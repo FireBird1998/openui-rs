@@ -1,6 +1,6 @@
 # Spec: openui-lang, the OpenUI Lang parser in Rust
 
-**Status:** needs-triage (draft for review, 2026-10-06)
+**Status:** ready-for-agent (approved 2026-10-06)
 
 ## Problem Statement
 

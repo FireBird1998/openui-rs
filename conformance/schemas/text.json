@@ -1,0 +1,8 @@
+{
+  "$defs": {
+    "Text": {
+      "properties": { "value": { "type": "string" } },
+      "required": ["value"]
+    }
+  }
+}

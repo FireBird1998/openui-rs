@@ -9,7 +9,7 @@ Each is conformant against the reference parser, using inputs lifted from its me
 
 **Blocked by:** 06 — One-shot parse matches.
 
-**Status:** needs-triage
+**Status:** ready-for-agent
 
 - [ ] Merge output matches the reference for every case from its tests plus generated patch cases.
 - [ ] JSON-to-OpenUI output matches the reference for every case from its serialize tests.

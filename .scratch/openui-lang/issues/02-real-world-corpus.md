@@ -10,7 +10,7 @@ Every case runs one-shot, at chunk sizes 1, 2, 3, 4, 7 and 16, and with seeded r
 
 **Blocked by:** 01 — Walking skeleton.
 
-**Status:** needs-triage
+**Status:** ready-for-agent
 
 - [ ] Every corpus case has committed golden output from the reference parser for every chunking.
 - [ ] The test run prints the count of conformant cases.

@@ -4,7 +4,7 @@
 
 **Blocked by:** 07 — Streaming parse matches.
 
-**Status:** needs-triage
+**Status:** ready-for-agent
 
 - [ ] Property tests over arbitrary strings and chunkings run in the normal test suite with fixed seeds.
 - [ ] A longer coverage-guided fuzz target exists for parse and streaming parse.

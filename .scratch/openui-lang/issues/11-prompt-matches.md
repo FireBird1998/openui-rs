@@ -4,7 +4,7 @@
 
 **Blocked by:** 01 — Walking skeleton.
 
-**Status:** needs-triage
+**Status:** ready-for-agent
 
 - [ ] Every prompt spec in the corpus produces exactly the reference prompt string.
 - [ ] Every mode combination (tools, no tools, edit mode, inline mode, bindings on and off) has a case.

@@ -1,0 +1,9 @@
+{
+  "chunkings": [4],
+  "schemas": {
+    "text": "schemas/text.json"
+  },
+  "cases": [
+    { "name": "hello-text", "schema": "text", "file": "cases/hello-text.oui", "source": "hand-written" }
+  ]
+}

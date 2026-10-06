@@ -1,0 +1,9 @@
+{
+  "name": "openui-lang-reference",
+  "private": true,
+  "type": "module",
+  "description": "Runs the vendored @openuidev/lang-core parser to produce conformance goldens.",
+  "dependencies": {
+    "ci-info": "^4.4.0"
+  }
+}

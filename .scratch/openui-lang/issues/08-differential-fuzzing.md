@@ -4,7 +4,7 @@
 
 **Blocked by:** 07 — Streaming parse matches.
 
-**Status:** needs-triage
+**Status:** ready-for-agent
 
 - [ ] A fuzz run of a chosen size and seed is reproducible from its seed.
 - [ ] Each mismatch is shrunk and saved as a corpus case; the normal test run then covers it without Bun.

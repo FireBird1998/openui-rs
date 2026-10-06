@@ -1,0 +1,13 @@
+[package]
+name = "openui-lang"
+version = "0.1.0"
+description = "OpenUI Lang parser in Rust, conformant with @openuidev/lang-core"
+edition.workspace = true
+license.workspace = true
+
+[dependencies]
+indexmap = "2"
+serde_json = { version = "1", features = ["preserve_order"] }
+
+[dev-dependencies]
+similar = "2"

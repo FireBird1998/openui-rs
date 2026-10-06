@@ -4,7 +4,7 @@
 
 **Blocked by:** 08 — Differential fuzzing; 09 — Never panic.
 
-**Status:** needs-triage
+**Status:** ready-for-agent
 
 - [ ] All conformance, fuzzing and robustness checks stay green.
 - [ ] Doubling a program costs no more than about 2.2× the streaming time, measured from 3.5 KB up to at least 28 KB.

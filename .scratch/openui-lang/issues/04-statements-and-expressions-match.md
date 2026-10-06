@@ -4,7 +4,7 @@
 
 **Blocked by:** 03 — Tokens match the reference.
 
-**Status:** needs-triage
+**Status:** ready-for-agent
 
 - [ ] `split` and `autoClose` output matches the reference for every corpus program and prefix, including the "was incomplete" flag.
 - [ ] Parsed expression trees match the reference for every statement in the corpus.

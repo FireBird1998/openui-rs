@@ -8,7 +8,7 @@
 
 **Blocked by:** 10 — Linear-time streaming; 11 — System prompt matches; 12 — Edit-mode merge.
 
-**Status:** needs-triage
+**Status:** ready-for-agent
 
 - [ ] A newcomer can clone, run the check command, and see everything green without Bun.
 - [ ] The README states the pinned commit and links the conformance report, quirks and benchmarks.
