@@ -14,3 +14,5 @@
 ## Comments
 
 **From ticket 03:** proptest is already a dev-dependency, and `tests/robustness.rs` covers tokenize. Extend that file rather than starting a new one.
+
+**From ticket 04:** the expression parser recurses, so very deep nesting (`((((...` thousands deep) would overflow the Rust stack. That's an abort, not a catchable panic, and in an app it would crash the process. The reference throws `RangeError` at some depth, so there's no result to conform to. Decide here: a nesting cap that degrades gracefully, or an explicit stack, and add a case for it.

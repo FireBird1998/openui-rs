@@ -156,3 +156,15 @@ pub(crate) fn write_json_number(out: &mut String, n: f64) {
         out.push_str("null");
     }
 }
+
+/// `String(n)` in JavaScript: like [`write_json_number`] for finite numbers,
+/// and `NaN`, `Infinity` or `-Infinity` otherwise.
+pub(crate) fn number_to_string(n: f64) -> String {
+    if n.is_nan() {
+        "NaN".to_owned()
+    } else if n.is_infinite() {
+        if n > 0.0 { "Infinity" } else { "-Infinity" }.to_owned()
+    } else {
+        ryu_js::Buffer::new().format_finite(n).to_owned()
+    }
+}

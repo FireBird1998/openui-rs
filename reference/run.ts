@@ -3,6 +3,7 @@
 //   bun reference/run.ts golden                          write conformance/golden/ for every case
 //   bun reference/run.ts show <case> <chunking> <step>   print the reference JSON for one step
 //   bun reference/run.ts show-tokens <case> <length>     print tokenize() of the first <length> chars
+//   bun reference/run.ts show-statements <case> <length> print the statement stages of the first <length> chars
 //
 // The corpus is conformance/manifest.json (hand-written) plus
 // conformance/imported.json (from scripts/import-corpus.sh). A chunking is
@@ -18,6 +19,8 @@ const { compileSchema, createStreamParser, parse } = await import(
   "./lang-core/src/parser/parser"
 );
 const { tokenize } = await import("./lang-core/src/parser/lexer");
+const { autoClose, split } = await import("./lang-core/src/parser/statements");
+const { parseExpression } = await import("./lang-core/src/parser/expressions");
 
 const CONFORMANCE = join(import.meta.dir, "..", "conformance");
 const GOLDEN = join(CONFORMANCE, "golden");
@@ -105,6 +108,16 @@ function tokensOfPrefix(c: Case, length: number): string {
   return JSON.stringify(tokenize(Array.from(input(c)).slice(0, length).join("")));
 }
 
+/**
+ * The statement stages of a prefix, as one JSON document: autoClose, then
+ * split(tokenize(closed text)), each statement with parseExpression of its tokens.
+ */
+function statementsOf(text: string): string {
+  const closed = autoClose(text);
+  const statements = split(tokenize(closed.text)).map((s) => ({ ...s, expr: parseExpression(s.tokens) }));
+  return JSON.stringify({ autoClose: closed, statements });
+}
+
 function writeGolden(rel: string, content: string) {
   const path = join(GOLDEN, rel);
   mkdirSync(dirname(path), { recursive: true });
@@ -126,6 +139,8 @@ if (command === "golden") {
     const cps = Array.from(input(c));
     const prefixes = cps.map((_, k) => fingerprint(JSON.stringify(tokenize(cps.slice(0, k + 1).join("")))));
     writeGolden(`${c.name}.tokens.json`, JSON.stringify(prefixes) + "\n");
+    const statements = cps.map((_, k) => fingerprint(statementsOf(cps.slice(0, k + 1).join(""))));
+    writeGolden(`${c.name}.statements.json`, JSON.stringify(statements) + "\n");
   }
   console.log(`Wrote goldens for ${cases.length} cases × ${chunkings.length} chunkings to conformance/golden/`);
 } else if (command === "show" && args.length === 3) {
@@ -138,7 +153,14 @@ if (command === "golden") {
   const c = cases.find((x) => x.name === name);
   if (!c) throw new Error(`no case named ${name}`);
   process.stdout.write(tokensOfPrefix(c, Number(length)));
+} else if (command === "show-statements" && args.length === 2) {
+  const [name, length] = args;
+  const c = cases.find((x) => x.name === name);
+  if (!c) throw new Error(`no case named ${name}`);
+  process.stdout.write(statementsOf(Array.from(input(c)).slice(0, Number(length)).join("")));
 } else {
-  console.error("usage: bun reference/run.ts golden | show <case> <chunking> <step> | show-tokens <case> <length>");
+  console.error(
+    "usage: bun reference/run.ts golden | show <case> <chunking> <step> | show-tokens <case> <length> | show-statements <case> <length>",
+  );
   process.exit(1);
 }

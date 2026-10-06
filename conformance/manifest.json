@@ -439,6 +439,12 @@
    "schema": "hand",
    "file": "cases/hand/70-lexer-stray-characters.oui",
    "source": "hand-written"
+  },
+  {
+   "name": "hand/71-expression-forms",
+   "schema": "hand",
+   "file": "cases/hand/71-expression-forms.oui",
+   "source": "hand-written"
   }
  ]
 }

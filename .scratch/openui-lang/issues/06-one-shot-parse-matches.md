@@ -27,3 +27,5 @@ Every one-shot case in the corpus conforms.
 - `compileSchema` walks `Object.entries`, which puts integer-like keys ("0", "12") first in ascending order, then the rest in insertion order. `serde_json`'s `preserve_order` keeps document order. Add a case with an integer-like property name and match JS order.
 - Enum and const values in signatures currently use serde_json's number formatting. Switch to the JS number formatter.
 - Query, mutation and state statements aren't classified yet, and `to_json` writes `[]` for them.
+
+**From ticket 04:** `materialize_value` maps every node kind except Str, Null, Ph, Ref and Comp to null for now. Ticket 06 replaces that with the real lowering: Num, Bool, Arr and Obj to plain values (arrays drop Ph, and drop null Comp or Ref results), and runtime expressions kept as AST via `materializeExpr` (which adds `mappedProps` to catalog Comp nodes and turns Query/Mutation refs into `RuntimeRef`). `Value` needs a variant for an AST node, and `Ast::Comp` needs optional `mapped_props` (key order `k, name, args, mappedProps`).

@@ -44,6 +44,8 @@ pub(crate) fn materialize_value(node: &Ast, ctx: &mut Ctx) -> Value {
         Ast::Str(v) => Value::Str(v.clone()),
         Ast::Null | Ast::Ph(_) => Value::Null,
         Ast::Comp { name, args } => materialize_comp(name, args, ctx),
+        // Other literals, collections and runtime expressions aren't materialized yet.
+        _ => Value::Null,
     }
 }
 

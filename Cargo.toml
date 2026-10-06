@@ -9,3 +9,7 @@ license = "MIT"
 [profile.release]
 lto = true
 codegen-units = 1
+
+# Tests walk every prefix of a 64 KB corpus; unoptimized builds make that slow.
+[profile.test]
+opt-level = 1

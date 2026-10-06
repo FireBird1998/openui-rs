@@ -11,6 +11,17 @@ pub enum IdKind {
     StateVar,
 }
 
+impl IdKind {
+    /// The reference parser's numeric token kind (`T`) for the id's token.
+    pub fn token_kind(self) -> u8 {
+        match self {
+            IdKind::Ident => 16,
+            IdKind::Type => 17,
+            IdKind::StateVar => 18,
+        }
+    }
+}
+
 /// A statement before its expression is parsed: `id = <tokens>`.
 #[derive(Clone, Debug, PartialEq)]
 pub struct RawStatement {
