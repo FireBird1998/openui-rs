@@ -235,6 +235,7 @@ impl<V> Default for JsObject<V> {
 }
 
 impl<V> JsObject<V> {
+    /// An empty object.
     pub fn new() -> Self {
         Self::default()
     }
@@ -258,10 +259,12 @@ impl<V> JsObject<V> {
         self.entries.get(key)
     }
 
+    /// The own property `key`, to change.
     pub fn get_mut(&mut self, key: &str) -> Option<&mut V> {
         self.entries.get_mut(key)
     }
 
+    /// `Object.hasOwn(obj, key)`.
     pub fn has_own(&self, key: &str) -> bool {
         self.entries.contains_key(key)
     }
@@ -276,10 +279,12 @@ impl<V> JsObject<V> {
         self.entries.shift_remove(key)
     }
 
+    /// How many own properties.
     pub fn len(&self) -> usize {
         self.entries.len()
     }
 
+    /// Whether there are none.
     pub fn is_empty(&self) -> bool {
         self.entries.is_empty()
     }
@@ -291,6 +296,7 @@ impl<V> JsObject<V> {
             .map(|i| self.entries.get_index(i).expect("index in range"))
     }
 
+    /// Values in JavaScript property order.
     pub fn values(&self) -> impl Iterator<Item = &V> {
         self.iter().map(|(_, v)| v)
     }

@@ -146,6 +146,7 @@ name = "openui-lang"
 version = "0.1.0"
 dependencies = [
  "indexmap",
+ "libc",
  "proptest",
  "ryu-js",
  "serde_json",

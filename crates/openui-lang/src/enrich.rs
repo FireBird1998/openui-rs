@@ -10,12 +10,17 @@ use crate::result::{ValidationError, ValidationErrorCode};
 /// parser errors, with a hint where one helps.
 #[derive(Clone, Debug, PartialEq)]
 pub struct EnrichedError {
+    /// What kind of problem.
     pub code: ValidationErrorCode,
+    /// The validation error's message.
     pub message: String,
+    /// The component it's about.
     pub component: String,
     /// The prop path; `None` where the error has none.
     pub path: Option<String>,
+    /// The statement the error is in, when there is one.
     pub statement_id: Option<String>,
+    /// What to do about it, for the error kinds that have one.
     pub hint: Option<String>,
 }
 

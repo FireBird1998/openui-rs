@@ -15,11 +15,13 @@ DEST="$ROOT/reference/lang-core"
 commit="${1:?usage: update-reference.sh <commit> [<local openui checkout>]}"
 tmp="$(mktemp -d)"
 trap 'rm -rf "$tmp"' EXIT
-full="$(fetch_upstream "$commit" "$tmp" "${2:-}" "$PKG")"
+full="$(fetch_upstream "$commit" "$tmp" "${2:-}" "$PKG" LICENSE)"
 
 rm -rf "$DEST"
 mkdir -p "$DEST"
 cp -R "$tmp/$PKG/src" "$DEST/src"
+# Upstream's MIT notice travels with its code.
+cp "$tmp/LICENSE" "$DEST/LICENSE"
 cp "$tmp/$PKG/package.json" "$DEST/package.json.upstream"
 version="$(sed -n 's/^  "version": "\(.*\)",$/\1/p' "$DEST/package.json.upstream")"
 

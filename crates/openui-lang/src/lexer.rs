@@ -11,20 +11,35 @@ pub(crate) static EOF: Token = Token::Eof;
 /// One token, mirroring the reference parser's `T` kinds.
 #[derive(Clone, Debug, PartialEq)]
 pub enum Token {
+    /// A line break.
     Newline,
+    /// `(`
     LParen,
+    /// `)`
     RParen,
+    /// `[`
     LBrack,
+    /// `]`
     RBrack,
+    /// `{`
     LBrace,
+    /// `}`
     RBrace,
+    /// `,`
     Comma,
+    /// `:`
     Colon,
+    /// `=`
     Equals,
+    /// `true`
     True,
+    /// `false`
     False,
+    /// `null`
     Null,
+    /// The end of the input; always the last token.
     Eof,
+    /// A string literal, unescaped (double or single quotes).
     Str(String),
     /// As JavaScript's `+text`: `1e` is NaN, `1e400` is Infinity.
     Num(f64),
@@ -34,21 +49,37 @@ pub enum Token {
     Type(String),
     /// `$name`, including the `$`.
     StateVar(String),
+    /// `.`
     Dot,
+    /// `+`
     Plus,
+    /// `-`
     Minus,
+    /// `*`
     Star,
+    /// `/`
     Slash,
+    /// `%`
     Percent,
+    /// `==`
     EqEq,
+    /// `!=`
     NotEq,
+    /// `>`
     Greater,
+    /// `<`
     Less,
+    /// `>=`
     GreaterEq,
+    /// `<=`
     LessEq,
+    /// `&&`
     And,
+    /// `||`
     Or,
+    /// `!`
     Not,
+    /// `?`
     Question,
     /// `@name`, without the `@`.
     BuiltinCall(String),

@@ -15,14 +15,22 @@ pub enum Ast {
     /// Materializing a library component inside a runtime expression adds
     /// `mapped_props`, its args by param name.
     Comp {
+        /// The callee, without `@`.
         name: String,
+        /// Positional arguments.
         args: Arc<Vec<Ast>>,
+        /// The same args by param name; only after materializing.
         mapped_props: Option<Arc<JsObject<Ast>>>,
     },
+    /// A string literal, unescaped.
     Str(String),
+    /// A number literal.
     Num(f64),
+    /// `true` or `false`.
     Bool(bool),
+    /// `null`.
     Null,
+    /// An array literal.
     Arr(Arc<Vec<Ast>>),
     /// Entries in source order; keys may repeat.
     Obj(Arc<Vec<(String, Ast)>>),
@@ -34,34 +42,55 @@ pub enum Ast {
     StateRef(String),
     /// A reference to a Query or Mutation statement, resolved at runtime.
     RuntimeRef {
+        /// The statement's name.
         n: String,
+        /// Whether it's a query or a mutation.
         ref_type: RefType,
     },
+    /// A binary operation: `a + b`, `x == 1`, `p && q`.
     BinOp {
+        /// `+ - * / % == != > < >= <= && ||`.
         op: &'static str,
+        /// The left operand.
         left: Arc<Ast>,
+        /// The right operand.
         right: Arc<Ast>,
     },
+    /// `!x` or `-x`.
     UnaryOp {
+        /// `!` or `-`.
         op: &'static str,
+        /// The operand.
         operand: Arc<Ast>,
     },
+    /// `cond ? then : otherwise`.
     Ternary {
+        /// The condition.
         cond: Arc<Ast>,
+        /// The value when it's truthy.
         then: Arc<Ast>,
+        /// The value otherwise (the reference's `else`).
         otherwise: Arc<Ast>,
     },
+    /// `obj.field`; on an array, the field of every element.
     Member {
+        /// What's read from.
         obj: Arc<Ast>,
+        /// The field name.
         field: String,
     },
+    /// `obj[index]`.
     Index {
+        /// What's indexed.
         obj: Arc<Ast>,
+        /// The index or key.
         index: Arc<Ast>,
     },
     /// `$count = expression`.
     Assign {
+        /// The state variable, `$` included.
         target: String,
+        /// The value assigned.
         value: Arc<Ast>,
     },
 }
@@ -69,11 +98,14 @@ pub enum Ast {
 /// What a [`Ast::RuntimeRef`] points at.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum RefType {
+    /// A `Query(...)` statement.
     Query,
+    /// A `Mutation(...)` statement.
     Mutation,
 }
 
 impl RefType {
+    /// `"query"` or `"mutation"`, as in the JSON.
     pub fn as_str(self) -> &'static str {
         match self {
             RefType::Query => "query",

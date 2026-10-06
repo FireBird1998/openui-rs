@@ -6,8 +6,11 @@ use crate::lexer::{EOF, Token};
 /// Which kind of token named a statement.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum IdKind {
+    /// A lowercase name: `header = ...`.
     Ident,
+    /// A PascalCase name: `Header = ...`.
     Type,
+    /// A state variable: `$count = ...`.
     StateVar,
 }
 
@@ -25,8 +28,11 @@ impl IdKind {
 /// A statement before its expression is parsed: `id = <tokens>`.
 #[derive(Clone, Debug, PartialEq)]
 pub struct RawStatement {
+    /// The statement's name, `$` included for state.
     pub id: String,
+    /// Which kind of token named it.
     pub id_kind: IdKind,
+    /// The expression's tokens, ending in [`Token::Eof`].
     pub tokens: Vec<Token>,
 }
 

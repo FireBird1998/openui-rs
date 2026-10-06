@@ -1,6 +1,6 @@
 # Spec: openui-lang, the OpenUI Lang parser in Rust
 
-**Status:** ready-for-agent (approved 2026-10-06)
+**Status:** done (2026-10-07). Approved 2026-10-06; tickets 01–14 complete. See `CONFORMANCE.md` at the repository root.
 
 ## Problem Statement
 

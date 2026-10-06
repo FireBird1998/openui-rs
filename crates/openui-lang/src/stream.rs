@@ -70,6 +70,9 @@ impl Completed {
 }
 
 impl StreamParser {
+    /// A parser for one stream. `root_name` picks the entry statement when
+    /// there's no `root`: a statement by that name, else the first statement
+    /// calling that component.
     pub fn new(library: Arc<Library>, root_name: Option<&str>) -> StreamParser {
         StreamParser {
             library,

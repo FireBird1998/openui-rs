@@ -31,7 +31,8 @@ pub(crate) const JSON_DEPTH_LIMIT: usize = 800;
 
 /// Why an element tree couldn't be serialized: the reference throws on the
 /// same inputs (a missing node, a field of the wrong type, an object that
-/// can't be turned into text), or it nests deeper than [`JSON_DEPTH_LIMIT`].
+/// can't be turned into text), or it nests deeper than 800 levels, which no
+/// parse result does.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct SerializeError(String);
 

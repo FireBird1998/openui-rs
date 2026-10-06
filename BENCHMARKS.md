@@ -1,9 +1,15 @@
 # Benchmarks
 
 How fast the core streams, measured against the reference parser on the same
-workload, and why the numbers look the way they do. Last run: 2026-10-06 on an
-Apple Silicon laptop (Rust 1.97, release profile; Bun 1.4), reference at commit
-`bba1d251`.
+workload, and why the numbers look the way they do. The table was measured on
+2026-10-06 on an idle Apple Silicon laptop (Rust 1.97, release profile; Bun
+1.4), reference at commit `bba1d251`. The reference hasn't changed since. The
+core's synthetic-program times were measured again on 2026-10-07, after
+tickets 12 and 14 changed its internals, and matched within noise (below).
+
+Benchmarks need an idle machine: a run on 2026-10-07 while a virtual machine
+was using most of a core came out 4–7× slower on both sides, unevenly, and was
+discarded.
 
 ## Workload
 

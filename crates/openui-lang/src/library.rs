@@ -9,7 +9,9 @@ use crate::js::object_entries;
 /// One component parameter, in positional order.
 #[derive(Clone, Debug, PartialEq)]
 pub struct Param {
+    /// The prop name.
     pub name: String,
+    /// Listed in the component's `required`.
     pub required: bool,
     /// The schema's `default`, used when a required prop is missing or null.
     pub default: Option<Json>,
@@ -20,6 +22,7 @@ pub struct Param {
 /// A component's parameters, in positional order.
 #[derive(Clone, Debug, PartialEq)]
 pub struct Component {
+    /// Params in positional order: the order of the schema's `properties`.
     pub params: Vec<Param>,
 }
 
@@ -63,6 +66,7 @@ impl Library {
         Library { components }
     }
 
+    /// A component by name.
     pub fn component(&self, name: &str) -> Option<&Component> {
         self.components.get(name)
     }

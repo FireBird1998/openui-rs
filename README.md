@@ -1,22 +1,45 @@
 # openui-rs
 
-A Rust implementation of the OpenUI Lang language layer (the `openui-lang` crate), and Dynamic News, an Android app built on it.
+`openui-lang` is the OpenUI Lang language layer in Rust: parsing (one-shot and streaming), prop validation, system prompt generation, edit-mode merging, and turning element trees back into source. It's a port of `@openuidev/lang-core`, the TypeScript reference, and its output is the same byte for byte, after every streamed chunk, so a screen looks the same on every platform. It's written to run on phones: no input can panic it, overflow its stack or exhaust its memory.
 
-**Status:** tickets 01–12 and 14 done; 13 (the write-up) is left. Edit-mode merge, element trees back to source, and enriched errors match the reference on 1,417 merge, 325 serialize and 187 enrich cases, plus 100,000 fuzzed inputs. Prompt generation matches the reference on 44 specs (every mode, tools, groups, cloud config, and its error cases). Streaming cost now grows linearly with the program: a push costs the arriving statement plus the chain above it, not the whole tree, and doubling a program costs about 2.15× (3.7 KB to 30 KB); see [BENCHMARKS.md](BENCHMARKS.md). No input can panic it, overflow the stack or exhaust memory: nesting stops at 256 levels (`depth_limited`), results share repeated subtrees instead of copying them, and a result that would grow past about 8 MiB of JSON is cut (`size_limited`). Differential fuzzing (180,000 generated and mangled programs) finds no unexplained mismatches. **All 300 corpus cases conform**: one-shot, at every step of eight push chunkings, and through two resync sequences (`set` with growing, rewound and edited text). The cases are hand-written edge cases, every program the reference test suites parse, the benchmark samples, programs from the upstream docs and examples, fuzz finds, and synthetic programs up to 30 KB. Stages (preprocessing, tokens, statements, expression trees) also match on every prefix.
+The repository will also hold Dynamic News, an Android app whose story screens are written by an LLM and drawn natively with this crate. That part is still being designed ([map](.scratch/dynamic-news/map.md)).
 
-## How correctness works
+**Status:** the crate is complete: every ticket of its [spec](.scratch/openui-lang/spec.md) is done. It conforms to the reference at commit [`bba1d2515fa53562ccf0d5d51309c6a93dbaf186`](https://github.com/thesysdev/openui/tree/bba1d2515fa53562ccf0d5d51309c6a93dbaf186/packages/lang-core) (lang-core 0.3.0) on 300 parse cases at every streaming step, 44 prompts, 1,417 merges, 325 serializations, 187 enriched error lists and 320,000 fuzzed inputs.
 
-The TypeScript parser in `@openuidev/lang-core` is the reference. It's vendored under `reference/` at the commit recorded in [`reference/UPSTREAM`](reference/UPSTREAM). For every case in `conformance/`, the Rust parse result has to serialize to exactly the JSON the reference produced: one-shot, and after every push of a streaming parse, under eight chunkings (sizes 1, 2, 3, 4, 7, 16 and two seeded random ones).
+- [CONFORMANCE.md](CONFORMANCE.md): what's checked and how, fuzzing, what it found, and the few deliberate divergences
+- [conformance/QUIRKS.md](conformance/QUIRKS.md): reference behaviour that looks wrong but is reproduced, with draft upstream reports
+- [BENCHMARKS.md](BENCHMARKS.md): streaming speed against the reference, and why it grows linearly
+
+## Using it
+
+```rust
+use std::sync::Arc;
+use openui_lang::{Library, StreamParser, parse};
+
+// The JSON Schema that `library.toJSONSchema()` produces on the web side.
+let schema = serde_json::json!({"$defs": {
+    "Stack": {"properties": {"children": {"type": "array"}}},
+    "Text": {"properties": {"value": {"type": "string"}}, "required": ["value"]}
+}});
+let library = Arc::new(Library::from_json_schema(&schema));
+
+// One-shot.
+let result = parse("root = Stack([title])\ntitle = Text(\"Hello\")", &library, None);
+assert_eq!(result.root.unwrap().type_name, "Stack");
+
+// Streaming: a full result after every chunk, the unfinished parts marked partial.
+let mut stream = StreamParser::new(library, None);
+for chunk in ["root = Stack([ti", "tle])\ntitle = Te", "xt(\"Hello\")"] {
+    let result = stream.push(chunk);
+    println!("{}", result.to_json()); // the reference's JSON, byte for byte
+}
+```
+
+`cargo doc -p openui-lang --open` has the rest, with examples for prompts, merging and serializing. Embedders should build the crate optimized (opt-level 1 or more, even in debug builds) and call it from threads with at least 512 KB of stack.
+
+The command-line tool runs each part on files:
 
 ```bash
-scripts/check.sh                       # fmt, clippy, tests (Rust only, no Bun needed)
-scripts/regen-golden.sh                # re-run the reference over the corpus (needs Bun)
-scripts/import-corpus.sh [<checkout>]  # re-import upstream programs at the pinned commit, then regen
-scripts/update-reference.sh <commit>   # vendor a different upstream commit (full hash)
-UPDATE_PENDING=1 cargo test --test conformance   # rewrite pending.txt to the cases failing now
-scripts/fuzz.sh --seed 1 --count 10000           # differential fuzzing; saves shrunk mismatches as cases
-scripts/fuzz.sh --edits --seed 1 --count 10000   # the same for merge and serialize
-scripts/bench.sh                                 # streaming benchmarks, core against the reference (needs Bun)
 cargo run -p openui-lang -- parse conformance/schemas/text.json conformance/cases/hello-text.oui
 cargo run -p openui-lang -- stream conformance/schemas/hand.json conformance/cases/hand/71-expression-forms.oui 7
 cargo run -p openui-lang -- tokens conformance/cases/hand/67-lexer-number-forms.oui
@@ -24,10 +47,40 @@ cargo run -p openui-lang -- prompt conformance/prompts/library-tools-specs.json
 cargo run --release -p openui-lang -- bench conformance/imported/schemas/bench.json conformance/imported/cases/bench/*.oui
 ```
 
-Reference behaviour that looks wrong, but that the core matches anyway, is recorded in [`conformance/QUIRKS.md`](conformance/QUIRKS.md). How fast it is, and how that was measured, is in [`BENCHMARKS.md`](BENCHMARKS.md).
+## Checking it
 
-## Map
+```bash
+scripts/check.sh
+```
 
-- Glossary: [CONTEXT.md](CONTEXT.md)
-- Parser spec and tickets: [.scratch/openui-lang/](.scratch/openui-lang/spec.md)
-- Dynamic News map (parked until the parser tickets are done): [.scratch/dynamic-news/map.md](.scratch/dynamic-news/map.md)
+That's formatting, clippy, the docs, and every test, doc examples included (this README's example too). It needs only Rust 1.88 or later: no Bun, no network. The reference's outputs are committed as goldens, so the tests compare against them directly.
+
+## Working on it
+
+These need [Bun](https://bun.sh) 1.4, which runs the vendored reference in `reference/`:
+
+```bash
+scripts/regen-golden.sh                  # recompute every golden from the reference
+scripts/import-corpus.sh [<checkout>]    # re-import upstream programs and test calls, then regenerate
+scripts/update-reference.sh <commit>     # vendor another upstream commit (full hash), then import
+scripts/fuzz.sh --seed 1 --count 10000   # differential fuzzing; saves shrunk mismatches as cases
+scripts/fuzz.sh --edits --seed 1 --count 10000   # the same for merging and serializing
+scripts/bench.sh                         # streaming benchmarks, core against reference
+```
+
+When a test fails, it prints the case, the streaming step and a diff against the reference (fetched live when Bun is there). Two switches rewrite generated files: `UPDATE_PENDING=1 cargo test --test conformance` lists the cases that fail now as pending, and `UPDATE_REPORT=1 cargo test --test report` refreshes the counts in CONFORMANCE.md. Coverage-guided fuzz targets live in `fuzz/` and need nightly Rust and `cargo-fuzz`.
+
+## Layout
+
+| Path | What's there |
+|---|---|
+| `crates/openui-lang/` | the crate: `src/` (one module per stage), `tests/`, the CLI in `src/bin/`, the differential fuzzer in `examples/fuzz/` |
+| `conformance/` | the corpus (`manifest.json` and friends list every case), the goldens, quirks, and the hand-written and generated edit and prompt cases |
+| `reference/` | the vendored reference (`lang-core/`, untouched) and the Bun scripts that run it: goldens, fuzz server, benchmarks, corpus import |
+| `scripts/` | the commands above |
+| `fuzz/` | cargo-fuzz targets |
+| `.scratch/` | the spec, its tickets with notes on every decision, and the Dynamic News map; the glossary is [CONTEXT.md](CONTEXT.md) |
+
+## License
+
+MIT, see [LICENSE](LICENSE). The vendored reference in `reference/lang-core/` and the programs imported from upstream in `conformance/imported/` are Thesys Inc.'s, also under MIT; their notice is kept beside them.

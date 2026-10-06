@@ -3,7 +3,11 @@ name = "openui-lang"
 version = "0.1.0"
 description = "OpenUI Lang parser in Rust, conformant with @openuidev/lang-core"
 edition.workspace = true
+rust-version.workspace = true
 license.workspace = true
+readme = "../../README.md"
+keywords = ["openui", "parser", "generative-ui", "llm", "streaming"]
+categories = ["parser-implementations"]
 
 [dependencies]
 indexmap = "2"
@@ -12,4 +16,6 @@ serde_json = { version = "1", features = ["preserve_order", "float_roundtrip"] }
 
 [dev-dependencies]
 proptest = "1"
+# Thread CPU time for tests/streaming_cost.rs; already in the tree via proptest.
+libc = "0.2"
 similar = "2"

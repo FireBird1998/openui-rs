@@ -11,9 +11,11 @@ commit="$(sed -n 's/^commit: //p' "$ROOT/reference/UPSTREAM")"
 
 tmp="$(mktemp -d)"
 trap 'rm -rf "$tmp"' EXIT
-fetch_upstream "$commit" "$tmp" "${1:-}" benchmarks docs/content examples >/dev/null
+fetch_upstream "$commit" "$tmp" "${1:-}" benchmarks docs/content examples LICENSE >/dev/null
 
 cd "$ROOT/reference"
 bun install --silent
 OPENUI_TELEMETRY_DISABLED=1 DO_NOT_TRACK=1 bun import-corpus.ts "$tmp"
+# The imported programs are upstream's, under its MIT notice.
+cp "$tmp/LICENSE" "$ROOT/conformance/imported/LICENSE"
 "$ROOT/scripts/regen-golden.sh"

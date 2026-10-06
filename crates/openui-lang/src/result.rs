@@ -11,16 +11,22 @@ use crate::js::{JsObject, json_number, write_json_number, write_json_string};
 /// A materialized prop value: what the reference parser puts in an element's props.
 #[derive(Clone, Debug, PartialEq)]
 pub enum Value {
+    /// `null`: a literal, a dropped component, or an unresolved reference.
     Null,
+    /// `true` or `false`.
     Bool(bool),
+    /// A number.
     Num(f64),
+    /// A string.
     Str(String),
     /// Shared, as everything below an element is: a statement inlined in many
     /// places is stored once. Clones are cheap; changes copy on write.
     Arr(Arc<Vec<Value>>),
+    /// A plain object, keys in JavaScript's property order.
     Obj(Arc<JsObject<Value>>),
-    /// Shared: a streaming parse keeps elements that haven't changed between
-    /// results, so an element may be part of several results at once.
+    /// A component instance. Shared: a streaming parse keeps elements that
+    /// haven't changed between results, so an element may be part of several
+    /// results at once.
     Element(Arc<Element>),
     /// A builtin call or runtime expression, kept for evaluation.
     Ast(Arc<Ast>),
@@ -51,7 +57,10 @@ impl Value {
 /// A component instance with its positional arguments mapped to named props.
 #[derive(Clone, Debug, PartialEq)]
 pub struct Element {
+    /// The component's name.
     pub type_name: String,
+    /// Positional args mapped to the library's param names, validated, with
+    /// defaults filled in.
     pub props: JsObject<Value>,
     /// The element's text hasn't fully arrived yet.
     pub partial: bool,
@@ -64,15 +73,22 @@ pub struct Element {
 /// What kind of validation problem was found.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum ValidationErrorCode {
+    /// A required prop wasn't given and has no default.
     MissingRequired,
+    /// A required prop is `null` and has no default.
     NullRequired,
+    /// The component isn't in the library or the builtins.
     UnknownComponent,
+    /// `Query(...)` or `Mutation(...)` used as a value instead of a statement.
     InlineReserved,
+    /// More positional args than the component has params.
     ExcessArgs,
+    /// A prop's value doesn't match its schema.
     TypeMismatch,
 }
 
 impl ValidationErrorCode {
+    /// The code as in the JSON: `"missing-required"` and so on.
     pub fn as_str(self) -> &'static str {
         match self {
             ValidationErrorCode::MissingRequired => "missing-required",
@@ -88,11 +104,15 @@ impl ValidationErrorCode {
 /// A prop validation problem.
 #[derive(Clone, Debug, PartialEq)]
 pub struct ValidationError {
+    /// What kind of problem.
     pub code: ValidationErrorCode,
+    /// The component it's about.
     pub component: String,
     /// JSON Pointer into the component's props, such as `/title`, or empty.
     pub path: String,
+    /// The reference's wording, with signatures and expected types inlined.
     pub message: String,
+    /// The statement the error is in, when there is one.
     pub statement_id: Option<String>,
 }
 
@@ -105,39 +125,55 @@ pub struct Meta {
     pub unresolved: Vec<String>,
     /// Statements nothing reaches from the root.
     pub orphaned: Vec<String>,
+    /// How many statements the program has (streaming counts a redefinition
+    /// again: see quirk 4).
     pub statement_count: usize,
+    /// Prop validation problems, in the order they were met.
     pub errors: Vec<ValidationError>,
 }
 
 /// A `name = Query(tool, args, defaults, refresh)` statement, unevaluated.
 #[derive(Clone, Debug, PartialEq)]
 pub struct QueryStatement {
+    /// The statement's name.
     pub statement_id: String,
+    /// The tool name expression (first arg).
     pub tool: Option<Ast>,
+    /// The tool arguments (second arg).
     pub args: Option<Ast>,
+    /// Data to show before the query returns (third arg).
     pub defaults: Option<Ast>,
+    /// The refresh interval in seconds (fourth arg).
     pub refresh: Option<Ast>,
     /// State variables the args read, when there are any.
     pub deps: Option<Vec<String>>,
+    /// Always `true` in a parse result; the runtime tracks loading.
     pub complete: bool,
 }
 
 /// A `name = Mutation(tool, args)` statement, unevaluated.
 #[derive(Clone, Debug, PartialEq)]
 pub struct MutationStatement {
+    /// The statement's name.
     pub statement_id: String,
+    /// The tool name expression (first arg).
     pub tool: Option<Ast>,
+    /// The tool arguments (second arg).
     pub args: Option<Ast>,
 }
 
 /// What parsing returns.
 #[derive(Clone, Debug, Default, PartialEq)]
 pub struct ParseResult {
+    /// The element tree, from the entry statement; `None` when it isn't a component.
     pub root: Option<Element>,
+    /// Facts about the parse as a whole.
     pub meta: Meta,
     /// `$name` → initial value, including `$name`s used but never declared (null).
     pub state_declarations: JsObject<Value>,
+    /// `Query(...)` statements, in program order.
     pub query_statements: Vec<QueryStatement>,
+    /// `Mutation(...)` statements, in program order.
     pub mutation_statements: Vec<MutationStatement>,
     /// The program nested deeper than [`crate::MAX_DEPTH`] levels and the
     /// too-deep parts were dropped. (The reference throws on such input.)
