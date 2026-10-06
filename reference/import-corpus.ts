@@ -63,12 +63,16 @@ const run = spawnSync(
   { cwd: join(HERE, "lang-core"), env: { ...process.env, CAPTURE_OUT: captureOut }, encoding: "utf8" },
 );
 if (run.status !== 0) throw new Error(`reference tests failed:\n${run.stderr}`);
-const captured: { test: string; schema: unknown; input: string; root?: string }[] = JSON.parse(
+const capture: {
+  parses: { test: string; schema: unknown; input: string; root?: string }[];
+  merges: { test: string; existing: string; patch: string; rootId?: string }[];
+  serializes: { test: string; element: unknown; schema: unknown; stateDeclarations?: unknown }[];
+} = JSON.parse(
   readFileSync(captureOut, "utf8"),
 );
 rmSync(captureOut);
 const testSchemas = new Map<string, string>();
-for (const c of captured) {
+for (const c of capture.parses) {
   const stem = c.test.replace(/\.test\.ts$/, "").replace(/\./g, "-");
   const json = JSON.stringify(c.schema);
   if (!testSchemas.has(json)) {
@@ -79,6 +83,49 @@ for (const c of captured) {
   }
   addCase(`test/${stem}`, testSchemas.get(json)!, c.input, "reference-test", `packages/lang-core/src/parser/__tests__/${c.test}`, c.root);
 }
+
+// The tests' mergeStatements and jsonToOpenUI calls, with their arguments as
+// JSON carries them, each distinct call once.
+const stemOf = (test: string) => test.replace(/\.test\.ts$/, "").replace(/\./g, "-");
+const editCases = <T extends { test: string }>(calls: T[], make: (c: T) => object) => {
+  const seenCalls = new Set<string>();
+  const counts = new Map<string, number>();
+  const out: object[] = [];
+  for (const c of calls) {
+    const { test, ...args } = c;
+    const key = JSON.stringify(args);
+    if (seenCalls.has(key)) continue;
+    seenCalls.add(key);
+    const stem = stemOf(test);
+    const n = (counts.get(stem) ?? 0) + 1;
+    counts.set(stem, n);
+    out.push({
+      name: `test/${stem}-${String(n).padStart(2, "0")}`,
+      ...make(c),
+      source: "reference-test",
+      origin: `packages/lang-core/src/parser/__tests__/${test}`,
+    });
+  }
+  return out;
+};
+writeFileSync(
+  join(OUT, "merge.json"),
+  JSON.stringify({ cases: editCases(capture.merges, ({ test: _, ...args }) => args) }, null, 1) + "\n",
+);
+const editSchemas = new Map<string, string>();
+const serializeCases = editCases(capture.serializes, ({ test, schema, ...args }) => {
+  const json = JSON.stringify(schema);
+  if (!editSchemas.has(json)) editSchemas.set(json, `test-${stemOf(test)}-lib${editSchemas.size ? `-${editSchemas.size + 1}` : ""}`);
+  return { schema: editSchemas.get(json), ...args };
+});
+writeFileSync(
+  join(OUT, "serialize.json"),
+  JSON.stringify(
+    { schemas: Object.fromEntries([...editSchemas].map(([json, name]) => [name, JSON.parse(json)])), cases: serializeCases },
+    null,
+    1,
+  ) + "\n",
+);
 
 // ── Benchmark samples ────────────────────────────────────────────────────────
 addSchema("bench", JSON.parse(readFileSync(join(upstream, "benchmarks/schema.json"), "utf8")));
@@ -173,3 +220,4 @@ importPrograms("examples", "examples", (rel) => {
 writeFileSync(join(OUT, "..", "imported.json"), JSON.stringify({ schemas, cases }, null, 1) + "\n");
 const bySource = Object.entries(Object.groupBy(cases, (c) => c.source)).map(([s, cs]) => `${cs!.length} ${s}`);
 console.log(`Imported ${cases.length} cases (${bySource.join(", ")}) into conformance/imported/`);
+console.log(`Captured ${capture.merges.length} merge and ${capture.serializes.length} serialize calls from the reference tests (${serializeCases.length} distinct serialize calls)`);

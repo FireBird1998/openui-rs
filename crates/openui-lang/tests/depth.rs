@@ -5,14 +5,21 @@
 //! rather than panicking. Kept in their own test binary so an overflow can't
 //! hide other results.
 //!
-//! Measured at depth 256: optimized builds (opt-level 1 or 3) need at most
-//! 256 KB of stack, unoptimized ones up to about 1 MB. Hence opt-level 1 for
-//! this crate even in dev and test builds. `DEPTH_STACK_KB=<n>` overrides the
-//! stack size to measure.
+//! Measured (2026-10-06) with `DEPTH_STACK_KB=<n>`, which overrides the stack
+//! size: every shape fits in 384 KB in both test (opt-level 1) and release
+//! builds. The 10,000-statement reference chain is the largest; the nested
+//! shapes need 256 KB or less. Unoptimized builds need up to about 1 MB,
+//! hence opt-level 1 for this crate even in dev and test builds.
+//!
+//! The same goes for the rest of the language layer on the deepest results:
+//! reading the result's JSON back, serializing its tree to source, and merging
+//! the program into itself.
 
 use std::sync::Arc;
 
-use openui_lang::{Library, MAX_DEPTH, StreamParser, parse};
+use openui_lang::{
+    Library, MAX_DEPTH, StreamParser, json_to_openui, merge_statements, parse, parse_json,
+};
 
 // Ordinary programs must stay well inside the limit.
 const _: () = assert!(MAX_DEPTH >= 256);
@@ -43,7 +50,7 @@ fn survives(program: String) -> (bool, bool) {
             let lib = library();
             let one = parse(&program, &lib, None);
             one.to_json();
-            let mut stream = StreamParser::new(lib, None);
+            let mut stream = StreamParser::new(lib.clone(), None);
             let chars: Vec<char> = program.chars().collect();
             let mut last = None;
             for chunk in chars.chunks(chars.len().div_ceil(16)) {
@@ -51,6 +58,14 @@ fn survives(program: String) -> (bool, bool) {
             }
             let last = last.unwrap();
             last.to_json();
+            // Back to source: every parse result's JSON reads back and serializes.
+            let json = parse_json(&one.to_json()).expect("a parse result reads back");
+            if !json["root"].is_null() {
+                json_to_openui(&json["root"], &lib, Some(&json["stateDeclarations"]))
+                    .expect("a parse result serializes");
+            }
+            merge_statements(&program, &program, None);
+            merge_statements("", &program, None);
             (one.depth_limited, last.depth_limited)
         })
         .unwrap()
@@ -136,4 +151,40 @@ fn ordinary_nesting_is_not_limited() {
         "])".repeat(40)
     );
     assert_eq!(survives(program), (false, false));
+}
+
+/// JSON deeper than any parse result is refused, not recursed into.
+#[test]
+fn json_deeper_than_any_parse_result_is_refused() {
+    std::thread::Builder::new()
+        .stack_size(stack())
+        .spawn(|| {
+            let deep = format!("{}1{}", "[".repeat(100_000), "]".repeat(100_000));
+            assert!(parse_json(&deep).is_err());
+            // Trees built in code: at the limit, serialized; just past it, refused.
+            // (Built by hand: `json!` deep-copies its argument recursively.)
+            let element = |levels: usize| {
+                use serde_json::Value;
+                let mut value = Value::String("leaf".into());
+                for _ in 0..levels {
+                    value = Value::Array(vec![value]);
+                }
+                let mut props = serde_json::Map::new();
+                props.insert("children".into(), value);
+                let mut element = serde_json::Map::new();
+                element.insert("type".into(), Value::String("element".into()));
+                element.insert("typeName".into(), Value::String("Stack".into()));
+                element.insert("props".into(), Value::Object(props));
+                element.insert("partial".into(), Value::Bool(false));
+                Value::Object(element)
+            };
+            assert!(json_to_openui(&element(797), &library(), None).is_ok());
+            assert!(json_to_openui(&element(900), &library(), None).is_err());
+            // And JSON text at the limit reads back.
+            let at_limit = format!("{}1{}", "[".repeat(800), "]".repeat(800));
+            assert!(parse_json(&at_limit).is_ok());
+        })
+        .unwrap()
+        .join()
+        .expect("deep JSON panicked");
 }

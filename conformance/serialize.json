@@ -1,0 +1,1880 @@
+{
+ "schemas": {
+  "odd-serialize": {
+   "$defs": {
+    "Odd": {
+     "properties": {
+      "0": {},
+      "length": {},
+      "__proto__": {},
+      "constructor": {},
+      "toString": {}
+     }
+    }
+   }
+  }
+ },
+ "cases": [
+  {
+   "name": "hand/statement-ids-of-every-type",
+   "schema": "hand",
+   "element": {
+    "type": "element",
+    "typeName": "Root",
+    "props": {
+     "children": [
+      {
+       "type": "element",
+       "typeName": "Text",
+       "props": {
+        "value": "seven"
+       },
+       "partial": false,
+       "hasDynamicProps": false,
+       "statementId": 7
+      },
+      {
+       "type": "element",
+       "typeName": "Text",
+       "props": {
+        "value": "true"
+       },
+       "partial": false,
+       "hasDynamicProps": false,
+       "statementId": true
+      },
+      {
+       "type": "element",
+       "typeName": "Text",
+       "props": {
+        "value": "object"
+       },
+       "partial": false,
+       "hasDynamicProps": false,
+       "statementId": {
+        "a": 1
+       }
+      },
+      {
+       "type": "element",
+       "typeName": "Text",
+       "props": {
+        "value": "array"
+       },
+       "partial": false,
+       "hasDynamicProps": false,
+       "statementId": [
+        1,
+        null,
+        [
+         2
+        ]
+       ]
+      },
+      {
+       "type": "element",
+       "typeName": "Text",
+       "props": {
+        "value": "empty"
+       },
+       "partial": false,
+       "hasDynamicProps": false,
+       "statementId": ""
+      },
+      {
+       "type": "element",
+       "typeName": "Text",
+       "props": {
+        "value": "zero"
+       },
+       "partial": false,
+       "hasDynamicProps": false,
+       "statementId": 0
+      },
+      {
+       "type": "element",
+       "typeName": "Text",
+       "props": {
+        "value": "false"
+       },
+       "partial": false,
+       "hasDynamicProps": false,
+       "statementId": false
+      },
+      {
+       "type": "element",
+       "typeName": "Text",
+       "props": {
+        "value": "again"
+       },
+       "partial": false,
+       "hasDynamicProps": false,
+       "statementId": 7.0
+      }
+     ]
+    },
+    "partial": false,
+    "hasDynamicProps": false
+   },
+   "source": "hand-written"
+  },
+  {
+   "name": "hand/duplicate-ids",
+   "schema": "hand",
+   "element": {
+    "type": "element",
+    "typeName": "Root",
+    "props": {
+     "children": [
+      {
+       "type": "element",
+       "typeName": "Text",
+       "props": {
+        "value": "first"
+       },
+       "partial": false,
+       "hasDynamicProps": false,
+       "statementId": "x"
+      },
+      {
+       "type": "element",
+       "typeName": "Text",
+       "props": {
+        "value": "second"
+       },
+       "partial": false,
+       "hasDynamicProps": false,
+       "statementId": "x"
+      }
+     ]
+    },
+    "partial": false,
+    "hasDynamicProps": false
+   },
+   "note": "the first one registered wins",
+   "source": "hand-written"
+  },
+  {
+   "name": "hand/child-shares-root-id",
+   "schema": "hand",
+   "element": {
+    "type": "element",
+    "typeName": "Root",
+    "props": {
+     "children": [
+      {
+       "type": "element",
+       "typeName": "Text",
+       "props": {
+        "value": "child"
+       },
+       "partial": false,
+       "hasDynamicProps": false,
+       "statementId": "main"
+      }
+     ]
+    },
+    "partial": false,
+    "hasDynamicProps": false,
+    "statementId": "main"
+   },
+   "source": "hand-written"
+  },
+  {
+   "name": "hand/nested-same-id",
+   "schema": "hand",
+   "element": {
+    "type": "element",
+    "typeName": "Root",
+    "props": {
+     "children": [
+      {
+       "type": "element",
+       "typeName": "Card",
+       "props": {
+        "header": {
+         "type": "element",
+         "typeName": "Text",
+         "props": {
+          "value": "inner"
+         },
+         "partial": false,
+         "hasDynamicProps": false,
+         "statementId": "p"
+        }
+       },
+       "partial": false,
+       "hasDynamicProps": false,
+       "statementId": "p"
+      }
+     ]
+    },
+    "partial": false,
+    "hasDynamicProps": false
+   },
+   "source": "hand-written"
+  },
+  {
+   "name": "hand/statement-id-null-string",
+   "schema": "hand",
+   "element": {
+    "type": "element",
+    "typeName": "Card",
+    "props": {
+     "header": "h",
+     "body": {
+      "type": "element",
+      "typeName": "Text",
+      "props": {
+       "value": "x"
+      },
+      "partial": false,
+      "hasDynamicProps": false,
+      "statementId": "null"
+     }
+    },
+    "partial": false,
+    "hasDynamicProps": false
+   },
+   "note": "a reference named null reads as a trailing null",
+   "source": "hand-written"
+  },
+  {
+   "name": "hand/root-numeric-id",
+   "schema": "hand",
+   "element": {
+    "type": "element",
+    "typeName": "Root",
+    "props": {
+     "children": []
+    },
+    "partial": false,
+    "hasDynamicProps": false,
+    "statementId": 3
+   },
+   "source": "hand-written"
+  },
+  {
+   "name": "hand/root-id-number-collides",
+   "schema": "hand",
+   "element": {
+    "type": "element",
+    "typeName": "Root",
+    "props": {
+     "children": [
+      {
+       "type": "element",
+       "typeName": "Text",
+       "props": {
+        "value": "c"
+       },
+       "partial": false,
+       "hasDynamicProps": false,
+       "statementId": 3
+      }
+     ]
+    },
+    "partial": false,
+    "hasDynamicProps": false,
+    "statementId": 3
+   },
+   "source": "hand-written"
+  },
+  {
+   "name": "hand/unknown-component",
+   "schema": "hand",
+   "element": {
+    "type": "element",
+    "typeName": "Mystery",
+    "props": {
+     "b": 1,
+     "a": "x",
+     "2": true,
+     "1": null,
+     "__proto__": 5
+    },
+    "partial": false,
+    "hasDynamicProps": false
+   },
+   "source": "hand-written"
+  },
+  {
+   "name": "hand/unknown-component-array-props",
+   "schema": "hand",
+   "element": {
+    "type": "element",
+    "typeName": "Mystery",
+    "props": [
+     "x",
+     null,
+     {
+      "k": "Str",
+      "v": "ast"
+     }
+    ],
+    "partial": false,
+    "hasDynamicProps": false
+   },
+   "source": "hand-written"
+  },
+  {
+   "name": "hand/props-array-known",
+   "schema": "hand",
+   "element": {
+    "type": "element",
+    "typeName": "Text",
+    "props": [
+     "x",
+     "y"
+    ],
+    "partial": false,
+    "hasDynamicProps": false
+   },
+   "source": "hand-written"
+  },
+  {
+   "name": "hand/inherited-names",
+   "schema": "odd-serialize",
+   "element": {
+    "type": "element",
+    "typeName": "Odd",
+    "props": {
+     "0": "zero"
+    },
+    "partial": false,
+    "hasDynamicProps": false
+   },
+   "note": "__proto__ and length come from the prototype",
+   "source": "hand-written"
+  },
+  {
+   "name": "hand/inherited-names-array",
+   "schema": "odd-serialize",
+   "element": {
+    "type": "element",
+    "typeName": "Odd",
+    "props": [
+     5,
+     6
+    ],
+    "partial": false,
+    "hasDynamicProps": false
+   },
+   "source": "hand-written"
+  },
+  {
+   "name": "hand/trailing-nulls",
+   "schema": "hand",
+   "element": {
+    "type": "element",
+    "typeName": "Card",
+    "props": {
+     "header": null,
+     "body": "b",
+     "meta": null
+    },
+    "partial": false,
+    "hasDynamicProps": false
+   },
+   "source": "hand-written"
+  },
+  {
+   "name": "hand/trailing-nulls-all",
+   "schema": "hand",
+   "element": {
+    "type": "element",
+    "typeName": "Card",
+    "props": {},
+    "partial": false,
+    "hasDynamicProps": false
+   },
+   "source": "hand-written"
+  },
+  {
+   "name": "hand/partial-and-dynamic-flags",
+   "schema": "hand",
+   "element": {
+    "type": "element",
+    "typeName": "Text",
+    "props": {
+     "value": "v"
+    },
+    "partial": true,
+    "hasDynamicProps": true
+   },
+   "source": "hand-written"
+  },
+  {
+   "name": "hand/values",
+   "schema": "hand",
+   "element": {
+    "type": "element",
+    "typeName": "Slot",
+    "props": {
+     "content": [
+      "s",
+      1,
+      1e+21,
+      1e-07,
+      -0.0,
+      0.30000000000000004,
+      123456789012345678901234567890,
+      true,
+      null,
+      [
+       []
+      ],
+      {}
+     ],
+     "fallback": {
+      "b": 1,
+      "10": 2,
+      "2": 3,
+      "a b": "spaces",
+      "__proto__": "own",
+      "": "empty",
+      "\"q\"": "quote"
+     },
+     "list": [
+      "\u0000\u001f\u2028\ud800 lone",
+      "\u00e9\ud83d\ude00",
+      "\\",
+      "\n\t"
+     ]
+    },
+    "partial": false,
+    "hasDynamicProps": false
+   },
+   "source": "hand-written"
+  },
+  {
+   "name": "hand/element-lookalikes",
+   "schema": "hand",
+   "element": {
+    "type": "element",
+    "typeName": "Slot",
+    "props": {
+     "content": {
+      "type": "element",
+      "typeName": "Text",
+      "props": {
+       "value": "no partial"
+      }
+     },
+     "fallback": {
+      "type": "element",
+      "typeName": 5,
+      "props": {},
+      "partial": false
+     },
+     "list": [
+      {
+       "type": "element",
+       "typeName": "Text",
+       "props": null,
+       "partial": false
+      },
+      {
+       "type": "Element",
+       "typeName": "Text",
+       "props": {},
+       "partial": true
+      }
+     ]
+    },
+    "partial": false,
+    "hasDynamicProps": false
+   },
+   "source": "hand-written"
+  },
+  {
+   "name": "hand/ast-lookalikes",
+   "schema": "hand",
+   "element": {
+    "type": "element",
+    "typeName": "Slot",
+    "props": {
+     "content": {
+      "k": "Unknown",
+      "v": 1
+     },
+     "fallback": {
+      "k": "Str",
+      "v": "real"
+     },
+     "list": [
+      {
+       "k": 5
+      },
+      {
+       "k": "Null",
+       "extra": 1
+      }
+     ]
+    },
+    "partial": false,
+    "hasDynamicProps": false
+   },
+   "source": "hand-written"
+  },
+  {
+   "name": "hand/precedence",
+   "schema": "hand",
+   "element": {
+    "type": "element",
+    "typeName": "Slot",
+    "props": {
+     "content": [
+      {
+       "k": "BinOp",
+       "op": "*",
+       "left": {
+        "k": "BinOp",
+        "op": "+",
+        "left": {
+         "k": "Ref",
+         "n": "a"
+        },
+        "right": {
+         "k": "Ref",
+         "n": "b"
+        }
+       },
+       "right": {
+        "k": "Ref",
+        "n": "c"
+       }
+      },
+      {
+       "k": "BinOp",
+       "op": "-",
+       "left": {
+        "k": "Ref",
+        "n": "a"
+       },
+       "right": {
+        "k": "BinOp",
+        "op": "-",
+        "left": {
+         "k": "Ref",
+         "n": "b"
+        },
+        "right": {
+         "k": "Ref",
+         "n": "c"
+        }
+       }
+      },
+      {
+       "k": "BinOp",
+       "op": "||",
+       "left": {
+        "k": "Ref",
+        "n": "a"
+       },
+       "right": {
+        "k": "BinOp",
+        "op": "&&",
+        "left": {
+         "k": "Ref",
+         "n": "b"
+        },
+        "right": {
+         "k": "Ref",
+         "n": "c"
+        }
+       }
+      },
+      {
+       "k": "BinOp",
+       "op": "&&",
+       "left": {
+        "k": "BinOp",
+        "op": "||",
+        "left": {
+         "k": "Ref",
+         "n": "a"
+        },
+        "right": {
+         "k": "Ref",
+         "n": "b"
+        }
+       },
+       "right": {
+        "k": "Ref",
+        "n": "c"
+       }
+      },
+      {
+       "k": "BinOp",
+       "op": "==",
+       "left": {
+        "k": "BinOp",
+        "op": "<",
+        "left": {
+         "k": "Ref",
+         "n": "a"
+        },
+        "right": {
+         "k": "Ref",
+         "n": "b"
+        }
+       },
+       "right": {
+        "k": "BinOp",
+        "op": ">=",
+        "left": {
+         "k": "Ref",
+         "n": "c"
+        },
+        "right": {
+         "k": "Num",
+         "v": 1
+        }
+       }
+      },
+      {
+       "k": "BinOp",
+       "op": "%",
+       "left": {
+        "k": "BinOp",
+        "op": "/",
+        "left": {
+         "k": "Ref",
+         "n": "a"
+        },
+        "right": {
+         "k": "Ref",
+         "n": "b"
+        }
+       },
+       "right": {
+        "k": "BinOp",
+        "op": "*",
+        "left": {
+         "k": "Ref",
+         "n": "c"
+        },
+        "right": {
+         "k": "Ref",
+         "n": "d"
+        }
+       }
+      },
+      {
+       "k": "BinOp",
+       "op": "+",
+       "left": {
+        "k": "Str",
+        "v": "x"
+       },
+       "right": {
+        "k": "BinOp",
+        "op": "??",
+        "left": {
+         "k": "Ref",
+         "n": "a"
+        },
+        "right": {
+         "k": "Ref",
+         "n": "b"
+        }
+       }
+      },
+      {
+       "k": "BinOp",
+       "op": "??",
+       "left": {
+        "k": "BinOp",
+        "op": "+",
+        "left": {
+         "k": "Ref",
+         "n": "a"
+        },
+        "right": {
+         "k": "Ref",
+         "n": "b"
+        }
+       },
+       "right": {
+        "k": "Ref",
+        "n": "c"
+       }
+      }
+     ]
+    },
+    "partial": false,
+    "hasDynamicProps": false
+   },
+   "note": "a right-hand child of equal precedence loses its parentheses, as in the reference",
+   "source": "hand-written"
+  },
+  {
+   "name": "hand/precedence-inherited-ops",
+   "schema": "hand",
+   "element": {
+    "type": "element",
+    "typeName": "Slot",
+    "props": {
+     "content": [
+      {
+       "k": "BinOp",
+       "op": "toString",
+       "left": {
+        "k": "BinOp",
+        "op": "valueOf",
+        "left": {
+         "k": "Ref",
+         "n": "a"
+        },
+        "right": {
+         "k": "Ref",
+         "n": "b"
+        }
+       },
+       "right": {
+        "k": "Ref",
+        "n": "c"
+       }
+      },
+      {
+       "k": "BinOp",
+       "op": "valueOf",
+       "left": {
+        "k": "BinOp",
+        "op": "toString",
+        "left": {
+         "k": "Ref",
+         "n": "a"
+        },
+        "right": {
+         "k": "Ref",
+         "n": "b"
+        }
+       },
+       "right": {
+        "k": "Ref",
+        "n": "c"
+       }
+      },
+      {
+       "k": "BinOp",
+       "op": "+",
+       "left": {
+        "k": "BinOp",
+        "op": "constructor",
+        "left": {
+         "k": "Ref",
+         "n": "a"
+        },
+        "right": {
+         "k": "Ref",
+         "n": "b"
+        }
+       },
+       "right": {
+        "k": "Ref",
+        "n": "c"
+       }
+      },
+      {
+       "k": "BinOp",
+       "op": "__proto__",
+       "left": {
+        "k": "BinOp",
+        "op": "toString",
+        "left": {
+         "k": "Ref",
+         "n": "a"
+        },
+        "right": {
+         "k": "Ref",
+         "n": "b"
+        }
+       },
+       "right": {
+        "k": "Ref",
+        "n": "c"
+       }
+      },
+      {
+       "k": "BinOp",
+       "op": "toString",
+       "left": {
+        "k": "BinOp",
+        "op": "__proto__",
+        "left": {
+         "k": "Ref",
+         "n": "a"
+        },
+        "right": {
+         "k": "Ref",
+         "n": "b"
+        }
+       },
+       "right": {
+        "k": "Ref",
+        "n": "c"
+       }
+      },
+      {
+       "k": "BinOp",
+       "op": 5,
+       "left": {
+        "k": "BinOp",
+        "op": null,
+        "left": {
+         "k": "Ref",
+         "n": "a"
+        },
+        "right": {
+         "k": "Ref",
+         "n": "b"
+        }
+       },
+       "right": {
+        "k": "Ref",
+        "n": "c"
+       }
+      },
+      {
+       "k": "BinOp",
+       "left": {
+        "k": "BinOp",
+        "op": "+",
+        "left": {
+         "k": "Ref",
+         "n": "a"
+        },
+        "right": {
+         "k": "Ref",
+         "n": "b"
+        }
+       },
+       "right": {
+        "k": "Ref",
+        "n": "c"
+       }
+      }
+     ]
+    },
+    "partial": false,
+    "hasDynamicProps": false
+   },
+   "source": "hand-written"
+  },
+  {
+   "name": "hand/every-ast-kind",
+   "schema": "hand",
+   "element": {
+    "type": "element",
+    "typeName": "Slot",
+    "props": {
+     "content": [
+      {
+       "k": "Str",
+       "v": "s\"q"
+      },
+      {
+       "k": "Num",
+       "v": 1.5
+      },
+      {
+       "k": "Bool",
+       "v": true
+      },
+      {
+       "k": "Null"
+      },
+      {
+       "k": "Ph",
+       "n": "ph"
+      },
+      {
+       "k": "StateRef",
+       "n": "$s"
+      },
+      {
+       "k": "RuntimeRef",
+       "n": "q",
+       "refType": "query"
+      },
+      {
+       "k": "Ref",
+       "n": "r"
+      },
+      {
+       "k": "Arr",
+       "els": [
+        {
+         "k": "Num",
+         "v": 1
+        },
+        {
+         "k": "Str",
+         "v": "two"
+        }
+       ]
+      },
+      {
+       "k": "Obj",
+       "entries": [
+        [
+         "a",
+         {
+          "k": "Num",
+          "v": 1
+         }
+        ],
+        [
+         "b c",
+         {
+          "k": "Str",
+          "v": "x"
+         }
+        ]
+       ]
+      },
+      {
+       "k": "UnaryOp",
+       "op": "!",
+       "operand": {
+        "k": "StateRef",
+        "n": "$flag"
+       }
+      },
+      {
+       "k": "UnaryOp",
+       "op": "-",
+       "operand": {
+        "k": "Num",
+        "v": 3
+       }
+      },
+      {
+       "k": "Ternary",
+       "cond": {
+        "k": "Ref",
+        "n": "c"
+       },
+       "then": {
+        "k": "Str",
+        "v": "y"
+       },
+       "else": {
+        "k": "Str",
+        "v": "n"
+       }
+      },
+      {
+       "k": "Member",
+       "obj": {
+        "k": "Ref",
+        "n": "data"
+       },
+       "field": "rows"
+      },
+      {
+       "k": "Index",
+       "obj": {
+        "k": "Ref",
+        "n": "rows"
+       },
+       "index": {
+        "k": "Num",
+        "v": 0
+       }
+      },
+      {
+       "k": "Assign",
+       "target": "$x",
+       "value": {
+        "k": "Num",
+        "v": 1
+       }
+      },
+      {
+       "k": "Comp",
+       "name": "Count",
+       "args": [
+        {
+         "k": "Ref",
+         "n": "rows"
+        }
+       ]
+      },
+      {
+       "k": "Comp",
+       "name": "Action",
+       "args": [
+        {
+         "k": "Arr",
+         "els": [
+          {
+           "k": "Comp",
+           "name": "Run",
+           "args": [
+            {
+             "k": "Ref",
+             "n": "q"
+            }
+           ]
+          }
+         ]
+        }
+       ]
+      },
+      {
+       "k": "Comp",
+       "name": "Query",
+       "args": [
+        {
+         "k": "Str",
+         "v": "tool"
+        }
+       ]
+      },
+      {
+       "k": "Comp",
+       "name": "Text",
+       "args": [
+        {
+         "k": "Str",
+         "v": "t"
+        }
+       ],
+       "mappedProps": {
+        "value": {
+         "k": "Str",
+         "v": "t"
+        }
+       }
+      }
+     ]
+    },
+    "partial": false,
+    "hasDynamicProps": false
+   },
+   "source": "hand-written"
+  },
+  {
+   "name": "hand/odd-ast-fields",
+   "schema": "hand",
+   "element": {
+    "type": "element",
+    "typeName": "Slot",
+    "props": {
+     "content": [
+      {
+       "k": "Arr",
+       "els": [
+        {
+         "k": "Str"
+        },
+        {
+         "k": "Ref",
+         "n": null
+        },
+        {
+         "k": "Ref"
+        },
+        {
+         "k": "Num",
+         "v": null
+        },
+        5,
+        "str",
+        [
+         1
+        ],
+        {
+         "no": "k"
+        },
+        {
+         "k": "Bool",
+         "v": ""
+        },
+        {
+         "k": "Bool",
+         "v": "x"
+        }
+       ]
+      },
+      {
+       "k": "Obj",
+       "entries": [
+        [
+         "k",
+         {
+          "k": "Str"
+         }
+        ],
+        "ab",
+        [
+         1,
+         {
+          "k": "Num",
+          "v": 2
+         }
+        ],
+        [
+         null,
+         {
+          "k": "Num",
+          "v": 3
+         }
+        ],
+        [
+         [
+          1,
+          2
+         ],
+         {
+          "k": "Num",
+          "v": 4
+         }
+        ]
+       ]
+      },
+      {
+       "k": "Num",
+       "v": "12"
+      },
+      {
+       "k": "Num",
+       "v": [
+        1,
+        [
+         2,
+         null
+        ]
+       ]
+      },
+      {
+       "k": "Num",
+       "v": {
+        "a": 1
+       }
+      },
+      {
+       "k": "Num"
+      },
+      {
+       "k": "Ref",
+       "n": 5
+      },
+      {
+       "k": "Ref",
+       "n": {
+        "a": 1
+       }
+      },
+      {
+       "k": "Ref",
+       "n": [
+        1,
+        2
+       ]
+      },
+      {
+       "k": "StateRef",
+       "n": null
+      },
+      {
+       "k": "Comp",
+       "name": 5,
+       "args": []
+      },
+      {
+       "k": "Comp",
+       "args": []
+      },
+      {
+       "k": "Comp",
+       "name": "Each",
+       "args": [
+        {
+         "k": "Ref",
+         "n": "rows"
+        },
+        {
+         "k": "Str",
+         "v": "it"
+        },
+        {
+         "k": "Ref",
+         "n": "it"
+        }
+       ]
+      },
+      {
+       "k": "Member",
+       "obj": {
+        "k": "Ref",
+        "n": "a"
+       }
+      },
+      {
+       "k": "Assign",
+       "value": {
+        "k": "Num",
+        "v": 1
+       }
+      },
+      {
+       "k": "UnaryOp",
+       "operand": {
+        "k": "Num",
+        "v": 1
+       }
+      },
+      {
+       "k": "Foo",
+       "v": 1
+      }
+     ],
+     "fallback": {
+      "k": "Str"
+     },
+     "list": [
+      {
+       "k": "Str"
+      },
+      {
+       "k": "Ref",
+       "n": null
+      }
+     ]
+    },
+    "partial": false,
+    "hasDynamicProps": false
+   },
+   "note": "missing fields read as undefined: empty in a list, 'undefined' in text",
+   "source": "hand-written"
+  },
+  {
+   "name": "hand/component-ids-inside-values",
+   "schema": "hand",
+   "element": {
+    "type": "element",
+    "typeName": "Slot",
+    "props": {
+     "content": {
+      "nested": [
+       {
+        "type": "element",
+        "typeName": "Text",
+        "props": {
+         "value": "deep"
+        },
+        "partial": false,
+        "hasDynamicProps": false,
+        "statementId": "deep"
+       }
+      ]
+     },
+     "fallback": [
+      [
+       {
+        "type": "element",
+        "typeName": "Text",
+        "props": {
+         "value": "inner"
+        },
+        "partial": false,
+        "hasDynamicProps": false,
+        "statementId": "inner"
+       }
+      ]
+     ]
+    },
+    "partial": false,
+    "hasDynamicProps": false
+   },
+   "source": "hand-written"
+  },
+  {
+   "name": "hand/state-declarations",
+   "schema": "hand",
+   "element": {
+    "type": "element",
+    "typeName": "Text",
+    "props": {
+     "value": "v"
+    },
+    "partial": false,
+    "hasDynamicProps": false
+   },
+   "stateDeclarations": {
+    "$a": 1,
+    "$b": null,
+    "$c": "s",
+    "$d": [
+     1,
+     null
+    ],
+    "$e": {
+     "x": true
+    },
+    "$f": {
+     "type": "element",
+     "typeName": "Text",
+     "props": {
+      "value": "in state"
+     },
+     "partial": false,
+     "hasDynamicProps": false,
+     "statementId": "fromState"
+    },
+    "$g": {
+     "k": "Ref",
+     "n": "r"
+    },
+    "10": "numeric key",
+    "$h": false
+   },
+   "source": "hand-written"
+  },
+  {
+   "name": "hand/state-declarations-array",
+   "schema": "hand",
+   "element": {
+    "type": "element",
+    "typeName": "Text",
+    "props": {
+     "value": "v"
+    },
+    "partial": false,
+    "hasDynamicProps": false
+   },
+   "stateDeclarations": [
+    "a",
+    null,
+    3
+   ],
+   "source": "hand-written"
+  },
+  {
+   "name": "hand/state-declarations-string",
+   "schema": "hand",
+   "element": {
+    "type": "element",
+    "typeName": "Text",
+    "props": {
+     "value": "v"
+    },
+    "partial": false,
+    "hasDynamicProps": false
+   },
+   "stateDeclarations": "a\ud83d\ude00",
+   "source": "hand-written"
+  },
+  {
+   "name": "hand/state-declarations-number",
+   "schema": "hand",
+   "element": {
+    "type": "element",
+    "typeName": "Text",
+    "props": {
+     "value": "v"
+    },
+    "partial": false,
+    "hasDynamicProps": false
+   },
+   "stateDeclarations": 5,
+   "source": "hand-written"
+  },
+  {
+   "name": "hand/state-declarations-false",
+   "schema": "hand",
+   "element": {
+    "type": "element",
+    "typeName": "Text",
+    "props": {
+     "value": "v"
+    },
+    "partial": false,
+    "hasDynamicProps": false
+   },
+   "stateDeclarations": false,
+   "source": "hand-written"
+  },
+  {
+   "name": "hand/state-declarations-empty",
+   "schema": "hand",
+   "element": {
+    "type": "element",
+    "typeName": "Text",
+    "props": {
+     "value": "v"
+    },
+    "partial": false,
+    "hasDynamicProps": false
+   },
+   "stateDeclarations": {},
+   "source": "hand-written"
+  },
+  {
+   "name": "hand/keys-schema",
+   "schema": "keys",
+   "element": {
+    "type": "element",
+    "typeName": "Grid",
+    "props": {
+     "0": "zero",
+     "a": 7,
+     "b": "bee",
+     "10": [
+      1
+     ]
+    },
+    "partial": false,
+    "hasDynamicProps": false
+   },
+   "source": "hand-written"
+  },
+  {
+   "name": "hand/keys-schema-proto",
+   "schema": "keys",
+   "element": {
+    "type": "element",
+    "typeName": "Box",
+    "props": {
+     "__proto__": "own proto",
+     "label": "L"
+    },
+    "partial": false,
+    "hasDynamicProps": false
+   },
+   "source": "hand-written"
+  },
+  {
+   "name": "hand/keys-schema-proto-missing",
+   "schema": "keys",
+   "element": {
+    "type": "element",
+    "typeName": "Box",
+    "props": {
+     "label": "L"
+    },
+    "partial": false,
+    "hasDynamicProps": false
+   },
+   "source": "hand-written"
+  },
+  {
+   "name": "hand/numeric-component-name",
+   "schema": "hand",
+   "element": {
+    "type": "element",
+    "typeName": "10",
+    "props": {
+     "0": "a",
+     "b": "c"
+    },
+    "partial": false,
+    "hasDynamicProps": false
+   },
+   "source": "hand-written"
+  },
+  {
+   "name": "hand/root-not-an-element",
+   "schema": "hand",
+   "element": {
+    "typeName": "Text",
+    "props": {
+     "value": "only props"
+    }
+   },
+   "note": "the root isn't checked for type or partial",
+   "source": "hand-written"
+  },
+  {
+   "name": "hand/root-without-type-name",
+   "schema": "hand",
+   "element": {
+    "props": {
+     "a": 1
+    }
+   },
+   "source": "hand-written"
+  },
+  {
+   "name": "hand/error-root-array",
+   "schema": "hand",
+   "element": [
+    {
+     "type": "element",
+     "typeName": "Text",
+     "props": {
+      "value": "x"
+     },
+     "partial": false,
+     "hasDynamicProps": false
+    }
+   ],
+   "source": "hand-written"
+  },
+  {
+   "name": "hand/error-root-string",
+   "schema": "hand",
+   "element": "Text",
+   "source": "hand-written"
+  },
+  {
+   "name": "hand/error-root-null-props",
+   "schema": "hand",
+   "element": {
+    "type": "element",
+    "typeName": "Text",
+    "props": null,
+    "partial": false
+   },
+   "source": "hand-written"
+  },
+  {
+   "name": "hand/root-props-string",
+   "schema": "hand",
+   "element": {
+    "type": "element",
+    "typeName": "Card",
+    "props": "a\ud83d\ude00",
+    "partial": false
+   },
+   "note": "indexes read UTF-16 units",
+   "source": "hand-written"
+  },
+  {
+   "name": "hand/root-props-string-unknown",
+   "schema": "hand",
+   "element": {
+    "type": "element",
+    "typeName": "Mystery",
+    "props": "ab",
+    "partial": false
+   },
+   "source": "hand-written"
+  },
+  {
+   "name": "hand/root-props-string-inherited",
+   "schema": "odd-serialize",
+   "element": {
+    "type": "element",
+    "typeName": "Odd",
+    "props": "xy",
+    "partial": false,
+    "hasDynamicProps": false
+   },
+   "source": "hand-written"
+  },
+  {
+   "name": "hand/root-props-number",
+   "schema": "hand",
+   "element": {
+    "type": "element",
+    "typeName": "Card",
+    "props": 7,
+    "partial": false
+   },
+   "source": "hand-written"
+  },
+  {
+   "name": "hand/root-props-bool-inherited",
+   "schema": "odd-serialize",
+   "element": {
+    "type": "element",
+    "typeName": "Odd",
+    "props": true,
+    "partial": false,
+    "hasDynamicProps": false
+   },
+   "source": "hand-written"
+  },
+  {
+   "name": "hand/root-props-number-unknown",
+   "schema": "hand",
+   "element": {
+    "type": "element",
+    "typeName": "Mystery",
+    "props": 0,
+    "partial": false
+   },
+   "source": "hand-written"
+  },
+  {
+   "name": "hand/error-root-missing-props",
+   "schema": "hand",
+   "element": {
+    "type": "element",
+    "typeName": "Mystery",
+    "partial": false
+   },
+   "source": "hand-written"
+  },
+  {
+   "name": "hand/error-id-unconvertible",
+   "schema": "hand",
+   "element": {
+    "type": "element",
+    "typeName": "Root",
+    "props": {
+     "children": [
+      {
+       "type": "element",
+       "typeName": "Text",
+       "props": {
+        "value": "x"
+       },
+       "partial": false,
+       "hasDynamicProps": false,
+       "statementId": {
+        "toString": 1
+       }
+      }
+     ]
+    },
+    "partial": false,
+    "hasDynamicProps": false
+   },
+   "source": "hand-written"
+  },
+  {
+   "name": "hand/error-null-in-els",
+   "schema": "hand",
+   "element": {
+    "type": "element",
+    "typeName": "Text",
+    "props": {
+     "value": {
+      "k": "Arr",
+      "els": [
+       null
+      ]
+     }
+    },
+    "partial": false,
+    "hasDynamicProps": false
+   },
+   "source": "hand-written"
+  },
+  {
+   "name": "hand/error-els-not-array",
+   "schema": "hand",
+   "element": {
+    "type": "element",
+    "typeName": "Text",
+    "props": {
+     "value": {
+      "k": "Arr",
+      "els": {
+       "0": {
+        "k": "Num",
+        "v": 1
+       }
+      }
+     }
+    },
+    "partial": false,
+    "hasDynamicProps": false
+   },
+   "source": "hand-written"
+  },
+  {
+   "name": "hand/error-args-missing",
+   "schema": "hand",
+   "element": {
+    "type": "element",
+    "typeName": "Text",
+    "props": {
+     "value": {
+      "k": "Comp",
+      "name": "Count"
+     }
+    },
+    "partial": false,
+    "hasDynamicProps": false
+   },
+   "source": "hand-written"
+  },
+  {
+   "name": "hand/error-entries-not-array",
+   "schema": "hand",
+   "element": {
+    "type": "element",
+    "typeName": "Text",
+    "props": {
+     "value": {
+      "k": "Obj",
+      "entries": "ab"
+     }
+    },
+    "partial": false,
+    "hasDynamicProps": false
+   },
+   "source": "hand-written"
+  },
+  {
+   "name": "hand/error-entry-not-iterable",
+   "schema": "hand",
+   "element": {
+    "type": "element",
+    "typeName": "Text",
+    "props": {
+     "value": {
+      "k": "Obj",
+      "entries": [
+       5
+      ]
+     }
+    },
+    "partial": false,
+    "hasDynamicProps": false
+   },
+   "source": "hand-written"
+  },
+  {
+   "name": "hand/error-entry-short",
+   "schema": "hand",
+   "element": {
+    "type": "element",
+    "typeName": "Text",
+    "props": {
+     "value": {
+      "k": "Obj",
+      "entries": [
+       [
+        "only key"
+       ]
+      ]
+     }
+    },
+    "partial": false,
+    "hasDynamicProps": false
+   },
+   "source": "hand-written"
+  },
+  {
+   "name": "hand/error-entry-short-string",
+   "schema": "hand",
+   "element": {
+    "type": "element",
+    "typeName": "Text",
+    "props": {
+     "value": {
+      "k": "Obj",
+      "entries": [
+       "a"
+      ]
+     }
+    },
+    "partial": false,
+    "hasDynamicProps": false
+   },
+   "source": "hand-written"
+  },
+  {
+   "name": "hand/error-binop-missing-left",
+   "schema": "hand",
+   "element": {
+    "type": "element",
+    "typeName": "Text",
+    "props": {
+     "value": {
+      "k": "BinOp",
+      "op": "+",
+      "right": {
+       "k": "Num",
+       "v": 1
+      }
+     }
+    },
+    "partial": false,
+    "hasDynamicProps": false
+   },
+   "source": "hand-written"
+  },
+  {
+   "name": "hand/error-ternary-missing-else",
+   "schema": "hand",
+   "element": {
+    "type": "element",
+    "typeName": "Text",
+    "props": {
+     "value": {
+      "k": "Ternary",
+      "cond": {
+       "k": "Ref",
+       "n": "a"
+      },
+      "then": {
+       "k": "Num",
+       "v": 1
+      }
+     }
+    },
+    "partial": false,
+    "hasDynamicProps": false
+   },
+   "source": "hand-written"
+  },
+  {
+   "name": "hand/error-ref-unconvertible",
+   "schema": "hand",
+   "element": {
+    "type": "element",
+    "typeName": "Text",
+    "props": {
+     "value": {
+      "k": "Arr",
+      "els": [
+       {
+        "k": "Ref",
+        "n": {
+         "toString": "x"
+        }
+       }
+      ]
+     }
+    },
+    "partial": false,
+    "hasDynamicProps": false
+   },
+   "source": "hand-written"
+  },
+  {
+   "name": "hand/error-op-unconvertible",
+   "schema": "hand",
+   "element": {
+    "type": "element",
+    "typeName": "Text",
+    "props": {
+     "value": {
+      "k": "BinOp",
+      "op": {
+       "toString": 1
+      },
+      "left": {
+       "k": "BinOp",
+       "op": "+",
+       "left": {
+        "k": "Num",
+        "v": 1
+       },
+       "right": {
+        "k": "Num",
+        "v": 2
+       }
+      },
+      "right": {
+       "k": "Num",
+       "v": 3
+      }
+     }
+    },
+    "partial": false,
+    "hasDynamicProps": false
+   },
+   "source": "hand-written"
+  }
+ ]
+}

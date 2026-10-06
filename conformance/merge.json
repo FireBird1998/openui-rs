@@ -1,0 +1,297 @@
+{
+ "cases": [
+  {
+   "name": "hand/replace-one",
+   "existing": "root = Stack([header, body])\nheader = Title(\"Hello\")\nbody = Card(\"Main\", \"Sub\")",
+   "patch": "header = Title(\"Bye\")",
+   "source": "hand-written"
+  },
+  {
+   "name": "hand/append-new",
+   "existing": "root = Stack([header, body])\nheader = Title(\"Hello\")\nbody = Card(\"Main\", \"Sub\")",
+   "patch": "root = Stack([header, body, footer])\nfooter = Title(\"End\")",
+   "source": "hand-written"
+  },
+  {
+   "name": "hand/append-unreferenced",
+   "existing": "root = Stack([header, body])\nheader = Title(\"Hello\")\nbody = Card(\"Main\", \"Sub\")",
+   "patch": "extra = Title(\"Nobody uses me\")",
+   "note": "appended, then garbage-collected",
+   "source": "hand-written"
+  },
+  {
+   "name": "hand/delete-with-null",
+   "existing": "root = Stack([header, body])\nheader = Title(\"Hello\")\nbody = Card(\"Main\", \"Sub\")",
+   "patch": "body = null\nroot = Stack([header])",
+   "source": "hand-written"
+  },
+  {
+   "name": "hand/delete-only",
+   "existing": "root = Stack([header, body])\nheader = Title(\"Hello\")\nbody = Card(\"Main\", \"Sub\")",
+   "patch": "body = null",
+   "note": "root still references body, which is gone",
+   "source": "hand-written"
+  },
+  {
+   "name": "hand/delete-missing",
+   "existing": "root = Stack([header, body])\nheader = Title(\"Hello\")\nbody = Card(\"Main\", \"Sub\")",
+   "patch": "ghost = null",
+   "source": "hand-written"
+  },
+  {
+   "name": "hand/delete-root",
+   "existing": "root = Stack([header, body])\nheader = Title(\"Hello\")\nbody = Card(\"Main\", \"Sub\")",
+   "patch": "root = null",
+   "note": "no root left, so nothing is collected",
+   "source": "hand-written"
+  },
+  {
+   "name": "hand/empty-expression-deletes",
+   "existing": "root = Stack([header, body])\nheader = Title(\"Hello\")\nbody = Card(\"Main\", \"Sub\")",
+   "patch": "body =",
+   "note": "an empty expression parses as null",
+   "source": "hand-written"
+  },
+  {
+   "name": "hand/drop-child-collects-subtree",
+   "existing": "root = Stack([a, b])\na = Card(x)\nx = Title(\"x\")\nb = Title(\"b\")",
+   "patch": "root = Stack([b])",
+   "source": "hand-written"
+  },
+  {
+   "name": "hand/empty-existing",
+   "existing": "",
+   "patch": "root = Stack([a])\n\n  a = Title(\"A\")  \n",
+   "source": "hand-written"
+  },
+  {
+   "name": "hand/whitespace-existing",
+   "existing": " \n\t\n",
+   "patch": "a = Title(\"A\")",
+   "source": "hand-written"
+  },
+  {
+   "name": "hand/empty-patch",
+   "existing": "root = Stack([header, body])\nheader = Title(\"Hello\")\nbody = Card(\"Main\", \"Sub\")\n\n  ",
+   "patch": "",
+   "note": "existing comes back exactly, whitespace and all",
+   "source": "hand-written"
+  },
+  {
+   "name": "hand/prose-only-patch",
+   "existing": "root = Stack([header, body])\nheader = Title(\"Hello\")\nbody = Card(\"Main\", \"Sub\")",
+   "patch": "Sure! I didn't need to change anything.",
+   "source": "hand-written"
+  },
+  {
+   "name": "hand/comment-only-patch",
+   "existing": "root = Stack([header, body])\nheader = Title(\"Hello\")\nbody = Card(\"Main\", \"Sub\")",
+   "patch": "// nothing to change\n# really",
+   "source": "hand-written"
+  },
+  {
+   "name": "hand/fenced-patch",
+   "existing": "root = Stack([header, body])\nheader = Title(\"Hello\")\nbody = Card(\"Main\", \"Sub\")",
+   "patch": "Here's the change:\n\n```openui-lang\nheader = Title(\"Fenced\")\n```\n\nDone.",
+   "source": "hand-written"
+  },
+  {
+   "name": "hand/two-fences",
+   "existing": "root = Stack([header, body])\nheader = Title(\"Hello\")\nbody = Card(\"Main\", \"Sub\")",
+   "patch": "```openui\nheader = Title(\"One\")\n```\nand\n```\nbody = Card(\"Two\")\n```",
+   "source": "hand-written"
+  },
+  {
+   "name": "hand/unclosed-fence",
+   "existing": "root = Stack([header, body])\nheader = Title(\"Hello\")\nbody = Card(\"Main\", \"Sub\")",
+   "patch": "```openui-lang\nheader = Title(\"Still streaming\")",
+   "source": "hand-written"
+  },
+  {
+   "name": "hand/fenced-existing",
+   "existing": "```openui\nroot = Stack([header, body])\nheader = Title(\"Hello\")\nbody = Card(\"Main\", \"Sub\")\n```",
+   "patch": "header = Title(\"X\")",
+   "note": "the existing program isn't fence-stripped",
+   "source": "hand-written"
+  },
+  {
+   "name": "hand/fenced-existing-empty-patch",
+   "existing": "```openui\nroot = Stack([header, body])\nheader = Title(\"Hello\")\nbody = Card(\"Main\", \"Sub\")\n```",
+   "patch": "",
+   "source": "hand-written"
+  },
+  {
+   "name": "hand/duplicate-existing",
+   "existing": "root = Stack([a])\na = Title(\"1\")\nb = Title(\"2\")\na = Title(\"3\")",
+   "patch": "b = Title(\"B\")",
+   "note": "an id defined twice is listed twice",
+   "source": "hand-written"
+  },
+  {
+   "name": "hand/duplicate-existing-redefined",
+   "existing": "root = Stack([a])\na = Title(\"1\")\na = Title(\"3\")",
+   "patch": "a = Title(\"new\")",
+   "source": "hand-written"
+  },
+  {
+   "name": "hand/duplicate-existing-deleted",
+   "existing": "root = Stack([a])\na = Title(\"1\")\nx = Title(\"x\")\na = Title(\"3\")",
+   "patch": "a = null",
+   "note": "delete removes the first listing only",
+   "source": "hand-written"
+  },
+  {
+   "name": "hand/duplicate-in-patch",
+   "existing": "root = Stack([header, body])\nheader = Title(\"Hello\")\nbody = Card(\"Main\", \"Sub\")",
+   "patch": "header = Title(\"first\")\nheader = Title(\"second\")",
+   "source": "hand-written"
+  },
+  {
+   "name": "hand/cycle-reachable",
+   "existing": "root = Stack([a])\na = Card(b)\nb = Card(a)",
+   "patch": "b = Card(a, \"again\")",
+   "source": "hand-written"
+  },
+  {
+   "name": "hand/cycle-unreachable",
+   "existing": "root = Stack([c])\na = Card(b)\nb = Card(a)\nc = Title(\"c\")",
+   "patch": "c = Title(\"C\")",
+   "source": "hand-written"
+  },
+  {
+   "name": "hand/state-kept",
+   "existing": "root = Stack([t])\n$count = 0\n$unused = \"x\"\nt = Title($count)",
+   "patch": "t = Title(\"no state\")",
+   "note": "$ statements are never collected",
+   "source": "hand-written"
+  },
+  {
+   "name": "hand/state-deleted",
+   "existing": "root = Stack([t])\n$count = 0\nt = Title($count)",
+   "patch": "$count = null",
+   "source": "hand-written"
+  },
+  {
+   "name": "hand/query-reachable-through-run",
+   "existing": "root = Stack([btn])\nq = Query(\"tool\", {}, {rows: []})\nm = Mutation(\"save\", {})\nbtn = Button(\"Go\", Action([@Run(m), @Run(q)]))",
+   "patch": "btn = Button(\"Go!\", Action([@Run(q)]))",
+   "source": "hand-written"
+  },
+  {
+   "name": "hand/multiline-statement",
+   "existing": "root = Stack([\n  a,\n  b\n])\na = Title(\"a\")\nb = Title(\"b\")",
+   "patch": "b = Title(\n  \"B\"\n)",
+   "source": "hand-written"
+  },
+  {
+   "name": "hand/ternary-continuation",
+   "existing": "root = Stack([a])\na = $flag\n  ? Title(\"yes\")\n  : Title(\"no\")",
+   "patch": "root = Stack([a])",
+   "note": "the continuation lines become texts of their own and drop out",
+   "source": "hand-written"
+  },
+  {
+   "name": "hand/prose-apostrophe-existing",
+   "existing": "Here's your UI:\nroot = Stack([a])\na = Title(\"A\")",
+   "patch": "a = Title(\"B\")",
+   "note": "an apostrophe in prose opens a string that runs on",
+   "source": "hand-written"
+  },
+  {
+   "name": "hand/string-with-newline-escape",
+   "existing": "root = Stack([a])\na = Title(\"line1\\nline2\")",
+   "patch": "a = Title(\"it's \\\"quoted\\\"\")",
+   "source": "hand-written"
+  },
+  {
+   "name": "hand/crlf",
+   "existing": "root = Stack([a])\r\na = Title(\"A\")\r\nb = Title(\"B\")\r\n",
+   "patch": "a = Title(\"AA\")\r\nroot = Stack([a, b])\r\n",
+   "source": "hand-written"
+  },
+  {
+   "name": "hand/unicode-whitespace",
+   "existing": "﻿ root = Stack([a]) \na = Title(\"é😀\") ",
+   "patch": "　a = Title(\"ü\") ",
+   "source": "hand-written"
+  },
+  {
+   "name": "hand/custom-root",
+   "existing": "main = Stack([a])\na = Title(\"A\")\nroot = Stack([b])\nb = Title(\"B\")",
+   "patch": "a = Title(\"AA\")",
+   "rootId": "main",
+   "source": "hand-written"
+  },
+  {
+   "name": "hand/custom-root-missing",
+   "existing": "root = Stack([header, body])\nheader = Title(\"Hello\")\nbody = Card(\"Main\", \"Sub\")",
+   "patch": "header = Title(\"X\")",
+   "rootId": "nope",
+   "source": "hand-written"
+  },
+  {
+   "name": "hand/custom-root-empty-string",
+   "existing": "root = Stack([header, body])\nheader = Title(\"Hello\")\nbody = Card(\"Main\", \"Sub\")",
+   "patch": "header = Title(\"X\")",
+   "rootId": "",
+   "source": "hand-written"
+  },
+  {
+   "name": "hand/root-is-state",
+   "existing": "$root = Stack([a])\na = Title(\"A\")\nb = Title(\"B\")",
+   "patch": "b = Title(\"BB\")",
+   "rootId": "$root",
+   "source": "hand-written"
+  },
+  {
+   "name": "hand/non-statement-lines",
+   "existing": "root = Stack([header, body])\nheader = Title(\"Hello\")\nbody = Card(\"Main\", \"Sub\")\n// a comment\nnot a statement\n123",
+   "patch": "header = Title(\"X\")",
+   "source": "hand-written"
+  },
+  {
+   "name": "hand/patch-references-unknown",
+   "existing": "root = Stack([header, body])\nheader = Title(\"Hello\")\nbody = Card(\"Main\", \"Sub\")",
+   "patch": "root = Stack([header, nowhere])",
+   "source": "hand-written"
+  },
+  {
+   "name": "hand/lone-surrogate-escape",
+   "existing": "root = Stack([a])\na = Title(\"\\uD800\")",
+   "patch": "a = Title(\"\\uDC00x\")",
+   "source": "hand-written"
+  },
+  {
+   "name": "hand/brackets-in-strings",
+   "existing": "root = Stack([a])\na = Title(\"( [ {\")\nb = Title(\")\")",
+   "patch": "b = Title(\"] } )\")\nroot = Stack([a, b])",
+   "source": "hand-written"
+  },
+  {
+   "name": "hand/unbalanced-closers",
+   "existing": "root = Stack([a]))\na = Title(\"A\")]\nb = Title(\"B\")",
+   "patch": "b = Title(\"BB\")",
+   "source": "hand-written"
+  },
+  {
+   "name": "hand/unclosed-bracket",
+   "existing": "root = Stack([a\na = Title(\"A\")",
+   "patch": "a = Title(\"AA\")",
+   "note": "the unclosed bracket swallows the rest into one text",
+   "source": "hand-written"
+  },
+  {
+   "name": "hand/member-and-index-refs",
+   "existing": "root = Stack([t])\nt = Title(data.rows[idx].name)\ndata = Query(\"q\", {}, {rows: []})\nidx = 0\nunused = 1",
+   "patch": "t = Title(data.rows[idx].title)",
+   "source": "hand-written"
+  },
+  {
+   "name": "hand/each-scope",
+   "existing": "root = Stack([list])\nlist = @Each(items, \"it\", Title(it.name))\nitems = [1, 2]\nit = Title(\"shadow\")",
+   "patch": "items = [3]",
+   "note": "the iterator name is a Ref like any other, so `it` stays",
+   "source": "hand-written"
+  }
+ ]
+}

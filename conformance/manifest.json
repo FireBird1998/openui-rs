@@ -14,7 +14,8 @@
  "schemas": {
   "text": "schemas/text.json",
   "hand": "schemas/hand.json",
-  "keys": "schemas/keys.json"
+  "keys": "schemas/keys.json",
+  "odd": "schemas/odd.json"
  },
  "cases": [
   {
@@ -535,6 +536,12 @@
    "name": "hand/85-streaming-redefinition-1127",
    "schema": "hand",
    "file": "cases/hand/85-streaming-redefinition-1127.oui",
+   "source": "hand-written"
+  },
+  {
+   "name": "hand/86-odd-schema-shapes",
+   "schema": "odd",
+   "file": "cases/hand/86-odd-schema-shapes.oui",
    "source": "hand-written"
   }
  ]

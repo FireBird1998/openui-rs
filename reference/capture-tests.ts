@@ -1,17 +1,28 @@
 // Preload for `bun test`: wraps the reference parser so every program the
 // reference test suites parse is recorded, with the component library it was
-// parsed against. Run through `bun import-corpus.ts`, not directly.
+// parsed against; and likewise every mergeStatements and jsonToOpenUI call,
+// with its arguments. Run through `bun import-corpus.ts`, not directly.
 import { afterAll, mock } from "bun:test";
 import { writeFileSync } from "fs";
 import { join } from "path";
 
 const PARSER = join(import.meta.dir, "lang-core/src/parser/parser.ts");
+const MERGE = join(import.meta.dir, "lang-core/src/parser/merge.ts");
+const SERIALIZE = join(import.meta.dir, "lang-core/src/parser/serialize.ts");
 // Copy the exports first: mock.module rewrites the live module namespace too.
 const real = { ...(await import(PARSER)) };
+const realMerge = { ...(await import(MERGE)) };
+const realSerialize = { ...(await import(SERIALIZE)) };
 const out = process.env.CAPTURE_OUT!;
 
 type Captured = { test: string; schema: unknown; input: string; root?: string };
 const captured: Captured[] = [];
+type MergeCall = { test: string; existing: string; patch: string; rootId?: string };
+const merges: MergeCall[] = [];
+type SerializeCall = { test: string; element: unknown; schema: unknown; stateDeclarations?: unknown };
+const serializes: SerializeCall[] = [];
+/** A value as JSON carries it: what the Rust side gets. */
+const asJson = (v: unknown) => JSON.parse(JSON.stringify(v));
 
 /** The test that's running, from the call stack (`<file>.test.ts`). */
 function currentTestFile(): string {
@@ -90,5 +101,26 @@ mock.module(PARSER, () => ({
   },
 }));
 
+mock.module(MERGE, () => ({
+  ...realMerge,
+  mergeStatements(existing: string, patch: string, rootId?: string) {
+    merges.push({ test: currentTestFile(), existing, patch, ...(rootId !== undefined ? { rootId } : {}) });
+    return realMerge.mergeStatements(existing, patch, rootId);
+  },
+}));
+
+mock.module(SERIALIZE, () => ({
+  ...realSerialize,
+  jsonToOpenUI(json: unknown, library: any, options?: { stateDeclarations?: unknown }) {
+    serializes.push({
+      test: currentTestFile(),
+      element: asJson(json),
+      schema: asJson(library.toJSONSchema()),
+      ...(options?.stateDeclarations !== undefined ? { stateDeclarations: asJson(options.stateDeclarations) } : {}),
+    });
+    return realSerialize.jsonToOpenUI(json, library, options);
+  },
+}));
+
 // In a preload, afterAll runs once after every test file. (`exit` never fires under bun test.)
-afterAll(() => writeFileSync(out, JSON.stringify(captured)));
+afterAll(() => writeFileSync(out, JSON.stringify({ parses: captured, merges, serializes })));

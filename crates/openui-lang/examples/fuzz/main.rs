@@ -1,6 +1,6 @@
 //! Differential fuzzing against the reference parser.
 //!
-//!   cargo run --release --example fuzz -- [--seed N] [--count N] [--only K] [--no-save]
+//!   cargo run --release --example fuzz -- [--seed N] [--count N] [--only K] [--no-save] [--edits]
 //!
 //! Each program is generated from a component library's grammar or mangled
 //! from a corpus case, then parsed by the core and by the reference (a
@@ -8,8 +8,10 @@
 //! chunking. Program K of seed S is the same on every machine (`--only K`
 //! replays it). Mismatches are shrunk to a minimal program and saved as corpus
 //! cases in `conformance/fuzz.json`; run `scripts/regen-golden.sh` afterwards.
+//! With `--edits`, merge and serialization are fuzzed instead (see `edits.rs`).
 //! Needs Bun.
 
+mod edits;
 mod generate;
 mod reference;
 mod rng;
@@ -26,7 +28,7 @@ use generate::{Generator, mutate};
 use reference::{Answer, Reference};
 use rng::Rng;
 
-const BATCH: usize = 200;
+pub(crate) const BATCH: usize = 200;
 
 /// Documented limitations: a minimal mismatch containing one of these is
 /// explained, not a bug to save. Assigning an object or null to `__proto__`
@@ -37,7 +39,7 @@ const EXPLAINED: [(&str, &str); 1] = [(
     "__proto__",
     "object or null assigned to __proto__ (prototype chain)",
 )];
-const MAX_SAVES: usize = 25;
+pub(crate) const MAX_SAVES: usize = 25;
 
 #[derive(Clone)]
 pub struct Program {
@@ -56,9 +58,9 @@ enum Outcome {
     CorePanicked,
 }
 
-struct Corpus {
-    libraries: BTreeMap<String, Arc<Library>>,
-    cases: Vec<(String, String, Option<String>)>, // (lib, input, root)
+pub(crate) struct Corpus {
+    pub libraries: BTreeMap<String, Arc<Library>>,
+    pub cases: Vec<(String, String, Option<String>)>, // (lib, input, root)
 }
 
 fn repo_root() -> PathBuf {
@@ -122,7 +124,7 @@ fn program(seed: u64, k: u64, corpus: &Corpus) -> Program {
     }
 }
 
-fn fingerprint(json: &str) -> String {
+pub(crate) fn fingerprint(json: &str) -> String {
     let mut h: u32 = 0x811c_9dc5;
     for &b in json.as_bytes() {
         h ^= u32::from(b);
@@ -306,6 +308,17 @@ fn main() {
         Some(k) => vec![k],
         None => (0..count).collect(),
     };
+    if args.iter().any(|a| a == "--edits") {
+        edits::run(
+            seed,
+            &indices,
+            &corpus,
+            &mut reference,
+            &conformance,
+            save_cases,
+        );
+        return;
+    }
     let mut tally: HashMap<Outcome, usize> = HashMap::new();
     let mut found: Vec<(Program, String)> = Vec::new();
     let mut threw: Vec<(Program, String)> = Vec::new();

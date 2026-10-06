@@ -95,3 +95,91 @@ root = Text("x")
 > **One-shot `parse()` marks a complete program `incomplete` (and every element `partial`) after a mismatched closing bracket.** `autoClose` matches bracket types while the stream parser's statement scanner (`scanNewCompleted`) doesn't, so `f = (]\nroot = Text("x")` parses one-shot as incomplete with `partial: true` elements, but streams as complete. Pick one rule for both, likely "any closer closes the innermost opener", which is also what the expression parser effectively does.
 
 **Related, by design:** when the stream ends on a redefinition that's still being written (unclosed), streaming keeps the earlier, completed definition, while `parse()` uses the new one. That's the upstream #1127 fix working as intended ("existing IDs are replaced only when the pending expression no longer needs automatic closing"), pinned by `hand/85-streaming-redefinition-1127`.
+
+## 6. Merging drops a ternary's continuation lines
+
+- **Found:** 2026-10-06, porting `mergeStatements` (ticket 12). Reference commit `bba1d251`.
+- **Pinned by:** merge case `hand/ternary-continuation`.
+
+```
+existing:                 patch:
+root = Stack([a])         root = Stack([a])
+a = $flag
+  ? Title("yes")
+  : Title("no")
+```
+
+**Reference behaviour:** the merged program is `root = Stack([a])` and `a = $flag`. The two continuation lines are gone, so `a` changes meaning from a ternary to the flag itself. The statement wasn't even in the patch.
+
+**Why:** `mergeStatements` cuts the program into statements with its own `splitStatementSource`, which splits at every newline outside brackets. The parser's splitter (and the stream parser's) treats a next line starting with `?` or `:` as a continuation. The two continuation lines become statement texts of their own, have no `name =`, and are dropped.
+
+**Draft upstream report:**
+
+> **`mergeStatements` drops the continuation lines of a multi-line ternary, even in statements the patch doesn't touch.** `splitStatementSource` in `parser/merge.ts` splits at every newline outside brackets, unlike `split` in `statements.ts` and the stream parser's `scanNewCompleted`, which keep a line starting with `?` or `:` with the statement before it. So `a = $flag\n  ? Title("yes")\n  : Title("no")` comes out of any merge as `a = $flag`. The prompt's own syntax rules show ternaries, and models do break long ones across lines. Reuse the parser's continuation rule in `splitStatementSource`. Repro: `mergeStatements('root = Stack([a])\na = $flag\n  ? Title("yes")\n  : Title("no")', 'root = Stack([a])')`.
+
+## 7. An apostrophe in prose before the existing program makes a merge lose it
+
+- **Found:** 2026-10-06 (ticket 12), a sibling of quirk 1.
+- **Pinned by:** merge case `hand/prose-apostrophe-existing`.
+
+```
+existing:                 patch:
+Here's your UI:           a = Title("B")
+root = Stack([a])
+a = Title("A")
+```
+
+**Reference behaviour:** the merged program is just `a = Title("B")`. `root` and everything else in the existing program are gone.
+
+**Why:** the existing program isn't stripped of fences or prose (only the patch is), and `splitStatementSource` treats `'` as a string delimiter. "Here's" opens a string that runs to the end, so the whole program is one statement text whose first statement can't be parsed. With no existing statements, the merge returns the patch alone.
+
+**Draft upstream report:**
+
+> **`mergeStatements` returns only the patch when the existing program starts with prose containing an apostrophe.** Unlike the patch, `existing` isn't passed through `stripFences`, and `splitStatementSource` treats `'` as opening a string, so "Here's your UI:" swallows the program and no existing statements are found. A host that stores the model's raw first response and merges edits into it loses the whole UI on the first edit. Run `existing` through the same preprocessing as the patch (or as `parse`). Repro: `mergeStatements("Here's your UI:\nroot = Stack([a])\na = Title(\"A\")", 'a = Title("B")')` → `'a = Title("B")'`.
+
+## 8. An id defined twice in the existing program comes out twice
+
+- **Found:** 2026-10-06 (ticket 12).
+- **Pinned by:** merge cases `hand/duplicate-existing`, `hand/duplicate-existing-redefined` and `hand/duplicate-existing-deleted`.
+
+```
+existing:                 patch:
+root = Stack([a])         b = Title("B")
+a = Title("1")
+b = Title("2")
+a = Title("3")
+```
+
+**Reference behaviour:** `root = Stack([a])`, `a = Title("3")`, `a = Title("3")`. The last definition is printed twice, in both places, and the first one's text is lost. A patch `a = null` removes only the first listing; the second disappears only because its text was deleted along with it.
+
+**Why:** the merge keeps a `Map` of id to text and a separate `order` array, and pushes every existing id onto `order`, so a re-defined id is listed twice and both listings look up the latest text.
+
+**Draft upstream report:**
+
+> **`mergeStatements` duplicates a statement that's defined twice in the existing program.** Every existing statement's id is pushed onto `order` (`merge.ts`), so an id defined twice is listed twice and printed twice with its last text. Push an id only the first time it's seen, as the patch loop already does. Repro: `mergeStatements('root = Stack([a])\na = Title("1")\na = Title("3")', 'b = Title("B")')`.
+
+## 9. Serializing drops parentheses around an equal-precedence right operand
+
+- **Found:** 2026-10-06, porting `jsonToOpenUI` (ticket 12).
+- **Pinned by:** serialize case `hand/precedence`.
+
+An expression tree for `a - (b - c)` (a `BinOp` `-` whose right operand is a `BinOp` `-`) serializes as `a - b - c`, which parses back as `(a - b) - c`. The same for `a / (b % c)`, `a % (b * c)`, `a - (b + c)` and `a == (b != c)`.
+
+**Why:** `serializeBinOpChild` adds parentheses only when the child's precedence is *lower* than the parent's. The operators are left-associative, so a right operand of *equal* precedence needs them too.
+
+**Draft upstream report:**
+
+> **`jsonToOpenUI` changes the meaning of `a - (b - c)`.** `serializeBinOpChild` in `parser/serialize.ts` parenthesizes a child only when `childPrec < parentPrec`, but every binary operator is left-associative, so a right child of equal precedence needs parentheses too: `a - (b - c)` serializes as `a - b - c`, which parses as `(a - b) - c`. The helper already receives `_side`; parenthesize when `side === "right" && childPrec === parentPrec`. Repro: serialize an element whose prop is `{k: "BinOp", op: "-", left: Ref a, right: {k: "BinOp", op: "-", left: Ref b, right: Ref c}}`.
+
+## 10. Serialized object keys aren't quoted
+
+- **Found:** 2026-10-06 (ticket 12).
+- **Pinned by:** serialize case `hand/values`.
+
+A plain object prop `{"a b": 1, "": 2}` serializes as `{a b: 1, : 2}`, which doesn't parse back. (A key with quotes in it, `"q"`, happens to come out as valid syntax.)
+
+**Why:** `serializeValue` writes `${k}: ...` for object entries, and the `Obj` AST branch does the same, with no quoting. Object literals in OpenUI Lang accept quoted keys, so `JSON.stringify(k)` would always work.
+
+**Draft upstream report:**
+
+> **`jsonToOpenUI` writes object keys without quotes, so keys that aren't identifiers produce text that doesn't parse.** Both `serializeValue` (plain objects) and the `Obj` branch of `serializeASTNode` emit `${k}: ...`. A prop like `{"Content-Type": "json"}` or `{"first name": "x"}` round-trips to invalid OpenUI Lang. Quote keys that aren't plain identifiers (or always: the parser accepts `{"a": 1}`). Repro: serialize `Slot({"a b": 1})`.

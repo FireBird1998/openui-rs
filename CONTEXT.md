@@ -34,6 +34,10 @@ _Avoid_: AST, output, tree (when meaning the whole result)
 Parsing a program chunk by chunk as it arrives, producing a parse result after every chunk.
 _Avoid_: incremental render, live parse
 
+**Patch**:
+A program holding only the statements that changed, merged into an existing program by statement id; `name = null` deletes. Edit mode is the model writing patches instead of whole programs.
+_Avoid_: diff, delta, update
+
 **Prompt spec**:
 The JSON that describes what goes into a system prompt: component signatures and groups, tools, examples, rules and mode flags; the reference's `PromptSpec`, or `{library, promptOptions}`.
 _Avoid_: prompt config, prompt options (when meaning the whole input)

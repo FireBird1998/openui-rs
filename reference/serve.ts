@@ -3,6 +3,10 @@
 //
 //   {"lib": "<schema name>", "input": "...", "root"?: "...", "sizes": [n, ...]}
 //   → {"oneshot": fp, "tokens": fp, "steps": [fp, ...]}   or   {"threw": "<error>"}
+//   {"op": "merge", "existing": "...", "patch": "...", "rootId"?: "..."}
+//   → {"text": "..."}   or   {"threw": "<error>"}
+//   {"op": "serialize", "lib": "<schema name>", "element": {...}, "state"?: {...}}
+//   → {"text": "..."}   or   {"threw": "<error>"}
 //
 // fp is the FNV-1a fingerprint the goldens use. Schema names are those in the
 // conformance manifests. Sizes are push chunk sizes in code points.
@@ -14,12 +18,19 @@ process.env.OPENUI_TELEMETRY_DISABLED = "1";
 process.env.DO_NOT_TRACK = "1";
 const { compileSchema, createStreamParser, parse } = await import("./lang-core/src/parser/parser");
 const { tokenize } = await import("./lang-core/src/parser/lexer");
+const { mergeStatements } = await import("./lang-core/src/parser/merge");
+const { jsonToOpenUI } = await import("./lang-core/src/parser/serialize");
 
 const CONFORMANCE = join(import.meta.dir, "..", "conformance");
 const schemaFiles: Record<string, string> = {};
 for (const file of ["manifest.json", "imported.json", "fuzz.json"]) {
   const path = join(CONFORMANCE, file);
   if (existsSync(path)) Object.assign(schemaFiles, JSON.parse(readFileSync(path, "utf8")).schemas);
+}
+const schemas = new Map<string, unknown>();
+function schema(name: string) {
+  if (!schemas.has(name)) schemas.set(name, JSON.parse(readFileSync(join(CONFORMANCE, schemaFiles[name]), "utf8")));
+  return schemas.get(name);
 }
 const libraries = new Map<string, unknown>();
 function library(name: string) {
@@ -61,6 +72,23 @@ function answer(req: Request) {
   }
 }
 
+type EditRequest =
+  | { op: "merge"; existing: string; patch: string; rootId?: string }
+  | { op: "serialize"; lib: string; element: unknown; state?: unknown };
+
+function answerEdit(req: EditRequest) {
+  try {
+    if (req.op === "merge") return { text: mergeStatements(req.existing, req.patch, req.rootId) };
+    const s = schema(req.lib);
+    const lib = { toJSONSchema: () => s } as any;
+    return { text: jsonToOpenUI(req.element as any, lib, "state" in req ? { stateDeclarations: req.state as any } : undefined) };
+  } catch (e) {
+    return { threw: String(e) };
+  }
+}
+
 for await (const line of createInterface({ input: process.stdin })) {
-  if (line.trim()) process.stdout.write(JSON.stringify(answer(JSON.parse(line))) + "\n");
+  if (!line.trim()) continue;
+  const req = JSON.parse(line);
+  process.stdout.write(JSON.stringify(req.op ? answerEdit(req) : answer(req)) + "\n");
 }

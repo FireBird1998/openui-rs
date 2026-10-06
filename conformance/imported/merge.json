@@ -1,0 +1,11 @@
+{
+ "cases": [
+  {
+   "name": "test/serialize-01",
+   "existing": "root = Stack([header])\nheader = Title(\"Old\")",
+   "patch": "root = Stack([header])\nheader = Title(\"New\")",
+   "source": "reference-test",
+   "origin": "packages/lang-core/src/parser/__tests__/serialize.test.ts"
+  }
+ ]
+}

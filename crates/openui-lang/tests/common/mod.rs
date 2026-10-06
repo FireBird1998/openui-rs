@@ -44,6 +44,8 @@ pub fn fingerprint(json: &str) -> String {
 pub struct Case {
     pub name: String,
     pub library: Arc<Library>,
+    /// The library's JSON Schema, as written.
+    pub schema: Arc<Value>,
     pub input: String,
     pub root: Option<String>,
     /// Whether the case has per-prefix stage goldens (large ones skip them).
@@ -71,12 +73,13 @@ pub fn load_corpus() -> Corpus {
     .filter(|p| p.exists())
     .map(|p| serde_json::from_str(&read(&p)).unwrap())
     .collect();
-    let mut libraries: HashMap<String, Arc<Library>> = HashMap::new();
+    let mut libraries: HashMap<String, (Arc<Library>, Arc<Value>)> = HashMap::new();
     for manifest in &manifests {
         for (name, file) in manifest["schemas"].as_object().unwrap() {
             let schema: Value =
                 serde_json::from_str(&read(&conformance.join(file.as_str().unwrap()))).unwrap();
-            libraries.insert(name.clone(), Arc::new(Library::from_json_schema(&schema)));
+            let library = Arc::new(Library::from_json_schema(&schema));
+            libraries.insert(name.clone(), (library, Arc::new(schema)));
         }
     }
     let chunkings = manifests[0]["chunkings"]
@@ -90,7 +93,8 @@ pub fn load_corpus() -> Corpus {
         .flat_map(|m| m["cases"].as_array().unwrap())
         .map(|c| Case {
             name: c["name"].as_str().unwrap().to_owned(),
-            library: libraries[c["schema"].as_str().unwrap()].clone(),
+            library: libraries[c["schema"].as_str().unwrap()].0.clone(),
+            schema: libraries[c["schema"].as_str().unwrap()].1.clone(),
             input: read(&conformance.join(c["file"].as_str().unwrap())),
             root: c.get("root").and_then(Value::as_str).map(str::to_owned),
             stages: c.get("stages").and_then(Value::as_bool).unwrap_or(true),

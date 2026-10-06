@@ -1,0 +1,716 @@
+{
+ "schemas": {
+  "test-serialize-lib": {
+   "$defs": {
+    "Stack": {
+     "properties": {
+      "children": {
+       "type": "array"
+      }
+     },
+     "required": [
+      "children"
+     ]
+    },
+    "Title": {
+     "properties": {
+      "text": {
+       "type": "string"
+      }
+     },
+     "required": [
+      "text"
+     ]
+    },
+    "Table": {
+     "properties": {
+      "columns": {
+       "type": "array"
+      },
+      "rows": {
+       "type": "array"
+      }
+     },
+     "required": [
+      "columns",
+      "rows"
+     ]
+    },
+    "Card": {
+     "properties": {
+      "title": {
+       "type": "string"
+      },
+      "subtitle": {
+       "type": "string"
+      }
+     },
+     "required": [
+      "title"
+     ]
+    }
+   }
+  }
+ },
+ "cases": [
+  {
+   "name": "test/serialize-01",
+   "schema": "test-serialize-lib",
+   "element": {
+    "type": "element",
+    "typeName": "Title",
+    "props": {
+     "text": "Hello"
+    },
+    "partial": false,
+    "hasDynamicProps": false
+   },
+   "source": "reference-test",
+   "origin": "packages/lang-core/src/parser/__tests__/serialize.test.ts"
+  },
+  {
+   "name": "test/serialize-02",
+   "schema": "test-serialize-lib",
+   "element": {
+    "type": "element",
+    "typeName": "Title",
+    "props": {
+     "text": "Hi"
+    },
+    "partial": false,
+    "statementId": "header"
+   },
+   "source": "reference-test",
+   "origin": "packages/lang-core/src/parser/__tests__/serialize.test.ts"
+  },
+  {
+   "name": "test/serialize-03",
+   "schema": "test-serialize-lib",
+   "element": {
+    "type": "element",
+    "typeName": "Stack",
+    "props": {
+     "children": [
+      {
+       "type": "element",
+       "typeName": "Title",
+       "props": {
+        "text": "Hello"
+       },
+       "partial": false,
+       "statementId": "header"
+      }
+     ]
+    },
+    "partial": false,
+    "statementId": "root"
+   },
+   "source": "reference-test",
+   "origin": "packages/lang-core/src/parser/__tests__/serialize.test.ts"
+  },
+  {
+   "name": "test/serialize-04",
+   "schema": "test-serialize-lib",
+   "element": {
+    "type": "element",
+    "typeName": "Stack",
+    "props": {
+     "children": [
+      {
+       "type": "element",
+       "typeName": "Title",
+       "props": {
+        "text": "Inline"
+       },
+       "partial": false
+      }
+     ]
+    },
+    "partial": false
+   },
+   "source": "reference-test",
+   "origin": "packages/lang-core/src/parser/__tests__/serialize.test.ts"
+  },
+  {
+   "name": "test/serialize-05",
+   "schema": "test-serialize-lib",
+   "element": {
+    "type": "element",
+    "typeName": "Title",
+    "props": {
+     "text": "Hello \"world\""
+    },
+    "partial": false
+   },
+   "source": "reference-test",
+   "origin": "packages/lang-core/src/parser/__tests__/serialize.test.ts"
+  },
+  {
+   "name": "test/serialize-06",
+   "schema": "test-serialize-lib",
+   "element": {
+    "type": "element",
+    "typeName": "Table",
+    "props": {
+     "columns": [
+      42
+     ],
+     "rows": [
+      [
+       3.14
+      ]
+     ]
+    },
+    "partial": false
+   },
+   "source": "reference-test",
+   "origin": "packages/lang-core/src/parser/__tests__/serialize.test.ts"
+  },
+  {
+   "name": "test/serialize-07",
+   "schema": "test-serialize-lib",
+   "element": {
+    "type": "element",
+    "typeName": "Table",
+    "props": {
+     "columns": [
+      true
+     ],
+     "rows": [
+      [
+       false
+      ]
+     ]
+    },
+    "partial": false
+   },
+   "source": "reference-test",
+   "origin": "packages/lang-core/src/parser/__tests__/serialize.test.ts"
+  },
+  {
+   "name": "test/serialize-08",
+   "schema": "test-serialize-lib",
+   "element": {
+    "type": "element",
+    "typeName": "Table",
+    "props": {
+     "columns": [
+      null
+     ],
+     "rows": [
+      []
+     ]
+    },
+    "partial": false
+   },
+   "source": "reference-test",
+   "origin": "packages/lang-core/src/parser/__tests__/serialize.test.ts"
+  },
+  {
+   "name": "test/serialize-09",
+   "schema": "test-serialize-lib",
+   "element": {
+    "type": "element",
+    "typeName": "Table",
+    "props": {
+     "columns": [
+      {
+       "name": "col1",
+       "key": "id"
+      }
+     ],
+     "rows": []
+    },
+    "partial": false
+   },
+   "source": "reference-test",
+   "origin": "packages/lang-core/src/parser/__tests__/serialize.test.ts"
+  },
+  {
+   "name": "test/serialize-10",
+   "schema": "test-serialize-lib",
+   "element": {
+    "type": "element",
+    "typeName": "Table",
+    "props": {
+     "columns": [
+      "A",
+      "B"
+     ],
+     "rows": [
+      [
+       1,
+       2
+      ]
+     ]
+    },
+    "partial": false
+   },
+   "source": "reference-test",
+   "origin": "packages/lang-core/src/parser/__tests__/serialize.test.ts"
+  },
+  {
+   "name": "test/serialize-11",
+   "schema": "test-serialize-lib",
+   "element": {
+    "type": "element",
+    "typeName": "Card",
+    "props": {
+     "title": "Hello"
+    },
+    "partial": false
+   },
+   "source": "reference-test",
+   "origin": "packages/lang-core/src/parser/__tests__/serialize.test.ts"
+  },
+  {
+   "name": "test/serialize-12",
+   "schema": "test-serialize-lib",
+   "element": {
+    "type": "element",
+    "typeName": "Table",
+    "props": {
+     "rows": [
+      [
+       1,
+       2
+      ]
+     ]
+    },
+    "partial": false
+   },
+   "source": "reference-test",
+   "origin": "packages/lang-core/src/parser/__tests__/serialize.test.ts"
+  },
+  {
+   "name": "test/serialize-13",
+   "schema": "test-serialize-lib",
+   "element": {
+    "type": "element",
+    "typeName": "Title",
+    "props": {
+     "text": {
+      "k": "StateRef",
+      "n": "$name"
+     }
+    },
+    "partial": false,
+    "hasDynamicProps": true
+   },
+   "source": "reference-test",
+   "origin": "packages/lang-core/src/parser/__tests__/serialize.test.ts"
+  },
+  {
+   "name": "test/serialize-14",
+   "schema": "test-serialize-lib",
+   "element": {
+    "type": "element",
+    "typeName": "Title",
+    "props": {
+     "text": {
+      "k": "RuntimeRef",
+      "n": "queryData",
+      "refType": "query"
+     }
+    },
+    "partial": false,
+    "hasDynamicProps": true
+   },
+   "source": "reference-test",
+   "origin": "packages/lang-core/src/parser/__tests__/serialize.test.ts"
+  },
+  {
+   "name": "test/serialize-15",
+   "schema": "test-serialize-lib",
+   "element": {
+    "type": "element",
+    "typeName": "Title",
+    "props": {
+     "text": {
+      "k": "BinOp",
+      "op": "*",
+      "left": {
+       "k": "BinOp",
+       "op": "+",
+       "left": {
+        "k": "StateRef",
+        "n": "$a"
+       },
+       "right": {
+        "k": "StateRef",
+        "n": "$b"
+       }
+      },
+      "right": {
+       "k": "StateRef",
+       "n": "$c"
+      }
+     }
+    },
+    "partial": false,
+    "hasDynamicProps": true
+   },
+   "source": "reference-test",
+   "origin": "packages/lang-core/src/parser/__tests__/serialize.test.ts"
+  },
+  {
+   "name": "test/serialize-16",
+   "schema": "test-serialize-lib",
+   "element": {
+    "type": "element",
+    "typeName": "Title",
+    "props": {
+     "text": {
+      "k": "Ternary",
+      "cond": {
+       "k": "StateRef",
+       "n": "$active"
+      },
+      "then": {
+       "k": "Str",
+       "v": "Yes"
+      },
+      "else": {
+       "k": "Str",
+       "v": "No"
+      }
+     }
+    },
+    "partial": false,
+    "hasDynamicProps": true
+   },
+   "source": "reference-test",
+   "origin": "packages/lang-core/src/parser/__tests__/serialize.test.ts"
+  },
+  {
+   "name": "test/serialize-17",
+   "schema": "test-serialize-lib",
+   "element": {
+    "type": "element",
+    "typeName": "Title",
+    "props": {
+     "text": {
+      "k": "Member",
+      "obj": {
+       "k": "RuntimeRef",
+       "n": "data",
+       "refType": "query"
+      },
+      "field": "name"
+     }
+    },
+    "partial": false,
+    "hasDynamicProps": true
+   },
+   "source": "reference-test",
+   "origin": "packages/lang-core/src/parser/__tests__/serialize.test.ts"
+  },
+  {
+   "name": "test/serialize-18",
+   "schema": "test-serialize-lib",
+   "element": {
+    "type": "element",
+    "typeName": "Title",
+    "props": {
+     "text": {
+      "k": "Index",
+      "obj": {
+       "k": "RuntimeRef",
+       "n": "items",
+       "refType": "query"
+      },
+      "index": {
+       "k": "Num",
+       "v": 0
+      }
+     }
+    },
+    "partial": false,
+    "hasDynamicProps": true
+   },
+   "source": "reference-test",
+   "origin": "packages/lang-core/src/parser/__tests__/serialize.test.ts"
+  },
+  {
+   "name": "test/serialize-19",
+   "schema": "test-serialize-lib",
+   "element": {
+    "type": "element",
+    "typeName": "Title",
+    "props": {
+     "text": {
+      "k": "UnaryOp",
+      "op": "!",
+      "operand": {
+       "k": "StateRef",
+       "n": "$flag"
+      }
+     }
+    },
+    "partial": false,
+    "hasDynamicProps": true
+   },
+   "source": "reference-test",
+   "origin": "packages/lang-core/src/parser/__tests__/serialize.test.ts"
+  },
+  {
+   "name": "test/serialize-20",
+   "schema": "test-serialize-lib",
+   "element": {
+    "type": "element",
+    "typeName": "Title",
+    "props": {
+     "text": {
+      "k": "Comp",
+      "name": "Count",
+      "args": [
+       {
+        "k": "RuntimeRef",
+        "n": "items",
+        "refType": "query"
+       }
+      ]
+     }
+    },
+    "partial": false,
+    "hasDynamicProps": true
+   },
+   "source": "reference-test",
+   "origin": "packages/lang-core/src/parser/__tests__/serialize.test.ts"
+  },
+  {
+   "name": "test/serialize-21",
+   "schema": "test-serialize-lib",
+   "element": {
+    "type": "element",
+    "typeName": "Title",
+    "props": {
+     "text": {
+      "k": "Comp",
+      "name": "Action",
+      "args": [
+       {
+        "k": "Arr",
+        "els": [
+         {
+          "k": "Comp",
+          "name": "Run",
+          "args": [
+           {
+            "k": "Ref",
+            "n": "myQuery"
+           }
+          ]
+         }
+        ]
+       }
+      ]
+     }
+    },
+    "partial": false,
+    "hasDynamicProps": true
+   },
+   "source": "reference-test",
+   "origin": "packages/lang-core/src/parser/__tests__/serialize.test.ts"
+  },
+  {
+   "name": "test/serialize-22",
+   "schema": "test-serialize-lib",
+   "element": {
+    "type": "element",
+    "typeName": "Title",
+    "props": {
+     "text": "Hi"
+    },
+    "partial": false
+   },
+   "stateDeclarations": {
+    "$count": 0,
+    "$name": "default"
+   },
+   "source": "reference-test",
+   "origin": "packages/lang-core/src/parser/__tests__/serialize.test.ts"
+  },
+  {
+   "name": "test/serialize-23",
+   "schema": "test-serialize-lib",
+   "element": {
+    "type": "element",
+    "typeName": "Title",
+    "props": {
+     "text": "Hi"
+    },
+    "partial": false
+   },
+   "stateDeclarations": {
+    "$filter": null
+   },
+   "source": "reference-test",
+   "origin": "packages/lang-core/src/parser/__tests__/serialize.test.ts"
+  },
+  {
+   "name": "test/serialize-24",
+   "schema": "test-serialize-lib",
+   "element": {
+    "type": "element",
+    "typeName": "Title",
+    "props": {
+     "text": "Hello"
+    },
+    "partial": false,
+    "hasDynamicProps": false,
+    "statementId": "root"
+   },
+   "source": "reference-test",
+   "origin": "packages/lang-core/src/parser/__tests__/serialize.test.ts"
+  },
+  {
+   "name": "test/serialize-25",
+   "schema": "test-serialize-lib",
+   "element": {
+    "type": "element",
+    "typeName": "Stack",
+    "props": {
+     "children": [
+      {
+       "type": "element",
+       "typeName": "Title",
+       "props": {
+        "text": "Hi"
+       },
+       "partial": false,
+       "hasDynamicProps": false,
+       "statementId": "header"
+      },
+      {
+       "type": "element",
+       "typeName": "Table",
+       "props": {
+        "columns": [
+         "A",
+         "B"
+        ],
+        "rows": [
+         [
+          1,
+          2
+         ]
+        ]
+       },
+       "partial": false,
+       "hasDynamicProps": false,
+       "statementId": "tbl"
+      }
+     ]
+    },
+    "partial": false,
+    "hasDynamicProps": false,
+    "statementId": "root"
+   },
+   "source": "reference-test",
+   "origin": "packages/lang-core/src/parser/__tests__/serialize.test.ts"
+  },
+  {
+   "name": "test/serialize-26",
+   "schema": "test-serialize-lib",
+   "element": {
+    "type": "element",
+    "typeName": "Card",
+    "props": {
+     "title": "Main Title"
+    },
+    "partial": false,
+    "hasDynamicProps": false,
+    "statementId": "root"
+   },
+   "source": "reference-test",
+   "origin": "packages/lang-core/src/parser/__tests__/serialize.test.ts"
+  },
+  {
+   "name": "test/serialize-27",
+   "schema": "test-serialize-lib",
+   "element": {
+    "type": "element",
+    "typeName": "Stack",
+    "props": {
+     "children": [
+      {
+       "type": "element",
+       "typeName": "Title",
+       "props": {
+        "text": "New"
+       },
+       "partial": false,
+       "statementId": "header"
+      }
+     ]
+    },
+    "partial": false,
+    "statementId": "root"
+   },
+   "source": "reference-test",
+   "origin": "packages/lang-core/src/parser/__tests__/serialize.test.ts"
+  },
+  {
+   "name": "test/serialize-28",
+   "schema": "test-serialize-lib",
+   "element": {
+    "type": "element",
+    "typeName": "Stack",
+    "props": {
+     "children": []
+    },
+    "partial": false
+   },
+   "source": "reference-test",
+   "origin": "packages/lang-core/src/parser/__tests__/serialize.test.ts"
+  },
+  {
+   "name": "test/serialize-29",
+   "schema": "test-serialize-lib",
+   "element": {
+    "type": "element",
+    "typeName": "Title",
+    "props": {
+     "text": "Streaming"
+    },
+    "partial": true
+   },
+   "source": "reference-test",
+   "origin": "packages/lang-core/src/parser/__tests__/serialize.test.ts"
+  },
+  {
+   "name": "test/serialize-30",
+   "schema": "test-serialize-lib",
+   "element": {
+    "type": "element",
+    "typeName": "Stack",
+    "props": {
+     "children": [
+      {
+       "type": "element",
+       "typeName": "Title",
+       "props": {
+        "text": "Same"
+       },
+       "partial": false,
+       "statementId": "shared"
+      },
+      {
+       "type": "element",
+       "typeName": "Title",
+       "props": {
+        "text": "Same"
+       },
+       "partial": false,
+       "statementId": "shared"
+      }
+     ]
+    },
+    "partial": false
+   },
+   "source": "reference-test",
+   "origin": "packages/lang-core/src/parser/__tests__/serialize.test.ts"
+  }
+ ]
+}

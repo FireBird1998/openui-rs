@@ -92,6 +92,29 @@ impl Reference {
     }
 }
 
+impl Reference {
+    /// Raw answers for a batch of request lines, in order.
+    pub fn ask_lines(&mut self, lines: &[String]) -> Vec<String> {
+        let stdin = &mut self.stdin;
+        let stdout = &mut self.stdout;
+        std::thread::scope(|scope| {
+            scope.spawn(move || {
+                for line in lines {
+                    writeln!(stdin, "{line}").expect("write to reference");
+                }
+                stdin.flush().expect("flush reference");
+            });
+            (0..lines.len())
+                .map(|_| {
+                    let mut line = String::new();
+                    stdout.read_line(&mut line).expect("read from reference");
+                    line
+                })
+                .collect()
+        })
+    }
+}
+
 impl Drop for Reference {
     fn drop(&mut self) {
         let _ = self.child.kill();

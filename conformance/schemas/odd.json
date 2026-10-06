@@ -1,0 +1,61 @@
+{
+ "$defs": {
+  "Holder": {
+   "properties": {
+    "items": {
+     "type": "array"
+    },
+    "extra": {}
+   }
+  },
+  "Pair": {
+   "properties": [
+    "first",
+    "second"
+   ],
+   "required": "01"
+  },
+  "Chars": {
+   "properties": "ab",
+   "required": [
+    "0"
+   ]
+  },
+  "Loose": {
+   "properties": {
+    "a": {
+     "type": "string"
+    },
+    "b": {
+     "type": "number"
+    },
+    "c": {}
+   },
+   "required": "ac"
+  },
+  "Mixed": {
+   "properties": {
+    "x": {
+     "type": "string"
+    },
+    "5": {
+     "type": "number"
+    }
+   },
+   "required": [
+    "x",
+    5,
+    "5"
+   ]
+  },
+  "Bare": {
+   "required": [
+    "ghost"
+   ]
+  },
+  "Empty": {
+   "properties": {},
+   "required": []
+  }
+ }
+}

@@ -89,7 +89,12 @@ Each module mirrors one stage of the reference pipeline, with Rust idioms inside
 - **Parser:** one-shot parse to a parse result.
 - **Streaming parser:** push a chunk, resync with the full text, read the current result.
 - **Prompt generation:** system prompt from a prompt spec in the same JSON shape the reference parser accepts.
-- **Later:** statement merging for edit mode, JSON-to-OpenUI serialization, and error hints.
+- **Later:** statement merging for edit mode, JSON-to-OpenUI serialization, and error hints. **Done in ticket 12 (2026-10-06):**
+  - `merge_statements(existing, patch, root_id)` works on source text, as the reference does.
+  - `json_to_openui(element, library, state_declarations)` takes the element tree in its JSON form (`serde_json::Value`), the shape that crosses any boundary, and applies the JavaScript rules the reference relies on: what counts as an element or AST node, property order, how values stringify, and where it throws (returned as an error). A Rust caller with a `ParseResult` reads its JSON back with `parse_json`.
+  - `parse_json` / `stringify_json`: `JSON.parse` and `JSON.stringify` for `serde_json::Value`, keeping lone surrogates. The reader is iterative, so it needs no stack per level.
+  - `enrich_errors(errors, schema, component_names)` is the deprecated `enrichErrors`.
+  - Divergences, all on inputs no parse result produces: JSON nested deeper than 800 levels is refused (a parse result nests at most 764; the reference copes up to about 10,000), and `JSON.parse`'s `Infinity` for `1e400` can't be held in a `serde_json::Value`.
 
 ### Public API (Rust)
 - Load a component library from a JSON Schema value.
@@ -106,7 +111,7 @@ Each module mirrors one stage of the reference pipeline, with Rust idioms inside
 
 ### Depth limit (decided 2026-10-06)
 - Expressions and reference chains nest at most `MAX_DEPTH` = 256 levels. Deeper parts become null and `ParseResult::depth_limited` is set (not part of the JSON). The reference copes up to roughly 8,000 levels, then throws, so 257 to about 8,000 is a documented divergence that no real model output comes near.
-- At full depth, optimized builds need at most 256 KB of stack and unoptimized ones at most 1 MB. Embedders must build the core optimized (opt-level 1 or more) and call it from threads with at least 512 KB of stack.
+- At full depth, optimized builds (opt-level 1 or 3) need at most 384 KB of stack and unoptimized ones at most 1 MB. (Corrected 2026-10-06: ticket 09 said 256 KB, but the 10,000-statement reference chain already needed 384 KB in release builds.) Embedders must build the core optimized (opt-level 1 or more) and call it from threads with at least 512 KB of stack.
 
 ### Crate and tooling
 - Rust 2024 edition on stable (1.97 on this machine).
