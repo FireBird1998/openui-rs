@@ -1,0 +1,188 @@
+root = Root([a, b])
+a = Text("hi")
+b = Text("x", "warn")
+=====
+root = Root([t])
+t = Text(123)
+=====
+root = Root([Text(), Text(null), Text("a", "nope"), Text("a", "info", 1, 2)])
+=====
+root = Root([Card(Text("h"), ["s", Text("b"), 3], {id: "x", tags: ["a", 1], nested: {flag: "no"}})])
+=====
+root = Root([Card(Text("h"), [], {count: 2}), Card(Text("h"), [], {id: null, count: null, nested: {}})])
+=====
+root = Root([Badge("badge", 2.5), Badge("nope", "x"), Badge("badge", {a: 1}), Badge(), Badge("badge", null), Badge("badge", [1])])
+=====
+root = Root([Chart([{x: 1, y: 2}, {x: "a"}, {y: 3, x: 1}, 5], "L"), Chart(null, null), Chart("pts")])
+=====
+root = Root([Unknown(1), Query("x"), Mutation("y")])
+=====
+$count = 0
+root = Root([Btn("Add", Action([@Set($count, $count + 1), @ToAssistant("hi"), @OpenUrl("https://x.dev")]))])
+=====
+data = Query("get_users", {page: $page, q: $search}, {rows: []}, 30)
+root = Root([Text(data.rows[0].name), Text(@Count(data.rows))])
+=====
+save = Mutation("save", {name: $name, extra: $page})
+root = Root([Btn("Save", Action([@Run(save), @Reset($name)]))])
+=====
+root = Root([@Each(items, "item", Text(item.name))])
+items = [{name: "a"}, {name: "b"}]
+=====
+root = Root([@Each(items, item, Card(Text(item.title), [], {id: item.id}))])
+items = Query("list_items")
+=====
+root = Root([@Each(items, 3, Text(item.name)), @Each(items, "", Text("x")), @Each(items)])
+items = [1, 2]
+=====
+root = Root([a])
+a = Root([b])
+b = Root([a])
+=====
+root = Root([x, Text(y)])
+=====
+root = Root([a])
+b = Text("orphan")
+a = Text("used")
+c = Query("q")
+$s = "state"
+=====
+root = Root([a])
+a = Text("first")
+a = Text("second")
+=====
+title = $flag
+  ? "yes"
+  : "no"
+root = Root([Text(title)])
+=====
+root = Root([Text($a > 1 && !$b || $c == "x" ? "p" : $d != 2 ? "q" : "r"), Text($n >= 1), Text($n <= 2), Text($n < 3)])
+=====
+root = Root([Text(-3), Text(1e3), Text(2.5e-3), Text(1e), Text(007), Text(-x), Text(1.), Text(.5), Text(1e400), Text(0.1 + 0.2)])
+=====
+x = 5 - -3 * 2 % 4 / 1
+y = (1 + 2) * -(3)
+root = Root([Text(x), Text(y)])
+=====
+Here is your UI:
+```openui
+root = Root([Text("a")])
+```
+Hope that helps!
+=====
+```openui
+root = Root([Text("a")])
+=====
+```
+root = Root([])
+=====
+```openui
+=====
+two blocks
+```
+root = Root([a])
+```
+and
+```
+a = Text("from block two")
+```
+=====
+// leading comment
+root = Root([Text("a // not a comment"), Text('it\'s'), Text("# nope")]) # trailing
+# full line
+a = Text("x") // trailing
+=====
+root = Root([Text("emoji 😀 é é \n tab\t 😀 \/ \b \f \r"), Text('single \'q\' \\ \n \t \x')])
+=====
+root = Root([Text("unterminated
+=====
+root = Root([Text("bad \x escape"), Text("ok \"quoted\"")])
+=====
+root = Root([Text({a: 1, "b c": 2, 3: 4, $s: 5, : 6, 10: 7, 2: 8, "01": 9})])
+=====
+root = Root([Text([1, , 2]), Text([,]), Text({,}), Text({a})])
+=====
+Root = Root([Text("pascal id")])
+=====
+$s = Query("q", {x: $other})
+root = Root([Text($s)])
+=====
+lowercase = Text("no root")
+other = Text("b")
+=====
+a = 1
+b = 2
+=====
+= broken
+not a statement
+root = Root([Text("ok")])
+=====
+root = Root([Text(obj.field), Text(arr[0]), Text(obj.$x), Text(obj.1), Text(obj.), Text(obj."s"), Text(obj.Type)])
+=====
+root = Root([Text(@Count(items)), Text(Count(items)), Text(@Sum), Text(Action), Text(Action([])), Text(@Filter(items, "a", "==", 1))])
+=====
+root = Root(children: [Text("named?")])
+=====
+root = Root([Text("a"), ], "title", )
+=====
+root = Root([1(2), Text(")"), Text("]"), Text("}")])
+=====
+root = Root([Slot("c", {2: "two", a: 1, 1: "one", z: 0}, "notarray"), Slot(1, 2, [3])])
+=====
+root = Root([Input("n", null, "email"), Input("n", 5, "fax"), Form("f", [Input("a"), Text("x"), 3], Btn("go")), Form("f", "x", Text("t"))])
+=====
+root = Root([Text("a").foo, Root([Text("a")]).children[0]])
+=====
+root = Root([@toString(1), @constructor(), Text(@valueOf)])
+=====
+x = $a = $b + 1
+root = Root([Btn("go", $c = 2)])
+=====
+root = Root([Text($items[$i].name), Text(@First($items)), Text(@Last($items))])
+=====
+root = Root([Text("a" + 1 + true + null)])
+=====
+root = Root([Text(true ? Text("nested") : null)])
+=====
+root = Root([Text(Text("inline element as string"))])
+=====
+root = Root([Card(Text("h"), [Text("b", "warn")], {id: "x", count: 1, nested: {flag: true}, extra: [Text("deep")]})])
+=====
+root = Root([Text("a"), Text("b")
+=====
+root = Root([Text("a"), Text("b"
+=====
+root = Root([Text('unterminated single
+=====
+root = Root([Text("esc at end\
+=====
+x = [1, 2
+y = {a: 1
+root = Root([Text(x)
+=====
+root = Root(
+  [
+    Text("multi"),
+    Text("line")
+  ],
+  "title"
+)
+=====
+a = $x
+  ? Text("a")
+  : $y
+    ? Text("b")
+    : Text("c")
+root = Root([a])
+=====
+root = Root([Text("x")])
+$a = [1, {b: $c}]
+$d = Text("state el")
+=====
+root = Root([Text(1, "info", 2)], "t", "extra", "more")
+=====
+root = Stack([TextContent("hello", "large"), Table([Col("A", "string")], [["x"]]), BarChart(["a"], [Series("s", [1, "2"])], "weird")])
+=====
+root = Root([10("x")])
+=====
+ root = Root([Text("leading nbsp and bom")]) 
