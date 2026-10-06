@@ -14,6 +14,9 @@ use std::sync::Arc;
 
 use openui_lang::{Library, MAX_DEPTH, StreamParser, parse};
 
+// Ordinary programs must stay well inside the limit.
+const _: () = assert!(MAX_DEPTH >= 256);
+
 const STACK: usize = 512 * 1024;
 fn stack() -> usize {
     std::env::var("DEPTH_STACK_KB")
@@ -133,5 +136,4 @@ fn ordinary_nesting_is_not_limited() {
         "])".repeat(40)
     );
     assert_eq!(survives(program), (false, false));
-    assert!(MAX_DEPTH >= 256);
 }
