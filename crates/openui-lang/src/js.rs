@@ -20,7 +20,7 @@ fn lone_surrogate(unit: u16) -> char {
 
 /// The characters `String.prototype.trim` removes (WhiteSpace + LineTerminator).
 /// Differs from `char::is_whitespace`: includes U+FEFF, excludes U+0085.
-fn is_js_whitespace(c: char) -> bool {
+pub(crate) fn is_js_whitespace(c: char) -> bool {
     matches!(
         c,
         '\t' | '\n' | '\u{0B}' | '\u{0C}' | '\r' | ' ' | '\u{A0}' | '\u{1680}' | '\u{2000}'

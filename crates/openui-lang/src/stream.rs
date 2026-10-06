@@ -3,6 +3,10 @@
 //! Statements that end in a newline outside brackets are parsed once and
 //! cached. The trailing statement is still arriving, so it's auto-closed and
 //! re-parsed on every push and laid over a copy of the cache.
+//!
+//! The reference re-derives the cleaned text from the whole buffer on every
+//! push; here a [`Preprocessor`] extends it chunk by chunk, with the same
+//! result.
 
 use std::sync::Arc;
 
@@ -13,7 +17,7 @@ use crate::js;
 use crate::lexer::tokenize;
 use crate::library::Library;
 use crate::parser::{Statement, build_result, classify};
-use crate::preprocess::preprocess;
+use crate::preprocess::Preprocessor;
 use crate::result::ParseResult;
 use crate::statements::{auto_close, split};
 
@@ -24,15 +28,43 @@ pub struct StreamParser {
     /// Everything pushed so far.
     buf: String,
     /// `buf` preprocessed; statement boundaries are found in this, never in `buf`.
-    cleaned: String,
-    /// How far into `cleaned` the completed statements reach.
-    completed_end: usize,
-    completed: IndexMap<String, Statement>,
-    /// Completed statements parsed, counting re-definitions.
-    completed_count: usize,
-    /// Some completed statement nested past `MAX_DEPTH`.
-    completed_depth_limited: bool,
+    pre: Preprocessor,
+    completed: Completed,
+}
+
+/// The statements that have fully arrived.
+#[derive(Default)]
+struct Completed {
+    /// How far into the cleaned text they reach.
+    end: usize,
+    statements: IndexMap<String, Statement>,
+    /// Statements parsed, counting re-definitions.
+    count: usize,
+    /// Some statement nested past `MAX_DEPTH`.
+    depth_limited: bool,
     first_id: String,
+}
+
+impl Completed {
+    fn clear(&mut self) {
+        *self = Completed::default();
+    }
+
+    fn add(&mut self, text: &str) {
+        let text = js::trim(text);
+        if text.is_empty() {
+            return;
+        }
+        for raw in split(&tokenize(text)) {
+            let (expr, limited) = parse_expression_with_limit(&raw.tokens);
+            self.depth_limited |= limited;
+            if self.first_id.is_empty() {
+                self.first_id = raw.id.clone();
+            }
+            self.statements.insert(raw.id.clone(), classify(&raw, expr));
+            self.count += 1;
+        }
+    }
 }
 
 impl StreamParser {
@@ -41,18 +73,14 @@ impl StreamParser {
             library,
             root_name: root_name.map(str::to_owned),
             buf: String::new(),
-            cleaned: String::new(),
-            completed_end: 0,
-            completed: IndexMap::new(),
-            completed_count: 0,
-            completed_depth_limited: false,
-            first_id: String::new(),
+            pre: Preprocessor::new(),
+            completed: Completed::default(),
         }
     }
 
     /// Feed the next chunk and get the latest parse result.
     pub fn push(&mut self, chunk: &str) -> ParseResult {
-        self.buf.push_str(chunk);
+        self.absorb(chunk);
         self.current_result()
     }
 
@@ -62,8 +90,7 @@ impl StreamParser {
         if !full_text.starts_with(self.buf.as_str()) {
             self.reset();
         }
-        let delta = &full_text[self.buf.len()..];
-        self.buf.push_str(delta);
+        self.absorb(&full_text[self.buf.len()..]);
         self.current_result()
     }
 
@@ -74,56 +101,34 @@ impl StreamParser {
 
     fn reset(&mut self) {
         self.buf.clear();
-        self.cleaned.clear();
-        self.completed_end = 0;
+        self.pre.reset();
         self.completed.clear();
-        self.completed_count = 0;
-        self.completed_depth_limited = false;
-        self.first_id.clear();
     }
 
-    fn add_statements(&mut self, text: &str) {
-        let text = js::trim(text);
-        if text.is_empty() {
-            return;
-        }
-        for raw in split(&tokenize(text)) {
-            let (expr, limited) = parse_expression_with_limit(&raw.tokens);
-            self.completed_depth_limited |= limited;
-            if self.first_id.is_empty() {
-                self.first_id = raw.id.clone();
-            }
-            self.completed.insert(raw.id.clone(), classify(&raw, expr));
-            self.completed_count += 1;
-        }
-    }
-
-    /// Re-derive `cleaned`. If the completed prefix changed (say an opening
-    /// fence appeared and shifted everything), the cache is stale: start over.
-    fn refresh_cleaned(&mut self) {
-        let next = preprocess(&self.buf);
-        if !next.starts_with(&self.cleaned[..self.completed_end]) {
-            self.completed_end = 0;
+    /// Take in new text. If the cleaned text changed under the completed
+    /// statements (an opening fence appeared and shifted everything, say),
+    /// they're stale: start over, as the reference does.
+    fn absorb(&mut self, chunk: &str) {
+        self.buf.push_str(chunk);
+        let unchanged = self.pre.push(chunk);
+        if self.completed.end > unchanged {
             self.completed.clear();
-            self.completed_count = 0;
-            self.completed_depth_limited = false;
-            self.first_id.clear();
         }
-        self.cleaned = next;
     }
 
     /// Cache statements completed since the last scan. Returns where the
     /// pending (still incomplete) statement starts.
     fn scan_new_completed(&mut self) -> usize {
-        let s = self.cleaned.as_bytes();
+        let cleaned = self.pre.cleaned();
+        let s = cleaned.as_bytes();
         let mut depth: i32 = 0;
         let mut ternary_depth: i32 = 0;
         let mut in_str: Option<u8> = None;
         let mut esc = false;
-        let mut stmt_start = self.completed_end;
+        let mut stmt_start = self.completed.end;
         let mut completed = Vec::new();
 
-        for i in self.completed_end..s.len() {
+        for i in self.completed.end..s.len() {
             let c = s[i];
             if esc {
                 esc = false;
@@ -158,43 +163,41 @@ impl StreamParser {
                     }
                     completed.push(stmt_start..i);
                     stmt_start = i + 1;
-                    self.completed_end = i + 1;
+                    self.completed.end = i + 1;
                 }
                 _ => {}
             }
         }
 
-        let cleaned = std::mem::take(&mut self.cleaned);
         for range in completed {
-            self.add_statements(&cleaned[range]);
+            self.completed.add(&cleaned[range]);
         }
-        self.cleaned = cleaned;
         stmt_start
     }
 
     fn current_result(&mut self) -> ParseResult {
         let (mut result, pending_limited) = self.build_current();
-        result.depth_limited |= self.completed_depth_limited || pending_limited;
+        result.depth_limited |= self.completed.depth_limited || pending_limited;
         result
     }
 
     /// The result, and whether a pending statement nested past `MAX_DEPTH`.
     fn build_current(&mut self) -> (ParseResult, bool) {
-        self.refresh_cleaned();
         let pending_start = self.scan_new_completed();
-        let pending = js::trim(&self.cleaned[pending_start..]);
+        let pending = js::trim(&self.pre.cleaned()[pending_start..]);
+        let completed = &self.completed;
         let library = &self.library;
         let root_name = self.root_name.as_deref();
 
         if pending.is_empty() {
-            if self.completed_count == 0 {
+            if completed.count == 0 {
                 return (ParseResult::empty(true), false);
             }
             let result = build_result(
-                &self.completed,
-                &self.first_id,
+                &completed.statements,
+                &completed.first_id,
                 false,
-                self.completed_count,
+                completed.count,
                 library,
                 root_name,
             );
@@ -204,14 +207,14 @@ impl StreamParser {
         let (closed, was_incomplete) = auto_close(pending);
         let pending_statements = split(&tokenize(&closed));
         if pending_statements.is_empty() {
-            if self.completed_count == 0 {
+            if completed.count == 0 {
                 return (ParseResult::empty(was_incomplete), false);
             }
             let result = build_result(
-                &self.completed,
-                &self.first_id,
+                &completed.statements,
+                &completed.first_id,
                 was_incomplete,
-                self.completed_count,
+                completed.count,
                 library,
                 root_name,
             );
@@ -220,26 +223,26 @@ impl StreamParser {
 
         // A new id renders as it arrives; a re-defined one replaces the cached
         // statement only once it no longer needs closing.
-        let mut all = self.completed.clone();
+        let mut all = completed.statements.clone();
         let mut pending_limited = false;
         for raw in &pending_statements {
-            if was_incomplete && self.completed.contains_key(&raw.id) {
+            if was_incomplete && completed.statements.contains_key(&raw.id) {
                 continue;
             }
             let (expr, limited) = parse_expression_with_limit(&raw.tokens);
             pending_limited |= limited;
             all.insert(raw.id.clone(), classify(raw, expr));
         }
-        let first_id = if self.first_id.is_empty() {
+        let first_id = if completed.first_id.is_empty() {
             &pending_statements[0].id
         } else {
-            &self.first_id
+            &completed.first_id
         };
         let result = build_result(
             &all,
             first_id,
             was_incomplete,
-            self.completed_count + pending_statements.len(),
+            completed.count + pending_statements.len(),
             library,
             root_name,
         );

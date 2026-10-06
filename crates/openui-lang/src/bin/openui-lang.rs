@@ -5,16 +5,35 @@
 //!                                                   streaming parse in chunks of `chunk` chars
 //!                                                   (default 4), one result JSON per line
 //!   openui-lang tokens <program|->                  prints the tokens as JSON
+//!   openui-lang bench <schema.json> <program>...     streaming timing: chunks of 4 code
+//!                                                   points, 5 warm-ups, mean of BENCH_RUNS
+//!                                                   (default 20) runs; same workload as
+//!                                                   reference/bench.ts
 
 use std::io::Read;
 use std::process::ExitCode;
-
 use std::sync::Arc;
+use std::time::Instant;
 
 use openui_lang::{Library, StreamParser, parse, tokenize, tokens_to_json};
 
-const USAGE: &str =
-    "usage: openui-lang parse <schema.json> <program|->\n       openui-lang tokens <program|->";
+const USAGE: &str = "usage: openui-lang parse <schema.json> <program|->
+       openui-lang stream <schema.json> <program|-> [chunk]
+       openui-lang tokens <program|->
+       openui-lang bench <schema.json> <program>...";
+
+/// `text` cut into pieces of `size` code points.
+fn chunks(text: &str, size: usize) -> Vec<&str> {
+    let chars: Vec<(usize, char)> = text.char_indices().collect();
+    chars
+        .chunks(size)
+        .map(|group| {
+            let start = group[0].0;
+            let end = group.last().map_or(start, |&(i, c)| i + c.len_utf8());
+            &text[start..end]
+        })
+        .collect()
+}
 
 fn read_input(path: &str) -> Result<String, String> {
     if path == "-" {
@@ -53,11 +72,41 @@ fn run(args: &[String]) -> Result<(), String> {
             let library = Arc::new(load_library(schema)?);
             let text = read_input(program)?;
             let mut parser = StreamParser::new(library, None);
-            let chars: Vec<(usize, char)> = text.char_indices().collect();
-            for group in chars.chunks(size) {
-                let start = group[0].0;
-                let end = group.last().map_or(start, |&(i, c)| i + c.len_utf8());
-                println!("{}", parser.push(&text[start..end]).to_json());
+            for chunk in chunks(&text, size) {
+                println!("{}", parser.push(chunk).to_json());
+            }
+            Ok(())
+        }
+        [command, schema, programs @ ..] if command == "bench" && !programs.is_empty() => {
+            let library = Arc::new(load_library(schema)?);
+            let runs: usize = std::env::var("BENCH_RUNS")
+                .ok()
+                .and_then(|v| v.parse().ok())
+                .filter(|&n| n > 0)
+                .unwrap_or(20);
+            for path in programs {
+                let text = read_input(path)?;
+                let pieces = chunks(&text, 4);
+                let once = || {
+                    let mut parser = StreamParser::new(library.clone(), None);
+                    for chunk in &pieces {
+                        std::hint::black_box(parser.push(chunk));
+                    }
+                };
+                for _ in 0..runs.min(5) {
+                    once();
+                }
+                let started = Instant::now();
+                for _ in 0..runs {
+                    once();
+                }
+                let ms = started.elapsed().as_secs_f64() * 1000.0 / runs as f64;
+                let name = path.rsplit('/').next().unwrap_or(path);
+                println!(
+                    "{name}\t{}\t{}\t{ms:.2}",
+                    text.chars().count(),
+                    pieces.len()
+                );
             }
             Ok(())
         }
