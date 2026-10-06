@@ -228,7 +228,7 @@ pub(crate) fn element_parts(value: &Value) -> Option<(&str, Option<&JsObject<Val
             match (is_element, o.get("typeName")) {
                 (true, Some(Value::Str(name))) => {
                     let props = match o.get("props") {
-                        Some(Value::Obj(p)) => Some(p),
+                        Some(Value::Obj(p)) => Some(&**p),
                         _ => None,
                     };
                     Some((name, props))
@@ -341,6 +341,8 @@ fn validate_object(
         );
         return true;
     };
+    // Shared with every other place the value is inlined: copy before changing.
+    let obj = std::sync::Arc::make_mut(obj);
     let props: Vec<(String, &Json)> = match s.get("properties") {
         Some(Json::Object(m)) => json_entries(m)
             .into_iter()
@@ -449,6 +451,8 @@ fn validate_array(
     let Some(item_schema) = s.get("items").filter(|i| i.is_object()) else {
         return false;
     };
+    // Shared with every other place the value is inlined: copy before changing.
+    let items = std::sync::Arc::make_mut(items);
     let mut invalid = Vec::new();
     for (i, item) in items.iter_mut().enumerate() {
         if validate_schema_value(item, item_schema, component, &format!("{path}/{i}"), ctx) {

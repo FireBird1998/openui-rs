@@ -15,13 +15,15 @@ pub enum Value {
     Bool(bool),
     Num(f64),
     Str(String),
-    Arr(Vec<Value>),
-    Obj(JsObject<Value>),
+    /// Shared, as everything below an element is: a statement inlined in many
+    /// places is stored once. Clones are cheap; changes copy on write.
+    Arr(Arc<Vec<Value>>),
+    Obj(Arc<JsObject<Value>>),
     /// Shared: a streaming parse keeps elements that haven't changed between
     /// results, so an element may be part of several results at once.
     Element(Arc<Element>),
     /// A builtin call or runtime expression, kept for evaluation.
-    Ast(Box<Ast>),
+    Ast(Arc<Ast>),
 }
 
 impl Value {
@@ -32,13 +34,15 @@ impl Value {
             Json::Bool(b) => Value::Bool(*b),
             Json::Number(n) => Value::Num(json_number(n)),
             Json::String(s) => Value::Str(s.clone()),
-            Json::Array(items) => Value::Arr(items.iter().map(Value::from_json).collect()),
+            Json::Array(items) => {
+                Value::Arr(Arc::new(items.iter().map(Value::from_json).collect()))
+            }
             Json::Object(map) => {
                 let mut obj = JsObject::new();
                 for (k, v) in map {
                     obj.define(k.clone(), Value::from_json(v));
                 }
-                Value::Obj(obj)
+                Value::Obj(Arc::new(obj))
             }
         }
     }
@@ -139,6 +143,10 @@ pub struct ParseResult {
     /// too-deep parts were dropped. (The reference throws on such input.)
     /// Not part of the JSON.
     pub depth_limited: bool,
+    /// The result would have grown past [`crate::MAX_RESULT_SIZE`] (statements
+    /// inlined into each other until it doubles at every level), and what
+    /// didn't fit was dropped. Not part of the JSON.
+    pub size_limited: bool,
 }
 
 impl ParseResult {

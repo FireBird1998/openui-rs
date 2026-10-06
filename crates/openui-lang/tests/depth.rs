@@ -5,11 +5,12 @@
 //! rather than panicking. Kept in their own test binary so an overflow can't
 //! hide other results.
 //!
-//! Measured (2026-10-06) with `DEPTH_STACK_KB=<n>`, which overrides the stack
-//! size: every shape fits in 384 KB in both test (opt-level 1) and release
-//! builds. The 10,000-statement reference chain is the largest; the nested
-//! shapes need 256 KB or less. Unoptimized builds need up to about 1 MB,
-//! hence opt-level 1 for this crate even in dev and test builds.
+//! Measured (2026-10-07) with `DEPTH_STACK_KB=<n>`, which overrides the stack
+//! size: every parsing shape fits in 256 KB in both test (opt-level 1) and
+//! release builds. Serializing a tree built by hand at the JSON nesting limit
+//! needs the most: 448 KB in a test build, 320 KB in release. Unoptimized
+//! builds need up to about 1 MB, hence opt-level 1 for this crate even in dev
+//! and test builds.
 //!
 //! The same goes for the rest of the language layer on the deepest results:
 //! reading the result's JSON back, serializing its tree to source, and merging

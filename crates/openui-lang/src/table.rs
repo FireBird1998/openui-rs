@@ -363,6 +363,8 @@ pub(crate) struct Entry {
     pub errors: Vec<ValidationError>,
     /// How much deeper than its starting depth the materialization went.
     pub r_max: usize,
+    /// How much it grew the result (`Ctx::size`), counted again on each reuse.
+    pub size: usize,
 }
 
 pub(crate) enum Output {

@@ -6,7 +6,6 @@
 use std::collections::HashSet;
 use std::sync::Arc;
 
-use crate::MAX_DEPTH;
 use crate::ast::{Ast, RefType};
 use crate::builtins::{is_builtin, is_lazy_builtin, is_reserved_call};
 use crate::js::JsObject;
@@ -17,6 +16,7 @@ use crate::validation::{
     Issue, element_parts, is_ast_node, params_signature, resolve_invalid_value,
     validate_schema_value,
 };
+use crate::{MAX_DEPTH, MAX_RESULT_SIZE};
 
 pub(crate) struct Ctx<'a> {
     pub table: &'a Table,
@@ -30,6 +30,9 @@ pub(crate) struct Ctx<'a> {
     /// Open materialize calls, across references too: a chain of references
     /// nests as deeply as one big expression.
     pub depth: usize,
+    /// About how many bytes of JSON the result has grown to so far, counting
+    /// every place a statement is inlined. See [`MAX_RESULT_SIZE`].
+    pub size: usize,
     /// What the materialization in progress has done on the side.
     pub frame: Frame,
 }
@@ -54,17 +57,73 @@ pub(crate) struct Frame {
     pub cycle: bool,
     /// Went past `MAX_DEPTH`; the deeper parts became null.
     pub limited: bool,
+    /// Grew past `MAX_RESULT_SIZE`; the rest became null.
+    pub size_limited: bool,
+}
+
+/// What each piece adds to [`Ctx::size`]: about the bytes of JSON it writes,
+/// erring high, so the result's JSON stays under the limit.
+const ELEMENT_SIZE: usize = 100;
+const ERROR_SIZE: usize = 100;
+
+/// The JSON a node writes besides its children (counted when they are
+/// materialized) and inlined statements (counted when inlined). In value
+/// mode, runtime expressions are counted in expression mode instead, and a
+/// component becoming an element adds the rest of `ELEMENT_SIZE` later.
+fn json_size(node: &Ast, expr: bool) -> usize {
+    let size = match node {
+        Ast::Ref(_) => 0,
+        Ast::Str(v) => 20 + v.len(),
+        Ast::Num(_) => 41,
+        Ast::Bool(_) => 20,
+        Ast::Null => 10,
+        Ast::Ph(n) | Ast::StateRef(n) => 24 + n.len(),
+        Ast::RuntimeRef { n, .. } => 44 + n.len(),
+        Ast::Arr(_) => 22,
+        Ast::Obj(_) => 26,
+        Ast::Comp { name, .. } => 34 + name.len(),
+        Ast::BinOp { .. } | Ast::Ternary { .. } => 42,
+        Ast::UnaryOp { .. } | Ast::Index { .. } => 34,
+        Ast::Member { field, .. } => 36 + field.len(),
+        Ast::Assign { target, .. } => 38 + target.len(),
+    };
+    match node {
+        _ if expr => size,
+        // Plain values write less than their AST would.
+        Ast::Str(v) => 3 + v.len(),
+        Ast::Num(_) => 25,
+        Ast::Bool(_) | Ast::Null | Ast::Ph(_) => 6,
+        Ast::Arr(_) | Ast::Obj(_) => 3,
+        Ast::Ref(_) | Ast::Comp { .. } => size,
+        _ => 0,
+    }
 }
 
 impl Ctx<'_> {
     pub(crate) fn push_issue(&mut self, component: &str, path: &str, issue: Issue) {
+        let message = issue.message(component, path);
+        self.size += ERROR_SIZE + message.len() + component.len() + path.len();
         self.frame.errors.push(ValidationError {
             code: issue.code(),
             component: component.to_owned(),
             path: path.to_owned(),
-            message: issue.message(component, path),
+            message,
             statement_id: self.current_statement_id.clone(),
         });
+    }
+
+    fn unresolved(&mut self, name: &str) {
+        self.size += name.len() + 3;
+        self.frame.unresolved.push(name.to_owned());
+    }
+
+    /// Whether the result can still grow by `more`; if not, it's cut here.
+    fn fits(&mut self, more: usize) -> bool {
+        if self.size.saturating_add(more) > MAX_RESULT_SIZE {
+            self.frame.size_limited = true;
+            return false;
+        }
+        true
     }
 
     fn unknown_component(&mut self, name: &str) {
@@ -73,13 +132,18 @@ impl Ctx<'_> {
         self.push_issue(name, "", Issue::UnknownComponent { available });
     }
 
-    /// Note a materialize call starting at the current depth; `None` past the limit.
-    fn enter(&mut self) -> Option<()> {
+    /// Note a materialize call starting at the current depth, writing about
+    /// `size` bytes; `None` past either limit.
+    fn enter(&mut self, size: usize) -> Option<()> {
         self.frame.max_depth = self.frame.max_depth.max(self.depth);
         if self.depth >= MAX_DEPTH {
             self.frame.limited = true;
             return None;
         }
+        if !self.fits(size) {
+            return None;
+        }
+        self.size += size;
         self.depth += 1;
         Some(())
     }
@@ -92,7 +156,7 @@ type Scope = HashSet<String>;
 /// for builtins and runtime expressions; `Null` for placeholders and for
 /// components that had to be dropped. Past `MAX_DEPTH`, `Null`.
 pub(crate) fn materialize_value(node: &Ast, ctx: &mut Ctx) -> Value {
-    if ctx.enter().is_none() {
+    if ctx.enter(json_size(node, false)).is_none() {
         return Value::Null;
     }
     let value = materialize_value_at_depth(node, ctx);
@@ -108,7 +172,7 @@ fn materialize_value_at_depth(node: &Ast, ctx: &mut Ctx) -> Value {
     match node {
         Ast::Ref(name) => match resolve_ref(name, ctx, Mode::Value) {
             Resolved::Value(v) => v,
-            Resolved::Ast(a) => Value::Ast(Box::new(a)),
+            Resolved::Ast(a) => Value::Ast(Arc::new(a)),
         },
         Ast::Str(v) => Value::Str(v.clone()),
         Ast::Num(n) => Value::Num(*n),
@@ -122,7 +186,7 @@ fn materialize_value_at_depth(node: &Ast, ctx: &mut Ctx) -> Value {
             mapped_props,
         } => materialize_comp(name, args, mapped_props, ctx),
         // Runtime expressions stay AST, with their insides normalized.
-        _ => Value::Ast(Box::new(materialize_expr(node, ctx, &Scope::new()))),
+        _ => Value::Ast(Arc::new(materialize_expr(node, ctx, &Scope::new()))),
     }
 }
 
@@ -139,16 +203,17 @@ fn materialize_array(els: &[Ast], ctx: &mut Ctx) -> Value {
         }
         items.push(value);
     }
-    Value::Arr(items)
+    Value::Arr(Arc::new(items))
 }
 
 fn materialize_object(entries: &[(String, Ast)], ctx: &mut Ctx) -> Value {
     let mut obj = JsObject::new();
     for (key, value) in entries {
+        ctx.size += key.len() + 4;
         let value = materialize_value(value, ctx);
         obj.set(key.clone(), value);
     }
-    Value::Obj(obj)
+    Value::Obj(Arc::new(obj))
 }
 
 #[derive(Clone, Copy)]
@@ -177,14 +242,14 @@ fn resolve_ref(name: &str, ctx: &mut Ctx, mode: Mode) -> Resolved {
     };
     let table = ctx.table;
     let Some(slot) = table.slot(name) else {
-        ctx.frame.unresolved.push(name.to_owned());
+        ctx.unresolved(name);
         return placeholder(mode);
     };
     let target = match table.get(slot) {
         Some(stmt) if !ctx.visited.contains(&slot) => stmt.expr(),
         found => {
             ctx.frame.cycle |= found.is_some();
-            ctx.frame.unresolved.push(name.to_owned());
+            ctx.unresolved(name);
             return placeholder(mode);
         }
     };
@@ -203,7 +268,7 @@ fn resolve_ref(name: &str, ctx: &mut Ctx, mode: Mode) -> Resolved {
         };
         return match mode {
             Mode::Expr => Resolved::Ast(node),
-            Mode::Value => Resolved::Value(Value::Ast(Box::new(node))),
+            Mode::Value => Resolved::Value(Value::Ast(Arc::new(node))),
         };
     }
 
@@ -211,6 +276,19 @@ fn resolve_ref(name: &str, ctx: &mut Ctx, mode: Mode) -> Resolved {
     if let Some(entry) = ctx.cache.get(slot, ctx.partial, expr)
         && ctx.depth + entry.r_max < MAX_DEPTH
     {
+        // Inlined again, it grows the result as much as it did the first time.
+        let size = entry.size;
+        if !ctx.fits(size) {
+            return match mode {
+                Mode::Expr => Resolved::Ast(Ast::Null),
+                Mode::Value => Resolved::Value(Value::Null),
+            };
+        }
+        ctx.size += size;
+        let entry = ctx
+            .cache
+            .get(slot, ctx.partial, expr)
+            .expect("still cached");
         replay(entry, &mut ctx.frame, ctx.depth);
         return match &entry.output {
             Output::Value(v) => Resolved::Value(v.clone()),
@@ -222,10 +300,13 @@ fn resolve_ref(name: &str, ctx: &mut Ctx, mode: Mode) -> Resolved {
     let previous = ctx.current_statement_id.replace(name.to_owned());
     let outer = std::mem::take(&mut ctx.frame);
     let start_depth = ctx.depth;
+    let start_size = ctx.size;
     let output = match mode {
         Mode::Value => {
             let mut value = materialize_value(target, ctx);
-            tag_statement(&mut value, name);
+            if tag_statement(&mut value, name) {
+                ctx.size += name.len() + 18; // `,"statementId":"name"`
+            }
             Output::Value(value)
         }
         Mode::Expr => Output::Ast(materialize_expr(target, ctx, &Scope::new())),
@@ -237,7 +318,8 @@ fn resolve_ref(name: &str, ctx: &mut Ctx, mode: Mode) -> Resolved {
         Output::Value(v) => Resolved::Value(v.clone()),
         Output::Ast(a) => Resolved::Ast(a.clone()),
     };
-    finish(frame, output, slot, expr, start_depth, ctx);
+    let size = ctx.size - start_size;
+    finish(frame, output, slot, expr, (start_depth, size), ctx);
     resolved
 }
 
@@ -253,7 +335,14 @@ fn replay(entry: &Entry, frame: &mut Frame, depth: usize) {
 /// Fold a finished statement's frame into the outer one, and cache it unless
 /// it met a cycle or the depth limit (then it depends on where it was reached from).
 #[inline(never)]
-fn finish(frame: Frame, output: Output, slot: Slot, expr: bool, start_depth: usize, ctx: &mut Ctx) {
+fn finish(
+    frame: Frame,
+    output: Output,
+    slot: Slot,
+    expr: bool,
+    (start_depth, size): (usize, usize),
+    ctx: &mut Ctx,
+) {
     let Frame {
         errors,
         unresolved,
@@ -262,6 +351,7 @@ fn finish(frame: Frame, output: Output, slot: Slot, expr: bool, start_depth: usi
         max_depth,
         cycle,
         limited,
+        size_limited,
     } = frame;
     reached.sort_unstable();
     reached.dedup();
@@ -276,7 +366,8 @@ fn finish(frame: Frame, output: Output, slot: Slot, expr: bool, start_depth: usi
     ctx.frame.max_depth = ctx.frame.max_depth.max(max_depth);
     ctx.frame.cycle |= cycle;
     ctx.frame.limited |= limited;
-    if cycle || limited {
+    ctx.frame.size_limited |= size_limited;
+    if cycle || limited || size_limited {
         return;
     }
     let entry = Entry {
@@ -285,30 +376,33 @@ fn finish(frame: Frame, output: Output, slot: Slot, expr: bool, start_depth: usi
         unresolved,
         errors,
         r_max: max_depth.saturating_sub(start_depth),
+        size,
     };
     ctx.cache.put(slot, ctx.partial, expr, entry);
 }
 
 /// `result.statementId = name` on an element (or anything shaped like one).
-pub(crate) fn tag_statement(value: &mut Value, name: &str) {
+/// Whether it was one.
+pub(crate) fn tag_statement(value: &mut Value, name: &str) -> bool {
     if element_parts(value).is_none() {
-        return;
+        return false;
     }
     match value {
         Value::Element(e) => Arc::make_mut(e).statement_id = Some(name.to_owned()),
-        Value::Obj(o) => o.set("statementId", Value::Str(name.to_owned())),
+        Value::Obj(o) => Arc::make_mut(o).set("statementId", Value::Str(name.to_owned())),
         _ => {}
     }
+    true
 }
 
 fn materialize_comp(
     name: &str,
     args: &[Ast],
-    mapped_props: &Option<JsObject<Ast>>,
+    mapped_props: &Option<Arc<JsObject<Ast>>>,
     ctx: &mut Ctx,
 ) -> Value {
     if is_builtin(name) {
-        return Value::Ast(Box::new(builtin_call(name, args, mapped_props, ctx)));
+        return Value::Ast(Arc::new(builtin_call(name, args, mapped_props, ctx)));
     }
     if is_reserved_call(name) {
         return report(ctx, name, Issue::InlineReserved);
@@ -331,7 +425,7 @@ fn materialize_comp(
 fn builtin_call(
     name: &str,
     args: &[Ast],
-    mapped_props: &Option<JsObject<Ast>>,
+    mapped_props: &Option<Arc<JsObject<Ast>>>,
     ctx: &mut Ctx,
 ) -> Ast {
     if let Some(lazy) = materialize_lazy_builtin(name, args, mapped_props, ctx, &Scope::new()) {
@@ -366,6 +460,7 @@ fn add_prop(
     component: &str,
     ctx: &mut Ctx,
 ) -> bool {
+    ctx.size += param.name.len() + 4;
     let path = format!("/{}", param.name);
     let invalid = validate_schema_value(&mut value, &param.schema, component, &path, ctx);
     props.set(param.name.clone(), value);
@@ -422,6 +517,7 @@ fn finish_component(
         return Value::Null;
     }
 
+    ctx.size += ELEMENT_SIZE - 34;
     let has_dynamic_props = props.values().any(contains_dynamic_value);
     Value::Element(Arc::new(Element {
         type_name: name.to_owned(),
@@ -438,7 +534,7 @@ fn finish_component(
 fn materialize_lazy_builtin(
     name: &str,
     args: &[Ast],
-    mapped_props: &Option<JsObject<Ast>>,
+    mapped_props: &Option<Arc<JsObject<Ast>>>,
     ctx: &mut Ctx,
     scope: &Scope,
 ) -> Option<Ast> {
@@ -465,10 +561,10 @@ fn materialize_lazy_builtin(
                 materialize_expr(a, ctx, &inner)
             }
         })
-        .collect();
+        .collect::<Vec<_>>();
     Some(Ast::Comp {
         name: name.to_owned(),
-        args,
+        args: Arc::new(args),
         mapped_props: mapped_props.clone(),
     })
 }
@@ -477,7 +573,7 @@ fn materialize_lazy_builtin(
 /// components' args to `mapped_props`. The structure stays AST. Past
 /// `MAX_DEPTH`, `Null`.
 pub(crate) fn materialize_expr(node: &Ast, ctx: &mut Ctx, scope: &Scope) -> Ast {
-    if ctx.enter().is_none() {
+    if ctx.enter(json_size(node, true)).is_none() {
         return Ast::Null;
     }
     let ast = materialize_expr_at_depth(node, ctx, scope);
@@ -536,24 +632,29 @@ fn materialize_expr_at_depth(node: &Ast, ctx: &mut Ctx, scope: &Scope) -> Ast {
     }
 }
 
-fn expr_boxed(node: &Ast, ctx: &mut Ctx, scope: &Scope) -> Box<Ast> {
-    Box::new(materialize_expr(node, ctx, scope))
+fn expr_boxed(node: &Ast, ctx: &mut Ctx, scope: &Scope) -> Arc<Ast> {
+    Arc::new(materialize_expr(node, ctx, scope))
 }
 
-fn expr_list(nodes: &[Ast], ctx: &mut Ctx, scope: &Scope) -> Vec<Ast> {
-    nodes
-        .iter()
-        .map(|n| materialize_expr(n, ctx, scope))
-        .collect()
+fn expr_list(nodes: &[Ast], ctx: &mut Ctx, scope: &Scope) -> Arc<Vec<Ast>> {
+    Arc::new(
+        nodes
+            .iter()
+            .map(|n| materialize_expr(n, ctx, scope))
+            .collect(),
+    )
 }
 
 fn expr_object(entries: &[(String, Ast)], ctx: &mut Ctx, scope: &Scope) -> Ast {
-    Ast::Obj(
+    Ast::Obj(Arc::new(
         entries
             .iter()
-            .map(|(k, v)| (k.clone(), materialize_expr(v, ctx, scope)))
+            .map(|(k, v)| {
+                ctx.size += k.len() + 8;
+                (k.clone(), materialize_expr(v, ctx, scope))
+            })
             .collect(),
-    )
+    ))
 }
 
 fn expr_ternary(cond: &Ast, then: &Ast, otherwise: &Ast, ctx: &mut Ctx, scope: &Scope) -> Ast {
@@ -569,15 +670,17 @@ fn expr_ternary(cond: &Ast, then: &Ast, otherwise: &Ast, ctx: &mut Ctx, scope: &
 fn expr_comp(
     name: &str,
     args: &[Ast],
-    mapped_props: &Option<JsObject<Ast>>,
+    mapped_props: &Option<Arc<JsObject<Ast>>>,
     ctx: &mut Ctx,
     scope: &Scope,
 ) -> Ast {
     if let Some(lazy) = materialize_lazy_builtin(name, args, mapped_props, ctx, scope) {
         return lazy;
     }
+    let start = ctx.size;
     let args = expr_list(args, ctx, scope);
-    library_comp(name, args, mapped_props, ctx)
+    let args_size = ctx.size - start;
+    library_comp(name, args, args_size, mapped_props, ctx)
 }
 
 /// A call in a runtime expression: library components get `mapped_props`
@@ -585,8 +688,9 @@ fn expr_comp(
 #[inline(never)]
 fn library_comp(
     name: &str,
-    args: Vec<Ast>,
-    mapped_props: &Option<JsObject<Ast>>,
+    args: Arc<Vec<Ast>>,
+    args_size: usize,
+    mapped_props: &Option<Arc<JsObject<Ast>>>,
     ctx: &mut Ctx,
 ) -> Ast {
     let keep = |args| Ast::Comp {
@@ -599,14 +703,27 @@ fn library_comp(
     }
     let library = ctx.library;
     if let Some(def) = library.component(name) {
+        // `mappedProps` holds the args again: as much again in the result.
+        let keys: usize = def
+            .params
+            .iter()
+            .take(args.len())
+            .map(|p| p.name.len() + 4)
+            .sum();
+        let mapped = args_size + 16 + keys;
+        if !ctx.fits(mapped) {
+            return Ast::Null;
+        }
+        ctx.size += mapped;
         let mut by_name = JsObject::new();
-        for (param, arg) in def.params.iter().zip(&args) {
+        // Clones of the args' nodes, which share everything below them.
+        for (param, arg) in def.params.iter().zip(args.iter()) {
             by_name.set(param.name.clone(), arg.clone());
         }
         return Ast::Comp {
             name: name.to_owned(),
             args,
-            mapped_props: Some(by_name),
+            mapped_props: Some(Arc::new(by_name)),
         };
     }
     ctx.unknown_component(name);

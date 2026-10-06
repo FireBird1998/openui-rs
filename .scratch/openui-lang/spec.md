@@ -111,8 +111,13 @@ Each module mirrors one stage of the reference pipeline, with Rust idioms inside
 
 ### Depth limit (decided 2026-10-06)
 - Expressions and reference chains nest at most `MAX_DEPTH` = 256 levels. Deeper parts become null and `ParseResult::depth_limited` is set (not part of the JSON). The reference copes up to roughly 8,000 levels, then throws, so 257 to about 8,000 is a documented divergence that no real model output comes near.
-- At full depth, optimized builds (opt-level 1 or 3) need at most 384 KB of stack and unoptimized ones at most 1 MB. (Corrected 2026-10-06: ticket 09 said 256 KB, but the 10,000-statement reference chain already needed 384 KB in release builds.) Embedders must build the core optimized (opt-level 1 or more) and call it from threads with at least 512 KB of stack.
+- At full depth, optimized builds (opt-level 1 or 3) need at most 384 KB of stack and unoptimized ones at most 1 MB. (Corrected 2026-10-06: ticket 09 said 256 KB, but the 10,000-statement reference chain already needed 384 KB in release builds. Since ticket 14 it needs 256 KB.) Embedders must build the core optimized (opt-level 1 or more) and call it from threads with at least 512 KB of stack.
 
+### Size limit (decided 2026-10-07, ticket 14)
+- A statement is inlined wherever it's referenced, so a program whose statements each reference the one before twice doubles its result with every line, and a component nested inside a runtime expression doubles too (it's written as `args` and again as `mappedProps`). Thirty such lines would make a result of billions of nodes.
+- Results share instead of copy: elements, arrays, objects and expressions in a parse result, and the children of expression nodes, are reference-counted, so a statement inlined in many places is stored once. Memory stays proportional to the program.
+- The result's size is still capped, because its JSON (and its error list) is exponential by contract: `MAX_RESULT_SIZE` = 8 MiB of estimated JSON. Past it, what doesn't fit becomes null and `ParseResult::size_limited` is set (not part of the JSON). The estimate errs high; real results are about twice the program's size, so a 487 KB program estimates at 1.4 MB.
+- Divergence: only on inputs past the cap. The reference shares `mappedProps` (so it parses that case quickly, though its JSON is just as large), and takes exponential time and memory on the other doubling shapes.
 ### Crate and tooling
 - Rust 2024 edition on stable (1.97 on this machine).
 - One library crate with a command-line binary, inside a Cargo workspace that leaves room for bindings and the Android app later.

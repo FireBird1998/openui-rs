@@ -85,6 +85,14 @@ tree and the reverse reference graph: a few times the program's size. A
 result keeps alive the subtrees it shares with the cache for as long as the
 caller holds it.
 
+Since ticket 14 every inlined statement is shared, not copied: elements,
+arrays, objects and expressions in a result are reference-counted. A
+program built to double its result at every line (each statement
+referencing the one before twice) used 1.8 GB at 20 lines; it now stays
+under 40 MB at any length, and the result is cut at `MAX_RESULT_SIZE`
+(8 MiB of JSON). The streaming numbers above didn't change: re-measured after
+the change, a push still costs 8 to 12 µs and doubling a program 2.1×.
+
 ## Checking it stays that way
 
 - `tests/streaming_cost.rs` fails if a push on the 8-copy program costs 2× or

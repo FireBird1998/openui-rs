@@ -1,4 +1,10 @@
 //! Expression trees, mirroring the reference parser's `ASTNode`.
+//!
+//! Children are reference-counted, so a node clones in constant time and a
+//! subtree inlined in many places (a statement referenced twice, a
+//! component's args repeated in `mapped_props`) is stored once.
+
+use std::sync::Arc;
 
 use crate::js::{JsObject, write_json_number, write_json_string};
 
@@ -10,16 +16,16 @@ pub enum Ast {
     /// `mapped_props`, its args by param name.
     Comp {
         name: String,
-        args: Vec<Ast>,
-        mapped_props: Option<JsObject<Ast>>,
+        args: Arc<Vec<Ast>>,
+        mapped_props: Option<Arc<JsObject<Ast>>>,
     },
     Str(String),
     Num(f64),
     Bool(bool),
     Null,
-    Arr(Vec<Ast>),
+    Arr(Arc<Vec<Ast>>),
     /// Entries in source order; keys may repeat.
-    Obj(Vec<(String, Ast)>),
+    Obj(Arc<Vec<(String, Ast)>>),
     /// A reference to another statement: `header`.
     Ref(String),
     /// A placeholder for a reference that couldn't be resolved.
@@ -33,30 +39,30 @@ pub enum Ast {
     },
     BinOp {
         op: &'static str,
-        left: Box<Ast>,
-        right: Box<Ast>,
+        left: Arc<Ast>,
+        right: Arc<Ast>,
     },
     UnaryOp {
         op: &'static str,
-        operand: Box<Ast>,
+        operand: Arc<Ast>,
     },
     Ternary {
-        cond: Box<Ast>,
-        then: Box<Ast>,
-        otherwise: Box<Ast>,
+        cond: Arc<Ast>,
+        then: Arc<Ast>,
+        otherwise: Arc<Ast>,
     },
     Member {
-        obj: Box<Ast>,
+        obj: Arc<Ast>,
         field: String,
     },
     Index {
-        obj: Box<Ast>,
-        index: Box<Ast>,
+        obj: Arc<Ast>,
+        index: Arc<Ast>,
     },
     /// `$count = expression`.
     Assign {
         target: String,
-        value: Box<Ast>,
+        value: Arc<Ast>,
     },
 }
 

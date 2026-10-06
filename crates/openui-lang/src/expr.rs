@@ -6,6 +6,8 @@
 //! left-nested chains (`a.b.c...`, `1 + 1 + ...`), are cut off, so neither
 //! parsing nor anything that later walks the tree can overflow the stack.
 
+use std::sync::Arc;
+
 use crate::MAX_DEPTH;
 use crate::ast::Ast;
 use crate::builtins::is_builtin;
@@ -168,7 +170,7 @@ impl<'a> ExprParser<'a> {
                 self.pos += 1;
                 if *self.cur() == Token::Equals {
                     self.pos += 1;
-                    let value = Box::new(self.expr(0));
+                    let value = Arc::new(self.expr(0));
                     return Ast::Assign {
                         target: name.clone(),
                         value,
@@ -201,7 +203,7 @@ impl<'a> ExprParser<'a> {
                 } else {
                     "-"
                 };
-                let operand = Box::new(self.expr(PREC_UNARY));
+                let operand = Arc::new(self.expr(PREC_UNARY));
                 Ast::UnaryOp { op, operand }
             }
             Token::LParen => {
@@ -219,18 +221,18 @@ impl<'a> ExprParser<'a> {
     }
 
     fn infix(&mut self, left: Ast) -> Ast {
-        let left = Box::new(left);
+        let left = Arc::new(left);
         let token = self.advance();
         if let Some((op, prec)) = binary_operator(token) {
-            let right = Box::new(self.expr(prec));
+            let right = Arc::new(self.expr(prec));
             return Ast::BinOp { op, left, right };
         }
         match token {
             // `cond ? then : else`, right-associative.
             Token::Question => {
-                let then = Box::new(self.expr(0));
+                let then = Arc::new(self.expr(0));
                 self.eat(&Token::Colon);
-                let otherwise = Box::new(self.expr(0));
+                let otherwise = Arc::new(self.expr(0));
                 Ast::Ternary {
                     cond: left,
                     then,
@@ -242,12 +244,12 @@ impl<'a> ExprParser<'a> {
                 Ast::Member { obj: left, field }
             }
             Token::LBrack => {
-                let index = Box::new(self.expr(0));
+                let index = Arc::new(self.expr(0));
                 self.eat(&Token::RBrack);
                 Ast::Index { obj: left, index }
             }
             // Unreachable: only tokens with an infix precedence get here.
-            _ => *left,
+            _ => Arc::unwrap_or_clone(left),
         }
     }
 
@@ -255,7 +257,7 @@ impl<'a> ExprParser<'a> {
     fn comp(&mut self, name: &str) -> Ast {
         self.pos += 1;
         self.eat(&Token::LParen);
-        let args = self.list_until(&Token::RParen);
+        let args = Arc::new(self.list_until(&Token::RParen));
         Ast::Comp {
             name: name.to_owned(),
             args,
@@ -266,7 +268,7 @@ impl<'a> ExprParser<'a> {
     /// `[el, el, ...]`, with the cursor on `[`.
     fn array(&mut self) -> Ast {
         self.pos += 1;
-        Ast::Arr(self.list_until(&Token::RBrack))
+        Ast::Arr(Arc::new(self.list_until(&Token::RBrack)))
     }
 
     /// Comma-separated expressions up to `close` (consumed if present).
@@ -291,6 +293,6 @@ impl<'a> ExprParser<'a> {
             self.eat(&Token::Comma);
         }
         self.eat(&Token::RBrace);
-        Ast::Obj(entries)
+        Ast::Obj(Arc::new(entries))
     }
 }

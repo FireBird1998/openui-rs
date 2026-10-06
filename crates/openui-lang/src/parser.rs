@@ -253,10 +253,11 @@ pub(crate) fn build_result(
         visited: Vec::new(),
         current_statement_id: Some(entry_id.to_owned()),
         depth: 0,
+        size: 0,
         frame: Frame::default(),
     };
     let mut materialized = materialize_value(entry.expr(), &mut ctx);
-    tag_statement(&mut materialized, entry_id);
+    let _ = tag_statement(&mut materialized, entry_id);
     let root = match materialized {
         Value::Element(element) => Some(Arc::unwrap_or_clone(element)),
         _ => None,
@@ -284,6 +285,7 @@ pub(crate) fn build_result(
         query_statements,
         mutation_statements,
         depth_limited: frame.limited,
+        size_limited: frame.size_limited,
     }
 }
 
