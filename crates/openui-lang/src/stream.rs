@@ -12,7 +12,8 @@ use crate::expr::parse_expression;
 use crate::js;
 use crate::lexer::tokenize;
 use crate::library::Library;
-use crate::parser::{Statement, build_result, classify, preprocess};
+use crate::parser::{Statement, build_result, classify};
+use crate::preprocess::preprocess;
 use crate::result::ParseResult;
 use crate::statements::{auto_close, split};
 

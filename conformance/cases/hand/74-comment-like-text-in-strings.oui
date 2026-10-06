@@ -1,0 +1,8 @@
+root = Root([a, b, c, d])
+a = Text("http://example.com/#anchor") // a URL
+b = Text('#not a comment') # a hash comment
+c = Text("a // b # c", 'it\'s')
+# a heading line
+d = Text("multi
+// line # string")
+// trailing comment

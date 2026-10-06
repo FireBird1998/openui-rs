@@ -7,7 +7,9 @@ mod common;
 use std::fmt::Write as _;
 
 use common::{explain, fingerprint, golden_json, load_corpus};
-use openui_lang::{auto_close, parse_expression, split, tokenize, tokens_to_json};
+use openui_lang::{
+    auto_close, parse_expression, preprocess, split, strip_fences, tokenize, tokens_to_json,
+};
 
 /// Bun lookups for readable diffs; enough to start on.
 const EXPLANATIONS: usize = 5;
@@ -114,4 +116,15 @@ fn statements_json(text: &str) -> String {
 #[test]
 fn statements_and_expressions_match_the_reference_for_every_prefix() {
     check_every_prefix("statements.json", "show-statements", statements_json);
+}
+
+#[test]
+fn fences_and_comments_are_stripped_like_the_reference_for_every_prefix() {
+    check_every_prefix("preprocess.json", "show-preprocess", |prefix| {
+        format!(
+            "{{\"stripFences\":{},\"preprocess\":{}}}",
+            serde_json::to_string(&strip_fences(prefix)).unwrap(),
+            serde_json::to_string(&preprocess(prefix)).unwrap()
+        )
+    });
 }

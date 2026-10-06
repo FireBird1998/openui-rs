@@ -1,0 +1,3 @@
+root = Root([Text("x")])
+
+This layout uses `Text` for the body. I've kept it simple — you can add a ```chart``` later.

@@ -1,0 +1,5 @@
+Here's what I've built for you — it's a card:
+
+root = Root([Text("it's done")])
+
+Let me know if you'd like changes!

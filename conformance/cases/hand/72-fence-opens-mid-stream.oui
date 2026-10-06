@@ -1,0 +1,7 @@
+root = Root([a])
+a = Text("plain")
+Wait, let me format that properly:
+```openui
+root = Root([b])
+b = Text("fenced")
+```

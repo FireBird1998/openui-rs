@@ -1,0 +1,6 @@
+```openui
+root = Root([Text("```not a fence```"), Text("``` js")])
+```
+and after: ```
+more = Text("tail")
+```

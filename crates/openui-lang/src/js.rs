@@ -39,6 +39,11 @@ pub(crate) fn trim(s: &str) -> &str {
     s.trim_matches(is_js_whitespace)
 }
 
+/// `s.trimEnd()` in JavaScript.
+pub(crate) fn trim_end(s: &str) -> &str {
+    s.trim_end_matches(is_js_whitespace)
+}
+
 /// `JSON.parse` of a whole JSON string literal, quotes included; `None` where
 /// `JSON.parse` would throw (bad escape, raw control character, no closing quote).
 pub(crate) fn json_parse_string(literal: &str) -> Option<String> {

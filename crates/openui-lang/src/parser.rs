@@ -8,10 +8,10 @@ use indexmap::{IndexMap, IndexSet};
 use crate::ast::Ast;
 use crate::builtins::{is_builtin, is_reserved_call};
 use crate::expr::parse_expression;
-use crate::js;
 use crate::lexer::tokenize;
 use crate::library::Library;
 use crate::materialize::{Ctx, materialize_value};
+use crate::preprocess::preprocess;
 use crate::result::{Meta, ParseResult, Value};
 use crate::statements::{RawStatement, auto_close, split};
 
@@ -33,12 +33,6 @@ impl Statement {
 
 pub(crate) fn classify(_raw: &RawStatement, expr: Ast) -> Statement {
     Statement::Value { expr }
-}
-
-/// Clean up model output before parsing. Markdown fences and comments aren't
-/// stripped yet, only surrounding whitespace.
-pub(crate) fn preprocess(input: &str) -> String {
-    js::trim(input).to_owned()
 }
 
 /// Parse a complete (or partial) program in one pass.

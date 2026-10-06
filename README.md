@@ -2,7 +2,7 @@
 
 A Rust implementation of the OpenUI Lang language layer (the `openui-lang` crate), and Dynamic News, an Android app built on it.
 
-**Status:** tickets 01–04 of 13 done. Tokens, statements and expression trees match the reference on every prefix of every program. The corpus has 271 cases (hand-written edge cases, every program the reference test suites parse, the benchmark samples, and programs from the upstream docs and examples). 29 conform end to end so far; the other 242 are listed in [`conformance/pending.txt`](conformance/pending.txt) and drop off as later tickets land.
+**Status:** tickets 01–05 of 13 done. Preprocessing (fences, comments, prose), tokens, statements and expression trees match the reference on every prefix of every program. The corpus has 277 cases (hand-written edge cases, every program the reference test suites parse, the benchmark samples, and programs from the upstream docs and examples). 37 conform end to end so far; the other 240 are listed in [`conformance/pending.txt`](conformance/pending.txt) and drop off as later tickets land.
 
 ## How correctness works
 

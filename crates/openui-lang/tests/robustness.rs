@@ -1,6 +1,6 @@
 //! Whatever text arrives, the stages finish without panicking.
 
-use openui_lang::{Token, tokenize, tokens_to_json};
+use openui_lang::{Token, preprocess, strip_fences, tokenize, tokens_to_json};
 use proptest::prelude::*;
 
 /// Text dense in the characters the lexer treats specially, plus multi-byte
@@ -80,5 +80,21 @@ proptest! {
     #[test]
     fn tokenizing_lexer_heavy_text_ends_in_eof(text in lexer_heavy_text()) {
         assert_tokenizes(&text);
+    }
+}
+
+proptest! {
+    #![proptest_config(ProptestConfig::with_cases(2000))]
+
+    #[test]
+    fn preprocessing_any_text_finishes(text in any::<String>()) {
+        strip_fences(&text);
+        preprocess(&text);
+    }
+
+    #[test]
+    fn preprocessing_fence_and_comment_heavy_text_finishes(text in lexer_heavy_text()) {
+        strip_fences(&text);
+        preprocess(&text);
     }
 }

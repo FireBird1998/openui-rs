@@ -4,18 +4,33 @@
 //   bun reference/run.ts show <case> <chunking> <step>   print the reference JSON for one step
 //   bun reference/run.ts show-tokens <case> <length>     print tokenize() of the first <length> chars
 //   bun reference/run.ts show-statements <case> <length> print the statement stages of the first <length> chars
+//   bun reference/run.ts show-preprocess <case> <length> print stripFences and preprocess of the first <length> chars
 //
 // The corpus is conformance/manifest.json (hand-written) plus
 // conformance/imported.json (from scripts/import-corpus.sh). A chunking is
 // "oneshot", a chunk size in code points, or "random-<k>": sizes 1–16 drawn
 // from a generator seeded with the case name and k. Steps count from 1.
+import { plugin } from "bun";
 import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "fs";
 import { dirname, join } from "path";
+
+// parser.ts keeps stripComments and preprocess to itself; export them as the
+// module loads so their output can be checked stage by stage. The vendored
+// file itself stays untouched.
+plugin({
+  name: "expose-parser-internals",
+  setup(build) {
+    build.onLoad({ filter: /lang-core\/src\/parser\/parser\.ts$/ }, ({ path }) => ({
+      contents: readFileSync(path, "utf8") + "\nexport { stripComments, preprocess };\n",
+      loader: "ts",
+    }));
+  },
+});
 
 // Set before the parser module loads; telemetry must never run here.
 process.env.OPENUI_TELEMETRY_DISABLED = "1";
 process.env.DO_NOT_TRACK = "1";
-const { compileSchema, createStreamParser, parse } = await import(
+const { compileSchema, createStreamParser, parse, preprocess, stripFences } = await import(
   "./lang-core/src/parser/parser"
 );
 const { tokenize } = await import("./lang-core/src/parser/lexer");
@@ -118,6 +133,11 @@ function statementsOf(text: string): string {
   return JSON.stringify({ autoClose: closed, statements });
 }
 
+/** stripFences and the whole preprocess (trim, fences, comments, trim) of a prefix. */
+function preprocessOf(text: string): string {
+  return JSON.stringify({ stripFences: stripFences(text), preprocess: preprocess(text) });
+}
+
 function writeGolden(rel: string, content: string) {
   const path = join(GOLDEN, rel);
   mkdirSync(dirname(path), { recursive: true });
@@ -141,6 +161,8 @@ if (command === "golden") {
     writeGolden(`${c.name}.tokens.json`, JSON.stringify(prefixes) + "\n");
     const statements = cps.map((_, k) => fingerprint(statementsOf(cps.slice(0, k + 1).join(""))));
     writeGolden(`${c.name}.statements.json`, JSON.stringify(statements) + "\n");
+    const preprocessed = cps.map((_, k) => fingerprint(preprocessOf(cps.slice(0, k + 1).join(""))));
+    writeGolden(`${c.name}.preprocess.json`, JSON.stringify(preprocessed) + "\n");
   }
   console.log(`Wrote goldens for ${cases.length} cases × ${chunkings.length} chunkings to conformance/golden/`);
 } else if (command === "show" && args.length === 3) {
@@ -158,9 +180,14 @@ if (command === "golden") {
   const c = cases.find((x) => x.name === name);
   if (!c) throw new Error(`no case named ${name}`);
   process.stdout.write(statementsOf(Array.from(input(c)).slice(0, Number(length)).join("")));
+} else if (command === "show-preprocess" && args.length === 2) {
+  const [name, length] = args;
+  const c = cases.find((x) => x.name === name);
+  if (!c) throw new Error(`no case named ${name}`);
+  process.stdout.write(preprocessOf(Array.from(input(c)).slice(0, Number(length)).join("")));
 } else {
   console.error(
-    "usage: bun reference/run.ts golden | show <case> <chunking> <step> | show-tokens <case> <length> | show-statements <case> <length>",
+    "usage: bun reference/run.ts golden | show <case> <chunking> <step> | show-tokens <case> <length> | show-statements <case> <length> | show-preprocess <case> <length>",
   );
   process.exit(1);
 }

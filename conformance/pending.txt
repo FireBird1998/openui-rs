@@ -9,7 +9,6 @@ bench/settings-panel
 bench/simple-table
 docs/api-reference-a2ui-01
 docs/blog-components-live-filter-demo-01
-docs/blog-generative-ui-benchmark-01
 docs/blog-state-of-generative-ui-report-01
 docs/blog-state-of-generative-ui-report-02
 docs/blog-stop-making-ai-write-json-01
@@ -56,7 +55,6 @@ docs/openui-lang-reactive-state-03
 docs/openui-lang-reactive-state-04
 docs/openui-lang-reactive-state-05
 docs/openui-lang-specification-v01-01
-docs/openui-lang-specification-v01-03
 docs/openui-lang-specification-v01-04
 docs/openui-lang-specification-v05-01
 docs/openui-lang-specification-v05-02
@@ -67,8 +65,6 @@ docs/openui-lang-specification-v05-08
 docs/openui-lang-syntax-01
 docs/openui-lang-syntax-02
 docs/openui-lang-system-prompts-01
-docs/openui-lang-troubleshooting-01
-docs/openui-lang-troubleshooting-02
 docs/openui-lang-troubleshooting-03
 docs/openui-lang-troubleshooting-04
 docs/openui-lang-troubleshooting-05
@@ -82,7 +78,6 @@ examples/grok-build-grok-build-stream-test-04
 examples/grok-build-grok-build-stream-test-05
 examples/grok-build-grok-build-stream-test-07
 examples/grok-build-grok-build-stream-test-08
-examples/grok-build-openui-output-01
 examples/grok-build-openui-output-02
 examples/handsontable-spreadsheet-library-01
 examples/handsontable-spreadsheet-library-02
@@ -139,7 +134,6 @@ hand/22-arithmetic-and-unary-minus
 hand/23-fenced-with-prose
 hand/24-unclosed-fence
 hand/25-bare-fence
-hand/26-lone-fence
 hand/27-two-fenced-blocks
 hand/28-comments-and-strings
 hand/29-string-escapes
@@ -183,6 +177,11 @@ hand/68-lexer-identifier-forms
 hand/69-lexer-string-forms
 hand/70-lexer-stray-characters
 hand/71-expression-forms
+hand/72-fence-opens-mid-stream
+hand/74-comment-like-text-in-strings
+hand/75-trailing-prose
+hand/76-backticks-inside-strings
+hand/77-crlf-and-tabs
 test/materialize-validation-01
 test/materialize-validation-02
 test/materialize-validation-03
@@ -237,7 +236,6 @@ test/parser-20
 test/parser-21
 test/parser-22
 test/parser-23
-test/parser-28
 test/parser-29
 test/parser-30
 test/serialize-02

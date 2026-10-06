@@ -445,6 +445,42 @@
    "schema": "hand",
    "file": "cases/hand/71-expression-forms.oui",
    "source": "hand-written"
+  },
+  {
+   "name": "hand/72-fence-opens-mid-stream",
+   "schema": "hand",
+   "file": "cases/hand/72-fence-opens-mid-stream.oui",
+   "source": "hand-written"
+  },
+  {
+   "name": "hand/73-prose-with-apostrophes",
+   "schema": "hand",
+   "file": "cases/hand/73-prose-with-apostrophes.oui",
+   "source": "hand-written"
+  },
+  {
+   "name": "hand/74-comment-like-text-in-strings",
+   "schema": "hand",
+   "file": "cases/hand/74-comment-like-text-in-strings.oui",
+   "source": "hand-written"
+  },
+  {
+   "name": "hand/75-trailing-prose",
+   "schema": "hand",
+   "file": "cases/hand/75-trailing-prose.oui",
+   "source": "hand-written"
+  },
+  {
+   "name": "hand/76-backticks-inside-strings",
+   "schema": "hand",
+   "file": "cases/hand/76-backticks-inside-strings.oui",
+   "source": "hand-written"
+  },
+  {
+   "name": "hand/77-crlf-and-tabs",
+   "schema": "hand",
+   "file": "cases/hand/77-crlf-and-tabs.oui",
+   "source": "hand-written"
   }
  ]
 }
