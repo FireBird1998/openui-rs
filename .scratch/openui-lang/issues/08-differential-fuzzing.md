@@ -10,3 +10,7 @@
 - [ ] Each mismatch is shrunk and saved as a corpus case; the normal test run then covers it without Bun.
 - [ ] A quirks document exists, and each entry has a minimal program, the reference behaviour and a draft upstream issue.
 - [ ] A 10,000-program run finishes with no unexplained mismatches.
+
+## Comments
+
+**From ticket 03:** generate `\uXXXX` escapes, including surrogate pairs that chunking splits; the core handles those. Don't generate raw U+10F800–U+10FFFF characters: those are reserved for carrying lone surrogates, a documented limitation rather than a quirk.

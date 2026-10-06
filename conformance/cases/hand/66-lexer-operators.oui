@@ -1,0 +1,5 @@
+x = $a == $b != $c >= 1 <= 2 > 3 < 4
+y = !$a && $b || $c & $d | $e
+z = $a ? 1 : 2 + 3 - 4 * 5 / 6 % 7
+w = a.b[0]
+root = Root([Text(x), Text(y), Text(z), Text(w)])

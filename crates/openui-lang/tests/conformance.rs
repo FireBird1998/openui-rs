@@ -9,33 +9,18 @@
 //! list). `UPDATE_PENDING=1 cargo test --test conformance` rewrites the list to
 //! exactly the cases failing now.
 
-use std::collections::{BTreeSet, HashMap};
+mod common;
+
+use std::collections::BTreeSet;
 use std::fmt::Write as _;
 use std::panic::{AssertUnwindSafe, catch_unwind};
-use std::path::{Path, PathBuf};
-use std::process::Command;
-use std::sync::Arc;
+use std::path::Path;
 
-use openui_lang::{Library, StreamParser, parse};
-use serde_json::Value;
-
-fn repo_root() -> PathBuf {
-    Path::new(env!("CARGO_MANIFEST_DIR")).join("../..")
-}
-
-fn read(path: &Path) -> String {
-    std::fs::read_to_string(path).unwrap_or_else(|e| panic!("read {}: {e}", path.display()))
-}
-
-/// FNV-1a (32-bit) over UTF-8 bytes, as 8 hex digits; mirrors `reference/run.ts`.
-fn fingerprint(json: &str) -> String {
-    let mut h: u32 = 0x811c_9dc5;
-    for &b in json.as_bytes() {
-        h ^= u32::from(b);
-        h = h.wrapping_mul(0x0100_0193);
-    }
-    format!("{h:08x}")
-}
+use common::{
+    Case, conformance_dir, diff, explain as explain_step, fingerprint, golden_dir, golden_json,
+    load_corpus, read,
+};
+use openui_lang::{StreamParser, parse};
 
 /// Split into consecutive chunks of the given sizes in chars, like slicing
 /// `Array.from(text)` in the runner.
@@ -53,53 +38,6 @@ fn chunks<'a>(text: &'a str, sizes: &[usize]) -> Vec<&'a str> {
         .collect()
 }
 
-struct Case {
-    name: String,
-    library: Arc<Library>,
-    input: String,
-    root: Option<String>,
-}
-
-struct Corpus {
-    chunkings: Vec<String>,
-    cases: Vec<Case>,
-}
-
-/// The hand-written manifest plus the imported one.
-fn load_corpus(conformance: &Path) -> Corpus {
-    let manifests: Vec<Value> = ["manifest.json", "imported.json"]
-        .iter()
-        .map(|f| conformance.join(f))
-        .filter(|p| p.exists())
-        .map(|p| serde_json::from_str(&read(&p)).unwrap())
-        .collect();
-    let mut libraries: HashMap<String, Arc<Library>> = HashMap::new();
-    for manifest in &manifests {
-        for (name, file) in manifest["schemas"].as_object().unwrap() {
-            let schema: Value =
-                serde_json::from_str(&read(&conformance.join(file.as_str().unwrap()))).unwrap();
-            libraries.insert(name.clone(), Arc::new(Library::from_json_schema(&schema)));
-        }
-    }
-    let chunkings = manifests[0]["chunkings"]
-        .as_array()
-        .unwrap()
-        .iter()
-        .map(|c| c.as_str().unwrap().to_owned())
-        .collect();
-    let cases = manifests
-        .iter()
-        .flat_map(|m| m["cases"].as_array().unwrap())
-        .map(|c| Case {
-            name: c["name"].as_str().unwrap().to_owned(),
-            library: libraries[c["schema"].as_str().unwrap()].clone(),
-            input: read(&conformance.join(c["file"].as_str().unwrap())),
-            root: c.get("root").and_then(Value::as_str).map(str::to_owned),
-        })
-        .collect();
-    Corpus { chunkings, cases }
-}
-
 fn load_pending(path: &Path) -> BTreeSet<String> {
     if !path.exists() {
         return BTreeSet::new();
@@ -112,47 +50,10 @@ fn load_pending(path: &Path) -> BTreeSet<String> {
         .collect()
 }
 
-/// The reference JSON for one streaming step (counted from 1), if Bun is
-/// available to run it.
-fn reference_step(case: &str, chunking: &str, step: usize) -> Result<String, String> {
-    let step = step.to_string();
-    let args = ["run.ts", "show", case, chunking, &step];
-    let command = format!("(cd reference && bun {})", args.join(" "));
-    match Command::new("bun")
-        .args(args)
-        .current_dir(repo_root().join("reference"))
-        .env("OPENUI_TELEMETRY_DISABLED", "1")
-        .env("DO_NOT_TRACK", "1")
-        .output()
-    {
-        Ok(out) if out.status.success() => Ok(String::from_utf8(out.stdout).unwrap()),
-        _ => Err(format!("run `{command}` to see the reference JSON")),
-    }
-}
-
-fn pretty(json: &str) -> String {
-    serde_json::from_str::<Value>(json)
-        .and_then(|v| serde_json::to_string_pretty(&v))
-        .unwrap_or_else(|_| json.to_owned())
-}
-
-/// A unified diff of the pretty-printed JSON, or both raw strings when they only
-/// differ in ways pretty-printing hides (such as number formatting).
-fn diff(reference: &str, rust: &str) -> String {
-    let (a, b) = (pretty(reference), pretty(rust));
-    if a == b {
-        return format!("  reference: {reference}\n  rust:      {rust}\n");
-    }
-    similar::TextDiff::from_lines(&a, &b)
-        .unified_diff()
-        .context_radius(3)
-        .header("reference", "rust")
-        .to_string()
-}
-
 /// Every check for one case; returns a report of each mismatch (empty when the
 /// case conforms). `explain` fetches reference JSON for readable diffs.
 fn check_case(case: &Case, chunkings: &[String], golden: &Path, explain: bool) -> String {
+    let golden_steps = golden_json(&case.name, "steps.json");
     let mut failures = String::new();
     let root = case.root.as_deref();
 
@@ -162,10 +63,8 @@ fn check_case(case: &Case, chunkings: &[String], golden: &Path, explain: bool) -
         let _ = write!(failures, "  one-shot parse\n{}", diff(&expected, &actual));
     }
 
-    let steps: Value =
-        serde_json::from_str(&read(&golden.join(format!("{}.steps.json", case.name)))).unwrap();
     for chunking in chunkings {
-        let golden = &steps[chunking];
+        let golden = &golden_steps[chunking];
         let expected: Vec<&str> = golden["steps"]
             .as_array()
             .unwrap()
@@ -209,10 +108,10 @@ fn check_case(case: &Case, chunkings: &[String], golden: &Path, explain: bool) -
             let detail = if !explain {
                 String::new()
             } else {
-                match reference_step(&case.name, chunking, step + 1) {
-                    Ok(reference) => diff(&reference, &actual),
-                    Err(hint) => format!("  rust: {actual}\n  {hint}\n"),
-                }
+                explain_step(
+                    &["show", &case.name, chunking, &(step + 1).to_string()],
+                    &actual,
+                )
             };
             let _ = write!(
                 failures,
@@ -228,11 +127,10 @@ fn check_case(case: &Case, chunkings: &[String], golden: &Path, explain: bool) -
 
 #[test]
 fn every_case_matches_the_reference_parser() {
-    let root = repo_root();
-    let conformance = root.join("conformance");
-    let golden = conformance.join("golden");
+    let conformance = conformance_dir();
+    let golden = golden_dir();
     let pending_path = conformance.join("pending.txt");
-    let corpus = load_corpus(&conformance);
+    let corpus = load_corpus();
     let pending = load_pending(&pending_path);
     let update_pending = std::env::var_os("UPDATE_PENDING").is_some();
 

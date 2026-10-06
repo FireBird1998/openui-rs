@@ -1,13 +1,15 @@
 //! Command-line tool for the OpenUI Lang parser.
 //!
 //!   openui-lang parse <schema.json> <program|->    one-shot parse, prints the result JSON
+//!   openui-lang tokens <program|->                  prints the tokens as JSON
 
 use std::io::Read;
 use std::process::ExitCode;
 
-use openui_lang::{Library, parse};
+use openui_lang::{Library, parse, tokenize, tokens_to_json};
 
-const USAGE: &str = "usage: openui-lang parse <schema.json> <program|->";
+const USAGE: &str =
+    "usage: openui-lang parse <schema.json> <program|->\n       openui-lang tokens <program|->";
 
 fn read_input(path: &str) -> Result<String, String> {
     if path == "-" {
@@ -32,6 +34,10 @@ fn run(args: &[String]) -> Result<(), String> {
         [command, schema, program] if command == "parse" => {
             let library = load_library(schema)?;
             println!("{}", parse(&read_input(program)?, &library, None).to_json());
+            Ok(())
+        }
+        [command, program] if command == "tokens" => {
+            println!("{}", tokens_to_json(&tokenize(&read_input(program)?)));
             Ok(())
         }
         _ => Err(USAGE.to_owned()),

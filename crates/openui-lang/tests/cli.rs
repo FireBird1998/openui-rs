@@ -28,6 +28,40 @@ fn parse_prints_the_reference_parse_result() {
     );
 }
 
+/// FNV-1a (32-bit) as 8 hex digits, as the goldens store it.
+fn fingerprint(text: &str) -> String {
+    let mut h: u32 = 0x811c_9dc5;
+    for &b in text.as_bytes() {
+        h ^= u32::from(b);
+        h = h.wrapping_mul(0x0100_0193);
+    }
+    format!("{h:08x}")
+}
+
+#[test]
+fn tokens_prints_the_reference_tokens() {
+    let dir = conformance();
+    let out = Command::new(env!("CARGO_BIN_EXE_openui-lang"))
+        .arg("tokens")
+        .arg(dir.join("cases/hand/67-lexer-number-forms.oui"))
+        .output()
+        .unwrap();
+    assert!(
+        out.status.success(),
+        "stderr: {}",
+        String::from_utf8_lossy(&out.stderr)
+    );
+    let stdout = String::from_utf8(out.stdout).unwrap();
+    let golden =
+        std::fs::read_to_string(dir.join("golden/hand/67-lexer-number-forms.tokens.json")).unwrap();
+    let prefixes: Vec<String> = serde_json::from_str(&golden).unwrap();
+    // The last prefix is the whole program.
+    assert_eq!(
+        fingerprint(stdout.trim_end_matches('\n')),
+        *prefixes.last().unwrap()
+    );
+}
+
 #[test]
 fn unknown_command_prints_usage_and_fails() {
     let out = Command::new(env!("CARGO_BIN_EXE_openui-lang"))

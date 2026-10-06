@@ -10,3 +10,7 @@
 - [ ] A longer coverage-guided fuzz target exists for parse and streaming parse.
 - [ ] Any panic found is fixed and saved as a regression case.
 - [ ] The stream-equals-parse invariant holds on the whole corpus.
+
+## Comments
+
+**From ticket 03:** proptest is already a dev-dependency, and `tests/robustness.rs` covers tokenize. Extend that file rather than starting a new one.

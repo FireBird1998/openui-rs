@@ -2,6 +2,7 @@
 //
 //   bun reference/run.ts golden                          write conformance/golden/ for every case
 //   bun reference/run.ts show <case> <chunking> <step>   print the reference JSON for one step
+//   bun reference/run.ts show-tokens <case> <length>     print tokenize() of the first <length> chars
 //
 // The corpus is conformance/manifest.json (hand-written) plus
 // conformance/imported.json (from scripts/import-corpus.sh). A chunking is
@@ -16,6 +17,7 @@ process.env.DO_NOT_TRACK = "1";
 const { compileSchema, createStreamParser, parse } = await import(
   "./lang-core/src/parser/parser"
 );
+const { tokenize } = await import("./lang-core/src/parser/lexer");
 
 const CONFORMANCE = join(import.meta.dir, "..", "conformance");
 const GOLDEN = join(CONFORMANCE, "golden");
@@ -98,6 +100,11 @@ function stream(c: Case, chunking: string) {
   return { steps, sizes: random ? plan : undefined };
 }
 
+/** tokenize() of the first `length` code points, as JSON. */
+function tokensOfPrefix(c: Case, length: number): string {
+  return JSON.stringify(tokenize(Array.from(input(c)).slice(0, length).join("")));
+}
+
 function writeGolden(rel: string, content: string) {
   const path = join(GOLDEN, rel);
   mkdirSync(dirname(path), { recursive: true });
@@ -115,6 +122,10 @@ if (command === "golden") {
       streams[chunking] = { ...(sizes ? { sizes } : {}), steps: steps.map(fingerprint) };
     }
     writeGolden(`${c.name}.steps.json`, JSON.stringify(streams) + "\n");
+    // Stage golden: tokens of every prefix (index k is the first k+1 code points).
+    const cps = Array.from(input(c));
+    const prefixes = cps.map((_, k) => fingerprint(JSON.stringify(tokenize(cps.slice(0, k + 1).join("")))));
+    writeGolden(`${c.name}.tokens.json`, JSON.stringify(prefixes) + "\n");
   }
   console.log(`Wrote goldens for ${cases.length} cases × ${chunkings.length} chunkings to conformance/golden/`);
 } else if (command === "show" && args.length === 3) {
@@ -122,7 +133,12 @@ if (command === "golden") {
   const c = cases.find((x) => x.name === name);
   if (!c) throw new Error(`no case named ${name}`);
   process.stdout.write(chunking === "oneshot" ? oneshot(c) : stream(c, chunking).steps[Number(step) - 1]);
+} else if (command === "show-tokens" && args.length === 2) {
+  const [name, length] = args;
+  const c = cases.find((x) => x.name === name);
+  if (!c) throw new Error(`no case named ${name}`);
+  process.stdout.write(tokensOfPrefix(c, Number(length)));
 } else {
-  console.error("usage: bun reference/run.ts golden | show <case> <chunking> <step>");
+  console.error("usage: bun reference/run.ts golden | show <case> <chunking> <step> | show-tokens <case> <length>");
   process.exit(1);
 }

@@ -1,0 +1,4 @@
+root = Root([Text("a") # comment-ish
+, Text(~x), Text(^y), Text(`z`), Text(😀), Text(\), Text(;)]);
+é = Text("non-ascii id")
+😀root = Text("emoji before id")

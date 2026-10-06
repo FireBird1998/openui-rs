@@ -409,6 +409,36 @@
    "schema": "hand",
    "file": "cases/hand/65-bom-and-nbsp.oui",
    "source": "hand-written"
+  },
+  {
+   "name": "hand/66-lexer-operators",
+   "schema": "hand",
+   "file": "cases/hand/66-lexer-operators.oui",
+   "source": "hand-written"
+  },
+  {
+   "name": "hand/67-lexer-number-forms",
+   "schema": "hand",
+   "file": "cases/hand/67-lexer-number-forms.oui",
+   "source": "hand-written"
+  },
+  {
+   "name": "hand/68-lexer-identifier-forms",
+   "schema": "hand",
+   "file": "cases/hand/68-lexer-identifier-forms.oui",
+   "source": "hand-written"
+  },
+  {
+   "name": "hand/69-lexer-string-forms",
+   "schema": "hand",
+   "file": "cases/hand/69-lexer-string-forms.oui",
+   "source": "hand-written"
+  },
+  {
+   "name": "hand/70-lexer-stray-characters",
+   "schema": "hand",
+   "file": "cases/hand/70-lexer-stray-characters.oui",
+   "source": "hand-written"
   }
  ]
 }

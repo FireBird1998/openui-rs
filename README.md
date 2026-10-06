@@ -2,7 +2,7 @@
 
 A Rust implementation of the OpenUI Lang language layer (the `openui-lang` crate), and Dynamic News, an Android app built on it.
 
-**Status:** tickets 01–02 of 13 done. The corpus has 265 cases (hand-written edge cases, every program the reference test suites parse, the benchmark samples, and programs from the upstream docs and examples). 26 conform so far; the other 239 are listed in [`conformance/pending.txt`](conformance/pending.txt) and drop off as later tickets land.
+**Status:** tickets 01–03 of 13 done. The tokenizer matches the reference on every prefix of every program. The corpus has 265 cases (hand-written edge cases, every program the reference test suites parse, the benchmark samples, and programs from the upstream docs and examples). 29 conform end to end so far; the other 241 are listed in [`conformance/pending.txt`](conformance/pending.txt) and drop off as later tickets land.
 
 ## How correctness works
 
@@ -15,6 +15,7 @@ scripts/import-corpus.sh [<checkout>]  # re-import upstream programs at the pinn
 scripts/update-reference.sh <commit>   # vendor a different upstream commit (full hash)
 UPDATE_PENDING=1 cargo test --test conformance   # rewrite pending.txt to the cases failing now
 cargo run -p openui-lang -- parse conformance/schemas/text.json conformance/cases/hello-text.oui
+cargo run -p openui-lang -- tokens conformance/cases/hand/67-lexer-number-forms.oui
 ```
 
 ## Map

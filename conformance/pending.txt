@@ -28,7 +28,6 @@ docs/openui-lang-builtins-03
 docs/openui-lang-builtins-04
 docs/openui-lang-components-how-it-works-01
 docs/openui-lang-components-lang-example-01
-docs/openui-lang-components-lang-example-02
 docs/openui-lang-defining-components-01
 docs/openui-lang-evolution-guide-01
 docs/openui-lang-evolution-guide-02
@@ -112,7 +111,6 @@ examples/shadcn-index-10
 examples/shadcn-index-11
 examples/shadcn-index-12
 examples/svelte-library-01
-examples/svelte-library-02
 examples/svelte-library-03
 examples/vue-define-library-01
 examples/vue-generate-prompt-01
@@ -151,7 +149,6 @@ hand/32-object-key-forms
 hand/33-holes-in-arrays-and-objects
 hand/34-pascal-case-statement-id
 hand/35-state-assigned-a-query
-hand/37-only-values
 hand/38-junk-lines
 hand/39-member-access-forms
 hand/40-builtin-call-forms
@@ -180,6 +177,11 @@ hand/62-excess-args-top-level
 hand/63-unknown-library-components
 hand/64-numeric-component-name
 hand/65-bom-and-nbsp
+hand/66-lexer-operators
+hand/67-lexer-number-forms
+hand/68-lexer-identifier-forms
+hand/69-lexer-string-forms
+hand/70-lexer-stray-characters
 test/materialize-validation-01
 test/materialize-validation-02
 test/materialize-validation-03

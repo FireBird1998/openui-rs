@@ -31,7 +31,7 @@ mod validation;
 pub use ast::Ast;
 pub use builtins::{is_builtin, is_reserved_call};
 pub use expr::parse_expression;
-pub use lexer::{Token, tokenize};
+pub use lexer::{Token, tokenize, tokens_to_json};
 pub use library::{Component, Library, Param};
 pub use parser::parse;
 pub use result::{Element, Meta, ParseResult, ValidationError, ValidationErrorCode, Value};

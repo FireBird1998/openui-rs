@@ -1,7 +1,7 @@
 //! Splitting tokens into statements, and closing what a stream left open, as
 //! the reference parser's `split` and `autoClose`.
 
-use crate::lexer::Token;
+use crate::lexer::{EOF, Token};
 
 /// Which kind of token named a statement.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -125,7 +125,7 @@ pub fn split(tokens: &[Token]) -> Vec<RawStatement> {
                 while peek < n && tokens[peek] == Token::Newline {
                     peek += 1;
                 }
-                let next = tokens.get(peek).unwrap_or(&Token::Eof);
+                let next = tokens.get(peek).unwrap_or(&EOF);
                 if *next == Token::Question || (*next == Token::Colon && ternary_depth > 0) {
                     pos += 1;
                     continue;

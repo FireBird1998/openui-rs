@@ -2,9 +2,7 @@
 
 use crate::ast::Ast;
 use crate::builtins::is_builtin;
-use crate::lexer::Token;
-
-static EOF: Token = Token::Eof;
+use crate::lexer::{EOF, Token};
 
 /// Parse one statement's expression tokens.
 pub fn parse_expression(tokens: &[Token]) -> Ast {

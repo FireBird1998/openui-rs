@@ -1,0 +1,1 @@
+root = Root([Text($), Text($1), Text($_a), Text(@), Text(@1), Text(@_x), Text(_lower), Text(Upper), Text(tRUE), Text(True), Text(nullish), Text(a1_b2), Text(Ünïcode), Text(x$y), Text(@Count)])

@@ -7,7 +7,9 @@ license.workspace = true
 
 [dependencies]
 indexmap = "2"
+ryu-js = "1"
 serde_json = { version = "1", features = ["preserve_order"] }
 
 [dev-dependencies]
+proptest = "1"
 similar = "2"

@@ -1,0 +1,1 @@
+root = Root([Text("\u0041\u00e9\uD83D\uDE00 \" \\ \/ \b\f\n\r\t"), Text("raw	tab"), Text("bad \q escape"), Text('single \' \" \\ \n \t \q \😀 é'), Text(''), Text(""), Text("\u12"), Text("emoji 😀 and é"), Text("ends with backslash\\")])
