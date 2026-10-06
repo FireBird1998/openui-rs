@@ -53,6 +53,31 @@ impl StreamParser {
         self.current_result()
     }
 
+    /// Give the full text so far, as after a reconnect. Text that continues
+    /// what was pushed only parses the new part; anything else starts over.
+    pub fn set(&mut self, full_text: &str) -> ParseResult {
+        if !full_text.starts_with(self.buf.as_str()) {
+            self.reset();
+        }
+        let delta = &full_text[self.buf.len()..];
+        self.buf.push_str(delta);
+        self.current_result()
+    }
+
+    /// The latest parse result, without new text.
+    pub fn result(&mut self) -> ParseResult {
+        self.current_result()
+    }
+
+    fn reset(&mut self) {
+        self.buf.clear();
+        self.cleaned.clear();
+        self.completed_end = 0;
+        self.completed.clear();
+        self.completed_count = 0;
+        self.first_id.clear();
+    }
+
     fn add_statements(&mut self, text: &str) {
         let text = js::trim(text);
         if text.is_empty() {

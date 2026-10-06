@@ -2,7 +2,7 @@
 
 A Rust implementation of the OpenUI Lang language layer (the `openui-lang` crate), and Dynamic News, an Android app built on it.
 
-**Status:** tickets 01–06 of 13 done. **All 284 corpus cases conform**: one-shot, and at every step of eight streaming chunkings. The cases are hand-written edge cases, every program the reference test suites parse, the benchmark samples, and programs from the upstream docs and examples. Stages (preprocessing, tokens, statements, expression trees) also match on every prefix.
+**Status:** tickets 01–07 of 13 done. **All 285 corpus cases conform**: one-shot, at every step of eight push chunkings, and through two resync sequences (`set` with growing, rewound and edited text). The cases are hand-written edge cases, every program the reference test suites parse, the benchmark samples, and programs from the upstream docs and examples. Stages (preprocessing, tokens, statements, expression trees) also match on every prefix.
 
 ## How correctness works
 
@@ -15,6 +15,7 @@ scripts/import-corpus.sh [<checkout>]  # re-import upstream programs at the pinn
 scripts/update-reference.sh <commit>   # vendor a different upstream commit (full hash)
 UPDATE_PENDING=1 cargo test --test conformance   # rewrite pending.txt to the cases failing now
 cargo run -p openui-lang -- parse conformance/schemas/text.json conformance/cases/hello-text.oui
+cargo run -p openui-lang -- stream conformance/schemas/hand.json conformance/cases/hand/71-expression-forms.oui 7
 cargo run -p openui-lang -- tokens conformance/cases/hand/67-lexer-number-forms.oui
 ```
 

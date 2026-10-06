@@ -63,6 +63,38 @@ fn tokens_prints_the_reference_tokens() {
 }
 
 #[test]
+fn stream_prints_the_reference_result_after_every_push() {
+    let dir = conformance();
+    let case = "hand/71-expression-forms";
+    let out = Command::new(env!("CARGO_BIN_EXE_openui-lang"))
+        .arg("stream")
+        .arg(dir.join("schemas/hand.json"))
+        .arg(dir.join(format!("cases/{case}.oui")))
+        .arg("7")
+        .output()
+        .unwrap();
+    assert!(
+        out.status.success(),
+        "stderr: {}",
+        String::from_utf8_lossy(&out.stderr)
+    );
+    let golden = std::fs::read_to_string(dir.join(format!("golden/{case}.steps.json"))).unwrap();
+    let golden: serde_json::Value = serde_json::from_str(&golden).unwrap();
+    let expected: Vec<&str> = golden["7"]["steps"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|s| s.as_str().unwrap())
+        .collect();
+    let actual: Vec<String> = String::from_utf8(out.stdout)
+        .unwrap()
+        .lines()
+        .map(fingerprint)
+        .collect();
+    assert_eq!(actual, expected);
+}
+
+#[test]
 fn unknown_command_prints_usage_and_fails() {
     let out = Command::new(env!("CARGO_BIN_EXE_openui-lang"))
         .arg("frobnicate")

@@ -54,3 +54,22 @@ root = Root([@toString(1), @constructor(), Text(@valueOf)])
 - **Pinned by:** `hand/84-index-like-param-names`, and `hand/44-integer-like-keys` for object literals.
 
 A component's positional order is `Object.keys(properties)`, and JavaScript lists array-index keys (`"0"`, `"10"`) before all others. So with `properties: {"b": ..., "0": ..., "a": ..., "10": ...}`, the order is `0, 10, b, a`, and `Grid("x", "y")` sets `"0"` and `"10"`, not `"b"`. The same reordering applies to `$defs` (the order of "Available components") and to object literals in programs. Worth a note in the docs on defining components, rather than a code change.
+
+## 4. Streaming counts redefined statements; one-shot doesn't
+
+- **Found:** 2026-10-06, noted in ticket 01, confirmed in ticket 07. Reference commit `bba1d251`.
+- **Pinned by:** `hand/18-redefined-statement` and `hand/85-streaming-redefinition-1127` under every streaming chunking.
+
+```
+root = Text(a)
+a = "one"
+a = "two"
+```
+
+**Reference behaviour:** `parse()` reports `statementCount: 2`. Streaming the same complete text, then calling `getResult()`, reports `statementCount: 3`.
+
+**Why:** one-shot uses the number of distinct ids (`stmtMap.size`), while the stream parser increments `completedCount` for every completed statement, redefinitions included. The tree and everything else agree, so this only matters to anything that reads `statementCount`.
+
+**Draft upstream report:**
+
+> **`meta.statementCount` differs between `parse()` and the stream parser when an id is redefined.** For the same final text, `parse()` counts distinct statement ids and `createStreamParser` counts every statement it completed, redefinitions included (`completedCount`). Either count distinct ids in the stream parser (`completedStmtMap.size`, plus new pending ids), or document that the streaming count includes redefinitions.

@@ -1,0 +1,6 @@
+root = Root([a, b])
+a = Text("first")
+b = Text("kept")
+a = Text("second")
+a = Text("third", "warn"
+b = Text("pending redefinition"

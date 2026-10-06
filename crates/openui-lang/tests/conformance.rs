@@ -65,6 +65,10 @@ fn check_case(case: &Case, chunkings: &[String], golden: &Path, explain: bool) -
 
     for chunking in chunkings {
         let golden = &golden_steps[chunking];
+        if let Some(ops) = golden.get("ops") {
+            check_resync(case, chunking, ops, golden, explain, &mut failures);
+            continue;
+        }
         let expected: Vec<&str> = golden["steps"]
             .as_array()
             .unwrap()
@@ -123,6 +127,74 @@ fn check_case(case: &Case, chunkings: &[String], golden: &Path, explain: bool) -
         }
     }
     failures
+}
+
+/// The program with its middle character changed; mirrors `edited` in the runner.
+fn edited(input: &str) -> String {
+    let mut chars: Vec<char> = input.chars().collect();
+    let m = chars.len() / 2;
+    if let Some(c) = chars.get_mut(m) {
+        *c = if *c == 'Z' { 'Y' } else { 'Z' };
+    }
+    chars.into_iter().collect()
+}
+
+/// The first `n` chars of `text`.
+fn prefix(text: &str, n: usize) -> &str {
+    &text[..text.char_indices().nth(n).map_or(text.len(), |(i, _)| i)]
+}
+
+/// A resync chunking: `set` with the program's (`p`) or the edited copy's
+/// (`x`) first n chars, then a final `result` (`r`).
+fn check_resync(
+    case: &Case,
+    chunking: &str,
+    ops: &serde_json::Value,
+    golden: &serde_json::Value,
+    explain: bool,
+    failures: &mut String,
+) {
+    let other = edited(&case.input);
+    let expected = golden["steps"].as_array().unwrap();
+    let mut parser = StreamParser::new(case.library.clone(), case.root.as_deref());
+    for (step, op) in ops.as_array().unwrap().iter().enumerate() {
+        let kind = op[0].as_str().unwrap();
+        let n = op[1].as_u64().unwrap() as usize;
+        let (actual, call) = match kind {
+            "r" => (parser.result().to_json(), "result()".to_owned()),
+            _ => {
+                let text = prefix(if kind == "p" { &case.input } else { &other }, n);
+                let call = format!(
+                    "set({} chars of the {})",
+                    n,
+                    if kind == "p" {
+                        "program"
+                    } else {
+                        "edited copy"
+                    }
+                );
+                (parser.set(text).to_json(), call)
+            }
+        };
+        if fingerprint(&actual) == expected[step].as_str().unwrap() {
+            continue;
+        }
+        let detail = if explain {
+            explain_step(
+                &["show", &case.name, chunking, &(step + 1).to_string()],
+                &actual,
+            )
+        } else {
+            String::new()
+        };
+        let _ = write!(
+            failures,
+            "  chunking {chunking}, step {} of {}: {call}\n{detail}",
+            step + 1,
+            expected.len()
+        );
+        return;
+    }
 }
 
 #[test]

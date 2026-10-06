@@ -8,8 +8,11 @@
 //
 // The corpus is conformance/manifest.json (hand-written) plus
 // conformance/imported.json (from scripts/import-corpus.sh). A chunking is
-// "oneshot", a chunk size in code points, or "random-<k>": sizes 1–16 drawn
-// from a generator seeded with the case name and k. Steps count from 1.
+// "oneshot", a chunk size in code points, "random-<k>" (push sizes 1–16 drawn
+// from a generator seeded with the case name and k), or "resync-<k>": set()
+// calls with the text so far that mostly grow, sometimes rewind (reset), and
+// sometimes switch to an edited copy of the program (reset once they differ),
+// then one getResult(). Steps count from 1.
 import { plugin } from "bun";
 import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "fs";
 import { dirname, join } from "path";
@@ -104,8 +107,52 @@ function sizes(c: Case, chunking: string, length: number): { sizes: number[]; ra
   return { sizes: out, random };
 }
 
+/** The program with its middle code point changed, so its prefixes past the
+ *  middle aren't continuations of the program's own. */
+function edited(cps: string[]): string[] {
+  const copy = [...cps];
+  const m = Math.floor(copy.length / 2);
+  if (copy.length) copy[m] = copy[m] === "Z" ? "Y" : "Z";
+  return copy;
+}
+
+type ResyncOp = ["p" | "x", number] | ["r", 0];
+
+/** A seeded sequence of set() calls: ["p", n] sets the program's first n code
+ *  points, ["x", n] the edited copy's, and a final ["r", 0] is getResult(). */
+function resyncOps(c: Case, chunking: string, n: number): ResyncOp[] {
+  const next = generator(fnv1a(`${c.name}:${chunking}`));
+  const ops: ResyncOp[] = [];
+  let kind: "p" | "x" = "p";
+  let length = 0;
+  while (!(kind === "p" && length === n) && ops.length < 2 * n + 64) {
+    const r = next();
+    if (r < 0.15 && length > 0) length = Math.max(0, length - 1 - Math.floor(next() * 20));
+    else if (r < 0.3) {
+      kind = kind === "p" ? "x" : "p";
+      length = Math.min(n, length + Math.floor(next() * 4));
+    } else length = Math.min(n, length + 1 + Math.floor(next() * 16));
+    ops.push([kind, length]);
+  }
+  if (!(kind === "p" && length === n)) ops.push(["p", n]);
+  ops.push(["r", 0]);
+  return ops;
+}
+
 /** One JSON string per push, plus the chunk sizes used. */
 function stream(c: Case, chunking: string) {
+  if (chunking.startsWith("resync-")) {
+    const cps = Array.from(input(c));
+    const other = edited(cps);
+    const ops = resyncOps(c, chunking, cps.length);
+    const parser = createStreamParser(library(c.schema), c.root);
+    const steps = ops.map(([kind, n]) =>
+      JSON.stringify(
+        kind === "r" ? parser.getResult() : parser.set((kind === "p" ? cps : other).slice(0, n).join("")),
+      ),
+    );
+    return { steps, sizes: undefined, ops };
+  }
   const cps = Array.from(input(c));
   const { sizes: plan, random } = sizes(c, chunking, cps.length);
   const parser = createStreamParser(library(c.schema), c.root);
@@ -115,7 +162,7 @@ function stream(c: Case, chunking: string) {
     steps.push(JSON.stringify(parser.push(cps.slice(pos, pos + size).join(""))));
     pos += size;
   }
-  return { steps, sizes: random ? plan : undefined };
+  return { steps, sizes: random ? plan : undefined, ops: undefined };
 }
 
 /** tokenize() of the first `length` code points, as JSON. */
@@ -149,10 +196,10 @@ if (command === "golden") {
   rmSync(GOLDEN, { recursive: true, force: true });
   for (const c of cases) {
     writeGolden(`${c.name}.oneshot.json`, oneshot(c));
-    const streams: Record<string, { sizes?: number[]; steps: string[] }> = {};
+    const streams: Record<string, { sizes?: number[]; ops?: ResyncOp[]; steps: string[] }> = {};
     for (const chunking of chunkings) {
-      const { steps, sizes } = stream(c, chunking);
-      streams[chunking] = { ...(sizes ? { sizes } : {}), steps: steps.map(fingerprint) };
+      const { steps, sizes, ops } = stream(c, chunking);
+      streams[chunking] = { ...(sizes ? { sizes } : {}), ...(ops ? { ops } : {}), steps: steps.map(fingerprint) };
     }
     writeGolden(`${c.name}.steps.json`, JSON.stringify(streams) + "\n");
     // Stage golden: tokens of every prefix (index k is the first k+1 code points).

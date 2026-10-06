@@ -1,12 +1,17 @@
 //! Command-line tool for the OpenUI Lang parser.
 //!
 //!   openui-lang parse <schema.json> <program|->    one-shot parse, prints the result JSON
+//!   openui-lang stream <schema.json> <program|-> [chunk]
+//!                                                   streaming parse in chunks of `chunk` chars
+//!                                                   (default 4), one result JSON per line
 //!   openui-lang tokens <program|->                  prints the tokens as JSON
 
 use std::io::Read;
 use std::process::ExitCode;
 
-use openui_lang::{Library, parse, tokenize, tokens_to_json};
+use std::sync::Arc;
+
+use openui_lang::{Library, StreamParser, parse, tokenize, tokens_to_json};
 
 const USAGE: &str =
     "usage: openui-lang parse <schema.json> <program|->\n       openui-lang tokens <program|->";
@@ -34,6 +39,26 @@ fn run(args: &[String]) -> Result<(), String> {
         [command, schema, program] if command == "parse" => {
             let library = load_library(schema)?;
             println!("{}", parse(&read_input(program)?, &library, None).to_json());
+            Ok(())
+        }
+        [command, schema, program, rest @ ..] if command == "stream" && rest.len() <= 1 => {
+            let size: usize = match rest.first() {
+                Some(n) => n
+                    .parse()
+                    .ok()
+                    .filter(|&n| n > 0)
+                    .ok_or("chunk must be a positive number")?,
+                None => 4,
+            };
+            let library = Arc::new(load_library(schema)?);
+            let text = read_input(program)?;
+            let mut parser = StreamParser::new(library, None);
+            let chars: Vec<(usize, char)> = text.char_indices().collect();
+            for group in chars.chunks(size) {
+                let start = group[0].0;
+                let end = group.last().map_or(start, |&(i, c)| i + c.len_utf8());
+                println!("{}", parser.push(&text[start..end]).to_json());
+            }
             Ok(())
         }
         [command, program] if command == "tokens" => {

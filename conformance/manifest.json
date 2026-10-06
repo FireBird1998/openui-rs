@@ -7,7 +7,9 @@
   "7",
   "16",
   "random-1",
-  "random-2"
+  "random-2",
+  "resync-1",
+  "resync-2"
  ],
  "schemas": {
   "text": "schemas/text.json",
@@ -527,6 +529,12 @@
    "name": "hand/84-index-like-param-names",
    "schema": "keys",
    "file": "cases/hand/84-index-like-param-names.oui",
+   "source": "hand-written"
+  },
+  {
+   "name": "hand/85-streaming-redefinition-1127",
+   "schema": "hand",
+   "file": "cases/hand/85-streaming-redefinition-1127.oui",
    "source": "hand-written"
   }
  ]
