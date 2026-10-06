@@ -2,7 +2,7 @@
 
 A Rust implementation of the OpenUI Lang language layer (the `openui-lang` crate), and Dynamic News, an Android app built on it.
 
-**Status:** tickets 01–05 of 13 done. Preprocessing (fences, comments, prose), tokens, statements and expression trees match the reference on every prefix of every program. The corpus has 277 cases (hand-written edge cases, every program the reference test suites parse, the benchmark samples, and programs from the upstream docs and examples). 37 conform end to end so far; the other 240 are listed in [`conformance/pending.txt`](conformance/pending.txt) and drop off as later tickets land.
+**Status:** tickets 01–05 of 13 done. Preprocessing (fences, comments, prose), tokens, statements and expression trees match the reference on every prefix of every program. The corpus has 278 cases (hand-written edge cases, every program the reference test suites parse, the benchmark samples, and programs from the upstream docs and examples). 37 conform end to end so far; the other 241 are listed in [`conformance/pending.txt`](conformance/pending.txt) and drop off as later tickets land.
 
 ## How correctness works
 
@@ -17,6 +17,8 @@ UPDATE_PENDING=1 cargo test --test conformance   # rewrite pending.txt to the ca
 cargo run -p openui-lang -- parse conformance/schemas/text.json conformance/cases/hello-text.oui
 cargo run -p openui-lang -- tokens conformance/cases/hand/67-lexer-number-forms.oui
 ```
+
+Reference behaviour that looks wrong, but that the core matches anyway, is recorded in [`conformance/QUIRKS.md`](conformance/QUIRKS.md).
 
 ## Map
 

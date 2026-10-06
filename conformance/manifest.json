@@ -481,6 +481,12 @@
    "schema": "hand",
    "file": "cases/hand/77-crlf-and-tabs.oui",
    "source": "hand-written"
+  },
+  {
+   "name": "hand/78-apostrophe-hides-comment",
+   "schema": "hand",
+   "file": "cases/hand/78-apostrophe-hides-comment.oui",
+   "source": "hand-written"
   }
  ]
 }

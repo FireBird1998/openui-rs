@@ -22,3 +22,4 @@
 - Deliberate breaks, each caught: resetting quote state per line (hand 74, test/parser-26/27), finding fences inside strings (hand 76, test/parser-24/25), and skipping `trimEnd` before comments (hand 28, 70, 74).
 - `tests/robustness.rs`: strip_fences and preprocess on any text and on fence/comment-heavy text (2 × 2000 cases).
 - Whole-result conformance went from 29/271 to 37/277. Seven pending cases now conform (fenced and commented programs from the docs, examples and reference tests), and so does the new hand/73. The other new cases wait on ticket 06.
+- **First quirk found:** an apostrophe in leading prose ("Here's the UI:") keeps `stripComments` in a string for the rest of the program. A trailing `// comment` then survives and turns `root` into a `BinOp`, so the reference renders nothing. Confirmed against the reference, pinned by `hand/78-apostrophe-hides-comment`, and recorded in `conformance/QUIRKS.md` with a draft upstream report (not filed).

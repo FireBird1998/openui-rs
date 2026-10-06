@@ -14,3 +14,5 @@
 ## Comments
 
 **From ticket 03:** generate `\uXXXX` escapes, including surrogate pairs that chunking splits; the core handles those. Don't generate raw U+10F800–U+10FFFF characters: those are reserved for carrying lone surrogates, a documented limitation rather than a quirk.
+
+**From ticket 05:** `conformance/QUIRKS.md` already exists with quirk 1 (an apostrophe in prose hides comments). Add fuzz-found quirks there in the same format.
