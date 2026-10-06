@@ -1,0 +1,53 @@
+{
+  "cloud": true,
+  "library": {
+    "root": "",
+    "schema": {
+      "$defs": {
+        "Card": {
+          "properties": [
+            "not",
+            "an",
+            "object"
+          ],
+          "required": "children"
+        },
+        "Text": "nope",
+        "List": {
+          "properties": {
+            "items": {
+              "type": "array",
+              "items": [
+                {
+                  "$ref": "#/$defs/Text"
+                },
+                {
+                  "$ref": "#/bad"
+                }
+              ]
+            }
+          },
+          "required": [
+            "items",
+            3
+          ]
+        }
+      }
+    },
+    "componentGroups": [
+      {
+        "name": "Bad",
+        "components": [
+          "Card",
+          "Ghost",
+          7
+        ]
+      },
+      {
+        "name": 5,
+        "components": []
+      },
+      "oops"
+    ]
+  }
+}

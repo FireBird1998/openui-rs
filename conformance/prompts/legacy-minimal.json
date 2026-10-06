@@ -1,0 +1,7 @@
+{
+  "components": {
+    "Card": {
+      "signature": "Card(children: Component[])"
+    }
+  }
+}

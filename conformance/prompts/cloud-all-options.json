@@ -1,0 +1,62 @@
+{
+  "cloud": true,
+  "library": {
+    "root": "Card",
+    "schema": {
+      "$defs": {
+        "Card": {
+          "properties": {
+            "children": {
+              "type": "array",
+              "items": {
+                "anyOf": [
+                  {
+                    "$ref": "#/$defs/TextContent"
+                  }
+                ]
+              }
+            },
+            "title": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "children"
+          ],
+          "description": "Top-level container."
+        },
+        "TextContent": {
+          "properties": {
+            "text": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "text"
+          ]
+        }
+      }
+    },
+    "componentGroups": [
+      {
+        "name": "Content",
+        "components": [
+          "TextContent"
+        ]
+      }
+    ]
+  },
+  "instructions": "Keep it short.",
+  "promptOptions": {
+    "additionalRules": [
+      "No red."
+    ],
+    "examples": [
+      "root = Card([])"
+    ],
+    "preamble": "Acme.",
+    "toolExamples": [
+      "x"
+    ]
+  }
+}

@@ -1,0 +1,70 @@
+{
+  "library": {
+    "root": "Page",
+    "components": {
+      "Page": {
+        "signature": "Page(children: (Header | Card | Table)[], title?: string)",
+        "description": "Top-level layout."
+      },
+      "Header": {
+        "signature": "Header(title: string, subtitle?: string)",
+        "description": "Page heading."
+      },
+      "Card": {
+        "signature": "Card(children: (TextContent | Button | Select)[], variant?: \"card\" | \"plain\")"
+      },
+      "TextContent": {
+        "signature": "TextContent(text: string, tone?: \"default\" | \"muted\")",
+        "description": "A paragraph."
+      },
+      "Button": {
+        "signature": "Button(label: string, action?: ActionExpression, variant?: \"primary\" | \"secondary\")",
+        "description": "Click to act."
+      },
+      "Select": {
+        "signature": "Select(name: string, items: SelectItem[], placeholder?: string, validation?: object, value?: $binding<string>)"
+      },
+      "SelectItem": {
+        "signature": "SelectItem(value: string, label: string)"
+      },
+      "Table": {
+        "signature": "Table(columns: string[], rows: any[][])",
+        "description": "Rows and columns."
+      }
+    },
+    "componentGroups": [
+      {
+        "name": "Layout",
+        "components": [
+          "Page",
+          "Header",
+          "Card"
+        ],
+        "notes": [
+          "Page is the only root.",
+          "Cards nest."
+        ]
+      },
+      {
+        "name": "Content",
+        "components": [
+          "TextContent",
+          "Table",
+          "Missing",
+          "Card"
+        ]
+      },
+      {
+        "name": "Forms",
+        "components": [
+          "Select",
+          "SelectItem"
+        ],
+        "notes": []
+      }
+    ]
+  },
+  "promptOptions": {
+    "bindings": true
+  }
+}

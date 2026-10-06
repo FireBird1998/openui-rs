@@ -1,0 +1,1 @@
+{"error":"[generateSystemPrompt] Invalid library: chatLibrary.schema.$defs must be a non-empty object keyed by component name."}

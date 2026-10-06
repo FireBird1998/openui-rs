@@ -34,6 +34,14 @@ _Avoid_: AST, output, tree (when meaning the whole result)
 Parsing a program chunk by chunk as it arrives, producing a parse result after every chunk.
 _Avoid_: incremental render, live parse
 
+**Prompt spec**:
+The JSON that describes what goes into a system prompt: component signatures and groups, tools, examples, rules and mode flags; the reference's `PromptSpec`, or `{library, promptOptions}`.
+_Avoid_: prompt config, prompt options (when meaning the whole input)
+
+**System prompt**:
+The text generated from a prompt spec that tells the model how to write OpenUI Lang for a given component library.
+_Avoid_: instructions, preamble (that's one part of it)
+
 ### Correctness
 
 **Reference parser**:

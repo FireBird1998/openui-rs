@@ -1,0 +1,20 @@
+{
+  "library": {
+    "root": "Column",
+    "components": {
+      "Column": {
+        "signature": "Column(children: (Text | Image)[])"
+      },
+      "Text": {
+        "signature": "Text(value: string)",
+        "description": "Plain text."
+      },
+      "Image": {
+        "signature": "Image(src: string, alt?: string)"
+      }
+    }
+  },
+  "promptOptions": {
+    "bindings": true
+  }
+}

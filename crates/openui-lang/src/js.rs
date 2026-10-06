@@ -351,3 +351,42 @@ pub(crate) fn json_value_string(value: &serde_json::Value) -> String {
     write_json_value(&mut out, value);
     out
 }
+
+/// `String(value)` in JavaScript, for a JSON value: template interpolation
+/// and property keys see this.
+pub(crate) fn js_string(value: &serde_json::Value) -> String {
+    use serde_json::Value as Json;
+    match value {
+        Json::String(s) => s.clone(),
+        Json::Number(n) => number_to_string(json_number(n)),
+        Json::Bool(b) => b.to_string(),
+        Json::Null => "null".to_owned(),
+        Json::Array(items) => items
+            .iter()
+            .map(|v| {
+                if v.is_null() {
+                    String::new()
+                } else {
+                    js_string(v)
+                }
+            })
+            .collect::<Vec<_>>()
+            .join(","),
+        Json::Object(_) => "[object Object]".to_owned(),
+    }
+}
+
+/// JavaScript truthiness of a JSON value; an absent value is falsy.
+pub(crate) fn truthy(value: Option<&serde_json::Value>) -> bool {
+    use serde_json::Value as Json;
+    match value {
+        None | Some(Json::Null) => false,
+        Some(Json::Bool(b)) => *b,
+        Some(Json::Number(n)) => {
+            let n = json_number(n);
+            n != 0.0 && !n.is_nan()
+        }
+        Some(Json::String(s)) => !s.is_empty(),
+        Some(Json::Array(_) | Json::Object(_)) => true,
+    }
+}

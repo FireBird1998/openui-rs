@@ -1,0 +1,8 @@
+{
+  "cloud": true,
+  "library": {
+    "schema": {
+      "$defs": {}
+    }
+  }
+}

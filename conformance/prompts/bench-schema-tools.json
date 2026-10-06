@@ -1,0 +1,348 @@
+{
+  "library": {
+    "root": "Stack",
+    "components": {
+      "Card": {
+        "signature": "Card(children: (TextContent | MarkDownRenderer | CardHeader | Callout | TextCallout | CodeBlock | Image | ImageBlock | ImageGallery | Separator | HorizontalBarChart | RadarChart | PieChart | RadialChart | SingleStackedBarChart | ScatterChart | AreaChart | BarChart | LineChart | Table | TagBlock | Form | Buttons | Steps | Tabs | Carousel | Stack)[], variant?: \"card\" | \"sunk\" | \"clear\", direction?: \"row\" | \"column\", gap?: \"none\" | \"xs\" | \"s\" | \"m\" | \"l\" | \"xl\" | \"2xl\", align?: \"start\" | \"center\" | \"end\" | \"stretch\" | \"baseline\", justify?: \"start\" | \"center\" | \"end\" | \"between\" | \"around\" | \"evenly\", wrap?: boolean)"
+      },
+      "TextContent": {
+        "signature": "TextContent(text: string, size?: \"small\" | \"default\" | \"large\" | \"small-heavy\" | \"large-heavy\")"
+      },
+      "MarkDownRenderer": {
+        "signature": "MarkDownRenderer(textMarkdown: string, variant?: \"clear\" | \"card\" | \"sunk\")"
+      },
+      "CardHeader": {
+        "signature": "CardHeader(title?: string, subtitle?: string)"
+      },
+      "Callout": {
+        "signature": "Callout(variant: \"info\" | \"warning\" | \"error\" | \"success\" | \"neutral\", title: string, description: string)"
+      },
+      "TextCallout": {
+        "signature": "TextCallout(variant?: \"neutral\" | \"info\" | \"warning\" | \"success\" | \"danger\", title?: string, description?: string)"
+      },
+      "CodeBlock": {
+        "signature": "CodeBlock(language: string, codeString: string)"
+      },
+      "Image": {
+        "signature": "Image(alt: string, src?: string)"
+      },
+      "ImageBlock": {
+        "signature": "ImageBlock(src: string, alt?: string)"
+      },
+      "ImageGallery": {
+        "signature": "ImageGallery(images: object[])"
+      },
+      "Separator": {
+        "signature": "Separator(orientation?: \"horizontal\" | \"vertical\", decorative?: boolean)"
+      },
+      "HorizontalBarChart": {
+        "signature": "HorizontalBarChart(labels: string[], series: Series[], variant?: \"grouped\" | \"stacked\", xLabel?: string, yLabel?: string)"
+      },
+      "Series": {
+        "signature": "Series(category: string, values: number[])"
+      },
+      "RadarChart": {
+        "signature": "RadarChart(labels: string[], series: Series[])"
+      },
+      "PieChart": {
+        "signature": "PieChart(slices: Slice[], variant?: \"pie\" | \"donut\")"
+      },
+      "Slice": {
+        "signature": "Slice(category: string, value: number)"
+      },
+      "RadialChart": {
+        "signature": "RadialChart(slices: Slice[])"
+      },
+      "SingleStackedBarChart": {
+        "signature": "SingleStackedBarChart(slices: Slice[])"
+      },
+      "ScatterChart": {
+        "signature": "ScatterChart(datasets: ScatterSeries[], xLabel?: string, yLabel?: string)"
+      },
+      "ScatterSeries": {
+        "signature": "ScatterSeries(name: string, points: Point[])"
+      },
+      "Point": {
+        "signature": "Point(x: number, y: number, z?: number)"
+      },
+      "AreaChart": {
+        "signature": "AreaChart(labels: string[], series: Series[], variant?: \"linear\" | \"natural\" | \"step\", xLabel?: string, yLabel?: string)"
+      },
+      "BarChart": {
+        "signature": "BarChart(labels: string[], series: Series[], variant?: \"grouped\" | \"stacked\", xLabel?: string, yLabel?: string)"
+      },
+      "LineChart": {
+        "signature": "LineChart(labels: string[], series: Series[], variant?: \"linear\" | \"natural\" | \"step\", xLabel?: string, yLabel?: string)"
+      },
+      "Table": {
+        "signature": "Table(columns: Col[], rows: (string | number | boolean)[][])"
+      },
+      "Col": {
+        "signature": "Col(label: string, type?: \"string\" | \"number\" | \"action\")"
+      },
+      "TagBlock": {
+        "signature": "TagBlock(tags: string[])"
+      },
+      "Form": {
+        "signature": "Form(name: string, fields: FormControl[], buttons?: Buttons)"
+      },
+      "FormControl": {
+        "signature": "FormControl(label: string, input: (Input | TextArea | Select | DatePicker | Slider | CheckBoxGroup | RadioGroup), hint?: string)"
+      },
+      "Input": {
+        "signature": "Input(name: string, placeholder?: string, type?: \"text\" | \"email\" | \"password\" | \"number\" | \"url\", rules?: string[])"
+      },
+      "TextArea": {
+        "signature": "TextArea(name: string, placeholder?: string, rows?: number, rules?: string[])"
+      },
+      "Select": {
+        "signature": "Select(name: string, items: SelectItem[], placeholder?: string, rules?: string[])"
+      },
+      "SelectItem": {
+        "signature": "SelectItem(value: string, label: string)"
+      },
+      "DatePicker": {
+        "signature": "DatePicker(name: string, mode: \"single\" | \"range\", rules?: string[])"
+      },
+      "Slider": {
+        "signature": "Slider(name: string, variant: \"continuous\" | \"discrete\", min: number, max: number, step?: number, defaultValue?: number, rules?: string[])"
+      },
+      "CheckBoxGroup": {
+        "signature": "CheckBoxGroup(name: string, items: CheckBoxItem[], rules?: string[])"
+      },
+      "CheckBoxItem": {
+        "signature": "CheckBoxItem(label: string, description: string, name: string, defaultChecked?: boolean)"
+      },
+      "RadioGroup": {
+        "signature": "RadioGroup(name: string, items: RadioItem[], defaultValue?: string, rules?: string[])"
+      },
+      "RadioItem": {
+        "signature": "RadioItem(label: string, description: string, value: string)"
+      },
+      "Buttons": {
+        "signature": "Buttons(buttons: Button[], direction?: \"row\" | \"column\")"
+      },
+      "Button": {
+        "signature": "Button(label: string, action: string, variant?: \"primary\" | \"secondary\" | \"tertiary\", type?: \"normal\" | \"destructive\", size?: \"extra-small\" | \"small\" | \"medium\" | \"large\")"
+      },
+      "Steps": {
+        "signature": "Steps(items: StepsItem[])"
+      },
+      "StepsItem": {
+        "signature": "StepsItem(title: string, details: string)"
+      },
+      "Tabs": {
+        "signature": "Tabs(items: TabItem[])"
+      },
+      "TabItem": {
+        "signature": "TabItem(value: string, trigger: string, content: (TextContent | MarkDownRenderer | CardHeader | Callout | TextCallout | CodeBlock | Image | ImageBlock | ImageGallery | Separator | HorizontalBarChart | RadarChart | PieChart | RadialChart | SingleStackedBarChart | ScatterChart | AreaChart | BarChart | LineChart | Table | TagBlock | Form | Buttons | Steps)[])"
+      },
+      "Carousel": {
+        "signature": "Carousel(children: Stack[], variant?: \"card\" | \"sunk\")"
+      },
+      "Stack": {
+        "signature": "Stack(children: any[], direction?: \"row\" | \"column\", gap?: \"none\" | \"xs\" | \"s\" | \"m\" | \"l\" | \"xl\" | \"2xl\", align?: \"start\" | \"center\" | \"end\" | \"stretch\" | \"baseline\", justify?: \"start\" | \"center\" | \"end\" | \"between\" | \"around\" | \"evenly\", wrap?: boolean)"
+      },
+      "Label": {
+        "signature": "Label(text: string)"
+      },
+      "SwitchGroup": {
+        "signature": "SwitchGroup(items: SwitchItem[], variant?: \"clear\" | \"card\" | \"sunk\")"
+      },
+      "SwitchItem": {
+        "signature": "SwitchItem(label?: string, description?: string, name?: string, value?: string, checked?: boolean, defaultChecked?: boolean, disabled?: boolean)"
+      },
+      "Accordion": {
+        "signature": "Accordion(items: AccordionItem[])"
+      },
+      "AccordionItem": {
+        "signature": "AccordionItem(value: string, trigger: string, content: (TextContent | MarkDownRenderer | CardHeader | Callout | TextCallout | CodeBlock | Image | ImageBlock | ImageGallery | Separator | HorizontalBarChart | RadarChart | PieChart | RadialChart | SingleStackedBarChart | ScatterChart | AreaChart | BarChart | LineChart | Table | TagBlock | Form | Buttons | Steps)[])"
+      },
+      "Tag": {
+        "signature": "Tag(text: string, icon?: string, size?: \"sm\" | \"md\" | \"lg\", variant?: \"neutral\" | \"info\" | \"success\" | \"warning\" | \"danger\")"
+      }
+    },
+    "componentGroups": [
+      {
+        "name": "Structure",
+        "components": [
+          "Card",
+          "TextContent",
+          "MarkDownRenderer",
+          "CardHeader",
+          "Callout",
+          "TextCallout",
+          "CodeBlock",
+          "Image",
+          "ImageBlock",
+          "ImageGallery",
+          "Separator",
+          "HorizontalBarChart",
+          "Series",
+          "RadarChart",
+          "PieChart",
+          "Slice",
+          "RadialChart"
+        ],
+        "notes": [
+          "Start with Stack."
+        ]
+      },
+      {
+        "name": "Content",
+        "components": [
+          "SingleStackedBarChart",
+          "ScatterChart",
+          "ScatterSeries",
+          "Point",
+          "AreaChart",
+          "BarChart",
+          "LineChart",
+          "Table",
+          "Col",
+          "TagBlock",
+          "Form",
+          "FormControl",
+          "Input",
+          "TextArea",
+          "Select",
+          "SelectItem",
+          "DatePicker"
+        ]
+      }
+    ]
+  },
+  "promptOptions": {
+    "tools": [
+      "search",
+      {
+        "name": "list_users",
+        "description": "Users matching a filter.",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "role": {
+              "type": "string",
+              "enum": [
+                "admin",
+                "member",
+                "guest"
+              ]
+            },
+            "limit": {
+              "type": "integer"
+            },
+            "active": {
+              "type": "boolean"
+            },
+            "sort": {
+              "type": "object",
+              "properties": {
+                "field": {
+                  "type": "string"
+                },
+                "desc": {
+                  "type": "boolean"
+                }
+              },
+              "required": [
+                "field"
+              ]
+            },
+            "tags": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "anything": {
+              "type": "null"
+            }
+          },
+          "required": [
+            "role",
+            "limit"
+          ]
+        },
+        "outputSchema": {
+          "type": "object",
+          "properties": {
+            "rows": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "id": {
+                    "type": "number"
+                  },
+                  "name": {
+                    "type": "string"
+                  },
+                  "roles": {
+                    "type": "array"
+                  }
+                }
+              }
+            },
+            "total": {
+              "type": "integer"
+            },
+            "ok": {
+              "type": "boolean"
+            },
+            "meta": {
+              "type": "object"
+            },
+            "note": {
+              "type": "string"
+            },
+            "other": {}
+          }
+        },
+        "annotations": {
+          "readOnlyHint": true
+        }
+      },
+      {
+        "name": "create_user",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "name": {
+              "type": "string"
+            },
+            "email": {
+              "type": "string"
+            }
+          },
+          "required": "name"
+        },
+        "outputSchema": {
+          "type": "string"
+        },
+        "annotations": {
+          "destructiveHint": true
+        }
+      },
+      {
+        "name": "ping",
+        "inputSchema": {
+          "type": "object",
+          "properties": {}
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "noschema",
+        "inputSchema": {},
+        "outputSchema": {
+          "type": "array",
+          "items": {
+            "type": "number"
+          }
+        }
+      }
+    ],
+    "editMode": true
+  }
+}

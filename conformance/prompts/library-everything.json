@@ -1,0 +1,211 @@
+{
+  "library": {
+    "root": "Page",
+    "components": {
+      "Page": {
+        "signature": "Page(children: (Header | Card | Table)[], title?: string)",
+        "description": "Top-level layout."
+      },
+      "Header": {
+        "signature": "Header(title: string, subtitle?: string)",
+        "description": "Page heading."
+      },
+      "Card": {
+        "signature": "Card(children: (TextContent | Button | Select)[], variant?: \"card\" | \"plain\")"
+      },
+      "TextContent": {
+        "signature": "TextContent(text: string, tone?: \"default\" | \"muted\")",
+        "description": "A paragraph."
+      },
+      "Button": {
+        "signature": "Button(label: string, action?: ActionExpression, variant?: \"primary\" | \"secondary\")",
+        "description": "Click to act."
+      },
+      "Select": {
+        "signature": "Select(name: string, items: SelectItem[], placeholder?: string, validation?: object, value?: $binding<string>)"
+      },
+      "SelectItem": {
+        "signature": "SelectItem(value: string, label: string)"
+      },
+      "Table": {
+        "signature": "Table(columns: string[], rows: any[][])",
+        "description": "Rows and columns."
+      }
+    },
+    "componentGroups": [
+      {
+        "name": "Layout",
+        "components": [
+          "Page",
+          "Header",
+          "Card"
+        ],
+        "notes": [
+          "Page is the only root.",
+          "Cards nest."
+        ]
+      },
+      {
+        "name": "Content",
+        "components": [
+          "TextContent",
+          "Table",
+          "Missing",
+          "Card"
+        ]
+      },
+      {
+        "name": "Forms",
+        "components": [
+          "Select",
+          "SelectItem"
+        ],
+        "notes": []
+      }
+    ]
+  },
+  "promptOptions": {
+    "tools": [
+      "search",
+      {
+        "name": "list_users",
+        "description": "Users matching a filter.",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "role": {
+              "type": "string",
+              "enum": [
+                "admin",
+                "member",
+                "guest"
+              ]
+            },
+            "limit": {
+              "type": "integer"
+            },
+            "active": {
+              "type": "boolean"
+            },
+            "sort": {
+              "type": "object",
+              "properties": {
+                "field": {
+                  "type": "string"
+                },
+                "desc": {
+                  "type": "boolean"
+                }
+              },
+              "required": [
+                "field"
+              ]
+            },
+            "tags": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "anything": {
+              "type": "null"
+            }
+          },
+          "required": [
+            "role",
+            "limit"
+          ]
+        },
+        "outputSchema": {
+          "type": "object",
+          "properties": {
+            "rows": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "id": {
+                    "type": "number"
+                  },
+                  "name": {
+                    "type": "string"
+                  },
+                  "roles": {
+                    "type": "array"
+                  }
+                }
+              }
+            },
+            "total": {
+              "type": "integer"
+            },
+            "ok": {
+              "type": "boolean"
+            },
+            "meta": {
+              "type": "object"
+            },
+            "note": {
+              "type": "string"
+            },
+            "other": {}
+          }
+        },
+        "annotations": {
+          "readOnlyHint": true
+        }
+      },
+      {
+        "name": "create_user",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "name": {
+              "type": "string"
+            },
+            "email": {
+              "type": "string"
+            }
+          },
+          "required": "name"
+        },
+        "outputSchema": {
+          "type": "string"
+        },
+        "annotations": {
+          "destructiveHint": true
+        }
+      },
+      {
+        "name": "ping",
+        "inputSchema": {
+          "type": "object",
+          "properties": {}
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "noschema",
+        "inputSchema": {},
+        "outputSchema": {
+          "type": "array",
+          "items": {
+            "type": "number"
+          }
+        }
+      }
+    ],
+    "editMode": true,
+    "inlineMode": true,
+    "examples": [
+      "root = Page([])"
+    ],
+    "toolExamples": [
+      "data = Query(\"search\", {}, {rows: []})"
+    ],
+    "additionalRules": [
+      "Be brief."
+    ],
+    "preamble": "Acme."
+  }
+}

@@ -129,3 +129,36 @@ fn bench_prints_one_timing_line_per_program() {
         line[3].parse::<f64>().unwrap();
     }
 }
+
+#[test]
+fn prompt_prints_the_reference_system_prompt() {
+    let dir = conformance();
+    let out = Command::new(env!("CARGO_BIN_EXE_openui-lang"))
+        .arg("prompt")
+        .arg(dir.join("prompts/library-tools-strings.json"))
+        .output()
+        .unwrap();
+    assert!(out.status.success());
+    let golden: serde_json::Value = serde_json::from_str(
+        &std::fs::read_to_string(dir.join("golden/prompts/library-tools-strings.json")).unwrap(),
+    )
+    .unwrap();
+    let expected = format!("{}\n", golden["prompt"].as_str().unwrap());
+    assert_eq!(String::from_utf8(out.stdout).unwrap(), expected);
+}
+
+#[test]
+fn prompt_reports_the_reference_error_and_fails() {
+    let dir = conformance();
+    let out = Command::new(env!("CARGO_BIN_EXE_openui-lang"))
+        .arg("prompt")
+        .arg(dir.join("prompts/cloud-options-without-library.json"))
+        .output()
+        .unwrap();
+    assert!(!out.status.success());
+    let stderr = String::from_utf8(out.stderr).unwrap();
+    assert!(
+        stderr.contains("promptOptions requires a library"),
+        "{stderr}"
+    );
+}

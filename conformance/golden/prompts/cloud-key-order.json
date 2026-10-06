@@ -1,0 +1,1 @@
+{"prompt":"]]>openui:config\n{\"chatLibrary\":{\"componentGroups\":[],\"schema\":{\"$defs\":{\"2\":{},\"10\":{\"properties\":{}},\"Zed\":{\"properties\":{\"n\":{\"type\":\"number\"}}}}},\"root\":\"Zed\",\"extra\":{\"1\":\"first\",\"b\":1,\"a\":[1.5,1e+21,0,true,null]}}}"}

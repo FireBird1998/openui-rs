@@ -1,0 +1,1 @@
+{"error":"[generateSystemPrompt] Invalid library: chatLibrary.schema must be an object with a $defs map of component schemas."}

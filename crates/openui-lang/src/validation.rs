@@ -5,8 +5,8 @@
 use serde_json::Value as Json;
 
 use crate::js::{
-    JsObject, OBJECT_PROTOTYPE_KEYS, json_entries, json_string, json_value_string,
-    number_to_string, write_json_number,
+    JsObject, OBJECT_PROTOTYPE_KEYS, js_string, json_entries, json_string, json_value_string,
+    write_json_number,
 };
 use crate::library::Param;
 use crate::materialize::Ctx;
@@ -355,7 +355,7 @@ fn validate_object(
     };
     let prop = |key: &str| props.iter().find(|(k, _)| k == key).map(|(_, v)| *v);
     let required: Vec<String> = match s.get("required") {
-        Some(Json::Array(items)) => items.iter().map(js_string_of).collect(),
+        Some(Json::Array(items)) => items.iter().map(js_string).collect(),
         _ => Vec::new(),
     };
     let is_required = |key: &str| matches!(s.get("required"), Some(Json::Array(items)) if items.iter().any(|r| r.as_str() == Some(key)));
@@ -423,28 +423,6 @@ fn validate_inherited_function(schema: &Json, component: &str, path: &str, ctx: 
     };
     ctx.push_issue(component, path, issue);
     true
-}
-
-/// A JSON value as a JavaScript property key (`String(value)`).
-fn js_string_of(value: &Json) -> String {
-    match value {
-        Json::String(s) => s.clone(),
-        Json::Number(n) => number_to_string(crate::js::json_number(n)),
-        Json::Bool(b) => b.to_string(),
-        Json::Null => "null".to_owned(),
-        Json::Array(items) => items
-            .iter()
-            .map(|v| {
-                if v.is_null() {
-                    String::new()
-                } else {
-                    js_string_of(v)
-                }
-            })
-            .collect::<Vec<_>>()
-            .join(","),
-        Json::Object(_) => "[object Object]".to_owned(),
-    }
 }
 
 /// An array slot: invalid items are pruned (after validating all of them, so

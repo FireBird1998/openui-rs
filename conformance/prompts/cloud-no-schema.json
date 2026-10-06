@@ -1,0 +1,7 @@
+{
+  "cloud": true,
+  "library": {
+    "root": "Card",
+    "components": {}
+  }
+}

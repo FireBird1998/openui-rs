@@ -1,0 +1,1 @@
+{"error":"[generateSystemPrompt] Invalid library: Root component \"Missing\" was not found in schema.$defs. Available components: Card. $defs/Card lists required property \"ghost\" that is not in properties. Unresolvable $ref \"#/$defs/Nope\" at $defs/Card/properties/body — refs must be \"#/$defs/<name>\" pointing at a component in $defs."}

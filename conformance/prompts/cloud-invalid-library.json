@@ -1,0 +1,21 @@
+{
+  "cloud": true,
+  "library": {
+    "root": "Missing",
+    "components": {},
+    "schema": {
+      "$defs": {
+        "Card": {
+          "properties": {
+            "body": {
+              "$ref": "#/$defs/Nope"
+            }
+          },
+          "required": [
+            "ghost"
+          ]
+        }
+      }
+    }
+  }
+}

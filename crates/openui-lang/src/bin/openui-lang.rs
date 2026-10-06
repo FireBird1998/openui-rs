@@ -5,6 +5,9 @@
 //!                                                   streaming parse in chunks of `chunk` chars
 //!                                                   (default 4), one result JSON per line
 //!   openui-lang tokens <program|->                  prints the tokens as JSON
+//!   openui-lang prompt <spec.json|->                 prints the system prompt for a prompt
+//!                                                   spec ({library, promptOptions}, a prompt
+//!                                                   spec, or {cloud: true, ...})
 //!   openui-lang bench <schema.json> <program>...     streaming timing: chunks of 4 code
 //!                                                   points, 5 warm-ups, mean of BENCH_RUNS
 //!                                                   (default 20) runs; same workload as
@@ -15,11 +18,12 @@ use std::process::ExitCode;
 use std::sync::Arc;
 use std::time::Instant;
 
-use openui_lang::{Library, StreamParser, parse, tokenize, tokens_to_json};
+use openui_lang::{Library, StreamParser, generate_system_prompt, parse, tokenize, tokens_to_json};
 
 const USAGE: &str = "usage: openui-lang parse <schema.json> <program|->
        openui-lang stream <schema.json> <program|-> [chunk]
        openui-lang tokens <program|->
+       openui-lang prompt <spec.json|->
        openui-lang bench <schema.json> <program>...";
 
 /// `text` cut into pieces of `size` code points.
@@ -112,6 +116,13 @@ fn run(args: &[String]) -> Result<(), String> {
         }
         [command, program] if command == "tokens" => {
             println!("{}", tokens_to_json(&tokenize(&read_input(program)?)));
+            Ok(())
+        }
+        [command, spec] if command == "prompt" => {
+            let spec: serde_json::Value =
+                serde_json::from_str(&read_input(spec)?).map_err(|e| format!("{spec}: {e}"))?;
+            let prompt = generate_system_prompt(&spec).map_err(|e| e.to_string())?;
+            println!("{prompt}");
             Ok(())
         }
         _ => Err(USAGE.to_owned()),
