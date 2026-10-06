@@ -2,23 +2,31 @@
 
 Behaviour of the reference parser that looks wrong but that the core reproduces anyway, because the contract is to match the reference byte for byte. Fixing a quirk happens upstream first; the core follows when the pinned commit moves.
 
-Each entry has a minimal program, what the reference does, the corpus case that pins it, and a draft upstream report. Nothing here has been filed yet.
+Each entry has a minimal program, what the reference does, the corpus cases that pin it, and a draft upstream report. Nothing here has been filed yet.
 
-## 1. An apostrophe in leading prose stops comments from being stripped
+## 1. An apostrophe in unfenced prose swallows the program
 
-- **Found:** 2026-10-06, while porting `stripComments` (ticket 05). Reference commit `bba1d251`.
-- **Pinned by:** `hand/78-apostrophe-hides-comment`, and `hand/73-prose-with-apostrophes` for the prose part.
+- **Found:** 2026-10-06, while porting the preprocessing (ticket 05). Reference commit `bba1d251`.
+- **Pinned by:** `hand/78-apostrophe-in-leading-prose`, `hand/79-apostrophe-in-trailing-prose`, and `hand/73-prose-with-apostrophes` (an odd count that happens to survive).
 
 ```
 Here's the UI:
-root = Root([a]) // main layout
+root = Root([a])
 a = Text("x")
 ```
 
-**Reference behaviour:** `root` is `null`, and the UI renders nothing. With "Here is the UI:" instead, `root` is the `Root` element as expected.
+**Reference behaviour:** `root` is `null`, `statementCount` is 0, and `incomplete` is `true`, so the UI renders nothing. Measured variants:
 
-**Why:** `stripComments` treats `'` as a string delimiter and carries its in-string state from one line to the next. The apostrophe in "Here's" opens a string that never closes, so every later `//` or `#` comment is kept. `// main layout` then tokenizes as `/ / main`, and `root`'s expression becomes `BinOp(Root(...), "/", null)`, which isn't an element.
+| Model output | Result |
+|---|---|
+| `Here is the UI:` then the program | renders |
+| `Here's the UI:` then the program (with or without `//` comments) | **nothing**: 0 statements |
+| `Here's what I've got:` then the program (two apostrophes) | renders: the two quotes pair up |
+| `Here's the UI:` then the program inside a ```` ``` ```` fence | renders: the fence is extracted first |
+| the program, then `Here's the UI.` | renders, but `incomplete` stays `true`, so every element is `partial` even after the stream ends |
+
+**Why:** `'` is a string delimiter everywhere: in `autoClose`, in the lexer, and in `stripComments`. Prose isn't removed from unfenced output, so the apostrophe in "Here's" opens a single-quoted string that runs to the end of the text. `autoClose` closes it (so the result is marked incomplete), and the lexer reads the whole program as that one string, leaving no statements. Trailing prose opens the string after the program, which only trips `incomplete`.
 
 **Draft upstream report:**
 
-> **Leading prose with an apostrophe disables comment stripping, so the whole UI can disappear.** When a model response starts with prose containing an apostrophe (such as "Here's the UI:") and any later statement has a trailing `//` or `#` comment, `parse()` returns `root: null`. `stripComments` in `packages/lang-core/src/parser/parser.ts` treats `'` as a string delimiter and carries that state across lines, so the apostrophe opens a string that hides every later comment. `stripFences` was already made apostrophe-safe (see the "does not treat apostrophes as string delimiters when stripping fences" test); `stripComments` needs the same treatment, or at least to reset single-quote state at each newline. Repro: `parse("Here's the UI:\nroot = Root([a]) // main layout\na = Text(\"x\")", lib)`.
+> **Unfenced model output that starts with an apostrophe ("Here's the UI:") renders nothing.** When a response isn't wrapped in a code fence and the prose before the program has an odd number of apostrophes, `parse()` returns `root: null` with `statementCount: 0`. `autoClose` and the lexer both treat `'` as a string delimiter, so "Here's" opens a single-quoted string that swallows the rest of the program. Prose *after* the program has a milder effect: everything renders but `meta.incomplete` stays `true`, so elements stay `partial` after the stream ends. `stripFences` already ignores apostrophes (see its "does not treat apostrophes as string delimiters" test), but unfenced prose reaches the statement stages untouched. Possible fixes: drop lines that can't start a statement before lexing, or only treat `'` as opening a string where an expression can start. Repro: `parse("Here's the UI:\nroot = Root([a])\na = Text(\"x\")", lib)` → `root: null`.

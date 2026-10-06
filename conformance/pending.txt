@@ -182,6 +182,7 @@ hand/74-comment-like-text-in-strings
 hand/75-trailing-prose
 hand/76-backticks-inside-strings
 hand/77-crlf-and-tabs
+hand/79-apostrophe-in-trailing-prose
 test/materialize-validation-01
 test/materialize-validation-02
 test/materialize-validation-03

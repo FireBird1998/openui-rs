@@ -483,9 +483,15 @@
    "source": "hand-written"
   },
   {
-   "name": "hand/78-apostrophe-hides-comment",
+   "name": "hand/78-apostrophe-in-leading-prose",
    "schema": "hand",
-   "file": "cases/hand/78-apostrophe-hides-comment.oui",
+   "file": "cases/hand/78-apostrophe-in-leading-prose.oui",
+   "source": "hand-written"
+  },
+  {
+   "name": "hand/79-apostrophe-in-trailing-prose",
+   "schema": "hand",
+   "file": "cases/hand/79-apostrophe-in-trailing-prose.oui",
    "source": "hand-written"
   }
  ]
