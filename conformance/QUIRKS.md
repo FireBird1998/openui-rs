@@ -34,13 +34,15 @@ a = Text("x")
 ## 2. Builtins named after `Object.prototype` members count as Query/Mutation calls
 
 - **Found:** 2026-10-06, while porting materialize (ticket 06). Reference commit `bba1d251`.
-- **Pinned by:** `hand/47-prototype-named-builtins`.
+- **Pinned by:** `hand/47-prototype-named-builtins`, `fuzz/3cdbf706`.
 
 ```
 root = Root([@toString(1), @constructor(), Text(@valueOf)])
 ```
 
 **Reference behaviour:** two `inline-reserved` errors, *"toString() must be declared as a top-level statement, not used inline as a value"* (and the same for `constructor`), and both calls are dropped. Declared as a statement, it's worse: after `a = @toString(1)`, every reference to `a` becomes `{"k":"RuntimeRef","n":"a","refType":"query"}`, but `queryStatements` is empty, so the runtime is asked to run a query that was never declared.
+
+It's inconsistent, too: choosing the entry statement compares against `"Query"` and `"Mutation"` by name, so `r = @toString(` is still picked as the root statement, and then fails as an inline reserved call (fuzz case `fuzz/3cdbf706`, found in ticket 08).
 
 **Why:** `isReservedCall(name)` is `name in RESERVED_CALLS`, and `in` also sees what every object inherits: `toString`, `constructor`, `valueOf`, `hasOwnProperty`, `__proto__` and seven more.
 

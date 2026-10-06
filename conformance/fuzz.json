@@ -1,0 +1,12 @@
+{
+  "schemas": {},
+  "cases": [
+    {
+      "name": "fuzz/3cdbf706",
+      "schema": "hand",
+      "file": "cases/fuzz/3cdbf706.oui",
+      "source": "fuzz",
+      "origin": "seed 1, program 5982"
+    }
+  ]
+}

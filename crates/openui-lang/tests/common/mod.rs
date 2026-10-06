@@ -53,10 +53,10 @@ pub struct Corpus {
     pub cases: Vec<Case>,
 }
 
-/// The hand-written manifest plus the imported one.
+/// The hand-written manifest, plus the imported and fuzz-found cases.
 pub fn load_corpus() -> Corpus {
     let conformance = conformance_dir();
-    let manifests: Vec<Value> = ["manifest.json", "imported.json"]
+    let manifests: Vec<Value> = ["manifest.json", "imported.json", "fuzz.json"]
         .iter()
         .map(|f| conformance.join(f))
         .filter(|p| p.exists())

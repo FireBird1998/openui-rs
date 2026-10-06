@@ -6,8 +6,9 @@
 //   bun reference/run.ts show-statements <case> <length> print the statement stages of the first <length> chars
 //   bun reference/run.ts show-preprocess <case> <length> print stripFences and preprocess of the first <length> chars
 //
-// The corpus is conformance/manifest.json (hand-written) plus
-// conformance/imported.json (from scripts/import-corpus.sh). A chunking is
+// The corpus is conformance/manifest.json (hand-written), plus
+// conformance/imported.json (from scripts/import-corpus.sh) and
+// conformance/fuzz.json (shrunk mismatches from the fuzzer). A chunking is
 // "oneshot", a chunk size in code points, "random-<k>" (push sizes 1–16 drawn
 // from a generator seeded with the case name and k), or "resync-<k>": set()
 // calls with the text so far that mostly grow, sometimes rewind (reset), and
@@ -52,9 +53,10 @@ function readManifest(file: string): Manifest {
 }
 const hand = readManifest("manifest.json");
 const imported = readManifest("imported.json");
+const fuzz = readManifest("fuzz.json");
 const chunkings = hand.chunkings ?? [];
-const schemaFiles = { ...hand.schemas, ...imported.schemas };
-const cases = [...hand.cases, ...imported.cases];
+const schemaFiles = { ...hand.schemas, ...imported.schemas, ...fuzz.schemas };
+const cases = [...hand.cases, ...imported.cases, ...fuzz.cases];
 
 const libraries = new Map<string, unknown>();
 function library(name: string) {

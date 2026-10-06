@@ -6,7 +6,7 @@ use std::collections::HashSet;
 use indexmap::{IndexMap, IndexSet};
 
 use crate::ast::Ast;
-use crate::builtins::{is_builtin, is_reserved_call};
+use crate::builtins::is_builtin;
 use crate::expr::parse_expression;
 use crate::js::JsObject;
 use crate::lexer::tokenize;
@@ -126,11 +126,14 @@ pub fn parse(input: &str, library: &Library, root_name: Option<&str>) -> ParseRe
     )
 }
 
+/// A value statement that calls a component. The reference compares against
+/// `Query` and `Mutation` by name here, not with `isReservedCall`, so
+/// `r = @toString()` does count.
 fn is_component_statement(stmt: &Statement) -> Option<&str> {
     match stmt {
         Statement::Value {
             expr: Ast::Comp { name, .. },
-        } if !is_builtin(name) && !is_reserved_call(name) => Some(name),
+        } if !is_builtin(name) && name != "Query" && name != "Mutation" => Some(name),
         _ => None,
     }
 }

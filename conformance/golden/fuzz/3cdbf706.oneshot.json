@@ -1,0 +1,1 @@
+{"root":null,"meta":{"incomplete":true,"unresolved":[],"orphaned":["s"],"statementCount":2,"errors":[{"code":"inline-reserved","component":"toString","path":"","message":"toString() must be declared as a top-level statement, not used inline as a value","statementId":"r"}]},"stateDeclarations":{},"queryStatements":[],"mutationStatements":[]}
