@@ -103,3 +103,29 @@ fn unknown_command_prints_usage_and_fails() {
     assert!(!out.status.success());
     assert!(String::from_utf8_lossy(&out.stderr).contains("usage: openui-lang parse"));
 }
+
+#[test]
+fn bench_prints_one_timing_line_per_program() {
+    let dir = conformance();
+    let out = Command::new(env!("CARGO_BIN_EXE_openui-lang"))
+        .env("BENCH_RUNS", "1")
+        .arg("bench")
+        .arg(dir.join("imported/schemas/bench.json"))
+        .arg(dir.join("imported/cases/bench/simple-table.oui"))
+        .arg(dir.join("imported/cases/bench/contact-form.oui"))
+        .output()
+        .unwrap();
+    assert!(out.status.success());
+    let stdout = String::from_utf8(out.stdout).unwrap();
+    let lines: Vec<Vec<&str>> = stdout.lines().map(|l| l.split('\t').collect()).collect();
+    assert_eq!(lines.len(), 2);
+    assert_eq!(lines[0][0], "simple-table.oui");
+    assert_eq!(lines[1][0], "contact-form.oui");
+    for line in &lines {
+        assert_eq!(line.len(), 4, "name, code points, pushes, ms: {line:?}");
+        let code_points: usize = line[1].parse().unwrap();
+        let pushes: usize = line[2].parse().unwrap();
+        assert_eq!(pushes, code_points.div_ceil(4));
+        line[3].parse::<f64>().unwrap();
+    }
+}

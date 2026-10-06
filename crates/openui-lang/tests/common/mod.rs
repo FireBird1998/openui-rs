@@ -46,6 +46,10 @@ pub struct Case {
     pub library: Arc<Library>,
     pub input: String,
     pub root: Option<String>,
+    /// Whether the case has per-prefix stage goldens (large ones skip them).
+    pub stages: bool,
+    /// The chunkings the case runs under, when not all of the manifest's.
+    pub chunkings: Option<Vec<String>>,
 }
 
 pub struct Corpus {
@@ -53,15 +57,20 @@ pub struct Corpus {
     pub cases: Vec<Case>,
 }
 
-/// The hand-written manifest, plus the imported and fuzz-found cases.
+/// The hand-written manifest, plus the imported, fuzz-found and synthetic cases.
 pub fn load_corpus() -> Corpus {
     let conformance = conformance_dir();
-    let manifests: Vec<Value> = ["manifest.json", "imported.json", "fuzz.json"]
-        .iter()
-        .map(|f| conformance.join(f))
-        .filter(|p| p.exists())
-        .map(|p| serde_json::from_str(&read(&p)).unwrap())
-        .collect();
+    let manifests: Vec<Value> = [
+        "manifest.json",
+        "imported.json",
+        "fuzz.json",
+        "synthetic.json",
+    ]
+    .iter()
+    .map(|f| conformance.join(f))
+    .filter(|p| p.exists())
+    .map(|p| serde_json::from_str(&read(&p)).unwrap())
+    .collect();
     let mut libraries: HashMap<String, Arc<Library>> = HashMap::new();
     for manifest in &manifests {
         for (name, file) in manifest["schemas"].as_object().unwrap() {
@@ -84,6 +93,11 @@ pub fn load_corpus() -> Corpus {
             library: libraries[c["schema"].as_str().unwrap()].clone(),
             input: read(&conformance.join(c["file"].as_str().unwrap())),
             root: c.get("root").and_then(Value::as_str).map(str::to_owned),
+            stages: c.get("stages").and_then(Value::as_bool).unwrap_or(true),
+            chunkings: c
+                .get("chunkings")
+                .and_then(Value::as_array)
+                .map(|a| a.iter().map(|v| v.as_str().unwrap().to_owned()).collect()),
         })
         .collect();
     Corpus { chunkings, cases }

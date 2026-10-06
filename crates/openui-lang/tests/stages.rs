@@ -21,7 +21,7 @@ fn check_every_prefix(golden_suffix: &str, show: &str, stage: impl Fn(&str) -> S
     let mut checked = 0;
     let mut failed = 0;
     let mut report = String::new();
-    for case in &corpus.cases {
+    for case in corpus.cases.iter().filter(|c| c.stages) {
         let golden = golden_json(&case.name, golden_suffix);
         let expected: Vec<&str> = golden
             .as_array()

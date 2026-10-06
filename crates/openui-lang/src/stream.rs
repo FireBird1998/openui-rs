@@ -5,21 +5,21 @@
 //! re-parsed on every push and laid over a copy of the cache.
 //!
 //! The reference re-derives the cleaned text from the whole buffer on every
-//! push; here a [`Preprocessor`] extends it chunk by chunk, with the same
-//! result.
+//! push and rebuilds the whole tree; here a [`Preprocessor`] extends the
+//! cleaned text chunk by chunk, and a [`Cache`] keeps the materialized
+//! statements that nothing changed under, with the same result.
 
 use std::sync::Arc;
-
-use indexmap::IndexMap;
 
 use crate::expr::parse_expression_with_limit;
 use crate::js;
 use crate::lexer::tokenize;
 use crate::library::Library;
-use crate::parser::{Statement, build_result, classify};
+use crate::parser::{build_result, classify};
 use crate::preprocess::Preprocessor;
 use crate::result::ParseResult;
 use crate::statements::{auto_close, split};
+use crate::table::{Cache, Table};
 
 /// Parses a program chunk by chunk as it streams in.
 pub struct StreamParser {
@@ -37,7 +37,8 @@ pub struct StreamParser {
 struct Completed {
     /// How far into the cleaned text they reach.
     end: usize,
-    statements: IndexMap<String, Statement>,
+    table: Table,
+    cache: Cache,
     /// Statements parsed, counting re-definitions.
     count: usize,
     /// Some statement nested past `MAX_DEPTH`.
@@ -61,7 +62,8 @@ impl Completed {
             if self.first_id.is_empty() {
                 self.first_id = raw.id.clone();
             }
-            self.statements.insert(raw.id.clone(), classify(&raw, expr));
+            let undo = self.table.define(&raw.id, classify(&raw, expr));
+            self.cache.invalidate(undo.slot, &self.table);
             self.count += 1;
         }
     }
@@ -185,23 +187,14 @@ impl StreamParser {
     fn build_current(&mut self) -> (ParseResult, bool) {
         let pending_start = self.scan_new_completed();
         let pending = js::trim(&self.pre.cleaned()[pending_start..]);
-        let completed = &self.completed;
-        let library = &self.library;
-        let root_name = self.root_name.as_deref();
+        let completed = &mut self.completed;
 
         if pending.is_empty() {
             if completed.count == 0 {
                 return (ParseResult::empty(true), false);
             }
-            let result = build_result(
-                &completed.statements,
-                &completed.first_id,
-                false,
-                completed.count,
-                library,
-                root_name,
-            );
-            return (result, false);
+            let count = completed.count;
+            return (self.build_from_table(None, false, count), false);
         }
 
         let (closed, was_incomplete) = auto_close(pending);
@@ -210,42 +203,58 @@ impl StreamParser {
             if completed.count == 0 {
                 return (ParseResult::empty(was_incomplete), false);
             }
-            let result = build_result(
-                &completed.statements,
-                &completed.first_id,
-                was_incomplete,
-                completed.count,
-                library,
-                root_name,
-            );
-            return (result, false);
+            let count = completed.count;
+            return (self.build_from_table(None, was_incomplete, count), false);
         }
 
         // A new id renders as it arrives; a re-defined one replaces the cached
-        // statement only once it no longer needs closing.
-        let mut all = completed.statements.clone();
+        // statement only once it no longer needs closing. The pending
+        // statements are laid over the table for this result only, so which
+        // ids are completed is decided before any of them goes on.
+        let keep: Vec<bool> = pending_statements
+            .iter()
+            .map(|raw| !(was_incomplete && completed.table.by_name(&raw.id).is_some()))
+            .collect();
         let mut pending_limited = false;
-        for raw in &pending_statements {
-            if was_incomplete && completed.statements.contains_key(&raw.id) {
+        let mut undos = Vec::new();
+        for (raw, &keep) in pending_statements.iter().zip(&keep) {
+            if !keep {
                 continue;
             }
             let (expr, limited) = parse_expression_with_limit(&raw.tokens);
             pending_limited |= limited;
-            all.insert(raw.id.clone(), classify(raw, expr));
+            let undo = completed.table.define(&raw.id, classify(raw, expr));
+            completed.cache.invalidate(undo.slot, &completed.table);
+            undos.push(undo);
         }
-        let first_id = if completed.first_id.is_empty() {
-            &pending_statements[0].id
-        } else {
-            &completed.first_id
-        };
-        let result = build_result(
-            &all,
-            first_id,
-            was_incomplete,
-            completed.count + pending_statements.len(),
-            library,
-            root_name,
-        );
+        let count = completed.count + pending_statements.len();
+        let first_id = (completed.first_id.is_empty()).then(|| pending_statements[0].id.as_str());
+        let result = self.build_from_table(first_id, was_incomplete, count);
+        for undo in undos.into_iter().rev() {
+            let slot = undo.slot;
+            self.completed.table.undo(undo);
+            self.completed.cache.invalidate(slot, &self.completed.table);
+        }
         (result, pending_limited)
+    }
+
+    /// Build the result from the table as it stands; `first_id` overrides the
+    /// completed statements' first id while there is none.
+    fn build_from_table(
+        &mut self,
+        first_id: Option<&str>,
+        was_incomplete: bool,
+        count: usize,
+    ) -> ParseResult {
+        let completed = &mut self.completed;
+        build_result(
+            &mut completed.table,
+            &mut completed.cache,
+            first_id.unwrap_or(&completed.first_id),
+            was_incomplete,
+            count,
+            &self.library,
+            self.root_name.as_deref(),
+        )
     }
 }

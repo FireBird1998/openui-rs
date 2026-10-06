@@ -102,6 +102,7 @@ Each module mirrors one stage of the reference pipeline, with Rust idioms inside
 ### Performance
 - **Phase 1:** port the reference algorithms faithfully, including the streaming parser's rescanning, until the core conforms.
 - **Phase 2:** make streaming incremental, so that total work grows linearly with program length and doubling a program costs no more than about 2.2× the streaming time. Output must stay byte-identical. Measured on the 7 benchmark samples plus synthetic large programs, against the reference parser on Bun.
+- **Done (2026-10-06), see `BENCHMARKS.md`:** a push costs the arriving statement plus the chain of statements above it, not the program. The cleaned text is extended chunk by chunk; materialized statements are cached and invalidated through the reverse reference graph; results share unchanged subtrees, so `Value::Element` holds an `Arc<Element>`. Doubling costs 2.15× on average from 3.7 KB to 30 KB (2.0–2.4 per step, higher where the tree gains a level). Cycles and depth-limited branches are never cached, so pathological programs cost what they cost in the reference.
 
 ### Depth limit (decided 2026-10-06)
 - Expressions and reference chains nest at most `MAX_DEPTH` = 256 levels. Deeper parts become null and `ParseResult::depth_limited` is set (not part of the JSON). The reference copes up to roughly 8,000 levels, then throws, so 257 to about 8,000 is a documented divergence that no real model output comes near.

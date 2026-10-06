@@ -44,7 +44,18 @@ const { parseExpression } = await import("./lang-core/src/parser/expressions");
 const CONFORMANCE = join(import.meta.dir, "..", "conformance");
 const GOLDEN = join(CONFORMANCE, "golden");
 
-type Case = { name: string; schema: string; file: string; source: string; root?: string };
+// Large programs cost the square of their length to golden at every prefix
+// and every step: `stages: false` skips the per-prefix stage goldens, and
+// `chunkings` limits a case to some of the manifest's chunkings.
+type Case = {
+  name: string;
+  schema: string;
+  file: string;
+  source: string;
+  root?: string;
+  stages?: boolean;
+  chunkings?: string[];
+};
 type Manifest = { chunkings?: string[]; schemas: Record<string, string>; cases: Case[] };
 
 function readManifest(file: string): Manifest {
@@ -54,9 +65,10 @@ function readManifest(file: string): Manifest {
 const hand = readManifest("manifest.json");
 const imported = readManifest("imported.json");
 const fuzz = readManifest("fuzz.json");
+const synthetic = readManifest("synthetic.json");
 const chunkings = hand.chunkings ?? [];
-const schemaFiles = { ...hand.schemas, ...imported.schemas, ...fuzz.schemas };
-const cases = [...hand.cases, ...imported.cases, ...fuzz.cases];
+const schemaFiles = { ...hand.schemas, ...imported.schemas, ...fuzz.schemas, ...synthetic.schemas };
+const cases = [...hand.cases, ...imported.cases, ...fuzz.cases, ...synthetic.cases];
 
 const libraries = new Map<string, unknown>();
 function library(name: string) {
@@ -199,11 +211,12 @@ if (command === "golden") {
   for (const c of cases) {
     writeGolden(`${c.name}.oneshot.json`, oneshot(c));
     const streams: Record<string, { sizes?: number[]; ops?: ResyncOp[]; steps: string[] }> = {};
-    for (const chunking of chunkings) {
+    for (const chunking of c.chunkings ?? chunkings) {
       const { steps, sizes, ops } = stream(c, chunking);
       streams[chunking] = { ...(sizes ? { sizes } : {}), ...(ops ? { ops } : {}), steps: steps.map(fingerprint) };
     }
     writeGolden(`${c.name}.steps.json`, JSON.stringify(streams) + "\n");
+    if (c.stages === false) continue;
     // Stage golden: tokens of every prefix (index k is the first k+1 code points).
     const cps = Array.from(input(c));
     const prefixes = cps.map((_, k) => fingerprint(JSON.stringify(tokenize(cps.slice(0, k + 1).join("")))));

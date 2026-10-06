@@ -7,6 +7,76 @@
       "file": "cases/fuzz/3cdbf706.oui",
       "source": "fuzz",
       "origin": "seed 1, program 5982"
+    },
+    {
+      "name": "fuzz/00951ad8",
+      "schema": "bench",
+      "file": "cases/fuzz/00951ad8.oui",
+      "source": "fuzz",
+      "origin": "seed 11, program 1414"
+    },
+    {
+      "name": "fuzz/fe87afd6",
+      "schema": "bench",
+      "file": "cases/fuzz/fe87afd6.oui",
+      "source": "fuzz",
+      "origin": "seed 11, program 2268"
+    },
+    {
+      "name": "fuzz/48fd23fc",
+      "schema": "bench",
+      "file": "cases/fuzz/48fd23fc.oui",
+      "source": "fuzz",
+      "origin": "seed 11, program 7482"
+    },
+    {
+      "name": "fuzz/f471fb40",
+      "schema": "bench",
+      "file": "cases/fuzz/f471fb40.oui",
+      "source": "fuzz",
+      "origin": "seed 12, program 1400"
+    },
+    {
+      "name": "fuzz/528e71d6",
+      "schema": "bench",
+      "file": "cases/fuzz/528e71d6.oui",
+      "source": "fuzz",
+      "origin": "seed 12, program 1431"
+    },
+    {
+      "name": "fuzz/df6ea61a",
+      "schema": "bench",
+      "file": "cases/fuzz/df6ea61a.oui",
+      "source": "fuzz",
+      "origin": "seed 12, program 3861"
+    },
+    {
+      "name": "fuzz/eba14dfa",
+      "schema": "bench",
+      "file": "cases/fuzz/eba14dfa.oui",
+      "source": "fuzz",
+      "origin": "seed 12, program 5174"
+    },
+    {
+      "name": "fuzz/92d4b66f",
+      "schema": "test-parser",
+      "file": "cases/fuzz/92d4b66f.oui",
+      "source": "fuzz",
+      "origin": "seed 12, program 5629"
+    },
+    {
+      "name": "fuzz/2085b744",
+      "schema": "bench",
+      "file": "cases/fuzz/2085b744.oui",
+      "source": "fuzz",
+      "origin": "seed 12, program 5677"
+    },
+    {
+      "name": "fuzz/fe686b0c",
+      "schema": "bench",
+      "file": "cases/fuzz/fe686b0c.oui",
+      "source": "fuzz",
+      "origin": "seed 12, program 7224"
     }
   ]
 }

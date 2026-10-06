@@ -213,7 +213,12 @@ fn every_case_matches_the_reference_parser() {
     for case in &corpus.cases {
         let explain = !pending.contains(&case.name) && !update_pending && explanations_left > 0;
         let outcome = catch_unwind(AssertUnwindSafe(|| {
-            check_case(case, &corpus.chunkings, &golden, explain)
+            check_case(
+                case,
+                case.chunkings.as_deref().unwrap_or(&corpus.chunkings),
+                &golden,
+                explain,
+            )
         }));
         let failures = match outcome {
             Ok(failures) => failures,
@@ -328,6 +333,12 @@ fn streaming_ends_where_parsing_ends() {
     let mut reference_divergent = Vec::new();
     let mut report = String::new();
     for case in &corpus.cases {
+        let golden = golden_json(&case.name, "steps.json");
+        // Needs the reference's result after the last single-character push;
+        // large cases skip that chunking.
+        let Some(reference_end) = golden["1"]["steps"].as_array().and_then(|s| s.last()) else {
+            continue;
+        };
         let root = case.root.as_deref();
         let oneshot = parse(&case.input, &case.library, root).to_json();
         let mut stream = StreamParser::new(case.library.clone(), root);
@@ -336,8 +347,6 @@ fn streaming_ends_where_parsing_ends() {
             end = Some(stream.push(&case.input[i..i + c.len_utf8()]).to_json());
         }
         let Some(end) = end else { continue };
-        let golden = golden_json(&case.name, "steps.json");
-        let reference_end = golden["1"]["steps"].as_array().unwrap().last().unwrap();
         let reference_oneshot = read(&golden_dir().join(format!("{}.oneshot.json", case.name)));
         let reference_diverges =
             reference_end.as_str() != Some(fingerprint(&reference_oneshot).as_str());

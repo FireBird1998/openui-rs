@@ -1,6 +1,8 @@
 //! The parse result and everything in it, written as the reference parser's
 //! `JSON.stringify` output: same keys, same order, same formatting.
 
+use std::sync::Arc;
+
 use serde_json::Value as Json;
 
 use crate::ast::{Ast, write_ast};
@@ -15,7 +17,9 @@ pub enum Value {
     Str(String),
     Arr(Vec<Value>),
     Obj(JsObject<Value>),
-    Element(Box<Element>),
+    /// Shared: a streaming parse keeps elements that haven't changed between
+    /// results, so an element may be part of several results at once.
+    Element(Arc<Element>),
     /// A builtin call or runtime expression, kept for evaluation.
     Ast(Box<Ast>),
 }

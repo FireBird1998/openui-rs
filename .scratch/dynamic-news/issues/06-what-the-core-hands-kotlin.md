@@ -11,3 +11,5 @@ During a streaming parse, does the Kotlin side get the whole parse result after 
 ## Comments
 
 **2026-10-06 (from openui-lang ticket 02):** upstream's blog post "Rewriting our Rust WASM Parser in TypeScript" measured the cost of crossing a language boundary with a whole parse result on every chunk. The boundary dominated, not the parsing: about 20–61 µs per call in the browser, and returning native objects (serde-wasm-bindgen) was slower than a JSON string. The same question applies to Kotlin over UniFFI/JNI. Measure the per-chunk crossing cost, not just parse speed.
+
+**Note from openui-lang ticket 10 (2026-10-06):** elements in a parse result are reference-counted (`Arc<Element>`) and shared between consecutive streaming results. Handing Kotlin the whole tree after every push would undo that: the binding should hand over only what changed, or an opaque handle plus a way to walk it. Decide here.

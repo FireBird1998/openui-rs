@@ -1,6 +1,8 @@
-// A large program built from a sample: `copies` renamed copies of it, stacked
-// under one root. Every statement id `x` of copy k becomes `x_k`, so the
-// program is `copies` times the size with the same shape per copy.
+// A large program built from a sample: `copies` renamed copies of it, nested
+// under one root in groups of four, so the tree gets deeper rather than the
+// root wider, as a real program would. Every statement id `x` of copy k
+// becomes `x_k`, so the program is `copies` times the size with the same
+// shape per copy.
 //
 //   bun reference/synth.ts <sample.oui> <copies> <out.oui>
 import { readFileSync, writeFileSync } from "fs";
@@ -29,4 +31,18 @@ for (let k = 1; k <= copies; k++) {
   roots.push(`root_${k}`);
   parts.push(copy);
 }
-writeFileSync(out, `root = Stack([${roots.join(", ")}], "column", "l")\n\n${parts.join("\n\n")}\n`);
+// Groups of four, top down: the root, then each level of groups.
+const groups: string[] = [];
+let level = roots;
+let next = 1;
+while (level.length > 4) {
+  const parents: string[] = [];
+  for (let i = 0; i < level.length; i += 4) {
+    const id = `group_${next++}`;
+    groups.push(`${id} = Stack([${level.slice(i, i + 4).join(", ")}], "column", "l")`);
+    parents.push(id);
+  }
+  level = parents;
+}
+groups.unshift(`root = Stack([${level.join(", ")}], "column", "l")`);
+writeFileSync(out, `${groups.join("\n")}\n\n${parts.join("\n\n")}\n`);

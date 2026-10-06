@@ -33,6 +33,7 @@ mod preprocess;
 mod result;
 mod statements;
 mod stream;
+mod table;
 mod validation;
 
 pub use ast::Ast;

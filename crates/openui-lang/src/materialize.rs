@@ -4,43 +4,61 @@
 //! `materializeExpr`.
 
 use std::collections::HashSet;
-
-use indexmap::{IndexMap, IndexSet};
+use std::sync::Arc;
 
 use crate::MAX_DEPTH;
 use crate::ast::{Ast, RefType};
 use crate::builtins::{is_builtin, is_lazy_builtin, is_reserved_call};
 use crate::js::JsObject;
 use crate::library::{Library, Param};
-use crate::parser::Statement;
 use crate::result::{Element, ValidationError, Value};
+use crate::table::{Cache, Entry, Output, Reach, Slot, Table};
 use crate::validation::{
     Issue, element_parts, is_ast_node, params_signature, resolve_invalid_value,
     validate_schema_value,
 };
 
 pub(crate) struct Ctx<'a> {
-    pub statements: &'a IndexMap<String, Statement>,
+    pub table: &'a Table,
+    pub cache: &'a mut Cache,
     pub library: &'a Library,
-    pub errors: Vec<ValidationError>,
-    pub unresolved: Vec<String>,
-    /// Statements being materialized right now, to break reference cycles.
-    pub visited: HashSet<String>,
     pub partial: bool,
+    /// Statements being materialized right now, to break reference cycles.
+    pub visited: Vec<Slot>,
     /// The statement errors are attributed to.
     pub current_statement_id: Option<String>,
-    /// Value statements not reached yet; what's left at the end is orphaned.
-    pub unreached: IndexSet<String>,
     /// Open materialize calls, across references too: a chain of references
     /// nests as deeply as one big expression.
     pub depth: usize,
+    /// What the materialization in progress has done on the side.
+    pub frame: Frame,
+}
+
+/// The side effects of materializing one statement (or the entry): errors
+/// and unresolved references in the order they were met, the statements
+/// reached, and how deep it went. A fresh frame is opened for each statement
+/// so its effects can be cached and replayed with it.
+#[derive(Default)]
+pub(crate) struct Frame {
+    pub errors: Vec<ValidationError>,
+    pub unresolved: Vec<String>,
+    /// Every defined statement looked up here, sorted and deduplicated when
+    /// the frame closes.
+    pub reached: Vec<Slot>,
+    /// The reached trees of the cached statements taken as they were, and of
+    /// the statements materialized afresh inside this one.
+    pub children: Vec<Arc<Reach>>,
+    /// The deepest `depth` a materialize call started at.
+    pub max_depth: usize,
+    /// A reference hit a statement already being materialized.
+    pub cycle: bool,
     /// Went past `MAX_DEPTH`; the deeper parts became null.
-    pub depth_limited: bool,
+    pub limited: bool,
 }
 
 impl Ctx<'_> {
     pub(crate) fn push_issue(&mut self, component: &str, path: &str, issue: Issue) {
-        self.errors.push(ValidationError {
+        self.frame.errors.push(ValidationError {
             code: issue.code(),
             component: component.to_owned(),
             path: path.to_owned(),
@@ -54,6 +72,17 @@ impl Ctx<'_> {
         let available = library.component_names().map(str::to_owned).collect();
         self.push_issue(name, "", Issue::UnknownComponent { available });
     }
+
+    /// Note a materialize call starting at the current depth; `None` past the limit.
+    fn enter(&mut self) -> Option<()> {
+        self.frame.max_depth = self.frame.max_depth.max(self.depth);
+        if self.depth >= MAX_DEPTH {
+            self.frame.limited = true;
+            return None;
+        }
+        self.depth += 1;
+        Some(())
+    }
 }
 
 /// Iterator variables in scope inside `@Each` templates.
@@ -63,11 +92,9 @@ type Scope = HashSet<String>;
 /// for builtins and runtime expressions; `Null` for placeholders and for
 /// components that had to be dropped. Past `MAX_DEPTH`, `Null`.
 pub(crate) fn materialize_value(node: &Ast, ctx: &mut Ctx) -> Value {
-    if ctx.depth >= MAX_DEPTH {
-        ctx.depth_limited = true;
+    if ctx.enter().is_none() {
         return Value::Null;
     }
-    ctx.depth += 1;
     let value = materialize_value_at_depth(node, ctx);
     ctx.depth -= 1;
     value
@@ -137,19 +164,31 @@ enum Resolved {
 
 /// Inline the referenced statement. Unknown or cyclic refs are recorded as
 /// unresolved; refs to Query/Mutation statements become `RuntimeRef`s.
+///
+/// A statement materialized before is taken from the cache when it's still
+/// there (a change to anything it references drops it) and it fits under the
+/// depth limit from here. A cached statement can't reach a statement being
+/// materialized right now: that would be a cycle, and a materialization that
+/// met a cycle is never cached.
 fn resolve_ref(name: &str, ctx: &mut Ctx, mode: Mode) -> Resolved {
-    let statements = ctx.statements;
-    let target = match statements.get(name) {
-        Some(stmt) if !ctx.visited.contains(name) => stmt.expr(),
-        _ => {
-            ctx.unresolved.push(name.to_owned());
-            return match mode {
-                Mode::Expr => Resolved::Ast(Ast::Ph(name.to_owned())),
-                Mode::Value => Resolved::Value(Value::Null),
-            };
+    let placeholder = |mode: Mode| match mode {
+        Mode::Expr => Resolved::Ast(Ast::Ph(name.to_owned())),
+        Mode::Value => Resolved::Value(Value::Null),
+    };
+    let table = ctx.table;
+    let Some(slot) = table.slot(name) else {
+        ctx.frame.unresolved.push(name.to_owned());
+        return placeholder(mode);
+    };
+    let target = match table.get(slot) {
+        Some(stmt) if !ctx.visited.contains(&slot) => stmt.expr(),
+        found => {
+            ctx.frame.cycle |= found.is_some();
+            ctx.frame.unresolved.push(name.to_owned());
+            return placeholder(mode);
         }
     };
-    ctx.unreached.shift_remove(name);
+    ctx.frame.reached.push(slot);
     if let Ast::Comp { name: callee, .. } = target
         && is_reserved_call(callee)
     {
@@ -167,19 +206,87 @@ fn resolve_ref(name: &str, ctx: &mut Ctx, mode: Mode) -> Resolved {
             Mode::Value => Resolved::Value(Value::Ast(Box::new(node))),
         };
     }
-    ctx.visited.insert(name.to_owned());
+
+    let expr = matches!(mode, Mode::Expr);
+    if let Some(entry) = ctx.cache.get(slot, ctx.partial, expr)
+        && ctx.depth + entry.r_max < MAX_DEPTH
+    {
+        replay(entry, &mut ctx.frame, ctx.depth);
+        return match &entry.output {
+            Output::Value(v) => Resolved::Value(v.clone()),
+            Output::Ast(a) => Resolved::Ast(a.clone()),
+        };
+    }
+
+    ctx.visited.push(slot);
     let previous = ctx.current_statement_id.replace(name.to_owned());
-    let result = match mode {
+    let outer = std::mem::take(&mut ctx.frame);
+    let start_depth = ctx.depth;
+    let output = match mode {
         Mode::Value => {
             let mut value = materialize_value(target, ctx);
             tag_statement(&mut value, name);
-            Resolved::Value(value)
+            Output::Value(value)
         }
-        Mode::Expr => Resolved::Ast(materialize_expr(target, ctx, &Scope::new())),
+        Mode::Expr => Output::Ast(materialize_expr(target, ctx, &Scope::new())),
     };
+    let frame = std::mem::replace(&mut ctx.frame, outer);
     ctx.current_statement_id = previous;
-    ctx.visited.remove(name);
-    result
+    ctx.visited.pop();
+    let resolved = match &output {
+        Output::Value(v) => Resolved::Value(v.clone()),
+        Output::Ast(a) => Resolved::Ast(a.clone()),
+    };
+    finish(frame, output, slot, expr, start_depth, ctx);
+    resolved
+}
+
+/// Account for a cached statement as if it had been materialized here.
+#[inline(never)]
+fn replay(entry: &Entry, frame: &mut Frame, depth: usize) {
+    frame.errors.extend(entry.errors.iter().cloned());
+    frame.unresolved.extend(entry.unresolved.iter().cloned());
+    frame.children.push(entry.reach.clone());
+    frame.max_depth = frame.max_depth.max(depth + entry.r_max);
+}
+
+/// Fold a finished statement's frame into the outer one, and cache it unless
+/// it met a cycle or the depth limit (then it depends on where it was reached from).
+#[inline(never)]
+fn finish(frame: Frame, output: Output, slot: Slot, expr: bool, start_depth: usize, ctx: &mut Ctx) {
+    let Frame {
+        errors,
+        unresolved,
+        mut reached,
+        children,
+        max_depth,
+        cycle,
+        limited,
+    } = frame;
+    reached.sort_unstable();
+    reached.dedup();
+    let reach = Arc::new(Reach {
+        direct: reached,
+        children,
+    });
+    let reach = ctx.cache.share_reach(slot, reach);
+    ctx.frame.errors.extend(errors.iter().cloned());
+    ctx.frame.unresolved.extend(unresolved.iter().cloned());
+    ctx.frame.children.push(reach.clone());
+    ctx.frame.max_depth = ctx.frame.max_depth.max(max_depth);
+    ctx.frame.cycle |= cycle;
+    ctx.frame.limited |= limited;
+    if cycle || limited {
+        return;
+    }
+    let entry = Entry {
+        output,
+        reach,
+        unresolved,
+        errors,
+        r_max: max_depth.saturating_sub(start_depth),
+    };
+    ctx.cache.put(slot, ctx.partial, expr, entry);
 }
 
 /// `result.statementId = name` on an element (or anything shaped like one).
@@ -188,7 +295,7 @@ pub(crate) fn tag_statement(value: &mut Value, name: &str) {
         return;
     }
     match value {
-        Value::Element(e) => e.statement_id = Some(name.to_owned()),
+        Value::Element(e) => Arc::make_mut(e).statement_id = Some(name.to_owned()),
         Value::Obj(o) => o.set("statementId", Value::Str(name.to_owned())),
         _ => {}
     }
@@ -316,7 +423,7 @@ fn finish_component(
     }
 
     let has_dynamic_props = props.values().any(contains_dynamic_value);
-    Value::Element(Box::new(Element {
+    Value::Element(Arc::new(Element {
         type_name: name.to_owned(),
         props,
         partial: ctx.partial,
@@ -370,11 +477,9 @@ fn materialize_lazy_builtin(
 /// components' args to `mapped_props`. The structure stays AST. Past
 /// `MAX_DEPTH`, `Null`.
 pub(crate) fn materialize_expr(node: &Ast, ctx: &mut Ctx, scope: &Scope) -> Ast {
-    if ctx.depth >= MAX_DEPTH {
-        ctx.depth_limited = true;
+    if ctx.enter().is_none() {
         return Ast::Null;
     }
-    ctx.depth += 1;
     let ast = materialize_expr_at_depth(node, ctx, scope);
     ctx.depth -= 1;
     ast
@@ -509,12 +614,18 @@ fn library_comp(
 }
 
 /// Whether a prop value holds anything that needs runtime evaluation.
+///
+/// An element answers from its own flag: it was set from this same check over
+/// its props when the element was made, and nothing changes those props
+/// afterwards. That keeps a parent from walking the whole tree below it, which
+/// the streaming parser shares between results.
 fn contains_dynamic_value(value: &Value) -> bool {
     if is_ast_node(value) {
         return true;
     }
     match value {
         Value::Arr(items) => items.iter().any(contains_dynamic_value),
+        Value::Element(e) => e.has_dynamic_props,
         _ => match element_parts(value) {
             Some((_, props)) => props.is_some_and(|p| p.values().any(contains_dynamic_value)),
             None => match value {

@@ -1,0 +1,39 @@
+{
+  "schemas": {},
+  "cases": [
+    {
+      "name": "synthetic/dashboard-x2",
+      "schema": "bench",
+      "file": "cases/synthetic/dashboard-x2.oui",
+      "source": "synthetic",
+      "origin": "reference/synth.ts: 2 renamed copies of bench/dashboard under one root"
+    },
+    {
+      "name": "synthetic/dashboard-x4",
+      "schema": "bench",
+      "file": "cases/synthetic/dashboard-x4.oui",
+      "source": "synthetic",
+      "origin": "reference/synth.ts: 4 renamed copies of bench/dashboard under one root",
+      "stages": false,
+      "chunkings": [
+        "4",
+        "16",
+        "random-2",
+        "resync-2"
+      ]
+    },
+    {
+      "name": "synthetic/dashboard-x8",
+      "schema": "bench",
+      "file": "cases/synthetic/dashboard-x8.oui",
+      "source": "synthetic",
+      "origin": "reference/synth.ts: 8 renamed copies of bench/dashboard in groups of four",
+      "stages": false,
+      "chunkings": [
+        "16",
+        "random-1",
+        "resync-1"
+      ]
+    }
+  ]
+}
