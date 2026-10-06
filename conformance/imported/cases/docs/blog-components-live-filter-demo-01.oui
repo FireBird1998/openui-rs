@@ -1,0 +1,6 @@
+$days = "7"
+root = Stack([filter, chart, tbl])
+filter = Select("days", [SelectItem("7", "Last 7 days"), SelectItem("30", "Last 30 days"), SelectItem("90", "Last 90 days")], null, null, $days)
+metrics = Query("query_revenue", {days: $days}, {trend: [], rows: []})
+chart = LineChart(metrics.trend.day, [Series("North America", metrics.trend.na), Series("Europe", metrics.trend.eu), Series("Asia Pacific", metrics.trend.apac), Series("Latin America", metrics.trend.latam)], "natural")
+tbl = Table([Col("Region", metrics.rows.region), Col("Revenue", metrics.rows.revenue)])

@@ -1,0 +1,2 @@
+```openui
+root = Root([Text("a")])

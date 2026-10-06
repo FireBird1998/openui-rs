@@ -1,0 +1,10 @@
+Example 2 — Form with validation:
+root = Card([title, form])
+title = CardHeader("Contact Us")
+form = Form("contact", btns, [nameField, emailField, planField])
+nameField = FormControl("Name", Input("name", "Your name", "text", { required: true, minLength: 2 }))
+emailField = FormControl("Email", Input("email", "you@example.com", "email", { required: true, email: true }))
+planField = FormControl("Plan", Select("plan", [opt1, opt2], "Choose a plan", { required: true }))
+opt1 = SelectItem("free", "Free")
+opt2 = SelectItem("pro", "Pro")
+btns = Buttons([Button("Submit", { type: "continue_conversation" }, "default")])

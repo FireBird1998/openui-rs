@@ -1,9 +1,414 @@
 {
-  "chunkings": [4],
-  "schemas": {
-    "text": "schemas/text.json"
+ "chunkings": [
+  "1",
+  "2",
+  "3",
+  "4",
+  "7",
+  "16",
+  "random-1",
+  "random-2"
+ ],
+ "schemas": {
+  "text": "schemas/text.json",
+  "hand": "schemas/hand.json"
+ },
+ "cases": [
+  {
+   "name": "hello-text",
+   "schema": "text",
+   "file": "cases/hello-text.oui",
+   "source": "hand-written"
   },
-  "cases": [
-    { "name": "hello-text", "schema": "text", "file": "cases/hello-text.oui", "source": "hand-written" }
-  ]
+  {
+   "name": "hand/01-refs-and-validation",
+   "schema": "hand",
+   "file": "cases/hand/01-refs-and-validation.oui",
+   "source": "hand-written"
+  },
+  {
+   "name": "hand/02-number-for-string",
+   "schema": "hand",
+   "file": "cases/hand/02-number-for-string.oui",
+   "source": "hand-written"
+  },
+  {
+   "name": "hand/03-arity-and-null-args",
+   "schema": "hand",
+   "file": "cases/hand/03-arity-and-null-args.oui",
+   "source": "hand-written"
+  },
+  {
+   "name": "hand/04-nested-card-mixed-args",
+   "schema": "hand",
+   "file": "cases/hand/04-nested-card-mixed-args.oui",
+   "source": "hand-written"
+  },
+  {
+   "name": "hand/05-card-empty-and-null-meta",
+   "schema": "hand",
+   "file": "cases/hand/05-card-empty-and-null-meta.oui",
+   "source": "hand-written"
+  },
+  {
+   "name": "hand/06-badge-enum-and-types",
+   "schema": "hand",
+   "file": "cases/hand/06-badge-enum-and-types.oui",
+   "source": "hand-written"
+  },
+  {
+   "name": "hand/07-chart-point-shapes",
+   "schema": "hand",
+   "file": "cases/hand/07-chart-point-shapes.oui",
+   "source": "hand-written"
+  },
+  {
+   "name": "hand/08-unknown-and-inline-reserved",
+   "schema": "hand",
+   "file": "cases/hand/08-unknown-and-inline-reserved.oui",
+   "source": "hand-written"
+  },
+  {
+   "name": "hand/09-state-and-actions",
+   "schema": "hand",
+   "file": "cases/hand/09-state-and-actions.oui",
+   "source": "hand-written"
+  },
+  {
+   "name": "hand/10-query-with-state-args",
+   "schema": "hand",
+   "file": "cases/hand/10-query-with-state-args.oui",
+   "source": "hand-written"
+  },
+  {
+   "name": "hand/11-mutation-run-reset",
+   "schema": "hand",
+   "file": "cases/hand/11-mutation-run-reset.oui",
+   "source": "hand-written"
+  },
+  {
+   "name": "hand/12-each-with-string-var",
+   "schema": "hand",
+   "file": "cases/hand/12-each-with-string-var.oui",
+   "source": "hand-written"
+  },
+  {
+   "name": "hand/13-each-over-query",
+   "schema": "hand",
+   "file": "cases/hand/13-each-over-query.oui",
+   "source": "hand-written"
+  },
+  {
+   "name": "hand/14-each-bad-args",
+   "schema": "hand",
+   "file": "cases/hand/14-each-bad-args.oui",
+   "source": "hand-written"
+  },
+  {
+   "name": "hand/15-reference-cycle",
+   "schema": "hand",
+   "file": "cases/hand/15-reference-cycle.oui",
+   "source": "hand-written"
+  },
+  {
+   "name": "hand/16-unresolved-refs",
+   "schema": "hand",
+   "file": "cases/hand/16-unresolved-refs.oui",
+   "source": "hand-written"
+  },
+  {
+   "name": "hand/17-orphaned-statements",
+   "schema": "hand",
+   "file": "cases/hand/17-orphaned-statements.oui",
+   "source": "hand-written"
+  },
+  {
+   "name": "hand/18-redefined-statement",
+   "schema": "hand",
+   "file": "cases/hand/18-redefined-statement.oui",
+   "source": "hand-written"
+  },
+  {
+   "name": "hand/19-multiline-ternary",
+   "schema": "hand",
+   "file": "cases/hand/19-multiline-ternary.oui",
+   "source": "hand-written"
+  },
+  {
+   "name": "hand/20-operator-precedence",
+   "schema": "hand",
+   "file": "cases/hand/20-operator-precedence.oui",
+   "source": "hand-written"
+  },
+  {
+   "name": "hand/21-number-literal-forms",
+   "schema": "hand",
+   "file": "cases/hand/21-number-literal-forms.oui",
+   "source": "hand-written"
+  },
+  {
+   "name": "hand/22-arithmetic-and-unary-minus",
+   "schema": "hand",
+   "file": "cases/hand/22-arithmetic-and-unary-minus.oui",
+   "source": "hand-written"
+  },
+  {
+   "name": "hand/23-fenced-with-prose",
+   "schema": "hand",
+   "file": "cases/hand/23-fenced-with-prose.oui",
+   "source": "hand-written"
+  },
+  {
+   "name": "hand/24-unclosed-fence",
+   "schema": "hand",
+   "file": "cases/hand/24-unclosed-fence.oui",
+   "source": "hand-written"
+  },
+  {
+   "name": "hand/25-bare-fence",
+   "schema": "hand",
+   "file": "cases/hand/25-bare-fence.oui",
+   "source": "hand-written"
+  },
+  {
+   "name": "hand/26-lone-fence",
+   "schema": "hand",
+   "file": "cases/hand/26-lone-fence.oui",
+   "source": "hand-written"
+  },
+  {
+   "name": "hand/27-two-fenced-blocks",
+   "schema": "hand",
+   "file": "cases/hand/27-two-fenced-blocks.oui",
+   "source": "hand-written"
+  },
+  {
+   "name": "hand/28-comments-and-strings",
+   "schema": "hand",
+   "file": "cases/hand/28-comments-and-strings.oui",
+   "source": "hand-written"
+  },
+  {
+   "name": "hand/29-string-escapes",
+   "schema": "hand",
+   "file": "cases/hand/29-string-escapes.oui",
+   "source": "hand-written"
+  },
+  {
+   "name": "hand/30-unterminated-string",
+   "schema": "hand",
+   "file": "cases/hand/30-unterminated-string.oui",
+   "source": "hand-written"
+  },
+  {
+   "name": "hand/31-bad-escape",
+   "schema": "hand",
+   "file": "cases/hand/31-bad-escape.oui",
+   "source": "hand-written"
+  },
+  {
+   "name": "hand/32-object-key-forms",
+   "schema": "hand",
+   "file": "cases/hand/32-object-key-forms.oui",
+   "source": "hand-written"
+  },
+  {
+   "name": "hand/33-holes-in-arrays-and-objects",
+   "schema": "hand",
+   "file": "cases/hand/33-holes-in-arrays-and-objects.oui",
+   "source": "hand-written"
+  },
+  {
+   "name": "hand/34-pascal-case-statement-id",
+   "schema": "hand",
+   "file": "cases/hand/34-pascal-case-statement-id.oui",
+   "source": "hand-written"
+  },
+  {
+   "name": "hand/35-state-assigned-a-query",
+   "schema": "hand",
+   "file": "cases/hand/35-state-assigned-a-query.oui",
+   "source": "hand-written"
+  },
+  {
+   "name": "hand/36-no-root-statement",
+   "schema": "hand",
+   "file": "cases/hand/36-no-root-statement.oui",
+   "source": "hand-written"
+  },
+  {
+   "name": "hand/37-only-values",
+   "schema": "hand",
+   "file": "cases/hand/37-only-values.oui",
+   "source": "hand-written"
+  },
+  {
+   "name": "hand/38-junk-lines",
+   "schema": "hand",
+   "file": "cases/hand/38-junk-lines.oui",
+   "source": "hand-written"
+  },
+  {
+   "name": "hand/39-member-access-forms",
+   "schema": "hand",
+   "file": "cases/hand/39-member-access-forms.oui",
+   "source": "hand-written"
+  },
+  {
+   "name": "hand/40-builtin-call-forms",
+   "schema": "hand",
+   "file": "cases/hand/40-builtin-call-forms.oui",
+   "source": "hand-written"
+  },
+  {
+   "name": "hand/41-named-argument-syntax",
+   "schema": "hand",
+   "file": "cases/hand/41-named-argument-syntax.oui",
+   "source": "hand-written"
+  },
+  {
+   "name": "hand/42-trailing-commas",
+   "schema": "hand",
+   "file": "cases/hand/42-trailing-commas.oui",
+   "source": "hand-written"
+  },
+  {
+   "name": "hand/43-closers-inside-strings",
+   "schema": "hand",
+   "file": "cases/hand/43-closers-inside-strings.oui",
+   "source": "hand-written"
+  },
+  {
+   "name": "hand/44-integer-like-keys",
+   "schema": "hand",
+   "file": "cases/hand/44-integer-like-keys.oui",
+   "source": "hand-written"
+  },
+  {
+   "name": "hand/45-form-with-inputs",
+   "schema": "hand",
+   "file": "cases/hand/45-form-with-inputs.oui",
+   "source": "hand-written"
+  },
+  {
+   "name": "hand/46-member-on-component-call",
+   "schema": "hand",
+   "file": "cases/hand/46-member-on-component-call.oui",
+   "source": "hand-written"
+  },
+  {
+   "name": "hand/47-prototype-named-builtins",
+   "schema": "hand",
+   "file": "cases/hand/47-prototype-named-builtins.oui",
+   "source": "hand-written"
+  },
+  {
+   "name": "hand/48-chained-assignment",
+   "schema": "hand",
+   "file": "cases/hand/48-chained-assignment.oui",
+   "source": "hand-written"
+  },
+  {
+   "name": "hand/49-state-index-and-builtins",
+   "schema": "hand",
+   "file": "cases/hand/49-state-index-and-builtins.oui",
+   "source": "hand-written"
+  },
+  {
+   "name": "hand/50-string-concatenation",
+   "schema": "hand",
+   "file": "cases/hand/50-string-concatenation.oui",
+   "source": "hand-written"
+  },
+  {
+   "name": "hand/51-element-in-ternary",
+   "schema": "hand",
+   "file": "cases/hand/51-element-in-ternary.oui",
+   "source": "hand-written"
+  },
+  {
+   "name": "hand/52-element-as-string-prop",
+   "schema": "hand",
+   "file": "cases/hand/52-element-as-string-prop.oui",
+   "source": "hand-written"
+  },
+  {
+   "name": "hand/53-deep-card-elements",
+   "schema": "hand",
+   "file": "cases/hand/53-deep-card-elements.oui",
+   "source": "hand-written"
+  },
+  {
+   "name": "hand/54-unclosed-array",
+   "schema": "hand",
+   "file": "cases/hand/54-unclosed-array.oui",
+   "source": "hand-written"
+  },
+  {
+   "name": "hand/55-unclosed-call-and-string",
+   "schema": "hand",
+   "file": "cases/hand/55-unclosed-call-and-string.oui",
+   "source": "hand-written"
+  },
+  {
+   "name": "hand/56-unterminated-single-quote",
+   "schema": "hand",
+   "file": "cases/hand/56-unterminated-single-quote.oui",
+   "source": "hand-written"
+  },
+  {
+   "name": "hand/57-escape-at-end",
+   "schema": "hand",
+   "file": "cases/hand/57-escape-at-end.oui",
+   "source": "hand-written"
+  },
+  {
+   "name": "hand/58-several-unclosed-statements",
+   "schema": "hand",
+   "file": "cases/hand/58-several-unclosed-statements.oui",
+   "source": "hand-written"
+  },
+  {
+   "name": "hand/59-multiline-call",
+   "schema": "hand",
+   "file": "cases/hand/59-multiline-call.oui",
+   "source": "hand-written"
+  },
+  {
+   "name": "hand/60-nested-multiline-ternary",
+   "schema": "hand",
+   "file": "cases/hand/60-nested-multiline-ternary.oui",
+   "source": "hand-written"
+  },
+  {
+   "name": "hand/61-state-declarations",
+   "schema": "hand",
+   "file": "cases/hand/61-state-declarations.oui",
+   "source": "hand-written"
+  },
+  {
+   "name": "hand/62-excess-args-top-level",
+   "schema": "hand",
+   "file": "cases/hand/62-excess-args-top-level.oui",
+   "source": "hand-written"
+  },
+  {
+   "name": "hand/63-unknown-library-components",
+   "schema": "hand",
+   "file": "cases/hand/63-unknown-library-components.oui",
+   "source": "hand-written"
+  },
+  {
+   "name": "hand/64-numeric-component-name",
+   "schema": "hand",
+   "file": "cases/hand/64-numeric-component-name.oui",
+   "source": "hand-written"
+  },
+  {
+   "name": "hand/65-bom-and-nbsp",
+   "schema": "hand",
+   "file": "cases/hand/65-bom-and-nbsp.oui",
+   "source": "hand-written"
+  }
+ ]
 }

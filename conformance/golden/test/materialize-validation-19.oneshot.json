@@ -1,0 +1,1 @@
+{"root":null,"meta":{"incomplete":false,"unresolved":[],"orphaned":[],"statementCount":1,"errors":[{"code":"type-mismatch","component":"ReqScalar","path":"/title","message":"field \"/title\" expects string but got number","statementId":"root"}]},"stateDeclarations":{},"queryStatements":[],"mutationStatements":[]}

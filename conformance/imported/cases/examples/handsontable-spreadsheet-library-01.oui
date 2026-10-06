@@ -1,0 +1,4 @@
+root = Stack([title, info, followups])
+title = TextContent("Sales Summary", "large-heavy")
+info = TextContent("Your spreadsheet has 5 products with quarterly sales data. Total revenue across all products is $45,350.")
+followups = Buttons([Button("Visualize sales trends", null, "secondary"), Button("Add a new product", null, "secondary"), Button("Show top performers", null, "secondary")])

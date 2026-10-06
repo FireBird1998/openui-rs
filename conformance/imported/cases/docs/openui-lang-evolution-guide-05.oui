@@ -1,0 +1,2 @@
+openCount = @Count(@Filter(tickets.rows, "status", "==", "open"))
+sorted = @Sort(tickets.rows, "created", "desc")

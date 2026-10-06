@@ -1,0 +1,2 @@
+$s = Query("q", {x: $other})
+root = Root([Text($s)])

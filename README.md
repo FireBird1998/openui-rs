@@ -2,16 +2,18 @@
 
 A Rust implementation of the OpenUI Lang language layer (the `openui-lang` crate), and Dynamic News, an Android app built on it.
 
-**Status:** ticket 01 of 13 done. One program parses end to end and conforms with the reference parser, both one-shot and while streaming.
+**Status:** tickets 01–02 of 13 done. The corpus has 265 cases (hand-written edge cases, every program the reference test suites parse, the benchmark samples, and programs from the upstream docs and examples). 26 conform so far; the other 239 are listed in [`conformance/pending.txt`](conformance/pending.txt) and drop off as later tickets land.
 
 ## How correctness works
 
-The TypeScript parser in `@openuidev/lang-core` is the reference. It's vendored under `reference/` at the commit recorded in [`reference/UPSTREAM`](reference/UPSTREAM). For every case in `conformance/`, the Rust parse result has to serialize to exactly the JSON the reference produced: one-shot, and after every push of a streaming parse.
+The TypeScript parser in `@openuidev/lang-core` is the reference. It's vendored under `reference/` at the commit recorded in [`reference/UPSTREAM`](reference/UPSTREAM). For every case in `conformance/`, the Rust parse result has to serialize to exactly the JSON the reference produced: one-shot, and after every push of a streaming parse, under eight chunkings (sizes 1, 2, 3, 4, 7, 16 and two seeded random ones).
 
 ```bash
 scripts/check.sh                       # fmt, clippy, tests (Rust only, no Bun needed)
 scripts/regen-golden.sh                # re-run the reference over the corpus (needs Bun)
+scripts/import-corpus.sh [<checkout>]  # re-import upstream programs at the pinned commit, then regen
 scripts/update-reference.sh <commit>   # vendor a different upstream commit (full hash)
+UPDATE_PENDING=1 cargo test --test conformance   # rewrite pending.txt to the cases failing now
 cargo run -p openui-lang -- parse conformance/schemas/text.json conformance/cases/hello-text.oui
 ```
 

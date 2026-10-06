@@ -1,0 +1,7 @@
+// Inline
+root = Stack([Header("Title"), TextContent("Body")])
+
+// References
+root = Stack([h, t])
+h = Header("Title")
+t = TextContent("Body")

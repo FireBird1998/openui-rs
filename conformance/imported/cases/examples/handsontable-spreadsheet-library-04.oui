@@ -1,0 +1,4 @@
+root = Stack([msg, sheet, followups])
+msg = TextContent("Done! I added Widget C with Q1=500, Q2=600, Q3=700, Q4=800 and a SUM formula for Total.")
+sheet = SpreadsheetTable([["Widget A", 1500, 1800, 2100, 2400, "=SUM(B1:E1)"], ["Widget B", 1200, 1400, 1600, 1900, "=SUM(B2:E2)"], ["Widget C", 500, 600, 700, 800, "=SUM(B3:E3)"]], ["Product", "Q1 Sales", "Q2 Sales", "Q3 Sales", "Q4 Sales", "Total"])
+followups = Buttons([Button("Add another product", null, "secondary"), Button("Show updated totals", null, "secondary"), Button("Visualize the data", null, "secondary")])

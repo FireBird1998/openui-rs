@@ -1,0 +1,3 @@
+root = Stack([t1])
+t1 = Title("a")
+orphan = Title("stray")

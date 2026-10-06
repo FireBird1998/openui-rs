@@ -1,0 +1,1 @@
+{"root":null,"meta":{"incomplete":false,"unresolved":[],"orphaned":[],"statementCount":1,"errors":[{"code":"type-mismatch","component":"ChartBox","path":"/labels","message":"field \"/labels\" expects array but got component \"CardBox\"","statementId":"root"}]},"stateDeclarations":{},"queryStatements":[],"mutationStatements":[]}

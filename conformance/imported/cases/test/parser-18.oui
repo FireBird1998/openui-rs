@@ -1,0 +1,3 @@
+root = Stack([t1, t2])
+t1 = Title("first")
+t2 = Title("second")

@@ -1,0 +1,5 @@
+Example 9 — Pagination:
+root = Card([title, table, pagination])
+title = TextContent("Search Results", "large-heavy")
+table = Table([Col("Name", "string"), Col("Status", "string")], [["Item 1", "Active"], ["Item 2", "Pending"], ["Item 3", "Active"]])
+pagination = PaginationBlock(2, 10)

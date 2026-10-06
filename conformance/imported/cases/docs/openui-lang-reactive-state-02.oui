@@ -1,0 +1,2 @@
+title = TextContent("Showing last " + $days + " days")
+data = Query("analytics", {days: $days}, {rows: []})

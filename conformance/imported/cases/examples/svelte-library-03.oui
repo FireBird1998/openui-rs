@@ -1,0 +1,7 @@
+User: Show me the top 5 programming languages by popularity
+
+root = Stack([card, cta])
+chart = Chart("Programming Language Popularity", "bar", ["Python", "JavaScript", "Java", "C++", "TypeScript"], [30, 25, 18, 12, 10], "% Market Share")
+t1 = TextContent("Python leads with 30% market share, driven by AI/ML adoption. JavaScript remains dominant for web development at 25%.")
+card = Card("Language Trends", [chart, t1])
+cta = Button("Compare Python vs JavaScript")

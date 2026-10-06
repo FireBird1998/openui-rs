@@ -1,0 +1,3 @@
+root = Stack([bad, good])
+bad = Title()
+good = Title("ok")

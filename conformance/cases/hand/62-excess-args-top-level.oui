@@ -1,0 +1,1 @@
+root = Root([Text(1, "info", 2)], "t", "extra", "more")

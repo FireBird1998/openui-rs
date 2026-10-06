@@ -1,0 +1,5 @@
+root = Root([a])
+b = Text("orphan")
+a = Text("used")
+c = Query("q")
+$s = "state"

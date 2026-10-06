@@ -1,0 +1,87 @@
+{
+  "$defs": {
+    "Root": {
+      "type": "object",
+      "properties": { "children": { "type": "array", "items": {} }, "title": { "type": "string" } },
+      "required": ["children"]
+    },
+    "Text": {
+      "properties": {
+        "value": { "type": "string" },
+        "tone": { "type": "string", "enum": ["info", "warn"], "default": "info" },
+        "weight": { "type": "number" }
+      },
+      "required": ["value"]
+    },
+    "Card": {
+      "properties": {
+        "header": { "$ref": "#/$defs/Text" },
+        "body": { "type": "array", "items": { "anyOf": [{ "$ref": "#/$defs/Text" }, { "type": "string" }] } },
+        "meta": {
+          "type": "object",
+          "properties": {
+            "id": { "type": "string" },
+            "count": { "type": "integer", "default": 0 },
+            "tags": { "type": "array", "items": { "type": "string" } },
+            "nested": {
+              "type": "object",
+              "properties": { "flag": { "type": "boolean" } },
+              "required": ["flag"]
+            }
+          },
+          "required": ["id", "count"]
+        }
+      },
+      "required": ["header"]
+    },
+    "Badge": {
+      "properties": {
+        "kind": { "const": "badge" },
+        "level": { "enum": [1, 2.5, null, "x", true, { "a": 1 }] }
+      },
+      "required": ["kind"]
+    },
+    "Chart": {
+      "properties": {
+        "points": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": { "x": { "type": "number" }, "y": { "type": "number" } },
+            "required": ["x", "y"]
+          }
+        },
+        "label": { "type": "string", "default": null }
+      },
+      "required": ["points", "label"]
+    },
+    "Btn": {
+      "properties": { "label": { "type": "string" }, "action": {} },
+      "required": ["label"]
+    },
+    "Form": {
+      "properties": {
+        "name": { "type": "string" },
+        "fields": { "type": "array", "items": { "$ref": "#/$defs/Input" } },
+        "submit": { "$ref": "#/$defs/Btn" }
+      },
+      "required": ["name", "fields"]
+    },
+    "Input": {
+      "properties": {
+        "name": { "type": "string" },
+        "value": { "type": ["string", "null"] },
+        "kind": { "type": "string", "enum": ["text", "email"] }
+      },
+      "required": ["name"]
+    },
+    "Slot": {
+      "properties": {
+        "content": { "type": "string" },
+        "fallback": { "type": "object", "properties": { "2": { "type": "string" }, "a": {}, "1": {} } },
+        "list": { "type": "array" }
+      }
+    },
+    "10": { "properties": { "b": {}, "0": { "type": "string" } } }
+  }
+}

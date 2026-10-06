@@ -1,0 +1,2 @@
+save = Mutation("save", {name: $name, extra: $page})
+root = Root([Btn("Save", Action([@Run(save), @Reset($name)]))])

@@ -1,0 +1,8 @@
+Example 3 — Alert variants and a list:
+root = Card([info, warning, items])
+info = Alert("Update available", "A new version is ready to install.", "info")
+warning = Alert("Disk almost full", "Less than 10% storage remaining.", "warning")
+items = List([i1, i2, i3])
+i1 = ListItem("Back up your data", "Recommended before updating")
+i2 = ListItem("Free up space")
+i3 = ListItem("Install the update")

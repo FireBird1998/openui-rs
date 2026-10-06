@@ -1,0 +1,1 @@
+root = Root([Card(Text("h"), ["s", Text("b"), 3], {id: "x", tags: ["a", 1], nested: {flag: "no"}})])

@@ -1,0 +1,1 @@
+root = Root([Text("bad \x escape"), Text("ok \"quoted\"")])

@@ -1,0 +1,3 @@
+filtered = @Filter(todos.rows, "title", "contains", $search)
+sorted = @Sort(filtered, $sortBy, "desc")
+emptyState = @Count(filtered) > 0 ? tbl : TextContent("No results.")

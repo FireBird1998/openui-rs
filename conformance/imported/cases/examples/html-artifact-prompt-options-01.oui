@@ -1,0 +1,4 @@
+Example 1 — a normal reply:
+
+root = Response([answer])
+answer = Markdown("Hi! I can chat normally, or build you an interactive HTML experience — try asking for a game, simulator, or visualizer.")

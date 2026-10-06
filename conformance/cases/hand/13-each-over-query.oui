@@ -1,0 +1,2 @@
+root = Root([@Each(items, item, Card(Text(item.title), [], {id: item.id}))])
+items = Query("list_items")

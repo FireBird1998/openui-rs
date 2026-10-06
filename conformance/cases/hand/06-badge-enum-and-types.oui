@@ -1,0 +1,1 @@
+root = Root([Badge("badge", 2.5), Badge("nope", "x"), Badge("badge", {a: 1}), Badge(), Badge("badge", null), Badge("badge", [1])])

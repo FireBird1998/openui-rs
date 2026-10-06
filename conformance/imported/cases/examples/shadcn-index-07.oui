@@ -1,0 +1,9 @@
+Example 7 — Typography showcase:
+root = Card([h1, h2, h3, quote, codeEx, sep, text])
+h1 = Heading("Welcome to the Platform", "h1")
+h2 = Heading("Getting Started", "h2")
+h3 = Heading("Prerequisites", "h3")
+quote = Blockquote("The best way to predict the future is to invent it.", "Alan Kay")
+codeEx = InlineCode("npm install @acme/sdk")
+sep = Separator()
+text = TextContent("Follow the steps below to get up and running.")

@@ -1,0 +1,4 @@
+Example 11 — Standalone calendar:
+root = Card([title, cal])
+title = TextContent("Pick a Date", "large-heavy")
+cal = CalendarBlock("single", "2025-01-01", 1)

@@ -1,0 +1,1 @@
+root = Root([Text($a > 1 && !$b || $c == "x" ? "p" : $d != 2 ? "q" : "r"), Text($n >= 1), Text($n <= 2), Text($n < 3)])

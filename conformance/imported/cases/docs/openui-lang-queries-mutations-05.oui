@@ -1,0 +1,1 @@
+createResult = Mutation("create_ticket", {title: $title, priority: $priority})

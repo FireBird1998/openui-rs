@@ -1,0 +1,3 @@
+root = Root([a, b])
+a = Text("hi")
+b = Text("x", "warn")

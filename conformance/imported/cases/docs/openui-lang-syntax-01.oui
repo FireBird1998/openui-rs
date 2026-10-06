@@ -1,0 +1,8 @@
+root = Stack([title, form])
+title = TextContent("Sign up", "large-heavy")
+form = Form("signup", [nameField, emailField], actions)
+nameField = FormControl("Name", Input("name", "Your name", "text", ["required"]))
+emailField = FormControl("Email", Input("email", "you@example.com", "email", ["required", "email"]))
+actions = Buttons([submitBtn, cancelBtn], "row")
+submitBtn = Button("Submit", "submit:signup", "primary")
+cancelBtn = Button("Cancel", "action:cancel", "secondary")

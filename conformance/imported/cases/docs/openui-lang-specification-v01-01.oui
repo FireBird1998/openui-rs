@@ -1,0 +1,6 @@
+root = Root([header, chart])           // 1. Entry Point
+header = Header("Q4 Revenue", "YTD")   // 2. Component Call
+chart = BarChart(labels, [s1, s2])     // 3. Forward Reference
+labels = ["Jan", "Feb", "Mar"]         // 4. Data Definition
+s1 = Series("Product A", [10, 20, 30])
+s2 = Series("Product B", [5, 15, 25])

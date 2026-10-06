@@ -1,0 +1,2 @@
+root = Card([chart])
+chart = PieChart([{label:"Product A",value:45},{label:"Product B",value:30},{label:"Product C",value:25}], "2025 Market Share")

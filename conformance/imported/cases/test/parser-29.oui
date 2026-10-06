@@ -1,0 +1,3 @@
+root = Stack([a])
+a = Title("x")
+a = Title("y")

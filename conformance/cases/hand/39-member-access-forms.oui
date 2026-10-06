@@ -1,0 +1,1 @@
+root = Root([Text(obj.field), Text(arr[0]), Text(obj.$x), Text(obj.1), Text(obj.), Text(obj."s"), Text(obj.Type)])

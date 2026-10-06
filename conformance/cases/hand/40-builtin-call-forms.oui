@@ -1,0 +1,1 @@
+root = Root([Text(@Count(items)), Text(Count(items)), Text(@Sum), Text(Action), Text(Action([])), Text(@Filter(items, "a", "==", 1))])

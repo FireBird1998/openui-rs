@@ -1,0 +1,3 @@
+root = Stack([t1])
+t1 = Title("used")
+orphan = Title("unused")

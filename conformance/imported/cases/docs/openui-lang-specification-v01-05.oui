@@ -1,0 +1,14 @@
+root = Root([nav, dashboard])
+nav  = Navbar("Acme Corp", [link1, link2])
+link1 = Link("Home", "/")
+link2 = Link("Settings", "/settings")
+
+dashboard = Section([kpi_row, main_chart])
+kpi_row   = Grid([stat1, stat2])
+stat1     = StatCard("Revenue", "$1.2M", "up")
+stat2     = StatCard("Users", "450k", "flat")
+
+main_chart = LineChart(
+  ["Mon", "Tue", "Wed"],
+  [Series("Visits", [100, 450, 320])]
+)

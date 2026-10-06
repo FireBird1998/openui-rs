@@ -1,0 +1,3 @@
+$filter = "all"
+filterBar = Select("filter", $filter, [SelectItem("all", "All"), SelectItem("active", "Active"), SelectItem("completed", "Completed")])
+root = Stack([CardHeader("Todos"), Stack([Input("title", $title, "What needs to be done?"), submitBtn], "row"), filterBar, tbl, footer])

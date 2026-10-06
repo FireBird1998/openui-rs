@@ -1,0 +1,3 @@
+$title = ""
+$priority = "medium"
+resetBtn = Button("Clear", Action([@Reset($title, $priority)]))

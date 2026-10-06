@@ -44,6 +44,22 @@ _Avoid_: TS version, original, upstream parser
 The core producing exactly the same serialized parse result as the reference parser for the same program, component library and chunking.
 _Avoid_: parity, compatibility, equivalence
 
+**Case**:
+One program plus the component library (and optional root name) it's parsed against; the unit of conformance.
+_Avoid_: fixture, sample, test
+
+**Chunking**:
+A way of cutting a program into pushes for a streaming parse: a fixed size in characters, or seeded random sizes.
+_Avoid_: split, batching
+
+**Golden**:
+The reference parser's saved output for a case: the one-shot result, and a fingerprint of every streaming step under every chunking.
+_Avoid_: snapshot, expected output
+
+**Pending case**:
+A case the core doesn't conform on yet, listed so the suite stays green while showing progress.
+_Avoid_: skipped, known failure
+
 **Quirk**:
 A reference-parser behaviour that looks wrong but that the core reproduces anyway, recorded with an upstream report.
 _Avoid_: bug (when the core matches it on purpose)

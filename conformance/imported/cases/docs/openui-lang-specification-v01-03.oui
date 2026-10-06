@@ -1,0 +1,2 @@
+// Valid: subtitle is undefined
+h1 = Header("Dashboard")

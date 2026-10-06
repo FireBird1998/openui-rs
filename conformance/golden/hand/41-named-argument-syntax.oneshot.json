@@ -1,0 +1,1 @@
+{"root":null,"meta":{"incomplete":false,"unresolved":["children"],"orphaned":[],"statementCount":1,"errors":[{"code":"null-required","component":"Root","path":"/children","message":"required field \"/children\" cannot be null — signature: Root(children*: array, title: string)","statementId":"root"}]},"stateDeclarations":{},"queryStatements":[],"mutationStatements":[]}

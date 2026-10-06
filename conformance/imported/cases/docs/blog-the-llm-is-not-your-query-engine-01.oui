@@ -1,0 +1,6 @@
+$days = "7"
+root = Stack([filter, chart, tbl])
+filter = Select("days", [SelectItem("7", "Last 7 days"), SelectItem("30", "Last 30 days"), SelectItem("90", "Last 90 days")], null, null, $days)
+metrics = Query("query_orders", {days: $days, groupBy: "region"}, {rows: []})
+chart = BarChart(metrics.rows.region, [Series("Revenue", metrics.rows.revenue)])
+tbl = Table([Col("Region", metrics.rows.region), Col("Revenue", metrics.rows.revenue, "number")])

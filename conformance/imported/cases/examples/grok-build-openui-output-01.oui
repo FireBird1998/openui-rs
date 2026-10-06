@@ -1,0 +1,100 @@
++[	 ]*$/.test(withoutNewline)) {
+      blocks.push({ value: block.join(""), start: blockStart, end: lineStart });
+      block = undefined;
+      quote = undefined;
+      continue;
+    }
+
+    block.push(line);
+    quote = scanQuoteState(line, quote);
+  }
+
+  // Match lang-core's streaming behavior: an unclosed fence owns the rest.
+  if (block) blocks.push({ value: block.join(""), start: blockStart, end: value.length });
+  return blocks;
+}
+
+function isInsideLineComment(value: string, index: number): boolean {
+  const lineStart = value.lastIndexOf("
+", index - 1) + 1;
+  let quote: '"' | "'" | undefined;
+  let escaped = false;
+
+  for (let cursor = lineStart; cursor < index; cursor += 1) {
+    const character = value[cursor];
+    if (quote) {
+      if (escaped) escaped = false;
+      else if (character === "\") escaped = true;
+      else if (character === quote) quote = undefined;
+      continue;
+    }
+    if (character === '"' || character === "'") quote = character;
+    else if (character === "#") return true;
+    else if (character === "/" && value[cursor + 1] === "/") return true;
+  }
+  return false;
+}
+
+function rootCandidateIndexes(value: string): number[] {
+  const indexes: number[] = [];
+  for (const match of value.matchAll(ROOT_CANDIDATE)) {
+    const rootOffset = match[0].indexOf("root");
+    const index = match.index + rootOffset;
+    if (!isInsideLineComment(value, index)) indexes.push(index);
+  }
+  return indexes;
+}
+
+function isRootCandidateAt(value: string, index: number): boolean {
+  if (!value.startsWith("root", index)) return false;
+  const previous = value[index - 1];
+  if (previous && /[A-Za-z0-9_$]/.test(previous)) return false;
+
+  let cursor = index + "root".length;
+  while (value[cursor] === " " || value[cursor] === "	") cursor += 1;
+  return value[cursor] === "=";
+}
+
+/** Isolate one structurally complete candidate without crossing into a later root. */
+function candidateAt(value: string, start: number): string | undefined {
+  let quote: '"' | "'" | undefined;
+  let escaped = false;
+  let lineComment = false;
+  let parentheses = 0;
+  let brackets = 0;
+  let braces = 0;
+
+  for (let index = start; index < value.length; index += 1) {
+    const character = value[index];
+    if (lineComment) {
+      if (character === "
+") lineComment = false;
+      continue;
+    }
+    if (quote) {
+      if (escaped) {
+        escaped = false;
+      } else if (character === "\") {
+        escaped = true;
+      } else if (character === quote) {
+        quote = undefined;
+      }
+      continue;
+    }
+
+    if (character === '"' || character === "'") {
+      quote = character;
+      continue;
+    }
+    if (character === "#" || (character === "/" && value[index + 1] === "/")) {
+      lineComment = true;
+      continue;
+    }
+
+    // OpenUI escapes only occur inside quoted strings. Seeing one here means
+    // this root was probably recovered from an escaped example inside a string.
+    if (character === "\") return undefined;
+
+    const atTopLevel = parentheses === 0 && brackets === 0 && braces === 0;
+    if (index > start && atTopLevel) {
+      if (value.startsWith("

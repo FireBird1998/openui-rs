@@ -1,0 +1,4 @@
+root = Stack([title, pie, followups])
+title = TextContent("Revenue by Category", "large-heavy")
+pie = PieChart(["Laptops", "Phones", "Audio", "Tablets"], [236800, 521700, 149200, 104100], "donut")
+followups = Buttons([Button("Show as a bar chart", null, "secondary"), Button("Break down by quarter", null, "secondary")])

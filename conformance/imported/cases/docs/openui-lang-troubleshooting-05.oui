@@ -1,0 +1,6 @@
+// Wrong — Query inside Table
+tbl = Table([Col("Title", Query("list", {}).rows.title)])
+
+// Correct — Query as a separate statement
+data = Query("list", {}, {rows: []})
+tbl = Table([Col("Title", data.rows.title)])

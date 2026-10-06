@@ -1,0 +1,11 @@
+$search = ""
+$sortBy = "stars"
+data = Query("get_repos", {}, {rows: []})
+filtered = @Filter(data.rows, "name", "contains", $search)
+sorted = @Sort(filtered, $sortBy, "desc")
+searchBox = FormControl("Search", Input("search", "Filter repos...", "text", null, $search))
+sortSelect = FormControl("Sort by", Select("sortBy", [SelectItem("stars", "Stars"), SelectItem("forks", "Forks"), SelectItem("updated", "Recent")], null, null, $sortBy))
+controls = Stack([searchBox, sortSelect], "row", "m")
+tbl = Table([Col("Name", sorted.name), Col("Stars", sorted.stars, "number"), Col("Forks", sorted.forks, "number")])
+emptyState = @Count(filtered) > 0 ? tbl : TextContent("No results match your search.")
+root = Stack([CardHeader("Repositories"), controls, emptyState])

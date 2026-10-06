@@ -1,0 +1,6 @@
+a = $x
+  ? Text("a")
+  : $y
+    ? Text("b")
+    : Text("c")
+root = Root([a])

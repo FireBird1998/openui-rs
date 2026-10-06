@@ -1,0 +1,3 @@
+root = Card([header, viz])
+header = CardHeader("Orbital decay", "Interactive model")
+viz = GeneratedView("<!doctype html><html>...canvas + JS simulation...</html>")

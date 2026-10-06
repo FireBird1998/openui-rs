@@ -1,0 +1,6 @@
+Example 10 — Drawer with content:
+root = Card([title, drawerBtn])
+title = TextContent("Report Summary", "large-heavy")
+drawerBtn = DrawerBlock("View Full Report", "Quarterly Report Q4 2024", "Detailed breakdown of performance metrics", [chart, summary])
+chart = BarChart(["Oct", "Nov", "Dec"], [Series("Revenue", [42, 38, 51])], "grouped", "Month", "Revenue ($K)")
+summary = TextContent("Overall revenue increased by 12% compared to Q3.")

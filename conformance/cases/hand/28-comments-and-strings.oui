@@ -1,0 +1,4 @@
+// leading comment
+root = Root([Text("a // not a comment"), Text('it\'s'), Text("# nope")]) # trailing
+# full line
+a = Text("x") // trailing

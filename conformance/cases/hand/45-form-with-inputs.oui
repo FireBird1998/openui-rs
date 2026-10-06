@@ -1,0 +1,1 @@
+root = Root([Input("n", null, "email"), Input("n", 5, "fax"), Form("f", [Input("a"), Text("x"), 3], Btn("go")), Form("f", "x", Text("t"))])

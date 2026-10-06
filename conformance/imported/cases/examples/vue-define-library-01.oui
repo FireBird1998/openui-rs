@@ -1,0 +1,10 @@
+User: What is Vue?
+
+t1 = TextContent("Vue is a progressive JavaScript framework for building user interfaces. It builds on standard HTML, CSS, and JavaScript with a declarative, component-based programming model.")
+t2 = TextContent("**Reactivity system** — Vue tracks dependencies at runtime and efficiently updates the DOM when state changes, with no virtual DOM diffing overhead in Vue 3's Vapor mode.")
+t3 = TextContent("**Single-File Components** — Vue's .vue files combine template, logic, and styling in one file with full TypeScript support.")
+t4 = TextContent("**Composition API** — Flexible, composable logic reuse with `setup()` and `<script setup>` syntax.")
+intro = Card("What is Vue?", [t1])
+features = Card("Key Features", [t2, t3, t4])
+cta = Button("Tell me about Vue 3.5")
+root = Stack([intro, features, cta])

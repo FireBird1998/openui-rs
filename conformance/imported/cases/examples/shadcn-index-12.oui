@@ -1,0 +1,5 @@
+Example 12 — Range calendar with two months:
+root = Card([title, desc, cal])
+title = TextContent("Select Travel Dates", "large-heavy")
+desc = TextContent("Choose your check-in and check-out dates.", "small")
+cal = CalendarBlock("range", "2025-06-01", 2)

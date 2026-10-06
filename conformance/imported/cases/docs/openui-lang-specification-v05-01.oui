@@ -1,0 +1,3 @@
+data = Query("list", {}, {rows: []})
+tbl = Table([Col("Title", data.rows.title)])   // plucks title from each row
+kpi = TextContent("" + data.total)              // access a single field

@@ -1,0 +1,1 @@
+root = Root([Text("a").foo, Root([Text("a")]).children[0]])

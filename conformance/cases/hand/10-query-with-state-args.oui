@@ -1,0 +1,2 @@
+data = Query("get_users", {page: $page, q: $search}, {rows: []}, 30)
+root = Root([Text(data.rows[0].name), Text(@Count(data.rows))])

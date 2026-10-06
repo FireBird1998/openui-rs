@@ -1,0 +1,9 @@
+ Before (4 statements):                After merge (5 statements):
+
+ root = Stack([header, tbl])           root = Stack([header, chart, tbl])  ← replaced
+ header = CardHeader("Tickets")        header = CardHeader("Tickets")      ← kept
+ tickets = Query("list_tickets",...)   tickets = Query("list_tickets",...) ← kept
+ tbl = Table([...])                    tbl = Table([...])                  ← kept
+                                       chart = PieChart(...)               ← added
+
+ LLM only output 2 lines (root + chart). Parser merged by name.

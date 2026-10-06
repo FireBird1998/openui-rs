@@ -1,0 +1,1 @@
+root = Root([Text(Text("inline element as string"))])

@@ -1,0 +1,3 @@
+root = Card([intro, detail])
+intro = Text("It's sunny and 24°C in San Francisco.", "heading")
+detail = Text("Humidity is at 60%. No rain expected this week.", "body")

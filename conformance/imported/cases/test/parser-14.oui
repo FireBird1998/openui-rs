@@ -1,0 +1,2 @@
+root = Stack([missing, t1])
+t1 = Title("ok")

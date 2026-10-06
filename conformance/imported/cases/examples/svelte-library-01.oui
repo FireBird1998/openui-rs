@@ -1,0 +1,10 @@
+User: What is Svelte?
+
+t1 = TextContent("Svelte is a modern JavaScript framework that shifts work from the browser to a compile step. Unlike React or Vue, Svelte compiles your components into efficient imperative code that directly manipulates the DOM.")
+t2 = TextContent("**No virtual DOM** — Svelte updates the DOM surgically when state changes, resulting in excellent runtime performance.")
+t3 = TextContent("**Less boilerplate** — Svelte's syntax is concise and intuitive, letting you write less code to achieve the same results.")
+t4 = TextContent("**Built-in reactivity** — Simple variable assignments trigger UI updates. No hooks or special APIs needed.")
+intro = Card("What is Svelte?", [t1])
+features = Card("Key Features", [t2, t3, t4])
+cta = Button("Tell me about Svelte 5")
+root = Stack([intro, features, cta])

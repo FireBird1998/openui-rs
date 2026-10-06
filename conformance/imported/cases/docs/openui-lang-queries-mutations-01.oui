@@ -1,0 +1,1 @@
+data = Query("list_tickets", {}, {rows: []})

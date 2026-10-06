@@ -1,0 +1,7 @@
+root = Stack([CardHeader("Todos"), Stack([Input("title", $title, "What needs to be done?"), submitBtn], "row"), tbl, footer])
+todos = Query("list_todos", {}, {rows: []})
+createResult = Mutation("create_todo", {title: $title})
+submitBtn = Button("Add", Action([@Run(createResult), @Run(todos), @Reset($title)]))
+openCount = @Count(@Filter(todos.rows, "completed", "==", false))
+tbl = Table([Col("Title", todos.rows.title), Col("Done", todos.rows.completed)])
+footer = TextContent("" + openCount + " items left", "small")

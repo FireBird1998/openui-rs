@@ -1,0 +1,1 @@
+{"root":null,"meta":{"incomplete":false,"unresolved":[],"orphaned":[],"statementCount":1,"errors":[{"code":"unknown-component","component":"DataTable","path":"","message":"Unknown component \"DataTable\" — not found in catalog or builtins. Available components: Stack, Title, Table","statementId":"root"}]},"stateDeclarations":{},"queryStatements":[],"mutationStatements":[]}

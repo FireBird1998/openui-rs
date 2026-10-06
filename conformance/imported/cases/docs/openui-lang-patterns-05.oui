@@ -1,0 +1,12 @@
+$days = "7"
+filter = FormControl("Date Range", Select("days", [SelectItem("7", "7 days"), SelectItem("14", "14 days"), SelectItem("30", "30 days")], null, null, $days))
+usage = Query("get_usage_metrics", {days: $days}, {data: []})
+endpoints = Query("get_top_endpoints", {days: $days}, {endpoints: []})
+overviewTab = TabItem("overview", "Overview", [
+  LineChart(usage.data.day, [Series("Events", usage.data.events)])
+])
+endpointsTab = TabItem("endpoints", "Top Endpoints", [
+  Table([Col("Path", endpoints.endpoints.path), Col("Requests", endpoints.endpoints.requests, "number"), Col("Latency", endpoints.endpoints.avgLatency, "number")])
+])
+tabs = Tabs([overviewTab, endpointsTab])
+root = Stack([CardHeader("Dashboard"), filter, tabs])

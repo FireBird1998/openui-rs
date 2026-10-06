@@ -1,0 +1,3 @@
+$search = ""
+searchBox = Input("search", $search, "Search...")
+filtered = @Filter(data.rows, "title", "contains", $search)

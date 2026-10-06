@@ -1,0 +1,1 @@
+root = Root([Text("emoji 😀 é é \n tab\t 😀 \/ \b \f \r"), Text('single \'q\' \\ \n \t \x')])

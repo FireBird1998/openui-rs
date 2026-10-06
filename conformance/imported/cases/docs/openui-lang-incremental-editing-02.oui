@@ -1,0 +1,4 @@
+root = Stack([header, tbl])
+header = CardHeader("Tickets")
+tickets = Query("list_tickets", {}, {rows: []})
+tbl = Table([Col("Title", tickets.rows.title), Col("Status", tickets.rows.status)])

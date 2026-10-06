@@ -1,0 +1,3 @@
+submitBtn = Button("Add", Action([@Run(createResult), @Run(todos), @Reset($title)]))
+todos = Query("list_todos", {}, {rows: []})
+createResult = Mutation("create_todo", {title: $title})

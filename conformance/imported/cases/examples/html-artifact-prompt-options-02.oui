@@ -1,0 +1,5 @@
+Example 2 — an interactive artifact:
+
+root = Response([intro, artifact])
+intro = Markdown("Here's a simple click counter:")
+artifact = HtmlArtifact("Interactive counter", "<!doctype html><html><head><style>body{font-family:system-ui;padding:2rem}button{padding:.5rem 1rem}</style></head><body><h1>Counter</h1><button id='count'>0</button><script>let count=0;document.querySelector('#count').addEventListener('click',event=>{event.currentTarget.textContent=String(++count)})</script></body></html>")

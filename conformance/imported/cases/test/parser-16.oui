@@ -1,0 +1,3 @@
+root = Stack([u, t1])
+u = Ghost("x")
+t1 = Title("ok")

@@ -1,0 +1,8 @@
+Example 4 — Bar chart with badges:
+root = Card([header, badges, chart, followUps])
+header = CardHeader("Monthly Revenue", "Q4 2024 performance across regions")
+badges = TagBlock([Tag("Live data", "default"), Tag("USD", "secondary"), Tag("Grouped", "outline")])
+chart = BarChart(["Oct", "Nov", "Dec"], [s1, s2], "grouped", "Month", "Revenue ($K)")
+s1 = Series("North America", [420, 380, 510])
+s2 = Series("Europe", [310, 290, 340])
+followUps = FollowUpBlock([FollowUpItem("Show as line chart"), FollowUpItem("Add Asia-Pacific")])

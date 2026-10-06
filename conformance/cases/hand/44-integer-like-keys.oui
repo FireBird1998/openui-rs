@@ -1,0 +1,1 @@
+root = Root([Slot("c", {2: "two", a: 1, 1: "one", z: 0}, "notarray"), Slot(1, 2, [3])])

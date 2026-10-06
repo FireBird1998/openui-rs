@@ -1,0 +1,2 @@
+root = Root([@Each(items, 3, Text(item.name)), @Each(items, "", Text("x")), @Each(items)])
+items = [1, 2]

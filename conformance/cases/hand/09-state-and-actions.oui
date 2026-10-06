@@ -1,0 +1,2 @@
+$count = 0
+root = Root([Btn("Add", Action([@Set($count, $count + 1), @ToAssistant("hi"), @OpenUrl("https://x.dev")]))])

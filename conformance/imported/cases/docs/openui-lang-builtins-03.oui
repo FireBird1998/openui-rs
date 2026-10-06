@@ -1,0 +1,4 @@
+kpi = Card([
+  TextContent("Open Tickets", "small"),
+  TextContent("" + @Count(@Filter(data.rows, "status", "==", "open")), "large-heavy")
+])

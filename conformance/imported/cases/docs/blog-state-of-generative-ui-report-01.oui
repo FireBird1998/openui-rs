@@ -1,0 +1,6 @@
+root = Card([header, chart, cta])
+header = CardHeader("Q1 revenue", "All segments")
+chart = BarChart(months, [revSeries])
+months = ["Jan", "Feb", "Mar"]
+revSeries = Series("Revenue", [120, 145, 180])
+cta = Button("View breakdown")

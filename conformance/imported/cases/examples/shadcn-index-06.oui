@@ -1,0 +1,10 @@
+Example 6 — Tabs with charts:
+root = Card([header, tabs])
+header = CardHeader("Sales Dashboard", "Compare metrics across time periods")
+tabs = Tabs([tab1, tab2, tab3])
+tab1 = TabItem("revenue", "Revenue", [revChart])
+tab2 = TabItem("users", "Users", [usersChart])
+tab3 = TabItem("breakdown", "Breakdown", [pieChart])
+revChart = BarChart(["Jan", "Feb", "Mar", "Apr"], [Series("Revenue", [45, 52, 61, 58])], "grouped", "Month", "USD ($K)")
+usersChart = LineChart(["Jan", "Feb", "Mar", "Apr"], [Series("Active", [1200, 1350, 1500, 1420]), Series("New", [300, 420, 380, 450])], "Month", "Users")
+pieChart = PieChart([Slice("Desktop", 62), Slice("Mobile", 31), Slice("Tablet", 7)])

@@ -1,0 +1,3 @@
+metrics = Query("query_orders", {days: $days, groupBy: "category"}, {rows: []})
+chart = BarChart(metrics.rows.category, [Series("Revenue", metrics.rows.revenue)])
+tbl = Table([Col("Category", metrics.rows.category), Col("Revenue", metrics.rows.revenue, "number")])

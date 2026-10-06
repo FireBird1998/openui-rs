@@ -1,0 +1,3 @@
+root = Root([Text("x")])
+$a = [1, {b: $c}]
+$d = Text("state el")

@@ -1,0 +1,3 @@
+root = Root([a])
+a = Root([b])
+b = Root([a])

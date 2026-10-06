@@ -1,0 +1,1 @@
+root = Root([Text(-3), Text(1e3), Text(2.5e-3), Text(1e), Text(007), Text(-x), Text(1.), Text(.5), Text(1e400), Text(0.1 + 0.2)])

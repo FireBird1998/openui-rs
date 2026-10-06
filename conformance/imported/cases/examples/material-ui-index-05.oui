@@ -1,0 +1,9 @@
+Example 5 — Accordion with progress:
+root = Card([header, acc])
+header = CardHeader("Project Status", "Sprint 14")
+acc = Accordion([a1, a2, a3], "single")
+a1 = AccordionItem("done", "Done", [doneText, doneProgress])
+doneText = TextContent("All planned API work is complete.")
+doneProgress = Progress(100, "API")
+a2 = AccordionItem("progress", "In progress", [Progress(60, "Dashboard UI")])
+a3 = AccordionItem("blocked", "Blocked", [Alert("Waiting on design", "Final mockups pending review.", "warning")])

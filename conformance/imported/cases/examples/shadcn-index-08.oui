@@ -1,0 +1,8 @@
+Example 8 — Dialog and AlertDialog:
+root = Card([title, btns])
+title = TextContent("Actions Demo", "large-heavy")
+btns = Buttons([viewBtn, deleteBtn])
+viewBtn = DialogBlock("View Details", "Product Details", "Full specifications for Widget Pro", [detailText, detailTable], "outline")
+detailText = TextContent("Here are the complete specifications:")
+detailTable = Table([Col("Spec", "string"), Col("Value", "string")], [["Weight", "2.5 kg"], ["Dimensions", "30x20x10 cm"]])
+deleteBtn = AlertDialogBlock("Delete Item", "Are you sure?", "This action cannot be undone. This will permanently delete the item.", "Delete", "Cancel", "destructive")

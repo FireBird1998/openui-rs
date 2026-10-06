@@ -1,0 +1,1403 @@
+{
+ "schemas": {
+  "test-materialize-validation": "imported/schemas/test-materialize-validation.json",
+  "test-parser": "imported/schemas/test-parser.json",
+  "test-serialize": "imported/schemas/test-serialize.json",
+  "bench": "imported/schemas/bench.json"
+ },
+ "cases": [
+  {
+   "name": "test/materialize-validation-01",
+   "schema": "test-materialize-validation",
+   "file": "imported/cases/test/materialize-validation-01.oui",
+   "source": "reference-test",
+   "origin": "packages/lang-core/src/parser/__tests__/materialize.validation.test.ts"
+  },
+  {
+   "name": "test/materialize-validation-02",
+   "schema": "test-materialize-validation",
+   "file": "imported/cases/test/materialize-validation-02.oui",
+   "source": "reference-test",
+   "origin": "packages/lang-core/src/parser/__tests__/materialize.validation.test.ts"
+  },
+  {
+   "name": "test/materialize-validation-03",
+   "schema": "test-materialize-validation",
+   "file": "imported/cases/test/materialize-validation-03.oui",
+   "source": "reference-test",
+   "origin": "packages/lang-core/src/parser/__tests__/materialize.validation.test.ts"
+  },
+  {
+   "name": "test/materialize-validation-04",
+   "schema": "test-materialize-validation",
+   "file": "imported/cases/test/materialize-validation-04.oui",
+   "source": "reference-test",
+   "origin": "packages/lang-core/src/parser/__tests__/materialize.validation.test.ts"
+  },
+  {
+   "name": "test/materialize-validation-05",
+   "schema": "test-materialize-validation",
+   "file": "imported/cases/test/materialize-validation-05.oui",
+   "source": "reference-test",
+   "origin": "packages/lang-core/src/parser/__tests__/materialize.validation.test.ts"
+  },
+  {
+   "name": "test/materialize-validation-06",
+   "schema": "test-materialize-validation",
+   "file": "imported/cases/test/materialize-validation-06.oui",
+   "source": "reference-test",
+   "origin": "packages/lang-core/src/parser/__tests__/materialize.validation.test.ts"
+  },
+  {
+   "name": "test/materialize-validation-07",
+   "schema": "test-materialize-validation",
+   "file": "imported/cases/test/materialize-validation-07.oui",
+   "source": "reference-test",
+   "origin": "packages/lang-core/src/parser/__tests__/materialize.validation.test.ts"
+  },
+  {
+   "name": "test/materialize-validation-08",
+   "schema": "test-materialize-validation",
+   "file": "imported/cases/test/materialize-validation-08.oui",
+   "source": "reference-test",
+   "origin": "packages/lang-core/src/parser/__tests__/materialize.validation.test.ts"
+  },
+  {
+   "name": "test/materialize-validation-09",
+   "schema": "test-materialize-validation",
+   "file": "imported/cases/test/materialize-validation-09.oui",
+   "source": "reference-test",
+   "origin": "packages/lang-core/src/parser/__tests__/materialize.validation.test.ts"
+  },
+  {
+   "name": "test/materialize-validation-10",
+   "schema": "test-materialize-validation",
+   "file": "imported/cases/test/materialize-validation-10.oui",
+   "source": "reference-test",
+   "origin": "packages/lang-core/src/parser/__tests__/materialize.validation.test.ts"
+  },
+  {
+   "name": "test/materialize-validation-11",
+   "schema": "test-materialize-validation",
+   "file": "imported/cases/test/materialize-validation-11.oui",
+   "source": "reference-test",
+   "origin": "packages/lang-core/src/parser/__tests__/materialize.validation.test.ts"
+  },
+  {
+   "name": "test/materialize-validation-12",
+   "schema": "test-materialize-validation",
+   "file": "imported/cases/test/materialize-validation-12.oui",
+   "source": "reference-test",
+   "origin": "packages/lang-core/src/parser/__tests__/materialize.validation.test.ts"
+  },
+  {
+   "name": "test/materialize-validation-13",
+   "schema": "test-materialize-validation",
+   "file": "imported/cases/test/materialize-validation-13.oui",
+   "source": "reference-test",
+   "origin": "packages/lang-core/src/parser/__tests__/materialize.validation.test.ts"
+  },
+  {
+   "name": "test/materialize-validation-14",
+   "schema": "test-materialize-validation",
+   "file": "imported/cases/test/materialize-validation-14.oui",
+   "source": "reference-test",
+   "origin": "packages/lang-core/src/parser/__tests__/materialize.validation.test.ts"
+  },
+  {
+   "name": "test/materialize-validation-15",
+   "schema": "test-materialize-validation",
+   "file": "imported/cases/test/materialize-validation-15.oui",
+   "source": "reference-test",
+   "origin": "packages/lang-core/src/parser/__tests__/materialize.validation.test.ts"
+  },
+  {
+   "name": "test/materialize-validation-16",
+   "schema": "test-materialize-validation",
+   "file": "imported/cases/test/materialize-validation-16.oui",
+   "source": "reference-test",
+   "origin": "packages/lang-core/src/parser/__tests__/materialize.validation.test.ts"
+  },
+  {
+   "name": "test/materialize-validation-17",
+   "schema": "test-materialize-validation",
+   "file": "imported/cases/test/materialize-validation-17.oui",
+   "source": "reference-test",
+   "origin": "packages/lang-core/src/parser/__tests__/materialize.validation.test.ts"
+  },
+  {
+   "name": "test/materialize-validation-18",
+   "schema": "test-materialize-validation",
+   "file": "imported/cases/test/materialize-validation-18.oui",
+   "source": "reference-test",
+   "origin": "packages/lang-core/src/parser/__tests__/materialize.validation.test.ts"
+  },
+  {
+   "name": "test/materialize-validation-19",
+   "schema": "test-materialize-validation",
+   "file": "imported/cases/test/materialize-validation-19.oui",
+   "source": "reference-test",
+   "origin": "packages/lang-core/src/parser/__tests__/materialize.validation.test.ts"
+  },
+  {
+   "name": "test/materialize-validation-20",
+   "schema": "test-materialize-validation",
+   "file": "imported/cases/test/materialize-validation-20.oui",
+   "source": "reference-test",
+   "origin": "packages/lang-core/src/parser/__tests__/materialize.validation.test.ts"
+  },
+  {
+   "name": "test/materialize-validation-21",
+   "schema": "test-materialize-validation",
+   "file": "imported/cases/test/materialize-validation-21.oui",
+   "source": "reference-test",
+   "origin": "packages/lang-core/src/parser/__tests__/materialize.validation.test.ts"
+  },
+  {
+   "name": "test/materialize-validation-22",
+   "schema": "test-materialize-validation",
+   "file": "imported/cases/test/materialize-validation-22.oui",
+   "source": "reference-test",
+   "origin": "packages/lang-core/src/parser/__tests__/materialize.validation.test.ts"
+  },
+  {
+   "name": "test/materialize-validation-23",
+   "schema": "test-materialize-validation",
+   "file": "imported/cases/test/materialize-validation-23.oui",
+   "source": "reference-test",
+   "origin": "packages/lang-core/src/parser/__tests__/materialize.validation.test.ts"
+  },
+  {
+   "name": "test/materialize-validation-24",
+   "schema": "test-materialize-validation",
+   "file": "imported/cases/test/materialize-validation-24.oui",
+   "source": "reference-test",
+   "origin": "packages/lang-core/src/parser/__tests__/materialize.validation.test.ts"
+  },
+  {
+   "name": "test/materialize-validation-25",
+   "schema": "test-materialize-validation",
+   "file": "imported/cases/test/materialize-validation-25.oui",
+   "source": "reference-test",
+   "origin": "packages/lang-core/src/parser/__tests__/materialize.validation.test.ts"
+  },
+  {
+   "name": "test/materialize-validation-26",
+   "schema": "test-materialize-validation",
+   "file": "imported/cases/test/materialize-validation-26.oui",
+   "source": "reference-test",
+   "origin": "packages/lang-core/src/parser/__tests__/materialize.validation.test.ts"
+  },
+  {
+   "name": "test/materialize-validation-27",
+   "schema": "test-materialize-validation",
+   "file": "imported/cases/test/materialize-validation-27.oui",
+   "source": "reference-test",
+   "origin": "packages/lang-core/src/parser/__tests__/materialize.validation.test.ts"
+  },
+  {
+   "name": "test/materialize-validation-28",
+   "schema": "test-materialize-validation",
+   "file": "imported/cases/test/materialize-validation-28.oui",
+   "source": "reference-test",
+   "origin": "packages/lang-core/src/parser/__tests__/materialize.validation.test.ts"
+  },
+  {
+   "name": "test/materialize-validation-29",
+   "schema": "test-materialize-validation",
+   "file": "imported/cases/test/materialize-validation-29.oui",
+   "source": "reference-test",
+   "origin": "packages/lang-core/src/parser/__tests__/materialize.validation.test.ts"
+  },
+  {
+   "name": "test/materialize-validation-30",
+   "schema": "test-materialize-validation",
+   "file": "imported/cases/test/materialize-validation-30.oui",
+   "source": "reference-test",
+   "origin": "packages/lang-core/src/parser/__tests__/materialize.validation.test.ts"
+  },
+  {
+   "name": "test/materialize-validation-31",
+   "schema": "test-materialize-validation",
+   "file": "imported/cases/test/materialize-validation-31.oui",
+   "source": "reference-test",
+   "origin": "packages/lang-core/src/parser/__tests__/materialize.validation.test.ts"
+  },
+  {
+   "name": "test/materialize-validation-32",
+   "schema": "test-materialize-validation",
+   "file": "imported/cases/test/materialize-validation-32.oui",
+   "source": "reference-test",
+   "origin": "packages/lang-core/src/parser/__tests__/materialize.validation.test.ts"
+  },
+  {
+   "name": "test/materialize-validation-33",
+   "schema": "test-materialize-validation",
+   "file": "imported/cases/test/materialize-validation-33.oui",
+   "source": "reference-test",
+   "origin": "packages/lang-core/src/parser/__tests__/materialize.validation.test.ts"
+  },
+  {
+   "name": "test/materialize-validation-34",
+   "schema": "test-materialize-validation",
+   "file": "imported/cases/test/materialize-validation-34.oui",
+   "source": "reference-test",
+   "origin": "packages/lang-core/src/parser/__tests__/materialize.validation.test.ts"
+  },
+  {
+   "name": "test/materialize-validation-35",
+   "schema": "test-materialize-validation",
+   "file": "imported/cases/test/materialize-validation-35.oui",
+   "source": "reference-test",
+   "origin": "packages/lang-core/src/parser/__tests__/materialize.validation.test.ts"
+  },
+  {
+   "name": "test/materialize-validation-36",
+   "schema": "test-materialize-validation",
+   "file": "imported/cases/test/materialize-validation-36.oui",
+   "source": "reference-test",
+   "origin": "packages/lang-core/src/parser/__tests__/materialize.validation.test.ts"
+  },
+  {
+   "name": "test/materialize-validation-37",
+   "schema": "test-materialize-validation",
+   "file": "imported/cases/test/materialize-validation-37.oui",
+   "source": "reference-test",
+   "origin": "packages/lang-core/src/parser/__tests__/materialize.validation.test.ts"
+  },
+  {
+   "name": "test/materialize-validation-38",
+   "schema": "test-materialize-validation",
+   "file": "imported/cases/test/materialize-validation-38.oui",
+   "source": "reference-test",
+   "origin": "packages/lang-core/src/parser/__tests__/materialize.validation.test.ts"
+  },
+  {
+   "name": "test/materialize-validation-39",
+   "schema": "test-materialize-validation",
+   "file": "imported/cases/test/materialize-validation-39.oui",
+   "source": "reference-test",
+   "origin": "packages/lang-core/src/parser/__tests__/materialize.validation.test.ts"
+  },
+  {
+   "name": "test/materialize-validation-40",
+   "schema": "test-materialize-validation",
+   "file": "imported/cases/test/materialize-validation-40.oui",
+   "source": "reference-test",
+   "origin": "packages/lang-core/src/parser/__tests__/materialize.validation.test.ts"
+  },
+  {
+   "name": "test/parser-01",
+   "schema": "test-parser",
+   "file": "imported/cases/test/parser-01.oui",
+   "source": "reference-test",
+   "origin": "packages/lang-core/src/parser/__tests__/parser.test.ts"
+  },
+  {
+   "name": "test/parser-02",
+   "schema": "test-parser",
+   "file": "imported/cases/test/parser-02.oui",
+   "source": "reference-test",
+   "origin": "packages/lang-core/src/parser/__tests__/parser.test.ts"
+  },
+  {
+   "name": "test/parser-03",
+   "schema": "test-parser",
+   "file": "imported/cases/test/parser-03.oui",
+   "source": "reference-test",
+   "origin": "packages/lang-core/src/parser/__tests__/parser.test.ts"
+  },
+  {
+   "name": "test/parser-04",
+   "schema": "test-parser",
+   "file": "imported/cases/test/parser-04.oui",
+   "source": "reference-test",
+   "origin": "packages/lang-core/src/parser/__tests__/parser.test.ts"
+  },
+  {
+   "name": "test/parser-05",
+   "schema": "test-parser",
+   "file": "imported/cases/test/parser-05.oui",
+   "source": "reference-test",
+   "origin": "packages/lang-core/src/parser/__tests__/parser.test.ts"
+  },
+  {
+   "name": "test/parser-06",
+   "schema": "test-parser",
+   "file": "imported/cases/test/parser-06.oui",
+   "source": "reference-test",
+   "origin": "packages/lang-core/src/parser/__tests__/parser.test.ts"
+  },
+  {
+   "name": "test/parser-07",
+   "schema": "test-parser",
+   "file": "imported/cases/test/parser-07.oui",
+   "source": "reference-test",
+   "origin": "packages/lang-core/src/parser/__tests__/parser.test.ts"
+  },
+  {
+   "name": "test/parser-08",
+   "schema": "test-parser",
+   "file": "imported/cases/test/parser-08.oui",
+   "source": "reference-test",
+   "origin": "packages/lang-core/src/parser/__tests__/parser.test.ts"
+  },
+  {
+   "name": "test/parser-09",
+   "schema": "test-parser",
+   "file": "imported/cases/test/parser-09.oui",
+   "source": "reference-test",
+   "origin": "packages/lang-core/src/parser/__tests__/parser.test.ts"
+  },
+  {
+   "name": "test/parser-10",
+   "schema": "test-parser",
+   "file": "imported/cases/test/parser-10.oui",
+   "source": "reference-test",
+   "origin": "packages/lang-core/src/parser/__tests__/parser.test.ts"
+  },
+  {
+   "name": "test/parser-11",
+   "schema": "test-parser",
+   "file": "imported/cases/test/parser-11.oui",
+   "source": "reference-test",
+   "origin": "packages/lang-core/src/parser/__tests__/parser.test.ts"
+  },
+  {
+   "name": "test/parser-12",
+   "schema": "test-parser",
+   "file": "imported/cases/test/parser-12.oui",
+   "source": "reference-test",
+   "origin": "packages/lang-core/src/parser/__tests__/parser.test.ts"
+  },
+  {
+   "name": "test/parser-13",
+   "schema": "test-parser",
+   "file": "imported/cases/test/parser-13.oui",
+   "source": "reference-test",
+   "origin": "packages/lang-core/src/parser/__tests__/parser.test.ts"
+  },
+  {
+   "name": "test/parser-14",
+   "schema": "test-parser",
+   "file": "imported/cases/test/parser-14.oui",
+   "source": "reference-test",
+   "origin": "packages/lang-core/src/parser/__tests__/parser.test.ts"
+  },
+  {
+   "name": "test/parser-15",
+   "schema": "test-parser",
+   "file": "imported/cases/test/parser-15.oui",
+   "source": "reference-test",
+   "origin": "packages/lang-core/src/parser/__tests__/parser.test.ts"
+  },
+  {
+   "name": "test/parser-16",
+   "schema": "test-parser",
+   "file": "imported/cases/test/parser-16.oui",
+   "source": "reference-test",
+   "origin": "packages/lang-core/src/parser/__tests__/parser.test.ts"
+  },
+  {
+   "name": "test/parser-17",
+   "schema": "test-parser",
+   "file": "imported/cases/test/parser-17.oui",
+   "source": "reference-test",
+   "origin": "packages/lang-core/src/parser/__tests__/parser.test.ts"
+  },
+  {
+   "name": "test/parser-18",
+   "schema": "test-parser",
+   "file": "imported/cases/test/parser-18.oui",
+   "source": "reference-test",
+   "origin": "packages/lang-core/src/parser/__tests__/parser.test.ts"
+  },
+  {
+   "name": "test/parser-19",
+   "schema": "test-parser",
+   "file": "imported/cases/test/parser-19.oui",
+   "source": "reference-test",
+   "origin": "packages/lang-core/src/parser/__tests__/parser.test.ts"
+  },
+  {
+   "name": "test/parser-20",
+   "schema": "test-parser",
+   "file": "imported/cases/test/parser-20.oui",
+   "source": "reference-test",
+   "origin": "packages/lang-core/src/parser/__tests__/parser.test.ts"
+  },
+  {
+   "name": "test/parser-21",
+   "schema": "test-parser",
+   "file": "imported/cases/test/parser-21.oui",
+   "source": "reference-test",
+   "origin": "packages/lang-core/src/parser/__tests__/parser.test.ts"
+  },
+  {
+   "name": "test/parser-22",
+   "schema": "test-parser",
+   "file": "imported/cases/test/parser-22.oui",
+   "source": "reference-test",
+   "origin": "packages/lang-core/src/parser/__tests__/parser.test.ts"
+  },
+  {
+   "name": "test/parser-23",
+   "schema": "test-parser",
+   "file": "imported/cases/test/parser-23.oui",
+   "source": "reference-test",
+   "origin": "packages/lang-core/src/parser/__tests__/parser.test.ts"
+  },
+  {
+   "name": "test/parser-24",
+   "schema": "test-parser",
+   "file": "imported/cases/test/parser-24.oui",
+   "source": "reference-test",
+   "origin": "packages/lang-core/src/parser/__tests__/parser.test.ts"
+  },
+  {
+   "name": "test/parser-25",
+   "schema": "test-parser",
+   "file": "imported/cases/test/parser-25.oui",
+   "source": "reference-test",
+   "origin": "packages/lang-core/src/parser/__tests__/parser.test.ts"
+  },
+  {
+   "name": "test/parser-26",
+   "schema": "test-parser",
+   "file": "imported/cases/test/parser-26.oui",
+   "source": "reference-test",
+   "origin": "packages/lang-core/src/parser/__tests__/parser.test.ts"
+  },
+  {
+   "name": "test/parser-27",
+   "schema": "test-parser",
+   "file": "imported/cases/test/parser-27.oui",
+   "source": "reference-test",
+   "origin": "packages/lang-core/src/parser/__tests__/parser.test.ts"
+  },
+  {
+   "name": "test/parser-28",
+   "schema": "test-parser",
+   "file": "imported/cases/test/parser-28.oui",
+   "source": "reference-test",
+   "origin": "packages/lang-core/src/parser/__tests__/parser.test.ts"
+  },
+  {
+   "name": "test/parser-29",
+   "schema": "test-parser",
+   "file": "imported/cases/test/parser-29.oui",
+   "source": "reference-test",
+   "origin": "packages/lang-core/src/parser/__tests__/parser.test.ts"
+  },
+  {
+   "name": "test/parser-30",
+   "schema": "test-parser",
+   "file": "imported/cases/test/parser-30.oui",
+   "source": "reference-test",
+   "origin": "packages/lang-core/src/parser/__tests__/parser.test.ts"
+  },
+  {
+   "name": "test/serialize-01",
+   "schema": "test-serialize",
+   "file": "imported/cases/test/serialize-01.oui",
+   "source": "reference-test",
+   "origin": "packages/lang-core/src/parser/__tests__/serialize.test.ts"
+  },
+  {
+   "name": "test/serialize-02",
+   "schema": "test-serialize",
+   "file": "imported/cases/test/serialize-02.oui",
+   "source": "reference-test",
+   "origin": "packages/lang-core/src/parser/__tests__/serialize.test.ts"
+  },
+  {
+   "name": "test/serialize-03",
+   "schema": "test-serialize",
+   "file": "imported/cases/test/serialize-03.oui",
+   "source": "reference-test",
+   "origin": "packages/lang-core/src/parser/__tests__/serialize.test.ts"
+  },
+  {
+   "name": "test/serialize-04",
+   "schema": "test-serialize",
+   "file": "imported/cases/test/serialize-04.oui",
+   "source": "reference-test",
+   "origin": "packages/lang-core/src/parser/__tests__/serialize.test.ts"
+  },
+  {
+   "name": "bench/chart-with-data",
+   "schema": "bench",
+   "file": "imported/cases/bench/chart-with-data.oui",
+   "source": "benchmark",
+   "origin": "benchmarks/samples/chart-with-data.oui"
+  },
+  {
+   "name": "bench/contact-form",
+   "schema": "bench",
+   "file": "imported/cases/bench/contact-form.oui",
+   "source": "benchmark",
+   "origin": "benchmarks/samples/contact-form.oui"
+  },
+  {
+   "name": "bench/dashboard",
+   "schema": "bench",
+   "file": "imported/cases/bench/dashboard.oui",
+   "source": "benchmark",
+   "origin": "benchmarks/samples/dashboard.oui"
+  },
+  {
+   "name": "bench/e-commerce-product",
+   "schema": "bench",
+   "file": "imported/cases/bench/e-commerce-product.oui",
+   "source": "benchmark",
+   "origin": "benchmarks/samples/e-commerce-product.oui"
+  },
+  {
+   "name": "bench/pricing-page",
+   "schema": "bench",
+   "file": "imported/cases/bench/pricing-page.oui",
+   "source": "benchmark",
+   "origin": "benchmarks/samples/pricing-page.oui"
+  },
+  {
+   "name": "bench/settings-panel",
+   "schema": "bench",
+   "file": "imported/cases/bench/settings-panel.oui",
+   "source": "benchmark",
+   "origin": "benchmarks/samples/settings-panel.oui"
+  },
+  {
+   "name": "bench/simple-table",
+   "schema": "bench",
+   "file": "imported/cases/bench/simple-table.oui",
+   "source": "benchmark",
+   "origin": "benchmarks/samples/simple-table.oui"
+  },
+  {
+   "name": "docs/blog-components-live-filter-demo-01",
+   "schema": "bench",
+   "file": "imported/cases/docs/blog-components-live-filter-demo-01.oui",
+   "source": "docs",
+   "origin": "docs/content/blog/components/live-filter-demo.tsx"
+  },
+  {
+   "name": "docs/blog-generative-ui-benchmark-01",
+   "schema": "bench",
+   "file": "imported/cases/docs/blog-generative-ui-benchmark-01.oui",
+   "source": "docs",
+   "origin": "docs/content/blog/generative-ui-benchmark.mdx"
+  },
+  {
+   "name": "docs/blog-state-of-generative-ui-report-01",
+   "schema": "bench",
+   "file": "imported/cases/docs/blog-state-of-generative-ui-report-01.oui",
+   "source": "docs",
+   "origin": "docs/content/blog/state-of-generative-ui-report.mdx"
+  },
+  {
+   "name": "docs/blog-state-of-generative-ui-report-02",
+   "schema": "bench",
+   "file": "imported/cases/docs/blog-state-of-generative-ui-report-02.oui",
+   "source": "docs",
+   "origin": "docs/content/blog/state-of-generative-ui-report.mdx"
+  },
+  {
+   "name": "docs/blog-state-of-generative-ui-report-03",
+   "schema": "bench",
+   "file": "imported/cases/docs/blog-state-of-generative-ui-report-03.oui",
+   "source": "docs",
+   "origin": "docs/content/blog/state-of-generative-ui-report.mdx"
+  },
+  {
+   "name": "docs/blog-stop-making-ai-write-json-01",
+   "schema": "bench",
+   "file": "imported/cases/docs/blog-stop-making-ai-write-json-01.oui",
+   "source": "docs",
+   "origin": "docs/content/blog/stop-making-ai-write-json.mdx"
+  },
+  {
+   "name": "docs/blog-stop-making-ai-write-json-02",
+   "schema": "bench",
+   "file": "imported/cases/docs/blog-stop-making-ai-write-json-02.oui",
+   "source": "docs",
+   "origin": "docs/content/blog/stop-making-ai-write-json.mdx"
+  },
+  {
+   "name": "docs/blog-stop-making-ai-write-json-03",
+   "schema": "bench",
+   "file": "imported/cases/docs/blog-stop-making-ai-write-json-03.oui",
+   "source": "docs",
+   "origin": "docs/content/blog/stop-making-ai-write-json.mdx"
+  },
+  {
+   "name": "docs/blog-stop-making-ai-write-json-04",
+   "schema": "bench",
+   "file": "imported/cases/docs/blog-stop-making-ai-write-json-04.oui",
+   "source": "docs",
+   "origin": "docs/content/blog/stop-making-ai-write-json.mdx"
+  },
+  {
+   "name": "docs/blog-stop-making-ai-write-json-05",
+   "schema": "bench",
+   "file": "imported/cases/docs/blog-stop-making-ai-write-json-05.oui",
+   "source": "docs",
+   "origin": "docs/content/blog/stop-making-ai-write-json.mdx"
+  },
+  {
+   "name": "docs/blog-the-llm-is-not-your-query-engine-01",
+   "schema": "bench",
+   "file": "imported/cases/docs/blog-the-llm-is-not-your-query-engine-01.oui",
+   "source": "docs",
+   "origin": "docs/content/blog/the-llm-is-not-your-query-engine.mdx"
+  },
+  {
+   "name": "docs/blog-the-llm-is-not-your-query-engine-02",
+   "schema": "bench",
+   "file": "imported/cases/docs/blog-the-llm-is-not-your-query-engine-02.oui",
+   "source": "docs",
+   "origin": "docs/content/blog/the-llm-is-not-your-query-engine.mdx"
+  },
+  {
+   "name": "docs/api-reference-a2ui-01",
+   "schema": "bench",
+   "file": "imported/cases/docs/api-reference-a2ui-01.oui",
+   "source": "docs",
+   "origin": "docs/content/docs/api-reference/a2ui.mdx"
+  },
+  {
+   "name": "docs/openui-lang-architecture-01",
+   "schema": "bench",
+   "file": "imported/cases/docs/openui-lang-architecture-01.oui",
+   "source": "docs",
+   "origin": "docs/content/docs/openui-lang/architecture.mdx"
+  },
+  {
+   "name": "docs/openui-lang-architecture-02",
+   "schema": "bench",
+   "file": "imported/cases/docs/openui-lang-architecture-02.oui",
+   "source": "docs",
+   "origin": "docs/content/docs/openui-lang/architecture.mdx"
+  },
+  {
+   "name": "docs/openui-lang-benchmarks-01",
+   "schema": "bench",
+   "file": "imported/cases/docs/openui-lang-benchmarks-01.oui",
+   "source": "docs",
+   "origin": "docs/content/docs/openui-lang/benchmarks.mdx"
+  },
+  {
+   "name": "docs/openui-lang-builtins-01",
+   "schema": "bench",
+   "file": "imported/cases/docs/openui-lang-builtins-01.oui",
+   "source": "docs",
+   "origin": "docs/content/docs/openui-lang/builtins.mdx"
+  },
+  {
+   "name": "docs/openui-lang-builtins-02",
+   "schema": "bench",
+   "file": "imported/cases/docs/openui-lang-builtins-02.oui",
+   "source": "docs",
+   "origin": "docs/content/docs/openui-lang/builtins.mdx"
+  },
+  {
+   "name": "docs/openui-lang-builtins-03",
+   "schema": "bench",
+   "file": "imported/cases/docs/openui-lang-builtins-03.oui",
+   "source": "docs",
+   "origin": "docs/content/docs/openui-lang/builtins.mdx"
+  },
+  {
+   "name": "docs/openui-lang-builtins-04",
+   "schema": "bench",
+   "file": "imported/cases/docs/openui-lang-builtins-04.oui",
+   "source": "docs",
+   "origin": "docs/content/docs/openui-lang/builtins.mdx"
+  },
+  {
+   "name": "docs/openui-lang-components-how-it-works-01",
+   "schema": "bench",
+   "file": "imported/cases/docs/openui-lang-components-how-it-works-01.oui",
+   "source": "docs",
+   "origin": "docs/content/docs/openui-lang/components/how-it-works.tsx"
+  },
+  {
+   "name": "docs/openui-lang-components-lang-example-01",
+   "schema": "bench",
+   "file": "imported/cases/docs/openui-lang-components-lang-example-01.oui",
+   "source": "docs",
+   "origin": "docs/content/docs/openui-lang/components/lang-example.tsx"
+  },
+  {
+   "name": "docs/openui-lang-components-lang-example-02",
+   "schema": "bench",
+   "file": "imported/cases/docs/openui-lang-components-lang-example-02.oui",
+   "source": "docs",
+   "origin": "docs/content/docs/openui-lang/components/lang-example.tsx"
+  },
+  {
+   "name": "docs/openui-lang-defining-components-01",
+   "schema": "bench",
+   "file": "imported/cases/docs/openui-lang-defining-components-01.oui",
+   "source": "docs",
+   "origin": "docs/content/docs/openui-lang/defining-components.mdx"
+  },
+  {
+   "name": "docs/openui-lang-evolution-guide-01",
+   "schema": "bench",
+   "file": "imported/cases/docs/openui-lang-evolution-guide-01.oui",
+   "source": "docs",
+   "origin": "docs/content/docs/openui-lang/evolution-guide.mdx"
+  },
+  {
+   "name": "docs/openui-lang-evolution-guide-02",
+   "schema": "bench",
+   "file": "imported/cases/docs/openui-lang-evolution-guide-02.oui",
+   "source": "docs",
+   "origin": "docs/content/docs/openui-lang/evolution-guide.mdx"
+  },
+  {
+   "name": "docs/openui-lang-evolution-guide-03",
+   "schema": "bench",
+   "file": "imported/cases/docs/openui-lang-evolution-guide-03.oui",
+   "source": "docs",
+   "origin": "docs/content/docs/openui-lang/evolution-guide.mdx"
+  },
+  {
+   "name": "docs/openui-lang-evolution-guide-04",
+   "schema": "bench",
+   "file": "imported/cases/docs/openui-lang-evolution-guide-04.oui",
+   "source": "docs",
+   "origin": "docs/content/docs/openui-lang/evolution-guide.mdx"
+  },
+  {
+   "name": "docs/openui-lang-evolution-guide-05",
+   "schema": "bench",
+   "file": "imported/cases/docs/openui-lang-evolution-guide-05.oui",
+   "source": "docs",
+   "origin": "docs/content/docs/openui-lang/evolution-guide.mdx"
+  },
+  {
+   "name": "docs/openui-lang-evolution-guide-06",
+   "schema": "bench",
+   "file": "imported/cases/docs/openui-lang-evolution-guide-06.oui",
+   "source": "docs",
+   "origin": "docs/content/docs/openui-lang/evolution-guide.mdx"
+  },
+  {
+   "name": "docs/openui-lang-incremental-editing-01",
+   "schema": "bench",
+   "file": "imported/cases/docs/openui-lang-incremental-editing-01.oui",
+   "source": "docs",
+   "origin": "docs/content/docs/openui-lang/incremental-editing.mdx"
+  },
+  {
+   "name": "docs/openui-lang-incremental-editing-02",
+   "schema": "bench",
+   "file": "imported/cases/docs/openui-lang-incremental-editing-02.oui",
+   "source": "docs",
+   "origin": "docs/content/docs/openui-lang/incremental-editing.mdx"
+  },
+  {
+   "name": "docs/openui-lang-incremental-editing-03",
+   "schema": "bench",
+   "file": "imported/cases/docs/openui-lang-incremental-editing-03.oui",
+   "source": "docs",
+   "origin": "docs/content/docs/openui-lang/incremental-editing.mdx"
+  },
+  {
+   "name": "docs/openui-lang-index-01",
+   "schema": "bench",
+   "file": "imported/cases/docs/openui-lang-index-01.oui",
+   "source": "docs",
+   "origin": "docs/content/docs/openui-lang/index.mdx"
+  },
+  {
+   "name": "docs/openui-lang-interactivity-01",
+   "schema": "bench",
+   "file": "imported/cases/docs/openui-lang-interactivity-01.oui",
+   "source": "docs",
+   "origin": "docs/content/docs/openui-lang/interactivity.mdx"
+  },
+  {
+   "name": "docs/openui-lang-patterns-01",
+   "schema": "bench",
+   "file": "imported/cases/docs/openui-lang-patterns-01.oui",
+   "source": "docs",
+   "origin": "docs/content/docs/openui-lang/patterns.mdx"
+  },
+  {
+   "name": "docs/openui-lang-patterns-02",
+   "schema": "bench",
+   "file": "imported/cases/docs/openui-lang-patterns-02.oui",
+   "source": "docs",
+   "origin": "docs/content/docs/openui-lang/patterns.mdx"
+  },
+  {
+   "name": "docs/openui-lang-patterns-03",
+   "schema": "bench",
+   "file": "imported/cases/docs/openui-lang-patterns-03.oui",
+   "source": "docs",
+   "origin": "docs/content/docs/openui-lang/patterns.mdx"
+  },
+  {
+   "name": "docs/openui-lang-patterns-04",
+   "schema": "bench",
+   "file": "imported/cases/docs/openui-lang-patterns-04.oui",
+   "source": "docs",
+   "origin": "docs/content/docs/openui-lang/patterns.mdx"
+  },
+  {
+   "name": "docs/openui-lang-patterns-05",
+   "schema": "bench",
+   "file": "imported/cases/docs/openui-lang-patterns-05.oui",
+   "source": "docs",
+   "origin": "docs/content/docs/openui-lang/patterns.mdx"
+  },
+  {
+   "name": "docs/openui-lang-queries-mutations-01",
+   "schema": "bench",
+   "file": "imported/cases/docs/openui-lang-queries-mutations-01.oui",
+   "source": "docs",
+   "origin": "docs/content/docs/openui-lang/queries-mutations.mdx"
+  },
+  {
+   "name": "docs/openui-lang-queries-mutations-02",
+   "schema": "bench",
+   "file": "imported/cases/docs/openui-lang-queries-mutations-02.oui",
+   "source": "docs",
+   "origin": "docs/content/docs/openui-lang/queries-mutations.mdx"
+  },
+  {
+   "name": "docs/openui-lang-queries-mutations-03",
+   "schema": "bench",
+   "file": "imported/cases/docs/openui-lang-queries-mutations-03.oui",
+   "source": "docs",
+   "origin": "docs/content/docs/openui-lang/queries-mutations.mdx"
+  },
+  {
+   "name": "docs/openui-lang-queries-mutations-04",
+   "schema": "bench",
+   "file": "imported/cases/docs/openui-lang-queries-mutations-04.oui",
+   "source": "docs",
+   "origin": "docs/content/docs/openui-lang/queries-mutations.mdx"
+  },
+  {
+   "name": "docs/openui-lang-queries-mutations-05",
+   "schema": "bench",
+   "file": "imported/cases/docs/openui-lang-queries-mutations-05.oui",
+   "source": "docs",
+   "origin": "docs/content/docs/openui-lang/queries-mutations.mdx"
+  },
+  {
+   "name": "docs/openui-lang-reactive-state-01",
+   "schema": "bench",
+   "file": "imported/cases/docs/openui-lang-reactive-state-01.oui",
+   "source": "docs",
+   "origin": "docs/content/docs/openui-lang/reactive-state.mdx"
+  },
+  {
+   "name": "docs/openui-lang-reactive-state-02",
+   "schema": "bench",
+   "file": "imported/cases/docs/openui-lang-reactive-state-02.oui",
+   "source": "docs",
+   "origin": "docs/content/docs/openui-lang/reactive-state.mdx"
+  },
+  {
+   "name": "docs/openui-lang-reactive-state-03",
+   "schema": "bench",
+   "file": "imported/cases/docs/openui-lang-reactive-state-03.oui",
+   "source": "docs",
+   "origin": "docs/content/docs/openui-lang/reactive-state.mdx"
+  },
+  {
+   "name": "docs/openui-lang-reactive-state-04",
+   "schema": "bench",
+   "file": "imported/cases/docs/openui-lang-reactive-state-04.oui",
+   "source": "docs",
+   "origin": "docs/content/docs/openui-lang/reactive-state.mdx"
+  },
+  {
+   "name": "docs/openui-lang-reactive-state-05",
+   "schema": "bench",
+   "file": "imported/cases/docs/openui-lang-reactive-state-05.oui",
+   "source": "docs",
+   "origin": "docs/content/docs/openui-lang/reactive-state.mdx"
+  },
+  {
+   "name": "docs/openui-lang-specification-v01-01",
+   "schema": "bench",
+   "file": "imported/cases/docs/openui-lang-specification-v01-01.oui",
+   "source": "docs",
+   "origin": "docs/content/docs/openui-lang/specification-v01.mdx"
+  },
+  {
+   "name": "docs/openui-lang-specification-v01-02",
+   "schema": "bench",
+   "file": "imported/cases/docs/openui-lang-specification-v01-02.oui",
+   "source": "docs",
+   "origin": "docs/content/docs/openui-lang/specification-v01.mdx"
+  },
+  {
+   "name": "docs/openui-lang-specification-v01-03",
+   "schema": "bench",
+   "file": "imported/cases/docs/openui-lang-specification-v01-03.oui",
+   "source": "docs",
+   "origin": "docs/content/docs/openui-lang/specification-v01.mdx"
+  },
+  {
+   "name": "docs/openui-lang-specification-v01-04",
+   "schema": "bench",
+   "file": "imported/cases/docs/openui-lang-specification-v01-04.oui",
+   "source": "docs",
+   "origin": "docs/content/docs/openui-lang/specification-v01.mdx"
+  },
+  {
+   "name": "docs/openui-lang-specification-v01-05",
+   "schema": "bench",
+   "file": "imported/cases/docs/openui-lang-specification-v01-05.oui",
+   "source": "docs",
+   "origin": "docs/content/docs/openui-lang/specification-v01.mdx"
+  },
+  {
+   "name": "docs/openui-lang-specification-v05-01",
+   "schema": "bench",
+   "file": "imported/cases/docs/openui-lang-specification-v05-01.oui",
+   "source": "docs",
+   "origin": "docs/content/docs/openui-lang/specification-v05.mdx"
+  },
+  {
+   "name": "docs/openui-lang-specification-v05-02",
+   "schema": "bench",
+   "file": "imported/cases/docs/openui-lang-specification-v05-02.oui",
+   "source": "docs",
+   "origin": "docs/content/docs/openui-lang/specification-v05.mdx"
+  },
+  {
+   "name": "docs/openui-lang-specification-v05-03",
+   "schema": "bench",
+   "file": "imported/cases/docs/openui-lang-specification-v05-03.oui",
+   "source": "docs",
+   "origin": "docs/content/docs/openui-lang/specification-v05.mdx"
+  },
+  {
+   "name": "docs/openui-lang-specification-v05-04",
+   "schema": "bench",
+   "file": "imported/cases/docs/openui-lang-specification-v05-04.oui",
+   "source": "docs",
+   "origin": "docs/content/docs/openui-lang/specification-v05.mdx"
+  },
+  {
+   "name": "docs/openui-lang-specification-v05-05",
+   "schema": "bench",
+   "file": "imported/cases/docs/openui-lang-specification-v05-05.oui",
+   "source": "docs",
+   "origin": "docs/content/docs/openui-lang/specification-v05.mdx"
+  },
+  {
+   "name": "docs/openui-lang-specification-v05-06",
+   "schema": "bench",
+   "file": "imported/cases/docs/openui-lang-specification-v05-06.oui",
+   "source": "docs",
+   "origin": "docs/content/docs/openui-lang/specification-v05.mdx"
+  },
+  {
+   "name": "docs/openui-lang-specification-v05-07",
+   "schema": "bench",
+   "file": "imported/cases/docs/openui-lang-specification-v05-07.oui",
+   "source": "docs",
+   "origin": "docs/content/docs/openui-lang/specification-v05.mdx"
+  },
+  {
+   "name": "docs/openui-lang-specification-v05-08",
+   "schema": "bench",
+   "file": "imported/cases/docs/openui-lang-specification-v05-08.oui",
+   "source": "docs",
+   "origin": "docs/content/docs/openui-lang/specification-v05.mdx"
+  },
+  {
+   "name": "docs/openui-lang-specification-v05-09",
+   "schema": "bench",
+   "file": "imported/cases/docs/openui-lang-specification-v05-09.oui",
+   "source": "docs",
+   "origin": "docs/content/docs/openui-lang/specification-v05.mdx"
+  },
+  {
+   "name": "docs/openui-lang-syntax-01",
+   "schema": "bench",
+   "file": "imported/cases/docs/openui-lang-syntax-01.oui",
+   "source": "docs",
+   "origin": "docs/content/docs/openui-lang/syntax.mdx"
+  },
+  {
+   "name": "docs/openui-lang-syntax-02",
+   "schema": "bench",
+   "file": "imported/cases/docs/openui-lang-syntax-02.oui",
+   "source": "docs",
+   "origin": "docs/content/docs/openui-lang/syntax.mdx"
+  },
+  {
+   "name": "docs/openui-lang-system-prompts-01",
+   "schema": "bench",
+   "file": "imported/cases/docs/openui-lang-system-prompts-01.oui",
+   "source": "docs",
+   "origin": "docs/content/docs/openui-lang/system-prompts.mdx"
+  },
+  {
+   "name": "docs/openui-lang-troubleshooting-01",
+   "schema": "bench",
+   "file": "imported/cases/docs/openui-lang-troubleshooting-01.oui",
+   "source": "docs",
+   "origin": "docs/content/docs/openui-lang/troubleshooting.mdx"
+  },
+  {
+   "name": "docs/openui-lang-troubleshooting-02",
+   "schema": "bench",
+   "file": "imported/cases/docs/openui-lang-troubleshooting-02.oui",
+   "source": "docs",
+   "origin": "docs/content/docs/openui-lang/troubleshooting.mdx"
+  },
+  {
+   "name": "docs/openui-lang-troubleshooting-03",
+   "schema": "bench",
+   "file": "imported/cases/docs/openui-lang-troubleshooting-03.oui",
+   "source": "docs",
+   "origin": "docs/content/docs/openui-lang/troubleshooting.mdx"
+  },
+  {
+   "name": "docs/openui-lang-troubleshooting-04",
+   "schema": "bench",
+   "file": "imported/cases/docs/openui-lang-troubleshooting-04.oui",
+   "source": "docs",
+   "origin": "docs/content/docs/openui-lang/troubleshooting.mdx"
+  },
+  {
+   "name": "docs/openui-lang-troubleshooting-05",
+   "schema": "bench",
+   "file": "imported/cases/docs/openui-lang-troubleshooting-05.oui",
+   "source": "docs",
+   "origin": "docs/content/docs/openui-lang/troubleshooting.mdx"
+  },
+  {
+   "name": "examples/react-native-library-01",
+   "schema": "bench",
+   "file": "imported/cases/examples/react-native-library-01.oui",
+   "source": "examples",
+   "origin": "examples/app-frameworks/react-native/backend/src/library.ts"
+  },
+  {
+   "name": "examples/react-native-library-02",
+   "schema": "bench",
+   "file": "imported/cases/examples/react-native-library-02.oui",
+   "source": "examples",
+   "origin": "examples/app-frameworks/react-native/backend/src/library.ts"
+  },
+  {
+   "name": "examples/react-native-library-03",
+   "schema": "bench",
+   "file": "imported/cases/examples/react-native-library-03.oui",
+   "source": "examples",
+   "origin": "examples/app-frameworks/react-native/backend/src/library.ts"
+  },
+  {
+   "name": "examples/svelte-library-01",
+   "schema": "bench",
+   "file": "imported/cases/examples/svelte-library-01.oui",
+   "source": "examples",
+   "origin": "examples/app-frameworks/svelte/src/lib/library.ts"
+  },
+  {
+   "name": "examples/svelte-library-02",
+   "schema": "bench",
+   "file": "imported/cases/examples/svelte-library-02.oui",
+   "source": "examples",
+   "origin": "examples/app-frameworks/svelte/src/lib/library.ts"
+  },
+  {
+   "name": "examples/svelte-library-03",
+   "schema": "bench",
+   "file": "imported/cases/examples/svelte-library-03.oui",
+   "source": "examples",
+   "origin": "examples/app-frameworks/svelte/src/lib/library.ts"
+  },
+  {
+   "name": "examples/vue-define-library-01",
+   "schema": "bench",
+   "file": "imported/cases/examples/vue-define-library-01.oui",
+   "source": "examples",
+   "origin": "examples/app-frameworks/vue/lib/define-library.ts"
+  },
+  {
+   "name": "examples/vue-generate-prompt-01",
+   "schema": "bench",
+   "file": "imported/cases/examples/vue-generate-prompt-01.oui",
+   "source": "examples",
+   "origin": "examples/app-frameworks/vue/scripts/generate-prompt.mjs"
+  },
+  {
+   "name": "examples/conversational-analytics-prompt-01",
+   "schema": "bench",
+   "file": "imported/cases/examples/conversational-analytics-prompt-01.oui",
+   "source": "examples",
+   "origin": "examples/cookbooks/conversational-analytics/src/lib/prompt.ts"
+  },
+  {
+   "name": "examples/document-comparison-prompt-01",
+   "schema": "bench",
+   "file": "imported/cases/examples/document-comparison-prompt-01.oui",
+   "source": "examples",
+   "origin": "examples/cookbooks/document-comparison/src/lib/prompt.ts"
+  },
+  {
+   "name": "examples/document-comparison-prompt-02",
+   "schema": "bench",
+   "file": "imported/cases/examples/document-comparison-prompt-02.oui",
+   "source": "examples",
+   "origin": "examples/cookbooks/document-comparison/src/lib/prompt.ts"
+  },
+  {
+   "name": "examples/material-ui-README-01",
+   "schema": "bench",
+   "file": "imported/cases/examples/material-ui-README-01.oui",
+   "source": "examples",
+   "origin": "examples/design-systems/material-ui/README.md"
+  },
+  {
+   "name": "examples/material-ui-index-01",
+   "schema": "bench",
+   "file": "imported/cases/examples/material-ui-index-01.oui",
+   "source": "examples",
+   "origin": "examples/design-systems/material-ui/src/lib/mui-genui/index.tsx"
+  },
+  {
+   "name": "examples/material-ui-index-02",
+   "schema": "bench",
+   "file": "imported/cases/examples/material-ui-index-02.oui",
+   "source": "examples",
+   "origin": "examples/design-systems/material-ui/src/lib/mui-genui/index.tsx"
+  },
+  {
+   "name": "examples/material-ui-index-03",
+   "schema": "bench",
+   "file": "imported/cases/examples/material-ui-index-03.oui",
+   "source": "examples",
+   "origin": "examples/design-systems/material-ui/src/lib/mui-genui/index.tsx"
+  },
+  {
+   "name": "examples/material-ui-index-04",
+   "schema": "bench",
+   "file": "imported/cases/examples/material-ui-index-04.oui",
+   "source": "examples",
+   "origin": "examples/design-systems/material-ui/src/lib/mui-genui/index.tsx"
+  },
+  {
+   "name": "examples/material-ui-index-05",
+   "schema": "bench",
+   "file": "imported/cases/examples/material-ui-index-05.oui",
+   "source": "examples",
+   "origin": "examples/design-systems/material-ui/src/lib/mui-genui/index.tsx"
+  },
+  {
+   "name": "examples/material-ui-index-06",
+   "schema": "bench",
+   "file": "imported/cases/examples/material-ui-index-06.oui",
+   "source": "examples",
+   "origin": "examples/design-systems/material-ui/src/lib/mui-genui/index.tsx"
+  },
+  {
+   "name": "examples/shadcn-index-01",
+   "schema": "bench",
+   "file": "imported/cases/examples/shadcn-index-01.oui",
+   "source": "examples",
+   "origin": "examples/design-systems/shadcn/src/lib/shadcn-genui/index.tsx"
+  },
+  {
+   "name": "examples/shadcn-index-02",
+   "schema": "bench",
+   "file": "imported/cases/examples/shadcn-index-02.oui",
+   "source": "examples",
+   "origin": "examples/design-systems/shadcn/src/lib/shadcn-genui/index.tsx"
+  },
+  {
+   "name": "examples/shadcn-index-03",
+   "schema": "bench",
+   "file": "imported/cases/examples/shadcn-index-03.oui",
+   "source": "examples",
+   "origin": "examples/design-systems/shadcn/src/lib/shadcn-genui/index.tsx"
+  },
+  {
+   "name": "examples/shadcn-index-04",
+   "schema": "bench",
+   "file": "imported/cases/examples/shadcn-index-04.oui",
+   "source": "examples",
+   "origin": "examples/design-systems/shadcn/src/lib/shadcn-genui/index.tsx"
+  },
+  {
+   "name": "examples/shadcn-index-05",
+   "schema": "bench",
+   "file": "imported/cases/examples/shadcn-index-05.oui",
+   "source": "examples",
+   "origin": "examples/design-systems/shadcn/src/lib/shadcn-genui/index.tsx"
+  },
+  {
+   "name": "examples/shadcn-index-06",
+   "schema": "bench",
+   "file": "imported/cases/examples/shadcn-index-06.oui",
+   "source": "examples",
+   "origin": "examples/design-systems/shadcn/src/lib/shadcn-genui/index.tsx"
+  },
+  {
+   "name": "examples/shadcn-index-07",
+   "schema": "bench",
+   "file": "imported/cases/examples/shadcn-index-07.oui",
+   "source": "examples",
+   "origin": "examples/design-systems/shadcn/src/lib/shadcn-genui/index.tsx"
+  },
+  {
+   "name": "examples/shadcn-index-08",
+   "schema": "bench",
+   "file": "imported/cases/examples/shadcn-index-08.oui",
+   "source": "examples",
+   "origin": "examples/design-systems/shadcn/src/lib/shadcn-genui/index.tsx"
+  },
+  {
+   "name": "examples/shadcn-index-09",
+   "schema": "bench",
+   "file": "imported/cases/examples/shadcn-index-09.oui",
+   "source": "examples",
+   "origin": "examples/design-systems/shadcn/src/lib/shadcn-genui/index.tsx"
+  },
+  {
+   "name": "examples/shadcn-index-10",
+   "schema": "bench",
+   "file": "imported/cases/examples/shadcn-index-10.oui",
+   "source": "examples",
+   "origin": "examples/design-systems/shadcn/src/lib/shadcn-genui/index.tsx"
+  },
+  {
+   "name": "examples/shadcn-index-11",
+   "schema": "bench",
+   "file": "imported/cases/examples/shadcn-index-11.oui",
+   "source": "examples",
+   "origin": "examples/design-systems/shadcn/src/lib/shadcn-genui/index.tsx"
+  },
+  {
+   "name": "examples/shadcn-index-12",
+   "schema": "bench",
+   "file": "imported/cases/examples/shadcn-index-12.oui",
+   "source": "examples",
+   "origin": "examples/design-systems/shadcn/src/lib/shadcn-genui/index.tsx"
+  },
+  {
+   "name": "examples/grok-build-grok-build-stream-test-01",
+   "schema": "bench",
+   "file": "imported/cases/examples/grok-build-grok-build-stream-test-01.oui",
+   "source": "examples",
+   "origin": "examples/harnesses/grok-build/src/lib/grok-build-stream.test.ts"
+  },
+  {
+   "name": "examples/grok-build-grok-build-stream-test-02",
+   "schema": "bench",
+   "file": "imported/cases/examples/grok-build-grok-build-stream-test-02.oui",
+   "source": "examples",
+   "origin": "examples/harnesses/grok-build/src/lib/grok-build-stream.test.ts"
+  },
+  {
+   "name": "examples/grok-build-grok-build-stream-test-03",
+   "schema": "bench",
+   "file": "imported/cases/examples/grok-build-grok-build-stream-test-03.oui",
+   "source": "examples",
+   "origin": "examples/harnesses/grok-build/src/lib/grok-build-stream.test.ts"
+  },
+  {
+   "name": "examples/grok-build-grok-build-stream-test-04",
+   "schema": "bench",
+   "file": "imported/cases/examples/grok-build-grok-build-stream-test-04.oui",
+   "source": "examples",
+   "origin": "examples/harnesses/grok-build/src/lib/grok-build-stream.test.ts"
+  },
+  {
+   "name": "examples/grok-build-grok-build-stream-test-05",
+   "schema": "bench",
+   "file": "imported/cases/examples/grok-build-grok-build-stream-test-05.oui",
+   "source": "examples",
+   "origin": "examples/harnesses/grok-build/src/lib/grok-build-stream.test.ts"
+  },
+  {
+   "name": "examples/grok-build-grok-build-stream-test-06",
+   "schema": "bench",
+   "file": "imported/cases/examples/grok-build-grok-build-stream-test-06.oui",
+   "source": "examples",
+   "origin": "examples/harnesses/grok-build/src/lib/grok-build-stream.test.ts"
+  },
+  {
+   "name": "examples/grok-build-grok-build-stream-test-07",
+   "schema": "bench",
+   "file": "imported/cases/examples/grok-build-grok-build-stream-test-07.oui",
+   "source": "examples",
+   "origin": "examples/harnesses/grok-build/src/lib/grok-build-stream.test.ts"
+  },
+  {
+   "name": "examples/grok-build-grok-build-stream-test-08",
+   "schema": "bench",
+   "file": "imported/cases/examples/grok-build-grok-build-stream-test-08.oui",
+   "source": "examples",
+   "origin": "examples/harnesses/grok-build/src/lib/grok-build-stream.test.ts"
+  },
+  {
+   "name": "examples/grok-build-openui-output-01",
+   "schema": "bench",
+   "file": "imported/cases/examples/grok-build-openui-output-01.oui",
+   "source": "examples",
+   "origin": "examples/harnesses/grok-build/src/lib/openui-output.ts"
+  },
+  {
+   "name": "examples/grok-build-openui-output-02",
+   "schema": "bench",
+   "file": "imported/cases/examples/grok-build-openui-output-02.oui",
+   "source": "examples",
+   "origin": "examples/harnesses/grok-build/src/lib/openui-output.ts"
+  },
+  {
+   "name": "examples/handsontable-spreadsheet-library-01",
+   "schema": "bench",
+   "file": "imported/cases/examples/handsontable-spreadsheet-library-01.oui",
+   "source": "examples",
+   "origin": "examples/miscellaneous/handsontable/src/lib/spreadsheet-library.tsx"
+  },
+  {
+   "name": "examples/handsontable-spreadsheet-library-02",
+   "schema": "bench",
+   "file": "imported/cases/examples/handsontable-spreadsheet-library-02.oui",
+   "source": "examples",
+   "origin": "examples/miscellaneous/handsontable/src/lib/spreadsheet-library.tsx"
+  },
+  {
+   "name": "examples/handsontable-spreadsheet-library-03",
+   "schema": "bench",
+   "file": "imported/cases/examples/handsontable-spreadsheet-library-03.oui",
+   "source": "examples",
+   "origin": "examples/miscellaneous/handsontable/src/lib/spreadsheet-library.tsx"
+  },
+  {
+   "name": "examples/handsontable-spreadsheet-library-04",
+   "schema": "bench",
+   "file": "imported/cases/examples/handsontable-spreadsheet-library-04.oui",
+   "source": "examples",
+   "origin": "examples/miscellaneous/handsontable/src/lib/spreadsheet-library.tsx"
+  },
+  {
+   "name": "examples/html-artifact-prompt-options-01",
+   "schema": "bench",
+   "file": "imported/cases/examples/html-artifact-prompt-options-01.oui",
+   "source": "examples",
+   "origin": "examples/miscellaneous/html-artifact/src/lib/prompt-options.ts"
+  },
+  {
+   "name": "examples/html-artifact-prompt-options-02",
+   "schema": "bench",
+   "file": "imported/cases/examples/html-artifact-prompt-options-02.oui",
+   "source": "examples",
+   "origin": "examples/miscellaneous/html-artifact/src/lib/prompt-options.ts"
+  }
+ ]
+}

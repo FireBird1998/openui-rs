@@ -1,0 +1,27 @@
+$title = ""
+$priority = "medium"
+$showEdit = false
+$editId = ""
+$editTitle = ""
+$editPriority = "medium"
+createResult = Mutation("create_ticket", {title: $title, priority: $priority})
+updateResult = Mutation("update_ticket", {id: $editId, title: $editTitle, priority: $editPriority})
+tickets = Query("list_tickets", {}, {rows: []})
+createBtn = Button("Create", Action([@Run(createResult), @Run(tickets), @Reset($title, $priority)]))
+createForm = Form("create", createBtn, [
+  FormControl("Title", Input("title", "Ticket title", "text", {required: true}, $title)),
+  FormControl("Priority", Select("priority", [SelectItem("low", "Low"), SelectItem("medium", "Medium"), SelectItem("high", "High")], null, null, $priority))
+])
+tbl = Table([
+  Col("Title", tickets.rows.title),
+  Col("Priority", @Each(tickets.rows, "t", Tag(t.priority, null, "sm", t.priority == "high" ? "danger" : "neutral"))),
+  Col("Edit", @Each(tickets.rows, "t", Button("Edit", Action([@Set($editId, t.id), @Set($editTitle, t.title), @Set($editPriority, t.priority), @Set($showEdit, true)]), "secondary", "normal", "small")))
+])
+saveBtn = Button("Save", Action([@Run(updateResult), @Run(tickets), @Set($showEdit, false)]), "primary")
+cancelBtn = Button("Cancel", Action([@Set($showEdit, false)]), "secondary")
+editForm = Form("edit", Buttons([saveBtn, cancelBtn]), [
+  FormControl("Title", Input("editTitle", "", "text", {required: true}, $editTitle)),
+  FormControl("Priority", Select("editPriority", [SelectItem("low", "Low"), SelectItem("medium", "Medium"), SelectItem("high", "High")], null, null, $editPriority))
+])
+editModal = Modal("Edit Ticket", $showEdit, [editForm])
+root = Stack([CardHeader("Tickets"), createForm, tbl, editModal])

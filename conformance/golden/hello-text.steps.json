@@ -1,9 +1,1 @@
-{
- "4": [
-  "c8bfd3a0:170",
-  "5557c6e3:173",
-  "daadcdbc:334",
-  "922a9198:284",
-  "d172e31c:286"
- ]
-}
+{"1":{"steps":["c8bfd3a0","c8bfd3a0","c8bfd3a0","c8bfd3a0","c8bfd3a0","c8bfd3a0","c8bfd3a0","5557c6e3","16e96be6","3ed7bfac","14a4e76a","daadcdbc","d78047e7","38271721","922a9198","922a9198","d172e31c","d172e31c"]},"2":{"steps":["c8bfd3a0","c8bfd3a0","c8bfd3a0","5557c6e3","3ed7bfac","daadcdbc","38271721","922a9198","d172e31c"]},"3":{"steps":["c8bfd3a0","c8bfd3a0","16e96be6","daadcdbc","922a9198","d172e31c"]},"4":{"steps":["c8bfd3a0","5557c6e3","daadcdbc","922a9198","d172e31c"]},"7":{"steps":["c8bfd3a0","38271721","d172e31c"]},"16":{"steps":["922a9198","d172e31c"]},"random-1":{"sizes":[8,2,8],"steps":["5557c6e3","3ed7bfac","d172e31c"]},"random-2":{"sizes":[5,13],"steps":["c8bfd3a0","d172e31c"]}}

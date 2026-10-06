@@ -1,0 +1,1 @@
+root = Root([Text(true ? Text("nested") : null)])

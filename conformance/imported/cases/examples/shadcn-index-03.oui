@@ -1,0 +1,6 @@
+Example 3 — Alert variants:
+root = Card([info, success, warning, danger])
+info = Alert("Update available", "A new version is available for download.", "info")
+success = Alert("Payment confirmed", "Your transaction was successful.", "success")
+warning = Alert("Disk almost full", "You have less than 10% storage remaining.", "warning")
+danger = Alert("Account suspended", "Please contact support immediately.", "destructive")

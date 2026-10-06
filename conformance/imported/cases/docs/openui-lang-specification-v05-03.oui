@@ -1,0 +1,1 @@
+result = Mutation("tool_name", {title: $title})

@@ -1,0 +1,10 @@
+health = Query("get_server_health", {}, {cpu: 0, memory: 0, latencyP95: 0, errorRate: 0, timeseries: []}, 30)
+kpiRow = Stack([
+  Card([TextContent("CPU", "small"), TextContent("" + @Round(health.cpu, 1) + "%", "large-heavy")]),
+  Card([TextContent("Memory", "small"), TextContent("" + @Round(health.memory, 1) + "%", "large-heavy")]),
+  Card([TextContent("P95 Latency", "small"), TextContent("" + health.latencyP95 + "ms", "large-heavy")]),
+  Card([TextContent("Error Rate", "small"), TextContent("" + @Round(health.errorRate, 2) + "%", "large-heavy")])
+], "row", "m", "stretch", "start", true)
+chart = Card([CardHeader("24h Trend"), LineChart(health.timeseries.time, [Series("CPU", health.timeseries.cpu), Series("Memory", health.timeseries.memory)])])
+refreshBtn = Button("Refresh Now", Action([@Run(health)]), "secondary")
+root = Stack([CardHeader("Server Health"), refreshBtn, kpiRow, chart])

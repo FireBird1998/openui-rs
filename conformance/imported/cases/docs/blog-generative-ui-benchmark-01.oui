@@ -1,0 +1,8 @@
+# openui-lang: one line
+header = Header("Executive Revenue Dashboard", "Q4 Performance Overview")
+
+# json-render: one patch of many
+{"op":"add","path":"/elements/header_main","value":{"type":"Header","props":{...}}}
+
+# A2UI: one wrapped message
+{"version":"v0.9","updateComponents":{"surfaceId":"main","components":[{...}]}}

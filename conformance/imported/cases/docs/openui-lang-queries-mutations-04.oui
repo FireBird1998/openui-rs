@@ -1,0 +1,1 @@
+health = Query("get_server_health", {}, {cpu: 0, memory: 0}, 30)

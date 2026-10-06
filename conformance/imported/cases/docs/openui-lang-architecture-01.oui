@@ -1,0 +1,8 @@
+Turn 1:                              Turn 2 (patch only):
+
+root = Stack([header, tbl])          root = Stack([header, chart, tbl])  ← updated
+header = CardHeader("Tickets")       chart = PieChart(["Open","Closed"], ← new
+tickets = Query(...)                   [@Count(@Filter(..., "open")),
+tbl = Table([...])                      @Count(@Filter(..., "closed"))
+                                       ], "donut")
+  20 lines, ~400 tokens               3 lines, ~60 tokens (85% fewer)

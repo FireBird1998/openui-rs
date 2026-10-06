@@ -1,0 +1,2 @@
+root = Root([@Each(items, "item", Text(item.name))])
+items = [{name: "a"}, {name: "b"}]

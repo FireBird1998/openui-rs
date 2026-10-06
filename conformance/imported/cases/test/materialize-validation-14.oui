@@ -1,0 +1,2 @@
+root = ListBox([inner])
+inner = ObjBox({ author: "ann", views: "lots" })

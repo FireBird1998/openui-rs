@@ -1,0 +1,3 @@
+= broken
+not a statement
+root = Root([Text("ok")])

@@ -1,0 +1,2 @@
+root = Stack([tbl])
+tbl = Title("hello")

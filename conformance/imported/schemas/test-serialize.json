@@ -1,0 +1,39 @@
+{
+ "$defs": {
+  "Stack": {
+   "properties": {
+    "children": {}
+   },
+   "required": [
+    "children"
+   ]
+  },
+  "Title": {
+   "properties": {
+    "text": {}
+   },
+   "required": [
+    "text"
+   ]
+  },
+  "Table": {
+   "properties": {
+    "columns": {},
+    "rows": {}
+   },
+   "required": [
+    "columns",
+    "rows"
+   ]
+  },
+  "Card": {
+   "properties": {
+    "title": {},
+    "subtitle": {}
+   },
+   "required": [
+    "title"
+   ]
+  }
+ }
+}

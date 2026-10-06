@@ -1,0 +1,8 @@
+two blocks
+```
+root = Root([a])
+```
+and
+```
+a = Text("from block two")
+```

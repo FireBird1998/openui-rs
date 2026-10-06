@@ -1,0 +1,3 @@
+root = Stack([header, chart])
+header = CardHeader("Q4 Revenue")
+chart = BarChart(["Oct", "Nov", "Dec"], [Series("Revenue", [120, 150, 180])])

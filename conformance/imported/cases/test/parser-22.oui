@@ -1,0 +1,4 @@
+root = Stack([t1])
+t1 = Title("used")
+a = Title("x")
+b = Title("y")

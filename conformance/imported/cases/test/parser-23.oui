@@ -1,0 +1,4 @@
+root = Stack([t1])
+t1 = Table([col], rows)
+col = Title("Name")
+rows = [["Alice"]]

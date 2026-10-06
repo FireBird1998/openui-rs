@@ -1,0 +1,2 @@
+root = Stack([answer])
+answer = TextContent('literal ) root = Stack([])')

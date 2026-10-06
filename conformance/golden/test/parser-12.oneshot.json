@@ -1,0 +1,1 @@
+{"root":null,"meta":{"incomplete":false,"unresolved":[],"orphaned":[],"statementCount":1,"errors":[{"code":"missing-required","component":"Stack","path":"/children","message":"missing required field \"/children\" — signature: Stack(children*)","statementId":"root"}]},"stateDeclarations":{},"queryStatements":[],"mutationStatements":[]}

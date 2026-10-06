@@ -7,3 +7,7 @@ Blocked by: 01 (and openui-lang ticket 07)
 ## Question
 
 During a streaming parse, does the Kotlin side get the whole parse result after every chunk, or only what changed since the last one? Which shape lets Compose redraw only the changed parts of a story screen, and what does each cost to send across the boundary?
+
+## Comments
+
+**2026-10-06 (from openui-lang ticket 02):** upstream's blog post "Rewriting our Rust WASM Parser in TypeScript" measured the cost of crossing a language boundary with a whole parse result on every chunk. The boundary dominated, not the parsing: about 20–61 µs per call in the browser, and returning native objects (serde-wasm-bindgen) was slower than a JSON string. The same question applies to Kotlin over UniFFI/JNI. Measure the per-chunk crossing cost, not just parse speed.

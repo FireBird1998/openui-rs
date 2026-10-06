@@ -1,0 +1,10 @@
+$days = "7"
+data = Query("get_usage_metrics", {days: $days}, {totalEvents: 0, totalUsers: 0, data: []})
+filter = FormControl("Date Range", Select("days", [SelectItem("7", "7 days"), SelectItem("14", "14 days"), SelectItem("30", "30 days")], null, null, $days))
+kpiRow = Stack([
+  Card([TextContent("Events", "small"), TextContent("" + data.totalEvents, "large-heavy")]),
+  Card([TextContent("Users", "small"), TextContent("" + data.totalUsers, "large-heavy")]),
+  Card([TextContent("Avg/Day", "small"), TextContent("" + @Round(@Avg(data.data.events), 0), "large-heavy")])
+], "row", "m", "stretch", "start", true)
+chart = Card([CardHeader("Daily Trend"), LineChart(data.data.day, [Series("Events", data.data.events), Series("Users", data.data.users)])])
+root = Stack([CardHeader("Analytics"), filter, kpiRow, chart])

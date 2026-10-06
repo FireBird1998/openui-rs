@@ -1,0 +1,2 @@
+tbl = Table([Col("Title", data.rows.title), Col("Status", data.rows.status)])
+chart = LineChart(data.rows.day, [Series("Views", data.rows.views)])

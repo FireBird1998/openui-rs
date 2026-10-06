@@ -1,0 +1,2 @@
+$days = "7"
+filter = Select("days", $days, [SelectItem("7", "7 days"), SelectItem("30", "30 days")])

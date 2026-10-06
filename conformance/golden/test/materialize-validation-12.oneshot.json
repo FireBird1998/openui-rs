@@ -1,0 +1,1 @@
+{"root":null,"meta":{"incomplete":false,"unresolved":[],"orphaned":[],"statementCount":1,"errors":[{"code":"null-required","component":"ChartBox","path":"/labels","message":"required field \"/labels\" cannot be null — signature: ChartBox(labels*: array, variant: \"grouped\"|\"stacked\")","statementId":"root"}]},"stateDeclarations":{},"queryStatements":[],"mutationStatements":[]}

@@ -1,0 +1,10 @@
+Example 5 — Buttons with all variants:
+root = Card([title, btns])
+title = TextContent("Button Styles", "large-heavy")
+btns = Buttons([b1, b2, b3, b4, b5, b6])
+b1 = Button("Default", { type: "continue_conversation" }, "default")
+b2 = Button("Secondary", { type: "continue_conversation" }, "secondary")
+b3 = Button("Outline", { type: "continue_conversation" }, "outline")
+b4 = Button("Ghost", { type: "continue_conversation" }, "ghost")
+b5 = Button("Link", { type: "continue_conversation" }, "link")
+b6 = Button("Destructive", { type: "continue_conversation" }, "destructive")

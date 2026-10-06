@@ -1,0 +1,1 @@
+root = Stack([TextContent("hello", "large"), Table([Col("A", "string")], [["x"]]), BarChart(["a"], [Series("s", [1, "2"])], "weird")])

@@ -1,0 +1,3 @@
+root = Card([header, tbl])
+header = CardHeader("Q1 Sales")
+tbl = Table([Col("Product"), Col("Revenue", "number")], [["Widget", 1200]])
