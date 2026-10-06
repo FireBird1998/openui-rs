@@ -74,6 +74,7 @@ The work happens in two phases: make it right (a faithful port that conforms), t
   - `JSON.stringify` string escaping
 - **Input:** programs are valid Unicode, and a future binding must not split a character across chunks.
 - **Lone surrogates** (decided in ticket 03): decoded strings can still hold one, for example when a stream stops between `\uD83D` and `\uDE00`. The reference parser keeps it as a lone UTF-16 surrogate and writes it as `\ud83d`. The core carries each lone surrogate as one of the last 2048 code points of plane 16 (U+10F800–U+10FFFF) and writes it back out the same way. The cost: a program that contains those private-use code points itself can't conform. A Kotlin binding, whose strings are UTF-16, should map them back to real lone surrogates.
+- **JavaScript object semantics** (decided in ticket 06): where they reach the output, the core reproduces them. That covers array-index keys ordered first, `in` seeing `Object.prototype` names, `__proto__` assignment, and objects shaped like AST nodes or elements. Cases that would need a full JS object model (an element-shaped object literal as the root, prototype mutation, shared mutable schema defaults) are documented divergences, not emulated.
 - **Telemetry:** the reference runner always runs with OpenUI telemetry disabled. The core has no telemetry.
 
 ### Modules

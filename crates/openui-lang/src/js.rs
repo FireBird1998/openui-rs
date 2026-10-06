@@ -173,3 +173,181 @@ pub(crate) fn number_to_string(n: f64) -> String {
         ryu_js::Buffer::new().format_finite(n).to_owned()
     }
 }
+
+/// Names every object inherits from `Object.prototype` (as Bun/JavaScriptCore
+/// has them). `name in obj` is true for these even when `obj` doesn't have them.
+pub(crate) const OBJECT_PROTOTYPE_KEYS: [&str; 12] = [
+    "__defineGetter__",
+    "__defineSetter__",
+    "__lookupGetter__",
+    "__lookupSetter__",
+    "__proto__",
+    "constructor",
+    "hasOwnProperty",
+    "isPrototypeOf",
+    "propertyIsEnumerable",
+    "toLocaleString",
+    "toString",
+    "valueOf",
+];
+
+/// The key as an array index ("0", "17", up to 2³² − 2), if it is one.
+/// JavaScript lists such keys first, in numeric order, on every object.
+fn array_index(key: &str) -> Option<u32> {
+    let canonical = key == "0" || (!key.starts_with('0') && !key.is_empty());
+    if !canonical || key.len() > 10 || !key.bytes().all(|b| b.is_ascii_digit()) {
+        return None;
+    }
+    key.parse::<u64>()
+        .ok()
+        .filter(|&n| n < u64::from(u32::MAX))
+        .map(|n| n as u32)
+}
+
+/// Positions of `keys` in JavaScript property order: array indices ascending,
+/// then the other keys in insertion order.
+fn js_property_order<'a>(keys: impl Iterator<Item = &'a str>) -> Vec<usize> {
+    let mut order: Vec<(Option<u32>, usize)> =
+        keys.enumerate().map(|(i, k)| (array_index(k), i)).collect();
+    if order.iter().any(|(index, _)| index.is_some()) {
+        order.sort_by_key(|&(index, i)| match index {
+            Some(n) => (0, u64::from(n)),
+            None => (1, i as u64),
+        });
+    }
+    order.into_iter().map(|(_, i)| i).collect()
+}
+
+/// A string-keyed object with JavaScript's semantics: re-setting a key keeps
+/// its place, and iteration lists array-index keys first (ascending), then the
+/// rest in insertion order.
+#[derive(Clone, Debug, PartialEq)]
+pub struct JsObject<V> {
+    entries: indexmap::IndexMap<String, V>,
+}
+
+impl<V> Default for JsObject<V> {
+    fn default() -> Self {
+        JsObject {
+            entries: indexmap::IndexMap::new(),
+        }
+    }
+}
+
+impl<V> JsObject<V> {
+    pub fn new() -> Self {
+        Self::default()
+    }
+
+    /// `obj[key] = value`. Assigning `__proto__` changes the prototype instead
+    /// of adding a property, so it's dropped here.
+    pub fn set(&mut self, key: impl Into<String>, value: V) {
+        let key = key.into();
+        if key != "__proto__" {
+            self.entries.insert(key, value);
+        }
+    }
+
+    /// Add an own property even if it's `__proto__`, as `JSON.parse` does.
+    pub fn define(&mut self, key: impl Into<String>, value: V) {
+        self.entries.insert(key.into(), value);
+    }
+
+    /// The own property `key`.
+    pub fn get(&self, key: &str) -> Option<&V> {
+        self.entries.get(key)
+    }
+
+    pub fn get_mut(&mut self, key: &str) -> Option<&mut V> {
+        self.entries.get_mut(key)
+    }
+
+    pub fn has_own(&self, key: &str) -> bool {
+        self.entries.contains_key(key)
+    }
+
+    /// `key in obj`: an own property, or one inherited from `Object.prototype`.
+    pub fn has(&self, key: &str) -> bool {
+        self.has_own(key) || OBJECT_PROTOTYPE_KEYS.contains(&key)
+    }
+
+    /// `delete obj[key]`.
+    pub fn remove(&mut self, key: &str) -> Option<V> {
+        self.entries.shift_remove(key)
+    }
+
+    pub fn len(&self) -> usize {
+        self.entries.len()
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.entries.is_empty()
+    }
+
+    /// Entries in JavaScript property order.
+    pub fn iter(&self) -> impl Iterator<Item = (&String, &V)> {
+        js_property_order(self.entries.keys().map(String::as_str))
+            .into_iter()
+            .map(|i| self.entries.get_index(i).expect("index in range"))
+    }
+
+    pub fn values(&self) -> impl Iterator<Item = &V> {
+        self.iter().map(|(_, v)| v)
+    }
+}
+
+/// A JSON object's entries in the order `JSON.parse` would give them.
+pub(crate) fn json_entries(
+    map: &serde_json::Map<String, serde_json::Value>,
+) -> Vec<(&String, &serde_json::Value)> {
+    let entries: Vec<_> = map.iter().collect();
+    js_property_order(entries.iter().map(|(k, _)| k.as_str()))
+        .into_iter()
+        .map(|i| entries[i])
+        .collect()
+}
+
+/// A JSON value's number as `JSON.parse` reads it.
+pub(crate) fn json_number(n: &serde_json::Number) -> f64 {
+    n.as_f64().unwrap_or(f64::NAN)
+}
+
+/// Append a JSON value as `JSON.stringify(JSON.parse(...))` would write it.
+pub(crate) fn write_json_value(out: &mut String, value: &serde_json::Value) {
+    use serde_json::Value as Json;
+    match value {
+        Json::Null => out.push_str("null"),
+        Json::Bool(b) => out.push_str(if *b { "true" } else { "false" }),
+        Json::Number(n) => write_json_number(out, json_number(n)),
+        Json::String(s) => write_json_string(out, s),
+        Json::Array(items) => {
+            out.push('[');
+            for (i, item) in items.iter().enumerate() {
+                if i > 0 {
+                    out.push(',');
+                }
+                write_json_value(out, item);
+            }
+            out.push(']');
+        }
+        Json::Object(map) => {
+            out.push('{');
+            for (i, (k, v)) in json_entries(map).into_iter().enumerate() {
+                if i > 0 {
+                    out.push(',');
+                }
+                write_json_string(out, k);
+                out.push(':');
+                write_json_value(out, v);
+            }
+            out.push('}');
+        }
+    }
+}
+
+/// `JSON.stringify(value)` for a JSON value.
+pub(crate) fn json_value_string(value: &serde_json::Value) -> String {
+    let mut out = String::new();
+    write_json_value(&mut out, value);
+    out
+}

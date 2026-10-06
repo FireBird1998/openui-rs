@@ -1,0 +1,4 @@
+root = Grid("x", "y")
+other = Grid("x", "y", 3, {"10": 1, b: 2, "0": 3}, "extra")
+box = Box("p", "label")
+last = Grid(null, "y")

@@ -1,0 +1,3 @@
+t = Text("x")
+c = Card(Text("h"), [t], {})
+r = Root([c])

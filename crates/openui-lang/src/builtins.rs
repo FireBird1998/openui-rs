@@ -29,7 +29,15 @@ pub fn is_builtin(name: &str) -> bool {
     BUILTIN_NAMES.contains(&name)
 }
 
-/// Statement-level calls that are neither builtins nor components.
+/// Statement-level calls that are neither builtins nor components. The
+/// reference checks `name in { Query, Mutation }`, so names every object
+/// inherits (`toString`, `constructor`, ...) count too.
 pub fn is_reserved_call(name: &str) -> bool {
-    matches!(name, "Query" | "Mutation")
+    matches!(name, "Query" | "Mutation") || crate::js::OBJECT_PROTOTYPE_KEYS.contains(&name)
+}
+
+/// Builtins whose arguments are kept as expressions with a scoped iterator
+/// variable (`@Each(items, "item", template)`).
+pub(crate) fn is_lazy_builtin(name: &str) -> bool {
+    name == "Each"
 }

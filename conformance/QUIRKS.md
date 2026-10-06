@@ -30,3 +30,27 @@ a = Text("x")
 **Draft upstream report:**
 
 > **Unfenced model output that starts with an apostrophe ("Here's the UI:") renders nothing.** When a response isn't wrapped in a code fence and the prose before the program has an odd number of apostrophes, `parse()` returns `root: null` with `statementCount: 0`. `autoClose` and the lexer both treat `'` as a string delimiter, so "Here's" opens a single-quoted string that swallows the rest of the program. Prose *after* the program has a milder effect: everything renders but `meta.incomplete` stays `true`, so elements stay `partial` after the stream ends. `stripFences` already ignores apostrophes (see its "does not treat apostrophes as string delimiters" test), but unfenced prose reaches the statement stages untouched. Possible fixes: drop lines that can't start a statement before lexing, or only treat `'` as opening a string where an expression can start. Repro: `parse("Here's the UI:\nroot = Root([a])\na = Text(\"x\")", lib)` → `root: null`.
+
+## 2. Builtins named after `Object.prototype` members count as Query/Mutation calls
+
+- **Found:** 2026-10-06, while porting materialize (ticket 06). Reference commit `bba1d251`.
+- **Pinned by:** `hand/47-prototype-named-builtins`.
+
+```
+root = Root([@toString(1), @constructor(), Text(@valueOf)])
+```
+
+**Reference behaviour:** two `inline-reserved` errors, *"toString() must be declared as a top-level statement, not used inline as a value"* (and the same for `constructor`), and both calls are dropped. Declared as a statement, it's worse: after `a = @toString(1)`, every reference to `a` becomes `{"k":"RuntimeRef","n":"a","refType":"query"}`, but `queryStatements` is empty, so the runtime is asked to run a query that was never declared.
+
+**Why:** `isReservedCall(name)` is `name in RESERVED_CALLS`, and `in` also sees what every object inherits: `toString`, `constructor`, `valueOf`, `hasOwnProperty`, `__proto__` and seven more.
+
+**Draft upstream report:**
+
+> **`isReservedCall` matches `toString`, `constructor` and other `Object.prototype` names.** `isReservedCall` in `packages/lang-core/src/parser/builtins.ts` uses `name in RESERVED_CALLS`, which is true for inherited names. So `@toString(x)` is reported as an inline Query/Mutation, and a statement `a = @toString(x)` turns every reference to `a` into a query `RuntimeRef` with no matching entry in `queryStatements`. Use `Object.hasOwn(RESERVED_CALLS, name)` or a `Set`. Repro: `parse("a = @toString(1)\nroot = Root([Text(a)])", lib)`.
+
+## 3. Prop names that look like numbers take positional args first
+
+- **Found:** 2026-10-06 (ticket 06). This is JavaScript object semantics rather than a bug, but it surprises library authors.
+- **Pinned by:** `hand/84-index-like-param-names`, and `hand/44-integer-like-keys` for object literals.
+
+A component's positional order is `Object.keys(properties)`, and JavaScript lists array-index keys (`"0"`, `"10"`) before all others. So with `properties: {"b": ..., "0": ..., "a": ..., "10": ...}`, the order is `0, 10, b, a`, and `Grid("x", "y")` sets `"0"` and `"10"`, not `"b"`. The same reordering applies to `$defs` (the order of "Available components") and to object literals in programs. Worth a note in the docs on defining components, rather than a code change.

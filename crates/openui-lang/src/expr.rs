@@ -222,6 +222,7 @@ impl<'a> ExprParser<'a> {
         Ast::Comp {
             name: name.to_owned(),
             args,
+            mapped_props: None,
         }
     }
 

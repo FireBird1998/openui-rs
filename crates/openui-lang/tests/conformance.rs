@@ -206,3 +206,43 @@ fn every_case_matches_the_reference_parser() {
         "conformance doesn't match pending.txt:\n{report}"
     );
 }
+
+/// One-shot parsing alone, with no pending list: every case must match.
+#[test]
+fn every_one_shot_parse_matches_the_reference_parser() {
+    let corpus = load_corpus();
+    let golden = golden_dir();
+    let mut explanations_left = 5;
+    let mut report = String::new();
+    let mut failed = 0;
+    for case in &corpus.cases {
+        let expected = read(&golden.join(format!("{}.oneshot.json", case.name)));
+        let outcome = catch_unwind(AssertUnwindSafe(|| {
+            parse(&case.input, &case.library, case.root.as_deref()).to_json()
+        }));
+        let actual = match outcome {
+            Ok(json) => json,
+            Err(_) => "(panicked)".to_owned(),
+        };
+        if actual == expected {
+            continue;
+        }
+        failed += 1;
+        let detail = if explanations_left > 0 {
+            explanations_left -= 1;
+            diff(&expected, &actual)
+        } else {
+            String::new()
+        };
+        let _ = write!(report, "\n✗ {}\n{detail}", case.name);
+    }
+    println!(
+        "one-shot: {} of {} cases match",
+        corpus.cases.len() - failed,
+        corpus.cases.len()
+    );
+    assert!(
+        report.is_empty(),
+        "{failed} one-shot parses differ from the reference:\n{report}"
+    );
+}

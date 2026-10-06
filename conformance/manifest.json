@@ -11,7 +11,8 @@
  ],
  "schemas": {
   "text": "schemas/text.json",
-  "hand": "schemas/hand.json"
+  "hand": "schemas/hand.json",
+  "keys": "schemas/keys.json"
  },
  "cases": [
   {
@@ -492,6 +493,40 @@
    "name": "hand/79-apostrophe-in-trailing-prose",
    "schema": "hand",
    "file": "cases/hand/79-apostrophe-in-trailing-prose.oui",
+   "source": "hand-written"
+  },
+  {
+   "name": "hand/80-root-name-statement",
+   "schema": "hand",
+   "file": "cases/hand/80-root-name-statement.oui",
+   "source": "hand-written",
+   "root": "main"
+  },
+  {
+   "name": "hand/81-root-name-component",
+   "schema": "hand",
+   "file": "cases/hand/81-root-name-component.oui",
+   "source": "hand-written",
+   "root": "Card"
+  },
+  {
+   "name": "hand/82-root-name-missing",
+   "schema": "hand",
+   "file": "cases/hand/82-root-name-missing.oui",
+   "source": "hand-written",
+   "root": "Missing"
+  },
+  {
+   "name": "hand/83-root-statement-wins",
+   "schema": "hand",
+   "file": "cases/hand/83-root-statement-wins.oui",
+   "source": "hand-written",
+   "root": "main"
+  },
+  {
+   "name": "hand/84-index-like-param-names",
+   "schema": "keys",
+   "file": "cases/hand/84-index-like-param-names.oui",
    "source": "hand-written"
   }
  ]

@@ -1,40 +1,55 @@
-//! Validation messages and component signatures, worded exactly as the
-//! reference parser words them.
+//! Prop validation against the component library's JSON Schema, as the
+//! reference parser's `validateSchemaValue` and `resolveInvalidValue`, with
+//! every message worded exactly as the reference words it.
 
 use serde_json::Value as Json;
 
-use crate::js::json_string;
+use crate::js::{
+    JsObject, OBJECT_PROTOTYPE_KEYS, json_entries, json_string, json_value_string,
+    number_to_string, write_json_number,
+};
 use crate::library::Param;
-use crate::result::ValidationErrorCode;
+use crate::materialize::Ctx;
+use crate::result::{ValidationErrorCode, Value};
 
-/// The varying parts of a validation error; the wording lives in [`message`].
+/// The varying parts of a validation error; the wording lives in [`Issue::message`].
 pub(crate) enum Issue {
-    MissingRequired { signature: String },
-    NullRequired { signature: String },
+    TypeMismatch { expected: String, actual: String },
+    MissingRequired { signature: Option<String> },
+    NullRequired { signature: Option<String> },
     UnknownComponent { available: Vec<String> },
+    InlineReserved,
+    ExcessArgs { declared: usize, got: usize },
 }
 
 impl Issue {
     pub(crate) fn code(&self) -> ValidationErrorCode {
         match self {
+            Issue::TypeMismatch { .. } => ValidationErrorCode::TypeMismatch,
             Issue::MissingRequired { .. } => ValidationErrorCode::MissingRequired,
             Issue::NullRequired { .. } => ValidationErrorCode::NullRequired,
             Issue::UnknownComponent { .. } => ValidationErrorCode::UnknownComponent,
+            Issue::InlineReserved => ValidationErrorCode::InlineReserved,
+            Issue::ExcessArgs { .. } => ValidationErrorCode::ExcessArgs,
         }
     }
 
     pub(crate) fn message(&self, component: &str, path: &str) -> String {
+        let hint = |signature: &Option<String>| match signature {
+            Some(s) if !s.is_empty() => format!(" — signature: {s}"),
+            _ => String::new(),
+        };
         match self {
+            Issue::TypeMismatch { expected, actual } => {
+                format!("field \"{path}\" expects {expected} but got {actual}")
+            }
             Issue::MissingRequired { signature } => {
-                format!(
-                    "missing required field \"{path}\"{}",
-                    signature_hint(signature)
-                )
+                format!("missing required field \"{path}\"{}", hint(signature))
             }
             Issue::NullRequired { signature } => {
                 format!(
                     "required field \"{path}\" cannot be null{}",
-                    signature_hint(signature)
+                    hint(signature)
                 )
             }
             Issue::UnknownComponent { available } => {
@@ -47,15 +62,16 @@ impl Issue {
                     "Unknown component \"{component}\" — not found in catalog or builtins{list}"
                 )
             }
+            Issue::InlineReserved => {
+                format!(
+                    "{component}() must be declared as a top-level statement, not used inline as a value"
+                )
+            }
+            Issue::ExcessArgs { declared, got } => format!(
+                "{component} takes {declared} arg(s), got {got} ({} excess dropped)",
+                got - declared
+            ),
         }
-    }
-}
-
-fn signature_hint(signature: &str) -> String {
-    if signature.is_empty() {
-        String::new()
-    } else {
-        format!(" — signature: {signature}")
     }
 }
 
@@ -71,12 +87,35 @@ pub(crate) fn params_signature(component: &str, params: &[Param]) -> String {
                 p.name.clone()
             };
             match type_from_schema(&p.schema) {
-                Some(ty) => format!("{marked}: {ty}"),
-                None => marked,
+                Some(ty) if !ty.is_empty() => format!("{marked}: {ty}"),
+                _ => marked,
             }
         })
         .collect();
     format!("{component}({})", rendered.join(", "))
+}
+
+/// A schema leaf's allowed literal values, or its scalar type.
+enum Leaf<'a> {
+    Enum(Vec<&'a Json>),
+    Type(&'static str),
+    Unchecked,
+}
+
+/// The reference's `getScalarTypeInfo`: `enum`, then `const`, then `type`.
+fn scalar_leaf(s: &serde_json::Map<String, Json>) -> Leaf<'_> {
+    if let Some(Json::Array(values)) = s.get("enum") {
+        return Leaf::Enum(values.iter().collect());
+    }
+    if let Some(value) = s.get("const") {
+        return Leaf::Enum(vec![value]);
+    }
+    match s.get("type").and_then(Json::as_str) {
+        Some("string") => Leaf::Type("string"),
+        Some("number" | "integer") => Leaf::Type("number"),
+        Some("boolean") => Leaf::Type("boolean"),
+        _ => Leaf::Unchecked,
+    }
 }
 
 /// The type hint for a param's schema, as the reference `getTypeFromSchema`.
@@ -85,32 +124,398 @@ fn type_from_schema(schema: &Json) -> Option<String> {
     if let Some(r) = p.get("$ref").and_then(Json::as_str) {
         return r.rsplit('/').next().map(str::to_owned);
     }
-    if let Some(values) = p.get("enum").and_then(Json::as_array) {
-        return Some(
+    match scalar_leaf(p) {
+        Leaf::Enum(values) => Some(
             values
-                .iter()
-                .map(json_literal)
+                .into_iter()
+                .map(json_value_string)
                 .collect::<Vec<_>>()
                 .join("|"),
-        );
-    }
-    if let Some(value) = p.get("const") {
-        return Some(json_literal(value));
-    }
-    match p.get("type").and_then(Json::as_str) {
-        Some("string") => Some("string".to_owned()),
-        Some("number" | "integer") => Some("number".to_owned()),
-        Some("boolean") => Some("boolean".to_owned()),
-        Some(other) => Some(other.to_owned()),
-        None => None,
+        ),
+        Leaf::Type(t) => Some(t.to_owned()),
+        Leaf::Unchecked => p.get("type").and_then(Json::as_str).map(str::to_owned),
     }
 }
 
-/// `JSON.stringify` of an enum or const value. Exact for strings, booleans and
-/// null; numbers use serde_json's formatting until the JS number formatter lands.
-fn json_literal(value: &Json) -> String {
+/// `typeof value` in JavaScript.
+fn type_of(value: &Value) -> &'static str {
     match value {
-        Json::String(s) => json_string(s),
-        other => other.to_string(),
+        Value::Str(_) => "string",
+        Value::Num(_) => "number",
+        Value::Bool(_) => "boolean",
+        _ => "object",
     }
+}
+
+/// `typeof value`, but `array` for arrays (the reference's `jsType`).
+fn js_type(value: &Value) -> &'static str {
+    match value {
+        Value::Arr(_) => "array",
+        other => type_of(other),
+    }
+}
+
+/// `JSON.stringify(value)` for a scalar.
+fn scalar_json(value: &Value) -> String {
+    match value {
+        Value::Str(s) => json_string(s),
+        Value::Num(n) => {
+            let mut out = String::new();
+            write_json_number(&mut out, *n);
+            out
+        }
+        Value::Bool(b) => b.to_string(),
+        _ => "null".to_owned(),
+    }
+}
+
+/// `enumValues.includes(value)` (SameValueZero: NaN equals NaN).
+fn enum_includes(values: &[&Json], value: &Value) -> bool {
+    values.iter().any(|v| match (v, value) {
+        (Json::String(a), Value::Str(b)) => a == b,
+        (Json::Number(a), Value::Num(b)) => {
+            let a = crate::js::json_number(a);
+            a == *b || (a.is_nan() && b.is_nan())
+        }
+        (Json::Bool(a), Value::Bool(b)) => a == b,
+        _ => false,
+    })
+}
+
+const AST_KINDS: [&str; 17] = [
+    "Comp",
+    "Ref",
+    "StateRef",
+    "RuntimeRef",
+    "BinOp",
+    "UnaryOp",
+    "Ternary",
+    "Member",
+    "Index",
+    "Assign",
+    "Str",
+    "Num",
+    "Bool",
+    "Null",
+    "Arr",
+    "Obj",
+    "Ph",
+];
+
+/// The reference's `isASTNode`: an AST node, or any object whose `k` is an AST kind.
+pub(crate) fn is_ast_node(value: &Value) -> bool {
+    match value {
+        Value::Ast(_) => true,
+        Value::Obj(o) => {
+            matches!(o.get("k"), Some(Value::Str(k)) if AST_KINDS.contains(&k.as_str()))
+        }
+        _ => false,
+    }
+}
+
+/// The reference's `isElementNode`: an element, or an object shaped like one.
+/// Returns the type name and the props, when it is one.
+pub(crate) fn element_parts(value: &Value) -> Option<(&str, Option<&JsObject<Value>>)> {
+    match value {
+        Value::Element(e) => Some((&e.type_name, Some(&e.props))),
+        Value::Obj(o) => {
+            let is_element = matches!(o.get("type"), Some(Value::Str(t)) if t == "element")
+                && matches!(o.get("partial"), Some(Value::Bool(_)))
+                && matches!(
+                    o.get("props"),
+                    Some(Value::Obj(_) | Value::Arr(_) | Value::Element(_) | Value::Ast(_))
+                );
+            match (is_element, o.get("typeName")) {
+                (true, Some(Value::Str(name))) => {
+                    let props = match o.get("props") {
+                        Some(Value::Obj(p)) => Some(p),
+                        _ => None,
+                    };
+                    Some((name, props))
+                }
+                _ => None,
+            }
+        }
+        _ => None,
+    }
+}
+
+/// The reference's edge rule for an invalid value: use the schema default if
+/// there is one; otherwise a required key makes its container invalid (true),
+/// and an optional one is deleted.
+pub(crate) fn resolve_invalid_value(
+    container: &mut JsObject<Value>,
+    key: &str,
+    required: bool,
+    default: Option<&Json>,
+) -> bool {
+    if let Some(default) = default {
+        container.set(key, Value::from_json(default));
+        return false;
+    }
+    if required {
+        return true;
+    }
+    container.remove(key);
+    false
+}
+
+fn schema_default(schema: Option<&Json>) -> Option<&Json> {
+    schema?.as_object()?.get("default")
+}
+
+/// Validate `value` against a JSON Schema fragment, reporting every problem
+/// and pruning what can't be salvaged. True when the value itself is invalid
+/// and its parent must resolve it.
+pub(crate) fn validate_schema_value(
+    value: &mut Value,
+    schema: &Json,
+    component: &str,
+    path: &str,
+    ctx: &mut Ctx,
+) -> bool {
+    let Some(s) = schema.as_object() else {
+        return false;
+    };
+    if matches!(value, Value::Null) || is_ast_node(value) {
+        return false; // absence is the parent's concern; runtime values resolve later
+    }
+    if let Some((type_name, _)) = element_parts(value) {
+        let type_name = type_name.to_owned();
+        return validate_element_position(&type_name, s, component, path, ctx);
+    }
+    if ["$ref", "anyOf", "oneOf", "allOf"]
+        .iter()
+        .any(|k| s.contains_key(*k))
+    {
+        return false; // composite shapes can't be matched to one plain value
+    }
+    match s.get("type").and_then(Json::as_str) {
+        Some("object") => validate_object(value, s, component, path, ctx),
+        Some("array") => validate_array(value, s, component, path, ctx),
+        _ => validate_leaf(value, s, component, path, ctx),
+    }
+}
+
+/// A component in a data slot: fine where components may go, a mismatch where
+/// the slot wants plain data.
+fn validate_element_position(
+    type_name: &str,
+    s: &serde_json::Map<String, Json>,
+    component: &str,
+    path: &str,
+    ctx: &mut Ctx,
+) -> bool {
+    if ["$ref", "anyOf", "oneOf", "allOf"]
+        .iter()
+        .any(|k| s.contains_key(*k))
+    {
+        return false;
+    }
+    let ty = s.get("type").and_then(Json::as_str);
+    if ty.is_some() || matches!(s.get("enum"), Some(Json::Array(_))) || s.contains_key("const") {
+        let expected = ty.unwrap_or("a literal value").to_owned();
+        let actual = format!("component \"{type_name}\"");
+        ctx.push_issue(component, path, Issue::TypeMismatch { expected, actual });
+        return true;
+    }
+    false
+}
+
+fn validate_object(
+    value: &mut Value,
+    s: &serde_json::Map<String, Json>,
+    component: &str,
+    path: &str,
+    ctx: &mut Ctx,
+) -> bool {
+    let Value::Obj(obj) = value else {
+        let actual = js_type(value).to_owned();
+        ctx.push_issue(
+            component,
+            path,
+            Issue::TypeMismatch {
+                expected: "object".to_owned(),
+                actual,
+            },
+        );
+        return true;
+    };
+    let props: Vec<(String, &Json)> = match s.get("properties") {
+        Some(Json::Object(m)) => json_entries(m)
+            .into_iter()
+            .map(|(k, v)| (k.clone(), v))
+            .collect(),
+        Some(Json::Array(items)) => items
+            .iter()
+            .enumerate()
+            .map(|(i, v)| (i.to_string(), v))
+            .collect(),
+        _ => Vec::new(),
+    };
+    let prop = |key: &str| props.iter().find(|(k, _)| k == key).map(|(_, v)| *v);
+    let required: Vec<String> = match s.get("required") {
+        Some(Json::Array(items)) => items.iter().map(js_string_of).collect(),
+        _ => Vec::new(),
+    };
+    let is_required = |key: &str| matches!(s.get("required"), Some(Json::Array(items)) if items.iter().any(|r| r.as_str() == Some(key)));
+
+    let mut invalid = false;
+    // Structural checks are streaming-sensitive: only on complete input.
+    if !ctx.partial {
+        for key in &required {
+            let present = obj.has(key);
+            if !present || matches!(obj.get(key), Some(Value::Null)) {
+                if let Some(fallback) = schema_default(prop(key)) {
+                    obj.set(key.clone(), Value::from_json(fallback));
+                    continue;
+                }
+                let issue = if present {
+                    Issue::NullRequired { signature: None }
+                } else {
+                    Issue::MissingRequired { signature: None }
+                };
+                ctx.push_issue(component, &format!("{path}/{key}"), issue);
+                invalid = true;
+            }
+        }
+    }
+    for (key, sub) in &props {
+        let child_path = format!("{path}/{key}");
+        let child_invalid = match obj.get_mut(key) {
+            Some(child) => validate_schema_value(child, sub, component, &child_path, ctx),
+            // An inherited name (`toString`, ...) is "in" every object, as a function.
+            None if key != "__proto__" && OBJECT_PROTOTYPE_KEYS.contains(&key.as_str()) => {
+                validate_inherited_function(sub, component, &child_path, ctx)
+            }
+            None => continue,
+        };
+        if child_invalid
+            && resolve_invalid_value(obj, key, is_required(key), schema_default(Some(sub)))
+        {
+            invalid = true;
+        }
+    }
+    invalid
+}
+
+/// What validating an inherited method (a function) against `schema` reports.
+fn validate_inherited_function(schema: &Json, component: &str, path: &str, ctx: &mut Ctx) -> bool {
+    let Some(s) = schema.as_object() else {
+        return false;
+    };
+    if ["$ref", "anyOf", "oneOf", "allOf"]
+        .iter()
+        .any(|k| s.contains_key(*k))
+    {
+        return false;
+    }
+    let expected = match s.get("type").and_then(Json::as_str) {
+        Some(t @ ("object" | "array")) => t,
+        _ => match scalar_leaf(s) {
+            Leaf::Type(t) => t,
+            _ => return false,
+        },
+    };
+    let issue = Issue::TypeMismatch {
+        expected: expected.to_owned(),
+        actual: "function".to_owned(),
+    };
+    ctx.push_issue(component, path, issue);
+    true
+}
+
+/// A JSON value as a JavaScript property key (`String(value)`).
+fn js_string_of(value: &Json) -> String {
+    match value {
+        Json::String(s) => s.clone(),
+        Json::Number(n) => number_to_string(crate::js::json_number(n)),
+        Json::Bool(b) => b.to_string(),
+        Json::Null => "null".to_owned(),
+        Json::Array(items) => items
+            .iter()
+            .map(|v| {
+                if v.is_null() {
+                    String::new()
+                } else {
+                    js_string_of(v)
+                }
+            })
+            .collect::<Vec<_>>()
+            .join(","),
+        Json::Object(_) => "[object Object]".to_owned(),
+    }
+}
+
+/// An array slot: invalid items are pruned (after validating all of them, so
+/// error paths keep the original indices). Never invalid itself.
+fn validate_array(
+    value: &mut Value,
+    s: &serde_json::Map<String, Json>,
+    component: &str,
+    path: &str,
+    ctx: &mut Ctx,
+) -> bool {
+    let Value::Arr(items) = value else {
+        let actual = js_type(value).to_owned();
+        ctx.push_issue(
+            component,
+            path,
+            Issue::TypeMismatch {
+                expected: "array".to_owned(),
+                actual,
+            },
+        );
+        return true;
+    };
+    let Some(item_schema) = s.get("items").filter(|i| i.is_object()) else {
+        return false;
+    };
+    let mut invalid = Vec::new();
+    for (i, item) in items.iter_mut().enumerate() {
+        if validate_schema_value(item, item_schema, component, &format!("{path}/{i}"), ctx) {
+            invalid.push(i);
+        }
+    }
+    for i in invalid.into_iter().rev() {
+        items.remove(i);
+    }
+    false
+}
+
+/// A scalar or enum leaf. Enum membership waits while streaming (a partial
+/// literal may still become valid); scalar type checks don't.
+fn validate_leaf(
+    value: &Value,
+    s: &serde_json::Map<String, Json>,
+    component: &str,
+    path: &str,
+    ctx: &mut Ctx,
+) -> bool {
+    let issue = match scalar_leaf(s) {
+        Leaf::Unchecked => return false,
+        Leaf::Enum(_) if ctx.partial => return false,
+        Leaf::Enum(values) => {
+            let scalar = matches!(value, Value::Str(_) | Value::Num(_) | Value::Bool(_));
+            if !scalar || enum_includes(&values, value) {
+                return false;
+            }
+            let listed: Vec<String> = values.into_iter().map(json_value_string).collect();
+            Issue::TypeMismatch {
+                expected: format!("one of [{}]", listed.join(", ")),
+                actual: scalar_json(value),
+            }
+        }
+        Leaf::Type(expected) => {
+            if expected == type_of(value) {
+                return false;
+            }
+            Issue::TypeMismatch {
+                expected: expected.to_owned(),
+                actual: js_type(value).to_owned(),
+            }
+        }
+    };
+    ctx.push_issue(component, path, issue);
+    true
 }

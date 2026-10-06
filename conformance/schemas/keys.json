@@ -1,0 +1,36 @@
+{
+ "$defs": {
+  "Grid": {
+   "properties": {
+    "b": {
+     "type": "string"
+    },
+    "0": {
+     "type": "string"
+    },
+    "a": {
+     "type": "number",
+     "default": 7
+    },
+    "10": {}
+   },
+   "required": [
+    "0",
+    "a"
+   ]
+  },
+  "Box": {
+   "properties": {
+    "__proto__": {
+     "type": "string"
+    },
+    "label": {
+     "type": "string"
+    }
+   },
+   "required": [
+    "label"
+   ]
+  }
+ }
+}

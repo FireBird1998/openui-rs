@@ -1,14 +1,17 @@
 //! Expression trees, mirroring the reference parser's `ASTNode`.
 
-use crate::js::{write_json_number, write_json_string};
+use crate::js::{JsObject, write_json_number, write_json_string};
 
 /// One expression node.
 #[derive(Clone, Debug, PartialEq)]
 pub enum Ast {
     /// A component or builtin call: `Header("Hello")`, `@Count(items)`.
+    /// Materializing a library component inside a runtime expression adds
+    /// `mapped_props`, its args by param name.
     Comp {
         name: String,
         args: Vec<Ast>,
+        mapped_props: Option<JsObject<Ast>>,
     },
     Str(String),
     Num(f64),
@@ -23,6 +26,11 @@ pub enum Ast {
     Ph(String),
     /// A reactive state variable, `$` included: `$count`.
     StateRef(String),
+    /// A reference to a Query or Mutation statement, resolved at runtime.
+    RuntimeRef {
+        n: String,
+        ref_type: RefType,
+    },
     BinOp {
         op: &'static str,
         left: Box<Ast>,
@@ -52,6 +60,22 @@ pub enum Ast {
     },
 }
 
+/// What a [`Ast::RuntimeRef`] points at.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum RefType {
+    Query,
+    Mutation,
+}
+
+impl RefType {
+    pub fn as_str(self) -> &'static str {
+        match self {
+            RefType::Query => "query",
+            RefType::Mutation => "mutation",
+        }
+    }
+}
+
 impl Ast {
     /// The node as the reference parser's `JSON.stringify` writes it.
     pub fn to_json(&self) -> String {
@@ -59,9 +83,64 @@ impl Ast {
         write_ast(&mut out, self);
         out
     }
+
+    /// Kept for runtime evaluation rather than lowered to a plain value
+    /// (the reference's `isRuntimeExpr`).
+    pub fn is_runtime_expr(&self) -> bool {
+        matches!(
+            self,
+            Ast::StateRef(_)
+                | Ast::RuntimeRef { .. }
+                | Ast::BinOp { .. }
+                | Ast::UnaryOp { .. }
+                | Ast::Ternary { .. }
+                | Ast::Member { .. }
+                | Ast::Index { .. }
+                | Ast::Assign { .. }
+        )
+    }
+
+    /// Every node in the tree, parents before children, in the reference's
+    /// `walkAST` order.
+    pub fn walk(&self, visit: &mut impl FnMut(&Ast)) {
+        visit(self);
+        match self {
+            Ast::Comp {
+                args, mapped_props, ..
+            } => {
+                args.iter().for_each(|a| a.walk(visit));
+                if let Some(props) = mapped_props {
+                    props.values().for_each(|a| a.walk(visit));
+                }
+            }
+            Ast::Arr(els) => els.iter().for_each(|e| e.walk(visit)),
+            Ast::Obj(entries) => entries.iter().for_each(|(_, v)| v.walk(visit)),
+            Ast::BinOp { left, right, .. } => {
+                left.walk(visit);
+                right.walk(visit);
+            }
+            Ast::UnaryOp { operand, .. } => operand.walk(visit),
+            Ast::Ternary {
+                cond,
+                then,
+                otherwise,
+            } => {
+                cond.walk(visit);
+                then.walk(visit);
+                otherwise.walk(visit);
+            }
+            Ast::Member { obj, .. } => obj.walk(visit),
+            Ast::Index { obj, index } => {
+                obj.walk(visit);
+                index.walk(visit);
+            }
+            Ast::Assign { value, .. } => value.walk(visit),
+            _ => {}
+        }
+    }
 }
 
-fn write_ast(out: &mut String, node: &Ast) {
+pub(crate) fn write_ast(out: &mut String, node: &Ast) {
     let key = |out: &mut String, k: &str| {
         out.push_str(",\"");
         out.push_str(k);
@@ -69,12 +148,29 @@ fn write_ast(out: &mut String, node: &Ast) {
     };
     out.push_str("{\"k\":\"");
     match node {
-        Ast::Comp { name, args } => {
+        Ast::Comp {
+            name,
+            args,
+            mapped_props,
+        } => {
             out.push_str("Comp\"");
             key(out, "name");
             write_json_string(out, name);
             key(out, "args");
             write_list(out, args);
+            if let Some(props) = mapped_props {
+                key(out, "mappedProps");
+                out.push('{');
+                for (i, (k, v)) in props.iter().enumerate() {
+                    if i > 0 {
+                        out.push(',');
+                    }
+                    write_json_string(out, k);
+                    out.push(':');
+                    write_ast(out, v);
+                }
+                out.push('}');
+            }
         }
         Ast::Str(v) => {
             out.push_str("Str\"");
@@ -121,6 +217,13 @@ fn write_ast(out: &mut String, node: &Ast) {
             });
             key(out, "n");
             write_json_string(out, n);
+        }
+        Ast::RuntimeRef { n, ref_type } => {
+            out.push_str("RuntimeRef\"");
+            key(out, "n");
+            write_json_string(out, n);
+            key(out, "refType");
+            write_json_string(out, ref_type.as_str());
         }
         Ast::BinOp { op, left, right } => {
             out.push_str("BinOp\"");

@@ -1,0 +1,2 @@
+main = Text("not me")
+root = Root([Text("me")])
