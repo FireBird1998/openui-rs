@@ -1,7 +1,12 @@
 //! Tokens to an expression tree, as the reference parser's `parseExpression`:
 //! a Pratt parser that never fails. Unknown tokens become `Null`, and missing
 //! closers are taken as given.
+//!
+//! Unlike the reference, it stops at [`MAX_DEPTH`]: deeper nesting, and longer
+//! left-nested chains (`a.b.c...`, `1 + 1 + ...`), are cut off, so neither
+//! parsing nor anything that later walks the tree can overflow the stack.
 
+use crate::MAX_DEPTH;
 use crate::ast::Ast;
 use crate::builtins::is_builtin;
 use crate::js::number_to_string;
@@ -19,7 +24,19 @@ const PREC_MEMBER: u8 = 9;
 
 /// Parse one statement's expression tokens.
 pub fn parse_expression(tokens: &[Token]) -> Ast {
-    ExprParser { tokens, pos: 0 }.expr(0)
+    parse_expression_with_limit(tokens).0
+}
+
+/// Parse, and say whether nesting went past [`MAX_DEPTH`] and was cut off.
+pub(crate) fn parse_expression_with_limit(tokens: &[Token]) -> (Ast, bool) {
+    let mut parser = ExprParser {
+        tokens,
+        pos: 0,
+        depth: 0,
+        limited: false,
+    };
+    let ast = parser.expr(0);
+    (ast, parser.limited)
 }
 
 /// How tightly `token` binds as an infix or postfix operator; 0 if it isn't one.
@@ -71,6 +88,10 @@ fn key_text(token: &Token) -> String {
 struct ExprParser<'a> {
     tokens: &'a [Token],
     pos: usize,
+    /// How many `expr` calls are open.
+    depth: usize,
+    /// Nesting went past `MAX_DEPTH` somewhere.
+    limited: bool,
 }
 
 impl<'a> ExprParser<'a> {
@@ -96,10 +117,26 @@ impl<'a> ExprParser<'a> {
     }
 
     fn expr(&mut self, min_prec: u8) -> Ast {
-        let mut left = self.prefix();
-        while infix_precedence(self.cur()) > min_prec {
-            left = self.infix(left);
+        if self.depth >= MAX_DEPTH {
+            // Too deep: give up on this branch, but still consume a token so
+            // every caller's loop makes progress.
+            self.limited = true;
+            self.pos += 1;
+            return Ast::Null;
         }
+        self.depth += 1;
+        let mut left = self.prefix();
+        // Each infix step nests `left` one level deeper, so a long chain counts too.
+        let mut chain = 0;
+        while infix_precedence(self.cur()) > min_prec {
+            if self.depth + chain >= MAX_DEPTH {
+                self.limited = true;
+                break;
+            }
+            left = self.infix(left);
+            chain += 1;
+        }
+        self.depth -= 1;
         left
     }
 

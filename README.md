@@ -2,7 +2,7 @@
 
 A Rust implementation of the OpenUI Lang language layer (the `openui-lang` crate), and Dynamic News, an Android app built on it.
 
-**Status:** tickets 01–08 of 13 done. Differential fuzzing (130,000 generated and mangled programs) finds no unexplained mismatches. **All 285 corpus cases conform**: one-shot, at every step of eight push chunkings, and through two resync sequences (`set` with growing, rewound and edited text). The cases are hand-written edge cases, every program the reference test suites parse, the benchmark samples, and programs from the upstream docs and examples. Stages (preprocessing, tokens, statements, expression trees) also match on every prefix.
+**Status:** tickets 01–09 of 13 done. No input can panic it or overflow the stack: nesting stops at 256 levels (`depth_limited`). Differential fuzzing (130,000 generated and mangled programs) finds no unexplained mismatches. **All 285 corpus cases conform**: one-shot, at every step of eight push chunkings, and through two resync sequences (`set` with growing, rewound and edited text). The cases are hand-written edge cases, every program the reference test suites parse, the benchmark samples, and programs from the upstream docs and examples. Stages (preprocessing, tokens, statements, expression trees) also match on every prefix.
 
 ## How correctness works
 

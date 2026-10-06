@@ -318,3 +318,42 @@ fn every_one_shot_parse_matches_the_reference_parser() {
         "{failed} one-shot parses differ from the reference:\n{report}"
     );
 }
+
+/// Streaming a whole program ends where parsing it one-shot does, except where
+/// the reference itself ends differently (`conformance/QUIRKS.md`: redefinitions
+/// counted twice, mismatched brackets, an incomplete trailing redefinition).
+#[test]
+fn streaming_ends_where_parsing_ends() {
+    let corpus = load_corpus();
+    let mut reference_divergent = Vec::new();
+    let mut report = String::new();
+    for case in &corpus.cases {
+        let root = case.root.as_deref();
+        let oneshot = parse(&case.input, &case.library, root).to_json();
+        let mut stream = StreamParser::new(case.library.clone(), root);
+        let mut end = None;
+        for (i, c) in case.input.char_indices() {
+            end = Some(stream.push(&case.input[i..i + c.len_utf8()]).to_json());
+        }
+        let Some(end) = end else { continue };
+        let golden = golden_json(&case.name, "steps.json");
+        let reference_end = golden["1"]["steps"].as_array().unwrap().last().unwrap();
+        let reference_oneshot = read(&golden_dir().join(format!("{}.oneshot.json", case.name)));
+        let reference_diverges =
+            reference_end.as_str() != Some(fingerprint(&reference_oneshot).as_str());
+        if reference_diverges {
+            reference_divergent.push(case.name.as_str());
+        } else if end != oneshot {
+            let _ = write!(report, "\n✗ {}\n{}", case.name, diff(&oneshot, &end));
+        }
+    }
+    println!(
+        "stream end = one-shot on every case except {} where the reference also differs: {}",
+        reference_divergent.len(),
+        reference_divergent.join(", ")
+    );
+    assert!(
+        report.is_empty(),
+        "streaming ends differently from one-shot parsing:\n{report}"
+    );
+}

@@ -103,6 +103,10 @@ Each module mirrors one stage of the reference pipeline, with Rust idioms inside
 - **Phase 1:** port the reference algorithms faithfully, including the streaming parser's rescanning, until the core conforms.
 - **Phase 2:** make streaming incremental, so that total work grows linearly with program length and doubling a program costs no more than about 2.2× the streaming time. Output must stay byte-identical. Measured on the 7 benchmark samples plus synthetic large programs, against the reference parser on Bun.
 
+### Depth limit (decided 2026-10-06)
+- Expressions and reference chains nest at most `MAX_DEPTH` = 256 levels. Deeper parts become null and `ParseResult::depth_limited` is set (not part of the JSON). The reference copes up to roughly 8,000 levels, then throws, so 257 to about 8,000 is a documented divergence that no real model output comes near.
+- At full depth, optimized builds need at most 256 KB of stack and unoptimized ones at most 1 MB. Embedders must build the core optimized (opt-level 1 or more) and call it from threads with at least 512 KB of stack.
+
 ### Crate and tooling
 - Rust 2024 edition on stable (1.97 on this machine).
 - One library crate with a command-line binary, inside a Cargo workspace that leaves room for bindings and the Android app later.

@@ -8,7 +8,7 @@ use std::sync::Arc;
 
 use indexmap::IndexMap;
 
-use crate::expr::parse_expression;
+use crate::expr::parse_expression_with_limit;
 use crate::js;
 use crate::lexer::tokenize;
 use crate::library::Library;
@@ -30,6 +30,8 @@ pub struct StreamParser {
     completed: IndexMap<String, Statement>,
     /// Completed statements parsed, counting re-definitions.
     completed_count: usize,
+    /// Some completed statement nested past `MAX_DEPTH`.
+    completed_depth_limited: bool,
     first_id: String,
 }
 
@@ -43,6 +45,7 @@ impl StreamParser {
             completed_end: 0,
             completed: IndexMap::new(),
             completed_count: 0,
+            completed_depth_limited: false,
             first_id: String::new(),
         }
     }
@@ -75,6 +78,7 @@ impl StreamParser {
         self.completed_end = 0;
         self.completed.clear();
         self.completed_count = 0;
+        self.completed_depth_limited = false;
         self.first_id.clear();
     }
 
@@ -84,7 +88,8 @@ impl StreamParser {
             return;
         }
         for raw in split(&tokenize(text)) {
-            let expr = parse_expression(&raw.tokens);
+            let (expr, limited) = parse_expression_with_limit(&raw.tokens);
+            self.completed_depth_limited |= limited;
             if self.first_id.is_empty() {
                 self.first_id = raw.id.clone();
             }
@@ -101,6 +106,7 @@ impl StreamParser {
             self.completed_end = 0;
             self.completed.clear();
             self.completed_count = 0;
+            self.completed_depth_limited = false;
             self.first_id.clear();
         }
         self.cleaned = next;
@@ -167,6 +173,13 @@ impl StreamParser {
     }
 
     fn current_result(&mut self) -> ParseResult {
+        let (mut result, pending_limited) = self.build_current();
+        result.depth_limited |= self.completed_depth_limited || pending_limited;
+        result
+    }
+
+    /// The result, and whether a pending statement nested past `MAX_DEPTH`.
+    fn build_current(&mut self) -> (ParseResult, bool) {
         self.refresh_cleaned();
         let pending_start = self.scan_new_completed();
         let pending = js::trim(&self.cleaned[pending_start..]);
@@ -175,9 +188,9 @@ impl StreamParser {
 
         if pending.is_empty() {
             if self.completed_count == 0 {
-                return ParseResult::empty(true);
+                return (ParseResult::empty(true), false);
             }
-            return build_result(
+            let result = build_result(
                 &self.completed,
                 &self.first_id,
                 false,
@@ -185,15 +198,16 @@ impl StreamParser {
                 library,
                 root_name,
             );
+            return (result, false);
         }
 
         let (closed, was_incomplete) = auto_close(pending);
         let pending_statements = split(&tokenize(&closed));
         if pending_statements.is_empty() {
             if self.completed_count == 0 {
-                return ParseResult::empty(was_incomplete);
+                return (ParseResult::empty(was_incomplete), false);
             }
-            return build_result(
+            let result = build_result(
                 &self.completed,
                 &self.first_id,
                 was_incomplete,
@@ -201,16 +215,19 @@ impl StreamParser {
                 library,
                 root_name,
             );
+            return (result, false);
         }
 
         // A new id renders as it arrives; a re-defined one replaces the cached
         // statement only once it no longer needs closing.
         let mut all = self.completed.clone();
+        let mut pending_limited = false;
         for raw in &pending_statements {
             if was_incomplete && self.completed.contains_key(&raw.id) {
                 continue;
             }
-            let expr = parse_expression(&raw.tokens);
+            let (expr, limited) = parse_expression_with_limit(&raw.tokens);
+            pending_limited |= limited;
             all.insert(raw.id.clone(), classify(raw, expr));
         }
         let first_id = if self.first_id.is_empty() {
@@ -218,13 +235,14 @@ impl StreamParser {
         } else {
             &self.first_id
         };
-        build_result(
+        let result = build_result(
             &all,
             first_id,
             was_incomplete,
             self.completed_count + pending_statements.len(),
             library,
             root_name,
-        )
+        );
+        (result, pending_limited)
     }
 }

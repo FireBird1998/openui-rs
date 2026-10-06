@@ -1,5 +1,7 @@
 [workspace]
 members = ["crates/openui-lang"]
+# cargo-fuzz targets build on nightly with their own settings.
+exclude = ["fuzz"]
 resolver = "3"
 
 [workspace.package]
@@ -12,4 +14,8 @@ codegen-units = 1
 
 # Tests walk every prefix of a 64 KB corpus; unoptimized builds make that slow.
 [profile.test]
+opt-level = 1
+
+# Recursion stays inside small thread stacks only when optimized (see tests/depth.rs).
+[profile.dev.package.openui-lang]
 opt-level = 1

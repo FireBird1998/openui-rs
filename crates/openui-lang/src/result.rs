@@ -131,6 +131,10 @@ pub struct ParseResult {
     pub state_declarations: JsObject<Value>,
     pub query_statements: Vec<QueryStatement>,
     pub mutation_statements: Vec<MutationStatement>,
+    /// The program nested deeper than [`crate::MAX_DEPTH`] levels and the
+    /// too-deep parts were dropped. (The reference throws on such input.)
+    /// Not part of the JSON.
+    pub depth_limited: bool,
 }
 
 impl ParseResult {

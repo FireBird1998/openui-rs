@@ -7,7 +7,7 @@ use indexmap::{IndexMap, IndexSet};
 
 use crate::ast::Ast;
 use crate::builtins::is_builtin;
-use crate::expr::parse_expression;
+use crate::expr::parse_expression_with_limit;
 use crate::js::JsObject;
 use crate::lexer::tokenize;
 use crate::library::Library;
@@ -111,19 +111,23 @@ pub fn parse(input: &str, library: &Library, root_name: Option<&str>) -> ParseRe
 
     // Re-defining an id replaces its statement but keeps its original position.
     let mut statements = IndexMap::new();
+    let mut depth_limited = false;
     for stmt in &raw {
-        let expr = parse_expression(&stmt.tokens);
+        let (expr, limited) = parse_expression_with_limit(&stmt.tokens);
+        depth_limited |= limited;
         statements.insert(stmt.id.clone(), classify(stmt, expr));
     }
     let count = statements.len();
-    build_result(
+    let mut result = build_result(
         &statements,
         &raw[0].id,
         was_incomplete,
         count,
         library,
         root_name,
-    )
+    );
+    result.depth_limited |= depth_limited;
+    result
 }
 
 /// A value statement that calls a component. The reference compares against
@@ -194,6 +198,8 @@ pub(crate) fn build_result(
         partial: was_incomplete,
         current_statement_id: Some(entry_id.to_owned()),
         unreached,
+        depth: 0,
+        depth_limited: false,
     };
     let mut materialized = materialize_value(entry.expr(), &mut ctx);
     tag_statement(&mut materialized, entry_id);
@@ -217,6 +223,7 @@ pub(crate) fn build_result(
         state_declarations,
         query_statements,
         mutation_statements,
+        depth_limited: ctx.depth_limited,
     }
 }
 

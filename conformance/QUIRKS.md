@@ -75,3 +75,23 @@ a = "two"
 **Draft upstream report:**
 
 > **`meta.statementCount` differs between `parse()` and the stream parser when an id is redefined.** For the same final text, `parse()` counts distinct statement ids and `createStreamParser` counts every statement it completed, redefinitions included (`completedCount`). Either count distinct ids in the stream parser (`completedStmtMap.size`, plus new pending ids), or document that the streaming count includes redefinitions.
+
+## 5. A mismatched closing bracket leaves the one-shot result "incomplete" forever
+
+- **Found:** 2026-10-06, checking that streaming ends where parsing ends (ticket 09). Reference commit `bba1d251`.
+- **Pinned by:** `hand/71-expression-forms` (via `f = {..., [: 6, 7}`), under every chunking.
+
+```
+f = (]
+root = Text("x")
+```
+
+**Reference behaviour:** `parse()` reports `incomplete: true`, and `root` (and every element) has `partial: true`, even though the text is complete. Streaming the same text ends with `incomplete: false` and `partial: false`.
+
+**Why:** `autoClose` only pops a bracket of the matching type, so `(` closed by `]` stays open and the whole program is treated as cut off mid-stream. The stream parser's statement scanner counts any closing bracket as closing the last one, so it sees the first line as a finished statement. A UI that shows partial elements as loading would show this one loading forever when parsed one-shot.
+
+**Draft upstream report:**
+
+> **One-shot `parse()` marks a complete program `incomplete` (and every element `partial`) after a mismatched closing bracket.** `autoClose` matches bracket types while the stream parser's statement scanner (`scanNewCompleted`) doesn't, so `f = (]\nroot = Text("x")` parses one-shot as incomplete with `partial: true` elements, but streams as complete. Pick one rule for both, likely "any closer closes the innermost opener", which is also what the expression parser effectively does.
+
+**Related, by design:** when the stream ends on a redefinition that's still being written (unclosed), streaming keeps the earlier, completed definition, while `parse()` uses the new one. That's the upstream #1127 fix working as intended ("existing IDs are replaced only when the pending expression no longer needs automatic closing"), pinned by `hand/85-streaming-redefinition-1127`.

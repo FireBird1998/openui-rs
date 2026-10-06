@@ -15,6 +15,12 @@
 //! assert_eq!(result.root.unwrap().type_name, "Text");
 //! ```
 
+/// How deep expressions and reference chains may nest before the core stops
+/// descending and sets [`ParseResult::depth_limited`]. Real UIs nest a few
+/// dozen levels at most; this bound keeps recursion well inside a small
+/// thread stack. See `tests/depth.rs`.
+pub const MAX_DEPTH: usize = 256;
+
 mod ast;
 mod builtins;
 mod expr;

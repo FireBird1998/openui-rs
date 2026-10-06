@@ -7,6 +7,7 @@ use std::collections::HashSet;
 
 use indexmap::{IndexMap, IndexSet};
 
+use crate::MAX_DEPTH;
 use crate::ast::{Ast, RefType};
 use crate::builtins::{is_builtin, is_lazy_builtin, is_reserved_call};
 use crate::js::JsObject;
@@ -30,6 +31,11 @@ pub(crate) struct Ctx<'a> {
     pub current_statement_id: Option<String>,
     /// Value statements not reached yet; what's left at the end is orphaned.
     pub unreached: IndexSet<String>,
+    /// Open materialize calls, across references too: a chain of references
+    /// nests as deeply as one big expression.
+    pub depth: usize,
+    /// Went past `MAX_DEPTH`; the deeper parts became null.
+    pub depth_limited: bool,
 }
 
 impl Ctx<'_> {
@@ -55,8 +61,23 @@ type Scope = HashSet<String>;
 
 /// Lower a node to what ends up in the tree: elements, plain values, and AST
 /// for builtins and runtime expressions; `Null` for placeholders and for
-/// components that had to be dropped.
+/// components that had to be dropped. Past `MAX_DEPTH`, `Null`.
 pub(crate) fn materialize_value(node: &Ast, ctx: &mut Ctx) -> Value {
+    if ctx.depth >= MAX_DEPTH {
+        ctx.depth_limited = true;
+        return Value::Null;
+    }
+    ctx.depth += 1;
+    let value = materialize_value_at_depth(node, ctx);
+    ctx.depth -= 1;
+    value
+}
+
+// The functions on the recursive path stay small, and the heavier
+// non-recursive work lives in `#[inline(never)]` helpers. In unoptimized
+// builds a frame holds every temporary its function could need, so this is
+// what keeps MAX_DEPTH levels inside a small thread stack.
+fn materialize_value_at_depth(node: &Ast, ctx: &mut Ctx) -> Value {
     match node {
         Ast::Ref(name) => match resolve_ref(name, ctx, Mode::Value) {
             Resolved::Value(v) => v,
@@ -66,29 +87,8 @@ pub(crate) fn materialize_value(node: &Ast, ctx: &mut Ctx) -> Value {
         Ast::Num(n) => Value::Num(*n),
         Ast::Bool(b) => Value::Bool(*b),
         Ast::Null | Ast::Ph(_) => Value::Null,
-        Ast::Arr(els) => {
-            let mut items = Vec::new();
-            for el in els {
-                if matches!(el, Ast::Ph(_)) {
-                    continue; // unresolved placeholders drop out of arrays
-                }
-                let value = materialize_value(el, ctx);
-                // So do components and refs that came out null (dropped, unresolved, unknown).
-                if matches!(value, Value::Null) && matches!(el, Ast::Comp { .. } | Ast::Ref(_)) {
-                    continue;
-                }
-                items.push(value);
-            }
-            Value::Arr(items)
-        }
-        Ast::Obj(entries) => {
-            let mut obj = JsObject::new();
-            for (key, value) in entries {
-                let value = materialize_value(value, ctx);
-                obj.set(key.clone(), value);
-            }
-            Value::Obj(obj)
-        }
+        Ast::Arr(els) => materialize_array(els, ctx),
+        Ast::Obj(entries) => materialize_object(entries, ctx),
         Ast::Comp {
             name,
             args,
@@ -97,6 +97,31 @@ pub(crate) fn materialize_value(node: &Ast, ctx: &mut Ctx) -> Value {
         // Runtime expressions stay AST, with their insides normalized.
         _ => Value::Ast(Box::new(materialize_expr(node, ctx, &Scope::new()))),
     }
+}
+
+fn materialize_array(els: &[Ast], ctx: &mut Ctx) -> Value {
+    let mut items = Vec::new();
+    for el in els {
+        if matches!(el, Ast::Ph(_)) {
+            continue; // unresolved placeholders drop out of arrays
+        }
+        let value = materialize_value(el, ctx);
+        // So do components and refs that came out null (dropped, unresolved, unknown).
+        if matches!(value, Value::Null) && matches!(el, Ast::Comp { .. } | Ast::Ref(_)) {
+            continue;
+        }
+        items.push(value);
+    }
+    Value::Arr(items)
+}
+
+fn materialize_object(entries: &[(String, Ast)], ctx: &mut Ctx) -> Value {
+    let mut obj = JsObject::new();
+    for (key, value) in entries {
+        let value = materialize_value(value, ctx);
+        obj.set(key.clone(), value);
+    }
+    Value::Obj(obj)
 }
 
 #[derive(Clone, Copy)]
@@ -175,61 +200,92 @@ fn materialize_comp(
     mapped_props: &Option<JsObject<Ast>>,
     ctx: &mut Ctx,
 ) -> Value {
-    // Builtins stay AST for the runtime.
     if is_builtin(name) {
-        let node = materialize_lazy_builtin(name, args, mapped_props, ctx, &Scope::new())
-            .unwrap_or_else(|| Ast::Comp {
-                name: name.to_owned(),
-                args: args
-                    .iter()
-                    .map(|a| materialize_expr(a, ctx, &Scope::new()))
-                    .collect(),
-                mapped_props: mapped_props.clone(),
-            });
-        return Value::Ast(Box::new(node));
+        return Value::Ast(Box::new(builtin_call(name, args, mapped_props, ctx)));
     }
     if is_reserved_call(name) {
-        ctx.push_issue(name, "", Issue::InlineReserved);
-        return Value::Null;
+        return report(ctx, name, Issue::InlineReserved);
     }
     let library = ctx.library;
     let Some(def) = library.component(name) else {
-        ctx.unknown_component(name);
-        return Value::Null;
+        return unknown_component(ctx, name);
     };
-
     let mut props = JsObject::new();
     // Set when a required prop is invalid with no default to fall back on.
     let mut drop_component = false;
     for (param, arg) in def.params.iter().zip(args) {
-        let mut value = materialize_value(arg, ctx);
-        let path = format!("/{}", param.name);
-        let invalid = validate_schema_value(&mut value, &param.schema, name, &path, ctx);
-        props.set(param.name.clone(), value);
-        if invalid
-            && resolve_invalid_value(
-                &mut props,
-                &param.name,
-                param.required,
-                param.default.as_ref(),
-            )
-        {
-            drop_component = true;
-        }
+        let value = materialize_value(arg, ctx);
+        drop_component |= add_prop(&mut props, param, value, name, ctx);
     }
+    finish_component(name, &def.params, args.len(), props, drop_component, ctx)
+}
 
-    if args.len() > def.params.len() {
+/// Builtins stay AST for the runtime.
+fn builtin_call(
+    name: &str,
+    args: &[Ast],
+    mapped_props: &Option<JsObject<Ast>>,
+    ctx: &mut Ctx,
+) -> Ast {
+    if let Some(lazy) = materialize_lazy_builtin(name, args, mapped_props, ctx, &Scope::new()) {
+        return lazy;
+    }
+    Ast::Comp {
+        name: name.to_owned(),
+        args: expr_list(args, ctx, &Scope::new()),
+        mapped_props: mapped_props.clone(),
+    }
+}
+
+#[inline(never)]
+fn report(ctx: &mut Ctx, name: &str, issue: Issue) -> Value {
+    ctx.push_issue(name, "", issue);
+    Value::Null
+}
+
+#[inline(never)]
+fn unknown_component(ctx: &mut Ctx, name: &str) -> Value {
+    ctx.unknown_component(name);
+    Value::Null
+}
+
+/// Validate one prop and store it. True if it's required, invalid, and has no
+/// default, which drops the component.
+#[inline(never)]
+fn add_prop(
+    props: &mut JsObject<Value>,
+    param: &Param,
+    mut value: Value,
+    component: &str,
+    ctx: &mut Ctx,
+) -> bool {
+    let path = format!("/{}", param.name);
+    let invalid = validate_schema_value(&mut value, &param.schema, component, &path, ctx);
+    props.set(param.name.clone(), value);
+    invalid && resolve_invalid_value(props, &param.name, param.required, param.default.as_ref())
+}
+
+/// Excess args, missing required props (defaults first), and the element.
+#[inline(never)]
+fn finish_component(
+    name: &str,
+    params: &[Param],
+    arg_count: usize,
+    mut props: JsObject<Value>,
+    drop_component: bool,
+    ctx: &mut Ctx,
+) -> Value {
+    if arg_count > params.len() {
         let issue = Issue::ExcessArgs {
-            declared: def.params.len(),
-            got: args.len(),
+            declared: params.len(),
+            got: arg_count,
         };
         ctx.push_issue(name, "", issue);
     }
 
     // Missing or null required props take their default; without one, the
     // component is dropped.
-    let missing: Vec<&Param> = def
-        .params
+    let missing: Vec<&Param> = params
         .iter()
         .filter(|p| {
             p.required && (!props.has(&p.name) || matches!(props.get(&p.name), Some(Value::Null)))
@@ -243,7 +299,7 @@ fn materialize_comp(
         }
     }
     if !still_missing.is_empty() {
-        let signature = params_signature(name, &def.params);
+        let signature = params_signature(name, params);
         for p in still_missing {
             let signature = Some(signature.clone());
             let issue = if props.has(&p.name) {
@@ -311,9 +367,20 @@ fn materialize_lazy_builtin(
 }
 
 /// Normalize a node for runtime evaluation: resolve refs, map library
-/// components' args to `mapped_props`. The structure stays AST.
+/// components' args to `mapped_props`. The structure stays AST. Past
+/// `MAX_DEPTH`, `Null`.
 pub(crate) fn materialize_expr(node: &Ast, ctx: &mut Ctx, scope: &Scope) -> Ast {
-    let boxed = |ctx: &mut Ctx, n: &Ast| Box::new(materialize_expr(n, ctx, scope));
+    if ctx.depth >= MAX_DEPTH {
+        ctx.depth_limited = true;
+        return Ast::Null;
+    }
+    ctx.depth += 1;
+    let ast = materialize_expr_at_depth(node, ctx, scope);
+    ctx.depth -= 1;
+    ast
+}
+
+fn materialize_expr_at_depth(node: &Ast, ctx: &mut Ctx, scope: &Scope) -> Ast {
     match node {
         Ast::Ref(name) if scope.contains(name) => node.clone(),
         Ast::Ref(name) => match resolve_ref(name, ctx, Mode::Expr) {
@@ -324,94 +391,121 @@ pub(crate) fn materialize_expr(node: &Ast, ctx: &mut Ctx, scope: &Scope) -> Ast 
             name,
             args,
             mapped_props,
-        } => {
-            if let Some(lazy) = materialize_lazy_builtin(name, args, mapped_props, ctx, scope) {
-                return lazy;
-            }
-            let args: Vec<Ast> = args
-                .iter()
-                .map(|a| materialize_expr(a, ctx, scope))
-                .collect();
-            if is_builtin(name) || is_reserved_call(name) {
-                return Ast::Comp {
-                    name: name.clone(),
-                    args,
-                    mapped_props: mapped_props.clone(),
-                };
-            }
-            let library = ctx.library;
-            if let Some(def) = library.component(name) {
-                let mut by_name = JsObject::new();
-                for (param, arg) in def.params.iter().zip(&args) {
-                    by_name.set(param.name.clone(), arg.clone());
-                }
-                return Ast::Comp {
-                    name: name.clone(),
-                    args,
-                    mapped_props: Some(by_name),
-                };
-            }
-            ctx.unknown_component(name);
-            Ast::Comp {
-                name: name.clone(),
-                args,
-                mapped_props: mapped_props.clone(),
-            }
-        }
-        Ast::Arr(els) => Ast::Arr(
-            els.iter()
-                .map(|e| materialize_expr(e, ctx, scope))
-                .collect(),
-        ),
-        Ast::Obj(entries) => Ast::Obj(
-            entries
-                .iter()
-                .map(|(k, v)| (k.clone(), materialize_expr(v, ctx, scope)))
-                .collect(),
-        ),
+        } => expr_comp(name, args, mapped_props, ctx, scope),
+        Ast::Arr(els) => Ast::Arr(expr_list(els, ctx, scope)),
+        Ast::Obj(entries) => expr_object(entries, ctx, scope),
         Ast::BinOp { op, left, right } => {
-            let left = boxed(ctx, left);
+            let left = expr_boxed(left, ctx, scope);
             Ast::BinOp {
                 op,
                 left,
-                right: boxed(ctx, right),
+                right: expr_boxed(right, ctx, scope),
             }
         }
         Ast::UnaryOp { op, operand } => Ast::UnaryOp {
             op,
-            operand: boxed(ctx, operand),
+            operand: expr_boxed(operand, ctx, scope),
         },
         Ast::Ternary {
             cond,
             then,
             otherwise,
-        } => {
-            let cond = boxed(ctx, cond);
-            let then = boxed(ctx, then);
-            Ast::Ternary {
-                cond,
-                then,
-                otherwise: boxed(ctx, otherwise),
-            }
-        }
+        } => expr_ternary(cond, then, otherwise, ctx, scope),
         Ast::Member { obj, field } => Ast::Member {
-            obj: boxed(ctx, obj),
+            obj: expr_boxed(obj, ctx, scope),
             field: field.clone(),
         },
         Ast::Index { obj, index } => {
-            let obj = boxed(ctx, obj);
+            let obj = expr_boxed(obj, ctx, scope);
             Ast::Index {
                 obj,
-                index: boxed(ctx, index),
+                index: expr_boxed(index, ctx, scope),
             }
         }
         Ast::Assign { target, value } => Ast::Assign {
             target: target.clone(),
-            value: boxed(ctx, value),
+            value: expr_boxed(value, ctx, scope),
         },
         // Literals, placeholders, state and runtime refs pass through.
         _ => node.clone(),
     }
+}
+
+fn expr_boxed(node: &Ast, ctx: &mut Ctx, scope: &Scope) -> Box<Ast> {
+    Box::new(materialize_expr(node, ctx, scope))
+}
+
+fn expr_list(nodes: &[Ast], ctx: &mut Ctx, scope: &Scope) -> Vec<Ast> {
+    nodes
+        .iter()
+        .map(|n| materialize_expr(n, ctx, scope))
+        .collect()
+}
+
+fn expr_object(entries: &[(String, Ast)], ctx: &mut Ctx, scope: &Scope) -> Ast {
+    Ast::Obj(
+        entries
+            .iter()
+            .map(|(k, v)| (k.clone(), materialize_expr(v, ctx, scope)))
+            .collect(),
+    )
+}
+
+fn expr_ternary(cond: &Ast, then: &Ast, otherwise: &Ast, ctx: &mut Ctx, scope: &Scope) -> Ast {
+    let cond = expr_boxed(cond, ctx, scope);
+    let then = expr_boxed(then, ctx, scope);
+    Ast::Ternary {
+        cond,
+        then,
+        otherwise: expr_boxed(otherwise, ctx, scope),
+    }
+}
+
+fn expr_comp(
+    name: &str,
+    args: &[Ast],
+    mapped_props: &Option<JsObject<Ast>>,
+    ctx: &mut Ctx,
+    scope: &Scope,
+) -> Ast {
+    if let Some(lazy) = materialize_lazy_builtin(name, args, mapped_props, ctx, scope) {
+        return lazy;
+    }
+    let args = expr_list(args, ctx, scope);
+    library_comp(name, args, mapped_props, ctx)
+}
+
+/// A call in a runtime expression: library components get `mapped_props`
+/// (args by param name); unknown ones are reported; builtins pass through.
+#[inline(never)]
+fn library_comp(
+    name: &str,
+    args: Vec<Ast>,
+    mapped_props: &Option<JsObject<Ast>>,
+    ctx: &mut Ctx,
+) -> Ast {
+    let keep = |args| Ast::Comp {
+        name: name.to_owned(),
+        args,
+        mapped_props: mapped_props.clone(),
+    };
+    if is_builtin(name) || is_reserved_call(name) {
+        return keep(args);
+    }
+    let library = ctx.library;
+    if let Some(def) = library.component(name) {
+        let mut by_name = JsObject::new();
+        for (param, arg) in def.params.iter().zip(&args) {
+            by_name.set(param.name.clone(), arg.clone());
+        }
+        return Ast::Comp {
+            name: name.to_owned(),
+            args,
+            mapped_props: Some(by_name),
+        };
+    }
+    ctx.unknown_component(name);
+    keep(args)
 }
 
 /// Whether a prop value holds anything that needs runtime evaluation.
