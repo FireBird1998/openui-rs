@@ -108,6 +108,19 @@ extension Corpus {
         return sections
     }
 
+    /// The prompt spec for a component library (`prompts/<name>-schema.json`),
+    /// which the system prompt is made from, if the corpus has one.
+    public func promptSpec(forLibrary name: String) -> String? {
+        try? String(contentsOf: directory.appendingPathComponent("prompts/\(name)-schema.json"), encoding: .utf8)
+    }
+
+    /// The libraries live requests can use: those with a schema and a prompt spec.
+    public var promptLibraries: [String] {
+        schemas.keys.sorted().filter {
+            FileManager.default.fileExists(atPath: directory.appendingPathComponent("prompts/\($0)-schema.json").path)
+        }
+    }
+
     /// The reference's step fingerprints for a case, if the corpus has them.
     public func golden(for c: CorpusCase) -> GoldenSteps? {
         try? GoldenSteps.load(caseName: c.name, in: directory)

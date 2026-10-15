@@ -375,3 +375,234 @@ import Testing
         for prop in element.props { walk(prop.value, ElementPath.child(of: path, prop.name)) }
     }
 }
+
+// MARK: Live requests (no network: a stub URLProtocol serves canned responses)
+
+@Suite struct TheClaudeRequest {
+    let request = ClaudeRequest(model: .opus, effort: "low", systemPrompt: "SYSTEM", userText: "a screen")
+
+    func body(_ r: URLRequest) throws -> JSONValue {
+        try JSONValue.parse(String(decoding: try #require(r.httpBody), as: UTF8.self))
+    }
+
+    @Test func itStreamsWithTheSystemPromptEffortAndFallbacks() throws {
+        let r = try request.urlRequest(apiKey: "sk-test-secret")
+        let json = try body(r)
+        #expect(r.url?.absoluteString == "https://api.anthropic.com/v1/messages")
+        #expect(r.value(forHTTPHeaderField: "anthropic-version") == "2023-06-01")
+        #expect(r.value(forHTTPHeaderField: "anthropic-beta") == "server-side-fallback-2026-07-01")
+        #expect(json["model"]?.string == "claude-opus-5-5")
+        #expect(json["stream"]?.bool == true)
+        #expect(json["system"]?.string == "SYSTEM")
+        #expect(json["output_config"]?["effort"]?.string == "low")
+        #expect(json["fallbacks"]?.string == "default")
+        #expect(json["max_tokens"]?.number == 16_000)
+    }
+
+    @Test func theKeyTravelsOnlyInItsHeader() throws {
+        let r = try request.urlRequest(apiKey: "sk-test-secret")
+        #expect(r.value(forHTTPHeaderField: "x-api-key") == "sk-test-secret")
+        #expect(!String(decoding: try #require(r.httpBody), as: UTF8.self).contains("sk-test-secret"))
+        #expect(!r.url!.absoluteString.contains("sk-test-secret"))
+    }
+
+    @Test func haikuHasNoFallbacks() throws {
+        var haiku = request
+        haiku.model = .haiku
+        let r = try haiku.urlRequest(apiKey: "k")
+        #expect(r.value(forHTTPHeaderField: "anthropic-beta") == nil)
+        #expect(try body(r)["fallbacks"] == nil)
+    }
+
+    @Test func costsFollowThePrices() {
+        #expect(ClaudeModel.opus.cost(inputTokens: 1_000_000, outputTokens: 1_000_000) == 24)
+        #expect(ClaudeModel.haiku.cost(inputTokens: 10_000, outputTokens: 2_000) == 0.002)
+    }
+}
+
+/// A server-sent event stream like the Messages API's.
+func sse(_ events: [String]) -> String {
+    events.map { "event: x\ndata: \($0)\n\n" }.joined()
+}
+
+let okStream = sse([
+    #"{"type":"message_start","message":{"model":"claude-opus-5-5","usage":{"input_tokens":1200,"cache_read_input_tokens":300}}}"#,
+    #"{"type":"content_block_start","index":0,"content_block":{"type":"thinking","thinking":""}}"#,
+    #"{"type":"content_block_stop","index":0}"#,
+    #"{"type":"content_block_start","index":1,"content_block":{"type":"text","text":""}}"#,
+    #"{"type":"ping"}"#,
+    #"{"type":"content_block_delta","index":1,"delta":{"type":"text_delta","text":"root = Text"}}"#,
+    #"{"type":"content_block_delta","index":1,"delta":{"type":"text_delta","text":"Content(\"hi\")"}}"#,
+    #"{"type":"content_block_stop","index":1}"#,
+    #"{"type":"message_delta","delta":{"stop_reason":"end_turn"},"usage":{"output_tokens":42}}"#,
+    #"{"type":"message_stop"}"#,
+])
+
+@Suite struct ParsingTheEventStream {
+    @Test func textUsageAndTheStopReasonComeThrough() {
+        let parser = ServerSentEvents()
+        let events = okStream.split(separator: "\n", omittingEmptySubsequences: false).flatMap { parser.events(fromLine: String($0)) }
+        #expect(events == [
+            .started(model: "claude-opus-5-5", inputTokens: 1500),
+            .thinking,
+            .text("root = Text"),
+            .text("Content(\"hi\")"),
+            .progress(outputTokens: 42, stopReason: "end_turn"),
+        ])
+    }
+
+    @Test func fallbacksAndErrorsAreReported() {
+        let parser = ServerSentEvents()
+        #expect(parser.events(fromLine: #"data: {"type":"content_block_start","index":0,"content_block":{"type":"fallback","from":{"model":"a"},"to":{"model":"b"}}}"#)
+            == [.fallback(from: "a", to: "b")])
+        #expect(parser.events(fromLine: #"data: {"type":"error","error":{"type":"overloaded_error","message":"Overloaded"}}"#)
+            == [.failed("Overloaded")])
+        #expect(parser.events(fromLine: "event: ping").isEmpty)
+        #expect(parser.events(fromLine: "data: not json").isEmpty)
+    }
+}
+
+/// Serves one canned response to every request.
+final class StubProtocol: URLProtocol, @unchecked Sendable {
+    nonisolated(unsafe) static var status = 200
+    nonisolated(unsafe) static var body = ""
+    nonisolated(unsafe) static var lastRequest: URLRequest?
+
+    override class func canInit(with request: URLRequest) -> Bool { true }
+    override class func canonicalRequest(for request: URLRequest) -> URLRequest { request }
+
+    override func startLoading() {
+        Self.lastRequest = request
+        let response = HTTPURLResponse(url: request.url!, statusCode: Self.status, httpVersion: "HTTP/1.1",
+                                       headerFields: ["content-type": "text/event-stream"])!
+        client?.urlProtocol(self, didReceive: response, cacheStoragePolicy: .notAllowed)
+        client?.urlProtocol(self, didLoad: Data(Self.body.utf8))
+        client?.urlProtocolDidFinishLoading(self)
+    }
+
+    override func stopLoading() {}
+
+    static var session: URLSession {
+        let configuration = URLSessionConfiguration.ephemeral
+        configuration.protocolClasses = [StubProtocol.self]
+        return URLSession(configuration: configuration)
+    }
+}
+
+/// These share the stub's canned response, so they run one at a time.
+@MainActor @Suite(.serialized) struct StreamingFromClaude {
+    func run(status code: Int, body: String) async throws -> (chunks: [String], status: LiveStatus, error: (any Error)?) {
+        StubProtocol.status = code
+        StubProtocol.body = body
+        let status = LiveStatus(model: .opus)
+        let source = ClaudeSource(
+            request: ClaudeRequest(model: .opus, effort: "low", systemPrompt: "S", userText: "U"),
+            apiKey: "sk-test", status: status, session: StubProtocol.session
+        )
+        var chunks: [String] = []
+        do {
+            for try await batch in source.chunks() { chunks += batch }
+            return (chunks, status, nil)
+        } catch {
+            return (chunks, status, error)
+        }
+    }
+
+    @Test func aStreamArrivesAsChunksWithItsUsage() async throws {
+        let (chunks, status, error) = try await run(status: 200, body: okStream)
+        #expect(error == nil)
+        #expect(chunks == ["root = Text", "Content(\"hi\")"])
+        #expect(status.phase == .finished(stopReason: "end_turn"))
+        #expect(status.inputTokens == 1500)
+        #expect(status.outputTokens == 42)
+        #expect(StubProtocol.lastRequest?.value(forHTTPHeaderField: "x-api-key") == "sk-test")
+    }
+
+    @Test func aRefusalIsReportedAsSuch() async throws {
+        let body = sse([
+            #"{"type":"message_start","message":{"model":"claude-opus-5-5","usage":{"input_tokens":10}}}"#,
+            #"{"type":"message_delta","delta":{"stop_reason":"refusal"},"usage":{"output_tokens":0}}"#,
+        ])
+        let (chunks, status, error) = try await run(status: 200, body: body)
+        #expect(error == nil)
+        #expect(chunks.isEmpty)
+        #expect(status.phase == .finished(stopReason: "refusal"))
+    }
+
+    @Test func anHTTPErrorShowsTheAPIsMessage() async throws {
+        let (_, status, error) = try await run(status: 401, body: #"{"type":"error","error":{"type":"authentication_error","message":"invalid x-api-key"}}"#)
+        #expect(String(describing: try #require(error)) == "HTTP 401: invalid x-api-key")
+        #expect(status.phase == .failed("HTTP 401: invalid x-api-key"))
+    }
+
+    @Test func anErrorEventMidStreamEndsIt() async throws {
+        let body = sse([
+            #"{"type":"content_block_delta","index":0,"delta":{"type":"text_delta","text":"root = "}}"#,
+            #"{"type":"error","error":{"type":"overloaded_error","message":"Overloaded"}}"#,
+        ])
+        let (chunks, status, error) = try await run(status: 200, body: body)
+        #expect(chunks == ["root = "])
+        #expect(error != nil)
+        #expect(status.phase == .failed("Overloaded"))
+    }
+}
+
+/// A source that yields its batches over time, like a live stream.
+struct DripSource: ChunkSource {
+    let batches: [[String]]
+    let gap: Duration
+
+    func chunks() -> AsyncThrowingStream<[String], any Error> {
+        AsyncThrowingStream { continuation in
+            let task = Task {
+                for batch in batches {
+                    try? await Task.sleep(for: gap)
+                    if Task.isCancelled { break }
+                    continuation.yield(batch)
+                }
+                continuation.finish()
+            }
+            continuation.onTermination = { _ in task.cancel() }
+        }
+    }
+}
+
+@MainActor @Suite struct FollowingALiveSource {
+    func playback() async throws -> Playback {
+        let core = Core()
+        return Playback(core: core, library: try await core.library(schema: TheCore.schema), root: nil)
+    }
+
+    @Test func playbackFollowsTheNewestStepAsChunksArrive() async throws {
+        let playback = try await playback()
+        let pieces = ReplaySource.split("root = Stack([a])\na = Text(\"hello\")", size: 4).map { [$0] }
+        await playback.load(DripSource(batches: pieces, gap: .milliseconds(5)))
+        #expect(playback.chunks.count == pieces.count)
+        #expect(playback.position == pieces.count)
+        #expect(playback.text == "root = Stack([a])\na = Text(\"hello\")")
+        #expect(!playback.isStreaming)
+        #expect(playback.step?.result.root?.typeName == "Stack")
+    }
+
+    @Test func stoppingKeepsWhatArrived() async throws {
+        let playback = try await playback()
+        let pieces = (0..<200).map { _ in ["x"] }
+        let loading = Task { await playback.load(DripSource(batches: pieces, gap: .milliseconds(10))) }
+        try await Task.sleep(for: .milliseconds(150))
+        playback.stop()
+        await loading.value
+        #expect(!playback.isStreaming)
+        #expect(playback.chunks.count > 0 && playback.chunks.count < 200)
+        #expect(playback.position == playback.chunks.count)
+    }
+}
+
+@Suite struct ThePromptForALiveRequest {
+    @Test func theBenchLibraryHasAPromptAndItIsTheReferences() async throws {
+        let corpus = try Corpus.load()
+        #expect(corpus.promptLibraries == ["bench"])
+        let prompt = try await Core().systemPrompt(spec: try #require(corpus.promptSpec(forLibrary: "bench")))
+        let golden = try JSONValue.parse(String(contentsOf: corpus.directory.appendingPathComponent("golden/prompts/bench-schema.json"), encoding: .utf8))
+        #expect(prompt == golden["prompt"]?.string)
+    }
+}

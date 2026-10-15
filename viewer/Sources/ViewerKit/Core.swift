@@ -57,6 +57,14 @@ public final class Core: Sendable {
         }
     }
 
+    /// The system prompt for a prompt spec (`{library, promptOptions}` as JSON text).
+    public func systemPrompt(spec: String) async throws -> String {
+        try await run {
+            Core.assertOnCoreThread()
+            return try OpenUIFFI.generateSystemPrompt(spec: spec)
+        }
+    }
+
     /// Starts a streaming parse.
     public func session(library: Library, root: String? = nil) async throws -> Session {
         try await run { Session(core: self, library: library, root: root) }

@@ -7,7 +7,8 @@ public struct PlaybackView: View {
     @Bindable var playback: Playback
     @Binding var chunking: Chunking
     let chunkings: [Chunking]
-    let program: String
+    /// The live request the program comes from, if any.
+    let live: LiveStatus?
     @Environment(ElementSelection.self) private var selection: ElementSelection?
     /// The drawing's width in points; 0 fits the window.
     @AppStorage("drawingWidth") private var drawingWidth = 0.0
@@ -16,21 +17,25 @@ public struct PlaybackView: View {
 
     static let speeds: [Double] = [1, 2, 5, 10, 30, 60, 120, 300, 1000, 10000]
 
-    public init(playback: Playback, chunking: Binding<Chunking>, chunkings: [Chunking], program: String) {
+    public init(playback: Playback, chunking: Binding<Chunking>, chunkings: [Chunking], live: LiveStatus? = nil) {
         self.playback = playback
         _chunking = chunking
         self.chunkings = chunkings
-        self.program = program
+        self.live = live
     }
 
     public var body: some View {
         VStack(spacing: 0) {
             controls.padding(.horizontal).padding(.vertical, 8)
+            if let live {
+                LiveBar(status: live) { playback.stop() }
+                    .padding(.horizontal).padding(.bottom, 8)
+            }
             Divider()
             VSplitView {
                 drawing.frame(minHeight: 120)
                 ProgramTextView(
-                    text: program,
+                    text: playback.text,
                     received: playback.textOffsets[playback.position],
                     previous: playback.textOffsets[max(playback.position - 1, 0)]
                 )
@@ -71,6 +76,8 @@ public struct PlaybackView: View {
                     }
                 }
                 .fixedSize()
+                .disabled(playback.isStreaming)
+                .help(live != nil ? "A live program arrives in the chunks Claude sent; picking a size replays its text cut that way." : "")
                 Picker("Speed", selection: $playback.speed) {
                     ForEach(Self.speeds, id: \.self) { speed in
                         Text(speed >= 10000 ? "As fast as possible" : "\(Int(speed)) chunks/s").tag(speed)

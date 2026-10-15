@@ -10,6 +10,10 @@ import Observation
 @MainActor @Observable
 public final class Playback {
     public private(set) var chunks: [String] = []
+    /// The program so far: every chunk that has arrived.
+    public private(set) var text = ""
+    /// Chunks are still arriving from a live source.
+    public private(set) var isStreaming = false
     /// `textOffsets[k]` is where step `k`'s text ends, in UTF-16 units (what
     /// AppKit's text views count); `textOffsets[0]` is 0.
     public private(set) var textOffsets: [Int] = [0]
@@ -53,9 +57,11 @@ public final class Playback {
         self.cacheBudget = cacheBudget
     }
 
-    /// Replaces the program with the chunks `source` yields, and shows the
-    /// step that has seen `resumeAt` code points (all of them when nil).
-    /// Returns once every chunk has arrived and that step is shown.
+    /// Replaces the program with the chunks `source` yields. While they
+    /// arrive, playback follows the newest step unless it has been moved back.
+    /// Once they've all arrived, it shows the step that has seen `resumeAt`
+    /// code points (all of them when nil). Returns then, or when `stop()` ends
+    /// a live source.
     public func load(_ source: some ChunkSource, resumeAt: Int? = nil) async {
         pause()
         let previous = loading
@@ -63,36 +69,48 @@ public final class Playback {
             // Loads run one after another: two at once would mix their chunks.
             await previous?.value
             await navigator?.value
-            var chunks: [String] = []
-            var textOffsets = [0]
-            var scalarOffsets = [0]
-            var failure: String?
-            do {
-                for try await batch in source.chunks() {
-                    chunks += batch
-                    for chunk in batch {
-                        textOffsets.append(textOffsets.last! + chunk.utf16.count)
-                        scalarOffsets.append(scalarOffsets.last! + chunk.unicodeScalars.count)
-                    }
-                }
-            } catch {
-                failure = String(describing: error)
-            }
-            // Swapped in all at once, so the view never sees the new chunks with
-            // the old position. The old step stays on screen until the new one
-            // is made.
-            self.chunks = chunks
-            self.textOffsets = textOffsets
-            self.scalarOffsets = scalarOffsets
-            position = min(position, chunks.count)
+            // Reset together, with no suspension between, so the view never
+            // sees a position past the chunks.
+            chunks = []
+            text = ""
+            textOffsets = [0]
+            scalarOffsets = [0]
+            position = 0
             cache = [:]
             session = nil
             sessionPosition = 0
-            error = failure
+            error = nil
+            isStreaming = true
+            do {
+                for try await batch in source.chunks() {
+                    let following = (requested ?? position) == chunks.count
+                    append(batch)
+                    if following && resumeAt == nil { enqueue(chunks.count) }
+                }
+            } catch is CancellationError {
+                // Stopped: keep what arrived.
+            } catch {
+                self.error = String(describing: error)
+            }
+            isStreaming = false
             await request(target(resumingAt: resumeAt))
         }
         loading = task
         await task.value
+    }
+
+    /// Stops a live source; what has arrived stays.
+    public func stop() {
+        loading?.cancel()
+    }
+
+    private func append(_ batch: [String]) {
+        chunks += batch
+        for chunk in batch {
+            text += chunk
+            textOffsets.append(textOffsets.last! + chunk.utf16.count)
+            scalarOffsets.append(scalarOffsets.last! + chunk.unicodeScalars.count)
+        }
     }
 
     /// How many code points the shown step has seen.

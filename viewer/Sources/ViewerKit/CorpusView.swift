@@ -8,6 +8,7 @@ public struct CorpusView: View {
     @State private var search = ""
     @State private var showInspector = true
     @State private var showNewProgram = false
+    @State private var showAskClaude = false
     @AppStorage(CorpusSettings.folderKey) private var folder = ""
 
     public init() {}
@@ -31,11 +32,20 @@ public struct CorpusView: View {
         .navigationTitle(model.current?.title ?? "Viewer")
         .toolbar {
             ToolbarItem {
+                Button("Ask Claude", systemImage: "sparkles") { showAskClaude = true }
+                    .help("Ask Claude for a screen and watch it stream")
+            }
+            ToolbarItem {
                 Button("Open a Program", systemImage: "doc.badge.plus") { showNewProgram = true }
                     .help("Paste a program or open a file, with a component library")
             }
             ToolbarItem {
                 Button("Inspector", systemImage: "sidebar.right") { showInspector.toggle() }
+            }
+        }
+        .sheet(isPresented: $showAskClaude) {
+            AskClaudeSheet(libraries: model.promptLibraries) { draft in
+                Task { await model.openLive(draft) }
             }
         }
         .sheet(isPresented: $showNewProgram) {
@@ -64,7 +74,7 @@ public struct CorpusView: View {
                 playback: playback,
                 chunking: $model.chunking,
                 chunkings: model.chunkings,
-                program: current.text
+                live: model.liveStatus
             )
             .inspector(isPresented: $showInspector) {
                 InspectorView(playback: playback, golden: current.golden, chunking: model.chunking)
@@ -80,6 +90,7 @@ public struct CorpusView: View {
 /// The program on screen and where it came from.
 struct OpenProgram {
     var title: String
+    /// The whole program; for a live request, filled in once it has all arrived.
     var text: String
     /// The reference's step fingerprints, for corpus cases.
     var golden: GoldenSteps?
@@ -92,6 +103,8 @@ final class CorpusModel {
     var chunking = Chunking.fixed(4)
     private(set) var current: OpenProgram?
     private(set) var playback: Playback?
+    /// The live request on screen, if the program came from one.
+    private(set) var liveStatus: LiveStatus?
     /// The chunking the playback was last loaded with.
     private var loadedChunking: Chunking?
     private(set) var failure: String?
@@ -119,6 +132,8 @@ final class CorpusModel {
     }
 
     var schemaNames: [String] { corpus?.schemas.keys.sorted() ?? [] }
+
+    var promptLibraries: [String] { corpus?.promptLibraries ?? [] }
 
     /// The fixed chunkings, plus the corpus's random ones for a corpus case.
     var chunkings: [Chunking] {
@@ -167,20 +182,63 @@ final class CorpusModel {
         return library
     }
 
-    private func show(_ program: OpenProgram, library: Library, root: String?) async {
+    /// Asks Claude for a screen and plays the answer as it streams. The key is
+    /// read from the Keychain for this request only.
+    func openLive(_ draft: LiveDraft) async {
+        guard let corpus else { return }
+        guard !Budget.reached else {
+            failure = "The budget cap (\(Budget.format(Budget.cap))) is reached. Raise it or reset the spending in Settings."
+            return
+        }
+        guard let key = APIKeyStore.read(), !key.isEmpty else {
+            failure = "No API key in the Keychain. Add one in Settings."
+            return
+        }
+        guard let spec = corpus.promptSpec(forLibrary: draft.library) else {
+            failure = "The corpus has no prompt spec for \(draft.library)."
+            return
+        }
+        selected = nil
+        do {
+            let library = try await library(named: draft.library, in: corpus)
+            let systemPrompt = try await core.systemPrompt(spec: spec)
+            let status = LiveStatus(model: draft.model)
+            let request = ClaudeRequest(model: draft.model, effort: draft.effort, systemPrompt: systemPrompt, userText: draft.text)
+            let title = "Claude · " + draft.text.prefix(48).replacingOccurrences(of: "\n", with: " ")
+            await show(OpenProgram(title: title, text: "", golden: nil), library: library, root: nil,
+                       source: ClaudeSource(request: request, apiKey: key, status: status), live: status)
+            Budget.add(status.cost)
+            if let playback { current?.text = playback.text }
+        } catch {
+            failure = String(describing: error)
+        }
+    }
+
+    /// Stops the live request on screen, keeping what has arrived.
+    func stopLive() {
+        playback?.stop()
+    }
+
+    private func show(_ program: OpenProgram, library: Library, root: String?,
+                      source: (any ChunkSource)? = nil, live: LiveStatus? = nil) async {
         failure = nil
         selection.clear()
         if case .recorded = chunking { chunking = .fixed(4) } // recorded sizes belong to one case
         current = program
+        liveStatus = live
         let playback = Playback(core: core, library: library, root: root)
         self.playback = playback
         loadedChunking = chunking
-        await playback.load(chunking.source(for: program.text))
+        if let source {
+            await playback.load(source)
+        } else {
+            await playback.load(chunking.source(for: program.text))
+        }
     }
 
     /// Cuts the same program the new way, staying near the same place.
     func rechunk() async {
-        guard let playback, let current, chunking != loadedChunking else { return }
+        guard let playback, let current, chunking != loadedChunking, !playback.isStreaming else { return }
         loadedChunking = chunking
         await playback.load(chunking.source(for: current.text), resumeAt: playback.received)
     }

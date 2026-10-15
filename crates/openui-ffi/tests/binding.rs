@@ -6,7 +6,9 @@ mod common;
 use std::fmt::Write;
 use std::sync::Arc;
 
-use openui_ffi::{ComponentLibrary, OpenUiError, ParseOutput, StreamSession, parse};
+use openui_ffi::{
+    ComponentLibrary, OpenUiError, ParseOutput, StreamSession, generate_system_prompt, parse,
+};
 use openui_lang::{ParseResult, StreamParser};
 
 /// Whether the binding's output is the core's result: the same JSON and flags.
@@ -139,6 +141,43 @@ fn set_matches_the_core() {
         }
     }
     assert!(report.is_empty(), "set differs from the core:{report}");
+}
+
+/// Every spec in the prompt corpus gives the core's prompt, or the core's error.
+#[test]
+fn system_prompts_match_the_core() {
+    let dir = common::conformance_dir().join("prompts");
+    let mut specs: Vec<_> = std::fs::read_dir(&dir)
+        .unwrap()
+        .map(|e| e.unwrap().path())
+        .collect();
+    specs.retain(|p| p.extension().is_some_and(|e| e == "json"));
+    assert!(specs.len() > 40, "found only {} prompt specs", specs.len());
+    let mut report = String::new();
+    for path in specs {
+        let text = common::read(&path);
+        let want = openui_lang::generate_system_prompt(&serde_json::from_str(&text).unwrap());
+        let same = match (generate_system_prompt(text), want) {
+            (Ok(got), Ok(want)) => got == want,
+            (Err(OpenUiError::Prompt { message }), Err(want)) => message == want.to_string(),
+            _ => false,
+        };
+        if !same {
+            let _ = write!(report, "\n✗ {}", path.display());
+        }
+    }
+    assert!(
+        report.is_empty(),
+        "the binding's prompts differ from the core's:{report}"
+    );
+}
+
+#[test]
+fn a_prompt_spec_that_is_not_json_is_an_error() {
+    assert!(matches!(
+        generate_system_prompt("{".to_owned()),
+        Err(OpenUiError::InvalidPromptSpec { .. })
+    ));
 }
 
 #[test]

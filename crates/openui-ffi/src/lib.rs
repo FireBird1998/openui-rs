@@ -20,12 +20,21 @@ uniffi::setup_scaffolding!();
 pub enum OpenUiError {
     /// The component library's JSON Schema isn't valid JSON.
     InvalidSchema { message: String },
+    /// The prompt spec isn't valid JSON.
+    InvalidPromptSpec { message: String },
+    /// The core can't make a system prompt from the spec, with the message
+    /// the reference throws.
+    Prompt { message: String },
 }
 
 impl fmt::Display for OpenUiError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             OpenUiError::InvalidSchema { message } => write!(f, "invalid JSON Schema: {message}"),
+            OpenUiError::InvalidPromptSpec { message } => {
+                write!(f, "invalid prompt spec: {message}")
+            }
+            OpenUiError::Prompt { message } => f.write_str(message),
         }
     }
 }
@@ -102,6 +111,19 @@ pub fn parse(
     let started = Instant::now();
     let result = openui_lang::parse(&program, &library.inner, root_name.as_deref());
     ParseOutput::timed(result, started)
+}
+
+/// The system prompt for a prompt spec: `{library, promptOptions}` as the
+/// reference's `generateSystemPrompt` takes it, as JSON text.
+#[uniffi::export]
+pub fn generate_system_prompt(spec: String) -> Result<String, OpenUiError> {
+    let json: serde_json::Value =
+        serde_json::from_str(&spec).map_err(|e| OpenUiError::InvalidPromptSpec {
+            message: e.to_string(),
+        })?;
+    openui_lang::generate_system_prompt(&json).map_err(|e| OpenUiError::Prompt {
+        message: e.to_string(),
+    })
 }
 
 /// A streaming parse of one program, fed chunk by chunk. Calls on one session
