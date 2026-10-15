@@ -36,15 +36,40 @@ use rng::Rng;
 
 pub(crate) const BATCH: usize = 200;
 
-/// Documented limitations: a minimal mismatch containing one of these is
-/// explained, not a bug to save. Assigning an object or null to `__proto__`
-/// (in an object literal, or to a param named `__proto__`) replaces the
-/// prototype, and the reference then reads AST or element fields, and `in`
-/// checks, through the new prototype chain. The core drops the assignment.
-const EXPLAINED: [(&str, &str); 1] = [(
-    "__proto__",
-    "object or null assigned to __proto__ (prototype chain)",
-)];
+/// Whether a shrunk program shows a documented divergence, and which.
+type Explains = (fn(&str) -> bool, &'static str);
+
+/// Divergences CONFORMANCE.md documents: a minimal mismatch one of these
+/// recognizes is explained, not a bug to save.
+const EXPLAINED: [Explains; 2] = [
+    (
+        assigns_proto,
+        "object or null assigned to __proto__ (prototype chain)",
+    ),
+    (
+        root_is_an_element_shaped_object,
+        "object literal shaped like an element as the root",
+    ),
+];
+
+/// Assigning an object or null to `__proto__` (in an object literal, or to a
+/// param named `__proto__`) replaces the prototype, and the reference then
+/// reads AST or element fields, and `in` checks, through the new prototype
+/// chain. The core drops the assignment.
+fn assigns_proto(program: &str) -> bool {
+    program.contains("__proto__")
+}
+
+/// The reference returns such an object as the root; the core's root is
+/// always a component's element. Shrunk, the program is that one statement.
+fn root_is_an_element_shaped_object(program: &str) -> bool {
+    let program = program.trim();
+    !program.contains('\n')
+        && program.contains("element")
+        && program
+            .split_once('=')
+            .is_some_and(|(_, value)| value.trim_start().starts_with('{'))
+}
 pub(crate) const MAX_SAVES: usize = 25;
 
 #[derive(Clone)]
@@ -388,7 +413,7 @@ fn main() {
             let (small, complete) = shrink(p, outcome, &mut reference, &corpus);
             if let Some((_, why)) = EXPLAINED
                 .iter()
-                .find(|(pattern, _)| small.input.contains(pattern))
+                .find(|(explains, _)| explains(&small.input))
             {
                 explained += 1;
                 println!("explained at {origin}: {why}: {:?}", small.input);

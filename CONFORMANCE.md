@@ -44,7 +44,7 @@ Quirks recorded: 10.
 | Ticket 14 | parsing and edits, seeds 31, 32 | 40,000 | 0 |
 | **Total** | | **320,000** | |
 
-"Explained" mismatches are the `__proto__` divergence below; the fuzzer recognizes and skips them.
+"Explained" mismatches are two of the divergences below, the `__proto__` one and an element-shaped root; the fuzzer recognizes and skips them.
 
 ## What conformance testing found
 
@@ -79,7 +79,7 @@ Documented, not emulated. None occurs in the corpus, and none comes from a real 
 | Nesting 257 to about 8,000 levels | parses (throws `RangeError` past that) | stops at 256, sets `depth_limited` |
 | A result past about 8 MiB of JSON (statements inlined until it doubles per level) | exponential time and memory, or a huge JSON | cuts it, sets `size_limited` |
 | An object or `null` assigned to `__proto__` | replaces the prototype; later reads and `in` checks see through it | ignores the assignment |
-| An object literal shaped like an element used as the root | returns that object as `root` | `root` is `None` |
+| An object literal shaped like an element used as the root | returns that object as `root` (lang-core 1.0 no longer does) | `root` is `None` |
 | A schema default object, mutated by one parse | shared with later parses | copied per parse |
 | JSON nested deeper than 800 levels, for `json_to_openui` or `parse_json` | handled, up to the engine's recursion limit | refused with an error |
 | `1e400` in JSON read back | `Infinity` | refused: a `serde_json::Value` can't hold it |

@@ -155,7 +155,7 @@ def fuzz_row(name, unit, summary, findings):
     found = kinds_line(counts) or "none"
     explained = summary.get("explained", 0)
     if explained:
-        found += f" ({explained} known `__proto__` divergence{'s' if explained != 1 else ''})"
+        found += f" ({explained} known divergence{'s' if explained != 1 else ''})"
     unrecorded = sum(summary.get(k, 0) for k in ["mismatch", "crash", "blow-up", "quirk?"]) - explained - sum(counts.values())
     if unrecorded > 0:
         found += f"; {unrecorded} more not shrunk or repeats"

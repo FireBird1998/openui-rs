@@ -125,7 +125,7 @@ A hunt never commits and never changes tracked files. It compares them before an
 | blow-up | The core took over a second on one input, or a fuzzer hung | Fixed in the core. If the reference blows up too and the input is unlike real output, it becomes a documented divergence. |
 | quirk? | The reference throws where the core doesn't | We decide: a documented divergence, or a quirk with a draft upstream report |
 
-Known divergences (the `__proto__` ones in CONFORMANCE.md) are counted, not reported. We review findings together, one report at a time: small fixes go in one commit after the check passes, and anything that needs a design decision becomes a ticket.
+Known divergences, the ones in CONFORMANCE.md the fuzzer recognizes (`__proto__` assignments, and an object shaped like an element as the root), are counted, not reported. We review findings together, one report at a time: small fixes go in one commit after the check passes, and anything that needs a design decision becomes a ticket.
 
 ### Turning a finding into a case
 
