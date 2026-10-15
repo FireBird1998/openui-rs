@@ -7,7 +7,8 @@ use std::fmt::Write;
 use std::sync::Arc;
 
 use openui_ffi::{
-    ComponentLibrary, OpenUiError, ParseOutput, StreamSession, generate_system_prompt, parse,
+    ComponentLibrary, OpenUiError, ParseOutput, StreamSession, generate_system_prompt,
+    merge_statements, parse,
 };
 use openui_lang::{ParseResult, StreamParser};
 
@@ -169,6 +170,54 @@ fn system_prompts_match_the_core() {
     assert!(
         report.is_empty(),
         "the binding's prompts differ from the core's:{report}"
+    );
+}
+
+/// Every case in the merge corpus merges as the core merges it.
+#[test]
+fn merging_matches_the_core() {
+    let programs: std::collections::HashMap<String, String> = common::load_corpus()
+        .cases
+        .into_iter()
+        .map(|c| (c.name, c.input))
+        .collect();
+    let text = |c: &serde_json::Value, inline: &str, by_case: &str| -> String {
+        match (c.get(inline), c.get(by_case)) {
+            (Some(serde_json::Value::String(t)), _) => t.clone(),
+            (_, Some(serde_json::Value::String(name))) => programs[name].clone(),
+            _ => panic!("{}: no {inline} or {by_case}", c["name"]),
+        }
+    };
+    let mut report = String::new();
+    let mut checked = 0;
+    for file in [
+        "imported/merge.json",
+        "merge.json",
+        "merge-generated.json",
+        "merge-fuzz.json",
+    ] {
+        let path = common::conformance_dir().join(file);
+        if !path.exists() {
+            continue;
+        }
+        let manifest: serde_json::Value = serde_json::from_str(&common::read(&path)).unwrap();
+        for c in manifest["cases"].as_array().unwrap() {
+            let (existing, patch) = (
+                text(c, "existing", "existingCase"),
+                text(c, "patch", "patchCase"),
+            );
+            let root = c.get("rootId").and_then(serde_json::Value::as_str);
+            let want = openui_lang::merge_statements(&existing, &patch, root);
+            if merge_statements(existing, patch, root.map(str::to_owned)) != want {
+                let _ = write!(report, "\n✗ {}", c["name"]);
+            }
+            checked += 1;
+        }
+    }
+    assert!(checked > 1000, "only {checked} merge cases");
+    assert!(
+        report.is_empty(),
+        "the binding merges differently from the core:{report}"
     );
 }
 

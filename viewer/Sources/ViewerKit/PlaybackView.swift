@@ -30,13 +30,33 @@ public struct PlaybackView: View {
             Divider()
             VSplitView {
                 drawing.frame(minHeight: 120)
-                ProgramTextView(
-                    text: playback.text,
-                    received: playback.textOffsets[playback.position],
-                    previous: playback.textOffsets[max(playback.position - 1, 0)]
-                )
-                .frame(minHeight: 60, idealHeight: 140)
+                programText.frame(minHeight: 60, idealHeight: 140)
             }
+        }
+    }
+
+    /// The program's text, with what's been received; in edit mode, the patch
+    /// beside the program it merges into.
+    @ViewBuilder private var programText: some View {
+        let received = ProgramTextView(
+            text: playback.text,
+            received: playback.textOffsets[playback.position],
+            previous: playback.textOffsets[max(playback.position - 1, 0)]
+        )
+        if let base = playback.base {
+            let merged = playback.step?.program ?? base
+            HSplitView {
+                VStack(spacing: 0) {
+                    PaneTitle(title: "Patch")
+                    received
+                }
+                VStack(spacing: 0) {
+                    PaneTitle(title: "Merged program")
+                    ProgramTextView(text: merged, received: merged.utf16.count, previous: merged.utf16.count)
+                }
+            }
+        } else {
+            received
         }
     }
 
@@ -196,5 +216,19 @@ struct RedrawProbe: NSViewRepresentable {
             reported = stamp
             drawn?(stamp)
         }
+    }
+}
+
+struct PaneTitle: View {
+    let title: String
+
+    var body: some View {
+        Text(title)
+            .font(.caption.weight(.semibold))
+            .foregroundStyle(.secondary)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(.horizontal, 8)
+            .padding(.vertical, 3)
+            .background(.bar)
     }
 }

@@ -38,6 +38,9 @@ public final class Playback {
     private let core: Core
     private let library: Library
     private let root: String?
+    /// In edit mode, the program the chunks patch: each step shows it merged
+    /// with the patch so far.
+    public let base: String?
     private var session: Session?
     /// How many chunks `session` has seen.
     private var sessionPosition = 0
@@ -49,11 +52,13 @@ public final class Playback {
     private var loading: Task<Void, Never>?
     private var handedAt = ContinuousClock.now
 
-    /// `cacheBudget` bounds the JSON kept for stepping back, in bytes.
-    public init(core: Core, library: Library, root: String?, cacheBudget: Int = 32 << 20) {
+    /// `cacheBudget` bounds the JSON kept for stepping back, in bytes. With a
+    /// `base`, the chunks are an edit-mode patch to it.
+    public init(core: Core, library: Library, root: String?, base: String? = nil, cacheBudget: Int = 32 << 20) {
         self.core = core
         self.library = library
         self.root = root
+        self.base = base
         self.cacheBudget = cacheBudget
     }
 
@@ -200,6 +205,21 @@ public final class Playback {
     private func show(_ target: Int) async {
         if let kept = cache[target] {
             hand(kept, at: target, fromCache: true)
+            return
+        }
+        if let base {
+            // Edit mode: the merge isn't append-only, so each step parses the
+            // merged program afresh, as a renderer does.
+            do {
+                let made = try await core.mergeAndParse(
+                    base: base, patch: chunks[..<target].joined(), library: library, root: root,
+                    chunks: abs(target - position)
+                )
+                keep(made, at: target)
+                hand(made, at: target, fromCache: false)
+            } catch {
+                self.error = String(describing: error)
+            }
             return
         }
         do {

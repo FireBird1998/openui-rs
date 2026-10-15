@@ -45,3 +45,5 @@
 
 Screen capture failed while this was being built, so the new sheet and settings haven't been looked at on screen, only built and exercised through tests.
 
+**2026-10-15 (from ticket 08):** the sheet and Settings were looked at later, with the current build running. An old instance had been answering before: see ticket 08. The sheet was correct. Settings showed field placeholders as stray labels, now fixed.
+

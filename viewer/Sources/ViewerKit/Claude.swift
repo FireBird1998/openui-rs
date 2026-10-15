@@ -42,6 +42,12 @@ public struct ClaudeRequest: Sendable {
         self.userText = userText
     }
 
+    /// A follow-up's message: the current program, then the change wanted.
+    /// The edit-mode system prompt asks for only the statements that change.
+    public static func followUp(_ change: String, to program: String) -> String {
+        "Here is the current program:\n\n```\n\(program)\n```\n\n\(change)"
+    }
+
     /// The HTTP request for `POST /v1/messages`, streaming. The key goes only
     /// into the `x-api-key` header, never into anything logged or saved.
     func urlRequest(apiKey: String) throws -> URLRequest {

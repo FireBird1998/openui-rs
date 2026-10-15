@@ -114,6 +114,16 @@ extension Corpus {
         try? String(contentsOf: directory.appendingPathComponent("prompts/\(name)-schema.json"), encoding: .utf8)
     }
 
+    /// The prompt spec for a library with edit mode on (`promptOptions.editMode`),
+    /// for follow-up requests that answer with a patch.
+    public func promptSpec(forLibrary name: String, editMode: Bool) -> String? {
+        guard let spec = promptSpec(forLibrary: name) else { return nil }
+        guard editMode, case var .object(entries) = try? JSONValue.parse(spec) else { return spec }
+        entries.removeAll { $0.key == "promptOptions" }
+        entries.append((key: "promptOptions", value: .object([(key: "editMode", value: .bool(true))])))
+        return JSONValue.object(entries).compact
+    }
+
     /// The libraries live requests can use: those with a schema and a prompt spec.
     public var promptLibraries: [String] {
         schemas.keys.sorted().filter {

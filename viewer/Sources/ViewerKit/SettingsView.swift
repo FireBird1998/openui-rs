@@ -68,7 +68,9 @@ public struct SettingsView: View {
             LabeledContent("Anthropic API key") {
                 VStack(alignment: .leading, spacing: 4) {
                     // The key goes straight into the Keychain and is never shown again.
-                    SecureField(hasKey ? "A key is saved; enter a new one to replace it" : "sk-ant-…", text: $newKey)
+                    SecureField("API key", text: $newKey,
+                                prompt: Text(hasKey ? "A key is saved; enter a new one to replace it" : "sk-ant-…"))
+                        .labelsHidden()
                         .textContentType(.password)
                     HStack {
                         Button("Save to Keychain") {
@@ -99,7 +101,8 @@ public struct SettingsView: View {
             }
             LabeledContent("Budget cap") {
                 VStack(alignment: .leading, spacing: 4) {
-                    TextField("Dollars", value: $cap, format: .currency(code: "USD"))
+                    TextField("Budget cap", value: $cap, format: .currency(code: "USD"))
+                        .labelsHidden()
                         .frame(width: 120)
                     HStack {
                         Text("Spent so far (estimated): \(Budget.format(spent))")

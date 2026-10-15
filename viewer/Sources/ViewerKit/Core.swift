@@ -65,6 +65,28 @@ public final class Core: Sendable {
         }
     }
 
+    /// Merges an edit-mode patch into a program by statement name.
+    public func merge(existing: String, patch: String) async throws -> String {
+        try await run {
+            Core.assertOnCoreThread()
+            return OpenUIFFI.mergeStatements(existing: existing, patch: patch, rootId: nil)
+        }
+    }
+
+    /// Merges the patch so far into `base` and parses the result one-shot: one
+    /// step of an edit-mode stream, as a renderer shows it.
+    public func mergeAndParse(base: String, patch: String, library: Library, root: String?, chunks: Int) async throws -> Step {
+        try await run {
+            Core.assertOnCoreThread()
+            let merged = OpenUIFFI.mergeStatements(existing: base, patch: patch, rootId: nil)
+            var step = try Step.measure(chunks: chunks) {
+                OpenUIFFI.parse(program: merged, library: library.inner, rootName: root)
+            }
+            step.program = merged
+            return step
+        }
+    }
+
     /// Starts a streaming parse.
     public func session(library: Library, root: String? = nil) async throws -> Session {
         try await run { Session(core: self, library: library, root: root) }
@@ -125,6 +147,8 @@ public struct Step: Sendable {
     /// The JSON as it crossed, for comparing results exactly.
     public var json: String
     public var timings: Timings
+    /// In edit mode, the merged program this step parsed.
+    public var program: String?
 
     /// Calls the core, then decodes, timing each part. Core thread only.
     static func measure(chunks: Int, _ call: () -> ParseOutput) throws -> Step {

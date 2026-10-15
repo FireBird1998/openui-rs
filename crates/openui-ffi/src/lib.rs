@@ -126,6 +126,13 @@ pub fn generate_system_prompt(spec: String) -> Result<String, OpenUiError> {
     })
 }
 
+/// Merges an edit-mode patch into a program by statement name, as the
+/// reference's `mergeStatements` does; `root_id` defaults to `root`.
+#[uniffi::export]
+pub fn merge_statements(existing: String, patch: String, root_id: Option<String>) -> String {
+    openui_lang::merge_statements(&existing, &patch, root_id.as_deref())
+}
+
 /// A streaming parse of one program, fed chunk by chunk. Calls on one session
 /// are serialized; a viewer drives it from a single thread anyway.
 #[derive(uniffi::Object)]

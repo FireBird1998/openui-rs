@@ -697,3 +697,106 @@ extension StreamingFromClaude {
         }
     }
 }
+
+// MARK: Edit mode
+
+@Suite struct EditModePrompts {
+    @Test func theCorpusEditModeSpecGivesTheReferencesPrompt() async throws {
+        let corpus = try Corpus.load()
+        let spec = try String(contentsOf: corpus.directory.appendingPathComponent("prompts/library-edit-mode.json"), encoding: .utf8)
+        let golden = try JSONValue.parse(String(contentsOf: corpus.directory.appendingPathComponent("golden/prompts/library-edit-mode.json"), encoding: .utf8))
+        #expect(try await Core().systemPrompt(spec: spec) == golden["prompt"]?.string)
+    }
+
+    @Test func aFollowUpUsesTheLibrarysPromptWithEditModeOn() async throws {
+        let corpus = try Corpus.load()
+        let core = Core()
+        let plain = try await core.systemPrompt(spec: try #require(corpus.promptSpec(forLibrary: "bench", editMode: false)))
+        let edit = try await core.systemPrompt(spec: try #require(corpus.promptSpec(forLibrary: "bench", editMode: true)))
+        #expect(!plain.contains("## Edit Mode"))
+        #expect(edit.contains("## Edit Mode"))
+        #expect(edit.contains("Output ONLY statements that changed or are new."))
+    }
+
+    @Test func aFollowUpSendsTheProgramAndTheChange() {
+        let text = ClaudeRequest.followUp("Make the title red", to: "root = Text(\"hi\")")
+        #expect(text.contains("root = Text(\"hi\")"))
+        #expect(text.hasSuffix("Make the title red"))
+    }
+}
+
+let editBase = """
+root = Stack([title, body])
+title = TextContent("Weather", "large-heavy")
+body = TextContent("Sunny all week")
+"""
+let editPatch = """
+title = TextContent("Weather in Lisbon", "large-heavy")
+root = Stack([title, body, note])
+note = Callout("info", "Heads up", "Rain on Sunday")
+"""
+
+@MainActor @Suite struct PlayingAPatch {
+    func bench(_ core: Core) async throws -> Library {
+        let corpus = try Corpus.load()
+        return try await core.library(schema: String(contentsOf: corpus.directory.appendingPathComponent(try #require(corpus.schemas["bench"])), encoding: .utf8))
+    }
+
+    /// Step k shows the base merged with the first k chunks of the patch,
+    /// exactly as merging and parsing that prefix directly gives.
+    @Test func everyStepIsTheBaseMergedWithThePatchSoFar() async throws {
+        let core = Core()
+        let library = try await bench(core)
+        let playback = Playback(core: core, library: library, root: nil, base: editBase)
+        let chunks = ReplaySource.split(editPatch, size: 7)
+        await playback.load(ReplaySource(program: editPatch, chunkSize: 7))
+        for k in [0, 1, 5, chunks.count / 2, chunks.count] {
+            await playback.move(to: k)
+            let direct = try await core.mergeAndParse(base: editBase, patch: chunks[..<k].joined(), library: library, root: nil, chunks: k)
+            #expect(playback.step?.program == direct.program, "step \(k)")
+            #expect(playback.step?.json == direct.json, "step \(k)")
+        }
+        await playback.move(to: 0)
+        #expect(playback.step?.program == (try await core.merge(existing: editBase, patch: "")))
+        await playback.move(to: chunks.count)
+        let merged = try #require(playback.step?.program)
+        #expect(merged.contains("Weather in Lisbon"))
+        #expect(merged.contains("note = Callout"))
+        #expect(merged.contains("Sunny all week"))
+    }
+
+    /// A follow-up's recording keeps the program it patched, and replaying it
+    /// reproduces the same merged program at every step.
+    @Test func aFollowUpRecordingReplaysTheSameMergeAtEveryStep() async throws {
+        let pieces = ReplaySource.split(editPatch, size: 9)
+        let recording = Recording(
+            createdAt: Date(timeIntervalSince1970: 1_792_000_000), request: "Name the city and warn about rain",
+            model: "claude-haiku-5-5", servedBy: "claude-haiku-5-5", effort: "low", library: "bench",
+            stopReason: "end_turn", inputTokens: 2500, outputTokens: 60,
+            chunks: pieces.enumerated().map { Recording.Chunk(t: 1 + Double($0.offset) * 0.01, text: $0.element) },
+            patchOf: editBase
+        )
+        let reloaded = try Recording.decode(recording.encoded())
+        #expect(reloaded == recording)
+        let core = Core()
+        let library = try await bench(core)
+        let playback = Playback(core: core, library: library, root: nil, base: reloaded.patchOf)
+        await playback.load(RecordingSource(recording: reloaded, timed: true))
+        #expect(playback.chunks == pieces)
+        for k in 0...pieces.count {
+            await playback.move(to: k)
+            let direct = try await core.mergeAndParse(base: editBase, patch: pieces[..<k].joined(), library: library, root: nil, chunks: k)
+            #expect(playback.step?.json == direct.json, "step \(k)")
+        }
+    }
+}
+
+extension StreamingFromClaude {
+    @Test func aFollowUpRecordingKeepsTheProgramItPatched() async throws {
+        let (_, status, _) = try await run(status: 200, body: okStream)
+        let recording = Recording(status: status, request: "change", effort: "low", library: "bench",
+                                  createdAt: Date(), patchOf: editBase)
+        #expect(recording.patchOf == editBase)
+        #expect(try Recording.decode(recording.encoded()).patchOf == editBase)
+    }
+}

@@ -26,19 +26,26 @@ public enum Budget {
     }
 }
 
-/// What the maintainer asks for: a request, a model, an effort and a library.
+/// What the maintainer asks for: a request, a model, an effort and a library,
+/// and for a follow-up, the program to change.
 struct LiveDraft {
     var text: String
     var model: ClaudeModel
     var effort: String
     var library: String
+    var base: String?
 }
 
 /// Asks Claude for a screen: the request, the model, effort and component
-/// library, with the budget and whether a key is saved.
+/// library, with the budget and whether a key is saved. For a follow-up, it
+/// asks for a change to the program on screen, in its library.
 struct AskClaudeSheet: View {
     /// Libraries the corpus has a prompt spec for.
     let libraries: [String]
+    /// The program to change, for a follow-up.
+    var base: String?
+    /// The follow-up's library: the program's own.
+    var baseLibrary: String?
     let ask: (LiveDraft) -> Void
     @Environment(\.dismiss) private var dismiss
     @AppStorage("liveModel") private var modelID = ClaudeModel.opus.id
@@ -51,8 +58,10 @@ struct AskClaudeSheet: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
-            Text("Ask Claude for a screen").font(.title2.bold())
-            Text("Claude writes OpenUI Lang for the component library, and the viewer draws it as it streams.")
+            Text(base == nil ? "Ask Claude for a screen" : "Ask Claude to change this screen").font(.title2.bold())
+            Text(base == nil
+                 ? "Claude writes OpenUI Lang for the component library, and the viewer draws it as it streams."
+                 : "Claude answers in edit mode with a patch, only the statements that change, and the viewer merges it into the screen as it streams.")
                 .foregroundStyle(.secondary)
             TextEditor(text: $text)
                 .font(.body)
@@ -70,8 +79,12 @@ struct AskClaudeSheet: View {
                     Text("High").tag("high")
                 }
                 .pickerStyle(.segmented)
-                Picker("Component library", selection: $library) {
-                    ForEach(libraries, id: \.self) { Text($0).tag($0) }
+                if base == nil {
+                    Picker("Component library", selection: $library) {
+                        ForEach(libraries, id: \.self) { Text($0).tag($0) }
+                    }
+                } else {
+                    LabeledContent("Component library", value: library)
                 }
             }
             VStack(alignment: .leading, spacing: 4) {
@@ -88,7 +101,7 @@ struct AskClaudeSheet: View {
                     .keyboardShortcut(.cancelAction)
                 Button("Ask") {
                     let model = ClaudeModel.all.first { $0.id == modelID } ?? .opus
-                    ask(LiveDraft(text: text, model: model, effort: effort, library: library))
+                    ask(LiveDraft(text: text, model: model, effort: effort, library: library, base: base))
                     dismiss()
                 }
                 .keyboardShortcut(.defaultAction)
@@ -99,7 +112,7 @@ struct AskClaudeSheet: View {
         .frame(width: 620)
         .onAppear {
             hasKey = APIKeyStore.hasKey
-            if library.isEmpty { library = libraries.first ?? "" }
+            if let baseLibrary { library = baseLibrary } else if library.isEmpty { library = libraries.first ?? "" }
         }
     }
 
@@ -116,6 +129,8 @@ struct LiveBar: View {
     let save: () -> Void
     /// The recording's file, once saved.
     let saved: URL?
+    /// Asks for a change to the screen, once the request is over; nil when it can't.
+    let followUp: (() -> Void)?
 
     var body: some View {
         HStack(spacing: 8) {
@@ -136,6 +151,10 @@ struct LiveBar: View {
                     .help("Show the recording in Finder")
             } else if !status.received.isEmpty {
                 Button("Save Recording", systemImage: "record.circle", action: save)
+            }
+            if !status.isActive, let followUp {
+                Button("Follow Up", systemImage: "text.bubble", action: followUp)
+                    .help("Ask Claude to change this screen; it answers with a patch")
             }
         }
         .font(.callout)
@@ -184,6 +203,7 @@ struct RecordingBar: View {
     let file: URL?
     let recording: Recording
     let replay: () -> Void
+    let followUp: (() -> Void)?
 
     var body: some View {
         HStack(spacing: 8) {
@@ -195,6 +215,9 @@ struct RecordingBar: View {
             if let file {
                 Button("Show in Finder", systemImage: "folder") { Recordings.reveal(file) }
             }
+            if let followUp {
+                Button("Follow Up", systemImage: "text.bubble", action: followUp)
+            }
         }
         .font(.callout)
     }
@@ -203,6 +226,7 @@ struct RecordingBar: View {
         let seconds = (recording.chunks.last?.t ?? 0) - (recording.chunks.first?.t ?? 0)
         let date = recording.createdAt.formatted(date: .abbreviated, time: .shortened)
         let ending = recording.stopReason.map { " · \($0)" } ?? " · stopped early"
-        return "\(recording.servedBy ?? recording.model) · \(date) · \(recording.chunks.count) chunks over \(String(format: "%.1f", seconds)) s\(ending)"
+        let kind = recording.patchOf == nil ? "" : "follow-up · "
+        return "\(kind)\(recording.servedBy ?? recording.model) · \(date) · \(recording.chunks.count) chunks over \(String(format: "%.1f", seconds)) s\(ending)"
     }
 }

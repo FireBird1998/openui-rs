@@ -9,6 +9,7 @@ public struct CorpusView: View {
     @State private var showInspector = true
     @State private var showNewProgram = false
     @State private var showAskClaude = false
+    @State private var showFollowUp = false
     @AppStorage(CorpusSettings.folderKey) private var folder = ""
     @AppStorage(Recordings.folderKey) private var recordingsFolder = ""
 
@@ -58,6 +59,12 @@ public struct CorpusView: View {
                 Task { await model.openLive(draft) }
             }
         }
+        .sheet(isPresented: $showFollowUp) {
+            AskClaudeSheet(libraries: model.promptLibraries, base: model.current?.finalProgram,
+                           baseLibrary: model.current?.libraryName) { draft in
+                Task { await model.openLive(draft) }
+            }
+        }
         .sheet(isPresented: $showNewProgram) {
             NewProgramSheet(schemaNames: model.schemaNames) { request in
                 Task { await model.open(request) }
@@ -83,14 +90,15 @@ public struct CorpusView: View {
         } else if let playback = model.playback, let current = model.current {
             VStack(spacing: 0) {
                 if let live = model.liveStatus {
-                    LiveBar(status: live, stop: { model.stopLive() }, save: { model.saveRecording() }, saved: model.savedRecording)
+                    LiveBar(status: live, stop: { model.stopLive() }, save: { model.saveRecording() },
+                            saved: model.savedRecording, followUp: model.canFollowUp ? { showFollowUp = true } : nil)
                         .padding(.horizontal).padding(.vertical, 8)
                     Divider()
                 }
                 if let recording = current.recording {
-                    RecordingBar(file: current.recordingFile, recording: recording) {
-                        Task { await model.replayRecording() }
-                    }
+                    RecordingBar(file: current.recordingFile, recording: recording,
+                                 replay: { Task { await model.replayRecording() } },
+                                 followUp: model.canFollowUp ? { showFollowUp = true } : nil)
                     .padding(.horizontal).padding(.vertical, 8)
                     Divider()
                 }
@@ -126,6 +134,12 @@ struct OpenProgram {
     /// The recording it was opened from, and its file.
     var recording: Recording?
     var recordingFile: URL?
+    /// For an edit-mode patch, the program it patches.
+    var base: String?
+    /// The component library's name in the corpus, if it has one.
+    var libraryName: String?
+    /// The whole program once it has all arrived: for a patch, the merged result.
+    var finalProgram: String?
 }
 
 @MainActor @Observable
@@ -171,7 +185,7 @@ final class CorpusModel {
         guard let status = liveStatus, let draft = liveDraft, !status.isActive else { return }
         do {
             let recording = Recording(status: status, request: draft.text, effort: draft.effort,
-                                      library: draft.library, createdAt: liveStarted)
+                                      library: draft.library, createdAt: liveStarted, patchOf: draft.base)
             savedRecording = try Recordings.save(recording)
             reloadRecordings()
         } catch {
@@ -185,10 +199,11 @@ final class CorpusModel {
         do {
             let library = try await library(named: file.recording.library, in: corpus)
             let program = OpenProgram(title: "Recording · \(file.title)", text: file.recording.text, golden: nil,
-                                      recording: file.recording, recordingFile: file.url)
+                                      recording: file.recording, recordingFile: file.url,
+                                      base: file.recording.patchOf, libraryName: file.recording.library)
             await show(program, library: library, root: nil,
                        source: RecordingSource(recording: file.recording, timed: false),
-                       chunking: file.recording.chunking)
+                       chunking: file.recording.chunking, base: file.recording.patchOf)
         } catch {
             failure = String(describing: error)
         }
@@ -236,7 +251,8 @@ final class CorpusModel {
         guard let corpus, let name = selected, let c = corpus.cases.first(where: { $0.name == name }) else { return }
         do {
             let library = try await library(named: c.schemaName, in: corpus)
-            await show(OpenProgram(title: c.name, text: try corpus.program(of: c), golden: corpus.golden(for: c)),
+            await show(OpenProgram(title: c.name, text: try corpus.program(of: c), golden: corpus.golden(for: c),
+                                   libraryName: c.schemaName),
                        library: library, root: c.root)
         } catch {
             failure = String(describing: error)
@@ -274,8 +290,17 @@ final class CorpusModel {
         return library
     }
 
-    /// Asks Claude for a screen and plays the answer as it streams. The key is
-    /// read from the Keychain for this request only.
+    /// Whether the screen can be changed with a follow-up: it came from a live
+    /// request or a recording in a library with a prompt spec, and has arrived.
+    var canFollowUp: Bool {
+        guard let current, current.finalProgram != nil, let library = current.libraryName else { return false }
+        return (liveStatus != nil || current.recording != nil) && promptLibraries.contains(library)
+            && !(playback?.isStreaming ?? true)
+    }
+
+    /// Asks Claude for a screen, or with a `base`, for a change to it in edit
+    /// mode, and plays the answer as it streams. The key is read from the
+    /// Keychain for this request only.
     func openLive(_ draft: LiveDraft) async {
         guard let corpus else { return }
         guard !Budget.reached else {
@@ -286,7 +311,7 @@ final class CorpusModel {
             failure = "No API key in the Keychain. Add one in Settings."
             return
         }
-        guard let spec = corpus.promptSpec(forLibrary: draft.library) else {
+        guard let spec = corpus.promptSpec(forLibrary: draft.library, editMode: draft.base != nil) else {
             failure = "The corpus has no prompt spec for \(draft.library)."
             return
         }
@@ -295,12 +320,15 @@ final class CorpusModel {
             let library = try await library(named: draft.library, in: corpus)
             let systemPrompt = try await core.systemPrompt(spec: spec)
             let status = LiveStatus(model: draft.model)
-            let request = ClaudeRequest(model: draft.model, effort: draft.effort, systemPrompt: systemPrompt, userText: draft.text)
-            let title = "Claude · " + draft.text.prefix(48).replacingOccurrences(of: "\n", with: " ")
+            let userText = draft.base.map { ClaudeRequest.followUp(draft.text, to: $0) } ?? draft.text
+            let request = ClaudeRequest(model: draft.model, effort: draft.effort, systemPrompt: systemPrompt, userText: userText)
+            let title = (draft.base == nil ? "Claude · " : "Claude · change: ")
+                + draft.text.prefix(48).replacingOccurrences(of: "\n", with: " ")
             liveDraft = draft
             liveStarted = Date()
-            await show(OpenProgram(title: title, text: "", golden: nil), library: library, root: nil,
-                       source: ClaudeSource(request: request, apiKey: key, status: status), live: status)
+            await show(OpenProgram(title: title, text: "", golden: nil, base: draft.base, libraryName: draft.library),
+                       library: library, root: nil,
+                       source: ClaudeSource(request: request, apiKey: key, status: status), live: status, base: draft.base)
             Budget.add(status.cost)
             if let playback { current?.text = playback.text }
         } catch {
@@ -314,7 +342,8 @@ final class CorpusModel {
     }
 
     private func show(_ program: OpenProgram, library: Library, root: String?,
-                      source: (any ChunkSource)? = nil, live: LiveStatus? = nil, chunking initial: Chunking? = nil) async {
+                      source: (any ChunkSource)? = nil, live: LiveStatus? = nil, chunking initial: Chunking? = nil,
+                      base: String? = nil) async {
         failure = nil
         selection.clear()
         if let initial {
@@ -325,13 +354,17 @@ final class CorpusModel {
         current = program
         liveStatus = live
         savedRecording = nil
-        let playback = Playback(core: core, library: library, root: root)
+        let playback = Playback(core: core, library: library, root: root, base: base)
         self.playback = playback
         loadedChunking = chunking
         if let source {
             await playback.load(source)
         } else {
             await playback.load(chunking.source(for: program.text))
+        }
+        // Shown last: the whole program, or for a patch the merged result.
+        if self.playback === playback {
+            current?.finalProgram = playback.step?.program ?? playback.text
         }
     }
 

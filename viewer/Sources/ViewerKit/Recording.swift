@@ -17,11 +17,16 @@ import Foundation
 /// }
 /// ```
 ///
+/// A follow-up in edit mode records the program it patched in `patchOf`, and
+/// its chunks are the patch: each step is `patchOf` merged with the patch so
+/// far. A fresh request has no `patchOf`.
+///
 /// `t` is seconds from sending the request to the delta's arrival; each
 /// chunk's text is a text delta exactly as received. `model` is what was
 /// asked for and `servedBy` what answered (they differ after a fallback).
-/// `stopReason` is null when the stream was stopped or failed. A recording
-/// never holds the API key or any request header.
+/// `stopReason` is left out when the stream was stopped or failed, as is any
+/// other field without a value. A recording never holds the API key or any
+/// request header.
 public struct Recording: Codable, Equatable, Sendable {
     public static let formatName = "openui-recording"
 
@@ -43,8 +48,10 @@ public struct Recording: Codable, Equatable, Sendable {
     public var inputTokens: Int
     public var outputTokens: Int
     public var chunks: [Chunk]
+    /// For a follow-up, the program the chunks patch.
+    public var patchOf: String?
 
-    /// The whole program as it arrived.
+    /// The whole program, or for a follow-up the whole patch, as it arrived.
     public var text: String { chunks.map(\.text).joined() }
 
     /// The chunks' sizes in code points: replaying with these sizes gives
@@ -75,7 +82,7 @@ public struct Recording: Codable, Equatable, Sendable {
 extension Recording {
     /// A recording of what a live request received.
     @MainActor
-    init(status: LiveStatus, request: String, effort: String, library: String, createdAt: Date) {
+    init(status: LiveStatus, request: String, effort: String, library: String, createdAt: Date, patchOf: String? = nil) {
         var stopReason: String?
         if case let .finished(reason) = status.phase, reason != "end of stream" { stopReason = reason }
         self.init(
@@ -88,7 +95,8 @@ extension Recording {
             stopReason: stopReason,
             inputTokens: status.inputTokens,
             outputTokens: status.outputTokens,
-            chunks: status.received
+            chunks: status.received,
+            patchOf: patchOf
         )
     }
 }
