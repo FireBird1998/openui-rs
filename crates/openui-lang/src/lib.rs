@@ -200,3 +200,12 @@ pub use result::{
 pub use serialize::{SerializeError, json_to_openui};
 pub use statements::{IdKind, RawStatement, auto_close, split};
 pub use stream::StreamParser;
+
+// Embedders parse off the UI thread and share one library between parsers, so
+// these stay shareable across threads; this stops compiling if one stops.
+const _: () = {
+    const fn shareable<T: Send + Sync>() {}
+    shareable::<StreamParser>();
+    shareable::<ParseResult>();
+    shareable::<Library>();
+};

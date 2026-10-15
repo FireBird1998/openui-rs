@@ -1,10 +1,12 @@
 //! The `openui-lang` command-line tool.
 
-use std::path::{Path, PathBuf};
+mod common;
+
+use std::path::PathBuf;
 use std::process::Command;
 
 fn conformance() -> PathBuf {
-    Path::new(env!("CARGO_MANIFEST_DIR")).join("../../conformance")
+    common::conformance_dir()
 }
 
 #[test]

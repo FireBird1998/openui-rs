@@ -14,8 +14,20 @@ pub fn repo_root() -> PathBuf {
     Path::new(env!("CARGO_MANIFEST_DIR")).join("../..")
 }
 
+/// The conformance folder: the repository's, or wherever `OPENUI_CONFORMANCE_DIR`
+/// names, so the suite can run where the source tree isn't (a phone, a copy).
 pub fn conformance_dir() -> PathBuf {
-    repo_root().join("conformance")
+    match std::env::var_os("OPENUI_CONFORMANCE_DIR") {
+        Some(dir) if !dir.is_empty() => PathBuf::from(dir),
+        _ => repo_root().join("conformance"),
+    }
+}
+
+/// Whether a failing test may run the reference to show a live diff. Not when
+/// `OPENUI_NO_LIVE_DIFFS` is set: under mutation testing every caught mutant
+/// would start Bun, and on a phone there's no Bun to start.
+pub fn live_diffs() -> bool {
+    std::env::var_os("OPENUI_NO_LIVE_DIFFS").is_none()
 }
 
 pub fn golden_dir() -> PathBuf {
@@ -108,9 +120,14 @@ pub fn load_corpus() -> Corpus {
 }
 
 /// Run `bun run.ts <args>` in `reference/` for reference output, if Bun is
-/// installed; otherwise a hint with the command to run.
+/// installed and live diffs are on; otherwise a hint with the command to run.
 pub fn reference_output(args: &[&str]) -> Result<String, String> {
     let command = format!("(cd reference && bun run.ts {})", args.join(" "));
+    if !live_diffs() {
+        return Err(format!(
+            "live diffs are off (OPENUI_NO_LIVE_DIFFS); run `{command}` to see the reference JSON"
+        ));
+    }
     match Command::new("bun")
         .arg("run.ts")
         .args(args)

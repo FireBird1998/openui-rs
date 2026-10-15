@@ -12,11 +12,24 @@
 
 **Blocked by:** None — can start immediately.
 
-**Status:** ready-for-agent
+**Status:** done (2026-10-15)
 
-- [ ] With the conformance folder copied elsewhere and the switch pointing there, the whole suite passes from the copy.
-- [ ] With live diffs off, a deliberately failing comparison reports from the goldens and doesn't start Bun.
-- [ ] `scripts/check.sh` builds the workspace on Rust 1.88.0, and no toolchain gets installed.
-- [ ] The thread-sharing check fails to compile if one of those types stops being shareable.
-- [ ] TESTING.md exists and covers everything above.
-- [ ] `scripts/check.sh` passes.
+- [x] With the conformance folder copied elsewhere and the switch pointing there, the whole suite passes from the copy.
+- [x] With live diffs off, a deliberately failing comparison reports from the goldens and doesn't start Bun.
+- [x] `scripts/check.sh` builds the workspace on Rust 1.88.0, and no toolchain gets installed.
+- [x] The thread-sharing check fails to compile if one of those types stops being shareable.
+- [x] TESTING.md exists and covers everything above.
+- [x] `scripts/check.sh` passes.
+
+## Comments
+
+**2026-10-15, done.**
+- **`OPENUI_CONFORMANCE_DIR`** names the corpus folder. It's honored by every test that reads the corpus: the shared helpers, the CLI tests, and through the shared helpers, the binding's tests. The `report` test also reads `CONFORMANCE.md` and `reference/UPSTREAM` from the source tree, which ticket 12 will need to account for on a phone.
+- **`OPENUI_NO_LIVE_DIFFS`** makes the one helper that starts Bun (`reference_output`) return the command to run instead.
+- **Checked by hand:**
+  - The corpus copied to the scratchpad, with both switches set, passes the whole suite.
+  - One golden step broken in the copy fails `hand/04-nested-card-mixed-args`, so the copy is what's read. The failure says live diffs are off, and a fake `bun` on the PATH was called 0 times. With live diffs on, the same failure called it once.
+- **The compile-time check** is in `src/lib.rs`. Adding `Rc<()>` to it failed to compile, with "cannot be sent between threads" and "cannot be shared between threads". That experiment was then removed.
+- **The 1.88.0 build** in `scripts/check.sh` uses its own target directory (`target/msrv`) and `RUSTUP_AUTO_INSTALL=0`. It's skipped with a note when the toolchain is missing, so the check still runs elsewhere. The toolchain list was the same before and after.
+- **TESTING.md** covers every existing test with what it catches, the corpus, adding a case, reading a failure, and the switches. The README links it.
+

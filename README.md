@@ -53,7 +53,7 @@ cargo run --release -p openui-lang -- bench conformance/imported/schemas/bench.j
 scripts/check.sh
 ```
 
-That's formatting, clippy, the docs, and every test, doc examples included (this README's example too) and the binding's. It needs only Rust 1.88 or later: no Bun, no network. The reference's outputs are committed as goldens, so the tests compare against them directly.
+That's formatting, clippy, the docs, and every test, doc examples included (this README's example too) and the binding's, then a build on Rust 1.88.0 when that toolchain is installed. It needs only Rust 1.88 or later: no Bun, no network. The reference's outputs are committed as goldens, so the tests compare against them directly. [TESTING.md](TESTING.md) explains what each test catches, how to add a case and how to read a failure.
 
 ## Working on it
 
