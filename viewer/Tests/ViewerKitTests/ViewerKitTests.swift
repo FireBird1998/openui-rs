@@ -256,6 +256,12 @@ import Testing
         #expect(rows.map(\.typeName) == ["Stack", "Text", "Stack", "Text"])
         #expect(rows[1].key == "children[0]")
     }
+
+    @Test func ancestorsRunFromTheOutermost() {
+        #expect(ElementPath.ancestors(of: "/children/2/header") == ["/children", "/children/2"])
+        #expect(ElementPath.ancestors(of: "/children").isEmpty)
+        #expect(ElementPath.ancestors(of: "/").isEmpty)
+    }
 }
 
 @MainActor @Suite struct NativeDrawing {

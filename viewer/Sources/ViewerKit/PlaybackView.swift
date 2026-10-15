@@ -122,8 +122,16 @@ public struct PlaybackView: View {
                     .frame(width: max(pane.size.width - Self.scrollBarRoom, 120), alignment: drawingWidth > 0 ? .top : .topLeading)
                 }
                 .onChange(of: selection?.revealInDrawing) {
-                    if let path = selection?.path {
-                        withAnimation { proxy.scrollTo(path, anchor: .center) }
+                    guard let path = selection?.path else { return }
+                    // Lazy stacks only build what's been on screen, so scroll
+                    // through the element's ancestors, outermost first: each
+                    // step builds the next. Paths that aren't elements, such as
+                    // `/children`, scroll nowhere.
+                    Task {
+                        for ancestor in ElementPath.ancestors(of: path) + [path] {
+                            withAnimation { proxy.scrollTo(ancestor, anchor: .center) }
+                            try? await Task.sleep(for: .milliseconds(60))
+                        }
                     }
                 }
             }

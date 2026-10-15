@@ -2,18 +2,20 @@ import AppKit
 
 /// Checks playback in the real window with nobody at the screen:
 ///
-///   VIEWER_PLAY=<case> [VIEWER_CHUNK=1] [VIEWER_SECONDS=6] Viewer.app/Contents/MacOS/Viewer
+///   VIEWER_PLAY=<case> [VIEWER_CHUNK=1] [VIEWER_SECONDS=6] [VIEWER_SPEED=<chunks/s>] Viewer.app/Contents/MacOS/Viewer
 ///
 /// opens the case (or, for `gallery`, the component gallery; for an absolute
-/// path, that program file against `VIEWER_LIBRARY`, default `bench`), plays it as
-/// fast as possible, jumps back mid-play, plays on, pauses, prints how the UI
-/// kept up, and quits.
+/// path, that program file against `VIEWER_LIBRARY`, default `bench`), plays it
+/// (as fast as possible unless `VIEWER_SPEED` says otherwise), jumps back
+/// mid-play, plays on, pauses, prints how the UI kept up, and quits.
 @MainActor
 enum ScriptedRun {
     struct Request {
         var caseName: String
         var chunkSize: Int
         var seconds: Double
+        /// Chunks per second; as fast as possible by default.
+        var speed: Double
     }
 
     static var request: Request? {
@@ -22,7 +24,8 @@ enum ScriptedRun {
         return Request(
             caseName: name,
             chunkSize: env["VIEWER_CHUNK"].flatMap(Int.init) ?? 1,
-            seconds: env["VIEWER_SECONDS"].flatMap(Double.init) ?? 6
+            seconds: env["VIEWER_SECONDS"].flatMap(Double.init) ?? 6,
+            speed: env["VIEWER_SPEED"].flatMap(Double.init) ?? 10000
         )
     }
 
@@ -48,17 +51,16 @@ enum ScriptedRun {
         }
         guard let playback = model.playback else { return }
 
-        var redraws: [Duration] = []
+        // Every update made (not taken from the kept steps), once it's drawn.
         var updates: [Timings] = []
-        playback.onDrawn = { redraw in
-            redraws.append(redraw)
+        playback.onDrawn = { _ in
             if let t = playback.timings, !playback.fromCache { updates.append(t) }
         }
         let heartbeat = Heartbeat()
         let started = ContinuousClock.now
         let stampAtStart = playback.stamp
 
-        playback.speed = 10000
+        playback.speed = request.speed
         playback.play()
         try? await Task.sleep(for: .seconds(request.seconds / 2))
         let back = playback.position / 2
@@ -73,11 +75,11 @@ enum ScriptedRun {
         let afterPause = playback.stamp - stampAtPause
         heartbeat.stop()
 
-        let sorted = redraws.sorted()
-        let medianRedraw = sorted.isEmpty ? Duration.zero : sorted[sorted.count / 2]
-        func median(_ part: KeyPath<Timings, Duration>) -> String {
-            let values = updates.map { $0[keyPath: part] }.sorted()
-            return TimingsLine.ms(values.isEmpty ? .zero : values[values.count / 2])
+        func part(_ name: String, _ values: [Duration]) -> String {
+            let sorted = values.sorted()
+            let median = sorted.isEmpty ? Duration.zero : sorted[sorted.count / 2]
+            return "    \(name.padding(toLength: 9, withPad: " ", startingAt: 0))"
+                + "\(TimingsLine.ms(median)) / \(TimingsLine.ms(sorted.last ?? .zero))"
         }
         let chunksPerUpdate = updates.isEmpty ? 0 : updates.map(\.chunks).reduce(0, +) / updates.count
         let elapsed = ContinuousClock.now - started
@@ -85,9 +87,11 @@ enum ScriptedRun {
         scripted run: \(request.caseName), \(request.chunkSize) code point(s) per chunk, \
         \(playback.chunks.count) chunks, \(String(format: "%.1f", elapsed.inSeconds)) s
           updates drawn: \(playback.stamp - stampAtStart); reached chunk \(playback.position)
-          per update (median, about \(chunksPerUpdate) chunks each): parse \(median(\.parse)), \
-        crossing \(median(\.crossing)), decode \(median(\.decode))
-          redraw: median \(TimingsLine.ms(medianRedraw)), worst \(TimingsLine.ms(sorted.last ?? .zero))
+          per update, median / worst (\(updates.count) updates, about \(chunksPerUpdate) chunks each):
+        \(part("parse", updates.map(\.parse)))
+        \(part("crossing", updates.map(\.crossing)))
+        \(part("decode", updates.map(\.decode)))
+        \(part("redraw", updates.compactMap(\.redraw)))
           main thread's longest stall: \(TimingsLine.ms(heartbeat.longestStall))
           jump back to chunk \(back) mid-play: \(TimingsLine.ms(seekTook))
           updates after pause: \(afterPause)

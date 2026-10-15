@@ -9,6 +9,13 @@ public enum ElementPath {
     public static func child(of parent: String, _ key: String) -> String {
         parent == root ? root + key : parent + "/" + key
     }
+
+    /// The paths above `path`, outermost first, root excluded:
+    /// `/children/2/header` has `/children` and `/children/2`.
+    public static func ancestors(of path: String) -> [String] {
+        let parts = path.split(separator: "/")
+        return parts.indices.dropLast().map { "/" + parts[...$0].joined(separator: "/") }
+    }
 }
 
 /// The selected element, shared by the drawing and the inspector's tree.

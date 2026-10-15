@@ -84,7 +84,7 @@ It comes in two milestones:
 ### What crosses after each chunk
 
 - **The baseline** is the JSON text the core already produces, byte-identical with the web. Swift decodes it into its own model of the parse result.
-- **The experiment** builds one alternative after measuring the baseline: either a handle to the Rust-side tree that Swift walks, or only what changed since the last chunk. It picks whichever the baseline numbers point to.
+- **The experiment** was going to build one alternative after measuring the baseline: either a handle to the Rust-side tree that Swift walks, or only what changed since the last chunk. Ticket 05 was rescoped on 2026-10-15 because crossing cost under 0.2 ms against a redraw of about 90 ms. It profiled and fixed the redraw instead, and recommends sending JSON.
 - **Timings:** parse, crossing, decoding and redrawing are each timed per chunk and shown in the inspector.
 - **Where the findings go:** Dynamic News tickets 01 and 06 get the build setup, the threads calls land on, the stack each needs, and the timings.
 
