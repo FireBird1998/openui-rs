@@ -28,3 +28,9 @@ This finishes the viewer's first milestone.
 - [ ] Dynamic News ticket 01 gets the build setup, threads and stack findings as a comment.
 - [ ] Dynamic News ticket 06 gets the comparison and a recommendation as a comment.
 - [ ] The README's viewer section is current.
+
+## Comments
+
+**2026-10-15 (from ticket 02):** the scripted run (`VIEWER_PLAY=<case> VIEWER_CHUNK=<n>`) already plays a case in the real window and prints the median parse, crossing, decode and redraw per update, plus the longest main-thread stall. It's a starting point for this ticket's timing command. Two baselines from ticket 02, release build, on the largest case at 1 code point per chunk:
+- **Parse and crossing:** about 11.5 ms of core time per 1,600-chunk update, and 0.2 ms to cross.
+- **Redraw:** with the box drawing, the redraw (median 53 ms) dwarfs both.

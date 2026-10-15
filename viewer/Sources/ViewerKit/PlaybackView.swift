@@ -1,0 +1,146 @@
+import AppKit
+import SwiftUI
+
+/// The playback controls, where each update's time went, and the drawing.
+public struct PlaybackView: View {
+    @Bindable var playback: Playback
+    @Binding var chunkSize: Int
+
+    /// The corpus's fixed chunkings, then larger ones.
+    static let chunkSizes = [1, 2, 3, 4, 7, 16, 64, 256]
+    static let speeds: [Double] = [1, 2, 5, 10, 30, 60, 120, 300, 1000, 10000]
+
+    public init(playback: Playback, chunkSize: Binding<Int>) {
+        self.playback = playback
+        _chunkSize = chunkSize
+    }
+
+    public var body: some View {
+        VStack(spacing: 0) {
+            controls.padding(.horizontal).padding(.vertical, 8)
+            Divider()
+            drawing
+        }
+    }
+
+    private var controls: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            HStack(spacing: 10) {
+                Button("Step back", systemImage: "backward.frame") { playback.stepBack() }
+                    .disabled(playback.position == 0)
+                Button(playback.isPlaying ? "Pause" : "Play", systemImage: playback.isPlaying ? "pause.fill" : "play.fill") {
+                    playback.isPlaying ? playback.pause() : playback.play()
+                }
+                .disabled(playback.chunks.isEmpty)
+                Button("Step forward", systemImage: "forward.frame") { playback.stepForward() }
+                    .disabled(playback.position >= playback.chunks.count)
+                Slider(
+                    value: Binding(
+                        get: { Double(playback.position) },
+                        set: { playback.seek(to: Int($0.rounded())) }
+                    ),
+                    in: 0...Double(max(playback.chunks.count, 1)),
+                    step: 1
+                )
+                .disabled(playback.chunks.isEmpty)
+                Text("\(playback.position) / \(playback.chunks.count)")
+                    .monospacedDigit()
+                    .frame(minWidth: 90, alignment: .trailing)
+            }
+            .labelStyle(.iconOnly)
+            HStack(spacing: 16) {
+                Picker("Chunk", selection: $chunkSize) {
+                    ForEach(Self.chunkSizes, id: \.self) { size in
+                        Text(size == 1 ? "1 character" : "\(size) characters").tag(size)
+                    }
+                }
+                .fixedSize()
+                Picker("Speed", selection: $playback.speed) {
+                    ForEach(Self.speeds, id: \.self) { speed in
+                        Text(speed >= 10000 ? "As fast as possible" : "\(Int(speed)) chunks/s").tag(speed)
+                    }
+                }
+                .fixedSize()
+                Spacer()
+            }
+            TimingsLine(timings: playback.timings, fromCache: playback.fromCache)
+                .lineLimit(1)
+                .frame(maxWidth: .infinity, alignment: .leading)
+            if let error = playback.error {
+                Text(error).foregroundStyle(.red).font(.callout)
+            }
+        }
+    }
+
+    @ViewBuilder private var drawing: some View {
+        ScrollView([.vertical, .horizontal]) {
+            Group {
+                if let root = playback.step?.result.root {
+                    ElementBox(element: root)
+                } else if playback.step != nil {
+                    Text("No root element yet").foregroundStyle(.secondary)
+                }
+            }
+            .padding()
+            .background(RedrawProbe(stamp: playback.stamp) { playback.drawn($0) })
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+        }
+    }
+}
+
+/// "parse 0.12 ms · crossing 0.03 ms · decode 0.20 ms · redraw 4.1 ms"
+struct TimingsLine: View {
+    let timings: Timings?
+    let fromCache: Bool
+
+    var body: some View {
+        if let t = timings {
+            HStack(spacing: 4) {
+                if fromCache {
+                    Text("kept step:").foregroundStyle(.secondary)
+                } else if t.chunks > 1 {
+                    Text("\(t.chunks) chunks:").foregroundStyle(.secondary)
+                }
+                Text(
+                    "parse \(Self.ms(t.parse)) · crossing \(Self.ms(t.crossing)) · decode \(Self.ms(t.decode))"
+                        + " · redraw \(t.redraw.map(Self.ms) ?? "…")"
+                )
+            }
+            .font(.caption.monospacedDigit())
+            .help("Parse: the core. Crossing: serializing to JSON and into Swift. Decode: JSON into the viewer's model. Redraw: until the step was on screen.")
+        }
+    }
+
+    static func ms(_ d: Duration) -> String {
+        String(format: "%.2f ms", d.inSeconds * 1000)
+    }
+}
+
+/// Reports when the content it sits behind is drawn with a new stamp: an
+/// invisible view drawn in the same pass as the content.
+struct RedrawProbe: NSViewRepresentable {
+    let stamp: Int
+    let drawn: @MainActor (Int) -> Void
+
+    func makeNSView(context: Context) -> ProbeView { ProbeView() }
+
+    func updateNSView(_ view: ProbeView, context: Context) {
+        view.drawn = drawn
+        if view.stamp != stamp {
+            view.stamp = stamp
+            view.needsDisplay = true
+        }
+    }
+
+    final class ProbeView: NSView {
+        var stamp = 0
+        var reported = -1
+        var drawn: (@MainActor (Int) -> Void)?
+
+        override func draw(_ dirtyRect: NSRect) {
+            guard stamp != reported else { return }
+            reported = stamp
+            drawn?(stamp)
+        }
+    }
+}

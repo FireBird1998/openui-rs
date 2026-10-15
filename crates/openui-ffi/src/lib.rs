@@ -3,13 +3,15 @@
 //!
 //! Parse results cross as the JSON text [`ParseResult::to_json`] produces,
 //! byte-identical with the reference, plus the two limit flags the reference
-//! has no field for. Callers must call in from threads with at least 512 KB of
-//! stack; the crate is built at opt-level 1 or more in every profile.
+//! has no field for and how long the core took. Callers must call in from
+//! threads with at least 512 KB of stack; the crate is built at opt-level 1 or
+//! more in every profile.
 
 use std::fmt;
-use std::sync::Arc;
+use std::sync::{Arc, Mutex, MutexGuard};
+use std::time::Instant;
 
-use openui_lang::{Library, ParseResult};
+use openui_lang::{Library, ParseResult, StreamParser};
 
 uniffi::setup_scaffolding!();
 
@@ -57,7 +59,7 @@ impl ComponentLibrary {
 }
 
 /// A parse result as it crosses the boundary.
-#[derive(Debug, PartialEq, Eq, uniffi::Record)]
+#[derive(Debug, uniffi::Record)]
 pub struct ParseOutput {
     /// The parse result, serialized exactly as the reference serializes it.
     pub json: String,
@@ -65,16 +67,29 @@ pub struct ParseOutput {
     pub depth_limited: bool,
     /// The result grew past the core's size limit and was cut.
     pub size_limited: bool,
+    /// Time the core spent parsing, in nanoseconds.
+    pub parse_nanos: u64,
+    /// Time spent serializing the result to `json`, in nanoseconds.
+    pub json_nanos: u64,
 }
 
-impl From<ParseResult> for ParseOutput {
-    fn from(result: ParseResult) -> Self {
+impl ParseOutput {
+    /// The result and how long it took to produce, from when parsing started.
+    fn timed(result: ParseResult, started: Instant) -> ParseOutput {
+        let parsed = Instant::now();
+        let json = result.to_json();
         ParseOutput {
-            json: result.to_json(),
+            json,
             depth_limited: result.depth_limited,
             size_limited: result.size_limited,
+            parse_nanos: nanos(started, parsed),
+            json_nanos: nanos(parsed, Instant::now()),
         }
     }
+}
+
+fn nanos(from: Instant, to: Instant) -> u64 {
+    u64::try_from((to - from).as_nanos()).unwrap_or(u64::MAX)
 }
 
 /// One-shot parse of a whole program; `root_name` picks the entry statement.
@@ -84,5 +99,70 @@ pub fn parse(
     library: Arc<ComponentLibrary>,
     root_name: Option<String>,
 ) -> ParseOutput {
-    openui_lang::parse(&program, &library.inner, root_name.as_deref()).into()
+    let started = Instant::now();
+    let result = openui_lang::parse(&program, &library.inner, root_name.as_deref());
+    ParseOutput::timed(result, started)
+}
+
+/// A streaming parse of one program, fed chunk by chunk. Calls on one session
+/// are serialized; a viewer drives it from a single thread anyway.
+#[derive(uniffi::Object)]
+pub struct StreamSession {
+    parser: Mutex<StreamParser>,
+}
+
+impl StreamSession {
+    fn parser(&self) -> MutexGuard<'_, StreamParser> {
+        // The core doesn't panic, so the lock is never poisoned in practice.
+        self.parser
+            .lock()
+            .unwrap_or_else(|poisoned| poisoned.into_inner())
+    }
+}
+
+#[uniffi::export]
+impl StreamSession {
+    /// A session over `library`; `root_name` picks the entry statement.
+    #[uniffi::constructor]
+    pub fn new(library: Arc<ComponentLibrary>, root_name: Option<String>) -> Arc<Self> {
+        let parser = StreamParser::new(library.inner.clone(), root_name.as_deref());
+        Arc::new(StreamSession {
+            parser: Mutex::new(parser),
+        })
+    }
+
+    /// Pushes the next chunk; the result after it.
+    pub fn push(&self, chunk: String) -> ParseOutput {
+        let started = Instant::now();
+        let result = self.parser().push(&chunk);
+        ParseOutput::timed(result, started)
+    }
+
+    /// Pushes several chunks one by one and returns only the result after the
+    /// last, for a viewer that skips steps. The core sees exactly the pushes it
+    /// would have seen one call at a time, so the result is the same.
+    pub fn push_all(&self, chunks: Vec<String>) -> ParseOutput {
+        let started = Instant::now();
+        let mut parser = self.parser();
+        let mut result = None;
+        for chunk in &chunks {
+            result = Some(parser.push(chunk));
+        }
+        let result = result.unwrap_or_else(|| parser.result());
+        ParseOutput::timed(result, started)
+    }
+
+    /// Gives the whole text so far, as after a reconnect.
+    pub fn set(&self, text: String) -> ParseOutput {
+        let started = Instant::now();
+        let result = self.parser().set(&text);
+        ParseOutput::timed(result, started)
+    }
+
+    /// The latest result, without new text.
+    pub fn result(&self) -> ParseOutput {
+        let started = Instant::now();
+        let result = self.parser().result();
+        ParseOutput::timed(result, started)
+    }
 }

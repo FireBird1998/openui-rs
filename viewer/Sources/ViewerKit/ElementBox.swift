@@ -2,6 +2,7 @@ import SwiftUI
 
 /// Draws any element as a labeled box: its type, its props, and the elements
 /// inside it drawn the same way. Every program draws something this way.
+/// Partial elements get a dashed orange border.
 public struct ElementBox: View {
     let element: Element
 
@@ -16,6 +17,12 @@ public struct ElementBox: View {
                 if let id = element.statementId {
                     Text(id).font(.caption.monospaced()).foregroundStyle(.secondary)
                 }
+                if element.partial {
+                    Image(systemName: "ellipsis")
+                        .font(.caption)
+                        .foregroundStyle(.orange)
+                        .help("Partial: still arriving, or waiting on something that hasn't arrived")
+                }
             }
             ForEach(Array(element.props.enumerated()), id: \.offset) { _, prop in
                 PropRow(prop: prop)
@@ -24,7 +31,12 @@ public struct ElementBox: View {
         .padding(8)
         .frame(alignment: .leading)
         .background(.quaternary.opacity(0.3), in: RoundedRectangle(cornerRadius: 6))
-        .overlay(RoundedRectangle(cornerRadius: 6).strokeBorder(.secondary.opacity(0.5)))
+        .overlay(
+            RoundedRectangle(cornerRadius: 6).strokeBorder(
+                element.partial ? AnyShapeStyle(.orange.opacity(0.7)) : AnyShapeStyle(.secondary.opacity(0.5)),
+                style: StrokeStyle(lineWidth: 1, dash: element.partial ? [4, 3] : [])
+            )
+        )
     }
 }
 
@@ -42,7 +54,7 @@ struct PropRow: View {
         } else {
             HStack(alignment: .firstTextBaseline, spacing: 4) {
                 PropName(name: prop.name)
-                Text(prop.value.summary).font(.body.monospaced()).textSelection(.enabled)
+                Text(prop.value.summary).font(.body.monospaced())
             }
         }
     }
