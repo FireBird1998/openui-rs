@@ -47,6 +47,9 @@ public struct CorpusView: View {
         .task(id: model.selected) { await model.openSelected() }
         .onChange(of: model.chunking) { Task { await model.rechunk() } }
         .onChange(of: folder) { model.reloadCorpus() }
+        .onReceive(NotificationCenter.default.publisher(for: Gallery.openNotification)) { _ in
+            Task { await model.open(Gallery.request) }
+        }
         .task {
             if let request = ScriptedRun.request { await ScriptedRun.run(request, model: model) }
         }
@@ -89,6 +92,8 @@ final class CorpusModel {
     var chunking = Chunking.fixed(4)
     private(set) var current: OpenProgram?
     private(set) var playback: Playback?
+    /// The chunking the playback was last loaded with.
+    private var loadedChunking: Chunking?
     private(set) var failure: String?
     let selection = ElementSelection()
     private let core = Core()
@@ -169,12 +174,14 @@ final class CorpusModel {
         current = program
         let playback = Playback(core: core, library: library, root: root)
         self.playback = playback
+        loadedChunking = chunking
         await playback.load(chunking.source(for: program.text))
     }
 
     /// Cuts the same program the new way, staying near the same place.
     func rechunk() async {
-        guard let playback, let current else { return }
+        guard let playback, let current, chunking != loadedChunking else { return }
+        loadedChunking = chunking
         await playback.load(chunking.source(for: current.text), resumeAt: playback.received)
     }
 }

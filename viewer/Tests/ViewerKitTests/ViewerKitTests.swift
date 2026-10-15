@@ -129,6 +129,21 @@ import Testing
         }
     }
 
+    /// Two loads started back to back run one after the other; the last one wins,
+    /// and the position never points past the chunks.
+    @Test func overlappingLoadsEndInTheLastOnesState() async throws {
+        let playback = try await playback(cacheBudget: 32 << 20)
+        let program = playback.chunks.joined()
+        let first = Task { await playback.load(ReplaySource(program: program, chunkSize: 2)) }
+        let second = Task { await playback.load(ReplaySource(program: program, chunkSize: 5)) }
+        #expect(playback.position <= playback.chunks.count)
+        await first.value
+        #expect(playback.position <= playback.chunks.count)
+        await second.value
+        #expect(playback.chunks == ReplaySource.split(program, size: 5))
+        #expect(playback.position == playback.chunks.count)
+    }
+
     @Test func changingTheChunkSizeResumesNearTheSamePlace() async throws {
         let playback = try await playback(cacheBudget: 32 << 20)
         await playback.move(to: 10)
@@ -240,5 +255,117 @@ import Testing
         #expect(rows.map(\.depth) == [0, 1, 1, 2])
         #expect(rows.map(\.typeName) == ["Stack", "Text", "Stack", "Text"])
         #expect(rows[1].key == "children[0]")
+    }
+}
+
+@MainActor @Suite struct NativeDrawing {
+    /// Upstream's example library, which the native components follow.
+    func bench(_ core: Core) async throws -> Library {
+        let corpus = try Corpus.load()
+        let path = try #require(corpus.schemas["bench"])
+        return try await core.library(schema: String(contentsOf: corpus.directory.appendingPathComponent(path), encoding: .utf8))
+    }
+
+    func root(_ program: String) async throws -> Element {
+        let core = Core()
+        return try #require(try await core.parseOneShot(program, library: bench(core)).result.root)
+    }
+
+    /// Every corpus case's final result draws, natively where it can, without
+    /// crashing. A root with nothing to draw, such as a stack whose only child
+    /// was an unknown component the core dropped, makes an empty image.
+    @Test func everyCorpusCaseDrawsOffscreen() async throws {
+        let corpus = try Corpus.load()
+        let core = Core()
+        var libraries: [String: Library] = [:]
+        var drawn = 0
+        var empty = 0
+        for c in corpus.cases {
+            let library: Library
+            if let loaded = libraries[c.schemaName] {
+                library = loaded
+            } else {
+                library = try await core.library(schema: corpus.schema(of: c))
+                libraries[c.schemaName] = library
+            }
+            let step = try await core.parseOneShot(corpus.program(of: c), library: library, root: c.root)
+            guard let root = step.result.root else { continue }
+            let renderer = ImageRenderer(content: ElementView(element: root))
+            renderer.proposedSize = ProposedViewSize(width: 800, height: nil)
+            if renderer.nsImage == nil {
+                var size = CGSize.zero
+                renderer.render { s, _ in size = s }
+                #expect(size.height == 0, "\(c.name) has something to draw but made no image")
+                empty += 1
+            }
+            drawn += 1
+        }
+        #expect(drawn > 200)
+        #expect(empty < 25)
+    }
+
+    /// The gallery parses cleanly, and every element in it is either drawn
+    /// natively or a child part its parent draws.
+    @Test func theGalleryIsAllNative() async throws {
+        let core = Core()
+        let step = try await core.parseOneShot(Gallery.program, library: bench(core))
+        #expect(step.result.meta.errors.isEmpty)
+        #expect(step.result.meta.unresolved.isEmpty)
+        let root = try #require(step.result.root)
+        let childParts: Set = ["Col", "SelectItem", "Series", "Slice", "TabItem"]
+        let rows = TreeRow.rows(of: root)
+        #expect(Set(rows.map(\.typeName)).isSuperset(of: NativeComponents.names))
+        for row in rows where !childParts.contains(row.typeName) {
+            #expect(NativeComponents.names.contains(row.typeName), "\(row.typeName) at \(row.id)")
+        }
+        func check(_ element: Element, _ path: String) {
+            if NativeComponents.names.contains(element.typeName) {
+                #expect(NativeComponents.view(for: element, path: path) != nil, "\(element.typeName) at \(path) fell back")
+            }
+        }
+        visit(root, path: ElementPath.root, check)
+    }
+
+    /// The core drops elements with missing required props, so these are built by hand.
+    func element(_ type: String, _ props: [(String, PropValue)] = [], partial: Bool = false) -> Element {
+        Element(typeName: type, props: props.map { Prop(name: $0.0, value: $0.1) },
+                partial: partial, hasDynamicProps: false, statementId: nil)
+    }
+
+    @Test func propsOfTheWrongTypeFallBackToABox() {
+        let stack = element("Stack", [("children", .scalar(.string("not a list")))])
+        #expect(NativeComponents.view(for: stack, path: "/") == nil)
+        let series = element("Series", [("category", .scalar(.string("s"))), ("values", .list([.scalar(.string("x"))]))])
+        let chart = element("LineChart", [("labels", .list([.scalar(.string("a"))])), ("series", .list([.element(series)]))])
+        #expect(NativeComponents.view(for: chart, path: "/") == nil)
+        let goodSeries = element("Series", [("category", .scalar(.string("s"))), ("values", .list([.scalar(.number(1))]))])
+        let goodChart = element("LineChart", [("labels", .list([.scalar(.string("a"))])), ("series", .list([.element(goodSeries)]))])
+        #expect(NativeComponents.view(for: goodChart, path: "/") != nil)
+    }
+
+    @Test func aMissingPropFallsBackOnlyOnceTheElementIsComplete() {
+        for type in ["TextContent", "Callout", "Button", "Table"] {
+            #expect(NativeComponents.view(for: element(type), path: "/") == nil, "complete \(type)")
+            #expect(NativeComponents.view(for: element(type, partial: true), path: "/") != nil, "arriving \(type)")
+        }
+    }
+
+    @Test func dynamicTextIsDrawnAsItsSource() async throws {
+        let text = try await root(#"root = TextContent($name)"#)
+        #expect(try PropReader(element: text).text("text") == .dynamic("ƒ " + #"{"k":"StateRef","n":"$name"}"#))
+        #expect(NativeComponents.view(for: text, path: "/") != nil)
+    }
+
+    private func visit(_ element: Element, path: String, _ body: (Element, String) -> Void) {
+        body(element, path)
+        func walk(_ value: PropValue, _ path: String) {
+            switch value {
+            case let .element(e): visit(e, path: path, body)
+            case let .list(items): for (i, item) in items.enumerated() { walk(item, ElementPath.child(of: path, String(i))) }
+            case let .record(fields): for f in fields { walk(f.value, ElementPath.child(of: path, f.name)) }
+            default: break
+            }
+        }
+        for prop in element.props { walk(prop.value, ElementPath.child(of: path, prop.name)) }
     }
 }

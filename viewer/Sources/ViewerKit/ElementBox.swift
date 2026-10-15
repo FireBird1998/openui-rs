@@ -1,8 +1,9 @@
 import SwiftUI
 
 /// Draws any element as a labeled box: its type, its props, and the elements
-/// inside it drawn the same way. Every program draws something this way.
-/// Partial elements get a dashed orange border; clicking a box selects it.
+/// inside it (natively where the viewer can). Every program draws something
+/// this way. Partial elements get a dashed orange border; clicking a box
+/// selects it.
 public struct ElementBox: View {
     let element: Element
     let path: String
@@ -97,7 +98,7 @@ struct PropValueView: View {
     var body: some View {
         switch value {
         case let .element(element):
-            ElementBox(element: element, path: path)
+            ElementView(element: element, path: path)
         case let .list(items):
             VStack(alignment: .leading, spacing: 6) {
                 ForEach(Array(items.enumerated()), id: \.offset) { i, item in

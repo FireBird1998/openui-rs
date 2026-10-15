@@ -72,7 +72,7 @@ When a test fails, it prints the case, the streaming step and a diff against the
 
 ## The viewer
 
-A Mac app that draws programs natively, beside their parse result: a playground for the crate, and a rehearsal for Dynamic News's binding ([spec](.scratch/viewer/spec.md)). It calls the crate through `crates/openui-ffi`, a UniFFI binding that Kotlin will use too. So far it opens any corpus case (searchable, grouped by source) or a program you paste or open, with a component library, and plays it as a stream: chunk size, speed, stepping, a slider to any step. It draws every element as a labeled box, shows the program text with what's been received, and has an inspector with the element tree, what's unresolved, orphaned or invalid, the limit flags, and, for corpus cases, whether each step matches the reference's golden. Its settings can point it at another conformance folder. It needs macOS 27 and Xcode.
+A Mac app that draws programs natively, beside their parse result: a playground for the crate, and a rehearsal for Dynamic News's binding ([spec](.scratch/viewer/spec.md)). It calls the crate through `crates/openui-ffi`, a UniFFI binding that Kotlin will use too. So far it opens any corpus case (searchable, grouped by source) or a program you paste or open, with a component library, and plays it as a stream: chunk size, speed, stepping, a slider to any step. It draws the most used components of upstream's example library natively (text, stacks, cards, buttons, tables, forms, line, bar and pie charts, tabs, tags and callouts; File > Open Component Gallery shows them all) and anything else as a labeled box, at the window's width or a phone's or tablet's, and shows the program text with what's been received, and has an inspector with the element tree, what's unresolved, orphaned or invalid, the limit flags, and, for corpus cases, whether each step matches the reference's golden. Its settings can point it at another conformance folder. It needs macOS 27 and Xcode.
 
 ```bash
 scripts/viewer.sh run      # build the binding and the app, then run it
@@ -81,7 +81,7 @@ scripts/check-viewer.sh    # build with warnings as errors, then the Swift tests
 
 Or run `scripts/viewer.sh` once, then open `viewer/Package.swift` in Xcode and press ⌘R; the shared scheme rebuilds the binding first (its log is `target/viewer-xcode-prebuild.log`). The app bundle lands in `target/viewer/`.
 
-A scripted run plays a case in the real window with nobody at the screen, then prints how the UI kept up and quits:
+A scripted run plays a case (or `gallery`, or a program file's absolute path) in the real window with nobody at the screen, then prints how the UI kept up and quits:
 
 ```bash
 VIEWER_PLAY=synthetic/dashboard-x8 VIEWER_CHUNK=1 target/viewer/release/Viewer.app/Contents/MacOS/Viewer

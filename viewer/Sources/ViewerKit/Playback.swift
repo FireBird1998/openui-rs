@@ -58,16 +58,15 @@ public final class Playback {
     /// Returns once every chunk has arrived and that step is shown.
     public func load(_ source: some ChunkSource, resumeAt: Int? = nil) async {
         pause()
-        loading?.cancel()
+        let previous = loading
         let task = Task {
+            // Loads run one after another: two at once would mix their chunks.
+            await previous?.value
             await navigator?.value
-            chunks = []
-            textOffsets = [0]
-            scalarOffsets = [0]
-            cache = [:]
-            session = nil
-            sessionPosition = 0
-            error = nil
+            var chunks: [String] = []
+            var textOffsets = [0]
+            var scalarOffsets = [0]
+            var failure: String?
             do {
                 for try await batch in source.chunks() {
                     chunks += batch
@@ -77,8 +76,19 @@ public final class Playback {
                     }
                 }
             } catch {
-                self.error = String(describing: error)
+                failure = String(describing: error)
             }
+            // Swapped in all at once, so the view never sees the new chunks with
+            // the old position. The old step stays on screen until the new one
+            // is made.
+            self.chunks = chunks
+            self.textOffsets = textOffsets
+            self.scalarOffsets = scalarOffsets
+            position = min(position, chunks.count)
+            cache = [:]
+            session = nil
+            sessionPosition = 0
+            error = failure
             await request(target(resumingAt: resumeAt))
         }
         loading = task

@@ -4,8 +4,10 @@ import AppKit
 ///
 ///   VIEWER_PLAY=<case> [VIEWER_CHUNK=1] [VIEWER_SECONDS=6] Viewer.app/Contents/MacOS/Viewer
 ///
-/// opens the case, plays it as fast as possible, jumps back mid-play, plays
-/// on, pauses, prints how the UI kept up, and quits.
+/// opens the case (or, for `gallery`, the component gallery; for an absolute
+/// path, that program file against `VIEWER_LIBRARY`, default `bench`), plays it as
+/// fast as possible, jumps back mid-play, plays on, pauses, prints how the UI
+/// kept up, and quits.
 @MainActor
 enum ScriptedRun {
     struct Request {
@@ -26,7 +28,17 @@ enum ScriptedRun {
 
     static func run(_ request: Request, model: CorpusModel) async {
         model.chunking = .fixed(request.chunkSize)
-        model.selected = request.caseName
+        if request.caseName == "gallery" {
+            await model.open(Gallery.request)
+        } else if request.caseName.hasPrefix("/") {
+            let library = ProcessInfo.processInfo.environment["VIEWER_LIBRARY"] ?? "bench"
+            guard let text = try? String(contentsOfFile: request.caseName, encoding: .utf8) else {
+                return finish("scripted run: can't read \(request.caseName)")
+            }
+            await model.open(ProgramRequest(title: request.caseName, text: text, library: .corpus(library), root: nil))
+        } else {
+            model.selected = request.caseName
+        }
         // The selection opens the case; wait until it shows its last step.
         var waited = 0
         while model.playback.map({ $0.chunks.isEmpty || $0.position < $0.chunks.count }) ?? true {

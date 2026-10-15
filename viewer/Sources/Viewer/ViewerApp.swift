@@ -10,6 +10,12 @@ struct ViewerApp: App {
         WindowGroup("Viewer") {
             CorpusView()
         }
+        .commands {
+            CommandGroup(after: .newItem) {
+                Button("Open Component Gallery") { Gallery.open() }
+                    .keyboardShortcut("g", modifiers: [.command, .shift])
+            }
+        }
         Settings {
             SettingsView()
         }

@@ -34,3 +34,14 @@ This finishes the viewer's first milestone.
 **2026-10-15 (from ticket 02):** the scripted run (`VIEWER_PLAY=<case> VIEWER_CHUNK=<n>`) already plays a case in the real window and prints the median parse, crossing, decode and redraw per update, plus the longest main-thread stall. It's a starting point for this ticket's timing command. Two baselines from ticket 02, release build, on the largest case at 1 code point per chunk:
 - **Parse and crossing:** about 11.5 ms of core time per 1,600-chunk update, and 0.2 ms to cross.
 - **Redraw:** with the box drawing, the redraw (median 53 ms) dwarfs both.
+
+**2026-10-15 (from ticket 04):** baselines with native drawing, release build, at 1 code point per chunk:
+
+| | gallery | `bench/dashboard` | `synthetic/dashboard-x8` |
+|---|---:|---:|---:|
+| redraw, median | 96 ms | 85 ms | 93 ms |
+| longest main-thread stall | 157 ms | 136 ms | 165 ms |
+| core parse per update | about 5 ms | 8 ms | 13 ms |
+| crossing per update | under 0.2 ms | under 0.2 ms | under 0.2 ms |
+
+The redraw isn't charts: drawing them as boxes left `bench/dashboard` at 106 ms. It isn't rebuilding views either: SwiftUI skipping unchanged subtrees through `Equatable` didn't move it. Start by profiling layout and drawing in Instruments before blaming the boundary. The scripted run also plays program files now (an absolute path in `VIEWER_PLAY`), which is useful for a fixed timing set.

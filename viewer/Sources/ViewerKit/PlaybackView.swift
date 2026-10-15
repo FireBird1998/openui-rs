@@ -9,6 +9,10 @@ public struct PlaybackView: View {
     let chunkings: [Chunking]
     let program: String
     @Environment(ElementSelection.self) private var selection: ElementSelection?
+    /// The drawing's width in points; 0 fits the window.
+    @AppStorage("drawingWidth") private var drawingWidth = 0.0
+
+    static let widths: [(label: String, points: Double)] = [("Window", 0), ("Phone", 390), ("Tablet", 820)]
 
     static let speeds: [Double] = [1, 2, 5, 10, 30, 60, 120, 300, 1000, 10000]
 
@@ -73,6 +77,12 @@ public struct PlaybackView: View {
                     }
                 }
                 .fixedSize()
+                Picker("Width", selection: $drawingWidth) {
+                    ForEach(Self.widths, id: \.points) { width in
+                        Text(width.points > 0 ? "\(width.label) (\(Int(width.points)) pt)" : width.label).tag(width.points)
+                    }
+                }
+                .fixedSize()
                 Spacer()
             }
             TimingsLine(timings: playback.timings, fromCache: playback.fromCache)
@@ -84,23 +94,37 @@ public struct PlaybackView: View {
         }
     }
 
+    /// Room kept beside the drawing for a vertical scroll bar.
+    static let scrollBarRoom: CGFloat = 16
+
     @ViewBuilder private var drawing: some View {
-        ScrollViewReader { proxy in
-            ScrollView([.vertical, .horizontal]) {
-                Group {
-                    if let root = playback.step?.result.root {
-                        ElementBox(element: root)
-                    } else if playback.step != nil {
-                        Text("No root element yet").foregroundStyle(.secondary)
+        // The drawing's width comes from the pane, less room for a scroll bar,
+        // never from the space beside the bar. Otherwise, with scroll bars
+        // always shown, a drawing just the window's height can loop: the bar
+        // appears, text wraps narrower and grows taller, the bar goes, text
+        // grows shorter, until AppKit gives up on the window's layout.
+        GeometryReader { pane in
+            ScrollViewReader { proxy in
+                ScrollView(.vertical) {
+                    Group {
+                        if let root = playback.step?.result.root {
+                            ElementView(element: root)
+                        } else if playback.step != nil {
+                            Text("No root element yet").foregroundStyle(.secondary)
+                        }
                     }
+                    .padding()
+                    .frame(
+                        width: drawingWidth > 0 ? drawingWidth : max(pane.size.width - Self.scrollBarRoom, 120),
+                        alignment: .topLeading
+                    )
+                    .background(RedrawProbe(stamp: playback.stamp) { playback.drawn($0) })
+                    .frame(width: max(pane.size.width - Self.scrollBarRoom, 120), alignment: drawingWidth > 0 ? .top : .topLeading)
                 }
-                .padding()
-                .background(RedrawProbe(stamp: playback.stamp) { playback.drawn($0) })
-                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-            }
-            .onChange(of: selection?.revealInDrawing) {
-                if let path = selection?.path {
-                    withAnimation { proxy.scrollTo(path, anchor: .center) }
+                .onChange(of: selection?.revealInDrawing) {
+                    if let path = selection?.path {
+                        withAnimation { proxy.scrollTo(path, anchor: .center) }
+                    }
                 }
             }
         }
