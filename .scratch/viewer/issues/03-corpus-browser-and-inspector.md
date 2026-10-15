@@ -15,12 +15,12 @@ Selecting an element in the drawing selects it in the tree, and the other way ro
 
 **Blocked by:** 02 — Streaming playback
 
-**Status:** done (2026-10-15)
+**Status:** done (2026-10-15), except for one check by hand: two-way selection
 
 - [x] Every corpus case is listed, and each opens with its own component library and root name.
 - [x] Program files open with a chosen library, and pasted text works.
 - [x] The inspector shows the tree, the incomplete, unresolved and orphaned lists, the errors and the limit flags for the current step.
-- [x] Selection works both ways between the drawing and the tree.
+- [ ] Selection works both ways between the drawing and the tree. (Built and wired. The paths are tested to match, but nobody has clicked through it yet.)
 - [x] The text received so far is highlighted in the program text.
 - [x] Golden match shows a pass or a fail for the current step when a golden exists, and "no golden for this chunking" otherwise. A test with a deliberately wrong fingerprint shows a fail.
 - [x] The viewer reads the conformance folder of the repository it was built from, and settings can point it elsewhere.
