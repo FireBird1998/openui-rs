@@ -160,7 +160,7 @@ Each invariant is checked on a million programs from the differential fuzzer's g
 
 ### Recorded model streams
 
-- **Recorded through the viewer (decided 2026-10-15):** the viewer streams from models and saves recordings, so this phase imports its recordings into the corpus instead of building a separate recording script.
+- **Recorded through the viewer (decided 2026-10-15):** the viewer streams from models and saves recordings, so this phase imports its recordings into the corpus instead of building a separate recording script. The recording format is documented on `Recording` in the viewer (`viewer/Sources/ViewerKit/Recording.swift`): one JSON file per stream, each text delta with its arrival time. A recording's chunk sizes in code points are its recorded chunking.
 - **Who runs it:** the maintainer, in the viewer. API keys live in the macOS Keychain, entered by the maintainer in the viewer's settings, and are never logged.
 - **Budget:** a hard cap of $10.
 - **Models:** Claude Sonnet 5.5 and Claude Haiku 5.5, plus a third provider if the maintainer has a key.

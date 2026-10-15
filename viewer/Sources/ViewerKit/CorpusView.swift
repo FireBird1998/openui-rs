@@ -10,12 +10,22 @@ public struct CorpusView: View {
     @State private var showNewProgram = false
     @State private var showAskClaude = false
     @AppStorage(CorpusSettings.folderKey) private var folder = ""
+    @AppStorage(Recordings.folderKey) private var recordingsFolder = ""
 
     public init() {}
 
     public var body: some View {
         NavigationSplitView {
             List(selection: $model.selected) {
+                let recordings = model.recordings(matching: search)
+                if !recordings.isEmpty {
+                    Section("Recordings") {
+                        ForEach(recordings) { file in
+                            Text(file.title).tag(file.id)
+                                .help(file.url.lastPathComponent)
+                        }
+                    }
+                }
                 ForEach(model.sections(matching: search)) { section in
                     Section(section.title) {
                         ForEach(section.cases) { c in
@@ -57,6 +67,7 @@ public struct CorpusView: View {
         .task(id: model.selected) { await model.openSelected() }
         .onChange(of: model.chunking) { Task { await model.rechunk() } }
         .onChange(of: folder) { model.reloadCorpus() }
+        .onChange(of: recordingsFolder) { model.reloadRecordings() }
         .onReceive(NotificationCenter.default.publisher(for: Gallery.openNotification)) { _ in
             Task { await model.open(Gallery.request) }
         }
@@ -70,6 +81,28 @@ public struct CorpusView: View {
         if let message = model.failure {
             ContentUnavailableView("Couldn't open it", systemImage: "exclamationmark.triangle", description: Text(message))
         } else if let playback = model.playback, let current = model.current {
+            VStack(spacing: 0) {
+                if let live = model.liveStatus {
+                    LiveBar(status: live, stop: { model.stopLive() }, save: { model.saveRecording() }, saved: model.savedRecording)
+                        .padding(.horizontal).padding(.vertical, 8)
+                    Divider()
+                }
+                if let recording = current.recording {
+                    RecordingBar(file: current.recordingFile, recording: recording) {
+                        Task { await model.replayRecording() }
+                    }
+                    .padding(.horizontal).padding(.vertical, 8)
+                    Divider()
+                }
+                playbackView(playback, current: current)
+            }
+        } else {
+            ContentUnavailableView("Pick a case", systemImage: "square.dashed",
+                                   description: Text("Or open a program of your own with the toolbar's + button."))
+        }
+    }
+
+    private func playbackView(_ playback: Playback, current: OpenProgram) -> some View {
             PlaybackView(
                 playback: playback,
                 chunking: $model.chunking,
@@ -80,10 +113,6 @@ public struct CorpusView: View {
                 InspectorView(playback: playback, golden: current.golden, chunking: model.chunking)
                     .inspectorColumnWidth(min: 260, ideal: 340, max: 600)
             }
-        } else {
-            ContentUnavailableView("Pick a case", systemImage: "square.dashed",
-                                   description: Text("Or open a program of your own with the toolbar's + button."))
-        }
     }
 }
 
@@ -94,6 +123,9 @@ struct OpenProgram {
     var text: String
     /// The reference's step fingerprints, for corpus cases.
     var golden: GoldenSteps?
+    /// The recording it was opened from, and its file.
+    var recording: Recording?
+    var recordingFile: URL?
 }
 
 @MainActor @Observable
@@ -105,6 +137,12 @@ final class CorpusModel {
     private(set) var playback: Playback?
     /// The live request on screen, if the program came from one.
     private(set) var liveStatus: LiveStatus?
+    /// What it asked for and when, for saving it as a recording.
+    private var liveDraft: LiveDraft?
+    private var liveStarted = Date()
+    /// Where the live request on screen was saved, once it has been.
+    private(set) var savedRecording: URL?
+    private(set) var recordings: [RecordingFile] = []
     /// The chunking the playback was last loaded with.
     private var loadedChunking: Chunking?
     private(set) var failure: String?
@@ -114,6 +152,54 @@ final class CorpusModel {
 
     init() {
         reloadCorpus()
+        reloadRecordings()
+    }
+
+    func reloadRecordings() {
+        recordings = Recordings.list()
+    }
+
+    func recordings(matching search: String) -> [RecordingFile] {
+        recordings.filter {
+            search.isEmpty || $0.title.localizedCaseInsensitiveContains(search)
+                || $0.url.lastPathComponent.localizedCaseInsensitiveContains(search)
+        }
+    }
+
+    /// Saves the live request on screen as a recording.
+    func saveRecording() {
+        guard let status = liveStatus, let draft = liveDraft, !status.isActive else { return }
+        do {
+            let recording = Recording(status: status, request: draft.text, effort: draft.effort,
+                                      library: draft.library, createdAt: liveStarted)
+            savedRecording = try Recordings.save(recording)
+            reloadRecordings()
+        } catch {
+            failure = String(describing: error)
+        }
+    }
+
+    /// Opens a saved recording, cut where its deltas arrived.
+    func openRecording(_ file: RecordingFile) async {
+        guard let corpus else { return }
+        do {
+            let library = try await library(named: file.recording.library, in: corpus)
+            let program = OpenProgram(title: "Recording · \(file.title)", text: file.recording.text, golden: nil,
+                                      recording: file.recording, recordingFile: file.url)
+            await show(program, library: library, root: nil,
+                       source: RecordingSource(recording: file.recording, timed: false),
+                       chunking: file.recording.chunking)
+        } catch {
+            failure = String(describing: error)
+        }
+    }
+
+    /// Plays the recording on screen again with the timing it arrived with.
+    func replayRecording() async {
+        guard let playback, let recording = current?.recording else { return }
+        chunking = recording.chunking
+        loadedChunking = chunking
+        await playback.load(RecordingSource(recording: recording, timed: true))
     }
 
     func reloadCorpus() {
@@ -135,12 +221,18 @@ final class CorpusModel {
 
     var promptLibraries: [String] { corpus?.promptLibraries ?? [] }
 
-    /// The fixed chunkings, plus the corpus's random ones for a corpus case.
+    /// The fixed chunkings, plus the corpus's random ones for a corpus case,
+    /// or the received one for a recording.
     var chunkings: [Chunking] {
         Chunking.fixedSizes.map(Chunking.fixed) + (current?.golden?.recordedChunkings ?? [])
+            + (current?.recording.map { [$0.chunking] } ?? [])
     }
 
     func openSelected() async {
+        if let id = selected, let file = recordings.first(where: { $0.id == id }) {
+            await openRecording(file)
+            return
+        }
         guard let corpus, let name = selected, let c = corpus.cases.first(where: { $0.name == name }) else { return }
         do {
             let library = try await library(named: c.schemaName, in: corpus)
@@ -205,6 +297,8 @@ final class CorpusModel {
             let status = LiveStatus(model: draft.model)
             let request = ClaudeRequest(model: draft.model, effort: draft.effort, systemPrompt: systemPrompt, userText: draft.text)
             let title = "Claude · " + draft.text.prefix(48).replacingOccurrences(of: "\n", with: " ")
+            liveDraft = draft
+            liveStarted = Date()
             await show(OpenProgram(title: title, text: "", golden: nil), library: library, root: nil,
                        source: ClaudeSource(request: request, apiKey: key, status: status), live: status)
             Budget.add(status.cost)
@@ -220,12 +314,17 @@ final class CorpusModel {
     }
 
     private func show(_ program: OpenProgram, library: Library, root: String?,
-                      source: (any ChunkSource)? = nil, live: LiveStatus? = nil) async {
+                      source: (any ChunkSource)? = nil, live: LiveStatus? = nil, chunking initial: Chunking? = nil) async {
         failure = nil
         selection.clear()
-        if case .recorded = chunking { chunking = .fixed(4) } // recorded sizes belong to one case
+        if let initial {
+            chunking = initial
+        } else if case .recorded = chunking {
+            chunking = .fixed(4) // recorded sizes belong to one case
+        }
         current = program
         liveStatus = live
+        savedRecording = nil
         let playback = Playback(core: core, library: library, root: root)
         self.playback = playback
         loadedChunking = chunking

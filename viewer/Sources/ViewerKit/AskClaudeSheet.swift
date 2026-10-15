@@ -108,10 +108,14 @@ struct AskClaudeSheet: View {
     }
 }
 
-/// A live request's progress, cost and a stop button.
+/// A live request's progress, cost, a stop button, and once it's over, a
+/// button to save it as a recording.
 struct LiveBar: View {
     let status: LiveStatus
     let stop: () -> Void
+    let save: () -> Void
+    /// The recording's file, once saved.
+    let saved: URL?
 
     var body: some View {
         HStack(spacing: 8) {
@@ -127,6 +131,11 @@ struct LiveBar: View {
                 .help("Estimated cost. Output tokens arrive at the end; until then the estimate counts text only.")
             if status.isActive {
                 Button("Stop", systemImage: "stop.fill", action: stop)
+            } else if let saved {
+                Button("Saved", systemImage: "checkmark") { Recordings.reveal(saved) }
+                    .help("Show the recording in Finder")
+            } else if !status.received.isEmpty {
+                Button("Save Recording", systemImage: "record.circle", action: save)
             }
         }
         .font(.callout)
@@ -166,5 +175,34 @@ struct LiveBar: View {
         case .failed: .red
         default: .orange
         }
+    }
+}
+
+/// A recording's details, with buttons to replay it with its original timing
+/// and to show its file.
+struct RecordingBar: View {
+    let file: URL?
+    let recording: Recording
+    let replay: () -> Void
+
+    var body: some View {
+        HStack(spacing: 8) {
+            Image(systemName: "record.circle").foregroundStyle(.secondary)
+            Text(summary).foregroundStyle(.secondary).lineLimit(1)
+            Spacer()
+            Button("Replay as Recorded", systemImage: "clock.arrow.circlepath", action: replay)
+                .help("Play the chunks again with the timing they arrived with")
+            if let file {
+                Button("Show in Finder", systemImage: "folder") { Recordings.reveal(file) }
+            }
+        }
+        .font(.callout)
+    }
+
+    private var summary: String {
+        let seconds = (recording.chunks.last?.t ?? 0) - (recording.chunks.first?.t ?? 0)
+        let date = recording.createdAt.formatted(date: .abbreviated, time: .shortened)
+        let ending = recording.stopReason.map { " · \($0)" } ?? " · stopped early"
+        return "\(recording.servedBy ?? recording.model) · \(date) · \(recording.chunks.count) chunks over \(String(format: "%.1f", seconds)) s\(ending)"
     }
 }

@@ -155,6 +155,8 @@ public final class LiveStatus {
     public private(set) var outputTokens = 0
     /// Characters of text received, for estimating output when a request is cancelled.
     public private(set) var receivedCharacters = 0
+    /// Every text delta as it arrived, with seconds since the request was sent.
+    public private(set) var received: [Recording.Chunk] = []
 
     public init(model: ClaudeModel) {
         self.model = model
@@ -195,6 +197,10 @@ public final class LiveStatus {
         }
     }
 
+    func receive(_ text: String, after elapsed: Duration) {
+        received.append(Recording.Chunk(t: (elapsed.inSeconds * 1000).rounded() / 1000, text: text))
+    }
+
     func end(_ error: (any Error)?) {
         guard isActive else { return }
         if error is CancellationError || (error as? URLError)?.code == .cancelled {
@@ -225,6 +231,7 @@ public struct ClaudeSource: ChunkSource {
     public func chunks() -> AsyncThrowingStream<[String], any Error> {
         let (stream, continuation) = AsyncThrowingStream<[String], any Error>.makeStream()
         let task = Task { [request, apiKey, status, session] in
+            let sent = ContinuousClock.now
             do {
                 let (bytes, response) = try await session.bytes(for: request.urlRequest(apiKey: apiKey))
                 if let http = response as? HTTPURLResponse, http.statusCode != 200 {
@@ -235,7 +242,9 @@ public struct ClaudeSource: ChunkSource {
                     for event in parser.events(fromLine: line) {
                         await status.apply(event)
                         switch event {
-                        case let .text(text): continuation.yield([text])
+                        case let .text(text):
+                            await status.receive(text, after: ContinuousClock.now - sent)
+                            continuation.yield([text])
                         case let .failed(message): throw ClaudeError(description: message)
                         default: break
                         }

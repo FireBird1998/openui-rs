@@ -12,12 +12,14 @@ public enum CorpusSettings {
     }
 }
 
-/// The viewer's settings window: the corpus folder, the API key and the budget.
+/// The viewer's settings window: the corpus and recordings folders, the API key and the budget.
 public struct SettingsView: View {
     @AppStorage(CorpusSettings.folderKey) private var folder = ""
     @AppStorage(Budget.capKey) private var cap = Budget.defaultCap
     @AppStorage(Budget.spentKey) private var spent = 0.0
+    @AppStorage(Recordings.folderKey) private var recordingsFolder = ""
     @State private var choosing = false
+    @State private var choosingRecordings = false
     @State private var newKey = ""
     @State private var hasKey = APIKeyStore.hasKey
     @State private var keyMessage: String?
@@ -42,6 +44,25 @@ public struct SettingsView: View {
                             .disabled(folder.isEmpty)
                     }
                 }
+            }
+            LabeledContent("Recordings folder") {
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(Recordings.directory.path)
+                        .font(.callout.monospaced())
+                        .textSelection(.enabled)
+                    HStack {
+                        Button("Choose…") { choosingRecordings = true }
+                        Button("Use the Default") { recordingsFolder = "" }
+                            .disabled(recordingsFolder.isEmpty)
+                        Button("Show in Finder") {
+                            try? FileManager.default.createDirectory(at: Recordings.directory, withIntermediateDirectories: true)
+                            Recordings.reveal(Recordings.directory)
+                        }
+                    }
+                }
+            }
+            .fileImporter(isPresented: $choosingRecordings, allowedContentTypes: [.folder]) { result in
+                if case let .success(url) = result { recordingsFolder = url.path }
             }
             Divider()
             LabeledContent("Anthropic API key") {

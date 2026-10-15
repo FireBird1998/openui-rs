@@ -27,10 +27,6 @@ public struct PlaybackView: View {
     public var body: some View {
         VStack(spacing: 0) {
             controls.padding(.horizontal).padding(.vertical, 8)
-            if let live {
-                LiveBar(status: live) { playback.stop() }
-                    .padding(.horizontal).padding(.bottom, 8)
-            }
             Divider()
             VSplitView {
                 drawing.frame(minHeight: 120)

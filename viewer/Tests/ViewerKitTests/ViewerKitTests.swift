@@ -606,3 +606,94 @@ struct DripSource: ChunkSource {
         #expect(prompt == golden["prompt"]?.string)
     }
 }
+
+// MARK: Recordings
+
+/// A hand-made recording, with deltas that split a surrogate pair's worth of
+/// text and a combining accent across chunks.
+let handMade = Recording(
+    createdAt: Date(timeIntervalSince1970: 1_792_000_000),
+    request: "A card that says hi",
+    model: "claude-haiku-5-5", servedBy: "claude-haiku-5-5", effort: "low", library: "bench",
+    stopReason: "end_turn", inputTokens: 2146, outputTokens: 30,
+    chunks: [
+        .init(t: 1.20, text: "root = Card([TextCon"),
+        .init(t: 1.25, text: "tent(\"hi 😀 e"),
+        .init(t: 1.31, text: "\u{301}\")])"),
+    ]
+)
+
+@Suite struct SavingRecordings {
+    @Test func aRecordingSurvivesARoundTrip() throws {
+        let decoded = try Recording.decode(handMade.encoded())
+        #expect(decoded == handMade)
+        #expect(decoded.text == "root = Card([TextContent(\"hi 😀 e\u{301}\")])")
+    }
+
+    @Test func otherJSONIsNotARecording() {
+        #expect(throws: (any Error).self) { try Recording.decode(Data(#"{"format":"something-else"}"#.utf8)) }
+    }
+
+    @Test func itsChunkingCutsTheTextExactlyWhereTheDeltasArrived() {
+        #expect(ReplaySource.split(handMade.text, sizes: handMade.sizes) == handMade.chunks.map(\.text))
+    }
+
+    @Test func savedRecordingsListNewestFirst() throws {
+        let dir = FileManager.default.temporaryDirectory.appendingPathComponent("recordings-\(UUID().uuidString)")
+        defer { try? FileManager.default.removeItem(at: dir) }
+        var older = handMade
+        older.createdAt = handMade.createdAt.addingTimeInterval(-60)
+        older.request = "An older one"
+        let first = try Recordings.save(older, in: dir)
+        let second = try Recordings.save(handMade, in: dir)
+        #expect(first.lastPathComponent.hasSuffix(Recordings.fileSuffix))
+        #expect(second.lastPathComponent.contains("a-card-that-says-hi"))
+        try Data("not a recording".utf8).write(to: dir.appendingPathComponent("junk\(Recordings.fileSuffix)"))
+        let listed = Recordings.list(in: dir)
+        #expect(listed.map(\.recording) == [handMade, older])
+    }
+}
+
+@Suite struct ReplayingRecordings {
+    @Test func allAtOnceGivesExactlyTheRecordedChunks() async throws {
+        var batches: [[String]] = []
+        for try await batch in RecordingSource(recording: handMade, timed: false).chunks() { batches.append(batch) }
+        #expect(batches == [handMade.chunks.map(\.text)])
+    }
+
+    @Test func asRecordedGivesThemInOrderWithTheirTiming() async throws {
+        let started = ContinuousClock.now
+        var batches: [[String]] = []
+        for try await batch in RecordingSource(recording: handMade, timed: true).chunks() { batches.append(batch) }
+        #expect(batches == handMade.chunks.map { [$0.text] })
+        #expect(ContinuousClock.now - started >= .milliseconds(100)) // 1.31 - 1.20 s
+    }
+
+    @MainActor @Test func playbackReplaysARecordingAsRecorded() async throws {
+        let core = Core()
+        let corpus = try Corpus.load()
+        let library = try await core.library(schema: String(contentsOf: corpus.directory.appendingPathComponent(try #require(corpus.schemas["bench"])), encoding: .utf8))
+        let playback = Playback(core: core, library: library, root: nil)
+        await playback.load(RecordingSource(recording: handMade, timed: true))
+        #expect(playback.chunks == handMade.chunks.map(\.text))
+        #expect(playback.position == 3)
+        #expect(playback.step?.result.root?.typeName == "Card")
+    }
+}
+
+extension StreamingFromClaude {
+    /// A recording of a live stream holds what arrived, and never the key or a header.
+    @Test func aRecordingHoldsNoKeyOrHeaders() async throws {
+        let (chunks, status, error) = try await run(status: 200, body: okStream)
+        #expect(error == nil)
+        let recording = Recording(status: status, request: "U", effort: "low", library: "bench", createdAt: Date())
+        #expect(recording.chunks.map(\.text) == chunks)
+        #expect(recording.stopReason == "end_turn")
+        #expect(recording.servedBy == "claude-opus-5-5")
+        #expect(recording.chunks.allSatisfy { $0.t >= 0 })
+        let json = String(decoding: try recording.encoded(), as: UTF8.self)
+        for secret in ["sk-test", "x-api-key", "anthropic-version", "anthropic-beta", "content-type"] {
+            #expect(!json.contains(secret), "\(secret) is in the recording")
+        }
+    }
+}
