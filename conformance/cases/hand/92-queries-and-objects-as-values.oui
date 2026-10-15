@@ -1,0 +1,3 @@
+root = Probe([q, Flags([1]), Flags({a: 1}), {type: "element", typeName: "Flags", partial: false, props: [1]}, x])
+q = Query("get_story", {}, {data: null})
+x = {type: "element", typeName: "Probe", partial: false, props: {value: 1}}

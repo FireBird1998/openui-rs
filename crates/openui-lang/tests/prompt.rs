@@ -1,6 +1,8 @@
 //! Prompt generation conformance: every spec in `conformance/prompts/` gives
 //! exactly the prompt the reference's `generateSystemPrompt` gives, or the
-//! same error message where the reference throws.
+//! same error message where the reference throws. Where the reference crashes
+//! inside the JavaScript engine instead (its golden records an `errorType`),
+//! the core only has to return an error too.
 
 mod common;
 
@@ -53,7 +55,10 @@ fn every_prompt_spec_matches_the_reference() {
             _ => panic!("{name}: golden has neither prompt nor error"),
         };
         let actual = generate_system_prompt(&spec).map_err(|e| e.to_string());
-        if actual == expected {
+        // The reference crashed inside the JavaScript engine (a TypeError, say):
+        // the core has to refuse the spec too, but not in the engine's words.
+        let engine_error = golden.get("errorType").is_some();
+        if actual == expected || (engine_error && actual.is_err()) {
             continue;
         }
         failed += 1;

@@ -1,0 +1,64 @@
+{
+ "library": {
+  "root": "Page",
+  "components": {
+   "Page": {
+    "signature": "Page(children: Card[])",
+    "description": "The page."
+   },
+   "Card": {
+    "signature": "Card(title: string)"
+   }
+  },
+  "componentGroups": [
+   {
+    "name": "All",
+    "components": [
+     "Page",
+     "Card"
+    ],
+    "notes": [
+     "Everything is grouped."
+    ]
+   }
+  ]
+ },
+ "promptOptions": {
+  "tools": [
+   {
+    "name": "no_input",
+    "description": "A tool without an input schema."
+   },
+   {
+    "name": "empty_input",
+    "inputSchema": {
+     "type": "object"
+    }
+   },
+   {
+    "name": "odd_enum",
+    "inputSchema": {
+     "type": "object",
+     "properties": {
+      "k": {
+       "type": "string",
+       "enum": [
+        1,
+        true,
+        null,
+        [
+         "a",
+         null,
+         2
+        ],
+        {
+         "b": 1
+        }
+       ]
+      }
+     }
+    }
+   }
+  ]
+ }
+}

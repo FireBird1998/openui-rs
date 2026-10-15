@@ -222,6 +222,20 @@ fn merging_matches_the_core() {
 }
 
 #[test]
+fn errors_explain_themselves() {
+    let message = || "m".to_owned();
+    assert_eq!(
+        OpenUiError::InvalidSchema { message: message() }.to_string(),
+        "invalid JSON Schema: m"
+    );
+    assert_eq!(
+        OpenUiError::InvalidPromptSpec { message: message() }.to_string(),
+        "invalid prompt spec: m"
+    );
+    assert_eq!(OpenUiError::Prompt { message: message() }.to_string(), "m");
+}
+
+#[test]
 fn a_prompt_spec_that_is_not_json_is_an_error() {
     assert!(matches!(
         generate_system_prompt("{".to_owned()),

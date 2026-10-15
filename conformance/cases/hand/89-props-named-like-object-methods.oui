@@ -1,0 +1,1 @@
+root = Probe([Inherited({}), Inherited({toString: "s", valueOf: [1]})])

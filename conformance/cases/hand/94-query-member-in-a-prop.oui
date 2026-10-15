@@ -1,0 +1,2 @@
+root = Probe(q.data)
+q = Query("get_story", {}, {data: null})

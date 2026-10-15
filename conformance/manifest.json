@@ -15,7 +15,8 @@
   "text": "schemas/text.json",
   "hand": "schemas/hand.json",
   "keys": "schemas/keys.json",
-  "odd": "schemas/odd.json"
+  "odd": "schemas/odd.json",
+  "edge": "schemas/edge.json"
  },
  "cases": [
   {
@@ -542,6 +543,60 @@
    "name": "hand/86-odd-schema-shapes",
    "schema": "odd",
    "file": "cases/hand/86-odd-schema-shapes.oui",
+   "source": "hand-written"
+  },
+  {
+   "name": "hand/87-required-defaults",
+   "schema": "edge",
+   "file": "cases/hand/87-required-defaults.oui",
+   "source": "hand-written"
+  },
+  {
+   "name": "hand/88-boolean-enums",
+   "schema": "edge",
+   "file": "cases/hand/88-boolean-enums.oui",
+   "source": "hand-written"
+  },
+  {
+   "name": "hand/89-props-named-like-object-methods",
+   "schema": "edge",
+   "file": "cases/hand/89-props-named-like-object-methods.oui",
+   "source": "hand-written"
+  },
+  {
+   "name": "hand/90-properties-as-an-array",
+   "schema": "edge",
+   "file": "cases/hand/90-properties-as-an-array.oui",
+   "source": "hand-written"
+  },
+  {
+   "name": "hand/91-element-shaped-objects",
+   "schema": "edge",
+   "file": "cases/hand/91-element-shaped-objects.oui",
+   "source": "hand-written"
+  },
+  {
+   "name": "hand/92-queries-and-objects-as-values",
+   "schema": "edge",
+   "file": "cases/hand/92-queries-and-objects-as-values.oui",
+   "source": "hand-written"
+  },
+  {
+   "name": "hand/93-number-literal-keys",
+   "schema": "edge",
+   "file": "cases/hand/93-number-literal-keys.oui",
+   "source": "hand-written"
+  },
+  {
+   "name": "hand/94-query-member-in-a-prop",
+   "schema": "edge",
+   "file": "cases/hand/94-query-member-in-a-prop.oui",
+   "source": "hand-written"
+  },
+  {
+   "name": "hand/95-odd-required-and-properties",
+   "schema": "edge",
+   "file": "cases/hand/95-odd-required-and-properties.oui",
    "source": "hand-written"
   }
  ]

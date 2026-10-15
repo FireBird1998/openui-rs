@@ -1,0 +1,1 @@
+{"root":{"type":"element","typeName":"Probe","props":{"value":{"Infinity":"inf","2.5":"x","1e+21":"big","0.000001":"small"}},"partial":false,"hasDynamicProps":false,"statementId":"root"},"meta":{"incomplete":false,"unresolved":[],"orphaned":[],"statementCount":1,"errors":[]},"stateDeclarations":{},"queryStatements":[],"mutationStatements":[]}

@@ -1,0 +1,1 @@
+root = Probe([{type: "element", typeName: "Flags", partial: false, props: {flag: "no"}}, {type: "element", typeName: "Probe", partial: true, props: {value: $x}}])

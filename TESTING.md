@@ -22,16 +22,17 @@ cargo test -p openui-lang --test conformance streaming_   # tests whose names ma
 
 | Test | Checks | Catches |
 |---|---|---|
-| `conformance` | Every corpus case (300), one-shot and after every streaming push, under each of the corpus's chunkings, against the reference's goldens. Also that a stream ends where one-shot parsing ends, apart from three kinds of programs where the reference itself doesn't. | Any difference from the reference in parsing or streaming |
+| `conformance` | Every corpus case (309), one-shot and after every streaming push, under each of the corpus's chunkings, against the reference's goldens. Also that a stream ends where one-shot parsing ends, apart from three kinds of programs where the reference itself doesn't. | Any difference from the reference in parsing or streaming |
 | `stages` | Tokens, statements and expressions, and fence and comment stripping, on every prefix of every program | Which stage of the pipeline a difference starts in |
 | `edits` | Merging (over 1,400 cases), converting element trees back to source, and error hints, against the reference | Differences in the edit-mode and error layer |
-| `prompt` | Every prompt spec in the corpus (44) against the reference's `generateSystemPrompt` | Differences in system prompts |
+| `prompt` | Every prompt spec in the corpus (47) against the reference's `generateSystemPrompt`. Its error messages are compared exactly; for crashes inside the JavaScript engine, only that it fails. | Differences in system prompts |
 | `robustness` | Property tests: any text, cut anywhere, through every stage and every entry point, finishes without panicking | Crashes on arbitrary input |
 | `depth` | Absurdly deep nesting stops at 256 levels with `depth_limited`, on a 512 KB thread stack | Stack overflows |
 | `size` | Programs that double with every line stop at about 8 MiB with `size_limited` | Runaway memory |
 | `streaming_cost` | A push costs about the same on a program four times the size (thread CPU time, best of 7) | Streaming that grows with the square of the program |
 | `report` | The counts in CONFORMANCE.md are what the corpus holds | A stale write-up |
-| `cli` | The command-line tool's commands | A broken CLI |
+| `cli` | The command-line tool's commands, including reading stdin and the default chunk size | A broken CLI |
+| `api` | The public JSON reader and writer, `JsObject`, and walking an expression | Public helpers that parsing alone doesn't reach |
 | doc tests | The crate docs' examples and the README's | Examples that no longer compile or run |
 | unit tests in `js.rs`, `preprocess.rs` | JSON reading and writing; incremental preprocessing against the one-shot form | Internal disagreements |
 | `openui-ffi`'s `binding` | The binding returns exactly the core's output: one-shot, every streaming step, `set`, prompts, merges | A binding that changes what it hands on |
@@ -83,6 +84,21 @@ A conformance failure names the case, the chunking and the step (the push number
 
 - **Which test failed first** narrows things down. A failure in `stages` names the stage and the prefix length, which points closer to the cause than a whole-result diff. `streaming_ends_where_parsing_ends` lists the cases whose stream ends differently from their one-shot parse.
 - **`edits` and `prompt` failures** show the expected text against the actual.
+
+## Coverage
+
+```bash
+scripts/coverage.sh
+```
+
+The script measures line coverage of the core and the binding over the offline suite. It prints a summary per file, writes an HTML report to `target/llvm-cov/html/index.html`, and fails if a line no test runs isn't explained in [crates/openui-lang/UNREACHED.md](crates/openui-lang/UNREACHED.md). It needs cargo-llvm-cov and the `llvm-tools-preview` component, and takes about a minute.
+
+When the script names a line:
+1. **Reachable by real input:** add a case that runs it. If it's reachable through the reference too, add it to the corpus with a golden; otherwise add a test.
+2. **Dead code:** delete it.
+3. **Unreachable on purpose:** list its text under its file in UNREACHED.md, with the reason. That's a guard that mirrors the reference, or an invariant.
+
+There's no percentage target; the bar is that nothing goes unexplained. On 2026-10-15 it stood at 99.12% of lines, with the remaining 30 lines all explained.
 
 ## Switches
 

@@ -14,12 +14,12 @@ Reference: `@openuidev/lang-core 0.3.0` at commit `bba1d2515fa53562ccf0d5d51309c
 
 | Compared with the reference | Cases | Checks | Cases by source |
 |---|---:|---:|---|
-| Parse results: one-shot, and after every push of 8 chunkings and 2 resync sequences | 300 | 245,513 results | 7 benchmark, 72 docs, 46 examples, 11 fuzz, 87 hand-written, 74 reference-test, 3 synthetic |
-| Stages on every prefix: preprocessing, tokens, statements and expression trees | 298 | 74,313 prefixes | the parse corpus, less its largest synthetic programs |
-| System prompts | 44 | 44 | |
+| Parse results: one-shot, and after every push of 8 chunkings and 2 resync sequences | 309 | 248,268 results | 7 benchmark, 72 docs, 46 examples, 11 fuzz, 96 hand-written, 74 reference-test, 3 synthetic |
+| Stages on every prefix: preprocessing, tokens, statements and expression trees | 307 | 75,202 prefixes | the parse corpus, less its largest synthetic programs |
+| System prompts | 47 | 47 | |
 | Edit-mode merges | 1,417 | 1,417 | 1,370 generated, 46 hand-written, 1 reference-test |
-| Element trees back to source | 325 | 325 | 57 hand-written, 238 parse corpus root, 30 reference-test |
-| Enriched errors | 187 | 187 | every parse corpus case with errors |
+| Element trees back to source | 335 | 335 | 58 hand-written, 247 parse corpus root, 30 reference-test |
+| Enriched errors | 191 | 191 | every parse corpus case with errors |
 
 Quirks recorded: 10.
 <!-- /counts -->
@@ -83,8 +83,9 @@ Documented, not emulated. None occurs in the corpus, and none comes from a real 
 | A schema default object, mutated by one parse | shared with later parses | copied per parse |
 | JSON nested deeper than 800 levels, for `json_to_openui` or `parse_json` | handled, up to the engine's recursion limit | refused with an error |
 | `1e400` in JSON read back | `Infinity` | refused: a `serde_json::Value` can't hold it |
+| A component with `properties` whose `required` is neither an array nor a string (a number, say) | throws a `TypeError` building the library (`required.includes is not a function`) | treats `required` as empty |
 
-Error messages where the reference throws aren't compared, only that it throws.
+Error messages where the reference throws aren't compared, only that it throws. For system prompts, the reference's own error messages are compared exactly. Where it crashes inside the JavaScript engine instead (a `TypeError`, for a spec that's a JSON array, say), the core only has to return an error too.
 
 ## Reproducing
 

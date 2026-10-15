@@ -1,0 +1,125 @@
+{
+ "$defs": {
+  "Probe": {
+   "properties": {
+    "value": {}
+   }
+  },
+  "Defaults": {
+   "properties": {
+    "label": {
+     "type": "string"
+    },
+    "on": {
+     "type": "boolean",
+     "default": true
+    },
+    "tags": {
+     "type": "array",
+     "default": [
+      "a",
+      "b"
+     ]
+    },
+    "style": {
+     "type": "object",
+     "default": {
+      "pad": 2,
+      "nested": [
+       1,
+       {
+        "x": null
+       }
+      ]
+     }
+    }
+   },
+   "required": [
+    "label",
+    "on",
+    "tags",
+    "style"
+   ]
+  },
+  "Flags": {
+   "properties": {
+    "flag": {
+     "enum": [
+      true,
+      false,
+      "maybe"
+     ]
+    }
+   },
+   "required": [
+    "flag"
+   ]
+  },
+  "Inherited": {
+   "properties": {
+    "meta": {
+     "type": "object",
+     "properties": {
+      "toString": {
+       "type": "string"
+      },
+      "valueOf": {
+       "type": "array"
+      },
+      "hasOwnProperty": {
+       "type": "object"
+      },
+      "constructor": {
+       "enum": [
+        "x"
+       ]
+      },
+      "isPrototypeOf": {
+       "$ref": "#/$defs/Probe"
+      },
+      "propertyIsEnumerable": true
+     }
+    }
+   }
+  },
+  "Listed": {
+   "properties": {
+    "opts": {
+     "type": "object",
+     "properties": [
+      {
+       "type": "string"
+      },
+      {
+       "type": "number"
+      }
+     ],
+     "required": [
+      "0"
+     ]
+    }
+   }
+  },
+  "Weird": {
+   "properties": 42,
+   "required": true
+  },
+  "Stringy": {
+   "properties": {
+    "a": {
+     "type": "string"
+    },
+    "b": {
+     "type": "string"
+    },
+    "ab": {
+     "type": "string"
+    },
+    "c": {
+     "type": "string"
+    }
+   },
+   "required": "ab"
+  }
+ }
+}

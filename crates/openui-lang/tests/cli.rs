@@ -96,6 +96,68 @@ fn stream_prints_the_reference_result_after_every_push() {
     assert_eq!(actual, expected);
 }
 
+/// Without a chunk size, `stream` pushes 4 characters at a time, the corpus's
+/// "4" chunking.
+#[test]
+fn stream_pushes_four_characters_at_a_time_by_default() {
+    let dir = conformance();
+    let case = "hand/71-expression-forms";
+    let out = Command::new(env!("CARGO_BIN_EXE_openui-lang"))
+        .arg("stream")
+        .arg(dir.join("schemas/hand.json"))
+        .arg(dir.join(format!("cases/{case}.oui")))
+        .output()
+        .unwrap();
+    assert!(
+        out.status.success(),
+        "stderr: {}",
+        String::from_utf8_lossy(&out.stderr)
+    );
+    let golden = std::fs::read_to_string(dir.join(format!("golden/{case}.steps.json"))).unwrap();
+    let golden: serde_json::Value = serde_json::from_str(&golden).unwrap();
+    let expected: Vec<&str> = golden["4"]["steps"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|s| s.as_str().unwrap())
+        .collect();
+    let actual: Vec<String> = String::from_utf8(out.stdout)
+        .unwrap()
+        .lines()
+        .map(fingerprint)
+        .collect();
+    assert_eq!(actual, expected);
+}
+
+/// `-` reads the program from standard input.
+#[test]
+fn parse_reads_the_program_from_stdin_given_a_dash() {
+    use std::io::Write;
+    let dir = conformance();
+    let program = std::fs::read_to_string(dir.join("cases/hello-text.oui")).unwrap();
+    let mut child = Command::new(env!("CARGO_BIN_EXE_openui-lang"))
+        .arg("parse")
+        .arg(dir.join("schemas/text.json"))
+        .arg("-")
+        .stdin(std::process::Stdio::piped())
+        .stdout(std::process::Stdio::piped())
+        .spawn()
+        .unwrap();
+    child
+        .stdin
+        .take()
+        .unwrap()
+        .write_all(program.as_bytes())
+        .unwrap();
+    let out = child.wait_with_output().unwrap();
+    assert!(out.status.success());
+    let golden = std::fs::read_to_string(dir.join("golden/hello-text.oneshot.json")).unwrap();
+    assert_eq!(
+        String::from_utf8(out.stdout).unwrap().trim_end(),
+        golden.trim_end()
+    );
+}
+
 #[test]
 fn unknown_command_prints_usage_and_fails() {
     let out = Command::new(env!("CARGO_BIN_EXE_openui-lang"))

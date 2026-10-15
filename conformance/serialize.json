@@ -1875,6 +1875,29 @@
     "hasDynamicProps": false
    },
    "source": "hand-written"
+  },
+  {
+   "name": "hand/numeric-statement-id-as-last-argument",
+   "schema": "hand",
+   "element": {
+    "type": "element",
+    "typeName": "Card",
+    "props": {
+     "header": {
+      "type": "element",
+      "typeName": "Text",
+      "props": {
+       "value": "h"
+      },
+      "partial": false,
+      "hasDynamicProps": false,
+      "statementId": 7
+     }
+    },
+    "partial": false,
+    "hasDynamicProps": false
+   },
+   "source": "hand-written"
   }
  ]
 }

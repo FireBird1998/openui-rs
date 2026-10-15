@@ -1,6 +1,9 @@
 // Goldens for prompt generation. Every conformance/prompts/<name>.json is the
 // argument to generateSystemPrompt; conformance/golden/prompts/<name>.json
 // records what it returned ({"prompt": ...}) or threw ({"error": message}).
+// A crash inside the JavaScript engine (a TypeError or RangeError, not an
+// Error the reference throws itself) also records its type as "errorType":
+// the core only has to refuse such a spec too, not word it like the engine.
 //
 //   bun reference/prompts.ts golden        write every golden
 //   bun reference/prompts.ts show <name>   print the reference prompt (or error)
@@ -15,12 +18,13 @@ const CONFORMANCE = join(import.meta.dir, "..", "conformance");
 const SPECS = join(CONFORMANCE, "prompts");
 const GOLDEN = join(CONFORMANCE, "golden", "prompts");
 
-function run(name: string): { prompt: string } | { error: string } {
+function run(name: string): { prompt: string } | { error: string; errorType?: string } {
   const spec = JSON.parse(readFileSync(join(SPECS, `${name}.json`), "utf8"));
   try {
     return { prompt: generateSystemPrompt(spec) };
   } catch (e) {
-    return { error: e instanceof Error ? e.message : String(e) };
+    if (!(e instanceof Error)) return { error: String(e) };
+    return e.name === "Error" ? { error: e.message } : { error: e.message, errorType: e.name };
   }
 }
 

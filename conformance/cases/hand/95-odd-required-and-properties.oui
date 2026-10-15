@@ -1,0 +1,1 @@
+root = Probe([Weird(1, 2), Stringy("x", "y", "z"), Stringy("x")])

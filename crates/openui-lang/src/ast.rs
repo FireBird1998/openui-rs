@@ -122,22 +122,6 @@ impl Ast {
         out
     }
 
-    /// Kept for runtime evaluation rather than lowered to a plain value
-    /// (the reference's `isRuntimeExpr`).
-    pub fn is_runtime_expr(&self) -> bool {
-        matches!(
-            self,
-            Ast::StateRef(_)
-                | Ast::RuntimeRef { .. }
-                | Ast::BinOp { .. }
-                | Ast::UnaryOp { .. }
-                | Ast::Ternary { .. }
-                | Ast::Member { .. }
-                | Ast::Index { .. }
-                | Ast::Assign { .. }
-        )
-    }
-
     /// Every node in the tree, parents before children, in the reference's
     /// `walkAST` order.
     pub fn walk(&self, visit: &mut impl FnMut(&Ast)) {
