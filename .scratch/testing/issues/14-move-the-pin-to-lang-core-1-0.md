@@ -22,9 +22,9 @@ This is likely more than one ticket. Its first step is a map of the changes per 
 
 **Blocked by:** None — can start immediately, once the maintainer decides to move.
 
-**Status:** waiting for the maintainer's decision
+**Status:** in progress (the change map is done; its tickets wait for approval)
 
-- [ ] A change map: each upstream change in the parser layer, the core module it touches, and whether our corpus covers it. Upstream's new tests are imported as cases.
+- [x] A change map: each upstream change in the parser layer, the core module it touches, and whether our corpus covers it. Upstream's new tests are imported as cases.
 - [ ] The reference is vendored at the new commit with `scripts/update-reference.sh`, with `zod` added to its packages. The corpus is re-imported, and every golden is regenerated.
 - [ ] The core matches every golden, one-shot and streaming. `pending.txt` is empty again.
 - [ ] CONFORMANCE.md names the new version, and its divergences and QUIRKS.md are reviewed against 1.0: some go away, and new ones may appear.
@@ -35,3 +35,5 @@ This is likely more than one ticket. Its first step is a map of the changes per 
 ## Comments
 
 **Recommendation (2026-10-16):** move, and do it before testing tickets 10 and 11. The recorded streams' system prompts come from the core, and 27 of 47 prompts change with 1.0. Recordings made against 0.3.0 prompts would test the old language. Tickets 04 to 09 and 12 work either way. Running them first means their results are on 0.3.0, so mutation testing in particular would want a rerun on the parser layer after the move.
+
+**2026-10-16:** the maintainer decided to move. The change map is [../../lang-core-1.0/map.md](../../lang-core-1.0/map.md): each upstream change per area of the core, what our corpus covers, five decisions with recommendations, and nine proposed tickets. Upstream's 1.0 conformance fixtures (54 cases) join the corpus as inputs, since the core has no evaluator to check them as upstream does.
