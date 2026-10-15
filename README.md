@@ -72,7 +72,7 @@ When a test fails, it prints the case, the streaming step and a diff against the
 
 ## The viewer
 
-A Mac app that draws programs natively, beside their parse result: a playground for the crate, and a rehearsal for Dynamic News's binding ([spec](.scratch/viewer/spec.md)). It calls the crate through `crates/openui-ffi`, a UniFFI binding that Kotlin will use too. So far it opens any corpus case and plays it as a stream (chunk size, speed, stepping, a slider to any step), drawing every element as a labeled box and showing where each update's time went. It needs macOS 27 and Xcode.
+A Mac app that draws programs natively, beside their parse result: a playground for the crate, and a rehearsal for Dynamic News's binding ([spec](.scratch/viewer/spec.md)). It calls the crate through `crates/openui-ffi`, a UniFFI binding that Kotlin will use too. So far it opens any corpus case (searchable, grouped by source) or a program you paste or open, with a component library, and plays it as a stream: chunk size, speed, stepping, a slider to any step. It draws every element as a labeled box, shows the program text with what's been received, and has an inspector with the element tree, what's unresolved, orphaned or invalid, the limit flags, and, for corpus cases, whether each step matches the reference's golden. Its settings can point it at another conformance folder. It needs macOS 27 and Xcode.
 
 ```bash
 scripts/viewer.sh run      # build the binding and the app, then run it

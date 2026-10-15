@@ -10,6 +10,9 @@ struct ViewerApp: App {
         WindowGroup("Viewer") {
             CorpusView()
         }
+        Settings {
+            SettingsView()
+        }
     }
 }
 

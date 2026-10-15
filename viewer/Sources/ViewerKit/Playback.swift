@@ -10,6 +10,11 @@ import Observation
 @MainActor @Observable
 public final class Playback {
     public private(set) var chunks: [String] = []
+    /// `textOffsets[k]` is where step `k`'s text ends, in UTF-16 units (what
+    /// AppKit's text views count); `textOffsets[0]` is 0.
+    public private(set) var textOffsets: [Int] = [0]
+    /// The same in code points.
+    private var scalarOffsets: [Int] = [0]
     /// The step shown: how many chunks the result has seen.
     public private(set) var position = 0
     public private(set) var step: Step?
@@ -57,6 +62,8 @@ public final class Playback {
         let task = Task {
             await navigator?.value
             chunks = []
+            textOffsets = [0]
+            scalarOffsets = [0]
             cache = [:]
             session = nil
             sessionPosition = 0
@@ -64,6 +71,10 @@ public final class Playback {
             do {
                 for try await batch in source.chunks() {
                     chunks += batch
+                    for chunk in batch {
+                        textOffsets.append(textOffsets.last! + chunk.utf16.count)
+                        scalarOffsets.append(scalarOffsets.last! + chunk.unicodeScalars.count)
+                    }
                 }
             } catch {
                 self.error = String(describing: error)
@@ -75,19 +86,12 @@ public final class Playback {
     }
 
     /// How many code points the shown step has seen.
-    public var received: Int {
-        chunks[..<position].reduce(0) { $0 + $1.unicodeScalars.count }
-    }
+    public var received: Int { scalarOffsets[position] }
 
+    /// The first step that has seen at least `scalars` code points.
     private func target(resumingAt scalars: Int?) -> Int {
         guard let scalars else { return chunks.count }
-        guard scalars > 0 else { return 0 }
-        var seen = 0
-        for (i, chunk) in chunks.enumerated() {
-            seen += chunk.unicodeScalars.count
-            if seen >= scalars { return i + 1 }
-        }
-        return chunks.count
+        return scalarOffsets.firstIndex { $0 >= scalars } ?? chunks.count
     }
 
     // MARK: Controls

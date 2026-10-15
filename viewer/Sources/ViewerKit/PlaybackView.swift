@@ -1,25 +1,37 @@
 import AppKit
 import SwiftUI
 
-/// The playback controls, where each update's time went, and the drawing.
+/// The playback controls, where each update's time went, the drawing, and
+/// the program's text with what's been received so far.
 public struct PlaybackView: View {
     @Bindable var playback: Playback
-    @Binding var chunkSize: Int
+    @Binding var chunking: Chunking
+    let chunkings: [Chunking]
+    let program: String
+    @Environment(ElementSelection.self) private var selection: ElementSelection?
 
-    /// The corpus's fixed chunkings, then larger ones.
-    static let chunkSizes = [1, 2, 3, 4, 7, 16, 64, 256]
     static let speeds: [Double] = [1, 2, 5, 10, 30, 60, 120, 300, 1000, 10000]
 
-    public init(playback: Playback, chunkSize: Binding<Int>) {
+    public init(playback: Playback, chunking: Binding<Chunking>, chunkings: [Chunking], program: String) {
         self.playback = playback
-        _chunkSize = chunkSize
+        _chunking = chunking
+        self.chunkings = chunkings
+        self.program = program
     }
 
     public var body: some View {
         VStack(spacing: 0) {
             controls.padding(.horizontal).padding(.vertical, 8)
             Divider()
-            drawing
+            VSplitView {
+                drawing.frame(minHeight: 120)
+                ProgramTextView(
+                    text: program,
+                    received: playback.textOffsets[playback.position],
+                    previous: playback.textOffsets[max(playback.position - 1, 0)]
+                )
+                .frame(minHeight: 60, idealHeight: 140)
+            }
         }
     }
 
@@ -49,9 +61,9 @@ public struct PlaybackView: View {
             }
             .labelStyle(.iconOnly)
             HStack(spacing: 16) {
-                Picker("Chunk", selection: $chunkSize) {
-                    ForEach(Self.chunkSizes, id: \.self) { size in
-                        Text(size == 1 ? "1 character" : "\(size) characters").tag(size)
+                Picker("Chunk", selection: $chunking) {
+                    ForEach(chunkings, id: \.self) { chunking in
+                        Text(chunking.label).tag(chunking)
                     }
                 }
                 .fixedSize()
@@ -73,17 +85,24 @@ public struct PlaybackView: View {
     }
 
     @ViewBuilder private var drawing: some View {
-        ScrollView([.vertical, .horizontal]) {
-            Group {
-                if let root = playback.step?.result.root {
-                    ElementBox(element: root)
-                } else if playback.step != nil {
-                    Text("No root element yet").foregroundStyle(.secondary)
+        ScrollViewReader { proxy in
+            ScrollView([.vertical, .horizontal]) {
+                Group {
+                    if let root = playback.step?.result.root {
+                        ElementBox(element: root)
+                    } else if playback.step != nil {
+                        Text("No root element yet").foregroundStyle(.secondary)
+                    }
+                }
+                .padding()
+                .background(RedrawProbe(stamp: playback.stamp) { playback.drawn($0) })
+                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+            }
+            .onChange(of: selection?.revealInDrawing) {
+                if let path = selection?.path {
+                    withAnimation { proxy.scrollTo(path, anchor: .center) }
                 }
             }
-            .padding()
-            .background(RedrawProbe(stamp: playback.stamp) { playback.drawn($0) })
-            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
         }
     }
 }

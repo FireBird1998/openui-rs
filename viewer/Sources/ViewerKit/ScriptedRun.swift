@@ -25,7 +25,7 @@ enum ScriptedRun {
     }
 
     static func run(_ request: Request, model: CorpusModel) async {
-        model.chunkSize = request.chunkSize
+        model.chunking = .fixed(request.chunkSize)
         model.selected = request.caseName
         // The selection opens the case; wait until it shows its last step.
         var waited = 0

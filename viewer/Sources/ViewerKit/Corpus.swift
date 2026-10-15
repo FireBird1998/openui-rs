@@ -72,3 +72,44 @@ public struct Corpus: Sendable {
         return try String(contentsOf: directory.appendingPathComponent(path), encoding: .utf8)
     }
 }
+
+/// Corpus cases from one source, for the sidebar.
+public struct CorpusSection: Identifiable, Sendable {
+    public var id: String { source }
+    public var source: String
+    public var cases: [CorpusCase]
+
+    public var title: String {
+        switch source {
+        case "hand-written": "Hand-written"
+        case "docs": "Upstream docs"
+        case "examples": "Upstream examples"
+        case "reference-test": "Upstream tests"
+        case "benchmark": "Upstream benchmarks"
+        case "fuzz": "Found by fuzzing"
+        case "synthetic": "Synthetic"
+        default: source.isEmpty ? "Other" : source
+        }
+    }
+}
+
+extension Corpus {
+    /// The cases whose names contain `search` (all when it's empty), grouped
+    /// by source in the manifests' order.
+    public func sections(matching search: String) -> [CorpusSection] {
+        var sections: [CorpusSection] = []
+        for c in cases where search.isEmpty || c.name.localizedCaseInsensitiveContains(search) {
+            if let i = sections.firstIndex(where: { $0.source == c.source }) {
+                sections[i].cases.append(c)
+            } else {
+                sections.append(CorpusSection(source: c.source, cases: [c]))
+            }
+        }
+        return sections
+    }
+
+    /// The reference's step fingerprints for a case, if the corpus has them.
+    public func golden(for c: CorpusCase) -> GoldenSteps? {
+        try? GoldenSteps.load(caseName: c.name, in: directory)
+    }
+}

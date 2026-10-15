@@ -7,20 +7,27 @@ public protocol ChunkSource: Sendable {
     func chunks() -> AsyncThrowingStream<[String], any Error>
 }
 
-/// A program replayed in chunks of a fixed number of code points, the way the
-/// corpus chunkings cut it.
+/// A program replayed in chunks of a given number of code points each, the
+/// way the corpus chunkings cut it.
 public struct ReplaySource: ChunkSource {
     public var program: String
-    public var chunkSize: Int
+    /// Code points per chunk; the last size repeats until the program ends.
+    public var sizes: [Int]
 
+    /// Chunks of `chunkSize` code points, the last one shorter.
     public init(program: String, chunkSize: Int) {
-        precondition(chunkSize > 0, "chunks need at least one code point")
+        self.init(program: program, sizes: [chunkSize])
+    }
+
+    /// Chunks of the given sizes in turn, as a seeded random chunking records them.
+    public init(program: String, sizes: [Int]) {
+        precondition(!sizes.isEmpty && sizes.allSatisfy { $0 > 0 }, "chunks need at least one code point")
         self.program = program
-        self.chunkSize = chunkSize
+        self.sizes = sizes
     }
 
     public func chunks() -> AsyncThrowingStream<[String], any Error> {
-        let all = ReplaySource.split(program, size: chunkSize)
+        let all = ReplaySource.split(program, sizes: sizes)
         return AsyncThrowingStream { continuation in
             if !all.isEmpty { continuation.yield(all) }
             continuation.finish()
@@ -30,11 +37,22 @@ public struct ReplaySource: ChunkSource {
     /// Consecutive pieces of `size` code points (Unicode scalars), the last
     /// one shorter.
     public static func split(_ text: String, size: Int) -> [String] {
+        split(text, sizes: [size])
+    }
+
+    /// Consecutive pieces of the given sizes in code points, the last size
+    /// repeating until the text ends, and the last piece possibly shorter.
+    public static func split(_ text: String, sizes: [Int]) -> [String] {
         let scalars = Array(text.unicodeScalars)
-        return stride(from: 0, to: scalars.count, by: size).map { start in
+        var pieces: [String] = []
+        var start = 0
+        while start < scalars.count {
+            let size = sizes[min(pieces.count, sizes.count - 1)]
             var piece = String.UnicodeScalarView()
             piece.append(contentsOf: scalars[start..<min(start + size, scalars.count)])
-            return String(piece)
+            pieces.append(String(piece))
+            start += size
         }
+        return pieces
     }
 }

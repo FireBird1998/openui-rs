@@ -2,12 +2,15 @@ import SwiftUI
 
 /// Draws any element as a labeled box: its type, its props, and the elements
 /// inside it drawn the same way. Every program draws something this way.
-/// Partial elements get a dashed orange border.
+/// Partial elements get a dashed orange border; clicking a box selects it.
 public struct ElementBox: View {
     let element: Element
+    let path: String
+    @Environment(ElementSelection.self) private var selection: ElementSelection?
 
-    public init(element: Element) {
+    public init(element: Element, path: String = ElementPath.root) {
         self.element = element
+        self.path = path
     }
 
     public var body: some View {
@@ -25,7 +28,7 @@ public struct ElementBox: View {
                 }
             }
             ForEach(Array(element.props.enumerated()), id: \.offset) { _, prop in
-                PropRow(prop: prop)
+                PropRow(prop: prop, path: ElementPath.child(of: path, prop.name))
             }
         }
         .padding(8)
@@ -37,6 +40,22 @@ public struct ElementBox: View {
                 style: StrokeStyle(lineWidth: 1, dash: element.partial ? [4, 3] : [])
             )
         )
+        .overlay(SelectionRing(path: path))
+        .contentShape(Rectangle())
+        .onTapGesture { selection?.select(path, from: .drawing) }
+        .id(path)
+    }
+}
+
+/// The selected box's outline; only these small views redraw when the selection changes.
+struct SelectionRing: View {
+    let path: String
+    @Environment(ElementSelection.self) private var selection: ElementSelection?
+
+    var body: some View {
+        if selection?.path == path {
+            RoundedRectangle(cornerRadius: 6).strokeBorder(Color.accentColor, lineWidth: 2)
+        }
     }
 }
 
@@ -44,12 +63,14 @@ public struct ElementBox: View {
 /// drawn below its name.
 struct PropRow: View {
     let prop: Prop
+    /// The prop's path: where the elements in it sit.
+    let path: String
 
     var body: some View {
         if prop.value.holdsElements {
             VStack(alignment: .leading, spacing: 4) {
                 PropName(name: prop.name)
-                PropValueView(value: prop.value).padding(.leading, 12)
+                PropValueView(value: prop.value, path: path).padding(.leading, 12)
             }
         } else {
             HStack(alignment: .firstTextBaseline, spacing: 4) {
@@ -71,16 +92,17 @@ struct PropName: View {
 /// A value that holds elements somewhere inside it.
 struct PropValueView: View {
     let value: PropValue
+    let path: String
 
     var body: some View {
         switch value {
         case let .element(element):
-            ElementBox(element: element)
+            ElementBox(element: element, path: path)
         case let .list(items):
             VStack(alignment: .leading, spacing: 6) {
-                ForEach(Array(items.enumerated()), id: \.offset) { _, item in
+                ForEach(Array(items.enumerated()), id: \.offset) { i, item in
                     if item.holdsElements {
-                        PropValueView(value: item)
+                        PropValueView(value: item, path: ElementPath.child(of: path, String(i)))
                     } else {
                         Text(item.summary).font(.body.monospaced())
                     }
@@ -89,7 +111,7 @@ struct PropValueView: View {
         case let .record(fields):
             VStack(alignment: .leading, spacing: 4) {
                 ForEach(Array(fields.enumerated()), id: \.offset) { _, field in
-                    PropRow(prop: field)
+                    PropRow(prop: field, path: ElementPath.child(of: path, field.name))
                 }
             }
         case .expression, .scalar:

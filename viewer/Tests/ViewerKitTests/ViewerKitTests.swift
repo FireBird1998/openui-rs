@@ -148,3 +148,97 @@ import Testing
     let image = try #require(ImageRenderer(content: ElementBox(element: root)).nsImage)
     #expect(image.size.width > 100 && image.size.height > 100)
 }
+
+@Suite struct TheCorpus {
+    /// The reference's own one-shot result for every case decodes into the
+    /// viewer's model.
+    @Test func everyGoldenOneShotResultDecodes() throws {
+        let corpus = try Corpus.load()
+        var failures: [String] = []
+        for c in corpus.cases {
+            let url = corpus.directory.appendingPathComponent("golden/\(c.name).oneshot.json")
+            do {
+                _ = try ParseResult(json: String(contentsOf: url, encoding: .utf8), depthLimited: false, sizeLimited: false)
+            } catch {
+                failures.append("\(c.name): \(error)")
+            }
+        }
+        #expect(corpus.cases.count >= 300)
+        #expect(failures.isEmpty, "\(failures.joined(separator: "\n"))")
+    }
+
+    @Test func casesGroupBySourceAndFilterByName() throws {
+        let corpus = try Corpus.load()
+        let all = corpus.sections(matching: "")
+        #expect(all.first?.title == "Hand-written")
+        #expect(all.map(\.cases.count).reduce(0, +) == corpus.cases.count)
+        #expect(Set(all.map(\.source)).count == all.count)
+        let found = corpus.sections(matching: "DASHBOARD-X")
+        #expect(found.map(\.title) == ["Synthetic"])
+        #expect(found.first?.cases.count == 3)
+    }
+}
+
+@Suite struct Goldens {
+    @Test func fingerprintsAreTheGoldensFNV1a() {
+        #expect(fingerprint("") == "811c9dc5")
+        #expect(fingerprint("a") == "e40c292c")
+    }
+
+    @Test func aWrongFingerprintIsReportedAsDiffering() {
+        let json = #"{"root":null}"#
+        let golden = GoldenSteps(steps: ["4": [fingerprint(json), "00000000"]])
+        #expect(golden.verdict(step: 1, json: json, chunking: .fixed(4)) == .matches)
+        #expect(golden.verdict(step: 2, json: json, chunking: .fixed(4))
+            == .differs(reference: "00000000", viewer: fingerprint(json)))
+        #expect(golden.verdict(step: 0, json: json, chunking: .fixed(4)) == .nothingPushed)
+        #expect(golden.verdict(step: 3, json: json, chunking: .fixed(4)) == .noGolden)
+        #expect(golden.verdict(step: 1, json: json, chunking: .fixed(64)) == .noGolden)
+    }
+
+    @Test func recordedChunkingsReplayTheirSizes() {
+        let pieces = ReplaySource.split("abcdefghij", sizes: [1, 3, 2])
+        #expect(pieces == ["a", "bcd", "ef", "gh", "ij"])
+    }
+}
+
+/// Playing a case in the viewer gives the reference's result at every step,
+/// for fixed and recorded chunkings: the golden match shows a pass throughout.
+@MainActor @Suite struct PlayingAgainstTheReference {
+    @Test(arguments: ["hand/04-nested-card-mixed-args", "hand/71-expression-forms", "bench/dashboard"])
+    func everyStepMatchesItsGolden(caseName: String) async throws {
+        let corpus = try Corpus.load()
+        let c = try #require(corpus.cases.first { $0.name == caseName })
+        let golden = try #require(corpus.golden(for: c))
+        let core = Core()
+        let library = try await core.library(schema: corpus.schema(of: c))
+        let program = try corpus.program(of: c)
+        for chunking in [Chunking.fixed(3), .fixed(16)] + golden.recordedChunkings {
+            let playback = Playback(core: core, library: library, root: c.root)
+            await playback.load(chunking.source(for: program))
+            #expect(playback.chunks.count == golden.steps[chunking.goldenName]?.count, "\(chunking)")
+            for k in 1...playback.chunks.count {
+                await playback.move(to: k)
+                let verdict = golden.verdict(step: k, json: playback.step?.json ?? "", chunking: chunking)
+                #expect(verdict == .matches, "\(caseName) \(chunking.label) step \(k)")
+                if verdict != .matches { break }
+            }
+        }
+    }
+}
+
+@Suite struct TheElementTree {
+    @Test func rowsFollowTheDrawingsPaths() async throws {
+        let core = Core()
+        let library = try await core.library(schema: TheCore.schema)
+        let step = try await core.parseOneShot(
+            "root = Stack([a, Stack([b])])\na = Text(\"x\")\nb = Text(\"y\")",
+            library: library
+        )
+        let rows = TreeRow.rows(of: try #require(step.result.root))
+        #expect(rows.map(\.id) == ["/", "/children/0", "/children/1", "/children/1/children/0"])
+        #expect(rows.map(\.depth) == [0, 1, 1, 2])
+        #expect(rows.map(\.typeName) == ["Stack", "Text", "Stack", "Text"])
+        #expect(rows[1].key == "children[0]")
+    }
+}
