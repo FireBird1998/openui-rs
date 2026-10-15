@@ -77,6 +77,13 @@
       "file": "cases/fuzz/fe686b0c.oui",
       "source": "fuzz",
       "origin": "seed 12, program 7224"
+    },
+    {
+      "name": "fuzz/591e1ee7",
+      "schema": "edge",
+      "file": "cases/fuzz/591e1ee7.oui",
+      "source": "fuzz",
+      "origin": "seed 99, program 11208"
     }
   ]
 }

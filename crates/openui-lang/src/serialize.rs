@@ -68,9 +68,6 @@ pub fn json_to_openui(
     let Json::Object(root) = element else {
         return Err(thrown("the root must be an element object"));
     };
-    if matches!(root.get("props"), None | Some(Json::Null)) {
-        return Err(thrown("the root element has no props"));
-    }
     let mut s = Serializer {
         library,
         statements: Vec::new(),
@@ -439,7 +436,11 @@ impl<'a> Serializer<'a> {
     /// the props' own order.
     fn element_expr(&mut self, node: &Json) -> Result<String, SerializeError> {
         let type_name = node.get("typeName");
-        let props = node.get("props").expect("checked: elements have props");
+        // Only the root can come without props: nested elements are told
+        // apart by having them. The reference reads them only for a param, or
+        // for an unknown component's `Object.values`, and throws there.
+        let props = node.get("props").filter(|p| !p.is_null());
+        let no_props = || thrown("the root element has no props");
         let library = self.library;
         let def = match type_name {
             Some(Json::String(name)) => library.component(name),
@@ -449,7 +450,7 @@ impl<'a> Serializer<'a> {
         match def {
             Some(def) => {
                 for param in &def.params {
-                    args.push(match prop(props, &param.name) {
+                    args.push(match prop(props.ok_or_else(no_props)?, &param.name) {
                         Prop::Own(v) => self.value(Some(v))?,
                         Prop::Missing => Out::Text("null".to_owned()),
                         Prop::Text(t) => Out::Text(t),
@@ -464,6 +465,7 @@ impl<'a> Serializer<'a> {
             }
             None => {
                 // `Object.values(props)`.
+                let props = props.ok_or_else(no_props)?;
                 let values: Vec<&Json> = match props {
                     Json::Object(map) => json_entries(map).into_iter().map(|(_, v)| v).collect(),
                     Json::Array(items) => items.iter().collect(),

@@ -598,6 +598,12 @@
    "schema": "edge",
    "file": "cases/hand/95-odd-required-and-properties.oui",
    "source": "hand-written"
+  },
+  {
+   "name": "hand/96-dynamic-props-in-element-shaped-objects",
+   "schema": "edge",
+   "file": "cases/hand/96-dynamic-props-in-element-shaped-objects.oui",
+   "source": "hand-written"
   }
  ]
 }

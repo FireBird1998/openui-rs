@@ -1,0 +1,3 @@
+{"cases": [
+{"name":"fuzz/09abc31b","schema":"edge","element":{"type":"element","typeName":"Weird","props":null,"partial":false,"hasDynamicProps":false,"statementId":"root"},"stateDeclarations":{},"source":"fuzz","origin":"edits seed 99, input 906996"}
+]}

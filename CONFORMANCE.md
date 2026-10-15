@@ -14,11 +14,11 @@ Reference: `@openuidev/lang-core 0.3.0` at commit `bba1d2515fa53562ccf0d5d51309c
 
 | Compared with the reference | Cases | Checks | Cases by source |
 |---|---:|---:|---|
-| Parse results: one-shot, and after every push of 8 chunkings and 2 resync sequences | 309 | 248,268 results | 7 benchmark, 72 docs, 46 examples, 11 fuzz, 96 hand-written, 74 reference-test, 3 synthetic |
-| Stages on every prefix: preprocessing, tokens, statements and expression trees | 307 | 75,202 prefixes | the parse corpus, less its largest synthetic programs |
+| Parse results: one-shot, and after every push of 8 chunkings and 2 resync sequences | 311 | 250,270 results | 7 benchmark, 72 docs, 46 examples, 12 fuzz, 97 hand-written, 74 reference-test, 3 synthetic |
+| Stages on every prefix: preprocessing, tokens, statements and expression trees | 309 | 75,862 prefixes | the parse corpus, less its largest synthetic programs |
 | System prompts | 47 | 47 | |
 | Edit-mode merges | 1,417 | 1,417 | 1,370 generated, 46 hand-written, 1 reference-test |
-| Element trees back to source | 335 | 335 | 58 hand-written, 247 parse corpus root, 30 reference-test |
+| Element trees back to source | 342 | 342 | 1 fuzz, 62 hand-written, 249 parse corpus root, 30 reference-test |
 | Enriched errors | 191 | 191 | every parse corpus case with errors |
 
 Quirks recorded: 10.

@@ -1,0 +1,8 @@
+root = Probe([a, b, c, d, e, f, g])
+a = Probe({type: "element", typeName: "Flags", partial: false, props: $x})
+b = Probe({type: "element", typeName: "Flags", partial: false, props: $x.y})
+c = Probe({type: "element", typeName: "Flags", partial: false, props: [$x]})
+d = Probe({type: "element", typeName: "Flags", partial: false, props: Probe($x)})
+e = Probe({type: "element", typeName: "Flags", partial: false, props: Probe("no")})
+f = Probe({type: "element", typeName: "Flags", partial: false, props: @Count($rows)})
+g = Probe({type: "element", typeName: "Flags", partial: false, props: {k: "Str", v: $x}})

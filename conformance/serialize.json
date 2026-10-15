@@ -1898,6 +1898,53 @@
     "hasDynamicProps": false
    },
    "source": "hand-written"
+  },
+  {
+   "name": "hand/root-without-props-for-a-component-without-params",
+   "schema": "edge",
+   "element": {
+    "type": "element",
+    "typeName": "Weird",
+    "props": null,
+    "partial": false,
+    "hasDynamicProps": false
+   },
+   "source": "hand-written"
+  },
+  {
+   "name": "hand/root-missing-props-for-a-component-without-params",
+   "schema": "odd",
+   "element": {
+    "type": "element",
+    "typeName": "Empty",
+    "partial": false,
+    "hasDynamicProps": false
+   },
+   "source": "hand-written"
+  },
+  {
+   "name": "hand/root-without-props-for-a-component-with-params",
+   "schema": "edge",
+   "element": {
+    "type": "element",
+    "typeName": "Probe",
+    "props": null,
+    "partial": false,
+    "hasDynamicProps": false
+   },
+   "source": "hand-written"
+  },
+  {
+   "name": "hand/root-without-props-for-an-unknown-component",
+   "schema": "edge",
+   "element": {
+    "type": "element",
+    "typeName": "Nope",
+    "props": null,
+    "partial": false,
+    "hasDynamicProps": false
+   },
+   "source": "hand-written"
   }
  ]
 }

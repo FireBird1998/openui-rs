@@ -22,7 +22,7 @@ cargo test -p openui-lang --test conformance streaming_   # tests whose names ma
 
 | Test | Checks | Catches |
 |---|---|---|
-| `conformance` | Every corpus case (309), one-shot and after every streaming push, under each of the corpus's chunkings, against the reference's goldens. Also that a stream ends where one-shot parsing ends, apart from three kinds of programs where the reference itself doesn't. | Any difference from the reference in parsing or streaming |
+| `conformance` | Every corpus case (311), one-shot and after every streaming push, under each of the corpus's chunkings, against the reference's goldens. Also that a stream ends where one-shot parsing ends, apart from three kinds of programs where the reference itself doesn't. | Any difference from the reference in parsing or streaming |
 | `stages` | Tokens, statements and expressions, and fence and comment stripping, on every prefix of every program | Which stage of the pipeline a difference starts in |
 | `edits` | Merging (over 1,400 cases), converting element trees back to source, and error hints, against the reference | Differences in the edit-mode and error layer |
 | `prompt` | Every prompt spec in the corpus (47) against the reference's `generateSystemPrompt`. Its error messages are compared exactly; for crashes inside the JavaScript engine, only that it fails. | Differences in system prompts |

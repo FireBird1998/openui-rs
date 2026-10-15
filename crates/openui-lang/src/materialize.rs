@@ -8,9 +8,9 @@ use std::sync::Arc;
 
 use crate::ast::{Ast, RefType};
 use crate::builtins::{is_builtin, is_lazy_builtin, is_reserved_call};
-use crate::js::JsObject;
+use crate::js::{JsObject, parse_json};
 use crate::library::{Library, Param};
-use crate::result::{Element, ValidationError, Value};
+use crate::result::{Element, ValidationError, Value, write_value};
 use crate::table::{Cache, Entry, Output, Reach, Slot, Table};
 use crate::validation::{
     Issue, element_parts, is_ast_node, params_signature, resolve_invalid_value,
@@ -730,6 +730,20 @@ fn library_comp(
     keep(args)
 }
 
+/// `Object.values(props).some(containsDynamicValue)` for an object shaped like
+/// an element whose props aren't a plain object: an array's items, or the
+/// fields of an element or an AST node as they are in JSON, which is what the
+/// reference walks. Only objects written to look like elements get here.
+fn values_contain_dynamic(props: &Value) -> bool {
+    if let Value::Arr(items) = props {
+        return items.iter().any(contains_dynamic_value);
+    }
+    let mut json = String::new();
+    write_value(&mut json, props);
+    let fields = parse_json(&json).map(|json| Value::from_json(&json));
+    matches!(fields, Ok(Value::Obj(fields)) if fields.values().any(contains_dynamic_value))
+}
+
 /// Whether a prop value holds anything that needs runtime evaluation.
 ///
 /// An element answers from its own flag: it was set from this same check over
@@ -744,7 +758,10 @@ fn contains_dynamic_value(value: &Value) -> bool {
         Value::Arr(items) => items.iter().any(contains_dynamic_value),
         Value::Element(e) => e.has_dynamic_props,
         _ => match element_parts(value) {
-            Some((_, props)) => props.is_some_and(|p| p.values().any(contains_dynamic_value)),
+            Some((_, Some(props))) => props.values().any(contains_dynamic_value),
+            Some((_, None)) => {
+                matches!(value, Value::Obj(o) if o.get("props").is_some_and(values_contain_dynamic))
+            }
             None => match value {
                 Value::Obj(o) => o.values().any(contains_dynamic_value),
                 _ => false,
