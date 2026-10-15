@@ -37,3 +37,8 @@ Everything goes into a dated report in a findings folder git ignores. A hunt nev
 4. **Upstream moved: OpenUI 1.0.** 11 lang-core commits since the pin, newest `eb20708` (lang-core 1.0.1). With it, outputs change for 305 of 309 parse cases, 25 of 335 conversions back to source, 77 of 191 error hints and 27 of 47 system prompts. Two causes seen so far: streaming results whose root isn't a component yet now carry a `no-root` error, and built-in action calls carry `mappedProps`. It also imports `zod` (a peer dependency) at run time. Its runtime telemetry is opt-in and respects our opt-out variables. Moving the pin is a separate decision.
 
 Findings 1 to 3 all come from the `edge` and `odd` schemas, which ticket 03 added to the fuzzer's choices. The hunts' folders are in `findings/` for review.
+
+**2026-10-16, the findings reviewed:**
+- **1:** already a documented divergence. The fuzzer knew only the `__proto__` one, and now recognizes this one too (`0610c25`).
+- **2 and 3:** fixed in the core, each with its cases first (`2dd2623`). A 2-minute hunt afterwards found nothing in 73,600 programs and 1.4 million edits.
+- **4:** became ticket 14, which waits for the maintainer's decision to move.

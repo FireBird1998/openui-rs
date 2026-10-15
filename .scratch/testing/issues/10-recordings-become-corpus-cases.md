@@ -19,3 +19,7 @@ Prove it with a hand-made recording in the tests, and with one real recording th
 - [ ] One real recording, made by the maintainer, is imported and conforms.
 - [ ] CONFORMANCE.md's counts include recorded cases, and its report test checks them.
 - [ ] `scripts/check.sh` passes.
+
+## Comments
+
+**2026-10-16:** upstream released lang-core 1.0, and 27 of 47 system prompts change with it. If the pin moves (ticket 14), move it before recording, so the recordings test the new language.
