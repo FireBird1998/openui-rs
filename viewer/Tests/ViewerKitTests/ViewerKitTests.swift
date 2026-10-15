@@ -609,8 +609,8 @@ struct DripSource: ChunkSource {
 
 // MARK: Recordings
 
-/// A hand-made recording, with deltas that split a surrogate pair's worth of
-/// text and a combining accent across chunks.
+/// A hand-made recording, with an emoji inside one delta and a letter split
+/// from its combining accent across two.
 let handMade = Recording(
     createdAt: Date(timeIntervalSince1970: 1_792_000_000),
     request: "A card that says hi",

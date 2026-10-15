@@ -24,7 +24,7 @@ Recordings open like any other program and replay through a recording source of 
 
 **2026-10-15, built and tested; one check left for the maintainer.** `scripts/check-viewer.sh` passes with 49 Swift tests. The new ones:
 - **The file:** a hand-made recording survives a round trip; other JSON is rejected.
-- **The chunks:** its recorded chunking cuts the text exactly where the deltas arrived, even mid-emoji-sequence and across a combining accent. Replaying it all at once gives exactly the recorded chunks.
+- **The chunks:** its recorded chunking cuts the text exactly where the deltas arrived, including where a delta splits a letter from its combining accent. Replaying it all at once gives exactly the recorded chunks.
 - **The timing:** replaying it as recorded gives them in order, taking at least the recorded time.
 - **Playback** replays a recording as recorded.
 - **Saving:** saved recordings list newest first, and junk files are skipped.
