@@ -2,7 +2,7 @@
 
 `openui-lang` is the OpenUI Lang language layer in Rust: parsing (one-shot and streaming), prop validation, system prompt generation, edit-mode merging, and turning element trees back into source. It's a port of `@openuidev/lang-core`, the TypeScript reference, and its output is the same byte for byte, after every streamed chunk, so a screen looks the same on every platform. It's written to run on phones: no input can panic it, overflow its stack or exhaust its memory.
 
-The repository will also hold Dynamic News, an Android app whose story screens are written by an LLM and drawn natively with this crate. That part is still being designed ([map](.scratch/dynamic-news/map.md)).
+The repository also holds the viewer, a Mac app that draws programs natively through the crate (see below), and will hold Dynamic News, an Android app whose story screens are written by an LLM and drawn natively with this crate. That part is still being designed ([map](.scratch/dynamic-news/map.md)).
 
 **Status:** the crate is complete: every ticket of its [spec](.scratch/openui-lang/spec.md) is done. It conforms to the reference at commit [`bba1d2515fa53562ccf0d5d51309c6a93dbaf186`](https://github.com/thesysdev/openui/tree/bba1d2515fa53562ccf0d5d51309c6a93dbaf186/packages/lang-core) (lang-core 0.3.0) on 300 parse cases at every streaming step, 44 prompts, 1,417 merges, 325 serializations, 187 enriched error lists and 320,000 fuzzed inputs.
 
@@ -53,7 +53,7 @@ cargo run --release -p openui-lang -- bench conformance/imported/schemas/bench.j
 scripts/check.sh
 ```
 
-That's formatting, clippy, the docs, and every test, doc examples included (this README's example too). It needs only Rust 1.88 or later: no Bun, no network. The reference's outputs are committed as goldens, so the tests compare against them directly.
+That's formatting, clippy, the docs, and every test, doc examples included (this README's example too) and the binding's. It needs only Rust 1.88 or later: no Bun, no network. The reference's outputs are committed as goldens, so the tests compare against them directly.
 
 ## Working on it
 
@@ -70,11 +70,24 @@ scripts/bench.sh                         # streaming benchmarks, core against re
 
 When a test fails, it prints the case, the streaming step and a diff against the reference (fetched live when Bun is there). Two switches rewrite generated files: `UPDATE_PENDING=1 cargo test --test conformance` lists the cases that fail now as pending, and `UPDATE_REPORT=1 cargo test --test report` refreshes the counts in CONFORMANCE.md. Coverage-guided fuzz targets live in `fuzz/` and need nightly Rust and `cargo-fuzz`.
 
+## The viewer
+
+A Mac app that draws programs natively, beside their parse result: a playground for the crate, and a rehearsal for Dynamic News's binding ([spec](.scratch/viewer/spec.md)). It calls the crate through `crates/openui-ffi`, a UniFFI binding that Kotlin will use too. So far it opens any corpus case and draws every element as a labeled box. It needs macOS 27 and Xcode.
+
+```bash
+scripts/viewer.sh run      # build the binding and the app, then run it
+scripts/check-viewer.sh    # build with warnings as errors, then the Swift tests
+```
+
+Or run `scripts/viewer.sh` once, then open `viewer/Package.swift` in Xcode and press ⌘R; the shared scheme rebuilds the binding first (its log is `target/viewer-xcode-prebuild.log`). The app bundle lands in `target/viewer/`.
+
 ## Layout
 
 | Path | What's there |
 |---|---|
 | `crates/openui-lang/` | the crate: `src/` (one module per stage), `tests/`, the CLI in `src/bin/`, the differential fuzzer in `examples/fuzz/` |
+| `crates/openui-ffi/` | the UniFFI binding the viewer (and later Dynamic News) calls, with the bindings generator |
+| `viewer/` | the viewer, a Swift package; `scripts/viewer.sh` generates its `Frameworks/` and `Sources/OpenUIFFI/` |
 | `conformance/` | the corpus (`manifest.json` and friends list every case), the goldens, quirks, and the hand-written and generated edit and prompt cases |
 | `reference/` | the vendored reference (`lang-core/`, untouched) and the Bun scripts that run it: goldens, fuzz server, benchmarks, corpus import |
 | `scripts/` | the commands above |
@@ -83,4 +96,4 @@ When a test fails, it prints the case, the streaming step and a diff against the
 
 ## License
 
-MIT, see [LICENSE](LICENSE). The vendored reference in `reference/lang-core/` and the programs imported from upstream in `conformance/imported/` are Thesys Inc.'s, also under MIT; their notice is kept beside them.
+MIT, see [LICENSE](LICENSE). The binding depends on UniFFI, which is under MPL-2.0. The vendored reference in `reference/lang-core/` and the programs imported from upstream in `conformance/imported/` are Thesys Inc.'s, also under MIT; their notice is kept beside them.

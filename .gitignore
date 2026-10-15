@@ -1,3 +1,12 @@
 target/
 node_modules/
 .DS_Store
+# The viewer's generated parts; scripts/viewer.sh makes them.
+viewer/.build/
+viewer/Frameworks/
+viewer/Sources/OpenUIFFI/
+# Xcode's package state, except the shared scheme that builds the binding first.
+viewer/.swiftpm/*
+!viewer/.swiftpm/xcode/
+viewer/.swiftpm/xcode/*
+!viewer/.swiftpm/xcode/xcshareddata/

@@ -1,0 +1,30 @@
+# 05 — Boundary experiment
+
+**What to build:** Find out what each chunk costs as it crosses from Rust to Swift, using real native views.
+
+First, measure the baseline, where the whole parse result crosses as JSON text after every chunk. Run it on the largest corpus programs, split into parsing, crossing, decoding and redrawing. Then pick one alternative, whichever the numbers point to:
+- a handle to the Rust-side tree that Swift walks;
+- or only what changed since the last chunk.
+
+Build it behind a switch in the viewer and measure it the same way.
+
+Write the results into Dynamic News tickets 01 and 06:
+- the build setup;
+- which threads calls land on, and the stack each needs;
+- both sets of numbers;
+- a recommendation for Android.
+
+This finishes the viewer's first milestone.
+
+**Blocked by:** 02 — Streaming playback; 04 — Native components
+
+**Status:** ready-for-agent
+
+- [ ] One command reproduces the timing run: a fixed set of the largest corpus programs, fixed chunkings, an optimized build. It reports the median and the worst time per chunk for parsing, crossing, decoding and redrawing.
+- [ ] The choice of alternative is written down with its reason, drawn from the baseline numbers.
+- [ ] The alternative is built in the binding and the viewer behind a switch.
+- [ ] For every corpus case at every step, the alternative produces the same Swift model as the JSON path. This is tested.
+- [ ] Both sets of numbers are recorded.
+- [ ] Dynamic News ticket 01 gets the build setup, threads and stack findings as a comment.
+- [ ] Dynamic News ticket 06 gets the comparison and a recommendation as a comment.
+- [ ] The README's viewer section is current.

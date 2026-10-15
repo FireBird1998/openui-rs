@@ -61,7 +61,7 @@ One program plus the component library (and optional root name) it's parsed agai
 _Avoid_: fixture, sample, test
 
 **Chunking**:
-A way of cutting a program into pushes for a streaming parse: a fixed size in characters, or seeded random sizes.
+A way of cutting a program into pushes for a streaming parse: a fixed size in characters, seeded random sizes, or the boundaries a model's stream actually had (a recorded chunking).
 _Avoid_: split, batching
 
 **Golden**:
@@ -73,8 +73,30 @@ A case the core doesn't conform on yet, listed so the suite stays green while sh
 _Avoid_: skipped, known failure
 
 **Quirk**:
-A reference-parser behaviour that looks wrong but that the core reproduces anyway, recorded with an upstream report.
-_Avoid_: bug (when the core matches it on purpose)
+A reference-parser behaviour that looks wrong but that the core reproduces anyway, recorded with an upstream report. Comparing the two can't reveal one; only invariants and people reading outputs do.
+_Avoid_: bug (when the core matches it on purpose), shared bug
+
+**Divergence**:
+A documented place where the core departs from the reference parser on purpose, on inputs no real program produces.
+_Avoid_: deviation, exception
+
+**Mismatch**:
+A difference between the core's output and the reference parser's that no divergence explains.
+_Avoid_: diff, regression, failure
+
+**Invariant**:
+A rule every program should satisfy, such as "parsing, converting back to source and parsing again gives the same tree", checked on the core and the reference alike; where the reference breaks one, the exception is a quirk.
+_Avoid_: property, law
+
+### Hunting
+
+**Hunt**:
+A time-boxed search for findings, run on demand or on a schedule, that leaves shrunk cases and a report for review and never commits.
+_Avoid_: fuzz run, nightly, sweep
+
+**Finding**:
+Anything a hunt or test turns up before it's sorted: a mismatch, a crash, a blow-up (too slow or too much memory), a platform bug (right on the Mac, wrong on a phone) or a new quirk.
+_Avoid_: bug report, issue
 
 ### Products
 
@@ -84,6 +106,10 @@ _Avoid_: runtime, engine, SDK
 
 **Dynamic News**:
 The showcase Android app whose story screens are written by an LLM, parsed by the core on the phone, and drawn with Jetpack Compose.
+
+**Viewer**:
+The Mac app that plays a program as a stream and draws it natively beside its parse result: a playground for the core and a rehearsal for Dynamic News's binding.
+_Avoid_: playground, inspector, demo app, Mac app
 
 **Story screen**:
 The screen for one news story, whose layout is a program generated for that story.

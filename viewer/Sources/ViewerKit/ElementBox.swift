@@ -1,0 +1,109 @@
+import SwiftUI
+
+/// Draws any element as a labeled box: its type, its props, and the elements
+/// inside it drawn the same way. Every program draws something this way.
+public struct ElementBox: View {
+    let element: Element
+
+    public init(element: Element) {
+        self.element = element
+    }
+
+    public var body: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            HStack(spacing: 6) {
+                Text(element.typeName).font(.headline.monospaced())
+                if let id = element.statementId {
+                    Text(id).font(.caption.monospaced()).foregroundStyle(.secondary)
+                }
+            }
+            ForEach(Array(element.props.enumerated()), id: \.offset) { _, prop in
+                PropRow(prop: prop)
+            }
+        }
+        .padding(8)
+        .frame(alignment: .leading)
+        .background(.quaternary.opacity(0.3), in: RoundedRectangle(cornerRadius: 6))
+        .overlay(RoundedRectangle(cornerRadius: 6).strokeBorder(.secondary.opacity(0.5)))
+    }
+}
+
+/// One prop: on one line when it holds no elements, otherwise its elements
+/// drawn below its name.
+struct PropRow: View {
+    let prop: Prop
+
+    var body: some View {
+        if prop.value.holdsElements {
+            VStack(alignment: .leading, spacing: 4) {
+                PropName(name: prop.name)
+                PropValueView(value: prop.value).padding(.leading, 12)
+            }
+        } else {
+            HStack(alignment: .firstTextBaseline, spacing: 4) {
+                PropName(name: prop.name)
+                Text(prop.value.summary).font(.body.monospaced()).textSelection(.enabled)
+            }
+        }
+    }
+}
+
+struct PropName: View {
+    let name: String
+
+    var body: some View {
+        Text(name + ":").font(.callout.monospaced()).foregroundStyle(.secondary)
+    }
+}
+
+/// A value that holds elements somewhere inside it.
+struct PropValueView: View {
+    let value: PropValue
+
+    var body: some View {
+        switch value {
+        case let .element(element):
+            ElementBox(element: element)
+        case let .list(items):
+            VStack(alignment: .leading, spacing: 6) {
+                ForEach(Array(items.enumerated()), id: \.offset) { _, item in
+                    if item.holdsElements {
+                        PropValueView(value: item)
+                    } else {
+                        Text(item.summary).font(.body.monospaced())
+                    }
+                }
+            }
+        case let .record(fields):
+            VStack(alignment: .leading, spacing: 4) {
+                ForEach(Array(fields.enumerated()), id: \.offset) { _, field in
+                    PropRow(prop: field)
+                }
+            }
+        case .expression, .scalar:
+            Text(value.summary).font(.body.monospaced())
+        }
+    }
+}
+
+extension PropValue {
+    var holdsElements: Bool {
+        switch self {
+        case .element: true
+        case let .list(items): items.contains { $0.holdsElements }
+        case let .record(fields): fields.contains { $0.value.holdsElements }
+        case .expression, .scalar: false
+        }
+    }
+
+    /// One line of text for a value with no elements in it.
+    var summary: String {
+        switch self {
+        case let .scalar(json): json.compact
+        case let .expression(json): "ƒ " + json.compact
+        case let .list(items): "[" + items.map(\.summary).joined(separator: ", ") + "]"
+        case let .record(fields): "{" + fields.map { $0.name + ": " + $0.value.summary }.joined(separator: ", ") + "}"
+        case let .element(element): element.typeName + "(…)"
+        }
+    }
+}

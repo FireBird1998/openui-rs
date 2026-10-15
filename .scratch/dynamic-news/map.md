@@ -18,6 +18,7 @@ A spec for Dynamic News v1, ready to hand to build sessions: a showcase Android 
 - **Skills:** /grilling and /domain-modeling for discussion tickets, /prototype for sketches, /research for research tickets.
 - **Glossary:** `CONTEXT.md` at the repo root.
 - **Research tickets** (01–03) haven't been started. Start them when this map comes off the shelf.
+- **Mac viewer first (decided 2026-10-15):** before the testing phase (`../testing/spec.md`) and before this map comes off the shelf, a small SwiftUI Mac app that draws programs natively as they stream, calling the core through UniFFI. It is both a playground for the core and a rehearsal for this app's binding: what it learns about what crosses the boundary per chunk feeds tickets 01 and 06 here. Not a Mac version of Dynamic News.
 
 ## Decisions so far
 
@@ -37,7 +38,7 @@ A spec for Dynamic News v1, ready to hand to build sessions: a showcase Android 
 ## Out of scope
 
 - iOS app.
-- Python or other bindings.
+- Python bindings, and any binding besides Kotlin and the Mac viewer's Swift one.
 - Play Store release.
 - Evaluator, state and queries in the core.
 - Replacing the web parser with WebAssembly.

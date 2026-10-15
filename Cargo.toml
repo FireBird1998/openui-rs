@@ -1,5 +1,5 @@
 [workspace]
-members = ["crates/openui-lang"]
+members = ["crates/openui-lang", "crates/openui-ffi"]
 # cargo-fuzz targets build on nightly with their own settings.
 exclude = ["fuzz"]
 resolver = "3"
@@ -20,4 +20,6 @@ opt-level = 1
 
 # Recursion stays inside small thread stacks only when optimized (see tests/depth.rs).
 [profile.dev.package.openui-lang]
+opt-level = 1
+[profile.dev.package.openui-ffi]
 opt-level = 1

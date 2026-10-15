@@ -1,0 +1,32 @@
+[package]
+name = "openui-ffi"
+version = "0.1.0"
+description = "UniFFI bindings for openui-lang: Swift for the viewer, Kotlin later"
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish = false
+
+[lib]
+name = "openui_ffi"
+# staticlib for the viewer to link; cdylib for uniffi-bindgen to read the
+# interface from; lib for Rust tests.
+crate-type = ["lib", "staticlib", "cdylib"]
+
+[[bin]]
+name = "uniffi-bindgen"
+path = "src/bin/uniffi-bindgen.rs"
+required-features = ["bindgen"]
+
+[features]
+# The bindings generator, kept out of the library's own dependencies.
+bindgen = ["uniffi/cli", "uniffi/cargo-metadata"]
+
+[dependencies]
+openui-lang = { path = "../openui-lang" }
+serde_json = { version = "1", features = ["preserve_order", "float_roundtrip"] }
+uniffi = { version = "0.32", default-features = false }
+
+[dev-dependencies]
+# Used by the core's shared test helpers, which these tests include.
+similar = "2"
