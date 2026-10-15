@@ -1,6 +1,6 @@
 # Spec: testing openui-lang thoroughly, and keeping it tested
 
-**Status:** ready-for-agent. Drafted 2026-10-14 from a grilling session. Each ticket starts only after the maintainer approves it. On 2026-10-15 this phase was put after the Mac viewer (see the Dynamic News map); the ticket breakdown is drafted but not yet approved or written.
+**Status:** ready-for-agent. Drafted 2026-10-14 from a grilling session. Each ticket starts only after the maintainer approves it. On 2026-10-15 this phase was put after the Mac viewer (see the Dynamic News map), and once the viewer was done its 13 tickets were written in `issues/`.
 
 ## Problem Statement
 
@@ -66,7 +66,7 @@ The phase:
 23. As an OpenUI maintainer, I want every new quirk recorded with a draft upstream report, so that bugs found here can reach OpenUI. Filing stays the maintainer's call.
 24. As the maintainer, I want real model outputs in the corpus, so that the core is tested on what models actually write: truncation, fences, invented components and odd formatting.
 25. As an embedder, I want each recorded stream checked with the chunk boundaries the API actually sent, so that conformance covers real network chunking, not just synthetic chunk sizes.
-26. As the maintainer, I want to record streams myself with a script that reads my API keys from my shell, so that keys never pass through an agent session.
+26. As the maintainer, I want to record streams myself in the viewer, with my API key kept in the Keychain, so that keys never pass through an agent session.
 27. As the maintainer, I want recording to stop at a budget cap, so that a mistake can't run up a bill.
 28. As the maintainer, I want edit-mode follow-ups recorded too, so that merging is tested on real patches.
 29. As the maintainer, I want recorded streams checked offline like every other case, so that the suite still needs no Bun and no network.
@@ -163,10 +163,10 @@ Each invariant is checked on a million programs from the differential fuzzer's g
 - **Recorded through the viewer (decided 2026-10-15):** the viewer streams from models and saves recordings, so this phase imports its recordings into the corpus instead of building a separate recording script. The recording format is documented on `Recording` in the viewer (`viewer/Sources/ViewerKit/Recording.swift`): one JSON file per stream, each text delta with its arrival time. A recording's chunk sizes in code points are its recorded chunking.
 - **Who runs it:** the maintainer, in the viewer. API keys live in the macOS Keychain, entered by the maintainer in the viewer's settings, and are never logged.
 - **Budget:** a hard cap of $10.
-- **Models:** Claude Sonnet 5.5 and Claude Haiku 5.5, plus a third provider if the maintainer has a key.
+- **Models:** Claude Sonnet 5.5 and Claude Haiku 5.5, about half each. The viewer also offers Claude Opus 5.5. It talks only to the Claude API, so the third provider that was planned is dropped.
 - **Requests:** 40 fresh screens and 10 edit-mode follow-ups. Claude writes the requests, about half of them news-shaped.
 - **System prompts:** the core generates them, using upstream's example component libraries.
-- **What's stored per stream:** the request, the model, and the text deltas exactly as received. The recorded chunking comes from those deltas.
+- **What's stored per stream:** what the viewer's recording format holds: the request, the model asked and the one that answered, effort, library, stop reason, token counts, and each text delta with its arrival time. A follow-up also holds the program it patched. The recorded chunking comes from the deltas' sizes. A follow-up becomes a merge case, plus a parse case of the merged program.
 - **Re-recording:** recording again with the news component library and the on-device model belongs to Dynamic News.
 
 ### Android
