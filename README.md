@@ -66,6 +66,7 @@ scripts/update-reference.sh <commit>     # vendor another upstream commit (full 
 scripts/fuzz.sh --seed 1 --count 10000   # differential fuzzing; saves shrunk mismatches as cases
 scripts/fuzz.sh --edits --seed 1 --count 10000   # the same for merging and serializing
 scripts/bench.sh                         # streaming benchmarks, core against reference
+scripts/hunt.sh --minutes 60             # fuzzing with a fresh seed and an upstream check; report in findings/
 ```
 
 When a test fails, it prints the case, the streaming step and a diff against the reference (fetched live when Bun is there). Two switches rewrite generated files: `UPDATE_PENDING=1 cargo test --test conformance` lists the cases that fail now as pending, and `UPDATE_REPORT=1 cargo test --test report` refreshes the counts in CONFORMANCE.md. Coverage-guided fuzz targets live in `fuzz/` and need nightly Rust and `cargo-fuzz`. `scripts/coverage.sh` measures line coverage over the offline suite and fails if a line no test runs isn't explained in [UNREACHED.md](crates/openui-lang/UNREACHED.md); it needs `cargo-llvm-cov`.

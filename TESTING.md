@@ -43,6 +43,8 @@ Not in the check, because they need Bun, time or a screen:
 
 | Command | What it does |
 |---|---|
+| `scripts/hunt.sh --minutes N` | A hunt: differential fuzzing with a fresh seed and the upstream check, for a set time, leaving a report (see [Hunts](#hunts)) |
+| `scripts/upstream-check.sh <folder>` | The upstream check on its own |
 | `scripts/fuzz.sh --seed N --count N` | Differential fuzzing: generated and mangled programs through the core and a live reference, comparing every step. It saves shrunk mismatches as corpus cases. |
 | `scripts/fuzz.sh --edits …` | The same, for merging and converting back to source |
 | `fuzz/` | Coverage-guided fuzz targets, which need nightly Rust and cargo-fuzz (testing ticket 06) |
@@ -67,7 +69,7 @@ Everything the tests compare is in `conformance/`:
 
 1. Write the program as `conformance/cases/hand/NN-what-it-tests.oui`, using the next free number.
 2. Add it to `conformance/manifest.json`: `{"name": "hand/NN-what-it-tests", "schema": "hand", "file": "cases/hand/NN-what-it-tests.oui", "source": "hand-written"}`, with a `root` if it needs one.
-3. Compute its goldens from the reference with `scripts/regen-golden.sh`. This needs [Bun](https://bun.sh) 1.4.
+3. Compute its goldens from the reference with `scripts/regen-golden.sh`. This needs [Bun](https://bun.sh) 1.4. If the reference crashes on a case, the old goldens stay as they were.
 4. Run `cargo test -p openui-lang --test conformance`. If the core doesn't match yet and the fix is for later, `UPDATE_PENDING=1 cargo test -p openui-lang --test conformance` lists the case as pending.
 5. Refresh the counts in CONFORMANCE.md with `UPDATE_REPORT=1 cargo test -p openui-lang --test report`.
 
@@ -99,6 +101,39 @@ When the script names a line:
 3. **Unreachable on purpose:** list its text under its file in UNREACHED.md, with the reason. That's a guard that mirrors the reference, or an invariant.
 
 There's no percentage target; the bar is that nothing goes unexplained. On 2026-10-15 it stood at 99.12% of lines, with the remaining 30 lines all explained.
+
+## Hunts
+
+```bash
+scripts/hunt.sh --minutes 60
+```
+
+A hunt searches for findings for a set time, then leaves a report and the shrunk cases in `findings/<date>-seed<seed>/`, a folder git ignores. It runs:
+- **Differential fuzzing with a fresh seed:** parsing for the first half of the time, then edits (merging and converting back to source). An input the core takes over a second on counts as a blow-up.
+- **The upstream check, alongside:** are there lang-core commits on upstream's main since the pin? If so, it computes our corpus's goldens with the newest in a scratch copy, and lists which cases' outputs change. Moving the pin is its own decision. `scripts/upstream-check.sh <folder>` runs the check alone.
+
+A hunt never commits and never changes tracked files. It compares them before and after, and exits with status 1 if they changed. Fuzzing needs Bun; without it, the hunt runs only the upstream check, which then lists commits only. Without network, the upstream check uses the copy of upstream's history from the last time it reached GitHub (cached in `target/upstream.git`), and says so. `--seed S` repeats a hunt's fuzzing, and `--no-upstream` skips the upstream check.
+
+### Reading the report
+
+`report.md` starts with a summary: what each check ran and found. Then each finding gets its kind, its seed and input number, how far it shrank, the command that replays it, and where it's saved as a case. The kinds are as far as the hunt can tell:
+
+| Kind | Means | Then |
+|---|---|---|
+| mismatch | The core and the reference disagree | Fixed in the core, with a case first |
+| crash | The core panicked, or a fuzzer died (its last batch is the replay) | Fixed in the core |
+| blow-up | The core took over a second on one input, or a fuzzer hung | Fixed in the core. If the reference blows up too and the input is unlike real output, it becomes a documented divergence. |
+| quirk? | The reference throws where the core doesn't | We decide: a documented divergence, or a quirk with a draft upstream report |
+
+Known divergences (the `__proto__` ones in CONFORMANCE.md) are counted, not reported. We review findings together, one report at a time: small fixes go in one commit after the check passes, and anything that needs a design decision becomes a ticket.
+
+### Turning a finding into a case
+
+The hunt saves each finding in the corpus's own formats, so it moves over as it is:
+- **Parsing:** copy `cases/fuzz/<name>.oui` into `conformance/cases/fuzz/`, and its entry from the folder's `fuzz.json` into `conformance/fuzz.json`. Or give it a name that says what it tests and add it as a hand-written case.
+- **Merging or converting back to source:** copy its line from the folder's `merge-fuzz.json` or `serialize-fuzz.json` into the file of the same name in `conformance/`.
+
+Then run `scripts/regen-golden.sh`. The tests now show the failure, with the step and a diff. A `quirk?` isn't saved as a case, because the reference has no output for it to compare with; it's written up in CONFORMANCE.md or QUIRKS.md instead. A replay command regenerates its input from the corpus, so it reproduces the finding only while the corpus is unchanged.
 
 ## Switches
 

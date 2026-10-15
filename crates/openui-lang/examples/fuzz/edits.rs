@@ -6,19 +6,22 @@
 //! (edited lines, deletions, fences and prose, other programs, mangled text).
 //! Serialize inputs are real parse results, sometimes with a field deleted,
 //! retyped or renamed. Mismatches are saved to `conformance/merge-fuzz.json`
-//! and `conformance/serialize-fuzz.json`.
+//! and `conformance/serialize-fuzz.json`, or with `--findings`, to the same
+//! files in the findings folder.
 
 use std::collections::HashMap;
 use std::panic::{AssertUnwindSafe, catch_unwind};
 use std::path::Path;
+use std::time::{Duration, Instant};
 
 use openui_lang::{json_to_openui, merge_statements, parse, parse_json, stringify_json};
 use serde_json::{Value, json};
 
+use crate::findings::{self, Outcome};
 use crate::generate::{Generator, mutate};
 use crate::reference::Reference;
 use crate::rng::Rng;
-use crate::{BATCH, Corpus, MAX_SAVES, fingerprint};
+use crate::{Corpus, MAX_SAVES, fingerprint};
 
 #[derive(Clone, Debug)]
 enum Edit {
@@ -32,14 +35,6 @@ enum Edit {
         element: Value,
         state: Option<Value>,
     },
-}
-
-#[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]
-enum Outcome {
-    Match,
-    Mismatch,
-    ReferenceThrew,
-    CorePanicked,
 }
 
 /// A few lines of `text`, with a string literal edited now and then.
@@ -256,9 +251,10 @@ fn request(e: &Edit) -> String {
     }
 }
 
-/// The core's answer: `Ok(text)`, `Err` where it refuses the input, or `None`
-/// if it panicked.
-fn core(e: &Edit, corpus: &Corpus) -> Option<Result<String, String>> {
+/// The core's answer, `Ok(text)` or `Err` where it refuses the input, and how
+/// long it took; `None` if it panicked.
+fn core(e: &Edit, corpus: &Corpus) -> Option<(Result<String, String>, Duration)> {
+    let started = Instant::now();
     catch_unwind(AssertUnwindSafe(|| match e {
         Edit::Merge {
             existing,
@@ -273,32 +269,41 @@ fn core(e: &Edit, corpus: &Corpus) -> Option<Result<String, String>> {
             .map_err(|e| e.to_string()),
     }))
     .ok()
+    .map(|ours| (ours, started.elapsed()))
 }
 
-fn judge(e: &Edit, answer: &str, corpus: &Corpus) -> Outcome {
+/// The outcome for an input, and how long the core took when it finished.
+fn judge(e: &Edit, answer: &str, corpus: &Corpus) -> (Outcome, Option<Duration>) {
     let answer = parse_json(answer).expect("reference answer is JSON");
-    let Some(ours) = core(e, corpus) else {
-        return Outcome::CorePanicked;
+    let Some((ours, took)) = core(e, corpus) else {
+        return (Outcome::CorePanicked, None);
     };
-    match (&ours, answer.get("text"), answer.get("threw")) {
+    let outcome = match (&ours, answer.get("text"), answer.get("threw")) {
+        _ if took > findings::run().slow => Outcome::BlowUp,
         (Ok(text), Some(Value::String(theirs)), _) if text == theirs => Outcome::Match,
         (Err(_), _, Some(_)) => Outcome::Match,
         (Ok(_), _, Some(_)) if matches!(e, Edit::Merge { .. }) => Outcome::ReferenceThrew,
         _ => Outcome::Mismatch,
-    }
+    };
+    (outcome, Some(took))
 }
 
 /// A smaller merge with the same outcome: whole lines of each text, then runs
-/// of characters.
-fn shrink(e: &Edit, outcome: Outcome, reference: &mut Reference, corpus: &Corpus) -> Edit {
+/// of characters. Serializations and blow-ups aren't shrunk. When the run's
+/// time is up, shrinking stops and returns what it has; the flag says whether
+/// it finished.
+fn shrink(e: &Edit, outcome: Outcome, reference: &mut Reference, corpus: &Corpus) -> (Edit, bool) {
     let Edit::Merge {
         existing,
         patch,
         root,
     } = e
     else {
-        return e.clone();
+        return (e.clone(), outcome != Outcome::BlowUp);
     };
+    if outcome == Outcome::BlowUp {
+        return (e.clone(), false);
+    }
     let (mut existing, mut patch) = (existing.clone(), patch.clone());
     let keeps = |existing: &str, patch: &str, reference: &mut Reference| {
         let candidate = Edit::Merge {
@@ -307,8 +312,9 @@ fn shrink(e: &Edit, outcome: Outcome, reference: &mut Reference, corpus: &Corpus
             root: root.clone(),
         };
         let answer = reference.ask_lines(&[request(&candidate)]).pop().unwrap();
-        judge(&candidate, &answer, corpus) == outcome
+        judge(&candidate, &answer, corpus).0 == outcome
     };
+    let mut complete = true;
     for which in 0..2 {
         // Lines first, then runs of characters.
         loop {
@@ -316,6 +322,10 @@ fn shrink(e: &Edit, outcome: Outcome, reference: &mut Reference, corpus: &Corpus
             let lines: Vec<&str> = text.split('\n').collect();
             let mut shrunk = None;
             for i in 0..lines.len() {
+                if findings::run().out_of_time() {
+                    complete = false;
+                    break;
+                }
                 let candidate = [&lines[..i], &lines[i + 1..]].concat().join("\n");
                 let ok = if which == 0 {
                     keeps(&candidate, &patch, reference)
@@ -333,7 +343,7 @@ fn shrink(e: &Edit, outcome: Outcome, reference: &mut Reference, corpus: &Corpus
                 None => break,
             }
         }
-        let mut run = (if which == 0 { &existing } else { &patch })
+        let mut step = (if which == 0 { &existing } else { &patch })
             .chars()
             .count()
             .div_ceil(2)
@@ -348,7 +358,11 @@ fn shrink(e: &Edit, outcome: Outcome, reference: &mut Reference, corpus: &Corpus
                 if start >= chars.len() {
                     break;
                 }
-                let end = (start + run).min(chars.len());
+                if findings::run().out_of_time() {
+                    complete = false;
+                    break;
+                }
+                let end = (start + step).min(chars.len());
                 let candidate: String = chars[..start].iter().chain(&chars[end..]).collect();
                 let ok = if which == 0 {
                     keeps(&candidate, &patch, reference)
@@ -363,62 +377,71 @@ fn shrink(e: &Edit, outcome: Outcome, reference: &mut Reference, corpus: &Corpus
                     }
                     progressed = true;
                 } else {
-                    start += run;
+                    start += step;
                 }
             }
-            if run == 1 && !progressed {
+            if step == 1 && !progressed || !complete {
                 break;
             }
             if !progressed {
-                run = run.div_ceil(2);
+                step = step.div_ceil(2);
             }
         }
     }
-    Edit::Merge {
-        existing,
-        patch,
-        root: root.clone(),
+    (
+        Edit::Merge {
+            existing,
+            patch,
+            root: root.clone(),
+        },
+        complete,
+    )
+}
+
+/// The file an input is saved to as a case, its name there, and the case.
+fn case_of(e: &Edit) -> (&'static str, String, Value) {
+    match e {
+        Edit::Merge {
+            existing,
+            patch,
+            root,
+        } => {
+            let name = format!(
+                "fuzz/{}",
+                fingerprint(&format!("{existing}\0{patch}\0{root:?}"))
+            );
+            let mut case = json!({"name": name, "existing": existing, "patch": patch});
+            if let Some(root) = root {
+                case["rootId"] = json!(root);
+            }
+            ("merge-fuzz.json", name, case)
+        }
+        Edit::Serialize {
+            lib,
+            element,
+            state,
+        } => {
+            let name = format!(
+                "fuzz/{}",
+                fingerprint(&format!("{lib}\0{}", stringify_json(element)))
+            );
+            let mut case = json!({"name": name, "schema": lib, "element": element});
+            if let Some(state) = state {
+                case["stateDeclarations"] = state.clone();
+            }
+            ("serialize-fuzz.json", name, case)
+        }
     }
 }
 
-/// Append found mismatches to `merge-fuzz.json` / `serialize-fuzz.json`, one
-/// case per line, written as `JSON.stringify` would.
-fn save(found: &[(Edit, String)], conformance: &Path) -> usize {
+/// Append found mismatches to `merge-fuzz.json` / `serialize-fuzz.json` in
+/// `dir` (the corpus, or a hunt's findings folder), one case per line,
+/// written as `JSON.stringify` would.
+fn save(found: &[(Edit, String)], dir: &Path) -> usize {
     let mut saved = 0;
     for (e, origin) in found {
-        let (file, name, case) = match e {
-            Edit::Merge {
-                existing,
-                patch,
-                root,
-            } => {
-                let name = format!(
-                    "fuzz/{}",
-                    fingerprint(&format!("{existing}\0{patch}\0{root:?}"))
-                );
-                let mut case = json!({"name": name, "existing": existing, "patch": patch});
-                if let Some(root) = root {
-                    case["rootId"] = json!(root);
-                }
-                ("merge-fuzz.json", name, case)
-            }
-            Edit::Serialize {
-                lib,
-                element,
-                state,
-            } => {
-                let name = format!(
-                    "fuzz/{}",
-                    fingerprint(&format!("{lib}\0{}", stringify_json(element)))
-                );
-                let mut case = json!({"name": name, "schema": lib, "element": element});
-                if let Some(state) = state {
-                    case["stateDeclarations"] = state.clone();
-                }
-                ("serialize-fuzz.json", name, case)
-            }
-        };
-        let path = conformance.join(file);
+        let (file, name, case) = case_of(e);
+        let path = dir.join(file);
         let mut manifest = std::fs::read_to_string(&path)
             .ok()
             .and_then(|t| parse_json(&t).ok())
@@ -444,7 +467,7 @@ fn save(found: &[(Edit, String)], conformance: &Path) -> usize {
 
 pub fn run(
     seed: u64,
-    indices: &[u64],
+    batches: impl Iterator<Item = Vec<u64>>,
     corpus: &Corpus,
     reference: &mut Reference,
     conformance: &Path,
@@ -452,12 +475,26 @@ pub fn run(
 ) {
     let mut tally: HashMap<(&str, Outcome), usize> = HashMap::new();
     let mut found: Vec<(Edit, String)> = Vec::new();
-    for batch in indices.chunks(BATCH) {
+    let mut slowest = (Duration::ZERO, 0);
+    for batch in batches {
+        findings::run().progress(
+            "edits",
+            &format!(
+                "scripts/fuzz.sh --edits --seed {seed} --from {} --count {} --no-save",
+                batch[0],
+                batch.len()
+            ),
+        );
         let edits: Vec<Edit> = batch.iter().map(|&k| edit(seed, k, corpus)).collect();
         let lines: Vec<String> = edits.iter().map(request).collect();
         let answers = reference.ask_lines(&lines);
-        for ((e, answer), &k) in edits.iter().zip(&answers).zip(batch) {
-            let outcome = judge(e, answer, corpus);
+        for ((e, answer), &k) in edits.iter().zip(&answers).zip(batch.iter()) {
+            let (outcome, took) = judge(e, answer, corpus);
+            if let Some(took) = took
+                && took > slowest.0
+            {
+                slowest = (took, k);
+            }
             let kind = if matches!(e, Edit::Merge { .. }) {
                 "merge"
             } else {
@@ -467,7 +504,7 @@ pub fn run(
             if outcome == Outcome::Match || found.len() >= MAX_SAVES {
                 continue;
             }
-            let small = shrink(e, outcome, reference, corpus);
+            let (small, complete) = shrink(e, outcome, reference, corpus);
             let origin = format!("edits seed {seed}, input {k}");
             let shown = match &small {
                 Edit::Merge {
@@ -487,9 +524,36 @@ pub fn run(
                     state.as_ref().map(stringify_json).unwrap_or_default()
                 ),
             };
+            let ours = core(&small, corpus).map(|(ours, _)| ours);
             println!("{outcome:?} at {origin}: {shown}");
             println!("  reference: {}", answer.trim_end());
-            println!("  core:      {:?}", core(&small, corpus));
+            println!("  core:      {ours:?}");
+            let (file, name, mut case) = case_of(&small);
+            if found.iter().any(|(f, _)| case_of(f).1 == name) {
+                continue;
+            }
+            case.as_object_mut().unwrap().shift_remove("name");
+            let mut finding = json!({
+                "kind": outcome.kind(),
+                "check": kind,
+                "seed": seed,
+                "index": k,
+                "replay": format!("scripts/fuzz.sh --edits --seed {seed} --only {k} --no-save"),
+                "shrunk": complete,
+                "case": name,
+                "file": file,
+                "input": case,
+                "reference": parse_json(answer).unwrap_or(Value::Null),
+                "core": match &ours {
+                    Some(Ok(text)) => json!({"text": text}),
+                    Some(Err(error)) => json!({"error": error}),
+                    None => json!({"panicked": true}),
+                },
+            });
+            if let Some(took) = took {
+                finding["core_ms"] = json!(took.as_secs_f64() * 1000.0);
+            }
+            findings::run().record(&finding);
             found.push((small, origin));
         }
     }
@@ -500,20 +564,42 @@ pub fn run(
             Outcome::Mismatch,
             Outcome::ReferenceThrew,
             Outcome::CorePanicked,
+            Outcome::BlowUp,
         ]
         .into_iter()
         .map(count)
         .sum();
         println!(
-            "edits seed {seed}, {kind}: {total} inputs, {} match, {} mismatch, {} core panics, {} reference exceptions",
+            "edits seed {seed}, {kind}: {total} inputs, {} match, {} mismatch, {} core panics, {} blow-ups, {} reference exceptions",
             count(Outcome::Match),
             count(Outcome::Mismatch),
             count(Outcome::CorePanicked),
+            count(Outcome::BlowUp),
             count(Outcome::ReferenceThrew),
         );
+        findings::run().summary(
+            kind,
+            &json!({
+                "inputs": total,
+                "match": count(Outcome::Match),
+                "mismatch": count(Outcome::Mismatch),
+                "crash": count(Outcome::CorePanicked),
+                "blow-up": count(Outcome::BlowUp),
+                "quirk?": count(Outcome::ReferenceThrew),
+            }),
+        );
     }
+    println!(
+        "slowest core answer: {:.1} ms (input {})",
+        slowest.0.as_secs_f64() * 1000.0,
+        slowest.1
+    );
     if save_cases && !found.is_empty() {
-        let saved = save(&found, conformance);
-        println!("saved {saved} new edit cases; run scripts/regen-golden.sh");
+        let dir = findings::run().save_dir(conformance);
+        let saved = save(&found, dir);
+        println!("saved {saved} new edit cases to {}", dir.display());
+        if findings::run().dir.is_none() {
+            println!("run scripts/regen-golden.sh");
+        }
     }
 }

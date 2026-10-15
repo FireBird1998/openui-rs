@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Differential fuzzing against the reference parser. Needs Bun.
 #
-#   scripts/fuzz.sh [--seed N] [--count N] [--only K] [--no-save] [--edits]
+#   scripts/fuzz.sh [--seed N] [--count N] [--from K] [--only K] [--no-save] [--edits]
 #
 # Shrunk mismatches are saved to conformance/fuzz.json as corpus cases (with
 # --edits, merge and serialize ones to merge-fuzz.json and serialize-fuzz.json),

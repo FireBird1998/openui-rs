@@ -10,3 +10,6 @@ viewer/.swiftpm/*
 !viewer/.swiftpm/xcode/
 viewer/.swiftpm/xcode/*
 !viewer/.swiftpm/xcode/xcshareddata/
+
+# Hunts write their reports and findings here (scripts/hunt.sh).
+findings/

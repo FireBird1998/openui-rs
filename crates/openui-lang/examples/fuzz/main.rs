@@ -1,6 +1,7 @@
 //! Differential fuzzing against the reference parser.
 //!
-//!   cargo run --release --example fuzz -- [--seed N] [--count N] [--only K] [--no-save] [--edits]
+//!   cargo run --release --example fuzz -- [--seed N] [--count N] [--from K] [--only K]
+//!       [--seconds S] [--findings DIR] [--slow-ms N] [--no-save] [--edits]
 //!
 //! Each program is generated from a component library's grammar or mangled
 //! from a corpus case, then parsed by the core and by the reference (a
@@ -9,9 +10,12 @@
 //! replays it). Mismatches are shrunk to a minimal program and saved as corpus
 //! cases in `conformance/fuzz.json`; run `scripts/regen-golden.sh` afterwards.
 //! With `--edits`, merge and serialization are fuzzed instead (see `edits.rs`).
+//! The core taking longer than `--slow-ms` (default 1000) on an input is a
+//! blow-up. Hunts add `--seconds` and `--findings` (see `findings.rs`).
 //! Needs Bun.
 
 mod edits;
+mod findings;
 mod generate;
 mod reference;
 mod rng;
@@ -20,10 +24,12 @@ use std::collections::{BTreeMap, HashMap};
 use std::panic::{AssertUnwindSafe, catch_unwind};
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
+use std::time::{Duration, Instant};
 
 use openui_lang::{Library, StreamParser, parse, tokenize, tokens_to_json};
 use serde_json::{Value, json};
 
+use findings::{Outcome, batches, run};
 use generate::{Generator, mutate};
 use reference::{Answer, Reference};
 use rng::Rng;
@@ -48,14 +54,6 @@ pub struct Program {
     pub root: Option<String>,
     /// Push chunk sizes in chars; empty means one-shot and tokens only.
     pub sizes: Vec<usize>,
-}
-
-#[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]
-enum Outcome {
-    Match,
-    Mismatch,
-    ReferenceThrew,
-    CorePanicked,
 }
 
 pub(crate) struct Corpus {
@@ -133,8 +131,12 @@ pub(crate) fn fingerprint(json: &str) -> String {
     format!("{h:08x}")
 }
 
-/// The core's fingerprints for a program, or None if it panicked.
-fn core_answer(p: &Program, library: &Arc<Library>) -> Option<(String, String, Vec<String>)> {
+type Fingerprints = (String, String, Vec<String>);
+
+/// The core's fingerprints for a program and how long they took, or None if
+/// it panicked.
+fn core_answer(p: &Program, library: &Arc<Library>) -> Option<(Fingerprints, Duration)> {
+    let started = Instant::now();
     catch_unwind(AssertUnwindSafe(|| {
         let oneshot = fingerprint(&parse(&p.input, library, p.root.as_deref()).to_json());
         let tokens = fingerprint(&tokens_to_json(&tokenize(&p.input)));
@@ -154,33 +156,49 @@ fn core_answer(p: &Program, library: &Arc<Library>) -> Option<(String, String, V
         (oneshot, tokens, steps)
     }))
     .ok()
+    .map(|answer| (answer, started.elapsed()))
 }
 
-fn judge(p: &Program, answer: &Answer, corpus: &Corpus) -> Outcome {
+/// The outcome for a program, and how long the core took when it finished.
+fn judge(p: &Program, answer: &Answer, corpus: &Corpus) -> (Outcome, Option<Duration>) {
     let Answer::Fingerprints {
         oneshot,
         tokens,
         steps,
+        ..
     } = answer
     else {
-        return Outcome::ReferenceThrew;
+        return (Outcome::ReferenceThrew, None);
     };
     match core_answer(p, &corpus.libraries[&p.lib]) {
-        None => Outcome::CorePanicked,
-        Some((o, t, s)) if &o == oneshot && &t == tokens && &s == steps => Outcome::Match,
-        Some(_) => Outcome::Mismatch,
+        None => (Outcome::CorePanicked, None),
+        Some((_, took)) if took > run().slow => (Outcome::BlowUp, Some(took)),
+        Some(((o, t, s), took)) if &o == oneshot && &t == tokens && &s == steps => {
+            (Outcome::Match, Some(took))
+        }
+        Some((_, took)) => (Outcome::Mismatch, Some(took)),
     }
 }
 
 fn outcome_of(p: &Program, reference: &mut Reference, corpus: &Corpus) -> Outcome {
     let answer = reference.ask(&[p]).pop().unwrap();
-    judge(p, &answer, corpus)
+    judge(p, &answer, corpus).0
 }
 
 /// The smallest program (by removing lines, then ever smaller runs of chars)
 /// with the same outcome. Streaming mismatches shrink under one-char pushes,
-/// so any chunking reproduces them.
-fn shrink(p: &Program, outcome: Outcome, reference: &mut Reference, corpus: &Corpus) -> Program {
+/// so any chunking reproduces them. Blow-ups aren't shrunk: each try could
+/// take as long as the original. When the run's time is up, shrinking stops
+/// and returns what it has; the flag says whether it finished.
+fn shrink(
+    p: &Program,
+    outcome: Outcome,
+    reference: &mut Reference,
+    corpus: &Corpus,
+) -> (Program, bool) {
+    if outcome == Outcome::BlowUp {
+        return (p.clone(), false);
+    }
     let with_sizes = |input: String, streaming: bool| {
         let n = input.chars().count();
         Program {
@@ -191,7 +209,7 @@ fn shrink(p: &Program, outcome: Outcome, reference: &mut Reference, corpus: &Cor
     };
     let streaming = outcome_of(&with_sizes(p.input.clone(), false), reference, corpus) != outcome;
     if streaming && outcome_of(&with_sizes(p.input.clone(), true), reference, corpus) != outcome {
-        return p.clone(); // only this exact chunking reproduces it
+        return (p.clone(), true); // only this exact chunking reproduces it
     }
     let mut best = p.input.clone();
     let keeps = |text: &str, reference: &mut Reference| {
@@ -203,6 +221,9 @@ fn shrink(p: &Program, outcome: Outcome, reference: &mut Reference, corpus: &Cor
         let lines: Vec<&str> = best.split('\n').collect();
         if i >= lines.len() || lines.len() == 1 {
             break;
+        }
+        if run().out_of_time() {
+            return (with_sizes(best, streaming), false);
         }
         let candidate: String = lines
             .iter()
@@ -218,7 +239,7 @@ fn shrink(p: &Program, outcome: Outcome, reference: &mut Reference, corpus: &Cor
         }
     }
     // Then runs of characters, halving the run length.
-    let mut run = best.chars().count().div_ceil(2).max(1);
+    let mut step = best.chars().count().div_ceil(2).max(1);
     loop {
         let mut start = 0;
         let mut progressed = false;
@@ -227,50 +248,59 @@ fn shrink(p: &Program, outcome: Outcome, reference: &mut Reference, corpus: &Cor
             if start >= chars.len() {
                 break;
             }
-            let end = (start + run).min(chars.len());
+            if run().out_of_time() {
+                return (with_sizes(best, streaming), false);
+            }
+            let end = (start + step).min(chars.len());
             let candidate: String = chars[..start].iter().chain(&chars[end..]).collect();
             if keeps(&candidate, reference) {
                 best = candidate;
                 progressed = true;
             } else {
-                start += run;
+                start += step;
             }
         }
-        if run == 1 && !progressed {
+        if step == 1 && !progressed {
             break;
         }
         if !progressed {
-            run = run.div_ceil(2);
+            step = step.div_ceil(2);
         }
     }
-    with_sizes(best, streaming)
+    (with_sizes(best, streaming), true)
 }
 
-/// Add shrunk mismatches to `conformance/fuzz.json` as corpus cases.
-fn save(found: &[(Program, String)], conformance: &Path) -> Vec<String> {
-    let manifest_path = conformance.join("fuzz.json");
+/// A saved case's name: the fingerprint of its library, root and program.
+fn case_name(p: &Program) -> String {
+    format!(
+        "fuzz/{}",
+        fingerprint(&format!(
+            "{}\0{}\0{}",
+            p.lib,
+            p.root.as_deref().unwrap_or(""),
+            p.input
+        ))
+    )
+}
+
+/// Add shrunk finds to `fuzz.json` in `dir` as corpus cases: the corpus, or a
+/// hunt's findings folder.
+fn save(found: &[(Program, String)], dir: &Path) -> Vec<String> {
+    let manifest_path = dir.join("fuzz.json");
     let mut manifest: Value = std::fs::read_to_string(&manifest_path)
         .ok()
         .and_then(|t| serde_json::from_str(&t).ok())
         .unwrap_or_else(|| json!({ "schemas": {}, "cases": [] }));
     let mut saved = Vec::new();
     for (p, origin) in found {
-        let name = format!(
-            "fuzz/{}",
-            fingerprint(&format!(
-                "{}\0{}\0{}",
-                p.lib,
-                p.root.as_deref().unwrap_or(""),
-                p.input
-            ))
-        );
+        let name = case_name(p);
         let cases = manifest["cases"].as_array_mut().unwrap();
         if cases.iter().any(|c| c["name"] == name) {
             continue;
         }
         let file = format!("cases/{name}.oui");
-        std::fs::create_dir_all(conformance.join("cases/fuzz")).unwrap();
-        std::fs::write(conformance.join(&file), &p.input).unwrap();
+        std::fs::create_dir_all(dir.join("cases/fuzz")).unwrap();
+        std::fs::write(dir.join(&file), &p.input).unwrap();
         let mut case = json!({ "name": name, "schema": p.lib, "file": file, "source": "fuzz", "origin": origin });
         if let Some(root) = &p.root {
             case["root"] = json!(root);
@@ -288,30 +318,35 @@ fn save(found: &[(Program, String)], conformance: &Path) -> Vec<String> {
 
 fn main() {
     let args: Vec<String> = std::env::args().skip(1).collect();
-    let flag = |name: &str| {
+    let value = |name: &str| {
         args.iter()
             .position(|a| a == name)
             .and_then(|i| args.get(i + 1))
-            .and_then(|v| v.parse::<u64>().ok())
     };
+    let flag = |name: &str| value(name).and_then(|v| v.parse::<u64>().ok());
     let seed = flag("--seed").unwrap_or(1);
-    let count = flag("--count").unwrap_or(1000);
-    let only = flag("--only");
     let save_cases = !args.iter().any(|a| a == "--no-save");
+    findings::init(
+        flag("--seconds"),
+        flag("--slow-ms").unwrap_or(1000),
+        value("--findings").map(PathBuf::from),
+    );
+    let batches = batches(
+        flag("--only"),
+        flag("--from").unwrap_or(0),
+        flag("--count"),
+        BATCH,
+    );
 
     let root = repo_root();
     let conformance = root.join("conformance");
     let corpus = load_corpus(&conformance);
     let mut reference = Reference::start(&root.join("reference"));
 
-    let indices: Vec<u64> = match only {
-        Some(k) => vec![k],
-        None => (0..count).collect(),
-    };
     if args.iter().any(|a| a == "--edits") {
         edits::run(
             seed,
-            &indices,
+            batches,
             &corpus,
             &mut reference,
             &conformance,
@@ -323,12 +358,26 @@ fn main() {
     let mut found: Vec<(Program, String)> = Vec::new();
     let mut threw: Vec<(Program, String)> = Vec::new();
     let mut explained = 0;
-    for batch in indices.chunks(BATCH) {
+    let mut slowest = (Duration::ZERO, 0);
+    for batch in batches {
+        run().progress(
+            "parse",
+            &format!(
+                "scripts/fuzz.sh --seed {seed} --from {} --count {} --no-save",
+                batch[0],
+                batch.len()
+            ),
+        );
         let programs: Vec<Program> = batch.iter().map(|&k| program(seed, k, &corpus)).collect();
         let answers = reference.ask(&programs.iter().collect::<Vec<_>>());
-        for ((p, answer), &k) in programs.iter().zip(&answers).zip(batch) {
-            let outcome = judge(p, answer, &corpus);
+        for ((p, answer), &k) in programs.iter().zip(&answers).zip(batch.iter()) {
+            let (outcome, took) = judge(p, answer, &corpus);
             *tally.entry(outcome).or_default() += 1;
+            if let Some(took) = took
+                && took > slowest.0
+            {
+                slowest = (took, k);
+            }
             if outcome == Outcome::Match {
                 continue;
             }
@@ -336,7 +385,7 @@ fn main() {
             if found.len() + threw.len() >= MAX_SAVES {
                 continue;
             }
-            let small = shrink(p, outcome, &mut reference, &corpus);
+            let (small, complete) = shrink(p, outcome, &mut reference, &corpus);
             if let Some((_, why)) = EXPLAINED
                 .iter()
                 .find(|(pattern, _)| small.input.contains(pattern))
@@ -362,31 +411,83 @@ fn main() {
                 },
                 small.input
             );
+            let mut finding = json!({
+                "kind": outcome.kind(),
+                "check": "parse",
+                "seed": seed,
+                "index": k,
+                "replay": format!("scripts/fuzz.sh --seed {seed} --only {k} --no-save"),
+                "library": small.lib,
+                "root": small.root,
+                "streaming": !small.sizes.is_empty(),
+                "chars": [p.input.chars().count(), small.input.chars().count()],
+                "shrunk": complete,
+                "input": small.input,
+            });
+            if let Answer::Fingerprints { ms, .. } = answer {
+                finding["reference_ms"] = json!(ms);
+            }
+            if let Some(took) = took {
+                finding["core_ms"] = json!(took.as_secs_f64() * 1000.0);
+            }
+            let same = |(f, _): &(Program, String)| f.input == small.input && f.lib == small.lib;
             if let (Outcome::ReferenceThrew, Answer::Threw(error)) = (outcome, answer) {
                 println!("  reference threw: {error}");
+                if threw.iter().any(same) {
+                    continue;
+                }
+                finding["reference"] = json!(error);
                 threw.push((small, origin));
-            } else if !found
-                .iter()
-                .any(|(f, _)| f.input == small.input && f.lib == small.lib)
-            {
+            } else {
+                if found.iter().any(same) {
+                    continue;
+                }
+                finding["case"] = json!(case_name(&small));
                 found.push((small, origin));
             }
+            run().record(&finding);
         }
     }
 
     let total: usize = tally.values().sum();
+    let count = |o| tally.get(&o).copied().unwrap_or(0);
     println!(
-        "fuzz seed {seed}: {total} programs, {} match, {} mismatch ({explained} explained), {} core panics, {} reference exceptions",
-        tally.get(&Outcome::Match).unwrap_or(&0),
-        tally.get(&Outcome::Mismatch).unwrap_or(&0),
-        tally.get(&Outcome::CorePanicked).unwrap_or(&0),
-        tally.get(&Outcome::ReferenceThrew).unwrap_or(&0),
+        "fuzz seed {seed}: {total} programs, {} match, {} mismatch ({explained} explained), {} core panics, {} blow-ups, {} reference exceptions",
+        count(Outcome::Match),
+        count(Outcome::Mismatch),
+        count(Outcome::CorePanicked),
+        count(Outcome::BlowUp),
+        count(Outcome::ReferenceThrew),
+    );
+    println!(
+        "slowest core answer: {:.1} ms (program {})",
+        slowest.0.as_secs_f64() * 1000.0,
+        slowest.1
+    );
+    run().summary(
+        "parse",
+        &json!({
+            "inputs": total,
+            "match": count(Outcome::Match),
+            "mismatch": count(Outcome::Mismatch),
+            "explained": explained,
+            "crash": count(Outcome::CorePanicked),
+            "blow-up": count(Outcome::BlowUp),
+            "quirk?": count(Outcome::ReferenceThrew),
+            "slowest_ms": slowest.0.as_secs_f64() * 1000.0,
+            "slowest_index": slowest.1,
+        }),
     );
     if save_cases && !found.is_empty() {
-        let saved = save(&found, &conformance);
+        let dir = run().save_dir(&conformance);
+        let saved = save(&found, dir);
         println!(
-            "saved {} new cases to conformance/fuzz.json; run scripts/regen-golden.sh",
-            saved.len()
+            "saved {} new cases to {}",
+            saved.len(),
+            dir.join("fuzz.json").display()
         );
+        if run().dir.is_none() {
+            println!("run scripts/regen-golden.sh");
+        }
     }
 }
