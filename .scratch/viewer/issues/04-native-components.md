@@ -38,7 +38,7 @@ Looked at in the real window: the gallery's header, the three card variants, the
 - **`PropReader` decides what draws.** A prop a view needs must be there and of the right type, or the element falls back. A style prop with an unknown value uses its default. An element that's still arriving reads a missing prop as empty, so it doesn't flip between box and native view mid-stream.
 - **Paths stay the same.** Children sit at the same paths as in the inspector's tree, such as `/children/2` and `/items/1/content/0`.
 - **Dynamic text.** A prop that's an expression is drawn as its source in italics.
-- **Three more than listed.** `TextCallout` shares the callout view, and a wrapping row (`wrap: true`) uses a small flow layout. 18 component names are drawn natively.
+- **One more than listed.** `TextCallout` shares the callout view, so 18 component names are drawn natively. A wrapping row (`wrap: true`) uses a small flow layout.
 - **Drawing width.** The drawing now scrolls only vertically and fits a width: the window, a phone (390 pt) or a tablet (820 pt). That setting is in the playback bar.
 - **The gallery.** `File > Open Component Gallery` (⇧⌘G) opens a 14-statement program against upstream's example library that uses every native component and parses with no errors. `VIEWER_PLAY=gallery` plays it in a scripted run, and an absolute path plays any program file.
 
