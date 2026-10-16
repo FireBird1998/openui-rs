@@ -73,7 +73,7 @@ const OBJECT_KEYS: [&str; 14] = [
 
 const AST_KIND_STRINGS: [&str; 5] = ["\"Str\"", "\"Comp\"", "\"Ref\"", "\"element\"", "\"Null\""];
 
-const BUILTIN_CALLS: [&str; 10] = [
+const BUILTIN_CALLS: [&str; 18] = [
     "@Count(items)",
     "@Each(items, \"item\", Text(item.name))",
     "@Each(items, item, Text(item))",
@@ -84,6 +84,16 @@ const BUILTIN_CALLS: [&str; 10] = [
     "@toString(1)",
     "Count(items)",
     "@First($items)",
+    // 1.0: a step on its own, a step's context, bad and missing args, an
+    // `@` name nothing registers, and Action without its list.
+    "@ToAssistant(\"hi\", {orderId: 42})",
+    "@OpenUrl(5)",
+    "@OpenUrl()",
+    "@Round(1, 2, 3)",
+    "@Nope(items)",
+    "Action(@OpenUrl(\"https://x.dev\"))",
+    "Action([])",
+    "@Set($q)",
 ];
 
 /// Characters and fragments the lexer and preprocessing treat specially.
@@ -95,6 +105,8 @@ const NOISE: [&str; 30] = [
 pub struct Generator<'a> {
     rng: &'a mut Rng,
     components: Vec<(String, usize)>,
+    /// The library's own functions and actions, with their param counts.
+    calls: Vec<(String, usize)>,
     ids: Vec<&'static str>,
 }
 
@@ -109,9 +121,15 @@ impl<'a> Generator<'a> {
                 )
             })
             .collect();
+        let calls = library
+            .calls()
+            .filter(|(_, call)| !call.builtin)
+            .map(|(n, call)| (n.to_owned(), call.params.len()))
+            .collect();
         Generator {
             rng,
             components,
+            calls,
             ids: Vec::new(),
         }
     }
@@ -243,9 +261,28 @@ impl<'a> Generator<'a> {
         if self.rng.chance(10) {
             return self.rng.pick(&BUILTIN_CALLS).to_string();
         }
+        if !self.calls.is_empty() && self.rng.chance(20) {
+            return self.library_call(depth);
+        }
         let n = self.rng.below(params + 2).min(5);
         let args: Vec<String> = (0..n).map(|_| self.expr(depth + 1)).collect();
         format!("{name}({})", args.join(", "))
+    }
+
+    /// A call to one of the library's functions or actions: usually with `@`,
+    /// sometimes bare, sometimes as one of several steps; with too few, the
+    /// right number or too many args.
+    fn library_call(&mut self, depth: usize) -> String {
+        let (name, params) = self.rng.pick(&self.calls).clone();
+        let n = self.rng.below(params + 2).min(5);
+        let args: Vec<String> = (0..n).map(|_| self.expr(depth + 1)).collect();
+        let at = if self.rng.chance(85) { "@" } else { "" };
+        let call = format!("{at}{name}({})", args.join(", "));
+        if self.rng.chance(15) {
+            format!("Action([{call}, @ToAssistant(\"done\")])")
+        } else {
+            call
+        }
     }
 
     fn reference(&mut self) -> String {

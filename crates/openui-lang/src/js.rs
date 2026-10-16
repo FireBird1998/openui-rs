@@ -224,12 +224,16 @@ fn js_property_order<'a>(keys: impl Iterator<Item = &'a str>) -> Vec<usize> {
 #[derive(Clone, Debug, PartialEq)]
 pub struct JsObject<V> {
     entries: indexmap::IndexMap<String, V>,
+    /// `obj.__proto__ = null` was assigned: nothing is inherited, and a later
+    /// `__proto__` assignment makes an own property.
+    null_prototype: bool,
 }
 
 impl<V> Default for JsObject<V> {
     fn default() -> Self {
         JsObject {
             entries: indexmap::IndexMap::new(),
+            null_prototype: false,
         }
     }
 }
@@ -241,12 +245,18 @@ impl<V> JsObject<V> {
     }
 
     /// `obj[key] = value`. Assigning `__proto__` changes the prototype instead
-    /// of adding a property, so it's dropped here.
+    /// of adding a property, so it's dropped here, unless the prototype is
+    /// already null.
     pub fn set(&mut self, key: impl Into<String>, value: V) {
         let key = key.into();
-        if key != "__proto__" {
+        if key != "__proto__" || self.null_prototype {
             self.entries.insert(key, value);
         }
+    }
+
+    /// `obj.__proto__ = null`, on an object that still has its prototype.
+    pub(crate) fn drop_prototype(&mut self) {
+        self.null_prototype = true;
     }
 
     /// Add an own property even if it's `__proto__`, as `JSON.parse` does.
@@ -271,7 +281,7 @@ impl<V> JsObject<V> {
 
     /// `key in obj`: an own property, or one inherited from `Object.prototype`.
     pub fn has(&self, key: &str) -> bool {
-        self.has_own(key) || OBJECT_PROTOTYPE_KEYS.contains(&key)
+        self.has_own(key) || (!self.null_prototype && OBJECT_PROTOTYPE_KEYS.contains(&key))
     }
 
     /// `delete obj[key]`.

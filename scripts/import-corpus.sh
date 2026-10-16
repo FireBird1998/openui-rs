@@ -1,8 +1,9 @@
 #!/usr/bin/env bash
 # Rebuild conformance/imported/ from upstream at the pinned commit: programs the
 # reference test suites parse, the spec's conformance fixtures, the benchmark
-# samples, and examples from the docs and examples folders. Then regenerates
-# the goldens. Needs Bun.
+# samples, examples from the docs and examples folders, and react-ui's
+# component library with its prompt spec. Then regenerates the goldens. Needs
+# Bun.
 #
 #   scripts/import-corpus.sh [<local thesysdev/openui checkout>]
 set -euo pipefail
@@ -12,7 +13,7 @@ commit="$(sed -n 's/^commit: //p' "$ROOT/reference/UPSTREAM")"
 
 tmp="$(mktemp -d)"
 trap 'rm -rf "$tmp"' EXIT
-fetch_upstream "$commit" "$tmp" "${1:-}" benchmarks docs/content examples spec LICENSE >/dev/null
+fetch_upstream "$commit" "$tmp" "${1:-}" benchmarks docs/content examples spec packages/react-ui/src LICENSE >/dev/null
 
 cd "$ROOT/reference"
 bun install --silent

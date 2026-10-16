@@ -112,7 +112,11 @@ struct AskClaudeSheet: View {
         .frame(width: 620)
         .onAppear {
             hasKey = APIKeyStore.hasKey
-            if let baseLibrary { library = baseLibrary } else if library.isEmpty { library = libraries.first ?? "" }
+            if let baseLibrary {
+                library = baseLibrary
+            } else if library.isEmpty {
+                library = libraries.contains(Corpus.preferredLibrary) ? Corpus.preferredLibrary : libraries.first ?? ""
+            }
         }
     }
 

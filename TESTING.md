@@ -22,10 +22,10 @@ cargo test -p openui-lang --test conformance streaming_   # tests whose names ma
 
 | Test | Checks | Catches |
 |---|---|---|
-| `conformance` | Every corpus case (532), one-shot, after every streaming push and at each stream's end, under each of the corpus's chunkings, against the reference's goldens. Also that a stream, once ended, gives what one-shot parsing gives, apart from programs where the reference itself doesn't. | Any difference from the reference in parsing or streaming |
+| `conformance` | Every corpus case (534), one-shot, after every streaming push and at each stream's end, under each of the corpus's chunkings, against the reference's goldens. Also that a stream, once ended, gives what one-shot parsing gives, apart from programs where the reference itself doesn't. | Any difference from the reference in parsing or streaming |
 | `stages` | Tokens, statements and expressions, and fence and comment stripping, on every prefix of every program | Which stage of the pipeline a difference starts in |
 | `edits` | Merging (over 1,400 cases), converting element trees back to source, and error hints, against the reference | Differences in the edit-mode and error layer |
-| `prompt` | Every prompt spec in the corpus (59) against the reference's `generateSystemPrompt`. Its error messages are compared exactly; for crashes inside the JavaScript engine, only that it fails. | Differences in system prompts |
+| `prompt` | Every prompt spec in the corpus (61) against the reference's `generateSystemPrompt`. Its error messages are compared exactly; for crashes inside the JavaScript engine, only that it fails. | Differences in system prompts |
 | `robustness` | Property tests: any text, cut anywhere, through every stage and every entry point, finishes without panicking | Crashes on arbitrary input |
 | `depth` | Absurdly deep nesting stops at 256 levels with `depth_limited`, on a 512 KB thread stack | Stack overflows |
 | `size` | Programs that double with every line stop at about 8 MiB with `size_limited` | Runaway memory |
@@ -63,7 +63,7 @@ Everything the tests compare is in `conformance/`:
 
   Every stream then ends: its last step is the result once the stream is complete, the reference's `getResult(true)` and the core's `StreamParser::finish()`.
 - **Goldens** are in `golden/`. Each case has `<case>.oneshot.json`, the reference's JSON, and `<case>.steps.json`, a fingerprint of every step under every chunking, plus stage goldens. A fingerprint is FNV-1a over the JSON's UTF-8.
-- **Other corpora:** `merge.json` (and its generated and imported siblings), `serialize.json`, and `prompts/`. Their goldens are in `golden/edits/` and `golden/prompts/`.
+- **Other corpora:** `merge.json` (and its generated and imported siblings), `serialize.json`, and `prompts/`. Their goldens are in `golden/edits/` and `golden/prompts/`. Two prompt specs per imported library are written by the import: the spec fixtures' library, and upstream's react-ui library (`react-ui-schema`), which the viewer asks Claude with. The import loads react-ui with React and its other dependencies stubbed out (`reference/react-ui-stubs.ts`), so nothing gets installed.
 - **The reference's own oddities:**
   - `QUIRKS.md` lists behaviour the core reproduces on purpose;
   - `pending/` holds a list per golden test of the cases the core doesn't match yet: `parse`, the three stages (`tokens`, `statements`, `preprocess`), `merge`, `serialize`, `enrich` and `prompt`. A listed case may fail. One that matches again, or a listed name that isn't a case, fails its test, so the lists stay exact. Every list is empty today.
@@ -128,7 +128,7 @@ A hunt never commits and never changes tracked files. It compares them before an
 | blow-up | The core took over a second on one input, or a fuzzer hung | Fixed in the core. If the reference blows up too and the input is unlike real output, it becomes a documented divergence. |
 | quirk? | The reference throws where the core doesn't | We decide: a documented divergence, or a quirk with a draft upstream report |
 
-Known divergences, the ones in CONFORMANCE.md the fuzzer recognizes (`__proto__` assignments, and an object shaped like an element as the root), are counted, not reported. We review findings together, one report at a time: small fixes go in one commit after the check passes, and anything that needs a design decision becomes a ticket.
+Known divergences, the ones in CONFORMANCE.md the fuzzer recognizes (`__proto__` assignments, and a root that's an object shaped like an element or an AST node), are counted, not reported, including the reference throwing on the last. We review findings together, one report at a time: small fixes go in one commit after the check passes, and anything that needs a design decision becomes a ticket.
 
 ### Turning a finding into a case
 

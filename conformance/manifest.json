@@ -654,6 +654,18 @@
    "schema": "libraries",
    "file": "cases/hand/104-component-only-slots.oui",
    "source": "hand-written"
+  },
+  {
+   "name": "hand/105-proto-named-param",
+   "schema": "keys",
+   "file": "cases/hand/105-proto-named-param.oui",
+   "source": "hand-written"
+  },
+  {
+   "name": "hand/106-bare-library-calls",
+   "schema": "libraries",
+   "file": "cases/hand/106-bare-library-calls.oui",
+   "source": "hand-written"
   }
  ]
 }

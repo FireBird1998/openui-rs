@@ -755,6 +755,12 @@ fn add_prop(
     ctx: &mut Ctx,
 ) -> bool {
     ctx.size += param.name.len() + 4;
+    // The reference assigns the raw value before validating, then the
+    // validated one: a null `__proto__` drops the prototype, so the second
+    // assignment makes `__proto__` an own prop.
+    if param.name == "__proto__" && matches!(value, Value::Null) {
+        props.drop_prototype();
+    }
     let path = format!("/{}", param.name);
     let invalid = validate_schema_value(&mut value, &param.schema, component, &path, ctx);
     props.set(param.name.clone(), value);

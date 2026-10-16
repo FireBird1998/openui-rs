@@ -41,7 +41,7 @@ type Explains = (fn(&str) -> bool, &'static str);
 
 /// Divergences CONFORMANCE.md documents: a minimal mismatch one of these
 /// recognizes is explained, not a bug to save.
-const EXPLAINED: [Explains; 2] = [
+const EXPLAINED: [Explains; 3] = [
     (
         assigns_proto,
         "object or null assigned to __proto__ (prototype chain)",
@@ -49,6 +49,10 @@ const EXPLAINED: [Explains; 2] = [
     (
         root_is_an_element_shaped_object,
         "object literal shaped like an element as the root",
+    ),
+    (
+        root_is_an_ast_shaped_object,
+        "object literal shaped like an AST node as the root",
     ),
 ];
 
@@ -61,14 +65,44 @@ fn assigns_proto(program: &str) -> bool {
 }
 
 /// The reference returns such an object as the root; the core's root is
-/// always a component's element. Shrunk, the program is that one statement.
+/// always a component's element. Shrunk, the program is that statement.
 fn root_is_an_element_shaped_object(program: &str) -> bool {
-    let program = program.trim();
-    !program.contains('\n')
-        && program.contains("element")
-        && program
-            .split_once('=')
-            .is_some_and(|(_, value)| value.trim_start().starts_with('{'))
+    root_is_an_object(program) && program.contains("element")
+}
+
+/// The reference walks such an object as an AST node: it returns it as the
+/// root expression when it holds a component call, and throws when a node in
+/// it lacks the children its kind has (`root = {k: "Comp"}`). The core has no
+/// root then. Shrunk, the program is that statement, and its kind string may
+/// have lost its closing quote.
+fn root_is_an_ast_shaped_object(program: &str) -> bool {
+    const WITH_CHILDREN: [&str; 9] = [
+        "\"Comp",
+        "\"Arr",
+        "\"Obj",
+        "\"BinOp",
+        "\"UnaryOp",
+        "\"Ternary",
+        "\"Member",
+        "\"Index",
+        "\"Assign",
+    ];
+    root_is_an_object(program) && WITH_CHILDREN.iter().any(|kind| program.contains(kind))
+}
+
+/// One statement whose value is an object literal, or a chain of references
+/// to one (`root = c`, `c = {...}`).
+fn root_is_an_object(program: &str) -> bool {
+    fn value(line: &str) -> Option<&str> {
+        line.split_once('=').map(|(_, v)| v.trim())
+    }
+    let is_ref = |v: &str| !v.is_empty() && v.chars().all(|c| c.is_alphanumeric() || c == '_');
+    let lines: Vec<&str> = program.trim().lines().collect();
+    let Some((last, chain)) = lines.split_last() else {
+        return false;
+    };
+    chain.iter().all(|line| value(line).is_some_and(is_ref))
+        && value(last).is_some_and(|v| v.starts_with('{'))
 }
 pub(crate) const MAX_SAVES: usize = 25;
 

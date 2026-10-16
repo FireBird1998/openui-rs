@@ -5,7 +5,7 @@ The `openui-lang` crate is a port of the OpenUI Lang language layer in `@openuid
 - **Parse results:** `ParseResult::to_json()` equals `JSON.stringify` of the reference's result, for one-shot parsing and after every push of a streaming parse, with both sides cutting the text at the same code points.
 - **Everything else:** the same system prompt string, the same merged program text, the same source from `jsonToOpenUI`, the same enriched errors. Where the reference throws, the core returns an error.
 
-**Moving to lang-core 1.0.** The reference below is 1.0.1, and the core now matches it on every case in the corpus: every pending list is empty. The divergences and quirks below were written against 0.3.0 (the local tag `lang-core-0.3.0`), and the move's last ticket ([map](.scratch/lang-core-1.0/map.md)) reviews them against 1.0.
+The reference is lang-core 1.0.1, and the core matches it on every case in the corpus: nothing is pending. The quirks and divergences below were all checked against 1.0.1. The core conformed to 0.3.0 before; that state is the local tag `lang-core-0.3.0`, and isn't kept up.
 
 Behaviour that looks wrong in the reference is reproduced anyway and recorded as a [quirk](conformance/QUIRKS.md) with a draft upstream report. The core departs from the reference only where the list of [divergences](#divergences) below says so, all on inputs no real program produces.
 
@@ -16,14 +16,14 @@ Reference: `@openuidev/lang-core 1.0.1` at commit `eb20708b9cc41afced5625e99e6ce
 
 | Compared with the reference | Cases | Checks | Cases by source |
 |---|---:|---:|---|
-| Parse results: one-shot, and after every push and at the end of 8 chunkings, 2 resync sequences and any recorded chunks | 532 | 321,368 results | 7 benchmark, 105 docs, 46 examples, 12 fuzz, 105 hand-written, 196 reference-test, 58 spec-fixture, 3 synthetic |
-| Stages on every prefix: preprocessing, tokens, statements and expression trees | 530 | 97,122 prefixes | the parse corpus, less its largest synthetic programs |
-| System prompts | 59 | 59 | |
+| Parse results: one-shot, and after every push and at the end of 8 chunkings, 2 resync sequences and any recorded chunks | 534 | 322,570 results | 7 benchmark, 105 docs, 46 examples, 12 fuzz, 107 hand-written, 196 reference-test, 58 spec-fixture, 3 synthetic |
+| Stages on every prefix: preprocessing, tokens, statements and expression trees | 532 | 97,518 prefixes | the parse corpus, less its largest synthetic programs |
+| System prompts | 61 | 61 | |
 | Edit-mode merges | 2,521 | 2,521 | 2,469 generated, 46 hand-written, 1 reference-test, 5 spec-fixture |
-| Element trees back to source | 504 | 504 | 1 fuzz, 62 hand-written, 410 parse corpus root, 31 reference-test |
-| Enriched errors | 337 | 337 | every parse corpus case with errors |
+| Element trees back to source | 506 | 506 | 1 fuzz, 62 hand-written, 412 parse corpus root, 31 reference-test |
+| Enriched errors | 339 | 339 | every parse corpus case with errors |
 
-Quirks recorded: 11.
+Quirks recorded: 12.
 Not matched yet, listed in `conformance/pending/`: none.
 <!-- /counts -->
 
@@ -47,9 +47,10 @@ Cases the core doesn't match yet would be listed in `conformance/pending/`, one 
 | Ticket 10 | parsing, seeds 11, 12, 21–23 | 50,000 | 0 after one fix |
 | Ticket 12 | merge and serialize, seeds 1–5 | 100,000 | 0 after one fix |
 | Ticket 14 | parsing and edits, seeds 31, 32 | 40,000 | 0 |
-| **Total** | | **320,000** | |
+| 1.0 ticket 09, against 1.0.1, with library functions and actions | parsing, seeds 41–44; edits, seeds 41, 42 | 140,000 | 0 after one fix |
+| **Total** | | **460,000** | |
 
-"Explained" mismatches are two of the divergences below, the `__proto__` one and an element-shaped root; the fuzzer recognizes and skips them.
+"Explained" mismatches are three of the divergences below: the `__proto__` one, and a root that's an object literal shaped like an element or like an AST node. The last also explains the reference throwing. The fuzzer recognizes and skips them.
 
 ## What conformance testing found
 
@@ -59,6 +60,8 @@ In the core, fixed, each pinned by a case:
 - Two pending statements with the same id in one push lost the second, a regression from making streaming incremental (fuzzing, `fuzz/00951ad8` and nine more).
 - `$defs` and `properties` must be read with `Object.entries`, so arrays and strings count by index (`hand/86-odd-schema-shapes`).
 - A root element whose `props` is a string, number or boolean is read the way JavaScript reads it (edit fuzzing).
+- A prompt spec's maps must be read with `Object.entries` too, so components, functions and actions given as an array or a string list what the reference lists (`library-components-array`, found in 1.0 ticket 08).
+- In 1.0 a prop is assigned twice, raw and then validated, so `null` for a param named `__proto__` drops the prototype and then becomes an own prop (fuzzing, `hand/105-proto-named-param`).
 
 In the reference, reproduced and recorded in [QUIRKS.md](conformance/QUIRKS.md), each with a draft upstream report (none filed):
 
@@ -72,6 +75,8 @@ In the reference, reproduced and recorded in [QUIRKS.md](conformance/QUIRKS.md),
 8. An id defined twice in the existing program comes out of a merge twice.
 9. Serializing drops parentheses around an equal-precedence right operand: `a - (b - c)` becomes `a - b - c`.
 10. Serialized object keys aren't quoted.
+11. At a stream's end, a final redefinition that needed closing doesn't win (new in 1.0's terms: the spec says it should).
+12. A library function or action called without `@` is still called, even over a component of that name (new in 1.0).
 
 Also reported, though not a quirk because the core doesn't reproduce it: a few lines that each reference the line before twice make the reference's `parse` take exponential time and memory (ticket 14).
 
@@ -83,9 +88,9 @@ Documented, not emulated. None occurs in the corpus, and none comes from a real 
 |---|---|---|
 | Nesting 257 to about 8,000 levels | parses (throws `RangeError` past that) | stops at 256, sets `depth_limited` |
 | A result past about 8 MiB of JSON (statements inlined until it doubles per level) | exponential time and memory, or a huge JSON | cuts it, sets `size_limited` |
-| An object or `null` assigned to `__proto__` | replaces the prototype; later reads and `in` checks see through it | ignores the assignment |
+| An object assigned to `__proto__`, or `null` in an object literal | replaces the prototype; later reads and `in` checks see through it | ignores the assignment (`null` for a param named `__proto__` is reproduced) |
 | An object literal shaped like an element used as the root | returns that object as `root` | `root` is `None` (it still counts as a root, so no `no-root`) |
-| An object literal shaped like an AST node used as the root (`root = {k: "Comp", name: "Card", args: []}`) | returns that object as `rootExpression` when it holds a component call | no `rootExpression`, and `no-root` |
+| An object literal shaped like an AST node used as the root (`root = {k: "Comp", name: "Card", args: []}`) | returns that object as `rootExpression` when it holds a component call, and throws a `TypeError` when a node in it lacks the children its kind has (`root = {k: "Comp"}`) | no `rootExpression`, and `no-root` |
 | JSON nested deeper than 800 levels, for `json_to_openui` or `parse_json` | handled, up to the engine's recursion limit | refused with an error |
 | `1e400` in JSON read back | `Infinity` | refused: a `serde_json::Value` can't hold it |
 | A component with `properties` whose `required` is neither an array nor a string (a number, say) | throws a `TypeError` building the library (`required.includes is not a function`) | treats `required` as empty |

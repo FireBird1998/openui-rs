@@ -1,0 +1,4 @@
+root = Page([w, b, c], Ping("bare action"), Ping("a bare action in an action slot"))
+w = Widget(Twice(2))
+b = Badge("a component's name, called as the action")
+c = Widget(Count(2))

@@ -32,7 +32,8 @@
   "test-store": "imported/schemas/test-store.json",
   "test-store-2": "imported/schemas/test-store-2.json",
   "spec-1.0": "imported/schemas/spec-1.0.json",
-  "bench": "imported/schemas/bench.json"
+  "bench": "imported/schemas/bench.json",
+  "react-ui": "imported/schemas/react-ui.json"
  },
  "cases": [
   {

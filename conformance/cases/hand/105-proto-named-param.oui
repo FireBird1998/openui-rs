@@ -1,0 +1,5 @@
+root = Grid("zero", [a, b, c, d], "b", 1)
+a = Box(null, "a null __proto__ drops the prototype, then becomes a prop")
+b = Box(missing, "an unresolved ref is null too")
+c = Box(5, "a number is ignored")
+d = Box(null)

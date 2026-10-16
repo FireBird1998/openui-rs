@@ -142,6 +142,8 @@ writeFileSync(
   ) + "\n",
 );
 
+const PROMPTS = join(HERE, "..", "conformance", "prompts");
+
 // ── The spec's conformance fixtures ──────────────────────────────────────────
 // spec/fixtures/1.0: the spec's own cases, over its test library. Their
 // expected results describe an evaluated tree, which the core doesn't build,
@@ -193,10 +195,9 @@ if (existsSync(FIXTURES)) {
     }
   }
   // The fixture library as the system prompt's input, plain and with every option on.
-  const prompts = join(HERE, "..", "conformance", "prompts");
-  writeFileSync(join(prompts, "spec-1.0-library.json"), JSON.stringify({ library }, null, 1) + "\n");
+  writeFileSync(join(PROMPTS, "spec-1.0-library.json"), JSON.stringify({ library }, null, 1) + "\n");
   writeFileSync(
-    join(prompts, "spec-1.0-library-tools.json"),
+    join(PROMPTS, "spec-1.0-library-tools.json"),
     JSON.stringify({ library, promptOptions: { toolCalls: true, bindings: true } }, null, 1) + "\n",
   );
 }
@@ -209,6 +210,35 @@ for (const f of readdirSync(samples).filter((f) => f.endsWith(".oui")).sort()) {
   const name = `bench/${basename(f, ".oui")}`;
   write(`cases/${name}.oui`, readFileSync(join(samples, f), "utf8"));
   cases.push({ name, schema: "bench", file: `imported/cases/${name}.oui`, source: "benchmark", origin: `benchmarks/samples/${f}` });
+}
+
+// ── react-ui's component library ─────────────────────────────────────────────
+// Upstream's own library, from packages/react-ui (react-ui-spec.ts loads it
+// with React stubbed out): its JSON Schema as a library, and its prompt spec
+// with the package's examples and rules, plain and with tool calls and
+// bindings on. The viewer asks Claude with these.
+const reactUi = spawnSync(
+  "bun",
+  ["--no-install", "--preload", "./react-ui-stubs.ts", "react-ui-spec.ts", upstream],
+  {
+    cwd: HERE,
+    encoding: "utf8",
+    maxBuffer: 64 << 20,
+    // A stale transpile from before the stubs would bypass them.
+    env: { ...process.env, BUN_RUNTIME_TRANSPILER_CACHE_PATH: "0" },
+  },
+);
+if (reactUi.status !== 0) throw new Error(`react-ui-spec.ts failed:\n${reactUi.stderr}`);
+const reactUiLibrary = JSON.parse(reactUi.stdout);
+addSchema("react-ui", reactUiLibrary.schema);
+for (const [name, options] of [
+  ["react-ui-schema", reactUiLibrary.promptOptions],
+  ["react-ui-schema-tools", { ...reactUiLibrary.promptOptions, toolCalls: true, bindings: true }],
+]) {
+  writeFileSync(
+    join(PROMPTS, `${name}.json`),
+    JSON.stringify({ library: reactUiLibrary.spec, promptOptions: options }, null, 1) + "\n",
+  );
 }
 
 // ── Docs and examples ────────────────────────────────────────────────────────

@@ -2,11 +2,11 @@
 
 Behaviour of the reference parser that looks wrong but that the core reproduces anyway, because the contract is to match the reference byte for byte. Fixing a quirk happens upstream first; the core follows when the pinned commit moves.
 
-Each entry has a minimal program, what the reference does, the corpus cases that pin it, and a draft upstream report. Nothing here has been filed yet.
+Each entry has a minimal program, what the reference does, the corpus cases that pin it, and a draft upstream report. Nothing here has been filed yet. Every entry was checked again against lang-core 1.0.1 on 2026-10-16.
 
 ## 1. An apostrophe in unfenced prose swallows the program
 
-- **Found:** 2026-10-06, while porting the preprocessing (ticket 05). Reference commit `bba1d251`.
+- **Found:** 2026-10-06, while porting the preprocessing (ticket 05). Reference commit `bba1d251`; still so in 1.0.1 (`eb20708`).
 - **Pinned by:** `hand/78-apostrophe-in-leading-prose`, `hand/79-apostrophe-in-trailing-prose`, and `hand/73-prose-with-apostrophes` (an odd count that happens to survive).
 
 ```
@@ -33,7 +33,7 @@ a = Text("x")
 
 ## 2. Builtins named after `Object.prototype` members count as Query/Mutation calls
 
-- **Found:** 2026-10-06, while porting materialize (ticket 06). Reference commit `bba1d251`.
+- **Found:** 2026-10-06, while porting materialize (ticket 06). Reference commit `bba1d251`; still so in 1.0.1 (`eb20708`).
 - **Pinned by:** `hand/47-prototype-named-builtins`, `fuzz/3cdbf706`.
 
 ```
@@ -52,7 +52,7 @@ It's inconsistent, too: choosing the entry statement compares against `"Query"` 
 
 ## 3. Prop names that look like numbers take positional args first
 
-- **Found:** 2026-10-06 (ticket 06). This is JavaScript object semantics rather than a bug, but it surprises library authors.
+- **Found:** 2026-10-06 (ticket 06). This is JavaScript object semantics rather than a bug, but it surprises library authors. Still so in 1.0.1 (`eb20708`).
 - **Pinned by:** `hand/84-index-like-param-names`, and `hand/44-integer-like-keys` for object literals.
 
 A component's positional order is `Object.keys(properties)`, and JavaScript lists array-index keys (`"0"`, `"10"`) before all others. So with `properties: {"b": ..., "0": ..., "a": ..., "10": ...}`, the order is `0, 10, b, a`, and `Grid("x", "y")` sets `"0"` and `"10"`, not `"b"`. The same reordering applies to `$defs` (the order of "Available components") and to object literals in programs. Worth a note in the docs on defining components, rather than a code change.
@@ -98,7 +98,7 @@ root = Text("x")
 
 ## 6. Merging drops a ternary's continuation lines
 
-- **Found:** 2026-10-06, porting `mergeStatements` (ticket 12). Reference commit `bba1d251`.
+- **Found:** 2026-10-06, porting `mergeStatements` (ticket 12). Reference commit `bba1d251`; still so in 1.0.1 (`eb20708`).
 - **Pinned by:** merge case `hand/ternary-continuation`.
 
 ```
@@ -119,7 +119,7 @@ a = $flag
 
 ## 7. An apostrophe in prose before the existing program makes a merge lose it
 
-- **Found:** 2026-10-06 (ticket 12), a sibling of quirk 1.
+- **Found:** 2026-10-06 (ticket 12), a sibling of quirk 1. Still so in 1.0.1 (`eb20708`).
 - **Pinned by:** merge case `hand/prose-apostrophe-existing`.
 
 ```
@@ -139,7 +139,7 @@ a = Title("A")
 
 ## 8. An id defined twice in the existing program comes out twice
 
-- **Found:** 2026-10-06 (ticket 12).
+- **Found:** 2026-10-06 (ticket 12). Still so in 1.0.1 (`eb20708`).
 - **Pinned by:** merge cases `hand/duplicate-existing`, `hand/duplicate-existing-redefined` and `hand/duplicate-existing-deleted`.
 
 ```
@@ -160,7 +160,7 @@ a = Title("3")
 
 ## 9. Serializing drops parentheses around an equal-precedence right operand
 
-- **Found:** 2026-10-06, porting `jsonToOpenUI` (ticket 12).
+- **Found:** 2026-10-06, porting `jsonToOpenUI` (ticket 12). Still so in 1.0.1 (`eb20708`).
 - **Pinned by:** serialize case `hand/precedence`.
 
 An expression tree for `a - (b - c)` (a `BinOp` `-` whose right operand is a `BinOp` `-`) serializes as `a - b - c`, which parses back as `(a - b) - c`. The same for `a / (b % c)`, `a % (b * c)`, `a - (b + c)` and `a == (b != c)`.
@@ -173,7 +173,7 @@ An expression tree for `a - (b - c)` (a `BinOp` `-` whose right operand is a `Bi
 
 ## 10. Serialized object keys aren't quoted
 
-- **Found:** 2026-10-06 (ticket 12).
+- **Found:** 2026-10-06 (ticket 12). Still so in 1.0.1 (`eb20708`).
 - **Pinned by:** serialize case `hand/values`.
 
 A plain object prop `{"a b": 1, "": 2}` serializes as `{a b: 1, : 2}`, which doesn't parse back. (A key with quotes in it, `"q"`, happens to come out as valid syntax.)
@@ -202,4 +202,25 @@ a = "two
 **Draft upstream report:**
 
 > **Ending a stream keeps an earlier definition instead of a final redefinition that needed closing, unlike `parse()` and the 1.0 spec.** With `complete`, `createStreamParser` still skips a pending statement whose id is already completed if the pending text needed implicit closing, so the stream's end keeps the earlier definition while `parse()` of the same text uses the last one. language.md, section 2.4 ("At stream end a final redefinition wins") and section 4, rule 7 say the end of the stream finalizes the pending tail. Apply the `wasIncomplete` guard only while `complete` isn't set. Repro: push `root = Text(a)\na = "one"\na = "two` and call `getResult(true)`: `a` is `"one"`, while `parse()` gives `"two"`.
+
+## 12. A library function or action called without `@` is still called, even over a component of that name
+
+- **Found:** 2026-10-16, porting 1.0's call registry (1.0 ticket 03), and confirmed reviewing quirks for 1.0 (1.0 ticket 09). Reference commit `eb20708` (1.0.1).
+- **Pinned by:** `hand/106-bare-library-calls`, and `hand/102-library-shapes-and-calls` (`b = Badge("x")`).
+
+```
+root = Page([w, b])
+w = Widget(Twice(2))
+b = Badge("x")
+```
+
+With `Twice` a library function, `Badge` both a component and a library action.
+
+**Reference behaviour:** `Twice(2)` is the function call, as `@Twice(2)` is, only without the `fn` flag. `Badge("x")` is the action, not a `Badge` element. A bare built-in is different: `Count(2)` reads as the reference `Count`, and its argument is dropped with an `excess-args` error.
+
+**Why:** materializing a call checks `isRuntimeCall(name)`, which looks the name up in the whole call registry (built-ins, the library's functions and actions) whether or not the call was written with `@`, and before it looks for a component. The expression parser already turns bare built-in names into references, so only library calls get through. The 1.0 specification says otherwise: "Built-ins and custom functions need the `@`. [...] Only `Action([...])` works with or without `@`" (language.md, section 1.5), and an action is "a `@` call" (section 6.3). It forbids a library function named like a component (section 3.6), but not an action, so the `Badge` case is a valid library whose component can't be used.
+
+**Draft upstream report:**
+
+> **A call without `@` to a library function or action is treated as that call, even when a component has the same name.** In `materialize.ts`, the `Comp` case checks `isRuntimeCall(name, ctx)` (the call registry, built-ins plus the library's `functions` and `actions`) for every call, not only for `@` calls (`node.fn`), and before the component lookup. So `Twice(2)` runs the library function, and with a component and an action both named `Badge`, `Badge("x")` gives the action instead of the component. language.md, section 1.5 says custom functions need the `@` and only `Action([...])` works without it, and section 6.3 defines an action as a `@` call. Treat a call without `@` as a component call unless it's `Action`, Query or Mutation, and report an `unknown-component` when there's no component of that name. Repro: with `functions: {Twice: ...}` and `actions: {Badge: ...}` beside a component `Badge`, `parse("root = Page([Widget(Twice(2)), Badge(\"x\")])", lib)` gives a `Twice` call and a `Badge` action.
 

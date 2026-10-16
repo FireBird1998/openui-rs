@@ -635,13 +635,26 @@ struct DripSource: ChunkSource {
 }
 
 @Suite struct ThePromptForALiveRequest {
-    @Test func theBenchLibraryHasAPromptAndItIsTheReferences() async throws {
+    @Test func eachLibraryWithAPromptHasTheReferencesPrompt() async throws {
         let corpus = try Corpus.load()
-        #expect(corpus.promptLibraries == ["bench"])
-        if pending("prompt", in: corpus).contains("bench-schema") { return }
-        let prompt = try await Core().systemPrompt(spec: try #require(corpus.promptSpec(forLibrary: "bench")))
-        let golden = try JSONValue.parse(String(contentsOf: corpus.directory.appendingPathComponent("golden/prompts/bench-schema.json"), encoding: .utf8))
-        #expect(prompt == golden["prompt"]?.string)
+        #expect(corpus.promptLibraries == ["bench", "react-ui"])
+        #expect(corpus.promptLibraries.contains(Corpus.preferredLibrary))
+        for library in corpus.promptLibraries where !pending("prompt", in: corpus).contains("\(library)-schema") {
+            let prompt = try await Core().systemPrompt(spec: try #require(corpus.promptSpec(forLibrary: library)))
+            let golden = try JSONValue.parse(String(contentsOf: corpus.directory.appendingPathComponent("golden/prompts/\(library)-schema.json"), encoding: .utf8))
+            #expect(prompt == golden["prompt"]?.string, "\(library)")
+        }
+    }
+
+    @Test func aFollowUpKeepsTheLibrarysExamplesAndRules() async throws {
+        let corpus = try Corpus.load()
+        let core = Core()
+        let plain = try await core.systemPrompt(spec: try #require(corpus.promptSpec(forLibrary: "react-ui", editMode: false)))
+        let edit = try await core.systemPrompt(spec: try #require(corpus.promptSpec(forLibrary: "react-ui", editMode: true)))
+        #expect(plain.contains("Example 1 — Table (column-oriented)"))
+        #expect(edit.contains("Example 1 — Table (column-oriented)"))
+        #expect(!plain.contains("## Edit Mode"))
+        #expect(edit.contains("## Edit Mode"))
     }
 }
 

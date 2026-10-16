@@ -115,14 +115,24 @@ extension Corpus {
     }
 
     /// The prompt spec for a library with edit mode on (`promptOptions.editMode`),
-    /// for follow-up requests that answer with a patch.
+    /// keeping its other options (examples, rules), for follow-up requests that
+    /// answer with a patch.
     public func promptSpec(forLibrary name: String, editMode: Bool) -> String? {
         guard let spec = promptSpec(forLibrary: name) else { return nil }
         guard editMode, case var .object(entries) = try? JSONValue.parse(spec) else { return spec }
+        var options: [(key: String, value: JSONValue)] = []
+        if case let .object(existing)? = entries.first(where: { $0.key == "promptOptions" })?.value {
+            options = existing.filter { $0.key != "editMode" }
+        }
+        options.append((key: "editMode", value: .bool(true)))
         entries.removeAll { $0.key == "promptOptions" }
-        entries.append((key: "promptOptions", value: .object([(key: "editMode", value: .bool(true))])))
+        entries.append((key: "promptOptions", value: .object(options)))
         return JSONValue.object(entries).compact
     }
+
+    /// The library live requests start with: upstream's own react-ui library,
+    /// the one its apps ask models for.
+    public static let preferredLibrary = "react-ui"
 
     /// The libraries live requests can use: those with a schema and a prompt spec.
     public var promptLibraries: [String] {
