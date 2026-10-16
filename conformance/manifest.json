@@ -604,6 +604,37 @@
    "schema": "edge",
    "file": "cases/hand/96-dynamic-props-in-element-shaped-objects.oui",
    "source": "hand-written"
+  },
+  {
+   "name": "hand/97-root-each-of-components",
+   "schema": "hand",
+   "file": "cases/hand/97-root-each-of-components.oui",
+   "source": "hand-written"
+  },
+  {
+   "name": "hand/98-root-through-references",
+   "schema": "hand",
+   "file": "cases/hand/98-root-through-references.oui",
+   "source": "hand-written"
+  },
+  {
+   "name": "hand/99-fallback-root-dropped",
+   "schema": "hand",
+   "file": "cases/hand/99-fallback-root-dropped.oui",
+   "source": "hand-written",
+   "root": "Root"
+  },
+  {
+   "name": "hand/100-root-calls-a-prototype-name",
+   "schema": "hand",
+   "file": "cases/hand/100-root-calls-a-prototype-name.oui",
+   "source": "hand-written"
+  },
+  {
+   "name": "hand/101-root-in-a-reference-cycle",
+   "schema": "hand",
+   "file": "cases/hand/101-root-in-a-reference-cycle.oui",
+   "source": "hand-written"
   }
  ]
 }

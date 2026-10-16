@@ -68,13 +68,21 @@
 //! assert!(first.root.unwrap().partial);
 //!
 //! stream.push("le])\ntitle = Text(\"Hello\")");
-//! let last = stream.result();
+//! // Once the stream has ended:
+//! let last = stream.finish();
 //! assert!(!last.meta.incomplete);
 //! assert!(!last.root.unwrap().partial);
 //! ```
 //!
 //! After a reconnect, [`StreamParser::set`] takes the full text so far and
 //! parses only what's new.
+//!
+//! The tree grows from the `root` statement. Without one, the root argument
+//! names the library's root component, and the first statement calling it
+//! stands in, with a `no-root` warning; with neither, there's no tree and a
+//! `no-root` error, which a streaming client reads once the stream ends. A
+//! `root` that picks a component at runtime (`root = $tab ? A : B`) comes
+//! back as `root_expression`.
 //!
 //! # System prompts
 //!
@@ -194,7 +202,7 @@ pub use parser::parse;
 pub use preprocess::{preprocess, strip_fences};
 pub use prompt::{PromptError, generate_prompt, generate_system_prompt};
 pub use result::{
-    Element, Meta, MutationStatement, ParseResult, QueryStatement, ValidationError,
+    Element, Meta, MutationStatement, ParseResult, QueryStatement, Severity, ValidationError,
     ValidationErrorCode, Value,
 };
 pub use serialize::{SerializeError, json_to_openui};

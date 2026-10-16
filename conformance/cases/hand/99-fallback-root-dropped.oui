@@ -1,0 +1,3 @@
+title = Text("Orders")
+page = Root()
+other = Root([title])

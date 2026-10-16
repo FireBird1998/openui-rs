@@ -109,6 +109,7 @@ impl Ctx<'_> {
             path: path.to_owned(),
             message,
             statement_id: self.current_statement_id.clone(),
+            severity: issue.severity(),
         });
     }
 

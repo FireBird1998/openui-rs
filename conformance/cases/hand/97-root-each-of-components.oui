@@ -1,0 +1,2 @@
+root = @Each(names, "n", Card(Text(n)))
+names = ["Ada", "Grace"]

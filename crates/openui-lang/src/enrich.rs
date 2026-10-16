@@ -4,7 +4,7 @@
 use serde_json::Value as Json;
 
 use crate::js::{json_entries, truthy, write_json_string};
-use crate::result::{ValidationError, ValidationErrorCode};
+use crate::result::{Severity, ValidationError, ValidationErrorCode};
 
 /// A validation error in the shape the reference's `OpenUIError` takes for
 /// parser errors, with a hint where one helps.
@@ -20,6 +20,8 @@ pub struct EnrichedError {
     pub path: Option<String>,
     /// The statement the error is in, when there is one.
     pub statement_id: Option<String>,
+    /// `Some` when the program renders despite it.
+    pub severity: Option<Severity>,
     /// What to do about it, for the error kinds that have one.
     pub hint: Option<String>,
 }
@@ -33,9 +35,11 @@ impl EnrichedError {
         write_json_string(&mut out, &self.message);
         out.push_str(",\"component\":");
         write_json_string(&mut out, &self.component);
+        let severity = self.severity.map(|s| s.as_str().to_owned());
         for (key, value) in [
             ("path", &self.path),
             ("statementId", &self.statement_id),
+            ("severity", &severity),
             ("hint", &self.hint),
         ] {
             if let Some(value) = value {
@@ -87,6 +91,7 @@ pub fn enrich_errors(
                 component: e.component.clone(),
                 path: (!e.path.is_empty()).then(|| e.path.clone()),
                 statement_id: e.statement_id.clone(),
+                severity: e.severity,
                 hint,
             }
         })

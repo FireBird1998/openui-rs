@@ -1,12 +1,13 @@
 //! One-shot parsing, and the result building shared with streaming, as the
 //! reference parser's `parse` and `buildResult`.
 
+use std::collections::HashSet;
 use std::sync::Arc;
 
 use indexmap::IndexSet;
 
 use crate::ast::Ast;
-use crate::builtins::is_builtin;
+use crate::builtins::{is_builtin, is_reserved_call};
 use crate::expr::parse_expression_with_limit;
 use crate::js::JsObject;
 use crate::lexer::tokenize;
@@ -16,6 +17,7 @@ use crate::preprocess::preprocess;
 use crate::result::{Meta, MutationStatement, ParseResult, QueryStatement, Value};
 use crate::statements::{IdKind, RawStatement, auto_close, split};
 use crate::table::{Cache, Reach, Slot, Table};
+use crate::validation::{Issue, NoRootReason};
 
 const DEFAULT_ROOT_STATEMENT_ID: &str = "root";
 
@@ -156,7 +158,9 @@ fn collect_state_refs(node: Option<&Ast>) -> Vec<String> {
     refs.into_iter().collect()
 }
 
-/// Parse a complete (or partial) program in one pass.
+/// Parse a complete (or partial) program in one pass. `root_name` is the
+/// library's root component: with no `root` statement, the first statement
+/// that calls it is the entry.
 pub fn parse(input: &str, library: &Library, root_name: Option<&str>) -> ParseResult {
     let trimmed = preprocess(input);
     if trimmed.is_empty() {
@@ -181,7 +185,6 @@ pub fn parse(input: &str, library: &Library, root_name: Option<&str>) -> ParseRe
     let mut result = build_result(
         &mut table,
         &mut cache,
-        &raw[0].id,
         was_incomplete,
         count,
         library,
@@ -191,89 +194,146 @@ pub fn parse(input: &str, library: &Library, root_name: Option<&str>) -> ParseRe
     result
 }
 
-/// A value statement that calls a component. The reference compares against
-/// `Query` and `Mutation` by name here, not with `isReservedCall`, so
-/// `r = @toString()` does count.
-fn is_component_statement(stmt: &Statement) -> Option<&str> {
-    match stmt {
-        Statement::Value {
-            expr: Ast::Comp { name, .. },
-        } if !is_builtin(name) && name != "Query" && name != "Mutation" => Some(name),
+/// A call to a library component: not a builtin, nor a reserved call. The
+/// reference tells reserved calls apart with `name in { Query, Mutation }`, so
+/// names every object inherits (`toString`, `constructor`, ...) don't count
+/// either.
+fn is_component_call(node: &Ast) -> Option<&str> {
+    match node {
+        Ast::Comp { name, .. } if !is_builtin(name) && !is_reserved_call(name) => Some(name),
         _ => None,
     }
 }
 
-/// The statement the tree grows from: `root`, then the requested root name,
-/// then the first component statement, then the first statement.
-fn pick_entry_id<'a>(table: &'a Table, first_id: &'a str, root_name: Option<&'a str>) -> &'a str {
-    if table.by_name(DEFAULT_ROOT_STATEMENT_ID).is_some() {
-        return DEFAULT_ROOT_STATEMENT_ID;
+/// A value statement that calls a component, and which one.
+fn is_component_statement(stmt: &Statement) -> Option<&str> {
+    match stmt {
+        Statement::Value { expr } => is_component_call(expr),
+        _ => None,
     }
-    if let Some(root) = root_name {
-        if table.by_name(root).is_some() {
-            return root;
-        }
-        let preferred = table
-            .order()
-            .iter()
-            .find(|&&slot| table.info(slot).component.as_deref() == Some(root));
-        if let Some(&slot) = preferred {
-            return table.name(slot);
-        }
+}
+
+/// The statement the tree grows from: `root`; else the first statement whose
+/// value calls the library's root component, standing in for it (the flag);
+/// else none.
+fn pick_entry(table: &Table, root_name: Option<&str>) -> Option<(Slot, bool)> {
+    if let Some(slot) = table
+        .slot(DEFAULT_ROOT_STATEMENT_ID)
+        .filter(|&slot| table.get(slot).is_some())
+    {
+        return Some((slot, false));
     }
+    let root = root_name?;
     table
         .order()
         .iter()
-        .find(|&&slot| table.info(slot).component.is_some())
-        .map_or(first_id, |&slot| table.name(slot))
+        .find(|&&slot| table.info(slot).component.as_deref() == Some(root))
+        .map(|&slot| (slot, true))
+}
+
+/// Whether the entry's expression is a component call once references to
+/// other statements are followed. A call that validation dropped still counts.
+fn resolves_to_component_call<'a>(table: &'a Table, mut node: &'a Ast) -> bool {
+    let mut seen = HashSet::new();
+    while let Ast::Ref(name) = node {
+        if !seen.insert(name.as_str()) {
+            break;
+        }
+        match table.by_name(name) {
+            Some(stmt) => node = stmt.expr(),
+            None => return false,
+        }
+    }
+    is_component_call(node).is_some()
+}
+
+/// Whether a runtime expression can produce a component, as `$tab ? A : B` does.
+fn contains_component(node: &Ast) -> bool {
+    let mut found = false;
+    node.walk(&mut |n| found |= is_component_call(n).is_some());
+    found
 }
 
 pub(crate) fn build_result(
     table: &mut Table,
     cache: &mut Cache,
-    first_id: &str,
     was_incomplete: bool,
     statement_count: usize,
     library: &Library,
     root_name: Option<&str>,
 ) -> ParseResult {
-    let entry_id = pick_entry_id(table, first_id, root_name);
-    let Some(entry_slot) = table.slot(entry_id) else {
-        return ParseResult::empty(was_incomplete);
-    };
-    let Some(entry) = table.get(entry_slot) else {
-        return ParseResult::empty(was_incomplete);
-    };
-
+    let entry = pick_entry(table, root_name);
+    let entry_id = entry.map(|(slot, _)| table.name(slot).to_owned());
     let mut ctx = Ctx {
         table,
         cache,
         library,
         partial: was_incomplete,
         visited: Vec::new(),
-        current_statement_id: Some(entry_id.to_owned()),
+        current_statement_id: entry_id.clone(),
         depth: 0,
         size: 0,
         frame: Frame::default(),
     };
-    let mut materialized = materialize_value(entry.expr(), &mut ctx);
-    let _ = tag_statement(&mut materialized, entry_id);
-    let root = match materialized {
-        Value::Element(element) => Some(Arc::unwrap_or_clone(element)),
-        _ => None,
-    };
+    let mut root = None;
+    let mut root_expression = None;
+    // An object literal shaped like an element is the reference's root, but
+    // can't be the core's (a documented divergence): it still counts as one.
+    let mut element_shaped = false;
+    if let Some((slot, _)) = entry {
+        let stmt = ctx.table.get(slot).expect("defined statement");
+        let mut materialized = materialize_value(stmt.expr(), &mut ctx);
+        element_shaped = tag_statement(&mut materialized, ctx.table.name(slot));
+        match materialized {
+            Value::Element(element) => root = Some(Arc::unwrap_or_clone(element)),
+            Value::Ast(expression) if contains_component(&expression) => {
+                root_expression = Some(expression);
+            }
+            _ => {}
+        }
+    }
 
     let (state_declarations, query_statements, mutation_statements) =
-        extract_statements(table, &mut ctx);
+        extract_statements(ctx.table, &mut ctx);
+
+    // `no-root`, which streaming consumers read only once the stream ends.
+    ctx.current_statement_id = entry_id;
+    let rendered = element_shaped || root_expression.is_some();
+    let reason = match entry {
+        None => Some(NoRootReason::Missing),
+        Some((slot, _))
+            if !rendered
+                && !resolves_to_component_call(
+                    ctx.table,
+                    ctx.table.get(slot).expect("defined statement").expr(),
+                ) =>
+        {
+            Some(NoRootReason::NotComponent)
+        }
+        Some((_, true)) if element_shaped => Some(NoRootReason::Fallback),
+        Some((_, true)) => Some(NoRootReason::Missing),
+        Some(_) => None,
+    };
+    if let Some(reason) = reason {
+        ctx.push_issue(root_name.unwrap_or(""), "", Issue::NoRoot { reason });
+    }
+
     let Ctx { frame, .. } = ctx;
-    let reach = Arc::new(Reach {
-        direct: frame.reached,
-        children: frame.children,
-    });
-    let orphaned = table.finish_result(entry_slot, reach);
+    // With no entry nothing is reachable, and `no-root` says so: no orphans.
+    let orphaned = match entry {
+        Some((slot, _)) => {
+            let reach = Arc::new(Reach {
+                direct: frame.reached,
+                children: frame.children,
+            });
+            table.finish_result(slot, reach)
+        }
+        None => Vec::new(),
+    };
 
     ParseResult {
         root,
+        root_expression,
         meta: Meta {
             incomplete: was_incomplete,
             unresolved: frame.unresolved,

@@ -10,7 +10,7 @@ use crate::js::{
 };
 use crate::library::Param;
 use crate::materialize::Ctx;
-use crate::result::{ValidationErrorCode, Value};
+use crate::result::{Severity, ValidationErrorCode, Value};
 
 /// The varying parts of a validation error; the wording lives in [`Issue::message`].
 pub(crate) enum Issue {
@@ -20,6 +20,18 @@ pub(crate) enum Issue {
     UnknownComponent { available: Vec<String> },
     InlineReserved,
     ExcessArgs { declared: usize, got: usize },
+    NoRoot { reason: NoRootReason },
+}
+
+/// Why a program has no usable entry, which the `no-root` message words.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub(crate) enum NoRootReason {
+    /// No `root`, and no statement calls the root component.
+    Missing,
+    /// `root` is there but isn't a component.
+    NotComponent,
+    /// No `root`; a statement calling the root component stands in.
+    Fallback,
 }
 
 impl Issue {
@@ -31,6 +43,17 @@ impl Issue {
             Issue::UnknownComponent { .. } => ValidationErrorCode::UnknownComponent,
             Issue::InlineReserved => ValidationErrorCode::InlineReserved,
             Issue::ExcessArgs { .. } => ValidationErrorCode::ExcessArgs,
+            Issue::NoRoot { .. } => ValidationErrorCode::NoRoot,
+        }
+    }
+
+    /// The fallback `no-root` is a warning: the program still renders.
+    pub(crate) fn severity(&self) -> Option<Severity> {
+        match self {
+            Issue::NoRoot {
+                reason: NoRootReason::Fallback,
+            } => Some(Severity::Warning),
+            _ => None,
         }
     }
 
@@ -71,6 +94,16 @@ impl Issue {
                 "{component} takes {declared} arg(s), got {got} ({} excess dropped)",
                 got - declared
             ),
+            Issue::NoRoot { reason } => match reason {
+                NoRootReason::NotComponent => "root does not evaluate to a component".to_owned(),
+                NoRootReason::Fallback => format!(
+                    "No root statement. Rendering the first statement that calls the root component {component}"
+                ),
+                NoRootReason::Missing if component.is_empty() => "No root statement".to_owned(),
+                NoRootReason::Missing => format!(
+                    "No root statement, and no statement calls the root component {component}"
+                ),
+            },
         }
     }
 }

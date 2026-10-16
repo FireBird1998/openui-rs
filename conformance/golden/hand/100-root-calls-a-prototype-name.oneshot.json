@@ -1,0 +1,1 @@
+{"root":null,"meta":{"incomplete":false,"unresolved":["toString"],"orphaned":["card"],"statementCount":2,"errors":[{"code":"no-root","component":"","path":"","message":"root does not evaluate to a component","statementId":"root"}]},"stateDeclarations":{},"queryStatements":[],"mutationStatements":[]}

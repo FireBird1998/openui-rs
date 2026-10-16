@@ -1,0 +1,4 @@
+root = page
+page = layout
+layout = 42
+orphan = Text("unreached")

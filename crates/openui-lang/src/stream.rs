@@ -43,7 +43,6 @@ struct Completed {
     count: usize,
     /// Some statement nested past `MAX_DEPTH`.
     depth_limited: bool,
-    first_id: String,
 }
 
 impl Completed {
@@ -59,9 +58,6 @@ impl Completed {
         for raw in split(&tokenize(text)) {
             let (expr, limited) = parse_expression_with_limit(&raw.tokens);
             self.depth_limited |= limited;
-            if self.first_id.is_empty() {
-                self.first_id = raw.id.clone();
-            }
             let undo = self.table.define(&raw.id, classify(&raw, expr));
             self.cache.invalidate(undo.slot, &self.table);
             self.count += 1;
@@ -70,9 +66,9 @@ impl Completed {
 }
 
 impl StreamParser {
-    /// A parser for one stream. `root_name` picks the entry statement when
-    /// there's no `root`: a statement by that name, else the first statement
-    /// calling that component.
+    /// A parser for one stream. `root_name` is the library's root component:
+    /// with no `root` statement, the first statement that calls it is the
+    /// entry.
     pub fn new(library: Arc<Library>, root_name: Option<&str>) -> StreamParser {
         StreamParser {
             library,
@@ -206,7 +202,7 @@ impl StreamParser {
                 return (ParseResult::empty(true), false);
             }
             let count = completed.count;
-            return (self.build_from_table(None, false, count), false);
+            return (self.build_from_table(false, count), false);
         }
 
         let (closed, was_incomplete) = auto_close(pending);
@@ -216,7 +212,7 @@ impl StreamParser {
                 return (ParseResult::empty(was_incomplete), false);
             }
             let count = completed.count;
-            return (self.build_from_table(None, was_incomplete, count), false);
+            return (self.build_from_table(was_incomplete, count), false);
         }
 
         // A new id renders as it arrives; a re-defined one replaces the cached
@@ -240,8 +236,7 @@ impl StreamParser {
             undos.push(undo);
         }
         let count = completed.count + pending_statements.len();
-        let first_id = (completed.first_id.is_empty()).then(|| pending_statements[0].id.as_str());
-        let result = self.build_from_table(first_id, was_incomplete, count);
+        let result = self.build_from_table(was_incomplete, count);
         for undo in undos.into_iter().rev() {
             let slot = undo.slot;
             self.completed.table.undo(undo);
@@ -250,19 +245,12 @@ impl StreamParser {
         (result, pending_limited)
     }
 
-    /// Build the result from the table as it stands; `first_id` overrides the
-    /// completed statements' first id while there is none.
-    fn build_from_table(
-        &mut self,
-        first_id: Option<&str>,
-        was_incomplete: bool,
-        count: usize,
-    ) -> ParseResult {
+    /// Build the result from the table as it stands.
+    fn build_from_table(&mut self, was_incomplete: bool, count: usize) -> ParseResult {
         let completed = &mut self.completed;
         build_result(
             &mut completed.table,
             &mut completed.cache,
-            first_id.unwrap_or(&completed.first_id),
             was_incomplete,
             count,
             &self.library,

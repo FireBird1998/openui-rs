@@ -1,0 +1,2 @@
+root = toString(card)
+card = Card(Text("x"))

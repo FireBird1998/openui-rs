@@ -11,7 +11,7 @@ The first hunts (testing ticket 02) found upstream had moved. There are 11 lang-
 Changes seen so far:
 - A streaming result whose root doesn't evaluate to a component yet carries a `no-root` error. This is why nearly every case's early steps change.
 - Built-in action calls carry `mappedProps`.
-- An object literal shaped like an element is no longer returned as the root. That removes one of our documented divergences.
+- An object literal shaped like an element is still returned as the root (corrected 2026-10-16: an earlier check here gave that object no entry, and wrongly concluded 1.0 had dropped it).
 - The parser layer's source changes by about 1,300 lines, across `parser`, `materialize`, `validation`, `builtins`, `prompt`, `serialize`, `ast` and `types`. `library.ts` is reworked, and there are new `extend.ts`, `signature.ts`, `message.ts` and `functions.ts`.
 - It imports `zod/v4` at run time, a peer dependency (`^3.25.0 || ^4.0.0` in upstream's pnpm catalog). The reference's packages need it.
 - Its runtime telemetry is opt-in (`OPENUI_RUNTIME_TELEMETRY_ENABLED`) and honours `OPENUI_TELEMETRY_DISABLED` and `DO_NOT_TRACK`, which every reference script sets.

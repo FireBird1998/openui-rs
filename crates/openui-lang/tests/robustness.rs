@@ -6,7 +6,7 @@
 use std::sync::{Arc, LazyLock};
 
 use openui_lang::{
-    Library, StreamParser, Token, ValidationError, ValidationErrorCode, enrich_errors,
+    Library, Severity, StreamParser, Token, ValidationError, ValidationErrorCode, enrich_errors,
     enriched_errors_to_json, json_to_openui, merge_statements, parse, parse_json, preprocess,
     strip_fences, tokenize, tokens_to_json,
 };
@@ -349,6 +349,7 @@ proptest! {
             ValidationErrorCode::InlineReserved,
             ValidationErrorCode::ExcessArgs,
             ValidationErrorCode::TypeMismatch,
+            ValidationErrorCode::NoRoot,
         ]
         .into_iter()
         .map(|code| ValidationError {
@@ -357,6 +358,7 @@ proptest! {
             path: path.clone(),
             message: "m".to_owned(),
             statement_id: None,
+            severity: (code == ValidationErrorCode::NoRoot).then_some(Severity::Warning),
         })
         .collect();
         enriched_errors_to_json(&enrich_errors(&errors, &schema, &[]));

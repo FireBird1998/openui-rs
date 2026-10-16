@@ -101,7 +101,9 @@ fn nanos(from: Instant, to: Instant) -> u64 {
     u64::try_from((to - from).as_nanos()).unwrap_or(u64::MAX)
 }
 
-/// One-shot parse of a whole program; `root_name` picks the entry statement.
+/// One-shot parse of a whole program. `root_name` is the library's root
+/// component: with no `root` statement, the first statement calling it is the
+/// entry.
 #[uniffi::export]
 pub fn parse(
     program: String,
@@ -151,7 +153,8 @@ impl StreamSession {
 
 #[uniffi::export]
 impl StreamSession {
-    /// A session over `library`; `root_name` picks the entry statement.
+    /// A session over `library`; `root_name` is the library's root component,
+    /// as for `parse`.
     #[uniffi::constructor]
     pub fn new(library: Arc<ComponentLibrary>, root_name: Option<String>) -> Arc<Self> {
         let parser = StreamParser::new(library.inner.clone(), root_name.as_deref());

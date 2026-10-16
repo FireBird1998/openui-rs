@@ -16,15 +16,15 @@ Reference: `@openuidev/lang-core 1.0.1` at commit `eb20708b9cc41afced5625e99e6ce
 
 | Compared with the reference | Cases | Checks | Cases by source |
 |---|---:|---:|---|
-| Parse results: one-shot, and after every push and at the end of 8 chunkings, 2 resync sequences and any recorded chunks | 524 | 318,748 results | 7 benchmark, 105 docs, 46 examples, 12 fuzz, 97 hand-written, 196 reference-test, 58 spec-fixture, 3 synthetic |
-| Stages on every prefix: preprocessing, tokens, statements and expression trees | 522 | 96,264 prefixes | the parse corpus, less its largest synthetic programs |
+| Parse results: one-shot, and after every push and at the end of 8 chunkings, 2 resync sequences and any recorded chunks | 529 | 319,577 results | 7 benchmark, 105 docs, 46 examples, 12 fuzz, 102 hand-written, 196 reference-test, 58 spec-fixture, 3 synthetic |
+| Stages on every prefix: preprocessing, tokens, statements and expression trees | 527 | 96,516 prefixes | the parse corpus, less its largest synthetic programs |
 | System prompts | 49 | 49 | |
 | Edit-mode merges | 2,521 | 2,521 | 2,469 generated, 46 hand-written, 1 reference-test, 5 spec-fixture |
 | Element trees back to source | 501 | 501 | 1 fuzz, 62 hand-written, 407 parse corpus root, 31 reference-test |
-| Enriched errors | 329 | 329 | every parse corpus case with errors |
+| Enriched errors | 333 | 333 | every parse corpus case with errors |
 
 Quirks recorded: 10.
-Not matched yet, listed in `conformance/pending/`: 520 parse results, 63 statements and expression trees on every prefix, 41 trees back to source, 229 enriched errors, 29 system prompts.
+Not matched yet, listed in `conformance/pending/`: 180 parse results, 63 statements and expression trees on every prefix, 41 trees back to source, 132 enriched errors, 29 system prompts.
 <!-- /counts -->
 
 
@@ -84,7 +84,8 @@ Documented, not emulated. None occurs in the corpus, and none comes from a real 
 | Nesting 257 to about 8,000 levels | parses (throws `RangeError` past that) | stops at 256, sets `depth_limited` |
 | A result past about 8 MiB of JSON (statements inlined until it doubles per level) | exponential time and memory, or a huge JSON | cuts it, sets `size_limited` |
 | An object or `null` assigned to `__proto__` | replaces the prototype; later reads and `in` checks see through it | ignores the assignment |
-| An object literal shaped like an element used as the root | returns that object as `root` (lang-core 1.0 no longer does) | `root` is `None` |
+| An object literal shaped like an element used as the root | returns that object as `root` | `root` is `None` (it still counts as a root, so no `no-root`) |
+| An object literal shaped like an AST node used as the root (`root = {k: "Comp", name: "Card", args: []}`) | returns that object as `rootExpression` when it holds a component call | no `rootExpression`, and `no-root` |
 | A schema default object, mutated by one parse | shared with later parses | copied per parse |
 | JSON nested deeper than 800 levels, for `json_to_openui` or `parse_json` | handled, up to the engine's recursion limit | refused with an error |
 | `1e400` in JSON read back | `Infinity` | refused: a `serde_json::Value` can't hold it |

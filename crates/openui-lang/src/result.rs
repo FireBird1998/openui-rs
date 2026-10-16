@@ -85,6 +85,10 @@ pub enum ValidationErrorCode {
     ExcessArgs,
     /// A prop's value doesn't match its schema.
     TypeMismatch,
+    /// No usable entry: no `root` statement and no statement calling the
+    /// library's root component, or a `root` that isn't a component. A
+    /// warning when another statement renders in its place.
+    NoRoot,
 }
 
 impl ValidationErrorCode {
@@ -97,6 +101,24 @@ impl ValidationErrorCode {
             ValidationErrorCode::InlineReserved => "inline-reserved",
             ValidationErrorCode::ExcessArgs => "excess-args",
             ValidationErrorCode::TypeMismatch => "type-mismatch",
+            ValidationErrorCode::NoRoot => "no-root",
+        }
+    }
+}
+
+/// How serious a validation problem is, when it's less than an error.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum Severity {
+    /// The program still renders: today only `no-root` when another statement
+    /// stands in for the missing `root`.
+    Warning,
+}
+
+impl Severity {
+    /// The severity as in the JSON: `"warning"`.
+    pub fn as_str(self) -> &'static str {
+        match self {
+            Severity::Warning => "warning",
         }
     }
 }
@@ -114,6 +136,8 @@ pub struct ValidationError {
     pub message: String,
     /// The statement the error is in, when there is one.
     pub statement_id: Option<String>,
+    /// `Some` when the program renders despite it; `None` means an error.
+    pub severity: Option<Severity>,
 }
 
 /// Facts about the parse as a whole.
@@ -167,6 +191,9 @@ pub struct MutationStatement {
 pub struct ParseResult {
     /// The element tree, from the entry statement; `None` when it isn't a component.
     pub root: Option<Element>,
+    /// The entry's value when it's an expression that picks a component at
+    /// runtime, such as `root = $tab ? A : B`; `root` is then `None`.
+    pub root_expression: Option<Arc<Ast>>,
     /// Facts about the parse as a whole.
     pub meta: Meta,
     /// `$name` → initial value, including `$name`s used but never declared (null).
@@ -204,6 +231,10 @@ impl ParseResult {
         match &self.root {
             Some(root) => write_element(&mut out, root),
             None => out.push_str("null"),
+        }
+        if let Some(expression) = &self.root_expression {
+            out.push_str(",\"rootExpression\":");
+            write_ast(&mut out, expression);
         }
         out.push_str(",\"meta\":{\"incomplete\":");
         write_bool(&mut out, self.meta.incomplete);
@@ -351,6 +382,10 @@ fn write_error(out: &mut String, e: &ValidationError) {
     if let Some(id) = &e.statement_id {
         out.push_str(",\"statementId\":");
         write_json_string(out, id);
+    }
+    if let Some(severity) = e.severity {
+        out.push_str(",\"severity\":");
+        write_json_string(out, severity.as_str());
     }
     out.push('}');
 }
