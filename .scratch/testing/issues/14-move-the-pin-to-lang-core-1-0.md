@@ -22,18 +22,20 @@ This is likely more than one ticket. Its first step is a map of the changes per 
 
 **Blocked by:** None — can start immediately, once the maintainer decides to move.
 
-**Status:** in progress (the change map is done; its tickets wait for approval)
+**Status:** done (2026-10-16)
 
 - [x] A change map: each upstream change in the parser layer, the core module it touches, and whether our corpus covers it. Upstream's new tests are imported as cases.
-- [ ] The reference is vendored at the new commit with `scripts/update-reference.sh`, with `zod` added to its packages. The corpus is re-imported, and every golden is regenerated.
-- [ ] The core matches every golden, one-shot and streaming. `pending.txt` is empty again.
-- [ ] CONFORMANCE.md names the new version, and its divergences and QUIRKS.md are reviewed against 1.0: some go away, and new ones may appear.
-- [ ] The binding and the viewer still pass their tests. The viewer's system prompts come from the new core.
-- [ ] A hunt afterwards reports no lang-core commits since the pin, and no findings.
-- [ ] `scripts/check.sh` passes.
+- [x] The reference is vendored at the new commit with `scripts/update-reference.sh`, with `zod` added to its packages. The corpus is re-imported, and every golden is regenerated.
+- [x] The core matches every golden, one-shot and streaming. `pending.txt` is empty again.
+- [x] CONFORMANCE.md names the new version, and its divergences and QUIRKS.md are reviewed against 1.0: some go away, and new ones may appear.
+- [x] The binding and the viewer still pass their tests. The viewer's system prompts come from the new core.
+- [x] A hunt afterwards reports no lang-core commits since the pin, and no findings.
+- [x] `scripts/check.sh` passes.
 
 ## Comments
 
 **Recommendation (2026-10-16):** move, and do it before testing tickets 10 and 11. The recorded streams' system prompts come from the core, and 27 of 47 prompts change with 1.0. Recordings made against 0.3.0 prompts would test the old language. Tickets 04 to 09 and 12 work either way. Running them first means their results are on 0.3.0, so mutation testing in particular would want a rerun on the parser layer after the move.
 
 **2026-10-16:** the maintainer decided to move. The change map is [../../lang-core-1.0/map.md](../../lang-core-1.0/map.md): each upstream change per area of the core, what our corpus covers, five decisions with recommendations, and nine proposed tickets. Upstream's 1.0 conformance fixtures (54 cases) join the corpus as inputs, since the core has no evaluator to check them as upstream does.
+
+**2026-10-16, done.** The move's nine tickets ([../../lang-core-1.0/issues/](../../lang-core-1.0/issues/)) are all closed. The core conforms to lang-core 1.0.1 (`eb20708`) with nothing pending: 534 parse cases, 61 prompts, 2,521 merges, 506 trees back to source and 339 enriched error lists. QUIRKS.md has 12 quirks (11 and 12 new in 1.0's terms), each with a draft upstream report for the maintainer. A 12-minute hunt found nothing and the pin current. Testing tickets 04 to 13 can resume on 1.0.
