@@ -130,6 +130,17 @@ public final class Session: Sendable {
         }
     }
 
+    /// The result once the stream has ended, after its last chunk: a `$name`
+    /// at the very end reads as the whole name.
+    public func finish() async throws -> Step {
+        try await core.run { [inner] in
+            try Step.measure(chunks: 0) {
+                Core.assertOnCoreThread()
+                return inner.finish()
+            }
+        }
+    }
+
     /// Gives the whole text so far.
     public func set(_ text: String) async throws -> Step {
         try await core.run { [inner] in

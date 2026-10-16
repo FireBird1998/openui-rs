@@ -71,13 +71,16 @@ public struct GoldenSteps: Sendable {
     }
 
     /// Whether `json`, the result after `step` pushes under `chunking`, is the
-    /// reference's.
-    public func verdict(step: Int, json: String, chunking: Chunking) -> GoldenVerdict {
+    /// reference's. With `ended`, the last step is the stream's end, and is
+    /// checked against the golden's end.
+    public func verdict(step: Int, json: String, chunking: Chunking, ended: Bool = false) -> GoldenVerdict {
         guard let steps = steps[chunking.goldenName] else { return .noGolden }
         guard step > 0 else { return .nothingPushed }
         guard step <= steps.count else { return .noGolden }
+        let reference = ended && step == steps.count ? ends[chunking.goldenName] : steps[step - 1]
+        guard let reference else { return .noGolden }
         let mine = fingerprint(json)
-        return mine == steps[step - 1] ? .matches : .differs(reference: steps[step - 1], viewer: mine)
+        return mine == reference ? .matches : .differs(reference: reference, viewer: mine)
     }
 }
 

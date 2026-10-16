@@ -24,7 +24,7 @@ public struct InspectorView: View {
             )) {
                 if let golden {
                     Section("Reference") {
-                        GoldenRow(verdict: golden.verdict(step: playback.position, json: playback.step?.json ?? "", chunking: chunking))
+                        GoldenRow(verdict: golden.verdict(step: playback.position, json: playback.step?.json ?? "", chunking: chunking, ended: playback.isEnd))
                     }
                 }
                 if let result {

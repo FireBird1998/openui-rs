@@ -2,7 +2,8 @@ import Foundation
 import Observation
 
 /// Plays a program's chunks through a streaming parse: forward, back, to any
-/// step, or at a speed. Step `k` is the result after the first `k` chunks.
+/// step, or at a speed. Step `k` is the result after the first `k` chunks;
+/// once every chunk has arrived, the last step is the stream's end.
 ///
 /// Going back shows exactly the result the step had going forward: recent
 /// steps are kept, and older ones are rebuilt by pushing the same chunks into
@@ -98,6 +99,8 @@ public final class Playback {
                 self.error = String(describing: error)
             }
             isStreaming = false
+            // The last step was the newest push; now it's the stream's end.
+            cache[chunks.count] = nil
             await request(target(resumingAt: resumeAt))
         }
         loading = task
@@ -120,6 +123,10 @@ public final class Playback {
 
     /// How many code points the shown step has seen.
     public var received: Int { scalarOffsets[position] }
+
+    /// The shown step is the stream's end: every chunk has arrived and been
+    /// pushed. (Edit mode parses the merged program whole, with no end.)
+    public var isEnd: Bool { base == nil && !isStreaming && position > 0 && position == chunks.count }
 
     /// The first step that has seen at least `scalars` code points.
     private func target(resumingAt scalars: Int?) -> Int {
@@ -228,8 +235,11 @@ public final class Playback {
                 sessionPosition = 0
             }
             guard let session else { return }
-            let made = try await session.push(Array(chunks[sessionPosition..<target]))
+            var made = try await session.push(Array(chunks[sessionPosition..<target]))
             sessionPosition = target
+            if !isStreaming, target > 0, target == chunks.count {
+                made = try await session.finish()
+            }
             keep(made, at: target)
             hand(made, at: target, fromCache: false)
         } catch {

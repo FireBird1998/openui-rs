@@ -197,4 +197,13 @@ impl StreamSession {
         let result = self.parser().result();
         ParseOutput::timed(result, started)
     }
+
+    /// The result once the stream has ended, after its last chunk. Until
+    /// then, a `$name` at the very end may still be growing and isn't declared
+    /// as state yet.
+    pub fn finish(&self) -> ParseOutput {
+        let started = Instant::now();
+        let result = self.parser().finish();
+        ParseOutput::timed(result, started)
+    }
 }

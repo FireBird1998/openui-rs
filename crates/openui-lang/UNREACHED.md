@@ -54,7 +54,7 @@ Nothing: every line runs.
 
 ## crates/openui-lang/src/stream.rs
 
-- `}`, `let count = completed.count;`, `return (self.build_from_table(false, count), false);` — the case where nothing is pending after completed statements. None of the inputs tried reached it, including trailing blank lines and trailing comments: while streaming, the cleaned text is never seen to end right after a completed statement. It mirrors the reference's structure; it's listed instead of deleted because that is unproven.
+- `}`, `let count = completed.count;`, `return (self.build_from_table(false, count, None), false);` — the case where nothing is pending after completed statements. None of the inputs tried reached it, including trailing blank lines and trailing comments: while streaming, the cleaned text is never seen to end right after a completed statement. It mirrors the reference's structure; it's listed instead of deleted because that is unproven.
 
 ## crates/openui-lang/src/table.rs
 

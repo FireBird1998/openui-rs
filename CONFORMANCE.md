@@ -23,8 +23,8 @@ Reference: `@openuidev/lang-core 1.0.1` at commit `eb20708b9cc41afced5625e99e6ce
 | Element trees back to source | 504 | 504 | 1 fuzz, 62 hand-written, 410 parse corpus root, 31 reference-test |
 | Enriched errors | 337 | 337 | every parse corpus case with errors |
 
-Quirks recorded: 10.
-Not matched yet, listed in `conformance/pending/`: 99 parse results, 43 trees back to source, 29 system prompts.
+Quirks recorded: 11.
+Not matched yet, listed in `conformance/pending/`: 43 trees back to source, 29 system prompts.
 <!-- /counts -->
 
 
@@ -35,7 +35,7 @@ Cases the core doesn't match yet would be listed in `conformance/pending/`, one 
 - **Chunkings:** sizes 1, 2, 3, 4, 7 and 16 code points, two seeded random ones (1 to 16), and two resync sequences that call `set` with growing, rewound and edited text.
 - **Sources:** hand-written edge cases; every program the reference's own test suites parse, merge and serialize, captured live while they run; the 7 benchmark samples (real GPT output); programs from the upstream docs and examples; fuzz-found cases; synthetic programs up to 30 KB; generated edit patches over every corpus program with a root; and every corpus parse result serialized back to source.
 - **Stages:** preprocessing, tokens, statements and expression trees are compared on every prefix of every case, so a mismatch points at the stage that diverged.
-- **Rust-only checks:** no input panics or overflows a 512 KB stack (fixed-seed property tests and the deepest shapes); a streamed program ends where its one-shot parse does, except where the reference itself doesn't (quirks 4 and 5); streaming cost stays linear (`tests/streaming_cost.rs`); results that double at every level are cut at the size cap (`tests/size.rs`).
+- **Rust-only checks:** no input panics or overflows a 512 KB stack (fixed-seed property tests and the deepest shapes); a streamed program ends where its one-shot parse does, except where the reference itself doesn't (quirks 4, 5 and 11); streaming cost stays linear (`tests/streaming_cost.rs`); results that double at every level are cut at the size cap (`tests/size.rs`).
 
 ## Differential fuzzing
 

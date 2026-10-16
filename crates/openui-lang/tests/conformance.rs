@@ -304,8 +304,8 @@ fn every_one_shot_parse_matches_the_reference_parser() {
 
 /// A stream of the whole program, once it has ended, gives what parsing it
 /// one-shot does, except where the reference itself ends differently
-/// (`conformance/QUIRKS.md`: redefinitions counted twice, mismatched brackets,
-/// an incomplete trailing redefinition).
+/// (`conformance/QUIRKS.md`: redefinitions counted twice, quirk 4; mismatched
+/// brackets, quirk 5; a trailing redefinition that needed closing, quirk 11).
 #[test]
 fn streaming_ends_where_parsing_ends() {
     let corpus = load_corpus();

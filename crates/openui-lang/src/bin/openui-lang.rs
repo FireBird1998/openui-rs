@@ -3,7 +3,8 @@
 //!   openui-lang parse <schema.json> <program|->    one-shot parse, prints the result JSON
 //!   openui-lang stream <schema.json> <program|-> [chunk]
 //!                                                   streaming parse in chunks of `chunk` chars
-//!                                                   (default 4), one result JSON per line
+//!                                                   (default 4), one result JSON per line,
+//!                                                   then the result at the stream's end
 //!   openui-lang tokens <program|->                  prints the tokens as JSON
 //!   openui-lang prompt <spec.json|->                 prints the system prompt for a prompt
 //!                                                   spec ({library, promptOptions}, a prompt
@@ -79,6 +80,7 @@ fn run(args: &[String]) -> Result<(), String> {
             for chunk in chunks(&text, size) {
                 println!("{}", parser.push(chunk).to_json());
             }
+            println!("{}", parser.finish().to_json());
             Ok(())
         }
         [command, schema, programs @ ..] if command == "bench" && !programs.is_empty() => {

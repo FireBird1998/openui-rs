@@ -24,14 +24,17 @@ fn library(schema: &Path) -> Arc<Library> {
     ))
 }
 
-/// The library's result after each push of `size` code points, one JSON line each.
+/// The library's result after each push of `size` code points, then at the
+/// stream's end, one JSON line each.
 fn streamed(schema: &Path, program: &Path, size: usize) -> Vec<String> {
     let mut parser = StreamParser::new(library(schema), None);
     let chars: Vec<char> = read(program).chars().collect();
-    chars
+    let mut lines: Vec<String> = chars
         .chunks(size)
         .map(|chunk| parser.push(&chunk.iter().collect::<String>()).to_json())
-        .collect()
+        .collect();
+    lines.push(parser.finish().to_json());
+    lines
 }
 
 #[test]

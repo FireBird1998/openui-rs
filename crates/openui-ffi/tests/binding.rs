@@ -80,6 +80,13 @@ fn streaming_matches_the_core_at_every_step() {
                     case.name
                 );
             }
+            if !same(&session.finish(), &core.finish()) {
+                let _ = write!(
+                    report,
+                    "\n✗ {} at chunk size {size}, the stream's end",
+                    case.name
+                );
+            }
         }
     }
     assert!(

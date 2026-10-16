@@ -15,11 +15,11 @@ use crate::expr::parse_expression_with_limit;
 use crate::js;
 use crate::lexer::tokenize;
 use crate::library::Library;
-use crate::parser::{build_result, classify};
+use crate::parser::{PartialRef, build_result, classify};
 use crate::preprocess::Preprocessor;
 use crate::result::ParseResult;
 use crate::statements::{auto_close, split};
-use crate::table::{Cache, Table};
+use crate::table::{Cache, Slot, Table};
 
 /// Parses a program chunk by chunk as it streams in.
 pub struct StreamParser {
@@ -82,7 +82,7 @@ impl StreamParser {
     /// Feed the next chunk and get the latest parse result.
     pub fn push(&mut self, chunk: &str) -> ParseResult {
         self.absorb(chunk);
-        self.current_result()
+        self.current_result(false)
     }
 
     /// Give the full text so far, as after a reconnect. Text that continues
@@ -92,21 +92,21 @@ impl StreamParser {
             self.reset();
         }
         self.absorb(&full_text[self.buf.len()..]);
-        self.current_result()
+        self.current_result(false)
     }
 
     /// The latest parse result, without new text.
     pub fn result(&mut self) -> ParseResult {
-        self.current_result()
+        self.current_result(false)
     }
 
     /// The result once the stream has ended, after its last chunk: the
-    /// reference's `getResult(true)`.
+    /// reference's `getResult(true)`. Until then, a `$name` at the very end of
+    /// the text may still be growing (`$d` of `$dishes`), so the pending
+    /// statements don't declare it as state; once the stream has ended, it's
+    /// the whole name.
     pub fn finish(&mut self) -> ParseResult {
-        // The same as `result()` for now: the one thing the end changes in the
-        // reference, how a `$name` at the very end of the text is read, isn't
-        // ported yet.
-        self.current_result()
+        self.current_result(true)
     }
 
     fn reset(&mut self) {
@@ -185,14 +185,14 @@ impl StreamParser {
         stmt_start
     }
 
-    fn current_result(&mut self) -> ParseResult {
-        let (mut result, pending_limited) = self.build_current();
+    fn current_result(&mut self, complete: bool) -> ParseResult {
+        let (mut result, pending_limited) = self.build_current(complete);
         result.depth_limited |= self.completed.depth_limited || pending_limited;
         result
     }
 
     /// The result, and whether a pending statement nested past `MAX_DEPTH`.
-    fn build_current(&mut self) -> (ParseResult, bool) {
+    fn build_current(&mut self, complete: bool) -> (ParseResult, bool) {
         let pending_start = self.scan_new_completed();
         let pending = js::trim(&self.pre.cleaned()[pending_start..]);
         let completed = &mut self.completed;
@@ -202,7 +202,7 @@ impl StreamParser {
                 return (ParseResult::empty(true), false);
             }
             let count = completed.count;
-            return (self.build_from_table(false, count), false);
+            return (self.build_from_table(false, count, None), false);
         }
 
         let (closed, was_incomplete) = auto_close(pending);
@@ -212,7 +212,7 @@ impl StreamParser {
                 return (ParseResult::empty(was_incomplete), false);
             }
             let count = completed.count;
-            return (self.build_from_table(was_incomplete, count), false);
+            return (self.build_from_table(was_incomplete, count, None), false);
         }
 
         // A new id renders as it arrives; a re-defined one replaces the cached
@@ -236,7 +236,17 @@ impl StreamParser {
             undos.push(undo);
         }
         let count = completed.count + pending_statements.len();
-        let result = self.build_from_table(was_incomplete, count);
+        let growing = if complete {
+            None
+        } else {
+            growing_state_ref(&self.buf, pending).map(str::to_owned)
+        };
+        let pending_slots: Vec<Slot> = undos.iter().map(|undo| undo.slot).collect();
+        let partial = growing.as_deref().map(|name| PartialRef {
+            name,
+            slots: &pending_slots,
+        });
+        let result = self.build_from_table(was_incomplete, count, partial);
         for undo in undos.into_iter().rev() {
             let slot = undo.slot;
             self.completed.table.undo(undo);
@@ -246,7 +256,12 @@ impl StreamParser {
     }
 
     /// Build the result from the table as it stands.
-    fn build_from_table(&mut self, was_incomplete: bool, count: usize) -> ParseResult {
+    fn build_from_table(
+        &mut self,
+        was_incomplete: bool,
+        count: usize,
+        partial: Option<PartialRef>,
+    ) -> ParseResult {
         let completed = &mut self.completed;
         build_result(
             &mut completed.table,
@@ -255,6 +270,29 @@ impl StreamParser {
             count,
             &self.library,
             self.root_name.as_deref(),
+            partial,
         )
     }
+}
+
+/// A `$name` ending the raw text, which may still be growing (`$d` of
+/// `$dishes`): `/\$\w+$/` on the text so far, when the pending statements'
+/// text ends with it too and doesn't already have that name in full before
+/// it.
+fn growing_state_ref<'a>(buf: &'a str, pending: &str) -> Option<&'a str> {
+    let word = |b: u8| b.is_ascii_alphanumeric() || b == b'_';
+    let start = buf.len() - buf.bytes().rev().take_while(|&b| word(b)).count();
+    if start == buf.len() || !buf[..start].ends_with('$') {
+        return None;
+    }
+    let tail = &buf[start - 1..];
+    let before = pending.strip_suffix(tail)?;
+    // `\$name(?!\w)`: the same name, not the start of a longer one.
+    let in_full = before.match_indices(tail).any(|(i, _)| {
+        !before
+            .as_bytes()
+            .get(i + tail.len())
+            .is_some_and(|&b| word(b))
+    });
+    (!in_full).then_some(tail)
 }

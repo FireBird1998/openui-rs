@@ -59,8 +59,8 @@ A component's positional order is `Object.keys(properties)`, and JavaScript list
 
 ## 4. Streaming counts redefined statements; one-shot doesn't
 
-- **Found:** 2026-10-06, noted in ticket 01, confirmed in ticket 07. Reference commit `bba1d251`.
-- **Pinned by:** `hand/18-redefined-statement` and `hand/85-streaming-redefinition-1127` under every streaming chunking.
+- **Found:** 2026-10-06, noted in ticket 01, confirmed in ticket 07. Reference commit `bba1d251`; still so in 1.0.1 (`eb20708`).
+- **Pinned by:** `hand/18-redefined-statement` and `hand/85-streaming-redefinition-1127` under every streaming chunking, and 19 more cases the stream-end check lists.
 
 ```
 root = Text(a)
@@ -68,17 +68,17 @@ a = "one"
 a = "two"
 ```
 
-**Reference behaviour:** `parse()` reports `statementCount: 2`. Streaming the same complete text, then calling `getResult()`, reports `statementCount: 3`.
+**Reference behaviour:** `parse()` reports `statementCount: 2`. Streaming the same complete text and ending the stream (`getResult(true)`) reports `statementCount: 3`.
 
 **Why:** one-shot uses the number of distinct ids (`stmtMap.size`), while the stream parser increments `completedCount` for every completed statement, redefinitions included. The tree and everything else agree, so this only matters to anything that reads `statementCount`.
 
 **Draft upstream report:**
 
-> **`meta.statementCount` differs between `parse()` and the stream parser when an id is redefined.** For the same final text, `parse()` counts distinct statement ids and `createStreamParser` counts every statement it completed, redefinitions included (`completedCount`). Either count distinct ids in the stream parser (`completedStmtMap.size`, plus new pending ids), or document that the streaming count includes redefinitions.
+> **`meta.statementCount` differs between `parse()` and the stream parser when an id is redefined.** For the same final text, `parse()` counts distinct statement ids and `createStreamParser` counts every statement it completed, redefinitions included (`completedCount`), even once the stream has ended (`getResult(true)`). The 1.0 specification says a stream's end must equal a batch parse (language.md, section 4). Either count distinct ids in the stream parser (`completedStmtMap.size`, plus new pending ids), or say in the spec that the streaming count includes redefinitions.
 
 ## 5. A mismatched closing bracket leaves the one-shot result "incomplete" forever
 
-- **Found:** 2026-10-06, checking that streaming ends where parsing ends (ticket 09). Reference commit `bba1d251`.
+- **Found:** 2026-10-06, checking that streaming ends where parsing ends (ticket 09). Reference commit `bba1d251`; still so in 1.0.1 (`eb20708`), with the stream ended by `getResult(true)`.
 - **Pinned by:** `hand/71-expression-forms` (via `f = {..., [: 6, 7}`), under every chunking.
 
 ```
@@ -94,7 +94,7 @@ root = Text("x")
 
 > **One-shot `parse()` marks a complete program `incomplete` (and every element `partial`) after a mismatched closing bracket.** `autoClose` matches bracket types while the stream parser's statement scanner (`scanNewCompleted`) doesn't, so `f = (]\nroot = Text("x")` parses one-shot as incomplete with `partial: true` elements, but streams as complete. Pick one rule for both, likely "any closer closes the innermost opener", which is also what the expression parser effectively does.
 
-**Related, by design:** when the stream ends on a redefinition that's still being written (unclosed), streaming keeps the earlier, completed definition, while `parse()` uses the new one. That's the upstream #1127 fix working as intended ("existing IDs are replaced only when the pending expression no longer needs automatic closing"), pinned by `hand/85-streaming-redefinition-1127`.
+**Related:** a stream that ends on a redefinition still being written keeps the earlier definition. That was by design in 0.3; it isn't in the 1.0 specification (quirk 11).
 
 ## 6. Merging drops a ternary's continuation lines
 
@@ -183,3 +183,23 @@ A plain object prop `{"a b": 1, "": 2}` serializes as `{a b: 1, : 2}`, which doe
 **Draft upstream report:**
 
 > **`jsonToOpenUI` writes object keys without quotes, so keys that aren't identifiers produce text that doesn't parse.** Both `serializeValue` (plain objects) and the `Obj` branch of `serializeASTNode` emit `${k}: ...`. A prop like `{"Content-Type": "json"}` or `{"first name": "x"}` round-trips to invalid OpenUI Lang. Quote keys that aren't plain identifiers (or always: the parser accepts `{"a": 1}`). Repro: serialize `Slot({"a b": 1})`.
+
+## 11. At a stream's end, a final redefinition that needed closing doesn't win
+
+- **Found:** 2026-10-16, reviewing stream ends for lang-core 1.0 (1.0 ticket 07). Reference commit `eb20708` (1.0.1).
+- **Pinned by:** `hand/85-streaming-redefinition-1127` under every chunking, and the stream-end check.
+
+```
+root = Text(a)
+a = "one"
+a = "two
+```
+
+**Reference behaviour:** `parse()` gives `a` the value `"two"`. Streaming the same text and ending the stream with `getResult(true)` keeps `"one"`.
+
+**Why:** `currentResult` skips a pending statement whose id is already completed when the pending text needed closing (`if (completedStmtMap.has(s.id) && wasIncomplete) continue;`), and `complete` changes nothing there: it only decides how a trailing `$name` is read. In 0.3 this was the upstream #1127 fix working as intended ("existing IDs are replaced only when the pending expression no longer needs automatic closing"). The 1.0 specification now says otherwise: "At stream end a final redefinition wins" (language.md, section 2.4), and the end of the stream "finalizes the pending tail: implicit closing applies, and the resulting statements become completed, including a redefinition of an earlier name" (section 4, rule 7).
+
+**Draft upstream report:**
+
+> **Ending a stream keeps an earlier definition instead of a final redefinition that needed closing, unlike `parse()` and the 1.0 spec.** With `complete`, `createStreamParser` still skips a pending statement whose id is already completed if the pending text needed implicit closing, so the stream's end keeps the earlier definition while `parse()` of the same text uses the last one. language.md, section 2.4 ("At stream end a final redefinition wins") and section 4, rule 7 say the end of the stream finalizes the pending tail. Apply the `wasIncomplete` guard only while `complete` isn't set. Repro: push `root = Text(a)\na = "one"\na = "two` and call `getResult(true)`: `a` is `"one"`, while `parse()` gives `"two"`.
+

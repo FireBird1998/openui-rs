@@ -109,6 +109,24 @@ import Testing
         let playback = try await playback(cacheBudget: 32 << 20)
         #expect(playback.position == playback.chunks.count)
         #expect(playback.step != nil)
+        #expect(playback.isEnd)
+    }
+
+    /// Until the stream has ended, a `$name` at the very end may still be
+    /// growing, so it isn't declared as state; at the stream's end it is.
+    @Test func theLastStepIsTheStreamsEnd() async throws {
+        let core = Core()
+        let library = try await core.library(schema: TheCore.schema)
+        let playback = Playback(core: core, library: library, root: nil)
+        let program = "root = Text($na"
+        await playback.load(ReplaySource(program: program, chunkSize: 4))
+        #expect(playback.isEnd)
+        #expect(try #require(playback.step).json.contains(#""stateDeclarations":{"$na":null}"#))
+        await playback.move(to: playback.chunks.count - 1)
+        #expect(!playback.isEnd)
+        let session = try await core.session(library: library, root: nil)
+        let lastPush = try await session.push(playback.chunks)
+        #expect(lastPush.json.contains(#""stateDeclarations":{}"#))
     }
 
     /// Going back shows exactly the earlier step, whether it was kept (a big
@@ -211,6 +229,14 @@ import Testing
         #expect(golden.verdict(step: 1, json: json, chunking: .fixed(64)) == .noGolden)
     }
 
+    @Test func theLastStepOfAnEndedStreamIsCheckedAgainstTheGoldensEnd() {
+        let json = #"{"root":null}"#
+        let golden = GoldenSteps(steps: ["4": ["00000000", fingerprint(json)]], ends: ["4": "11111111"])
+        #expect(golden.verdict(step: 2, json: json, chunking: .fixed(4)) == .matches)
+        #expect(golden.verdict(step: 2, json: json, chunking: .fixed(4), ended: true)
+            == .differs(reference: "11111111", viewer: fingerprint(json)))
+    }
+
     @Test func recordedChunkingsReplayTheirSizes() {
         let pieces = ReplaySource.split("abcdefghij", sizes: [1, 3, 2])
         #expect(pieces == ["a", "bcd", "ef", "gh", "ij"])
@@ -245,7 +271,7 @@ func pending(_ list: String, in corpus: Corpus) -> Set<String> {
             #expect(playback.chunks.count == golden.steps[chunking.goldenName]?.count, "\(chunking)")
             for k in 1...playback.chunks.count {
                 await playback.move(to: k)
-                let verdict = golden.verdict(step: k, json: playback.step?.json ?? "", chunking: chunking)
+                let verdict = golden.verdict(step: k, json: playback.step?.json ?? "", chunking: chunking, ended: playback.isEnd)
                 #expect(verdict == .matches, "\(caseName) \(chunking.label) step \(k)")
                 if verdict != .matches { break }
             }

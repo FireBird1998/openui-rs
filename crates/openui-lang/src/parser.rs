@@ -189,6 +189,7 @@ pub fn parse(input: &str, library: &Library, root_name: Option<&str>) -> ParseRe
         count,
         library,
         root_name,
+        None,
     );
     result.depth_limited |= depth_limited;
     result
@@ -258,6 +259,13 @@ fn contains_component(node: &Ast) -> bool {
     found
 }
 
+/// A `$name` at the very end of a stream's text so far, which may still be
+/// growing, and the pending statements it's in: those don't declare it.
+pub(crate) struct PartialRef<'a> {
+    pub name: &'a str,
+    pub slots: &'a [Slot],
+}
+
 pub(crate) fn build_result(
     table: &mut Table,
     cache: &mut Cache,
@@ -265,6 +273,7 @@ pub(crate) fn build_result(
     statement_count: usize,
     library: &Library,
     root_name: Option<&str>,
+    partial: Option<PartialRef>,
 ) -> ParseResult {
     let entry = pick_entry(table, root_name);
     let entry_id = entry.map(|(slot, _)| table.name(slot).to_owned());
@@ -298,7 +307,7 @@ pub(crate) fn build_result(
     }
 
     let (state_declarations, query_statements, mutation_statements) =
-        extract_statements(ctx.table, &mut ctx);
+        extract_statements(ctx.table, &mut ctx, partial.as_ref());
 
     // `no-root`, which streaming consumers read only once the stream ends.
     ctx.current_statement_id = entry_id;
@@ -354,10 +363,12 @@ pub(crate) fn build_result(
 }
 
 /// State initial values (materialized), plus queries and mutations as written.
-/// Any `$name` used anywhere but never declared is declared as null.
+/// Any `$name` used anywhere but never declared is declared as null, except
+/// one still growing at the end of a stream, in the statements it ends.
 fn extract_statements(
     table: &Table,
     ctx: &mut Ctx,
+    partial: Option<&PartialRef>,
 ) -> (JsObject<Value>, Vec<QueryStatement>, Vec<MutationStatement>) {
     let mut state = JsObject::new();
     let mut queries = Vec::new();
@@ -395,6 +406,9 @@ fn extract_statements(
     }
     for &slot in table.specials() {
         for name in &table.info(slot).state_refs {
+            if partial.is_some_and(|p| p.name == name && p.slots.contains(&slot)) {
+                continue;
+            }
             if !state.has(name) {
                 state.set(name.clone(), Value::Null);
             }
