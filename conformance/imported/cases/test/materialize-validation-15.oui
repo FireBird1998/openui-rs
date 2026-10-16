@@ -1,1 +1,1 @@
-root = ScalarBox(5)
+root = ScalarBox({ a: $x })

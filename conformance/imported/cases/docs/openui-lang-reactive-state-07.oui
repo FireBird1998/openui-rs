@@ -1,0 +1,7 @@
+root = Stack([header, filter, summary, chart])
+header = CardHeader("Usage")
+$days = "7"
+filter = FormControl("Date range", Select("days", [SelectItem("7", "7 days"), SelectItem("30", "30 days")], null, null, $days))
+usage = Query("get_usage", {days: $days}, {rows: []})
+summary = TextContent("Showing last " + $days + " days, " + @Sum(usage.rows.events) + " events")
+chart = LineChart(usage.rows.day, [Series("Events", usage.rows.events)])

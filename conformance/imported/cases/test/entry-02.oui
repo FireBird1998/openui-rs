@@ -1,0 +1,2 @@
+t = Title("x")
+page = Card([t])

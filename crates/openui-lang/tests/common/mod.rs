@@ -162,6 +162,21 @@ pub struct Case {
     pub stages: bool,
     /// The chunkings the case runs under, when not all of the manifest's.
     pub chunkings: Option<Vec<String>>,
+    /// Chunk sizes in code points for a case that came with its own chunks:
+    /// the `recorded` chunking.
+    pub recorded: Option<Vec<usize>>,
+}
+
+impl Case {
+    /// The chunkings this case's golden holds: its own or the corpus's, then
+    /// `recorded` when it has recorded chunks.
+    pub fn chunkings(&self, corpus: &[String]) -> Vec<String> {
+        let mut out = self.chunkings.clone().unwrap_or_else(|| corpus.to_vec());
+        if self.recorded.is_some() {
+            out.push("recorded".to_owned());
+        }
+        out
+    }
 }
 
 pub struct Corpus {
@@ -212,6 +227,10 @@ pub fn load_corpus() -> Corpus {
                 .get("chunkings")
                 .and_then(Value::as_array)
                 .map(|a| a.iter().map(|v| v.as_str().unwrap().to_owned()).collect()),
+            recorded: c
+                .get("recorded")
+                .and_then(Value::as_array)
+                .map(|a| a.iter().map(|v| v.as_u64().unwrap() as usize).collect()),
         })
         .collect();
     Corpus { chunkings, cases }

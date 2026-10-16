@@ -2,14 +2,14 @@
 // request per line on stdin and writes one JSON response per line:
 //
 //   {"lib": "<schema name>", "input": "...", "root"?: "...", "sizes": [n, ...]}
-//   → {"oneshot": fp, "tokens": fp, "steps": [fp, ...], "ms": n}   or   {"threw": "<error>"}
+//   → {"oneshot": fp, "tokens": fp, "steps": [fp, ...], "end": fp, "ms": n}   or   {"threw": "<error>"}
 //   {"op": "merge", "existing": "...", "patch": "...", "rootId"?: "..."}
 //   → {"text": "..."}   or   {"threw": "<error>"}
 //   {"op": "serialize", "lib": "<schema name>", "element": {...}, "state"?: {...}}
 //   → {"text": "..."}   or   {"threw": "<error>"}
 //
-// fp is the FNV-1a fingerprint the goldens use, and ms how long the reference
-// took. Schema names are those in the conformance manifests. Sizes are push
+// fp is the FNV-1a fingerprint the goldens use, end the stream's result once it
+// has ended (getResult(true)), and ms how long the reference took. Schema names are those in the conformance manifests. Sizes are push
 // chunk sizes in code points.
 import { existsSync, readFileSync } from "fs";
 import { join } from "path";
@@ -68,7 +68,8 @@ function answer(req: Request) {
       steps.push(fingerprint(JSON.stringify(parser.push(cps.slice(pos, pos + size).join("")))));
       pos += size;
     }
-    return { oneshot, tokens, steps, ms: performance.now() - started };
+    const end = fingerprint(JSON.stringify(parser.getResult(true)));
+    return { oneshot, tokens, steps, end, ms: performance.now() - started };
   } catch (e) {
     return { threw: String(e) };
   }

@@ -1,0 +1,1 @@
+root = TextContent("Total: " + @Total(items))

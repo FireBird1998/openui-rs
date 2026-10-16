@@ -1,11 +1,581 @@
 {
  "schemas": {
+  "test-actions": "imported/schemas/test-actions.json",
+  "test-actions-2": "imported/schemas/test-actions-2.json",
+  "test-actions-3": "imported/schemas/test-actions-3.json",
+  "test-actions-4": "imported/schemas/test-actions-4.json",
+  "test-actions-5": "imported/schemas/test-actions-5.json",
+  "test-actions-6": "imported/schemas/test-actions-6.json",
+  "test-actions-7": "imported/schemas/test-actions-7.json",
+  "test-actions-8": "imported/schemas/test-actions-8.json",
+  "test-actions-9": "imported/schemas/test-actions-9.json",
+  "test-actions-10": "imported/schemas/test-actions-10.json",
+  "test-actions-11": "imported/schemas/test-actions-11.json",
+  "test-actions-12": "imported/schemas/test-actions-12.json",
+  "test-entry": "imported/schemas/test-entry.json",
+  "test-extend": "imported/schemas/test-extend.json",
+  "test-extend-2": "imported/schemas/test-extend-2.json",
+  "test-extend-3": "imported/schemas/test-extend-3.json",
+  "test-extend-4": "imported/schemas/test-extend-4.json",
+  "test-functions": "imported/schemas/test-functions.json",
+  "test-functions-2": "imported/schemas/test-functions-2.json",
+  "test-library": "imported/schemas/test-library.json",
+  "test-library-2": "imported/schemas/test-library-2.json",
   "test-materialize-validation": "imported/schemas/test-materialize-validation.json",
+  "test-materialize-validation-2": "imported/schemas/test-materialize-validation-2.json",
+  "test-materialize-validation-3": "imported/schemas/test-materialize-validation-3.json",
+  "test-materialize-validation-4": "imported/schemas/test-materialize-validation-4.json",
   "test-parser": "imported/schemas/test-parser.json",
   "test-serialize": "imported/schemas/test-serialize.json",
+  "test-serialize-2": "imported/schemas/test-serialize-2.json",
+  "test-serialize-3": "imported/schemas/test-serialize-3.json",
+  "test-store": "imported/schemas/test-store.json",
+  "test-store-2": "imported/schemas/test-store-2.json",
+  "spec-1.0": "imported/schemas/spec-1.0.json",
   "bench": "imported/schemas/bench.json"
  },
  "cases": [
+  {
+   "name": "test/actions-01",
+   "schema": "test-actions",
+   "file": "imported/cases/test/actions-01.oui",
+   "source": "reference-test",
+   "origin": "packages/lang-core/src/runtime/__tests__/actions.test.ts",
+   "root": "Button"
+  },
+  {
+   "name": "test/actions-02",
+   "schema": "test-actions-2",
+   "file": "imported/cases/test/actions-02.oui",
+   "source": "reference-test",
+   "origin": "packages/lang-core/src/runtime/__tests__/actions.test.ts",
+   "root": "Button"
+  },
+  {
+   "name": "test/actions-03",
+   "schema": "test-actions",
+   "file": "imported/cases/test/actions-03.oui",
+   "source": "reference-test",
+   "origin": "packages/lang-core/src/runtime/__tests__/actions.test.ts",
+   "root": "Button"
+  },
+  {
+   "name": "test/actions-04",
+   "schema": "test-actions-2",
+   "file": "imported/cases/test/actions-04.oui",
+   "source": "reference-test",
+   "origin": "packages/lang-core/src/runtime/__tests__/actions.test.ts",
+   "root": "Button"
+  },
+  {
+   "name": "test/actions-05",
+   "schema": "test-actions",
+   "file": "imported/cases/test/actions-05.oui",
+   "source": "reference-test",
+   "origin": "packages/lang-core/src/runtime/__tests__/actions.test.ts",
+   "root": "Button"
+  },
+  {
+   "name": "test/actions-06",
+   "schema": "test-actions-2",
+   "file": "imported/cases/test/actions-06.oui",
+   "source": "reference-test",
+   "origin": "packages/lang-core/src/runtime/__tests__/actions.test.ts",
+   "root": "Button"
+  },
+  {
+   "name": "test/actions-07",
+   "schema": "test-actions",
+   "file": "imported/cases/test/actions-07.oui",
+   "source": "reference-test",
+   "origin": "packages/lang-core/src/runtime/__tests__/actions.test.ts",
+   "root": "Button"
+  },
+  {
+   "name": "test/actions-08",
+   "schema": "test-actions-2",
+   "file": "imported/cases/test/actions-08.oui",
+   "source": "reference-test",
+   "origin": "packages/lang-core/src/runtime/__tests__/actions.test.ts",
+   "root": "Button"
+  },
+  {
+   "name": "test/actions-09",
+   "schema": "test-actions-3",
+   "file": "imported/cases/test/actions-09.oui",
+   "source": "reference-test",
+   "origin": "packages/lang-core/src/runtime/__tests__/actions.test.ts",
+   "root": "Text"
+  },
+  {
+   "name": "test/actions-10",
+   "schema": "test-actions-4",
+   "file": "imported/cases/test/actions-10.oui",
+   "source": "reference-test",
+   "origin": "packages/lang-core/src/runtime/__tests__/actions.test.ts",
+   "root": "Text"
+  },
+  {
+   "name": "test/actions-11",
+   "schema": "test-actions-5",
+   "file": "imported/cases/test/actions-11.oui",
+   "source": "reference-test",
+   "origin": "packages/lang-core/src/runtime/__tests__/actions.test.ts",
+   "root": "Button"
+  },
+  {
+   "name": "test/actions-12",
+   "schema": "test-actions-6",
+   "file": "imported/cases/test/actions-12.oui",
+   "source": "reference-test",
+   "origin": "packages/lang-core/src/runtime/__tests__/actions.test.ts",
+   "root": "Button"
+  },
+  {
+   "name": "test/actions-13",
+   "schema": "test-actions-5",
+   "file": "imported/cases/test/actions-13.oui",
+   "source": "reference-test",
+   "origin": "packages/lang-core/src/runtime/__tests__/actions.test.ts",
+   "root": "Button"
+  },
+  {
+   "name": "test/actions-14",
+   "schema": "test-actions-6",
+   "file": "imported/cases/test/actions-14.oui",
+   "source": "reference-test",
+   "origin": "packages/lang-core/src/runtime/__tests__/actions.test.ts",
+   "root": "Button"
+  },
+  {
+   "name": "test/actions-15",
+   "schema": "test-actions-7",
+   "file": "imported/cases/test/actions-15.oui",
+   "source": "reference-test",
+   "origin": "packages/lang-core/src/runtime/__tests__/actions.test.ts",
+   "root": "Button"
+  },
+  {
+   "name": "test/actions-16",
+   "schema": "test-actions-8",
+   "file": "imported/cases/test/actions-16.oui",
+   "source": "reference-test",
+   "origin": "packages/lang-core/src/runtime/__tests__/actions.test.ts",
+   "root": "Button"
+  },
+  {
+   "name": "test/actions-17",
+   "schema": "test-actions-7",
+   "file": "imported/cases/test/actions-17.oui",
+   "source": "reference-test",
+   "origin": "packages/lang-core/src/runtime/__tests__/actions.test.ts",
+   "root": "Button"
+  },
+  {
+   "name": "test/actions-18",
+   "schema": "test-actions-8",
+   "file": "imported/cases/test/actions-18.oui",
+   "source": "reference-test",
+   "origin": "packages/lang-core/src/runtime/__tests__/actions.test.ts",
+   "root": "Button"
+  },
+  {
+   "name": "test/actions-19",
+   "schema": "test-actions-7",
+   "file": "imported/cases/test/actions-19.oui",
+   "source": "reference-test",
+   "origin": "packages/lang-core/src/runtime/__tests__/actions.test.ts",
+   "root": "Button"
+  },
+  {
+   "name": "test/actions-20",
+   "schema": "test-actions-8",
+   "file": "imported/cases/test/actions-20.oui",
+   "source": "reference-test",
+   "origin": "packages/lang-core/src/runtime/__tests__/actions.test.ts",
+   "root": "Button"
+  },
+  {
+   "name": "test/actions-21",
+   "schema": "test-actions-9",
+   "file": "imported/cases/test/actions-21.oui",
+   "source": "reference-test",
+   "origin": "packages/lang-core/src/runtime/__tests__/actions.test.ts",
+   "root": "Button"
+  },
+  {
+   "name": "test/actions-22",
+   "schema": "test-actions-10",
+   "file": "imported/cases/test/actions-22.oui",
+   "source": "reference-test",
+   "origin": "packages/lang-core/src/runtime/__tests__/actions.test.ts",
+   "root": "Button"
+  },
+  {
+   "name": "test/actions-23",
+   "schema": "test-actions-5",
+   "file": "imported/cases/test/actions-23.oui",
+   "source": "reference-test",
+   "origin": "packages/lang-core/src/runtime/__tests__/actions.test.ts",
+   "root": "Button"
+  },
+  {
+   "name": "test/actions-24",
+   "schema": "test-actions-6",
+   "file": "imported/cases/test/actions-24.oui",
+   "source": "reference-test",
+   "origin": "packages/lang-core/src/runtime/__tests__/actions.test.ts",
+   "root": "Button"
+  },
+  {
+   "name": "test/actions-25",
+   "schema": "test-actions-5",
+   "file": "imported/cases/test/actions-25.oui",
+   "source": "reference-test",
+   "origin": "packages/lang-core/src/runtime/__tests__/actions.test.ts",
+   "root": "Button"
+  },
+  {
+   "name": "test/actions-26",
+   "schema": "test-actions-6",
+   "file": "imported/cases/test/actions-26.oui",
+   "source": "reference-test",
+   "origin": "packages/lang-core/src/runtime/__tests__/actions.test.ts",
+   "root": "Button"
+  },
+  {
+   "name": "test/actions-27",
+   "schema": "test-actions-5",
+   "file": "imported/cases/test/actions-27.oui",
+   "source": "reference-test",
+   "origin": "packages/lang-core/src/runtime/__tests__/actions.test.ts",
+   "root": "Button"
+  },
+  {
+   "name": "test/actions-28",
+   "schema": "test-actions-6",
+   "file": "imported/cases/test/actions-28.oui",
+   "source": "reference-test",
+   "origin": "packages/lang-core/src/runtime/__tests__/actions.test.ts",
+   "root": "Button"
+  },
+  {
+   "name": "test/actions-29",
+   "schema": "test-actions-5",
+   "file": "imported/cases/test/actions-29.oui",
+   "source": "reference-test",
+   "origin": "packages/lang-core/src/runtime/__tests__/actions.test.ts",
+   "root": "Button"
+  },
+  {
+   "name": "test/actions-30",
+   "schema": "test-actions-6",
+   "file": "imported/cases/test/actions-30.oui",
+   "source": "reference-test",
+   "origin": "packages/lang-core/src/runtime/__tests__/actions.test.ts",
+   "root": "Button"
+  },
+  {
+   "name": "test/actions-31",
+   "schema": "test-actions-11",
+   "file": "imported/cases/test/actions-31.oui",
+   "source": "reference-test",
+   "origin": "packages/lang-core/src/runtime/__tests__/actions.test.ts",
+   "root": "Card"
+  },
+  {
+   "name": "test/actions-32",
+   "schema": "test-actions-12",
+   "file": "imported/cases/test/actions-32.oui",
+   "source": "reference-test",
+   "origin": "packages/lang-core/src/runtime/__tests__/actions.test.ts",
+   "root": "Card"
+  },
+  {
+   "name": "test/actions-33",
+   "schema": "test-actions-11",
+   "file": "imported/cases/test/actions-33.oui",
+   "source": "reference-test",
+   "origin": "packages/lang-core/src/runtime/__tests__/actions.test.ts",
+   "root": "Card"
+  },
+  {
+   "name": "test/actions-34",
+   "schema": "test-actions-12",
+   "file": "imported/cases/test/actions-34.oui",
+   "source": "reference-test",
+   "origin": "packages/lang-core/src/runtime/__tests__/actions.test.ts",
+   "root": "Card"
+  },
+  {
+   "name": "test/actions-35",
+   "schema": "test-actions-11",
+   "file": "imported/cases/test/actions-35.oui",
+   "source": "reference-test",
+   "origin": "packages/lang-core/src/runtime/__tests__/actions.test.ts",
+   "root": "Card"
+  },
+  {
+   "name": "test/actions-36",
+   "schema": "test-actions-12",
+   "file": "imported/cases/test/actions-36.oui",
+   "source": "reference-test",
+   "origin": "packages/lang-core/src/runtime/__tests__/actions.test.ts",
+   "root": "Card"
+  },
+  {
+   "name": "test/actions-37",
+   "schema": "test-actions-11",
+   "file": "imported/cases/test/actions-37.oui",
+   "source": "reference-test",
+   "origin": "packages/lang-core/src/runtime/__tests__/actions.test.ts",
+   "root": "Card"
+  },
+  {
+   "name": "test/actions-38",
+   "schema": "test-actions-12",
+   "file": "imported/cases/test/actions-38.oui",
+   "source": "reference-test",
+   "origin": "packages/lang-core/src/runtime/__tests__/actions.test.ts",
+   "root": "Card"
+  },
+  {
+   "name": "test/entry-01",
+   "schema": "test-entry",
+   "file": "imported/cases/test/entry-01.oui",
+   "source": "reference-test",
+   "origin": "packages/lang-core/src/parser/__tests__/entry.test.ts",
+   "root": "Card"
+  },
+  {
+   "name": "test/entry-02",
+   "schema": "test-entry",
+   "file": "imported/cases/test/entry-02.oui",
+   "source": "reference-test",
+   "origin": "packages/lang-core/src/parser/__tests__/entry.test.ts",
+   "root": "Card"
+  },
+  {
+   "name": "test/entry-03",
+   "schema": "test-entry",
+   "file": "imported/cases/test/entry-03.oui",
+   "source": "reference-test",
+   "origin": "packages/lang-core/src/parser/__tests__/entry.test.ts",
+   "root": "Card"
+  },
+  {
+   "name": "test/entry-04",
+   "schema": "test-entry",
+   "file": "imported/cases/test/entry-04.oui",
+   "source": "reference-test",
+   "origin": "packages/lang-core/src/parser/__tests__/entry.test.ts"
+  },
+  {
+   "name": "test/entry-05",
+   "schema": "test-entry",
+   "file": "imported/cases/test/entry-05.oui",
+   "source": "reference-test",
+   "origin": "packages/lang-core/src/parser/__tests__/entry.test.ts"
+  },
+  {
+   "name": "test/entry-06",
+   "schema": "test-entry",
+   "file": "imported/cases/test/entry-06.oui",
+   "source": "reference-test",
+   "origin": "packages/lang-core/src/parser/__tests__/entry.test.ts"
+  },
+  {
+   "name": "test/extend-01",
+   "schema": "test-extend",
+   "file": "imported/cases/test/extend-01.oui",
+   "source": "reference-test",
+   "origin": "packages/lang-core/src/__tests__/extend.test.ts",
+   "root": "Stack"
+  },
+  {
+   "name": "test/extend-02",
+   "schema": "test-extend-2",
+   "file": "imported/cases/test/extend-02.oui",
+   "source": "reference-test",
+   "origin": "packages/lang-core/src/__tests__/extend.test.ts",
+   "root": "Stack"
+  },
+  {
+   "name": "test/extend-03",
+   "schema": "test-extend-3",
+   "file": "imported/cases/test/extend-03.oui",
+   "source": "reference-test",
+   "origin": "packages/lang-core/src/__tests__/extend.test.ts",
+   "root": "Stack"
+  },
+  {
+   "name": "test/extend-04",
+   "schema": "test-extend-4",
+   "file": "imported/cases/test/extend-04.oui",
+   "source": "reference-test",
+   "origin": "packages/lang-core/src/__tests__/extend.test.ts",
+   "root": "Stack"
+  },
+  {
+   "name": "test/functions-01",
+   "schema": "test-functions",
+   "file": "imported/cases/test/functions-01.oui",
+   "source": "reference-test",
+   "origin": "packages/lang-core/src/runtime/__tests__/functions.test.ts",
+   "root": "Text"
+  },
+  {
+   "name": "test/functions-02",
+   "schema": "test-functions-2",
+   "file": "imported/cases/test/functions-02.oui",
+   "source": "reference-test",
+   "origin": "packages/lang-core/src/runtime/__tests__/functions.test.ts",
+   "root": "Text"
+  },
+  {
+   "name": "test/functions-03",
+   "schema": "test-functions",
+   "file": "imported/cases/test/functions-03.oui",
+   "source": "reference-test",
+   "origin": "packages/lang-core/src/runtime/__tests__/functions.test.ts",
+   "root": "Text"
+  },
+  {
+   "name": "test/functions-04",
+   "schema": "test-functions-2",
+   "file": "imported/cases/test/functions-04.oui",
+   "source": "reference-test",
+   "origin": "packages/lang-core/src/runtime/__tests__/functions.test.ts",
+   "root": "Text"
+  },
+  {
+   "name": "test/functions-05",
+   "schema": "test-functions",
+   "file": "imported/cases/test/functions-05.oui",
+   "source": "reference-test",
+   "origin": "packages/lang-core/src/runtime/__tests__/functions.test.ts",
+   "root": "Text"
+  },
+  {
+   "name": "test/functions-06",
+   "schema": "test-functions-2",
+   "file": "imported/cases/test/functions-06.oui",
+   "source": "reference-test",
+   "origin": "packages/lang-core/src/runtime/__tests__/functions.test.ts",
+   "root": "Text"
+  },
+  {
+   "name": "test/functions-07",
+   "schema": "test-functions",
+   "file": "imported/cases/test/functions-07.oui",
+   "source": "reference-test",
+   "origin": "packages/lang-core/src/runtime/__tests__/functions.test.ts",
+   "root": "Text"
+  },
+  {
+   "name": "test/functions-08",
+   "schema": "test-functions-2",
+   "file": "imported/cases/test/functions-08.oui",
+   "source": "reference-test",
+   "origin": "packages/lang-core/src/runtime/__tests__/functions.test.ts",
+   "root": "Text"
+  },
+  {
+   "name": "test/functions-09",
+   "schema": "test-functions",
+   "file": "imported/cases/test/functions-09.oui",
+   "source": "reference-test",
+   "origin": "packages/lang-core/src/runtime/__tests__/functions.test.ts",
+   "root": "Text"
+  },
+  {
+   "name": "test/functions-10",
+   "schema": "test-functions-2",
+   "file": "imported/cases/test/functions-10.oui",
+   "source": "reference-test",
+   "origin": "packages/lang-core/src/runtime/__tests__/functions.test.ts",
+   "root": "Text"
+  },
+  {
+   "name": "test/functions-11",
+   "schema": "test-functions",
+   "file": "imported/cases/test/functions-11.oui",
+   "source": "reference-test",
+   "origin": "packages/lang-core/src/runtime/__tests__/functions.test.ts",
+   "root": "Text"
+  },
+  {
+   "name": "test/functions-12",
+   "schema": "test-functions-2",
+   "file": "imported/cases/test/functions-12.oui",
+   "source": "reference-test",
+   "origin": "packages/lang-core/src/runtime/__tests__/functions.test.ts",
+   "root": "Text"
+  },
+  {
+   "name": "test/functions-13",
+   "schema": "test-functions",
+   "file": "imported/cases/test/functions-13.oui",
+   "source": "reference-test",
+   "origin": "packages/lang-core/src/runtime/__tests__/functions.test.ts",
+   "root": "Text"
+  },
+  {
+   "name": "test/functions-14",
+   "schema": "test-functions-2",
+   "file": "imported/cases/test/functions-14.oui",
+   "source": "reference-test",
+   "origin": "packages/lang-core/src/runtime/__tests__/functions.test.ts",
+   "root": "Text"
+  },
+  {
+   "name": "test/functions-15",
+   "schema": "test-functions",
+   "file": "imported/cases/test/functions-15.oui",
+   "source": "reference-test",
+   "origin": "packages/lang-core/src/runtime/__tests__/functions.test.ts",
+   "root": "Text"
+  },
+  {
+   "name": "test/functions-16",
+   "schema": "test-functions-2",
+   "file": "imported/cases/test/functions-16.oui",
+   "source": "reference-test",
+   "origin": "packages/lang-core/src/runtime/__tests__/functions.test.ts",
+   "root": "Text"
+  },
+  {
+   "name": "test/functions-17",
+   "schema": "test-functions",
+   "file": "imported/cases/test/functions-17.oui",
+   "source": "reference-test",
+   "origin": "packages/lang-core/src/runtime/__tests__/functions.test.ts",
+   "root": "Text"
+  },
+  {
+   "name": "test/functions-18",
+   "schema": "test-functions-2",
+   "file": "imported/cases/test/functions-18.oui",
+   "source": "reference-test",
+   "origin": "packages/lang-core/src/runtime/__tests__/functions.test.ts",
+   "root": "Text"
+  },
+  {
+   "name": "test/library-01",
+   "schema": "test-library",
+   "file": "imported/cases/test/library-01.oui",
+   "source": "reference-test",
+   "origin": "packages/lang-core/src/__tests__/library.test.ts",
+   "root": "Button"
+  },
+  {
+   "name": "test/library-02",
+   "schema": "test-library-2",
+   "file": "imported/cases/test/library-02.oui",
+   "source": "reference-test",
+   "origin": "packages/lang-core/src/__tests__/library.test.ts",
+   "root": "Button"
+  },
   {
    "name": "test/materialize-validation-01",
    "schema": "test-materialize-validation",
@@ -15,7 +585,7 @@
   },
   {
    "name": "test/materialize-validation-02",
-   "schema": "test-materialize-validation",
+   "schema": "test-materialize-validation-2",
    "file": "imported/cases/test/materialize-validation-02.oui",
    "source": "reference-test",
    "origin": "packages/lang-core/src/parser/__tests__/materialize.validation.test.ts"
@@ -29,7 +599,7 @@
   },
   {
    "name": "test/materialize-validation-04",
-   "schema": "test-materialize-validation",
+   "schema": "test-materialize-validation-2",
    "file": "imported/cases/test/materialize-validation-04.oui",
    "source": "reference-test",
    "origin": "packages/lang-core/src/parser/__tests__/materialize.validation.test.ts"
@@ -43,7 +613,7 @@
   },
   {
    "name": "test/materialize-validation-06",
-   "schema": "test-materialize-validation",
+   "schema": "test-materialize-validation-2",
    "file": "imported/cases/test/materialize-validation-06.oui",
    "source": "reference-test",
    "origin": "packages/lang-core/src/parser/__tests__/materialize.validation.test.ts"
@@ -57,7 +627,7 @@
   },
   {
    "name": "test/materialize-validation-08",
-   "schema": "test-materialize-validation",
+   "schema": "test-materialize-validation-2",
    "file": "imported/cases/test/materialize-validation-08.oui",
    "source": "reference-test",
    "origin": "packages/lang-core/src/parser/__tests__/materialize.validation.test.ts"
@@ -71,7 +641,7 @@
   },
   {
    "name": "test/materialize-validation-10",
-   "schema": "test-materialize-validation",
+   "schema": "test-materialize-validation-2",
    "file": "imported/cases/test/materialize-validation-10.oui",
    "source": "reference-test",
    "origin": "packages/lang-core/src/parser/__tests__/materialize.validation.test.ts"
@@ -85,7 +655,7 @@
   },
   {
    "name": "test/materialize-validation-12",
-   "schema": "test-materialize-validation",
+   "schema": "test-materialize-validation-2",
    "file": "imported/cases/test/materialize-validation-12.oui",
    "source": "reference-test",
    "origin": "packages/lang-core/src/parser/__tests__/materialize.validation.test.ts"
@@ -99,7 +669,7 @@
   },
   {
    "name": "test/materialize-validation-14",
-   "schema": "test-materialize-validation",
+   "schema": "test-materialize-validation-2",
    "file": "imported/cases/test/materialize-validation-14.oui",
    "source": "reference-test",
    "origin": "packages/lang-core/src/parser/__tests__/materialize.validation.test.ts"
@@ -113,7 +683,7 @@
   },
   {
    "name": "test/materialize-validation-16",
-   "schema": "test-materialize-validation",
+   "schema": "test-materialize-validation-2",
    "file": "imported/cases/test/materialize-validation-16.oui",
    "source": "reference-test",
    "origin": "packages/lang-core/src/parser/__tests__/materialize.validation.test.ts"
@@ -127,7 +697,7 @@
   },
   {
    "name": "test/materialize-validation-18",
-   "schema": "test-materialize-validation",
+   "schema": "test-materialize-validation-2",
    "file": "imported/cases/test/materialize-validation-18.oui",
    "source": "reference-test",
    "origin": "packages/lang-core/src/parser/__tests__/materialize.validation.test.ts"
@@ -141,7 +711,7 @@
   },
   {
    "name": "test/materialize-validation-20",
-   "schema": "test-materialize-validation",
+   "schema": "test-materialize-validation-2",
    "file": "imported/cases/test/materialize-validation-20.oui",
    "source": "reference-test",
    "origin": "packages/lang-core/src/parser/__tests__/materialize.validation.test.ts"
@@ -155,7 +725,7 @@
   },
   {
    "name": "test/materialize-validation-22",
-   "schema": "test-materialize-validation",
+   "schema": "test-materialize-validation-2",
    "file": "imported/cases/test/materialize-validation-22.oui",
    "source": "reference-test",
    "origin": "packages/lang-core/src/parser/__tests__/materialize.validation.test.ts"
@@ -169,7 +739,7 @@
   },
   {
    "name": "test/materialize-validation-24",
-   "schema": "test-materialize-validation",
+   "schema": "test-materialize-validation-2",
    "file": "imported/cases/test/materialize-validation-24.oui",
    "source": "reference-test",
    "origin": "packages/lang-core/src/parser/__tests__/materialize.validation.test.ts"
@@ -183,7 +753,7 @@
   },
   {
    "name": "test/materialize-validation-26",
-   "schema": "test-materialize-validation",
+   "schema": "test-materialize-validation-2",
    "file": "imported/cases/test/materialize-validation-26.oui",
    "source": "reference-test",
    "origin": "packages/lang-core/src/parser/__tests__/materialize.validation.test.ts"
@@ -197,7 +767,7 @@
   },
   {
    "name": "test/materialize-validation-28",
-   "schema": "test-materialize-validation",
+   "schema": "test-materialize-validation-2",
    "file": "imported/cases/test/materialize-validation-28.oui",
    "source": "reference-test",
    "origin": "packages/lang-core/src/parser/__tests__/materialize.validation.test.ts"
@@ -211,7 +781,7 @@
   },
   {
    "name": "test/materialize-validation-30",
-   "schema": "test-materialize-validation",
+   "schema": "test-materialize-validation-2",
    "file": "imported/cases/test/materialize-validation-30.oui",
    "source": "reference-test",
    "origin": "packages/lang-core/src/parser/__tests__/materialize.validation.test.ts"
@@ -225,7 +795,7 @@
   },
   {
    "name": "test/materialize-validation-32",
-   "schema": "test-materialize-validation",
+   "schema": "test-materialize-validation-2",
    "file": "imported/cases/test/materialize-validation-32.oui",
    "source": "reference-test",
    "origin": "packages/lang-core/src/parser/__tests__/materialize.validation.test.ts"
@@ -239,7 +809,7 @@
   },
   {
    "name": "test/materialize-validation-34",
-   "schema": "test-materialize-validation",
+   "schema": "test-materialize-validation-2",
    "file": "imported/cases/test/materialize-validation-34.oui",
    "source": "reference-test",
    "origin": "packages/lang-core/src/parser/__tests__/materialize.validation.test.ts"
@@ -253,7 +823,7 @@
   },
   {
    "name": "test/materialize-validation-36",
-   "schema": "test-materialize-validation",
+   "schema": "test-materialize-validation-2",
    "file": "imported/cases/test/materialize-validation-36.oui",
    "source": "reference-test",
    "origin": "packages/lang-core/src/parser/__tests__/materialize.validation.test.ts"
@@ -267,7 +837,7 @@
   },
   {
    "name": "test/materialize-validation-38",
-   "schema": "test-materialize-validation",
+   "schema": "test-materialize-validation-2",
    "file": "imported/cases/test/materialize-validation-38.oui",
    "source": "reference-test",
    "origin": "packages/lang-core/src/parser/__tests__/materialize.validation.test.ts"
@@ -281,8 +851,330 @@
   },
   {
    "name": "test/materialize-validation-40",
-   "schema": "test-materialize-validation",
+   "schema": "test-materialize-validation-2",
    "file": "imported/cases/test/materialize-validation-40.oui",
+   "source": "reference-test",
+   "origin": "packages/lang-core/src/parser/__tests__/materialize.validation.test.ts"
+  },
+  {
+   "name": "test/materialize-validation-41",
+   "schema": "test-materialize-validation",
+   "file": "imported/cases/test/materialize-validation-41.oui",
+   "source": "reference-test",
+   "origin": "packages/lang-core/src/parser/__tests__/materialize.validation.test.ts"
+  },
+  {
+   "name": "test/materialize-validation-42",
+   "schema": "test-materialize-validation-2",
+   "file": "imported/cases/test/materialize-validation-42.oui",
+   "source": "reference-test",
+   "origin": "packages/lang-core/src/parser/__tests__/materialize.validation.test.ts"
+  },
+  {
+   "name": "test/materialize-validation-43",
+   "schema": "test-materialize-validation",
+   "file": "imported/cases/test/materialize-validation-43.oui",
+   "source": "reference-test",
+   "origin": "packages/lang-core/src/parser/__tests__/materialize.validation.test.ts"
+  },
+  {
+   "name": "test/materialize-validation-44",
+   "schema": "test-materialize-validation-2",
+   "file": "imported/cases/test/materialize-validation-44.oui",
+   "source": "reference-test",
+   "origin": "packages/lang-core/src/parser/__tests__/materialize.validation.test.ts"
+  },
+  {
+   "name": "test/materialize-validation-45",
+   "schema": "test-materialize-validation",
+   "file": "imported/cases/test/materialize-validation-45.oui",
+   "source": "reference-test",
+   "origin": "packages/lang-core/src/parser/__tests__/materialize.validation.test.ts"
+  },
+  {
+   "name": "test/materialize-validation-46",
+   "schema": "test-materialize-validation-2",
+   "file": "imported/cases/test/materialize-validation-46.oui",
+   "source": "reference-test",
+   "origin": "packages/lang-core/src/parser/__tests__/materialize.validation.test.ts"
+  },
+  {
+   "name": "test/materialize-validation-47",
+   "schema": "test-materialize-validation",
+   "file": "imported/cases/test/materialize-validation-47.oui",
+   "source": "reference-test",
+   "origin": "packages/lang-core/src/parser/__tests__/materialize.validation.test.ts"
+  },
+  {
+   "name": "test/materialize-validation-48",
+   "schema": "test-materialize-validation-2",
+   "file": "imported/cases/test/materialize-validation-48.oui",
+   "source": "reference-test",
+   "origin": "packages/lang-core/src/parser/__tests__/materialize.validation.test.ts"
+  },
+  {
+   "name": "test/materialize-validation-49",
+   "schema": "test-materialize-validation",
+   "file": "imported/cases/test/materialize-validation-49.oui",
+   "source": "reference-test",
+   "origin": "packages/lang-core/src/parser/__tests__/materialize.validation.test.ts"
+  },
+  {
+   "name": "test/materialize-validation-50",
+   "schema": "test-materialize-validation-2",
+   "file": "imported/cases/test/materialize-validation-50.oui",
+   "source": "reference-test",
+   "origin": "packages/lang-core/src/parser/__tests__/materialize.validation.test.ts"
+  },
+  {
+   "name": "test/materialize-validation-51",
+   "schema": "test-materialize-validation",
+   "file": "imported/cases/test/materialize-validation-51.oui",
+   "source": "reference-test",
+   "origin": "packages/lang-core/src/parser/__tests__/materialize.validation.test.ts"
+  },
+  {
+   "name": "test/materialize-validation-52",
+   "schema": "test-materialize-validation-2",
+   "file": "imported/cases/test/materialize-validation-52.oui",
+   "source": "reference-test",
+   "origin": "packages/lang-core/src/parser/__tests__/materialize.validation.test.ts"
+  },
+  {
+   "name": "test/materialize-validation-53",
+   "schema": "test-materialize-validation",
+   "file": "imported/cases/test/materialize-validation-53.oui",
+   "source": "reference-test",
+   "origin": "packages/lang-core/src/parser/__tests__/materialize.validation.test.ts"
+  },
+  {
+   "name": "test/materialize-validation-54",
+   "schema": "test-materialize-validation-2",
+   "file": "imported/cases/test/materialize-validation-54.oui",
+   "source": "reference-test",
+   "origin": "packages/lang-core/src/parser/__tests__/materialize.validation.test.ts"
+  },
+  {
+   "name": "test/materialize-validation-55",
+   "schema": "test-materialize-validation",
+   "file": "imported/cases/test/materialize-validation-55.oui",
+   "source": "reference-test",
+   "origin": "packages/lang-core/src/parser/__tests__/materialize.validation.test.ts"
+  },
+  {
+   "name": "test/materialize-validation-56",
+   "schema": "test-materialize-validation-2",
+   "file": "imported/cases/test/materialize-validation-56.oui",
+   "source": "reference-test",
+   "origin": "packages/lang-core/src/parser/__tests__/materialize.validation.test.ts"
+  },
+  {
+   "name": "test/materialize-validation-57",
+   "schema": "test-materialize-validation",
+   "file": "imported/cases/test/materialize-validation-57.oui",
+   "source": "reference-test",
+   "origin": "packages/lang-core/src/parser/__tests__/materialize.validation.test.ts"
+  },
+  {
+   "name": "test/materialize-validation-58",
+   "schema": "test-materialize-validation-2",
+   "file": "imported/cases/test/materialize-validation-58.oui",
+   "source": "reference-test",
+   "origin": "packages/lang-core/src/parser/__tests__/materialize.validation.test.ts"
+  },
+  {
+   "name": "test/materialize-validation-59",
+   "schema": "test-materialize-validation",
+   "file": "imported/cases/test/materialize-validation-59.oui",
+   "source": "reference-test",
+   "origin": "packages/lang-core/src/parser/__tests__/materialize.validation.test.ts"
+  },
+  {
+   "name": "test/materialize-validation-60",
+   "schema": "test-materialize-validation-2",
+   "file": "imported/cases/test/materialize-validation-60.oui",
+   "source": "reference-test",
+   "origin": "packages/lang-core/src/parser/__tests__/materialize.validation.test.ts"
+  },
+  {
+   "name": "test/materialize-validation-61",
+   "schema": "test-materialize-validation",
+   "file": "imported/cases/test/materialize-validation-61.oui",
+   "source": "reference-test",
+   "origin": "packages/lang-core/src/parser/__tests__/materialize.validation.test.ts"
+  },
+  {
+   "name": "test/materialize-validation-62",
+   "schema": "test-materialize-validation-2",
+   "file": "imported/cases/test/materialize-validation-62.oui",
+   "source": "reference-test",
+   "origin": "packages/lang-core/src/parser/__tests__/materialize.validation.test.ts"
+  },
+  {
+   "name": "test/materialize-validation-63",
+   "schema": "test-materialize-validation",
+   "file": "imported/cases/test/materialize-validation-63.oui",
+   "source": "reference-test",
+   "origin": "packages/lang-core/src/parser/__tests__/materialize.validation.test.ts"
+  },
+  {
+   "name": "test/materialize-validation-64",
+   "schema": "test-materialize-validation-2",
+   "file": "imported/cases/test/materialize-validation-64.oui",
+   "source": "reference-test",
+   "origin": "packages/lang-core/src/parser/__tests__/materialize.validation.test.ts"
+  },
+  {
+   "name": "test/materialize-validation-65",
+   "schema": "test-materialize-validation-3",
+   "file": "imported/cases/test/materialize-validation-65.oui",
+   "source": "reference-test",
+   "origin": "packages/lang-core/src/parser/__tests__/materialize.validation.test.ts"
+  },
+  {
+   "name": "test/materialize-validation-66",
+   "schema": "test-materialize-validation-4",
+   "file": "imported/cases/test/materialize-validation-66.oui",
+   "source": "reference-test",
+   "origin": "packages/lang-core/src/parser/__tests__/materialize.validation.test.ts"
+  },
+  {
+   "name": "test/materialize-validation-67",
+   "schema": "test-materialize-validation",
+   "file": "imported/cases/test/materialize-validation-67.oui",
+   "source": "reference-test",
+   "origin": "packages/lang-core/src/parser/__tests__/materialize.validation.test.ts"
+  },
+  {
+   "name": "test/materialize-validation-68",
+   "schema": "test-materialize-validation-2",
+   "file": "imported/cases/test/materialize-validation-68.oui",
+   "source": "reference-test",
+   "origin": "packages/lang-core/src/parser/__tests__/materialize.validation.test.ts"
+  },
+  {
+   "name": "test/materialize-validation-69",
+   "schema": "test-materialize-validation",
+   "file": "imported/cases/test/materialize-validation-69.oui",
+   "source": "reference-test",
+   "origin": "packages/lang-core/src/parser/__tests__/materialize.validation.test.ts"
+  },
+  {
+   "name": "test/materialize-validation-70",
+   "schema": "test-materialize-validation-2",
+   "file": "imported/cases/test/materialize-validation-70.oui",
+   "source": "reference-test",
+   "origin": "packages/lang-core/src/parser/__tests__/materialize.validation.test.ts"
+  },
+  {
+   "name": "test/materialize-validation-71",
+   "schema": "test-materialize-validation",
+   "file": "imported/cases/test/materialize-validation-71.oui",
+   "source": "reference-test",
+   "origin": "packages/lang-core/src/parser/__tests__/materialize.validation.test.ts"
+  },
+  {
+   "name": "test/materialize-validation-72",
+   "schema": "test-materialize-validation-2",
+   "file": "imported/cases/test/materialize-validation-72.oui",
+   "source": "reference-test",
+   "origin": "packages/lang-core/src/parser/__tests__/materialize.validation.test.ts"
+  },
+  {
+   "name": "test/materialize-validation-73",
+   "schema": "test-materialize-validation",
+   "file": "imported/cases/test/materialize-validation-73.oui",
+   "source": "reference-test",
+   "origin": "packages/lang-core/src/parser/__tests__/materialize.validation.test.ts"
+  },
+  {
+   "name": "test/materialize-validation-74",
+   "schema": "test-materialize-validation-2",
+   "file": "imported/cases/test/materialize-validation-74.oui",
+   "source": "reference-test",
+   "origin": "packages/lang-core/src/parser/__tests__/materialize.validation.test.ts"
+  },
+  {
+   "name": "test/materialize-validation-75",
+   "schema": "test-materialize-validation",
+   "file": "imported/cases/test/materialize-validation-75.oui",
+   "source": "reference-test",
+   "origin": "packages/lang-core/src/parser/__tests__/materialize.validation.test.ts"
+  },
+  {
+   "name": "test/materialize-validation-76",
+   "schema": "test-materialize-validation-2",
+   "file": "imported/cases/test/materialize-validation-76.oui",
+   "source": "reference-test",
+   "origin": "packages/lang-core/src/parser/__tests__/materialize.validation.test.ts"
+  },
+  {
+   "name": "test/materialize-validation-77",
+   "schema": "test-materialize-validation",
+   "file": "imported/cases/test/materialize-validation-77.oui",
+   "source": "reference-test",
+   "origin": "packages/lang-core/src/parser/__tests__/materialize.validation.test.ts"
+  },
+  {
+   "name": "test/materialize-validation-78",
+   "schema": "test-materialize-validation-2",
+   "file": "imported/cases/test/materialize-validation-78.oui",
+   "source": "reference-test",
+   "origin": "packages/lang-core/src/parser/__tests__/materialize.validation.test.ts"
+  },
+  {
+   "name": "test/materialize-validation-79",
+   "schema": "test-materialize-validation",
+   "file": "imported/cases/test/materialize-validation-79.oui",
+   "source": "reference-test",
+   "origin": "packages/lang-core/src/parser/__tests__/materialize.validation.test.ts"
+  },
+  {
+   "name": "test/materialize-validation-80",
+   "schema": "test-materialize-validation-2",
+   "file": "imported/cases/test/materialize-validation-80.oui",
+   "source": "reference-test",
+   "origin": "packages/lang-core/src/parser/__tests__/materialize.validation.test.ts"
+  },
+  {
+   "name": "test/materialize-validation-81",
+   "schema": "test-materialize-validation",
+   "file": "imported/cases/test/materialize-validation-81.oui",
+   "source": "reference-test",
+   "origin": "packages/lang-core/src/parser/__tests__/materialize.validation.test.ts"
+  },
+  {
+   "name": "test/materialize-validation-82",
+   "schema": "test-materialize-validation-2",
+   "file": "imported/cases/test/materialize-validation-82.oui",
+   "source": "reference-test",
+   "origin": "packages/lang-core/src/parser/__tests__/materialize.validation.test.ts"
+  },
+  {
+   "name": "test/materialize-validation-83",
+   "schema": "test-materialize-validation",
+   "file": "imported/cases/test/materialize-validation-83.oui",
+   "source": "reference-test",
+   "origin": "packages/lang-core/src/parser/__tests__/materialize.validation.test.ts"
+  },
+  {
+   "name": "test/materialize-validation-84",
+   "schema": "test-materialize-validation-2",
+   "file": "imported/cases/test/materialize-validation-84.oui",
+   "source": "reference-test",
+   "origin": "packages/lang-core/src/parser/__tests__/materialize.validation.test.ts"
+  },
+  {
+   "name": "test/materialize-validation-85",
+   "schema": "test-materialize-validation",
+   "file": "imported/cases/test/materialize-validation-85.oui",
+   "source": "reference-test",
+   "origin": "packages/lang-core/src/parser/__tests__/materialize.validation.test.ts"
+  },
+  {
+   "name": "test/materialize-validation-86",
+   "schema": "test-materialize-validation-2",
+   "file": "imported/cases/test/materialize-validation-86.oui",
    "source": "reference-test",
    "origin": "packages/lang-core/src/parser/__tests__/materialize.validation.test.ts"
   },
@@ -501,28 +1393,576 @@
    "schema": "test-serialize",
    "file": "imported/cases/test/serialize-01.oui",
    "source": "reference-test",
-   "origin": "packages/lang-core/src/parser/__tests__/serialize.test.ts"
+   "origin": "packages/lang-core/src/parser/__tests__/serialize.test.ts",
+   "root": "Btn"
   },
   {
    "name": "test/serialize-02",
-   "schema": "test-serialize",
+   "schema": "test-serialize-2",
    "file": "imported/cases/test/serialize-02.oui",
    "source": "reference-test",
-   "origin": "packages/lang-core/src/parser/__tests__/serialize.test.ts"
+   "origin": "packages/lang-core/src/parser/__tests__/serialize.test.ts",
+   "root": "Btn"
   },
   {
    "name": "test/serialize-03",
-   "schema": "test-serialize",
+   "schema": "test-serialize-3",
    "file": "imported/cases/test/serialize-03.oui",
    "source": "reference-test",
    "origin": "packages/lang-core/src/parser/__tests__/serialize.test.ts"
   },
   {
    "name": "test/serialize-04",
-   "schema": "test-serialize",
+   "schema": "test-serialize-3",
    "file": "imported/cases/test/serialize-04.oui",
    "source": "reference-test",
    "origin": "packages/lang-core/src/parser/__tests__/serialize.test.ts"
+  },
+  {
+   "name": "test/serialize-05",
+   "schema": "test-serialize-3",
+   "file": "imported/cases/test/serialize-05.oui",
+   "source": "reference-test",
+   "origin": "packages/lang-core/src/parser/__tests__/serialize.test.ts"
+  },
+  {
+   "name": "test/serialize-06",
+   "schema": "test-serialize-3",
+   "file": "imported/cases/test/serialize-06.oui",
+   "source": "reference-test",
+   "origin": "packages/lang-core/src/parser/__tests__/serialize.test.ts"
+  },
+  {
+   "name": "test/store-01",
+   "schema": "test-store",
+   "file": "imported/cases/test/store-01.oui",
+   "source": "reference-test",
+   "origin": "packages/lang-core/src/runtime/__tests__/store.test.ts",
+   "root": "Col"
+  },
+  {
+   "name": "test/store-02",
+   "schema": "test-store-2",
+   "file": "imported/cases/test/store-02.oui",
+   "source": "reference-test",
+   "origin": "packages/lang-core/src/runtime/__tests__/store.test.ts",
+   "root": "Col"
+  },
+  {
+   "name": "test/store-03",
+   "schema": "test-store",
+   "file": "imported/cases/test/store-03.oui",
+   "source": "reference-test",
+   "origin": "packages/lang-core/src/runtime/__tests__/store.test.ts",
+   "root": "Col"
+  },
+  {
+   "name": "test/store-04",
+   "schema": "test-store-2",
+   "file": "imported/cases/test/store-04.oui",
+   "source": "reference-test",
+   "origin": "packages/lang-core/src/runtime/__tests__/store.test.ts",
+   "root": "Col"
+  },
+  {
+   "name": "test/store-05",
+   "schema": "test-store",
+   "file": "imported/cases/test/store-05.oui",
+   "source": "reference-test",
+   "origin": "packages/lang-core/src/runtime/__tests__/store.test.ts",
+   "root": "Col"
+  },
+  {
+   "name": "test/store-06",
+   "schema": "test-store-2",
+   "file": "imported/cases/test/store-06.oui",
+   "source": "reference-test",
+   "origin": "packages/lang-core/src/runtime/__tests__/store.test.ts",
+   "root": "Col"
+  },
+  {
+   "name": "spec/actions/001-several-actions",
+   "schema": "spec-1.0",
+   "file": "imported/cases/spec/actions/001-several-actions.oui",
+   "source": "spec-fixture",
+   "origin": "spec/fixtures/1.0/actions/001-several-actions",
+   "root": "Stack"
+  },
+  {
+   "name": "spec/actions/002-one-action",
+   "schema": "spec-1.0",
+   "file": "imported/cases/spec/actions/002-one-action.oui",
+   "source": "spec-fixture",
+   "origin": "spec/fixtures/1.0/actions/002-one-action",
+   "root": "Stack"
+  },
+  {
+   "name": "spec/actions/003-event-context-any-value",
+   "schema": "spec-1.0",
+   "file": "imported/cases/spec/actions/003-event-context-any-value.oui",
+   "source": "spec-fixture",
+   "origin": "spec/fixtures/1.0/actions/003-event-context-any-value",
+   "root": "Stack"
+  },
+  {
+   "name": "spec/actions/004-event-form-state-per-action",
+   "schema": "spec-1.0",
+   "file": "imported/cases/spec/actions/004-event-form-state-per-action.oui",
+   "source": "spec-fixture",
+   "origin": "spec/fixtures/1.0/actions/004-event-form-state-per-action",
+   "root": "Stack"
+  },
+  {
+   "name": "spec/actions/006-query-rerun-on-state",
+   "schema": "spec-1.0",
+   "file": "imported/cases/spec/actions/006-query-rerun-on-state.oui",
+   "source": "spec-fixture",
+   "origin": "spec/fixtures/1.0/actions/006-query-rerun-on-state",
+   "root": "Stack"
+  },
+  {
+   "name": "spec/actions/007-mutation-run",
+   "schema": "spec-1.0",
+   "file": "imported/cases/spec/actions/007-mutation-run.oui",
+   "source": "spec-fixture",
+   "origin": "spec/fixtures/1.0/actions/007-mutation-run",
+   "root": "Stack"
+  },
+  {
+   "name": "spec/actions/008-tool-not-found-stops-plan",
+   "schema": "spec-1.0",
+   "file": "imported/cases/spec/actions/008-tool-not-found-stops-plan.oui",
+   "source": "spec-fixture",
+   "origin": "spec/fixtures/1.0/actions/008-tool-not-found-stops-plan",
+   "root": "Stack"
+  },
+  {
+   "name": "spec/actions/009-custom-action",
+   "schema": "spec-1.0",
+   "file": "imported/cases/spec/actions/009-custom-action.oui",
+   "source": "spec-fixture",
+   "origin": "spec/fixtures/1.0/actions/009-custom-action",
+   "root": "Stack"
+  },
+  {
+   "name": "spec/actions/010-one-action-by-reference",
+   "schema": "spec-1.0",
+   "file": "imported/cases/spec/actions/010-one-action-by-reference.oui",
+   "source": "spec-fixture",
+   "origin": "spec/fixtures/1.0/actions/010-one-action-by-reference",
+   "root": "Stack"
+  },
+  {
+   "name": "spec/actions/011-action-list-is-data",
+   "schema": "spec-1.0",
+   "file": "imported/cases/spec/actions/011-action-list-is-data.oui",
+   "source": "spec-fixture",
+   "origin": "spec/fixtures/1.0/actions/011-action-list-is-data",
+   "root": "Stack"
+  },
+  {
+   "name": "spec/editing/001-replace-and-add",
+   "schema": "spec-1.0",
+   "file": "imported/cases/spec/editing/001-replace-and-add.oui",
+   "source": "spec-fixture",
+   "origin": "spec/fixtures/1.0/editing/001-replace-and-add",
+   "root": "Stack"
+  },
+  {
+   "name": "spec/editing/002-delete-and-gc",
+   "schema": "spec-1.0",
+   "file": "imported/cases/spec/editing/002-delete-and-gc.oui",
+   "source": "spec-fixture",
+   "origin": "spec/fixtures/1.0/editing/002-delete-and-gc",
+   "root": "Stack"
+  },
+  {
+   "name": "spec/editing/003-state-delete",
+   "schema": "spec-1.0",
+   "file": "imported/cases/spec/editing/003-state-delete.oui",
+   "source": "spec-fixture",
+   "origin": "spec/fixtures/1.0/editing/003-state-delete",
+   "root": "Stack"
+  },
+  {
+   "name": "spec/editing/005-fenced-patch",
+   "schema": "spec-1.0",
+   "file": "imported/cases/spec/editing/005-fenced-patch.oui",
+   "source": "spec-fixture",
+   "origin": "spec/fixtures/1.0/editing/005-fenced-patch",
+   "root": "Stack"
+  },
+  {
+   "name": "spec/editing/006-no-root-statement-no-gc",
+   "schema": "spec-1.0",
+   "file": "imported/cases/spec/editing/006-no-root-statement-no-gc.oui",
+   "source": "spec-fixture",
+   "origin": "spec/fixtures/1.0/editing/006-no-root-statement-no-gc",
+   "root": "Stack"
+  },
+  {
+   "name": "spec/entry/001-root-statement",
+   "schema": "spec-1.0",
+   "file": "imported/cases/spec/entry/001-root-statement.oui",
+   "source": "spec-fixture",
+   "origin": "spec/fixtures/1.0/entry/001-root-statement",
+   "root": "Stack"
+  },
+  {
+   "name": "spec/entry/002-first-calls-root-component",
+   "schema": "spec-1.0",
+   "file": "imported/cases/spec/entry/002-first-calls-root-component.oui",
+   "source": "spec-fixture",
+   "origin": "spec/fixtures/1.0/entry/002-first-calls-root-component",
+   "root": "Stack"
+  },
+  {
+   "name": "spec/entry/003-root-component-later",
+   "schema": "spec-1.0",
+   "file": "imported/cases/spec/entry/003-root-component-later.oui",
+   "source": "spec-fixture",
+   "origin": "spec/fixtures/1.0/entry/003-root-component-later",
+   "root": "Stack"
+  },
+  {
+   "name": "spec/entry/004-root-not-a-component",
+   "schema": "spec-1.0",
+   "file": "imported/cases/spec/entry/004-root-not-a-component.oui",
+   "source": "spec-fixture",
+   "origin": "spec/fixtures/1.0/entry/004-root-not-a-component",
+   "root": "Stack"
+  },
+  {
+   "name": "spec/entry/005-first-is-state-declaration",
+   "schema": "spec-1.0",
+   "file": "imported/cases/spec/entry/005-first-is-state-declaration.oui",
+   "source": "spec-fixture",
+   "origin": "spec/fixtures/1.0/entry/005-first-is-state-declaration",
+   "root": "Stack"
+  },
+  {
+   "name": "spec/entry/006-ternary-root-multiline",
+   "schema": "spec-1.0",
+   "file": "imported/cases/spec/entry/006-ternary-root-multiline.oui",
+   "source": "spec-fixture",
+   "origin": "spec/fixtures/1.0/entry/006-ternary-root-multiline",
+   "root": "Stack"
+  },
+  {
+   "name": "spec/entry/007-no-root-component-call",
+   "schema": "spec-1.0",
+   "file": "imported/cases/spec/entry/007-no-root-component-call.oui",
+   "source": "spec-fixture",
+   "origin": "spec/fixtures/1.0/entry/007-no-root-component-call",
+   "root": "Stack"
+  },
+  {
+   "name": "spec/errors/001-unknown-component-dropped",
+   "schema": "spec-1.0",
+   "file": "imported/cases/spec/errors/001-unknown-component-dropped.oui",
+   "source": "spec-fixture",
+   "origin": "spec/fixtures/1.0/errors/001-unknown-component-dropped",
+   "root": "Stack"
+  },
+  {
+   "name": "spec/errors/002-unknown-function-null",
+   "schema": "spec-1.0",
+   "file": "imported/cases/spec/errors/002-unknown-function-null.oui",
+   "source": "spec-fixture",
+   "origin": "spec/fixtures/1.0/errors/002-unknown-function-null",
+   "root": "Stack"
+  },
+  {
+   "name": "spec/errors/003-no-root-unresolved-root",
+   "schema": "spec-1.0",
+   "file": "imported/cases/spec/errors/003-no-root-unresolved-root.oui",
+   "source": "spec-fixture",
+   "origin": "spec/fixtures/1.0/errors/003-no-root-unresolved-root",
+   "root": "Stack"
+  },
+  {
+   "name": "spec/errors/005-shape-missing-required-metric",
+   "schema": "spec-1.0",
+   "file": "imported/cases/spec/errors/005-shape-missing-required-metric.oui",
+   "source": "spec-fixture",
+   "origin": "spec/fixtures/1.0/errors/005-shape-missing-required-metric",
+   "root": "Stack"
+  },
+  {
+   "name": "spec/errors/006-null-required-dropped",
+   "schema": "spec-1.0",
+   "file": "imported/cases/spec/errors/006-null-required-dropped.oui",
+   "source": "spec-fixture",
+   "origin": "spec/fixtures/1.0/errors/006-null-required-dropped",
+   "root": "Stack"
+  },
+  {
+   "name": "spec/errors/007-type-mismatch-enum",
+   "schema": "spec-1.0",
+   "file": "imported/cases/spec/errors/007-type-mismatch-enum.oui",
+   "source": "spec-fixture",
+   "origin": "spec/fixtures/1.0/errors/007-type-mismatch-enum",
+   "root": "Stack"
+  },
+  {
+   "name": "spec/errors/008-type-mismatch-bare-list",
+   "schema": "spec-1.0",
+   "file": "imported/cases/spec/errors/008-type-mismatch-bare-list.oui",
+   "source": "spec-fixture",
+   "origin": "spec/fixtures/1.0/errors/008-type-mismatch-bare-list",
+   "root": "Stack"
+  },
+  {
+   "name": "spec/errors/009-excess-args-dropped",
+   "schema": "spec-1.0",
+   "file": "imported/cases/spec/errors/009-excess-args-dropped.oui",
+   "source": "spec-fixture",
+   "origin": "spec/fixtures/1.0/errors/009-excess-args-dropped",
+   "root": "Stack"
+  },
+  {
+   "name": "spec/errors/010-inline-reserved-array",
+   "schema": "spec-1.0",
+   "file": "imported/cases/spec/errors/010-inline-reserved-array.oui",
+   "source": "spec-fixture",
+   "origin": "spec/fixtures/1.0/errors/010-inline-reserved-array",
+   "root": "Stack"
+  },
+  {
+   "name": "spec/errors/012-validate-array-elements",
+   "schema": "spec-1.0",
+   "file": "imported/cases/spec/errors/012-validate-array-elements.oui",
+   "source": "spec-fixture",
+   "origin": "spec/fixtures/1.0/errors/012-validate-array-elements",
+   "root": "Stack"
+  },
+  {
+   "name": "spec/errors/013-validate-component-slot-data",
+   "schema": "spec-1.0",
+   "file": "imported/cases/spec/errors/013-validate-component-slot-data.oui",
+   "source": "spec-fixture",
+   "origin": "spec/fixtures/1.0/errors/013-validate-component-slot-data",
+   "root": "Stack"
+  },
+  {
+   "name": "spec/errors/014-function-literal-args",
+   "schema": "spec-1.0",
+   "file": "imported/cases/spec/errors/014-function-literal-args.oui",
+   "source": "spec-fixture",
+   "origin": "spec/fixtures/1.0/errors/014-function-literal-args",
+   "root": "Stack"
+  },
+  {
+   "name": "spec/evaluation/001-kind-classify",
+   "schema": "spec-1.0",
+   "file": "imported/cases/spec/evaluation/001-kind-classify.oui",
+   "source": "spec-fixture",
+   "origin": "spec/fixtures/1.0/evaluation/001-kind-classify",
+   "root": "Stack"
+  },
+  {
+   "name": "spec/evaluation/003-ref-cycle",
+   "schema": "spec-1.0",
+   "file": "imported/cases/spec/evaluation/003-ref-cycle.oui",
+   "source": "spec-fixture",
+   "origin": "spec/fixtures/1.0/evaluation/003-ref-cycle",
+   "root": "Stack"
+  },
+  {
+   "name": "spec/evaluation/004-duplicate-later-wins",
+   "schema": "spec-1.0",
+   "file": "imported/cases/spec/evaluation/004-duplicate-later-wins.oui",
+   "source": "spec-fixture",
+   "origin": "spec/fixtures/1.0/evaluation/004-duplicate-later-wins",
+   "root": "Stack"
+  },
+  {
+   "name": "spec/evaluation/005-op-coerce-values",
+   "schema": "spec-1.0",
+   "file": "imported/cases/spec/evaluation/005-op-coerce-values.oui",
+   "source": "spec-fixture",
+   "origin": "spec/fixtures/1.0/evaluation/005-op-coerce-values",
+   "root": "Stack"
+  },
+  {
+   "name": "spec/evaluation/006-member-pluck-and-null",
+   "schema": "spec-1.0",
+   "file": "imported/cases/spec/evaluation/006-member-pluck-and-null.oui",
+   "source": "spec-fixture",
+   "origin": "spec/fixtures/1.0/evaluation/006-member-pluck-and-null",
+   "root": "Stack"
+  },
+  {
+   "name": "spec/evaluation/008-builtin-sort-locale",
+   "schema": "spec-1.0",
+   "file": "imported/cases/spec/evaluation/008-builtin-sort-locale.oui",
+   "source": "spec-fixture",
+   "origin": "spec/fixtures/1.0/evaluation/008-builtin-sort-locale",
+   "root": "Stack"
+  },
+  {
+   "name": "spec/evaluation/010-function-registered",
+   "schema": "spec-1.0",
+   "file": "imported/cases/spec/evaluation/010-function-registered.oui",
+   "source": "spec-fixture",
+   "origin": "spec/fixtures/1.0/evaluation/010-function-registered",
+   "root": "Stack"
+  },
+  {
+   "name": "spec/evaluation/011-function-null-required-arg",
+   "schema": "spec-1.0",
+   "file": "imported/cases/spec/evaluation/011-function-null-required-arg.oui",
+   "source": "spec-fixture",
+   "origin": "spec/fixtures/1.0/evaluation/011-function-null-required-arg",
+   "root": "Stack"
+  },
+  {
+   "name": "spec/evaluation/012-kind-query-dollar-name",
+   "schema": "spec-1.0",
+   "file": "imported/cases/spec/evaluation/012-kind-query-dollar-name.oui",
+   "source": "spec-fixture",
+   "origin": "spec/fixtures/1.0/evaluation/012-kind-query-dollar-name",
+   "root": "Stack"
+  },
+  {
+   "name": "spec/grammar/003-fence-multiple-joined",
+   "schema": "spec-1.0",
+   "file": "imported/cases/spec/grammar/003-fence-multiple-joined.oui",
+   "source": "spec-fixture",
+   "origin": "spec/fixtures/1.0/grammar/003-fence-multiple-joined",
+   "root": "Stack"
+  },
+  {
+   "name": "spec/grammar/004-comment-strip",
+   "schema": "spec-1.0",
+   "file": "imported/cases/spec/grammar/004-comment-strip.oui",
+   "source": "spec-fixture",
+   "origin": "spec/fixtures/1.0/grammar/004-comment-strip",
+   "root": "Stack"
+  },
+  {
+   "name": "spec/grammar/005-lex-escapes",
+   "schema": "spec-1.0",
+   "file": "imported/cases/spec/grammar/005-lex-escapes.oui",
+   "source": "spec-fixture",
+   "origin": "spec/fixtures/1.0/grammar/005-lex-escapes",
+   "root": "Stack"
+  },
+  {
+   "name": "spec/grammar/006-lex-minus-and-skip",
+   "schema": "spec-1.0",
+   "file": "imported/cases/spec/grammar/006-lex-minus-and-skip.oui",
+   "source": "spec-fixture",
+   "origin": "spec/fixtures/1.0/grammar/006-lex-minus-and-skip",
+   "root": "Stack"
+  },
+  {
+   "name": "spec/grammar/008-expr-precedence-and-keys",
+   "schema": "spec-1.0",
+   "file": "imported/cases/spec/grammar/008-expr-precedence-and-keys.oui",
+   "source": "spec-fixture",
+   "origin": "spec/fixtures/1.0/grammar/008-expr-precedence-and-keys",
+   "root": "Stack"
+  },
+  {
+   "name": "spec/grammar/009-member-digits-field",
+   "schema": "spec-1.0",
+   "file": "imported/cases/spec/grammar/009-member-digits-field.oui",
+   "source": "spec-fixture",
+   "origin": "spec/fixtures/1.0/grammar/009-member-digits-field",
+   "root": "Stack"
+  },
+  {
+   "name": "spec/grammar/010-roundtrip-tree",
+   "schema": "spec-1.0",
+   "file": "imported/cases/spec/grammar/010-roundtrip-tree.oui",
+   "source": "spec-fixture",
+   "origin": "spec/fixtures/1.0/grammar/010-roundtrip-tree",
+   "root": "Stack"
+  },
+  {
+   "name": "spec/state/001-store-auto-declare",
+   "schema": "spec-1.0",
+   "file": "imported/cases/spec/state/001-store-auto-declare.oui",
+   "source": "spec-fixture",
+   "origin": "spec/fixtures/1.0/state/001-store-auto-declare",
+   "root": "Stack"
+  },
+  {
+   "name": "spec/state/002-binding-two-way",
+   "schema": "spec-1.0",
+   "file": "imported/cases/spec/state/002-binding-two-way.oui",
+   "source": "spec-fixture",
+   "origin": "spec/fixtures/1.0/state/002-binding-two-way",
+   "root": "Stack"
+  },
+  {
+   "name": "spec/state/003-form-scope",
+   "schema": "spec-1.0",
+   "file": "imported/cases/spec/state/003-form-scope.oui",
+   "source": "spec-fixture",
+   "origin": "spec/fixtures/1.0/state/003-form-scope",
+   "root": "Stack"
+  },
+  {
+   "name": "spec/state/004-form-page-level",
+   "schema": "spec-1.0",
+   "file": "imported/cases/spec/state/004-form-page-level.oui",
+   "source": "spec-fixture",
+   "origin": "spec/fixtures/1.0/state/004-form-page-level",
+   "root": "Stack"
+  },
+  {
+   "name": "spec/streaming/001-worked-example",
+   "schema": "spec-1.0",
+   "file": "imported/cases/spec/streaming/001-worked-example.oui",
+   "source": "spec-fixture",
+   "origin": "spec/fixtures/1.0/streaming/001-worked-example",
+   "root": "Stack",
+   "recorded": [
+    40,
+    43,
+    88,
+    78
+   ]
+  },
+  {
+   "name": "spec/streaming/003-multiline-ternary-across-chunks",
+   "schema": "spec-1.0",
+   "file": "imported/cases/spec/streaming/003-multiline-ternary-across-chunks.oui",
+   "source": "spec-fixture",
+   "origin": "spec/fixtures/1.0/streaming/003-multiline-ternary-across-chunks",
+   "root": "Stack",
+   "recorded": [
+    42,
+    11,
+    11
+   ]
+  },
+  {
+   "name": "spec/streaming/005-fence-arrives-late",
+   "schema": "spec-1.0",
+   "file": "imported/cases/spec/streaming/005-fence-arrives-late.oui",
+   "source": "spec-fixture",
+   "origin": "spec/fixtures/1.0/streaming/005-fence-arrives-late",
+   "root": "Stack",
+   "recorded": [
+    13,
+    36,
+    10
+   ]
+  },
+  {
+   "name": "spec/streaming/006-truncated-string-escape",
+   "schema": "spec-1.0",
+   "file": "imported/cases/spec/streaming/006-truncated-string-escape.oui",
+   "source": "spec-fixture",
+   "origin": "spec/fixtures/1.0/streaming/006-truncated-string-escape",
+   "root": "Stack",
+   "recorded": [
+    29,
+    1
+   ]
   },
   {
    "name": "bench/chart-with-data",
@@ -665,6 +2105,97 @@
    "origin": "docs/content/docs/api-reference/a2ui.mdx"
   },
   {
+   "name": "docs/build-agents-conversation-history-01",
+   "schema": "bench",
+   "file": "imported/cases/docs/build-agents-conversation-history-01.oui",
+   "source": "docs",
+   "origin": "docs/content/docs/build-agents/conversation-history.mdx"
+  },
+  {
+   "name": "docs/build-agents-how-it-works-01",
+   "schema": "bench",
+   "file": "imported/cases/docs/build-agents-how-it-works-01.oui",
+   "source": "docs",
+   "origin": "docs/content/docs/build-agents/how-it-works.mdx"
+  },
+  {
+   "name": "docs/build-agents-tools-01",
+   "schema": "bench",
+   "file": "imported/cases/docs/build-agents-tools-01.oui",
+   "source": "docs",
+   "origin": "docs/content/docs/build-agents/tools.mdx"
+  },
+  {
+   "name": "docs/build-agents-tools-02",
+   "schema": "bench",
+   "file": "imported/cases/docs/build-agents-tools-02.oui",
+   "source": "docs",
+   "origin": "docs/content/docs/build-agents/tools.mdx"
+  },
+  {
+   "name": "docs/build-agents-tools-03",
+   "schema": "bench",
+   "file": "imported/cases/docs/build-agents-tools-03.oui",
+   "source": "docs",
+   "origin": "docs/content/docs/build-agents/tools.mdx"
+  },
+  {
+   "name": "docs/cookbooks-document-comparison-01",
+   "schema": "bench",
+   "file": "imported/cases/docs/cookbooks-document-comparison-01.oui",
+   "source": "docs",
+   "origin": "docs/content/docs/cookbooks/document-comparison.mdx"
+  },
+  {
+   "name": "docs/openui-lang-actions-01",
+   "schema": "bench",
+   "file": "imported/cases/docs/openui-lang-actions-01.oui",
+   "source": "docs",
+   "origin": "docs/content/docs/openui-lang/actions.mdx"
+  },
+  {
+   "name": "docs/openui-lang-actions-02",
+   "schema": "bench",
+   "file": "imported/cases/docs/openui-lang-actions-02.oui",
+   "source": "docs",
+   "origin": "docs/content/docs/openui-lang/actions.mdx"
+  },
+  {
+   "name": "docs/openui-lang-actions-03",
+   "schema": "bench",
+   "file": "imported/cases/docs/openui-lang-actions-03.oui",
+   "source": "docs",
+   "origin": "docs/content/docs/openui-lang/actions.mdx"
+  },
+  {
+   "name": "docs/openui-lang-actions-04",
+   "schema": "bench",
+   "file": "imported/cases/docs/openui-lang-actions-04.oui",
+   "source": "docs",
+   "origin": "docs/content/docs/openui-lang/actions.mdx"
+  },
+  {
+   "name": "docs/openui-lang-actions-05",
+   "schema": "bench",
+   "file": "imported/cases/docs/openui-lang-actions-05.oui",
+   "source": "docs",
+   "origin": "docs/content/docs/openui-lang/actions.mdx"
+  },
+  {
+   "name": "docs/openui-lang-actions-06",
+   "schema": "bench",
+   "file": "imported/cases/docs/openui-lang-actions-06.oui",
+   "source": "docs",
+   "origin": "docs/content/docs/openui-lang/actions.mdx"
+  },
+  {
+   "name": "docs/openui-lang-actions-07",
+   "schema": "bench",
+   "file": "imported/cases/docs/openui-lang-actions-07.oui",
+   "source": "docs",
+   "origin": "docs/content/docs/openui-lang/actions.mdx"
+  },
+  {
    "name": "docs/openui-lang-architecture-01",
    "schema": "bench",
    "file": "imported/cases/docs/openui-lang-architecture-01.oui",
@@ -686,34 +2217,6 @@
    "origin": "docs/content/docs/openui-lang/benchmarks.mdx"
   },
   {
-   "name": "docs/openui-lang-builtins-01",
-   "schema": "bench",
-   "file": "imported/cases/docs/openui-lang-builtins-01.oui",
-   "source": "docs",
-   "origin": "docs/content/docs/openui-lang/builtins.mdx"
-  },
-  {
-   "name": "docs/openui-lang-builtins-02",
-   "schema": "bench",
-   "file": "imported/cases/docs/openui-lang-builtins-02.oui",
-   "source": "docs",
-   "origin": "docs/content/docs/openui-lang/builtins.mdx"
-  },
-  {
-   "name": "docs/openui-lang-builtins-03",
-   "schema": "bench",
-   "file": "imported/cases/docs/openui-lang-builtins-03.oui",
-   "source": "docs",
-   "origin": "docs/content/docs/openui-lang/builtins.mdx"
-  },
-  {
-   "name": "docs/openui-lang-builtins-04",
-   "schema": "bench",
-   "file": "imported/cases/docs/openui-lang-builtins-04.oui",
-   "source": "docs",
-   "origin": "docs/content/docs/openui-lang/builtins.mdx"
-  },
-  {
    "name": "docs/openui-lang-components-how-it-works-01",
    "schema": "bench",
    "file": "imported/cases/docs/openui-lang-components-how-it-works-01.oui",
@@ -724,13 +2227,6 @@
    "name": "docs/openui-lang-components-lang-example-01",
    "schema": "bench",
    "file": "imported/cases/docs/openui-lang-components-lang-example-01.oui",
-   "source": "docs",
-   "origin": "docs/content/docs/openui-lang/components/lang-example.tsx"
-  },
-  {
-   "name": "docs/openui-lang-components-lang-example-02",
-   "schema": "bench",
-   "file": "imported/cases/docs/openui-lang-components-lang-example-02.oui",
    "source": "docs",
    "origin": "docs/content/docs/openui-lang/components/lang-example.tsx"
   },
@@ -784,6 +2280,62 @@
    "origin": "docs/content/docs/openui-lang/evolution-guide.mdx"
   },
   {
+   "name": "docs/openui-lang-functions-01",
+   "schema": "bench",
+   "file": "imported/cases/docs/openui-lang-functions-01.oui",
+   "source": "docs",
+   "origin": "docs/content/docs/openui-lang/functions.mdx"
+  },
+  {
+   "name": "docs/openui-lang-functions-02",
+   "schema": "bench",
+   "file": "imported/cases/docs/openui-lang-functions-02.oui",
+   "source": "docs",
+   "origin": "docs/content/docs/openui-lang/functions.mdx"
+  },
+  {
+   "name": "docs/openui-lang-functions-03",
+   "schema": "bench",
+   "file": "imported/cases/docs/openui-lang-functions-03.oui",
+   "source": "docs",
+   "origin": "docs/content/docs/openui-lang/functions.mdx"
+  },
+  {
+   "name": "docs/openui-lang-functions-04",
+   "schema": "bench",
+   "file": "imported/cases/docs/openui-lang-functions-04.oui",
+   "source": "docs",
+   "origin": "docs/content/docs/openui-lang/functions.mdx"
+  },
+  {
+   "name": "docs/openui-lang-functions-05",
+   "schema": "bench",
+   "file": "imported/cases/docs/openui-lang-functions-05.oui",
+   "source": "docs",
+   "origin": "docs/content/docs/openui-lang/functions.mdx"
+  },
+  {
+   "name": "docs/openui-lang-functions-06",
+   "schema": "bench",
+   "file": "imported/cases/docs/openui-lang-functions-06.oui",
+   "source": "docs",
+   "origin": "docs/content/docs/openui-lang/functions.mdx"
+  },
+  {
+   "name": "docs/openui-lang-functions-07",
+   "schema": "bench",
+   "file": "imported/cases/docs/openui-lang-functions-07.oui",
+   "source": "docs",
+   "origin": "docs/content/docs/openui-lang/functions.mdx"
+  },
+  {
+   "name": "docs/openui-lang-functions-08",
+   "schema": "bench",
+   "file": "imported/cases/docs/openui-lang-functions-08.oui",
+   "source": "docs",
+   "origin": "docs/content/docs/openui-lang/functions.mdx"
+  },
+  {
    "name": "docs/openui-lang-incremental-editing-01",
    "schema": "bench",
    "file": "imported/cases/docs/openui-lang-incremental-editing-01.oui",
@@ -794,13 +2346,6 @@
    "name": "docs/openui-lang-incremental-editing-02",
    "schema": "bench",
    "file": "imported/cases/docs/openui-lang-incremental-editing-02.oui",
-   "source": "docs",
-   "origin": "docs/content/docs/openui-lang/incremental-editing.mdx"
-  },
-  {
-   "name": "docs/openui-lang-incremental-editing-03",
-   "schema": "bench",
-   "file": "imported/cases/docs/openui-lang-incremental-editing-03.oui",
    "source": "docs",
    "origin": "docs/content/docs/openui-lang/incremental-editing.mdx"
   },
@@ -817,6 +2362,20 @@
    "file": "imported/cases/docs/openui-lang-interactivity-01.oui",
    "source": "docs",
    "origin": "docs/content/docs/openui-lang/interactivity.mdx"
+  },
+  {
+   "name": "docs/openui-lang-message-protocol-01",
+   "schema": "bench",
+   "file": "imported/cases/docs/openui-lang-message-protocol-01.oui",
+   "source": "docs",
+   "origin": "docs/content/docs/openui-lang/message-protocol.mdx"
+  },
+  {
+   "name": "docs/openui-lang-message-protocol-02",
+   "schema": "bench",
+   "file": "imported/cases/docs/openui-lang-message-protocol-02.oui",
+   "source": "docs",
+   "origin": "docs/content/docs/openui-lang/message-protocol.mdx"
   },
   {
    "name": "docs/openui-lang-patterns-01",
@@ -889,6 +2448,27 @@
    "origin": "docs/content/docs/openui-lang/queries-mutations.mdx"
   },
   {
+   "name": "docs/openui-lang-queries-mutations-06",
+   "schema": "bench",
+   "file": "imported/cases/docs/openui-lang-queries-mutations-06.oui",
+   "source": "docs",
+   "origin": "docs/content/docs/openui-lang/queries-mutations.mdx"
+  },
+  {
+   "name": "docs/openui-lang-queries-mutations-07",
+   "schema": "bench",
+   "file": "imported/cases/docs/openui-lang-queries-mutations-07.oui",
+   "source": "docs",
+   "origin": "docs/content/docs/openui-lang/queries-mutations.mdx"
+  },
+  {
+   "name": "docs/openui-lang-queries-mutations-08",
+   "schema": "bench",
+   "file": "imported/cases/docs/openui-lang-queries-mutations-08.oui",
+   "source": "docs",
+   "origin": "docs/content/docs/openui-lang/queries-mutations.mdx"
+  },
+  {
    "name": "docs/openui-lang-reactive-state-01",
    "schema": "bench",
    "file": "imported/cases/docs/openui-lang-reactive-state-01.oui",
@@ -924,102 +2504,158 @@
    "origin": "docs/content/docs/openui-lang/reactive-state.mdx"
   },
   {
-   "name": "docs/openui-lang-specification-v01-01",
+   "name": "docs/openui-lang-reactive-state-06",
    "schema": "bench",
-   "file": "imported/cases/docs/openui-lang-specification-v01-01.oui",
+   "file": "imported/cases/docs/openui-lang-reactive-state-06.oui",
    "source": "docs",
-   "origin": "docs/content/docs/openui-lang/specification-v01.mdx"
+   "origin": "docs/content/docs/openui-lang/reactive-state.mdx"
   },
   {
-   "name": "docs/openui-lang-specification-v01-02",
+   "name": "docs/openui-lang-reactive-state-07",
    "schema": "bench",
-   "file": "imported/cases/docs/openui-lang-specification-v01-02.oui",
+   "file": "imported/cases/docs/openui-lang-reactive-state-07.oui",
    "source": "docs",
-   "origin": "docs/content/docs/openui-lang/specification-v01.mdx"
+   "origin": "docs/content/docs/openui-lang/reactive-state.mdx"
   },
   {
-   "name": "docs/openui-lang-specification-v01-03",
+   "name": "docs/openui-lang-specification-index-01",
    "schema": "bench",
-   "file": "imported/cases/docs/openui-lang-specification-v01-03.oui",
+   "file": "imported/cases/docs/openui-lang-specification-index-01.oui",
    "source": "docs",
-   "origin": "docs/content/docs/openui-lang/specification-v01.mdx"
+   "origin": "docs/content/docs/openui-lang/specification/index.mdx"
   },
   {
-   "name": "docs/openui-lang-specification-v01-04",
+   "name": "docs/openui-lang-specification-index-02",
    "schema": "bench",
-   "file": "imported/cases/docs/openui-lang-specification-v01-04.oui",
+   "file": "imported/cases/docs/openui-lang-specification-index-02.oui",
    "source": "docs",
-   "origin": "docs/content/docs/openui-lang/specification-v01.mdx"
+   "origin": "docs/content/docs/openui-lang/specification/index.mdx"
   },
   {
-   "name": "docs/openui-lang-specification-v01-05",
+   "name": "docs/openui-lang-specification-index-03",
    "schema": "bench",
-   "file": "imported/cases/docs/openui-lang-specification-v01-05.oui",
+   "file": "imported/cases/docs/openui-lang-specification-index-03.oui",
    "source": "docs",
-   "origin": "docs/content/docs/openui-lang/specification-v01.mdx"
+   "origin": "docs/content/docs/openui-lang/specification/index.mdx"
   },
   {
-   "name": "docs/openui-lang-specification-v05-01",
+   "name": "docs/openui-lang-specification-index-04",
    "schema": "bench",
-   "file": "imported/cases/docs/openui-lang-specification-v05-01.oui",
+   "file": "imported/cases/docs/openui-lang-specification-index-04.oui",
    "source": "docs",
-   "origin": "docs/content/docs/openui-lang/specification-v05.mdx"
+   "origin": "docs/content/docs/openui-lang/specification/index.mdx"
   },
   {
-   "name": "docs/openui-lang-specification-v05-02",
+   "name": "docs/openui-lang-specification-index-05",
    "schema": "bench",
-   "file": "imported/cases/docs/openui-lang-specification-v05-02.oui",
+   "file": "imported/cases/docs/openui-lang-specification-index-05.oui",
    "source": "docs",
-   "origin": "docs/content/docs/openui-lang/specification-v05.mdx"
+   "origin": "docs/content/docs/openui-lang/specification/index.mdx"
   },
   {
-   "name": "docs/openui-lang-specification-v05-03",
+   "name": "docs/openui-lang-specification-v0-1-01",
    "schema": "bench",
-   "file": "imported/cases/docs/openui-lang-specification-v05-03.oui",
+   "file": "imported/cases/docs/openui-lang-specification-v0-1-01.oui",
    "source": "docs",
-   "origin": "docs/content/docs/openui-lang/specification-v05.mdx"
+   "origin": "docs/content/docs/openui-lang/specification/v0.1.mdx"
   },
   {
-   "name": "docs/openui-lang-specification-v05-04",
+   "name": "docs/openui-lang-specification-v0-1-02",
    "schema": "bench",
-   "file": "imported/cases/docs/openui-lang-specification-v05-04.oui",
+   "file": "imported/cases/docs/openui-lang-specification-v0-1-02.oui",
    "source": "docs",
-   "origin": "docs/content/docs/openui-lang/specification-v05.mdx"
+   "origin": "docs/content/docs/openui-lang/specification/v0.1.mdx"
   },
   {
-   "name": "docs/openui-lang-specification-v05-05",
+   "name": "docs/openui-lang-specification-v0-1-03",
    "schema": "bench",
-   "file": "imported/cases/docs/openui-lang-specification-v05-05.oui",
+   "file": "imported/cases/docs/openui-lang-specification-v0-1-03.oui",
    "source": "docs",
-   "origin": "docs/content/docs/openui-lang/specification-v05.mdx"
+   "origin": "docs/content/docs/openui-lang/specification/v0.1.mdx"
   },
   {
-   "name": "docs/openui-lang-specification-v05-06",
+   "name": "docs/openui-lang-specification-v0-1-04",
    "schema": "bench",
-   "file": "imported/cases/docs/openui-lang-specification-v05-06.oui",
+   "file": "imported/cases/docs/openui-lang-specification-v0-1-04.oui",
    "source": "docs",
-   "origin": "docs/content/docs/openui-lang/specification-v05.mdx"
+   "origin": "docs/content/docs/openui-lang/specification/v0.1.mdx"
   },
   {
-   "name": "docs/openui-lang-specification-v05-07",
+   "name": "docs/openui-lang-specification-v0-1-05",
    "schema": "bench",
-   "file": "imported/cases/docs/openui-lang-specification-v05-07.oui",
+   "file": "imported/cases/docs/openui-lang-specification-v0-1-05.oui",
    "source": "docs",
-   "origin": "docs/content/docs/openui-lang/specification-v05.mdx"
+   "origin": "docs/content/docs/openui-lang/specification/v0.1.mdx"
   },
   {
-   "name": "docs/openui-lang-specification-v05-08",
+   "name": "docs/openui-lang-specification-v0-5-01",
    "schema": "bench",
-   "file": "imported/cases/docs/openui-lang-specification-v05-08.oui",
+   "file": "imported/cases/docs/openui-lang-specification-v0-5-01.oui",
    "source": "docs",
-   "origin": "docs/content/docs/openui-lang/specification-v05.mdx"
+   "origin": "docs/content/docs/openui-lang/specification/v0.5.mdx"
   },
   {
-   "name": "docs/openui-lang-specification-v05-09",
+   "name": "docs/openui-lang-specification-v0-5-02",
    "schema": "bench",
-   "file": "imported/cases/docs/openui-lang-specification-v05-09.oui",
+   "file": "imported/cases/docs/openui-lang-specification-v0-5-02.oui",
    "source": "docs",
-   "origin": "docs/content/docs/openui-lang/specification-v05.mdx"
+   "origin": "docs/content/docs/openui-lang/specification/v0.5.mdx"
+  },
+  {
+   "name": "docs/openui-lang-specification-v0-5-03",
+   "schema": "bench",
+   "file": "imported/cases/docs/openui-lang-specification-v0-5-03.oui",
+   "source": "docs",
+   "origin": "docs/content/docs/openui-lang/specification/v0.5.mdx"
+  },
+  {
+   "name": "docs/openui-lang-specification-v0-5-04",
+   "schema": "bench",
+   "file": "imported/cases/docs/openui-lang-specification-v0-5-04.oui",
+   "source": "docs",
+   "origin": "docs/content/docs/openui-lang/specification/v0.5.mdx"
+  },
+  {
+   "name": "docs/openui-lang-specification-v0-5-05",
+   "schema": "bench",
+   "file": "imported/cases/docs/openui-lang-specification-v0-5-05.oui",
+   "source": "docs",
+   "origin": "docs/content/docs/openui-lang/specification/v0.5.mdx"
+  },
+  {
+   "name": "docs/openui-lang-specification-v0-5-06",
+   "schema": "bench",
+   "file": "imported/cases/docs/openui-lang-specification-v0-5-06.oui",
+   "source": "docs",
+   "origin": "docs/content/docs/openui-lang/specification/v0.5.mdx"
+  },
+  {
+   "name": "docs/openui-lang-specification-v0-5-07",
+   "schema": "bench",
+   "file": "imported/cases/docs/openui-lang-specification-v0-5-07.oui",
+   "source": "docs",
+   "origin": "docs/content/docs/openui-lang/specification/v0.5.mdx"
+  },
+  {
+   "name": "docs/openui-lang-specification-v0-5-08",
+   "schema": "bench",
+   "file": "imported/cases/docs/openui-lang-specification-v0-5-08.oui",
+   "source": "docs",
+   "origin": "docs/content/docs/openui-lang/specification/v0.5.mdx"
+  },
+  {
+   "name": "docs/openui-lang-specification-v0-5-09",
+   "schema": "bench",
+   "file": "imported/cases/docs/openui-lang-specification-v0-5-09.oui",
+   "source": "docs",
+   "origin": "docs/content/docs/openui-lang/specification/v0.5.mdx"
+  },
+  {
+   "name": "docs/openui-lang-specification-v0-5-10",
+   "schema": "bench",
+   "file": "imported/cases/docs/openui-lang-specification-v0-5-10.oui",
+   "source": "docs",
+   "origin": "docs/content/docs/openui-lang/specification/v0.5.mdx"
   },
   {
    "name": "docs/openui-lang-syntax-01",
@@ -1076,6 +2712,41 @@
    "file": "imported/cases/docs/openui-lang-troubleshooting-05.oui",
    "source": "docs",
    "origin": "docs/content/docs/openui-lang/troubleshooting.mdx"
+  },
+  {
+   "name": "docs/openui-lang-whats-new-01",
+   "schema": "bench",
+   "file": "imported/cases/docs/openui-lang-whats-new-01.oui",
+   "source": "docs",
+   "origin": "docs/content/docs/openui-lang/whats-new.mdx"
+  },
+  {
+   "name": "docs/openui-lang-whats-new-02",
+   "schema": "bench",
+   "file": "imported/cases/docs/openui-lang-whats-new-02.oui",
+   "source": "docs",
+   "origin": "docs/content/docs/openui-lang/whats-new.mdx"
+  },
+  {
+   "name": "docs/openui-lang-whats-new-03",
+   "schema": "bench",
+   "file": "imported/cases/docs/openui-lang-whats-new-03.oui",
+   "source": "docs",
+   "origin": "docs/content/docs/openui-lang/whats-new.mdx"
+  },
+  {
+   "name": "docs/integrations-open-webui-01",
+   "schema": "bench",
+   "file": "imported/cases/docs/integrations-open-webui-01.oui",
+   "source": "docs",
+   "origin": "docs/content/integrations/open-webui.mdx"
+  },
+  {
+   "name": "docs/integrations-open-webui-02",
+   "schema": "bench",
+   "file": "imported/cases/docs/integrations-open-webui-02.oui",
+   "source": "docs",
+   "origin": "docs/content/integrations/open-webui.mdx"
   },
   {
    "name": "examples/react-native-library-01",

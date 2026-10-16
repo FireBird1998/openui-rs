@@ -33,15 +33,19 @@ public enum Chunking: Hashable, Sendable {
 }
 
 /// The reference's fingerprints of every streaming step of one case, per
-/// chunking, from `conformance/golden/<case>.steps.json`.
+/// chunking, from `conformance/golden/<case>.steps.json`. A golden's last step
+/// is the stream's end, which `ends` holds apart from the pushes.
 public struct GoldenSteps: Sendable {
     /// Chunking name to one fingerprint per push.
     public var steps: [String: [String]]
-    /// Chunk sizes of the seeded random chunkings.
+    /// Chunking name to the fingerprint once the stream has ended.
+    public var ends: [String: String]
+    /// Chunk sizes of the seeded random and recorded chunkings.
     public var sizes: [String: [Int]]
 
-    public init(steps: [String: [String]], sizes: [String: [Int]] = [:]) {
+    public init(steps: [String: [String]], ends: [String: String] = [:], sizes: [String: [Int]] = [:]) {
         self.steps = steps
+        self.ends = ends
         self.sizes = sizes
     }
 
@@ -51,7 +55,9 @@ public struct GoldenSteps: Sendable {
         var golden = GoldenSteps(steps: [:])
         guard case let .object(chunkings) = json else { return golden }
         for (name, value) in chunkings {
-            golden.steps[name] = value["steps"]?.array?.compactMap(\.string)
+            let all = value["steps"]?.array?.compactMap(\.string) ?? []
+            golden.steps[name] = Array(all.dropLast())
+            golden.ends[name] = all.last
             if let sizes = value["sizes"]?.array {
                 golden.sizes[name] = sizes.compactMap { $0.number.map(Int.init) }
             }

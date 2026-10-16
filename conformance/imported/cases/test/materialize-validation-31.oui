@@ -1,1 +1,1 @@
-root = TagBox(["a", $x])
+root = TagBox(["a", 2, "c"])

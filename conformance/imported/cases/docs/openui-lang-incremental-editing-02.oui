@@ -1,4 +1,2 @@
-root = Stack([header, tbl])
-header = CardHeader("Tickets")
-tickets = Query("list_tickets", {}, {rows: []})
-tbl = Table([Col("Title", tickets.rows.title), Col("Status", tickets.rows.status)])
+root = Stack([header, chart, tbl])
+chart = PieChart(["Open", "Closed"], [@Count(@Filter(tickets.rows, "status", "==", "open")), @Count(@Filter(tickets.rows, "status", "==", "closed"))], "donut")

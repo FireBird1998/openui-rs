@@ -1,1 +1,1 @@
-root = AnyBox({ anything: true })
+root = ArrBox([{ label: "a", value: 1 }, { value: 2 }])

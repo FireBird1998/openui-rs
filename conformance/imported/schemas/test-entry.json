@@ -1,0 +1,28 @@
+{
+ "properties": {
+  "Card": {
+   "$ref": "#/$defs/Card"
+  },
+  "Title": {
+   "$ref": "#/$defs/Title"
+  }
+ },
+ "$defs": {
+  "Card": {
+   "properties": {
+    "children": {}
+   },
+   "required": [
+    "children"
+   ]
+  },
+  "Title": {
+   "properties": {
+    "text": {}
+   },
+   "required": [
+    "text"
+   ]
+  }
+ }
+}

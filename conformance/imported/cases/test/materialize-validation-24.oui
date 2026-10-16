@@ -1,1 +1,1 @@
-root = NestDefBox({ retries: 2 })
+root = ChartBox(null, "grouped")

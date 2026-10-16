@@ -1,0 +1,1 @@
+{"root":{"type":"element","typeName":"Button","props":{"label":"Go","action":{"steps":[{"type":"custom_action","name":"CopyToClipboard","params":{}}]}},"partial":false,"hasDynamicProps":true,"statementId":"root"},"meta":{"incomplete":false,"unresolved":[],"orphaned":[],"statementCount":1,"errors":[]},"stateDeclarations":{},"queryStatements":[],"mutationStatements":[]}

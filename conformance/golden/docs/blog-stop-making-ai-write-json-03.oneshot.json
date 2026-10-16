@@ -1,1 +1,1 @@
-{"root":null,"meta":{"incomplete":false,"unresolved":["todos"],"orphaned":["sorted","emptyState"],"statementCount":3,"errors":[]},"stateDeclarations":{"$search":null,"$sortBy":null},"queryStatements":[],"mutationStatements":[]}
+{"root":null,"meta":{"incomplete":false,"unresolved":[],"orphaned":[],"statementCount":3,"errors":[{"code":"no-root","component":"","path":"","message":"No root statement"}]},"stateDeclarations":{"$search":null,"$sortBy":null},"queryStatements":[],"mutationStatements":[]}

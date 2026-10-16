@@ -1,0 +1,2 @@
+root = Card([total])
+total = TextContent("Total: " + @Total(items))

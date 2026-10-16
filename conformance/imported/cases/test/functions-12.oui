@@ -1,0 +1,3 @@
+root = Text("a")
+q = Query("save", { p: @Sum2([@Percent("bad")]), n: @Percent(3) })
+m = Mutation("save", { p: @Percent("bad") })

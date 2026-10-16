@@ -1,0 +1,1 @@
+root = Button("Go", Action([@Set($a, 1), @Reset("a"), Action([@OpenUrl("u")])]))

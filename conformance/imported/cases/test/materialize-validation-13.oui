@@ -1,1 +1,1 @@
-root = Nope()
+root = TagBox(42)

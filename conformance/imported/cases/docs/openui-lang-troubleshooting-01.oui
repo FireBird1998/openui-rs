@@ -1,6 +1,6 @@
 // Schema: z.object({ title: z.string(), subtitle: z.string() })
 
-// Wrong — 3 args for a 2-prop schema
+// Wrong: 3 args for a 2-prop schema
 h1 = Header("Title", "Sub", "extra")
 
 // Correct

@@ -1,1 +1,2 @@
+askBtn = Button("Tell me more", @ToAssistant("Tell me more about these tickets"))
 submitBtn = Button("Create", Action([@Run(createResult), @Run(tickets), @Reset($title)]))

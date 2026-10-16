@@ -1,1 +1,1 @@
-root = NestDefBox({ mode: "warp", retries: 1 })
+root = ReqScalar()

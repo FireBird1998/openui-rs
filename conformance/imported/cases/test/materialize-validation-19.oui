@@ -1,1 +1,1 @@
-root = ReqScalar(5)
+root = ScalarBox(1, 1, true, "extra")

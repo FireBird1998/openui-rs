@@ -1,0 +1,2 @@
+copyBtn = Button("Copy", @CopyToClipboard(order.id))
+copyAndClose = Button("Copy and close", Action([@CopyToClipboard(order.id), @Set($open, false)]))

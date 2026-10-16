@@ -1,0 +1,1 @@
+root = Text(@Percent("1", 4))

@@ -1,6 +1,7 @@
 //! Conformance with the reference parser: for every corpus case, the one-shot
-//! parse result and the result after every streaming push must serialize to
-//! exactly the JSON the reference parser produced (see `conformance/golden/`,
+//! parse result, the result after every streaming push, and the result once
+//! each stream has ended must serialize to exactly the JSON the reference
+//! parser produced (see `conformance/golden/`,
 //! written by `scripts/regen-golden.sh`). Needs no Bun unless a streaming step
 //! mismatches, and then only to show the reference JSON for that step.
 //!
@@ -80,10 +81,11 @@ fn check_case(case: &Case, chunkings: &[String], golden: &Path, explain: bool) -
             }
         };
         let parts = chunks(&case.input, &sizes);
-        if parts.len() != expected.len() {
+        // Every push, then the stream's end.
+        if parts.len() + 1 != expected.len() {
             let _ = writeln!(
                 failures,
-                "  chunking {chunking}: {} pushes, reference has {}",
+                "  chunking {chunking}: {} pushes and the end, reference has {} steps",
                 parts.len(),
                 expected.len()
             );
@@ -91,9 +93,14 @@ fn check_case(case: &Case, chunkings: &[String], golden: &Path, explain: bool) -
         }
         let mut parser = StreamParser::new(case.library.clone(), root);
         let mut so_far = String::new();
-        for (step, part) in parts.iter().enumerate() {
-            so_far.push_str(part);
-            let actual = parser.push(part).to_json();
+        for step in 0..expected.len() {
+            let actual = match parts.get(step) {
+                Some(part) => {
+                    so_far.push_str(part);
+                    parser.push(part).to_json()
+                }
+                None => parser.finish().to_json(),
+            };
             if fingerprint(&actual) == expected[step] {
                 continue;
             }
@@ -105,11 +112,16 @@ fn check_case(case: &Case, chunkings: &[String], golden: &Path, explain: bool) -
                     &actual,
                 )
             };
+            let at = if step < parts.len() {
+                format!("input so far: {so_far:?}")
+            } else {
+                "the stream's end".to_owned()
+            };
             let _ = write!(
                 failures,
-                "  chunking {chunking}, step {} of {} (input so far: {so_far:?})\n{detail}",
+                "  chunking {chunking}, step {} of {} ({at})\n{detail}",
                 step + 1,
-                parts.len()
+                expected.len()
             );
             break; // later steps of this stream usually repeat the same divergence
         }
@@ -133,7 +145,7 @@ fn prefix(text: &str, n: usize) -> &str {
 }
 
 /// A resync chunking: `set` with the program's (`p`) or the edited copy's
-/// (`x`) first n chars, then a final `result` (`r`).
+/// (`x`) first n chars, then `result` (`r`) and the stream's end (`e`).
 fn check_resync(
     case: &Case,
     chunking: &str,
@@ -150,6 +162,7 @@ fn check_resync(
         let n = op[1].as_u64().unwrap() as usize;
         let (actual, call) = match kind {
             "r" => (parser.result().to_json(), "result()".to_owned()),
+            "e" => (parser.finish().to_json(), "finish()".to_owned()),
             _ => {
                 let text = prefix(if kind == "p" { &case.input } else { &other }, n);
                 let call = format!(
@@ -198,12 +211,7 @@ fn every_case_matches_the_reference_parser() {
     for case in &corpus.cases {
         let explain = !pending.contains(&case.name) && !update_pending() && explanations_left > 0;
         let outcome = catch_unwind(AssertUnwindSafe(|| {
-            check_case(
-                case,
-                case.chunkings.as_deref().unwrap_or(&corpus.chunkings),
-                &golden,
-                explain,
-            )
+            check_case(case, &case.chunkings(&corpus.chunkings), &golden, explain)
         }));
         let failures = match outcome {
             Ok(failures) => failures,
@@ -284,15 +292,20 @@ fn every_one_shot_parse_matches_the_reference_parser() {
             .filter(|c| pending.contains(&c.name))
             .count()
     );
+    // Rewriting the list is the test above's; this one read it before then.
+    if update_pending() {
+        return;
+    }
     assert!(
         report.is_empty(),
         "{failed} one-shot parses differ from the reference:\n{report}"
     );
 }
 
-/// Streaming a whole program ends where parsing it one-shot does, except where
-/// the reference itself ends differently (`conformance/QUIRKS.md`: redefinitions
-/// counted twice, mismatched brackets, an incomplete trailing redefinition).
+/// A stream of the whole program, once it has ended, gives what parsing it
+/// one-shot does, except where the reference itself ends differently
+/// (`conformance/QUIRKS.md`: redefinitions counted twice, mismatched brackets,
+/// an incomplete trailing redefinition).
 #[test]
 fn streaming_ends_where_parsing_ends() {
     let corpus = load_corpus();
@@ -300,19 +313,21 @@ fn streaming_ends_where_parsing_ends() {
     let mut report = String::new();
     for case in &corpus.cases {
         let golden = golden_json(&case.name, "steps.json");
-        // Needs the reference's result after the last single-character push;
-        // large cases skip that chunking.
+        // Needs the reference's result at the end of the single-character
+        // stream; large cases skip that chunking.
         let Some(reference_end) = golden["1"]["steps"].as_array().and_then(|s| s.last()) else {
             continue;
         };
         let root = case.root.as_deref();
         let oneshot = parse(&case.input, &case.library, root).to_json();
         let mut stream = StreamParser::new(case.library.clone(), root);
-        let mut end = None;
-        for (i, c) in case.input.char_indices() {
-            end = Some(stream.push(&case.input[i..i + c.len_utf8()]).to_json());
+        if case.input.is_empty() {
+            continue;
         }
-        let Some(end) = end else { continue };
+        for (i, c) in case.input.char_indices() {
+            stream.push(&case.input[i..i + c.len_utf8()]);
+        }
+        let end = stream.finish().to_json();
         let reference_oneshot = read(&golden_dir().join(format!("{}.oneshot.json", case.name)));
         let reference_diverges =
             reference_end.as_str() != Some(fingerprint(&reference_oneshot).as_str());

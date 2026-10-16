@@ -15,7 +15,7 @@ DEST="$ROOT/reference/lang-core"
 commit="${1:?usage: update-reference.sh <commit> [<local openui checkout>]}"
 tmp="$(mktemp -d)"
 trap 'rm -rf "$tmp"' EXIT
-full="$(fetch_upstream "$commit" "$tmp" "${2:-}" "$PKG" LICENSE)"
+full="$(fetch_upstream "$commit" "$tmp" "${2:-}" "$PKG" LICENSE pnpm-workspace.yaml)"
 
 rm -rf "$DEST"
 mkdir -p "$DEST"
@@ -33,3 +33,14 @@ path: $PKG/src
 vendored: $(date +%Y-%m-%d)
 META
 echo "Vendored @openuidev/lang-core $version at ${full:0:12} into reference/lang-core"
+
+# Packages the new source imports that reference/package.json doesn't list.
+python3 -I "$ROOT/scripts/hunt.py" packages "$DEST" "$tmp/pnpm-workspace.yaml" "$ROOT/reference/package.json" |
+  python3 -I -c '
+import json, sys
+wanted = json.load(sys.stdin)["dependencies"]
+have = json.load(open(sys.argv[1])).get("dependencies", {})
+for name, version in wanted.items():
+    if name not in have:
+        print(f"reference/package.json lacks {name}, which lang-core imports: (cd reference && bun add \"{name}@{version}\")")
+' "$ROOT/reference/package.json"

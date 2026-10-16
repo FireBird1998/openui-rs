@@ -1,1 +1,1 @@
-root = ObjBox({ author: "a", views: Sum([1, 2]) })
+root = TagBox(["a", 2, "c"])

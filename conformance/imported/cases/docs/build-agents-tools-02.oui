@@ -1,0 +1,3 @@
+tickets = Query("list_tickets", {}, {rows: []})
+tbl = Table([Col("Title", tickets.rows.title), Col("Priority", tickets.rows.priority)])
+root = Stack([CardHeader("Open tickets"), tbl])

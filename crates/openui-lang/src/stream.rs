@@ -104,6 +104,15 @@ impl StreamParser {
         self.current_result()
     }
 
+    /// The result once the stream has ended, after its last chunk: the
+    /// reference's `getResult(true)`.
+    pub fn finish(&mut self) -> ParseResult {
+        // The same as `result()` for now: the one thing the end changes in the
+        // reference, how a `$name` at the very end of the text is read, isn't
+        // ported yet.
+        self.current_result()
+    }
+
     fn reset(&mut self) {
         self.buf.clear();
         self.pre.reset();

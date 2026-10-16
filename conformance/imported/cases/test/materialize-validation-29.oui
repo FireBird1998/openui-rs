@@ -1,1 +1,1 @@
-root = SlotBox([CardBox("hi"), EnumBox("active")])
+root = ScalarBox(5)

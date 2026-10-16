@@ -1,1 +1,1 @@
-root = ObjBox("hello")
+root = ArrBox([{ label: "a", value: "x" }])

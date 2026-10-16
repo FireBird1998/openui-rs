@@ -1,1 +1,1 @@
-root = ScalarBox({ a: $x })
+root = ObjBox({ views: 3 })

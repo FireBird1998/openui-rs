@@ -1,1 +1,1 @@
-root = TagBox(["a", 2, "c"])
+root = ScalarBox({ a: $x })

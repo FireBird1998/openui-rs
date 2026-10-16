@@ -1,0 +1,11 @@
+root = Stack([CardHeader("Tickets"), form, createError, tbl])
+$title = ""
+$priority = "medium"
+tickets = Query("list_tickets", {}, {rows: []})
+createResult = Mutation("create_ticket", {title: $title, priority: $priority})
+form = Form("create", Buttons([submitBtn]), [titleField, priorityField])
+titleField = FormControl("Title", Input("title", "Ticket title", "text", {required: true}, $title))
+priorityField = FormControl("Priority", Select("priority", [SelectItem("low", "Low"), SelectItem("medium", "Medium"), SelectItem("high", "High")], null, null, $priority))
+submitBtn = Button("Create", Action([@Run(createResult), @Run(tickets), @Reset($title, $priority)]), "primary")
+createError = createResult.status == "error" ? Callout("error", "Could not create the ticket", createResult.error) : null
+tbl = Table([Col("Title", tickets.rows.title), Col("Priority", tickets.rows.priority)])

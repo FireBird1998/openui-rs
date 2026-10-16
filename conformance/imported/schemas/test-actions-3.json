@@ -1,0 +1,25 @@
+{
+ "$schema": "https://json-schema.org/draft/2020-12/schema",
+ "type": "object",
+ "properties": {
+  "Text": {
+   "$ref": "#/$defs/Text"
+  }
+ },
+ "required": [
+  "Text"
+ ],
+ "additionalProperties": false,
+ "$defs": {
+  "Text": {
+   "type": "object",
+   "properties": {
+    "text": {}
+   },
+   "required": [
+    "text"
+   ],
+   "additionalProperties": false
+  }
+ }
+}

@@ -1,1 +1,1 @@
-root = Card("Main Title")
+root = Title("Hello")

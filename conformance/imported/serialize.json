@@ -1,6 +1,124 @@
 {
  "schemas": {
   "test-serialize-lib": {
+   "$schema": "https://json-schema.org/draft/2020-12/schema",
+   "type": "object",
+   "properties": {
+    "Btn": {
+     "$ref": "#/$defs/Btn"
+    }
+   },
+   "required": [
+    "Btn"
+   ],
+   "additionalProperties": false,
+   "$defs": {
+    "Btn": {
+     "type": "object",
+     "properties": {
+      "label": {},
+      "action": {
+       "$ref": "#/$defs/ActionExpression"
+      }
+     },
+     "required": [
+      "label"
+     ],
+     "additionalProperties": false
+    },
+    "ActionExpression": {
+     "anyOf": [
+      {
+       "type": "object",
+       "properties": {
+        "type": {
+         "type": "string",
+         "const": "open_url"
+        },
+        "url": {
+         "type": "string"
+        }
+       },
+       "required": [
+        "type",
+        "url"
+       ],
+       "additionalProperties": false
+      },
+      {
+       "type": "object",
+       "properties": {
+        "type": {
+         "type": "string",
+         "const": "continue_conversation"
+        },
+        "context": {
+         "type": "string"
+        }
+       },
+       "required": [
+        "type"
+       ],
+       "additionalProperties": false
+      },
+      {
+       "type": "object",
+       "properties": {
+        "type": {
+         "type": "string"
+        },
+        "params": {
+         "type": "object",
+         "propertyNames": {
+          "type": "string"
+         },
+         "additionalProperties": {}
+        }
+       },
+       "required": [
+        "type"
+       ],
+       "additionalProperties": false
+      }
+     ]
+    }
+   },
+   "functions": {
+    "Upper": {
+     "description": "",
+     "params": {
+      "type": "object",
+      "properties": {
+       "s": {
+        "type": "string"
+       }
+      },
+      "required": [
+       "s"
+      ],
+      "additionalProperties": false
+     }
+    }
+   },
+   "actions": {
+    "Copy": {
+     "description": "",
+     "params": {
+      "type": "object",
+      "properties": {
+       "t": {
+        "type": "string"
+       }
+      },
+      "required": [
+       "t"
+      ],
+      "additionalProperties": false
+     }
+    }
+   }
+  },
+  "test-serialize-lib-2": {
    "$defs": {
     "Stack": {
      "properties": {
@@ -58,6 +176,55 @@
    "schema": "test-serialize-lib",
    "element": {
     "type": "element",
+    "typeName": "Btn",
+    "props": {
+     "label": {
+      "k": "Comp",
+      "name": "Upper",
+      "args": [
+       {
+        "k": "StateRef",
+        "n": "$name"
+       }
+      ],
+      "fn": true,
+      "mappedProps": {
+       "s": {
+        "k": "StateRef",
+        "n": "$name"
+       }
+      }
+     },
+     "action": {
+      "k": "Comp",
+      "name": "Copy",
+      "args": [
+       {
+        "k": "Str",
+        "v": "x"
+       }
+      ],
+      "fn": true,
+      "mappedProps": {
+       "t": {
+        "k": "Str",
+        "v": "x"
+       }
+      }
+     }
+    },
+    "partial": false,
+    "hasDynamicProps": true,
+    "statementId": "root"
+   },
+   "source": "reference-test",
+   "origin": "packages/lang-core/src/parser/__tests__/serialize.test.ts"
+  },
+  {
+   "name": "test/serialize-02",
+   "schema": "test-serialize-lib-2",
+   "element": {
+    "type": "element",
     "typeName": "Title",
     "props": {
      "text": "Hello"
@@ -69,8 +236,8 @@
    "origin": "packages/lang-core/src/parser/__tests__/serialize.test.ts"
   },
   {
-   "name": "test/serialize-02",
-   "schema": "test-serialize-lib",
+   "name": "test/serialize-03",
+   "schema": "test-serialize-lib-2",
    "element": {
     "type": "element",
     "typeName": "Title",
@@ -84,8 +251,8 @@
    "origin": "packages/lang-core/src/parser/__tests__/serialize.test.ts"
   },
   {
-   "name": "test/serialize-03",
-   "schema": "test-serialize-lib",
+   "name": "test/serialize-04",
+   "schema": "test-serialize-lib-2",
    "element": {
     "type": "element",
     "typeName": "Stack",
@@ -109,8 +276,8 @@
    "origin": "packages/lang-core/src/parser/__tests__/serialize.test.ts"
   },
   {
-   "name": "test/serialize-04",
-   "schema": "test-serialize-lib",
+   "name": "test/serialize-05",
+   "schema": "test-serialize-lib-2",
    "element": {
     "type": "element",
     "typeName": "Stack",
@@ -132,8 +299,8 @@
    "origin": "packages/lang-core/src/parser/__tests__/serialize.test.ts"
   },
   {
-   "name": "test/serialize-05",
-   "schema": "test-serialize-lib",
+   "name": "test/serialize-06",
+   "schema": "test-serialize-lib-2",
    "element": {
     "type": "element",
     "typeName": "Title",
@@ -146,8 +313,8 @@
    "origin": "packages/lang-core/src/parser/__tests__/serialize.test.ts"
   },
   {
-   "name": "test/serialize-06",
-   "schema": "test-serialize-lib",
+   "name": "test/serialize-07",
+   "schema": "test-serialize-lib-2",
    "element": {
     "type": "element",
     "typeName": "Table",
@@ -167,8 +334,8 @@
    "origin": "packages/lang-core/src/parser/__tests__/serialize.test.ts"
   },
   {
-   "name": "test/serialize-07",
-   "schema": "test-serialize-lib",
+   "name": "test/serialize-08",
+   "schema": "test-serialize-lib-2",
    "element": {
     "type": "element",
     "typeName": "Table",
@@ -188,8 +355,8 @@
    "origin": "packages/lang-core/src/parser/__tests__/serialize.test.ts"
   },
   {
-   "name": "test/serialize-08",
-   "schema": "test-serialize-lib",
+   "name": "test/serialize-09",
+   "schema": "test-serialize-lib-2",
    "element": {
     "type": "element",
     "typeName": "Table",
@@ -207,8 +374,8 @@
    "origin": "packages/lang-core/src/parser/__tests__/serialize.test.ts"
   },
   {
-   "name": "test/serialize-09",
-   "schema": "test-serialize-lib",
+   "name": "test/serialize-10",
+   "schema": "test-serialize-lib-2",
    "element": {
     "type": "element",
     "typeName": "Table",
@@ -227,8 +394,8 @@
    "origin": "packages/lang-core/src/parser/__tests__/serialize.test.ts"
   },
   {
-   "name": "test/serialize-10",
-   "schema": "test-serialize-lib",
+   "name": "test/serialize-11",
+   "schema": "test-serialize-lib-2",
    "element": {
     "type": "element",
     "typeName": "Table",
@@ -250,8 +417,8 @@
    "origin": "packages/lang-core/src/parser/__tests__/serialize.test.ts"
   },
   {
-   "name": "test/serialize-11",
-   "schema": "test-serialize-lib",
+   "name": "test/serialize-12",
+   "schema": "test-serialize-lib-2",
    "element": {
     "type": "element",
     "typeName": "Card",
@@ -264,8 +431,8 @@
    "origin": "packages/lang-core/src/parser/__tests__/serialize.test.ts"
   },
   {
-   "name": "test/serialize-12",
-   "schema": "test-serialize-lib",
+   "name": "test/serialize-13",
+   "schema": "test-serialize-lib-2",
    "element": {
     "type": "element",
     "typeName": "Table",
@@ -283,8 +450,8 @@
    "origin": "packages/lang-core/src/parser/__tests__/serialize.test.ts"
   },
   {
-   "name": "test/serialize-13",
-   "schema": "test-serialize-lib",
+   "name": "test/serialize-14",
+   "schema": "test-serialize-lib-2",
    "element": {
     "type": "element",
     "typeName": "Title",
@@ -301,8 +468,8 @@
    "origin": "packages/lang-core/src/parser/__tests__/serialize.test.ts"
   },
   {
-   "name": "test/serialize-14",
-   "schema": "test-serialize-lib",
+   "name": "test/serialize-15",
+   "schema": "test-serialize-lib-2",
    "element": {
     "type": "element",
     "typeName": "Title",
@@ -320,8 +487,8 @@
    "origin": "packages/lang-core/src/parser/__tests__/serialize.test.ts"
   },
   {
-   "name": "test/serialize-15",
-   "schema": "test-serialize-lib",
+   "name": "test/serialize-16",
+   "schema": "test-serialize-lib-2",
    "element": {
     "type": "element",
     "typeName": "Title",
@@ -354,8 +521,8 @@
    "origin": "packages/lang-core/src/parser/__tests__/serialize.test.ts"
   },
   {
-   "name": "test/serialize-16",
-   "schema": "test-serialize-lib",
+   "name": "test/serialize-17",
+   "schema": "test-serialize-lib-2",
    "element": {
     "type": "element",
     "typeName": "Title",
@@ -383,8 +550,8 @@
    "origin": "packages/lang-core/src/parser/__tests__/serialize.test.ts"
   },
   {
-   "name": "test/serialize-17",
-   "schema": "test-serialize-lib",
+   "name": "test/serialize-18",
+   "schema": "test-serialize-lib-2",
    "element": {
     "type": "element",
     "typeName": "Title",
@@ -406,8 +573,8 @@
    "origin": "packages/lang-core/src/parser/__tests__/serialize.test.ts"
   },
   {
-   "name": "test/serialize-18",
-   "schema": "test-serialize-lib",
+   "name": "test/serialize-19",
+   "schema": "test-serialize-lib-2",
    "element": {
     "type": "element",
     "typeName": "Title",
@@ -432,8 +599,8 @@
    "origin": "packages/lang-core/src/parser/__tests__/serialize.test.ts"
   },
   {
-   "name": "test/serialize-19",
-   "schema": "test-serialize-lib",
+   "name": "test/serialize-20",
+   "schema": "test-serialize-lib-2",
    "element": {
     "type": "element",
     "typeName": "Title",
@@ -454,8 +621,8 @@
    "origin": "packages/lang-core/src/parser/__tests__/serialize.test.ts"
   },
   {
-   "name": "test/serialize-20",
-   "schema": "test-serialize-lib",
+   "name": "test/serialize-21",
+   "schema": "test-serialize-lib-2",
    "element": {
     "type": "element",
     "typeName": "Title",
@@ -479,8 +646,8 @@
    "origin": "packages/lang-core/src/parser/__tests__/serialize.test.ts"
   },
   {
-   "name": "test/serialize-21",
-   "schema": "test-serialize-lib",
+   "name": "test/serialize-22",
+   "schema": "test-serialize-lib-2",
    "element": {
     "type": "element",
     "typeName": "Title",
@@ -514,8 +681,8 @@
    "origin": "packages/lang-core/src/parser/__tests__/serialize.test.ts"
   },
   {
-   "name": "test/serialize-22",
-   "schema": "test-serialize-lib",
+   "name": "test/serialize-23",
+   "schema": "test-serialize-lib-2",
    "element": {
     "type": "element",
     "typeName": "Title",
@@ -532,8 +699,8 @@
    "origin": "packages/lang-core/src/parser/__tests__/serialize.test.ts"
   },
   {
-   "name": "test/serialize-23",
-   "schema": "test-serialize-lib",
+   "name": "test/serialize-24",
+   "schema": "test-serialize-lib-2",
    "element": {
     "type": "element",
     "typeName": "Title",
@@ -549,8 +716,8 @@
    "origin": "packages/lang-core/src/parser/__tests__/serialize.test.ts"
   },
   {
-   "name": "test/serialize-24",
-   "schema": "test-serialize-lib",
+   "name": "test/serialize-25",
+   "schema": "test-serialize-lib-2",
    "element": {
     "type": "element",
     "typeName": "Title",
@@ -565,8 +732,8 @@
    "origin": "packages/lang-core/src/parser/__tests__/serialize.test.ts"
   },
   {
-   "name": "test/serialize-25",
-   "schema": "test-serialize-lib",
+   "name": "test/serialize-26",
+   "schema": "test-serialize-lib-2",
    "element": {
     "type": "element",
     "typeName": "Stack",
@@ -611,8 +778,8 @@
    "origin": "packages/lang-core/src/parser/__tests__/serialize.test.ts"
   },
   {
-   "name": "test/serialize-26",
-   "schema": "test-serialize-lib",
+   "name": "test/serialize-27",
+   "schema": "test-serialize-lib-2",
    "element": {
     "type": "element",
     "typeName": "Card",
@@ -627,8 +794,8 @@
    "origin": "packages/lang-core/src/parser/__tests__/serialize.test.ts"
   },
   {
-   "name": "test/serialize-27",
-   "schema": "test-serialize-lib",
+   "name": "test/serialize-28",
+   "schema": "test-serialize-lib-2",
    "element": {
     "type": "element",
     "typeName": "Stack",
@@ -652,8 +819,8 @@
    "origin": "packages/lang-core/src/parser/__tests__/serialize.test.ts"
   },
   {
-   "name": "test/serialize-28",
-   "schema": "test-serialize-lib",
+   "name": "test/serialize-29",
+   "schema": "test-serialize-lib-2",
    "element": {
     "type": "element",
     "typeName": "Stack",
@@ -666,8 +833,8 @@
    "origin": "packages/lang-core/src/parser/__tests__/serialize.test.ts"
   },
   {
-   "name": "test/serialize-29",
-   "schema": "test-serialize-lib",
+   "name": "test/serialize-30",
+   "schema": "test-serialize-lib-2",
    "element": {
     "type": "element",
     "typeName": "Title",
@@ -680,8 +847,8 @@
    "origin": "packages/lang-core/src/parser/__tests__/serialize.test.ts"
   },
   {
-   "name": "test/serialize-30",
-   "schema": "test-serialize-lib",
+   "name": "test/serialize-31",
+   "schema": "test-serialize-lib-2",
    "element": {
     "type": "element",
     "typeName": "Stack",

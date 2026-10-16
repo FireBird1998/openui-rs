@@ -1,0 +1,4 @@
+$compact = false
+root = $compact ? compactView : fullView
+compactView = TextContent("3 open")
+fullView = Card([TextContent("3 open tickets")])

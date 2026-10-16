@@ -1,0 +1,2 @@
+root = SlotBox(items)
+items = [{ text: "a" }]

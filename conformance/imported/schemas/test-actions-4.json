@@ -1,0 +1,17 @@
+{
+ "properties": {
+  "Text": {
+   "$ref": "#/$defs/Text"
+  }
+ },
+ "$defs": {
+  "Text": {
+   "properties": {
+    "text": {}
+   },
+   "required": [
+    "text"
+   ]
+  }
+ }
+}

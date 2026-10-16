@@ -1,0 +1,2 @@
+root = Stack([CardHeader("Q3 revenue", "Up 18% on Q2"), chart])
+chart = BarChart(["Jul", "Aug", "Sep"], [Series("Revenue", [380, 410, 440])])

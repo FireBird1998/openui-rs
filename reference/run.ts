@@ -10,10 +10,13 @@
 // conformance/imported.json (from scripts/import-corpus.sh) and
 // conformance/fuzz.json (shrunk mismatches from the fuzzer). A chunking is
 // "oneshot", a chunk size in code points, "random-<k>" (push sizes 1–16 drawn
-// from a generator seeded with the case name and k), or "resync-<k>": set()
-// calls with the text so far that mostly grow, sometimes rewind (reset), and
-// sometimes switch to an edited copy of the program (reset once they differ),
-// then one getResult(). Steps count from 1.
+// from a generator seeded with the case name and k), "recorded" (the sizes in
+// the case's `recorded`, for cases that came with their own chunks), or
+// "resync-<k>": set() calls with the text so far that mostly grow, sometimes
+// rewind (reset), and sometimes switch to an edited copy of the program (reset
+// once they differ), then one getResult(). Every stream then ends: its last
+// step is getResult(true), the result once the stream is complete. Steps count
+// from 1.
 import { plugin } from "bun";
 import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "fs";
 import { dirname, join } from "path";
@@ -55,6 +58,8 @@ type Case = {
   root?: string;
   stages?: boolean;
   chunkings?: string[];
+  /** Chunk sizes in code points, for a case that came with its own chunks. */
+  recorded?: number[];
 };
 type Manifest = { chunkings?: string[]; schemas: Record<string, string>; cases: Case[] };
 
@@ -109,6 +114,7 @@ function generator(seed: number) {
 
 /** Chunk sizes in code points; random chunkings return them for the golden. */
 function sizes(c: Case, chunking: string, length: number): { sizes: number[]; random: boolean } {
+  if (chunking === "recorded") return { sizes: c.recorded!, random: false };
   const random = chunking.startsWith("random-");
   const next = random ? generator(fnv1a(`${c.name}:${chunking}`)) : null;
   const fixed = random ? 0 : Number(chunking);
@@ -130,10 +136,11 @@ function edited(cps: string[]): string[] {
   return copy;
 }
 
-type ResyncOp = ["p" | "x", number] | ["r", 0];
+type ResyncOp = ["p" | "x", number] | ["r", 0] | ["e", 0];
 
 /** A seeded sequence of set() calls: ["p", n] sets the program's first n code
- *  points, ["x", n] the edited copy's, and a final ["r", 0] is getResult(). */
+ *  points, ["x", n] the edited copy's, then ["r", 0] is getResult() and a
+ *  final ["e", 0] getResult(true), the stream's end. */
 function resyncOps(c: Case, chunking: string, n: number): ResyncOp[] {
   const next = generator(fnv1a(`${c.name}:${chunking}`));
   const ops: ResyncOp[] = [];
@@ -149,7 +156,7 @@ function resyncOps(c: Case, chunking: string, n: number): ResyncOp[] {
     ops.push([kind, length]);
   }
   if (!(kind === "p" && length === n)) ops.push(["p", n]);
-  ops.push(["r", 0]);
+  ops.push(["r", 0], ["e", 0]);
   return ops;
 }
 
@@ -162,7 +169,11 @@ function stream(c: Case, chunking: string) {
     const parser = createStreamParser(library(c.schema), c.root);
     const steps = ops.map(([kind, n]) =>
       JSON.stringify(
-        kind === "r" ? parser.getResult() : parser.set((kind === "p" ? cps : other).slice(0, n).join("")),
+        kind === "e"
+          ? parser.getResult(true)
+          : kind === "r"
+            ? parser.getResult()
+            : parser.set((kind === "p" ? cps : other).slice(0, n).join("")),
       ),
     );
     return { steps, sizes: undefined, ops };
@@ -176,7 +187,8 @@ function stream(c: Case, chunking: string) {
     steps.push(JSON.stringify(parser.push(cps.slice(pos, pos + size).join(""))));
     pos += size;
   }
-  return { steps, sizes: random ? plan : undefined, ops: undefined };
+  steps.push(JSON.stringify(parser.getResult(true)));
+  return { steps, sizes: random || chunking === "recorded" ? plan : undefined, ops: undefined };
 }
 
 /** tokenize() of the first `length` code points, as JSON. */
@@ -211,7 +223,7 @@ if (command === "golden") {
   for (const c of cases) {
     writeGolden(`${c.name}.oneshot.json`, oneshot(c));
     const streams: Record<string, { sizes?: number[]; ops?: ResyncOp[]; steps: string[] }> = {};
-    for (const chunking of c.chunkings ?? chunkings) {
+    for (const chunking of [...(c.chunkings ?? chunkings), ...(c.recorded ? ["recorded"] : [])]) {
       const { steps, sizes, ops } = stream(c, chunking);
       streams[chunking] = { ...(sizes ? { sizes } : {}), ...(ops ? { ops } : {}), steps: steps.map(fingerprint) };
     }

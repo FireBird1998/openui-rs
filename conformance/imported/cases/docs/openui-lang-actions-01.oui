@@ -1,0 +1,2 @@
+askBtn = Button("Explain this chart", @ToAssistant("Explain the revenue chart"))
+docsBtn = Button("Docs", @OpenUrl("https://example.com/docs"))

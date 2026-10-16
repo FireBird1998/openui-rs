@@ -1,0 +1,1 @@
+root = Button("Go", {steps: [{type: "custom_action", name: "CopyToClipboard", params: {}}]})

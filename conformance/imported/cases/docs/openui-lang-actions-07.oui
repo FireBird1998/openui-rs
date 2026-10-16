@@ -1,0 +1,7 @@
+root = Stack([card])
+card = Card([CardHeader("Order ORD-1042", "3 items, $120"), status, buttons])
+approveOrder = Mutation("approve_order", {orderId: "ORD-1042"})
+status = approveOrder.status == "success" ? Callout("success", "Approved", "The order is approved.") : null
+buttons = Buttons([approveBtn, copyBtn])
+approveBtn = Button("Approve", Action([@Run(approveOrder), @ToAssistant("I approved order ORD-1042")]), "primary")
+copyBtn = Button("Copy ID", @CopyToClipboard("ORD-1042"), "secondary")

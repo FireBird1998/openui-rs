@@ -1,0 +1,54 @@
+{
+ "properties": {
+  "Text": {
+   "$ref": "#/$defs/Text"
+  }
+ },
+ "$defs": {
+  "Text": {
+   "properties": {
+    "value": {}
+   },
+   "required": [
+    "value"
+   ]
+  }
+ },
+ "functions": {
+  "Percent": {
+   "params": {
+    "properties": {
+     "part": {
+      "type": "number"
+     },
+     "total": {
+      "default": 100,
+      "type": "number"
+     }
+    },
+    "required": [
+     "part",
+     "total"
+    ]
+   }
+  },
+  "Sum2": {
+   "params": {
+    "properties": {
+     "numbers": {
+      "type": "array",
+      "items": {
+       "type": "number"
+      }
+     },
+     "label": {
+      "type": "string"
+     }
+    },
+    "required": [
+     "numbers"
+    ]
+   }
+  }
+ }
+}

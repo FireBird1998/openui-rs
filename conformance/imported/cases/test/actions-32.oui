@@ -1,0 +1,2 @@
+rows = [{id: "a", plan: {steps: [{type: "custom_action", name: "CopyToClipboard", params: {text: "x"}}]}}]
+root = Card(@Each(rows, "r", Button("Go", @CopyToClipboard(r.id))))

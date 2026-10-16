@@ -1,0 +1,1 @@
+{"root":null,"meta":{"incomplete":false,"unresolved":[],"orphaned":["email"],"statementCount":2,"errors":[{"code":"unknown-component","component":"Col","path":"","message":"Unknown component \"Col\" — not found in catalog or builtins","statementId":"root"}]},"stateDeclarations":{"$email":null},"queryStatements":[],"mutationStatements":[]}

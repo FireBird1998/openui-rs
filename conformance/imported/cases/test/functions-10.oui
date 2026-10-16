@@ -1,0 +1,1 @@
+root = Text(@Sum2([1], null))

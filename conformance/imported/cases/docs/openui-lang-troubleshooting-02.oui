@@ -1,5 +1,5 @@
-// Wrong — "Paragraph" is not registered
+// Wrong: "Paragraph" is not registered
 text = Paragraph("Hello world")
 
-// Correct — use the registered name
+// Correct: use the registered name
 text = TextContent("Hello world")

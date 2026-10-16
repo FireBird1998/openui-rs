@@ -1,1 +1,1 @@
-root = DefBox()
+root = ReqScalar()

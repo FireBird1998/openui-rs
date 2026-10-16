@@ -92,7 +92,11 @@ def packages(lang_core, workspace, ours):
                 continue
             parts = spec.split("/")
             names.add("/".join(parts[:2]) if spec.startswith("@") else parts[0])
-    manifest = json.loads((Path(lang_core) / "package.json").read_text())
+    # A vendored copy keeps upstream's package.json as package.json.upstream.
+    manifest_path = Path(lang_core) / "package.json"
+    if not manifest_path.is_file():
+        manifest_path = Path(lang_core) / "package.json.upstream"
+    manifest = json.loads(manifest_path.read_text())
     declared = {**manifest.get("peerDependencies", {}), **manifest.get("dependencies", {})}
     versions = catalog(workspace)
     dependencies = dict(json.loads(Path(ours).read_text()).get("dependencies", {}))

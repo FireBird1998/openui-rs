@@ -1,0 +1,4 @@
+$t = true
+root = $t ? a : b
+a = Title("A")
+b = Title("B")

@@ -1,0 +1,2 @@
+root = Stack([CardHeader("Revenue by region"), chart])
+chart = BarChart(["NA", "EU", "APAC"], [Series("Revenue", [420, 310, 180])])

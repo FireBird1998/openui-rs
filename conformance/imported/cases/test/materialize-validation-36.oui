@@ -1,1 +1,1 @@
-root = ObjBox({ author: "a", bonus: 99 })
+root = ObjBox({ author: { first: "a" }, views: 3 })

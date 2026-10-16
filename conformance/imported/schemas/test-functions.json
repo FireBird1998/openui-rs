@@ -1,0 +1,72 @@
+{
+ "$schema": "https://json-schema.org/draft/2020-12/schema",
+ "type": "object",
+ "properties": {
+  "Text": {
+   "$ref": "#/$defs/Text"
+  }
+ },
+ "required": [
+  "Text"
+ ],
+ "additionalProperties": false,
+ "$defs": {
+  "Text": {
+   "type": "object",
+   "properties": {
+    "value": {}
+   },
+   "required": [
+    "value"
+   ],
+   "additionalProperties": false,
+   "description": "Shows a value"
+  }
+ },
+ "functions": {
+  "Percent": {
+   "description": "Formats part / total as a percentage",
+   "params": {
+    "type": "object",
+    "properties": {
+     "part": {
+      "type": "number"
+     },
+     "total": {
+      "default": 100,
+      "type": "number"
+     }
+    },
+    "required": [
+     "part",
+     "total"
+    ],
+    "additionalProperties": false
+   },
+   "returns": {
+    "type": "string"
+   }
+  },
+  "Sum2": {
+   "description": "Sums numbers, with an optional label",
+   "params": {
+    "type": "object",
+    "properties": {
+     "numbers": {
+      "type": "array",
+      "items": {
+       "type": "number"
+      }
+     },
+     "label": {
+      "type": "string"
+     }
+    },
+    "required": [
+     "numbers"
+    ],
+    "additionalProperties": false
+   }
+  }
+ }
+}

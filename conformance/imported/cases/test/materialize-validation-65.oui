@@ -1,0 +1,1 @@
+root = Tree({ label: "a" })

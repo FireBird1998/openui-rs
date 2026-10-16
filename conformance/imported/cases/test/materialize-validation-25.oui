@@ -1,1 +1,1 @@
-root = NestDefBox({ mode: null, retries: 2 })
+root = Nope()

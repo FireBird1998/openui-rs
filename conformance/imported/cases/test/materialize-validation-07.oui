@@ -1,1 +1,1 @@
-root = TagBox(42)
+root = ObjBox({ views: 3 })

@@ -15,6 +15,8 @@ pub enum Answer {
         oneshot: String,
         tokens: String,
         steps: Vec<String>,
+        /// The result once the stream has ended.
+        end: String,
         /// How long the reference took, in milliseconds.
         ms: f64,
     },
@@ -86,6 +88,7 @@ impl Reference {
                                 .iter()
                                 .map(|s| s.as_str().unwrap().to_owned())
                                 .collect(),
+                            end: answer["end"].as_str().unwrap().to_owned(),
                             ms: answer["ms"].as_f64().unwrap_or(0.0),
                         },
                     }

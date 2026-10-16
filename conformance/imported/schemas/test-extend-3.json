@@ -1,0 +1,109 @@
+{
+ "$schema": "https://json-schema.org/draft/2020-12/schema",
+ "type": "object",
+ "properties": {
+  "Stack": {
+   "$ref": "#/$defs/Stack"
+  },
+  "Text": {
+   "$ref": "#/$defs/Text"
+  },
+  "Image": {
+   "$ref": "#/$defs/Image"
+  },
+  "Frame": {
+   "$ref": "#/$defs/Frame"
+  },
+  "Card": {
+   "$ref": "#/$defs/Card"
+  }
+ },
+ "required": [
+  "Stack",
+  "Text",
+  "Image",
+  "Frame",
+  "Card"
+ ],
+ "additionalProperties": false,
+ "$defs": {
+  "Stack": {
+   "type": "object",
+   "properties": {
+    "children": {
+     "type": "array",
+     "items": {
+      "anyOf": [
+       {
+        "$ref": "#/$defs/Text"
+       },
+       {
+        "$ref": "#/$defs/Image"
+       },
+       {
+        "$ref": "#/$defs/Card"
+       }
+      ]
+     }
+    }
+   },
+   "required": [
+    "children"
+   ],
+   "additionalProperties": false,
+   "description": "Stack desc"
+  },
+  "Text": {
+   "type": "object",
+   "properties": {
+    "label": {
+     "type": "string"
+    }
+   },
+   "required": [
+    "label"
+   ],
+   "additionalProperties": false,
+   "description": "Text desc"
+  },
+  "Image": {
+   "type": "object",
+   "properties": {
+    "label": {
+     "type": "string"
+    }
+   },
+   "required": [
+    "label"
+   ],
+   "additionalProperties": false,
+   "description": "Image desc"
+  },
+  "Card": {
+   "type": "object",
+   "properties": {
+    "body": {
+     "$ref": "#/$defs/Stack"
+    }
+   },
+   "required": [
+    "body"
+   ],
+   "additionalProperties": false,
+   "description": "Card desc"
+  },
+  "Frame": {
+   "type": "object",
+   "properties": {
+    "image": {
+     "$ref": "#/$defs/Image"
+    }
+   },
+   "required": [
+    "image"
+   ],
+   "additionalProperties": false,
+   "description": "Frame desc"
+  }
+ }
+}

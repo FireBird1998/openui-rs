@@ -1,16 +1,41 @@
-//! The `openui-lang` command-line tool.
+//! The `openui-lang` command-line tool. Each command must print what the
+//! library itself gives for the same input; whether that matches the
+//! reference is the conformance tests' job.
 
 mod common;
 
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::process::Command;
+use std::sync::Arc;
+
+use openui_lang::{Library, StreamParser, generate_system_prompt, parse, tokenize, tokens_to_json};
 
 fn conformance() -> PathBuf {
     common::conformance_dir()
 }
 
+fn read(path: &Path) -> String {
+    std::fs::read_to_string(path).unwrap()
+}
+
+fn library(schema: &Path) -> Arc<Library> {
+    Arc::new(Library::from_json_schema(
+        &serde_json::from_str(&read(schema)).unwrap(),
+    ))
+}
+
+/// The library's result after each push of `size` code points, one JSON line each.
+fn streamed(schema: &Path, program: &Path, size: usize) -> Vec<String> {
+    let mut parser = StreamParser::new(library(schema), None);
+    let chars: Vec<char> = read(program).chars().collect();
+    chars
+        .chunks(size)
+        .map(|chunk| parser.push(&chunk.iter().collect::<String>()).to_json())
+        .collect()
+}
+
 #[test]
-fn parse_prints_the_reference_parse_result() {
+fn parse_prints_the_parse_result() {
     let dir = conformance();
     let out = Command::new(env!("CARGO_BIN_EXE_openui-lang"))
         .arg("parse")
@@ -23,25 +48,20 @@ fn parse_prints_the_reference_parse_result() {
         "stderr: {}",
         String::from_utf8_lossy(&out.stderr)
     );
-    let expected = std::fs::read_to_string(dir.join("golden/hello-text.oneshot.json")).unwrap();
+    let expected = parse(
+        &read(&dir.join("cases/hello-text.oui")),
+        &library(&dir.join("schemas/text.json")),
+        None,
+    )
+    .to_json();
     assert_eq!(
         String::from_utf8(out.stdout).unwrap(),
         format!("{expected}\n")
     );
 }
 
-/// FNV-1a (32-bit) as 8 hex digits, as the goldens store it.
-fn fingerprint(text: &str) -> String {
-    let mut h: u32 = 0x811c_9dc5;
-    for &b in text.as_bytes() {
-        h ^= u32::from(b);
-        h = h.wrapping_mul(0x0100_0193);
-    }
-    format!("{h:08x}")
-}
-
 #[test]
-fn tokens_prints_the_reference_tokens() {
+fn tokens_prints_the_tokens() {
     let dir = conformance();
     let out = Command::new(env!("CARGO_BIN_EXE_openui-lang"))
         .arg("tokens")
@@ -53,19 +73,17 @@ fn tokens_prints_the_reference_tokens() {
         "stderr: {}",
         String::from_utf8_lossy(&out.stderr)
     );
-    let stdout = String::from_utf8(out.stdout).unwrap();
-    let golden =
-        std::fs::read_to_string(dir.join("golden/hand/67-lexer-number-forms.tokens.json")).unwrap();
-    let prefixes: Vec<String> = serde_json::from_str(&golden).unwrap();
-    // The last prefix is the whole program.
+    let expected = tokens_to_json(&tokenize(&read(
+        &dir.join("cases/hand/67-lexer-number-forms.oui"),
+    )));
     assert_eq!(
-        fingerprint(stdout.trim_end_matches('\n')),
-        *prefixes.last().unwrap()
+        String::from_utf8(out.stdout).unwrap(),
+        format!("{expected}\n")
     );
 }
 
 #[test]
-fn stream_prints_the_reference_result_after_every_push() {
+fn stream_prints_the_result_after_every_push() {
     let dir = conformance();
     let case = "hand/71-expression-forms";
     let out = Command::new(env!("CARGO_BIN_EXE_openui-lang"))
@@ -80,24 +98,17 @@ fn stream_prints_the_reference_result_after_every_push() {
         "stderr: {}",
         String::from_utf8_lossy(&out.stderr)
     );
-    let golden = std::fs::read_to_string(dir.join(format!("golden/{case}.steps.json"))).unwrap();
-    let golden: serde_json::Value = serde_json::from_str(&golden).unwrap();
-    let expected: Vec<&str> = golden["7"]["steps"]
-        .as_array()
-        .unwrap()
-        .iter()
-        .map(|s| s.as_str().unwrap())
-        .collect();
-    let actual: Vec<String> = String::from_utf8(out.stdout)
-        .unwrap()
-        .lines()
-        .map(fingerprint)
-        .collect();
-    assert_eq!(actual, expected);
+    let expected = streamed(
+        &dir.join("schemas/hand.json"),
+        &dir.join(format!("cases/{case}.oui")),
+        7,
+    );
+    let stdout = String::from_utf8(out.stdout).unwrap();
+    assert_eq!(stdout.lines().collect::<Vec<_>>(), expected);
 }
 
-/// Without a chunk size, `stream` pushes 4 characters at a time, the corpus's
-/// "4" chunking.
+/// Without a chunk size, `stream` pushes 4 characters at a time, like the
+/// corpus's "4" chunking.
 #[test]
 fn stream_pushes_four_characters_at_a_time_by_default() {
     let dir = conformance();
@@ -113,20 +124,13 @@ fn stream_pushes_four_characters_at_a_time_by_default() {
         "stderr: {}",
         String::from_utf8_lossy(&out.stderr)
     );
-    let golden = std::fs::read_to_string(dir.join(format!("golden/{case}.steps.json"))).unwrap();
-    let golden: serde_json::Value = serde_json::from_str(&golden).unwrap();
-    let expected: Vec<&str> = golden["4"]["steps"]
-        .as_array()
-        .unwrap()
-        .iter()
-        .map(|s| s.as_str().unwrap())
-        .collect();
-    let actual: Vec<String> = String::from_utf8(out.stdout)
-        .unwrap()
-        .lines()
-        .map(fingerprint)
-        .collect();
-    assert_eq!(actual, expected);
+    let expected = streamed(
+        &dir.join("schemas/hand.json"),
+        &dir.join(format!("cases/{case}.oui")),
+        4,
+    );
+    let stdout = String::from_utf8(out.stdout).unwrap();
+    assert_eq!(stdout.lines().collect::<Vec<_>>(), expected);
 }
 
 /// `-` reads the program from standard input.
@@ -151,11 +155,8 @@ fn parse_reads_the_program_from_stdin_given_a_dash() {
         .unwrap();
     let out = child.wait_with_output().unwrap();
     assert!(out.status.success());
-    let golden = std::fs::read_to_string(dir.join("golden/hello-text.oneshot.json")).unwrap();
-    assert_eq!(
-        String::from_utf8(out.stdout).unwrap().trim_end(),
-        golden.trim_end()
-    );
+    let expected = parse(&program, &library(&dir.join("schemas/text.json")), None).to_json();
+    assert_eq!(String::from_utf8(out.stdout).unwrap().trim_end(), expected);
 }
 
 #[test]
@@ -195,7 +196,7 @@ fn bench_prints_one_timing_line_per_program() {
 }
 
 #[test]
-fn prompt_prints_the_reference_system_prompt() {
+fn prompt_prints_the_system_prompt() {
     let dir = conformance();
     let out = Command::new(env!("CARGO_BIN_EXE_openui-lang"))
         .arg("prompt")
@@ -203,16 +204,14 @@ fn prompt_prints_the_reference_system_prompt() {
         .output()
         .unwrap();
     assert!(out.status.success());
-    let golden: serde_json::Value = serde_json::from_str(
-        &std::fs::read_to_string(dir.join("golden/prompts/library-tools-strings.json")).unwrap(),
-    )
-    .unwrap();
-    let expected = format!("{}\n", golden["prompt"].as_str().unwrap());
+    let spec =
+        serde_json::from_str(&read(&dir.join("prompts/library-tools-strings.json"))).unwrap();
+    let expected = format!("{}\n", generate_system_prompt(&spec).unwrap());
     assert_eq!(String::from_utf8(out.stdout).unwrap(), expected);
 }
 
 #[test]
-fn prompt_reports_the_reference_error_and_fails() {
+fn prompt_reports_the_error_and_fails() {
     let dir = conformance();
     let out = Command::new(env!("CARGO_BIN_EXE_openui-lang"))
         .arg("prompt")

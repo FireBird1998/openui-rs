@@ -4,7 +4,7 @@
 
 The repository also holds the viewer, a Mac app that draws programs natively through the crate (see below), and will hold Dynamic News, an Android app whose story screens are written by an LLM and drawn natively with this crate. That part is still being designed ([map](.scratch/dynamic-news/map.md)).
 
-**Status:** the crate is complete: every ticket of its [spec](.scratch/openui-lang/spec.md) is done. It conforms to the reference at commit [`bba1d2515fa53562ccf0d5d51309c6a93dbaf186`](https://github.com/thesysdev/openui/tree/bba1d2515fa53562ccf0d5d51309c6a93dbaf186/packages/lang-core) (lang-core 0.3.0) on 300 parse cases at every streaming step, 44 prompts, 1,417 merges, 325 serializations, 187 enriched error lists and 320,000 fuzzed inputs.
+**Status:** moving to lang-core 1.0. The crate conforms to the reference at commit [`bba1d2515fa53562ccf0d5d51309c6a93dbaf186`](https://github.com/thesysdev/openui/tree/bba1d2515fa53562ccf0d5d51309c6a93dbaf186/packages/lang-core) (lang-core 0.3.0), as of the local tag `lang-core-0.3.0`: 311 parse cases at every streaming step, 47 prompts, 1,417 merges, 342 serializations, 191 enriched error lists and 320,000 fuzzed inputs. The reference is now lang-core 1.0.1, and the move to it lands ticket by ticket ([map](.scratch/lang-core-1.0/map.md)); until it's done, `conformance/pending/` lists what the core doesn't match yet.
 
 - [CONFORMANCE.md](CONFORMANCE.md): what's checked and how, fuzzing, what it found, and the few deliberate divergences
 - [conformance/QUIRKS.md](conformance/QUIRKS.md): reference behaviour that looks wrong but is reproduced, with draft upstream reports

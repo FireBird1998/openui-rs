@@ -265,9 +265,23 @@ fn enriched_errors_match_the_reference() {
             for e in &enriched {
                 codes.insert((e.code.as_str(), e.hint.is_some()));
             }
-            let expected = serde_json::json!({ "text": golden[&name] });
+            // A case the reference reports no errors for has no golden.
+            let expected = match golden.get(&name) {
+                Some(text) => serde_json::json!({ "text": text }),
+                None => serde_json::json!({}),
+            };
             report.check(&name, &expected, Ok(enriched_errors_to_json(&enriched)));
         }
+    }
+    // Cases the reference reports errors for and the core doesn't.
+    let unchecked: Vec<String> = golden
+        .keys()
+        .filter(|name| !report.names.contains(*name))
+        .cloned()
+        .collect();
+    for name in unchecked {
+        let expected = serde_json::json!({ "text": golden[&name] });
+        report.check(&name, &expected, Ok(enriched_errors_to_json(&[])));
     }
     assert!(report.checked > 150, "only {} enrich cases", report.checked);
     for code in [

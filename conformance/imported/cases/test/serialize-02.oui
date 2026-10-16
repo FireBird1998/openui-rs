@@ -1,3 +1,1 @@
-root = Stack([header, tbl])
-header = Title("Hi")
-tbl = Table(["A", "B"], [[1, 2]])
+root = Btn(@Upper($name), @Copy("x"))

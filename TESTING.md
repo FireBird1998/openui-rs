@@ -22,7 +22,7 @@ cargo test -p openui-lang --test conformance streaming_   # tests whose names ma
 
 | Test | Checks | Catches |
 |---|---|---|
-| `conformance` | Every corpus case (311), one-shot and after every streaming push, under each of the corpus's chunkings, against the reference's goldens. Also that a stream ends where one-shot parsing ends, apart from three kinds of programs where the reference itself doesn't. | Any difference from the reference in parsing or streaming |
+| `conformance` | Every corpus case (524), one-shot, after every streaming push and at each stream's end, under each of the corpus's chunkings, against the reference's goldens. Also that a stream, once ended, gives what one-shot parsing gives, apart from programs where the reference itself doesn't. | Any difference from the reference in parsing or streaming |
 | `stages` | Tokens, statements and expressions, and fence and comment stripping, on every prefix of every program | Which stage of the pipeline a difference starts in |
 | `edits` | Merging (over 1,400 cases), converting element trees back to source, and error hints, against the reference | Differences in the edit-mode and error layer |
 | `prompt` | Every prompt spec in the corpus (47) against the reference's `generateSystemPrompt`. Its error messages are compared exactly; for crashes inside the JavaScript engine, only that it fails. | Differences in system prompts |
@@ -31,7 +31,7 @@ cargo test -p openui-lang --test conformance streaming_   # tests whose names ma
 | `size` | Programs that double with every line stop at about 8 MiB with `size_limited` | Runaway memory |
 | `streaming_cost` | A push costs about the same on a program four times the size (thread CPU time, best of 7) | Streaming that grows with the square of the program |
 | `report` | The counts in CONFORMANCE.md are what the corpus holds | A stale write-up |
-| `cli` | The command-line tool's commands, including reading stdin and the default chunk size | A broken CLI |
+| `cli` | The command-line tool's commands print what the library gives, including reading stdin and the default chunk size | A broken CLI |
 | `api` | The public JSON reader and writer, `JsObject`, and walking an expression | Public helpers that parsing alone doesn't reach |
 | doc tests | The crate docs' examples and the README's | Examples that no longer compile or run |
 | unit tests in `js.rs`, `preprocess.rs` | JSON reading and writing; incremental preprocessing against the one-shot form | Internal disagreements |
@@ -54,11 +54,14 @@ Not in the check, because they need Bun, time or a screen:
 ## The corpus
 
 Everything the tests compare is in `conformance/`:
-- **Parse cases** are listed in `manifest.json` (hand-written), `imported.json` (upstream's docs, examples and tests), `fuzz.json` (shrunk fuzzer finds) and `synthetic.json`. Each case has a `name`, a `schema` (component library), a program `file`, and optionally a `root` name and a narrower set of `chunkings`.
+- **Parse cases** are listed in `manifest.json` (hand-written), `imported.json` (upstream's docs, examples, tests and spec fixtures), `fuzz.json` (shrunk fuzzer finds) and `synthetic.json`. Each case has a `name`, a `schema` (component library), a program `file`, and optionally a `root` component name, a narrower set of `chunkings`, and `recorded` chunk sizes.
 - **Chunkings** are how a case is cut into pushes:
   - `1`, `2`, `3`, `4`, `7` and `16` code points;
   - `random-1` and `random-2`, with seeded sizes their golden records;
+  - `recorded`, for a case that came with its own chunks (the spec's streaming fixtures): the sizes in its `recorded`;
   - `resync-1` and `resync-2`, which mix in `set` calls.
+
+  Every stream then ends: its last step is the result once the stream is complete, the reference's `getResult(true)` and the core's `StreamParser::finish()`.
 - **Goldens** are in `golden/`. Each case has `<case>.oneshot.json`, the reference's JSON, and `<case>.steps.json`, a fingerprint of every step under every chunking, plus stage goldens. A fingerprint is FNV-1a over the JSON's UTF-8.
 - **Other corpora:** `merge.json` (and its generated and imported siblings), `serialize.json`, and `prompts/`. Their goldens are in `golden/edits/` and `golden/prompts/`.
 - **The reference's own oddities:**

@@ -6,6 +6,41 @@
    "patch": "root = Stack([header])\nheader = Title(\"New\")",
    "source": "reference-test",
    "origin": "packages/lang-core/src/parser/__tests__/serialize.test.ts"
+  },
+  {
+   "name": "spec/editing/001-replace-and-add",
+   "existing": "root = Stack([a, b])\na = Text(\"A\")\nb = Text(\"B\")\n",
+   "patch": "root = Stack([a, b, c])\na = Text(\"A2\")\nc = Text(\"C\")\n",
+   "source": "spec-fixture",
+   "origin": "spec/fixtures/1.0/editing/001-replace-and-add"
+  },
+  {
+   "name": "spec/editing/002-delete-and-gc",
+   "existing": "root = Stack([a, b, c])\n$x = 1\na = Text(\"A\")\nb = Text(\"B\")\nc = Text(\"C\")\n",
+   "patch": "root = Stack([a])\nb = null\n",
+   "source": "spec-fixture",
+   "origin": "spec/fixtures/1.0/editing/002-delete-and-gc"
+  },
+  {
+   "name": "spec/editing/003-state-delete",
+   "existing": "root = Stack([a])\n$x = 1\na = Text(\"A\")\n",
+   "patch": "$x = null\n",
+   "source": "spec-fixture",
+   "origin": "spec/fixtures/1.0/editing/003-state-delete"
+  },
+  {
+   "name": "spec/editing/005-fenced-patch",
+   "existing": "root = Stack([a, b])\na = Text(\"A\")\nb = Text(\"B\")\n",
+   "patch": "Sure! I changed the first line, don't worry.\n```openui\na = Text(\"A2\")\n```\nLet me know if you want more.\n",
+   "source": "spec-fixture",
+   "origin": "spec/fixtures/1.0/editing/005-fenced-patch"
+  },
+  {
+   "name": "spec/editing/006-no-root-statement-no-gc",
+   "existing": "page = Stack([a])\na = Text(\"A\")\nx = Text(\"X\")\n",
+   "patch": "x = Text(\"X2\")\n",
+   "source": "spec-fixture",
+   "origin": "spec/fixtures/1.0/editing/006-no-root-statement-no-gc"
   }
  ]
 }

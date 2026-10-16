@@ -1,0 +1,19 @@
+{
+ "properties": {
+  "Tree": {
+   "$ref": "#/$defs/Tree"
+  }
+ },
+ "$defs": {
+  "Tree": {
+   "properties": {
+    "node": {
+     "$ref": "#/$defs/__schema0"
+    }
+   },
+   "required": [
+    "node"
+   ]
+  }
+ }
+}

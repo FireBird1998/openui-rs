@@ -1,0 +1,6 @@
+]]>openui:content
+root = Card([title])
+title = TextContent("Order 42")
+]]>openui:context
+{"formState":{"note":"rush"}}
+]]>openui:end

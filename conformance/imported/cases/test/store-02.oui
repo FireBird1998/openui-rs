@@ -1,0 +1,7 @@
+root = Col([shopping, copyButton, dinnerCards], 4)
+$ingredients = ["500 g (about 1 lb) ground beef", "12 small tortillas or taco shells", "1 packet taco seasoning (about 28 g / 1 oz)", "1 small head lettuce", "2 medium tomatoes", "1 small onion", "150 g (about 1½ cups) shredded cheddar", "2 avocados", "200 g (about ¾ cup) salsa", "150 g (about ⅔ cup) sour cream", "2 limes"]
+$checked = []
+$dishes = [{name: "Lemon chicken pasta", time: "30 minutes"}, {name: "Chickpea and spinach curry", time: "35 minutes"}]
+shopping = Card([Col(@Each($ingredients, "item", Pressable([Text(item)], @Set($checked, @Toggle($checked, item)), @Includes($checked, item))))])
+copyButton = Button("Copy whole shopping list", @CopyToClipboard(@Join($ingredients, "\n")))
+dinnerCards = Grid(@Each($dishes, "dish", Card([Title(dish.name), Button("Get recipe", @ToAssistant("Recipe for " + dish.name, {dishName: dish.name}))])))

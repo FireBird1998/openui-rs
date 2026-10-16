@@ -1,1 +1,1 @@
-root = ChartBox(null, "grouped")
+root = ObjBox("hello")

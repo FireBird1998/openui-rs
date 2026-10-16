@@ -1,0 +1,1 @@
+{"root":null,"meta":{"incomplete":false,"unresolved":[],"orphaned":[],"statementCount":1,"errors":[{"code":"no-root","component":"Card","path":"","message":"No root statement, and no statement calls the root component Card"}]},"stateDeclarations":{},"queryStatements":[],"mutationStatements":[]}

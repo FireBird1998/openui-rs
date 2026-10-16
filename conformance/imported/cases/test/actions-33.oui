@@ -1,0 +1,2 @@
+rows = [{id: "a", plan: {steps: [{type: "custom_action", name: "CopyToClipboard", params: {text: "x"}}]}}]
+root = Card([$t ? Button("Go", Action([@CopyToClipboard("a"), @OpenUrl("u")])) : null])

@@ -31,19 +31,34 @@ function currentTestFile(): string {
   return m ? m[1] : "unknown";
 }
 
-/** A ParamMap (what parse() takes) as the JSON Schema compileSchema would read back. */
-function paramMapToSchema(cat: Map<string, { params: any[] }> | undefined): unknown {
-  const $defs: Record<string, unknown> = {};
-  for (const [name, { params }] of cat ?? []) {
-    const properties: Record<string, unknown> = {};
-    for (const p of params) {
-      const schema = p.schema && typeof p.schema === "object" ? { ...p.schema } : {};
-      if (p.defaultValue !== undefined) schema.default = p.defaultValue;
-      properties[p.name] = schema;
-    }
-    $defs[name] = { properties, required: params.filter((p) => p.required).map((p) => p.name) };
+/** Compiled params as the JSON Schema object they came from. */
+function paramsToSchema(params: any[]): { properties: Record<string, unknown>; required: string[] } {
+  const properties: Record<string, unknown> = {};
+  for (const p of params) {
+    const schema = p.schema && typeof p.schema === "object" ? { ...p.schema } : {};
+    if (p.defaultValue !== undefined) schema.default = p.defaultValue;
+    properties[p.name] = schema;
   }
-  return { $defs };
+  return { properties, required: params.filter((p) => p.required).map((p) => p.name) };
+}
+
+/** A ParamMap (what parse() takes) as the JSON Schema compileSchema would read
+ *  back: its components, named in `properties`, and the library's own
+ *  functions and actions from its call registry (the built-ins aren't). */
+function paramMapToSchema(cat: (Map<string, { params: any[] }> & { callDefs?: Map<string, any> }) | undefined): unknown {
+  const $defs: Record<string, unknown> = {};
+  for (const [name, { params }] of cat ?? []) $defs[name] = paramsToSchema(params);
+  const schema: Record<string, unknown> = {
+    properties: Object.fromEntries(Object.keys($defs).map((name) => [name, { $ref: `#/$defs/${name}` }])),
+    $defs,
+  };
+  for (const [kind, key] of [["function", "functions"], ["action", "actions"]] as const) {
+    const calls = [...(cat?.callDefs ?? [])].filter(([, def]) => !def.builtin && def.kind === kind);
+    if (calls.length) {
+      schema[key] = Object.fromEntries(calls.map(([name, def]) => [name, { params: paramsToSchema(def.params) }]));
+    }
+  }
+  return schema;
 }
 
 function record(schema: unknown, input: string, root?: string) {
@@ -64,17 +79,17 @@ function recordingStream(stream: any, schema: unknown, root?: string) {
   };
   return {
     ...stream,
-    push(chunk: string) {
+    push(chunk: string, complete?: boolean) {
       text += chunk;
       sync();
-      return stream.push(chunk);
+      return stream.push(chunk, complete);
     },
-    set(full: string) {
+    set(full: string, complete?: boolean) {
       text = full;
       sync();
-      return stream.set(full);
+      return stream.set(full, complete);
     },
-    getResult: () => stream.getResult(),
+    getResult: (complete?: boolean) => stream.getResult(complete),
   };
 }
 

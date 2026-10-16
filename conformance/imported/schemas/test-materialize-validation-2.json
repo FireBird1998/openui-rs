@@ -1,0 +1,232 @@
+{
+ "properties": {
+  "ObjBox": {
+   "$ref": "#/$defs/ObjBox"
+  },
+  "ArrBox": {
+   "$ref": "#/$defs/ArrBox"
+  },
+  "TagBox": {
+   "$ref": "#/$defs/TagBox"
+  },
+  "EnumBox": {
+   "$ref": "#/$defs/EnumBox"
+  },
+  "AnyBox": {
+   "$ref": "#/$defs/AnyBox"
+  },
+  "ScalarBox": {
+   "$ref": "#/$defs/ScalarBox"
+  },
+  "ListBox": {
+   "$ref": "#/$defs/ListBox"
+  },
+  "CardBox": {
+   "$ref": "#/$defs/CardBox"
+  },
+  "ReqScalar": {
+   "$ref": "#/$defs/ReqScalar"
+  },
+  "DefBox": {
+   "$ref": "#/$defs/DefBox"
+  },
+  "SlotBox": {
+   "$ref": "#/$defs/SlotBox"
+  },
+  "ChartBox": {
+   "$ref": "#/$defs/ChartBox"
+  },
+  "NestDefBox": {
+   "$ref": "#/$defs/NestDefBox"
+  }
+ },
+ "$defs": {
+  "ObjBox": {
+   "properties": {
+    "info": {
+     "type": "object",
+     "properties": {
+      "author": {
+       "type": "string"
+      },
+      "views": {
+       "type": "number"
+      }
+     },
+     "required": [
+      "author"
+     ]
+    }
+   },
+   "required": []
+  },
+  "ArrBox": {
+   "properties": {
+    "rows": {
+     "type": "array",
+     "items": {
+      "type": "object",
+      "properties": {
+       "label": {
+        "type": "string"
+       },
+       "value": {
+        "type": "number"
+       }
+      },
+      "required": [
+       "label"
+      ]
+     }
+    }
+   },
+   "required": []
+  },
+  "TagBox": {
+   "properties": {
+    "tags": {
+     "type": "array",
+     "items": {
+      "type": "string"
+     }
+    }
+   },
+   "required": []
+  },
+  "EnumBox": {
+   "properties": {
+    "status": {
+     "enum": [
+      "active",
+      "inactive"
+     ]
+    }
+   },
+   "required": []
+  },
+  "AnyBox": {
+   "properties": {
+    "combo": {
+     "anyOf": [
+      {
+       "type": "string"
+      },
+      {
+       "type": "number"
+      }
+     ]
+    }
+   },
+   "required": []
+  },
+  "ScalarBox": {
+   "properties": {
+    "title": {
+     "type": "string"
+    },
+    "count": {
+     "type": "number"
+    },
+    "flag": {
+     "type": "boolean"
+    }
+   },
+   "required": []
+  },
+  "ListBox": {
+   "properties": {
+    "children": {
+     "type": "array"
+    }
+   },
+   "required": []
+  },
+  "CardBox": {
+   "properties": {
+    "text": {
+     "type": "string"
+    }
+   },
+   "required": []
+  },
+  "ReqScalar": {
+   "properties": {
+    "title": {
+     "type": "string"
+    }
+   },
+   "required": [
+    "title"
+   ]
+  },
+  "DefBox": {
+   "properties": {
+    "theme": {
+     "type": "string",
+     "default": "dark"
+    }
+   },
+   "required": [
+    "theme"
+   ]
+  },
+  "SlotBox": {
+   "properties": {
+    "children": {
+     "type": "array",
+     "items": {
+      "anyOf": [
+       {
+        "$ref": "#/$defs/CardBox"
+       }
+      ]
+     }
+    }
+   },
+   "required": []
+  },
+  "ChartBox": {
+   "properties": {
+    "labels": {
+     "type": "array",
+     "items": {
+      "type": "string"
+     }
+    },
+    "variant": {
+     "enum": [
+      "grouped",
+      "stacked"
+     ]
+    }
+   },
+   "required": [
+    "labels"
+   ]
+  },
+  "NestDefBox": {
+   "properties": {
+    "cfg": {
+     "type": "object",
+     "properties": {
+      "mode": {
+       "enum": [
+        "fast",
+        "slow"
+       ],
+       "default": "fast"
+      },
+      "retries": {
+       "type": "number",
+       "default": 3
+      }
+     },
+     "required": [
+      "mode"
+     ]
+    }
+   },
+   "required": []
+  }
+ }
+}

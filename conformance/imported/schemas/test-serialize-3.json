@@ -1,0 +1,53 @@
+{
+ "properties": {
+  "Stack": {
+   "$ref": "#/$defs/Stack"
+  },
+  "Title": {
+   "$ref": "#/$defs/Title"
+  },
+  "Table": {
+   "$ref": "#/$defs/Table"
+  },
+  "Card": {
+   "$ref": "#/$defs/Card"
+  }
+ },
+ "$defs": {
+  "Stack": {
+   "properties": {
+    "children": {}
+   },
+   "required": [
+    "children"
+   ]
+  },
+  "Title": {
+   "properties": {
+    "text": {}
+   },
+   "required": [
+    "text"
+   ]
+  },
+  "Table": {
+   "properties": {
+    "columns": {},
+    "rows": {}
+   },
+   "required": [
+    "columns",
+    "rows"
+   ]
+  },
+  "Card": {
+   "properties": {
+    "title": {},
+    "subtitle": {}
+   },
+   "required": [
+    "title"
+   ]
+  }
+ }
+}

@@ -6,7 +6,7 @@
 //! Each program is generated from a component library's grammar or mangled
 //! from a corpus case, then parsed by the core and by the reference (a
 //! long-lived `bun reference/serve.ts`): one-shot, tokens, and a random push
-//! chunking. Program K of seed S is the same on every machine (`--only K`
+//! chunking with the stream's end. Program K of seed S is the same on every machine (`--only K`
 //! replays it). Mismatches are shrunk to a minimal program and saved as corpus
 //! cases in `conformance/fuzz.json`; run `scripts/regen-golden.sh` afterwards.
 //! With `--edits`, merge and serialization are fuzzed instead (see `edits.rs`).
@@ -156,6 +156,7 @@ pub(crate) fn fingerprint(json: &str) -> String {
     format!("{h:08x}")
 }
 
+/// One-shot, tokens, then every push and the stream's end.
 type Fingerprints = (String, String, Vec<String>);
 
 /// The core's fingerprints for a program and how long they took, or None if
@@ -178,6 +179,7 @@ fn core_answer(p: &Program, library: &Arc<Library>) -> Option<(Fingerprints, Dur
             steps.push(fingerprint(&parser.push(&p.input[start..end]).to_json()));
             start = end;
         }
+        steps.push(fingerprint(&parser.finish().to_json()));
         (oneshot, tokens, steps)
     }))
     .ok()
@@ -190,15 +192,19 @@ fn judge(p: &Program, answer: &Answer, corpus: &Corpus) -> (Outcome, Option<Dura
         oneshot,
         tokens,
         steps,
+        end,
         ..
     } = answer
     else {
         return (Outcome::ReferenceThrew, None);
     };
+    let steps: Vec<&String> = steps.iter().chain([end]).collect();
     match core_answer(p, &corpus.libraries[&p.lib]) {
         None => (Outcome::CorePanicked, None),
         Some((_, took)) if took > run().slow => (Outcome::BlowUp, Some(took)),
-        Some(((o, t, s), took)) if &o == oneshot && &t == tokens && &s == steps => {
+        Some(((o, t, s), took))
+            if &o == oneshot && &t == tokens && s.iter().eq(steps.iter().copied()) =>
+        {
             (Outcome::Match, Some(took))
         }
         Some((_, took)) => (Outcome::Mismatch, Some(took)),

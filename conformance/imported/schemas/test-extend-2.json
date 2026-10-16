@@ -1,0 +1,84 @@
+{
+ "properties": {
+  "Stack": {
+   "$ref": "#/$defs/Stack"
+  },
+  "Text": {
+   "$ref": "#/$defs/Text"
+  },
+  "Image": {
+   "$ref": "#/$defs/Image"
+  },
+  "Card": {
+   "$ref": "#/$defs/Card"
+  },
+  "Frame": {
+   "$ref": "#/$defs/Frame"
+  }
+ },
+ "$defs": {
+  "Stack": {
+   "properties": {
+    "children": {
+     "type": "array",
+     "items": {
+      "anyOf": [
+       {
+        "$ref": "#/$defs/Text"
+       },
+       {
+        "$ref": "#/$defs/Image"
+       },
+       {
+        "$ref": "#/$defs/Card"
+       }
+      ]
+     }
+    }
+   },
+   "required": [
+    "children"
+   ]
+  },
+  "Text": {
+   "properties": {
+    "label": {
+     "type": "string"
+    }
+   },
+   "required": [
+    "label"
+   ]
+  },
+  "Image": {
+   "properties": {
+    "label": {
+     "type": "string"
+    }
+   },
+   "required": [
+    "label"
+   ]
+  },
+  "Card": {
+   "properties": {
+    "label": {
+     "type": "string"
+    }
+   },
+   "required": [
+    "label"
+   ]
+  },
+  "Frame": {
+   "properties": {
+    "image": {
+     "$ref": "#/$defs/Image"
+    }
+   },
+   "required": [
+    "image"
+   ]
+  }
+ }
+}

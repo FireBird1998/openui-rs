@@ -1,1 +1,2 @@
-root = TagBox(["a", CardBox("x"), "b"])
+root = ListBox([inner])
+inner = ObjBox({ author: "ann", views: "lots" })

@@ -1,1 +1,2 @@
-root = ChartBox(["a"], CardBox("x"))
+root = ListBox([inner])
+inner = ObjBox({ author: "ann", views: "lots" })

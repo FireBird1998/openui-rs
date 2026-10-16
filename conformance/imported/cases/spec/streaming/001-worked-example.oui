@@ -1,0 +1,6 @@
+root = Stack([header, kpis])
+header = Text("Tickets", "heading")
+kpis = Stack([open, closed])
+open = Metric("Open", @Count(@Filter(tickets.rows, "status", "==", "open")))
+closed = Metric("Closed", 8)
+tickets = Query("listTickets", {}, { rows: [] })

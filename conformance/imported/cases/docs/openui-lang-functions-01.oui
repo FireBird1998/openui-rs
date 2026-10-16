@@ -1,0 +1,1 @@
+openTickets = @Filter(tickets.rows, "status", "==", "open")

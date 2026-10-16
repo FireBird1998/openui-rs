@@ -1,7 +1,7 @@
-root = Stack([header, table, chart, gap, sources, followUps], "column", "l")
+root = Card([header, table, chart, gap, followUps], sources)
 header = CardHeader("Revenue, latest fiscal year", "Company A report · Company B report")
 table = Table([Col("Criterion", ["Revenue", "Revenue growth"]), Col("Company A", ["$10.0 billion (p. 12)", "Up 5% (p. 12)"]), Col("Company B", ["$8.0 billion (p. 40)", "Not found"])])
 chart = HorizontalBarChart(["Company A", "Company B"], [Series("Revenue (USD billions)", [10.0, 8.0])], "grouped", "USD billions", "Company")
 gap = Callout("info", "Growth not reported", "Company B's report does not state revenue growth, so it is left out of the comparison.")
-sources = Sources([{title: "“Revenue for the fiscal year was $10.0 billion, up 5% from a year ago.”", sourceName: "Company A · Page 12", url: "https://example.com/company-a.pdf#page=12"}, {title: "“Net revenue was $8.0 billion in 2025.”", sourceName: "Company B · Page 40", url: "https://example.com/company-b.pdf#page=40"}])
 followUps = FollowUpBlock([FollowUpItem("Add operating income"), FollowUpItem("Break down revenue by segment")])
+sources = [{title: "“Revenue for the fiscal year was $10.0 billion, up 5% from a year ago.”", sourceName: "Company A · Page 12", url: "https://example.com/company-a.pdf#page=12"}, {title: "“Net revenue was $8.0 billion in 2025.”", sourceName: "Company B · Page 40", url: "https://example.com/company-b.pdf#page=40"}]

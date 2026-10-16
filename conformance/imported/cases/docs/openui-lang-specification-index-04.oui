@@ -1,0 +1,2 @@
+askBtn = Button("Tell me more", @ToAssistant("Tell me more about this order"))
+saveBtn = Button("Save", Action([@Run(save), @Run(orders), @Reset($note)]))

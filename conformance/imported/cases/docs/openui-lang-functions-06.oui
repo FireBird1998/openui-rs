@@ -1,0 +1,1 @@
+priorityTags = @Each(tickets.rows, "t", Tag(t.priority, null, "sm"))

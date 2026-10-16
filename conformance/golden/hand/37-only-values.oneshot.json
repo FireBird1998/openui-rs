@@ -1,1 +1,1 @@
-{"root":null,"meta":{"incomplete":false,"unresolved":[],"orphaned":["b"],"statementCount":2,"errors":[]},"stateDeclarations":{},"queryStatements":[],"mutationStatements":[]}
+{"root":null,"meta":{"incomplete":false,"unresolved":[],"orphaned":[],"statementCount":2,"errors":[{"code":"no-root","component":"","path":"","message":"No root statement"}]},"stateDeclarations":{},"queryStatements":[],"mutationStatements":[]}

@@ -1,1 +1,1 @@
-root = EnumBox("bogus" )
+root = DefBox(5)

@@ -1,13 +1,13 @@
+root = Stack([CardHeader("Ticket Tracker"), form, tbl])
 $title = ""
 $priority = "medium"
 createResult = Mutation("create_ticket", {title: $title, priority: $priority})
 tickets = Query("list_tickets", {}, {rows: []})
-submitBtn = Button("Create", Action([@Run(createResult), @Run(tickets), @Reset($title, $priority)]))
-form = Form("create", submitBtn, [
-  FormControl("Title", Input("title", $title)),
-  FormControl("Priority", Select("priority", $priority, [
+submitBtn = Button("Create", Action([@Run(createResult), @Run(tickets), @Reset($title, $priority)]), "primary")
+form = Form("create", Buttons([submitBtn]), [
+  FormControl("Title", Input("title", "Ticket title", "text", {required: true}, $title)),
+  FormControl("Priority", Select("priority", [
     SelectItem("low", "Low"), SelectItem("medium", "Medium"), SelectItem("high", "High")
-  ]))
+  ], null, null, $priority))
 ])
 tbl = Table([Col("Title", tickets.rows.title), Col("Priority", tickets.rows.priority)])
-root = Stack([CardHeader("Ticket Tracker"), form, tbl])

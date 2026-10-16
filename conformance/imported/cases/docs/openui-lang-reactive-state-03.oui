@@ -1,1 +1,1 @@
-btn = Button("Show 30 days", Action([@Set($days, "30")]))
+btn = Button("Show 30 days", @Set($days, "30"))

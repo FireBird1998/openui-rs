@@ -1,0 +1,7 @@
+root = Stack([header, tbl, summary])
+header = CardHeader("Q3 sales")
+regions = ["North", "South", "West"]
+sales = [42, 75, 120]
+targets = [120, 100, 100]
+tbl = Table([Col("Region", regions), Col("Sales", sales, "number"), Col("Target", targets, "number")])
+summary = TextContent("North reached " + @Percent(42, 120) + " of its target. The team reached " + @Percent(@Sum(sales), @Sum(targets)) + ".")

@@ -1,5 +1,0 @@
-root = Stack([header, chart, tbl])
-chart = PieChart(["Open", "Closed"], [
-  @Count(@Filter(tickets.rows, "status", "==", "open")),
-  @Count(@Filter(tickets.rows, "status", "==", "closed"))
-], "donut")

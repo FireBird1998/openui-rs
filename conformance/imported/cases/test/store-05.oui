@@ -1,0 +1,2 @@
+root = Col([Input(email)])
+email = $email

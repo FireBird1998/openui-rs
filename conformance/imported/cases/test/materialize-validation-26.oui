@@ -1,1 +1,1 @@
-root = ChartBox(CardBox("x"), "grouped")
+root = Nope()

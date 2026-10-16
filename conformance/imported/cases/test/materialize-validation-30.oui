@@ -1,1 +1,1 @@
-root = ObjBox({ author: CardBox(9) })
+root = ScalarBox(5)

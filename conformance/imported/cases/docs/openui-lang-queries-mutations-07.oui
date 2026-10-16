@@ -1,0 +1,2 @@
+createError = createResult.status == "error" ? Callout("error", "Failed", createResult.error) : null
+createDone = createResult.status == "success" ? Callout("success", "Created", "Ticket added.") : null

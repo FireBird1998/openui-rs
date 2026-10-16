@@ -1,0 +1,2 @@
+root = Card([header, table, chart, gap, followUps], sources)
+sources = [{title: "“Revenue for the fiscal year was $10.0 billion, up 5% from a year ago.”", sourceName: "Company A · Page 12", url: "https://example.com/company-a.pdf#page=12"}]

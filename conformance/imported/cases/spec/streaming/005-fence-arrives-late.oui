@@ -1,0 +1,5 @@
+Here you go:
+```openui
+root = Stack([Text("a")])
+```
+Enjoy.

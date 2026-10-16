@@ -1,0 +1,4 @@
+$showHelp = false
+helpBtn = Button("Help", @Set($showHelp, true))
+help = $showHelp ? Callout("info", "Tip", "Pick a range to update the chart.") : null
+root = Stack([helpBtn, help])

@@ -1,10 +1,15 @@
-root = Stack([welcomeCard])
-welcomeCard = Card([welcomeHeader, welcomeBody])
-welcomeHeader = CardHeader("Welcome", "Get started with our platform")
-welcomeBody = Stack([signupForm], "column", "m")
-signupForm = Form("signup", actions, [nameField, emailField])
-nameField = FormControl("Name", Input("name", "Your name", "text", { required: true, minLength: 2 }))
-emailField = FormControl("Email", Input("email", "you@example.com", "email", { required: true, email: true }))
-actions = Buttons([signUpBtn, learnMoreBtn], "row")
-signUpBtn = Button("Sign up", { type: "continue_conversation", context: "signup" }, "primary")
-learnMoreBtn = Button("Learn more", { type: "continue_conversation", context: "learn_more" }, "secondary")
+import { Renderer } from '@openuidev/react-lang';
+import { myLibrary } from './library';
+
+// Inside your Chat Message component
+export function AssistantMessage({ content, isStreaming }) {
+  return (
+    <div className="prose dark:prose-invert max-w-none">
+      <Renderer
+        library={myLibrary}
+        response={content}
+        isStreaming={isStreaming}
+      />
+    </div>
+  );
+}

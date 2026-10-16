@@ -1,4 +1,15 @@
 {
+ "properties": {
+  "Stack": {
+   "$ref": "#/$defs/Stack"
+  },
+  "Title": {
+   "$ref": "#/$defs/Title"
+  },
+  "Table": {
+   "$ref": "#/$defs/Table"
+  }
+ },
  "$defs": {
   "Stack": {
    "properties": {

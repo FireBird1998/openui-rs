@@ -147,7 +147,7 @@ fn block() -> String {
     let _ = writeln!(out, "|---|---:|---:|---|");
     let _ = writeln!(
         out,
-        "| Parse results: one-shot, and after every push of 8 chunkings and 2 resync sequences | {} | {} results | {} |",
+        "| Parse results: one-shot, and after every push and at the end of 8 chunkings, 2 resync sequences and any recorded chunks | {} | {} results | {} |",
         n(corpus.len()),
         n(steps),
         sources(&by_source(&corpus))

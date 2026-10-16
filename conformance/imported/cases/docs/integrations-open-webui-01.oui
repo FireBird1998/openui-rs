@@ -1,0 +1,25 @@
+from starlette.responses import HTMLResponse
+
+
+class Tools:
+    async def render_openui(
+        self,
+        openui_lang_code: str,
+        title: str = "Response",
+        __event_emitter__=None,
+        __event_call__=None,
+    ) -> tuple:
+        # Omitted: the docstring, which tells the model when to call the tool and
+        # teaches OpenUI Lang syntax, and the status updates sent to __event_emitter__.
+
+        # Helpers in tool.py: read Open WebUI's light/dark theme, then build an HTML
+        # page that loads the OpenUI browser bundle and renders openui_lang_code.
+        theme = await _get_openwebui_theme(__event_call__)
+        html = _build_openui_html(
+            openui_lang_code, title, self.valves.cdn_base_url, theme
+        )
+        response = HTMLResponse(content=html, headers={"Content-Disposition": "inline"})
+
+        # result_context tells the model the UI is already on screen, so it describes
+        # it instead of echoing the OpenUI Lang code.
+        return response, result_context
