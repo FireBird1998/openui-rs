@@ -648,6 +648,12 @@
    "schema": "libraries",
    "file": "cases/hand/103-library-function-args.oui",
    "source": "hand-written"
+  },
+  {
+   "name": "hand/104-component-only-slots",
+   "schema": "libraries",
+   "file": "cases/hand/104-component-only-slots.oui",
+   "source": "hand-written"
   }
  ]
 }

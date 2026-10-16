@@ -322,17 +322,61 @@ pub(crate) fn validate_schema_value(
         let type_name = type_name.to_owned();
         return validate_element_position(&type_name, s, component, path, ctx);
     }
-    if ["$ref", "anyOf", "oneOf", "allOf"]
-        .iter()
-        .any(|k| s.contains_key(*k))
-    {
-        return false; // composite shapes can't be matched to one plain value
+    if is_composite(s) {
+        // Composite shapes can't be matched to one plain value, but data in a
+        // slot that takes only components is a mismatch.
+        let Some(expected) = component_slot(s, ctx) else {
+            return false;
+        };
+        let actual = match value {
+            Value::Obj(_) => "plain object",
+            other => js_type(other),
+        };
+        let issue = Issue::TypeMismatch {
+            expected,
+            actual: actual.to_owned(),
+        };
+        ctx.push_issue(component, path, issue);
+        return true;
     }
     match s.get("type").and_then(Json::as_str) {
         Some("object") => validate_object(value, s, component, path, ctx),
         Some("array") => validate_array(value, s, component, path, ctx),
         _ => validate_leaf(value, s, component, path, ctx),
     }
+}
+
+/// `isCompositeSchema`: a `$ref` or a union, which no one plain value matches.
+fn is_composite(s: &serde_json::Map<String, Json>) -> bool {
+    ["$ref", "anyOf", "oneOf", "allOf"]
+        .iter()
+        .any(|k| s.contains_key(*k))
+}
+
+/// For a slot that takes only components (`isOnlyComponentSlot`: every option
+/// of its `$ref`, `anyOf` or `oneOf` is a `$ref` to a component), the
+/// components it takes, as the mismatch message lists them: `Card | Text`.
+/// `None` for any other slot. Options that aren't an array, or an option
+/// that's `null`, make the reference throw; such a slot takes data here.
+fn component_slot(s: &serde_json::Map<String, Json>, ctx: &Ctx) -> Option<String> {
+    // `s.anyOf ?? s.oneOf ?? [s]`
+    let union = s
+        .get("anyOf")
+        .filter(|u| !u.is_null())
+        .or_else(|| s.get("oneOf").filter(|u| !u.is_null()));
+    let options: Vec<&serde_json::Map<String, Json>> = match union {
+        None => vec![s],
+        Some(Json::Array(options)) => options.iter().map(Json::as_object).collect::<Option<_>>()?,
+        Some(_) => return None,
+    };
+    // `refName`: the last segment of a string `$ref`.
+    let names: Vec<&str> = options
+        .iter()
+        .map(|o| o.get("$ref")?.as_str()?.rsplit('/').next())
+        .collect::<Option<_>>()?;
+    let library = ctx.library;
+    let only_components = !names.is_empty() && names.iter().all(|n| library.component(n).is_some());
+    only_components.then(|| names.join(" | "))
 }
 
 /// A component in a data slot: fine where components may go, a mismatch where
@@ -344,10 +388,7 @@ fn validate_element_position(
     path: &str,
     ctx: &mut Ctx,
 ) -> bool {
-    if ["$ref", "anyOf", "oneOf", "allOf"]
-        .iter()
-        .any(|k| s.contains_key(*k))
-    {
+    if is_composite(s) {
         return false;
     }
     let ty = s.get("type").and_then(Json::as_str);
@@ -401,6 +442,9 @@ fn validate_object(
     let is_required = |key: &str| matches!(s.get("required"), Some(Json::Array(items)) if items.iter().any(|r| r.as_str() == Some(key)));
 
     let mut invalid = false;
+    // Keys filled from their default here, which aren't validated after: the
+    // reference fills them into a copy, and validates the object as it was.
+    let mut filled: Vec<String> = Vec::new();
     // Structural checks are streaming-sensitive: only on complete input.
     if !ctx.partial {
         for key in &required {
@@ -408,6 +452,7 @@ fn validate_object(
             if !present || matches!(obj.get(key), Some(Value::Null)) {
                 if let Some(fallback) = schema_default(prop(key)) {
                     obj.set(key.clone(), Value::from_json(fallback));
+                    filled.push(key.clone());
                     continue;
                 }
                 let issue = if present {
@@ -421,6 +466,9 @@ fn validate_object(
         }
     }
     for (key, sub) in &props {
+        if filled.contains(key) {
+            continue;
+        }
         let child_path = format!("{path}/{key}");
         let child_invalid = match obj.get_mut(key) {
             Some(child) => validate_schema_value(child, sub, component, &child_path, ctx),
@@ -444,11 +492,16 @@ fn validate_inherited_function(schema: &Json, component: &str, path: &str, ctx: 
     let Some(s) = schema.as_object() else {
         return false;
     };
-    if ["$ref", "anyOf", "oneOf", "allOf"]
-        .iter()
-        .any(|k| s.contains_key(*k))
-    {
-        return false;
+    if is_composite(s) {
+        let Some(expected) = component_slot(s, ctx) else {
+            return false;
+        };
+        let issue = Issue::TypeMismatch {
+            expected,
+            actual: "function".to_owned(),
+        };
+        ctx.push_issue(component, path, issue);
+        return true;
     }
     let expected = match s.get("type").and_then(Json::as_str) {
         Some(t @ ("object" | "array")) => t,

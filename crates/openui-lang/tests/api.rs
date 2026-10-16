@@ -134,6 +134,30 @@ fn a_library_survives_schemas_the_reference_throws_on() {
     assert!(library.call("Odd").unwrap().params.is_empty());
 }
 
+/// A slot whose `anyOf` or `oneOf` isn't an array of objects makes the
+/// reference throw while validating (documented in CONFORMANCE.md); here it's
+/// a slot that takes data.
+#[test]
+fn a_malformed_union_takes_data() {
+    for slot in [json!({"anyOf": [null]}), json!({"oneOf": "x"})] {
+        let schema = json!({"$defs": {"Box": {"properties": {"slot": slot}}}});
+        let result = parse(
+            "root = Box(\"data\")",
+            &Library::from_json_schema(&schema),
+            None,
+        );
+        assert!(
+            result.meta.errors.is_empty(),
+            "{slot}: {:?}",
+            result.meta.errors
+        );
+        assert_eq!(
+            result.root.unwrap().props.get("slot"),
+            Some(&Value::Str("data".to_owned()))
+        );
+    }
+}
+
 /// `$defs` read the way JavaScript reads parsed JSON: an array's entries are
 /// its indexes, so an action named "0" makes entry 0 an action shape, and only
 /// entry 1 is a component (checked against the reference).

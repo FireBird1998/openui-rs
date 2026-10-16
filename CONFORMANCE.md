@@ -16,15 +16,15 @@ Reference: `@openuidev/lang-core 1.0.1` at commit `eb20708b9cc41afced5625e99e6ce
 
 | Compared with the reference | Cases | Checks | Cases by source |
 |---|---:|---:|---|
-| Parse results: one-shot, and after every push and at the end of 8 chunkings, 2 resync sequences and any recorded chunks | 531 | 321,051 results | 7 benchmark, 105 docs, 46 examples, 12 fuzz, 104 hand-written, 196 reference-test, 58 spec-fixture, 3 synthetic |
-| Stages on every prefix: preprocessing, tokens, statements and expression trees | 529 | 97,014 prefixes | the parse corpus, less its largest synthetic programs |
+| Parse results: one-shot, and after every push and at the end of 8 chunkings, 2 resync sequences and any recorded chunks | 532 | 321,368 results | 7 benchmark, 105 docs, 46 examples, 12 fuzz, 105 hand-written, 196 reference-test, 58 spec-fixture, 3 synthetic |
+| Stages on every prefix: preprocessing, tokens, statements and expression trees | 530 | 97,122 prefixes | the parse corpus, less its largest synthetic programs |
 | System prompts | 49 | 49 | |
 | Edit-mode merges | 2,521 | 2,521 | 2,469 generated, 46 hand-written, 1 reference-test, 5 spec-fixture |
-| Element trees back to source | 503 | 503 | 1 fuzz, 62 hand-written, 409 parse corpus root, 31 reference-test |
-| Enriched errors | 336 | 336 | every parse corpus case with errors |
+| Element trees back to source | 504 | 504 | 1 fuzz, 62 hand-written, 410 parse corpus root, 31 reference-test |
+| Enriched errors | 337 | 337 | every parse corpus case with errors |
 
 Quirks recorded: 10.
-Not matched yet, listed in `conformance/pending/`: 114 parse results, 43 trees back to source, 19 enriched errors, 29 system prompts.
+Not matched yet, listed in `conformance/pending/`: 99 parse results, 43 trees back to source, 29 system prompts.
 <!-- /counts -->
 
 
@@ -86,11 +86,11 @@ Documented, not emulated. None occurs in the corpus, and none comes from a real 
 | An object or `null` assigned to `__proto__` | replaces the prototype; later reads and `in` checks see through it | ignores the assignment |
 | An object literal shaped like an element used as the root | returns that object as `root` | `root` is `None` (it still counts as a root, so no `no-root`) |
 | An object literal shaped like an AST node used as the root (`root = {k: "Comp", name: "Card", args: []}`) | returns that object as `rootExpression` when it holds a component call | no `rootExpression`, and `no-root` |
-| A schema default object, mutated by one parse | shared with later parses | copied per parse |
 | JSON nested deeper than 800 levels, for `json_to_openui` or `parse_json` | handled, up to the engine's recursion limit | refused with an error |
 | `1e400` in JSON read back | `Infinity` | refused: a `serde_json::Value` can't hold it |
 | A component with `properties` whose `required` is neither an array nor a string (a number, say) | throws a `TypeError` building the library (`required.includes is not a function`) | treats `required` as empty |
 | A library function or action without `params`, or one that isn't an object | throws a `TypeError` building the library | has no params |
+| A slot schema whose `anyOf` or `oneOf` isn't an array of objects (`anyOf: [null]`, `oneOf: "x"`) | throws a `TypeError` validating a value in it | treats the slot as one that takes data |
 | An action shape in `$defs` that refers to itself, such as `ActionExpression: {anyOf: [{$ref: "#/$defs/ActionExpression"}]}` | recurses until the engine's stack overflows (`RangeError`) building the library | leaves that `$ref` in place |
 
 Error messages where the reference throws aren't compared, only that it throws. For system prompts, the reference's own error messages are compared exactly. Where it crashes inside the JavaScript engine instead (a `TypeError`, for a spec that's a JSON array, say), the core only has to return an error too.

@@ -1,22 +1,3 @@
 # Cases the core doesn't match the reference on yet. Each may fail, but one
 # that matches again, or a name that isn't a case, fails the test. Rewrite
 # every list to the cases failing now: UPDATE_PENDING=1 cargo test -p openui-lang
-docs/build-agents-tools-03
-docs/openui-lang-architecture-02
-docs/openui-lang-components-how-it-works-01
-docs/openui-lang-incremental-editing-02
-docs/openui-lang-patterns-02
-docs/openui-lang-patterns-02#no-names
-docs/openui-lang-queries-mutations-08
-docs/openui-lang-syntax-01
-examples/handsontable-spreadsheet-library-03
-examples/material-ui-index-02
-examples/react-native-library-03
-examples/shadcn-index-02
-hand/45-form-with-inputs
-hand/89-props-named-like-object-methods
-spec/errors/013-validate-component-slot-data
-test/materialize-validation-61
-test/materialize-validation-62
-test/materialize-validation-63
-test/materialize-validation-64

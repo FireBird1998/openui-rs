@@ -13,12 +13,10 @@ docs/openui-lang-actions-02
 docs/openui-lang-actions-03
 docs/openui-lang-actions-06
 docs/openui-lang-architecture-02
-docs/openui-lang-components-how-it-works-01
 docs/openui-lang-evolution-guide-02
 docs/openui-lang-evolution-guide-03
 docs/openui-lang-evolution-guide-04
 docs/openui-lang-evolution-guide-06
-docs/openui-lang-incremental-editing-02
 docs/openui-lang-interactivity-01
 docs/openui-lang-patterns-01
 docs/openui-lang-patterns-02
@@ -39,11 +37,6 @@ docs/openui-lang-specification-index-01
 docs/openui-lang-specification-index-04
 docs/openui-lang-specification-v0-5-03
 docs/openui-lang-specification-v0-5-04
-docs/openui-lang-syntax-01
-examples/handsontable-spreadsheet-library-03
-examples/material-ui-index-02
-examples/react-native-library-03
-examples/shadcn-index-02
 hand/09-state-and-actions
 hand/10-query-with-state-args
 hand/103-library-function-args
@@ -51,7 +44,6 @@ hand/11-mutation-run-reset
 hand/19-multiline-ternary
 hand/20-operator-precedence
 hand/35-state-assigned-a-query
-hand/45-form-with-inputs
 hand/48-chained-assignment
 hand/49-state-index-and-builtins
 hand/60-nested-multiline-ternary
@@ -60,7 +52,6 @@ hand/66-lexer-operators
 hand/67-lexer-number-forms
 hand/68-lexer-identifier-forms
 hand/71-expression-forms
-hand/89-props-named-like-object-methods
 hand/91-element-shaped-objects
 hand/96-dynamic-props-in-element-shaped-objects
 spec/actions/002-one-action
@@ -71,12 +62,10 @@ spec/actions/008-tool-not-found-stops-plan
 spec/actions/010-one-action-by-reference
 spec/actions/011-action-list-is-data
 spec/entry/006-ternary-root-multiline
-spec/errors/013-validate-component-slot-data
 spec/evaluation/001-kind-classify
 spec/evaluation/005-op-coerce-values
 spec/evaluation/011-function-null-required-arg
 spec/evaluation/012-kind-query-dollar-name
-spec/grammar/010-roundtrip-tree
 spec/state/001-store-auto-declare
 spec/state/002-binding-two-way
 test/actions-03
@@ -101,10 +90,6 @@ test/functions-15
 test/functions-16
 test/materialize-validation-15
 test/materialize-validation-16
-test/materialize-validation-61
-test/materialize-validation-62
-test/materialize-validation-63
-test/materialize-validation-64
 test/materialize-validation-67
 test/materialize-validation-68
 test/serialize-01

@@ -1,0 +1,2 @@
+root = Page([Methods({}), Methods({valueOf: 1, toString: w}), Methods({toString: "text"})])
+w = Widget("x")
