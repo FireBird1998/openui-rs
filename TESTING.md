@@ -47,6 +47,7 @@ Not in the check, because they need Bun, time or a screen:
 | `scripts/upstream-check.sh <folder>` | The upstream check on its own |
 | `scripts/fuzz.sh --seed N --count N` | Differential fuzzing: generated and mangled programs through the core and a live reference, comparing every step. It saves shrunk mismatches as corpus cases. |
 | `scripts/fuzz.sh --edits …` | The same, for merging and converting back to source |
+| `scripts/fuzz.sh --invariants …` | The invariants, on the core and the reference alike (see [Invariants](#invariants)) |
 | `fuzz/` | Coverage-guided fuzz targets, which need nightly Rust and cargo-fuzz (testing ticket 06) |
 | `scripts/bench.sh` | Streaming speed against the reference |
 | `scripts/viewer-timing.sh` | The viewer's drawing speed |
@@ -112,7 +113,8 @@ scripts/hunt.sh --minutes 60
 ```
 
 A hunt searches for findings for a set time, then leaves a report and the shrunk cases in `findings/<date>-seed<seed>/`, a folder git ignores. It runs:
-- **Differential fuzzing with a fresh seed:** parsing for the first half of the time, then edits (merging and converting back to source). An input the core takes over a second on counts as a blow-up.
+- **Differential fuzzing with a fresh seed:** parsing for the first 40% of the time, then edits (merging and converting back to source) for the next 35%. An input the core takes over a second on counts as a blow-up.
+- **The invariants**, for the rest of the time, with the same seed (see [Invariants](#invariants)).
 - **The upstream check, alongside:** are there lang-core commits on upstream's main since the pin? If so, it computes our corpus's goldens with the newest in a scratch copy, and lists which cases' outputs change. Moving the pin is its own decision. `scripts/upstream-check.sh <folder>` runs the check alone.
 
 A hunt never commits and never changes tracked files. It compares them before and after, and exits with status 1 if they changed. Fuzzing needs Bun; without it, the hunt runs only the upstream check, which then lists commits only. Without network, the upstream check uses the copy of upstream's history from the last time it reached GitHub (cached in `target/upstream.git`), and says so. `--seed S` repeats a hunt's fuzzing, and `--no-upstream` skips the upstream check.
@@ -137,6 +139,48 @@ The hunt saves each finding in the corpus's own formats, so it moves over as it 
 - **Merging or converting back to source:** copy its line from the folder's `merge-fuzz.json` or `serialize-fuzz.json` into the file of the same name in `conformance/`.
 
 Then run `scripts/regen-golden.sh`. The tests now show the failure, with the step and a diff. A `quirk?` isn't saved as a case, because the reference has no output for it to compare with; it's written up in CONFORMANCE.md or QUIRKS.md instead. A replay command regenerates its input from the corpus, so it reproduces the finding only while the corpus is unchanged.
+
+## Invariants
+
+```bash
+scripts/fuzz.sh --invariants --seed 1 --count 1000000
+```
+
+An invariant is a rule a result should keep whatever the input. Each is written once, in `examples/fuzz/invariants.rs`, against an engine interface (`engine.rs`) with two implementations: the core in-process, and the reference through the fuzzer's long-lived Bun process. The interface covers a full one-shot result, a stream over given chunks, merging, and converting back to source. Results and trees cross it as JSON, as each parser wrote them. The programs are the differential fuzzer's: generated from a library's grammar, or corpus programs mangled.
+
+Each program's verdict on each parser is that the rule holds, doesn't apply, or is broken. Sorting:
+
+| Core | Reference | Meaning |
+|---|---|---|
+| broken | broken | A candidate quirk. The maintainer judges whether the reference is wrong (a quirk, with a draft upstream report, and an exception to the rule) or the rule is (it's narrowed). |
+| broken | holds | A mismatch, fixed in the core |
+| holds | broken | A mismatch too: the parsers disagree |
+
+A break a known quirk causes is that rule's **exception**: the rule recognizes it from the tree and counts it, without reporting it. A disagreement or a break that one of CONFORMANCE.md's divergences explains (`__proto__`, an object literal shaped like an element or AST node as the root) is counted the same way.
+
+### Round trip
+
+Parsing, converting the tree back to source and parsing that again gives the same tree. Trees are compared as upstream's own round-trip test compares them, without the `partial` and `hasDynamicProps` flags (at every depth here), and with a null prop the same as a missing one, since converting back to source leaves trailing nulls out on purpose (language.md, section 9.2).
+
+It doesn't apply to:
+- a program without a tree, or one still arriving (`meta.incomplete`), whose values may be half written;
+- a tree that refers to a Query or Mutation statement: `jsonToOpenUI` takes the tree and the state, not those statements, and the spec says they don't round-trip;
+- a tree with a placeholder (`Ph`), or with an element inside an element of its own statement: a statement that refers to itself, which the tree cuts;
+- a program with a number JSON can't hold (`1e` is `NaN`, `1e400` is `Infinity`), since JSON writes both as null.
+
+Its exceptions, each beside its quirk in QUIRKS.md:
+
+| Exception | Quirk |
+|---|---|
+| A unary operand, a binary operator's ternary operand, or a member access's object that needs parentheses | 13 |
+| A right operand of the same precedence | 9 |
+| An object key that isn't a bare name | 10 (by design since 1.0) |
+| A bare call to a library function or action | 12 |
+| A call parsing made null (`{k: "Null"}`) | 14 (a candidate) |
+| A call named after an `Object.prototype` member | 2 |
+| An object literal shaped like an element or an AST node | the divergences' family |
+
+On a million programs (seed 61, about a minute): 169,773 hold, 824,291 don't apply, 5,936 are exceptions, and none is a mismatch or unexplained. Quirk 14 accounts for 2,054 exceptions, 12 and the node-shaped literals for 1,132 each, 13 for 862 and 10 for 707.
 
 ## Switches
 

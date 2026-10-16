@@ -7,6 +7,13 @@
 //   → {"text": "..."}   or   {"threw": "<error>"}
 //   {"op": "serialize", "lib": "<schema name>", "element": {...}, "state"?: {...}}
 //   → {"text": "..."}   or   {"threw": "<error>"}
+//   {"op": "parse", "lib": "<schema name>", "input": "...", "root"?: "..."}
+//   → {"json": "<the one-shot result's JSON>"}   or   {"threw": "<error>"}
+//   {"op": "stream", "lib": "<schema name>", "input": "...", "root"?: "...", "sizes": [n, ...]}
+//   → {"steps": ["<JSON>", ...], "end": "<JSON>"}   or   {"threw": "<error>"}
+//
+// The last two give full results, for the invariants (see the fuzzer's
+// engine.rs); the first gives fingerprints, which differential fuzzing needs.
 //
 // fp is the FNV-1a fingerprint the goldens use, end the stream's result once it
 // has ended (getResult(true)), and ms how long the reference took. Schema names are those in the conformance manifests. Sizes are push
@@ -77,10 +84,24 @@ function answer(req: Request) {
 
 type EditRequest =
   | { op: "merge"; existing: string; patch: string; rootId?: string }
-  | { op: "serialize"; lib: string; element: unknown; state?: unknown };
+  | { op: "serialize"; lib: string; element: unknown; state?: unknown }
+  | { op: "parse"; lib: string; input: string; root?: string }
+  | { op: "stream"; lib: string; input: string; root?: string; sizes: number[] };
 
 function answerEdit(req: EditRequest) {
   try {
+    if (req.op === "parse") return { json: JSON.stringify(parse(req.input, library(req.lib), req.root)) };
+    if (req.op === "stream") {
+      const cps = Array.from(req.input);
+      const parser = createStreamParser(library(req.lib), req.root);
+      const steps: string[] = [];
+      let pos = 0;
+      for (const size of req.sizes) {
+        steps.push(JSON.stringify(parser.push(cps.slice(pos, pos + size).join(""))));
+        pos += size;
+      }
+      return { steps, end: JSON.stringify(parser.getResult(true)) };
+    }
     if (req.op === "merge") return { text: mergeStatements(req.existing, req.patch, req.rootId) };
     const s = schema(req.lib);
     const lib = { toJSONSchema: () => s } as any;

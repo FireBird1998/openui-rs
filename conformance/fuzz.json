@@ -84,6 +84,14 @@
       "file": "cases/fuzz/591e1ee7.oui",
       "source": "fuzz",
       "origin": "seed 99, program 11208"
+    },
+    {
+      "name": "fuzz/106fb3f3",
+      "schema": "test-actions-7",
+      "file": "cases/fuzz/106fb3f3.oui",
+      "source": "fuzz",
+      "origin": "seed 3782605650, program 59582",
+      "root": "Missing"
     }
   ]
 }

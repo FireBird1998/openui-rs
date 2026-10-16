@@ -165,7 +165,9 @@ a = Title("3")
 
 An expression tree for `a - (b - c)` (a `BinOp` `-` whose right operand is a `BinOp` `-`) serializes as `a - b - c`, which parses back as `(a - b) - c`. The same for `a / (b % c)`, `a % (b * c)`, `a - (b + c)` and `a == (b != c)`.
 
-**Why:** `serializeBinOpChild` adds parentheses only when the child's precedence is *lower* than the parent's. The operators are left-associative, so a right operand of *equal* precedence needs them too.
+**Why:** `serializeBinOpChild` adds parentheses only when the child's precedence is *lower* than the parent's. The operators are left-associative, so a right operand of *equal* precedence needs them too. The 1.0 specification says serializers "SHOULD add parentheses where parsing back would change the grouping, as in `a - (b - c)`" (language.md, section 9.2). Quirk 13 is the same gap elsewhere in the serializer.
+
+**Exception to the round-trip invariant** (see TESTING.md): a tree with a `BinOp` whose right operand is a `BinOp` of the same precedence.
 
 **Draft upstream report:**
 
@@ -173,14 +175,18 @@ An expression tree for `a - (b - c)` (a `BinOp` `-` whose right operand is a `Bi
 
 ## 10. Serialized object keys aren't quoted
 
-- **Found:** 2026-10-06 (ticket 12). Still so in 1.0.1 (`eb20708`).
+- **Found:** 2026-10-06 (ticket 12). Still so in 1.0.1 (`eb20708`), where it's by design.
 - **Pinned by:** serialize case `hand/values`.
 
 A plain object prop `{"a b": 1, "": 2}` serializes as `{a b: 1, : 2}`, which doesn't parse back. (A key with quotes in it, `"q"`, happens to come out as valid syntax.)
 
 **Why:** `serializeValue` writes `${k}: ...` for object entries, and the `Obj` AST branch does the same, with no quoting. Object literals in OpenUI Lang accept quoted keys, so `JSON.stringify(k)` would always work.
 
-**Draft upstream report:**
+**By design since 1.0:** the specification says "Object keys are written unquoted, so they must be valid names to round-trip" (language.md, section 9.2). So the draft report below is withdrawn rather than waiting to be filed; at most, upstream might mention it in the serializer's docs. The entry stays because the core reproduces the behaviour.
+
+**Exception to the round-trip invariant:** a tree with an object key that isn't a valid bare name (an identifier, a `$name`, or digits without a leading zero).
+
+**Draft upstream report (withdrawn):**
 
 > **`jsonToOpenUI` writes object keys without quotes, so keys that aren't identifiers produce text that doesn't parse.** Both `serializeValue` (plain objects) and the `Obj` branch of `serializeASTNode` emit `${k}: ...`. A prop like `{"Content-Type": "json"}` or `{"first name": "x"}` round-trips to invalid OpenUI Lang. Quote keys that aren't plain identifiers (or always: the parser accepts `{"a": 1}`). Repro: serialize `Slot({"a b": 1})`.
 
@@ -223,4 +229,50 @@ With `Twice` a library function, `Badge` both a component and a library action.
 **Draft upstream report:**
 
 > **A call without `@` to a library function or action is treated as that call, even when a component has the same name.** In `materialize.ts`, the `Comp` case checks `isRuntimeCall(name, ctx)` (the call registry, built-ins plus the library's `functions` and `actions`) for every call, not only for `@` calls (`node.fn`), and before the component lookup. So `Twice(2)` runs the library function, and with a component and an action both named `Badge`, `Badge("x")` gives the action instead of the component. language.md, section 1.5 says custom functions need the `@` and only `Action([...])` works without it, and section 6.3 defines an action as a `@` call. Treat a call without `@` as a component call unless it's `Action`, Query or Mutation, and report an `unknown-component` when there's no component of that name. Repro: with `functions: {Twice: ...}` and `actions: {Badge: ...}` beside a component `Badge`, `parse("root = Page([Widget(Twice(2)), Badge(\"x\")])", lib)` gives a `Twice` call and a `Badge` action.
+
+## 13. Serializing drops the parentheses an operand needs
+
+- **Found:** 2026-10-16, by the round-trip invariant (testing ticket 08). Reference commit `eb20708` (1.0.1).
+- **Pinned by:** `hand/107-operands-that-need-parentheses`, through the corpus's serialization of every parse case's tree.
+
+```
+root = Root([a, b, c, d, e])
+a = Text(!($on && $off))
+b = Text(-($x + 1))
+c = Text(-(3))
+d = Text(($on ? "a" : "b").length)
+e = Text($on || ($off ? "a" : "b"))
+```
+
+**Reference behaviour:** converting the tree back to source gives `!$on && $off`, `-$x + 1`, `-3`, `$on ? "a" : "b".length` and `$on || $off ? "a" : "b"`. Each parses back as a different expression: `(!$on) && $off`, `(-$x) + 1`, the number literal `-3` (which, unlike the expression, is type-checked, so a `Text` that needs a string is dropped), `$on ? "a" : ("b".length)` and `($on || $off) ? "a" : "b"`. A member access on a number has the same problem: `(5).x` comes back as `5.x`, and a field that's digits, `5. 1`, as the decimal `5.1`.
+
+**Why:** in `serializeASTNode`, `UnaryOp` writes `${op}${operand}`, `Member` and `Index` write the object as it is, and `serializeBinOpChild` parenthesizes only a child that's a lower-precedence `BinOp`, never a `Ternary`. The 1.0 specification asks for these parentheses: "Serializers SHOULD add parentheses where parsing back would change the grouping, as in `a - (b - c)` and `-(a + b)`" (language.md, section 9.2). Quirk 9 is the binary-operator case of the same gap.
+
+**Exception to the round-trip invariant:** a tree with a `UnaryOp` whose operand is a `BinOp`, `Ternary` or `Assign` (or, for `-`, starts with a number); a `BinOp` with a `Ternary` or `Assign` operand; or a `Member` or `Index` whose object is one of those, a `UnaryOp`, or starts with a number, or whose field isn't a name.
+
+**Draft upstream report:**
+
+> **`jsonToOpenUI` drops parentheses that operands need, so `!(a && b)` comes back as `!a && b`.** In `parser/serialize.ts`, `serializeASTNode` writes a `UnaryOp` as `${op}${operand}` and a `Member` or `Index` object as it is, and `serializeBinOpChild` parenthesizes only a lower-precedence `BinOp` child. So `!($on && $off)` serializes as `!$on && $off`, `-($x + 1)` as `-$x + 1`, `($on ? "a" : "b").length` as `$on ? "a" : "b".length`, `$on || ($off ? "a" : "b")` as `$on || $off ? "a" : "b"`, and `-(3)` as `-3`, which parses as a number literal and is then type-checked. Each parses back as a different expression, and language.md, section 9.2 says serializers should add parentheses where parsing back would change the grouping. Wrap a unary operand, a member access's or index's object, and a binary operator's operand in parentheses when they aren't primary expressions (and when a number would absorb the `-` or the `.`). Repro: `jsonToOpenUI(parse('root = Text(!($on && $off))', lib).root, library)` gives `root = Text(!$on && $off)`.
+
+## 14. A call made null when parsing doesn't count as a null prop (candidate)
+
+- **Found:** 2026-10-16, by the round-trip invariant (testing ticket 08). Reference commit `eb20708` (1.0.1).
+- **Pinned by:** `hand/108-call-made-null`, through the corpus's serialization of every parse case's tree.
+- **Status:** a candidate for the maintainer to judge. The specification's round trip is "up to the recovery rules of section 8", which may cover it.
+
+```
+root = Page(@Format(5))
+```
+
+With `Format(value: string, ...)` a library function whose `value` is required, and `Page`'s `children` required.
+
+**Reference behaviour:** the literal argument is checked when parsing (`type-mismatch`), and the call becomes null, as 1.0 says it should. But it becomes the expression `{k: "Null"}`, not the value `null`, so `children` holds an expression and `Page` is kept, with no `null-required`. Converting the tree back to source writes that expression as `null`, and `root = Page(null)` drops `Page` with `null-required`. The same null drops the component when it's written as a literal and keeps it when a call evaluates to it.
+
+**Why:** `mapCallArgs` failing gives `{k: "Null"}` (`materialize.ts`), and the required-prop check looks for `null` values, not for null expressions. language.md, section 3.6 says an invalid required argument "makes the call evaluate to null", and section 8.2 that a required prop that is null drops the component (`null-required`).
+
+**Exception to the round-trip invariant:** a tree that holds a `{k: "Null"}` node.
+
+**Draft upstream report:**
+
+> **A required prop filled by a call that parsing already made null isn't reported, while a literal `null` there is.** When a library call's literal arguments fail their check, the call becomes `{k: "Null"}` in the tree. A component whose required prop is that expression is kept, with no `null-required`, so `parse('root = Page(@Format(5))', lib)` keeps `Page` (with `type-mismatch` for the argument), while `parse('root = Page(null)', lib)` drops it. Converting the first tree back to source gives the second program. Either treat a `{k: "Null"}` prop as null in the required-prop check, or keep it as an expression on purpose and say so in language.md, section 8.2.
 

@@ -666,6 +666,18 @@
    "schema": "libraries",
    "file": "cases/hand/106-bare-library-calls.oui",
    "source": "hand-written"
+  },
+  {
+   "name": "hand/107-operands-that-need-parentheses",
+   "schema": "hand",
+   "file": "cases/hand/107-operands-that-need-parentheses.oui",
+   "source": "hand-written"
+  },
+  {
+   "name": "hand/108-call-made-null",
+   "schema": "libraries",
+   "file": "cases/hand/108-call-made-null.oui",
+   "source": "hand-written"
   }
  ]
 }

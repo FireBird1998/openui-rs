@@ -1,0 +1,6 @@
+root = Root([a, b, c, d, e])
+a = Text(!($on && $off))
+b = Text(-($x + 1))
+c = Text(-(3))
+d = Text(($on ? "a" : "b").length)
+e = Text($on || ($off ? "a" : "b"))

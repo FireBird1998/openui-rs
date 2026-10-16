@@ -1,7 +1,7 @@
 //! Differential fuzzing against the reference parser.
 //!
 //!   cargo run --release --example fuzz -- [--seed N] [--count N] [--from K] [--only K]
-//!       [--seconds S] [--findings DIR] [--slow-ms N] [--no-save] [--edits]
+//!       [--seconds S] [--findings DIR] [--slow-ms N] [--no-save] [--edits | --invariants]
 //!
 //! Each program is generated from a component library's grammar or mangled
 //! from a corpus case, then parsed by the core and by the reference (a
@@ -9,14 +9,18 @@
 //! chunking with the stream's end. Program K of seed S is the same on every machine (`--only K`
 //! replays it). Mismatches are shrunk to a minimal program and saved as corpus
 //! cases in `conformance/fuzz.json`; run `scripts/regen-golden.sh` afterwards.
-//! With `--edits`, merge and serialization are fuzzed instead (see `edits.rs`).
+//! With `--edits`, merge and serialization are fuzzed instead (see `edits.rs`),
+//! and with `--invariants`, the rules in `invariants.rs` are checked on both
+//! parsers.
 //! The core taking longer than `--slow-ms` (default 1000) on an input is a
 //! blow-up. Hunts add `--seconds` and `--findings` (see `findings.rs`).
 //! Needs Bun.
 
 mod edits;
+mod engine;
 mod findings;
 mod generate;
+mod invariants;
 mod reference;
 mod rng;
 
@@ -41,7 +45,7 @@ type Explains = (fn(&str) -> bool, &'static str);
 
 /// Divergences CONFORMANCE.md documents: a minimal mismatch one of these
 /// recognizes is explained, not a bug to save.
-const EXPLAINED: [Explains; 3] = [
+pub(crate) const EXPLAINED: [Explains; 3] = [
     (
         assigns_proto,
         "object or null assigned to __proto__ (prototype chain)",
@@ -151,7 +155,7 @@ fn load_corpus(conformance: &Path) -> Corpus {
 }
 
 /// Program `k` of the run with this seed.
-fn program(seed: u64, k: u64, corpus: &Corpus) -> Program {
+pub(crate) fn program(seed: u64, k: u64, corpus: &Corpus) -> Program {
     let mut rng = Rng::for_program(seed, k);
     let (lib, input, root) = if rng.chance(50) {
         let names: Vec<&String> = corpus.libraries.keys().collect();
@@ -408,6 +412,10 @@ fn main() {
     let corpus = load_corpus(&conformance);
     let mut reference = Reference::start(&root.join("reference"));
 
+    if args.iter().any(|a| a == "--invariants") {
+        invariants::run_all(seed, batches, &corpus, &mut reference);
+        return;
+    }
     if args.iter().any(|a| a == "--edits") {
         edits::run(
             seed,

@@ -580,7 +580,7 @@ fn map_call_args(name: &str, args: &[Ast], def: &Call, ctx: &mut Ctx) -> Option<
                 }
             }
         }
-        if next != value {
+        if !unchanged(&next, &value) {
             mapped.set(param.name.clone(), to_literal_ast(&next));
         }
     }
@@ -592,6 +592,28 @@ fn map_call_args(name: &str, args: &[Ast], def: &Call, ctx: &mut Ctx) -> Option<
 
 /// `literalValue`: the value a literal node stands for; `None` for anything
 /// that needs evaluating (a reference, a call, an operator).
+/// Whether validation left a value as it was: the reference compares by
+/// identity (`next !== lit.v`), and gets back the very object when nothing
+/// changed. Structurally, then, but with `NaN` equal to itself, so an object
+/// holding one isn't rebuilt (which would also drop a duplicate key).
+fn unchanged(a: &Value, b: &Value) -> bool {
+    match (a, b) {
+        (Value::Num(x), Value::Num(y)) => x == y || x.is_nan() && y.is_nan(),
+        (Value::Arr(x), Value::Arr(y)) => {
+            Arc::ptr_eq(x, y)
+                || x.len() == y.len() && x.iter().zip(y.iter()).all(|(a, b)| unchanged(a, b))
+        }
+        (Value::Obj(x), Value::Obj(y)) => {
+            Arc::ptr_eq(x, y)
+                || x.len() == y.len()
+                    && x.iter()
+                        .zip(y.iter())
+                        .all(|((k, a), (l, b))| k == l && unchanged(a, b))
+        }
+        _ => a == b,
+    }
+}
+
 fn literal_value(node: &Ast) -> Option<Value> {
     Some(match node {
         Ast::Str(v) => Value::Str(v.clone()),

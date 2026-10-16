@@ -16,14 +16,14 @@ Reference: `@openuidev/lang-core 1.0.1` at commit `eb20708b9cc41afced5625e99e6ce
 
 | Compared with the reference | Cases | Checks | Cases by source |
 |---|---:|---:|---|
-| Parse results: one-shot, and after every push and at the end of 8 chunkings, 2 resync sequences and any recorded chunks | 534 | 322,570 results | 7 benchmark, 105 docs, 46 examples, 12 fuzz, 107 hand-written, 196 reference-test, 58 spec-fixture, 3 synthetic |
-| Stages on every prefix: preprocessing, tokens, statements and expression trees | 532 | 97,518 prefixes | the parse corpus, less its largest synthetic programs |
+| Parse results: one-shot, and after every push and at the end of 8 chunkings, 2 resync sequences and any recorded chunks | 537 | 323,211 results | 7 benchmark, 105 docs, 46 examples, 13 fuzz, 109 hand-written, 196 reference-test, 58 spec-fixture, 3 synthetic |
+| Stages on every prefix: preprocessing, tokens, statements and expression trees | 535 | 97,723 prefixes | the parse corpus, less its largest synthetic programs |
 | System prompts | 61 | 61 | |
 | Edit-mode merges | 2,521 | 2,521 | 2,469 generated, 46 hand-written, 1 reference-test, 5 spec-fixture |
-| Element trees back to source | 506 | 506 | 1 fuzz, 62 hand-written, 412 parse corpus root, 31 reference-test |
-| Enriched errors | 339 | 339 | every parse corpus case with errors |
+| Element trees back to source | 508 | 508 | 1 fuzz, 62 hand-written, 414 parse corpus root, 31 reference-test |
+| Enriched errors | 341 | 341 | every parse corpus case with errors |
 
-Quirks recorded: 12.
+Quirks recorded: 14.
 Not matched yet, listed in `conformance/pending/`: none.
 <!-- /counts -->
 
@@ -35,6 +35,7 @@ Cases the core doesn't match yet would be listed in `conformance/pending/`, one 
 - **Chunkings:** sizes 1, 2, 3, 4, 7 and 16 code points, two seeded random ones (1 to 16), and two resync sequences that call `set` with growing, rewound and edited text.
 - **Sources:** hand-written edge cases; every program the reference's own test suites parse, merge and serialize, captured live while they run; the 7 benchmark samples (real GPT output); programs from the upstream docs and examples; fuzz-found cases; synthetic programs up to 30 KB; generated edit patches over every corpus program with a root; and every corpus parse result serialized back to source.
 - **Stages:** preprocessing, tokens, statements and expression trees are compared on every prefix of every case, so a mismatch points at the stage that diverged.
+- **Invariants:** rules a result should keep, checked on the core and the reference alike over a million generated programs; a rule both parsers break is a candidate quirk (TESTING.md, "Invariants").
 - **Rust-only checks:** no input panics or overflows a 512 KB stack (fixed-seed property tests and the deepest shapes); a streamed program ends where its one-shot parse does, except where the reference itself doesn't (quirks 4, 5 and 11); streaming cost stays linear (`tests/streaming_cost.rs`); results that double at every level are cut at the size cap (`tests/size.rs`).
 
 ## Differential fuzzing
@@ -62,6 +63,7 @@ In the core, fixed, each pinned by a case:
 - A root element whose `props` is a string, number or boolean is read the way JavaScript reads it (edit fuzzing).
 - A prompt spec's maps must be read with `Object.entries` too, so components, functions and actions given as an array or a string list what the reference lists (`library-components-array`, found in 1.0 ticket 08).
 - In 1.0 a prop is assigned twice, raw and then validated, so `null` for a param named `__proto__` drops the prototype and then becomes an own prop (fuzzing, `hand/105-proto-named-param`).
+- A library call's validated argument replaces the written one only when validation changed it, which the reference sees by identity: an object holding `NaN` (which never equals itself) was rebuilt, losing a duplicate key (a hunt, `fuzz/106fb3f3`).
 
 In the reference, reproduced and recorded in [QUIRKS.md](conformance/QUIRKS.md), each with a draft upstream report (none filed):
 
@@ -74,9 +76,11 @@ In the reference, reproduced and recorded in [QUIRKS.md](conformance/QUIRKS.md),
 7. Prose with an apostrophe before the existing program makes a merge lose it.
 8. An id defined twice in the existing program comes out of a merge twice.
 9. Serializing drops parentheses around an equal-precedence right operand: `a - (b - c)` becomes `a - b - c`.
-10. Serialized object keys aren't quoted.
+10. Serialized object keys aren't quoted (by design since 1.0: the spec says keys must be valid names to round-trip).
 11. At a stream's end, a final redefinition that needed closing doesn't win (new in 1.0's terms: the spec says it should).
 12. A library function or action called without `@` is still called, even over a component of that name (new in 1.0).
+13. Serializing drops the parentheses an operand needs: `!($a && $b)` becomes `!$a && $b` (found by the round-trip invariant).
+14. A call parsing made null doesn't count as a null prop, so a required prop isn't checked (a candidate, found by the round-trip invariant).
 
 Also reported, though not a quirk because the core doesn't reproduce it: a few lines that each reference the line before twice make the reference's `parse` take exponential time and memory (ticket 14).
 

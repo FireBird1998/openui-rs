@@ -1,8 +1,9 @@
 #!/usr/bin/env bash
 # A hunt: searches for findings for a set time, then leaves a report and the
 # shrunk cases in findings/<date>-seed<seed>/, which git ignores. It runs
-# differential fuzzing with a fresh seed, for parsing and then for edits, with
-# the upstream check (scripts/upstream-check.sh) alongside. A hunt never commits
+# differential fuzzing with a fresh seed, for parsing and then for edits, then
+# the invariants on both parsers, with the upstream check
+# (scripts/upstream-check.sh) alongside. A hunt never commits
 # and never changes tracked files: it compares them before and after, and fails
 # if they changed. Fuzzing needs Bun; the first hunt also builds the fuzzer.
 #
@@ -93,21 +94,27 @@ fi
 if [[ -n "$skip" ]]; then
   echo "skipped: $skip" > "$hunt/status-parse"
   echo "skipped: $skip" > "$hunt/status-edits"
+  echo "skipped: $skip" > "$hunt/status-invariants"
   echo "Fuzzing skipped: $skip"
 else
-  # Parsing gets the first half of the time left and edits the second. Each
-  # fuzzer stops itself before its share ends; one still running at the end is
-  # stopped, and its last batch reported as a probable hang.
+  # Parsing gets the first 40% of the time left, edits the next 35% and the
+  # invariants the rest. Each fuzzer stops itself before its share ends; one
+  # still running at the end is stopped, and its last batch reported as a
+  # probable hang.
   now="$(date +%s)"
-  parse_until=$((now + (deadline - now) / 2))
-  for check in parse edits; do
+  parse_until=$((now + (deadline - now) * 2 / 5))
+  edits_until=$((now + (deadline - now) * 3 / 4))
+  for check in parse edits invariants; do
     now="$(date +%s)"
-    until=$parse_until
-    [[ "$check" == parse ]] || until=$deadline
+    case "$check" in
+      parse) until=$parse_until ;;
+      edits) until=$edits_until ;;
+      *) until=$deadline ;;
+    esac
     share=$((until - now))
     grace=$((share / 10 < 15 ? share / 10 : 15))
     flags="--seed $seed --seconds $((share - grace)) --slow-ms $slow_ms --findings $hunt"
-    [[ "$check" == parse ]] || flags="--edits $flags"
+    [[ "$check" == parse ]] || flags="--$check $flags"
     echo "Fuzzing $check for $((share - grace)) s"
     # shellcheck disable=SC2086 # the flags are words
     target/release/examples/fuzz $flags > "$hunt/$check.log" 2>&1 &

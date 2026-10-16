@@ -167,7 +167,8 @@ def fuzz_row(name, unit, summary, findings):
 
 
 def finding_section(n, f):
-    check = {"parse": "parsing", "edits": "edits", "merge": "merging", "serialize": "converting back to source"}[f["check"]]
+    check = {"parse": "parsing", "edits": "edits", "merge": "merging", "serialize": "converting back to source",
+             "invariant": f"the {f.get('rule', '')} invariant", "invariants": "invariants"}[f["check"]]
     kind = {"mismatch": "Mismatch", "crash": "Crash", "blow-up": "Blow-up", "quirk?": "Quirk?"}[f["kind"]]
     lines = [f"### {n}. {kind}: {check}" + (", streaming" if f.get("streaming") else "")]
     if "seed" in f:
@@ -180,7 +181,7 @@ def finding_section(n, f):
     if f["kind"] == "blow-up" and "core_ms" in f:
         ref = f" (the reference took {f['reference_ms']:.0f} ms)" if "reference_ms" in f else ""
         lines.append(f"- **Time:** the core took {f['core_ms']:.0f} ms{ref}")
-    if f["check"] == "parse" and "chars" in f:
+    if f["check"] in ("parse", "invariant") and "chars" in f:
         before, after = f["chars"]
         if f["kind"] == "blow-up":
             lines.append(f"- **Not shrunk:** blow-ups aren't. {number(before)} characters.")
@@ -202,8 +203,11 @@ def finding_section(n, f):
     if f.get("note"):
         lines.append(f"- {f['note']}")
     lines.append("")
-    if f["check"] == "parse" and "input" in f:
+    if f["check"] in ("parse", "invariant") and "input" in f:
         lines.append(shown(f["input"]))
+    if f["check"] == "invariant":
+        lines += ["", "The core:", "", fenced(json.dumps(f.get("core"), ensure_ascii=False)),
+                  "", "The reference:", "", fenced(json.dumps(f.get("reference"), ensure_ascii=False))]
     elif f["check"] == "merge" and "input" in f:
         lines += ["Existing program:", "", shown(f["input"]["existing"]), "", "Patch:", "", shown(f["input"]["patch"])]
         if "rootId" in f["input"]:
@@ -311,8 +315,8 @@ def report(hunt, ran):
     findings = []
     if (hunt / "findings.jsonl").is_file():
         findings = [json.loads(line) for line in (hunt / "findings.jsonl").read_text().splitlines() if line.strip()]
-    findings += process_findings(hunt, "parse", "parsing") + process_findings(hunt, "edits", "edits")
-    summaries = {c: json.loads(text(hunt / f"summary-{c}.json")) if (hunt / f"summary-{c}.json").is_file() else None for c in ["parse", "merge", "serialize"]}
+    findings += process_findings(hunt, "parse", "parsing") + process_findings(hunt, "edits", "edits") + process_findings(hunt, "invariants", "invariants")
+    summaries = {c: json.loads(text(hunt / f"summary-{c}.json")) if (hunt / f"summary-{c}.json").is_file() else None for c in ["parse", "merge", "serialize", "invariants"]}
 
     code = f"`{meta['commit'][:7]}`" + (" with uncommitted changes" if meta["dirty"] else "")
     out = [f"# Hunt, {meta['started']}", ""]
@@ -326,7 +330,11 @@ def report(hunt, ran):
             out.append(row)
         elif by_check(check):
             out.append(f"| {name} | stopped early | {kinds_line(tally(by_check(check)))} |")
-    for check, label in [("parse", "parsing"), ("edits", "edits")]:
+    for rule, tallies in (summaries["invariants"] or {}).items():
+        found = [f for f in by_check("invariant") if f.get("rule") == rule]
+        row = fuzz_row(f"Invariant: {rule.replace('-', ' ')}", "programs", tallies, found)
+        out.append(row.replace(" known divergence", " known exception"))
+    for check, label in [("parse", "parsing"), ("edits", "edits"), ("invariants", "invariants")]:
         status = text(hunt / f"status-{check}")
         if status.startswith("skipped"):
             out.append(f"| Differential fuzzing, {label} | not run: {status[len('skipped: '):]} | |")
