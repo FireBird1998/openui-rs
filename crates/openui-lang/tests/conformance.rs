@@ -4,10 +4,10 @@
 //! written by `scripts/regen-golden.sh`). Needs no Bun unless a streaming step
 //! mismatches, and then only to show the reference JSON for that step.
 //!
-//! Cases listed in `conformance/pending.txt` aren't supported yet: they may
-//! fail, but the suite fails if one starts passing (so it gets removed from the
-//! list). `UPDATE_PENDING=1 cargo test --test conformance` rewrites the list to
-//! exactly the cases failing now.
+//! Cases listed in `conformance/pending/parse.txt` aren't supported yet: they
+//! may fail, but the suite fails if one starts passing (so it gets removed from
+//! the list). `UPDATE_PENDING=1 cargo test --test conformance` rewrites the list
+//! to exactly the cases failing now.
 
 mod common;
 
@@ -17,8 +17,8 @@ use std::panic::{AssertUnwindSafe, catch_unwind};
 use std::path::Path;
 
 use common::{
-    Case, conformance_dir, diff, explain as explain_step, fingerprint, golden_dir, golden_json,
-    load_corpus, read,
+    Case, Pending, diff, explain as explain_step, fingerprint, golden_dir, golden_json,
+    load_corpus, read, update_pending,
 };
 use openui_lang::{StreamParser, parse};
 
@@ -35,18 +35,6 @@ fn chunks<'a>(text: &'a str, sizes: &[usize]) -> Vec<&'a str> {
             start = end;
             part
         })
-        .collect()
-}
-
-fn load_pending(path: &Path) -> BTreeSet<String> {
-    if !path.exists() {
-        return BTreeSet::new();
-    }
-    read(path)
-        .lines()
-        .map(str::trim)
-        .filter(|l| !l.is_empty() && !l.starts_with('#'))
-        .map(str::to_owned)
         .collect()
 }
 
@@ -199,19 +187,16 @@ fn check_resync(
 
 #[test]
 fn every_case_matches_the_reference_parser() {
-    let conformance = conformance_dir();
     let golden = golden_dir();
-    let pending_path = conformance.join("pending.txt");
     let corpus = load_corpus();
-    let pending = load_pending(&pending_path);
-    let update_pending = std::env::var_os("UPDATE_PENDING").is_some();
+    let pending = Pending::load("parse");
 
     // Fetching reference JSON runs Bun once per mismatch; enough to start on.
     let mut explanations_left = 5;
     let mut failing = BTreeSet::new();
     let mut report = String::new();
     for case in &corpus.cases {
-        let explain = !pending.contains(&case.name) && !update_pending && explanations_left > 0;
+        let explain = !pending.contains(&case.name) && !update_pending() && explanations_left > 0;
         let outcome = catch_unwind(AssertUnwindSafe(|| {
             check_case(
                 case,
@@ -231,68 +216,45 @@ fn every_case_matches_the_reference_parser() {
                 format!("  panicked: {message}\n")
             }
         };
-        let is_pending = pending.contains(&case.name);
         if failures.is_empty() {
-            if is_pending {
-                let _ = writeln!(
-                    report,
-                    "\n✓ {} now conforms: remove it from pending.txt",
-                    case.name
-                );
-            }
-        } else {
-            failing.insert(case.name.clone());
-            if explain {
-                explanations_left -= 1;
-            }
-            if !is_pending {
-                let _ = write!(report, "\n✗ {}\n{failures}", case.name);
-            }
+            continue;
+        }
+        failing.insert(case.name.clone());
+        if explain {
+            explanations_left -= 1;
+        }
+        if !pending.contains(&case.name) {
+            let _ = write!(report, "\n✗ {}\n{failures}", case.name);
         }
     }
-    let names: BTreeSet<&str> = corpus.cases.iter().map(|c| c.name.as_str()).collect();
-    for stale in pending.iter().filter(|p| !names.contains(p.as_str())) {
-        let _ = writeln!(report, "\n? {stale} is in pending.txt but isn't a case");
-    }
-
+    let checked = corpus.cases.iter().map(|c| c.name.clone()).collect();
     let total = corpus.cases.len();
     println!(
         "conformance: {} of {total} cases conform to the reference parser ({} pending)",
         total - failing.len(),
         failing.len()
     );
-    if update_pending {
-        let mut text = String::from(
-            "# Cases the core doesn't conform on yet. The conformance test fails if one\n\
-             # starts passing; regenerate with UPDATE_PENDING=1 cargo test --test conformance\n",
-        );
-        for name in &failing {
-            text.push_str(name);
-            text.push('\n');
-        }
-        std::fs::write(&pending_path, text).unwrap();
-        println!(
-            "wrote {} pending cases to {}",
-            failing.len(),
-            pending_path.display()
-        );
+    let Some(problems) = pending.settle(&checked, &failing) else {
         return;
-    }
+    };
+    report.push_str(&problems);
     assert!(
         report.is_empty(),
-        "conformance doesn't match pending.txt:\n{report}"
+        "conformance doesn't match pending/parse.txt:\n{report}"
     );
 }
 
-/// One-shot parsing alone, with no pending list: every case must match.
+/// One-shot parsing alone: every case must match, except those pending (the
+/// test above keeps the list honest).
 #[test]
 fn every_one_shot_parse_matches_the_reference_parser() {
     let corpus = load_corpus();
     let golden = golden_dir();
+    let pending = Pending::load("parse");
     let mut explanations_left = 5;
     let mut report = String::new();
     let mut failed = 0;
-    for case in &corpus.cases {
+    for case in corpus.cases.iter().filter(|c| !pending.contains(&c.name)) {
         let expected = read(&golden.join(format!("{}.oneshot.json", case.name)));
         let outcome = catch_unwind(AssertUnwindSafe(|| {
             parse(&case.input, &case.library, case.root.as_deref()).to_json()
@@ -314,9 +276,13 @@ fn every_one_shot_parse_matches_the_reference_parser() {
         let _ = write!(report, "\n✗ {}\n{detail}", case.name);
     }
     println!(
-        "one-shot: {} of {} cases match",
-        corpus.cases.len() - failed,
-        corpus.cases.len()
+        "one-shot: {failed} of {} cases differ ({} more pending)",
+        corpus.cases.len(),
+        corpus
+            .cases
+            .iter()
+            .filter(|c| pending.contains(&c.name))
+            .count()
     );
     assert!(
         report.is_empty(),

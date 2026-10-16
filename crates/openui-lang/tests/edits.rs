@@ -1,15 +1,16 @@
 //! The rest of the language layer against the reference: edit-mode merge
 //! (`mergeStatements`), element trees back to source (`jsonToOpenUI`), and
 //! validation errors with hints (`enrichErrors`). Expected outputs are in
-//! `conformance/golden/edits/`, written by `reference/edits.ts`.
+//! `conformance/golden/edits/`, written by `reference/edits.ts`. Each kind has
+//! a pending list, `conformance/pending/<kind>.txt`.
 
 mod common;
 
-use std::collections::HashMap;
+use std::collections::{BTreeSet, HashMap};
 use std::fmt::Write as _;
 use std::path::Path;
 
-use common::{conformance_dir, golden_dir, load_corpus, read};
+use common::{Pending, conformance_dir, golden_dir, load_corpus, read};
 use openui_lang::{
     Library, enrich_errors, enriched_errors_to_json, json_to_openui, merge_statements, parse,
     parse_json,
@@ -47,18 +48,34 @@ fn text_diff(reference: &str, rust: &str) -> String {
         .to_string()
 }
 
-/// Collects mismatches; the first few with a diff and the command that shows
-/// the reference's output.
-#[derive(Default)]
+/// Collects mismatches for one kind; the first few with a diff and the
+/// command that shows the reference's output. Pending ones are only counted.
 struct Report {
+    kind: &'static str,
+    pending: Pending,
     checked: usize,
+    names: BTreeSet<String>,
+    failing: BTreeSet<String>,
     failed: usize,
     text: String,
 }
 
 impl Report {
-    fn check(&mut self, kind: &str, name: &str, expected: &Value, actual: Result<String, String>) {
+    fn new(kind: &'static str) -> Report {
+        Report {
+            kind,
+            pending: Pending::load(kind),
+            checked: 0,
+            names: BTreeSet::new(),
+            failing: BTreeSet::new(),
+            failed: 0,
+            text: String::new(),
+        }
+    }
+
+    fn check(&mut self, name: &str, expected: &Value, actual: Result<String, String>) {
         self.checked += 1;
+        self.names.insert(name.to_owned());
         let matches = match (&actual, expected.get("text"), expected.get("error")) {
             (Ok(text), Some(Value::String(want)), _) => text == want,
             (Err(_), _, Some(_)) => true,
@@ -67,10 +84,15 @@ impl Report {
         if matches {
             return;
         }
+        self.failing.insert(name.to_owned());
+        if self.pending.contains(name) {
+            return;
+        }
         self.failed += 1;
         if self.failed > SHOWN {
             return;
         }
+        let kind = self.kind;
         let show = |o: Option<&Value>, e: Option<&Value>| match (o, e) {
             (Some(Value::String(t)), _) => t.clone(),
             (_, Some(e)) => format!("error: {e}"),
@@ -88,15 +110,21 @@ impl Report {
         );
     }
 
-    fn finish(self, kind: &str) {
+    fn finish(mut self) {
+        let kind = self.kind;
         println!(
-            "{kind}: {} of {} cases match",
-            self.checked - self.failed,
-            self.checked
+            "{kind}: {} of {} cases match ({} pending)",
+            self.checked - self.failing.len(),
+            self.checked,
+            self.failing.len() - self.failed
         );
+        let Some(problems) = self.pending.settle(&self.names, &self.failing) else {
+            return;
+        };
+        self.text.push_str(&problems);
         assert!(
-            self.failed == 0,
-            "{} {kind} cases differ from the reference:\n{}",
+            self.text.is_empty(),
+            "{} {kind} cases differ from the reference, apart from pending/{kind}.txt:\n{}",
             self.failed,
             self.text
         );
@@ -118,7 +146,7 @@ fn merging_patches_matches_the_reference() {
         }
     };
     let golden = golden("merge");
-    let mut report = Report::default();
+    let mut report = Report::new("merge");
     let all: Vec<Value> = [
         "imported/merge.json",
         "merge.json",
@@ -134,9 +162,9 @@ fn merging_patches_matches_the_reference() {
         let existing = text(c, "existing", "existingCase");
         let patch = text(c, "patch", "patchCase");
         let merged = merge_statements(&existing, &patch, c.get("rootId").and_then(Value::as_str));
-        report.check("merge", name, &golden[name], Ok(merged));
+        report.check(name, &golden[name], Ok(merged));
     }
-    report.finish("merge");
+    report.finish();
 }
 
 #[test]
@@ -184,13 +212,13 @@ fn serializing_element_trees_matches_the_reference() {
         .collect();
 
     let golden = golden("serialize");
-    let mut report = Report::default();
+    let mut report = Report::new("serialize");
     for c in &serialize_cases {
         let name = c["name"].as_str().unwrap();
         let library = &libraries[&c["schema"].as_str().unwrap().to_owned()];
         let actual = json_to_openui(&c["element"], library, c.get("stateDeclarations"))
             .map_err(|e| e.to_string());
-        report.check("serialize", name, &golden[name], actual);
+        report.check(name, &golden[name], actual);
     }
     // Every corpus case's one-shot root, as the reference parser gave it.
     let mut from_corpus = 0;
@@ -207,16 +235,16 @@ fn serializing_element_trees_matches_the_reference() {
             Some(&result["stateDeclarations"]),
         )
         .map_err(|e| e.to_string());
-        report.check("serialize", &name, &golden[&name], actual);
+        report.check(&name, &golden[&name], actual);
     }
     assert!(from_corpus > 200, "only {from_corpus} corpus roots");
-    report.finish("serialize");
+    report.finish();
 }
 
 #[test]
 fn enriched_errors_match_the_reference() {
     let golden = golden("enrich");
-    let mut report = Report::default();
+    let mut report = Report::new("enrich");
     let mut codes = std::collections::HashSet::new();
     for case in load_corpus().cases {
         let result = parse(&case.input, &case.library, case.root.as_deref());
@@ -238,12 +266,7 @@ fn enriched_errors_match_the_reference() {
                 codes.insert((e.code.as_str(), e.hint.is_some()));
             }
             let expected = serde_json::json!({ "text": golden[&name] });
-            report.check(
-                "enrich",
-                &name,
-                &expected,
-                Ok(enriched_errors_to_json(&enriched)),
-            );
+            report.check(&name, &expected, Ok(enriched_errors_to_json(&enriched)));
         }
     }
     assert!(report.checked > 150, "only {} enrich cases", report.checked);
@@ -259,5 +282,5 @@ fn enriched_errors_match_the_reference() {
         codes.contains(&("unknown-component", false)),
         "no unknown-component without names"
     );
-    report.finish("enrich");
+    report.finish();
 }

@@ -1,2 +1,0 @@
-# Cases the core doesn't conform on yet. The conformance test fails if one
-# starts passing; regenerate with UPDATE_PENDING=1 cargo test --test conformance

@@ -1,12 +1,14 @@
 //! Stage-level conformance: each pipeline stage the reference package exports
 //! matches it on every prefix of every corpus program, so a mismatch points at
-//! the stage that diverged rather than at the whole parse result.
+//! the stage that diverged rather than at the whole parse result. Each stage
+//! has a pending list, `conformance/pending/<stage>.txt`.
 
 mod common;
 
+use std::collections::BTreeSet;
 use std::fmt::Write as _;
 
-use common::{explain, fingerprint, golden_json, load_corpus};
+use common::{Pending, explain, fingerprint, golden_json, load_corpus};
 use openui_lang::{
     auto_close, parse_expression, preprocess, split, strip_fences, tokenize, tokens_to_json,
 };
@@ -18,10 +20,12 @@ const EXPLANATIONS: usize = 5;
 /// prefix of every case; `show` is the runner command that prints one.
 fn check_every_prefix(golden_suffix: &str, show: &str, stage: impl Fn(&str) -> String) {
     let corpus = load_corpus();
+    let pending = Pending::load(golden_suffix.trim_end_matches(".json"));
     let mut checked = 0;
-    let mut failed = 0;
+    let mut failing = BTreeSet::new();
     let mut report = String::new();
-    for case in corpus.cases.iter().filter(|c| c.stages) {
+    let staged: Vec<_> = corpus.cases.iter().filter(|c| c.stages).collect();
+    for case in &staged {
         let golden = golden_json(&case.name, golden_suffix);
         let expected: Vec<&str> = golden
             .as_array()
@@ -47,7 +51,11 @@ fn check_every_prefix(golden_suffix: &str, show: &str, stage: impl Fn(&str) -> S
             if fingerprint(&actual) == expected[k] {
                 continue;
             }
-            failed += 1;
+            failing.insert(case.name.clone());
+            if pending.contains(&case.name) {
+                break;
+            }
+            let shown = failing.iter().filter(|n| !pending.contains(n)).count();
             let tail: String = prefix
                 .chars()
                 .rev()
@@ -57,7 +65,7 @@ fn check_every_prefix(golden_suffix: &str, show: &str, stage: impl Fn(&str) -> S
                 .rev()
                 .collect();
             let length = (k + 1).to_string();
-            let detail = if failed <= EXPLANATIONS {
+            let detail = if shown <= EXPLANATIONS {
                 explain(&[show, &case.name, &length], &actual)
             } else {
                 String::new()
@@ -71,13 +79,20 @@ fn check_every_prefix(golden_suffix: &str, show: &str, stage: impl Fn(&str) -> S
         }
     }
     println!(
-        "{golden_suffix}: {} of {} cases match on every prefix ({checked} prefixes checked)",
-        corpus.cases.len() - failed,
-        corpus.cases.len()
+        "{golden_suffix}: {} of {} cases match on every prefix ({checked} prefixes checked, {} pending)",
+        staged.len() - failing.len(),
+        staged.len(),
+        failing.iter().filter(|n| pending.contains(n)).count()
     );
+    let names = staged.iter().map(|c| c.name.clone()).collect();
+    let Some(problems) = pending.settle(&names, &failing) else {
+        return;
+    };
+    report.push_str(&problems);
     assert!(
         report.is_empty(),
-        "{failed} cases differ from the reference:\n{report}"
+        "{} cases differ from the reference:\n{report}",
+        failing.iter().filter(|n| !pending.contains(n)).count()
     );
 }
 

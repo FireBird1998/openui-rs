@@ -1,8 +1,8 @@
-//! Shared by the conformance tests: the corpus, goldens, fingerprints, and
-//! readable diffs against the reference parser.
+//! Shared by the conformance tests: the corpus, goldens, fingerprints, pending
+//! lists, and readable diffs against the reference parser.
 #![allow(dead_code)] // each test binary uses a different subset
 
-use std::collections::HashMap;
+use std::collections::{BTreeSet, HashMap};
 use std::path::{Path, PathBuf};
 use std::process::Command;
 use std::sync::Arc;
@@ -41,6 +41,104 @@ pub fn read(path: &Path) -> String {
 /// A case's golden file with the given suffix, parsed as JSON.
 pub fn golden_json(case: &str, suffix: &str) -> Value {
     serde_json::from_str(&read(&golden_dir().join(format!("{case}.{suffix}")))).unwrap()
+}
+
+/// Each golden test's pending list in `conformance/pending/`, and what it lists.
+pub const PENDING_LISTS: [(&str, &str); 8] = [
+    ("parse", "parse results"),
+    ("tokens", "tokens on every prefix"),
+    (
+        "statements",
+        "statements and expression trees on every prefix",
+    ),
+    ("preprocess", "preprocessing on every prefix"),
+    ("merge", "merges"),
+    ("serialize", "trees back to source"),
+    ("enrich", "enriched errors"),
+    ("prompt", "system prompts"),
+];
+
+const PENDING_HEADER: &str = "\
+# Cases the core doesn't match the reference on yet. Each may fail, but one
+# that matches again, or a name that isn't a case, fails the test. Rewrite
+# every list to the cases failing now: UPDATE_PENDING=1 cargo test -p openui-lang
+";
+
+/// Whether `UPDATE_PENDING` asks the golden tests to rewrite their pending lists.
+pub fn update_pending() -> bool {
+    std::env::var_os("UPDATE_PENDING").is_some()
+}
+
+/// The cases a golden test lets fail for now: `conformance/pending/<list>.txt`,
+/// one name per line, `#` starting a comment line. Each test has a list of its
+/// own, so tests running in parallel never write the same file.
+pub struct Pending {
+    list: String,
+    path: PathBuf,
+    names: BTreeSet<String>,
+}
+
+impl Pending {
+    pub fn load(list: &str) -> Pending {
+        assert!(
+            PENDING_LISTS.iter().any(|(name, _)| *name == list),
+            "{list} isn't one of PENDING_LISTS"
+        );
+        let path = conformance_dir()
+            .join("pending")
+            .join(format!("{list}.txt"));
+        let names = std::fs::read_to_string(&path)
+            .unwrap_or_default()
+            .lines()
+            .map(str::trim)
+            .filter(|l| !l.is_empty() && !l.starts_with('#'))
+            .map(str::to_owned)
+            .collect();
+        Pending {
+            list: list.to_owned(),
+            path,
+            names,
+        }
+    }
+
+    pub fn contains(&self, name: &str) -> bool {
+        self.names.contains(name)
+    }
+
+    pub fn len(&self) -> usize {
+        self.names.len()
+    }
+
+    /// Squares the list with a run: `checked` is every name the test checked,
+    /// `failing` those that failed. With `UPDATE_PENDING`, rewrites the list to
+    /// `failing` and returns `None`. Otherwise returns what's wrong with the
+    /// list, empty when nothing is: listed cases that match now, and listed
+    /// names that aren't cases.
+    pub fn settle(&self, checked: &BTreeSet<String>, failing: &BTreeSet<String>) -> Option<String> {
+        let file = format!("pending/{}.txt", self.list);
+        if update_pending() {
+            let mut text = PENDING_HEADER.to_owned();
+            for name in failing {
+                text.push_str(name);
+                text.push('\n');
+            }
+            std::fs::create_dir_all(self.path.parent().unwrap()).unwrap();
+            std::fs::write(&self.path, text).unwrap();
+            println!("wrote {} pending cases to {file}", failing.len());
+            return None;
+        }
+        let mut problems = String::new();
+        for name in &self.names {
+            if !checked.contains(name) {
+                problems.push_str(&format!("\n? {name} is in {file} but isn't a case\n"));
+            } else if !failing.contains(name) {
+                problems.push_str(&format!(
+                    "\n✓ {name} matches the reference now: remove it from {file}\n"
+                ));
+            }
+        }
+        Some(problems)
+    }
 }
 
 /// FNV-1a (32-bit) over UTF-8 bytes, as 8 hex digits; mirrors `reference/run.ts`.

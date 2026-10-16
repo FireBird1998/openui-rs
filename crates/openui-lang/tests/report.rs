@@ -7,7 +7,7 @@ mod common;
 use std::collections::BTreeMap;
 use std::fmt::Write as _;
 
-use common::{conformance_dir, golden_dir, read, repo_root};
+use common::{PENDING_LISTS, Pending, conformance_dir, golden_dir, read, repo_root};
 use openui_lang::parse_json;
 use serde_json::Value;
 
@@ -186,6 +186,21 @@ fn block() -> String {
         n(enrich.as_object().unwrap().len())
     );
     let _ = writeln!(out, "\nQuirks recorded: {quirks}.");
+    let pending: Vec<String> = PENDING_LISTS
+        .iter()
+        .map(|(list, what)| (Pending::load(list).len(), what))
+        .filter(|(count, _)| *count > 0)
+        .map(|(count, what)| format!("{} {what}", n(count)))
+        .collect();
+    let _ = writeln!(
+        out,
+        "Not matched yet, listed in `conformance/pending/`: {}.",
+        if pending.is_empty() {
+            "none".to_owned()
+        } else {
+            pending.join(", ")
+        }
+    );
     let _ = write!(out, "{END}");
     out
 }

@@ -1,0 +1,3 @@
+# Cases the core doesn't match the reference on yet. Each may fail, but one
+# that matches again, or a name that isn't a case, fails the test. Rewrite
+# every list to the cases failing now: UPDATE_PENDING=1 cargo test -p openui-lang

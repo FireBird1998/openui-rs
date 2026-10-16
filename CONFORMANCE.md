@@ -22,8 +22,11 @@ Reference: `@openuidev/lang-core 0.3.0` at commit `bba1d2515fa53562ccf0d5d51309c
 | Enriched errors | 191 | 191 | every parse corpus case with errors |
 
 Quirks recorded: 10.
+Not matched yet, listed in `conformance/pending/`: none.
 <!-- /counts -->
 
+
+Cases the core doesn't match yet would be listed in `conformance/pending/`, one list per test; the line above counts them. A listed case may fail, and one that matches again fails its test until it's taken off the list.
 
 `cargo test` runs all of it without Bun or the network: the reference's outputs are committed as goldens in `conformance/golden/` (full JSON for one-shot results, prompts and edits; an FNV-1a fingerprint per streaming step and per prefix). On a mismatch, the test prints the case, the step and its chunk sizes, and, if Bun is installed, a diff against the reference's JSON.
 
