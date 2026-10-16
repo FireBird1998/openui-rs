@@ -196,7 +196,7 @@ pub use enrich::{EnrichedError, enrich_errors, enriched_errors_to_json};
 pub use expr::parse_expression;
 pub use js::{JsObject, JsonError, parse_json, stringify_json};
 pub use lexer::{Token, tokenize, tokens_to_json};
-pub use library::{Component, Library, Param};
+pub use library::{Call, CallKind, Component, Library, Param};
 pub use merge::merge_statements;
 pub use parser::parse;
 pub use preprocess::{preprocess, strip_fences};

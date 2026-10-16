@@ -13,3 +13,7 @@
 
 - [ ] Every pending case whose difference is in calls conforms, including the fixtures with library functions and actions.
 - [ ] `scripts/check.sh` passes, with the pending lists shorter.
+
+## Comments
+
+**2026-10-16, from ticket 03:** 1.0's materialize checks the call registry before components. So a name that's both a listed component and a library action (`Badge` in the hand schema `libraries`) materializes as the action even when called without `@`. `hand/102-library-shapes-and-calls` covers it, and it's a candidate quirk to write up.

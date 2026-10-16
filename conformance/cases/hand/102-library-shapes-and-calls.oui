@@ -1,0 +1,5 @@
+root = Page([w, s, b], "oops", {type: "open_url"})
+w = Widget("hi")
+s = Shape(1)
+b = Badge("x")
+other = Page([w], {target: 5})

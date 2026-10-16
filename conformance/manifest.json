@@ -16,7 +16,8 @@
   "hand": "schemas/hand.json",
   "keys": "schemas/keys.json",
   "odd": "schemas/odd.json",
-  "edge": "schemas/edge.json"
+  "edge": "schemas/edge.json",
+  "libraries": "schemas/libraries.json"
  },
  "cases": [
   {
@@ -634,6 +635,12 @@
    "name": "hand/101-root-in-a-reference-cycle",
    "schema": "hand",
    "file": "cases/hand/101-root-in-a-reference-cycle.oui",
+   "source": "hand-written"
+  },
+  {
+   "name": "hand/102-library-shapes-and-calls",
+   "schema": "libraries",
+   "file": "cases/hand/102-library-shapes-and-calls.oui",
    "source": "hand-written"
   }
  ]

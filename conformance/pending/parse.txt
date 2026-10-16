@@ -54,6 +54,7 @@ examples/react-native-library-03
 examples/shadcn-index-02
 hand/09-state-and-actions
 hand/10-query-with-state-args
+hand/102-library-shapes-and-calls
 hand/11-mutation-run-reset
 hand/19-multiline-ternary
 hand/20-operator-precedence
@@ -82,15 +83,8 @@ spec/actions/008-tool-not-found-stops-plan
 spec/actions/009-custom-action
 spec/actions/010-one-action-by-reference
 spec/actions/011-action-list-is-data
-spec/editing/001-replace-and-add
-spec/editing/002-delete-and-gc
-spec/editing/005-fenced-patch
 spec/entry/006-ternary-root-multiline
-spec/errors/001-unknown-component-dropped
 spec/errors/002-unknown-function-null
-spec/errors/009-excess-args-dropped
-spec/errors/010-inline-reserved-array
-spec/errors/012-validate-array-elements
 spec/errors/013-validate-component-slot-data
 spec/errors/014-function-literal-args
 spec/evaluation/001-kind-classify
@@ -99,14 +93,12 @@ spec/evaluation/008-builtin-sort-locale
 spec/evaluation/010-function-registered
 spec/evaluation/011-function-null-required-arg
 spec/evaluation/012-kind-query-dollar-name
-spec/grammar/006-lex-minus-and-skip
 spec/grammar/010-roundtrip-tree
 spec/state/001-store-auto-declare
 spec/state/002-binding-two-way
 spec/state/003-form-scope
 spec/state/004-form-page-level
 spec/streaming/001-worked-example
-spec/streaming/005-fence-arrives-late
 test/actions-01
 test/actions-02
 test/actions-03
@@ -164,7 +156,6 @@ test/functions-15
 test/functions-16
 test/functions-17
 test/functions-18
-test/library-01
 test/materialize-validation-15
 test/materialize-validation-16
 test/materialize-validation-61

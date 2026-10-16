@@ -28,12 +28,9 @@ examples/shadcn-index-02
 hand/45-form-with-inputs
 hand/89-props-named-like-object-methods
 spec/actions/009-custom-action
-spec/errors/001-unknown-component-dropped
-spec/errors/001-unknown-component-dropped#no-names
+spec/actions/009-custom-action#no-names
 spec/errors/002-unknown-function-null
 spec/errors/002-unknown-function-null#no-names
-spec/errors/012-validate-array-elements
-spec/errors/012-validate-array-elements#no-names
 spec/errors/013-validate-component-slot-data
 spec/errors/014-function-literal-args
 spec/errors/014-function-literal-args#no-names

@@ -241,6 +241,22 @@ fn serializing_element_trees_matches_the_reference() {
     report.finish();
 }
 
+/// `Object.keys(schema.$defs ?? {})` for an object: array-index keys first,
+/// in numeric order, then the rest as written.
+fn defs_keys(schema: &Value) -> Vec<String> {
+    let Some(Value::Object(defs)) = schema.get("$defs") else {
+        return Vec::new();
+    };
+    let index = |k: &str| {
+        k.parse::<u32>()
+            .ok()
+            .filter(|i| *i != u32::MAX && i.to_string() == k)
+    };
+    let mut keys: Vec<&String> = defs.keys().collect();
+    keys.sort_by_key(|k| index(k).map_or((1, 0), |i| (0, i)));
+    keys.into_iter().cloned().collect()
+}
+
 #[test]
 fn enriched_errors_match_the_reference() {
     let golden = golden("enrich");
@@ -252,7 +268,8 @@ fn enriched_errors_match_the_reference() {
         if errors.is_empty() {
             continue;
         }
-        let names: Vec<String> = case.library.component_names().map(str::to_owned).collect();
+        // The runner's names: `Object.keys(schema.$defs)`, action shapes included.
+        let names = defs_keys(&case.schema);
         let mut variants = vec![(case.name.clone(), names)];
         if errors
             .iter()
