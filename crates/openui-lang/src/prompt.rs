@@ -3,15 +3,16 @@
 //!
 //! The spec is taken as JSON, the shape the reference documents, and read the
 //! way JavaScript would: `??` defaults only replace a missing or null value,
-//! `if (x)` tests truthiness, `${x}` stringifies, and object keys come in
-//! property order. So a spec that round-trips through JSON gives the same
-//! prompt here as there.
+//! `if (x)` tests truthiness, `${x}` stringifies, and maps are read as
+//! `Object.entries` reads them: an object's keys in property order, an
+//! array's or a string's by index. So a spec that round-trips through JSON
+//! gives the same prompt here as there.
 
 use std::fmt;
 
 use serde_json::Value as Json;
 
-use crate::js::{js_string, json_entries, json_value_string, truthy};
+use crate::js::{js_string, json_entries, json_value_string, object_entries, truthy};
 
 /// Why a system prompt couldn't be generated: the reference throws in the
 /// same cases, with the same message.
@@ -69,12 +70,10 @@ fn present<'a>(value: &'a Json, key: &str) -> Option<&'a Json> {
     field(value, key).filter(|v| !v.is_null())
 }
 
-/// An object's entries in JavaScript property order; nothing for a non-object.
-fn entries(value: Option<&Json>) -> Vec<(&String, &Json)> {
-    match value.and_then(Json::as_object) {
-        Some(map) => json_entries(map),
-        None => Vec::new(),
-    }
+/// `Object.entries(value)`: an object's entries in property order, an
+/// array's or a string's by index, and nothing for anything else.
+fn entries(value: Option<&Json>) -> Vec<(String, Json)> {
+    value.map(object_entries).unwrap_or_default()
 }
 
 fn items(value: Option<&Json>) -> &[Json] {
@@ -118,8 +117,8 @@ fn json_schema_type_str(schema: &Json) -> String {
             let fields: Vec<String> = props
                 .into_iter()
                 .map(|(k, v)| {
-                    let opt = if requires(schema, k) { "" } else { "?" };
-                    format!("{k}{opt}: {}", json_schema_type_str(v))
+                    let opt = if requires(schema, &k) { "" } else { "?" };
+                    format!("{k}{opt}: {}", json_schema_type_str(&v))
                 })
                 .collect();
             format!("{{{}}}", fields.join(", "))
@@ -139,7 +138,7 @@ fn default_for_schema(schema: &Json) -> Json {
             let props = entries(field(schema, "properties"));
             let mut result = serde_json::Map::new();
             for (k, v) in props {
-                result.insert(k.clone(), default_for_schema(v));
+                result.insert(k, default_for_schema(&v));
             }
             Json::Object(result)
         }
@@ -189,47 +188,81 @@ fn syntax_rules(root: &str, supports_expressions: bool, bindings: bool) -> Strin
     lines.join("\n")
 }
 
-/// The builtin registry's prompt docs, in registry order, then the lazy `Each`.
-const BUILTIN_DOCS: [(&str, &str); 14] = [
-    ("Count(array) → number", "Returns array length"),
-    ("First(array) → element", "Returns first element of array"),
-    ("Last(array) → element", "Returns last element of array"),
-    ("Sum(numbers[]) → number", "Sum of numeric array"),
-    ("Avg(numbers[]) → number", "Average of numeric array"),
-    ("Min(numbers[]) → number", "Minimum value in array"),
-    ("Max(numbers[]) → number", "Maximum value in array"),
+/// The built-in functions' prompt lines, as the reference generates them from
+/// each function's schema (`schemaSignature`), in registry order.
+const BUILTIN_FUNCTION_LINES: [&str; 14] = [
+    "@Count(array: any[]) → number — Returns array length",
+    "@First(array: any[]) → any — Returns first element of array",
+    "@Last(array: any[]) → any — Returns last element of array",
+    "@Sum(numbers: number[]) → number — Sum of numeric array",
+    "@Avg(numbers: number[]) → number — Average of numeric array",
+    "@Min(numbers: number[]) → number — Minimum value in array",
+    "@Max(numbers: number[]) → number — Maximum value in array",
+    r#"@Sort(array: any[], field: string, direction?: "asc" | "desc") → any[] — Sort array by field. Direction: "asc" (default) or "desc""#,
+    r#"@Filter(array: any[], field: string, operator: "==" | "!=" | ">" | "<" | ">=" | "<=" | "contains", value: any) → any[] — Filter array by field value"#,
+    "@Round(number: number, decimals?: number) → number — Round to N decimal places (default 0)",
+    "@Abs(number: number) → number — Absolute value",
+    "@Floor(number: number) → number — Round down to nearest integer",
+    "@Ceil(number: number) → number — Round up to nearest integer",
+    "@Each(array: any[], varName: string, template: any) — Evaluate template for each element. varName is the loop variable — use it ONLY inside the template expression (inline). Do NOT create a separate statement for the template.",
+];
+
+/// The built-in steps' names and prompt lines, generated the same way, in
+/// registry order.
+const BUILTIN_STEP_LINES: [(&str, &str); 5] = [
     (
-        "Sort(array, field, direction?) → sorted array",
-        "Sort array by field. Direction: \"asc\" (default) or \"desc\"",
+        "Run",
+        "@Run(ref: Query | Mutation) — Execute a Mutation or re-fetch a Query (ref must be a declared Query/Mutation)",
     ),
     (
-        "Filter(array, field, operator: \"==\" | \"!=\" | \">\" | \"<\" | \">=\" | \"<=\" | \"contains\", value) → filtered array",
-        "Filter array by field value",
+        "ToAssistant",
+        r#"@ToAssistant(message: string, context?: any) — Send a message to the assistant (for conversational buttons like "Tell me more", "Explain this"). The optional context is any value (object, array, string, number) passed to the assistant as hidden data, e.g. @ToAssistant("Show details", {orderId: 42})"#,
+    ),
+    ("OpenUrl", "@OpenUrl(url: string) — Navigate to a URL"),
+    (
+        "Set",
+        "@Set(variable: $variable, value: any) — Set a $variable to a specific value",
     ),
     (
-        "Round(number, decimals?) → number",
-        "Round to N decimal places (default 0)",
-    ),
-    ("Abs(number) → number", "Absolute value"),
-    ("Floor(number) → number", "Round down to nearest integer"),
-    ("Ceil(number) → number", "Round up to nearest integer"),
-    (
-        "Each(array, varName, template)",
-        "Evaluate template for each element. varName is the loop variable — use it ONLY inside the template expression (inline). Do NOT create a separate statement for the template.",
+        "Reset",
+        r#"@Reset(variable: $variable) — Reset $variables to their declared defaults; pass several to reset each (e.g. @Reset($title, $priority) restores $title="" and $priority="medium")"#,
     ),
 ];
 
-fn builtin_functions_section() -> String {
-    let lines: Vec<String> = BUILTIN_DOCS
-        .iter()
-        .map(|(signature, description)| format!("@{signature} — {description}"))
+/// The built-in steps the prompt lists: `@Run` needs tool calls, `@Set` and
+/// `@Reset` need bindings.
+fn builtin_steps(
+    tool_calls: bool,
+    bindings: bool,
+) -> impl Iterator<Item = (&'static str, &'static str)> {
+    BUILTIN_STEP_LINES
+        .into_iter()
+        .filter(move |(name, _)| match *name {
+            "Run" => tool_calls,
+            "Set" | "Reset" => bindings,
+            _ => true,
+        })
+}
+
+/// `functionLine`: a library function's or action's line, `@` and its
+/// signature, then its description if it has one.
+fn function_line(call: &Json) -> String {
+    format!("@{}", format_signature(call))
+}
+
+fn builtin_functions_section(custom: &[String], tool_calls: bool) -> String {
+    let lines: Vec<&str> = BUILTIN_FUNCTION_LINES
+        .into_iter()
+        .chain(custom.iter().map(String::as_str))
         .collect();
+    let on = if tool_calls { "Query results" } else { "data" };
     format!(
-        "{}\n{}\n{}",
+        "{}{on}{}\n{}\n{}",
         r##"## Built-in Functions
 
 Data functions prefixed with `@` to distinguish from components. These are the ONLY functions available — do NOT invent new ones.
-Use @-prefixed built-in functions (@Count, @Sum, @Avg, @Min, @Max, @Round) on Query results — do NOT hardcode computed values.
+Use @-prefixed built-in functions (@Count, @Sum, @Avg, @Min, @Max, @Round) on "##,
+        r##". Do NOT hardcode computed values.
 "##,
         lines.join("\n"),
         r##"
@@ -238,8 +271,8 @@ Builtins compose — output of one is input to the next:
 Array pluck: `data.rows.field` extracts a field from every row → use with @Sum, @Avg, charts, tables.
 
 IMPORTANT @Each rule: The loop variable (e.g. "item") is ONLY available inside the @Each template expression. Always inline the template — do NOT extract it to a separate statement.
-CORRECT: `Col("Actions", @Each(rows, "t", Button("Edit", Action([@Set($id, t.id)]))))`
-WRONG: `myBtn = Button("Edit", Action([@Set($id, t.id)]))` then `Col("Actions", @Each(rows, "t", myBtn))` — t is undefined in myBtn."##
+CORRECT: `list = @Each(rows, "t", Comp(t.name))`
+WRONG: `item = Comp(t.name)` then `list = @Each(rows, "t", item)`, because t is undefined in item."##
     )
 }
 
@@ -276,18 +309,13 @@ result = Mutation("tool_name", {arg1: $binding, arg2: "value"})
 - Mutation results use regular identifiers: `result = Mutation(...)`, NOT `$result`
 - Show loading state: `result.status == "loading" ? TextContent("Saving...") : null`"##;
 
-fn action_section(tool_calls: bool, bindings: bool) -> String {
-    let mut steps = vec![
-        "- @ToAssistant(\"message\") — Send a message to the assistant (for conversational buttons like \"Tell me more\", \"Explain this\")",
-        "- @OpenUrl(\"https://...\") — Navigate to a URL",
-    ];
-    if bindings {
-        steps.push("- @Set($variable, value) — Set a $variable to a specific value");
-        steps.push("- @Reset($var1, $var2, ...) — Reset $variables to their declared defaults (e.g. @Reset($title, $priority) restores $title=\"\" and $priority=\"medium\")");
-    }
-    if tool_calls {
-        steps.insert(0, "- @Run(queryOrMutationRef) — Execute a Mutation or re-fetch a Query (ref must be a declared Query/Mutation)");
-    }
+const ACTION_HEADER: &str = "## Action — Button Behavior";
+
+fn action_section(tool_calls: bool, bindings: bool, custom: &[String]) -> String {
+    let steps: Vec<String> = builtin_steps(tool_calls, bindings)
+        .map(|(_, line)| format!("- {line}"))
+        .chain(custom.iter().cloned())
+        .collect();
 
     let mut examples = Vec::new();
     if tool_calls {
@@ -304,12 +332,12 @@ onSubmit = Action([@Run(result), @Run(data), @Reset($binding)])
     examples.push(
         r##"Example — simple nav:
 ```
-viewBtn = Button("View", Action([@OpenUrl("https://example.com")]))
+viewBtn = Button("View", @OpenUrl("https://example.com"))
 ```"##,
     );
 
     let mut rules = vec![
-        "- Action can be assigned to a variable or inlined: Button(\"Go\", onSubmit) and Button(\"Go\", Action([...])) both work",
+        "- An action can be assigned to a variable or inlined: Button(\"Go\", onSubmit) and Button(\"Go\", Action([...])) both work",
     ];
     if tool_calls {
         rules.push(
@@ -319,11 +347,11 @@ viewBtn = Button("View", Action([@OpenUrl("https://example.com")]))
     }
 
     format!(
-        "{}\n{}\n\n{}\n\n{}",
-        r##"## Action — Button Behavior
+        "{ACTION_HEADER}{}\n{}\n\n{}\n\n{}",
+        r##"
 
-Action([@steps...]) wires button clicks to operations. Steps are @-prefixed built-in actions. Steps execute in order.
-Buttons without an explicit Action prop automatically send their label to the assistant (equivalent to Action([@ToAssistant(label)])).
+An action wires a button click to operations. Pass one @-prefixed step bare, e.g. Button("Ask", @ToAssistant("Tell me more")). Put several steps in Action([...]), e.g. Button("Read", Action([@OpenUrl("https://example.com"), @ToAssistant("Summarize this page")])). Steps execute in order.
+Buttons without an action automatically send their label to the assistant (equivalent to @ToAssistant(label)).
 
 Available steps:"##,
         steps.join("\n"),
@@ -396,18 +424,24 @@ To remove a component, re-declare its parent without that component in the paren
 - NEVER output the entire program as a patch. Only output what actually changes
 - If you are about to output more than 10 statements, reconsider — most edits need fewer"##;
 
-fn streaming_rules(root: &str, supports_expressions: bool) -> String {
+fn streaming_rules(root: &str, supports_expressions: bool, tool_calls: bool) -> String {
     let mut steps = vec![format!(
         "1. `root = {root}(...)` — UI shell appears immediately"
     )];
     if supports_expressions {
         steps.push("2. $variable declarations — state ready for bindings".to_owned());
-        steps.push(
-            "3. Query statements — defaults resolve immediately so components render with data"
-                .to_owned(),
-        );
-        steps.push("4. Component definitions — fill in with data already available".to_owned());
-        steps.push("5. Data values — leaf content last".to_owned());
+        if tool_calls {
+            steps.push(
+                "3. Query statements — defaults resolve immediately so components render with data"
+                    .to_owned(),
+            );
+        }
+        let n = steps.len();
+        steps.push(format!(
+            "{}. Component definitions — fill in with data already available",
+            n + 1
+        ));
+        steps.push(format!("{}. Data values — leaf content last", n + 2));
     } else {
         steps.push("2. Component definitions — fill in as they stream".to_owned());
         steps.push("3. Data values — leaf content last".to_owned());
@@ -455,7 +489,7 @@ const TOOL_WORKFLOW_SECTION: &str = r##"## Data Workflow
 When tools are available, follow this workflow:
 1. FIRST: Call the most relevant tool to inspect the real data shape before generating code
 2. Use Query() for READ operations (data that should stay live) — NEVER hardcode tool results as literal arrays or objects
-3. Use Mutation() for WRITE operations (create, update, delete) — triggered by button clicks via Action([@Run(mutationRef)])
+3. Use Mutation() for WRITE operations (create, update, delete) — triggered by button clicks via @Run(mutationRef)
 4. Use the real data from step 1 as condensed Query defaults (3-5 rows) so the UI renders immediately
 5. Use @-prefixed builtins (@Count, @Filter, @Sort, @Sum) on Query results for KPIs and aggregations — the runtime evaluates these live on every refresh
 6. Hardcoded arrays are ONLY for static display data (labels, options) where no tool exists
@@ -521,8 +555,8 @@ fn render_tool_signature(tool: &Json) -> String {
             args = props
                 .into_iter()
                 .map(|(k, v)| {
-                    let opt = if requires(input, k) { "" } else { "?" };
-                    format!("{k}{opt}: {}", json_schema_type_str(v))
+                    let opt = if requires(input, &k) { "" } else { "?" };
+                    format!("{k}{opt}: {}", json_schema_type_str(&v))
                 })
                 .collect::<Vec<_>>()
                 .join(", ");
@@ -584,6 +618,18 @@ fn signature_contains(component: &Json, needle: &str) -> bool {
         .is_some_and(|s| s.contains(needle))
 }
 
+/// `RESTRICTED_SLOT`, `/[:|] @[A-Z]/`, on the stringified signature: a slot
+/// that takes only named steps, e.g. `share?: @CopyToClipboard | @OpenUrl`.
+fn restricted_slot(component: &Json) -> bool {
+    let signature = present(component, "signature")
+        .map(js_string)
+        .unwrap_or_default();
+    signature
+        .as_bytes()
+        .windows(4)
+        .any(|w| matches!(w, [b':' | b'|', b' ', b'@', b'A'..=b'Z']))
+}
+
 fn format_signature(component: &Json) -> String {
     let signature = field(component, "signature").map_or_else(|| "undefined".to_owned(), js_string);
     match field(component, "description").filter(|v| truthy(Some(v))) {
@@ -605,20 +651,21 @@ fn component_signatures(
         "Arguments marked with ? are optional. Sub-components can be inline or referenced; prefer references for better streaming.".to_owned(),
     ];
     if uses_action_expression {
-        let steps: Vec<&str> = [
-            tool_calls.then_some("@Run"),
-            Some("@ToAssistant"),
-            Some("@OpenUrl"),
-            bindings.then_some("@Set"),
-            bindings.then_some("@Reset"),
-        ]
-        .into_iter()
-        .flatten()
-        .collect();
+        let actions = entries(field(spec, "actions"));
+        let steps: Vec<String> = builtin_steps(tool_calls, bindings)
+            .map(|(name, _)| format!("@{name}"))
+            .chain(actions.iter().map(|(name, _)| format!("@{name}")))
+            .collect();
         lines.push(format!(
-            "Props typed `ActionExpression` accept an Action([@steps...]) expression. See the Action section for available steps ({}).",
+            "Props typed `ActionExpression` accept one @step, or Action([@steps...]) for several. See the Action section for available steps ({}).",
             steps.join(", ")
         ));
+        if components.iter().any(|(_, c)| restricted_slot(c)) {
+            lines.push(
+                "Props typed like `@OpenUrl | @ToAssistant` accept only the steps listed."
+                    .to_owned(),
+            );
+        }
     }
     let uses_bindings = bindings
         || components
@@ -656,8 +703,8 @@ fn component_signatures(
             let key = js_string(name);
             let Some(component) = components
                 .iter()
-                .find(|(k, _)| **k == key)
-                .map(|(_, c)| *c)
+                .find(|(k, _)| *k == key)
+                .map(|(_, c)| c)
                 .filter(|c| truthy(Some(c)))
             else {
                 continue;
@@ -671,8 +718,8 @@ fn component_signatures(
     }
     let ungrouped: Vec<&Json> = components
         .iter()
-        .filter(|(k, _)| !grouped.contains(&&Json::String((*k).clone())))
-        .map(|(_, c)| *c)
+        .filter(|(k, _)| !grouped.contains(&&Json::String(k.clone())))
+        .map(|(_, c)| c)
         .collect();
     if !ungrouped.is_empty() {
         lines.push(String::new());
@@ -697,7 +744,7 @@ pub fn generate_prompt(spec: &Json) -> String {
     let supports_expressions = tool_calls || bindings;
     let uses_action_expression = entries(field(spec, "components"))
         .iter()
-        .any(|(_, c)| signature_contains(c, "ActionExpression"));
+        .any(|(_, c)| signature_contains(c, "ActionExpression") || restricted_slot(c));
 
     let mut parts: Vec<String> = vec![
         present(spec, "preamble").map_or_else(|| PREAMBLE.to_owned(), js_string),
@@ -706,9 +753,20 @@ pub fn generate_prompt(spec: &Json) -> String {
         String::new(),
         component_signatures(spec, tool_calls, bindings, uses_action_expression),
     ];
-    if supports_expressions {
+    // Library functions get the section alone when the built-ins aren't listed.
+    let custom_functions: Vec<String> = entries(field(spec, "functions"))
+        .into_iter()
+        .map(|(_, f)| function_line(&f))
+        .collect();
+    if present(spec, "builtinFunctions").map_or(supports_expressions, |v| truthy(Some(v))) {
         parts.push(String::new());
-        parts.push(builtin_functions_section());
+        parts.push(builtin_functions_section(&custom_functions, tool_calls));
+    } else if !custom_functions.is_empty() {
+        parts.push(String::new());
+        parts.push(format!(
+            "## Built-in Functions\n\n{}",
+            custom_functions.join("\n")
+        ));
     }
     if tool_calls {
         parts.push(String::new());
@@ -716,9 +774,20 @@ pub fn generate_prompt(spec: &Json) -> String {
         parts.push(String::new());
         parts.push(MUTATION_SECTION.to_owned());
     }
+    // Library actions get the Action section alone when no component takes one.
+    let custom_actions: Vec<String> = entries(field(spec, "actions"))
+        .into_iter()
+        .map(|(_, a)| format!("- {}", function_line(&a)))
+        .collect();
     if uses_action_expression {
         parts.push(String::new());
-        parts.push(action_section(tool_calls, bindings));
+        parts.push(action_section(tool_calls, bindings, &custom_actions));
+    } else if !custom_actions.is_empty() {
+        parts.push(String::new());
+        parts.push(format!(
+            "{ACTION_HEADER}\n\nPass one step, or Action([...]) with several steps, as a button's action.\n\nAvailable steps:\n{}",
+            custom_actions.join("\n")
+        ));
     }
     if tool_calls && bindings {
         parts.push(String::new());
@@ -733,7 +802,7 @@ pub fn generate_prompt(spec: &Json) -> String {
         parts.push(render_tools_section(tools));
     }
     parts.push(String::new());
-    parts.push(streaming_rules(&root, supports_expressions));
+    parts.push(streaming_rules(&root, supports_expressions, tool_calls));
 
     let examples: Vec<&Json> = items(field(spec, "examples"))
         .iter()

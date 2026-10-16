@@ -1,0 +1,10 @@
+{
+  "library": {
+    "root": "Column",
+    "components": {
+      "Column": {"signature": "Column(children: Text[])"},
+      "Text": {"signature": "Text(value: string)"}
+    }
+  },
+  "promptOptions": {"toolCalls": true, "builtinFunctions": 0}
+}

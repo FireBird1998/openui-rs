@@ -1,0 +1,13 @@
+{
+  "library": {
+    "root": "Column",
+    "components": {
+      "Column": {"signature": "Column(children: Text[])"},
+      "Text": {"signature": "Text(value: string)"}
+    },
+    "functions": {
+      "Upper": {"signature": "Upper(text: string) → string", "description": ""}
+    }
+  },
+  "promptOptions": {"builtinFunctions": true}
+}

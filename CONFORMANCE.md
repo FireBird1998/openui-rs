@@ -5,7 +5,7 @@ The `openui-lang` crate is a port of the OpenUI Lang language layer in `@openuid
 - **Parse results:** `ParseResult::to_json()` equals `JSON.stringify` of the reference's result, for one-shot parsing and after every push of a streaming parse, with both sides cutting the text at the same code points.
 - **Everything else:** the same system prompt string, the same merged program text, the same source from `jsonToOpenUI`, the same enriched errors. Where the reference throws, the core returns an error.
 
-**Moving to lang-core 1.0.** The reference below is 1.0.1, but the core still mostly behaves as it did for 0.3.0, the last version it fully conforms to (the local tag `lang-core-0.3.0`). The move lands ticket by ticket ([map](.scratch/lang-core-1.0/map.md)), and the pending lists hold what differs until then. The divergences and quirks below were written against 0.3.0, and the move's last ticket reviews them against 1.0.
+**Moving to lang-core 1.0.** The reference below is 1.0.1, and the core now matches it on every case in the corpus: every pending list is empty. The divergences and quirks below were written against 0.3.0 (the local tag `lang-core-0.3.0`), and the move's last ticket ([map](.scratch/lang-core-1.0/map.md)) reviews them against 1.0.
 
 Behaviour that looks wrong in the reference is reproduced anyway and recorded as a [quirk](conformance/QUIRKS.md) with a draft upstream report. The core departs from the reference only where the list of [divergences](#divergences) below says so, all on inputs no real program produces.
 
@@ -18,13 +18,13 @@ Reference: `@openuidev/lang-core 1.0.1` at commit `eb20708b9cc41afced5625e99e6ce
 |---|---:|---:|---|
 | Parse results: one-shot, and after every push and at the end of 8 chunkings, 2 resync sequences and any recorded chunks | 532 | 321,368 results | 7 benchmark, 105 docs, 46 examples, 12 fuzz, 105 hand-written, 196 reference-test, 58 spec-fixture, 3 synthetic |
 | Stages on every prefix: preprocessing, tokens, statements and expression trees | 530 | 97,122 prefixes | the parse corpus, less its largest synthetic programs |
-| System prompts | 49 | 49 | |
+| System prompts | 59 | 59 | |
 | Edit-mode merges | 2,521 | 2,521 | 2,469 generated, 46 hand-written, 1 reference-test, 5 spec-fixture |
 | Element trees back to source | 504 | 504 | 1 fuzz, 62 hand-written, 410 parse corpus root, 31 reference-test |
 | Enriched errors | 337 | 337 | every parse corpus case with errors |
 
 Quirks recorded: 11.
-Not matched yet, listed in `conformance/pending/`: 43 trees back to source, 29 system prompts.
+Not matched yet, listed in `conformance/pending/`: none.
 <!-- /counts -->
 
 

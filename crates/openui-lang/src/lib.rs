@@ -95,7 +95,8 @@
 //!
 //! [`generate_system_prompt`] writes the instructions that teach a model the
 //! language for a component library, as the reference's
-//! `generateSystemPrompt` does, from the same JSON.
+//! `generateSystemPrompt` does, from the same JSON. A library's own
+//! `functions` and `actions` are taught beside the built-ins.
 //!
 //! ```
 //! let spec = serde_json::json!({"library": {

@@ -1,0 +1,14 @@
+{
+  "library": {
+    "root": "Column",
+    "components": {
+      "Column": {"signature": "Column(children: (Link | Card)[])"},
+      "Link": {"signature": "Link(href: string, onClick?: @OpenUrl)"},
+      "Card": {"signature": "Card(title: string, share?: @CopyToClipboard | @OpenUrl)"}
+    },
+    "actions": {
+      "CopyToClipboard": {"signature": "CopyToClipboard(text: string)", "description": "Copies text to the clipboard"}
+    }
+  },
+  "promptOptions": {"toolCalls": true, "bindings": true}
+}

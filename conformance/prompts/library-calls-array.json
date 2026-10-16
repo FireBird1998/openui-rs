@@ -1,0 +1,1 @@
+{"library": {"root": "A", "components": {"A": {"signature": "A()"}}, "functions": [{"signature": "F(x: any)"}], "actions": [{"signature": "G()"}]}}

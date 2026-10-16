@@ -1,0 +1,12 @@
+{
+  "library": {
+    "root": "Column",
+    "components": {
+      "Column": {"signature": "Column(children: Tag[])"},
+      "Tag": {"signature": "Tag(kind?:@Lower)"},
+      "Note": {"signature": "Note(at: @lower)"},
+      "Pipe": {"signature": "Pipe(x: a |@B)"},
+      "Mail": {"signature": "Mail(to: user@Example)"}
+    }
+  }
+}

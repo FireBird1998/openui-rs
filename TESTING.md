@@ -25,7 +25,7 @@ cargo test -p openui-lang --test conformance streaming_   # tests whose names ma
 | `conformance` | Every corpus case (532), one-shot, after every streaming push and at each stream's end, under each of the corpus's chunkings, against the reference's goldens. Also that a stream, once ended, gives what one-shot parsing gives, apart from programs where the reference itself doesn't. | Any difference from the reference in parsing or streaming |
 | `stages` | Tokens, statements and expressions, and fence and comment stripping, on every prefix of every program | Which stage of the pipeline a difference starts in |
 | `edits` | Merging (over 1,400 cases), converting element trees back to source, and error hints, against the reference | Differences in the edit-mode and error layer |
-| `prompt` | Every prompt spec in the corpus (47) against the reference's `generateSystemPrompt`. Its error messages are compared exactly; for crashes inside the JavaScript engine, only that it fails. | Differences in system prompts |
+| `prompt` | Every prompt spec in the corpus (59) against the reference's `generateSystemPrompt`. Its error messages are compared exactly; for crashes inside the JavaScript engine, only that it fails. | Differences in system prompts |
 | `robustness` | Property tests: any text, cut anywhere, through every stage and every entry point, finishes without panicking | Crashes on arbitrary input |
 | `depth` | Absurdly deep nesting stops at 256 levels with `depth_limited`, on a 512 KB thread stack | Stack overflows |
 | `size` | Programs that double with every line stop at about 8 MiB with `size_limited` | Runaway memory |

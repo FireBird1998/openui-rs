@@ -14,7 +14,6 @@ use std::fmt;
 
 use serde_json::Value as Json;
 
-use crate::builtins::is_builtin;
 use crate::js::{
     OBJECT_PROTOTYPE_KEYS, json_entries, json_number, json_string, json_value_string,
     lone_surrogate, number_to_string, object_entries, truthy,
@@ -55,7 +54,8 @@ fn thrown(message: &str) -> SerializeError {
 /// lines). Elements with a `statementId` become statements of their own, child
 /// statements first; others are written inline. Props go back to positional
 /// arguments in the library's order, with trailing nulls for optional params
-/// left off.
+/// left off. Calls in runtime expressions are written with `@` when they're
+/// built-ins or the library's functions and actions, `Action` aside.
 ///
 /// To serialize a [`crate::ParseResult`], read its JSON back:
 /// `let json = parse_json(&result.to_json())?;` then pass `&json["root"]` and
@@ -606,8 +606,9 @@ impl<'a> Serializer<'a> {
             parts.push(self.ast(Some(arg))?.join_item()?);
         }
         let name = o.get("name");
-        let builtin = matches!(name, Some(Json::String(n)) if is_builtin(n) && n != "Action");
-        let prefix = if builtin { "@" } else { "" };
+        // Built-ins and the library's functions and actions, but not Action.
+        let call = matches!(name, Some(Json::String(n)) if self.library.call(n).is_some() && n != "Action");
+        let prefix = if call { "@" } else { "" };
         Ok(Out::Text(format!(
             "{prefix}{}({})",
             field_text(name)?,
