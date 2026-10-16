@@ -44,6 +44,13 @@
 //! assert_eq!(result.meta.errors[0].message, r#"field "/value" expects string but got number"#);
 //! ```
 //!
+//! Calls with `@` (`@Count(rows)`, `@ToAssistant("Hi")`) are built-ins, or the
+//! library's own functions and actions from the schema's `functions` and
+//! `actions`. They stay expressions for the runtime to evaluate, with their
+//! args also by param name; a library call's literal args are checked like
+//! props. An `@` name that's neither is reported as `unknown-function` and is
+//! null.
+//!
 //! # Streaming
 //!
 //! A [`StreamParser`] takes the model's output chunk by chunk and returns a

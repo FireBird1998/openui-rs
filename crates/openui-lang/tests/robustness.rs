@@ -350,6 +350,7 @@ proptest! {
             ValidationErrorCode::ExcessArgs,
             ValidationErrorCode::TypeMismatch,
             ValidationErrorCode::NoRoot,
+            ValidationErrorCode::UnknownFunction,
         ]
         .into_iter()
         .map(|code| ValidationError {

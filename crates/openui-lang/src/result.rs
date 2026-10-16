@@ -89,6 +89,9 @@ pub enum ValidationErrorCode {
     /// library's root component, or a `root` that isn't a component. A
     /// warning when another statement renders in its place.
     NoRoot,
+    /// `@Name(...)` with a name that's neither a builtin nor one of the
+    /// library's functions or actions; the call is null.
+    UnknownFunction,
 }
 
 impl ValidationErrorCode {
@@ -102,6 +105,7 @@ impl ValidationErrorCode {
             ValidationErrorCode::ExcessArgs => "excess-args",
             ValidationErrorCode::TypeMismatch => "type-mismatch",
             ValidationErrorCode::NoRoot => "no-root",
+            ValidationErrorCode::UnknownFunction => "unknown-function",
         }
     }
 }

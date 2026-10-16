@@ -1,0 +1,3 @@
+root = Page([Widget(@Format("a", {upper: true}, [true, false])), Widget(@Format(null)), Widget(@Format("b", {upper: "no"}, [1, true])), Widget(@Twice(true)), Widget(@Format("e", {upper: null}))])
+q = Query("search", {x: $on ? @Twice(1) : @Twice("2"), y: $v = @Format("c", {pad: 3})}, {rows: []})
+m = Mutation("save", {z: @Format("d", {upper: false, pad: "x"}, [false])})

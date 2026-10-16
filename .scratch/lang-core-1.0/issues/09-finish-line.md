@@ -15,3 +15,9 @@
 - [ ] CONFORMANCE.md, QUIRKS.md, TESTING.md and the README describe 1.0.
 - [ ] A hunt of at least ten minutes finds nothing and reports the pin current.
 - [ ] `scripts/check.sh` and `scripts/check-viewer.sh` pass.
+
+## Comments
+
+**Candidate quirks found during the move, to review here:**
+- **A name that's both a listed component and a library action** (found in ticket 03): a bare call to it materializes as the action, because 1.0 checks the call registry before components. `hand/102` covers it.
+- **The stream end and a pending redefinition** (the change map): the spec says a final redefinition wins at stream end, but the reference skips a pending redefinition that needed closing even with `complete`. Ticket 07 checks it.

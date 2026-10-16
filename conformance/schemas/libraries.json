@@ -25,7 +25,24 @@
   "Ping": {"type": "object", "properties": {"target": {"type": "string"}}, "required": ["target"]}
  },
  "functions": {
-  "Twice": {"params": {"type": "object", "properties": {"n": {"type": "number"}}}, "returns": {"type": "number"}}
+  "Twice": {"params": {"type": "object", "properties": {"n": {"type": "number"}}}, "returns": {"type": "number"}},
+  "Format": {
+   "params": {
+    "type": "object",
+    "properties": {
+     "value": {"type": "string"},
+     "opts": {
+      "type": "object",
+      "properties": {"upper": {"type": "boolean"}, "pad": {"type": "number", "default": 2}},
+      "required": ["pad"]
+     },
+     "flags": {"type": "array", "items": {"type": "boolean"}},
+     "toString": {"type": "string"}
+    },
+    "required": ["value", "toString"]
+   },
+   "returns": {"type": "string"}
+  }
  },
  "actions": {
   "Ping": {"params": {"type": "object", "properties": {"target": {"type": "string"}}, "required": ["target"]}},

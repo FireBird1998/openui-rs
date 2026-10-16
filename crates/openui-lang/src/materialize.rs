@@ -7,9 +7,9 @@ use std::collections::HashSet;
 use std::sync::Arc;
 
 use crate::ast::{Ast, RefType};
-use crate::builtins::{is_builtin, is_lazy_builtin, is_reserved_call};
-use crate::js::{JsObject, parse_json};
-use crate::library::{Library, Param};
+use crate::builtins::{is_lazy_builtin, is_reserved_call};
+use crate::js::{JsObject, OBJECT_PROTOTYPE_KEYS, parse_json};
+use crate::library::{Call, CallKind, Library, Param};
 use crate::result::{Element, ValidationError, Value, write_value};
 use crate::table::{Cache, Entry, Output, Reach, Slot, Table};
 use crate::validation::{
@@ -184,8 +184,9 @@ fn materialize_value_at_depth(node: &Ast, ctx: &mut Ctx) -> Value {
         Ast::Comp {
             name,
             args,
+            function,
             mapped_props,
-        } => materialize_comp(name, args, mapped_props, ctx),
+        } => materialize_comp(name, args, *function, mapped_props, ctx),
         // Runtime expressions stay AST, with their insides normalized.
         _ => Value::Ast(Arc::new(materialize_expr(node, ctx, &Scope::new()))),
     }
@@ -399,14 +400,19 @@ pub(crate) fn tag_statement(value: &mut Value, name: &str) -> bool {
 fn materialize_comp(
     name: &str,
     args: &[Ast],
+    function: bool,
     mapped_props: &Option<Arc<JsObject<Ast>>>,
     ctx: &mut Ctx,
 ) -> Value {
-    if is_builtin(name) {
-        return Value::Ast(Arc::new(builtin_call(name, args, mapped_props, ctx)));
+    if function && !is_runtime_call(name, ctx) {
+        return report(ctx, name, Issue::UnknownFunction);
     }
     if is_reserved_call(name) {
         return report(ctx, name, Issue::InlineReserved);
+    }
+    if is_runtime_call(name, ctx) {
+        let call = runtime_call(name, args, function, mapped_props, ctx, &Scope::new());
+        return Value::Ast(Arc::new(call));
     }
     let library = ctx.library;
     let Some(def) = library.component(name) else {
@@ -422,20 +428,307 @@ fn materialize_comp(
     finish_component(name, &def.params, args.len(), props, drop_component, ctx)
 }
 
-/// Builtins stay AST for the runtime.
-fn builtin_call(
+/// A builtin, one of the library's functions or actions, or a reserved
+/// call: these stay AST for the runtime.
+fn is_runtime_call(name: &str, ctx: &Ctx) -> bool {
+    ctx.library.call(name).is_some() || is_reserved_call(name)
+}
+
+/// A runtime call, kept as AST: `@Each` with its iterator in scope, anything
+/// else with its args normalized and, for a function or step, by param name.
+fn runtime_call(
     name: &str,
     args: &[Ast],
+    function: bool,
+    mapped_props: &Option<Arc<JsObject<Ast>>>,
+    ctx: &mut Ctx,
+    scope: &Scope,
+) -> Ast {
+    if let Some(lazy) = materialize_lazy_builtin(name, args, function, mapped_props, ctx, scope) {
+        return lazy;
+    }
+    let start = ctx.size;
+    let args = expr_list(args, ctx, scope);
+    let args_size = ctx.size - start;
+    mapped_call(name, args, args_size, function, mapped_props, ctx)
+}
+
+/// `materializeCall`: a builtin's args by param name; a library function's
+/// or action's checked like props first. An invalid function call is null,
+/// and an invalid action an empty plan, `Action([])`. Lazy calls and reserved
+/// ones keep their args as they are.
+#[inline(never)]
+fn mapped_call(
+    name: &str,
+    args: Arc<Vec<Ast>>,
+    args_size: usize,
+    function: bool,
     mapped_props: &Option<Arc<JsObject<Ast>>>,
     ctx: &mut Ctx,
 ) -> Ast {
-    if let Some(lazy) = materialize_lazy_builtin(name, args, mapped_props, ctx, &Scope::new()) {
-        return lazy;
+    let library = ctx.library;
+    let Some(def) = library.call(name).filter(|def| !def.lazy) else {
+        return Ast::Comp {
+            name: name.to_owned(),
+            args,
+            function,
+            mapped_props: mapped_props.clone(),
+        };
+    };
+    let mapped = if def.builtin {
+        Some(name_args(&args, &def.params))
+    } else {
+        map_call_args(name, &args, def, ctx)
+    };
+    let Some(by_name) = mapped else {
+        return match def.kind {
+            CallKind::Action => Ast::Comp {
+                name: "Action".to_owned(),
+                args: Arc::new(vec![Ast::Arr(Arc::new(Vec::new()))]),
+                function: false,
+                mapped_props: None,
+            },
+            CallKind::Function => Ast::Null,
+        };
+    };
+    // `mappedProps` holds the args again: as much again in the result.
+    let keys: usize = by_name.iter().map(|(k, _)| k.len() + 4).sum();
+    let size = args_size + 16 + keys;
+    if !ctx.fits(size) {
+        return Ast::Null;
     }
+    ctx.size += size;
     Ast::Comp {
         name: name.to_owned(),
-        args: expr_list(args, ctx, &Scope::new()),
-        mapped_props: mapped_props.clone(),
+        args,
+        function,
+        mapped_props: Some(Arc::new(by_name)),
+    }
+}
+
+/// `nameArgs`: args by param name, in param order; extra args are left out.
+fn name_args(args: &[Ast], params: &[Param]) -> JsObject<Ast> {
+    let mut by_name = JsObject::new();
+    for (param, arg) in params.iter().zip(args) {
+        by_name.set(param.name.clone(), arg.clone());
+    }
+    by_name
+}
+
+/// `mapCallArgs`: a library function's or action's args by param name, each
+/// literal one checked against its param's schema as a prop is. Excess args
+/// are reported and left out; a missing or null required arg without a
+/// default, or an invalid one, makes the call invalid (`None`); an invalid
+/// optional one is left out, or replaced by its default. An action with any
+/// error at all is invalid: it never runs with a value the model didn't write.
+#[inline(never)]
+fn map_call_args(name: &str, args: &[Ast], def: &Call, ctx: &mut Ctx) -> Option<JsObject<Ast>> {
+    let params = &def.params;
+    if args.len() > params.len() {
+        let issue = Issue::ExcessArgs {
+            declared: params.len(),
+            got: args.len(),
+        };
+        ctx.push_issue(name, "", issue);
+    }
+    let mut mapped = name_args(args, params);
+    let errors_before = ctx.frame.errors.len();
+    let mut invalid = false;
+    for param in params {
+        let arg = mapped.get(&param.name);
+        // `mapped[name]` reads an inherited method for `toString` and the
+        // like, which isn't a literal: checked at runtime.
+        if arg.is_none() && OBJECT_PROTOTYPE_KEYS.contains(&param.name.as_str()) {
+            continue;
+        }
+        let literal = match arg {
+            Some(arg) => match literal_value(arg) {
+                Some(value) => Some(value),
+                None => continue, // not a literal: checked at runtime
+            },
+            None => None,
+        };
+        let path = format!("/{}", param.name);
+        let value = match literal {
+            Some(value) if !matches!(value, Value::Null) => value,
+            _ => {
+                if !param.required || param.default.is_some() {
+                    continue;
+                }
+                let signature = Some(params_signature(name, params));
+                let issue = if arg.is_some() {
+                    Issue::NullRequired { signature }
+                } else {
+                    Issue::MissingRequired { signature }
+                };
+                ctx.push_issue(name, &path, issue);
+                invalid = true;
+                continue;
+            }
+        };
+        let mut next = value.clone();
+        if validate_schema_value(&mut next, &param.schema, name, &path, ctx) {
+            match (&param.default, param.required) {
+                (Some(default), _) => next = Value::from_json(default),
+                (None, true) => {
+                    invalid = true;
+                    continue;
+                }
+                (None, false) => {
+                    mapped.remove(&param.name);
+                    continue;
+                }
+            }
+        }
+        if next != value {
+            mapped.set(param.name.clone(), to_literal_ast(&next));
+        }
+    }
+    if def.kind == CallKind::Action && ctx.frame.errors.len() > errors_before {
+        invalid = true;
+    }
+    (!invalid).then_some(mapped)
+}
+
+/// `literalValue`: the value a literal node stands for; `None` for anything
+/// that needs evaluating (a reference, a call, an operator).
+fn literal_value(node: &Ast) -> Option<Value> {
+    Some(match node {
+        Ast::Str(v) => Value::Str(v.clone()),
+        Ast::Num(n) => Value::Num(*n),
+        Ast::Bool(b) => Value::Bool(*b),
+        Ast::Null => Value::Null,
+        Ast::Arr(els) => Value::Arr(Arc::new(
+            els.iter().map(literal_value).collect::<Option<Vec<_>>>()?,
+        )),
+        Ast::Obj(entries) => {
+            let mut obj = JsObject::new();
+            for (key, value) in entries.iter() {
+                obj.set(key.clone(), literal_value(value)?);
+            }
+            Value::Obj(Arc::new(obj))
+        }
+        _ => return None,
+    })
+}
+
+/// `toLiteralAST`: a plain value as the literal node that writes it.
+fn to_literal_ast(value: &Value) -> Ast {
+    match value {
+        Value::Str(v) => Ast::Str(v.clone()),
+        Value::Num(n) => Ast::Num(*n),
+        Value::Bool(b) => Ast::Bool(*b),
+        Value::Arr(items) => Ast::Arr(Arc::new(items.iter().map(to_literal_ast).collect())),
+        Value::Obj(obj) => Ast::Obj(Arc::new(
+            obj.iter()
+                .map(|(k, v)| (k.clone(), to_literal_ast(v)))
+                .collect(),
+        )),
+        // Null; elements and AST don't come out of literals.
+        _ => Ast::Null,
+    }
+}
+
+/// `nameRawCallArgs`: in a Query's or Mutation's args, every call to a
+/// builtin, library function or step gets its args by param name, as
+/// written. A library call's literal args are checked as props are; an
+/// invalid call keeps its args by name all the same, and is null at runtime.
+/// A call is checked before the calls inside it, as `walkAST` visits them.
+pub(crate) fn name_raw_call_args(args: &[Ast], ctx: &mut Ctx, statement_id: &str) -> Vec<Ast> {
+    let outer = ctx.current_statement_id.replace(statement_id.to_owned());
+    let named = args.iter().map(|arg| name_calls(arg, ctx)).collect();
+    ctx.current_statement_id = outer;
+    named
+}
+
+fn name_calls(node: &Ast, ctx: &mut Ctx) -> Ast {
+    let all = |nodes: &[Ast], ctx: &mut Ctx| -> Arc<Vec<Ast>> {
+        Arc::new(nodes.iter().map(|n| name_calls(n, ctx)).collect())
+    };
+    let one = |node: &Ast, ctx: &mut Ctx| Arc::new(name_calls(node, ctx));
+    match node {
+        Ast::Comp {
+            name,
+            args,
+            function,
+            mapped_props,
+        } => {
+            let library = ctx.library;
+            let def = library.call(name).filter(|def| !def.lazy);
+            let checked = match def {
+                Some(def) if !def.builtin => map_call_args(name, args, def, ctx),
+                _ => None,
+            };
+            let named_args = all(args, ctx);
+            let mapped_props = match def {
+                None => mapped_props.clone(),
+                Some(def) => {
+                    let mut by_name = checked.unwrap_or_else(|| name_args(args, &def.params));
+                    // Args as written are shared with `args`, so they carry
+                    // their own calls' names too.
+                    for (i, param) in def.params.iter().enumerate().take(args.len()) {
+                        if by_name.get(&param.name) == Some(&args[i]) {
+                            by_name.set(param.name.clone(), named_args[i].clone());
+                        }
+                    }
+                    Some(Arc::new(by_name))
+                }
+            };
+            Ast::Comp {
+                name: name.clone(),
+                args: named_args,
+                function: *function,
+                mapped_props,
+            }
+        }
+        Ast::Arr(els) => Ast::Arr(all(els, ctx)),
+        Ast::Obj(entries) => Ast::Obj(Arc::new(
+            entries
+                .iter()
+                .map(|(k, v)| (k.clone(), name_calls(v, ctx)))
+                .collect(),
+        )),
+        Ast::BinOp { op, left, right } => {
+            let left = one(left, ctx);
+            Ast::BinOp {
+                op,
+                left,
+                right: one(right, ctx),
+            }
+        }
+        Ast::UnaryOp { op, operand } => Ast::UnaryOp {
+            op,
+            operand: one(operand, ctx),
+        },
+        Ast::Ternary {
+            cond,
+            then,
+            otherwise,
+        } => {
+            let cond = one(cond, ctx);
+            let then = one(then, ctx);
+            Ast::Ternary {
+                cond,
+                then,
+                otherwise: one(otherwise, ctx),
+            }
+        }
+        Ast::Member { obj, field } => Ast::Member {
+            obj: one(obj, ctx),
+            field: field.clone(),
+        },
+        Ast::Index { obj, index } => {
+            let obj = one(obj, ctx);
+            Ast::Index {
+                obj,
+                index: one(index, ctx),
+            }
+        }
+        Ast::Assign { target, value } => Ast::Assign {
+            target: target.clone(),
+            value: one(value, ctx),
+        },
+        _ => node.clone(),
     }
 }
 
@@ -535,6 +828,7 @@ fn finish_component(
 fn materialize_lazy_builtin(
     name: &str,
     args: &[Ast],
+    function: bool,
     mapped_props: &Option<Arc<JsObject<Ast>>>,
     ctx: &mut Ctx,
     scope: &Scope,
@@ -566,6 +860,7 @@ fn materialize_lazy_builtin(
     Some(Ast::Comp {
         name: name.to_owned(),
         args: Arc::new(args),
+        function,
         mapped_props: mapped_props.clone(),
     })
 }
@@ -592,8 +887,9 @@ fn materialize_expr_at_depth(node: &Ast, ctx: &mut Ctx, scope: &Scope) -> Ast {
         Ast::Comp {
             name,
             args,
+            function,
             mapped_props,
-        } => expr_comp(name, args, mapped_props, ctx, scope),
+        } => expr_comp(name, args, *function, mapped_props, ctx, scope),
         Ast::Arr(els) => Ast::Arr(expr_list(els, ctx, scope)),
         Ast::Obj(entries) => expr_object(entries, ctx, scope),
         Ast::BinOp { op, left, right } => {
@@ -671,12 +967,17 @@ fn expr_ternary(cond: &Ast, then: &Ast, otherwise: &Ast, ctx: &mut Ctx, scope: &
 fn expr_comp(
     name: &str,
     args: &[Ast],
+    function: bool,
     mapped_props: &Option<Arc<JsObject<Ast>>>,
     ctx: &mut Ctx,
     scope: &Scope,
 ) -> Ast {
-    if let Some(lazy) = materialize_lazy_builtin(name, args, mapped_props, ctx, scope) {
-        return lazy;
+    if function && !is_runtime_call(name, ctx) {
+        ctx.push_issue(name, "", Issue::UnknownFunction);
+        return Ast::Null;
+    }
+    if is_runtime_call(name, ctx) {
+        return runtime_call(name, args, function, mapped_props, ctx, scope);
     }
     let start = ctx.size;
     let args = expr_list(args, ctx, scope);
@@ -684,8 +985,8 @@ fn expr_comp(
     library_comp(name, args, args_size, mapped_props, ctx)
 }
 
-/// A call in a runtime expression: library components get `mapped_props`
-/// (args by param name); unknown ones are reported; builtins pass through.
+/// A component call in a runtime expression: a library component gets
+/// `mapped_props` (args by param name); an unknown one is reported.
 #[inline(never)]
 fn library_comp(
     name: &str,
@@ -694,14 +995,6 @@ fn library_comp(
     mapped_props: &Option<Arc<JsObject<Ast>>>,
     ctx: &mut Ctx,
 ) -> Ast {
-    let keep = |args| Ast::Comp {
-        name: name.to_owned(),
-        args,
-        mapped_props: mapped_props.clone(),
-    };
-    if is_builtin(name) || is_reserved_call(name) {
-        return keep(args);
-    }
     let library = ctx.library;
     if let Some(def) = library.component(name) {
         // `mappedProps` holds the args again: as much again in the result.
@@ -716,19 +1009,21 @@ fn library_comp(
             return Ast::Null;
         }
         ctx.size += mapped;
-        let mut by_name = JsObject::new();
-        // Clones of the args' nodes, which share everything below them.
-        for (param, arg) in def.params.iter().zip(args.iter()) {
-            by_name.set(param.name.clone(), arg.clone());
-        }
+        let by_name = name_args(&args, &def.params);
         return Ast::Comp {
             name: name.to_owned(),
             args,
+            function: false,
             mapped_props: Some(Arc::new(by_name)),
         };
     }
     ctx.unknown_component(name);
-    keep(args)
+    Ast::Comp {
+        name: name.to_owned(),
+        args,
+        function: false,
+        mapped_props: mapped_props.clone(),
+    }
 }
 
 /// `Object.values(props).some(containsDynamicValue)` for an object shaped like
@@ -763,8 +1058,13 @@ fn contains_dynamic_value(value: &Value) -> bool {
             Some((_, None)) => {
                 matches!(value, Value::Obj(o) if o.get("props").is_some_and(values_contain_dynamic))
             }
+            // A `{steps: [...]}` literal is evaluated too, so data can't pose as
+            // custom action steps.
             None => match value {
-                Value::Obj(o) => o.values().any(contains_dynamic_value),
+                Value::Obj(o) => {
+                    matches!(o.get("steps"), Some(Value::Arr(_)))
+                        || o.values().any(contains_dynamic_value)
+                }
                 _ => false,
             },
         },

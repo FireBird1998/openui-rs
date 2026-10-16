@@ -181,14 +181,15 @@ impl<'a> ExprParser<'a> {
             Token::Type(name) => {
                 // Builtins need their `@` prefix to be called; only Action is exempt.
                 if self.next_is(&Token::LParen) && (!is_builtin(name) || name == "Action") {
-                    return self.comp(name);
+                    return self.comp(name, false);
                 }
                 self.pos += 1;
                 Ast::Ref(name.clone())
             }
             Token::BuiltinCall(name) => {
                 if self.next_is(&Token::LParen) {
-                    return self.comp(name);
+                    // `@Name(...)` for a library function or action, or an unknown name.
+                    return self.comp(name, !is_builtin(name));
                 }
                 self.pos += 1;
                 Ast::Ref(name.clone())
@@ -254,13 +255,14 @@ impl<'a> ExprParser<'a> {
     }
 
     /// `Name(arg, arg, ...)`, with the cursor on `Name`.
-    fn comp(&mut self, name: &str) -> Ast {
+    fn comp(&mut self, name: &str, function: bool) -> Ast {
         self.pos += 1;
         self.eat(&Token::LParen);
         let args = Arc::new(self.list_until(&Token::RParen));
         Ast::Comp {
             name: name.to_owned(),
             args,
+            function,
             mapped_props: None,
         }
     }

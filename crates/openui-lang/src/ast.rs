@@ -12,13 +12,17 @@ use crate::js::{JsObject, write_json_number, write_json_string};
 #[derive(Clone, Debug, PartialEq)]
 pub enum Ast {
     /// A component or builtin call: `Header("Hello")`, `@Count(items)`.
-    /// Materializing a library component inside a runtime expression adds
-    /// `mapped_props`, its args by param name.
+    /// Materializing adds `mapped_props`, its args by param name, to a library
+    /// component inside a runtime expression and to a call of a function or
+    /// action step.
     Comp {
         /// The callee, without `@`.
         name: String,
         /// Positional arguments.
         args: Arc<Vec<Ast>>,
+        /// Written `@Name(...)` with a name that isn't a builtin: a library
+        /// function or action, or an unknown one. The JSON's `fn`.
+        function: bool,
         /// The same args by param name; only after materializing.
         mapped_props: Option<Arc<JsObject<Ast>>>,
     },
@@ -173,6 +177,7 @@ pub(crate) fn write_ast(out: &mut String, node: &Ast) {
         Ast::Comp {
             name,
             args,
+            function,
             mapped_props,
         } => {
             out.push_str("Comp\"");
@@ -180,6 +185,10 @@ pub(crate) fn write_ast(out: &mut String, node: &Ast) {
             write_json_string(out, name);
             key(out, "args");
             write_list(out, args);
+            if *function {
+                key(out, "fn");
+                out.push_str("true");
+            }
             if let Some(props) = mapped_props {
                 key(out, "mappedProps");
                 out.push('{');

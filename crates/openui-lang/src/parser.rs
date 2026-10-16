@@ -12,7 +12,7 @@ use crate::expr::parse_expression_with_limit;
 use crate::js::JsObject;
 use crate::lexer::tokenize;
 use crate::library::Library;
-use crate::materialize::{Ctx, Frame, materialize_value, tag_statement};
+use crate::materialize::{Ctx, Frame, materialize_value, name_raw_call_args, tag_statement};
 use crate::preprocess::preprocess;
 use crate::result::{Meta, MutationStatement, ParseResult, QueryStatement, Value};
 use crate::statements::{IdKind, RawStatement, auto_close, split};
@@ -194,13 +194,17 @@ pub fn parse(input: &str, library: &Library, root_name: Option<&str>) -> ParseRe
     result
 }
 
-/// A call to a library component: not a builtin, nor a reserved call. The
+/// A call to a library component: not an `@` function, a builtin, nor a reserved call. The
 /// reference tells reserved calls apart with `name in { Query, Mutation }`, so
 /// names every object inherits (`toString`, `constructor`, ...) don't count
 /// either.
 fn is_component_call(node: &Ast) -> Option<&str> {
     match node {
-        Ast::Comp { name, .. } if !is_builtin(name) && !is_reserved_call(name) => Some(name),
+        Ast::Comp {
+            name,
+            function: false,
+            ..
+        } if !is_builtin(name) && !is_reserved_call(name) => Some(name),
         _ => None,
     }
 }
@@ -367,7 +371,7 @@ fn extract_statements(
                 state.set(id.to_owned(), value);
             }
             Statement::Query { deps, .. } => {
-                let args = stmt.call_args();
+                let args = name_raw_call_args(stmt.call_args(), ctx, id);
                 queries.push(QueryStatement {
                     statement_id: id.to_owned(),
                     tool: args.first().cloned(),
@@ -379,7 +383,7 @@ fn extract_statements(
                 });
             }
             Statement::Mutation { .. } => {
-                let args = stmt.call_args();
+                let args = name_raw_call_args(stmt.call_args(), ctx, id);
                 mutations.push(MutationStatement {
                     statement_id: id.to_owned(),
                     tool: args.first().cloned(),

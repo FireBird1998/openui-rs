@@ -16,15 +16,15 @@ Reference: `@openuidev/lang-core 1.0.1` at commit `eb20708b9cc41afced5625e99e6ce
 
 | Compared with the reference | Cases | Checks | Cases by source |
 |---|---:|---:|---|
-| Parse results: one-shot, and after every push and at the end of 8 chunkings, 2 resync sequences and any recorded chunks | 530 | 319,970 results | 7 benchmark, 105 docs, 46 examples, 12 fuzz, 103 hand-written, 196 reference-test, 58 spec-fixture, 3 synthetic |
-| Stages on every prefix: preprocessing, tokens, statements and expression trees | 528 | 96,643 prefixes | the parse corpus, less its largest synthetic programs |
+| Parse results: one-shot, and after every push and at the end of 8 chunkings, 2 resync sequences and any recorded chunks | 531 | 321,051 results | 7 benchmark, 105 docs, 46 examples, 12 fuzz, 104 hand-written, 196 reference-test, 58 spec-fixture, 3 synthetic |
+| Stages on every prefix: preprocessing, tokens, statements and expression trees | 529 | 97,014 prefixes | the parse corpus, less its largest synthetic programs |
 | System prompts | 49 | 49 | |
 | Edit-mode merges | 2,521 | 2,521 | 2,469 generated, 46 hand-written, 1 reference-test, 5 spec-fixture |
-| Element trees back to source | 502 | 502 | 1 fuzz, 62 hand-written, 408 parse corpus root, 31 reference-test |
-| Enriched errors | 335 | 335 | every parse corpus case with errors |
+| Element trees back to source | 503 | 503 | 1 fuzz, 62 hand-written, 409 parse corpus root, 31 reference-test |
+| Enriched errors | 336 | 336 | every parse corpus case with errors |
 
 Quirks recorded: 10.
-Not matched yet, listed in `conformance/pending/`: 171 parse results, 63 statements and expression trees on every prefix, 42 trees back to source, 129 enriched errors, 29 system prompts.
+Not matched yet, listed in `conformance/pending/`: 114 parse results, 43 trees back to source, 19 enriched errors, 29 system prompts.
 <!-- /counts -->
 
 

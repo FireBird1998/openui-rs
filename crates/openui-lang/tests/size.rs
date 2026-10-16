@@ -40,6 +40,14 @@ fn doubling(n: usize) -> Vec<(&'static str, String)> {
             ),
         ),
         (
+            "builtin call nested in a runtime expression",
+            format!(
+                "root = Text($x ? {}\"a\"{} : null)",
+                "@Count(".repeat(n),
+                ")".repeat(n)
+            ),
+        ),
+        (
             "data referenced twice per level",
             chain(
                 "s0 = {a: 1, b: \"x\"}",

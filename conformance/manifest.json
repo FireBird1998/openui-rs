@@ -642,6 +642,12 @@
    "schema": "libraries",
    "file": "cases/hand/102-library-shapes-and-calls.oui",
    "source": "hand-written"
+  },
+  {
+   "name": "hand/103-library-function-args",
+   "schema": "libraries",
+   "file": "cases/hand/103-library-function-args.oui",
+   "source": "hand-written"
   }
  ]
 }

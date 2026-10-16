@@ -2,6 +2,7 @@
 # that matches again, or a name that isn't a case, fails the test. Rewrite
 # every list to the cases failing now: UPDATE_PENDING=1 cargo test -p openui-lang
 corpus/hand/102-library-shapes-and-calls
+corpus/hand/103-library-function-args
 corpus/spec/actions/009-custom-action
 corpus/spec/errors/014-function-literal-args
 corpus/spec/evaluation/010-function-registered
