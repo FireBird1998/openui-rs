@@ -1,0 +1,6 @@
+# cargo-mutants (testing tickets 04 and 05; scripts/mutants.sh runs it).
+#
+# Mutants the suite can't catch because they change nothing a caller can
+# observe, each with the reason. Reruns skip them. A mutant goes here only
+# once it's been shown to change nothing; anything else gets a test.
+exclude_re = []

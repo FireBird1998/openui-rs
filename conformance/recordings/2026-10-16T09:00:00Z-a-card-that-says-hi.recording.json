@@ -1,0 +1,27 @@
+{
+  "chunks": [
+    {
+      "t": 1.2,
+      "text": "root = Card([TextCon"
+    },
+    {
+      "t": 1.25,
+      "text": "tent(\"hi 😀 e"
+    },
+    {
+      "t": 1.31,
+      "text": "́\")])"
+    }
+  ],
+  "createdAt": "2026-10-16T09:00:00Z",
+  "effort": "low",
+  "format": "openui-recording",
+  "inputTokens": 2146,
+  "library": "react-ui",
+  "model": "claude-haiku-5-5",
+  "outputTokens": 30,
+  "request": "A card that says hi",
+  "servedBy": "claude-haiku-5-5",
+  "stopReason": "end_turn",
+  "version": 1
+}

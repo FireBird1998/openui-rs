@@ -1,0 +1,3 @@
+root = Card([greeting, note])
+greeting = TextContent("hi 😀 é")
+note = Callout("info", "Heads up", "Rain on Sunday")

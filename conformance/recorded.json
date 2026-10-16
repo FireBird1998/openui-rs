@@ -1,0 +1,36 @@
+{
+ "schemas": {},
+ "cases": [
+  {
+   "name": "recorded/2026-10-16T09-00-00Z-a-card-that-says-hi",
+   "schema": "react-ui",
+   "file": "cases/recorded/2026-10-16T09-00-00Z-a-card-that-says-hi.oui",
+   "source": "recorded",
+   "recorded": [
+    20,
+    12,
+    5
+   ],
+   "origin": "conformance/recordings/2026-10-16T09:00:00Z-a-card-that-says-hi.recording.json",
+   "request": "A card that says hi",
+   "model": "claude-haiku-5-5",
+   "servedBy": "claude-haiku-5-5",
+   "effort": "low",
+   "createdAt": "2026-10-16T09:00:00Z",
+   "stopReason": "end_turn"
+  },
+  {
+   "name": "recorded/2026-10-16T09-01-00Z-add-a-note-about-rain-on-sunday-merged",
+   "schema": "react-ui",
+   "file": "cases/recorded/2026-10-16T09-01-00Z-add-a-note-about-rain-on-sunday-merged.oui",
+   "source": "recorded",
+   "origin": "conformance/recordings/2026-10-16T09:01:00Z-add-a-note-about-rain-on-sunday.recording.json",
+   "request": "Add a note about rain on Sunday",
+   "model": "claude-haiku-5-5",
+   "servedBy": "claude-haiku-5-5",
+   "effort": "low",
+   "createdAt": "2026-10-16T09:01:00Z",
+   "stopReason": "end_turn"
+  }
+ ]
+}

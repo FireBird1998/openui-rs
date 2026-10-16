@@ -1,0 +1,130 @@
+# The invariants on both parsers (testing tickets 08 and 09), started by hand:
+#
+#   gh workflow run invariants.yml -f seed=82 -f count=1000000
+#
+# The programs are split into ranges, one job each (`--from`, `--count`), so
+# the run is the same million programs as one long run of that seed. Each job
+# keeps its findings folder as an artifact; the last job adds up the
+# summaries and lists every finding in the run's summary.
+name: Invariants
+
+on:
+  workflow_dispatch:
+    inputs:
+      seed:
+        description: Seed
+        type: number
+        default: 82
+      count:
+        description: Programs
+        type: number
+        default: 1000000
+      shards:
+        description: Jobs to split the programs across
+        type: number
+        default: 4
+      rule:
+        description: One rule only (empty for all)
+        type: string
+        default: ""
+
+permissions:
+  contents: read
+
+# bash -eo pipefail: a step piped through tee still fails when its command does.
+defaults:
+  run:
+    shell: bash
+
+env:
+  RUST: 1.97.1
+
+jobs:
+  plan:
+    runs-on: ubuntu-24.04
+    outputs:
+      shards: ${{ steps.plan.outputs.shards }}
+    steps:
+      - id: plan
+        env:
+          SHARDS: ${{ inputs.shards }}
+        run: echo "shards=$(seq 0 $((SHARDS - 1)) | jq -sc .)" >> "$GITHUB_OUTPUT"
+
+  run:
+    needs: plan
+    runs-on: ubuntu-24.04
+    timeout-minutes: 355
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: ${{ fromJSON(needs.plan.outputs.shards) }}
+    steps:
+      - uses: actions/checkout@v7
+      - name: Rust
+        run: |
+          rustup toolchain install "$RUST" --profile minimal
+          rustup default "$RUST"
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.4.0
+      - name: The reference's dependencies
+        working-directory: reference
+        run: bun install --frozen-lockfile
+      - uses: Swatinem/rust-cache@v2
+      - run: cargo build --release -p openui-lang --example fuzz
+      - name: Invariants
+        env:
+          SEED: ${{ inputs.seed }}
+          COUNT: ${{ inputs.count }}
+          SHARDS: ${{ inputs.shards }}
+          SHARD: ${{ matrix.shard }}
+          RULE: ${{ inputs.rule }}
+        run: |
+          per=$(( (COUNT + SHARDS - 1) / SHARDS ))
+          from=$(( SHARD * per ))
+          count=$(( COUNT - from < per ? COUNT - from : per ))
+          mkdir -p findings
+          # 5 h 40 min: the job limit is 6 hours, and a run that's out of time
+          # still writes its summary.
+          target/release/examples/fuzz --invariants --seed "$SEED" --from "$from" --count "$count" \
+            --no-save --seconds 20400 --findings findings ${RULE:+--rule "$RULE"} | tee findings/log.txt
+      - if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: invariants-${{ matrix.shard }}
+          path: findings/
+
+  summary:
+    needs: run
+    if: always()
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/download-artifact@v8
+        with:
+          pattern: invariants-*
+          path: shards
+      - name: Add up the shards
+        run: |
+          python3 -I - shards >> "$GITHUB_STEP_SUMMARY" <<'PY'
+          import glob, json, sys
+          totals, finds = {}, []
+          shards = sorted(glob.glob(f"{sys.argv[1]}/invariants-*"))
+          for shard in shards:
+              for path in glob.glob(f"{shard}/summary-invariants.json"):
+                  for rule, t in json.load(open(path)).items():
+                      total = totals.setdefault(rule, {"inputs": 0, "holds": 0, "skipped": 0, "explained": 0, "quirk?": 0, "mismatch": 0, "exceptions": {}})
+                      for key in ("inputs", "holds", "skipped", "explained", "quirk?", "mismatch"):
+                          total[key] += t[key]
+                      for why, n in t["exceptions"].items():
+                          total["exceptions"][why] = total["exceptions"].get(why, 0) + n
+              for path in glob.glob(f"{shard}/findings.jsonl"):
+                  finds += [json.loads(line) for line in open(path) if line.strip()]
+          print(f"### Invariants ({len(shards)} shards)\n")
+          print("| Rule | Programs | Hold | Don't apply | Explained | Broken on both | Mismatches |")
+          print("|---|---:|---:|---:|---:|---:|---:|")
+          for rule, t in sorted(totals.items()):
+              print(f"| {rule} | {t['inputs']} | {t['holds']} | {t['skipped']} | {t['explained']} | {t['quirk?'] - t['explained']} | {t['mismatch']} |")
+          print(f"\n{len(finds)} findings")
+          for f in finds:
+              print(f"- {f['kind']}, {f['rule']}, program {f['index']}: `{f['replay']}`")
+          PY

@@ -46,6 +46,8 @@ It's inconsistent, too: choosing the entry statement compares against `"Query"` 
 
 **Why:** `isReservedCall(name)` is `name in RESERVED_CALLS`, and `in` also sees what every object inherits: `toString`, `constructor`, `valueOf`, `hasOwnProperty`, `__proto__` and seven more.
 
+**Exception to the round-trip invariant** (and merging a program's own source): a tree with a call named after an `Object.prototype` member.
+
 **Draft upstream report:**
 
 > **`isReservedCall` matches `toString`, `constructor` and other `Object.prototype` names.** `isReservedCall` in `packages/lang-core/src/parser/builtins.ts` uses `name in RESERVED_CALLS`, which is true for inherited names. So `@toString(x)` is reported as an inline Query/Mutation, and a statement `a = @toString(x)` turns every reference to `a` into a query `RuntimeRef` with no matching entry in `queryStatements`. Use `Object.hasOwn(RESERVED_CALLS, name)` or a `Set`. Repro: `parse("a = @toString(1)\nroot = Root([Text(a)])", lib)`.
@@ -72,6 +74,8 @@ a = "two"
 
 **Why:** one-shot uses the number of distinct ids (`stmtMap.size`), while the stream parser increments `completedCount` for every completed statement, redefinitions included. The tree and everything else agree, so this only matters to anything that reads `statementCount`.
 
+**Exception to the chunking and stream-end invariants:** a program that defines a name twice, when the results differ in `statementCount`.
+
 **Draft upstream report:**
 
 > **`meta.statementCount` differs between `parse()` and the stream parser when an id is redefined.** For the same final text, `parse()` counts distinct statement ids and `createStreamParser` counts every statement it completed, redefinitions included (`completedCount`), even once the stream has ended (`getResult(true)`). The 1.0 specification says a stream's end must equal a batch parse (language.md, section 4). Either count distinct ids in the stream parser (`completedStmtMap.size`, plus new pending ids), or say in the spec that the streaming count includes redefinitions.
@@ -89,6 +93,8 @@ root = Text("x")
 **Reference behaviour:** `parse()` reports `incomplete: true`, and `root` (and every element) has `partial: true`, even though the text is complete. Streaming the same text ends with `incomplete: false` and `partial: false`.
 
 **Why:** `autoClose` only pops a bracket of the matching type, so `(` closed by `]` stays open and the whole program is treated as cut off mid-stream. The stream parser's statement scanner counts any closing bracket as closing the last one, so it sees the first line as a finished statement. A UI that shows partial elements as loading would show this one loading forever when parsed one-shot.
+
+**Exception to the chunking and stream-end invariants:** a program with a mismatched closing bracket.
 
 **Draft upstream report:**
 
@@ -154,6 +160,8 @@ a = Title("3")
 
 **Why:** the merge keeps a `Map` of id to text and a separate `order` array, and pushes every existing id onto `order`, so a re-defined id is listed twice and both listings look up the latest text.
 
+**Exception to the merge invariants:** an existing program that defines a name twice.
+
 **Draft upstream report:**
 
 > **`mergeStatements` duplicates a statement that's defined twice in the existing program.** Every existing statement's id is pushed onto `order` (`merge.ts`), so an id defined twice is listed twice and printed twice with its last text. Push an id only the first time it's seen, as the patch loop already does. Repro: `mergeStatements('root = Stack([a])\na = Title("1")\na = Title("3")', 'b = Title("B")')`.
@@ -205,6 +213,8 @@ a = "two
 
 **Why:** `currentResult` skips a pending statement whose id is already completed when the pending text needed closing (`if (completedStmtMap.has(s.id) && wasIncomplete) continue;`), and `complete` changes nothing there: it only decides how a trailing `$name` is read. In 0.3 this was the upstream #1127 fix working as intended ("existing IDs are replaced only when the pending expression no longer needs automatic closing"). The 1.0 specification now says otherwise: "At stream end a final redefinition wins" (language.md, section 2.4), and the end of the stream "finalizes the pending tail: implicit closing applies, and the resulting statements become completed, including a redefinition of an earlier name" (section 4, rule 7).
 
+**Exception to the chunking and stream-end invariants:** a program that defines a name twice, when the results differ otherwise.
+
 **Draft upstream report:**
 
 > **Ending a stream keeps an earlier definition instead of a final redefinition that needed closing, unlike `parse()` and the 1.0 spec.** With `complete`, `createStreamParser` still skips a pending statement whose id is already completed if the pending text needed implicit closing, so the stream's end keeps the earlier definition while `parse()` of the same text uses the last one. language.md, section 2.4 ("At stream end a final redefinition wins") and section 4, rule 7 say the end of the stream finalizes the pending tail. Apply the `wasIncomplete` guard only while `complete` isn't set. Repro: push `root = Text(a)\na = "one"\na = "two` and call `getResult(true)`: `a` is `"one"`, while `parse()` gives `"two"`.
@@ -225,6 +235,8 @@ With `Twice` a library function, `Badge` both a component and a library action.
 **Reference behaviour:** `Twice(2)` is the function call, as `@Twice(2)` is, only without the `fn` flag. `Badge("x")` is the action, not a `Badge` element. A bare built-in is different: `Count(2)` reads as the reference `Count`, and its argument is dropped with an `excess-args` error.
 
 **Why:** materializing a call checks `isRuntimeCall(name)`, which looks the name up in the whole call registry (built-ins, the library's functions and actions) whether or not the call was written with `@`, and before it looks for a component. The expression parser already turns bare built-in names into references, so only library calls get through. The 1.0 specification says otherwise: "Built-ins and custom functions need the `@`. [...] Only `Action([...])` works with or without `@`" (language.md, section 1.5), and an action is "a `@` call" (section 6.3). It forbids a library function named like a component (section 3.6), but not an action, so the `Badge` case is a valid library whose component can't be used.
+
+**Exception to the round-trip invariant** (and merging a program's own source): a bare library call, which comes back with `@` and the `fn` flag.
 
 **Draft upstream report:**
 
@@ -275,4 +287,143 @@ With `Format(value: string, ...)` a library function whose `value` is required, 
 **Draft upstream report:**
 
 > **A required prop filled by a call that parsing already made null isn't reported, while a literal `null` there is.** When a library call's literal arguments fail their check, the call becomes `{k: "Null"}` in the tree. A component whose required prop is that expression is kept, with no `null-required`, so `parse('root = Page(@Format(5))', lib)` keeps `Page` (with `type-mismatch` for the argument), while `parse('root = Page(null)', lib)` drops it. Converting the first tree back to source gives the second program. Either treat a `{k: "Null"}` prop as null in the required-prop check, or keep it as an expression on purpose and say so in language.md, section 8.2.
+
+## 15. Merging puts what it appends after an unfinished statement, which takes it in
+
+- **Found:** 2026-10-16, by the merge invariants (testing ticket 09). Reference commit `eb20708` (1.0.1).
+- **Pinned by:** merge case `hand/into-an-unfinished-statement`.
+- **Status:** a candidate for the maintainer to judge.
+
+```
+existing:  root = Root([a, b])
+           a = Text("one")
+           b = Text("cut off
+patch:     c = Text("new")
+           root = Root([a, b, c])
+```
+
+**Reference behaviour:** the merge gives `root = Root([a, b, c])\na = Text("one")\nb = Text("cut off\nc = Text("new")`. Parsed, `b`'s string runs to the end and takes `c` in: `b` is `"cut off\nc = Text("`, and there's no `c`. A reply cut off mid-string (a token limit, a dropped connection) followed by an edit loses the patch's new statements. Merging the same patch again changes the program again, so merging isn't idempotent either.
+
+**Why:** `mergeStatements` copies each statement's text as it is and joins them with newlines. A statement that ends inside a string or a bracket, in the existing program or in the patch, reads on into whatever comes after it. language.md, section 7 says the merge reads both texts with sections 1.2 and 1.4, which is how it finds the statements, but not what to write for one that isn't finished.
+
+**Exception to the merge invariants:** a program or patch with an unclosed string or bracket, or a statement line whose quotes or brackets don't balance.
+
+**Draft upstream report:**
+
+> **Merging a patch into a program whose last statement is unfinished loses the patch's new statements.** `mergeStatements` writes each statement's text as it was and appends new ones after it, so after `b = Text("cut off`, an appended `c = Text("new")` sits inside `b`'s unclosed string: `mergeStatements('root = Root([a, b])\na = Text("one")\nb = Text("cut off', 'c = Text("new")\nroot = Root([a, b, c])')` parses with no `c`. Close an unfinished statement as parsing would (`autoClose`) before writing it, or drop it, so what follows stays separate.
+
+## 16. Merging into an empty program returns the patch as it is
+
+- **Found:** 2026-10-16, by the merge invariants (testing ticket 09). Reference commit `eb20708` (1.0.1).
+- **Pinned by:** merge case `hand/into-an-empty-program`.
+- **Status:** a candidate for the maintainer to judge.
+
+```
+existing:  (empty)
+patch:     root = Root([a])
+           a = Text("A")
+           b = Text("B")
+           b = null
+           a = Text("A2")
+```
+
+**Reference behaviour:** the merge is the patch, line for line: `b = null` stays a statement instead of deleting `b`, `a` is defined twice, and `b`, which `root` can't reach, isn't removed. Merging the same patch into a program that has statements gives `root = Root([a])\na = Text("A2")`. So merging isn't idempotent: the second merge cleans up what the first left. An existing program the merge finds no statements in (prose, a comment, or quirk 7's apostrophe) takes the same path.
+
+**Why:** `mergeStatements` returns early, `if (!existingStmts.length) return patchStmts.map((stmt) => stmt.raw).join("\n")`, before the deletions, the duplicates and the reachability pass. language.md, section 7 asks for all three: "`name = null` in a patch deletes the statement", "The merged program has each name once", and statements `root` can't reach are removed.
+
+**Exception to the merge invariants:** an existing program, or a first merge's result, with no statements.
+
+**Draft upstream report:**
+
+> **`mergeStatements` into an empty program skips deletions, duplicates and the reachability pass.** With no existing statements it returns the patch's statements as they are, so `mergeStatements("", 'root = Root([a])\na = Text("A")\nb = Text("B")\nb = null\na = Text("A2")')` keeps `b = null`, both `a`s and the unreachable `b`, while the same patch into any program with a statement gives `root = Root([a])\na = Text("A2")`. language.md, section 7 asks for each of those. Drop the early return and let the empty case go through the same steps.
+
+## 17. While a later statement is still open, finished statements are treated as partial
+
+- **Found:** 2026-10-16, by the finished-statements invariant (testing ticket 09). Reference commit `eb20708` (1.0.1).
+- **Pinned by:** `hand/109-finished-while-a-later-one-is-open`, at every streaming step.
+- **Status:** a candidate for the maintainer to judge.
+
+```
+root = Root([a])
+a = Text("done", "loud")
+note = "still being written"
+```
+
+With `Text`'s `tone` an enum of `"info"` and `"warn"`, defaulting to `"info"`.
+
+**Reference behaviour:** once the second line is complete, `a` is `partial: false` with `tone: "info"`, the invalid `"loud"` replaced by its default. When `note = "still` arrives, `a` turns `partial: true` with `tone: "loud"`, and back again when the string closes. A finished component flickers between its corrected and its raw props while anything after it is still open.
+
+**Why:** a result is parsed with one `partial` flag (`wasIncomplete`, the pending tail needed closing), and materializing uses it for every statement: each element is marked with it, and validation lets invalid values through while it's set. The element type's own documentation says `partial` is "True when the parser hasn't received all tokens for this node yet", and language.md, section 4, rule 1 says "Completed statements are parsed once and never change."
+
+**Exception to the finished-statements invariant:** a change between two results whose `meta.incomplete` differs.
+
+**Draft upstream report:**
+
+> **A finished component turns `partial`, with its raw props, whenever a later statement is still being written.** In `createStreamParser`, the `partial` context of a result comes from whether the pending tail needed closing, and materializing applies it to every statement: completed ones are marked `partial: true` and validated leniently too. Streaming `root = Root([a])\na = Text("done", "loud")\n`, then `note = "still`, flips `a` from `{tone: "info"}` (the default, since `"loud"` isn't allowed) to `partial: true` with `{tone: "loud"}`, and back when the string closes. `ElementNode.partial` is documented as "the parser hasn't received all tokens for this node yet", and language.md, section 4 says completed statements never change. Materialize completed statements with `partial: false` whatever the tail is.
+
+## 18. An empty program parses as incomplete
+
+- **Found:** 2026-10-16, by the fences invariant (testing ticket 09). Reference commit `eb20708` (1.0.1).
+- **Pinned by:** `hand/110-only-a-comment`.
+- **Status:** a candidate for the maintainer to judge.
+
+```
+// nothing here
+```
+
+**Reference behaviour:** `parse()` gives `meta.incomplete: true` for an empty program, or one that's empty once comments and fences are stripped. A reply that's only prose with no statements, `"Sorry, that's not something I can show."`, can be incomplete too (here, through quirk 1's apostrophe), while one without an apostrophe is complete. Wrapped in a fence with prose around it, the empty program is complete.
+
+**Why:** `parse` returns `emptyResult()` when the preprocessed text is empty, and `emptyResult`'s `incomplete` defaults to `true`, the right answer for a stream that hasn't started. A one-shot parse has all of its text.
+
+**Exception to the fences invariant:** a program that's empty once preprocessed. **And to the chunking and stream-end invariants:** a program without statements whose results differ only in `meta.incomplete` (one-shot and the stream's end can disagree there too: `((#'\n])\n()` is incomplete one-shot and complete once streamed).
+
+**Draft upstream report:**
+
+> **`parse("")` says the result is incomplete.** For an empty input (or one that's empty once comments and fences are stripped), `parse` returns `emptyResult()`, whose `incomplete` defaults to `true`, as it should for a stream that hasn't started. A host that shows a loading state until `meta.incomplete` is false keeps showing it for an empty reply. Pass `false` from `parse`: `return emptyResult(false)`.
+
+## 19. A stray character before a ternary's `?` ends a streamed statement but not a parsed one
+
+- **Found:** 2026-10-16, by the stream-end invariant (testing ticket 09). Reference commit `eb20708` (1.0.1).
+- **Pinned by:** `hand/111-stray-character-before-a-ternary`, at every streaming step and the stream's end.
+- **Status:** a candidate for the maintainer to judge, on input no model is likely to write.
+
+```
+root = Root([a])
+a = Text("x")
+`? "y" : "z"
+```
+
+**Reference behaviour:** `parse()` reads the third line as `a`'s ternary continuing (`a = Text("x") ? "y" : "z"`): the lexer skips the backtick, so the line's first token is `?`. A stream ends `a` at the newline instead, since the next line's first character isn't `?`, and the third line is then no statement. The stream's end and the one-shot parse differ. A backslash does the same.
+
+**Why:** the batch split looks at the next line's first token (language.md, section 1.4: "the next line's first non-whitespace token is `?`"), and `scanNewCompleted` in the stream parser at its first non-whitespace character. Section 1.4 says the two "MUST agree on these boundaries byte for byte".
+
+**Exception to the chunking and stream-end invariants:** a line whose first token is `?` but whose first character isn't.
+
+**Draft upstream report:**
+
+> **The stream parser and `parse()` split statements differently before a `?` that follows a skipped character.** `scanNewCompleted` checks whether the next line's first non-whitespace *character* is `?`, while the batch split checks its first *token*, and the lexer skips characters such as a backtick or a backslash. So for `root = Root([a])\na = Text("x")\n\`? "y" : "z"`, `parse()` continues `a`'s ternary and a stream ends `a` at the newline. language.md, section 1.4 says the batch parser, the streaming parser and the merge must agree on these boundaries byte for byte. Look for the next line's first token in the stream parser too.
+
+## 20. Merging reads comments as code
+
+- **Found:** 2026-10-16, by the merge invariants (testing ticket 09). Reference commit `eb20708` (1.0.1).
+- **Pinned by:** merge case `hand/a-quote-in-a-comment`.
+- **Status:** a candidate for the maintainer to judge.
+
+```
+existing:  root = Root([a, b])
+           a = Text("A")
+           b = Text("B")
+patch:     // say "hi
+           a = Text("A2")
+```
+
+**Reference behaviour:** the merge returns the program unchanged, so `a` stays `"A"`: the quote in the comment opens a string in the merge's view, which takes in `a = Text("A2")`, and the patch has no statements left. A bracket in a comment (`// keep b (it is fine`) joins lines the same way, and a comment line is copied into the merged program. A model that writes `// update the "Save" button` above its patch loses the patch.
+
+**Why:** `mergeStatements` splits both texts with `splitStatementSource`, which follows brackets and quotes but doesn't skip `//` or `#` comments. Parsing strips comments first (language.md, section 1.2, "Comment stripping"), and section 7 says the merge "MUST read both texts with sections 1.2 and 1.4".
+
+**Exception to the merge invariants:** a program or patch with a comment marker (`//` or `#`) in it.
+
+**Draft upstream report:**
+
+> **A quote or bracket in a comment makes `mergeStatements` lose statements.** `splitStatementSource` tracks brackets and quotes but not comments, so a patch `// say "hi\na = Text("A2")` has no statements as the merge reads it (the quote opens a string that runs to the end), and `mergeStatements('root = Root([a, b])\na = Text("A")\nb = Text("B")', patch)` returns the program unchanged. language.md, section 7 says the merge reads both texts with section 1.2, which strips comments first. Strip comments (as `preprocess` does) before splitting, or skip them while scanning.
 

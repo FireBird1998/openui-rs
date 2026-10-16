@@ -1,0 +1,80 @@
+# Coverage-guided fuzzing (testing tickets 06 and 07), started by hand:
+#
+#   gh workflow run fuzz-coverage.yml -f seconds=20400
+#
+# One job a target, all in parallel, each running scripts/fuzz-coverage.sh
+# for the given time. A job may run 6 hours, so a full night (8 hours) is two
+# runs: each target's corpus is kept in the Actions cache, and the next run
+# starts from where the last one stopped. A crash, a panic or an input over
+# the time limit fails the target's job; its input and log are the
+# `fuzz-<target>` artifact.
+name: Coverage-guided fuzzing
+
+on:
+  workflow_dispatch:
+    inputs:
+      seconds:
+        description: Seconds each target runs (at most about 20400, to fit the 6-hour job limit)
+        type: number
+        default: 20400
+      targets:
+        description: Targets, space-separated
+        type: string
+        default: parse stream merge serialize json
+
+permissions:
+  contents: read
+
+# bash -eo pipefail: a step piped through tee still fails when its command does.
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  plan:
+    runs-on: ubuntu-24.04
+    outputs:
+      targets: ${{ steps.plan.outputs.targets }}
+    steps:
+      - id: plan
+        env:
+          TARGETS: ${{ inputs.targets }}
+        run: echo "targets=$(printf '%s\n' $TARGETS | jq -Rsc 'split("\n") | map(select(. != ""))')" >> "$GITHUB_OUTPUT"
+
+  fuzz:
+    needs: plan
+    runs-on: ubuntu-24.04
+    timeout-minutes: 358
+    strategy:
+      fail-fast: false
+      matrix:
+        target: ${{ fromJSON(needs.plan.outputs.targets) }}
+    steps:
+      - uses: actions/checkout@v7
+      - name: Rust nightly and cargo-fuzz
+        run: |
+          rustup toolchain install nightly --profile minimal
+          cargo install cargo-fuzz --locked --version 0.13.2
+      - name: The corpus so far
+        uses: actions/cache/restore@v6
+        with:
+          path: fuzz/corpus/${{ matrix.target }}
+          key: fuzz-corpus-${{ matrix.target }}-${{ github.run_id }}
+          restore-keys: fuzz-corpus-${{ matrix.target }}-
+      - name: Fuzz
+        env:
+          SECONDS_EACH: ${{ inputs.seconds }}
+          TARGET: ${{ matrix.target }}
+        run: scripts/fuzz-coverage.sh --seconds "$SECONDS_EACH" "$TARGET" | tee -a "$GITHUB_STEP_SUMMARY"
+      - if: always()
+        name: Keep the corpus
+        uses: actions/cache/save@v6
+        with:
+          path: fuzz/corpus/${{ matrix.target }}
+          key: fuzz-corpus-${{ matrix.target }}-${{ github.run_id }}
+      - if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: fuzz-${{ matrix.target }}
+          path: fuzz/artifacts/${{ matrix.target }}/
+          if-no-files-found: ignore

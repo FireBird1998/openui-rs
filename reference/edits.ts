@@ -29,7 +29,7 @@ const read = (rel: string) => readFileSync(join(CONFORMANCE, rel), "utf8");
 const manifest = (rel: string) => (existsSync(join(CONFORMANCE, rel)) ? JSON.parse(read(rel)) : { cases: [] });
 
 // The parse corpus, and every schema by name (a path, or inline).
-const corpusFiles = ["manifest.json", "imported.json", "fuzz.json", "synthetic.json"];
+const corpusFiles = ["manifest.json", "imported.json", "fuzz.json", "synthetic.json", "recorded.json"];
 const schemaSources: Record<string, unknown> = {};
 const corpus: { name: string; schema: string; file: string }[] = [];
 for (const f of corpusFiles) {
@@ -55,7 +55,7 @@ function attempt(f: () => string): Outcome {
 
 // ── merge ────────────────────────────────────────────────────────────────────
 type MergeCase = { name: string; existing?: string; existingCase?: string; patch?: string; patchCase?: string; rootId?: string };
-const mergeCases: MergeCase[] = ["imported/merge.json", "merge.json", "merge-generated.json", "merge-fuzz.json"].flatMap(
+const mergeCases: MergeCase[] = ["imported/merge.json", "merge.json", "merge-generated.json", "merge-fuzz.json", "merge-recorded.json"].flatMap(
   (f) => manifest(f).cases,
 );
 const runMerge = (c: MergeCase) =>

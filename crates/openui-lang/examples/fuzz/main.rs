@@ -1,7 +1,7 @@
 //! Differential fuzzing against the reference parser.
 //!
 //!   cargo run --release --example fuzz -- [--seed N] [--count N] [--from K] [--only K]
-//!       [--seconds S] [--findings DIR] [--slow-ms N] [--no-save] [--edits | --invariants]
+//!       [--seconds S] [--findings DIR] [--slow-ms N] [--no-save] [--edits | --invariants [--rule R]]
 //!
 //! Each program is generated from a component library's grammar or mangled
 //! from a corpus case, then parsed by the core and by the reference (a
@@ -23,6 +23,7 @@ mod generate;
 mod invariants;
 mod reference;
 mod rng;
+mod rules;
 
 use std::collections::{BTreeMap, HashMap};
 use std::panic::{AssertUnwindSafe, catch_unwind};
@@ -94,19 +95,41 @@ fn root_is_an_ast_shaped_object(program: &str) -> bool {
     root_is_an_object(program) && WITH_CHILDREN.iter().any(|kind| program.contains(kind))
 }
 
-/// One statement whose value is an object literal, or a chain of references
-/// to one (`root = c`, `c = {...}`).
+/// Whether the root's value is an object literal: the `root` statement's (or
+/// the first statement's), or through a chain of references to one (`root =
+/// c`, `c = {...}`). Other lines don't count: they may be prose, or taken in
+/// by the object if it's unclosed.
 fn root_is_an_object(program: &str) -> bool {
-    fn value(line: &str) -> Option<&str> {
-        line.split_once('=').map(|(_, v)| v.trim())
-    }
-    let is_ref = |v: &str| !v.is_empty() && v.chars().all(|c| c.is_alphanumeric() || c == '_');
-    let lines: Vec<&str> = program.trim().lines().collect();
-    let Some((last, chain)) = lines.split_last() else {
-        return false;
+    let statements: Vec<(&str, &str)> = program
+        .lines()
+        .filter_map(|line| {
+            let (name, value) = line.split_once('=')?;
+            let name = name.trim();
+            let named = !name.is_empty()
+                && name
+                    .chars()
+                    .all(|c| c.is_alphanumeric() || c == '_' || c == '$');
+            named.then(|| (name, value.trim()))
+        })
+        .collect();
+    let value_of = |name: &str| {
+        statements
+            .iter()
+            .rev()
+            .find(|(n, _)| *n == name)
+            .map(|(_, v)| *v)
     };
-    chain.iter().all(|line| value(line).is_some_and(is_ref))
-        && value(last).is_some_and(|v| v.starts_with('{'))
+    let mut value = value_of("root").or_else(|| statements.first().map(|(_, v)| *v));
+    for _ in 0..10 {
+        match value {
+            Some(v) if v.starts_with('{') => return true,
+            Some(v) if !v.is_empty() && v.chars().all(|c| c.is_alphanumeric() || c == '_') => {
+                value = value_of(v);
+            }
+            _ => return false,
+        }
+    }
+    false
 }
 pub(crate) const MAX_SAVES: usize = 25;
 
@@ -131,7 +154,12 @@ fn repo_root() -> PathBuf {
 fn load_corpus(conformance: &Path) -> Corpus {
     let mut libraries = BTreeMap::new();
     let mut cases = Vec::new();
-    for file in ["manifest.json", "imported.json", "fuzz.json"] {
+    for file in [
+        "manifest.json",
+        "imported.json",
+        "fuzz.json",
+        "recorded.json",
+    ] {
         let path = conformance.join(file);
         let Ok(text) = std::fs::read_to_string(&path) else {
             continue;
@@ -413,7 +441,13 @@ fn main() {
     let mut reference = Reference::start(&root.join("reference"));
 
     if args.iter().any(|a| a == "--invariants") {
-        invariants::run_all(seed, batches, &corpus, &mut reference);
+        invariants::run_all(
+            seed,
+            batches,
+            &corpus,
+            &mut reference,
+            value("--rule").map(String::as_str),
+        );
         return;
     }
     if args.iter().any(|a| a == "--edits") {

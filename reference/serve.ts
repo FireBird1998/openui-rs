@@ -9,8 +9,9 @@
 //   → {"text": "..."}   or   {"threw": "<error>"}
 //   {"op": "parse", "lib": "<schema name>", "input": "...", "root"?: "..."}
 //   → {"json": "<the one-shot result's JSON>"}   or   {"threw": "<error>"}
-//   {"op": "stream", "lib": "<schema name>", "input": "...", "root"?: "...", "sizes": [n, ...]}
+//   {"op": "stream", "lib": "<schema name>", "input": "...", "root"?: "...", "sizes": [n, ...], "steps"?: false}
 //   → {"steps": ["<JSON>", ...], "end": "<JSON>"}   or   {"threw": "<error>"}
+//   ("steps": false leaves the pushes' results out, for rules that need only the end)
 //
 // The last two give full results, for the invariants (see the fuzzer's
 // engine.rs); the first gives fingerprints, which differential fuzzing needs.
@@ -86,7 +87,7 @@ type EditRequest =
   | { op: "merge"; existing: string; patch: string; rootId?: string }
   | { op: "serialize"; lib: string; element: unknown; state?: unknown }
   | { op: "parse"; lib: string; input: string; root?: string }
-  | { op: "stream"; lib: string; input: string; root?: string; sizes: number[] };
+  | { op: "stream"; lib: string; input: string; root?: string; sizes: number[]; steps?: boolean };
 
 function answerEdit(req: EditRequest) {
   try {
@@ -97,7 +98,8 @@ function answerEdit(req: EditRequest) {
       const steps: string[] = [];
       let pos = 0;
       for (const size of req.sizes) {
-        steps.push(JSON.stringify(parser.push(cps.slice(pos, pos + size).join(""))));
+        const result = parser.push(cps.slice(pos, pos + size).join(""));
+        if (req.steps !== false) steps.push(JSON.stringify(result));
         pos += size;
       }
       return { steps, end: JSON.stringify(parser.getResult(true)) };

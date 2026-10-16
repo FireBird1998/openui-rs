@@ -71,9 +71,10 @@ const hand = readManifest("manifest.json");
 const imported = readManifest("imported.json");
 const fuzz = readManifest("fuzz.json");
 const synthetic = readManifest("synthetic.json");
+const recorded = readManifest("recorded.json");
 const chunkings = hand.chunkings ?? [];
-const schemaFiles = { ...hand.schemas, ...imported.schemas, ...fuzz.schemas, ...synthetic.schemas };
-const cases = [...hand.cases, ...imported.cases, ...fuzz.cases, ...synthetic.cases];
+const schemaFiles = { ...hand.schemas, ...imported.schemas, ...fuzz.schemas, ...synthetic.schemas, ...recorded.schemas };
+const cases = [...hand.cases, ...imported.cases, ...fuzz.cases, ...synthetic.cases, ...recorded.cases];
 
 const libraries = new Map<string, unknown>();
 function library(name: string) {

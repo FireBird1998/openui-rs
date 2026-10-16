@@ -77,26 +77,7 @@ fn merge_edit(rng: &mut Rng, corpus: &Corpus) -> Edit {
         _ => base,
     };
     let known = ids(&existing);
-    let patch = match rng.below(8) {
-        0 | 1 => some_lines(rng, &existing),
-        2 => Generator::new(rng, &corpus.libraries[&lib]).program(),
-        3 => mutate(rng, &existing),
-        4 if !known.is_empty() => {
-            let id = rng.pick(&known).clone();
-            format!("{id} = null\n{}", some_lines(rng, &existing))
-        }
-        5 => format!(
-            "Here's the change:\n\n```openui-lang\n{}\n```\n\nAnything else?",
-            some_lines(rng, &existing)
-        ),
-        6 => {
-            let lines = some_lines(rng, &existing);
-            mutate(rng, &lines)
-        }
-        _ => rng
-            .pick(&["", "  \n", "Nothing to change.", "// none"])
-            .to_string(),
-    };
+    let patch = patch_for(rng, corpus, &lib, &existing);
     let root = rng.chance(15).then(|| {
         if !known.is_empty() && rng.chance(70) {
             rng.pick(&known).clone()
@@ -108,6 +89,33 @@ fn merge_edit(rng: &mut Rng, corpus: &Corpus) -> Edit {
         existing,
         patch,
         root,
+    }
+}
+
+/// A patch for `existing`: some of its lines (edited now and then), a new
+/// program, its text mangled, a deletion, the lines in a fence with prose, or
+/// next to nothing.
+pub(crate) fn patch_for(rng: &mut Rng, corpus: &Corpus, lib: &str, existing: &str) -> String {
+    let known = ids(existing);
+    match rng.below(8) {
+        0 | 1 => some_lines(rng, existing),
+        2 => Generator::new(rng, &corpus.libraries[lib]).program(),
+        3 => mutate(rng, existing),
+        4 if !known.is_empty() => {
+            let id = rng.pick(&known).clone();
+            format!("{id} = null\n{}", some_lines(rng, existing))
+        }
+        5 => format!(
+            "Here's the change:\n\n```openui-lang\n{}\n```\n\nAnything else?",
+            some_lines(rng, existing)
+        ),
+        6 => {
+            let lines = some_lines(rng, existing);
+            mutate(rng, &lines)
+        }
+        _ => rng
+            .pick(&["", "  \n", "Nothing to change.", "// none"])
+            .to_string(),
     }
 }
 

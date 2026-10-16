@@ -16,14 +16,14 @@ Reference: `@openuidev/lang-core 1.0.1` at commit `eb20708b9cc41afced5625e99e6ce
 
 | Compared with the reference | Cases | Checks | Cases by source |
 |---|---:|---:|---|
-| Parse results: one-shot, and after every push and at the end of 8 chunkings, 2 resync sequences and any recorded chunks | 537 | 323,211 results | 7 benchmark, 105 docs, 46 examples, 13 fuzz, 109 hand-written, 196 reference-test, 58 spec-fixture, 3 synthetic |
-| Stages on every prefix: preprocessing, tokens, statements and expression trees | 535 | 97,723 prefixes | the parse corpus, less its largest synthetic programs |
+| Parse results: one-shot, and after every push and at the end of 8 chunkings, 2 resync sequences and any recorded chunks | 542 | 324,156 results | 7 benchmark, 105 docs, 46 examples, 13 fuzz, 112 hand-written, 2 recorded, 196 reference-test, 58 spec-fixture, 3 synthetic |
+| Stages on every prefix: preprocessing, tokens, statements and expression trees | 540 | 98,006 prefixes | the parse corpus, less its largest synthetic programs |
 | System prompts | 61 | 61 | |
-| Edit-mode merges | 2,521 | 2,521 | 2,469 generated, 46 hand-written, 1 reference-test, 5 spec-fixture |
-| Element trees back to source | 508 | 508 | 1 fuzz, 62 hand-written, 414 parse corpus root, 31 reference-test |
-| Enriched errors | 341 | 341 | every parse corpus case with errors |
+| Edit-mode merges | 2,525 | 2,525 | 2,469 generated, 49 hand-written, 1 recorded, 1 reference-test, 5 spec-fixture |
+| Element trees back to source | 512 | 512 | 1 fuzz, 62 hand-written, 418 parse corpus root, 31 reference-test |
+| Enriched errors | 342 | 342 | every parse corpus case with errors |
 
-Quirks recorded: 14.
+Quirks recorded: 20.
 Not matched yet, listed in `conformance/pending/`: none.
 <!-- /counts -->
 
@@ -33,10 +33,10 @@ Cases the core doesn't match yet would be listed in `conformance/pending/`, one 
 `cargo test` runs all of it without Bun or the network: the reference's outputs are committed as goldens in `conformance/golden/` (full JSON for one-shot results, prompts and edits; an FNV-1a fingerprint per streaming step and per prefix). On a mismatch, the test prints the case, the step and its chunk sizes, and, if Bun is installed, a diff against the reference's JSON.
 
 - **Chunkings:** sizes 1, 2, 3, 4, 7 and 16 code points, two seeded random ones (1 to 16), and two resync sequences that call `set` with growing, rewound and edited text.
-- **Sources:** hand-written edge cases; every program the reference's own test suites parse, merge and serialize, captured live while they run; the 7 benchmark samples (real GPT output); programs from the upstream docs and examples; fuzz-found cases; synthetic programs up to 30 KB; generated edit patches over every corpus program with a root; and every corpus parse result serialized back to source.
+- **Sources:** hand-written edge cases; streams recorded from Claude in the viewer, with their chunks as they arrived; every program the reference's own test suites parse, merge and serialize, captured live while they run; the 7 benchmark samples (real GPT output); programs from the upstream docs and examples; fuzz-found cases; synthetic programs up to 30 KB; generated edit patches over every corpus program with a root; and every corpus parse result serialized back to source.
 - **Stages:** preprocessing, tokens, statements and expression trees are compared on every prefix of every case, so a mismatch points at the stage that diverged.
 - **Invariants:** rules a result should keep, checked on the core and the reference alike over a million generated programs; a rule both parsers break is a candidate quirk (TESTING.md, "Invariants").
-- **Rust-only checks:** no input panics or overflows a 512 KB stack (fixed-seed property tests and the deepest shapes); a streamed program ends where its one-shot parse does, except where the reference itself doesn't (quirks 4, 5 and 11); streaming cost stays linear (`tests/streaming_cost.rs`); results that double at every level are cut at the size cap (`tests/size.rs`).
+- **Rust-only checks:** no input panics or overflows a 512 KB stack (fixed-seed property tests and the deepest shapes); a streamed program ends where its one-shot parse does, except where the reference itself doesn't (quirks 4, 5, 11 and 19); streaming cost stays linear (`tests/streaming_cost.rs`); results that double at every level are cut at the size cap (`tests/size.rs`).
 
 ## Differential fuzzing
 
@@ -81,6 +81,12 @@ In the reference, reproduced and recorded in [QUIRKS.md](conformance/QUIRKS.md),
 12. A library function or action called without `@` is still called, even over a component of that name (new in 1.0).
 13. Serializing drops the parentheses an operand needs: `!($a && $b)` becomes `!$a && $b` (found by the round-trip invariant).
 14. A call parsing made null doesn't count as a null prop, so a required prop isn't checked (a candidate, found by the round-trip invariant).
+15. Merging puts what it appends after an unfinished statement, which takes it in (a candidate, found by the merge invariants).
+16. Merging into an empty program returns the patch as it is, deletions and duplicates included (a candidate, found by the merge invariants).
+17. While a later statement is still open, finished statements are treated as partial: marked so, and their props checked leniently (a candidate, found by the finished-statements invariant).
+18. An empty program parses as incomplete (a candidate, found by the fences invariant).
+19. A stray character before a ternary's `?` ends a streamed statement but not a parsed one (a candidate, found by the stream-end invariant).
+20. Merging reads comments as code: a quote in a `//` comment can make a patch lose its statements (a candidate, found by the merge invariants).
 
 Also reported, though not a quirk because the core doesn't reproduce it: a few lines that each reference the line before twice make the reference's `parse` take exponential time and memory (ticket 14).
 

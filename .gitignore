@@ -13,3 +13,6 @@ viewer/.swiftpm/xcode/*
 
 # Hunts write their reports and findings here (scripts/hunt.sh).
 findings/
+# Coverage-guided fuzzing's working corpus and its finds (scripts/fuzz-coverage.sh).
+fuzz/corpus/
+fuzz/artifacts/

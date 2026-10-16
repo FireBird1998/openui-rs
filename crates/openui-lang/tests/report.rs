@@ -77,6 +77,7 @@ fn block() -> String {
         "imported.json",
         "fuzz.json",
         "synthetic.json",
+        "recorded.json",
     ]);
     let (mut steps, mut prefixes, mut staged, mut roots) = (0, 0, 0, 0);
     for c in &corpus {
@@ -113,6 +114,7 @@ fn block() -> String {
         "merge.json",
         "merge-generated.json",
         "merge-fuzz.json",
+        "merge-recorded.json",
     ]);
     let serializes = cases(&[
         "imported/serialize.json",

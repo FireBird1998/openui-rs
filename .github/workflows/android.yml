@@ -1,0 +1,54 @@
+# The suite on Android (testing ticket 12), started by hand:
+#
+#   gh workflow run android.yml
+#
+# GitHub's Linux machines run an x86_64 emulator (with KVM), so this builds
+# for x86_64. The 64-bit ARM run is scripts/android-test.sh on the Mac's
+# emulator or a phone.
+name: Android
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+# bash -eo pipefail: a step piped through tee still fails when its command does.
+defaults:
+  run:
+    shell: bash
+
+env:
+  RUST: 1.97.1
+
+jobs:
+  emulator:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v7
+      - name: KVM for the emulator
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+      - name: Rust and cargo-ndk
+        run: |
+          rustup toolchain install "$RUST" --profile minimal -t x86_64-linux-android
+          rustup default "$RUST"
+          cargo install cargo-ndk --locked --version 4.1.2
+      - uses: Swatinem/rust-cache@v2
+      - uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 36
+          arch: x86_64
+          target: google_apis
+          disable-animations: true
+          emulator-options: -no-window -gpu swiftshader_indirect -no-snapshot -noaudio -no-boot-anim
+          script: scripts/android-test.sh --abi x86_64
+      - if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: android-logs
+          path: target/android-*.log
+          if-no-files-found: ignore

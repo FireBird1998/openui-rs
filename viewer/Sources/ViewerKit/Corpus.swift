@@ -29,7 +29,7 @@ public struct Corpus: Sendable {
             .appendingPathComponent("conformance")
     }
 
-    public static let manifests = ["manifest.json", "imported.json", "fuzz.json", "synthetic.json"]
+    public static let manifests = ["manifest.json", "imported.json", "fuzz.json", "synthetic.json", "recorded.json"]
 
     public static func load(from directory: URL = defaultDirectory) throws -> Corpus {
         var corpus = Corpus(directory: directory, cases: [], schemas: [:])
@@ -88,6 +88,7 @@ public struct CorpusSection: Identifiable, Sendable {
         case "benchmark": "Upstream benchmarks"
         case "fuzz": "Found by fuzzing"
         case "synthetic": "Synthetic"
+        case "recorded": "Recorded streams"
         default: source.isEmpty ? "Other" : source
         }
     }

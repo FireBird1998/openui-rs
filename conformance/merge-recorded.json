@@ -1,0 +1,17 @@
+{
+ "cases": [
+  {
+   "name": "recorded/2026-10-16T09-01-00Z-add-a-note-about-rain-on-sunday",
+   "existing": "root = Card([TextContent(\"hi 😀 é\")])",
+   "patch": "root = Card([greeting, note])\ngreeting = TextContent(\"hi 😀 é\")\nnote = Callout(\"info\", \"Heads up\", \"Rain on Sunday\")",
+   "source": "recorded",
+   "origin": "conformance/recordings/2026-10-16T09:01:00Z-add-a-note-about-rain-on-sunday.recording.json",
+   "request": "Add a note about rain on Sunday",
+   "model": "claude-haiku-5-5",
+   "servedBy": "claude-haiku-5-5",
+   "effort": "low",
+   "createdAt": "2026-10-16T09:01:00Z",
+   "stopReason": "end_turn"
+  }
+ ]
+}

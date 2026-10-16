@@ -152,6 +152,7 @@ fn merging_patches_matches_the_reference() {
         "merge.json",
         "merge-generated.json",
         "merge-fuzz.json",
+        "merge-recorded.json",
     ]
     .iter()
     .flat_map(|f| cases(f))

@@ -292,6 +292,24 @@
    "patch": "items = [3]",
    "note": "the iterator name is a Ref like any other, so `it` stays",
    "source": "hand-written"
+  },
+  {
+   "name": "hand/into-an-unfinished-statement",
+   "existing": "root = Root([a, b])\na = Text(\"one\")\nb = Text(\"cut off",
+   "patch": "c = Text(\"new\")\nroot = Root([a, b, c])",
+   "source": "hand-written"
+  },
+  {
+   "name": "hand/into-an-empty-program",
+   "existing": "",
+   "patch": "root = Root([a])\na = Text(\"A\")\nb = Text(\"B\")\nb = null\na = Text(\"A2\")",
+   "source": "hand-written"
+  },
+  {
+   "name": "hand/a-quote-in-a-comment",
+   "existing": "root = Root([a, b])\na = Text(\"A\")\nb = Text(\"B\")",
+   "patch": "// say \"hi\na = Text(\"A2\")",
+   "source": "hand-written"
   }
  ]
 }

@@ -184,7 +184,8 @@ pub struct Corpus {
     pub cases: Vec<Case>,
 }
 
-/// The hand-written manifest, plus the imported, fuzz-found and synthetic cases.
+/// The hand-written manifest, plus the imported, fuzz-found, synthetic and
+/// recorded cases.
 pub fn load_corpus() -> Corpus {
     let conformance = conformance_dir();
     let manifests: Vec<Value> = [
@@ -192,6 +193,7 @@ pub fn load_corpus() -> Corpus {
         "imported.json",
         "fuzz.json",
         "synthetic.json",
+        "recorded.json",
     ]
     .iter()
     .map(|f| conformance.join(f))

@@ -2,8 +2,9 @@
 # A hunt: searches for findings for a set time, then leaves a report and the
 # shrunk cases in findings/<date>-seed<seed>/, which git ignores. It runs
 # differential fuzzing with a fresh seed, for parsing and then for edits, then
-# the invariants on both parsers, with the upstream check
-# (scripts/upstream-check.sh) alongside. A hunt never commits
+# the invariants on both parsers, with coverage-guided fuzzing
+# (scripts/fuzz-coverage.sh, when cargo-fuzz is installed) and the upstream
+# check (scripts/upstream-check.sh) alongside. A hunt never commits
 # and never changes tracked files: it compares them before and after, and fails
 # if they changed. Fuzzing needs Bun; the first hunt also builds the fuzzer.
 #
@@ -83,6 +84,16 @@ else
   echo "skipped: --no-upstream" > "$hunt/status-upstream"
 fi
 
+# Coverage-guided fuzzing runs alongside for the whole hunt, each target on a
+# core of its own, and leaves what it finds in the hunt's folder.
+coverage_pid=""
+if cargo +nightly fuzz --version > /dev/null 2>&1; then
+  scripts/fuzz-coverage.sh --seconds $((deadline - $(date +%s) - 30)) --findings "$hunt" > "$hunt/coverage.log" 2>&1 &
+  coverage_pid=$!
+else
+  echo "skipped: cargo-fuzz isn't installed" > "$hunt/status-coverage"
+fi
+
 skip=""
 if ! command -v bun >/dev/null; then
   skip="Bun isn't installed"
@@ -125,6 +136,10 @@ fi
 if [[ "$upstream" == 1 ]]; then
   echo "Finishing the upstream check"
   watch "$upstream_pid" "$deadline" "$hunt/status-upstream" 2>/dev/null
+fi
+if [[ -n "$coverage_pid" ]]; then
+  echo "Finishing coverage-guided fuzzing"
+  watch "$coverage_pid" "$deadline" "$hunt/status-coverage" 2>/dev/null
 fi
 set +m
 

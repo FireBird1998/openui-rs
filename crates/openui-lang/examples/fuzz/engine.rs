@@ -21,16 +21,16 @@ pub struct ParseCall<'a> {
     pub root: Option<&'a str>,
 }
 
-#[allow(dead_code)] // The rules that stream and merge come next (testing ticket 09).
 pub struct StreamCall<'a> {
     pub lib: &'a str,
     pub input: &'a str,
     pub root: Option<&'a str>,
     /// Push sizes in code points.
     pub sizes: &'a [usize],
+    /// Whether to keep each push's result, or only the end's.
+    pub steps: bool,
 }
 
-#[allow(dead_code)] // The rules that stream and merge come next (testing ticket 09).
 pub struct MergeCall<'a> {
     pub existing: &'a str,
     pub patch: &'a str,
@@ -46,7 +46,6 @@ pub struct SerializeCall<'a> {
 }
 
 /// A stream's result after each push, and once it has ended.
-#[allow(dead_code)] // The rules that stream and merge come next (testing ticket 09).
 pub struct Streamed {
     pub steps: Vec<String>,
     pub end: String,
@@ -56,9 +55,7 @@ pub type Answer<T> = Result<T, String>;
 
 pub trait Engine {
     fn parse(&mut self, calls: &[ParseCall]) -> Vec<Answer<String>>;
-    #[allow(dead_code)] // The rules that stream and merge come next (testing ticket 09).
     fn stream(&mut self, calls: &[StreamCall]) -> Vec<Answer<Streamed>>;
-    #[allow(dead_code)] // The rules that stream and merge come next (testing ticket 09).
     fn merge(&mut self, calls: &[MergeCall]) -> Vec<Answer<String>>;
     fn serialize(&mut self, calls: &[SerializeCall]) -> Vec<Answer<String>>;
 }
@@ -88,15 +85,15 @@ impl Engine for Core<'_> {
                     let mut parser = StreamParser::new(self.libraries[c.lib].clone(), c.root);
                     let chars: Vec<char> = c.input.chars().collect();
                     let mut at = 0;
-                    let steps = c
-                        .sizes
-                        .iter()
-                        .map(|&n| {
-                            let chunk: String = chars[at..at + n].iter().collect();
-                            at += n;
-                            parser.push(&chunk).to_json()
-                        })
-                        .collect();
+                    let mut steps = Vec::new();
+                    for &n in c.sizes {
+                        let chunk: String = chars[at..at + n].iter().collect();
+                        at += n;
+                        let result = parser.push(&chunk);
+                        if c.steps {
+                            steps.push(result.to_json());
+                        }
+                    }
                     Streamed {
                         steps,
                         end: parser.finish().to_json(),
@@ -171,7 +168,7 @@ impl Engine for Ref<'_> {
         let lines = calls
             .iter()
             .map(|c| {
-                json!({"op": "stream", "lib": c.lib, "input": c.input, "root": c.root, "sizes": c.sizes})
+                json!({"op": "stream", "lib": c.lib, "input": c.input, "root": c.root, "sizes": c.sizes, "steps": c.steps})
                     .to_string()
             })
             .collect();

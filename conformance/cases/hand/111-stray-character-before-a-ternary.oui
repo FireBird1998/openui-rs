@@ -1,0 +1,3 @@
+root = Root([a])
+a = Text("x")
+`? "y" : "z"

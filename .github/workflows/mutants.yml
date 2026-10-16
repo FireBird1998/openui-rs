@@ -1,0 +1,111 @@
+# Mutation testing (testing tickets 04 and 05), started by hand:
+#
+#   gh workflow run mutants.yml -f group=parsing -f shards=16
+#
+# Each job runs scripts/mutants.sh on its shard of the group's mutants. The
+# last job puts the shards' lists together (caught, missed, timeout,
+# unviable), shows the counts and the missed mutants in the run's summary,
+# and keeps the lists as the `mutants` artifact.
+name: Mutation testing
+
+on:
+  workflow_dispatch:
+    inputs:
+      group:
+        description: Which modules (scripts/mutants.sh)
+        type: choice
+        options: [parsing, rest, both]
+        default: parsing
+      shards:
+        description: Jobs to split each group's mutants across
+        type: number
+        default: 16
+
+permissions:
+  contents: read
+
+# bash -eo pipefail: a step piped through tee still fails when its command does.
+defaults:
+  run:
+    shell: bash
+
+env:
+  RUST: 1.97.1
+
+jobs:
+  plan:
+    runs-on: ubuntu-24.04
+    outputs:
+      groups: ${{ steps.plan.outputs.groups }}
+      shards: ${{ steps.plan.outputs.shards }}
+    steps:
+      - id: plan
+        env:
+          GROUP: ${{ inputs.group }}
+          SHARDS: ${{ inputs.shards }}
+        run: |
+          if [[ "$GROUP" == both ]]; then groups='["parsing","rest"]'; else groups="[\"$GROUP\"]"; fi
+          echo "groups=$groups" >> "$GITHUB_OUTPUT"
+          echo "shards=$(seq 0 $((SHARDS - 1)) | jq -sc .)" >> "$GITHUB_OUTPUT"
+
+  mutants:
+    needs: plan
+    runs-on: ubuntu-24.04
+    timeout-minutes: 355
+    strategy:
+      fail-fast: false
+      matrix:
+        group: ${{ fromJSON(needs.plan.outputs.groups) }}
+        shard: ${{ fromJSON(needs.plan.outputs.shards) }}
+    steps:
+      - uses: actions/checkout@v7
+      - name: Rust
+        run: |
+          rustup toolchain install "$RUST" --profile minimal
+          rustup default "$RUST"
+      - uses: taiki-e/install-action@v2
+        with:
+          tool: cargo-mutants@27.1.0
+      - name: Mutants
+        env:
+          GROUP: ${{ matrix.group }}
+          SHARD: ${{ matrix.shard }}
+          SHARDS: ${{ inputs.shards }}
+        run: scripts/mutants.sh "$GROUP" --shard "$SHARD/$SHARDS" --jobs 2
+      - if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: mutants-${{ matrix.group }}-${{ matrix.shard }}
+          path: target/mutants/${{ matrix.group }}/mutants.out/
+          if-no-files-found: ignore
+
+  summary:
+    needs: mutants
+    if: always()
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/download-artifact@v8
+        with:
+          pattern: mutants-*
+          path: shards
+      - name: Put the shards together
+        run: |
+          for group in parsing rest; do
+            compgen -G "shards/mutants-$group-*" > /dev/null || continue
+            mkdir -p "mutants/$group"
+            {
+              echo "### $group ($(ls -d shards/mutants-$group-* | wc -l) shards)"
+              for list in caught missed timeout unviable; do
+                cat shards/mutants-$group-*/$list.txt 2>/dev/null | sort > "mutants/$group/$list.txt" || true
+                echo "- $list: $(wc -l < "mutants/$group/$list.txt")"
+              done
+              if [[ -s "mutants/$group/missed.txt" ]]; then
+                echo; echo '```'; cat "mutants/$group/missed.txt"; echo '```'
+              fi
+            } >> "$GITHUB_STEP_SUMMARY"
+          done
+      - uses: actions/upload-artifact@v7
+        with:
+          name: mutants
+          path: mutants/
+          if-no-files-found: ignore

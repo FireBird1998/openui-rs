@@ -678,6 +678,24 @@
    "schema": "libraries",
    "file": "cases/hand/108-call-made-null.oui",
    "source": "hand-written"
+  },
+  {
+   "name": "hand/109-finished-while-a-later-one-is-open",
+   "schema": "hand",
+   "file": "cases/hand/109-finished-while-a-later-one-is-open.oui",
+   "source": "hand-written"
+  },
+  {
+   "name": "hand/110-only-a-comment",
+   "schema": "hand",
+   "file": "cases/hand/110-only-a-comment.oui",
+   "source": "hand-written"
+  },
+  {
+   "name": "hand/111-stray-character-before-a-ternary",
+   "schema": "hand",
+   "file": "cases/hand/111-stray-character-before-a-ternary.oui",
+   "source": "hand-written"
   }
  ]
 }

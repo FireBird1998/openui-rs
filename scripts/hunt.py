@@ -168,7 +168,8 @@ def fuzz_row(name, unit, summary, findings):
 
 def finding_section(n, f):
     check = {"parse": "parsing", "edits": "edits", "merge": "merging", "serialize": "converting back to source",
-             "invariant": f"the {f.get('rule', '')} invariant", "invariants": "invariants"}[f["check"]]
+             "invariant": f"the {f.get('rule', '')} invariant", "invariants": "invariants",
+             "coverage": f"coverage-guided fuzzing, {f.get('target', '')}"}[f["check"]]
     kind = {"mismatch": "Mismatch", "crash": "Crash", "blow-up": "Blow-up", "quirk?": "Quirk?"}[f["kind"]]
     lines = [f"### {n}. {kind}: {check}" + (", streaming" if f.get("streaming") else "")]
     if "seed" in f:
@@ -203,7 +204,7 @@ def finding_section(n, f):
     if f.get("note"):
         lines.append(f"- {f['note']}")
     lines.append("")
-    if f["check"] in ("parse", "invariant") and "input" in f:
+    if f["check"] in ("parse", "invariant", "coverage") and "input" in f:
         lines.append(shown(f["input"]))
     if f["check"] == "invariant":
         lines += ["", "The core:", "", fenced(json.dumps(f.get("core"), ensure_ascii=False)),
@@ -220,6 +221,37 @@ def finding_section(n, f):
     if f.get("log"):
         lines += ["The end of its log:", "", fenced(f["log"])]
     return "\n".join(lines)
+
+
+COVERAGE_TARGETS = ["parse", "stream", "merge", "serialize", "json"]
+
+
+def coverage_findings(hunt):
+    """What coverage-guided fuzzing left: an input per crash, timeout or memory blow-up."""
+    out = []
+    for target in COVERAGE_TARGETS:
+        for kind, label in [("crash", "crash"), ("timeout", "blow-up"), ("oom", "blow-up"), ("leak", "crash")]:
+            for path in sorted(hunt.glob(f"coverage-{target}-{kind}-*")):
+                data = path.read_bytes()
+                out.append({"kind": label, "check": "coverage", "target": target, "file": path.name,
+                            "input": data.decode("utf-8", "replace"),
+                            "replay": f"cargo +nightly fuzz run {target} {path}"})
+    return out
+
+
+def coverage_row(hunt):
+    """The coverage-guided targets' row: inputs run, and the coverage reached."""
+    runs, parts = 0, []
+    for target in COVERAGE_TARGETS:
+        log = text(hunt / f"coverage-{target}.log")
+        executed = re.findall(r"stat::number_of_executed_units: *(\d+)", log)
+        cov = re.findall(r"cov: (\d+)", log)
+        if executed:
+            runs += int(executed[-1])
+            parts.append(f"{target} {cov[-1] if cov else '?'}")
+    if not parts:
+        return None
+    return f"{number(runs)} inputs (coverage: {', '.join(parts)})"
 
 
 def process_findings(hunt, check, label):
@@ -316,6 +348,7 @@ def report(hunt, ran):
     if (hunt / "findings.jsonl").is_file():
         findings = [json.loads(line) for line in (hunt / "findings.jsonl").read_text().splitlines() if line.strip()]
     findings += process_findings(hunt, "parse", "parsing") + process_findings(hunt, "edits", "edits") + process_findings(hunt, "invariants", "invariants")
+    findings += coverage_findings(hunt)
     summaries = {c: json.loads(text(hunt / f"summary-{c}.json")) if (hunt / f"summary-{c}.json").is_file() else None for c in ["parse", "merge", "serialize", "invariants"]}
 
     code = f"`{meta['commit'][:7]}`" + (" with uncommitted changes" if meta["dirty"] else "")
@@ -340,6 +373,13 @@ def report(hunt, ran):
             out.append(f"| Differential fuzzing, {label} | not run: {status[len('skipped: '):]} | |")
         elif status != "ok" and check == "edits" and by_check("edits"):
             out.append(f"| Differential fuzzing, edits | stopped early | {kinds_line(tally(by_check('edits')))} |")
+    coverage = coverage_row(hunt)
+    status = text(hunt / "status-coverage")
+    if coverage:
+        found = kinds_line(tally(by_check("coverage"))) or "none"
+        out.append(f"| Coverage-guided fuzzing | {coverage} | {found} |")
+    elif status.startswith("skipped"):
+        out.append(f"| Coverage-guided fuzzing | not run: {status[len('skipped: '):]} | |")
     upstream_lines, upstream_row = upstream_section(hunt, meta)
     out.append(f"| Upstream | {upstream_row} | |")
     out.append("")

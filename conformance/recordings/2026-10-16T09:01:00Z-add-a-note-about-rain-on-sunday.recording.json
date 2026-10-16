@@ -1,0 +1,28 @@
+{
+  "chunks": [
+    {
+      "t": 0.9,
+      "text": "root = Card([greeting, no"
+    },
+    {
+      "t": 0.95,
+      "text": "te])\ngreeting = TextContent(\"hi 😀 é\")\nnote = Call"
+    },
+    {
+      "t": 1.02,
+      "text": "out(\"info\", \"Heads up\", \"Rain on Sunday\")"
+    }
+  ],
+  "createdAt": "2026-10-16T09:01:00Z",
+  "effort": "low",
+  "format": "openui-recording",
+  "inputTokens": 2400,
+  "library": "react-ui",
+  "model": "claude-haiku-5-5",
+  "outputTokens": 41,
+  "patchOf": "root = Card([TextContent(\"hi 😀 é\")])",
+  "request": "Add a note about rain on Sunday",
+  "servedBy": "claude-haiku-5-5",
+  "stopReason": "end_turn",
+  "version": 1
+}
