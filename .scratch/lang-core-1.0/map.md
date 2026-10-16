@@ -43,7 +43,7 @@ The core conforms to `@openuidev/lang-core` 1.0.1 (`eb20708`, 2026-10-15) the wa
 
 Today only parse conformance has a pending list. The first ticket extends `pending.txt` to every test that compares with goldens: stages, merges, conversions back to source, error hints, prompts, and the stream-end check. Vendoring 1.0 then marks everything that differs as pending. Each later ticket shrinks the list, and the last one empties it. Every commit passes `scripts/check.sh`.
 
-## Decisions, with recommendations
+## Decisions (accepted 2026-10-16, as recommended)
 
 1. **Stream end in the Rust API:** add `StreamParser::finish() -> ParseResult`, upstream's `getResult(true)`. `push`, `set` and `result` keep their meaning, "not ended yet". In the reference, `push(chunk, true)` gives the same result as `push(chunk)` followed by `getResult(true)`, because `complete` only changes how the result is computed, not the parser's state. So one new method covers it. The binding gets `StreamSession.finish()`, and the viewer calls it when a stream ends.
 2. **`root` argument:** keep the parameter. It now names only the library's root component, as upstream's `rootName` does. Document the change.
@@ -51,7 +51,9 @@ Today only parse conformance has a pending list. The first ticket extends `pendi
 4. **0.3.0:** don't keep supporting it. vue-lang, svelte-lang and angular-lang stay on 0.x upstream, but the core follows 1.0. A local git tag on the last 0.3.0-conformant commit keeps it reachable.
 5. **The message protocol:** not in this move.
 
-## Proposed tickets
+## Tickets
+
+Approved 2026-10-16, in [issues/](issues/):
 
 1. **Pending lists for every golden test** (prefactor). Blocked by: none. On 0.3.0 nothing is pending, and the check stays green.
 2. **Vendor lang-core 1.0.1, its tests and the spec's fixtures.**
