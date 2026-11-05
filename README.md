@@ -4,7 +4,7 @@
 
 The repository also holds the viewer, a Mac app that draws programs natively through the crate (see below), and will hold Dynamic News, an Android app whose story screens are written by an LLM and drawn natively with this crate. That part is still being designed ([map](.scratch/dynamic-news/map.md)).
 
-**Status:** conforms to lang-core 1.0.1, at commit [`eb20708b9cc41afced5625e99e6ce8ec2f8a5435`](https://github.com/thesysdev/openui/tree/eb20708b9cc41afced5625e99e6ce8ec2f8a5435/packages/lang-core): 534 parse cases at every streaming step and at each stream's end, 61 prompts, 2,521 merges, 506 serializations, 339 enriched error lists, and 140,000 fuzzed inputs against 1.0.1 (460,000 in all). Nothing is pending. The local tag `lang-core-0.3.0` is the last state that conformed to 0.3.0, which isn't kept up.
+**Status:** conforms to lang-core 1.1.0 (OpenUI Lang 1.1), at commit [`47b9cae0d3b26a8c9d7514d5887a6d6608801ac9`](https://github.com/thesysdev/openui/tree/47b9cae0d3b26a8c9d7514d5887a6d6608801ac9/packages/lang-core): 637 parse cases at every streaming step and at each stream's end, 61 prompts, 3,235 merges, 605 serializations and 378 enriched error lists, plus 100,000 fuzzed programs against 1.1.0 with every difference a documented divergence. Nothing is pending. The local tags `lang-core-1.0.1` and `lang-core-0.3.0` are the last states that conformed to those versions, which aren't kept up.
 
 - [CONFORMANCE.md](CONFORMANCE.md): what's checked and how, fuzzing, what it found, and the few deliberate divergences
 - [conformance/QUIRKS.md](conformance/QUIRKS.md): reference behaviour that looks wrong but is reproduced, with draft upstream reports
