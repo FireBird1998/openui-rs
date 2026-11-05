@@ -47,3 +47,20 @@ Their findings are sorted. The candidate quirks are drafted for the maintainer's
   - mutation testing of both groups.
 
   Their findings get sorted when they finish.
+
+**2026-11-06, first results from the worker Mac, against `10ad0cd`.**
+
+| Run | Result |
+|---|---|
+| Invariants: a million programs of seed 82, every rule | no mismatch left: the 12 found were the AST-shaped-root divergence, which the fuzzer now recognizes in its shrunk forms (`2b2454f`) |
+| Differential fuzzing, 500,000 programs | every one of 1,838 mismatches and 548 reference exceptions is a documented divergence; no panics, no blow-ups |
+| Edit fuzzing, 500,000 merges and conversions | all match |
+| Coverage-guided fuzzing, 5 targets × 6 hours | running, without AddressSanitizer |
+| Mutation testing, both groups | running after it |
+
+**Candidate quirks, broken on both parsers, for the maintainer to judge:**
+
+1. **A reference cycle round-trips differently (new in 1.1).** About 450 programs, under round-trip and merge-own-source. A list inside a component's children comes out as `[[]]`, and after converting back to source and parsing again as `[]`, or the other way round. Minimal: `root = Root([x, y])`, `y = Root([x])`, `x = [y]`. Each statement is reached once through the cycle and once around it. 1.1 doesn't memoize a statement that met a cycle, so `x` and `y` materialize differently in each place, and one place keeps a list where validation would prune it once the tree is written out. 1.0.1's run had 1 of these. Either a quirk with an upstream report, or the round-trip rule is narrowed to programs without reference cycles.
+2. **Merging twice reads a patch's ternary differently (7 programs).** The patch has a multi-line ternary with an unfinished branch (`$dark = false` / `  ? darkPage`). 1.1's merge keeps multi-line statements together (the fix for quirk 6). The first merge's text reads back with other references unresolved than the second's. This likely follows from that fix.
+3. **Stream end counts a redefinition (2 programs):** `[`, `a=("")`, `a=`. This is quirk 4's shape, which the stream-end rule's exception misses. It was in 1.0.1's run too. The exception should recognize it.
+4. **The reference throws on an object with its own `toString` in a state default.** `$a = {toString: 1}` then `$b = $a + ""`, or `@Sort([$a, 0], "")`. JavaScript can't turn the object into text, so 1.1's `parse` throws a `TypeError`. A crash in `parse` on model output is worth reporting upstream. It's a divergence in CONFORMANCE.md.
