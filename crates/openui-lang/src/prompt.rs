@@ -200,10 +200,10 @@ const BUILTIN_FUNCTION_LINES: [&str; 14] = [
     "@Max(numbers: number[]) → number — Maximum value in array",
     r#"@Sort(array: any[], field: string, direction?: "asc" | "desc") → any[] — Sort array by field. Direction: "asc" (default) or "desc""#,
     r#"@Filter(array: any[], field: string, operator: "==" | "!=" | ">" | "<" | ">=" | "<=" | "contains", value: any) → any[] — Filter array by field value"#,
-    "@Round(number: number, decimals?: number) → number — Round to N decimal places (default 0)",
-    "@Abs(number: number) → number — Absolute value",
-    "@Floor(number: number) → number — Round down to nearest integer",
-    "@Ceil(number: number) → number — Round up to nearest integer",
+    "@Round(number: number | number[], decimals?: number) → number | number[] — Round to N decimal places (default 0)",
+    "@Abs(number: number | number[]) → number | number[] — Absolute value",
+    "@Floor(number: number | number[]) → number | number[] — Round down to nearest integer",
+    "@Ceil(number: number | number[]) → number | number[] — Round up to nearest integer",
     "@Each(array: any[], varName: string, template: any) — Evaluate template for each element. varName is the loop variable — use it ONLY inside the template expression (inline). Do NOT create a separate statement for the template.",
 ];
 

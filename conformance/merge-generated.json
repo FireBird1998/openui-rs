@@ -4073,6 +4073,264 @@
    "source": "generated"
   },
   {
+   "name": "gen/hand/135-state-defaults-operators-and-coercions/edit",
+   "existingCase": "hand/135-state-defaults-operators-and-coercions",
+   "patch": "$b = \"Edited\" + 1",
+   "source": "generated"
+  },
+  {
+   "name": "gen/hand/135-state-defaults-operators-and-coercions/add",
+   "existingCase": "hand/135-state-defaults-operators-and-coercions",
+   "patch": "root = Root([added, Text(\"x\")])\nadded = Text(\"Added\")",
+   "source": "generated"
+  },
+  {
+   "name": "gen/hand/135-state-defaults-operators-and-coercions/delete",
+   "existingCase": "hand/135-state-defaults-operators-and-coercions",
+   "patch": "$n = null",
+   "source": "generated"
+  },
+  {
+   "name": "gen/hand/135-state-defaults-operators-and-coercions/fenced",
+   "existingCase": "hand/135-state-defaults-operators-and-coercions",
+   "patch": "Here's the update:\n\n```openui-lang\n$b = \"Edited\" + 1\n$n = null\n```\n\nLet me know if you'd like anything else.",
+   "source": "generated"
+  },
+  {
+   "name": "gen/hand/135-state-defaults-operators-and-coercions/root-$a",
+   "existingCase": "hand/135-state-defaults-operators-and-coercions",
+   "patch": "$b = \"Edited\" + 1",
+   "rootId": "$a",
+   "source": "generated"
+  },
+  {
+   "name": "gen/hand/135-state-defaults-operators-and-coercions/replay",
+   "existingCase": "hand/135-state-defaults-operators-and-coercions",
+   "patch": "root = Root([Text(\"x\")])\n$a = 1 + 2\n$b = \"n\" + 1\n$c = 1 + \"2\" + 3\n$d = 10 / 0\n$e = 7 % 0\n$f = 7 % 3\n$g = -\"5\"\n$h = !0\n$i = \"5\" == 5\n$j = null == $missing\n$k = [1] == 1\n$l = 0.1 + 0.2\n$m = 3 > \"2\"\n$n = \"abc\" * 2\n$o = true + true\n$p = $a * 2\n$q = $later + 1\n$later = 5\n$r = \"x\" + null\n$s = [1, [2, null]] + \"!\"\n$t = {a: 1} + \"\"\n$u = 1 / 3\n$v = \"0x1F\" * 1\n$w = \" 12 \" - 2\n$x = \"1e3\" == 1000\n$y = $a == $a\n$z = [1] == [1]\n",
+   "source": "generated"
+  },
+  {
+   "name": "gen/hand/135-state-defaults-operators-and-coercions/onto-nothing",
+   "existing": "",
+   "patchCase": "hand/135-state-defaults-operators-and-coercions",
+   "source": "generated"
+  },
+  {
+   "name": "gen/hand/136-state-defaults-builtin-functions/edit",
+   "existingCase": "hand/136-state-defaults-builtin-functions",
+   "patch": "$rows = [{n: 3, name: \"Edited\"}, {n: 1, name: \"a\"}, {n: 2, name: \"C\"}]",
+   "source": "generated"
+  },
+  {
+   "name": "gen/hand/136-state-defaults-builtin-functions/add",
+   "existingCase": "hand/136-state-defaults-builtin-functions",
+   "patch": "root = Root([added, Text(\"x\")])\nadded = Count(\"Added\")",
+   "source": "generated"
+  },
+  {
+   "name": "gen/hand/136-state-defaults-builtin-functions/delete",
+   "existingCase": "hand/136-state-defaults-builtin-functions",
+   "patch": "$contains = null",
+   "source": "generated"
+  },
+  {
+   "name": "gen/hand/136-state-defaults-builtin-functions/fenced",
+   "existingCase": "hand/136-state-defaults-builtin-functions",
+   "patch": "Here's the update:\n\n```openui-lang\n$rows = [{n: 3, name: \"Edited\"}, {n: 1, name: \"a\"}, {n: 2, name: \"C\"}]\n$contains = null\n```\n\nLet me know if you'd like anything else.",
+   "source": "generated"
+  },
+  {
+   "name": "gen/hand/136-state-defaults-builtin-functions/root-$rows",
+   "existingCase": "hand/136-state-defaults-builtin-functions",
+   "patch": "$rows = [{n: 3, name: \"Edited\"}, {n: 1, name: \"a\"}, {n: 2, name: \"C\"}]",
+   "rootId": "$rows",
+   "source": "generated"
+  },
+  {
+   "name": "gen/hand/136-state-defaults-builtin-functions/replay",
+   "existingCase": "hand/136-state-defaults-builtin-functions",
+   "patch": "root = Root([Text(\"x\")])\n$rows = [{n: 3, name: \"b\"}, {n: 1, name: \"a\"}, {n: 2, name: \"C\"}]\n$count = @Count($rows)\n$first = @First($rows)\n$last = @Last($rows).name\n$sum = @Sum($rows.n)\n$avg = @Avg([1, 2, 4])\n$min = @Min([3, \"1\", true])\n$max = @Max([])\n$sorted = @Sort($rows, \"n\")\n$byName = @Sort($rows, \"name\", \"desc\")\n$filtered = @Filter($rows, \"n\", \">\", 1)\n$contains = @Filter([\"apple\", \"banana\", \"cherry\"], \"\", \"contains\", \"an\")\n$loose = @Filter([1, \"1\", true, null], \"\", \"==\", 1)\n$round = @Round(2.5)\n$negative = @Round(-2.5)\n$roundList = @Round([1.234, [2.345, null]], 2)\n$abs = @Abs(-3)\n$floor = @Floor([1.5, -1.5])\n$ceil = @Ceil(\"2.1\")\n$each = @Each([1, 2, 3], \"x\", x * 10)\n$eachObj = @Each($rows, \"r\", r.name + \"!\")\n$nested = @Each([[1, 2], [3]], \"xs\", @Sum(xs))\n",
+   "source": "generated"
+  },
+  {
+   "name": "gen/hand/136-state-defaults-builtin-functions/onto-nothing",
+   "existing": "",
+   "patchCase": "hand/136-state-defaults-builtin-functions",
+   "source": "generated"
+  },
+  {
+   "name": "gen/hand/137-state-defaults-in-lists-and-objects/edit",
+   "existingCase": "hand/137-state-defaults-in-lists-and-objects",
+   "patch": "$list = [1 + 1, \"Edited\" + \"b\", [2 * 3]]",
+   "source": "generated"
+  },
+  {
+   "name": "gen/hand/137-state-defaults-in-lists-and-objects/add",
+   "existingCase": "hand/137-state-defaults-in-lists-and-objects",
+   "patch": "root = Root([added, Text(\"x\")])\nadded = Text(\"Added\")",
+   "source": "generated"
+  },
+  {
+   "name": "gen/hand/137-state-defaults-in-lists-and-objects/delete",
+   "existingCase": "hand/137-state-defaults-in-lists-and-objects",
+   "patch": "$strIndex = null",
+   "source": "generated"
+  },
+  {
+   "name": "gen/hand/137-state-defaults-in-lists-and-objects/fenced",
+   "existingCase": "hand/137-state-defaults-in-lists-and-objects",
+   "patch": "Here's the update:\n\n```openui-lang\n$list = [1 + 1, \"Edited\" + \"b\", [2 * 3]]\n$strIndex = null\n```\n\nLet me know if you'd like anything else.",
+   "source": "generated"
+  },
+  {
+   "name": "gen/hand/137-state-defaults-in-lists-and-objects/root-$list",
+   "existingCase": "hand/137-state-defaults-in-lists-and-objects",
+   "patch": "$list = [1 + 1, \"Edited\" + \"b\", [2 * 3]]",
+   "rootId": "$list",
+   "source": "generated"
+  },
+  {
+   "name": "gen/hand/137-state-defaults-in-lists-and-objects/replay",
+   "existingCase": "hand/137-state-defaults-in-lists-and-objects",
+   "patch": "root = Root([Text(\"x\")])\n$list = [1 + 1, \"a\" + \"b\", [2 * 3]]\n$obj = {sum: 1 + 2, nested: {flag: !true}, items: [$list.length]}\n$member = $obj.nested.flag\n$index = $list[1]\n$out = $list[9]\n$pluck = [{a: 1}, {b: 2}, null].a\n$strIndex = \"hello\"[1]\n$length = \"héllo😀\".length\n$method = $obj.toString\n$ctor = $obj.constructor ? \"yes\" : \"no\"\n$missing = $obj.nope\n$keyed = {\"1\": 1 + 1, b: 2, \"0\": 0 * 1}\n$plain = [1, {k: \"v\"}]\n",
+   "source": "generated"
+  },
+  {
+   "name": "gen/hand/137-state-defaults-in-lists-and-objects/onto-nothing",
+   "existing": "",
+   "patchCase": "hand/137-state-defaults-in-lists-and-objects",
+   "source": "generated"
+  },
+  {
+   "name": "gen/hand/138-state-defaults-that-come-out-null/edit",
+   "existingCase": "hand/138-state-defaults-that-come-out-null",
+   "patch": "data = Query(\"Edited\", {})",
+   "source": "generated"
+  },
+  {
+   "name": "gen/hand/138-state-defaults-that-come-out-null/add",
+   "existingCase": "hand/138-state-defaults-that-come-out-null",
+   "patch": "root = Page([added, Widget(\"x\")])\nadded = Query(\"Added\")",
+   "source": "generated"
+  },
+  {
+   "name": "gen/hand/138-state-defaults-that-come-out-null/delete",
+   "existingCase": "hand/138-state-defaults-that-come-out-null",
+   "patch": "$withComponent = null",
+   "source": "generated"
+  },
+  {
+   "name": "gen/hand/138-state-defaults-that-come-out-null/fenced",
+   "existingCase": "hand/138-state-defaults-that-come-out-null",
+   "patch": "Here's the update:\n\n```openui-lang\ndata = Query(\"Edited\", {})\n$withComponent = null\n```\n\nLet me know if you'd like anything else.",
+   "source": "generated"
+  },
+  {
+   "name": "gen/hand/138-state-defaults-that-come-out-null/root-data",
+   "existingCase": "hand/138-state-defaults-that-come-out-null",
+   "patch": "data = Query(\"Edited\", {})",
+   "rootId": "data",
+   "source": "generated"
+  },
+  {
+   "name": "gen/hand/138-state-defaults-that-come-out-null/replay",
+   "existingCase": "hand/138-state-defaults-that-come-out-null",
+   "patch": "root = Page([Widget(\"x\")])\ndata = Query(\"load\", {})\n$fromQuery = data.rows\n$fromStatement = total + 1\ntotal = 5\n$withComponent = $flag ? Widget(\"a\") : 0\n$withLibraryCall = @Twice(2)\n$withStep = @Ping()\n$inList = [1 + 1, @Twice(1)]\n",
+   "source": "generated"
+  },
+  {
+   "name": "gen/hand/138-state-defaults-that-come-out-null/onto-nothing",
+   "existing": "",
+   "patchCase": "hand/138-state-defaults-that-come-out-null",
+   "source": "generated"
+  },
+  {
+   "name": "gen/hand/139-state-defaults-sorting-text/edit",
+   "existingCase": "hand/139-state-defaults-sorting-text",
+   "patch": "$names = @Sort([\"Edited\", \"Apple\", \"apple\", \"_x\", \"10\", \"9\", \"Zed\", \"zed\", \"a b\", \"a-b\", \"\", \"B\", \"b\"], \"\")",
+   "source": "generated"
+  },
+  {
+   "name": "gen/hand/139-state-defaults-sorting-text/add",
+   "existingCase": "hand/139-state-defaults-sorting-text",
+   "patch": "root = Root([added, Text(\"x\")])\nadded = Sort(\"Added\")",
+   "source": "generated"
+  },
+  {
+   "name": "gen/hand/139-state-defaults-sorting-text/delete",
+   "existingCase": "hand/139-state-defaults-sorting-text",
+   "patch": "$mixed = null",
+   "source": "generated"
+  },
+  {
+   "name": "gen/hand/139-state-defaults-sorting-text/fenced",
+   "existingCase": "hand/139-state-defaults-sorting-text",
+   "patch": "Here's the update:\n\n```openui-lang\n$names = @Sort([\"Edited\", \"Apple\", \"apple\", \"_x\", \"10\", \"9\", \"Zed\", \"zed\", \"a b\", \"a-b\", \"\", \"B\", \"b\"], \"\")\n$mixed = null\n```\n\nLet me know if you'd like anything else.",
+   "source": "generated"
+  },
+  {
+   "name": "gen/hand/139-state-defaults-sorting-text/root-$names",
+   "existingCase": "hand/139-state-defaults-sorting-text",
+   "patch": "$names = @Sort([\"Edited\", \"Apple\", \"apple\", \"_x\", \"10\", \"9\", \"Zed\", \"zed\", \"a b\", \"a-b\", \"\", \"B\", \"b\"], \"\")",
+   "rootId": "$names",
+   "source": "generated"
+  },
+  {
+   "name": "gen/hand/139-state-defaults-sorting-text/replay",
+   "existingCase": "hand/139-state-defaults-sorting-text",
+   "patch": "root = Root([Text(\"x\")])\n$names = @Sort([\"banana\", \"Apple\", \"apple\", \"_x\", \"10\", \"9\", \"Zed\", \"zed\", \"a b\", \"a-b\", \"\", \"B\", \"b\"], \"\")\n$desc = @Sort([\"b\", \"A\", \"a\", \"B\"], \"\", \"desc\")\n$mixed = @Sort([3, \"10\", \"x\", 2, \"2\", null], \"\")\n$byField = @Sort([{t: \"beta\"}, {t: \"Alpha\"}, {t: \"alpha\"}, {}], \"t\")\n$dotted = @Sort([{a: {b: 2}}, {a: {b: 1}}], \"a.b\")\n",
+   "source": "generated"
+  },
+  {
+   "name": "gen/hand/139-state-defaults-sorting-text/onto-nothing",
+   "existing": "",
+   "patchCase": "hand/139-state-defaults-sorting-text",
+   "source": "generated"
+  },
+  {
+   "name": "gen/hand/140-state-defaults-sorting-mixed-values-that-loop/edit",
+   "existingCase": "hand/140-state-defaults-sorting-mixed-values-that-loop",
+   "patch": "$three = @Sort([2, \"Edited\", \"1a\"], \"\")",
+   "source": "generated"
+  },
+  {
+   "name": "gen/hand/140-state-defaults-sorting-mixed-values-that-loop/add",
+   "existingCase": "hand/140-state-defaults-sorting-mixed-values-that-loop",
+   "patch": "root = Root([added, Text(\"x\")])\nadded = Sort(\"Added\")",
+   "source": "generated"
+  },
+  {
+   "name": "gen/hand/140-state-defaults-sorting-mixed-values-that-loop/delete",
+   "existingCase": "hand/140-state-defaults-sorting-mixed-values-that-loop",
+   "patch": "$twelve = null",
+   "source": "generated"
+  },
+  {
+   "name": "gen/hand/140-state-defaults-sorting-mixed-values-that-loop/fenced",
+   "existingCase": "hand/140-state-defaults-sorting-mixed-values-that-loop",
+   "patch": "Here's the update:\n\n```openui-lang\n$three = @Sort([2, \"Edited\", \"1a\"], \"\")\n$twelve = null\n```\n\nLet me know if you'd like anything else.",
+   "source": "generated"
+  },
+  {
+   "name": "gen/hand/140-state-defaults-sorting-mixed-values-that-loop/root-$three",
+   "existingCase": "hand/140-state-defaults-sorting-mixed-values-that-loop",
+   "patch": "$three = @Sort([2, \"Edited\", \"1a\"], \"\")",
+   "rootId": "$three",
+   "source": "generated"
+  },
+  {
+   "name": "gen/hand/140-state-defaults-sorting-mixed-values-that-loop/replay",
+   "existingCase": "hand/140-state-defaults-sorting-mixed-values-that-loop",
+   "patch": "root = Root([Text(\"x\")])\n$three = @Sort([2, \"10\", \"1a\"], \"\")\n$seven = @Sort([2, \"10\", \"1a\", 9, \"9a\", \"x\", 1], \"\", \"desc\")\n$twelve = @Sort([2, \"10\", \"1a\", 9, \"9a\", \"x\", 1, \"01\", true, null, 2.5, \"B\"], \"\", \"desc\")\n$runFirst = @Sort([\"9\", \"8\", \"1a\", \"7\", \"10\", 2, \"x\", \"2\", \"b\", \"A\", 3, \"03\"], \"\")\n$byField = @Sort([{v: 2}, {v: \"10\"}, {v: \"1a\"}, {v: 9}, {v: \"9a\"}, {v: \"x\"}, {v: 1}, {v: \"01\"}], \"v\")\n",
+   "source": "generated"
+  },
+  {
+   "name": "gen/hand/140-state-defaults-sorting-mixed-values-that-loop/onto-nothing",
+   "existing": "",
+   "patchCase": "hand/140-state-defaults-sorting-mixed-values-that-loop",
+   "source": "generated"
+  },
+  {
    "name": "gen/test/actions-01/add",
    "existingCase": "test/actions-01",
    "patch": "added = Text(\"Added\")",

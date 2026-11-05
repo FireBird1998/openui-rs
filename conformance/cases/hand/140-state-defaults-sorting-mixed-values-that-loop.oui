@@ -1,0 +1,6 @@
+root = Root([Text("x")])
+$three = @Sort([2, "10", "1a"], "")
+$seven = @Sort([2, "10", "1a", 9, "9a", "x", 1], "", "desc")
+$twelve = @Sort([2, "10", "1a", 9, "9a", "x", 1, "01", true, null, 2.5, "B"], "", "desc")
+$runFirst = @Sort(["9", "8", "1a", "7", "10", 2, "x", "2", "b", "A", 3, "03"], "")
+$byField = @Sort([{v: 2}, {v: "10"}, {v: "1a"}, {v: 9}, {v: "9a"}, {v: "x"}, {v: 1}, {v: "01"}], "v")

@@ -1,0 +1,6 @@
+root = Root([Text("x")])
+$names = @Sort(["banana", "Apple", "apple", "_x", "10", "9", "Zed", "zed", "a b", "a-b", "", "B", "b"], "")
+$desc = @Sort(["b", "A", "a", "B"], "", "desc")
+$mixed = @Sort([3, "10", "x", 2, "2", null], "")
+$byField = @Sort([{t: "beta"}, {t: "Alpha"}, {t: "alpha"}, {}], "t")
+$dotted = @Sort([{a: {b: 2}}, {a: {b: 1}}], "a.b")

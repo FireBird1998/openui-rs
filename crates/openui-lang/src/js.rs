@@ -18,6 +18,12 @@ pub(crate) fn lone_surrogate(unit: u16) -> char {
     char::from_u32(LONE_SURROGATE_BASE + u32::from(unit - 0xD800)).expect("plane 16 code point")
 }
 
+/// The lone surrogate a char stands in for, if it stands in for one.
+pub(crate) fn lone_surrogate_unit(c: char) -> Option<u16> {
+    let code = c as u32;
+    (code >= LONE_SURROGATE_BASE).then(|| (code - LONE_SURROGATE_BASE + 0xD800) as u16)
+}
+
 /// The characters `String.prototype.trim` removes (WhiteSpace + LineTerminator).
 /// Differs from `char::is_whitespace`: includes U+FEFF, excludes U+0085.
 pub(crate) fn is_js_whitespace(c: char) -> bool {
@@ -193,7 +199,7 @@ pub(crate) const OBJECT_PROTOTYPE_KEYS: [&str; 12] = [
 
 /// The key as an array index ("0", "17", up to 2³² − 2), if it is one.
 /// JavaScript lists such keys first, in numeric order, on every object.
-fn array_index(key: &str) -> Option<u32> {
+pub(crate) fn array_index(key: &str) -> Option<u32> {
     let canonical = key == "0" || (!key.starts_with('0') && !key.is_empty());
     if !canonical || key.len() > 10 || !key.bytes().all(|b| b.is_ascii_digit()) {
         return None;

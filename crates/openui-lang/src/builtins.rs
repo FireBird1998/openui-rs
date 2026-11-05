@@ -82,6 +82,15 @@ pub(crate) fn builtin_calls() -> IndexMap<String, Call> {
         .collect()
 }
 
+/// A built-in function's param names (`@Each` included), or `None` for
+/// anything else.
+pub(crate) fn builtin_function_params(name: &str) -> Option<&'static [&'static str]> {
+    BUILTINS
+        .iter()
+        .find(|&&(builtin, kind, ..)| builtin == name && kind == CallKind::Function)
+        .map(|&(_, _, params, _)| params)
+}
+
 /// Whether `name` is a builtin function or action, not a component.
 pub fn is_builtin(name: &str) -> bool {
     BUILTINS.iter().any(|&(builtin, ..)| builtin == name)

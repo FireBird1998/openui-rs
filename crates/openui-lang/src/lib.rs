@@ -182,6 +182,7 @@ pub const MAX_RESULT_SIZE: usize = 8 * 1024 * 1024;
 mod ast;
 mod builtins;
 mod enrich;
+mod evaluate;
 mod expr;
 mod js;
 mod lexer;

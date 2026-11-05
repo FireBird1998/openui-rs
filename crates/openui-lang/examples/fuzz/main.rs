@@ -46,7 +46,7 @@ type Explains = (fn(&str) -> bool, &'static str);
 
 /// Divergences CONFORMANCE.md documents: a minimal mismatch one of these
 /// recognizes is explained, not a bug to save.
-pub(crate) const EXPLAINED: [Explains; 3] = [
+pub(crate) const EXPLAINED: [Explains; 6] = [
     (
         assigns_proto,
         "object or null assigned to __proto__ (prototype chain)",
@@ -59,6 +59,81 @@ pub(crate) const EXPLAINED: [Explains; 3] = [
         root_is_an_ast_shaped_object,
         "object literal shaped like an AST node as the root",
     ),
+    (
+        sorts_text_outside_ascii,
+        "a state default sorting text outside ASCII (ICU collation)",
+    ),
+    (
+        reads_a_property_of_a_builtin,
+        "a state default reading a property of a built-in method or prototype",
+    ),
+    (
+        ast_shaped_object_in_a_state_default,
+        "object literal shaped like an AST node in a state default",
+    ),
+];
+
+/// `@Sort` in a state default orders text with ICU's root collation; the
+/// core has it exactly for ASCII only.
+fn sorts_text_outside_ascii(program: &str) -> bool {
+    program.contains("@Sort") && program.contains('$') && !program.is_ascii()
+}
+
+/// Names a value inherits as built-in methods, read as a step in a longer
+/// path: `x.toString.length`, `[].map[0]`. The core reads such properties as
+/// undefined.
+fn reads_a_property_of_a_builtin(program: &str) -> bool {
+    const INHERITED: [&str; 14] = [
+        "constructor",
+        "toString",
+        "valueOf",
+        "toLocaleString",
+        "hasOwnProperty",
+        "isPrototypeOf",
+        "propertyIsEnumerable",
+        "map",
+        "filter",
+        "length",
+        "at",
+        "slice",
+        "concat",
+        "indexOf",
+    ];
+    program.contains('$')
+        && INHERITED.iter().any(|name| {
+            program.contains(&format!(".{name}.")) || program.contains(&format!(".{name}["))
+        })
+}
+
+/// The reference evaluates such an object in a state default as the node it
+/// looks like; the core keeps it as the object.
+fn ast_shaped_object_in_a_state_default(program: &str) -> bool {
+    program.contains('$')
+        && (program.contains("k:") || program.contains("\"k\""))
+        && crate::AST_KIND_NAMES
+            .iter()
+            .any(|kind| program.contains(&format!("\"{kind}")))
+}
+
+/// The AST kinds the reference recognizes in an object's `k`.
+pub(crate) const AST_KIND_NAMES: [&str; 17] = [
+    "Comp",
+    "Str",
+    "Num",
+    "Bool",
+    "Null",
+    "Arr",
+    "Obj",
+    "Ref",
+    "Ph",
+    "StateRef",
+    "RuntimeRef",
+    "BinOp",
+    "UnaryOp",
+    "Ternary",
+    "Member",
+    "Index",
+    "Assign",
 ];
 
 /// Assigning an object or null to `__proto__` (in an object literal, or to a

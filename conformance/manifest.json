@@ -834,6 +834,42 @@
    "schema": "hand",
    "file": "cases/hand/134-tool-and-args-from-other-statements.oui",
    "source": "hand-written"
+  },
+  {
+   "name": "hand/135-state-defaults-operators-and-coercions",
+   "schema": "hand",
+   "file": "cases/hand/135-state-defaults-operators-and-coercions.oui",
+   "source": "hand-written"
+  },
+  {
+   "name": "hand/136-state-defaults-builtin-functions",
+   "schema": "hand",
+   "file": "cases/hand/136-state-defaults-builtin-functions.oui",
+   "source": "hand-written"
+  },
+  {
+   "name": "hand/137-state-defaults-in-lists-and-objects",
+   "schema": "hand",
+   "file": "cases/hand/137-state-defaults-in-lists-and-objects.oui",
+   "source": "hand-written"
+  },
+  {
+   "name": "hand/138-state-defaults-that-come-out-null",
+   "schema": "libraries",
+   "file": "cases/hand/138-state-defaults-that-come-out-null.oui",
+   "source": "hand-written"
+  },
+  {
+   "name": "hand/139-state-defaults-sorting-text",
+   "schema": "hand",
+   "file": "cases/hand/139-state-defaults-sorting-text.oui",
+   "source": "hand-written"
+  },
+  {
+   "name": "hand/140-state-defaults-sorting-mixed-values-that-loop",
+   "schema": "hand",
+   "file": "cases/hand/140-state-defaults-sorting-mixed-values-that-loop.oui",
+   "source": "hand-written"
   }
  ]
 }

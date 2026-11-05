@@ -1,0 +1,14 @@
+root = Root([Text("x")])
+$list = [1 + 1, "a" + "b", [2 * 3]]
+$obj = {sum: 1 + 2, nested: {flag: !true}, items: [$list.length]}
+$member = $obj.nested.flag
+$index = $list[1]
+$out = $list[9]
+$pluck = [{a: 1}, {b: 2}, null].a
+$strIndex = "hello"[1]
+$length = "héllo😀".length
+$method = $obj.toString
+$ctor = $obj.constructor ? "yes" : "no"
+$missing = $obj.nope
+$keyed = {"1": 1 + 1, b: 2, "0": 0 * 1}
+$plain = [1, {k: "v"}]

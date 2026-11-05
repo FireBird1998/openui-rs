@@ -1,26 +1,3 @@
 # Cases the core doesn't match the reference on yet. Each may fail, but one
 # that matches again, or a name that isn't a case, fails the test. Rewrite
 # every list to the cases failing now: UPDATE_PENDING=1 cargo test -p openui-lang
-bench-schema-tools
-legacy-everything
-legacy-tools-strings
-library-bindings-off
-library-bindings-only
-library-both-examples
-library-builtin-functions-null
-library-builtin-functions-on
-library-edit-and-inline
-library-everything
-library-falsy-and-truthy
-library-options-override-root
-library-plain-bindings-on
-library-plain-tools
-library-restricted-slots
-library-tool-examples
-library-tool-shapes
-library-toolcalls-bindings-off
-library-toolcalls-no-tools
-library-tools-specs
-library-tools-strings
-react-ui-schema-tools
-spec-1.0-library-tools

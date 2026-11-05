@@ -8,6 +8,7 @@ use indexmap::IndexSet;
 
 use crate::ast::{Ast, RefType};
 use crate::builtins::{is_builtin, is_reserved_call};
+use crate::evaluate::{from_value, has_runtime, state_default, to_value};
 use crate::expr::parse_expression_with_limit;
 use crate::js::JsObject;
 use crate::lexer::tokenize;
@@ -417,6 +418,37 @@ pub(crate) fn build_result(
     }
 }
 
+/// 1.1 evaluates expression defaults (`$total = 1 + 2`) once, in statement
+/// order, each reading the defaults declared above it. Returns the names of
+/// those that came out `undefined`: left out of the result, as JSON leaves
+/// them, but declared all the same. Evaluating reports no errors, so it can
+/// come after all the materializing.
+fn evaluate_state_defaults(state: &mut JsObject<Value>) -> HashSet<String> {
+    let mut undefined = HashSet::new();
+    if !state.values().any(has_runtime) {
+        return undefined;
+    }
+    let mut declared = JsObject::new();
+    let mut evaluated = JsObject::new();
+    for (id, value) in state.iter() {
+        if has_runtime(value) {
+            let js = state_default(value, &declared);
+            match to_value(&js) {
+                Some(v) => evaluated.set(id.clone(), v),
+                None => {
+                    undefined.insert(id.clone());
+                }
+            }
+            declared.define(id.clone(), js);
+        } else {
+            evaluated.set(id.clone(), value.clone());
+            declared.define(id.clone(), from_value(value));
+        }
+    }
+    *state = evaluated;
+    undefined
+}
+
 /// State initial values (materialized), plus queries and mutations as written.
 /// Any `$name` used anywhere but never declared is declared as null, except
 /// one still growing at the end of a stream, in the statements it ends.
@@ -463,6 +495,7 @@ fn extract_statements(
             Statement::Value { .. } => {}
         }
     }
+    let undefined = evaluate_state_defaults(&mut state);
     // A query waits for the queries it reads; ones that read each other can
     // never start.
     for cycle in query_cycles(&queries) {
@@ -475,7 +508,7 @@ fn extract_statements(
             if partial.is_some_and(|p| p.name == name && p.slots.contains(&slot)) {
                 continue;
             }
-            if !state.has(name) {
+            if !state.has(name) && !undefined.contains(name) {
                 state.set(name.clone(), Value::Null);
             }
         }

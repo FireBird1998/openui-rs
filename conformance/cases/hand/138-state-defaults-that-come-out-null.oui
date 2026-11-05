@@ -1,0 +1,9 @@
+root = Page([Widget("x")])
+data = Query("load", {})
+$fromQuery = data.rows
+$fromStatement = total + 1
+total = 5
+$withComponent = $flag ? Widget("a") : 0
+$withLibraryCall = @Twice(2)
+$withStep = @Ping()
+$inList = [1 + 1, @Twice(1)]
