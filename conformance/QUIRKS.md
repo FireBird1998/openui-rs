@@ -6,7 +6,7 @@ Each entry has a minimal program, what the reference does, the corpus cases that
 
 ## 1. An apostrophe in unfenced prose swallows the program
 
-- **Found:** 2026-10-06, while porting the preprocessing (ticket 05). Reference commit `bba1d251`; still so in 1.0.1 (`eb20708`).
+- **Found:** 2026-10-06, while porting the preprocessing (ticket 05). Reference commit `bba1d251`; still so in 1.0.1 (`eb20708`) and in 1.1.0 (`47b9cae`), whose new fence rules don't touch unfenced prose.
 - **Pinned by:** `hand/78-apostrophe-in-leading-prose`, `hand/79-apostrophe-in-trailing-prose`, and `hand/73-prose-with-apostrophes` (an odd count that happens to survive).
 
 ```

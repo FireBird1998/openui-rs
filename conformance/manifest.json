@@ -708,6 +708,72 @@
    "schema": "hand",
    "file": "cases/hand/113-offsets-after-non-ascii.oui",
    "source": "hand-written"
+  },
+  {
+   "name": "hand/114-script-block-skipped",
+   "schema": "hand",
+   "file": "cases/hand/114-script-block-skipped.oui",
+   "source": "hand-written"
+  },
+  {
+   "name": "hand/115-inline-fence-in-prose",
+   "schema": "hand",
+   "file": "cases/hand/115-inline-fence-in-prose.oui",
+   "source": "hand-written"
+  },
+  {
+   "name": "hand/116-code-on-the-opener-line",
+   "schema": "hand",
+   "file": "cases/hand/116-code-on-the-opener-line.oui",
+   "source": "hand-written"
+  },
+  {
+   "name": "hand/117-tag-as-the-name",
+   "schema": "hand",
+   "file": "cases/hand/117-tag-as-the-name.oui",
+   "source": "hand-written"
+  },
+  {
+   "name": "hand/118-stray-closing-fence",
+   "schema": "hand",
+   "file": "cases/hand/118-stray-closing-fence.oui",
+   "source": "hand-written"
+  },
+  {
+   "name": "hand/119-js-helpers-after-a-program",
+   "schema": "hand",
+   "file": "cases/hand/119-js-helpers-after-a-program.oui",
+   "source": "hand-written"
+  },
+  {
+   "name": "hand/120-fence-line-inside-a-string",
+   "schema": "hand",
+   "file": "cases/hand/120-fence-line-inside-a-string.oui",
+   "source": "hand-written"
+  },
+  {
+   "name": "hand/121-fence-line-inside-a-string-in-a-block",
+   "schema": "hand",
+   "file": "cases/hand/121-fence-line-inside-a-string-in-a-block.oui",
+   "source": "hand-written"
+  },
+  {
+   "name": "hand/122-comment-lines-before-the-first-statement",
+   "schema": "hand",
+   "file": "cases/hand/122-comment-lines-before-the-first-statement.oui",
+   "source": "hand-written"
+  },
+  {
+   "name": "hand/123-no-block-starts-a-program",
+   "schema": "hand",
+   "file": "cases/hand/123-no-block-starts-a-program.oui",
+   "source": "hand-written"
+  },
+  {
+   "name": "hand/124-blocks-without-a-program-and-prose",
+   "schema": "hand",
+   "file": "cases/hand/124-blocks-without-a-program-and-prose.oui",
+   "source": "hand-written"
   }
  ]
 }

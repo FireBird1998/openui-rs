@@ -9,17 +9,10 @@ docs/openui-lang-specification-v0-5-02
 fuzz/106fb3f3
 hand/10-query-with-state-args
 hand/103-library-function-args
-hand/23-fenced-with-prose
-hand/27-two-fenced-blocks
 hand/35-state-assigned-a-query
 hand/61-state-declarations
-hand/72-fence-opens-mid-stream
-hand/75-trailing-prose
-hand/76-backticks-inside-strings
 hand/92-queries-and-objects-as-values
 hand/94-query-member-in-a-prop
-spec/grammar/003-fence-multiple-joined
-spec/streaming/005-fence-arrives-late
 test/functions-11
 test/functions-12
 test/toolCompatibility-01

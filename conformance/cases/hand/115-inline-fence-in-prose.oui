@@ -1,0 +1,4 @@
+Wrap it in ```openui``` fences, like this:
+```openui
+root = Root([Text("inline mentions do not count")])
+```

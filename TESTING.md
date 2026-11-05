@@ -29,7 +29,7 @@ cargo test -p openui-lang --test conformance streaming_   # tests whose names ma
 | `robustness` | Property tests: any text, cut anywhere, through every stage and every entry point, finishes without panicking | Crashes on arbitrary input |
 | `depth` | Absurdly deep nesting stops at 256 levels with `depth_limited`, on a 512 KB thread stack | Stack overflows |
 | `size` | Programs that double with every line stop at about 8 MiB with `size_limited` | Runaway memory |
-| `streaming_cost` | A push costs about the same on a program four times the size (thread CPU time, best of 7) | Streaming that grows with the square of the program |
+| `streaming_cost` | A push costs about the same on a program four times the size, bare and in a fence with prose around it (thread CPU time, best of 7) | Streaming that grows with the square of the program |
 | `report` | The counts in CONFORMANCE.md are what the corpus holds | A stale write-up |
 | `cli` | The command-line tool's commands print what the library gives, including reading stdin and the default chunk size | A broken CLI |
 | `api` | The public JSON reader and writer, `JsObject`, and walking an expression | Public helpers that parsing alone doesn't reach |

@@ -1,0 +1,5 @@
+root = Root([b])
+b = Text("unfenced")
+```js
+fetch("/x")
+```

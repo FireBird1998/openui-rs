@@ -35,9 +35,6 @@ gen/hand/72-fence-opens-mid-stream/drop-child
 gen/hand/72-fence-opens-mid-stream/edit
 gen/hand/72-fence-opens-mid-stream/fenced
 gen/hand/72-fence-opens-mid-stream/replay
-gen/hand/75-trailing-prose/onto-nothing
-gen/hand/75-trailing-prose/replay
-gen/hand/76-backticks-inside-strings/onto-nothing
 gen/hand/85-streaming-redefinition-1127/add
 gen/hand/85-streaming-redefinition-1127/edit
 gen/hand/85-streaming-redefinition-1127/replay

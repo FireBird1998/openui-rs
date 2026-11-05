@@ -1,0 +1,7 @@
+Here is a helper and the UI.
+```openui-js
+const x = 1
+```
+```openui
+root = Root([Text("after the script")])
+```

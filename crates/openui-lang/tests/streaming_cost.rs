@@ -67,14 +67,15 @@ fn cost_per_push(library: &Arc<Library>, chunks: &[&str]) -> f64 {
     (now() - started) / chunks.len() as f64
 }
 
-#[test]
-fn a_push_costs_about_the_same_on_a_program_four_times_the_size() {
+/// Asserts a push on the larger text costs less than [`BOUND`] times one on
+/// the smaller: `wrap` turns each program into the text streamed.
+fn check_ratio(wrap: impl Fn(&str) -> String) {
     let conformance = conformance_dir();
     let schema =
         serde_json::from_str(&read(&conformance.join("imported/schemas/bench.json"))).unwrap();
     let library = Arc::new(Library::from_json_schema(&schema));
-    let small_text = read(&conformance.join("cases/synthetic/dashboard-x2.oui"));
-    let large_text = read(&conformance.join("cases/synthetic/dashboard-x8.oui"));
+    let small_text = wrap(&read(&conformance.join("cases/synthetic/dashboard-x2.oui")));
+    let large_text = wrap(&read(&conformance.join("cases/synthetic/dashboard-x8.oui")));
     let (small, large) = (chunks(&small_text), chunks(&large_text));
     let (mut small_cost, mut large_cost) = (f64::INFINITY, f64::INFINITY);
     for _ in 0..RUNS {
@@ -93,4 +94,18 @@ fn a_push_costs_about_the_same_on_a_program_four_times_the_size() {
         large_cost * 1e6,
         small_cost * 1e6
     );
+}
+
+#[test]
+fn a_push_costs_about_the_same_on_a_program_four_times_the_size() {
+    check_ratio(str::to_owned);
+}
+
+/// As models usually send a program: in a fence, with prose around it. Fence
+/// extraction is line by line, so it stays linear too.
+#[test]
+fn so_it_does_in_a_fence_with_prose_around_it() {
+    check_ratio(|program| {
+        format!("Here is the dashboard:\n```openui\n{program}\n```\nIt updates live.")
+    });
 }

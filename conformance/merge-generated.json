@@ -3441,6 +3441,223 @@
    "source": "generated"
   },
   {
+   "name": "gen/hand/114-script-block-skipped/add",
+   "existingCase": "hand/114-script-block-skipped",
+   "patch": "root = Root([added, Text(\"after the script\")])\nadded = Text(\"Added\")",
+   "source": "generated"
+  },
+  {
+   "name": "gen/hand/114-script-block-skipped/fenced",
+   "existingCase": "hand/114-script-block-skipped",
+   "patch": "Here's the update:\n\n```openui-lang\nadded = Text(\"Added\")\n```\n\nLet me know if you'd like anything else.",
+   "source": "generated"
+  },
+  {
+   "name": "gen/hand/114-script-block-skipped/replay",
+   "existingCase": "hand/114-script-block-skipped",
+   "patch": "Here is a helper and the UI.\n```openui-js\nconst x = 1\n```\n```openui\nroot = Root([Text(\"after the script\")])\n```\n",
+   "source": "generated"
+  },
+  {
+   "name": "gen/hand/114-script-block-skipped/onto-nothing",
+   "existing": "",
+   "patchCase": "hand/114-script-block-skipped",
+   "source": "generated"
+  },
+  {
+   "name": "gen/hand/115-inline-fence-in-prose/add",
+   "existingCase": "hand/115-inline-fence-in-prose",
+   "patch": "root = Root([added, Text(\"inline mentions do not count\")])\nadded = Text(\"Added\")",
+   "source": "generated"
+  },
+  {
+   "name": "gen/hand/115-inline-fence-in-prose/fenced",
+   "existingCase": "hand/115-inline-fence-in-prose",
+   "patch": "Here's the update:\n\n```openui-lang\nadded = Text(\"Added\")\n```\n\nLet me know if you'd like anything else.",
+   "source": "generated"
+  },
+  {
+   "name": "gen/hand/115-inline-fence-in-prose/replay",
+   "existingCase": "hand/115-inline-fence-in-prose",
+   "patch": "Wrap it in ```openui``` fences, like this:\n```openui\nroot = Root([Text(\"inline mentions do not count\")])\n```\n",
+   "source": "generated"
+  },
+  {
+   "name": "gen/hand/115-inline-fence-in-prose/onto-nothing",
+   "existing": "",
+   "patchCase": "hand/115-inline-fence-in-prose",
+   "source": "generated"
+  },
+  {
+   "name": "gen/hand/118-stray-closing-fence/add",
+   "existingCase": "hand/118-stray-closing-fence",
+   "patch": "root = Root([added, Text(\"unfenced\")])\nadded = Text(\"Added\")",
+   "source": "generated"
+  },
+  {
+   "name": "gen/hand/118-stray-closing-fence/fenced",
+   "existingCase": "hand/118-stray-closing-fence",
+   "patch": "Here's the update:\n\n```openui-lang\nadded = Text(\"Added\")\n```\n\nLet me know if you'd like anything else.",
+   "source": "generated"
+  },
+  {
+   "name": "gen/hand/118-stray-closing-fence/replay",
+   "existingCase": "hand/118-stray-closing-fence",
+   "patch": "root = Root([Text(\"unfenced\")])\n```\nDone.\n",
+   "source": "generated"
+  },
+  {
+   "name": "gen/hand/118-stray-closing-fence/onto-nothing",
+   "existing": "",
+   "patchCase": "hand/118-stray-closing-fence",
+   "source": "generated"
+  },
+  {
+   "name": "gen/hand/119-js-helpers-after-a-program/edit",
+   "existingCase": "hand/119-js-helpers-after-a-program",
+   "patch": "b = Text(\"Edited\")",
+   "source": "generated"
+  },
+  {
+   "name": "gen/hand/119-js-helpers-after-a-program/add",
+   "existingCase": "hand/119-js-helpers-after-a-program",
+   "patch": "root = Root([added, b])\nadded = Text(\"Added\")",
+   "source": "generated"
+  },
+  {
+   "name": "gen/hand/119-js-helpers-after-a-program/delete",
+   "existingCase": "hand/119-js-helpers-after-a-program",
+   "patch": "b = null",
+   "source": "generated"
+  },
+  {
+   "name": "gen/hand/119-js-helpers-after-a-program/drop-child",
+   "existingCase": "hand/119-js-helpers-after-a-program",
+   "patch": "root = Root([])",
+   "source": "generated"
+  },
+  {
+   "name": "gen/hand/119-js-helpers-after-a-program/fenced",
+   "existingCase": "hand/119-js-helpers-after-a-program",
+   "patch": "Here's the update:\n\n```openui-lang\nb = Text(\"Edited\")\nb = null\n```\n\nLet me know if you'd like anything else.",
+   "source": "generated"
+  },
+  {
+   "name": "gen/hand/119-js-helpers-after-a-program/root-b",
+   "existingCase": "hand/119-js-helpers-after-a-program",
+   "patch": "b = Text(\"Edited\")",
+   "rootId": "b",
+   "source": "generated"
+  },
+  {
+   "name": "gen/hand/119-js-helpers-after-a-program/replay",
+   "existingCase": "hand/119-js-helpers-after-a-program",
+   "patch": "root = Root([b])\nb = Text(\"unfenced\")\n```js\nfetch(\"/x\")\n```\n",
+   "source": "generated"
+  },
+  {
+   "name": "gen/hand/119-js-helpers-after-a-program/onto-nothing",
+   "existing": "",
+   "patchCase": "hand/119-js-helpers-after-a-program",
+   "source": "generated"
+  },
+  {
+   "name": "gen/hand/120-fence-line-inside-a-string/add",
+   "existingCase": "hand/120-fence-line-inside-a-string",
+   "patch": "root = Root([added, Text(\"before\nadded = Text(\"Added\")",
+   "source": "generated"
+  },
+  {
+   "name": "gen/hand/120-fence-line-inside-a-string/fenced",
+   "existingCase": "hand/120-fence-line-inside-a-string",
+   "patch": "Here's the update:\n\n```openui-lang\nadded = Text(\"Added\")\n```\n\nLet me know if you'd like anything else.",
+   "source": "generated"
+  },
+  {
+   "name": "gen/hand/120-fence-line-inside-a-string/replay",
+   "existingCase": "hand/120-fence-line-inside-a-string",
+   "patch": "root = Root([Text(\"before\n```\nafter\")])\n",
+   "source": "generated"
+  },
+  {
+   "name": "gen/hand/120-fence-line-inside-a-string/onto-nothing",
+   "existing": "",
+   "patchCase": "hand/120-fence-line-inside-a-string",
+   "source": "generated"
+  },
+  {
+   "name": "gen/hand/121-fence-line-inside-a-string-in-a-block/add",
+   "existingCase": "hand/121-fence-line-inside-a-string-in-a-block",
+   "patch": "root = Root([added, Text(\"x\nadded = Text(\"Added\")",
+   "source": "generated"
+  },
+  {
+   "name": "gen/hand/121-fence-line-inside-a-string-in-a-block/fenced",
+   "existingCase": "hand/121-fence-line-inside-a-string-in-a-block",
+   "patch": "Here's the update:\n\n```openui-lang\nadded = Text(\"Added\")\n```\n\nLet me know if you'd like anything else.",
+   "source": "generated"
+  },
+  {
+   "name": "gen/hand/121-fence-line-inside-a-string-in-a-block/replay",
+   "existingCase": "hand/121-fence-line-inside-a-string-in-a-block",
+   "patch": "```openui\nroot = Root([Text(\"x\n```\nstill the string\")])\n```\n",
+   "source": "generated"
+  },
+  {
+   "name": "gen/hand/121-fence-line-inside-a-string-in-a-block/onto-nothing",
+   "existing": "",
+   "patchCase": "hand/121-fence-line-inside-a-string-in-a-block",
+   "source": "generated"
+  },
+  {
+   "name": "gen/hand/122-comment-lines-before-the-first-statement/add",
+   "existingCase": "hand/122-comment-lines-before-the-first-statement",
+   "patch": "root = Root([added, Text(\"a\")])\nadded = Text(\"Added\")",
+   "source": "generated"
+  },
+  {
+   "name": "gen/hand/122-comment-lines-before-the-first-statement/fenced",
+   "existingCase": "hand/122-comment-lines-before-the-first-statement",
+   "patch": "Here's the update:\n\n```openui-lang\nadded = Text(\"Added\")\n```\n\nLet me know if you'd like anything else.",
+   "source": "generated"
+  },
+  {
+   "name": "gen/hand/122-comment-lines-before-the-first-statement/replay",
+   "existingCase": "hand/122-comment-lines-before-the-first-statement",
+   "patch": "```\n// generated\n\n# by a model\nroot = Root([Text(\"a\")])\n```\n",
+   "source": "generated"
+  },
+  {
+   "name": "gen/hand/122-comment-lines-before-the-first-statement/onto-nothing",
+   "existing": "",
+   "patchCase": "hand/122-comment-lines-before-the-first-statement",
+   "source": "generated"
+  },
+  {
+   "name": "gen/hand/123-no-block-starts-a-program/add",
+   "existingCase": "hand/123-no-block-starts-a-program",
+   "patch": "root = Root([added, Text(\"outside wins\")])\nadded = Text(\"Added\")",
+   "source": "generated"
+  },
+  {
+   "name": "gen/hand/123-no-block-starts-a-program/fenced",
+   "existingCase": "hand/123-no-block-starts-a-program",
+   "patch": "Here's the update:\n\n```openui-lang\nadded = Text(\"Added\")\n```\n\nLet me know if you'd like anything else.",
+   "source": "generated"
+  },
+  {
+   "name": "gen/hand/123-no-block-starts-a-program/replay",
+   "existingCase": "hand/123-no-block-starts-a-program",
+   "patch": "Some prose.\n```\njust text\n```\nroot = Root([Text(\"outside wins\")])\n",
+   "source": "generated"
+  },
+  {
+   "name": "gen/hand/123-no-block-starts-a-program/onto-nothing",
+   "existing": "",
+   "patchCase": "hand/123-no-block-starts-a-program",
+   "source": "generated"
+  },
+  {
    "name": "gen/test/actions-01/add",
    "existingCase": "test/actions-01",
    "patch": "added = Text(\"Added\")",
