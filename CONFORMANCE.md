@@ -16,12 +16,12 @@ Reference: `@openuidev/lang-core 1.1.0` at commit `47b9cae0d3b26a8c9d7514d5887a6
 
 | Compared with the reference | Cases | Checks | Cases by source |
 |---|---:|---:|---|
-| Parse results: one-shot, and after every push and at the end of 8 chunkings, 2 resync sequences and any recorded chunks | 636 | 358,175 results | 7 benchmark, 107 docs, 46 examples, 13 fuzz, 141 hand-written, 2 recorded, 259 reference-test, 58 spec-fixture, 3 synthetic |
-| Stages on every prefix: preprocessing, tokens, statements and expression trees | 634 | 108,751 prefixes | the parse corpus, less its largest synthetic programs |
+| Parse results: one-shot, and after every push and at the end of 8 chunkings, 2 resync sequences and any recorded chunks | 637 | 358,377 results | 7 benchmark, 107 docs, 46 examples, 13 fuzz, 142 hand-written, 2 recorded, 259 reference-test, 58 spec-fixture, 3 synthetic |
+| Stages on every prefix: preprocessing, tokens, statements and expression trees | 635 | 108,812 prefixes | the parse corpus, less its largest synthetic programs |
 | System prompts | 61 | 61 | |
-| Edit-mode merges | 3,228 | 3,228 | 3,172 generated, 49 hand-written, 1 recorded, 1 reference-test, 5 spec-fixture |
+| Edit-mode merges | 3,235 | 3,235 | 3,179 generated, 49 hand-written, 1 recorded, 1 reference-test, 5 spec-fixture |
 | Element trees back to source | 605 | 605 | 1 fuzz, 62 hand-written, 511 parse corpus root, 31 reference-test |
-| Enriched errors | 376 | 376 | every parse corpus case with errors |
+| Enriched errors | 378 | 378 | every parse corpus case with errors |
 
 Quirks recorded: 17.
 Not matched yet, listed in `conformance/pending/`: none.
@@ -105,6 +105,7 @@ Documented, not emulated. None occurs in the corpus, and none comes from a real 
 | A state default sorting more than 65 values whose comparison loops (numbers and text mixed: `2 < "10" < "1a" < 2`) | JavaScriptCore merges sorted runs | a stable merge sort. Up to 65 values it follows JavaScriptCore exactly, and either way the core never panics |
 | A state default reading a property of a built-in method or prototype (`$a = [].map.length`, `$b = $o.__proto__.x`) | that property | `undefined` (the method itself, `[].map`, is reproduced) |
 | An object literal shaped like an AST node in a state default (`$x = {k: "Num", v: 1}`) | evaluates it as that node | keeps it as the object |
+| A state default turning an object with its own `toString` or `valueOf` into text (`$a = {toString: 1}` then `$b = $a + ""`, or in `@Sort`, `@Filter`'s `contains`, `==`) | `parse` throws a `TypeError`: the object can't become text | `"[object Object]"` |
 | JSON nested deeper than 800 levels, for `json_to_openui` or `parse_json` | handled, up to the engine's recursion limit | refused with an error |
 | `1e400` in JSON read back | `Infinity` | refused: a `serde_json::Value` can't hold it |
 | A component with `properties` whose `required` is neither an array nor a string (a number, say) | throws a `TypeError` building the library (`required.includes is not a function`) | treats `required` as empty |

@@ -14,8 +14,9 @@ use std::collections::HashMap;
 use std::sync::Arc;
 
 use crate::ast::Ast;
+use crate::materialize::ErrorPart;
 use crate::parser::{Info, Kind, Statement};
-use crate::result::{ValidationError, Value};
+use crate::result::Value;
 
 /// A name's number: dense from 0, fixed for the life of the table.
 pub(crate) type Slot = u32;
@@ -360,7 +361,9 @@ pub(crate) struct Entry {
     pub output: Output,
     pub reach: Arc<Reach>,
     pub unresolved: Vec<String>,
-    pub errors: Vec<ValidationError>,
+    /// Its errors, those of the statements it reached kept apart: the same
+    /// whatever was reported before, so any later pass can take them.
+    pub errors: Arc<Vec<ErrorPart>>,
     /// How much deeper than its starting depth the materialization went.
     pub r_max: usize,
     /// How much it grew the result (`Ctx::size`), counted again on each reuse.

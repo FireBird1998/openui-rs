@@ -4331,6 +4331,49 @@
    "source": "generated"
   },
   {
+   "name": "gen/hand/141-a-reference-to-a-later-statement-while-streaming/edit",
+   "existingCase": "hand/141-a-reference-to-a-later-statement-while-streaming",
+   "patch": "editModal=M(\"Edited\")",
+   "source": "generated"
+  },
+  {
+   "name": "gen/hand/141-a-reference-to-a-later-statement-while-streaming/add",
+   "existingCase": "hand/141-a-reference-to-a-later-statement-while-streaming",
+   "patch": "added = Table(\"Added\")",
+   "source": "generated"
+  },
+  {
+   "name": "gen/hand/141-a-reference-to-a-later-statement-while-streaming/delete",
+   "existingCase": "hand/141-a-reference-to-a-later-statement-while-streaming",
+   "patch": "editModal = null",
+   "source": "generated"
+  },
+  {
+   "name": "gen/hand/141-a-reference-to-a-later-statement-while-streaming/fenced",
+   "existingCase": "hand/141-a-reference-to-a-later-statement-while-streaming",
+   "patch": "Here's the update:\n\n```openui-lang\neditModal=M(\"Edited\")\neditModal = null\n```\n\nLet me know if you'd like anything else.",
+   "source": "generated"
+  },
+  {
+   "name": "gen/hand/141-a-reference-to-a-later-statement-while-streaming/root-tbl",
+   "existingCase": "hand/141-a-reference-to-a-later-statement-while-streaming",
+   "patch": "editModal=M(\"Edited\")",
+   "rootId": "tbl",
+   "source": "generated"
+  },
+  {
+   "name": "gen/hand/141-a-reference-to-a-later-statement-while-streaming/replay",
+   "existingCase": "hand/141-a-reference-to-a-later-statement-while-streaming",
+   "patch": "tbl=Table(editModal)\neditModal=M(\"\")\nroot=Stack(tbl editModal",
+   "source": "generated"
+  },
+  {
+   "name": "gen/hand/141-a-reference-to-a-later-statement-while-streaming/onto-nothing",
+   "existing": "",
+   "patchCase": "hand/141-a-reference-to-a-later-statement-while-streaming",
+   "source": "generated"
+  },
+  {
    "name": "gen/test/actions-01/add",
    "existingCase": "test/actions-01",
    "patch": "added = Text(\"Added\")",

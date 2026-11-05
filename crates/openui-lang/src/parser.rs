@@ -13,7 +13,9 @@ use crate::expr::parse_expression_with_limit;
 use crate::js::JsObject;
 use crate::lexer::tokenize;
 use crate::library::Library;
-use crate::materialize::{Ctx, Frame, materialize_call_args, materialize_value, tag_statement};
+use crate::materialize::{
+    Ctx, Frame, flatten_errors, materialize_call_args, materialize_value, tag_statement,
+};
 use crate::preprocess::preprocess;
 use crate::result::{Meta, MutationStatement, ParseResult, QueryStatement, Value};
 use crate::statements::{IdKind, RawStatement, auto_close, split};
@@ -342,7 +344,6 @@ pub(crate) fn build_result(
         depth: 0,
         size: 0,
         frame: Frame::default(),
-        seen: HashSet::new(),
     };
     let mut root = None;
     let mut root_expression = None;
@@ -408,7 +409,7 @@ pub(crate) fn build_result(
             unresolved: frame.unresolved,
             orphaned,
             statement_count,
-            errors: frame.errors,
+            errors: flatten_errors(&frame.errors),
         },
         state_declarations,
         query_statements,

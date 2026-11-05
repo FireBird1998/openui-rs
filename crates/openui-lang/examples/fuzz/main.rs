@@ -46,7 +46,7 @@ type Explains = (fn(&str) -> bool, &'static str);
 
 /// Divergences CONFORMANCE.md documents: a minimal mismatch one of these
 /// recognizes is explained, not a bug to save.
-pub(crate) const EXPLAINED: [Explains; 6] = [
+pub(crate) const EXPLAINED: [Explains; 7] = [
     (
         assigns_proto,
         "object or null assigned to __proto__ (prototype chain)",
@@ -71,12 +71,25 @@ pub(crate) const EXPLAINED: [Explains; 6] = [
         ast_shaped_object_in_a_state_default,
         "object literal shaped like an AST node in a state default",
     ),
+    (
+        stringifies_an_own_to_string,
+        "a state default turning an object with its own toString or valueOf into text",
+    ),
 ];
+
+/// JavaScript can't turn an object whose own `toString` (or `valueOf`) isn't
+/// a function into text: in a state default (`+ ""`, `@Sort`, `==`) the
+/// reference's `parse` throws a TypeError. The core writes "[object Object]".
+fn stringifies_an_own_to_string(program: &str) -> bool {
+    program.contains('$') && (program.contains("toString") || program.contains("valueOf"))
+}
 
 /// `@Sort` in a state default orders text with ICU's root collation; the
 /// core has it exactly for ASCII only.
 fn sorts_text_outside_ascii(program: &str) -> bool {
-    program.contains("@Sort") && program.contains('$') && !program.is_ascii()
+    program.contains("@Sort")
+        && program.contains('$')
+        && (!program.is_ascii() || program.contains("\\u"))
 }
 
 /// Names a value inherits as built-in methods, read as a step in a longer
@@ -107,9 +120,11 @@ fn reads_a_property_of_a_builtin(program: &str) -> bool {
 
 /// The reference evaluates such an object in a state default as the node it
 /// looks like; the core keeps it as the object.
+/// Shrunk, the key's colon or quotes may be gone (`$q={k"Ref`).
 fn ast_shaped_object_in_a_state_default(program: &str) -> bool {
     program.contains('$')
-        && (program.contains("k:") || program.contains("\"k\""))
+        && program.contains('{')
+        && program.contains('k')
         && crate::AST_KIND_NAMES
             .iter()
             .any(|kind| program.contains(&format!("\"{kind}")))

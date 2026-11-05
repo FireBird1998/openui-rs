@@ -35,11 +35,48 @@ pub(crate) struct Ctx<'a> {
     pub size: usize,
     /// What the materialization in progress has done on the side.
     pub frame: Frame,
-    /// Statements this pass has materialized (or taken from the cache), as
-    /// values and as expressions. The reference memoizes them per pass, so
-    /// one taken again reports its errors only the first time, unless it met
-    /// an unresolved reference: then the reference didn't memoize it.
-    pub seen: HashSet<(Slot, bool)>,
+}
+
+/// An error, or the errors of a statement reached, in the order met. The
+/// reference memoizes each statement per pass (as a value and as an
+/// expression), so one reached again reports nothing, unless it met an
+/// unresolved or cyclic reference: then it wasn't memoized, and is
+/// materialized, errors and all, every time. Kept apart, a statement's errors
+/// don't depend on what the pass reported before it, so they can be cached
+/// across passes; [`flatten_errors`] applies the memo for each.
+#[derive(Clone, Debug)]
+pub(crate) enum ErrorPart {
+    Own(ValidationError),
+    Reached {
+        key: (Slot, bool),
+        memoized: bool,
+        parts: Arc<Vec<ErrorPart>>,
+    },
+}
+
+/// A pass's errors as the reference reports them: a memoized statement's only
+/// where it's first reached.
+pub(crate) fn flatten_errors(parts: &[ErrorPart]) -> Vec<ValidationError> {
+    fn walk(parts: &[ErrorPart], seen: &mut HashSet<(Slot, bool)>, out: &mut Vec<ValidationError>) {
+        for part in parts {
+            match part {
+                ErrorPart::Own(error) => out.push(error.clone()),
+                ErrorPart::Reached {
+                    key,
+                    memoized,
+                    parts,
+                } => {
+                    if *memoized && !seen.insert(*key) {
+                        continue;
+                    }
+                    walk(parts, seen, out);
+                }
+            }
+        }
+    }
+    let mut out = Vec::new();
+    walk(parts, &mut HashSet::new(), &mut out);
+    out
 }
 
 /// The side effects of materializing one statement (or the entry): errors
@@ -48,7 +85,7 @@ pub(crate) struct Ctx<'a> {
 /// so its effects can be cached and replayed with it.
 #[derive(Default)]
 pub(crate) struct Frame {
-    pub errors: Vec<ValidationError>,
+    pub errors: Vec<ErrorPart>,
     pub unresolved: Vec<String>,
     /// Every defined statement looked up here, sorted and deduplicated when
     /// the frame closes.
@@ -108,14 +145,14 @@ impl Ctx<'_> {
     pub(crate) fn push_issue(&mut self, component: &str, path: &str, issue: Issue) {
         let message = issue.message(component, path);
         self.size += ERROR_SIZE + message.len() + component.len() + path.len();
-        self.frame.errors.push(ValidationError {
+        self.frame.errors.push(ErrorPart::Own(ValidationError {
             code: issue.code(),
             component: component.to_owned(),
             path: path.to_owned(),
             message,
             statement_id: self.current_statement_id.clone(),
             severity: issue.severity(),
-        });
+        }));
     }
 
     fn unresolved(&mut self, name: &str) {
@@ -292,17 +329,11 @@ fn resolve_ref(name: &str, ctx: &mut Ctx, mode: Mode) -> Resolved {
             };
         }
         ctx.size += size;
-        let first = ctx.seen.insert((slot, expr));
         let entry = ctx
             .cache
             .get(slot, ctx.partial, expr)
             .expect("still cached");
-        replay(
-            entry,
-            &mut ctx.frame,
-            ctx.depth,
-            first || !entry.unresolved.is_empty(),
-        );
+        replay(entry, (slot, expr), &mut ctx.frame, ctx.depth);
         return match &entry.output {
             Output::Value(v) => Resolved::Value(v.clone()),
             Output::Ast(a) => Resolved::Ast(a.clone()),
@@ -333,17 +364,17 @@ fn resolve_ref(name: &str, ctx: &mut Ctx, mode: Mode) -> Resolved {
     };
     let size = ctx.size - start_size;
     finish(frame, output, slot, expr, (start_depth, size), ctx);
-    ctx.seen.insert((slot, expr));
     resolved
 }
 
-/// Account for a cached statement as if it had been materialized here, its
-/// errors included unless this pass has reported them already.
+/// Account for a cached statement as if it had been materialized here.
 #[inline(never)]
-fn replay(entry: &Entry, frame: &mut Frame, depth: usize, errors: bool) {
-    if errors {
-        frame.errors.extend(entry.errors.iter().cloned());
-    }
+fn replay(entry: &Entry, key: (Slot, bool), frame: &mut Frame, depth: usize) {
+    frame.errors.push(ErrorPart::Reached {
+        key,
+        memoized: entry.unresolved.is_empty(),
+        parts: entry.errors.clone(),
+    });
     frame.unresolved.extend(entry.unresolved.iter().cloned());
     frame.children.push(entry.reach.clone());
     frame.max_depth = frame.max_depth.max(depth + entry.r_max);
@@ -377,7 +408,12 @@ fn finish(
         children,
     });
     let reach = ctx.cache.share_reach(slot, reach);
-    ctx.frame.errors.extend(errors.iter().cloned());
+    let errors = Arc::new(errors);
+    ctx.frame.errors.push(ErrorPart::Reached {
+        key: (slot, expr),
+        memoized: !cycle && unresolved.is_empty(),
+        parts: errors.clone(),
+    });
     ctx.frame.unresolved.extend(unresolved.iter().cloned());
     ctx.frame.children.push(reach.clone());
     ctx.frame.max_depth = ctx.frame.max_depth.max(max_depth);

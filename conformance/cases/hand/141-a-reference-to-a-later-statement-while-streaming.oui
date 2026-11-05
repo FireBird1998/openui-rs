@@ -1,0 +1,3 @@
+tbl=Table(editModal)
+editModal=M("")
+root=Stack(tbl editModal

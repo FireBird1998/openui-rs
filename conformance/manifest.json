@@ -870,6 +870,12 @@
    "schema": "hand",
    "file": "cases/hand/140-state-defaults-sorting-mixed-values-that-loop.oui",
    "source": "hand-written"
+  },
+  {
+   "name": "hand/141-a-reference-to-a-later-statement-while-streaming",
+   "schema": "bench",
+   "file": "cases/hand/141-a-reference-to-a-later-statement-while-streaming.oui",
+   "source": "hand-written"
   }
  ]
 }
