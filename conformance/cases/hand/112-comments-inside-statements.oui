@@ -1,0 +1,12 @@
+# A whole-line hash comment before anything
+root = Root([   // a comment inside the brackets
+  heading, # a hash comment after an element
+  Card([Text("in # the string"), Text("and // this one")]) // closing comment
+])
+heading = Text("x") #no space
+ratio = 10 / 2 // a slash, then a comment
+half = 1 /2
+nested = Card([
+  # an indented hash comment line
+  Text("y")
+])

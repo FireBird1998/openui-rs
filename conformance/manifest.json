@@ -696,6 +696,18 @@
    "schema": "hand",
    "file": "cases/hand/111-stray-character-before-a-ternary.oui",
    "source": "hand-written"
+  },
+  {
+   "name": "hand/112-comments-inside-statements",
+   "schema": "hand",
+   "file": "cases/hand/112-comments-inside-statements.oui",
+   "source": "hand-written"
+  },
+  {
+   "name": "hand/113-offsets-after-non-ascii",
+   "schema": "hand",
+   "file": "cases/hand/113-offsets-after-non-ascii.oui",
+   "source": "hand-written"
   }
  ]
 }

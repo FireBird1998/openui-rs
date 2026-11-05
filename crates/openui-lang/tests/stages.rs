@@ -117,10 +117,12 @@ fn statements_json(text: &str) -> String {
         }
         let _ = write!(
             out,
-            "{{\"id\":{},\"idTokenType\":{},\"tokens\":{},\"expr\":{}}}",
+            "{{\"id\":{},\"idTokenType\":{},\"tokens\":{},\"start\":{},\"end\":{},\"expr\":{}}}",
             serde_json::to_string(&stmt.id).unwrap(),
             stmt.id_kind.token_kind(),
             tokens_to_json(&stmt.tokens),
+            stmt.start.utf16,
+            stmt.end.utf16,
             parse_expression(&stmt.tokens).to_json()
         );
     }

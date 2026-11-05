@@ -3349,6 +3349,98 @@
    "source": "generated"
   },
   {
+   "name": "gen/hand/112-comments-inside-statements/edit",
+   "existingCase": "hand/112-comments-inside-statements",
+   "patch": "heading = Text(\"Edited\") #no space",
+   "source": "generated"
+  },
+  {
+   "name": "gen/hand/112-comments-inside-statements/add",
+   "existingCase": "hand/112-comments-inside-statements",
+   "patch": "root = Root([added, // a comment inside the brackets\nadded = Text(\"Added\")",
+   "source": "generated"
+  },
+  {
+   "name": "gen/hand/112-comments-inside-statements/delete",
+   "existingCase": "hand/112-comments-inside-statements",
+   "patch": "half = null",
+   "source": "generated"
+  },
+  {
+   "name": "gen/hand/112-comments-inside-statements/fenced",
+   "existingCase": "hand/112-comments-inside-statements",
+   "patch": "Here's the update:\n\n```openui-lang\nheading = Text(\"Edited\") #no space\nhalf = null\n```\n\nLet me know if you'd like anything else.",
+   "source": "generated"
+  },
+  {
+   "name": "gen/hand/112-comments-inside-statements/root-heading",
+   "existingCase": "hand/112-comments-inside-statements",
+   "patch": "heading = Text(\"Edited\") #no space",
+   "rootId": "heading",
+   "source": "generated"
+  },
+  {
+   "name": "gen/hand/112-comments-inside-statements/replay",
+   "existingCase": "hand/112-comments-inside-statements",
+   "patch": "# A whole-line hash comment before anything\nroot = Root([   // a comment inside the brackets\n  heading, # a hash comment after an element\n  Card([Text(\"in # the string\"), Text(\"and // this one\")]) // closing comment\n])\nheading = Text(\"x\") #no space\nratio = 10 / 2 // a slash, then a comment\nhalf = 1 /2\nnested = Card([\n  # an indented hash comment line\n  Text(\"y\")\n])\n",
+   "source": "generated"
+  },
+  {
+   "name": "gen/hand/112-comments-inside-statements/onto-nothing",
+   "existing": "",
+   "patchCase": "hand/112-comments-inside-statements",
+   "source": "generated"
+  },
+  {
+   "name": "gen/hand/113-offsets-after-non-ascii/edit",
+   "existingCase": "hand/113-offsets-after-non-ascii",
+   "patch": "greeting = Text(\"Edited\")",
+   "source": "generated"
+  },
+  {
+   "name": "gen/hand/113-offsets-after-non-ascii/add",
+   "existingCase": "hand/113-offsets-after-non-ascii",
+   "patch": "root = Root([added, greeting, Text(\"😀 emoji and ñ\"), wave, naïve])\nadded = Text(\"Added\")",
+   "source": "generated"
+  },
+  {
+   "name": "gen/hand/113-offsets-after-non-ascii/delete",
+   "existingCase": "hand/113-offsets-after-non-ascii",
+   "patch": "wave = null",
+   "source": "generated"
+  },
+  {
+   "name": "gen/hand/113-offsets-after-non-ascii/drop-child",
+   "existingCase": "hand/113-offsets-after-non-ascii",
+   "patch": "root = Root([Text(\"😀 emoji and ñ\"), wave, naïve])",
+   "source": "generated"
+  },
+  {
+   "name": "gen/hand/113-offsets-after-non-ascii/fenced",
+   "existingCase": "hand/113-offsets-after-non-ascii",
+   "patch": "Here's the update:\n\n```openui-lang\ngreeting = Text(\"Edited\")\nwave = null\n```\n\nLet me know if you'd like anything else.",
+   "source": "generated"
+  },
+  {
+   "name": "gen/hand/113-offsets-after-non-ascii/root-greeting",
+   "existingCase": "hand/113-offsets-after-non-ascii",
+   "patch": "greeting = Text(\"Edited\")",
+   "rootId": "greeting",
+   "source": "generated"
+  },
+  {
+   "name": "gen/hand/113-offsets-after-non-ascii/replay",
+   "existingCase": "hand/113-offsets-after-non-ascii",
+   "patch": "root = Root([greeting, Text(\"😀 emoji and ñ\"), wave, naïve])\ngreeting = Text(\"Grüße — ünïcödé\")\nwave = Text(\"🌊🌊\")  // 🌊 in a comment\né = Text(\"a stray letter before a statement\")\nnaïve = Text(\"an identifier cut by a letter\")\n$sélection = \"x\"\n",
+   "source": "generated"
+  },
+  {
+   "name": "gen/hand/113-offsets-after-non-ascii/onto-nothing",
+   "existing": "",
+   "patchCase": "hand/113-offsets-after-non-ascii",
+   "source": "generated"
+  },
+  {
    "name": "gen/test/actions-01/add",
    "existingCase": "test/actions-01",
    "patch": "added = Text(\"Added\")",

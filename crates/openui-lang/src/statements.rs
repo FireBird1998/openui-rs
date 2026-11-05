@@ -1,7 +1,7 @@
 //! Splitting tokens into statements, and closing what a stream left open, as
 //! the reference parser's `split` and `autoClose`.
 
-use crate::lexer::{EOF, Token};
+use crate::lexer::{EOF, Pos, Token, Tokens};
 
 /// Which kind of token named a statement.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -32,8 +32,12 @@ pub struct RawStatement {
     pub id: String,
     /// Which kind of token named it.
     pub id_kind: IdKind,
-    /// The expression's tokens, ending in [`Token::Eof`].
-    pub tokens: Vec<Token>,
+    /// The expression's tokens.
+    pub tokens: Tokens,
+    /// Where the statement starts: at its name.
+    pub start: Pos,
+    /// Where it ends: at the newline that closes it, or the end of the input.
+    pub end: Pos,
 }
 
 /// Close an unterminated string and any open brackets so a partial program
@@ -97,7 +101,8 @@ pub fn auto_close(input: &str) -> (String, bool) {
 /// Split a token stream into `id = expression` statements. Statements end at a
 /// newline outside brackets, unless the next line continues a ternary. Lines
 /// that aren't statements are skipped.
-pub fn split(tokens: &[Token]) -> Vec<RawStatement> {
+pub fn split(tokens: &Tokens) -> Vec<RawStatement> {
+    let starts = tokens.starts();
     let mut stmts = Vec::new();
     let mut pos = 0;
     let n = tokens.len();
@@ -115,6 +120,7 @@ pub fn split(tokens: &[Token]) -> Vec<RawStatement> {
             break;
         }
 
+        let start = starts[pos];
         let (id, id_kind) = match &tokens[pos] {
             Token::Ident(v) => (v.clone(), IdKind::Ident),
             Token::Type(v) => (v.clone(), IdKind::Type),
@@ -132,7 +138,7 @@ pub fn split(tokens: &[Token]) -> Vec<RawStatement> {
         }
         pos += 1;
 
-        let mut expr = Vec::new();
+        let mut expr = Tokens::default();
         let mut depth: i32 = 0;
         let mut ternary_depth: i32 = 0;
         while pos < n && tokens[pos] != Token::Eof {
@@ -160,7 +166,7 @@ pub fn split(tokens: &[Token]) -> Vec<RawStatement> {
                 Token::Colon if depth == 0 && ternary_depth > 0 => ternary_depth -= 1,
                 _ => {}
             }
-            expr.push(token.clone());
+            expr.push(token.clone(), starts[pos]);
             pos += 1;
         }
 
@@ -169,6 +175,9 @@ pub fn split(tokens: &[Token]) -> Vec<RawStatement> {
                 id,
                 id_kind,
                 tokens: expr,
+                start,
+                // A newline or the end: the tokens always end in the latter.
+                end: starts[pos],
             });
         }
     }

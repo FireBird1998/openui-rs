@@ -1,0 +1,6 @@
+root = Root([greeting, Text("😀 emoji and ñ"), wave, naïve])
+greeting = Text("Grüße — ünïcödé")
+wave = Text("🌊🌊")  // 🌊 in a comment
+é = Text("a stray letter before a statement")
+naïve = Text("an identifier cut by a letter")
+$sélection = "x"

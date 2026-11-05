@@ -2,7 +2,11 @@
 //!
 //! Works on bytes: every character the grammar cares about is ASCII, and UTF-8
 //! continuation bytes never look like ASCII, so byte positions behave like the
-//! reference parser's UTF-16 positions wherever it matters.
+//! reference parser's UTF-16 positions wherever it matters. Where a position
+//! is written out (a token's or a statement's `start`), it's converted to the
+//! UTF-16 offset JavaScript would give.
+
+use std::ops::Deref;
 
 use crate::js::{json_parse_string, write_json_number, write_json_string};
 
@@ -129,11 +133,60 @@ impl Token {
     }
 }
 
+/// Where a token starts in the text it came from: as a byte offset, for
+/// slicing, and as the UTF-16 offset the reference parser's `start` is.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub struct Pos {
+    pub byte: usize,
+    pub utf16: usize,
+}
+
+/// A program's tokens, each with where it starts. Reads as the tokens.
+#[derive(Clone, Debug, Default, PartialEq)]
+pub struct Tokens {
+    tokens: Vec<Token>,
+    starts: Vec<Pos>,
+}
+
+impl Tokens {
+    /// Where each token starts, one for each.
+    pub fn starts(&self) -> &[Pos] {
+        &self.starts
+    }
+
+    pub(crate) fn push(&mut self, token: Token, start: Pos) {
+        self.tokens.push(token);
+        self.starts.push(start);
+    }
+}
+
+impl Deref for Tokens {
+    type Target = [Token];
+
+    fn deref(&self) -> &[Token] {
+        &self.tokens
+    }
+}
+
+/// Whether the reference parser gives a token its `start`: the tokens that
+/// can open or close a statement.
+fn has_start(token: &Token) -> bool {
+    matches!(
+        token,
+        Token::Newline | Token::Ident(_) | Token::Type(_) | Token::StateVar(_) | Token::Eof
+    )
+}
+
 /// Tokens as the reference parser's `JSON.stringify(tokenize(...))` writes them.
-pub fn tokens_to_json(tokens: &[Token]) -> String {
+pub fn tokens_to_json(tokens: &Tokens) -> String {
     let mut out = String::with_capacity(tokens.len() * 12);
+    write_tokens_json(&mut out, tokens);
+    out
+}
+
+pub(crate) fn write_tokens_json(out: &mut String, tokens: &Tokens) {
     out.push('[');
-    for (i, token) in tokens.iter().enumerate() {
+    for (i, (token, start)) in tokens.iter().zip(tokens.starts()).enumerate() {
         if i > 0 {
             out.push(',');
         }
@@ -146,18 +199,21 @@ pub fn tokens_to_json(tokens: &[Token]) -> String {
             | Token::StateVar(v)
             | Token::BuiltinCall(v) => {
                 out.push_str(",\"v\":");
-                write_json_string(&mut out, v);
+                write_json_string(out, v);
             }
             Token::Num(n) => {
                 out.push_str(",\"v\":");
-                write_json_number(&mut out, *n);
+                write_json_number(out, *n);
             }
             _ => {}
+        }
+        if has_start(token) {
+            out.push_str(",\"start\":");
+            out.push_str(&start.utf16.to_string());
         }
         out.push('}');
     }
     out.push(']');
-    out
 }
 
 fn is_ident_start(b: u8) -> bool {
@@ -188,12 +244,43 @@ fn ends_value(token: Option<&Token>) -> bool {
     )
 }
 
+/// UTF-16 offsets of byte offsets, asked for in increasing order.
+struct Utf16Offsets<'a> {
+    bytes: &'a [u8],
+    byte: usize,
+    utf16: usize,
+}
+
+impl Utf16Offsets<'_> {
+    /// Where `byte`, a character boundary at or after the last one asked
+    /// for, is.
+    fn at(&mut self, byte: usize) -> Pos {
+        for &b in &self.bytes[self.byte..byte] {
+            // A character starts at every byte but a continuation byte; one
+            // of four bytes is two UTF-16 units.
+            if b & 0xC0 != 0x80 {
+                self.utf16 += if b >= 0xF0 { 2 } else { 1 };
+            }
+        }
+        self.byte = byte;
+        Pos {
+            byte,
+            utf16: self.utf16,
+        }
+    }
+}
+
 /// Tokenize a program. Always ends with [`Token::Eof`].
-pub fn tokenize(src: &str) -> Vec<Token> {
+pub fn tokenize(src: &str) -> Tokens {
     let s = src.as_bytes();
     let n = s.len();
     let at = |i: usize| s.get(i).copied();
-    let mut tokens = Vec::new();
+    let mut offsets = Utf16Offsets {
+        bytes: s,
+        byte: 0,
+        utf16: 0,
+    };
+    let mut tokens = Tokens::default();
     let mut i = 0;
 
     while i < n {
@@ -204,6 +291,16 @@ pub fn tokenize(src: &str) -> Vec<Token> {
             break;
         }
         let c = s[i];
+        let start = offsets.at(i);
+
+        // A line comment, `//` or `#`, runs to the end of the line.
+        if c == b'#' || (c == b'/' && at(i + 1) == Some(b'/')) {
+            while i < n && s[i] != b'\n' {
+                i += 1;
+            }
+            continue;
+        }
+
         let next_is_digit = at(i + 1).is_some_and(|b| b.is_ascii_digit());
 
         // One- and two-character punctuation and operators.
@@ -240,26 +337,26 @@ pub fn tokenize(src: &str) -> Vec<Token> {
             _ => None,
         };
         if let Some((token, width)) = operator {
-            tokens.push(token);
+            tokens.push(token, start);
             i += width;
             continue;
         }
 
         if c == b'"' {
             let (token, next) = double_quoted(src, i);
-            tokens.push(token);
+            tokens.push(token, start);
             i = next;
             continue;
         }
         if c == b'\'' {
             let (token, next) = single_quoted(src, i);
-            tokens.push(token);
+            tokens.push(token, start);
             i = next;
             continue;
         }
 
         if c.is_ascii_digit() || c == b'-' {
-            let start = i;
+            let number = i;
             if c == b'-' {
                 i += 1;
             }
@@ -282,50 +379,54 @@ pub fn tokenize(src: &str) -> Vec<Token> {
                 }
             }
             // JavaScript's `+text`; a dangling exponent such as `1e` is NaN.
-            tokens.push(Token::Num(src[start..i].parse().unwrap_or(f64::NAN)));
+            tokens.push(
+                Token::Num(src[number..i].parse().unwrap_or(f64::NAN)),
+                start,
+            );
             continue;
         }
 
         if c == b'$' && at(i + 1).is_some_and(is_ident_start) {
-            let start = i;
+            let name = i;
             i += 1;
             while i < n && is_ident_char(s[i]) {
                 i += 1;
             }
-            tokens.push(Token::StateVar(src[start..i].to_owned()));
+            tokens.push(Token::StateVar(src[name..i].to_owned()), start);
             continue;
         }
 
         if is_ident_start(c) {
-            let start = i;
+            let name = i;
             while i < n && is_ident_char(s[i]) {
                 i += 1;
             }
-            let word = &src[start..i];
-            tokens.push(match word {
+            let word = &src[name..i];
+            let token = match word {
                 "true" => Token::True,
                 "false" => Token::False,
                 "null" => Token::Null,
                 _ if c.is_ascii_uppercase() => Token::Type(word.to_owned()),
                 _ => Token::Ident(word.to_owned()),
-            });
+            };
+            tokens.push(token, start);
             continue;
         }
 
         if c == b'@' && at(i + 1).is_some_and(is_ident_start) {
             i += 1;
-            let start = i;
+            let name = i;
             while i < n && is_ident_char(s[i]) {
                 i += 1;
             }
-            tokens.push(Token::BuiltinCall(src[start..i].to_owned()));
+            tokens.push(Token::BuiltinCall(src[name..i].to_owned()), start);
             continue;
         }
 
         i += 1; // any other character is skipped
     }
 
-    tokens.push(Token::Eof);
+    tokens.push(Token::Eof, offsets.at(n));
     tokens
 }
 
