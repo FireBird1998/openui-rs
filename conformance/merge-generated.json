@@ -3658,6 +3658,206 @@
    "source": "generated"
   },
   {
+   "name": "gen/hand/125-a-statement-with-an-error-used-twice/edit",
+   "existingCase": "hand/125-a-statement-with-an-error-used-twice",
+   "patch": "a = Text(\"Edited\", \"loud\")",
+   "source": "generated"
+  },
+  {
+   "name": "gen/hand/125-a-statement-with-an-error-used-twice/add",
+   "existingCase": "hand/125-a-statement-with-an-error-used-twice",
+   "patch": "root = Root([added, a, a, Card(a, [a])])\nadded = Text(\"Added\")",
+   "source": "generated"
+  },
+  {
+   "name": "gen/hand/125-a-statement-with-an-error-used-twice/delete",
+   "existingCase": "hand/125-a-statement-with-an-error-used-twice",
+   "patch": "a = null",
+   "source": "generated"
+  },
+  {
+   "name": "gen/hand/125-a-statement-with-an-error-used-twice/drop-child",
+   "existingCase": "hand/125-a-statement-with-an-error-used-twice",
+   "patch": "root = Root([a, Card(a, [a])])",
+   "source": "generated"
+  },
+  {
+   "name": "gen/hand/125-a-statement-with-an-error-used-twice/fenced",
+   "existingCase": "hand/125-a-statement-with-an-error-used-twice",
+   "patch": "Here's the update:\n\n```openui-lang\na = Text(\"Edited\", \"loud\")\na = null\n```\n\nLet me know if you'd like anything else.",
+   "source": "generated"
+  },
+  {
+   "name": "gen/hand/125-a-statement-with-an-error-used-twice/root-a",
+   "existingCase": "hand/125-a-statement-with-an-error-used-twice",
+   "patch": "a = Text(\"Edited\", \"loud\")",
+   "rootId": "a",
+   "source": "generated"
+  },
+  {
+   "name": "gen/hand/125-a-statement-with-an-error-used-twice/replay",
+   "existingCase": "hand/125-a-statement-with-an-error-used-twice",
+   "patch": "root = Root([a, a, Card(a, [a])])\na = Text(\"x\", \"loud\")\n",
+   "source": "generated"
+  },
+  {
+   "name": "gen/hand/125-a-statement-with-an-error-used-twice/onto-nothing",
+   "existing": "",
+   "patchCase": "hand/125-a-statement-with-an-error-used-twice",
+   "source": "generated"
+  },
+  {
+   "name": "gen/hand/126-aliases-of-the-root-and-a-child/edit",
+   "existingCase": "hand/126-aliases-of-the-root-and-a-child",
+   "patch": "t = Text(\"Edited\", \"warn\")",
+   "source": "generated"
+  },
+  {
+   "name": "gen/hand/126-aliases-of-the-root-and-a-child/add",
+   "existingCase": "hand/126-aliases-of-the-root-and-a-child",
+   "patch": "added = Root(\"Added\")",
+   "source": "generated"
+  },
+  {
+   "name": "gen/hand/126-aliases-of-the-root-and-a-child/delete",
+   "existingCase": "hand/126-aliases-of-the-root-and-a-child",
+   "patch": "t = null",
+   "source": "generated"
+  },
+  {
+   "name": "gen/hand/126-aliases-of-the-root-and-a-child/fenced",
+   "existingCase": "hand/126-aliases-of-the-root-and-a-child",
+   "patch": "Here's the update:\n\n```openui-lang\nt = Text(\"Edited\", \"warn\")\nt = null\n```\n\nLet me know if you'd like anything else.",
+   "source": "generated"
+  },
+  {
+   "name": "gen/hand/126-aliases-of-the-root-and-a-child/root-main",
+   "existingCase": "hand/126-aliases-of-the-root-and-a-child",
+   "patch": "t = Text(\"Edited\", \"warn\")",
+   "rootId": "main",
+   "source": "generated"
+  },
+  {
+   "name": "gen/hand/126-aliases-of-the-root-and-a-child/replay",
+   "existingCase": "hand/126-aliases-of-the-root-and-a-child",
+   "patch": "root = main\nmain = Root([t, alias, alias])\nt = Text(\"hello\", \"warn\")\nalias = t\n",
+   "source": "generated"
+  },
+  {
+   "name": "gen/hand/126-aliases-of-the-root-and-a-child/onto-nothing",
+   "existing": "",
+   "patchCase": "hand/126-aliases-of-the-root-and-a-child",
+   "source": "generated"
+  },
+  {
+   "name": "gen/hand/127-an-error-in-a-cycle-reached-twice/add",
+   "existingCase": "hand/127-an-error-in-a-cycle-reached-twice",
+   "patch": "root = Root([added, x, y])\nadded = Root(\"Added\")",
+   "source": "generated"
+  },
+  {
+   "name": "gen/hand/127-an-error-in-a-cycle-reached-twice/delete",
+   "existingCase": "hand/127-an-error-in-a-cycle-reached-twice",
+   "patch": "y = null",
+   "source": "generated"
+  },
+  {
+   "name": "gen/hand/127-an-error-in-a-cycle-reached-twice/drop-child",
+   "existingCase": "hand/127-an-error-in-a-cycle-reached-twice",
+   "patch": "root = Root([y])",
+   "source": "generated"
+  },
+  {
+   "name": "gen/hand/127-an-error-in-a-cycle-reached-twice/fenced",
+   "existingCase": "hand/127-an-error-in-a-cycle-reached-twice",
+   "patch": "Here's the update:\n\n```openui-lang\ny = null\n```\n\nLet me know if you'd like anything else.",
+   "source": "generated"
+  },
+  {
+   "name": "gen/hand/127-an-error-in-a-cycle-reached-twice/replay",
+   "existingCase": "hand/127-an-error-in-a-cycle-reached-twice",
+   "patch": "root = Root([x, y])\nx = Root([y, Text(123)])\ny = Root([x])\n",
+   "source": "generated"
+  },
+  {
+   "name": "gen/hand/127-an-error-in-a-cycle-reached-twice/onto-nothing",
+   "existing": "",
+   "patchCase": "hand/127-an-error-in-a-cycle-reached-twice",
+   "source": "generated"
+  },
+  {
+   "name": "gen/hand/128-unresolved-inside-a-statement-used-twice/add",
+   "existingCase": "hand/128-unresolved-inside-a-statement-used-twice",
+   "patch": "root = Root([added, u, u])\nadded = Root(\"Added\")",
+   "source": "generated"
+  },
+  {
+   "name": "gen/hand/128-unresolved-inside-a-statement-used-twice/delete",
+   "existingCase": "hand/128-unresolved-inside-a-statement-used-twice",
+   "patch": "u = null",
+   "source": "generated"
+  },
+  {
+   "name": "gen/hand/128-unresolved-inside-a-statement-used-twice/drop-child",
+   "existingCase": "hand/128-unresolved-inside-a-statement-used-twice",
+   "patch": "root = Root([u])",
+   "source": "generated"
+  },
+  {
+   "name": "gen/hand/128-unresolved-inside-a-statement-used-twice/fenced",
+   "existingCase": "hand/128-unresolved-inside-a-statement-used-twice",
+   "patch": "Here's the update:\n\n```openui-lang\nu = null\n```\n\nLet me know if you'd like anything else.",
+   "source": "generated"
+  },
+  {
+   "name": "gen/hand/128-unresolved-inside-a-statement-used-twice/replay",
+   "existingCase": "hand/128-unresolved-inside-a-statement-used-twice",
+   "patch": "root = Root([u, u])\nu = Root([missing, Text(1)])\n",
+   "source": "generated"
+  },
+  {
+   "name": "gen/hand/128-unresolved-inside-a-statement-used-twice/onto-nothing",
+   "existing": "",
+   "patchCase": "hand/128-unresolved-inside-a-statement-used-twice",
+   "source": "generated"
+  },
+  {
+   "name": "gen/hand/129-a-statement-as-a-value-and-in-an-expression/add",
+   "existingCase": "hand/129-a-statement-as-a-value-and-in-an-expression",
+   "patch": "root = Root([added, t, $on ? t : Text(\"off\"), $on ? t : t])\nadded = Text(\"Added\")",
+   "source": "generated"
+  },
+  {
+   "name": "gen/hand/129-a-statement-as-a-value-and-in-an-expression/delete",
+   "existingCase": "hand/129-a-statement-as-a-value-and-in-an-expression",
+   "patch": "t = null",
+   "source": "generated"
+  },
+  {
+   "name": "gen/hand/129-a-statement-as-a-value-and-in-an-expression/drop-child",
+   "existingCase": "hand/129-a-statement-as-a-value-and-in-an-expression",
+   "patch": "root = Root([$on ? t : Text(\"off\"), $on ? t : t])",
+   "source": "generated"
+  },
+  {
+   "name": "gen/hand/129-a-statement-as-a-value-and-in-an-expression/fenced",
+   "existingCase": "hand/129-a-statement-as-a-value-and-in-an-expression",
+   "patch": "Here's the update:\n\n```openui-lang\nt = null\n```\n\nLet me know if you'd like anything else.",
+   "source": "generated"
+  },
+  {
+   "name": "gen/hand/129-a-statement-as-a-value-and-in-an-expression/replay",
+   "existingCase": "hand/129-a-statement-as-a-value-and-in-an-expression",
+   "patch": "root = Root([t, $on ? t : Text(\"off\"), $on ? t : t])\nt = Text(5)\n",
+   "source": "generated"
+  },
+  {
+   "name": "gen/hand/129-a-statement-as-a-value-and-in-an-expression/onto-nothing",
+   "existing": "",
+   "patchCase": "hand/129-a-statement-as-a-value-and-in-an-expression",
+   "source": "generated"
+  },
+  {
    "name": "gen/test/actions-01/add",
    "existingCase": "test/actions-01",
    "patch": "added = Text(\"Added\")",

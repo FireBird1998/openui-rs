@@ -35,6 +35,11 @@ pub(crate) struct Ctx<'a> {
     pub size: usize,
     /// What the materialization in progress has done on the side.
     pub frame: Frame,
+    /// Statements this pass has materialized (or taken from the cache), as
+    /// values and as expressions. The reference memoizes them per pass, so
+    /// one taken again reports its errors only the first time, unless it met
+    /// an unresolved reference: then the reference didn't memoize it.
+    pub seen: HashSet<(Slot, bool)>,
 }
 
 /// The side effects of materializing one statement (or the entry): errors
@@ -287,11 +292,17 @@ fn resolve_ref(name: &str, ctx: &mut Ctx, mode: Mode) -> Resolved {
             };
         }
         ctx.size += size;
+        let first = ctx.seen.insert((slot, expr));
         let entry = ctx
             .cache
             .get(slot, ctx.partial, expr)
             .expect("still cached");
-        replay(entry, &mut ctx.frame, ctx.depth);
+        replay(
+            entry,
+            &mut ctx.frame,
+            ctx.depth,
+            first || !entry.unresolved.is_empty(),
+        );
         return match &entry.output {
             Output::Value(v) => Resolved::Value(v.clone()),
             Output::Ast(a) => Resolved::Ast(a.clone()),
@@ -322,13 +333,17 @@ fn resolve_ref(name: &str, ctx: &mut Ctx, mode: Mode) -> Resolved {
     };
     let size = ctx.size - start_size;
     finish(frame, output, slot, expr, (start_depth, size), ctx);
+    ctx.seen.insert((slot, expr));
     resolved
 }
 
-/// Account for a cached statement as if it had been materialized here.
+/// Account for a cached statement as if it had been materialized here, its
+/// errors included unless this pass has reported them already.
 #[inline(never)]
-fn replay(entry: &Entry, frame: &mut Frame, depth: usize) {
-    frame.errors.extend(entry.errors.iter().cloned());
+fn replay(entry: &Entry, frame: &mut Frame, depth: usize, errors: bool) {
+    if errors {
+        frame.errors.extend(entry.errors.iter().cloned());
+    }
     frame.unresolved.extend(entry.unresolved.iter().cloned());
     frame.children.push(entry.reach.clone());
     frame.max_depth = frame.max_depth.max(depth + entry.r_max);

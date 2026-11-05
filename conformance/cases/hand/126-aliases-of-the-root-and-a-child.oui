@@ -1,0 +1,4 @@
+root = main
+main = Root([t, alias, alias])
+t = Text("hello", "warn")
+alias = t

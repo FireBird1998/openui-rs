@@ -1,0 +1,3 @@
+root = Root([x, y])
+x = Root([y, Text(123)])
+y = Root([x])

@@ -287,6 +287,7 @@ pub(crate) fn build_result(
         depth: 0,
         size: 0,
         frame: Frame::default(),
+        seen: HashSet::new(),
     };
     let mut root = None;
     let mut root_expression = None;

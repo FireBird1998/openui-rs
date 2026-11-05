@@ -16,12 +16,12 @@ Reference: `@openuidev/lang-core 1.1.0` at commit `47b9cae0d3b26a8c9d7514d5887a6
 
 | Compared with the reference | Cases | Checks | Cases by source |
 |---|---:|---:|---|
-| Parse results: one-shot, and after every push and at the end of 8 chunkings, 2 resync sequences and any recorded chunks | 620 | 347,246 results | 7 benchmark, 107 docs, 46 examples, 13 fuzz, 125 hand-written, 2 recorded, 259 reference-test, 58 spec-fixture, 3 synthetic |
-| Stages on every prefix: preprocessing, tokens, statements and expression trees | 618 | 105,165 prefixes | the parse corpus, less its largest synthetic programs |
+| Parse results: one-shot, and after every push and at the end of 8 chunkings, 2 resync sequences and any recorded chunks | 625 | 348,273 results | 7 benchmark, 107 docs, 46 examples, 13 fuzz, 130 hand-written, 2 recorded, 259 reference-test, 58 spec-fixture, 3 synthetic |
+| Stages on every prefix: preprocessing, tokens, statements and expression trees | 623 | 105,473 prefixes | the parse corpus, less its largest synthetic programs |
 | System prompts | 61 | 61 | |
-| Edit-mode merges | 3,118 | 3,118 | 3,062 generated, 49 hand-written, 1 recorded, 1 reference-test, 5 spec-fixture |
-| Element trees back to source | 589 | 589 | 1 fuzz, 62 hand-written, 495 parse corpus root, 31 reference-test |
-| Enriched errors | 367 | 367 | every parse corpus case with errors |
+| Edit-mode merges | 3,151 | 3,151 | 3,095 generated, 49 hand-written, 1 recorded, 1 reference-test, 5 spec-fixture |
+| Element trees back to source | 594 | 594 | 1 fuzz, 62 hand-written, 500 parse corpus root, 31 reference-test |
+| Enriched errors | 371 | 371 | every parse corpus case with errors |
 
 Quirks recorded: 17.
 Not matched yet, listed in `conformance/pending/`: 77 parse results, 2 enriched errors, 23 system prompts.
@@ -97,7 +97,7 @@ Documented, not emulated. None occurs in the corpus, and none comes from a real 
 | Input | Reference | Core |
 |---|---|---|
 | Nesting 257 to about 8,000 levels | parses (throws `RangeError` past that) | stops at 256, sets `depth_limited` |
-| A result past about 8 MiB of JSON (statements inlined until it doubles per level) | exponential time and memory, or a huge JSON | cuts it, sets `size_limited` |
+| A result past about 8 MiB of JSON (statements inlined until it doubles per level) | parses quickly, since 1.1 builds each statement once and shares it, but its JSON doubles per level: about 1 GB at 22 levels, and at 24 `JSON.stringify` runs out of memory | cuts it, sets `size_limited` |
 | An object assigned to `__proto__`, or `null` in an object literal | replaces the prototype; later reads and `in` checks see through it | ignores the assignment (`null` for a param named `__proto__` is reproduced) |
 | An object literal shaped like an element used as the root | returns that object as `root` | `root` is `None` (it still counts as a root, so no `no-root`) |
 | An object literal shaped like an AST node used as the root (`root = {k: "Comp", name: "Card", args: []}`) | returns that object as `rootExpression` when it holds a component call, and throws a `TypeError` when a node in it lacks the children its kind has (`root = {k: "Comp"}`) | no `rootExpression`, and `no-root` |

@@ -1,0 +1,2 @@
+root = Root([u, u])
+u = Root([missing, Text(1)])

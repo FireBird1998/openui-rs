@@ -774,6 +774,36 @@
    "schema": "hand",
    "file": "cases/hand/124-blocks-without-a-program-and-prose.oui",
    "source": "hand-written"
+  },
+  {
+   "name": "hand/125-a-statement-with-an-error-used-twice",
+   "schema": "hand",
+   "file": "cases/hand/125-a-statement-with-an-error-used-twice.oui",
+   "source": "hand-written"
+  },
+  {
+   "name": "hand/126-aliases-of-the-root-and-a-child",
+   "schema": "hand",
+   "file": "cases/hand/126-aliases-of-the-root-and-a-child.oui",
+   "source": "hand-written"
+  },
+  {
+   "name": "hand/127-an-error-in-a-cycle-reached-twice",
+   "schema": "hand",
+   "file": "cases/hand/127-an-error-in-a-cycle-reached-twice.oui",
+   "source": "hand-written"
+  },
+  {
+   "name": "hand/128-unresolved-inside-a-statement-used-twice",
+   "schema": "hand",
+   "file": "cases/hand/128-unresolved-inside-a-statement-used-twice.oui",
+   "source": "hand-written"
+  },
+  {
+   "name": "hand/129-a-statement-as-a-value-and-in-an-expression",
+   "schema": "hand",
+   "file": "cases/hand/129-a-statement-as-a-value-and-in-an-expression.oui",
+   "source": "hand-written"
   }
  ]
 }

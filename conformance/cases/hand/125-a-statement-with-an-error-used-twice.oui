@@ -1,0 +1,2 @@
+root = Root([a, a, Card(a, [a])])
+a = Text("x", "loud")

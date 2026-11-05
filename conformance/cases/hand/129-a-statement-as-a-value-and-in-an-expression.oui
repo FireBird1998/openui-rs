@@ -1,0 +1,2 @@
+root = Root([t, $on ? t : Text("off"), $on ? t : t])
+t = Text(5)
