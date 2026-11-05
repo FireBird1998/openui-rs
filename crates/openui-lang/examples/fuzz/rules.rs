@@ -827,19 +827,9 @@ fn merge_exception(input: &Input, merged: Option<&str>) -> Option<&'static str> 
         return Some("quirk 16: merging into a program without statements");
     }
     // The merge doesn't extract the existing program's fences (quirk 7's
-    // cause), so a fence marker in it reads as code.
+    // cause), so the prose around them reads as code.
     if input.program.input.contains("```") {
         return Some("quirk 7: the existing program's fences");
-    }
-    // A name the program defines twice comes out of a merge twice.
-    if redefines(&input.program.input) {
-        return Some("quirk 8: a name the program defines twice");
-    }
-    // The merge reads comments as code: a quote or bracket in one joins or
-    // swallows the statements after it.
-    let comment = |text: &str| text.contains("//") || text.contains('#');
-    if comment(&input.program.input) || comment(&input.patch) {
-        return Some("quirk 20: a comment the merge reads as code");
     }
     // An unclosed string or bracket (the text's own, or one line's, which
     // may close against a later line), or a stray closing bracket, joins

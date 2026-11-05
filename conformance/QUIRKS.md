@@ -2,7 +2,7 @@
 
 Behaviour of the reference parser that looks wrong but that the core reproduces anyway, because the contract is to match the reference byte for byte. Fixing a quirk happens upstream first; the core follows when the pinned commit moves.
 
-Each entry has a minimal program, what the reference does, the corpus cases that pin it, and a draft upstream report. Nothing here has been filed yet. Every entry was checked again against lang-core 1.0.1 on 2026-10-16.
+Each entry has a minimal program, what the reference does, the corpus cases that pin it, and a draft upstream report. Nothing here has been filed yet. Every entry was checked again against lang-core 1.0.1 on 2026-10-16. During the move to 1.1.0, quirks 1, 7, 15 and 16 were checked against it on 2026-11-06 and still hold; the rest are checked at the end of the move. Quirks that upstream fixed are kept, under their numbers, in [Fixed upstream](#fixed-upstream).
 
 ## 1. An apostrophe in unfenced prose swallows the program
 
@@ -102,30 +102,9 @@ root = Text("x")
 
 **Related:** a stream that ends on a redefinition still being written keeps the earlier definition. That was by design in 0.3; it isn't in the 1.0 specification (quirk 11).
 
-## 6. Merging drops a ternary's continuation lines
-
-- **Found:** 2026-10-06, porting `mergeStatements` (ticket 12). Reference commit `bba1d251`; still so in 1.0.1 (`eb20708`).
-- **Pinned by:** merge case `hand/ternary-continuation`.
-
-```
-existing:                 patch:
-root = Stack([a])         root = Stack([a])
-a = $flag
-  ? Title("yes")
-  : Title("no")
-```
-
-**Reference behaviour:** the merged program is `root = Stack([a])` and `a = $flag`. The two continuation lines are gone, so `a` changes meaning from a ternary to the flag itself. The statement wasn't even in the patch.
-
-**Why:** `mergeStatements` cuts the program into statements with its own `splitStatementSource`, which splits at every newline outside brackets. The parser's splitter (and the stream parser's) treats a next line starting with `?` or `:` as a continuation. The two continuation lines become statement texts of their own, have no `name =`, and are dropped.
-
-**Draft upstream report:**
-
-> **`mergeStatements` drops the continuation lines of a multi-line ternary, even in statements the patch doesn't touch.** `splitStatementSource` in `parser/merge.ts` splits at every newline outside brackets, unlike `split` in `statements.ts` and the stream parser's `scanNewCompleted`, which keep a line starting with `?` or `:` with the statement before it. So `a = $flag\n  ? Title("yes")\n  : Title("no")` comes out of any merge as `a = $flag`. The prompt's own syntax rules show ternaries, and models do break long ones across lines. Reuse the parser's continuation rule in `splitStatementSource`. Repro: `mergeStatements('root = Stack([a])\na = $flag\n  ? Title("yes")\n  : Title("no")', 'root = Stack([a])')`.
-
 ## 7. An apostrophe in prose before the existing program makes a merge lose it
 
-- **Found:** 2026-10-06 (ticket 12), a sibling of quirk 1. Still so in 1.0.1 (`eb20708`).
+- **Found:** 2026-10-06 (ticket 12), a sibling of quirk 1. Still so in 1.0.1 (`eb20708`) and 1.1.0 (`47b9cae`): the merge now splits with the parser's lexer, which reads the apostrophe as opening a string too.
 - **Pinned by:** merge case `hand/prose-apostrophe-existing`.
 
 ```
@@ -142,29 +121,6 @@ a = Title("A")
 **Draft upstream report:**
 
 > **`mergeStatements` returns only the patch when the existing program starts with prose containing an apostrophe.** Unlike the patch, `existing` isn't passed through `stripFences`, and `splitStatementSource` treats `'` as opening a string, so "Here's your UI:" swallows the program and no existing statements are found. A host that stores the model's raw first response and merges edits into it loses the whole UI on the first edit. Run `existing` through the same preprocessing as the patch (or as `parse`). Repro: `mergeStatements("Here's your UI:\nroot = Stack([a])\na = Title(\"A\")", 'a = Title("B")')` → `'a = Title("B")'`.
-
-## 8. An id defined twice in the existing program comes out twice
-
-- **Found:** 2026-10-06 (ticket 12). Still so in 1.0.1 (`eb20708`).
-- **Pinned by:** merge cases `hand/duplicate-existing`, `hand/duplicate-existing-redefined` and `hand/duplicate-existing-deleted`.
-
-```
-existing:                 patch:
-root = Stack([a])         b = Title("B")
-a = Title("1")
-b = Title("2")
-a = Title("3")
-```
-
-**Reference behaviour:** `root = Stack([a])`, `a = Title("3")`, `a = Title("3")`. The last definition is printed twice, in both places, and the first one's text is lost. A patch `a = null` removes only the first listing; the second disappears only because its text was deleted along with it.
-
-**Why:** the merge keeps a `Map` of id to text and a separate `order` array, and pushes every existing id onto `order`, so a re-defined id is listed twice and both listings look up the latest text.
-
-**Exception to the merge invariants:** an existing program that defines a name twice.
-
-**Draft upstream report:**
-
-> **`mergeStatements` duplicates a statement that's defined twice in the existing program.** Every existing statement's id is pushed onto `order` (`merge.ts`), so an id defined twice is listed twice and printed twice with its last text. Push an id only the first time it's seen, as the patch loop already does. Repro: `mergeStatements('root = Stack([a])\na = Title("1")\na = Title("3")', 'b = Title("B")')`.
 
 ## 9. Serializing drops parentheses around an equal-precedence right operand
 
@@ -290,7 +246,7 @@ With `Format(value: string, ...)` a library function whose `value` is required, 
 
 ## 15. Merging puts what it appends after an unfinished statement, which takes it in
 
-- **Found:** 2026-10-16, by the merge invariants (testing ticket 09). Reference commit `eb20708` (1.0.1).
+- **Found:** 2026-10-16, by the merge invariants (testing ticket 09). Reference commit `eb20708` (1.0.1); still so in 1.1.0 (`47b9cae`).
 - **Pinned by:** merge case `hand/into-an-unfinished-statement`.
 - **Status:** a candidate for the maintainer to judge.
 
@@ -314,7 +270,7 @@ patch:     c = Text("new")
 
 ## 16. Merging into an empty program returns the patch as it is
 
-- **Found:** 2026-10-16, by the merge invariants (testing ticket 09). Reference commit `eb20708` (1.0.1).
+- **Found:** 2026-10-16, by the merge invariants (testing ticket 09). Reference commit `eb20708` (1.0.1); still so in 1.1.0 (`47b9cae`), which returns the patch's statements joined, as before.
 - **Pinned by:** merge case `hand/into-an-empty-program`.
 - **Status:** a candidate for the maintainer to judge.
 
@@ -403,7 +359,67 @@ a = Text("x")
 
 > **The stream parser and `parse()` split statements differently before a `?` that follows a skipped character.** `scanNewCompleted` checks whether the next line's first non-whitespace *character* is `?`, while the batch split checks its first *token*, and the lexer skips characters such as a backtick or a backslash. So for `root = Root([a])\na = Text("x")\n\`? "y" : "z"`, `parse()` continues `a`'s ternary and a stream ends `a` at the newline. language.md, section 1.4 says the batch parser, the streaming parser and the merge must agree on these boundaries byte for byte. Look for the next line's first token in the stream parser too.
 
-## 20. Merging reads comments as code
+# Fixed upstream
+
+The reference no longer behaves this way, so the core doesn't either. The cases that pinned each quirk now pin the fixed behaviour.
+
+### 6. Merging drops a ternary's continuation lines
+
+**Fixed in 1.1.0** (`47b9cae`, #1480: "`mergeStatements` keeps multi-line statements, such as ternaries, intact"). The merge splits with the parser's own statement splitting now, so a ternary's continuation lines stay with it. The merged program is the existing one, unchanged. `hand/ternary-continuation` pins the fixed behaviour.
+
+As recorded before the fix:
+
+- **Found:** 2026-10-06, porting `mergeStatements` (ticket 12). Reference commit `bba1d251`; still so in 1.0.1 (`eb20708`).
+- **Pinned by:** merge case `hand/ternary-continuation`.
+
+```
+existing:                 patch:
+root = Stack([a])         root = Stack([a])
+a = $flag
+  ? Title("yes")
+  : Title("no")
+```
+
+**Reference behaviour:** the merged program is `root = Stack([a])` and `a = $flag`. The two continuation lines are gone, so `a` changes meaning from a ternary to the flag itself. The statement wasn't even in the patch.
+
+**Why:** `mergeStatements` cuts the program into statements with its own `splitStatementSource`, which splits at every newline outside brackets. The parser's splitter (and the stream parser's) treats a next line starting with `?` or `:` as a continuation. The two continuation lines become statement texts of their own, have no `name =`, and are dropped.
+
+**Draft upstream report:**
+
+> **`mergeStatements` drops the continuation lines of a multi-line ternary, even in statements the patch doesn't touch.** `splitStatementSource` in `parser/merge.ts` splits at every newline outside brackets, unlike `split` in `statements.ts` and the stream parser's `scanNewCompleted`, which keep a line starting with `?` or `:` with the statement before it. So `a = $flag\n  ? Title("yes")\n  : Title("no")` comes out of any merge as `a = $flag`. The prompt's own syntax rules show ternaries, and models do break long ones across lines. Reuse the parser's continuation rule in `splitStatementSource`. Repro: `mergeStatements('root = Stack([a])\na = $flag\n  ? Title("yes")\n  : Title("no")', 'root = Stack([a])')`.
+
+### 8. An id defined twice in the existing program comes out twice
+
+**Fixed in 1.1.0** (`47b9cae`). An id defined twice keeps its first place in the merge's order, with its latest text. The example merges to `root = Stack([a])` and `a = Title("3")`, with `b` dropped as unreachable. The three cases pin the fixed behaviour.
+
+As recorded before the fix:
+
+- **Found:** 2026-10-06 (ticket 12). Still so in 1.0.1 (`eb20708`).
+- **Pinned by:** merge cases `hand/duplicate-existing`, `hand/duplicate-existing-redefined` and `hand/duplicate-existing-deleted`.
+
+```
+existing:                 patch:
+root = Stack([a])         b = Title("B")
+a = Title("1")
+b = Title("2")
+a = Title("3")
+```
+
+**Reference behaviour:** `root = Stack([a])`, `a = Title("3")`, `a = Title("3")`. The last definition is printed twice, in both places, and the first one's text is lost. A patch `a = null` removes only the first listing; the second disappears only because its text was deleted along with it.
+
+**Why:** the merge keeps a `Map` of id to text and a separate `order` array, and pushes every existing id onto `order`, so a re-defined id is listed twice and both listings look up the latest text.
+
+**Exception to the merge invariants:** an existing program that defines a name twice.
+
+**Draft upstream report:**
+
+> **`mergeStatements` duplicates a statement that's defined twice in the existing program.** Every existing statement's id is pushed onto `order` (`merge.ts`), so an id defined twice is listed twice and printed twice with its last text. Push an id only the first time it's seen, as the patch loop already does. Repro: `mergeStatements('root = Stack([a])\na = Title("1")\na = Title("3")', 'b = Title("B")')`.
+
+### 20. Merging reads comments as code
+
+**Fixed in 1.1.0** (`47b9cae`). The lexer skips `//` and `#` comments itself, and the merge splits with the parser's lexer, so a quote or bracket in a comment no longer joins or swallows statements. The example merges to `root = Root([a, b])`, `a = Text("A2")` and `b = Text("B")`. `hand/a-quote-in-a-comment` pins the fixed behaviour.
+
+As recorded before the fix:
 
 - **Found:** 2026-10-16, by the merge invariants (testing ticket 09). Reference commit `eb20708` (1.0.1).
 - **Pinned by:** merge case `hand/a-quote-in-a-comment`.
@@ -426,4 +442,3 @@ patch:     // say "hi
 **Draft upstream report:**
 
 > **A quote or bracket in a comment makes `mergeStatements` lose statements.** `splitStatementSource` tracks brackets and quotes but not comments, so a patch `// say "hi\na = Text("A2")` has no statements as the merge reads it (the quote opens a string that runs to the end), and `mergeStatements('root = Root([a, b])\na = Text("A")\nb = Text("B")', patch)` returns the program unchanged. language.md, section 7 says the merge reads both texts with section 1.2, which strips comments first. Strip comments (as `preprocess` does) before splitting, or skip them while scanning.
-

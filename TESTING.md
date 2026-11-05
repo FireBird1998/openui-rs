@@ -206,7 +206,7 @@ A program inside a markdown fence, with prose before and after (no apostrophe, w
 - An empty patch changes nothing: the merged program parses as the program did.
 - The program's tree converted back to source works as a patch: merging it in gives the same tree. This applies where the round trip does, with its exceptions.
 
-Exceptions: a name the program defines twice (quirk 8); an unfinished statement, in the program or the patch, which takes in what's appended after it (quirk 15); a program without statements, which the merge returns the patch for as it is (quirk 16); a comment, which the merge reads as code (quirk 20).
+Exceptions: an unfinished statement, in the program or the patch, which takes in what's appended after it (quirk 15); a program without statements, which the merge returns the patch for as it is (quirk 16); an existing program with fences, whose prose the merge reads as code (quirk 7). Quirks 8 and 20, a name defined twice and comments read as code, were exceptions until 1.1 fixed them.
 
 ### Finished statements stay put (`finished-stay-put`)
 

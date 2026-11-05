@@ -23,8 +23,8 @@ Reference: `@openuidev/lang-core 1.1.0` at commit `47b9cae0d3b26a8c9d7514d5887a6
 | Element trees back to source | 589 | 589 | 1 fuzz, 62 hand-written, 495 parse corpus root, 31 reference-test |
 | Enriched errors | 367 | 367 | every parse corpus case with errors |
 
-Quirks recorded: 20.
-Not matched yet, listed in `conformance/pending/`: 77 parse results, 63 merges, 2 enriched errors, 23 system prompts.
+Quirks recorded: 17.
+Not matched yet, listed in `conformance/pending/`: 77 parse results, 2 enriched errors, 23 system prompts.
 <!-- /counts -->
 
 
@@ -72,9 +72,9 @@ In the reference, reproduced and recorded in [QUIRKS.md](conformance/QUIRKS.md),
 3. Prop names that look like numbers take positional args first.
 4. Streaming counts redefined statements; one-shot doesn't.
 5. A mismatched closing bracket leaves a one-shot result "incomplete" forever.
-6. Merging drops a ternary's continuation lines.
+6. ~~Merging drops a ternary's continuation lines.~~ Fixed in 1.1.0.
 7. Prose with an apostrophe before the existing program makes a merge lose it.
-8. An id defined twice in the existing program comes out of a merge twice.
+8. ~~An id defined twice in the existing program comes out of a merge twice.~~ Fixed in 1.1.0.
 9. Serializing drops parentheses around an equal-precedence right operand: `a - (b - c)` becomes `a - b - c`.
 10. Serialized object keys aren't quoted (by design since 1.0: the spec says keys must be valid names to round-trip).
 11. At a stream's end, a final redefinition that needed closing doesn't win (new in 1.0's terms: the spec says it should).
@@ -86,7 +86,7 @@ In the reference, reproduced and recorded in [QUIRKS.md](conformance/QUIRKS.md),
 17. While a later statement is still open, finished statements are treated as partial: marked so, and their props checked leniently (a candidate, found by the finished-statements invariant).
 18. An empty program parses as incomplete (a candidate, found by the fences invariant).
 19. A stray character before a ternary's `?` ends a streamed statement but not a parsed one (a candidate, found by the stream-end invariant).
-20. Merging reads comments as code: a quote in a `//` comment can make a patch lose its statements (a candidate, found by the merge invariants).
+20. ~~Merging reads comments as code: a quote in a `//` comment can make a patch lose its statements (a candidate, found by the merge invariants).~~ Fixed in 1.1.0.
 
 Also reported, though not a quirk because the core doesn't reproduce it: a few lines that each reference the line before twice make the reference's `parse` take exponential time and memory (ticket 14).
 
