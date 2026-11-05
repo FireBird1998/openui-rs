@@ -190,11 +190,17 @@ fn root_is_an_ast_shaped_object(program: &str) -> bool {
 /// c`, `c = {...}`). Other lines don't count: they may be prose, or taken in
 /// by the object if it's unclosed.
 fn root_is_an_object(program: &str) -> bool {
+    // As the parser sees it: fences taken out (code may sit on the opener
+    // line), comments stripped.
+    let program = openui_lang::preprocess(program);
     let statements: Vec<(&str, &str)> = program
         .lines()
         .filter_map(|line| {
             let (name, value) = line.split_once('=')?;
-            let name = name.trim();
+            // Shrunk, a stray character the lexer skips may lead the name.
+            let name = name
+                .trim()
+                .trim_start_matches(|c: char| !(c.is_alphanumeric() || c == '_' || c == '$'));
             let named = !name.is_empty()
                 && name
                     .chars()
@@ -213,8 +219,13 @@ fn root_is_an_object(program: &str) -> bool {
     for _ in 0..10 {
         match value {
             Some(v) if v.starts_with('{') => return true,
-            Some(v) if !v.is_empty() && v.chars().all(|c| c.is_alphanumeric() || c == '_') => {
-                value = value_of(v);
+            // A reference, maybe with shrunk junk after it (`root = header n`).
+            Some(v) => {
+                let name = v.split_whitespace().next().unwrap_or_default();
+                if name.is_empty() || !name.chars().all(|c| c.is_alphanumeric() || c == '_') {
+                    return false;
+                }
+                value = value_of(name);
             }
             _ => return false,
         }
