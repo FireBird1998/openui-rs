@@ -9,7 +9,7 @@ const STATEMENT_IDS: [&str; 12] = [
     "a", "b", "c", "items", "data", "header", "Main", "x1", "$count", "$flag", "$q", "save",
 ];
 
-const STRING_PIECES: [&str; 22] = [
+const STRING_PIECES: [&str; 23] = [
     "hi",
     "a b",
     "it's",
@@ -32,6 +32,8 @@ const STRING_PIECES: [&str; 22] = [
     "x\\q",
     "\\u12",
     " ",
+    // 1.1: a fence line inside a multi-line string.
+    "\n```\n",
 ];
 
 const NUMBERS: [&str; 17] = [
@@ -73,7 +75,7 @@ const OBJECT_KEYS: [&str; 14] = [
 
 const AST_KIND_STRINGS: [&str; 5] = ["\"Str\"", "\"Comp\"", "\"Ref\"", "\"element\"", "\"Null\""];
 
-const BUILTIN_CALLS: [&str; 18] = [
+const BUILTIN_CALLS: [&str; 23] = [
     "@Count(items)",
     "@Each(items, \"item\", Text(item.name))",
     "@Each(items, item, Text(item))",
@@ -94,6 +96,12 @@ const BUILTIN_CALLS: [&str; 18] = [
     "Action(@OpenUrl(\"https://x.dev\"))",
     "Action([])",
     "@Set($q)",
+    // 1.1: rounding over lists, and calls state defaults evaluate.
+    "@Round([1.25, [2.5, null]], 1)",
+    "@Abs(data.rows)",
+    "@Sort(items, \"name\", \"desc\")",
+    "@Each([1, 2], \"n\", n * 2)",
+    "@Floor(\"2.7\")",
 ];
 
 /// Characters and fragments the lexer and preprocessing treat specially.
@@ -155,6 +163,8 @@ impl<'a> Generator<'a> {
         for id in &ids {
             let expr = match *id {
                 "data" | "items" if self.rng.chance(50) => self.query(),
+                // 1.1 evaluates these while parsing.
+                id if id.starts_with('$') && self.rng.chance(40) => self.computed_default(),
                 "save" if self.rng.chance(70) => format!("Mutation(\"save\", {})", self.object(1)),
                 _ => self.expr(0),
             };
@@ -165,6 +175,14 @@ impl<'a> Generator<'a> {
             } else {
                 ""
             };
+            // 1.1: whole-line comments, which the lexer and merging skip.
+            if self.rng.chance(6) {
+                lines.push(
+                    self.rng
+                        .pick(&["// a note", "# a note", "  // indented"])
+                        .to_string(),
+                );
+            }
             lines.push(format!("{id} = {expr}{comment}"));
             if self.rng.chance(8) {
                 lines.push(String::new());
@@ -177,8 +195,71 @@ impl<'a> Generator<'a> {
         self.wrap(text)
     }
 
+    /// A state default that computes: arithmetic over numbers, text and the
+    /// other states, or a built-in function over a literal list.
+    fn computed_default(&mut self) -> String {
+        let operand = |g: &mut Self| -> String {
+            match g.rng.below(4) {
+                0 => g.rng.pick(&NUMBERS).to_string(),
+                1 => g.string(),
+                2 => g.rng.pick(&["$count", "$flag", "$q", "$later"]).to_string(),
+                _ => g
+                    .rng
+                    .pick(&["[1, \"2\", null]", "{n: 2}", "true", "null"])
+                    .to_string(),
+            }
+        };
+        match self.rng.below(3) {
+            0 => {
+                let op = *self
+                    .rng
+                    .pick(&["+", "-", "*", "/", "%", "==", "!=", ">", "&&", "||"]);
+                format!("{} {op} {}", operand(self), operand(self))
+            }
+            1 => {
+                let f = *self.rng.pick(&[
+                    "@Count", "@Sum", "@Avg", "@Min", "@Max", "@First", "@Last", "@Round", "@Abs",
+                    "@Floor", "@Ceil",
+                ]);
+                format!(
+                    "{f}([{}, {}, {}])",
+                    operand(self),
+                    operand(self),
+                    operand(self)
+                )
+            }
+            _ => format!(
+                "@Sort([{}, {}, {}, {}], \"\"{})",
+                operand(self),
+                operand(self),
+                operand(self),
+                operand(self),
+                if self.rng.chance(50) {
+                    ", \"desc\""
+                } else {
+                    ""
+                }
+            ),
+        }
+    }
+
     fn query(&mut self) -> String {
-        let mut args = vec![format!("\"tool_{}\"", self.rng.below(3)), self.object(1)];
+        // 1.1: a tool name read from another statement, and args reading
+        // other queries' results, so queries wait for each other or loop.
+        let tool = if self.rng.chance(20) {
+            self.reference()
+        } else {
+            format!("\"tool_{}\"", self.rng.below(3))
+        };
+        let args = if self.rng.chance(30) {
+            let read = *self
+                .rng
+                .pick(&["data.rows", "items.total", "data", "x1.id"]);
+            format!("{{x: {read}}}")
+        } else {
+            self.object(1)
+        };
+        let mut args = vec![tool, args];
         if self.rng.chance(60) {
             args.push("{rows: []}".to_owned());
         }
@@ -324,12 +405,20 @@ impl<'a> Generator<'a> {
     }
 
     fn wrap(&mut self, text: String) -> String {
+        let (first, rest) = text.split_once('\n').unwrap_or((&text, ""));
         match self.rng.below(100) {
             0..=9 => format!("```openui\n{text}\n```"),
             10..=14 => format!("Here's the UI:\n```openui\n{text}\n```\nHope that helps!"),
             15..=19 => format!("Here is the UI:\n{text}"),
             20..=22 => format!("Here's the UI:\n{text}"),
             23..=26 => format!("{text}\n\nLet me know if you'd like changes."),
+            // 1.1's fence rules: a script block, code on the opener line, an
+            // inline mention, a stray closing fence, helpers after the program.
+            27..=28 => format!("```openui-js\nconst x = 1\n```\n```openui\n{text}\n```"),
+            29..=30 => format!("```openui {first}\n{rest}\n```"),
+            31..=32 => format!("Use ```openui``` blocks:\n```openui\n{text}\n```"),
+            33..=34 => format!("{text}\n```\nDone."),
+            35..=36 => format!("{text}\n```js\nhelper()\n```"),
             _ => text,
         }
     }
