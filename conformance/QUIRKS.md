@@ -2,7 +2,7 @@
 
 Behaviour of the reference parser that looks wrong but that the core reproduces anyway, because the contract is to match the reference byte for byte. Fixing a quirk happens upstream first; the core follows when the pinned commit moves.
 
-Each entry has a minimal program, what the reference does, the corpus cases that pin it, and a draft upstream report. Nothing here has been filed yet. Every entry was checked again against lang-core 1.0.1 on 2026-10-16. During the move to 1.1.0, quirks 1, 7, 15 and 16 were checked against it on 2026-11-06 and still hold; the rest are checked at the end of the move. Quirks that upstream fixed are kept, under their numbers, in [Fixed upstream](#fixed-upstream).
+Each entry has a minimal program, what the reference does, the corpus cases that pin it, and a draft upstream report. Nothing here has been filed yet. Every entry was checked again against lang-core 1.1.0 on 2026-11-06. The cases that pin each one match 1.1's results, so each still holds, except 6, 8 and 20, which 1.1 fixed. Quirks that upstream fixed are kept, under their numbers, in [Fixed upstream](#fixed-upstream).
 
 ## 1. An apostrophe in unfenced prose swallows the program
 

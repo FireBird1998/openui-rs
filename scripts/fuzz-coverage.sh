@@ -12,9 +12,15 @@
 #
 # Inputs stay under 8 KB, the size of a long model response: smaller inputs
 # run faster, so the fuzzer explores more. The time limit is 10 s an input: the core answers any input in well under
-# a second in a release build, and a fuzz build adds AddressSanitizer and debug
-# assertions, which make it several times slower. Ten seconds still catches
-# what grows without bound, which is what the limit is for.
+# a second in a release build, and a fuzz build adds debug assertions, which
+# make it slower. Ten seconds still catches what grows without bound, which is
+# what the limit is for.
+#
+# Built without AddressSanitizer (`-s none`): the core forbids unsafe code, so
+# the sanitizer has nothing to catch, and over a long run its bookkeeping grows
+# without bound. GitHub's 5-hour runs of parse and merge stopped at the 4 GB
+# limit that way. Without it memory stays flat (35 MB over 2.3 million merge
+# inputs) and inputs run twice as fast.
 set -uo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$ROOT"
@@ -32,7 +38,7 @@ while [[ $# -gt 0 ]]; do
 done
 [[ ${#targets[@]} -gt 0 ]] || targets=(parse stream merge serialize json)
 
-cargo +nightly fuzz build > /dev/null 2>&1 || { cargo +nightly fuzz build; exit 1; }
+cargo +nightly fuzz build -s none > /dev/null 2>&1 || { cargo +nightly fuzz build -s none; exit 1; }
 
 # Seeds: corpus programs for parsing and streaming (a stream's first byte is
 # its chunk plan), program-and-patch pairs for merging, and parse results for
@@ -70,7 +76,7 @@ for target in "${targets[@]}"; do
   prefix="$out/"
   [[ -z "$findings" ]] || prefix="$out/coverage-$target-"
   echo "Fuzzing $target for $seconds s"
-  cargo +nightly fuzz run "$target" "fuzz/corpus/$target" -- \
+  cargo +nightly fuzz run -s none "$target" "fuzz/corpus/$target" -- \
     -dict=fuzz/openui.dict -timeout=10 -rss_limit_mb=4096 -max_len=8192 -max_total_time="$seconds" \
     -print_final_stats=1 -artifact_prefix="$prefix" > "$out/coverage-$target.log" 2>&1 &
   pids+=($!)

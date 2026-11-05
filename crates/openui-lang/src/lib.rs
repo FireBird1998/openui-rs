@@ -156,6 +156,7 @@
 //! Call the core from a thread with at least 512 KB of stack, and build it
 //! optimized (opt-level 1 or more), even in debug builds of the app.
 
+#![forbid(unsafe_code)]
 #![warn(missing_docs)]
 
 /// The repository README's Rust example runs as a doc test, so it can't drift.

@@ -5,7 +5,7 @@ The `openui-lang` crate is a port of the OpenUI Lang language layer in `@openuid
 - **Parse results:** `ParseResult::to_json()` equals `JSON.stringify` of the reference's result, for one-shot parsing and after every push of a streaming parse, with both sides cutting the text at the same code points.
 - **Everything else:** the same system prompt string, the same merged program text, the same source from `jsonToOpenUI`, the same enriched errors. Where the reference throws, the core returns an error.
 
-The reference is lang-core 1.1.0, and the core is moving to it ([plan](.scratch/lang-core-1.1/map.md)). What it doesn't match yet is listed case by case in `conformance/pending/` and counted below. The quirks and divergences below were checked against 1.0.1 and are reviewed against 1.1 at the end of the move. The core matched 1.0.1 on every case before the move; that state is the local tag `lang-core-1.0.1`. The 0.3.0 state is the tag `lang-core-0.3.0`. Neither is kept up.
+The reference is lang-core 1.1.0 (OpenUI Lang 1.1), and the core matches it on every case in the corpus: nothing is pending. The quirks and divergences below were checked against 1.1.0 on 2026-11-06. Three quirks were fixed upstream in 1.1, and the core follows. The core conformed to 1.0.1 and to 0.3.0 before; those states are the local tags `lang-core-1.0.1` and `lang-core-0.3.0`, and aren't kept up.
 
 Behaviour that looks wrong in the reference is reproduced anyway and recorded as a [quirk](conformance/QUIRKS.md) with a draft upstream report. The core departs from the reference only where the list of [divergences](#divergences) below says so, all on inputs no real program produces.
 

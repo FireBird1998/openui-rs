@@ -258,7 +258,7 @@ libFuzzer, through cargo-fuzz on the nightly toolchain, mutates inputs toward co
 | `serialize` | Converting JSON back to source: a parse result's tree with its state, or anything else | the parse goldens |
 | `json` | Reading JSON, and that writing what it read settles after one round | the parse goldens |
 
-They share a library (`fuzz/fuzz_targets/library.rs`) with every schema shape validation handles, plus 1.0's library functions and actions. The dictionary, `fuzz/openui.dict`, holds fragments of the language and of model output. Inputs stay under 8 KB, the size of a long response. An input over 10 s is a blow-up: the core answers any input well inside a second in release, and the fuzz build's sanitizers and debug assertions make it several times slower. The working corpus (`fuzz/corpus/`) and the finds (`fuzz/artifacts/`) aren't tracked. Replay a find with `cargo +nightly fuzz run <target> <file>`.
+They share a library (`fuzz/fuzz_targets/library.rs`) with every schema shape validation handles, plus 1.0's library functions and actions. The dictionary, `fuzz/openui.dict`, holds fragments of the language and of model output. Inputs stay under 8 KB, the size of a long response. An input over 10 s is a blow-up: the core answers any input well inside a second in release, and the fuzz build's debug assertions make it slower. The fuzz build has no AddressSanitizer: the crate forbids unsafe code, and over hours the sanitizer's own memory grows without bound (GitHub's 5-hour runs stopped at 4 GB that way). The working corpus (`fuzz/corpus/`) and the finds (`fuzz/artifacts/`) aren't tracked. Replay a find with `cargo +nightly fuzz run <target> <file>`.
 
 ## Recorded streams
 
