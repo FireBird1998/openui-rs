@@ -1,0 +1,2 @@
+root = Text("Healthy")
+job = Mutation("save", {value: @Each([1, 2], x, @Each([3, 4], y, x + y))})

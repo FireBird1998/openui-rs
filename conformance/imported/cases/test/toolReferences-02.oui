@@ -1,0 +1,8 @@
+root = Title("Healthy")
+job = Query(tool, args)
+tool = "save"
+args = {total: total, rows: @Each(items, item, item + extra)}
+total = @Sum(items)
+items = [1,2]
+item = 100
+extra = 10

@@ -1,0 +1,6 @@
+root = Title("Healthy")
+job = Mutation(tool, args)
+tool = "save"
+args = {q: q.value, m: m.value}
+q = Query("load")
+m = Mutation("save")

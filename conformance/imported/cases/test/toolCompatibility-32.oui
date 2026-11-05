@@ -1,0 +1,2 @@
+root = Text("Healthy")
+job = Mutation("save", {value: @Format(25, "label")})

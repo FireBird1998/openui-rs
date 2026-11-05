@@ -1,3 +1,11 @@
 # Cases the core doesn't match the reference on yet. Each may fail, but one
 # that matches again, or a name that isn't a case, fails the test. Rewrite
 # every list to the cases failing now: UPDATE_PENDING=1 cargo test -p openui-lang
+hand/23-fenced-with-prose
+hand/27-two-fenced-blocks
+hand/72-fence-opens-mid-stream
+hand/75-trailing-prose
+hand/76-backticks-inside-strings
+spec/grammar/003-fence-multiple-joined
+spec/streaming/005-fence-arrives-late
+test/parser-28

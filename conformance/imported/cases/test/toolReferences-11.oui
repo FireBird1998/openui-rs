@@ -1,0 +1,7 @@
+root = Title("Healthy")
+$n=2
+q = Query("save", args, defaults, refresh)
+args={value:alias}
+alias=$n*2
+defaults={saved:false}
+refresh=5000

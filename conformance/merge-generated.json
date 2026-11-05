@@ -2780,6 +2780,575 @@
    "source": "generated"
   },
   {
+   "name": "gen/hand/97-root-each-of-components/edit",
+   "existingCase": "hand/97-root-each-of-components",
+   "patch": "names = [\"Edited\", \"Grace\"]",
+   "source": "generated"
+  },
+  {
+   "name": "gen/hand/97-root-each-of-components/add",
+   "existingCase": "hand/97-root-each-of-components",
+   "patch": "added = Text(\"Added\")",
+   "source": "generated"
+  },
+  {
+   "name": "gen/hand/97-root-each-of-components/delete",
+   "existingCase": "hand/97-root-each-of-components",
+   "patch": "names = null",
+   "source": "generated"
+  },
+  {
+   "name": "gen/hand/97-root-each-of-components/fenced",
+   "existingCase": "hand/97-root-each-of-components",
+   "patch": "Here's the update:\n\n```openui-lang\nnames = [\"Edited\", \"Grace\"]\nnames = null\n```\n\nLet me know if you'd like anything else.",
+   "source": "generated"
+  },
+  {
+   "name": "gen/hand/97-root-each-of-components/root-names",
+   "existingCase": "hand/97-root-each-of-components",
+   "patch": "names = [\"Edited\", \"Grace\"]",
+   "rootId": "names",
+   "source": "generated"
+  },
+  {
+   "name": "gen/hand/97-root-each-of-components/replay",
+   "existingCase": "hand/97-root-each-of-components",
+   "patch": "root = @Each(names, \"n\", Card(Text(n)))\nnames = [\"Ada\", \"Grace\"]\n",
+   "source": "generated"
+  },
+  {
+   "name": "gen/hand/97-root-each-of-components/onto-nothing",
+   "existing": "",
+   "patchCase": "hand/97-root-each-of-components",
+   "source": "generated"
+  },
+  {
+   "name": "gen/hand/98-root-through-references/edit",
+   "existingCase": "hand/98-root-through-references",
+   "patch": "orphan = Text(\"Edited\")",
+   "source": "generated"
+  },
+  {
+   "name": "gen/hand/98-root-through-references/add",
+   "existingCase": "hand/98-root-through-references",
+   "patch": "added = Text(\"Added\")",
+   "source": "generated"
+  },
+  {
+   "name": "gen/hand/98-root-through-references/delete",
+   "existingCase": "hand/98-root-through-references",
+   "patch": "layout = null",
+   "source": "generated"
+  },
+  {
+   "name": "gen/hand/98-root-through-references/fenced",
+   "existingCase": "hand/98-root-through-references",
+   "patch": "Here's the update:\n\n```openui-lang\norphan = Text(\"Edited\")\nlayout = null\n```\n\nLet me know if you'd like anything else.",
+   "source": "generated"
+  },
+  {
+   "name": "gen/hand/98-root-through-references/root-page",
+   "existingCase": "hand/98-root-through-references",
+   "patch": "orphan = Text(\"Edited\")",
+   "rootId": "page",
+   "source": "generated"
+  },
+  {
+   "name": "gen/hand/98-root-through-references/replay",
+   "existingCase": "hand/98-root-through-references",
+   "patch": "root = page\npage = layout\nlayout = 42\norphan = Text(\"unreached\")\n",
+   "source": "generated"
+  },
+  {
+   "name": "gen/hand/98-root-through-references/onto-nothing",
+   "existing": "",
+   "patchCase": "hand/98-root-through-references",
+   "source": "generated"
+  },
+  {
+   "name": "gen/hand/100-root-calls-a-prototype-name/edit",
+   "existingCase": "hand/100-root-calls-a-prototype-name",
+   "patch": "card = Card(Text(\"Edited\"))",
+   "source": "generated"
+  },
+  {
+   "name": "gen/hand/100-root-calls-a-prototype-name/add",
+   "existingCase": "hand/100-root-calls-a-prototype-name",
+   "patch": "added = Card(\"Added\")",
+   "source": "generated"
+  },
+  {
+   "name": "gen/hand/100-root-calls-a-prototype-name/delete",
+   "existingCase": "hand/100-root-calls-a-prototype-name",
+   "patch": "card = null",
+   "source": "generated"
+  },
+  {
+   "name": "gen/hand/100-root-calls-a-prototype-name/fenced",
+   "existingCase": "hand/100-root-calls-a-prototype-name",
+   "patch": "Here's the update:\n\n```openui-lang\ncard = Card(Text(\"Edited\"))\ncard = null\n```\n\nLet me know if you'd like anything else.",
+   "source": "generated"
+  },
+  {
+   "name": "gen/hand/100-root-calls-a-prototype-name/root-card",
+   "existingCase": "hand/100-root-calls-a-prototype-name",
+   "patch": "card = Card(Text(\"Edited\"))",
+   "rootId": "card",
+   "source": "generated"
+  },
+  {
+   "name": "gen/hand/100-root-calls-a-prototype-name/replay",
+   "existingCase": "hand/100-root-calls-a-prototype-name",
+   "patch": "root = toString(card)\ncard = Card(Text(\"x\"))\n",
+   "source": "generated"
+  },
+  {
+   "name": "gen/hand/100-root-calls-a-prototype-name/onto-nothing",
+   "existing": "",
+   "patchCase": "hand/100-root-calls-a-prototype-name",
+   "source": "generated"
+  },
+  {
+   "name": "gen/hand/101-root-in-a-reference-cycle/add",
+   "existingCase": "hand/101-root-in-a-reference-cycle",
+   "patch": "added = Text(\"Added\")",
+   "source": "generated"
+  },
+  {
+   "name": "gen/hand/101-root-in-a-reference-cycle/delete",
+   "existingCase": "hand/101-root-in-a-reference-cycle",
+   "patch": "a = null",
+   "source": "generated"
+  },
+  {
+   "name": "gen/hand/101-root-in-a-reference-cycle/fenced",
+   "existingCase": "hand/101-root-in-a-reference-cycle",
+   "patch": "Here's the update:\n\n```openui-lang\na = null\n```\n\nLet me know if you'd like anything else.",
+   "source": "generated"
+  },
+  {
+   "name": "gen/hand/101-root-in-a-reference-cycle/replay",
+   "existingCase": "hand/101-root-in-a-reference-cycle",
+   "patch": "root = a\na = root\n",
+   "source": "generated"
+  },
+  {
+   "name": "gen/hand/101-root-in-a-reference-cycle/onto-nothing",
+   "existing": "",
+   "patchCase": "hand/101-root-in-a-reference-cycle",
+   "source": "generated"
+  },
+  {
+   "name": "gen/hand/102-library-shapes-and-calls/edit",
+   "existingCase": "hand/102-library-shapes-and-calls",
+   "patch": "w = Widget(\"Edited\")",
+   "source": "generated"
+  },
+  {
+   "name": "gen/hand/102-library-shapes-and-calls/add",
+   "existingCase": "hand/102-library-shapes-and-calls",
+   "patch": "root = Page([added, w, s, b], \"oops\", {type: \"open_url\"})\nadded = Widget(\"Added\")",
+   "source": "generated"
+  },
+  {
+   "name": "gen/hand/102-library-shapes-and-calls/delete",
+   "existingCase": "hand/102-library-shapes-and-calls",
+   "patch": "b = null",
+   "source": "generated"
+  },
+  {
+   "name": "gen/hand/102-library-shapes-and-calls/drop-child",
+   "existingCase": "hand/102-library-shapes-and-calls",
+   "patch": "root = Page([s, b], \"oops\", {type: \"open_url\"})",
+   "source": "generated"
+  },
+  {
+   "name": "gen/hand/102-library-shapes-and-calls/fenced",
+   "existingCase": "hand/102-library-shapes-and-calls",
+   "patch": "Here's the update:\n\n```openui-lang\nw = Widget(\"Edited\")\nb = null\n```\n\nLet me know if you'd like anything else.",
+   "source": "generated"
+  },
+  {
+   "name": "gen/hand/102-library-shapes-and-calls/root-w",
+   "existingCase": "hand/102-library-shapes-and-calls",
+   "patch": "w = Widget(\"Edited\")",
+   "rootId": "w",
+   "source": "generated"
+  },
+  {
+   "name": "gen/hand/102-library-shapes-and-calls/replay",
+   "existingCase": "hand/102-library-shapes-and-calls",
+   "patch": "root = Page([w, s, b], \"oops\", {type: \"open_url\"})\nw = Widget(\"hi\")\ns = Shape(1)\nb = Badge(\"x\")\nother = Page([w], {target: 5})\n",
+   "source": "generated"
+  },
+  {
+   "name": "gen/hand/102-library-shapes-and-calls/onto-nothing",
+   "existing": "",
+   "patchCase": "hand/102-library-shapes-and-calls",
+   "source": "generated"
+  },
+  {
+   "name": "gen/hand/103-library-function-args/edit",
+   "existingCase": "hand/103-library-function-args",
+   "patch": "q = Query(\"Edited\", {x: $on ? @Twice(1) : @Twice(\"2\"), y: $v = @Format(\"c\", {pad: 3})}, {rows: []})",
+   "source": "generated"
+  },
+  {
+   "name": "gen/hand/103-library-function-args/add",
+   "existingCase": "hand/103-library-function-args",
+   "patch": "root = Page([added, Widget(@Format(\"a\", {upper: true}, [true, false])), Widget(@Format(null)), Widget(@Format(\"b\", {upper: \"no\"}, [1, true])), Widget(@Twice(true)), Widget(@Format(\"e\", {upper: null}))])\nadded = Query(\"Added\")",
+   "source": "generated"
+  },
+  {
+   "name": "gen/hand/103-library-function-args/delete",
+   "existingCase": "hand/103-library-function-args",
+   "patch": "m = null",
+   "source": "generated"
+  },
+  {
+   "name": "gen/hand/103-library-function-args/drop-child",
+   "existingCase": "hand/103-library-function-args",
+   "patch": "root = Page([Widget(@Format(\"a\", {upper: true}, [false])), Widget(@Format(null)), Widget(@Format(\"b\", {upper: \"no\"}, [1, true])), Widget(@Twice(true)), Widget(@Format(\"e\", {upper: null}))])",
+   "source": "generated"
+  },
+  {
+   "name": "gen/hand/103-library-function-args/fenced",
+   "existingCase": "hand/103-library-function-args",
+   "patch": "Here's the update:\n\n```openui-lang\nq = Query(\"Edited\", {x: $on ? @Twice(1) : @Twice(\"2\"), y: $v = @Format(\"c\", {pad: 3})}, {rows: []})\nm = null\n```\n\nLet me know if you'd like anything else.",
+   "source": "generated"
+  },
+  {
+   "name": "gen/hand/103-library-function-args/root-q",
+   "existingCase": "hand/103-library-function-args",
+   "patch": "q = Query(\"Edited\", {x: $on ? @Twice(1) : @Twice(\"2\"), y: $v = @Format(\"c\", {pad: 3})}, {rows: []})",
+   "rootId": "q",
+   "source": "generated"
+  },
+  {
+   "name": "gen/hand/103-library-function-args/replay",
+   "existingCase": "hand/103-library-function-args",
+   "patch": "root = Page([Widget(@Format(\"a\", {upper: true}, [true, false])), Widget(@Format(null)), Widget(@Format(\"b\", {upper: \"no\"}, [1, true])), Widget(@Twice(true)), Widget(@Format(\"e\", {upper: null}))])\nq = Query(\"search\", {x: $on ? @Twice(1) : @Twice(\"2\"), y: $v = @Format(\"c\", {pad: 3})}, {rows: []})\nm = Mutation(\"save\", {z: @Format(\"d\", {upper: false, pad: \"x\"}, [false])})\n",
+   "source": "generated"
+  },
+  {
+   "name": "gen/hand/103-library-function-args/onto-nothing",
+   "existing": "",
+   "patchCase": "hand/103-library-function-args",
+   "source": "generated"
+  },
+  {
+   "name": "gen/hand/104-component-only-slots/edit",
+   "existingCase": "hand/104-component-only-slots",
+   "patch": "w = Widget(\"Edited\")",
+   "source": "generated"
+  },
+  {
+   "name": "gen/hand/104-component-only-slots/add",
+   "existingCase": "hand/104-component-only-slots",
+   "patch": "root = Page([added, Methods({}), Methods({valueOf: 1, toString: w}), Methods({toString: \"text\"})])\nadded = Widget(\"Added\")",
+   "source": "generated"
+  },
+  {
+   "name": "gen/hand/104-component-only-slots/delete",
+   "existingCase": "hand/104-component-only-slots",
+   "patch": "w = null",
+   "source": "generated"
+  },
+  {
+   "name": "gen/hand/104-component-only-slots/fenced",
+   "existingCase": "hand/104-component-only-slots",
+   "patch": "Here's the update:\n\n```openui-lang\nw = Widget(\"Edited\")\nw = null\n```\n\nLet me know if you'd like anything else.",
+   "source": "generated"
+  },
+  {
+   "name": "gen/hand/104-component-only-slots/root-w",
+   "existingCase": "hand/104-component-only-slots",
+   "patch": "w = Widget(\"Edited\")",
+   "rootId": "w",
+   "source": "generated"
+  },
+  {
+   "name": "gen/hand/104-component-only-slots/replay",
+   "existingCase": "hand/104-component-only-slots",
+   "patch": "root = Page([Methods({}), Methods({valueOf: 1, toString: w}), Methods({toString: \"text\"})])\nw = Widget(\"x\")\n",
+   "source": "generated"
+  },
+  {
+   "name": "gen/hand/104-component-only-slots/onto-nothing",
+   "existing": "",
+   "patchCase": "hand/104-component-only-slots",
+   "source": "generated"
+  },
+  {
+   "name": "gen/hand/105-proto-named-param/edit",
+   "existingCase": "hand/105-proto-named-param",
+   "patch": "a = Box(null, \"Edited\")",
+   "source": "generated"
+  },
+  {
+   "name": "gen/hand/105-proto-named-param/add",
+   "existingCase": "hand/105-proto-named-param",
+   "patch": "root = Grid(\"zero\", [added, a, b, c, d], \"b\", 1)\nadded = Box(\"Added\")",
+   "source": "generated"
+  },
+  {
+   "name": "gen/hand/105-proto-named-param/delete",
+   "existingCase": "hand/105-proto-named-param",
+   "patch": "c = null",
+   "source": "generated"
+  },
+  {
+   "name": "gen/hand/105-proto-named-param/drop-child",
+   "existingCase": "hand/105-proto-named-param",
+   "patch": "root = Grid(\"zero\", [b, c, d], \"b\", 1)",
+   "source": "generated"
+  },
+  {
+   "name": "gen/hand/105-proto-named-param/fenced",
+   "existingCase": "hand/105-proto-named-param",
+   "patch": "Here's the update:\n\n```openui-lang\na = Box(null, \"Edited\")\nc = null\n```\n\nLet me know if you'd like anything else.",
+   "source": "generated"
+  },
+  {
+   "name": "gen/hand/105-proto-named-param/root-a",
+   "existingCase": "hand/105-proto-named-param",
+   "patch": "a = Box(null, \"Edited\")",
+   "rootId": "a",
+   "source": "generated"
+  },
+  {
+   "name": "gen/hand/105-proto-named-param/replay",
+   "existingCase": "hand/105-proto-named-param",
+   "patch": "root = Grid(\"zero\", [a, b, c, d], \"b\", 1)\na = Box(null, \"a null __proto__ drops the prototype, then becomes a prop\")\nb = Box(missing, \"an unresolved ref is null too\")\nc = Box(5, \"a number is ignored\")\nd = Box(null)\n",
+   "source": "generated"
+  },
+  {
+   "name": "gen/hand/105-proto-named-param/onto-nothing",
+   "existing": "",
+   "patchCase": "hand/105-proto-named-param",
+   "source": "generated"
+  },
+  {
+   "name": "gen/hand/106-bare-library-calls/edit",
+   "existingCase": "hand/106-bare-library-calls",
+   "patch": "b = Badge(\"Edited\")",
+   "source": "generated"
+  },
+  {
+   "name": "gen/hand/106-bare-library-calls/add",
+   "existingCase": "hand/106-bare-library-calls",
+   "patch": "root = Page([added, w, b, c], Ping(\"bare action\"), Ping(\"a bare action in an action slot\"))\nadded = Widget(\"Added\")",
+   "source": "generated"
+  },
+  {
+   "name": "gen/hand/106-bare-library-calls/delete",
+   "existingCase": "hand/106-bare-library-calls",
+   "patch": "b = null",
+   "source": "generated"
+  },
+  {
+   "name": "gen/hand/106-bare-library-calls/drop-child",
+   "existingCase": "hand/106-bare-library-calls",
+   "patch": "root = Page([b, c], Ping(\"bare action\"), Ping(\"a bare action in an action slot\"))",
+   "source": "generated"
+  },
+  {
+   "name": "gen/hand/106-bare-library-calls/fenced",
+   "existingCase": "hand/106-bare-library-calls",
+   "patch": "Here's the update:\n\n```openui-lang\nb = Badge(\"Edited\")\nb = null\n```\n\nLet me know if you'd like anything else.",
+   "source": "generated"
+  },
+  {
+   "name": "gen/hand/106-bare-library-calls/root-w",
+   "existingCase": "hand/106-bare-library-calls",
+   "patch": "b = Badge(\"Edited\")",
+   "rootId": "w",
+   "source": "generated"
+  },
+  {
+   "name": "gen/hand/106-bare-library-calls/replay",
+   "existingCase": "hand/106-bare-library-calls",
+   "patch": "root = Page([w, b, c], Ping(\"bare action\"), Ping(\"a bare action in an action slot\"))\nw = Widget(Twice(2))\nb = Badge(\"a component's name, called as the action\")\nc = Widget(Count(2))\n",
+   "source": "generated"
+  },
+  {
+   "name": "gen/hand/106-bare-library-calls/onto-nothing",
+   "existing": "",
+   "patchCase": "hand/106-bare-library-calls",
+   "source": "generated"
+  },
+  {
+   "name": "gen/hand/107-operands-that-need-parentheses/edit",
+   "existingCase": "hand/107-operands-that-need-parentheses",
+   "patch": "d = Text(($on ? \"Edited\" : \"b\").length)",
+   "source": "generated"
+  },
+  {
+   "name": "gen/hand/107-operands-that-need-parentheses/add",
+   "existingCase": "hand/107-operands-that-need-parentheses",
+   "patch": "root = Root([added, a, b, c, d, e])\nadded = Text(\"Added\")",
+   "source": "generated"
+  },
+  {
+   "name": "gen/hand/107-operands-that-need-parentheses/delete",
+   "existingCase": "hand/107-operands-that-need-parentheses",
+   "patch": "c = null",
+   "source": "generated"
+  },
+  {
+   "name": "gen/hand/107-operands-that-need-parentheses/drop-child",
+   "existingCase": "hand/107-operands-that-need-parentheses",
+   "patch": "root = Root([b, c, d, e])",
+   "source": "generated"
+  },
+  {
+   "name": "gen/hand/107-operands-that-need-parentheses/fenced",
+   "existingCase": "hand/107-operands-that-need-parentheses",
+   "patch": "Here's the update:\n\n```openui-lang\nd = Text(($on ? \"Edited\" : \"b\").length)\nc = null\n```\n\nLet me know if you'd like anything else.",
+   "source": "generated"
+  },
+  {
+   "name": "gen/hand/107-operands-that-need-parentheses/root-a",
+   "existingCase": "hand/107-operands-that-need-parentheses",
+   "patch": "d = Text(($on ? \"Edited\" : \"b\").length)",
+   "rootId": "a",
+   "source": "generated"
+  },
+  {
+   "name": "gen/hand/107-operands-that-need-parentheses/replay",
+   "existingCase": "hand/107-operands-that-need-parentheses",
+   "patch": "root = Root([a, b, c, d, e])\na = Text(!($on && $off))\nb = Text(-($x + 1))\nc = Text(-(3))\nd = Text(($on ? \"a\" : \"b\").length)\ne = Text($on || ($off ? \"a\" : \"b\"))\n",
+   "source": "generated"
+  },
+  {
+   "name": "gen/hand/107-operands-that-need-parentheses/onto-nothing",
+   "existing": "",
+   "patchCase": "hand/107-operands-that-need-parentheses",
+   "source": "generated"
+  },
+  {
+   "name": "gen/hand/108-call-made-null/add",
+   "existingCase": "hand/108-call-made-null",
+   "patch": "added = Text(\"Added\")",
+   "source": "generated"
+  },
+  {
+   "name": "gen/hand/108-call-made-null/fenced",
+   "existingCase": "hand/108-call-made-null",
+   "patch": "Here's the update:\n\n```openui-lang\nadded = Text(\"Added\")\n```\n\nLet me know if you'd like anything else.",
+   "source": "generated"
+  },
+  {
+   "name": "gen/hand/108-call-made-null/replay",
+   "existingCase": "hand/108-call-made-null",
+   "patch": "root = Page(@Format(5))\n",
+   "source": "generated"
+  },
+  {
+   "name": "gen/hand/108-call-made-null/onto-nothing",
+   "existing": "",
+   "patchCase": "hand/108-call-made-null",
+   "source": "generated"
+  },
+  {
+   "name": "gen/hand/109-finished-while-a-later-one-is-open/edit",
+   "existingCase": "hand/109-finished-while-a-later-one-is-open",
+   "patch": "a = Text(\"Edited\", \"loud\")",
+   "source": "generated"
+  },
+  {
+   "name": "gen/hand/109-finished-while-a-later-one-is-open/add",
+   "existingCase": "hand/109-finished-while-a-later-one-is-open",
+   "patch": "root = Root([added, a])\nadded = Text(\"Added\")",
+   "source": "generated"
+  },
+  {
+   "name": "gen/hand/109-finished-while-a-later-one-is-open/delete",
+   "existingCase": "hand/109-finished-while-a-later-one-is-open",
+   "patch": "note = null",
+   "source": "generated"
+  },
+  {
+   "name": "gen/hand/109-finished-while-a-later-one-is-open/drop-child",
+   "existingCase": "hand/109-finished-while-a-later-one-is-open",
+   "patch": "root = Root([])",
+   "source": "generated"
+  },
+  {
+   "name": "gen/hand/109-finished-while-a-later-one-is-open/fenced",
+   "existingCase": "hand/109-finished-while-a-later-one-is-open",
+   "patch": "Here's the update:\n\n```openui-lang\na = Text(\"Edited\", \"loud\")\nnote = null\n```\n\nLet me know if you'd like anything else.",
+   "source": "generated"
+  },
+  {
+   "name": "gen/hand/109-finished-while-a-later-one-is-open/root-a",
+   "existingCase": "hand/109-finished-while-a-later-one-is-open",
+   "patch": "a = Text(\"Edited\", \"loud\")",
+   "rootId": "a",
+   "source": "generated"
+  },
+  {
+   "name": "gen/hand/109-finished-while-a-later-one-is-open/replay",
+   "existingCase": "hand/109-finished-while-a-later-one-is-open",
+   "patch": "root = Root([a])\na = Text(\"done\", \"loud\")\nnote = \"still being written\"\n",
+   "source": "generated"
+  },
+  {
+   "name": "gen/hand/109-finished-while-a-later-one-is-open/onto-nothing",
+   "existing": "",
+   "patchCase": "hand/109-finished-while-a-later-one-is-open",
+   "source": "generated"
+  },
+  {
+   "name": "gen/hand/111-stray-character-before-a-ternary/edit",
+   "existingCase": "hand/111-stray-character-before-a-ternary",
+   "patch": "a = Text(\"Edited\")",
+   "source": "generated"
+  },
+  {
+   "name": "gen/hand/111-stray-character-before-a-ternary/add",
+   "existingCase": "hand/111-stray-character-before-a-ternary",
+   "patch": "root = Root([added, a])\nadded = Text(\"Added\")",
+   "source": "generated"
+  },
+  {
+   "name": "gen/hand/111-stray-character-before-a-ternary/delete",
+   "existingCase": "hand/111-stray-character-before-a-ternary",
+   "patch": "a = null",
+   "source": "generated"
+  },
+  {
+   "name": "gen/hand/111-stray-character-before-a-ternary/drop-child",
+   "existingCase": "hand/111-stray-character-before-a-ternary",
+   "patch": "root = Root([])",
+   "source": "generated"
+  },
+  {
+   "name": "gen/hand/111-stray-character-before-a-ternary/fenced",
+   "existingCase": "hand/111-stray-character-before-a-ternary",
+   "patch": "Here's the update:\n\n```openui-lang\na = Text(\"Edited\")\na = null\n```\n\nLet me know if you'd like anything else.",
+   "source": "generated"
+  },
+  {
+   "name": "gen/hand/111-stray-character-before-a-ternary/root-a",
+   "existingCase": "hand/111-stray-character-before-a-ternary",
+   "patch": "a = Text(\"Edited\")",
+   "rootId": "a",
+   "source": "generated"
+  },
+  {
+   "name": "gen/hand/111-stray-character-before-a-ternary/replay",
+   "existingCase": "hand/111-stray-character-before-a-ternary",
+   "patch": "root = Root([a])\na = Text(\"x\")\n`? \"y\" : \"z\"\n",
+   "source": "generated"
+  },
+  {
+   "name": "gen/hand/111-stray-character-before-a-ternary/onto-nothing",
+   "existing": "",
+   "patchCase": "hand/111-stray-character-before-a-ternary",
+   "source": "generated"
+  },
+  {
    "name": "gen/test/actions-01/add",
    "existingCase": "test/actions-01",
    "patch": "added = Text(\"Added\")",
@@ -8152,6 +8721,2715 @@
    "source": "generated"
   },
   {
+   "name": "gen/test/toolCompatibility-01/edit",
+   "existingCase": "test/toolCompatibility-01",
+   "patch": "job = Query(\"Edited\", {value: @Format(25)})",
+   "source": "generated"
+  },
+  {
+   "name": "gen/test/toolCompatibility-01/add",
+   "existingCase": "test/toolCompatibility-01",
+   "patch": "added = Query(\"Added\")",
+   "source": "generated"
+  },
+  {
+   "name": "gen/test/toolCompatibility-01/delete",
+   "existingCase": "test/toolCompatibility-01",
+   "patch": "job = null",
+   "source": "generated"
+  },
+  {
+   "name": "gen/test/toolCompatibility-01/fenced",
+   "existingCase": "test/toolCompatibility-01",
+   "patch": "Here's the update:\n\n```openui-lang\njob = Query(\"Edited\", {value: @Format(25)})\njob = null\n```\n\nLet me know if you'd like anything else.",
+   "source": "generated"
+  },
+  {
+   "name": "gen/test/toolCompatibility-01/root-job",
+   "existingCase": "test/toolCompatibility-01",
+   "patch": "job = Query(\"Edited\", {value: @Format(25)})",
+   "rootId": "job",
+   "source": "generated"
+  },
+  {
+   "name": "gen/test/toolCompatibility-01/replay",
+   "existingCase": "test/toolCompatibility-01",
+   "patch": "root = Text(\"Healthy\")\njob = Query(\"save\", {value: @Format(25)})",
+   "source": "generated"
+  },
+  {
+   "name": "gen/test/toolCompatibility-01/onto-nothing",
+   "existing": "",
+   "patchCase": "test/toolCompatibility-01",
+   "source": "generated"
+  },
+  {
+   "name": "gen/test/toolCompatibility-02/edit",
+   "existingCase": "test/toolCompatibility-02",
+   "patch": "job = Query(\"Edited\", {value: @Format(25)})",
+   "source": "generated"
+  },
+  {
+   "name": "gen/test/toolCompatibility-02/add",
+   "existingCase": "test/toolCompatibility-02",
+   "patch": "added = Query(\"Added\")",
+   "source": "generated"
+  },
+  {
+   "name": "gen/test/toolCompatibility-02/delete",
+   "existingCase": "test/toolCompatibility-02",
+   "patch": "job = null",
+   "source": "generated"
+  },
+  {
+   "name": "gen/test/toolCompatibility-02/fenced",
+   "existingCase": "test/toolCompatibility-02",
+   "patch": "Here's the update:\n\n```openui-lang\njob = Query(\"Edited\", {value: @Format(25)})\njob = null\n```\n\nLet me know if you'd like anything else.",
+   "source": "generated"
+  },
+  {
+   "name": "gen/test/toolCompatibility-02/root-job",
+   "existingCase": "test/toolCompatibility-02",
+   "patch": "job = Query(\"Edited\", {value: @Format(25)})",
+   "rootId": "job",
+   "source": "generated"
+  },
+  {
+   "name": "gen/test/toolCompatibility-02/replay",
+   "existingCase": "test/toolCompatibility-02",
+   "patch": "root = Text(\"Healthy\")\njob = Query(\"save\", {value: @Format(25)})",
+   "source": "generated"
+  },
+  {
+   "name": "gen/test/toolCompatibility-02/onto-nothing",
+   "existing": "",
+   "patchCase": "test/toolCompatibility-02",
+   "source": "generated"
+  },
+  {
+   "name": "gen/test/toolCompatibility-03/edit",
+   "existingCase": "test/toolCompatibility-03",
+   "patch": "job = Query(\"Edited\", {value: @Format(25, null)})",
+   "source": "generated"
+  },
+  {
+   "name": "gen/test/toolCompatibility-03/add",
+   "existingCase": "test/toolCompatibility-03",
+   "patch": "added = Query(\"Added\")",
+   "source": "generated"
+  },
+  {
+   "name": "gen/test/toolCompatibility-03/delete",
+   "existingCase": "test/toolCompatibility-03",
+   "patch": "job = null",
+   "source": "generated"
+  },
+  {
+   "name": "gen/test/toolCompatibility-03/fenced",
+   "existingCase": "test/toolCompatibility-03",
+   "patch": "Here's the update:\n\n```openui-lang\njob = Query(\"Edited\", {value: @Format(25, null)})\njob = null\n```\n\nLet me know if you'd like anything else.",
+   "source": "generated"
+  },
+  {
+   "name": "gen/test/toolCompatibility-03/root-job",
+   "existingCase": "test/toolCompatibility-03",
+   "patch": "job = Query(\"Edited\", {value: @Format(25, null)})",
+   "rootId": "job",
+   "source": "generated"
+  },
+  {
+   "name": "gen/test/toolCompatibility-03/replay",
+   "existingCase": "test/toolCompatibility-03",
+   "patch": "root = Text(\"Healthy\")\njob = Query(\"save\", {value: @Format(25, null)})",
+   "source": "generated"
+  },
+  {
+   "name": "gen/test/toolCompatibility-03/onto-nothing",
+   "existing": "",
+   "patchCase": "test/toolCompatibility-03",
+   "source": "generated"
+  },
+  {
+   "name": "gen/test/toolCompatibility-04/edit",
+   "existingCase": "test/toolCompatibility-04",
+   "patch": "job = Query(\"Edited\", {value: @Format(25, null)})",
+   "source": "generated"
+  },
+  {
+   "name": "gen/test/toolCompatibility-04/add",
+   "existingCase": "test/toolCompatibility-04",
+   "patch": "added = Query(\"Added\")",
+   "source": "generated"
+  },
+  {
+   "name": "gen/test/toolCompatibility-04/delete",
+   "existingCase": "test/toolCompatibility-04",
+   "patch": "job = null",
+   "source": "generated"
+  },
+  {
+   "name": "gen/test/toolCompatibility-04/fenced",
+   "existingCase": "test/toolCompatibility-04",
+   "patch": "Here's the update:\n\n```openui-lang\njob = Query(\"Edited\", {value: @Format(25, null)})\njob = null\n```\n\nLet me know if you'd like anything else.",
+   "source": "generated"
+  },
+  {
+   "name": "gen/test/toolCompatibility-04/root-job",
+   "existingCase": "test/toolCompatibility-04",
+   "patch": "job = Query(\"Edited\", {value: @Format(25, null)})",
+   "rootId": "job",
+   "source": "generated"
+  },
+  {
+   "name": "gen/test/toolCompatibility-04/replay",
+   "existingCase": "test/toolCompatibility-04",
+   "patch": "root = Text(\"Healthy\")\njob = Query(\"save\", {value: @Format(25, null)})",
+   "source": "generated"
+  },
+  {
+   "name": "gen/test/toolCompatibility-04/onto-nothing",
+   "existing": "",
+   "patchCase": "test/toolCompatibility-04",
+   "source": "generated"
+  },
+  {
+   "name": "gen/test/toolCompatibility-05/edit",
+   "existingCase": "test/toolCompatibility-05",
+   "patch": "job = Query(\"Edited\", {value: @Format(25, \"label\")})",
+   "source": "generated"
+  },
+  {
+   "name": "gen/test/toolCompatibility-05/add",
+   "existingCase": "test/toolCompatibility-05",
+   "patch": "added = Query(\"Added\")",
+   "source": "generated"
+  },
+  {
+   "name": "gen/test/toolCompatibility-05/delete",
+   "existingCase": "test/toolCompatibility-05",
+   "patch": "job = null",
+   "source": "generated"
+  },
+  {
+   "name": "gen/test/toolCompatibility-05/fenced",
+   "existingCase": "test/toolCompatibility-05",
+   "patch": "Here's the update:\n\n```openui-lang\njob = Query(\"Edited\", {value: @Format(25, \"label\")})\njob = null\n```\n\nLet me know if you'd like anything else.",
+   "source": "generated"
+  },
+  {
+   "name": "gen/test/toolCompatibility-05/root-job",
+   "existingCase": "test/toolCompatibility-05",
+   "patch": "job = Query(\"Edited\", {value: @Format(25, \"label\")})",
+   "rootId": "job",
+   "source": "generated"
+  },
+  {
+   "name": "gen/test/toolCompatibility-05/replay",
+   "existingCase": "test/toolCompatibility-05",
+   "patch": "root = Text(\"Healthy\")\njob = Query(\"save\", {value: @Format(25, \"label\")})",
+   "source": "generated"
+  },
+  {
+   "name": "gen/test/toolCompatibility-05/onto-nothing",
+   "existing": "",
+   "patchCase": "test/toolCompatibility-05",
+   "source": "generated"
+  },
+  {
+   "name": "gen/test/toolCompatibility-06/edit",
+   "existingCase": "test/toolCompatibility-06",
+   "patch": "job = Query(\"Edited\", {value: @Format(25, \"label\")})",
+   "source": "generated"
+  },
+  {
+   "name": "gen/test/toolCompatibility-06/add",
+   "existingCase": "test/toolCompatibility-06",
+   "patch": "added = Query(\"Added\")",
+   "source": "generated"
+  },
+  {
+   "name": "gen/test/toolCompatibility-06/delete",
+   "existingCase": "test/toolCompatibility-06",
+   "patch": "job = null",
+   "source": "generated"
+  },
+  {
+   "name": "gen/test/toolCompatibility-06/fenced",
+   "existingCase": "test/toolCompatibility-06",
+   "patch": "Here's the update:\n\n```openui-lang\njob = Query(\"Edited\", {value: @Format(25, \"label\")})\njob = null\n```\n\nLet me know if you'd like anything else.",
+   "source": "generated"
+  },
+  {
+   "name": "gen/test/toolCompatibility-06/root-job",
+   "existingCase": "test/toolCompatibility-06",
+   "patch": "job = Query(\"Edited\", {value: @Format(25, \"label\")})",
+   "rootId": "job",
+   "source": "generated"
+  },
+  {
+   "name": "gen/test/toolCompatibility-06/replay",
+   "existingCase": "test/toolCompatibility-06",
+   "patch": "root = Text(\"Healthy\")\njob = Query(\"save\", {value: @Format(25, \"label\")})",
+   "source": "generated"
+  },
+  {
+   "name": "gen/test/toolCompatibility-06/onto-nothing",
+   "existing": "",
+   "patchCase": "test/toolCompatibility-06",
+   "source": "generated"
+  },
+  {
+   "name": "gen/test/toolCompatibility-07/edit",
+   "existingCase": "test/toolCompatibility-07",
+   "patch": "job = Query(\"Edited\", {value: @Format(25, 10)})",
+   "source": "generated"
+  },
+  {
+   "name": "gen/test/toolCompatibility-07/add",
+   "existingCase": "test/toolCompatibility-07",
+   "patch": "added = Query(\"Added\")",
+   "source": "generated"
+  },
+  {
+   "name": "gen/test/toolCompatibility-07/delete",
+   "existingCase": "test/toolCompatibility-07",
+   "patch": "job = null",
+   "source": "generated"
+  },
+  {
+   "name": "gen/test/toolCompatibility-07/fenced",
+   "existingCase": "test/toolCompatibility-07",
+   "patch": "Here's the update:\n\n```openui-lang\njob = Query(\"Edited\", {value: @Format(25, 10)})\njob = null\n```\n\nLet me know if you'd like anything else.",
+   "source": "generated"
+  },
+  {
+   "name": "gen/test/toolCompatibility-07/root-job",
+   "existingCase": "test/toolCompatibility-07",
+   "patch": "job = Query(\"Edited\", {value: @Format(25, 10)})",
+   "rootId": "job",
+   "source": "generated"
+  },
+  {
+   "name": "gen/test/toolCompatibility-07/replay",
+   "existingCase": "test/toolCompatibility-07",
+   "patch": "root = Text(\"Healthy\")\njob = Query(\"save\", {value: @Format(25, 10)})",
+   "source": "generated"
+  },
+  {
+   "name": "gen/test/toolCompatibility-07/onto-nothing",
+   "existing": "",
+   "patchCase": "test/toolCompatibility-07",
+   "source": "generated"
+  },
+  {
+   "name": "gen/test/toolCompatibility-08/edit",
+   "existingCase": "test/toolCompatibility-08",
+   "patch": "job = Query(\"Edited\", {value: @Format(25, 10)})",
+   "source": "generated"
+  },
+  {
+   "name": "gen/test/toolCompatibility-08/add",
+   "existingCase": "test/toolCompatibility-08",
+   "patch": "added = Query(\"Added\")",
+   "source": "generated"
+  },
+  {
+   "name": "gen/test/toolCompatibility-08/delete",
+   "existingCase": "test/toolCompatibility-08",
+   "patch": "job = null",
+   "source": "generated"
+  },
+  {
+   "name": "gen/test/toolCompatibility-08/fenced",
+   "existingCase": "test/toolCompatibility-08",
+   "patch": "Here's the update:\n\n```openui-lang\njob = Query(\"Edited\", {value: @Format(25, 10)})\njob = null\n```\n\nLet me know if you'd like anything else.",
+   "source": "generated"
+  },
+  {
+   "name": "gen/test/toolCompatibility-08/root-job",
+   "existingCase": "test/toolCompatibility-08",
+   "patch": "job = Query(\"Edited\", {value: @Format(25, 10)})",
+   "rootId": "job",
+   "source": "generated"
+  },
+  {
+   "name": "gen/test/toolCompatibility-08/replay",
+   "existingCase": "test/toolCompatibility-08",
+   "patch": "root = Text(\"Healthy\")\njob = Query(\"save\", {value: @Format(25, 10)})",
+   "source": "generated"
+  },
+  {
+   "name": "gen/test/toolCompatibility-08/onto-nothing",
+   "existing": "",
+   "patchCase": "test/toolCompatibility-08",
+   "source": "generated"
+  },
+  {
+   "name": "gen/test/toolCompatibility-09/edit",
+   "existingCase": "test/toolCompatibility-09",
+   "patch": "job = Query(\"Edited\", {value: @Format(\"bad\")})",
+   "source": "generated"
+  },
+  {
+   "name": "gen/test/toolCompatibility-09/add",
+   "existingCase": "test/toolCompatibility-09",
+   "patch": "added = Query(\"Added\")",
+   "source": "generated"
+  },
+  {
+   "name": "gen/test/toolCompatibility-09/delete",
+   "existingCase": "test/toolCompatibility-09",
+   "patch": "job = null",
+   "source": "generated"
+  },
+  {
+   "name": "gen/test/toolCompatibility-09/fenced",
+   "existingCase": "test/toolCompatibility-09",
+   "patch": "Here's the update:\n\n```openui-lang\njob = Query(\"Edited\", {value: @Format(\"bad\")})\njob = null\n```\n\nLet me know if you'd like anything else.",
+   "source": "generated"
+  },
+  {
+   "name": "gen/test/toolCompatibility-09/root-job",
+   "existingCase": "test/toolCompatibility-09",
+   "patch": "job = Query(\"Edited\", {value: @Format(\"bad\")})",
+   "rootId": "job",
+   "source": "generated"
+  },
+  {
+   "name": "gen/test/toolCompatibility-09/replay",
+   "existingCase": "test/toolCompatibility-09",
+   "patch": "root = Text(\"Healthy\")\njob = Query(\"save\", {value: @Format(\"bad\")})",
+   "source": "generated"
+  },
+  {
+   "name": "gen/test/toolCompatibility-09/onto-nothing",
+   "existing": "",
+   "patchCase": "test/toolCompatibility-09",
+   "source": "generated"
+  },
+  {
+   "name": "gen/test/toolCompatibility-10/edit",
+   "existingCase": "test/toolCompatibility-10",
+   "patch": "job = Query(\"Edited\", {value: @Format(\"bad\")})",
+   "source": "generated"
+  },
+  {
+   "name": "gen/test/toolCompatibility-10/add",
+   "existingCase": "test/toolCompatibility-10",
+   "patch": "added = Query(\"Added\")",
+   "source": "generated"
+  },
+  {
+   "name": "gen/test/toolCompatibility-10/delete",
+   "existingCase": "test/toolCompatibility-10",
+   "patch": "job = null",
+   "source": "generated"
+  },
+  {
+   "name": "gen/test/toolCompatibility-10/fenced",
+   "existingCase": "test/toolCompatibility-10",
+   "patch": "Here's the update:\n\n```openui-lang\njob = Query(\"Edited\", {value: @Format(\"bad\")})\njob = null\n```\n\nLet me know if you'd like anything else.",
+   "source": "generated"
+  },
+  {
+   "name": "gen/test/toolCompatibility-10/root-job",
+   "existingCase": "test/toolCompatibility-10",
+   "patch": "job = Query(\"Edited\", {value: @Format(\"bad\")})",
+   "rootId": "job",
+   "source": "generated"
+  },
+  {
+   "name": "gen/test/toolCompatibility-10/replay",
+   "existingCase": "test/toolCompatibility-10",
+   "patch": "root = Text(\"Healthy\")\njob = Query(\"save\", {value: @Format(\"bad\")})",
+   "source": "generated"
+  },
+  {
+   "name": "gen/test/toolCompatibility-10/onto-nothing",
+   "existing": "",
+   "patchCase": "test/toolCompatibility-10",
+   "source": "generated"
+  },
+  {
+   "name": "gen/test/toolCompatibility-11/edit",
+   "existingCase": "test/toolCompatibility-11",
+   "patch": "job = Query(\"Edited\", {value: @Format()})",
+   "source": "generated"
+  },
+  {
+   "name": "gen/test/toolCompatibility-11/add",
+   "existingCase": "test/toolCompatibility-11",
+   "patch": "added = Query(\"Added\")",
+   "source": "generated"
+  },
+  {
+   "name": "gen/test/toolCompatibility-11/delete",
+   "existingCase": "test/toolCompatibility-11",
+   "patch": "job = null",
+   "source": "generated"
+  },
+  {
+   "name": "gen/test/toolCompatibility-11/fenced",
+   "existingCase": "test/toolCompatibility-11",
+   "patch": "Here's the update:\n\n```openui-lang\njob = Query(\"Edited\", {value: @Format()})\njob = null\n```\n\nLet me know if you'd like anything else.",
+   "source": "generated"
+  },
+  {
+   "name": "gen/test/toolCompatibility-11/root-job",
+   "existingCase": "test/toolCompatibility-11",
+   "patch": "job = Query(\"Edited\", {value: @Format()})",
+   "rootId": "job",
+   "source": "generated"
+  },
+  {
+   "name": "gen/test/toolCompatibility-11/replay",
+   "existingCase": "test/toolCompatibility-11",
+   "patch": "root = Text(\"Healthy\")\njob = Query(\"save\", {value: @Format()})",
+   "source": "generated"
+  },
+  {
+   "name": "gen/test/toolCompatibility-11/onto-nothing",
+   "existing": "",
+   "patchCase": "test/toolCompatibility-11",
+   "source": "generated"
+  },
+  {
+   "name": "gen/test/toolCompatibility-12/edit",
+   "existingCase": "test/toolCompatibility-12",
+   "patch": "job = Query(\"Edited\", {value: @Format()})",
+   "source": "generated"
+  },
+  {
+   "name": "gen/test/toolCompatibility-12/add",
+   "existingCase": "test/toolCompatibility-12",
+   "patch": "added = Query(\"Added\")",
+   "source": "generated"
+  },
+  {
+   "name": "gen/test/toolCompatibility-12/delete",
+   "existingCase": "test/toolCompatibility-12",
+   "patch": "job = null",
+   "source": "generated"
+  },
+  {
+   "name": "gen/test/toolCompatibility-12/fenced",
+   "existingCase": "test/toolCompatibility-12",
+   "patch": "Here's the update:\n\n```openui-lang\njob = Query(\"Edited\", {value: @Format()})\njob = null\n```\n\nLet me know if you'd like anything else.",
+   "source": "generated"
+  },
+  {
+   "name": "gen/test/toolCompatibility-12/root-job",
+   "existingCase": "test/toolCompatibility-12",
+   "patch": "job = Query(\"Edited\", {value: @Format()})",
+   "rootId": "job",
+   "source": "generated"
+  },
+  {
+   "name": "gen/test/toolCompatibility-12/replay",
+   "existingCase": "test/toolCompatibility-12",
+   "patch": "root = Text(\"Healthy\")\njob = Query(\"save\", {value: @Format()})",
+   "source": "generated"
+  },
+  {
+   "name": "gen/test/toolCompatibility-12/onto-nothing",
+   "existing": "",
+   "patchCase": "test/toolCompatibility-12",
+   "source": "generated"
+  },
+  {
+   "name": "gen/test/toolCompatibility-13/edit",
+   "existingCase": "test/toolCompatibility-13",
+   "patch": "job = Query(\"Edited\", {value: @Format(null)})",
+   "source": "generated"
+  },
+  {
+   "name": "gen/test/toolCompatibility-13/add",
+   "existingCase": "test/toolCompatibility-13",
+   "patch": "added = Query(\"Added\")",
+   "source": "generated"
+  },
+  {
+   "name": "gen/test/toolCompatibility-13/delete",
+   "existingCase": "test/toolCompatibility-13",
+   "patch": "job = null",
+   "source": "generated"
+  },
+  {
+   "name": "gen/test/toolCompatibility-13/fenced",
+   "existingCase": "test/toolCompatibility-13",
+   "patch": "Here's the update:\n\n```openui-lang\njob = Query(\"Edited\", {value: @Format(null)})\njob = null\n```\n\nLet me know if you'd like anything else.",
+   "source": "generated"
+  },
+  {
+   "name": "gen/test/toolCompatibility-13/root-job",
+   "existingCase": "test/toolCompatibility-13",
+   "patch": "job = Query(\"Edited\", {value: @Format(null)})",
+   "rootId": "job",
+   "source": "generated"
+  },
+  {
+   "name": "gen/test/toolCompatibility-13/replay",
+   "existingCase": "test/toolCompatibility-13",
+   "patch": "root = Text(\"Healthy\")\njob = Query(\"save\", {value: @Format(null)})",
+   "source": "generated"
+  },
+  {
+   "name": "gen/test/toolCompatibility-13/onto-nothing",
+   "existing": "",
+   "patchCase": "test/toolCompatibility-13",
+   "source": "generated"
+  },
+  {
+   "name": "gen/test/toolCompatibility-14/edit",
+   "existingCase": "test/toolCompatibility-14",
+   "patch": "job = Query(\"Edited\", {value: @Format(null)})",
+   "source": "generated"
+  },
+  {
+   "name": "gen/test/toolCompatibility-14/add",
+   "existingCase": "test/toolCompatibility-14",
+   "patch": "added = Query(\"Added\")",
+   "source": "generated"
+  },
+  {
+   "name": "gen/test/toolCompatibility-14/delete",
+   "existingCase": "test/toolCompatibility-14",
+   "patch": "job = null",
+   "source": "generated"
+  },
+  {
+   "name": "gen/test/toolCompatibility-14/fenced",
+   "existingCase": "test/toolCompatibility-14",
+   "patch": "Here's the update:\n\n```openui-lang\njob = Query(\"Edited\", {value: @Format(null)})\njob = null\n```\n\nLet me know if you'd like anything else.",
+   "source": "generated"
+  },
+  {
+   "name": "gen/test/toolCompatibility-14/root-job",
+   "existingCase": "test/toolCompatibility-14",
+   "patch": "job = Query(\"Edited\", {value: @Format(null)})",
+   "rootId": "job",
+   "source": "generated"
+  },
+  {
+   "name": "gen/test/toolCompatibility-14/replay",
+   "existingCase": "test/toolCompatibility-14",
+   "patch": "root = Text(\"Healthy\")\njob = Query(\"save\", {value: @Format(null)})",
+   "source": "generated"
+  },
+  {
+   "name": "gen/test/toolCompatibility-14/onto-nothing",
+   "existing": "",
+   "patchCase": "test/toolCompatibility-14",
+   "source": "generated"
+  },
+  {
+   "name": "gen/test/toolCompatibility-15/edit",
+   "existingCase": "test/toolCompatibility-15",
+   "patch": "job = Query(\"Edited\", {value: @Format(25, \"label\", 3)})",
+   "source": "generated"
+  },
+  {
+   "name": "gen/test/toolCompatibility-15/add",
+   "existingCase": "test/toolCompatibility-15",
+   "patch": "added = Query(\"Added\")",
+   "source": "generated"
+  },
+  {
+   "name": "gen/test/toolCompatibility-15/delete",
+   "existingCase": "test/toolCompatibility-15",
+   "patch": "job = null",
+   "source": "generated"
+  },
+  {
+   "name": "gen/test/toolCompatibility-15/fenced",
+   "existingCase": "test/toolCompatibility-15",
+   "patch": "Here's the update:\n\n```openui-lang\njob = Query(\"Edited\", {value: @Format(25, \"label\", 3)})\njob = null\n```\n\nLet me know if you'd like anything else.",
+   "source": "generated"
+  },
+  {
+   "name": "gen/test/toolCompatibility-15/root-job",
+   "existingCase": "test/toolCompatibility-15",
+   "patch": "job = Query(\"Edited\", {value: @Format(25, \"label\", 3)})",
+   "rootId": "job",
+   "source": "generated"
+  },
+  {
+   "name": "gen/test/toolCompatibility-15/replay",
+   "existingCase": "test/toolCompatibility-15",
+   "patch": "root = Text(\"Healthy\")\njob = Query(\"save\", {value: @Format(25, \"label\", 3)})",
+   "source": "generated"
+  },
+  {
+   "name": "gen/test/toolCompatibility-15/onto-nothing",
+   "existing": "",
+   "patchCase": "test/toolCompatibility-15",
+   "source": "generated"
+  },
+  {
+   "name": "gen/test/toolCompatibility-16/edit",
+   "existingCase": "test/toolCompatibility-16",
+   "patch": "job = Query(\"Edited\", {value: @Format(25, \"label\", 3)})",
+   "source": "generated"
+  },
+  {
+   "name": "gen/test/toolCompatibility-16/add",
+   "existingCase": "test/toolCompatibility-16",
+   "patch": "added = Query(\"Added\")",
+   "source": "generated"
+  },
+  {
+   "name": "gen/test/toolCompatibility-16/delete",
+   "existingCase": "test/toolCompatibility-16",
+   "patch": "job = null",
+   "source": "generated"
+  },
+  {
+   "name": "gen/test/toolCompatibility-16/fenced",
+   "existingCase": "test/toolCompatibility-16",
+   "patch": "Here's the update:\n\n```openui-lang\njob = Query(\"Edited\", {value: @Format(25, \"label\", 3)})\njob = null\n```\n\nLet me know if you'd like anything else.",
+   "source": "generated"
+  },
+  {
+   "name": "gen/test/toolCompatibility-16/root-job",
+   "existingCase": "test/toolCompatibility-16",
+   "patch": "job = Query(\"Edited\", {value: @Format(25, \"label\", 3)})",
+   "rootId": "job",
+   "source": "generated"
+  },
+  {
+   "name": "gen/test/toolCompatibility-16/replay",
+   "existingCase": "test/toolCompatibility-16",
+   "patch": "root = Text(\"Healthy\")\njob = Query(\"save\", {value: @Format(25, \"label\", 3)})",
+   "source": "generated"
+  },
+  {
+   "name": "gen/test/toolCompatibility-16/onto-nothing",
+   "existing": "",
+   "patchCase": "test/toolCompatibility-16",
+   "source": "generated"
+  },
+  {
+   "name": "gen/test/toolCompatibility-17/edit",
+   "existingCase": "test/toolCompatibility-17",
+   "patch": "job = Query(\"Edited\", {value: @Format($n)})",
+   "source": "generated"
+  },
+  {
+   "name": "gen/test/toolCompatibility-17/add",
+   "existingCase": "test/toolCompatibility-17",
+   "patch": "added = Query(\"Added\")",
+   "source": "generated"
+  },
+  {
+   "name": "gen/test/toolCompatibility-17/delete",
+   "existingCase": "test/toolCompatibility-17",
+   "patch": "job = null",
+   "source": "generated"
+  },
+  {
+   "name": "gen/test/toolCompatibility-17/fenced",
+   "existingCase": "test/toolCompatibility-17",
+   "patch": "Here's the update:\n\n```openui-lang\njob = Query(\"Edited\", {value: @Format($n)})\njob = null\n```\n\nLet me know if you'd like anything else.",
+   "source": "generated"
+  },
+  {
+   "name": "gen/test/toolCompatibility-17/root-job",
+   "existingCase": "test/toolCompatibility-17",
+   "patch": "job = Query(\"Edited\", {value: @Format($n)})",
+   "rootId": "job",
+   "source": "generated"
+  },
+  {
+   "name": "gen/test/toolCompatibility-17/replay",
+   "existingCase": "test/toolCompatibility-17",
+   "patch": "root = Text(\"Healthy\")\njob = Query(\"save\", {value: @Format($n)})",
+   "source": "generated"
+  },
+  {
+   "name": "gen/test/toolCompatibility-17/onto-nothing",
+   "existing": "",
+   "patchCase": "test/toolCompatibility-17",
+   "source": "generated"
+  },
+  {
+   "name": "gen/test/toolCompatibility-18/edit",
+   "existingCase": "test/toolCompatibility-18",
+   "patch": "job = Query(\"Edited\", {value: @Format($n)})",
+   "source": "generated"
+  },
+  {
+   "name": "gen/test/toolCompatibility-18/add",
+   "existingCase": "test/toolCompatibility-18",
+   "patch": "added = Query(\"Added\")",
+   "source": "generated"
+  },
+  {
+   "name": "gen/test/toolCompatibility-18/delete",
+   "existingCase": "test/toolCompatibility-18",
+   "patch": "job = null",
+   "source": "generated"
+  },
+  {
+   "name": "gen/test/toolCompatibility-18/fenced",
+   "existingCase": "test/toolCompatibility-18",
+   "patch": "Here's the update:\n\n```openui-lang\njob = Query(\"Edited\", {value: @Format($n)})\njob = null\n```\n\nLet me know if you'd like anything else.",
+   "source": "generated"
+  },
+  {
+   "name": "gen/test/toolCompatibility-18/root-job",
+   "existingCase": "test/toolCompatibility-18",
+   "patch": "job = Query(\"Edited\", {value: @Format($n)})",
+   "rootId": "job",
+   "source": "generated"
+  },
+  {
+   "name": "gen/test/toolCompatibility-18/replay",
+   "existingCase": "test/toolCompatibility-18",
+   "patch": "root = Text(\"Healthy\")\njob = Query(\"save\", {value: @Format($n)})",
+   "source": "generated"
+  },
+  {
+   "name": "gen/test/toolCompatibility-18/onto-nothing",
+   "existing": "",
+   "patchCase": "test/toolCompatibility-18",
+   "source": "generated"
+  },
+  {
+   "name": "gen/test/toolCompatibility-19/edit",
+   "existingCase": "test/toolCompatibility-19",
+   "patch": "job = Query(\"Edited\", {value: @Each([1, 2], x, @Format(x))})",
+   "source": "generated"
+  },
+  {
+   "name": "gen/test/toolCompatibility-19/add",
+   "existingCase": "test/toolCompatibility-19",
+   "patch": "added = Query(\"Added\")",
+   "source": "generated"
+  },
+  {
+   "name": "gen/test/toolCompatibility-19/delete",
+   "existingCase": "test/toolCompatibility-19",
+   "patch": "job = null",
+   "source": "generated"
+  },
+  {
+   "name": "gen/test/toolCompatibility-19/fenced",
+   "existingCase": "test/toolCompatibility-19",
+   "patch": "Here's the update:\n\n```openui-lang\njob = Query(\"Edited\", {value: @Each([1, 2], x, @Format(x))})\njob = null\n```\n\nLet me know if you'd like anything else.",
+   "source": "generated"
+  },
+  {
+   "name": "gen/test/toolCompatibility-19/root-job",
+   "existingCase": "test/toolCompatibility-19",
+   "patch": "job = Query(\"Edited\", {value: @Each([1, 2], x, @Format(x))})",
+   "rootId": "job",
+   "source": "generated"
+  },
+  {
+   "name": "gen/test/toolCompatibility-19/replay",
+   "existingCase": "test/toolCompatibility-19",
+   "patch": "root = Text(\"Healthy\")\njob = Query(\"save\", {value: @Each([1, 2], x, @Format(x))})",
+   "source": "generated"
+  },
+  {
+   "name": "gen/test/toolCompatibility-19/onto-nothing",
+   "existing": "",
+   "patchCase": "test/toolCompatibility-19",
+   "source": "generated"
+  },
+  {
+   "name": "gen/test/toolCompatibility-20/edit",
+   "existingCase": "test/toolCompatibility-20",
+   "patch": "job = Query(\"Edited\", {value: @Each([1, 2], x, @Format(x))})",
+   "source": "generated"
+  },
+  {
+   "name": "gen/test/toolCompatibility-20/add",
+   "existingCase": "test/toolCompatibility-20",
+   "patch": "added = Query(\"Added\")",
+   "source": "generated"
+  },
+  {
+   "name": "gen/test/toolCompatibility-20/delete",
+   "existingCase": "test/toolCompatibility-20",
+   "patch": "job = null",
+   "source": "generated"
+  },
+  {
+   "name": "gen/test/toolCompatibility-20/fenced",
+   "existingCase": "test/toolCompatibility-20",
+   "patch": "Here's the update:\n\n```openui-lang\njob = Query(\"Edited\", {value: @Each([1, 2], x, @Format(x))})\njob = null\n```\n\nLet me know if you'd like anything else.",
+   "source": "generated"
+  },
+  {
+   "name": "gen/test/toolCompatibility-20/root-job",
+   "existingCase": "test/toolCompatibility-20",
+   "patch": "job = Query(\"Edited\", {value: @Each([1, 2], x, @Format(x))})",
+   "rootId": "job",
+   "source": "generated"
+  },
+  {
+   "name": "gen/test/toolCompatibility-20/replay",
+   "existingCase": "test/toolCompatibility-20",
+   "patch": "root = Text(\"Healthy\")\njob = Query(\"save\", {value: @Each([1, 2], x, @Format(x))})",
+   "source": "generated"
+  },
+  {
+   "name": "gen/test/toolCompatibility-20/onto-nothing",
+   "existing": "",
+   "patchCase": "test/toolCompatibility-20",
+   "source": "generated"
+  },
+  {
+   "name": "gen/test/toolCompatibility-21/edit",
+   "existingCase": "test/toolCompatibility-21",
+   "patch": "job = Query(\"Edited\", {value: @Each([1, 2], x, @Each([3, 4], y, x + y))})",
+   "source": "generated"
+  },
+  {
+   "name": "gen/test/toolCompatibility-21/add",
+   "existingCase": "test/toolCompatibility-21",
+   "patch": "added = Query(\"Added\")",
+   "source": "generated"
+  },
+  {
+   "name": "gen/test/toolCompatibility-21/delete",
+   "existingCase": "test/toolCompatibility-21",
+   "patch": "job = null",
+   "source": "generated"
+  },
+  {
+   "name": "gen/test/toolCompatibility-21/fenced",
+   "existingCase": "test/toolCompatibility-21",
+   "patch": "Here's the update:\n\n```openui-lang\njob = Query(\"Edited\", {value: @Each([1, 2], x, @Each([3, 4], y, x + y))})\njob = null\n```\n\nLet me know if you'd like anything else.",
+   "source": "generated"
+  },
+  {
+   "name": "gen/test/toolCompatibility-21/root-job",
+   "existingCase": "test/toolCompatibility-21",
+   "patch": "job = Query(\"Edited\", {value: @Each([1, 2], x, @Each([3, 4], y, x + y))})",
+   "rootId": "job",
+   "source": "generated"
+  },
+  {
+   "name": "gen/test/toolCompatibility-21/replay",
+   "existingCase": "test/toolCompatibility-21",
+   "patch": "root = Text(\"Healthy\")\njob = Query(\"save\", {value: @Each([1, 2], x, @Each([3, 4], y, x + y))})",
+   "source": "generated"
+  },
+  {
+   "name": "gen/test/toolCompatibility-21/onto-nothing",
+   "existing": "",
+   "patchCase": "test/toolCompatibility-21",
+   "source": "generated"
+  },
+  {
+   "name": "gen/test/toolCompatibility-22/edit",
+   "existingCase": "test/toolCompatibility-22",
+   "patch": "job = Query(\"Edited\", {value: @Each([1, 2], x, @Each([3, 4], y, x + y))})",
+   "source": "generated"
+  },
+  {
+   "name": "gen/test/toolCompatibility-22/add",
+   "existingCase": "test/toolCompatibility-22",
+   "patch": "added = Query(\"Added\")",
+   "source": "generated"
+  },
+  {
+   "name": "gen/test/toolCompatibility-22/delete",
+   "existingCase": "test/toolCompatibility-22",
+   "patch": "job = null",
+   "source": "generated"
+  },
+  {
+   "name": "gen/test/toolCompatibility-22/fenced",
+   "existingCase": "test/toolCompatibility-22",
+   "patch": "Here's the update:\n\n```openui-lang\njob = Query(\"Edited\", {value: @Each([1, 2], x, @Each([3, 4], y, x + y))})\njob = null\n```\n\nLet me know if you'd like anything else.",
+   "source": "generated"
+  },
+  {
+   "name": "gen/test/toolCompatibility-22/root-job",
+   "existingCase": "test/toolCompatibility-22",
+   "patch": "job = Query(\"Edited\", {value: @Each([1, 2], x, @Each([3, 4], y, x + y))})",
+   "rootId": "job",
+   "source": "generated"
+  },
+  {
+   "name": "gen/test/toolCompatibility-22/replay",
+   "existingCase": "test/toolCompatibility-22",
+   "patch": "root = Text(\"Healthy\")\njob = Query(\"save\", {value: @Each([1, 2], x, @Each([3, 4], y, x + y))})",
+   "source": "generated"
+  },
+  {
+   "name": "gen/test/toolCompatibility-22/onto-nothing",
+   "existing": "",
+   "patchCase": "test/toolCompatibility-22",
+   "source": "generated"
+  },
+  {
+   "name": "gen/test/toolCompatibility-23/edit",
+   "existingCase": "test/toolCompatibility-23",
+   "patch": "job = Query(\"Edited\", {value: false ? @Format(99) : 42})",
+   "source": "generated"
+  },
+  {
+   "name": "gen/test/toolCompatibility-23/add",
+   "existingCase": "test/toolCompatibility-23",
+   "patch": "added = Query(\"Added\")",
+   "source": "generated"
+  },
+  {
+   "name": "gen/test/toolCompatibility-23/delete",
+   "existingCase": "test/toolCompatibility-23",
+   "patch": "job = null",
+   "source": "generated"
+  },
+  {
+   "name": "gen/test/toolCompatibility-23/fenced",
+   "existingCase": "test/toolCompatibility-23",
+   "patch": "Here's the update:\n\n```openui-lang\njob = Query(\"Edited\", {value: false ? @Format(99) : 42})\njob = null\n```\n\nLet me know if you'd like anything else.",
+   "source": "generated"
+  },
+  {
+   "name": "gen/test/toolCompatibility-23/root-job",
+   "existingCase": "test/toolCompatibility-23",
+   "patch": "job = Query(\"Edited\", {value: false ? @Format(99) : 42})",
+   "rootId": "job",
+   "source": "generated"
+  },
+  {
+   "name": "gen/test/toolCompatibility-23/replay",
+   "existingCase": "test/toolCompatibility-23",
+   "patch": "root = Text(\"Healthy\")\njob = Query(\"save\", {value: false ? @Format(99) : 42})",
+   "source": "generated"
+  },
+  {
+   "name": "gen/test/toolCompatibility-23/onto-nothing",
+   "existing": "",
+   "patchCase": "test/toolCompatibility-23",
+   "source": "generated"
+  },
+  {
+   "name": "gen/test/toolCompatibility-24/edit",
+   "existingCase": "test/toolCompatibility-24",
+   "patch": "job = Query(\"Edited\", {value: false ? @Format(99) : 42})",
+   "source": "generated"
+  },
+  {
+   "name": "gen/test/toolCompatibility-24/add",
+   "existingCase": "test/toolCompatibility-24",
+   "patch": "added = Query(\"Added\")",
+   "source": "generated"
+  },
+  {
+   "name": "gen/test/toolCompatibility-24/delete",
+   "existingCase": "test/toolCompatibility-24",
+   "patch": "job = null",
+   "source": "generated"
+  },
+  {
+   "name": "gen/test/toolCompatibility-24/fenced",
+   "existingCase": "test/toolCompatibility-24",
+   "patch": "Here's the update:\n\n```openui-lang\njob = Query(\"Edited\", {value: false ? @Format(99) : 42})\njob = null\n```\n\nLet me know if you'd like anything else.",
+   "source": "generated"
+  },
+  {
+   "name": "gen/test/toolCompatibility-24/root-job",
+   "existingCase": "test/toolCompatibility-24",
+   "patch": "job = Query(\"Edited\", {value: false ? @Format(99) : 42})",
+   "rootId": "job",
+   "source": "generated"
+  },
+  {
+   "name": "gen/test/toolCompatibility-24/replay",
+   "existingCase": "test/toolCompatibility-24",
+   "patch": "root = Text(\"Healthy\")\njob = Query(\"save\", {value: false ? @Format(99) : 42})",
+   "source": "generated"
+  },
+  {
+   "name": "gen/test/toolCompatibility-24/onto-nothing",
+   "existing": "",
+   "patchCase": "test/toolCompatibility-24",
+   "source": "generated"
+  },
+  {
+   "name": "gen/test/toolCompatibility-25/edit",
+   "existingCase": "test/toolCompatibility-25",
+   "patch": "job = Query(\"Edited\", {plan: Action([@Set($n, $n + 1), @Reset($n), @Run(q)])})",
+   "source": "generated"
+  },
+  {
+   "name": "gen/test/toolCompatibility-25/add",
+   "existingCase": "test/toolCompatibility-25",
+   "patch": "added = Query(\"Added\")",
+   "source": "generated"
+  },
+  {
+   "name": "gen/test/toolCompatibility-25/delete",
+   "existingCase": "test/toolCompatibility-25",
+   "patch": "q = null",
+   "source": "generated"
+  },
+  {
+   "name": "gen/test/toolCompatibility-25/fenced",
+   "existingCase": "test/toolCompatibility-25",
+   "patch": "Here's the update:\n\n```openui-lang\njob = Query(\"Edited\", {plan: Action([@Set($n, $n + 1), @Reset($n), @Run(q)])})\nq = null\n```\n\nLet me know if you'd like anything else.",
+   "source": "generated"
+  },
+  {
+   "name": "gen/test/toolCompatibility-25/root-job",
+   "existingCase": "test/toolCompatibility-25",
+   "patch": "job = Query(\"Edited\", {plan: Action([@Set($n, $n + 1), @Reset($n), @Run(q)])})",
+   "rootId": "job",
+   "source": "generated"
+  },
+  {
+   "name": "gen/test/toolCompatibility-25/replay",
+   "existingCase": "test/toolCompatibility-25",
+   "patch": "root = Text(\"Healthy\")\njob = Query(\"save\", {plan: Action([@Set($n, $n + 1), @Reset($n), @Run(q)])})\nq = Query(\"load\")",
+   "source": "generated"
+  },
+  {
+   "name": "gen/test/toolCompatibility-25/onto-nothing",
+   "existing": "",
+   "patchCase": "test/toolCompatibility-25",
+   "source": "generated"
+  },
+  {
+   "name": "gen/test/toolCompatibility-26/edit",
+   "existingCase": "test/toolCompatibility-26",
+   "patch": "job = Query(\"Edited\", {plan: Action([@Set($n, $n + 1), @Reset($n), @Run(q)])})",
+   "source": "generated"
+  },
+  {
+   "name": "gen/test/toolCompatibility-26/add",
+   "existingCase": "test/toolCompatibility-26",
+   "patch": "added = Query(\"Added\")",
+   "source": "generated"
+  },
+  {
+   "name": "gen/test/toolCompatibility-26/delete",
+   "existingCase": "test/toolCompatibility-26",
+   "patch": "q = null",
+   "source": "generated"
+  },
+  {
+   "name": "gen/test/toolCompatibility-26/fenced",
+   "existingCase": "test/toolCompatibility-26",
+   "patch": "Here's the update:\n\n```openui-lang\njob = Query(\"Edited\", {plan: Action([@Set($n, $n + 1), @Reset($n), @Run(q)])})\nq = null\n```\n\nLet me know if you'd like anything else.",
+   "source": "generated"
+  },
+  {
+   "name": "gen/test/toolCompatibility-26/root-job",
+   "existingCase": "test/toolCompatibility-26",
+   "patch": "job = Query(\"Edited\", {plan: Action([@Set($n, $n + 1), @Reset($n), @Run(q)])})",
+   "rootId": "job",
+   "source": "generated"
+  },
+  {
+   "name": "gen/test/toolCompatibility-26/replay",
+   "existingCase": "test/toolCompatibility-26",
+   "patch": "root = Text(\"Healthy\")\njob = Query(\"save\", {plan: Action([@Set($n, $n + 1), @Reset($n), @Run(q)])})\nq = Query(\"load\")",
+   "source": "generated"
+  },
+  {
+   "name": "gen/test/toolCompatibility-26/onto-nothing",
+   "existing": "",
+   "patchCase": "test/toolCompatibility-26",
+   "source": "generated"
+  },
+  {
+   "name": "gen/test/toolCompatibility-27/edit",
+   "existingCase": "test/toolCompatibility-27",
+   "patch": "job = Mutation(\"Edited\", {value: @Format(25)})",
+   "source": "generated"
+  },
+  {
+   "name": "gen/test/toolCompatibility-27/add",
+   "existingCase": "test/toolCompatibility-27",
+   "patch": "added = Mutation(\"Added\")",
+   "source": "generated"
+  },
+  {
+   "name": "gen/test/toolCompatibility-27/delete",
+   "existingCase": "test/toolCompatibility-27",
+   "patch": "job = null",
+   "source": "generated"
+  },
+  {
+   "name": "gen/test/toolCompatibility-27/fenced",
+   "existingCase": "test/toolCompatibility-27",
+   "patch": "Here's the update:\n\n```openui-lang\njob = Mutation(\"Edited\", {value: @Format(25)})\njob = null\n```\n\nLet me know if you'd like anything else.",
+   "source": "generated"
+  },
+  {
+   "name": "gen/test/toolCompatibility-27/root-job",
+   "existingCase": "test/toolCompatibility-27",
+   "patch": "job = Mutation(\"Edited\", {value: @Format(25)})",
+   "rootId": "job",
+   "source": "generated"
+  },
+  {
+   "name": "gen/test/toolCompatibility-27/replay",
+   "existingCase": "test/toolCompatibility-27",
+   "patch": "root = Text(\"Healthy\")\njob = Mutation(\"save\", {value: @Format(25)})",
+   "source": "generated"
+  },
+  {
+   "name": "gen/test/toolCompatibility-27/onto-nothing",
+   "existing": "",
+   "patchCase": "test/toolCompatibility-27",
+   "source": "generated"
+  },
+  {
+   "name": "gen/test/toolCompatibility-28/edit",
+   "existingCase": "test/toolCompatibility-28",
+   "patch": "job = Mutation(\"Edited\", {value: @Format(25)})",
+   "source": "generated"
+  },
+  {
+   "name": "gen/test/toolCompatibility-28/add",
+   "existingCase": "test/toolCompatibility-28",
+   "patch": "added = Mutation(\"Added\")",
+   "source": "generated"
+  },
+  {
+   "name": "gen/test/toolCompatibility-28/delete",
+   "existingCase": "test/toolCompatibility-28",
+   "patch": "job = null",
+   "source": "generated"
+  },
+  {
+   "name": "gen/test/toolCompatibility-28/fenced",
+   "existingCase": "test/toolCompatibility-28",
+   "patch": "Here's the update:\n\n```openui-lang\njob = Mutation(\"Edited\", {value: @Format(25)})\njob = null\n```\n\nLet me know if you'd like anything else.",
+   "source": "generated"
+  },
+  {
+   "name": "gen/test/toolCompatibility-28/root-job",
+   "existingCase": "test/toolCompatibility-28",
+   "patch": "job = Mutation(\"Edited\", {value: @Format(25)})",
+   "rootId": "job",
+   "source": "generated"
+  },
+  {
+   "name": "gen/test/toolCompatibility-28/replay",
+   "existingCase": "test/toolCompatibility-28",
+   "patch": "root = Text(\"Healthy\")\njob = Mutation(\"save\", {value: @Format(25)})",
+   "source": "generated"
+  },
+  {
+   "name": "gen/test/toolCompatibility-28/onto-nothing",
+   "existing": "",
+   "patchCase": "test/toolCompatibility-28",
+   "source": "generated"
+  },
+  {
+   "name": "gen/test/toolCompatibility-29/edit",
+   "existingCase": "test/toolCompatibility-29",
+   "patch": "job = Mutation(\"Edited\", {value: @Format(25, null)})",
+   "source": "generated"
+  },
+  {
+   "name": "gen/test/toolCompatibility-29/add",
+   "existingCase": "test/toolCompatibility-29",
+   "patch": "added = Mutation(\"Added\")",
+   "source": "generated"
+  },
+  {
+   "name": "gen/test/toolCompatibility-29/delete",
+   "existingCase": "test/toolCompatibility-29",
+   "patch": "job = null",
+   "source": "generated"
+  },
+  {
+   "name": "gen/test/toolCompatibility-29/fenced",
+   "existingCase": "test/toolCompatibility-29",
+   "patch": "Here's the update:\n\n```openui-lang\njob = Mutation(\"Edited\", {value: @Format(25, null)})\njob = null\n```\n\nLet me know if you'd like anything else.",
+   "source": "generated"
+  },
+  {
+   "name": "gen/test/toolCompatibility-29/root-job",
+   "existingCase": "test/toolCompatibility-29",
+   "patch": "job = Mutation(\"Edited\", {value: @Format(25, null)})",
+   "rootId": "job",
+   "source": "generated"
+  },
+  {
+   "name": "gen/test/toolCompatibility-29/replay",
+   "existingCase": "test/toolCompatibility-29",
+   "patch": "root = Text(\"Healthy\")\njob = Mutation(\"save\", {value: @Format(25, null)})",
+   "source": "generated"
+  },
+  {
+   "name": "gen/test/toolCompatibility-29/onto-nothing",
+   "existing": "",
+   "patchCase": "test/toolCompatibility-29",
+   "source": "generated"
+  },
+  {
+   "name": "gen/test/toolCompatibility-30/edit",
+   "existingCase": "test/toolCompatibility-30",
+   "patch": "job = Mutation(\"Edited\", {value: @Format(25, null)})",
+   "source": "generated"
+  },
+  {
+   "name": "gen/test/toolCompatibility-30/add",
+   "existingCase": "test/toolCompatibility-30",
+   "patch": "added = Mutation(\"Added\")",
+   "source": "generated"
+  },
+  {
+   "name": "gen/test/toolCompatibility-30/delete",
+   "existingCase": "test/toolCompatibility-30",
+   "patch": "job = null",
+   "source": "generated"
+  },
+  {
+   "name": "gen/test/toolCompatibility-30/fenced",
+   "existingCase": "test/toolCompatibility-30",
+   "patch": "Here's the update:\n\n```openui-lang\njob = Mutation(\"Edited\", {value: @Format(25, null)})\njob = null\n```\n\nLet me know if you'd like anything else.",
+   "source": "generated"
+  },
+  {
+   "name": "gen/test/toolCompatibility-30/root-job",
+   "existingCase": "test/toolCompatibility-30",
+   "patch": "job = Mutation(\"Edited\", {value: @Format(25, null)})",
+   "rootId": "job",
+   "source": "generated"
+  },
+  {
+   "name": "gen/test/toolCompatibility-30/replay",
+   "existingCase": "test/toolCompatibility-30",
+   "patch": "root = Text(\"Healthy\")\njob = Mutation(\"save\", {value: @Format(25, null)})",
+   "source": "generated"
+  },
+  {
+   "name": "gen/test/toolCompatibility-30/onto-nothing",
+   "existing": "",
+   "patchCase": "test/toolCompatibility-30",
+   "source": "generated"
+  },
+  {
+   "name": "gen/test/toolCompatibility-31/edit",
+   "existingCase": "test/toolCompatibility-31",
+   "patch": "job = Mutation(\"Edited\", {value: @Format(25, \"label\")})",
+   "source": "generated"
+  },
+  {
+   "name": "gen/test/toolCompatibility-31/add",
+   "existingCase": "test/toolCompatibility-31",
+   "patch": "added = Mutation(\"Added\")",
+   "source": "generated"
+  },
+  {
+   "name": "gen/test/toolCompatibility-31/delete",
+   "existingCase": "test/toolCompatibility-31",
+   "patch": "job = null",
+   "source": "generated"
+  },
+  {
+   "name": "gen/test/toolCompatibility-31/fenced",
+   "existingCase": "test/toolCompatibility-31",
+   "patch": "Here's the update:\n\n```openui-lang\njob = Mutation(\"Edited\", {value: @Format(25, \"label\")})\njob = null\n```\n\nLet me know if you'd like anything else.",
+   "source": "generated"
+  },
+  {
+   "name": "gen/test/toolCompatibility-31/root-job",
+   "existingCase": "test/toolCompatibility-31",
+   "patch": "job = Mutation(\"Edited\", {value: @Format(25, \"label\")})",
+   "rootId": "job",
+   "source": "generated"
+  },
+  {
+   "name": "gen/test/toolCompatibility-31/replay",
+   "existingCase": "test/toolCompatibility-31",
+   "patch": "root = Text(\"Healthy\")\njob = Mutation(\"save\", {value: @Format(25, \"label\")})",
+   "source": "generated"
+  },
+  {
+   "name": "gen/test/toolCompatibility-31/onto-nothing",
+   "existing": "",
+   "patchCase": "test/toolCompatibility-31",
+   "source": "generated"
+  },
+  {
+   "name": "gen/test/toolCompatibility-32/edit",
+   "existingCase": "test/toolCompatibility-32",
+   "patch": "job = Mutation(\"Edited\", {value: @Format(25, \"label\")})",
+   "source": "generated"
+  },
+  {
+   "name": "gen/test/toolCompatibility-32/add",
+   "existingCase": "test/toolCompatibility-32",
+   "patch": "added = Mutation(\"Added\")",
+   "source": "generated"
+  },
+  {
+   "name": "gen/test/toolCompatibility-32/delete",
+   "existingCase": "test/toolCompatibility-32",
+   "patch": "job = null",
+   "source": "generated"
+  },
+  {
+   "name": "gen/test/toolCompatibility-32/fenced",
+   "existingCase": "test/toolCompatibility-32",
+   "patch": "Here's the update:\n\n```openui-lang\njob = Mutation(\"Edited\", {value: @Format(25, \"label\")})\njob = null\n```\n\nLet me know if you'd like anything else.",
+   "source": "generated"
+  },
+  {
+   "name": "gen/test/toolCompatibility-32/root-job",
+   "existingCase": "test/toolCompatibility-32",
+   "patch": "job = Mutation(\"Edited\", {value: @Format(25, \"label\")})",
+   "rootId": "job",
+   "source": "generated"
+  },
+  {
+   "name": "gen/test/toolCompatibility-32/replay",
+   "existingCase": "test/toolCompatibility-32",
+   "patch": "root = Text(\"Healthy\")\njob = Mutation(\"save\", {value: @Format(25, \"label\")})",
+   "source": "generated"
+  },
+  {
+   "name": "gen/test/toolCompatibility-32/onto-nothing",
+   "existing": "",
+   "patchCase": "test/toolCompatibility-32",
+   "source": "generated"
+  },
+  {
+   "name": "gen/test/toolCompatibility-33/edit",
+   "existingCase": "test/toolCompatibility-33",
+   "patch": "job = Mutation(\"Edited\", {value: @Format(25, 10)})",
+   "source": "generated"
+  },
+  {
+   "name": "gen/test/toolCompatibility-33/add",
+   "existingCase": "test/toolCompatibility-33",
+   "patch": "added = Mutation(\"Added\")",
+   "source": "generated"
+  },
+  {
+   "name": "gen/test/toolCompatibility-33/delete",
+   "existingCase": "test/toolCompatibility-33",
+   "patch": "job = null",
+   "source": "generated"
+  },
+  {
+   "name": "gen/test/toolCompatibility-33/fenced",
+   "existingCase": "test/toolCompatibility-33",
+   "patch": "Here's the update:\n\n```openui-lang\njob = Mutation(\"Edited\", {value: @Format(25, 10)})\njob = null\n```\n\nLet me know if you'd like anything else.",
+   "source": "generated"
+  },
+  {
+   "name": "gen/test/toolCompatibility-33/root-job",
+   "existingCase": "test/toolCompatibility-33",
+   "patch": "job = Mutation(\"Edited\", {value: @Format(25, 10)})",
+   "rootId": "job",
+   "source": "generated"
+  },
+  {
+   "name": "gen/test/toolCompatibility-33/replay",
+   "existingCase": "test/toolCompatibility-33",
+   "patch": "root = Text(\"Healthy\")\njob = Mutation(\"save\", {value: @Format(25, 10)})",
+   "source": "generated"
+  },
+  {
+   "name": "gen/test/toolCompatibility-33/onto-nothing",
+   "existing": "",
+   "patchCase": "test/toolCompatibility-33",
+   "source": "generated"
+  },
+  {
+   "name": "gen/test/toolCompatibility-34/edit",
+   "existingCase": "test/toolCompatibility-34",
+   "patch": "job = Mutation(\"Edited\", {value: @Format(25, 10)})",
+   "source": "generated"
+  },
+  {
+   "name": "gen/test/toolCompatibility-34/add",
+   "existingCase": "test/toolCompatibility-34",
+   "patch": "added = Mutation(\"Added\")",
+   "source": "generated"
+  },
+  {
+   "name": "gen/test/toolCompatibility-34/delete",
+   "existingCase": "test/toolCompatibility-34",
+   "patch": "job = null",
+   "source": "generated"
+  },
+  {
+   "name": "gen/test/toolCompatibility-34/fenced",
+   "existingCase": "test/toolCompatibility-34",
+   "patch": "Here's the update:\n\n```openui-lang\njob = Mutation(\"Edited\", {value: @Format(25, 10)})\njob = null\n```\n\nLet me know if you'd like anything else.",
+   "source": "generated"
+  },
+  {
+   "name": "gen/test/toolCompatibility-34/root-job",
+   "existingCase": "test/toolCompatibility-34",
+   "patch": "job = Mutation(\"Edited\", {value: @Format(25, 10)})",
+   "rootId": "job",
+   "source": "generated"
+  },
+  {
+   "name": "gen/test/toolCompatibility-34/replay",
+   "existingCase": "test/toolCompatibility-34",
+   "patch": "root = Text(\"Healthy\")\njob = Mutation(\"save\", {value: @Format(25, 10)})",
+   "source": "generated"
+  },
+  {
+   "name": "gen/test/toolCompatibility-34/onto-nothing",
+   "existing": "",
+   "patchCase": "test/toolCompatibility-34",
+   "source": "generated"
+  },
+  {
+   "name": "gen/test/toolCompatibility-35/edit",
+   "existingCase": "test/toolCompatibility-35",
+   "patch": "job = Mutation(\"Edited\", {value: @Format(\"bad\")})",
+   "source": "generated"
+  },
+  {
+   "name": "gen/test/toolCompatibility-35/add",
+   "existingCase": "test/toolCompatibility-35",
+   "patch": "added = Mutation(\"Added\")",
+   "source": "generated"
+  },
+  {
+   "name": "gen/test/toolCompatibility-35/delete",
+   "existingCase": "test/toolCompatibility-35",
+   "patch": "job = null",
+   "source": "generated"
+  },
+  {
+   "name": "gen/test/toolCompatibility-35/fenced",
+   "existingCase": "test/toolCompatibility-35",
+   "patch": "Here's the update:\n\n```openui-lang\njob = Mutation(\"Edited\", {value: @Format(\"bad\")})\njob = null\n```\n\nLet me know if you'd like anything else.",
+   "source": "generated"
+  },
+  {
+   "name": "gen/test/toolCompatibility-35/root-job",
+   "existingCase": "test/toolCompatibility-35",
+   "patch": "job = Mutation(\"Edited\", {value: @Format(\"bad\")})",
+   "rootId": "job",
+   "source": "generated"
+  },
+  {
+   "name": "gen/test/toolCompatibility-35/replay",
+   "existingCase": "test/toolCompatibility-35",
+   "patch": "root = Text(\"Healthy\")\njob = Mutation(\"save\", {value: @Format(\"bad\")})",
+   "source": "generated"
+  },
+  {
+   "name": "gen/test/toolCompatibility-35/onto-nothing",
+   "existing": "",
+   "patchCase": "test/toolCompatibility-35",
+   "source": "generated"
+  },
+  {
+   "name": "gen/test/toolCompatibility-36/edit",
+   "existingCase": "test/toolCompatibility-36",
+   "patch": "job = Mutation(\"Edited\", {value: @Format(\"bad\")})",
+   "source": "generated"
+  },
+  {
+   "name": "gen/test/toolCompatibility-36/add",
+   "existingCase": "test/toolCompatibility-36",
+   "patch": "added = Mutation(\"Added\")",
+   "source": "generated"
+  },
+  {
+   "name": "gen/test/toolCompatibility-36/delete",
+   "existingCase": "test/toolCompatibility-36",
+   "patch": "job = null",
+   "source": "generated"
+  },
+  {
+   "name": "gen/test/toolCompatibility-36/fenced",
+   "existingCase": "test/toolCompatibility-36",
+   "patch": "Here's the update:\n\n```openui-lang\njob = Mutation(\"Edited\", {value: @Format(\"bad\")})\njob = null\n```\n\nLet me know if you'd like anything else.",
+   "source": "generated"
+  },
+  {
+   "name": "gen/test/toolCompatibility-36/root-job",
+   "existingCase": "test/toolCompatibility-36",
+   "patch": "job = Mutation(\"Edited\", {value: @Format(\"bad\")})",
+   "rootId": "job",
+   "source": "generated"
+  },
+  {
+   "name": "gen/test/toolCompatibility-36/replay",
+   "existingCase": "test/toolCompatibility-36",
+   "patch": "root = Text(\"Healthy\")\njob = Mutation(\"save\", {value: @Format(\"bad\")})",
+   "source": "generated"
+  },
+  {
+   "name": "gen/test/toolCompatibility-36/onto-nothing",
+   "existing": "",
+   "patchCase": "test/toolCompatibility-36",
+   "source": "generated"
+  },
+  {
+   "name": "gen/test/toolCompatibility-37/edit",
+   "existingCase": "test/toolCompatibility-37",
+   "patch": "job = Mutation(\"Edited\", {value: @Format()})",
+   "source": "generated"
+  },
+  {
+   "name": "gen/test/toolCompatibility-37/add",
+   "existingCase": "test/toolCompatibility-37",
+   "patch": "added = Mutation(\"Added\")",
+   "source": "generated"
+  },
+  {
+   "name": "gen/test/toolCompatibility-37/delete",
+   "existingCase": "test/toolCompatibility-37",
+   "patch": "job = null",
+   "source": "generated"
+  },
+  {
+   "name": "gen/test/toolCompatibility-37/fenced",
+   "existingCase": "test/toolCompatibility-37",
+   "patch": "Here's the update:\n\n```openui-lang\njob = Mutation(\"Edited\", {value: @Format()})\njob = null\n```\n\nLet me know if you'd like anything else.",
+   "source": "generated"
+  },
+  {
+   "name": "gen/test/toolCompatibility-37/root-job",
+   "existingCase": "test/toolCompatibility-37",
+   "patch": "job = Mutation(\"Edited\", {value: @Format()})",
+   "rootId": "job",
+   "source": "generated"
+  },
+  {
+   "name": "gen/test/toolCompatibility-37/replay",
+   "existingCase": "test/toolCompatibility-37",
+   "patch": "root = Text(\"Healthy\")\njob = Mutation(\"save\", {value: @Format()})",
+   "source": "generated"
+  },
+  {
+   "name": "gen/test/toolCompatibility-37/onto-nothing",
+   "existing": "",
+   "patchCase": "test/toolCompatibility-37",
+   "source": "generated"
+  },
+  {
+   "name": "gen/test/toolCompatibility-38/edit",
+   "existingCase": "test/toolCompatibility-38",
+   "patch": "job = Mutation(\"Edited\", {value: @Format()})",
+   "source": "generated"
+  },
+  {
+   "name": "gen/test/toolCompatibility-38/add",
+   "existingCase": "test/toolCompatibility-38",
+   "patch": "added = Mutation(\"Added\")",
+   "source": "generated"
+  },
+  {
+   "name": "gen/test/toolCompatibility-38/delete",
+   "existingCase": "test/toolCompatibility-38",
+   "patch": "job = null",
+   "source": "generated"
+  },
+  {
+   "name": "gen/test/toolCompatibility-38/fenced",
+   "existingCase": "test/toolCompatibility-38",
+   "patch": "Here's the update:\n\n```openui-lang\njob = Mutation(\"Edited\", {value: @Format()})\njob = null\n```\n\nLet me know if you'd like anything else.",
+   "source": "generated"
+  },
+  {
+   "name": "gen/test/toolCompatibility-38/root-job",
+   "existingCase": "test/toolCompatibility-38",
+   "patch": "job = Mutation(\"Edited\", {value: @Format()})",
+   "rootId": "job",
+   "source": "generated"
+  },
+  {
+   "name": "gen/test/toolCompatibility-38/replay",
+   "existingCase": "test/toolCompatibility-38",
+   "patch": "root = Text(\"Healthy\")\njob = Mutation(\"save\", {value: @Format()})",
+   "source": "generated"
+  },
+  {
+   "name": "gen/test/toolCompatibility-38/onto-nothing",
+   "existing": "",
+   "patchCase": "test/toolCompatibility-38",
+   "source": "generated"
+  },
+  {
+   "name": "gen/test/toolCompatibility-39/edit",
+   "existingCase": "test/toolCompatibility-39",
+   "patch": "job = Mutation(\"Edited\", {value: @Format(null)})",
+   "source": "generated"
+  },
+  {
+   "name": "gen/test/toolCompatibility-39/add",
+   "existingCase": "test/toolCompatibility-39",
+   "patch": "added = Mutation(\"Added\")",
+   "source": "generated"
+  },
+  {
+   "name": "gen/test/toolCompatibility-39/delete",
+   "existingCase": "test/toolCompatibility-39",
+   "patch": "job = null",
+   "source": "generated"
+  },
+  {
+   "name": "gen/test/toolCompatibility-39/fenced",
+   "existingCase": "test/toolCompatibility-39",
+   "patch": "Here's the update:\n\n```openui-lang\njob = Mutation(\"Edited\", {value: @Format(null)})\njob = null\n```\n\nLet me know if you'd like anything else.",
+   "source": "generated"
+  },
+  {
+   "name": "gen/test/toolCompatibility-39/root-job",
+   "existingCase": "test/toolCompatibility-39",
+   "patch": "job = Mutation(\"Edited\", {value: @Format(null)})",
+   "rootId": "job",
+   "source": "generated"
+  },
+  {
+   "name": "gen/test/toolCompatibility-39/replay",
+   "existingCase": "test/toolCompatibility-39",
+   "patch": "root = Text(\"Healthy\")\njob = Mutation(\"save\", {value: @Format(null)})",
+   "source": "generated"
+  },
+  {
+   "name": "gen/test/toolCompatibility-39/onto-nothing",
+   "existing": "",
+   "patchCase": "test/toolCompatibility-39",
+   "source": "generated"
+  },
+  {
+   "name": "gen/test/toolCompatibility-40/edit",
+   "existingCase": "test/toolCompatibility-40",
+   "patch": "job = Mutation(\"Edited\", {value: @Format(null)})",
+   "source": "generated"
+  },
+  {
+   "name": "gen/test/toolCompatibility-40/add",
+   "existingCase": "test/toolCompatibility-40",
+   "patch": "added = Mutation(\"Added\")",
+   "source": "generated"
+  },
+  {
+   "name": "gen/test/toolCompatibility-40/delete",
+   "existingCase": "test/toolCompatibility-40",
+   "patch": "job = null",
+   "source": "generated"
+  },
+  {
+   "name": "gen/test/toolCompatibility-40/fenced",
+   "existingCase": "test/toolCompatibility-40",
+   "patch": "Here's the update:\n\n```openui-lang\njob = Mutation(\"Edited\", {value: @Format(null)})\njob = null\n```\n\nLet me know if you'd like anything else.",
+   "source": "generated"
+  },
+  {
+   "name": "gen/test/toolCompatibility-40/root-job",
+   "existingCase": "test/toolCompatibility-40",
+   "patch": "job = Mutation(\"Edited\", {value: @Format(null)})",
+   "rootId": "job",
+   "source": "generated"
+  },
+  {
+   "name": "gen/test/toolCompatibility-40/replay",
+   "existingCase": "test/toolCompatibility-40",
+   "patch": "root = Text(\"Healthy\")\njob = Mutation(\"save\", {value: @Format(null)})",
+   "source": "generated"
+  },
+  {
+   "name": "gen/test/toolCompatibility-40/onto-nothing",
+   "existing": "",
+   "patchCase": "test/toolCompatibility-40",
+   "source": "generated"
+  },
+  {
+   "name": "gen/test/toolCompatibility-41/edit",
+   "existingCase": "test/toolCompatibility-41",
+   "patch": "job = Mutation(\"Edited\", {value: @Format(25, \"label\", 3)})",
+   "source": "generated"
+  },
+  {
+   "name": "gen/test/toolCompatibility-41/add",
+   "existingCase": "test/toolCompatibility-41",
+   "patch": "added = Mutation(\"Added\")",
+   "source": "generated"
+  },
+  {
+   "name": "gen/test/toolCompatibility-41/delete",
+   "existingCase": "test/toolCompatibility-41",
+   "patch": "job = null",
+   "source": "generated"
+  },
+  {
+   "name": "gen/test/toolCompatibility-41/fenced",
+   "existingCase": "test/toolCompatibility-41",
+   "patch": "Here's the update:\n\n```openui-lang\njob = Mutation(\"Edited\", {value: @Format(25, \"label\", 3)})\njob = null\n```\n\nLet me know if you'd like anything else.",
+   "source": "generated"
+  },
+  {
+   "name": "gen/test/toolCompatibility-41/root-job",
+   "existingCase": "test/toolCompatibility-41",
+   "patch": "job = Mutation(\"Edited\", {value: @Format(25, \"label\", 3)})",
+   "rootId": "job",
+   "source": "generated"
+  },
+  {
+   "name": "gen/test/toolCompatibility-41/replay",
+   "existingCase": "test/toolCompatibility-41",
+   "patch": "root = Text(\"Healthy\")\njob = Mutation(\"save\", {value: @Format(25, \"label\", 3)})",
+   "source": "generated"
+  },
+  {
+   "name": "gen/test/toolCompatibility-41/onto-nothing",
+   "existing": "",
+   "patchCase": "test/toolCompatibility-41",
+   "source": "generated"
+  },
+  {
+   "name": "gen/test/toolCompatibility-42/edit",
+   "existingCase": "test/toolCompatibility-42",
+   "patch": "job = Mutation(\"Edited\", {value: @Format(25, \"label\", 3)})",
+   "source": "generated"
+  },
+  {
+   "name": "gen/test/toolCompatibility-42/add",
+   "existingCase": "test/toolCompatibility-42",
+   "patch": "added = Mutation(\"Added\")",
+   "source": "generated"
+  },
+  {
+   "name": "gen/test/toolCompatibility-42/delete",
+   "existingCase": "test/toolCompatibility-42",
+   "patch": "job = null",
+   "source": "generated"
+  },
+  {
+   "name": "gen/test/toolCompatibility-42/fenced",
+   "existingCase": "test/toolCompatibility-42",
+   "patch": "Here's the update:\n\n```openui-lang\njob = Mutation(\"Edited\", {value: @Format(25, \"label\", 3)})\njob = null\n```\n\nLet me know if you'd like anything else.",
+   "source": "generated"
+  },
+  {
+   "name": "gen/test/toolCompatibility-42/root-job",
+   "existingCase": "test/toolCompatibility-42",
+   "patch": "job = Mutation(\"Edited\", {value: @Format(25, \"label\", 3)})",
+   "rootId": "job",
+   "source": "generated"
+  },
+  {
+   "name": "gen/test/toolCompatibility-42/replay",
+   "existingCase": "test/toolCompatibility-42",
+   "patch": "root = Text(\"Healthy\")\njob = Mutation(\"save\", {value: @Format(25, \"label\", 3)})",
+   "source": "generated"
+  },
+  {
+   "name": "gen/test/toolCompatibility-42/onto-nothing",
+   "existing": "",
+   "patchCase": "test/toolCompatibility-42",
+   "source": "generated"
+  },
+  {
+   "name": "gen/test/toolCompatibility-43/edit",
+   "existingCase": "test/toolCompatibility-43",
+   "patch": "job = Mutation(\"Edited\", {value: @Format($n)})",
+   "source": "generated"
+  },
+  {
+   "name": "gen/test/toolCompatibility-43/add",
+   "existingCase": "test/toolCompatibility-43",
+   "patch": "added = Mutation(\"Added\")",
+   "source": "generated"
+  },
+  {
+   "name": "gen/test/toolCompatibility-43/delete",
+   "existingCase": "test/toolCompatibility-43",
+   "patch": "job = null",
+   "source": "generated"
+  },
+  {
+   "name": "gen/test/toolCompatibility-43/fenced",
+   "existingCase": "test/toolCompatibility-43",
+   "patch": "Here's the update:\n\n```openui-lang\njob = Mutation(\"Edited\", {value: @Format($n)})\njob = null\n```\n\nLet me know if you'd like anything else.",
+   "source": "generated"
+  },
+  {
+   "name": "gen/test/toolCompatibility-43/root-job",
+   "existingCase": "test/toolCompatibility-43",
+   "patch": "job = Mutation(\"Edited\", {value: @Format($n)})",
+   "rootId": "job",
+   "source": "generated"
+  },
+  {
+   "name": "gen/test/toolCompatibility-43/replay",
+   "existingCase": "test/toolCompatibility-43",
+   "patch": "root = Text(\"Healthy\")\njob = Mutation(\"save\", {value: @Format($n)})",
+   "source": "generated"
+  },
+  {
+   "name": "gen/test/toolCompatibility-43/onto-nothing",
+   "existing": "",
+   "patchCase": "test/toolCompatibility-43",
+   "source": "generated"
+  },
+  {
+   "name": "gen/test/toolCompatibility-44/edit",
+   "existingCase": "test/toolCompatibility-44",
+   "patch": "job = Mutation(\"Edited\", {value: @Format($n)})",
+   "source": "generated"
+  },
+  {
+   "name": "gen/test/toolCompatibility-44/add",
+   "existingCase": "test/toolCompatibility-44",
+   "patch": "added = Mutation(\"Added\")",
+   "source": "generated"
+  },
+  {
+   "name": "gen/test/toolCompatibility-44/delete",
+   "existingCase": "test/toolCompatibility-44",
+   "patch": "job = null",
+   "source": "generated"
+  },
+  {
+   "name": "gen/test/toolCompatibility-44/fenced",
+   "existingCase": "test/toolCompatibility-44",
+   "patch": "Here's the update:\n\n```openui-lang\njob = Mutation(\"Edited\", {value: @Format($n)})\njob = null\n```\n\nLet me know if you'd like anything else.",
+   "source": "generated"
+  },
+  {
+   "name": "gen/test/toolCompatibility-44/root-job",
+   "existingCase": "test/toolCompatibility-44",
+   "patch": "job = Mutation(\"Edited\", {value: @Format($n)})",
+   "rootId": "job",
+   "source": "generated"
+  },
+  {
+   "name": "gen/test/toolCompatibility-44/replay",
+   "existingCase": "test/toolCompatibility-44",
+   "patch": "root = Text(\"Healthy\")\njob = Mutation(\"save\", {value: @Format($n)})",
+   "source": "generated"
+  },
+  {
+   "name": "gen/test/toolCompatibility-44/onto-nothing",
+   "existing": "",
+   "patchCase": "test/toolCompatibility-44",
+   "source": "generated"
+  },
+  {
+   "name": "gen/test/toolCompatibility-45/edit",
+   "existingCase": "test/toolCompatibility-45",
+   "patch": "job = Mutation(\"Edited\", {value: @Each([1, 2], x, @Format(x))})",
+   "source": "generated"
+  },
+  {
+   "name": "gen/test/toolCompatibility-45/add",
+   "existingCase": "test/toolCompatibility-45",
+   "patch": "added = Mutation(\"Added\")",
+   "source": "generated"
+  },
+  {
+   "name": "gen/test/toolCompatibility-45/delete",
+   "existingCase": "test/toolCompatibility-45",
+   "patch": "job = null",
+   "source": "generated"
+  },
+  {
+   "name": "gen/test/toolCompatibility-45/fenced",
+   "existingCase": "test/toolCompatibility-45",
+   "patch": "Here's the update:\n\n```openui-lang\njob = Mutation(\"Edited\", {value: @Each([1, 2], x, @Format(x))})\njob = null\n```\n\nLet me know if you'd like anything else.",
+   "source": "generated"
+  },
+  {
+   "name": "gen/test/toolCompatibility-45/root-job",
+   "existingCase": "test/toolCompatibility-45",
+   "patch": "job = Mutation(\"Edited\", {value: @Each([1, 2], x, @Format(x))})",
+   "rootId": "job",
+   "source": "generated"
+  },
+  {
+   "name": "gen/test/toolCompatibility-45/replay",
+   "existingCase": "test/toolCompatibility-45",
+   "patch": "root = Text(\"Healthy\")\njob = Mutation(\"save\", {value: @Each([1, 2], x, @Format(x))})",
+   "source": "generated"
+  },
+  {
+   "name": "gen/test/toolCompatibility-45/onto-nothing",
+   "existing": "",
+   "patchCase": "test/toolCompatibility-45",
+   "source": "generated"
+  },
+  {
+   "name": "gen/test/toolCompatibility-46/edit",
+   "existingCase": "test/toolCompatibility-46",
+   "patch": "job = Mutation(\"Edited\", {value: @Each([1, 2], x, @Format(x))})",
+   "source": "generated"
+  },
+  {
+   "name": "gen/test/toolCompatibility-46/add",
+   "existingCase": "test/toolCompatibility-46",
+   "patch": "added = Mutation(\"Added\")",
+   "source": "generated"
+  },
+  {
+   "name": "gen/test/toolCompatibility-46/delete",
+   "existingCase": "test/toolCompatibility-46",
+   "patch": "job = null",
+   "source": "generated"
+  },
+  {
+   "name": "gen/test/toolCompatibility-46/fenced",
+   "existingCase": "test/toolCompatibility-46",
+   "patch": "Here's the update:\n\n```openui-lang\njob = Mutation(\"Edited\", {value: @Each([1, 2], x, @Format(x))})\njob = null\n```\n\nLet me know if you'd like anything else.",
+   "source": "generated"
+  },
+  {
+   "name": "gen/test/toolCompatibility-46/root-job",
+   "existingCase": "test/toolCompatibility-46",
+   "patch": "job = Mutation(\"Edited\", {value: @Each([1, 2], x, @Format(x))})",
+   "rootId": "job",
+   "source": "generated"
+  },
+  {
+   "name": "gen/test/toolCompatibility-46/replay",
+   "existingCase": "test/toolCompatibility-46",
+   "patch": "root = Text(\"Healthy\")\njob = Mutation(\"save\", {value: @Each([1, 2], x, @Format(x))})",
+   "source": "generated"
+  },
+  {
+   "name": "gen/test/toolCompatibility-46/onto-nothing",
+   "existing": "",
+   "patchCase": "test/toolCompatibility-46",
+   "source": "generated"
+  },
+  {
+   "name": "gen/test/toolCompatibility-47/edit",
+   "existingCase": "test/toolCompatibility-47",
+   "patch": "job = Mutation(\"Edited\", {value: @Each([1, 2], x, @Each([3, 4], y, x + y))})",
+   "source": "generated"
+  },
+  {
+   "name": "gen/test/toolCompatibility-47/add",
+   "existingCase": "test/toolCompatibility-47",
+   "patch": "added = Mutation(\"Added\")",
+   "source": "generated"
+  },
+  {
+   "name": "gen/test/toolCompatibility-47/delete",
+   "existingCase": "test/toolCompatibility-47",
+   "patch": "job = null",
+   "source": "generated"
+  },
+  {
+   "name": "gen/test/toolCompatibility-47/fenced",
+   "existingCase": "test/toolCompatibility-47",
+   "patch": "Here's the update:\n\n```openui-lang\njob = Mutation(\"Edited\", {value: @Each([1, 2], x, @Each([3, 4], y, x + y))})\njob = null\n```\n\nLet me know if you'd like anything else.",
+   "source": "generated"
+  },
+  {
+   "name": "gen/test/toolCompatibility-47/root-job",
+   "existingCase": "test/toolCompatibility-47",
+   "patch": "job = Mutation(\"Edited\", {value: @Each([1, 2], x, @Each([3, 4], y, x + y))})",
+   "rootId": "job",
+   "source": "generated"
+  },
+  {
+   "name": "gen/test/toolCompatibility-47/replay",
+   "existingCase": "test/toolCompatibility-47",
+   "patch": "root = Text(\"Healthy\")\njob = Mutation(\"save\", {value: @Each([1, 2], x, @Each([3, 4], y, x + y))})",
+   "source": "generated"
+  },
+  {
+   "name": "gen/test/toolCompatibility-47/onto-nothing",
+   "existing": "",
+   "patchCase": "test/toolCompatibility-47",
+   "source": "generated"
+  },
+  {
+   "name": "gen/test/toolCompatibility-48/edit",
+   "existingCase": "test/toolCompatibility-48",
+   "patch": "job = Mutation(\"Edited\", {value: @Each([1, 2], x, @Each([3, 4], y, x + y))})",
+   "source": "generated"
+  },
+  {
+   "name": "gen/test/toolCompatibility-48/add",
+   "existingCase": "test/toolCompatibility-48",
+   "patch": "added = Mutation(\"Added\")",
+   "source": "generated"
+  },
+  {
+   "name": "gen/test/toolCompatibility-48/delete",
+   "existingCase": "test/toolCompatibility-48",
+   "patch": "job = null",
+   "source": "generated"
+  },
+  {
+   "name": "gen/test/toolCompatibility-48/fenced",
+   "existingCase": "test/toolCompatibility-48",
+   "patch": "Here's the update:\n\n```openui-lang\njob = Mutation(\"Edited\", {value: @Each([1, 2], x, @Each([3, 4], y, x + y))})\njob = null\n```\n\nLet me know if you'd like anything else.",
+   "source": "generated"
+  },
+  {
+   "name": "gen/test/toolCompatibility-48/root-job",
+   "existingCase": "test/toolCompatibility-48",
+   "patch": "job = Mutation(\"Edited\", {value: @Each([1, 2], x, @Each([3, 4], y, x + y))})",
+   "rootId": "job",
+   "source": "generated"
+  },
+  {
+   "name": "gen/test/toolCompatibility-48/replay",
+   "existingCase": "test/toolCompatibility-48",
+   "patch": "root = Text(\"Healthy\")\njob = Mutation(\"save\", {value: @Each([1, 2], x, @Each([3, 4], y, x + y))})",
+   "source": "generated"
+  },
+  {
+   "name": "gen/test/toolCompatibility-48/onto-nothing",
+   "existing": "",
+   "patchCase": "test/toolCompatibility-48",
+   "source": "generated"
+  },
+  {
+   "name": "gen/test/toolCompatibility-49/edit",
+   "existingCase": "test/toolCompatibility-49",
+   "patch": "job = Mutation(\"Edited\", {value: false ? @Format(99) : 42})",
+   "source": "generated"
+  },
+  {
+   "name": "gen/test/toolCompatibility-49/add",
+   "existingCase": "test/toolCompatibility-49",
+   "patch": "added = Mutation(\"Added\")",
+   "source": "generated"
+  },
+  {
+   "name": "gen/test/toolCompatibility-49/delete",
+   "existingCase": "test/toolCompatibility-49",
+   "patch": "job = null",
+   "source": "generated"
+  },
+  {
+   "name": "gen/test/toolCompatibility-49/fenced",
+   "existingCase": "test/toolCompatibility-49",
+   "patch": "Here's the update:\n\n```openui-lang\njob = Mutation(\"Edited\", {value: false ? @Format(99) : 42})\njob = null\n```\n\nLet me know if you'd like anything else.",
+   "source": "generated"
+  },
+  {
+   "name": "gen/test/toolCompatibility-49/root-job",
+   "existingCase": "test/toolCompatibility-49",
+   "patch": "job = Mutation(\"Edited\", {value: false ? @Format(99) : 42})",
+   "rootId": "job",
+   "source": "generated"
+  },
+  {
+   "name": "gen/test/toolCompatibility-49/replay",
+   "existingCase": "test/toolCompatibility-49",
+   "patch": "root = Text(\"Healthy\")\njob = Mutation(\"save\", {value: false ? @Format(99) : 42})",
+   "source": "generated"
+  },
+  {
+   "name": "gen/test/toolCompatibility-49/onto-nothing",
+   "existing": "",
+   "patchCase": "test/toolCompatibility-49",
+   "source": "generated"
+  },
+  {
+   "name": "gen/test/toolCompatibility-50/edit",
+   "existingCase": "test/toolCompatibility-50",
+   "patch": "job = Mutation(\"Edited\", {value: false ? @Format(99) : 42})",
+   "source": "generated"
+  },
+  {
+   "name": "gen/test/toolCompatibility-50/add",
+   "existingCase": "test/toolCompatibility-50",
+   "patch": "added = Mutation(\"Added\")",
+   "source": "generated"
+  },
+  {
+   "name": "gen/test/toolCompatibility-50/delete",
+   "existingCase": "test/toolCompatibility-50",
+   "patch": "job = null",
+   "source": "generated"
+  },
+  {
+   "name": "gen/test/toolCompatibility-50/fenced",
+   "existingCase": "test/toolCompatibility-50",
+   "patch": "Here's the update:\n\n```openui-lang\njob = Mutation(\"Edited\", {value: false ? @Format(99) : 42})\njob = null\n```\n\nLet me know if you'd like anything else.",
+   "source": "generated"
+  },
+  {
+   "name": "gen/test/toolCompatibility-50/root-job",
+   "existingCase": "test/toolCompatibility-50",
+   "patch": "job = Mutation(\"Edited\", {value: false ? @Format(99) : 42})",
+   "rootId": "job",
+   "source": "generated"
+  },
+  {
+   "name": "gen/test/toolCompatibility-50/replay",
+   "existingCase": "test/toolCompatibility-50",
+   "patch": "root = Text(\"Healthy\")\njob = Mutation(\"save\", {value: false ? @Format(99) : 42})",
+   "source": "generated"
+  },
+  {
+   "name": "gen/test/toolCompatibility-50/onto-nothing",
+   "existing": "",
+   "patchCase": "test/toolCompatibility-50",
+   "source": "generated"
+  },
+  {
+   "name": "gen/test/toolCompatibility-51/edit",
+   "existingCase": "test/toolCompatibility-51",
+   "patch": "job = Mutation(\"Edited\", {plan: Action([@Set($n, $n + 1), @Reset($n), @Run(q)])})",
+   "source": "generated"
+  },
+  {
+   "name": "gen/test/toolCompatibility-51/add",
+   "existingCase": "test/toolCompatibility-51",
+   "patch": "added = Mutation(\"Added\")",
+   "source": "generated"
+  },
+  {
+   "name": "gen/test/toolCompatibility-51/delete",
+   "existingCase": "test/toolCompatibility-51",
+   "patch": "q = null",
+   "source": "generated"
+  },
+  {
+   "name": "gen/test/toolCompatibility-51/fenced",
+   "existingCase": "test/toolCompatibility-51",
+   "patch": "Here's the update:\n\n```openui-lang\njob = Mutation(\"Edited\", {plan: Action([@Set($n, $n + 1), @Reset($n), @Run(q)])})\nq = null\n```\n\nLet me know if you'd like anything else.",
+   "source": "generated"
+  },
+  {
+   "name": "gen/test/toolCompatibility-51/root-job",
+   "existingCase": "test/toolCompatibility-51",
+   "patch": "job = Mutation(\"Edited\", {plan: Action([@Set($n, $n + 1), @Reset($n), @Run(q)])})",
+   "rootId": "job",
+   "source": "generated"
+  },
+  {
+   "name": "gen/test/toolCompatibility-51/replay",
+   "existingCase": "test/toolCompatibility-51",
+   "patch": "root = Text(\"Healthy\")\njob = Mutation(\"save\", {plan: Action([@Set($n, $n + 1), @Reset($n), @Run(q)])})\nq = Query(\"load\")",
+   "source": "generated"
+  },
+  {
+   "name": "gen/test/toolCompatibility-51/onto-nothing",
+   "existing": "",
+   "patchCase": "test/toolCompatibility-51",
+   "source": "generated"
+  },
+  {
+   "name": "gen/test/toolCompatibility-52/edit",
+   "existingCase": "test/toolCompatibility-52",
+   "patch": "job = Mutation(\"Edited\", {plan: Action([@Set($n, $n + 1), @Reset($n), @Run(q)])})",
+   "source": "generated"
+  },
+  {
+   "name": "gen/test/toolCompatibility-52/add",
+   "existingCase": "test/toolCompatibility-52",
+   "patch": "added = Mutation(\"Added\")",
+   "source": "generated"
+  },
+  {
+   "name": "gen/test/toolCompatibility-52/delete",
+   "existingCase": "test/toolCompatibility-52",
+   "patch": "q = null",
+   "source": "generated"
+  },
+  {
+   "name": "gen/test/toolCompatibility-52/fenced",
+   "existingCase": "test/toolCompatibility-52",
+   "patch": "Here's the update:\n\n```openui-lang\njob = Mutation(\"Edited\", {plan: Action([@Set($n, $n + 1), @Reset($n), @Run(q)])})\nq = null\n```\n\nLet me know if you'd like anything else.",
+   "source": "generated"
+  },
+  {
+   "name": "gen/test/toolCompatibility-52/root-job",
+   "existingCase": "test/toolCompatibility-52",
+   "patch": "job = Mutation(\"Edited\", {plan: Action([@Set($n, $n + 1), @Reset($n), @Run(q)])})",
+   "rootId": "job",
+   "source": "generated"
+  },
+  {
+   "name": "gen/test/toolCompatibility-52/replay",
+   "existingCase": "test/toolCompatibility-52",
+   "patch": "root = Text(\"Healthy\")\njob = Mutation(\"save\", {plan: Action([@Set($n, $n + 1), @Reset($n), @Run(q)])})\nq = Query(\"load\")",
+   "source": "generated"
+  },
+  {
+   "name": "gen/test/toolCompatibility-52/onto-nothing",
+   "existing": "",
+   "patchCase": "test/toolCompatibility-52",
+   "source": "generated"
+  },
+  {
+   "name": "gen/test/toolReferences-01/edit",
+   "existingCase": "test/toolReferences-01",
+   "patch": "tool = \"Edited\"",
+   "source": "generated"
+  },
+  {
+   "name": "gen/test/toolReferences-01/add",
+   "existingCase": "test/toolReferences-01",
+   "patch": "added = Query(\"Added\")",
+   "source": "generated"
+  },
+  {
+   "name": "gen/test/toolReferences-01/delete",
+   "existingCase": "test/toolReferences-01",
+   "patch": "args = null",
+   "source": "generated"
+  },
+  {
+   "name": "gen/test/toolReferences-01/fenced",
+   "existingCase": "test/toolReferences-01",
+   "patch": "Here's the update:\n\n```openui-lang\ntool = \"Edited\"\nargs = null\n```\n\nLet me know if you'd like anything else.",
+   "source": "generated"
+  },
+  {
+   "name": "gen/test/toolReferences-01/root-job",
+   "existingCase": "test/toolReferences-01",
+   "patch": "tool = \"Edited\"",
+   "rootId": "job",
+   "source": "generated"
+  },
+  {
+   "name": "gen/test/toolReferences-01/replay",
+   "existingCase": "test/toolReferences-01",
+   "patch": "root = Title(\"Healthy\")\njob = Query(tool, args)\ntool = \"save\"\nargs = {amount: amount, nested: [alias]}\namount = 42\nalias = amount",
+   "source": "generated"
+  },
+  {
+   "name": "gen/test/toolReferences-01/onto-nothing",
+   "existing": "",
+   "patchCase": "test/toolReferences-01",
+   "source": "generated"
+  },
+  {
+   "name": "gen/test/toolReferences-02/edit",
+   "existingCase": "test/toolReferences-02",
+   "patch": "tool = \"Edited\"",
+   "source": "generated"
+  },
+  {
+   "name": "gen/test/toolReferences-02/add",
+   "existingCase": "test/toolReferences-02",
+   "patch": "added = Query(\"Added\")",
+   "source": "generated"
+  },
+  {
+   "name": "gen/test/toolReferences-02/delete",
+   "existingCase": "test/toolReferences-02",
+   "patch": "total = null",
+   "source": "generated"
+  },
+  {
+   "name": "gen/test/toolReferences-02/fenced",
+   "existingCase": "test/toolReferences-02",
+   "patch": "Here's the update:\n\n```openui-lang\ntool = \"Edited\"\ntotal = null\n```\n\nLet me know if you'd like anything else.",
+   "source": "generated"
+  },
+  {
+   "name": "gen/test/toolReferences-02/root-job",
+   "existingCase": "test/toolReferences-02",
+   "patch": "tool = \"Edited\"",
+   "rootId": "job",
+   "source": "generated"
+  },
+  {
+   "name": "gen/test/toolReferences-02/replay",
+   "existingCase": "test/toolReferences-02",
+   "patch": "root = Title(\"Healthy\")\njob = Query(tool, args)\ntool = \"save\"\nargs = {total: total, rows: @Each(items, item, item + extra)}\ntotal = @Sum(items)\nitems = [1,2]\nitem = 100\nextra = 10",
+   "source": "generated"
+  },
+  {
+   "name": "gen/test/toolReferences-02/onto-nothing",
+   "existing": "",
+   "patchCase": "test/toolReferences-02",
+   "source": "generated"
+  },
+  {
+   "name": "gen/test/toolReferences-03/edit",
+   "existingCase": "test/toolReferences-03",
+   "patch": "tool = \"Edited\"",
+   "source": "generated"
+  },
+  {
+   "name": "gen/test/toolReferences-03/add",
+   "existingCase": "test/toolReferences-03",
+   "patch": "added = Query(\"Added\")",
+   "source": "generated"
+  },
+  {
+   "name": "gen/test/toolReferences-03/delete",
+   "existingCase": "test/toolReferences-03",
+   "patch": "args = null",
+   "source": "generated"
+  },
+  {
+   "name": "gen/test/toolReferences-03/fenced",
+   "existingCase": "test/toolReferences-03",
+   "patch": "Here's the update:\n\n```openui-lang\ntool = \"Edited\"\nargs = null\n```\n\nLet me know if you'd like anything else.",
+   "source": "generated"
+  },
+  {
+   "name": "gen/test/toolReferences-03/root-job",
+   "existingCase": "test/toolReferences-03",
+   "patch": "tool = \"Edited\"",
+   "rootId": "job",
+   "source": "generated"
+  },
+  {
+   "name": "gen/test/toolReferences-03/replay",
+   "existingCase": "test/toolReferences-03",
+   "patch": "root = Title(\"Healthy\")\njob = Query(tool, args)\ntool = \"save\"\nargs = {amount: amount}\namount = @Missing(42)",
+   "source": "generated"
+  },
+  {
+   "name": "gen/test/toolReferences-03/onto-nothing",
+   "existing": "",
+   "patchCase": "test/toolReferences-03",
+   "source": "generated"
+  },
+  {
+   "name": "gen/test/toolReferences-04/edit",
+   "existingCase": "test/toolReferences-04",
+   "patch": "tool = \"Edited\"",
+   "source": "generated"
+  },
+  {
+   "name": "gen/test/toolReferences-04/add",
+   "existingCase": "test/toolReferences-04",
+   "patch": "added = Query(\"Added\")",
+   "source": "generated"
+  },
+  {
+   "name": "gen/test/toolReferences-04/delete",
+   "existingCase": "test/toolReferences-04",
+   "patch": "args = null",
+   "source": "generated"
+  },
+  {
+   "name": "gen/test/toolReferences-04/fenced",
+   "existingCase": "test/toolReferences-04",
+   "patch": "Here's the update:\n\n```openui-lang\ntool = \"Edited\"\nargs = null\n```\n\nLet me know if you'd like anything else.",
+   "source": "generated"
+  },
+  {
+   "name": "gen/test/toolReferences-04/root-job",
+   "existingCase": "test/toolReferences-04",
+   "patch": "tool = \"Edited\"",
+   "rootId": "job",
+   "source": "generated"
+  },
+  {
+   "name": "gen/test/toolReferences-04/replay",
+   "existingCase": "test/toolReferences-04",
+   "patch": "root = Title(\"Healthy\")\njob = Query(tool, args)\ntool = \"save\"\nargs = {cycle:a, missing: absent}\na = b\nb = a",
+   "source": "generated"
+  },
+  {
+   "name": "gen/test/toolReferences-04/onto-nothing",
+   "existing": "",
+   "patchCase": "test/toolReferences-04",
+   "source": "generated"
+  },
+  {
+   "name": "gen/test/toolReferences-05/edit",
+   "existingCase": "test/toolReferences-05",
+   "patch": "tool = \"Edited\"",
+   "source": "generated"
+  },
+  {
+   "name": "gen/test/toolReferences-05/add",
+   "existingCase": "test/toolReferences-05",
+   "patch": "added = Query(\"Added\")",
+   "source": "generated"
+  },
+  {
+   "name": "gen/test/toolReferences-05/delete",
+   "existingCase": "test/toolReferences-05",
+   "patch": "args = null",
+   "source": "generated"
+  },
+  {
+   "name": "gen/test/toolReferences-05/fenced",
+   "existingCase": "test/toolReferences-05",
+   "patch": "Here's the update:\n\n```openui-lang\ntool = \"Edited\"\nargs = null\n```\n\nLet me know if you'd like anything else.",
+   "source": "generated"
+  },
+  {
+   "name": "gen/test/toolReferences-05/root-job",
+   "existingCase": "test/toolReferences-05",
+   "patch": "tool = \"Edited\"",
+   "rootId": "job",
+   "source": "generated"
+  },
+  {
+   "name": "gen/test/toolReferences-05/replay",
+   "existingCase": "test/toolReferences-05",
+   "patch": "root = Title(\"Healthy\")\njob = Query(tool, args)\ntool = \"save\"\nargs = {q: q.value, m: m.value}\nq = Query(\"load\")\nm = Mutation(\"save\")",
+   "source": "generated"
+  },
+  {
+   "name": "gen/test/toolReferences-05/onto-nothing",
+   "existing": "",
+   "patchCase": "test/toolReferences-05",
+   "source": "generated"
+  },
+  {
+   "name": "gen/test/toolReferences-06/edit",
+   "existingCase": "test/toolReferences-06",
+   "patch": "tool = \"Edited\"",
+   "source": "generated"
+  },
+  {
+   "name": "gen/test/toolReferences-06/add",
+   "existingCase": "test/toolReferences-06",
+   "patch": "added = Mutation(\"Added\")",
+   "source": "generated"
+  },
+  {
+   "name": "gen/test/toolReferences-06/delete",
+   "existingCase": "test/toolReferences-06",
+   "patch": "args = null",
+   "source": "generated"
+  },
+  {
+   "name": "gen/test/toolReferences-06/fenced",
+   "existingCase": "test/toolReferences-06",
+   "patch": "Here's the update:\n\n```openui-lang\ntool = \"Edited\"\nargs = null\n```\n\nLet me know if you'd like anything else.",
+   "source": "generated"
+  },
+  {
+   "name": "gen/test/toolReferences-06/root-job",
+   "existingCase": "test/toolReferences-06",
+   "patch": "tool = \"Edited\"",
+   "rootId": "job",
+   "source": "generated"
+  },
+  {
+   "name": "gen/test/toolReferences-06/replay",
+   "existingCase": "test/toolReferences-06",
+   "patch": "root = Title(\"Healthy\")\njob = Mutation(tool, args)\ntool = \"save\"\nargs = {amount: amount, nested: [alias]}\namount = 42\nalias = amount",
+   "source": "generated"
+  },
+  {
+   "name": "gen/test/toolReferences-06/onto-nothing",
+   "existing": "",
+   "patchCase": "test/toolReferences-06",
+   "source": "generated"
+  },
+  {
+   "name": "gen/test/toolReferences-07/edit",
+   "existingCase": "test/toolReferences-07",
+   "patch": "tool = \"Edited\"",
+   "source": "generated"
+  },
+  {
+   "name": "gen/test/toolReferences-07/add",
+   "existingCase": "test/toolReferences-07",
+   "patch": "added = Mutation(\"Added\")",
+   "source": "generated"
+  },
+  {
+   "name": "gen/test/toolReferences-07/delete",
+   "existingCase": "test/toolReferences-07",
+   "patch": "total = null",
+   "source": "generated"
+  },
+  {
+   "name": "gen/test/toolReferences-07/fenced",
+   "existingCase": "test/toolReferences-07",
+   "patch": "Here's the update:\n\n```openui-lang\ntool = \"Edited\"\ntotal = null\n```\n\nLet me know if you'd like anything else.",
+   "source": "generated"
+  },
+  {
+   "name": "gen/test/toolReferences-07/root-job",
+   "existingCase": "test/toolReferences-07",
+   "patch": "tool = \"Edited\"",
+   "rootId": "job",
+   "source": "generated"
+  },
+  {
+   "name": "gen/test/toolReferences-07/replay",
+   "existingCase": "test/toolReferences-07",
+   "patch": "root = Title(\"Healthy\")\njob = Mutation(tool, args)\ntool = \"save\"\nargs = {total: total, rows: @Each(items, item, item + extra)}\ntotal = @Sum(items)\nitems = [1,2]\nitem = 100\nextra = 10",
+   "source": "generated"
+  },
+  {
+   "name": "gen/test/toolReferences-07/onto-nothing",
+   "existing": "",
+   "patchCase": "test/toolReferences-07",
+   "source": "generated"
+  },
+  {
+   "name": "gen/test/toolReferences-08/edit",
+   "existingCase": "test/toolReferences-08",
+   "patch": "tool = \"Edited\"",
+   "source": "generated"
+  },
+  {
+   "name": "gen/test/toolReferences-08/add",
+   "existingCase": "test/toolReferences-08",
+   "patch": "added = Mutation(\"Added\")",
+   "source": "generated"
+  },
+  {
+   "name": "gen/test/toolReferences-08/delete",
+   "existingCase": "test/toolReferences-08",
+   "patch": "args = null",
+   "source": "generated"
+  },
+  {
+   "name": "gen/test/toolReferences-08/fenced",
+   "existingCase": "test/toolReferences-08",
+   "patch": "Here's the update:\n\n```openui-lang\ntool = \"Edited\"\nargs = null\n```\n\nLet me know if you'd like anything else.",
+   "source": "generated"
+  },
+  {
+   "name": "gen/test/toolReferences-08/root-job",
+   "existingCase": "test/toolReferences-08",
+   "patch": "tool = \"Edited\"",
+   "rootId": "job",
+   "source": "generated"
+  },
+  {
+   "name": "gen/test/toolReferences-08/replay",
+   "existingCase": "test/toolReferences-08",
+   "patch": "root = Title(\"Healthy\")\njob = Mutation(tool, args)\ntool = \"save\"\nargs = {amount: amount}\namount = @Missing(42)",
+   "source": "generated"
+  },
+  {
+   "name": "gen/test/toolReferences-08/onto-nothing",
+   "existing": "",
+   "patchCase": "test/toolReferences-08",
+   "source": "generated"
+  },
+  {
+   "name": "gen/test/toolReferences-09/edit",
+   "existingCase": "test/toolReferences-09",
+   "patch": "tool = \"Edited\"",
+   "source": "generated"
+  },
+  {
+   "name": "gen/test/toolReferences-09/add",
+   "existingCase": "test/toolReferences-09",
+   "patch": "added = Mutation(\"Added\")",
+   "source": "generated"
+  },
+  {
+   "name": "gen/test/toolReferences-09/delete",
+   "existingCase": "test/toolReferences-09",
+   "patch": "args = null",
+   "source": "generated"
+  },
+  {
+   "name": "gen/test/toolReferences-09/fenced",
+   "existingCase": "test/toolReferences-09",
+   "patch": "Here's the update:\n\n```openui-lang\ntool = \"Edited\"\nargs = null\n```\n\nLet me know if you'd like anything else.",
+   "source": "generated"
+  },
+  {
+   "name": "gen/test/toolReferences-09/root-job",
+   "existingCase": "test/toolReferences-09",
+   "patch": "tool = \"Edited\"",
+   "rootId": "job",
+   "source": "generated"
+  },
+  {
+   "name": "gen/test/toolReferences-09/replay",
+   "existingCase": "test/toolReferences-09",
+   "patch": "root = Title(\"Healthy\")\njob = Mutation(tool, args)\ntool = \"save\"\nargs = {cycle:a, missing: absent}\na = b\nb = a",
+   "source": "generated"
+  },
+  {
+   "name": "gen/test/toolReferences-09/onto-nothing",
+   "existing": "",
+   "patchCase": "test/toolReferences-09",
+   "source": "generated"
+  },
+  {
+   "name": "gen/test/toolReferences-10/edit",
+   "existingCase": "test/toolReferences-10",
+   "patch": "tool = \"Edited\"",
+   "source": "generated"
+  },
+  {
+   "name": "gen/test/toolReferences-10/add",
+   "existingCase": "test/toolReferences-10",
+   "patch": "added = Mutation(\"Added\")",
+   "source": "generated"
+  },
+  {
+   "name": "gen/test/toolReferences-10/delete",
+   "existingCase": "test/toolReferences-10",
+   "patch": "args = null",
+   "source": "generated"
+  },
+  {
+   "name": "gen/test/toolReferences-10/fenced",
+   "existingCase": "test/toolReferences-10",
+   "patch": "Here's the update:\n\n```openui-lang\ntool = \"Edited\"\nargs = null\n```\n\nLet me know if you'd like anything else.",
+   "source": "generated"
+  },
+  {
+   "name": "gen/test/toolReferences-10/root-job",
+   "existingCase": "test/toolReferences-10",
+   "patch": "tool = \"Edited\"",
+   "rootId": "job",
+   "source": "generated"
+  },
+  {
+   "name": "gen/test/toolReferences-10/replay",
+   "existingCase": "test/toolReferences-10",
+   "patch": "root = Title(\"Healthy\")\njob = Mutation(tool, args)\ntool = \"save\"\nargs = {q: q.value, m: m.value}\nq = Query(\"load\")\nm = Mutation(\"save\")",
+   "source": "generated"
+  },
+  {
+   "name": "gen/test/toolReferences-10/onto-nothing",
+   "existing": "",
+   "patchCase": "test/toolReferences-10",
+   "source": "generated"
+  },
+  {
+   "name": "gen/test/toolReferences-11/edit",
+   "existingCase": "test/toolReferences-11",
+   "patch": "q = Query(\"Edited\", args, defaults, refresh)",
+   "source": "generated"
+  },
+  {
+   "name": "gen/test/toolReferences-11/add",
+   "existingCase": "test/toolReferences-11",
+   "patch": "added = Query(\"Added\")",
+   "source": "generated"
+  },
+  {
+   "name": "gen/test/toolReferences-11/delete",
+   "existingCase": "test/toolReferences-11",
+   "patch": "alias = null",
+   "source": "generated"
+  },
+  {
+   "name": "gen/test/toolReferences-11/fenced",
+   "existingCase": "test/toolReferences-11",
+   "patch": "Here's the update:\n\n```openui-lang\nq = Query(\"Edited\", args, defaults, refresh)\nalias = null\n```\n\nLet me know if you'd like anything else.",
+   "source": "generated"
+  },
+  {
+   "name": "gen/test/toolReferences-11/root-$n",
+   "existingCase": "test/toolReferences-11",
+   "patch": "q = Query(\"Edited\", args, defaults, refresh)",
+   "rootId": "$n",
+   "source": "generated"
+  },
+  {
+   "name": "gen/test/toolReferences-11/replay",
+   "existingCase": "test/toolReferences-11",
+   "patch": "root = Title(\"Healthy\")\n$n=2\nq = Query(\"save\", args, defaults, refresh)\nargs={value:alias}\nalias=$n*2\ndefaults={saved:false}\nrefresh=5000",
+   "source": "generated"
+  },
+  {
+   "name": "gen/test/toolReferences-11/onto-nothing",
+   "existing": "",
+   "patchCase": "test/toolReferences-11",
+   "source": "generated"
+  },
+  {
    "name": "gen/spec/actions/001-several-actions/edit",
    "existingCase": "spec/actions/001-several-actions",
    "patch": "bump = Button(\"Edited\", Action([@Set($m, 9)]))",
@@ -10901,6 +14179,55 @@
    "name": "gen/docs/blog-components-live-filter-demo-01/onto-nothing",
    "existing": "",
    "patchCase": "docs/blog-components-live-filter-demo-01",
+   "source": "generated"
+  },
+  {
+   "name": "gen/docs/blog-how-claude-dashboards-work-01/edit",
+   "existingCase": "docs/blog-how-claude-dashboards-work-01",
+   "patch": "$weeks = \"Edited\"",
+   "source": "generated"
+  },
+  {
+   "name": "gen/docs/blog-how-claude-dashboards-work-01/add",
+   "existingCase": "docs/blog-how-claude-dashboards-work-01",
+   "patch": "root = Stack([added, filter, chart])\nadded = Select(\"Added\")",
+   "source": "generated"
+  },
+  {
+   "name": "gen/docs/blog-how-claude-dashboards-work-01/delete",
+   "existingCase": "docs/blog-how-claude-dashboards-work-01",
+   "patch": "weekly = null",
+   "source": "generated"
+  },
+  {
+   "name": "gen/docs/blog-how-claude-dashboards-work-01/drop-child",
+   "existingCase": "docs/blog-how-claude-dashboards-work-01",
+   "patch": "root = Stack([chart])",
+   "source": "generated"
+  },
+  {
+   "name": "gen/docs/blog-how-claude-dashboards-work-01/fenced",
+   "existingCase": "docs/blog-how-claude-dashboards-work-01",
+   "patch": "Here's the update:\n\n```openui-lang\n$weeks = \"Edited\"\nweekly = null\n```\n\nLet me know if you'd like anything else.",
+   "source": "generated"
+  },
+  {
+   "name": "gen/docs/blog-how-claude-dashboards-work-01/root-$weeks",
+   "existingCase": "docs/blog-how-claude-dashboards-work-01",
+   "patch": "$weeks = \"Edited\"",
+   "rootId": "$weeks",
+   "source": "generated"
+  },
+  {
+   "name": "gen/docs/blog-how-claude-dashboards-work-01/replay",
+   "existingCase": "docs/blog-how-claude-dashboards-work-01",
+   "patch": "$weeks = \"8\"\nroot = Stack([filter, chart])\nfilter = Select(\"weeks\", [SelectItem(\"4\", \"Last 4 weeks\"), SelectItem(\"8\", \"Last 8 weeks\")], null, null, $weeks)\nweekly = Query(\"weekly_signups\", {weeks: $weeks}, {rows: []})\nlatest = @Last(@Sort(weekly.rows, \"week_start\"))\nchart = BarChart(weekly.rows.week_start, [Series(\"Signups\", weekly.rows.signups)])",
+   "source": "generated"
+  },
+  {
+   "name": "gen/docs/blog-how-claude-dashboards-work-01/onto-nothing",
+   "existing": "",
+   "patchCase": "docs/blog-how-claude-dashboards-work-01",
    "source": "generated"
   },
   {

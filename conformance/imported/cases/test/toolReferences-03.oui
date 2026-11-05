@@ -1,0 +1,5 @@
+root = Title("Healthy")
+job = Query(tool, args)
+tool = "save"
+args = {amount: amount}
+amount = @Missing(42)

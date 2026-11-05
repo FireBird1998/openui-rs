@@ -1,5 +1,5 @@
 repository: https://github.com/thesysdev/openui.git
-commit: eb20708b9cc41afced5625e99e6ce8ec2f8a5435
-package: @openuidev/lang-core 1.0.1
+commit: 47b9cae0d3b26a8c9d7514d5887a6d6608801ac9
+package: @openuidev/lang-core 1.1.0
 path: packages/lang-core/src
-vendored: 2026-10-16
+vendored: 2026-11-06

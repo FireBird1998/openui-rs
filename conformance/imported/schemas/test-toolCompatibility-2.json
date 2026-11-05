@@ -1,0 +1,36 @@
+{
+ "properties": {
+  "Text": {
+   "$ref": "#/$defs/Text"
+  }
+ },
+ "$defs": {
+  "Text": {
+   "properties": {
+    "value": {}
+   },
+   "required": [
+    "value"
+   ]
+  }
+ },
+ "functions": {
+  "Format": {
+   "params": {
+    "properties": {
+     "value": {
+      "type": "number"
+     },
+     "label": {
+      "default": "default",
+      "type": "string"
+     }
+    },
+    "required": [
+     "value",
+     "label"
+    ]
+   }
+  }
+ }
+}

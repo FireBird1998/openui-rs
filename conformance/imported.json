@@ -31,6 +31,11 @@
   "test-serialize-3": "imported/schemas/test-serialize-3.json",
   "test-store": "imported/schemas/test-store.json",
   "test-store-2": "imported/schemas/test-store-2.json",
+  "test-toolCompatibility": "imported/schemas/test-toolCompatibility.json",
+  "test-toolCompatibility-2": "imported/schemas/test-toolCompatibility-2.json",
+  "test-toolCompatibility-3": "imported/schemas/test-toolCompatibility-3.json",
+  "test-toolCompatibility-4": "imported/schemas/test-toolCompatibility-4.json",
+  "test-toolReferences": "imported/schemas/test-toolReferences.json",
   "spec-1.0": "imported/schemas/spec-1.0.json",
   "bench": "imported/schemas/bench.json",
   "react-ui": "imported/schemas/react-ui.json"
@@ -1482,6 +1487,499 @@
    "root": "Col"
   },
   {
+   "name": "test/toolCompatibility-01",
+   "schema": "test-toolCompatibility",
+   "file": "imported/cases/test/toolCompatibility-01.oui",
+   "source": "reference-test",
+   "origin": "packages/lang-core/src/parser/__tests__/toolCompatibility.test.ts",
+   "root": "Text"
+  },
+  {
+   "name": "test/toolCompatibility-02",
+   "schema": "test-toolCompatibility-2",
+   "file": "imported/cases/test/toolCompatibility-02.oui",
+   "source": "reference-test",
+   "origin": "packages/lang-core/src/parser/__tests__/toolCompatibility.test.ts",
+   "root": "Text"
+  },
+  {
+   "name": "test/toolCompatibility-03",
+   "schema": "test-toolCompatibility",
+   "file": "imported/cases/test/toolCompatibility-03.oui",
+   "source": "reference-test",
+   "origin": "packages/lang-core/src/parser/__tests__/toolCompatibility.test.ts",
+   "root": "Text"
+  },
+  {
+   "name": "test/toolCompatibility-04",
+   "schema": "test-toolCompatibility-2",
+   "file": "imported/cases/test/toolCompatibility-04.oui",
+   "source": "reference-test",
+   "origin": "packages/lang-core/src/parser/__tests__/toolCompatibility.test.ts",
+   "root": "Text"
+  },
+  {
+   "name": "test/toolCompatibility-05",
+   "schema": "test-toolCompatibility",
+   "file": "imported/cases/test/toolCompatibility-05.oui",
+   "source": "reference-test",
+   "origin": "packages/lang-core/src/parser/__tests__/toolCompatibility.test.ts",
+   "root": "Text"
+  },
+  {
+   "name": "test/toolCompatibility-06",
+   "schema": "test-toolCompatibility-2",
+   "file": "imported/cases/test/toolCompatibility-06.oui",
+   "source": "reference-test",
+   "origin": "packages/lang-core/src/parser/__tests__/toolCompatibility.test.ts",
+   "root": "Text"
+  },
+  {
+   "name": "test/toolCompatibility-07",
+   "schema": "test-toolCompatibility",
+   "file": "imported/cases/test/toolCompatibility-07.oui",
+   "source": "reference-test",
+   "origin": "packages/lang-core/src/parser/__tests__/toolCompatibility.test.ts",
+   "root": "Text"
+  },
+  {
+   "name": "test/toolCompatibility-08",
+   "schema": "test-toolCompatibility-2",
+   "file": "imported/cases/test/toolCompatibility-08.oui",
+   "source": "reference-test",
+   "origin": "packages/lang-core/src/parser/__tests__/toolCompatibility.test.ts",
+   "root": "Text"
+  },
+  {
+   "name": "test/toolCompatibility-09",
+   "schema": "test-toolCompatibility",
+   "file": "imported/cases/test/toolCompatibility-09.oui",
+   "source": "reference-test",
+   "origin": "packages/lang-core/src/parser/__tests__/toolCompatibility.test.ts",
+   "root": "Text"
+  },
+  {
+   "name": "test/toolCompatibility-10",
+   "schema": "test-toolCompatibility-2",
+   "file": "imported/cases/test/toolCompatibility-10.oui",
+   "source": "reference-test",
+   "origin": "packages/lang-core/src/parser/__tests__/toolCompatibility.test.ts",
+   "root": "Text"
+  },
+  {
+   "name": "test/toolCompatibility-11",
+   "schema": "test-toolCompatibility",
+   "file": "imported/cases/test/toolCompatibility-11.oui",
+   "source": "reference-test",
+   "origin": "packages/lang-core/src/parser/__tests__/toolCompatibility.test.ts",
+   "root": "Text"
+  },
+  {
+   "name": "test/toolCompatibility-12",
+   "schema": "test-toolCompatibility-2",
+   "file": "imported/cases/test/toolCompatibility-12.oui",
+   "source": "reference-test",
+   "origin": "packages/lang-core/src/parser/__tests__/toolCompatibility.test.ts",
+   "root": "Text"
+  },
+  {
+   "name": "test/toolCompatibility-13",
+   "schema": "test-toolCompatibility",
+   "file": "imported/cases/test/toolCompatibility-13.oui",
+   "source": "reference-test",
+   "origin": "packages/lang-core/src/parser/__tests__/toolCompatibility.test.ts",
+   "root": "Text"
+  },
+  {
+   "name": "test/toolCompatibility-14",
+   "schema": "test-toolCompatibility-2",
+   "file": "imported/cases/test/toolCompatibility-14.oui",
+   "source": "reference-test",
+   "origin": "packages/lang-core/src/parser/__tests__/toolCompatibility.test.ts",
+   "root": "Text"
+  },
+  {
+   "name": "test/toolCompatibility-15",
+   "schema": "test-toolCompatibility",
+   "file": "imported/cases/test/toolCompatibility-15.oui",
+   "source": "reference-test",
+   "origin": "packages/lang-core/src/parser/__tests__/toolCompatibility.test.ts",
+   "root": "Text"
+  },
+  {
+   "name": "test/toolCompatibility-16",
+   "schema": "test-toolCompatibility-2",
+   "file": "imported/cases/test/toolCompatibility-16.oui",
+   "source": "reference-test",
+   "origin": "packages/lang-core/src/parser/__tests__/toolCompatibility.test.ts",
+   "root": "Text"
+  },
+  {
+   "name": "test/toolCompatibility-17",
+   "schema": "test-toolCompatibility",
+   "file": "imported/cases/test/toolCompatibility-17.oui",
+   "source": "reference-test",
+   "origin": "packages/lang-core/src/parser/__tests__/toolCompatibility.test.ts",
+   "root": "Text"
+  },
+  {
+   "name": "test/toolCompatibility-18",
+   "schema": "test-toolCompatibility-2",
+   "file": "imported/cases/test/toolCompatibility-18.oui",
+   "source": "reference-test",
+   "origin": "packages/lang-core/src/parser/__tests__/toolCompatibility.test.ts",
+   "root": "Text"
+  },
+  {
+   "name": "test/toolCompatibility-19",
+   "schema": "test-toolCompatibility",
+   "file": "imported/cases/test/toolCompatibility-19.oui",
+   "source": "reference-test",
+   "origin": "packages/lang-core/src/parser/__tests__/toolCompatibility.test.ts",
+   "root": "Text"
+  },
+  {
+   "name": "test/toolCompatibility-20",
+   "schema": "test-toolCompatibility-2",
+   "file": "imported/cases/test/toolCompatibility-20.oui",
+   "source": "reference-test",
+   "origin": "packages/lang-core/src/parser/__tests__/toolCompatibility.test.ts",
+   "root": "Text"
+  },
+  {
+   "name": "test/toolCompatibility-21",
+   "schema": "test-toolCompatibility",
+   "file": "imported/cases/test/toolCompatibility-21.oui",
+   "source": "reference-test",
+   "origin": "packages/lang-core/src/parser/__tests__/toolCompatibility.test.ts",
+   "root": "Text"
+  },
+  {
+   "name": "test/toolCompatibility-22",
+   "schema": "test-toolCompatibility-2",
+   "file": "imported/cases/test/toolCompatibility-22.oui",
+   "source": "reference-test",
+   "origin": "packages/lang-core/src/parser/__tests__/toolCompatibility.test.ts",
+   "root": "Text"
+  },
+  {
+   "name": "test/toolCompatibility-23",
+   "schema": "test-toolCompatibility",
+   "file": "imported/cases/test/toolCompatibility-23.oui",
+   "source": "reference-test",
+   "origin": "packages/lang-core/src/parser/__tests__/toolCompatibility.test.ts",
+   "root": "Text"
+  },
+  {
+   "name": "test/toolCompatibility-24",
+   "schema": "test-toolCompatibility-2",
+   "file": "imported/cases/test/toolCompatibility-24.oui",
+   "source": "reference-test",
+   "origin": "packages/lang-core/src/parser/__tests__/toolCompatibility.test.ts",
+   "root": "Text"
+  },
+  {
+   "name": "test/toolCompatibility-25",
+   "schema": "test-toolCompatibility-3",
+   "file": "imported/cases/test/toolCompatibility-25.oui",
+   "source": "reference-test",
+   "origin": "packages/lang-core/src/parser/__tests__/toolCompatibility.test.ts",
+   "root": "Text"
+  },
+  {
+   "name": "test/toolCompatibility-26",
+   "schema": "test-toolCompatibility-4",
+   "file": "imported/cases/test/toolCompatibility-26.oui",
+   "source": "reference-test",
+   "origin": "packages/lang-core/src/parser/__tests__/toolCompatibility.test.ts",
+   "root": "Text"
+  },
+  {
+   "name": "test/toolCompatibility-27",
+   "schema": "test-toolCompatibility",
+   "file": "imported/cases/test/toolCompatibility-27.oui",
+   "source": "reference-test",
+   "origin": "packages/lang-core/src/parser/__tests__/toolCompatibility.test.ts",
+   "root": "Text"
+  },
+  {
+   "name": "test/toolCompatibility-28",
+   "schema": "test-toolCompatibility-2",
+   "file": "imported/cases/test/toolCompatibility-28.oui",
+   "source": "reference-test",
+   "origin": "packages/lang-core/src/parser/__tests__/toolCompatibility.test.ts",
+   "root": "Text"
+  },
+  {
+   "name": "test/toolCompatibility-29",
+   "schema": "test-toolCompatibility",
+   "file": "imported/cases/test/toolCompatibility-29.oui",
+   "source": "reference-test",
+   "origin": "packages/lang-core/src/parser/__tests__/toolCompatibility.test.ts",
+   "root": "Text"
+  },
+  {
+   "name": "test/toolCompatibility-30",
+   "schema": "test-toolCompatibility-2",
+   "file": "imported/cases/test/toolCompatibility-30.oui",
+   "source": "reference-test",
+   "origin": "packages/lang-core/src/parser/__tests__/toolCompatibility.test.ts",
+   "root": "Text"
+  },
+  {
+   "name": "test/toolCompatibility-31",
+   "schema": "test-toolCompatibility",
+   "file": "imported/cases/test/toolCompatibility-31.oui",
+   "source": "reference-test",
+   "origin": "packages/lang-core/src/parser/__tests__/toolCompatibility.test.ts",
+   "root": "Text"
+  },
+  {
+   "name": "test/toolCompatibility-32",
+   "schema": "test-toolCompatibility-2",
+   "file": "imported/cases/test/toolCompatibility-32.oui",
+   "source": "reference-test",
+   "origin": "packages/lang-core/src/parser/__tests__/toolCompatibility.test.ts",
+   "root": "Text"
+  },
+  {
+   "name": "test/toolCompatibility-33",
+   "schema": "test-toolCompatibility",
+   "file": "imported/cases/test/toolCompatibility-33.oui",
+   "source": "reference-test",
+   "origin": "packages/lang-core/src/parser/__tests__/toolCompatibility.test.ts",
+   "root": "Text"
+  },
+  {
+   "name": "test/toolCompatibility-34",
+   "schema": "test-toolCompatibility-2",
+   "file": "imported/cases/test/toolCompatibility-34.oui",
+   "source": "reference-test",
+   "origin": "packages/lang-core/src/parser/__tests__/toolCompatibility.test.ts",
+   "root": "Text"
+  },
+  {
+   "name": "test/toolCompatibility-35",
+   "schema": "test-toolCompatibility",
+   "file": "imported/cases/test/toolCompatibility-35.oui",
+   "source": "reference-test",
+   "origin": "packages/lang-core/src/parser/__tests__/toolCompatibility.test.ts",
+   "root": "Text"
+  },
+  {
+   "name": "test/toolCompatibility-36",
+   "schema": "test-toolCompatibility-2",
+   "file": "imported/cases/test/toolCompatibility-36.oui",
+   "source": "reference-test",
+   "origin": "packages/lang-core/src/parser/__tests__/toolCompatibility.test.ts",
+   "root": "Text"
+  },
+  {
+   "name": "test/toolCompatibility-37",
+   "schema": "test-toolCompatibility",
+   "file": "imported/cases/test/toolCompatibility-37.oui",
+   "source": "reference-test",
+   "origin": "packages/lang-core/src/parser/__tests__/toolCompatibility.test.ts",
+   "root": "Text"
+  },
+  {
+   "name": "test/toolCompatibility-38",
+   "schema": "test-toolCompatibility-2",
+   "file": "imported/cases/test/toolCompatibility-38.oui",
+   "source": "reference-test",
+   "origin": "packages/lang-core/src/parser/__tests__/toolCompatibility.test.ts",
+   "root": "Text"
+  },
+  {
+   "name": "test/toolCompatibility-39",
+   "schema": "test-toolCompatibility",
+   "file": "imported/cases/test/toolCompatibility-39.oui",
+   "source": "reference-test",
+   "origin": "packages/lang-core/src/parser/__tests__/toolCompatibility.test.ts",
+   "root": "Text"
+  },
+  {
+   "name": "test/toolCompatibility-40",
+   "schema": "test-toolCompatibility-2",
+   "file": "imported/cases/test/toolCompatibility-40.oui",
+   "source": "reference-test",
+   "origin": "packages/lang-core/src/parser/__tests__/toolCompatibility.test.ts",
+   "root": "Text"
+  },
+  {
+   "name": "test/toolCompatibility-41",
+   "schema": "test-toolCompatibility",
+   "file": "imported/cases/test/toolCompatibility-41.oui",
+   "source": "reference-test",
+   "origin": "packages/lang-core/src/parser/__tests__/toolCompatibility.test.ts",
+   "root": "Text"
+  },
+  {
+   "name": "test/toolCompatibility-42",
+   "schema": "test-toolCompatibility-2",
+   "file": "imported/cases/test/toolCompatibility-42.oui",
+   "source": "reference-test",
+   "origin": "packages/lang-core/src/parser/__tests__/toolCompatibility.test.ts",
+   "root": "Text"
+  },
+  {
+   "name": "test/toolCompatibility-43",
+   "schema": "test-toolCompatibility",
+   "file": "imported/cases/test/toolCompatibility-43.oui",
+   "source": "reference-test",
+   "origin": "packages/lang-core/src/parser/__tests__/toolCompatibility.test.ts",
+   "root": "Text"
+  },
+  {
+   "name": "test/toolCompatibility-44",
+   "schema": "test-toolCompatibility-2",
+   "file": "imported/cases/test/toolCompatibility-44.oui",
+   "source": "reference-test",
+   "origin": "packages/lang-core/src/parser/__tests__/toolCompatibility.test.ts",
+   "root": "Text"
+  },
+  {
+   "name": "test/toolCompatibility-45",
+   "schema": "test-toolCompatibility",
+   "file": "imported/cases/test/toolCompatibility-45.oui",
+   "source": "reference-test",
+   "origin": "packages/lang-core/src/parser/__tests__/toolCompatibility.test.ts",
+   "root": "Text"
+  },
+  {
+   "name": "test/toolCompatibility-46",
+   "schema": "test-toolCompatibility-2",
+   "file": "imported/cases/test/toolCompatibility-46.oui",
+   "source": "reference-test",
+   "origin": "packages/lang-core/src/parser/__tests__/toolCompatibility.test.ts",
+   "root": "Text"
+  },
+  {
+   "name": "test/toolCompatibility-47",
+   "schema": "test-toolCompatibility",
+   "file": "imported/cases/test/toolCompatibility-47.oui",
+   "source": "reference-test",
+   "origin": "packages/lang-core/src/parser/__tests__/toolCompatibility.test.ts",
+   "root": "Text"
+  },
+  {
+   "name": "test/toolCompatibility-48",
+   "schema": "test-toolCompatibility-2",
+   "file": "imported/cases/test/toolCompatibility-48.oui",
+   "source": "reference-test",
+   "origin": "packages/lang-core/src/parser/__tests__/toolCompatibility.test.ts",
+   "root": "Text"
+  },
+  {
+   "name": "test/toolCompatibility-49",
+   "schema": "test-toolCompatibility",
+   "file": "imported/cases/test/toolCompatibility-49.oui",
+   "source": "reference-test",
+   "origin": "packages/lang-core/src/parser/__tests__/toolCompatibility.test.ts",
+   "root": "Text"
+  },
+  {
+   "name": "test/toolCompatibility-50",
+   "schema": "test-toolCompatibility-2",
+   "file": "imported/cases/test/toolCompatibility-50.oui",
+   "source": "reference-test",
+   "origin": "packages/lang-core/src/parser/__tests__/toolCompatibility.test.ts",
+   "root": "Text"
+  },
+  {
+   "name": "test/toolCompatibility-51",
+   "schema": "test-toolCompatibility-3",
+   "file": "imported/cases/test/toolCompatibility-51.oui",
+   "source": "reference-test",
+   "origin": "packages/lang-core/src/parser/__tests__/toolCompatibility.test.ts",
+   "root": "Text"
+  },
+  {
+   "name": "test/toolCompatibility-52",
+   "schema": "test-toolCompatibility-4",
+   "file": "imported/cases/test/toolCompatibility-52.oui",
+   "source": "reference-test",
+   "origin": "packages/lang-core/src/parser/__tests__/toolCompatibility.test.ts",
+   "root": "Text"
+  },
+  {
+   "name": "test/toolReferences-01",
+   "schema": "test-toolReferences",
+   "file": "imported/cases/test/toolReferences-01.oui",
+   "source": "reference-test",
+   "origin": "packages/lang-core/src/parser/__tests__/toolReferences.test.ts"
+  },
+  {
+   "name": "test/toolReferences-02",
+   "schema": "test-toolReferences",
+   "file": "imported/cases/test/toolReferences-02.oui",
+   "source": "reference-test",
+   "origin": "packages/lang-core/src/parser/__tests__/toolReferences.test.ts"
+  },
+  {
+   "name": "test/toolReferences-03",
+   "schema": "test-toolReferences",
+   "file": "imported/cases/test/toolReferences-03.oui",
+   "source": "reference-test",
+   "origin": "packages/lang-core/src/parser/__tests__/toolReferences.test.ts"
+  },
+  {
+   "name": "test/toolReferences-04",
+   "schema": "test-toolReferences",
+   "file": "imported/cases/test/toolReferences-04.oui",
+   "source": "reference-test",
+   "origin": "packages/lang-core/src/parser/__tests__/toolReferences.test.ts"
+  },
+  {
+   "name": "test/toolReferences-05",
+   "schema": "test-toolReferences",
+   "file": "imported/cases/test/toolReferences-05.oui",
+   "source": "reference-test",
+   "origin": "packages/lang-core/src/parser/__tests__/toolReferences.test.ts"
+  },
+  {
+   "name": "test/toolReferences-06",
+   "schema": "test-toolReferences",
+   "file": "imported/cases/test/toolReferences-06.oui",
+   "source": "reference-test",
+   "origin": "packages/lang-core/src/parser/__tests__/toolReferences.test.ts"
+  },
+  {
+   "name": "test/toolReferences-07",
+   "schema": "test-toolReferences",
+   "file": "imported/cases/test/toolReferences-07.oui",
+   "source": "reference-test",
+   "origin": "packages/lang-core/src/parser/__tests__/toolReferences.test.ts"
+  },
+  {
+   "name": "test/toolReferences-08",
+   "schema": "test-toolReferences",
+   "file": "imported/cases/test/toolReferences-08.oui",
+   "source": "reference-test",
+   "origin": "packages/lang-core/src/parser/__tests__/toolReferences.test.ts"
+  },
+  {
+   "name": "test/toolReferences-09",
+   "schema": "test-toolReferences",
+   "file": "imported/cases/test/toolReferences-09.oui",
+   "source": "reference-test",
+   "origin": "packages/lang-core/src/parser/__tests__/toolReferences.test.ts"
+  },
+  {
+   "name": "test/toolReferences-10",
+   "schema": "test-toolReferences",
+   "file": "imported/cases/test/toolReferences-10.oui",
+   "source": "reference-test",
+   "origin": "packages/lang-core/src/parser/__tests__/toolReferences.test.ts"
+  },
+  {
+   "name": "test/toolReferences-11",
+   "schema": "test-toolReferences",
+   "file": "imported/cases/test/toolReferences-11.oui",
+   "source": "reference-test",
+   "origin": "packages/lang-core/src/parser/__tests__/toolReferences.test.ts"
+  },
+  {
    "name": "spec/actions/001-several-actions",
    "schema": "spec-1.0",
    "file": "imported/cases/spec/actions/001-several-actions.oui",
@@ -2027,6 +2525,20 @@
    "file": "imported/cases/docs/blog-generative-ui-benchmark-01.oui",
    "source": "docs",
    "origin": "docs/content/blog/generative-ui-benchmark.mdx"
+  },
+  {
+   "name": "docs/blog-how-claude-dashboards-work-01",
+   "schema": "bench",
+   "file": "imported/cases/docs/blog-how-claude-dashboards-work-01.oui",
+   "source": "docs",
+   "origin": "docs/content/blog/how-claude-dashboards-work.mdx"
+  },
+  {
+   "name": "docs/blog-how-claude-dashboards-work-02",
+   "schema": "bench",
+   "file": "imported/cases/docs/blog-how-claude-dashboards-work-02.oui",
+   "source": "docs",
+   "origin": "docs/content/blog/how-claude-dashboards-work.mdx"
   },
   {
    "name": "docs/blog-state-of-generative-ui-report-01",

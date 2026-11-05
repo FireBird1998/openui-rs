@@ -1,0 +1,1 @@
+data = Query("tool", args, default, refreshSecs)

@@ -1,0 +1,2 @@
+root = Text("Healthy")
+job = Query("save", {value: false ? @Format(99) : 42})

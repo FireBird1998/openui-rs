@@ -1,0 +1,6 @@
+$weeks = "8"
+root = Stack([filter, chart])
+filter = Select("weeks", [SelectItem("4", "Last 4 weeks"), SelectItem("8", "Last 8 weeks")], null, null, $weeks)
+weekly = Query("weekly_signups", {weeks: $weeks}, {rows: []})
+latest = @Last(@Sort(weekly.rows, "week_start"))
+chart = BarChart(weekly.rows.week_start, [Series("Signups", weekly.rows.signups)])

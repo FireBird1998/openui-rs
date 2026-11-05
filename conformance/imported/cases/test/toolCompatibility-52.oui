@@ -1,0 +1,3 @@
+root = Text("Healthy")
+job = Mutation("save", {plan: Action([@Set($n, $n + 1), @Reset($n), @Run(q)])})
+q = Query("load")

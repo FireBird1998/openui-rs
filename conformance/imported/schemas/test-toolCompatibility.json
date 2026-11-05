@@ -1,0 +1,51 @@
+{
+ "$schema": "https://json-schema.org/draft/2020-12/schema",
+ "type": "object",
+ "properties": {
+  "Text": {
+   "$ref": "#/$defs/Text"
+  }
+ },
+ "required": [
+  "Text"
+ ],
+ "additionalProperties": false,
+ "$defs": {
+  "Text": {
+   "type": "object",
+   "properties": {
+    "value": {}
+   },
+   "required": [
+    "value"
+   ],
+   "additionalProperties": false,
+   "description": "Shows a value"
+  }
+ },
+ "functions": {
+  "Format": {
+   "description": "Formats a value",
+   "params": {
+    "type": "object",
+    "properties": {
+     "value": {
+      "type": "number"
+     },
+     "label": {
+      "default": "default",
+      "type": "string"
+     }
+    },
+    "required": [
+     "value",
+     "label"
+    ],
+    "additionalProperties": false
+   },
+   "returns": {
+    "type": "string"
+   }
+  }
+ }
+}

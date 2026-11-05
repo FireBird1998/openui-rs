@@ -1,0 +1,17 @@
+{
+ "properties": {
+  "Title": {
+   "$ref": "#/$defs/Title"
+  }
+ },
+ "$defs": {
+  "Title": {
+   "properties": {
+    "text": {}
+   },
+   "required": [
+    "text"
+   ]
+  }
+ }
+}
