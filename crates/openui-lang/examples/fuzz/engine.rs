@@ -15,6 +15,21 @@ use serde_json::{Value, json};
 
 use crate::reference::Reference;
 
+/// Programs whose result passes this many bytes of JSON (as the core measures
+/// it) aren't sent to the reference: its results double with them, and it runs
+/// out of memory (a divergence in CONFORMANCE.md). That holds for every program
+/// a check parses, such as a merge's result, not only the generated ones.
+pub const RESULT_LIMIT: usize = 1 << 20;
+
+/// What the reference answers, unasked, for a program past [`RESULT_LIMIT`].
+pub const TOO_BIG: &str = "too big for the reference";
+
+/// Whether a program's result is past [`RESULT_LIMIT`].
+pub fn too_big(library: &Library, input: &str, root: Option<&str>) -> bool {
+    let result = parse(input, library, root);
+    result.size_limited || result.to_json().len() > RESULT_LIMIT
+}
+
 pub struct ParseCall<'a> {
     pub lib: &'a str,
     pub input: &'a str,
@@ -130,16 +145,36 @@ impl Engine for Core<'_> {
 /// The reference, through `reference/serve.ts`.
 pub struct Ref<'a> {
     pub reference: &'a mut Reference,
+    /// To measure a program before the reference gets it.
+    pub libraries: &'a BTreeMap<String, Arc<Library>>,
 }
 
 impl Ref<'_> {
-    fn ask(&mut self, lines: Vec<String>) -> Vec<Value> {
-        self.reference
-            .ask_lines(&lines)
+    /// Answers in order. A request that's `None` isn't sent: it's answered
+    /// as having thrown [`TOO_BIG`].
+    fn ask(&mut self, lines: Vec<Option<String>>) -> Vec<Value> {
+        let sent: Vec<String> = lines.iter().flatten().cloned().collect();
+        let mut answers = self.reference.ask_lines(&sent).into_iter();
+        lines
             .iter()
-            // As `JSON.parse` reads it: a result may hold a lone surrogate.
-            .map(|line| parse_json(line).expect("reference answer is JSON"))
+            .map(|line| match line {
+                // As `JSON.parse` reads it: a result may hold a lone surrogate.
+                Some(_) => parse_json(&answers.next().expect("an answer per request"))
+                    .expect("reference answer is JSON"),
+                None => json!({ "threw": TOO_BIG }),
+            })
             .collect()
+    }
+
+    /// The request, unless the program is too big for the reference.
+    fn unless_too_big(
+        &self,
+        lib: &str,
+        input: &str,
+        root: Option<&str>,
+        request: Value,
+    ) -> Option<String> {
+        (!too_big(&self.libraries[lib], input, root)).then(|| request.to_string())
     }
 }
 
@@ -158,7 +193,9 @@ impl Engine for Ref<'_> {
         let lines = calls
             .iter()
             .map(|c| {
-                json!({"op": "parse", "lib": c.lib, "input": c.input, "root": c.root}).to_string()
+                let request =
+                    json!({"op": "parse", "lib": c.lib, "input": c.input, "root": c.root});
+                self.unless_too_big(c.lib, c.input, c.root, request)
             })
             .collect();
         self.ask(lines).iter().map(|a| text(a, "json")).collect()
@@ -168,8 +205,8 @@ impl Engine for Ref<'_> {
         let lines = calls
             .iter()
             .map(|c| {
-                json!({"op": "stream", "lib": c.lib, "input": c.input, "root": c.root, "sizes": c.sizes, "steps": c.steps})
-                    .to_string()
+                let request = json!({"op": "stream", "lib": c.lib, "input": c.input, "root": c.root, "sizes": c.sizes, "steps": c.steps});
+                self.unless_too_big(c.lib, c.input, c.root, request)
             })
             .collect();
         self.ask(lines)
@@ -195,7 +232,7 @@ impl Engine for Ref<'_> {
                 if let Some(id) = c.root_id {
                     request["rootId"] = json!(id);
                 }
-                request.to_string()
+                Some(request.to_string())
             })
             .collect();
         self.ask(lines).iter().map(|a| text(a, "text")).collect()
@@ -216,7 +253,7 @@ impl Engine for Ref<'_> {
                     line.push_str(state);
                 }
                 line.push('}');
-                line
+                Some(line)
             })
             .collect();
         self.ask(lines).iter().map(|a| text(a, "text")).collect()

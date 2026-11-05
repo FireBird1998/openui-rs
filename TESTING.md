@@ -130,7 +130,7 @@ A hunt never commits and never changes tracked files. It compares them before an
 | Kind | Means | Then |
 |---|---|---|
 | mismatch | The core and the reference disagree | Fixed in the core, with a case first |
-| crash | The core panicked, or a fuzzer died (its last batch is the replay) | Fixed in the core |
+| crash | The core panicked, a fuzzer died (its last batch is the replay), or the reference died on an input (it's restarted and the run goes on; the input isn't shrunk) | Fixed in the core. A reference that dies on an input is a divergence or a quirk. |
 | blow-up | The core took over a second on one input, or a fuzzer hung | Fixed in the core. If the reference blows up too and the input is unlike real output, it becomes a documented divergence. |
 | quirk? | The reference throws where the core doesn't | We decide: a documented divergence, or a quirk with a draft upstream report |
 
@@ -151,6 +151,8 @@ scripts/fuzz.sh --invariants --seed 1 --count 1000000
 ```
 
 An invariant is a rule a result should keep whatever the input. Each is written once, in `examples/fuzz/rules.rs` (the runner is `invariants.rs`), against an engine interface (`engine.rs`) with two implementations: the core in-process, and the reference through the fuzzer's long-lived Bun process. The interface covers a full one-shot result, a stream over given chunks, merging, and converting back to source. Results and trees cross it as JSON, as each parser wrote them. The programs are the differential fuzzer's: generated from a library's grammar, or corpus programs mangled. The merging rules also take a patch for each, from the edit fuzzer's generator. `--rule NAME` runs one rule.
+
+Programs whose result passes 1 MiB of JSON, as the core measures it, are kept from the reference, which runs out of memory on them (a divergence). That goes for what a rule makes too, such as a merge's result: the rule doesn't apply to it, on either parser.
 
 Each program's verdict on each parser is that the rule holds, doesn't apply, or is broken. Sorting:
 

@@ -625,7 +625,12 @@ struct DripSource: ChunkSource {
         let playback = try await playback()
         let pieces = (0..<200).map { _ in ["x"] }
         let loading = Task { await playback.load(DripSource(batches: pieces, gap: .milliseconds(10))) }
-        try await Task.sleep(for: .milliseconds(150))
+        // Stop once chunks have started arriving, however slow the machine: a
+        // fixed wait stopped before the first one on GitHub's runner.
+        let deadline = ContinuousClock.now + .seconds(10)
+        while playback.chunks.isEmpty && ContinuousClock.now < deadline {
+            try await Task.sleep(for: .milliseconds(5))
+        }
         playback.stop()
         await loading.value
         #expect(!playback.isStreaming)

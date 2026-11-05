@@ -14,9 +14,9 @@ use std::collections::BTreeMap;
 
 use serde_json::{Value, json};
 
-use crate::engine::{Core, Engine, Ref};
+use crate::engine::{Core, Engine, Ref, TOO_BIG};
 use crate::findings::run;
-use crate::reference::Reference;
+use crate::reference::{CRASHED, Reference};
 use crate::rng::Rng;
 use crate::rules::RULES;
 use crate::{Corpus, EXPLAINED, MAX_SAVES, Program, edits, program};
@@ -41,15 +41,17 @@ pub struct Input {
     pub patch: String,
 }
 
-/// Programs whose result passes this many bytes of JSON (as the core
-/// measures it) are left out: the reference's results double with them, and
-/// it runs out of memory (a divergence in CONFORMANCE.md).
-const RESULT_LIMIT: usize = 1 << 20;
-
-/// Whether a program's result is past [`RESULT_LIMIT`].
+/// Whether a program is too big for the reference ([`crate::engine::RESULT_LIMIT`]).
+/// Such programs are left out.
 fn too_big(p: &Program, corpus: &Corpus) -> bool {
-    let result = openui_lang::parse(&p.input, &corpus.libraries[&p.lib], p.root.as_deref());
-    result.size_limited || result.to_json().len() > RESULT_LIMIT
+    crate::engine::too_big(&corpus.libraries[&p.lib], &p.input, p.root.as_deref())
+}
+
+/// Whether the reference was spared something the rule parses, a merge's
+/// result say, because it's too big for it. The rule doesn't apply then, on
+/// either parser.
+fn spared(reference: &Verdict) -> bool {
+    matches!(reference, Verdict::Broken { why, .. } if why.contains(TOO_BIG))
 }
 
 pub struct Rule {
@@ -112,7 +114,20 @@ fn verdicts(
         },
         inputs,
     );
-    let refs = (rule.check)(&mut Ref { reference }, inputs);
+    let mut core = core;
+    let mut refs = (rule.check)(
+        &mut Ref {
+            reference,
+            libraries: &corpus.libraries,
+        },
+        inputs,
+    );
+    for (c, r) in core.iter_mut().zip(&mut refs) {
+        if spared(r) {
+            *c = Verdict::Skipped;
+            *r = Verdict::Skipped;
+        }
+    }
     (core, refs)
 }
 
@@ -142,8 +157,14 @@ fn shrink(
         if class == Class::Both && !matches!(core[0], Verdict::Broken { .. }) {
             return false;
         }
-        let r = (rule.check)(&mut Ref { reference }, &[candidate]);
-        classify(&core[0], &r[0], candidate) == class
+        let r = (rule.check)(
+            &mut Ref {
+                reference,
+                libraries: &corpus.libraries,
+            },
+            &[candidate],
+        );
+        !spared(&r[0]) && classify(&core[0], &r[0], candidate) == class
     };
     let with = |text: String| {
         let mut candidate = start.clone();
@@ -262,6 +283,28 @@ pub fn run_all(
                 if !matches!(class, Class::Both | Class::Mismatch)
                     || found.iter().filter(|(_, c, _)| *c == class).count() >= MAX_SAVES
                 {
+                    continue;
+                }
+                // The reference died on it: not something to shrink, since a
+                // fresh reference may well answer it.
+                if matches!(r, Verdict::Broken { why, .. } if why.contains(CRASHED)) {
+                    let p = &input.program;
+                    println!(
+                        "The reference crashed at seed {seed}, program {k}, rule {}, library {:?}: {:?}",
+                        rule.name, p.lib, p.input
+                    );
+                    run().record(&json!({
+                        "kind": "crash",
+                        "check": "invariant",
+                        "rule": rule.name,
+                        "seed": seed,
+                        "index": k,
+                        "replay": format!("scripts/fuzz.sh --invariants --seed {seed} --only {k} --no-save"),
+                        "library": p.lib,
+                        "root": p.root,
+                        "input": p.input,
+                        "patch": input.patch,
+                    }));
                     continue;
                 }
                 let (small, complete) = shrink(rule, input, class, corpus, reference);
