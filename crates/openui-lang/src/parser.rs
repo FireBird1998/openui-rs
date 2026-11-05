@@ -1,18 +1,18 @@
 //! One-shot parsing, and the result building shared with streaming, as the
 //! reference parser's `parse` and `buildResult`.
 
-use std::collections::HashSet;
+use std::collections::{HashMap, HashSet};
 use std::sync::Arc;
 
 use indexmap::IndexSet;
 
-use crate::ast::Ast;
+use crate::ast::{Ast, RefType};
 use crate::builtins::{is_builtin, is_reserved_call};
 use crate::expr::parse_expression_with_limit;
 use crate::js::JsObject;
 use crate::lexer::tokenize;
 use crate::library::Library;
-use crate::materialize::{Ctx, Frame, materialize_value, name_raw_call_args, tag_statement};
+use crate::materialize::{Ctx, Frame, materialize_call_args, materialize_value, tag_statement};
 use crate::preprocess::preprocess;
 use crate::result::{Meta, MutationStatement, ParseResult, QueryStatement, Value};
 use crate::statements::{IdKind, RawStatement, auto_close, split};
@@ -31,10 +31,9 @@ pub(crate) enum Statement {
     State {
         init: Ast,
     },
-    /// `name = Query(...)`, with the state variables its args read.
+    /// `name = Query(...)`.
     Query {
         expr: Ast,
-        deps: Option<Vec<String>>,
     },
     /// `name = Mutation(...)`.
     Mutation {
@@ -129,11 +128,9 @@ impl Info {
 /// Classify by expression shape, then by the id's token: Query and Mutation
 /// calls first (so `$x = Query(...)` is a query), then `$` ids as state.
 pub(crate) fn classify(raw: &RawStatement, expr: Ast) -> Statement {
-    if let Ast::Comp { name, args, .. } = &expr {
+    if let Ast::Comp { name, .. } = &expr {
         if name == "Query" {
-            let deps = collect_state_refs(args.get(1));
-            let deps = (!deps.is_empty()).then_some(deps);
-            return Statement::Query { expr, deps };
+            return Statement::Query { expr };
         }
         if name == "Mutation" {
             return Statement::Mutation { expr };
@@ -156,6 +153,63 @@ fn collect_state_refs(node: Option<&Ast>) -> Vec<String> {
         });
     }
     refs.into_iter().collect()
+}
+
+/// The queries whose results these expressions read, in the order first met.
+fn query_reads(nodes: &[Ast]) -> Vec<String> {
+    let mut reads: IndexSet<String> = IndexSet::new();
+    for node in nodes {
+        node.walk(&mut |n| {
+            if let Ast::RuntimeRef {
+                n,
+                ref_type: RefType::Query,
+            } = n
+            {
+                reads.insert(n.clone());
+            }
+        });
+    }
+    reads.into_iter().collect()
+}
+
+/// Loops of queries reading each other's results (one reading itself is
+/// one), each listed in statement order, in the order a depth-first walk over
+/// the queries in statement order meets them.
+fn query_cycles(queries: &[QueryStatement]) -> Vec<Vec<String>> {
+    let order: HashMap<&str, usize> = queries
+        .iter()
+        .enumerate()
+        .map(|(i, q)| (q.statement_id.as_str(), i))
+        .collect();
+    let reads =
+        |id: &str| -> &[String] { queries[order[id]].wait_for.as_deref().unwrap_or_default() };
+    let mut done: HashSet<&str> = HashSet::new();
+    let mut cycles = Vec::new();
+    for q in queries {
+        if done.contains(q.statement_id.as_str()) {
+            continue;
+        }
+        // The walk's path, each with how many of its reads it has followed:
+        // the reference recurses, and this keeps its order without the stack.
+        let mut path: Vec<(&str, usize)> = vec![(q.statement_id.as_str(), 0)];
+        while let Some(&mut (id, ref mut next)) = path.last_mut() {
+            let Some(dep) = reads(id).get(*next) else {
+                path.pop();
+                done.insert(id);
+                continue;
+            };
+            *next += 1;
+            if let Some(at) = path.iter().position(|(p, _)| *p == dep.as_str()) {
+                let mut cycle: Vec<String> =
+                    path[at..].iter().map(|(p, _)| (*p).to_owned()).collect();
+                cycle.sort_by_key(|p| order[p.as_str()]);
+                cycles.push(cycle);
+            } else if order.contains_key(dep.as_str()) && !done.contains(dep.as_str()) {
+                path.push((dep.as_str(), 0));
+            }
+        }
+    }
+    cycles
 }
 
 /// Parse a complete (or partial) program in one pass. `root_name` is the
@@ -382,20 +436,24 @@ fn extract_statements(
                 let value = materialize_value(init, ctx);
                 state.set(id.to_owned(), value);
             }
-            Statement::Query { deps, .. } => {
-                let args = name_raw_call_args(stmt.call_args(), ctx, id);
+            Statement::Query { .. } => {
+                let args = materialize_call_args(stmt.call_args(), ctx, id);
+                // Aliases can hide state reads the statement as written doesn't show.
+                let deps = collect_state_refs(args.get(1));
+                let wait_for = query_reads(&args[..args.len().min(2)]);
                 queries.push(QueryStatement {
                     statement_id: id.to_owned(),
                     tool: args.first().cloned(),
                     args: args.get(1).cloned(),
                     defaults: args.get(2).cloned(),
                     refresh: args.get(3).cloned(),
-                    deps: deps.clone(),
+                    deps: (!deps.is_empty()).then_some(deps),
+                    wait_for: (!wait_for.is_empty()).then_some(wait_for),
                     complete: true,
                 });
             }
             Statement::Mutation { .. } => {
-                let args = name_raw_call_args(stmt.call_args(), ctx, id);
+                let args = materialize_call_args(stmt.call_args(), ctx, id);
                 mutations.push(MutationStatement {
                     statement_id: id.to_owned(),
                     tool: args.first().cloned(),
@@ -404,6 +462,13 @@ fn extract_statements(
             }
             Statement::Value { .. } => {}
         }
+    }
+    // A query waits for the queries it reads; ones that read each other can
+    // never start.
+    for cycle in query_cycles(&queries) {
+        let outer = ctx.current_statement_id.replace(cycle[0].clone());
+        ctx.push_issue("Query", "", Issue::QueryCycle { cycle });
+        ctx.current_statement_id = outer;
     }
     for &slot in table.specials() {
         for name in &table.info(slot).state_refs {

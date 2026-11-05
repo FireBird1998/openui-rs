@@ -92,6 +92,9 @@ pub enum ValidationErrorCode {
     /// `@Name(...)` with a name that's neither a builtin nor one of the
     /// library's functions or actions; the call is null.
     UnknownFunction,
+    /// Queries that read each other's results, around a loop: none can run
+    /// first, so none runs.
+    QueryCycle,
 }
 
 impl ValidationErrorCode {
@@ -106,6 +109,7 @@ impl ValidationErrorCode {
             ValidationErrorCode::TypeMismatch => "type-mismatch",
             ValidationErrorCode::NoRoot => "no-root",
             ValidationErrorCode::UnknownFunction => "unknown-function",
+            ValidationErrorCode::QueryCycle => "query-cycle",
         }
     }
 }
@@ -175,6 +179,9 @@ pub struct QueryStatement {
     pub refresh: Option<Ast>,
     /// State variables the args read, when there are any.
     pub deps: Option<Vec<String>>,
+    /// Queries whose results the tool name or args read, when there are any:
+    /// it runs once each has a result.
+    pub wait_for: Option<Vec<String>>,
     /// Always `true` in a parse result; the runtime tracks loading.
     pub complete: bool,
 }
@@ -278,6 +285,10 @@ impl ParseResult {
             if let Some(deps) = &q.deps {
                 out.push_str(",\"deps\":");
                 write_strings(&mut out, deps);
+            }
+            if let Some(wait_for) = &q.wait_for {
+                out.push_str(",\"waitFor\":");
+                write_strings(&mut out, wait_for);
             }
             out.push_str(",\"complete\":");
             write_bool(&mut out, q.complete);

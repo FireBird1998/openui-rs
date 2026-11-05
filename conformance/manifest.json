@@ -804,6 +804,36 @@
    "schema": "hand",
    "file": "cases/hand/129-a-statement-as-a-value-and-in-an-expression.oui",
    "source": "hand-written"
+  },
+  {
+   "name": "hand/130-two-queries-reading-each-other",
+   "schema": "hand",
+   "file": "cases/hand/130-two-queries-reading-each-other.oui",
+   "source": "hand-written"
+  },
+  {
+   "name": "hand/131-a-query-reading-itself",
+   "schema": "hand",
+   "file": "cases/hand/131-a-query-reading-itself.oui",
+   "source": "hand-written"
+  },
+  {
+   "name": "hand/132-a-loop-of-three-and-a-reader",
+   "schema": "hand",
+   "file": "cases/hand/132-a-loop-of-three-and-a-reader.oui",
+   "source": "hand-written"
+  },
+  {
+   "name": "hand/133-two-separate-loops",
+   "schema": "hand",
+   "file": "cases/hand/133-two-separate-loops.oui",
+   "source": "hand-written"
+  },
+  {
+   "name": "hand/134-tool-and-args-from-other-statements",
+   "schema": "hand",
+   "file": "cases/hand/134-tool-and-args-from-other-statements.oui",
+   "source": "hand-written"
   }
  ]
 }

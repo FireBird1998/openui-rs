@@ -1,0 +1,10 @@
+root = Root([Text(res.name)])
+tool = "lookup"
+args = {id: $id, other: first.id, n: @Count(rows)}
+rows = [1, 2]
+first = Query("first", {})
+res = Query(tool, args, {name: "…"})
+$id = 1
+save = Mutation(tool, {v: $x, d: data, from: res.name})
+data = {a: alias}
+alias = $y

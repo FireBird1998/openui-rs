@@ -1,0 +1,5 @@
+root = Root([Text("x")])
+a = Query("a", {v: c.v})
+b = Query("b", {v: a.v})
+c = Query("c", {v: b.v})
+d = Query("d", {v: a.v})

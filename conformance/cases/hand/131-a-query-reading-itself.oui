@@ -1,0 +1,2 @@
+root = Root([Text(q.count)])
+q = Query("tick", {n: q.count}, {count: 0}, 5)

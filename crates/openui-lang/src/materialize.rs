@@ -666,110 +666,19 @@ fn to_literal_ast(value: &Value) -> Ast {
     }
 }
 
-/// `nameRawCallArgs`: in a Query's or Mutation's args, every call to a
-/// builtin, library function or step gets its args by param name, as
-/// written. A library call's literal args are checked as props are; an
-/// invalid call keeps its args by name all the same, and is null at runtime.
-/// A call is checked before the calls inside it, as `walkAST` visits them.
-pub(crate) fn name_raw_call_args(args: &[Ast], ctx: &mut Ctx, statement_id: &str) -> Vec<Ast> {
+/// A Query's or Mutation's args, materialized as expressions: references
+/// inlined, calls named and checked as anywhere else. Errors are the
+/// statement's.
+pub(crate) fn materialize_call_args(args: &[Ast], ctx: &mut Ctx, statement_id: &str) -> Vec<Ast> {
     let outer = ctx.current_statement_id.replace(statement_id.to_owned());
-    let named = args.iter().map(|arg| name_calls(arg, ctx)).collect();
+    let materialized = args
+        .iter()
+        .map(|arg| materialize_expr(arg, ctx, &Scope::new()))
+        .collect();
     ctx.current_statement_id = outer;
-    named
+    materialized
 }
 
-fn name_calls(node: &Ast, ctx: &mut Ctx) -> Ast {
-    let all = |nodes: &[Ast], ctx: &mut Ctx| -> Arc<Vec<Ast>> {
-        Arc::new(nodes.iter().map(|n| name_calls(n, ctx)).collect())
-    };
-    let one = |node: &Ast, ctx: &mut Ctx| Arc::new(name_calls(node, ctx));
-    match node {
-        Ast::Comp {
-            name,
-            args,
-            function,
-            mapped_props,
-        } => {
-            let library = ctx.library;
-            let def = library.call(name).filter(|def| !def.lazy);
-            let checked = match def {
-                Some(def) if !def.builtin => map_call_args(name, args, def, ctx),
-                _ => None,
-            };
-            let named_args = all(args, ctx);
-            let mapped_props = match def {
-                None => mapped_props.clone(),
-                Some(def) => {
-                    let mut by_name = checked.unwrap_or_else(|| name_args(args, &def.params));
-                    // Args as written are shared with `args`, so they carry
-                    // their own calls' names too.
-                    for (i, param) in def.params.iter().enumerate().take(args.len()) {
-                        if by_name.get(&param.name) == Some(&args[i]) {
-                            by_name.set(param.name.clone(), named_args[i].clone());
-                        }
-                    }
-                    Some(Arc::new(by_name))
-                }
-            };
-            Ast::Comp {
-                name: name.clone(),
-                args: named_args,
-                function: *function,
-                mapped_props,
-            }
-        }
-        Ast::Arr(els) => Ast::Arr(all(els, ctx)),
-        Ast::Obj(entries) => Ast::Obj(Arc::new(
-            entries
-                .iter()
-                .map(|(k, v)| (k.clone(), name_calls(v, ctx)))
-                .collect(),
-        )),
-        Ast::BinOp { op, left, right } => {
-            let left = one(left, ctx);
-            Ast::BinOp {
-                op,
-                left,
-                right: one(right, ctx),
-            }
-        }
-        Ast::UnaryOp { op, operand } => Ast::UnaryOp {
-            op,
-            operand: one(operand, ctx),
-        },
-        Ast::Ternary {
-            cond,
-            then,
-            otherwise,
-        } => {
-            let cond = one(cond, ctx);
-            let then = one(then, ctx);
-            Ast::Ternary {
-                cond,
-                then,
-                otherwise: one(otherwise, ctx),
-            }
-        }
-        Ast::Member { obj, field } => Ast::Member {
-            obj: one(obj, ctx),
-            field: field.clone(),
-        },
-        Ast::Index { obj, index } => {
-            let obj = one(obj, ctx);
-            Ast::Index {
-                obj,
-                index: one(index, ctx),
-            }
-        }
-        Ast::Assign { target, value } => Ast::Assign {
-            target: target.clone(),
-            value: one(value, ctx),
-        },
-        _ => node.clone(),
-    }
-}
-
-#[inline(never)]
 fn report(ctx: &mut Ctx, name: &str, issue: Issue) -> Value {
     ctx.push_issue(name, "", issue);
     Value::Null

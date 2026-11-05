@@ -1,0 +1,3 @@
+root = Root([Text(a.rows)])
+a = Query("one", {x: b.total}, {rows: []})
+b = Query("two", {y: a.total})

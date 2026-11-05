@@ -3858,6 +3858,221 @@
    "source": "generated"
   },
   {
+   "name": "gen/hand/130-two-queries-reading-each-other/edit",
+   "existingCase": "hand/130-two-queries-reading-each-other",
+   "patch": "a = Query(\"Edited\", {x: b.total}, {rows: []})",
+   "source": "generated"
+  },
+  {
+   "name": "gen/hand/130-two-queries-reading-each-other/add",
+   "existingCase": "hand/130-two-queries-reading-each-other",
+   "patch": "root = Root([added, Text(a.rows)])\nadded = Query(\"Added\")",
+   "source": "generated"
+  },
+  {
+   "name": "gen/hand/130-two-queries-reading-each-other/delete",
+   "existingCase": "hand/130-two-queries-reading-each-other",
+   "patch": "b = null",
+   "source": "generated"
+  },
+  {
+   "name": "gen/hand/130-two-queries-reading-each-other/fenced",
+   "existingCase": "hand/130-two-queries-reading-each-other",
+   "patch": "Here's the update:\n\n```openui-lang\na = Query(\"Edited\", {x: b.total}, {rows: []})\nb = null\n```\n\nLet me know if you'd like anything else.",
+   "source": "generated"
+  },
+  {
+   "name": "gen/hand/130-two-queries-reading-each-other/root-a",
+   "existingCase": "hand/130-two-queries-reading-each-other",
+   "patch": "a = Query(\"Edited\", {x: b.total}, {rows: []})",
+   "rootId": "a",
+   "source": "generated"
+  },
+  {
+   "name": "gen/hand/130-two-queries-reading-each-other/replay",
+   "existingCase": "hand/130-two-queries-reading-each-other",
+   "patch": "root = Root([Text(a.rows)])\na = Query(\"one\", {x: b.total}, {rows: []})\nb = Query(\"two\", {y: a.total})\n",
+   "source": "generated"
+  },
+  {
+   "name": "gen/hand/130-two-queries-reading-each-other/onto-nothing",
+   "existing": "",
+   "patchCase": "hand/130-two-queries-reading-each-other",
+   "source": "generated"
+  },
+  {
+   "name": "gen/hand/131-a-query-reading-itself/edit",
+   "existingCase": "hand/131-a-query-reading-itself",
+   "patch": "q = Query(\"Edited\", {n: q.count}, {count: 0}, 5)",
+   "source": "generated"
+  },
+  {
+   "name": "gen/hand/131-a-query-reading-itself/add",
+   "existingCase": "hand/131-a-query-reading-itself",
+   "patch": "root = Root([added, Text(q.count)])\nadded = Query(\"Added\")",
+   "source": "generated"
+  },
+  {
+   "name": "gen/hand/131-a-query-reading-itself/delete",
+   "existingCase": "hand/131-a-query-reading-itself",
+   "patch": "q = null",
+   "source": "generated"
+  },
+  {
+   "name": "gen/hand/131-a-query-reading-itself/fenced",
+   "existingCase": "hand/131-a-query-reading-itself",
+   "patch": "Here's the update:\n\n```openui-lang\nq = Query(\"Edited\", {n: q.count}, {count: 0}, 5)\nq = null\n```\n\nLet me know if you'd like anything else.",
+   "source": "generated"
+  },
+  {
+   "name": "gen/hand/131-a-query-reading-itself/root-q",
+   "existingCase": "hand/131-a-query-reading-itself",
+   "patch": "q = Query(\"Edited\", {n: q.count}, {count: 0}, 5)",
+   "rootId": "q",
+   "source": "generated"
+  },
+  {
+   "name": "gen/hand/131-a-query-reading-itself/replay",
+   "existingCase": "hand/131-a-query-reading-itself",
+   "patch": "root = Root([Text(q.count)])\nq = Query(\"tick\", {n: q.count}, {count: 0}, 5)\n",
+   "source": "generated"
+  },
+  {
+   "name": "gen/hand/131-a-query-reading-itself/onto-nothing",
+   "existing": "",
+   "patchCase": "hand/131-a-query-reading-itself",
+   "source": "generated"
+  },
+  {
+   "name": "gen/hand/132-a-loop-of-three-and-a-reader/edit",
+   "existingCase": "hand/132-a-loop-of-three-and-a-reader",
+   "patch": "a = Query(\"Edited\", {v: c.v})",
+   "source": "generated"
+  },
+  {
+   "name": "gen/hand/132-a-loop-of-three-and-a-reader/add",
+   "existingCase": "hand/132-a-loop-of-three-and-a-reader",
+   "patch": "root = Root([added, Text(\"x\")])\nadded = Query(\"Added\")",
+   "source": "generated"
+  },
+  {
+   "name": "gen/hand/132-a-loop-of-three-and-a-reader/delete",
+   "existingCase": "hand/132-a-loop-of-three-and-a-reader",
+   "patch": "c = null",
+   "source": "generated"
+  },
+  {
+   "name": "gen/hand/132-a-loop-of-three-and-a-reader/fenced",
+   "existingCase": "hand/132-a-loop-of-three-and-a-reader",
+   "patch": "Here's the update:\n\n```openui-lang\na = Query(\"Edited\", {v: c.v})\nc = null\n```\n\nLet me know if you'd like anything else.",
+   "source": "generated"
+  },
+  {
+   "name": "gen/hand/132-a-loop-of-three-and-a-reader/root-a",
+   "existingCase": "hand/132-a-loop-of-three-and-a-reader",
+   "patch": "a = Query(\"Edited\", {v: c.v})",
+   "rootId": "a",
+   "source": "generated"
+  },
+  {
+   "name": "gen/hand/132-a-loop-of-three-and-a-reader/replay",
+   "existingCase": "hand/132-a-loop-of-three-and-a-reader",
+   "patch": "root = Root([Text(\"x\")])\na = Query(\"a\", {v: c.v})\nb = Query(\"b\", {v: a.v})\nc = Query(\"c\", {v: b.v})\nd = Query(\"d\", {v: a.v})\n",
+   "source": "generated"
+  },
+  {
+   "name": "gen/hand/132-a-loop-of-three-and-a-reader/onto-nothing",
+   "existing": "",
+   "patchCase": "hand/132-a-loop-of-three-and-a-reader",
+   "source": "generated"
+  },
+  {
+   "name": "gen/hand/133-two-separate-loops/edit",
+   "existingCase": "hand/133-two-separate-loops",
+   "patch": "p = Query(\"Edited\", {v: q.v})",
+   "source": "generated"
+  },
+  {
+   "name": "gen/hand/133-two-separate-loops/add",
+   "existingCase": "hand/133-two-separate-loops",
+   "patch": "root = Root([added, Text(\"x\")])\nadded = Query(\"Added\")",
+   "source": "generated"
+  },
+  {
+   "name": "gen/hand/133-two-separate-loops/delete",
+   "existingCase": "hand/133-two-separate-loops",
+   "patch": "r = null",
+   "source": "generated"
+  },
+  {
+   "name": "gen/hand/133-two-separate-loops/fenced",
+   "existingCase": "hand/133-two-separate-loops",
+   "patch": "Here's the update:\n\n```openui-lang\np = Query(\"Edited\", {v: q.v})\nr = null\n```\n\nLet me know if you'd like anything else.",
+   "source": "generated"
+  },
+  {
+   "name": "gen/hand/133-two-separate-loops/root-p",
+   "existingCase": "hand/133-two-separate-loops",
+   "patch": "p = Query(\"Edited\", {v: q.v})",
+   "rootId": "p",
+   "source": "generated"
+  },
+  {
+   "name": "gen/hand/133-two-separate-loops/replay",
+   "existingCase": "hand/133-two-separate-loops",
+   "patch": "root = Root([Text(\"x\")])\np = Query(\"p\", {v: q.v})\nq = Query(\"q\", {v: p.v})\nr = Query(s.tool, {})\ns = Query(\"s\", {v: r.v})\n",
+   "source": "generated"
+  },
+  {
+   "name": "gen/hand/133-two-separate-loops/onto-nothing",
+   "existing": "",
+   "patchCase": "hand/133-two-separate-loops",
+   "source": "generated"
+  },
+  {
+   "name": "gen/hand/134-tool-and-args-from-other-statements/edit",
+   "existingCase": "hand/134-tool-and-args-from-other-statements",
+   "patch": "tool = \"Edited\"",
+   "source": "generated"
+  },
+  {
+   "name": "gen/hand/134-tool-and-args-from-other-statements/add",
+   "existingCase": "hand/134-tool-and-args-from-other-statements",
+   "patch": "root = Root([added, Text(res.name)])\nadded = Count(\"Added\")",
+   "source": "generated"
+  },
+  {
+   "name": "gen/hand/134-tool-and-args-from-other-statements/delete",
+   "existingCase": "hand/134-tool-and-args-from-other-statements",
+   "patch": "res = null",
+   "source": "generated"
+  },
+  {
+   "name": "gen/hand/134-tool-and-args-from-other-statements/fenced",
+   "existingCase": "hand/134-tool-and-args-from-other-statements",
+   "patch": "Here's the update:\n\n```openui-lang\ntool = \"Edited\"\nres = null\n```\n\nLet me know if you'd like anything else.",
+   "source": "generated"
+  },
+  {
+   "name": "gen/hand/134-tool-and-args-from-other-statements/root-tool",
+   "existingCase": "hand/134-tool-and-args-from-other-statements",
+   "patch": "tool = \"Edited\"",
+   "rootId": "tool",
+   "source": "generated"
+  },
+  {
+   "name": "gen/hand/134-tool-and-args-from-other-statements/replay",
+   "existingCase": "hand/134-tool-and-args-from-other-statements",
+   "patch": "root = Root([Text(res.name)])\ntool = \"lookup\"\nargs = {id: $id, other: first.id, n: @Count(rows)}\nrows = [1, 2]\nfirst = Query(\"first\", {})\nres = Query(tool, args, {name: \"…\"})\n$id = 1\nsave = Mutation(tool, {v: $x, d: data, from: res.name})\ndata = {a: alias}\nalias = $y\n",
+   "source": "generated"
+  },
+  {
+   "name": "gen/hand/134-tool-and-args-from-other-statements/onto-nothing",
+   "existing": "",
+   "patchCase": "hand/134-tool-and-args-from-other-statements",
+   "source": "generated"
+  },
+  {
    "name": "gen/test/actions-01/add",
    "existingCase": "test/actions-01",
    "patch": "added = Text(\"Added\")",

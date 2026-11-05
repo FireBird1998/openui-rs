@@ -22,6 +22,7 @@ pub(crate) enum Issue {
     ExcessArgs { declared: usize, got: usize },
     NoRoot { reason: NoRootReason },
     UnknownFunction,
+    QueryCycle { cycle: Vec<String> },
 }
 
 /// Why a program has no usable entry, which the `no-root` message words.
@@ -46,6 +47,7 @@ impl Issue {
             Issue::ExcessArgs { .. } => ValidationErrorCode::ExcessArgs,
             Issue::NoRoot { .. } => ValidationErrorCode::NoRoot,
             Issue::UnknownFunction => ValidationErrorCode::UnknownFunction,
+            Issue::QueryCycle { .. } => ValidationErrorCode::QueryCycle,
         }
     }
 
@@ -98,6 +100,10 @@ impl Issue {
             ),
             Issue::UnknownFunction => format!(
                 "Unknown function \"@{component}\": not a built-in or action step. The call evaluates to null"
+            ),
+            Issue::QueryCycle { cycle } => format!(
+                "Queries {} read each other's results, so none of them can run first. They do not run",
+                cycle.join(", ")
             ),
             Issue::NoRoot { reason } => match reason {
                 NoRootReason::NotComponent => "root does not evaluate to a component".to_owned(),
