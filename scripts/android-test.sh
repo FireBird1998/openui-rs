@@ -40,9 +40,18 @@ device=("$adb")
 "${device[@]}" get-state > /dev/null || { echo "android-test.sh: no device; start an emulator first" >&2; exit 1; }
 
 echo "Building the test binaries for $abi (NDK $(basename "$ANDROID_NDK_HOME"))"
-binaries="$(cargo ndk -t "$abi" test -q --no-run -p openui-lang --message-format=json 2>/dev/null |
-  jq -r 'select(.reason == "compiler-artifact" and .executable != null and .profile.test) | .executable')"
-[[ -n "$binaries" ]] || { echo "android-test.sh: nothing built" >&2; exit 1; }
+# `cargo ndk` reads cargo's JSON messages itself and doesn't pass them on;
+# `cargo ndk-test` does, but exits 0 whatever cargo did, so the build's
+# errors are looked for in its log.
+build_log="target/android-build.log"
+mkdir -p target
+binaries="$(cargo ndk-test -t "$abi" -q --no-run -p openui-lang --message-format=json-render-diagnostics 2> "$build_log" |
+  jq -r 'select(.reason == "compiler-artifact" and .executable != null and .profile.test) | "\(.target.kind[0]):\(.executable)"')"
+if grep -q '^error' "$build_log" || [[ -z "$binaries" ]]; then
+  tail -20 "$build_log" >&2
+  echo "android-test.sh: the build failed (log in $build_log)" >&2
+  exit 1
+fi
 
 dir=/data/local/tmp/openui-rs
 echo "Pushing the conformance data to $dir"
@@ -51,9 +60,14 @@ echo "Pushing the conformance data to $dir"
 
 failed=()
 ran=0
-for binary in $binaries; do
+for entry in $binaries; do
+  # kind:path. The library's and the binary's unit tests share the crate's
+  # name, so those two are told apart by kind.
+  kind="${entry%%:*}"
+  binary="${entry#*:}"
   name="$(basename "$binary")"
   test_name="${name%-*}"
+  [[ "$kind" == test ]] || test_name="$test_name-$kind"
   case "$test_name" in
     report | cli) echo "skip $test_name (host only)"; continue ;;
   esac

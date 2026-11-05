@@ -702,7 +702,7 @@ mod json_reader_tests {
     /// writes out byte for byte: lone surrogates, numbers and key order included.
     #[test]
     fn every_reference_result_round_trips() {
-        let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../conformance/golden");
+        let root = crate::conformance_dir().join("golden");
         let mut files = Vec::new();
         goldens(&root, &mut files);
         assert!(files.len() > 250);

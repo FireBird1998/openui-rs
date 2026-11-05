@@ -494,7 +494,7 @@ mod tests {
 
     #[test]
     fn every_corpus_program_cleans_the_same_incrementally() {
-        let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../conformance");
+        let root = crate::conformance_dir();
         let mut texts = Vec::new();
         programs(&root.join("cases"), &mut texts);
         programs(&root.join("imported/cases"), &mut texts);

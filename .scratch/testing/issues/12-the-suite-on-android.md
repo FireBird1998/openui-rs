@@ -9,11 +9,22 @@ One command does all of this while an emulator is running. Then do one run on a 
 
 **Blocked by:** 01 — The suite runs anywhere
 
-**Status:** ready-for-agent
+**Status:** waiting for the real-phone run (or a note that there's no phone)
 
-- [ ] The maintainer approves installing cargo-ndk and the aarch64 Android Rust target before they're installed.
-- [ ] One command runs the whole suite on a running emulator, and it passes.
-- [ ] The stack tests pass at a 512 KB thread stack on the emulator.
+- [x] The maintainer approves installing cargo-ndk and the aarch64 Android Rust target before they're installed.
+- [x] One command runs the whole suite on a running emulator, and it passes.
+- [x] The stack tests pass at a 512 KB thread stack on the emulator.
 - [ ] The real-phone run has passed, or this ticket records that there's no phone to run it on.
-- [ ] TESTING.md has a section on Android.
-- [ ] `scripts/check.sh` passes.
+- [x] TESTING.md has a section on Android.
+- [x] `scripts/check.sh` passes.
+
+## Results
+
+**2026-11-06, the worker Mac's emulator:**
+- Setup: `openui-arm64`, Android 16 (API 36, Google APIs, arm64-v8a), headless, NDK 27.1.12297006, cargo-ndk 4.1.2. The maintainer approved installing these on the worker Mac.
+- Result: `scripts/android-test.sh` ran 12 test binaries, 55 tests, none failed, in 30 s. That includes the 11 depth tests at a 512 KB stack. `report` and `cli` stay on the host.
+- Fixed on the way, in the commit that records this:
+  - With cargo-ndk 4, the script found no test binaries ("nothing built"), here and in GitHub's x86_64 emulator run 41998291085. cargo-ndk 4 reads cargo's JSON messages itself and doesn't pass them on. The script now builds with `cargo ndk-test`, which does pass them on.
+  - Two unit tests read the conformance folder from the source tree's path. They now honour `OPENUI_CONFORMANCE_DIR`.
+
+**Still open:** the real-phone run, if the maintainer has a phone, or a note here that there isn't one. GitHub's x86_64 run needs repeating after a push.

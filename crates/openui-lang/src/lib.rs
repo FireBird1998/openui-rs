@@ -198,6 +198,17 @@ mod stream;
 mod table;
 mod validation;
 
+/// The conformance folder, for the unit tests that read it: the repository's,
+/// or wherever `OPENUI_CONFORMANCE_DIR` names, as the integration tests read
+/// it, so they also run where the source tree isn't (an Android device).
+#[cfg(test)]
+fn conformance_dir() -> std::path::PathBuf {
+    match std::env::var_os("OPENUI_CONFORMANCE_DIR") {
+        Some(dir) if !dir.is_empty() => dir.into(),
+        _ => std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../conformance"),
+    }
+}
+
 pub use ast::{Ast, RefType};
 pub use builtins::{is_builtin, is_reserved_call};
 pub use enrich::{EnrichedError, enrich_errors, enriched_errors_to_json};
