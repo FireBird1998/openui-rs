@@ -85,6 +85,20 @@ Their findings are sorted. The candidate quirks are drafted for the maintainer's
 
   The frozen run's files are kept beside the new ones as `frozen-*` and `mutants-parsing-partial.out`.
 
+**2026-11-06, the resumed runs finished at 22:01.** The worker stayed up throughout, with 80% or more of its memory free. The watchdog stopped 72 runaway mutants' tests or CLI children (69 parsing, 3 rest).
+
+| Resumed run, against `de9af5e` | Result |
+|---|---|
+| Coverage-guided fuzzing, 6 hours per target | `merge` 317 million inputs, `serialize` 788 million, `json` 1.33 billion: clean. `parse` (1.6 million) and `stream` (159,000) stopped on a slow input each: `coverage-parse-timeout-94563fe…` replays in 18.5 s at 678 MB peak, `coverage-stream-timeout-b1187e1…` in 12.5 s at 78 MB. Slow, not crashing or growing; still to be looked into |
+| Mutation testing, parsing (6 h) | 1,488 tested after the 387 caught or unviable before the freeze: 1,070 caught, **296 missed**, 44 timeouts, 78 unviable |
+| Mutation testing, rest (84 min) | 647: 550 caught, **38 missed**, 5 timeouts (all `js.rs`'s JSON reader not advancing), 54 unviable |
+
+Where the misses are:
+- **Parsing:** `evaluate.rs` 153, `materialize.rs` 53, `preprocess.rs` 25, `statements.rs` 19, `table.rs` 16, `stream.rs` 13, `validation.rs` 7, `expr.rs` 4, `parser.rs` 3, `lexer.rs` 3. The largest clusters are `evaluate.rs`'s `merge_sort` (33), `binary` (14), `substitute`, `number_cost` (12 each), `js_number`, `filter` (10 each), `loose_eq` and `json_cost` (8 each); `statements.rs`'s `split` (19); `materialize.rs`'s `json_size` (17); and `stream.rs`'s `scan_new_completed` (11). Many are the size and depth budget's pricing, whose tests check that the limits trigger but not the exact accounting.
+- **Rest:** `js.rs` 12 (`array_index` 6, `lone_surrogate_unit` 4), the CLI's `run` 10, `serialize.rs` 8 (`precedence` 3, `key`, `enter`), `prompt.rs`, `enrich.rs` and the binding's timer 2 each, `lib.rs` and `builtins.rs` 1 each.
+
+The result lists are in `~/openui-runs/long-1.1-run2/mutants-{parsing,rest}/` on the worker. Next, each miss is sorted into a case or an exclusion with its reason.
+
 **Candidate quirks, broken on both parsers, for the maintainer to judge:**
 
 1. **A reference cycle round-trips differently (new in 1.1).** About 450 programs, under round-trip and merge-own-source. A list inside a component's children comes out as `[[]]`, and after converting back to source and parsing again as `[]`, or the other way round. Minimal: `root = Root([x, y])`, `y = Root([x])`, `x = [y]`. Each statement is reached once through the cycle and once around it. 1.1 doesn't memoize a statement that met a cycle, so `x` and `y` materialize differently in each place, and one place keeps a list where validation would prune it once the tree is written out. 1.0.1's run had 1 of these. Either a quirk with an upstream report, or the round-trip rule is narrowed to programs without reference cycles.
