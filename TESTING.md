@@ -235,11 +235,13 @@ The tree names only statements that are components, so those are the ones the ru
 ## Mutation testing
 
 ```bash
-scripts/mutants.sh parsing --jobs 3   # testing ticket 04: about 1,340 mutants
+scripts/mutants.sh parsing --jobs 3   # testing ticket 04: about 1,800 mutants, the 1.1 evaluator's included
 scripts/mutants.sh rest --jobs 3      # testing ticket 05: about 650, the binding's included
 ```
 
 [cargo-mutants](https://mutants.rs) plants one bug at a time in the source (a `>` turned into `>=`, a function that returns a default, a deleted `!`) and runs the offline suite against each, with live diffs off. A mutant the suite doesn't catch is code a real bug could break unnoticed. Each one is either caught by a new case, or listed in `.cargo/mutants.toml` with the reason it changes nothing a caller can observe, so reruns skip it. A mutant costs a rebuild plus the suite, so a whole group takes hours: run it on AC power, or on GitHub (see [On GitHub](#on-github)). Results go to `target/mutants/<group>/mutants.out/` (`missed.txt`, `caught.txt`, `timeout.txt`).
+
+A mutant that stops the parser advancing makes a test allocate without bound, faster than cargo-mutants' timeout ends it, and macOS has no per-process memory limit: two such tests once took a Mac down with a kernel panic. So the script runs a watchdog beside cargo-mutants. It kills any test process from a mutant's build that holds more than `MUTANTS_MEMORY_LIMIT_MB` (default 2048; the suite peaks near 600 MB), and on macOS, when free memory falls under 20%, the largest one over 1 GB. The test fails, the mutant counts as caught, and each kill is logged (`mutants.sh: killed a test holding …`).
 
 ## Coverage-guided fuzzing
 
