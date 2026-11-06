@@ -88,6 +88,24 @@ _Avoid_: diff, regression, failure
 A rule every program should satisfy, such as "parsing, converting back to source and parsing again gives the same tree", checked on the core and the reference alike; where the reference breaks one, the exception is a quirk.
 _Avoid_: property, law
 
+### Limits
+
+**Limit**:
+A documented bound on what one parse may read, build or do: program size, result size, depth or work.
+_Avoid_: cap, quota, budget (when meaning the bound itself)
+
+**Cut result**:
+A parse result in which a limit was hit, flagged as such, with what lay past the limit left out.
+_Avoid_: truncated result, partial result, limited result
+
+**Amplification**:
+How many times larger a parse result is than its program.
+_Avoid_: blow-up factor, expansion
+
+**Stall**:
+A parsing loop consuming input without advancing through it; always a bug in the core, never a property of the input.
+_Avoid_: hang, infinite loop, livelock
+
 ### Hunting
 
 **Hunt**:

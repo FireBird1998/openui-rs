@@ -170,4 +170,4 @@ Each module mirrors one stage of the reference pipeline, with Rust idioms inside
   - a shared, reference-counted library in the streaming parser
   - two-phase performance
 - **Prior art:** upstream's blog post "Rewriting our Rust WASM Parser in TypeScript" (docs/content/blog/rust-wasm-parser.mdx, 2026-03-13). Thesys first built this parser in Rust compiled to WebAssembly and replaced it with TypeScript, which ran about 3× faster in the browser. Copying strings and results across the WASM boundary dominated (about 20–61 µs per call), and serde-wasm-bindgen was 9–29% slower still. That's why this core targets platforms outside JavaScript, not the web. The post also describes the statement-level caching that the reference streaming parser uses today. The old Rust code isn't in the upstream history.
-- **Glossary:** `CONTEXT.md` at the repo root.
+- **Glossary:** `GLOSSARY.md` at the repo root (named `CONTEXT.md` until 2026-11-07).

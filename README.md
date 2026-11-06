@@ -101,7 +101,8 @@ VIEWER_PLAY=synthetic/dashboard-x8 VIEWER_CHUNK=1 target/viewer/release/Viewer.a
 | `reference/` | the vendored reference (`lang-core/`, untouched) and the Bun scripts that run it: goldens, fuzz server, benchmarks, corpus import |
 | `scripts/` | the commands above |
 | `fuzz/` | cargo-fuzz targets |
-| `.scratch/` | the spec, its tickets with notes on every decision, and the Dynamic News map; the glossary is [CONTEXT.md](CONTEXT.md) |
+| `.scratch/` | the earlier specs, their tickets with notes on every decision, and the Dynamic News map; new work is tracked in [GitHub Issues](https://github.com/FireBird1998/openui-rs/issues). The glossary is [GLOSSARY.md](GLOSSARY.md) |
+| `docs/` | decision records (`adr/`) and how agents use this repository (`agents/`) |
 
 ## License
 

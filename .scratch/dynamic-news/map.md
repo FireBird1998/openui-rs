@@ -16,7 +16,7 @@ A spec for Dynamic News v1, ready to hand to build sessions: a showcase Android 
   - The core covers the language layer only (parse, stream, validate, prompt).
   - This map lives in `.scratch/`.
 - **Skills:** /grilling and /domain-modeling for discussion tickets, /prototype for sketches, /research for research tickets.
-- **Glossary:** `CONTEXT.md` at the repo root.
+- **Glossary:** `GLOSSARY.md` at the repo root (named `CONTEXT.md` until 2026-11-07).
 - **Research tickets** (01–03) haven't been started. Start them when this map comes off the shelf.
 - **Mac viewer first (decided 2026-10-15):** before the testing phase (`../testing/spec.md`) and before this map comes off the shelf, a small SwiftUI Mac app that draws programs natively as they stream, calling the core through UniFFI. It is both a playground for the core and a rehearsal for this app's binding: what it learns about what crosses the boundary per chunk feeds tickets 01 and 06 here. Not a Mac version of Dynamic News.
 
