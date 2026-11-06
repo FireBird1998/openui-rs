@@ -4,7 +4,9 @@
 //! runtime expression does too, since it's written as `args` and again as
 //! `mappedProps`. The core cuts the result at about `MAX_RESULT_SIZE` bytes
 //! of JSON and sets `size_limited`. Inlined statements are shared rather than
-//! copied, so memory stays proportional to the program, not the result.
+//! copied, so memory stays proportional to the program, not the result. State
+//! defaults, evaluated, can double too (a list of the one above twice, a
+//! string added to itself): evaluating stops at what's left of the budget.
 //! (The reference shares only the `mappedProps` case; the others take it
 //! exponential time and memory.)
 
@@ -25,6 +27,12 @@ fn library() -> Arc<Library> {
 
 /// Programs whose result doubles at each of `n` levels.
 fn doubling(n: usize) -> Vec<(&'static str, String)> {
+    // Evaluated, each state default reads the one above it.
+    let state_chain = |first: &str, each: &dyn Fn(&str) -> String| {
+        let mut lines = vec!["root = Text(\"x\")".to_owned(), format!("$s0 = {first}")];
+        lines.extend((1..=n).map(|i| format!("$s{i} = {}", each(&format!("$s{}", i - 1)))));
+        lines.join("\n")
+    };
     let chain = |first: &str, each: &dyn Fn(usize) -> String, root: String| {
         let mut lines = vec![root, first.to_owned()];
         lines.extend((1..=n).map(each));
@@ -70,6 +78,22 @@ fn doubling(n: usize) -> Vec<(&'static str, String)> {
                 &|i| format!("s{i} = Stack([s{}, s{}])", i - 1, i - 1),
                 format!("root = Stack([s{n}])"),
             ),
+        ),
+        (
+            "state default listing the one above twice",
+            state_chain("[1, \"x\"]", &|p| format!("[{p}, {p}]")),
+        ),
+        (
+            "state default adding the one above to itself",
+            state_chain("\"ab\"", &|p| format!("{p} + {p}")),
+        ),
+        (
+            "state default joining a list of the one above",
+            state_chain("\"ab\"", &|p| format!("\"\" + [{p}, {p}]")),
+        ),
+        (
+            "state default copying the one above with @Each",
+            state_chain("[1, \"x\"]", &|p| format!("@Each([{p}, {p}], \"x\", x)")),
         ),
         (
             "invalid value referenced twice per level",

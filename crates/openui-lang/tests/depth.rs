@@ -144,6 +144,30 @@ fn long_reference_chain() {
     assert_limited(program);
 }
 
+/// State defaults, evaluated, read the ones above them, so a chain of them
+/// nests without bound however shallow each line is: as a value, copied by
+/// `@Each`, and joined into a string.
+#[test]
+fn long_chain_of_state_defaults() {
+    let wrap = |inner: &str| format!("{}{inner}{}", "[".repeat(200), "]".repeat(200));
+    let chain = |lines: usize, each: &dyn Fn(&str) -> String| {
+        let mut program = String::from("root = Text(\"x\")\n$v0 = [1, \"x\"]\n");
+        for i in 1..=lines {
+            program.push_str(&format!("$v{i} = {}\n", each(&format!("$v{}", i - 1))));
+        }
+        program
+    };
+    assert_limited(chain(30, &|previous| wrap(previous)));
+    assert_limited(chain(30, &|previous| {
+        format!("@Each({}, \"x\", {})", wrap(previous), wrap("x"))
+    }));
+    // Three levels of 200 are as deep as a default may be; joined inside a
+    // fourth, it's deeper.
+    let mut program = chain(3, &|previous| wrap(previous));
+    program.push_str(&format!("$s = \"\" + {}", wrap("$v3")));
+    assert_limited(program);
+}
+
 #[test]
 fn ordinary_nesting_is_not_limited() {
     let program = format!(

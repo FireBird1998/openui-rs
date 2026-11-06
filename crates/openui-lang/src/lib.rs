@@ -174,10 +174,11 @@ pub const MAX_DEPTH: usize = 256;
 /// referenced from two places is inlined in both, so a few lines that each
 /// reference the one before twice double the result at every line; a
 /// component inside a runtime expression is written twice (`args` and
-/// `mappedProps`), with the same effect when nested. Past this, the rest of
-/// the result becomes null and [`ParseResult::size_limited`] is set. Real
-/// results are about twice the program's size, so this is far out of reach of
-/// any program a model writes.
+/// `mappedProps`), with the same effect when nested; and a state default,
+/// evaluated, can list the one above it twice, or add a string to itself.
+/// Past this, the rest of the result becomes null and
+/// [`ParseResult::size_limited`] is set. Real results are about twice the
+/// program's size, so this is far out of reach of any program a model writes.
 pub const MAX_RESULT_SIZE: usize = 8 * 1024 * 1024;
 
 mod ast;

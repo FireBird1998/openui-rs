@@ -8,11 +8,18 @@
 //! compared by identity, `==` with its coercions, strings indexed by UTF-16
 //! unit. Where the core can't follow the reference (a property of a
 //! prototype, string order outside ASCII), CONFORMANCE.md lists it.
+//!
+//! Evaluating keeps to the core's limits (see [`Limits`]): a default that
+//! would build past what's left of `MAX_RESULT_SIZE`, or nest too deep, is
+//! null instead.
 
+use std::cell::Cell;
 use std::cmp::Ordering;
+use std::collections::HashSet;
 use std::rc::Rc;
 use std::sync::Arc;
 
+use crate::MAX_DEPTH;
 use crate::ast::Ast;
 use crate::builtins::builtin_function_params;
 use crate::js::{self, JsObject, OBJECT_PROTOTYPE_KEYS, array_index, number_to_string, parse_json};
@@ -153,7 +160,177 @@ const NUMBER_METHODS: [&str; 6] = [
 ];
 const BOOLEAN_METHODS: [&str; 2] = ["toString", "valueOf"];
 
+// ─── Limits ─────────────────────────────────────────────────────────────────
+
+/// How deep the evaluator's walks may nest: as deep as a parse result's JSON
+/// can, three levels per `MAX_DEPTH` level, so an evaluated default reads
+/// back and serializes like any result (see `serialize::JSON_DEPTH_LIMIT`).
+const MAX_VALUE_DEPTH: usize = 3 * MAX_DEPTH;
+
+/// What evaluating defaults may still build, and whether it went past that.
+///
+/// A default can build far more than the program holds. One listing an
+/// earlier one twice doubles with every line, and joining that into a string,
+/// adding a string to itself or `@Each` copying its items doubles it again;
+/// defaults reading defaults also nest without bound. The reference builds on
+/// until the engine runs out of memory or stack. The core keeps all of a
+/// parse's evaluating to what materializing left of `MAX_RESULT_SIZE`, and its
+/// walks to `MAX_VALUE_DEPTH`. A default that goes past either is null, as is
+/// every expression default after the budget runs out.
+///
+/// What draws on it: each expression evaluated, each string joined or added,
+/// each value `@Each` turns into a literal, and each value turned back into
+/// the result's. They reach it through a thread-local, set for one parse's
+/// defaults at a time: evaluating is synchronous, and passing it through
+/// every coercion would touch nearly every function here.
+struct Limits {
+    /// About how many bytes, or steps, are left.
+    budget: Cell<usize>,
+    /// Levels open across the walks.
+    depth: Cell<usize>,
+    /// The default being evaluated ran out of budget, or of depth.
+    size_limited: Cell<bool>,
+    depth_limited: Cell<bool>,
+}
+
+thread_local! {
+    static LIMITS: Limits = const {
+        Limits {
+            budget: Cell::new(usize::MAX),
+            depth: Cell::new(0),
+            size_limited: Cell::new(false),
+            depth_limited: Cell::new(false),
+        }
+    };
+}
+
+/// Spend `cost` of the budget: `false`, and the default is cut, once it's spent.
+fn spend(cost: usize) -> bool {
+    LIMITS.with(|l| match l.budget.get().checked_sub(cost) {
+        Some(left) => {
+            l.budget.set(left);
+            true
+        }
+        None => {
+            l.budget.set(0);
+            l.size_limited.set(true);
+            false
+        }
+    })
+}
+
+/// A level open in one of the walks, closed when dropped.
+struct Level;
+
+impl Level {
+    /// `None`, and the default is cut, past `MAX_VALUE_DEPTH`.
+    fn enter() -> Option<Level> {
+        LIMITS.with(|l| {
+            let depth = l.depth.get();
+            if depth >= MAX_VALUE_DEPTH {
+                l.depth_limited.set(true);
+                return None;
+            }
+            l.depth.set(depth + 1);
+            Some(Level)
+        })
+    }
+}
+
+impl Drop for Level {
+    fn drop(&mut self) {
+        LIMITS.with(|l| l.depth.set(l.depth.get() - 1));
+    }
+}
+
+/// About what a value's own JSON costs, its items' and entries' apart.
+fn json_cost(js: &Js) -> usize {
+    match js {
+        Js::Str(s) => s.len() + 2,
+        Js::Arr(items) => items.len() + 2,
+        Js::Obj(o) => o.iter().map(|(key, _)| key.len() + 4).sum::<usize>() + 2,
+        Js::Num(n) => number_cost(*n),
+        _ => 4,
+    }
+}
+
+/// About how long a number's JSON is: an integer's digits, else the longest.
+fn number_cost(n: f64) -> usize {
+    if n.fract() == 0.0 && n.abs() < 1e15 {
+        let digits = if n == 0.0 {
+            1
+        } else {
+            n.abs().log10() as usize + 1
+        };
+        digits + usize::from(n < 0.0)
+    } else {
+        24
+    }
+}
+
 // ─── State defaults ─────────────────────────────────────────────────────────
+
+/// A parse's state defaults, evaluated.
+pub(crate) struct Evaluated {
+    pub state: JsObject<Value>,
+    /// Those that came out `undefined`: left out of the result, as JSON
+    /// leaves them, but declared all the same.
+    pub undefined: HashSet<String>,
+    /// One went past the budget, or too deep, and is null.
+    pub size_limited: bool,
+    pub depth_limited: bool,
+}
+
+/// 1.1 evaluates expression defaults (`$total = 1 + 2`) once, in statement
+/// order, each reading the defaults declared above it, building no more than
+/// about `budget` bytes in all (see [`Limits`]).
+pub(crate) fn state_defaults(state: JsObject<Value>, budget: usize) -> Evaluated {
+    let mut out = Evaluated {
+        state: JsObject::new(),
+        undefined: HashSet::new(),
+        size_limited: false,
+        depth_limited: false,
+    };
+    if !state.values().any(has_runtime) {
+        out.state = state;
+        return out;
+    }
+    LIMITS.with(|l| {
+        l.budget.set(budget);
+        l.depth.set(0);
+    });
+    let mut declared = JsObject::new();
+    for (id, value) in state.iter() {
+        if !has_runtime(value) {
+            out.state.set(id.clone(), value.clone());
+            declared.define(id.clone(), from_value(value));
+            continue;
+        }
+        LIMITS.with(|l| {
+            l.size_limited.set(false);
+            l.depth_limited.set(false);
+        });
+        let js = state_default(value, &declared);
+        let converted = to_value(&js);
+        let (size, depth) = LIMITS.with(|l| (l.size_limited.get(), l.depth_limited.get()));
+        if size || depth {
+            out.size_limited |= size;
+            out.depth_limited |= depth;
+            out.state.set(id.clone(), Value::Null);
+            declared.define(id.clone(), Js::Null);
+            continue;
+        }
+        match converted {
+            Some(v) => out.state.set(id.clone(), v),
+            None => {
+                out.undefined.insert(id.clone());
+            }
+        }
+        declared.define(id.clone(), js);
+    }
+    LIMITS.with(|l| l.budget.set(usize::MAX));
+    out
+}
 
 /// Whether a materialized default holds anything to evaluate: a runtime
 /// expression, in it or in its lists and plain objects.
@@ -171,7 +348,7 @@ pub(crate) fn has_runtime(value: &Value) -> bool {
 /// `stateDefault`: the materialized default with its runtime expressions
 /// evaluated, reading `declared`, the defaults declared before it. An object
 /// literal shaped like an AST node isn't evaluated (a divergence).
-pub(crate) fn state_default(value: &Value, declared: &JsObject<Js>) -> Js {
+fn state_default(value: &Value, declared: &JsObject<Js>) -> Js {
     match value {
         Value::Ast(ast) => {
             if only_builtin_functions(ast) {
@@ -209,7 +386,7 @@ fn only_builtin_functions(node: &Ast) -> bool {
 }
 
 /// A parse result's value as a JavaScript value.
-pub(crate) fn from_value(value: &Value) -> Js {
+fn from_value(value: &Value) -> Js {
     match value {
         Value::Null => Js::Null,
         Value::Bool(b) => Js::Bool(*b),
@@ -251,8 +428,18 @@ fn from_json(json: &serde_json::Value) -> Js {
 }
 
 /// The value as `JSON.stringify` writes it, or `None` where it leaves it
-/// out (`undefined`, a function): a property is dropped, an array item is null.
-pub(crate) fn to_value(js: &Js) -> Option<Value> {
+/// out (`undefined`, a function): a property is dropped, an array item is
+/// null. Null where the limits cut it.
+fn to_value(js: &Js) -> Option<Value> {
+    if matches!(js, Js::Undefined | Js::Function { .. }) {
+        return None;
+    }
+    let Some(_level) = Level::enter() else {
+        return Some(Value::Null);
+    };
+    if !spend(json_cost(js)) {
+        return Some(Value::Null);
+    }
     Some(match js {
         Js::Undefined | Js::Function { .. } => return None,
         Js::Null => Value::Null,
@@ -323,6 +510,12 @@ impl Scope<'_> {
 }
 
 fn evaluate(node: &Ast, scope: &Scope) -> Js {
+    let Some(_level) = Level::enter() else {
+        return Js::Null;
+    };
+    if !spend(1) {
+        return Js::Null;
+    }
     match node {
         Ast::Str(s) => Js::Str(s.as_str().into()),
         Ast::Num(n) => Js::Num(*n),
@@ -459,7 +652,11 @@ fn binary(op: &str, left: &Ast, right: &Ast, scope: &Scope) -> Js {
                     to_string(v)
                 }
             };
-            Js::Str(format!("{}{}", text(&left), text(&right)).into())
+            let (left, right) = (text(&left), text(&right));
+            if !spend(left.len() + right.len()) {
+                return Js::Str("".into());
+            }
+            Js::Str(format!("{left}{right}").into())
         }
         "+" => Js::Num(to_number(&left) + to_number(&right)),
         "-" => Js::Num(to_number(&left) - to_number(&right)),
@@ -581,8 +778,14 @@ fn substitute(node: &Ast, var: &str, value: &Js) -> Ast {
     }
 }
 
-/// `toLiteralAST`.
+/// `toLiteralAST`; null where the limits cut it.
 fn literal(value: &Js) -> Ast {
+    let Some(_level) = Level::enter() else {
+        return Ast::Null;
+    };
+    if !spend(json_cost(value)) {
+        return Ast::Null;
+    }
     match value {
         Js::Undefined | Js::Null | Js::Function { .. } => Ast::Null,
         Js::Str(s) => Ast::Str(s.to_string()),
@@ -972,11 +1175,11 @@ fn to_string(v: &Js) -> String {
         Js::Bool(b) => b.to_string(),
         Js::Num(n) => number_to_string(*n),
         Js::Str(s) => s.to_string(),
-        Js::Arr(items) => items
-            .iter()
-            .map(|item| text_or(item, ""))
-            .collect::<Vec<_>>()
-            .join(","),
+        Js::Arr(items) => {
+            let mut out = String::new();
+            join(items, &mut out);
+            out
+        }
         Js::Obj(_) | Js::Proto(Kind::Object) => "[object Object]".to_owned(),
         Js::Function {
             name,
@@ -987,6 +1190,39 @@ fn to_string(v: &Js) -> String {
         Js::Proto(Kind::Number) => "0".to_owned(),
         Js::Proto(Kind::Boolean) => "false".to_owned(),
     }
+}
+
+/// `Array.prototype.join(",")` into `out`, nested arrays and all: a string
+/// built from an array costs its length, and stops where the limits cut it.
+fn join(items: &[Js], out: &mut String) {
+    let Some(_level) = Level::enter() else {
+        return;
+    };
+    if !spend(1) {
+        return;
+    }
+    for (i, item) in items.iter().enumerate() {
+        if i > 0 && !push(out, ",") {
+            return;
+        }
+        match item {
+            Js::Undefined | Js::Null => {}
+            Js::Arr(inner) => join(inner, out),
+            _ => {
+                if !push(out, &to_string(item)) {
+                    return;
+                }
+            }
+        }
+    }
+}
+
+fn push(out: &mut String, text: &str) -> bool {
+    if !spend(text.len()) {
+        return false;
+    }
+    out.push_str(text);
+    true
 }
 
 /// `ToPrimitive` of an object, as `==` takes it.

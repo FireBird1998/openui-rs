@@ -6,9 +6,10 @@ use std::sync::Arc;
 
 use indexmap::IndexSet;
 
+use crate::MAX_RESULT_SIZE;
 use crate::ast::{Ast, RefType};
 use crate::builtins::{is_builtin, is_reserved_call};
-use crate::evaluate::{from_value, has_runtime, state_default, to_value};
+use crate::evaluate::{has_runtime, state_defaults};
 use crate::expr::parse_expression_with_limit;
 use crate::js::JsObject;
 use crate::lexer::tokenize;
@@ -419,37 +420,6 @@ pub(crate) fn build_result(
     }
 }
 
-/// 1.1 evaluates expression defaults (`$total = 1 + 2`) once, in statement
-/// order, each reading the defaults declared above it. Returns the names of
-/// those that came out `undefined`: left out of the result, as JSON leaves
-/// them, but declared all the same. Evaluating reports no errors, so it can
-/// come after all the materializing.
-fn evaluate_state_defaults(state: &mut JsObject<Value>) -> HashSet<String> {
-    let mut undefined = HashSet::new();
-    if !state.values().any(has_runtime) {
-        return undefined;
-    }
-    let mut declared = JsObject::new();
-    let mut evaluated = JsObject::new();
-    for (id, value) in state.iter() {
-        if has_runtime(value) {
-            let js = state_default(value, &declared);
-            match to_value(&js) {
-                Some(v) => evaluated.set(id.clone(), v),
-                None => {
-                    undefined.insert(id.clone());
-                }
-            }
-            declared.define(id.clone(), js);
-        } else {
-            evaluated.set(id.clone(), value.clone());
-            declared.define(id.clone(), from_value(value));
-        }
-    }
-    *state = evaluated;
-    undefined
-}
-
 /// State initial values (materialized), plus queries and mutations as written.
 /// Any `$name` used anywhere but never declared is declared as null, except
 /// one still growing at the end of a stream, in the statements it ends.
@@ -461,12 +431,19 @@ fn extract_statements(
     let mut state = JsObject::new();
     let mut queries = Vec::new();
     let mut mutations = Vec::new();
+    // What the expression defaults cost materialized: evaluated, they're
+    // written in its place.
+    let mut expressions_size = 0;
     for &slot in table.specials() {
         let id = table.name(slot);
         let stmt = table.get(slot).expect("defined statement");
         match stmt {
             Statement::State { init } => {
+                let before = ctx.size;
                 let value = materialize_value(init, ctx);
+                if has_runtime(&value) {
+                    expressions_size += ctx.size - before;
+                }
                 state.set(id.to_owned(), value);
             }
             Statement::Query { .. } => {
@@ -496,7 +473,12 @@ fn extract_statements(
             Statement::Value { .. } => {}
         }
     }
-    let undefined = evaluate_state_defaults(&mut state);
+    // Evaluating builds no more than what's left of the result's budget.
+    let budget = MAX_RESULT_SIZE.saturating_sub(ctx.size - expressions_size);
+    let evaluated = state_defaults(state, budget);
+    ctx.frame.size_limited |= evaluated.size_limited;
+    ctx.frame.limited |= evaluated.depth_limited;
+    let (mut state, undefined) = (evaluated.state, evaluated.undefined);
     // A query waits for the queries it reads; ones that read each other can
     // never start.
     for cycle in query_cycles(&queries) {
