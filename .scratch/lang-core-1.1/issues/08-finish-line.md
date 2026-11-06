@@ -55,8 +55,17 @@ Their findings are sorted. The candidate quirks are drafted for the maintainer's
 | Invariants: a million programs of seed 82, every rule | no mismatch left: the 12 found were the AST-shaped-root divergence, which the fuzzer now recognizes in its shrunk forms (`2b2454f`) |
 | Differential fuzzing, 500,000 programs | every one of 1,838 mismatches and 548 reference exceptions is a documented divergence; no panics, no blow-ups |
 | Edit fuzzing, 500,000 merges and conversions | all match |
-| Coverage-guided fuzzing, 5 targets × 6 hours | running, without AddressSanitizer |
-| Mutation testing, both groups | running after it |
+| Coverage-guided fuzzing, 5 targets × 6 hours | stopped after 28 minutes, when the worker panicked (below) |
+| Mutation testing, both groups | stopped 8 minutes in, by the same panic |
+
+**2026-11-06, the worker panicked, and what it found.** At 04:43 macOS's watchdog reset the worker: memory was gone, with 94 swap files and the compressor full.
+- **The cause:** mutants that stop the expression parser advancing (`self.pos += 1` made `-=` or `*=` in `expr.rs`). Under them the `api` and `depth` tests allocate without bound, and two reached 140 GB and 70 GB before cargo-mutants' timeout. macOS has no per-process memory limit.
+- **The fix, `3383c91`:** `scripts/mutants.sh` runs a watchdog that kills a mutant's test past 2 GB, or the largest past 1 GB when free memory is under 20%, so the mutant counts as caught. On the worker the ten runaway mutants are all caught in 89 s. `evaluate.rs` was in no group; it's in `parsing` now.
+- **Fuzz finds from the swapping minutes:** two timeouts (`parse`, `stream`) and a slow unit (`serialize`). Replayed on an idle machine they take 0.8 s, 0.3 s and 2 ms, so none hangs. But the `parse` one is a 4 KB program whose result is 4.4 MB, almost all one evaluated state default. That showed a real hole: evaluating ran after the size guard.
+  - A default listing the one above twice doubles per line (12 lines ≈ 22 GB), as does a string added to itself, a list of itself joined, or `@Each` copying its items. Defaults wrapping the ones above nest without bound.
+  - **The fix, `b535852`:** evaluating draws on what materializing left of `MAX_RESULT_SIZE` and stops at three JSON levels per `MAX_DEPTH` level. A default past either is null and the result is flagged. New cases are in `tests/size.rs` and `tests/depth.rs`, and there's a new divergence row: the reference shares lists, and its `parse` throws a `RangeError` on a doubled string.
+- **Checked after the fixes:** 20,000 programs each of differential, invariants and edits, all explained.
+- **Restarted 12:49 against `b535852`, into `~/openui-runs/long-1.1-run2/`:** the same runs, mutants at 3 jobs.
 
 **Candidate quirks, broken on both parsers, for the maintainer to judge:**
 
