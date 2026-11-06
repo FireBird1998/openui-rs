@@ -67,6 +67,24 @@ Their findings are sorted. The candidate quirks are drafted for the maintainer's
 - **Checked after the fixes:** 20,000 programs each of differential, invariants and edits, all explained.
 - **Restarted 12:49 against `b535852`, into `~/openui-runs/long-1.1-run2/`:** the same runs, mutants at 3 jobs.
 
+**2026-11-06, run 2: the worker froze, and what had finished.** At 14:31 the worker stopped answering, with WindowServer and the Wi-Fi driver hitting watchdog timeouts, but it didn't panic.
+- **The cause:** under `expr.rs:194:26` (`self.pos += 1` made `-=` or `*=`), the `cli` test's `openui-lang stream` child grew to 85 GB and 74 GB. The watchdog matched only test binaries under `deps/`, and it read RSS, which the compressor kept at 387 MB for the 85 GB one. SplitBook's emulator and Gradle held another 10 GB. With the maintainer's OK, the two were killed and the run stopped.
+- **The fix, `de9af5e`:** the watchdog is now `scripts/mutants-watchdog.sh`. It watches every process run from a mutant's build, and on macOS it measures the physical footprint, which counts compressed memory. On the worker, a 3 GB/s hog in a build-shaped folder is killed within a second, at 2.6 GB. The six mutants on `expr.rs:194:26` are all caught in 61 s, the CLI killed at 2.1 and 2.2 GB, with free memory at 80% throughout.
+
+| Run 2, against `b535852` | Result |
+|---|---|
+| Invariants: a million programs of seed 82, every rule | 0 mismatches; the 100 broken on both are candidates 1–3 below (58 round-trip, 33 merge-own-source, 7 merge-twice, 2 stream-end) |
+| Differential fuzzing, 500,000 programs | every one of 1,838 mismatches and 548 reference exceptions is a documented divergence; no panics, no blow-ups; slowest answer 145 ms |
+| Edit fuzzing, 500,000 merges and conversions | all match |
+| Coverage-guided fuzzing, 5 targets | clean for 1.5 hours (`parse` 3.4 million inputs, `stream` 345,000, `merge` 87 million, `serialize` and `json` 216 million each); then six timeouts during the freeze, 14:22–14:26, each replaying in 117 ms or less |
+| Mutation testing, parsing | 559 of 1,875 before the freeze: 354 caught (12 by the watchdog), 157 missed, 15 timeouts, 33 unviable. 153 of the misses are in `evaluate.rs`, mutated for the first time |
+
+- **Resumed 14:43 against `de9af5e`** (the crate is unchanged since `b535852`), by `~/openui-runs/long-resume.sh`:
+  - coverage-guided fuzzing again, 6 hours per target from the corpus so far;
+  - mutation testing at 2 jobs, for SplitBook's headroom: parsing with `--iterate`, skipping the 387 caught or unviable (1,488 left), then rest.
+
+  The frozen run's files are kept beside the new ones as `frozen-*` and `mutants-parsing-partial.out`.
+
 **Candidate quirks, broken on both parsers, for the maintainer to judge:**
 
 1. **A reference cycle round-trips differently (new in 1.1).** About 450 programs, under round-trip and merge-own-source. A list inside a component's children comes out as `[[]]`, and after converting back to source and parsing again as `[]`, or the other way round. Minimal: `root = Root([x, y])`, `y = Root([x])`, `x = [y]`. Each statement is reached once through the cycle and once around it. 1.1 doesn't memoize a statement that met a cycle, so `x` and `y` materialize differently in each place, and one place keeps a list where validation would prune it once the tree is written out. 1.0.1's run had 1 of these. Either a quirk with an upstream report, or the round-trip rule is narrowed to programs without reference cycles.
