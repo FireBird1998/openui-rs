@@ -22,4 +22,8 @@ exclude_re = [
     'statements\.rs:.*replace < with <= in split',
     # The current token is a newline, so skipping from pos or pos + 1 reaches the same first non-newline (#13).
     'statements\.rs:.*replace \+ with \* in after_newline',
+    # The fallback walks json_shaped(props), which finds the same dynamic values as walking plain-object props directly; only extra copying changes (#14).
+    'validation\.rs:.*delete match arm Some\(Value::Obj\(p\)\) in element_parts',
+    # RuntimeRef is produced by resolution and never fed back into materialization; retain non-panicking defensive pricing (#14).
+    'materialize\.rs:.*(in runtime_ref_size$|replace runtime_ref_size -> usize)',
 ]

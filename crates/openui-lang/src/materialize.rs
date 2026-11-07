@@ -126,7 +126,7 @@ fn json_size(node: &Ast, expr: bool) -> usize {
         Ast::Bool(_) => 20,
         Ast::Null => 10,
         Ast::Ph(n) | Ast::StateRef(n) => 24 + n.len(),
-        Ast::RuntimeRef { n, .. } => 44 + n.len(),
+        Ast::RuntimeRef { n, .. } => runtime_ref_size(n),
         Ast::Arr(_) => 22,
         Ast::Obj(_) => 26,
         Ast::Comp { name, .. } => 34 + name.len(),
@@ -145,6 +145,12 @@ fn json_size(node: &Ast, expr: bool) -> usize {
         Ast::Ref(_) | Ast::Comp { .. } => size,
         _ => 0,
     }
+}
+
+/// Defensive pricing for a node produced by reference resolution. Source
+/// parsing never passes a RuntimeRef back into materialization.
+fn runtime_ref_size(name: &str) -> usize {
+    44 + name.len()
 }
 
 impl Ctx<'_> {
@@ -326,20 +332,13 @@ fn resolve_ref(name: &str, ctx: &mut Ctx, mode: Mode) -> Resolved {
     let expr = matches!(mode, Mode::Expr);
     if let Some(entry) = ctx.cache.get(slot, ctx.partial, expr)
         && ctx.depth + entry.r_max < ctx.limits.depth()
+        && ctx.size.saturating_add(entry.size) <= ctx.limits.result_size()
     {
-        // Inlined again, it grows the result as much as it did the first time.
-        let size = entry.size;
-        if !ctx.fits(size) {
-            return match mode {
-                Mode::Expr => Resolved::Ast(Ast::Null),
-                Mode::Value => Resolved::Value(Value::Null),
-            };
-        }
-        ctx.size += size;
-        let entry = ctx
-            .cache
-            .get(slot, ctx.partial, expr)
-            .expect("still cached");
+        // Replay only a whole subtree that fits. Otherwise walk it afresh:
+        // the remaining room may hold a prefix, and keys, errors and element
+        // overhead are charged after their children's fit checks. Rejecting
+        // the total here would cut differently depending on cache history.
+        ctx.size += entry.size;
         replay(entry, (slot, expr), true, &mut ctx.frame, ctx.depth);
         return match &entry.output {
             Output::Value(v) => Resolved::Value(v.clone()),
@@ -486,9 +485,10 @@ fn finish(
 /// State statements are never referenced by name (`$name` is a runtime read),
 /// so their slots' value-mode entries are free for this.
 pub(crate) fn materialize_state(slot: Slot, init: &Ast, ctx: &mut Ctx) -> Value {
+    // State defaults start at depth zero under the same fixed depth limit;
+    // only uncut entries are stored, so their depth always fits again.
     if let Some(entry) = ctx.cache.get(slot, ctx.partial, false)
         && entry.context == ctx.current_statement_id
-        && ctx.depth + entry.r_max < ctx.limits.depth()
         && ctx.size.saturating_add(entry.size) <= ctx.limits.result_size()
         && let Output::Value(value) = &entry.output
     {
@@ -509,10 +509,11 @@ pub(crate) fn materialize_state(slot: Slot, init: &Ast, ctx: &mut Ctx) -> Value 
     }
     // Nothing here depends on whether the text is still arriving: no
     // statement reached (whose own entry is kept per `partial`), no library
-    // check, no element. Then it's kept once for both, so a stream whose
-    // pending text is closed at one push and not the next still takes the
+    // check. Elements always set partial_read when constructed. Keep it for
+    // both, so a stream whose pending text is closed at one push and not the
+    // next still takes the
     // same value (see `evaluate::Reuse`).
-    let either_way = folded.reached_nothing && !folded.partial_read && elementless(&value);
+    let either_way = folded.reached_nothing && !folded.partial_read;
     let entry = |value: &Value| Entry {
         output: Output::Value(value.clone()),
         reach: folded.reach.clone(),
@@ -529,17 +530,6 @@ pub(crate) fn materialize_state(slot: Slot, init: &Ast, ctx: &mut Ctx) -> Value 
     let this = entry(&value);
     ctx.cache.put(slot, ctx.partial, false, this);
     value
-}
-
-/// Whether a value holds no element: runtime expressions hold none.
-fn elementless(value: &Value) -> bool {
-    crate::stack::grow_stack!(elementless(value));
-    match value {
-        Value::Element(_) => false,
-        Value::Arr(items) => items.iter().all(elementless),
-        Value::Obj(entries) => entries.values().all(elementless),
-        Value::Null | Value::Bool(_) | Value::Num(_) | Value::Str(_) | Value::Ast(_) => true,
-    }
 }
 
 /// `result.statementId = name` on an element (or anything shaped like one).
@@ -751,31 +741,21 @@ fn map_call_args(name: &str, args: &[Ast], def: &Call, ctx: &mut Ctx) -> Option<
     (!invalid).then_some(mapped)
 }
 
-/// `literalValue`: the value a literal node stands for; `None` for anything
-/// that needs evaluating (a reference, a call, an operator).
-/// Whether validation left a value as it was: the reference compares by
-/// identity (`next !== lit.v`), and gets back the very object when nothing
-/// changed. Structurally, then, but with `NaN` equal to itself, so an object
-/// holding one isn't rebuilt (which would also drop a duplicate key).
-fn unchanged(a: &Value, b: &Value) -> bool {
-    crate::stack::grow_stack!(unchanged(a, b));
+/// JavaScript `===` for materialized values (`next !== lit.v` in mapCallArgs).
+/// Containers compare by identity; NaN differs from itself and signed zeros
+/// compare equal, as Rust's floating-point equality already does.
+pub(crate) fn unchanged(a: &Value, b: &Value) -> bool {
     match (a, b) {
-        (Value::Num(x), Value::Num(y)) => x == y || x.is_nan() && y.is_nan(),
-        (Value::Arr(x), Value::Arr(y)) => {
-            Arc::ptr_eq(x, y)
-                || x.len() == y.len() && x.iter().zip(y.iter()).all(|(a, b)| unchanged(a, b))
-        }
-        (Value::Obj(x), Value::Obj(y)) => {
-            Arc::ptr_eq(x, y)
-                || x.len() == y.len()
-                    && x.iter()
-                        .zip(y.iter())
-                        .all(|((k, a), (l, b))| k == l && unchanged(a, b))
-        }
+        (Value::Arr(x), Value::Arr(y)) => Arc::ptr_eq(x, y),
+        (Value::Obj(x), Value::Obj(y)) => Arc::ptr_eq(x, y),
+        (Value::Element(x), Value::Element(y)) => Arc::ptr_eq(x, y),
+        (Value::Ast(x), Value::Ast(y)) => Arc::ptr_eq(x, y),
         _ => a == b,
     }
 }
 
+/// `literalValue`: the value a literal node stands for; `None` for anything
+/// that needs evaluating (a reference, a call, an operator).
 fn literal_value(node: &Ast) -> Option<Value> {
     crate::stack::grow_stack!(literal_value(node));
     Some(match node {

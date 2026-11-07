@@ -1,0 +1,3 @@
+a = Box([b, Missing()])
+b = Box([a, Missing()])
+root = Box([a, b, a, b])

@@ -1,0 +1,1 @@
+root = Box([@Object({x: 1e, x: 1e}), @Object({x: 3, x: 3}), @Walk([{x: 1e, x: 1e}]), @Walk([{x: 3, x: 3}]), @Choose(1e), @Choose(3)])

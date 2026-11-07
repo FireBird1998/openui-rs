@@ -1,0 +1,1 @@
+root = Box({type: "element", typeName: "Box", partial: false, props: {value: $x}})

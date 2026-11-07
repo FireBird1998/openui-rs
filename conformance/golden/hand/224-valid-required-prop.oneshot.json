@@ -1,0 +1,1 @@
+{"root":null,"meta":{"incomplete":false,"unresolved":[],"orphaned":[],"statementCount":1,"errors":[{"code":"type-mismatch","component":"Required","path":"/empty","message":"field \"/empty\" expects one of [] but got 1","statementId":"root"}]},"stateDeclarations":{},"queryStatements":[],"mutationStatements":[]}

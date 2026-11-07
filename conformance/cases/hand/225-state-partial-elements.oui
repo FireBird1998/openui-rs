@@ -1,0 +1,4 @@
+$a = [{child: Box(1)}]
+$b = Box(2)
+$c = [1, {x: 2}]
+root = Box($a)

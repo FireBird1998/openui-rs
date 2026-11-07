@@ -1,0 +1,3 @@
+item = Box(1)
+$a = [{child: item}]
+root = Box($a)
