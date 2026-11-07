@@ -103,10 +103,7 @@ impl StreamParser {
             buf: String::new(),
             pre: Preprocessor::new(),
             completed: Completed::default(),
-            reuse: Reuse::new(
-                limits.work_for(limits.program_size()),
-                limits.result_size_for(limits.program_size()),
-            ),
+            reuse: Reuse::for_limits(&limits),
             stalled: None,
             past_program_size: false,
         }
@@ -174,10 +171,7 @@ impl StreamParser {
         self.buf.clear();
         self.pre.reset();
         self.completed.clear();
-        self.reuse = Reuse::new(
-            self.limits.work_for(self.limits.program_size()),
-            self.limits.result_size_for(self.limits.program_size()),
-        );
+        self.reuse = Reuse::for_limits(&self.limits);
         self.stalled = None;
         self.past_program_size = false;
     }

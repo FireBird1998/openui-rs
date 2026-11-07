@@ -340,7 +340,7 @@ fn resolve_ref(name: &str, ctx: &mut Ctx, mode: Mode) -> Resolved {
             .cache
             .get(slot, ctx.partial, expr)
             .expect("still cached");
-        replay(entry, (slot, expr), &mut ctx.frame, ctx.depth);
+        replay(entry, (slot, expr), true, &mut ctx.frame, ctx.depth);
         return match &entry.output {
             Output::Value(v) => Resolved::Value(v.clone()),
             Output::Ast(a) => Resolved::Ast(a.clone()),
@@ -374,18 +374,80 @@ fn resolve_ref(name: &str, ctx: &mut Ctx, mode: Mode) -> Resolved {
     resolved
 }
 
-/// Account for a cached statement as if it had been materialized here.
+/// Account for a cached statement as if it had been materialized here. Its
+/// errors are reported once per pass where `memoize` allows it (see
+/// [`ErrorPart`]).
 #[inline(never)]
-fn replay(entry: &Entry, key: (Slot, bool), frame: &mut Frame, depth: usize) {
-    crate::stack::grow_stack!(replay(entry, key, frame, depth));
+fn replay(entry: &Entry, key: (Slot, bool), memoize: bool, frame: &mut Frame, depth: usize) {
+    crate::stack::grow_stack!(replay(entry, key, memoize, frame, depth));
     frame.errors.push(ErrorPart::Reached {
         key,
-        memoized: entry.unresolved.is_empty(),
+        memoized: memoize && entry.unresolved.is_empty(),
         parts: entry.errors.clone(),
     });
     frame.unresolved.extend(entry.unresolved.iter().cloned());
     frame.children.push(entry.reach.clone());
     frame.max_depth = frame.max_depth.max(depth + entry.r_max);
+}
+
+/// A statement's own frame, folded into the one around it.
+struct Folded {
+    reach: Arc<Reach>,
+    errors: Arc<Vec<ErrorPart>>,
+    unresolved: Vec<String>,
+    max_depth: usize,
+    /// It met a cycle or a limit: what it came to depends on where it was
+    /// reached from, so it isn't cached.
+    cut: bool,
+    reached_nothing: bool,
+    partial_read: bool,
+}
+
+/// Fold `frame`, a statement's own, into the frame around it (`ctx.frame`),
+/// its errors kept apart under `key`, reported once per pass where `memoize`
+/// allows it (see [`ErrorPart`]).
+fn fold(frame: Frame, key: (Slot, bool), memoize: bool, ctx: &mut Ctx) -> Folded {
+    let Frame {
+        errors,
+        unresolved,
+        mut reached,
+        children,
+        max_depth,
+        cycle,
+        limited,
+        size_limited,
+        partial_read,
+    } = frame;
+    let reached_nothing = reached.is_empty();
+    reached.sort_unstable();
+    reached.dedup();
+    let reach = Arc::new(Reach {
+        direct: reached,
+        children,
+    });
+    let reach = ctx.cache.share_reach(key.0, reach);
+    let errors = Arc::new(errors);
+    ctx.frame.errors.push(ErrorPart::Reached {
+        key,
+        memoized: memoize && !cycle && unresolved.is_empty(),
+        parts: errors.clone(),
+    });
+    ctx.frame.unresolved.extend(unresolved.iter().cloned());
+    ctx.frame.children.push(reach.clone());
+    ctx.frame.max_depth = ctx.frame.max_depth.max(max_depth);
+    ctx.frame.cycle |= cycle;
+    ctx.frame.limited |= limited;
+    ctx.frame.size_limited |= size_limited;
+    ctx.frame.partial_read |= partial_read;
+    Folded {
+        reach,
+        errors,
+        unresolved,
+        max_depth,
+        cut: cycle || limited || size_limited,
+        reached_nothing,
+        partial_read,
+    }
 }
 
 /// Fold a finished statement's frame into the outer one, and cache it unless
@@ -399,46 +461,16 @@ fn finish(
     (start_depth, size): (usize, usize),
     ctx: &mut Ctx,
 ) {
-    let Frame {
-        errors,
-        unresolved,
-        mut reached,
-        children,
-        max_depth,
-        cycle,
-        limited,
-        size_limited,
-        partial_read,
-    } = frame;
-    reached.sort_unstable();
-    reached.dedup();
-    let reach = Arc::new(Reach {
-        direct: reached,
-        children,
-    });
-    let reach = ctx.cache.share_reach(slot, reach);
-    let errors = Arc::new(errors);
-    ctx.frame.errors.push(ErrorPart::Reached {
-        key: (slot, expr),
-        memoized: !cycle && unresolved.is_empty(),
-        parts: errors.clone(),
-    });
-    ctx.frame.unresolved.extend(unresolved.iter().cloned());
-    ctx.frame.children.push(reach.clone());
-    ctx.frame.max_depth = ctx.frame.max_depth.max(max_depth);
-    ctx.frame.cycle |= cycle;
-    ctx.frame.limited |= limited;
-    ctx.frame.size_limited |= size_limited;
-    ctx.frame.partial_read |= partial_read;
-    if cycle || limited || size_limited {
+    let folded = fold(frame, (slot, expr), true, ctx);
+    if folded.cut {
         return;
     }
     let entry = Entry {
         output,
-        reach,
-        unresolved,
-        errors,
-        r_max: max_depth.saturating_sub(start_depth),
+        reach: folded.reach,
+        unresolved: folded.unresolved,
+        errors: folded.errors,
+        r_max: folded.max_depth.saturating_sub(start_depth),
         size,
         context: None,
     };
@@ -463,76 +495,39 @@ pub(crate) fn materialize_state(slot: Slot, init: &Ast, ctx: &mut Ctx) -> Value 
         // Its errors stand where they were met, in order: not memoized, so
         // they're reported here every time, as inline ones are.
         ctx.size += entry.size;
-        ctx.frame.errors.push(ErrorPart::Reached {
-            key: (slot, false),
-            memoized: false,
-            parts: entry.errors.clone(),
-        });
-        ctx.frame
-            .unresolved
-            .extend(entry.unresolved.iter().cloned());
-        ctx.frame.children.push(entry.reach.clone());
-        ctx.frame.max_depth = ctx.frame.max_depth.max(ctx.depth + entry.r_max);
+        replay(entry, (slot, false), false, &mut ctx.frame, ctx.depth);
         return value.clone();
     }
 
     let outer = std::mem::take(&mut ctx.frame);
     let (start_depth, start_size) = (ctx.depth, ctx.size);
     let value = materialize_value(init, ctx);
-    let Frame {
-        errors,
-        unresolved,
-        mut reached,
-        children,
-        max_depth,
-        cycle,
-        limited,
-        size_limited,
-        partial_read,
-    } = std::mem::replace(&mut ctx.frame, outer);
+    let frame = std::mem::replace(&mut ctx.frame, outer);
+    let folded = fold(frame, (slot, false), false, ctx);
+    if folded.cut {
+        return value;
+    }
     // Nothing here depends on whether the text is still arriving: no
     // statement reached (whose own entry is kept per `partial`), no library
-    // check, no element.
-    let either_way = reached.is_empty() && !partial_read && elementless(&value);
-    reached.sort_unstable();
-    reached.dedup();
-    let reach = Arc::new(Reach {
-        direct: reached,
-        children,
-    });
-    let errors = Arc::new(errors);
-    ctx.frame.errors.push(ErrorPart::Reached {
-        key: (slot, false),
-        memoized: false,
-        parts: errors.clone(),
-    });
-    ctx.frame.unresolved.extend(unresolved.iter().cloned());
-    ctx.frame.children.push(reach.clone());
-    ctx.frame.max_depth = ctx.frame.max_depth.max(max_depth);
-    ctx.frame.cycle |= cycle;
-    ctx.frame.limited |= limited;
-    ctx.frame.size_limited |= size_limited;
-    ctx.frame.partial_read |= partial_read;
-    if !(cycle || limited || size_limited) {
-        let entry = |value: &Value| Entry {
-            output: Output::Value(value.clone()),
-            reach: reach.clone(),
-            unresolved: unresolved.clone(),
-            errors: errors.clone(),
-            r_max: max_depth.saturating_sub(start_depth),
-            size: ctx.size - start_size,
-            context: ctx.current_statement_id.clone(),
-        };
-        // The same value either way: kept once for both, so a stream whose
-        // pending text is closed at one push and not the next still takes
-        // the same value (see `evaluate::Reuse`).
-        if either_way {
-            let other = entry(&value);
-            ctx.cache.put(slot, !ctx.partial, false, other);
-        }
-        let this = entry(&value);
-        ctx.cache.put(slot, ctx.partial, false, this);
+    // check, no element. Then it's kept once for both, so a stream whose
+    // pending text is closed at one push and not the next still takes the
+    // same value (see `evaluate::Reuse`).
+    let either_way = folded.reached_nothing && !folded.partial_read && elementless(&value);
+    let entry = |value: &Value| Entry {
+        output: Output::Value(value.clone()),
+        reach: folded.reach.clone(),
+        unresolved: folded.unresolved.clone(),
+        errors: folded.errors.clone(),
+        r_max: folded.max_depth.saturating_sub(start_depth),
+        size: ctx.size - start_size,
+        context: ctx.current_statement_id.clone(),
+    };
+    if either_way {
+        let other = entry(&value);
+        ctx.cache.put(slot, !ctx.partial, false, other);
     }
+    let this = entry(&value);
+    ctx.cache.put(slot, ctx.partial, false, this);
     value
 }
 

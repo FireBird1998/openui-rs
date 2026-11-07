@@ -267,15 +267,16 @@ thread_local! {
     /// The addresses put in `READ`, in order, so a default's own can be told
     /// apart (see [`Reuse`]).
     static READ_LOG: RefCell<Vec<usize>> = const { RefCell::new(Vec::new()) };
-    /// Shared nodes of a stream's earlier push standing for this push's, by
-    /// address (see [`Reuse`]): an object read from one is the object read
-    /// from the other, as it would be had the default been evaluated now.
+    /// Elements and runtime expressions of a stream's earlier push standing
+    /// for this push's, by address (see [`Reuse`]): an object read from one
+    /// is the object read from the other, as it would be had the default
+    /// been evaluated now.
     static SAME_AS: RefCell<Aliases> = RefCell::new(Aliases::default());
 }
 
-/// The node at `address` as this push knows it: itself, or the one it stands
-/// for (see [`SAME_AS`]).
-fn now_known(address: usize) -> usize {
+/// The address this push knows an element or runtime expression by: its own,
+/// or that of the one it stands for (see [`SAME_AS`]).
+fn this_push(address: usize) -> usize {
     SAME_AS.with(|s| s.borrow().now.get(&address).copied().unwrap_or(address))
 }
 
@@ -426,17 +427,36 @@ pub(crate) fn state_defaults(
     // was, under the same depth limit.
     let mut in_step = reuse.max_depth == max_depth;
     reuse.max_depth = max_depth;
-    let caps = (reuse.work_cap.max(work), reuse.room_cap.max(room));
+    let most = Amounts {
+        work: reuse.most.work.max(work),
+        room: reuse.most.room.max(room),
+    };
     let mut earlier = std::mem::take(&mut reuse.records).into_iter();
+    // Every earlier value compared at this push lives until its pairs in
+    // `SAME_AS` are cleared, at the end: they're keyed by address, so a value
+    // freed before then could have its address taken by a new node, which
+    // would read as the one it was paired with.
+    let mut compared: Vec<Value> = Vec::new();
     let mut declared = Declared::default();
     for (id, value) in state.iter() {
-        let before = earlier.next().filter(|r| in_step && r.id == *id);
-        let unchanged = before.as_ref().is_some_and(|r| same(&r.value, value));
-        let before = before.filter(|_| unchanged);
+        let before = match earlier.next() {
+            Some(record) if in_step && record.id == *id => {
+                if same(&record.value, value) {
+                    Some(record)
+                } else {
+                    compared.push(record.value);
+                    None
+                }
+            }
+            _ => None,
+        };
         if !has_runtime(value) {
             out.state.set(id.clone(), value.clone());
             declared.plain.define(id.clone(), value.clone());
-            in_step &= unchanged;
+            in_step &= before.is_some();
+            if let Some(record) = before {
+                compared.push(record.value);
+            }
             reuse.records.push(Record {
                 id: id.clone(),
                 value: value.clone(),
@@ -444,35 +464,41 @@ pub(crate) fn state_defaults(
             });
             continue;
         }
-        let budgets = LIMITS.with(|l| (l.work.get(), l.room.get()));
+        let left = LIMITS.with(|l| Amounts {
+            work: l.work.get(),
+            room: l.room.get(),
+        });
         let decision = match &before {
-            Some(record) => record.decide(budgets, caps),
-            None => Decision::Evaluate(budgets),
+            Some(record) => record.decide(left, most),
+            None => Decision::Evaluate(left),
         };
         let (record, ended) = match (decision, before) {
             (Decision::Take, Some(record)) => {
                 let ended = record.take(id, &mut declared, &mut out);
-                (record.now(value), ended)
+                (record.moved_to(value, &mut compared), ended)
             }
-            (Decision::Spent, Some(record)) => {
-                spent(id, &mut declared, &mut out);
-                (record.now(value), Ended::Spent)
+            (Decision::RunsOut, Some(record)) => {
+                ran_out(id, &mut declared, &mut out);
+                (record.moved_to(value, &mut compared), Ended::RanOut)
             }
-            (Decision::Evaluate(probe), before) => {
+            (Decision::Evaluate(given), before) => {
                 let was_null = before.as_ref().is_some_and(|r| r.outcome.null());
+                if let Some(record) = before {
+                    compared.push(record.value);
+                }
                 let (record, ended) =
-                    evaluate_default((id, value), &mut declared, &mut out, budgets, probe);
+                    evaluate_default((id, value), &mut declared, &mut out, left, given);
                 // The defaults after it, as the last push found them, read it
                 // as it was: they hold if it's null now as then.
                 in_step &= was_null && ended != Ended::Whole;
                 (record, ended)
             }
-            (_, None) => unreachable!("a default is taken or found spent only by its record"),
+            (_, None) => unreachable!("a default is taken or found out by its record only"),
         };
         reuse.records.push(record);
         // Out of room or work, every expression default after is null,
         // whatever it reads: any record says so.
-        if ended == Ended::Spent {
+        if ended == Ended::RanOut {
             in_step = true;
         }
     }
@@ -485,7 +511,30 @@ pub(crate) fn state_defaults(
     PROPERTIES.with(|r| r.borrow_mut().clear());
     PROPERTIES_LOG.with(|l| l.borrow_mut().clear());
     SAME_AS.with(|s| *s.borrow_mut() = Aliases::default());
+    drop(compared);
+    drop(earlier);
     out
+}
+
+/// Work and room together: what a default took, had, or has left.
+#[derive(Clone, Copy, Default, PartialEq, Eq)]
+struct Amounts {
+    work: usize,
+    room: usize,
+}
+
+impl Amounts {
+    /// Neither is less than in `other`.
+    fn covers(self, other: Amounts) -> bool {
+        self.work >= other.work && self.room >= other.room
+    }
+
+    fn less(self, taken: Amounts) -> Amounts {
+        Amounts {
+            work: self.work - taken.work,
+            room: self.room - taken.room,
+        }
+    }
 }
 
 /// How one default came out.
@@ -495,11 +544,11 @@ enum Ended {
     /// Past the depth limit: null, the rest going on.
     TooDeep,
     /// Out of room or work: null, as is every expression default after it.
-    Spent,
+    RanOut,
 }
 
 /// Default `id` ran out of room or work: null, and no room or work is left.
-fn spent(id: &str, declared: &mut Declared, out: &mut Evaluated) {
+fn ran_out(id: &str, declared: &mut Declared, out: &mut Evaluated) {
     LIMITS.with(|l| {
         l.work.set(0);
         l.room.set(0);
@@ -516,20 +565,26 @@ fn too_deep(id: &str, declared: &mut Declared, out: &mut Evaluated) {
     declared.evaluated.define(id.to_owned(), Js::Null);
 }
 
+/// The work and room left set to `left`.
+fn set_left(left: Amounts) {
+    LIMITS.with(|l| {
+        l.work.set(left.work);
+        l.room.set(left.room);
+    });
+}
+
 /// What one evaluation of a default found.
 struct Run {
     js: Js,
     value: Option<Value>,
     cut: Option<Cut>,
-    work_left: usize,
-    room_left: usize,
+    left: Amounts,
 }
 
-/// Evaluate one default with `work` steps and `room` bytes to go.
-fn run(value: &Value, declared: &Declared, (work, room): (usize, usize)) -> Run {
+/// Evaluate one default with `given` work and room.
+fn run(value: &Value, declared: &Declared, given: Amounts) -> Run {
+    set_left(given);
     LIMITS.with(|l| {
-        l.work.set(work);
-        l.room.set(room);
         l.size_limited.set(false);
         l.depth_limited.set(false);
         l.cut.set(None);
@@ -540,61 +595,57 @@ fn run(value: &Value, declared: &Declared, (work, room): (usize, usize)) -> Run 
         js,
         value: converted,
         cut: l.cut.take(),
-        work_left: l.work.get(),
-        room_left: l.room.get(),
+        left: Amounts {
+            work: l.work.get(),
+            room: l.room.get(),
+        },
     })
 }
 
-/// Evaluate default `id` with `budgets` (work and room) to go, as a one-shot
-/// parse would, into `declared` and `out`, and say what it found and how it
-/// came out.
+/// Evaluate default `id` with `left` work and room to go, as a one-shot parse
+/// would, into `declared` and `out`, and say what it found and how it came
+/// out.
 ///
-/// Given larger `probe` budgets (a stream found it spent before, with these
-/// inputs), it's evaluated with those instead, to learn more than this push
-/// needs. The budgets are all that differs, and a run takes the same course
-/// whatever they are until one runs out. So where it went whole or too deep
-/// within `budgets`, it's the run `budgets` give; anywhere else it's spent.
+/// Given more (`given`: a stream found it out of work or room before, with
+/// these inputs), it's evaluated with that instead, to learn more than this
+/// push needs. The amounts are all that differs, and a run takes the same
+/// course whatever they are until one runs out. So where it went whole or too
+/// deep within `left`, it's the run `left` gives; anywhere else it runs out.
 fn evaluate_default(
     (id, value): (&String, &Value),
     declared: &mut Declared,
     out: &mut Evaluated,
-    budgets: (usize, usize),
-    probe: (usize, usize),
+    left: Amounts,
+    given: Amounts,
 ) -> (Record, Ended) {
-    let marks = Made::mark(declared);
-    let mut probe = probe;
-    let mut ran = run(value, declared, probe);
-    if probe != budgets && ran.cut != Some(Cut::Room) && ran.cut != Some(Cut::Work) {
+    let marks = FirstReads::mark(declared);
+    let mut given = given;
+    let mut ran = run(value, declared, given);
+    if given != left && !matches!(ran.cut, Some(Cut::Room | Cut::Work)) {
         // Whole or too deep with exactly this push's work: a loop may have
         // seen some left where it would see none. Run it as it is.
-        if budgets.0 == probe.0 - ran.work_left && budgets.1 >= probe.1 - ran.room_left {
-            Made::undo(marks, declared);
-            probe = budgets;
-            ran = run(value, declared, probe);
+        let took = given.less(ran.left);
+        if left.work == took.work && left.room >= took.room {
+            FirstReads::undo(marks, declared);
+            given = left;
+            ran = run(value, declared, given);
         }
     }
-    let record = Record::of(id, value, &ran, probe, Made::since(marks, declared));
-    let took = (probe.0 - ran.work_left, probe.1 - ran.room_left);
-    let within = budgets.0 >= took.0 && budgets.1 >= took.1;
+    let record = Record::of(id, value, &ran, given, FirstReads::since(marks, declared));
+    let took = given.less(ran.left);
     let ended = match ran.cut {
-        None if within => Ended::Whole,
-        Some(Cut::Depth) if within => Ended::TooDeep,
-        _ => Ended::Spent,
+        None if left.covers(took) => Ended::Whole,
+        Some(Cut::Depth) if left.covers(took) => Ended::TooDeep,
+        _ => Ended::RanOut,
     };
     match ended {
-        Ended::Spent => spent(id, declared, out),
+        Ended::RanOut => ran_out(id, declared, out),
         Ended::TooDeep => {
-            LIMITS.with(|l| {
-                l.work.set(budgets.0 - took.0);
-                l.room.set(budgets.1 - took.1);
-            });
+            set_left(left.less(took));
             too_deep(id, declared, out);
         }
         Ended::Whole => {
-            LIMITS.with(|l| {
-                l.work.set(budgets.0 - took.0);
-                l.room.set(budgets.1 - took.1);
-            });
+            set_left(left.less(took));
             match ran.value {
                 Some(v) => out.state.set(id.clone(), v),
                 None => {
@@ -612,43 +663,47 @@ fn evaluate_default(
 /// What evaluating a stream's defaults found at its last push, so the next
 /// push needn't evaluate again what nothing changed under.
 ///
-/// A default's run takes the same course whatever its budgets until one runs
-/// out, and it stops where one does. So it comes out whole, or too deep,
-/// having taken some work and room, or spent (out of room or work, and then
-/// so is every expression default after it); and given the same value and
-/// reading the same defaults, it comes out the same way with any budgets that
-/// cover what it took, and spent with any that don't.
+/// A default's run takes the same course whatever work and room it's given
+/// until one runs out, and it stops where one does. So it comes out whole, or
+/// too deep, having taken some work and room, or runs out of room or work
+/// (and then so does every expression default after it); and given the same
+/// value and reading the same defaults, it comes out the same way given
+/// anything that covers what it took, and runs out given anything that
+/// doesn't.
 ///
 /// Defaults are taken in order. While each is as it was (the same value, its
-/// shared nodes paired one to one with the earlier push's, see [`same`]), one
-/// whole or too deep is taken as it was where this push's budgets cover what
-/// it took, and found spent where they don't; one found spent is found so
-/// again with budgets no larger than it had. Whatever it read when it was
-/// evaluated, elements converted and plain defaults read, is read again by
-/// the defaults after it, as the same objects. So the result is the one
-/// evaluating them all would give, as a one-shot parse does.
+/// elements and runtime expressions paired one to one with the earlier
+/// push's, see [`same`]), one whole or too deep is taken as it was where this
+/// push leaves it what it took, and found out where it doesn't; one that ran
+/// out is found out again given no more than it had. Whatever it read first
+/// when it was evaluated (elements converted, properties of runtime
+/// expressions, plain defaults) is read again by the defaults after it, as
+/// the same objects, whether it came out whole or too deep. So the result is
+/// the one evaluating them all would give, as a one-shot parse does.
 ///
-/// A default found spent and then given more is evaluated with twice what it
-/// ran out of last time (no more than any push of this stream can give): a
-/// default a stream keeps finding spent as its limits grow costs about as
-/// much in all as evaluating it once at the end.
+/// A default that ran out and is then given more is evaluated with twice
+/// what it ran out of last time (no more than any push of this stream can
+/// give): a default a stream keeps finding out as its limits grow costs about
+/// as much in all as evaluating it once at the end.
 #[derive(Default)]
 pub(crate) struct Reuse {
     records: Vec<Record>,
     /// The evaluator's depth limit they were found under.
     max_depth: usize,
     /// The most work and room any push of the stream can give.
-    work_cap: usize,
-    room_cap: usize,
+    most: Amounts,
 }
 
 impl Reuse {
-    /// For a stream whose pushes give no more than `work_cap` steps and
-    /// `room_cap` bytes.
-    pub(crate) fn new(work_cap: usize, room_cap: usize) -> Reuse {
+    /// For a stream under `limits`: no push can give more work or room than
+    /// its whole program allows.
+    pub(crate) fn for_limits(limits: &crate::Limits) -> Reuse {
+        let program = limits.program_size();
         Reuse {
-            work_cap,
-            room_cap,
+            most: Amounts {
+                work: limits.work_for(program),
+                room: limits.result_size_for(program),
+            },
             ..Reuse::default()
         }
     }
@@ -664,26 +719,26 @@ struct Record {
 enum Outcome {
     /// Nothing to evaluate.
     Plain,
-    /// Whole, or too deep, having taken `took` (work, room): what it gave,
-    /// what it read first, and whether its work ran out exactly (then only
-    /// the same work gives the same run, a loop having seen none left).
+    /// Whole, or too deep (`gave` is `None`), having taken `took`; what it
+    /// read first; and whether its work ran out exactly (then only the same
+    /// work gives the same run, a loop having seen none left).
     Ran {
-        took: (usize, usize),
+        took: Amounts,
         exact: bool,
-        whole: Option<Whole>,
+        first: FirstReads,
+        gave: Option<Gave>,
+        /// Neither what it gave nor what it read first holds an element or a
+        /// runtime expression of its value (see [`Record::moved_to`]).
+        unpaired: bool,
     },
-    /// Spent, having been given `had` (work, room), and out of `out`.
-    Spent { had: (usize, usize), out: Cut },
+    /// Out of room or work (`of`), having had `had`.
+    RanOut { had: Amounts, of: Cut },
 }
 
-/// What a whole default gave and read.
-struct Whole {
+/// What a whole default gave.
+struct Gave {
     js: Js,
     value: Option<Value>,
-    made: Made,
-    /// Neither what it gave nor what it read first holds a shared node of
-    /// its value (see [`Record::now`]).
-    nodeless: bool,
 }
 
 impl Outcome {
@@ -691,7 +746,7 @@ impl Outcome {
     fn null(&self) -> bool {
         matches!(
             self,
-            Outcome::Ran { whole: None, .. } | Outcome::Spent { .. }
+            Outcome::Ran { gave: None, .. } | Outcome::RanOut { .. }
         )
     }
 }
@@ -699,74 +754,67 @@ impl Outcome {
 enum Decision {
     /// As it was.
     Take,
-    /// Spent, without evaluating it.
-    Spent,
-    /// Evaluated with these budgets (see [`evaluate_default`]).
-    Evaluate((usize, usize)),
+    /// Runs out, without evaluating it.
+    RunsOut,
+    /// Evaluated given this (see [`evaluate_default`]).
+    Evaluate(Amounts),
 }
 
 impl Record {
-    /// What an unchanged default does with `budgets` (work, room) to go, in a
-    /// stream whose pushes give no more than `caps`.
-    fn decide(&self, (work, room): (usize, usize), caps: (usize, usize)) -> Decision {
+    /// What an unchanged default does with `left` to go, in a stream whose
+    /// pushes give no more than `most`.
+    fn decide(&self, left: Amounts, most: Amounts) -> Decision {
         match self.outcome {
-            Outcome::Plain => Decision::Evaluate((work, room)),
-            Outcome::Ran {
-                took: (w, r),
-                exact,
-                ..
-            } => {
+            Outcome::Plain => Decision::Evaluate(left),
+            Outcome::Ran { took, exact, .. } => {
                 // With what it took or more, the same run; with less, it
                 // runs out. With exactly the work it took, a loop may see
                 // none left where it saw some: only the same run if it did.
-                if room < r || work < w {
-                    Decision::Spent
-                } else if work == w && !exact {
-                    Decision::Evaluate((work, room))
+                if !left.covers(took) {
+                    Decision::RunsOut
+                } else if left.work == took.work && !exact {
+                    Decision::Evaluate(left)
                 } else {
                     Decision::Take
                 }
             }
-            Outcome::Spent {
-                had: (w, _),
-                out: Cut::Work,
-            } => {
-                if work <= w {
-                    Decision::Spent
+            Outcome::RanOut { had, of: Cut::Work } => {
+                if left.work <= had.work {
+                    Decision::RunsOut
                 } else {
-                    Decision::Evaluate((work.max(w.saturating_mul(2).min(caps.0)), room))
+                    Decision::Evaluate(Amounts {
+                        work: left.work.max(had.work.saturating_mul(2).min(most.work)),
+                        room: left.room,
+                    })
                 }
             }
-            Outcome::Spent {
-                had: (_, r),
-                out: Cut::Room,
-            } => {
-                if room <= r {
-                    Decision::Spent
+            Outcome::RanOut { had, of: Cut::Room } => {
+                if left.room <= had.room {
+                    Decision::RunsOut
                 } else {
-                    Decision::Evaluate((work, room.max(r.saturating_mul(2).min(caps.1))))
+                    Decision::Evaluate(Amounts {
+                        work: left.work,
+                        room: left.room.max(had.room.saturating_mul(2).min(most.room)),
+                    })
                 }
             }
-            Outcome::Spent {
-                out: Cut::Depth, ..
-            } => Decision::Evaluate((work, room)),
+            Outcome::RanOut { of: Cut::Depth, .. } => Decision::Evaluate(left),
         }
     }
 
-    /// The record of the same default at this push, whose `value` is the
-    /// same as this one (see [`same`]). Where nothing kept holds a node of
-    /// the earlier value, it's kept with this push's value instead, so the
-    /// next push finds it the same by its pointer alone. Otherwise it stays
-    /// with the earlier value, whose nodes what it kept stands for.
-    fn now(mut self, value: &Value) -> Record {
-        let nodeless = match &self.outcome {
-            Outcome::Ran {
-                whole: Some(whole), ..
-            } => whole.nodeless,
+    /// This record, found the same as `value` at this push (see [`same`]).
+    /// Where nothing it kept holds an element or runtime expression of the
+    /// earlier value, it moves to this push's value, so the next push finds
+    /// it the same by its pointer alone; the earlier value goes to `compared`
+    /// (see [`state_defaults`]). Otherwise it stays with the earlier value,
+    /// whose elements and expressions what it kept stands for.
+    fn moved_to(mut self, value: &Value, compared: &mut Vec<Value>) -> Record {
+        let unpaired = match &self.outcome {
+            Outcome::Ran { unpaired, .. } => *unpaired,
             _ => true,
         };
-        if nodeless {
-            self.value = value.clone();
+        if unpaired {
+            compared.push(std::mem::replace(&mut self.value, value.clone()));
         }
         self
     }
@@ -774,54 +822,50 @@ impl Record {
     /// Take a default as it was, whole or too deep.
     fn take(&self, id: &str, declared: &mut Declared, out: &mut Evaluated) -> Ended {
         let Outcome::Ran {
-            took: (w, r),
-            whole,
-            ..
+            took, first, gave, ..
         } = &self.outcome
         else {
             unreachable!("only a default that ran is taken");
         };
         LIMITS.with(|l| {
-            l.work.set(l.work.get() - w);
-            l.room.set(l.room.get() - r);
+            l.work.set(l.work.get() - took.work);
+            l.room.set(l.room.get() - took.room);
         });
-        let Some(whole) = whole else {
+        first.replay(declared);
+        let Some(gave) = gave else {
             too_deep(id, declared, out);
             return Ended::TooDeep;
         };
-        whole.made.again(declared);
-        match &whole.value {
+        match &gave.value {
             Some(v) => out.state.set(id.to_owned(), v.clone()),
             None => {
                 out.undefined.insert(id.to_owned());
             }
         }
-        declared.evaluated.define(id.to_owned(), whole.js.clone());
+        declared.evaluated.define(id.to_owned(), gave.js.clone());
         Ended::Whole
     }
 
-    /// What a run of `value` with `had` (work, room) found.
-    fn of(id: &str, value: &Value, ran: &Run, had: (usize, usize), made: Made) -> Record {
-        let took = (had.0 - ran.work_left, had.1 - ran.room_left);
+    /// What a run of `value` given `had` found.
+    fn of(id: &str, value: &Value, ran: &Run, had: Amounts, first: FirstReads) -> Record {
+        let ran_whole = |gave: Option<Gave>| {
+            let unpaired = first.is_empty_of_shared()
+                && gave.as_ref().is_none_or(|gave| !holds_expression(&gave.js));
+            Outcome::Ran {
+                took: had.less(ran.left),
+                exact: ran.left.work == 0,
+                first,
+                gave,
+                unpaired,
+            }
+        };
         let outcome = match ran.cut {
-            None => Outcome::Ran {
-                took,
-                exact: ran.work_left == 0,
-                whole: Some(Whole {
-                    js: ran.js.clone(),
-                    value: ran.value.clone(),
-                    nodeless: made.elements.is_empty()
-                        && made.properties.is_empty()
-                        && !holds_node(&ran.js),
-                    made,
-                }),
-            },
-            Some(Cut::Depth) => Outcome::Ran {
-                took,
-                exact: ran.work_left == 0,
-                whole: None,
-            },
-            Some(out) => Outcome::Spent { had, out },
+            None => ran_whole(Some(Gave {
+                js: ran.js.clone(),
+                value: ran.value.clone(),
+            })),
+            Some(Cut::Depth) => ran_whole(None),
+            Some(of) => Outcome::RanOut { had, of },
         };
         Record {
             id: id.to_owned(),
@@ -835,13 +879,13 @@ impl Record {
 /// of runtime expressions it read, and plain defaults it read. The defaults
 /// after it read the same objects.
 #[derive(Default)]
-struct Made {
+struct FirstReads {
     elements: Vec<(usize, Value, Js)>,
     properties: Vec<(usize, String, Arc<Ast>, Js)>,
     plain: Vec<(String, Js)>,
 }
 
-/// Where the logs of shared reads stand.
+/// Where the logs of first reads stand.
 #[derive(Clone, Copy)]
 struct Marks {
     elements: usize,
@@ -849,7 +893,7 @@ struct Marks {
     plain: usize,
 }
 
-impl Made {
+impl FirstReads {
     /// Where the logs stand before a default is evaluated.
     fn mark(declared: &Declared) -> Marks {
         Marks {
@@ -859,8 +903,13 @@ impl Made {
         }
     }
 
+    /// No element or runtime expression read first.
+    fn is_empty_of_shared(&self) -> bool {
+        self.elements.is_empty() && self.properties.is_empty()
+    }
+
     /// What was read first since `marks`.
-    fn since(marks: Marks, declared: &Declared) -> Made {
+    fn since(marks: Marks, declared: &Declared) -> FirstReads {
         let elements = READ_LOG.with(|l| {
             READ.with(|r| {
                 let read = r.borrow();
@@ -895,7 +944,7 @@ impl Made {
             .iter()
             .filter_map(|name| Some((name.clone(), read.get(name)?.clone())))
             .collect();
-        Made {
+        FirstReads {
             elements,
             properties,
             plain,
@@ -927,18 +976,18 @@ impl Made {
     }
 
     /// Read again what was read, as the same objects.
-    fn again(&self, declared: &Declared) {
+    fn replay(&self, declared: &Declared) {
         READ.with(|r| {
             let mut read = r.borrow_mut();
             for (address, value, js) in &self.elements {
-                read.insert(now_known(*address), (value.clone(), js.clone()));
+                read.insert(this_push(*address), (value.clone(), js.clone()));
             }
         });
         PROPERTIES.with(|r| {
             let mut read = r.borrow_mut();
             for (address, key, owner, js) in &self.properties {
                 read.insert(
-                    (now_known(*address), key.clone()),
+                    (this_push(*address), key.clone()),
                     PropertyRead {
                         owner: Arc::clone(owner),
                         value: js.clone(),
@@ -953,28 +1002,29 @@ impl Made {
     }
 }
 
-/// Whether a value holds a runtime expression read as a value, whose node's
+/// Whether a value holds a runtime expression read as a value, whose
 /// identity it carries.
-fn holds_node(js: &Js) -> bool {
-    crate::stack::grow_stack!(holds_node(js));
+fn holds_expression(js: &Js) -> bool {
+    crate::stack::grow_stack!(holds_expression(js));
     match js {
         Js::Ast(_) => true,
-        Js::Arr(items) => items.iter().any(holds_node),
-        Js::Obj(o) => o.values().any(holds_node),
+        Js::Arr(items) => items.iter().any(holds_expression),
+        Js::Obj(o) => o.values().any(holds_expression),
         _ => false,
     }
 }
 
-/// The shared nodes of an earlier push paired with this push's (see
-/// [`same`]): `now` by `then`, and back.
+/// The elements and runtime expressions of an earlier push paired with this
+/// push's (see [`same`]), by address: `now` by `then`, and back.
 #[derive(Default)]
 struct Aliases {
     now: HashMap<usize, usize>,
     then: HashMap<usize, usize>,
 }
 
-/// Pair the shared node at `then` (an earlier push's) with the one at `now`
-/// (this push's): `false` if either is paired with another already.
+/// Pair the element or runtime expression at `then` (an earlier push's) with
+/// the one at `now` (this push's): `false` if either is paired with another
+/// already.
 fn pair(then: usize, now: usize) -> bool {
     SAME_AS.with(|s| {
         let mut s = s.borrow_mut();
@@ -991,9 +1041,13 @@ fn pair(then: usize, now: usize) -> bool {
 }
 
 /// Whether a default's value at an earlier push is its value at this one:
-/// equal, with every shared node (an element, a runtime expression), whose
-/// identity the evaluator can see, paired one to one with this push's.
-/// Evaluated now, it would give what it gave then.
+/// equal, with every element and runtime expression in it, whose identity
+/// the evaluator can see, paired one to one with this push's. Evaluated now,
+/// it would give what it gave then.
+///
+/// A comparison that fails may leave pairs behind: harmless, as both values
+/// live until the pairs are cleared (see [`state_defaults`]), and a pair
+/// only ever stands for an equal element or expression at the same place.
 fn same(then: &Value, now: &Value) -> bool {
     crate::stack::grow_stack!(same(then, now));
     match (then, now) {
@@ -1015,7 +1069,7 @@ fn same(then: &Value, now: &Value) -> bool {
                         && a.statement_id == b.statement_id
                         && same_entries(&a.props, &b.props)))
         }
-        (Value::Ast(a), Value::Ast(b)) => same_node(a, b),
+        (Value::Ast(a), Value::Ast(b)) => same_expression(a, b),
         _ => false,
     }
 }
@@ -1028,7 +1082,7 @@ fn same_entries(a: &JsObject<Value>, b: &JsObject<Value>) -> bool {
 }
 
 /// A shared runtime expression: paired, and the same node.
-fn same_node(a: &Arc<Ast>, b: &Arc<Ast>) -> bool {
+fn same_expression(a: &Arc<Ast>, b: &Arc<Ast>) -> bool {
     pair(Arc::as_ptr(a) as usize, Arc::as_ptr(b) as usize) && (Arc::ptr_eq(a, b) || same_ast(a, b))
 }
 
@@ -1048,7 +1102,7 @@ fn same_field(x: &Field, y: &Field) -> bool {
         (Field::Text(a), Field::Text(b)) => a == b,
         (Field::Num(a), Field::Num(b)) => a.to_bits() == b.to_bits(),
         (Field::Bool(a), Field::Bool(b)) => a == b,
-        (Field::Node(a), Field::Node(b)) => same_node(a, b),
+        (Field::Node(a), Field::Node(b)) => same_expression(a, b),
         (Field::Nodes(a), Field::Nodes(b)) => {
             a.len() == b.len() && a.iter().zip(b.iter()).all(|(x, y)| same_ast(x, y))
         }
@@ -1171,7 +1225,7 @@ fn from_value(value: &Value) -> Js {
         Value::Arr(items) => Js::Arr(Arc::new(items.iter().map(from_value).collect())),
         Value::Obj(o) => from_object(o),
         Value::Element(element) => {
-            let address = now_known(Arc::as_ptr(element) as usize);
+            let address = this_push(Arc::as_ptr(element) as usize);
             if let Some(js) = READ.with(|r| r.borrow().get(&address).map(|(_, js)| js.clone())) {
                 return js;
             }
@@ -1246,7 +1300,7 @@ fn whole_ast(node: &Ast) -> Js {
 /// `node[key]`, the node read as the plain object its JSON is: a step, and
 /// one per item of a list it reads.
 fn ast_property(node: &Arc<Ast>, key: &str) -> Option<Js> {
-    let cache_key = (now_known(Arc::as_ptr(node) as usize), key.to_owned());
+    let cache_key = (this_push(Arc::as_ptr(node) as usize), key.to_owned());
     if let Some(value) =
         PROPERTIES.with(|r| r.borrow().get(&cache_key).map(|read| read.value.clone()))
     {
@@ -2246,7 +2300,7 @@ fn loose_eq(a: &Js, b: &Js) -> bool {
         (Js::Arr(x), Js::Arr(y)) => Arc::ptr_eq(x, y),
         (Js::Obj(x), Js::Obj(y)) => Arc::ptr_eq(x, y),
         (Js::Ast(x), Js::Ast(y)) => {
-            now_known(Arc::as_ptr(x) as usize) == now_known(Arc::as_ptr(y) as usize)
+            this_push(Arc::as_ptr(x) as usize) == this_push(Arc::as_ptr(y) as usize)
         }
         (
             Js::Function {
