@@ -263,6 +263,55 @@ fn an_unknown_limit_names_the_valid_ones_and_fails() {
 }
 
 #[test]
+fn limits_apply_to_tokens_and_prompt() {
+    let dir = conformance();
+    // `tokens` reads the program up to the program-size limit, as parsing does.
+    let program = dir.join("cases/hand/67-lexer-number-forms.oui");
+    let out = Command::new(env!("CARGO_BIN_EXE_openui-lang"))
+        .args(["tokens", "--limit", "program-size=40"])
+        .arg(&program)
+        .output()
+        .unwrap();
+    assert!(out.status.success());
+    let text = read(&program);
+    let expected = tokens_to_json(&tokenize(&text[..40]));
+    assert_eq!(
+        String::from_utf8(out.stdout).unwrap(),
+        format!("{expected}\n")
+    );
+
+    // `prompt` refuses a spec nesting past the depth limit's 44 JSON levels
+    // at depth 4, and takes it under the default.
+    let mut schema = serde_json::json!({"type": "string"});
+    for _ in 0..30 {
+        schema = serde_json::json!({"type": "object", "properties": {"a": schema}});
+    }
+    let spec = serde_json::json!({"tools": [{"name": "t", "inputSchema": schema}]}).to_string();
+    for (limit, succeeds) in [("depth=4", false), ("depth=256", true)] {
+        let mut child = Command::new(env!("CARGO_BIN_EXE_openui-lang"))
+            .args(["prompt", "-", "--limit", limit])
+            .stdin(std::process::Stdio::piped())
+            .stdout(std::process::Stdio::piped())
+            .stderr(std::process::Stdio::piped())
+            .spawn()
+            .unwrap();
+        use std::io::Write;
+        child
+            .stdin
+            .take()
+            .unwrap()
+            .write_all(spec.as_bytes())
+            .unwrap();
+        let out = child.wait_with_output().unwrap();
+        assert_eq!(out.status.success(), succeeds, "{limit}");
+        if !succeeds {
+            let stderr = String::from_utf8(out.stderr).unwrap();
+            assert!(stderr.contains("nests deeper than 44"), "{stderr}");
+        }
+    }
+}
+
+#[test]
 fn prompt_reports_the_error_and_fails() {
     let dir = conformance();
     let out = Command::new(env!("CARGO_BIN_EXE_openui-lang"))

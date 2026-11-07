@@ -182,14 +182,31 @@
 //! The limits count bytes and levels, never time, so a result is the same on
 //! every machine. No default cuts a program in the conformance corpus.
 //!
+//! Every other entry point takes the same value, beside a form that uses the
+//! defaults. Where it has flags, hitting a limit cuts and flags the result;
+//! where it has an error, a limit refuses the input with it:
+//!
+//! - [`merge_statements_with_limits`]: the program-size limit applies to each
+//!   input, the depth limit to each statement's expression, with
+//!   `size_limited` and `depth_limited` on the [`Merged`] result.
+//! - [`parse_expression_with_limits`]: the depth limit, and whether it cut.
+//! - [`parse_json_with_limits`], [`json_to_openui_with_limits`],
+//!   [`generate_system_prompt_with_limits`] and
+//!   [`generate_prompt_with_limits`]: JSON nesting deeper than three levels
+//!   per level of the depth limit and 32 more (800 at the default) is refused
+//!   with their error, so whatever a parse under the same limits produces
+//!   still reads back, converts back and nests. Their time and output grow
+//!   with the JSON, nothing more, and it's already in the caller's memory, so
+//!   the size limits don't apply.
+//!
 //! The core grows its stack on demand: when a call runs low, it goes on in a
 //! segment allocated on the heap. And a result frees its tree with a loop,
 //! not recursion. So the core needs no minimum thread stack: it parses, and
 //! its results drop, on a 64 KB one, at the default depth limit or a raised
 //! one, optimized or not. The exception is [`parse_json`]'s result: a
-//! `serde_json::Value`, up to 800 levels deep, which drops by recursion as
-//! serde_json's own type does. That takes under 64 KB optimized, but more
-//! in an unoptimized build.
+//! `serde_json::Value`, which drops by recursion as serde_json's own type
+//! does. At the default's 800 levels that takes under 64 KB optimized; free a
+//! value read under a raised depth limit with [`free_json`], which loops.
 //!
 //! Because they free themselves, [`Value`] and [`Ast`] implement [`Drop`],
 //! so a pattern can't move a field out of one: borrow it instead, and clone
@@ -268,20 +285,24 @@ fn conformance_dir() -> std::path::PathBuf {
 pub use ast::{Ast, RefType};
 pub use builtins::{is_builtin, is_reserved_call};
 pub use enrich::{EnrichedError, enrich_errors, enriched_errors_to_json};
-pub use expr::parse_expression;
-pub use js::{JsObject, JsonError, parse_json, stringify_json};
+pub use expr::{parse_expression, parse_expression_with_limits};
+pub use free::free_json;
+pub use js::{JsObject, JsonError, parse_json, parse_json_with_limits, stringify_json};
 pub use lexer::{Token, tokenize, tokens_to_json};
 pub use library::{Call, CallKind, Component, Library, Param};
 pub use limits::Limits;
-pub use merge::merge_statements;
+pub use merge::{Merged, merge_statements, merge_statements_with_limits};
 pub use parser::{parse, parse_with_limits};
 pub use preprocess::{preprocess, strip_fences};
-pub use prompt::{PromptError, generate_prompt, generate_system_prompt};
+pub use prompt::{
+    PromptError, generate_prompt, generate_prompt_with_limits, generate_system_prompt,
+    generate_system_prompt_with_limits,
+};
 pub use result::{
     Element, Meta, MutationStatement, ParseResult, QueryStatement, Severity, ValidationError,
     ValidationErrorCode, Value,
 };
-pub use serialize::{SerializeError, json_to_openui};
+pub use serialize::{SerializeError, json_to_openui, json_to_openui_with_limits};
 pub use statements::{IdKind, RawStatement, auto_close, split};
 pub use stream::StreamParser;
 

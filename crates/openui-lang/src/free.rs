@@ -149,9 +149,17 @@ fn ast_children(ast: &mut Ast, rest: &mut Vec<Node>) {
     }
 }
 
-/// Free a `serde_json::Value` with a loop. serde_json's own drop recurses, so
-/// the JSON the core reads back while parsing is freed through here instead.
-pub(crate) fn free_json(json: serde_json::Value) {
+/// Free a `serde_json::Value` with a loop, so it needs no stack however deep
+/// it nests.
+///
+/// serde_json's own drop recurses, a few frames per level, on whoever drops
+/// the value. That's fine at the default depth limit (a value from
+/// [`crate::parse_json`] nests at most 800 levels, and drops in under 64 KB
+/// of stack optimized), but a value read under a raised depth limit
+/// ([`crate::parse_json_with_limits`]) can outgrow a small thread's stack.
+/// Free such a value through here instead of dropping it. The JSON the core
+/// reads back while parsing is freed this way too.
+pub fn free_json(json: serde_json::Value) {
     use serde_json::Value as Json;
     let mut rest = vec![json];
     while let Some(mut json) = rest.pop() {

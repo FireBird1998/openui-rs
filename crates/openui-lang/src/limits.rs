@@ -50,7 +50,9 @@ impl Limits {
 
     /// How deep expressions, reference chains and evaluated defaults may nest
     /// (defaults three JSON levels per level); deeper parts become null and
-    /// the result is flagged `depth_limited`.
+    /// the result is flagged `depth_limited`. The entry points that take JSON
+    /// (reading it, converting it back to source, prompt specs) allow three
+    /// JSON levels per level and 32 more, and refuse deeper input.
     pub const fn depth(&self) -> usize {
         self.depth
     }
@@ -85,6 +87,15 @@ impl Limits {
 }
 
 impl Limits {
+    /// How deep JSON may nest for the entry points that take JSON (reading
+    /// it, converting it back to source, prompt specs): three JSON levels per
+    /// level of the depth limit, as deep as a parse result under these
+    /// limits nests (an evaluated default; measured at 764 of 768 at the
+    /// default), and 32 more to spare. 800 at the default depth.
+    pub(crate) const fn json_depth(&self) -> usize {
+        self.depth.saturating_mul(3).saturating_add(32)
+    }
+
     /// The part of `text` within `room` bytes, never splitting a character,
     /// and whether anything was left out.
     pub(crate) fn fit(text: &str, room: usize) -> (&str, bool) {

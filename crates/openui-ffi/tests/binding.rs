@@ -8,7 +8,8 @@ use std::sync::Arc;
 
 use openui_ffi::{
     ComponentLibrary, OpenUiError, ParseLimits, ParseOutput, StreamSession, generate_system_prompt,
-    merge_statements, parse, parse_with_limits,
+    generate_system_prompt_with_limits, merge_statements, merge_statements_with_limits, parse,
+    parse_with_limits,
 };
 use openui_lang::{Limits, ParseResult, StreamParser};
 
@@ -304,6 +305,58 @@ fn limits_reach_the_core_one_shot_and_streaming() {
         &defaults,
         &openui_lang::parse(&program, &core_library, None)
     ));
+}
+
+#[test]
+fn limits_reach_merging_and_prompts() {
+    let existing = "root = Stack([a, b])\na = Text(\"A\")\nb = Text(\"B\")";
+    let patch = "c = Text(\"C\")";
+    let limits = ParseLimits {
+        program_size: Some(34),
+        ..ParseLimits::default()
+    };
+    let want = openui_lang::merge_statements_with_limits(
+        existing,
+        patch,
+        None,
+        Limits::default().with_program_size(34),
+    );
+    assert!(want.size_limited);
+    let got = merge_statements_with_limits(existing.to_owned(), patch.to_owned(), None, limits);
+    assert_eq!(
+        (got.text, got.size_limited, got.depth_limited),
+        (want.text, want.size_limited, want.depth_limited)
+    );
+    let whole = merge_statements_with_limits(
+        existing.to_owned(),
+        patch.to_owned(),
+        None,
+        ParseLimits::default(),
+    );
+    assert!(!whole.size_limited && !whole.depth_limited);
+    assert_eq!(
+        whole.text,
+        merge_statements(existing.to_owned(), patch.to_owned(), None)
+    );
+
+    // A spec nesting past 44 JSON levels, the depth limit's at depth 4.
+    let mut schema = serde_json::json!({"type": "string"});
+    for _ in 0..30 {
+        schema = serde_json::json!({"type": "object", "properties": {"a": schema}});
+    }
+    let spec = serde_json::json!({"tools": [{"name": "t", "inputSchema": schema}]}).to_string();
+    let shallow = ParseLimits {
+        depth: Some(4),
+        ..ParseLimits::default()
+    };
+    assert!(matches!(
+        generate_system_prompt_with_limits(spec.clone(), shallow),
+        Err(OpenUiError::Prompt { .. })
+    ));
+    assert_eq!(
+        generate_system_prompt_with_limits(spec.clone(), ParseLimits::default()).unwrap(),
+        generate_system_prompt(spec).unwrap()
+    );
 }
 
 #[test]
