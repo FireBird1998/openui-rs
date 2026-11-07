@@ -160,3 +160,38 @@ fn plucking_list_properties_charges_one_step_per_item() {
             .contains("\"$a\":[1,22,333]")
     );
 }
+
+#[test]
+fn text_operations_charge_both_operands_and_nested_arrays() {
+    for (program, work, room) in [
+        ("$a = @Sort([\"ab\", \"cde\"], \"\")", 26, 363),
+        (
+            "$a = @Filter([{v: \"abc\"}, {v: \"defg\"}], \"v\", \"contains\", \"ab\")",
+            37,
+            632,
+        ),
+        ("$a = \"\" + [[1, 22], [333, null], []]", 53, 400),
+    ] {
+        edges(program, work, None);
+        assert_eq!(threshold(program, false), room);
+        assert_eq!(
+            under(program, 2_000_000, room),
+            under(program, 2_000_000, 2_000_000)
+        );
+        assert!(under(program, 2_000_000, room - 1).size_limited);
+    }
+}
+
+#[test]
+fn runtime_inside_element_shaped_data_does_not_charge_evaluation() {
+    for program in [
+        "$a = {type: \"element\", typeName: \"Text\", partial: false, props: {value: 1 + 2}}",
+        "$a = {k: \"Str\", v: 1 + 2}",
+    ] {
+        assert_eq!(
+            under(program, 0, 2_000_000),
+            under(program, 2_000_000, 2_000_000)
+        );
+        assert!(!under(program, 0, 2_000_000).size_limited);
+    }
+}

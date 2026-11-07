@@ -514,8 +514,8 @@ pub(crate) fn state_defaults(
         reuse.records.push(record);
         // Out of room or work, every expression default after is null,
         // whatever it reads: any record says so.
-        if ended == Ended::RanOut {
-            if !in_step {
+        if followers_are_forced_null(ended) {
+            if discards_stale_followers(in_step) {
                 // These older runs read a different prefix. They may say
                 // RunsOut now, but retaining their whole outcomes would let
                 // recovery reuse values computed from the old defaults.
@@ -567,6 +567,14 @@ enum Ended {
     TooDeep,
     /// Out of room or work: null, as is every expression default after it.
     RanOut,
+}
+
+fn followers_are_forced_null(ended: Ended) -> bool {
+    ended == Ended::RanOut
+}
+
+fn discards_stale_followers(in_step: bool) -> bool {
+    !in_step
 }
 
 /// Default `id` ran out of room or work: null, and no room or work is left.

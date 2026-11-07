@@ -1,0 +1,6 @@
+root = Root([a, a, b])
+a = Root([b, Text(1)])
+b = Root([a, Text(2)])
+b = Root([Text(3)])
+a = Root([])
+a = Root([b])

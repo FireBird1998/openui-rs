@@ -51,12 +51,22 @@ fn chunks(text: &str, n: usize) -> Vec<&str> {
 /// one push; and the end's that of a one-shot parse, but for its statement
 /// count (quirk 4).
 fn streams_as_without_reuse(program: &str, library: &Arc<Library>, limits: Limits, n: usize) {
+    streams_as_without_reuse_root(program, library, limits, n, None);
+}
+
+fn streams_as_without_reuse_root(
+    program: &str,
+    library: &Arc<Library>,
+    limits: Limits,
+    n: usize,
+    root: Option<&str>,
+) {
     let fresh = |text: &str| {
-        let mut stream = StreamParser::with_limits(library.clone(), None, limits);
+        let mut stream = StreamParser::with_limits(library.clone(), root, limits);
         stream.push(text);
         stream
     };
-    let mut stream = StreamParser::with_limits(library.clone(), None, limits);
+    let mut stream = StreamParser::with_limits(library.clone(), root, limits);
     let mut so_far = 0;
     for chunk in chunks(program, n) {
         so_far += chunk.len();
@@ -69,7 +79,7 @@ fn streams_as_without_reuse(program: &str, library: &Arc<Library>, limits: Limit
     }
     let end = stream.finish();
     assert_same(&end, &fresh(program).finish(), program);
-    let one_shot = parse_with_limits(program, library, None, limits);
+    let one_shot = parse_with_limits(program, library, root, limits);
     let uncounted = |result: &ParseResult| {
         let mut json: serde_json::Value = serde_json::from_str(&result.to_json()).unwrap();
         json["meta"]["statementCount"] = serde_json::Value::Null;
@@ -653,6 +663,8 @@ fn structurally_unchanged_reparsed_defaults_keep_expensive_followers() {
         "[$t = 1]",
         "{a: $t = 1}",
         "$t = {a: [1]}",
+        "$t = true",
+        "$t = @Sum([1, 2])",
     ];
     let library = library();
     let limits = Limits::default().with_work(64_000_000);
@@ -915,4 +927,234 @@ fn state_defaults_share_materialized_owners_between_streaming_modes() {
         Limits::default(),
         71,
     );
+}
+
+#[test]
+fn revised_defaults_and_reference_graphs_match_fresh_streams_at_limit_edges() {
+    let programs = [
+        "root = Stack([$a, $b, $c])\n$a = [1, 2] + \"old\"\n$b = [$a, $a]\n$c = $b + \"!\"\n$a = [3, 4] + \"new\"\n",
+        "root = Stack([$a, $b, $c])\n$a = 1 + 2\n$b = $a + 10\n$c = $b + 100\n$a = @Each([1,2,3,4,5], \"x\", [1,2,3,4,5])\n",
+        "root = Stack([a, b])\na = Stack([b])\nb = Stack([a, missing])\nb = Text(\"done\")\na = Stack([])\na = Stack([b])\n",
+        "root = Stack([])\na = Text(\"a\")\nb = Text(\"b\")\nroot = Stack([a,b])\na = Query(\"x\")\na = Text(\"a\")\nroot = Stack([])\nroot = Stack([a,b])\n",
+        "root = Stack([$a])\n$a = source\n$b = $a.expr\nsource = $t = true\nsource = $t = false\nsource = $t = @Sum([1,2])\nsource = $t = @Sum([3,4])\n",
+    ];
+    for program in programs {
+        for work in [0, 1, 5, 10, 20, 40, 60, 80, 100, 150, 200, 400, 1000] {
+            for n in [1, 11] {
+                streams_as_without_reuse(program, &library(), Limits::default().with_work(work), n);
+            }
+        }
+        for room in (80..1000).step_by(17) {
+            streams_as_without_reuse(
+                program,
+                &library(),
+                Limits::default().with_result_size(room),
+                7,
+            );
+        }
+    }
+}
+
+#[test]
+fn partial_validation_changes_mapped_props_even_when_written_args_are_equal() {
+    // A library may override a builtin's signature. Enum validation waits
+    // until the pending statement closes, changing only mappedProps.
+    for default in [serde_json::json!("good"), serde_json::Value::Null] {
+        let mut param = serde_json::json!({"enum": ["good"]});
+        if !default.is_null() {
+            param["default"] = default;
+        }
+        let schema = serde_json::json!({
+            "$defs": {"Text": {"properties": {"value": {}}}},
+            "functions": {"Sum": {"params": {"properties": {"items": param}}}}
+        });
+        let lib = Arc::new(Library::from_json_schema(&schema));
+        let program = "root = Text(\"x\")\n$a = $t = @Sum(\"bad\")\n$b = $a.expr.mappedProps.items.v\npending = Text(\"done\")\npending = Text(\"again\")\n";
+        for n in [1, 7, 23] {
+            streams_as_without_reuse(program, &lib, Limits::default(), n);
+        }
+    }
+}
+
+#[test]
+fn speculative_recovery_after_redefinition_replaces_old_followers() {
+    let lib = library();
+    let old = "root = Stack([])\n$a = 1 + 0\n$b = [$a, $a]\n$c = $b + \"!\"\n";
+    for count in [40, 80, 160] {
+        let changed = format!("$a = @Each({}, \"i\", {})\n", list(count), list(count));
+        for amplification in [1, 2, 4, 8, 16] {
+            let limits = Limits::default()
+                .with_result_floor(0)
+                .with_amplification(amplification);
+            let mut stream = StreamParser::with_limits(lib.clone(), None, limits);
+            let mut text = String::new();
+            for push in [old, &changed].into_iter().chain(std::iter::repeat_n("                                                                                                 ", 200)) {
+                text.push_str(push);
+                let result = stream.push(push);
+                let mut fresh = StreamParser::with_limits(lib.clone(), None, limits);
+                assert_same(&result, &fresh.push(&text), &text);
+            }
+            let end = stream.finish();
+            let whole = parse_with_limits(&text, &lib, None, limits);
+            assert_eq!(end.state_declarations, whole.state_declarations);
+            assert_eq!(
+                (end.size_limited, end.depth_limited),
+                (whole.size_limited, whole.depth_limited)
+            );
+        }
+    }
+}
+
+#[test]
+fn changing_the_fallback_entry_invalidates_the_orphan_list() {
+    let program = "a = 0\nb = Text(\"b\")\nc = 0\na = Text(\"a\")\na = 0\nb = 0\nc = Text(\"c\")\n";
+    for n in [1, 7, 17] {
+        streams_as_without_reuse_root(program, &library(), Limits::default(), n, Some("Text"));
+    }
+}
+
+#[test]
+fn expression_and_value_variants_reach_different_excess_arguments() {
+    for extra in ["b", "[b, c]", "Stack([b, c])"] {
+        for roots in ["[card, $x ? card : null]", "[$x ? card : null, card]"] {
+            let program = format!(
+                "root = Stack({roots})\nb = Text(\"b\")\nc = Text(\"c\")\ncard = Text(\"hi\", {extra})\npending = Text(\"done\")\ncard = Text(\"hi\")\ncard = Text(\"hi\", {extra})\nb = Text(\"new\")\n"
+            );
+            for n in [1, 7, 19] {
+                streams_as_without_reuse(&program, &library(), Limits::default(), n);
+            }
+        }
+    }
+}
+
+#[test]
+fn closing_one_fence_and_opening_another_keeps_completed_statements() {
+    // The unfinished fence was the pending line. Replacing it with the next
+    // block's code preserves exactly the completed prefix, including its last
+    // newline. A large orphan string makes reparsing that prefix expensive,
+    // while its parse result stays small.
+    let head = format!(
+        "```openui\nroot = Stack([])\npad = \"{}\"\n``",
+        "x".repeat(150_000)
+    );
+    let lib = library();
+    let cost = |advance: bool| {
+        fastest(5, || {
+            let mut stream = StreamParser::new(lib.clone(), None);
+            stream.push(&head);
+            let start = now();
+            for _ in 0..60 {
+                std::hint::black_box(stream.push(if advance {
+                    "`\n```openui\nnext = 0\n``"
+                } else {
+                    ""
+                }));
+            }
+            now() - start
+        })
+    };
+    let unchanged = cost(false);
+    let advanced = cost(true);
+    assert!(
+        advanced < unchanged * 10.0,
+        "new blocks {advanced:.6}s, unchanged {unchanged:.6}s"
+    );
+    let program = "```openui\nroot = Stack([])\npad = 0\n```\n```openui\nnext = 0\n```\n";
+    streams_as_without_reuse(program, &lib, Limits::default(), 1);
+}
+
+#[test]
+fn speculative_work_recovery_after_redefinition_replaces_old_followers() {
+    let lib = library();
+    let limits = Limits::default().with_result_size(8 * 1024 * 1024);
+    let items = list(80);
+    let changed = format!(
+        "$a = @Count(@Each({items}, \"x\", @Count(@Each({items}, \"y\", @Count(@Each({items}, \"z\", 1))))))\n"
+    );
+    let mut stream = StreamParser::with_limits(lib.clone(), None, limits);
+    let mut text = String::new();
+    for push in ["root = Stack([])\n$a = 1 + 0\n$b = $a + 10\n", &changed].into_iter().chain(std::iter::repeat_n("                                                                                                    ", 60)) {
+        text.push_str(push);
+        let result = stream.push(push);
+        let mut fresh = StreamParser::with_limits(lib.clone(), None, limits);
+        assert_same(&result, &fresh.push(&text), &text);
+    }
+    assert!(!stream.finish().size_limited);
+}
+
+#[test]
+fn mode_changes_share_a_deep_reach_tree_used_many_times() {
+    // Errors are memoized by statement, so a repeated alias chain is walked
+    // once when reporting. Reach sharing must also avoid walking that same
+    // chain once PER occurrence every time the partial flag changes.
+    let mut head = "leaf = Text(\"value\")\na0 = leaf\n".to_owned();
+    for i in 1..100 {
+        head.push_str(&format!("a{i} = a{}\n", i - 1));
+    }
+    head.push_str(&format!(
+        "wide = Stack([{}])\nroot = Stack([wide])\n",
+        vec!["a99"; 800].join(",")
+    ));
+    let lib = library();
+    let cost = |toggle: bool| {
+        fastest(5, || {
+            let mut stream = StreamParser::with_limits(
+                lib.clone(),
+                None,
+                Limits::default()
+                    .with_depth(1024)
+                    .with_result_size(8 * 1024 * 1024),
+            );
+            let result = stream.push(&head);
+            assert!(!result.depth_limited && !result.size_limited);
+            stream.push("pending = Text(");
+            stream.push("\"done\")\n");
+            let start = now();
+            for _ in 0..40 {
+                if toggle {
+                    std::hint::black_box(stream.push("pending = Text("));
+                    std::hint::black_box(stream.push("\"done\")\n"));
+                } else {
+                    std::hint::black_box(stream.push(""));
+                    std::hint::black_box(stream.push(""));
+                }
+            }
+            now() - start
+        })
+    };
+    let unchanged = cost(false);
+    let toggled = cost(true);
+    assert!(
+        toggled < unchanged * 8.0,
+        "shared aliases: toggled {toggled:.6}s, unchanged {unchanged:.6}s"
+    );
+}
+
+#[test]
+fn an_unresolved_depth_cut_reports_each_occurrences_validation_errors() {
+    // A depth cut prevents caching. Each occurrence therefore materializes
+    // and reports its own error; an unresolved reference also forbids error
+    // memoization, even though there is no cycle.
+    let lib = Arc::new(Library::from_json_schema(&serde_json::json!({"$defs": {
+        "Text": {"properties": {"value": {"type": "string"}}},
+        "Stack": {"properties": {"children": {"type": "array"}}}
+    }})));
+    let program = format!(
+        "root = Stack([a, a])\na = Stack([missing, Text(1), deep])\ndeep = {}0{}\n",
+        "[".repeat(20),
+        "]".repeat(20)
+    );
+    let limits = Limits::default().with_depth(8);
+    let result = parse_with_limits(&program, &lib, None, limits);
+    assert!(result.depth_limited);
+    assert_eq!(
+        result
+            .meta
+            .errors
+            .iter()
+            .filter(|e| e.component == "Text" && e.path == "/value")
+            .count(),
+        2
+    );
+    streams_as_without_reuse(&program, &lib, limits, 7);
 }

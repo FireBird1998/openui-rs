@@ -18,7 +18,10 @@
   "odd": "schemas/odd.json",
   "edge": "schemas/edge.json",
   "libraries": "schemas/libraries.json",
-  "pricing-validation": "schemas/pricing-validation.json"
+  "pricing-validation": "schemas/pricing-validation.json",
+  "batch-mapped-default": "schemas/batch-mapped-default.json",
+  "batch-mapped-removal": "schemas/batch-mapped-removal.json",
+  "batch-validation": "schemas/batch-validation.json"
  },
  "cases": [
   {
@@ -1246,6 +1249,67 @@
    "name": "hand/193-state-defaults-each-resolving-a-runtime-ref",
    "schema": "hand",
    "file": "cases/hand/193-state-defaults-each-resolving-a-runtime-ref.oui",
+   "source": "hand-written"
+  },
+  {
+   "name": "hand/240-text-operation-pricing",
+   "schema": "hand",
+   "file": "cases/hand/240-text-operation-pricing.oui",
+   "source": "hand-written"
+  },
+  {
+   "name": "hand/241-repeated-cycle-errors",
+   "schema": "hand",
+   "file": "cases/hand/241-repeated-cycle-errors.oui",
+   "source": "hand-written"
+  },
+  {
+   "name": "hand/242-fallback-entry-orphans",
+   "schema": "hand",
+   "file": "cases/hand/242-fallback-entry-orphans.oui",
+   "source": "hand-written",
+   "root": "Text"
+  },
+  {
+   "name": "hand/243-excess-argument-reach",
+   "schema": "hand",
+   "file": "cases/hand/243-excess-argument-reach.oui",
+   "source": "hand-written"
+  },
+  {
+   "name": "hand/244-partial-mapped-default",
+   "schema": "batch-mapped-default",
+   "file": "cases/hand/244-partial-mapped-default.oui",
+   "source": "hand-written"
+  },
+  {
+   "name": "hand/245-partial-mapped-removal",
+   "schema": "batch-mapped-removal",
+   "file": "cases/hand/245-partial-mapped-removal.oui",
+   "source": "hand-written"
+  },
+  {
+   "name": "hand/246-component-slot-and-proto",
+   "schema": "batch-validation",
+   "file": "cases/hand/246-component-slot-and-proto.oui",
+   "source": "hand-written"
+  },
+  {
+   "name": "hand/247-nested-variant-reach",
+   "schema": "hand",
+   "file": "cases/hand/247-nested-variant-reach.oui",
+   "source": "hand-written"
+  },
+  {
+   "name": "hand/248-fence-completed-boundary",
+   "schema": "hand",
+   "file": "cases/hand/248-fence-completed-boundary.oui",
+   "source": "hand-written"
+  },
+  {
+   "name": "hand/249-repeated-unresolved-errors",
+   "schema": "hand",
+   "file": "cases/hand/249-repeated-unresolved-errors.oui",
    "source": "hand-written"
   }
  ]

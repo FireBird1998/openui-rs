@@ -1,0 +1,2 @@
+root = Box(1, 1, 1, null, {x: 1}, 1)
+root = Box({}, {}, {}, "written", {x: null}, 1)

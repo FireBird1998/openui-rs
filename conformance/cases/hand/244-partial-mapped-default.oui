@@ -1,0 +1,5 @@
+root = Text("x")
+$a = $t = @Sum("bad")
+$b = $a.expr.mappedProps.items.v
+pending = Text("done")
+pending = Text("again")
