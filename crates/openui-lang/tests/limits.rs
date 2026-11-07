@@ -45,6 +45,12 @@ fn the_defaults_are_the_documented_ones() {
         (limits.program_size(), limits.result_size(), limits.depth()),
         (MAX_PROGRAM_SIZE, MAX_RESULT_SIZE, MAX_DEPTH)
     );
+    // The work limit scales with the program unless set (see tests/work.rs):
+    // a million steps for a short one, 1,000 a byte, at most 64 million.
+    assert_eq!(limits.work(), None);
+    assert_eq!(limits.work_for(10), 1_000_000);
+    assert_eq!(limits.work_for(10_000), 10_000_000);
+    assert_eq!(limits.work_for(MAX_PROGRAM_SIZE), 64_000_000);
 }
 
 /// `root = Stack([[...[1]...]])`, nested `levels` deep.

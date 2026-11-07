@@ -157,8 +157,8 @@ fn ast_children(ast: &mut Ast, rest: &mut Vec<Node>) {
 /// [`crate::parse_json`] nests at most 800 levels, and drops in under 64 KB
 /// of stack optimized), but a value read under a raised depth limit
 /// ([`crate::parse_json_with_limits`]) can outgrow a small thread's stack.
-/// Free such a value through here instead of dropping it. The JSON the core
-/// reads back while parsing is freed this way too.
+/// Free such a value through here instead of dropping it. (The core itself
+/// never reads JSON back while parsing.)
 pub fn free_json(json: serde_json::Value) {
     use serde_json::Value as Json;
     let mut rest = vec![json];

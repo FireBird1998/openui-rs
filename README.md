@@ -35,7 +35,7 @@ for chunk in ["root = Stack([ti", "tle])\ntitle = Te", "xt(\"Hello\")"] {
 }
 ```
 
-`cargo doc -p openui-lang --open` has the rest, with examples for prompts, merging and serializing. The core grows its stack on demand and its results free their trees without recursion, so it runs, and its results drop, on any thread. Its limits on program size, result size and depth are one `Limits` value with documented defaults, which an embedder may raise or lower. The result-size limit scales with the program (by default the larger of 64 KiB and 64 times its size, never above 8 MiB), so a result's amplification is bounded and serializing every push of a stream has a known cost. Every entry point takes it: parsing and streaming, merging, converting back to source, reading JSON and generating prompts.
+`cargo doc -p openui-lang --open` has the rest, with examples for prompts, merging and serializing. The core grows its stack on demand and its results free their trees without recursion, so it runs, and its results drop, on any thread. Its limits on program size, result size, depth and the work evaluating state defaults may take are one `Limits` value with documented defaults, which an embedder may raise or lower. The result-size limit scales with the program (by default the larger of 64 KiB and 64 times its size, never above 8 MiB), so a result's amplification is bounded and serializing every push of a stream has a known cost. So does the work limit (by default the larger of a million steps and 1,000 per byte, never above 64 million), so a small program can't keep it busy. Every entry point takes it: parsing and streaming, merging, converting back to source, reading JSON and generating prompts.
 
 The command-line tool runs each part on files:
 

@@ -241,24 +241,6 @@ mod tests {
     }
 
     #[test]
-    fn in_a_release_build_a_stall_while_evaluating_a_default_flags_the_result() {
-        // A default holding a component reads it back through the JSON reader.
-        let schema = serde_json::json!({"$defs": {
-            "Text": {"properties": {"value": {"type": "string"}}, "required": ["value"]}
-        }});
-        let library = crate::Library::from_json_schema(&schema);
-        let program = "root = Text(\"y\")\n$a = Text(\"x\")\n$b = $a";
-        let clean = crate::parse(program, &library, None);
-        assert!(!clean.size_limited);
-        assert!(!clean.to_json().contains("\"$a\":null"));
-        let result = as_release(|| {
-            testing::stall("the JSON reader", 0);
-            crate::parse(program, &library, None)
-        });
-        assert!(result.size_limited);
-    }
-
-    #[test]
     fn in_a_release_build_a_stalled_stream_ignores_pushes_until_set() {
         let mut stream = crate::StreamParser::new(Default::default(), None);
         let (first, second) = as_release(|| {

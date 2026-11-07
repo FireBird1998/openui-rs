@@ -16,9 +16,9 @@
 //!
 //! `--limit name=value`, anywhere and as often as needed, sets one of the
 //! core's limits for every command: `program-size` and `result-size` in
-//! bytes, `depth` in levels. `tokens` reads the program up to the
-//! program-size limit, and `prompt` refuses a spec nesting past the depth
-//! limit. Fuzz finds and blow-ups replay under any limit this way.
+//! bytes, `depth` in levels, `work` in steps. `tokens` reads the program up
+//! to the program-size limit, and `prompt` refuses a spec nesting past the
+//! depth limit. Fuzz finds and blow-ups replay under any limit this way.
 
 use std::io::Read;
 use std::process::ExitCode;
@@ -39,7 +39,7 @@ options: --limit name=value";
 
 /// The limits `--limit name=value` can set.
 const LIMIT_NAMES: &str =
-    "program-size, result-size, result-floor, amplification, result-ceiling, depth";
+    "program-size, result-size, result-floor, amplification, result-ceiling, depth, work";
 
 /// The arguments with every `--limit name=value` taken out, and the limits
 /// they set.
@@ -64,6 +64,7 @@ fn take_limits(args: &[String]) -> Result<(Vec<String>, Limits), String> {
             "amplification" => limits.with_amplification(value),
             "result-ceiling" => limits.with_result_ceiling(value),
             "depth" => limits.with_depth(value),
+            "work" => limits.with_work(value),
             _ => {
                 return Err(format!(
                     "unknown limit `{name}`; the limits are {LIMIT_NAMES}"

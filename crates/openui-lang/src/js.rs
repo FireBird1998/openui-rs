@@ -503,13 +503,6 @@ pub fn parse_json_with_limits(
     read_json(text, limits.json_depth())
 }
 
-/// Read back JSON the core wrote itself, nesting as deep as it does. Its
-/// depth is already bounded by the parse's [`crate::Limits`], so the reader
-/// adds no limit of its own; only a stall can refuse it.
-pub(crate) fn read_back(text: &str) -> Result<serde_json::Value, JsonError> {
-    read_json(text, usize::MAX)
-}
-
 fn read_json(text: &str, limit: usize) -> Result<serde_json::Value, JsonError> {
     JsonReader {
         s: text.as_bytes(),

@@ -226,9 +226,11 @@ pub struct ParseResult {
     /// longer than the program-size limit and the rest was ignored
     /// ([`crate::Limits::program_size`]); or the result would have grown past
     /// the result-size limit ([`crate::Limits::result_size`]: statements
-    /// inlined into each other until it doubles at every level, say); or, in
-    /// a release build, a loop reading the input stalled (a bug in the core)
-    /// and the parse ended there. Not part of the JSON.
+    /// inlined into each other until it doubles at every level, say); or
+    /// evaluating state defaults ran out of work ([`crate::Limits::work_for`])
+    /// and a default came out null; or, in a release build, a loop reading
+    /// the input stalled (a bug in the core) and the parse ended there. Not
+    /// part of the JSON.
     pub size_limited: bool,
 }
 
@@ -396,6 +398,52 @@ fn write_element(out: &mut String, e: &Element) {
     out.push('}');
 }
 
+/// The value as reading its JSON back gives it (`JSON.parse(JSON.stringify(
+/// value))`), without writing or reading any text: an element or an AST node
+/// is the plain object its JSON is, and a number that isn't finite is null,
+/// `-0` is `0`. Everything else is as it was.
+pub(crate) fn json_shaped(value: &Value) -> Value {
+    crate::stack::grow_stack!(json_shaped(value));
+    match value {
+        Value::Num(n) => json_number_value(*n),
+        Value::Arr(items) => Value::Arr(Arc::new(items.iter().map(json_shaped).collect())),
+        Value::Obj(obj) => Value::Obj(Arc::new(json_shaped_object(obj))),
+        Value::Element(e) => {
+            let mut out = JsObject::new();
+            out.define("type", Value::Str("element".to_owned()));
+            out.define("typeName", Value::Str(e.type_name.clone()));
+            out.define("props", Value::Obj(Arc::new(json_shaped_object(&e.props))));
+            out.define("partial", Value::Bool(e.partial));
+            out.define("hasDynamicProps", Value::Bool(e.has_dynamic_props));
+            if let Some(id) = &e.statement_id {
+                out.define("statementId", Value::Str(id.clone()));
+            }
+            Value::Obj(Arc::new(out))
+        }
+        Value::Ast(node) => crate::ast::json_shaped_ast(node),
+        Value::Null | Value::Bool(_) | Value::Str(_) => value.clone(),
+    }
+}
+
+fn json_shaped_object(obj: &JsObject<Value>) -> JsObject<Value> {
+    let mut out = JsObject::new();
+    for (key, v) in obj.iter() {
+        out.define(key.clone(), json_shaped(v));
+    }
+    out
+}
+
+/// A number as its JSON reads back: null if it isn't finite, and `-0` as `0`.
+pub(crate) fn json_number_value(n: f64) -> Value {
+    if !n.is_finite() {
+        Value::Null
+    } else if n == 0.0 {
+        Value::Num(0.0)
+    } else {
+        Value::Num(n)
+    }
+}
+
 fn write_error(out: &mut String, e: &ValidationError) {
     out.push_str("{\"code\":");
     write_json_string(out, e.code.as_str());
@@ -414,4 +462,68 @@ fn write_error(out: &mut String, e: &ValidationError) {
         write_json_string(out, severity.as_str());
     }
     out.push('}');
+}
+
+#[cfg(test)]
+mod tests {
+    use std::sync::Arc;
+
+    use super::{Value, json_shaped, write_value};
+    use crate::{Library, parse};
+
+    /// Every value in the result's root and state, nested ones included.
+    fn values(value: &Value, out: &mut Vec<Value>) {
+        out.push(value.clone());
+        match value {
+            Value::Arr(items) => items.iter().for_each(|v| values(v, out)),
+            Value::Obj(obj) => obj.values().for_each(|v| values(v, out)),
+            Value::Element(e) => e.props.values().for_each(|v| values(v, out)),
+            _ => {}
+        }
+    }
+
+    #[test]
+    fn a_value_shaped_directly_is_what_its_json_reads_back_as() {
+        let schema = serde_json::json!({"$defs": {
+            "Text": {"properties": {"value": {}}, "required": ["value"]},
+            "Stack": {"properties": {"children": {"type": "array"}}}
+        }});
+        let library = Library::from_json_schema(&schema);
+        let programs = [
+            // Elements, nested, with props whose keys are array indexes.
+            "root = Stack([t, Text({\"2\": 1, \"a\": -0, \"1\": [1e21, 1e-7]})])\nt = Text(\"x\")",
+            // Runtime expressions of every kind, in props and in state.
+            "root = Stack([Text($a ? -1 : !$b), Text($s.n[0] + $q.data), Text(@Count([1]))])\n\
+             $a = {k: \"Num\", \"0\": 1}\n$b = $a == null || $a != 1\n\
+             $s = Text(\"y\")\n$q = 1\nq = Query(\"tool\", {a: $s}, {})\n\
+             $e = @Each([1, 2], \"x\", {v: x, w: [x, \"s\"]})\n$f = @Fn(1, $a)\n\
+             $g = $h = 2",
+            // Unicode, escapes and lone surrogates.
+            "root = Text(\"\\u00e9 \\ud800 \\\" \\n\")",
+        ];
+        for program in programs {
+            let result = parse(program, &library, None);
+            let mut all = Vec::new();
+            if let Some(root) = &result.root {
+                values(&Value::Element(Arc::new(root.clone())), &mut all);
+            }
+            result
+                .state_declarations
+                .values()
+                .for_each(|v| values(v, &mut all));
+            if let Some(expression) = &result.root_expression {
+                values(&Value::Ast(Arc::clone(expression)), &mut all);
+            }
+            assert!(all.iter().any(|v| matches!(v, Value::Element(_))));
+            if program.contains('$') {
+                assert!(all.iter().any(|v| matches!(v, Value::Ast(_))));
+            }
+            for value in &all {
+                let mut json = String::new();
+                write_value(&mut json, value);
+                let read = crate::parse_json(&json).unwrap();
+                assert_eq!(json_shaped(value), Value::from_json(&read), "{json}");
+            }
+        }
+    }
 }

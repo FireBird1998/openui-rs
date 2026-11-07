@@ -14,8 +14,7 @@ use crate::{MAX_AMPLIFICATION, MAX_DEPTH, MAX_PROGRAM_SIZE, MAX_RESULT_SIZE, MIN
 /// program's size, never above 8 MiB (see [`Limits::result_size_for`]).
 ///
 /// Its fields are private and set through the `with_*` methods, so limits
-/// added later (a limit on evaluating's work is planned) aren't a breaking
-/// change for code that builds one:
+/// added later aren't a breaking change for code that builds one:
 ///
 /// ```
 /// use openui_lang::Limits;
@@ -35,18 +34,28 @@ pub struct Limits {
     amplification: usize,
     result_ceiling: usize,
     depth: usize,
+    /// Set with [`Limits::with_work`]; `None` scales with the program.
+    work: Option<usize>,
 }
+
+/// The default work limit's floor, its steps per byte of program, and its
+/// ceiling (see [`Limits::work_for`]).
+const MIN_WORK: usize = 1_000_000;
+const WORK_PER_BYTE: usize = 1_000;
+const MAX_WORK: usize = 64_000_000;
 
 impl Limits {
     /// The defaults: [`MAX_PROGRAM_SIZE`]; a result-size limit of the larger
     /// of [`MIN_RESULT_SIZE`] and [`MAX_AMPLIFICATION`] times the program,
-    /// never above [`MAX_RESULT_SIZE`]; and [`MAX_DEPTH`].
+    /// never above [`MAX_RESULT_SIZE`]; [`MAX_DEPTH`]; and a work limit that
+    /// scales with the program (see [`Limits::work_for`]).
     pub const DEFAULT: Limits = Limits {
         program_size: MAX_PROGRAM_SIZE,
         result_floor: MIN_RESULT_SIZE,
         amplification: MAX_AMPLIFICATION,
         result_ceiling: MAX_RESULT_SIZE,
         depth: MAX_DEPTH,
+        work: None,
     };
 
     /// How many bytes of a program are read; the rest is ignored as if the
@@ -101,6 +110,48 @@ impl Limits {
     /// JSON levels per level and 32 more, and refuse deeper input.
     pub const fn depth(&self) -> usize {
         self.depth
+    }
+
+    /// The work limit, if one was set with [`Limits::with_work`]; `None`
+    /// means the default, which scales with the program (see
+    /// [`Limits::work_for`]).
+    pub const fn work(&self) -> Option<usize> {
+        self.work
+    }
+
+    /// How many steps evaluating a program's state defaults may take, for a
+    /// program of `program_bytes`: the limit set with [`Limits::with_work`],
+    /// or by default the larger of a million steps and 1,000 steps per byte,
+    /// never above 64 million.
+    ///
+    /// A step is one expression evaluated, one item sorted, filtered or
+    /// copied into an `@Each` template, one node of a component or runtime
+    /// expression read as a value, or one byte built. Past the limit the
+    /// default being evaluated is null, as is every expression default after
+    /// it, and the result is flagged `size_limited`.
+    pub const fn work_for(&self, program_bytes: usize) -> usize {
+        match self.work {
+            Some(steps) => steps,
+            None => {
+                let scaled = program_bytes.saturating_mul(WORK_PER_BYTE);
+                let floored = if scaled > MIN_WORK { scaled } else { MIN_WORK };
+                if floored < MAX_WORK {
+                    floored
+                } else {
+                    MAX_WORK
+                }
+            }
+        }
+    }
+
+    /// These limits with the work limit set to `steps`, for every program
+    /// (see [`Limits::work_for`]).
+    #[must_use]
+    pub const fn with_work(self, steps: usize) -> Limits {
+        Limits {
+            work: Some(steps),
+            ..self
+        }
     }
 
     /// These limits with the program-size limit set to `bytes`.
@@ -185,11 +236,12 @@ impl Limits {
         (&text[..end], true)
     }
 
-    /// These limits for a program of `program_bytes`: the result-size limit
-    /// fixed at what it scales to, so everything below reads one number from
-    /// [`Limits::result_size`].
+    /// These limits for a program of `program_bytes`: the result-size and
+    /// work limits fixed at what they scale to, so everything below reads one
+    /// number from [`Limits::result_size`] and [`Limits::work_for`].
     pub(crate) const fn for_program(self, program_bytes: usize) -> Limits {
         self.with_result_size(self.result_size_for(program_bytes))
+            .with_work(self.work_for(program_bytes))
     }
 }
 
