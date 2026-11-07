@@ -73,7 +73,7 @@ A case the core doesn't conform on yet, listed so the suite stays green while sh
 _Avoid_: skipped, known failure
 
 **Quirk**:
-A reference-parser behaviour that looks wrong but that the core reproduces anyway, recorded with an upstream report. Comparing the two can't reveal one; only invariants and people reading outputs do.
+A reference-parser behaviour that looks wrong but that the core reproduces anyway, recorded with a draft upstream report unless it only follows from an upstream fix. Comparing the two can't reveal one; only invariants and people reading outputs do.
 _Avoid_: bug (when the core matches it on purpose), shared bug
 
 **Divergence**:
@@ -95,7 +95,7 @@ A documented bound on what one parse may read, build or do: program size, result
 _Avoid_: cap, quota, budget (when meaning the bound itself)
 
 **Cut result**:
-A parse result in which a limit was hit, flagged as such, with what lay past the limit left out.
+A parse result in which a limit was hit, or a stall stopped the parse in a release build, flagged as such, with what lay past that point left out.
 _Avoid_: truncated result, partial result, limited result
 
 **Amplification**:

@@ -303,7 +303,10 @@ pub(crate) fn state_defaults(state: JsObject<Value>, budget: usize) -> Evaluated
     for (id, value) in state.iter() {
         if !has_runtime(value) {
             out.state.set(id.clone(), value.clone());
-            declared.define(id.clone(), from_value(value));
+            let js = from_value(value);
+            // Reading a component back can only fail on a stall, which cuts.
+            out.size_limited |= LIMITS.with(|l| l.size_limited.replace(false));
+            declared.define(id.clone(), js);
             continue;
         }
         LIMITS.with(|l| {
@@ -407,9 +410,15 @@ fn from_value(value: &Value) -> Js {
         Value::Element(_) | Value::Ast(_) => {
             let mut json = String::new();
             write_value(&mut json, value);
-            // The core writes JSON, so only a stall can refuse it, and that
-            // flags the result.
-            parse_json(&json).map_or(Js::Null, |json| from_json(&json))
+            // The core writes JSON, so only a stall can refuse it. Whatever
+            // refuses it, the default is cut and the result flagged.
+            parse_json(&json).map_or_else(
+                |_| {
+                    LIMITS.with(|l| l.size_limited.set(true));
+                    Js::Null
+                },
+                |json| from_json(&json),
+            )
         }
     }
 }

@@ -34,7 +34,7 @@ cargo test -p openui-lang --test conformance streaming_   # tests whose names ma
 | `cli` | The command-line tool's commands print what the library gives, including reading stdin and the default chunk size | A broken CLI |
 | `api` | The public JSON reader and writer, `JsObject`, and walking an expression | Public helpers that parsing alone doesn't reach |
 | doc tests | The crate docs' examples and the README's | Examples that no longer compile or run |
-| unit tests in `js.rs`, `preprocess.rs` | JSON reading and writing; incremental preprocessing against the one-shot form | Internal disagreements |
+| unit tests in `js.rs`, `preprocess.rs`, `progress.rs` | JSON reading and writing; incremental preprocessing against the one-shot form; the stall guard: each guarded loop panics naming itself on a forced stall, and a release stall gives a flagged cut result, a stream that ignores pushes until `set`, and a refused JSON read | Internal disagreements; a loop that stops advancing |
 | unit tests in the fuzzer's `rules.rs` | The invariants' newer exceptions (quirks 4's empty redefinition, 21 and 22) on the programs that found them, run on the core, and near misses each must not explain | An exception that stops recognizing its quirk, or explains too much |
 | `openui-ffi`'s `binding` | The binding returns exactly the core's output: one-shot, every streaming step, `set`, prompts, merges | A binding that changes what it hands on |
 | `openui-ffi`'s `stack` | The deepest programs parse, stream and merge through the binding on a 64 KB thread stack, and their results and sessions drop there too | A binding that leaves a deep drop on the caller's stack |
@@ -82,7 +82,7 @@ Everything the tests compare is in `conformance/`:
 4. Run `cargo test -p openui-lang --test conformance`. If the core doesn't match yet and the fix is for later, `UPDATE_PENDING=1 cargo test -p openui-lang --test conformance` lists the case in `conformance/pending/parse.txt`.
 5. Refresh the counts in CONFORMANCE.md with `UPDATE_REPORT=1 cargo test -p openui-lang --test report`.
 
-Merge, serialization and prompt cases work the same way: add an entry to `merge.json` or `serialize.json`, or a spec file to `prompts/`, then regenerate. If the reference does something that looks wrong, the core still matches it. Record the behaviour in `QUIRKS.md` with a draft upstream report; filing it is the maintainer's call. Fuzzing saves its own finds as cases.
+Merge, serialization and prompt cases work the same way: add an entry to `merge.json` or `serialize.json`, or a spec file to `prompts/`, then regenerate. If the reference does something that looks wrong, the core still matches it. Record the behaviour in `QUIRKS.md` with a draft upstream report (unless it only follows from an upstream fix); filing it is the maintainer's call. Fuzzing saves its own finds as cases.
 
 ## Reading a failure
 

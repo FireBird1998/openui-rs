@@ -144,8 +144,8 @@
 //! # Limits
 //!
 //! No input can panic the core, overflow its stack or exhaust memory, so a
-//! bad model response can't crash the app. Two limits make that so, and each
-//! sets a flag on the result instead of failing:
+//! bad model response can't crash the app. Two limits and a stall guard make
+//! that so, and each sets a flag on the result instead of failing:
 //!
 //! - [`MAX_DEPTH`]: nesting past 256 levels becomes null
 //!   ([`ParseResult::depth_limited`]).
@@ -157,7 +157,8 @@
 //!   input's fault. In debug builds it panics; in release builds the parse
 //!   ends there with a cut result ([`ParseResult::size_limited`]), and a
 //!   [`StreamParser`] it cut gives that result again, ignoring pushes, until
-//!   [`StreamParser::set`]. [`parse_json`] refuses its input instead.
+//!   [`StreamParser::set`]. [`parse_json`] refuses its input instead, and
+//!   [`merge_statements`] stops where the stall was.
 //!
 //! The core grows its stack on demand: when a call runs low, it goes on in a
 //! segment allocated on the heap. So it needs no minimum thread stack, and
