@@ -235,6 +235,8 @@ pub fn parse_with_limits(
     // Past the program-size limit, the rest is ignored as if the stream had
     // stopped there.
     let (input, cut) = Limits::fit(input, limits.program_size());
+    // The result-size limit scales with the program read.
+    let limits = limits.for_program(input.len());
     let (mut result, stalled) = progress::watch(|| parse_text(input, library, root_name, limits));
     result.size_limited |= stalled || cut;
     result

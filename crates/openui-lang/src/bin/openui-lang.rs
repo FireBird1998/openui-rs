@@ -38,7 +38,8 @@ const USAGE: &str = "usage: openui-lang parse <schema.json> <program|->
 options: --limit name=value";
 
 /// The limits `--limit name=value` can set.
-const LIMIT_NAMES: &str = "program-size, result-size, depth";
+const LIMIT_NAMES: &str =
+    "program-size, result-size, result-floor, amplification, result-ceiling, depth";
 
 /// The arguments with every `--limit name=value` taken out, and the limits
 /// they set.
@@ -59,6 +60,9 @@ fn take_limits(args: &[String]) -> Result<(Vec<String>, Limits), String> {
         limits = match name {
             "program-size" => limits.with_program_size(value),
             "result-size" => limits.with_result_size(value),
+            "result-floor" => limits.with_result_floor(value),
+            "amplification" => limits.with_amplification(value),
+            "result-ceiling" => limits.with_result_ceiling(value),
             "depth" => limits.with_depth(value),
             _ => {
                 return Err(format!(

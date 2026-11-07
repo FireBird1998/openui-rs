@@ -8,7 +8,7 @@ A model's reply is untrusted input that the core parses on phones. The long runs
 
 So every limit (program size, result size, depth, evaluation work) is one `Limits` value. It has documented defaults, and an embedder may raise or lower each one:
 - **Program size:** 1 MiB by default.
-- **Result size:** the larger of 64 KiB and 64 times the program's size, never above 8 MiB.
+- **Result size:** the larger of 64 KiB and 64 times the program's size, never above 8 MiB. The floor, the multiplier (the amplification allowed) and the ceiling can each be set, or the limit fixed at one size whatever the program. A stream's limit is that of the text so far.
 - **Evaluation work:** the larger of a million steps and 1,000 steps per byte of program, never above 64 million.
 - **Depth:** 256 by default.
 

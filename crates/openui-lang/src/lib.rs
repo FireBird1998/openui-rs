@@ -154,10 +154,15 @@
 //!   rest of the text is ignored as if the stream had stopped there
 //!   ([`ParseResult::size_limited`]). A stream cut there stays cut: later
 //!   pushes are ignored until [`StreamParser::set`].
-//! - **Result size**, about 8 MiB of JSON by default ([`MAX_RESULT_SIZE`]): a
-//!   result that would grow past it is cut, the rest null
-//!   ([`ParseResult::size_limited`]). Repeated subtrees are shared, not
-//!   copied.
+//! - **Result size**, in bytes of JSON, scaling with the program: by default
+//!   the larger of 64 KiB ([`MIN_RESULT_SIZE`]) and 64 times the program's
+//!   size ([`MAX_AMPLIFICATION`]), never above 8 MiB ([`MAX_RESULT_SIZE`]); see
+//!   [`Limits::result_size_for`]. A result that would grow past it is cut, the
+//!   rest null ([`ParseResult::size_limited`]). That bounds amplification, so
+//!   a caller serializing every push of a stream knows what it can cost. A
+//!   stream's limit is that of the text so far, so an early push can be cut
+//!   and a later one not; every push's result is still the one-shot parse of
+//!   the text so far. Repeated subtrees are shared, not copied.
 //! - **Depth**, 256 levels by default ([`MAX_DEPTH`]): nesting past it becomes
 //!   null ([`ParseResult::depth_limited`]); evaluated state defaults may
 //!   nest three levels per level.
@@ -228,8 +233,10 @@ struct ReadmeDoctests;
 /// `tests/depth.rs`.
 pub const MAX_DEPTH: usize = 256;
 
-/// About how large a parse result may grow by default, in bytes of its JSON:
-/// the default of [`Limits::result_size`]. A statement
+/// About how large a parse result may grow by default, in bytes of its JSON,
+/// however large its program: the default ceiling, [`Limits::result_size`],
+/// on a limit that scales with the program ([`Limits::result_size_for`]). A
+/// statement
 /// referenced from two places is inlined in both, so a few lines that each
 /// reference the one before twice double the result at every line; a
 /// component inside a runtime expression is written twice (`args` and
@@ -239,6 +246,17 @@ pub const MAX_DEPTH: usize = 256;
 /// [`ParseResult::size_limited`] is set. Real results are about twice the
 /// program's size, so this is far out of reach of any program a model writes.
 pub const MAX_RESULT_SIZE: usize = 8 * 1024 * 1024;
+
+/// The default floor of the result-size limit, [`Limits::result_floor`]: a
+/// short program's result may always grow to 64 KiB of JSON.
+pub const MIN_RESULT_SIZE: usize = 64 * 1024;
+
+/// The default [`Limits::amplification`]: how many times its program's size a
+/// result may grow to, above [`MIN_RESULT_SIZE`] and up to
+/// [`MAX_RESULT_SIZE`]. Real results are about twice their program; the
+/// most any conformance case reaches is about 42, on a program of 22 bytes,
+/// well inside the floor.
+pub const MAX_AMPLIFICATION: usize = 64;
 
 /// How many bytes of a program a parse reads by default, the default of
 /// [`Limits::program_size`]: past it, the rest
