@@ -31,4 +31,6 @@ exclude_re = [
     'statements\.rs:.*replace \+ with \* in after_newline',
     # One more merging pass once runs span the whole list (width == n) only copies the one sorted run (#12).
     'evaluate\.rs:.*replace < with <= in runs_to_merge',
+    # Both callers subsequently draw positive work before returning any value; zero work or an existing cut therefore still cuts the same default (#11).
+    'evaluate\.rs:.*replace out_of_work -> bool with false',
 ]
