@@ -148,11 +148,7 @@ fn run(args: &[String]) -> Result<(), String> {
         }
         [command, schema, programs @ ..] if command == "bench" && !programs.is_empty() => {
             let library = Arc::new(load_library(schema)?);
-            let runs: usize = std::env::var("BENCH_RUNS")
-                .ok()
-                .and_then(|v| v.parse().ok())
-                .filter(|&n| n > 0)
-                .unwrap_or(20);
+            let runs: usize = benchmark_runs(std::env::var("BENCH_RUNS").ok().as_deref());
             for path in programs {
                 let text = read_input(path)?;
                 let pieces = chunks(&text, 4);
@@ -169,7 +165,7 @@ fn run(args: &[String]) -> Result<(), String> {
                 for _ in 0..runs {
                     once();
                 }
-                let ms = started.elapsed().as_secs_f64() * 1000.0 / runs as f64;
+                let ms = mean_milliseconds(started.elapsed(), runs);
                 let name = path.rsplit('/').next().unwrap_or(path);
                 println!(
                     "{name}\t{}\t{}\t{ms:.2}",
@@ -211,3 +207,41 @@ fn main() -> ExitCode {
 #[cfg(test)]
 #[global_allocator]
 static TEST_ALLOCATOR: test_alloc::Allocator = test_alloc::Allocator::with_cap(test_alloc::DEFAULT);
+
+/// Mean wall-clock duration of one benchmark run, in milliseconds.
+fn mean_milliseconds(elapsed: std::time::Duration, runs: usize) -> f64 {
+    elapsed.as_secs_f64() * 1000.0 / runs as f64
+}
+
+/// The documented benchmark repetition count; absent, invalid or zero uses 20.
+fn benchmark_runs(setting: Option<&str>) -> usize {
+    setting
+        .and_then(|v| v.parse().ok())
+        .filter(|&n| n > 0)
+        .unwrap_or(20)
+}
+
+#[cfg(test)]
+mod tests {
+    #[test]
+    fn benchmark_repetitions_accept_positive_counts_and_default_otherwise() {
+        for (setting, expected) in [
+            (None, 20),
+            (Some("0"), 20),
+            (Some("1"), 1),
+            (Some("3"), 3),
+            (Some("-1"), 20),
+            (Some("abc"), 20),
+        ] {
+            assert_eq!(super::benchmark_runs(setting), expected, "{setting:?}");
+        }
+    }
+
+    #[test]
+    fn benchmark_reports_mean_milliseconds() {
+        assert_eq!(
+            super::mean_milliseconds(std::time::Duration::from_millis(750), 3),
+            250.0
+        );
+    }
+}

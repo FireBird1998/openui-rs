@@ -189,3 +189,85 @@ fn merging_reads_expressions_to_the_depth_limit() {
 
 #[global_allocator]
 static ALLOCATOR: test_alloc::Allocator = test_alloc::Allocator::with_cap(test_alloc::LIMITS);
+
+#[test]
+fn serializer_accepts_exactly_the_configured_nesting_boundary() {
+    // At depth zero, serialization allows 32 nested value visits. An empty
+    // array adds one visit without increasing the JSON input's nesting.
+    let limits = Limits::default().with_depth(0);
+    let mut value = serde_json::json!([]);
+    for _ in 0..31 {
+        value = serde_json::json!([value]);
+    }
+    let root =
+        serde_json::json!({"type":"element", "typeName":"Stack", "props":{"children":value}});
+    assert!(json_to_openui_with_limits(&root, &library(), None, limits).is_ok());
+    let mut root = root;
+    root["props"]["children"] = serde_json::json!([root["props"]["children"].take()]);
+    let error = json_to_openui_with_limits(&root, &library(), None, limits).unwrap_err();
+    assert_eq!(
+        error.to_string(),
+        "[jsonToOpenUI] the element tree nests too deeply"
+    );
+}
+
+#[test]
+fn evaluated_defaults_reuse_the_room_their_expressions_occupied() {
+    let program = format!(
+        "root = Stack([])\n{}",
+        (0..50)
+            .map(|i| format!("$x{i} = 1 + 2\n"))
+            .collect::<String>()
+    );
+    let result = parse_with_limits(
+        &program,
+        &library(),
+        None,
+        // The materialized expressions fill this limit. Evaluation must
+        // reclaim their room before replacing them with the numeric defaults.
+        Limits::default().with_result_size(6320),
+    );
+    assert!(!result.size_limited);
+    let json = parse_json(&result.to_json()).unwrap();
+    for i in 0..50 {
+        assert_eq!(json["stateDeclarations"][format!("$x{i}")], 3);
+    }
+}
+
+#[test]
+fn expression_depth_counts_chains_and_releases_siblings() {
+    let limits = Limits::default().with_depth(4);
+    for (text, limited) in [
+        ("1 + 2 + 3 + 4", false),
+        ("1 + 2 + 3 + 4 + 5", true),
+        ("[[1], [2], [3], [4]]", false),
+    ] {
+        let (_, got) = parse_expression_with_limits(&tokenize(text), limits);
+        assert_eq!(got, limited, "{text}");
+    }
+}
+
+#[test]
+fn merging_flags_either_input_being_cut_independently() {
+    let short = "a = 1";
+    let long = "b = 2\nc = 3";
+    let limits = Limits::default().with_program_size(short.len());
+    for (existing, patch, cut) in [
+        (short, short, false),
+        (long, short, true),
+        (short, long, true),
+        (long, long, true),
+    ] {
+        let result = merge_statements_with_limits(existing, patch, None, limits);
+        assert_eq!(result.size_limited, cut, "{existing:?}, {patch:?}");
+        assert!(!result.depth_limited);
+        assert_eq!(
+            result.text,
+            merge_statements(
+                &existing[..existing.len().min(short.len())],
+                &patch[..patch.len().min(short.len())],
+                None
+            )
+        );
+    }
+}

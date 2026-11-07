@@ -1945,6 +1945,661 @@
     "hasDynamicProps": false
    },
    "source": "hand-written"
-  }
+  },
+  {
+   "name": "hand/issue16-precedence-||",
+   "schema": "hand",
+   "element": {
+    "type": "element",
+    "typeName": "Slot",
+    "props": {
+     "content": [
+      {
+       "k": "BinOp",
+       "op": "||",
+       "left": {
+        "k": "BinOp",
+        "op": "||",
+        "left": {
+         "k": "Ref",
+         "n": "a"
+        },
+        "right": {
+         "k": "Ref",
+         "n": "b"
+        }
+       },
+       "right": {
+        "k": "Ref",
+        "n": "c"
+       }
+      },
+      {
+       "k": "BinOp",
+       "op": "&&",
+       "left": {
+        "k": "BinOp",
+        "op": "||",
+        "left": {
+         "k": "Ref",
+         "n": "a"
+        },
+        "right": {
+         "k": "Ref",
+         "n": "b"
+        }
+       },
+       "right": {
+        "k": "Ref",
+        "n": "c"
+       }
+      },
+      {
+       "k": "BinOp",
+       "op": "__proto__",
+       "left": {
+        "k": "BinOp",
+        "op": "||",
+        "left": {
+         "k": "Ref",
+         "n": "a"
+        },
+        "right": {
+         "k": "Ref",
+         "n": "b"
+        }
+       },
+       "right": {
+        "k": "Ref",
+        "n": "c"
+       }
+      },
+      {
+       "k": "BinOp",
+       "op": "constructor",
+       "left": {
+        "k": "BinOp",
+        "op": "||",
+        "left": {
+         "k": "Ref",
+         "n": "a"
+        },
+        "right": {
+         "k": "Ref",
+         "n": "b"
+        }
+       },
+       "right": {
+        "k": "Ref",
+        "n": "c"
+       }
+      },
+      {
+       "k": "BinOp",
+       "op": "toString",
+       "left": {
+        "k": "BinOp",
+        "op": "||",
+        "left": {
+         "k": "Ref",
+         "n": "a"
+        },
+        "right": {
+         "k": "Ref",
+         "n": "b"
+        }
+       },
+       "right": {
+        "k": "Ref",
+        "n": "c"
+       }
+      }
+     ]
+    },
+    "partial": false,
+    "hasDynamicProps": false
+   },
+   "source": "hand-written"
+  },
+  {
+   "name": "hand/issue16-precedence-__proto__",
+   "schema": "hand",
+   "element": {
+    "type": "element",
+    "typeName": "Slot",
+    "props": {
+     "content": [
+      {
+       "k": "BinOp",
+       "op": "||",
+       "left": {
+        "k": "BinOp",
+        "op": "__proto__",
+        "left": {
+         "k": "Ref",
+         "n": "a"
+        },
+        "right": {
+         "k": "Ref",
+         "n": "b"
+        }
+       },
+       "right": {
+        "k": "Ref",
+        "n": "c"
+       }
+      },
+      {
+       "k": "BinOp",
+       "op": "&&",
+       "left": {
+        "k": "BinOp",
+        "op": "__proto__",
+        "left": {
+         "k": "Ref",
+         "n": "a"
+        },
+        "right": {
+         "k": "Ref",
+         "n": "b"
+        }
+       },
+       "right": {
+        "k": "Ref",
+        "n": "c"
+       }
+      },
+      {
+       "k": "BinOp",
+       "op": "__proto__",
+       "left": {
+        "k": "BinOp",
+        "op": "__proto__",
+        "left": {
+         "k": "Ref",
+         "n": "a"
+        },
+        "right": {
+         "k": "Ref",
+         "n": "b"
+        }
+       },
+       "right": {
+        "k": "Ref",
+        "n": "c"
+       }
+      },
+      {
+       "k": "BinOp",
+       "op": "constructor",
+       "left": {
+        "k": "BinOp",
+        "op": "__proto__",
+        "left": {
+         "k": "Ref",
+         "n": "a"
+        },
+        "right": {
+         "k": "Ref",
+         "n": "b"
+        }
+       },
+       "right": {
+        "k": "Ref",
+        "n": "c"
+       }
+      },
+      {
+       "k": "BinOp",
+       "op": "toString",
+       "left": {
+        "k": "BinOp",
+        "op": "__proto__",
+        "left": {
+         "k": "Ref",
+         "n": "a"
+        },
+        "right": {
+         "k": "Ref",
+         "n": "b"
+        }
+       },
+       "right": {
+        "k": "Ref",
+        "n": "c"
+       }
+      }
+     ]
+    },
+    "partial": false,
+    "hasDynamicProps": false
+   },
+   "source": "hand-written"
+  },
+  {
+   "name": "hand/issue16-precedence-constructor",
+   "schema": "hand",
+   "element": {
+    "type": "element",
+    "typeName": "Slot",
+    "props": {
+     "content": [
+      {
+       "k": "BinOp",
+       "op": "||",
+       "left": {
+        "k": "BinOp",
+        "op": "constructor",
+        "left": {
+         "k": "Ref",
+         "n": "a"
+        },
+        "right": {
+         "k": "Ref",
+         "n": "b"
+        }
+       },
+       "right": {
+        "k": "Ref",
+        "n": "c"
+       }
+      },
+      {
+       "k": "BinOp",
+       "op": "&&",
+       "left": {
+        "k": "BinOp",
+        "op": "constructor",
+        "left": {
+         "k": "Ref",
+         "n": "a"
+        },
+        "right": {
+         "k": "Ref",
+         "n": "b"
+        }
+       },
+       "right": {
+        "k": "Ref",
+        "n": "c"
+       }
+      },
+      {
+       "k": "BinOp",
+       "op": "__proto__",
+       "left": {
+        "k": "BinOp",
+        "op": "constructor",
+        "left": {
+         "k": "Ref",
+         "n": "a"
+        },
+        "right": {
+         "k": "Ref",
+         "n": "b"
+        }
+       },
+       "right": {
+        "k": "Ref",
+        "n": "c"
+       }
+      },
+      {
+       "k": "BinOp",
+       "op": "constructor",
+       "left": {
+        "k": "BinOp",
+        "op": "constructor",
+        "left": {
+         "k": "Ref",
+         "n": "a"
+        },
+        "right": {
+         "k": "Ref",
+         "n": "b"
+        }
+       },
+       "right": {
+        "k": "Ref",
+        "n": "c"
+       }
+      },
+      {
+       "k": "BinOp",
+       "op": "toString",
+       "left": {
+        "k": "BinOp",
+        "op": "constructor",
+        "left": {
+         "k": "Ref",
+         "n": "a"
+        },
+        "right": {
+         "k": "Ref",
+         "n": "b"
+        }
+       },
+       "right": {
+        "k": "Ref",
+        "n": "c"
+       }
+      }
+     ]
+    },
+    "partial": false,
+    "hasDynamicProps": false
+   },
+   "source": "hand-written"
+  },
+  {
+   "name": "hand/issue16-precedence-toString",
+   "schema": "hand",
+   "element": {
+    "type": "element",
+    "typeName": "Slot",
+    "props": {
+     "content": [
+      {
+       "k": "BinOp",
+       "op": "||",
+       "left": {
+        "k": "BinOp",
+        "op": "toString",
+        "left": {
+         "k": "Ref",
+         "n": "a"
+        },
+        "right": {
+         "k": "Ref",
+         "n": "b"
+        }
+       },
+       "right": {
+        "k": "Ref",
+        "n": "c"
+       }
+      },
+      {
+       "k": "BinOp",
+       "op": "&&",
+       "left": {
+        "k": "BinOp",
+        "op": "toString",
+        "left": {
+         "k": "Ref",
+         "n": "a"
+        },
+        "right": {
+         "k": "Ref",
+         "n": "b"
+        }
+       },
+       "right": {
+        "k": "Ref",
+        "n": "c"
+       }
+      },
+      {
+       "k": "BinOp",
+       "op": "__proto__",
+       "left": {
+        "k": "BinOp",
+        "op": "toString",
+        "left": {
+         "k": "Ref",
+         "n": "a"
+        },
+        "right": {
+         "k": "Ref",
+         "n": "b"
+        }
+       },
+       "right": {
+        "k": "Ref",
+        "n": "c"
+       }
+      },
+      {
+       "k": "BinOp",
+       "op": "constructor",
+       "left": {
+        "k": "BinOp",
+        "op": "toString",
+        "left": {
+         "k": "Ref",
+         "n": "a"
+        },
+        "right": {
+         "k": "Ref",
+         "n": "b"
+        }
+       },
+       "right": {
+        "k": "Ref",
+        "n": "c"
+       }
+      },
+      {
+       "k": "BinOp",
+       "op": "toString",
+       "left": {
+        "k": "BinOp",
+        "op": "toString",
+        "left": {
+         "k": "Ref",
+         "n": "a"
+        },
+        "right": {
+         "k": "Ref",
+         "n": "b"
+        }
+       },
+       "right": {
+        "k": "Ref",
+        "n": "c"
+       }
+      }
+     ]
+    },
+    "partial": false,
+    "hasDynamicProps": false
+   },
+   "source": "hand-written"
+  },
+  {
+   "name": "hand/issue16-identities-True",
+   "schema": "hand",
+   "element": {
+    "type": "element",
+    "typeName": "Slot",
+    "props": {
+     "content": [
+      {
+       "type": "element",
+       "typeName": "Text",
+       "props": {
+        "value": "0"
+       },
+       "statementId": true,
+       "partial": false,
+       "hasDynamicProps": false
+      },
+      {
+       "type": "element",
+       "typeName": "Text",
+       "props": {
+        "value": "1"
+       },
+       "statementId": true,
+       "partial": false,
+       "hasDynamicProps": false
+      }
+     ]
+    },
+    "partial": false,
+    "hasDynamicProps": false
+   },
+   "source": "hand-written"
+  },
+  {
+   "name": "hand/issue16-identities-0",
+   "schema": "hand",
+   "element": {
+    "type": "element",
+    "typeName": "Slot",
+    "props": {
+     "content": [
+      {
+       "type": "element",
+       "typeName": "Text",
+       "props": {
+        "value": "0"
+       },
+       "statementId": 0,
+       "partial": false,
+       "hasDynamicProps": false
+      },
+      {
+       "type": "element",
+       "typeName": "Text",
+       "props": {
+        "value": "1"
+       },
+       "statementId": -0.0,
+       "partial": false,
+       "hasDynamicProps": false
+      }
+     ]
+    },
+    "partial": false,
+    "hasDynamicProps": false
+   },
+   "source": "hand-written"
+  },
+  {
+   "name": "hand/issue16-identities-False",
+   "schema": "hand",
+   "element": {
+    "type": "element",
+    "typeName": "Slot",
+    "props": {
+     "content": [
+      {
+       "type": "element",
+       "typeName": "Text",
+       "props": {
+        "value": "0"
+       },
+       "statementId": false,
+       "partial": false,
+       "hasDynamicProps": false
+      },
+      {
+       "type": "element",
+       "typeName": "Text",
+       "props": {
+        "value": "1"
+       },
+       "statementId": false,
+       "partial": false,
+       "hasDynamicProps": false
+      }
+     ]
+    },
+    "partial": false,
+    "hasDynamicProps": false
+   },
+   "source": "hand-written"
+  },
+  {
+ "name": "hand/issue16-followup-or-with-unknown-precedence",
+ "schema": "hand",
+ "element": {
+  "type": "element",
+  "typeName": "Slot",
+  "props": {
+   "content": [
+    {
+     "k": "BinOp",
+     "op": "||",
+     "left": {
+      "k": "BinOp",
+      "op": "unknown",
+      "left": {
+       "k": "Ref",
+       "n": "a"
+      },
+      "right": {
+       "k": "Ref",
+       "n": "b"
+      }
+     },
+     "right": {
+      "k": "Ref",
+      "n": "c"
+     }
+    }
+   ]
+  },
+  "partial": false,
+  "hasDynamicProps": false
+ },
+ "source": "hand-written"
+},
+  {
+ "name": "hand/issue16-followup-constructor-relative-to-getter",
+ "schema": "hand",
+ "element": {
+  "type": "element",
+  "typeName": "Slot",
+  "props": {
+   "content": [
+    {
+     "k": "BinOp",
+     "op": "constructor",
+     "left": {
+      "k": "BinOp",
+      "op": "__defineGetter__",
+      "left": {
+       "k": "Ref",
+       "n": "a"
+      },
+      "right": {
+       "k": "Ref",
+       "n": "b"
+      }
+     },
+     "right": {
+      "k": "Ref",
+      "n": "c"
+     }
+    },
+    {
+     "k": "BinOp",
+     "op": "__defineGetter__",
+     "left": {
+      "k": "BinOp",
+      "op": "constructor",
+      "left": {
+       "k": "Ref",
+       "n": "a"
+      },
+      "right": {
+       "k": "Ref",
+       "n": "b"
+      }
+     },
+     "right": {
+      "k": "Ref",
+      "n": "c"
+     }
+    }
+   ]
+  },
+  "partial": false,
+  "hasDynamicProps": false
+ },
+ "source": "hand-written"
+}
  ]
 }

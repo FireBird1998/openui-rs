@@ -1,0 +1,28 @@
+{
+  "cloud": true,
+  "library": {
+    "schema": {
+      "$defs": {
+        "A": {
+          "properties": {
+            "empty": {
+              "$ref": "#/$defs/"
+            },
+            "newline": {
+              "$ref": "#/$defs/\n"
+            },
+            "valid": {
+              "$ref": "#/$defs/A"
+            }
+          }
+        },
+        "": {
+          "properties": {}
+        },
+        "\n": {
+          "properties": {}
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,28 @@
+{
+  "tools": [
+    {
+      "name": "t",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "0": {
+            "type": "array",
+            "items": null
+          },
+          "1": {
+            "type": "array",
+            "items": false
+          },
+          "2": {
+            "type": "array",
+            "items": 0
+          },
+          "3": {
+            "type": "array",
+            "items": ""
+          }
+        }
+      }
+    }
+  ]
+}

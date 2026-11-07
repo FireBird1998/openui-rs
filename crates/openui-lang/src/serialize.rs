@@ -375,7 +375,8 @@ impl<'a> Serializer<'a> {
             Json::String(s) => Key::Str(s.clone()),
             Json::Number(n) => {
                 let n = json_number(n);
-                Key::Num(if n == 0.0 { 0.0f64 } else { n }.to_bits())
+                // Only truthy statement ids reach `key`, so neither signed zero does.
+                Key::Num(n.to_bits())
             }
             Json::Bool(true) => Key::True,
             _ => {

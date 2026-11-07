@@ -367,7 +367,9 @@ fn limits_reach_merging_and_prompts() {
     for _ in 0..30 {
         schema = serde_json::json!({"type": "object", "properties": {"a": schema}});
     }
-    let spec = serde_json::json!({"tools": [{"name": "t", "inputSchema": schema}]}).to_string();
+    let spec =
+        serde_json::json!({"components": {}, "tools": [{"name": "t", "inputSchema": schema}]})
+            .to_string();
     let shallow = ParseLimits {
         depth: Some(4),
         ..ParseLimits::default()
@@ -391,3 +393,33 @@ fn component_names_keep_the_schema_order() {
 
 #[global_allocator]
 static ALLOCATOR: test_alloc::Allocator = test_alloc::Allocator::with_cap(test_alloc::LIMITS);
+
+#[test]
+fn parsing_and_serialization_report_elapsed_nanoseconds() {
+    let library = ComponentLibrary::new(
+        r#"{"$defs":{"Text":{"properties":{"value":{"type":"string"}}}}}"#.to_owned(),
+    )
+    .unwrap();
+    let result = parse(
+        format!("root = Text(\"{}\")", "x".repeat(20000)),
+        library,
+        None,
+    );
+    assert!(result.parse_nanos > 1, "{}", result.parse_nanos);
+    assert!(result.json_nanos > 1, "{}", result.json_nanos);
+}
+
+#[test]
+fn prompts_without_components_return_the_cores_prompt_error() {
+    for spec in ["{}", r#"{"library":{}}"#] {
+        for result in [
+            generate_system_prompt(spec.to_owned()),
+            generate_system_prompt_with_limits(spec.to_owned(), ParseLimits::default()),
+        ] {
+            let Err(OpenUiError::Prompt { message }) = result else {
+                panic!("expected a prompt error")
+            };
+            assert_eq!(message, "[generatePrompt] components is missing.");
+        }
+    }
+}

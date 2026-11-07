@@ -291,6 +291,23 @@ fn enriched_errors_match_the_reference() {
             report.check(&name, &expected, Ok(enriched_errors_to_json(&enriched)));
         }
     }
+    for case in cases("enrich.json") {
+        let name = case["name"].as_str().unwrap();
+        let error = openui_lang::ValidationError {
+            code: openui_lang::ValidationErrorCode::MissingRequired,
+            component: case["component"].as_str().unwrap().to_owned(),
+            path: "/title".to_owned(),
+            message: "m".to_owned(),
+            statement_id: None,
+            severity: None,
+        };
+        let enriched = enrich_errors(&[error], &case["schema"], &[]);
+        report.check(
+            name,
+            &serde_json::json!({"text": golden[name]}),
+            Ok(enriched_errors_to_json(&enriched)),
+        );
+    }
     // Cases the reference reports errors for and the core doesn't.
     let unchecked: Vec<String> = golden
         .keys()

@@ -1,0 +1,76 @@
+{
+  "cases": [
+    {
+      "name": "hand/issue16-array-def-0",
+      "schema": {
+        "$defs": [
+          {
+            "properties": {
+              "title": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "title"
+            ]
+          }
+        ]
+      },
+      "component": "0"
+    },
+    {
+      "name": "hand/issue16-array-def-00",
+      "schema": {
+        "$defs": [
+          {
+            "properties": {
+              "title": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "title"
+            ]
+          }
+        ]
+      },
+      "component": "00"
+    },
+    {
+      "name": "hand/issue16-array-def-+0",
+      "schema": {
+        "$defs": [
+          {
+            "properties": {
+              "title": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "title"
+            ]
+          }
+        ]
+      },
+      "component": "+0"
+    },
+    {
+      "name": "hand/issue16-array-def-1",
+      "schema": {
+        "$defs": [
+          {
+            "properties": {
+              "title": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "title"
+            ]
+          }
+        ]
+      },
+      "component": "1"
+    }
+  ]
+}
