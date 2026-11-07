@@ -22,4 +22,6 @@ exclude_re = [
     'statements\.rs:.*replace < with <= in split',
     # The current token is a newline, so skipping from pos or pos + 1 reaches the same first non-newline (#13).
     'statements\.rs:.*replace \+ with \* in after_newline',
+    # Both callers subsequently draw positive work before returning any value; zero work or an existing cut therefore still cuts the same default (#11).
+    'evaluate\.rs:.*replace out_of_work -> bool with false',
 ]
