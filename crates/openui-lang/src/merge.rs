@@ -88,6 +88,7 @@ fn gc_unreachable(
 /// is the patch's statements; with no patch statements it's `existing`
 /// unchanged.
 pub fn merge_statements(existing: &str, patch: &str, root_id: Option<&str>) -> String {
+    crate::stack::grow_stack!(merge_statements(existing, patch, root_id));
     let existing_statements = parse_statements(existing);
     let fenced = strip_fences(patch);
     let patch_statements = parse_statements(&fenced);

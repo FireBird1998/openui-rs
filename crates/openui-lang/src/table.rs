@@ -280,6 +280,7 @@ impl Table {
     }
 
     fn reach_add(&mut self, reach: &Reach) {
+        crate::stack::grow_stack!(self.reach_add(reach));
         for &slot in &reach.direct {
             self.reach_inc(slot);
         }
@@ -289,6 +290,7 @@ impl Table {
     }
 
     fn reach_remove(&mut self, reach: &Reach) {
+        crate::stack::grow_stack!(self.reach_remove(reach));
         for &slot in &reach.direct {
             self.reach_dec(slot);
         }
@@ -299,6 +301,7 @@ impl Table {
 
     /// Move the counts from `old`'s tree to `new`'s, skipping shared nodes.
     fn reach_diff(&mut self, old: Option<&Arc<Reach>>, new: &Arc<Reach>) {
+        crate::stack::grow_stack!(self.reach_diff(old, new));
         let Some(old) = old else {
             return self.reach_add(new);
         };

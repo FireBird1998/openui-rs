@@ -159,8 +159,14 @@
 //!   [`StreamParser`] it cut gives that result again, ignoring pushes, until
 //!   [`StreamParser::set`]. [`parse_json`] refuses its input instead.
 //!
-//! Call the core from a thread with at least 512 KB of stack, and build it
-//! optimized (opt-level 1 or more), even in debug builds of the app.
+//! The core grows its stack on demand: when a call runs low, it goes on in a
+//! segment allocated on the heap. So it needs no minimum thread stack, and
+//! runs on a 64 KB one at the depth limit. One thing happens on the caller's
+//! stack: dropping a [`ParseResult`] recurses through its tree. At the
+//! default depth limit that takes under 64 KB in an optimized build (opt-level
+//! 1 or more) and under 512 KB in an unoptimized one, so drop deep results on
+//! a thread with that much, or build the core optimized even in debug builds
+//! of the app. (A [`StreamParser`] drops its own state on a fresh segment.)
 
 #![forbid(unsafe_code)]
 #![warn(missing_docs)]
@@ -172,8 +178,8 @@ struct ReadmeDoctests;
 
 /// How deep expressions and reference chains may nest before the core stops
 /// descending and sets [`ParseResult::depth_limited`]. Real UIs nest a few
-/// dozen levels at most; this bound keeps recursion well inside a small
-/// thread stack. See `tests/depth.rs`.
+/// dozen levels at most; this bound keeps a result's depth, and so the work
+/// and the stack it takes, bounded. See `tests/depth.rs`.
 pub const MAX_DEPTH: usize = 256;
 
 /// About how large a parse result may grow, in bytes of its JSON. A statement
@@ -203,6 +209,7 @@ mod progress;
 mod prompt;
 mod result;
 mod serialize;
+mod stack;
 mod statements;
 mod stream;
 mod table;

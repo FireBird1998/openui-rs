@@ -25,6 +25,7 @@ bindgen = ["uniffi/cli", "uniffi/cargo-metadata"]
 [dependencies]
 openui-lang = { path = "../openui-lang" }
 serde_json = { version = "1", features = ["preserve_order", "float_roundtrip"] }
+stacker = "0.1"
 uniffi = { version = "0.32", default-features = false }
 
 [dev-dependencies]

@@ -58,6 +58,7 @@ pub(crate) enum ErrorPart {
 /// where it's first reached.
 pub(crate) fn flatten_errors(parts: &[ErrorPart]) -> Vec<ValidationError> {
     fn walk(parts: &[ErrorPart], seen: &mut HashSet<(Slot, bool)>, out: &mut Vec<ValidationError>) {
+        crate::stack::grow_stack!(walk(parts, seen, out));
         for part in parts {
             match part {
                 ErrorPart::Own(error) => out.push(error.clone()),
@@ -199,6 +200,7 @@ type Scope = HashSet<String>;
 /// for builtins and runtime expressions; `Null` for placeholders and for
 /// components that had to be dropped. Past `MAX_DEPTH`, `Null`.
 pub(crate) fn materialize_value(node: &Ast, ctx: &mut Ctx) -> Value {
+    crate::stack::grow_stack!(materialize_value(node, ctx));
     if ctx.enter(json_size(node, false)).is_none() {
         return Value::Null;
     }
@@ -210,7 +212,7 @@ pub(crate) fn materialize_value(node: &Ast, ctx: &mut Ctx) -> Value {
 // The functions on the recursive path stay small, and the heavier
 // non-recursive work lives in `#[inline(never)]` helpers. In unoptimized
 // builds a frame holds every temporary its function could need, so this is
-// what keeps MAX_DEPTH levels inside a small thread stack.
+// what keeps a walk to MAX_DEPTH levels inside one stack segment.
 fn materialize_value_at_depth(node: &Ast, ctx: &mut Ctx) -> Value {
     match node {
         Ast::Ref(name) => match resolve_ref(name, ctx, Mode::Value) {
@@ -370,6 +372,7 @@ fn resolve_ref(name: &str, ctx: &mut Ctx, mode: Mode) -> Resolved {
 /// Account for a cached statement as if it had been materialized here.
 #[inline(never)]
 fn replay(entry: &Entry, key: (Slot, bool), frame: &mut Frame, depth: usize) {
+    crate::stack::grow_stack!(replay(entry, key, frame, depth));
     frame.errors.push(ErrorPart::Reached {
         key,
         memoized: entry.unresolved.is_empty(),
@@ -648,6 +651,7 @@ fn map_call_args(name: &str, args: &[Ast], def: &Call, ctx: &mut Ctx) -> Option<
 /// changed. Structurally, then, but with `NaN` equal to itself, so an object
 /// holding one isn't rebuilt (which would also drop a duplicate key).
 fn unchanged(a: &Value, b: &Value) -> bool {
+    crate::stack::grow_stack!(unchanged(a, b));
     match (a, b) {
         (Value::Num(x), Value::Num(y)) => x == y || x.is_nan() && y.is_nan(),
         (Value::Arr(x), Value::Arr(y)) => {
@@ -666,6 +670,7 @@ fn unchanged(a: &Value, b: &Value) -> bool {
 }
 
 fn literal_value(node: &Ast) -> Option<Value> {
+    crate::stack::grow_stack!(literal_value(node));
     Some(match node {
         Ast::Str(v) => Value::Str(v.clone()),
         Ast::Num(n) => Value::Num(*n),
@@ -687,6 +692,7 @@ fn literal_value(node: &Ast) -> Option<Value> {
 
 /// `toLiteralAST`: a plain value as the literal node that writes it.
 fn to_literal_ast(value: &Value) -> Ast {
+    crate::stack::grow_stack!(to_literal_ast(value));
     match value {
         Value::Str(v) => Ast::Str(v.clone()),
         Value::Num(n) => Ast::Num(*n),
@@ -857,6 +863,7 @@ fn materialize_lazy_builtin(
 /// components' args to `mapped_props`. The structure stays AST. Past
 /// `MAX_DEPTH`, `Null`.
 pub(crate) fn materialize_expr(node: &Ast, ctx: &mut Ctx, scope: &Scope) -> Ast {
+    crate::stack::grow_stack!(materialize_expr(node, ctx, scope));
     if ctx.enter(json_size(node, true)).is_none() {
         return Ast::Null;
     }
@@ -1035,6 +1042,7 @@ fn values_contain_dynamic(props: &Value) -> bool {
 /// afterwards. That keeps a parent from walking the whole tree below it, which
 /// the streaming parser shares between results.
 fn contains_dynamic_value(value: &Value) -> bool {
+    crate::stack::grow_stack!(contains_dynamic_value(value));
     if is_ast_node(value) {
         return true;
     }

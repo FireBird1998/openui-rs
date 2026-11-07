@@ -3,9 +3,9 @@
 //!
 //! Parse results cross as the JSON text [`ParseResult::to_json`] produces,
 //! byte-identical with the reference, plus the two limit flags the reference
-//! has no field for and how long the core took. Callers must call in from
-//! threads with at least 512 KB of stack; the crate is built at opt-level 1 or
-//! more in every profile.
+//! has no field for and how long the core took. Callers may call in from any
+//! thread, whatever its stack: the core grows its stack on demand (ADR 0002),
+//! and the binding drops each result the same way.
 
 use std::fmt;
 use std::sync::{Arc, Mutex, MutexGuard};
@@ -87,14 +87,24 @@ impl ParseOutput {
     fn timed(result: ParseResult, started: Instant) -> ParseOutput {
         let parsed = Instant::now();
         let json = result.to_json();
-        ParseOutput {
+        let output = ParseOutput {
             json,
             depth_limited: result.depth_limited,
             size_limited: result.size_limited,
             parse_nanos: nanos(started, parsed),
             json_nanos: nanos(parsed, Instant::now()),
-        }
+        };
+        drop_deep(result);
+        output
     }
+}
+
+/// Drop a result, whose tree goes as deep as a parse does, on a fresh stack
+/// segment when the caller's stack runs low: the core grows its stack for its
+/// own work, but a result is dropped by whoever holds it, and dropping recurses.
+/// The sizes are the core's (ADR 0002).
+fn drop_deep(result: ParseResult) {
+    stacker::maybe_grow(128 * 1024, 2 * 1024 * 1024, move || drop(result));
 }
 
 fn nanos(from: Instant, to: Instant) -> u64 {

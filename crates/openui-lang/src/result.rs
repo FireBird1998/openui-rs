@@ -35,6 +35,7 @@ pub enum Value {
 impl Value {
     /// A JSON value as `JSON.parse` would give it (a schema default, say).
     pub fn from_json(json: &Json) -> Value {
+        crate::stack::grow_stack!(Value::from_json(json));
         match json {
             Json::Null => Value::Null,
             Json::Bool(b) => Value::Bool(*b),
@@ -239,6 +240,7 @@ impl ParseResult {
 
     /// The result as the reference parser's `JSON.stringify` writes it.
     pub fn to_json(&self) -> String {
+        crate::stack::grow_stack!(self.to_json());
         let mut out = String::with_capacity(256);
         out.push_str("{\"root\":");
         match &self.root {
@@ -350,6 +352,7 @@ fn write_object(out: &mut String, obj: &JsObject<Value>) {
 }
 
 pub(crate) fn write_value(out: &mut String, value: &Value) {
+    crate::stack::grow_stack!(write_value(out, value));
     match value {
         Value::Null => out.push_str("null"),
         Value::Bool(b) => write_bool(out, *b),

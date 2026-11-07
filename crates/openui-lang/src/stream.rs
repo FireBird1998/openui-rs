@@ -49,6 +49,19 @@ struct Completed {
     depth_limited: bool,
 }
 
+/// The table and cache hold statements and results as deep as a parse goes,
+/// and dropping them recurses: on a stack running low, that happens on a
+/// fresh segment instead.
+impl Drop for Completed {
+    fn drop(&mut self) {
+        if crate::stack::low() {
+            let table = std::mem::take(&mut self.table);
+            let cache = std::mem::take(&mut self.cache);
+            crate::stack::on_new_segment(move || drop((table, cache)));
+        }
+    }
+}
+
 impl Completed {
     fn clear(&mut self) {
         *self = Completed::default();
@@ -215,6 +228,7 @@ impl StreamParser {
     }
 
     fn current_result(&mut self, complete: bool) -> ParseResult {
+        crate::stack::grow_stack!(self.current_result(complete));
         let (mut result, pending_limited) = self.build_current(complete);
         result.depth_limited |= self.completed.depth_limited || pending_limited;
         result

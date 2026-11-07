@@ -199,6 +199,7 @@ fn inline_action_shapes(
     shapes: &IndexMap<String, Json>,
     inlining: &mut Vec<String>,
 ) -> Json {
+    crate::stack::grow_stack!(inline_action_shapes(node, shapes, inlining));
     match node {
         Json::Object(map) => {
             if let Some(Json::String(target)) = map.get("$ref") {

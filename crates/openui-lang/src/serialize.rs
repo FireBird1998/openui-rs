@@ -22,10 +22,9 @@ use crate::library::Library;
 
 /// How deeply the input may nest, in JSON levels. A parse result nests at most
 /// three JSON levels per [`crate::MAX_DEPTH`] level (a runtime expression of
-/// nested objects; measured at 764), so every parse result fits. A tree built
-/// by hand at this depth needs 448 KB of stack to serialize in a test build
-/// (opt-level 1) and 320 KB in release, inside the 512 KB embedders give the
-/// core. Reading JSON back doesn't recurse at all.
+/// nested objects; measured at 764), so every parse result fits. Serializing
+/// grows its stack on demand, like the rest of the core; reading JSON back
+/// doesn't recurse at all.
 pub(crate) const JSON_DEPTH_LIMIT: usize = 800;
 
 /// Why an element tree couldn't be serialized: the reference throws on the
@@ -65,6 +64,7 @@ pub fn json_to_openui(
     library: &Library,
     state_declarations: Option<&Json>,
 ) -> Result<String, SerializeError> {
+    crate::stack::grow_stack!(json_to_openui(element, library, state_declarations));
     let Json::Object(root) = element else {
         return Err(thrown("the root must be an element object"));
     };
@@ -159,6 +159,7 @@ impl Out<'_> {
 /// can't be converted (the key shadows the method, and `valueOf` gives back
 /// the object), so that throws, as in JavaScript.
 fn to_string(value: &Json) -> Result<String, SerializeError> {
+    crate::stack::grow_stack!(to_string(value));
     match value {
         Json::Null => Ok("null".to_owned()),
         Json::Bool(b) => Ok(b.to_string()),
@@ -374,8 +375,9 @@ impl<'a> Serializer<'a> {
     ///
     /// The recursive path stays small, and each heavier case is an
     /// `#[inline(never)]` helper: a frame then holds only the case in hand,
-    /// which keeps `JSON_DEPTH_LIMIT` levels inside a small thread stack.
+    /// which keeps `JSON_DEPTH_LIMIT` levels inside one stack segment.
     fn value<'v>(&mut self, value: Option<&'v Json>) -> Result<Out<'v>, SerializeError> {
+        crate::stack::grow_stack!(self.value(value));
         self.enter()?;
         let out = match value {
             None | Some(Json::Null) => Ok(Out::Text("null".to_owned())),
@@ -486,6 +488,7 @@ impl<'a> Serializer<'a> {
     /// The reference's `serializeASTNode`; `None` is `undefined`, and reading
     /// a field of it (or of null) throws. Kept small, as `value` is.
     fn ast<'v>(&mut self, node: Option<&'v Json>) -> Result<Out<'v>, SerializeError> {
+        crate::stack::grow_stack!(self.ast(node));
         self.enter()?;
         let out = match node {
             None | Some(Json::Null) => Err(thrown("cannot read properties of a missing node")),
