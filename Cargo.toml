@@ -18,11 +18,3 @@ codegen-units = 1
 [profile.test]
 opt-level = 1
 
-# Our own trees grow the stack and free themselves without recursion (ADR
-# 0002), but reading JSON back still goes through serde_json's value, which
-# drops recursively: fine optimized, too deep for a small stack at opt-level
-# 0. Kept until reading JSON and the evaluator stop using it (#6, #7).
-[profile.dev.package.openui-lang]
-opt-level = 1
-[profile.dev.package.openui-ffi]
-opt-level = 1

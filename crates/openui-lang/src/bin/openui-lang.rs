@@ -34,7 +34,7 @@ const USAGE: &str = "usage: openui-lang parse <schema.json> <program|->
        openui-lang tokens <program|->
        openui-lang prompt <spec.json|->
        openui-lang bench <schema.json> <program>...
-options: --limit name=value (program-size, result-size, depth)";
+options: --limit name=value";
 
 /// The limits `--limit name=value` can set.
 const LIMIT_NAMES: &str = "program-size, result-size, depth";
@@ -171,7 +171,7 @@ fn run(args: &[String]) -> Result<(), String> {
             println!("{prompt}");
             Ok(())
         }
-        _ => Err(USAGE.to_owned()),
+        _ => Err(format!("{USAGE} ({LIMIT_NAMES})")),
     }
 }
 

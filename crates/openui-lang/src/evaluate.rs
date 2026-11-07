@@ -21,7 +21,7 @@ use std::sync::Arc;
 
 use crate::ast::Ast;
 use crate::builtins::builtin_function_params;
-use crate::js::{self, JsObject, OBJECT_PROTOTYPE_KEYS, array_index, number_to_string, parse_json};
+use crate::js::{self, JsObject, OBJECT_PROTOTYPE_KEYS, array_index, number_to_string, read_back};
 use crate::result::{Value, write_value};
 use crate::validation::{element_parts, is_ast_node};
 
@@ -163,7 +163,7 @@ const BOOLEAN_METHODS: [&str; 2] = ["toString", "valueOf"];
 
 /// How many of the evaluator's levels one level of the depth limit allows:
 /// as deep as a parse result's JSON nests, so an evaluated default reads back
-/// and serializes like any result (see `serialize::JSON_DEPTH_LIMIT`).
+/// and serializes like any result.
 const VALUE_LEVELS_PER_LEVEL: usize = 3;
 
 /// What evaluating defaults may still build, and whether it went past that.
@@ -174,7 +174,7 @@ const VALUE_LEVELS_PER_LEVEL: usize = 3;
 /// defaults reading defaults also nest without bound. The reference builds on
 /// until the engine runs out of memory or stack. The core keeps all of a
 /// parse's evaluating to what materializing left of the result-size limit, and its
-/// walks to `MAX_VALUE_DEPTH`. A default that goes past either is null, as is
+/// walks to [`VALUE_LEVELS_PER_LEVEL`] per level of the depth limit. A default that goes past either is null, as is
 /// every expression default after the budget runs out.
 ///
 /// What draws on it: each expression evaluated, each string joined or added,
@@ -416,15 +416,19 @@ fn from_value(value: &Value) -> Js {
         Value::Element(_) | Value::Ast(_) => {
             let mut json = String::new();
             write_value(&mut json, value);
-            // The core writes JSON, so only a stall can refuse it. Whatever
-            // refuses it, the default is cut and the result flagged.
-            parse_json(&json).map_or_else(
-                |_| {
+            // The core wrote it, so only a stall can refuse it: then the
+            // default is cut and the result flagged.
+            match read_back(&json) {
+                Ok(json) => {
+                    let js = from_json(&json);
+                    crate::free::free_json(json);
+                    js
+                }
+                Err(_) => {
                     LIMITS.with(|l| l.size_limited.set(true));
                     Js::Null
-                },
-                |json| from_json(&json),
-            )
+                }
+            }
         }
     }
 }

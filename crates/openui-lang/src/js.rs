@@ -486,12 +486,23 @@ impl std::error::Error for JsonError {}
 /// number too large for a double (`1e400`) is refused too: `JSON.parse` makes
 /// it `Infinity`, which a `serde_json::Value` can't hold.
 pub fn parse_json(text: &str) -> Result<serde_json::Value, JsonError> {
+    read_json(text, crate::serialize::JSON_DEPTH_LIMIT)
+}
+
+/// Read back JSON the core wrote itself, nesting as deep as it does. Its
+/// depth is already bounded by the parse's [`crate::Limits`], so the reader
+/// adds no limit of its own; only a stall can refuse it.
+pub(crate) fn read_back(text: &str) -> Result<serde_json::Value, JsonError> {
+    read_json(text, usize::MAX)
+}
+
+fn read_json(text: &str, limit: usize) -> Result<serde_json::Value, JsonError> {
     JsonReader {
         s: text.as_bytes(),
         text,
         pos: 0,
     }
-    .read()
+    .read(limit)
 }
 
 struct JsonReader<'a> {
@@ -526,9 +537,8 @@ impl JsonReader<'_> {
         }
     }
 
-    fn read(mut self) -> Result<serde_json::Value, JsonError> {
+    fn read(mut self, limit: usize) -> Result<serde_json::Value, JsonError> {
         use serde_json::Value as Json;
-        let limit = crate::serialize::JSON_DEPTH_LIMIT;
         let mut open: Vec<Open> = Vec::new();
         let mut progress = Progress::new("the JSON reader");
         loop {

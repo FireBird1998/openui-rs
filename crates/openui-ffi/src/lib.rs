@@ -119,7 +119,7 @@ pub struct ParseLimits {
 impl ParseLimits {
     /// The core's limits: these, the defaults where unset. A value past what
     /// the platform can count is as good as no limit.
-    fn core(&self) -> Limits {
+    fn to_core(&self) -> Limits {
         let size = |n: u64| usize::try_from(n).unwrap_or(usize::MAX);
         let mut limits = Limits::default();
         if let Some(n) = self.program_size {
@@ -166,7 +166,7 @@ pub fn parse_with_limits(
         &program,
         &library.inner,
         root_name.as_deref(),
-        limits.core(),
+        limits.to_core(),
     );
     ParseOutput::timed(result, started)
 }
@@ -228,8 +228,11 @@ impl StreamSession {
         root_name: Option<String>,
         limits: ParseLimits,
     ) -> Arc<Self> {
-        let parser =
-            StreamParser::with_limits(library.inner.clone(), root_name.as_deref(), limits.core());
+        let parser = StreamParser::with_limits(
+            library.inner.clone(),
+            root_name.as_deref(),
+            limits.to_core(),
+        );
         Arc::new(StreamSession {
             parser: Mutex::new(parser),
         })

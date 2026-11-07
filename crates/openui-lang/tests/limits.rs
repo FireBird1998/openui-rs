@@ -198,3 +198,34 @@ fn a_program_within_the_limit_is_not_cut() {
     stream.push(PROGRAM);
     assert_eq!(stream.finish(), parse(PROGRAM, &lib, None));
 }
+
+#[test]
+fn the_default_program_size_limit_cuts_plain_parsing_and_streaming() {
+    // Just over 1 MiB of statements.
+    let line = "a = \"xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\"\n";
+    let program = format!(
+        "root = Text(a)\n{}",
+        line.repeat(MAX_PROGRAM_SIZE / line.len() + 1)
+    );
+    assert!(program.len() > MAX_PROGRAM_SIZE);
+    assert!(parse(&program, &library(), None).size_limited);
+    let mut stream = StreamParser::new(library(), None);
+    assert!(stream.push(&program).size_limited);
+}
+
+#[test]
+fn at_a_raised_depth_a_default_holding_a_deep_component_is_read_whole() {
+    // The default's component nests 400 levels: written as JSON, about 1,200,
+    // past the 800 that `parse_json` takes from outside.
+    let levels = 400;
+    let program = format!(
+        "root = Stack([])\n$a = {}Text(\"x\"){}\n$b = $a",
+        "Stack([".repeat(levels),
+        "])".repeat(levels)
+    );
+    let limits = Limits::default().with_depth(2_000);
+    let result = parse_with_limits(&program, &library(), None, limits);
+    assert!(!result.size_limited && !result.depth_limited);
+    let json = result.to_json();
+    assert!(!json.contains("\"$a\":null") && !json.contains("\"$b\":null"));
+}

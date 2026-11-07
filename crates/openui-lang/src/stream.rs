@@ -38,7 +38,7 @@ pub struct StreamParser {
     stalled: Option<ParseResult>,
     /// The text reached the program-size limit: the rest was left out, and
     /// later pushes are too, until [`StreamParser::set`] starts over.
-    cut: bool,
+    past_program_size: bool,
 }
 
 /// The statements that have fully arrived.
@@ -100,7 +100,7 @@ impl StreamParser {
             pre: Preprocessor::new(),
             completed: Completed::default(),
             stalled: None,
-            cut: false,
+            past_program_size: false,
         }
     }
 
@@ -120,7 +120,10 @@ impl StreamParser {
     /// what was pushed only parses the new part; anything else starts over,
     /// as does a stream that was cut.
     pub fn set(&mut self, full_text: &str) -> ParseResult {
-        if self.cut || self.stalled.is_some() || !full_text.starts_with(self.buf.as_str()) {
+        if self.past_program_size
+            || self.stalled.is_some()
+            || !full_text.starts_with(self.buf.as_str())
+        {
             self.reset();
         }
         self.watched(|parser| {
@@ -151,7 +154,7 @@ impl StreamParser {
             return cut.clone();
         }
         let (mut result, stalled) = progress::watch(|| step(self));
-        result.size_limited |= self.cut;
+        result.size_limited |= self.past_program_size;
         if stalled {
             result.size_limited = true;
             self.stalled = Some(result.clone());
@@ -164,7 +167,7 @@ impl StreamParser {
         self.pre.reset();
         self.completed.clear();
         self.stalled = None;
-        self.cut = false;
+        self.past_program_size = false;
     }
 
     /// Take in new text, up to the program-size limit. If the cleaned text
@@ -172,12 +175,12 @@ impl StreamParser {
     /// shifted everything, say), they're stale: start over, as the reference
     /// does.
     fn absorb(&mut self, chunk: &str) {
-        if self.cut {
+        if self.past_program_size {
             return;
         }
         let room = self.limits.program_size().saturating_sub(self.buf.len());
         let (chunk, cut) = Limits::fit(chunk, room);
-        self.cut = cut;
+        self.past_program_size = cut;
         self.buf.push_str(chunk);
         let unchanged = self.pre.push(chunk);
         if self.completed.end > unchanged {

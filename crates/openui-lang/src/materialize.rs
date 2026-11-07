@@ -9,7 +9,7 @@ use std::sync::Arc;
 use crate::Limits;
 use crate::ast::{Ast, RefType};
 use crate::builtins::{is_lazy_builtin, is_reserved_call};
-use crate::js::{JsObject, OBJECT_PROTOTYPE_KEYS, parse_json};
+use crate::js::{JsObject, OBJECT_PROTOTYPE_KEYS, read_back};
 use crate::library::{Call, CallKind, Library, Param};
 use crate::result::{Element, ValidationError, Value, write_value};
 use crate::table::{Cache, Entry, Output, Reach, Slot, Table};
@@ -1033,8 +1033,14 @@ fn values_contain_dynamic(props: &Value) -> bool {
     }
     let mut json = String::new();
     write_value(&mut json, props);
-    let fields = parse_json(&json).map(|json| Value::from_json(&json));
-    matches!(&fields, Ok(Value::Obj(fields)) if fields.values().any(contains_dynamic_value))
+    // The core wrote it, so only a stall can refuse it, and that flags the
+    // result.
+    let Ok(json) = read_back(&json) else {
+        return false;
+    };
+    let fields = Value::from_json(&json);
+    crate::free::free_json(json);
+    matches!(&fields, Value::Obj(fields) if fields.values().any(contains_dynamic_value))
 }
 
 /// Whether a prop value holds anything that needs runtime evaluation.
