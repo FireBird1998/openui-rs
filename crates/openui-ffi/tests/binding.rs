@@ -264,8 +264,19 @@ fn limits_reach_the_core_one_shot_and_streaming() {
     let library = ComponentLibrary::new(schema.to_owned()).unwrap();
     let core_library =
         openui_lang::Library::from_json_schema(&serde_json::from_str(schema).unwrap());
-    let program = format!("root = Stack({}1{})", "[".repeat(20), "]".repeat(20));
+    let program = format!(
+        "root = Stack({}1{})\n$a = @Count([1, 2, 3])",
+        "[".repeat(20),
+        "]".repeat(20)
+    );
     for (limits, core_limits) in [
+        (
+            ParseLimits {
+                work: Some(2),
+                ..ParseLimits::default()
+            },
+            Limits::default().with_work(2),
+        ),
         (
             ParseLimits {
                 depth: Some(10),

@@ -143,10 +143,10 @@
 //!
 //! # Limits
 //!
-//! No input can panic the core, overflow its stack or exhaust memory, so a
-//! bad model response can't crash the app. Three limits and a stall guard
-//! make that so, and each cuts the result and sets a flag on it instead of
-//! failing. The limits are one [`Limits`] value, given to
+//! No input can panic the core, overflow its stack, exhaust memory or keep it
+//! busy for long, so a bad model response can't crash or freeze the app.
+//! Four limits and a stall guard make that so, and each cuts the result and
+//! sets a flag on it instead of failing. The limits are one [`Limits`] value, given to
 //! [`parse_with_limits`] or [`StreamParser::with_limits`]; [`parse`] and
 //! [`StreamParser::new`] use the defaults. Each can be raised or lowered:
 //!
@@ -161,6 +161,14 @@
 //! - **Depth**, 256 levels by default ([`MAX_DEPTH`]): nesting past it becomes
 //!   null ([`ParseResult::depth_limited`]); evaluated state defaults may
 //!   nest three levels per level.
+//! - **Work**, by default the larger of a million steps and 1,000 steps per
+//!   byte of program, never above 64 million ([`Limits::work_for`]):
+//!   evaluating state defaults counts every step it takes, an expression
+//!   evaluated, an item sorted, filtered or copied into an `@Each` template,
+//!   a node of a value read, a byte built. Past it, the default being
+//!   evaluated is null, as is every expression default after it
+//!   ([`ParseResult::size_limited`]). A step takes nanoseconds, so a parse
+//!   stays within a fraction of a second.
 //! - A stall: every loop that reads input either moves forward or stops. A
 //!   loop that stopped moving forward would be a bug in the core, never the
 //!   input's fault. In debug builds it panics; in release builds the parse
@@ -179,8 +187,11 @@
 //! assert!(parse_with_limits(program, &library, None, shallow).depth_limited);
 //! ```
 //!
-//! The limits count bytes and levels, never time, so a result is the same on
-//! every machine. No default cuts a program in the conformance corpus.
+//! The limits count bytes, levels and steps, never time, so a result is the
+//! same on every machine. No default cuts a program in the conformance
+//! corpus. The program-size and work limits scale with the program as
+//! streamed so far, so a stream's result is always the one-shot parse of its
+//! text so far: an early push may be cut where a later one isn't.
 //!
 //! The core grows its stack on demand: when a call runs low, it goes on in a
 //! segment allocated on the heap. And a result frees its tree with a loop,

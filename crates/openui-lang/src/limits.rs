@@ -10,8 +10,7 @@ use crate::{MAX_DEPTH, MAX_PROGRAM_SIZE, MAX_RESULT_SIZE};
 /// machine.
 ///
 /// Its fields are private and set through the `with_*` methods, so limits
-/// added later (a limit on evaluating's work is planned) aren't a breaking
-/// change for code that builds one:
+/// added later aren't a breaking change for code that builds one:
 ///
 /// ```
 /// use openui_lang::Limits;
@@ -25,15 +24,25 @@ pub struct Limits {
     program_size: usize,
     result_size: usize,
     depth: usize,
+    /// Set with [`Limits::with_work`]; `None` scales with the program.
+    work: Option<usize>,
 }
 
+/// The default work limit's floor, its steps per byte of program, and its
+/// ceiling (see [`Limits::work_for`]).
+const MIN_WORK: usize = 1_000_000;
+const WORK_PER_BYTE: usize = 1_000;
+const MAX_WORK: usize = 64_000_000;
+
 impl Limits {
-    /// The defaults: [`MAX_PROGRAM_SIZE`], [`MAX_RESULT_SIZE`] and
-    /// [`MAX_DEPTH`].
+    /// The defaults: [`MAX_PROGRAM_SIZE`], [`MAX_RESULT_SIZE`],
+    /// [`MAX_DEPTH`], and a work limit that scales with the program (see
+    /// [`Limits::work_for`]).
     pub const DEFAULT: Limits = Limits {
         program_size: MAX_PROGRAM_SIZE,
         result_size: MAX_RESULT_SIZE,
         depth: MAX_DEPTH,
+        work: None,
     };
 
     /// How many bytes of a program are read; the rest is ignored as if the
@@ -53,6 +62,48 @@ impl Limits {
     /// the result is flagged `depth_limited`.
     pub const fn depth(&self) -> usize {
         self.depth
+    }
+
+    /// The work limit, if one was set with [`Limits::with_work`]; `None`
+    /// means the default, which scales with the program (see
+    /// [`Limits::work_for`]).
+    pub const fn work(&self) -> Option<usize> {
+        self.work
+    }
+
+    /// How many steps evaluating a program's state defaults may take, for a
+    /// program of `program_bytes`: the limit set with [`Limits::with_work`],
+    /// or by default the larger of a million steps and 1,000 steps per byte,
+    /// never above 64 million.
+    ///
+    /// A step is one expression evaluated, one item sorted, filtered or
+    /// copied into an `@Each` template, one node of a component or runtime
+    /// expression read as a value, or one byte built. Past the limit the
+    /// default being evaluated is null, as is every expression default after
+    /// it, and the result is flagged `size_limited`.
+    pub const fn work_for(&self, program_bytes: usize) -> usize {
+        match self.work {
+            Some(steps) => steps,
+            None => {
+                let scaled = program_bytes.saturating_mul(WORK_PER_BYTE);
+                let floored = if scaled > MIN_WORK { scaled } else { MIN_WORK };
+                if floored < MAX_WORK {
+                    floored
+                } else {
+                    MAX_WORK
+                }
+            }
+        }
+    }
+
+    /// These limits with the work limit set to `steps`, for every program
+    /// (see [`Limits::work_for`]).
+    #[must_use]
+    pub const fn with_work(self, steps: usize) -> Limits {
+        Limits {
+            work: Some(steps),
+            ..self
+        }
     }
 
     /// These limits with the program-size limit set to `bytes`.

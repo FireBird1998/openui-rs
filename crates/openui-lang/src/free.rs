@@ -149,22 +149,6 @@ fn ast_children(ast: &mut Ast, rest: &mut Vec<Node>) {
     }
 }
 
-/// Free a `serde_json::Value` with a loop. serde_json's own drop recurses, so
-/// the JSON the core reads back while parsing is freed through here instead.
-pub(crate) fn free_json(json: serde_json::Value) {
-    use serde_json::Value as Json;
-    let mut rest = vec![json];
-    while let Some(mut json) = rest.pop() {
-        match &mut json {
-            Json::Array(items) => rest.append(items),
-            Json::Object(fields) => {
-                rest.extend(std::mem::take(fields).into_iter().map(|(_, v)| v));
-            }
-            _ => {}
-        }
-    }
-}
-
 /// The evaluator's values nest as deep as an evaluated default does, three
 /// levels per level of the depth limit, and are dropped inside the parse:
 /// the same loop frees them.

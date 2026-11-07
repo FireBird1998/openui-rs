@@ -278,6 +278,7 @@ fn parse_text(
             library,
             root_name,
             limits,
+            program_bytes: input.len(),
         },
         None,
     );
@@ -356,13 +357,16 @@ pub(crate) struct PartialRef<'a> {
     pub slots: &'a [Slot],
 }
 
-/// What a parse is against, the same for every result of a stream: the
-/// component library, its root component, and the limits.
+/// What a parse is against: the component library, its root component, the
+/// limits, and how long the program is so far, which the limits that scale
+/// with it read (the same for a stream's push as for a one-shot parse of the
+/// text so far).
 #[derive(Clone, Copy)]
 pub(crate) struct Against<'a> {
     pub library: &'a Library,
     pub root_name: Option<&'a str>,
     pub limits: Limits,
+    pub program_bytes: usize,
 }
 
 pub(crate) fn build_result(
@@ -377,6 +381,7 @@ pub(crate) fn build_result(
         library,
         root_name,
         limits,
+        program_bytes,
     } = against;
     let entry = pick_entry(table, root_name);
     let entry_id = entry.map(|(slot, _)| table.name(slot).to_owned());
@@ -416,8 +421,9 @@ pub(crate) fn build_result(
         }
     }
 
+    let work = limits.work_for(program_bytes);
     let (state_declarations, query_statements, mutation_statements) =
-        extract_statements(ctx.table, &mut ctx, partial.as_ref());
+        extract_statements(ctx.table, &mut ctx, partial.as_ref(), work);
 
     // `no-root`, which streaming consumers read only once the stream ends.
     ctx.current_statement_id = entry_id;
@@ -479,6 +485,7 @@ fn extract_statements(
     table: &Table,
     ctx: &mut Ctx,
     partial: Option<&PartialRef>,
+    work: usize,
 ) -> (JsObject<Value>, Vec<QueryStatement>, Vec<MutationStatement>) {
     let mut state = JsObject::new();
     let mut queries = Vec::new();
@@ -525,12 +532,13 @@ fn extract_statements(
             Statement::Value { .. } => {}
         }
     }
-    // Evaluating builds no more than what's left of the result's budget.
-    let budget = ctx
+    // Evaluating builds no more than the result-size limit leaves room for,
+    // and takes no more than `work` steps.
+    let room = ctx
         .limits
         .result_size()
         .saturating_sub(ctx.size - expressions_size);
-    let evaluated = state_defaults(state, budget, ctx.limits.depth());
+    let evaluated = state_defaults(state, room, ctx.limits.depth(), work);
     ctx.frame.size_limited |= evaluated.size_limited;
     ctx.frame.limited |= evaluated.depth_limited;
     let (mut state, undefined) = (evaluated.state, evaluated.undefined);

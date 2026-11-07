@@ -335,6 +335,7 @@ impl StreamParser {
                 library: &self.library,
                 root_name: self.root_name.as_deref(),
                 limits: self.limits,
+                program_bytes: self.buf.len(),
             },
             partial,
         )

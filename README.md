@@ -35,7 +35,7 @@ for chunk in ["root = Stack([ti", "tle])\ntitle = Te", "xt(\"Hello\")"] {
 }
 ```
 
-`cargo doc -p openui-lang --open` has the rest, with examples for prompts, merging and serializing. The core grows its stack on demand and its results free their trees without recursion, so it runs, and its results drop, on any thread. Its limits on program size, result size and depth are one `Limits` value with documented defaults, which an embedder may raise or lower.
+`cargo doc -p openui-lang --open` has the rest, with examples for prompts, merging and serializing. The core grows its stack on demand and its results free their trees without recursion, so it runs, and its results drop, on any thread. Its limits on program size, result size, depth and the work evaluating state defaults may take are one `Limits` value with documented defaults, which an embedder may raise or lower.
 
 The command-line tool runs each part on files:
 

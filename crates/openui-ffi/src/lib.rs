@@ -98,8 +98,10 @@ impl ParseOutput {
 }
 
 /// The core's limits (its `Limits`), each one left out meaning its default:
-/// 1 MiB of program, about 8 MiB of result JSON, 256 levels of nesting.
-/// Hitting one cuts the result and sets `size_limited` or `depth_limited`.
+/// 1 MiB of program, about 8 MiB of result JSON, 256 levels of nesting, and
+/// evaluating state defaults in the larger of a million steps and 1,000 per
+/// byte of program, at most 64 million. Hitting one cuts the result and sets
+/// `size_limited` or `depth_limited`.
 /// New limits are added as fields that default to unset, so code that builds
 /// one keeps compiling.
 #[derive(Clone, Debug, Default, PartialEq, Eq, uniffi::Record)]
@@ -114,6 +116,10 @@ pub struct ParseLimits {
     /// How deep expressions and references may nest.
     #[uniffi(default = None)]
     pub depth: Option<u64>,
+    /// How many steps evaluating state defaults may take, for every program;
+    /// unset, it scales with the program.
+    #[uniffi(default = None)]
+    pub work: Option<u64>,
 }
 
 impl ParseLimits {
@@ -130,6 +136,9 @@ impl ParseLimits {
         }
         if let Some(n) = self.depth {
             limits = limits.with_depth(size(n));
+        }
+        if let Some(n) = self.work {
+            limits = limits.with_work(size(n));
         }
         limits
     }

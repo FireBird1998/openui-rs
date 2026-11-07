@@ -900,6 +900,12 @@
    "schema": "hand",
    "file": "cases/hand/145-an-empty-redefinition-after-a-stray-bracket.oui",
    "source": "hand-written"
+  },
+  {
+   "name": "hand/146-state-defaults-reading-an-assignment",
+   "schema": "hand",
+   "file": "cases/hand/146-state-defaults-reading-an-assignment.oui",
+   "source": "hand-written"
   }
  ]
 }

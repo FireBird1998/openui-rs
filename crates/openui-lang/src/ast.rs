@@ -7,6 +7,7 @@
 use std::sync::Arc;
 
 use crate::js::{JsObject, write_json_number, write_json_string};
+use crate::result::{Value, json_number_value};
 
 /// One expression node.
 ///
@@ -314,6 +315,133 @@ pub(crate) fn write_ast(out: &mut String, node: &Ast) {
         }
     }
     out.push('}');
+}
+
+/// One field of the plain object a node's JSON is.
+pub(crate) enum Field<'a> {
+    Text(&'a str),
+    Num(f64),
+    Bool(bool),
+    /// A child node, shared: read as a value, it's the same object each time.
+    Node(&'a Arc<Ast>),
+    Nodes(&'a [Ast]),
+    /// An object literal's entries: `[[key, node], ...]`.
+    Entries(&'a [(String, Ast)]),
+    /// `mappedProps`: `{key: node, ...}`.
+    Props(&'a JsObject<Ast>),
+}
+
+/// The fields of the plain object a node's JSON is, in the order
+/// [`write_ast`] writes them. Reading the node as a value goes through these,
+/// whole (`json_shaped_ast`) or one property at a time (the evaluator).
+pub(crate) fn fields(node: &Ast) -> Vec<(&'static str, Field<'_>)> {
+    use Field::{Bool, Entries, Node, Nodes, Num, Props, Text};
+    match node {
+        Ast::Comp {
+            name,
+            args,
+            function,
+            mapped_props,
+        } => {
+            let mut out = vec![
+                ("k", Text("Comp")),
+                ("name", Text(name)),
+                ("args", Nodes(args)),
+            ];
+            if *function {
+                out.push(("fn", Bool(true)));
+            }
+            if let Some(props) = mapped_props {
+                out.push(("mappedProps", Props(props)));
+            }
+            out
+        }
+        Ast::Str(v) => vec![("k", Text("Str")), ("v", Text(v))],
+        Ast::Num(v) => vec![("k", Text("Num")), ("v", Num(*v))],
+        Ast::Bool(v) => vec![("k", Text("Bool")), ("v", Bool(*v))],
+        Ast::Null => vec![("k", Text("Null"))],
+        Ast::Arr(els) => vec![("k", Text("Arr")), ("els", Nodes(els))],
+        Ast::Obj(entries) => vec![("k", Text("Obj")), ("entries", Entries(entries))],
+        Ast::Ref(n) => vec![("k", Text("Ref")), ("n", Text(n))],
+        Ast::Ph(n) => vec![("k", Text("Ph")), ("n", Text(n))],
+        Ast::StateRef(n) => vec![("k", Text("StateRef")), ("n", Text(n))],
+        Ast::RuntimeRef { n, ref_type } => vec![
+            ("k", Text("RuntimeRef")),
+            ("n", Text(n)),
+            ("refType", Text(ref_type.as_str())),
+        ],
+        Ast::BinOp { op, left, right } => vec![
+            ("k", Text("BinOp")),
+            ("op", Text(op)),
+            ("left", Node(left)),
+            ("right", Node(right)),
+        ],
+        Ast::UnaryOp { op, operand } => vec![
+            ("k", Text("UnaryOp")),
+            ("op", Text(op)),
+            ("operand", Node(operand)),
+        ],
+        Ast::Ternary {
+            cond,
+            then,
+            otherwise,
+        } => vec![
+            ("k", Text("Ternary")),
+            ("cond", Node(cond)),
+            ("then", Node(then)),
+            ("else", Node(otherwise)),
+        ],
+        Ast::Member { obj, field } => vec![
+            ("k", Text("Member")),
+            ("obj", Node(obj)),
+            ("field", Text(field)),
+        ],
+        Ast::Index { obj, index } => vec![
+            ("k", Text("Index")),
+            ("obj", Node(obj)),
+            ("index", Node(index)),
+        ],
+        Ast::Assign { target, value } => vec![
+            ("k", Text("Assign")),
+            ("target", Text(target)),
+            ("value", Node(value)),
+        ],
+    }
+}
+
+/// The node as reading its JSON back gives it: the plain object
+/// [`write_ast`] writes, built directly (see `result::json_shaped`).
+pub(crate) fn json_shaped_ast(node: &Ast) -> Value {
+    crate::stack::grow_stack!(json_shaped_ast(node));
+    let mut out = JsObject::new();
+    for (key, field) in fields(node) {
+        let value = match field {
+            Field::Text(s) => Value::Str(s.to_owned()),
+            Field::Num(n) => json_number_value(n),
+            Field::Bool(b) => Value::Bool(b),
+            Field::Node(node) => json_shaped_ast(node),
+            Field::Nodes(nodes) => {
+                Value::Arr(Arc::new(nodes.iter().map(json_shaped_ast).collect()))
+            }
+            Field::Entries(entries) => Value::Arr(Arc::new(
+                entries
+                    .iter()
+                    .map(|(k, v)| {
+                        Value::Arr(Arc::new(vec![Value::Str(k.clone()), json_shaped_ast(v)]))
+                    })
+                    .collect(),
+            )),
+            Field::Props(props) => {
+                let mut mapped = JsObject::new();
+                for (k, v) in props.iter() {
+                    mapped.define(k.clone(), json_shaped_ast(v));
+                }
+                Value::Obj(Arc::new(mapped))
+            }
+        };
+        out.define(key, value);
+    }
+    Value::Obj(Arc::new(out))
 }
 
 fn write_list(out: &mut String, nodes: &[Ast]) {

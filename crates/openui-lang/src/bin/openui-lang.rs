@@ -16,8 +16,8 @@
 //!
 //! `--limit name=value`, anywhere and as often as needed, sets one of the
 //! core's limits for `parse`, `stream` and `bench`: `program-size` and
-//! `result-size` in bytes, `depth` in levels. Fuzz finds and blow-ups replay
-//! under any limit this way.
+//! `result-size` in bytes, `depth` in levels, `work` in steps. Fuzz finds and
+//! blow-ups replay under any limit this way.
 
 use std::io::Read;
 use std::process::ExitCode;
@@ -37,7 +37,7 @@ const USAGE: &str = "usage: openui-lang parse <schema.json> <program|->
 options: --limit name=value";
 
 /// The limits `--limit name=value` can set.
-const LIMIT_NAMES: &str = "program-size, result-size, depth";
+const LIMIT_NAMES: &str = "program-size, result-size, depth, work";
 
 /// The arguments with every `--limit name=value` taken out, and the limits
 /// they set.
@@ -59,6 +59,7 @@ fn take_limits(args: &[String]) -> Result<(Vec<String>, Limits), String> {
             "program-size" => limits.with_program_size(value),
             "result-size" => limits.with_result_size(value),
             "depth" => limits.with_depth(value),
+            "work" => limits.with_work(value),
             _ => {
                 return Err(format!(
                     "unknown limit `{name}`; the limits are {LIMIT_NAMES}"

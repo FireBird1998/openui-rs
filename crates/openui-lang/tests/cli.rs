@@ -256,10 +256,35 @@ fn an_unknown_limit_names_the_valid_ones_and_fails() {
         assert!(!out.status.success(), "{bad}");
         let stderr = String::from_utf8(out.stderr).unwrap();
         assert!(
-            stderr.contains("program-size, result-size, depth"),
+            stderr.contains("program-size, result-size, depth, work"),
             "{bad}: {stderr}"
         );
     }
+}
+
+#[test]
+fn the_work_limit_applies_to_parse() {
+    let dir = conformance();
+    let schema = dir.join("schemas/hand.json");
+    let program = dir.join("cases/hand/136-state-defaults-builtin-functions.oui");
+    let limits = openui_lang::Limits::default().with_work(5);
+    let expected = openui_lang::parse_with_limits(&read(&program), &library(&schema), None, limits);
+    assert!(expected.size_limited);
+    let out = Command::new(env!("CARGO_BIN_EXE_openui-lang"))
+        .args(["parse", "--limit", "work=5"])
+        .arg(&schema)
+        .arg(&program)
+        .output()
+        .unwrap();
+    assert!(
+        out.status.success(),
+        "{}",
+        String::from_utf8_lossy(&out.stderr)
+    );
+    assert_eq!(
+        String::from_utf8(out.stdout).unwrap().trim_end(),
+        expected.to_json()
+    );
 }
 
 #[test]

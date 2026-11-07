@@ -1,0 +1,15 @@
+root = Stack([Text("x")])
+$each = @Each([1, 2], "i", {set: $t = i + 1, keep: $u = [i, {a: 1}], same: $v = 3 * -0})
+$first = $each[0]
+$kind = $first.set.expr.k
+$left = $first.set.expr.left
+$right = $first.set.expr.right.v
+$list = $first.keep.expr.els
+$entry = $first.keep.expr.els[1].entries[0]
+$zero = $first.same.expr.right.operand.v
+$missing = $first.set.expr.nothing
+$asText = $first.set.expr + ""
+$equal = $first.set.expr == $first.set.expr
+$sameLeft = $first.set.expr.left == $first.set.expr.left
+$count = @Count($first.keep.expr.els)
+$whole = $first.keep
