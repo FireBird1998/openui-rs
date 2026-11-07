@@ -214,7 +214,8 @@ pub fn strip_fences(input: &str) -> String {
     }
 }
 
-/// Whether a backslash has a following byte in a complete comment-strip line.
+/// Whether a known backslash has a following byte to skip. A trailing one
+/// may wait for more text; skipping its future byte early is equivalent.
 fn has_escape_byte(pos: usize, len: usize) -> bool {
     pos + 1 < len
 }
@@ -661,7 +662,7 @@ impl Comments {
             let c = s[scan.pos];
             if let Some(quote) = scan.in_str {
                 if c == b'\\' {
-                    if scan.pos + 1 < s.len() {
+                    if has_escape_byte(scan.pos, s.len()) {
                         scan.pos += 2;
                         continue;
                     }

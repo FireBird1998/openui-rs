@@ -1,0 +1,4 @@
+root = Text("x")
+$a = @Each([1], "i", $t = [i, {a: 1}])
+$same = $a[0].expr.els == $a[0].expr.els
+$entries = $a[0].expr.els[1].entries == $a[0].expr.els[1].entries

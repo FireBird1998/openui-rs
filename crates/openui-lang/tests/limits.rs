@@ -45,6 +45,12 @@ fn the_defaults_are_the_documented_ones() {
         (limits.program_size(), limits.result_size(), limits.depth()),
         (MAX_PROGRAM_SIZE, MAX_RESULT_SIZE, MAX_DEPTH)
     );
+    // The work limit scales with the program unless set (see tests/work.rs):
+    // a million steps for a short one, 1,000 a byte, at most 64 million.
+    assert_eq!(limits.work(), None);
+    assert_eq!(limits.work_for(10), 1_000_000);
+    assert_eq!(limits.work_for(10_000), 10_000_000);
+    assert_eq!(limits.work_for(MAX_PROGRAM_SIZE), 64_000_000);
 }
 
 /// `root = Stack([[...[1]...]])`, nested `levels` deep.
@@ -228,4 +234,125 @@ fn at_a_raised_depth_a_default_holding_a_deep_component_is_read_whole() {
     assert!(!result.size_limited && !result.depth_limited);
     let json = result.to_json();
     assert!(!json.contains("\"$a\":null") && !json.contains("\"$b\":null"));
+}
+
+/// A small program with a large result: `a`, a Text of 100 bytes, inlined
+/// 1,000 times through three levels of ten references each. About 250 bytes
+/// of program and about 230 KB of result, an amplification near 950.
+fn amplifier() -> String {
+    let ten = |name: &str| [name; 10].join(", ");
+    format!(
+        "root = Stack([{}])\nc = Stack([{}])\nb = Stack([{}])\na = Text(\"{}\")\n",
+        ten("c"),
+        ten("b"),
+        ten("a"),
+        "x".repeat(100)
+    )
+}
+
+#[test]
+fn the_default_result_size_limit_scales_with_the_program() {
+    let limits = Limits::default();
+    assert_eq!(limits.result_size_for(0), 64 * 1024);
+    assert_eq!(limits.result_size_for(1_000), 64 * 1024);
+    assert_eq!(limits.result_size_for(10_000), 640_000);
+    assert_eq!(limits.result_size_for(1024 * 1024), 8 * 1024 * 1024);
+    assert_eq!(limits.amplification(), 64);
+    assert_eq!(limits.result_floor(), 64 * 1024);
+    assert_eq!(limits.result_size(), 8 * 1024 * 1024);
+}
+
+#[test]
+fn a_small_program_amplified_past_the_default_is_cut() {
+    let lib = library();
+    let program = amplifier();
+    let fixed = Limits::default().with_result_size(MAX_RESULT_SIZE);
+    let whole = parse_with_limits(&program, &lib, None, fixed);
+    assert!(!whole.size_limited);
+    assert!(whole.to_json().len() > 150_000);
+
+    let cut = parse(&program, &lib, None);
+    assert!(cut.size_limited);
+    assert!(cut.to_json().len() < 70 * 1024);
+
+    let raised = Limits::default().with_amplification(2_000);
+    assert_eq!(parse_with_limits(&program, &lib, None, raised), whole);
+}
+
+#[test]
+fn a_fixed_result_size_ignores_the_program_size() {
+    let limits = Limits::default().with_result_size(10_000);
+    assert_eq!(limits.result_size_for(0), 10_000);
+    assert_eq!(limits.result_size_for(1024 * 1024), 10_000);
+    let raised = Limits::default()
+        .with_result_ceiling(64 * 1024 * 1024)
+        .with_amplification(128);
+    assert_eq!(raised.result_size_for(1024 * 1024), 64 * 1024 * 1024);
+    assert_eq!(raised.with_result_floor(1).result_size_for(10), 1_280);
+}
+
+/// The `stream` fuzz target's slow input from the lang-core 1.1 long runs
+/// (`coverage-stream-timeout-b1187e1…`, 4.8 KB with a 612 KB result), shrunk
+/// to 86 bytes whose root expression, written out as an AST, is 98 KB of
+/// JSON: an amplification over 1,100. The library is the part of the fuzz
+/// target's that it needs.
+const SLOW_STREAM_INPUT: &str =
+    r#"root=Card([t[Text(""root=Card([t=@Sort(@Filter(["pple""bvation""cherry""""ns"root le@t"#;
+
+fn slow_stream_library() -> Arc<Library> {
+    let schema = serde_json::json!({
+        "$defs": {"Text": {"properties": {
+            "value": {"type": "string"},
+            "tone": {"enum": ["info", 2, null], "default": "info"}
+        }}},
+        "actions": {"Card": {"params": {
+            "type": "object", "properties": {"id": {"type": "string"}}
+        }}}
+    });
+    Arc::new(Library::from_json_schema(&schema))
+}
+
+#[test]
+fn the_slow_stream_fuzz_input_is_cut_under_the_defaults() {
+    let lib = slow_stream_library();
+    let program = SLOW_STREAM_INPUT;
+    let fixed = Limits::default().with_result_size(MAX_RESULT_SIZE);
+    let whole = parse_with_limits(program, &lib, None, fixed);
+    assert!(!whole.size_limited);
+    assert!(whole.to_json().len() > 90_000);
+
+    let cut = parse(program, &lib, None);
+    assert!(cut.size_limited);
+    assert!(cut.to_json().len() < 64 * 1024);
+    assert_eq!(streamed_with(lib.clone(), program, Limits::default()), cut);
+
+    let raised = Limits::default().with_amplification(10_000);
+    assert_eq!(parse_with_limits(program, &lib, None, raised), whole);
+    assert_eq!(streamed_with(lib, program, raised), whole);
+}
+
+/// [`streamed`] with another library.
+fn streamed_with(lib: Arc<Library>, program: &str, limits: Limits) -> openui_lang::ParseResult {
+    let mut stream = StreamParser::with_limits(lib, None, limits);
+    let chars: Vec<char> = program.chars().collect();
+    for chunk in chars.chunks(3) {
+        stream.push(&chunk.iter().collect::<String>());
+    }
+    stream.finish()
+}
+
+#[test]
+fn a_stream_cut_early_is_whole_once_the_program_has_grown_enough() {
+    let lib = library();
+    let head = amplifier();
+    // Statements nothing reads, enough to raise the limit past the result.
+    let padding: String = (0..1_000).map(|i| format!("p{i:03} = 1\n")).collect();
+    let mut stream = StreamParser::new(lib.clone(), None);
+    let early = stream.push(&head);
+    assert!(early.size_limited);
+    assert_eq!(early, parse(&head, &lib, None));
+    let whole = format!("{head}{padding}");
+    let late = stream.push(&padding);
+    assert!(!late.size_limited);
+    assert_eq!(late, parse(&whole, &lib, None));
 }

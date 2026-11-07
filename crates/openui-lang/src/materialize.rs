@@ -9,9 +9,9 @@ use std::sync::Arc;
 use crate::Limits;
 use crate::ast::{Ast, RefType};
 use crate::builtins::{is_lazy_builtin, is_reserved_call};
-use crate::js::{JsObject, OBJECT_PROTOTYPE_KEYS, read_back};
+use crate::js::{JsObject, OBJECT_PROTOTYPE_KEYS};
 use crate::library::{Call, CallKind, Library, Param};
-use crate::result::{Element, ValidationError, Value, write_value};
+use crate::result::{Element, ValidationError, Value, json_shaped};
 use crate::table::{Cache, Entry, Output, Reach, Slot, Table};
 use crate::validation::{
     Issue, element_parts, is_ast_node, params_signature, resolve_invalid_value,
@@ -1031,15 +1031,7 @@ fn values_contain_dynamic(props: &Value) -> bool {
     if let Value::Arr(items) = props {
         return items.iter().any(contains_dynamic_value);
     }
-    let mut json = String::new();
-    write_value(&mut json, props);
-    // The core wrote it, so only a stall can refuse it, and that flags the
-    // result.
-    let Ok(json) = read_back(&json) else {
-        return false;
-    };
-    let fields = Value::from_json(&json);
-    crate::free::free_json(json);
+    let fields = json_shaped(props);
     matches!(&fields, Value::Obj(fields) if fields.values().any(contains_dynamic_value))
 }
 

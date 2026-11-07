@@ -8,11 +8,11 @@ A model's reply is untrusted input that the core parses on phones. The long runs
 
 So every limit (program size, result size, depth, evaluation work) is one `Limits` value. It has documented defaults, and an embedder may raise or lower each one:
 - **Program size:** 1 MiB by default.
-- **Result size:** the larger of 64 KiB and 64 times the program's size, never above 8 MiB.
+- **Result size:** the larger of 64 KiB and 64 times the program's size, never above 8 MiB. The floor, the multiplier (the amplification allowed) and the ceiling can each be set, or the limit fixed at one size whatever the program. A stream's limit is that of the text so far.
 - **Evaluation work:** the larger of a million steps and 1,000 steps per byte of program, never above 64 million.
 - **Depth:** 256 by default.
 
-Work is counted in steps and bytes, never in time, so results stay the same on every machine. Hitting a limit gives a cut result flagged `size_limited` or `depth_limited`, never an error or a panic. A stall in a release build (a bug in the core, not a limit) ends the parse the same way, flagged `size_limited`, as decided in openui-rs #1. No default may cut a program in the conformance corpus: if one would, the default is raised.
+Work is counted in steps and bytes, never in time, so results stay the same on every machine. Hitting a limit gives a cut result flagged `size_limited` or `depth_limited`, never an error or a panic. A stall in a release build (a bug in the core, not a limit) ends the parse the same way, flagged `size_limited`, as decided in openui-rs #1. Entry points with no result to cut (`parse_json_with_limits`, `json_to_openui_with_limits`, `generate_system_prompt_with_limits` and `generate_prompt_with_limits`) refuse over-limit input with their existing error, as decided in #1/#6. No default may cut a program in the conformance corpus: if one would, the default is raised.
 
 ## Considered options
 

@@ -16,12 +16,12 @@ Reference: `@openuidev/lang-core 1.1.0` at commit `47b9cae0d3b26a8c9d7514d5887a6
 
 | Compared with the reference | Cases | Checks | Cases by source |
 |---|---:|---:|---|
-| Parse results: one-shot, and after every push and at the end of 8 chunkings, 2 resync sequences and any recorded chunks | 654 | 361,488 results | 7 benchmark, 107 docs, 46 examples, 13 fuzz, 159 hand-written, 2 recorded, 259 reference-test, 58 spec-fixture, 3 synthetic |
-| Stages on every prefix: preprocessing, tokens, statements and expression trees | 652 | 109,716 prefixes | the parse corpus, less its largest synthetic programs |
+| Parse results: one-shot, and after every push and at the end of 8 chunkings, 2 resync sequences and any recorded chunks | 656 | 363,671 results | 7 benchmark, 107 docs, 46 examples, 13 fuzz, 161 hand-written, 2 recorded, 259 reference-test, 58 spec-fixture, 3 synthetic |
+| Stages on every prefix: preprocessing, tokens, statements and expression trees | 654 | 110,440 prefixes | the parse corpus, less its largest synthetic programs |
 | System prompts | 61 | 61 | |
 | Edit-mode merges | 3,239 | 3,239 | 3,179 generated, 53 hand-written, 1 recorded, 1 reference-test, 5 spec-fixture |
-| Element trees back to source | 617 | 617 | 1 fuzz, 62 hand-written, 523 parse corpus root, 31 reference-test |
-| Enriched errors | 383 | 383 | every parse corpus case with errors |
+| Element trees back to source | 618 | 618 | 1 fuzz, 62 hand-written, 524 parse corpus root, 31 reference-test |
+| Enriched errors | 385 | 385 | every parse corpus case with errors |
 
 Quirks recorded: 19.
 Not matched yet, listed in `conformance/pending/`: none.
@@ -101,8 +101,8 @@ Documented, not emulated. None occurs in the corpus, and none comes from a real 
 | Input | Reference | Core |
 |---|---|---|
 | Nesting 257 to about 8,000 levels | parses (throws `RangeError` past that) | stops at 256, sets `depth_limited` |
-| A result past about 8 MiB of JSON (statements inlined until it doubles per level) | parses quickly, since 1.1 builds each statement once and shares it, but its JSON doubles per level: about 1 GB at 22 levels, and at 24 `JSON.stringify` runs out of memory | cuts it, sets `size_limited` |
-| A state default building past about 8 MiB, or nesting past 768 levels, from the ones above it (`$b = [$a, $a]` line after line, a string added to itself, nested lists around the one above) | evaluates it, sharing lists and objects, so lists are quick but their JSON doubles per line; a string grown that way makes `parse` throw a `RangeError` (`Out of memory`) | that default is null, and so is every expression default after the budget runs out; sets `size_limited` or `depth_limited` |
+| A result past the result-size limit: by default the larger of 64 KiB and 64 times the program's size, never above 8 MiB (statements inlined until it doubles per level, a root expression written out as a large AST) | parses quickly, since 1.1 builds each statement once and shares it, but its JSON doubles per level: about 1 GB at 22 levels, and at 24 `JSON.stringify` runs out of memory | cuts it, sets `size_limited`. A stream's limit is that of the text so far, so an early push can be cut where the reference's isn't, and a later one whole |
+| A state default building past what the result-size limit leaves, or nesting past 768 levels, from the ones above it (`$b = [$a, $a]` line after line, a string added to itself, nested lists around the one above) | evaluates it, sharing lists and objects, so lists are quick but their JSON doubles per line; a string grown that way makes `parse` throw a `RangeError` (`Out of memory`) | that default is null, and so is every expression default after a limit is hit; sets `size_limited` or `depth_limited` |
 | An object assigned to `__proto__`, or `null` in an object literal | replaces the prototype; later reads and `in` checks see through it | ignores the assignment (`null` for a param named `__proto__` is reproduced) |
 | An object literal shaped like an element used as the root | returns that object as `root` | `root` is `None` (it still counts as a root, so no `no-root`) |
 | An object literal shaped like an AST node used as the root (`root = {k: "Comp", name: "Card", args: []}`) | returns that object as `rootExpression` when it holds a component call, and throws a `TypeError` when a node in it lacks the children its kind has (`root = {k: "Comp"}`) | no `rootExpression`, and `no-root` |
@@ -111,7 +111,7 @@ Documented, not emulated. None occurs in the corpus, and none comes from a real 
 | A state default reading a property of a built-in method or prototype (`$a = [].map.length`, `$b = $o.__proto__.x`) | that property | `undefined` (the method itself, `[].map`, is reproduced) |
 | An object literal shaped like an AST node in a state default (`$x = {k: "Num", v: 1}`) | evaluates it as that node | keeps it as the object |
 | A state default turning an object with its own `toString` or `valueOf` into text (`$a = {toString: 1}` then `$b = $a + ""`, or in `@Sort`, `@Filter`'s `contains`, `==`) | `parse` throws a `TypeError`: the object can't become text | `"[object Object]"` |
-| JSON nested deeper than 800 levels, for `json_to_openui` or `parse_json` | handled, up to the engine's recursion limit | refused with an error |
+| JSON nested deeper than 800 levels (three per level of the depth limit and 32 more, under raised `Limits`), for `json_to_openui`, `parse_json` or a prompt spec for `generate_system_prompt` | handled, up to the engine's recursion limit | refused with an error |
 | `1e400` in JSON read back | `Infinity` | refused: a `serde_json::Value` can't hold it |
 | A component with `properties` whose `required` is neither an array nor a string (a number, say) | throws a `TypeError` building the library (`required.includes is not a function`) | treats `required` as empty |
 | A library function or action without `params`, or one that isn't an object | throws a `TypeError` building the library | has no params |

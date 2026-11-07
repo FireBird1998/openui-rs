@@ -14,23 +14,18 @@ use std::fmt;
 
 use serde_json::Value as Json;
 
+use crate::Limits;
 use crate::js::{
     OBJECT_PROTOTYPE_KEYS, json_entries, json_number, json_string, json_value_string,
     lone_surrogate, number_to_string, object_entries, truthy,
 };
 use crate::library::Library;
 
-/// How deeply the input may nest, in JSON levels. A parse result nests at most
-/// three JSON levels per [`crate::MAX_DEPTH`] level (a runtime expression of
-/// nested objects; measured at 764), so every parse result fits. Serializing
-/// grows its stack on demand, like the rest of the core; reading JSON back
-/// doesn't recurse at all.
-pub(crate) const JSON_DEPTH_LIMIT: usize = 800;
-
 /// Why an element tree couldn't be serialized: the reference throws on the
 /// same inputs (a missing node, a field of the wrong type, an object that
-/// can't be turned into text), or it nests deeper than 800 levels, which no
-/// parse result does.
+/// can't be turned into text), or it nests deeper than the depth limit allows
+/// (see [`Limits::depth`] and [`json_to_openui_with_limits`]), which no
+/// parse result under the same limits does.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct SerializeError(String);
 
@@ -59,12 +54,36 @@ fn thrown(message: &str) -> SerializeError {
 /// To serialize a [`crate::ParseResult`], read its JSON back:
 /// `let json = parse_json(&result.to_json())?;` then pass `&json["root"]` and
 /// `Some(&json["stateDeclarations"])`.
+///
+/// It converts under the default [`Limits`]: see
+/// [`json_to_openui_with_limits`].
 pub fn json_to_openui(
     element: &Json,
     library: &Library,
     state_declarations: Option<&Json>,
 ) -> Result<String, SerializeError> {
-    crate::stack::grow_stack!(json_to_openui(element, library, state_declarations));
+    json_to_openui_with_limits(element, library, state_declarations, Limits::DEFAULT)
+}
+
+/// [`json_to_openui`] under `limits`. A tree nesting past the JSON
+/// limit described by [`Limits::depth`] is refused with a [`SerializeError`],
+/// so the tree of any parse result
+/// under the same limits converts back. The text it writes grows with the
+/// tree, nothing more, so the other limits don't apply: the tree is already
+/// in the caller's memory. Converting grows its stack on demand, like the
+/// rest of the core.
+pub fn json_to_openui_with_limits(
+    element: &Json,
+    library: &Library,
+    state_declarations: Option<&Json>,
+    limits: Limits,
+) -> Result<String, SerializeError> {
+    crate::stack::grow_stack!(json_to_openui_with_limits(
+        element,
+        library,
+        state_declarations,
+        limits
+    ));
     let Json::Object(root) = element else {
         return Err(thrown("the root must be an element object"));
     };
@@ -74,6 +93,7 @@ pub fn json_to_openui(
         registered: HashSet::new(),
         unique: 0,
         depth: 0,
+        max_depth: limits.json_depth(),
     };
     let root_expr = s.element_expr(element)?;
     let (root_key, root_id) = match root.get("statementId").filter(|id| truthy(Some(id))) {
@@ -115,6 +135,8 @@ struct Serializer<'a> {
     registered: HashSet<Key>,
     unique: usize,
     depth: usize,
+    /// How deep the tree may nest, in JSON levels.
+    max_depth: usize,
 }
 
 /// What a step of the reference serializer returns. Mostly a string, but a few
@@ -365,7 +387,7 @@ impl<'a> Serializer<'a> {
 
     fn enter(&mut self) -> Result<(), SerializeError> {
         self.depth += 1;
-        if self.depth > JSON_DEPTH_LIMIT {
+        if self.depth > self.max_depth {
             return Err(thrown("the element tree nests too deeply"));
         }
         Ok(())
@@ -375,7 +397,7 @@ impl<'a> Serializer<'a> {
     ///
     /// The recursive path stays small, and each heavier case is an
     /// `#[inline(never)]` helper: a frame then holds only the case in hand,
-    /// which keeps `JSON_DEPTH_LIMIT` levels inside one stack segment.
+    /// which keeps the default's 800 levels inside one stack segment.
     fn value<'v>(&mut self, value: Option<&'v Json>) -> Result<Out<'v>, SerializeError> {
         crate::stack::grow_stack!(self.value(value));
         self.enter()?;

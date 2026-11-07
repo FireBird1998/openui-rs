@@ -12,8 +12,10 @@ exclude_re = [
     'progress\.rs:\d+:\d+: replace panics -> bool with (true|false)',
     # Keeping the comment's newline adds only leading whitespace, trimmed by every caller before recognizing a statement (#13).
     'preprocess\.rs:.*replace \+ with \* in after_comment_lines',
-    # On complete lines, treating the final backslash as an escape reads nothing and leaves quote state unchanged (#13).
+    # Called only on a known backslash: skipping its absent next byte early preserves quote state; a later push skips that same escaped byte, and a finished line resets the cursor (#13).
     'preprocess\.rs:.*replace (< with <=|\+ with \*) in has_escape_byte',
+    # The caller already checked for a backslash; true only skips a trailing backslash's future byte early, with identical state and output (#13).
+    'preprocess\.rs:.*replace has_escape_byte -> bool with true',
     # Deleting either arm retains a definite prefix and recomputes the same Yes/No; only performance-irrelevant recomputation changes (#13).
     'preprocess\.rs:.*delete match arm Starts::(Yes|No) in Block::add',
     # Both < comparisons in split guard EOF-terminated scanning; EOF stops before pos reaches n (and the outer check handles empty tokens) (#13).

@@ -143,10 +143,10 @@
 //!
 //! # Limits
 //!
-//! No input can panic the core, overflow its stack or exhaust memory, so a
-//! bad model response can't crash the app. Three limits and a stall guard
-//! make that so, and each cuts the result and sets a flag on it instead of
-//! failing. The limits are one [`Limits`] value, given to
+//! No input can panic the core, overflow its stack, exhaust memory or keep it
+//! busy for long, so a bad model response can't crash or freeze the app.
+//! Four limits and a stall guard make that so, and each cuts the result and
+//! sets a flag on it instead of failing. The limits are one [`Limits`] value, given to
 //! [`parse_with_limits`] or [`StreamParser::with_limits`]; [`parse`] and
 //! [`StreamParser::new`] use the defaults. Each can be raised or lowered:
 //!
@@ -154,13 +154,26 @@
 //!   rest of the text is ignored as if the stream had stopped there
 //!   ([`ParseResult::size_limited`]). A stream cut there stays cut: later
 //!   pushes are ignored until [`StreamParser::set`].
-//! - **Result size**, about 8 MiB of JSON by default ([`MAX_RESULT_SIZE`]): a
-//!   result that would grow past it is cut, the rest null
-//!   ([`ParseResult::size_limited`]). Repeated subtrees are shared, not
-//!   copied.
+//! - **Result size**, in bytes of JSON, scaling with the program: by default
+//!   the larger of 64 KiB ([`MIN_RESULT_SIZE`]) and 64 times the program's
+//!   size ([`MAX_AMPLIFICATION`]), never above 8 MiB ([`MAX_RESULT_SIZE`]); see
+//!   [`Limits::result_size_for`]. A result that would grow past it is cut, the
+//!   rest null ([`ParseResult::size_limited`]). That bounds amplification, so
+//!   a caller serializing every push of a stream knows what it can cost. A
+//!   stream's limit is that of the text so far, so an early push can be cut
+//!   and a later one not; every push's result is still the one-shot parse of
+//!   the text so far. Repeated subtrees are shared, not copied.
 //! - **Depth**, 256 levels by default ([`MAX_DEPTH`]): nesting past it becomes
 //!   null ([`ParseResult::depth_limited`]); evaluated state defaults may
 //!   nest three levels per level.
+//! - **Work**, by default the larger of a million steps and 1,000 steps per
+//!   byte of program, never above 64 million ([`Limits::work_for`]):
+//!   evaluating state defaults counts every step it takes, an expression
+//!   evaluated, an item sorted, filtered or copied into an `@Each` template,
+//!   a node of a value read, a byte built. Past it, the default being
+//!   evaluated is null, as is every expression default after it
+//!   ([`ParseResult::size_limited`]). A step takes nanoseconds, so a parse
+//!   stays within a fraction of a second.
 //! - A stall: every loop that reads input either moves forward or stops. A
 //!   loop that stopped moving forward would be a bug in the core, never the
 //!   input's fault. In debug builds it panics; in release builds the parse
@@ -179,17 +192,37 @@
 //! assert!(parse_with_limits(program, &library, None, shallow).depth_limited);
 //! ```
 //!
-//! The limits count bytes and levels, never time, so a result is the same on
-//! every machine. No default cuts a program in the conformance corpus.
+//! The limits count bytes, levels and steps, never time, so a result is the
+//! same on every machine. No default cuts a program in the conformance
+//! corpus. The result-size and work limits scale with the program as
+//! streamed so far, so a stream's result is always the one-shot parse of its
+//! text so far: an early push may be cut where a later one isn't.
+//!
+//! Every other entry point takes the same value, beside a form that uses the
+//! defaults. Where it has flags, hitting a limit cuts and flags the result;
+//! where it has an error, a limit refuses the input with it:
+//!
+//! - [`merge_statements_with_limits`]: the program-size limit applies to each
+//!   input, the depth limit to each statement's expression, with
+//!   `size_limited` and `depth_limited` on the [`Merged`] result.
+//! - [`parse_expression_with_limits`]: the depth limit, and whether it cut.
+//! - [`parse_json_with_limits`], [`json_to_openui_with_limits`],
+//!   [`generate_system_prompt_with_limits`] and
+//!   [`generate_prompt_with_limits`]: JSON nesting past the limit
+//!   described by [`Limits::depth`] is refused
+//!   with their error, so whatever a parse under the same limits produces
+//!   still reads back, converts back and nests. Their time and output grow
+//!   with the JSON, nothing more, and it's already in the caller's memory, so
+//!   the size limits don't apply.
 //!
 //! The core grows its stack on demand: when a call runs low, it goes on in a
 //! segment allocated on the heap. And a result frees its tree with a loop,
 //! not recursion. So the core needs no minimum thread stack: it parses, and
 //! its results drop, on a 64 KB one, at the default depth limit or a raised
 //! one, optimized or not. The exception is [`parse_json`]'s result: a
-//! `serde_json::Value`, up to 800 levels deep, which drops by recursion as
-//! serde_json's own type does. That takes under 64 KB optimized, but more
-//! in an unoptimized build.
+//! `serde_json::Value`, which drops by recursion as serde_json's own type
+//! does. At the default's 800 levels that takes under 64 KB optimized; free a
+//! value read under a raised depth limit with [`free_json`], which loops.
 //!
 //! Because they free themselves, [`Value`] and [`Ast`] implement [`Drop`],
 //! so a pattern can't move a field out of one: borrow it instead, and clone
@@ -211,8 +244,10 @@ struct ReadmeDoctests;
 /// `tests/depth.rs`.
 pub const MAX_DEPTH: usize = 256;
 
-/// About how large a parse result may grow by default, in bytes of its JSON:
-/// the default of [`Limits::result_size`]. A statement
+/// About how large a parse result may grow by default, in bytes of its JSON,
+/// however large its program: the default ceiling, [`Limits::result_size`],
+/// on a limit that scales with the program ([`Limits::result_size_for`]). A
+/// statement
 /// referenced from two places is inlined in both, so a few lines that each
 /// reference the one before twice double the result at every line; a
 /// component inside a runtime expression is written twice (`args` and
@@ -222,6 +257,17 @@ pub const MAX_DEPTH: usize = 256;
 /// [`ParseResult::size_limited`] is set. Real results are about twice the
 /// program's size, so this is far out of reach of any program a model writes.
 pub const MAX_RESULT_SIZE: usize = 8 * 1024 * 1024;
+
+/// The default floor of the result-size limit, [`Limits::result_floor`]: a
+/// short program's result may always grow to 64 KiB of JSON.
+pub const MIN_RESULT_SIZE: usize = 64 * 1024;
+
+/// The default [`Limits::amplification`]: how many times its program's size a
+/// result may grow to, above [`MIN_RESULT_SIZE`] and up to
+/// [`MAX_RESULT_SIZE`]. Real results are about twice their program; the
+/// most any conformance case reaches is about 42, on a program of 22 bytes,
+/// well inside the floor.
+pub const MAX_AMPLIFICATION: usize = 64;
 
 /// How many bytes of a program a parse reads by default, the default of
 /// [`Limits::program_size`]: past it, the rest
@@ -268,20 +314,24 @@ fn conformance_dir() -> std::path::PathBuf {
 pub use ast::{Ast, RefType};
 pub use builtins::{is_builtin, is_reserved_call};
 pub use enrich::{EnrichedError, enrich_errors, enriched_errors_to_json};
-pub use expr::parse_expression;
-pub use js::{JsObject, JsonError, parse_json, stringify_json};
+pub use expr::{parse_expression, parse_expression_with_limits};
+pub use free::free_json;
+pub use js::{JsObject, JsonError, parse_json, parse_json_with_limits, stringify_json};
 pub use lexer::{Token, tokenize, tokens_to_json};
 pub use library::{Call, CallKind, Component, Library, Param};
 pub use limits::Limits;
-pub use merge::merge_statements;
+pub use merge::{Merged, merge_statements, merge_statements_with_limits};
 pub use parser::{parse, parse_with_limits};
 pub use preprocess::{preprocess, strip_fences};
-pub use prompt::{PromptError, generate_prompt, generate_system_prompt};
+pub use prompt::{
+    PromptError, generate_prompt, generate_prompt_with_limits, generate_system_prompt,
+    generate_system_prompt_with_limits,
+};
 pub use result::{
     Element, Meta, MutationStatement, ParseResult, QueryStatement, Severity, ValidationError,
     ValidationErrorCode, Value,
 };
-pub use serialize::{SerializeError, json_to_openui};
+pub use serialize::{SerializeError, json_to_openui, json_to_openui_with_limits};
 pub use statements::{IdKind, RawStatement, auto_close, split};
 pub use stream::StreamParser;
 
