@@ -367,6 +367,7 @@ pub(crate) fn json_number(n: &serde_json::Number) -> f64 {
 
 /// Append a JSON value as `JSON.stringify(JSON.parse(...))` would write it.
 pub(crate) fn write_json_value(out: &mut String, value: &serde_json::Value) {
+    crate::stack::grow_stack!(write_json_value(out, value));
     use serde_json::Value as Json;
     match value {
         Json::Null => out.push_str("null"),
@@ -408,6 +409,7 @@ pub(crate) fn json_value_string(value: &serde_json::Value) -> String {
 /// `String(value)` in JavaScript, for a JSON value: template interpolation
 /// and property keys see this.
 pub(crate) fn js_string(value: &serde_json::Value) -> String {
+    crate::stack::grow_stack!(js_string(value));
     use serde_json::Value as Json;
     match value {
         Json::String(s) => s.clone(),

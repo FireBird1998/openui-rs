@@ -93,6 +93,7 @@ fn requires(schema: &Json, key: &str) -> bool {
 // ─── JSON Schema → type string ──────────────────────────────────────────────
 
 fn json_schema_type_str(schema: &Json) -> String {
+    crate::stack::grow_stack!(json_schema_type_str(schema));
     let ty = field(schema, "type").and_then(Json::as_str);
     match ty {
         Some("string") => match field(schema, "enum") {
@@ -129,6 +130,7 @@ fn json_schema_type_str(schema: &Json) -> String {
 
 /// A default-values hint for an output schema.
 fn default_for_schema(schema: &Json) -> Json {
+    crate::stack::grow_stack!(default_for_schema(schema));
     match field(schema, "type").and_then(Json::as_str) {
         Some("string") => Json::String(String::new()),
         Some("number" | "integer") => Json::from(0),
@@ -909,6 +911,7 @@ fn is_plain_object(value: Option<&Json>) -> bool {
 
 /// Every `$ref` under `node` that doesn't point at a component in `$defs`.
 fn collect_ref_issues(node: &Json, path: &str, defs: &[&String], issues: &mut Vec<String>) {
+    crate::stack::grow_stack!(collect_ref_issues(node, path, defs, issues));
     match node {
         Json::Array(items) => {
             for (i, item) in items.iter().enumerate() {

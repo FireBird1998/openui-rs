@@ -27,7 +27,7 @@ cargo test -p openui-lang --test conformance streaming_   # tests whose names ma
 | `edits` | Merging (over 1,400 cases), converting element trees back to source, and error hints, against the reference | Differences in the edit-mode and error layer |
 | `prompt` | Every prompt spec in the corpus (61) against the reference's `generateSystemPrompt`. Its error messages are compared exactly; for crashes inside the JavaScript engine, only that it fails. | Differences in system prompts |
 | `robustness` | Property tests: any text, cut anywhere, through every stage and every entry point, finishes without panicking | Crashes on arbitrary input |
-| `depth` | Absurdly deep nesting stops at 256 levels with `depth_limited`, on a 512 KB thread stack; so do state defaults nesting the ones above them, at 768 JSON levels | Stack overflows |
+| `depth` | Absurdly deep nesting stops at 256 levels with `depth_limited`, on a 64 KB thread stack, because the core grows its stack on demand; so do state defaults nesting the ones above them, at 768 JSON levels | Stack overflows, a recursive walk the stack growth misses |
 | `size` | Programs that double with every line stop at about 8 MiB with `size_limited`, state defaults evaluated from the ones above them too | Runaway memory |
 | `streaming_cost` | A push costs about the same on a program four times the size, bare and in a fence with prose around it (thread CPU time, best of 7) | Streaming that grows with the square of the program |
 | `report` | The counts in CONFORMANCE.md are what the corpus holds | A stale write-up |
@@ -36,6 +36,7 @@ cargo test -p openui-lang --test conformance streaming_   # tests whose names ma
 | doc tests | The crate docs' examples and the README's | Examples that no longer compile or run |
 | unit tests in `js.rs`, `preprocess.rs` | JSON reading and writing; incremental preprocessing against the one-shot form | Internal disagreements |
 | `openui-ffi`'s `binding` | The binding returns exactly the core's output: one-shot, every streaming step, `set`, prompts, merges | A binding that changes what it hands on |
+| `openui-ffi`'s `stack` | The deepest programs parse, stream and merge through the binding on a 64 KB thread stack, and their results and sessions drop there too | A binding that leaves a deep drop on the caller's stack |
 | the viewer's Swift tests | Decoding, playback, goldens through the viewer, native drawing, live streaming against a stub server, recordings, edit mode | Viewer bugs (`scripts/check-viewer.sh`) |
 | compile time | The streaming parser, parse results and libraries can be shared between threads (`src/lib.rs`) | A change that stops embedders parsing off the UI thread |
 
@@ -317,6 +318,6 @@ The 64-bit ARM run stays on the Mac's emulator or a phone.
 | `OPENUI_NO_LIVE_DIFFS=1` | A failure shows the core's side and the command to see the reference's, and never starts Bun. Use it for mutation testing, where every caught mutant would start Bun, and on phones. |
 | `UPDATE_PENDING=1` | Rewrite each test's list in `conformance/pending/` to the cases failing now. Run the whole suite with it (`cargo test -p openui-lang --no-fail-fast`) to rewrite them all. |
 | `UPDATE_REPORT=1` | Rewrite the counts in CONFORMANCE.md |
-| `DEPTH_STACK_KB=<n>` | The thread stack the depth tests run on, in KB (default 512) |
+| `DEPTH_STACK_KB=<n>` | The thread stack the depth tests run on, in KB (default 64) |
 
 When you point `OPENUI_CONFORMANCE_DIR` at a copy, turn live diffs off too. A live diff runs the reference on the repository's corpus, not the copy's.

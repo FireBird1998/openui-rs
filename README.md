@@ -35,7 +35,7 @@ for chunk in ["root = Stack([ti", "tle])\ntitle = Te", "xt(\"Hello\")"] {
 }
 ```
 
-`cargo doc -p openui-lang --open` has the rest, with examples for prompts, merging and serializing. Embedders should build the crate optimized (opt-level 1 or more, even in debug builds) and call it from threads with at least 512 KB of stack.
+`cargo doc -p openui-lang --open` has the rest, with examples for prompts, merging and serializing. The core grows its stack on demand, so it runs on any thread; dropping a deep result in Rust still recurses on the caller's stack (under 64 KB optimized, so embedders should build the crate optimized, opt-level 1 or more, even in debug builds).
 
 The command-line tool runs each part on files:
 

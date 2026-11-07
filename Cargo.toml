@@ -18,7 +18,8 @@ codegen-units = 1
 [profile.test]
 opt-level = 1
 
-# Recursion stays inside small thread stacks only when optimized (see tests/depth.rs).
+# The core grows its stack on demand (ADR 0002), but dropping a deep result in
+# Rust recurses on the caller's stack: under 64 KB optimized, about 512 KB not.
 [profile.dev.package.openui-lang]
 opt-level = 1
 [profile.dev.package.openui-ffi]

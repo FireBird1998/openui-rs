@@ -36,7 +36,7 @@ Cases the core doesn't match yet would be listed in `conformance/pending/`, one 
 - **Sources:** hand-written edge cases; streams recorded from Claude in the viewer, with their chunks as they arrived; every program the reference's own test suites parse, merge and serialize, captured live while they run; the 7 benchmark samples (real GPT output); programs from the upstream docs and examples; fuzz-found cases; synthetic programs up to 30 KB; generated edit patches over every corpus program with a root; and every corpus parse result serialized back to source.
 - **Stages:** preprocessing, tokens, statements and expression trees are compared on every prefix of every case, so a mismatch points at the stage that diverged.
 - **Invariants:** rules a result should keep, checked on the core and the reference alike over a million generated programs; a rule both parsers break is a candidate quirk (TESTING.md, "Invariants").
-- **Rust-only checks:** no input panics or overflows a 512 KB stack (fixed-seed property tests and the deepest shapes); a streamed program ends where its one-shot parse does, except where the reference itself doesn't (quirks 4, 5, 11 and 19); streaming cost stays linear (`tests/streaming_cost.rs`); results that double at every level are cut at the size cap (`tests/size.rs`).
+- **Rust-only checks:** no input panics, and the deepest shapes run on a 64 KB stack (fixed-seed property tests and `tests/depth.rs`); a streamed program ends where its one-shot parse does, except where the reference itself doesn't (quirks 4, 5, 11 and 19); streaming cost stays linear (`tests/streaming_cost.rs`); results that double at every level are cut at the size cap (`tests/size.rs`).
 
 ## Differential fuzzing
 

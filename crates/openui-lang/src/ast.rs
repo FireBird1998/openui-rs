@@ -129,6 +129,7 @@ impl Ast {
     /// Every node in the tree, parents before children, in the reference's
     /// `walkAST` order.
     pub fn walk(&self, visit: &mut impl FnMut(&Ast)) {
+        crate::stack::grow_stack!(self.walk(visit));
         visit(self);
         match self {
             Ast::Comp {
@@ -167,6 +168,7 @@ impl Ast {
 }
 
 pub(crate) fn write_ast(out: &mut String, node: &Ast) {
+    crate::stack::grow_stack!(write_ast(out, node));
     let key = |out: &mut String, k: &str| {
         out.push_str(",\"");
         out.push_str(k);

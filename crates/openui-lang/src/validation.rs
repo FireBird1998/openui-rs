@@ -318,6 +318,7 @@ pub(crate) fn validate_schema_value(
     path: &str,
     ctx: &mut Ctx,
 ) -> bool {
+    crate::stack::grow_stack!(validate_schema_value(value, schema, component, path, ctx));
     let Some(s) = schema.as_object() else {
         return false;
     };

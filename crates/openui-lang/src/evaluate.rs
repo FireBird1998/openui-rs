@@ -335,6 +335,7 @@ pub(crate) fn state_defaults(state: JsObject<Value>, budget: usize) -> Evaluated
 /// Whether a materialized default holds anything to evaluate: a runtime
 /// expression, in it or in its lists and plain objects.
 pub(crate) fn has_runtime(value: &Value) -> bool {
+    crate::stack::grow_stack!(has_runtime(value));
     match value {
         Value::Ast(_) => true,
         Value::Arr(items) => items.iter().any(has_runtime),
@@ -349,6 +350,7 @@ pub(crate) fn has_runtime(value: &Value) -> bool {
 /// evaluated, reading `declared`, the defaults declared before it. An object
 /// literal shaped like an AST node isn't evaluated (a divergence).
 fn state_default(value: &Value, declared: &JsObject<Js>) -> Js {
+    crate::stack::grow_stack!(state_default(value, declared));
     match value {
         Value::Ast(ast) => {
             if only_builtin_functions(ast) {
@@ -387,6 +389,7 @@ fn only_builtin_functions(node: &Ast) -> bool {
 
 /// A parse result's value as a JavaScript value.
 fn from_value(value: &Value) -> Js {
+    crate::stack::grow_stack!(from_value(value));
     match value {
         Value::Null => Js::Null,
         Value::Bool(b) => Js::Bool(*b),
@@ -410,6 +413,7 @@ fn from_value(value: &Value) -> Js {
 }
 
 fn from_json(json: &serde_json::Value) -> Js {
+    crate::stack::grow_stack!(from_json(json));
     use serde_json::Value as Json;
     match json {
         Json::Null => Js::Null,
@@ -431,6 +435,7 @@ fn from_json(json: &serde_json::Value) -> Js {
 /// out (`undefined`, a function): a property is dropped, an array item is
 /// null. Null where the limits cut it.
 fn to_value(js: &Js) -> Option<Value> {
+    crate::stack::grow_stack!(to_value(js));
     if matches!(js, Js::Undefined | Js::Function { .. }) {
         return None;
     }
@@ -510,6 +515,7 @@ impl Scope<'_> {
 }
 
 fn evaluate(node: &Ast, scope: &Scope) -> Js {
+    crate::stack::grow_stack!(evaluate(node, scope));
     let Some(_level) = Level::enter() else {
         return Js::Null;
     };
@@ -711,6 +717,7 @@ fn each(args: &[Ast], scope: &Scope) -> Js {
 
 /// `substituteRef`: the iterator variable replaced by the item's literal.
 fn substitute(node: &Ast, var: &str, value: &Js) -> Ast {
+    crate::stack::grow_stack!(substitute(node, var, value));
     let sub = |n: &Ast| substitute(n, var, value);
     let boxed = |n: &Ast| Arc::new(substitute(n, var, value));
     match node {
@@ -780,6 +787,7 @@ fn substitute(node: &Ast, var: &str, value: &Js) -> Ast {
 
 /// `toLiteralAST`; null where the limits cut it.
 fn literal(value: &Js) -> Ast {
+    crate::stack::grow_stack!(literal(value));
     let Some(_level) = Level::enter() else {
         return Ast::Null;
     };
@@ -903,6 +911,7 @@ fn js_round(x: f64) -> f64 {
 
 /// A number function on a number, or on each item of a list, nested lists too.
 fn elementwise(value: &Js, f: &dyn Fn(f64) -> f64) -> Js {
+    crate::stack::grow_stack!(elementwise(value, f));
     match value {
         Js::Arr(items) => Js::Arr(Rc::new(items.iter().map(|v| elementwise(v, f)).collect())),
         v => Js::Num(f(to_number(v))),
@@ -1053,6 +1062,7 @@ fn merge_sort(items: Vec<Js>, less: &dyn Fn(&Js, &Js) -> bool) -> Vec<Js> {
 }
 
 fn filter(array: &Js, field: &Js, operator: &Js, value: &Js) -> Js {
+    crate::stack::grow_stack!(filter(array, field, operator, value));
     let Js::Arr(items) = array else {
         return Js::Arr(Rc::new(Vec::new()));
     };
@@ -1169,6 +1179,7 @@ fn radix_number(digits: &str, radix: u32) -> f64 {
 
 /// `String(value)`.
 fn to_string(v: &Js) -> String {
+    crate::stack::grow_stack!(to_string(v));
     match v {
         Js::Undefined => "undefined".to_owned(),
         Js::Null => "null".to_owned(),
@@ -1195,6 +1206,7 @@ fn to_string(v: &Js) -> String {
 /// `Array.prototype.join(",")` into `out`, nested arrays and all: a string
 /// built from an array costs its length, and stops where the limits cut it.
 fn join(items: &[Js], out: &mut String) {
+    crate::stack::grow_stack!(join(items, out));
     let Some(_level) = Level::enter() else {
         return;
     };
@@ -1246,6 +1258,7 @@ fn is_object(v: &Js) -> bool {
 
 /// `a == b`.
 fn loose_eq(a: &Js, b: &Js) -> bool {
+    crate::stack::grow_stack!(loose_eq(a, b));
     match (a, b) {
         (Js::Undefined | Js::Null, Js::Undefined | Js::Null) => true,
         (Js::Undefined | Js::Null, _) | (_, Js::Undefined | Js::Null) => false,

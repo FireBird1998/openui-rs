@@ -220,6 +220,7 @@ fn query_cycles(queries: &[QueryStatement]) -> Vec<Vec<String>> {
 /// library's root component: with no `root` statement, the first statement
 /// that calls it is the entry.
 pub fn parse(input: &str, library: &Library, root_name: Option<&str>) -> ParseResult {
+    crate::stack::grow_stack!(parse(input, library, root_name));
     let trimmed = preprocess(input);
     if trimmed.is_empty() {
         return ParseResult::empty(true);

@@ -119,6 +119,7 @@ impl<'a> ExprParser<'a> {
     }
 
     fn expr(&mut self, min_prec: u8) -> Ast {
+        crate::stack::grow_stack!(self.expr(min_prec));
         if self.depth >= MAX_DEPTH {
             // Too deep: give up on this branch, but still consume a token so
             // every caller's loop makes progress.
