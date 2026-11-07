@@ -16,7 +16,9 @@
 //!
 //! `--limit name=value`, anywhere and as often as needed, sets one of the
 //! core's limits for every command: `program-size` and `result-size` in
-//! bytes, `depth` in levels, `work` in steps. `tokens` reads the program up
+//! bytes, `depth` in levels, `work` in steps.
+//! `prompt` reads the spec with serde_json, which refuses nesting past 128
+//! levels regardless of `--limit depth`. `tokens` reads
 //! to the program-size limit, and `prompt` refuses a spec nesting past the
 //! depth limit. Fuzz finds and blow-ups replay under any limit this way.
 
@@ -77,6 +79,7 @@ fn take_limits(args: &[String]) -> Result<(Vec<String>, Limits), String> {
 
 /// The part of `text` within `bytes`, never splitting a character: what the
 /// program-size limit lets parsing read.
+// `Limits::fit` is crate-private, so the CLI keeps this character-safe copy.
 fn within(text: &str, bytes: usize) -> &str {
     let end = (0..=bytes.min(text.len()))
         .rev()

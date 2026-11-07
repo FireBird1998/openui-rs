@@ -104,6 +104,21 @@ fn a_component_read_many_times_is_converted_once() {
     assert!(many - few <= 10 * 990, "{few} -> {many}");
 }
 
+#[test]
+fn the_first_component_read_costs_its_size() {
+    // Subtract constructing the default itself to isolate its first read.
+    let read_cost = |children| {
+        let program = reading_a_component(children, 1);
+        let construction = program.split("\n$a =").next().unwrap();
+        steps(&program) - steps(construction)
+    };
+    let small = read_cost(100);
+    let large = read_cost(200);
+    assert!(small >= 100 * 40, "{small}");
+    let ratio = large as f64 / small as f64;
+    assert!((1.8..2.2).contains(&ratio), "{small} -> {large}");
+}
+
 /// A default sorting, or filtering, `n` numbers in a scrambled order.
 fn sorting(n: usize, how: &str) -> String {
     let items: Vec<String> = (0..n).map(|i| ((i * 7919) % n).to_string()).collect();

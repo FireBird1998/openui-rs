@@ -208,8 +208,8 @@
 //! - [`parse_expression_with_limits`]: the depth limit, and whether it cut.
 //! - [`parse_json_with_limits`], [`json_to_openui_with_limits`],
 //!   [`generate_system_prompt_with_limits`] and
-//!   [`generate_prompt_with_limits`]: JSON nesting deeper than three levels
-//!   per level of the depth limit and 32 more (800 at the default) is refused
+//!   [`generate_prompt_with_limits`]: JSON nesting past the limit
+//!   described by [`Limits::depth`] is refused
 //!   with their error, so whatever a parse under the same limits produces
 //!   still reads back, converts back and nests. Their time and output grow
 //!   with the JSON, nothing more, and it's already in the caller's memory, so

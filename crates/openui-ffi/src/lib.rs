@@ -210,8 +210,8 @@ pub fn generate_system_prompt(spec: String) -> Result<String, OpenUiError> {
     generate_system_prompt_with_limits(spec, ParseLimits::default())
 }
 
-/// [`generate_system_prompt`] within `limits`: a spec nesting past the depth
-/// limit's JSON levels (800 at the default) is refused as a `Prompt` error.
+/// [`generate_system_prompt`] within `limits`: a spec nesting past the JSON
+/// nesting limit described by [`openui_lang::Limits::depth`] is refused as a `Prompt` error.
 /// The spec is read with serde_json, which refuses nesting past 128 levels on
 /// its own, as `InvalidPromptSpec`.
 #[uniffi::export]

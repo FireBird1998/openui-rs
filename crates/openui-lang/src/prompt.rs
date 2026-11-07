@@ -39,9 +39,8 @@ pub fn generate_system_prompt(spec: &Json) -> Result<String, PromptError> {
     generate_system_prompt_with_limits(spec, Limits::DEFAULT)
 }
 
-/// [`generate_system_prompt`] under `limits`. A spec nesting deeper than
-/// three JSON levels per level of the depth limit, and 32 more (800 at the
-/// default 256), is refused with a [`PromptError`], where the reference goes
+/// [`generate_system_prompt`] under `limits`. A spec nesting past the JSON
+/// limit described by [`Limits::depth`] is refused with a [`PromptError`], where the reference goes
 /// on until the engine runs out of stack. Otherwise the prompt's time and
 /// size grow with the spec, nothing more, so the other limits don't apply:
 /// the spec is already in the caller's memory.
@@ -897,8 +896,8 @@ pub fn generate_prompt(spec: &Json) -> String {
     parts.join("\n")
 }
 
-/// [`generate_prompt`] under `limits`: a spec nesting deeper than three JSON
-/// levels per level of the depth limit, and 32 more (800 at the default 256),
+/// [`generate_prompt`] under `limits`: a spec nesting past the JSON
+/// limit described by [`Limits::depth`]
 /// is refused with a [`PromptError`].
 pub fn generate_prompt_with_limits(spec: &Json, limits: Limits) -> Result<String, PromptError> {
     within_depth("generatePrompt", spec, limits)?;

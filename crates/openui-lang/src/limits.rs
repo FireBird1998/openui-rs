@@ -90,24 +90,20 @@ impl Limits {
     /// far, so an early result can be cut and a later one not: each is the
     /// one-shot parse of the text so far.
     pub const fn result_size_for(&self, program_bytes: usize) -> usize {
-        let scaled = self.amplification.saturating_mul(program_bytes);
-        let at_least = if scaled > self.result_floor {
-            scaled
-        } else {
-            self.result_floor
-        };
-        if at_least < self.result_ceiling {
-            at_least
-        } else {
-            self.result_ceiling
-        }
+        scaled_limit(
+            program_bytes,
+            self.result_floor,
+            self.amplification,
+            self.result_ceiling,
+        )
     }
 
     /// How deep expressions, reference chains and evaluated defaults may nest
     /// (defaults three JSON levels per level); deeper parts become null and
     /// the result is flagged `depth_limited`. The entry points that take JSON
     /// (reading it, converting it back to source, prompt specs) allow three
-    /// JSON levels per level and 32 more, and refuse deeper input.
+    /// JSON levels per level and 32 more (800 at the default depth of 256),
+    /// and refuse deeper input.
     pub const fn depth(&self) -> usize {
         self.depth
     }
@@ -132,15 +128,7 @@ impl Limits {
     pub const fn work_for(&self, program_bytes: usize) -> usize {
         match self.work {
             Some(steps) => steps,
-            None => {
-                let scaled = program_bytes.saturating_mul(WORK_PER_BYTE);
-                let floored = if scaled > MIN_WORK { scaled } else { MIN_WORK };
-                if floored < MAX_WORK {
-                    floored
-                } else {
-                    MAX_WORK
-                }
-            }
+            None => scaled_limit(program_bytes, MIN_WORK, WORK_PER_BYTE, MAX_WORK),
         }
     }
 
@@ -214,11 +202,7 @@ impl Limits {
 }
 
 impl Limits {
-    /// How deep JSON may nest for the entry points that take JSON (reading
-    /// it, converting it back to source, prompt specs): three JSON levels per
-    /// level of the depth limit, as deep as a parse result under these
-    /// limits nests (an evaluated default; measured at 764 of 768 at the
-    /// default), and 32 more to spare. 800 at the default depth.
+    /// The JSON nesting limit described by [`Limits::depth`].
     pub(crate) const fn json_depth(&self) -> usize {
         self.depth.saturating_mul(3).saturating_add(32)
     }
@@ -249,4 +233,11 @@ impl Default for Limits {
     fn default() -> Limits {
         Limits::DEFAULT
     }
+}
+
+/// Scale with saturation, then apply the floor and ceiling.
+const fn scaled_limit(bytes: usize, floor: usize, scale: usize, ceiling: usize) -> usize {
+    let scaled = bytes.saturating_mul(scale);
+    let floored = if scaled > floor { scaled } else { floor };
+    if floored < ceiling { floored } else { ceiling }
 }

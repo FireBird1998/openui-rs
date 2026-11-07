@@ -22,7 +22,7 @@ use std::sync::Arc;
 use crate::ast::{Ast, Field, fields, json_shaped_ast};
 use crate::builtins::builtin_function_params;
 use crate::js::{self, JsObject, OBJECT_PROTOTYPE_KEYS, array_index, number_to_string};
-use crate::result::{Value, json_number_value, json_shaped};
+use crate::result::{Value, json_number_value};
 use crate::validation::{element_parts, is_ast_node};
 
 /// A JavaScript value, as the evaluator sees one.
@@ -184,8 +184,8 @@ const VALUE_LEVELS_PER_LEVEL: usize = 3;
 /// reference goes on until the engine runs out of memory or stack, or time.
 ///
 /// So the core keeps all of a parse's evaluating to three limits:
-/// - **room:** what it builds into strings, literals and the result, no more
-///   than materializing left of the result-size limit;
+/// - **result size:** what is left of the result-size limit (its room),
+///   for strings, literals and the result;
 /// - **work:** every step it takes, no more than the work limit
 ///   ([`crate::Limits::work_for`]). A step is an expression evaluated, an item
 ///   sorted, filtered, summed or copied into an `@Each` template, a node of a
@@ -214,6 +214,12 @@ struct EvalLimits {
     depth_limited: Cell<bool>,
 }
 
+/// Keeps the owning node alive so its address cannot be reused while cached.
+struct PropertyRead {
+    _owner: Arc<Ast>,
+    value: Js,
+}
+
 thread_local! {
     static LIMITS: EvalLimits = const {
         EvalLimits {
@@ -225,6 +231,8 @@ thread_local! {
             depth_limited: Cell::new(false),
         }
     };
+    /// Stable property identities, including arrays and their entry pairs.
+    static PROPERTIES: RefCell<HashMap<(usize, String), PropertyRead>> = RefCell::new(HashMap::new());
     /// Elements already read as values, by the address of their shared node,
     /// which the entry keeps alive: an element read many times is converted
     /// once, and every read gets the same object, as the reference's do.
@@ -386,6 +394,7 @@ pub(crate) fn state_defaults(
         l.work.set(usize::MAX);
     });
     READ.with(|r| r.borrow_mut().clear());
+    PROPERTIES.with(|r| r.borrow_mut().clear());
     out
 }
 
@@ -487,16 +496,7 @@ fn from_value(value: &Value) -> Js {
             Js::Str(s.as_str().into())
         }
         Value::Arr(items) => Js::Arr(Rc::new(items.iter().map(from_value).collect())),
-        Value::Obj(o) => {
-            let mut out = JsObject::new();
-            for (key, v) in o.iter() {
-                if !step(key.len()) {
-                    break;
-                }
-                out.define(key.clone(), from_value(v));
-            }
-            Js::Obj(Rc::new(out))
-        }
+        Value::Obj(o) => from_object(o),
         Value::Element(element) => {
             let address = Arc::as_ptr(element) as usize;
             if let Some(js) = READ.with(|r| r.borrow().get(&address).map(|(_, js)| js.clone())) {
@@ -507,12 +507,56 @@ fn from_value(value: &Value) -> Js {
                 LIMITS.with(|l| l.size_limited.set(true));
                 return Js::Null;
             }
-            let js = from_value(&json_shaped(value));
+            let mut out = JsObject::new();
+            for (key, value) in [
+                ("type", from_value(&Value::Str("element".into()))),
+                (
+                    "typeName",
+                    from_value(&Value::Str(element.type_name.clone())),
+                ),
+                (
+                    "props",
+                    if step(1) {
+                        from_object(&element.props)
+                    } else {
+                        Js::Null
+                    },
+                ),
+                ("partial", from_value(&Value::Bool(element.partial))),
+                (
+                    "hasDynamicProps",
+                    from_value(&Value::Bool(element.has_dynamic_props)),
+                ),
+            ] {
+                if !step(key.len()) {
+                    return Js::Null;
+                }
+                out.define(key.to_owned(), value);
+            }
+            if let Some(id) = &element.statement_id {
+                if !step("statementId".len()) {
+                    return Js::Null;
+                }
+                out.define("statementId", from_value(&Value::Str(id.clone())));
+            }
+            let js = Js::Obj(Rc::new(out));
             READ.with(|r| r.borrow_mut().insert(address, (value.clone(), js.clone())));
             js
         }
         Value::Ast(node) => Js::Ast(Arc::clone(node)),
     }
+}
+
+/// Convert an object's entries as they are priced, without copying it first.
+fn from_object(object: &JsObject<Value>) -> Js {
+    let mut out = JsObject::new();
+    for (key, value) in object.iter() {
+        if !step(key.len()) {
+            break;
+        }
+        out.define(key.clone(), from_value(value));
+    }
+    Js::Obj(Rc::new(out))
 }
 
 /// A runtime expression read as a value, built whole: the object its JSON
@@ -527,10 +571,16 @@ fn whole_ast(node: &Ast) -> Js {
 
 /// `node[key]`, the node read as the plain object its JSON is: a step, and
 /// one per item of a list it reads.
-fn ast_property(node: &Ast, key: &str) -> Option<Js> {
+fn ast_property(node: &Arc<Ast>, key: &str) -> Option<Js> {
+    let cache_key = (Arc::as_ptr(node) as usize, key.to_owned());
+    if let Some(value) =
+        PROPERTIES.with(|r| r.borrow().get(&cache_key).map(|read| read.value.clone()))
+    {
+        return Some(value);
+    }
     let (_, field) = fields(node).into_iter().find(|(k, _)| *k == key)?;
     let read = |node: &Ast| Js::Ast(Arc::new(node.clone()));
-    Some(match field {
+    let value = match field {
         Field::Text(s) => Js::Str(s.into()),
         Field::Num(n) => match json_number_value(n) {
             Value::Num(n) => Js::Num(n),
@@ -565,7 +615,17 @@ fn ast_property(node: &Ast, key: &str) -> Option<Js> {
             }
             Js::Obj(Rc::new(out))
         }
-    })
+    };
+    PROPERTIES.with(|r| {
+        r.borrow_mut().insert(
+            cache_key,
+            PropertyRead {
+                _owner: Arc::clone(node),
+                value: value.clone(),
+            },
+        )
+    });
+    Some(value)
 }
 
 /// The value as `JSON.stringify` writes it, or `None` where it leaves it

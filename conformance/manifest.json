@@ -906,6 +906,12 @@
    "schema": "hand",
    "file": "cases/hand/146-state-defaults-reading-an-assignment.oui",
    "source": "hand-written"
+  },
+  {
+   "name": "hand/147-runtime-property-identity",
+   "schema": "hand",
+   "file": "cases/hand/147-runtime-property-identity.oui",
+   "source": "hand-written"
   }
  ]
 }

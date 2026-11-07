@@ -482,7 +482,7 @@ impl std::error::Error for JsonError {}
 /// back a [`crate::ParseResult::to_json`] exactly, or reference output.
 ///
 /// The reader never recurses, so its stack use doesn't grow with nesting.
-/// Nesting deeper than the default limits allow, 800 levels, is refused; no
+/// Nesting deeper than [`crate::Limits::depth`] allows by default is refused; no
 /// parse result under them comes close (see [`parse_json_with_limits`]). A
 /// number too large for a double (`1e400`) is refused too: `JSON.parse` makes
 /// it `Infinity`, which a `serde_json::Value` can't hold.
@@ -490,9 +490,9 @@ pub fn parse_json(text: &str) -> Result<serde_json::Value, JsonError> {
     parse_json_with_limits(text, crate::Limits::DEFAULT)
 }
 
-/// [`parse_json`] under `limits`: nesting deeper than three JSON levels per
-/// level of the depth limit, and 32 more, is refused (800 at the default
-/// 256), so the JSON of any parse result under the same limits reads back.
+/// [`parse_json`] under `limits`: nesting past the JSON limit described by
+/// [`crate::Limits::depth`] is refused, so the JSON of any parse result
+/// under the same limits reads back.
 /// Its time and memory grow with the text's length, nothing more. A value
 /// read under a raised depth limit can nest too deep for its own recursive
 /// drop on a small stack: free it with [`crate::free_json`].

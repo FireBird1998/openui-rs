@@ -7,7 +7,7 @@
 //! `MAX_RESULT_SIZE` bytes of JSON, and sets `size_limited`. Inlined statements are shared rather than
 //! copied, so memory stays proportional to the program, not the result. State
 //! defaults, evaluated, can double too (a list of the one above twice, a
-//! string added to itself): evaluating stops at what's left of the budget.
+//! string added to itself): evaluating stops at what's left of the result-size limit.
 //! (The reference shares only the `mappedProps` case; the others take it
 //! exponential time and memory.)
 

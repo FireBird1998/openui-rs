@@ -24,7 +24,7 @@ use crate::library::Library;
 /// Why an element tree couldn't be serialized: the reference throws on the
 /// same inputs (a missing node, a field of the wrong type, an object that
 /// can't be turned into text), or it nests deeper than the depth limit allows
-/// (800 JSON levels by default; see [`json_to_openui_with_limits`]), which no
+/// (see [`Limits::depth`] and [`json_to_openui_with_limits`]), which no
 /// parse result under the same limits does.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct SerializeError(String);
@@ -65,9 +65,9 @@ pub fn json_to_openui(
     json_to_openui_with_limits(element, library, state_declarations, Limits::DEFAULT)
 }
 
-/// [`json_to_openui`] under `limits`. A tree nesting deeper than three JSON
-/// levels per level of the depth limit, and 32 more (800 at the default
-/// 256), is refused with a [`SerializeError`], so the tree of any parse result
+/// [`json_to_openui`] under `limits`. A tree nesting past the JSON
+/// limit described by [`Limits::depth`] is refused with a [`SerializeError`],
+/// so the tree of any parse result
 /// under the same limits converts back. The text it writes grows with the
 /// tree, nothing more, so the other limits don't apply: the tree is already
 /// in the caller's memory. Converting grows its stack on demand, like the
