@@ -1592,4 +1592,29 @@ mod tests {
         assert_eq!(stream_exception("[\na=1\nb=", why), None);
         assert!(is(stream_exception("[\na=1\na=", why), "quirk 4"));
     }
+
+    #[test]
+    fn a_sort_whose_comparison_loops_is_explained_narrowly() {
+        let explained = crate::sorts_values_whose_comparison_loops;
+        assert!(explained("$s = @Sort([2, \"10\", \"1a\", 9], \"\")"));
+        assert!(explained("$s=@Sort([2 \"10\" \"1a\""));
+        // No text that starts with a digit: nothing for the loop to go through.
+        assert!(!explained("$s = @Sort([2, \"10\", \"x\"], \"\")"));
+        // Fewer than two numbers.
+        assert!(!explained("$s = @Sort([\"1a\", \"x\"], \"\")"));
+        // Not a sort, or not in a state default.
+        assert!(!explained("$s = [2, \"10\", \"1a\"]"));
+        assert!(!explained(
+            "root = Root([@Sort([2, \"10\", \"1a\"], \"\")])"
+        ));
+    }
+
+    #[test]
+    fn a_constructor_turned_into_text_is_explained_narrowly() {
+        let explained = crate::turns_a_constructor_into_text;
+        assert!(explained("$s = (1).constructor + \"\""));
+        assert!(explained("$s=true.constructor+\""));
+        assert!(!explained("$s = 1 + \"\""));
+        assert!(!explained("root = Root([Text(\"constructor\")])"));
+    }
 }

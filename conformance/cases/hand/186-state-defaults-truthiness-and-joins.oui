@@ -1,0 +1,5 @@
+root = Root([Text("x")])
+$truthy = [true ? 1 : 0, false ? 1 : 0, 0 ? 1 : 0, 2 ? 1 : 0, "" ? 1 : 0, "0" ? 1 : 0, "a" ? 1 : 0, null ? 1 : 0, [] ? 1 : 0, {} ? 1 : 0, ("Infinity" - "Infinity") ? 1 : 0]
+$nots = [!true, !false, !"", !"0", !0, !2, ![], !{}]
+$joined = [[1, [2, [3, null]], "x"] + "", [[], [[]], null, true] + "", [{a: 1}, [1]] + "!"]
+$protoText = [[1].__proto__ + "", (1).__proto__ + "", true.__proto__ + "", "".__proto__ + "", {}.__proto__ + "", {}.constructor + ""]

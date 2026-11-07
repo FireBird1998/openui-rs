@@ -1,0 +1,13 @@
+root = Root([Text("x")])
+$items = [{v: 1}, {v: 2}, {v: 3}, {v: "2"}, {v: null}, {}, {v: "x"}, {v: true}]
+$eq = @Filter($items, "v", "==", 2)
+$ne = @Filter($items, "v", "!=", 2)
+$lt = @Filter($items, "v", "<", 2)
+$gt = @Filter($items, "v", ">", 2)
+$ge = @Filter($items, "v", ">=", 2)
+$le = @Filter($items, "v", "<=", 2)
+$contains = @Filter([{t: "abc"}, {t: "xbz"}, {t: "c"}, {t: null}, {}], "t", "contains", "b")
+$unknown = @Filter($items, "v", "~", 2)
+$whole = @Filter([1, 2, 3, "2"], "", "==", 2)
+$dotted = @Filter([{a: {b: 1}}, {a: {b: 2}}, {a: null}, {}], "a.b", ">=", 2)
+$defaultOperator = @Filter([{v: 1}, {v: 2}], "v", null, 2)

@@ -1,0 +1,13 @@
+root = Root([Text("x")])
+$list = [1, 2]
+$obj = {a: 1}
+$nullish = [null == null, null == 0, 0 == null, "" == null, null == false]
+$numbers = [1 == 1, 1 == 2, 0 == -0, 1 == "1", "1" == 1, 2 == "1", "1" == 2, 0 == "", "" == 0, 1 == "x"]
+$texts = ["a" == "a", "a" == "b", "" == ""]
+$booleans = [true == true, true == false, true == 1, 1 == true, false == 0, true == "1", "1" == true, false == "", true == 2, false == "x"]
+$objects = [$list == $list, $list == [1, 2], $obj == $obj, $obj == {a: 1}, $list == "1,2", "1,2" == $list, $obj == "[object Object]", [] == "", [] == 0, [0] == false, [1] == true, $obj == 1]
+$protos = [$list.__proto__ == $list.__proto__, (1).__proto__ == 0, 1 .__proto__ == 0, true.__proto__ == false, "".__proto__ == "", $obj.__proto__ == $list.__proto__, $list.constructor == $list.constructor, $list.constructor == $obj.constructor, $list.push == $list.push, $obj.__proto__ == "[object Object]"]
+$functions = [(1).toFixed == (1).toFixed, (1).toFixed == (1).toPrecision, {}.toString == {}.toString, {}.valueOf == {}.toString]
+$owners = [{}.toString == (1).toString, (1).toString == (2).toString, "a".toString == (1).toString, (1).valueOf == true.valueOf, (1).hasOwnProperty == {}.hasOwnProperty, "a".hasOwnProperty == true.hasOwnProperty, {f: (1).toString}.f == (1).toString, {f: (1).toString}.f == {}.toString, {toString: 1}.toString == {}.toString, (1).constructor == (2).constructor, (1).constructor == {}.constructor]
+$prototypes =[(1).__proto__ == (2).__proto__, (1).__proto__ == true.__proto__, {}.__proto__ == {a: 1}.__proto__, "".__proto__ == "a".__proto__]
+$protosAsPrimitives =[(1).__proto__ == "", true.__proto__ == "", "".__proto__ == "", (1).__proto__ == "0", true.__proto__ == "false", $list.__proto__ == ""]
