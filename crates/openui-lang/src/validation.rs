@@ -9,7 +9,7 @@ use crate::js::{
     write_json_number,
 };
 use crate::library::Param;
-use crate::materialize::{Ctx, unchanged};
+use crate::materialize::{Ctx, js_strict_eq};
 use crate::result::{Severity, ValidationErrorCode, Value};
 
 /// The varying parts of a validation error; the wording lives in [`Issue::message`].
@@ -283,24 +283,55 @@ pub(crate) fn element_parts(value: &Value) -> Option<(&str, Option<&JsObject<Val
     }
 }
 
+/// What an invalid value becomes: `resolveInvalidValue`.
+pub(crate) enum Fallback<'a> {
+    /// The schema's default.
+    Default(&'a Json),
+    /// None, and the key is required: its container is invalid.
+    Invalid,
+    /// None, and the key is optional: it's deleted.
+    Remove,
+}
+
 /// The reference's edge rule for an invalid value: use the schema default if
-/// there is one; otherwise a required key makes its container invalid (true),
-/// and an optional one is deleted.
+/// there is one; otherwise a required key makes its container invalid, and an
+/// optional one is deleted.
+pub(crate) fn invalid_fallback(required: bool, default: Option<&Json>) -> Fallback<'_> {
+    match default {
+        Some(default) => Fallback::Default(default),
+        None if required => Fallback::Invalid,
+        None => Fallback::Remove,
+    }
+}
+
+/// [`invalid_fallback`] applied to `container[key]`: true when the container
+/// is invalid.
 pub(crate) fn resolve_invalid_value(
     container: &mut JsObject<Value>,
     key: &str,
     required: bool,
     default: Option<&Json>,
 ) -> bool {
-    if let Some(default) = default {
-        container.set(key, Value::from_json(default));
-        return false;
+    match invalid_fallback(required, default) {
+        Fallback::Default(default) => {
+            container.set(key, Value::from_json(default));
+            false
+        }
+        Fallback::Invalid => true,
+        Fallback::Remove => {
+            container.remove(key);
+            false
+        }
     }
-    if required {
-        return true;
-    }
-    container.remove(key);
-    false
+}
+
+/// The object's copy, made on its first change (the reference's `out ??=
+/// { ...obj }`), so an object nothing changes keeps its identity.
+fn copied<'a>(
+    out: &'a mut Option<JsObject<Value>>,
+    obj: &JsObject<Value>,
+) -> &'a mut JsObject<Value> {
+    out.get_or_insert_with(|| obj.clone())
 }
 
 fn schema_default(schema: Option<&Json>) -> Option<&Json> {
@@ -457,8 +488,7 @@ fn validate_object(
             let present = obj.has(key);
             if !present || matches!(obj.get(key), Some(Value::Null)) {
                 if let Some(fallback) = schema_default(prop(key)) {
-                    out.get_or_insert_with(|| (**obj).clone())
-                        .set(key.clone(), Value::from_json(fallback));
+                    copied(&mut out, obj).set(key.clone(), Value::from_json(fallback));
                     filled.push(key.clone());
                     continue;
                 }
@@ -483,7 +513,7 @@ fn validate_object(
                 && OBJECT_PROTOTYPE_KEYS.contains(&key.as_str())
                 && validate_inherited_function(sub, component, &child_path, ctx)
                 && resolve_invalid_value(
-                    out.get_or_insert_with(|| (**obj).clone()),
+                    copied(&mut out, obj),
                     key,
                     is_required(key),
                     schema_default(Some(sub)),
@@ -495,20 +525,21 @@ fn validate_object(
         };
         let mut next = before.clone();
         if validate_schema_value(&mut next, sub, component, &child_path, ctx) {
-            if let Some(default) = schema_default(Some(sub)) {
-                next = Value::from_json(default);
-            } else if is_required(key) {
-                invalid = true;
-                continue;
-            } else {
-                out.get_or_insert_with(|| (**obj).clone()).remove(key);
-                continue;
+            match invalid_fallback(is_required(key), schema_default(Some(sub))) {
+                Fallback::Default(default) => next = Value::from_json(default),
+                Fallback::Invalid => {
+                    invalid = true;
+                    continue;
+                }
+                Fallback::Remove => {
+                    copied(&mut out, obj).remove(key);
+                    continue;
+                }
             }
         }
         // Reference: `next === obj[key]`. In particular NaN triggers a copy.
-        if !unchanged(&next, before) {
-            out.get_or_insert_with(|| (**obj).clone())
-                .set(key.clone(), next);
+        if !js_strict_eq(&next, before) {
+            copied(&mut out, obj).set(key.clone(), next);
         }
     }
     if let Some(out) = out {
@@ -583,7 +614,7 @@ fn validate_array(
             ctx,
         );
         // Reference: `next !== value[i]`; NaN counts as changed even if kept.
-        if invalid || !unchanged(&next, before) {
+        if invalid || !js_strict_eq(&next, before) {
             out.get_or_insert_with(|| items[..i].to_vec());
         }
         if let Some(out) = &mut out

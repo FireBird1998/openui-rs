@@ -374,14 +374,17 @@ pub(crate) fn fingerprint(json: &str) -> String {
 /// One-shot, tokens, then every push and the stream's end.
 type Fingerprints = (String, String, Vec<String>);
 
-/// The core's fingerprints for a program under `limits`, whether a limit cut
-/// any of its results (the one-shot parse, a push or the end), and how long
-/// they took; or None if it panicked.
-fn core_answer(
-    p: &Program,
-    library: &Arc<Library>,
-    limits: Limits,
-) -> Option<(Fingerprints, bool, Duration)> {
+/// The core's answer for a program under some limits.
+struct CoreAnswer {
+    fingerprints: Fingerprints,
+    /// Whether a limit cut any of its results (the one-shot parse, a push or
+    /// the end).
+    cut: bool,
+    took: Duration,
+}
+
+/// The core's answer for a program under `limits`; or None if it panicked.
+fn core_answer(p: &Program, library: &Arc<Library>, limits: Limits) -> Option<CoreAnswer> {
     let started = Instant::now();
     catch_unwind(AssertUnwindSafe(|| {
         let mut cut = false;
@@ -413,7 +416,11 @@ fn core_answer(
         ((oneshot, tokens, steps), cut)
     }))
     .ok()
-    .map(|(answer, cut)| (answer, cut, started.elapsed()))
+    .map(|(fingerprints, cut)| CoreAnswer {
+        fingerprints,
+        cut,
+        took: started.elapsed(),
+    })
 }
 
 /// Limits under which nothing the reference can answer is cut for size or
@@ -449,16 +456,22 @@ fn judge(p: &Program, answer: &Answer, corpus: &Corpus) -> (Outcome, Option<Dura
         o == oneshot && t == tokens && s.iter().eq(steps.iter().copied())
     };
     let library = &corpus.libraries[&p.lib];
-    match core_answer(p, library, Limits::default()) {
-        None => (Outcome::CorePanicked, None),
-        Some((_, _, took)) if took > run().slow => (Outcome::BlowUp, Some(took)),
-        Some((answer, _, took)) if same(&answer) => (Outcome::Match, Some(took)),
-        Some((_, true, took)) => match core_answer(p, library, raised_limits()) {
-            None => (Outcome::CorePanicked, Some(took)),
-            Some((raised, _, _)) if same(&raised) => (Outcome::Cut, Some(took)),
-            Some(_) => (Outcome::Mismatch, Some(took)),
-        },
-        Some((_, false, took)) => (Outcome::Mismatch, Some(took)),
+    let Some(answer) = core_answer(p, library, Limits::default()) else {
+        return (Outcome::CorePanicked, None);
+    };
+    let took = Some(answer.took);
+    if answer.took > run().slow {
+        (Outcome::BlowUp, took)
+    } else if same(&answer.fingerprints) {
+        (Outcome::Match, took)
+    } else if answer.cut {
+        match core_answer(p, library, raised_limits()) {
+            None => (Outcome::CorePanicked, took),
+            Some(raised) if same(&raised.fingerprints) => (Outcome::Cut, took),
+            Some(_) => (Outcome::Mismatch, took),
+        }
+    } else {
+        (Outcome::Mismatch, took)
     }
 }
 
