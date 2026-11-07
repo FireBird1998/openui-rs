@@ -248,6 +248,8 @@ struct PropertyRead {
 }
 
 thread_local! {
+    #[cfg(debug_assertions)]
+    static EXECUTED: Cell<u64> = const { Cell::new(0) };
     static LIMITS: EvalLimits = const {
         EvalLimits {
             room: Cell::new(usize::MAX),
@@ -278,6 +280,24 @@ thread_local! {
     static SAME_AS: RefCell<Aliases> = RefCell::new(Aliases::default());
 }
 
+/// Executed evaluator work on this thread (debug builds only).
+///
+/// Unlike the limit charge, replaying a cached run does not execute its work.
+/// Counts consumed work steps plus one per compared value/AST node. Replayed
+/// limit charges and failed draws after a cut do not execute those steps.
+#[cfg(debug_assertions)]
+pub fn evaluation_steps() -> u64 {
+    EXECUTED.with(Cell::get)
+}
+
+#[inline]
+fn executed(steps: usize) {
+    #[cfg(debug_assertions)]
+    EXECUTED.with(|n| n.set(n.get().saturating_add(steps as u64)));
+    #[cfg(not(debug_assertions))]
+    let _ = steps;
+}
+
 /// The address this push knows an element or runtime expression by: its own,
 /// or that of the one it stands for (see [`SAME_AS`]).
 fn this_push(address: usize) -> usize {
@@ -289,6 +309,9 @@ fn this_push(address: usize) -> usize {
 fn draw(l: &EvalLimits, which: Cut, cost: usize) -> bool {
     if l.cut.get().is_some() {
         return false;
+    }
+    if which == Cut::Work {
+        executed(cost.min(l.work.get()));
     }
     let counter = match which {
         Cut::Room => &l.room,
@@ -486,7 +509,8 @@ pub(crate) fn state_defaults(
                 (record.moved_to(value, &mut compared), Ended::RanOut)
             }
             (Decision::Evaluate(given), before) => {
-                let was_null = before.as_ref().is_some_and(|r| r.outcome.null());
+                // Only RanOut records choose Evaluate; every such record declared null.
+                let was_null = before.is_some();
                 if let Some(record) = before {
                     compared.push(record.value);
                 }
@@ -623,18 +647,10 @@ fn evaluate_default(
     given: Amounts,
 ) -> (Record, Ended) {
     let marks = FirstReads::mark(declared);
-    let mut given = given;
-    let mut ran = run(value, declared, given);
-    if given != left && !matches!(ran.cut, Some(Cut::Room | Cut::Work)) {
-        // Whole or too deep with exactly this push's work: a loop may have
-        // seen some left where it would see none. Run it as it is.
-        let took = given.less(ran.left);
-        if left.work == took.work && left.room >= took.room {
-            FirstReads::undo(marks, declared);
-            given = left;
-            ran = run(value, declared, given);
-        }
-    }
+    // No exact-work retry is needed: neither out_of_work caller can produce
+    // a value without subsequently drawing positive work. Thus extra work
+    // cannot turn a zero-work early stop into a successful run of this price.
+    let ran = run(value, declared, given);
     let record = Record::of(id, value, &ran, given, FirstReads::since(marks, declared));
     let took = given.less(ran.left);
     let ended = match ran.cut {
@@ -723,12 +739,10 @@ struct Record {
 enum Outcome {
     /// Nothing to evaluate.
     Plain,
-    /// Whole, or too deep (`gave` is `None`), having taken `took`; what it
-    /// read first; and whether its work ran out exactly (then only the same
-    /// work gives the same run, a loop having seen none left).
+    /// Whole, or too deep (`gave` is `None`), having taken `took`, with what
+    /// it read first.
     Ran {
         took: Amounts,
-        exact: bool,
         first: FirstReads,
         gave: Option<Gave>,
         /// Neither what it gave nor what it read first holds an element or a
@@ -743,16 +757,6 @@ enum Outcome {
 struct Gave {
     js: Js,
     value: Option<Value>,
-}
-
-impl Outcome {
-    /// It declared the default null.
-    fn null(&self) -> bool {
-        matches!(
-            self,
-            Outcome::Ran { gave: None, .. } | Outcome::RanOut { .. }
-        )
-    }
 }
 
 enum Decision {
@@ -770,14 +774,12 @@ impl Record {
     fn decide(&self, left: Amounts, most: Amounts) -> Decision {
         match self.outcome {
             Outcome::Plain => Decision::Evaluate(left),
-            Outcome::Ran { took, exact, .. } => {
+            Outcome::Ran { took, .. } => {
                 // With what it took or more, the same run; with less, it
-                // runs out. With exactly the work it took, a loop may see
-                // none left where it saw some: only the same run if it did.
+                // runs out. A successful run cannot stop early at zero work:
+                // both out_of_work callers subsequently draw positive work.
                 if !left.covers(took) {
                     Decision::RunsOut
-                } else if left.work == took.work && !exact {
-                    Decision::Evaluate(left)
                 } else {
                     Decision::Take
                 }
@@ -857,7 +859,6 @@ impl Record {
                 && gave.as_ref().is_none_or(|gave| !holds_expression(&gave.js));
             Outcome::Ran {
                 took: had.less(ran.left),
-                exact: ran.left.work == 0,
                 first,
                 gave,
                 unpaired,
@@ -955,30 +956,6 @@ impl FirstReads {
         }
     }
 
-    /// Forget what was read first since `marks`, as if it never was.
-    fn undo(marks: Marks, declared: &Declared) {
-        READ_LOG.with(|l| {
-            READ.with(|r| {
-                let mut read = r.borrow_mut();
-                for address in l.borrow_mut().drain(marks.elements..) {
-                    read.remove(&address);
-                }
-            })
-        });
-        PROPERTIES_LOG.with(|l| {
-            PROPERTIES.with(|r| {
-                let mut read = r.borrow_mut();
-                for key in l.borrow_mut().drain(marks.properties..) {
-                    read.remove(&key);
-                }
-            })
-        });
-        let mut read = declared.read.borrow_mut();
-        for name in declared.read_log.borrow_mut().drain(marks.plain..) {
-            read.remove(&name);
-        }
-    }
-
     /// Read again what was read, as the same objects.
     fn replay(&self, declared: &Declared) {
         READ.with(|r| {
@@ -1054,6 +1031,7 @@ fn pair(then: usize, now: usize) -> bool {
 /// only ever stands for an equal element or expression at the same place.
 fn same(then: &Value, now: &Value) -> bool {
     crate::stack::grow_stack!(same(then, now));
+    executed(1);
     match (then, now) {
         (Value::Null, Value::Null) => true,
         (Value::Bool(a), Value::Bool(b)) => a == b,
@@ -1093,6 +1071,7 @@ fn same_expression(a: &Arc<Ast>, b: &Arc<Ast>) -> bool {
 /// The same node, read field by field as the evaluator reads one.
 fn same_ast(a: &Ast, b: &Ast) -> bool {
     crate::stack::grow_stack!(same_ast(a, b));
+    executed(1);
     let (fa, fb) = (fields(a), fields(b));
     fa.len() == fb.len()
         && fa

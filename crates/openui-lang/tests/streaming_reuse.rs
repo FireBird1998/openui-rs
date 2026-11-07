@@ -15,8 +15,8 @@
 //! is also compared with a one-shot parse, which streams' ends match apart
 //! from quirk 4's count of a redefinition.
 //!
-//! Costs are measured in the thread's CPU time, the fastest of a few runs, as
-//! `streaming_cost.rs` does, against generous bounds.
+//! Reuse decisions are checked with executed work steps in debug builds.
+//! Broader scaling checks also use thread CPU time against generous bounds.
 
 use std::sync::Arc;
 
@@ -805,3 +805,155 @@ fn a_default_that_keeps_running_out_costs_about_one_evaluation_in_all() {
 
 #[global_allocator]
 static ALLOCATOR: test_alloc::Allocator = test_alloc::Allocator::with_cap(test_alloc::LIMITS);
+
+/// Measure execution, rather than the identical limit charge of a cached run.
+#[cfg(debug_assertions)]
+fn work(f: impl FnOnce()) -> u64 {
+    let before = openui_lang::evaluation_steps();
+    f();
+    openui_lang::evaluation_steps() - before
+}
+
+#[test]
+#[cfg(debug_assertions)]
+fn reused_scalar_defaults_execute_less_work_than_fresh_defaults() {
+    let library = library();
+    let program = "root = Stack([])\n$a = 1 + 2\n$b = $a + 3\nsource = 1\n";
+    let mut stream = StreamParser::new(library.clone(), None);
+    stream.push(program);
+    let reused = work(|| {
+        stream.push(" ");
+    });
+    let fresh = work(|| {
+        StreamParser::new(library.clone(), None).push(&format!("{program} "));
+    });
+    assert!(reused < fresh, "reused {reused}, fresh {fresh}");
+    streams_as_without_reuse(&format!("{program}    "), &library, Limits::default(), 7);
+}
+
+#[test]
+#[cfg(debug_assertions)]
+fn adopting_a_scalar_owner_avoids_rewalking_its_expression() {
+    let library = library();
+    let head = format!(
+        "root = Stack([])\n$a = @Count(source)\nsource = {}",
+        list(300)
+    );
+    let mut adopted = StreamParser::new(library.clone(), None);
+    adopted.push(&head);
+    adopted.push("\n");
+    adopted.push("");
+    let mut cached = StreamParser::new(library.clone(), None);
+    cached.push(&format!("{head}\n"));
+    cached.push("");
+    let a = work(|| {
+        adopted.push("");
+    });
+    let b = work(|| {
+        cached.push("");
+    });
+    assert_eq!(a, b, "adopted and originally cached owners");
+}
+
+#[test]
+#[cfg(debug_assertions)]
+fn recovered_defaults_invalidate_followers_without_rechecking_their_old_inputs() {
+    let head = format!(
+        "root = Stack([])\n$a = @Each({}, \"i\", \"{}\")\n$b = @Count($a)\n$c = $b + 1\n",
+        list(30),
+        "payload".repeat(20)
+    );
+    let tail = padding(8_000);
+    let library = library();
+    let limits = Limits::default().with_result_floor(0).with_amplification(8);
+    let mut stream = StreamParser::with_limits(library.clone(), None, limits);
+    assert!(stream.push(&head).size_limited);
+    let mut pushed = None;
+    let reused = work(|| {
+        pushed = Some(stream.push(&tail));
+    });
+    assert!(!pushed.as_ref().unwrap().size_limited);
+    let program = format!("{head}{tail}");
+    let fresh = work(|| {
+        StreamParser::with_limits(library.clone(), None, limits).push(&program);
+    });
+    // Only $a is compared (one cached value) before evaluation; its null result is
+    // replaced by a whole result, so no follower's old input is compared.
+    assert_eq!(reused, fresh + 1);
+    streams_as_without_reuse(&program, &library, limits, 37);
+}
+
+#[test]
+fn a_changed_default_that_becomes_too_deep_invalidates_its_followers() {
+    let limits = Limits::default().with_depth(6);
+    let (k, chain) = deepest_chain(limits);
+    let program =
+        format!("root = Stack([])\n{chain}$t = 5 + 0\n$b = $t + 1\n$t = [[$n{k}], 1 + 1]\n");
+    for n in [1, 7] {
+        streams_as_without_reuse(&program, &library(), limits, n);
+    }
+}
+
+#[test]
+fn a_speculative_depth_cut_still_needs_this_pushs_work() {
+    let limits = Limits::default().with_depth(6);
+    let (k, chain) = deepest_chain(limits);
+    let program = format!(
+        "root = Stack([])\n{chain}$l = {}\n$a = [@Count(@Each($l, \"x\", @Each($l, \"y\", @Each($l, \"z\", 1)))), [$n{k}]]\n{}",
+        list(80),
+        padding(2_000)
+    );
+    assert!(parse_with_limits(&program, &library(), None, limits).depth_limited);
+    streams_as_without_reuse(&program, &library(), limits, 31);
+}
+
+#[test]
+fn unsubstituted_assignment_templates_keep_their_original_owners() {
+    for template in [
+        "$t = [1, {a: 1}]",
+        "[$t = [1, {a: 1}]]",
+        "{nested: $t = [1, {a: 1}]}",
+    ] {
+        let access = if template.starts_with('[') {
+            "[0][0]"
+        } else if template.starts_with('{') {
+            "[0].nested"
+        } else {
+            "[0]"
+        };
+        let program = format!(
+            "root = Stack([])\n$seed = source\n$first = $seed{access}.expr.els\n$again = source\n$same = $first == $again{access}.expr.els\nsource = @Each([1], \"i\", {template}){}\n$new = source\n$late = $first == $new{access}.expr.els\n",
+            " ".repeat(40)
+        );
+        for n in [1, 3, 7] {
+            streams_as_without_reuse(&program, &library(), Limits::default(), n);
+        }
+    }
+}
+
+#[test]
+#[cfg(debug_assertions)]
+fn scalar_runs_keep_their_first_property_reads_after_an_owner_change() {
+    let expression = "@Each([1], \"i\", $t = [1, 2, 3])[0].expr.els == null";
+    let head = format!("root = Stack([])\n$a = source\nsource = {expression}");
+    let library = library();
+    let mut stream = StreamParser::new(library.clone(), None);
+    stream.push(&format!("{head}\n"));
+    stream.push(&format!("source = {expression}\n"));
+    stream.push("");
+    let tail = "$b = source\n";
+    let reused = work(|| {
+        stream.push(tail);
+    });
+    let mut fresh = StreamParser::new(library.clone(), None);
+    fresh.push(&format!("{head}\n"));
+    fresh.push("");
+    let cached = work(|| {
+        fresh.push(tail);
+    });
+    assert_eq!(reused, cached);
+    // Replaying the three-item `els` read saves three steps. Comparing two
+    // streams alone is too weak: the mutation affects both streams equally.
+    assert_eq!(reused, 37, "pin property replay execution");
+    streams_as_without_reuse(&format!("{head}\n{tail}"), &library, Limits::default(), 3);
+}

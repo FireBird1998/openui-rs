@@ -110,3 +110,42 @@ fn amplified_values_pin_work_and_room_independently() {
 
 #[global_allocator]
 static ALLOCATOR: test_alloc::Allocator = test_alloc::Allocator::with_cap(test_alloc::LIMITS);
+
+#[test]
+fn runtime_expression_conversion_has_an_exact_work_boundary() {
+    let program = "$a = @Each([1], \"i\", $t = [1, {a: 1}])";
+    edges(program, 195, None);
+}
+
+#[test]
+fn zero_work_is_cut_before_converting_a_runtime_expression_at_the_depth_limit() {
+    // n16 is whole. Adding TWO levels at once puts its raw runtime expression
+    // exactly at the depth limit, without an intervening default becoming null.
+    let mut program = "$n0 = @Each([1], \"i\", $t = 1)[0].expr\n".to_owned();
+    for i in 1..=16 {
+        program.push_str(&format!("$n{i} = [$n{}]\n", i - 1));
+    }
+    program.push_str("$a = [[$n16]]\n");
+    let parse = |work| {
+        parse_with_limits(
+            &program,
+            &Library::from_json_schema(&serde_json::json!({})),
+            None,
+            Limits::default().with_depth(6).with_work(work),
+        )
+    };
+    // At 932, whole_ast sees exactly zero work. Its early-return null would
+    // hit depth before drawing work: ran_out_of_work must mark Work FIRST.
+    for work in [931, 932, 933, 939] {
+        let cut = parse(work);
+        assert_eq!(
+            (cut.size_limited, cut.depth_limited),
+            (true, false),
+            "work {work}"
+        );
+        assert!(cut.to_json().contains("\"$a\":null"));
+    }
+    let depth = parse(940);
+    assert_eq!((depth.size_limited, depth.depth_limited), (false, true));
+    assert_eq!(depth, parse(2_000_000));
+}
