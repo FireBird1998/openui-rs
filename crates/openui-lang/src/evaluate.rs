@@ -16,7 +16,6 @@
 use std::cell::{Cell, RefCell};
 use std::cmp::Ordering;
 use std::collections::{HashMap, HashSet};
-use std::rc::Rc;
 use std::sync::Arc;
 
 use crate::ast::{Ast, Field, fields, json_shaped_ast};
@@ -33,9 +32,9 @@ pub(crate) enum Js {
     Bool(bool),
     Num(f64),
     /// A string, with lone surrogates as the core carries them (see `js`).
-    Str(Rc<str>),
-    Arr(Rc<Vec<Js>>),
-    Obj(Rc<JsObject<Js>>),
+    Str(Arc<str>),
+    Arr(Arc<Vec<Js>>),
+    Obj(Arc<JsObject<Js>>),
     /// A runtime expression read as a value: the plain object its JSON is
     /// (`ast::fields`), its properties read from the node as they're asked
     /// for. It's built whole only if it reaches the result or a literal, so
@@ -193,8 +192,9 @@ const VALUE_LEVELS_PER_LEVEL: usize = 3;
 /// - **depth:** its walks, [`VALUE_LEVELS_PER_LEVEL`] per level of the depth
 ///   limit.
 ///
-/// A default that goes past any of them is null, as is every expression
-/// default after room or work runs out.
+/// A default that goes past any of them is null, and stops there: what it
+/// would have done after takes no more work. After room or work runs out,
+/// every expression default is null too.
 ///
 /// They reach the evaluator through a thread-local, set for one parse's
 /// defaults at a time: evaluating is synchronous, and passing them through
@@ -212,11 +212,34 @@ struct EvalLimits {
     /// The default being evaluated ran out of room or work, or of depth.
     size_limited: Cell<bool>,
     depth_limited: Cell<bool>,
+    /// What the default being evaluated ran out of, if anything: nothing more
+    /// is drawn for it after.
+    cut: Cell<Option<Cut>>,
+}
+
+/// What a default ran out of.
+#[derive(Clone, Copy, PartialEq, Eq)]
+enum Cut {
+    Room,
+    Work,
+    Depth,
+}
+
+impl EvalLimits {
+    fn cut_by(&self, cut: Cut) {
+        match cut {
+            Cut::Depth => self.depth_limited.set(true),
+            Cut::Room | Cut::Work => self.size_limited.set(true),
+        }
+        if self.cut.get().is_none() {
+            self.cut.set(Some(cut));
+        }
+    }
 }
 
 /// Keeps the owning node alive so its address cannot be reused while cached.
 struct PropertyRead {
-    _owner: Arc<Ast>,
+    owner: Arc<Ast>,
     value: Js,
 }
 
@@ -229,19 +252,43 @@ thread_local! {
             max_depth: Cell::new(0),
             size_limited: Cell::new(false),
             depth_limited: Cell::new(false),
+            cut: Cell::new(None),
         }
     };
     /// Stable property identities, including arrays and their entry pairs.
     static PROPERTIES: RefCell<HashMap<(usize, String), PropertyRead>> = RefCell::new(HashMap::new());
+    /// The keys put in `PROPERTIES`, in order, so a default's own can be told
+    /// apart (see [`Reuse`]).
+    static PROPERTIES_LOG: RefCell<Vec<(usize, String)>> = const { RefCell::new(Vec::new()) };
     /// Elements already read as values, by the address of their shared node,
     /// which the entry keeps alive: an element read many times is converted
     /// once, and every read gets the same object, as the reference's do.
     static READ: RefCell<HashMap<usize, (Value, Js)>> = RefCell::new(HashMap::new());
+    /// The addresses put in `READ`, in order, so a default's own can be told
+    /// apart (see [`Reuse`]).
+    static READ_LOG: RefCell<Vec<usize>> = const { RefCell::new(Vec::new()) };
+    /// Shared nodes of a stream's earlier push standing for this push's, by
+    /// address (see [`Reuse`]): an object read from one is the object read
+    /// from the other, as it would be had the default been evaluated now.
+    static SAME_AS: RefCell<Aliases> = RefCell::new(Aliases::default());
 }
 
-/// Take `cost` from a counter: `false`, and the default is cut, once it's
-/// spent.
-fn draw(counter: &Cell<usize>, size_limited: &Cell<bool>, cost: usize) -> bool {
+/// The node at `address` as this push knows it: itself, or the one it stands
+/// for (see [`SAME_AS`]).
+fn now_known(address: usize) -> usize {
+    SAME_AS.with(|s| s.borrow().now.get(&address).copied().unwrap_or(address))
+}
+
+/// Take `cost` from room or work: `false`, and the default is cut, once it's
+/// spent, or once the default was cut anyhow.
+fn draw(l: &EvalLimits, which: Cut, cost: usize) -> bool {
+    if l.cut.get().is_some() {
+        return false;
+    }
+    let counter = match which {
+        Cut::Room => &l.room,
+        Cut::Work | Cut::Depth => &l.work,
+    };
     match counter.get().checked_sub(cost) {
         Some(left) => {
             counter.set(left);
@@ -249,7 +296,7 @@ fn draw(counter: &Cell<usize>, size_limited: &Cell<bool>, cost: usize) -> bool {
         }
         None => {
             counter.set(0);
-            size_limited.set(true);
+            l.cut_by(which);
             false
         }
     }
@@ -257,29 +304,39 @@ fn draw(counter: &Cell<usize>, size_limited: &Cell<bool>, cost: usize) -> bool {
 
 /// Build `bytes`: they cost room and work alike.
 fn spend(bytes: usize) -> bool {
-    LIMITS.with(|l| draw(&l.work, &l.size_limited, bytes) && draw(&l.room, &l.size_limited, bytes))
+    LIMITS.with(|l| draw(l, Cut::Work, bytes) && draw(l, Cut::Room, bytes))
 }
 
 /// Take `steps` steps of work, building nothing that stays.
 fn step(steps: usize) -> bool {
-    LIMITS.with(|l| draw(&l.work, &l.size_limited, steps))
+    LIMITS.with(|l| draw(l, Cut::Work, steps))
 }
 
-/// Whether the work has run out: a long loop stops taking steps then.
+/// Whether the work has run out, or the default was cut: a long loop stops
+/// taking steps then.
 fn out_of_work() -> bool {
-    LIMITS.with(|l| l.work.get() == 0)
+    LIMITS.with(|l| l.work.get() == 0 || l.cut.get().is_some())
+}
+
+/// Out of work where a step was due: the default is cut.
+fn ran_out_of_work() {
+    LIMITS.with(|l| l.cut_by(Cut::Work));
 }
 
 /// A level open in one of the walks, closed when dropped.
 struct Level;
 
 impl Level {
-    /// `None`, and the default is cut, past the evaluator's depth limit.
+    /// `None`, and the default is cut, past the evaluator's depth limit; or
+    /// `None` once it was cut anyhow.
     fn enter() -> Option<Level> {
         LIMITS.with(|l| {
+            if l.cut.get().is_some() {
+                return None;
+            }
             let depth = l.depth.get();
             if depth >= l.max_depth.get() {
-                l.depth_limited.set(true);
+                l.cut_by(Cut::Depth);
                 return None;
             }
             l.depth.set(depth + 1);
@@ -337,11 +394,14 @@ pub(crate) struct Evaluated {
 /// about `room` bytes and taking no more than `work` steps in all, nesting no
 /// deeper than [`VALUE_LEVELS_PER_LEVEL`] per level of `depth` (see
 /// [`EvalLimits`]).
+///
+/// A stream passes its [`Reuse`], and gets the same result doing less.
 pub(crate) fn state_defaults(
     state: JsObject<Value>,
     room: usize,
     depth: usize,
     work: usize,
+    reuse: Option<&mut Reuse>,
 ) -> Evaluated {
     let mut out = Evaluated {
         state: JsObject::new(),
@@ -353,49 +413,659 @@ pub(crate) fn state_defaults(
         out.state = state;
         return out;
     }
+    let max_depth = depth.saturating_mul(VALUE_LEVELS_PER_LEVEL);
     LIMITS.with(|l| {
         l.room.set(room);
         l.work.set(work);
         l.depth.set(0);
-        l.max_depth
-            .set(depth.saturating_mul(VALUE_LEVELS_PER_LEVEL));
+        l.max_depth.set(max_depth);
     });
+    let mut scratch = Reuse::default();
+    let reuse = reuse.unwrap_or(&mut scratch);
+    // What the last push found holds while every default before it is as it
+    // was, under the same depth limit.
+    let mut in_step = reuse.max_depth == max_depth;
+    reuse.max_depth = max_depth;
+    let caps = (reuse.work_cap.max(work), reuse.room_cap.max(room));
+    let mut earlier = std::mem::take(&mut reuse.records).into_iter();
     let mut declared = Declared::default();
     for (id, value) in state.iter() {
+        let before = earlier.next().filter(|r| in_step && r.id == *id);
+        let unchanged = before.as_ref().is_some_and(|r| same(&r.value, value));
+        let before = before.filter(|_| unchanged);
         if !has_runtime(value) {
             out.state.set(id.clone(), value.clone());
             declared.plain.define(id.clone(), value.clone());
+            in_step &= unchanged;
+            reuse.records.push(Record {
+                id: id.clone(),
+                value: value.clone(),
+                outcome: Outcome::Plain,
+            });
             continue;
         }
-        LIMITS.with(|l| {
-            l.size_limited.set(false);
-            l.depth_limited.set(false);
-        });
-        let js = state_default(value, &declared);
-        let converted = to_value(&js);
-        let (size, depth) = LIMITS.with(|l| (l.size_limited.get(), l.depth_limited.get()));
-        if size || depth {
-            out.size_limited |= size;
-            out.depth_limited |= depth;
-            out.state.set(id.clone(), Value::Null);
-            declared.evaluated.define(id.clone(), Js::Null);
-            continue;
-        }
-        match converted {
-            Some(v) => out.state.set(id.clone(), v),
-            None => {
-                out.undefined.insert(id.clone());
+        let budgets = LIMITS.with(|l| (l.work.get(), l.room.get()));
+        let decision = match &before {
+            Some(record) => record.decide(budgets, caps),
+            None => Decision::Evaluate(budgets),
+        };
+        let (record, ended) = match (decision, before) {
+            (Decision::Take, Some(record)) => {
+                let ended = record.take(id, &mut declared, &mut out);
+                (record.now(value), ended)
             }
+            (Decision::Spent, Some(record)) => {
+                spent(id, &mut declared, &mut out);
+                (record.now(value), Ended::Spent)
+            }
+            (Decision::Evaluate(probe), before) => {
+                let was_null = before.as_ref().is_some_and(|r| r.outcome.null());
+                let (record, ended) =
+                    evaluate_default((id, value), &mut declared, &mut out, budgets, probe);
+                // The defaults after it, as the last push found them, read it
+                // as it was: they hold if it's null now as then.
+                in_step &= was_null && ended != Ended::Whole;
+                (record, ended)
+            }
+            (_, None) => unreachable!("a default is taken or found spent only by its record"),
+        };
+        reuse.records.push(record);
+        // Out of room or work, every expression default after is null,
+        // whatever it reads: any record says so.
+        if ended == Ended::Spent {
+            in_step = true;
         }
-        declared.evaluated.define(id.clone(), js);
     }
     LIMITS.with(|l| {
         l.room.set(usize::MAX);
         l.work.set(usize::MAX);
     });
     READ.with(|r| r.borrow_mut().clear());
+    READ_LOG.with(|l| l.borrow_mut().clear());
     PROPERTIES.with(|r| r.borrow_mut().clear());
+    PROPERTIES_LOG.with(|l| l.borrow_mut().clear());
+    SAME_AS.with(|s| *s.borrow_mut() = Aliases::default());
     out
+}
+
+/// How one default came out.
+#[derive(Clone, Copy, PartialEq, Eq)]
+enum Ended {
+    Whole,
+    /// Past the depth limit: null, the rest going on.
+    TooDeep,
+    /// Out of room or work: null, as is every expression default after it.
+    Spent,
+}
+
+/// Default `id` ran out of room or work: null, and no room or work is left.
+fn spent(id: &str, declared: &mut Declared, out: &mut Evaluated) {
+    LIMITS.with(|l| {
+        l.work.set(0);
+        l.room.set(0);
+    });
+    out.size_limited = true;
+    out.state.set(id.to_owned(), Value::Null);
+    declared.evaluated.define(id.to_owned(), Js::Null);
+}
+
+/// Default `id` went past the depth limit: null.
+fn too_deep(id: &str, declared: &mut Declared, out: &mut Evaluated) {
+    out.depth_limited = true;
+    out.state.set(id.to_owned(), Value::Null);
+    declared.evaluated.define(id.to_owned(), Js::Null);
+}
+
+/// What one evaluation of a default found.
+struct Run {
+    js: Js,
+    value: Option<Value>,
+    cut: Option<Cut>,
+    work_left: usize,
+    room_left: usize,
+}
+
+/// Evaluate one default with `work` steps and `room` bytes to go.
+fn run(value: &Value, declared: &Declared, (work, room): (usize, usize)) -> Run {
+    LIMITS.with(|l| {
+        l.work.set(work);
+        l.room.set(room);
+        l.size_limited.set(false);
+        l.depth_limited.set(false);
+        l.cut.set(None);
+    });
+    let js = state_default(value, declared);
+    let converted = to_value(&js);
+    LIMITS.with(|l| Run {
+        js,
+        value: converted,
+        cut: l.cut.take(),
+        work_left: l.work.get(),
+        room_left: l.room.get(),
+    })
+}
+
+/// Evaluate default `id` with `budgets` (work and room) to go, as a one-shot
+/// parse would, into `declared` and `out`, and say what it found and how it
+/// came out.
+///
+/// Given larger `probe` budgets (a stream found it spent before, with these
+/// inputs), it's evaluated with those instead, to learn more than this push
+/// needs. The budgets are all that differs, and a run takes the same course
+/// whatever they are until one runs out. So where it went whole or too deep
+/// within `budgets`, it's the run `budgets` give; anywhere else it's spent.
+fn evaluate_default(
+    (id, value): (&String, &Value),
+    declared: &mut Declared,
+    out: &mut Evaluated,
+    budgets: (usize, usize),
+    probe: (usize, usize),
+) -> (Record, Ended) {
+    let marks = Made::mark(declared);
+    let mut probe = probe;
+    let mut ran = run(value, declared, probe);
+    if probe != budgets && ran.cut != Some(Cut::Room) && ran.cut != Some(Cut::Work) {
+        // Whole or too deep with exactly this push's work: a loop may have
+        // seen some left where it would see none. Run it as it is.
+        if budgets.0 == probe.0 - ran.work_left && budgets.1 >= probe.1 - ran.room_left {
+            Made::undo(marks, declared);
+            probe = budgets;
+            ran = run(value, declared, probe);
+        }
+    }
+    let record = Record::of(id, value, &ran, probe, Made::since(marks, declared));
+    let took = (probe.0 - ran.work_left, probe.1 - ran.room_left);
+    let within = budgets.0 >= took.0 && budgets.1 >= took.1;
+    let ended = match ran.cut {
+        None if within => Ended::Whole,
+        Some(Cut::Depth) if within => Ended::TooDeep,
+        _ => Ended::Spent,
+    };
+    match ended {
+        Ended::Spent => spent(id, declared, out),
+        Ended::TooDeep => {
+            LIMITS.with(|l| {
+                l.work.set(budgets.0 - took.0);
+                l.room.set(budgets.1 - took.1);
+            });
+            too_deep(id, declared, out);
+        }
+        Ended::Whole => {
+            LIMITS.with(|l| {
+                l.work.set(budgets.0 - took.0);
+                l.room.set(budgets.1 - took.1);
+            });
+            match ran.value {
+                Some(v) => out.state.set(id.clone(), v),
+                None => {
+                    out.undefined.insert(id.clone());
+                }
+            }
+            declared.evaluated.define(id.clone(), ran.js);
+        }
+    }
+    (record, ended)
+}
+
+// ─── Reuse across a stream's pushes ─────────────────────────────────────────
+
+/// What evaluating a stream's defaults found at its last push, so the next
+/// push needn't evaluate again what nothing changed under.
+///
+/// A default's run takes the same course whatever its budgets until one runs
+/// out, and it stops where one does. So it comes out whole, or too deep,
+/// having taken some work and room, or spent (out of room or work, and then
+/// so is every expression default after it); and given the same value and
+/// reading the same defaults, it comes out the same way with any budgets that
+/// cover what it took, and spent with any that don't.
+///
+/// Defaults are taken in order. While each is as it was (the same value, its
+/// shared nodes paired one to one with the earlier push's, see [`same`]), one
+/// whole or too deep is taken as it was where this push's budgets cover what
+/// it took, and found spent where they don't; one found spent is found so
+/// again with budgets no larger than it had. Whatever it read when it was
+/// evaluated, elements converted and plain defaults read, is read again by
+/// the defaults after it, as the same objects. So the result is the one
+/// evaluating them all would give, as a one-shot parse does.
+///
+/// A default found spent and then given more is evaluated with twice what it
+/// ran out of last time (no more than any push of this stream can give): a
+/// default a stream keeps finding spent as its limits grow costs about as
+/// much in all as evaluating it once at the end.
+#[derive(Default)]
+pub(crate) struct Reuse {
+    records: Vec<Record>,
+    /// The evaluator's depth limit they were found under.
+    max_depth: usize,
+    /// The most work and room any push of the stream can give.
+    work_cap: usize,
+    room_cap: usize,
+}
+
+impl Reuse {
+    /// For a stream whose pushes give no more than `work_cap` steps and
+    /// `room_cap` bytes.
+    pub(crate) fn new(work_cap: usize, room_cap: usize) -> Reuse {
+        Reuse {
+            work_cap,
+            room_cap,
+            ..Reuse::default()
+        }
+    }
+}
+
+/// One default as the last push found it.
+struct Record {
+    id: String,
+    value: Value,
+    outcome: Outcome,
+}
+
+enum Outcome {
+    /// Nothing to evaluate.
+    Plain,
+    /// Whole, or too deep, having taken `took` (work, room): what it gave,
+    /// what it read first, and whether its work ran out exactly (then only
+    /// the same work gives the same run, a loop having seen none left).
+    Ran {
+        took: (usize, usize),
+        exact: bool,
+        whole: Option<Whole>,
+    },
+    /// Spent, having been given `had` (work, room), and out of `out`.
+    Spent { had: (usize, usize), out: Cut },
+}
+
+/// What a whole default gave and read.
+struct Whole {
+    js: Js,
+    value: Option<Value>,
+    made: Made,
+    /// Neither what it gave nor what it read first holds a shared node of
+    /// its value (see [`Record::now`]).
+    nodeless: bool,
+}
+
+impl Outcome {
+    /// It declared the default null.
+    fn null(&self) -> bool {
+        matches!(
+            self,
+            Outcome::Ran { whole: None, .. } | Outcome::Spent { .. }
+        )
+    }
+}
+
+enum Decision {
+    /// As it was.
+    Take,
+    /// Spent, without evaluating it.
+    Spent,
+    /// Evaluated with these budgets (see [`evaluate_default`]).
+    Evaluate((usize, usize)),
+}
+
+impl Record {
+    /// What an unchanged default does with `budgets` (work, room) to go, in a
+    /// stream whose pushes give no more than `caps`.
+    fn decide(&self, (work, room): (usize, usize), caps: (usize, usize)) -> Decision {
+        match self.outcome {
+            Outcome::Plain => Decision::Evaluate((work, room)),
+            Outcome::Ran {
+                took: (w, r),
+                exact,
+                ..
+            } => {
+                // With what it took or more, the same run; with less, it
+                // runs out. With exactly the work it took, a loop may see
+                // none left where it saw some: only the same run if it did.
+                if room < r || work < w {
+                    Decision::Spent
+                } else if work == w && !exact {
+                    Decision::Evaluate((work, room))
+                } else {
+                    Decision::Take
+                }
+            }
+            Outcome::Spent {
+                had: (w, _),
+                out: Cut::Work,
+            } => {
+                if work <= w {
+                    Decision::Spent
+                } else {
+                    Decision::Evaluate((work.max(w.saturating_mul(2).min(caps.0)), room))
+                }
+            }
+            Outcome::Spent {
+                had: (_, r),
+                out: Cut::Room,
+            } => {
+                if room <= r {
+                    Decision::Spent
+                } else {
+                    Decision::Evaluate((work, room.max(r.saturating_mul(2).min(caps.1))))
+                }
+            }
+            Outcome::Spent {
+                out: Cut::Depth, ..
+            } => Decision::Evaluate((work, room)),
+        }
+    }
+
+    /// The record of the same default at this push, whose `value` is the
+    /// same as this one (see [`same`]). Where nothing kept holds a node of
+    /// the earlier value, it's kept with this push's value instead, so the
+    /// next push finds it the same by its pointer alone. Otherwise it stays
+    /// with the earlier value, whose nodes what it kept stands for.
+    fn now(mut self, value: &Value) -> Record {
+        let nodeless = match &self.outcome {
+            Outcome::Ran {
+                whole: Some(whole), ..
+            } => whole.nodeless,
+            _ => true,
+        };
+        if nodeless {
+            self.value = value.clone();
+        }
+        self
+    }
+
+    /// Take a default as it was, whole or too deep.
+    fn take(&self, id: &str, declared: &mut Declared, out: &mut Evaluated) -> Ended {
+        let Outcome::Ran {
+            took: (w, r),
+            whole,
+            ..
+        } = &self.outcome
+        else {
+            unreachable!("only a default that ran is taken");
+        };
+        LIMITS.with(|l| {
+            l.work.set(l.work.get() - w);
+            l.room.set(l.room.get() - r);
+        });
+        let Some(whole) = whole else {
+            too_deep(id, declared, out);
+            return Ended::TooDeep;
+        };
+        whole.made.again(declared);
+        match &whole.value {
+            Some(v) => out.state.set(id.to_owned(), v.clone()),
+            None => {
+                out.undefined.insert(id.to_owned());
+            }
+        }
+        declared.evaluated.define(id.to_owned(), whole.js.clone());
+        Ended::Whole
+    }
+
+    /// What a run of `value` with `had` (work, room) found.
+    fn of(id: &str, value: &Value, ran: &Run, had: (usize, usize), made: Made) -> Record {
+        let took = (had.0 - ran.work_left, had.1 - ran.room_left);
+        let outcome = match ran.cut {
+            None => Outcome::Ran {
+                took,
+                exact: ran.work_left == 0,
+                whole: Some(Whole {
+                    js: ran.js.clone(),
+                    value: ran.value.clone(),
+                    nodeless: made.elements.is_empty()
+                        && made.properties.is_empty()
+                        && !holds_node(&ran.js),
+                    made,
+                }),
+            },
+            Some(Cut::Depth) => Outcome::Ran {
+                took,
+                exact: ran.work_left == 0,
+                whole: None,
+            },
+            Some(out) => Outcome::Spent { had, out },
+        };
+        Record {
+            id: id.to_owned(),
+            value: value.clone(),
+            outcome,
+        }
+    }
+}
+
+/// The shared reads a default made first: elements it converted, properties
+/// of runtime expressions it read, and plain defaults it read. The defaults
+/// after it read the same objects.
+#[derive(Default)]
+struct Made {
+    elements: Vec<(usize, Value, Js)>,
+    properties: Vec<(usize, String, Arc<Ast>, Js)>,
+    plain: Vec<(String, Js)>,
+}
+
+/// Where the logs of shared reads stand.
+#[derive(Clone, Copy)]
+struct Marks {
+    elements: usize,
+    properties: usize,
+    plain: usize,
+}
+
+impl Made {
+    /// Where the logs stand before a default is evaluated.
+    fn mark(declared: &Declared) -> Marks {
+        Marks {
+            elements: READ_LOG.with(|l| l.borrow().len()),
+            properties: PROPERTIES_LOG.with(|l| l.borrow().len()),
+            plain: declared.read_log.borrow().len(),
+        }
+    }
+
+    /// What was read first since `marks`.
+    fn since(marks: Marks, declared: &Declared) -> Made {
+        let elements = READ_LOG.with(|l| {
+            READ.with(|r| {
+                let read = r.borrow();
+                l.borrow()[marks.elements..]
+                    .iter()
+                    .filter_map(|address| {
+                        let (value, js) = read.get(address)?;
+                        Some((*address, value.clone(), js.clone()))
+                    })
+                    .collect()
+            })
+        });
+        let properties = PROPERTIES_LOG.with(|l| {
+            PROPERTIES.with(|r| {
+                let read = r.borrow();
+                l.borrow()[marks.properties..]
+                    .iter()
+                    .filter_map(|key| {
+                        let property = read.get(key)?;
+                        Some((
+                            key.0,
+                            key.1.clone(),
+                            Arc::clone(&property.owner),
+                            property.value.clone(),
+                        ))
+                    })
+                    .collect()
+            })
+        });
+        let read = declared.read.borrow();
+        let plain = declared.read_log.borrow()[marks.plain..]
+            .iter()
+            .filter_map(|name| Some((name.clone(), read.get(name)?.clone())))
+            .collect();
+        Made {
+            elements,
+            properties,
+            plain,
+        }
+    }
+
+    /// Forget what was read first since `marks`, as if it never was.
+    fn undo(marks: Marks, declared: &Declared) {
+        READ_LOG.with(|l| {
+            READ.with(|r| {
+                let mut read = r.borrow_mut();
+                for address in l.borrow_mut().drain(marks.elements..) {
+                    read.remove(&address);
+                }
+            })
+        });
+        PROPERTIES_LOG.with(|l| {
+            PROPERTIES.with(|r| {
+                let mut read = r.borrow_mut();
+                for key in l.borrow_mut().drain(marks.properties..) {
+                    read.remove(&key);
+                }
+            })
+        });
+        let mut read = declared.read.borrow_mut();
+        for name in declared.read_log.borrow_mut().drain(marks.plain..) {
+            read.remove(&name);
+        }
+    }
+
+    /// Read again what was read, as the same objects.
+    fn again(&self, declared: &Declared) {
+        READ.with(|r| {
+            let mut read = r.borrow_mut();
+            for (address, value, js) in &self.elements {
+                read.insert(now_known(*address), (value.clone(), js.clone()));
+            }
+        });
+        PROPERTIES.with(|r| {
+            let mut read = r.borrow_mut();
+            for (address, key, owner, js) in &self.properties {
+                read.insert(
+                    (now_known(*address), key.clone()),
+                    PropertyRead {
+                        owner: Arc::clone(owner),
+                        value: js.clone(),
+                    },
+                );
+            }
+        });
+        let mut read = declared.read.borrow_mut();
+        for (name, js) in &self.plain {
+            read.insert(name.clone(), js.clone());
+        }
+    }
+}
+
+/// Whether a value holds a runtime expression read as a value, whose node's
+/// identity it carries.
+fn holds_node(js: &Js) -> bool {
+    crate::stack::grow_stack!(holds_node(js));
+    match js {
+        Js::Ast(_) => true,
+        Js::Arr(items) => items.iter().any(holds_node),
+        Js::Obj(o) => o.values().any(holds_node),
+        _ => false,
+    }
+}
+
+/// The shared nodes of an earlier push paired with this push's (see
+/// [`same`]): `now` by `then`, and back.
+#[derive(Default)]
+struct Aliases {
+    now: HashMap<usize, usize>,
+    then: HashMap<usize, usize>,
+}
+
+/// Pair the shared node at `then` (an earlier push's) with the one at `now`
+/// (this push's): `false` if either is paired with another already.
+fn pair(then: usize, now: usize) -> bool {
+    SAME_AS.with(|s| {
+        let mut s = s.borrow_mut();
+        match (s.now.get(&then), s.then.get(&now)) {
+            (None, None) => {
+                s.now.insert(then, now);
+                s.then.insert(now, then);
+                true
+            }
+            (Some(&n), Some(&t)) => n == now && t == then,
+            _ => false,
+        }
+    })
+}
+
+/// Whether a default's value at an earlier push is its value at this one:
+/// equal, with every shared node (an element, a runtime expression), whose
+/// identity the evaluator can see, paired one to one with this push's.
+/// Evaluated now, it would give what it gave then.
+fn same(then: &Value, now: &Value) -> bool {
+    crate::stack::grow_stack!(same(then, now));
+    match (then, now) {
+        (Value::Null, Value::Null) => true,
+        (Value::Bool(a), Value::Bool(b)) => a == b,
+        (Value::Num(a), Value::Num(b)) => a.to_bits() == b.to_bits(),
+        (Value::Str(a), Value::Str(b)) => a == b,
+        (Value::Arr(a), Value::Arr(b)) => {
+            Arc::ptr_eq(a, b)
+                || (a.len() == b.len() && a.iter().zip(b.iter()).all(|(x, y)| same(x, y)))
+        }
+        (Value::Obj(a), Value::Obj(b)) => Arc::ptr_eq(a, b) || same_entries(a, b),
+        (Value::Element(a), Value::Element(b)) => {
+            pair(Arc::as_ptr(a) as usize, Arc::as_ptr(b) as usize)
+                && (Arc::ptr_eq(a, b)
+                    || (a.type_name == b.type_name
+                        && a.partial == b.partial
+                        && a.has_dynamic_props == b.has_dynamic_props
+                        && a.statement_id == b.statement_id
+                        && same_entries(&a.props, &b.props)))
+        }
+        (Value::Ast(a), Value::Ast(b)) => same_node(a, b),
+        _ => false,
+    }
+}
+
+fn same_entries(a: &JsObject<Value>, b: &JsObject<Value>) -> bool {
+    a.len() == b.len()
+        && a.iter()
+            .zip(b.iter())
+            .all(|((ka, va), (kb, vb))| ka == kb && same(va, vb))
+}
+
+/// A shared runtime expression: paired, and the same node.
+fn same_node(a: &Arc<Ast>, b: &Arc<Ast>) -> bool {
+    pair(Arc::as_ptr(a) as usize, Arc::as_ptr(b) as usize) && (Arc::ptr_eq(a, b) || same_ast(a, b))
+}
+
+/// The same node, read field by field as the evaluator reads one.
+fn same_ast(a: &Ast, b: &Ast) -> bool {
+    crate::stack::grow_stack!(same_ast(a, b));
+    let (fa, fb) = (fields(a), fields(b));
+    fa.len() == fb.len()
+        && fa
+            .iter()
+            .zip(&fb)
+            .all(|((ka, x), (kb, y))| ka == kb && same_field(x, y))
+}
+
+fn same_field(x: &Field, y: &Field) -> bool {
+    match (x, y) {
+        (Field::Text(a), Field::Text(b)) => a == b,
+        (Field::Num(a), Field::Num(b)) => a.to_bits() == b.to_bits(),
+        (Field::Bool(a), Field::Bool(b)) => a == b,
+        (Field::Node(a), Field::Node(b)) => same_node(a, b),
+        (Field::Nodes(a), Field::Nodes(b)) => {
+            a.len() == b.len() && a.iter().zip(b.iter()).all(|(x, y)| same_ast(x, y))
+        }
+        (Field::Entries(a), Field::Entries(b)) => {
+            a.len() == b.len()
+                && a.iter()
+                    .zip(b.iter())
+                    .all(|((ka, x), (kb, y))| ka == kb && same_ast(x, y))
+        }
+        (Field::Props(a), Field::Props(b)) => {
+            a.len() == b.len()
+                && a.iter()
+                    .zip(b.iter())
+                    .all(|((ka, x), (kb, y))| ka == kb && same_ast(x, y))
+        }
+        _ => false,
+    }
 }
 
 /// The defaults declared so far, as the ones after them read them: those
@@ -406,6 +1076,8 @@ struct Declared {
     evaluated: JsObject<Js>,
     plain: JsObject<Value>,
     read: RefCell<HashMap<String, Js>>,
+    /// The names put in `read`, in order (see [`Reuse`]).
+    read_log: RefCell<Vec<String>>,
 }
 
 impl Declared {
@@ -419,6 +1091,7 @@ impl Declared {
         }
         let js = from_value(value);
         self.read.borrow_mut().insert(name.to_owned(), js.clone());
+        self.read_log.borrow_mut().push(name.to_owned());
         Some(js)
     }
 }
@@ -450,7 +1123,7 @@ fn state_default(value: &Value, declared: &Declared) -> Js {
                 Js::Null
             }
         }
-        Value::Arr(items) => Js::Arr(Rc::new(
+        Value::Arr(items) => Js::Arr(Arc::new(
             items.iter().map(|v| state_default(v, declared)).collect(),
         )),
         Value::Obj(o) if element_parts(value).is_none() && !is_ast_node(value) => {
@@ -458,7 +1131,7 @@ fn state_default(value: &Value, declared: &Declared) -> Js {
             for (key, v) in o.iter() {
                 out.define(key.clone(), state_default(v, declared));
             }
-            Js::Obj(Rc::new(out))
+            Js::Obj(Arc::new(out))
         }
         _ => from_value(value),
     }
@@ -495,16 +1168,16 @@ fn from_value(value: &Value) -> Js {
             }
             Js::Str(s.as_str().into())
         }
-        Value::Arr(items) => Js::Arr(Rc::new(items.iter().map(from_value).collect())),
+        Value::Arr(items) => Js::Arr(Arc::new(items.iter().map(from_value).collect())),
         Value::Obj(o) => from_object(o),
         Value::Element(element) => {
-            let address = Arc::as_ptr(element) as usize;
+            let address = now_known(Arc::as_ptr(element) as usize);
             if let Some(js) = READ.with(|r| r.borrow().get(&address).map(|(_, js)| js.clone())) {
                 return js;
             }
             // The object its JSON reads back as, built directly.
             if out_of_work() {
-                LIMITS.with(|l| l.size_limited.set(true));
+                ran_out_of_work();
                 return Js::Null;
             }
             let mut out = JsObject::new();
@@ -539,8 +1212,9 @@ fn from_value(value: &Value) -> Js {
                 }
                 out.define("statementId", from_value(&Value::Str(id.clone())));
             }
-            let js = Js::Obj(Rc::new(out));
+            let js = Js::Obj(Arc::new(out));
             READ.with(|r| r.borrow_mut().insert(address, (value.clone(), js.clone())));
+            READ_LOG.with(|l| l.borrow_mut().push(address));
             js
         }
         Value::Ast(node) => Js::Ast(Arc::clone(node)),
@@ -556,14 +1230,14 @@ fn from_object(object: &JsObject<Value>) -> Js {
         }
         out.define(key.clone(), from_value(value));
     }
-    Js::Obj(Rc::new(out))
+    Js::Obj(Arc::new(out))
 }
 
 /// A runtime expression read as a value, built whole: the object its JSON
 /// reads back as, for the result or a literal.
 fn whole_ast(node: &Ast) -> Js {
     if out_of_work() {
-        LIMITS.with(|l| l.size_limited.set(true));
+        ran_out_of_work();
         return Js::Null;
     }
     from_value(&json_shaped_ast(node))
@@ -572,7 +1246,7 @@ fn whole_ast(node: &Ast) -> Js {
 /// `node[key]`, the node read as the plain object its JSON is: a step, and
 /// one per item of a list it reads.
 fn ast_property(node: &Arc<Ast>, key: &str) -> Option<Js> {
-    let cache_key = (Arc::as_ptr(node) as usize, key.to_owned());
+    let cache_key = (now_known(Arc::as_ptr(node) as usize), key.to_owned());
     if let Some(value) =
         PROPERTIES.with(|r| r.borrow().get(&cache_key).map(|read| read.value.clone()))
     {
@@ -592,16 +1266,16 @@ fn ast_property(node: &Arc<Ast>, key: &str) -> Option<Js> {
             if !step(nodes.len()) {
                 return Some(Js::Null);
             }
-            Js::Arr(Rc::new(nodes.iter().map(read).collect()))
+            Js::Arr(Arc::new(nodes.iter().map(read).collect()))
         }
         Field::Entries(entries) => {
             if !step(entries.len()) {
                 return Some(Js::Null);
             }
-            Js::Arr(Rc::new(
+            Js::Arr(Arc::new(
                 entries
                     .iter()
-                    .map(|(k, v)| Js::Arr(Rc::new(vec![Js::Str(k.as_str().into()), read(v)])))
+                    .map(|(k, v)| Js::Arr(Arc::new(vec![Js::Str(k.as_str().into()), read(v)])))
                     .collect(),
             ))
         }
@@ -613,14 +1287,15 @@ fn ast_property(node: &Arc<Ast>, key: &str) -> Option<Js> {
             for (k, v) in props.iter() {
                 out.define(k.clone(), read(v));
             }
-            Js::Obj(Rc::new(out))
+            Js::Obj(Arc::new(out))
         }
     };
+    PROPERTIES_LOG.with(|l| l.borrow_mut().push(cache_key.clone()));
     PROPERTIES.with(|r| {
         r.borrow_mut().insert(
             cache_key,
             PropertyRead {
-                _owner: Arc::clone(node),
+                owner: Arc::clone(node),
                 value: value.clone(),
             },
         )
@@ -729,13 +1404,13 @@ fn evaluate(node: &Ast, scope: &Scope) -> Js {
         Ast::Null | Ast::Ph(_) => Js::Null,
         Ast::StateRef(name) => scope.state(name),
         Ast::Ref(name) | Ast::RuntimeRef { n: name, .. } => scope.reference(name),
-        Ast::Arr(els) => Js::Arr(Rc::new(els.iter().map(|e| evaluate(e, scope)).collect())),
+        Ast::Arr(els) => Js::Arr(Arc::new(els.iter().map(|e| evaluate(e, scope)).collect())),
         Ast::Obj(entries) => {
             let mut out = JsObject::new();
             for (key, v) in entries.iter() {
                 out.define(key.clone(), evaluate(v, scope));
             }
-            Js::Obj(Rc::new(out))
+            Js::Obj(Arc::new(out))
         }
         Ast::Comp {
             name,
@@ -790,7 +1465,7 @@ fn evaluate(node: &Ast, scope: &Scope) -> Js {
                 Js::Arr(items) if field == "length" => Js::Num(items.len() as f64),
                 // A step per item plucked from.
                 Js::Arr(items) if !step(items.len()) => Js::Null,
-                Js::Arr(items) => Js::Arr(Rc::new(
+                Js::Arr(items) => Js::Arr(Arc::new(
                     items
                         .iter()
                         .map(|item| match property(item, field) {
@@ -826,7 +1501,7 @@ fn evaluate(node: &Ast, scope: &Scope) -> Js {
             out.define("__reactive", Js::Str("assign".into()));
             out.define("target", Js::Str(target.as_str().into()));
             out.define("expr", from_value(&Value::Ast(value.clone())));
-            Js::Obj(Rc::new(out))
+            Js::Obj(Arc::new(out))
         }
     }
 }
@@ -892,17 +1567,17 @@ fn binary(op: &str, left: &Ast, right: &Ast, scope: &Scope) -> Js {
 /// iterator variable replaced by the item's literal first.
 fn each(args: &[Ast], scope: &Scope) -> Js {
     if args.len() < 3 {
-        return Js::Arr(Rc::new(Vec::new()));
+        return Js::Arr(Arc::new(Vec::new()));
     }
     let array = evaluate(&args[0], scope);
     let Js::Arr(items) = &array else {
-        return Js::Arr(Rc::new(Vec::new()));
+        return Js::Arr(Arc::new(Vec::new()));
     };
     let var = match &args[1] {
         Ast::Ref(name) | Ast::Str(name) if !name.is_empty() => name.as_str(),
-        _ => return Js::Arr(Rc::new(Vec::new())),
+        _ => return Js::Arr(Arc::new(Vec::new())),
     };
-    Js::Arr(Rc::new(
+    Js::Arr(Arc::new(
         items
             .iter()
             .map(|item| {
@@ -1189,7 +1864,7 @@ fn elementwise(value: &Js, f: &dyn Fn(f64) -> f64) -> Js {
         return Js::Null;
     }
     match value {
-        Js::Arr(items) => Js::Arr(Rc::new(items.iter().map(|v| elementwise(v, f)).collect())),
+        Js::Arr(items) => Js::Arr(Arc::new(items.iter().map(|v| elementwise(v, f)).collect())),
         v => Js::Num(f(to_number(v))),
     }
 }
@@ -1271,7 +1946,7 @@ fn sort(array: &Js, field: &Js, direction: &Js) -> Js {
         .partition(|v| !matches!(v, Js::Undefined));
     let mut sorted = js_sort(defined, &|a, b| compare(a, b) == Ordering::Less);
     sorted.extend(undefined);
-    Js::Arr(Rc::new(sorted))
+    Js::Arr(Arc::new(sorted))
 }
 
 /// `Array.prototype.sort` as JavaScriptCore (Bun) does it, so that even a
@@ -1353,7 +2028,7 @@ fn merge_sort(items: Vec<Js>, less: &dyn Fn(&Js, &Js) -> bool) -> Vec<Js> {
 fn filter(array: &Js, field: &Js, operator: &Js, value: &Js) -> Js {
     crate::stack::grow_stack!(filter(array, field, operator, value));
     let Js::Arr(items) = array else {
-        return Js::Arr(Rc::new(Vec::new()));
+        return Js::Arr(Arc::new(Vec::new()));
     };
     let field = text_or(field, "");
     let operator = text_or(operator, "==");
@@ -1377,7 +2052,9 @@ fn filter(array: &Js, field: &Js, operator: &Js, value: &Js) -> Js {
             _ => false,
         }
     };
-    Js::Arr(Rc::new(items.iter().filter(|v| keep(v)).cloned().collect()))
+    Js::Arr(Arc::new(
+        items.iter().filter(|v| keep(v)).cloned().collect(),
+    ))
 }
 
 // ─── JavaScript's semantics ─────────────────────────────────────────────────
@@ -1566,9 +2243,11 @@ fn loose_eq(a: &Js, b: &Js) -> bool {
         (Js::Bool(x), other) | (other, Js::Bool(x)) => {
             loose_eq(&Js::Num(f64::from(u8::from(*x))), other)
         }
-        (Js::Arr(x), Js::Arr(y)) => Rc::ptr_eq(x, y),
-        (Js::Obj(x), Js::Obj(y)) => Rc::ptr_eq(x, y),
-        (Js::Ast(x), Js::Ast(y)) => Arc::ptr_eq(x, y),
+        (Js::Arr(x), Js::Arr(y)) => Arc::ptr_eq(x, y),
+        (Js::Obj(x), Js::Obj(y)) => Arc::ptr_eq(x, y),
+        (Js::Ast(x), Js::Ast(y)) => {
+            now_known(Arc::as_ptr(x) as usize) == now_known(Arc::as_ptr(y) as usize)
+        }
         (
             Js::Function {
                 name: x,

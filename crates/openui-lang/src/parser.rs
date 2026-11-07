@@ -9,13 +9,14 @@ use indexmap::IndexSet;
 use crate::Limits;
 use crate::ast::{Ast, RefType};
 use crate::builtins::{is_builtin, is_reserved_call};
-use crate::evaluate::{has_runtime, state_defaults};
+use crate::evaluate::{Reuse, has_runtime, state_defaults};
 use crate::expr::parse_expression_with_limit;
 use crate::js::JsObject;
 use crate::lexer::tokenize;
 use crate::library::Library;
 use crate::materialize::{
-    Ctx, Frame, flatten_errors, materialize_call_args, materialize_value, tag_statement,
+    Ctx, Frame, flatten_errors, materialize_call_args, materialize_state, materialize_value,
+    tag_statement,
 };
 use crate::preprocess::preprocess;
 use crate::progress;
@@ -282,6 +283,7 @@ fn parse_text(
             limits,
         },
         None,
+        None,
     );
     result.depth_limited |= depth_limited;
     result
@@ -369,6 +371,8 @@ pub(crate) struct Against<'a> {
     pub limits: Limits,
 }
 
+/// A stream passes its [`Reuse`] of the state defaults' evaluation, which a
+/// one-shot parse has no use for.
 pub(crate) fn build_result(
     table: &mut Table,
     cache: &mut Cache,
@@ -376,6 +380,7 @@ pub(crate) fn build_result(
     statement_count: usize,
     against: Against,
     partial: Option<PartialRef>,
+    reuse: Option<&mut Reuse>,
 ) -> ParseResult {
     let Against {
         library,
@@ -423,7 +428,7 @@ pub(crate) fn build_result(
     // Fixed for this program by `Limits::for_program`, whatever the length.
     let work = limits.work_for(0);
     let (state_declarations, query_statements, mutation_statements) =
-        extract_statements(ctx.table, &mut ctx, partial.as_ref(), work);
+        extract_statements(ctx.table, &mut ctx, partial.as_ref(), work, reuse);
 
     // `no-root`, which streaming consumers read only once the stream ends.
     ctx.current_statement_id = entry_id;
@@ -486,6 +491,7 @@ fn extract_statements(
     ctx: &mut Ctx,
     partial: Option<&PartialRef>,
     work: usize,
+    reuse: Option<&mut Reuse>,
 ) -> (JsObject<Value>, Vec<QueryStatement>, Vec<MutationStatement>) {
     let mut state = JsObject::new();
     let mut queries = Vec::new();
@@ -499,7 +505,7 @@ fn extract_statements(
         match stmt {
             Statement::State { init } => {
                 let before = ctx.size;
-                let value = materialize_value(init, ctx);
+                let value = materialize_state(slot, init, ctx);
                 if has_runtime(&value) {
                     expressions_size += ctx.size - before;
                 }
@@ -538,7 +544,7 @@ fn extract_statements(
         .limits
         .result_size()
         .saturating_sub(ctx.size - expressions_size);
-    let evaluated = state_defaults(state, room, ctx.limits.depth(), work);
+    let evaluated = state_defaults(state, room, ctx.limits.depth(), work, reuse);
     ctx.frame.size_limited |= evaluated.size_limited;
     ctx.frame.limited |= evaluated.depth_limited;
     let (mut state, undefined) = (evaluated.state, evaluated.undefined);

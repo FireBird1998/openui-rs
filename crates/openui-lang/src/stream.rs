@@ -6,11 +6,13 @@
 //!
 //! The reference re-derives the cleaned text from the whole buffer on every
 //! push and rebuilds the whole tree; here a [`Preprocessor`] extends the
-//! cleaned text chunk by chunk, and a [`Cache`] keeps the materialized
-//! statements that nothing changed under, with the same result.
+//! cleaned text chunk by chunk, a [`Cache`] keeps the materialized
+//! statements that nothing changed under, and a [`Reuse`] the evaluated
+//! state defaults, with the same result.
 
 use std::sync::Arc;
 
+use crate::evaluate::Reuse;
 use crate::expr::parse_expression_with_limit;
 use crate::js;
 use crate::lexer::{skip_while, tokenize};
@@ -33,6 +35,8 @@ pub struct StreamParser {
     /// `buf` preprocessed; statement boundaries are found in this, never in `buf`.
     pre: Preprocessor,
     completed: Completed,
+    /// What evaluating the state defaults found at the last push.
+    reuse: Reuse,
     /// The result a stall cut the stream at (in a release build), given
     /// again until [`StreamParser::set`] starts over.
     stalled: Option<ParseResult>,
@@ -99,6 +103,10 @@ impl StreamParser {
             buf: String::new(),
             pre: Preprocessor::new(),
             completed: Completed::default(),
+            reuse: Reuse::new(
+                limits.work_for(limits.program_size()),
+                limits.result_size_for(limits.program_size()),
+            ),
             stalled: None,
             past_program_size: false,
         }
@@ -166,6 +174,10 @@ impl StreamParser {
         self.buf.clear();
         self.pre.reset();
         self.completed.clear();
+        self.reuse = Reuse::new(
+            self.limits.work_for(self.limits.program_size()),
+            self.limits.result_size_for(self.limits.program_size()),
+        );
         self.stalled = None;
         self.past_program_size = false;
     }
@@ -339,6 +351,7 @@ impl StreamParser {
                 limits: self.limits.for_program(self.buf.len()),
             },
             partial,
+            Some(&mut self.reuse),
         )
     }
 }

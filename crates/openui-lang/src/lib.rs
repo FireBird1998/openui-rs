@@ -61,7 +61,10 @@
 //! full result after each one. What's still arriving is auto-closed and
 //! marked `partial`; references that haven't arrived yet are left out until
 //! they do. A push costs the new text plus the statements above it, not the
-//! whole program.
+//! whole program: statements that arrived are kept as they were materialized,
+//! and state defaults as they were evaluated, while nothing they depend on
+//! changes. A statement still arriving is read again at every push, as the
+//! reference does, defaults and all.
 //!
 //! ```
 //! # #[global_allocator]
@@ -184,8 +187,9 @@
 //!   evaluated, an item sorted, filtered or copied into an `@Each` template,
 //!   a node of a value read, a byte built. Past it, the default being
 //!   evaluated is null, as is every expression default after it
-//!   ([`ParseResult::size_limited`]). A step takes nanoseconds, so a parse
-//!   stays within a fraction of a second.
+//!   ([`ParseResult::size_limited`]); so past the result size. A default cut
+//!   by any limit stops there, taking no more work. A step takes
+//!   nanoseconds, so a parse stays within a fraction of a second.
 //! - A stall: every loop that reads input either moves forward or stops. A
 //!   loop that stopped moving forward would be a bug in the core, never the
 //!   input's fault. In debug builds it panics; in release builds the parse

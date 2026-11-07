@@ -371,6 +371,9 @@ pub(crate) struct Entry {
     pub r_max: usize,
     /// How much it grew the result (`Ctx::size`), counted again on each reuse.
     pub size: usize,
+    /// For a state default's value: the statement its errors were attributed
+    /// to (the entry's), which a reuse must share. `None` for the rest.
+    pub context: Option<String>,
 }
 
 pub(crate) enum Output {
