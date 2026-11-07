@@ -112,6 +112,10 @@ fn doubling(n: usize) -> Vec<(&'static str, String)> {
 /// One-shot, and streamed in eight pieces, on a 512 KB stack.
 fn parse_both(program: String) -> (ParseResult, ParseResult) {
     std::thread::Builder::new()
+        .name(format!(
+            "{}::worker",
+            std::thread::current().name().unwrap_or("test")
+        ))
         .stack_size(512 * 1024)
         .spawn(move || {
             let lib = library();
@@ -172,5 +176,29 @@ fn no_corpus_program_comes_near_the_limit() {
     for case in load_corpus().cases {
         let result = parse(&case.input, &case.library, case.root.as_deref());
         assert!(!result.size_limited, "{}: cut", case.name);
+    }
+}
+
+#[global_allocator]
+static ALLOCATOR: test_alloc::Allocator = test_alloc::Allocator::with_cap(test_alloc::LIMITS);
+
+#[test]
+fn shared_subtrees_stay_small_at_the_result_ceiling() {
+    let lib = library();
+    for (shape, program) in doubling(18).into_iter().take(5) {
+        test_alloc::reset_peak();
+        let result = parse_with_limits(
+            &program,
+            &lib,
+            None,
+            Limits::default().with_result_size(MAX_RESULT_SIZE),
+        );
+        let peak = test_alloc::peak();
+        eprintln!("shared shape {shape}: {peak} bytes");
+        assert!(
+            peak < 1024 * 1024,
+            "{shape}: peak {peak} bytes; shared subtrees must stay below 1 MiB"
+        );
+        std::hint::black_box(result);
     }
 }

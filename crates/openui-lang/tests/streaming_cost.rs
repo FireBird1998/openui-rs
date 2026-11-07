@@ -109,3 +109,6 @@ fn so_it_does_in_a_fence_with_prose_around_it() {
         format!("Here is the dashboard:\n```openui\n{program}\n```\nIt updates live.")
     });
 }
+
+#[global_allocator]
+static ALLOCATOR: test_alloc::Allocator = test_alloc::Allocator::with_cap(test_alloc::LIMITS);

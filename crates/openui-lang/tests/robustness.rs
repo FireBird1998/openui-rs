@@ -368,3 +368,6 @@ proptest! {
         parse("root = Text(1)\nx = Card()", &library, None).to_json();
     }
 }
+
+#[global_allocator]
+static ALLOCATOR: test_alloc::Allocator = test_alloc::Allocator::with_cap(test_alloc::DEFAULT);

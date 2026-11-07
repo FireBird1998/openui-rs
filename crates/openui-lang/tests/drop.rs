@@ -64,6 +64,10 @@ fn deep_programs(levels: usize) -> Vec<(&'static str, String)> {
 /// the stream parser, all on a small stack.
 fn parses_and_drops(levels: usize, limits: Limits) {
     std::thread::Builder::new()
+        .name(format!(
+            "{}::worker",
+            std::thread::current().name().unwrap_or("test")
+        ))
         .stack_size(stack())
         .spawn(move || {
             let lib = library();
@@ -97,3 +101,6 @@ fn results_at_the_default_depth_limit_drop_on_a_small_stack() {
 fn results_at_a_raised_depth_limit_drop_on_a_small_stack() {
     parses_and_drops(10_000, Limits::default().with_depth(20_000));
 }
+
+#[global_allocator]
+static ALLOCATOR: test_alloc::Allocator = test_alloc::Allocator::with_cap(test_alloc::LIMITS);

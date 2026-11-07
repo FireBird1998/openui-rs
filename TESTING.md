@@ -18,6 +18,75 @@ cargo test -p openui-lang --test conformance              # one test file
 cargo test -p openui-lang --test conformance streaming_   # tests whose names match
 ```
 
+## Allocation caps
+
+Every core and binding Rust test binary uses the counting global allocator in
+`crates/test-alloc`, a private, unpublished dev dependency. The published libraries
+keep their unsafe-code prohibition and have no allocator, public API or default
+feature changes. Only the test helper implements the unsafe `GlobalAlloc` contract.
+Doc examples install the same allocator through hidden setup lines.
+
+Each binary installs the allocator once with `Allocator::with_cap(...)`. There
+is no per-test setup to forget: a const-initialized thread-local creates an
+account on the thread's first allocation. Setup uses `System` directly for one
+small permanent owner record and guards against re-entrancy. Libtest gives each
+test a separate named thread, so property-test generation, every generated case,
+and test setup/cleanup are all counted automatically. The libtest main thread
+has its own account too.
+
+The **64 MiB allocation cap** applies to the core's `size`, `depth`, `work`,
+`limits`, `drop`, `entry_points`, `streaming_cost` and `cli` binaries, and the
+binding's `stack` and `binding` binaries. All other core and binding test
+binaries, including unit tests, example tests and doc examples, use **256 MiB**.
+The mixed CLI and binding suites fit comfortably under the stricter cap.
+`prompt_depth` uses 256 MiB: its 900-level object schema must cross the default
+JSON depth limit and render successfully with a raised limit, which retains
+nested schema copies. Moving it preserves that shape with substantial headroom.
+The other largest depth shapes use 50,000 unary/member/addition links, still far
+beyond the depth limit. Measured successful thread peaks stay below 60% of their
+binary's allocation cap (the deliberately failing subprocess is the exception).
+
+Workers get independent accounts against the same binary-wide cap; simultaneous
+threads' peaks are not summed. The small-stack workers are named after their
+test with `::worker` appended, so their reports identify the test. An aligned
+prefix stores each allocation's owning account, and freeing or reallocating on
+another thread credits that original account. Owner records survive thread exit
+until process exit, so results returned from an exited worker remain safe to
+free. CLI subprocesses are outside the test allocator's address space.
+
+The measurement is peak live heap bytes requested from `System`, including the
+aligned accounting prefix, padding and owner record, not RSS, stack segments allocated outside
+`GlobalAlloc`, or cumulative allocation traffic. Reallocation charges the size change while retaining the original owner. Shape assertions leave room
+for platform layout differences: the size suite pins five doubling shapes below
+1 MiB with the result-size limit fixed at 8 MiB, without serializing the result;
+the depth suite pins each shape to a measured ceiling (1–36 MiB) on the worker
+that actually parses and drops it. Resetting a shape measurement never resets
+the thread-wide peak used for enforcement or reporting.
+This catches subtree copying independently of the general allocation cap.
+
+A failure looks like:
+
+```text
+allocation cap exceeded: test nested_arrays::worker; cap 67108864 bytes; peak 67109000 bytes
+```
+
+The peak includes the allocation about to be requested. The allocator checks
+before asking `System` for memory, prints directly to stderr, and exits with 101
+immediately. It cannot safely unwind from `GlobalAlloc`, so the whole test binary
+fails; rerun the named test to isolate it. The `allocation` suite starts a copy of
+itself with ordinary libtest capture enabled. A test with no accounting setup
+deliberately requests more than the binary's 256 MiB allocation cap; the parent
+checks status 101 and a diagnostic naming the test, cap and an above-cap peak.
+The rejected allocation is never requested from `System`.
+It also checks alignment, reallocation and freeing on another thread.
+
+To print successful peaks (bytes), including independent worker measurements (printed automatically at thread exit):
+
+```bash
+export CARGO_NET_OFFLINE=true
+OPENUI_ALLOCATION_PEAKS=1 cargo test -q -j 4 -p openui-lang --test depth -- --nocapture
+```
+
 ## What each test catches
 
 | Test | Checks | Catches |
@@ -31,7 +100,8 @@ cargo test -p openui-lang --test conformance streaming_   # tests whose names ma
 | `size` | Programs that double with every line stop at the result-size limit with `size_limited` (by default about 64 KiB for these short programs, up to 8 MiB with the limit fixed there), state defaults evaluated from the ones above them too | Runaway memory |
 | `work` | The work limit on evaluating state defaults: its default scaling with the program; running out cuts the default (and every later expression default) and flags the result, and raising it lets it finish; the cost in steps, found by bisecting the work limit, of `@Each` reading an expression per item (items times template), of a component read many times (its size once), and of sorting (`n log n`) and filtering (`n`); the slow fuzz input, shrunk | Evaluating that takes seconds on a small program, or a step that isn't counted |
 | `limits` | The `Limits` value: its documented defaults; raising and lowering depth and result size, one-shot and streaming; the result-size limit scaling with the program (floor, amplification, ceiling, or fixed), a small program amplified past it cut, a stream cut early and whole once its text has grown, and the `stream` fuzz target's slow input from the 1.1 long runs, shrunk to 86 bytes with a 98 KB result; past the program-size limit, a flagged result equal to parsing the text up to it (never splitting a character), and a stream that ignores pushes until `set`; no default cuts a corpus case | A limit that doesn't reach a stage, or a default that cuts real programs |
-| `entry_points` | `Limits` on the other entry points: merging reads each input to the program-size limit and expressions to the depth limit, flagged; one expression stops at the depth limit; reading JSON, converting back to source and prompt specs nest three JSON levels per depth level and 32 more (800 by default), refused past it and let through when raised; a 30,000-level JSON value frees on a 64 KB stack; a prompt's time grows linearly with its component groups (best of 3) | An entry point a hostile input can run unbounded, or a limit that doesn't reach it |
+| `entry_points` | `Limits` on the other entry points: merging reads each input to the program-size limit and expressions to the depth limit, flagged; one expression stops at the depth limit; reading JSON, converting back to source nest three JSON levels per depth level and 32 more (800 by default), refused past it and let through when raised; a 30,000-level JSON value frees on a 64 KB stack; a prompt's time grows linearly with its component groups (best of 3) | An entry point a hostile input can run unbounded, or a limit that doesn't reach it |
+| `prompt_depth` | A 900-level tool input schema is refused at the default JSON depth limit and renders when the depth limit is raised; a lowered limit refuses a shallower schema | A prompt entry point that ignores the depth limit |
 | `drop` | Deep results, at the default depth limit and at 20,000 levels, parse, stream and drop on a 64 KB thread stack: arrays, elements, a runtime expression, evaluated defaults and a 10,000-statement reference chain. Run it unoptimized too (`CARGO_PROFILE_TEST_OPT_LEVEL=0`), where frames are largest | A tree that frees itself by recursion |
 | `streaming_cost` | A push costs about the same on a program four times the size, bare and in a fence with prose around it (thread CPU time, best of 7) | Streaming that grows with the square of the program |
 | `report` | The counts in CONFORMANCE.md are what the corpus holds | A stale write-up |

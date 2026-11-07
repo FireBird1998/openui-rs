@@ -390,6 +390,7 @@ dependencies = [
  "openui-lang",
  "serde_json",
  "similar",
+ "test-alloc",
  "uniffi",
 ]
 
@@ -404,6 +405,7 @@ dependencies = [
  "serde_json",
  "similar",
  "stacker",
+ "test-alloc",
 ]
 
 [[package]]
@@ -739,6 +741,10 @@ dependencies = [
  "rustix",
  "windows-sys",
 ]
+
+[[package]]
+name = "test-alloc"
+version = "0.0.0"
 
 [[package]]
 name = "textwrap"

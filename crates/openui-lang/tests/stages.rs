@@ -145,3 +145,6 @@ fn fences_and_comments_are_stripped_like_the_reference_for_every_prefix() {
         )
     });
 }
+
+#[global_allocator]
+static ALLOCATOR: test_alloc::Allocator = test_alloc::Allocator::with_cap(test_alloc::DEFAULT);

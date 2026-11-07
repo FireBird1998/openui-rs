@@ -13,6 +13,8 @@ The repository also holds the viewer, a Mac app that draws programs natively thr
 ## Using it
 
 ```rust
+# #[global_allocator]
+# static ALLOCATOR: test_alloc::Allocator = test_alloc::Allocator::with_cap(test_alloc::DEFAULT);
 use std::sync::Arc;
 use openui_lang::{Library, StreamParser, parse};
 

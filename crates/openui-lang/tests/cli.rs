@@ -386,3 +386,6 @@ fn prompt_reports_the_error_and_fails() {
         "{stderr}"
     );
 }
+
+#[global_allocator]
+static ALLOCATOR: test_alloc::Allocator = test_alloc::Allocator::with_cap(test_alloc::LIMITS);

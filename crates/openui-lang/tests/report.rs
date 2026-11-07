@@ -228,3 +228,6 @@ fn the_report_counts_what_the_corpus_holds() {
         "CONFORMANCE.md's counts are stale. Fresh block (or run with UPDATE_REPORT=1):\n\n{fresh}"
     );
 }
+
+#[global_allocator]
+static ALLOCATOR: test_alloc::Allocator = test_alloc::Allocator::with_cap(test_alloc::DEFAULT);

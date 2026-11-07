@@ -42,8 +42,12 @@ fn library() -> Arc<Library> {
 /// Parse one-shot and streamed (in 16 chunks) on a small stack. Streaming in
 /// small chunks would only add time: re-parsing one huge pending line per
 /// push is the quadratic cost ticket 10 is about, not a crash risk.
-fn survives(program: String) -> (bool, bool) {
+fn survives(program: String, max_mib: usize) -> (bool, bool) {
     std::thread::Builder::new()
+        .name(format!(
+            "{}::worker",
+            std::thread::current().name().unwrap_or("test")
+        ))
         .stack_size(stack())
         .spawn(move || {
             let lib = library();
@@ -65,71 +69,86 @@ fn survives(program: String) -> (bool, bool) {
             }
             merge_statements(&program, &program, None);
             merge_statements("", &program, None);
-            (one.depth_limited, last.depth_limited)
+            let flags = (one.depth_limited, last.depth_limited);
+            drop((one, last, stream, json, chars));
+            let peak = test_alloc::peak();
+            assert!(
+                peak < max_mib * 1024 * 1024,
+                "depth shape exceeded its pinned {max_mib} MiB peak: {peak} bytes"
+            );
+            flags
         })
         .unwrap()
         .join()
         .expect("parsing panicked")
 }
 
-fn assert_limited(program: String) {
-    assert_eq!(survives(program), (true, true));
+fn assert_limited(program: String, max_mib: usize) {
+    assert_eq!(survives(program, max_mib), (true, true));
 }
 
 #[test]
 fn nested_parentheses() {
-    assert_limited(format!(
-        "root = {}1{}",
-        "(".repeat(10_000),
-        ")".repeat(10_000)
-    ));
+    assert_limited(
+        format!("root = {}1{}", "(".repeat(10_000), ")".repeat(10_000)),
+        5,
+    );
 }
 
 #[test]
 fn nested_arrays() {
-    assert_limited(format!(
-        "root = Stack({}1{})",
-        "[".repeat(10_000),
-        "]".repeat(10_000)
-    ));
+    assert_limited(
+        format!(
+            "root = Stack({}1{})",
+            "[".repeat(10_000),
+            "]".repeat(10_000)
+        ),
+        12,
+    );
 }
 
 #[test]
 fn nested_objects() {
-    assert_limited(format!(
-        "root = Text({}1{})",
-        "{a: ".repeat(10_000),
-        "}".repeat(10_000)
-    ));
+    assert_limited(
+        format!(
+            "root = Text({}1{})",
+            "{a: ".repeat(10_000),
+            "}".repeat(10_000)
+        ),
+        16,
+    );
 }
 
 #[test]
 fn nested_component_calls() {
-    assert_limited(format!(
-        "root = {}\"x\"{}",
-        "Text(".repeat(10_000),
-        ")".repeat(10_000)
-    ));
+    assert_limited(
+        format!(
+            "root = {}\"x\"{}",
+            "Text(".repeat(10_000),
+            ")".repeat(10_000)
+        ),
+        12,
+    );
 }
 
 #[test]
 fn long_unary_chain() {
-    assert_limited(format!("root = Text({}$x)", "!".repeat(100_000)));
+    assert_limited(format!("root = Text({}$x)", "!".repeat(50_000)), 18);
 }
 
 #[test]
 fn long_member_chain() {
-    assert_limited(format!("root = Text($x{})", ".b".repeat(100_000)));
+    assert_limited(format!("root = Text($x{})", ".b".repeat(50_000)), 30);
 }
 
 #[test]
 fn long_addition_chain() {
-    assert_limited(format!("root = Text(1{})", " + 1".repeat(100_000)));
+    assert_limited(format!("root = Text(1{})", " + 1".repeat(50_000)), 36);
 }
 
 #[test]
 fn long_ternary_chain() {
-    assert_limited(format!("root = Text({}0)", "$a ? 1 : ".repeat(10_000)));
+    assert_limited(format!("root = Text({}0)", "$a ? 1 : ".repeat(10_000)), 17);
 }
 
 #[test]
@@ -139,7 +158,7 @@ fn long_reference_chain() {
         program.push_str(&format!("s{i} = s{}\n", i + 1));
     }
     program.push_str("s10000 = Text(\"end\")");
-    assert_limited(program);
+    assert_limited(program, 26);
 }
 
 /// State defaults, evaluated, read the ones above them, so a chain of them
@@ -155,15 +174,18 @@ fn long_chain_of_state_defaults() {
         }
         program
     };
-    assert_limited(chain(30, &|previous| wrap(previous)));
-    assert_limited(chain(30, &|previous| {
-        format!("@Each({}, \"x\", {})", wrap(previous), wrap("x"))
-    }));
+    assert_limited(chain(30, &|previous| wrap(previous)), 18);
+    assert_limited(
+        chain(30, &|previous| {
+            format!("@Each({}, \"x\", {})", wrap(previous), wrap("x"))
+        }),
+        18,
+    );
     // Three levels of 200 are as deep as a default may be; joined inside a
     // fourth, it's deeper.
     let mut program = chain(3, &|previous| wrap(previous));
     program.push_str(&format!("$s = \"\" + {}", wrap("$v3")));
-    assert_limited(program);
+    assert_limited(program, 18);
 }
 
 #[test]
@@ -173,13 +195,17 @@ fn ordinary_nesting_is_not_limited() {
         "Stack([".repeat(40),
         "])".repeat(40)
     );
-    assert_eq!(survives(program), (false, false));
+    assert_eq!(survives(program, 1), (false, false));
 }
 
 /// JSON deeper than any parse result is refused, not recursed into.
 #[test]
 fn json_deeper_than_any_parse_result_is_refused() {
     std::thread::Builder::new()
+        .name(format!(
+            "{}::worker",
+            std::thread::current().name().unwrap_or("test")
+        ))
         .stack_size(stack())
         .spawn(|| {
             let deep = format!("{}1{}", "[".repeat(100_000), "]".repeat(100_000));
@@ -206,8 +232,16 @@ fn json_deeper_than_any_parse_result_is_refused() {
             // And JSON text at the limit reads back.
             let at_limit = format!("{}1{}", "[".repeat(800), "]".repeat(800));
             assert!(parse_json(&at_limit).is_ok());
+            assert!(
+                test_alloc::peak() < 2 * 1024 * 1024,
+                "deep JSON exceeded its pinned 2 MiB peak: {} bytes",
+                test_alloc::peak()
+            );
         })
         .unwrap()
         .join()
         .expect("deep JSON panicked");
 }
+
+#[global_allocator]
+static ALLOCATOR: test_alloc::Allocator = test_alloc::Allocator::with_cap(test_alloc::LIMITS);

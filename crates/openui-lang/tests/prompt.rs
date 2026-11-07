@@ -144,3 +144,6 @@ fn the_corpus_covers_every_mode() {
         assert!(seen.contains(required), "no spec for {required}");
     }
 }
+
+#[global_allocator]
+static ALLOCATOR: test_alloc::Allocator = test_alloc::Allocator::with_cap(test_alloc::DEFAULT);

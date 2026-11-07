@@ -1,5 +1,5 @@
 [workspace]
-members = ["crates/openui-lang", "crates/openui-ffi"]
+members = ["crates/openui-lang", "crates/openui-ffi", "crates/test-alloc"]
 # cargo-fuzz targets build on nightly with their own settings.
 exclude = ["fuzz"]
 resolver = "3"

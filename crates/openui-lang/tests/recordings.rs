@@ -144,3 +144,6 @@ fn every_recording_is_in_the_corpus_as_imported() {
         "recorded.json has a case for each recording and no others"
     );
 }
+
+#[global_allocator]
+static ALLOCATOR: test_alloc::Allocator = test_alloc::Allocator::with_cap(test_alloc::DEFAULT);
