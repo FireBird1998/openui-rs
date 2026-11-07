@@ -317,10 +317,21 @@ fn step(steps: usize) -> bool {
     LIMITS.with(|l| draw(l, Cut::Work, steps))
 }
 
-/// Whether the work has run out, or the default was cut: a long loop stops
-/// taking steps then.
-fn out_of_work() -> bool {
-    LIMITS.with(|l| l.work.get() == 0 || l.cut.get().is_some())
+/// Stop once work runs out or a cut occurs; otherwise run the next conversion.
+/// The continuation must draw positive work: exact-work reuse relies on every
+/// passed check costing work before it can return (asserted in debug builds).
+fn out_of_work(next: impl FnOnce() -> Js) -> Js {
+    let work = LIMITS.with(|l| l.work.get());
+    if LIMITS.with(|l| l.work.get() == 0 || l.cut.get().is_some()) {
+        ran_out_of_work();
+        return Js::Null;
+    }
+    let value = next();
+    debug_assert!(
+        LIMITS.with(|l| l.work.get() < work),
+        "out_of_work continuation must draw positive work"
+    );
+    value
 }
 
 /// Out of work where a step was due: the default is cut.
@@ -486,7 +497,8 @@ pub(crate) fn state_defaults(
                 (record.moved_to(value, &mut compared), Ended::RanOut)
             }
             (Decision::Evaluate(given), before) => {
-                let was_null = before.as_ref().is_some_and(|r| r.outcome.null());
+                // Only RanOut records choose Evaluate; every such record declared null.
+                let was_null = before.is_some();
                 if let Some(record) = before {
                     compared.push(record.value);
                 }
@@ -503,6 +515,12 @@ pub(crate) fn state_defaults(
         // Out of room or work, every expression default after is null,
         // whatever it reads: any record says so.
         if ended == Ended::RanOut {
+            if !in_step {
+                // These older runs read a different prefix. They may say
+                // RunsOut now, but retaining their whole outcomes would let
+                // recovery reuse values computed from the old defaults.
+                compared.extend(earlier.by_ref().map(|record| record.value));
+            }
             in_step = true;
         }
     }
@@ -623,18 +641,10 @@ fn evaluate_default(
     given: Amounts,
 ) -> (Record, Ended) {
     let marks = FirstReads::mark(declared);
-    let mut given = given;
-    let mut ran = run(value, declared, given);
-    if given != left && !matches!(ran.cut, Some(Cut::Room | Cut::Work)) {
-        // Whole or too deep with exactly this push's work: a loop may have
-        // seen some left where it would see none. Run it as it is.
-        let took = given.less(ran.left);
-        if left.work == took.work && left.room >= took.room {
-            FirstReads::undo(marks, declared);
-            given = left;
-            ran = run(value, declared, given);
-        }
-    }
+    // No exact-work retry is needed: neither out_of_work caller can produce
+    // a value without subsequently drawing positive work. Thus extra work
+    // cannot turn a zero-work early stop into a successful run of this price.
+    let ran = run(value, declared, given);
     let record = Record::of(id, value, &ran, given, FirstReads::since(marks, declared));
     let took = given.less(ran.left);
     let ended = match ran.cut {
@@ -723,12 +733,10 @@ struct Record {
 enum Outcome {
     /// Nothing to evaluate.
     Plain,
-    /// Whole, or too deep (`gave` is `None`), having taken `took`; what it
-    /// read first; and whether its work ran out exactly (then only the same
-    /// work gives the same run, a loop having seen none left).
+    /// Whole, or too deep (`gave` is `None`), having taken `took`, with what
+    /// it read first.
     Ran {
         took: Amounts,
-        exact: bool,
         first: FirstReads,
         gave: Option<Gave>,
         /// Neither what it gave nor what it read first holds an element or a
@@ -743,16 +751,6 @@ enum Outcome {
 struct Gave {
     js: Js,
     value: Option<Value>,
-}
-
-impl Outcome {
-    /// It declared the default null.
-    fn null(&self) -> bool {
-        matches!(
-            self,
-            Outcome::Ran { gave: None, .. } | Outcome::RanOut { .. }
-        )
-    }
 }
 
 enum Decision {
@@ -770,14 +768,12 @@ impl Record {
     fn decide(&self, left: Amounts, most: Amounts) -> Decision {
         match self.outcome {
             Outcome::Plain => Decision::Evaluate(left),
-            Outcome::Ran { took, exact, .. } => {
+            Outcome::Ran { took, .. } => {
                 // With what it took or more, the same run; with less, it
-                // runs out. With exactly the work it took, a loop may see
-                // none left where it saw some: only the same run if it did.
+                // runs out. A successful run cannot stop early at zero work:
+                // both out_of_work callers subsequently draw positive work.
                 if !left.covers(took) {
                     Decision::RunsOut
-                } else if left.work == took.work && !exact {
-                    Decision::Evaluate(left)
                 } else {
                     Decision::Take
                 }
@@ -857,7 +853,6 @@ impl Record {
                 && gave.as_ref().is_none_or(|gave| !holds_expression(&gave.js));
             Outcome::Ran {
                 took: had.less(ran.left),
-                exact: ran.left.work == 0,
                 first,
                 gave,
                 unpaired,
@@ -952,30 +947,6 @@ impl FirstReads {
             elements,
             properties,
             plain,
-        }
-    }
-
-    /// Forget what was read first since `marks`, as if it never was.
-    fn undo(marks: Marks, declared: &Declared) {
-        READ_LOG.with(|l| {
-            READ.with(|r| {
-                let mut read = r.borrow_mut();
-                for address in l.borrow_mut().drain(marks.elements..) {
-                    read.remove(&address);
-                }
-            })
-        });
-        PROPERTIES_LOG.with(|l| {
-            PROPERTIES.with(|r| {
-                let mut read = r.borrow_mut();
-                for key in l.borrow_mut().drain(marks.properties..) {
-                    read.remove(&key);
-                }
-            })
-        });
-        let mut read = declared.read.borrow_mut();
-        for name in declared.read_log.borrow_mut().drain(marks.plain..) {
-            read.remove(&name);
         }
     }
 
@@ -1234,46 +1205,44 @@ fn from_value(value: &Value) -> Js {
                 return js;
             }
             // The object its JSON reads back as, built directly.
-            if out_of_work() {
-                ran_out_of_work();
-                return Js::Null;
-            }
-            let mut out = JsObject::new();
-            for (key, value) in [
-                ("type", from_value(&Value::Str("element".into()))),
-                (
-                    "typeName",
-                    from_value(&Value::Str(element.type_name.clone())),
-                ),
-                (
-                    "props",
-                    if step(1) {
-                        from_object(&element.props)
-                    } else {
-                        Js::Null
-                    },
-                ),
-                ("partial", from_value(&Value::Bool(element.partial))),
-                (
-                    "hasDynamicProps",
-                    from_value(&Value::Bool(element.has_dynamic_props)),
-                ),
-            ] {
-                if !step(key.len()) {
-                    return Js::Null;
+            out_of_work(|| {
+                let mut out = JsObject::new();
+                for (key, value) in [
+                    ("type", from_value(&Value::Str("element".into()))),
+                    (
+                        "typeName",
+                        from_value(&Value::Str(element.type_name.clone())),
+                    ),
+                    (
+                        "props",
+                        if step(1) {
+                            from_object(&element.props)
+                        } else {
+                            Js::Null
+                        },
+                    ),
+                    ("partial", from_value(&Value::Bool(element.partial))),
+                    (
+                        "hasDynamicProps",
+                        from_value(&Value::Bool(element.has_dynamic_props)),
+                    ),
+                ] {
+                    if !step(key.len()) {
+                        return Js::Null;
+                    }
+                    out.define(key.to_owned(), value);
                 }
-                out.define(key.to_owned(), value);
-            }
-            if let Some(id) = &element.statement_id {
-                if !step("statementId".len()) {
-                    return Js::Null;
+                if let Some(id) = &element.statement_id {
+                    if !step("statementId".len()) {
+                        return Js::Null;
+                    }
+                    out.define("statementId", from_value(&Value::Str(id.clone())));
                 }
-                out.define("statementId", from_value(&Value::Str(id.clone())));
-            }
-            let js = Js::Obj(Arc::new(out));
-            READ.with(|r| r.borrow_mut().insert(address, (value.clone(), js.clone())));
-            READ_LOG.with(|l| l.borrow_mut().push(address));
-            js
+                let js = Js::Obj(Arc::new(out));
+                READ.with(|r| r.borrow_mut().insert(address, (value.clone(), js.clone())));
+                READ_LOG.with(|l| l.borrow_mut().push(address));
+                js
+            })
         }
         Value::Ast(node) => Js::Ast(Arc::clone(node)),
     }
@@ -1294,11 +1263,7 @@ fn from_object(object: &JsObject<Value>) -> Js {
 /// A runtime expression read as a value, built whole: the object its JSON
 /// reads back as, for the result or a literal.
 fn whole_ast(node: &Ast) -> Js {
-    if out_of_work() {
-        ran_out_of_work();
-        return Js::Null;
-    }
-    from_value(&json_shaped_ast(node))
+    out_of_work(|| from_value(&json_shaped_ast(node)))
 }
 
 /// `node[key]`, the node read as the plain object its JSON is: a step, and
@@ -2471,6 +2436,17 @@ pub(crate) fn locale_compare(a: &str, b: &str) -> Ordering {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    #[cfg(debug_assertions)]
+    #[should_panic(expected = "out_of_work continuation must draw positive work")]
+    fn a_work_check_without_a_draw_is_rejected() {
+        LIMITS.with(|l| {
+            l.work.set(1);
+            l.cut.set(None);
+        });
+        out_of_work(|| Js::Null);
+    }
 
     /// Text outside ASCII compares by code point, after all of ASCII: the
     /// documented divergence from ICU's collation (CONFORMANCE.md). It holds

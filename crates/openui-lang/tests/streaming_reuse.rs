@@ -15,8 +15,8 @@
 //! is also compared with a one-shot parse, which streams' ends match apart
 //! from quirk 4's count of a redefinition.
 //!
-//! Costs are measured in the thread's CPU time, the fastest of a few runs, as
-//! `streaming_cost.rs` does, against generous bounds.
+//! Cost checks use thread CPU time, fastest of several runs, against generous
+//! ratios. Work pricing is checked through public work limits.
 
 use std::sync::Arc;
 
@@ -805,3 +805,114 @@ fn a_default_that_keeps_running_out_costs_about_one_evaluation_in_all() {
 
 #[global_allocator]
 static ALLOCATOR: test_alloc::Allocator = test_alloc::Allocator::with_cap(test_alloc::LIMITS);
+
+#[test]
+fn recovered_defaults_invalidate_followers() {
+    let head = format!(
+        "root = Stack([])\n$a = @Each([1], \"i\", \"old\")\n$b = @Count($a)\n$c = $b + 1\n$a = @Each({}, \"i\", \"{}\")\n$b = @Count($a)\n$c = $b + 1\n",
+        list(30),
+        "payload".repeat(20)
+    );
+    let program = format!("{head}{}", padding(8_000));
+    let limits = Limits::default().with_result_floor(0).with_amplification(8);
+    assert!(parse_with_limits(&head, &library(), None, limits).size_limited);
+    assert!(!parse_with_limits(&program, &library(), None, limits).size_limited);
+    streams_as_without_reuse(&program, &library(), limits, 37);
+}
+
+#[test]
+fn a_changed_default_that_becomes_too_deep_invalidates_its_followers() {
+    let limits = Limits::default().with_depth(6);
+    let (k, chain) = deepest_chain(limits);
+    let program =
+        format!("root = Stack([])\n{chain}$t = 5 + 0\n$b = $t + 1\n$t = [[$n{k}], 1 + 1]\n");
+    for n in [1, 7] {
+        streams_as_without_reuse(&program, &library(), limits, n);
+    }
+}
+
+#[test]
+fn a_speculative_depth_cut_still_needs_this_pushs_work() {
+    let limits = Limits::default().with_depth(6);
+    let (k, chain) = deepest_chain(limits);
+    let program = format!(
+        "root = Stack([])\n{chain}$l = {}\n$a = [@Count(@Each($l, \"x\", @Each($l, \"y\", @Each($l, \"z\", 1)))), [$n{k}]]\n{}",
+        list(80),
+        padding(2_000)
+    );
+    assert!(parse_with_limits(&program, &library(), None, limits).depth_limited);
+    streams_as_without_reuse(&program, &library(), limits, 31);
+}
+
+#[test]
+fn unsubstituted_assignment_templates_keep_their_original_owners() {
+    for template in [
+        "$t = [1, {a: 1}]",
+        "[$t = [1, {a: 1}]]",
+        "{nested: $t = [1, {a: 1}]}",
+    ] {
+        let access = if template.starts_with('[') {
+            "[0][0]"
+        } else if template.starts_with('{') {
+            "[0].nested"
+        } else {
+            "[0]"
+        };
+        let program = format!(
+            "root = Stack([])\n$seed = source\n$first = $seed{access}.expr.els\n$again = source\n$same = $first == $again{access}.expr.els\nsource = @Each([1], \"i\", {template}){}\n$new = source\n$late = $first == $new{access}.expr.els\n",
+            " ".repeat(40)
+        );
+        for n in [1, 3, 7] {
+            streams_as_without_reuse(&program, &library(), Limits::default(), n);
+        }
+    }
+}
+
+#[test]
+fn empty_expression_properties_keep_identity_after_owner_changes() {
+    let head = "root = Stack([])\n$a = source\nsource = @Each([1], \"i\", $t = [])[0].expr.els";
+    let program = format!("{head}{}\n$b = source\n$same = $a == $b\n", " ".repeat(40));
+    for n in [1, 3, 7] {
+        streams_as_without_reuse(&program, &library(), Limits::default(), n);
+    }
+}
+
+#[test]
+fn state_defaults_share_materialized_owners_between_streaming_modes() {
+    // No references or library checks: both modes can use the SAME AST owner.
+    // Merely warming both caches is insufficient if each holds a different
+    // owner: every mode switch then walks this list again to compare them.
+    let head = format!("root = Stack([])\n$a = {} == null\npad = 0\n", list(8_000));
+    let library = library();
+    let cost = |toggle: bool| {
+        fastest(5, || {
+            let mut stream = StreamParser::new(library.clone(), None);
+            stream.push(&head);
+            stream.push("pending = Text(");
+            stream.push("\"done\")\n");
+            let start = now();
+            for _ in 0..40 {
+                if toggle {
+                    std::hint::black_box(stream.push("pending = Text("));
+                    std::hint::black_box(stream.push("\"done\")\n"));
+                } else {
+                    std::hint::black_box(stream.push(""));
+                    std::hint::black_box(stream.push(""));
+                }
+            }
+            (now() - start) / 80.0
+        })
+    };
+    let unchanged = cost(false);
+    let toggled = cost(true);
+    assert!(
+        toggled < unchanged * 10.0,
+        "mode switches {toggled:.6}s, unchanged {unchanged:.6}s"
+    );
+    streams_as_without_reuse(
+        &format!("{head}pending = Text(\"done\")\n"),
+        &library,
+        Limits::default(),
+        71,
+    );
+}
