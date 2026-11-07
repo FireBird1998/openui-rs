@@ -333,6 +333,152 @@ fn the_slow_fuzz_input_streams_as_without_reuse() {
     streams_as_without_reuse(program, &fuzz_library(), Limits::default(), 3);
 }
 
+#[test]
+fn completed_depth_cuts_survive_later_shallow_statements() {
+    let program = "root = Stack([])\ndeep = [[[[[[1]]]]]]\nplain = 1\n";
+    let limits = Limits::default().with_depth(3);
+    assert!(parse_with_limits(program, &library(), None, limits).depth_limited);
+    for n in [1, 7, program.len()] {
+        streams_as_without_reuse(program, &library(), limits, n);
+    }
+}
+
+#[test]
+fn changing_reference_graphs_stream_as_fresh_tables() {
+    // Definitions, temporary overlays and their undo change both the reverse
+    // reference graph and the reached tree. Keep an orphan throughout so the
+    // memoized orphan list must change even when its length stays nonzero.
+    let programs = [
+        "spare = Text(\"spare\")\na = Text(\"a\")\nb = Text(\"b\")\nc = Text(\"c\")\nx = Stack([a, b])\ny = Stack([a, c])\nroot = Stack([x, y])\nx = Stack([])\nroot = Stack([y])\ny = Stack([])\nroot = Stack([b])\n",
+        "spare = 0\na = Text(\"a\")\nb = Text(\"b\")\nx = Stack([a])\nroot = Stack([x])\nx = Stack([b])\na = Text(\"changed\")\nb = Text(\"changed too\")\nx = Stack([a, b])\na = Text(\"again\")\n",
+        "spare = 0\na = Text(\"a\")\nroot = Stack([])\nlate = 1\n$late = 2\nlate = $late\nlate = Text(\"value\")\nroot = Stack([late, a])\n",
+    ];
+    for program in programs {
+        for n in [1, 2, 7, 31] {
+            streams_as_without_reuse(program, &library(), Limits::default(), n);
+        }
+    }
+}
+
+#[test]
+fn cache_variants_at_depth_boundaries_keep_their_own_reach() {
+    let program = "spare = Text(\"spare\")\na = Text(\"a\")\nb = Stack([a])\nc = Stack([b])\nroot = Stack([a, b, c])\npending = Stack([\n";
+    for depth in 2..8 {
+        for n in [1, 7, 23] {
+            streams_as_without_reuse(program, &library(), Limits::default().with_depth(depth), n);
+        }
+    }
+}
+
+/// The smallest whole-run work limit, observed through the public parser.
+fn default_steps(program: &str) -> usize {
+    let library = library();
+    let whole = |work| {
+        !parse_with_limits(program, &library, None, Limits::default().with_work(work)).size_limited
+    };
+    let (mut lo, mut hi) = (0, 64_000_000);
+    assert!(whole(hi));
+    while hi - lo > 1 {
+        let mid = lo + (hi - lo) / 2;
+        if whole(mid) {
+            hi = mid;
+        } else {
+            lo = mid;
+        }
+    }
+    hi
+}
+
+#[test]
+fn reused_defaults_charge_work_and_room_at_every_boundary() {
+    let programs = [
+        "root = Stack([])\n$p = {a: [1, 2]}\n$a = @Each([1, 2, 3], \"x\", $p)\n$b = $a[0] == $a[1]\n$c = @Count($a) + 1\n",
+        "root = Stack([])\n$e = Text(\"hi\")\n$a = [$e, $e]\n$b = $a[0] == $e\n$c = @Each([1, 2], \"i\", $a)\n",
+        "root = Stack([])\n$a = @Each([1, 2], \"i\", $t = [i, {a: 1}])\n$b = $a[0].expr.els\n$c = $b == $a[0].expr.els\n",
+    ];
+    for program in programs {
+        let steps = default_steps(program);
+        for work in 0..=steps + 2 {
+            streams_as_without_reuse(program, &library(), Limits::default().with_work(work), 7);
+        }
+        for room in (0..600).step_by(7) {
+            streams_as_without_reuse(
+                program,
+                &library(),
+                Limits::default().with_result_size(room),
+                11,
+            );
+        }
+    }
+}
+
+#[test]
+fn changing_default_shapes_and_aliases_never_reuses_old_values() {
+    let program = "root = Stack([])\n$seed = {a: true, b: null}\n$read = [$seed, $seed]\n$same = $read[0] == $read[1]\n$seed = {b: null, a: false}\n$seed = [true, null]\n$seed = \"changed\"\n$seed = false\n$seed = null\n$seed = Text(\"first\")\n$seed = Stack([])\n$seed = {a: Text(\"nested\")}\n$seed = [$read = {a: 1}]\n$seed = {a: $read = [1]}\n";
+    for n in [1, 3, 11] {
+        streams_as_without_reuse(program, &library(), Limits::default(), n);
+    }
+}
+
+#[test]
+fn shared_elements_and_expression_properties_survive_reparsed_defaults() {
+    // Aliases occur both within one default and across defaults. A default
+    // that returns an assignment retains runtime expressions nested in arrays
+    // and objects, then later defaults read their shared properties.
+    let program = "root = Stack([])\ncard = Text(\"hi\")\n$a = @Each([1, 2], \"i\", [$t = {a: card, b: [card]}])\n$b = $a[0][0]\n$c = $b.expr.entries\n$d = $a[0][0].expr.entries == $c\n$e = [$b, {nested: $b}]\n$f = $e[0].expr.entries == $e[1].nested.expr.entries\ncard = Text(\"changed\")\n$g = $a[0][0].expr.entries == $c\n";
+    for n in [1, 4, 13] {
+        streams_as_without_reuse(program, &library(), Limits::default(), n);
+    }
+}
+
+#[test]
+fn doubled_room_runs_replay_first_reads_at_exact_work_boundaries() {
+    let heads = [
+        "root = Stack([])\ncard = Text(\"shared element\")\n$p = {a: 1}\n$a = @Each([1, 2, 3, 4], \"i\", [card, $p, \"a long payload that needs more room than its source\"])\n",
+        "root = Stack([])\n$a = @Each([1, 2, 3, 4], \"i\", $t = [i, {a: 1}])\n$b = @Each([1, 2, 3, 4], \"i\", [$a[0].expr.els, \"a long payload that needs more room than its source\"])\n",
+    ];
+    for head in heads {
+        let steps = default_steps(head);
+        let program = format!("{head}$same = $a[0] == $a[0]\n{}", " ".repeat(1_200));
+        for work in [steps - 1, steps, steps + 1, steps + 2, steps * 2] {
+            let limits = Limits::default()
+                .with_work(work)
+                .with_result_floor(0)
+                .with_amplification(1);
+            for n in [7, 31] {
+                streams_as_without_reuse(&program, &library(), limits, n);
+            }
+        }
+    }
+}
+
+#[test]
+fn reparsed_expression_owners_keep_shared_reads_across_many_pushes() {
+    for (template, access) in [
+        ("$t = [i, {a: 1}]", "[0]"),
+        ("[$t = [i, {a: 1}]]", "[0][0]"),
+        ("{nested: $t = [i, {a: 1}]}", "[0].nested"),
+    ] {
+        let program = format!(
+            "root = Stack([])\n$seed = source\n$first = $seed{access}.expr.els\n$again = $seed\n$same = $first == $again{access}.expr.els\nsource = @Each([1], \"i\", {template}){}",
+            " ".repeat(60)
+        );
+        for n in [1, 7, 19] {
+            streams_as_without_reuse(&program, &library(), Limits::default(), n);
+        }
+        let json = parse_with_limits(&program, &library(), None, Limits::default()).to_json();
+        assert!(json.contains("\"$same\":true"), "{json}");
+    }
+}
+
+#[test]
+fn equal_looking_elements_with_different_owners_do_not_reuse() {
+    let program = "root = Stack([])\none = Text(\"same\")\ntwo = Text(\"same\")\n$seed = source\n$read = [$seed, $seed]\nsource = one\nsource = two\nsource = Text($live)\nsource = Text(\"same\")\n";
+    for n in [1, 3, 9] {
+        streams_as_without_reuse(program, &library(), Limits::default(), n);
+    }
+}
+
 // ─── Costs ──────────────────────────────────────────────────────────────────
 
 /// Seconds of CPU time this thread has used.
@@ -394,6 +540,184 @@ fn an_unchanged_default_isnt_evaluated_again_on_later_pushes() {
         "a push costs {:.3} ms, evaluating the default {:.3} ms",
         per_push * 1e3,
         evaluating * 1e3
+    );
+}
+
+#[test]
+fn an_empty_push_at_a_completed_boundary_reuses_the_table() {
+    let program = format!("root = Stack([])\n{}", padding(40_000));
+    let library = library();
+    let parse_cost = fastest(5, || {
+        let start = now();
+        std::hint::black_box(parse_with_limits(
+            &program,
+            &library,
+            None,
+            Limits::default(),
+        ));
+        now() - start
+    });
+    let push_cost = fastest(5, || {
+        let mut stream = StreamParser::new(library.clone(), None);
+        stream.push(&program);
+        let start = now();
+        for _ in 0..20 {
+            std::hint::black_box(stream.push(""));
+        }
+        (now() - start) / 20.0
+    });
+    assert!(
+        push_cost < parse_cost / 5.0,
+        "empty push {push_cost:.6}s, parsing {parse_cost:.6}s"
+    );
+}
+
+#[test]
+fn changing_an_obsolete_reference_keeps_the_new_tree_cached() {
+    let children = (0..600)
+        .map(|i| format!("Text(\"value {i}\")"))
+        .collect::<Vec<_>>()
+        .join(",");
+    let head = format!("a = 0\nx = a\nroot = Stack([x])\nx = Stack([{children}])\n");
+    let library = library();
+    let cost = |name: &str| {
+        fastest(5, || {
+            let mut stream = StreamParser::new(library.clone(), None);
+            stream.push(&head);
+            let start = now();
+            for i in 0..30 {
+                std::hint::black_box(stream.push(&format!("{name} = {i}\n")));
+            }
+            (now() - start) / 30.0
+        })
+    };
+    let unrelated = cost("unused");
+    let obsolete = cost("a");
+    assert!(
+        obsolete < unrelated * 3.0,
+        "obsolete reference {obsolete:.6}s, unrelated {unrelated:.6}s"
+    );
+}
+
+#[test]
+fn changing_partial_flags_shares_unchanged_reach_trees() {
+    // One cached value with many children, used by a state default (AST
+    // mode) as well as the root. The trailing statement alternates the
+    // partial flag without changing any reference in that cached value.
+    let children = (0..4_000).map(|_| "leaf").collect::<Vec<_>>().join(",");
+    let head = format!(
+        "leaf = Text(\"value\")\nwide = Stack([{children}])\nroot = Stack([wide])\n$copy = wide\n"
+    );
+    let library = library();
+    let cost = |toggle: bool| {
+        fastest(5, || {
+            let mut stream = StreamParser::new(library.clone(), None);
+            stream.push(&head);
+            // Warm both partial variants before timing.
+            stream.push("pending = Text(");
+            stream.push("\"done\")\n");
+            let start = now();
+            for _ in 0..40 {
+                if toggle {
+                    std::hint::black_box(stream.push("pending = Text("));
+                    std::hint::black_box(stream.push("\"done\")\n"));
+                } else {
+                    std::hint::black_box(stream.push(""));
+                    std::hint::black_box(stream.push(""));
+                }
+            }
+            (now() - start) / 80.0
+        })
+    };
+    let unchanged = cost(false);
+    let toggled = cost(true);
+    assert!(
+        toggled < unchanged * 4.0,
+        "partial flag changes {toggled:.6}s, unchanged {unchanged:.6}s"
+    );
+}
+
+#[test]
+fn structurally_unchanged_reparsed_defaults_keep_expensive_followers() {
+    // The final source definition is complete but has no newline. Every push
+    // reparses it and invalidates its readers, giving same() fresh values to
+    // compare, including objects and runtime expressions with new addresses.
+    // Two readers of source also exercise pairing the same identity twice.
+    let seeds = [
+        "null",
+        "true",
+        "\"same\"",
+        "[1, {a: null}]",
+        "{a: true}",
+        "Text(\"hi\")",
+        "[$t = 1]",
+        "{a: $t = 1}",
+        "$t = {a: [1]}",
+    ];
+    let library = library();
+    let limits = Limits::default().with_work(64_000_000);
+    for seed in seeds {
+        let program = format!(
+            "root = Stack([])\n$seed = source\n$again = source\n{}source = {seed}",
+            costly_default()
+        );
+        let whole = parse_with_limits(&program, &library, None, limits);
+        assert!(!whole.size_limited, "{seed}");
+        streams_as_without_reuse(&format!("{program}    "), &library, limits, 29);
+        let evaluating = fastest(3, || {
+            let start = now();
+            std::hint::black_box(parse_with_limits(&program, &library, None, limits));
+            now() - start
+        });
+        let pushing = fastest(3, || {
+            let mut stream = StreamParser::with_limits(library.clone(), None, limits);
+            stream.push(&program);
+            let start = now();
+            for _ in 0..20 {
+                std::hint::black_box(stream.push(" "));
+            }
+            (now() - start) / 20.0
+        });
+        assert!(
+            pushing < evaluating / 8.0,
+            "seed {seed}: push {pushing:.6}s, evaluating {evaluating:.6}s"
+        );
+    }
+}
+
+#[test]
+fn scalar_runs_move_to_the_now_cached_expression() {
+    // Completing source changes the materialized AST's address once. A run
+    // returning a scalar and retaining no shared reads can then adopt that
+    // new owner. Rechecking a long, old AST on every empty push costs linear
+    // time; adopting the cached owner makes the equality check constant time.
+    let head = format!(
+        "root = Stack([])\n$a = @Count(source)\nsource = {}",
+        list(8_000)
+    );
+    let library = library();
+    let cost = |complete_later: bool| {
+        fastest(5, || {
+            let mut stream = StreamParser::new(library.clone(), None);
+            if complete_later {
+                stream.push(&head);
+                stream.push("\n");
+            } else {
+                stream.push(&format!("{head}\n"));
+            }
+            stream.push("");
+            let start = now();
+            for _ in 0..40 {
+                std::hint::black_box(stream.push(""));
+            }
+            (now() - start) / 40.0
+        })
+    };
+    let already_cached = cost(false);
+    let adopted = cost(true);
+    assert!(
+        adopted < already_cached * 4.0,
+        "adopted owner {adopted:.6}s, originally cached {already_cached:.6}s"
     );
 }
 

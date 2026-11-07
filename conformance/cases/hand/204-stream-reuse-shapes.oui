@@ -1,0 +1,14 @@
+root = Root([])
+$seed = {a: true, b: null}
+$read = [$seed, $seed]
+$same = $read[0] == $read[1]
+$seed = {b: null, a: false}
+$seed = [true, null]
+$seed = "changed"
+$seed = false
+$seed = null
+$seed = Text("first")
+$seed = Root([])
+$seed = {a: Text("nested")}
+$seed = [$read = {a: 1}]
+$seed = {a: $read = [1]}

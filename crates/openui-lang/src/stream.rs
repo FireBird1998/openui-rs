@@ -229,16 +229,16 @@ impl StreamParser {
                 b'?' if depth == 0 => ternary_depth += 1,
                 b':' if depth == 0 && ternary_depth > 0 => ternary_depth -= 1,
                 b'\n' if depth <= 0 && ternary_depth <= 0 => {
-                    // A next line starting with `?` (or `:` mid-ternary) continues it.
-                    let peek = skip_while(s, i + 1, |b| matches!(b, b' ' | b'\t' | b'\r' | b'\n'));
+                    // A next line starting with `?` continues it.
+                    let peek = skip_while(s, i, |b| matches!(b, b' ' | b'\t' | b'\r' | b'\n'));
                     if let Some(&next) = s.get(peek)
-                        && (next == b'?' || (next == b':' && ternary_depth > 0))
+                        && next == b'?'
                     {
                         continue;
                     }
                     completed.push(stmt_start..i);
-                    stmt_start = i + 1;
                     self.completed.end = i + 1;
+                    stmt_start = self.completed.end;
                 }
                 _ => {}
             }

@@ -992,10 +992,30 @@
    "file": "cases/hand/160-stray-colon-before-a-ternary.oui",
    "source": "hand-written"
   },
-  {"name": "hand/161-expression-boundaries", "schema": "hand", "file": "cases/hand/161-expression-boundaries.oui", "source": "hand-written"},
-  {"name": "hand/162-surrogate-members", "schema": "hand", "file": "cases/hand/162-surrogate-members.oui", "source": "hand-written"},
-  {"name": "hand/163-lexer-boundaries", "schema": "hand", "file": "cases/hand/163-lexer-boundaries.oui", "source": "hand-written"},
-  {"name": "hand/164-expression-depth-accounting", "schema": "hand", "file": "cases/hand/164-expression-depth-accounting.oui", "source": "hand-written"},
+  {
+   "name": "hand/161-expression-boundaries",
+   "schema": "hand",
+   "file": "cases/hand/161-expression-boundaries.oui",
+   "source": "hand-written"
+  },
+  {
+   "name": "hand/162-surrogate-members",
+   "schema": "hand",
+   "file": "cases/hand/162-surrogate-members.oui",
+   "source": "hand-written"
+  },
+  {
+   "name": "hand/163-lexer-boundaries",
+   "schema": "hand",
+   "file": "cases/hand/163-lexer-boundaries.oui",
+   "source": "hand-written"
+  },
+  {
+   "name": "hand/164-expression-depth-accounting",
+   "schema": "hand",
+   "file": "cases/hand/164-expression-depth-accounting.oui",
+   "source": "hand-written"
+  },
   {
    "name": "hand/180-state-defaults-comparing-and-combining",
    "schema": "hand",
@@ -1160,6 +1180,66 @@
    "name": "hand/232-strict-validation-identity",
    "schema": "pricing-validation",
    "file": "cases/hand/232-strict-validation-identity.oui",
+   "source": "hand-written"
+  },
+  {
+   "name": "hand/200-stream-reach-diff",
+   "schema": "hand",
+   "file": "cases/hand/200-stream-reach-diff.oui",
+   "source": "hand-written"
+  },
+  {
+   "name": "hand/201-stream-ref-redefinition",
+   "schema": "hand",
+   "file": "cases/hand/201-stream-ref-redefinition.oui",
+   "source": "hand-written"
+  },
+  {
+   "name": "hand/202-stream-scan-boundaries",
+   "schema": "hand",
+   "file": "cases/hand/202-stream-scan-boundaries.oui",
+   "source": "hand-written"
+  },
+  {
+   "name": "hand/203-stream-orphan-kinds",
+   "schema": "hand",
+   "file": "cases/hand/203-stream-orphan-kinds.oui",
+   "source": "hand-written"
+  },
+  {
+   "name": "hand/204-stream-reuse-shapes",
+   "schema": "hand",
+   "file": "cases/hand/204-stream-reuse-shapes.oui",
+   "source": "hand-written"
+  },
+  {
+   "name": "hand/205-stream-reuse-shared-properties",
+   "schema": "hand",
+   "file": "cases/hand/205-stream-reuse-shared-properties.oui",
+   "source": "hand-written"
+  },
+  {
+   "name": "hand/206-stream-reuse-element-owners",
+   "schema": "hand",
+   "file": "cases/hand/206-stream-reuse-element-owners.oui",
+   "source": "hand-written"
+  },
+  {
+   "name": "hand/207-stream-reuse-expression-owner-1",
+   "schema": "hand",
+   "file": "cases/hand/207-stream-reuse-expression-owner-1.oui",
+   "source": "hand-written"
+  },
+  {
+   "name": "hand/208-stream-reuse-expression-owner-2",
+   "schema": "hand",
+   "file": "cases/hand/208-stream-reuse-expression-owner-2.oui",
+   "source": "hand-written"
+  },
+  {
+   "name": "hand/209-stream-reuse-expression-owner-3",
+   "schema": "hand",
+   "file": "cases/hand/209-stream-reuse-expression-owner-3.oui",
    "source": "hand-written"
   }
  ]

@@ -11,6 +11,10 @@ exclude_re = [
     # Extra Value slots are ignored by extraction and have no state_refs to declare.
     'parser\.rs:.*: replace Info::special -> bool with true$',
 
+    # pair maintains inverse maps: with both lookups present, n == now iff t == then, so AND and OR agree (#15).
+    'evaluate\.rs:.*replace && with \|\| in pair',
+    # partial occupies bit 0 and expr bit 1, so OR and XOR are identical (#15).
+    'table\.rs:.*replace \| with \^ in Cache::index',
     # The stall guard's choice between panicking and cutting, outside unit
     # tests (they use a twin they can switch). Only a stall reaches it, and
     # only a bug in the core stalls, so with one mutant planted at a time

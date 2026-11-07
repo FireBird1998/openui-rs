@@ -136,9 +136,12 @@ impl Table {
         match previous {
             Some((stmt, info)) => {
                 for &r in &info.refs {
-                    if !self.referrers[r as usize].contains(&slot) {
-                        self.referrers[r as usize].push(slot);
-                    }
+                    // Invariant: s occurs in referrers[r] exactly once iff
+                    // r is in info[s].refs, and not at all otherwise. define
+                    // sorts/deduplicates refs and preserves that invariant.
+                    // undo removed every occurrence of slot from its current
+                    // refs' lists above, so previous.refs can be pushed once.
+                    self.referrers[r as usize].push(slot);
                 }
                 self.set_special(slot, info.special(), current.special());
                 self.orphan_change(slot, Some(current.kind), Some(info.kind));
