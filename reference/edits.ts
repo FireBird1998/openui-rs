@@ -5,6 +5,8 @@
 //   bun reference/edits.ts golden
 //   bun reference/edits.ts show merge|serialize|enrich <name>
 //
+// Also records builtin-params.json for the public call-registry API tests.
+//
 // Inputs:
 //   merge      imported/merge.json (the reference tests' calls), merge.json
 //              (hand-written), merge-generated.json (reference/merge-cases.ts),
@@ -22,6 +24,7 @@ process.env.DO_NOT_TRACK = "1";
 const { mergeStatements } = await import("./lang-core/src/parser/merge");
 const { jsonToOpenUI } = await import("./lang-core/src/parser/serialize");
 const { enrichErrors } = await import("./lang-core/src/parser/enrich-errors");
+const { BUILTIN_CALLS } = await import("./lang-core/src/parser/builtins");
 
 const CONFORMANCE = join(import.meta.dir, "..", "conformance");
 const GOLDEN = join(CONFORMANCE, "golden", "edits");
@@ -111,6 +114,8 @@ if (command === "golden") {
   write("merge.json", mergeCases.map((c) => [c.name, runMerge(c)]));
   write("serialize.json", serializeCases.map((c) => [c.name, runSerialize(c)]));
   write("enrich.json", enrichCases.map((c) => [c.name, runEnrich(c)]));
+  // Public call metadata is observable even though built-in args aren't validated.
+  write("builtin-params.json", [...BUILTIN_CALLS].map(([name, call]) => [name, call.params]));
   console.log(
     `Wrote edit goldens: ${mergeCases.length} merge, ${serializeCases.length} serialize, ${enrichCases.length} enrich cases`,
   );

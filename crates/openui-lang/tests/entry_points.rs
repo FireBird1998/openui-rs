@@ -246,3 +246,28 @@ fn expression_depth_counts_chains_and_releases_siblings() {
         assert_eq!(got, limited, "{text}");
     }
 }
+
+#[test]
+fn merging_flags_either_input_being_cut_independently() {
+    let short = "a = 1";
+    let long = "b = 2\nc = 3";
+    let limits = Limits::default().with_program_size(short.len());
+    for (existing, patch, cut) in [
+        (short, short, false),
+        (long, short, true),
+        (short, long, true),
+        (long, long, true),
+    ] {
+        let result = merge_statements_with_limits(existing, patch, None, limits);
+        assert_eq!(result.size_limited, cut, "{existing:?}, {patch:?}");
+        assert!(!result.depth_limited);
+        assert_eq!(
+            result.text,
+            merge_statements(
+                &existing[..existing.len().min(short.len())],
+                &patch[..patch.len().min(short.len())],
+                None
+            )
+        );
+    }
+}

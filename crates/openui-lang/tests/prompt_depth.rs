@@ -41,3 +41,32 @@ fn a_prompt_spec_nests_to_the_depth_limit() {
     let shallow = Limits::default().with_depth(4);
     assert!(generate_system_prompt_with_limits(&spec, shallow).is_err());
 }
+
+#[test]
+fn prompts_accept_the_exact_json_depth_limit() {
+    // At depth=0 the JSON limit is 32 containers. The spec is one, so
+    // 31 nested arrays fit; adding a 32nd array must be refused.
+    let limits = Limits::default().with_depth(0);
+    for (arrays, accepted) in [(31, true), (32, false)] {
+        let mut nested = serde_json::Value::Null;
+        for _ in 0..arrays {
+            nested = serde_json::json!([nested]);
+        }
+        let spec = serde_json::json!({"components": {}, "extra": nested});
+        for result in [
+            generate_prompt_with_limits(&spec, limits),
+            generate_system_prompt_with_limits(&spec, limits),
+        ] {
+            if accepted {
+                assert_eq!(result.unwrap(), generate_prompt(&spec));
+            } else {
+                assert!(
+                    result
+                        .unwrap_err()
+                        .to_string()
+                        .contains("nests deeper than 32 levels")
+                );
+            }
+        }
+    }
+}

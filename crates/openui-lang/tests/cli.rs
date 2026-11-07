@@ -442,3 +442,43 @@ fn invalid_command_shapes_and_chunks_fail() {
         streamed(&schema, &program, 1)
     );
 }
+
+#[test]
+fn the_fixed_result_size_limit_can_be_set() {
+    let dir = conformance();
+    let schema = dir.join("schemas/text.json");
+    let program = dir.join("cases/hello-text.oui");
+    let expected = openui_lang::parse_with_limits(
+        &read(&program),
+        &library(&schema),
+        None,
+        openui_lang::Limits::default().with_result_size(10),
+    );
+    assert!(expected.size_limited);
+    assert_ne!(
+        expected.to_json(),
+        parse(&read(&program), &library(&schema), None).to_json()
+    );
+    for command in ["parse", "stream"] {
+        let out = Command::new(env!("CARGO_BIN_EXE_openui-lang"))
+            .args([command, "--limit", "result-size=10"])
+            .arg(&schema)
+            .arg(&program)
+            .output()
+            .unwrap();
+        assert!(
+            out.status.success(),
+            "{}",
+            String::from_utf8_lossy(&out.stderr)
+        );
+        assert_eq!(
+            String::from_utf8(out.stdout)
+                .unwrap()
+                .lines()
+                .last()
+                .unwrap(),
+            expected.to_json(),
+            "{command}"
+        );
+    }
+}

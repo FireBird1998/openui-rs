@@ -183,3 +183,26 @@ fn js_object_members_include_its_prototype_but_own_checks_do_not() {
     object.define("missing", 1);
     assert!(object.has("missing"));
 }
+
+#[test]
+fn builtin_parameter_metadata_matches_the_reference_registry() {
+    let golden = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+        .join("../../conformance/golden/edits/builtin-params.json");
+    let expected: serde_json::Value =
+        serde_json::from_str(&std::fs::read_to_string(golden).unwrap()).unwrap();
+    let actual: serde_json::Map<String, serde_json::Value> = Library::default()
+        .calls()
+        .map(|(name, call)| {
+            (
+                name.to_owned(),
+                json!(
+                    call.params
+                        .iter()
+                        .map(|p| json!({"name":p.name,"required":p.required}))
+                        .collect::<Vec<_>>()
+                ),
+            )
+        })
+        .collect();
+    assert_eq!(serde_json::Value::Object(actual), expected);
+}

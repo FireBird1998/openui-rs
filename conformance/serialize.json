@@ -2510,6 +2510,96 @@
     "hasDynamicProps": false
    },
    "source": "hand-written"
-  }
+  },
+  {
+ "name": "hand/issue16-followup-or-with-unknown-precedence",
+ "schema": "hand",
+ "element": {
+  "type": "element",
+  "typeName": "Slot",
+  "props": {
+   "content": [
+    {
+     "k": "BinOp",
+     "op": "||",
+     "left": {
+      "k": "BinOp",
+      "op": "unknown",
+      "left": {
+       "k": "Ref",
+       "n": "a"
+      },
+      "right": {
+       "k": "Ref",
+       "n": "b"
+      }
+     },
+     "right": {
+      "k": "Ref",
+      "n": "c"
+     }
+    }
+   ]
+  },
+  "partial": false,
+  "hasDynamicProps": false
+ },
+ "source": "hand-written"
+},
+  {
+ "name": "hand/issue16-followup-constructor-relative-to-getter",
+ "schema": "hand",
+ "element": {
+  "type": "element",
+  "typeName": "Slot",
+  "props": {
+   "content": [
+    {
+     "k": "BinOp",
+     "op": "constructor",
+     "left": {
+      "k": "BinOp",
+      "op": "__defineGetter__",
+      "left": {
+       "k": "Ref",
+       "n": "a"
+      },
+      "right": {
+       "k": "Ref",
+       "n": "b"
+      }
+     },
+     "right": {
+      "k": "Ref",
+      "n": "c"
+     }
+    },
+    {
+     "k": "BinOp",
+     "op": "__defineGetter__",
+     "left": {
+      "k": "BinOp",
+      "op": "constructor",
+      "left": {
+       "k": "Ref",
+       "n": "a"
+      },
+      "right": {
+       "k": "Ref",
+       "n": "b"
+      }
+     },
+     "right": {
+      "k": "Ref",
+      "n": "c"
+     }
+    }
+   ]
+  },
+  "partial": false,
+  "hasDynamicProps": false
+ },
+ "source": "hand-written"
+}
  ]
 }

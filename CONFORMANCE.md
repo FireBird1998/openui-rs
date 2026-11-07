@@ -20,7 +20,7 @@ Reference: `@openuidev/lang-core 1.1.0` at commit `47b9cae0d3b26a8c9d7514d5887a6
 | Stages on every prefix: preprocessing, tokens, statements and expression trees | 645 | 109,944 prefixes | the parse corpus, less its largest synthetic programs |
 | System prompts | 65 | 65 | |
 | Edit-mode merges | 3,239 | 3,239 | 3,179 generated, 53 hand-written, 1 recorded, 1 reference-test, 5 spec-fixture |
-| Element trees back to source | 619 | 619 | 1 fuzz, 69 hand-written, 518 parse corpus root, 31 reference-test |
+| Element trees back to source | 621 | 621 | 1 fuzz, 71 hand-written, 518 parse corpus root, 31 reference-test |
 | Enriched errors | 389 | 389 | every parse corpus case with errors |
 
 Quirks recorded: 19.
