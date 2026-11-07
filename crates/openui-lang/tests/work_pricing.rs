@@ -149,3 +149,14 @@ fn zero_work_is_cut_before_converting_a_runtime_expression_at_the_depth_limit() 
     assert_eq!((depth.size_limited, depth.depth_limited), (false, true));
     assert_eq!(depth, parse(2_000_000));
 }
+
+#[test]
+fn plucking_list_properties_charges_one_step_per_item() {
+    let program = "$xs = [{v: 1}, {v: 22}, {v: 333}]\n$a = $xs.v";
+    edges(program, 26, None);
+    assert!(
+        under(program, 26, 2_000_000)
+            .to_json()
+            .contains("\"$a\":[1,22,333]")
+    );
+}

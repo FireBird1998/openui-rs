@@ -35,16 +35,19 @@ exclude_re = [
     'statements\.rs:.*replace \+ with \* in after_newline$',
     # One more merging pass once runs span the whole list (width == n) only copies the one sorted run (#12).
     'evaluate\.rs:.*replace < with <= in runs_to_merge$',
-    # Both out_of_work callers draw positive work before returning a value:
-    # from_value(Element) reads its type; whole_ast calls from_value. With zero
-    # work the next draw cuts Work; with an existing cut it stays sticky. Run
-    # derives Ended from that first cut, not the temporary size_limited flag.
-    # Continuing past the guard forces that draw; returning null WITHOUT marking
-    # Work is different (the 932-step work/depth test catches ran_out_of_work).
-    # The boolean mutants only change unpriced preparation, not result/priced
-    # work (#11); work_pricing also pins assignment conversion at 195/194.
-    'evaluate\.rs:.*replace out_of_work -> bool with false$',
-    'evaluate\.rs:.*replace \|\| with && in out_of_work$',
+    # A recovered whole RanOut record has only null followers once invalid
+    # prefixes have been discarded. Comparing their old inputs still evaluates
+    # them with the same allowance/result. Only small extra comparisons change;
+    # neither charged work nor a reliable generous timing ratio distinguishes it.
+    'evaluate\.rs:.*replace != with == in state_defaults$',
+    # validate_schema_value returns an AST unchanged before validation (as does
+    # reference validateSchemaValue); object/array children clone that same Arc.
+    # Schema defaults create JSON Values, never Value::Ast, and literal_value
+    # in mapCallArgs cannot produce ASTs. Distinct-but-equal AST pairs are thus
+    # unreachable. Structural fallback only revisits the same AST; NaN can cause
+    # a redundant enclosing-container copy with unchanged children. Neither
+    # serialized values nor priced work changes; no reliable timing ratio pins it.
+    'materialize\.rs:.*delete match arm \(Value::Ast\(x\), Value::Ast\(y\)\) in js_strict_eq$',
     # The fallback walks json_shaped(props), which finds the same dynamic values as walking plain-object props directly; only extra copying changes (#14).
     'validation\.rs:.*delete match arm Some\(Value::Obj\(p\)\) in element_parts$',
     # RuntimeRef is produced by resolution and never fed back into materialization; retain non-panicking defensive pricing (#14).

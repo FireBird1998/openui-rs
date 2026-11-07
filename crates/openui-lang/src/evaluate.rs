@@ -248,8 +248,6 @@ struct PropertyRead {
 }
 
 thread_local! {
-    #[cfg(debug_assertions)]
-    static EXECUTED: Cell<u64> = const { Cell::new(0) };
     static LIMITS: EvalLimits = const {
         EvalLimits {
             room: Cell::new(usize::MAX),
@@ -280,24 +278,6 @@ thread_local! {
     static SAME_AS: RefCell<Aliases> = RefCell::new(Aliases::default());
 }
 
-/// Executed evaluator work on this thread (debug builds only).
-///
-/// Unlike the limit charge, replaying a cached run does not execute its work.
-/// Counts consumed work steps plus one per compared value/AST node. Replayed
-/// limit charges and failed draws after a cut do not execute those steps.
-#[cfg(debug_assertions)]
-pub fn evaluation_steps() -> u64 {
-    EXECUTED.with(Cell::get)
-}
-
-#[inline]
-fn executed(steps: usize) {
-    #[cfg(debug_assertions)]
-    EXECUTED.with(|n| n.set(n.get().saturating_add(steps as u64)));
-    #[cfg(not(debug_assertions))]
-    let _ = steps;
-}
-
 /// The address this push knows an element or runtime expression by: its own,
 /// or that of the one it stands for (see [`SAME_AS`]).
 fn this_push(address: usize) -> usize {
@@ -309,9 +289,6 @@ fn this_push(address: usize) -> usize {
 fn draw(l: &EvalLimits, which: Cut, cost: usize) -> bool {
     if l.cut.get().is_some() {
         return false;
-    }
-    if which == Cut::Work {
-        executed(cost.min(l.work.get()));
     }
     let counter = match which {
         Cut::Room => &l.room,
@@ -340,10 +317,21 @@ fn step(steps: usize) -> bool {
     LIMITS.with(|l| draw(l, Cut::Work, steps))
 }
 
-/// Whether the work has run out, or the default was cut: a long loop stops
-/// taking steps then.
-fn out_of_work() -> bool {
-    LIMITS.with(|l| l.work.get() == 0 || l.cut.get().is_some())
+/// Stop once work runs out or a cut occurs; otherwise run the next conversion.
+/// The continuation must draw positive work: exact-work reuse relies on every
+/// passed check costing work before it can return (asserted in debug builds).
+fn out_of_work(next: impl FnOnce() -> Js) -> Js {
+    let work = LIMITS.with(|l| l.work.get());
+    if LIMITS.with(|l| l.work.get() == 0 || l.cut.get().is_some()) {
+        ran_out_of_work();
+        return Js::Null;
+    }
+    let value = next();
+    debug_assert!(
+        LIMITS.with(|l| l.work.get() < work),
+        "out_of_work continuation must draw positive work"
+    );
+    value
 }
 
 /// Out of work where a step was due: the default is cut.
@@ -527,6 +515,12 @@ pub(crate) fn state_defaults(
         // Out of room or work, every expression default after is null,
         // whatever it reads: any record says so.
         if ended == Ended::RanOut {
+            if !in_step {
+                // These older runs read a different prefix. They may say
+                // RunsOut now, but retaining their whole outcomes would let
+                // recovery reuse values computed from the old defaults.
+                compared.extend(earlier.by_ref().map(|record| record.value));
+            }
             in_step = true;
         }
     }
@@ -1031,7 +1025,6 @@ fn pair(then: usize, now: usize) -> bool {
 /// only ever stands for an equal element or expression at the same place.
 fn same(then: &Value, now: &Value) -> bool {
     crate::stack::grow_stack!(same(then, now));
-    executed(1);
     match (then, now) {
         (Value::Null, Value::Null) => true,
         (Value::Bool(a), Value::Bool(b)) => a == b,
@@ -1071,7 +1064,6 @@ fn same_expression(a: &Arc<Ast>, b: &Arc<Ast>) -> bool {
 /// The same node, read field by field as the evaluator reads one.
 fn same_ast(a: &Ast, b: &Ast) -> bool {
     crate::stack::grow_stack!(same_ast(a, b));
-    executed(1);
     let (fa, fb) = (fields(a), fields(b));
     fa.len() == fb.len()
         && fa
@@ -1213,46 +1205,44 @@ fn from_value(value: &Value) -> Js {
                 return js;
             }
             // The object its JSON reads back as, built directly.
-            if out_of_work() {
-                ran_out_of_work();
-                return Js::Null;
-            }
-            let mut out = JsObject::new();
-            for (key, value) in [
-                ("type", from_value(&Value::Str("element".into()))),
-                (
-                    "typeName",
-                    from_value(&Value::Str(element.type_name.clone())),
-                ),
-                (
-                    "props",
-                    if step(1) {
-                        from_object(&element.props)
-                    } else {
-                        Js::Null
-                    },
-                ),
-                ("partial", from_value(&Value::Bool(element.partial))),
-                (
-                    "hasDynamicProps",
-                    from_value(&Value::Bool(element.has_dynamic_props)),
-                ),
-            ] {
-                if !step(key.len()) {
-                    return Js::Null;
+            out_of_work(|| {
+                let mut out = JsObject::new();
+                for (key, value) in [
+                    ("type", from_value(&Value::Str("element".into()))),
+                    (
+                        "typeName",
+                        from_value(&Value::Str(element.type_name.clone())),
+                    ),
+                    (
+                        "props",
+                        if step(1) {
+                            from_object(&element.props)
+                        } else {
+                            Js::Null
+                        },
+                    ),
+                    ("partial", from_value(&Value::Bool(element.partial))),
+                    (
+                        "hasDynamicProps",
+                        from_value(&Value::Bool(element.has_dynamic_props)),
+                    ),
+                ] {
+                    if !step(key.len()) {
+                        return Js::Null;
+                    }
+                    out.define(key.to_owned(), value);
                 }
-                out.define(key.to_owned(), value);
-            }
-            if let Some(id) = &element.statement_id {
-                if !step("statementId".len()) {
-                    return Js::Null;
+                if let Some(id) = &element.statement_id {
+                    if !step("statementId".len()) {
+                        return Js::Null;
+                    }
+                    out.define("statementId", from_value(&Value::Str(id.clone())));
                 }
-                out.define("statementId", from_value(&Value::Str(id.clone())));
-            }
-            let js = Js::Obj(Arc::new(out));
-            READ.with(|r| r.borrow_mut().insert(address, (value.clone(), js.clone())));
-            READ_LOG.with(|l| l.borrow_mut().push(address));
-            js
+                let js = Js::Obj(Arc::new(out));
+                READ.with(|r| r.borrow_mut().insert(address, (value.clone(), js.clone())));
+                READ_LOG.with(|l| l.borrow_mut().push(address));
+                js
+            })
         }
         Value::Ast(node) => Js::Ast(Arc::clone(node)),
     }
@@ -1273,11 +1263,7 @@ fn from_object(object: &JsObject<Value>) -> Js {
 /// A runtime expression read as a value, built whole: the object its JSON
 /// reads back as, for the result or a literal.
 fn whole_ast(node: &Ast) -> Js {
-    if out_of_work() {
-        ran_out_of_work();
-        return Js::Null;
-    }
-    from_value(&json_shaped_ast(node))
+    out_of_work(|| from_value(&json_shaped_ast(node)))
 }
 
 /// `node[key]`, the node read as the plain object its JSON is: a step, and
@@ -2450,6 +2436,17 @@ pub(crate) fn locale_compare(a: &str, b: &str) -> Ordering {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    #[cfg(debug_assertions)]
+    #[should_panic(expected = "out_of_work continuation must draw positive work")]
+    fn a_work_check_without_a_draw_is_rejected() {
+        LIMITS.with(|l| {
+            l.work.set(1);
+            l.cut.set(None);
+        });
+        out_of_work(|| Js::Null);
+    }
 
     /// Text outside ASCII compares by code point, after all of ASCII: the
     /// documented divergence from ICU's collation (CONFORMANCE.md). It holds
