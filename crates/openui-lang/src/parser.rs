@@ -6,7 +6,7 @@ use std::sync::Arc;
 
 use indexmap::IndexSet;
 
-use crate::MAX_RESULT_SIZE;
+use crate::Limits;
 use crate::ast::{Ast, RefType};
 use crate::builtins::{is_builtin, is_reserved_call};
 use crate::evaluate::{has_runtime, state_defaults};
@@ -221,13 +221,31 @@ fn query_cycles(queries: &[QueryStatement]) -> Vec<Vec<String>> {
 /// library's root component: with no `root` statement, the first statement
 /// that calls it is the entry.
 pub fn parse(input: &str, library: &Library, root_name: Option<&str>) -> ParseResult {
-    crate::stack::grow_stack!(parse(input, library, root_name));
-    let (mut result, stalled) = progress::watch(|| parse_text(input, library, root_name));
-    result.size_limited |= stalled;
+    parse_with_limits(input, library, root_name, Limits::DEFAULT)
+}
+
+/// [`parse`] within `limits` instead of the defaults.
+pub fn parse_with_limits(
+    input: &str,
+    library: &Library,
+    root_name: Option<&str>,
+    limits: Limits,
+) -> ParseResult {
+    crate::stack::grow_stack!(parse_with_limits(input, library, root_name, limits));
+    // Past the program-size limit, the rest is ignored as if the stream had
+    // stopped there.
+    let (input, cut) = Limits::fit(input, limits.program_size());
+    let (mut result, stalled) = progress::watch(|| parse_text(input, library, root_name, limits));
+    result.size_limited |= stalled || cut;
     result
 }
 
-fn parse_text(input: &str, library: &Library, root_name: Option<&str>) -> ParseResult {
+fn parse_text(
+    input: &str,
+    library: &Library,
+    root_name: Option<&str>,
+    limits: Limits,
+) -> ParseResult {
     let trimmed = preprocess(input);
     if trimmed.is_empty() {
         return ParseResult::empty(true);
@@ -245,7 +263,7 @@ fn parse_text(input: &str, library: &Library, root_name: Option<&str>) -> ParseR
         if progress::stalled_so_far() {
             break;
         }
-        let (expr, limited) = parse_expression_with_limit(&stmt.tokens);
+        let (expr, limited) = parse_expression_with_limit(&stmt.tokens, limits.depth());
         depth_limited |= limited;
         table.define(&stmt.id, classify(stmt, expr));
     }
@@ -256,8 +274,11 @@ fn parse_text(input: &str, library: &Library, root_name: Option<&str>) -> ParseR
         &mut cache,
         was_incomplete,
         count,
-        library,
-        root_name,
+        Against {
+            library,
+            root_name,
+            limits,
+        },
         None,
     );
     result.depth_limited |= depth_limited;
@@ -335,15 +356,28 @@ pub(crate) struct PartialRef<'a> {
     pub slots: &'a [Slot],
 }
 
+/// What a parse is against, the same for every result of a stream: the
+/// component library, its root component, and the limits.
+#[derive(Clone, Copy)]
+pub(crate) struct Against<'a> {
+    pub library: &'a Library,
+    pub root_name: Option<&'a str>,
+    pub limits: Limits,
+}
+
 pub(crate) fn build_result(
     table: &mut Table,
     cache: &mut Cache,
     was_incomplete: bool,
     statement_count: usize,
-    library: &Library,
-    root_name: Option<&str>,
+    against: Against,
     partial: Option<PartialRef>,
 ) -> ParseResult {
+    let Against {
+        library,
+        root_name,
+        limits,
+    } = against;
     let entry = pick_entry(table, root_name);
     let entry_id = entry.map(|(slot, _)| table.name(slot).to_owned());
     let mut ctx = Ctx {
@@ -355,6 +389,7 @@ pub(crate) fn build_result(
         current_statement_id: entry_id.clone(),
         depth: 0,
         size: 0,
+        limits,
         frame: Frame::default(),
     };
     let mut root = None;
@@ -366,10 +401,16 @@ pub(crate) fn build_result(
         let stmt = ctx.table.get(slot).expect("defined statement");
         let mut materialized = materialize_value(stmt.expr(), &mut ctx);
         element_shaped = tag_statement(&mut materialized, ctx.table.name(slot));
-        match materialized {
-            Value::Element(element) => root = Some(Arc::unwrap_or_clone(element)),
-            Value::Ast(expression) if contains_component(&expression) => {
-                root_expression = Some(expression);
+        // A value frees its tree itself, so nothing moves out of it: the
+        // element is shared out, and owned alone once the value is gone.
+        match &materialized {
+            Value::Element(element) => {
+                let element = Arc::clone(element);
+                drop(materialized);
+                root = Some(Arc::unwrap_or_clone(element));
+            }
+            Value::Ast(expression) if contains_component(expression) => {
+                root_expression = Some(Arc::clone(expression));
             }
             _ => {}
         }
@@ -485,8 +526,11 @@ fn extract_statements(
         }
     }
     // Evaluating builds no more than what's left of the result's budget.
-    let budget = MAX_RESULT_SIZE.saturating_sub(ctx.size - expressions_size);
-    let evaluated = state_defaults(state, budget);
+    let budget = ctx
+        .limits
+        .result_size()
+        .saturating_sub(ctx.size - expressions_size);
+    let evaluated = state_defaults(state, budget, ctx.limits.depth());
     ctx.frame.size_limited |= evaluated.size_limited;
     ctx.frame.limited |= evaluated.depth_limited;
     let (mut state, undefined) = (evaluated.state, evaluated.undefined);

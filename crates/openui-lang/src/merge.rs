@@ -28,7 +28,7 @@ fn parse_statements(input: &str) -> Vec<Parsed<'_>> {
     split(&tokenize(input))
         .into_iter()
         .map(|statement| {
-            let (ast, _) = parse_expression_with_limit(&statement.tokens);
+            let (ast, _) = parse_expression_with_limit(&statement.tokens, crate::MAX_DEPTH);
             Parsed {
                 raw: js::trim_end(&input[statement.start.byte..statement.end.byte]),
                 id: statement.id,

@@ -5,7 +5,9 @@
 
 use std::sync::Arc;
 
-use openui_ffi::{ComponentLibrary, StreamSession, merge_statements, parse};
+use openui_ffi::{
+    ComponentLibrary, ParseLimits, StreamSession, merge_statements, parse, parse_with_limits,
+};
 
 const STACK: usize = 64 * 1024;
 
@@ -57,6 +59,35 @@ fn the_deepest_programs_run_on_a_small_stack() {
                 assert!(session.finish().depth_limited);
                 drop(session);
                 merge_statements(program.clone(), program, None);
+            }
+        })
+        .unwrap()
+        .join()
+        .expect("the binding panicked");
+}
+
+#[test]
+fn a_raised_depth_limit_runs_on_a_small_stack() {
+    let library = library();
+    let limits = ParseLimits {
+        depth: Some(20_000),
+        ..ParseLimits::default()
+    };
+    std::thread::Builder::new()
+        .stack_size(STACK)
+        .spawn(move || {
+            for program in &deepest_programs()[..2] {
+                // 10,000 levels fit under the raised limit: nothing is cut.
+                let output =
+                    parse_with_limits(program.clone(), library.clone(), None, limits.clone());
+                assert!(!output.depth_limited);
+                let session = StreamSession::with_limits(library.clone(), None, limits.clone());
+                let chars: Vec<char> = program.chars().collect();
+                for chunk in chars.chunks(chars.len().div_ceil(4)) {
+                    session.push(chunk.iter().collect());
+                }
+                assert!(!session.finish().depth_limited);
+                drop(session);
             }
         })
         .unwrap()

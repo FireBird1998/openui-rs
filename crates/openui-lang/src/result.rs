@@ -9,6 +9,10 @@ use crate::ast::{Ast, write_ast};
 use crate::js::{JsObject, json_number, write_json_number, write_json_string};
 
 /// A materialized prop value: what the reference parser puts in an element's props.
+///
+/// It frees its tree with a loop rather than recursion, so dropping one needs
+/// no stack however deep it nests. That makes it [`Drop`]: a pattern can't
+/// move a field out, so borrow it and clone the `Arc` instead.
 #[derive(Clone, Debug, PartialEq)]
 pub enum Value {
     /// `null`: a literal, a dropped component, or an unresolved reference.
@@ -214,15 +218,17 @@ pub struct ParseResult {
     pub query_statements: Vec<QueryStatement>,
     /// `Mutation(...)` statements, in program order.
     pub mutation_statements: Vec<MutationStatement>,
-    /// The program nested deeper than [`crate::MAX_DEPTH`] levels and the
-    /// too-deep parts were dropped. (The reference throws on such input.)
-    /// Not part of the JSON.
+    /// The program nested deeper than the depth limit ([`crate::Limits::depth`])
+    /// and the too-deep parts were dropped. (The reference throws on such
+    /// input.) Not part of the JSON.
     pub depth_limited: bool,
-    /// The result would have grown past [`crate::MAX_RESULT_SIZE`] (statements
-    /// inlined into each other until it doubles at every level), and what
-    /// didn't fit was dropped; or, in a release build, a loop reading the
-    /// input stalled (a bug in the core) and the parse ended there. Not part
-    /// of the JSON.
+    /// The result was cut, and what didn't fit was dropped: the program was
+    /// longer than the program-size limit and the rest was ignored
+    /// ([`crate::Limits::program_size`]); or the result would have grown past
+    /// the result-size limit ([`crate::Limits::result_size`]: statements
+    /// inlined into each other until it doubles at every level, say); or, in
+    /// a release build, a loop reading the input stalled (a bug in the core)
+    /// and the parse ended there. Not part of the JSON.
     pub size_limited: bool,
 }
 

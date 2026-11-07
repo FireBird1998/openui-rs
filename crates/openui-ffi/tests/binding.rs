@@ -7,10 +7,10 @@ use std::fmt::Write;
 use std::sync::Arc;
 
 use openui_ffi::{
-    ComponentLibrary, OpenUiError, ParseOutput, StreamSession, generate_system_prompt,
-    merge_statements, parse,
+    ComponentLibrary, OpenUiError, ParseLimits, ParseOutput, StreamSession, generate_system_prompt,
+    merge_statements, parse, parse_with_limits,
 };
-use openui_lang::{ParseResult, StreamParser};
+use openui_lang::{Limits, ParseResult, StreamParser};
 
 /// Whether the binding's output is the core's result: the same JSON and flags.
 fn same(output: &ParseOutput, result: &ParseResult) -> bool {
@@ -256,6 +256,54 @@ fn a_schema_that_is_not_json_is_an_error() {
         panic!("loaded a truncated schema");
     };
     assert!(matches!(error, OpenUiError::InvalidSchema { .. }));
+}
+
+#[test]
+fn limits_reach_the_core_one_shot_and_streaming() {
+    let schema = r#"{"$defs": {"Stack": {"properties": {"children": {"type": "array"}}}}}"#;
+    let library = ComponentLibrary::new(schema.to_owned()).unwrap();
+    let core_library =
+        openui_lang::Library::from_json_schema(&serde_json::from_str(schema).unwrap());
+    let program = format!("root = Stack({}1{})", "[".repeat(20), "]".repeat(20));
+    for (limits, core_limits) in [
+        (
+            ParseLimits {
+                depth: Some(10),
+                ..ParseLimits::default()
+            },
+            Limits::default().with_depth(10),
+        ),
+        (
+            ParseLimits {
+                program_size: Some(30),
+                ..ParseLimits::default()
+            },
+            Limits::default().with_program_size(30),
+        ),
+        (
+            ParseLimits {
+                result_size: Some(100),
+                ..ParseLimits::default()
+            },
+            Limits::default().with_result_size(100),
+        ),
+    ] {
+        let want = openui_lang::parse_with_limits(&program, &core_library, None, core_limits);
+        assert!(want.depth_limited || want.size_limited);
+        let got = parse_with_limits(program.clone(), library.clone(), None, limits.clone());
+        assert!(same(&got, &want));
+        let session = StreamSession::with_limits(library.clone(), None, limits);
+        for chunk in chunks_of(&program, 9) {
+            session.push(chunk);
+        }
+        assert!(same(&session.finish(), &want));
+    }
+    // No limits given are the defaults.
+    let defaults = parse_with_limits(program.clone(), library, None, ParseLimits::default());
+    assert!(same(
+        &defaults,
+        &openui_lang::parse(&program, &core_library, None)
+    ));
 }
 
 #[test]

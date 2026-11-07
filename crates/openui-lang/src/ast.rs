@@ -9,6 +9,10 @@ use std::sync::Arc;
 use crate::js::{JsObject, write_json_number, write_json_string};
 
 /// One expression node.
+///
+/// It frees its tree with a loop rather than recursion, so dropping one needs
+/// no stack however deep it nests. That makes it [`Drop`]: a pattern can't
+/// move a field out, so borrow it and clone the `Arc` instead.
 #[derive(Clone, Debug, PartialEq)]
 pub enum Ast {
     /// A component or builtin call: `Header("Hello")`, `@Count(items)`.

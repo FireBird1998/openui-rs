@@ -318,6 +318,11 @@ impl<V> JsObject<V> {
     pub fn values(&self) -> impl Iterator<Item = &V> {
         self.iter().map(|(_, v)| v)
     }
+
+    /// Take every value out, in no particular order, leaving it empty.
+    pub(crate) fn drain_values(&mut self) -> impl Iterator<Item = V> + '_ {
+        self.entries.drain(..).map(|(_, v)| v)
+    }
 }
 
 /// `Object.entries(value)` for a parsed JSON value, values cloned: an
