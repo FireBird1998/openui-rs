@@ -187,9 +187,10 @@
 //!   evaluated, an item sorted, filtered or copied into an `@Each` template,
 //!   a node of a value read, a byte built. Past it, the default being
 //!   evaluated is null, as is every expression default after it
-//!   ([`ParseResult::size_limited`]); so past the result size. A default cut
-//!   by any limit stops there, taking no more work. A step takes
-//!   nanoseconds, so a parse stays within a fraction of a second.
+//!   ([`ParseResult::size_limited`]), and the same goes for a default that
+//!   builds past what the result size leaves. A default cut by any limit
+//!   stops there, taking no more work. A step takes nanoseconds, so a parse
+//!   stays within a fraction of a second.
 //! - A stall: every loop that reads input either moves forward or stops. A
 //!   loop that stopped moving forward would be a bug in the core, never the
 //!   input's fault. In debug builds it panics; in release builds the parse
