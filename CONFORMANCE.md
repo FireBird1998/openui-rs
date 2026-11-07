@@ -5,7 +5,7 @@ The `openui-lang` crate is a port of the OpenUI Lang language layer in `@openuid
 - **Parse results:** `ParseResult::to_json()` equals `JSON.stringify` of the reference's result, for one-shot parsing and after every push of a streaming parse, with both sides cutting the text at the same code points.
 - **Everything else:** the same system prompt string, the same merged program text, the same source from `jsonToOpenUI`, the same enriched errors. Where the reference throws, the core returns an error.
 
-The reference is lang-core 1.1.0 (OpenUI Lang 1.1), and the core matches it on every case in the corpus: nothing is pending. The quirks and divergences below were checked against 1.1.0 on 2026-11-06. Three quirks were fixed upstream in 1.1, and the core follows. The core conformed to 1.0.1 and to 0.3.0 before; those states are the local tags `lang-core-1.0.1` and `lang-core-0.3.0`, and aren't kept up.
+The reference is lang-core 1.1.0 (OpenUI Lang 1.1), and the core matches it on every case in the corpus: nothing is pending. The quirks and divergences below were checked against 1.1.0 on 2026-11-06, and quirks 21 and 22 added on 2026-11-07. Three quirks were fixed upstream in 1.1, and the core follows. The core conformed to 1.0.1 and to 0.3.0 before; those states are the local tags `lang-core-1.0.1` and `lang-core-0.3.0`, and aren't kept up.
 
 Behaviour that looks wrong in the reference is reproduced anyway and recorded as a [quirk](conformance/QUIRKS.md) with a draft upstream report. The core departs from the reference only where the list of [divergences](#divergences) below says so, all on inputs no real program produces.
 
@@ -16,14 +16,14 @@ Reference: `@openuidev/lang-core 1.1.0` at commit `47b9cae0d3b26a8c9d7514d5887a6
 
 | Compared with the reference | Cases | Checks | Cases by source |
 |---|---:|---:|---|
-| Parse results: one-shot, and after every push and at the end of 8 chunkings, 2 resync sequences and any recorded chunks | 637 | 358,377 results | 7 benchmark, 107 docs, 46 examples, 13 fuzz, 142 hand-written, 2 recorded, 259 reference-test, 58 spec-fixture, 3 synthetic |
-| Stages on every prefix: preprocessing, tokens, statements and expression trees | 635 | 108,812 prefixes | the parse corpus, less its largest synthetic programs |
+| Parse results: one-shot, and after every push and at the end of 8 chunkings, 2 resync sequences and any recorded chunks | 641 | 358,786 results | 7 benchmark, 107 docs, 46 examples, 13 fuzz, 146 hand-written, 2 recorded, 259 reference-test, 58 spec-fixture, 3 synthetic |
+| Stages on every prefix: preprocessing, tokens, statements and expression trees | 639 | 108,930 prefixes | the parse corpus, less its largest synthetic programs |
 | System prompts | 61 | 61 | |
-| Edit-mode merges | 3,235 | 3,235 | 3,179 generated, 49 hand-written, 1 recorded, 1 reference-test, 5 spec-fixture |
-| Element trees back to source | 605 | 605 | 1 fuzz, 62 hand-written, 511 parse corpus root, 31 reference-test |
-| Enriched errors | 378 | 378 | every parse corpus case with errors |
+| Edit-mode merges | 3,239 | 3,239 | 3,179 generated, 53 hand-written, 1 recorded, 1 reference-test, 5 spec-fixture |
+| Element trees back to source | 607 | 607 | 1 fuzz, 62 hand-written, 513 parse corpus root, 31 reference-test |
+| Enriched errors | 380 | 380 | every parse corpus case with errors |
 
-Quirks recorded: 17.
+Quirks recorded: 19.
 Not matched yet, listed in `conformance/pending/`: none.
 <!-- /counts -->
 
@@ -87,6 +87,10 @@ In the reference, reproduced and recorded in [QUIRKS.md](conformance/QUIRKS.md),
 18. An empty program parses as incomplete (a candidate, found by the fences invariant).
 19. A stray character before a ternary's `?` ends a streamed statement but not a parsed one (a candidate, found by the stream-end invariant).
 20. ~~Merging reads comments as code: a quote in a `//` comment can make a patch lose its statements (a candidate, found by the merge invariants).~~ Fixed in 1.1.0.
+21. A statement reached through a reference cycle comes out as two different elements, and converting back to source keeps one (new in 1.1, found by the round-trip invariant; its upstream report is drafted as an issue of its own).
+22. An open ternary takes in what merging writes after it, so a second merge reads the program differently (new in 1.1, following from its fix for quirk 6; found by the merge-twice invariant; no upstream report).
+
+The long runs against 1.1 (lang-core 1.1 ticket 08) found four candidates, which the maintainer decided on 2026-11-07: two are quirks 21 and 22; one is quirk 4's shape, which the stream-end invariant now recognizes; and the reference throwing a `TypeError` on an object with its own `toString` in a state default stays a [divergence](#divergences), with an upstream report drafted for the maintainer to file.
 
 Also reported, though not a quirk because the core doesn't reproduce it: a few lines that each reference the line before twice make the reference's `parse` take exponential time and memory (ticket 14).
 

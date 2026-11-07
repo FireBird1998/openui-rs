@@ -2,7 +2,7 @@
 
 Behaviour of the reference parser that looks wrong but that the core reproduces anyway, because the contract is to match the reference byte for byte. Fixing a quirk happens upstream first; the core follows when the pinned commit moves.
 
-Each entry has a minimal program, what the reference does, the corpus cases that pin it, and a draft upstream report. Nothing here has been filed yet. Every entry was checked again against lang-core 1.1.0 on 2026-11-06. The cases that pin each one match 1.1's results, so each still holds, except 6, 8 and 20, which 1.1 fixed. Quirks that upstream fixed are kept, under their numbers, in [Fixed upstream](#fixed-upstream).
+Each entry has a minimal program, what the reference does, the corpus cases that pin it, and a draft upstream report (21's is drafted as an issue of its own, and 22 has none). Nothing here has been filed yet. Every entry was checked again against lang-core 1.1.0 on 2026-11-06. The cases that pin each one match 1.1's results, so each still holds, except 6, 8 and 20, which 1.1 fixed. Quirks that upstream fixed are kept, under their numbers, in [Fixed upstream](#fixed-upstream).
 
 ## 1. An apostrophe in unfenced prose swallows the program
 
@@ -62,7 +62,7 @@ A component's positional order is `Object.keys(properties)`, and JavaScript list
 ## 4. Streaming counts redefined statements; one-shot doesn't
 
 - **Found:** 2026-10-06, noted in ticket 01, confirmed in ticket 07. Reference commit `bba1d251`; still so in 1.0.1 (`eb20708`).
-- **Pinned by:** `hand/18-redefined-statement` and `hand/85-streaming-redefinition-1127` under every streaming chunking, and 19 more cases the stream-end check lists.
+- **Pinned by:** `hand/18-redefined-statement`, `hand/85-streaming-redefinition-1127` and `hand/145-an-empty-redefinition-after-a-stray-bracket` under every streaming chunking, and 19 more cases the stream-end check lists.
 
 ```
 root = Text(a)
@@ -74,7 +74,7 @@ a = "two"
 
 **Why:** one-shot uses the number of distinct ids (`stmtMap.size`), while the stream parser increments `completedCount` for every completed statement, redefinitions included. The tree and everything else agree, so this only matters to anything that reads `statementCount`.
 
-**Exception to the chunking and stream-end invariants:** a program that defines a name twice, when the results differ in `statementCount`.
+**Exception to the chunking and stream-end invariants:** a program that defines a name twice, when the results differ in `statementCount`. That includes a line defining a name again with nothing after its `=`, behind a stray opening bracket: `[`, `a=("")`, `a=` streams to a count of 2 and parses to 1. The invariants found that shape twice in a million programs against 1.1 (lang-core 1.1 ticket 08, candidate 3), and 1.0.1's run had it too; the maintainer decided on 2026-11-07 that it's this quirk, not a new one.
 
 **Draft upstream report:**
 
@@ -358,6 +358,43 @@ a = Text("x")
 **Draft upstream report:**
 
 > **The stream parser and `parse()` split statements differently before a `?` that follows a skipped character.** `scanNewCompleted` checks whether the next line's first non-whitespace *character* is `?`, while the batch split checks its first *token*, and the lexer skips characters such as a backtick or a backslash. So for `root = Root([a])\na = Text("x")\n\`? "y" : "z"`, `parse()` continues `a`'s ternary and a stream ends `a` at the newline. language.md, section 1.4 says the batch parser, the streaming parser and the merge must agree on these boundaries byte for byte. Look for the next line's first token in the stream parser too.
+
+## 21. A statement reached through a reference cycle comes out two ways, and converting back to source keeps one
+
+- **Found:** 2026-11-06, by the round-trip and merge-own-source invariants on a million programs against lang-core 1.1.0 (`47b9cae`; lang-core 1.1 ticket 08): 91 of the 100 programs broken on both parsers. 1.0.1's run (`eb20708`) had 1.
+- **Pinned by:** `hand/142-a-reference-cycle-through-a-list` (the tree, and the source converting it back writes), and `hand/143-a-reference-cycle-written-back` (that source, parsed again).
+- **Status:** a quirk, decided by the maintainer on 2026-11-07 (openui-rs #1). An upstream report is drafted for the maintainer to file (openui-rs #18).
+
+```
+root = Root([x, y])
+y = Root([x])
+x = [y]
+```
+
+**Reference behaviour:** `y` comes out as two different elements in one tree. Reached through `x` (the first child, `[y]`), it's `Root` with `children: []`: its own `x` closes the cycle back to `x` and is cut. Reached directly (the second child), it's `Root` with `children: [[]]`: its `x` is materialized, and the `y` inside that is cut. Converting the tree back to source writes each statement once, from the first place it meets it: `root = Root([[y], y])` and `y = Root([])`. Parsed again, both `y`s are `children: []`, so the tree changes. Merging the program's own source back into it gives the same changed tree.
+
+**Why:** materializing memoizes a statement's result per pass, except a result that met an unresolved or cyclic reference, which "depends on the path, so it is not memoized" (`resolveRef` in `materialize.ts`). That's deliberate: where a cycle is cut depends on where it was entered. But every element keeps its `statementId`, and `jsonToOpenUI` writes one definition per statement id, so a statement that came out two ways can't be written back.
+
+**Exception to the round-trip and merge-own-source invariants:** a program whose statements refer to each other in a cycle, and whose tree has one statement as two different elements.
+
+**Upstream report:** drafted as a `ready-for-human` issue (openui-rs #18) for the maintainer to file.
+
+## 22. An open ternary takes in what merging writes after it, so a second merge reads the program differently
+
+- **Found:** 2026-11-06, by the merge-twice invariant on a million programs against lang-core 1.1.0 (`47b9cae`; lang-core 1.1 ticket 08): 7 programs, broken on both parsers.
+- **Pinned by:** merge cases `hand/an-open-ternary-in-the-patch`, `hand/an-open-ternary-in-the-patch-merged-again`, `hand/an-open-ternary-in-the-program` and `hand/an-open-ternary-in-the-program-merged-again`, and `hand/144-an-open-ternary-takes-in-the-next-line`.
+- **Status:** a quirk, decided by the maintainer on 2026-11-07 (openui-rs #1). It follows from 1.1's fix for quirk 6. No upstream report.
+
+```
+existing:  root = Root([a])          patch:  root = $flag
+           a = Text("A")                       ? a
+```
+
+**Reference behaviour:** the first merge gives `root = $flag\n  ? a\na = Text("A")`. Parsed, `root`'s ternary is still open (a `?` without its `:`), so `a = Text("A")` is read as part of `root`, and `a` is unresolved. Merging the same patch again gives `root = $flag\n  ? a`: the second merge splits the program as the parser does, sees `a = Text("A")` as part of `root`, and replaces it with the patch's `root`. An open ternary in the existing program does the same from the other side: `s = 0 ?` merged with `$n = 0` gives `s = 0 ?\n$n = 0`, which parses as `s`'s ternary, so the second merge doesn't find `$n` and appends it again.
+
+**Why:** a statement doesn't end at a newline while a ternary is open (language.md, section 4, rule 1). The merge writes what it keeps or appends after such a statement, as quirk 15's unfinished strings and brackets do. Since 1.1 (`47b9cae`, #1480, the fix for quirk 6), the merge splits both texts with the parser's own statement splitting, so the next merge reads the joined statement as one. Before, it split at every newline, which dropped a ternary's continuation lines instead (quirk 6).
+
+**Exception to the merge invariants:** a program, a patch or a first merge's result with a statement whose ternary is still open: more `?` than `:` outside brackets.
 
 # Fixed upstream
 

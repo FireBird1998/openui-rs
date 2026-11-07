@@ -337,6 +337,69 @@ fn has_unjsonable_number(input: &str) -> bool {
     false
 }
 
+/// Whether a program's statements refer to each other in a cycle (`x = [y]`,
+/// `y = Root([x])`), as the parser splits it.
+fn refers_in_a_cycle(input: &str) -> bool {
+    let graph: Vec<(String, Vec<String>)> = split(&tokenize(&preprocess(input)))
+        .into_iter()
+        .map(|s| {
+            let mut names = Vec::new();
+            parse_expression(&s.tokens).walk(&mut |node| {
+                if let Ast::Ref(name) = node {
+                    names.push(name.clone());
+                }
+            });
+            (s.id, names)
+        })
+        .collect();
+    // Depth first, each name visited once: a name met again while it's still
+    // on the path closes a cycle.
+    fn closes<'g>(
+        graph: &'g [(String, Vec<String>)],
+        id: &'g str,
+        path: &mut Vec<&'g str>,
+        done: &mut Vec<&'g str>,
+    ) -> bool {
+        if path.contains(&id) {
+            return true;
+        }
+        if done.contains(&id) {
+            return false;
+        }
+        path.push(id);
+        let found = graph
+            .iter()
+            .filter(|(name, _)| name == id)
+            .flat_map(|(_, refs)| refs)
+            .any(|r| closes(graph, r, path, done));
+        path.pop();
+        done.push(id);
+        found
+    }
+    let mut done = Vec::new();
+    graph
+        .iter()
+        .any(|(id, _)| closes(&graph, id, &mut Vec::new(), &mut done))
+}
+
+/// Whether one statement comes out as two different elements in a tree, as
+/// it does reached through a reference cycle and around it. Converting back
+/// to source writes each statement once, so one of the two is lost.
+fn one_statement_twice(tree: &Value) -> bool {
+    let mut all = Vec::new();
+    nodes(tree, &mut all);
+    let elements: Vec<(&Value, Value)> = all
+        .into_iter()
+        .filter(|n| n.get("type") == Some(&json!("element")))
+        .filter_map(|n| Some((n.get("statementId")?, normalized(n))))
+        .collect();
+    elements.iter().enumerate().any(|(i, (id, element))| {
+        elements[..i]
+            .iter()
+            .any(|(other, seen)| other == id && seen != element)
+    })
+}
+
 /// The quirk behind a broken round trip, if a known one explains it.
 fn round_trip_exception(input: &str, tree: &Value, why: &str) -> Option<&'static str> {
     let mut all = Vec::new();
@@ -411,6 +474,9 @@ fn round_trip_exception(input: &str, tree: &Value, why: &str) -> Option<&'static
                 .is_some_and(|name| PROTOTYPE_NAMES.contains(&name))
     }) {
         return Some("quirk 2: a call named after an Object.prototype member");
+    }
+    if refers_in_a_cycle(input) && one_statement_twice(tree) {
+        return Some("quirk 21: a statement reached through a reference cycle");
     }
     if has_node_shaped_literal(input) {
         return Some("an object literal shaped like a tree node");
@@ -662,7 +728,7 @@ fn stream_exception(input: &str, why: &str) -> Option<&'static str> {
     if why.contains("/meta/incomplete") && split(&tokenize(&preprocess(input))).is_empty() {
         return Some("quirk 18: a program without statements");
     }
-    if why.contains("/meta/statementCount") && redefines(input) {
+    if why.contains("/meta/statementCount") && (redefines(input) || redefined_empty(input)) {
         return Some("quirk 4: streaming counts a redefinition");
     }
     if mismatched_bracket(&preprocess(input)) {
@@ -840,8 +906,39 @@ fn merge_exception(input: &Input, merged: Option<&str>) -> Option<&'static str> 
                 .lines()
                 .any(|line| line.contains('=') && (auto_close(line).1 || mismatched_bracket(line)))
     };
-    (unbalanced(&input.program.input) || unbalanced(&input.patch))
-        .then_some("quirk 15: an unfinished statement takes in what follows it")
+    if unbalanced(&input.program.input) || unbalanced(&input.patch) {
+        return Some("quirk 15: an unfinished statement takes in what follows it");
+    }
+    // A ternary still open (a `?` without its `:`) keeps its statement going
+    // across lines, so what the merge writes after it joins it; the next
+    // merge, splitting as the parser does (1.1's fix for quirk 6), sees it as
+    // part of that statement.
+    [
+        &input.program.input,
+        &input.patch,
+        merged.unwrap_or_default(),
+    ]
+    .iter()
+    .any(|text| open_ternary(text))
+    .then_some("quirk 22: an open ternary takes in what the merge writes after it")
+}
+
+/// Whether a statement, as the parser splits the text, ends with a ternary
+/// still open: more `?` than `:` outside brackets.
+fn open_ternary(text: &str) -> bool {
+    split(&tokenize(&preprocess(text))).iter().any(|s| {
+        let (mut depth, mut open) = (0usize, 0isize);
+        for token in s.tokens.iter() {
+            match token {
+                Token::LParen | Token::LBrack | Token::LBrace => depth += 1,
+                Token::RParen | Token::RBrack | Token::RBrace => depth = depth.saturating_sub(1),
+                Token::Question if depth == 0 => open += 1,
+                Token::Colon if depth == 0 => open -= 1,
+                _ => {}
+            }
+        }
+        open > 0
+    })
 }
 
 /// **Merging behaves, twice:** applying a patch twice gives what applying it
@@ -1143,6 +1240,31 @@ fn redefines(input: &str) -> bool {
     split_twice || lines_twice
 }
 
+/// Whether a line defines a name again with nothing after its `=` (`a=`),
+/// which the split doesn't count as a statement but a stream's end does,
+/// behind a stray opening bracket (`[`, `a=("")`, `a=`).
+fn redefined_empty(input: &str) -> bool {
+    let mut names: Vec<String> = Vec::new();
+    for line in input.lines() {
+        if let Some(name) = statement_name(line) {
+            names.push(name);
+            continue;
+        }
+        let tokens = tokenize(line);
+        if let [
+            Token::Ident(name) | Token::Type(name) | Token::StateVar(name),
+            Token::Equals,
+            Token::Newline | Token::Eof,
+            ..,
+        ] = &tokens[..]
+            && names.contains(name)
+        {
+            return true;
+        }
+    }
+    false
+}
+
 /// The names a statement's expression refers to.
 fn references(statement: &str) -> Vec<String> {
     let tokens = tokenize(statement);
@@ -1336,4 +1458,138 @@ fn finished_stay_put(engine: &mut dyn Engine, inputs: &[&Input]) -> Vec<Verdict>
             Verdict::Holds
         })
         .collect()
+}
+
+// ─── Tests ──────────────────────────────────────────────────────────────────
+
+/// Each exception against programs the invariants found broken on both
+/// parsers (seed 82, against lang-core 1.1), run on the core, which matches
+/// the reference on them; and near misses the exception mustn't explain.
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::engine::Core;
+    use crate::{load_corpus, repo_root};
+
+    fn input(lib: &str, program: &str, patch: &str) -> Input {
+        Input {
+            program: Program {
+                lib: lib.to_owned(),
+                input: program.to_owned(),
+                root: None,
+                sizes: vec![1; program.chars().count()],
+            },
+            patch: patch.to_owned(),
+        }
+    }
+
+    fn verdict(rule: &str, input: &Input) -> Verdict {
+        let corpus = load_corpus(&repo_root().join("conformance"));
+        let mut core = Core {
+            libraries: &corpus.libraries,
+        };
+        let rule = RULES.iter().find(|r| r.name == rule).expect("a rule");
+        (rule.check)(&mut core, &[input]).remove(0)
+    }
+
+    fn exception(verdict: &Verdict) -> Option<&'static str> {
+        match verdict {
+            Verdict::Broken { exception, .. } => *exception,
+            other => panic!("expected the rule broken, got {other:?}"),
+        }
+    }
+
+    fn is(found: Option<&str>, quirk: &str) -> bool {
+        found.is_some_and(|q| q.starts_with(&format!("{quirk}:")))
+    }
+
+    #[test]
+    fn a_reference_cycle_breaks_the_round_trip_as_quirk_21() {
+        let program = "root=Root([x y])\nx=[y]\ny=Root([x])";
+        let found = exception(&verdict("round-trip", &input("hand", program, "")));
+        assert!(is(found, "quirk 21"), "{found:?}");
+    }
+
+    #[test]
+    fn a_reference_cycle_breaks_merging_its_own_source_as_quirk_21() {
+        let program = "root=Root([x y])\nx=Root([y])\ny=([x])";
+        let found = exception(&verdict("merge-own-source", &input("hand", program, "")));
+        assert!(is(found, "quirk 21"), "{found:?}");
+    }
+
+    #[test]
+    fn a_patch_with_an_open_ternary_breaks_merging_twice_as_quirk_22() {
+        let patch = "Here's the change:\n\n```openui-lang\nroot = $dark\n  ? darkPage\n```\n\nAnything else?";
+        let found = exception(&verdict(
+            "merge-twice",
+            &input("spec-1.0", "root=a\ndarkPage=r", patch),
+        ));
+        assert!(is(found, "quirk 22"), "{found:?}");
+    }
+
+    #[test]
+    fn a_program_with_an_open_ternary_breaks_merging_twice_as_quirk_22() {
+        let patch = "$n = null\nroot = Stack([Text(s)])\r\r\n$n = 0\r\r\n$n = 0\r\r";
+        let found = exception(&verdict(
+            "merge-twice",
+            &input("spec-1.0", "root=()\ns=0?", patch),
+        ));
+        assert!(is(found, "quirk 22"), "{found:?}");
+    }
+
+    #[test]
+    fn an_empty_redefinition_after_a_stray_bracket_is_quirk_4_at_the_stream_end() {
+        let program = "[\na=(\"\")\na=";
+        let found = exception(&verdict("stream-end", &input("hand", program, "")));
+        assert!(is(found, "quirk 4"), "{found:?}");
+    }
+
+    /// `y` as an element: in one place reached through the cycle (children
+    /// `[]`), in the other around it (`[[]]`).
+    fn y(children: Value) -> Value {
+        json!({"type": "element", "typeName": "Root", "props": {"children": children},
+               "partial": false, "hasDynamicProps": false, "statementId": "y"})
+    }
+
+    #[test]
+    fn quirk_21_needs_the_cycle_and_a_statement_written_two_ways() {
+        let why = "/props/children/1/props/children: [[]] before, [] after";
+        let two_ways = json!({"type": "element", "typeName": "Root", "statementId": "root",
+            "props": {"children": [[y(json!([]))], y(json!([[]]))]}});
+        let one_way = json!({"type": "element", "typeName": "Root", "statementId": "root",
+            "props": {"children": [[y(json!([[]]))], y(json!([[]]))]}});
+        let cyclic = "root=Root([x y])\nx=[y]\ny=Root([x])";
+        let acyclic = "root=Root([x y])\nx=[y]\ny=Root([z])\nz=[]";
+        let quirk = |input, tree| round_trip_exception(input, tree, why);
+        assert!(is(quirk(cyclic, &two_ways), "quirk 21"));
+        assert_eq!(quirk(cyclic, &one_way), None);
+        assert_eq!(quirk(acyclic, &two_ways), None);
+    }
+
+    #[test]
+    fn quirk_22_needs_a_ternary_left_open() {
+        let finished = input(
+            "spec-1.0",
+            "root=a\ndarkPage=r",
+            "root = $dark\n  ? darkPage\n  : lightPage",
+        );
+        assert_eq!(
+            merge_exception(
+                &finished,
+                Some("root = $dark\n  ? darkPage\n  : lightPage\ndarkPage=r")
+            ),
+            None
+        );
+        // A `?` and `:` inside brackets are an object's or a call's, not a
+        // ternary of the statement's.
+        let bracketed = input("spec-1.0", "root=Stack([a ? b : c])\na=1", "x = f({k: 1})");
+        assert_eq!(merge_exception(&bracketed, None), None);
+    }
+
+    #[test]
+    fn quirk_4_at_the_stream_end_needs_the_empty_line_to_redefine() {
+        let why = "the stream's end against one-shot: /meta/statementCount: 1 before, 2 after";
+        assert_eq!(stream_exception("[\na=1\nb=", why), None);
+        assert!(is(stream_exception("[\na=1\na=", why), "quirk 4"));
+    }
 }
