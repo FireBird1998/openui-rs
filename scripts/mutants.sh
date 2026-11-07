@@ -7,6 +7,7 @@
 #   scripts/mutants.sh parsing|rest [--jobs N] [cargo-mutants options...]
 #
 #   parsing  the lexer, statements, expressions and the AST, the preprocessor,
+#            the stall guard,
 #            the parser, materializing and validation, evaluating state
 #            defaults, the streaming table and parser, and results (testing
 #            ticket 04)
@@ -30,7 +31,7 @@ group="${1:-}"
 shift || true
 case "$group" in
   parsing)
-    files=(lexer statements expr ast preprocess parser materialize validation evaluate table stream result)
+    files=(lexer statements expr ast preprocess parser materialize validation evaluate table stream result progress)
     packages=(-p openui-lang) ;;
   rest)
     files=(merge serialize prompt enrich js library builtins lib bin/openui-lang)

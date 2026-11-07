@@ -13,10 +13,11 @@ use std::sync::Arc;
 
 use crate::expr::parse_expression_with_limit;
 use crate::js;
-use crate::lexer::tokenize;
+use crate::lexer::{skip_while, tokenize};
 use crate::library::Library;
 use crate::parser::{PartialRef, build_result, classify};
 use crate::preprocess::Preprocessor;
+use crate::progress;
 use crate::result::ParseResult;
 use crate::statements::{auto_close, split};
 use crate::table::{Cache, Slot, Table};
@@ -30,6 +31,9 @@ pub struct StreamParser {
     /// `buf` preprocessed; statement boundaries are found in this, never in `buf`.
     pre: Preprocessor,
     completed: Completed,
+    /// The result a stall cut the stream at (in a release build), given
+    /// again until [`StreamParser::set`] starts over.
+    stalled: Option<ParseResult>,
 }
 
 /// The statements that have fully arrived.
@@ -56,6 +60,9 @@ impl Completed {
             return;
         }
         for raw in split(&tokenize(text)) {
+            if progress::stalled_so_far() {
+                break;
+            }
             let (expr, limited) = parse_expression_with_limit(&raw.tokens);
             self.depth_limited |= limited;
             let undo = self.table.define(&raw.id, classify(&raw, expr));
@@ -76,28 +83,38 @@ impl StreamParser {
             buf: String::new(),
             pre: Preprocessor::new(),
             completed: Completed::default(),
+            stalled: None,
         }
     }
 
     /// Feed the next chunk and get the latest parse result.
+    ///
+    /// A stream a stall cut (see [`ParseResult::size_limited`]) ignores
+    /// further pushes and gives the cut result again, until
+    /// [`StreamParser::set`].
     pub fn push(&mut self, chunk: &str) -> ParseResult {
-        self.absorb(chunk);
-        self.current_result(false)
+        self.watched(|parser| {
+            parser.absorb(chunk);
+            parser.current_result(false)
+        })
     }
 
     /// Give the full text so far, as after a reconnect. Text that continues
-    /// what was pushed only parses the new part; anything else starts over.
+    /// what was pushed only parses the new part; anything else starts over,
+    /// as does a stream a stall cut.
     pub fn set(&mut self, full_text: &str) -> ParseResult {
-        if !full_text.starts_with(self.buf.as_str()) {
+        if self.stalled.is_some() || !full_text.starts_with(self.buf.as_str()) {
             self.reset();
         }
-        self.absorb(&full_text[self.buf.len()..]);
-        self.current_result(false)
+        self.watched(|parser| {
+            parser.absorb(&full_text[parser.buf.len()..]);
+            parser.current_result(false)
+        })
     }
 
     /// The latest parse result, without new text.
     pub fn result(&mut self) -> ParseResult {
-        self.current_result(false)
+        self.watched(|parser| parser.current_result(false))
     }
 
     /// The result once the stream has ended, after its last chunk: the
@@ -106,13 +123,28 @@ impl StreamParser {
     /// statements don't declare it as state; once the stream has ended, it's
     /// the whole name.
     pub fn finish(&mut self) -> ParseResult {
-        self.current_result(true)
+        self.watched(|parser| parser.current_result(true))
+    }
+
+    /// `step`'s result, unless a stall has cut the stream: then the result
+    /// it was cut at. A stall in `step` cuts it there.
+    fn watched(&mut self, step: impl FnOnce(&mut Self) -> ParseResult) -> ParseResult {
+        if let Some(cut) = &self.stalled {
+            return cut.clone();
+        }
+        let (mut result, stalled) = progress::watch(|| step(self));
+        if stalled {
+            result.size_limited = true;
+            self.stalled = Some(result.clone());
+        }
+        result
     }
 
     fn reset(&mut self) {
         self.buf.clear();
         self.pre.reset();
         self.completed.clear();
+        self.stalled = None;
     }
 
     /// Take in new text. If the cleaned text changed under the completed
@@ -162,10 +194,7 @@ impl StreamParser {
                 b':' if depth == 0 && ternary_depth > 0 => ternary_depth -= 1,
                 b'\n' if depth <= 0 && ternary_depth <= 0 => {
                     // A next line starting with `?` (or `:` mid-ternary) continues it.
-                    let mut peek = i + 1;
-                    while peek < s.len() && matches!(s[peek], b' ' | b'\t' | b'\r' | b'\n') {
-                        peek += 1;
-                    }
+                    let peek = skip_while(s, i + 1, |b| matches!(b, b' ' | b'\t' | b'\r' | b'\n'));
                     if let Some(&next) = s.get(peek)
                         && (next == b'?' || (next == b':' && ternary_depth > 0))
                     {
@@ -228,6 +257,9 @@ impl StreamParser {
         for (raw, &keep) in pending_statements.iter().zip(&keep) {
             if !keep {
                 continue;
+            }
+            if progress::stalled_so_far() {
+                break;
             }
             let (expr, limited) = parse_expression_with_limit(&raw.tokens);
             pending_limited |= limited;

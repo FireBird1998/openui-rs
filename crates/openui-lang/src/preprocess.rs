@@ -6,6 +6,7 @@
 //! end of an ASCII run, so slices are whole UTF-8.
 
 use crate::js;
+use crate::progress::Progress;
 
 /// Model output ready to parse: trimmed, the code fences' contents (if any),
 /// `//` and `#` comments removed, trimmed again.
@@ -130,7 +131,11 @@ pub(crate) fn starts_program(block: &str) -> bool {
 /// line break after it stays.
 pub(crate) fn after_comment_lines(text: &str) -> &str {
     let mut rest = text;
+    let mut progress = Progress::new("the preprocessor");
     loop {
+        if progress.stalled(text.len() - rest.len()) {
+            return rest;
+        }
         let line = rest.trim_start_matches(js::is_js_whitespace);
         if !(line.starts_with("//") || line.starts_with('#')) {
             return rest;
@@ -219,7 +224,11 @@ fn strip_comments(input: &str) -> String {
         .map(|line| {
             let s = line.as_bytes();
             let mut i = 0;
+            let mut progress = Progress::new("the preprocessor");
             while i < s.len() {
+                if progress.stalled(i) {
+                    break;
+                }
                 let c = s[i];
                 if let Some(quote) = in_str {
                     if c == b'\\' && i + 1 < s.len() {
@@ -660,7 +669,12 @@ impl Comments {
     fn scan_line(&mut self, whole: bool) {
         let s = &self.line[..];
         let scan = &mut self.scan;
+        let mut progress = Progress::new("the preprocessor");
         while scan.pos < s.len() && scan.comment_at.is_none() {
+            if progress.stalled(scan.pos) {
+                scan.pos = s.len();
+                break;
+            }
             let c = s[scan.pos];
             if let Some(quote) = scan.in_str {
                 if c == b'\\' {

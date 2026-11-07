@@ -219,7 +219,9 @@ pub struct ParseResult {
     pub depth_limited: bool,
     /// The result would have grown past [`crate::MAX_RESULT_SIZE`] (statements
     /// inlined into each other until it doubles at every level), and what
-    /// didn't fit was dropped. Not part of the JSON.
+    /// didn't fit was dropped; or, in a release build, a loop reading the
+    /// input stalled (a bug in the core) and the parse ended there. Not part
+    /// of the JSON.
     pub size_limited: bool,
 }
 

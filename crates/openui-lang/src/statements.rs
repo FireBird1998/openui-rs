@@ -2,6 +2,7 @@
 //! the reference parser's `split` and `autoClose`.
 
 use crate::lexer::{EOF, Pos, Token, Tokens};
+use crate::progress::Progress;
 
 /// Which kind of token named a statement.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -106,16 +107,26 @@ pub fn split(tokens: &Tokens) -> Vec<RawStatement> {
     let mut stmts = Vec::new();
     let mut pos = 0;
     let n = tokens.len();
-    let skip_line = |pos: &mut usize| {
-        while *pos < n && !matches!(tokens[*pos], Token::Newline | Token::Eof) {
-            *pos += 1;
-        }
+    // Where the run of tokens matching `pred` from `pos` ends. It can't
+    // stall: a count, not a loop.
+    let skip = |pos: usize, pred: fn(&Token) -> bool| {
+        pos + tokens
+            .get(pos..)
+            .unwrap_or_default()
+            .iter()
+            .take_while(|t| pred(t))
+            .count()
     };
+    let skip_line = |pos: &mut usize| {
+        *pos = skip(*pos, |t| !matches!(t, Token::Newline | Token::Eof));
+    };
+    let mut progress = Progress::new("statement splitting");
 
     while pos < n {
-        while pos < n && tokens[pos] == Token::Newline {
-            pos += 1;
+        if progress.stalled(pos) {
+            break;
         }
+        pos = skip(pos, |t| *t == Token::Newline);
         if pos >= n || tokens[pos] == Token::Eof {
             break;
         }
@@ -141,13 +152,16 @@ pub fn split(tokens: &Tokens) -> Vec<RawStatement> {
         let mut expr = Tokens::default();
         let mut depth: i32 = 0;
         let mut ternary_depth: i32 = 0;
+        let mut expr_progress = Progress::new("statement splitting");
         while pos < n && tokens[pos] != Token::Eof {
+            if expr_progress.stalled(pos) {
+                // Stop at the end: the tokens always end in an `Eof`.
+                pos = n - 1;
+                break;
+            }
             let token = &tokens[pos];
             if *token == Token::Newline && depth <= 0 && ternary_depth <= 0 {
-                let mut peek = pos + 1;
-                while peek < n && tokens[peek] == Token::Newline {
-                    peek += 1;
-                }
+                let peek = skip(pos + 1, |t| *t == Token::Newline);
                 let next = tokens.get(peek).unwrap_or(&EOF);
                 if *next == Token::Question || (*next == Token::Colon && ternary_depth > 0) {
                     pos += 1;
