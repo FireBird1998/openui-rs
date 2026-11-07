@@ -4,6 +4,8 @@
 # observe, each with the reason. Reruns skip them. A mutant goes here only
 # once it's been shown to change nothing; anything else gets a test.
 exclude_re = [
+    # pair maintains inverse maps: with both lookups present, n == now iff t == then, so AND and OR agree (#15).
+    'evaluate\.rs:.*replace && with \|\| in pair',
     # partial occupies bit 0 and expr bit 1, so OR and XOR are identical (#15).
     'table\.rs:.*replace \| with \^ in Cache::index',
     # The stall guard's choice between panicking and cutting, outside unit

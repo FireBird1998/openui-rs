@@ -1,0 +1,6 @@
+root = Root([])
+$seed = source
+$first = $seed[0].expr.els
+$again = $seed
+$same = $first == $again[0].expr.els
+source = @Each([1], "i", $t = [i, {a: 1}])                                                            

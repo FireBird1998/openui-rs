@@ -1,0 +1,9 @@
+root = Root([])
+one = Text("same")
+two = Text("same")
+$seed = source
+$read = [$seed, $seed]
+source = one
+source = two
+source = Text($live)
+source = Text("same")

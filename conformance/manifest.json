@@ -1014,6 +1014,42 @@
    "schema": "hand",
    "file": "cases/hand/203-stream-orphan-kinds.oui",
    "source": "hand-written"
+  },
+  {
+   "name": "hand/204-stream-reuse-shapes",
+   "schema": "hand",
+   "file": "cases/hand/204-stream-reuse-shapes.oui",
+   "source": "hand-written"
+  },
+  {
+   "name": "hand/205-stream-reuse-shared-properties",
+   "schema": "hand",
+   "file": "cases/hand/205-stream-reuse-shared-properties.oui",
+   "source": "hand-written"
+  },
+  {
+   "name": "hand/206-stream-reuse-element-owners",
+   "schema": "hand",
+   "file": "cases/hand/206-stream-reuse-element-owners.oui",
+   "source": "hand-written"
+  },
+  {
+   "name": "hand/207-stream-reuse-expression-owner-1",
+   "schema": "hand",
+   "file": "cases/hand/207-stream-reuse-expression-owner-1.oui",
+   "source": "hand-written"
+  },
+  {
+   "name": "hand/208-stream-reuse-expression-owner-2",
+   "schema": "hand",
+   "file": "cases/hand/208-stream-reuse-expression-owner-2.oui",
+   "source": "hand-written"
+  },
+  {
+   "name": "hand/209-stream-reuse-expression-owner-3",
+   "schema": "hand",
+   "file": "cases/hand/209-stream-reuse-expression-owner-3.oui",
+   "source": "hand-written"
   }
  ]
 }
