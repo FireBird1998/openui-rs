@@ -18,6 +18,7 @@ use crate::materialize::{
     Ctx, Frame, flatten_errors, materialize_call_args, materialize_value, tag_statement,
 };
 use crate::preprocess::preprocess;
+use crate::progress;
 use crate::result::{Meta, MutationStatement, ParseResult, QueryStatement, Value};
 use crate::statements::{IdKind, RawStatement, auto_close, split};
 use crate::table::{Cache, Reach, Slot, Table};
@@ -220,6 +221,12 @@ fn query_cycles(queries: &[QueryStatement]) -> Vec<Vec<String>> {
 /// library's root component: with no `root` statement, the first statement
 /// that calls it is the entry.
 pub fn parse(input: &str, library: &Library, root_name: Option<&str>) -> ParseResult {
+    let (mut result, stalled) = progress::watch(|| parse_text(input, library, root_name));
+    result.size_limited |= stalled;
+    result
+}
+
+fn parse_text(input: &str, library: &Library, root_name: Option<&str>) -> ParseResult {
     let trimmed = preprocess(input);
     if trimmed.is_empty() {
         return ParseResult::empty(true);
@@ -234,6 +241,9 @@ pub fn parse(input: &str, library: &Library, root_name: Option<&str>) -> ParseRe
     let mut table = Table::default();
     let mut depth_limited = false;
     for stmt in &raw {
+        if progress::stalled_so_far() {
+            break;
+        }
         let (expr, limited) = parse_expression_with_limit(&stmt.tokens);
         depth_limited |= limited;
         table.define(&stmt.id, classify(stmt, expr));

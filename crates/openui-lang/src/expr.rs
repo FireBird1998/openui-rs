@@ -13,6 +13,7 @@ use crate::ast::Ast;
 use crate::builtins::is_builtin;
 use crate::js::number_to_string;
 use crate::lexer::{EOF, Token};
+use crate::progress::Progress;
 
 const PREC_TERNARY: u8 = 1;
 const PREC_OR: u8 = 2;
@@ -112,6 +113,16 @@ impl<'a> ExprParser<'a> {
         token
     }
 
+    /// Whether a loop has stalled at the cursor. On a stall (in a release
+    /// build) the cursor jumps to the end, so every loop open stops.
+    fn stalled(&mut self, progress: &mut Progress) -> bool {
+        let stalled = progress.stalled(self.pos);
+        if stalled {
+            self.pos = self.tokens.len();
+        }
+        stalled
+    }
+
     fn eat(&mut self, token: &Token) {
         if self.cur() == token {
             self.pos += 1;
@@ -130,7 +141,11 @@ impl<'a> ExprParser<'a> {
         let mut left = self.prefix();
         // Each infix step nests `left` one level deeper, so a long chain counts too.
         let mut chain = 0;
+        let mut progress = Progress::new("the expression parser");
         while infix_precedence(self.cur()) > min_prec {
+            if self.stalled(&mut progress) {
+                break;
+            }
             if self.depth + chain >= MAX_DEPTH {
                 self.limited = true;
                 break;
@@ -276,7 +291,11 @@ impl<'a> ExprParser<'a> {
     /// Comma-separated expressions up to `close` (consumed if present).
     fn list_until(&mut self, close: &Token) -> Vec<Ast> {
         let mut items = Vec::new();
+        let mut progress = Progress::new("the expression parser");
         while self.cur() != close && *self.cur() != Token::Eof {
+            if self.stalled(&mut progress) {
+                break;
+            }
             items.push(self.expr(0));
             self.eat(&Token::Comma);
         }
@@ -288,7 +307,11 @@ impl<'a> ExprParser<'a> {
     fn object(&mut self) -> Ast {
         self.pos += 1;
         let mut entries = Vec::new();
+        let mut progress = Progress::new("the expression parser");
         while !matches!(self.cur(), Token::RBrace | Token::Eof) {
+            if self.stalled(&mut progress) {
+                break;
+            }
             let key = key_text(self.advance());
             self.eat(&Token::Colon);
             entries.push((key, self.expr(0)));

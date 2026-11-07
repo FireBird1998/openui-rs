@@ -3,4 +3,11 @@
 # Mutants the suite can't catch because they change nothing a caller can
 # observe, each with the reason. Reruns skip them. A mutant goes here only
 # once it's been shown to change nothing; anything else gets a test.
-exclude_re = []
+exclude_re = [
+    # The stall guard's choice between panicking and cutting, outside unit
+    # tests (they use a twin they can switch). Only a stall reaches it, and
+    # only a bug in the core stalls, so with one mutant planted at a time
+    # nothing does: `true` is what a test build already does, and `false`
+    # shows only alongside a second bug (issue #2).
+    'progress\.rs:\d+:\d+: replace panics -> bool with (true|false)',
+]

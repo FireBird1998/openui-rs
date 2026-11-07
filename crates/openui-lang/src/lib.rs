@@ -152,6 +152,12 @@
 //! - [`MAX_RESULT_SIZE`]: a result that would grow past about 8 MiB of JSON is
 //!   cut ([`ParseResult::size_limited`]). Repeated subtrees are shared, not
 //!   copied.
+//! - A stall: every loop that reads input either moves forward or stops. A
+//!   loop that stopped moving forward would be a bug in the core, never the
+//!   input's fault. In debug builds it panics; in release builds the parse
+//!   ends there with a cut result ([`ParseResult::size_limited`]), and a
+//!   [`StreamParser`] it cut gives that result again, ignoring pushes, until
+//!   [`StreamParser::set`]. [`parse_json`] refuses its input instead.
 //!
 //! Call the core from a thread with at least 512 KB of stack, and build it
 //! optimized (opt-level 1 or more), even in debug builds of the app.
@@ -193,6 +199,7 @@ mod materialize;
 mod merge;
 mod parser;
 mod preprocess;
+mod progress;
 mod prompt;
 mod result;
 mod serialize;

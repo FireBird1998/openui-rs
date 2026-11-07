@@ -404,7 +404,9 @@ fn from_value(value: &Value) -> Js {
         Value::Element(_) | Value::Ast(_) => {
             let mut json = String::new();
             write_value(&mut json, value);
-            from_json(&parse_json(&json).expect("the core writes JSON"))
+            // The core writes JSON, so only a stall can refuse it, and that
+            // flags the result.
+            parse_json(&json).map_or(Js::Null, |json| from_json(&json))
         }
     }
 }

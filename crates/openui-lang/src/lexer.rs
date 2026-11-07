@@ -9,6 +9,7 @@
 use std::ops::Deref;
 
 use crate::js::{json_parse_string, write_json_number, write_json_string};
+use crate::progress::Progress;
 
 pub(crate) static EOF: Token = Token::Eof;
 
@@ -216,6 +217,17 @@ pub(crate) fn write_tokens_json(out: &mut String, tokens: &Tokens) {
     out.push(']');
 }
 
+/// Where a run of bytes matching `pred` from `i` ends. It can't stall: a
+/// count, not a loop that moves a cursor.
+pub(crate) fn skip_while(s: &[u8], i: usize, pred: impl Fn(u8) -> bool) -> usize {
+    i + s
+        .get(i..)
+        .unwrap_or_default()
+        .iter()
+        .take_while(|&&b| pred(b))
+        .count()
+}
+
 fn is_ident_start(b: u8) -> bool {
     b.is_ascii_alphabetic() || b == b'_'
 }
@@ -282,11 +294,13 @@ pub fn tokenize(src: &str) -> Tokens {
     };
     let mut tokens = Tokens::default();
     let mut i = 0;
+    let mut progress = Progress::new("the lexer");
 
     while i < n {
-        while i < n && matches!(s[i], b' ' | b'\t' | b'\r') {
-            i += 1;
+        if progress.stalled(i) {
+            break;
         }
+        i = skip_while(s, i, |b| matches!(b, b' ' | b'\t' | b'\r'));
         if i >= n {
             break;
         }
@@ -295,9 +309,7 @@ pub fn tokenize(src: &str) -> Tokens {
 
         // A line comment, `//` or `#`, runs to the end of the line.
         if c == b'#' || (c == b'/' && at(i + 1) == Some(b'/')) {
-            while i < n && s[i] != b'\n' {
-                i += 1;
-            }
+            i = skip_while(s, i, |b| b != b'\n');
             continue;
         }
 
@@ -360,23 +372,16 @@ pub fn tokenize(src: &str) -> Tokens {
             if c == b'-' {
                 i += 1;
             }
-            while i < n && s[i].is_ascii_digit() {
-                i += 1;
-            }
+            i = skip_while(s, i, |b| b.is_ascii_digit());
             if at(i) == Some(b'.') && at(i + 1).is_some_and(|b| b.is_ascii_digit()) {
-                i += 1;
-                while i < n && s[i].is_ascii_digit() {
-                    i += 1;
-                }
+                i = skip_while(s, i + 1, |b| b.is_ascii_digit());
             }
             if matches!(at(i), Some(b'e' | b'E')) {
                 i += 1;
                 if matches!(at(i), Some(b'+' | b'-')) {
                     i += 1;
                 }
-                while i < n && s[i].is_ascii_digit() {
-                    i += 1;
-                }
+                i = skip_while(s, i, |b| b.is_ascii_digit());
             }
             // JavaScript's `+text`; a dangling exponent such as `1e` is NaN.
             tokens.push(
@@ -388,19 +393,14 @@ pub fn tokenize(src: &str) -> Tokens {
 
         if c == b'$' && at(i + 1).is_some_and(is_ident_start) {
             let name = i;
-            i += 1;
-            while i < n && is_ident_char(s[i]) {
-                i += 1;
-            }
+            i = skip_while(s, i + 1, is_ident_char);
             tokens.push(Token::StateVar(src[name..i].to_owned()), start);
             continue;
         }
 
         if is_ident_start(c) {
             let name = i;
-            while i < n && is_ident_char(s[i]) {
-                i += 1;
-            }
+            i = skip_while(s, i, is_ident_char);
             let word = &src[name..i];
             let token = match word {
                 "true" => Token::True,
@@ -414,11 +414,8 @@ pub fn tokenize(src: &str) -> Tokens {
         }
 
         if c == b'@' && at(i + 1).is_some_and(is_ident_start) {
-            i += 1;
-            let name = i;
-            while i < n && is_ident_char(s[i]) {
-                i += 1;
-            }
+            let name = i + 1;
+            i = skip_while(s, name, is_ident_char);
             tokens.push(Token::BuiltinCall(src[name..i].to_owned()), start);
             continue;
         }
@@ -438,7 +435,12 @@ fn double_quoted(src: &str, start: usize) -> (Token, usize) {
     let n = s.len();
     let mut i = start + 1;
     let mut closed = false;
+    let mut progress = Progress::new("the lexer");
     while i < n {
+        if progress.stalled(i) {
+            i = n;
+            break;
+        }
         match s[i] {
             b'\\' => i += 2,
             b'"' => {
@@ -471,7 +473,11 @@ fn single_quoted(src: &str, start: usize) -> (Token, usize) {
     let mut value = String::new();
     let mut i = start + 1;
     let mut run = i; // start of the current run of plain characters
+    let mut progress = Progress::new("the lexer");
     while i < n {
+        if progress.stalled(i) {
+            return (Token::Str(value), n);
+        }
         match s[i] {
             b'\\' => {
                 value.push_str(&src[run..i]);

@@ -11,6 +11,8 @@
 
 use std::fmt::Write as _;
 
+use crate::progress::Progress;
+
 /// Stands in for the lone surrogate U+D800; U+D801 is the next code point, and so on.
 const LONE_SURROGATE_BASE: u32 = 0x10_F800;
 
@@ -502,9 +504,9 @@ impl JsonReader<'_> {
     }
 
     fn skip_ws(&mut self) {
-        while matches!(self.s.get(self.pos), Some(b' ' | b'\t' | b'\n' | b'\r')) {
-            self.pos += 1;
-        }
+        self.pos = crate::lexer::skip_while(self.s, self.pos, |b| {
+            matches!(b, b' ' | b'\t' | b'\n' | b'\r')
+        });
     }
 
     fn eat(&mut self, c: u8) -> bool {
@@ -521,7 +523,11 @@ impl JsonReader<'_> {
         use serde_json::Value as Json;
         let limit = crate::serialize::JSON_DEPTH_LIMIT;
         let mut open: Vec<Open> = Vec::new();
+        let mut progress = Progress::new("the JSON reader");
         loop {
+            if progress.stalled(self.pos) {
+                return Err(self.error("the JSON reader stalled"));
+            }
             // A value starts here.
             self.skip_ws();
             let mut value = match self.s.get(self.pos) {
@@ -614,7 +620,11 @@ impl JsonReader<'_> {
     fn string(&mut self) -> Result<String, JsonError> {
         let start = self.pos;
         let mut i = start + 1;
+        let mut progress = Progress::new("the JSON reader");
         loop {
+            if progress.stalled(i) {
+                return Err(self.error("the JSON reader stalled"));
+            }
             match self.s.get(i) {
                 None => return Err(self.error("unterminated string")),
                 Some(b'\\') => i += 2,
@@ -641,9 +651,7 @@ impl JsonReader<'_> {
         let start = self.pos;
         let digits = |r: &mut Self| {
             let from = r.pos;
-            while r.s.get(r.pos).is_some_and(u8::is_ascii_digit) {
-                r.pos += 1;
-            }
+            r.pos = crate::lexer::skip_while(r.s, r.pos, |b| b.is_ascii_digit());
             r.pos > from
         };
         self.literal("-");
