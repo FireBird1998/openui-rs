@@ -1,0 +1,2 @@
+root = Root([[y], y])
+y = Root([])

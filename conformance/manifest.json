@@ -876,6 +876,30 @@
    "schema": "bench",
    "file": "cases/hand/141-a-reference-to-a-later-statement-while-streaming.oui",
    "source": "hand-written"
+  },
+  {
+   "name": "hand/142-a-reference-cycle-through-a-list",
+   "schema": "hand",
+   "file": "cases/hand/142-a-reference-cycle-through-a-list.oui",
+   "source": "hand-written"
+  },
+  {
+   "name": "hand/143-a-reference-cycle-written-back",
+   "schema": "hand",
+   "file": "cases/hand/143-a-reference-cycle-written-back.oui",
+   "source": "hand-written"
+  },
+  {
+   "name": "hand/144-an-open-ternary-takes-in-the-next-line",
+   "schema": "hand",
+   "file": "cases/hand/144-an-open-ternary-takes-in-the-next-line.oui",
+   "source": "hand-written"
+  },
+  {
+   "name": "hand/145-an-empty-redefinition-after-a-stray-bracket",
+   "schema": "hand",
+   "file": "cases/hand/145-an-empty-redefinition-after-a-stray-bracket.oui",
+   "source": "hand-written"
   }
  ]
 }

@@ -19,3 +19,9 @@ proptest = "1"
 # Thread CPU time for tests/streaming_cost.rs; already in the tree via proptest.
 libc = "0.2"
 similar = "2"
+
+# The invariants' exceptions have unit tests (examples/fuzz/rules.rs) that
+# `cargo test` runs on the core alone; the rest of the fuzzer needs Bun.
+[[example]]
+name = "fuzz"
+test = true

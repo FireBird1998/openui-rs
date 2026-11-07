@@ -35,6 +35,7 @@ cargo test -p openui-lang --test conformance streaming_   # tests whose names ma
 | `api` | The public JSON reader and writer, `JsObject`, and walking an expression | Public helpers that parsing alone doesn't reach |
 | doc tests | The crate docs' examples and the README's | Examples that no longer compile or run |
 | unit tests in `js.rs`, `preprocess.rs` | JSON reading and writing; incremental preprocessing against the one-shot form | Internal disagreements |
+| unit tests in the fuzzer's `rules.rs` | The invariants' newer exceptions (quirks 4's empty redefinition, 21 and 22) on the programs that found them, run on the core, and near misses each must not explain | An exception that stops recognizing its quirk, or explains too much |
 | `openui-ffi`'s `binding` | The binding returns exactly the core's output: one-shot, every streaming step, `set`, prompts, merges | A binding that changes what it hands on |
 | the viewer's Swift tests | Decoding, playback, goldens through the viewer, native drawing, live streaming against a stub server, recordings, edit mode | Viewer bugs (`scripts/check-viewer.sh`) |
 | compile time | The streaming parser, parse results and libraries can be shared between threads (`src/lib.rs`) | A change that stops embedders parsing off the UI thread |
@@ -184,9 +185,10 @@ Its exceptions, each beside its quirk in QUIRKS.md:
 | A bare call to a library function or action | 12 |
 | A call parsing made null (`{k: "Null"}`) | 14 (a candidate) |
 | A call named after an `Object.prototype` member | 2 |
+| Statements that refer to each other in a cycle, with one statement as two different elements in the tree | 21 |
 | An object literal shaped like an element or an AST node | the divergences' family |
 
-On a million programs (seed 61, about a minute): 169,773 hold, 824,291 don't apply, 5,936 are exceptions, and none is a mismatch or unexplained. Quirk 14 accounts for 2,054 exceptions, 12 and the node-shaped literals for 1,132 each, 13 for 862 and 10 for 707.
+On a million programs (seed 61, about a minute): 169,773 hold, 824,291 don't apply, 5,936 are exceptions, and none is a mismatch or unexplained. Quirk 14 accounts for 2,054 exceptions, 12 and the node-shaped literals for 1,132 each, 13 for 862 and 10 for 707. Against lang-core 1.1 (seed 82, lang-core 1.1 ticket 08), the 91 programs that broke the round trip and merging its own source on both parsers were quirk 21's.
 
 ### Chunking doesn't matter (`chunking`)
 
@@ -194,7 +196,7 @@ A stream's result once it has ended is the same however the program was cut: in 
 
 ### Streaming ends where one-shot parsing ends (`stream-end`)
 
-A stream in the random chunks gives, once ended, what parsing the whole program at once gives. Same lengths. Exceptions: a redefinition counted twice (quirk 4), a mismatched closing bracket (quirk 5), a final redefinition that needed closing (quirk 11), a program without statements (quirk 18), a stray character before a ternary's `?` (quirk 19).
+A stream in the random chunks gives, once ended, what parsing the whole program at once gives. Same lengths. Exceptions: a redefinition counted twice (quirk 4, including a line `a=` with nothing after it, behind a stray opening bracket), a mismatched closing bracket (quirk 5), a final redefinition that needed closing (quirk 11), a program without statements (quirk 18), a stray character before a ternary's `?` (quirk 19).
 
 ### Fences don't matter (`fences`)
 
@@ -206,7 +208,7 @@ A program inside a markdown fence, with prose before and after (no apostrophe, w
 - An empty patch changes nothing: the merged program parses as the program did.
 - The program's tree converted back to source works as a patch: merging it in gives the same tree. This applies where the round trip does, with its exceptions.
 
-Exceptions: an unfinished statement, in the program or the patch, which takes in what's appended after it (quirk 15); a program without statements, which the merge returns the patch for as it is (quirk 16); an existing program with fences, whose prose the merge reads as code (quirk 7). Quirks 8 and 20, a name defined twice and comments read as code, were exceptions until 1.1 fixed them.
+Exceptions: an unfinished statement, in the program or the patch, which takes in what's appended after it (quirk 15); a program without statements, which the merge returns the patch for as it is (quirk 16); an existing program with fences, whose prose the merge reads as code (quirk 7); a statement whose ternary is still open (more `?` than `:` outside brackets), in the program, the patch or the first merge's result, which takes in what the merge writes after it (quirk 22). Quirks 8 and 20, a name defined twice and comments read as code, were exceptions until 1.1 fixed them.
 
 ### Finished statements stay put (`finished-stay-put`)
 
@@ -227,7 +229,8 @@ The tree names only statements that are components, so those are the ones the ru
 | 10: unquoted object keys (by design since 1.0) | round trip, merging its own source |
 | 12: bare library calls | round trip, merging its own source |
 | 14: a call made null when parsing | round trip, merging its own source |
-| 8, 15, 16, 20: merging duplicate names, unfinished or empty programs, comments | merging twice, merging an empty patch |
+| 21: a statement reached through a reference cycle, written back once | round trip, merging its own source |
+| 8, 15, 16, 20, 22: merging duplicate names, unfinished or empty programs, comments, open ternaries | merging twice, merging an empty patch |
 | 17: finished statements treated as partial | finished statements stay put |
 | 18: an empty program reads as incomplete | fences, chunking, stream end |
 | the divergences' node-shaped literals and `__proto__` | any |

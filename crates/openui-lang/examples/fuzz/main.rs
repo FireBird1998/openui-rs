@@ -16,6 +16,10 @@
 //! blow-up. Hunts add `--seconds` and `--findings` (see `findings.rs`).
 //! Needs Bun.
 
+// `cargo test` runs the rules' unit tests without `main`, so most of the
+// fuzzer is unused there.
+#![cfg_attr(test, allow(dead_code, unused_imports))]
+
 mod edits;
 mod engine;
 mod findings;

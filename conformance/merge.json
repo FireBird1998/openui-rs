@@ -310,6 +310,30 @@
    "existing": "root = Root([a, b])\na = Text(\"A\")\nb = Text(\"B\")",
    "patch": "// say \"hi\na = Text(\"A2\")",
    "source": "hand-written"
+  },
+  {
+   "name": "hand/an-open-ternary-in-the-patch",
+   "existing": "root = Root([a])\na = Text(\"A\")",
+   "patch": "root = $flag\n  ? a",
+   "source": "hand-written"
+  },
+  {
+   "name": "hand/an-open-ternary-in-the-patch-merged-again",
+   "existing": "root = $flag\n  ? a\na = Text(\"A\")",
+   "patch": "root = $flag\n  ? a",
+   "source": "hand-written"
+  },
+  {
+   "name": "hand/an-open-ternary-in-the-program",
+   "existing": "root = Root([s])\ns = 0 ?",
+   "patch": "$n = 0",
+   "source": "hand-written"
+  },
+  {
+   "name": "hand/an-open-ternary-in-the-program-merged-again",
+   "existing": "root = Root([s])\ns = 0 ?\n$n = 0",
+   "patch": "$n = 0",
+   "source": "hand-written"
   }
  ]
 }
