@@ -147,3 +147,32 @@ fn the_corpus_covers_every_mode() {
 
 #[global_allocator]
 static ALLOCATOR: test_alloc::Allocator = test_alloc::Allocator::with_cap(test_alloc::DEFAULT);
+
+#[test]
+fn fallible_prompts_refuse_missing_components() {
+    use openui_lang::{Limits, generate_prompt_with_limits, generate_system_prompt_with_limits};
+    for spec in [
+        serde_json::json!({}),
+        serde_json::json!({"components":null}),
+    ] {
+        for error in [
+            generate_system_prompt(&spec).unwrap_err(),
+            generate_system_prompt_with_limits(&spec, Limits::default()).unwrap_err(),
+            generate_prompt_with_limits(&spec, Limits::default()).unwrap_err(),
+        ] {
+            assert_eq!(error.to_string(), "[generatePrompt] components is missing.");
+        }
+        let wrapped = serde_json::json!({"library": spec});
+        assert!(
+            generate_system_prompt(&wrapped)
+                .unwrap_err()
+                .to_string()
+                .contains("components is missing")
+        );
+    }
+    let validated = serde_json::json!({"components":{}});
+    assert_eq!(
+        openui_lang::generate_prompt(&validated),
+        generate_prompt_with_limits(&validated, Limits::default()).unwrap()
+    );
+}

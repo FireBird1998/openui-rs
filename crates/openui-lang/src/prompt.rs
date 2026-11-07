@@ -44,6 +44,9 @@ pub fn generate_system_prompt(spec: &Json) -> Result<String, PromptError> {
 /// on until the engine runs out of stack. Otherwise the prompt's time and
 /// size grow with the spec, nothing more, so the other limits don't apply:
 /// the spec is already in the caller's memory.
+/// Prompt specs without a non-null `components` field are refused too, after
+/// merging `library` and `promptOptions` when supplied. Cloud config requests
+/// instead use the reference's separate chat-library schema validation.
 pub fn generate_system_prompt_with_limits(
     spec: &Json,
     limits: Limits,
@@ -71,9 +74,9 @@ pub fn generate_system_prompt_with_limits(
                     merged.insert(key.clone(), value.clone());
                 }
             }
-            Ok(generate_prompt(&Json::Object(merged)))
+            generate_prompt_with_limits(&Json::Object(merged), limits)
         }
-        _ => Ok(generate_prompt(spec)),
+        _ => generate_prompt_with_limits(spec, limits),
     }
 }
 
@@ -146,7 +149,7 @@ fn json_schema_type_str(schema: &Json) -> String {
         Some("number" | "integer") => "number".to_owned(),
         Some("boolean") => "boolean".to_owned(),
         Some("array") => match field(schema, "items") {
-            Some(items) if truthy(Some(items)) => format!("{}[]", json_schema_type_str(items)),
+            Some(items) => format!("{}[]", json_schema_type_str(items)),
             _ => "any[]".to_owned(),
         },
         Some("object") => {
@@ -795,6 +798,11 @@ fn component_signatures(
 /// with the spec, and it grows its stack on demand however deep the spec
 /// nests. For a spec from outside the app, [`generate_prompt_with_limits`]
 /// refuses one nesting past the depth limit.
+///
+/// Callers must supply a validated spec with a non-null `components` field.
+/// This unchecked, infallible entry point cannot report the reference's error
+/// for a missing field. Use [`generate_prompt_with_limits`] to validate input
+/// from outside the app before rendering it.
 pub fn generate_prompt(spec: &Json) -> String {
     let root = present(spec, "root").map_or_else(|| "Root".to_owned(), js_string);
     let tools = items(field(spec, "tools"));
@@ -896,11 +904,16 @@ pub fn generate_prompt(spec: &Json) -> String {
     parts.join("\n")
 }
 
-/// [`generate_prompt`] under `limits`: a spec nesting past the JSON
-/// limit described by [`Limits::depth`]
-/// is refused with a [`PromptError`].
+/// [`generate_prompt`] under `limits`: a spec missing non-null `components`,
+/// or nesting past the JSON limit described by [`Limits::depth`], is refused
+/// with a [`PromptError`].
 pub fn generate_prompt_with_limits(spec: &Json, limits: Limits) -> Result<String, PromptError> {
     within_depth("generatePrompt", spec, limits)?;
+    if field(spec, "components").is_none_or(Json::is_null) {
+        return Err(PromptError(
+            "[generatePrompt] components is missing.".to_owned(),
+        ));
+    }
     Ok(generate_prompt(spec))
 }
 

@@ -1,0 +1,18 @@
+{
+  "library": {
+    "root": "A",
+    "$defs": {
+      "A": {
+        "type": "object",
+        "properties": {
+          "x": {
+            "$ref": "#/$defs/\n"
+          }
+        }
+      },
+      "\n": {
+        "type": "string"
+      }
+    }
+  }
+}

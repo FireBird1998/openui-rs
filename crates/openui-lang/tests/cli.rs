@@ -346,7 +346,9 @@ fn limits_apply_to_tokens_and_prompt() {
     for _ in 0..30 {
         schema = serde_json::json!({"type": "object", "properties": {"a": schema}});
     }
-    let spec = serde_json::json!({"tools": [{"name": "t", "inputSchema": schema}]}).to_string();
+    let spec =
+        serde_json::json!({"components": {}, "tools": [{"name": "t", "inputSchema": schema}]})
+            .to_string();
     for (limit, succeeds) in [("depth=4", false), ("depth=256", true)] {
         let mut child = Command::new(env!("CARGO_BIN_EXE_openui-lang"))
             .args(["prompt", "-", "--limit", limit])
@@ -389,3 +391,54 @@ fn prompt_reports_the_error_and_fails() {
 
 #[global_allocator]
 static ALLOCATOR: test_alloc::Allocator = test_alloc::Allocator::with_cap(test_alloc::LIMITS);
+
+#[test]
+fn invalid_command_shapes_and_chunks_fail() {
+    let dir = conformance();
+    let schema = dir.join("schemas/text.json");
+    let program = dir.join("cases/hello-text.oui");
+    for args in [
+        vec!["unknown", "-"],
+        vec!["bench"],
+        vec!["bench", "missing"],
+        vec!["stream", "a", "b", "4", "extra"],
+    ] {
+        let out = Command::new(env!("CARGO_BIN_EXE_openui-lang"))
+            .args(args)
+            .output()
+            .unwrap();
+        assert!(!out.status.success());
+        assert!(String::from_utf8(out.stderr).unwrap().contains("usage:"));
+    }
+    for chunk in ["0", "-1", "abc"] {
+        let out = Command::new(env!("CARGO_BIN_EXE_openui-lang"))
+            .arg("stream")
+            .arg(&schema)
+            .arg(&program)
+            .arg(chunk)
+            .output()
+            .unwrap();
+        assert!(!out.status.success());
+        assert!(
+            String::from_utf8(out.stderr)
+                .unwrap()
+                .contains("chunk must be a positive number")
+        );
+    }
+    let out = Command::new(env!("CARGO_BIN_EXE_openui-lang"))
+        .arg("stream")
+        .arg(&schema)
+        .arg(&program)
+        .arg("1")
+        .output()
+        .unwrap();
+    assert!(out.status.success());
+    assert_eq!(
+        String::from_utf8(out.stdout)
+            .unwrap()
+            .lines()
+            .map(str::to_owned)
+            .collect::<Vec<_>>(),
+        streamed(&schema, &program, 1)
+    );
+}

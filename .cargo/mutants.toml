@@ -4,6 +4,13 @@
 # observe, each with the reason. Reruns skip them. A mutant goes here only
 # once it's been shown to change nothing; anything else gets a test.
 exclude_re = [
+    # Both comparisons choose the same sign for n, which is already infinite.
+    'js\.rs:.*: replace > with >= in number_to_string$',
+    # At EOF the inner i >= n check breaks before any byte or token is read.
+    'lexer\.rs:.*: replace < with <= in tokenize$',
+    # Extra Value slots are ignored by extraction and have no state_refs to declare.
+    'parser\.rs:.*: replace Info::special -> bool with true$',
+
     # The stall guard's choice between panicking and cutting, outside unit
     # tests (they use a twin they can switch). Only a stall reaches it, and
     # only a bug in the core stalls, so with one mutant planted at a time

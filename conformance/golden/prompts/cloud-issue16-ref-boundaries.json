@@ -1,0 +1,1 @@
+{"error":"[generateSystemPrompt] Invalid library: Unresolvable $ref \"#/$defs/\" at $defs/A/properties/empty — refs must be \"#/$defs/<name>\" pointing at a component in $defs. Unresolvable $ref \"#/$defs/\n\" at $defs/A/properties/newline — refs must be \"#/$defs/<name>\" pointing at a component in $defs."}

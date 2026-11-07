@@ -14,7 +14,7 @@ fn deep_spec(levels: usize) -> serde_json::Value {
     for _ in 0..levels {
         schema = serde_json::json!({"type": "object", "properties": {"a": schema}});
     }
-    serde_json::json!({"tools": [{"name": "t", "inputSchema": schema}]})
+    serde_json::json!({"components": {}, "tools": [{"name": "t", "inputSchema": schema}]})
 }
 
 #[test]

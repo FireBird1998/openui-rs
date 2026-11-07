@@ -912,6 +912,10 @@
    "schema": "hand",
    "file": "cases/hand/147-runtime-property-identity.oui",
    "source": "hand-written"
-  }
+  },
+  {"name": "hand/161-expression-boundaries", "schema": "hand", "file": "cases/hand/161-expression-boundaries.oui", "source": "hand-written"},
+  {"name": "hand/162-surrogate-members", "schema": "hand", "file": "cases/hand/162-surrogate-members.oui", "source": "hand-written"},
+  {"name": "hand/163-lexer-boundaries", "schema": "hand", "file": "cases/hand/163-lexer-boundaries.oui", "source": "hand-written"},
+  {"name": "hand/164-expression-depth-accounting", "schema": "hand", "file": "cases/hand/164-expression-depth-accounting.oui", "source": "hand-written"}
  ]
 }

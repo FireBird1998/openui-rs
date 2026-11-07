@@ -202,8 +202,8 @@ pub(crate) const OBJECT_PROTOTYPE_KEYS: [&str; 12] = [
 /// The key as an array index ("0", "17", up to 2³² − 2), if it is one.
 /// JavaScript lists such keys first, in numeric order, on every object.
 pub(crate) fn array_index(key: &str) -> Option<u32> {
-    let canonical = key == "0" || (!key.starts_with('0') && !key.is_empty());
-    if !canonical || key.len() > 10 || !key.bytes().all(|b| b.is_ascii_digit()) {
+    let canonical = key == "0" || !key.starts_with('0');
+    if !canonical || !key.bytes().all(|b| b.is_ascii_digit()) {
         return None;
     }
     key.parse::<u64>()
@@ -817,5 +817,29 @@ mod json_reader_tests {
         assert!(parse_json(&past).is_err());
         let objects = format!("{}1{}", "{\"a\":".repeat(801), "}".repeat(801));
         assert!(parse_json(&objects).is_err());
+    }
+}
+
+#[cfg(test)]
+mod issue16_tests {
+    use super::*;
+
+    #[test]
+    fn object_order_distinguishes_indices_from_other_numeric_keys() {
+        let text = r#"{"4294967295":1,"4294967294":2,"1000000000":3,"01":4,"":5,"0":6,"-1":7,"12345678901":8,"1a":9}"#;
+        let value = parse_json(text).unwrap();
+        let mut out = String::new();
+        write_json_value(&mut out, &value);
+        assert_eq!(
+            out,
+            r#"{"0":6,"1000000000":3,"4294967294":2,"4294967295":1,"01":4,"":5,"-1":7,"12345678901":8,"1a":9}"#
+        );
+    }
+
+    #[test]
+    fn escaped_and_plain_strings_and_number_scans_advance() {
+        for text in [r#""a\nb""#, r#""abc""#, " \t\n12345 ", "-12.34e+56"] {
+            assert!(parse_json(text).is_ok(), "{text}");
+        }
     }
 }

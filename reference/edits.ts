@@ -86,7 +86,7 @@ const runSerialize = (c: SerializeCase) =>
   });
 
 // ── enrich ───────────────────────────────────────────────────────────────────
-type EnrichCase = { name: string; schema: string; errors: unknown[]; names: string[] };
+type EnrichCase = { name: string; schema: string; errors: unknown[]; names: string[]; inlineSchema?: unknown };
 const enrichCases: EnrichCase[] = [];
 for (const c of corpus) {
   const errors = JSON.parse(read(`golden/${c.name}.oneshot.json`)).meta.errors;
@@ -97,7 +97,11 @@ for (const c of corpus) {
     enrichCases.push({ name: `${c.name}#no-names`, schema: c.schema, errors, names: [] });
   }
 }
-const runEnrich = (c: EnrichCase) => JSON.stringify(enrichErrors(c.errors as any, schemaOf(c.schema), c.names));
+for (const c of manifest("enrich.json").cases) {
+  enrichCases.push({ name: c.name, schema: "", inlineSchema: c.schema, names: [],
+    errors: [{ code: "missing-required", component: c.component, path: "/title", message: "m" }] });
+}
+const runEnrich = (c: EnrichCase) => JSON.stringify(enrichErrors(c.errors as any, c.inlineSchema ?? schemaOf(c.schema), c.names));
 
 const [command, kind, name] = process.argv.slice(2);
 if (command === "golden") {

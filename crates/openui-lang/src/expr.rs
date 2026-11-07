@@ -188,10 +188,6 @@ impl<'a> ExprParser<'a> {
                 self.pos += 1;
                 Ast::Bool(false)
             }
-            Token::Null => {
-                self.pos += 1;
-                Ast::Null
-            }
             Token::LBrack => self.array(),
             Token::LBrace => self.object(),
             Token::StateVar(name) => {
