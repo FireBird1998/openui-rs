@@ -1,0 +1,8 @@
+root = Root([Text("x")])
+$b = 2
+$shaped = {type: "element", typeName: "Text", partial: false, props: {value: $b}}
+$listed = [{type: "element", typeName: "Text", partial: false, props: {value: $b + 1}}]
+$plain = {type: "element", typeName: "Text", props: {value: $b}}
+$beside = [{type: "element", typeName: "Text", partial: false, props: {value: $b + 1}}, $b]
+$besideInObject = {shaped: {type: "element", typeName: "Text", partial: true, props: {value: $b}}, plain: $b}
+$nested ={outer: {type: "element", typeName: "Text", partial: true, props: [$b]}}

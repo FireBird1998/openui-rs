@@ -22,4 +22,6 @@ exclude_re = [
     'statements\.rs:.*replace < with <= in split',
     # The current token is a newline, so skipping from pos or pos + 1 reaches the same first non-newline (#13).
     'statements\.rs:.*replace \+ with \* in after_newline',
+    # One more merging pass once runs span the whole list (width == n) only copies the one sorted run (#12).
+    'evaluate\.rs:.*replace < with <= in runs_to_merge',
 ]

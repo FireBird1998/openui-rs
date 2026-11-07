@@ -990,6 +990,94 @@
    "schema": "hand",
    "file": "cases/hand/160-stray-colon-before-a-ternary.oui",
    "source": "hand-written"
+  },
+  {
+   "name": "hand/180-state-defaults-comparing-and-combining",
+   "schema": "hand",
+   "file": "cases/hand/180-state-defaults-comparing-and-combining.oui",
+   "source": "hand-written"
+  },
+  {
+   "name": "hand/181-state-defaults-text-as-numbers",
+   "schema": "hand",
+   "file": "cases/hand/181-state-defaults-text-as-numbers.oui",
+   "source": "hand-written"
+  },
+  {
+   "name": "hand/182-state-defaults-rounding-and-extremes",
+   "schema": "hand",
+   "file": "cases/hand/182-state-defaults-rounding-and-extremes.oui",
+   "source": "hand-written"
+  },
+  {
+   "name": "hand/183-state-defaults-filtering-by-operator",
+   "schema": "hand",
+   "file": "cases/hand/183-state-defaults-filtering-by-operator.oui",
+   "source": "hand-written"
+  },
+  {
+   "name": "hand/184-state-defaults-sorting-edges",
+   "schema": "hand",
+   "file": "cases/hand/184-state-defaults-sorting-edges.oui",
+   "source": "hand-written"
+  },
+  {
+   "name": "hand/185-state-defaults-loose-equality",
+   "schema": "hand",
+   "file": "cases/hand/185-state-defaults-loose-equality.oui",
+   "source": "hand-written"
+  },
+  {
+   "name": "hand/186-state-defaults-truthiness-and-joins",
+   "schema": "hand",
+   "file": "cases/hand/186-state-defaults-truthiness-and-joins.oui",
+   "source": "hand-written"
+  },
+  {
+   "name": "hand/187-state-defaults-each-templates",
+   "schema": "hand",
+   "file": "cases/hand/187-state-defaults-each-templates.oui",
+   "source": "hand-written"
+  },
+  {
+   "name": "hand/188-state-defaults-each-copies-items",
+   "schema": "hand",
+   "file": "cases/hand/188-state-defaults-each-copies-items.oui",
+   "source": "hand-written"
+  },
+  {
+   "name": "hand/189-state-defaults-element-shaped-objects",
+   "schema": "hand",
+   "file": "cases/hand/189-state-defaults-element-shaped-objects.oui",
+   "source": "hand-written"
+  },
+  {
+   "name": "hand/190-state-defaults-each-shadowing-a-query",
+   "schema": "hand",
+   "file": "cases/hand/190-state-defaults-each-shadowing-a-query.oui",
+   "source": "hand-written"
+  },
+  {
+   "name": "hand/191-state-defaults-indexing-lists",
+   "schema": "hand",
+   "file": "cases/hand/191-state-defaults-indexing-lists.oui",
+   "source": "hand-written"
+  },
+  {
+   "name": "hand/192-state-defaults-sorting-65-mixed-values-that-loop",
+   "schema": "hand",
+   "file": "cases/hand/192-state-defaults-sorting-65-mixed-values-that-loop.oui",
+   "source": "hand-written",
+   "chunkings": [
+    "1",
+    "2",
+    "3",
+    "4",
+    "7",
+    "16",
+    "random-1",
+    "random-2"
+   ]
   }
  ]
 }

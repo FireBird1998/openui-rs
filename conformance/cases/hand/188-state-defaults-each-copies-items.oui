@@ -1,0 +1,12 @@
+root = Root([Text("x")])
+$obj = {a: 1}
+$plain = @Each([$obj], "x", x == $obj)
+$member = @Each([{self: $obj}], "x", x.self == $obj)
+$unary = @Each([$obj], "x", !(x == $obj))
+$ternary = @Each([$obj], "x", x == $obj ? "same" : "copy")
+$call = @Each([[$obj]], "a", @First(a) == $obj)
+$named = @Each([[$obj]], "a", @First(array: a) == $obj)
+$index = @Each([[$obj]], "a", a[0] == $obj)
+$inList = @Each([$obj], "x", [x][0] == $obj)
+$inObject = @Each([$obj], "x", {v: x}.v == $obj)
+$assigned = @Each([1], "x", $t = x)

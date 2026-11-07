@@ -50,7 +50,7 @@ type Explains = (fn(&str) -> bool, &'static str);
 
 /// Divergences CONFORMANCE.md documents: a minimal mismatch one of these
 /// recognizes is explained, not a bug to save.
-pub(crate) const EXPLAINED: [Explains; 7] = [
+pub(crate) const EXPLAINED: [Explains; 9] = [
     (
         assigns_proto,
         "object or null assigned to __proto__ (prototype chain)",
@@ -79,7 +79,51 @@ pub(crate) const EXPLAINED: [Explains; 7] = [
         stringifies_an_own_to_string,
         "a state default turning an object with its own toString or valueOf into text",
     ),
+    (
+        sorts_values_whose_comparison_loops,
+        "a state default sorting values whose comparison loops (engine-defined order)",
+    ),
+    (
+        turns_a_constructor_into_text,
+        "a state default turning a built-in constructor into text (engine-defined)",
+    ),
 ];
+
+/// Sorting values whose comparison loops (`2 < "10"` as numbers, `"10" <
+/// "1a" < "2"` as text) gives an order the engine defines; the core follows
+/// JavaScriptCore's algorithm, which agrees for most lists, not all. A loop
+/// needs at least two numbers and a text that isn't one but sorts among their
+/// text forms, so starts with a digit.
+fn sorts_values_whose_comparison_loops(program: &str) -> bool {
+    if !program.contains("@Sort") || !program.contains('$') {
+        return false;
+    }
+    let is_number = |s: &str| !s.trim().is_empty() && s.trim().parse::<f64>().is_ok();
+    let mut numbers = 0;
+    let mut digit_led_text = false;
+    for (i, part) in program.split('"').enumerate() {
+        if i % 2 == 1 {
+            if is_number(part) {
+                numbers += 1;
+            } else if part.starts_with(|c: char| c.is_ascii_digit()) {
+                digit_led_text = true;
+            }
+        } else {
+            numbers += part
+                .split(|c: char| !(c.is_ascii_alphanumeric() || c == '.' || c == '$'))
+                .filter(|token| is_number(token))
+                .count();
+        }
+    }
+    numbers >= 2 && digit_led_text
+}
+
+/// A built-in function's text is the engine's: JavaScriptCore writes
+/// `Number`, `String` and `Boolean`'s constructors across three lines, the
+/// core every constructor on one.
+fn turns_a_constructor_into_text(program: &str) -> bool {
+    program.contains('$') && program.contains(".constructor")
+}
 
 /// JavaScript can't turn an object whose own `toString` (or `valueOf`) isn't
 /// a function into text: in a state default (`+ ""`, `@Sort`, `==`) the

@@ -1,0 +1,11 @@
+root = Root([Text("x")])
+q = Query("tool", {}, {rows: []})
+$shadowed = @Each([1, 2], "q", q)
+$notShadowed = @Each([1, 2], "x", q)
+$inner = @Each([1, 2], "q", @Each([10], "y", [q, y]))
+$props = @Each([1], "x", $t = @Count([x])).expr
+$propsRead = @Each([1], "x", $t = @Count([x]))[0].expr.mappedProps
+card = Text("hi")
+$cards = [card]
+$cardId = $cards[0].statementId
+$cardType = $cards[0].typeName

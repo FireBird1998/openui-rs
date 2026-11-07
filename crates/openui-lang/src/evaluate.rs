@@ -41,10 +41,14 @@ pub(crate) enum Js {
     /// an `@Each` template assigning a large expression costs nothing per
     /// item to read it.
     Ast(Arc<Ast>),
-    /// A built-in method or constructor read off a value (`[].map`).
+    /// A built-in method or constructor read off a value (`[].map`). It's
+    /// the property of the first prototype in the chain that has it, its
+    /// `owner`, so `(1).toString` (`Number.prototype`'s) isn't `{}.toString`
+    /// (`Object.prototype`'s), while `(1).hasOwnProperty` is.
     Function {
         name: &'static str,
         constructor: bool,
+        owner: Kind,
     },
     /// A prototype, read through `__proto__`.
     Proto(Kind),
@@ -1172,7 +1176,7 @@ fn state_default(value: &Value, declared: &Declared) -> Js {
     match value {
         Value::Ast(ast) => {
             if only_builtin_functions(ast) {
-                evaluate(ast, &Scope::Root(declared))
+                evaluate(ast, &Scope(declared))
             } else {
                 Js::Null
             }
@@ -1408,37 +1412,20 @@ fn to_value(js: &Js) -> Option<Value> {
 
 // ─── Evaluating ─────────────────────────────────────────────────────────────
 
-/// What names read: state from the defaults declared so far, and `@Each`'s
-/// iterator variables. Other references are null here.
-enum Scope<'a> {
-    Root(&'a Declared),
-    Each {
-        name: &'a str,
-        item: &'a Js,
-        parent: &'a Scope<'a>,
-    },
-}
+/// What state reads: the defaults declared so far. An `@Each` template needs
+/// no scope of its own: `substitute` replaces every reference to its iterator
+/// variable with the item before it's evaluated (one to a query of that name
+/// too, which materializing makes a plain reference inside the template), so
+/// any reference left is to something only the runtime has, and `resolveRef`
+/// is null for it here.
+struct Scope<'a>(&'a Declared);
 
 impl Scope<'_> {
     /// `getState(name)`: `declared[name] ?? null`.
     fn state(&self, name: &str) -> Js {
-        match self {
-            Scope::Root(declared) => match declared.get(name) {
-                Some(Js::Undefined | Js::Null) | None => Js::Null,
-                Some(v) => v,
-            },
-            Scope::Each { parent, .. } => parent.state(name),
-        }
-    }
-
-    /// `resolveRef(name)`.
-    fn reference(&self, name: &str) -> Js {
-        match self {
-            Scope::Root(_) => Js::Null,
-            Scope::Each {
-                name: var, item, ..
-            } if *var == name => (*item).clone(),
-            Scope::Each { parent, .. } => parent.reference(name),
+        match self.0.get(name) {
+            Some(Js::Undefined | Js::Null) | None => Js::Null,
+            Some(v) => v,
         }
     }
 }
@@ -1457,7 +1444,7 @@ fn evaluate(node: &Ast, scope: &Scope) -> Js {
         Ast::Bool(b) => Js::Bool(*b),
         Ast::Null | Ast::Ph(_) => Js::Null,
         Ast::StateRef(name) => scope.state(name),
-        Ast::Ref(name) | Ast::RuntimeRef { n: name, .. } => scope.reference(name),
+        Ast::Ref(_) | Ast::RuntimeRef { .. } => Js::Null,
         Ast::Arr(els) => Js::Arr(Arc::new(els.iter().map(|e| evaluate(e, scope)).collect())),
         Ast::Obj(entries) => {
             let mut out = JsObject::new();
@@ -1640,12 +1627,7 @@ fn each(args: &[Ast], scope: &Scope) -> Js {
                 }
                 // A step per node of the template (see `substitute`).
                 let copy = substitute(&args[2], var, item);
-                let child = Scope::Each {
-                    name: var,
-                    item,
-                    parent: scope,
-                };
-                evaluate(copy.as_ref().unwrap_or(&args[2]), &child)
+                evaluate(copy.as_ref().unwrap_or(&args[2]), scope)
             })
             .collect(),
     ))
@@ -1876,39 +1858,34 @@ fn sum(items: &[Js]) -> f64 {
     items.iter().fold(0.0, |acc, v| acc + to_number(v))
 }
 
-/// `Math.min` and `Math.max`: NaN wins, and -0 is below +0.
+// The sign of zero is never observable here: text and JSON write -0 as "0"
+// (`number_to_string`), `==` and sorting treat it as 0, and division by zero
+// is 0 by design. So `Math.min`, `Math.max` and `Math.round` keep only their
+// visible behaviour, without choosing between -0 and +0.
+
+/// `Math.min`: NaN wins.
 fn js_min(a: f64, b: f64) -> f64 {
     if a.is_nan() || b.is_nan() {
         f64::NAN
-    } else if a == b {
-        if a.is_sign_negative() { a } else { b }
     } else {
         a.min(b)
     }
 }
 
+/// `Math.max`: NaN wins.
 fn js_max(a: f64, b: f64) -> f64 {
     if a.is_nan() || b.is_nan() {
         f64::NAN
-    } else if a == b {
-        if a.is_sign_positive() { a } else { b }
     } else {
         a.max(b)
     }
 }
 
-/// `Math.round`: to the nearest integer, halves up.
+/// `Math.round`: to the nearest integer, halves up. NaN and the infinities
+/// come out as they went in, since their floor is themselves.
 fn js_round(x: f64) -> f64 {
-    if !x.is_finite() || x == 0.0 {
-        return x;
-    }
     let floor = x.floor();
-    let rounded = if x - floor >= 0.5 { floor + 1.0 } else { floor };
-    if rounded == 0.0 && x < 0.0 {
-        -0.0
-    } else {
-        rounded
-    }
+    if x - floor >= 0.5 { floor + 1.0 } else { floor }
 }
 
 /// A number function on a number, or on each item of a list, nested lists too.
@@ -1923,11 +1900,10 @@ fn elementwise(value: &Js, f: &dyn Fn(f64) -> f64) -> Js {
     }
 }
 
-/// `resolveField`: a property, or a dot path of them.
+/// `resolveField`: a property, or a dot path of them. The path isn't empty
+/// (see [`field_of`]), and a nullish object has no properties, so neither
+/// needs a check of its own.
 fn resolve_field(obj: &Js, path: &str) -> Js {
-    if path.is_empty() || is_nullish(obj) {
-        return Js::Undefined;
-    }
     if !path.contains('.') {
         return property(obj, path);
     }
@@ -2003,13 +1979,15 @@ fn sort(array: &Js, field: &Js, direction: &Js) -> Js {
     Js::Arr(Arc::new(sorted))
 }
 
-/// `Array.prototype.sort` as JavaScriptCore (Bun) does it, so that even a
-/// comparison that isn't a total order (numbers and text mixed so that it
-/// loops) gives the reference's order. Traced in Bun: binary insertion under 8
+/// `Array.prototype.sort` after JavaScriptCore (Bun), so that a comparison
+/// that isn't a total order (numbers and text mixed so that it loops) mostly
+/// gives the reference's order too; ECMAScript leaves that order to the
+/// engine, an engine-dependent divergence where they differ (a 65-value list
+/// whose first run descends, say). Traced in Bun: binary insertion under 8
 /// items; from 8 to 65, the first run (reversed if it descends strictly) and
 /// binary insertion after it; past 65, runs merged. That last is a stable
-/// merge sort here, which agrees whenever the comparison is consistent (a
-/// divergence otherwise). It never panics, as `slice::sort_by` may.
+/// merge sort here, which agrees whenever the comparison is consistent. It
+/// never panics, as `slice::sort_by` may.
 fn js_sort(mut items: Vec<Js>, less: &dyn Fn(&Js, &Js) -> bool) -> Vec<Js> {
     let n = items.len();
     if n > 65 {
@@ -2018,21 +1996,20 @@ fn js_sort(mut items: Vec<Js>, less: &dyn Fn(&Js, &Js) -> bool) -> Vec<Js> {
     if n < 2 {
         return items;
     }
+    // The first run ends at the first item that breaks it, compared in order
+    // from the third item, as Bun does.
     let start = if n < 8 {
         1
-    } else {
-        let mut run = 2;
-        if less(&items[1], &items[0]) {
-            while run < n && less(&items[run], &items[run - 1]) {
-                run += 1;
-            }
-            items[..run].reverse();
-        } else {
-            while run < n && !less(&items[run], &items[run - 1]) {
-                run += 1;
-            }
-        }
+    } else if less(&items[1], &items[0]) {
+        let run = (2..n)
+            .find(|&i| !less(&items[i], &items[i - 1]))
+            .unwrap_or(n);
+        items[..run].reverse();
         run
+    } else {
+        (2..n)
+            .find(|&i| less(&items[i], &items[i - 1]))
+            .unwrap_or(n)
     };
     for i in start..n {
         let (mut lo, mut hi) = (0, i);
@@ -2056,10 +2033,9 @@ fn merge_sort(items: Vec<Js>, less: &dyn Fn(&Js, &Js) -> bool) -> Vec<Js> {
     let n = items.len();
     let mut src = items;
     let mut width = 1;
-    while width < n {
+    while runs_to_merge(width, n) {
         let mut dst = Vec::with_capacity(n);
-        let mut start = 0;
-        while start < n {
+        for start in (0..n).step_by(2 * width) {
             let (mut left, left_end) = (start, (start + width).min(n));
             let (mut right, right_end) = (left_end, (left_end + width).min(n));
             while left < left_end || right < right_end {
@@ -2071,12 +2047,18 @@ fn merge_sort(items: Vec<Js>, less: &dyn Fn(&Js, &Js) -> bool) -> Vec<Js> {
                     left += 1;
                 }
             }
-            start += 2 * width;
         }
         src = dst;
         width *= 2;
     }
     src
+}
+
+/// Whether runs of `width` items are still shorter than the `n` being
+/// sorted, so another merging pass is needed. (A pass at `width == n` would
+/// only copy the one sorted run.)
+fn runs_to_merge(width: usize, n: usize) -> bool {
+    width < n
 }
 
 fn filter(array: &Js, field: &Js, operator: &Js, value: &Js) -> Js {
@@ -2164,19 +2146,17 @@ pub(crate) fn js_number(text: &str) -> f64 {
             return radix_number(&t[2..], radix);
         }
     }
-    // StrDecimalLiteral: a sign, digits with a point, an exponent.
+    // StrDecimalLiteral: a sign, digits with a point, an exponent. Rust's
+    // parser takes the same decimal syntax, and refuses a malformed exponent
+    // (`1e`, `1e+`, `1ex`) as `Number` does, but it also reads `inf` and
+    // `nan`, so the digits before the exponent are checked here.
     let rest = t.strip_prefix(['+', '-']).unwrap_or(t);
-    let mut parts = rest.splitn(2, ['e', 'E']);
-    let mantissa = parts.next().unwrap_or_default();
-    let exponent_ok = parts.next().is_none_or(|e| {
-        let digits = e.strip_prefix(['+', '-']).unwrap_or(e);
-        !digits.is_empty() && digits.bytes().all(|b| b.is_ascii_digit())
-    });
+    let mantissa = rest.split(['e', 'E']).next().unwrap_or_default();
     let (whole, fraction) = mantissa.split_once('.').unwrap_or((mantissa, ""));
     let mantissa_ok = (!whole.is_empty() || !fraction.is_empty())
         && whole.bytes().all(|b| b.is_ascii_digit())
         && fraction.bytes().all(|b| b.is_ascii_digit());
-    if mantissa_ok && exponent_ok {
+    if mantissa_ok {
         t.parse().unwrap_or(f64::NAN)
     } else {
         f64::NAN
@@ -2219,9 +2199,11 @@ fn to_string(v: &Js) -> String {
             out
         }
         Js::Obj(_) | Js::Ast(_) | Js::Proto(Kind::Object) => "[object Object]".to_owned(),
+        // The text is the name's, wherever the function is from.
         Js::Function {
             name,
             constructor: true,
+            ..
         } => format!("function {name}() {{ [native code] }}"),
         Js::Function { name, .. } => format!("function {name}() {{\n    [native code]\n}}"),
         Js::Proto(Kind::Array | Kind::String) => String::new(),
@@ -2302,16 +2284,19 @@ fn loose_eq(a: &Js, b: &Js) -> bool {
         (Js::Ast(x), Js::Ast(y)) => {
             this_push(Arc::as_ptr(x) as usize) == this_push(Arc::as_ptr(y) as usize)
         }
+        // The same built-in: the same name on the same prototype.
         (
             Js::Function {
                 name: x,
                 constructor: cx,
+                owner: ox,
             },
             Js::Function {
                 name: y,
                 constructor: cy,
+                owner: oy,
             },
-        ) => x == y && cx == cy,
+        ) => x == y && cx == cy && ox == oy,
         (Js::Proto(x), Js::Proto(y)) => x == y,
         (x, y) if is_object(x) && is_object(y) => false,
         (x, y) if is_object(x) => loose_eq(&to_primitive(x), y),
@@ -2356,19 +2341,20 @@ fn property(value: &Js, key: &str) -> Js {
             return Js::Function {
                 name,
                 constructor: true,
+                owner: kind,
             };
         }
-        match methods
-            .iter()
-            .chain(OBJECT_PROTOTYPE_KEYS.iter())
-            .find(|&&m| m == key)
-        {
-            Some(&name) => Js::Function {
+        // The value's own prototype's method, else `Object.prototype`'s.
+        let method = |names: &[&'static str], owner: Kind| {
+            names.iter().find(|&&m| m == key).map(|&name| Js::Function {
                 name,
                 constructor: false,
-            },
-            None => Js::Undefined,
-        }
+                owner,
+            })
+        };
+        method(methods, kind)
+            .or_else(|| method(&OBJECT_PROTOTYPE_KEYS, Kind::Object))
+            .unwrap_or(Js::Undefined)
     };
     match value {
         Js::Obj(o) => match o.get(key) {
@@ -2451,4 +2437,73 @@ pub(crate) fn locale_compare(a: &str, b: &str) -> Ordering {
     let (pa, ua) = key(a);
     let (pb, ub) = key(b);
     pa.cmp(&pb).then_with(|| ua.cmp(&ub))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// Text outside ASCII compares by code point, after all of ASCII: the
+    /// documented divergence from ICU's collation (CONFORMANCE.md). It holds
+    /// past U+FFFF too, where the weights must not overflow.
+    #[test]
+    fn text_outside_ascii_compares_by_code_point_after_ascii() {
+        assert_eq!(locale_compare("é", "ü"), Ordering::Less);
+        assert_eq!(locale_compare("z", "é"), Ordering::Less);
+        assert_eq!(locale_compare("é", "😀"), Ordering::Less);
+        assert_eq!(locale_compare("😀", "😁"), Ordering::Less);
+        assert_eq!(locale_compare("😁", "😀"), Ordering::Greater);
+    }
+
+    /// `$s`, as a parse of `program` gives it.
+    fn evaluated(program: &str) -> serde_json::Value {
+        let schema = serde_json::json!({"$defs": {
+            "Root": {"properties": {"children": {"type": "array"}}, "required": ["children"]},
+            "Text": {"properties": {"value": {"type": "string"}}, "required": ["value"]}
+        }});
+        let library = crate::Library::from_json_schema(&schema);
+        let result = crate::parse(program, &library, None);
+        let json: serde_json::Value = serde_json::from_str(&result.to_json()).unwrap();
+        json["stateDeclarations"]["$s"].clone()
+    }
+
+    /// A built-in's text is engine-defined, an engine-dependent divergence
+    /// (CONFORMANCE.md): JavaScriptCore writes `Number`, `String` and
+    /// `Boolean`'s constructors across several lines. The core writes every
+    /// constructor on one line, and a method across three.
+    #[test]
+    fn a_constructor_turned_into_text_is_one_line() {
+        let program = "root = Root([Text(\"x\")])\n$s = [(1).constructor + \"\", \"\".constructor + \"\", true.constructor + \"\", {}.constructor + \"\", (1).toFixed + \"\"]";
+        assert_eq!(
+            evaluated(program),
+            serde_json::json!([
+                "function Number() { [native code] }",
+                "function String() { [native code] }",
+                "function Boolean() { [native code] }",
+                "function Object() { [native code] }",
+                "function toFixed() {\n    [native code]\n}"
+            ])
+        );
+    }
+
+    /// Sorting values whose comparison loops gives an engine-defined order,
+    /// an engine-dependent divergence (CONFORMANCE.md). The core follows
+    /// JavaScriptCore's algorithm, which agrees for most lists but not this
+    /// one: 65 values whose first run descends. Pinned as the core gives it.
+    #[test]
+    fn a_looping_sort_whose_first_run_descends_keeps_the_cores_order() {
+        let twelve = r#""9", "8", "1a", "7", "10", 2, "x", "2", "b", "A", 3, "03""#;
+        let items = format!(
+            "{}, \"9\", \"8\", \"1a\", \"7\", \"10\"",
+            [twelve; 5].join(", ")
+        );
+        let program = format!("root = Root([Text(\"x\")])\n$s = @Sort([{items}], \"\", \"desc\")");
+        let expected = serde_json::json!([
+            "x", "x", "x", "x", "x", "b", "b", "b", "b", "b", "A", "A", "A", "A", "A", "10", "10",
+            "10", "10", "10", "10", "9", "9", "9", "9", "9", "9", "8", "8", "8", "8", "8", "8",
+            "7", "7", "7", "7", "7", "7", 3, "03", 3, "03", 3, "03", 3, "03", 3, "03", 2, "2", 2,
+            "2", 2, "2", 2, "2", 2, "2", "1a", "1a", "1a", "1a", "1a", "1a"
+        ]);
+        assert_eq!(evaluated(&program), expected);
+    }
 }
