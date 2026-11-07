@@ -2,8 +2,9 @@
 //! places, then that one in two more, and so on, doubles the result with
 //! every line (a "billion laughs" program); a component nested inside a
 //! runtime expression does too, since it's written as `args` and again as
-//! `mappedProps`. The core cuts the result at about `MAX_RESULT_SIZE` bytes
-//! of JSON and sets `size_limited`. Inlined statements are shared rather than
+//! `mappedProps`. The core cuts the result at the result-size limit, by
+//! default the larger of 64 KiB and 64 times the program's size, never above
+//! `MAX_RESULT_SIZE` bytes of JSON, and sets `size_limited`. Inlined statements are shared rather than
 //! copied, so memory stays proportional to the program, not the result. State
 //! defaults, evaluated, can double too (a list of the one above twice, a
 //! string added to itself): evaluating stops at what's left of the budget.
@@ -15,7 +16,9 @@ mod common;
 use std::sync::Arc;
 
 use common::load_corpus;
-use openui_lang::{Library, MAX_RESULT_SIZE, ParseResult, StreamParser, parse};
+use openui_lang::{
+    Library, Limits, MAX_RESULT_SIZE, ParseResult, StreamParser, parse, parse_with_limits,
+};
 
 fn library() -> Arc<Library> {
     let schema = serde_json::json!({"$defs": {
@@ -129,11 +132,12 @@ fn parse_both(program: String) -> (ParseResult, ParseResult) {
 #[test]
 fn doubling_programs_are_cut_at_the_size_limit() {
     for (shape, program) in doubling(60) {
+        let limit = Limits::default().result_size_for(program.len());
         let (one, streamed) = parse_both(program);
         assert!(one.size_limited, "{shape}: not flagged");
         let json = one.to_json();
         assert!(
-            json.len() <= MAX_RESULT_SIZE + MAX_RESULT_SIZE / 4,
+            json.len() <= limit + limit / 4,
             "{shape}: {} bytes of JSON",
             json.len()
         );
@@ -144,12 +148,22 @@ fn doubling_programs_are_cut_at_the_size_limit() {
 
 #[test]
 fn doubling_a_few_times_is_complete() {
-    for (shape, program) in doubling(8) {
+    for (shape, program) in doubling(5) {
         let (one, streamed) = parse_both(program);
         assert!(
             !one.size_limited && !streamed.size_limited,
-            "{shape}: cut at depth 8"
+            "{shape}: cut at depth 5"
         );
+    }
+}
+
+#[test]
+fn doubling_up_to_the_ceiling_is_complete_when_the_limit_is_fixed_there() {
+    // With the result size fixed at the ceiling, as before it scaled.
+    let fixed = Limits::default().with_result_size(MAX_RESULT_SIZE);
+    for (shape, program) in doubling(8) {
+        let result = parse_with_limits(&program, &library(), None, fixed);
+        assert!(!result.size_limited, "{shape}: cut at depth 8");
     }
 }
 
