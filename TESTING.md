@@ -35,7 +35,7 @@ and test setup/cleanup are all counted automatically. The libtest main thread
 has its own account too.
 
 The **64 MiB allocation cap** applies to the core's `size`, `depth`, `work`,
-`limits`, `drop`, `entry_points`, `streaming_cost` and `cli` binaries, and the
+`limits`, `drop`, `entry_points`, `streaming_cost`, `streaming_reuse` and `cli` binaries, and the
 binding's `stack` and `binding` binaries. All other core and binding test
 binaries, including unit tests, example tests and doc examples, use **256 MiB**.
 The mixed CLI and binding suites fit comfortably under the stricter cap.
@@ -104,6 +104,7 @@ OPENUI_ALLOCATION_PEAKS=1 cargo test -q -j 4 -p openui-lang --test depth -- --no
 | `prompt_depth` | A 900-level tool input schema is refused at the default JSON depth limit and renders when the depth limit is raised; a lowered limit refuses a shallower schema | A prompt entry point that ignores the depth limit |
 | `drop` | Deep results, at the default depth limit and at 20,000 levels, parse, stream and drop on a 64 KB thread stack: arrays, elements, a runtime expression, evaluated defaults and a 10,000-statement reference chain. Run it unoptimized too (`CARGO_PROFILE_TEST_OPT_LEVEL=0`), where frames are largest | A tree that frees itself by recursion |
 | `streaming_cost` | A push costs about the same on a program four times the size, bare and in a fence with prose around it (thread CPU time, best of 7) | Streaming that grows with the square of the program |
+| `streaming_reuse` | A stream takes the state defaults it evaluated at earlier pushes as they were (#8): every push equals a fresh stream given the text so far in one push, for defaults reading defaults, components read twice (one object), a runtime expression's properties read across defaults (one object), a redefinition, a late reference, a default cut by work or by room early and whole once the program grows, and the shrunk slow fuzz input; and by cost, a push after an expensive default costs a fraction of evaluating it, and sixty defaults streamed a character at a time cost about as much a push late as early (thread CPU time) | Reuse that changes a result, or streaming defaults that grows with the square of the program |
 | `report` | The counts in CONFORMANCE.md are what the corpus holds | A stale write-up |
 | `cli` | The command-line tool's commands print what the library gives, including reading stdin, the default chunk size, and `--limit name=value` (and its error naming the limits) for every command: `tokens` reads to the program-size limit, `prompt` refuses a spec past the depth limit | A broken CLI |
 | `api` | The public JSON reader and writer, `JsObject`, and walking an expression | Public helpers that parsing alone doesn't reach |

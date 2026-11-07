@@ -104,6 +104,9 @@ pub(crate) struct Frame {
     pub limited: bool,
     /// Grew past the result-size limit; the rest became null.
     pub size_limited: bool,
+    /// Checked a library component, function or action against the library,
+    /// which a stream's still-arriving text changes (`Ctx::partial`).
+    pub partial_read: bool,
 }
 
 /// What each piece adds to [`Ctx::size`]: about the bytes of JSON it writes,
@@ -405,6 +408,7 @@ fn finish(
         cycle,
         limited,
         size_limited,
+        partial_read,
     } = frame;
     reached.sort_unstable();
     reached.dedup();
@@ -425,6 +429,7 @@ fn finish(
     ctx.frame.cycle |= cycle;
     ctx.frame.limited |= limited;
     ctx.frame.size_limited |= size_limited;
+    ctx.frame.partial_read |= partial_read;
     if cycle || limited || size_limited {
         return;
     }
@@ -435,8 +440,111 @@ fn finish(
         errors,
         r_max: max_depth.saturating_sub(start_depth),
         size,
+        context: None,
     };
     ctx.cache.put(slot, ctx.partial, expr, entry);
+}
+
+/// A state default's value, `init` materialized as the statement in `slot`
+/// declares it: as inline, its errors attributed to the statement being
+/// reported on, but kept in the cache like a referenced statement, so a
+/// stream's later results take the same value (the same shared tree) while
+/// nothing under it changes.
+///
+/// State statements are never referenced by name (`$name` is a runtime read),
+/// so their slots' value-mode entries are free for this.
+pub(crate) fn materialize_state(slot: Slot, init: &Ast, ctx: &mut Ctx) -> Value {
+    if let Some(entry) = ctx.cache.get(slot, ctx.partial, false)
+        && entry.context == ctx.current_statement_id
+        && ctx.depth + entry.r_max < ctx.limits.depth()
+        && ctx.size.saturating_add(entry.size) <= ctx.limits.result_size()
+        && let Output::Value(value) = &entry.output
+    {
+        // Its errors stand where they were met, in order: not memoized, so
+        // they're reported here every time, as inline ones are.
+        ctx.size += entry.size;
+        ctx.frame.errors.push(ErrorPart::Reached {
+            key: (slot, false),
+            memoized: false,
+            parts: entry.errors.clone(),
+        });
+        ctx.frame
+            .unresolved
+            .extend(entry.unresolved.iter().cloned());
+        ctx.frame.children.push(entry.reach.clone());
+        ctx.frame.max_depth = ctx.frame.max_depth.max(ctx.depth + entry.r_max);
+        return value.clone();
+    }
+
+    let outer = std::mem::take(&mut ctx.frame);
+    let (start_depth, start_size) = (ctx.depth, ctx.size);
+    let value = materialize_value(init, ctx);
+    let Frame {
+        errors,
+        unresolved,
+        mut reached,
+        children,
+        max_depth,
+        cycle,
+        limited,
+        size_limited,
+        partial_read,
+    } = std::mem::replace(&mut ctx.frame, outer);
+    // Nothing here depends on whether the text is still arriving: no
+    // statement reached (whose own entry is kept per `partial`), no library
+    // check, no element.
+    let either_way = reached.is_empty() && !partial_read && elementless(&value);
+    reached.sort_unstable();
+    reached.dedup();
+    let reach = Arc::new(Reach {
+        direct: reached,
+        children,
+    });
+    let errors = Arc::new(errors);
+    ctx.frame.errors.push(ErrorPart::Reached {
+        key: (slot, false),
+        memoized: false,
+        parts: errors.clone(),
+    });
+    ctx.frame.unresolved.extend(unresolved.iter().cloned());
+    ctx.frame.children.push(reach.clone());
+    ctx.frame.max_depth = ctx.frame.max_depth.max(max_depth);
+    ctx.frame.cycle |= cycle;
+    ctx.frame.limited |= limited;
+    ctx.frame.size_limited |= size_limited;
+    ctx.frame.partial_read |= partial_read;
+    if !(cycle || limited || size_limited) {
+        let entry = |value: &Value| Entry {
+            output: Output::Value(value.clone()),
+            reach: reach.clone(),
+            unresolved: unresolved.clone(),
+            errors: errors.clone(),
+            r_max: max_depth.saturating_sub(start_depth),
+            size: ctx.size - start_size,
+            context: ctx.current_statement_id.clone(),
+        };
+        // The same value either way: kept once for both, so a stream whose
+        // pending text is closed at one push and not the next still takes
+        // the same value (see `evaluate::Reuse`).
+        if either_way {
+            let other = entry(&value);
+            ctx.cache.put(slot, !ctx.partial, false, other);
+        }
+        let this = entry(&value);
+        ctx.cache.put(slot, ctx.partial, false, this);
+    }
+    value
+}
+
+/// Whether a value holds no element: runtime expressions hold none.
+fn elementless(value: &Value) -> bool {
+    crate::stack::grow_stack!(elementless(value));
+    match value {
+        Value::Element(_) => false,
+        Value::Arr(items) => items.iter().all(elementless),
+        Value::Obj(entries) => entries.values().all(elementless),
+        Value::Null | Value::Bool(_) | Value::Num(_) | Value::Str(_) | Value::Ast(_) => true,
+    }
 }
 
 /// `result.statementId = name` on an element (or anything shaped like one).
@@ -474,6 +582,7 @@ fn materialize_comp(
     let Some(def) = library.component(name) else {
         return unknown_component(ctx, name);
     };
+    ctx.frame.partial_read = true;
     let mut props = JsObject::new();
     // Set when a required prop is invalid with no default to fall back on.
     let mut drop_component = false;
@@ -579,6 +688,7 @@ fn name_args(args: &[Ast], params: &[Param]) -> JsObject<Ast> {
 /// error at all is invalid: it never runs with a value the model didn't write.
 #[inline(never)]
 fn map_call_args(name: &str, args: &[Ast], def: &Call, ctx: &mut Ctx) -> Option<JsObject<Ast>> {
+    ctx.frame.partial_read = true;
     let params = &def.params;
     if args.len() > params.len() {
         let issue = Issue::ExcessArgs {
@@ -993,6 +1103,7 @@ fn library_comp(
     ctx: &mut Ctx,
 ) -> Ast {
     let library = ctx.library;
+    ctx.frame.partial_read = true;
     if let Some(def) = library.component(name) {
         // `mappedProps` holds the args again: as much again in the result.
         let keys: usize = def

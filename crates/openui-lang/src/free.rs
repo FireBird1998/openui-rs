@@ -9,7 +9,6 @@
 //! `Arc` has other owners) only loses one owner, which recurses no further;
 //! the last owner frees it the same way.
 
-use std::rc::Rc;
 use std::sync::Arc;
 
 use crate::ast::Ast;
@@ -192,12 +191,12 @@ impl Drop for Js {
 fn js_children(js: &mut Js, rest: &mut Vec<Js>) {
     match js {
         Js::Arr(items) => {
-            if let Some(items) = Rc::get_mut(items) {
+            if let Some(items) = Arc::get_mut(items) {
                 rest.append(items);
             }
         }
         Js::Obj(object) => {
-            if let Some(object) = Rc::get_mut(object) {
+            if let Some(object) = Arc::get_mut(object) {
                 rest.extend(object.drain_values());
             }
         }
