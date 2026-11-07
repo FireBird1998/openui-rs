@@ -33,4 +33,8 @@ exclude_re = [
     'evaluate\.rs:.*replace < with <= in runs_to_merge',
     # Both callers subsequently draw positive work before returning any value; zero work or an existing cut therefore still cuts the same default (#11).
     'evaluate\.rs:.*replace out_of_work -> bool with false',
+    # The fallback walks json_shaped(props), which finds the same dynamic values as walking plain-object props directly; only extra copying changes (#14).
+    'validation\.rs:.*delete match arm Some\(Value::Obj\(p\)\) in element_parts',
+    # RuntimeRef is produced by resolution and never fed back into materialization; retain non-panicking defensive pricing (#14).
+    'materialize\.rs:.*(in runtime_ref_size$|replace runtime_ref_size -> usize)',
 ]

@@ -1,0 +1,1 @@
+root = Box([@ObjectDefault({x: 1, x: 1}), @ArrayDefault([{x: 1, x: 1}]), @Nested({x: [1e], x: [1e]}), @Walk([1e, {x: 1, x: 1}]), @Zero({x: -0, x: -0}), Enums(1e, false), @Keep([1e, {x: 1, x: 1}]), @Object({x: 0, x: -0})])

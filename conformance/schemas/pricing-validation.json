@@ -1,0 +1,186 @@
+{
+  "$defs": {
+    "Box": {
+      "properties": {
+        "value": {}
+      }
+    },
+    "Required": {
+      "properties": {
+        "blank": {
+          "type": ""
+        },
+        "empty": {
+          "enum": []
+        },
+        "ref": {
+          "$ref": "#/"
+        }
+      },
+      "required": [
+        "blank",
+        "empty",
+        "ref"
+      ]
+    },
+    "Enums": {
+      "properties": {
+        "number": {
+          "enum": [
+            1,
+            2
+          ]
+        },
+        "boolean": {
+          "enum": [
+            true
+          ]
+        }
+      }
+    },
+    "EmptySlot": {
+      "properties": {
+        "value": {
+          "anyOf": []
+        }
+      }
+    }
+  },
+  "functions": {
+    "Keep": {
+      "params": {
+        "properties": {
+          "value": {}
+        }
+      }
+    },
+    "Prune": {
+      "params": {
+        "properties": {
+          "value": {
+            "type": "array",
+            "items": {
+              "type": "number"
+            }
+          }
+        }
+      }
+    },
+    "Default": {
+      "params": {
+        "properties": {
+          "value": {
+            "type": "number",
+            "default": 7
+          }
+        }
+      }
+    },
+    "Walk": {
+      "params": {
+        "properties": {
+          "value": {
+            "type": "array",
+            "items": {}
+          }
+        }
+      }
+    },
+    "Object": {
+      "params": {
+        "properties": {
+          "value": {
+            "type": "object",
+            "properties": {
+              "x": {}
+            }
+          }
+        }
+      }
+    },
+    "Choose": {
+      "params": {
+        "properties": {
+          "value": {
+            "enum": [
+              7
+            ],
+            "default": 7
+          }
+        }
+      }
+    },
+    "RequiredCall": {
+      "params": {
+        "properties": {
+          "value": {
+            "enum": [
+              7
+            ]
+          }
+        },
+        "required": [
+          "value"
+        ]
+      }
+    },
+    "ObjectDefault": {
+      "params": {
+        "properties": {
+          "value": {
+            "type": "array",
+            "default": {
+              "x": 1
+            }
+          }
+        }
+      }
+    },
+    "ArrayDefault": {
+      "params": {
+        "properties": {
+          "value": {
+            "type": "object",
+            "default": [
+              {
+                "x": 1
+              }
+            ]
+          }
+        }
+      }
+    },
+    "Nested": {
+      "params": {
+        "properties": {
+          "value": {
+            "type": "object",
+            "properties": {
+              "x": {
+                "type": "array",
+                "items": {}
+              }
+            }
+          }
+        }
+      }
+    },
+    "Zero": {
+      "params": {
+        "properties": {
+          "value": {
+            "type": "object",
+            "properties": {
+              "x": {
+                "enum": [
+                  7
+                ],
+                "default": 0
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

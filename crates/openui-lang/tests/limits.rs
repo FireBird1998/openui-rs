@@ -402,3 +402,152 @@ fn validation_errors_count_against_the_result_size_limit() {
 
 #[global_allocator]
 static ALLOCATOR: test_alloc::Allocator = test_alloc::Allocator::with_cap(test_alloc::LIMITS);
+
+#[test]
+fn materialization_prices_exact_result_size_edges() {
+    let lib = library();
+    let cases = [
+        ("root = Stack([1, 2])", 92),
+        ("root = Stack([$state + \"abc\", 2])", 162),
+        ("root = Stack([$state ? ?unknown : null, 2])", 171),
+        ("root = Stack([$state ? true : false, 2])", 179),
+        ("root = Stack([Text(null), 2])", 296),
+        ("root = Stack([Text(), 2])", 274),
+        ("root = Stack([Text(\"abc\"), 2])", 186),
+        (
+            "root = Stack([$state ? Text(\"abc\") : Text(\"def\"), 2])",
+            357,
+        ),
+        ("root = Stack([true, false, null, ?missing, 2])", 101),
+        ("root = Stack([\"abc\", 2])", 73),
+        ("root = Stack([{longkey: 1}, 2])", 106),
+        ("root = Stack([$state, 2])", 97),
+        ("root = Stack([@Sum([1, 2]), 2])", 339),
+        ("root = Stack([$state.longfield, 2])", 142),
+        ("root = Stack([$state = 1, 2])", 152),
+        ("root = Stack([$state ? Text(\"abc\") : null, 2])", 258),
+        ("root = Stack([$state + {longkey: 1}, 2])", 221),
+        ("root = Stack([missing, 2])", 77),
+        ("leaf = Text(\"abc\")\nroot = Stack([leaf, leaf, 2])", 349),
+        ("root = Stack([Text(1), 2])", 205),
+        ("q = Query(\"x\")\nroot = Stack([q, 2])", 166),
+    ];
+    // These constants price materialization, not the serialized result's length:
+    // scalar/AST overhead, keys, duplicated mapped args, errors and inlining.
+    // The last array item forces a fit check after earlier unchecked charges.
+    for (program, edge) in cases {
+        let whole = parse(program, &lib, None);
+        for (limit, cut) in [(edge, false), (edge - 1, true)] {
+            let limits = Limits::default().with_result_size(limit);
+            let result = parse_with_limits(program, &lib, None, limits);
+            assert_eq!(result.size_limited, cut, "{program}, limit {limit}");
+            if !cut {
+                assert_eq!(result.to_json(), whole.to_json(), "{program}");
+            } else {
+                assert_ne!(result.to_json(), whole.to_json(), "{program}");
+            }
+            let mut stream = StreamParser::with_limits(lib.clone(), None, limits);
+            stream.push(program);
+            assert_eq!(stream.finish(), result, "{program}, limit {limit}");
+        }
+    }
+}
+
+/// Regression found while testing cache-sensitive materialization limits (#14).
+#[test]
+fn repeated_result_preserves_the_cut_tree() {
+    let program = "leaf = Text(\"abc\")\nroot = Stack([leaf, [[[leaf]]], leaf])";
+    let limits = Limits::default().with_depth(5).with_result_size(120);
+    let lib = library();
+    let expected = parse_with_limits(program, &lib, None, limits);
+    let mut stream = StreamParser::with_limits(lib, None, limits);
+    assert_eq!(stream.push(program), expected);
+    assert_eq!(stream.result(), expected);
+}
+
+/// Seeded corpus coverage stays small enough for this binary's 64 MiB cap.
+#[test]
+fn lowered_limits_are_independent_of_stream_history() {
+    let corpus = common::load_corpus();
+    let mut cases: Vec<_> = corpus
+        .cases
+        .iter()
+        .filter(|case| case.input.len() <= 512)
+        .collect();
+    cases.sort_by_key(|case| common::fingerprint(&format!("issue-14-seed-1:{}", case.name)));
+    cases.truncate(96);
+    assert_eq!(cases.len(), 96);
+    for case in cases {
+        for depth in [3, 5, 8] {
+            for size in [120, 400, 2000] {
+                let limits = Limits::default()
+                    .with_depth(depth)
+                    .with_result_size(size)
+                    .with_work(200);
+                let expected =
+                    parse_with_limits(&case.input, &case.library, case.root.as_deref(), limits);
+                let mut stream =
+                    StreamParser::with_limits(case.library.clone(), case.root.as_deref(), limits);
+                let first = stream.push(&case.input);
+                let same = |actual: &openui_lang::ParseResult,
+                            expected: &openui_lang::ParseResult,
+                            stage: &str| {
+                    let mut actual = actual.clone();
+                    // Quirk 4: only the count of a redefinition may differ.
+                    if matches!(stage, "whole push" | "whole finish" | "chunked finish") {
+                        actual.meta.statement_count = expected.meta.statement_count;
+                    }
+                    assert_eq!(
+                        actual.to_json(),
+                        expected.to_json(),
+                        "{}, depth {depth}, size {size}, {stage}",
+                        case.name
+                    );
+                    assert_eq!(
+                        (actual.size_limited, actual.depth_limited),
+                        (expected.size_limited, expected.depth_limited),
+                        "{}, {stage} flags",
+                        case.name
+                    );
+                };
+                same(&first, &expected, "whole push");
+                same(&stream.result(), &first, "repeated result");
+                same(&stream.finish(), &expected, "whole finish");
+                let mut stream =
+                    StreamParser::with_limits(case.library.clone(), case.root.as_deref(), limits);
+                let mut start = 0;
+                for (i, _) in case.input.char_indices().skip(1).step_by(7) {
+                    stream.push(&case.input[start..i]);
+                    start = i;
+                }
+                stream.push(&case.input[start..]);
+                let end = stream.finish();
+                same(&end, &expected, "chunked finish");
+                same(&stream.finish(), &end, "repeated finish");
+            }
+        }
+    }
+}
+
+#[test]
+fn a_cached_reference_at_the_depth_edge_is_walked_again() {
+    let program = "leaf = Text(\"abc\")\nroot = Stack([leaf, [[leaf]], leaf])";
+    let lib = library();
+    let limits = Limits::default().with_depth(6);
+    let result = parse_with_limits(program, &lib, None, limits);
+    assert!(result.depth_limited);
+    let json: serde_json::Value = serde_json::from_str(&result.to_json()).unwrap();
+    assert_eq!(json["root"]["props"]["children"][0]["typeName"], "Text");
+    assert_eq!(
+        json["root"]["props"]["children"][1],
+        serde_json::json!([[]])
+    );
+    assert_eq!(json["root"]["props"]["children"][2]["typeName"], "Text");
+    let whole = parse_with_limits(program, &lib, None, limits.with_depth(7));
+    assert!(!whole.depth_limited);
+    let json: serde_json::Value = serde_json::from_str(&whole.to_json()).unwrap();
+    assert_eq!(
+        json["root"]["props"]["children"][1][0][0]["typeName"],
+        "Text"
+    );
+}

@@ -1,0 +1,1 @@
+root = Box([@Keep({x: 1e, x: 1e}), @Keep([1e, {x: 1e, x: 1e}]), @Keep({x: 3, x: 3}), @Prune([1, "bad", 2]), @Default("bad")])

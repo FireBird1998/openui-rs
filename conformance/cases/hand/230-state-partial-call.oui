@@ -1,0 +1,3 @@
+$a = @RequiredCall(3)
+$b = @RequiredCall()
+root = Box($a)

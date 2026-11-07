@@ -17,7 +17,8 @@
   "keys": "schemas/keys.json",
   "odd": "schemas/odd.json",
   "edge": "schemas/edge.json",
-  "libraries": "schemas/libraries.json"
+  "libraries": "schemas/libraries.json",
+  "pricing-validation": "schemas/pricing-validation.json"
  },
  "cases": [
   {
@@ -1082,6 +1083,84 @@
     "random-1",
     "random-2"
    ]
+  },
+  {
+   "name": "hand/220-empty-signature-types",
+   "schema": "pricing-validation",
+   "file": "cases/hand/220-empty-signature-types.oui",
+   "source": "hand-written"
+  },
+  {
+   "name": "hand/221-number-bool-enums",
+   "schema": "pricing-validation",
+   "file": "cases/hand/221-number-bool-enums.oui",
+   "source": "hand-written"
+  },
+  {
+   "name": "hand/222-empty-component-union",
+   "schema": "pricing-validation",
+   "file": "cases/hand/222-empty-component-union.oui",
+   "source": "hand-written"
+  },
+  {
+   "name": "hand/223-literal-identity",
+   "schema": "pricing-validation",
+   "file": "cases/hand/223-literal-identity.oui",
+   "source": "hand-written"
+  },
+  {
+   "name": "hand/224-valid-required-prop",
+   "schema": "pricing-validation",
+   "file": "cases/hand/224-valid-required-prop.oui",
+   "source": "hand-written"
+  },
+  {
+   "name": "hand/225-state-partial-elements",
+   "schema": "pricing-validation",
+   "file": "cases/hand/225-state-partial-elements.oui",
+   "source": "hand-written"
+  },
+  {
+   "name": "hand/226-state-partial-reference",
+   "schema": "pricing-validation",
+   "file": "cases/hand/226-state-partial-reference.oui",
+   "source": "hand-written"
+  },
+  {
+   "name": "hand/227-cycle-errors",
+   "schema": "pricing-validation",
+   "file": "cases/hand/227-cycle-errors.oui",
+   "source": "hand-written"
+  },
+  {
+   "name": "hand/228-shaped-element-dynamic",
+   "schema": "pricing-validation",
+   "file": "cases/hand/228-shaped-element-dynamic.oui",
+   "source": "hand-written"
+  },
+  {
+   "name": "hand/229-validated-literal-identity",
+   "schema": "pricing-validation",
+   "file": "cases/hand/229-validated-literal-identity.oui",
+   "source": "hand-written"
+  },
+  {
+   "name": "hand/230-state-partial-call",
+   "schema": "pricing-validation",
+   "file": "cases/hand/230-state-partial-call.oui",
+   "source": "hand-written"
+  },
+  {
+   "name": "hand/231-noncyclic-error-memo",
+   "schema": "pricing-validation",
+   "file": "cases/hand/231-noncyclic-error-memo.oui",
+   "source": "hand-written"
+  },
+  {
+   "name": "hand/232-strict-validation-identity",
+   "schema": "pricing-validation",
+   "file": "cases/hand/232-strict-validation-identity.oui",
+   "source": "hand-written"
   }
  ]
 }

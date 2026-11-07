@@ -9,7 +9,7 @@ use crate::js::{
     write_json_number,
 };
 use crate::library::Param;
-use crate::materialize::Ctx;
+use crate::materialize::{Ctx, unchanged};
 use crate::result::{Severity, ValidationErrorCode, Value};
 
 /// The varying parts of a validation error; the wording lives in [`Issue::message`].
@@ -63,7 +63,7 @@ impl Issue {
 
     pub(crate) fn message(&self, component: &str, path: &str) -> String {
         let hint = |signature: &Option<String>| match signature {
-            Some(s) if !s.is_empty() => format!(" — signature: {s}"),
+            Some(s) => format!(" — signature: {s}"),
             _ => String::new(),
         };
         match self {
@@ -213,14 +213,13 @@ fn scalar_json(value: &Value) -> String {
     }
 }
 
-/// `enumValues.includes(value)` (SameValueZero: NaN equals NaN).
+/// `enumValues.includes(value)` uses SameValueZero, not `===`. Schema JSON
+/// numbers are finite, so numeric equality suffices: a parsed NaN never
+/// matches, while +0 and -0 do.
 fn enum_includes(values: &[&Json], value: &Value) -> bool {
     values.iter().any(|v| match (v, value) {
         (Json::String(a), Value::Str(b)) => a == b,
-        (Json::Number(a), Value::Num(b)) => {
-            let a = crate::js::json_number(a);
-            a == *b || (a.is_nan() && b.is_nan())
-        }
+        (Json::Number(a), Value::Num(b)) => crate::js::json_number(a) == *b,
         (Json::Bool(a), Value::Bool(b)) => a == b,
         _ => false,
     })
@@ -427,8 +426,8 @@ fn validate_object(
         );
         return true;
     };
-    // Shared with every other place the value is inlined: copy before changing.
-    let obj = std::sync::Arc::make_mut(obj);
+    // Match the reference's lazy copy: unchanged containers keep identity.
+    let mut out: Option<JsObject<Value>> = None;
     let props: Vec<(String, &Json)> = match s.get("properties") {
         Some(Json::Object(m)) => json_entries(m)
             .into_iter()
@@ -458,7 +457,8 @@ fn validate_object(
             let present = obj.has(key);
             if !present || matches!(obj.get(key), Some(Value::Null)) {
                 if let Some(fallback) = schema_default(prop(key)) {
-                    obj.set(key.clone(), Value::from_json(fallback));
+                    out.get_or_insert_with(|| (**obj).clone())
+                        .set(key.clone(), Value::from_json(fallback));
                     filled.push(key.clone());
                     continue;
                 }
@@ -477,19 +477,42 @@ fn validate_object(
             continue;
         }
         let child_path = format!("{path}/{key}");
-        let child_invalid = match obj.get_mut(key) {
-            Some(child) => validate_schema_value(child, sub, component, &child_path, ctx),
-            // An inherited name (`toString`, ...) is "in" every object, as a function.
-            None if key != "__proto__" && OBJECT_PROTOTYPE_KEYS.contains(&key.as_str()) => {
-                validate_inherited_function(sub, component, &child_path, ctx)
+        let Some(before) = obj.get(key) else {
+            // Inherited methods are functions, not representable as Value.
+            if key != "__proto__"
+                && OBJECT_PROTOTYPE_KEYS.contains(&key.as_str())
+                && validate_inherited_function(sub, component, &child_path, ctx)
+                && resolve_invalid_value(
+                    out.get_or_insert_with(|| (**obj).clone()),
+                    key,
+                    is_required(key),
+                    schema_default(Some(sub)),
+                )
+            {
+                invalid = true;
             }
-            None => continue,
+            continue;
         };
-        if child_invalid
-            && resolve_invalid_value(obj, key, is_required(key), schema_default(Some(sub)))
-        {
-            invalid = true;
+        let mut next = before.clone();
+        if validate_schema_value(&mut next, sub, component, &child_path, ctx) {
+            if let Some(default) = schema_default(Some(sub)) {
+                next = Value::from_json(default);
+            } else if is_required(key) {
+                invalid = true;
+                continue;
+            } else {
+                out.get_or_insert_with(|| (**obj).clone()).remove(key);
+                continue;
+            }
         }
+        // Reference: `next === obj[key]`. In particular NaN triggers a copy.
+        if !unchanged(&next, before) {
+            out.get_or_insert_with(|| (**obj).clone())
+                .set(key.clone(), next);
+        }
+    }
+    if let Some(out) = out {
+        *obj = std::sync::Arc::new(out);
     }
     invalid
 }
@@ -549,16 +572,28 @@ fn validate_array(
     let Some(item_schema) = s.get("items").filter(|i| i.is_object()) else {
         return false;
     };
-    // Shared with every other place the value is inlined: copy before changing.
-    let items = std::sync::Arc::make_mut(items);
-    let mut invalid = Vec::new();
-    for (i, item) in items.iter_mut().enumerate() {
-        if validate_schema_value(item, item_schema, component, &format!("{path}/{i}"), ctx) {
-            invalid.push(i);
+    let mut out = None;
+    for (i, before) in items.iter().enumerate() {
+        let mut next = before.clone();
+        let invalid = validate_schema_value(
+            &mut next,
+            item_schema,
+            component,
+            &format!("{path}/{i}"),
+            ctx,
+        );
+        // Reference: `next !== value[i]`; NaN counts as changed even if kept.
+        if invalid || !unchanged(&next, before) {
+            out.get_or_insert_with(|| items[..i].to_vec());
+        }
+        if let Some(out) = &mut out
+            && !invalid
+        {
+            out.push(next);
         }
     }
-    for i in invalid.into_iter().rev() {
-        items.remove(i);
+    if let Some(out) = out {
+        *items = std::sync::Arc::new(out);
     }
     false
 }

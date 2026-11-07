@@ -1,0 +1,1 @@
+root = Box([Enums(1, true), Enums(3, false), Enums(2, true)])
