@@ -1,0 +1,11 @@
+root = Root([Text("x")])
+q = Query("tool", {}, {rows: []})
+y = q
+$obj = {a: 1}
+$throughStatement = @Each([1, 2], "q", y)
+$direct = @Each([1, 2], "q", q)
+$otherName = @Each([1, 2], "x", y)
+$innerShadows = @Each([1, 2], "q", @Each([10], "q", y))
+$outerThrough = @Each([1, 2], "q", @Each([10], "z", [y, z]))
+$itemItself = @Each([$obj], "q", y == $obj)
+$copied = @Each([$obj], "q", q == $obj)

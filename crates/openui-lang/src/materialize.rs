@@ -161,10 +161,9 @@ impl Ctx<'_> {
     pub(crate) fn push_issue(&mut self, component: &str, path: &str, issue: Issue) {
         let message = issue.message(component, path);
         let size = ERROR_SIZE + message.len() + component.len() + path.len();
-        if !self.fits(size) {
+        if !self.grow(size) {
             return;
         }
-        self.size += size;
         self.frame.errors.push(ErrorPart::Own(ValidationError {
             code: issue.code(),
             component: component.to_owned(),
@@ -178,19 +177,34 @@ impl Ctx<'_> {
     /// Record an unresolved reference, within the result-size limit as
     /// [`Ctx::push_issue`] records an error.
     fn unresolved(&mut self, name: &str) {
-        if !self.fits(name.len() + 3) {
+        if !self.grow(name.len() + 3) {
             return;
         }
-        self.size += name.len() + 3;
         self.frame.unresolved.push(name.to_owned());
+    }
+
+    /// Whether the result could grow by `more` and stay within the
+    /// result-size limit. Asking cuts nothing.
+    fn would_fit(&self, more: usize) -> bool {
+        self.size.saturating_add(more) <= self.limits.result_size()
     }
 
     /// Whether the result can still grow by `more`; if not, it's cut here.
     fn fits(&mut self, more: usize) -> bool {
-        if self.size.saturating_add(more) > self.limits.result_size() {
+        if !self.would_fit(more) {
             self.frame.size_limited = true;
             return false;
         }
+        true
+    }
+
+    /// Grow the result by `more` if it fits ([`Ctx::fits`]), and say whether
+    /// it did.
+    fn grow(&mut self, more: usize) -> bool {
+        if !self.fits(more) {
+            return false;
+        }
+        self.size += more;
         true
     }
 
@@ -208,10 +222,9 @@ impl Ctx<'_> {
             self.frame.limited = true;
             return None;
         }
-        if !self.fits(size) {
+        if !self.grow(size) {
             return None;
         }
-        self.size += size;
         self.depth += 1;
         Some(())
     }
@@ -345,7 +358,7 @@ fn resolve_ref(name: &str, ctx: &mut Ctx, mode: Mode) -> Resolved {
     let expr = matches!(mode, Mode::Expr);
     if let Some(entry) = ctx.cache.get(slot, ctx.partial, expr)
         && ctx.depth + entry.r_max < ctx.limits.depth()
-        && ctx.size.saturating_add(entry.size) <= ctx.limits.result_size()
+        && ctx.would_fit(entry.size)
     {
         // Replay only a whole subtree that fits. Otherwise walk it afresh:
         // the remaining room may hold a prefix, and keys, errors and element
@@ -502,7 +515,7 @@ pub(crate) fn materialize_state(slot: Slot, init: &Ast, ctx: &mut Ctx) -> Value 
     // only uncut entries are stored, so their depth always fits again.
     if let Some(entry) = ctx.cache.get(slot, ctx.partial, false)
         && entry.context == ctx.current_statement_id
-        && ctx.size.saturating_add(entry.size) <= ctx.limits.result_size()
+        && ctx.would_fit(entry.size)
         && let Output::Value(value) = &entry.output
     {
         // Its errors stand where they were met, in order: not memoized, so
@@ -524,8 +537,7 @@ pub(crate) fn materialize_state(slot: Slot, init: &Ast, ctx: &mut Ctx) -> Value 
     // statement reached (whose own entry is kept per `partial`), no library
     // check. Elements always set partial_read when constructed. Keep it for
     // both, so a stream whose pending text is closed at one push and not the
-    // next still takes the
-    // same value (see `evaluate::Reuse`).
+    // next still takes the same value (see `evaluate::Reuse`).
     let either_way = folded.reached_nothing && !folded.partial_read;
     let entry = |value: &Value| Entry {
         output: Output::Value(value.clone()),
@@ -744,7 +756,7 @@ fn map_call_args(name: &str, args: &[Ast], def: &Call, ctx: &mut Ctx) -> Option<
                 }
             }
         }
-        if !unchanged(&next, &value) {
+        if !js_strict_eq(&next, &value) {
             mapped.set(param.name.clone(), to_literal_ast(&next));
         }
     }
@@ -757,7 +769,7 @@ fn map_call_args(name: &str, args: &[Ast], def: &Call, ctx: &mut Ctx) -> Option<
 /// JavaScript `===` for materialized values (`next !== lit.v` in mapCallArgs).
 /// Containers compare by identity; NaN differs from itself and signed zeros
 /// compare equal, as Rust's floating-point equality already does.
-pub(crate) fn unchanged(a: &Value, b: &Value) -> bool {
+pub(crate) fn js_strict_eq(a: &Value, b: &Value) -> bool {
     match (a, b) {
         (Value::Arr(x), Value::Arr(y)) => Arc::ptr_eq(x, y),
         (Value::Obj(x), Value::Obj(y)) => Arc::ptr_eq(x, y),
