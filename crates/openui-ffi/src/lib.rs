@@ -7,6 +7,8 @@
 //! thread, whatever its stack: the core grows its stack on demand, and a
 //! result frees its tree without recursion (ADR 0002).
 
+#![forbid(unsafe_code)]
+
 use std::fmt;
 use std::sync::{Arc, Mutex, MutexGuard};
 use std::time::Instant;
@@ -364,3 +366,7 @@ impl StreamSession {
         ParseOutput::timed(result, started)
     }
 }
+
+#[cfg(test)]
+#[global_allocator]
+static TEST_ALLOCATOR: test_alloc::Allocator = test_alloc::Allocator::with_cap(test_alloc::DEFAULT);

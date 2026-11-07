@@ -356,3 +356,6 @@ fn a_stream_cut_early_is_whole_once_the_program_has_grown_enough() {
     assert!(!late.size_limited);
     assert_eq!(late, parse(&whole, &lib, None));
 }
+
+#[global_allocator]
+static ALLOCATOR: test_alloc::Allocator = test_alloc::Allocator::with_cap(test_alloc::LIMITS);

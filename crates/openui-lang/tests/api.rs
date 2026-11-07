@@ -170,3 +170,6 @@ fn an_array_of_defs_is_read_by_index() {
     let library = Library::from_json_schema(&schema);
     assert_eq!(library.component_names().collect::<Vec<_>>(), ["1"]);
 }
+
+#[global_allocator]
+static ALLOCATOR: test_alloc::Allocator = test_alloc::Allocator::with_cap(test_alloc::DEFAULT);

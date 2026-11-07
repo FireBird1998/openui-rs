@@ -5,3 +5,7 @@
 fn main() {
     uniffi::uniffi_bindgen_main()
 }
+
+#[cfg(test)]
+#[global_allocator]
+static TEST_ALLOCATOR: test_alloc::Allocator = test_alloc::Allocator::with_cap(test_alloc::DEFAULT);

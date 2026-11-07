@@ -189,3 +189,6 @@ fn the_default_work_limit_scales_with_the_program() {
     assert_eq!(set.work(), Some(10));
     assert_eq!(set.work_for(1024 * 1024), 10);
 }
+
+#[global_allocator]
+static ALLOCATOR: test_alloc::Allocator = test_alloc::Allocator::with_cap(test_alloc::LIMITS);

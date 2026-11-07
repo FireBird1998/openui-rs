@@ -388,3 +388,6 @@ fn component_names_keep_the_schema_order() {
     let library = ComponentLibrary::new(schema.to_owned()).unwrap();
     assert_eq!(library.component_names(), ["Stack", "Card", "Text"]);
 }
+
+#[global_allocator]
+static ALLOCATOR: test_alloc::Allocator = test_alloc::Allocator::with_cap(test_alloc::LIMITS);

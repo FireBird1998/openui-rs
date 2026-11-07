@@ -14,6 +14,8 @@
 //! produces on the web side. Positional arguments map to its props in order.
 //!
 //! ```
+//! # #[global_allocator]
+//! # static ALLOCATOR: test_alloc::Allocator = test_alloc::Allocator::with_cap(test_alloc::DEFAULT);
 //! use openui_lang::{Library, parse};
 //!
 //! let schema = serde_json::json!({"$defs": {
@@ -33,6 +35,8 @@
 //! it's required, the component is too:
 //!
 //! ```
+//! # #[global_allocator]
+//! # static ALLOCATOR: test_alloc::Allocator = test_alloc::Allocator::with_cap(test_alloc::DEFAULT);
 //! # use openui_lang::{Library, parse};
 //! # let schema = serde_json::json!({"$defs": {
 //! #     "Text": {"properties": {"value": {"type": "string"}}, "required": ["value"]}
@@ -60,6 +64,8 @@
 //! whole program.
 //!
 //! ```
+//! # #[global_allocator]
+//! # static ALLOCATOR: test_alloc::Allocator = test_alloc::Allocator::with_cap(test_alloc::DEFAULT);
 //! # use openui_lang::Library;
 //! use std::sync::Arc;
 //! use openui_lang::StreamParser;
@@ -99,6 +105,8 @@
 //! `functions` and `actions` are taught beside the built-ins.
 //!
 //! ```
+//! # #[global_allocator]
+//! # static ALLOCATOR: test_alloc::Allocator = test_alloc::Allocator::with_cap(test_alloc::DEFAULT);
 //! let spec = serde_json::json!({"library": {
 //!     "root": "Stack",
 //!     "components": {"Stack": {"signature": "Stack(children: Component[])"}}
@@ -114,6 +122,8 @@
 //! and statements nothing reaches any more are dropped.
 //!
 //! ```
+//! # #[global_allocator]
+//! # static ALLOCATOR: test_alloc::Allocator = test_alloc::Allocator::with_cap(test_alloc::DEFAULT);
 //! let existing = "root = Stack([a, b])\na = Text(\"A\")\nb = Text(\"B\")";
 //! let patch = "root = Stack([a])\na = Text(\"New\")";
 //! let merged = openui_lang::merge_statements(existing, patch, None);
@@ -127,6 +137,8 @@
 //! result back with [`parse_json`], which keeps it exact.
 //!
 //! ```
+//! # #[global_allocator]
+//! # static ALLOCATOR: test_alloc::Allocator = test_alloc::Allocator::with_cap(test_alloc::DEFAULT);
 //! # use openui_lang::{Library, parse};
 //! use openui_lang::{json_to_openui, parse_json};
 //! # let schema = serde_json::json!({"$defs": {
@@ -183,6 +195,8 @@
 //!   [`merge_statements`] stops where the stall was.
 //!
 //! ```
+//! # #[global_allocator]
+//! # static ALLOCATOR: test_alloc::Allocator = test_alloc::Allocator::with_cap(test_alloc::DEFAULT);
 //! # use openui_lang::{Library, Limits, parse_with_limits};
 //! # let library = Library::from_json_schema(&serde_json::json!({"$defs": {
 //! #     "Stack": {"properties": {"children": {"type": "array"}}}
@@ -343,3 +357,7 @@ const _: () = {
     shareable::<ParseResult>();
     shareable::<Library>();
 };
+
+#[cfg(test)]
+#[global_allocator]
+static TEST_ALLOCATOR: test_alloc::Allocator = test_alloc::Allocator::with_cap(test_alloc::DEFAULT);

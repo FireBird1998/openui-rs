@@ -316,3 +316,6 @@ fn enriched_errors_match_the_reference() {
     );
     report.finish();
 }
+
+#[global_allocator]
+static ALLOCATOR: test_alloc::Allocator = test_alloc::Allocator::with_cap(test_alloc::DEFAULT);

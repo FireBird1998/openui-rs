@@ -347,3 +347,6 @@ fn streaming_ends_where_parsing_ends() {
         "streaming ends differently from one-shot parsing:\n{report}"
     );
 }
+
+#[global_allocator]
+static ALLOCATOR: test_alloc::Allocator = test_alloc::Allocator::with_cap(test_alloc::DEFAULT);

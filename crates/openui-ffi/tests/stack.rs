@@ -46,6 +46,10 @@ fn deepest_programs() -> Vec<String> {
 fn the_deepest_programs_run_on_a_small_stack() {
     let library = library();
     std::thread::Builder::new()
+        .name(format!(
+            "{}::worker",
+            std::thread::current().name().unwrap_or("test")
+        ))
         .stack_size(STACK)
         .spawn(move || {
             for program in deepest_programs() {
@@ -74,6 +78,10 @@ fn a_raised_depth_limit_runs_on_a_small_stack() {
         ..ParseLimits::default()
     };
     std::thread::Builder::new()
+        .name(format!(
+            "{}::worker",
+            std::thread::current().name().unwrap_or("test")
+        ))
         .stack_size(STACK)
         .spawn(move || {
             for program in &deepest_programs()[..2] {
@@ -94,3 +102,6 @@ fn a_raised_depth_limit_runs_on_a_small_stack() {
         .join()
         .expect("the binding panicked");
 }
+
+#[global_allocator]
+static ALLOCATOR: test_alloc::Allocator = test_alloc::Allocator::with_cap(test_alloc::LIMITS);
