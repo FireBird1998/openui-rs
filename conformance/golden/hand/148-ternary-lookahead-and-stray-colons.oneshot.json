@@ -1,0 +1,1 @@
+{"root":{"type":"element","typeName":"Text","props":{"value":{"k":"Ternary","cond":{"k":"Num","v":1},"then":{"k":"Num","v":2},"else":{"k":"Num","v":3}}},"partial":false,"hasDynamicProps":true,"statementId":"root"},"meta":{"incomplete":false,"unresolved":[],"orphaned":["b","c"],"statementCount":4,"errors":[]},"stateDeclarations":{},"queryStatements":[],"mutationStatements":[]}
