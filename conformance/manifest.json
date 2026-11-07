@@ -1241,6 +1241,12 @@
    "schema": "hand",
    "file": "cases/hand/209-stream-reuse-expression-owner-3.oui",
    "source": "hand-written"
+  },
+  {
+   "name": "hand/193-state-defaults-each-resolving-a-runtime-ref",
+   "schema": "hand",
+   "file": "cases/hand/193-state-defaults-each-resolving-a-runtime-ref.oui",
+   "source": "hand-written"
   }
  ]
 }

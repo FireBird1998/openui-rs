@@ -1155,7 +1155,7 @@ fn state_default(value: &Value, declared: &Declared) -> Js {
     match value {
         Value::Ast(ast) => {
             if only_builtin_functions(ast) {
-                evaluate(ast, &Scope(declared))
+                evaluate(ast, &Scope::Root(declared))
             } else {
                 Js::Null
             }
@@ -1391,20 +1391,44 @@ fn to_value(js: &Js) -> Option<Value> {
 
 // ─── Evaluating ─────────────────────────────────────────────────────────────
 
-/// What state reads: the defaults declared so far. An `@Each` template needs
-/// no scope of its own: `substitute` replaces every reference to its iterator
-/// variable with the item before it's evaluated (one to a query of that name
-/// too, which materializing makes a plain reference inside the template), so
-/// any reference left is to something only the runtime has, and `resolveRef`
-/// is null for it here.
-struct Scope<'a>(&'a Declared);
+/// What names read: state from the defaults declared so far, and `@Each`'s
+/// iterator variables. The reference's `Each` both substitutes the item for
+/// `Ref` nodes named after its variable (`substituteRef`, here [`substitute`])
+/// and evaluates the template in a child context whose `resolveRef` gives the
+/// item itself for that name. A `RuntimeRef` isn't substituted, and one named
+/// after the variable reaches the template through a statement it inlines
+/// (`y = q` read inside `@Each(…, "q", y)`), so the lookup is needed too. Other
+/// references are null here.
+enum Scope<'a> {
+    Root(&'a Declared),
+    Each {
+        name: &'a str,
+        item: &'a Js,
+        parent: &'a Scope<'a>,
+    },
+}
 
 impl Scope<'_> {
     /// `getState(name)`: `declared[name] ?? null`.
     fn state(&self, name: &str) -> Js {
-        match self.0.get(name) {
-            Some(Js::Undefined | Js::Null) | None => Js::Null,
-            Some(v) => v,
+        match self {
+            Scope::Root(declared) => match declared.get(name) {
+                Some(Js::Undefined | Js::Null) | None => Js::Null,
+                Some(v) => v,
+            },
+            Scope::Each { parent, .. } => parent.state(name),
+        }
+    }
+
+    /// `resolveRef(name)`: the innermost `@Each` item of that name, the item
+    /// itself (not a copy), else null.
+    fn reference(&self, name: &str) -> Js {
+        match self {
+            Scope::Root(_) => Js::Null,
+            Scope::Each {
+                name: var, item, ..
+            } if *var == name => (*item).clone(),
+            Scope::Each { parent, .. } => parent.reference(name),
         }
     }
 }
@@ -1423,7 +1447,7 @@ fn evaluate(node: &Ast, scope: &Scope) -> Js {
         Ast::Bool(b) => Js::Bool(*b),
         Ast::Null | Ast::Ph(_) => Js::Null,
         Ast::StateRef(name) => scope.state(name),
-        Ast::Ref(_) | Ast::RuntimeRef { .. } => Js::Null,
+        Ast::Ref(name) | Ast::RuntimeRef { n: name, .. } => scope.reference(name),
         Ast::Arr(els) => Js::Arr(Arc::new(els.iter().map(|e| evaluate(e, scope)).collect())),
         Ast::Obj(entries) => {
             let mut out = JsObject::new();
@@ -1606,7 +1630,12 @@ fn each(args: &[Ast], scope: &Scope) -> Js {
                 }
                 // A step per node of the template (see `substitute`).
                 let copy = substitute(&args[2], var, item);
-                evaluate(copy.as_ref().unwrap_or(&args[2]), scope)
+                let child = Scope::Each {
+                    name: var,
+                    item,
+                    parent: scope,
+                };
+                evaluate(copy.as_ref().unwrap_or(&args[2]), &child)
             })
             .collect(),
     ))
@@ -2444,6 +2473,18 @@ mod tests {
         let result = crate::parse(program, &library, None);
         let json: serde_json::Value = serde_json::from_str(&result.to_json()).unwrap();
         json["stateDeclarations"]["$s"].clone()
+    }
+
+    /// `@Each` reads its loop variable two ways, as the reference does: a
+    /// `Ref` named after it is substituted with a copy of the item before
+    /// evaluating (`substitute`), and a `RuntimeRef` named after it (a query
+    /// of that name, read through a statement the template inlines) resolves
+    /// through the scope to the item itself. Each half shows: the copy isn't
+    /// the item, the resolved one is, and both read its value.
+    #[test]
+    fn each_substitutes_refs_and_resolves_runtime_refs_to_its_item() {
+        let program = "root = Root([Text(\"x\")])\nq = Query(\"tool\", {}, {rows: []})\ny = q\n$o = {a: 1}\n$s = @Each([$o], \"q\", [q == $o, y == $o, q.a, y.a])";
+        assert_eq!(evaluated(program), serde_json::json!([[false, true, 1, 1]]));
     }
 
     /// A built-in's text is engine-defined, an engine-dependent divergence

@@ -136,11 +136,11 @@ impl Table {
         match previous {
             Some((stmt, info)) => {
                 for &r in &info.refs {
-                    // Invariant: s occurs in referrers[r] exactly once iff
-                    // r is in info[s].refs, and not at all otherwise. define
-                    // sorts/deduplicates refs and preserves that invariant.
-                    // undo removed every occurrence of slot from its current
-                    // refs' lists above, so previous.refs can be pushed once.
+                    // Always so: s is in referrers[r] once if r is in
+                    // info[s].refs, and not at all otherwise. `define` sorts
+                    // and deduplicates refs to keep it so, and the loop above
+                    // took slot out of its current refs' lists, so each of
+                    // previous.refs takes it back once.
                     self.referrers[r as usize].push(slot);
                 }
                 self.set_special(slot, info.special(), current.special());
