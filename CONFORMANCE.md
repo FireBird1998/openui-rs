@@ -111,7 +111,7 @@ Documented, not emulated. None occurs in the corpus, and none comes from a real 
 | A state default reading a property of a built-in method or prototype (`$a = [].map.length`, `$b = $o.__proto__.x`) | that property | `undefined` (the method itself, `[].map`, is reproduced) |
 | An object literal shaped like an AST node in a state default (`$x = {k: "Num", v: 1}`) | evaluates it as that node | keeps it as the object |
 | A state default turning an object with its own `toString` or `valueOf` into text (`$a = {toString: 1}` then `$b = $a + ""`, or in `@Sort`, `@Filter`'s `contains`, `==`) | `parse` throws a `TypeError`: the object can't become text | `"[object Object]"` |
-| JSON nested deeper than 800 levels, for `json_to_openui` or `parse_json` | handled, up to the engine's recursion limit | refused with an error |
+| JSON nested deeper than 800 levels (three per level of the depth limit and 32 more, under raised `Limits`), for `json_to_openui`, `parse_json` or a prompt spec for `generate_system_prompt` | handled, up to the engine's recursion limit | refused with an error |
 | `1e400` in JSON read back | `Infinity` | refused: a `serde_json::Value` can't hold it |
 | A component with `properties` whose `required` is neither an array nor a string (a number, say) | throws a `TypeError` building the library (`required.includes is not a function`) | treats `required` as empty |
 | A library function or action without `params`, or one that isn't an object | throws a `TypeError` building the library | has no params |

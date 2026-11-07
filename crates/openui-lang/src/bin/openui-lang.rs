@@ -15,9 +15,10 @@
 //!                                                   reference/bench.ts
 //!
 //! `--limit name=value`, anywhere and as often as needed, sets one of the
-//! core's limits for `parse`, `stream` and `bench`: `program-size` and
-//! `result-size` in bytes, `depth` in levels. Fuzz finds and blow-ups replay
-//! under any limit this way.
+//! core's limits for every command: `program-size` and `result-size` in
+//! bytes, `depth` in levels. `tokens` reads the program up to the
+//! program-size limit, and `prompt` refuses a spec nesting past the depth
+//! limit. Fuzz finds and blow-ups replay under any limit this way.
 
 use std::io::Read;
 use std::process::ExitCode;
@@ -25,7 +26,7 @@ use std::sync::Arc;
 use std::time::Instant;
 
 use openui_lang::{
-    Library, Limits, StreamParser, generate_system_prompt, parse_with_limits, tokenize,
+    Library, Limits, StreamParser, generate_system_prompt_with_limits, parse_with_limits, tokenize,
     tokens_to_json,
 };
 
@@ -71,6 +72,16 @@ fn take_limits(args: &[String]) -> Result<(Vec<String>, Limits), String> {
         };
     }
     Ok((rest, limits))
+}
+
+/// The part of `text` within `bytes`, never splitting a character: what the
+/// program-size limit lets parsing read.
+fn within(text: &str, bytes: usize) -> &str {
+    let end = (0..=bytes.min(text.len()))
+        .rev()
+        .find(|&i| text.is_char_boundary(i))
+        .unwrap_or(0);
+    &text[..end]
 }
 
 /// `text` cut into pieces of `size` code points.
@@ -165,13 +176,16 @@ fn run(args: &[String]) -> Result<(), String> {
             Ok(())
         }
         [command, program] if command == "tokens" => {
-            println!("{}", tokens_to_json(&tokenize(&read_input(program)?)));
+            let text = read_input(program)?;
+            let text = within(&text, limits.program_size());
+            println!("{}", tokens_to_json(&tokenize(text)));
             Ok(())
         }
         [command, spec] if command == "prompt" => {
             let spec: serde_json::Value =
                 serde_json::from_str(&read_input(spec)?).map_err(|e| format!("{spec}: {e}"))?;
-            let prompt = generate_system_prompt(&spec).map_err(|e| e.to_string())?;
+            let prompt =
+                generate_system_prompt_with_limits(&spec, limits).map_err(|e| e.to_string())?;
             println!("{prompt}");
             Ok(())
         }
