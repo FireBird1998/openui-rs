@@ -1,0 +1,7 @@
+root = Text("outside")
+```openui
+// first
+
+# second
+root = Text("inside")
+```

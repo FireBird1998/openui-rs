@@ -99,6 +99,11 @@ pub fn auto_close(input: &str) -> (String, bool) {
     (out, true)
 }
 
+/// The position after a newline whose following newline run will be skipped.
+fn after_newline(pos: usize) -> usize {
+    pos + 1
+}
+
 /// Split a token stream into `id = expression` statements. Statements end at a
 /// newline outside brackets, unless the next line continues a ternary. Lines
 /// that aren't statements are skipped.
@@ -161,9 +166,9 @@ pub fn split(tokens: &Tokens) -> Vec<RawStatement> {
             }
             let token = &tokens[pos];
             if *token == Token::Newline && depth <= 0 && ternary_depth <= 0 {
-                let peek = skip(pos + 1, |t| *t == Token::Newline);
+                let peek = skip(after_newline(pos), |t| *t == Token::Newline);
                 let next = tokens.get(peek).unwrap_or(&EOF);
-                if *next == Token::Question || (*next == Token::Colon && ternary_depth > 0) {
+                if *next == Token::Question {
                     pos += 1;
                     continue;
                 }

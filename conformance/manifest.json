@@ -912,6 +912,84 @@
    "schema": "hand",
    "file": "cases/hand/147-runtime-property-identity.oui",
    "source": "hand-written"
+  },
+  {
+   "name": "hand/148-ternary-lookahead-and-stray-colons",
+   "schema": "hand",
+   "file": "cases/hand/148-ternary-lookahead-and-stray-colons.oui",
+   "source": "hand-written"
+  },
+  {
+   "name": "hand/149-nested-ternary-colons",
+   "schema": "hand",
+   "file": "cases/hand/149-nested-ternary-colons.oui",
+   "source": "hand-written"
+  },
+  {
+   "name": "hand/150-stray-closers-before-open-brackets",
+   "schema": "hand",
+   "file": "cases/hand/150-stray-closers-before-open-brackets.oui",
+   "source": "hand-written"
+  },
+  {
+   "name": "hand/151-fence-depth-and-continuation-strings",
+   "schema": "hand",
+   "file": "cases/hand/151-fence-depth-and-continuation-strings.oui",
+   "source": "hand-written"
+  },
+  {
+   "name": "hand/152-fence-open-depth-keeps-continuation-string",
+   "schema": "hand",
+   "file": "cases/hand/152-fence-open-depth-keeps-continuation-string.oui",
+   "source": "hand-written"
+  },
+  {
+   "name": "hand/153-fenced-comment-heads",
+   "schema": "hand",
+   "file": "cases/hand/153-fenced-comment-heads.oui",
+   "source": "hand-written"
+  },
+  {
+   "name": "hand/154-fenced-head-name-spans-lines",
+   "schema": "hand",
+   "file": "cases/hand/154-fenced-head-name-spans-lines.oui",
+   "source": "hand-written"
+  },
+  {
+   "name": "hand/155-fenced-nonstatement-head-stays-decided",
+   "schema": "hand",
+   "file": "cases/hand/155-fenced-nonstatement-head-stays-decided.oui",
+   "source": "hand-written"
+  },
+  {
+   "name": "hand/156-empty-fences-and-script-tails",
+   "schema": "hand",
+   "file": "cases/hand/156-empty-fences-and-script-tails.oui",
+   "source": "hand-written"
+  },
+  {
+   "name": "hand/157-blank-tail-after-fenced-program",
+   "schema": "hand",
+   "file": "cases/hand/157-blank-tail-after-fenced-program.oui",
+   "source": "hand-written"
+  },
+  {
+   "name": "hand/158-escaped-newline-before-comments",
+   "schema": "hand",
+   "file": "cases/hand/158-escaped-newline-before-comments.oui",
+   "source": "hand-written"
+  },
+  {
+   "name": "hand/159-inline-fence-and-script-opener",
+   "schema": "hand",
+   "file": "cases/hand/159-inline-fence-and-script-opener.oui",
+   "source": "hand-written"
+  },
+  {
+   "name": "hand/160-stray-colon-before-a-ternary",
+   "schema": "hand",
+   "file": "cases/hand/160-stray-colon-before-a-ternary.oui",
+   "source": "hand-written"
   }
  ]
 }
