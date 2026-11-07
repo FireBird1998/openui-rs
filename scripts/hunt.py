@@ -235,7 +235,7 @@ def coverage_findings(hunt):
                 data = path.read_bytes()
                 out.append({"kind": label, "check": "coverage", "target": target, "file": path.name,
                             "input": data.decode("utf-8", "replace"),
-                            "replay": f"cargo +nightly fuzz run {target} {path}"})
+                            "replay": f"cargo +nightly fuzz run -s none {target} {path} -- -timeout=2 -malloc_limit_mb=512 -rss_limit_mb=1024"})
     return out
 
 

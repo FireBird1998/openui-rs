@@ -10,7 +10,9 @@ use std::collections::BTreeMap;
 use std::panic::{AssertUnwindSafe, catch_unwind};
 use std::sync::Arc;
 
-use openui_lang::{Library, StreamParser, json_to_openui, merge_statements, parse, parse_json};
+use openui_lang::{
+    Library, Limits, StreamParser, json_to_openui, merge_statements, parse, parse_json,
+};
 use serde_json::{Value, json};
 
 use crate::reference::Reference;
@@ -97,7 +99,17 @@ impl Engine for Core<'_> {
             .iter()
             .map(|c| {
                 caught(|| {
-                    let mut parser = StreamParser::new(self.libraries[c.lib].clone(), c.root);
+                    // A stream's limits scale with the text so far, so an early
+                    // push can be cut where the whole program isn't (#5), and
+                    // a rule comparing pushes would see the limit, not the
+                    // parser. Programs whose result is cut are left out, so
+                    // every push gets the whole program's limits instead.
+                    let whole = Limits::default();
+                    let limits = whole
+                        .with_result_floor(whole.result_size_for(c.input.len()))
+                        .with_work(whole.work_for(c.input.len()));
+                    let mut parser =
+                        StreamParser::with_limits(self.libraries[c.lib].clone(), c.root, limits);
                     let chars: Vec<char> = c.input.chars().collect();
                     let mut at = 0;
                     let mut steps = Vec::new();

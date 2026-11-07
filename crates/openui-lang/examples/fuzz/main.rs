@@ -35,7 +35,7 @@ use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use std::time::{Duration, Instant};
 
-use openui_lang::{Library, StreamParser, parse, tokenize, tokens_to_json};
+use openui_lang::{Library, Limits, StreamParser, parse_with_limits, tokenize, tokens_to_json};
 use serde_json::{Value, json};
 
 use findings::{Outcome, batches, run};
@@ -330,14 +330,29 @@ pub(crate) fn fingerprint(json: &str) -> String {
 /// One-shot, tokens, then every push and the stream's end.
 type Fingerprints = (String, String, Vec<String>);
 
-/// The core's fingerprints for a program and how long they took, or None if
-/// it panicked.
-fn core_answer(p: &Program, library: &Arc<Library>) -> Option<(Fingerprints, Duration)> {
+/// The core's fingerprints for a program under `limits`, whether a limit cut
+/// any of its results (the one-shot parse, a push or the end), and how long
+/// they took; or None if it panicked.
+fn core_answer(
+    p: &Program,
+    library: &Arc<Library>,
+    limits: Limits,
+) -> Option<(Fingerprints, bool, Duration)> {
     let started = Instant::now();
     catch_unwind(AssertUnwindSafe(|| {
-        let oneshot = fingerprint(&parse(&p.input, library, p.root.as_deref()).to_json());
+        let mut cut = false;
+        let mut seen = |result: openui_lang::ParseResult| {
+            cut |= result.size_limited;
+            fingerprint(&result.to_json())
+        };
+        let oneshot = seen(parse_with_limits(
+            &p.input,
+            library,
+            p.root.as_deref(),
+            limits,
+        ));
         let tokens = fingerprint(&tokens_to_json(&tokenize(&p.input)));
-        let mut parser = StreamParser::new(library.clone(), p.root.as_deref());
+        let mut parser = StreamParser::with_limits(library.clone(), p.root.as_deref(), limits);
         let mut steps = Vec::new();
         let mut chars = p
             .input
@@ -347,17 +362,33 @@ fn core_answer(p: &Program, library: &Arc<Library>) -> Option<(Fingerprints, Dur
         let mut start = chars.next().unwrap_or(0);
         for &size in &p.sizes {
             let end = chars.nth(size - 1).unwrap_or(p.input.len());
-            steps.push(fingerprint(&parser.push(&p.input[start..end]).to_json()));
+            steps.push(seen(parser.push(&p.input[start..end])));
             start = end;
         }
-        steps.push(fingerprint(&parser.finish().to_json()));
-        (oneshot, tokens, steps)
+        steps.push(seen(parser.finish()));
+        ((oneshot, tokens, steps), cut)
     }))
     .ok()
-    .map(|answer| (answer, started.elapsed()))
+    .map(|(answer, cut)| (answer, cut, started.elapsed()))
+}
+
+/// Limits under which nothing the reference can answer is cut for size or
+/// work: what a result cut by the default limits is compared under instead.
+/// The depth limit stays: past it the core differs from the reference by
+/// design (a documented divergence), however the other limits are set.
+fn raised_limits() -> Limits {
+    Limits::default()
+        .with_amplification(1 << 20)
+        .with_result_ceiling(1 << 28)
+        .with_work(1 << 40)
 }
 
 /// The outcome for a program, and how long the core took when it finished.
+///
+/// A result a limit cut can't match the reference, which has no limits. So
+/// when the answers differ and the core's was cut for size or work, it's
+/// asked again with those limits raised: matching then, it's [`Outcome::Cut`]
+/// (the limit did its job), and differing still, a mismatch as before.
 fn judge(p: &Program, answer: &Answer, corpus: &Corpus) -> (Outcome, Option<Duration>) {
     let Answer::Fingerprints {
         oneshot,
@@ -370,15 +401,20 @@ fn judge(p: &Program, answer: &Answer, corpus: &Corpus) -> (Outcome, Option<Dura
         return (Outcome::ReferenceThrew, None);
     };
     let steps: Vec<&String> = steps.iter().chain([end]).collect();
-    match core_answer(p, &corpus.libraries[&p.lib]) {
+    let same = |(o, t, s): &Fingerprints| {
+        o == oneshot && t == tokens && s.iter().eq(steps.iter().copied())
+    };
+    let library = &corpus.libraries[&p.lib];
+    match core_answer(p, library, Limits::default()) {
         None => (Outcome::CorePanicked, None),
-        Some((_, took)) if took > run().slow => (Outcome::BlowUp, Some(took)),
-        Some(((o, t, s), took))
-            if &o == oneshot && &t == tokens && s.iter().eq(steps.iter().copied()) =>
-        {
-            (Outcome::Match, Some(took))
-        }
-        Some((_, took)) => (Outcome::Mismatch, Some(took)),
+        Some((_, _, took)) if took > run().slow => (Outcome::BlowUp, Some(took)),
+        Some((answer, _, took)) if same(&answer) => (Outcome::Match, Some(took)),
+        Some((_, true, took)) => match core_answer(p, library, raised_limits()) {
+            None => (Outcome::CorePanicked, Some(took)),
+            Some((raised, _, _)) if same(&raised) => (Outcome::Cut, Some(took)),
+            Some(_) => (Outcome::Mismatch, Some(took)),
+        },
+        Some((_, false, took)) => (Outcome::Mismatch, Some(took)),
     }
 }
 
@@ -590,7 +626,7 @@ fn main() {
             {
                 slowest = (took, k);
             }
-            if outcome == Outcome::Match {
+            if matches!(outcome, Outcome::Match | Outcome::Cut) {
                 continue;
             }
             let origin = format!("seed {seed}, program {k}");
@@ -664,8 +700,9 @@ fn main() {
     let total: usize = tally.values().sum();
     let count = |o| tally.get(&o).copied().unwrap_or(0);
     println!(
-        "fuzz seed {seed}: {total} programs, {} match, {} mismatch ({explained} explained), {} core panics, {} blow-ups, {} reference exceptions",
+        "fuzz seed {seed}: {total} programs, {} match, {} cut by a limit (matching with it raised), {} mismatch ({explained} explained), {} core panics, {} blow-ups, {} reference exceptions",
         count(Outcome::Match),
+        count(Outcome::Cut),
         count(Outcome::Mismatch),
         count(Outcome::CorePanicked),
         count(Outcome::BlowUp),
@@ -681,6 +718,7 @@ fn main() {
         &json!({
             "inputs": total,
             "match": count(Outcome::Match),
+            "cut": count(Outcome::Cut),
             "mismatch": count(Outcome::Mismatch),
             "explained": explained,
             "crash": count(Outcome::CorePanicked),

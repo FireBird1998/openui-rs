@@ -11,10 +11,15 @@
 # logs in DIR, as hunts do, instead of fuzz/artifacts/<target>/.
 #
 # Inputs stay under 8 KB, the size of a long model response: smaller inputs
-# run faster, so the fuzzer explores more. The time limit is 10 s an input: the core answers any input in well under
-# a second in a release build, and a fuzz build adds debug assertions, which
-# make it slower. Ten seconds still catches what grows without bound, which is
-# what the limit is for.
+# run faster, so the fuzzer explores more.
+#
+# The caps make slowness and memory a finding, not a pass (openui-rs #10): an
+# input over 2 s, a single allocation over 512 MB or a process over 1 GB stops
+# the target and leaves the input. Every limit the core has (ADR 0001) bounds
+# an input's work and memory well under them, even in a fuzz build with debug
+# assertions; the slow inputs of the lang-core 1.1 long runs (18.5 s and 12.5
+# s then) now replay in milliseconds. The targets also check that a result
+# past a limit is flagged and stays bounded (fuzz/fuzz_targets/checks.rs).
 #
 # Built without AddressSanitizer (`-s none`): the core forbids unsafe code, so
 # the sanitizer has nothing to catch, and over a long run its bookkeeping grows
@@ -44,9 +49,19 @@ cargo +nightly fuzz build -s none > /dev/null 2>&1 || { cargo +nightly fuzz buil
 # its chunk plan), program-and-patch pairs for merging, and parse results for
 # converting back to source and for JSON.
 seed() {
-  local target="$1" dir="fuzz/corpus/$1"
+  local target="$1" dir="fuzz/corpus/$1" fresh=""
   mkdir -p "$dir"
-  [[ -z "$(ls -A "$dir")" ]] || return 0
+  [[ -n "$(ls -A "$dir")" ]] || fresh=1
+  # The slow inputs of the lang-core 1.1 long runs, shrunk, join every corpus,
+  # new or kept, so each run replays them within the caps.
+  case "$target" in
+    parse) cp crates/openui-lang/tests/slow/*.oui "$dir/" ;;
+    stream)
+      for f in crates/openui-lang/tests/slow/*.oui; do
+        { printf '\000'; cat "$f"; } > "$dir/slow-$(basename "$f")"
+      done ;;
+  esac
+  [[ -n "$fresh" ]] || return 0
   case "$target" in
     parse) find conformance/cases conformance/imported/cases -name '*.oui' -size -8k -exec cp {} "$dir/" \; ;;
     stream)
@@ -77,7 +92,7 @@ for target in "${targets[@]}"; do
   [[ -z "$findings" ]] || prefix="$out/coverage-$target-"
   echo "Fuzzing $target for $seconds s"
   cargo +nightly fuzz run -s none "$target" "fuzz/corpus/$target" -- \
-    -dict=fuzz/openui.dict -timeout=10 -rss_limit_mb=4096 -max_len=8192 -max_total_time="$seconds" \
+    -dict=fuzz/openui.dict -timeout=2 -malloc_limit_mb=512 -rss_limit_mb=1024 -max_len=8192 -max_total_time="$seconds" \
     -print_final_stats=1 -artifact_prefix="$prefix" > "$out/coverage-$target.log" 2>&1 &
   pids+=($!)
 done

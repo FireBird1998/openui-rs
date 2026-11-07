@@ -119,6 +119,9 @@ pub fn batches(
 #[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]
 pub enum Outcome {
     Match,
+    /// The core's answer differs only because a limit cut it (ADR 0001): with
+    /// the result-size and work limits raised, it matches the reference.
+    Cut,
     Mismatch,
     ReferenceThrew,
     CorePanicked,
@@ -131,7 +134,7 @@ impl Outcome {
     /// throwing where the core doesn't is a candidate quirk or divergence.
     pub fn kind(self) -> &'static str {
         match self {
-            Outcome::Match => "none",
+            Outcome::Match | Outcome::Cut => "none",
             Outcome::Mismatch => "mismatch",
             Outcome::CorePanicked => "crash",
             Outcome::BlowUp => "blow-up",

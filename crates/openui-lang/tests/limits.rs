@@ -295,9 +295,9 @@ fn a_fixed_result_size_ignores_the_program_size() {
 /// (`coverage-stream-timeout-b1187e1…`, 4.8 KB with a 612 KB result), shrunk
 /// to 86 bytes whose root expression, written out as an AST, is 98 KB of
 /// JSON: an amplification over 1,100. The library is the part of the fuzz
-/// target's that it needs.
-const SLOW_STREAM_INPUT: &str =
-    r#"root=Card([t[Text(""root=Card([t=@Sort(@Filter(["pple""bvation""cherry""""ns"root le@t"#;
+/// target's that it needs. The coverage-guided targets' corpus is seeded
+/// with it too (`scripts/fuzz-coverage.sh`).
+const SLOW_STREAM_INPUT: &str = include_str!("slow/stream-b1187e1.oui");
 
 fn slow_stream_library() -> Arc<Library> {
     let schema = serde_json::json!({
@@ -355,6 +355,49 @@ fn a_stream_cut_early_is_whole_once_the_program_has_grown_enough() {
     let late = stream.push(&padding);
     assert!(!late.size_limited);
     assert_eq!(late, parse(&whole, &lib, None));
+}
+
+/// A library whose `Stack` takes only `Text` children, so each item that
+/// isn't one is a validation error, written out with its message.
+fn strict_library() -> Arc<Library> {
+    let schema = serde_json::json!({"$defs": {
+        "Text": {"properties": {"value": {"type": "string"}}, "required": ["value"]},
+        "Stack": {"properties": {"children": {"type": "array", "items": {"anyOf": [{"$ref": "#/$defs/Text"}]}}}}
+    }});
+    Arc::new(Library::from_json_schema(&schema))
+}
+
+/// Validation errors count against the result-size limit like the rest of
+/// the result: each `""` item (3 bytes) costs an error of about 100 bytes, so
+/// a program made of them amplifies past any limit unless its errors are cut.
+/// Found by the coverage-guided targets' flag check (#10): a 294-byte input's
+/// result was 13 KB, mostly errors, past a 1 KiB limit and unflagged.
+#[test]
+fn validation_errors_count_against_the_result_size_limit() {
+    let lib = strict_library();
+    let program = format!("root = Stack([{}])", "\"\", ".repeat(2_000));
+    let limit = 16 * 1024;
+    let limits = Limits::default().with_result_size(limit);
+    let cut = parse_with_limits(&program, &lib, None, limits);
+    assert!(cut.size_limited, "an over-limit result is flagged");
+    assert!(
+        cut.to_json().len() < limit + 1024,
+        "{}",
+        cut.to_json().len()
+    );
+    let whole = parse_with_limits(
+        &program,
+        &lib,
+        None,
+        Limits::default().with_result_size(MAX_RESULT_SIZE),
+    );
+    assert!(!whole.size_limited);
+    assert_eq!(whole.meta.errors.len(), 2_000);
+
+    let mut stream = StreamParser::with_limits(lib.clone(), None, limits);
+    let streamed = stream.push(&program);
+    assert!(streamed.size_limited);
+    assert_eq!(streamed, cut);
 }
 
 #[global_allocator]

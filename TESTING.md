@@ -122,7 +122,7 @@ Not in the check, because they need Bun, time or a screen:
 |---|---|
 | `scripts/hunt.sh --minutes N` | A hunt: differential fuzzing with a fresh seed and the upstream check, for a set time, leaving a report (see [Hunts](#hunts)) |
 | `scripts/upstream-check.sh <folder>` | The upstream check on its own |
-| `scripts/fuzz.sh --seed N --count N` | Differential fuzzing: generated and mangled programs through the core and a live reference, comparing every step. It saves shrunk mismatches as corpus cases. |
+| `scripts/fuzz.sh --seed N --count N` | Differential fuzzing: generated and mangled programs through the core and a live reference, comparing every step. It saves shrunk mismatches as corpus cases. A result a limit cut can't match the reference, which has none: where the answers differ and the core's was cut for size or work, it's parsed again with those limits raised, and counts as "cut by a limit" when it matches then, a mismatch when it doesn't. |
 | `scripts/fuzz.sh --edits …` | The same, for merging and converting back to source |
 | `scripts/fuzz.sh --invariants …` | The invariants, on the core and the reference alike (see [Invariants](#invariants)) |
 | `scripts/fuzz-coverage.sh …` | Coverage-guided fuzzing of the targets in `fuzz/` (see [Coverage-guided fuzzing](#coverage-guided-fuzzing)) |
@@ -211,7 +211,7 @@ A hunt never commits and never changes tracked files. It compares them before an
 | blow-up | The core took over a second on one input, or a fuzzer hung | Fixed in the core. If the reference blows up too and the input is unlike real output, it becomes a documented divergence. |
 | quirk? | The reference throws where the core doesn't | We decide: a documented divergence, or a quirk with a draft upstream report |
 
-Known divergences, the ones in CONFORMANCE.md the fuzzer recognizes (`__proto__` assignments, and a root that's an object shaped like an element or an AST node), are counted, not reported, including the reference throwing on the last. We review findings together, one report at a time: small fixes go in one commit after the check passes, and anything that needs a design decision becomes a ticket.
+Results cut by a limit aren't findings either: the differential fuzzer compares them with the reference under raised limits, and counts them as cut when they match then (seed 82's programs 3241 and 4052, 41 and 48 characters with 49 KB and 78 KB results, are two). Known divergences, the ones in CONFORMANCE.md the fuzzer recognizes (`__proto__` assignments, and a root that's an object shaped like an element or an AST node), are counted, not reported, including the reference throwing on the last. We review findings together, one report at a time: small fixes go in one commit after the check passes, and anything that needs a design decision becomes a ticket.
 
 ### Turning a finding into a case
 
@@ -329,17 +329,28 @@ scripts/fuzz-coverage.sh --seconds 28800              # every target, a full nig
 scripts/fuzz-coverage.sh --seconds 600 merge json     # some of them
 ```
 
-libFuzzer, through cargo-fuzz on the nightly toolchain, mutates inputs toward code they haven't reached yet. The targets, in `fuzz/fuzz_targets/`, check that nothing panics:
+libFuzzer, through cargo-fuzz on the nightly toolchain, mutates inputs toward code they haven't reached yet. The targets, in `fuzz/fuzz_targets/`, check that nothing panics, and that nothing amplifies:
 
 | Target | What it runs | Seeds |
 |---|---|---|
-| `parse` | One-shot parsing, with and without a root name | the corpus's programs |
-| `stream` | Streaming in chunks the input's first byte picks, and resyncing with `set` | the same, with a plan byte |
-| `merge` | Merging a program with a patch (a zero byte between them) | the merge cases |
+| `parse` | One-shot parsing, with and without a root name, under the default limits and under small ones (a 1 KiB floor, 4 times the program, a little work, 16 levels) that it hits often; every result checked (below) | the corpus's programs, and the long runs' slow inputs (`crates/openui-lang/tests/slow/`) |
+| `stream` | Streaming in chunks the input's first byte picks, at most 256 pushes, under the default or the small limits, and resyncing with `set`; every push's result checked, its limits scaling with the text so far | the same, with a plan byte |
+| `merge` | Merging a program with a patch (a zero byte between them); the merge is never longer than its inputs, give or take 64 bytes of joining newlines | the merge cases |
 | `serialize` | Converting JSON back to source: a parse result's tree with its state, or anything else | the parse goldens |
 | `json` | Reading JSON, and that writing what it read settles after one round | the parse goldens |
 
-They share a library (`fuzz/fuzz_targets/library.rs`) with every schema shape validation handles, plus 1.0's library functions and actions. The dictionary, `fuzz/openui.dict`, holds fragments of the language and of model output. Inputs stay under 8 KB, the size of a long response. An input over 10 s is a blow-up: the core answers any input well inside a second in release, and the fuzz build's debug assertions make it slower. The fuzz build has no AddressSanitizer: the crate forbids unsafe code, and over hours the sanitizer's own memory grows without bound (GitHub's 5-hour runs stopped at 4 GB that way). The working corpus (`fuzz/corpus/`) and the finds (`fuzz/artifacts/`) aren't tracked. Replay a find with `cargo +nightly fuzz run <target> <file>`.
+They share a library (`fuzz/fuzz_targets/library.rs`) with every schema shape validation handles, plus 1.0's library functions and actions. The dictionary, `fuzz/openui.dict`, holds fragments of the language and of model output. Inputs stay under 8 KB, the size of a long response.
+
+**The caps** (#10) make slowness and memory findings, not passes: an input over **2 s**, a single allocation over **512 MB**, or the process over **1 GB** stops the target and leaves the input. Every limit the core has (ADR 0001) bounds an input well under them, even in the fuzz build with its debug assertions. The long runs' slow inputs (18.5 s and 12.5 s against lang-core 1.1) replay in milliseconds now, and so do the 180,000 inputs the long runs' corpora had grown to. `scripts/fuzz-coverage.sh` sets the caps, so GitHub's runs and hunts have them too. The stream target caps its pushes at 256 because a statement that never closes is read again in full on every push (#22): in one-character pushes, an 8 KB one would take thousands of whole-statement parses, quadratic in its length. With the cap, a timeout still means a push costing more than it should.
+
+**The checks** (`fuzz/fuzz_targets/checks.rs`), on every result of `parse` and `stream`:
+- **Past the result-size limit, flagged.** An unflagged result's JSON stays within the limit plus half again plus 4 KiB. The limit is priced as the result is built, not by writing it, so it's approximate: over the 23,754 inputs of the parse corpus under six sets of limits, the most an unflagged result ran past was 16%.
+- **A cut result stays bounded.** It keeps what fit, plus a placeholder for each node left (a dozen bytes for a node of a few bytes of program), so it may run past by 16 bytes a byte of program more, never with the amplification.
+- **Past the depth limit, flagged.** An unflagged result nests no deeper than three JSON levels a level of the depth limit, plus 32.
+
+The checks found two holes when they were written, both fixed with cases: validation errors and unresolved names counted against the result-size limit without ever cutting (a list of `""` where `Text` items are expected made 45 bytes of errors a byte of program, unflagged), and strings priced at their raw length, where JSON escapes a control character in six bytes.
+
+The fuzz build has no AddressSanitizer: the crate forbids unsafe code, and over hours the sanitizer's own memory grows without bound (GitHub's 5-hour runs stopped at 4 GB that way). The working corpus (`fuzz/corpus/`) and the finds (`fuzz/artifacts/`) aren't tracked. Replay a find under the caps with `cargo +nightly fuzz run -s none <target> <file> -- -timeout=2 -malloc_limit_mb=512 -rss_limit_mb=1024`.
 
 ## Recorded streams
 

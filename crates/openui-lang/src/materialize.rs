@@ -9,7 +9,7 @@ use std::sync::Arc;
 use crate::Limits;
 use crate::ast::{Ast, RefType};
 use crate::builtins::{is_lazy_builtin, is_reserved_call};
-use crate::js::{JsObject, OBJECT_PROTOTYPE_KEYS};
+use crate::js::{JsObject, OBJECT_PROTOTYPE_KEYS, json_string_len};
 use crate::library::{Call, CallKind, Library, Param};
 use crate::result::{Element, ValidationError, Value, json_shaped};
 use crate::table::{Cache, Entry, Output, Reach, Slot, Table};
@@ -121,7 +121,7 @@ const ERROR_SIZE: usize = 100;
 fn json_size(node: &Ast, expr: bool) -> usize {
     let size = match node {
         Ast::Ref(_) => 0,
-        Ast::Str(v) => 20 + v.len(),
+        Ast::Str(v) => 20 + json_string_len(v),
         Ast::Num(_) => 41,
         Ast::Bool(_) => 20,
         Ast::Null => 10,
@@ -138,7 +138,7 @@ fn json_size(node: &Ast, expr: bool) -> usize {
     match node {
         _ if expr => size,
         // Plain values write less than their AST would.
-        Ast::Str(v) => 3 + v.len(),
+        Ast::Str(v) => 3 + json_string_len(v),
         Ast::Num(_) => 25,
         Ast::Bool(_) | Ast::Null | Ast::Ph(_) => 6,
         Ast::Arr(_) | Ast::Obj(_) => 3,
@@ -148,9 +148,17 @@ fn json_size(node: &Ast, expr: bool) -> usize {
 }
 
 impl Ctx<'_> {
+    /// Record a validation error. Its JSON counts against the result-size
+    /// limit like the rest of the result, so past the limit it's cut and the
+    /// result flagged: an item costing a few bytes of program can cost a
+    /// hundred of error message, which would otherwise amplify without bound.
     pub(crate) fn push_issue(&mut self, component: &str, path: &str, issue: Issue) {
         let message = issue.message(component, path);
-        self.size += ERROR_SIZE + message.len() + component.len() + path.len();
+        let size = ERROR_SIZE + message.len() + component.len() + path.len();
+        if !self.fits(size) {
+            return;
+        }
+        self.size += size;
         self.frame.errors.push(ErrorPart::Own(ValidationError {
             code: issue.code(),
             component: component.to_owned(),
@@ -161,7 +169,12 @@ impl Ctx<'_> {
         }));
     }
 
+    /// Record an unresolved reference, within the result-size limit as
+    /// [`Ctx::push_issue`] records an error.
     fn unresolved(&mut self, name: &str) {
+        if !self.fits(name.len() + 3) {
+            return;
+        }
         self.size += name.len() + 3;
         self.frame.unresolved.push(name.to_owned());
     }
@@ -260,7 +273,7 @@ fn materialize_array(els: &[Ast], ctx: &mut Ctx) -> Value {
 fn materialize_object(entries: &[(String, Ast)], ctx: &mut Ctx) -> Value {
     let mut obj = JsObject::new();
     for (key, value) in entries {
-        ctx.size += key.len() + 4;
+        ctx.size += json_string_len(key) + 4;
         let value = materialize_value(value, ctx);
         obj.set(key.clone(), value);
     }
@@ -1049,7 +1062,7 @@ fn expr_object(entries: &[(String, Ast)], ctx: &mut Ctx, scope: &Scope) -> Ast {
         entries
             .iter()
             .map(|(k, v)| {
-                ctx.size += k.len() + 8;
+                ctx.size += json_string_len(k) + 8;
                 (k.clone(), materialize_expr(v, ctx, scope))
             })
             .collect(),
