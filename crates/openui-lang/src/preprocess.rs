@@ -214,6 +214,11 @@ pub fn strip_fences(input: &str) -> String {
     }
 }
 
+/// Whether a backslash has a following byte in a complete comment-strip line.
+fn has_escape_byte(pos: usize, len: usize) -> bool {
+    pos + 1 < len
+}
+
 /// Remove `//` and `#` comments outside strings, then trailing whitespace on
 /// lines that had one. String state carries over from line to line, so an
 /// apostrophe in prose opens a `'...'` string that can hide later comments.
@@ -231,7 +236,7 @@ fn strip_comments(input: &str) -> String {
                 }
                 let c = s[i];
                 if let Some(quote) = in_str {
-                    if c == b'\\' && i + 1 < s.len() {
+                    if c == b'\\' && has_escape_byte(i, s.len()) {
                         i += 2;
                         continue;
                     }
@@ -507,13 +512,6 @@ impl Preprocessor {
             fence_line(last)
         };
         match (fence, &f.body) {
-            // Nothing yet.
-            (None, _) if last.is_empty() => {
-                if let (Some(block), false) = (&f.body, f.script) {
-                    starts |= block.starts_if_ending(None);
-                    nonblank |= block.nonblank;
-                }
-            }
             (None, Some(block)) => {
                 if !f.script {
                     blocks_tail = last;
@@ -542,20 +540,11 @@ impl Preprocessor {
                 }
             }
         }
-        // An open block with no lines yet joins the others as an empty line.
-        let empty_open = match (&f.body, fence) {
-            (Some(block), _) => !f.script && block.lines == 0 && blocks_tail.is_empty(),
-            (None, Some((tag, rest))) => {
-                !rest.contains("```") && !tag.eq_ignore_ascii_case("openui-js")
-            }
-            (None, None) => false,
-        };
         let blocks_tail = if new_block.is_empty() {
             blocks_tail
         } else {
             new_block.as_str()
         };
-        let has_blocks_tail = !blocks_tail.is_empty() || empty_open;
         let chosen = if starts {
             Stream::Blocks
         } else if unfenced || !nonblank {
@@ -563,9 +552,8 @@ impl Preprocessor {
         } else {
             Stream::Blocks
         };
-        self.blocks.set_tail(blocks_tail, has_blocks_tail);
-        self.outside
-            .set_tail(outside_tail, !outside_tail.is_empty());
+        self.blocks.set_tail(blocks_tail);
+        self.outside.set_tail(outside_tail);
         let before = self.chosen;
         self.chosen = chosen;
         let unchanged = match chosen {
@@ -595,9 +583,6 @@ struct Comments {
     in_str: Option<u8>,
     /// The last line, not finished yet.
     line: Vec<u8>,
-    /// Whether there is one: an empty last line still ends the text after a
-    /// line break.
-    has_line: bool,
     /// Comment stripping of `line`, as far as it has got.
     scan: Scan,
     /// Offset in `stable` of its first non-whitespace char, once there is one.
@@ -624,7 +609,7 @@ struct Scan {
 impl Comments {
     /// Make `text` the last line, scanned as far as it can be. Scanning
     /// resumes where it was when the old last line is the start of it.
-    fn set_tail(&mut self, text: &str, present: bool) {
+    fn set_tail(&mut self, text: &str) {
         if !text.as_bytes().starts_with(&self.line) {
             self.line.clear();
             self.scan = Scan {
@@ -634,13 +619,12 @@ impl Comments {
         }
         self.line
             .extend_from_slice(&text.as_bytes()[self.line.len()..]);
-        self.has_line = present;
         self.scan_line(false);
     }
 
     /// The last line is `text`, and finished.
     fn finish(&mut self, text: &str) {
-        self.set_tail(text, true);
+        self.set_tail(text);
         self.scan_line(true);
         let output = line_output(&self.line, self.scan.comment_at).to_owned();
         let kept = js::trim_end(&output);
@@ -656,7 +640,6 @@ impl Comments {
         self.stable.push_str(&output);
         self.stable.push('\n');
         self.line.clear();
-        self.has_line = false;
         self.scan = Scan {
             in_str: self.in_str,
             ..Scan::default()
@@ -711,16 +694,10 @@ impl Comments {
     fn rebuild(&mut self) -> usize {
         let old_final = self.final_len.min(self.cleaned.len());
         let old_tail: String = self.cleaned[old_final..].to_owned();
-        let line = if self.has_line {
-            line_output(&self.line, self.scan.comment_at)
-        } else {
-            ""
-        };
+        let line = line_output(&self.line, self.scan.comment_at);
         match self.lead {
             Some(lead) => {
-                if self.synced < lead {
-                    self.synced = lead;
-                }
+                self.synced = self.synced.max(lead);
                 self.cleaned.truncate(self.final_len);
                 self.cleaned
                     .push_str(&self.stable[self.synced..self.last_nonws_end]);
