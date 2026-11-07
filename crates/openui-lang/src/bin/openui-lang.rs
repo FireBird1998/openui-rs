@@ -13,19 +13,61 @@
 //!                                                   points, 5 warm-ups, mean of BENCH_RUNS
 //!                                                   (default 20) runs; same workload as
 //!                                                   reference/bench.ts
+//!
+//! `--limit name=value`, anywhere and as often as needed, sets one of the
+//! core's limits for `parse`, `stream` and `bench`: `program-size` and
+//! `result-size` in bytes, `depth` in levels. Fuzz finds and blow-ups replay
+//! under any limit this way.
 
 use std::io::Read;
 use std::process::ExitCode;
 use std::sync::Arc;
 use std::time::Instant;
 
-use openui_lang::{Library, StreamParser, generate_system_prompt, parse, tokenize, tokens_to_json};
+use openui_lang::{
+    Library, Limits, StreamParser, generate_system_prompt, parse_with_limits, tokenize,
+    tokens_to_json,
+};
 
 const USAGE: &str = "usage: openui-lang parse <schema.json> <program|->
        openui-lang stream <schema.json> <program|-> [chunk]
        openui-lang tokens <program|->
        openui-lang prompt <spec.json|->
-       openui-lang bench <schema.json> <program>...";
+       openui-lang bench <schema.json> <program>...
+options: --limit name=value (program-size, result-size, depth)";
+
+/// The limits `--limit name=value` can set.
+const LIMIT_NAMES: &str = "program-size, result-size, depth";
+
+/// The arguments with every `--limit name=value` taken out, and the limits
+/// they set.
+fn take_limits(args: &[String]) -> Result<(Vec<String>, Limits), String> {
+    let mut rest = Vec::new();
+    let mut limits = Limits::default();
+    let mut args = args.iter();
+    while let Some(arg) = args.next() {
+        if arg != "--limit" {
+            rest.push(arg.clone());
+            continue;
+        }
+        let setting = args.next().map_or("", String::as_str);
+        let bad =
+            || format!("--limit takes name=value, a whole number; the limits are {LIMIT_NAMES}");
+        let (name, value) = setting.split_once('=').ok_or_else(bad)?;
+        let value: usize = value.parse().map_err(|_| bad())?;
+        limits = match name {
+            "program-size" => limits.with_program_size(value),
+            "result-size" => limits.with_result_size(value),
+            "depth" => limits.with_depth(value),
+            _ => {
+                return Err(format!(
+                    "unknown limit `{name}`; the limits are {LIMIT_NAMES}"
+                ));
+            }
+        };
+    }
+    Ok((rest, limits))
+}
 
 /// `text` cut into pieces of `size` code points.
 fn chunks(text: &str, size: usize) -> Vec<&str> {
@@ -59,10 +101,12 @@ fn load_library(path: &str) -> Result<Library, String> {
 }
 
 fn run(args: &[String]) -> Result<(), String> {
-    match args {
+    let (args, limits) = take_limits(args)?;
+    match args.as_slice() {
         [command, schema, program] if command == "parse" => {
             let library = load_library(schema)?;
-            println!("{}", parse(&read_input(program)?, &library, None).to_json());
+            let result = parse_with_limits(&read_input(program)?, &library, None, limits);
+            println!("{}", result.to_json());
             Ok(())
         }
         [command, schema, program, rest @ ..] if command == "stream" && rest.len() <= 1 => {
@@ -76,7 +120,7 @@ fn run(args: &[String]) -> Result<(), String> {
             };
             let library = Arc::new(load_library(schema)?);
             let text = read_input(program)?;
-            let mut parser = StreamParser::new(library, None);
+            let mut parser = StreamParser::with_limits(library, None, limits);
             for chunk in chunks(&text, size) {
                 println!("{}", parser.push(chunk).to_json());
             }
@@ -94,7 +138,7 @@ fn run(args: &[String]) -> Result<(), String> {
                 let text = read_input(path)?;
                 let pieces = chunks(&text, 4);
                 let once = || {
-                    let mut parser = StreamParser::new(library.clone(), None);
+                    let mut parser = StreamParser::with_limits(library.clone(), None, limits);
                     for chunk in &pieces {
                         std::hint::black_box(parser.push(chunk));
                     }

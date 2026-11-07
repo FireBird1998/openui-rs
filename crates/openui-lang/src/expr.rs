@@ -27,15 +27,16 @@ const PREC_MEMBER: u8 = 9;
 
 /// Parse one statement's expression tokens.
 pub fn parse_expression(tokens: &[Token]) -> Ast {
-    parse_expression_with_limit(tokens).0
+    parse_expression_with_limit(tokens, MAX_DEPTH).0
 }
 
-/// Parse, and say whether nesting went past [`MAX_DEPTH`] and was cut off.
-pub(crate) fn parse_expression_with_limit(tokens: &[Token]) -> (Ast, bool) {
+/// Parse, and say whether nesting went past `max_depth` levels and was cut off.
+pub(crate) fn parse_expression_with_limit(tokens: &[Token], max_depth: usize) -> (Ast, bool) {
     let mut parser = ExprParser {
         tokens,
         pos: 0,
         depth: 0,
+        max_depth,
         limited: false,
     };
     let ast = parser.expr(0);
@@ -93,7 +94,9 @@ struct ExprParser<'a> {
     pos: usize,
     /// How many `expr` calls are open.
     depth: usize,
-    /// Nesting went past `MAX_DEPTH` somewhere.
+    /// The depth limit.
+    max_depth: usize,
+    /// Nesting went past `max_depth` somewhere.
     limited: bool,
 }
 
@@ -131,7 +134,7 @@ impl<'a> ExprParser<'a> {
 
     fn expr(&mut self, min_prec: u8) -> Ast {
         crate::stack::grow_stack!(self.expr(min_prec));
-        if self.depth >= MAX_DEPTH {
+        if self.depth >= self.max_depth {
             // Too deep: give up on this branch, but still consume a token so
             // every caller's loop makes progress.
             self.limited = true;
@@ -147,7 +150,7 @@ impl<'a> ExprParser<'a> {
             if self.stalled(&mut progress) {
                 break;
             }
-            if self.depth + chain >= MAX_DEPTH {
+            if self.depth + chain >= self.max_depth {
                 self.limited = true;
                 break;
             }

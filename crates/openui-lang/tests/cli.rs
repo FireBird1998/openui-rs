@@ -214,6 +214,55 @@ fn prompt_prints_the_system_prompt() {
 }
 
 #[test]
+fn limits_apply_to_parse_and_stream() {
+    let dir = conformance();
+    let schema = dir.join("schemas/text.json");
+    let program = dir.join("cases/hello-text.oui");
+    let limits = openui_lang::Limits::default()
+        .with_program_size(10)
+        .with_depth(3);
+    let expected = openui_lang::parse_with_limits(&read(&program), &library(&schema), None, limits);
+    assert!(expected.size_limited);
+    // `parse` prints the one result; `stream` ends with the result at the end.
+    for command in ["parse", "stream"] {
+        let out = Command::new(env!("CARGO_BIN_EXE_openui-lang"))
+            .args(["--limit", "program-size=10", command])
+            .arg(&schema)
+            .arg(&program)
+            .args(["--limit", "depth=3"])
+            .output()
+            .unwrap();
+        assert!(
+            out.status.success(),
+            "{command}: {}",
+            String::from_utf8_lossy(&out.stderr)
+        );
+        let stdout = String::from_utf8(out.stdout).unwrap();
+        let last = stdout.lines().last().unwrap();
+        assert_eq!(last, expected.to_json(), "{command}");
+    }
+}
+
+#[test]
+fn an_unknown_limit_names_the_valid_ones_and_fails() {
+    let dir = conformance();
+    for bad in ["frobs=3", "depth", "depth=lots"] {
+        let out = Command::new(env!("CARGO_BIN_EXE_openui-lang"))
+            .args(["parse", "--limit", bad])
+            .arg(dir.join("schemas/text.json"))
+            .arg(dir.join("cases/hello-text.oui"))
+            .output()
+            .unwrap();
+        assert!(!out.status.success(), "{bad}");
+        let stderr = String::from_utf8(out.stderr).unwrap();
+        assert!(
+            stderr.contains("program-size, result-size, depth"),
+            "{bad}: {stderr}"
+        );
+    }
+}
+
+#[test]
 fn prompt_reports_the_error_and_fails() {
     let dir = conformance();
     let out = Command::new(env!("CARGO_BIN_EXE_openui-lang"))

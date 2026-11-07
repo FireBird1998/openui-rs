@@ -15,7 +15,8 @@ use crate::expr::parse_expression_with_limit;
 use crate::js;
 use crate::lexer::{skip_while, tokenize};
 use crate::library::Library;
-use crate::parser::{PartialRef, build_result, classify};
+use crate::limits::Limits;
+use crate::parser::{Against, PartialRef, build_result, classify};
 use crate::preprocess::Preprocessor;
 use crate::progress;
 use crate::result::ParseResult;
@@ -26,6 +27,7 @@ use crate::table::{Cache, Slot, Table};
 pub struct StreamParser {
     library: Arc<Library>,
     root_name: Option<String>,
+    limits: Limits,
     /// Everything pushed so far.
     buf: String,
     /// `buf` preprocessed; statement boundaries are found in this, never in `buf`.
@@ -34,6 +36,9 @@ pub struct StreamParser {
     /// The result a stall cut the stream at (in a release build), given
     /// again until [`StreamParser::set`] starts over.
     stalled: Option<ParseResult>,
+    /// The text reached the program-size limit: the rest was left out, and
+    /// later pushes are too, until [`StreamParser::set`] starts over.
+    cut: bool,
 }
 
 /// The statements that have fully arrived.
@@ -45,21 +50,8 @@ struct Completed {
     cache: Cache,
     /// Statements parsed, counting re-definitions.
     count: usize,
-    /// Some statement nested past `MAX_DEPTH`.
+    /// Some statement nested past the depth limit.
     depth_limited: bool,
-}
-
-/// The table and cache hold statements and results as deep as a parse goes,
-/// and dropping them recurses: on a stack running low, that happens on a
-/// fresh segment instead.
-impl Drop for Completed {
-    fn drop(&mut self) {
-        if crate::stack::low() {
-            let table = std::mem::take(&mut self.table);
-            let cache = std::mem::take(&mut self.cache);
-            crate::stack::on_new_segment(move || drop((table, cache)));
-        }
-    }
 }
 
 impl Completed {
@@ -67,7 +59,7 @@ impl Completed {
         *self = Completed::default();
     }
 
-    fn add(&mut self, text: &str) {
+    fn add(&mut self, text: &str, limits: Limits) {
         let text = js::trim(text);
         if text.is_empty() {
             return;
@@ -76,7 +68,7 @@ impl Completed {
             if progress::stalled_so_far() {
                 break;
             }
-            let (expr, limited) = parse_expression_with_limit(&raw.tokens);
+            let (expr, limited) = parse_expression_with_limit(&raw.tokens, limits.depth());
             self.depth_limited |= limited;
             let undo = self.table.define(&raw.id, classify(&raw, expr));
             self.cache.invalidate(undo.slot, &self.table);
@@ -90,21 +82,33 @@ impl StreamParser {
     /// with no `root` statement, the first statement that calls it is the
     /// entry.
     pub fn new(library: Arc<Library>, root_name: Option<&str>) -> StreamParser {
+        StreamParser::with_limits(library, root_name, Limits::DEFAULT)
+    }
+
+    /// [`StreamParser::new`] within `limits` instead of the defaults, for
+    /// every push until the stream is dropped.
+    pub fn with_limits(
+        library: Arc<Library>,
+        root_name: Option<&str>,
+        limits: Limits,
+    ) -> StreamParser {
         StreamParser {
             library,
             root_name: root_name.map(str::to_owned),
+            limits,
             buf: String::new(),
             pre: Preprocessor::new(),
             completed: Completed::default(),
             stalled: None,
+            cut: false,
         }
     }
 
     /// Feed the next chunk and get the latest parse result.
     ///
-    /// A stream a stall cut (see [`ParseResult::size_limited`]) ignores
-    /// further pushes and gives the cut result again, until
-    /// [`StreamParser::set`].
+    /// A stream cut at the program-size limit (see [`Limits::program_size`])
+    /// or by a stall (see [`ParseResult::size_limited`]) ignores further
+    /// pushes and gives the cut result again, until [`StreamParser::set`].
     pub fn push(&mut self, chunk: &str) -> ParseResult {
         self.watched(|parser| {
             parser.absorb(chunk);
@@ -114,9 +118,9 @@ impl StreamParser {
 
     /// Give the full text so far, as after a reconnect. Text that continues
     /// what was pushed only parses the new part; anything else starts over,
-    /// as does a stream a stall cut.
+    /// as does a stream that was cut.
     pub fn set(&mut self, full_text: &str) -> ParseResult {
-        if self.stalled.is_some() || !full_text.starts_with(self.buf.as_str()) {
+        if self.cut || self.stalled.is_some() || !full_text.starts_with(self.buf.as_str()) {
             self.reset();
         }
         self.watched(|parser| {
@@ -140,12 +144,14 @@ impl StreamParser {
     }
 
     /// `step`'s result, unless a stall has cut the stream: then the result
-    /// it was cut at. A stall in `step` cuts it there.
+    /// it was cut at. A stall in `step` cuts it there. A stream cut at the
+    /// program-size limit says so on every result.
     fn watched(&mut self, step: impl FnOnce(&mut Self) -> ParseResult) -> ParseResult {
         if let Some(cut) = &self.stalled {
             return cut.clone();
         }
         let (mut result, stalled) = progress::watch(|| step(self));
+        result.size_limited |= self.cut;
         if stalled {
             result.size_limited = true;
             self.stalled = Some(result.clone());
@@ -158,12 +164,20 @@ impl StreamParser {
         self.pre.reset();
         self.completed.clear();
         self.stalled = None;
+        self.cut = false;
     }
 
-    /// Take in new text. If the cleaned text changed under the completed
-    /// statements (an opening fence appeared and shifted everything, say),
-    /// they're stale: start over, as the reference does.
+    /// Take in new text, up to the program-size limit. If the cleaned text
+    /// changed under the completed statements (an opening fence appeared and
+    /// shifted everything, say), they're stale: start over, as the reference
+    /// does.
     fn absorb(&mut self, chunk: &str) {
+        if self.cut {
+            return;
+        }
+        let room = self.limits.program_size().saturating_sub(self.buf.len());
+        let (chunk, cut) = Limits::fit(chunk, room);
+        self.cut = cut;
         self.buf.push_str(chunk);
         let unchanged = self.pre.push(chunk);
         if self.completed.end > unchanged {
@@ -222,7 +236,7 @@ impl StreamParser {
         }
 
         for range in completed {
-            self.completed.add(&cleaned[range]);
+            self.completed.add(&cleaned[range], self.limits);
         }
         stmt_start
     }
@@ -234,7 +248,7 @@ impl StreamParser {
         result
     }
 
-    /// The result, and whether a pending statement nested past `MAX_DEPTH`.
+    /// The result, and whether a pending statement nested past the depth limit.
     fn build_current(&mut self, complete: bool) -> (ParseResult, bool) {
         let pending_start = self.scan_new_completed();
         let pending = js::trim(&self.pre.cleaned()[pending_start..]);
@@ -275,7 +289,7 @@ impl StreamParser {
             if progress::stalled_so_far() {
                 break;
             }
-            let (expr, limited) = parse_expression_with_limit(&raw.tokens);
+            let (expr, limited) = parse_expression_with_limit(&raw.tokens, self.limits.depth());
             pending_limited |= limited;
             let undo = completed.table.define(&raw.id, classify(raw, expr));
             completed.cache.invalidate(undo.slot, &completed.table);
@@ -314,8 +328,11 @@ impl StreamParser {
             &mut completed.cache,
             was_incomplete,
             count,
-            &self.library,
-            self.root_name.as_deref(),
+            Against {
+                library: &self.library,
+                root_name: self.root_name.as_deref(),
+                limits: self.limits,
+            },
             partial,
         )
     }

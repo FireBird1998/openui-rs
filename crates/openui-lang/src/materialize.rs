@@ -6,6 +6,7 @@
 use std::collections::HashSet;
 use std::sync::Arc;
 
+use crate::Limits;
 use crate::ast::{Ast, RefType};
 use crate::builtins::{is_lazy_builtin, is_reserved_call};
 use crate::js::{JsObject, OBJECT_PROTOTYPE_KEYS, parse_json};
@@ -16,7 +17,6 @@ use crate::validation::{
     Issue, element_parts, is_ast_node, params_signature, resolve_invalid_value,
     validate_schema_value,
 };
-use crate::{MAX_DEPTH, MAX_RESULT_SIZE};
 
 pub(crate) struct Ctx<'a> {
     pub table: &'a Table,
@@ -31,8 +31,10 @@ pub(crate) struct Ctx<'a> {
     /// nests as deeply as one big expression.
     pub depth: usize,
     /// About how many bytes of JSON the result has grown to so far, counting
-    /// every place a statement is inlined. See [`MAX_RESULT_SIZE`].
+    /// every place a statement is inlined. See [`Limits::result_size`].
     pub size: usize,
+    /// The parse's limits.
+    pub limits: Limits,
     /// What the materialization in progress has done on the side.
     pub frame: Frame,
 }
@@ -98,9 +100,9 @@ pub(crate) struct Frame {
     pub max_depth: usize,
     /// A reference hit a statement already being materialized.
     pub cycle: bool,
-    /// Went past `MAX_DEPTH`; the deeper parts became null.
+    /// Went past the depth limit; the deeper parts became null.
     pub limited: bool,
-    /// Grew past `MAX_RESULT_SIZE`; the rest became null.
+    /// Grew past the result-size limit; the rest became null.
     pub size_limited: bool,
 }
 
@@ -163,7 +165,7 @@ impl Ctx<'_> {
 
     /// Whether the result can still grow by `more`; if not, it's cut here.
     fn fits(&mut self, more: usize) -> bool {
-        if self.size.saturating_add(more) > MAX_RESULT_SIZE {
+        if self.size.saturating_add(more) > self.limits.result_size() {
             self.frame.size_limited = true;
             return false;
         }
@@ -180,7 +182,7 @@ impl Ctx<'_> {
     /// `size` bytes; `None` past either limit.
     fn enter(&mut self, size: usize) -> Option<()> {
         self.frame.max_depth = self.frame.max_depth.max(self.depth);
-        if self.depth >= MAX_DEPTH {
+        if self.depth >= self.limits.depth() {
             self.frame.limited = true;
             return None;
         }
@@ -198,7 +200,7 @@ type Scope = HashSet<String>;
 
 /// Lower a node to what ends up in the tree: elements, plain values, and AST
 /// for builtins and runtime expressions; `Null` for placeholders and for
-/// components that had to be dropped. Past `MAX_DEPTH`, `Null`.
+/// components that had to be dropped. Past the depth limit, `Null`.
 pub(crate) fn materialize_value(node: &Ast, ctx: &mut Ctx) -> Value {
     crate::stack::grow_stack!(materialize_value(node, ctx));
     if ctx.enter(json_size(node, false)).is_none() {
@@ -212,7 +214,7 @@ pub(crate) fn materialize_value(node: &Ast, ctx: &mut Ctx) -> Value {
 // The functions on the recursive path stay small, and the heavier
 // non-recursive work lives in `#[inline(never)]` helpers. In unoptimized
 // builds a frame holds every temporary its function could need, so this is
-// what keeps a walk to MAX_DEPTH levels inside one stack segment.
+// what keeps a walk to the default depth limit inside one stack segment.
 fn materialize_value_at_depth(node: &Ast, ctx: &mut Ctx) -> Value {
     match node {
         Ast::Ref(name) => match resolve_ref(name, ctx, Mode::Value) {
@@ -320,7 +322,7 @@ fn resolve_ref(name: &str, ctx: &mut Ctx, mode: Mode) -> Resolved {
 
     let expr = matches!(mode, Mode::Expr);
     if let Some(entry) = ctx.cache.get(slot, ctx.partial, expr)
-        && ctx.depth + entry.r_max < MAX_DEPTH
+        && ctx.depth + entry.r_max < ctx.limits.depth()
     {
         // Inlined again, it grows the result as much as it did the first time.
         let size = entry.size;
@@ -861,7 +863,7 @@ fn materialize_lazy_builtin(
 
 /// Normalize a node for runtime evaluation: resolve refs, map library
 /// components' args to `mapped_props`. The structure stays AST. Past
-/// `MAX_DEPTH`, `Null`.
+/// the depth limit, `Null`.
 pub(crate) fn materialize_expr(node: &Ast, ctx: &mut Ctx, scope: &Scope) -> Ast {
     crate::stack::grow_stack!(materialize_expr(node, ctx, scope));
     if ctx.enter(json_size(node, true)).is_none() {
@@ -1032,7 +1034,7 @@ fn values_contain_dynamic(props: &Value) -> bool {
     let mut json = String::new();
     write_value(&mut json, props);
     let fields = parse_json(&json).map(|json| Value::from_json(&json));
-    matches!(fields, Ok(Value::Obj(fields)) if fields.values().any(contains_dynamic_value))
+    matches!(&fields, Ok(Value::Obj(fields)) if fields.values().any(contains_dynamic_value))
 }
 
 /// Whether a prop value holds anything that needs runtime evaluation.

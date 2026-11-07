@@ -1,6 +1,6 @@
 [package]
 name = "openui-lang"
-version = "0.1.0"
+version = "0.2.0"
 description = "OpenUI Lang parser in Rust, conformant with @openuidev/lang-core"
 edition.workspace = true
 rust-version.workspace = true

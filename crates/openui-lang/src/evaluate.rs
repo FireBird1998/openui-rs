@@ -9,9 +9,9 @@
 //! unit. Where the core can't follow the reference (a property of a
 //! prototype, string order outside ASCII), CONFORMANCE.md lists it.
 //!
-//! Evaluating keeps to the core's limits (see [`Limits`]): a default that
-//! would build past what's left of `MAX_RESULT_SIZE`, or nest too deep, is
-//! null instead.
+//! Evaluating keeps to the parse's limits (see [`EvalLimits`]): a default
+//! that would build past what's left of the result-size limit, or nest too
+//! deep, is null instead.
 
 use std::cell::Cell;
 use std::cmp::Ordering;
@@ -19,7 +19,6 @@ use std::collections::HashSet;
 use std::rc::Rc;
 use std::sync::Arc;
 
-use crate::MAX_DEPTH;
 use crate::ast::Ast;
 use crate::builtins::builtin_function_params;
 use crate::js::{self, JsObject, OBJECT_PROTOTYPE_KEYS, array_index, number_to_string, parse_json};
@@ -162,10 +161,10 @@ const BOOLEAN_METHODS: [&str; 2] = ["toString", "valueOf"];
 
 // ─── Limits ─────────────────────────────────────────────────────────────────
 
-/// How deep the evaluator's walks may nest: as deep as a parse result's JSON
-/// can, three levels per `MAX_DEPTH` level, so an evaluated default reads
-/// back and serializes like any result (see `serialize::JSON_DEPTH_LIMIT`).
-const MAX_VALUE_DEPTH: usize = 3 * MAX_DEPTH;
+/// How many of the evaluator's levels one level of the depth limit allows:
+/// as deep as a parse result's JSON nests, so an evaluated default reads back
+/// and serializes like any result (see `serialize::JSON_DEPTH_LIMIT`).
+const VALUE_LEVELS_PER_LEVEL: usize = 3;
 
 /// What evaluating defaults may still build, and whether it went past that.
 ///
@@ -174,7 +173,7 @@ const MAX_VALUE_DEPTH: usize = 3 * MAX_DEPTH;
 /// adding a string to itself or `@Each` copying its items doubles it again;
 /// defaults reading defaults also nest without bound. The reference builds on
 /// until the engine runs out of memory or stack. The core keeps all of a
-/// parse's evaluating to what materializing left of `MAX_RESULT_SIZE`, and its
+/// parse's evaluating to what materializing left of the result-size limit, and its
 /// walks to `MAX_VALUE_DEPTH`. A default that goes past either is null, as is
 /// every expression default after the budget runs out.
 ///
@@ -183,21 +182,25 @@ const MAX_VALUE_DEPTH: usize = 3 * MAX_DEPTH;
 /// the result's. They reach it through a thread-local, set for one parse's
 /// defaults at a time: evaluating is synchronous, and passing it through
 /// every coercion would touch nearly every function here.
-struct Limits {
+struct EvalLimits {
     /// About how many bytes, or steps, are left.
     budget: Cell<usize>,
     /// Levels open across the walks.
     depth: Cell<usize>,
+    /// How many may be open: [`VALUE_LEVELS_PER_LEVEL`] per level of the
+    /// parse's depth limit.
+    max_depth: Cell<usize>,
     /// The default being evaluated ran out of budget, or of depth.
     size_limited: Cell<bool>,
     depth_limited: Cell<bool>,
 }
 
 thread_local! {
-    static LIMITS: Limits = const {
-        Limits {
+    static LIMITS: EvalLimits = const {
+        EvalLimits {
             budget: Cell::new(usize::MAX),
             depth: Cell::new(0),
+            max_depth: Cell::new(0),
             size_limited: Cell::new(false),
             depth_limited: Cell::new(false),
         }
@@ -223,11 +226,11 @@ fn spend(cost: usize) -> bool {
 struct Level;
 
 impl Level {
-    /// `None`, and the default is cut, past `MAX_VALUE_DEPTH`.
+    /// `None`, and the default is cut, past the evaluator's depth limit.
     fn enter() -> Option<Level> {
         LIMITS.with(|l| {
             let depth = l.depth.get();
-            if depth >= MAX_VALUE_DEPTH {
+            if depth >= l.max_depth.get() {
                 l.depth_limited.set(true);
                 return None;
             }
@@ -283,8 +286,9 @@ pub(crate) struct Evaluated {
 
 /// 1.1 evaluates expression defaults (`$total = 1 + 2`) once, in statement
 /// order, each reading the defaults declared above it, building no more than
-/// about `budget` bytes in all (see [`Limits`]).
-pub(crate) fn state_defaults(state: JsObject<Value>, budget: usize) -> Evaluated {
+/// about `budget` bytes in all, nesting no deeper than [`VALUE_LEVELS_PER_LEVEL`]
+/// per level of `depth` (see [`EvalLimits`]).
+pub(crate) fn state_defaults(state: JsObject<Value>, budget: usize, depth: usize) -> Evaluated {
     let mut out = Evaluated {
         state: JsObject::new(),
         undefined: HashSet::new(),
@@ -298,6 +302,8 @@ pub(crate) fn state_defaults(state: JsObject<Value>, budget: usize) -> Evaluated
     LIMITS.with(|l| {
         l.budget.set(budget);
         l.depth.set(0);
+        l.max_depth
+            .set(depth.saturating_mul(VALUE_LEVELS_PER_LEVEL));
     });
     let mut declared = JsObject::new();
     for (id, value) in state.iter() {
@@ -703,7 +709,8 @@ fn each(args: &[Ast], scope: &Scope) -> Js {
     if args.len() < 3 {
         return Js::Arr(Rc::new(Vec::new()));
     }
-    let Js::Arr(items) = evaluate(&args[0], scope) else {
+    let array = evaluate(&args[0], scope);
+    let Js::Arr(items) = &array else {
         return Js::Arr(Rc::new(Vec::new()));
     };
     let var = match &args[1] {

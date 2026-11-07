@@ -4,14 +4,14 @@
 //! Parse results cross as the JSON text [`ParseResult::to_json`] produces,
 //! byte-identical with the reference, plus the two limit flags the reference
 //! has no field for and how long the core took. Callers may call in from any
-//! thread, whatever its stack: the core grows its stack on demand (ADR 0002),
-//! and the binding drops each result the same way.
+//! thread, whatever its stack: the core grows its stack on demand, and a
+//! result frees its tree without recursion (ADR 0002).
 
 use std::fmt;
 use std::sync::{Arc, Mutex, MutexGuard};
 use std::time::Instant;
 
-use openui_lang::{Library, ParseResult, StreamParser};
+use openui_lang::{Library, Limits, ParseResult, StreamParser};
 
 uniffi::setup_scaffolding!();
 
@@ -87,24 +87,52 @@ impl ParseOutput {
     fn timed(result: ParseResult, started: Instant) -> ParseOutput {
         let parsed = Instant::now();
         let json = result.to_json();
-        let output = ParseOutput {
+        ParseOutput {
             json,
             depth_limited: result.depth_limited,
             size_limited: result.size_limited,
             parse_nanos: nanos(started, parsed),
             json_nanos: nanos(parsed, Instant::now()),
-        };
-        drop_deep(result);
-        output
+        }
     }
 }
 
-/// Drop a result, whose tree goes as deep as a parse does, on a fresh stack
-/// segment when the caller's stack runs low: the core grows its stack for its
-/// own work, but a result is dropped by whoever holds it, and dropping recurses.
-/// The sizes are the core's (ADR 0002).
-fn drop_deep(result: ParseResult) {
-    stacker::maybe_grow(128 * 1024, 2 * 1024 * 1024, move || drop(result));
+/// The core's limits (its `Limits`), each one left out meaning its default:
+/// 1 MiB of program, about 8 MiB of result JSON, 256 levels of nesting.
+/// Hitting one cuts the result and sets `size_limited` or `depth_limited`.
+/// New limits are added as fields that default to unset, so code that builds
+/// one keeps compiling.
+#[derive(Clone, Debug, Default, PartialEq, Eq, uniffi::Record)]
+pub struct ParseLimits {
+    /// How many bytes of a program are read; the rest is ignored as if the
+    /// stream had stopped there.
+    #[uniffi(default = None)]
+    pub program_size: Option<u64>,
+    /// About how many bytes of JSON a result may grow to.
+    #[uniffi(default = None)]
+    pub result_size: Option<u64>,
+    /// How deep expressions and references may nest.
+    #[uniffi(default = None)]
+    pub depth: Option<u64>,
+}
+
+impl ParseLimits {
+    /// The core's limits: these, the defaults where unset. A value past what
+    /// the platform can count is as good as no limit.
+    fn core(&self) -> Limits {
+        let size = |n: u64| usize::try_from(n).unwrap_or(usize::MAX);
+        let mut limits = Limits::default();
+        if let Some(n) = self.program_size {
+            limits = limits.with_program_size(size(n));
+        }
+        if let Some(n) = self.result_size {
+            limits = limits.with_result_size(size(n));
+        }
+        if let Some(n) = self.depth {
+            limits = limits.with_depth(size(n));
+        }
+        limits
+    }
 }
 
 fn nanos(from: Instant, to: Instant) -> u64 {
@@ -122,6 +150,24 @@ pub fn parse(
 ) -> ParseOutput {
     let started = Instant::now();
     let result = openui_lang::parse(&program, &library.inner, root_name.as_deref());
+    ParseOutput::timed(result, started)
+}
+
+/// [`parse`] within `limits` instead of the core's defaults.
+#[uniffi::export]
+pub fn parse_with_limits(
+    program: String,
+    library: Arc<ComponentLibrary>,
+    root_name: Option<String>,
+    limits: ParseLimits,
+) -> ParseOutput {
+    let started = Instant::now();
+    let result = openui_lang::parse_with_limits(
+        &program,
+        &library.inner,
+        root_name.as_deref(),
+        limits.core(),
+    );
     ParseOutput::timed(result, started)
 }
 
@@ -168,6 +214,22 @@ impl StreamSession {
     #[uniffi::constructor]
     pub fn new(library: Arc<ComponentLibrary>, root_name: Option<String>) -> Arc<Self> {
         let parser = StreamParser::new(library.inner.clone(), root_name.as_deref());
+        Arc::new(StreamSession {
+            parser: Mutex::new(parser),
+        })
+    }
+
+    /// A session within `limits` instead of the core's defaults, for every
+    /// push. Past the program-size limit the stream is cut: later pushes are
+    /// ignored until `set`.
+    #[uniffi::constructor]
+    pub fn with_limits(
+        library: Arc<ComponentLibrary>,
+        root_name: Option<String>,
+        limits: ParseLimits,
+    ) -> Arc<Self> {
+        let parser =
+            StreamParser::with_limits(library.inner.clone(), root_name.as_deref(), limits.core());
         Arc::new(StreamSession {
             parser: Mutex::new(parser),
         })
