@@ -333,6 +333,43 @@ fn the_slow_fuzz_input_streams_as_without_reuse() {
     streams_as_without_reuse(program, &fuzz_library(), Limits::default(), 3);
 }
 
+#[test]
+fn completed_depth_cuts_survive_later_shallow_statements() {
+    let program = "root = Stack([])\ndeep = [[[[[[1]]]]]]\nplain = 1\n";
+    let limits = Limits::default().with_depth(3);
+    assert!(parse_with_limits(program, &library(), None, limits).depth_limited);
+    for n in [1, 7, program.len()] {
+        streams_as_without_reuse(program, &library(), limits, n);
+    }
+}
+
+#[test]
+fn changing_reference_graphs_stream_as_fresh_tables() {
+    // Definitions, temporary overlays and their undo change both the reverse
+    // reference graph and the reached tree. Keep an orphan throughout so the
+    // memoized orphan list must change even when its length stays nonzero.
+    let programs = [
+        "spare = Text(\"spare\")\na = Text(\"a\")\nb = Text(\"b\")\nc = Text(\"c\")\nx = Stack([a, b])\ny = Stack([a, c])\nroot = Stack([x, y])\nx = Stack([])\nroot = Stack([y])\ny = Stack([])\nroot = Stack([b])\n",
+        "spare = 0\na = Text(\"a\")\nb = Text(\"b\")\nx = Stack([a])\nroot = Stack([x])\nx = Stack([b])\na = Text(\"changed\")\nb = Text(\"changed too\")\nx = Stack([a, b])\na = Text(\"again\")\n",
+        "spare = 0\na = Text(\"a\")\nroot = Stack([])\nlate = 1\n$late = 2\nlate = $late\nlate = Text(\"value\")\nroot = Stack([late, a])\n",
+    ];
+    for program in programs {
+        for n in [1, 2, 7, 31] {
+            streams_as_without_reuse(program, &library(), Limits::default(), n);
+        }
+    }
+}
+
+#[test]
+fn cache_variants_at_depth_boundaries_keep_their_own_reach() {
+    let program = "spare = Text(\"spare\")\na = Text(\"a\")\nb = Stack([a])\nc = Stack([b])\nroot = Stack([a, b, c])\npending = Stack([\n";
+    for depth in 2..8 {
+        for n in [1, 7, 23] {
+            streams_as_without_reuse(program, &library(), Limits::default().with_depth(depth), n);
+        }
+    }
+}
+
 // ─── Costs ──────────────────────────────────────────────────────────────────
 
 /// Seconds of CPU time this thread has used.
@@ -394,6 +431,100 @@ fn an_unchanged_default_isnt_evaluated_again_on_later_pushes() {
         "a push costs {:.3} ms, evaluating the default {:.3} ms",
         per_push * 1e3,
         evaluating * 1e3
+    );
+}
+
+#[test]
+fn an_empty_push_at_a_completed_boundary_reuses_the_table() {
+    let program = format!("root = Stack([])\n{}", padding(40_000));
+    let library = library();
+    let parse_cost = fastest(5, || {
+        let start = now();
+        std::hint::black_box(parse_with_limits(
+            &program,
+            &library,
+            None,
+            Limits::default(),
+        ));
+        now() - start
+    });
+    let push_cost = fastest(5, || {
+        let mut stream = StreamParser::new(library.clone(), None);
+        stream.push(&program);
+        let start = now();
+        for _ in 0..20 {
+            std::hint::black_box(stream.push(""));
+        }
+        (now() - start) / 20.0
+    });
+    assert!(
+        push_cost < parse_cost / 5.0,
+        "empty push {push_cost:.6}s, parsing {parse_cost:.6}s"
+    );
+}
+
+#[test]
+fn changing_an_obsolete_reference_keeps_the_new_tree_cached() {
+    let children = (0..600)
+        .map(|i| format!("Text(\"value {i}\")"))
+        .collect::<Vec<_>>()
+        .join(",");
+    let head = format!("a = 0\nx = a\nroot = Stack([x])\nx = Stack([{children}])\n");
+    let library = library();
+    let cost = |name: &str| {
+        fastest(5, || {
+            let mut stream = StreamParser::new(library.clone(), None);
+            stream.push(&head);
+            let start = now();
+            for i in 0..30 {
+                std::hint::black_box(stream.push(&format!("{name} = {i}\n")));
+            }
+            (now() - start) / 30.0
+        })
+    };
+    let unrelated = cost("unused");
+    let obsolete = cost("a");
+    assert!(
+        obsolete < unrelated * 3.0,
+        "obsolete reference {obsolete:.6}s, unrelated {unrelated:.6}s"
+    );
+}
+
+#[test]
+fn changing_partial_flags_shares_unchanged_reach_trees() {
+    // One cached value with many children, used by a state default (AST
+    // mode) as well as the root. The trailing statement alternates the
+    // partial flag without changing any reference in that cached value.
+    let children = (0..4_000).map(|_| "leaf").collect::<Vec<_>>().join(",");
+    let head = format!(
+        "leaf = Text(\"value\")\nwide = Stack([{children}])\nroot = Stack([wide])\n$copy = wide\n"
+    );
+    let library = library();
+    let cost = |toggle: bool| {
+        fastest(5, || {
+            let mut stream = StreamParser::new(library.clone(), None);
+            stream.push(&head);
+            // Warm both partial variants before timing.
+            stream.push("pending = Text(");
+            stream.push("\"done\")\n");
+            let start = now();
+            for _ in 0..40 {
+                if toggle {
+                    std::hint::black_box(stream.push("pending = Text("));
+                    std::hint::black_box(stream.push("\"done\")\n"));
+                } else {
+                    std::hint::black_box(stream.push(""));
+                    std::hint::black_box(stream.push(""));
+                }
+            }
+            (now() - start) / 80.0
+        })
+    };
+    let unchanged = cost(false);
+    let toggled = cost(true);
+    assert!(
+        toggled < unchanged * 4.0,
+        "partial flag changes {toggled:.6}s, unchanged {unchanged:.6}s"
     );
 }
 

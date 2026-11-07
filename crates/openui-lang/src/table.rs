@@ -136,9 +136,9 @@ impl Table {
         match previous {
             Some((stmt, info)) => {
                 for &r in &info.refs {
-                    if !self.referrers[r as usize].contains(&slot) {
-                        self.referrers[r as usize].push(slot);
-                    }
+                    // The current definition's edges were removed above;
+                    // refs are deduplicated, so this edge is absent.
+                    self.referrers[r as usize].push(slot);
                 }
                 self.set_special(slot, info.special(), current.special());
                 self.orphan_change(slot, Some(current.kind), Some(info.kind));

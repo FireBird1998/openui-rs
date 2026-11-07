@@ -1,0 +1,6 @@
+root = Root([])
+a = true
+  ? Text("yes")
+  : Text("no")
+b = Text("line\nquote\"end")
+root = Root([a, b])

@@ -1,0 +1,8 @@
+spare = 0
+a = Text("a")
+root = Root([])
+late = 1
+$late = 2
+late = $late
+late = Text("value")
+root = Root([late, a])
