@@ -5,6 +5,12 @@
 set -euo pipefail
 cd "$(dirname "$0")/.."
 cargo fmt --all --check
+# Every test binary runs under an allocation cap (TESTING.md): one declared
+# without the counting allocator would run uncapped.
+for f in crates/*/tests/*.rs; do
+  grep -q 'static ALLOCATOR: test_alloc::Allocator' "$f" \
+    || { echo "check.sh: $f declares no test_alloc allocator (see TESTING.md)" >&2; exit 1; }
+done
 cargo clippy --all-targets --all-features -- -D warnings
 RUSTDOCFLAGS="-D warnings" cargo doc --no-deps -q -p openui-lang
 cargo test --all
