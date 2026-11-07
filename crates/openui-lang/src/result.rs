@@ -226,7 +226,9 @@ pub struct ParseResult {
     /// longer than the program-size limit and the rest was ignored
     /// ([`crate::Limits::program_size`]); or the result would have grown past
     /// the result-size limit ([`crate::Limits::result_size`]: statements
-    /// inlined into each other until it doubles at every level, say); or
+    /// inlined into each other until it doubles at every level, say, or a
+    /// validation error for each of a long list's items, since errors and
+    /// unresolved names count against it like the rest of the result); or
     /// evaluating state defaults ran out of work ([`crate::Limits::work_for`])
     /// and a default came out null; or, in a release build, a loop reading
     /// the input stalled (a bug in the core) and the parse ended there. Not

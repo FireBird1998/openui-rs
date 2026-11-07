@@ -153,6 +153,19 @@ pub(crate) fn write_json_string(out: &mut String, s: &str) {
     out.push('"');
 }
 
+/// How many bytes [`write_json_string`] writes for `s`, quotes left out: what
+/// the result-size limit charges for a string, since escaping a control
+/// character takes up to six bytes for one.
+pub(crate) fn json_string_len(s: &str) -> usize {
+    s.chars()
+        .map(|c| match c {
+            '"' | '\\' | '\u{08}' | '\u{0C}' | '\n' | '\r' | '\t' => 2,
+            c if c < '\u{20}' || c as u32 >= LONE_SURROGATE_BASE => 6,
+            c => c.len_utf8(),
+        })
+        .sum()
+}
+
 /// `JSON.stringify(s)` for a string.
 pub(crate) fn json_string(s: &str) -> String {
     let mut out = String::with_capacity(s.len() + 2);
@@ -723,7 +736,25 @@ impl JsonReader<'_> {
 mod json_reader_tests {
     use std::path::Path;
 
-    use super::{parse_json, write_json_value};
+    use super::{json_string_len, parse_json, write_json_string, write_json_value};
+
+    /// What the result-size limit charges for a string is what's written.
+    #[test]
+    fn a_strings_charge_is_its_escaped_length() {
+        let lone = char::from_u32(super::LONE_SURROGATE_BASE + 0x10).unwrap();
+        for s in [
+            "",
+            "plain",
+            "é😀",
+            "\"\\\u{08}\u{0C}\n\r\t",
+            "\u{0}\u{1}\u{1f}",
+            &format!("a{lone}b"),
+        ] {
+            let mut out = String::new();
+            write_json_string(&mut out, s);
+            assert_eq!(json_string_len(s) + 2, out.len(), "{s:?}");
+        }
+    }
 
     fn goldens(dir: &Path, out: &mut Vec<std::path::PathBuf>) {
         for entry in std::fs::read_dir(dir).unwrap() {
