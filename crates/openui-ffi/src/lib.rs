@@ -98,7 +98,8 @@ impl ParseOutput {
 }
 
 /// The core's limits (its `Limits`), each one left out meaning its default:
-/// 1 MiB of program, about 8 MiB of result JSON, 256 levels of nesting.
+/// 1 MiB of program; a result of the larger of 64 KiB and 64 times the
+/// program's size in JSON, never above 8 MiB; 256 levels of nesting.
 /// Hitting one cuts the result and sets `size_limited` or `depth_limited`.
 /// New limits are added as fields that default to unset, so code that builds
 /// one keeps compiling.
@@ -108,9 +109,22 @@ pub struct ParseLimits {
     /// stream had stopped there.
     #[uniffi(default = None)]
     pub program_size: Option<u64>,
-    /// About how many bytes of JSON a result may grow to.
+    /// A fixed result-size limit, in bytes of JSON, whatever the program's
+    /// size: it sets both the floor and the ceiling. Applied before the three
+    /// below, which can then change either.
     #[uniffi(default = None)]
     pub result_size: Option<u64>,
+    /// The fewest bytes of JSON the result-size limit scales down to.
+    #[uniffi(default = None)]
+    pub result_floor: Option<u64>,
+    /// How many times its program's size a result may grow to, between the
+    /// floor and the ceiling.
+    #[uniffi(default = None)]
+    pub amplification: Option<u64>,
+    /// The most bytes of JSON a result may grow to, however large the
+    /// program.
+    #[uniffi(default = None)]
+    pub result_ceiling: Option<u64>,
     /// How deep expressions and references may nest.
     #[uniffi(default = None)]
     pub depth: Option<u64>,
@@ -127,6 +141,15 @@ impl ParseLimits {
         }
         if let Some(n) = self.result_size {
             limits = limits.with_result_size(size(n));
+        }
+        if let Some(n) = self.result_floor {
+            limits = limits.with_result_floor(size(n));
+        }
+        if let Some(n) = self.amplification {
+            limits = limits.with_amplification(size(n));
+        }
+        if let Some(n) = self.result_ceiling {
+            limits = limits.with_result_ceiling(size(n));
         }
         if let Some(n) = self.depth {
             limits = limits.with_depth(size(n));

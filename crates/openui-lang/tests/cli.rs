@@ -244,6 +244,39 @@ fn limits_apply_to_parse_and_stream() {
 }
 
 #[test]
+fn the_scaling_result_size_limit_can_be_set() {
+    let dir = conformance();
+    let schema = dir.join("schemas/text.json");
+    let program = dir.join("cases/hello-text.oui");
+    let limits = openui_lang::Limits::default()
+        .with_amplification(0)
+        .with_result_floor(10)
+        .with_result_ceiling(1_000_000);
+    let expected = openui_lang::parse_with_limits(&read(&program), &library(&schema), None, limits);
+    assert!(expected.size_limited);
+    let out = Command::new(env!("CARGO_BIN_EXE_openui-lang"))
+        .args([
+            "parse",
+            "--limit",
+            "amplification=0",
+            "--limit",
+            "result-floor=10",
+        ])
+        .args(["--limit", "result-ceiling=1000000"])
+        .arg(&schema)
+        .arg(&program)
+        .output()
+        .unwrap();
+    assert!(
+        out.status.success(),
+        "{}",
+        String::from_utf8_lossy(&out.stderr)
+    );
+    let stdout = String::from_utf8(out.stdout).unwrap();
+    assert_eq!(stdout.lines().last().unwrap(), expected.to_json());
+}
+
+#[test]
 fn an_unknown_limit_names_the_valid_ones_and_fails() {
     let dir = conformance();
     for bad in ["frobs=3", "depth", "depth=lots"] {
@@ -256,7 +289,9 @@ fn an_unknown_limit_names_the_valid_ones_and_fails() {
         assert!(!out.status.success(), "{bad}");
         let stderr = String::from_utf8(out.stderr).unwrap();
         assert!(
-            stderr.contains("program-size, result-size, depth"),
+            stderr.contains(
+                "program-size, result-size, result-floor, amplification, result-ceiling, depth"
+            ),
             "{bad}: {stderr}"
         );
     }

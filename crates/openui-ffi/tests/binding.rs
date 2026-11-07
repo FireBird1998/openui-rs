@@ -287,6 +287,18 @@ fn limits_reach_the_core_one_shot_and_streaming() {
             },
             Limits::default().with_result_size(100),
         ),
+        (
+            ParseLimits {
+                result_floor: Some(100),
+                amplification: Some(0),
+                result_ceiling: Some(1_000_000),
+                ..ParseLimits::default()
+            },
+            Limits::default()
+                .with_result_floor(100)
+                .with_amplification(0)
+                .with_result_ceiling(1_000_000),
+        ),
     ] {
         let want = openui_lang::parse_with_limits(&program, &core_library, None, core_limits);
         assert!(want.depth_limited || want.size_limited);
