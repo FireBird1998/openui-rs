@@ -244,6 +244,39 @@ fn limits_apply_to_parse_and_stream() {
 }
 
 #[test]
+fn the_scaling_result_size_limit_can_be_set() {
+    let dir = conformance();
+    let schema = dir.join("schemas/text.json");
+    let program = dir.join("cases/hello-text.oui");
+    let limits = openui_lang::Limits::default()
+        .with_amplification(0)
+        .with_result_floor(10)
+        .with_result_ceiling(1_000_000);
+    let expected = openui_lang::parse_with_limits(&read(&program), &library(&schema), None, limits);
+    assert!(expected.size_limited);
+    let out = Command::new(env!("CARGO_BIN_EXE_openui-lang"))
+        .args([
+            "parse",
+            "--limit",
+            "amplification=0",
+            "--limit",
+            "result-floor=10",
+        ])
+        .args(["--limit", "result-ceiling=1000000"])
+        .arg(&schema)
+        .arg(&program)
+        .output()
+        .unwrap();
+    assert!(
+        out.status.success(),
+        "{}",
+        String::from_utf8_lossy(&out.stderr)
+    );
+    let stdout = String::from_utf8(out.stdout).unwrap();
+    assert_eq!(stdout.lines().last().unwrap(), expected.to_json());
+}
+
+#[test]
 fn an_unknown_limit_names_the_valid_ones_and_fails() {
     let dir = conformance();
     for bad in ["frobs=3", "depth", "depth=lots"] {
@@ -256,7 +289,9 @@ fn an_unknown_limit_names_the_valid_ones_and_fails() {
         assert!(!out.status.success(), "{bad}");
         let stderr = String::from_utf8(out.stderr).unwrap();
         assert!(
-            stderr.contains("program-size, result-size, depth, work"),
+            stderr.contains(
+                "program-size, result-size, result-floor, amplification, result-ceiling, depth, work"
+            ),
             "{bad}: {stderr}"
         );
     }
@@ -285,6 +320,55 @@ fn the_work_limit_applies_to_parse() {
         String::from_utf8(out.stdout).unwrap().trim_end(),
         expected.to_json()
     );
+}
+
+#[test]
+fn limits_apply_to_tokens_and_prompt() {
+    let dir = conformance();
+    // `tokens` reads the program up to the program-size limit, as parsing does.
+    let program = dir.join("cases/hand/67-lexer-number-forms.oui");
+    let out = Command::new(env!("CARGO_BIN_EXE_openui-lang"))
+        .args(["tokens", "--limit", "program-size=40"])
+        .arg(&program)
+        .output()
+        .unwrap();
+    assert!(out.status.success());
+    let text = read(&program);
+    let expected = tokens_to_json(&tokenize(&text[..40]));
+    assert_eq!(
+        String::from_utf8(out.stdout).unwrap(),
+        format!("{expected}\n")
+    );
+
+    // `prompt` refuses a spec nesting past the depth limit's 44 JSON levels
+    // at depth 4, and takes it under the default.
+    let mut schema = serde_json::json!({"type": "string"});
+    for _ in 0..30 {
+        schema = serde_json::json!({"type": "object", "properties": {"a": schema}});
+    }
+    let spec = serde_json::json!({"tools": [{"name": "t", "inputSchema": schema}]}).to_string();
+    for (limit, succeeds) in [("depth=4", false), ("depth=256", true)] {
+        let mut child = Command::new(env!("CARGO_BIN_EXE_openui-lang"))
+            .args(["prompt", "-", "--limit", limit])
+            .stdin(std::process::Stdio::piped())
+            .stdout(std::process::Stdio::piped())
+            .stderr(std::process::Stdio::piped())
+            .spawn()
+            .unwrap();
+        use std::io::Write;
+        child
+            .stdin
+            .take()
+            .unwrap()
+            .write_all(spec.as_bytes())
+            .unwrap();
+        let out = child.wait_with_output().unwrap();
+        assert_eq!(out.status.success(), succeeds, "{limit}");
+        if !succeeds {
+            let stderr = String::from_utf8(out.stderr).unwrap();
+            assert!(stderr.contains("nests deeper than 44"), "{stderr}");
+        }
+    }
 }
 
 #[test]

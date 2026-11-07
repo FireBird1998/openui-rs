@@ -98,7 +98,8 @@ impl ParseOutput {
 }
 
 /// The core's limits (its `Limits`), each one left out meaning its default:
-/// 1 MiB of program, about 8 MiB of result JSON, 256 levels of nesting, and
+/// 1 MiB of program; a result of the larger of 64 KiB and 64 times the
+/// program's size in JSON, never above 8 MiB; 256 levels of nesting; and
 /// evaluating state defaults in the larger of a million steps and 1,000 per
 /// byte of program, at most 64 million. Hitting one cuts the result and sets
 /// `size_limited` or `depth_limited`.
@@ -110,9 +111,22 @@ pub struct ParseLimits {
     /// stream had stopped there.
     #[uniffi(default = None)]
     pub program_size: Option<u64>,
-    /// About how many bytes of JSON a result may grow to.
+    /// A fixed result-size limit, in bytes of JSON, whatever the program's
+    /// size: it sets both the floor and the ceiling. Applied before the three
+    /// below, which can then change either.
     #[uniffi(default = None)]
     pub result_size: Option<u64>,
+    /// The fewest bytes of JSON the result-size limit scales down to.
+    #[uniffi(default = None)]
+    pub result_floor: Option<u64>,
+    /// How many times its program's size a result may grow to, between the
+    /// floor and the ceiling.
+    #[uniffi(default = None)]
+    pub amplification: Option<u64>,
+    /// The most bytes of JSON a result may grow to, however large the
+    /// program.
+    #[uniffi(default = None)]
+    pub result_ceiling: Option<u64>,
     /// How deep expressions and references may nest.
     #[uniffi(default = None)]
     pub depth: Option<u64>,
@@ -133,6 +147,15 @@ impl ParseLimits {
         }
         if let Some(n) = self.result_size {
             limits = limits.with_result_size(size(n));
+        }
+        if let Some(n) = self.result_floor {
+            limits = limits.with_result_floor(size(n));
+        }
+        if let Some(n) = self.amplification {
+            limits = limits.with_amplification(size(n));
+        }
+        if let Some(n) = self.result_ceiling {
+            limits = limits.with_result_ceiling(size(n));
         }
         if let Some(n) = self.depth {
             limits = limits.with_depth(size(n));
@@ -184,12 +207,26 @@ pub fn parse_with_limits(
 /// reference's `generateSystemPrompt` takes it, as JSON text.
 #[uniffi::export]
 pub fn generate_system_prompt(spec: String) -> Result<String, OpenUiError> {
+    generate_system_prompt_with_limits(spec, ParseLimits::default())
+}
+
+/// [`generate_system_prompt`] within `limits`: a spec nesting past the depth
+/// limit's JSON levels (800 at the default) is refused as a `Prompt` error.
+/// The spec is read with serde_json, which refuses nesting past 128 levels on
+/// its own, as `InvalidPromptSpec`.
+#[uniffi::export]
+pub fn generate_system_prompt_with_limits(
+    spec: String,
+    limits: ParseLimits,
+) -> Result<String, OpenUiError> {
     let json: serde_json::Value =
         serde_json::from_str(&spec).map_err(|e| OpenUiError::InvalidPromptSpec {
             message: e.to_string(),
         })?;
-    openui_lang::generate_system_prompt(&json).map_err(|e| OpenUiError::Prompt {
-        message: e.to_string(),
+    openui_lang::generate_system_prompt_with_limits(&json, limits.to_core()).map_err(|e| {
+        OpenUiError::Prompt {
+            message: e.to_string(),
+        }
     })
 }
 
@@ -198,6 +235,42 @@ pub fn generate_system_prompt(spec: String) -> Result<String, OpenUiError> {
 #[uniffi::export]
 pub fn merge_statements(existing: String, patch: String, root_id: Option<String>) -> String {
     openui_lang::merge_statements(&existing, &patch, root_id.as_deref())
+}
+
+/// A merge as it crosses the boundary: the merged program, and whether a
+/// limit cut it.
+#[derive(Debug, uniffi::Record)]
+pub struct MergeOutput {
+    /// The merged program.
+    pub text: String,
+    /// An input was longer than the program-size limit and was read only up
+    /// to it.
+    pub size_limited: bool,
+    /// An expression nested past the depth limit, so statements only its cut
+    /// part reaches may have been dropped as unreachable.
+    pub depth_limited: bool,
+}
+
+/// [`merge_statements`] within `limits`: the program-size limit applies to
+/// each input, and the depth limit to each statement's expression.
+#[uniffi::export]
+pub fn merge_statements_with_limits(
+    existing: String,
+    patch: String,
+    root_id: Option<String>,
+    limits: ParseLimits,
+) -> MergeOutput {
+    let merged = openui_lang::merge_statements_with_limits(
+        &existing,
+        &patch,
+        root_id.as_deref(),
+        limits.to_core(),
+    );
+    MergeOutput {
+        text: merged.text,
+        size_limited: merged.size_limited,
+        depth_limited: merged.depth_limited,
+    }
 }
 
 /// A streaming parse of one program, fed chunk by chunk. Calls on one session

@@ -334,8 +334,9 @@ impl StreamParser {
             Against {
                 library: &self.library,
                 root_name: self.root_name.as_deref(),
-                limits: self.limits,
-                program_bytes: self.buf.len(),
+                // The result-size and work limits of the text so far, as a
+                // one-shot parse of it would have.
+                limits: self.limits.for_program(self.buf.len()),
             },
             partial,
         )

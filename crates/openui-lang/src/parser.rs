@@ -235,6 +235,8 @@ pub fn parse_with_limits(
     // Past the program-size limit, the rest is ignored as if the stream had
     // stopped there.
     let (input, cut) = Limits::fit(input, limits.program_size());
+    // The result-size and work limits scale with the program read.
+    let limits = limits.for_program(input.len());
     let (mut result, stalled) = progress::watch(|| parse_text(input, library, root_name, limits));
     result.size_limited |= stalled || cut;
     result
@@ -278,7 +280,6 @@ fn parse_text(
             library,
             root_name,
             limits,
-            program_bytes: input.len(),
         },
         None,
     );
@@ -357,16 +358,15 @@ pub(crate) struct PartialRef<'a> {
     pub slots: &'a [Slot],
 }
 
-/// What a parse is against: the component library, its root component, the
-/// limits, and how long the program is so far, which the limits that scale
-/// with it read (the same for a stream's push as for a one-shot parse of the
-/// text so far).
+/// What a parse is against: the component library, its root component, and
+/// the limits, those that scale with the program fixed for the text so far
+/// (`Limits::for_program`), the same for a stream's push as for a one-shot
+/// parse of it.
 #[derive(Clone, Copy)]
 pub(crate) struct Against<'a> {
     pub library: &'a Library,
     pub root_name: Option<&'a str>,
     pub limits: Limits,
-    pub program_bytes: usize,
 }
 
 pub(crate) fn build_result(
@@ -381,7 +381,6 @@ pub(crate) fn build_result(
         library,
         root_name,
         limits,
-        program_bytes,
     } = against;
     let entry = pick_entry(table, root_name);
     let entry_id = entry.map(|(slot, _)| table.name(slot).to_owned());
@@ -421,7 +420,8 @@ pub(crate) fn build_result(
         }
     }
 
-    let work = limits.work_for(program_bytes);
+    // Fixed for this program by `Limits::for_program`, whatever the length.
+    let work = limits.work_for(0);
     let (state_declarations, query_statements, mutation_statements) =
         extract_statements(ctx.table, &mut ctx, partial.as_ref(), work);
 

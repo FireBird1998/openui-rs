@@ -25,9 +25,18 @@ const PREC_MUL: u8 = 7;
 const PREC_UNARY: u8 = 8;
 const PREC_MEMBER: u8 = 9;
 
-/// Parse one statement's expression tokens.
+/// Parse one statement's expression tokens, to the default depth limit
+/// ([`MAX_DEPTH`]).
 pub fn parse_expression(tokens: &[Token]) -> Ast {
     parse_expression_with_limit(tokens, MAX_DEPTH).0
+}
+
+/// [`parse_expression`] to `limits`' depth: nesting past it, and longer
+/// left-nested chains, are cut off. Also says whether anything was (what a
+/// parse flags `depth_limited`). The other limits don't apply to tokens
+/// already read.
+pub fn parse_expression_with_limits(tokens: &[Token], limits: crate::Limits) -> (Ast, bool) {
+    parse_expression_with_limit(tokens, limits.depth())
 }
 
 /// Parse, and say whether nesting went past `max_depth` levels and was cut off.

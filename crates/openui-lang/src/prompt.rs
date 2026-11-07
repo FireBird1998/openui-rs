@@ -8,10 +8,12 @@
 //! array's or a string's by index. So a spec that round-trips through JSON
 //! gives the same prompt here as there.
 
+use std::collections::{HashMap, HashSet};
 use std::fmt;
 
 use serde_json::Value as Json;
 
+use crate::Limits;
 use crate::js::{js_string, json_entries, json_value_string, object_entries, truthy};
 
 /// Why a system prompt couldn't be generated: the reference throws in the
@@ -30,7 +32,24 @@ impl std::error::Error for PromptError {}
 /// The reference's `generateSystemPrompt`. Takes `{library, promptOptions}`,
 /// a prompt spec directly (the deprecated form), or `{cloud: true, ...}` for
 /// OpenUI Cloud's config block.
+///
+/// It generates under the default [`Limits`]: see
+/// [`generate_system_prompt_with_limits`].
 pub fn generate_system_prompt(spec: &Json) -> Result<String, PromptError> {
+    generate_system_prompt_with_limits(spec, Limits::DEFAULT)
+}
+
+/// [`generate_system_prompt`] under `limits`. A spec nesting deeper than
+/// three JSON levels per level of the depth limit, and 32 more (800 at the
+/// default 256), is refused with a [`PromptError`], where the reference goes
+/// on until the engine runs out of stack. Otherwise the prompt's time and
+/// size grow with the spec, nothing more, so the other limits don't apply:
+/// the spec is already in the caller's memory.
+pub fn generate_system_prompt_with_limits(
+    spec: &Json,
+    limits: Limits,
+) -> Result<String, PromptError> {
+    within_depth("generateSystemPrompt", spec, limits)?;
     let Some(object) = spec.as_object() else {
         return Err(PromptError(
             "[generateSystemPrompt] spec must be an object.".to_owned(),
@@ -60,6 +79,27 @@ pub fn generate_system_prompt(spec: &Json) -> Result<String, PromptError> {
 }
 
 // ─── Reading the spec ───────────────────────────────────────────────────────
+
+/// Refuse a spec nesting deeper than `limits` allow JSON to, measured with a
+/// loop, so a deep spec costs no stack to check.
+fn within_depth(function: &str, spec: &Json, limits: Limits) -> Result<(), PromptError> {
+    let limit = limits.json_depth();
+    let mut open = vec![(spec, 0usize)];
+    while let Some((value, depth)) = open.pop() {
+        let children: Box<dyn Iterator<Item = &Json>> = match value {
+            Json::Array(items) => Box::new(items.iter()),
+            Json::Object(fields) => Box::new(fields.values()),
+            _ => continue,
+        };
+        if depth + 1 > limit {
+            return Err(PromptError(format!(
+                "[{function}] the spec nests deeper than {limit} levels."
+            )));
+        }
+        open.extend(children.map(|child| (child, depth + 1)));
+    }
+    Ok(())
+}
 
 fn field<'a>(value: &'a Json, key: &str) -> Option<&'a Json> {
     value.as_object()?.get(key)
@@ -689,9 +729,15 @@ fn component_signatures(
         return lines.join("\n");
     }
 
-    // Names already listed, as the group wrote them (a group may name a
-    // component by something that isn't a string; that never matches a key).
-    let mut grouped: Vec<&Json> = Vec::new();
+    // Each component by its key (entries' keys are unique), so a group's
+    // names are looked up in constant time, not by a scan per name.
+    let by_key: HashMap<&str, &Json> = components.iter().map(|(k, c)| (k.as_str(), c)).collect();
+    // Names already listed, as the group wrote them: a group may name a
+    // component by something that isn't a string (`1` for the key "1"), and
+    // then only the same value counts as already listed, as with the
+    // reference's `includes`. Strings, nearly every name, go in a set.
+    let mut grouped_strings: HashSet<&str> = HashSet::new();
+    let mut grouped_others: Vec<&Json> = Vec::new();
     for group in groups {
         lines.push(String::new());
         lines.push(format!(
@@ -699,19 +745,27 @@ fn component_signatures(
             field(group, "name").map_or_else(|| "undefined".to_owned(), js_string)
         ));
         for name in items(field(group, "components")) {
-            if grouped.contains(&name) {
+            let listed = match name {
+                Json::String(s) => grouped_strings.contains(s.as_str()),
+                other => grouped_others.contains(&other),
+            };
+            if listed {
                 continue;
             }
             let key = js_string(name);
-            let Some(component) = components
-                .iter()
-                .find(|(k, _)| *k == key)
-                .map(|(_, c)| c)
+            let Some(component) = by_key
+                .get(key.as_str())
+                .copied()
                 .filter(|c| truthy(Some(c)))
             else {
                 continue;
             };
-            grouped.push(name);
+            match name {
+                Json::String(s) => {
+                    grouped_strings.insert(s);
+                }
+                other => grouped_others.push(other),
+            }
             lines.push(format_signature(component));
         }
         for note in items(field(group, "notes")) {
@@ -720,7 +774,7 @@ fn component_signatures(
     }
     let ungrouped: Vec<&Json> = components
         .iter()
-        .filter(|(k, _)| !grouped.contains(&&Json::String(k.clone())))
+        .filter(|(k, _)| !grouped_strings.contains(k.as_str()))
         .map(|(_, c)| c)
         .collect();
     if !ungrouped.is_empty() {
@@ -737,6 +791,11 @@ fn component_signatures(
 
 /// The reference's `generatePrompt`: a prompt spec (components, groups, tools,
 /// examples, rules and mode flags) to the system prompt text.
+///
+/// It takes no limits and never fails: its time and the prompt's size grow
+/// with the spec, and it grows its stack on demand however deep the spec
+/// nests. For a spec from outside the app, [`generate_prompt_with_limits`]
+/// refuses one nesting past the depth limit.
 pub fn generate_prompt(spec: &Json) -> String {
     let root = present(spec, "root").map_or_else(|| "Root".to_owned(), js_string);
     let tools = items(field(spec, "tools"));
@@ -836,6 +895,14 @@ pub fn generate_prompt(spec: &Json) -> String {
         }
     }
     parts.join("\n")
+}
+
+/// [`generate_prompt`] under `limits`: a spec nesting deeper than three JSON
+/// levels per level of the depth limit, and 32 more (800 at the default 256),
+/// is refused with a [`PromptError`].
+pub fn generate_prompt_with_limits(spec: &Json, limits: Limits) -> Result<String, PromptError> {
+    within_depth("generatePrompt", spec, limits)?;
+    Ok(generate_prompt(spec))
 }
 
 // ─── Cloud config ───────────────────────────────────────────────────────────

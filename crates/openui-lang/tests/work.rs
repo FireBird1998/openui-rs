@@ -6,7 +6,7 @@
 
 use std::sync::Arc;
 
-use openui_lang::{Library, Limits, ParseResult, parse, parse_with_limits};
+use openui_lang::{Library, Limits, MAX_RESULT_SIZE, ParseResult, parse, parse_with_limits};
 
 fn library() -> Arc<Library> {
     let schema = serde_json::json!({"$defs": {
@@ -144,12 +144,17 @@ fn the_slow_fuzz_input_is_cut_by_default_and_whole_within_four_million_steps() {
     let library = Library::from_json_schema(&schema);
     let program = include_str!("slow/parse-94563fe.oui");
     let parse_under = |limits| parse_with_limits(program, &library, None, limits);
-    // Its 629 bytes get the default's floor, a million steps: not enough.
-    let cut = parse_under(Limits::default());
+    // The defaults cut it: its 64 KiB of result room and its million steps
+    // are both too few.
+    assert!(parse_under(Limits::default()).size_limited);
+    // With room to spare, the work is what cuts it: its 629 bytes get the
+    // work limit's floor, a million steps, and it needs more.
+    let roomy = Limits::default().with_result_size(MAX_RESULT_SIZE);
+    let cut = parse_under(roomy);
     assert!(cut.size_limited);
     assert!(cut.to_json().contains("\"$s\":null"));
-    // Four million are.
-    let whole = parse_under(Limits::default().with_work(4_000_000));
+    // Four million are enough.
+    let whole = parse_under(roomy.with_work(4_000_000));
     assert!(!whole.size_limited);
     assert!(whole.to_json().contains("\"$s\":[[null,null],[null,null]]"));
 }
