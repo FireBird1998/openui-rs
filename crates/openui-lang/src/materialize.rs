@@ -328,21 +328,33 @@ enum Resolved {
 /// materialized right now: that would be a cycle, and a materialization that
 /// met a cycle is never cached.
 fn resolve_ref(name: &str, ctx: &mut Ctx, mode: Mode) -> Resolved {
-    let placeholder = |mode: Mode| match mode {
-        Mode::Expr => Resolved::Ast(Ast::Ph(name.to_owned())),
+    // In an expression the placeholder is written (`{"k":"Ph","n":name}`),
+    // so it grows the result like any node: a component's `mappedProps`
+    // writes it again, so nested calls would otherwise multiply what's
+    // written past what's counted. As a value it's null, which an array
+    // leaves out.
+    let placeholder = |ctx: &mut Ctx, mode: Mode| match mode {
+        Mode::Expr => {
+            let node = Ast::Ph(name.to_owned());
+            if ctx.grow(json_size(&node, true)) {
+                Resolved::Ast(node)
+            } else {
+                Resolved::Ast(Ast::Null)
+            }
+        }
         Mode::Value => Resolved::Value(Value::Null),
     };
     let table = ctx.table;
     let Some(slot) = table.slot(name) else {
         ctx.unresolved(name);
-        return placeholder(mode);
+        return placeholder(ctx, mode);
     };
     let target = match table.get(slot) {
         Some(stmt) if !ctx.visited.contains(&slot) => stmt.expr(),
         found => {
             ctx.frame.cycle |= found.is_some();
             ctx.unresolved(name);
-            return placeholder(mode);
+            return placeholder(ctx, mode);
         }
     };
     ctx.frame.reached.push(slot);

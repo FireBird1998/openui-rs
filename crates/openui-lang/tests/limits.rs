@@ -425,6 +425,35 @@ fn placeholders_for_a_depth_cut_count_against_the_result_size_limit() {
     assert_eq!(stream.finish(), cut);
 }
 
+/// The placeholder an unresolved reference leaves in a runtime expression
+/// (`{"k":"Ph","n":"a"}`) counts against the result-size limit too: a
+/// component in an expression writes its args again as `mappedProps`, so
+/// each level doubles the placeholders written. Found by the parse target in
+/// the hardening re-run (#19): a 289-byte input's result was 125,301 bytes,
+/// past a 65,536-byte limit and unflagged.
+#[test]
+fn placeholders_for_unresolved_references_count_against_the_result_size_limit() {
+    let lib = library();
+    let refs = "a, ".repeat(300);
+    let program =
+        format!("root = Stack([$s ? Stack([$s ? Stack([$s ? Stack([{refs}]) : 1]) : 1]) : 1])");
+    let limit = 16 * 1024;
+    let limits = Limits::default().with_result_size(limit);
+    let cut = parse_with_limits(&program, &lib, None, limits);
+    let json = cut.to_json().len();
+    assert!(
+        cut.size_limited || json <= limit + limit / 2 + 4096,
+        "{json} bytes unflagged past a {limit}-byte limit"
+    );
+    assert!(
+        json <= limit + limit / 2 + 4096 + 16 * program.len(),
+        "{json}"
+    );
+    let mut stream = StreamParser::with_limits(lib.clone(), None, limits);
+    stream.push(&program);
+    assert_eq!(stream.finish(), cut);
+}
+
 #[global_allocator]
 static ALLOCATOR: test_alloc::Allocator = test_alloc::Allocator::with_cap(test_alloc::LIMITS);
 
@@ -434,7 +463,8 @@ fn materialization_prices_exact_result_size_edges() {
     let cases = [
         ("root = Stack([1, 2])", 92),
         ("root = Stack([$state + \"abc\", 2])", 162),
-        ("root = Stack([$state ? ?unknown : null, 2])", 171),
+        // An unresolved reference's placeholder counts, 31 bytes (#19).
+        ("root = Stack([$state ? ?unknown : null, 2])", 202),
         ("root = Stack([$state ? true : false, 2])", 179),
         ("root = Stack([Text(null), 2])", 296),
         ("root = Stack([Text(), 2])", 274),
