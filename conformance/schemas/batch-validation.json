@@ -1,0 +1,44 @@
+{
+  "$defs": {
+    "Box": {
+      "properties": {
+        "empty": {
+          "anyOf": []
+        },
+        "component": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Text"
+            }
+          ]
+        },
+        "data": {
+          "anyOf": [
+            {
+              "type": "number"
+            }
+          ]
+        },
+        "__proto__": {},
+        "value": {
+          "type": "object",
+          "properties": {
+            "x": {}
+          }
+        },
+        "one": {
+          "oneOf": [
+            {
+              "$ref": "#/$defs/Text"
+            }
+          ]
+        }
+      }
+    },
+    "Text": {
+      "properties": {
+        "value": {}
+      }
+    }
+  }
+}

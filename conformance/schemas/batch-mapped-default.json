@@ -1,0 +1,23 @@
+{
+  "$defs": {
+    "Text": {
+      "properties": {
+        "value": {}
+      }
+    }
+  },
+  "functions": {
+    "Sum": {
+      "params": {
+        "properties": {
+          "items": {
+            "enum": [
+              "good"
+            ],
+            "default": "good"
+          }
+        }
+      }
+    }
+  }
+}

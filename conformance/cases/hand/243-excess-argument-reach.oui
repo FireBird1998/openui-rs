@@ -1,0 +1,8 @@
+root = Root([card, $x ? card : null])
+b = Text("b")
+c = Text("c")
+card = Text("hi", "info", 1, Root([b,c]))
+pending = Text("done")
+card = Text("hi")
+card = Text("hi", "info", 1, Root([b,c]))
+b = Text("new")

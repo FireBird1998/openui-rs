@@ -1,0 +1,1 @@
+{"root":null,"meta":{"incomplete":false,"unresolved":[],"orphaned":[],"statementCount":3,"errors":[{"code":"no-root","component":"","path":"","message":"No root statement"}]},"stateDeclarations":{"$a":["ab","cde"],"$b":[{"v":"abc"}],"$c":"1,22,333,,"},"queryStatements":[],"mutationStatements":[]}

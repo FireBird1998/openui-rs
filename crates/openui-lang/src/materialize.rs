@@ -105,7 +105,9 @@ pub(crate) struct Frame {
     /// Grew past the result-size limit; the rest became null.
     pub size_limited: bool,
     /// Checked a library component, function or action against the library,
-    /// which a stream's still-arriving text changes (`Ctx::partial`).
+    /// which a stream's still-arriving text changes (`Ctx::partial`). Only
+    /// this frame's own checks matter: a state default reaching another
+    /// statement already forbids sharing modes, whatever that statement reads.
     pub partial_read: bool,
 }
 
@@ -463,7 +465,6 @@ fn fold(frame: Frame, key: (Slot, bool), memoize: bool, ctx: &mut Ctx) -> Folded
     ctx.frame.cycle |= cycle;
     ctx.frame.limited |= limited;
     ctx.frame.size_limited |= size_limited;
-    ctx.frame.partial_read |= partial_read;
     Folded {
         reach,
         errors,

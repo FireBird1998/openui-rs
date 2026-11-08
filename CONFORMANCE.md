@@ -16,12 +16,12 @@ Reference: `@openuidev/lang-core 1.1.0` at commit `47b9cae0d3b26a8c9d7514d5887a6
 
 | Compared with the reference | Cases | Checks | Cases by source |
 |---|---:|---:|---|
-| Parse results: one-shot, and after every push and at the end of 8 chunkings, 2 resync sequences and any recorded chunks | 697 | 406,407 results | 7 benchmark, 107 docs, 46 examples, 13 fuzz, 202 hand-written, 2 recorded, 259 reference-test, 58 spec-fixture, 3 synthetic |
-| Stages on every prefix: preprocessing, tokens, statements and expression trees | 695 | 124,601 prefixes | the parse corpus, less its largest synthetic programs |
+| Parse results: one-shot, and after every push and at the end of 8 chunkings, 2 resync sequences and any recorded chunks | 707 | 410,282 results | 7 benchmark, 107 docs, 46 examples, 13 fuzz, 212 hand-written, 2 recorded, 259 reference-test, 58 spec-fixture, 3 synthetic |
+| Stages on every prefix: preprocessing, tokens, statements and expression trees | 705 | 125,803 prefixes | the parse corpus, less its largest synthetic programs |
 | System prompts | 65 | 65 | |
 | Edit-mode merges | 3,239 | 3,239 | 3,179 generated, 53 hand-written, 1 recorded, 1 reference-test, 5 spec-fixture |
-| Element trees back to source | 666 | 666 | 1 fuzz, 71 hand-written, 563 parse corpus root, 31 reference-test |
-| Enriched errors | 403 | 403 | every parse corpus case with errors |
+| Element trees back to source | 675 | 675 | 1 fuzz, 71 hand-written, 572 parse corpus root, 31 reference-test |
+| Enriched errors | 412 | 412 | every parse corpus case with errors |
 
 Quirks recorded: 19.
 Not matched yet, listed in `conformance/pending/`: none.

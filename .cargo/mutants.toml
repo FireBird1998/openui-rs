@@ -52,4 +52,20 @@ exclude_re = [
     'validation\.rs:.*delete match arm Some\(Value::Obj\(p\)\) in element_parts$',
     # RuntimeRef is produced by resolution and never fed back into materialization; retain non-panicking defensive pricing (#14).
     'materialize\.rs:.*(in runtime_ref_size|replace runtime_ref_size -> usize with [0-9]+)$',
+
+    # These decrement mutants only overestimate the orphan count (division is
+    # by 1). The count only skips an exact scan at zero; versions still
+    # invalidate the memo and orphaned() uses the unchanged per-slot reach.
+    # Output and charged limits are identical; only an occasional extra scan
+    # remains, alongside the result's existing error/reach walks.
+    'table\.rs:.*replace -= with (\+=|/=) in Table::orphan_change$',
+    'table\.rs:.*replace -= with (\+=|/=) in Table::reach_inc$',
+    # OR only adds spurious orphan/version increments, including for the
+    # entry; it cannot hide a real orphan. The exact scan above still wins.
+    'table\.rs:.*replace && with \|\| in Table::reach_dec$',
+
+    # Reversing this predicate merely discards invalidated followers sooner on
+    # Whole/TooDeep and recomputes zero-allowance followers on RanOut. Values,
+    # priced work, and a reliable generous timing ratio are unchanged.
+    'evaluate\.rs:.*replace == with != in followers_are_forced_null$',
 ]

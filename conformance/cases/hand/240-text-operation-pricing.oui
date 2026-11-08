@@ -1,0 +1,3 @@
+$a = @Sort(["ab", "cde"], "")
+$b = @Filter([{v: "abc"}, {v: "defg"}], "v", "contains", "ab")
+$c = "" + [[1,22], [333,null], []]
