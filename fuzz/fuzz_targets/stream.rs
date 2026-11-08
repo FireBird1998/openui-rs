@@ -9,10 +9,13 @@
 //! within `MOST_WORK` steps, with at most 128 pushes; a long input's chunks
 //! grow instead. That keeps the known worst case well within the 2-second
 //! timeout, so a timeout still means a push costing more than it should. The
-//! hardening run (#19) found the cap too loose twice: at 256 pushes a 6 KB
-//! input whose stray quotes left a statement open, and at 128 an 884-byte
+//! hardening run (#19) found the cap too loose three times: at 256 pushes a
+//! 6 KB input whose stray quotes left a statement open, at 128 an 884-byte
 //! default left open and evaluated to the 1-million-step limit on each of
-//! 127 pushes (0.9 s idle in the fuzz build).
+//! 127 pushes (0.9 s idle in the fuzz build), and at 64 million steps a
+//! 1.2 KB default left open on each of 53 pushes (0.85 s on the worker at
+//! load 6, past 2 s when it was busier). A small input now gets at most 16
+//! pushes; its chunks still start where the first byte says.
 //!
 //!   cargo +nightly fuzz run stream -- -dict=fuzz/openui.dict
 #![no_main]
@@ -25,8 +28,9 @@ use openui_lang::{Limits, StreamParser};
 
 const MOST_PUSHES: usize = 128;
 /// Work steps a whole stream may take at most, at the work limit on every
-/// push: about 0.5 s in the fuzz build.
-const MOST_WORK: usize = 64_000_000;
+/// push: about 0.2 s in the fuzz build, a tenth of the timeout, so a busy
+/// machine doesn't turn the known worst case into a finding.
+const MOST_WORK: usize = 16_000_000;
 
 fuzz_target!(|data: &[u8]| {
     let Some((&plan, rest)) = data.split_first() else {
