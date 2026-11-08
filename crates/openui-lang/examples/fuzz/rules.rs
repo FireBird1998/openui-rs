@@ -723,10 +723,52 @@ fn skipped_before_question(input: &str) -> bool {
     })
 }
 
+/// Whether a statement line, after a line that left a bracket open, closes
+/// that bracket after a ternary's `?` of its own (`(`, then `a = $f ?)`): the
+/// stream's scan pairs the brackets and ends the statement at the newline,
+/// the one-shot split starts it after the bracket and keeps reading it as an
+/// open ternary.
+fn bracket_closed_after_a_ternary(input: &str) -> bool {
+    let mut open = 0usize;
+    for line in preprocess(input).lines() {
+        let mut depth = 0usize;
+        let mut question = false;
+        let mut closes_outer = false;
+        let mut string: Option<char> = None;
+        for c in line.chars() {
+            if let Some(quote) = string {
+                if c == quote {
+                    string = None;
+                }
+                continue;
+            }
+            match c {
+                '"' | '\'' => string = Some(c),
+                '(' | '[' | '{' => depth += 1,
+                ')' | ']' | '}' if depth > 0 => depth -= 1,
+                ')' | ']' | '}' => {
+                    closes_outer |= question && open > 0;
+                    open = open.saturating_sub(1);
+                }
+                '?' if depth == 0 => question = true,
+                _ => {}
+            }
+        }
+        if closes_outer && statement_name(line).is_some() {
+            return true;
+        }
+        open += depth;
+    }
+    false
+}
+
 /// The quirk behind a stream ending differently, if a known one explains it.
 fn stream_exception(input: &str, why: &str) -> Option<&'static str> {
     if skipped_before_question(input) {
         return Some("quirk 19: a stray character before a ternary's `?`");
+    }
+    if bracket_closed_after_a_ternary(input) {
+        return Some("quirk 23: a bracket closed after a ternary's `?`");
     }
     if why.contains("/meta/incomplete") && split(&tokenize(&preprocess(input))).is_empty() {
         return Some("quirk 18: a program without statements");
@@ -1613,6 +1655,23 @@ mod tests {
         assert_eq!(stream_exception("a=1\n\n  ?", why), None);
         // Something the lexer reads, not skips, before it.
         assert_eq!(stream_exception("a=1\nb\n?", why), None);
+    }
+
+    /// The hardening run's program (#19) and its pinned case.
+    #[test]
+    fn a_bracket_closed_after_a_ternary_is_quirk_23() {
+        let why = "the stream's end against one-shot: /meta/statementCount: 1 before, 2 after";
+        for program in ["(\na=?)\nr=R", "(\na = $flag ?)\nroot = Root([a])\n"] {
+            assert!(
+                is(stream_exception(program, why), "quirk 23"),
+                "{program:?}"
+            );
+        }
+        // The earlier bracket closed before the statement, the `?` inside the
+        // brackets it closes, or the bracket closed before the `?`.
+        assert_eq!(stream_exception("(\n)\na=?\nr=R", why), None);
+        assert_eq!(stream_exception("(\na=(?)\nr=R", why), None);
+        assert_eq!(stream_exception("(\na=1) ?\nr=R", why), None);
     }
 
     #[test]

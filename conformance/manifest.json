@@ -1311,6 +1311,12 @@
    "schema": "hand",
    "file": "cases/hand/249-repeated-unresolved-errors.oui",
    "source": "hand-written"
+  },
+  {
+   "name": "hand/250-a-bracket-before-a-statement-closed-after-its-ternary",
+   "schema": "hand",
+   "file": "cases/hand/250-a-bracket-before-a-statement-closed-after-its-ternary.oui",
+   "source": "hand-written"
   }
  ]
 }
