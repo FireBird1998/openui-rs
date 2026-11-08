@@ -64,12 +64,6 @@ exclude_re = [
     # entry; it cannot hide a real orphan. The exact scan above still wins.
     'table\.rs:.*replace && with \|\| in Table::reach_dec$',
 
-    # A changed prefix's RanOut leaves zero work AND room. Reversing the
-    # discard predicate can retain older whole followers for that push only:
-    # another RanOut discards them before recovery; immediate reevaluation
-    # recovering to Whole clears in_step before any follower can be taken.
-    # Values, priced work, and a reliable generous timing ratio are unchanged.
-    'evaluate\.rs:.*delete ! in discards_stale_followers$',
     # Reversing this predicate merely discards invalidated followers sooner on
     # Whole/TooDeep and recomputes zero-allowance followers on RanOut. Values,
     # priced work, and a reliable generous timing ratio are unchanged.

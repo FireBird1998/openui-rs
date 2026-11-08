@@ -1158,3 +1158,77 @@ fn an_unresolved_depth_cut_reports_each_occurrences_validation_errors() {
     );
     streams_as_without_reuse(&program, &lib, limits, 7);
 }
+
+#[test]
+fn too_deep_recovery_discards_followers_of_the_redefined_default() {
+    // The nested Counts do enough shallow work to exhaust the first push.
+    // The final nested state value exceeds the evaluation depth only after
+    // that work finishes. Depth 10 keeps materialization itself uncut.
+    let lib = library();
+    let limits = Limits::default()
+        .with_depth(10)
+        .with_result_floor(0)
+        .with_amplification(64);
+    let (k, chain) = deepest_chain(limits);
+    let head = format!("root = Stack([])\n{chain}$a = 1 + 0\n$b = $a + 1\n");
+    let items = list(80);
+    let changed = format!(
+        "$a = [@Count(@Each({items}, \"x\", @Count(@Each({items}, \"y\", @Count(@Each({items}, \"z\", 1)))))), [[$n{k}]]]\n"
+    );
+    // Recover in one push: an intervening RanOut would discard the stale
+    // follower even under the reversed discard predicate.
+    let padding = " ".repeat(20_000);
+    let mut stream = StreamParser::with_limits(lib.clone(), None, limits);
+    let mut text = String::new();
+    for (i, push) in [head.as_str(), changed.as_str(), padding.as_str()]
+        .into_iter()
+        .enumerate()
+    {
+        text.push_str(push);
+        let result = stream.push(push);
+        let mut fresh = StreamParser::with_limits(lib.clone(), None, limits);
+        let expected = fresh.push(&text);
+        assert_same(&result, &expected, &text);
+        match i {
+            0 => assert_eq!(
+                expected.state_declarations.get("$b"),
+                Some(&openui_lang::Value::Num(2.0))
+            ),
+            1 => {
+                assert!(expected.size_limited && !expected.depth_limited);
+                assert_eq!(
+                    expected.state_declarations.get("$b"),
+                    Some(&openui_lang::Value::Null)
+                );
+                // The same result-size allowance already suffices: only the
+                // work limit prevents this push from reaching the depth cut.
+                let more_work = parse_with_limits(&text, &lib, None, limits.with_work(64_000_000));
+                assert!(!more_work.size_limited && more_work.depth_limited);
+                assert_eq!(
+                    more_work.state_declarations.get("$b"),
+                    Some(&openui_lang::Value::Num(1.0))
+                );
+            }
+            2 => {
+                assert!(!expected.size_limited && expected.depth_limited);
+                assert_eq!(
+                    expected.state_declarations.get("$a"),
+                    Some(&openui_lang::Value::Null)
+                );
+                assert_eq!(
+                    expected.state_declarations.get("$b"),
+                    Some(&openui_lang::Value::Num(1.0))
+                );
+            }
+            _ => unreachable!(),
+        }
+    }
+    let end = stream.finish();
+    let mut fresh = StreamParser::with_limits(lib.clone(), None, limits);
+    fresh.push(&text);
+    assert_same(&end, &fresh.finish(), &text);
+    let mut one_shot = parse_with_limits(&text, &lib, None, limits);
+    // Streaming counts the redefinition too (quirk 4).
+    one_shot.meta.statement_count = end.meta.statement_count;
+    assert_same(&end, &one_shot, &text);
+}
