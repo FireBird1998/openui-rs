@@ -217,11 +217,15 @@ impl Ctx<'_> {
     }
 
     /// Note a materialize call starting at the current depth, writing about
-    /// `size` bytes; `None` past either limit.
-    fn enter(&mut self, size: usize) -> Option<()> {
+    /// `size` bytes; `None` past either limit. Past the depth limit, the
+    /// `placeholder` bytes written in the node's place grow the result
+    /// instead: references can repeat a cut subtree's placeholders without
+    /// end, so they count against the result-size limit like anything else.
+    fn enter(&mut self, size: usize, placeholder: usize) -> Option<()> {
         self.frame.max_depth = self.frame.max_depth.max(self.depth);
         if self.depth >= self.limits.depth() {
             self.frame.limited = true;
+            self.grow(placeholder);
             return None;
         }
         if !self.grow(size) {
@@ -240,7 +244,10 @@ type Scope = HashSet<String>;
 /// components that had to be dropped. Past the depth limit, `Null`.
 pub(crate) fn materialize_value(node: &Ast, ctx: &mut Ctx) -> Value {
     crate::stack::grow_stack!(materialize_value(node, ctx));
-    if ctx.enter(json_size(node, false)).is_none() {
+    if ctx
+        .enter(json_size(node, false), json_size(&Ast::Null, false))
+        .is_none()
+    {
         return Value::Null;
     }
     let value = materialize_value_at_depth(node, ctx);
@@ -977,7 +984,10 @@ fn materialize_lazy_builtin(
 /// the depth limit, `Null`.
 pub(crate) fn materialize_expr(node: &Ast, ctx: &mut Ctx, scope: &Scope) -> Ast {
     crate::stack::grow_stack!(materialize_expr(node, ctx, scope));
-    if ctx.enter(json_size(node, true)).is_none() {
+    if ctx
+        .enter(json_size(node, true), json_size(&Ast::Null, true))
+        .is_none()
+    {
         return Ast::Null;
     }
     let ast = materialize_expr_at_depth(node, ctx, scope);

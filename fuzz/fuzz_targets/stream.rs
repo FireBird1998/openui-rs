@@ -2,12 +2,14 @@
 //! with `set`, never panics, and every push's result past a limit is flagged
 //! and stays bounded (`checks.rs`), the limits scaling with the text so far.
 //!
-//! A stream of at most 256 pushes: a long input's chunks grow instead. A
+//! A stream of at most 128 pushes: a long input's chunks grow instead. A
 //! statement that never closes is read again in full on every push, so in
 //! one-character pushes an 8 KB one would cost thousands of whole-statement
 //! parses, quadratic in its length (openui-rs #22, a known limit). Capping
-//! the pushes keeps that within the 2-second timeout, so a timeout still means
-//! a push costing more than it should.
+//! the pushes keeps that well within the 2-second timeout, so a timeout still
+//! means a push costing more than it should. At 256 pushes, a 6 KB input whose
+//! stray quotes leave one statement open took 0.8 s on an idle machine and
+//! timed out on a loaded one (the hardening run, #19).
 //!
 //!   cargo +nightly fuzz run stream -- -dict=fuzz/openui.dict
 #![no_main]
@@ -18,7 +20,7 @@ mod library;
 use libfuzzer_sys::fuzz_target;
 use openui_lang::{Limits, StreamParser};
 
-const MOST_PUSHES: usize = 256;
+const MOST_PUSHES: usize = 128;
 
 fuzz_target!(|data: &[u8]| {
     let Some((&plan, rest)) = data.split_first() else {

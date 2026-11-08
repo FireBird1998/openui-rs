@@ -487,14 +487,20 @@ pub(crate) fn state_defaults(
             Some(record) => record.decide(left, most),
             None => Decision::Evaluate(left),
         };
-        let (record, ended) = match (decision, before) {
+        // Out of step (an earlier default changed, or the depth limit did),
+        // the later records read a different prefix: `in_step` never turns
+        // back on, so the guard on `before` uses none of them again at this
+        // push. Not even after a default runs out and every expression default
+        // after it is null: a record saying so may still hold values computed
+        // from the old defaults.
+        let record = match (decision, before) {
             (Decision::Take, Some(record)) => {
-                let ended = record.take(id, &mut declared, &mut out);
-                (record.moved_to(value, &mut compared), ended)
+                record.take(id, &mut declared, &mut out);
+                record.moved_to(value, &mut compared)
             }
             (Decision::RunsOut, Some(record)) => {
                 ran_out(id, &mut declared, &mut out);
-                (record.moved_to(value, &mut compared), Ended::RanOut)
+                record.moved_to(value, &mut compared)
             }
             (Decision::Evaluate(given), before) => {
                 // Only RanOut records choose Evaluate; every such record declared null.
@@ -507,22 +513,11 @@ pub(crate) fn state_defaults(
                 // The defaults after it, as the last push found them, read it
                 // as it was: they hold if it's null now as then.
                 in_step &= was_null && ended != Ended::Whole;
-                (record, ended)
+                record
             }
             (_, None) => unreachable!("a default is taken or found out by its record only"),
         };
         reuse.records.push(record);
-        // Out of room or work, every expression default after is null,
-        // whatever it reads: any record says so.
-        if followers_are_forced_null(ended) {
-            if discards_stale_followers(in_step) {
-                // These older runs read a different prefix. They may say
-                // RunsOut now, but retaining their whole outcomes would let
-                // recovery reuse values computed from the old defaults.
-                compared.extend(earlier.by_ref().map(|record| record.value));
-            }
-            in_step = true;
-        }
     }
     LIMITS.with(|l| {
         l.room.set(usize::MAX);
@@ -567,14 +562,6 @@ enum Ended {
     TooDeep,
     /// Out of room or work: null, as is every expression default after it.
     RanOut,
-}
-
-fn followers_are_forced_null(ended: Ended) -> bool {
-    ended == Ended::RanOut
-}
-
-fn discards_stale_followers(in_step: bool) -> bool {
-    !in_step
 }
 
 /// Default `id` ran out of room or work: null, and no room or work is left.
@@ -828,7 +815,7 @@ impl Record {
     }
 
     /// Take a default as it was, whole or too deep.
-    fn take(&self, id: &str, declared: &mut Declared, out: &mut Evaluated) -> Ended {
+    fn take(&self, id: &str, declared: &mut Declared, out: &mut Evaluated) {
         let Outcome::Ran {
             took, first, gave, ..
         } = &self.outcome
@@ -842,7 +829,7 @@ impl Record {
         first.replay(declared);
         let Some(gave) = gave else {
             too_deep(id, declared, out);
-            return Ended::TooDeep;
+            return;
         };
         match &gave.value {
             Some(v) => out.state.set(id.to_owned(), v.clone()),
@@ -851,7 +838,6 @@ impl Record {
             }
         }
         declared.evaluated.define(id.to_owned(), gave.js.clone());
-        Ended::Whole
     }
 
     /// What a run of `value` given `had` found.

@@ -89,33 +89,56 @@ pub(crate) const EXPLAINED: [Explains; 9] = [
     ),
 ];
 
-/// Sorting values whose comparison loops (`2 < "10"` as numbers, `"10" <
-/// "1a" < "2"` as text) gives an order the engine defines; the core follows
-/// JavaScriptCore's algorithm, which agrees for most lists, not all. A loop
-/// needs at least two numbers and a text that isn't one but sorts among their
-/// text forms, so starts with a digit.
+/// Sorting values whose comparison loops gives an order the engine defines;
+/// the core follows JavaScriptCore's algorithm, which agrees for most lists,
+/// not all. Numbers and numeric text (blank text reads as 0) compare as
+/// numbers, anything with other text as text, so a loop needs two numeric
+/// values `x <= y` and a text `t` with `y < t < x` as text: `2 <= "10"`,
+/// `"10" < "1a" < "2"`, or `0 <= " "`, `" " < "," < "0"` (the hardening run,
+/// #19). Read off the program as written, so number literals stand for their
+/// text forms only roughly.
 fn sorts_values_whose_comparison_loops(program: &str) -> bool {
     if !program.contains("@Sort") || !program.contains('$') {
         return false;
     }
-    let is_number = |s: &str| !s.trim().is_empty() && s.trim().parse::<f64>().is_ok();
-    let mut numbers = 0;
-    let mut digit_led_text = false;
+    let numeric = |s: &str| {
+        let t = s.trim();
+        if t.is_empty() {
+            Some(0.0)
+        } else {
+            t.parse::<f64>().ok().filter(|n| n.is_finite())
+        }
+    };
+    // (value, text form) of each numeric value, and each other text.
+    let mut numbers: Vec<(f64, String)> = Vec::new();
+    let mut texts: Vec<&str> = Vec::new();
     for (i, part) in program.split('"').enumerate() {
         if i % 2 == 1 {
-            if is_number(part) {
-                numbers += 1;
-            } else if part.starts_with(|c: char| c.is_ascii_digit()) {
-                digit_led_text = true;
+            match numeric(part) {
+                Some(n) => numbers.push((n, part.to_owned())),
+                None => texts.push(part),
             }
         } else {
-            numbers += part
-                .split(|c: char| !(c.is_ascii_alphanumeric() || c == '.' || c == '$'))
-                .filter(|token| is_number(token))
-                .count();
+            for token in part.split(|c: char| !(c.is_ascii_alphanumeric() || c == '.')) {
+                if let Some(n) = numeric(token).filter(|_| !token.is_empty()) {
+                    let text = if n.fract() == 0.0 && n.abs() < 1e21 {
+                        format!("{}", n as i64)
+                    } else {
+                        token.to_owned()
+                    };
+                    numbers.push((n, text));
+                }
+            }
         }
     }
-    numbers >= 2 && digit_led_text
+    numbers.iter().any(|(x, x_text)| {
+        numbers.iter().any(|(y, y_text)| {
+            x <= y
+                && texts
+                    .iter()
+                    .any(|t| y_text.as_str() < *t && *t < x_text.as_str())
+        })
+    })
 }
 
 /// A built-in function's text is the engine's: JavaScriptCore writes

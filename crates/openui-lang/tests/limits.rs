@@ -400,6 +400,31 @@ fn validation_errors_count_against_the_result_size_limit() {
     assert_eq!(streamed, cut);
 }
 
+/// What a depth cut writes in a node's place counts against the result-size
+/// limit too: each reference to `row` below writes its 300 numbers back as
+/// `null`s, cut for depth, so the result amplifies past any limit unless
+/// those count. Found by the parse target's flag check in the hardening run
+/// (#19): a 4,565-byte input's result was 41,631 bytes, mostly `{"k":"Null"}`
+/// placeholders, past an 18,260-byte limit and flagged only `depth_limited`.
+#[test]
+fn placeholders_for_a_depth_cut_count_against_the_result_size_limit() {
+    let lib = library();
+    let row = format!("row = [{}]", "0, ".repeat(300));
+    let program = format!("{row}\nroot = Stack([[{}]])", "row, ".repeat(300));
+    let limits = Limits::default().with_depth(5).with_result_size(16 * 1024);
+    let cut = parse_with_limits(&program, &lib, None, limits);
+    assert!(cut.depth_limited);
+    assert!(cut.size_limited, "an over-limit result is flagged");
+    assert!(
+        cut.to_json().len() < 16 * 1024 + 1024,
+        "{}",
+        cut.to_json().len()
+    );
+    let mut stream = StreamParser::with_limits(lib.clone(), None, limits);
+    stream.push(&program);
+    assert_eq!(stream.finish(), cut);
+}
+
 #[global_allocator]
 static ALLOCATOR: test_alloc::Allocator = test_alloc::Allocator::with_cap(test_alloc::LIMITS);
 
@@ -420,6 +445,8 @@ fn materialization_prices_exact_result_size_edges() {
         ),
         ("root = Stack([true, false, null, ?missing, 2])", 101),
         ("root = Stack([\"abc\", 2])", 73),
+        // A space is the first character written as itself, not escaped.
+        ("root = Stack([\"     \", 2])", 75),
         ("root = Stack([{longkey: 1}, 2])", 106),
         ("root = Stack([$state, 2])", 97),
         ("root = Stack([@Sum([1, 2]), 2])", 339),

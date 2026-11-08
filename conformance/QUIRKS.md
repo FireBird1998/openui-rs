@@ -353,7 +353,7 @@ a = Text("x")
 
 **Why:** the batch split looks at the next line's first token (language.md, section 1.4: "the next line's first non-whitespace token is `?`"), and `scanNewCompleted` in the stream parser at its first non-whitespace character. Section 1.4 says the two "MUST agree on these boundaries byte for byte".
 
-**Exception to the chunking and stream-end invariants:** a line whose first token is `?` but whose first character isn't.
+**Exception to the chunking and stream-end invariants:** a line whose first token is `?` but whose first character isn't, including a `?` on a later line after a line holding only what the lexer skips (`` root=R()\n`\n? ``, found four times in a million programs by the hardening run, #19).
 
 **Draft upstream report:**
 

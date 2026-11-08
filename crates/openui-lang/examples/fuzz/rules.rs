@@ -710,13 +710,16 @@ fn mismatched_bracket(input: &str) -> bool {
     false
 }
 
-/// Whether a line starts with something the lexer skips and then `?`: the
-/// one-shot split sees a ternary's `?` (a token), the stream's scan doesn't
-/// (a character).
+/// Whether a line starts with something the lexer skips and then `?`, on it
+/// or on a line after (a backtick or backslash alone on a line, then `?`, the
+/// hardening run, #19): the one-shot split sees a ternary's `?` (the first
+/// token past the newlines), the stream's scan doesn't (the first character).
 fn skipped_before_question(input: &str) -> bool {
-    input.lines().any(|line| {
-        let trimmed = line.trim_start();
-        !trimmed.starts_with('?') && tokenize(trimmed).first() == Some(&Token::Question)
+    let starts = std::iter::once(0).chain(input.match_indices('\n').map(|(i, _)| i + 1));
+    starts.into_iter().any(|start| {
+        let rest = &input[start..];
+        !rest.trim_start().starts_with('?')
+            && tokenize(rest).iter().find(|t| **t != Token::Newline) == Some(&Token::Question)
     })
 }
 
@@ -1593,13 +1596,41 @@ mod tests {
         assert!(is(stream_exception("[\na=1\na=", why), "quirk 4"));
     }
 
+    /// The hardening run's shapes (#19): the character the lexer skips alone
+    /// on its line, the `?` on the next.
+    #[test]
+    fn a_skipped_line_before_a_ternary_is_quirk_19() {
+        let why = "the stream's end against one-shot: /rootExpression: a before, missing after";
+        for program in ["root=R()\n`\n?", "t=\n`\n?", "a=1\n\\\n?\nt=("] {
+            assert!(
+                is(stream_exception(program, why), "quirk 19"),
+                "{program:?}"
+            );
+        }
+        // A `?` the stream's scan sees as well: first on its line, or after
+        // blank lines only.
+        assert_eq!(stream_exception("a=1\n?", why), None);
+        assert_eq!(stream_exception("a=1\n\n  ?", why), None);
+        // Something the lexer reads, not skips, before it.
+        assert_eq!(stream_exception("a=1\nb\n?", why), None);
+    }
+
     #[test]
     fn a_sort_whose_comparison_loops_is_explained_narrowly() {
         let explained = crate::sorts_values_whose_comparison_loops;
         assert!(explained("$s = @Sort([2, \"10\", \"1a\", 9], \"\")"));
         assert!(explained("$s=@Sort([2 \"10\" \"1a\""));
-        // No text that starts with a digit: nothing for the loop to go through.
+        // Blank text reads as 0, but as text sorts before punctuation, which
+        // sorts before digits (the hardening run, #19).
+        assert!(explained("$s = @Sort([0, \" \", \",\"], \"\")"));
+        assert!(explained(
+            "$s=@Sort([\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\",\"\"\"\"\"\"\"0\"\"a\"\"a\"\"x\"\"\" \""
+        ));
+        // No text between the numbers' text forms: nothing for the loop to go
+        // through.
         assert!(!explained("$s = @Sort([2, \"10\", \"x\"], \"\")"));
+        assert!(!explained("$s = @Sort([0, \" \", \"x\"], \"\")"));
+        assert!(!explained("$s = @Sort([1, 2, \",\"], \"\")"));
         // Fewer than two numbers.
         assert!(!explained("$s = @Sort([\"1a\", \"x\"], \"\")"));
         // Not a sort, or not in a state default.

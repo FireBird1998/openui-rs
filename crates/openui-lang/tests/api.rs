@@ -43,6 +43,19 @@ fn a_js_object_keeps_own_properties_including_proto() {
     assert_eq!(object.get("__proto__"), Some(&1));
 }
 
+#[test]
+fn a_js_object_property_can_be_changed_in_place() {
+    let mut object: JsObject<i32> = JsObject::new();
+    object.set("a", 1);
+    object.set("b", 2);
+    *object.get_mut("a").expect("an own property") += 10;
+    assert_eq!(object.get("a"), Some(&11));
+    assert_eq!(object.get_mut("missing"), None);
+    // Changed in place, it keeps its place.
+    let keys: Vec<&str> = object.iter().map(|(k, _)| k.as_str()).collect();
+    assert_eq!(keys, ["a", "b"]);
+}
+
 /// A component called inside an expression keeps its args and also maps them
 /// to props (`mappedProps`); walking the expression visits both.
 #[test]
