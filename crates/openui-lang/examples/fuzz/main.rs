@@ -98,6 +98,7 @@ pub(crate) const EXPLAINED: [Explains; 9] = [
 /// #19). Read off the program as written, so number literals stand for their
 /// text forms only roughly.
 fn sorts_values_whose_comparison_loops(program: &str) -> bool {
+    use openui_lang::{Token, tokenize};
     if !program.contains("@Sort") || !program.contains('$') {
         return false;
     }
@@ -109,26 +110,26 @@ fn sorts_values_whose_comparison_loops(program: &str) -> bool {
             t.parse::<f64>().ok().filter(|n| n.is_finite())
         }
     };
-    // (value, text form) of each numeric value, and each other text.
+    // (value, text form) of each numeric value, and each other text, as the
+    // lexer reads them (quotes doubled or tripled fool a count of quotes,
+    // the hardening re-run, #19).
     let mut numbers: Vec<(f64, String)> = Vec::new();
-    let mut texts: Vec<&str> = Vec::new();
-    for (i, part) in program.split('"').enumerate() {
-        if i % 2 == 1 {
-            match numeric(part) {
-                Some(n) => numbers.push((n, part.to_owned())),
-                None => texts.push(part),
+    let mut texts: Vec<String> = Vec::new();
+    for token in tokenize(program).iter() {
+        match token {
+            Token::Str(s) => match numeric(s) {
+                Some(n) => numbers.push((n, s.clone())),
+                None => texts.push(s.clone()),
+            },
+            &Token::Num(n) if n.is_finite() => {
+                let text = if n.fract() == 0.0 && n.abs() < 1e21 {
+                    format!("{}", n as i64)
+                } else {
+                    format!("{n}")
+                };
+                numbers.push((n, text));
             }
-        } else {
-            for token in part.split(|c: char| !(c.is_ascii_alphanumeric() || c == '.')) {
-                if let Some(n) = numeric(token).filter(|_| !token.is_empty()) {
-                    let text = if n.fract() == 0.0 && n.abs() < 1e21 {
-                        format!("{}", n as i64)
-                    } else {
-                        token.to_owned()
-                    };
-                    numbers.push((n, text));
-                }
-            }
+            _ => {}
         }
     }
     numbers.iter().any(|(x, x_text)| {
@@ -136,7 +137,7 @@ fn sorts_values_whose_comparison_loops(program: &str) -> bool {
             x <= y
                 && texts
                     .iter()
-                    .any(|t| y_text.as_str() < *t && *t < x_text.as_str())
+                    .any(|t| y_text.as_str() < t.as_str() && t.as_str() < x_text.as_str())
         })
     })
 }

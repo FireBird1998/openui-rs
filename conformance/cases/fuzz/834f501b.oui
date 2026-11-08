@@ -1,0 +1,11 @@
+root = Root([])
+card = T\ext("hi")
+$a = @Each([1, 2], "i", [$t = {a: card, b: [card]}])
+$b = $a[0][0]
+$c = $b.expr.entries
+$d = $a[0][0].expr.entries == $c
+card = T\ext("hi")
+$f = $e[0].expr.entries == $e[1].nested.expr.entries
+$e = [$b, {nested: $b}]
+card = Text("changed")
+$g = $a[0][0].expr.entries == $c

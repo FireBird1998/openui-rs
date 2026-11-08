@@ -92,6 +92,13 @@
       "source": "fuzz",
       "origin": "seed 3782605650, program 59582",
       "root": "Missing"
+    },
+    {
+      "name": "fuzz/834f501b",
+      "schema": "hand",
+      "file": "cases/fuzz/834f501b.oui",
+      "source": "fuzz",
+      "origin": "seed 82, program 180552"
     }
   ]
 }

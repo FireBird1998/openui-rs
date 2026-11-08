@@ -723,41 +723,52 @@ fn skipped_before_question(input: &str) -> bool {
     })
 }
 
-/// Whether a statement line, after a line that left a bracket open, closes
-/// that bracket after a ternary's `?` of its own (`(`, then `a = $f ?)`): the
+/// Whether a statement, after a line that left a bracket open, closes that
+/// bracket after a ternary's `?` of its own (`(`, then `a = $f ?)`, or the
+/// `?` starting the statement's next line, the hardening re-run, #19): the
 /// stream's scan pairs the brackets and ends the statement at the newline,
 /// the one-shot split starts it after the bracket and keeps reading it as an
 /// open ternary.
 fn bracket_closed_after_a_ternary(input: &str) -> bool {
+    let text = preprocess(input);
+    let lines: Vec<&str> = text.lines().collect();
     let mut open = 0usize;
-    for line in preprocess(input).lines() {
-        let mut depth = 0usize;
-        let mut question = false;
-        let mut closes_outer = false;
-        let mut string: Option<char> = None;
-        for c in line.chars() {
-            if let Some(quote) = string {
-                if c == quote {
-                    string = None;
+    for (i, line) in lines.iter().enumerate() {
+        // A name and `=` start it, even with nothing after them yet.
+        let tokens = tokenize(line);
+        let starts = matches!(
+            tokens.iter().take(2).collect::<Vec<_>>()[..],
+            [
+                Token::Ident(_) | Token::Type(_) | Token::StateVar(_),
+                Token::Equals
+            ]
+        );
+        if open > 0 && starts {
+            // The statement's line and the lines continuing its ternary.
+            let continued = lines[i + 1..]
+                .iter()
+                .take_while(|l| l.trim_start().starts_with('?'));
+            let (mut depth, mut question) = (0usize, false);
+            for c in std::iter::once(line)
+                .chain(continued)
+                .flat_map(|l| l.chars())
+            {
+                match c {
+                    '(' | '[' | '{' => depth += 1,
+                    ')' | ']' | '}' if depth > 0 => depth -= 1,
+                    ')' | ']' | '}' if question => return true,
+                    '?' if depth == 0 => question = true,
+                    _ => {}
                 }
-                continue;
             }
+        }
+        for c in line.chars() {
             match c {
-                '"' | '\'' => string = Some(c),
-                '(' | '[' | '{' => depth += 1,
-                ')' | ']' | '}' if depth > 0 => depth -= 1,
-                ')' | ']' | '}' => {
-                    closes_outer |= question && open > 0;
-                    open = open.saturating_sub(1);
-                }
-                '?' if depth == 0 => question = true,
+                '(' | '[' | '{' => open += 1,
+                ')' | ']' | '}' => open = open.saturating_sub(1),
                 _ => {}
             }
         }
-        if closes_outer && statement_name(line).is_some() {
-            return true;
-        }
-        open += depth;
     }
     false
 }
@@ -1661,7 +1672,11 @@ mod tests {
     #[test]
     fn a_bracket_closed_after_a_ternary_is_quirk_23() {
         let why = "the stream's end against one-shot: /meta/statementCount: 1 before, 2 after";
-        for program in ["(\na=?)\nr=R", "(\na = $flag ?)\nroot = Root([a])\n"] {
+        for program in [
+            "(\na=?)\nr=R",
+            "(\na = $flag ?)\nroot = Root([a])\n",
+            "(\na=\n?)\nr=R",
+        ] {
             assert!(
                 is(stream_exception(program, why), "quirk 23"),
                 "{program:?}"
@@ -1684,6 +1699,11 @@ mod tests {
         assert!(explained("$s = @Sort([0, \" \", \",\"], \"\")"));
         assert!(explained(
             "$s=@Sort([\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\",\"\"\"\"\"\"\"0\"\"a\"\"a\"\"x\"\"\" \""
+        ));
+        // Quotes tripled, as the re-run found it (#19): the lexer, not a count
+        // of quotes, says what's text.
+        assert!(explained(
+            "$s=@Sort([,\"\"\"1a\"\"\"B\"\"0\"\"1a\"\"9a\"\"x\"\"B\"\"0\"\"1a\"\"9a\"\"x\"\"1\"\"B\"\"10\"\"1a\"\"9a\"\"x\"\"1\"\"B\"\"10\"\"1a\"\"9a\"\"x\"\"e l,,\"\"2b\"\"c\"\")"
         ));
         // No text between the numbers' text forms: nothing for the loop to go
         // through.

@@ -874,7 +874,10 @@ impl Record {
 #[derive(Default)]
 struct FirstReads {
     elements: Vec<(usize, Value, Js)>,
-    properties: Vec<(usize, String, Arc<Ast>, Js)>,
+    /// Each property read: its key, the node it was read on, and what it
+    /// gave. Replayed under the node's address as this push knows it, as a
+    /// later read of that node looks it up.
+    properties: Vec<(String, Arc<Ast>, Js)>,
     plain: Vec<(String, Js)>,
 }
 
@@ -923,7 +926,6 @@ impl FirstReads {
                     .filter_map(|key| {
                         let property = read.get(key)?;
                         Some((
-                            key.0,
                             key.1.clone(),
                             Arc::clone(&property.owner),
                             property.value.clone(),
@@ -954,9 +956,9 @@ impl FirstReads {
         });
         PROPERTIES.with(|r| {
             let mut read = r.borrow_mut();
-            for (address, key, owner, js) in &self.properties {
+            for (key, owner, js) in &self.properties {
                 read.insert(
-                    (this_push(*address), key.clone()),
+                    (this_push(Arc::as_ptr(owner) as usize), key.clone()),
                     PropertyRead {
                         owner: Arc::clone(owner),
                         value: js.clone(),

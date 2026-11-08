@@ -1232,3 +1232,32 @@ fn too_deep_recovery_discards_followers_of_the_redefined_default() {
     one_shot.meta.statement_count = end.meta.statement_count;
     assert_same(&end, &one_shot, &text);
 }
+
+/// A default taken at a later push reads a runtime expression's properties
+/// as the same objects a fresh evaluation would, even when the record behind
+/// it keeps an earlier push's value: `$d`'s `.expr.entries` is `$c`'s. Found
+/// by the differential fuzzer in the hardening re-run (#19), resyncing with
+/// these three texts: the stream gave `$d: false`, a fresh one `true`. The
+/// replayed reads were keyed by the address as translated when they were
+/// made, not by the node they were made on.
+#[test]
+fn a_taken_default_shares_property_reads_with_later_defaults() {
+    let lib = library();
+    let pieces = [
+        "root = Stack([])\ncard = T\\ext(\"hi\")\n$a = @Each([1, 2], \"i\", [$t = {a: card, b: [card]}])\n$b = $a[0][0]\n$c = $b.expr.entr",
+        "ies\n$d = $a[",
+        "0][0].expr.entries == $c\ncard",
+    ];
+    let mut stream = StreamParser::new(lib.clone(), None);
+    let mut text = String::new();
+    for piece in pieces {
+        text.push_str(piece);
+        let pushed = stream.push(piece);
+        let mut fresh = StreamParser::new(lib.clone(), None);
+        assert_same(&pushed, &fresh.push(&text), &text);
+    }
+    assert_eq!(
+        stream.result().state_declarations.get("$d"),
+        Some(&openui_lang::Value::Bool(true))
+    );
+}

@@ -398,7 +398,7 @@ existing:  root = Root([a])          patch:  root = $flag
 
 ## 23. A bracket opened before a statement and closed after its `?` ends a streamed statement but not a parsed one
 
-- **Found:** 2026-11-08, by the stream-end invariant on a million programs against lang-core 1.1.0 (`47b9cae`) in the hardening run (openui-rs #19): one program, broken on both parsers.
+- **Found:** 2026-11-08, by the stream-end invariant on a million programs against lang-core 1.1.0 (`47b9cae`) in the hardening run (openui-rs #19): one program, broken on both parsers, and one more in the re-run.
 - **Pinned by:** `hand/250-a-bracket-before-a-statement-closed-after-its-ternary`, at every streaming step and the stream's end.
 - **Status:** a candidate, recorded by the maintainer's decision on 2026-11-08 (openui-rs #19), on input no model is likely to write. The upstream report below is drafted, not filed.
 
@@ -412,7 +412,7 @@ root = Root([a])
 
 **Why:** the stream parser's scan (`scanNewCompleted`) tracks brackets from the start of the text, so the `)` closes the `(` on the first line and the newline after it ends the statement. The batch split starts `a`'s statement after the `(`, which it skips as junk, so the `)` closes nothing; the `?` without its `:` keeps the ternary open, and a statement doesn't end at a newline while a ternary is open (language.md, section 4, rule 1). Section 1.4 says the two "MUST agree on these boundaries byte for byte".
 
-**Exception to the chunking and stream-end invariants:** a statement line, after a line that left a bracket open, that closes it after a `?` of its own outside its own brackets.
+**Exception to the chunking and stream-end invariants:** a statement, after a line that left a bracket open, that closes it after a `?` of its own outside its own brackets, on its line or on a line continuing its ternary (`(\na=\n?)\nr=R`, found by the re-run).
 
 **Draft upstream report:**
 
