@@ -368,11 +368,18 @@ impl Drop for Level {
 }
 
 /// About what a value's own JSON costs, its items' and entries' apart.
+/// Strings and keys are priced as written out, escapes and all: a control
+/// character is one byte of program and six of JSON.
 fn json_cost(js: &Js) -> usize {
     match js {
-        Js::Str(s) => s.len() + 2,
+        Js::Str(s) => js::json_string_len(s) + 2,
         Js::Arr(items) => items.len() + 2,
-        Js::Obj(o) => o.iter().map(|(key, _)| key.len() + 4).sum::<usize>() + 2,
+        Js::Obj(o) => {
+            o.iter()
+                .map(|(key, _)| js::json_string_len(key) + 4)
+                .sum::<usize>()
+                + 2
+        }
         Js::Num(n) => number_cost(*n),
         _ => 4,
     }

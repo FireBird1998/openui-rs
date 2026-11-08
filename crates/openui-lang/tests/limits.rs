@@ -454,6 +454,31 @@ fn placeholders_for_unresolved_references_count_against_the_result_size_limit() 
     assert_eq!(stream.finish(), cut);
 }
 
+#[test]
+fn escaped_characters_in_evaluated_defaults_count_against_the_result_size_limit() {
+    // A control character is one byte of program and six of JSON (`\u0001`),
+    // so 40 copies of 200 of them, in a string or a key, are 8 KB built but
+    // 48 KB written out (#19).
+    let lib = library();
+    let controls = "\u{1}".repeat(200);
+    let rows = vec!["1"; 40].join(", ");
+    for template in [format!("\"{controls}\""), format!("{{\"{controls}\": 1}}")] {
+        let program =
+            format!("$rows = [{rows}]\n$x = @Each($rows, \"r\", {template})\nroot = Stack([])");
+        let limit = 16 * 1024;
+        let limits = Limits::default().with_result_size(limit);
+        let result = parse_with_limits(&program, &lib, None, limits);
+        let json = result.to_json().len();
+        assert!(
+            result.size_limited || json <= limit + limit / 2 + 4096,
+            "{json} bytes unflagged past a {limit}-byte limit, from {template:.12}"
+        );
+        let mut stream = StreamParser::with_limits(lib.clone(), None, limits);
+        stream.push(&program);
+        assert_eq!(stream.finish(), result);
+    }
+}
+
 #[global_allocator]
 static ALLOCATOR: test_alloc::Allocator = test_alloc::Allocator::with_cap(test_alloc::LIMITS);
 
