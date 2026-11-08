@@ -21,7 +21,7 @@ use std::sync::Arc;
 use crate::ast::{Ast, Field, fields, json_shaped_ast};
 use crate::builtins::builtin_function_params;
 use crate::js::{self, JsObject, OBJECT_PROTOTYPE_KEYS, array_index, number_to_string};
-use crate::result::{Value, json_number_value};
+use crate::result::{Element, Value, json_number_value};
 use crate::validation::{element_parts, is_ast_node};
 
 /// A JavaScript value, as the evaluator sees one.
@@ -267,7 +267,7 @@ thread_local! {
     /// Elements already read as values, by the address of their shared node,
     /// which the entry keeps alive: an element read many times is converted
     /// once, and every read gets the same object, as the reference's do.
-    static READ: RefCell<HashMap<usize, (Value, Js)>> = RefCell::new(HashMap::new());
+    static READ: RefCell<HashMap<usize, (Arc<Element>, Js)>> = RefCell::new(HashMap::new());
     /// The addresses put in `READ`, in order, so a default's own can be told
     /// apart (see [`Reuse`]).
     static READ_LOG: RefCell<Vec<usize>> = const { RefCell::new(Vec::new()) };
@@ -873,7 +873,10 @@ impl Record {
 /// after it read the same objects.
 #[derive(Default)]
 struct FirstReads {
-    elements: Vec<(usize, Value, Js)>,
+    /// Each element read: the element, and the object it gave.
+    /// Replayed, as the properties are, under the element's address as this
+    /// push knows it, as a later read of that element looks it up.
+    elements: Vec<(Arc<Element>, Js)>,
     /// Each property read: its key, the node it was read on, and what it
     /// gave. Replayed under the node's address as this push knows it, as a
     /// later read of that node looks it up.
@@ -912,8 +915,8 @@ impl FirstReads {
                 l.borrow()[marks.elements..]
                     .iter()
                     .filter_map(|address| {
-                        let (value, js) = read.get(address)?;
-                        Some((*address, value.clone(), js.clone()))
+                        let (element, js) = read.get(address)?;
+                        Some((Arc::clone(element), js.clone()))
                     })
                     .collect()
             })
@@ -950,8 +953,9 @@ impl FirstReads {
     fn replay(&self, declared: &Declared) {
         READ.with(|r| {
             let mut read = r.borrow_mut();
-            for (address, value, js) in &self.elements {
-                read.insert(this_push(*address), (value.clone(), js.clone()));
+            for (element, js) in &self.elements {
+                let address = this_push(Arc::as_ptr(element) as usize);
+                read.insert(address, (Arc::clone(element), js.clone()));
             }
         });
         PROPERTIES.with(|r| {
@@ -1235,7 +1239,10 @@ fn from_value(value: &Value) -> Js {
                     out.define("statementId", from_value(&Value::Str(id.clone())));
                 }
                 let js = Js::Obj(Arc::new(out));
-                READ.with(|r| r.borrow_mut().insert(address, (value.clone(), js.clone())));
+                READ.with(|r| {
+                    r.borrow_mut()
+                        .insert(address, (Arc::clone(element), js.clone()))
+                });
                 READ_LOG.with(|l| l.borrow_mut().push(address));
                 js
             })
