@@ -168,7 +168,8 @@ private fun Stats(frame: Frame?) {
         val f = frame
         val line = when {
             f == null -> "Starting…"
-            f.done -> "Done · ${f.of} pushes · ${f.chars} chars · ${f.elements} elements · core ${f.totalCoreMicros / f.of.coerceAtLeast(1)} µs a push on average"
+            // As short as the streaming line, so it doesn't wrap and move the page.
+            f.done -> "Done · ${f.of} pushes · ${f.chars} chars · ${f.elements} elements · avg ${f.totalCoreMicros / f.of.coerceAtLeast(1)} µs"
             else -> "Push ${f.pushes}/${f.of} · ${f.chars} chars · ${f.elements} elements · core ${f.coreMicros} µs"
         }
         Txt(line + if (f?.cut == true) " · cut" else "", 12.sp, color = Palette.muted)
