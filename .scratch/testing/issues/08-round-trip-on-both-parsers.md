@@ -22,7 +22,7 @@ Quirk 9, the dropped parentheses, is a known exception. Hunts then run the rule.
 
 **Blocked by:** 02 — Hunts on demand
 
-**Status:** done (2026-10-16), with judgments left to the maintainer (below)
+**Status:** done (2026-10-16); the maintainer's judgments recorded 2026-11-09 (below)
 
 - [x] The engine interface exists, with both implementations; the reference process returns full results.
 - [x] The round-trip rule is written once and runs on both.
@@ -52,3 +52,7 @@ Quirk 9, the dropped parentheses, is a known exception. Hunts then run the rule.
 2. Quirk 14: is it the reference being wrong (as written up), or covered by the spec's "up to the recovery rules of section 8", which would make it a narrowing?
 3. Quirk 10: is withdrawing its draft report right?
 
+**2026-11-09, the maintainer's judgments:**
+1. **The narrowings are right**, all five: complete programs only; a null prop equals a missing one; no queries or mutations; no tree with a cycle cut; no numbers JSON can't hold.
+2. **Quirk 14 is the reference being wrong**, not a narrowing. QUIRKS.md says so, and its upstream report stays a draft for the maintainer to file, or not.
+3. **Withdrawing quirk 10's draft report is right:** the specification makes unquoted keys a design choice.

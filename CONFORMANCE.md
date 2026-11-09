@@ -80,7 +80,7 @@ In the reference, reproduced and recorded in [QUIRKS.md](conformance/QUIRKS.md),
 11. At a stream's end, a final redefinition that needed closing doesn't win (new in 1.0's terms: the spec says it should).
 12. A library function or action called without `@` is still called, even over a component of that name (new in 1.0).
 13. Serializing drops the parentheses an operand needs: `!($a && $b)` becomes `!$a && $b` (found by the round-trip invariant).
-14. A call parsing made null doesn't count as a null prop, so a required prop isn't checked (a candidate, found by the round-trip invariant).
+14. A call parsing made null doesn't count as a null prop, so a required prop isn't checked (found by the round-trip invariant; decided a quirk on 2026-11-09).
 15. Merging puts what it appends after an unfinished statement, which takes it in (a candidate, found by the merge invariants).
 16. Merging into an empty program returns the patch as it is, deletions and duplicates included (a candidate, found by the merge invariants).
 17. While a later statement is still open, finished statements are treated as partial: marked so, and their props checked leniently (a candidate, found by the finished-statements invariant).

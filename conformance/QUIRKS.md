@@ -146,7 +146,7 @@ A plain object prop `{"a b": 1, "": 2}` serializes as `{a b: 1, : 2}`, which doe
 
 **Why:** `serializeValue` writes `${k}: ...` for object entries, and the `Obj` AST branch does the same, with no quoting. Object literals in OpenUI Lang accept quoted keys, so `JSON.stringify(k)` would always work.
 
-**By design since 1.0:** the specification says "Object keys are written unquoted, so they must be valid names to round-trip" (language.md, section 9.2). So the draft report below is withdrawn rather than waiting to be filed; at most, upstream might mention it in the serializer's docs. The entry stays because the core reproduces the behaviour.
+**By design since 1.0:** the specification says "Object keys are written unquoted, so they must be valid names to round-trip" (language.md, section 9.2). So the draft report below is withdrawn rather than waiting to be filed, which the maintainer confirmed on 2026-11-09; at most, upstream might mention it in the serializer's docs. The entry stays because the core reproduces the behaviour.
 
 **Exception to the round-trip invariant:** a tree with an object key that isn't a valid bare name (an identifier, a `$name`, or digits without a leading zero).
 
@@ -222,11 +222,11 @@ e = Text($on || ($off ? "a" : "b"))
 
 > **`jsonToOpenUI` drops parentheses that operands need, so `!(a && b)` comes back as `!a && b`.** In `parser/serialize.ts`, `serializeASTNode` writes a `UnaryOp` as `${op}${operand}` and a `Member` or `Index` object as it is, and `serializeBinOpChild` parenthesizes only a lower-precedence `BinOp` child. So `!($on && $off)` serializes as `!$on && $off`, `-($x + 1)` as `-$x + 1`, `($on ? "a" : "b").length` as `$on ? "a" : "b".length`, `$on || ($off ? "a" : "b")` as `$on || $off ? "a" : "b"`, and `-(3)` as `-3`, which parses as a number literal and is then type-checked. Each parses back as a different expression, and language.md, section 9.2 says serializers should add parentheses where parsing back would change the grouping. Wrap a unary operand, a member access's or index's object, and a binary operator's operand in parentheses when they aren't primary expressions (and when a number would absorb the `-` or the `.`). Repro: `jsonToOpenUI(parse('root = Text(!($on && $off))', lib).root, library)` gives `root = Text(!$on && $off)`.
 
-## 14. A call made null when parsing doesn't count as a null prop (candidate)
+## 14. A call made null when parsing doesn't count as a null prop
 
 - **Found:** 2026-10-16, by the round-trip invariant (testing ticket 08). Reference commit `eb20708` (1.0.1).
 - **Pinned by:** `hand/108-call-made-null`, through the corpus's serialization of every parse case's tree.
-- **Status:** a candidate for the maintainer to judge. The specification's round trip is "up to the recovery rules of section 8", which may cover it.
+- **Status:** a quirk, decided by the maintainer on 2026-11-09: the reference is wrong, since language.md, sections 3.6 and 8.2, taken together say the component is dropped. It isn't a narrowing of the round trip under "up to the recovery rules of section 8". The upstream report below is drafted for the maintainer to file, or not.
 
 ```
 root = Page(@Format(5))

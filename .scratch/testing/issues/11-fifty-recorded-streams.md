@@ -24,3 +24,6 @@
 Checked 2026-11-09.
 - **Requests:** the 50 requests are written up in `.scratch/testing/recorded-streams.md` (3019307).
 - **Still open:** the maintainer records them in the viewer, then they're imported with ticket 10's command and their findings are sorted.
+
+**2026-11-09:** the maintainer wants more than 50. The plan is 150 in all, still under the $10 cap (the first 50 are estimated at about $1.10). The other 100 requests are still to write.
+
