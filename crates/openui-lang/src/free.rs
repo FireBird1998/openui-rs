@@ -13,7 +13,7 @@ use std::sync::Arc;
 
 use crate::ast::Ast;
 use crate::evaluate::Js;
-use crate::materialize::ErrorPart;
+use crate::materialize::{ErrorPart, UnresolvedPart};
 use crate::result::Value;
 use crate::table::Reach;
 
@@ -218,6 +218,25 @@ impl Drop for ErrorPart {
 
 fn error_children(part: &mut ErrorPart, rest: &mut Vec<ErrorPart>) {
     if let ErrorPart::Reached { parts, .. } = part
+        && let Some(parts) = Arc::get_mut(parts)
+    {
+        rest.append(parts);
+    }
+}
+
+/// So do its unresolved names.
+impl Drop for UnresolvedPart {
+    fn drop(&mut self) {
+        let mut rest = Vec::new();
+        unresolved_children(self, &mut rest);
+        while let Some(mut part) = rest.pop() {
+            unresolved_children(&mut part, &mut rest);
+        }
+    }
+}
+
+fn unresolved_children(part: &mut UnresolvedPart, rest: &mut Vec<UnresolvedPart>) {
+    if let UnresolvedPart::Reached(parts) = part
         && let Some(parts) = Arc::get_mut(parts)
     {
         rest.append(parts);

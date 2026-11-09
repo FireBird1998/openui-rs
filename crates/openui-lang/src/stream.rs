@@ -63,7 +63,10 @@ impl Completed {
         *self = Completed::default();
     }
 
-    fn add(&mut self, text: &str, limits: Limits) {
+    /// Parse and define `text`'s statements, noting each slot defined in
+    /// `changed`: the caller drops what's cached over them, once for them all
+    /// ([`Cache::invalidate`]).
+    fn add(&mut self, text: &str, limits: Limits, changed: &mut Vec<Slot>) {
         let text = js::trim(text);
         if text.is_empty() {
             return;
@@ -74,8 +77,7 @@ impl Completed {
             }
             let (expr, limited) = parse_expression_with_limit(&raw.tokens, limits.depth());
             self.depth_limited |= limited;
-            let undo = self.table.define(&raw.id, classify(&raw, expr));
-            self.cache.invalidate(undo.slot, &self.table);
+            changed.push(self.table.define(&raw.id, classify(&raw, expr)).slot);
             self.count += 1;
         }
     }
@@ -205,6 +207,9 @@ impl StreamParser {
         let mut esc = false;
         let mut stmt_start = self.completed.end;
         let mut completed = Vec::new();
+        // Where the blank space the last line break looked past ends: a
+        // line break inside it ends at the same place, without looking again.
+        let mut blank_end = 0;
 
         for i in self.completed.end..s.len() {
             let c = s[i];
@@ -230,8 +235,10 @@ impl StreamParser {
                 b':' if depth == 0 && ternary_depth > 0 => ternary_depth -= 1,
                 b'\n' if depth <= 0 && ternary_depth <= 0 => {
                     // A next line starting with `?` continues it.
-                    let peek = skip_while(s, i, |b| matches!(b, b' ' | b'\t' | b'\r' | b'\n'));
-                    if let Some(&next) = s.get(peek)
+                    if blank_end <= i {
+                        blank_end = skip_while(s, i, |b| matches!(b, b' ' | b'\t' | b'\r' | b'\n'));
+                    }
+                    if let Some(&next) = s.get(blank_end)
                         && next == b'?'
                     {
                         continue;
@@ -244,9 +251,14 @@ impl StreamParser {
             }
         }
 
+        let mut changed = Vec::new();
         for range in completed {
-            self.completed.add(&cleaned[range], self.limits);
+            self.completed
+                .add(&cleaned[range], self.limits, &mut changed);
         }
+        self.completed
+            .cache
+            .invalidate(&changed, &self.completed.table);
         stmt_start
     }
 
@@ -300,27 +312,27 @@ impl StreamParser {
             }
             let (expr, limited) = parse_expression_with_limit(&raw.tokens, self.limits.depth());
             pending_limited |= limited;
-            let undo = completed.table.define(&raw.id, classify(raw, expr));
-            completed.cache.invalidate(undo.slot, &completed.table);
-            undos.push(undo);
+            undos.push(completed.table.define(&raw.id, classify(raw, expr)));
         }
+        let pending_slots: Vec<Slot> = undos.iter().map(|undo| undo.slot).collect();
+        completed.cache.invalidate(&pending_slots, &completed.table);
         let count = completed.count + pending_statements.len();
         let growing = if complete {
             None
         } else {
             growing_state_ref(&self.buf, pending).map(str::to_owned)
         };
-        let pending_slots: Vec<Slot> = undos.iter().map(|undo| undo.slot).collect();
         let partial = growing.as_deref().map(|name| PartialRef {
             name,
             slots: &pending_slots,
         });
         let result = self.build_from_table(was_incomplete, count, partial);
         for undo in undos.into_iter().rev() {
-            let slot = undo.slot;
             self.completed.table.undo(undo);
-            self.completed.cache.invalidate(slot, &self.completed.table);
         }
+        self.completed
+            .cache
+            .invalidate(&pending_slots, &self.completed.table);
         (result, pending_limited)
     }
 

@@ -169,7 +169,10 @@ pub fn split(tokens: &Tokens) -> Vec<RawStatement> {
                 let peek = skip(after_newline(pos), |t| *t == Token::Newline);
                 let next = tokens.get(peek).unwrap_or(&EOF);
                 if *next == Token::Question {
-                    pos += 1;
+                    // The line breaks up to it are no part of the
+                    // expression: past them all at once, so a long run
+                    // isn't looked through again from each one.
+                    pos = peek;
                     continue;
                 }
                 break;

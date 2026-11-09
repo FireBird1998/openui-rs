@@ -82,6 +82,36 @@ pub(crate) fn flatten_errors(parts: &[ErrorPart]) -> Vec<ValidationError> {
     out
 }
 
+/// An unresolved name, or those of a statement reached, in the order met.
+/// A statement's are shared with whatever reaches it, never copied: under a
+/// chain of references each level would otherwise hold them all again, a
+/// thousand times the program between them. A statement with none adds no
+/// part, so a list is empty exactly when it holds no names.
+#[derive(Clone, Debug)]
+pub(crate) enum UnresolvedPart {
+    Own(String),
+    Reached(Arc<Vec<UnresolvedPart>>),
+}
+
+/// A pass's unresolved names as the reference lists them: each where it was
+/// met, a reached statement's every time it's reached. Each was counted
+/// against the result-size limit where it was met or replayed, so the list
+/// is within it.
+pub(crate) fn flatten_unresolved(parts: &[UnresolvedPart]) -> Vec<String> {
+    fn walk(parts: &[UnresolvedPart], out: &mut Vec<String>) {
+        crate::stack::grow_stack!(walk(parts, out));
+        for part in parts {
+            match part {
+                UnresolvedPart::Own(name) => out.push(name.clone()),
+                UnresolvedPart::Reached(parts) => walk(parts, out),
+            }
+        }
+    }
+    let mut out = Vec::new();
+    walk(parts, &mut out);
+    out
+}
+
 /// The side effects of materializing one statement (or the entry): errors
 /// and unresolved references in the order they were met, the statements
 /// reached, and how deep it went. A fresh frame is opened for each statement
@@ -89,7 +119,7 @@ pub(crate) fn flatten_errors(parts: &[ErrorPart]) -> Vec<ValidationError> {
 #[derive(Default)]
 pub(crate) struct Frame {
     pub errors: Vec<ErrorPart>,
-    pub unresolved: Vec<String>,
+    pub unresolved: Vec<UnresolvedPart>,
     /// Every defined statement looked up here, sorted and deduplicated when
     /// the frame closes.
     pub reached: Vec<Slot>,
@@ -115,6 +145,11 @@ pub(crate) struct Frame {
 /// erring high, so the result's JSON stays under the limit.
 const ELEMENT_SIZE: usize = 100;
 const ERROR_SIZE: usize = 100;
+
+/// What an error adds to [`Ctx::size`].
+fn issue_size(component: &str, path: &str, message_len: usize) -> usize {
+    ERROR_SIZE + message_len + component.len() + path.len()
+}
 
 /// The JSON a node writes besides its children (counted when they are
 /// materialized) and inlined statements (counted when inlined). In value
@@ -173,7 +208,7 @@ impl Ctx<'_> {
     /// hundred of error message, which would otherwise amplify without bound.
     pub(crate) fn push_issue(&mut self, component: &str, path: &str, issue: Issue) {
         let message = issue.message(component, path);
-        let size = ERROR_SIZE + message.len() + component.len() + path.len();
+        let size = issue_size(component, path, message.len());
         if !self.grow(size) {
             return;
         }
@@ -187,13 +222,23 @@ impl Ctx<'_> {
         }));
     }
 
+    /// Whether [`Ctx::push_issue`] would record an error whose message is
+    /// `message_len` bytes; if not, the result is cut here as it would be
+    /// there. For an error that costs as much to word as it writes: asked
+    /// first, one that doesn't fit is never built.
+    pub(crate) fn issue_fits(&mut self, component: &str, path: &str, message_len: usize) -> bool {
+        self.fits(issue_size(component, path, message_len))
+    }
+
     /// Record an unresolved reference, within the result-size limit as
     /// [`Ctx::push_issue`] records an error.
     fn unresolved(&mut self, name: &str) {
         if !self.grow(name.len() + 3) {
             return;
         }
-        self.frame.unresolved.push(name.to_owned());
+        self.frame
+            .unresolved
+            .push(UnresolvedPart::Own(name.to_owned()));
     }
 
     /// Whether the result could grow by `more` and stay within the
@@ -442,7 +487,11 @@ fn replay(entry: &Entry, key: (Slot, bool), memoize: bool, frame: &mut Frame, de
         memoized: memoize && entry.unresolved.is_empty(),
         parts: entry.errors.clone(),
     });
-    frame.unresolved.extend(entry.unresolved.iter().cloned());
+    if !entry.unresolved.is_empty() {
+        frame
+            .unresolved
+            .push(UnresolvedPart::Reached(entry.unresolved.clone()));
+    }
     frame.children.push(entry.reach.clone());
     frame.max_depth = frame.max_depth.max(depth + entry.r_max);
 }
@@ -451,7 +500,7 @@ fn replay(entry: &Entry, key: (Slot, bool), memoize: bool, frame: &mut Frame, de
 struct Folded {
     reach: Arc<Reach>,
     errors: Arc<Vec<ErrorPart>>,
-    unresolved: Vec<String>,
+    unresolved: Arc<Vec<UnresolvedPart>>,
     max_depth: usize,
     /// It met a cycle or a limit: what it came to depends on where it was
     /// reached from, so it isn't cached.
@@ -484,12 +533,23 @@ fn fold(frame: Frame, key: (Slot, bool), memoize: bool, ctx: &mut Ctx) -> Folded
     });
     let reach = ctx.cache.share_reach(key.0, reach);
     let errors = Arc::new(errors);
+    // A statement whose only names are one reached statement's shares that
+    // statement's list as it is: a chain of aliases adds no nesting, so
+    // listing the names costs a step per name, not per name and level.
+    let unresolved = match unresolved.as_slice() {
+        [UnresolvedPart::Reached(only)] => only.clone(),
+        _ => Arc::new(unresolved),
+    };
     ctx.frame.errors.push(ErrorPart::Reached {
         key,
         memoized: memoize && !cycle && unresolved.is_empty(),
         parts: errors.clone(),
     });
-    ctx.frame.unresolved.extend(unresolved.iter().cloned());
+    if !unresolved.is_empty() {
+        ctx.frame
+            .unresolved
+            .push(UnresolvedPart::Reached(unresolved.clone()));
+    }
     ctx.frame.children.push(reach.clone());
     ctx.frame.max_depth = ctx.frame.max_depth.max(max_depth);
     ctx.frame.cycle |= cycle;

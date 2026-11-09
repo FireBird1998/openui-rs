@@ -25,6 +25,22 @@ pub(crate) enum Issue {
     QueryCycle { cycle: Vec<String> },
 }
 
+/// The `query-cycle` message around its queries' names.
+const CYCLE_OPENING: &str = "Queries ";
+const CYCLE_SEPARATOR: &str = ", ";
+const CYCLE_CLOSING: &str =
+    " read each other's results, so none of them can run first. They do not run";
+
+/// How long the `query-cycle` message is for `count` queries whose names
+/// come to `bytes` in all, without building it: whether it fits in the
+/// result is known before the names are gathered.
+pub(crate) fn query_cycle_message_len(count: usize, bytes: usize) -> usize {
+    CYCLE_OPENING.len()
+        + bytes
+        + CYCLE_SEPARATOR.len() * count.saturating_sub(1)
+        + CYCLE_CLOSING.len()
+}
+
 /// Why a program has no usable entry, which the `no-root` message words.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub(crate) enum NoRootReason {
@@ -102,8 +118,8 @@ impl Issue {
                 "Unknown function \"@{component}\": not a built-in or action step. The call evaluates to null"
             ),
             Issue::QueryCycle { cycle } => format!(
-                "Queries {} read each other's results, so none of them can run first. They do not run",
-                cycle.join(", ")
+                "{CYCLE_OPENING}{}{CYCLE_CLOSING}",
+                cycle.join(CYCLE_SEPARATOR)
             ),
             Issue::NoRoot { reason } => match reason {
                 NoRootReason::NotComponent => "root does not evaluate to a component".to_owned(),

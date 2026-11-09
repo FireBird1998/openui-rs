@@ -14,7 +14,7 @@ use std::collections::HashMap;
 use std::sync::Arc;
 
 use crate::ast::Ast;
-use crate::materialize::ErrorPart;
+use crate::materialize::{ErrorPart, UnresolvedPart};
 use crate::parser::{Info, Kind, Statement};
 use crate::result::Value;
 
@@ -366,7 +366,7 @@ impl Table {
 pub(crate) struct Entry {
     pub output: Output,
     pub reach: Arc<Reach>,
-    pub unresolved: Vec<String>,
+    pub unresolved: Arc<Vec<UnresolvedPart>>,
     /// Its errors, those of the statements it reached kept apart: the same
     /// whatever was reported before, so any later pass can take them.
     pub errors: Arc<Vec<ErrorPart>>,
@@ -437,10 +437,15 @@ impl Cache {
         }
     }
 
-    /// `slot`'s statement changed: drop its entries and those of everything
-    /// that references it, however indirectly.
-    pub(crate) fn invalidate(&mut self, slot: Slot, table: &Table) {
-        let mut pending = vec![slot];
+    /// The statements in `slots` changed: drop their entries and those of
+    /// everything that references them, however indirectly. One walk for
+    /// them all, so a statement above many of them is visited once. Nothing
+    /// is cached between the changes of one push, so walking the references
+    /// as they stand after the last of them drops the same entries as a walk
+    /// after each: a reference a later change took away belonged to a
+    /// statement that is itself in `slots`.
+    pub(crate) fn invalidate(&mut self, slots: &[Slot], table: &Table) {
+        let mut pending = slots.to_vec();
         let mut seen = Vec::new();
         while let Some(s) = pending.pop() {
             if self.marked(s) {

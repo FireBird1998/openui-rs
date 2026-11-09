@@ -15,15 +15,15 @@ use crate::js::JsObject;
 use crate::lexer::tokenize;
 use crate::library::Library;
 use crate::materialize::{
-    Ctx, Frame, flatten_errors, materialize_call_args, materialize_state, materialize_value,
-    tag_statement,
+    Ctx, Frame, flatten_errors, flatten_unresolved, materialize_call_args, materialize_state,
+    materialize_value, tag_statement,
 };
 use crate::preprocess::preprocess;
 use crate::progress;
 use crate::result::{Meta, MutationStatement, ParseResult, QueryStatement, Value};
 use crate::statements::{IdKind, RawStatement, auto_close, split};
 use crate::table::{Cache, Reach, Slot, Table};
-use crate::validation::{Issue, NoRootReason};
+use crate::validation::{Issue, NoRootReason, query_cycle_message_len};
 
 const DEFAULT_ROOT_STATEMENT_ID: &str = "root";
 
@@ -178,44 +178,90 @@ fn query_reads(nodes: &[Ast]) -> Vec<String> {
     reads.into_iter().collect()
 }
 
+/// A loop of queries reading each other's results, as the search for them
+/// found it: how many queries and how long their names are in all, known
+/// without gathering them.
+struct QueryLoop<'a> {
+    queries: &'a [QueryStatement],
+    /// The queries in the loop: the end of the search's path.
+    path: &'a [(usize, usize)],
+    /// Their names' bytes in all.
+    bytes: usize,
+}
+
+impl QueryLoop<'_> {
+    /// The queries' names, in statement order.
+    fn names(&self) -> Vec<String> {
+        let mut members: Vec<usize> = self.path.iter().map(|&(query, _)| query).collect();
+        members.sort_unstable();
+        members
+            .into_iter()
+            .map(|query| self.queries[query].statement_id.clone())
+            .collect()
+    }
+}
+
 /// Loops of queries reading each other's results (one reading itself is
-/// one), each listed in statement order, in the order a depth-first walk over
-/// the queries in statement order meets them.
-fn query_cycles(queries: &[QueryStatement]) -> Vec<Vec<String>> {
+/// one), given to `found` in the order a depth-first walk over the queries in
+/// statement order meets them.
+///
+/// The walk takes a step per query and per read. A long chain of queries
+/// can hold as many loops as it has queries, each most of the chain long, so
+/// gathering a loop's names is left to `found`, which knows whether there's
+/// room to report it.
+fn query_cycles(queries: &[QueryStatement], mut found: impl FnMut(QueryLoop)) {
     let order: HashMap<&str, usize> = queries
         .iter()
         .enumerate()
         .map(|(i, q)| (q.statement_id.as_str(), i))
         .collect();
     let reads =
-        |id: &str| -> &[String] { queries[order[id]].wait_for.as_deref().unwrap_or_default() };
-    let mut done: HashSet<&str> = HashSet::new();
-    let mut cycles = Vec::new();
-    for q in queries {
-        if done.contains(q.statement_id.as_str()) {
+        |query: usize| -> &[String] { queries[query].wait_for.as_deref().unwrap_or_default() };
+    let name_len = |query: usize| queries[query].statement_id.len();
+    let mut done = vec![false; queries.len()];
+    // Where on the walk's path each query is, while it is.
+    let mut on_path: Vec<Option<usize>> = vec![None; queries.len()];
+    // The walk's path, each with how many of its reads it has followed:
+    // the reference recurses, and this keeps its order without the stack.
+    let mut path: Vec<(usize, usize)> = Vec::new();
+    // The bytes of the names before each query on the path, and of them all.
+    let mut bytes_before: Vec<usize> = Vec::new();
+    let mut bytes = 0;
+    for start in 0..queries.len() {
+        if done[start] {
             continue;
         }
-        // The walk's path, each with how many of its reads it has followed:
-        // the reference recurses, and this keeps its order without the stack.
-        let mut path: Vec<(&str, usize)> = vec![(q.statement_id.as_str(), 0)];
-        while let Some(&mut (id, ref mut next)) = path.last_mut() {
-            let Some(dep) = reads(id).get(*next) else {
+        on_path[start] = Some(0);
+        path.push((start, 0));
+        bytes_before.push(0);
+        bytes += name_len(start);
+        while let Some(&mut (query, ref mut next)) = path.last_mut() {
+            let Some(dep) = reads(query).get(*next) else {
                 path.pop();
-                done.insert(id);
+                bytes_before.pop();
+                bytes -= name_len(query);
+                on_path[query] = None;
+                done[query] = true;
                 continue;
             };
             *next += 1;
-            if let Some(at) = path.iter().position(|(p, _)| *p == dep.as_str()) {
-                let mut cycle: Vec<String> =
-                    path[at..].iter().map(|(p, _)| (*p).to_owned()).collect();
-                cycle.sort_by_key(|p| order[p.as_str()]);
-                cycles.push(cycle);
-            } else if order.contains_key(dep.as_str()) && !done.contains(dep.as_str()) {
-                path.push((dep.as_str(), 0));
+            let Some(&dep) = order.get(dep.as_str()) else {
+                continue;
+            };
+            if let Some(at) = on_path[dep] {
+                found(QueryLoop {
+                    queries,
+                    path: &path[at..],
+                    bytes: bytes - bytes_before[at],
+                });
+            } else if !done[dep] {
+                on_path[dep] = Some(path.len());
+                path.push((dep, 0));
+                bytes_before.push(bytes);
+                bytes += name_len(dep);
             }
         }
     }
-    cycles
 }
 
 /// Parse a complete (or partial) program in one pass. `root_name` is the
@@ -470,7 +516,7 @@ pub(crate) fn build_result(
         root_expression,
         meta: Meta {
             incomplete: was_incomplete,
-            unresolved: frame.unresolved,
+            unresolved: flatten_unresolved(&frame.unresolved),
             orphaned,
             statement_count,
             errors: flatten_errors(&frame.errors),
@@ -550,11 +596,18 @@ fn extract_statements(
     let (mut state, undefined) = (evaluated.state, evaluated.undefined);
     // A query waits for the queries it reads; ones that read each other can
     // never start.
-    for cycle in query_cycles(&queries) {
+    query_cycles(&queries, |found| {
+        // One that doesn't fit is cut before its names are gathered: they
+        // cost as much to gather as to write.
+        let message_len = query_cycle_message_len(found.path.len(), found.bytes);
+        if !ctx.issue_fits("Query", "", message_len) {
+            return;
+        }
+        let cycle = found.names();
         let outer = ctx.current_statement_id.replace(cycle[0].clone());
         ctx.push_issue("Query", "", Issue::QueryCycle { cycle });
         ctx.current_statement_id = outer;
-    }
+    });
     for &slot in table.specials() {
         for name in &table.info(slot).state_refs {
             if partial.is_some_and(|p| p.name == name && p.slots.contains(&slot)) {
