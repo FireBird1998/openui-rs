@@ -17,26 +17,27 @@ use openui_lang::{Library, Limits, ParseResult, StreamParser};
 
 uniffi::setup_scaffolding!();
 
-/// Something the core couldn't accept.
+/// Something the core couldn't accept. The field is `reason`, not `message`,
+/// which Kotlin's exceptions already have.
 #[derive(Debug, uniffi::Error)]
 pub enum OpenUiError {
     /// The component library's JSON Schema isn't valid JSON.
-    InvalidSchema { message: String },
+    InvalidSchema { reason: String },
     /// The prompt spec isn't valid JSON.
-    InvalidPromptSpec { message: String },
+    InvalidPromptSpec { reason: String },
     /// The core can't make a system prompt from the spec, with the message
     /// the reference throws.
-    Prompt { message: String },
+    Prompt { reason: String },
 }
 
 impl fmt::Display for OpenUiError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            OpenUiError::InvalidSchema { message } => write!(f, "invalid JSON Schema: {message}"),
-            OpenUiError::InvalidPromptSpec { message } => {
-                write!(f, "invalid prompt spec: {message}")
+            OpenUiError::InvalidSchema { reason } => write!(f, "invalid JSON Schema: {reason}"),
+            OpenUiError::InvalidPromptSpec { reason } => {
+                write!(f, "invalid prompt spec: {reason}")
             }
-            OpenUiError::Prompt { message } => f.write_str(message),
+            OpenUiError::Prompt { reason } => f.write_str(reason),
         }
     }
 }
@@ -56,7 +57,7 @@ impl ComponentLibrary {
     pub fn new(schema: String) -> Result<Arc<Self>, OpenUiError> {
         let json: serde_json::Value =
             serde_json::from_str(&schema).map_err(|e| OpenUiError::InvalidSchema {
-                message: e.to_string(),
+                reason: e.to_string(),
             })?;
         Ok(Arc::new(ComponentLibrary {
             inner: Arc::new(Library::from_json_schema(&json)),
@@ -223,11 +224,11 @@ pub fn generate_system_prompt_with_limits(
 ) -> Result<String, OpenUiError> {
     let json: serde_json::Value =
         serde_json::from_str(&spec).map_err(|e| OpenUiError::InvalidPromptSpec {
-            message: e.to_string(),
+            reason: e.to_string(),
         })?;
     openui_lang::generate_system_prompt_with_limits(&json, limits.to_core()).map_err(|e| {
         OpenUiError::Prompt {
-            message: e.to_string(),
+            reason: e.to_string(),
         }
     })
 }

@@ -168,7 +168,7 @@ fn system_prompts_match_the_core() {
         let want = openui_lang::generate_system_prompt(&serde_json::from_str(&text).unwrap());
         let same = match (generate_system_prompt(text), want) {
             (Ok(got), Ok(want)) => got == want,
-            (Err(OpenUiError::Prompt { message }), Err(want)) => message == want.to_string(),
+            (Err(OpenUiError::Prompt { reason }), Err(want)) => reason == want.to_string(),
             _ => false,
         };
         if !same {
@@ -233,14 +233,14 @@ fn merging_matches_the_core() {
 fn errors_explain_themselves() {
     let message = || "m".to_owned();
     assert_eq!(
-        OpenUiError::InvalidSchema { message: message() }.to_string(),
+        OpenUiError::InvalidSchema { reason: message() }.to_string(),
         "invalid JSON Schema: m"
     );
     assert_eq!(
-        OpenUiError::InvalidPromptSpec { message: message() }.to_string(),
+        OpenUiError::InvalidPromptSpec { reason: message() }.to_string(),
         "invalid prompt spec: m"
     );
-    assert_eq!(OpenUiError::Prompt { message: message() }.to_string(), "m");
+    assert_eq!(OpenUiError::Prompt { reason: message() }.to_string(), "m");
 }
 
 #[test]
@@ -416,10 +416,10 @@ fn prompts_without_components_return_the_cores_prompt_error() {
             generate_system_prompt(spec.to_owned()),
             generate_system_prompt_with_limits(spec.to_owned(), ParseLimits::default()),
         ] {
-            let Err(OpenUiError::Prompt { message }) = result else {
+            let Err(OpenUiError::Prompt { reason }) = result else {
                 panic!("expected a prompt error")
             };
-            assert_eq!(message, "[generatePrompt] components is missing.");
+            assert_eq!(reason, "[generatePrompt] components is missing.");
         }
     }
 }

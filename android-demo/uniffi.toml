@@ -1,0 +1,4 @@
+# Kotlin bindings for Android: the cleaner Android itself provides (API 34+).
+[crates.openui_ffi.bindings.kotlin]
+android = true
+android_cleaner = true

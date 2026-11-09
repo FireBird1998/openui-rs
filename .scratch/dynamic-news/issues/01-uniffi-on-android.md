@@ -36,3 +36,19 @@ Can Kotlin on Android call the core through UniFFI comfortably today? Find out:
 
 **What crossing costs:** see ticket 06. In short, it's negligible next to drawing.
 
+
+## Notes from the Android demo (2026-11-09)
+
+The demo app in `android-demo/` (built by `scripts/android-demo.sh`) partly answers this ticket. It ran on the arm64 Android 16 emulator.
+
+- **Build setup:**
+  - `cargo ndk` builds `openui-ffi` as a `.so` for arm64-v8a, and `uniffi-bindgen --language kotlin` generates the Kotlin side.
+  - `uniffi.toml` sets `android = true` and `android_cleaner = true`.
+  - The app is built with AGP 9.2.1 (built-in Kotlin 2.2.10) and Gradle 9.4.1.
+  - JNA must come as its `.aar` (`net.java.dev.jna:jna:5.17.0@aar`). The jar has no Android native library.
+- **A binding fix:** `OpenUiError`'s field was named `message`, which clashes with Kotlin's `Throwable.message`. It's `reason` now.
+- **Size:** the core plus binding is a 1.6 MB `.so` (release, unstripped), and JNA adds 0.2 MB. The debug APK is 23 MB, mostly unminified Compose.
+- **Streaming:** each push returns the whole result as JSON, which Kotlin parses with `org.json` and redraws. The binding reports the core's time at 70–400 µs per push on the emulator (parse and JSON together). The largest sample (4.8 KB) takes about 270 µs a push on average.
+- **Stack:** running the suite there found that the core never grew its stack on Android or iOS (GitHub #25, fixed).
+
+Still open: an APK size measured with R8 and stripped libraries, a real phone, and whether to hand Kotlin a tree instead of JSON.
