@@ -149,6 +149,17 @@ fn json_size(node: &Ast, expr: bool) -> usize {
     }
 }
 
+/// A reference kept as written, `{"k":"Ref","n":…}`, if it fits: an `@Each`
+/// iterator and the references to it in its template. [`json_size`] counts
+/// a reference as nothing, since it's priced as what it resolves to.
+fn kept_ref(node: &Ast, name: &str, ctx: &mut Ctx) -> Ast {
+    if ctx.grow(20 + json_string_len(name)) {
+        node.clone()
+    } else {
+        Ast::Null
+    }
+}
+
 /// Defensive pricing for a node produced by reference resolution. Source
 /// parsing never passes a RuntimeRef back into materialization.
 fn runtime_ref_size(name: &str) -> usize {
@@ -975,12 +986,17 @@ fn materialize_lazy_builtin(
     let args = args
         .iter()
         .enumerate()
-        .map(|(i, a)| {
-            if i == 1 {
-                a.clone()
-            } else {
-                materialize_expr(a, ctx, &inner)
+        .map(|(i, a)| match a {
+            // The iterator variable, kept as written.
+            Ast::Ref(n) if i == 1 => kept_ref(a, n, ctx),
+            _ if i == 1 => {
+                if ctx.grow(json_size(a, true)) {
+                    a.clone()
+                } else {
+                    Ast::Null
+                }
             }
+            _ => materialize_expr(a, ctx, &inner),
         })
         .collect::<Vec<_>>();
     Some(Ast::Comp {
@@ -1009,7 +1025,7 @@ pub(crate) fn materialize_expr(node: &Ast, ctx: &mut Ctx, scope: &Scope) -> Ast 
 
 fn materialize_expr_at_depth(node: &Ast, ctx: &mut Ctx, scope: &Scope) -> Ast {
     match node {
-        Ast::Ref(name) if scope.contains(name) => node.clone(),
+        Ast::Ref(name) if scope.contains(name) => kept_ref(node, name, ctx),
         Ast::Ref(name) => match resolve_ref(name, ctx, Mode::Expr) {
             Resolved::Ast(a) => a,
             Resolved::Value(_) => unreachable!("expr mode resolves to AST"),

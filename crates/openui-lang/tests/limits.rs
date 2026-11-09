@@ -479,6 +479,41 @@ fn escaped_characters_in_evaluated_defaults_count_against_the_result_size_limit(
     }
 }
 
+#[test]
+fn an_each_iterator_kept_in_an_expression_counts_against_the_result_size_limit() {
+    // `@Each` keeps its iterator variable, and the references to it in its
+    // template, as written. Inside a component in an expression, whose args
+    // are written twice (`args` and `mappedProps`), they double with every
+    // level (#19): 200 control characters are 1.2 KB of JSON, and a
+    // 1,000-character name read 8 times is 8 KB.
+    let lib = library();
+    let controls = "\u{1}".repeat(200);
+    let name = "v".repeat(1000);
+    let reads = [name.as_str(); 8].join(", ");
+    for each in [
+        vec![format!("@Each($xs, \"{controls}\", 1)"); 4].join(", "),
+        format!("@Each($xs, {name}, [{reads}])"),
+    ] {
+        let program =
+            format!("root = Stack([$s ? Stack([$s ? Stack([$s ? Stack([{each}]) : 1]) : 1]) : 1])");
+        let limit = 16 * 1024;
+        let limits = Limits::default().with_result_size(limit);
+        let result = parse_with_limits(&program, &lib, None, limits);
+        let json = result.to_json().len();
+        assert!(
+            result.size_limited || json <= limit + limit / 2 + 4096,
+            "{json} bytes unflagged past a {limit}-byte limit, from {each:.16}"
+        );
+        assert!(
+            json <= limit + limit / 2 + 4096 + 16 * program.len(),
+            "{json}"
+        );
+        let mut stream = StreamParser::with_limits(lib.clone(), None, limits);
+        stream.push(&program);
+        assert_eq!(stream.finish(), result);
+    }
+}
+
 #[global_allocator]
 static ALLOCATOR: test_alloc::Allocator = test_alloc::Allocator::with_cap(test_alloc::LIMITS);
 
