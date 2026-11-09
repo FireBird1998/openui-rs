@@ -10,11 +10,17 @@
 
 **Blocked by:** 10 — Recordings become corpus cases
 
-**Status:** ready-for-agent
+**Status:** waiting for the maintainer to record (needs their API key; $10 cap). Requests are written.
 
-- [ ] The 50 requests are committed.
+- [x] The 50 requests are committed.
 - [ ] The maintainer has recorded them, and the estimated spend is reported here, within the cap.
 - [ ] All 50 are imported. Every recorded case conforms, or its finding is resolved.
 - [ ] What real output brought to light (fences, truncation, invented components, anything else) is summarized in this ticket.
 - [ ] CONFORMANCE.md reports the recorded streams.
 - [ ] `scripts/check.sh` passes.
+
+## Results
+
+Checked 2026-11-09.
+- **Requests:** the 50 requests are written up in `.scratch/testing/recorded-streams.md` (3019307).
+- **Still open:** the maintainer records them in the viewer, then they're imported with ticket 10's command and their findings are sorted.

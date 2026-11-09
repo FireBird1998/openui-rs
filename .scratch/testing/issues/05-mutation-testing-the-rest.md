@@ -4,9 +4,17 @@
 
 **Blocked by:** 04 — Mutation testing: parsing and streaming
 
-**Status:** ready-for-agent
+**Status:** done (2026-11-09), finished under the hardening spec (GitHub #1).
 
-- [ ] The run's command, duration and counts are recorded in this ticket.
-- [ ] Every missed mutant is caught by a new case or explained in the exclusion file.
-- [ ] A rerun misses nothing unexplained.
-- [ ] `scripts/check.sh` passes.
+- [x] The run's command, duration and counts are recorded in this ticket.
+- [x] Every missed mutant is caught by a new case or explained in the exclusion file.
+- [x] A rerun misses nothing unexplained.
+- [x] `scripts/check.sh` passes.
+
+## Results
+
+Checked 2026-11-09 against the code and the worker Mac's runs.
+- **Tooling:** `scripts/mutants.sh rest` covers the rest of `openui-lang` and the binding crate `openui-ffi`.
+- **Full run** on the worker Mac, 2026-11-08 at 185735a: 696 mutants in 2 h, with 634 caught, 60 unviable and 2 missed. The misses were `JsObject::get_mut` and an edge case of `json_string_len`, both caught by new cases in b0dad81.
+- **Targeted rerun** at be4b5d3: 11 mutants, with 9 caught, 2 unviable and none missed.
+- `scripts/check.sh` passes at 4cc48f8.

@@ -13,7 +13,7 @@
 
 **Blocked by:** 05 — Mutation testing: the rest; 07 — Coverage-guided fuzzing: edits and JSON; 09 — The other five invariants; 11 — Fifty recorded streams; 12 — The suite on Android
 
-**Status:** ready-for-agent
+**Status:** blocked by 10, 11 and 12 (each waiting on the maintainer); 04–07 and 09 are done.
 
 - [ ] The maintainer approves installing the scheduled job, a standing configuration on their Mac, before it's installed.
 - [ ] It runs only on AC power, never commits, and its first nightly report has been reviewed with the maintainer.
@@ -22,3 +22,13 @@
 - [ ] TESTING.md covers every kind of test and the hunt.
 - [ ] The spec's status is done.
 - [ ] `scripts/check.sh` passes.
+
+## Results
+
+Checked 2026-11-09.
+- **Blockers:** 04, 05, 06, 07 and 09 are done. 10 and 11 wait for the maintainer's recordings, and 12 for the real-phone run or a note that there's no phone.
+- **Scheduled job:** no nightly hunt is installed yet. It needs the maintainer's OK. Since the main Mac shouldn't run long jobs, the worker Mac is the natural place for it.
+- **Done since this ticket was written:**
+  - GitHub workflows run the hunts' parts by hand (TESTING.md, "On GitHub");
+  - TESTING.md covers every kind of test and the hunt;
+  - the hardening phase (GitHub #1) measured the fuzzing and mutation numbers this ticket asks for.

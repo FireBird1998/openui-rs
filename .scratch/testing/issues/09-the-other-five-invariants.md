@@ -14,12 +14,25 @@ Each rule runs on a million generated programs. Failures are sorted as in ticket
 
 **Blocked by:** 08 — Round trip on both parsers
 
-**Status:** ready-for-agent
+**Status:** done (2026-11-09).
 
-- [ ] All five rules run on both parsers.
-- [ ] "Complete and fully resolved" is defined in writing before rule 5 is checked.
-- [ ] Each rule has run on a million programs, and every failure is sorted.
-- [ ] Any new quirks are in QUIRKS.md with draft upstream reports, which aren't filed.
-- [ ] Each rule's exceptions are listed.
-- [ ] Hunts run all five.
-- [ ] `scripts/check.sh` passes.
+- [x] All five rules run on both parsers.
+- [x] "Complete and fully resolved" is defined in writing before rule 5 is checked.
+- [x] Each rule has run on a million programs, and every failure is sorted.
+- [x] Any new quirks are in QUIRKS.md with draft upstream reports, which aren't filed.
+- [x] Each rule's exceptions are listed.
+- [x] Hunts run all five.
+- [x] `scripts/check.sh` passes.
+
+## Results
+
+Checked 2026-11-09.
+- **Rules:** chunking, stream end, fences, merging twice, merging nothing, merging a program's own source and finished statements stay put (3019307). They run on both parsers beside ticket 08's round trip.
+- "Complete and fully resolved" is defined in TESTING.md, and each rule's exceptions are listed there by quirk.
+- **New quirks:** 15–23 (some later fixed upstream) are in QUIRKS.md. The upstream report drafts are GitHub #20 and #21; none is filed.
+- **Hunts:** they run the invariants.
+- **A million programs per rule:**
+  - each long run on the worker Mac (2026-11-08 at 185735a, re-run at be4b5d3) ran every rule over two 500,000-program ranges;
+  - the re-run's tallies had 0 mismatches and 1 case broken on both;
+  - that case was quirk 23's shape, recognized since be4b5d3; every other failure is explained by a listed quirk or divergence.
+- `scripts/check.sh` passes.

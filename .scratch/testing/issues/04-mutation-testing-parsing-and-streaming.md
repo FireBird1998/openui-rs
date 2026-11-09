@@ -6,11 +6,23 @@
 
 **Blocked by:** 01 — The suite runs anywhere (live diffs off); 03 — Coverage map (so unrun code isn't sorted twice)
 
-**Status:** ready-for-agent
+**Status:** done (2026-11-09), finished under the hardening spec (GitHub #1).
 
-- [ ] The maintainer approves installing cargo-mutants before it's installed.
-- [ ] The run's command, duration and counts (mutants, caught, missed, timed out) are recorded in this ticket.
-- [ ] Every missed mutant is caught by a new case or explained in the exclusion file.
-- [ ] A rerun over these modules misses nothing unexplained.
-- [ ] TESTING.md has a section on mutation testing.
-- [ ] `scripts/check.sh` passes.
+- [x] The maintainer approves installing cargo-mutants before it's installed.
+- [x] The run's command, duration and counts (mutants, caught, missed, timed out) are recorded in this ticket.
+- [x] Every missed mutant is caught by a new case or explained in the exclusion file.
+- [x] A rerun over these modules misses nothing unexplained.
+- [x] TESTING.md has a section on mutation testing.
+- [x] `scripts/check.sh` passes.
+
+## Results
+
+Checked 2026-11-09 against the code and the worker Mac's runs.
+- **Tooling:** `scripts/mutants.sh parsing` (3019307), with `scripts/mutants-watchdog.sh` beside it. The exclusions are in `.cargo/mutants.toml`, and TESTING.md has a section on mutation testing.
+- **The 1.1 long runs** left 334 missed mutants across both groups. GitHub #11–#16 caught each one or listed it with its reason.
+- **Full run** on the worker Mac, 2026-11-08 at 185735a, `scripts/mutants.sh parsing --jobs 2`: 1,954 mutants in 12 h, with 1,799 caught, 147 unviable, 5 timeouts and 3 missed.
+  - The 5 timeouts are mutants the suite notices as hangs.
+  - The 3 misses were a block that did nothing, deleted in b0dad81 after an independent review.
+- **Targeted rerun** at be4b5d3: 49 mutants, with 44 caught, 5 unviable and none missed.
+- Watchdog kills: see GitHub #19 and #24.
+- `scripts/check.sh` passes at 4cc48f8.
