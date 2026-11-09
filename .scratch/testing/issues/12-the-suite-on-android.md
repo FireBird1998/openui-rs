@@ -28,3 +28,14 @@ One command does all of this while an emulator is running. Then do one run on a 
   - Two unit tests read the conformance folder from the source tree's path. They now honour `OPENUI_CONFORMANCE_DIR`.
 
 **Still open:** the real-phone run, if the maintainer has a phone, or a note here that there isn't one. GitHub's x86_64 run needs repeating after a push.
+
+**2026-11-09, the worker Mac's emulator again, after the hardening phase (GitHub #1):**
+- Setup: `emulator-5572`, Android 16 arm64, another session's running emulator, used with the maintainer's OK. `scripts/android-test.sh` writes only under `/data/local/tmp/openui-rs`.
+- **Before the fix:** 21 test binaries, 3 failed.
+  - `drop`: the raised-depth case segfaulted at a 512 KB, 2 MB and 8 MB stack alike. That was a real core bug: `stacker` can't measure the stack on Android or iOS, so the core never grew it (GitHub #25).
+  - `api` and `fuzz-example`: two tests read files from the source tree's path instead of `OPENUI_CONFORMANCE_DIR`.
+- **After the fix:** 21 test binaries, none failed.
+  - `drop` also passes at a 64 KB stack.
+  - `depth` passes at 128 KB and up. At 64 KB, one of its tests overflows dropping its own 900-level `serde_json` value, which is test code and not the core.
+- **Cost:** see ADR 0002.
+

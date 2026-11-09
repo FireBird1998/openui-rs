@@ -1525,7 +1525,7 @@ fn finished_stay_put(engine: &mut dyn Engine, inputs: &[&Input]) -> Vec<Verdict>
 mod tests {
     use super::*;
     use crate::engine::Core;
-    use crate::{load_corpus, repo_root};
+    use crate::{conformance_dir, load_corpus};
 
     fn input(lib: &str, program: &str, patch: &str) -> Input {
         Input {
@@ -1540,7 +1540,7 @@ mod tests {
     }
 
     fn verdict(rule: &str, input: &Input) -> Verdict {
-        let corpus = load_corpus(&repo_root().join("conformance"));
+        let corpus = load_corpus(&conformance_dir());
         let mut core = Core {
             libraries: &corpus.libraries,
         };

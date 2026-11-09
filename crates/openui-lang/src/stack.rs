@@ -6,6 +6,8 @@
 //! stack is left, the call starts again on a fresh [`SEGMENT`] allocated on
 //! the heap, and the next segment chains on in the same way.
 
+use std::cell::Cell;
+
 /// What must be left on the stack before a recursive step goes on in place.
 ///
 /// It has to cover the most stack used between two checks: one level of a
@@ -24,19 +26,50 @@ const RED_ZONE: usize = 128 * 1024;
 /// not touched, so the unused part costs address space only.
 const SEGMENT: usize = 2 * 1024 * 1024;
 
-/// Whether the stack is too low to go deeper in place. On a platform where
-/// `stacker` can't measure the stack it isn't, as in `stacker::maybe_grow`:
-/// a new segment there would measure no better, and re-entering would loop.
+/// Whether the stack is too low to go deeper in place.
+///
+/// Where `stacker` can't read the operating system's stack limit (Android and
+/// iOS, as of 0.1.25), it can't measure the thread's own stack, so this says
+/// low there and the walk starts on a segment of its own. `stacker` measures
+/// the segments it grows wherever it can switch stacks, so the walk then goes
+/// on as it does elsewhere. Where even a segment can't be measured, there is
+/// no point growing another: once on a segment the core grew, it goes on in
+/// place.
 #[inline]
 pub(crate) fn low() -> bool {
-    stacker::remaining_stack().is_some_and(|left| left < RED_ZONE)
+    low_given(stacker::remaining_stack(), ON_SEGMENT.get())
+}
+
+/// [`low`], given what `stacker` measures and whether the thread is on a
+/// segment the core grew.
+#[inline]
+fn low_given(remaining: Option<usize>, on_segment: bool) -> bool {
+    match remaining {
+        Some(left) => left < RED_ZONE,
+        None => !on_segment,
+    }
+}
+
+thread_local! {
+    /// Whether this thread is running on a segment [`on_new_segment`] grew.
+    static ON_SEGMENT: Cell<bool> = const { Cell::new(false) };
 }
 
 /// Run `f` on a fresh stack segment.
 #[cold]
 #[inline(never)]
 pub(crate) fn on_new_segment<R>(f: impl FnOnce() -> R) -> R {
-    stacker::grow(SEGMENT, f)
+    /// Puts back whether the thread was on a segment, unwinding or not.
+    struct Restore(bool);
+    impl Drop for Restore {
+        fn drop(&mut self) {
+            ON_SEGMENT.set(self.0);
+        }
+    }
+    stacker::grow(SEGMENT, || {
+        let _restore = Restore(ON_SEGMENT.replace(true));
+        f()
+    })
 }
 
 /// At the top of a function that recurses (or starts a walk), with the call
@@ -57,3 +90,38 @@ macro_rules! grow_stack {
     };
 }
 pub(crate) use grow_stack;
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn a_measured_stack_is_low_inside_the_red_zone_only() {
+        for on_segment in [false, true] {
+            assert!(low_given(Some(RED_ZONE - 1), on_segment));
+            assert!(!low_given(Some(RED_ZONE), on_segment));
+        }
+    }
+
+    #[test]
+    fn an_unmeasured_stack_is_low_until_on_a_segment_the_core_grew() {
+        assert!(low_given(None, false));
+        assert!(!low_given(None, true));
+    }
+
+    #[test]
+    fn a_segment_says_so_while_it_runs_and_not_after() {
+        assert!(!ON_SEGMENT.get());
+        assert!(on_new_segment(|| ON_SEGMENT.get()));
+        assert!(!ON_SEGMENT.get());
+        // A segment grown on a segment leaves the thread on the outer one.
+        assert!(on_new_segment(|| {
+            on_new_segment(|| ());
+            ON_SEGMENT.get()
+        }));
+        assert!(!ON_SEGMENT.get());
+        let unwound = std::panic::catch_unwind(|| on_new_segment(|| panic!("in a segment")));
+        assert!(unwound.is_err());
+        assert!(!ON_SEGMENT.get());
+    }
+}

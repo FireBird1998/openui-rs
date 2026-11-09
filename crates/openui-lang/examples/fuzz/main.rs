@@ -324,6 +324,17 @@ fn repo_root() -> PathBuf {
     Path::new(env!("CARGO_MANIFEST_DIR")).join("../..")
 }
 
+/// The conformance folder: the repository's, or wherever
+/// `OPENUI_CONFORMANCE_DIR` names, so the unit tests also run where the source
+/// tree isn't (an Android device).
+#[cfg(test)]
+fn conformance_dir() -> PathBuf {
+    match std::env::var_os("OPENUI_CONFORMANCE_DIR") {
+        Some(dir) if !dir.is_empty() => dir.into(),
+        _ => repo_root().join("conformance"),
+    }
+}
+
 fn load_corpus(conformance: &Path) -> Corpus {
     let mut libraries = BTreeMap::new();
     let mut cases = Vec::new();

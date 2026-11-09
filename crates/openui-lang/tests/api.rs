@@ -2,6 +2,8 @@
 //! reader and writer, `JsObject`, walking an expression, and a library's
 //! components and calls.
 
+mod common;
+
 use openui_lang::{Ast, CallKind, JsObject, Library, Value, parse, parse_json, stringify_json};
 use serde_json::json;
 
@@ -199,8 +201,7 @@ fn js_object_members_include_its_prototype_but_own_checks_do_not() {
 
 #[test]
 fn builtin_parameter_metadata_matches_the_reference_registry() {
-    let golden = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
-        .join("../../conformance/golden/edits/builtin-params.json");
+    let golden = common::conformance_dir().join("golden/edits/builtin-params.json");
     let expected: serde_json::Value =
         serde_json::from_str(&std::fs::read_to_string(golden).unwrap()).unwrap();
     let actual: serde_json::Map<String, serde_json::Value> = Library::default()
