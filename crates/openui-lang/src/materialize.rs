@@ -195,10 +195,10 @@ fn kept_ref(node: &Ast, name: &str, ctx: &mut Ctx) -> Ast {
     }
 }
 
-/// Defensive pricing for a node produced by reference resolution. Source
-/// parsing never passes a RuntimeRef back into materialization.
+/// What a reference to a query or mutation statement writes, as the longer
+/// of the two: `{"k":"RuntimeRef","n":…,"refType":"mutation"}` and a comma.
 fn runtime_ref_size(name: &str) -> usize {
-    44 + name.len()
+    47 + json_string_len(name)
 }
 
 impl Ctx<'_> {
@@ -258,7 +258,7 @@ impl Ctx<'_> {
 
     /// Grow the result by `more` if it fits ([`Ctx::fits`]), and say whether
     /// it did.
-    fn grow(&mut self, more: usize) -> bool {
+    pub(crate) fn grow(&mut self, more: usize) -> bool {
         if !self.fits(more) {
             return false;
         }
@@ -422,6 +422,15 @@ fn resolve_ref(name: &str, ctx: &mut Ctx, mode: Mode) -> Resolved {
         } else {
             RefType::Query
         };
+        // Written wherever it's referenced, so it grows the result like any
+        // node: a list of them inside nested calls would otherwise multiply
+        // what's written far past what's counted.
+        if !ctx.grow(runtime_ref_size(name)) {
+            return match mode {
+                Mode::Expr => Resolved::Ast(Ast::Null),
+                Mode::Value => Resolved::Value(Value::Null),
+            };
+        }
         let node = Ast::RuntimeRef {
             n: name.to_owned(),
             ref_type,

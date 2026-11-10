@@ -88,18 +88,20 @@ fn amplified_values_pin_work_and_room_independently() {
     // A 100-item value, copied into each of 100 results, makes evaluation's
     // room price exceed the initial parsed value's price. Work also counts
     // reading nodes and string bytes; room only counts what is built.
+    // Room also holds what each declaration writes around its value, its
+    // name included (6 bytes each here).
     // These are Rust limit expectations, not reference result semantics.
     for (value, work, room) in [
-        ("0", 20_805, 22_805),
-        ("12", 30_805, 32_805),
-        ("-12", 40_805, 42_805),
-        ("0.5", 250_805, 252_805),
-        ("1000000000000000", 250_805, 252_805),
-        ("\"abc\"", 61_105, 60_905),
-        ("[]", 30_805, 30_605),
-        ("[1,22,333]", 121_105, 128_105),
-        ("{}", 30_805, 30_605),
-        ("{abc: 1, z: 22}", 181_405, 186_805),
+        ("0", 20_805, 22_817),
+        ("12", 30_805, 32_817),
+        ("-12", 40_805, 42_817),
+        ("0.5", 250_805, 252_817),
+        ("1000000000000000", 250_805, 252_817),
+        ("\"abc\"", 61_105, 60_917),
+        ("[]", 30_805, 30_617),
+        ("[1,22,333]", 121_105, 128_117),
+        ("{}", 30_805, 30_617),
+        ("{abc: 1, z: 22}", 181_405, 186_817),
     ] {
         let values = vec![value; 100].join(",");
         let items = vec!["0"; 100].join(",");
@@ -164,13 +166,13 @@ fn plucking_list_properties_charges_one_step_per_item() {
 #[test]
 fn text_operations_charge_both_operands_and_nested_arrays() {
     for (program, work, room) in [
-        ("$a = @Sort([\"ab\", \"cde\"], \"\")", 26, 363),
+        ("$a = @Sort([\"ab\", \"cde\"], \"\")", 26, 369),
         (
             "$a = @Filter([{v: \"abc\"}, {v: \"defg\"}], \"v\", \"contains\", \"ab\")",
             37,
-            632,
+            638,
         ),
-        ("$a = \"\" + [[1, 22], [333, null], []]", 53, 400),
+        ("$a = \"\" + [[1, 22], [333, null], []]", 53, 406),
     ] {
         edges(program, work, None);
         assert_eq!(threshold(program, false), room);

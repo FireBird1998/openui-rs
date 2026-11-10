@@ -30,6 +30,7 @@ let result = parse("root = Stack([title])\ntitle = Text(\"Hello\")", &library, N
 assert_eq!(result.root.unwrap().type_name, "Stack");
 
 // Streaming: a full result after every chunk, the unfinished parts marked partial.
+// A push re-reads the statement still arriving, so push once a frame, not once a token.
 let mut stream = StreamParser::new(library, None);
 for chunk in ["root = Stack([ti", "tle])\ntitle = Te", "xt(\"Hello\")"] {
     let result = stream.push(chunk);

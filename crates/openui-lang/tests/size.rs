@@ -202,3 +202,138 @@ fn shared_subtrees_stay_small_at_the_result_ceiling() {
         std::hint::black_box(result);
     }
 }
+
+/// A root cut at the result-size limit, then `rest`.
+fn cut_root_then(rest: &str) -> String {
+    let (_, doubling) = doubling(60).swap_remove(0);
+    format!("{doubling}\n{rest}")
+}
+
+/// Programs with `n` state declarations, queries, mutations or references to
+/// them: what those write besides their values counts against the limit too.
+fn wrappers(n: usize) -> Vec<(&'static str, String)> {
+    let lines = |line: &dyn Fn(usize) -> String| (0..n).map(line).collect::<String>();
+    vec![
+        (
+            "queries",
+            cut_root_then(&lines(&|i| format!("q{i}=Query()\n"))),
+        ),
+        (
+            "mutations",
+            cut_root_then(&lines(&|i| format!("m{i}=Mutation()\n"))),
+        ),
+        ("state", cut_root_then(&lines(&|i| format!("$s{i}=1\n")))),
+        (
+            "state never declared",
+            cut_root_then(&lines(&|i| format!("q{i}=Query(\"t\",$u{i})\n"))),
+        ),
+        (
+            "queries reading state",
+            cut_root_then(&lines(&|i| {
+                format!("q{i}=Query(\"t\",[$a,$b,$c,q{}])\n", i + 1)
+            })),
+        ),
+        (
+            "queries alone",
+            lines(&|i| format!("q{i}=Query(q{})\n", i + 1)),
+        ),
+        (
+            "references to a query, written twice at each level",
+            format!(
+                "q=Query()\nroot = Text($x ? {}[{}]{} : null)",
+                "Text(".repeat(9),
+                vec!["q"; n].join(","),
+                ")".repeat(9)
+            ),
+        ),
+        (
+            "references to a mutation, in a list",
+            format!(
+                "m=Mutation()\nroot = Stack([{}])",
+                vec!["m"; n * 5].join(",")
+            ),
+        ),
+        ("query loops", lines(&|i| format!("q{i}=Query(q{i})\n"))),
+        (
+            "many query loops through each other",
+            lines(&|i| format!("q{i}=Query(q{},q{})\n", i + 1, (i * 7) % n)),
+        ),
+    ]
+}
+
+#[test]
+fn state_queries_and_mutations_count_against_the_size_limit() {
+    for (shape, program) in wrappers(6000) {
+        let limit = Limits::default().result_size_for(program.len());
+        let (one, streamed) = parse_both(program);
+        let json = one.to_json();
+        assert!(
+            json.len() <= limit + 1024,
+            "{shape}: {} bytes of JSON, limit {limit}",
+            json.len()
+        );
+        assert_eq!(streamed.to_json(), json, "{shape}: streamed differently");
+    }
+}
+
+#[test]
+fn a_query_that_does_not_fit_is_dropped_with_every_later_statement() {
+    let program = "q1=Query()\nq2=Query()\nm1=Mutation()\n$s=1\nq3=Query()\nroot=Text(1)";
+    let all = parse(program, &library(), None);
+    assert!(!all.size_limited);
+    assert_eq!(all.query_statements.len(), 3);
+    // The smallest limit with room for the root and the first two queries.
+    let whole = all.to_json().len();
+    let mut cut = None;
+    for limit in 0..whole {
+        let limits = Limits::default().with_result_size(limit);
+        let result = parse_with_limits(program, &library(), None, limits);
+        if result.root.is_some() && result.query_statements.len() == 2 {
+            cut = Some(result);
+            break;
+        }
+    }
+    let cut = cut.expect("no limit keeps the root and two queries");
+    assert!(cut.size_limited);
+    let ids: Vec<&str> = cut
+        .query_statements
+        .iter()
+        .map(|q| q.statement_id.as_str())
+        .collect();
+    assert_eq!(ids, ["q1", "q2"]);
+    assert!(
+        cut.mutation_statements.is_empty(),
+        "a later mutation was kept"
+    );
+    assert!(!cut.state_declarations.has("$s"), "later state was kept");
+}
+
+#[test]
+fn references_to_a_mutation_are_counted_as_written() {
+    let program = format!(
+        "m=Mutation()\nroot = Stack([{}])",
+        vec!["m"; 40_000].join(",")
+    );
+    let limit = 1_000_000;
+    let limits = Limits::default().with_result_size(limit);
+    let result = parse_with_limits(&program, &library(), None, limits);
+    assert!(result.size_limited);
+    let written = result.to_json().len();
+    assert!(written <= limit + 1024, "{written} bytes of JSON");
+}
+
+#[test]
+fn a_state_declaration_that_does_not_fit_is_not_declared_null() {
+    let program = "root = Stack([])\nq0 = Query()\n$s = 5\nq1 = Query(\"t\", $s)";
+    let whole = parse(program, &library(), None).to_json().len();
+    for limit in 0..whole {
+        let limits = Limits::default().with_result_size(limit);
+        let result = parse_with_limits(program, &library(), None, limits);
+        // Declared at all, it's after the query above it fit.
+        assert!(
+            !result.state_declarations.has("$s") || !result.query_statements.is_empty(),
+            "limit {limit}: {}",
+            result.to_json()
+        );
+    }
+}

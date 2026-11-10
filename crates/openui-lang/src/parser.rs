@@ -11,7 +11,7 @@ use crate::ast::{Ast, RefType};
 use crate::builtins::{is_builtin, is_reserved_call};
 use crate::evaluate::{Reuse, has_runtime, state_defaults};
 use crate::expr::parse_expression_with_limit;
-use crate::js::JsObject;
+use crate::js::{JsObject, json_string_len};
 use crate::lexer::tokenize;
 use crate::library::Library;
 use crate::materialize::{
@@ -529,6 +529,30 @@ pub(crate) fn build_result(
     }
 }
 
+/// What a state declaration writes around its name and value: `"":,`.
+const STATE_WRAPPER: usize = 4;
+
+/// What a query statement writes around its name and its parts, each of the
+/// four taken as the `null` a missing one is.
+const QUERY_WRAPPER: usize =
+    r#"{"statementId":"","toolAST":,"argsAST":,"defaultsAST":,"refreshAST":,"complete":false},"#
+        .len()
+        + 4 * "null".len();
+
+/// What a mutation statement writes around its name and its parts, as
+/// [`QUERY_WRAPPER`].
+const MUTATION_WRAPPER: usize =
+    r#"{"statementId":"","toolAST":,"argsAST":},"#.len() + 2 * "null".len();
+
+/// What a query's list of the names it depends on or waits for writes, if it
+/// has any: `,"waitFor":[]` and each name, quoted, with its comma.
+fn names_size(names: &[String]) -> usize {
+    if names.is_empty() {
+        return 0;
+    }
+    r#","waitFor":[]"#.len() + names.iter().map(|n| json_string_len(n) + 3).sum::<usize>()
+}
+
 /// State initial values (materialized), plus queries and mutations as written.
 /// Any `$name` used anywhere but never declared is declared as null, except
 /// one still growing at the end of a stream, in the statements it ends.
@@ -545,9 +569,23 @@ fn extract_statements(
     // What the expression defaults cost materialized: evaluated, they're
     // written in its place.
     let mut expressions_size = 0;
+    // A statement didn't fit: nothing more is written.
+    let mut full = false;
     for &slot in table.specials() {
         let id = table.name(slot);
         let stmt = table.get(slot).expect("defined statement");
+        // What the statement writes around its values counts too. One that
+        // doesn't fit is dropped, and every later one with it.
+        let wrapper = match stmt {
+            Statement::State { .. } => STATE_WRAPPER,
+            Statement::Query { .. } => QUERY_WRAPPER,
+            Statement::Mutation { .. } => MUTATION_WRAPPER,
+            Statement::Value { .. } => 0,
+        };
+        if wrapper > 0 && !ctx.grow(wrapper + json_string_len(id)) {
+            full = true;
+            break;
+        }
         match stmt {
             Statement::State { init } => {
                 let before = ctx.size;
@@ -562,6 +600,10 @@ fn extract_statements(
                 // Aliases can hide state reads the statement as written doesn't show.
                 let deps = collect_state_refs(args.get(1));
                 let wait_for = query_reads(&args[..args.len().min(2)]);
+                if !ctx.grow(names_size(&deps) + names_size(&wait_for)) {
+                    full = true;
+                    break;
+                }
                 queries.push(QueryStatement {
                     statement_id: id.to_owned(),
                     tool: args.first().cloned(),
@@ -608,12 +650,20 @@ fn extract_statements(
         ctx.push_issue("Query", "", Issue::QueryCycle { cycle });
         ctx.current_statement_id = outer;
     });
-    for &slot in table.specials() {
+    // Nor is a `$name` declared null once one doesn't fit, or a statement
+    // didn't: a dropped declaration isn't written as null instead.
+    'declare: for &slot in table.specials() {
+        if full {
+            break;
+        }
         for name in &table.info(slot).state_refs {
             if partial.is_some_and(|p| p.name == name && p.slots.contains(&slot)) {
                 continue;
             }
             if !state.has(name) && !undefined.contains(name) {
+                if !ctx.grow(STATE_WRAPPER + json_string_len(name) + "null".len()) {
+                    break 'declare;
+                }
                 state.set(name.clone(), Value::Null);
             }
         }

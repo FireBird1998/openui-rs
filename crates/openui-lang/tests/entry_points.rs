@@ -225,7 +225,7 @@ fn evaluated_defaults_reuse_the_room_their_expressions_occupied() {
         None,
         // The materialized expressions fill this limit. Evaluation must
         // reclaim their room before replacing them with the numeric defaults.
-        Limits::default().with_result_size(6320),
+        Limits::default().with_result_size(6710),
     );
     assert!(!result.size_limited);
     let json = parse_json(&result.to_json()).unwrap();

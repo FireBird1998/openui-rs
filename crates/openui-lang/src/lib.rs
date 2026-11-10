@@ -66,6 +66,14 @@
 //! changes. A statement still arriving is read again at every push, as the
 //! reference does, defaults and all.
 //!
+//! So a push costs at least the statement still arriving and the result built
+//! from it, however small the chunk. For a caller drawing frames, push once a
+//! frame: join the chunks that arrived since the last one and push them as
+//! one. A long statement pushed a few bytes at a time costs its whole length
+//! each time (one 100 KB open list is about 10 ms a push on a laptop, so
+//! seconds in all at 64 bytes a push); the same text pushed once a frame costs
+//! a few frames' worth. The result after a push is the same either way.
+//!
 //! ```
 //! # #[global_allocator]
 //! # static ALLOCATOR: test_alloc::Allocator = test_alloc::Allocator::with_cap(test_alloc::DEFAULT);
@@ -173,7 +181,8 @@
 //!   the larger of 64 KiB ([`MIN_RESULT_SIZE`]) and 64 times the program's
 //!   size ([`MAX_AMPLIFICATION`]), never above 8 MiB ([`MAX_RESULT_SIZE`]); see
 //!   [`Limits::result_size_for`]. A result that would grow past it is cut, the
-//!   rest null ([`ParseResult::size_limited`]). That bounds amplification, so
+//!   rest null ([`ParseResult::size_limited`]); a state declaration, query or
+//!   mutation that doesn't fit is left out, with every later one. That bounds amplification, so
 //!   a caller serializing every push of a stream knows what it can cost. A
 //!   stream's limit is that of the text so far, so an early push can be cut
 //!   and a later one not; every push's result is still the one-shot parse of
