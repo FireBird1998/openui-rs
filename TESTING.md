@@ -201,6 +201,16 @@ A hunt searches for findings for a set time, then leaves a report and the shrunk
 
 A hunt never commits and never changes tracked files. It compares them before and after, and exits with status 1 if they changed. Fuzzing needs Bun; without it, the hunt runs only the upstream check, which then lists commits only. Without network, the upstream check uses the copy of upstream's history from the last time it reached GitHub (cached in `target/upstream.git`), and says so. `--seed S` repeats a hunt's fuzzing, and `--no-upstream` skips the upstream check.
 
+### Every night
+
+```bash
+scripts/nightly-hunt.sh --install      # a 120-minute hunt at 02:00 every night
+scripts/nightly-hunt.sh --uninstall
+scripts/nightly-hunt.sh --minutes 30   # one now, as the job runs it
+```
+
+`scripts/nightly-hunt.sh` is a hunt nobody has to remember: a launchd agent of the logged-in user (`dev.openui-rs.nightly-hunt`) on a Mac that can spare the time. It runs only on AC power, one at a time, and brings a clean checkout up to date first. Like every hunt it never commits. The latest run's folder and exit status are in `findings/nightly-latest.txt`, and what it printed in `findings/nightly.log`. Installing it is a standing configuration on that Mac, so it's the maintainer's decision.
+
 ### Reading the report
 
 `report.md` starts with a summary: what each check ran and found. Then each finding gets its kind, its seed and input number, how far it shrank, the command that replays it, and where it's saved as a case. The kinds are as far as the hunt can tell:
@@ -376,6 +386,10 @@ scripts/android-test.sh --abi x86_64       # an x86_64 emulator, as on GitHub
 ```
 
 Cross-compiles the test binaries for 64-bit ARM (or `--abi`'s) with cargo-ndk, pushes them to the device with the conformance data (about 21 MB, to `/data/local/tmp/openui-rs/`), and runs each there with `OPENUI_CONFORMANCE_DIR` pointing at the copy, live diffs off, and the depth tests on a 512 KB thread stack (`DEPTH_STACK_KB`). It needs the Android SDK and NDK, cargo-ndk and the `aarch64-linux-android` Rust target, and a device already running. Two test binaries stay on the host: `report` checks CONFORMANCE.md in the source tree, and `cli` runs the host's command-line binary. Each binary's log is left in `target/android-<test>.log`. It isn't part of the check, and hunts don't run it.
+
+## iOS
+
+There's no script for iOS yet. The suite was run by hand in an iPhone 16 simulator (iOS 18.6, 2026-11-11): the test binaries built with `cargo test --no-run --target aarch64-apple-ios-sim -p openui-lang`, each started with `xcrun simctl spawn <device> <binary>` and `SIMCTL_CHILD_OPENUI_CONFORMANCE_DIR`, `SIMCTL_CHILD_OPENUI_NO_LIVE_DIFFS=1` and `SIMCTL_CHILD_DEPTH_STACK_KB=512`. All 22 passed; `report` and `cli` stay on the host, as on Android.
 
 ## On GitHub
 

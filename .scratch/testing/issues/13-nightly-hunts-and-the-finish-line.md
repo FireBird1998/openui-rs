@@ -32,3 +32,6 @@ Checked 2026-11-09.
   - GitHub workflows run the hunts' parts by hand (TESTING.md, "On GitHub");
   - TESTING.md covers every kind of test and the hunt;
   - the hardening phase (GitHub #1) measured the fuzzing and mutation numbers this ticket asks for.
+
+**2026-11-11, the nightly job is written, for the worker Mac.** The maintainer chose the worker Mac for it (2026-11-11). `scripts/nightly-hunt.sh` installs and removes the launchd agent and is what it runs (TESTING.md, "Every night"). A 3-minute trial on the worker in a bare environment, as launchd gives, found nothing and left its report. It gets installed there once the script is pushed. Blocker 12 is done; 10 and 11 wait for the maintainer's batch recording.
+

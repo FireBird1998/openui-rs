@@ -9,12 +9,12 @@ One command does all of this while an emulator is running. Then do one run on a 
 
 **Blocked by:** 01 — The suite runs anywhere
 
-**Status:** waiting for the real-phone run (or a note that there's no phone)
+**Status:** done (2026-11-11)
 
 - [x] The maintainer approves installing cargo-ndk and the aarch64 Android Rust target before they're installed.
 - [x] One command runs the whole suite on a running emulator, and it passes.
 - [x] The stack tests pass at a 512 KB thread stack on the emulator.
-- [ ] The real-phone run has passed, or this ticket records that there's no phone to run it on.
+- [x] The real-phone run has passed, or this ticket records that there's no phone to run it on. (No phone run: the maintainer's decision, 2026-11-11, is that the emulator is enough.)
 - [x] TESTING.md has a section on Android.
 - [x] `scripts/check.sh` passes.
 
@@ -39,3 +39,4 @@ One command does all of this while an emulator is running. Then do one run on a 
   - `depth` passes at 128 KB and up. At 64 KB, one of its tests overflows dropping its own 900-level `serde_json` value, which is test code and not the core.
 - **Cost:** see ADR 0002.
 
+**2026-11-11, no real-phone run.** The maintainer decided the 64-bit ARM emulator is enough: both Macs have Android Studio, and the emulator runs the same arm64 binaries a phone would. The suite also passes inside an iPhone 16 simulator (iOS 18.6) at a 512 KB stack, 22 test binaries, noted on #25.

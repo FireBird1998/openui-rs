@@ -16,14 +16,14 @@ Their findings are sorted. The candidate quirks are drafted for the maintainer's
 
 **Blocked by:** 02, 03, 04, 05, 06, 07
 
-**Status:** waiting for the long runs on the worker Mac (started 2026-11-06)
+**Status:** done (2026-11-11)
 
 - [x] Every list in `conformance/pending/` is empty, and CONFORMANCE.md names 1.1.
 - [x] QUIRKS.md marks the quirks 1.1 fixed, and the rest are re-checked.
 - [x] The fuzzer generates comments, `openui-js` blocks, expression defaults and queries reading queries.
 - [x] The viewer's react-ui prompt comes from 1.1.
 - [x] A hunt reports the pin current.
-- [ ] The long runs have run on the worker Mac against 1.1, their findings sorted into cases, exclusions or drafts for the maintainer.
+- [x] The long runs have run on the worker Mac against 1.1, their findings sorted into cases, exclusions or drafts for the maintainer.
 - [x] `scripts/check.sh` and `scripts/check-viewer.sh` pass.
 
 ## Comments
@@ -105,3 +105,13 @@ The result lists are in `~/openui-runs/long-1.1-run2/mutants-{parsing,rest}/` on
 2. **Merging twice reads a patch's ternary differently (7 programs).** The patch has a multi-line ternary with an unfinished branch (`$dark = false` / `  ? darkPage`). 1.1's merge keeps multi-line statements together (the fix for quirk 6). The first merge's text reads back with other references unresolved than the second's. This likely follows from that fix.
 3. **Stream end counts a redefinition (2 programs):** `[`, `a=("")`, `a=`. This is quirk 4's shape, which the stream-end rule's exception misses. It was in 1.0.1's run too. The exception should recognize it.
 4. **The reference throws on an object with its own `toString` in a state default.** `$a = {toString: 1}` then `$b = $a + ""`, or `@Sort([$a, 0], "")`. JavaScript can't turn the object into text, so 1.1's `parse` throws a `TypeError`. A crash in `parse` on model output is worth reporting upstream. It's a divergence in CONFORMANCE.md.
+
+**2026-11-11, the findings are sorted; nothing is left.** Checked by Codex on the worker Mac against `0e3f160`, and the counts re-read from the saved lists.
+- **Mutation misses:** the 334 from 2026-11-06 were worked off by the hardening batch (#11 to #16). Its full run at `185735a` (`~/openui-runs/hardened/`) missed 5:
+  - 3 in `evaluate.rs` are in two helpers deleted since (`b0dad81`);
+  - 2 in `js.rs` (`json_string_len`'s `<`, `JsObject::get_mut`) got tests in `b0dad81`. Each was applied by hand again: its test fails with it and passes without.
+
+  The targeted rerun (`hardened-2`) missed none. No new exclusions.
+- **The two slow fuzz inputs:** replayed in release on the current code, the `parse` one takes 1.4 ms and the `stream` one 1.1 ms, at under 4 MB. The limits added since bound them.
+- **The four candidate quirks** were decided on 2026-11-07: quirks 21 and 22, the stream-end exception, and the `toString` divergence. Two upstream report drafts are #20 and #21.
+
