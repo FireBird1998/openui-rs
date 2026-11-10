@@ -1,0 +1,9 @@
+node_modules/
+.next/
+next-env.d.ts
+*.tsbuildinfo
+# Build output copied in by scripts/copy-wasm.mjs and scripts/copy-programs.mjs.
+wasm/
+lib/*.generated.json
+# Live's settings (see .env.local.example).
+.env*.local

@@ -105,6 +105,15 @@ Run the same batch command again to resume. Matching completed batch recordings 
 
 `scripts/viewer-timing.sh` runs a fixed set of them, streaming steadily and under stress, and reports where each update's time goes. Sending the whole result as JSON after every chunk costs well under a millisecond even for the largest program; drawing is what costs, about 25–45 ms per update while streaming (see `.scratch/viewer/issues/05-where-the-redraw-time-goes.md`).
 
+## In the browser
+
+`examples/next-compare/` is a Next.js page that streams one program into two copies of upstream's React renderer and react-ui library: one parses with upstream's lang-core, the other with this core compiled to WebAssembly (`crates/openui-wasm`). Only the parser differs. Under each pane it shows parser time, React commit time and long tasks. `npm run compare` there checks without a browser that both give the same result at every update. See [its README](examples/next-compare/README.md).
+
+```sh
+scripts/wasm.sh
+cd examples/next-compare && npm ci && npm run compare && npm run build && npm start
+```
+
 ## Layout
 
 | Path | What's there |
@@ -114,6 +123,8 @@ Run the same batch command again to resume. Matching completed batch recordings 
 | `viewer/` | the viewer, a Swift package; `scripts/viewer.sh` generates its `Frameworks/` and `Sources/OpenUIFFI/` |
 | `conformance/` | the corpus (`manifest.json` and friends list every case), the goldens, quirks, and the hand-written and generated edit and prompt cases |
 | `reference/` | the vendored reference (`lang-core/`, untouched) and the Bun scripts that run it: goldens, fuzz server, benchmarks, corpus import |
+| `crates/openui-wasm/` | the WebAssembly binding (`scripts/wasm.sh` builds it into `target/wasm-pkg/`) |
+| `examples/next-compare/` | the side-by-side page above |
 | `scripts/` | the commands above |
 | `fuzz/` | cargo-fuzz targets |
 | `.scratch/` | the earlier specs, their tickets with notes on every decision, and the Dynamic News map; new work is tracked in [GitHub Issues](https://github.com/FireBird1998/openui-rs/issues). The glossary is [GLOSSARY.md](GLOSSARY.md) |
