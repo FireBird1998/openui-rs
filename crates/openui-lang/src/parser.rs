@@ -445,6 +445,8 @@ pub(crate) fn build_result(
         depth: 0,
         size: 0,
         limits,
+        cuts: 0,
+        cut_inside: false,
         frame: Frame::default(),
     };
     let mut root = None;

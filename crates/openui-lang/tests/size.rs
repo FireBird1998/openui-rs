@@ -612,3 +612,67 @@ fn every_part_of_a_result_stays_near_its_limit() {
         assert!(flagged, "{shape}: not flagged");
     }
 }
+
+/// Every size limit that cuts `program`, and every depth limit that does:
+/// no result says a required value is null or missing, and a stream given
+/// the text in pieces says what a one-shot parse does.
+fn no_limit_blames_the_program(program: &str, lib: &Arc<Library>) {
+    let whole = parse(program, lib, None);
+    assert!(whole.meta.errors.is_empty(), "{:?}", whole.meta.errors);
+    let sizes = (0..whole.to_json().len() + 200).map(|n| Limits::default().with_result_size(n));
+    let depths = (0..12).map(|n| Limits::default().with_depth(n));
+    let mut cut = 0;
+    for limits in sizes.chain(depths) {
+        let result = parse_with_limits(program, lib, None, limits);
+        if !result.size_limited && !result.depth_limited {
+            continue;
+        }
+        cut += 1;
+        let json = result.to_json();
+        assert!(!json.contains("cannot be null"), "{program}: {json}");
+        assert!(!json.contains("missing required"), "{program}: {json}");
+        let mut stream = StreamParser::with_limits(lib.clone(), None, limits);
+        let chars: Vec<char> = program.chars().collect();
+        let mut last = None;
+        for piece in chars.chunks(7) {
+            last = Some(stream.push(&piece.iter().collect::<String>()));
+        }
+        assert_eq!(last.unwrap().to_json(), json, "{program}: streamed");
+    }
+    assert!(cut > 100, "{program}: {cut} limits cut it");
+}
+
+#[test]
+fn a_required_value_a_limit_cut_is_not_reported_as_null() {
+    let lib = Arc::new(Library::from_json_schema(&serde_json::json!({
+        "$defs": {
+            "Btn": {"properties": {"n": {"type": "number"}, "label": {"type": "string"}},
+                    "required": ["n", "label"]},
+            "Card": {"properties": {"head": {"type": "object",
+                        "properties": {"title": {"type": "string"}}, "required": ["title"]}},
+                     "required": ["head"]},
+            "Stack": {"properties": {"children": {}}}
+        },
+        "functions": {"Label": {"params": {"properties": {"text": {"type": "string"}},
+                                           "required": ["text"]}}}
+    })));
+    let long = "x".repeat(300);
+    // The model wrote each of them; it's a limit that cut it.
+    for program in [
+        format!("root = Stack([Btn(5, \"{long}\")])"),
+        format!("root = Stack([Card({{title: \"{long}\"}})])"),
+        format!("root = Stack([Btn(5, @Label(\"{long}\"))])"),
+        format!("t = \"{long}\"\nroot = Stack([Btn(5, t), Card({{title: t}})])"),
+    ] {
+        no_limit_blames_the_program(&program, &lib);
+    }
+    // One the model did write as null is still reported, cut or not.
+    for program in [
+        "root = Stack([Btn(5, null)])",
+        "root = Stack([Card({title: null})])",
+    ] {
+        let null = parse(program, &lib, None);
+        assert_eq!(null.meta.errors.len(), 1, "{program}");
+        assert!(null.meta.errors[0].message.contains("cannot be null"));
+    }
+}

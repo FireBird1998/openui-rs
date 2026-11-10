@@ -20,7 +20,9 @@ fn stack() -> usize {
 
 fn library() -> Arc<Library> {
     let schema = serde_json::json!({"$defs": {
-        "Text": {"properties": {"value": {}}, "required": ["value"]},
+        // Not required: a value the depth limit cuts leaves the element, so
+        // the tree is as deep as the limit allows.
+        "Text": {"properties": {"value": {}}},
         "Stack": {"properties": {"children": {"type": "array"}}}
     }});
     Arc::new(Library::from_json_schema(&schema))

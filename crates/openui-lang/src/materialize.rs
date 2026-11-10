@@ -35,6 +35,16 @@ pub(crate) struct Ctx<'a> {
     pub size: usize,
     /// The parse's limits.
     pub limits: Limits,
+    /// How many times something was cut so far, at the result-size limit or
+    /// the depth limit: what tells a value the limits made null from one the
+    /// program wrote as null.
+    pub cuts: usize,
+    /// A limit cut something inside the value being checked: a required
+    /// field found null or missing in it isn't reported as the program's.
+    /// Anywhere in it, since a value doesn't say which of its nulls a limit
+    /// made: one the program did write there goes unreported too, in a
+    /// result that says it was cut.
+    pub cut_inside: bool,
     /// What the materialization in progress has done on the side.
     pub frame: Frame,
 }
@@ -273,6 +283,7 @@ impl Ctx<'_> {
     fn fits(&mut self, more: usize) -> bool {
         if !self.would_fit(more) {
             self.frame.size_limited = true;
+            self.cuts += 1;
             return false;
         }
         true
@@ -305,6 +316,7 @@ impl Ctx<'_> {
     pub(crate) fn full(&mut self) -> bool {
         let full = self.size > self.limits.result_size();
         self.frame.size_limited |= full;
+        self.cuts += usize::from(full);
         full
     }
 
@@ -334,6 +346,7 @@ impl Ctx<'_> {
         self.frame.max_depth = self.frame.max_depth.max(self.depth);
         if self.depth >= self.limits.depth() {
             self.frame.limited = true;
+            self.cuts += 1;
             self.cut(placeholder);
             return None;
         }
@@ -762,15 +775,32 @@ fn materialize_comp(
     let mut props = JsObject::new();
     // Set when a required prop is invalid with no default to fall back on.
     let mut drop_component = false;
-    for (param, arg) in def.params.iter().zip(args) {
+    // The props a limit cut: null or absent, but not as the program wrote.
+    let mut cut = Vec::new();
+    for (i, (param, arg)) in def.params.iter().zip(args).enumerate() {
         // Each prop's key, before its value.
         if ctx.full() || !ctx.grow(param.name.len() + 4) {
+            cut.extend(def.params.iter().take(args.len()).skip(i));
             break;
         }
+        let cuts = ctx.cuts;
         let value = materialize_value(arg, ctx);
+        let cut_inside = ctx.cuts > cuts;
+        if cut_inside && matches!(value, Value::Null) {
+            cut.push(param);
+        }
+        let outer = std::mem::replace(&mut ctx.cut_inside, cut_inside);
         drop_component |= add_prop(&mut props, param, value, name, ctx);
+        ctx.cut_inside = outer;
     }
-    finish_component(name, &def.params, args.len(), props, drop_component, ctx)
+    finish_component(
+        name,
+        &def.params,
+        args.len(),
+        props,
+        (drop_component, &cut),
+        ctx,
+    )
 }
 
 /// A builtin, one of the library's functions or actions, or a reserved
@@ -792,10 +822,13 @@ fn runtime_call(
     if let Some(lazy) = materialize_lazy_builtin(name, args, function, mapped_props, ctx, scope) {
         return lazy;
     }
-    let start = ctx.size;
+    let (start, cuts) = (ctx.size, ctx.cuts);
     let args = expr_list(args, ctx, scope);
     let args_size = ctx.size - start;
-    mapped_call(name, args, args_size, function, mapped_props, ctx)
+    let outer = std::mem::replace(&mut ctx.cut_inside, ctx.cuts > cuts);
+    let call = mapped_call(name, args, args_size, function, mapped_props, ctx);
+    ctx.cut_inside = outer;
+    call
 }
 
 /// `materializeCall`: a builtin's args by param name; a library function's
@@ -905,13 +938,16 @@ fn map_call_args(name: &str, args: &[Ast], def: &Call, ctx: &mut Ctx) -> Option<
                 if !param.required || param.default.is_some() {
                     continue;
                 }
-                let signature = Some(params_signature(name, params));
-                let issue = if arg.is_some() {
-                    Issue::NullRequired { signature }
-                } else {
-                    Issue::MissingRequired { signature }
-                };
-                ctx.push_issue(name, &path, issue);
+                // Not the program's mistake where a limit cut the args.
+                if !ctx.cut_inside {
+                    let signature = Some(params_signature(name, params));
+                    let issue = if arg.is_some() {
+                        Issue::NullRequired { signature }
+                    } else {
+                        Issue::MissingRequired { signature }
+                    };
+                    ctx.push_issue(name, &path, issue);
+                }
                 invalid = true;
                 continue;
             }
@@ -1058,7 +1094,7 @@ fn finish_component(
     params: &[Param],
     arg_count: usize,
     mut props: JsObject<Value>,
-    drop_component: bool,
+    (drop_component, cut): (bool, &[&Param]),
     ctx: &mut Ctx,
 ) -> Value {
     if arg_count > params.len() {
@@ -1090,6 +1126,11 @@ fn finish_component(
     if !still_missing.is_empty() {
         let signature = params_signature(name, params);
         for p in still_missing {
+            // One a limit cut isn't the program's mistake: the component is
+            // dropped all the same, and the result says it was cut.
+            if cut.iter().any(|c| c.name == p.name) {
+                continue;
+            }
             let signature = Some(signature.clone());
             let issue = if props.has(&p.name) {
                 Issue::NullRequired { signature }
