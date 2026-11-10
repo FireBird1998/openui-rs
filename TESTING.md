@@ -209,7 +209,7 @@ scripts/nightly-hunt.sh --uninstall
 scripts/nightly-hunt.sh --minutes 30   # one now, as the job runs it
 ```
 
-`scripts/nightly-hunt.sh` is a hunt nobody has to remember: a launchd agent of the logged-in user (`dev.openui-rs.nightly-hunt`) on a Mac that can spare the time. It runs only on AC power, one at a time, and brings a clean checkout up to date first. Like every hunt it never commits. The latest run's folder and exit status are in `findings/nightly-latest.txt`, and what it printed in `findings/nightly.log`. Installing it is a standing configuration on that Mac, so it's the maintainer's decision.
+`scripts/nightly-hunt.sh` is a hunt nobody has to remember: a line in the user's crontab on a Mac that can spare the time, so it runs whether or not anyone is logged in at the screen. It runs only on AC power, one at a time, and brings a clean checkout up to date first. Like every hunt it never commits. The latest run's folder and exit status are in `findings/nightly-latest.txt`, and what it printed in `findings/nightly.log`. Installing it is a standing configuration on that Mac, so it's the maintainer's decision.
 
 ### Reading the report
 
