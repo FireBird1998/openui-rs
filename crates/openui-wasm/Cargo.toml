@@ -1,0 +1,16 @@
+[package]
+name = "openui-wasm"
+version = "0.1.0"
+description = "WebAssembly binding for openui-lang: the core in a browser or in Node, behind lang-core's streaming interface"
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish = false
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[dependencies]
+openui-lang = { path = "../openui-lang" }
+serde_json = { version = "1", features = ["preserve_order", "float_roundtrip"] }
+wasm-bindgen = "0.2"
