@@ -70,7 +70,8 @@ fn survives(program: String, max_mib: usize) -> (bool, bool) {
             merge_statements(&program, &program, None);
             merge_statements("", &program, None);
             let flags = (one.depth_limited, last.depth_limited);
-            drop((one, last, stream, json, chars));
+            openui_lang::free_json(json);
+            drop((one, last, stream, chars));
             let peak = test_alloc::peak();
             assert!(
                 peak < max_mib * 1024 * 1024,

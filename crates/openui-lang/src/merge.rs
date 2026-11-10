@@ -29,6 +29,7 @@ struct Parsed<'a> {
 fn parse_statements<'a>(input: &'a str, depth: usize, depth_limited: &mut bool) -> Vec<Parsed<'a>> {
     split(&tokenize(input))
         .into_iter()
+        .take_while(|_| !crate::progress::stalled_so_far())
         .map(|statement| {
             let (ast, limited) = parse_expression_with_limit(&statement.tokens, depth);
             *depth_limited |= limited;
@@ -56,6 +57,9 @@ fn gc_unreachable(
     let mut reachable: HashSet<&str> = HashSet::from([root_id]);
     let mut queue = vec![root_id];
     while let Some(id) = queue.pop() {
+        if crate::progress::stalled_so_far() {
+            break;
+        }
         let Some(ast) = asts.get(id) else { continue };
         let mut refs: Vec<String> = Vec::new();
         ast.walk(&mut |node| match node {
@@ -63,6 +67,9 @@ fn gc_unreachable(
             _ => {}
         });
         for name in refs {
+            if crate::progress::stalled_so_far() {
+                break;
+            }
             if let Some((key, _)) = asts.get_key_value(name.as_str())
                 && reachable.insert(key)
             {
@@ -124,9 +131,7 @@ pub fn merge_statements_with_limits(
     root_id: Option<&str>,
     limits: Limits,
 ) -> Merged {
-    crate::stack::grow_stack!(merge_statements_with_limits(
-        existing, patch, root_id, limits
-    ));
+    let _ceiling = crate::stack::limit(limits.depth());
     let (existing, existing_cut) = Limits::fit(existing, limits.program_size());
     let (patch, patch_cut) = Limits::fit(patch, limits.program_size());
     let mut depth_limited = false;
@@ -147,9 +152,16 @@ fn merge(
     depth: usize,
     depth_limited: &mut bool,
 ) -> String {
+    crate::stack::grow_stack!(merge(existing, patch, root_id, depth, depth_limited), else String::new());
     let existing_statements = parse_statements(existing, depth, depth_limited);
+    if crate::progress::stalled_so_far() {
+        return String::new();
+    }
     let fenced = strip_fences(patch);
     let patch_statements = parse_statements(&fenced, depth, depth_limited);
+    if crate::progress::stalled_so_far() {
+        return String::new();
+    }
 
     if existing_statements.is_empty() {
         return patch_statements
@@ -168,6 +180,9 @@ fn merge(
     let mut asts: HashMap<String, Ast> = HashMap::new();
     let mut order: Vec<String> = Vec::new();
     for s in existing_statements {
+        if crate::progress::stalled_so_far() {
+            break;
+        }
         if !merged.contains_key(&s.id) {
             order.push(s.id.clone());
         }
@@ -175,6 +190,9 @@ fn merge(
         asts.insert(s.id, s.ast);
     }
     for s in patch_statements {
+        if crate::progress::stalled_so_far() {
+            break;
+        }
         if s.ast == Ast::Null {
             merged.remove(&s.id);
             asts.remove(&s.id);

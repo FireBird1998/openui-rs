@@ -10,6 +10,167 @@ use std::sync::Arc;
 
 use openui_lang::{Library, StreamParser, generate_system_prompt, parse, tokenize, tokens_to_json};
 
+/// All CLI children are drained concurrently so a full pipe cannot prevent
+/// the watchdog from polling them.
+trait BoundedOutput {
+    fn bounded_output(&mut self) -> std::io::Result<std::process::Output>;
+}
+impl BoundedOutput for Command {
+    fn bounded_output(&mut self) -> std::io::Result<std::process::Output> {
+        self.stdout(std::process::Stdio::piped())
+            .stderr(std::process::Stdio::piped());
+        bounded_wait(self.spawn()?)
+    }
+}
+
+fn footprint(pid: u32, deadline: std::time::Instant) -> Option<u64> {
+    physical_footprint(pid).or_else(|| rss(pid, deadline))
+}
+
+fn physical_footprint(pid: u32) -> Option<u64> {
+    #[cfg(target_os = "macos")]
+    {
+        let mut usage = std::mem::MaybeUninit::<libc::rusage_info_v4>::zeroed();
+        // SAFETY: the buffer has exactly the layout and size for V4; the
+        // syscall initializes it on success. Like the clock_gettime calls
+        // in the timing tests, this unsafe boundary exists only in tests.
+        let status = unsafe {
+            libc::proc_pid_rusage(
+                pid as libc::pid_t,
+                libc::RUSAGE_INFO_V4,
+                usage.as_mut_ptr().cast(),
+            )
+        };
+        if status != 0 {
+            return None;
+        }
+        // SAFETY: proc_pid_rusage succeeded with a V4 buffer.
+        let usage = unsafe { usage.assume_init() };
+        // The same physical footprint as `footprint`, including compressed
+        // memory. The lifetime peak also catches spikes between polls.
+        Some(
+            usage
+                .ri_lifetime_max_phys_footprint
+                .max(usage.ri_phys_footprint),
+        )
+    }
+    #[cfg(target_os = "linux")]
+    {
+        let status = std::fs::read_to_string(format!("/proc/{pid}/status")).ok()?;
+        Some(
+            status
+                .lines()
+                .filter(|line| line.starts_with("VmRSS:") || line.starts_with("VmSwap:"))
+                .filter_map(|line| line.split_whitespace().nth(1)?.parse::<u64>().ok())
+                .sum::<u64>()
+                * 1024,
+        )
+    }
+    #[cfg(not(any(target_os = "linux", target_os = "macos")))]
+    {
+        None
+    }
+}
+
+fn rss(pid: u32, deadline: std::time::Instant) -> Option<u64> {
+    let mut child = Command::new("ps")
+        .args(["-o", "rss=", "-p", &pid.to_string()])
+        .stdout(std::process::Stdio::piped())
+        .stderr(std::process::Stdio::null())
+        .spawn()
+        .ok()?;
+    loop {
+        match child.try_wait() {
+            Ok(Some(_)) => break,
+            Ok(None) => {}
+            Err(_) => {
+                let _ = child.kill();
+                let _ = child.wait();
+                return None;
+            }
+        }
+        if std::time::Instant::now() >= deadline {
+            let _ = child.kill();
+            let _ = child.wait();
+            return None;
+        }
+        std::thread::sleep(std::time::Duration::from_millis(1));
+    }
+    let output = child.wait_with_output().ok()?;
+    String::from_utf8_lossy(&output.stdout)
+        .trim()
+        .parse::<u64>()
+        .ok()
+        .map(|kb| kb * 1024)
+}
+
+fn bounded_wait(child: std::process::Child) -> std::io::Result<std::process::Output> {
+    bounded_wait_with(child, 512 * 1024 * 1024, std::time::Duration::from_secs(60))
+}
+
+fn bounded_wait_with(
+    mut child: std::process::Child,
+    memory: u64,
+    timeout: std::time::Duration,
+) -> std::io::Result<std::process::Output> {
+    use std::io::Read;
+    let drain = |pipe: Option<Box<dyn Read + Send>>| {
+        std::thread::spawn(move || {
+            let mut bytes = Vec::new();
+            if let Some(mut pipe) = pipe {
+                pipe.read_to_end(&mut bytes).unwrap();
+            }
+            bytes
+        })
+    };
+    let stdout = drain(
+        child
+            .stdout
+            .take()
+            .map(|p| Box::new(p) as Box<dyn Read + Send>),
+    );
+    let stderr = drain(
+        child
+            .stderr
+            .take()
+            .map(|p| Box::new(p) as Box<dyn Read + Send>),
+    );
+    let start = std::time::Instant::now();
+    let mut peak = 0;
+    let status = loop {
+        if let Some(status) = child.try_wait()? {
+            break status;
+        }
+        match footprint(child.id(), start + timeout) {
+            Some(bytes) => peak = peak.max(bytes),
+            None => {
+                if child.try_wait()?.is_none() {
+                    child.kill()?;
+                    child.wait()?;
+                    panic!("cannot measure CLI child physical footprint or ps RSS");
+                }
+            }
+        }
+        if peak > memory || start.elapsed() >= timeout {
+            child.kill()?;
+            child.wait()?;
+            stdout.join().unwrap();
+            stderr.join().unwrap();
+            panic!(
+                "CLI child {} killed: footprint peak {peak} bytes; elapsed {:?}; limits {memory} bytes / {timeout:?}",
+                child.id(),
+                start.elapsed()
+            );
+        }
+        std::thread::sleep(std::time::Duration::from_millis(10));
+    };
+    Ok(std::process::Output {
+        status,
+        stdout: stdout.join().unwrap(),
+        stderr: stderr.join().unwrap(),
+    })
+}
+
 fn conformance() -> PathBuf {
     common::conformance_dir()
 }
@@ -44,7 +205,7 @@ fn parse_prints_the_parse_result() {
         .arg("parse")
         .arg(dir.join("schemas/text.json"))
         .arg(dir.join("cases/hello-text.oui"))
-        .output()
+        .bounded_output()
         .unwrap();
     assert!(
         out.status.success(),
@@ -69,7 +230,7 @@ fn tokens_prints_the_tokens() {
     let out = Command::new(env!("CARGO_BIN_EXE_openui-lang"))
         .arg("tokens")
         .arg(dir.join("cases/hand/67-lexer-number-forms.oui"))
-        .output()
+        .bounded_output()
         .unwrap();
     assert!(
         out.status.success(),
@@ -94,7 +255,7 @@ fn stream_prints_the_result_after_every_push() {
         .arg(dir.join("schemas/hand.json"))
         .arg(dir.join(format!("cases/{case}.oui")))
         .arg("7")
-        .output()
+        .bounded_output()
         .unwrap();
     assert!(
         out.status.success(),
@@ -120,7 +281,7 @@ fn stream_pushes_four_characters_at_a_time_by_default() {
         .arg("stream")
         .arg(dir.join("schemas/hand.json"))
         .arg(dir.join(format!("cases/{case}.oui")))
-        .output()
+        .bounded_output()
         .unwrap();
     assert!(
         out.status.success(),
@@ -156,7 +317,7 @@ fn parse_reads_the_program_from_stdin_given_a_dash() {
         .unwrap()
         .write_all(program.as_bytes())
         .unwrap();
-    let out = child.wait_with_output().unwrap();
+    let out = bounded_wait(child).unwrap();
     assert!(out.status.success());
     let expected = parse(&program, &library(&dir.join("schemas/text.json")), None).to_json();
     assert_eq!(String::from_utf8(out.stdout).unwrap().trim_end(), expected);
@@ -166,7 +327,7 @@ fn parse_reads_the_program_from_stdin_given_a_dash() {
 fn unknown_command_prints_usage_and_fails() {
     let out = Command::new(env!("CARGO_BIN_EXE_openui-lang"))
         .arg("frobnicate")
-        .output()
+        .bounded_output()
         .unwrap();
     assert!(!out.status.success());
     assert!(String::from_utf8_lossy(&out.stderr).contains("usage: openui-lang parse"));
@@ -181,7 +342,7 @@ fn bench_prints_one_timing_line_per_program() {
         .arg(dir.join("imported/schemas/bench.json"))
         .arg(dir.join("imported/cases/bench/simple-table.oui"))
         .arg(dir.join("imported/cases/bench/contact-form.oui"))
-        .output()
+        .bounded_output()
         .unwrap();
     assert!(out.status.success());
     let stdout = String::from_utf8(out.stdout).unwrap();
@@ -204,7 +365,7 @@ fn prompt_prints_the_system_prompt() {
     let out = Command::new(env!("CARGO_BIN_EXE_openui-lang"))
         .arg("prompt")
         .arg(dir.join("prompts/library-tools-strings.json"))
-        .output()
+        .bounded_output()
         .unwrap();
     assert!(out.status.success());
     let spec =
@@ -230,7 +391,7 @@ fn limits_apply_to_parse_and_stream() {
             .arg(&schema)
             .arg(&program)
             .args(["--limit", "depth=3"])
-            .output()
+            .bounded_output()
             .unwrap();
         assert!(
             out.status.success(),
@@ -265,7 +426,7 @@ fn the_scaling_result_size_limit_can_be_set() {
         .args(["--limit", "result-ceiling=1000000"])
         .arg(&schema)
         .arg(&program)
-        .output()
+        .bounded_output()
         .unwrap();
     assert!(
         out.status.success(),
@@ -284,7 +445,7 @@ fn an_unknown_limit_names_the_valid_ones_and_fails() {
             .args(["parse", "--limit", bad])
             .arg(dir.join("schemas/text.json"))
             .arg(dir.join("cases/hello-text.oui"))
-            .output()
+            .bounded_output()
             .unwrap();
         assert!(!out.status.success(), "{bad}");
         let stderr = String::from_utf8(out.stderr).unwrap();
@@ -309,7 +470,7 @@ fn the_work_limit_applies_to_parse() {
         .args(["parse", "--limit", "work=5"])
         .arg(&schema)
         .arg(&program)
-        .output()
+        .bounded_output()
         .unwrap();
     assert!(
         out.status.success(),
@@ -330,7 +491,7 @@ fn limits_apply_to_tokens_and_prompt() {
     let out = Command::new(env!("CARGO_BIN_EXE_openui-lang"))
         .args(["tokens", "--limit", "program-size=40"])
         .arg(&program)
-        .output()
+        .bounded_output()
         .unwrap();
     assert!(out.status.success());
     let text = read(&program);
@@ -364,7 +525,7 @@ fn limits_apply_to_tokens_and_prompt() {
             .unwrap()
             .write_all(spec.as_bytes())
             .unwrap();
-        let out = child.wait_with_output().unwrap();
+        let out = bounded_wait(child).unwrap();
         assert_eq!(out.status.success(), succeeds, "{limit}");
         if !succeeds {
             let stderr = String::from_utf8(out.stderr).unwrap();
@@ -379,7 +540,7 @@ fn prompt_reports_the_error_and_fails() {
     let out = Command::new(env!("CARGO_BIN_EXE_openui-lang"))
         .arg("prompt")
         .arg(dir.join("prompts/cloud-options-without-library.json"))
-        .output()
+        .bounded_output()
         .unwrap();
     assert!(!out.status.success());
     let stderr = String::from_utf8(out.stderr).unwrap();
@@ -405,7 +566,7 @@ fn invalid_command_shapes_and_chunks_fail() {
     ] {
         let out = Command::new(env!("CARGO_BIN_EXE_openui-lang"))
             .args(args)
-            .output()
+            .bounded_output()
             .unwrap();
         assert!(!out.status.success());
         assert!(String::from_utf8(out.stderr).unwrap().contains("usage:"));
@@ -416,7 +577,7 @@ fn invalid_command_shapes_and_chunks_fail() {
             .arg(&schema)
             .arg(&program)
             .arg(chunk)
-            .output()
+            .bounded_output()
             .unwrap();
         assert!(!out.status.success());
         assert!(
@@ -430,7 +591,7 @@ fn invalid_command_shapes_and_chunks_fail() {
         .arg(&schema)
         .arg(&program)
         .arg("1")
-        .output()
+        .bounded_output()
         .unwrap();
     assert!(out.status.success());
     assert_eq!(
@@ -464,7 +625,7 @@ fn the_fixed_result_size_limit_can_be_set() {
             .args([command, "--limit", "result-size=10"])
             .arg(&schema)
             .arg(&program)
-            .output()
+            .bounded_output()
             .unwrap();
         assert!(
             out.status.success(),
@@ -479,6 +640,40 @@ fn the_fixed_result_size_limit_can_be_set() {
                 .unwrap(),
             expected.to_json(),
             "{command}"
+        );
+    }
+}
+
+// A child mode in the test binary, never in the published CLI. Normal runs
+// return immediately; the parent uses small bounds to exercise both kills.
+#[test]
+fn bounded_child_fixture() {
+    if std::env::var_os("OPENUI_CLI_BOUND_FIXTURE").is_some() {
+        let bytes = vec![42u8; 8 * 1024 * 1024];
+        std::hint::black_box(&bytes);
+        std::thread::sleep(std::time::Duration::from_secs(5));
+    }
+}
+
+#[test]
+fn child_memory_and_time_bounds_kill_and_reap() {
+    for (memory, timeout) in [
+        (1024 * 1024, std::time::Duration::from_secs(2)),
+        (u64::MAX, std::time::Duration::from_millis(50)),
+    ] {
+        let child = Command::new(std::env::current_exe().unwrap())
+            .args(["--exact", "bounded_child_fixture"])
+            .env("OPENUI_CLI_BOUND_FIXTURE", "1")
+            .stdout(std::process::Stdio::piped())
+            .stderr(std::process::Stdio::piped())
+            .spawn()
+            .unwrap();
+        let panic =
+            std::panic::catch_unwind(|| bounded_wait_with(child, memory, timeout)).unwrap_err();
+        let message = panic.downcast::<String>().unwrap();
+        assert!(
+            message.contains("CLI child") && message.contains("killed: footprint peak"),
+            "{message}"
         );
     }
 }

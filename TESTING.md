@@ -52,7 +52,14 @@ test with `::worker` appended, so their reports identify the test. An aligned
 prefix stores each allocation's owning account, and freeing or reallocating on
 another thread credits that original account. Owner records survive thread exit
 until process exit, so results returned from an exited worker remain safe to
-free. CLI subprocesses are outside the test allocator's address space.
+free. CLI subprocesses are outside the test allocator's address space. Every CLI
+child instead goes through one test-only helper which drains both output pipes,
+polls every 10 ms, and kills/reaps the child past **512 MiB physical footprint
+or 60 s**. On macOS `proc_pid_rusage` reads the same footprint (compressed
+memory included) as the watchdog's `footprint` tool, and its lifetime peak
+catches spikes between polls. Linux counts `/proc/<pid>/status` VmRSS + VmSwap;
+other platforms fall back to `ps` RSS. Failure to measure a running child fails
+the test instead of silently leaving memory unbounded.
 
 The measurement is peak live heap bytes requested from `System`, including the
 aligned accounting prefix, padding and owner record, not RSS, stack segments allocated outside
@@ -86,6 +93,13 @@ To print successful peaks (bytes), including independent worker measurements (pr
 export CARGO_NET_OFFLINE=true
 OPENUI_ALLOCATION_PEAKS=1 cargo test -q -j 4 -p openui-lang --test depth -- --nocapture
 ```
+
+Grown stack segments are outside the allocator too. Input-building walks have
+a depth-scaled segment ceiling (ADR 0002). Unit tests inject a zero ceiling at
+each capped site to exercise its typed cut and named debug panic, and a real
+low-stack observation on a deep program checks the same recovery without
+forcing that observation. They also check saturation, unwind restoration and
+a stream staying cut until `set`. Finished-tree walks remain uncapped.
 
 ## What each test catches
 
@@ -332,6 +346,21 @@ scripts/mutants.sh rest --jobs 3      # testing ticket 05: about 650, the bindin
 [cargo-mutants](https://mutants.rs) plants one bug at a time in the source (a `>` turned into `>=`, a function that returns a default, a deleted `!`) and runs the offline suite against each, with live diffs off. A mutant the suite doesn't catch is code a real bug could break unnoticed. Each one is either caught by a new case, or listed in `.cargo/mutants.toml` with the reason it changes nothing a caller can observe, so reruns skip it. A mutant costs a rebuild plus the suite, so a whole group takes hours: run it on AC power, or on GitHub (see [On GitHub](#on-github)). Results go to `target/mutants/<group>/mutants.out/` (`missed.txt`, `caught.txt`, `timeout.txt`).
 
 A mutant that stops the parser advancing makes a test, or the CLI a test starts, allocate without bound, faster than cargo-mutants' timeout ends it, and macOS has no per-process memory limit: such processes once took a Mac down with a kernel panic, and later froze it. So the script runs `scripts/mutants-watchdog.sh` beside cargo-mutants. It kills any process run from a mutant's build, test or CLI, whose memory passes `MUTANTS_MEMORY_LIMIT_MB` (default 2048; the suite peaks near 600 MB), and on macOS, when free memory falls under 20%, the largest one over 1 GB. On macOS memory is the physical footprint, compressed memory included, since under pressure the compressor keeps a runaway's RSS small. The test fails, the mutant counts as caught, and each kill is logged (`mutants-watchdog: killed a process holding …`).
+
+The watchdog's kill line includes a UTC timestamp, the mutant build directory,
+and the latest mutant description associated with that worker in cargo-mutants'
+`mutants.out/debug.log` (or `description unavailable`). Output records are read
+only. To exercise attribution and actual kills without cargo-mutants:
+
+```bash
+python3 scripts/test-mutants-watchdog.py
+```
+
+This uses a fake output/build layout, a 64 MiB owned hog, and a `ps` shim
+restricted to that PID. On macOS a fixture `footprint` shim queries libproc,
+so the test also works when a sandbox denies system-wide process discovery.
+It checks parallel-worker attribution, a missing description, timestamps,
+and that output records stay unchanged. It never targets another session.
 
 ## Coverage-guided fuzzing
 

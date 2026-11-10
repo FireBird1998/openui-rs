@@ -278,7 +278,7 @@ pub fn parse_with_limits(
     root_name: Option<&str>,
     limits: Limits,
 ) -> ParseResult {
-    crate::stack::grow_stack!(parse_with_limits(input, library, root_name, limits));
+    let _ceiling = crate::stack::limit(limits.depth());
     // Past the program-size limit, the rest is ignored as if the stream had
     // stopped there.
     let (input, cut) = Limits::fit(input, limits.program_size());
@@ -295,6 +295,7 @@ fn parse_text(
     root_name: Option<&str>,
     limits: Limits,
 ) -> ParseResult {
+    crate::stack::grow_stack!(parse_text(input, library, root_name, limits), else ParseResult::empty(true));
     let trimmed = preprocess(input);
     if trimmed.is_empty() {
         return ParseResult::empty(true);
@@ -443,6 +444,7 @@ pub(crate) fn build_result(
         visited: Vec::new(),
         current_statement_id: entry_id.clone(),
         depth: 0,
+        stack_cut: false,
         size: 0,
         limits,
         cuts: 0,
@@ -589,6 +591,9 @@ fn extract_statements(
     // A statement didn't fit: nothing more is written.
     let mut full = false;
     for &slot in table.specials() {
+        if progress::stalled_so_far() {
+            break;
+        }
         let id = table.name(slot);
         let stmt = table.get(slot).expect("defined statement");
         // What the statement writes around its values counts too. One that
@@ -674,6 +679,9 @@ fn extract_statements(
     // Nor is a `$name` declared null once one doesn't fit, or a statement
     // didn't: a dropped declaration isn't written as null instead.
     'declare: for &slot in table.specials() {
+        if progress::stalled_so_far() {
+            break;
+        }
         if full {
             break;
         }

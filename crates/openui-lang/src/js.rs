@@ -513,6 +513,7 @@ pub fn parse_json_with_limits(
     text: &str,
     limits: crate::Limits,
 ) -> Result<serde_json::Value, JsonError> {
+    let _ceiling = crate::stack::limit(limits.depth());
     read_json(text, limits.json_depth())
 }
 

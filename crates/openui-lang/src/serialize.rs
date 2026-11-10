@@ -78,6 +78,7 @@ pub fn json_to_openui_with_limits(
     state_declarations: Option<&Json>,
     limits: Limits,
 ) -> Result<String, SerializeError> {
+    let _ceiling = crate::stack::limit(limits.depth());
     crate::stack::grow_stack!(json_to_openui_with_limits(
         element,
         library,
@@ -107,7 +108,24 @@ pub fn json_to_openui_with_limits(
         }
     }
     if let Some(declarations) = state_declarations.filter(|d| truthy(Some(d))) {
-        for (name, value) in object_entries(declarations) {
+        // Borrow nested defaults: cloning/dropping serde_json trees recurses
+        // outside our guarded walks, including on a 512 KiB caller stack.
+        let entries: Vec<_> = match declarations {
+            Json::Object(map) => crate::js::json_entries(map)
+                .into_iter()
+                .map(|(k, v)| (k.clone(), std::borrow::Cow::Borrowed(v)))
+                .collect(),
+            Json::Array(items) => items
+                .iter()
+                .enumerate()
+                .map(|(i, v)| (i.to_string(), std::borrow::Cow::Borrowed(v)))
+                .collect(),
+            _ => object_entries(declarations)
+                .into_iter()
+                .map(|(k, v)| (k, std::borrow::Cow::Owned(v)))
+                .collect(),
+        };
+        for (name, value) in entries {
             if value.is_null() {
                 continue; // auto-declared nulls are left out
             }

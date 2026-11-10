@@ -14,6 +14,33 @@ Growing the stack covers the core's own work, but a result is dropped by whoever
 
 `stacker` brings `psm`, whose build script (from 0.1.28) uses `ar_archive_writer`, licensed Apache-2.0 WITH LLVM-exception. It runs only while `psm` compiles and none of it is in the core, the binding or an app, so the crate stays MIT and free for any use. The maintainer approved that licence for it on 2026-11-07, so `psm` isn't pinned to an older version.
 
+## A ceiling for input-building walks (#24)
+
+Grown segments are mapped directly, outside the test allocator. A core bug
+that recurses forever could therefore grow gigabytes despite the allocation
+cap. Each input-building entry scopes a thread-local ceiling, restored even
+on unwind: **8 segments plus 64 KiB per depth level**, rounded up to 2 MiB
+segments, with saturating arithmetic. All currently nested segments count.
+Raising `Limits::depth` raises the ceiling; there is no new public limit.
+
+Capped recursive walks name themselves in a panic in debug/test builds. In
+release builds they report through the existing stall channel and return
+a minimal cut value (null, no value, a short-circuit predicate, or nothing
+written). Further
+capped calls and sibling loops stop. The result is flagged `size_limited`, a
+stream returns the empty cut result and stays so until `set`, and merging
+stops. Statements not reached may be listed as orphaned. A ceiling stall
+alone never sets `depth_limited`. This is a core bug, never
+bad input. Finished-tree walks (serialization, equality, schema/prompt
+rendering and freeing) remain uncapped, even inside a scoped entry.
+
+Measured at opt-level 0 on 512 KiB threads, `tests/depth.rs` needed at most
+2 nested segments; `tests/drop.rs`'s raised-depth case needed 30. The
+respective ceilings are 16 (depth 256) and 633 (depth 20,000): **8× and
+21.1× headroom**, both above the required 4×. Measurement also exposed
+recursive JSON cloning in serializing state defaults on a 512 KiB caller;
+that path now borrows defaults, and the depth test frees JSON iteratively.
+
 ## Considered options
 
 - **Document a minimum thread stack and test it.** It's cheap, but it leaves the risk with every app, and the headroom on Apple platforms is under 2×.

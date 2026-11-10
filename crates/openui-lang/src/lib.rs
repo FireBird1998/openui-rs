@@ -215,9 +215,16 @@
 //!   loop that stopped moving forward would be a bug in the core, never the
 //!   input's fault. In debug builds it panics; in release builds the parse
 //!   ends there with a cut result ([`ParseResult::size_limited`]), and a
-//!   [`StreamParser`] it cut gives that result again, ignoring pushes, until
+//!   [`StreamParser`] returns the empty cut result, ignoring pushes, until
 //!   [`StreamParser::set`]. [`parse_json`] refuses its input instead, and
 //!   [`merge_statements`] stops where the stall was.
+//! - Grown stack has an internal ceiling: eight 2 MiB segments plus 64 KiB
+//!   per depth level, rounded up to segments. Reaching it means a bug in a
+//!   recursive input walk, and has the same panic/cut behavior as a stall.
+//!   Raising depth raises this ceiling; walks over finished results are
+//!   uncapped. The cut is flagged `size_limited`; statements not reached may
+//!   be listed as orphaned. A stream returns the empty cut result and keeps
+//!   returning it until `set`.
 //!
 //! ```
 //! # #[global_allocator]

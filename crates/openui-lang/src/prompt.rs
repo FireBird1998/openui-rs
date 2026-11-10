@@ -51,6 +51,7 @@ pub fn generate_system_prompt_with_limits(
     spec: &Json,
     limits: Limits,
 ) -> Result<String, PromptError> {
+    let _ceiling = crate::stack::limit(limits.depth());
     within_depth("generateSystemPrompt", spec, limits)?;
     let Some(object) = spec.as_object() else {
         return Err(PromptError(
@@ -908,6 +909,7 @@ pub fn generate_prompt(spec: &Json) -> String {
 /// or nesting past the JSON limit described by [`Limits::depth`], is refused
 /// with a [`PromptError`].
 pub fn generate_prompt_with_limits(spec: &Json, limits: Limits) -> Result<String, PromptError> {
+    let _ceiling = crate::stack::limit(limits.depth());
     within_depth("generatePrompt", spec, limits)?;
     if field(spec, "components").is_none_or(Json::is_null) {
         return Err(PromptError(

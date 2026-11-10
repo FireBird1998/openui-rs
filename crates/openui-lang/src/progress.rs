@@ -48,6 +48,18 @@ impl Progress {
     }
 }
 
+/// A recursive input walk requesting too many stack segments is a core bug,
+/// with the same release recovery as a loop that stopped advancing.
+#[cold]
+#[inline(never)]
+pub(crate) fn stack_stalled(walk: &str) {
+    if panics() {
+        panic!("stall: grown stack ceiling reached in {walk}");
+    }
+    STALLED.with(|s| s.set(true));
+    crate::evaluate::stack_stalled();
+}
+
 /// Run `f`, and say whether a loop stalled in it.
 pub(crate) fn watch<T>(f: impl FnOnce() -> T) -> (T, bool) {
     let outer = STALLED.with(|s| s.replace(false));
@@ -58,6 +70,7 @@ pub(crate) fn watch<T>(f: impl FnOnce() -> T) -> (T, bool) {
 
 /// Whether a loop has stalled since the innermost [`watch`] began, so the
 /// parse can stop there.
+#[inline(always)]
 pub(crate) fn stalled_so_far() -> bool {
     STALLED.with(Cell::get)
 }

@@ -286,6 +286,7 @@ fn this_push(address: usize) -> usize {
 
 /// Take `cost` from room or work: `false`, and the default is cut, once it's
 /// spent, or once the default was cut anyhow.
+#[inline]
 fn draw(l: &EvalLimits, which: Cut, cost: usize) -> bool {
     if l.cut.get().is_some() {
         return false;
@@ -307,12 +308,30 @@ fn draw(l: &EvalLimits, which: Cut, cost: usize) -> bool {
     }
 }
 
+/// A ceiling stall exhausts the existing work state, so evaluator steps
+/// stop without consulting a second thread-local on their hot path.
+#[cold]
+#[inline(never)]
+pub(crate) fn stack_stalled() {
+    LIMITS.with(|l| {
+        l.work.set(0);
+        l.cut_by(Cut::Work);
+    });
+}
+
 /// Build `bytes`: they cost room and work alike.
+#[inline(always)]
 fn spend(bytes: usize) -> bool {
-    LIMITS.with(|l| draw(l, Cut::Work, bytes) && draw(l, Cut::Room, bytes))
+    LIMITS.with(|l| spend_in(l, bytes))
+}
+
+#[inline]
+fn spend_in(limits: &EvalLimits, bytes: usize) -> bool {
+    draw(limits, Cut::Work, bytes) && draw(limits, Cut::Room, bytes)
 }
 
 /// Take `steps` steps of work, building nothing that stays.
+#[inline(always)]
 fn step(steps: usize) -> bool {
     LIMITS.with(|l| draw(l, Cut::Work, steps))
 }
@@ -327,8 +346,9 @@ fn out_of_work(next: impl FnOnce() -> Js) -> Js {
         return Js::Null;
     }
     let value = next();
+    // A stack stall can cut the continuation before its first draw.
     debug_assert!(
-        LIMITS.with(|l| l.work.get() < work),
+        crate::progress::stalled_so_far() || LIMITS.with(|l| l.work.get() < work),
         "out_of_work continuation must draw positive work"
     );
     value
@@ -345,26 +365,50 @@ struct Level;
 impl Level {
     /// `None`, and the default is cut, past the evaluator's depth limit; or
     /// `None` once it was cut anyhow.
+    #[inline(always)]
     fn enter() -> Option<Level> {
-        LIMITS.with(|l| {
-            if l.cut.get().is_some() {
-                return None;
-            }
-            let depth = l.depth.get();
-            if depth >= l.max_depth.get() {
-                l.cut_by(Cut::Depth);
-                return None;
-            }
-            l.depth.set(depth + 1);
-            Some(Level)
-        })
+        LIMITS.with(|l| if enter_level(l) { Some(Level) } else { None })
     }
 }
 
 impl Drop for Level {
+    #[inline(always)]
     fn drop(&mut self) {
         LIMITS.with(|l| l.depth.set(l.depth.get() - 1));
     }
+}
+
+/// The same guard when a recursive walk already carries its evaluator state.
+struct BorrowedLevel<'a>(&'a EvalLimits);
+impl<'a> BorrowedLevel<'a> {
+    #[inline(always)]
+    fn enter(limits: &'a EvalLimits) -> Option<Self> {
+        if enter_level(limits) {
+            Some(Self(limits))
+        } else {
+            None
+        }
+    }
+}
+impl Drop for BorrowedLevel<'_> {
+    #[inline(always)]
+    fn drop(&mut self) {
+        self.0.depth.set(self.0.depth.get() - 1);
+    }
+}
+
+#[inline(always)]
+fn enter_level(limits: &EvalLimits) -> bool {
+    if limits.cut.get().is_some() {
+        return false;
+    }
+    let depth = limits.depth.get();
+    if depth >= limits.max_depth.get() {
+        limits.cut_by(Cut::Depth);
+        return false;
+    }
+    limits.depth.set(depth + 1);
+    true
 }
 
 /// About what a value's own JSON costs, its items' and entries' apart.
@@ -465,6 +509,9 @@ pub(crate) fn state_defaults(
     let mut compared: Vec<Value> = Vec::new();
     let mut declared = Declared::default();
     for (id, value) in state.iter() {
+        if crate::progress::stalled_so_far() {
+            break;
+        }
         let before = match earlier.next() {
             Some(record) if in_step && record.id == *id => {
                 if same(&record.value, value) {
@@ -994,7 +1041,7 @@ impl FirstReads {
 /// Whether a value holds a runtime expression read as a value, whose
 /// identity it carries.
 fn holds_expression(js: &Js) -> bool {
-    crate::stack::grow_stack!(holds_expression(js));
+    crate::stack::grow_stack!(holds_expression(js), budget else true);
     match js {
         Js::Ast(_) => true,
         Js::Arr(items) => items.iter().any(holds_expression),
@@ -1142,7 +1189,7 @@ impl Declared {
 /// Whether a materialized default holds anything to evaluate: a runtime
 /// expression, in it or in its lists and plain objects.
 pub(crate) fn has_runtime(value: &Value) -> bool {
-    crate::stack::grow_stack!(has_runtime(value));
+    crate::stack::grow_stack!(has_runtime(value), budget else true);
     match value {
         Value::Ast(_) => true,
         Value::Arr(items) => items.iter().any(has_runtime),
@@ -1157,7 +1204,7 @@ pub(crate) fn has_runtime(value: &Value) -> bool {
 /// evaluated, reading `declared`, the defaults declared before it. An object
 /// literal shaped like an AST node isn't evaluated (a divergence).
 fn state_default(value: &Value, declared: &Declared) -> Js {
-    crate::stack::grow_stack!(state_default(value, declared));
+    crate::stack::grow_stack!(state_default(value, declared), budget else Js::Null);
     match value {
         Value::Ast(ast) => {
             if only_builtin_functions(ast) {
@@ -1167,11 +1214,18 @@ fn state_default(value: &Value, declared: &Declared) -> Js {
             }
         }
         Value::Arr(items) => Js::Arr(Arc::new(
-            items.iter().map(|v| state_default(v, declared)).collect(),
+            items
+                .iter()
+                .take_while(|_| !crate::progress::stalled_so_far())
+                .map(|v| state_default(v, declared))
+                .collect(),
         )),
         Value::Obj(o) if element_parts(value).is_none() && !is_ast_node(value) => {
             let mut out = JsObject::new();
             for (key, v) in o.iter() {
+                if crate::progress::stalled_so_far() {
+                    break;
+                }
                 out.define(key.clone(), state_default(v, declared));
             }
             Js::Obj(Arc::new(out))
@@ -1197,8 +1251,12 @@ fn only_builtin_functions(node: &Ast) -> bool {
 /// A parse result's value as a JavaScript value: a step for each of its
 /// nodes, and one for each byte of its strings and keys.
 fn from_value(value: &Value) -> Js {
-    crate::stack::grow_stack!(from_value(value));
-    if !step(1) {
+    LIMITS.with(|limits| from_value_in(value, limits))
+}
+
+fn from_value_in(value: &Value, limits: &EvalLimits) -> Js {
+    crate::stack::grow_stack!(from_value(value), budget else Js::Null);
+    if !draw(limits, Cut::Work, 1) {
         return Js::Null;
     }
     match value {
@@ -1206,12 +1264,18 @@ fn from_value(value: &Value) -> Js {
         Value::Bool(b) => Js::Bool(*b),
         Value::Num(n) => Js::Num(*n),
         Value::Str(s) => {
-            if !step(s.len()) {
+            if !draw(limits, Cut::Work, s.len()) {
                 return Js::Null;
             }
             Js::Str(s.as_str().into())
         }
-        Value::Arr(items) => Js::Arr(Arc::new(items.iter().map(from_value).collect())),
+        Value::Arr(items) => Js::Arr(Arc::new(
+            items
+                .iter()
+                .take_while(|_| limits.cut.get().is_none())
+                .map(|v| from_value_in(v, limits))
+                .collect(),
+        )),
         Value::Obj(o) => from_object(o),
         Value::Element(element) => {
             let address = this_push(Arc::as_ptr(element) as usize);
@@ -1269,6 +1333,9 @@ fn from_value(value: &Value) -> Js {
 fn from_object(object: &JsObject<Value>) -> Js {
     let mut out = JsObject::new();
     for (key, value) in object.iter() {
+        if crate::progress::stalled_so_far() {
+            break;
+        }
         if !step(key.len()) {
             break;
         }
@@ -1306,7 +1373,13 @@ fn ast_property(node: &Arc<Ast>, key: &str) -> Option<Js> {
             if !step(nodes.len()) {
                 return Some(Js::Null);
             }
-            Js::Arr(Arc::new(nodes.iter().map(read).collect()))
+            Js::Arr(Arc::new(
+                nodes
+                    .iter()
+                    .take_while(|_| !crate::progress::stalled_so_far())
+                    .map(read)
+                    .collect(),
+            ))
         }
         Field::Entries(entries) => {
             if !step(entries.len()) {
@@ -1315,6 +1388,7 @@ fn ast_property(node: &Arc<Ast>, key: &str) -> Option<Js> {
             Js::Arr(Arc::new(
                 entries
                     .iter()
+                    .take_while(|_| !crate::progress::stalled_so_far())
                     .map(|(k, v)| Js::Arr(Arc::new(vec![Js::Str(k.as_str().into()), read(v)])))
                     .collect(),
             ))
@@ -1325,6 +1399,9 @@ fn ast_property(node: &Arc<Ast>, key: &str) -> Option<Js> {
             }
             let mut out = JsObject::new();
             for (k, v) in props.iter() {
+                if crate::progress::stalled_so_far() {
+                    break;
+                }
                 out.define(k.clone(), read(v));
             }
             Js::Obj(Arc::new(out))
@@ -1347,17 +1424,21 @@ fn ast_property(node: &Arc<Ast>, key: &str) -> Option<Js> {
 /// out (`undefined`, a function): a property is dropped, an array item is
 /// null. Null where the limits cut it.
 fn to_value(js: &Js) -> Option<Value> {
-    crate::stack::grow_stack!(to_value(js));
+    LIMITS.with(|limits| to_value_in(js, limits))
+}
+
+fn to_value_in(js: &Js, limits: &EvalLimits) -> Option<Value> {
+    crate::stack::grow_stack!(to_value(js), budget else None);
     if matches!(js, Js::Undefined | Js::Function { .. }) {
         return None;
     }
     if let Js::Ast(node) = js {
         return to_value(&whole_ast(node));
     }
-    let Some(_level) = Level::enter() else {
+    let Some(_level) = BorrowedLevel::enter(limits) else {
         return Some(Value::Null);
     };
-    if !spend(json_cost(js)) {
+    if !spend_in(limits, json_cost(js)) {
         return Some(Value::Null);
     }
     Some(match js {
@@ -1369,13 +1450,17 @@ fn to_value(js: &Js) -> Option<Value> {
         Js::Arr(items) => Value::Arr(Arc::new(
             items
                 .iter()
-                .map(|v| to_value(v).unwrap_or(Value::Null))
+                .take_while(|_| limits.cut.get().is_none())
+                .map(|v| to_value_in(v, limits).unwrap_or(Value::Null))
                 .collect(),
         )),
         Js::Obj(o) => {
             let mut out = JsObject::new();
             for (key, v) in o.iter() {
-                if let Some(v) = to_value(v) {
+                if limits.cut.get().is_some() {
+                    break;
+                }
+                if let Some(v) = to_value_in(v, limits) {
                     out.define(key.clone(), v);
                 }
             }
@@ -1437,11 +1522,15 @@ impl Scope<'_> {
 }
 
 fn evaluate(node: &Ast, scope: &Scope) -> Js {
-    crate::stack::grow_stack!(evaluate(node, scope));
-    let Some(_level) = Level::enter() else {
+    LIMITS.with(|limits| evaluate_in(node, scope, limits))
+}
+
+fn evaluate_in(node: &Ast, scope: &Scope, limits: &EvalLimits) -> Js {
+    crate::stack::grow_stack!(evaluate(node, scope), budget else Js::Null);
+    let Some(_level) = BorrowedLevel::enter(limits) else {
         return Js::Null;
     };
-    if !step(1) {
+    if !draw(limits, Cut::Work, 1) {
         return Js::Null;
     }
     match node {
@@ -1451,11 +1540,19 @@ fn evaluate(node: &Ast, scope: &Scope) -> Js {
         Ast::Null | Ast::Ph(_) => Js::Null,
         Ast::StateRef(name) => scope.state(name),
         Ast::Ref(name) | Ast::RuntimeRef { n: name, .. } => scope.reference(name),
-        Ast::Arr(els) => Js::Arr(Arc::new(els.iter().map(|e| evaluate(e, scope)).collect())),
+        Ast::Arr(els) => Js::Arr(Arc::new(
+            els.iter()
+                .take_while(|_| limits.cut.get().is_none())
+                .map(|e| evaluate_in(e, scope, limits))
+                .collect(),
+        )),
         Ast::Obj(entries) => {
             let mut out = JsObject::new();
             for (key, v) in entries.iter() {
-                out.define(key.clone(), evaluate(v, scope));
+                if limits.cut.get().is_some() {
+                    break;
+                }
+                out.define(key.clone(), evaluate_in(v, scope, limits));
             }
             Js::Obj(Arc::new(out))
         }
@@ -1476,12 +1573,18 @@ fn evaluate(node: &Ast, scope: &Scope) -> Js {
             match mapped_props {
                 Some(props) => {
                     for (key, v) in props.iter() {
-                        named.define(key.clone(), evaluate(v, scope));
+                        if limits.cut.get().is_some() {
+                            break;
+                        }
+                        named.define(key.clone(), evaluate_in(v, scope, limits));
                     }
                 }
                 None => {
                     for (param, arg) in params.iter().zip(args.iter()) {
-                        named.define(*param, evaluate(arg, scope));
+                        if limits.cut.get().is_some() {
+                            break;
+                        }
+                        named.define(*param, evaluate_in(arg, scope, limits));
                     }
                 }
             }
@@ -1489,8 +1592,8 @@ fn evaluate(node: &Ast, scope: &Scope) -> Js {
         }
         Ast::BinOp { op, left, right } => binary(op, left, right, scope),
         Ast::UnaryOp { op, operand } => match *op {
-            "!" => Js::Bool(!truthy(&evaluate(operand, scope))),
-            "-" => Js::Num(-to_number(&evaluate(operand, scope))),
+            "!" => Js::Bool(!truthy(&evaluate_in(operand, scope, limits))),
+            "-" => Js::Num(-to_number(&evaluate_in(operand, scope, limits))),
             _ => Js::Null,
         },
         Ast::Ternary {
@@ -1498,23 +1601,24 @@ fn evaluate(node: &Ast, scope: &Scope) -> Js {
             then,
             otherwise,
         } => {
-            if truthy(&evaluate(cond, scope)) {
-                evaluate(then, scope)
+            if truthy(&evaluate_in(cond, scope, limits)) {
+                evaluate_in(then, scope, limits)
             } else {
-                evaluate(otherwise, scope)
+                evaluate_in(otherwise, scope, limits)
             }
         }
         Ast::Member { obj, field } => {
-            let obj = evaluate(obj, scope);
+            let obj = evaluate_in(obj, scope, limits);
             match &obj {
                 Js::Undefined | Js::Null => Js::Null,
                 // A field plucked from every item.
                 Js::Arr(items) if field == "length" => Js::Num(items.len() as f64),
                 // A step per item plucked from.
-                Js::Arr(items) if !step(items.len()) => Js::Null,
+                Js::Arr(items) if !draw(limits, Cut::Work, items.len()) => Js::Null,
                 Js::Arr(items) => Js::Arr(Arc::new(
                     items
                         .iter()
+                        .take_while(|_| limits.cut.get().is_none())
                         .map(|item| match property(item, field) {
                             Js::Undefined | Js::Null => Js::Null,
                             v => v,
@@ -1525,8 +1629,8 @@ fn evaluate(node: &Ast, scope: &Scope) -> Js {
             }
         }
         Ast::Index { obj, index } => {
-            let obj = evaluate(obj, scope);
-            let index = evaluate(index, scope);
+            let obj = evaluate_in(obj, scope, limits);
+            let index = evaluate_in(index, scope, limits);
             if is_nullish(&obj) || is_nullish(&index) {
                 return Js::Null;
             }
@@ -1627,6 +1731,7 @@ fn each(args: &[Ast], scope: &Scope) -> Js {
     Js::Arr(Arc::new(
         items
             .iter()
+            .take_while(|_| !crate::progress::stalled_so_far())
             .map(|item| {
                 if !step(1) {
                     return Js::Null;
@@ -1649,7 +1754,7 @@ fn each(args: &[Ast], scope: &Scope) -> Js {
 /// never changes once built, so the parts without the variable are shared,
 /// not copied, and only the paths down to it are new.
 fn substitute(node: &Ast, var: &str, value: &Js) -> Option<Ast> {
-    crate::stack::grow_stack!(substitute(node, var, value));
+    crate::stack::grow_stack!(substitute(node, var, value), budget else None);
     if !step(1) {
         return Some(Ast::Null);
     }
@@ -1706,6 +1811,9 @@ fn substitute(node: &Ast, var: &str, value: &Js) -> Option<Ast> {
         Ast::Obj(entries) => {
             let mut out: Option<Vec<(String, Ast)>> = None;
             for (i, (k, v)) in entries.iter().enumerate() {
+                if crate::progress::stalled_so_far() {
+                    break;
+                }
                 match substitute(v, var, value) {
                     Some(new) => out
                         .get_or_insert_with(|| entries[..i].to_vec())
@@ -1730,6 +1838,9 @@ fn substitute(node: &Ast, var: &str, value: &Js) -> Option<Ast> {
                 let mut changed = false;
                 let mut out = JsObject::new();
                 for (key, v) in props.iter() {
+                    if crate::progress::stalled_so_far() {
+                        break;
+                    }
                     let new = substitute(v, var, value);
                     changed |= new.is_some();
                     out.define(key.clone(), new.unwrap_or_else(|| v.clone()));
@@ -1758,6 +1869,9 @@ fn substitute(node: &Ast, var: &str, value: &Js) -> Option<Ast> {
 fn substitute_all(nodes: &[Ast], var: &str, value: &Js) -> Option<Vec<Ast>> {
     let mut out: Option<Vec<Ast>> = None;
     for (i, node) in nodes.iter().enumerate() {
+        if crate::progress::stalled_so_far() {
+            break;
+        }
         match substitute(node, var, value) {
             Some(new) => out.get_or_insert_with(|| nodes[..i].to_vec()).push(new),
             None => {
@@ -1772,14 +1886,18 @@ fn substitute_all(nodes: &[Ast], var: &str, value: &Js) -> Option<Vec<Ast>> {
 
 /// `toLiteralAST`; null where the limits cut it.
 fn literal(value: &Js) -> Ast {
-    crate::stack::grow_stack!(literal(value));
+    LIMITS.with(|limits| literal_in(value, limits))
+}
+
+fn literal_in(value: &Js, limits: &EvalLimits) -> Ast {
+    crate::stack::grow_stack!(literal(value), budget else Ast::Null);
     if let Js::Ast(node) = value {
         return literal(&whole_ast(node));
     }
-    let Some(_level) = Level::enter() else {
+    let Some(_level) = BorrowedLevel::enter(limits) else {
         return Ast::Null;
     };
-    if !spend(json_cost(value)) {
+    if !spend_in(limits, json_cost(value)) {
         return Ast::Null;
     }
     match value {
@@ -1787,9 +1905,18 @@ fn literal(value: &Js) -> Ast {
         Js::Str(s) => Ast::Str(s.to_string()),
         Js::Num(n) => Ast::Num(*n),
         Js::Bool(b) => Ast::Bool(*b),
-        Js::Arr(items) => Ast::Arr(Arc::new(items.iter().map(literal).collect())),
+        Js::Arr(items) => Ast::Arr(Arc::new(
+            items
+                .iter()
+                .take_while(|_| limits.cut.get().is_none())
+                .map(|v| literal_in(v, limits))
+                .collect(),
+        )),
         Js::Obj(o) => Ast::Obj(Arc::new(
-            o.iter().map(|(k, v)| (k.clone(), literal(v))).collect(),
+            o.iter()
+                .take_while(|_| limits.cut.get().is_none())
+                .map(|(k, v)| (k.clone(), literal_in(v, limits)))
+                .collect(),
         )),
         // `Array.prototype` is an array; the others have no own entries.
         Js::Proto(Kind::Array) => Ast::Arr(Arc::new(Vec::new())),
@@ -1901,12 +2028,18 @@ fn js_round(x: f64) -> f64 {
 
 /// A number function on a number, or on each item of a list, nested lists too.
 fn elementwise(value: &Js, f: &dyn Fn(f64) -> f64) -> Js {
-    crate::stack::grow_stack!(elementwise(value, f));
+    crate::stack::grow_stack!(elementwise(value, f), budget else Js::Null);
     if !step(1) {
         return Js::Null;
     }
     match value {
-        Js::Arr(items) => Js::Arr(Arc::new(items.iter().map(|v| elementwise(v, f)).collect())),
+        Js::Arr(items) => Js::Arr(Arc::new(
+            items
+                .iter()
+                .take_while(|_| !crate::progress::stalled_so_far())
+                .map(|v| elementwise(v, f))
+                .collect(),
+        )),
         v => Js::Num(f(to_number(v))),
     }
 }
@@ -1920,6 +2053,9 @@ fn resolve_field(obj: &Js, path: &str) -> Js {
     }
     let mut current = obj.clone();
     for part in path.split('.') {
+        if crate::progress::stalled_so_far() {
+            break;
+        }
         if is_nullish(&current) {
             return Js::Undefined;
         }
@@ -2023,8 +2159,14 @@ fn js_sort(mut items: Vec<Js>, less: &dyn Fn(&Js, &Js) -> bool) -> Vec<Js> {
             .unwrap_or(n)
     };
     for i in start..n {
+        if crate::progress::stalled_so_far() {
+            break;
+        }
         let (mut lo, mut hi) = (0, i);
         while lo < hi {
+            if crate::progress::stalled_so_far() {
+                break;
+            }
             let mid = (lo + hi) / 2;
             if less(&items[i], &items[mid]) {
                 hi = mid;
@@ -2045,11 +2187,20 @@ fn merge_sort(items: Vec<Js>, less: &dyn Fn(&Js, &Js) -> bool) -> Vec<Js> {
     let mut src = items;
     let mut width = 1;
     while runs_to_merge(width, n) {
+        if crate::progress::stalled_so_far() {
+            break;
+        }
         let mut dst = Vec::with_capacity(n);
         for start in (0..n).step_by(2 * width) {
+            if crate::progress::stalled_so_far() {
+                break;
+            }
             let (mut left, left_end) = (start, (start + width).min(n));
             let (mut right, right_end) = (left_end, (left_end + width).min(n));
             while left < left_end || right < right_end {
+                if crate::progress::stalled_so_far() {
+                    break;
+                }
                 if right < right_end && (left >= left_end || less(&src[right], &src[left])) {
                     dst.push(src[right].clone());
                     right += 1;
@@ -2073,7 +2224,7 @@ fn runs_to_merge(width: usize, n: usize) -> bool {
 }
 
 fn filter(array: &Js, field: &Js, operator: &Js, value: &Js) -> Js {
-    crate::stack::grow_stack!(filter(array, field, operator, value));
+    crate::stack::grow_stack!(filter(array, field, operator, value), else Js::Null);
     let Js::Arr(items) = array else {
         return Js::Arr(Arc::new(Vec::new()));
     };
@@ -2100,7 +2251,12 @@ fn filter(array: &Js, field: &Js, operator: &Js, value: &Js) -> Js {
         }
     };
     Js::Arr(Arc::new(
-        items.iter().filter(|v| keep(v)).cloned().collect(),
+        items
+            .iter()
+            .take_while(|_| !crate::progress::stalled_so_far())
+            .filter(|v| keep(v))
+            .cloned()
+            .collect(),
     ))
 }
 
@@ -2180,6 +2336,9 @@ fn radix_number(digits: &str, radix: u32) -> f64 {
     let mut approx = 0.0f64;
     let mut overflowed = false;
     for c in digits.chars() {
+        if crate::progress::stalled_so_far() {
+            break;
+        }
         let Some(d) = c.to_digit(radix) else {
             return f64::NAN;
         };
@@ -2197,7 +2356,7 @@ fn radix_number(digits: &str, radix: u32) -> f64 {
 
 /// `String(value)`.
 fn to_string(v: &Js) -> String {
-    crate::stack::grow_stack!(to_string(v));
+    crate::stack::grow_stack!(to_string(v), budget else String::new());
     match v {
         Js::Undefined => "undefined".to_owned(),
         Js::Null => "null".to_owned(),
@@ -2226,7 +2385,7 @@ fn to_string(v: &Js) -> String {
 /// `Array.prototype.join(",")` into `out`, nested arrays and all: a string
 /// built from an array costs its length, and stops where the limits cut it.
 fn join(items: &[Js], out: &mut String) {
-    crate::stack::grow_stack!(join(items, out));
+    crate::stack::grow_stack!(join(items, out), budget else {});
     let Some(_level) = Level::enter() else {
         return;
     };
@@ -2279,7 +2438,7 @@ fn is_object(v: &Js) -> bool {
 
 /// `a == b`.
 fn loose_eq(a: &Js, b: &Js) -> bool {
-    crate::stack::grow_stack!(loose_eq(a, b));
+    crate::stack::grow_stack!(loose_eq(a, b), budget else false);
     match (a, b) {
         (Js::Undefined | Js::Null, Js::Undefined | Js::Null) => true,
         (Js::Undefined | Js::Null, _) | (_, Js::Undefined | Js::Null) => false,
@@ -2431,6 +2590,9 @@ pub(crate) fn locale_compare(a: &str, b: &str) -> Ordering {
         let mut primary = Vec::new();
         let mut upper = Vec::new();
         for c in s.chars() {
+            if crate::progress::stalled_so_far() {
+                break;
+            }
             if c.is_ascii() {
                 let w = ascii_weight(c as u8);
                 if w == 0 {
@@ -2455,6 +2617,20 @@ mod tests {
     use super::*;
 
     #[test]
+    fn join_cut_writes_no_text() {
+        let mut out = String::from("prefix");
+        let (_, stalled) = crate::progress::testing::as_release(|| {
+            crate::progress::watch(|| {
+                crate::stack::testing::cutting("join(", || {
+                    join(&[Js::Str("value".into())], &mut out);
+                })
+            })
+        });
+        assert!(stalled);
+        assert_eq!(out, "prefix");
+    }
+
+    #[test]
     #[cfg(debug_assertions)]
     #[should_panic(expected = "out_of_work continuation must draw positive work")]
     fn a_work_check_without_a_draw_is_rejected() {
@@ -2463,6 +2639,23 @@ mod tests {
             l.cut.set(None);
         });
         out_of_work(|| Js::Null);
+    }
+
+    #[test]
+    fn a_release_stack_stall_can_cut_a_conversion_before_it_draws_work() {
+        LIMITS.with(|l| {
+            l.work.set(1);
+            l.cut.set(None);
+        });
+        let (value, stalled) = crate::progress::testing::as_release(|| {
+            crate::progress::watch(|| {
+                out_of_work(|| {
+                    crate::progress::stack_stalled("a conversion");
+                    Js::Null
+                })
+            })
+        });
+        assert!(stalled && matches!(value, Js::Null));
     }
 
     /// Text outside ASCII compares by code point, after all of ASCII: the

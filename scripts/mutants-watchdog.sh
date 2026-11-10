@@ -47,10 +47,35 @@ runaways() {
     END { if (free < 20 && big > 1048576) print line }'
 }
 
+# Read cargo-mutants' own trace: its worker span associates the build directory
+# with a mutant name. Match the basename because macOS logs /var while ps may
+# report /private/var. Never edit cargo-mutants' records.
+mutant_name() {
+  local build="$1" log name="" candidate
+  for log in "${MUTANTS_OUTPUT_ROOT:-target/mutants}"/*/mutants.out/debug.log; do
+    [[ -r "$log" ]] || continue
+    candidate="$(awk -v build="${build##*/}" '
+      index($0, build "\"") && /:mutant\{name="/ {
+        line = $0
+        sub(/^.*:mutant\{name="/, "", line)
+        sub(/"\}.*/, "", line)
+        name = line
+      }
+      END { print name }' "$log")"
+    [[ -z "$candidate" ]] || name="$candidate"
+  done
+  printf '%s' "${name:-description unavailable}"
+}
+
 while kill -0 "$parent" 2>/dev/null; do
   while read -r pid kb path; do
-    kill -9 "$pid" 2>/dev/null &&
-      echo "mutants-watchdog: killed a process holding $(( kb / 1024 )) MB: $path" >&2
+    # A test may restrict the watchdog to its own fake build directory.
+    [[ -z "${MUTANTS_WATCHDOG_BUILD_ROOT:-}" || "$path" == "$MUTANTS_WATCHDOG_BUILD_ROOT/"* ]] || continue
+    build="${path%%/target/*}"
+    if kill -9 "$pid" 2>/dev/null; then
+      description="$(mutant_name "$build")"
+      echo "mutants-watchdog: $(date -u +%Y-%m-%dT%H:%M:%SZ) killed a process holding $(( kb / 1024 )) MB: $path; build: $build; mutant: $description" >&2
+    fi
   done < <(runaways || true)
   sleep 0.25
 done

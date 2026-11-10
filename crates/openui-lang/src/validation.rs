@@ -366,7 +366,7 @@ pub(crate) fn validate_schema_value(
     path: &str,
     ctx: &mut Ctx,
 ) -> bool {
-    crate::stack::grow_stack!(validate_schema_value(value, schema, component, path, ctx));
+    crate::stack::grow_stack!(validate_schema_value(value, schema, component, path, ctx), budget else { *value = Value::Null; ctx.stack_stalled(); false });
     let Some(s) = schema.as_object() else {
         return false;
     };
@@ -503,6 +503,9 @@ fn validate_object(
     // Structural checks are streaming-sensitive: only on complete input.
     if !ctx.partial {
         for key in &required {
+            if ctx.stack_cut {
+                break;
+            }
             let present = obj.has(key);
             if !present || matches!(obj.get(key), Some(Value::Null)) {
                 if let Some(fallback) = schema_default(prop(key)) {
@@ -524,6 +527,9 @@ fn validate_object(
         }
     }
     for (key, sub) in &props {
+        if ctx.stack_cut {
+            break;
+        }
         if filled.contains(key) {
             continue;
         }
@@ -630,6 +636,9 @@ fn validate_array(
     };
     let mut out = None;
     for (i, before) in items.iter().enumerate() {
+        if ctx.stack_cut {
+            break;
+        }
         let mut next = before.clone();
         let invalid = validate_schema_value(
             &mut next,

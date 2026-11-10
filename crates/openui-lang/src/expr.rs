@@ -2,13 +2,12 @@
 //! a Pratt parser that never fails. Unknown tokens become `Null`, and missing
 //! closers are taken as given.
 //!
-//! Unlike the reference, it stops at [`MAX_DEPTH`]: deeper nesting, and longer
+//! Unlike the reference, it stops at [`crate::MAX_DEPTH`]: deeper nesting, and longer
 //! left-nested chains (`a.b.c...`, `1 + 1 + ...`), are cut off, so neither
 //! parsing nor anything that later walks the tree can overflow the stack.
 
 use std::sync::Arc;
 
-use crate::MAX_DEPTH;
 use crate::ast::Ast;
 use crate::builtins::is_builtin;
 use crate::js::number_to_string;
@@ -26,21 +25,28 @@ const PREC_UNARY: u8 = 8;
 const PREC_MEMBER: u8 = 9;
 
 /// Parse one statement's expression tokens, to the default depth limit
-/// ([`MAX_DEPTH`]).
+/// ([`crate::MAX_DEPTH`]).
 pub fn parse_expression(tokens: &[Token]) -> Ast {
-    parse_expression_with_limit(tokens, MAX_DEPTH).0
+    parse_expression_with_limits(tokens, crate::Limits::DEFAULT).0
 }
 
 /// [`parse_expression`] to `limits`' depth: nesting past it, and longer
 /// left-nested chains, are cut off. Also says whether anything was (what a
 /// parse flags `depth_limited`). The other limits don't apply to tokens
-/// already read.
+/// already read. At the grown-stack ceiling, release builds return an AST
+/// cut with null at the interrupted expression. The boolean reports only
+/// depth cuts; a ceiling stall alone leaves it false.
 pub fn parse_expression_with_limits(tokens: &[Token], limits: crate::Limits) -> (Ast, bool) {
-    parse_expression_with_limit(tokens, limits.depth())
+    let _ceiling = crate::stack::limit(limits.depth());
+    let ((ast, limited), _) =
+        crate::progress::watch(|| parse_expression_with_limit(tokens, limits.depth()));
+    (ast, limited)
 }
 
 /// Parse, and say whether nesting went past `max_depth` levels and was cut off.
 pub(crate) fn parse_expression_with_limit(tokens: &[Token], max_depth: usize) -> (Ast, bool) {
+    // All callers are inside a public entry's ceiling. Reinstalling it for
+    // every statement would add two TLS writes to the ordinary parse path.
     let mut parser = ExprParser {
         tokens,
         pos: 0,
@@ -142,7 +148,7 @@ impl<'a> ExprParser<'a> {
     }
 
     fn expr(&mut self, min_prec: u8) -> Ast {
-        crate::stack::grow_stack!(self.expr(min_prec));
+        crate::stack::grow_stack!(self.expr(min_prec), budget else { self.pos = self.tokens.len(); Ast::Null });
         if self.depth >= self.max_depth {
             // Too deep: give up on this branch, but still consume a token so
             // every caller's loop makes progress.

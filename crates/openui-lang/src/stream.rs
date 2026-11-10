@@ -157,12 +157,14 @@ impl StreamParser {
     /// it was cut at. A stall in `step` cuts it there. A stream cut at the
     /// program-size limit says so on every result.
     fn watched(&mut self, step: impl FnOnce(&mut Self) -> ParseResult) -> ParseResult {
+        let _ceiling = crate::stack::limit(self.limits.depth());
         if let Some(cut) = &self.stalled {
             return cut.clone();
         }
         let (mut result, stalled) = progress::watch(|| step(self));
         result.size_limited |= self.past_program_size;
         if stalled {
+            result = ParseResult::empty(true);
             result.size_limited = true;
             self.stalled = Some(result.clone());
         }
@@ -263,7 +265,7 @@ impl StreamParser {
     }
 
     fn current_result(&mut self, complete: bool) -> ParseResult {
-        crate::stack::grow_stack!(self.current_result(complete));
+        crate::stack::grow_stack!(self.current_result(complete), else ParseResult::default());
         let (mut result, pending_limited) = self.build_current(complete);
         result.depth_limited |= self.completed.depth_limited || pending_limited;
         result

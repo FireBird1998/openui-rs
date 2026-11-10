@@ -30,6 +30,8 @@ pub(crate) struct Ctx<'a> {
     /// Open materialize calls, across references too: a chain of references
     /// nests as deeply as one big expression.
     pub depth: usize,
+    /// A grown-stack cut stops later sibling descents through this context.
+    pub stack_cut: bool,
     /// About how many bytes of JSON the result has grown to so far, counting
     /// every place a statement is inlined. See [`Limits::result_size`].
     pub size: usize,
@@ -69,8 +71,12 @@ pub(crate) enum ErrorPart {
 /// A pass's errors as the reference reports them: a memoized statement's only
 /// where it's first reached.
 pub(crate) fn flatten_errors(parts: &[ErrorPart]) -> Vec<ValidationError> {
-    fn walk(parts: &[ErrorPart], seen: &mut HashSet<(Slot, bool)>, out: &mut Vec<ValidationError>) {
-        crate::stack::grow_stack!(walk(parts, seen, out));
+    fn walk(
+        parts: &[ErrorPart],
+        seen: &mut HashSet<(Slot, bool)>,
+        out: &mut Vec<ValidationError>,
+    ) -> bool {
+        crate::stack::grow_stack!(walk(parts, seen, out), budget else false);
         for part in parts {
             match part {
                 ErrorPart::Own(error) => out.push(error.clone()),
@@ -82,10 +88,16 @@ pub(crate) fn flatten_errors(parts: &[ErrorPart]) -> Vec<ValidationError> {
                     if *memoized && !seen.insert(*key) {
                         continue;
                     }
-                    walk(parts, seen, out);
+                    if !walk(parts, seen, out) {
+                        return false;
+                    }
                 }
             }
         }
+        true
+    }
+    if crate::progress::stalled_so_far() {
+        return Vec::new();
     }
     let mut out = Vec::new();
     walk(parts, &mut HashSet::new(), &mut out);
@@ -108,14 +120,22 @@ pub(crate) enum UnresolvedPart {
 /// against the result-size limit where it was met or replayed, so the list
 /// is within it.
 pub(crate) fn flatten_unresolved(parts: &[UnresolvedPart]) -> Vec<String> {
-    fn walk(parts: &[UnresolvedPart], out: &mut Vec<String>) {
-        crate::stack::grow_stack!(walk(parts, out));
+    fn walk(parts: &[UnresolvedPart], out: &mut Vec<String>) -> bool {
+        crate::stack::grow_stack!(walk(parts, out), budget else false);
         for part in parts {
             match part {
                 UnresolvedPart::Own(name) => out.push(name.clone()),
-                UnresolvedPart::Reached(parts) => walk(parts, out),
+                UnresolvedPart::Reached(parts) => {
+                    if !walk(parts, out) {
+                        return false;
+                    }
+                }
             }
         }
+        true
+    }
+    if crate::progress::stalled_so_far() {
+        return Vec::new();
     }
     let mut out = Vec::new();
     walk(parts, &mut out);
@@ -283,6 +303,18 @@ impl Ctx<'_> {
             .push(UnresolvedPart::Own(name.to_owned()));
     }
 
+    /// Exhaust the existing size state on the cold ceiling path. Raising
+    /// the depth bound here prevents sibling recovery from setting a depth
+    /// flag: the stall, rather than input nesting, stopped this walk.
+    #[cold]
+    #[inline(never)]
+    pub(crate) fn stack_stalled(&mut self) {
+        self.stack_cut = true;
+        self.size = self.size.max(1);
+        self.limits = self.limits.with_result_size(0).with_depth(usize::MAX);
+        self.frame.size_limited = true;
+    }
+
     /// Whether the result could grow by `more` and stay within the
     /// result-size limit. Asking cuts nothing.
     fn would_fit(&self, more: usize) -> bool {
@@ -376,7 +408,7 @@ type Scope = HashSet<String>;
 /// for builtins and runtime expressions; `Null` for placeholders and for
 /// components that had to be dropped. Past the depth limit, `Null`.
 pub(crate) fn materialize_value(node: &Ast, ctx: &mut Ctx) -> Value {
-    crate::stack::grow_stack!(materialize_value(node, ctx));
+    crate::stack::grow_stack!(materialize_value(node, ctx), budget else { ctx.stack_stalled(); Value::Null });
     if ctx.enter(json_size(node, false), NULL_VALUE).is_none() {
         return Value::Null;
     }
@@ -531,7 +563,13 @@ fn resolve_ref(name: &str, ctx: &mut Ctx, mode: Mode) -> Resolved {
         // overhead are charged after their children's fit checks. Rejecting
         // the total here would cut differently depending on cache history.
         ctx.size += entry.size;
-        replay(entry, (slot, expr), true, &mut ctx.frame, ctx.depth);
+        if !replay(entry, (slot, expr), true, &mut ctx.frame, ctx.depth) {
+            ctx.stack_stalled();
+            return match mode {
+                Mode::Value => Resolved::Value(Value::Null),
+                Mode::Expr => Resolved::Ast(Ast::Null),
+            };
+        }
         return match &entry.output {
             Output::Value(v) => Resolved::Value(v.clone()),
             Output::Ast(a) => Resolved::Ast(a.clone()),
@@ -588,8 +626,14 @@ fn cut_reference(ctx: &mut Ctx, mode: Mode) -> Resolved {
 /// errors are reported once per pass where `memoize` allows it (see
 /// [`ErrorPart`]).
 #[inline(never)]
-fn replay(entry: &Entry, key: (Slot, bool), memoize: bool, frame: &mut Frame, depth: usize) {
-    crate::stack::grow_stack!(replay(entry, key, memoize, frame, depth));
+fn replay(
+    entry: &Entry,
+    key: (Slot, bool),
+    memoize: bool,
+    frame: &mut Frame,
+    depth: usize,
+) -> bool {
+    crate::stack::grow_stack!(replay(entry, key, memoize, frame, depth), budget else false);
     frame.errors.push(ErrorPart::Reached {
         key,
         memoized: memoize && entry.unresolved.is_empty(),
@@ -602,6 +646,7 @@ fn replay(entry: &Entry, key: (Slot, bool), memoize: bool, frame: &mut Frame, de
     }
     frame.children.push(entry.reach.clone());
     frame.max_depth = frame.max_depth.max(depth + entry.r_max);
+    true
 }
 
 /// A statement's own frame, folded into the one around it.
@@ -720,7 +765,10 @@ pub(crate) fn materialize_state(slot: Slot, init: &Ast, ctx: &mut Ctx) -> Value 
         // Its errors stand where they were met, in order: not memoized, so
         // they're reported here every time, as inline ones are.
         ctx.size += entry.size;
-        replay(entry, (slot, false), false, &mut ctx.frame, ctx.depth);
+        if !replay(entry, (slot, false), false, &mut ctx.frame, ctx.depth) {
+            ctx.stack_stalled();
+            return Value::Null;
+        }
         return value.clone();
     }
 
@@ -912,6 +960,9 @@ fn mapped_call(
 fn name_args(args: &[Ast], params: &[Param]) -> JsObject<Ast> {
     let mut by_name = JsObject::new();
     for (param, arg) in params.iter().zip(args) {
+        if crate::progress::stalled_so_far() {
+            break;
+        }
         by_name.set(param.name.clone(), arg.clone());
     }
     by_name
@@ -938,6 +989,9 @@ fn map_call_args(name: &str, args: &[Ast], def: &Call, ctx: &mut Ctx) -> Option<
     let errors_before = ctx.frame.errors.len();
     let mut invalid = false;
     for param in params {
+        if ctx.stack_cut {
+            break;
+        }
         let arg = mapped.get(&param.name);
         // `mapped[name]` reads an inherited method for `toString` and the
         // like, which isn't a literal: checked at runtime.
@@ -947,7 +1001,12 @@ fn map_call_args(name: &str, args: &[Ast], def: &Call, ctx: &mut Ctx) -> Option<
         let literal = match arg {
             Some(arg) => match literal_value(arg) {
                 Some(value) => Some(value),
-                None => continue, // not a literal: checked at runtime
+                None => {
+                    if crate::progress::stalled_so_far() {
+                        ctx.stack_stalled();
+                    }
+                    continue; // not a literal: checked at runtime
+                }
             },
             None => None,
         };
@@ -992,6 +1051,9 @@ fn map_call_args(name: &str, args: &[Ast], def: &Call, ctx: &mut Ctx) -> Option<
         }
         if !js_strict_eq(&next, &value) {
             mapped.set(param.name.clone(), to_literal_ast(&next));
+            if crate::progress::stalled_so_far() {
+                ctx.stack_stalled();
+            }
         }
     }
     if def.kind == CallKind::Action && ctx.frame.errors.len() > errors_before {
@@ -1016,18 +1078,24 @@ pub(crate) fn js_strict_eq(a: &Value, b: &Value) -> bool {
 /// `literalValue`: the value a literal node stands for; `None` for anything
 /// that needs evaluating (a reference, a call, an operator).
 fn literal_value(node: &Ast) -> Option<Value> {
-    crate::stack::grow_stack!(literal_value(node));
+    crate::stack::grow_stack!(literal_value(node), budget else None);
     Some(match node {
         Ast::Str(v) => Value::Str(v.clone()),
         Ast::Num(n) => Value::Num(*n),
         Ast::Bool(b) => Value::Bool(*b),
         Ast::Null => Value::Null,
         Ast::Arr(els) => Value::Arr(Arc::new(
-            els.iter().map(literal_value).collect::<Option<Vec<_>>>()?,
+            els.iter()
+                .take_while(|_| !crate::progress::stalled_so_far())
+                .map(literal_value)
+                .collect::<Option<Vec<_>>>()?,
         )),
         Ast::Obj(entries) => {
             let mut obj = JsObject::new();
             for (key, value) in entries.iter() {
+                if crate::progress::stalled_so_far() {
+                    break;
+                }
                 obj.set(key.clone(), literal_value(value)?);
             }
             Value::Obj(Arc::new(obj))
@@ -1038,14 +1106,21 @@ fn literal_value(node: &Ast) -> Option<Value> {
 
 /// `toLiteralAST`: a plain value as the literal node that writes it.
 fn to_literal_ast(value: &Value) -> Ast {
-    crate::stack::grow_stack!(to_literal_ast(value));
+    crate::stack::grow_stack!(to_literal_ast(value), budget else Ast::Null);
     match value {
         Value::Str(v) => Ast::Str(v.clone()),
         Value::Num(n) => Ast::Num(*n),
         Value::Bool(b) => Ast::Bool(*b),
-        Value::Arr(items) => Ast::Arr(Arc::new(items.iter().map(to_literal_ast).collect())),
+        Value::Arr(items) => Ast::Arr(Arc::new(
+            items
+                .iter()
+                .take_while(|_| !crate::progress::stalled_so_far())
+                .map(to_literal_ast)
+                .collect(),
+        )),
         Value::Obj(obj) => Ast::Obj(Arc::new(
             obj.iter()
+                .take_while(|_| !crate::progress::stalled_so_far())
                 .map(|(k, v)| (k.clone(), to_literal_ast(v)))
                 .collect(),
         )),
@@ -1061,6 +1136,7 @@ pub(crate) fn materialize_call_args(args: &[Ast], ctx: &mut Ctx, statement_id: &
     let outer = ctx.current_statement_id.replace(statement_id.to_owned());
     let materialized = args
         .iter()
+        .take_while(|_| !crate::progress::stalled_so_far())
         .map(|arg| materialize_expr(arg, ctx, &Scope::new()))
         .collect();
     ctx.current_statement_id = outer;
@@ -1135,6 +1211,9 @@ fn finish_component(
         .collect();
     let mut still_missing = Vec::new();
     for p in missing {
+        if ctx.stack_cut {
+            break;
+        }
         match &p.default {
             Some(default) => {
                 ctx.default_used(default, 1);
@@ -1146,6 +1225,9 @@ fn finish_component(
     if !still_missing.is_empty() {
         let signature = params_signature(name, params);
         for p in still_missing {
+            if ctx.stack_cut {
+                break;
+            }
             // One a limit cut isn't the program's mistake: the component is
             // dropped all the same, and the result says it was cut.
             if cut.iter().any(|c| c.name == p.name) {
@@ -1171,6 +1253,9 @@ fn finish_component(
     // much, the depth limit times it at most.
     ctx.size += ELEMENT_SIZE - 34;
     let has_dynamic_props = props.values().any(contains_dynamic_value);
+    if has_dynamic_props && crate::progress::stalled_so_far() {
+        ctx.stack_stalled();
+    }
     Value::Element(Arc::new(Element {
         type_name: name.to_owned(),
         props,
@@ -1235,7 +1320,7 @@ fn materialize_lazy_builtin(
 /// components' args to `mapped_props`. The structure stays AST. Past
 /// the depth limit, `Null`.
 pub(crate) fn materialize_expr(node: &Ast, ctx: &mut Ctx, scope: &Scope) -> Ast {
-    crate::stack::grow_stack!(materialize_expr(node, ctx, scope));
+    crate::stack::grow_stack!(materialize_expr(node, ctx, scope), budget else { ctx.stack_stalled(); Ast::Null });
     if ctx.enter(json_size(node, true), NULL_EXPR).is_none() {
         return Ast::Null;
     }
@@ -1414,7 +1499,7 @@ fn values_contain_dynamic(props: &Value) -> bool {
 /// afterwards. That keeps a parent from walking the whole tree below it, which
 /// the streaming parser shares between results.
 fn contains_dynamic_value(value: &Value) -> bool {
-    crate::stack::grow_stack!(contains_dynamic_value(value));
+    crate::stack::grow_stack!(contains_dynamic_value(value), budget else true);
     if is_ast_node(value) {
         return true;
     }
@@ -1436,5 +1521,39 @@ fn contains_dynamic_value(value: &Value) -> bool {
                 _ => false,
             },
         },
+    }
+}
+
+#[cfg(test)]
+mod stack_cut_tests {
+    use super::*;
+
+    #[test]
+    fn replay_cut_leaves_the_frame_untouched() {
+        let entry = Entry {
+            output: Output::Value(Value::Num(1.0)),
+            reach: Arc::new(Reach {
+                direct: vec![0],
+                children: vec![],
+            }),
+            errors: Arc::new(vec![]),
+            unresolved: Arc::new(vec![UnresolvedPart::Own("missing".into())]),
+            r_max: 2,
+            size: 1,
+            context: None,
+        };
+        let mut frame = Frame::default();
+        let (_, stalled) = crate::progress::testing::as_release(|| {
+            crate::progress::watch(|| {
+                crate::stack::testing::cutting("replay(", || {
+                    assert!(!replay(&entry, (0, false), false, &mut frame, 3));
+                })
+            })
+        });
+        assert!(stalled);
+        assert!(frame.errors.is_empty() && frame.unresolved.is_empty());
+        assert!(frame.reached.is_empty() && frame.children.is_empty());
+        assert_eq!(frame.max_depth, 0);
+        assert!(!frame.cycle && !frame.limited && !frame.size_limited && !frame.partial_read);
     }
 }
