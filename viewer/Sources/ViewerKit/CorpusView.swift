@@ -79,8 +79,13 @@ public struct CorpusView: View {
             Task { await model.open(Gallery.request) }
         }
         .task {
-            if let request = ScriptedRun.request { await ScriptedRun.run(request, model: model) }
+            if ProcessInfo.processInfo.environment["VIEWER_RECORD"] != nil {
+                await BatchRecordRun.run(model: model)
+            } else if let request = ScriptedRun.request {
+                await ScriptedRun.run(request, model: model)
+            }
         }
+        .disabled(ProcessInfo.processInfo.environment["VIEWER_RECORD"] != nil)
         .environment(model.selection)
     }
 
@@ -164,8 +169,8 @@ final class CorpusModel {
     private let core = Core()
     private var libraries: [String: Library] = [:]
 
-    init() {
-        reloadCorpus()
+    init(corpus: Corpus? = nil) {
+        if let corpus { self.corpus = corpus } else { reloadCorpus() }
         reloadRecordings()
     }
 
@@ -182,15 +187,22 @@ final class CorpusModel {
 
     /// Saves the live request on screen as a recording.
     func saveRecording() {
-        guard let status = liveStatus, let draft = liveDraft, !status.isActive else { return }
-        do {
-            let recording = Recording(status: status, request: draft.text, effort: draft.effort,
-                                      library: draft.library, createdAt: liveStarted, patchOf: draft.base)
-            savedRecording = try Recordings.save(recording)
-            reloadRecordings()
-        } catch {
-            failure = String(describing: error)
+        do { _ = try saveRecording(batchRequest: nil, in: Recordings.directory) }
+        catch { failure = String(describing: error) }
+    }
+
+    @discardableResult
+    func saveRecording(batchRequest: BatchRequest?, in directory: URL) throws -> URL {
+        guard let status = liveStatus, let draft = liveDraft, !status.isActive else {
+            throw ClaudeError(description: "No finished stream to save")
         }
+        var recording = Recording(status: status, request: draft.text, effort: draft.effort,
+                                  library: draft.library, createdAt: liveStarted, patchOf: draft.base)
+        recording.batchRequest = batchRequest
+        let url = try Recordings.save(recording, in: directory)
+        savedRecording = url
+        reloadRecordings()
+        return url
     }
 
     /// Opens a saved recording, cut where its deltas arrived.
@@ -298,39 +310,59 @@ final class CorpusModel {
             && !(playback?.isStreaming ?? true)
     }
 
-    /// Asks Claude for a screen, or with a `base`, for a change to it in edit
-    /// mode, and plays the answer as it streams. The key is read from the
-    /// Keychain for this request only.
+    struct PreparedLive {
+        let draft: LiveDraft
+        let library: Library
+        let request: ClaudeRequest
+    }
+
+    /// Shared by the sheet and batch mode, including the library's edit prompt.
+    func prepareLive(_ draft: LiveDraft) async throws -> PreparedLive {
+        guard let corpus else { throw ClaudeError(description: "No corpus loaded") }
+        guard let spec = corpus.promptSpec(forLibrary: draft.library, editMode: draft.base != nil) else {
+            throw ClaudeError(description: "The corpus has no prompt spec for \(draft.library)")
+        }
+        let library = try await library(named: draft.library, in: corpus)
+        let systemPrompt = try await core.systemPrompt(spec: spec)
+        let userText = draft.base.map { ClaudeRequest.followUp(draft.text, to: $0) } ?? draft.text
+        return PreparedLive(draft: draft, library: library,
+                            request: ClaudeRequest(model: draft.model, effort: draft.effort,
+                                                   systemPrompt: systemPrompt, userText: userText))
+    }
+
+    /// The only live source factory: both modes use the same Keychain path.
+    /// Tests inject a fake source instead and never call this method.
+    static func liveSource(request: ClaudeRequest, status: LiveStatus) throws -> any ChunkSource {
+        guard let key = APIKeyStore.read(), !key.isEmpty else {
+            throw ClaudeError(description: "No API key in the Keychain. Add one in Settings.")
+        }
+        return ClaudeSource(request: request, apiKey: key, status: status)
+    }
+
+    func streamLive(_ prepared: PreparedLive, status: LiveStatus, source: any ChunkSource) async {
+        let draft = prepared.draft
+        selected = nil
+        let title = (draft.base == nil ? "Claude · " : "Claude · change: ")
+            + draft.text.prefix(48).replacingOccurrences(of: "\n", with: " ")
+        liveDraft = draft
+        liveStarted = Date()
+        await show(OpenProgram(title: title, text: "", golden: nil, base: draft.base, libraryName: draft.library),
+                   library: prepared.library, root: nil, source: source, live: status, base: draft.base)
+        if let playback { current?.text = playback.text }
+    }
+
+    /// Asks from the sheet and plays the answer as it streams.
     func openLive(_ draft: LiveDraft) async {
-        guard let corpus else { return }
         guard !Budget.reached else {
             failure = "The budget cap (\(Budget.format(Budget.cap))) is reached. Raise it or reset the spending in Settings."
             return
         }
-        guard let key = APIKeyStore.read(), !key.isEmpty else {
-            failure = "No API key in the Keychain. Add one in Settings."
-            return
-        }
-        guard let spec = corpus.promptSpec(forLibrary: draft.library, editMode: draft.base != nil) else {
-            failure = "The corpus has no prompt spec for \(draft.library)."
-            return
-        }
-        selected = nil
         do {
-            let library = try await library(named: draft.library, in: corpus)
-            let systemPrompt = try await core.systemPrompt(spec: spec)
+            let prepared = try await prepareLive(draft)
             let status = LiveStatus(model: draft.model)
-            let userText = draft.base.map { ClaudeRequest.followUp(draft.text, to: $0) } ?? draft.text
-            let request = ClaudeRequest(model: draft.model, effort: draft.effort, systemPrompt: systemPrompt, userText: userText)
-            let title = (draft.base == nil ? "Claude · " : "Claude · change: ")
-                + draft.text.prefix(48).replacingOccurrences(of: "\n", with: " ")
-            liveDraft = draft
-            liveStarted = Date()
-            await show(OpenProgram(title: title, text: "", golden: nil, base: draft.base, libraryName: draft.library),
-                       library: library, root: nil,
-                       source: ClaudeSource(request: request, apiKey: key, status: status), live: status, base: draft.base)
+            let source = try Self.liveSource(request: prepared.request, status: status)
+            await streamLive(prepared, status: status, source: source)
             Budget.add(status.cost)
-            if let playback { current?.text = playback.text }
         } catch {
             failure = String(describing: error)
         }

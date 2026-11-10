@@ -27,3 +27,8 @@ Checked 2026-11-09.
 
 **2026-11-09:** the maintainer wants more than 50. The plan is 150 in all, still under the $10 cap (the first 50 are estimated at about $1.10). The other 100 requests are still to write.
 
+**2026-11-11, all 150 requests are written, and the viewer records them in a batch.**
+- **Requests:** 51 to 150 are in `.scratch/testing/recorded-streams.md` (80 fresh screens, 20 follow-ups), and all 150 in `viewer/Requests/recorded-streams.json`. `scripts/check-viewer.sh` fails if the two disagree.
+- **Batch recording:** `VIEWER_RECORD=<the JSON>` makes the viewer ask each request in turn, as the Ask Claude sheet does, and save each recording. It reads the key from the Keychain itself, stops at the budget cap or after three failures in a row, and skips what an earlier run recorded. Written by Codex, with 13 Swift tests on a fake stream; no real request has been made yet.
+- **Still open:** the maintainer runs the batch, then the import and the findings.
+

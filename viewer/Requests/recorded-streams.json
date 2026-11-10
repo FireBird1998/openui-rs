@@ -1,0 +1,902 @@
+[
+  {
+    "number": 1,
+    "model": "sonnet",
+    "request": "Front page for a local news site: a lead story with an image, three secondary headlines, and a \"most read\" list.",
+    "of": null
+  },
+  {
+    "number": 2,
+    "model": "haiku",
+    "request": "Breaking news banner about a city-wide power outage, with the latest update time and a link to live coverage.",
+    "of": null
+  },
+  {
+    "number": 3,
+    "model": "sonnet",
+    "request": "A live blog of a product launch event with six timestamped updates, newest first.",
+    "of": null
+  },
+  {
+    "number": 4,
+    "model": "haiku",
+    "request": "Weekend weather for three cities as cards, each with a high, a low and a short forecast.",
+    "of": null
+  },
+  {
+    "number": 5,
+    "model": "sonnet",
+    "request": "Election night results for a mayoral race: candidates, vote share as a bar chart, and precincts reporting.",
+    "of": null
+  },
+  {
+    "number": 6,
+    "model": "haiku",
+    "request": "A sports scoreboard for tonight's four basketball games, with the final and in-progress ones marked.",
+    "of": null
+  },
+  {
+    "number": 7,
+    "model": "sonnet",
+    "request": "Market summary: three index values with daily change, a line chart of the week, and top movers in a table.",
+    "of": null
+  },
+  {
+    "number": 8,
+    "model": "haiku",
+    "request": "An article page: headline, byline, publish date, lead image, four paragraphs and related links.",
+    "of": null
+  },
+  {
+    "number": 9,
+    "model": "sonnet",
+    "request": "A newsletter digest with five stories, each a title, a one-line summary and a \"read more\" button.",
+    "of": null
+  },
+  {
+    "number": 10,
+    "model": "haiku",
+    "request": "Traffic alerts for the morning commute: three incidents with severity tags and estimated delays.",
+    "of": null
+  },
+  {
+    "number": 11,
+    "model": "sonnet",
+    "request": "A fact-check card rating a viral claim as \"mostly false\", with the claim, the verdict and three sources.",
+    "of": null
+  },
+  {
+    "number": 12,
+    "model": "haiku",
+    "request": "Top headlines by section, in tabs for World, Business, Tech and Sport, three per tab.",
+    "of": null
+  },
+  {
+    "number": 13,
+    "model": "sonnet",
+    "request": "An explainer about a new transit fare system, in an accordion of five questions and answers.",
+    "of": null
+  },
+  {
+    "number": 14,
+    "model": "haiku",
+    "request": "Storm warning for the coast: alert level, affected areas, timeline steps and safety tips.",
+    "of": null
+  },
+  {
+    "number": 15,
+    "model": "sonnet",
+    "request": "Opinion section: three columnists with photos, their latest piece title and a short excerpt.",
+    "of": null
+  },
+  {
+    "number": 16,
+    "model": "haiku",
+    "request": "A podcast episode page for a daily news show, with the episode list and a play button for each.",
+    "of": null
+  },
+  {
+    "number": 17,
+    "model": "sonnet",
+    "request": "Quarterly earnings for a retailer: revenue and profit as KPIs, a bar chart by quarter and a short analysis.",
+    "of": null
+  },
+  {
+    "number": 18,
+    "model": "haiku",
+    "request": "Obituary notice with a photo, dates, a short biography and service details.",
+    "of": null
+  },
+  {
+    "number": 19,
+    "model": "sonnet",
+    "request": "Local events this week as a list, each with a date, a venue and a tag for free or ticketed.",
+    "of": null
+  },
+  {
+    "number": 20,
+    "model": "haiku",
+    "request": "Corrections and clarifications page listing three recent corrections with the original and corrected text.",
+    "of": null
+  },
+  {
+    "number": 21,
+    "model": "sonnet",
+    "request": "A team task board with three columns (to do, doing, done) and cards with assignees.",
+    "of": null
+  },
+  {
+    "number": 22,
+    "model": "haiku",
+    "request": "A sign-up form with name, email, a password with rules, a plan select and terms checkbox.",
+    "of": null
+  },
+  {
+    "number": 23,
+    "model": "sonnet",
+    "request": "A sales dashboard: four KPI cards, monthly revenue line chart and a table of top products.",
+    "of": null
+  },
+  {
+    "number": 24,
+    "model": "haiku",
+    "request": "A recipe card for pancakes with ingredients, numbered steps and prep time.",
+    "of": null
+  },
+  {
+    "number": 25,
+    "model": "sonnet",
+    "request": "Settings page with switches for notifications, a theme radio group and a save button.",
+    "of": null
+  },
+  {
+    "number": 26,
+    "model": "haiku",
+    "request": "A pricing page with three plans as cards, the middle one highlighted as most popular.",
+    "of": null
+  },
+  {
+    "number": 27,
+    "model": "sonnet",
+    "request": "Flight booking search: from, to, dates, passengers, and three result rows with prices.",
+    "of": null
+  },
+  {
+    "number": 28,
+    "model": "haiku",
+    "request": "A contact card for a support team with hours, phone, email and a button to start a chat.",
+    "of": null
+  },
+  {
+    "number": 29,
+    "model": "sonnet",
+    "request": "Project status report: milestones as steps, a risks table and an overall health tag.",
+    "of": null
+  },
+  {
+    "number": 30,
+    "model": "haiku",
+    "request": "A product page for headphones with an image gallery, specs table and add-to-cart button.",
+    "of": null
+  },
+  {
+    "number": 31,
+    "model": "sonnet",
+    "request": "An onboarding checklist of five steps with progress and the next step highlighted.",
+    "of": null
+  },
+  {
+    "number": 32,
+    "model": "haiku",
+    "request": "A gym class timetable for the week in a table, with class type tags.",
+    "of": null
+  },
+  {
+    "number": 33,
+    "model": "sonnet",
+    "request": "A support ticket view: the ticket details, a conversation thread and status actions.",
+    "of": null
+  },
+  {
+    "number": 34,
+    "model": "haiku",
+    "request": "An FAQ page for a library: opening hours, membership, borrowing limits, in an accordion.",
+    "of": null
+  },
+  {
+    "number": 35,
+    "model": "sonnet",
+    "request": "A personal finance overview: balances, a pie chart of spending categories and recent transactions.",
+    "of": null
+  },
+  {
+    "number": 36,
+    "model": "haiku",
+    "request": "A course syllabus with weeks, topics and assignment due dates.",
+    "of": null
+  },
+  {
+    "number": 37,
+    "model": "sonnet",
+    "request": "A hiring pipeline: candidates per stage as a bar chart and a table of open roles.",
+    "of": null
+  },
+  {
+    "number": 38,
+    "model": "haiku",
+    "request": "A restaurant menu with sections for starters, mains and desserts, with prices.",
+    "of": null
+  },
+  {
+    "number": 39,
+    "model": "sonnet",
+    "request": "A server monitoring panel: CPU and memory charts, uptime, and an incidents list.",
+    "of": null
+  },
+  {
+    "number": 40,
+    "model": "haiku",
+    "request": "A travel itinerary for three days in Lisbon, each day a card with morning, afternoon and evening plans.",
+    "of": null
+  },
+  {
+    "number": 41,
+    "model": "sonnet",
+    "request": "Add a weather strip at the top and make the lead story's image larger.",
+    "of": 1
+  },
+  {
+    "number": 42,
+    "model": "haiku",
+    "request": "The power is back: change the banner to \"Power restored\" and add a timeline of the outage.",
+    "of": 2
+  },
+  {
+    "number": 43,
+    "model": "sonnet",
+    "request": "Add a second race for city council below the mayor's, with its own chart.",
+    "of": 5
+  },
+  {
+    "number": 44,
+    "model": "haiku",
+    "request": "Mark one game as overtime and add a \"watch highlights\" button to the finished ones.",
+    "of": 6
+  },
+  {
+    "number": 45,
+    "model": "sonnet",
+    "request": "Replace the line chart with an area chart and add a currency exchange table.",
+    "of": 7
+  },
+  {
+    "number": 46,
+    "model": "haiku",
+    "request": "Add a Science tab with three headlines.",
+    "of": 12
+  },
+  {
+    "number": 47,
+    "model": "sonnet",
+    "request": "Add a date range select that filters the dashboard, and remove the products table.",
+    "of": 23
+  },
+  {
+    "number": 48,
+    "model": "haiku",
+    "request": "Add a phone number field and make the plan select default to the free plan.",
+    "of": 22
+  },
+  {
+    "number": 49,
+    "model": "sonnet",
+    "request": "Mark the second milestone as done and add a new risk.",
+    "of": 29
+  },
+  {
+    "number": 50,
+    "model": "haiku",
+    "request": "Swap day two and day three, and add a restaurant suggestion to each evening.",
+    "of": 40
+  },
+  {
+    "number": 51,
+    "model": "sonnet",
+    "request": "A newsroom assignment desk: six pitches with reporter, deadline, reporting stage and an unassigned tag, plus a pitch submission form.",
+    "of": null
+  },
+  {
+    "number": 52,
+    "model": "haiku",
+    "request": "A reader's saved-story shelf with unread and finished sections, estimated reading times and remove buttons.",
+    "of": null
+  },
+  {
+    "number": 53,
+    "model": "sonnet",
+    "request": "An investigation into reservoir pollution: a timeline of sampling dates, a contaminant-level line chart and cards linking the evidence documents.",
+    "of": null
+  },
+  {
+    "number": 54,
+    "model": "haiku",
+    "request": "A newspaper subscription delivery notice: missed delivery dates, current address and a form to request a replacement copy.",
+    "of": null
+  },
+  {
+    "number": 55,
+    "model": "sonnet",
+    "request": "Compare three candidates' positions on housing, transport and schools in a table, with a short quote from each and source links.",
+    "of": null
+  },
+  {
+    "number": 56,
+    "model": "haiku",
+    "request": "A radio news bulletin rundown with segment durations, presenter names and a total running-time card.",
+    "of": null
+  },
+  {
+    "number": 57,
+    "model": "sonnet",
+    "request": "A housing affordability report: median rent by district in a horizontal bar chart, household-income figures and a methodology note.",
+    "of": null
+  },
+  {
+    "number": 58,
+    "model": "haiku",
+    "request": "A press conference transcript excerpt with speaker labels, timestamps and a callout highlighting the announced decision.",
+    "of": null
+  },
+  {
+    "number": 59,
+    "model": "sonnet",
+    "request": "A reader survey about local coverage: topic checkboxes, preferred edition radio choices and a free-text suggestion field.",
+    "of": null
+  },
+  {
+    "number": 60,
+    "model": "haiku",
+    "request": "A photo essay about restoring a historic theatre: four captioned images and a short introduction, followed by photographer credits.",
+    "of": null
+  },
+  {
+    "number": 61,
+    "model": "sonnet",
+    "request": "A city budget explainer comparing proposed and approved spending by department in a grouped bar chart and a changes table.",
+    "of": null
+  },
+  {
+    "number": 62,
+    "model": "haiku",
+    "request": "A newspaper archive search screen with a keyword field, year select and four dated issue result cards.",
+    "of": null
+  },
+  {
+    "number": 63,
+    "model": "sonnet",
+    "request": "A science story comparing two telescope discoveries: observation facts in a table, an image for each and a plain-language glossary.",
+    "of": null
+  },
+  {
+    "number": 64,
+    "model": "haiku",
+    "request": "A community noticeboard with lost-and-found notices, volunteer requests and public meetings grouped into separate cards.",
+    "of": null
+  },
+  {
+    "number": 65,
+    "model": "sonnet",
+    "request": "A newsroom source directory: five fictional experts with fields of expertise, institution and contact buttons, plus a subject filter.",
+    "of": null
+  },
+  {
+    "number": 66,
+    "model": "haiku",
+    "request": "A public hearing coverage page listing agenda items, testimony summaries and the next consultation deadline.",
+    "of": null
+  },
+  {
+    "number": 67,
+    "model": "sonnet",
+    "request": "A drought tracker with reservoir levels as a bar chart, weekly rainfall figures and water restriction tags for four towns.",
+    "of": null
+  },
+  {
+    "number": 68,
+    "model": "haiku",
+    "request": "An editor's letter explaining a new weekend edition, with three sample sections and a reader feedback button.",
+    "of": null
+  },
+  {
+    "number": 69,
+    "model": "sonnet",
+    "request": "A rail service reliability investigation: on-time percentages by operator, monthly cancellation trends and a table of the worst routes.",
+    "of": null
+  },
+  {
+    "number": 70,
+    "model": "haiku",
+    "request": "A book review roundup with cover images, reviewer verdicts and short excerpts for four new novels.",
+    "of": null
+  },
+  {
+    "number": 71,
+    "model": "sonnet",
+    "request": "A civic data request tracker showing requested documents, agency, submission date and response status, plus overdue notices.",
+    "of": null
+  },
+  {
+    "number": 72,
+    "model": "haiku",
+    "request": "A newsroom transparency page listing funding sources, editorial independence rules and how readers can report a conflict of interest.",
+    "of": null
+  },
+  {
+    "number": 73,
+    "model": "sonnet",
+    "request": "A local school enrollment report with capacity versus enrollment by school, a district total and notes about planned expansions.",
+    "of": null
+  },
+  {
+    "number": 74,
+    "model": "haiku",
+    "request": "A reader letters page with three letters, author towns and a form for submitting a new letter.",
+    "of": null
+  },
+  {
+    "number": 75,
+    "model": "sonnet",
+    "request": "A regional broadband coverage report with speed tiers by town in a table and a bar chart of households still unserved.",
+    "of": null
+  },
+  {
+    "number": 76,
+    "model": "haiku",
+    "request": "A union negotiation briefing: employer offers and union demands side by side, dates of talks and a list of unresolved items.",
+    "of": null
+  },
+  {
+    "number": 77,
+    "model": "sonnet",
+    "request": "A public-health data bulletin with fictional weekly clinic visits, a line chart by week and a note explaining the data lag.",
+    "of": null
+  },
+  {
+    "number": 78,
+    "model": "haiku",
+    "request": "A documentary screening review with a poster image, critic's summary, accessibility details and upcoming screening dates.",
+    "of": null
+  },
+  {
+    "number": 79,
+    "model": "sonnet",
+    "request": "A newsroom correction request form with article URL, disputed passage, supporting evidence and contact preference fields.",
+    "of": null
+  },
+  {
+    "number": 80,
+    "model": "haiku",
+    "request": "A court-case explainer showing the parties, procedural timeline, disputed questions and a glossary of legal terms using fictional details.",
+    "of": null
+  },
+  {
+    "number": 81,
+    "model": "sonnet",
+    "request": "A regional energy report with generation mix in a pie chart, monthly demand in a line chart and a planned maintenance notice.",
+    "of": null
+  },
+  {
+    "number": 82,
+    "model": "haiku",
+    "request": "A cultural heritage feature with cards for three endangered crafts, artisan quotes and workshop visit details.",
+    "of": null
+  },
+  {
+    "number": 83,
+    "model": "sonnet",
+    "request": "A neighborhood amenities comparison: parks, clinics and libraries per district in a table, with a short interpretation and source notes.",
+    "of": null
+  },
+  {
+    "number": 84,
+    "model": "haiku",
+    "request": "A community journalism tip form with topic, location, description and a checkbox requesting confidentiality.",
+    "of": null
+  },
+  {
+    "number": 85,
+    "model": "sonnet",
+    "request": "A disaster recovery spending tracker with pledged versus disbursed funds by project and completion-status tags.",
+    "of": null
+  },
+  {
+    "number": 86,
+    "model": "haiku",
+    "request": "A journalist profile with reporting beats, awards, a short biography and selected investigations displayed as cards.",
+    "of": null
+  },
+  {
+    "number": 87,
+    "model": "sonnet",
+    "request": "A coastal erosion report with shoreline retreat measurements by beach, a before-and-after image pair and a monitoring schedule.",
+    "of": null
+  },
+  {
+    "number": 88,
+    "model": "haiku",
+    "request": "A media literacy lesson showing a headline, evidence checklist and three questions readers should ask before sharing it.",
+    "of": null
+  },
+  {
+    "number": 89,
+    "model": "sonnet",
+    "request": "A public procurement investigation with contract values by supplier, tender dates and callouts for missing disclosures.",
+    "of": null
+  },
+  {
+    "number": 90,
+    "model": "haiku",
+    "request": "A bilingual news brief presenting the same fictional museum opening in English and Spanish in two clearly labeled cards.",
+    "of": null
+  },
+  {
+    "number": 91,
+    "model": "sonnet",
+    "request": "A seed inventory for a community garden: crop, variety, quantity and sowing month, with low-stock tags and a restock form.",
+    "of": null
+  },
+  {
+    "number": 92,
+    "model": "haiku",
+    "request": "A pet adoption directory with four animal portraits, ages, temperament tags and meet-and-greet buttons.",
+    "of": null
+  },
+  {
+    "number": 93,
+    "model": "sonnet",
+    "request": "A warehouse receiving checklist with expected shipments, counted quantities, damaged-item notes and a discrepancy callout.",
+    "of": null
+  },
+  {
+    "number": 94,
+    "model": "haiku",
+    "request": "A laundry pickup order form with service choices, garment counts, pickup slot and a price summary.",
+    "of": null
+  },
+  {
+    "number": 95,
+    "model": "sonnet",
+    "request": "A volunteer shift roster for a food bank with station assignments, vacant slots and a signup form.",
+    "of": null
+  },
+  {
+    "number": 96,
+    "model": "haiku",
+    "request": "A music practice log with daily minutes, pieces practiced and a weekly goal progress summary.",
+    "of": null
+  },
+  {
+    "number": 97,
+    "model": "sonnet",
+    "request": "A makerspace equipment reservation page with machine availability, safety certification status and a booking form.",
+    "of": null
+  },
+  {
+    "number": 98,
+    "model": "haiku",
+    "request": "A plant care guide for three indoor plants with light requirements, watering intervals and seasonal care notes.",
+    "of": null
+  },
+  {
+    "number": 99,
+    "model": "sonnet",
+    "request": "A workshop cost estimator with material quantities, unit prices, labor hours and an example total in a summary card.",
+    "of": null
+  },
+  {
+    "number": 100,
+    "model": "haiku",
+    "request": "A package return screen with order items, return reason select, pickup address and refund method radio choices.",
+    "of": null
+  },
+  {
+    "number": 101,
+    "model": "sonnet",
+    "request": "A language-learning flashcard review summary with words mastered, difficult vocabulary and a suggested next exercise.",
+    "of": null
+  },
+  {
+    "number": 102,
+    "model": "haiku",
+    "request": "A wedding seating planner summary with tables, guest names, meal preferences and unassigned guests shown in a separate card.",
+    "of": null
+  },
+  {
+    "number": 103,
+    "model": "sonnet",
+    "request": "A bicycle repair intake form with bike model, reported symptoms, service options and an estimate approval checkbox.",
+    "of": null
+  },
+  {
+    "number": 104,
+    "model": "haiku",
+    "request": "A museum collection catalog with artifact images, origin, period and curator notes, plus a period filter.",
+    "of": null
+  },
+  {
+    "number": 105,
+    "model": "sonnet",
+    "request": "A research participant scheduling page with available sessions, study duration, eligibility checklist and a registration form.",
+    "of": null
+  },
+  {
+    "number": 106,
+    "model": "haiku",
+    "request": "A campsite comparison with nightly rates, amenities, maximum tent size and availability for three sites.",
+    "of": null
+  },
+  {
+    "number": 107,
+    "model": "sonnet",
+    "request": "A bakery production plan with batches, ingredient requirements, oven slots and packing deadlines in coordinated tables.",
+    "of": null
+  },
+  {
+    "number": 108,
+    "model": "haiku",
+    "request": "A home appliance warranty register with purchase dates, coverage expiry and buttons to view receipts.",
+    "of": null
+  },
+  {
+    "number": 109,
+    "model": "sonnet",
+    "request": "A scholarship application tracker with eligibility notes, deadlines, required documents and submission-status tags.",
+    "of": null
+  },
+  {
+    "number": 110,
+    "model": "haiku",
+    "request": "A chess tournament standings page with players, points, tie-break scores and next-round pairings.",
+    "of": null
+  },
+  {
+    "number": 111,
+    "model": "sonnet",
+    "request": "A film festival program with screening rooms, start times, film lengths and tags for sold-out sessions.",
+    "of": null
+  },
+  {
+    "number": 112,
+    "model": "haiku",
+    "request": "A household chore rotation with room assignments, responsible person, due day and completion checkboxes.",
+    "of": null
+  },
+  {
+    "number": 113,
+    "model": "sonnet",
+    "request": "A nonprofit grant allocation summary with funding by program as a pie chart, beneficiaries served and a restricted-funds note.",
+    "of": null
+  },
+  {
+    "number": 114,
+    "model": "haiku",
+    "request": "A board-game lending catalog with player counts, playing time, availability tags and reserve buttons.",
+    "of": null
+  },
+  {
+    "number": 115,
+    "model": "sonnet",
+    "request": "A compost monitoring notebook with temperature readings over time, material additions and a moisture observation table.",
+    "of": null
+  },
+  {
+    "number": 116,
+    "model": "haiku",
+    "request": "A tailor's fitting appointment card with garment measurements, requested alterations, fittings schedule and estimated price.",
+    "of": null
+  },
+  {
+    "number": 117,
+    "model": "sonnet",
+    "request": "A community tool borrowing form with tool select, loan dates, deposit acknowledgment and a short care checklist.",
+    "of": null
+  },
+  {
+    "number": 118,
+    "model": "haiku",
+    "request": "A stargazing session planner with celestial targets, viewing windows, equipment checklist and a sky-condition note.",
+    "of": null
+  },
+  {
+    "number": 119,
+    "model": "sonnet",
+    "request": "A conference room utilization report with booked hours by room, peak time slots and underused-room recommendations.",
+    "of": null
+  },
+  {
+    "number": 120,
+    "model": "haiku",
+    "request": "A pet grooming appointment screen with pet details, service selections, special handling notes and a booking summary.",
+    "of": null
+  },
+  {
+    "number": 121,
+    "model": "sonnet",
+    "request": "A pottery studio firing log with kiln loads, clay types, target temperatures, firing stages and inspection results.",
+    "of": null
+  },
+  {
+    "number": 122,
+    "model": "haiku",
+    "request": "A moving-day inventory with boxes grouped by room, fragile tags, item counts and a loading checklist.",
+    "of": null
+  },
+  {
+    "number": 123,
+    "model": "sonnet",
+    "request": "A student lab equipment checkout page with instrument IDs, calibration dates, current borrower and return deadlines.",
+    "of": null
+  },
+  {
+    "number": 124,
+    "model": "haiku",
+    "request": "A neighborhood walking challenge with participant steps, a weekly progress bar chart and milestone badges as tags.",
+    "of": null
+  },
+  {
+    "number": 125,
+    "model": "sonnet",
+    "request": "A refill shop shopping list with container tare weights, product price per kilogram and example totals in a table.",
+    "of": null
+  },
+  {
+    "number": 126,
+    "model": "haiku",
+    "request": "A genealogy research notebook with ancestor profile cards, document citations and unresolved questions, without a family-tree diagram.",
+    "of": null
+  },
+  {
+    "number": 127,
+    "model": "sonnet",
+    "request": "A rowing club training plan with session intensity, distance, crew assignments and a weekly distance chart.",
+    "of": null
+  },
+  {
+    "number": 128,
+    "model": "haiku",
+    "request": "A theatre audition schedule with performers, requested roles, audition slots and callback-status tags.",
+    "of": null
+  },
+  {
+    "number": 129,
+    "model": "sonnet",
+    "request": "A water-quality fieldwork planner with sampling sites, required bottles, transport assignments and chain-of-custody checklist.",
+    "of": null
+  },
+  {
+    "number": 130,
+    "model": "haiku",
+    "request": "A holiday gift exchange organizer with participants, spending limit, wish lists and a checklist of wrapped gifts.",
+    "of": null
+  },
+  {
+    "number": 131,
+    "model": "sonnet",
+    "request": "Assign the unassigned pitch to Mira, add a fact-check deadline column and mark the first pitch ready for editing.",
+    "of": 51
+  },
+  {
+    "number": 132,
+    "model": "haiku",
+    "request": "Move the first unread story to finished and add a topic tag to every saved story.",
+    "of": 52
+  },
+  {
+    "number": 133,
+    "model": "sonnet",
+    "request": "Add a fourth candidate with positions on all three issues and highlight the housing row with a short summary callout.",
+    "of": 55
+  },
+  {
+    "number": 134,
+    "model": "haiku",
+    "request": "Add a fifth image showing the reopened theatre, with a caption and a restoration completion date.",
+    "of": 60
+  },
+  {
+    "number": 135,
+    "model": "sonnet",
+    "request": "Add a library services department and a callout stating which department gained the most funding.",
+    "of": 61
+  },
+  {
+    "number": 136,
+    "model": "haiku",
+    "request": "Add a new volunteer request for a river cleanup and group the public meetings by date.",
+    "of": 64
+  },
+  {
+    "number": 137,
+    "model": "sonnet",
+    "request": "Add a fourth week's rainfall readings and mark the driest town with a severe-restrictions tag.",
+    "of": 67
+  },
+  {
+    "number": 138,
+    "model": "haiku",
+    "request": "Add a fifth novel and place the editor's recommended book first, with a recommendation tag.",
+    "of": 70
+  },
+  {
+    "number": 139,
+    "model": "sonnet",
+    "request": "Add a projected enrollment column for next year and flag schools projected to exceed capacity.",
+    "of": 73
+  },
+  {
+    "number": 140,
+    "model": "haiku",
+    "request": "Add a new hearing to the procedural timeline and define two more terms in the glossary.",
+    "of": 80
+  },
+  {
+    "number": 141,
+    "model": "sonnet",
+    "request": "Record that twelve tomato seed packets were used and add a supplier column to the inventory.",
+    "of": 91
+  },
+  {
+    "number": 142,
+    "model": "haiku",
+    "request": "Mark the oldest animal as adopted and add a card for a newly arrived rabbit.",
+    "of": 92
+  },
+  {
+    "number": 143,
+    "model": "sonnet",
+    "request": "Fill one vacant packing shift with Sam and add a second sorting shift for Saturday afternoon.",
+    "of": 95
+  },
+  {
+    "number": 144,
+    "model": "haiku",
+    "request": "Add a fern with its care requirements and a warning about keeping plants away from a heater.",
+    "of": 98
+  },
+  {
+    "number": 145,
+    "model": "sonnet",
+    "request": "Add an optional brake adjustment service and a field for the owner's preferred collection date.",
+    "of": 103
+  },
+  {
+    "number": 146,
+    "model": "haiku",
+    "request": "Add a fourth campsite and flag which sites have wheelchair-accessible facilities.",
+    "of": 106
+  },
+  {
+    "number": 147,
+    "model": "sonnet",
+    "request": "Mark the earliest scholarship application submitted and add a reminder seven days before each remaining deadline.",
+    "of": 109
+  },
+  {
+    "number": 148,
+    "model": "haiku",
+    "request": "Rotate the kitchen and bathroom assignments, and add a monthly window-cleaning chore.",
+    "of": 112
+  },
+  {
+    "number": 149,
+    "model": "sonnet",
+    "request": "Mark the first kiln load complete and add an inspection note describing one cracked bowl.",
+    "of": 121
+  },
+  {
+    "number": 150,
+    "model": "haiku",
+    "request": "Mark two gifts wrapped and add a delivery deadline and a dietary-preferences note to the organizer.",
+    "of": 130
+  }
+]

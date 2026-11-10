@@ -91,6 +91,18 @@ A scripted run plays a case (or `gallery`, or a program file's absolute path) in
 VIEWER_PLAY=synthetic/dashboard-x8 VIEWER_CHUNK=1 target/viewer/release/Viewer.app/Contents/MacOS/Viewer
 ```
 
+For ticket 11's 150 real streams, the maintainer can launch a sequential batch after saving the API key in the viewer's Settings (Keychain) and checking the budget cap and recordings folder:
+
+```sh
+scripts/viewer.sh build
+VIEWER_RECORD="$PWD/viewer/Requests/recorded-streams.json" target/viewer/debug/Viewer.app/Contents/MacOS/Viewer
+# Optional inclusive range; keep the full JSON file:
+VIEWER_RECORD="$PWD/viewer/Requests/recorded-streams.json" VIEWER_RECORD_FROM=51 VIEWER_RECORD_TO=150 target/viewer/debug/Viewer.app/Contents/MacOS/Viewer
+scripts/import-recordings.sh # pass the folder as an argument if Settings uses a custom one
+```
+
+Run the same batch command again to resume. Matching completed batch recordings in the viewer's recordings folder are skipped; manual recordings have no batch identity. Follow-ups use their named fresh request's program from this run or its earlier batch recording, including parents outside the range, and are skipped if unavailable. The batch uses the sheet's react-ui prompt, low effort and each row's Sonnet/Haiku model, prints results with tokens and estimated spend, then quits. It stops before the next conservative cost reservation would exceed the viewer's budget cap, or after three consecutive failures. Failed/partial streams are kept for inspection and retried; output-token-limit recordings count as completed. Reservations for interrupted requests with unknown usage remain in the budget. The JSON is generated from [the request tables](.scratch/testing/recorded-streams.md) with `python3 viewer/Requests/sync-recorded-streams.py`; `scripts/check-viewer.sh` checks agreement and tests batch behavior with fake streams, without Keychain or API access. Do not combine `VIEWER_RECORD` and `VIEWER_PLAY`; recording takes precedence.
+
 `scripts/viewer-timing.sh` runs a fixed set of them, streaming steadily and under stress, and reports where each update's time goes. Sending the whole result as JSON after every chunk costs well under a millisecond even for the largest program; drawing is what costs, about 25–45 ms per update while streaming (see `.scratch/viewer/issues/05-where-the-redraw-time-goes.md`).
 
 ## Layout

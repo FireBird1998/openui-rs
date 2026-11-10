@@ -159,6 +159,8 @@ public final class LiveStatus {
     public private(set) var fallback: String?
     public private(set) var inputTokens = 0
     public private(set) var outputTokens = 0
+    private(set) var hasInputUsage = false
+    private(set) var hasOutputUsage = false
     /// Characters of text received, for estimating output when a request is cancelled.
     public private(set) var receivedCharacters = 0
     /// Every text delta as it arrived, with seconds since the request was sent.
@@ -188,6 +190,7 @@ public final class LiveStatus {
         case let .started(model, inputTokens):
             servedBy = model
             self.inputTokens = inputTokens
+            hasInputUsage = true
         case .thinking:
             if phase == .connecting { phase = .thinking }
         case let .text(text):
@@ -197,6 +200,7 @@ public final class LiveStatus {
             fallback = "\(from) declined; \(to) continued"
         case let .progress(outputTokens, stopReason):
             self.outputTokens = outputTokens
+            hasOutputUsage = true
             if let stopReason { phase = .finished(stopReason: stopReason) }
         case let .failed(message):
             phase = .failed(message)

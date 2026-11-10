@@ -51,6 +51,9 @@ public struct Recording: Codable, Equatable, Sendable {
     /// For a follow-up, the program the chunks patch.
     public var patchOf: String?
 
+    /// Resume identity for a completed batch stream. Older/manual recordings omit it.
+    public var batchRequest: BatchRequest? = nil
+
     /// The whole program, or for a follow-up the whole patch, as it arrived.
     public var text: String { chunks.map(\.text).joined() }
 
@@ -168,7 +171,8 @@ public enum Recordings {
         let words = recording.request.lowercased()
             .components(separatedBy: CharacterSet.alphanumerics.inverted)
             .filter { !$0.isEmpty }.prefix(6).joined(separator: "-")
-        let url = directory.appendingPathComponent("\(stamp)-\(words.isEmpty ? "recording" : words)\(fileSuffix)")
+        let batch = recording.batchRequest.map { "batch-\($0.number)-" } ?? ""
+        let url = directory.appendingPathComponent("\(batch)\(stamp)-\(words.isEmpty ? "recording" : words)\(fileSuffix)")
         try recording.encoded().write(to: url, options: .atomic)
         return url
     }

@@ -11,7 +11,7 @@ use serde_json::Value;
 
 /// The fields the viewer's `Recording` writes (`Recording.swift`). Anything
 /// else, an API key or a request header say, has no place in one.
-const FIELDS: [&str; 13] = [
+const FIELDS: [&str; 14] = [
     "format",
     "version",
     "createdAt",
@@ -25,6 +25,8 @@ const FIELDS: [&str; 13] = [
     "outputTokens",
     "chunks",
     "patchOf",
+    // Which request of a batch it answers, so a stopped batch can resume.
+    "batchRequest",
 ];
 
 fn json(path: &str) -> Value {
