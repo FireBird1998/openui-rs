@@ -191,7 +191,13 @@
 //!   a caller serializing every push of a stream knows what it can cost. A
 //!   stream's limit is that of the text so far, so an early push can be cut
 //!   and a later one not; every push's result is still the one-shot parse of
-//!   the text so far. Repeated subtrees are shared, not copied.
+//!   the text so far. Repeated subtrees are shared, not copied. The count
+//!   errs on the high side in two places. An error is counted for every
+//!   place its statement is used but written once, so a statement with an
+//!   error that is used hundreds of times can be cut though its JSON is
+//!   small. And every reference followed into its statement counts 32
+//!   bytes, whatever the statement writes: following one takes time and
+//!   memory that nothing else would bound, since an alias writes nothing.
 //! - **Depth**, 256 levels by default ([`MAX_DEPTH`]): nesting past it becomes
 //!   null ([`ParseResult::depth_limited`]); evaluated state defaults may
 //!   nest three levels per level.

@@ -162,6 +162,16 @@ const ERROR_SIZE: usize = 106;
 /// as a value, no more than `false` and one.
 const NULL_EXPR: usize = 13;
 const NULL_VALUE: usize = 6;
+/// What following a reference into its statement adds, whatever the
+/// statement writes. An alias writes nothing of its own, so a chain of them
+/// the depth limit cuts (and so never caches) would otherwise be walked again
+/// for every reference to it at no count: time and memory with no bound but
+/// the program's size (35 s and some 20 GB at the default limits). Counted,
+/// the walks end where the result-size limit does. A statement followed
+/// holds several hundred bytes while the result lives, so this is a small
+/// part of that: more would cut small programs that reuse a statement
+/// hundreds of times.
+const REFERENCE_SIZE: usize = 32;
 
 /// What an error adds to [`Ctx::size`]: `message_len` is its message's
 /// length as JSON, `statement_len` its statement name's.
@@ -499,16 +509,7 @@ fn resolve_ref(name: &str, ctx: &mut Ctx, mode: Mode) -> Resolved {
         // node: a list of them inside nested calls would otherwise multiply
         // what's written far past what's counted.
         if !ctx.grow(runtime_ref_size(name)) {
-            return match mode {
-                Mode::Expr => {
-                    ctx.cut(NULL_EXPR);
-                    Resolved::Ast(Ast::Null)
-                }
-                Mode::Value => {
-                    ctx.cut(NULL_VALUE);
-                    Resolved::Value(Value::Null)
-                }
-            };
+            return cut_reference(ctx, mode);
         }
         let node = Ast::RuntimeRef {
             n: name.to_owned(),
@@ -537,11 +538,16 @@ fn resolve_ref(name: &str, ctx: &mut Ctx, mode: Mode) -> Resolved {
         };
     }
 
+    // Part of what the statement adds, so a cached one counts it again on
+    // each reuse, as a walk afresh does.
+    let start_size = ctx.size;
+    if !ctx.grow(REFERENCE_SIZE) {
+        return cut_reference(ctx, mode);
+    }
     ctx.visited.push(slot);
     let previous = ctx.current_statement_id.replace(name.to_owned());
     let outer = std::mem::take(&mut ctx.frame);
     let start_depth = ctx.depth;
-    let start_size = ctx.size;
     let output = match mode {
         Mode::Value => {
             let mut value = materialize_value(target, ctx);
@@ -562,6 +568,20 @@ fn resolve_ref(name: &str, ctx: &mut Ctx, mode: Mode) -> Resolved {
     let size = ctx.size - start_size;
     finish(frame, output, slot, expr, (start_depth, size), ctx);
     resolved
+}
+
+/// A reference the result has no room to follow: null, and counted as cut.
+fn cut_reference(ctx: &mut Ctx, mode: Mode) -> Resolved {
+    match mode {
+        Mode::Expr => {
+            ctx.cut(NULL_EXPR);
+            Resolved::Ast(Ast::Null)
+        }
+        Mode::Value => {
+            ctx.cut(NULL_VALUE);
+            Resolved::Value(Value::Null)
+        }
+    }
 }
 
 /// Account for a cached statement as if it had been materialized here. Its

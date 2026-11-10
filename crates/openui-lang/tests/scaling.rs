@@ -284,5 +284,30 @@ fn unresolved_names_read_the_same_through_a_chain_of_aliases() {
     assert_eq!(parser.finish(), result);
 }
 
+/// A chain the depth limit cuts is never cached, so every reference to it
+/// walks it again, and an alias writes nothing: 35 s and some 20 GB for a
+/// program at the program-size limit. Each reference followed counts against
+/// the result size, so the walks stop where that limit does: a sixth of a
+/// second there, within the binary's allocation cap here.
+#[test]
+fn references_to_a_chain_the_depth_limit_cuts_stop_at_the_size_limit() {
+    let program = replays_over_an_alias_chain(5_000, 260);
+    let result = parse(&program, &library(), None);
+    assert!(result.depth_limited);
+    assert!(result.size_limited, "5,000 walks of 254 aliases, uncounted");
+
+    // A chain short enough to finish is walked once and reused, and its
+    // references fit.
+    let short = replays_over_an_alias_chain(20, 20);
+    let whole = parse(&short, &library(), None);
+    assert!(!whole.depth_limited && !whole.size_limited);
+
+    let mut parser = StreamParser::new(library(), None);
+    for line in program.split_inclusive('\n') {
+        parser.push(line);
+    }
+    assert_eq!(parser.finish(), result);
+}
+
 #[global_allocator]
 static ALLOCATOR: test_alloc::Allocator = test_alloc::Allocator::with_cap(test_alloc::LIMITS);

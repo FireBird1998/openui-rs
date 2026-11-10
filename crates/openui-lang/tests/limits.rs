@@ -545,7 +545,8 @@ fn materialization_prices_exact_result_size_edges() {
         ("root = Stack([$state ? Text(\"abc\") : null, 2])", 353),
         ("root = Stack([$state + {longkey: 1}, 2])", 313),
         ("root = Stack([missing, 2])", 95),
-        ("leaf = Text(\"abc\")\nroot = Stack([leaf, leaf, 2])", 361),
+        // Each reference followed counts 32 bytes of its own (#26).
+        ("leaf = Text(\"abc\")\nroot = Stack([leaf, leaf, 2])", 425),
         ("root = Stack([Text(1), 2])", 217),
         ("q = Query(\"x\")\nroot = Stack([q, 2])", 318),
     ];
