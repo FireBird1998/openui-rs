@@ -327,9 +327,11 @@ pub(crate) fn resolve_invalid_value(
     key: &str,
     required: bool,
     default: Option<&Json>,
+    ctx: &mut Ctx,
 ) -> bool {
     match invalid_fallback(required, default) {
         Fallback::Default(default) => {
+            ctx.default_used(default, 1);
             container.set(key, Value::from_json(default));
             false
         }
@@ -533,6 +535,7 @@ fn validate_object(
                     key,
                     is_required(key),
                     schema_default(Some(sub)),
+                    ctx,
                 )
             {
                 invalid = true;
@@ -542,7 +545,10 @@ fn validate_object(
         let mut next = before.clone();
         if validate_schema_value(&mut next, sub, component, &child_path, ctx) {
             match invalid_fallback(is_required(key), schema_default(Some(sub))) {
-                Fallback::Default(default) => next = Value::from_json(default),
+                Fallback::Default(default) => {
+                    ctx.default_used(default, 1);
+                    next = Value::from_json(default);
+                }
                 Fallback::Invalid => {
                     invalid = true;
                     continue;

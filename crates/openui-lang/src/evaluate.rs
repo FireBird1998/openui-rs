@@ -410,6 +410,9 @@ pub(crate) struct Evaluated {
     /// One ran out of room or work, or went too deep, and is null.
     pub size_limited: bool,
     pub depth_limited: bool,
+    /// The room the defaults that didn't run out took: about what they
+    /// write. One that ran out is null, and takes none.
+    pub built: usize,
 }
 
 /// 1.1 evaluates expression defaults (`$total = 1 + 2`) once, in statement
@@ -431,6 +434,7 @@ pub(crate) fn state_defaults(
         undefined: HashSet::new(),
         size_limited: false,
         depth_limited: false,
+        built: 0,
     };
     if !state.values().any(has_runtime) {
         out.state = state;
@@ -658,10 +662,12 @@ fn evaluate_default(
         Ended::RanOut => ran_out(id, declared, out),
         Ended::TooDeep => {
             set_left(left.less(took));
+            out.built += took.room;
             too_deep(id, declared, out);
         }
         Ended::Whole => {
             set_left(left.less(took));
+            out.built += took.room;
             match ran.value {
                 Some(v) => out.state.set(id.clone(), v),
                 None => {
@@ -833,6 +839,7 @@ impl Record {
             l.work.set(l.work.get() - took.work);
             l.room.set(l.room.get() - took.room);
         });
+        out.built += took.room;
         first.replay(declared);
         let Some(gave) = gave else {
             too_deep(id, declared, out);

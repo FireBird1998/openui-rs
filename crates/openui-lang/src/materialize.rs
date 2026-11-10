@@ -132,7 +132,8 @@ pub(crate) struct Frame {
     pub cycle: bool,
     /// Went past the depth limit; the deeper parts became null.
     pub limited: bool,
-    /// Grew past the result-size limit; the rest became null.
+    /// Grew past the result-size limit; the rest became null or was left
+    /// out.
     pub size_limited: bool,
     /// Checked a library component, function or action against the library,
     /// which a stream's still-arriving text changes (`Ctx::partial`). Only
@@ -144,11 +145,18 @@ pub(crate) struct Frame {
 /// What each piece adds to [`Ctx::size`]: about the bytes of JSON it writes,
 /// erring high, so the result's JSON stays under the limit.
 const ELEMENT_SIZE: usize = 100;
-const ERROR_SIZE: usize = 100;
+/// An error's keys and punctuation, with the longest code and a severity.
+const ERROR_SIZE: usize = 106;
 
-/// What an error adds to [`Ctx::size`].
-fn issue_size(component: &str, path: &str, message_len: usize) -> usize {
-    ERROR_SIZE + message_len + component.len() + path.len()
+/// What a cut node writes in an expression, `{"k":"Null"}` and a comma, and
+/// as a value, no more than `false` and one.
+const NULL_EXPR: usize = 13;
+const NULL_VALUE: usize = 6;
+
+/// What an error adds to [`Ctx::size`]: `message_len` is its message's
+/// length as JSON, `statement_len` its statement name's.
+fn issue_size(component: &str, path: &str, message_len: usize, statement_len: usize) -> usize {
+    ERROR_SIZE + message_len + json_string_len(component) + json_string_len(path) + statement_len
 }
 
 /// The JSON a node writes besides its children (counted when they are
@@ -160,16 +168,18 @@ fn json_size(node: &Ast, expr: bool) -> usize {
         Ast::Ref(_) => 0,
         Ast::Str(v) => 20 + json_string_len(v),
         Ast::Num(_) => 41,
-        Ast::Bool(_) => 20,
-        Ast::Null => 10,
+        Ast::Bool(_) => 23,
+        Ast::Null => NULL_EXPR,
         Ast::Ph(n) | Ast::StateRef(n) => 24 + n.len(),
         Ast::RuntimeRef { n, .. } => runtime_ref_size(n),
         Ast::Arr(_) => 22,
         Ast::Obj(_) => 26,
-        Ast::Comp { name, .. } => 34 + name.len(),
+        // A function call also writes `,"fn":true`.
+        Ast::Comp { name, function, .. } => 34 + name.len() + if *function { 10 } else { 0 },
         Ast::BinOp { .. } | Ast::Ternary { .. } => 42,
-        Ast::UnaryOp { .. } | Ast::Index { .. } => 34,
-        Ast::Member { field, .. } => 36 + field.len(),
+        Ast::UnaryOp { .. } => 36,
+        Ast::Index { .. } => 34,
+        Ast::Member { field, .. } => 36 + json_string_len(field),
         Ast::Assign { target, .. } => 38 + target.len(),
     };
     match node {
@@ -191,6 +201,7 @@ fn kept_ref(node: &Ast, name: &str, ctx: &mut Ctx) -> Ast {
     if ctx.grow(20 + json_string_len(name)) {
         node.clone()
     } else {
+        ctx.cut(NULL_EXPR);
         Ast::Null
     }
 }
@@ -208,7 +219,11 @@ impl Ctx<'_> {
     /// hundred of error message, which would otherwise amplify without bound.
     pub(crate) fn push_issue(&mut self, component: &str, path: &str, issue: Issue) {
         let message = issue.message(component, path);
-        let size = issue_size(component, path, message.len());
+        let statement_len = self
+            .current_statement_id
+            .as_deref()
+            .map_or(0, json_string_len);
+        let size = issue_size(component, path, json_string_len(&message), statement_len);
         if !self.grow(size) {
             return;
         }
@@ -223,11 +238,18 @@ impl Ctx<'_> {
     }
 
     /// Whether [`Ctx::push_issue`] would record an error whose message is
-    /// `message_len` bytes; if not, the result is cut here as it would be
-    /// there. For an error that costs as much to word as it writes: asked
-    /// first, one that doesn't fit is never built.
-    pub(crate) fn issue_fits(&mut self, component: &str, path: &str, message_len: usize) -> bool {
-        self.fits(issue_size(component, path, message_len))
+    /// `message_len` bytes, in a statement whose name is no longer than
+    /// `statement_len`; if not, the result is cut here as it would be there.
+    /// For an error that costs as much to word as it writes: asked first, one
+    /// that doesn't fit is never built.
+    pub(crate) fn issue_fits(
+        &mut self,
+        component: &str,
+        path: &str,
+        message_len: usize,
+        statement_len: usize,
+    ) -> bool {
+        self.fits(issue_size(component, path, message_len, statement_len))
     }
 
     /// Record an unresolved reference, within the result-size limit as
@@ -266,6 +288,39 @@ impl Ctx<'_> {
         true
     }
 
+    /// Count the `placeholder` bytes written where something was cut. They
+    /// count even past the limit: a cut list writes one for each item, and
+    /// nested calls write the list again at every level, so uncounted they
+    /// multiply without end. Past the limit the result is [`Ctx::full`].
+    pub(crate) fn cut(&mut self, placeholder: usize) {
+        self.size = self.size.saturating_add(placeholder);
+        self.full();
+    }
+
+    /// Whether the result has passed the result-size limit, which what's
+    /// charged without asking can do: placeholders for what was cut, keys,
+    /// an element's own JSON. A list stops here, its remaining items left
+    /// out and the result flagged, so no more than that is written past the
+    /// limit for each list still open.
+    pub(crate) fn full(&mut self) -> bool {
+        let full = self.size > self.limits.result_size();
+        self.frame.size_limited |= full;
+        full
+    }
+
+    /// Count a library default written in place of what the program gave,
+    /// as [`Ctx::cut`] counts a placeholder; `each` is how many bytes a byte
+    /// of it becomes where it's written.
+    pub(crate) fn default_used(&mut self, default: &serde_json::Value, each: usize) {
+        self.cut(
+            default
+                .to_string()
+                .len()
+                .saturating_mul(each)
+                .saturating_add(1),
+        );
+    }
+
     fn unknown_component(&mut self, name: &str) {
         let library = self.library;
         let available = library.component_names().map(str::to_owned).collect();
@@ -273,18 +328,17 @@ impl Ctx<'_> {
     }
 
     /// Note a materialize call starting at the current depth, writing about
-    /// `size` bytes; `None` past either limit. Past the depth limit, the
-    /// `placeholder` bytes written in the node's place grow the result
-    /// instead: references can repeat a cut subtree's placeholders without
-    /// end, so they count against the result-size limit like anything else.
+    /// `size` bytes; `None` past either limit, and the `placeholder` bytes
+    /// written in the node's place grow the result instead ([`Ctx::cut`]).
     fn enter(&mut self, size: usize, placeholder: usize) -> Option<()> {
         self.frame.max_depth = self.frame.max_depth.max(self.depth);
         if self.depth >= self.limits.depth() {
             self.frame.limited = true;
-            self.grow(placeholder);
+            self.cut(placeholder);
             return None;
         }
         if !self.grow(size) {
+            self.cut(placeholder);
             return None;
         }
         self.depth += 1;
@@ -300,10 +354,7 @@ type Scope = HashSet<String>;
 /// components that had to be dropped. Past the depth limit, `Null`.
 pub(crate) fn materialize_value(node: &Ast, ctx: &mut Ctx) -> Value {
     crate::stack::grow_stack!(materialize_value(node, ctx));
-    if ctx
-        .enter(json_size(node, false), json_size(&Ast::Null, false))
-        .is_none()
-    {
+    if ctx.enter(json_size(node, false), NULL_VALUE).is_none() {
         return Value::Null;
     }
     let value = materialize_value_at_depth(node, ctx);
@@ -341,6 +392,9 @@ fn materialize_value_at_depth(node: &Ast, ctx: &mut Ctx) -> Value {
 fn materialize_array(els: &[Ast], ctx: &mut Ctx) -> Value {
     let mut items = Vec::new();
     for el in els {
+        if ctx.full() {
+            break;
+        }
         if matches!(el, Ast::Ph(_)) {
             continue; // unresolved placeholders drop out of arrays
         }
@@ -357,7 +411,9 @@ fn materialize_array(els: &[Ast], ctx: &mut Ctx) -> Value {
 fn materialize_object(entries: &[(String, Ast)], ctx: &mut Ctx) -> Value {
     let mut obj = JsObject::new();
     for (key, value) in entries {
-        ctx.size += json_string_len(key) + 4;
+        if ctx.full() || !ctx.grow(json_string_len(key) + 4) {
+            break;
+        }
         let value = materialize_value(value, ctx);
         obj.set(key.clone(), value);
     }
@@ -395,10 +451,14 @@ fn resolve_ref(name: &str, ctx: &mut Ctx, mode: Mode) -> Resolved {
             if ctx.grow(json_size(&node, true)) {
                 Resolved::Ast(node)
             } else {
+                ctx.cut(NULL_EXPR);
                 Resolved::Ast(Ast::Null)
             }
         }
-        Mode::Value => Resolved::Value(Value::Null),
+        Mode::Value => {
+            ctx.cut(NULL_VALUE);
+            Resolved::Value(Value::Null)
+        }
     };
     let table = ctx.table;
     let Some(slot) = table.slot(name) else {
@@ -427,8 +487,14 @@ fn resolve_ref(name: &str, ctx: &mut Ctx, mode: Mode) -> Resolved {
         // what's written far past what's counted.
         if !ctx.grow(runtime_ref_size(name)) {
             return match mode {
-                Mode::Expr => Resolved::Ast(Ast::Null),
-                Mode::Value => Resolved::Value(Value::Null),
+                Mode::Expr => {
+                    ctx.cut(NULL_EXPR);
+                    Resolved::Ast(Ast::Null)
+                }
+                Mode::Value => {
+                    ctx.cut(NULL_VALUE);
+                    Resolved::Value(Value::Null)
+                }
             };
         }
         let node = Ast::RuntimeRef {
@@ -697,6 +763,10 @@ fn materialize_comp(
     // Set when a required prop is invalid with no default to fall back on.
     let mut drop_component = false;
     for (param, arg) in def.params.iter().zip(args) {
+        // Each prop's key, before its value.
+        if ctx.full() || !ctx.grow(param.name.len() + 4) {
+            break;
+        }
         let value = materialize_value(arg, ctx);
         drop_component |= add_prop(&mut props, param, value, name, ctx);
     }
@@ -757,12 +827,16 @@ fn mapped_call(
     };
     let Some(by_name) = mapped else {
         return match def.kind {
-            CallKind::Action => Ast::Comp {
-                name: "Action".to_owned(),
-                args: Arc::new(vec![Ast::Arr(Arc::new(Vec::new()))]),
-                function: false,
-                mapped_props: None,
-            },
+            CallKind::Action => {
+                // Written in the call's place: its name and its empty list.
+                ctx.cut("Action".len() + json_size(&Ast::Arr(Arc::default()), true));
+                Ast::Comp {
+                    name: "Action".to_owned(),
+                    args: Arc::new(vec![Ast::Arr(Arc::new(Vec::new()))]),
+                    function: false,
+                    mapped_props: None,
+                }
+            }
             CallKind::Function => Ast::Null,
         };
     };
@@ -845,7 +919,11 @@ fn map_call_args(name: &str, args: &[Ast], def: &Call, ctx: &mut Ctx) -> Option<
         let mut next = value.clone();
         if validate_schema_value(&mut next, &param.schema, name, &path, ctx) {
             match (&param.default, param.required) {
-                (Some(default), _) => next = Value::from_json(default),
+                (Some(default), _) => {
+                    // Written as literal nodes, each no longer than this.
+                    ctx.default_used(default, json_size(&Ast::Num(0.0), true));
+                    next = Value::from_json(default);
+                }
                 (None, true) => {
                     invalid = true;
                     continue;
@@ -954,7 +1032,6 @@ fn add_prop(
     component: &str,
     ctx: &mut Ctx,
 ) -> bool {
-    ctx.size += param.name.len() + 4;
     // The reference assigns the raw value before validating, then the
     // validated one: a null `__proto__` drops the prototype, so the second
     // assignment makes `__proto__` an own prop.
@@ -964,7 +1041,14 @@ fn add_prop(
     let path = format!("/{}", param.name);
     let invalid = validate_schema_value(&mut value, &param.schema, component, &path, ctx);
     props.set(param.name.clone(), value);
-    invalid && resolve_invalid_value(props, &param.name, param.required, param.default.as_ref())
+    invalid
+        && resolve_invalid_value(
+            props,
+            &param.name,
+            param.required,
+            param.default.as_ref(),
+            ctx,
+        )
 }
 
 /// Excess args, missing required props (defaults first), and the element.
@@ -996,7 +1080,10 @@ fn finish_component(
     let mut still_missing = Vec::new();
     for p in missing {
         match &p.default {
-            Some(default) => props.set(p.name.clone(), Value::from_json(default)),
+            Some(default) => {
+                ctx.default_used(default, 1);
+                props.set(p.name.clone(), Value::from_json(default));
+            }
             None => still_missing.push(p),
         }
     }
@@ -1017,6 +1104,10 @@ fn finish_component(
         return Value::Null;
     }
 
+    // The rest of the element's own JSON, without asking: an element whose
+    // children were cut to fit is still written around them. So each level of
+    // nested elements open when the limit is reached can pass it by this
+    // much, the depth limit times it at most.
     ctx.size += ELEMENT_SIZE - 34;
     let has_dynamic_props = props.values().any(contains_dynamic_value);
     Value::Element(Arc::new(Element {
@@ -1052,25 +1143,28 @@ fn materialize_lazy_builtin(
     }
     let mut inner = scope.clone();
     inner.insert(var.clone());
-    let args = args
-        .iter()
-        .enumerate()
-        .map(|(i, a)| match a {
+    let mut list = Vec::new();
+    for (i, a) in args.iter().enumerate() {
+        if ctx.full() {
+            break;
+        }
+        list.push(match a {
             // The iterator variable, kept as written.
             Ast::Ref(n) if i == 1 => kept_ref(a, n, ctx),
             _ if i == 1 => {
                 if ctx.grow(json_size(a, true)) {
                     a.clone()
                 } else {
+                    ctx.cut(NULL_EXPR);
                     Ast::Null
                 }
             }
             _ => materialize_expr(a, ctx, &inner),
-        })
-        .collect::<Vec<_>>();
+        });
+    }
     Some(Ast::Comp {
         name: name.to_owned(),
-        args: Arc::new(args),
+        args: Arc::new(list),
         function,
         mapped_props: mapped_props.clone(),
     })
@@ -1081,10 +1175,7 @@ fn materialize_lazy_builtin(
 /// the depth limit, `Null`.
 pub(crate) fn materialize_expr(node: &Ast, ctx: &mut Ctx, scope: &Scope) -> Ast {
     crate::stack::grow_stack!(materialize_expr(node, ctx, scope));
-    if ctx
-        .enter(json_size(node, true), json_size(&Ast::Null, true))
-        .is_none()
-    {
+    if ctx.enter(json_size(node, true), NULL_EXPR).is_none() {
         return Ast::Null;
     }
     let ast = materialize_expr_at_depth(node, ctx, scope);
@@ -1149,24 +1240,25 @@ fn expr_boxed(node: &Ast, ctx: &mut Ctx, scope: &Scope) -> Arc<Ast> {
 }
 
 fn expr_list(nodes: &[Ast], ctx: &mut Ctx, scope: &Scope) -> Arc<Vec<Ast>> {
-    Arc::new(
-        nodes
-            .iter()
-            .map(|n| materialize_expr(n, ctx, scope))
-            .collect(),
-    )
+    let mut list = Vec::new();
+    for node in nodes {
+        if ctx.full() {
+            break;
+        }
+        list.push(materialize_expr(node, ctx, scope));
+    }
+    Arc::new(list)
 }
 
 fn expr_object(entries: &[(String, Ast)], ctx: &mut Ctx, scope: &Scope) -> Ast {
-    Ast::Obj(Arc::new(
-        entries
-            .iter()
-            .map(|(k, v)| {
-                ctx.size += json_string_len(k) + 8;
-                (k.clone(), materialize_expr(v, ctx, scope))
-            })
-            .collect(),
-    ))
+    let mut list = Vec::new();
+    for (k, v) in entries {
+        if ctx.full() || !ctx.grow(json_string_len(k) + 8) {
+            break;
+        }
+        list.push((k.clone(), materialize_expr(v, ctx, scope)));
+    }
+    Ast::Obj(Arc::new(list))
 }
 
 fn expr_ternary(cond: &Ast, then: &Ast, otherwise: &Ast, ctx: &mut Ctx, scope: &Scope) -> Ast {

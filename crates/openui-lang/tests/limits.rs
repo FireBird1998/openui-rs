@@ -521,32 +521,32 @@ static ALLOCATOR: test_alloc::Allocator = test_alloc::Allocator::with_cap(test_a
 fn materialization_prices_exact_result_size_edges() {
     let lib = library();
     let cases = [
-        ("root = Stack([1, 2])", 92),
+        ("root = Stack([1, 2])", 104),
         ("root = Stack([$state + \"abc\", 2])", 254),
         // An unresolved reference's placeholder counts, 31 bytes (#19).
-        ("root = Stack([$state ? ?unknown : null, 2])", 294),
-        ("root = Stack([$state ? true : false, 2])", 271),
-        ("root = Stack([Text(null), 2])", 296),
-        ("root = Stack([Text(), 2])", 274),
-        ("root = Stack([Text(\"abc\"), 2])", 186),
+        ("root = Stack([$state ? ?unknown : null, 2])", 297),
+        ("root = Stack([$state ? true : false, 2])", 277),
+        ("root = Stack([Text(null), 2])", 320),
+        ("root = Stack([Text(), 2])", 298),
+        ("root = Stack([Text(\"abc\"), 2])", 198),
         (
             "root = Stack([$state ? Text(\"abc\") : Text(\"def\"), 2])",
             449,
         ),
-        ("root = Stack([true, false, null, ?missing, 2])", 101),
-        ("root = Stack([\"abc\", 2])", 73),
+        ("root = Stack([true, false, null, ?missing, 2])", 119),
+        ("root = Stack([\"abc\", 2])", 85),
         // A space is the first character written as itself, not escaped.
-        ("root = Stack([\"     \", 2])", 75),
-        ("root = Stack([{longkey: 1}, 2])", 106),
+        ("root = Stack([\"     \", 2])", 87),
+        ("root = Stack([{longkey: 1}, 2])", 118),
         ("root = Stack([$state, 2])", 189),
-        ("root = Stack([@Sum([1, 2]), 2])", 339),
+        ("root = Stack([@Sum([1, 2]), 2])", 351),
         ("root = Stack([$state.longfield, 2])", 234),
-        ("root = Stack([$state = 1, 2])", 152),
-        ("root = Stack([$state ? Text(\"abc\") : null, 2])", 350),
+        ("root = Stack([$state = 1, 2])", 164),
+        ("root = Stack([$state ? Text(\"abc\") : null, 2])", 353),
         ("root = Stack([$state + {longkey: 1}, 2])", 313),
-        ("root = Stack([missing, 2])", 77),
-        ("leaf = Text(\"abc\")\nroot = Stack([leaf, leaf, 2])", 349),
-        ("root = Stack([Text(1), 2])", 205),
+        ("root = Stack([missing, 2])", 95),
+        ("leaf = Text(\"abc\")\nroot = Stack([leaf, leaf, 2])", 361),
+        ("root = Stack([Text(1), 2])", 217),
         ("q = Query(\"x\")\nroot = Stack([q, 2])", 318),
     ];
     // These constants price materialization, not the serialized result's length:

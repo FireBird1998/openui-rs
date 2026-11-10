@@ -1,10 +1,12 @@
 //! Exact public work and result-size boundaries for evaluator pricing.
 use openui_lang::{Library, Limits, ParseResult, parse_with_limits};
 
+/// `program` under these limits, after a root: without one the `no-root`
+/// error, written after the defaults, would be what's cut first.
 fn under(program: &str, work: usize, room: usize) -> ParseResult {
     parse_with_limits(
-        program,
-        &Library::from_json_schema(&serde_json::json!({})),
+        &format!("root = Stack()\n{program}"),
+        &Library::from_json_schema(&serde_json::json!({"$defs": {"Stack": {"properties": {}}}})),
         None,
         Limits::default().with_work(work).with_result_size(room),
     )
@@ -92,16 +94,16 @@ fn amplified_values_pin_work_and_room_independently() {
     // name included (6 bytes each here).
     // These are Rust limit expectations, not reference result semantics.
     for (value, work, room) in [
-        ("0", 20_805, 22_817),
-        ("12", 30_805, 32_817),
-        ("-12", 40_805, 42_817),
-        ("0.5", 250_805, 252_817),
-        ("1000000000000000", 250_805, 252_817),
-        ("\"abc\"", 61_105, 60_917),
-        ("[]", 30_805, 30_617),
-        ("[1,22,333]", 121_105, 128_117),
-        ("{}", 30_805, 30_617),
-        ("{abc: 1, z: 22}", 181_405, 186_817),
+        ("0", 20_805, 22_922),
+        ("12", 30_805, 32_922),
+        ("-12", 40_805, 42_922),
+        ("0.5", 250_805, 252_922),
+        ("1000000000000000", 250_805, 252_922),
+        ("\"abc\"", 61_105, 61_022),
+        ("[]", 30_805, 30_722),
+        ("[1,22,333]", 121_105, 128_222),
+        ("{}", 30_805, 30_722),
+        ("{abc: 1, z: 22}", 181_405, 186_922),
     ] {
         let values = vec![value; 100].join(",");
         let items = vec!["0"; 100].join(",");
@@ -166,13 +168,13 @@ fn plucking_list_properties_charges_one_step_per_item() {
 #[test]
 fn text_operations_charge_both_operands_and_nested_arrays() {
     for (program, work, room) in [
-        ("$a = @Sort([\"ab\", \"cde\"], \"\")", 26, 369),
+        ("$a = @Sort([\"ab\", \"cde\"], \"\")", 26, 357),
         (
             "$a = @Filter([{v: \"abc\"}, {v: \"defg\"}], \"v\", \"contains\", \"ab\")",
             37,
-            638,
+            626,
         ),
-        ("$a = \"\" + [[1, 22], [333, null], []]", 53, 406),
+        ("$a = \"\" + [[1, 22], [333, null], []]", 53, 397),
     ] {
         edges(program, work, None);
         assert_eq!(threshold(program, false), room);

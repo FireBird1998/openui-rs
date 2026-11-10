@@ -498,9 +498,10 @@ pub(crate) fn build_result(
         ctx.push_issue(root_name.unwrap_or(""), "", Issue::NoRoot { reason });
     }
 
-    let Ctx { frame, .. } = ctx;
+    let room = ctx.limits.result_size().saturating_sub(ctx.size);
+    let Ctx { mut frame, .. } = ctx;
     // With no entry nothing is reachable, and `no-root` says so: no orphans.
-    let orphaned = match entry {
+    let mut orphaned = match entry {
         Some((slot, _)) => {
             let reach = Arc::new(Reach {
                 direct: frame.reached,
@@ -510,6 +511,20 @@ pub(crate) fn build_result(
         }
         None => Vec::new(),
     };
+    // Their names are the last thing written: those that don't fit in the
+    // room left are left out.
+    let mut size = 0;
+    let fit = orphaned
+        .iter()
+        .take_while(|name| {
+            size += json_string_len(name) + 3;
+            size <= room
+        })
+        .count();
+    if fit < orphaned.len() {
+        orphaned.truncate(fit);
+        frame.size_limited = true;
+    }
 
     ParseResult {
         root,
@@ -635,6 +650,9 @@ fn extract_statements(
     let evaluated = state_defaults(state, room, ctx.limits.depth(), work, reuse);
     ctx.frame.size_limited |= evaluated.size_limited;
     ctx.frame.limited |= evaluated.depth_limited;
+    // The evaluated defaults are written in the expressions' place: what's
+    // written after them has the room they left.
+    ctx.size = ctx.size - expressions_size + evaluated.built;
     let (mut state, undefined) = (evaluated.state, evaluated.undefined);
     // A query waits for the queries it reads; ones that read each other can
     // never start.
@@ -642,7 +660,8 @@ fn extract_statements(
         // One that doesn't fit is cut before its names are gathered: they
         // cost as much to gather as to write.
         let message_len = query_cycle_message_len(found.path.len(), found.bytes);
-        if !ctx.issue_fits("Query", "", message_len) {
+        // The statement the error names is one of them: no longer than all.
+        if !ctx.issue_fits("Query", "", message_len, found.bytes) {
             return;
         }
         let cycle = found.names();

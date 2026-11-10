@@ -182,7 +182,12 @@
 //!   size ([`MAX_AMPLIFICATION`]), never above 8 MiB ([`MAX_RESULT_SIZE`]); see
 //!   [`Limits::result_size_for`]. A result that would grow past it is cut, the
 //!   rest null ([`ParseResult::size_limited`]); a state declaration, query or
-//!   mutation that doesn't fit is left out, with every later one. That bounds amplification, so
+//!   mutation that doesn't fit is left out, with every later one, and a list
+//!   stops at the item that takes the result past the limit. The JSON can
+//!   pass the limit only by what a result always writes (its own keys, a few
+//!   hundred bytes), by an element's own keys for each level of nesting open
+//!   when the limit is reached, and by the library's defaults for one component. That
+//!   bounds amplification, so
 //!   a caller serializing every push of a stream knows what it can cost. A
 //!   stream's limit is that of the text so far, so an early push can be cut
 //!   and a later one not; every push's result is still the one-shot parse of

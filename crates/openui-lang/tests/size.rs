@@ -337,3 +337,278 @@ fn a_state_declaration_that_does_not_fit_is_not_declared_null() {
         );
     }
 }
+
+#[test]
+fn placeholders_for_what_was_cut_are_counted() {
+    // References to `big` fill the limit; then each of a long list of them
+    // is cut, inside calls that write the list again at every level.
+    let program = format!(
+        "big = \"{}\"\nroot = Stack([{}Text($x ? {}[{}]{} : null)])",
+        "x".repeat(6000),
+        "big,".repeat(33),
+        "Text(".repeat(4),
+        vec!["big"; 3000].join(","),
+        ")".repeat(4)
+    );
+    let limit = 200_000;
+    let limits = Limits::default().with_result_size(limit);
+    let result = parse_with_limits(&program, &library(), None, limits);
+    assert!(result.size_limited);
+    let written = result.to_json().len();
+    assert!(written <= limit + 1024, "{written} bytes of JSON");
+}
+
+#[test]
+fn orphaned_names_are_counted() {
+    let program = format!(
+        "root = Stack([])\n{}",
+        (0..5000).map(|i| format!("a{i}=1\n")).collect::<String>()
+    );
+    let whole = parse(&program, &library(), None);
+    assert_eq!(whole.meta.orphaned.len(), 5000);
+    let limit = 20_000;
+    let limits = Limits::default().with_result_size(limit);
+    let result = parse_with_limits(&program, &library(), None, limits);
+    assert!(result.size_limited);
+    let written = result.to_json().len();
+    assert!(written <= limit + 1024, "{written} bytes of JSON");
+    // The first of them, in order.
+    let kept = result.meta.orphaned.len();
+    assert!(kept > 1000 && kept < 5000, "{kept} kept");
+    assert_eq!(result.meta.orphaned[..], whole.meta.orphaned[..kept]);
+}
+
+/// A small deterministic generator (xorshift).
+struct Random(u64);
+
+impl Random {
+    fn below(&mut self, n: usize) -> usize {
+        self.0 ^= self.0 << 13;
+        self.0 ^= self.0 >> 7;
+        self.0 ^= self.0 << 17;
+        (self.0 % n as u64) as usize
+    }
+
+    fn pick<'a>(&mut self, from: &[&'a str]) -> &'a str {
+        from[self.below(from.len())]
+    }
+
+    /// `n` expressions, separated by commas.
+    fn list(&mut self, n: usize, depth: usize, out: &mut String) {
+        for i in 0..n {
+            if i > 0 {
+                out.push(',');
+            }
+            self.expression(depth, out);
+        }
+    }
+
+    /// Every kind of expression: literals with characters JSON escapes,
+    /// references that resolve, don't, or name a query or mutation, lists,
+    /// objects, components, builtins and operators.
+    fn expression(&mut self, depth: usize, out: &mut String) {
+        const NAMES: [&str; 8] = ["a", "b", "c", "d", "q", "m", "big", "missing"];
+        const STATE: [&str; 3] = ["$s", "$t", "$longername"];
+        let kinds = if depth == 0 { 8 } else { 18 };
+        let depth = depth.saturating_sub(1);
+        match self.below(kinds) {
+            0 | 1 => out.push_str(self.pick(&NAMES)),
+            2 => out.push_str(self.pick(&STATE)),
+            3 => out.push_str(self.pick(&["1", "-2.5", "1000000000000000", "true", "null"])),
+            4 => {
+                out.push('"');
+                for _ in 0..self.below(6) {
+                    out.push_str(self.pick(&["x", "\\n", "\\u0001", "é", "\\\""]));
+                }
+                out.push('"');
+            }
+            5 => out.push_str("[]"),
+            6 => out.push_str("{}"),
+            7 => out.push_str("Text()"),
+            8 | 9 => {
+                let n = if self.below(8) == 0 { 60 } else { 5 };
+                let n = self.below(n);
+                out.push('[');
+                self.list(n, depth, out);
+                out.push(']');
+            }
+            10 => {
+                out.push('{');
+                for i in 0..self.below(4) {
+                    if i > 0 {
+                        out.push(',');
+                    }
+                    out.push_str(self.pick(&["k:", "longkey:", "\"a\\u0001\":"]));
+                    self.expression(depth, out);
+                }
+                out.push('}');
+            }
+            11 | 12 => {
+                out.push_str(self.pick(&["Text(", "Stack(", "Nope(", "@Sum(", "@Each(", "@Nope("]));
+                let n = self.below(4);
+                self.list(n, depth, out);
+                out.push(')');
+            }
+            13 => {
+                self.expression(depth, out);
+                out.push_str(self.pick(&[" + ", " == ", " && "]));
+                self.expression(depth, out);
+            }
+            14 => {
+                self.expression(depth, out);
+                out.push_str(" ? ");
+                self.expression(depth, out);
+                out.push_str(" : ");
+                self.expression(depth, out);
+            }
+            15 => {
+                out.push_str(self.pick(&["!", "-"]));
+                self.expression(depth, out);
+            }
+            16 => {
+                self.expression(depth, out);
+                out.push_str(self.pick(&[".f", ".\"a\\u0001\"", "[0]"]));
+            }
+            _ => {
+                out.push_str(self.pick(&STATE));
+                out.push_str(" = ");
+                self.expression(depth, out);
+            }
+        }
+    }
+
+    /// Up to ten statements of every kind, some names defined twice.
+    fn program(&mut self) -> String {
+        let mut out = String::new();
+        for _ in 0..1 + self.below(10) {
+            let depth = self.below(5);
+            let name = match self.below(9) {
+                0 | 1 => "root = ",
+                2 => self.pick(&["$s = ", "$t = ", "$longername = "]),
+                3 => "q = Query(",
+                4 => "m = Mutation(",
+                5 => "big = \"",
+                6 => self.pick(&["o1 = ", "o2 = ", "o3 = "]),
+                _ => self.pick(&["a = ", "b = ", "c = ", "d = "]),
+            };
+            out.push_str(name);
+            if name.ends_with('(') {
+                let n = self.below(5);
+                self.list(n, depth, &mut out);
+                out.push(')');
+            } else if name.ends_with('"') {
+                out.push_str(&"x".repeat(self.below(400)));
+                out.push('"');
+            } else {
+                self.expression(depth, &mut out);
+            }
+            out.push('\n');
+        }
+        out
+    }
+}
+
+#[test]
+fn no_generated_program_writes_far_past_its_limit() {
+    // What a result writes whatever its limit: its own keys, and a few bytes
+    // for each list open when the limit is passed.
+    const ENVELOPE: usize = 512;
+    let lib = library();
+    let mut random = Random(0x9E37_79B9_7F4A_7C15);
+    let mut cut = 0;
+    for _ in 0..3000 {
+        let program = random.program();
+        let whole = parse(&program, &lib, None).to_json().len();
+        for _ in 0..3 {
+            let limit = random.below(whole + 50);
+            let limits = Limits::default().with_result_size(limit);
+            let result = parse_with_limits(&program, &lib, None, limits);
+            let json = result.to_json();
+            assert!(
+                json.len() <= limit + ENVELOPE,
+                "{} bytes of JSON, limit {limit}:\n{program}",
+                json.len()
+            );
+            cut += usize::from(result.size_limited);
+            // Arriving in pieces, each statement cached and replayed, the
+            // result is the one the whole text gives a fresh stream.
+            let mut whole_text = StreamParser::with_limits(lib.clone(), None, limits);
+            let expected = whole_text.push(&program);
+            let mut pieces = StreamParser::with_limits(lib.clone(), None, limits);
+            let chars: Vec<char> = program.chars().collect();
+            let mut last = None;
+            for piece in chars.chunks(1 + random.below(9)) {
+                last = Some(pieces.push(&piece.iter().collect::<String>()));
+            }
+            assert_eq!(
+                last.unwrap().to_json(),
+                expected.to_json(),
+                "limit {limit}:\n{program}"
+            );
+        }
+    }
+    assert!(cut > 3000, "only {cut} results were cut");
+}
+
+/// How far past `limit` the JSON of `program` goes, and whether it's flagged.
+fn past(program: &str, lib: &Library, limit: usize) -> (isize, bool) {
+    let limits = Limits::default().with_result_size(limit);
+    let result = parse_with_limits(program, lib, None, limits);
+    let written = result.to_json().len() as isize;
+    (written - limit as isize, result.size_limited)
+}
+
+#[test]
+fn every_part_of_a_result_stays_near_its_limit() {
+    let lib = library();
+    let with_default = Library::from_json_schema(&serde_json::json!({"$defs": {
+        "Text": {"properties": {"value": {"default": "d".repeat(2000)}}, "required": ["value"]},
+        "Stack": {"properties": {"children": {}}}
+    }}));
+    let cases: [(&str, String, &Library, usize, isize); 4] = [
+        (
+            "a lazy builtin's extra arguments",
+            format!(
+                "root = Stack([@Each([], \"v\", 1, {})])",
+                vec!["1"; 20_000].join(",")
+            ),
+            &lib,
+            1000,
+            512,
+        ),
+        (
+            "orphans after evaluated state defaults",
+            format!(
+                "$a = \"{}\"\n$b = [$a,$a,$a,$a]\nroot = Stack([])\n{}",
+                "x".repeat(3000),
+                (0..2000).map(|i| format!("o{i} = 1\n")).collect::<String>()
+            ),
+            &lib,
+            20_000,
+            512,
+        ),
+        // An element is written around children cut to fit: its own JSON, 66
+        // bytes besides its name, for each level open, the depth limit's 256
+        // at most.
+        (
+            "elements nested to the depth limit",
+            "root = ".to_owned() + &"Stack([".repeat(400),
+            &lib,
+            2000,
+            256 * 66 + 512,
+        ),
+        // One default past the limit at most: the library's, not the program's.
+        (
+            "a library default for each component",
+            format!("root = Stack([{}])", vec!["Text()"; 100].join(",")),
+            &with_default,
+            20_000,
+            2000 + 512,
+        ),
+    ];
+    for (shape, program, lib, limit, allowed) in cases {
+        let (over, flagged) = past(&program, lib, limit);
+        assert!(over <= allowed, "{shape}: {over} bytes past the limit");
+        assert!(flagged, "{shape}: not flagged");
+    }
+}
