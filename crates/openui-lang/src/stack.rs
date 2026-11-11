@@ -298,6 +298,40 @@ mod tests {
         assert_eq!(SEGMENTS.get(), 0);
     }
 
+    /// A ceiling stall in the evaluator spends its work, so the default being
+    /// evaluated is declared null: never left out, and never the part of its
+    /// value that was built before the cut.
+    #[test]
+    fn an_evaluator_stack_cut_declares_the_default_null() {
+        let lib = crate::Library::from_json_schema(&serde_json::json!({"$defs": {
+            "Text": {"properties": {"value": {}}}
+        }}));
+        for (walk, program, declared) in [
+            (
+                "to_value(",
+                "root = Text($a)\n$a = 1 + 2",
+                serde_json::json!({"$a": null}),
+            ),
+            (
+                "to_string(",
+                "root = Text($b)\n$a = @Sum([1, 2])\n$b = [5] + \"!\"",
+                serde_json::json!({"$a": 3, "$b": null}),
+            ),
+            (
+                "literal(",
+                "root = Text($a)\n$a = @Each([1, 2], \"x\", x + 1)",
+                serde_json::json!({"$a": null}),
+            ),
+        ] {
+            let cut = crate::progress::testing::as_release(|| {
+                testing::cutting(walk, || crate::parse(program, &lib, None))
+            });
+            assert!(testing::HITS.get() > 0 && cut.size_limited, "{walk}");
+            let json: serde_json::Value = serde_json::from_str(&cut.to_json()).unwrap();
+            assert_eq!(json["stateDeclarations"], declared, "{walk}");
+        }
+    }
+
     #[test]
     fn a_segment_says_so_while_it_runs_and_not_after() {
         assert!(!ON_SEGMENT.get());

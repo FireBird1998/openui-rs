@@ -68,4 +68,11 @@ exclude_re = [
     # Whole/TooDeep and recomputes zero-allowance followers on RanOut. Values,
     # priced work, and a reliable generous timing ratio are unchanged.
     'evaluate\.rs:.*replace == with != in followers_are_forced_null$',
+    # Sharing one reached statement's list of unresolved names changes no
+    # result, only the steps taken to list them under a chain of aliases. No
+    # cost test can show it yet: reaching such a chain many times already
+    # costs reaches times chain without the mutant (13.6x for 4x, against
+    # 14.5x with it), which is #28. Remove this when #28 is fixed and a
+    # scaling case pins the sharing.
+    'materialize\.rs:.*delete match arm \[UnresolvedPart::Reached\(only\)\] in fold$',
 ]
