@@ -1,0 +1,560 @@
+{
+  "batchRequest" : {
+    "model" : "haiku",
+    "number" : 16,
+    "request" : "A podcast episode page for a daily news show, with the episode list and a play button for each."
+  },
+  "chunks" : [
+    {
+      "t" : 0.617,
+      "text" : "root = Stack([header"
+    },
+    {
+      "t" : 0.732,
+      "text" : ", episodeList"
+    },
+    {
+      "t" : 0.74,
+      "text" : "])\nheader = In"
+    },
+    {
+      "t" : 0.746,
+      "text" : "lineHeader(\"The"
+    },
+    {
+      "t" : 0.763,
+      "text" : " Daily"
+    },
+    {
+      "t" : 0.783,
+      "text" : " Br"
+    },
+    {
+      "t" : 0.789,
+      "text" : "ief\", \"Da"
+    },
+    {
+      "t" : 0.794,
+      "text" : "ily news in"
+    },
+    {
+      "t" : 0.803,
+      "text" : " under"
+    },
+    {
+      "t" : 0.81,
+      "text" : " 20 minutes\")"
+    },
+    {
+      "t" : 0.82,
+      "text" : "\nepisodeList = Stack"
+    },
+    {
+      "t" : 0.827,
+      "text" : "([ep1, ep2"
+    },
+    {
+      "t" : 0.847,
+      "text" : ", ep3,"
+    },
+    {
+      "t" : 0.873,
+      "text" : " ep4], \""
+    },
+    {
+      "t" : 0.888,
+      "text" : "column\", \"m\")\nep"
+    },
+    {
+      "t" : 0.91,
+      "text" : "1 = Card(["
+    },
+    {
+      "t" : 0.935,
+      "text" : "ep1info"
+    },
+    {
+      "t" : 0.952,
+      "text" : ", ep1bt"
+    },
+    {
+      "t" : 0.97,
+      "text" : "n], \"card"
+    },
+    {
+      "t" : 0.99,
+      "text" : "\", \"row\", \"m"
+    },
+    {
+      "t" : 1.011,
+      "text" : "\", \"between"
+    },
+    {
+      "t" : 1.031,
+      "text" : "\", \"center\")\nep1"
+    },
+    {
+      "t" : 1.052,
+      "text" : "info = E"
+    },
+    {
+      "t" : 1.075,
+      "text" : "ntityList([ep1row"
+    },
+    {
+      "t" : 1.092,
+      "text" : "1"
+    },
+    {
+      "t" : 1.115,
+      "text" : ", ep1row2])"
+    },
+    {
+      "t" : 1.135,
+      "text" : "\nep1row1 = {"
+    },
+    {
+      "t" : 1.154,
+      "text" : "left: \"Epis"
+    },
+    {
+      "t" : 1.174,
+      "text" : "ode 412"
+    },
+    {
+      "t" : 1.193,
+      "text" : ":"
+    },
+    {
+      "t" : 1.214,
+      "text" : " Markets"
+    },
+    {
+      "t" : 1.234,
+      "text" : " Rally on"
+    },
+    {
+      "t" : 1.253,
+      "text" : " R"
+    },
+    {
+      "t" : 1.274,
+      "text" : "ate Hop"
+    },
+    {
+      "t" : 1.295,
+      "text" : "es\", right: \"M"
+    },
+    {
+      "t" : 1.315,
+      "text" : "ar"
+    },
+    {
+      "t" : 1.334,
+      "text" : " 14"
+    },
+    {
+      "t" : 1.355,
+      "text" : "\"}\nep1row2"
+    },
+    {
+      "t" : 1.403,
+      "text" : " = {left: \"Du"
+    },
+    {
+      "t" : 1.416,
+      "text" : "ration\", right: \"18 "
+    },
+    {
+      "t" : 1.429,
+      "text" : "min\"}\nep1"
+    },
+    {
+      "t" : 1.441,
+      "text" : "btn = IconButton(\""
+    },
+    {
+      "t" : 1.479,
+      "text" : "Play epis"
+    },
+    {
+      "t" : 1.499,
+      "text" : "ode 412\", Icon(\""
+    },
+    {
+      "t" : 1.519,
+      "text" : "play"
+    },
+    {
+      "t" : 1.539,
+      "text" : "\", \"media"
+    },
+    {
+      "t" : 1.56,
+      "text" : "\"), @ToAssist"
+    },
+    {
+      "t" : 1.58,
+      "text" : "ant(\"Play epis"
+    },
+    {
+      "t" : 1.601,
+      "text" : "ode 412:"
+    },
+    {
+      "t" : 1.621,
+      "text" : " Markets Rally on"
+    },
+    {
+      "t" : 1.647,
+      "text" : " Rate Hopes\"),"
+    },
+    {
+      "t" : 1.663,
+      "text" : " \"primary\", \"med"
+    },
+    {
+      "t" : 1.683,
+      "text" : "ium\", \"circle\")"
+    },
+    {
+      "t" : 1.704,
+      "text" : "\nep2 = Card(["
+    },
+    {
+      "t" : 1.725,
+      "text" : "ep2info, ep2bt"
+    },
+    {
+      "t" : 1.745,
+      "text" : "n], \"card\", \"row\","
+    },
+    {
+      "t" : 1.767,
+      "text" : " \"m\", \"between\", \"center"
+    },
+    {
+      "t" : 1.787,
+      "text" : "\")\nep2info = E"
+    },
+    {
+      "t" : 1.808,
+      "text" : "ntityList([ep2row"
+    },
+    {
+      "t" : 1.829,
+      "text" : "1, ep2row2])"
+    },
+    {
+      "t" : 1.848,
+      "text" : "\nep2row1 ="
+    },
+    {
+      "t" : 1.869,
+      "text" : " {left: \"Episode "
+    },
+    {
+      "t" : 1.89,
+      "text" : "411: Stor"
+    },
+    {
+      "t" : 1.909,
+      "text" : "m Season"
+    },
+    {
+      "t" : 1.93,
+      "text" : " Beg"
+    },
+    {
+      "t" : 1.95,
+      "text" : "ins Early\", right: \""
+    },
+    {
+      "t" : 1.972,
+      "text" : "Mar 13\"}"
+    },
+    {
+      "t" : 1.992,
+      "text" : "\nep2row2 = {left"
+    },
+    {
+      "t" : 2.013,
+      "text" : ": \"Duration\", right:"
+    },
+    {
+      "t" : 2.032,
+      "text" : " \"16"
+    },
+    {
+      "t" : 2.053,
+      "text" : " min\"}\nep2"
+    },
+    {
+      "t" : 2.073,
+      "text" : "btn = IconButton(\""
+    },
+    {
+      "t" : 2.094,
+      "text" : "Play episode 411\","
+    },
+    {
+      "t" : 2.115,
+      "text" : " Icon(\"play\", \"media"
+    },
+    {
+      "t" : 2.135,
+      "text" : "\"), @ToAssist"
+    },
+    {
+      "t" : 2.155,
+      "text" : "ant(\"Play episode 411"
+    },
+    {
+      "t" : 2.178,
+      "text" : ": Storm Season Beg"
+    },
+    {
+      "t" : 2.197,
+      "text" : "ins Early\"), \"primary"
+    },
+    {
+      "t" : 2.217,
+      "text" : "\", \"medium\", \"circle"
+    },
+    {
+      "t" : 2.238,
+      "text" : "\")\nep3 ="
+    },
+    {
+      "t" : 2.258,
+      "text" : " Card([ep3info, "
+    },
+    {
+      "t" : 2.279,
+      "text" : "ep3btn], \"card\","
+    },
+    {
+      "t" : 2.299,
+      "text" : " \"row\", \"m\", \"between"
+    },
+    {
+      "t" : 2.32,
+      "text" : "\", \"center\")\nep3"
+    },
+    {
+      "t" : 2.342,
+      "text" : "info = EntityList(["
+    },
+    {
+      "t" : 2.362,
+      "text" : "ep3row1, ep3"
+    },
+    {
+      "t" : 2.382,
+      "text" : "row2])\nep3row"
+    },
+    {
+      "t" : 2.403,
+      "text" : "1 = {left: \""
+    },
+    {
+      "t" : 2.423,
+      "text" : "Episode 410: Tech"
+    },
+    {
+      "t" : 2.445,
+      "text" : " Gi"
+    },
+    {
+      "t" : 2.473,
+      "text" : "ants Face"
+    },
+    {
+      "t" : 2.493,
+      "text" : " New"
+    },
+    {
+      "t" : 2.514,
+      "text" : " Priv"
+    },
+    {
+      "t" : 2.534,
+      "text" : "acy Rules\", right:"
+    },
+    {
+      "t" : 2.555,
+      "text" : " \"Mar 12\"}"
+    },
+    {
+      "t" : 2.575,
+      "text" : "\nep3row2 ="
+    },
+    {
+      "t" : 2.595,
+      "text" : " {left: \"Duration\","
+    },
+    {
+      "t" : 2.615,
+      "text" : " right: \"21"
+    },
+    {
+      "t" : 2.635,
+      "text" : " min\"}\nep3"
+    },
+    {
+      "t" : 2.656,
+      "text" : "btn = IconButton(\""
+    },
+    {
+      "t" : 2.677,
+      "text" : "Play episode 410\","
+    },
+    {
+      "t" : 2.697,
+      "text" : " Icon(\"play\", \"media"
+    },
+    {
+      "t" : 2.718,
+      "text" : "\"), @ToAssist"
+    },
+    {
+      "t" : 2.73,
+      "text" : "ant(\"Play episode 410"
+    },
+    {
+      "t" : 2.75,
+      "text" : ": Tech Giants"
+    },
+    {
+      "t" : 2.772,
+      "text" : " Face New Privacy R"
+    },
+    {
+      "t" : 2.794,
+      "text" : "ules\"), \"primary\", \""
+    },
+    {
+      "t" : 2.815,
+      "text" : "medium\", \"circle\")"
+    },
+    {
+      "t" : 2.836,
+      "text" : "\nep4 = Card(["
+    },
+    {
+      "t" : 2.857,
+      "text" : "ep4info, ep4"
+    },
+    {
+      "t" : 2.879,
+      "text" : "btn], \"card\", \"row"
+    },
+    {
+      "t" : 2.9,
+      "text" : "\", \"m\", \"between\", \""
+    },
+    {
+      "t" : 2.913,
+      "text" : "center\")\nep4info ="
+    },
+    {
+      "t" : 2.934,
+      "text" : " EntityList([ep4"
+    },
+    {
+      "t" : 2.956,
+      "text" : "row1, ep4row2"
+    },
+    {
+      "t" : 2.978,
+      "text" : "])\nep4row1 "
+    },
+    {
+      "t" : 3,
+      "text" : "= {left: \"Episode"
+    },
+    {
+      "t" : 3.022,
+      "text" : " 409: City"
+    },
+    {
+      "t" : 3.044,
+      "text" : " Council Appro"
+    },
+    {
+      "t" : 3.067,
+      "text" : "ves Trans"
+    },
+    {
+      "t" : 3.08,
+      "text" : "it Plan\", right: \""
+    },
+    {
+      "t" : 3.101,
+      "text" : "Mar 11\"}"
+    },
+    {
+      "t" : 3.123,
+      "text" : "\nep4row2 = {"
+    },
+    {
+      "t" : 3.146,
+      "text" : "left: \"Duration\", right"
+    },
+    {
+      "t" : 3.169,
+      "text" : ": \"15 min\"}"
+    },
+    {
+      "t" : 3.191,
+      "text" : "\nep4btn = Icon"
+    },
+    {
+      "t" : 3.214,
+      "text" : "Button(\"Play episode "
+    },
+    {
+      "t" : 3.237,
+      "text" : "409\", Icon(\"play\","
+    },
+    {
+      "t" : 3.261,
+      "text" : " \"media\"), @ToA"
+    },
+    {
+      "t" : 3.284,
+      "text" : "ssistant(\"Play episode"
+    },
+    {
+      "t" : 3.307,
+      "text" : " 409: City"
+    },
+    {
+      "t" : 3.331,
+      "text" : " Council Approves Transit"
+    },
+    {
+      "t" : 3.354,
+      "text" : " Plan\"), \"primary"
+    },
+    {
+      "t" : 3.377,
+      "text" : "\", \"medium\", \"circle"
+    },
+    {
+      "t" : 3.401,
+      "text" : "\")"
+    }
+  ],
+  "createdAt" : "2026-11-11T10:34:04Z",
+  "effort" : "low",
+  "format" : "openui-recording",
+  "inputTokens" : 14495,
+  "library" : "react-ui",
+  "model" : "claude-haiku-5-5",
+  "outputTokens" : 860,
+  "request" : "A podcast episode page for a daily news show, with the episode list and a play button for each.",
+  "servedBy" : "claude-haiku-5-5",
+  "stopReason" : "end_turn",
+  "version" : 1
+}

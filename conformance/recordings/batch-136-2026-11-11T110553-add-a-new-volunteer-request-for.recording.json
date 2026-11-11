@@ -1,0 +1,246 @@
+{
+  "batchRequest" : {
+    "model" : "haiku",
+    "number" : 136,
+    "of" : 64,
+    "request" : "Add a new volunteer request for a river cleanup and group the public meetings by date."
+  },
+  "chunks" : [
+    {
+      "t" : 4.791,
+      "text" : "vol"
+    },
+    {
+      "t" : 4.815,
+      "text" : "unteerBlock ="
+    },
+    {
+      "t" : 4.837,
+      "text" : " Stack([vol1, v"
+    },
+    {
+      "t" : 5.099,
+      "text" : "ol2, vol3, v"
+    },
+    {
+      "t" : 5.156,
+      "text" : "ol4], \"column\", \"s"
+    },
+    {
+      "t" : 5.22,
+      "text" : "\")\nvol4 ="
+    },
+    {
+      "t" : 5.258,
+      "text" : " Callout(\"info\", \"River c"
+    },
+    {
+      "t" : 5.312,
+      "text" : "leanup\", \"Satur"
+    },
+    {
+      "t" : 5.364,
+      "text" : "day 8am, meet at"
+    },
+    {
+      "t" : 5.422,
+      "text" : " the Mill Bridge"
+    },
+    {
+      "t" : 5.475,
+      "text" : ". Waders and litter p"
+    },
+    {
+      "t" : 5.525,
+      "text" : "ickers prov"
+    },
+    {
+      "t" : 5.574,
+      "text" : "ided.\")\nmeetingC"
+    },
+    {
+      "t" : 5.622,
+      "text" : "ard = Card([meeting"
+    },
+    {
+      "t" : 5.683,
+      "text" : "Header, meetingG"
+    },
+    {
+      "t" : 5.736,
+      "text" : "roups])\nmeetingG"
+    },
+    {
+      "t" : 5.808,
+      "text" : "roups = Accordion(["
+    },
+    {
+      "t" : 5.871,
+      "text" : "mg1, mg2,"
+    },
+    {
+      "t" : 5.925,
+      "text" : " mg3])\nmg1"
+    },
+    {
+      "t" : 5.974,
+      "text" : " = AccordionItem"
+    },
+    {
+      "t" : 6.023,
+      "text" : "(\"tue-11-"
+    },
+    {
+      "t" : 6.081,
+      "text" : "mar\", \"Tue,"
+    },
+    {
+      "t" : 6.139,
+      "text" : " 11 Mar\", ["
+    },
+    {
+      "t" : 6.198,
+      "text" : "mg1list])\nmg"
+    },
+    {
+      "t" : 6.264,
+      "text" : "1list = EntityList(["
+    },
+    {
+      "t" : 6.314,
+      "text" : "mt"
+    },
+    {
+      "t" : 6.374,
+      "text" : "g1], \"default\")\nm"
+    },
+    {
+      "t" : 6.452,
+      "text" : "tg1 = {left:"
+    },
+    {
+      "t" : 6.527,
+      "text" : " \"Neighbourhood"
+    },
+    {
+      "t" : 6.601,
+      "text" : " Planning\", right: \"18"
+    },
+    {
+      "t" : 6.68,
+      "text" : ":30,"
+    },
+    {
+      "t" : 6.766,
+      "text" : " Community Hall\"}"
+    },
+    {
+      "t" : 6.929,
+      "text" : "\nmg2 = Accord"
+    },
+    {
+      "t" : 7.017,
+      "text" : "ionItem(\"thu-13"
+    },
+    {
+      "t" : 7.103,
+      "text" : "-mar\", \"Thu"
+    },
+    {
+      "t" : 7.189,
+      "text" : ", 13 Mar\","
+    },
+    {
+      "t" : 7.259,
+      "text" : " [mg2list])\nm"
+    },
+    {
+      "t" : 7.262,
+      "text" : "g2list = EntityList"
+    },
+    {
+      "t" : 7.343,
+      "text" : "([mtg2], \"default"
+    },
+    {
+      "t" : 7.411,
+      "text" : "\")\nmtg2 ="
+    },
+    {
+      "t" : 7.564,
+      "text" : " {left: \"Budget"
+    },
+    {
+      "t" : 7.654,
+      "text" : " Open Forum\", right: \""
+    },
+    {
+      "t" : 7.722,
+      "text" : "19:00, Town Library"
+    },
+    {
+      "t" : 7.821,
+      "text" : " Room B\"}\nmg"
+    },
+    {
+      "t" : 7.915,
+      "text" : "3 = AccordionIt"
+    },
+    {
+      "t" : 7.993,
+      "text" : "em(\"mon-17-m"
+    },
+    {
+      "t" : 8.081,
+      "text" : "ar\", \"Mon, "
+    },
+    {
+      "t" : 8.085,
+      "text" : "17 Mar\", [m"
+    },
+    {
+      "t" : 8.171,
+      "text" : "g3list])\nmg3"
+    },
+    {
+      "t" : 8.276,
+      "text" : "list = EntityList([m"
+    },
+    {
+      "t" : 8.382,
+      "text" : "tg3], \"default\")"
+    },
+    {
+      "t" : 8.536,
+      "text" : "\nmtg3 = {left"
+    },
+    {
+      "t" : 8.538,
+      "text" : ": \"Youth Services"
+    },
+    {
+      "t" : 8.745,
+      "text" : " Review\", right: \"17:45"
+    },
+    {
+      "t" : 8.751,
+      "text" : ", Civic Centre,"
+    },
+    {
+      "t" : 8.855,
+      "text" : " Floor 2\"}"
+    }
+  ],
+  "createdAt" : "2026-11-11T11:05:53Z",
+  "effort" : "low",
+  "format" : "openui-recording",
+  "inputTokens" : 15931,
+  "library" : "react-ui",
+  "model" : "claude-haiku-5-5",
+  "outputTokens" : 1270,
+  "patchOf" : "root = Stack([header, lostCard, volunteerCard, meetingCard])\nheader = InlineHeader(\"Community Noticeboard\", \"Lost and found, volunteer requests and public meetings\")\nlostCard = Card([lostHeader, lostBlock])\nlostHeader = CardHeader(\"Lost & Found\", \"Recently reported items\")\nlostBlock = SnippetCardBlock([lost1, lost2, lost3])\nlost1 = SnippetCardItem(\"lost-keys\", lost1lhs, lost1rhs)\nlost1lhs = IconText(lost1icon, \"warning\", \"m\", \"Set of house keys\", \"Lost near Riverside Park\", false, \"horizontal\")\nlost1icon = Icon(\"key-round\", \"tools\")\nlost1rhs = Text(\"text\", \"Mon, 3 Mar\")\nlost2 = SnippetCardItem(\"lost-cat\", lost2lhs, lost2rhs)\nlost2lhs = IconText(lost2icon, \"info\", \"m\", \"Grey tabby cat\", \"Last seen on Elm Street\", false, \"horizontal\")\nlost2icon = Icon(\"cat\", \"animals\")\nlost2rhs = Text(\"text\", \"Sun, 2 Mar\")\nlost3 = SnippetCardItem(\"lost-wallet\", lost3lhs, lost3rhs)\nlost3lhs = IconText(lost3icon, \"warning\", \"m\", \"Brown leather wallet\", \"Near the library entrance\", false, \"horizontal\")\nlost3icon = Icon(\"wallet\", \"finance\")\nlost3rhs = Text(\"text\", \"Fri, 28 Feb\")\nvolunteerCard = Card([volunteerHeader, volunteerBlock])\nvolunteerHeader = CardHeader(\"Volunteer Requests\", \"Help make the neighbourhood better\")\nvolunteerBlock = Stack([vol1, vol2, vol3], \"column\", \"s\")\nvol1 = Callout(\"info\", \"Food bank sorting\", \"Saturday 9am to 1pm, Hall on Oak Road. Need 4 helpers.\")\nvol2 = Callout(\"success\", \"Park clean-up\", \"Sunday 10am, meet at the north gate. Gloves and bags provided.\")\nvol3 = Callout(\"warning\", \"Tutoring for primary pupils\", \"Weekdays after school. Maths and reading support needed.\")\nmeetingCard = Card([meetingHeader, meetingTable])\nmeetingHeader = CardHeader(\"Public Meetings\", \"Upcoming community sessions\")\nmeetingTable = Table([Col(\"Meeting\", meetingNames), Col(\"Date\", meetingDates), Col(\"Time\", meetingTimes), Col(\"Location\", meetingPlaces)])\nmeetingNames = [\"Neighbourhood Planning\", \"Budget Open Forum\", \"Youth Services Review\"]\nmeetingDates = [\"Tue, 11 Mar\", \"Thu, 13 Mar\", \"Mon, 17 Mar\"]\nmeetingTimes = [\"18:30\", \"19:00\", \"17:45\"]\nmeetingPlaces = [\"Community Hall\", \"Town Library Room B\", \"Civic Centre, Floor 2\"]",
+  "request" : "Add a new volunteer request for a river cleanup and group the public meetings by date.",
+  "servedBy" : "claude-haiku-5-5",
+  "stopReason" : "end_turn",
+  "version" : 1
+}

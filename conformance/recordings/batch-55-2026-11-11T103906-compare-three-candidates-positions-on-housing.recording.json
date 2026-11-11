@@ -1,0 +1,604 @@
+{
+  "batchRequest" : {
+    "model" : "sonnet",
+    "number" : 55,
+    "request" : "Compare three candidates' positions on housing, transport and schools in a table, with a short quote from each and source links."
+  },
+  "chunks" : [
+    {
+      "t" : 0.788,
+      "text" : "root = Stack([title,"
+    },
+    {
+      "t" : 1.103,
+      "text" : " note, t"
+    },
+    {
+      "t" : 1.142,
+      "text" : "bl, qu"
+    },
+    {
+      "t" : 1.201,
+      "text" : "otesHeader, quot"
+    },
+    {
+      "t" : 1.246,
+      "text" : "es, sourcesHe"
+    },
+    {
+      "t" : 1.302,
+      "text" : "ader, sources])\ntitle ="
+    },
+    {
+      "t" : 1.334,
+      "text" : " TextContent(\"Candid"
+    },
+    {
+      "t" : 1.38,
+      "text" : "ate Comparison: Hous"
+    },
+    {
+      "t" : 1.452,
+      "text" : "ing, Transport &"
+    },
+    {
+      "t" : 1.498,
+      "text" : " Schools\", \"large-he"
+    },
+    {
+      "t" : 1.499,
+      "text" : "avy\")\nnote ="
+    },
+    {
+      "t" : 1.549,
+      "text" : " Callout(\"info\", \"Ill"
+    },
+    {
+      "t" : 1.599,
+      "text" : "ustrative data\", \"These"
+    },
+    {
+      "t" : 1.626,
+      "text" : " cand"
+    },
+    {
+      "t" : 1.647,
+      "text" : "idates and"
+    },
+    {
+      "t" : 1.743,
+      "text" : " qu"
+    },
+    {
+      "t" : 1.756,
+      "text" : "otes are f"
+    },
+    {
+      "t" : 1.793,
+      "text" : "ictional examples."
+    },
+    {
+      "t" : 1.796,
+      "text" : " Replace with ver"
+    },
+    {
+      "t" : 1.833,
+      "text" : "ified stat"
+    },
+    {
+      "t" : 1.945,
+      "text" : "ements and links"
+    },
+    {
+      "t" : 1.999,
+      "text" : " before publishing.\")\nt"
+    },
+    {
+      "t" : 2.051,
+      "text" : "bl = Table([Col"
+    },
+    {
+      "t" : 2.095,
+      "text" : "(\"Candidate\", names"
+    },
+    {
+      "t" : 2.145,
+      "text" : "), Col(\"Housing\","
+    },
+    {
+      "t" : 2.19,
+      "text" : " hous"
+    },
+    {
+      "t" : 2.243,
+      "text" : "ing), Col(\"Transport"
+    },
+    {
+      "t" : 2.246,
+      "text" : "\", transport), Col(\""
+    },
+    {
+      "t" : 2.313,
+      "text" : "Schools\", schools)])"
+    },
+    {
+      "t" : 2.382,
+      "text" : "\nnames = [\"Maria"
+    },
+    {
+      "t" : 2.384,
+      "text" : " Alvarez\", \"David"
+    },
+    {
+      "t" : 2.481,
+      "text" : " Ch"
+    },
+    {
+      "t" : 2.482,
+      "text" : "en\", \"Pri"
+    },
+    {
+      "t" : 2.55,
+      "text" : "ya N"
+    },
+    {
+      "t" : 2.661,
+      "text" : "air\"]\nhousing = "
+    },
+    {
+      "t" : 2.662,
+      "text" : "[\"Build 5"
+    },
+    {
+      "t" : 2.728,
+      "text" : ",000 affordable units;"
+    },
+    {
+      "t" : 2.803,
+      "text" : " rel"
+    },
+    {
+      "t" : 2.874,
+      "text" : "ax zoning near"
+    },
+    {
+      "t" : 2.946,
+      "text" : " transit\","
+    },
+    {
+      "t" : 3.016,
+      "text" : " \"T"
+    },
+    {
+      "t" : 3.086,
+      "text" : "ax inc"
+    },
+    {
+      "t" : 3.162,
+      "text" : "entives for private"
+    },
+    {
+      "t" : 3.252,
+      "text" : " developers; first"
+    },
+    {
+      "t" : 3.254,
+      "text" : "-time"
+    },
+    {
+      "t" : 3.324,
+      "text" : " buyer grants\", \""
+    },
+    {
+      "t" : 3.398,
+      "text" : "Rent st"
+    },
+    {
+      "t" : 3.481,
+      "text" : "abilization and expanded public"
+    },
+    {
+      "t" : 3.561,
+      "text" : " housing\"]\ntransport ="
+    },
+    {
+      "t" : 3.642,
+      "text" : " [\"Exp"
+    },
+    {
+      "t" : 3.724,
+      "text" : "and bus r"
+    },
+    {
+      "t" : 3.801,
+      "text" : "apid trans"
+    },
+    {
+      "t" : 3.877,
+      "text" : "it and prot"
+    },
+    {
+      "t" : 3.961,
+      "text" : "ected bike lanes\", \""
+    },
+    {
+      "t" : 4.029,
+      "text" : "Road"
+    },
+    {
+      "t" : 4.106,
+      "text" : " rep"
+    },
+    {
+      "t" : 4.195,
+      "text" : "air first"
+    },
+    {
+      "t" : 4.287,
+      "text" : ";"
+    },
+    {
+      "t" : 4.368,
+      "text" : " modest r"
+    },
+    {
+      "t" : 4.455,
+      "text" : "ail ext"
+    },
+    {
+      "t" : 4.543,
+      "text" : "ension\", \"Free"
+    },
+    {
+      "t" : 4.633,
+      "text" : " fares for"
+    },
+    {
+      "t" : 4.781,
+      "text" : " students"
+    },
+    {
+      "t" : 4.782,
+      "text" : " and seniors; elect"
+    },
+    {
+      "t" : 4.859,
+      "text" : "rify b"
+    },
+    {
+      "t" : 4.93,
+      "text" : "us fleet\"]\nsch"
+    },
+    {
+      "t" : 5.012,
+      "text" : "ools = [\"Ra"
+    },
+    {
+      "t" : 5.109,
+      "text" : "ise te"
+    },
+    {
+      "t" : 5.206,
+      "text" : "acher pay "
+    },
+    {
+      "t" : 5.285,
+      "text" : "8"
+    },
+    {
+      "t" : 5.369,
+      "text" : "%; universal p"
+    },
+    {
+      "t" : 5.454,
+      "text" : "re-K\", \"School"
+    },
+    {
+      "t" : 5.501,
+      "text" : " choice exp"
+    },
+    {
+      "t" : 5.566,
+      "text" : "ansion;"
+    },
+    {
+      "t" : 5.616,
+      "text" : " more"
+    },
+    {
+      "t" : 5.67,
+      "text" : " charter cap"
+    },
+    {
+      "t" : 5.734,
+      "text" : "acity\", \"Sm"
+    },
+    {
+      "t" : 5.787,
+      "text" : "aller class sizes; f"
+    },
+    {
+      "t" : 5.856,
+      "text" : "und after"
+    },
+    {
+      "t" : 5.934,
+      "text" : "-school programs\"]\nqu"
+    },
+    {
+      "t" : 5.998,
+      "text" : "otesHeader = Inl"
+    },
+    {
+      "t" : 6.046,
+      "text" : "ineHeader(\"In"
+    },
+    {
+      "t" : 6.101,
+      "text" : " their"
+    },
+    {
+      "t" : 6.151,
+      "text" : " own words\", \"Short quot"
+    },
+    {
+      "t" : 6.201,
+      "text" : "es from"
+    },
+    {
+      "t" : 6.254,
+      "text" : " each candidate\")\nquot"
+    },
+    {
+      "t" : 6.401,
+      "text" : "es = Stack([q1"
+    },
+    {
+      "t" : 6.489,
+      "text" : ", q2, q3])"
+    },
+    {
+      "t" : 6.557,
+      "text" : "\nq1 = Card([T"
+    },
+    {
+      "t" : 6.561,
+      "text" : "extContent(\"**"
+    },
+    {
+      "t" : 6.631,
+      "text" : "Maria Alvarez"
+    },
+    {
+      "t" : 6.716,
+      "text" : "**\", \"small"
+    },
+    {
+      "t" : 6.886,
+      "text" : "-heavy\"), Text"
+    },
+    {
+      "t" : 6.889,
+      "text" : "Content(\"\\\"Housing"
+    },
+    {
+      "t" : 6.997,
+      "text" : " near"
+    },
+    {
+      "t" : 7.101,
+      "text" : " transit is the f"
+    },
+    {
+      "t" : 7.176,
+      "text" : "astest way to c"
+    },
+    {
+      "t" : 7.21,
+      "text" : "ut costs for"
+    },
+    {
+      "t" : 7.269,
+      "text" : " working"
+    },
+    {
+      "t" : 7.372,
+      "text" : " families.\\\"\")],"
+    },
+    {
+      "t" : 7.449,
+      "text" : " \"s"
+    },
+    {
+      "t" : 7.514,
+      "text" : "unk\")\nq2 ="
+    },
+    {
+      "t" : 7.62,
+      "text" : " Card([TextContent(\""
+    },
+    {
+      "t" : 7.74,
+      "text" : "**David Chen**\", \""
+    },
+    {
+      "t" : 7.822,
+      "text" : "small-heavy\"), T"
+    },
+    {
+      "t" : 7.932,
+      "text" : "extContent(\"\\\"Let"
+    },
+    {
+      "t" : 8.048,
+      "text" : " buil"
+    },
+    {
+      "t" : 8.165,
+      "text" : "ders build"
+    },
+    {
+      "t" : 8.44,
+      "text" : ", and let families ke"
+    },
+    {
+      "t" : 8.442,
+      "text" : "ep more"
+    },
+    {
+      "t" : 8.588,
+      "text" : " of what"
+    },
+    {
+      "t" : 8.717,
+      "text" : " they earn.\\\"\")],"
+    },
+    {
+      "t" : 8.857,
+      "text" : " \"sunk\")\nq3"
+    },
+    {
+      "t" : 8.994,
+      "text" : " = Card([TextCont"
+    },
+    {
+      "t" : 9.098,
+      "text" : "ent(\"**Priya N"
+    },
+    {
+      "t" : 9.3,
+      "text" : "air**\", \"small-heav"
+    },
+    {
+      "t" : 9.304,
+      "text" : "y\"), TextContent(\""
+    },
+    {
+      "t" : 9.43,
+      "text" : "\\\""
+    },
+    {
+      "t" : 9.547,
+      "text" : "Every child deserves a well"
+    },
+    {
+      "t" : 9.666,
+      "text" : "-funded classroom and an"
+    },
+    {
+      "t" : 9.871,
+      "text" : " affordable place to call"
+    },
+    {
+      "t" : 9.874,
+      "text" : " home.\\\"\")], \"s"
+    },
+    {
+      "t" : 9.968,
+      "text" : "unk\")\nsources"
+    },
+    {
+      "t" : 10.093,
+      "text" : "Header = InlineH"
+    },
+    {
+      "t" : 10.231,
+      "text" : "eader(\"Sources\", \""
+    },
+    {
+      "t" : 10.362,
+      "text" : "Cand"
+    },
+    {
+      "t" : 10.496,
+      "text" : "idate platform"
+    },
+    {
+      "t" : 10.69,
+      "text" : " pages\")\nsources ="
+    },
+    {
+      "t" : 10.691,
+      "text" : " Buttons([b1, b"
+    },
+    {
+      "t" : 10.81,
+      "text" : "2, b3])"
+    },
+    {
+      "t" : 10.945,
+      "text" : "\nb1 = Button(\""
+    },
+    {
+      "t" : 11.086,
+      "text" : "Alvarez platform\","
+    },
+    {
+      "t" : 11.206,
+      "text" : " @OpenUrl(\""
+    },
+    {
+      "t" : 11.327,
+      "text" : "https://example.com/alv"
+    },
+    {
+      "t" : 11.464,
+      "text" : "arez/platform\"), \""
+    },
+    {
+      "t" : 11.593,
+      "text" : "secondary\")\nb2 "
+    },
+    {
+      "t" : 11.711,
+      "text" : "= Button(\"Chen plat"
+    },
+    {
+      "t" : 11.842,
+      "text" : "form\", @OpenUr"
+    },
+    {
+      "t" : 11.991,
+      "text" : "l(\"https://example.com/"
+    },
+    {
+      "t" : 12.128,
+      "text" : "chen/platform\"), \""
+    },
+    {
+      "t" : 12.249,
+      "text" : "secondary\")\nb3 "
+    },
+    {
+      "t" : 12.317,
+      "text" : "= Button(\"Nair plat"
+    },
+    {
+      "t" : 12.391,
+      "text" : "form\", @OpenUr"
+    },
+    {
+      "t" : 12.471,
+      "text" : "l(\"https://example.com/"
+    },
+    {
+      "t" : 12.586,
+      "text" : "nair/platform\"), \""
+    },
+    {
+      "t" : 12.739,
+      "text" : "secondary\")"
+    }
+  ],
+  "createdAt" : "2026-11-11T10:39:06Z",
+  "effort" : "low",
+  "format" : "openui-recording",
+  "inputTokens" : 14503,
+  "library" : "react-ui",
+  "model" : "claude-sonnet-5-5",
+  "outputTokens" : 809,
+  "request" : "Compare three candidates' positions on housing, transport and schools in a table, with a short quote from each and source links.",
+  "servedBy" : "claude-sonnet-5-5",
+  "stopReason" : "end_turn",
+  "version" : 1
+}

@@ -1,0 +1,860 @@
+{
+  "batchRequest" : {
+    "model" : "sonnet",
+    "number" : 51,
+    "request" : "A newsroom assignment desk: six pitches with reporter, deadline, reporting stage and an unassigned tag, plus a pitch submission form."
+  },
+  "chunks" : [
+    {
+      "t" : 1.258,
+      "text" : "root = Stack([header"
+    },
+    {
+      "t" : 1.574,
+      "text" : ", pitchesC"
+    },
+    {
+      "t" : 1.582,
+      "text" : "ard, form"
+    },
+    {
+      "t" : 1.597,
+      "text" : "Card])\nheader = C"
+    },
+    {
+      "t" : 1.605,
+      "text" : "ardHeader(\"Ass"
+    },
+    {
+      "t" : 1.632,
+      "text" : "ignment Desk\", \""
+    },
+    {
+      "t" : 1.651,
+      "text" : "Six active"
+    },
+    {
+      "t" : 1.66,
+      "text" : " pitches and a"
+    },
+    {
+      "t" : 1.667,
+      "text" : " place"
+    },
+    {
+      "t" : 1.677,
+      "text" : " to submit new"
+    },
+    {
+      "t" : 1.684,
+      "text" : " ones\")\npitches"
+    },
+    {
+      "t" : 1.694,
+      "text" : "Card = Card([pit"
+    },
+    {
+      "t" : 1.702,
+      "text" : "chesHeader, pit"
+    },
+    {
+      "t" : 1.937,
+      "text" : "chT"
+    },
+    {
+      "t" : 1.947,
+      "text" : "able])\npitchesH"
+    },
+    {
+      "t" : 1.959,
+      "text" : "eader = InlineHe"
+    },
+    {
+      "t" : 1.966,
+      "text" : "ader(\"Active"
+    },
+    {
+      "t" : 1.977,
+      "text" : " Pitches\", \"Re"
+    },
+    {
+      "t" : 1.983,
+      "text" : "porter, deadline and re"
+    },
+    {
+      "t" : 1.995,
+      "text" : "porting stage\")\npit"
+    },
+    {
+      "t" : 2.003,
+      "text" : "chTable = Table(["
+    },
+    {
+      "t" : 2.014,
+      "text" : "Col(\"Pitch\", tit"
+    },
+    {
+      "t" : 2.027,
+      "text" : "les), Col(\"Repor"
+    },
+    {
+      "t" : 2.035,
+      "text" : "ter\", reporters), Col"
+    },
+    {
+      "t" : 2.053,
+      "text" : "(\"Deadline\", dead"
+    },
+    {
+      "t" : 2.308,
+      "text" : "lines), Col(\"St"
+    },
+    {
+      "t" : 2.321,
+      "text" : "age\", stage"
+    },
+    {
+      "t" : 2.333,
+      "text" : "Tags), Col(\"Ass"
+    },
+    {
+      "t" : 2.346,
+      "text" : "ignment\", assignTags)"
+    },
+    {
+      "t" : 2.36,
+      "text" : "])\ntitles = [\"City"
+    },
+    {
+      "t" : 2.367,
+      "text" : " bud"
+    },
+    {
+      "t" : 2.379,
+      "text" : "get sh"
+    },
+    {
+      "t" : 2.386,
+      "text" : "ortfall\", \"Port"
+    },
+    {
+      "t" : 2.398,
+      "text" : " str"
+    },
+    {
+      "t" : 2.412,
+      "text" : "ike imp"
+    },
+    {
+      "t" : 2.419,
+      "text" : "act on"
+    },
+    {
+      "t" : 2.449,
+      "text" : " ret"
+    },
+    {
+      "t" : 2.677,
+      "text" : "ailers\", \"School"
+    },
+    {
+      "t" : 2.691,
+      "text" : " b"
+    },
+    {
+      "t" : 2.704,
+      "text" : "us dri"
+    },
+    {
+      "t" : 2.718,
+      "text" : "ver shortage\", \"H"
+    },
+    {
+      "t" : 2.732,
+      "text" : "osp"
+    },
+    {
+      "t" : 2.746,
+      "text" : "ital w"
+    },
+    {
+      "t" : 2.754,
+      "text" : "ait times"
+    },
+    {
+      "t" : 2.76,
+      "text" : " invest"
+    },
+    {
+      "t" : 2.787,
+      "text" : "igation\", \"Local"
+    },
+    {
+      "t" : 2.801,
+      "text" : " election"
+    },
+    {
+      "t" : 2.815,
+      "text" : " prof"
+    },
+    {
+      "t" : 2.843,
+      "text" : "ile:"
+    },
+    {
+      "t" : 3.047,
+      "text" : " District"
+    },
+    {
+      "t" : 3.062,
+      "text" : " 4\", \"W"
+    },
+    {
+      "t" : 3.079,
+      "text" : "ildfire sm"
+    },
+    {
+      "t" : 3.088,
+      "text" : "oke and"
+    },
+    {
+      "t" : 3.093,
+      "text" : " air quality\"]\nrepor"
+    },
+    {
+      "t" : 3.108,
+      "text" : "ters = [\"Maria"
+    },
+    {
+      "t" : 3.134,
+      "text" : " L"
+    },
+    {
+      "t" : 3.15,
+      "text" : "opez\", \"Dan"
+    },
+    {
+      "t" : 3.165,
+      "text" : " Wh"
+    },
+    {
+      "t" : 3.181,
+      "text" : "itfield\", \"Unass"
+    },
+    {
+      "t" : 3.21,
+      "text" : "igned\", \"Priya"
+    },
+    {
+      "t" : 3.244,
+      "text" : " Nair\", \"Unassig"
+    },
+    {
+      "t" : 3.424,
+      "text" : "ned\", \"T"
+    },
+    {
+      "t" : 3.442,
+      "text" : "om Ok"
+    },
+    {
+      "t" : 3.458,
+      "text" : "afor\"]\ndeadl"
+    },
+    {
+      "t" : 3.477,
+      "text" : "ines = [\"2025-06"
+    },
+    {
+      "t" : 3.495,
+      "text" : "-12"
+    },
+    {
+      "t" : 3.513,
+      "text" : "\", \"2025-06-10"
+    },
+    {
+      "t" : 3.531,
+      "text" : "\", \"2025-06-18"
+    },
+    {
+      "t" : 3.549,
+      "text" : "\", \"2025-06-25"
+    },
+    {
+      "t" : 3.566,
+      "text" : "\", \"2025-06-20"
+    },
+    {
+      "t" : 3.585,
+      "text" : "\", \"2025-06-09"
+    },
+    {
+      "t" : 3.612,
+      "text" : "\"]\nstageTags ="
+    },
+    {
+      "t" : 3.645,
+      "text" : " [st"
+    },
+    {
+      "t" : 3.79,
+      "text" : "1, st2, st3,"
+    },
+    {
+      "t" : 3.808,
+      "text" : " st4, st5, st6"
+    },
+    {
+      "t" : 3.819,
+      "text" : "]\nst1 = T"
+    },
+    {
+      "t" : 3.837,
+      "text" : "ag(\"Dr"
+    },
+    {
+      "t" : 3.856,
+      "text" : "afting\", null, \"sm"
+    },
+    {
+      "t" : 3.874,
+      "text" : "\", \"info"
+    },
+    {
+      "t" : 3.892,
+      "text" : "\")\nst2 = T"
+    },
+    {
+      "t" : 3.914,
+      "text" : "ag(\"Edit"
+    },
+    {
+      "t" : 3.947,
+      "text" : "ing\", null, \"sm\","
+    },
+    {
+      "t" : 3.979,
+      "text" : " \"war"
+    },
+    {
+      "t" : 4.013,
+      "text" : "ning\")\nst3 ="
+    },
+    {
+      "t" : 4.046,
+      "text" : " Tag(\"Pitched\","
+    },
+    {
+      "t" : 4.156,
+      "text" : " null, \"sm\", \"ne"
+    },
+    {
+      "t" : 4.177,
+      "text" : "utral\")\nst4 ="
+    },
+    {
+      "t" : 4.196,
+      "text" : " Tag(\"Reporting"
+    },
+    {
+      "t" : 4.217,
+      "text" : "\", null, \"sm\", \""
+    },
+    {
+      "t" : 4.237,
+      "text" : "info\")\nst5 ="
+    },
+    {
+      "t" : 4.264,
+      "text" : " Tag(\"Pitched\","
+    },
+    {
+      "t" : 4.284,
+      "text" : " null, \"sm\", \"ne"
+    },
+    {
+      "t" : 4.315,
+      "text" : "utral\")\nst6 ="
+    },
+    {
+      "t" : 4.348,
+      "text" : " Tag(\""
+    },
+    {
+      "t" : 4.381,
+      "text" : "Ready to"
+    },
+    {
+      "t" : 4.415,
+      "text" : " publish\", null, \"sm"
+    },
+    {
+      "t" : 4.451,
+      "text" : "\", \"success\")\nassignT"
+    },
+    {
+      "t" : 4.541,
+      "text" : "ags = [as1, as2"
+    },
+    {
+      "t" : 4.563,
+      "text" : ", as3, as4, as"
+    },
+    {
+      "t" : 4.59,
+      "text" : "5, as6]\nas1"
+    },
+    {
+      "t" : 4.614,
+      "text" : " = Tag(\"Ass"
+    },
+    {
+      "t" : 4.638,
+      "text" : "igned\", null, \"sm"
+    },
+    {
+      "t" : 4.66,
+      "text" : "\", \"success\")\nas2 "
+    },
+    {
+      "t" : 4.684,
+      "text" : "= Tag(\"Assig"
+    },
+    {
+      "t" : 4.716,
+      "text" : "ned\", null, \"sm\","
+    },
+    {
+      "t" : 4.75,
+      "text" : " \"success\")\nas3 ="
+    },
+    {
+      "t" : 4.784,
+      "text" : " Tag(\"Unassig"
+    },
+    {
+      "t" : 4.817,
+      "text" : "ned\", null, \"sm\","
+    },
+    {
+      "t" : 4.851,
+      "text" : " \"danger\")\nas4 "
+    },
+    {
+      "t" : 4.916,
+      "text" : "= Tag(\"Assig"
+    },
+    {
+      "t" : 4.939,
+      "text" : "ned\", null, \"sm\","
+    },
+    {
+      "t" : 4.963,
+      "text" : " \"success\")\nas5 ="
+    },
+    {
+      "t" : 4.988,
+      "text" : " Tag(\"Unassig"
+    },
+    {
+      "t" : 5.018,
+      "text" : "ned\", null, \"sm\","
+    },
+    {
+      "t" : 5.054,
+      "text" : " \"danger\")\nas6 "
+    },
+    {
+      "t" : 5.085,
+      "text" : "= Tag(\"Assig"
+    },
+    {
+      "t" : 5.121,
+      "text" : "ned\", null, \"sm\","
+    },
+    {
+      "t" : 5.153,
+      "text" : " \"success\")\nformCard ="
+    },
+    {
+      "t" : 5.185,
+      "text" : " Card([formHeader,"
+    },
+    {
+      "t" : 5.231,
+      "text" : " pitchForm])\nform"
+    },
+    {
+      "t" : 5.257,
+      "text" : "Header = InlineH"
+    },
+    {
+      "t" : 5.286,
+      "text" : "eader(\"Submit a"
+    },
+    {
+      "t" : 5.318,
+      "text" : " Pitch\", \"Share"
+    },
+    {
+      "t" : 5.355,
+      "text" : " a"
+    },
+    {
+      "t" : 5.385,
+      "text" : " story id"
+    },
+    {
+      "t" : 5.418,
+      "text" : "ea with the desk\")\np"
+    },
+    {
+      "t" : 5.451,
+      "text" : "itchForm = Form(\""
+    },
+    {
+      "t" : 5.485,
+      "text" : "pitch\", formBtns"
+    },
+    {
+      "t" : 5.521,
+      "text" : ", [fT"
+    },
+    {
+      "t" : 5.551,
+      "text" : "itle, fRe"
+    },
+    {
+      "t" : 5.586,
+      "text" : "porter, fDeadline"
+    },
+    {
+      "t" : 5.618,
+      "text" : ", fStage, fSumm"
+    },
+    {
+      "t" : 5.652,
+      "text" : "ary])"
+    },
+    {
+      "t" : 5.684,
+      "text" : "\nfTitle = Form"
+    },
+    {
+      "t" : 5.718,
+      "text" : "Control(\"Working head"
+    },
+    {
+      "t" : 5.751,
+      "text" : "line\", Input(\"head"
+    },
+    {
+      "t" : 5.784,
+      "text" : "line\", \"e"
+    },
+    {
+      "t" : 5.818,
+      "text" : ".g."
+    },
+    {
+      "t" : 5.852,
+      "text" : " Transit f"
+    },
+    {
+      "t" : 5.885,
+      "text" : "are hike expl"
+    },
+    {
+      "t" : 5.917,
+      "text" : "ained\", \"text\", {"
+    },
+    {
+      "t" : 5.951,
+      "text" : " required: true, minLength:"
+    },
+    {
+      "t" : 5.985,
+      "text" : " 5 }))\nfRe"
+    },
+    {
+      "t" : 6.018,
+      "text" : "porter = FormControl(\""
+    },
+    {
+      "t" : 6.05,
+      "text" : "Reporter\", Select(\""
+    },
+    {
+      "t" : 6.085,
+      "text" : "reporter\", reporterO"
+    },
+    {
+      "t" : 6.118,
+      "text" : "pts, \"Select repor"
+    },
+    {
+      "t" : 6.152,
+      "text" : "ter or leave un"
+    },
+    {
+      "t" : 6.185,
+      "text" : "assigned\""
+    },
+    {
+      "t" : 6.218,
+      "text" : "), \"Le"
+    },
+    {
+      "t" : 6.251,
+      "text" : "ave blank if unassigned"
+    },
+    {
+      "t" : 6.284,
+      "text" : "\")\nre"
+    },
+    {
+      "t" : 6.318,
+      "text" : "porterOpts = [S"
+    },
+    {
+      "t" : 6.351,
+      "text" : "electItem(\"unassig"
+    },
+    {
+      "t" : 6.385,
+      "text" : "ned\", \"Unassigned"
+    },
+    {
+      "t" : 6.419,
+      "text" : "\"), SelectItem(\""
+    },
+    {
+      "t" : 6.451,
+      "text" : "l"
+    },
+    {
+      "t" : 6.485,
+      "text" : "opez\", \"Maria"
+    },
+    {
+      "t" : 6.519,
+      "text" : " Lopez\"), Select"
+    },
+    {
+      "t" : 6.554,
+      "text" : "Item(\"whitfield\","
+    },
+    {
+      "t" : 6.585,
+      "text" : " \"Dan Whitf"
+    },
+    {
+      "t" : 6.619,
+      "text" : "ield\"), SelectItem"
+    },
+    {
+      "t" : 6.652,
+      "text" : "(\"nair\", \"Priya"
+    },
+    {
+      "t" : 6.685,
+      "text" : " Nair\"), Select"
+    },
+    {
+      "t" : 6.72,
+      "text" : "Item(\"okafor\", \""
+    },
+    {
+      "t" : 6.752,
+      "text" : "Tom Okafor\")"
+    },
+    {
+      "t" : 6.785,
+      "text" : "]\nfDeadline ="
+    },
+    {
+      "t" : 6.819,
+      "text" : " FormControl(\"Dead"
+    },
+    {
+      "t" : 6.852,
+      "text" : "line\", DatePicker(\""
+    },
+    {
+      "t" : 6.885,
+      "text" : "deadline\", \"single\", {"
+    },
+    {
+      "t" : 6.919,
+      "text" : " required: true }))\nfSt"
+    },
+    {
+      "t" : 6.952,
+      "text" : "age = FormControl(\""
+    },
+    {
+      "t" : 6.986,
+      "text" : "Reporting stage\", Select"
+    },
+    {
+      "t" : 7.019,
+      "text" : "(\"stage\", stageOp"
+    },
+    {
+      "t" : 7.053,
+      "text" : "ts, \"Select"
+    },
+    {
+      "t" : 7.086,
+      "text" : " stage\", { required: true }"
+    },
+    {
+      "t" : 7.119,
+      "text" : "))\nstageOpts ="
+    },
+    {
+      "t" : 7.158,
+      "text" : " [SelectItem(\"p"
+    },
+    {
+      "t" : 7.19,
+      "text" : "itched\", \"Pitched"
+    },
+    {
+      "t" : 7.223,
+      "text" : "\"), SelectItem(\""
+    },
+    {
+      "t" : 7.255,
+      "text" : "reporting\", \"Repor"
+    },
+    {
+      "t" : 7.288,
+      "text" : "ting\"), SelectItem"
+    },
+    {
+      "t" : 7.321,
+      "text" : "(\"drafting\", \"Dr"
+    },
+    {
+      "t" : 7.353,
+      "text" : "afting\"), SelectIt"
+    },
+    {
+      "t" : 7.388,
+      "text" : "em(\"editing\", \"Edit"
+    },
+    {
+      "t" : 7.421,
+      "text" : "ing\"), SelectItem"
+    },
+    {
+      "t" : 7.454,
+      "text" : "(\"ready\", \"Ready"
+    },
+    {
+      "t" : 7.489,
+      "text" : " to publish\")]\nfS"
+    },
+    {
+      "t" : 7.522,
+      "text" : "ummary = FormControl(\""
+    },
+    {
+      "t" : 7.555,
+      "text" : "Summ"
+    },
+    {
+      "t" : 7.589,
+      "text" : "ary\", TextArea(\"summ"
+    },
+    {
+      "t" : 7.624,
+      "text" : "ary\", \"Describ"
+    },
+    {
+      "t" : 7.658,
+      "text" : "e the ang"
+    },
+    {
+      "t" : 7.692,
+      "text" : "le, sources and why it"
+    },
+    {
+      "t" : 7.725,
+      "text" : " matters now..."
+    },
+    {
+      "t" : 7.759,
+      "text" : "\", 4"
+    },
+    {
+      "t" : 7.792,
+      "text" : ", { required: true,"
+    },
+    {
+      "t" : 7.825,
+      "text" : " minLength: 20"
+    },
+    {
+      "t" : 7.86,
+      "text" : " }))"
+    },
+    {
+      "t" : 7.895,
+      "text" : "\nformBtns = Bu"
+    },
+    {
+      "t" : 7.93,
+      "text" : "ttons([Button(\"Subm"
+    },
+    {
+      "t" : 7.965,
+      "text" : "it Pitch\", @"
+    },
+    {
+      "t" : 8,
+      "text" : "ToAssistant(\"Subm"
+    },
+    {
+      "t" : 8.034,
+      "text" : "it new"
+    },
+    {
+      "t" : 8.069,
+      "text" : " pitch\"), \"primary"
+    },
+    {
+      "t" : 8.122,
+      "text" : "\"), Button(\"Clear"
+    },
+    {
+      "t" : 8.158,
+      "text" : "\", @ToAssistant"
+    },
+    {
+      "t" : 8.195,
+      "text" : "(\"Clear p"
+    },
+    {
+      "t" : 8.219,
+      "text" : "itch form\"), \"second"
+    },
+    {
+      "t" : 8.254,
+      "text" : "ary\")])"
+    }
+  ],
+  "createdAt" : "2026-11-11T10:38:03Z",
+  "effort" : "low",
+  "format" : "openui-recording",
+  "inputTokens" : 14517,
+  "library" : "react-ui",
+  "model" : "claude-sonnet-5-5",
+  "outputTokens" : 1332,
+  "request" : "A newsroom assignment desk: six pitches with reporter, deadline, reporting stage and an unassigned tag, plus a pitch submission form.",
+  "servedBy" : "claude-sonnet-5-5",
+  "stopReason" : "end_turn",
+  "version" : 1
+}

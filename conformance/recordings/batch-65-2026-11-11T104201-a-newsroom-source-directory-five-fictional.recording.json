@@ -1,0 +1,1040 @@
+{
+  "batchRequest" : {
+    "model" : "sonnet",
+    "number" : 65,
+    "request" : "A newsroom source directory: five fictional experts with fields of expertise, institution and contact buttons, plus a subject filter."
+  },
+  "chunks" : [
+    {
+      "t" : 0.686,
+      "text" : "root = Stack([header,"
+    },
+    {
+      "t" : 1,
+      "text" : " filterC"
+    },
+    {
+      "t" : 1.027,
+      "text" : "ard, exp"
+    },
+    {
+      "t" : 1.054,
+      "text" : "ertsH"
+    },
+    {
+      "t" : 1.1,
+      "text" : "eader, cards])\nheader"
+    },
+    {
+      "t" : 1.194,
+      "text" : " = C"
+    },
+    {
+      "t" : 1.26,
+      "text" : "ardHeader(\"New"
+    },
+    {
+      "t" : 1.291,
+      "text" : "sroom Source Directory"
+    },
+    {
+      "t" : 1.34,
+      "text" : "\", \"V"
+    },
+    {
+      "t" : 1.375,
+      "text" : "etted experts available"
+    },
+    {
+      "t" : 1.438,
+      "text" : " for com"
+    },
+    {
+      "t" : 1.462,
+      "text" : "ment and background"
+    },
+    {
+      "t" : 1.501,
+      "text" : " interviews\")\nfilterC"
+    },
+    {
+      "t" : 1.536,
+      "text" : "ard = Card([fil"
+    },
+    {
+      "t" : 1.576,
+      "text" : "terForm])\nfilterFor"
+    },
+    {
+      "t" : 1.683,
+      "text" : "m = Form(\"sub"
+    },
+    {
+      "t" : 1.721,
+      "text" : "jectFilter\", filter"
+    },
+    {
+      "t" : 1.724,
+      "text" : "Btns, [sub"
+    },
+    {
+      "t" : 1.781,
+      "text" : "jectField])\nsubject"
+    },
+    {
+      "t" : 1.831,
+      "text" : "Field = FormControl(\""
+    },
+    {
+      "t" : 2.123,
+      "text" : "Filter by subject\", sub"
+    },
+    {
+      "t" : 2.197,
+      "text" : "jectChips, \"Cho"
+    },
+    {
+      "t" : 2.257,
+      "text" : "ose a"
+    },
+    {
+      "t" : 2.293,
+      "text" : " subject to narrow the list"
+    },
+    {
+      "t" : 2.33,
+      "text" : "\")\nsubjectChips ="
+    },
+    {
+      "t" : 2.376,
+      "text" : " Chips(\"subject\", \""
+    },
+    {
+      "t" : 2.414,
+      "text" : "single\", [c1, c2"
+    },
+    {
+      "t" : 2.467,
+      "text" : ", c3, c4, c"
+    },
+    {
+      "t" : 2.515,
+      "text" : "5, c6])\nc1"
+    },
+    {
+      "t" : 2.58,
+      "text" : " = ChipItem(\""
+    },
+    {
+      "t" : 2.582,
+      "text" : "all\", \"All\")"
+    },
+    {
+      "t" : 2.642,
+      "text" : "\nc2 = Chip"
+    },
+    {
+      "t" : 2.689,
+      "text" : "Item(\"climate\", \""
+    },
+    {
+      "t" : 2.796,
+      "text" : "Climate\")\nc3 ="
+    },
+    {
+      "t" : 2.845,
+      "text" : " ChipItem(\"health\","
+    },
+    {
+      "t" : 2.887,
+      "text" : " \"Public"
+    },
+    {
+      "t" : 2.925,
+      "text" : " Health\")\nc4 ="
+    },
+    {
+      "t" : 2.954,
+      "text" : " ChipItem(\"economics"
+    },
+    {
+      "t" : 2.979,
+      "text" : "\", \"Economics\")\nc"
+    },
+    {
+      "t" : 3.027,
+      "text" : "5 = ChipItem"
+    },
+    {
+      "t" : 3.083,
+      "text" : "(\"c"
+    },
+    {
+      "t" : 3.131,
+      "text" : "yber\", \"Cybers"
+    },
+    {
+      "t" : 3.196,
+      "text" : "ecurity\")\nc6 "
+    },
+    {
+      "t" : 3.254,
+      "text" : "= ChipItem(\"law"
+    },
+    {
+      "t" : 3.394,
+      "text" : "\", \"Law &"
+    },
+    {
+      "t" : 3.467,
+      "text" : " Policy\")\nfilterB"
+    },
+    {
+      "t" : 3.468,
+      "text" : "tns = Buttons(["
+    },
+    {
+      "t" : 3.523,
+      "text" : "Button(\"Apply fil"
+    },
+    {
+      "t" : 3.602,
+      "text" : "ter\", @ToAssist"
+    },
+    {
+      "t" : 3.68,
+      "text" : "ant(\"Fil"
+    },
+    {
+      "t" : 3.759,
+      "text" : "ter the source"
+    },
+    {
+      "t" : 3.841,
+      "text" : " directory by the"
+    },
+    {
+      "t" : 3.965,
+      "text" : " selected subject\"), \"prim"
+    },
+    {
+      "t" : 3.969,
+      "text" : "ary\")])"
+    },
+    {
+      "t" : 4.044,
+      "text" : "\nexpertsHeader ="
+    },
+    {
+      "t" : 4.107,
+      "text" : " InlineHeader(\""
+    },
+    {
+      "t" : 4.175,
+      "text" : "Exper"
+    },
+    {
+      "t" : 4.257,
+      "text" : "ts\", \"Five s"
+    },
+    {
+      "t" : 4.343,
+      "text" : "ources on file\")\ncards ="
+    },
+    {
+      "t" : 4.413,
+      "text" : " Stack([e1, e2"
+    },
+    {
+      "t" : 4.478,
+      "text" : ", e3, e4, e"
+    },
+    {
+      "t" : 4.533,
+      "text" : "5])"
+    },
+    {
+      "t" : 4.61,
+      "text" : "\n\ne1 = Card([e"
+    },
+    {
+      "t" : 4.681,
+      "text" : "1h,"
+    },
+    {
+      "t" : 4.744,
+      "text" : " e1tags, e1list"
+    },
+    {
+      "t" : 4.798,
+      "text" : ", e1btns])\ne"
+    },
+    {
+      "t" : 4.84,
+      "text" : "1h = CardHeader"
+    },
+    {
+      "t" : 4.903,
+      "text" : "(\"Dr. Am"
+    },
+    {
+      "t" : 4.96,
+      "text" : "ara Okon"
+    },
+    {
+      "t" : 5.018,
+      "text" : "kwo\", \"Profess"
+    },
+    {
+      "t" : 5.1,
+      "text" : "or of Climate"
+    },
+    {
+      "t" : 5.155,
+      "text" : " Science, L"
+    },
+    {
+      "t" : 5.22,
+      "text" : "ak"
+    },
+    {
+      "t" : 5.255,
+      "text" : "esh"
+    },
+    {
+      "t" : 5.324,
+      "text" : "ore University\")\ne1tags"
+    },
+    {
+      "t" : 5.394,
+      "text" : " = TagBlock([\""
+    },
+    {
+      "t" : 5.467,
+      "text" : "Climate\", \"Ext"
+    },
+    {
+      "t" : 5.542,
+      "text" : "reme we"
+    },
+    {
+      "t" : 5.674,
+      "text" : "ather\", \"Polic"
+    },
+    {
+      "t" : 5.678,
+      "text" : "y\"], \"sm\")"
+    },
+    {
+      "t" : 5.756,
+      "text" : "\ne1list = EntityList"
+    },
+    {
+      "t" : 5.811,
+      "text" : "([{"
+    },
+    {
+      "t" : 5.862,
+      "text" : "left: \"Instit"
+    },
+    {
+      "t" : 5.911,
+      "text" : "ution\", right: \"Lak"
+    },
+    {
+      "t" : 5.972,
+      "text" : "eshore University\"}, {"
+    },
+    {
+      "t" : 6.03,
+      "text" : "left: \"Langu"
+    },
+    {
+      "t" : 6.088,
+      "text" : "ages\", right: \"English"
+    },
+    {
+      "t" : 6.148,
+      "text" : ", Igbo\"},"
+    },
+    {
+      "t" : 6.204,
+      "text" : " {left: \"Avail"
+    },
+    {
+      "t" : 6.28,
+      "text" : "ability\", right: \"We"
+    },
+    {
+      "t" : 6.368,
+      "text" : "ekdays,"
+    },
+    {
+      "t" : 6.437,
+      "text" : " "
+    },
+    {
+      "t" : 6.515,
+      "text" : "9am-6pm\"}"
+    },
+    {
+      "t" : 6.619,
+      "text" : "])"
+    },
+    {
+      "t" : 6.62,
+      "text" : "\ne1btns = Bu"
+    },
+    {
+      "t" : 6.705,
+      "text" : "ttons([Button(\"Email"
+    },
+    {
+      "t" : 6.786,
+      "text" : "\", @O"
+    },
+    {
+      "t" : 6.85,
+      "text" : "penUrl(\"mail"
+    },
+    {
+      "t" : 6.992,
+      "text" : "to:a.okonkw"
+    },
+    {
+      "t" : 7.059,
+      "text" : "o@example"
+    },
+    {
+      "t" : 7.133,
+      "text" : ".com\"), \"primary\""
+    },
+    {
+      "t" : 7.252,
+      "text" : "), Button(\"Call\", @"
+    },
+    {
+      "t" : 7.254,
+      "text" : "OpenUrl(\"t"
+    },
+    {
+      "t" : 7.336,
+      "text" : "el:+15550"
+    },
+    {
+      "t" : 7.42,
+      "text" : "100"
+    },
+    {
+      "t" : 7.471,
+      "text" : "101\"), \"secondary\")"
+    },
+    {
+      "t" : 7.554,
+      "text" : "])\n\ne2 = Card"
+    },
+    {
+      "t" : 7.619,
+      "text" : "([e2h, e2t"
+    },
+    {
+      "t" : 7.703,
+      "text" : "ags, e2list, e2"
+    },
+    {
+      "t" : 7.781,
+      "text" : "btns])\ne2h ="
+    },
+    {
+      "t" : 7.86,
+      "text" : " CardHeader(\"D"
+    },
+    {
+      "t" : 7.929,
+      "text" : "r. Lu"
+    },
+    {
+      "t" : 7.99,
+      "text" : "is"
+    },
+    {
+      "t" : 8.07,
+      "text" : " F"
+    },
+    {
+      "t" : 8.137,
+      "text" : "ernandez\", \"Epid"
+    },
+    {
+      "t" : 8.211,
+      "text" : "emiologist, Northb"
+    },
+    {
+      "t" : 8.276,
+      "text" : "ridge School"
+    },
+    {
+      "t" : 8.341,
+      "text" : " of Public Health\")\ne"
+    },
+    {
+      "t" : 8.426,
+      "text" : "2tags = TagBl"
+    },
+    {
+      "t" : 8.524,
+      "text" : "ock([\"Public Health\","
+    },
+    {
+      "t" : 8.608,
+      "text" : " \"Inf"
+    },
+    {
+      "t" : 8.692,
+      "text" : "ectious disease\", \"V"
+    },
+    {
+      "t" : 8.777,
+      "text" : "accines\"], \"sm"
+    },
+    {
+      "t" : 8.859,
+      "text" : "\")\ne2list = Ent"
+    },
+    {
+      "t" : 8.946,
+      "text" : "ityList([{left: \""
+    },
+    {
+      "t" : 9.05,
+      "text" : "Institution\", right: \"North"
+    },
+    {
+      "t" : 9.139,
+      "text" : "bridge School of Public"
+    },
+    {
+      "t" : 9.235,
+      "text" : " Health\"}, {left: \""
+    },
+    {
+      "t" : 9.321,
+      "text" : "Languages\", right: \"English"
+    },
+    {
+      "t" : 9.414,
+      "text" : ", Spanish\"},"
+    },
+    {
+      "t" : 9.523,
+      "text" : " {left: \"Availability\","
+    },
+    {
+      "t" : 9.639,
+      "text" : " right: \"Same-"
+    },
+    {
+      "t" : 9.734,
+      "text" : "day for"
+    },
+    {
+      "t" : 9.838,
+      "text" : " bre"
+    },
+    {
+      "t" : 9.915,
+      "text" : "aking news\"}])\ne"
+    },
+    {
+      "t" : 10.07,
+      "text" : "2btns = Buttons"
+    },
+    {
+      "t" : 10.168,
+      "text" : "([Button(\"Email\", @"
+    },
+    {
+      "t" : 10.172,
+      "text" : "OpenUrl(\"m"
+    },
+    {
+      "t" : 10.274,
+      "text" : "ailto:l.fernand"
+    },
+    {
+      "t" : 10.44,
+      "text" : "ez@example.com\"), \""
+    },
+    {
+      "t" : 10.441,
+      "text" : "primary\"), Button(\""
+    },
+    {
+      "t" : 10.552,
+      "text" : "Call\", @OpenUr"
+    },
+    {
+      "t" : 10.665,
+      "text" : "l(\"tel:+15550"
+    },
+    {
+      "t" : 10.826,
+      "text" : "100102\"), \"secondary"
+    },
+    {
+      "t" : 10.828,
+      "text" : "\")])\n\ne3 ="
+    },
+    {
+      "t" : 10.91,
+      "text" : " Card([e3h, e3"
+    },
+    {
+      "t" : 11.002,
+      "text" : "tags, e3list, e"
+    },
+    {
+      "t" : 11.097,
+      "text" : "3btns])\ne3h"
+    },
+    {
+      "t" : 11.174,
+      "text" : " = CardHeader(\""
+    },
+    {
+      "t" : 11.265,
+      "text" : "Prof. Mei T"
+    },
+    {
+      "t" : 11.343,
+      "text" : "anaka\", \"Lab"
+    },
+    {
+      "t" : 11.435,
+      "text" : "or Economist, Harb"
+    },
+    {
+      "t" : 11.551,
+      "text" : "or Institute for"
+    },
+    {
+      "t" : 11.674,
+      "text" : " Economic Research"
+    },
+    {
+      "t" : 11.8,
+      "text" : "\")\ne3tags = T"
+    },
+    {
+      "t" : 11.952,
+      "text" : "agBlock([\"Econom"
+    },
+    {
+      "t" : 12.064,
+      "text" : "ics\", \"Labor mark"
+    },
+    {
+      "t" : 12.234,
+      "text" : "ets\", \"Inflation\""
+    },
+    {
+      "t" : 12.241,
+      "text" : "], \"sm\")\ne3"
+    },
+    {
+      "t" : 12.345,
+      "text" : "list = EntityList([{"
+    },
+    {
+      "t" : 12.54,
+      "text" : "left: \"Institution\", right"
+    },
+    {
+      "t" : 12.544,
+      "text" : ": \"Harbor Instit"
+    },
+    {
+      "t" : 12.694,
+      "text" : "ute for"
+    },
+    {
+      "t" : 12.826,
+      "text" : " Economic Research\"},"
+    },
+    {
+      "t" : 12.966,
+      "text" : " {left: \"Languages\","
+    },
+    {
+      "t" : 12.967,
+      "text" : " right: \"English, Japan"
+    },
+    {
+      "t" : 13.079,
+      "text" : "ese\"}, {left: \""
+    },
+    {
+      "t" : 13.197,
+      "text" : "Availability\", right: \""
+    },
+    {
+      "t" : 13.349,
+      "text" : "Mornings,"
+    },
+    {
+      "t" : 13.503,
+      "text" : " by"
+    },
+    {
+      "t" : 13.669,
+      "text" : " appointment\"}])\ne"
+    },
+    {
+      "t" : 13.846,
+      "text" : "3btns = Bu"
+    },
+    {
+      "t" : 14.019,
+      "text" : "ttons([Button(\"Email"
+    },
+    {
+      "t" : 14.193,
+      "text" : "\", @OpenUrl"
+    },
+    {
+      "t" : 14.436,
+      "text" : "(\"mailto:m.t"
+    },
+    {
+      "t" : 14.437,
+      "text" : "anaka@example.com\""
+    },
+    {
+      "t" : 14.593,
+      "text" : "), \"primary\"), Button"
+    },
+    {
+      "t" : 14.763,
+      "text" : "(\"Call\", @Open"
+    },
+    {
+      "t" : 14.887,
+      "text" : "Url(\"tel:+"
+    },
+    {
+      "t" : 14.99,
+      "text" : "15550100103\"), \"sec"
+    },
+    {
+      "t" : 15.088,
+      "text" : "ondary\")])\n\ne4 "
+    },
+    {
+      "t" : 15.19,
+      "text" : "= Card([e4h,"
+    },
+    {
+      "t" : 15.283,
+      "text" : " e4tags, e4list"
+    },
+    {
+      "t" : 15.45,
+      "text" : ", e4btns])\ne"
+    },
+    {
+      "t" : 15.602,
+      "text" : "4h = CardHeader"
+    },
+    {
+      "t" : 15.77,
+      "text" : "(\"Sam"
+    },
+    {
+      "t" : 15.893,
+      "text" : "ir Haddad\", \""
+    },
+    {
+      "t" : 16.009,
+      "text" : "Senior Researcher,"
+    },
+    {
+      "t" : 16.167,
+      "text" : " Dig"
+    },
+    {
+      "t" : 16.346,
+      "text" : "ital Def"
+    },
+    {
+      "t" : 16.612,
+      "text" : "ense Lab\")\ne4"
+    },
+    {
+      "t" : 16.613,
+      "text" : "tags = TagBlock"
+    },
+    {
+      "t" : 16.762,
+      "text" : "([\"Cybersecur"
+    },
+    {
+      "t" : 16.922,
+      "text" : "ity\", \"Ransomware"
+    },
+    {
+      "t" : 17.099,
+      "text" : "\", \"Privacy\"],"
+    },
+    {
+      "t" : 17.269,
+      "text" : " \"sm\")\ne4list"
+    },
+    {
+      "t" : 17.448,
+      "text" : " = EntityList([{left"
+    },
+    {
+      "t" : 17.61,
+      "text" : ": \"Institution\", right:"
+    },
+    {
+      "t" : 17.784,
+      "text" : " \"Digital Defense"
+    },
+    {
+      "t" : 17.963,
+      "text" : " Lab\"}, {left:"
+    },
+    {
+      "t" : 18.26,
+      "text" : " \"Languages\", right: \""
+    },
+    {
+      "t" : 18.265,
+      "text" : "English, Arabic,"
+    },
+    {
+      "t" : 18.429,
+      "text" : " French\"}, {left: \""
+    },
+    {
+      "t" : 18.605,
+      "text" : "Availability\", right: \""
+    },
+    {
+      "t" : 18.731,
+      "text" : "Evenings and"
+    },
+    {
+      "t" : 18.873,
+      "text" : " weekends\"}])\ne"
+    },
+    {
+      "t" : 19.032,
+      "text" : "4btns = Bu"
+    },
+    {
+      "t" : 19.208,
+      "text" : "ttons([Button(\"Email"
+    },
+    {
+      "t" : 19.351,
+      "text" : "\", @OpenUrl"
+    },
+    {
+      "t" : 19.533,
+      "text" : "(\"mailto:s.ha"
+    },
+    {
+      "t" : 19.721,
+      "text" : "ddad@example.com\"),"
+    },
+    {
+      "t" : 19.914,
+      "text" : " \"primary\"), Button(\""
+    },
+    {
+      "t" : 20.093,
+      "text" : "Call\", @OpenU"
+    },
+    {
+      "t" : 20.26,
+      "text" : "rl(\"tel:+15"
+    },
+    {
+      "t" : 20.437,
+      "text" : "550100104\"), \"second"
+    },
+    {
+      "t" : 20.618,
+      "text" : "ary\")])\n\ne5 ="
+    },
+    {
+      "t" : 20.805,
+      "text" : " Card([e5h, e"
+    },
+    {
+      "t" : 20.968,
+      "text" : "5tags, e5list,"
+    },
+    {
+      "t" : 21.158,
+      "text" : " e5btns])\ne5"
+    },
+    {
+      "t" : 21.337,
+      "text" : "h = CardHeader(\""
+    },
+    {
+      "t" : 21.431,
+      "text" : "H"
+    },
+    {
+      "t" : 21.575,
+      "text" : "on"
+    },
+    {
+      "t" : 21.748,
+      "text" : ". R"
+    },
+    {
+      "t" : 21.915,
+      "text" : "ebecca L"
+    },
+    {
+      "t" : 22.117,
+      "text" : "indqvist\", \"Const"
+    },
+    {
+      "t" : 22.315,
+      "text" : "itutional Law Sc"
+    },
+    {
+      "t" : 22.514,
+      "text" : "holar, Me"
+    },
+    {
+      "t" : 22.682,
+      "text" : "ridian"
+    },
+    {
+      "t" : 22.956,
+      "text" : " Law School\")\ne5tags"
+    },
+    {
+      "t" : 23.088,
+      "text" : " = TagBlock([\""
+    },
+    {
+      "t" : 23.092,
+      "text" : "Law & Policy\", \""
+    },
+    {
+      "t" : 23.268,
+      "text" : "Constitutional law\", \""
+    },
+    {
+      "t" : 23.578,
+      "text" : "Elections\"], \"sm"
+    },
+    {
+      "t" : 23.582,
+      "text" : "\")\ne5list = Ent"
+    },
+    {
+      "t" : 23.793,
+      "text" : "ityList([{left: \""
+    },
+    {
+      "t" : 23.983,
+      "text" : "Institution\", right: \"Me"
+    },
+    {
+      "t" : 24.19,
+      "text" : "ridian Law School\"},"
+    },
+    {
+      "t" : 24.38,
+      "text" : " {left: \"Languages\","
+    },
+    {
+      "t" : 24.555,
+      "text" : " right: \"English, Swed"
+    },
+    {
+      "t" : 24.722,
+      "text" : "ish\"}, {left: \""
+    },
+    {
+      "t" : 24.937,
+      "text" : "Availability\", right: \""
+    },
+    {
+      "t" : 25.122,
+      "text" : "We"
+    },
+    {
+      "t" : 25.299,
+      "text" : "ekdays, 10am-"
+    },
+    {
+      "t" : 25.517,
+      "text" : "4"
+    },
+    {
+      "t" : 25.72,
+      "text" : "pm\"}])\ne5"
+    },
+    {
+      "t" : 25.935,
+      "text" : "btns = Buttons(["
+    },
+    {
+      "t" : 26.132,
+      "text" : "Button(\"Email\", @O"
+    },
+    {
+      "t" : 26.397,
+      "text" : "penUrl(\"mail"
+    },
+    {
+      "t" : 26.399,
+      "text" : "to:r.lindqv"
+    },
+    {
+      "t" : 26.512,
+      "text" : "ist@example.com\"), \""
+    },
+    {
+      "t" : 26.635,
+      "text" : "primary\"), Button(\""
+    },
+    {
+      "t" : 26.753,
+      "text" : "Call\", @OpenUr"
+    },
+    {
+      "t" : 26.879,
+      "text" : "l(\"tel:+15550"
+    },
+    {
+      "t" : 26.991,
+      "text" : "100105\"), \"secondary"
+    },
+    {
+      "t" : 27.112,
+      "text" : "\")])"
+    }
+  ],
+  "createdAt" : "2026-11-11T10:42:01Z",
+  "effort" : "low",
+  "format" : "openui-recording",
+  "inputTokens" : 14509,
+  "library" : "react-ui",
+  "model" : "claude-sonnet-5-5",
+  "outputTokens" : 1703,
+  "request" : "A newsroom source directory: five fictional experts with fields of expertise, institution and contact buttons, plus a subject filter.",
+  "servedBy" : "claude-sonnet-5-5",
+  "stopReason" : "end_turn",
+  "version" : 1
+}

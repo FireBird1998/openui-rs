@@ -1,0 +1,356 @@
+{
+  "batchRequest" : {
+    "model" : "haiku",
+    "number" : 124,
+    "request" : "A neighborhood walking challenge with participant steps, a weekly progress bar chart and milestone badges as tags."
+  },
+  "chunks" : [
+    {
+      "t" : 0.898,
+      "text" : "root = Stack(["
+    },
+    {
+      "t" : 1.032,
+      "text" : "header"
+    },
+    {
+      "t" : 1.064,
+      "text" : ", summ"
+    },
+    {
+      "t" : 1.12,
+      "text" : "aryR"
+    },
+    {
+      "t" : 1.166,
+      "text" : "ow, prog"
+    },
+    {
+      "t" : 1.258,
+      "text" : "ressCard, mileston"
+    },
+    {
+      "t" : 1.26,
+      "text" : "esCard])\nheader = In"
+    },
+    {
+      "t" : 1.378,
+      "text" : "lineHeader(\"Ne"
+    },
+    {
+      "t" : 1.465,
+      "text" : "ighborhood Walking"
+    },
+    {
+      "t" : 1.466,
+      "text" : " Challenge\", \"Week"
+    },
+    {
+      "t" : 1.507,
+      "text" : "ly particip"
+    },
+    {
+      "t" : 1.533,
+      "text" : "ant steps and"
+    },
+    {
+      "t" : 1.564,
+      "text" : " milestones"
+    },
+    {
+      "t" : 1.64,
+      "text" : "\")\nsummaryRow ="
+    },
+    {
+      "t" : 1.673,
+      "text" : " Stack([totalK"
+    },
+    {
+      "t" : 1.707,
+      "text" : "p"
+    },
+    {
+      "t" : 1.743,
+      "text" : "i, le"
+    },
+    {
+      "t" : 1.779,
+      "text" : "aderKpi, av"
+    },
+    {
+      "t" : 1.833,
+      "text" : "gKpi], \""
+    },
+    {
+      "t" : 1.834,
+      "text" : "row\", \"m"
+    },
+    {
+      "t" : 1.869,
+      "text" : "\", \"st"
+    },
+    {
+      "t" : 1.918,
+      "text" : "retch\", \"start"
+    },
+    {
+      "t" : 1.981,
+      "text" : "\", true"
+    },
+    {
+      "t" : 2.014,
+      "text" : ")"
+    },
+    {
+      "t" : 2.05,
+      "text" : "\ntotalKpi ="
+    },
+    {
+      "t" : 2.131,
+      "text" : " Card([TextContent(\""
+    },
+    {
+      "t" : 2.186,
+      "text" : "Total Steps\", \"small\""
+    },
+    {
+      "t" : 2.227,
+      "text" : "), TextContent(\"\" +"
+    },
+    {
+      "t" : 2.252,
+      "text" : " @S"
+    },
+    {
+      "t" : 2.304,
+      "text" : "um(data.ste"
+    },
+    {
+      "t" : 2.306,
+      "text" : "ps), \"large-heavy"
+    },
+    {
+      "t" : 2.38,
+      "text" : "\")])\nleaderKp"
+    },
+    {
+      "t" : 2.436,
+      "text" : "i = Card([TextCont"
+    },
+    {
+      "t" : 2.481,
+      "text" : "ent(\"Top"
+    },
+    {
+      "t" : 2.526,
+      "text" : " Wal"
+    },
+    {
+      "t" : 2.567,
+      "text" : "ker\", \"small\"), Text"
+    },
+    {
+      "t" : 2.615,
+      "text" : "Content(\"Ma"
+    },
+    {
+      "t" : 2.664,
+      "text" : "ya R"
+    },
+    {
+      "t" : 2.77,
+      "text" : ".\", \"large-heavy"
+    },
+    {
+      "t" : 2.819,
+      "text" : "\")])\navgKpi"
+    },
+    {
+      "t" : 2.82,
+      "text" : " = Card([TextContent"
+    },
+    {
+      "t" : 2.864,
+      "text" : "(\"Av"
+    },
+    {
+      "t" : 2.909,
+      "text" : "g per"
+    },
+    {
+      "t" : 2.947,
+      "text" : " Particip"
+    },
+    {
+      "t" : 2.99,
+      "text" : "ant\", \"small\"), Text"
+    },
+    {
+      "t" : 3.039,
+      "text" : "Content(\"\" + @S"
+    },
+    {
+      "t" : 3.094,
+      "text" : "um(data.steps)"
+    },
+    {
+      "t" : 3.134,
+      "text" : " / @Count(data.names"
+    },
+    {
+      "t" : 3.174,
+      "text" : "), \"large-heavy\")"
+    },
+    {
+      "t" : 3.226,
+      "text" : "])\nprogressCard ="
+    },
+    {
+      "t" : 3.305,
+      "text" : " Card([CardHeader(\""
+    },
+    {
+      "t" : 3.306,
+      "text" : "Weekly Prog"
+    },
+    {
+      "t" : 3.363,
+      "text" : "ress\", \"Steps per"
+    },
+    {
+      "t" : 3.462,
+      "text" : " participant this"
+    },
+    {
+      "t" : 3.516,
+      "text" : " week\"), chart])\nch"
+    },
+    {
+      "t" : 3.572,
+      "text" : "art = BarChart(data"
+    },
+    {
+      "t" : 3.621,
+      "text" : ".names, [st"
+    },
+    {
+      "t" : 3.739,
+      "text" : "epS"
+    },
+    {
+      "t" : 3.815,
+      "text" : "eries],"
+    },
+    {
+      "t" : 3.892,
+      "text" : " \"grouped\","
+    },
+    {
+      "t" : 3.952,
+      "text" : " \""
+    },
+    {
+      "t" : 4,
+      "text" : "Participant\", \"Ste"
+    },
+    {
+      "t" : 4.009,
+      "text" : "ps\")\nstepSeries"
+    },
+    {
+      "t" : 4.058,
+      "text" : " = Series(\"Ste"
+    },
+    {
+      "t" : 4.118,
+      "text" : "ps\", data.steps)"
+    },
+    {
+      "t" : 4.187,
+      "text" : "\nmilestonesCard ="
+    },
+    {
+      "t" : 4.251,
+      "text" : " Card([CardHeader(\""
+    },
+    {
+      "t" : 4.306,
+      "text" : "Milestone"
+    },
+    {
+      "t" : 4.368,
+      "text" : " Badges\", \"Ear"
+    },
+    {
+      "t" : 4.423,
+      "text" : "ned by"
+    },
+    {
+      "t" : 4.527,
+      "text" : " participants\"), milesto"
+    },
+    {
+      "t" : 4.529,
+      "text" : "neT"
+    },
+    {
+      "t" : 4.582,
+      "text" : "able"
+    },
+    {
+      "t" : 4.64,
+      "text" : "])\nmilestoneTable"
+    },
+    {
+      "t" : 4.7,
+      "text" : " = Table([Col(\""
+    },
+    {
+      "t" : 4.77,
+      "text" : "Participant\", data.names),"
+    },
+    {
+      "t" : 4.825,
+      "text" : " Col(\"Steps\", data."
+    },
+    {
+      "t" : 4.877,
+      "text" : "steps, \"number\"),"
+    },
+    {
+      "t" : 4.947,
+      "text" : " Col(\"Badges\", @"
+    },
+    {
+      "t" : 5.012,
+      "text" : "Each(data.bad"
+    },
+    {
+      "t" : 5.121,
+      "text" : "ges, \"b"
+    },
+    {
+      "t" : 5.123,
+      "text" : "\", TagBlock(b"
+    },
+    {
+      "t" : 5.258,
+      "text" : ")"
+    },
+    {
+      "t" : 5.26,
+      "text" : "))])"
+    }
+  ],
+  "createdAt" : "2026-11-11T11:02:29Z",
+  "effort" : "low",
+  "format" : "openui-recording",
+  "inputTokens" : 14506,
+  "library" : "react-ui",
+  "model" : "claude-haiku-5-5",
+  "outputTokens" : 467,
+  "request" : "A neighborhood walking challenge with participant steps, a weekly progress bar chart and milestone badges as tags.",
+  "servedBy" : "claude-haiku-5-5",
+  "stopReason" : "end_turn",
+  "version" : 1
+}

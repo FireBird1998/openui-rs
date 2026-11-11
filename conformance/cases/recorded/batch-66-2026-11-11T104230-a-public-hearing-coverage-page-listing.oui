@@ -1,0 +1,16 @@
+root = Stack([pageHeader, deadlineCallout, agendaHeader, agendaTabs, testimonyHeader, testimonyAccordion])
+pageHeader = InlineHeader("Public Hearing Coverage", "Municipal Planning Commission · Riverside Zoning Amendment")
+deadlineCallout = Callout("warning", "Next consultation deadline", "Written comments close Friday, 14 March 2025 at 5:00 PM. Submit via the city clerk portal or in person.")
+agendaHeader = InlineHeader("Agenda Items", "Items considered at this session")
+agendaTabs = Tabs([tabAgenda1, tabAgenda2, tabAgenda3])
+tabAgenda1 = TabItem("item1", "1. Zoning Amendment", agenda1Content)
+tabAgenda2 = TabItem("item2", "2. Parking Standards", agenda2Content)
+tabAgenda3 = TabItem("item3", "3. Park Budget", agenda3Content)
+agenda1Content = [TextContent("Proposal to rezone 14 parcels along Riverside Avenue from light industrial to mixed-use residential, allowing up to four stories of housing above ground-floor retail.", "default"), EntityList([{left: "Status", right: "Under review"}, {left: "Sponsor", right: "Planning Dept."}, {left: "Vote", right: "Deferred to April"}], "default")]
+agenda2Content = [TextContent("Revised minimum parking requirements for transit-adjacent developments, reducing spaces from 1.5 to 0.75 per unit within a half-mile of stations.", "default"), EntityList([{left: "Status", right: "Public comment open"}, {left: "Sponsor", right: "Transportation Committee"}, {left: "Vote", right: "Scheduled 2 April"}], "default")]
+agenda3Content = [TextContent("Proposed $1.2M allocation for renovation of Eastside Park playground and accessible pathways.", "default"), EntityList([{left: "Status", right: "Approved in principle"}, {left: "Sponsor", right: "Parks & Recreation"}, {left: "Vote", right: "Final vote pending"}], "default")]
+testimonyHeader = InlineHeader("Testimony Summaries", "Key points from members of the public")
+testimonyAccordion = Accordion([accT1, accT2, accT3])
+accT1 = AccordionItem("t1", "Maria Alvarez, Resident (Item 1)", [TextContent("Supports mixed-use rezoning but asked for stronger tenant protections and a commitment to affordable units in the first phase.")])
+accT2 = AccordionItem("t2", "James Okafor, Small Business Owner (Item 2)", [TextContent("Opposes reduced parking minimums, citing limited bus frequency and the need for customer parking for local shops.")])
+accT3 = AccordionItem("t3", "Priya Shah, Parent Council (Item 3)", [TextContent("Welcomed the Eastside Park investment and requested that accessible pathways be completed before playground work begins.")])

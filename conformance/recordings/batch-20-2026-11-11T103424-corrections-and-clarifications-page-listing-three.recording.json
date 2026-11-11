@@ -1,0 +1,432 @@
+{
+  "batchRequest" : {
+    "model" : "haiku",
+    "number" : 20,
+    "request" : "Corrections and clarifications page listing three recent corrections with the original and corrected text."
+  },
+  "chunks" : [
+    {
+      "t" : 0.629,
+      "text" : "root = Stack(["
+    },
+    {
+      "t" : 0.775,
+      "text" : "header"
+    },
+    {
+      "t" : 0.785,
+      "text" : ", c"
+    },
+    {
+      "t" : 0.791,
+      "text" : "1, c2, c3])"
+    },
+    {
+      "t" : 0.808,
+      "text" : "\nheader"
+    },
+    {
+      "t" : 0.825,
+      "text" : " = In"
+    },
+    {
+      "t" : 0.835,
+      "text" : "lineHeader(\"Cor"
+    },
+    {
+      "t" : 0.842,
+      "text" : "rections and Clarifications"
+    },
+    {
+      "t" : 0.853,
+      "text" : "\", \"Rec"
+    },
+    {
+      "t" : 0.86,
+      "text" : "ent corrections to"
+    },
+    {
+      "t" : 0.865,
+      "text" : " previ"
+    },
+    {
+      "t" : 0.887,
+      "text" : "ously published content"
+    },
+    {
+      "t" : 0.899,
+      "text" : "\")\nc1 ="
+    },
+    {
+      "t" : 0.978,
+      "text" : " Card([C"
+    },
+    {
+      "t" : 0.985,
+      "text" : "ardHeader(\"Correction"
+    },
+    {
+      "t" : 0.992,
+      "text" : " 1\", \"Published"
+    },
+    {
+      "t" : 1.004,
+      "text" : " March"
+    },
+    {
+      "t" : 1.017,
+      "text" : " 3"
+    },
+    {
+      "t" : 1.024,
+      "text" : ", 2025"
+    },
+    {
+      "t" : 1.037,
+      "text" : "\"), T"
+    },
+    {
+      "t" : 1.05,
+      "text" : "extCont"
+    },
+    {
+      "t" : 1.058,
+      "text" : "ent(\"**"
+    },
+    {
+      "t" : 1.071,
+      "text" : "Original:** The"
+    },
+    {
+      "t" : 1.086,
+      "text" : " company"
+    },
+    {
+      "t" : 1.103,
+      "text" : " reported qu"
+    },
+    {
+      "t" : 1.125,
+      "text" : "arterly revenue of $"
+    },
+    {
+      "t" : 1.146,
+      "text" : "4.2 billion,"
+    },
+    {
+      "t" : 1.168,
+      "text" : " up 12% year"
+    },
+    {
+      "t" : 1.189,
+      "text" : " over year.\"), TextContent"
+    },
+    {
+      "t" : 1.209,
+      "text" : "(\"**Corrected:**"
+    },
+    {
+      "t" : 1.234,
+      "text" : " The company reported quarterly"
+    },
+    {
+      "t" : 1.252,
+      "text" : " revenue of $4.02"
+    },
+    {
+      "t" : 1.272,
+      "text" : " billion, up 9"
+    },
+    {
+      "t" : 1.293,
+      "text" : "% year over year.\"), T"
+    },
+    {
+      "t" : 1.314,
+      "text" : "extC"
+    },
+    {
+      "t" : 1.333,
+      "text" : "allout(\"ne"
+    },
+    {
+      "t" : 1.356,
+      "text" : "utral\", \"Re"
+    },
+    {
+      "t" : 1.374,
+      "text" : "ason\", \""
+    },
+    {
+      "t" : 1.394,
+      "text" : "Figures were trans"
+    },
+    {
+      "t" : 1.415,
+      "text" : "pos"
+    },
+    {
+      "t" : 1.435,
+      "text" : "ed from a"
+    },
+    {
+      "t" : 1.455,
+      "text" : " preliminary ear"
+    },
+    {
+      "t" : 1.475,
+      "text" : "nings table"
+    },
+    {
+      "t" : 1.495,
+      "text" : ".\")])"
+    },
+    {
+      "t" : 1.516,
+      "text" : "\nc2 = Card(["
+    },
+    {
+      "t" : 1.538,
+      "text" : "CardHeader(\"Corre"
+    },
+    {
+      "t" : 1.558,
+      "text" : "ction 2\", \"Published February"
+    },
+    {
+      "t" : 1.578,
+      "text" : " 18"
+    },
+    {
+      "t" : 1.598,
+      "text" : ", 2025\"), Text"
+    },
+    {
+      "t" : 1.62,
+      "text" : "Content(\"**Original:**"
+    },
+    {
+      "t" : 1.639,
+      "text" : " The new trans"
+    },
+    {
+      "t" : 1.661,
+      "text" : "it line"
+    },
+    {
+      "t" : 1.68,
+      "text" : " will open in f"
+    },
+    {
+      "t" : 1.701,
+      "text" : "all 2026 "
+    },
+    {
+      "t" : 1.721,
+      "text" : "and"
+    },
+    {
+      "t" : 1.741,
+      "text" : " serve 40"
+    },
+    {
+      "t" : 1.762,
+      "text" : ",000 ri"
+    },
+    {
+      "t" : 1.782,
+      "text" : "ders daily.\"), TextCont"
+    },
+    {
+      "t" : 1.803,
+      "text" : "ent(\"**Corrected:"
+    },
+    {
+      "t" : 1.827,
+      "text" : "** The new transit line will open"
+    },
+    {
+      "t" : 1.853,
+      "text" : " in sp"
+    },
+    {
+      "t" : 1.877,
+      "text" : "ring 2026 and serve"
+    },
+    {
+      "t" : 1.909,
+      "text" : " an"
+    },
+    {
+      "t" : 1.936,
+      "text" : " estimated 14,000 "
+    },
+    {
+      "t" : 1.965,
+      "text" : "riders daily.\"), Text"
+    },
+    {
+      "t" : 1.99,
+      "text" : "Callout(\"neutral\","
+    },
+    {
+      "t" : 2.012,
+      "text" : " \"Reason\", \"The"
+    },
+    {
+      "t" : 2.032,
+      "text" : " original"
+    },
+    {
+      "t" : 2.053,
+      "text" : " schedule and"
+    },
+    {
+      "t" : 2.075,
+      "text" : " ridership fig"
+    },
+    {
+      "t" : 2.102,
+      "text" : "ures were from an"
+    },
+    {
+      "t" : 2.123,
+      "text" : " out"
+    },
+    {
+      "t" : 2.145,
+      "text" : "dated city"
+    },
+    {
+      "t" : 2.166,
+      "text" : " pro"
+    },
+    {
+      "t" : 2.188,
+      "text" : "posal.\")])\nc3"
+    },
+    {
+      "t" : 2.209,
+      "text" : " = Card([CardH"
+    },
+    {
+      "t" : 2.231,
+      "text" : "eader(\"Correction 3"
+    },
+    {
+      "t" : 2.255,
+      "text" : "\", \"Published January"
+    },
+    {
+      "t" : 2.279,
+      "text" : " 27"
+    },
+    {
+      "t" : 2.293,
+      "text" : ", 2025\"), Text"
+    },
+    {
+      "t" : 2.317,
+      "text" : "Content(\"**Original:**"
+    },
+    {
+      "t" : 2.343,
+      "text" : " The"
+    },
+    {
+      "t" : 2.364,
+      "text" : " study"
+    },
+    {
+      "t" : 2.386,
+      "text" : " invol"
+    },
+    {
+      "t" : 2.409,
+      "text" : "ved 1"
+    },
+    {
+      "t" : 2.432,
+      "text" : ",200 participants across"
+    },
+    {
+      "t" : 2.456,
+      "text" : " six count"
+    },
+    {
+      "t" : 2.478,
+      "text" : "ries.\""
+    },
+    {
+      "t" : 2.493,
+      "text" : "), TextContent(\"**"
+    },
+    {
+      "t" : 2.514,
+      "text" : "Corrected:** The study invol"
+    },
+    {
+      "t" : 2.538,
+      "text" : "ved 1,020"
+    },
+    {
+      "t" : 2.561,
+      "text" : " participants across four countries.\""
+    },
+    {
+      "t" : 2.575,
+      "text" : "), TextC"
+    },
+    {
+      "t" : 2.598,
+      "text" : "allout(\"neutral\", \""
+    },
+    {
+      "t" : 2.622,
+      "text" : "Reason\", \"The"
+    },
+    {
+      "t" : 2.646,
+      "text" : " participant count and"
+    },
+    {
+      "t" : 2.671,
+      "text" : " country"
+    },
+    {
+      "t" : 2.696,
+      "text" : " total"
+    },
+    {
+      "t" : 2.72,
+      "text" : " were mis"
+    },
+    {
+      "t" : 2.745,
+      "text" : "reported in the"
+    },
+    {
+      "t" : 2.76,
+      "text" : " init"
+    },
+    {
+      "t" : 2.77,
+      "text" : "ial summ"
+    },
+    {
+      "t" : 2.809,
+      "text" : "ary.\")])"
+    }
+  ],
+  "createdAt" : "2026-11-11T10:34:24Z",
+  "effort" : "low",
+  "format" : "openui-recording",
+  "inputTokens" : 14496,
+  "library" : "react-ui",
+  "model" : "claude-haiku-5-5",
+  "outputTokens" : 479,
+  "request" : "Corrections and clarifications page listing three recent corrections with the original and corrected text.",
+  "servedBy" : "claude-haiku-5-5",
+  "stopReason" : "end_turn",
+  "version" : 1
+}

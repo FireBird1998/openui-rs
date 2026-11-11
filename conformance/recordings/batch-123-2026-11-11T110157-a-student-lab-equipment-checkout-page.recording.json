@@ -1,0 +1,1192 @@
+{
+  "batchRequest" : {
+    "model" : "sonnet",
+    "number" : 123,
+    "request" : "A student lab equipment checkout page with instrument IDs, calibration dates, current borrower and return deadlines."
+  },
+  "chunks" : [
+    {
+      "t" : 0.754,
+      "text" : "root = Stack([header,"
+    },
+    {
+      "t" : 1.045,
+      "text" : " kpis, statusC"
+    },
+    {
+      "t" : 1.073,
+      "text" : "allout, tab"
+    },
+    {
+      "t" : 1.14,
+      "text" : "s, chec"
+    },
+    {
+      "t" : 1.202,
+      "text" : "koutH"
+    },
+    {
+      "t" : 1.269,
+      "text" : "eader,"
+    },
+    {
+      "t" : 1.311,
+      "text" : " checkoutForm])"
+    },
+    {
+      "t" : 1.357,
+      "text" : "\nheader = C"
+    },
+    {
+      "t" : 1.448,
+      "text" : "ardHeader(\"L"
+    },
+    {
+      "t" : 1.5,
+      "text" : "ab Equipment Check"
+    },
+    {
+      "t" : 1.502,
+      "text" : "out\", \"Track"
+    },
+    {
+      "t" : 1.568,
+      "text" : " instruments, calibration status"
+    },
+    {
+      "t" : 1.599,
+      "text" : ","
+    },
+    {
+      "t" : 1.631,
+      "text" : " borrowers and"
+    },
+    {
+      "t" : 1.632,
+      "text" : " return deadlines\")\nk"
+    },
+    {
+      "t" : 1.67,
+      "text" : "pis = S"
+    },
+    {
+      "t" : 1.704,
+      "text" : "nippetCardBlock"
+    },
+    {
+      "t" : 1.742,
+      "text" : "([k1, k2, k"
+    },
+    {
+      "t" : 1.804,
+      "text" : "3])\nk1 = S"
+    },
+    {
+      "t" : 1.853,
+      "text" : "nippetCardItem(\""
+    },
+    {
+      "t" : 1.955,
+      "text" : "total\", k1l"
+    },
+    {
+      "t" : 1.994,
+      "text" : ", k1r)\nk1"
+    },
+    {
+      "t" : 2.03,
+      "text" : "l = IconText(k1"
+    },
+    {
+      "t" : 2.091,
+      "text" : "i,"
+    },
+    {
+      "t" : 2.128,
+      "text" : " \"neutral\", \"m\","
+    },
+    {
+      "t" : 2.165,
+      "text" : " \"Total Instruments\","
+    },
+    {
+      "t" : 2.213,
+      "text" : " \"In"
+    },
+    {
+      "t" : 2.258,
+      "text" : " in"
+    },
+    {
+      "t" : 2.286,
+      "text" : "ventory\", false, \"horiz"
+    },
+    {
+      "t" : 2.305,
+      "text" : "ontal\")\nk1i ="
+    },
+    {
+      "t" : 2.344,
+      "text" : " Icon(\"micro"
+    },
+    {
+      "t" : 2.383,
+      "text" : "scope\", \"science\")\nk"
+    },
+    {
+      "t" : 2.427,
+      "text" : "1r = BoldText(\""
+    },
+    {
+      "t" : 2.49,
+      "text" : "number\", \"8\")"
+    },
+    {
+      "t" : 2.533,
+      "text" : "\nk2 = Snipp"
+    },
+    {
+      "t" : 2.595,
+      "text" : "etCardItem(\"out"
+    },
+    {
+      "t" : 2.727,
+      "text" : "\", k2l, k2r"
+    },
+    {
+      "t" : 2.755,
+      "text" : ")\nk2l = Icon"
+    },
+    {
+      "t" : 2.805,
+      "text" : "Text(k2i, \"ne"
+    },
+    {
+      "t" : 2.854,
+      "text" : "utral\", \"m\", \""
+    },
+    {
+      "t" : 2.9,
+      "text" : "Checked Out\", \"Curr"
+    },
+    {
+      "t" : 2.974,
+      "text" : "ently borrowed\", false,"
+    },
+    {
+      "t" : 3.045,
+      "text" : " \"horizontal\")\nk"
+    },
+    {
+      "t" : 3.101,
+      "text" : "2i = Icon(\"ar"
+    },
+    {
+      "t" : 3.18,
+      "text" : "row-right-left\", \""
+    },
+    {
+      "t" : 3.226,
+      "text" : "tools\")\nk2r ="
+    },
+    {
+      "t" : 3.274,
+      "text" : " BoldText(\"number\", \""
+    },
+    {
+      "t" : 3.346,
+      "text" : "5\")\nk3 = S"
+    },
+    {
+      "t" : 3.405,
+      "text" : "nippetCardItem(\""
+    },
+    {
+      "t" : 3.473,
+      "text" : "overdue\", k3l,"
+    },
+    {
+      "t" : 3.557,
+      "text" : " k3r)\nk3l"
+    },
+    {
+      "t" : 3.559,
+      "text" : " = IconText(k3i"
+    },
+    {
+      "t" : 3.63,
+      "text" : ", \"dan"
+    },
+    {
+      "t" : 3.677,
+      "text" : "ger\", \"m\", \"Over"
+    },
+    {
+      "t" : 3.736,
+      "text" : "due\", \"Past"
+    },
+    {
+      "t" : 3.791,
+      "text" : " de"
+    },
+    {
+      "t" : 3.846,
+      "text" : "adline\", false, \"horiz"
+    },
+    {
+      "t" : 3.891,
+      "text" : "ontal\")\nk3i ="
+    },
+    {
+      "t" : 3.955,
+      "text" : " Icon(\"al"
+    },
+    {
+      "t" : 4.012,
+      "text" : "arm-clock\", \"time"
+    },
+    {
+      "t" : 4.076,
+      "text" : "\")\nk3r = Bo"
+    },
+    {
+      "t" : 4.137,
+      "text" : "ldText(\"number\", \"1"
+    },
+    {
+      "t" : 4.213,
+      "text" : "\")\nstatusCallout ="
+    },
+    {
+      "t" : 4.272,
+      "text" : " Callout(\"warning\", \""
+    },
+    {
+      "t" : 4.392,
+      "text" : "Overdue item"
+    },
+    {
+      "t" : 4.403,
+      "text" : "\", \"L"
+    },
+    {
+      "t" : 4.5,
+      "text" : "AB-005"
+    },
+    {
+      "t" : 4.549,
+      "text" : " (Sp"
+    },
+    {
+      "t" : 4.598,
+      "text" : "ectroph"
+    },
+    {
+      "t" : 4.65,
+      "text" : "otometer) was due"
+    },
+    {
+      "t" : 4.687,
+      "text" : " on 2025"
+    },
+    {
+      "t" : 4.734,
+      "text" : "-05"
+    },
+    {
+      "t" : 4.786,
+      "text" : "-12"
+    },
+    {
+      "t" : 4.841,
+      "text" : " and is still"
+    },
+    {
+      "t" : 4.906,
+      "text" : " chec"
+    },
+    {
+      "t" : 4.97,
+      "text" : "ked out by"
+    },
+    {
+      "t" : 5.02,
+      "text" : " Pri"
+    },
+    {
+      "t" : 5.054,
+      "text" : "ya Nair.\")\nt"
+    },
+    {
+      "t" : 5.117,
+      "text" : "abs = Tabs(["
+    },
+    {
+      "t" : 5.182,
+      "text" : "all"
+    },
+    {
+      "t" : 5.26,
+      "text" : "Tab, avail"
+    },
+    {
+      "t" : 5.316,
+      "text" : "Tab, outTab])"
+    },
+    {
+      "t" : 5.387,
+      "text" : "\nallTab = TabItem"
+    },
+    {
+      "t" : 5.447,
+      "text" : "(\"all\", \"All Equ"
+    },
+    {
+      "t" : 5.527,
+      "text" : "ipment\", ["
+    },
+    {
+      "t" : 5.583,
+      "text" : "allTable])\navail"
+    },
+    {
+      "t" : 5.663,
+      "text" : "Tab = TabItem(\""
+    },
+    {
+      "t" : 5.777,
+      "text" : "avail\", \"Available\", ["
+    },
+    {
+      "t" : 5.78,
+      "text" : "availTable])\noutTab"
+    },
+    {
+      "t" : 5.85,
+      "text" : " = TabItem(\"out\","
+    },
+    {
+      "t" : 5.922,
+      "text" : " \"Checked Out\", ["
+    },
+    {
+      "t" : 5.999,
+      "text" : "outTable])\nallTable"
+    },
+    {
+      "t" : 6.09,
+      "text" : " = Table(["
+    },
+    {
+      "t" : 6.183,
+      "text" : "Col(\""
+    },
+    {
+      "t" : 6.261,
+      "text" : "Instrument ID\", ids"
+    },
+    {
+      "t" : 6.345,
+      "text" : "), Col(\"Name"
+    },
+    {
+      "t" : 6.436,
+      "text" : "\", names"
+    },
+    {
+      "t" : 6.547,
+      "text" : "), Col(\"Last"
+    },
+    {
+      "t" : 6.687,
+      "text" : " Calibrated\", c"
+    },
+    {
+      "t" : 6.688,
+      "text" : "al), Col(\"Bor"
+    },
+    {
+      "t" : 6.757,
+      "text" : "rower\", borrowers),"
+    },
+    {
+      "t" : 6.824,
+      "text" : " Col(\"Return"
+    },
+    {
+      "t" : 6.901,
+      "text" : " De"
+    },
+    {
+      "t" : 6.962,
+      "text" : "adline\", deadlines),"
+    },
+    {
+      "t" : 7.041,
+      "text" : " Col(\"Status\", status"
+    },
+    {
+      "t" : 7.117,
+      "text" : "Tags)])\nids ="
+    },
+    {
+      "t" : 7.2,
+      "text" : " [\"LAB-001\","
+    },
+    {
+      "t" : 7.271,
+      "text" : " \"LAB-002\", \""
+    },
+    {
+      "t" : 7.347,
+      "text" : "LAB-003\", \"L"
+    },
+    {
+      "t" : 7.422,
+      "text" : "AB-004\", \"LA"
+    },
+    {
+      "t" : 7.552,
+      "text" : "B-005\", \"LAB"
+    },
+    {
+      "t" : 7.555,
+      "text" : "-006\", \"LAB-"
+    },
+    {
+      "t" : 7.622,
+      "text" : "007\", \"LAB-008"
+    },
+    {
+      "t" : 7.714,
+      "text" : "\"]\nnames = [\""
+    },
+    {
+      "t" : 7.792,
+      "text" : "Digital O"
+    },
+    {
+      "t" : 7.903,
+      "text" : "scilloscope\", \""
+    },
+    {
+      "t" : 7.984,
+      "text" : "Analytical Balance\", \""
+    },
+    {
+      "t" : 8.066,
+      "text" : "Cent"
+    },
+    {
+      "t" : 8.185,
+      "text" : "rifuge\", \"pH"
+    },
+    {
+      "t" : 8.304,
+      "text" : " Meter\", \"Spect"
+    },
+    {
+      "t" : 8.399,
+      "text" : "rophotometer\", \""
+    },
+    {
+      "t" : 8.481,
+      "text" : "Function"
+    },
+    {
+      "t" : 8.565,
+      "text" : " Generator\", \"Comp"
+    },
+    {
+      "t" : 8.642,
+      "text" : "ound Microscope\", \""
+    },
+    {
+      "t" : 8.778,
+      "text" : "Multimeter\"]\nc"
+    },
+    {
+      "t" : 8.782,
+      "text" : "al = [\"2025-03"
+    },
+    {
+      "t" : 8.862,
+      "text" : "-10"
+    },
+    {
+      "t" : 8.937,
+      "text" : "\", \"2025-02"
+    },
+    {
+      "t" : 9.01,
+      "text" : "-18"
+    },
+    {
+      "t" : 9.096,
+      "text" : "\", \"2025-01-27"
+    },
+    {
+      "t" : 9.206,
+      "text" : "\", \"2025-04-02"
+    },
+    {
+      "t" : 9.283,
+      "text" : "\", \"2024"
+    },
+    {
+      "t" : 9.429,
+      "text" : "-11-30"
+    },
+    {
+      "t" : 9.513,
+      "text" : "\", \"2025-03"
+    },
+    {
+      "t" : 9.655,
+      "text" : "-22"
+    },
+    {
+      "t" : 9.656,
+      "text" : "\", \"2025-02-05"
+    },
+    {
+      "t" : 9.928,
+      "text" : "\", \"2025-04"
+    },
+    {
+      "t" : 10.09,
+      "text" : "-15"
+    },
+    {
+      "t" : 10.092,
+      "text" : "\"]\nborrowers ="
+    },
+    {
+      "t" : 10.164,
+      "text" : " [\""
+    },
+    {
+      "t" : 10.264,
+      "text" : "Maya Ch"
+    },
+    {
+      "t" : 10.355,
+      "text" : "en\", \"-"
+    },
+    {
+      "t" : 10.499,
+      "text" : "\", \"Liam O"
+    },
+    {
+      "t" : 10.584,
+      "text" : "'Brien\", \"-\","
+    },
+    {
+      "t" : 10.723,
+      "text" : " \"Priya Nair\","
+    },
+    {
+      "t" : 10.818,
+      "text" : " \"Daniel Ort"
+    },
+    {
+      "t" : 10.915,
+      "text" : "iz\", \"-"
+    },
+    {
+      "t" : 11.086,
+      "text" : "\", \"Sofia R"
+    },
+    {
+      "t" : 11.183,
+      "text" : "ossi\"]\ndeadl"
+    },
+    {
+      "t" : 11.294,
+      "text" : "ines = [\"2025-05"
+    },
+    {
+      "t" : 11.385,
+      "text" : "-20\", \"-\", \"2"
+    },
+    {
+      "t" : 11.482,
+      "text" : "025-05-22\", \"-"
+    },
+    {
+      "t" : 11.567,
+      "text" : "\", \"2025-05-12"
+    },
+    {
+      "t" : 11.672,
+      "text" : "\", \"2025-05-24"
+    },
+    {
+      "t" : 11.877,
+      "text" : "\", \"-"
+    },
+    {
+      "t" : 11.88,
+      "text" : "\", \"2025-05-21"
+    },
+    {
+      "t" : 12.004,
+      "text" : "\"]\nstatusTags ="
+    },
+    {
+      "t" : 12.107,
+      "text" : " [Tag(\"Checked"
+    },
+    {
+      "t" : 12.195,
+      "text" : " Out\", null, \"sm"
+    },
+    {
+      "t" : 12.287,
+      "text" : "\", \"info\"), Tag"
+    },
+    {
+      "t" : 12.374,
+      "text" : "(\"Available\", null, \"s"
+    },
+    {
+      "t" : 12.476,
+      "text" : "m\", \"success\"), T"
+    },
+    {
+      "t" : 12.662,
+      "text" : "ag(\"Checked Out\","
+    },
+    {
+      "t" : 12.663,
+      "text" : " null, \"sm\", \"info"
+    },
+    {
+      "t" : 12.779,
+      "text" : "\"), Tag(\"Available"
+    },
+    {
+      "t" : 12.944,
+      "text" : "\", null, \"sm\", \""
+    },
+    {
+      "t" : 12.95,
+      "text" : "success\"), Tag(\""
+    },
+    {
+      "t" : 13.039,
+      "text" : "Overdue\", null, \"s"
+    },
+    {
+      "t" : 13.116,
+      "text" : "m\", \"danger\"),"
+    },
+    {
+      "t" : 13.203,
+      "text" : " Tag(\"Checked Out"
+    },
+    {
+      "t" : 13.334,
+      "text" : "\", null, \"sm\", \""
+    },
+    {
+      "t" : 13.337,
+      "text" : "info\"), Tag(\""
+    },
+    {
+      "t" : 13.419,
+      "text" : "Available\", null, \"sm\","
+    },
+    {
+      "t" : 13.508,
+      "text" : " \"success\"), Tag(\""
+    },
+    {
+      "t" : 13.638,
+      "text" : "Checked Out\", null,"
+    },
+    {
+      "t" : 13.735,
+      "text" : " \"sm\", \"info\")]"
+    },
+    {
+      "t" : 13.824,
+      "text" : "\navailTable = Table(["
+    },
+    {
+      "t" : 13.998,
+      "text" : "Col(\""
+    },
+    {
+      "t" : 14.002,
+      "text" : "Instrument ID\", [\""
+    },
+    {
+      "t" : 14.147,
+      "text" : "LAB-002\", \"L"
+    },
+    {
+      "t" : 14.301,
+      "text" : "AB-004\", \"LA"
+    },
+    {
+      "t" : 14.446,
+      "text" : "B-007\"]), Col"
+    },
+    {
+      "t" : 14.567,
+      "text" : "(\"Name\", [\"Anal"
+    },
+    {
+      "t" : 14.722,
+      "text" : "ytical Balance\", \"p"
+    },
+    {
+      "t" : 14.969,
+      "text" : "H Meter\", \"Comp"
+    },
+    {
+      "t" : 15.07,
+      "text" : "ound Microscope\"]),"
+    },
+    {
+      "t" : 15.188,
+      "text" : " Col(\"Last Calib"
+    },
+    {
+      "t" : 15.286,
+      "text" : "rated\", [\"2025-"
+    },
+    {
+      "t" : 15.375,
+      "text" : "02-18\", \"2025-"
+    },
+    {
+      "t" : 15.548,
+      "text" : "04-02\", \"2025-"
+    },
+    {
+      "t" : 15.549,
+      "text" : "02-05\"]), Col"
+    },
+    {
+      "t" : 15.662,
+      "text" : "(\"Action\", [re"
+    },
+    {
+      "t" : 15.761,
+      "text" : "ser"
+    },
+    {
+      "t" : 15.877,
+      "text" : "ve"
+    },
+    {
+      "t" : 16.004,
+      "text" : "1, reserve2, re"
+    },
+    {
+      "t" : 16.587,
+      "text" : "serve3])])\nreser"
+    },
+    {
+      "t" : 16.852,
+      "text" : "ve1 = Button(\""
+    },
+    {
+      "t" : 16.855,
+      "text" : "Reserve\", @ToA"
+    },
+    {
+      "t" : 17.66,
+      "text" : "ssistant(\"Reserve"
+    },
+    {
+      "t" : 17.794,
+      "text" : " LAB-002 Anal"
+    },
+    {
+      "t" : 17.893,
+      "text" : "ytical Balance\"), \""
+    },
+    {
+      "t" : 18.013,
+      "text" : "secondary\","
+    },
+    {
+      "t" : 18.166,
+      "text" : " \"norm"
+    },
+    {
+      "t" : 18.27,
+      "text" : "al\", \"small\")\nreser"
+    },
+    {
+      "t" : 18.387,
+      "text" : "ve2 = Button(\""
+    },
+    {
+      "t" : 18.576,
+      "text" : "Reserve\", @ToA"
+    },
+    {
+      "t" : 18.578,
+      "text" : "ssistant(\"Reserve"
+    },
+    {
+      "t" : 18.701,
+      "text" : " LAB-004 pH"
+    },
+    {
+      "t" : 18.806,
+      "text" : " Meter\"), \"second"
+    },
+    {
+      "t" : 18.93,
+      "text" : "ary\", \"normal\", \"small"
+    },
+    {
+      "t" : 19.068,
+      "text" : "\")\nreserve3 ="
+    },
+    {
+      "t" : 19.161,
+      "text" : " Button(\"Reserve\","
+    },
+    {
+      "t" : 19.27,
+      "text" : " @ToAssistant(\""
+    },
+    {
+      "t" : 19.36,
+      "text" : "Reserve LAB-"
+    },
+    {
+      "t" : 19.473,
+      "text" : "007 Compound Microsc"
+    },
+    {
+      "t" : 19.596,
+      "text" : "ope\"), \"secondary\","
+    },
+    {
+      "t" : 19.772,
+      "text" : " \"normal\", \"small\")"
+    },
+    {
+      "t" : 19.874,
+      "text" : "\noutTable = Table(["
+    },
+    {
+      "t" : 20.007,
+      "text" : "Col(\"Instrument ID"
+    },
+    {
+      "t" : 20.159,
+      "text" : "\", [\"LAB-001"
+    },
+    {
+      "t" : 20.28,
+      "text" : "\", \"LAB-003\","
+    },
+    {
+      "t" : 20.383,
+      "text" : " \"LAB-005\", \""
+    },
+    {
+      "t" : 20.641,
+      "text" : "LAB-006\", \"L"
+    },
+    {
+      "t" : 20.643,
+      "text" : "AB-008\"]),"
+    },
+    {
+      "t" : 20.739,
+      "text" : " Col(\"Borrower\", "
+    },
+    {
+      "t" : 20.85,
+      "text" : "[\"Maya Chen\","
+    },
+    {
+      "t" : 20.987,
+      "text" : " \"Liam O'Br"
+    },
+    {
+      "t" : 21.231,
+      "text" : "ien\", \"Priya N"
+    },
+    {
+      "t" : 21.518,
+      "text" : "air\", \"Daniel"
+    },
+    {
+      "t" : 21.677,
+      "text" : " Ortiz\", \"S"
+    },
+    {
+      "t" : 21.679,
+      "text" : "ofia Rossi\"]"
+    },
+    {
+      "t" : 21.798,
+      "text" : "), Col(\"Return De"
+    },
+    {
+      "t" : 22.065,
+      "text" : "adline\", [\"2025-"
+    },
+    {
+      "t" : 22.076,
+      "text" : "05-20\", \"2025-"
+    },
+    {
+      "t" : 22.203,
+      "text" : "05-22\", \"2025-"
+    },
+    {
+      "t" : 22.349,
+      "text" : "05-12\", \"2025-"
+    },
+    {
+      "t" : 22.516,
+      "text" : "05-24\", \"2025-"
+    },
+    {
+      "t" : 22.649,
+      "text" : "05-21\"])"
+    },
+    {
+      "t" : 22.784,
+      "text" : "])\ncheckoutHe"
+    },
+    {
+      "t" : 22.911,
+      "text" : "ader = InlineHeader"
+    },
+    {
+      "t" : 23.15,
+      "text" : "(\"Check Out"
+    },
+    {
+      "t" : 23.152,
+      "text" : " Equipment\", \"F"
+    },
+    {
+      "t" : 23.278,
+      "text" : "ill in the form to borrow"
+    },
+    {
+      "t" : 23.491,
+      "text" : " an instrument\")\ncheck"
+    },
+    {
+      "t" : 23.493,
+      "text" : "outForm = Form(\""
+    },
+    {
+      "t" : 23.629,
+      "text" : "checkout\", checkout"
+    },
+    {
+      "t" : 23.742,
+      "text" : "Btns, [fc"
+    },
+    {
+      "t" : 23.863,
+      "text" : "Name, fcId"
+    },
+    {
+      "t" : 24.006,
+      "text" : ", fcD"
+    },
+    {
+      "t" : 24.16,
+      "text" : "ate])"
+    },
+    {
+      "t" : 24.3,
+      "text" : "\nfcName = FormContro"
+    },
+    {
+      "t" : 24.433,
+      "text" : "l(\"Student Name\","
+    },
+    {
+      "t" : 24.617,
+      "text" : " Input(\"student"
+    },
+    {
+      "t" : 24.785,
+      "text" : "\", \"Full"
+    },
+    {
+      "t" : 24.941,
+      "text" : " name\", \"text\", { required:"
+    },
+    {
+      "t" : 25.095,
+      "text" : " true, minLength: 2"
+    },
+    {
+      "t" : 25.248,
+      "text" : " }))\nfcId ="
+    },
+    {
+      "t" : 25.407,
+      "text" : " FormControl(\"Instr"
+    },
+    {
+      "t" : 25.563,
+      "text" : "ument\", Select(\"inst"
+    },
+    {
+      "t" : 25.638,
+      "text" : "rument\", inst"
+    },
+    {
+      "t" : 25.756,
+      "text" : "r"
+    },
+    {
+      "t" : 25.882,
+      "text" : "umentOpts, \""
+    },
+    {
+      "t" : 26.015,
+      "text" : "Select instrument..."
+    },
+    {
+      "t" : 26.166,
+      "text" : "\", { required: true }))"
+    },
+    {
+      "t" : 26.354,
+      "text" : "\nf"
+    },
+    {
+      "t" : 26.542,
+      "text" : "cDate = FormControl"
+    },
+    {
+      "t" : 26.699,
+      "text" : "(\"Return De"
+    },
+    {
+      "t" : 26.864,
+      "text" : "adline\", DatePicker"
+    },
+    {
+      "t" : 27.042,
+      "text" : "(\"deadline\", \"single\","
+    },
+    {
+      "t" : 27.214,
+      "text" : " { required: true }))"
+    },
+    {
+      "t" : 27.349,
+      "text" : "\ninstrumentOpts"
+    },
+    {
+      "t" : 27.464,
+      "text" : " = [SelectItem(\""
+    },
+    {
+      "t" : 27.617,
+      "text" : "LAB-002\", \"L"
+    },
+    {
+      "t" : 27.759,
+      "text" : "AB-002 –"
+    },
+    {
+      "t" : 27.893,
+      "text" : " Analytical Balance\""
+    },
+    {
+      "t" : 28.05,
+      "text" : "), SelectItem(\"L"
+    },
+    {
+      "t" : 28.184,
+      "text" : "AB-004\", \"LA"
+    },
+    {
+      "t" : 28.338,
+      "text" : "B-004 – pH"
+    },
+    {
+      "t" : 28.502,
+      "text" : " Meter\"), SelectIt"
+    },
+    {
+      "t" : 28.667,
+      "text" : "em(\"LAB-007\","
+    },
+    {
+      "t" : 28.815,
+      "text" : " \"LAB-007 –"
+    },
+    {
+      "t" : 28.968,
+      "text" : " Compound Microscope\")"
+    },
+    {
+      "t" : 29.114,
+      "text" : "]\ncheckoutBt"
+    },
+    {
+      "t" : 29.433,
+      "text" : "ns = Buttons(["
+    },
+    {
+      "t" : 29.437,
+      "text" : "Button(\"Confirm Chec"
+    },
+    {
+      "t" : 29.659,
+      "text" : "kout\", @ToAss"
+    },
+    {
+      "t" : 29.969,
+      "text" : "istant(\"Submit equ"
+    },
+    {
+      "t" : 29.972,
+      "text" : "ipment checkout\"), \""
+    },
+    {
+      "t" : 30.165,
+      "text" : "primary\"), Button(\""
+    },
+    {
+      "t" : 30.342,
+      "text" : "Clear\", @ToAss"
+    },
+    {
+      "t" : 30.534,
+      "text" : "istant(\"Clear chec"
+    },
+    {
+      "t" : 30.687,
+      "text" : "kout form\"), \"second"
+    },
+    {
+      "t" : 30.842,
+      "text" : "ary\")])"
+    }
+  ],
+  "createdAt" : "2026-11-11T11:01:57Z",
+  "effort" : "low",
+  "format" : "openui-recording",
+  "inputTokens" : 14505,
+  "library" : "react-ui",
+  "model" : "claude-sonnet-5-5",
+  "outputTokens" : 1975,
+  "request" : "A student lab equipment checkout page with instrument IDs, calibration dates, current borrower and return deadlines.",
+  "servedBy" : "claude-sonnet-5-5",
+  "stopReason" : "end_turn",
+  "version" : 1
+}

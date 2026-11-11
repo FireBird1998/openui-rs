@@ -1,0 +1,716 @@
+{
+  "batchRequest" : {
+    "model" : "sonnet",
+    "number" : 75,
+    "request" : "A regional broadband coverage report with speed tiers by town in a table and a bar chart of households still unserved."
+  },
+  "chunks" : [
+    {
+      "t" : 1.016,
+      "text" : "root = Stack([header,"
+    },
+    {
+      "t" : 1.362,
+      "text" : " summ"
+    },
+    {
+      "t" : 1.392,
+      "text" : "ary, tableC"
+    },
+    {
+      "t" : 1.407,
+      "text" : "ard, chartCard, note"
+    },
+    {
+      "t" : 1.491,
+      "text" : "])\nheader = C"
+    },
+    {
+      "t" : 1.549,
+      "text" : "ardHeader(\"Regional"
+    },
+    {
+      "t" : 1.574,
+      "text" : " Broadband Coverage"
+    },
+    {
+      "t" : 1.64,
+      "text" : " Report\", \"Speed t"
+    },
+    {
+      "t" : 1.664,
+      "text" : "ier avail"
+    },
+    {
+      "t" : 1.668,
+      "text" : "ability and"
+    },
+    {
+      "t" : 1.694,
+      "text" : " un"
+    },
+    {
+      "t" : 1.784,
+      "text" : "served households by town\")\nsumm"
+    },
+    {
+      "t" : 1.826,
+      "text" : "ary = O"
+    },
+    {
+      "t" : 1.863,
+      "text" : "verviewCardBlock"
+    },
+    {
+      "t" : 1.867,
+      "text" : "([o"
+    },
+    {
+      "t" : 1.905,
+      "text" : "1, o2, o3])"
+    },
+    {
+      "t" : 1.944,
+      "text" : "\no1 = Overvi"
+    },
+    {
+      "t" : 2.012,
+      "text" : "ewCardItem(\"tow"
+    },
+    {
+      "t" : 2.057,
+      "text" : "ns\", o1top, o"
+    },
+    {
+      "t" : 2.109,
+      "text" : "1bot"
+    },
+    {
+      "t" : 2.158,
+      "text" : ")\no1top = Icon"
+    },
+    {
+      "t" : 2.211,
+      "text" : "Text(o"
+    },
+    {
+      "t" : 2.257,
+      "text" : "1icon, \"neutral"
+    },
+    {
+      "t" : 2.259,
+      "text" : "\", \"m\", \"Towns"
+    },
+    {
+      "t" : 2.316,
+      "text" : " Covered\", \"Reg"
+    },
+    {
+      "t" : 2.318,
+      "text" : "ional total"
+    },
+    {
+      "t" : 2.37,
+      "text" : "\", false, \"horizontal"
+    },
+    {
+      "t" : 2.463,
+      "text" : "\")\no1icon ="
+    },
+    {
+      "t" : 2.465,
+      "text" : " Icon(\"map-pin\","
+    },
+    {
+      "t" : 2.52,
+      "text" : " \"places"
+    },
+    {
+      "t" : 2.579,
+      "text" : "\")\no1bot = M"
+    },
+    {
+      "t" : 2.636,
+      "text" : "etricIndicatorIn"
+    },
+    {
+      "t" : 2.702,
+      "text" : "line(\"8\", \"Tow"
+    },
+    {
+      "t" : 2.794,
+      "text" : "ns in report"
+    },
+    {
+      "t" : 2.856,
+      "text" : "\")\no2 = Over"
+    },
+    {
+      "t" : 2.921,
+      "text" : "viewCardItem(\"g"
+    },
+    {
+      "t" : 2.989,
+      "text" : "ig"
+    },
+    {
+      "t" : 3.045,
+      "text" : "\", o2top, o2b"
+    },
+    {
+      "t" : 3.046,
+      "text" : "ot)\no2top = I"
+    },
+    {
+      "t" : 3.103,
+      "text" : "conText(o2icon,"
+    },
+    {
+      "t" : 3.212,
+      "text" : " \"success"
+    },
+    {
+      "t" : 3.214,
+      "text" : "\", \"m\", \"Gig"
+    },
+    {
+      "t" : 3.274,
+      "text" : "abit Access"
+    },
+    {
+      "t" : 3.319,
+      "text" : "\", \"Av"
+    },
+    {
+      "t" : 3.371,
+      "text" : "g."
+    },
+    {
+      "t" : 3.419,
+      "text" : " coverage\", false, \"hor"
+    },
+    {
+      "t" : 3.487,
+      "text" : "izontal\")\no2ic"
+    },
+    {
+      "t" : 3.558,
+      "text" : "on = Icon(\"zap"
+    },
+    {
+      "t" : 3.64,
+      "text" : "\", \"t"
+    },
+    {
+      "t" : 3.641,
+      "text" : "ools\")\no2bot ="
+    },
+    {
+      "t" : 3.708,
+      "text" : " MetricIndicator"
+    },
+    {
+      "t" : 3.772,
+      "text" : "Inline(\"52%\", \"of"
+    },
+    {
+      "t" : 3.832,
+      "text" : " households\", { direction: \"up"
+    },
+    {
+      "t" : 3.942,
+      "text" : "\", value: 6"
+    },
+    {
+      "t" : 4.011,
+      "text" : " })\no3 "
+    },
+    {
+      "t" : 4.089,
+      "text" : "= OverviewCardIt"
+    },
+    {
+      "t" : 4.23,
+      "text" : "em(\"unserved\", o3"
+    },
+    {
+      "t" : 4.311,
+      "text" : "top, o3bot)"
+    },
+    {
+      "t" : 4.38,
+      "text" : "\no3top = IconText("
+    },
+    {
+      "t" : 4.449,
+      "text" : "o3icon, \"dan"
+    },
+    {
+      "t" : 4.499,
+      "text" : "ger\", \"m\", \"Un"
+    },
+    {
+      "t" : 4.569,
+      "text" : "served"
+    },
+    {
+      "t" : 4.645,
+      "text" : " Households\", \"Below"
+    },
+    {
+      "t" : 4.705,
+      "text" : " 25/"
+    },
+    {
+      "t" : 4.765,
+      "text" : "3"
+    },
+    {
+      "t" : 4.767,
+      "text" : " Mbps\", false,"
+    },
+    {
+      "t" : 4.85,
+      "text" : " \"horizontal\")\no"
+    },
+    {
+      "t" : 4.919,
+      "text" : "3icon = Icon(\""
+    },
+    {
+      "t" : 4.994,
+      "text" : "wifi-off\", \"dev"
+    },
+    {
+      "t" : 5.102,
+      "text" : "ices\")\no3bot ="
+    },
+    {
+      "t" : 5.104,
+      "text" : " MetricIndicator"
+    },
+    {
+      "t" : 5.155,
+      "text" : "Inline(\"7"
+    },
+    {
+      "t" : 5.242,
+      "text" : ",180\", \"Households\","
+    },
+    {
+      "t" : 5.323,
+      "text" : " { direction: \"down\", value"
+    },
+    {
+      "t" : 5.412,
+      "text" : ": 9 })\ntable"
+    },
+    {
+      "t" : 5.56,
+      "text" : "Card = Card([table"
+    },
+    {
+      "t" : 5.626,
+      "text" : "Header, tb"
+    },
+    {
+      "t" : 5.696,
+      "text" : "l])\ntableHeader"
+    },
+    {
+      "t" : 5.789,
+      "text" : " = InlineHeader(\""
+    },
+    {
+      "t" : 5.88,
+      "text" : "Speed Tiers by"
+    },
+    {
+      "t" : 5.97,
+      "text" : " Town\", \"Percent of"
+    },
+    {
+      "t" : 6.045,
+      "text" : " households with"
+    },
+    {
+      "t" : 6.117,
+      "text" : " access"
+    },
+    {
+      "t" : 6.157,
+      "text" : " to each tier\")\ntb"
+    },
+    {
+      "t" : 6.244,
+      "text" : "l = Table([Col(\""
+    },
+    {
+      "t" : 6.247,
+      "text" : "Town\", towns), Col"
+    },
+    {
+      "t" : 6.327,
+      "text" : "(\"Under 25 M"
+    },
+    {
+      "t" : 6.41,
+      "text" : "bps (%)\", t"
+    },
+    {
+      "t" : 6.5,
+      "text" : "1, \"number\"), Col"
+    },
+    {
+      "t" : 6.577,
+      "text" : "(\"25-100 Mb"
+    },
+    {
+      "t" : 6.666,
+      "text" : "ps (%)\", t2,"
+    },
+    {
+      "t" : 6.757,
+      "text" : " \"number\"), Col(\"100"
+    },
+    {
+      "t" : 6.851,
+      "text" : "-500"
+    },
+    {
+      "t" : 6.943,
+      "text" : " Mbps (%)"
+    },
+    {
+      "t" : 7.037,
+      "text" : "\", t3, \"number\"),"
+    },
+    {
+      "t" : 7.129,
+      "text" : " Col(\"1"
+    },
+    {
+      "t" : 7.219,
+      "text" : " Gbps+"
+    },
+    {
+      "t" : 7.362,
+      "text" : " (%)\", t4,"
+    },
+    {
+      "t" : 7.363,
+      "text" : " \"number\")])\ntowns ="
+    },
+    {
+      "t" : 7.438,
+      "text" : " [\""
+    },
+    {
+      "t" : 7.537,
+      "text" : "Ashford"
+    },
+    {
+      "t" : 7.623,
+      "text" : "\", \"Brookd"
+    },
+    {
+      "t" : 7.711,
+      "text" : "ale\", \"Cedar"
+    },
+    {
+      "t" : 7.802,
+      "text" : " Falls\", \"D"
+    },
+    {
+      "t" : 7.896,
+      "text" : "un"
+    },
+    {
+      "t" : 8.07,
+      "text" : "more\", \"E"
+    },
+    {
+      "t" : 8.156,
+      "text" : "astwick"
+    },
+    {
+      "t" : 8.255,
+      "text" : "\", \"Fairview\", \""
+    },
+    {
+      "t" : 8.256,
+      "text" : "Gl"
+    },
+    {
+      "t" : 8.361,
+      "text" : "en"
+    },
+    {
+      "t" : 8.446,
+      "text" : "h"
+    },
+    {
+      "t" : 8.539,
+      "text" : "aven\", \"Hart"
+    },
+    {
+      "t" : 8.666,
+      "text" : "ley"
+    },
+    {
+      "t" : 8.667,
+      "text" : "\"]\nt1 = ["
+    },
+    {
+      "t" : 8.763,
+      "text" : "4"
+    },
+    {
+      "t" : 8.865,
+      "text" : ", 11"
+    },
+    {
+      "t" : 8.935,
+      "text" : ", 7, 18"
+    },
+    {
+      "t" : 9.031,
+      "text" : ", 14"
+    },
+    {
+      "t" : 9.218,
+      "text" : ", 3"
+    },
+    {
+      "t" : 9.219,
+      "text" : ", 21"
+    },
+    {
+      "t" : 9.323,
+      "text" : ", 9"
+    },
+    {
+      "t" : 9.509,
+      "text" : "]\nt2 = [12"
+    },
+    {
+      "t" : 9.592,
+      "text" : ", 24"
+    },
+    {
+      "t" : 9.594,
+      "text" : ", 16"
+    },
+    {
+      "t" : 9.665,
+      "text" : ", 30, 27"
+    },
+    {
+      "t" : 9.777,
+      "text" : ", 8, 33"
+    },
+    {
+      "t" : 9.865,
+      "text" : ", 20"
+    },
+    {
+      "t" : 9.957,
+      "text" : "]\nt3 = [31"
+    },
+    {
+      "t" : 10.067,
+      "text" : ", 38"
+    },
+    {
+      "t" : 10.176,
+      "text" : ", 34, 32"
+    },
+    {
+      "t" : 10.288,
+      "text" : ", 35"
+    },
+    {
+      "t" : 10.372,
+      "text" : ", 27"
+    },
+    {
+      "t" : 10.468,
+      "text" : ", 29"
+    },
+    {
+      "t" : 10.571,
+      "text" : ", 33]\nt4 "
+    },
+    {
+      "t" : 10.684,
+      "text" : "= [53, 27"
+    },
+    {
+      "t" : 10.797,
+      "text" : ", 43"
+    },
+    {
+      "t" : 10.982,
+      "text" : ", 20"
+    },
+    {
+      "t" : 10.983,
+      "text" : ", 24"
+    },
+    {
+      "t" : 11.09,
+      "text" : ", 62"
+    },
+    {
+      "t" : 11.191,
+      "text" : ", 17"
+    },
+    {
+      "t" : 11.297,
+      "text" : ", 38]\nchartC"
+    },
+    {
+      "t" : 11.396,
+      "text" : "ard = Card([chartH"
+    },
+    {
+      "t" : 11.509,
+      "text" : "eader, chart])\nch"
+    },
+    {
+      "t" : 11.597,
+      "text" : "artHeader = Inline"
+    },
+    {
+      "t" : 11.718,
+      "text" : "Header(\"Households Still"
+    },
+    {
+      "t" : 11.969,
+      "text" : " Unserved\", \"Households"
+    },
+    {
+      "t" : 11.971,
+      "text" : " without"
+    },
+    {
+      "t" : 12.06,
+      "text" : " "
+    },
+    {
+      "t" : 12.185,
+      "text" : "25/"
+    },
+    {
+      "t" : 12.311,
+      "text" : "3 Mbps service"
+    },
+    {
+      "t" : 12.417,
+      "text" : ","
+    },
+    {
+      "t" : 12.617,
+      "text" : " by town\")\nchart = B"
+    },
+    {
+      "t" : 12.62,
+      "text" : "arChart(towns, ["
+    },
+    {
+      "t" : 12.745,
+      "text" : "s1], \"grouped\","
+    },
+    {
+      "t" : 12.849,
+      "text" : " \"Town\", \"Households\","
+    },
+    {
+      "t" : 12.968,
+      "text" : " 320"
+    },
+    {
+      "t" : 13.075,
+      "text" : ")\ns1 = Series"
+    },
+    {
+      "t" : 13.192,
+      "text" : "(\"Unserved households"
+    },
+    {
+      "t" : 13.31,
+      "text" : "\", ["
+    },
+    {
+      "t" : 13.389,
+      "text" : "310, 940"
+    },
+    {
+      "t" : 13.49,
+      "text" : ", 560"
+    },
+    {
+      "t" : 13.59,
+      "text" : ", 1420, 1180"
+    },
+    {
+      "t" : 13.692,
+      "text" : ", 240"
+    },
+    {
+      "t" : 13.791,
+      "text" : ", 1650, 880"
+    },
+    {
+      "t" : 13.919,
+      "text" : "])\nnote ="
+    },
+    {
+      "t" : 14.152,
+      "text" : " Callout(\"war"
+    },
+    {
+      "t" : 14.153,
+      "text" : "ning\", \"Priority Are"
+    },
+    {
+      "t" : 14.279,
+      "text" : "as\", \"Gl"
+    },
+    {
+      "t" : 14.485,
+      "text" : "enhaven and Dun"
+    },
+    {
+      "t" : 14.489,
+      "text" : "more account for over"
+    },
+    {
+      "t" : 14.691,
+      "text" : " 40"
+    },
+    {
+      "t" : 14.827,
+      "text" : "% of unserved households and are"
+    },
+    {
+      "t" : 14.831,
+      "text" : " top candidates for inf"
+    },
+    {
+      "t" : 14.958,
+      "text" : "rastructure funding.\")"
+    }
+  ],
+  "createdAt" : "2026-11-11T10:45:41Z",
+  "effort" : "low",
+  "format" : "openui-recording",
+  "inputTokens" : 14503,
+  "library" : "react-ui",
+  "model" : "claude-sonnet-5-5",
+  "outputTokens" : 993,
+  "request" : "A regional broadband coverage report with speed tiers by town in a table and a bar chart of households still unserved.",
+  "servedBy" : "claude-sonnet-5-5",
+  "stopReason" : "end_turn",
+  "version" : 1
+}

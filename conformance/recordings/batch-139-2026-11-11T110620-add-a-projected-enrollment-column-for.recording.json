@@ -1,0 +1,258 @@
+{
+  "batchRequest" : {
+    "model" : "sonnet",
+    "number" : 139,
+    "of" : 73,
+    "request" : "Add a projected enrollment column for next year and flag schools projected to exceed capacity."
+  },
+  "chunks" : [
+    {
+      "t" : 1.334,
+      "text" : "Projected fig"
+    },
+    {
+      "t" : 1.676,
+      "text" : "ures:"
+    },
+    {
+      "t" : 1.726,
+      "text" : " Maple 705"
+    },
+    {
+      "t" : 1.73,
+      "text" : ", Oak"
+    },
+    {
+      "t" : 1.854,
+      "text" : " Ridge 640, L"
+    },
+    {
+      "t" : 1.944,
+      "text" : "incoln "
+    },
+    {
+      "t" : 1.995,
+      "text" : "985"
+    },
+    {
+      "t" : 1.997,
+      "text" : ", Riverside 925"
+    },
+    {
+      "t" : 2.046,
+      "text" : ", Central 2780"
+    },
+    {
+      "t" : 2.095,
+      "text" : ", total"
+    },
+    {
+      "t" : 2.155,
+      "text" : " 6035"
+    },
+    {
+      "t" : 2.204,
+      "text" : "."
+    },
+    {
+      "t" : 2.258,
+      "text" : " Ma"
+    },
+    {
+      "t" : 2.311,
+      "text" : "ple and Ri"
+    },
+    {
+      "t" : 2.364,
+      "text" : "verside exceed capacity"
+    },
+    {
+      "t" : 2.475,
+      "text" : ".\n\n```"
+    },
+    {
+      "t" : 2.477,
+      "text" : "\nt"
+    },
+    {
+      "t" : 2.547,
+      "text" : "bl = Table([Col"
+    },
+    {
+      "t" : 2.615,
+      "text" : "(\"School\", tSchools),"
+    },
+    {
+      "t" : 2.687,
+      "text" : " Col(\"Capacity\","
+    },
+    {
+      "t" : 2.755,
+      "text" : " tCap, \"number\"),"
+    },
+    {
+      "t" : 2.819,
+      "text" : " Col(\"Enrollment"
+    },
+    {
+      "t" : 2.886,
+      "text" : "\", tEnr,"
+    },
+    {
+      "t" : 2.948,
+      "text" : " \"number\"), Col(\""
+    },
+    {
+      "t" : 3.023,
+      "text" : "Ut"
+    },
+    {
+      "t" : 3.109,
+      "text" : "ilization\", tUtil),"
+    },
+    {
+      "t" : 3.184,
+      "text" : " Col(\"Status"
+    },
+    {
+      "t" : 3.258,
+      "text" : "\", tStatus), Col"
+    },
+    {
+      "t" : 3.338,
+      "text" : "(\"Projected 2025-"
+    },
+    {
+      "t" : 3.405,
+      "text" : "26\", tProj,"
+    },
+    {
+      "t" : 3.46,
+      "text" : " \"number\"), Col(\""
+    },
+    {
+      "t" : 3.519,
+      "text" : "Projected Flag\", tF"
+    },
+    {
+      "t" : 3.598,
+      "text" : "lag)])\ntProj"
+    },
+    {
+      "t" : 3.601,
+      "text" : " = [705"
+    },
+    {
+      "t" : 3.65,
+      "text" : ", 640, 985, "
+    },
+    {
+      "t" : 3.707,
+      "text" : "925, 2780, 6"
+    },
+    {
+      "t" : 3.756,
+      "text" : "035]\ntFlag ="
+    },
+    {
+      "t" : 3.818,
+      "text" : " [Tag(\"Ex"
+    },
+    {
+      "t" : 3.901,
+      "text" : "ceeds capacity\", null"
+    },
+    {
+      "t" : 3.902,
+      "text" : ", \"sm\", \"danger"
+    },
+    {
+      "t" : 3.997,
+      "text" : "\"), Tag(\"Within"
+    },
+    {
+      "t" : 4.046,
+      "text" : " capacity\", null, \"s"
+    },
+    {
+      "t" : 4.114,
+      "text" : "m\", \"success\"), T"
+    },
+    {
+      "t" : 4.182,
+      "text" : "ag(\"Within capacity\","
+    },
+    {
+      "t" : 4.237,
+      "text" : " null, \"sm\", \"success"
+    },
+    {
+      "t" : 4.303,
+      "text" : "\"), Tag(\"Ex"
+    },
+    {
+      "t" : 4.363,
+      "text" : "ceeds capacity\", null"
+    },
+    {
+      "t" : 4.424,
+      "text" : ", \"sm\", \"danger"
+    },
+    {
+      "t" : 4.473,
+      "text" : "\"), Tag(\"Within"
+    },
+    {
+      "t" : 4.521,
+      "text" : " capacity\", null, \"s"
+    },
+    {
+      "t" : 4.576,
+      "text" : "m\", \"success\"), T"
+    },
+    {
+      "t" : 4.617,
+      "text" : "ag(\"Within capacity\","
+    },
+    {
+      "t" : 4.661,
+      "text" : " null, \"sm\", \"info"
+    },
+    {
+      "t" : 4.664,
+      "text" : "\")]\ntableHead ="
+    },
+    {
+      "t" : 4.719,
+      "text" : " CardHeader(\"En"
+    },
+    {
+      "t" : 4.818,
+      "text" : "rollment Detail\", \""
+    },
+    {
+      "t" : 4.819,
+      "text" : "District total included; projections"
+    },
+    {
+      "t" : 4.881,
+      "text" : " for "
+    },
+    {
+      "t" : 4.93,
+      "text" : "2025-26\")\n```"
+    }
+  ],
+  "createdAt" : "2026-11-11T11:06:20Z",
+  "effort" : "low",
+  "format" : "openui-recording",
+  "inputTokens" : 16219,
+  "library" : "react-ui",
+  "model" : "claude-sonnet-5-5",
+  "outputTokens" : 376,
+  "patchOf" : "root = Stack([header, kpis, chartCard, tableCard, notesHeader, notes])\nheader = CardHeader(\"School Enrollment Report\", \"Capacity versus enrollment by school, 2024-25 school year\")\nkpis = SnippetCardBlock([k1, k2, k3])\nk1 = SnippetCardItem(\"total-cap\", k1l, k1r)\nk1l = IconText(k1i, \"neutral\", \"m\", \"District Capacity\", \"All schools\", false, \"horizontal\")\nk1i = Icon(\"building-2\", \"education\")\nk1r = BoldText(\"number\", \"6,350\")\nk2 = SnippetCardItem(\"total-enr\", k2l, k2r)\nk2l = IconText(k2i, \"neutral\", \"m\", \"District Enrollment\", \"Current\", false, \"horizontal\")\nk2i = Icon(\"users\", \"people\")\nk2r = BoldText(\"number\", \"5,812\", \"+2.6%\", \"metric\")\nk3 = SnippetCardItem(\"util\", k3l, k3r)\nk3l = IconText(k3i, \"neutral\", \"m\", \"Utilization\", \"Enrollment / capacity\", false, \"horizontal\")\nk3i = Icon(\"gauge\", \"education\")\nk3r = BoldText(\"number\", \"91.5%\")\nchartCard = Card([chartHead, chart])\nchartHead = CardHeader(\"Capacity vs Enrollment\", \"By school\")\nchart = BarChart(schools, [capSeries, enrSeries], \"grouped\", \"School\", \"Students\")\nschools = [\"Maple Elementary\", \"Oak Ridge Elementary\", \"Lincoln Middle\", \"Riverside Middle\", \"Central High\"]\ncapSeries = Series(\"Capacity\", [650, 700, 1000, 900, 3100])\nenrSeries = Series(\"Enrollment\", [684, 610, 940, 872, 2706])\ntableCard = Card([tableHead, tbl])\ntableHead = CardHeader(\"Enrollment Detail\", \"District total included\")\ntbl = Table([Col(\"School\", tSchools), Col(\"Capacity\", tCap, \"number\"), Col(\"Enrollment\", tEnr, \"number\"), Col(\"Utilization\", tUtil), Col(\"Status\", tStatus)])\ntSchools = [\"Maple Elementary\", \"Oak Ridge Elementary\", \"Lincoln Middle\", \"Riverside Middle\", \"Central High\", \"District Total\"]\ntCap = [650, 700, 1000, 900, 3100, 6350]\ntEnr = [684, 610, 940, 872, 2706, 5812]\ntUtil = [\"105%\", \"87%\", \"94%\", \"97%\", \"87%\", \"91.5%\"]\ntStatus = [Tag(\"Over capacity\", null, \"sm\", \"danger\"), Tag(\"Available\", null, \"sm\", \"success\"), Tag(\"Near capacity\", null, \"sm\", \"warning\"), Tag(\"Near capacity\", null, \"sm\", \"warning\"), Tag(\"Available\", null, \"sm\", \"success\"), Tag(\"Healthy\", null, \"sm\", \"info\")]\nnotesHeader = InlineHeader(\"Planned Expansions\", \"Notes from the facilities plan\")\nnotes = Accordion([n1, n2, n3])\nn1 = AccordionItem(\"maple\", \"Maple Elementary: 6-classroom addition\", [TextContent(\"Maple is 34 students over capacity. A 6-classroom wing adding about 150 seats is planned, with construction targeted for summer 2025 and opening in fall 2026. Portable classrooms will be used in the interim.\")])\nn2 = AccordionItem(\"riverside\", \"Riverside Middle: Library and classroom renovation\", [TextContent(\"Renovation would add about 80 seats and modernize science labs. Design is under review, with a bond measure proposed for the next election.\")])\nn3 = AccordionItem(\"boundary\", \"Boundary review\", [Callout(\"info\", \"Rebalancing under study\", \"Oak Ridge has about 90 open seats. A boundary review may shift some Maple attendance zones to Oak Ridge to relieve overcrowding.\")])",
+  "request" : "Add a projected enrollment column for next year and flag schools projected to exceed capacity.",
+  "servedBy" : "claude-sonnet-5-5",
+  "stopReason" : "end_turn",
+  "version" : 1
+}

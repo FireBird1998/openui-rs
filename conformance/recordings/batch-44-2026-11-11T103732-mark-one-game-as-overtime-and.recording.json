@@ -1,0 +1,190 @@
+{
+  "batchRequest" : {
+    "model" : "haiku",
+    "number" : 44,
+    "of" : 6,
+    "request" : "Mark one game as overtime and add a \"watch highlights\" button to the finished ones."
+  },
+  "chunks" : [
+    {
+      "t" : 2.814,
+      "text" : "root"
+    },
+    {
+      "t" : 2.91,
+      "text" : " = Stack([header"
+    },
+    {
+      "t" : 2.916,
+      "text" : ", gamesRow])"
+    },
+    {
+      "t" : 2.928,
+      "text" : "\ngame"
+    },
+    {
+      "t" : 2.963,
+      "text" : "1Status = Tag(\""
+    },
+    {
+      "t" : 2.98,
+      "text" : "Final ("
+    },
+    {
+      "t" : 2.987,
+      "text" : "OT)\", null, \"s"
+    },
+    {
+      "t" : 2.998,
+      "text" : "m\", \"neutral\")"
+    },
+    {
+      "t" : 3.004,
+      "text" : "\ngame1Score = TextCont"
+    },
+    {
+      "t" : 3.014,
+      "text" : "ent(\"Final (OT)"
+    },
+    {
+      "t" : 3.021,
+      "text" : " · Celtics win by "
+    },
+    {
+      "t" : 3.038,
+      "text" : "8\", \"small\")\ngame1"
+    },
+    {
+      "t" : 3.058,
+      "text" : " = Card([game1"
+    },
+    {
+      "t" : 3.081,
+      "text" : "Status, game1Teams,"
+    },
+    {
+      "t" : 3.099,
+      "text" : " game1Score, game1"
+    },
+    {
+      "t" : 3.122,
+      "text" : "Btns], \"card\", \"column"
+    },
+    {
+      "t" : 3.141,
+      "text" : "\", \"s\")\ngame1"
+    },
+    {
+      "t" : 3.161,
+      "text" : "Btns = Buttons(["
+    },
+    {
+      "t" : 3.181,
+      "text" : "game1Btn])\ngame"
+    },
+    {
+      "t" : 3.202,
+      "text" : "1Btn = Button(\""
+    },
+    {
+      "t" : 3.222,
+      "text" : "Watch highlights\", @"
+    },
+    {
+      "t" : 3.242,
+      "text" : "ToAssistant(\""
+    },
+    {
+      "t" : 3.264,
+      "text" : "Show highlights for Bo"
+    },
+    {
+      "t" : 3.283,
+      "text" : "ston Celtics vs"
+    },
+    {
+      "t" : 3.304,
+      "text" : " Miami Heat\"), \""
+    },
+    {
+      "t" : 3.325,
+      "text" : "secondary\", \"normal\","
+    },
+    {
+      "t" : 3.346,
+      "text" : " \"small\")\ngame3 "
+    },
+    {
+      "t" : 3.366,
+      "text" : "= Card([game3Status"
+    },
+    {
+      "t" : 3.386,
+      "text" : ", game3Teams, game"
+    },
+    {
+      "t" : 3.407,
+      "text" : "3Score, game3Bt"
+    },
+    {
+      "t" : 3.432,
+      "text" : "ns], \"card\", \"column\","
+    },
+    {
+      "t" : 3.447,
+      "text" : " \"s\")\ngame3Bt"
+    },
+    {
+      "t" : 3.468,
+      "text" : "ns = Buttons([game"
+    },
+    {
+      "t" : 3.49,
+      "text" : "3Btn])\ngame3"
+    },
+    {
+      "t" : 3.509,
+      "text" : "Btn = Button(\""
+    },
+    {
+      "t" : 3.53,
+      "text" : "Watch highlights\", @"
+    },
+    {
+      "t" : 3.551,
+      "text" : "ToAssistant(\"Show"
+    },
+    {
+      "t" : 3.571,
+      "text" : " highlights for New York Kn"
+    },
+    {
+      "t" : 3.593,
+      "text" : "icks vs Philadel"
+    },
+    {
+      "t" : 3.612,
+      "text" : "phia 76ers\"),"
+    },
+    {
+      "t" : 3.632,
+      "text" : " \"secondary\", \"normal"
+    },
+    {
+      "t" : 3.649,
+      "text" : "\", \"small\")"
+    }
+  ],
+  "createdAt" : "2026-11-11T10:37:32Z",
+  "effort" : "low",
+  "format" : "openui-recording",
+  "inputTokens" : 15524,
+  "library" : "react-ui",
+  "model" : "claude-haiku-5-5",
+  "outputTokens" : 790,
+  "patchOf" : "root = Stack([header, gamesRow])\nheader = InlineHeader(\"Tonight's Basketball\", \"Four games on the board\")\ngamesRow = Stack([game1, game2, game3, game4], \"row\", \"m\", \"stretch\", \"start\", true)\ngame1 = Card([game1Status, game1Teams, game1Score], \"card\", \"column\", \"s\")\ngame1Status = Tag(\"Final\", null, \"sm\", \"neutral\")\ngame1Teams = EntityList([{left: \"Boston Celtics\", right: \"112\"}, {left: \"Miami Heat\", right: \"104\"}], \"default\")\ngame1Score = TextContent(\"Final · Celtics win by 8\", \"small\")\ngame2 = Card([game2Status, game2Teams, game2Score], \"card\", \"column\", \"s\")\ngame2Status = Tag(\"Q3 8:14\", null, \"sm\", \"success\")\ngame2Teams = EntityList([{left: \"Los Angeles Lakers\", right: \"78\"}, {left: \"Golden State Warriors\", right: \"81\"}], \"default\")\ngame2Score = TextContent(\"In progress · Warriors lead by 3\", \"small\")\ngame3 = Card([game3Status, game3Teams, game3Score], \"card\", \"column\", \"s\")\ngame3Status = Tag(\"Final\", null, \"sm\", \"neutral\")\ngame3Teams = EntityList([{left: \"New York Knicks\", right: \"98\"}, {left: \"Philadelphia 76ers\", right: \"101\"}], \"default\")\ngame3Score = TextContent(\"Final · 76ers win by 3\", \"small\")\ngame4 = Card([game4Status, game4Teams, game4Score], \"card\", \"column\", \"s\")\ngame4Status = Tag(\"Q2 4:30\", null, \"sm\", \"success\")\ngame4Teams = EntityList([{left: \"Denver Nuggets\", right: \"52\"}, {left: \"Dallas Mavericks\", right: \"49\"}], \"default\")\ngame4Score = TextContent(\"In progress · Nuggets lead by 3\", \"small\")",
+  "request" : "Mark one game as overtime and add a \"watch highlights\" button to the finished ones.",
+  "servedBy" : "claude-haiku-5-5",
+  "stopReason" : "end_turn",
+  "version" : 1
+}

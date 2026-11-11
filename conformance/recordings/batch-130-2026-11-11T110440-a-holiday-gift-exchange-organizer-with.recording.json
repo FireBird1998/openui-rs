@@ -1,0 +1,1060 @@
+{
+  "batchRequest" : {
+    "model" : "haiku",
+    "number" : 130,
+    "request" : "A holiday gift exchange organizer with participants, spending limit, wish lists and a checklist of wrapped gifts."
+  },
+  "chunks" : [
+    {
+      "t" : 0.969,
+      "text" : "root"
+    },
+    {
+      "t" : 1.142,
+      "text" : " = Stack(["
+    },
+    {
+      "t" : 1.164,
+      "text" : "header, limitC"
+    },
+    {
+      "t" : 1.165,
+      "text" : "ard"
+    },
+    {
+      "t" : 1.223,
+      "text" : ", participantsCard, w"
+    },
+    {
+      "t" : 1.253,
+      "text" : "ishC"
+    },
+    {
+      "t" : 1.284,
+      "text" : "ard, checklistCard])"
+    },
+    {
+      "t" : 1.318,
+      "text" : "\nheader = In"
+    },
+    {
+      "t" : 1.38,
+      "text" : "lineHeader(\"Hol"
+    },
+    {
+      "t" : 1.413,
+      "text" : "iday Gift Exch"
+    },
+    {
+      "t" : 1.445,
+      "text" : "ange\", \"Sec"
+    },
+    {
+      "t" : 1.447,
+      "text" : "ret Santa organ"
+    },
+    {
+      "t" : 1.473,
+      "text" : "izer with bud"
+    },
+    {
+      "t" : 1.5,
+      "text" : "get,"
+    },
+    {
+      "t" : 1.542,
+      "text" : " wish"
+    },
+    {
+      "t" : 1.567,
+      "text" : " lists and wrap"
+    },
+    {
+      "t" : 1.63,
+      "text" : " t"
+    },
+    {
+      "t" : 1.631,
+      "text" : "racking\")\nlimitCard"
+    },
+    {
+      "t" : 1.674,
+      "text" : " = Card([lim"
+    },
+    {
+      "t" : 1.712,
+      "text" : "itH"
+    },
+    {
+      "t" : 1.753,
+      "text" : "eader, limitR"
+    },
+    {
+      "t" : 1.797,
+      "text" : "ow"
+    },
+    {
+      "t" : 1.834,
+      "text" : "])\nlimitHeader ="
+    },
+    {
+      "t" : 1.864,
+      "text" : " CardHeader(\"Sp"
+    },
+    {
+      "t" : 1.911,
+      "text" : "ending Limit\", \"Ag"
+    },
+    {
+      "t" : 1.913,
+      "text" : "reed budget per g"
+    },
+    {
+      "t" : 1.999,
+      "text" : "ift\")\nlimitRow ="
+    },
+    {
+      "t" : 2.046,
+      "text" : " Stack([limitA"
+    },
+    {
+      "t" : 2.048,
+      "text" : "mount"
+    },
+    {
+      "t" : 2.093,
+      "text" : ", limitT"
+    },
+    {
+      "t" : 2.139,
+      "text" : "ags"
+    },
+    {
+      "t" : 2.18,
+      "text" : "], \""
+    },
+    {
+      "t" : 2.227,
+      "text" : "row\", \"m"
+    },
+    {
+      "t" : 2.267,
+      "text" : "\", \"center\", \"between"
+    },
+    {
+      "t" : 2.314,
+      "text" : "\","
+    },
+    {
+      "t" : 2.359,
+      "text" : " true)\nlimitAmount"
+    },
+    {
+      "t" : 2.416,
+      "text" : " = BoldText(\"number"
+    },
+    {
+      "t" : 2.418,
+      "text" : "\", \"$30"
+    },
+    {
+      "t" : 2.449,
+      "text" : ".00\", \"per"
+    },
+    {
+      "t" : 2.48,
+      "text" : " person"
+    },
+    {
+      "t" : 2.5,
+      "text" : "\", \"text"
+    },
+    {
+      "t" : 2.532,
+      "text" : "\", \"l"
+    },
+    {
+      "t" : 2.569,
+      "text" : "g\")\nlimitTags ="
+    },
+    {
+      "t" : 2.604,
+      "text" : " TagBlock([\""
+    },
+    {
+      "t" : 2.646,
+      "text" : "G"
+    },
+    {
+      "t" : 2.694,
+      "text" : "if"
+    },
+    {
+      "t" : 2.75,
+      "text" : "ts under"
+    },
+    {
+      "t" : 2.751,
+      "text" : " $30\", \"Sh"
+    },
+    {
+      "t" : 2.788,
+      "text" : "ipping"
+    },
+    {
+      "t" : 2.823,
+      "text" : " not"
+    },
+    {
+      "t" : 2.859,
+      "text" : " included"
+    },
+    {
+      "t" : 2.913,
+      "text" : "\", \"Handmade coun"
+    },
+    {
+      "t" : 2.964,
+      "text" : "ts\""
+    },
+    {
+      "t" : 3.026,
+      "text" : "], \"md"
+    },
+    {
+      "t" : 3.09,
+      "text" : "\")\nparticipantsCard ="
+    },
+    {
+      "t" : 3.153,
+      "text" : " Card([part"
+    },
+    {
+      "t" : 3.261,
+      "text" : "H"
+    },
+    {
+      "t" : 3.262,
+      "text" : "eader, part"
+    },
+    {
+      "t" : 3.325,
+      "text" : "Table])\npartHeader"
+    },
+    {
+      "t" : 3.437,
+      "text" : " = CardHeader(\""
+    },
+    {
+      "t" : 3.439,
+      "text" : "Participants\", \"Who is"
+    },
+    {
+      "t" : 3.505,
+      "text" : " gi"
+    },
+    {
+      "t" : 3.564,
+      "text" : "ving to whom\")"
+    },
+    {
+      "t" : 3.623,
+      "text" : "\npartTable = Table(["
+    },
+    {
+      "t" : 3.679,
+      "text" : "Col(\"Name\", part"
+    },
+    {
+      "t" : 3.735,
+      "text" : "Names), Col(\"Email"
+    },
+    {
+      "t" : 3.785,
+      "text" : "\", partEmails), Col"
+    },
+    {
+      "t" : 3.84,
+      "text" : "(\"Giving"
+    },
+    {
+      "t" : 3.904,
+      "text" : " To"
+    },
+    {
+      "t" : 3.953,
+      "text" : "\", partT"
+    },
+    {
+      "t" : 4.009,
+      "text" : "argets), Col(\"Status"
+    },
+    {
+      "t" : 4.05,
+      "text" : "\", partStatus"
+    },
+    {
+      "t" : 4.096,
+      "text" : ","
+    },
+    {
+      "t" : 4.144,
+      "text" : " \"action"
+    },
+    {
+      "t" : 4.196,
+      "text" : "\")])\npartNames = "
+    },
+    {
+      "t" : 4.26,
+      "text" : "[\"Ava"
+    },
+    {
+      "t" : 4.331,
+      "text" : " Th"
+    },
+    {
+      "t" : 4.39,
+      "text" : "ompson\", \""
+    },
+    {
+      "t" : 4.464,
+      "text" : "Ben Car"
+    },
+    {
+      "t" : 4.545,
+      "text" : "ter\", \"Ch"
+    },
+    {
+      "t" : 4.842,
+      "text" : "loe Riv"
+    },
+    {
+      "t" : 4.91,
+      "text" : "era\", \"Da"
+    },
+    {
+      "t" : 4.984,
+      "text" : "niel Park"
+    },
+    {
+      "t" : 5.044,
+      "text" : "\", \"Em"
+    },
+    {
+      "t" : 5.096,
+      "text" : "ma W"
+    },
+    {
+      "t" : 5.154,
+      "text" : "ilson\", \"Farah"
+    },
+    {
+      "t" : 5.236,
+      "text" : " Khan\"]\npartEm"
+    },
+    {
+      "t" : 5.292,
+      "text" : "ails = [\""
+    },
+    {
+      "t" : 5.652,
+      "text" : "ava@example.com\", \""
+    },
+    {
+      "t" : 5.713,
+      "text" : "ben@example.com\", \"ch"
+    },
+    {
+      "t" : 5.77,
+      "text" : "loe@example.com\", \""
+    },
+    {
+      "t" : 5.834,
+      "text" : "daniel@example.com\","
+    },
+    {
+      "t" : 6.089,
+      "text" : " \"emma@example.com\","
+    },
+    {
+      "t" : 6.192,
+      "text" : " \"farah@example.com\""
+    },
+    {
+      "t" : 6.194,
+      "text" : "]\npartTargets = "
+    },
+    {
+      "t" : 6.259,
+      "text" : "[\"H"
+    },
+    {
+      "t" : 6.328,
+      "text" : "id"
+    },
+    {
+      "t" : 6.392,
+      "text" : "den\", \"H"
+    },
+    {
+      "t" : 6.457,
+      "text" : "idden\", \"Hidden"
+    },
+    {
+      "t" : 6.515,
+      "text" : "\", \"Hidden\", \""
+    },
+    {
+      "t" : 6.618,
+      "text" : "Hidden\", \"H"
+    },
+    {
+      "t" : 6.619,
+      "text" : "idden\"]\npartStat"
+    },
+    {
+      "t" : 6.68,
+      "text" : "us = ["
+    },
+    {
+      "t" : 6.807,
+      "text" : "Tag(\"Wrapped"
+    },
+    {
+      "t" : 6.877,
+      "text" : "\", null, \"sm\", \""
+    },
+    {
+      "t" : 6.944,
+      "text" : "success\"), Tag(\""
+    },
+    {
+      "t" : 7.015,
+      "text" : "Wrapped\", null, \""
+    },
+    {
+      "t" : 7.078,
+      "text" : "sm\", \"success\"),"
+    },
+    {
+      "t" : 7.082,
+      "text" : " Tag(\"Sh"
+    },
+    {
+      "t" : 7.153,
+      "text" : "op"
+    },
+    {
+      "t" : 7.221,
+      "text" : "ping\", null, \"sm\","
+    },
+    {
+      "t" : 7.287,
+      "text" : " \"warning\"), Tag"
+    },
+    {
+      "t" : 7.362,
+      "text" : "(\"Not"
+    },
+    {
+      "t" : 7.482,
+      "text" : " started\", null, \"sm\","
+    },
+    {
+      "t" : 7.483,
+      "text" : " \"danger\"), Tag"
+    },
+    {
+      "t" : 7.552,
+      "text" : "(\"Sh"
+    },
+    {
+      "t" : 7.628,
+      "text" : "opping\", null, \"sm"
+    },
+    {
+      "t" : 7.731,
+      "text" : "\", \"warning\"), T"
+    },
+    {
+      "t" : 7.797,
+      "text" : "ag(\"Wrapped\","
+    },
+    {
+      "t" : 7.857,
+      "text" : " null, \"sm\", \"success"
+    },
+    {
+      "t" : 7.939,
+      "text" : "\")]\nwishCard ="
+    },
+    {
+      "t" : 8.017,
+      "text" : " Card([wishHeader"
+    },
+    {
+      "t" : 8.163,
+      "text" : ", wishes"
+    },
+    {
+      "t" : 8.241,
+      "text" : "])\nwishHeader ="
+    },
+    {
+      "t" : 8.318,
+      "text" : " CardHeader(\"W"
+    },
+    {
+      "t" : 8.392,
+      "text" : "ish Lists\", \"G"
+    },
+    {
+      "t" : 8.479,
+      "text" : "ift"
+    },
+    {
+      "t" : 8.571,
+      "text" : " ideas from"
+    },
+    {
+      "t" : 8.666,
+      "text" : " each participant\")\nwishes"
+    },
+    {
+      "t" : 8.748,
+      "text" : " = Acc"
+    },
+    {
+      "t" : 8.749,
+      "text" : "ordion([wishA"
+    },
+    {
+      "t" : 8.873,
+      "text" : "va, wishBen, w"
+    },
+    {
+      "t" : 9.026,
+      "text" : "ishChloe])"
+    },
+    {
+      "t" : 9.029,
+      "text" : "\nwishAva = A"
+    },
+    {
+      "t" : 9.144,
+      "text" : "ccordionItem(\"ava"
+    },
+    {
+      "t" : 9.248,
+      "text" : "\", \"Ava's"
+    },
+    {
+      "t" : 9.349,
+      "text" : " Wish List\", [av"
+    },
+    {
+      "t" : 9.498,
+      "text" : "aList"
+    },
+    {
+      "t" : 9.573,
+      "text" : "])\navaList = "
+    },
+    {
+      "t" : 9.577,
+      "text" : "ListBlock([av"
+    },
+    {
+      "t" : 9.69,
+      "text" : "aItem1, avaIt"
+    },
+    {
+      "t" : 9.848,
+      "text" : "em2, avaItem3"
+    },
+    {
+      "t" : 9.979,
+      "text" : "], \"number\")"
+    },
+    {
+      "t" : 10.062,
+      "text" : "\navaItem1 ="
+    },
+    {
+      "t" : 10.14,
+      "text" : " ListItem(\"Coz"
+    },
+    {
+      "t" : 10.235,
+      "text" : "y kn"
+    },
+    {
+      "t" : 10.322,
+      "text" : "it socks\", \"W"
+    },
+    {
+      "t" : 10.416,
+      "text" : "ool bl"
+    },
+    {
+      "t" : 10.504,
+      "text" : "end, size 9"
+    },
+    {
+      "t" : 10.658,
+      "text" : "\")\navaItem2 "
+    },
+    {
+      "t" : 10.66,
+      "text" : "= ListItem(\""
+    },
+    {
+      "t" : 10.755,
+      "text" : "Ce"
+    },
+    {
+      "t" : 10.85,
+      "text" : "ramic p"
+    },
+    {
+      "t" : 10.945,
+      "text" : "our-"
+    },
+    {
+      "t" : 11.073,
+      "text" : "over set"
+    },
+    {
+      "t" : 11.258,
+      "text" : "\", \"Any"
+    },
+    {
+      "t" : 11.453,
+      "text" : " ne"
+    },
+    {
+      "t" : 11.647,
+      "text" : "utral color\")\navaIt"
+    },
+    {
+      "t" : 11.758,
+      "text" : "em3 = ListItem"
+    },
+    {
+      "t" : 11.866,
+      "text" : "(\"M"
+    },
+    {
+      "t" : 11.963,
+      "text" : "ystery nov"
+    },
+    {
+      "t" : 12.058,
+      "text" : "el\", \"An"
+    },
+    {
+      "t" : 12.268,
+      "text" : "ything by"
+    },
+    {
+      "t" : 12.271,
+      "text" : " T"
+    },
+    {
+      "t" : 12.39,
+      "text" : "ana"
+    },
+    {
+      "t" : 12.489,
+      "text" : " French"
+    },
+    {
+      "t" : 12.59,
+      "text" : "\")\nwishB"
+    },
+    {
+      "t" : 12.716,
+      "text" : "en = AccordionItem"
+    },
+    {
+      "t" : 12.909,
+      "text" : "(\"ben\", \"Ben"
+    },
+    {
+      "t" : 12.911,
+      "text" : "'s Wish List\", [ben"
+    },
+    {
+      "t" : 13.004,
+      "text" : "List])\nbenList = List"
+    },
+    {
+      "t" : 13.088,
+      "text" : "Block([benItem1"
+    },
+    {
+      "t" : 13.182,
+      "text" : ", benItem2], \"number"
+    },
+    {
+      "t" : 13.27,
+      "text" : "\")\nbenItem1 ="
+    },
+    {
+      "t" : 13.357,
+      "text" : " ListItem(\"Blu"
+    },
+    {
+      "t" : 13.499,
+      "text" : "etooth spea"
+    },
+    {
+      "t" : 13.596,
+      "text" : "ker\", \"Comp"
+    },
+    {
+      "t" : 13.684,
+      "text" : "act, wa"
+    },
+    {
+      "t" : 13.774,
+      "text" : "terproof\")\nbenItem"
+    },
+    {
+      "t" : 13.835,
+      "text" : "2 = ListItem(\""
+    },
+    {
+      "t" : 13.867,
+      "text" : "Coffee be"
+    },
+    {
+      "t" : 13.965,
+      "text" : "ans\", \"Med"
+    },
+    {
+      "t" : 14.07,
+      "text" : "ium ro"
+    },
+    {
+      "t" : 14.183,
+      "text" : "ast, wh"
+    },
+    {
+      "t" : 14.269,
+      "text" : "ole b"
+    },
+    {
+      "t" : 14.449,
+      "text" : "ean\")\nwishChloe"
+    },
+    {
+      "t" : 14.595,
+      "text" : " = AccordionItem(\""
+    },
+    {
+      "t" : 14.743,
+      "text" : "chloe\", \"Chlo"
+    },
+    {
+      "t" : 14.842,
+      "text" : "e's Wish List\", ["
+    },
+    {
+      "t" : 14.967,
+      "text" : "chloeList])\nchlo"
+    },
+    {
+      "t" : 15.1,
+      "text" : "eList = ListBlock"
+    },
+    {
+      "t" : 15.241,
+      "text" : "([chloeItem1,"
+    },
+    {
+      "t" : 15.343,
+      "text" : " chloeItem2], \""
+    },
+    {
+      "t" : 15.561,
+      "text" : "number\")\nchloeItem"
+    },
+    {
+      "t" : 15.563,
+      "text" : "1 = ListItem(\""
+    },
+    {
+      "t" : 15.682,
+      "text" : "Yo"
+    },
+    {
+      "t" : 15.769,
+      "text" : "ga mat\", \"Th"
+    },
+    {
+      "t" : 15.897,
+      "text" : "ick,"
+    },
+    {
+      "t" : 16.021,
+      "text" : " non-slip\")\nchlo"
+    },
+    {
+      "t" : 16.144,
+      "text" : "eItem2 = List"
+    },
+    {
+      "t" : 16.263,
+      "text" : "Item(\"Plant care"
+    },
+    {
+      "t" : 16.385,
+      "text" : " k"
+    },
+    {
+      "t" : 16.595,
+      "text" : "it\", \"Succ"
+    },
+    {
+      "t" : 16.728,
+      "text" : "ulent"
+    },
+    {
+      "t" : 16.851,
+      "text" : "-friendly\")\ncheckl"
+    },
+    {
+      "t" : 16.983,
+      "text" : "istCard = Card([chec"
+    },
+    {
+      "t" : 17.122,
+      "text" : "k"
+    },
+    {
+      "t" : 17.125,
+      "text" : "Header, checklist"
+    },
+    {
+      "t" : 17.275,
+      "text" : "])\ncheckHeader ="
+    },
+    {
+      "t" : 17.507,
+      "text" : " CardHeader(\"W"
+    },
+    {
+      "t" : 17.511,
+      "text" : "rapping"
+    },
+    {
+      "t" : 17.655,
+      "text" : " Checklist\", \"Track"
+    },
+    {
+      "t" : 17.804,
+      "text" : " gifts that"
+    },
+    {
+      "t" : 17.913,
+      "text" : " are ready\")\nchecklist"
+    },
+    {
+      "t" : 18.016,
+      "text" : " = CheckBoxG"
+    },
+    {
+      "t" : 18.16,
+      "text" : "roup(\""
+    },
+    {
+      "t" : 18.282,
+      "text" : "w"
+    },
+    {
+      "t" : 18.402,
+      "text" : "rapped"
+    },
+    {
+      "t" : 18.518,
+      "text" : "\", [ch"
+    },
+    {
+      "t" : 18.632,
+      "text" : "k"
+    },
+    {
+      "t" : 18.733,
+      "text" : "Ava, chkBen"
+    },
+    {
+      "t" : 18.847,
+      "text" : ", chkChloe, ch"
+    },
+    {
+      "t" : 18.97,
+      "text" : "kDaniel, chk"
+    },
+    {
+      "t" : 19.102,
+      "text" : "Emma, chkFar"
+    },
+    {
+      "t" : 19.245,
+      "text" : "ah])\nchkAva ="
+    },
+    {
+      "t" : 19.369,
+      "text" : " CheckBoxItem"
+    },
+    {
+      "t" : 19.502,
+      "text" : "(\"Ava"
+    },
+    {
+      "t" : 19.608,
+      "text" : " Thompson\", \"G"
+    },
+    {
+      "t" : 19.72,
+      "text" : "ift wrapped and lab"
+    },
+    {
+      "t" : 19.841,
+      "text" : "eled\", \"ava\","
+    },
+    {
+      "t" : 19.988,
+      "text" : " true"
+    },
+    {
+      "t" : 20.124,
+      "text" : ")\nchkBen = C"
+    },
+    {
+      "t" : 20.252,
+      "text" : "heckBoxItem(\""
+    },
+    {
+      "t" : 20.359,
+      "text" : "Ben Carter\", \""
+    },
+    {
+      "t" : 20.562,
+      "text" : "Gift wrapped and"
+    },
+    {
+      "t" : 20.749,
+      "text" : " labeled\", \"ben\","
+    },
+    {
+      "t" : 20.752,
+      "text" : " true"
+    },
+    {
+      "t" : 20.881,
+      "text" : ")\nchkChloe ="
+    },
+    {
+      "t" : 20.996,
+      "text" : " CheckBoxItem"
+    },
+    {
+      "t" : 21.122,
+      "text" : "(\"Chloe Riv"
+    },
+    {
+      "t" : 21.246,
+      "text" : "era\", \"Gift wr"
+    },
+    {
+      "t" : 21.371,
+      "text" : "apped and labeled\", \""
+    },
+    {
+      "t" : 21.509,
+      "text" : "chloe\", false)\nch"
+    },
+    {
+      "t" : 21.639,
+      "text" : "kDaniel = Che"
+    },
+    {
+      "t" : 21.759,
+      "text" : "ckBoxItem(\""
+    },
+    {
+      "t" : 21.894,
+      "text" : "Daniel Park\", \""
+    },
+    {
+      "t" : 22.008,
+      "text" : "Gift wrapped and lab"
+    },
+    {
+      "t" : 22.135,
+      "text" : "eled\", \"daniel\","
+    },
+    {
+      "t" : 22.262,
+      "text" : " false)\nchkEmma"
+    },
+    {
+      "t" : 22.396,
+      "text" : " = CheckBoxIt"
+    },
+    {
+      "t" : 22.706,
+      "text" : "em(\"Emma Wil"
+    },
+    {
+      "t" : 22.922,
+      "text" : "son\", \"Gift wr"
+    },
+    {
+      "t" : 23.088,
+      "text" : "apped and labeled\", \""
+    },
+    {
+      "t" : 23.253,
+      "text" : "emma\", false"
+    },
+    {
+      "t" : 23.392,
+      "text" : ")\nchkFarah ="
+    },
+    {
+      "t" : 23.555,
+      "text" : " CheckBoxItem"
+    },
+    {
+      "t" : 23.713,
+      "text" : "(\"Farah Khan\","
+    },
+    {
+      "t" : 23.877,
+      "text" : " \"Gift wrapped"
+    },
+    {
+      "t" : 24.042,
+      "text" : " and labeled\", \"farah"
+    },
+    {
+      "t" : 24.193,
+      "text" : "\", true)"
+    }
+  ],
+  "createdAt" : "2026-11-11T11:04:40Z",
+  "effort" : "low",
+  "format" : "openui-recording",
+  "inputTokens" : 14508,
+  "library" : "react-ui",
+  "model" : "claude-haiku-5-5",
+  "outputTokens" : 1471,
+  "request" : "A holiday gift exchange organizer with participants, spending limit, wish lists and a checklist of wrapped gifts.",
+  "servedBy" : "claude-haiku-5-5",
+  "stopReason" : "end_turn",
+  "version" : 1
+}

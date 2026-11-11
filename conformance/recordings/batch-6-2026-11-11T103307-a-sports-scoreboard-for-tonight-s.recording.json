@@ -1,0 +1,440 @@
+{
+  "batchRequest" : {
+    "model" : "haiku",
+    "number" : 6,
+    "request" : "A sports scoreboard for tonight's four basketball games, with the final and in-progress ones marked."
+  },
+  "chunks" : [
+    {
+      "t" : 1.075,
+      "text" : "root"
+    },
+    {
+      "t" : 1.244,
+      "text" : " = Stack(["
+    },
+    {
+      "t" : 1.258,
+      "text" : "header"
+    },
+    {
+      "t" : 1.266,
+      "text" : ", g"
+    },
+    {
+      "t" : 1.292,
+      "text" : "amesR"
+    },
+    {
+      "t" : 1.303,
+      "text" : "ow])"
+    },
+    {
+      "t" : 1.331,
+      "text" : "\nheader = In"
+    },
+    {
+      "t" : 1.349,
+      "text" : "lineHeader(\"T"
+    },
+    {
+      "t" : 1.365,
+      "text" : "onight's Basketball\","
+    },
+    {
+      "t" : 1.366,
+      "text" : " \"Four games on"
+    },
+    {
+      "t" : 1.398,
+      "text" : " the board\")\ngamesR"
+    },
+    {
+      "t" : 1.406,
+      "text" : "ow = Stack([game"
+    },
+    {
+      "t" : 1.417,
+      "text" : "1, game2, game3,"
+    },
+    {
+      "t" : 1.475,
+      "text" : " game4], \"row\", \"m"
+    },
+    {
+      "t" : 1.483,
+      "text" : "\", \"st"
+    },
+    {
+      "t" : 1.494,
+      "text" : "retch\", \"start"
+    },
+    {
+      "t" : 1.5,
+      "text" : "\", true)\ngame1 ="
+    },
+    {
+      "t" : 1.505,
+      "text" : " Card(["
+    },
+    {
+      "t" : 1.514,
+      "text" : "game"
+    },
+    {
+      "t" : 1.547,
+      "text" : "1Status"
+    },
+    {
+      "t" : 1.554,
+      "text" : ", game1Teams, game"
+    },
+    {
+      "t" : 1.565,
+      "text" : "1Score],"
+    },
+    {
+      "t" : 1.597,
+      "text" : " \"card"
+    },
+    {
+      "t" : 1.598,
+      "text" : "\","
+    },
+    {
+      "t" : 1.614,
+      "text" : " \"column"
+    },
+    {
+      "t" : 1.678,
+      "text" : "\", \"s"
+    },
+    {
+      "t" : 1.696,
+      "text" : "\")\ngame1Status ="
+    },
+    {
+      "t" : 1.714,
+      "text" : " Tag(\"Final\", null"
+    },
+    {
+      "t" : 1.73,
+      "text" : ", \"sm\", \"neut"
+    },
+    {
+      "t" : 1.738,
+      "text" : "ral\")\ngame1Teams"
+    },
+    {
+      "t" : 1.744,
+      "text" : " = E"
+    },
+    {
+      "t" : 1.751,
+      "text" : "ntityList(["
+    },
+    {
+      "t" : 1.777,
+      "text" : "{left: \"Bo"
+    },
+    {
+      "t" : 1.785,
+      "text" : "ston Celtics\", right:"
+    },
+    {
+      "t" : 1.798,
+      "text" : " \"112"
+    },
+    {
+      "t" : 1.81,
+      "text" : "\"}, {left: \""
+    },
+    {
+      "t" : 1.825,
+      "text" : "Miami Heat\", right:"
+    },
+    {
+      "t" : 1.858,
+      "text" : " \"104"
+    },
+    {
+      "t" : 1.867,
+      "text" : "\"}], \"default\")"
+    },
+    {
+      "t" : 1.883,
+      "text" : "\ngame1Score = Text"
+    },
+    {
+      "t" : 1.903,
+      "text" : "Content(\"Final"
+    },
+    {
+      "t" : 1.925,
+      "text" : " ·"
+    },
+    {
+      "t" : 1.944,
+      "text" : " Celtics win"
+    },
+    {
+      "t" : 1.965,
+      "text" : " by"
+    },
+    {
+      "t" : 1.984,
+      "text" : " 8\", \"small"
+    },
+    {
+      "t" : 2.007,
+      "text" : "\")\ngame2 = Card"
+    },
+    {
+      "t" : 2.026,
+      "text" : "([game2Status, game2"
+    },
+    {
+      "t" : 2.048,
+      "text" : "Teams, game2Score"
+    },
+    {
+      "t" : 2.067,
+      "text" : "], \"card\", \"column\", \""
+    },
+    {
+      "t" : 2.088,
+      "text" : "s\")\ngame2Status ="
+    },
+    {
+      "t" : 2.108,
+      "text" : " Tag(\"Q3"
+    },
+    {
+      "t" : 2.133,
+      "text" : " 8"
+    },
+    {
+      "t" : 2.148,
+      "text" : ":14"
+    },
+    {
+      "t" : 2.17,
+      "text" : "\", null, \"s"
+    },
+    {
+      "t" : 2.192,
+      "text" : "m\", \"success\")\ngame2"
+    },
+    {
+      "t" : 2.21,
+      "text" : "Teams = EntityList"
+    },
+    {
+      "t" : 2.23,
+      "text" : "([{left: \"Los"
+    },
+    {
+      "t" : 2.25,
+      "text" : " Angeles Lakers\","
+    },
+    {
+      "t" : 2.271,
+      "text" : " right: \"78"
+    },
+    {
+      "t" : 2.292,
+      "text" : "\"}, {left: \""
+    },
+    {
+      "t" : 2.311,
+      "text" : "Golden State Warriors\","
+    },
+    {
+      "t" : 2.331,
+      "text" : " right: \"81\"}], \""
+    },
+    {
+      "t" : 2.361,
+      "text" : "default\")\ngame2Score ="
+    },
+    {
+      "t" : 2.378,
+      "text" : " TextContent(\"In"
+    },
+    {
+      "t" : 2.394,
+      "text" : " progress ·"
+    },
+    {
+      "t" : 2.413,
+      "text" : " Warriors l"
+    },
+    {
+      "t" : 2.435,
+      "text" : "ead by 3"
+    },
+    {
+      "t" : 2.454,
+      "text" : "\", \"small\")\ngame3 "
+    },
+    {
+      "t" : 2.476,
+      "text" : "= Card([game3Status"
+    },
+    {
+      "t" : 2.495,
+      "text" : ", game3Teams, game"
+    },
+    {
+      "t" : 2.516,
+      "text" : "3Score], \"card\", \""
+    },
+    {
+      "t" : 2.537,
+      "text" : "column\", \"s\")\ngame3"
+    },
+    {
+      "t" : 2.557,
+      "text" : "Status = Tag(\""
+    },
+    {
+      "t" : 2.577,
+      "text" : "Final\", null, \"sm\","
+    },
+    {
+      "t" : 2.598,
+      "text" : " \"neutral\")\ngame3"
+    },
+    {
+      "t" : 2.618,
+      "text" : "Teams = EntityList"
+    },
+    {
+      "t" : 2.638,
+      "text" : "([{left: \"New York"
+    },
+    {
+      "t" : 2.658,
+      "text" : " Knicks\", right: \"98"
+    },
+    {
+      "t" : 2.679,
+      "text" : "\"}, {left: \""
+    },
+    {
+      "t" : 2.7,
+      "text" : "Philadelphia "
+    },
+    {
+      "t" : 2.72,
+      "text" : "76ers\", right: \"101"
+    },
+    {
+      "t" : 2.74,
+      "text" : "\"}], \"default\")\ngame"
+    },
+    {
+      "t" : 2.761,
+      "text" : "3Score = TextContent"
+    },
+    {
+      "t" : 2.782,
+      "text" : "(\"Final · 76ers"
+    },
+    {
+      "t" : 2.802,
+      "text" : " win by 3\", \"small\")"
+    },
+    {
+      "t" : 2.822,
+      "text" : "\ngame4 = Card(["
+    },
+    {
+      "t" : 2.843,
+      "text" : "game4Status, game4"
+    },
+    {
+      "t" : 2.862,
+      "text" : "Teams, game4Score],"
+    },
+    {
+      "t" : 2.885,
+      "text" : " \"card\", \"column\", \"s"
+    },
+    {
+      "t" : 2.904,
+      "text" : "\")\ngame4Status ="
+    },
+    {
+      "t" : 2.925,
+      "text" : " Tag(\"Q2 4"
+    },
+    {
+      "t" : 2.945,
+      "text" : ":30\", null, \"sm"
+    },
+    {
+      "t" : 2.965,
+      "text" : "\", \"success\")\ngame4"
+    },
+    {
+      "t" : 2.987,
+      "text" : "Teams = EntityList(["
+    },
+    {
+      "t" : 3.011,
+      "text" : "{left: \"Denver"
+    },
+    {
+      "t" : 3.035,
+      "text" : " Nuggets\", right: \""
+    },
+    {
+      "t" : 3.048,
+      "text" : "52"
+    },
+    {
+      "t" : 3.067,
+      "text" : "\"}, {left: \""
+    },
+    {
+      "t" : 3.088,
+      "text" : "Dallas Mavericks"
+    },
+    {
+      "t" : 3.108,
+      "text" : "\", right: \"49"
+    },
+    {
+      "t" : 3.129,
+      "text" : "\"}], \"default\")\ngame"
+    },
+    {
+      "t" : 3.15,
+      "text" : "4Score = TextContent"
+    },
+    {
+      "t" : 3.171,
+      "text" : "(\"In progress · Nu"
+    },
+    {
+      "t" : 3.194,
+      "text" : "ggets lead by 3"
+    },
+    {
+      "t" : 3.217,
+      "text" : "\", \"small\")"
+    }
+  ],
+  "createdAt" : "2026-11-11T10:33:07Z",
+  "effort" : "low",
+  "format" : "openui-recording",
+  "inputTokens" : 14501,
+  "library" : "react-ui",
+  "model" : "claude-haiku-5-5",
+  "outputTokens" : 646,
+  "request" : "A sports scoreboard for tonight's four basketball games, with the final and in-progress ones marked.",
+  "servedBy" : "claude-haiku-5-5",
+  "stopReason" : "end_turn",
+  "version" : 1
+}

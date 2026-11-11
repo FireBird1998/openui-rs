@@ -1,0 +1,744 @@
+{
+  "batchRequest" : {
+    "model" : "haiku",
+    "number" : 60,
+    "request" : "A photo essay about restoring a historic theatre: four captioned images and a short introduction, followed by photographer credits."
+  },
+  "chunks" : [
+    {
+      "t" : 2.292,
+      "text" : "root"
+    },
+    {
+      "t" : 2.322,
+      "text" : " = Stack([he"
+    },
+    {
+      "t" : 2.346,
+      "text" : "ading, intro, f"
+    },
+    {
+      "t" : 2.48,
+      "text" : "ig1, f"
+    },
+    {
+      "t" : 2.51,
+      "text" : "ig2, fig3, f"
+    },
+    {
+      "t" : 2.547,
+      "text" : "ig4, creditsHe"
+    },
+    {
+      "t" : 2.574,
+      "text" : "ader, credits])\nheading"
+    },
+    {
+      "t" : 2.611,
+      "text" : " = TextContent(\"The"
+    },
+    {
+      "t" : 2.637,
+      "text" : " L"
+    },
+    {
+      "t" : 2.665,
+      "text" : "ant"
+    },
+    {
+      "t" : 2.699,
+      "text" : "ern Theatre: A"
+    },
+    {
+      "t" : 2.735,
+      "text" : " Rest"
+    },
+    {
+      "t" : 2.778,
+      "text" : "oration in"
+    },
+    {
+      "t" : 2.813,
+      "text" : " Four"
+    },
+    {
+      "t" : 2.844,
+      "text" : " Fr"
+    },
+    {
+      "t" : 2.893,
+      "text" : "ames\", \"large-heav"
+    },
+    {
+      "t" : 2.895,
+      "text" : "y\")\nintro = Text"
+    },
+    {
+      "t" : 2.975,
+      "text" : "Content(\"For"
+    },
+    {
+      "t" : 2.994,
+      "text" : " three"
+    },
+    {
+      "t" : 3.031,
+      "text" : " years, the "
+    },
+    {
+      "t" : 3.06,
+      "text" : "1921"
+    },
+    {
+      "t" : 3.095,
+      "text" : " L"
+    },
+    {
+      "t" : 3.097,
+      "text" : "antern Theatre s"
+    },
+    {
+      "t" : 3.13,
+      "text" : "at beh"
+    },
+    {
+      "t" : 3.174,
+      "text" : "ind sc"
+    },
+    {
+      "t" : 3.217,
+      "text" : "affolding and"
+    },
+    {
+      "t" : 3.273,
+      "text" : " pl"
+    },
+    {
+      "t" : 3.341,
+      "text" : "yw"
+    },
+    {
+      "t" : 3.343,
+      "text" : "ood while"
+    },
+    {
+      "t" : 3.392,
+      "text" : " cr"
+    },
+    {
+      "t" : 3.442,
+      "text" : "ews worked to b"
+    },
+    {
+      "t" : 3.443,
+      "text" : "ring back"
+    },
+    {
+      "t" : 3.488,
+      "text" : " its gilded pro"
+    },
+    {
+      "t" : 3.524,
+      "text" : "scenium, h"
+    },
+    {
+      "t" : 3.561,
+      "text" : "and-painted ceiling"
+    },
+    {
+      "t" : 3.605,
+      "text" : ", and original"
+    },
+    {
+      "t" : 3.653,
+      "text" : " o"
+    },
+    {
+      "t" : 3.71,
+      "text" : "ak seating"
+    },
+    {
+      "t" : 3.767,
+      "text" : ". These"
+    },
+    {
+      "t" : 3.823,
+      "text" : " four"
+    },
+    {
+      "t" : 3.893,
+      "text" : " images foll"
+    },
+    {
+      "t" : 3.965,
+      "text" : "ow the work"
+    },
+    {
+      "t" : 4.066,
+      "text" : " from first"
+    },
+    {
+      "t" : 4.068,
+      "text" : " dem"
+    },
+    {
+      "t" : 4.176,
+      "text" : "olition to the re"
+    },
+    {
+      "t" : 4.232,
+      "text" : "opening night.\", \"default"
+    },
+    {
+      "t" : 4.234,
+      "text" : "\")\nfig1 ="
+    },
+    {
+      "t" : 4.303,
+      "text" : " Card([img1, cap1"
+    },
+    {
+      "t" : 4.379,
+      "text" : "],"
+    },
+    {
+      "t" : 4.464,
+      "text" : " \"card"
+    },
+    {
+      "t" : 4.532,
+      "text" : "\","
+    },
+    {
+      "t" : 4.577,
+      "text" : " \"column"
+    },
+    {
+      "t" : 4.638,
+      "text" : "\","
+    },
+    {
+      "t" : 4.716,
+      "text" : " \"s"
+    },
+    {
+      "t" : 4.797,
+      "text" : "\")\nimg"
+    },
+    {
+      "t" : 4.883,
+      "text" : "1 = Image(\"Work"
+    },
+    {
+      "t" : 4.944,
+      "text" : "ers remov"
+    },
+    {
+      "t" : 5.021,
+      "text" : "ing pla"
+    },
+    {
+      "t" : 5.105,
+      "text" : "ster from the the"
+    },
+    {
+      "t" : 5.245,
+      "text" : "atre's east"
+    },
+    {
+      "t" : 5.246,
+      "text" : " wall to"
+    },
+    {
+      "t" : 5.33,
+      "text" : " exp"
+    },
+    {
+      "t" : 5.392,
+      "text" : "ose original"
+    },
+    {
+      "t" : 5.439,
+      "text" : " l"
+    },
+    {
+      "t" : 5.486,
+      "text" : "ath"
+    },
+    {
+      "t" : 5.542,
+      "text" : "\", \"\")"
+    },
+    {
+      "t" : 5.603,
+      "text" : "\ncap1 = Text"
+    },
+    {
+      "t" : 5.675,
+      "text" : "Content(\"Stripping dec"
+    },
+    {
+      "t" : 5.776,
+      "text" : "ades of plaster from"
+    },
+    {
+      "t" : 5.777,
+      "text" : " the east wall rev"
+    },
+    {
+      "t" : 5.832,
+      "text" : "ealed the original"
+    },
+    {
+      "t" : 5.887,
+      "text" : " lath"
+    },
+    {
+      "t" : 5.977,
+      "text" : " and h"
+    },
+    {
+      "t" : 5.984,
+      "text" : "and-m"
+    },
+    {
+      "t" : 6.046,
+      "text" : "ixed lime m"
+    },
+    {
+      "t" : 6.104,
+      "text" : "ortar be"
+    },
+    {
+      "t" : 6.163,
+      "text" : "neath."
+    },
+    {
+      "t" : 6.23,
+      "text" : "\", \"small\")\nfig2"
+    },
+    {
+      "t" : 6.313,
+      "text" : " = Card([img2,"
+    },
+    {
+      "t" : 6.379,
+      "text" : " cap2], \"card\", \""
+    },
+    {
+      "t" : 6.445,
+      "text" : "column\", \"s\")\nimg2"
+    },
+    {
+      "t" : 6.493,
+      "text" : " = Image(\"Restor"
+    },
+    {
+      "t" : 6.562,
+      "text" : "er appl"
+    },
+    {
+      "t" : 6.628,
+      "text" : "ying gold leaf to a"
+    },
+    {
+      "t" : 6.707,
+      "text" : " carved column"
+    },
+    {
+      "t" : 6.768,
+      "text" : " cap"
+    },
+    {
+      "t" : 6.835,
+      "text" : "ital in the au"
+    },
+    {
+      "t" : 6.94,
+      "text" : "ditorium\", \"\")\nc"
+    },
+    {
+      "t" : 6.943,
+      "text" : "ap2 = TextContent"
+    },
+    {
+      "t" : 7.019,
+      "text" : "(\"A"
+    },
+    {
+      "t" : 7.097,
+      "text" : " rest"
+    },
+    {
+      "t" : 7.165,
+      "text" : "orer applies "
+    },
+    {
+      "t" : 7.274,
+      "text" : "23"
+    },
+    {
+      "t" : 7.456,
+      "text" : "-"
+    },
+    {
+      "t" : 7.53,
+      "text" : "kar"
+    },
+    {
+      "t" : 7.593,
+      "text" : "at gold leaf to a"
+    },
+    {
+      "t" : 7.675,
+      "text" : " carved capital,"
+    },
+    {
+      "t" : 7.677,
+      "text" : " matching a p"
+    },
+    {
+      "t" : 7.783,
+      "text" : "attern found"
+    },
+    {
+      "t" : 7.884,
+      "text" : " in the 1921"
+    },
+    {
+      "t" : 8.037,
+      "text" : " arch"
+    },
+    {
+      "t" : 8.039,
+      "text" : "ives"
+    },
+    {
+      "t" : 8.139,
+      "text" : ".\", \"small\")\nfig"
+    },
+    {
+      "t" : 8.249,
+      "text" : "3 = Card([img3"
+    },
+    {
+      "t" : 8.35,
+      "text" : ", cap3], \"card\","
+    },
+    {
+      "t" : 8.435,
+      "text" : " \"column\", \"s\")\nimg"
+    },
+    {
+      "t" : 8.504,
+      "text" : "3 = Image(\""
+    },
+    {
+      "t" : 8.628,
+      "text" : "Ceiling m"
+    },
+    {
+      "t" : 8.655,
+      "text" : "ural part"
+    },
+    {
+      "t" : 8.733,
+      "text" : "ially u"
+    },
+    {
+      "t" : 8.815,
+      "text" : "ncovered with con"
+    },
+    {
+      "t" : 8.895,
+      "text" : "servators working"
+    },
+    {
+      "t" : 8.972,
+      "text" : " on"
+    },
+    {
+      "t" : 9.048,
+      "text" : " sc"
+    },
+    {
+      "t" : 9.126,
+      "text" : "affolding\", \"\")"
+    },
+    {
+      "t" : 9.203,
+      "text" : "\ncap3 = TextCont"
+    },
+    {
+      "t" : 9.285,
+      "text" : "ent(\"Conservators cl"
+    },
+    {
+      "t" : 9.355,
+      "text" : "ean the"
+    },
+    {
+      "t" : 9.481,
+      "text" : " ceiling mural one"
+    },
+    {
+      "t" : 9.485,
+      "text" : " square"
+    },
+    {
+      "t" : 9.571,
+      "text" : " fo"
+    },
+    {
+      "t" : 9.654,
+      "text" : "ot at a time, using c"
+    },
+    {
+      "t" : 9.727,
+      "text" : "otton swabs and"
+    },
+    {
+      "t" : 9.785,
+      "text" : " solvent"
+    },
+    {
+      "t" : 9.859,
+      "text" : " gels"
+    },
+    {
+      "t" : 9.948,
+      "text" : ".\", \"small\")\nfig"
+    },
+    {
+      "t" : 10.032,
+      "text" : "4 = Card([img4"
+    },
+    {
+      "t" : 10.111,
+      "text" : ", cap4], \"card\","
+    },
+    {
+      "t" : 10.195,
+      "text" : " \"column\", \"s\")\nimg"
+    },
+    {
+      "t" : 10.282,
+      "text" : "4 = Image(\"Aud"
+    },
+    {
+      "t" : 10.512,
+      "text" : "ience fil"
+    },
+    {
+      "t" : 10.603,
+      "text" : "ling rest"
+    },
+    {
+      "t" : 10.706,
+      "text" : "ored seats on op"
+    },
+    {
+      "t" : 10.793,
+      "text" : "ening night under"
+    },
+    {
+      "t" : 10.871,
+      "text" : " war"
+    },
+    {
+      "t" : 10.872,
+      "text" : "m house"
+    },
+    {
+      "t" : 11.028,
+      "text" : " lights\", \"\")\ncap"
+    },
+    {
+      "t" : 11.029,
+      "text" : "4 = TextContent(\""
+    },
+    {
+      "t" : 11.153,
+      "text" : "On re"
+    },
+    {
+      "t" : 11.265,
+      "text" : "opening night,"
+    },
+    {
+      "t" : 11.419,
+      "text" : " the rest"
+    },
+    {
+      "t" : 11.42,
+      "text" : "ored house"
+    },
+    {
+      "t" : 11.521,
+      "text" : " lights came"
+    },
+    {
+      "t" : 11.624,
+      "text" : " up over "
+    },
+    {
+      "t" : 11.794,
+      "text" : "480"
+    },
+    {
+      "t" : 11.796,
+      "text" : " seats ref"
+    },
+    {
+      "t" : 11.943,
+      "text" : "in"
+    },
+    {
+      "t" : 11.944,
+      "text" : "ished in"
+    },
+    {
+      "t" : 12.077,
+      "text" : " their"
+    },
+    {
+      "t" : 12.237,
+      "text" : " original o"
+    },
+    {
+      "t" : 12.493,
+      "text" : "ak.\", \"small\")\ncre"
+    },
+    {
+      "t" : 12.59,
+      "text" : "ditsHeader = In"
+    },
+    {
+      "t" : 12.592,
+      "text" : "lineHeader(\"Phot"
+    },
+    {
+      "t" : 12.658,
+      "text" : "ographer Credits\", \""
+    },
+    {
+      "t" : 12.813,
+      "text" : "Images used in this ess"
+    },
+    {
+      "t" : 12.814,
+      "text" : "ay\")\ncredits = Ent"
+    },
+    {
+      "t" : 12.93,
+      "text" : "ityList([cre"
+    },
+    {
+      "t" : 13.159,
+      "text" : "ditRow1, creditR"
+    },
+    {
+      "t" : 13.269,
+      "text" : "ow2, creditRow3"
+    },
+    {
+      "t" : 13.271,
+      "text" : ", creditRow4])"
+    },
+    {
+      "t" : 13.376,
+      "text" : "\ncreditRow1 ="
+    },
+    {
+      "t" : 13.482,
+      "text" : " { left: \"Figure "
+    },
+    {
+      "t" : 13.599,
+      "text" : "1\", right: \"Ma"
+    },
+    {
+      "t" : 13.729,
+      "text" : "ya"
+    },
+    {
+      "t" : 13.856,
+      "text" : " "
+    },
+    {
+      "t" : 13.961,
+      "text" : "Ortiz\" }\ncredit"
+    },
+    {
+      "t" : 14.055,
+      "text" : "Row2 = { left:"
+    },
+    {
+      "t" : 14.152,
+      "text" : " \"Figure 2\", right"
+    },
+    {
+      "t" : 14.318,
+      "text" : ": \"Da"
+    },
+    {
+      "t" : 14.319,
+      "text" : "niel Ok"
+    },
+    {
+      "t" : 14.519,
+      "text" : "afor\" }\ncreditR"
+    },
+    {
+      "t" : 14.605,
+      "text" : "ow3 = { left: \""
+    },
+    {
+      "t" : 14.738,
+      "text" : "Figure 3\", right:"
+    },
+    {
+      "t" : 14.86,
+      "text" : " \"H"
+    },
+    {
+      "t" : 14.947,
+      "text" : "annah L"
+    },
+    {
+      "t" : 14.949,
+      "text" : "ind"
+    },
+    {
+      "t" : 15.042,
+      "text" : "qvist\" }\ncredit"
+    },
+    {
+      "t" : 15.126,
+      "text" : "Row4 = { left:"
+    },
+    {
+      "t" : 15.258,
+      "text" : " \"Figure 4\", right"
+    },
+    {
+      "t" : 15.388,
+      "text" : ": \"Samuel Re"
+    },
+    {
+      "t" : 15.39,
+      "text" : "yes\" }"
+    }
+  ],
+  "createdAt" : "2026-11-11T10:40:13Z",
+  "effort" : "low",
+  "format" : "openui-recording",
+  "inputTokens" : 14506,
+  "library" : "react-ui",
+  "model" : "claude-haiku-5-5",
+  "outputTokens" : 1042,
+  "request" : "A photo essay about restoring a historic theatre: four captioned images and a short introduction, followed by photographer credits.",
+  "servedBy" : "claude-haiku-5-5",
+  "stopReason" : "end_turn",
+  "version" : 1
+}

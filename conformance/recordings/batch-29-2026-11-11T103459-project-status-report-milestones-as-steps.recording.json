@@ -1,0 +1,628 @@
+{
+  "batchRequest" : {
+    "model" : "sonnet",
+    "number" : 29,
+    "request" : "Project status report: milestones as steps, a risks table and an overall health tag."
+  },
+  "chunks" : [
+    {
+      "t" : 0.668,
+      "text" : "root = Stack([header,"
+    },
+    {
+      "t" : 0.982,
+      "text" : " heal"
+    },
+    {
+      "t" : 0.991,
+      "text" : "thR"
+    },
+    {
+      "t" : 0.997,
+      "text" : "ow, st"
+    },
+    {
+      "t" : 1.012,
+      "text" : "epsHeader, milest"
+    },
+    {
+      "t" : 1.026,
+      "text" : "ones, risksHeader,"
+    },
+    {
+      "t" : 1.032,
+      "text" : " risksTable])\nheader ="
+    },
+    {
+      "t" : 1.042,
+      "text" : " CardHeader(\"Project"
+    },
+    {
+      "t" : 1.048,
+      "text" : " Ph"
+    },
+    {
+      "t" : 1.057,
+      "text" : "oenix:"
+    },
+    {
+      "t" : 1.063,
+      "text" : " Status Report\", \"Re"
+    },
+    {
+      "t" : 1.073,
+      "text" : "porting period:"
+    },
+    {
+      "t" : 1.079,
+      "text" : " Q3"
+    },
+    {
+      "t" : 1.304,
+      "text" : " 2025,"
+    },
+    {
+      "t" : 1.311,
+      "text" : " Week 12\")\nhealth"
+    },
+    {
+      "t" : 1.317,
+      "text" : "Row = Stack([heal"
+    },
+    {
+      "t" : 1.327,
+      "text" : "thLabel, healthT"
+    },
+    {
+      "t" : 1.341,
+      "text" : "ag], \"row\", \"s"
+    },
+    {
+      "t" : 1.347,
+      "text" : "\", \"center\")\nhealthL"
+    },
+    {
+      "t" : 1.358,
+      "text" : "abel = TextContent(\""
+    },
+    {
+      "t" : 1.366,
+      "text" : "Overall"
+    },
+    {
+      "t" : 1.394,
+      "text" : " Health:"
+    },
+    {
+      "t" : 1.43,
+      "text" : "\", \"large-heavy\")"
+    },
+    {
+      "t" : 1.467,
+      "text" : "\nhealthTag = T"
+    },
+    {
+      "t" : 1.502,
+      "text" : "ag(\"At"
+    },
+    {
+      "t" : 1.628,
+      "text" : " Risk\","
+    },
+    {
+      "t" : 1.629,
+      "text" : " war"
+    },
+    {
+      "t" : 1.652,
+      "text" : "n"
+    },
+    {
+      "t" : 1.665,
+      "text" : "Icon, \"l"
+    },
+    {
+      "t" : 1.678,
+      "text" : "g\", \"warning\")\nwar"
+    },
+    {
+      "t" : 1.713,
+      "text" : "nIcon = Icon"
+    },
+    {
+      "t" : 1.749,
+      "text" : "(\"triangle-alert\","
+    },
+    {
+      "t" : 1.787,
+      "text" : " \"status\")\nstepsH"
+    },
+    {
+      "t" : 1.821,
+      "text" : "eader = InlineHe"
+    },
+    {
+      "t" : 1.858,
+      "text" : "ader(\"Milestones\", \""
+    },
+    {
+      "t" : 1.893,
+      "text" : "Progress against"
+    },
+    {
+      "t" : 1.927,
+      "text" : " the del"
+    },
+    {
+      "t" : 1.963,
+      "text" : "ivery plan\")\nmilest"
+    },
+    {
+      "t" : 1.999,
+      "text" : "ones = Steps([m"
+    },
+    {
+      "t" : 2.034,
+      "text" : "1, m2, m3,"
+    },
+    {
+      "t" : 2.072,
+      "text" : " m4, m5])\nm"
+    },
+    {
+      "t" : 2.106,
+      "text" : "1 = StepsItem"
+    },
+    {
+      "t" : 2.141,
+      "text" : "(\"Disc"
+    },
+    {
+      "t" : 2.176,
+      "text" : "overy & Requirements ("
+    },
+    {
+      "t" : 2.212,
+      "text" : "Complete)\", \"St"
+    },
+    {
+      "t" : 2.248,
+      "text" : "akeholder interviews fin"
+    },
+    {
+      "t" : 2.285,
+      "text" : "ished and requirements signed off"
+    },
+    {
+      "t" : 2.319,
+      "text" : " on June"
+    },
+    {
+      "t" : 2.353,
+      "text" : " 6"
+    },
+    {
+      "t" : 2.393,
+      "text" : ".\")\nm2 = St"
+    },
+    {
+      "t" : 2.428,
+      "text" : "epsItem(\"Archit"
+    },
+    {
+      "t" : 2.461,
+      "text" : "ecture & Design"
+    },
+    {
+      "t" : 2.497,
+      "text" : " (Complete)\", \"System"
+    },
+    {
+      "t" : 2.531,
+      "text" : " design approved;"
+    },
+    {
+      "t" : 2.566,
+      "text" : " U"
+    },
+    {
+      "t" : 2.601,
+      "text" : "X"
+    },
+    {
+      "t" : 2.636,
+      "text" : " pr"
+    },
+    {
+      "t" : 2.671,
+      "text" : "ototypes valid"
+    },
+    {
+      "t" : 2.707,
+      "text" : "ated with"
+    },
+    {
+      "t" : 2.741,
+      "text" : " 12 users.\")\nm"
+    },
+    {
+      "t" : 2.779,
+      "text" : "3 = StepsItem"
+    },
+    {
+      "t" : 2.814,
+      "text" : "(\"Core Development (In"
+    },
+    {
+      "t" : 2.851,
+      "text" : " Progress, 70%)\","
+    },
+    {
+      "t" : 2.885,
+      "text" : " \"Backend AP"
+    },
+    {
+      "t" : 2.92,
+      "text" : "Is done"
+    },
+    {
+      "t" : 2.954,
+      "text" : "; front"
+    },
+    {
+      "t" : 2.99,
+      "text" : "-end integration is running"
+    },
+    {
+      "t" : 3.025,
+      "text" : " about"
+    },
+    {
+      "t" : 3.059,
+      "text" : " one"
+    },
+    {
+      "t" : 3.096,
+      "text" : " week behind schedule.\")"
+    },
+    {
+      "t" : 3.131,
+      "text" : "\nm4 = Steps"
+    },
+    {
+      "t" : 3.167,
+      "text" : "Item(\"UAT &"
+    },
+    {
+      "t" : 3.203,
+      "text" : " Performance Testing (Up"
+    },
+    {
+      "t" : 3.239,
+      "text" : "coming)"
+    },
+    {
+      "t" : 3.273,
+      "text" : "\", \"Sc"
+    },
+    {
+      "t" : 3.309,
+      "text" : "heduled to"
+    },
+    {
+      "t" : 3.344,
+      "text" : " beg"
+    },
+    {
+      "t" : 3.38,
+      "text" : "in September 15"
+    },
+    {
+      "t" : 3.415,
+      "text" : ","
+    },
+    {
+      "t" : 3.451,
+      "text" : " p"
+    },
+    {
+      "t" : 3.495,
+      "text" : "ending complet"
+    },
+    {
+      "t" : 3.52,
+      "text" : "ion of core development.\")\nm"
+    },
+    {
+      "t" : 3.555,
+      "text" : "5 = StepsItem"
+    },
+    {
+      "t" : 3.592,
+      "text" : "(\"Laun"
+    },
+    {
+      "t" : 3.626,
+      "text" : "ch & Hand"
+    },
+    {
+      "t" : 3.662,
+      "text" : "over (Planned)\", \""
+    },
+    {
+      "t" : 3.697,
+      "text" : "Target go"
+    },
+    {
+      "t" : 3.732,
+      "text" : "-live October"
+    },
+    {
+      "t" : 3.767,
+      "text" : " 20"
+    },
+    {
+      "t" : 3.802,
+      "text" : ","
+    },
+    {
+      "t" : 3.838,
+      "text" : " with a"
+    },
+    {
+      "t" : 3.872,
+      "text" : " two-week h"
+    },
+    {
+      "t" : 3.908,
+      "text" : "ypercare period"
+    },
+    {
+      "t" : 3.946,
+      "text" : " af"
+    },
+    {
+      "t" : 3.978,
+      "text" : "terw"
+    },
+    {
+      "t" : 4.014,
+      "text" : "ards.\")\nrisksHe"
+    },
+    {
+      "t" : 4.049,
+      "text" : "ader = InlineHeader"
+    },
+    {
+      "t" : 4.085,
+      "text" : "(\"Key Risks\", \""
+    },
+    {
+      "t" : 4.122,
+      "text" : "Ranked by severity\")"
+    },
+    {
+      "t" : 4.157,
+      "text" : "\nrisksTable = Table"
+    },
+    {
+      "t" : 4.193,
+      "text" : "([Col(\"Risk\","
+    },
+    {
+      "t" : 4.229,
+      "text" : " riskNames), Col(\""
+    },
+    {
+      "t" : 4.263,
+      "text" : "Sever"
+    },
+    {
+      "t" : 4.298,
+      "text" : "ity\", severity"
+    },
+    {
+      "t" : 4.334,
+      "text" : "Tags), Col(\"Ow"
+    },
+    {
+      "t" : 4.372,
+      "text" : "ner\", ow"
+    },
+    {
+      "t" : 4.405,
+      "text" : "ners), Col(\"M"
+    },
+    {
+      "t" : 4.441,
+      "text" : "itigation\", mitigations"
+    },
+    {
+      "t" : 4.476,
+      "text" : ")])\nriskNames ="
+    },
+    {
+      "t" : 4.513,
+      "text" : " [\"Front-end integration"
+    },
+    {
+      "t" : 4.548,
+      "text" : " delay\", \"Third"
+    },
+    {
+      "t" : 4.584,
+      "text" : "-party API inst"
+    },
+    {
+      "t" : 4.623,
+      "text" : "ability\", \"Key engineer"
+    },
+    {
+      "t" : 4.655,
+      "text" : " att"
+    },
+    {
+      "t" : 4.69,
+      "text" : "rition\", \"Budget over"
+    },
+    {
+      "t" : 4.726,
+      "text" : "run on"
+    },
+    {
+      "t" : 4.761,
+      "text" : " c"
+    },
+    {
+      "t" : 4.795,
+      "text" : "loud cost"
+    },
+    {
+      "t" : 4.832,
+      "text" : "s\"]\nseverityTags"
+    },
+    {
+      "t" : 4.867,
+      "text" : " = [Tag(\"High\","
+    },
+    {
+      "t" : 4.902,
+      "text" : " null, \"sm\", \"dan"
+    },
+    {
+      "t" : 4.938,
+      "text" : "ger\"), Tag(\"High"
+    },
+    {
+      "t" : 4.974,
+      "text" : "\", null, \"sm\", \""
+    },
+    {
+      "t" : 5.009,
+      "text" : "danger\"), Tag(\""
+    },
+    {
+      "t" : 5.045,
+      "text" : "Medium\", null, \"s"
+    },
+    {
+      "t" : 5.081,
+      "text" : "m\", \"warning\"),"
+    },
+    {
+      "t" : 5.118,
+      "text" : " Tag(\"Low\", null,"
+    },
+    {
+      "t" : 5.152,
+      "text" : " \"sm\", \"ne"
+    },
+    {
+      "t" : 5.192,
+      "text" : "utral\")]\nowners ="
+    },
+    {
+      "t" : 5.226,
+      "text" : " [\"D"
+    },
+    {
+      "t" : 5.26,
+      "text" : "ana "
+    },
+    {
+      "t" : 5.295,
+      "text" : "Ortiz\", \"Priya"
+    },
+    {
+      "t" : 5.332,
+      "text" : " N"
+    },
+    {
+      "t" : 5.368,
+      "text" : "air\", \"Mar"
+    },
+    {
+      "t" : 5.4,
+      "text" : "cus Web"
+    },
+    {
+      "t" : 5.435,
+      "text" : "b\", \"El"
+    },
+    {
+      "t" : 5.47,
+      "text" : "ena R"
+    },
+    {
+      "t" : 5.506,
+      "text" : "ossi\"]\nmitig"
+    },
+    {
+      "t" : 5.542,
+      "text" : "ations = [\"Add two"
+    },
+    {
+      "t" : 5.577,
+      "text" : " contractors; da"
+    },
+    {
+      "t" : 5.612,
+      "text" : "ily sy"
+    },
+    {
+      "t" : 5.648,
+      "text" : "ncs\", \"Build f"
+    },
+    {
+      "t" : 5.684,
+      "text" : "allback ca"
+    },
+    {
+      "t" : 5.719,
+      "text" : "ching layer\", \"Cross"
+    },
+    {
+      "t" : 5.754,
+      "text" : "-train team"
+    },
+    {
+      "t" : 5.789,
+      "text" : "; document"
+    },
+    {
+      "t" : 5.824,
+      "text" : " mod"
+    },
+    {
+      "t" : 5.861,
+      "text" : "ules\", \"We"
+    },
+    {
+      "t" : 5.896,
+      "text" : "ekly cost review;"
+    },
+    {
+      "t" : 5.93,
+      "text" : " set"
+    },
+    {
+      "t" : 5.968,
+      "text" : " bud"
+    },
+    {
+      "t" : 6.002,
+      "text" : "get alerts\"]"
+    }
+  ],
+  "createdAt" : "2026-11-11T10:34:59Z",
+  "effort" : "low",
+  "format" : "openui-recording",
+  "inputTokens" : 14493,
+  "library" : "react-ui",
+  "model" : "claude-sonnet-5-5",
+  "outputTokens" : 809,
+  "request" : "Project status report: milestones as steps, a risks table and an overall health tag.",
+  "servedBy" : "claude-sonnet-5-5",
+  "stopReason" : "end_turn",
+  "version" : 1
+}

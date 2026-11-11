@@ -1,0 +1,620 @@
+{
+  "batchRequest" : {
+    "model" : "sonnet",
+    "number" : 99,
+    "request" : "A workshop cost estimator with material quantities, unit prices, labor hours and an example total in a summary card."
+  },
+  "chunks" : [
+    {
+      "t" : 0.853,
+      "text" : "root = Stack([header"
+    },
+    {
+      "t" : 1.163,
+      "text" : ", materialsC"
+    },
+    {
+      "t" : 1.19,
+      "text" : "ard, la"
+    },
+    {
+      "t" : 1.238,
+      "text" : "borCard, summaryC"
+    },
+    {
+      "t" : 1.305,
+      "text" : "ard,"
+    },
+    {
+      "t" : 1.364,
+      "text" : " act"
+    },
+    {
+      "t" : 1.4,
+      "text" : "ions])\nheader = Inline"
+    },
+    {
+      "t" : 1.43,
+      "text" : "Header(\"Work"
+    },
+    {
+      "t" : 1.458,
+      "text" : "shop Cost Estim"
+    },
+    {
+      "t" : 1.517,
+      "text" : "ator\", \"Example estimate"
+    },
+    {
+      "t" : 1.555,
+      "text" : " for a 20-person wo"
+    },
+    {
+      "t" : 1.557,
+      "text" : "odworking workshop\")"
+    },
+    {
+      "t" : 1.589,
+      "text" : "\nmaterialsCard = Card"
+    },
+    {
+      "t" : 1.623,
+      "text" : "(["
+    },
+    {
+      "t" : 1.681,
+      "text" : "materialsHeader, mater"
+    },
+    {
+      "t" : 1.719,
+      "text" : "ialsTable])\nmaterial"
+    },
+    {
+      "t" : 1.722,
+      "text" : "sHeader = CardH"
+    },
+    {
+      "t" : 1.753,
+      "text" : "eader(\"Materials\", \""
+    },
+    {
+      "t" : 1.787,
+      "text" : "Quantities"
+    },
+    {
+      "t" : 1.825,
+      "text" : " and"
+    },
+    {
+      "t" : 1.856,
+      "text" : " unit prices\")\nmaterial"
+    },
+    {
+      "t" : 1.901,
+      "text" : "sTable = Table(["
+    },
+    {
+      "t" : 1.972,
+      "text" : "Col(\"Item\", matIt"
+    },
+    {
+      "t" : 2.01,
+      "text" : "ems), Col(\"Q"
+    },
+    {
+      "t" : 2.058,
+      "text" : "ty\", matQty, \"number"
+    },
+    {
+      "t" : 2.095,
+      "text" : "\"), Col(\"Unit"
+    },
+    {
+      "t" : 2.132,
+      "text" : " Price ($)\", matP"
+    },
+    {
+      "t" : 2.172,
+      "text" : "rice, \"number\"),"
+    },
+    {
+      "t" : 2.219,
+      "text" : " Col(\"Line Total ($"
+    },
+    {
+      "t" : 2.257,
+      "text" : ")\", matTotal, \""
+    },
+    {
+      "t" : 2.296,
+      "text" : "number\")])\nmatItems ="
+    },
+    {
+      "t" : 2.333,
+      "text" : " [\"Pine bo"
+    },
+    {
+      "t" : 2.335,
+      "text" : "ards (6"
+    },
+    {
+      "t" : 2.375,
+      "text" : " "
+    },
+    {
+      "t" : 2.437,
+      "text" : "ft)\", \"W"
+    },
+    {
+      "t" : 2.438,
+      "text" : "ood screws ("
+    },
+    {
+      "t" : 2.476,
+      "text" : "box)\", \"W"
+    },
+    {
+      "t" : 2.519,
+      "text" : "ood glue (b"
+    },
+    {
+      "t" : 2.558,
+      "text" : "ottle)\", \"Sand"
+    },
+    {
+      "t" : 2.626,
+      "text" : "paper s"
+    },
+    {
+      "t" : 2.649,
+      "text" : "heets\", \"Safety go"
+    },
+    {
+      "t" : 2.704,
+      "text" : "ggles\", \"Finish"
+    },
+    {
+      "t" : 2.745,
+      "text" : " o"
+    },
+    {
+      "t" : 2.788,
+      "text" : "il (qu"
+    },
+    {
+      "t" : 2.829,
+      "text" : "art)\"]\nmatQty"
+    },
+    {
+      "t" : 2.87,
+      "text" : " = [40"
+    },
+    {
+      "t" : 2.898,
+      "text" : ", 10"
+    },
+    {
+      "t" : 2.946,
+      "text" : ", 8"
+    },
+    {
+      "t" : 2.981,
+      "text" : ", 100"
+    },
+    {
+      "t" : 3.027,
+      "text" : ", 20, 5"
+    },
+    {
+      "t" : 3.031,
+      "text" : "]\nmatPrice = ["
+    },
+    {
+      "t" : 3.118,
+      "text" : "12"
+    },
+    {
+      "t" : 3.119,
+      "text" : ".5"
+    },
+    {
+      "t" : 3.163,
+      "text" : ", 8"
+    },
+    {
+      "t" : 3.213,
+      "text" : ".75"
+    },
+    {
+      "t" : 3.264,
+      "text" : ", 6"
+    },
+    {
+      "t" : 3.311,
+      "text" : ".4, 0"
+    },
+    {
+      "t" : 3.36,
+      "text" : ".9"
+    },
+    {
+      "t" : 3.407,
+      "text" : ", 4"
+    },
+    {
+      "t" : 3.459,
+      "text" : ".5, 18"
+    },
+    {
+      "t" : 3.508,
+      "text" : "]\nmatTotal = ["
+    },
+    {
+      "t" : 3.581,
+      "text" : "500, 87.5, "
+    },
+    {
+      "t" : 3.63,
+      "text" : "51.2, 90, "
+    },
+    {
+      "t" : 3.679,
+      "text" : "90, 90]\nlabor"
+    },
+    {
+      "t" : 3.726,
+      "text" : "Card = Card([labor"
+    },
+    {
+      "t" : 3.779,
+      "text" : "Header, laborTable"
+    },
+    {
+      "t" : 3.828,
+      "text" : "])\nlaborHeader ="
+    },
+    {
+      "t" : 3.888,
+      "text" : " CardHeader(\"Lab"
+    },
+    {
+      "t" : 3.954,
+      "text" : "or\", \"Hours and h"
+    },
+    {
+      "t" : 4.009,
+      "text" : "ourly rates\")\nlabor"
+    },
+    {
+      "t" : 4.065,
+      "text" : "Table = Table([Col"
+    },
+    {
+      "t" : 4.123,
+      "text" : "(\"Role\", laborRo"
+    },
+    {
+      "t" : 4.177,
+      "text" : "les), Col(\"Hours"
+    },
+    {
+      "t" : 4.231,
+      "text" : "\", laborHours, \"number"
+    },
+    {
+      "t" : 4.285,
+      "text" : "\"), Col(\"R"
+    },
+    {
+      "t" : 4.338,
+      "text" : "ate ($/h"
+    },
+    {
+      "t" : 4.394,
+      "text" : "r)\", laborRate,"
+    },
+    {
+      "t" : 4.446,
+      "text" : " \"number\"), Col(\""
+    },
+    {
+      "t" : 4.499,
+      "text" : "Line Total ($)\", la"
+    },
+    {
+      "t" : 4.554,
+      "text" : "borTotal, \"number\")"
+    },
+    {
+      "t" : 4.616,
+      "text" : "])\nlaborRoles ="
+    },
+    {
+      "t" : 4.68,
+      "text" : " [\"Lead instructor"
+    },
+    {
+      "t" : 4.736,
+      "text" : "\", \"Assistant\", \""
+    },
+    {
+      "t" : 4.806,
+      "text" : "Setup and c"
+    },
+    {
+      "t" : 4.87,
+      "text" : "leanup cr"
+    },
+    {
+      "t" : 4.939,
+      "text" : "ew\"]\nlaborHours"
+    },
+    {
+      "t" : 5.004,
+      "text" : " = [6, 6"
+    },
+    {
+      "t" : 5.062,
+      "text" : ", 4]\nlaborR"
+    },
+    {
+      "t" : 5.13,
+      "text" : "ate = [60"
+    },
+    {
+      "t" : 5.194,
+      "text" : ", 30"
+    },
+    {
+      "t" : 5.254,
+      "text" : ", 22"
+    },
+    {
+      "t" : 5.318,
+      "text" : "]\nlaborTotal ="
+    },
+    {
+      "t" : 5.381,
+      "text" : " [360, 180, 88"
+    },
+    {
+      "t" : 5.446,
+      "text" : "]\nsummaryCard ="
+    },
+    {
+      "t" : 5.509,
+      "text" : " Card([summaryHe"
+    },
+    {
+      "t" : 5.583,
+      "text" : "ader, summaryList, summ"
+    },
+    {
+      "t" : 5.643,
+      "text" : "aryNote])\nsumma"
+    },
+    {
+      "t" : 5.709,
+      "text" : "ryHeader = CardH"
+    },
+    {
+      "t" : 5.774,
+      "text" : "eader(\"Summary\", \""
+    },
+    {
+      "t" : 5.88,
+      "text" : "Example total\")\nsummary"
+    },
+    {
+      "t" : 5.952,
+      "text" : "List = EntityList([r"
+    },
+    {
+      "t" : 5.955,
+      "text" : "1, r2, r3,"
+    },
+    {
+      "t" : 6.021,
+      "text" : " r4], \"default\", null"
+    },
+    {
+      "t" : 6.094,
+      "text" : ", footer)\nr1 "
+    },
+    {
+      "t" : 6.169,
+      "text" : "= { left: \"Materials"
+    },
+    {
+      "t" : 6.236,
+      "text" : " subtotal\", right: \""
+    },
+    {
+      "t" : 6.303,
+      "text" : "$908"
+    },
+    {
+      "t" : 6.384,
+      "text" : ".70"
+    },
+    {
+      "t" : 6.452,
+      "text" : "\", rightVariant: \""
+    },
+    {
+      "t" : 6.523,
+      "text" : "number\" }\nr2 ="
+    },
+    {
+      "t" : 6.647,
+      "text" : " { left: \"Labor sub"
+    },
+    {
+      "t" : 6.65,
+      "text" : "total\", right: \"$"
+    },
+    {
+      "t" : 6.72,
+      "text" : "628.00\", rightVari"
+    },
+    {
+      "t" : 6.788,
+      "text" : "ant: \"number\" }\nr"
+    },
+    {
+      "t" : 6.91,
+      "text" : "3 = { left: \""
+    },
+    {
+      "t" : 6.914,
+      "text" : "Contingency (10%)\","
+    },
+    {
+      "t" : 7.006,
+      "text" : " right: \"$153.67"
+    },
+    {
+      "t" : 7.085,
+      "text" : "\", rightVariant: \""
+    },
+    {
+      "t" : 7.145,
+      "text" : "number\" }\nr4 ="
+    },
+    {
+      "t" : 7.196,
+      "text" : " { left: \"Per"
+    },
+    {
+      "t" : 7.229,
+      "text" : " att"
+    },
+    {
+      "t" : 7.259,
+      "text" : "endee ("
+    },
+    {
+      "t" : 7.291,
+      "text" : "20)\", right: \"$84"
+    },
+    {
+      "t" : 7.321,
+      "text" : ".52"
+    },
+    {
+      "t" : 7.35,
+      "text" : "\", rightVariant: \""
+    },
+    {
+      "t" : 7.379,
+      "text" : "number\" }\nfooter = {"
+    },
+    {
+      "t" : 7.408,
+      "text" : " left: \"Estimated"
+    },
+    {
+      "t" : 7.437,
+      "text" : " Total\", right: \"$1,"
+    },
+    {
+      "t" : 7.467,
+      "text" : "690.37\", rightVari"
+    },
+    {
+      "t" : 7.496,
+      "text" : "ant: \"number\" }\nsumm"
+    },
+    {
+      "t" : 7.524,
+      "text" : "aryNote = Callout"
+    },
+    {
+      "t" : 7.553,
+      "text" : "(\"info\", \"Note"
+    },
+    {
+      "t" : 7.582,
+      "text" : "\", \"Pr"
+    },
+    {
+      "t" : 7.612,
+      "text" : "ices are s"
+    },
+    {
+      "t" : 7.64,
+      "text" : "ample values. Adjust qu"
+    },
+    {
+      "t" : 7.669,
+      "text" : "antities,"
+    },
+    {
+      "t" : 7.698,
+      "text" : " rates and hours to match"
+    },
+    {
+      "t" : 7.728,
+      "text" : " your workshop.\")\nact"
+    },
+    {
+      "t" : 7.756,
+      "text" : "ions = Buttons(["
+    },
+    {
+      "t" : 7.786,
+      "text" : "Button(\"Adjust qu"
+    },
+    {
+      "t" : 7.816,
+      "text" : "antities\", @ToAss"
+    },
+    {
+      "t" : 7.846,
+      "text" : "istant(\"Help"
+    },
+    {
+      "t" : 7.893,
+      "text" : " me adjust the material"
+    },
+    {
+      "t" : 7.894,
+      "text" : " quantities\"), \"sec"
+    },
+    {
+      "t" : 7.924,
+      "text" : "ondary\"), Button(\""
+    },
+    {
+      "t" : 7.954,
+      "text" : "Export estimate\", @To"
+    },
+    {
+      "t" : 7.984,
+      "text" : "Assistant(\"Export this"
+    },
+    {
+      "t" : 8.014,
+      "text" : " est"
+    },
+    {
+      "t" : 8.046,
+      "text" : "imate as a summary\"),"
+    },
+    {
+      "t" : 8.078,
+      "text" : " \"primary\")])"
+    }
+  ],
+  "createdAt" : "2026-11-11T10:54:44Z",
+  "effort" : "low",
+  "format" : "openui-recording",
+  "inputTokens" : 14503,
+  "library" : "react-ui",
+  "model" : "claude-sonnet-5-5",
+  "outputTokens" : 953,
+  "request" : "A workshop cost estimator with material quantities, unit prices, labor hours and an example total in a summary card.",
+  "servedBy" : "claude-sonnet-5-5",
+  "stopReason" : "end_turn",
+  "version" : 1
+}

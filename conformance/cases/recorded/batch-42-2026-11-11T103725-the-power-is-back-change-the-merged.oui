@@ -1,0 +1,8 @@
+root = Stack([banner, timelineHeader, timeline])
+banner = Callout("success", "Power restored", "Latest update: 3:42 PM. Power has been restored across downtown and surrounding neighborhoods.", null)
+timelineHeader = InlineHeader("Outage timeline", "Key events from the power outage")
+timeline = Steps([t1, t2, t3, t4])
+t1 = StepsItem("Outage begins", "Widespread power loss reported across downtown and nearby neighborhoods.")
+t2 = StepsItem("Crews dispatched", "Utility crews were sent to assess damage and identify the source of the failure.")
+t3 = StepsItem("Restoration underway", "Crews worked to restore power and estimated restoration time was still being assessed.")
+t4 = StepsItem("Power restored", "Latest update at 3:42 PM confirms power has been restored across the affected areas.")

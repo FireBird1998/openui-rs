@@ -1,0 +1,112 @@
+{
+  "batchRequest" : {
+    "model" : "haiku",
+    "number" : 2,
+    "request" : "Breaking news banner about a city-wide power outage, with the latest update time and a link to live coverage."
+  },
+  "chunks" : [
+    {
+      "t" : 0.632,
+      "text" : "root"
+    },
+    {
+      "t" : 0.777,
+      "text" : " = Stack(["
+    },
+    {
+      "t" : 0.788,
+      "text" : "ban"
+    },
+    {
+      "t" : 0.793,
+      "text" : "ner])\nbanner = Call"
+    },
+    {
+      "t" : 0.812,
+      "text" : "out(\"error\", \"Bre"
+    },
+    {
+      "t" : 0.823,
+      "text" : "aking: City-wide power"
+    },
+    {
+      "t" : 0.839,
+      "text" : " outage\", \"Lat"
+    },
+    {
+      "t" : 0.845,
+      "text" : "est update: 3:42"
+    },
+    {
+      "t" : 0.852,
+      "text" : " P"
+    },
+    {
+      "t" : 0.857,
+      "text" : "M. Cr"
+    },
+    {
+      "t" : 0.875,
+      "text" : "ews are working"
+    },
+    {
+      "t" : 0.881,
+      "text" : " to restore power across"
+    },
+    {
+      "t" : 0.894,
+      "text" : " down"
+    },
+    {
+      "t" : 1.027,
+      "text" : "town and"
+    },
+    {
+      "t" : 1.034,
+      "text" : " sur"
+    },
+    {
+      "t" : 1.04,
+      "text" : "rounding neighborho"
+    },
+    {
+      "t" : 1.058,
+      "text" : "ods. Est"
+    },
+    {
+      "t" : 1.072,
+      "text" : "imated rest"
+    },
+    {
+      "t" : 1.085,
+      "text" : "oration time is"
+    },
+    {
+      "t" : 1.092,
+      "text" : " still"
+    },
+    {
+      "t" : 1.099,
+      "text" : " being"
+    },
+    {
+      "t" : 1.105,
+      "text" : " assessed.\", null"
+    },
+    {
+      "t" : 1.125,
+      "text" : ")"
+    }
+  ],
+  "createdAt" : "2026-11-11T10:32:50Z",
+  "effort" : "low",
+  "format" : "openui-recording",
+  "inputTokens" : 14501,
+  "library" : "react-ui",
+  "model" : "claude-haiku-5-5",
+  "outputTokens" : 92,
+  "request" : "Breaking news banner about a city-wide power outage, with the latest update time and a link to live coverage.",
+  "servedBy" : "claude-haiku-5-5",
+  "stopReason" : "end_turn",
+  "version" : 1
+}

@@ -1,0 +1,252 @@
+{
+  "batchRequest" : {
+    "model" : "sonnet",
+    "number" : 19,
+    "request" : "Local events this week as a list, each with a date, a venue and a tag for free or ticketed."
+  },
+  "chunks" : [
+    {
+      "t" : 0.737,
+      "text" : "root = Stack([header"
+    },
+    {
+      "t" : 1.053,
+      "text" : ", e"
+    },
+    {
+      "t" : 1.063,
+      "text" : "ventList"
+    },
+    {
+      "t" : 1.073,
+      "text" : "])\nheader = InlineH"
+    },
+    {
+      "t" : 1.092,
+      "text" : "eader(\"Local Events This"
+    },
+    {
+      "t" : 1.102,
+      "text" : " Week\", \"D"
+    },
+    {
+      "t" : 1.123,
+      "text" : "ates, venues and "
+    },
+    {
+      "t" : 1.13,
+      "text" : "ticket info"
+    },
+    {
+      "t" : 1.142,
+      "text" : "\")\neventList = List"
+    },
+    {
+      "t" : 1.149,
+      "text" : "Block([e1, e"
+    },
+    {
+      "t" : 1.161,
+      "text" : "2, e3, e4,"
+    },
+    {
+      "t" : 1.172,
+      "text" : " e5, e6], \"number"
+    },
+    {
+      "t" : 1.18,
+      "text" : "\")\ne1 = List"
+    },
+    {
+      "t" : 1.378,
+      "text" : "Item(\"Farmers"
+    },
+    {
+      "t" : 1.391,
+      "text" : " Market\","
+    },
+    {
+      "t" : 1.4,
+      "text" : " \"Mon,"
+    },
+    {
+      "t" : 1.412,
+      "text" : " Jun 10"
+    },
+    {
+      "t" : 1.425,
+      "text" : " · Riverside Square"
+    },
+    {
+      "t" : 1.433,
+      "text" : " · Free\")\ne2 "
+    },
+    {
+      "t" : 1.446,
+      "text" : "= ListItem(\"Open"
+    },
+    {
+      "t" : 1.46,
+      "text" : " Mic Night\","
+    },
+    {
+      "t" : 1.474,
+      "text" : " \"Tue, Jun"
+    },
+    {
+      "t" : 1.509,
+      "text" : " 11 · The Bl"
+    },
+    {
+      "t" : 1.544,
+      "text" : "ue Door"
+    },
+    {
+      "t" : 1.578,
+      "text" : " Café"
+    },
+    {
+      "t" : 1.695,
+      "text" : " · Free"
+    },
+    {
+      "t" : 1.711,
+      "text" : "\")\ne3 = List"
+    },
+    {
+      "t" : 1.726,
+      "text" : "Item(\"Jazz in"
+    },
+    {
+      "t" : 1.742,
+      "text" : " the Park\", \"Wed"
+    },
+    {
+      "t" : 1.758,
+      "text" : ", Jun 12 ·"
+    },
+    {
+      "t" : 1.794,
+      "text" : " Central Park"
+    },
+    {
+      "t" : 1.827,
+      "text" : " Bandstand ·"
+    },
+    {
+      "t" : 1.863,
+      "text" : " Free\")\ne4 = "
+    },
+    {
+      "t" : 1.898,
+      "text" : "ListItem(\"Ind"
+    },
+    {
+      "t" : 1.933,
+      "text" : "ie Film Scre"
+    },
+    {
+      "t" : 1.969,
+      "text" : "ening\", \"Thu,"
+    },
+    {
+      "t" : 2.005,
+      "text" : " Jun 13 · L"
+    },
+    {
+      "t" : 2.039,
+      "text" : "um"
+    },
+    {
+      "t" : 2.075,
+      "text" : "en Cinema · "
+    },
+    {
+      "t" : 2.114,
+      "text" : "Ticketed "
+    },
+    {
+      "t" : 2.146,
+      "text" : "($12)\")\ne5 "
+    },
+    {
+      "t" : 2.182,
+      "text" : "= ListItem(\"Food"
+    },
+    {
+      "t" : 2.216,
+      "text" : " Tru"
+    },
+    {
+      "t" : 2.252,
+      "text" : "ck Festival\", \"F"
+    },
+    {
+      "t" : 2.288,
+      "text" : "ri, Jun 14 "
+    },
+    {
+      "t" : 2.323,
+      "text" : "· Har"
+    },
+    {
+      "t" : 2.358,
+      "text" : "bor L"
+    },
+    {
+      "t" : 2.393,
+      "text" : "ot B"
+    },
+    {
+      "t" : 2.428,
+      "text" : " · Free ent"
+    },
+    {
+      "t" : 2.569,
+      "text" : "ry\")\ne6 = "
+    },
+    {
+      "t" : 2.587,
+      "text" : "ListItem(\"Sym"
+    },
+    {
+      "t" : 2.604,
+      "text" : "phony Under"
+    },
+    {
+      "t" : 2.616,
+      "text" : " the Stars\", \"S"
+    },
+    {
+      "t" : 2.634,
+      "text" : "at, Jun 15 "
+    },
+    {
+      "t" : 2.653,
+      "text" : "· City"
+    },
+    {
+      "t" : 2.681,
+      "text" : " Am"
+    },
+    {
+      "t" : 2.739,
+      "text" : "phitheater · Tic"
+    },
+    {
+      "t" : 2.758,
+      "text" : "keted ($35)\")"
+    }
+  ],
+  "createdAt" : "2026-11-11T10:34:21Z",
+  "effort" : "low",
+  "format" : "openui-recording",
+  "inputTokens" : 14498,
+  "library" : "react-ui",
+  "model" : "claude-sonnet-5-5",
+  "outputTokens" : 348,
+  "request" : "Local events this week as a list, each with a date, a venue and a tag for free or ticketed.",
+  "servedBy" : "claude-sonnet-5-5",
+  "stopReason" : "end_turn",
+  "version" : 1
+}

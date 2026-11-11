@@ -1,0 +1,210 @@
+{
+  "batchRequest" : {
+    "model" : "sonnet",
+    "number" : 141,
+    "of" : 91,
+    "request" : "Record that twelve tomato seed packets were used and add a supplier column to the inventory."
+  },
+  "chunks" : [
+    {
+      "t" : 0.794,
+      "text" : "Tomato go"
+    },
+    {
+      "t" : 1.123,
+      "text" : "es from 45 to 33"
+    },
+    {
+      "t" : 1.165,
+      "text" : " packets, so total pack"
+    },
+    {
+      "t" : 1.168,
+      "text" : "ets go"
+    },
+    {
+      "t" : 1.265,
+      "text" : " from 283 to 271."
+    },
+    {
+      "t" : 1.334,
+      "text" : " Tomato st"
+    },
+    {
+      "t" : 1.349,
+      "text" : "ays in stock. Su"
+    },
+    {
+      "t" : 1.379,
+      "text" : "ppliers are invented for the"
+    },
+    {
+      "t" : 1.439,
+      "text" : " new"
+    },
+    {
+      "t" : 1.442,
+      "text" : " column.\n\n```"
+    },
+    {
+      "t" : 1.477,
+      "text" : "\nk"
+    },
+    {
+      "t" : 1.513,
+      "text" : "2"
+    },
+    {
+      "t" : 1.549,
+      "text" : "r = B"
+    },
+    {
+      "t" : 1.594,
+      "text" : "oldText(\"number\", \"271"
+    },
+    {
+      "t" : 2.298,
+      "text" : "\")\nqty = [33"
+    },
+    {
+      "t" : 2.34,
+      "text" : ", 12, 60, "
+    },
+    {
+      "t" : 2.397,
+      "text" : "38, 15, 30,"
+    },
+    {
+      "t" : 2.438,
+      "text" : " 8, 75]\nsu"
+    },
+    {
+      "t" : 2.486,
+      "text" : "ppliers = [\"Green"
+    },
+    {
+      "t" : 2.531,
+      "text" : " Th"
+    },
+    {
+      "t" : 2.574,
+      "text" : "umb Seeds\", \""
+    },
+    {
+      "t" : 2.763,
+      "text" : "Har"
+    },
+    {
+      "t" : 2.777,
+      "text" : "vest Co-"
+    },
+    {
+      "t" : 2.834,
+      "text" : "op\", \"Green"
+    },
+    {
+      "t" : 2.894,
+      "text" : " Thumb Seeds"
+    },
+    {
+      "t" : 2.972,
+      "text" : "\", \"Val"
+    },
+    {
+      "t" : 3.028,
+      "text" : "ley Seed"
+    },
+    {
+      "t" : 3.075,
+      "text" : " Sup"
+    },
+    {
+      "t" : 3.122,
+      "text" : "ply\", \"Harvest"
+    },
+    {
+      "t" : 3.193,
+      "text" : " Co-op\", \"Valley"
+    },
+    {
+      "t" : 3.194,
+      "text" : " Seed Supply\", \""
+    },
+    {
+      "t" : 3.241,
+      "text" : "Sunny"
+    },
+    {
+      "t" : 3.287,
+      "text" : " F"
+    },
+    {
+      "t" : 3.334,
+      "text" : "ields\","
+    },
+    {
+      "t" : 3.377,
+      "text" : " \"Green Thumb"
+    },
+    {
+      "t" : 3.437,
+      "text" : " Seeds\"]\ntb"
+    },
+    {
+      "t" : 3.439,
+      "text" : "l = Table([Col(\""
+    },
+    {
+      "t" : 3.481,
+      "text" : "Crop\", crops),"
+    },
+    {
+      "t" : 3.526,
+      "text" : " Col(\"Variety\", varie"
+    },
+    {
+      "t" : 3.593,
+      "text" : "ties), Col(\"Quant"
+    },
+    {
+      "t" : 3.595,
+      "text" : "ity\", qty, \"number\""
+    },
+    {
+      "t" : 3.64,
+      "text" : "), Col(\"S"
+    },
+    {
+      "t" : 3.698,
+      "text" : "owing Month\", months),"
+    },
+    {
+      "t" : 3.746,
+      "text" : " Col(\"Supplier\", su"
+    },
+    {
+      "t" : 3.794,
+      "text" : "ppliers), Col(\""
+    },
+    {
+      "t" : 3.838,
+      "text" : "Status\", statuses)])"
+    },
+    {
+      "t" : 3.912,
+      "text" : "\n```"
+    }
+  ],
+  "createdAt" : "2026-11-11T11:06:33Z",
+  "effort" : "low",
+  "format" : "openui-recording",
+  "inputTokens" : 16265,
+  "library" : "react-ui",
+  "model" : "claude-sonnet-5-5",
+  "outputTokens" : 277,
+  "patchOf" : "root = Stack([title, kpis, lowCallout, tbl, formHeader, form])\ntitle = TextContent(\"Community Garden Seed Inventory\", \"large-heavy\")\nkpis = SnippetCardBlock([k1, k2, k3])\nk1 = SnippetCardItem(\"total\", k1l, k1r)\nk1l = IconText(k1i, \"neutral\", \"m\", \"Seed Varieties\", \"In inventory\", false, \"horizontal\")\nk1i = Icon(\"sprout\", \"nature\")\nk1r = BoldText(\"number\", \"8\")\nk2 = SnippetCardItem(\"packets\", k2l, k2r)\nk2l = IconText(k2i, \"neutral\", \"m\", \"Total Packets\", \"All crops\", false, \"horizontal\")\nk2i = Icon(\"package\", \"shopping\")\nk2r = BoldText(\"number\", \"283\")\nk3 = SnippetCardItem(\"low\", k3l, k3r)\nk3l = IconText(k3i, \"warning\", \"m\", \"Low Stock\", \"Under 20 packets\", false, \"horizontal\")\nk3i = Icon(\"triangle-alert\", \"alerts\")\nk3r = BoldText(\"number\", \"3\")\nlowCallout = Callout(\"warning\", \"Restock needed\", \"Beans, Carrots and Sunflowers are running low.\")\ntbl = Table([Col(\"Crop\", crops), Col(\"Variety\", varieties), Col(\"Quantity\", qty, \"number\"), Col(\"Sowing Month\", months), Col(\"Status\", statuses)])\ncrops = [\"Tomato\", \"Carrot\", \"Lettuce\", \"Pea\", \"Bean\", \"Pumpkin\", \"Sunflower\", \"Radish\"]\nvarieties = [\"Roma\", \"Nantes\", \"Butterhead\", \"Sugar Snap\", \"Kentucky Wonder\", \"Sugar Pie\", \"Mammoth\", \"Cherry Belle\"]\nqty = [45, 12, 60, 38, 15, 30, 8, 75]\nmonths = [\"March\", \"April\", \"March\", \"February\", \"May\", \"May\", \"April\", \"April\"]\nstatuses = [Tag(\"In stock\", null, \"sm\", \"success\"), Tag(\"Low\", null, \"sm\", \"danger\"), Tag(\"In stock\", null, \"sm\", \"success\"), Tag(\"In stock\", null, \"sm\", \"success\"), Tag(\"Low\", null, \"sm\", \"danger\"), Tag(\"In stock\", null, \"sm\", \"success\"), Tag(\"Low\", null, \"sm\", \"danger\"), Tag(\"In stock\", null, \"sm\", \"success\")]\nformHeader = InlineHeader(\"Restock Request\", \"Order more seeds for the garden\")\nform = Form(\"restock\", btns, [fCrop, fQty, fMonth, fNotes])\nfCrop = FormControl(\"Crop\", Select(\"crop\", cropOpts, \"Select crop...\", { required: true }))\ncropOpts = [SelectItem(\"tomato\", \"Tomato - Roma\"), SelectItem(\"carrot\", \"Carrot - Nantes\"), SelectItem(\"lettuce\", \"Lettuce - Butterhead\"), SelectItem(\"pea\", \"Pea - Sugar Snap\"), SelectItem(\"bean\", \"Bean - Kentucky Wonder\"), SelectItem(\"pumpkin\", \"Pumpkin - Sugar Pie\"), SelectItem(\"sunflower\", \"Sunflower - Mammoth\"), SelectItem(\"radish\", \"Radish - Cherry Belle\")]\nfQty = FormControl(\"Quantity (packets)\", Input(\"quantity\", \"e.g. 25\", \"number\", { required: true, min: 1 }))\nfMonth = FormControl(\"Planned Sowing Month\", Select(\"month\", monthOpts, \"Select month...\", { required: true }))\nmonthOpts = [SelectItem(\"feb\", \"February\"), SelectItem(\"mar\", \"March\"), SelectItem(\"apr\", \"April\"), SelectItem(\"may\", \"May\")]\nfNotes = FormControl(\"Notes\", TextArea(\"notes\", \"Supplier or special requests...\", 3))\nbtns = Buttons([Button(\"Submit Request\", @ToAssistant(\"Submit restock request\"), \"primary\"), Button(\"Clear\", @ToAssistant(\"Clear restock form\"), \"secondary\")])",
+  "request" : "Record that twelve tomato seed packets were used and add a supplier column to the inventory.",
+  "servedBy" : "claude-sonnet-5-5",
+  "stopReason" : "end_turn",
+  "version" : 1
+}

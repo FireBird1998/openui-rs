@@ -1,0 +1,428 @@
+{
+  "batchRequest" : {
+    "model" : "haiku",
+    "number" : 32,
+    "request" : "A gym class timetable for the week in a table, with class type tags."
+  },
+  "chunks" : [
+    {
+      "t" : 0.598,
+      "text" : "root = Stack(["
+    },
+    {
+      "t" : 0.728,
+      "text" : "header"
+    },
+    {
+      "t" : 0.742,
+      "text" : ", timetable])\nheader"
+    },
+    {
+      "t" : 0.753,
+      "text" : " = TextContent(\"We"
+    },
+    {
+      "t" : 0.778,
+      "text" : "ekly Gym Class"
+    },
+    {
+      "t" : 0.791,
+      "text" : " Timetable\", \"large-"
+    },
+    {
+      "t" : 0.802,
+      "text" : "heavy\")\ntimetable"
+    },
+    {
+      "t" : 0.81,
+      "text" : " = Table([col"
+    },
+    {
+      "t" : 0.821,
+      "text" : "Day, colTime, col"
+    },
+    {
+      "t" : 0.828,
+      "text" : "Class, colInstructor"
+    },
+    {
+      "t" : 0.84,
+      "text" : ", colType])\ncolDay"
+    },
+    {
+      "t" : 0.852,
+      "text" : " ="
+    },
+    {
+      "t" : 0.86,
+      "text" : " Col(\"Day\", [\""
+    },
+    {
+      "t" : 0.872,
+      "text" : "Monday\", \"Mon"
+    },
+    {
+      "t" : 0.885,
+      "text" : "day\", \"Tuesday"
+    },
+    {
+      "t" : 0.903,
+      "text" : "\", \"Wednesday\","
+    },
+    {
+      "t" : 0.931,
+      "text" : " \"W"
+    },
+    {
+      "t" : 0.943,
+      "text" : "ednesday\", \"Thurs"
+    },
+    {
+      "t" : 0.963,
+      "text" : "day\", \"Friday\", \""
+    },
+    {
+      "t" : 0.986,
+      "text" : "Saturday\", \"S"
+    },
+    {
+      "t" : 1.005,
+      "text" : "unday\"])\ncolTime"
+    },
+    {
+      "t" : 1.026,
+      "text" : " = Col(\"Time\", "
+    },
+    {
+      "t" : 1.046,
+      "text" : "[\"06:30"
+    },
+    {
+      "t" : 1.069,
+      "text" : "\", \"18"
+    },
+    {
+      "t" : 1.087,
+      "text" : ":00\", \"07"
+    },
+    {
+      "t" : 1.106,
+      "text" : ":00"
+    },
+    {
+      "t" : 1.126,
+      "text" : "\", \"12"
+    },
+    {
+      "t" : 1.145,
+      "text" : ":15"
+    },
+    {
+      "t" : 1.166,
+      "text" : "\", \"19"
+    },
+    {
+      "t" : 1.185,
+      "text" : ":00"
+    },
+    {
+      "t" : 1.206,
+      "text" : "\", \"06:30\", \"17"
+    },
+    {
+      "t" : 1.227,
+      "text" : ":30"
+    },
+    {
+      "t" : 1.246,
+      "text" : "\", \"09"
+    },
+    {
+      "t" : 1.267,
+      "text" : ":00\", \"10:00\""
+    },
+    {
+      "t" : 1.287,
+      "text" : "])\ncolClass = Col"
+    },
+    {
+      "t" : 1.308,
+      "text" : "(\"Class\", [\""
+    },
+    {
+      "t" : 1.33,
+      "text" : "Spin\","
+    },
+    {
+      "t" : 1.349,
+      "text" : " \"Yoga\", \"H"
+    },
+    {
+      "t" : 1.369,
+      "text" : "IIT\", \"P"
+    },
+    {
+      "t" : 1.39,
+      "text" : "ilates\", \"Boxing"
+    },
+    {
+      "t" : 1.41,
+      "text" : "\", \"Spin\", \""
+    },
+    {
+      "t" : 1.432,
+      "text" : "Zumba\","
+    },
+    {
+      "t" : 1.451,
+      "text" : " \"Str"
+    },
+    {
+      "t" : 1.471,
+      "text" : "ength\","
+    },
+    {
+      "t" : 1.495,
+      "text" : " \"St"
+    },
+    {
+      "t" : 1.511,
+      "text" : "retch &"
+    },
+    {
+      "t" : 1.533,
+      "text" : " Recover"
+    },
+    {
+      "t" : 1.552,
+      "text" : "\"])\ncolInstructor"
+    },
+    {
+      "t" : 1.573,
+      "text" : " = Col(\"Instructor"
+    },
+    {
+      "t" : 1.593,
+      "text" : "\", [\"Ma"
+    },
+    {
+      "t" : 1.612,
+      "text" : "ya"
+    },
+    {
+      "t" : 1.636,
+      "text" : "\", \"Jord"
+    },
+    {
+      "t" : 1.66,
+      "text" : "an\", \"Ch"
+    },
+    {
+      "t" : 1.679,
+      "text" : "ris\", \"Pri"
+    },
+    {
+      "t" : 1.697,
+      "text" : "ya\", \"Alex\", \""
+    },
+    {
+      "t" : 1.719,
+      "text" : "Maya\", \"Sof"
+    },
+    {
+      "t" : 1.738,
+      "text" : "ia\", \"Ch"
+    },
+    {
+      "t" : 1.757,
+      "text" : "ris\", \"Pri"
+    },
+    {
+      "t" : 1.777,
+      "text" : "ya\"])\ncolType ="
+    },
+    {
+      "t" : 1.797,
+      "text" : " Col(\"Type\", ["
+    },
+    {
+      "t" : 1.817,
+      "text" : "tagS"
+    },
+    {
+      "t" : 1.84,
+      "text" : "pin, tagYoga"
+    },
+    {
+      "t" : 1.859,
+      "text" : ", tagHi"
+    },
+    {
+      "t" : 1.88,
+      "text" : "it, tagPilates,"
+    },
+    {
+      "t" : 1.902,
+      "text" : " tagBo"
+    },
+    {
+      "t" : 1.93,
+      "text" : "xing, tagSpin"
+    },
+    {
+      "t" : 1.952,
+      "text" : "2"
+    },
+    {
+      "t" : 1.972,
+      "text" : ", tagZ"
+    },
+    {
+      "t" : 1.992,
+      "text" : "umba, tagSt"
+    },
+    {
+      "t" : 2.011,
+      "text" : "rength, tagY"
+    },
+    {
+      "t" : 2.032,
+      "text" : "oga2"
+    },
+    {
+      "t" : 2.045,
+      "text" : "])\ntagSpin ="
+    },
+    {
+      "t" : 2.065,
+      "text" : " Tag(\"C"
+    },
+    {
+      "t" : 2.088,
+      "text" : "ardio\", null, \"sm"
+    },
+    {
+      "t" : 2.11,
+      "text" : "\", \"info\")\ntagY"
+    },
+    {
+      "t" : 2.132,
+      "text" : "oga = Tag(\""
+    },
+    {
+      "t" : 2.155,
+      "text" : "Flexibility\", null, \""
+    },
+    {
+      "t" : 2.178,
+      "text" : "sm\", \"success\")\nt"
+    },
+    {
+      "t" : 2.2,
+      "text" : "agHiit = Tag"
+    },
+    {
+      "t" : 2.223,
+      "text" : "(\"HIIT\", null,"
+    },
+    {
+      "t" : 2.246,
+      "text" : " \"sm\", \"danger\")"
+    },
+    {
+      "t" : 2.268,
+      "text" : "\ntagPilates ="
+    },
+    {
+      "t" : 2.269,
+      "text" : " Tag(\"Core\", null,"
+    },
+    {
+      "t" : 2.292,
+      "text" : " \"sm\", \"warning\")"
+    },
+    {
+      "t" : 2.316,
+      "text" : "\ntagBoxing ="
+    },
+    {
+      "t" : 2.352,
+      "text" : " Tag(\"Combat\","
+    },
+    {
+      "t" : 2.353,
+      "text" : " null, \"sm\", \"dan"
+    },
+    {
+      "t" : 2.377,
+      "text" : "ger\")\ntagSpin"
+    },
+    {
+      "t" : 2.4,
+      "text" : "2 = Tag(\""
+    },
+    {
+      "t" : 2.424,
+      "text" : "Cardio\", null, \"s"
+    },
+    {
+      "t" : 2.448,
+      "text" : "m\", \"info\")\ntag"
+    },
+    {
+      "t" : 2.486,
+      "text" : "Zumba = Tag(\""
+    },
+    {
+      "t" : 2.487,
+      "text" : "Dance\", null, \"s"
+    },
+    {
+      "t" : 2.512,
+      "text" : "m\", \"ne"
+    },
+    {
+      "t" : 2.536,
+      "text" : "utral\")\ntagStr"
+    },
+    {
+      "t" : 2.561,
+      "text" : "ength = Tag(\"Str"
+    },
+    {
+      "t" : 2.587,
+      "text" : "ength\", null, \"sm\","
+    },
+    {
+      "t" : 2.612,
+      "text" : " \"war"
+    },
+    {
+      "t" : 2.652,
+      "text" : "ning\")\ntagYoga"
+    },
+    {
+      "t" : 2.653,
+      "text" : "2 = Tag(\""
+    },
+    {
+      "t" : 2.679,
+      "text" : "Recovery\", null, \"s"
+    },
+    {
+      "t" : 2.705,
+      "text" : "m\", \"success\")"
+    }
+  ],
+  "createdAt" : "2026-11-11T10:35:16Z",
+  "effort" : "low",
+  "format" : "openui-recording",
+  "inputTokens" : 14489,
+  "library" : "react-ui",
+  "model" : "claude-haiku-5-5",
+  "outputTokens" : 629,
+  "request" : "A gym class timetable for the week in a table, with class type tags.",
+  "servedBy" : "claude-haiku-5-5",
+  "stopReason" : "end_turn",
+  "version" : 1
+}

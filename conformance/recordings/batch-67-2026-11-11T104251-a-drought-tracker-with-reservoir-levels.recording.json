@@ -1,0 +1,760 @@
+{
+  "batchRequest" : {
+    "model" : "sonnet",
+    "number" : 67,
+    "request" : "A drought tracker with reservoir levels as a bar chart, weekly rainfall figures and water restriction tags for four towns."
+  },
+  "chunks" : [
+    {
+      "t" : 1.205,
+      "text" : "root = Stack([title"
+    },
+    {
+      "t" : 1.21,
+      "text" : ", k"
+    },
+    {
+      "t" : 1.226,
+      "text" : "pis, lev"
+    },
+    {
+      "t" : 1.347,
+      "text" : "elsCard, rainC"
+    },
+    {
+      "t" : 1.385,
+      "text" : "ard, restr"
+    },
+    {
+      "t" : 1.412,
+      "text" : "ictionsCard])\ntitle"
+    },
+    {
+      "t" : 1.446,
+      "text" : " = TextContent(\"Dr"
+    },
+    {
+      "t" : 1.62,
+      "text" : "ought Tracker\", \"large"
+    },
+    {
+      "t" : 1.624,
+      "text" : "-heavy\")\nkp"
+    },
+    {
+      "t" : 1.671,
+      "text" : "is = SnippetCard"
+    },
+    {
+      "t" : 1.704,
+      "text" : "Block([k1, k"
+    },
+    {
+      "t" : 1.734,
+      "text" : "2,"
+    },
+    {
+      "t" : 1.766,
+      "text" : " k3])\nk1 ="
+    },
+    {
+      "t" : 1.799,
+      "text" : " SnippetCardItem"
+    },
+    {
+      "t" : 1.833,
+      "text" : "(\"av"
+    },
+    {
+      "t" : 1.88,
+      "text" : "g\", k1l, k1"
+    },
+    {
+      "t" : 1.919,
+      "text" : "r)\nk1l = I"
+    },
+    {
+      "t" : 1.981,
+      "text" : "conText(k1i"
+    },
+    {
+      "t" : 2.019,
+      "text" : ", \"neutral\", \"m"
+    },
+    {
+      "t" : 2.023,
+      "text" : "\", \"Av"
+    },
+    {
+      "t" : 2.052,
+      "text" : "g Reservoir"
+    },
+    {
+      "t" : 2.082,
+      "text" : " Level\", \"All"
+    },
+    {
+      "t" : 2.118,
+      "text" : " four towns\", false, \"hor"
+    },
+    {
+      "t" : 2.165,
+      "text" : "izontal\")\nk1i"
+    },
+    {
+      "t" : 2.237,
+      "text" : " = Icon(\"droplets"
+    },
+    {
+      "t" : 2.272,
+      "text" : "\", \"n"
+    },
+    {
+      "t" : 2.327,
+      "text" : "ature\")\nk1r = B"
+    },
+    {
+      "t" : 2.329,
+      "text" : "oldText(\"number\", \"46"
+    },
+    {
+      "t" : 2.376,
+      "text" : "%\", \"-3"
+    },
+    {
+      "t" : 2.416,
+      "text" : ".2%\", \"metric\")"
+    },
+    {
+      "t" : 2.458,
+      "text" : "\nk2 = Snipp"
+    },
+    {
+      "t" : 2.495,
+      "text" : "etCardItem(\"rain"
+    },
+    {
+      "t" : 2.539,
+      "text" : "\", k2l, k2r"
+    },
+    {
+      "t" : 2.59,
+      "text" : ")\nk2l = Icon"
+    },
+    {
+      "t" : 2.646,
+      "text" : "Text(k2i, \"ne"
+    },
+    {
+      "t" : 2.692,
+      "text" : "utral\", \"m\", \""
+    },
+    {
+      "t" : 2.743,
+      "text" : "Weekly Rainfall"
+    },
+    {
+      "t" : 2.833,
+      "text" : "\", \""
+    },
+    {
+      "t" : 2.873,
+      "text" : "Avg this"
+    },
+    {
+      "t" : 2.921,
+      "text" : " week\", false, \"horizont"
+    },
+    {
+      "t" : 2.96,
+      "text" : "al\")\nk2i ="
+    },
+    {
+      "t" : 3.001,
+      "text" : " Icon(\"cloud-r"
+    },
+    {
+      "t" : 3.056,
+      "text" : "ain\", \"we"
+    },
+    {
+      "t" : 3.081,
+      "text" : "ather\")\nk2r = B"
+    },
+    {
+      "t" : 3.109,
+      "text" : "oldText(\"number\", \"7"
+    },
+    {
+      "t" : 3.177,
+      "text" : ".6 mm\", \"-"
+    },
+    {
+      "t" : 3.247,
+      "text" : "1"
+    },
+    {
+      "t" : 3.248,
+      "text" : ".4%"
+    },
+    {
+      "t" : 3.301,
+      "text" : "\", \"metric\")\nk3"
+    },
+    {
+      "t" : 3.344,
+      "text" : " = SnippetCard"
+    },
+    {
+      "t" : 3.39,
+      "text" : "Item(\"restr\", k3"
+    },
+    {
+      "t" : 3.432,
+      "text" : "l, k3r)\nk"
+    },
+    {
+      "t" : 3.48,
+      "text" : "3l = IconText(k"
+    },
+    {
+      "t" : 3.577,
+      "text" : "3i, \"war"
+    },
+    {
+      "t" : 3.641,
+      "text" : "ning\", \"m\", \"Tow"
+    },
+    {
+      "t" : 3.697,
+      "text" : "ns"
+    },
+    {
+      "t" : 3.699,
+      "text" : " Restricted\", \"Current status"
+    },
+    {
+      "t" : 3.762,
+      "text" : "\", false, \"horizontal"
+    },
+    {
+      "t" : 3.813,
+      "text" : "\")\nk3i = Ic"
+    },
+    {
+      "t" : 3.871,
+      "text" : "on(\"triangle-alert"
+    },
+    {
+      "t" : 4.023,
+      "text" : "\", \"al"
+    },
+    {
+      "t" : 4.064,
+      "text" : "erts\")\nk3r ="
+    },
+    {
+      "t" : 4.12,
+      "text" : " BoldText(\"number\", \""
+    },
+    {
+      "t" : 4.187,
+      "text" : "3 of 4\")\nlev"
+    },
+    {
+      "t" : 4.268,
+      "text" : "elsCard = Card(["
+    },
+    {
+      "t" : 4.316,
+      "text" : "levelsHeader, lev"
+    },
+    {
+      "t" : 4.369,
+      "text" : "el"
+    },
+    {
+      "t" : 4.427,
+      "text" : "sChart])\nlevels"
+    },
+    {
+      "t" : 4.476,
+      "text" : "Header = CardHe"
+    },
+    {
+      "t" : 4.555,
+      "text" : "ader(\"Reservoir"
+    },
+    {
+      "t" : 4.607,
+      "text" : " Levels\", \"Perc"
+    },
+    {
+      "t" : 4.659,
+      "text" : "ent of"
+    },
+    {
+      "t" : 4.716,
+      "text" : " capacity\")\nlevels"
+    },
+    {
+      "t" : 4.766,
+      "text" : "Chart = BarChart("
+    },
+    {
+      "t" : 4.822,
+      "text" : "towns, [levelS"
+    },
+    {
+      "t" : 4.886,
+      "text" : "eries], \"grouped\","
+    },
+    {
+      "t" : 4.936,
+      "text" : " \"Town\", \"%"
+    },
+    {
+      "t" : 4.989,
+      "text" : " cap"
+    },
+    {
+      "t" : 5.055,
+      "text" : "acity\")\ntowns = "
+    },
+    {
+      "t" : 5.129,
+      "text" : "[\""
+    },
+    {
+      "t" : 5.262,
+      "text" : "Ashford"
+    },
+    {
+      "t" : 5.263,
+      "text" : "\", \"Br"
+    },
+    {
+      "t" : 5.317,
+      "text" : "ook"
+    },
+    {
+      "t" : 5.368,
+      "text" : "v"
+    },
+    {
+      "t" : 5.431,
+      "text" : "ale\", \"Car"
+    },
+    {
+      "t" : 5.489,
+      "text" : "lton"
+    },
+    {
+      "t" : 5.557,
+      "text" : "\", \"Dunmore\""
+    },
+    {
+      "t" : 5.633,
+      "text" : "]\nlevelSeries ="
+    },
+    {
+      "t" : 5.703,
+      "text" : " Series(\"Reservoir"
+    },
+    {
+      "t" : 5.769,
+      "text" : " level"
+    },
+    {
+      "t" : 5.827,
+      "text" : "\", [58"
+    },
+    {
+      "t" : 5.932,
+      "text" : ", 41"
+    },
+    {
+      "t" : 5.934,
+      "text" : ", 27, 63"
+    },
+    {
+      "t" : 5.999,
+      "text" : "])\nrainCard ="
+    },
+    {
+      "t" : 6.07,
+      "text" : " Card([rainHeader,"
+    },
+    {
+      "t" : 6.136,
+      "text" : " rainChart,"
+    },
+    {
+      "t" : 6.211,
+      "text" : " rainTable])\nrain"
+    },
+    {
+      "t" : 6.299,
+      "text" : "Header = CardHe"
+    },
+    {
+      "t" : 6.407,
+      "text" : "ader(\"Weekly R"
+    },
+    {
+      "t" : 6.474,
+      "text" : "ainfall\", \"Mill"
+    },
+    {
+      "t" : 6.539,
+      "text" : "imetres, last four"
+    },
+    {
+      "t" : 6.6,
+      "text" : " weeks\")\nrainCh"
+    },
+    {
+      "t" : 6.665,
+      "text" : "art = LineChart(we"
+    },
+    {
+      "t" : 6.754,
+      "text" : "eks, [r"
+    },
+    {
+      "t" : 6.836,
+      "text" : "1, r2, r3,"
+    },
+    {
+      "t" : 6.908,
+      "text" : " r4], \"nat"
+    },
+    {
+      "t" : 6.969,
+      "text" : "ural\", \"Week\", \"m"
+    },
+    {
+      "t" : 7.032,
+      "text" : "m\")\nwe"
+    },
+    {
+      "t" : 7.094,
+      "text" : "eks = [\"Week "
+    },
+    {
+      "t" : 7.151,
+      "text" : "1\", \"Week 2\","
+    },
+    {
+      "t" : 7.211,
+      "text" : " \"Week 3\", \""
+    },
+    {
+      "t" : 7.277,
+      "text" : "Week 4\"]\nr1"
+    },
+    {
+      "t" : 7.403,
+      "text" : " = Series(\"Ash"
+    },
+    {
+      "t" : 7.462,
+      "text" : "ford\", [12"
+    },
+    {
+      "t" : 7.538,
+      "text" : ", 8"
+    },
+    {
+      "t" : 7.539,
+      "text" : ", 5, 9])"
+    },
+    {
+      "t" : 7.606,
+      "text" : "\nr2 = Series(\""
+    },
+    {
+      "t" : 7.682,
+      "text" : "Brookvale\", [9"
+    },
+    {
+      "t" : 7.752,
+      "text" : ", 6, 4"
+    },
+    {
+      "t" : 7.829,
+      "text" : ", 7])\nr3 "
+    },
+    {
+      "t" : 7.952,
+      "text" : "= Series(\"Carlton"
+    },
+    {
+      "t" : 7.956,
+      "text" : "\", [5"
+    },
+    {
+      "t" : 8.099,
+      "text" : ", 3, 2, "
+    },
+    {
+      "t" : 8.179,
+      "text" : "4])\nr4 ="
+    },
+    {
+      "t" : 8.26,
+      "text" : " Series(\"Dunmore\","
+    },
+    {
+      "t" : 8.333,
+      "text" : " [14, 10, 8"
+    },
+    {
+      "t" : 8.417,
+      "text" : ", 11])\nrainT"
+    },
+    {
+      "t" : 8.496,
+      "text" : "able = Table([Col(\""
+    },
+    {
+      "t" : 8.576,
+      "text" : "Town\", towns), Col"
+    },
+    {
+      "t" : 8.655,
+      "text" : "(\"This"
+    },
+    {
+      "t" : 8.788,
+      "text" : " week"
+    },
+    {
+      "t" : 8.791,
+      "text" : " (mm)\", th"
+    },
+    {
+      "t" : 8.857,
+      "text" : "isWeek,"
+    },
+    {
+      "t" : 8.923,
+      "text" : " \"number\"), Col(\"4"
+    },
+    {
+      "t" : 8.999,
+      "text" : "-week total (mm)\","
+    },
+    {
+      "t" : 9.066,
+      "text" : " totals, \"number\")])"
+    },
+    {
+      "t" : 9.135,
+      "text" : "\nthisWeek = [9"
+    },
+    {
+      "t" : 9.268,
+      "text" : ", 7, 4, "
+    },
+    {
+      "t" : 9.272,
+      "text" : "11]\ntotals = [34"
+    },
+    {
+      "t" : 9.477,
+      "text" : ", 26, 14"
+    },
+    {
+      "t" : 9.579,
+      "text" : ", 43"
+    },
+    {
+      "t" : 9.671,
+      "text" : "]\nrestrictionsC"
+    },
+    {
+      "t" : 9.765,
+      "text" : "ard = Card([restrict"
+    },
+    {
+      "t" : 9.768,
+      "text" : "H"
+    },
+    {
+      "t" : 9.878,
+      "text" : "eader, restrict"
+    },
+    {
+      "t" : 9.967,
+      "text" : "T"
+    },
+    {
+      "t" : 10.065,
+      "text" : "able])\nrestrictHe"
+    },
+    {
+      "t" : 10.177,
+      "text" : "ader = C"
+    },
+    {
+      "t" : 10.302,
+      "text" : "ardHeader(\"Water"
+    },
+    {
+      "t" : 10.421,
+      "text" : " Restrictions\", \"Current"
+    },
+    {
+      "t" : 10.521,
+      "text" : " level"
+    },
+    {
+      "t" : 10.627,
+      "text" : " by town\")\nrestrictT"
+    },
+    {
+      "t" : 10.737,
+      "text" : "able = Table([Col(\""
+    },
+    {
+      "t" : 10.814,
+      "text" : "Town\", towns),"
+    },
+    {
+      "t" : 10.892,
+      "text" : " Col(\"Rest"
+    },
+    {
+      "t" : 11.019,
+      "text" : "riction\", t"
+    },
+    {
+      "t" : 11.165,
+      "text" : "ags), Col(\"Not"
+    },
+    {
+      "t" : 11.301,
+      "text" : "es\", notes)])\nt"
+    },
+    {
+      "t" : 11.44,
+      "text" : "ags = ["
+    },
+    {
+      "t" : 11.563,
+      "text" : "Tag(\"Level 2 "
+    },
+    {
+      "t" : 11.662,
+      "text" : "-"
+    },
+    {
+      "t" : 11.794,
+      "text" : " Mo"
+    },
+    {
+      "t" : 11.921,
+      "text" : "derate\", null, \"sm"
+    },
+    {
+      "t" : 12.083,
+      "text" : "\", \"warning\"), T"
+    },
+    {
+      "t" : 12.242,
+      "text" : "ag(\"Level 3 -"
+    },
+    {
+      "t" : 12.361,
+      "text" : " Severe\", null, \"s"
+    },
+    {
+      "t" : 12.495,
+      "text" : "m\", \"danger\"),"
+    },
+    {
+      "t" : 12.647,
+      "text" : " Tag(\"Level 4 "
+    },
+    {
+      "t" : 12.798,
+      "text" : "- Crit"
+    },
+    {
+      "t" : 12.948,
+      "text" : "ical\", null, \"sm\","
+    },
+    {
+      "t" : 13.071,
+      "text" : " \"danger\"), Tag"
+    },
+    {
+      "t" : 13.153,
+      "text" : "(\"No"
+    },
+    {
+      "t" : 13.248,
+      "text" : " restrictions\", null, \""
+    },
+    {
+      "t" : 13.376,
+      "text" : "sm\", \"success\")]"
+    },
+    {
+      "t" : 13.506,
+      "text" : "\nnotes = [\"Spr"
+    },
+    {
+      "t" : 13.635,
+      "text" : "inkler "
+    },
+    {
+      "t" : 13.766,
+      "text" : "ban\", \"Hose use"
+    },
+    {
+      "t" : 13.895,
+      "text" : " ban"
+    },
+    {
+      "t" : 14.024,
+      "text" : "ned,"
+    },
+    {
+      "t" : 14.144,
+      "text" : " no car washing"
+    },
+    {
+      "t" : 14.249,
+      "text" : "\", \"Out"
+    },
+    {
+      "t" : 14.397,
+      "text" : "door use pr"
+    },
+    {
+      "t" : 14.534,
+      "text" : "ohibited\", \"Vo"
+    },
+    {
+      "t" : 14.693,
+      "text" : "luntary con"
+    },
+    {
+      "t" : 14.833,
+      "text" : "servation\"]"
+    }
+  ],
+  "createdAt" : "2026-11-11T10:42:51Z",
+  "effort" : "low",
+  "format" : "openui-recording",
+  "inputTokens" : 14510,
+  "library" : "react-ui",
+  "model" : "claude-sonnet-5-5",
+  "outputTokens" : 1152,
+  "request" : "A drought tracker with reservoir levels as a bar chart, weekly rainfall figures and water restriction tags for four towns.",
+  "servedBy" : "claude-sonnet-5-5",
+  "stopReason" : "end_turn",
+  "version" : 1
+}

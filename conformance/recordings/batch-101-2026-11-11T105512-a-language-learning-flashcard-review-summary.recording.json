@@ -1,0 +1,808 @@
+{
+  "batchRequest" : {
+    "model" : "sonnet",
+    "number" : 101,
+    "request" : "A language-learning flashcard review summary with words mastered, difficult vocabulary and a suggested next exercise."
+  },
+  "chunks" : [
+    {
+      "t" : 0.826,
+      "text" : "root = Stack([header,"
+    },
+    {
+      "t" : 1.129,
+      "text" : " kpis"
+    },
+    {
+      "t" : 1.171,
+      "text" : ", mastery"
+    },
+    {
+      "t" : 1.23,
+      "text" : "C"
+    },
+    {
+      "t" : 1.257,
+      "text" : "ard, h"
+    },
+    {
+      "t" : 1.302,
+      "text" : "ardH"
+    },
+    {
+      "t" : 1.359,
+      "text" : "eader, h"
+    },
+    {
+      "t" : 1.394,
+      "text" : "ardTable, nextC"
+    },
+    {
+      "t" : 1.454,
+      "text" : "ard])\nheader = C"
+    },
+    {
+      "t" : 1.491,
+      "text" : "ardHeader(\"Sp"
+    },
+    {
+      "t" : 1.493,
+      "text" : "anish Review Summary\","
+    },
+    {
+      "t" : 1.527,
+      "text" : " \"Session"
+    },
+    {
+      "t" : 1.57,
+      "text" : " of"
+    },
+    {
+      "t" : 1.603,
+      "text" : " 40 flashcards ·"
+    },
+    {
+      "t" : 1.607,
+      "text" : " "
+    },
+    {
+      "t" : 1.645,
+      "text" : "18 minutes\")"
+    },
+    {
+      "t" : 1.705,
+      "text" : "\nkpis = Snipp"
+    },
+    {
+      "t" : 1.757,
+      "text" : "etCardBlock([k"
+    },
+    {
+      "t" : 1.791,
+      "text" : "1, k2, k3,"
+    },
+    {
+      "t" : 1.793,
+      "text" : " k4])\nk1 ="
+    },
+    {
+      "t" : 1.862,
+      "text" : " SnippetCardItem"
+    },
+    {
+      "t" : 1.911,
+      "text" : "(\"mastered\", k1l"
+    },
+    {
+      "t" : 1.948,
+      "text" : ", k1r)\nk1"
+    },
+    {
+      "t" : 1.996,
+      "text" : "l = IconText(k1"
+    },
+    {
+      "t" : 2.036,
+      "text" : "i, \"success"
+    },
+    {
+      "t" : 2.069,
+      "text" : "\", \"m\", \"Words"
+    },
+    {
+      "t" : 2.109,
+      "text" : " Mastered\", \"Total\","
+    },
+    {
+      "t" : 2.148,
+      "text" : " false, \"horizontal\")"
+    },
+    {
+      "t" : 2.151,
+      "text" : "\nk1i = Icon"
+    },
+    {
+      "t" : 2.19,
+      "text" : "(\"circle-check\", \"education"
+    },
+    {
+      "t" : 2.229,
+      "text" : "\")\nk1r = Bo"
+    },
+    {
+      "t" : 2.267,
+      "text" : "ldText(\"number\", \"286"
+    },
+    {
+      "t" : 2.316,
+      "text" : "\", \"+14"
+    },
+    {
+      "t" : 2.356,
+      "text" : "%"
+    },
+    {
+      "t" : 2.423,
+      "text" : "\", \"metric\")\nk2"
+    },
+    {
+      "t" : 2.424,
+      "text" : " = SnippetCard"
+    },
+    {
+      "t" : 2.468,
+      "text" : "Item(\"accuracy\","
+    },
+    {
+      "t" : 2.507,
+      "text" : " k2l, k2r)"
+    },
+    {
+      "t" : 2.555,
+      "text" : "\nk2l = IconText"
+    },
+    {
+      "t" : 2.595,
+      "text" : "(k2i, \"info"
+    },
+    {
+      "t" : 2.637,
+      "text" : "\", \"m\", \"Accu"
+    },
+    {
+      "t" : 2.685,
+      "text" : "racy\", \"This session\", false"
+    },
+    {
+      "t" : 2.749,
+      "text" : ", \"horizontal\")"
+    },
+    {
+      "t" : 2.751,
+      "text" : "\nk2i = Icon(\""
+    },
+    {
+      "t" : 2.817,
+      "text" : "target\", \"education\")\nk2"
+    },
+    {
+      "t" : 2.819,
+      "text" : "r = BoldText(\"number"
+    },
+    {
+      "t" : 2.862,
+      "text" : "\", \"82%\", \"+5"
+    },
+    {
+      "t" : 2.944,
+      "text" : "%\", \"metric\")\nk"
+    },
+    {
+      "t" : 2.946,
+      "text" : "3 = SnippetC"
+    },
+    {
+      "t" : 3.027,
+      "text" : "ardItem(\"streak\", k"
+    },
+    {
+      "t" : 3.083,
+      "text" : "3l, k3r)"
+    },
+    {
+      "t" : 3.136,
+      "text" : "\nk3l = IconText("
+    },
+    {
+      "t" : 3.237,
+      "text" : "k3i, \"warning\","
+    },
+    {
+      "t" : 3.298,
+      "text" : " \"m\", \"Study"
+    },
+    {
+      "t" : 3.358,
+      "text" : " Streak\", \"Days"
+    },
+    {
+      "t" : 3.409,
+      "text" : " in"
+    },
+    {
+      "t" : 3.41,
+      "text" : " a row\", false, \"horiz"
+    },
+    {
+      "t" : 3.474,
+      "text" : "ontal\")\nk3i ="
+    },
+    {
+      "t" : 3.563,
+      "text" : " Icon(\"flame\", \""
+    },
+    {
+      "t" : 3.565,
+      "text" : "education\")\nk3r = B"
+    },
+    {
+      "t" : 3.64,
+      "text" : "oldText(\"number\", \"12"
+    },
+    {
+      "t" : 3.78,
+      "text" : " days\")\nk4 ="
+    },
+    {
+      "t" : 3.85,
+      "text" : " SnippetCardItem"
+    },
+    {
+      "t" : 3.907,
+      "text" : "(\"difficult\", k4l"
+    },
+    {
+      "t" : 4,
+      "text" : ", k4r)\nk4"
+    },
+    {
+      "t" : 4.053,
+      "text" : "l = IconText(k4"
+    },
+    {
+      "t" : 4.106,
+      "text" : "i, \"danger\", \"m"
+    },
+    {
+      "t" : 4.159,
+      "text" : "\", \"Difficult Words"
+    },
+    {
+      "t" : 4.214,
+      "text" : "\", \"Needs review"
+    },
+    {
+      "t" : 4.277,
+      "text" : "\", false, \"horizontal"
+    },
+    {
+      "t" : 4.338,
+      "text" : "\")\nk4i = Ic"
+    },
+    {
+      "t" : 4.398,
+      "text" : "on(\"triangle-alert"
+    },
+    {
+      "t" : 4.399,
+      "text" : "\", \"education\")\nk4r"
+    },
+    {
+      "t" : 4.456,
+      "text" : " = BoldText(\"number\","
+    },
+    {
+      "t" : 4.521,
+      "text" : " \"23"
+    },
+    {
+      "t" : 4.578,
+      "text" : "\", \"-4"
+    },
+    {
+      "t" : 4.674,
+      "text" : "%\", \"metric\")\nmas"
+    },
+    {
+      "t" : 4.726,
+      "text" : "teryCard = Card(["
+    },
+    {
+      "t" : 4.729,
+      "text" : "mas"
+    },
+    {
+      "t" : 4.813,
+      "text" : "teryHeader, maste"
+    },
+    {
+      "t" : 4.881,
+      "text" : "ryChart])\nmastery"
+    },
+    {
+      "t" : 4.955,
+      "text" : "Header = C"
+    },
+    {
+      "t" : 5.052,
+      "text" : "ardHeader(\"We"
+    },
+    {
+      "t" : 5.055,
+      "text" : "ekly Words"
+    },
+    {
+      "t" : 5.113,
+      "text" : " Mastered\", \"New"
+    },
+    {
+      "t" : 5.182,
+      "text" : " words"
+    },
+    {
+      "t" : 5.243,
+      "text" : " mo"
+    },
+    {
+      "t" : 5.311,
+      "text" : "ved to m"
+    },
+    {
+      "t" : 5.4,
+      "text" : "astered\")\nmasteryCh"
+    },
+    {
+      "t" : 5.475,
+      "text" : "art = BarChart(days"
+    },
+    {
+      "t" : 5.545,
+      "text" : ", [Series(\"Mast"
+    },
+    {
+      "t" : 5.632,
+      "text" : "ered\", mastered)], \""
+    },
+    {
+      "t" : 5.724,
+      "text" : "grouped\", \"Day\","
+    },
+    {
+      "t" : 5.802,
+      "text" : " \"Words\","
+    },
+    {
+      "t" : 5.872,
+      "text" : " 220"
+    },
+    {
+      "t" : 5.938,
+      "text" : ")\ndays = [\"M"
+    },
+    {
+      "t" : 6.042,
+      "text" : "on\", \"Tue\", \""
+    },
+    {
+      "t" : 6.044,
+      "text" : "Wed\", \"Thu"
+    },
+    {
+      "t" : 6.122,
+      "text" : "\", \"Fri\", \""
+    },
+    {
+      "t" : 6.194,
+      "text" : "Sat\", \"Sun\""
+    },
+    {
+      "t" : 6.269,
+      "text" : "]\nmastered = [8"
+    },
+    {
+      "t" : 6.413,
+      "text" : ", 11"
+    },
+    {
+      "t" : 6.491,
+      "text" : ", 6, 14"
+    },
+    {
+      "t" : 6.494,
+      "text" : ", 9, 17"
+    },
+    {
+      "t" : 6.573,
+      "text" : ", 12"
+    },
+    {
+      "t" : 6.653,
+      "text" : "]\nhardHeader ="
+    },
+    {
+      "t" : 6.724,
+      "text" : " InlineHeader(\""
+    },
+    {
+      "t" : 6.798,
+      "text" : "Difficult Vocabul"
+    },
+    {
+      "t" : 6.903,
+      "text" : "ary\", \"Words you"
+    },
+    {
+      "t" : 7.016,
+      "text" : " missed most often\")\nhard"
+    },
+    {
+      "t" : 7.019,
+      "text" : "Table = Table([Col"
+    },
+    {
+      "t" : 7.096,
+      "text" : "(\"Word\", words"
+    },
+    {
+      "t" : 7.171,
+      "text" : "), Col(\"Me"
+    },
+    {
+      "t" : 7.236,
+      "text" : "aning\", me"
+    },
+    {
+      "t" : 7.308,
+      "text" : "anings), Col(\"Mis"
+    },
+    {
+      "t" : 7.395,
+      "text" : "ses\", misses, \"number\""
+    },
+    {
+      "t" : 7.558,
+      "text" : "), Col(\"Type"
+    },
+    {
+      "t" : 7.559,
+      "text" : "\", types"
+    },
+    {
+      "t" : 7.658,
+      "text" : ")])\nwords = [\"emb"
+    },
+    {
+      "t" : 7.731,
+      "text" : "arazada"
+    },
+    {
+      "t" : 7.814,
+      "text" : "\", \"desar"
+    },
+    {
+      "t" : 7.891,
+      "text" : "rollar\", \"sobrem"
+    },
+    {
+      "t" : 8.067,
+      "text" : "esa\", \"tamp"
+    },
+    {
+      "t" : 8.141,
+      "text" : "oco\", \"mad"
+    },
+    {
+      "t" : 8.214,
+      "text" : "rugada\"]\nmean"
+    },
+    {
+      "t" : 8.216,
+      "text" : "ings = [\"p"
+    },
+    {
+      "t" : 8.289,
+      "text" : "regnant\", \"to"
+    },
+    {
+      "t" : 8.366,
+      "text" : " develop\", \"after-me"
+    },
+    {
+      "t" : 8.439,
+      "text" : "al ch"
+    },
+    {
+      "t" : 8.524,
+      "text" : "at\", \"ne"
+    },
+    {
+      "t" : 8.594,
+      "text" : "ither /"
+    },
+    {
+      "t" : 8.677,
+      "text" : " either"
+    },
+    {
+      "t" : 8.76,
+      "text" : "\", \"early"
+    },
+    {
+      "t" : 8.848,
+      "text" : " morning\"]\nmisses ="
+    },
+    {
+      "t" : 8.933,
+      "text" : " [7"
+    },
+    {
+      "t" : 9.122,
+      "text" : ", 6, 5, "
+    },
+    {
+      "t" : 9.226,
+      "text" : "4, 4]\ntypes ="
+    },
+    {
+      "t" : 9.316,
+      "text" : " [\"False"
+    },
+    {
+      "t" : 9.408,
+      "text" : " fri"
+    },
+    {
+      "t" : 9.409,
+      "text" : "end\", \"Ver"
+    },
+    {
+      "t" : 9.49,
+      "text" : "b\", \"No"
+    },
+    {
+      "t" : 9.584,
+      "text" : "un\", \"Ad"
+    },
+    {
+      "t" : 9.676,
+      "text" : "verb\", \"Noun\""
+    },
+    {
+      "t" : 9.772,
+      "text" : "]\nnextCard ="
+    },
+    {
+      "t" : 9.857,
+      "text" : " Card([nextHeader,"
+    },
+    {
+      "t" : 10.035,
+      "text" : " nextText, nextT"
+    },
+    {
+      "t" : 10.132,
+      "text" : "ags, nextBtns"
+    },
+    {
+      "t" : 10.239,
+      "text" : "],"
+    },
+    {
+      "t" : 10.241,
+      "text" : " \"s"
+    },
+    {
+      "t" : 10.332,
+      "text" : "unk\")\nnextHe"
+    },
+    {
+      "t" : 10.426,
+      "text" : "ader = CardHeader(\""
+    },
+    {
+      "t" : 10.512,
+      "text" : "Suggested Next Ex"
+    },
+    {
+      "t" : 10.596,
+      "text" : "ercise\", \"Targ"
+    },
+    {
+      "t" : 10.683,
+      "text" : "eted pract"
+    },
+    {
+      "t" : 10.767,
+      "text" : "ice ·"
+    },
+    {
+      "t" : 10.876,
+      "text" : " about"
+    },
+    {
+      "t" : 10.992,
+      "text" : " 10"
+    },
+    {
+      "t" : 11.105,
+      "text" : " minutes\")\nnext"
+    },
+    {
+      "t" : 11.249,
+      "text" : "Text = TextContent(\""
+    },
+    {
+      "t" : 11.252,
+      "text" : "Try a"
+    },
+    {
+      "t" : 11.355,
+      "text" : " **fill-in-the-"
+    },
+    {
+      "t" : 11.478,
+      "text" : "blank sentence dr"
+    },
+    {
+      "t" : 11.57,
+      "text" : "ill** using"
+    },
+    {
+      "t" : 11.68,
+      "text" : " your 5"
+    },
+    {
+      "t" : 11.848,
+      "text" : " h"
+    },
+    {
+      "t" : 11.849,
+      "text" : "ardest words."
+    },
+    {
+      "t" : 11.942,
+      "text" : " Seeing them"
+    },
+    {
+      "t" : 12.048,
+      "text" : " in context will help with"
+    },
+    {
+      "t" : 12.161,
+      "text" : " false friends like"
+    },
+    {
+      "t" : 12.258,
+      "text" : " *embarazada* and the"
+    },
+    {
+      "t" : 12.353,
+      "text" : " verb *"
+    },
+    {
+      "t" : 12.442,
+      "text" : "desarrollar*.\")"
+    },
+    {
+      "t" : 12.598,
+      "text" : "\nnextTags = Tag"
+    },
+    {
+      "t" : 12.6,
+      "text" : "Block([\""
+    },
+    {
+      "t" : 12.703,
+      "text" : "S"
+    },
+    {
+      "t" : 12.8,
+      "text" : "entence drill\", \"10"
+    },
+    {
+      "t" : 12.916,
+      "text" : " min\", \""
+    },
+    {
+      "t" : 13.083,
+      "text" : "Int"
+    },
+    {
+      "t" : 13.191,
+      "text" : "ermediate\"], \"md\")"
+    },
+    {
+      "t" : 13.289,
+      "text" : "\nnextBtns ="
+    },
+    {
+      "t" : 13.381,
+      "text" : " Buttons(["
+    },
+    {
+      "t" : 13.496,
+      "text" : "Button(\"Start Ex"
+    },
+    {
+      "t" : 13.612,
+      "text" : "ercise\", @ToAss"
+    },
+    {
+      "t" : 13.768,
+      "text" : "istant(\"Start a"
+    },
+    {
+      "t" : 13.879,
+      "text" : " f"
+    },
+    {
+      "t" : 13.988,
+      "text" : "ill-in-the-blank"
+    },
+    {
+      "t" : 14.103,
+      "text" : " dr"
+    },
+    {
+      "t" : 14.225,
+      "text" : "ill with"
+    },
+    {
+      "t" : 14.335,
+      "text" : " my difficult Spanish"
+    },
+    {
+      "t" : 14.454,
+      "text" : " words\"), \"primary\"),"
+    },
+    {
+      "t" : 14.555,
+      "text" : " Button(\"Review Diffic"
+    },
+    {
+      "t" : 14.671,
+      "text" : "ult Words\", @ToA"
+    },
+    {
+      "t" : 14.858,
+      "text" : "ssistant(\"Show"
+    },
+    {
+      "t" : 14.86,
+      "text" : " fl"
+    },
+    {
+      "t" : 14.966,
+      "text" : "ashcards for my dif"
+    },
+    {
+      "t" : 15.082,
+      "text" : "ficult Spanish words\""
+    },
+    {
+      "t" : 15.173,
+      "text" : "), \"secondary\")])"
+    }
+  ],
+  "createdAt" : "2026-11-11T10:55:12Z",
+  "effort" : "low",
+  "format" : "openui-recording",
+  "inputTokens" : 14505,
+  "library" : "react-ui",
+  "model" : "claude-sonnet-5-5",
+  "outputTokens" : 1187,
+  "request" : "A language-learning flashcard review summary with words mastered, difficult vocabulary and a suggested next exercise.",
+  "servedBy" : "claude-sonnet-5-5",
+  "stopReason" : "end_turn",
+  "version" : 1
+}

@@ -1,0 +1,7 @@
+root = Card([header, details, chatBtn])
+header = CardHeader("Customer Support", "We're here to help")
+details = EntityList([hoursRow, phoneRow, emailRow])
+hoursRow = {left: "Hours", right: "Mon–Fri, 9am–6pm"}
+phoneRow = {left: "Phone", right: "+1 (555) 014-2290"}
+emailRow = {left: "Email", right: "support@example.com"}
+chatBtn = Buttons([Button("Start Chat", @ToAssistant("Start a chat with the support team"), "primary")])

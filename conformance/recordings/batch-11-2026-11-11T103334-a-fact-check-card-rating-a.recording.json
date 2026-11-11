@@ -1,0 +1,540 @@
+{
+  "batchRequest" : {
+    "model" : "sonnet",
+    "number" : 11,
+    "request" : "A fact-check card rating a viral claim as \"mostly false\", with the claim, the verdict and three sources."
+  },
+  "chunks" : [
+    {
+      "t" : 0.976,
+      "text" : "root = Stack([card])"
+    },
+    {
+      "t" : 1.03,
+      "text" : "\ncard = Card([header"
+    },
+    {
+      "t" : 1.047,
+      "text" : ", ver"
+    },
+    {
+      "t" : 1.078,
+      "text" : "dictTag, cla"
+    },
+    {
+      "t" : 1.092,
+      "text" : "imH"
+    },
+    {
+      "t" : 1.129,
+      "text" : "eader, claimText,"
+    },
+    {
+      "t" : 1.161,
+      "text" : " Separator("
+    },
+    {
+      "t" : 1.196,
+      "text" : "), verdictC"
+    },
+    {
+      "t" : 1.229,
+      "text" : "allout, s"
+    },
+    {
+      "t" : 1.269,
+      "text" : "ourcesHeader, s"
+    },
+    {
+      "t" : 1.319,
+      "text" : "ourcesList, actions])"
+    },
+    {
+      "t" : 1.669,
+      "text" : "\nheader"
+    },
+    {
+      "t" : 1.682,
+      "text" : " = CardHeader(\""
+    },
+    {
+      "t" : 1.694,
+      "text" : "Fact"
+    },
+    {
+      "t" : 1.702,
+      "text" : " Check\", \"Viral claim"
+    },
+    {
+      "t" : 1.714,
+      "text" : " review"
+    },
+    {
+      "t" : 1.727,
+      "text" : " · R"
+    },
+    {
+      "t" : 1.734,
+      "text" : "ating: Mostly False\")"
+    },
+    {
+      "t" : 1.746,
+      "text" : "\nverdictTag ="
+    },
+    {
+      "t" : 1.76,
+      "text" : " Tag(\"Mostly False"
+    },
+    {
+      "t" : 1.768,
+      "text" : "\", war"
+    },
+    {
+      "t" : 1.78,
+      "text" : "n"
+    },
+    {
+      "t" : 1.793,
+      "text" : "Icon, \"l"
+    },
+    {
+      "t" : 2.021,
+      "text" : "g\", \"warning\")\nwar"
+    },
+    {
+      "t" : 2.035,
+      "text" : "nIcon = Icon"
+    },
+    {
+      "t" : 2.049,
+      "text" : "(\"triangle-alert\","
+    },
+    {
+      "t" : 2.063,
+      "text" : " \"alerts\")\nclaim"
+    },
+    {
+      "t" : 2.077,
+      "text" : "Header = InlineH"
+    },
+    {
+      "t" : 2.086,
+      "text" : "eader(\"The Claim\","
+    },
+    {
+      "t" : 2.1,
+      "text" : " \"As"
+    },
+    {
+      "t" : 2.114,
+      "text" : " sh"
+    },
+    {
+      "t" : 2.128,
+      "text" : "ared wid"
+    },
+    {
+      "t" : 2.143,
+      "text" : "ely on social media\")\nclaim"
+    },
+    {
+      "t" : 2.153,
+      "text" : "Text = TextContent(\"\\"
+    },
+    {
+      "t" : 2.167,
+      "text" : "\"Drinking h"
+    },
+    {
+      "t" : 2.369,
+      "text" : "ot l"
+    },
+    {
+      "t" : 2.384,
+      "text" : "emon water every morning cures"
+    },
+    {
+      "t" : 2.401,
+      "text" : " and"
+    },
+    {
+      "t" : 2.416,
+      "text" : " pr"
+    },
+    {
+      "t" : 2.433,
+      "text" : "events most"
+    },
+    {
+      "t" : 2.45,
+      "text" : " types"
+    },
+    {
+      "t" : 2.468,
+      "text" : " of cancer,"
+    },
+    {
+      "t" : 2.484,
+      "text" : " according to do"
+    },
+    {
+      "t" : 2.501,
+      "text" : "ctors at a"
+    },
+    {
+      "t" : 2.518,
+      "text" : " leading research"
+    },
+    {
+      "t" : 2.541,
+      "text" : " h"
+    },
+    {
+      "t" : 2.591,
+      "text" : "ospital.\\\"\","
+    },
+    {
+      "t" : 2.756,
+      "text" : " \"large\")\nverdictC"
+    },
+    {
+      "t" : 2.775,
+      "text" : "allout = Callout(\"war"
+    },
+    {
+      "t" : 2.791,
+      "text" : "ning\", \"Verdict:"
+    },
+    {
+      "t" : 2.803,
+      "text" : " Mostly False"
+    },
+    {
+      "t" : 2.82,
+      "text" : "\", \"There is no cl"
+    },
+    {
+      "t" : 2.839,
+      "text" : "inical evidence that lem"
+    },
+    {
+      "t" : 2.857,
+      "text" : "on water c"
+    },
+    {
+      "t" : 2.868,
+      "text" : "ures or prevents cancer"
+    },
+    {
+      "t" : 2.897,
+      "text" : ". L"
+    },
+    {
+      "t" : 2.933,
+      "text" : "emons"
+    },
+    {
+      "t" : 2.969,
+      "text" : " cont"
+    },
+    {
+      "t" : 3.004,
+      "text" : "ain vitamin C and ant"
+    },
+    {
+      "t" : 3.118,
+      "text" : "ioxidants, which are"
+    },
+    {
+      "t" : 3.137,
+      "text" : " part of a healthy diet"
+    },
+    {
+      "t" : 3.156,
+      "text" : ", but no study"
+    },
+    {
+      "t" : 3.175,
+      "text" : " sh"
+    },
+    {
+      "t" : 3.186,
+      "text" : "ows they tre"
+    },
+    {
+      "t" : 3.219,
+      "text" : "at cancer. The hosp"
+    },
+    {
+      "t" : 3.251,
+      "text" : "ital named"
+    },
+    {
+      "t" : 3.287,
+      "text" : " in the pos"
+    },
+    {
+      "t" : 3.321,
+      "text" : "ts has"
+    },
+    {
+      "t" : 3.356,
+      "text" : " publ"
+    },
+    {
+      "t" : 3.396,
+      "text" : "icly denied making"
+    },
+    {
+      "t" : 3.427,
+      "text" : " the claim.\")\nsour"
+    },
+    {
+      "t" : 3.472,
+      "text" : "cesHeader = Inl"
+    },
+    {
+      "t" : 3.499,
+      "text" : "ineHeader(\"Sources"
+    },
+    {
+      "t" : 3.537,
+      "text" : "\", \"Three references"
+    },
+    {
+      "t" : 3.57,
+      "text" : " re"
+    },
+    {
+      "t" : 3.606,
+      "text" : "viewed\")\nsourc"
+    },
+    {
+      "t" : 3.642,
+      "text" : "esList = ListBlock"
+    },
+    {
+      "t" : 3.677,
+      "text" : "([s1, s2, s"
+    },
+    {
+      "t" : 3.715,
+      "text" : "3], \"number\")\ns1"
+    },
+    {
+      "t" : 3.749,
+      "text" : " = ListItem(\"National"
+    },
+    {
+      "t" : 3.785,
+      "text" : " Cancer Institute:"
+    },
+    {
+      "t" : 3.821,
+      "text" : " Cancer Prevention"
+    },
+    {
+      "t" : 3.896,
+      "text" : " Overview\", \"Ev"
+    },
+    {
+      "t" : 3.927,
+      "text" : "idence-based review of established"
+    },
+    {
+      "t" : 3.962,
+      "text" : " risk factors and"
+    },
+    {
+      "t" : 3.997,
+      "text" : " pr"
+    },
+    {
+      "t" : 4.033,
+      "text" : "evention\", null"
+    },
+    {
+      "t" : 4.068,
+      "text" : ", \"Open\","
+    },
+    {
+      "t" : 4.104,
+      "text" : " @OpenUrl(\""
+    },
+    {
+      "t" : 4.14,
+      "text" : "https://www.cancer."
+    },
+    {
+      "t" : 4.175,
+      "text" : "gov\"))\ns2 "
+    },
+    {
+      "t" : 4.225,
+      "text" : "= ListItem(\"World"
+    },
+    {
+      "t" : 4.25,
+      "text" : " Health Organization: C"
+    },
+    {
+      "t" : 4.282,
+      "text" : "ancer Fact She"
+    },
+    {
+      "t" : 4.318,
+      "text" : "et\", \"Global"
+    },
+    {
+      "t" : 4.354,
+      "text" : " guidance on prevention and"
+    },
+    {
+      "t" : 4.388,
+      "text" : " tre"
+    },
+    {
+      "t" : 4.425,
+      "text" : "atment\", null, \"Open"
+    },
+    {
+      "t" : 4.46,
+      "text" : "\", @OpenUrl"
+    },
+    {
+      "t" : 4.496,
+      "text" : "(\"https://www.who.int"
+    },
+    {
+      "t" : 4.531,
+      "text" : "/"
+    },
+    {
+      "t" : 4.567,
+      "text" : "news-room/fact-s"
+    },
+    {
+      "t" : 4.602,
+      "text" : "heets/detail/canc"
+    },
+    {
+      "t" : 4.638,
+      "text" : "er\"))\ns3 ="
+    },
+    {
+      "t" : 4.674,
+      "text" : " ListItem(\"Coch"
+    },
+    {
+      "t" : 4.709,
+      "text" : "rane Library"
+    },
+    {
+      "t" : 4.744,
+      "text" : ": D"
+    },
+    {
+      "t" : 4.845,
+      "text" : "ietary Interventions and"
+    },
+    {
+      "t" : 4.872,
+      "text" : " Cancer\", \"Syst"
+    },
+    {
+      "t" : 4.898,
+      "text" : "ematic reviews fin"
+    },
+    {
+      "t" : 4.925,
+      "text" : "ding no c"
+    },
+    {
+      "t" : 4.951,
+      "text" : "ure from"
+    },
+    {
+      "t" : 4.977,
+      "text" : " single"
+    },
+    {
+      "t" : 5.004,
+      "text" : " foods\", null, \"Open"
+    },
+    {
+      "t" : 5.031,
+      "text" : "\", @OpenUrl"
+    },
+    {
+      "t" : 5.064,
+      "text" : "(\"https://www.cochran"
+    },
+    {
+      "t" : 5.1,
+      "text" : "elibrary.com"
+    },
+    {
+      "t" : 5.136,
+      "text" : "\"))\nactions = Bu"
+    },
+    {
+      "t" : 5.17,
+      "text" : "ttons(["
+    },
+    {
+      "t" : 5.206,
+      "text" : "Button(\"Explain the"
+    },
+    {
+      "t" : 5.242,
+      "text" : " rating\", @ToAss"
+    },
+    {
+      "t" : 5.277,
+      "text" : "istant(\"Explain why this"
+    },
+    {
+      "t" : 5.313,
+      "text" : " claim was rated m"
+    },
+    {
+      "t" : 5.35,
+      "text" : "ostly false\"), \"primary"
+    },
+    {
+      "t" : 5.384,
+      "text" : "\"), Button(\"Check another"
+    },
+    {
+      "t" : 5.42,
+      "text" : " claim\", @ToAss"
+    },
+    {
+      "t" : 5.455,
+      "text" : "istant(\"I"
+    },
+    {
+      "t" : 5.49,
+      "text" : " want to fact-check another cla"
+    },
+    {
+      "t" : 5.526,
+      "text" : "im\"), \"secondary\")"
+    },
+    {
+      "t" : 5.562,
+      "text" : "])"
+    }
+  ],
+  "createdAt" : "2026-11-11T10:33:34Z",
+  "effort" : "low",
+  "format" : "openui-recording",
+  "inputTokens" : 14503,
+  "library" : "react-ui",
+  "model" : "claude-sonnet-5-5",
+  "outputTokens" : 728,
+  "request" : "A fact-check card rating a viral claim as \"mostly false\", with the claim, the verdict and three sources.",
+  "servedBy" : "claude-sonnet-5-5",
+  "stopReason" : "end_turn",
+  "version" : 1
+}

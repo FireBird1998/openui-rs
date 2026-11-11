@@ -1,0 +1,492 @@
+{
+  "batchRequest" : {
+    "model" : "haiku",
+    "number" : 112,
+    "request" : "A household chore rotation with room assignments, responsible person, due day and completion checkboxes."
+  },
+  "chunks" : [
+    {
+      "t" : 0.815,
+      "text" : "root"
+    },
+    {
+      "t" : 0.972,
+      "text" : " = Stack([header"
+    },
+    {
+      "t" : 1.009,
+      "text" : ", ch"
+    },
+    {
+      "t" : 1.092,
+      "text" : "ores"
+    },
+    {
+      "t" : 1.131,
+      "text" : ","
+    },
+    {
+      "t" : 1.237,
+      "text" : " t"
+    },
+    {
+      "t" : 1.275,
+      "text" : "ip])\nheader = Inline"
+    },
+    {
+      "t" : 1.316,
+      "text" : "Header(\"Household Ch"
+    },
+    {
+      "t" : 1.367,
+      "text" : "ore Rotation\", \""
+    },
+    {
+      "t" : 1.413,
+      "text" : "Weekly room"
+    },
+    {
+      "t" : 1.436,
+      "text" : " assignments and due"
+    },
+    {
+      "t" : 1.507,
+      "text" : " days"
+    },
+    {
+      "t" : 1.543,
+      "text" : "\")\nchores = Table"
+    },
+    {
+      "t" : 1.575,
+      "text" : "([col"
+    },
+    {
+      "t" : 1.577,
+      "text" : "Room, colOwner"
+    },
+    {
+      "t" : 1.61,
+      "text" : ", colT"
+    },
+    {
+      "t" : 1.658,
+      "text" : "ask, colDue, colD"
+    },
+    {
+      "t" : 1.691,
+      "text" : "one])\ncolRoom ="
+    },
+    {
+      "t" : 1.723,
+      "text" : " Col(\"Room"
+    },
+    {
+      "t" : 1.756,
+      "text" : "\", "
+    },
+    {
+      "t" : 1.787,
+      "text" : "[\"Kitchen\", \""
+    },
+    {
+      "t" : 1.823,
+      "text" : "Bathroom\", \""
+    },
+    {
+      "t" : 1.857,
+      "text" : "Living Room\", \"Bed"
+    },
+    {
+      "t" : 1.889,
+      "text" : "room\", \"Laundry"
+    },
+    {
+      "t" : 1.93,
+      "text" : "\"])\ncolOwner ="
+    },
+    {
+      "t" : 1.97,
+      "text" : " Col(\"Respon"
+    },
+    {
+      "t" : 2.011,
+      "text" : "sible\", [\"Alex"
+    },
+    {
+      "t" : 2.046,
+      "text" : "\", \"J"
+    },
+    {
+      "t" : 2.104,
+      "text" : "amie\", \"Pri"
+    },
+    {
+      "t" : 2.106,
+      "text" : "ya\", \"Sam\", \""
+    },
+    {
+      "t" : 2.15,
+      "text" : "Al"
+    },
+    {
+      "t" : 2.194,
+      "text" : "ex\"])\ncolTask ="
+    },
+    {
+      "t" : 2.257,
+      "text" : " Col(\"Task\", [\""
+    },
+    {
+      "t" : 2.259,
+      "text" : "Cl"
+    },
+    {
+      "t" : 2.327,
+      "text" : "ean coun"
+    },
+    {
+      "t" : 2.331,
+      "text" : "ters and"
+    },
+    {
+      "t" : 2.369,
+      "text" : " s"
+    },
+    {
+      "t" : 2.429,
+      "text" : "ink\", \"Sc"
+    },
+    {
+      "t" : 2.472,
+      "text" : "rub to"
+    },
+    {
+      "t" : 2.511,
+      "text" : "ilet and sh"
+    },
+    {
+      "t" : 2.552,
+      "text" : "ower\", \"V"
+    },
+    {
+      "t" : 2.601,
+      "text" : "acuum and dust\", \""
+    },
+    {
+      "t" : 2.645,
+      "text" : "Change s"
+    },
+    {
+      "t" : 2.691,
+      "text" : "heets\","
+    },
+    {
+      "t" : 2.743,
+      "text" : " \"Run"
+    },
+    {
+      "t" : 2.823,
+      "text" : " washer"
+    },
+    {
+      "t" : 2.918,
+      "text" : " and d"
+    },
+    {
+      "t" : 2.996,
+      "text" : "ryer\"])\ncolDue"
+    },
+    {
+      "t" : 3.061,
+      "text" : " = Col(\"Due\", "
+    },
+    {
+      "t" : 3.122,
+      "text" : "[\"Mon\", \"W"
+    },
+    {
+      "t" : 3.183,
+      "text" : "ed\", \"Fri\", \""
+    },
+    {
+      "t" : 3.25,
+      "text" : "Sat"
+    },
+    {
+      "t" : 3.327,
+      "text" : "\", \"Sun\"])"
+    },
+    {
+      "t" : 3.398,
+      "text" : "\ncolDone = Col(\""
+    },
+    {
+      "t" : 3.497,
+      "text" : "Done\", ["
+    },
+    {
+      "t" : 3.499,
+      "text" : "doneK"
+    },
+    {
+      "t" : 3.552,
+      "text" : "itchen, doneB"
+    },
+    {
+      "t" : 3.638,
+      "text" : "athroom, doneLi"
+    },
+    {
+      "t" : 3.698,
+      "text" : "ving, doneB"
+    },
+    {
+      "t" : 3.755,
+      "text" : "edroom, doneLa"
+    },
+    {
+      "t" : 3.757,
+      "text" : "undry])\ndoneKit"
+    },
+    {
+      "t" : 3.817,
+      "text" : "chen = CheckBo"
+    },
+    {
+      "t" : 3.918,
+      "text" : "xGroup(\""
+    },
+    {
+      "t" : 3.922,
+      "text" : "done"
+    },
+    {
+      "t" : 3.988,
+      "text" : "_kitchen\", [k"
+    },
+    {
+      "t" : 4.059,
+      "text" : "itchenItem])\nk"
+    },
+    {
+      "t" : 4.124,
+      "text" : "itchenItem = Che"
+    },
+    {
+      "t" : 4.192,
+      "text" : "ckBoxItem(\""
+    },
+    {
+      "t" : 4.257,
+      "text" : "Completed\", \""
+    },
+    {
+      "t" : 4.322,
+      "text" : "K"
+    },
+    {
+      "t" : 4.391,
+      "text" : "itchen done this"
+    },
+    {
+      "t" : 4.456,
+      "text" : " week\", \"kitchen_"
+    },
+    {
+      "t" : 4.596,
+      "text" : "done\", false)\ndoneB"
+    },
+    {
+      "t" : 4.678,
+      "text" : "athroom = CheckB"
+    },
+    {
+      "t" : 4.768,
+      "text" : "oxGroup(\"done_"
+    },
+    {
+      "t" : 4.83,
+      "text" : "bathroom\", [bath"
+    },
+    {
+      "t" : 4.879,
+      "text" : "roomItem])\nbath"
+    },
+    {
+      "t" : 4.933,
+      "text" : "room"
+    },
+    {
+      "t" : 5.017,
+      "text" : "Item = CheckBo"
+    },
+    {
+      "t" : 5.019,
+      "text" : "xItem(\"Completed\","
+    },
+    {
+      "t" : 5.078,
+      "text" : " \"Bathroom done this"
+    },
+    {
+      "t" : 5.181,
+      "text" : " week\", \"bathroom_"
+    },
+    {
+      "t" : 5.183,
+      "text" : "done\", false)\ndoneL"
+    },
+    {
+      "t" : 5.284,
+      "text" : "iving = CheckBo"
+    },
+    {
+      "t" : 5.431,
+      "text" : "xGroup(\"done_living"
+    },
+    {
+      "t" : 5.512,
+      "text" : "\", [liv"
+    },
+    {
+      "t" : 5.514,
+      "text" : "ingItem])\nlivingIt"
+    },
+    {
+      "t" : 5.582,
+      "text" : "em = CheckBox"
+    },
+    {
+      "t" : 5.65,
+      "text" : "Item(\"Completed\", \""
+    },
+    {
+      "t" : 5.72,
+      "text" : "Living room done this week\", \""
+    },
+    {
+      "t" : 5.808,
+      "text" : "living_done\", false)\ndo"
+    },
+    {
+      "t" : 5.895,
+      "text" : "neBedroom = Che"
+    },
+    {
+      "t" : 6.01,
+      "text" : "ckBoxGroup(\""
+    },
+    {
+      "t" : 6.079,
+      "text" : "done_bedroom\", ["
+    },
+    {
+      "t" : 6.138,
+      "text" : "bedroomItem])"
+    },
+    {
+      "t" : 6.198,
+      "text" : "\nbedroomItem = C"
+    },
+    {
+      "t" : 6.261,
+      "text" : "heckBoxItem(\""
+    },
+    {
+      "t" : 6.263,
+      "text" : "Completed\", \"Bed"
+    },
+    {
+      "t" : 6.331,
+      "text" : "room done this week\", \"b"
+    },
+    {
+      "t" : 6.396,
+      "text" : "edroom_done\", false)"
+    },
+    {
+      "t" : 6.461,
+      "text" : "\ndoneLaundry ="
+    },
+    {
+      "t" : 6.528,
+      "text" : " CheckBoxGro"
+    },
+    {
+      "t" : 6.653,
+      "text" : "up(\"done_laundry\","
+    },
+    {
+      "t" : 6.735,
+      "text" : " [laundryItem])"
+    },
+    {
+      "t" : 6.802,
+      "text" : "\nlaundryItem = Che"
+    },
+    {
+      "t" : 6.886,
+      "text" : "ckBoxItem(\""
+    },
+    {
+      "t" : 6.963,
+      "text" : "Completed\", \"Laundry"
+    },
+    {
+      "t" : 7.033,
+      "text" : " done this week\", \"laundry"
+    },
+    {
+      "t" : 7.116,
+      "text" : "_done\", false)\ntip"
+    },
+    {
+      "t" : 7.118,
+      "text" : " = TextCallout(\"info"
+    },
+    {
+      "t" : 7.196,
+      "text" : "\", \"Rotation"
+    },
+    {
+      "t" : 7.283,
+      "text" : " tip\", \"Sw"
+    },
+    {
+      "t" : 7.367,
+      "text" : "ap respon"
+    },
+    {
+      "t" : 7.496,
+      "text" : "sible people"
+    },
+    {
+      "t" : 7.498,
+      "text" : " each"
+    },
+    {
+      "t" : 7.579,
+      "text" : " week so everyone cov"
+    },
+    {
+      "t" : 7.658,
+      "text" : "ers every room over"
+    },
+    {
+      "t" : 7.739,
+      "text" : " time.\")"
+    }
+  ],
+  "createdAt" : "2026-11-11T10:58:20Z",
+  "effort" : "low",
+  "format" : "openui-recording",
+  "inputTokens" : 14498,
+  "library" : "react-ui",
+  "model" : "claude-haiku-5-5",
+  "outputTokens" : 707,
+  "request" : "A household chore rotation with room assignments, responsible person, due day and completion checkboxes.",
+  "servedBy" : "claude-haiku-5-5",
+  "stopReason" : "end_turn",
+  "version" : 1
+}

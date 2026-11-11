@@ -1,0 +1,664 @@
+{
+  "batchRequest" : {
+    "model" : "sonnet",
+    "number" : 17,
+    "request" : "Quarterly earnings for a retailer: revenue and profit as KPIs, a bar chart by quarter and a short analysis."
+  },
+  "chunks" : [
+    {
+      "t" : 0.661,
+      "text" : "root = Stack([header,"
+    },
+    {
+      "t" : 0.982,
+      "text" : " kpiBlock, ch"
+    },
+    {
+      "t" : 1.004,
+      "text" : "artCard, analysisC"
+    },
+    {
+      "t" : 1.031,
+      "text" : "ard])\nheader = Inline"
+    },
+    {
+      "t" : 1.054,
+      "text" : "Header(\"Quarter"
+    },
+    {
+      "t" : 1.074,
+      "text" : "ly Earnings - FY"
+    },
+    {
+      "t" : 1.096,
+      "text" : "2024\", \"Retail"
+    },
+    {
+      "t" : 1.103,
+      "text" : "er performance over"
+    },
+    {
+      "t" : 1.114,
+      "text" : "view\")\nkpiBl"
+    },
+    {
+      "t" : 1.121,
+      "text" : "ock = O"
+    },
+    {
+      "t" : 1.131,
+      "text" : "verviewCardBlock"
+    },
+    {
+      "t" : 1.138,
+      "text" : "([k1, k2, k"
+    },
+    {
+      "t" : 1.148,
+      "text" : "3, k4])\nk1"
+    },
+    {
+      "t" : 1.315,
+      "text" : " = OverviewCard"
+    },
+    {
+      "t" : 1.332,
+      "text" : "Item(\"r"
+    },
+    {
+      "t" : 1.341,
+      "text" : "ev\", k1top,"
+    },
+    {
+      "t" : 1.356,
+      "text" : " k1m)\nk1top"
+    },
+    {
+      "t" : 1.371,
+      "text" : " = IconText(k1i"
+    },
+    {
+      "t" : 1.386,
+      "text" : ", \"neutral\", \"m"
+    },
+    {
+      "t" : 1.401,
+      "text" : "\", \"Total Revenue"
+    },
+    {
+      "t" : 1.416,
+      "text" : "\", \""
+    },
+    {
+      "t" : 1.424,
+      "text" : "FY2024\", false, \""
+    },
+    {
+      "t" : 1.436,
+      "text" : "horizontal\")\nk1"
+    },
+    {
+      "t" : 1.465,
+      "text" : "i = Icon(\"circ"
+    },
+    {
+      "t" : 1.499,
+      "text" : "le-dollar-sign"
+    },
+    {
+      "t" : 1.645,
+      "text" : "\", \"finance\")\nk1"
+    },
+    {
+      "t" : 1.657,
+      "text" : "m = MetricIndic"
+    },
+    {
+      "t" : 1.674,
+      "text" : "atorInline(\"$4."
+    },
+    {
+      "t" : 1.691,
+      "text" : "82B"
+    },
+    {
+      "t" : 1.71,
+      "text" : "\", \"v"
+    },
+    {
+      "t" : 1.728,
+      "text" : "s F"
+    },
+    {
+      "t" : 1.745,
+      "text" : "Y2"
+    },
+    {
+      "t" : 1.78,
+      "text" : "023\", { direction: \"up"
+    },
+    {
+      "t" : 1.815,
+      "text" : "\", value: 7"
+    },
+    {
+      "t" : 1.851,
+      "text" : " "
+    },
+    {
+      "t" : 1.886,
+      "text" : "})\nk2 = Over"
+    },
+    {
+      "t" : 1.921,
+      "text" : "viewCardItem(\"prof"
+    },
+    {
+      "t" : 1.972,
+      "text" : "it\", k2top, k2"
+    },
+    {
+      "t" : 1.994,
+      "text" : "m)\nk2top = I"
+    },
+    {
+      "t" : 2.028,
+      "text" : "conText(k2i, \""
+    },
+    {
+      "t" : 2.068,
+      "text" : "neutral\", \"m\", \""
+    },
+    {
+      "t" : 2.099,
+      "text" : "Net Profit\", \"F"
+    },
+    {
+      "t" : 2.136,
+      "text" : "Y2024\", false, \"hor"
+    },
+    {
+      "t" : 2.171,
+      "text" : "izontal\")\nk2i"
+    },
+    {
+      "t" : 2.207,
+      "text" : " = Icon(\"trending-"
+    },
+    {
+      "t" : 2.243,
+      "text" : "up\", \"finance\")\nk"
+    },
+    {
+      "t" : 2.278,
+      "text" : "2m = MetricInd"
+    },
+    {
+      "t" : 2.314,
+      "text" : "icatorInline(\"$386"
+    },
+    {
+      "t" : 2.349,
+      "text" : "M\", \"vs FY2"
+    },
+    {
+      "t" : 2.385,
+      "text" : "023\", { direction: \"up"
+    },
+    {
+      "t" : 2.421,
+      "text" : "\", value: 11 })"
+    },
+    {
+      "t" : 2.457,
+      "text" : "\nk3 = Overview"
+    },
+    {
+      "t" : 2.494,
+      "text" : "CardItem(\"margin\","
+    },
+    {
+      "t" : 2.528,
+      "text" : " k3top, k3m)"
+    },
+    {
+      "t" : 2.563,
+      "text" : "\nk3top = IconText"
+    },
+    {
+      "t" : 2.599,
+      "text" : "(k3i, \"neut"
+    },
+    {
+      "t" : 2.635,
+      "text" : "ral\", \"m\", \"Net"
+    },
+    {
+      "t" : 2.669,
+      "text" : " Margin\", \"FY2"
+    },
+    {
+      "t" : 2.708,
+      "text" : "024\", false, \"horizont"
+    },
+    {
+      "t" : 2.746,
+      "text" : "al\")\nk3i ="
+    },
+    {
+      "t" : 2.776,
+      "text" : " Icon(\"percent\", \"fin"
+    },
+    {
+      "t" : 2.814,
+      "text" : "ance\")\nk3m = M"
+    },
+    {
+      "t" : 2.849,
+      "text" : "etricIndicatorIn"
+    },
+    {
+      "t" : 2.883,
+      "text" : "line(\"8.0%\", \""
+    },
+    {
+      "t" : 2.918,
+      "text" : "vs "
+    },
+    {
+      "t" : 2.953,
+      "text" : "7.7"
+    },
+    {
+      "t" : 2.988,
+      "text" : "%"
+    },
+    {
+      "t" : 3.024,
+      "text" : "\", { direction: \"up\","
+    },
+    {
+      "t" : 3.058,
+      "text" : " value: 4"
+    },
+    {
+      "t" : 3.095,
+      "text" : " })\nk4 = O"
+    },
+    {
+      "t" : 3.13,
+      "text" : "verviewCardItem(\""
+    },
+    {
+      "t" : 3.166,
+      "text" : "sss"
+    },
+    {
+      "t" : 3.201,
+      "text" : "\", k4top, k4m"
+    },
+    {
+      "t" : 3.236,
+      "text" : ")\nk4top = Icon"
+    },
+    {
+      "t" : 3.272,
+      "text" : "Text(k4i, \"ne"
+    },
+    {
+      "t" : 3.307,
+      "text" : "utral\", \"m\", \""
+    },
+    {
+      "t" : 3.344,
+      "text" : "Same-Store Sales\","
+    },
+    {
+      "t" : 3.379,
+      "text" : " \"FY2024\", false,"
+    },
+    {
+      "t" : 3.415,
+      "text" : " \"horizontal\")\nk"
+    },
+    {
+      "t" : 3.449,
+      "text" : "4i = Icon(\"store"
+    },
+    {
+      "t" : 3.485,
+      "text" : "\", \"shopping\")\nk"
+    },
+    {
+      "t" : 3.52,
+      "text" : "4m = MetricInd"
+    },
+    {
+      "t" : 3.556,
+      "text" : "icatorInline(\"+"
+    },
+    {
+      "t" : 3.593,
+      "text" : "3.2%\", \"Y"
+    },
+    {
+      "t" : 3.627,
+      "text" : "oY\", { direction: \""
+    },
+    {
+      "t" : 3.662,
+      "text" : "up\", value: 3 })"
+    },
+    {
+      "t" : 3.698,
+      "text" : "\nchartCard = Card"
+    },
+    {
+      "t" : 3.733,
+      "text" : "([chart"
+    },
+    {
+      "t" : 3.771,
+      "text" : "Header, chart])"
+    },
+    {
+      "t" : 3.804,
+      "text" : "\nchartHeader = Card"
+    },
+    {
+      "t" : 3.843,
+      "text" : "Header(\"Revenue"
+    },
+    {
+      "t" : 3.877,
+      "text" : " and Profit by Quar"
+    },
+    {
+      "t" : 3.914,
+      "text" : "ter\", \"In $"
+    },
+    {
+      "t" : 3.946,
+      "text" : " millions\")\nchart ="
+    },
+    {
+      "t" : 3.982,
+      "text" : " BarChart([\""
+    },
+    {
+      "t" : 4.017,
+      "text" : "Q1\", \"Q2"
+    },
+    {
+      "t" : 4.053,
+      "text" : "\", \"Q3\", \""
+    },
+    {
+      "t" : 4.087,
+      "text" : "Q4\"], [s1,"
+    },
+    {
+      "t" : 4.125,
+      "text" : " s2], \"grouped\","
+    },
+    {
+      "t" : 4.16,
+      "text" : " \"Qu"
+    },
+    {
+      "t" : 4.194,
+      "text" : "arter\", \"$"
+    },
+    {
+      "t" : 4.229,
+      "text" : " millions\")\ns1 "
+    },
+    {
+      "t" : 4.265,
+      "text" : "= Series(\"Revenue"
+    },
+    {
+      "t" : 4.3,
+      "text" : "\", [1050"
+    },
+    {
+      "t" : 4.336,
+      "text" : ", 1090"
+    },
+    {
+      "t" : 4.371,
+      "text" : ", 1130"
+    },
+    {
+      "t" : 4.406,
+      "text" : ", 1550"
+    },
+    {
+      "t" : 4.442,
+      "text" : "])\ns2 = Series"
+    },
+    {
+      "t" : 4.478,
+      "text" : "(\"Profit\", [74,"
+    },
+    {
+      "t" : 4.513,
+      "text" : " 82"
+    },
+    {
+      "t" : 4.548,
+      "text" : ", 88, 142"
+    },
+    {
+      "t" : 4.584,
+      "text" : "])\nanalysisCard ="
+    },
+    {
+      "t" : 4.619,
+      "text" : " Card([analysisHe"
+    },
+    {
+      "t" : 4.655,
+      "text" : "ader, analysis"
+    },
+    {
+      "t" : 4.689,
+      "text" : "Text, note"
+    },
+    {
+      "t" : 4.726,
+      "text" : "])\nanalysisHeader"
+    },
+    {
+      "t" : 4.761,
+      "text" : " = CardHeader(\""
+    },
+    {
+      "t" : 4.796,
+      "text" : "Analysis\")\nanalysis"
+    },
+    {
+      "t" : 4.832,
+      "text" : "Text = TextContent(\""
+    },
+    {
+      "t" : 4.868,
+      "text" : "Rev"
+    },
+    {
+      "t" : 4.904,
+      "text" : "enue grew 7% year"
+    },
+    {
+      "t" : 4.938,
+      "text" : " over year, with **"
+    },
+    {
+      "t" : 4.973,
+      "text" : "Q4 cont"
+    },
+    {
+      "t" : 5.008,
+      "text" : "ributing about"
+    },
+    {
+      "t" : 5.044,
+      "text" : " 32%"
+    },
+    {
+      "t" : 5.079,
+      "text" : "** of ann"
+    },
+    {
+      "t" : 5.115,
+      "text" : "ual sales th"
+    },
+    {
+      "t" : 5.15,
+      "text" : "anks to holiday dem"
+    },
+    {
+      "t" : 5.185,
+      "text" : "and. Prof"
+    },
+    {
+      "t" : 5.221,
+      "text" : "it rose fa"
+    },
+    {
+      "t" : 5.256,
+      "text" : "ster than revenue ("
+    },
+    {
+      "t" : 5.292,
+      "text" : "11%), l"
+    },
+    {
+      "t" : 5.328,
+      "text" : "ifting net margin from 7"
+    },
+    {
+      "t" : 5.367,
+      "text" : ".7% to 8.0"
+    },
+    {
+      "t" : 5.398,
+      "text" : "%"
+    },
+    {
+      "t" : 5.433,
+      "text" : " as prom"
+    },
+    {
+      "t" : 5.468,
+      "text" : "otional spend was"
+    },
+    {
+      "t" : 5.503,
+      "text" : " better"
+    },
+    {
+      "t" : 5.539,
+      "text" : " controlled and supply ch"
+    },
+    {
+      "t" : 5.574,
+      "text" : "ain costs e"
+    },
+    {
+      "t" : 5.615,
+      "text" : "ased. Q1 "
+    },
+    {
+      "t" : 5.649,
+      "text" : "to Q3 were"
+    },
+    {
+      "t" : 5.681,
+      "text" : " steady, with"
+    },
+    {
+      "t" : 5.715,
+      "text" : " mod"
+    },
+    {
+      "t" : 5.752,
+      "text" : "est s"
+    },
+    {
+      "t" : 5.787,
+      "text" : "equential growth of"
+    },
+    {
+      "t" : 5.821,
+      "text" : " "
+    },
+    {
+      "t" : 5.857,
+      "text" : "3-4% per"
+    },
+    {
+      "t" : 5.893,
+      "text" : " quarter.\")\nnote ="
+    },
+    {
+      "t" : 5.928,
+      "text" : " Callout(\"info"
+    },
+    {
+      "t" : 5.963,
+      "text" : "\", \"Out"
+    },
+    {
+      "t" : 6,
+      "text" : "look\", \"Watch in"
+    },
+    {
+      "t" : 6.034,
+      "text" : "ventory lev"
+    },
+    {
+      "t" : 6.07,
+      "text" : "els and cons"
+    },
+    {
+      "t" : 6.105,
+      "text" : "umer spending he"
+    },
+    {
+      "t" : 6.14,
+      "text" : "ading into next year;"
+    },
+    {
+      "t" : 6.176,
+      "text" : " marg"
+    },
+    {
+      "t" : 6.21,
+      "text" : "in g"
+    },
+    {
+      "t" : 6.246,
+      "text" : "ains depend on keeping mark"
+    },
+    {
+      "t" : 6.282,
+      "text" : "downs in"
+    },
+    {
+      "t" : 6.317,
+      "text" : " check.\")"
+    }
+  ],
+  "createdAt" : "2026-11-11T10:34:08Z",
+  "effort" : "low",
+  "format" : "openui-recording",
+  "inputTokens" : 14511,
+  "library" : "react-ui",
+  "model" : "claude-sonnet-5-5",
+  "outputTokens" : 1001,
+  "request" : "Quarterly earnings for a retailer: revenue and profit as KPIs, a bar chart by quarter and a short analysis.",
+  "servedBy" : "claude-sonnet-5-5",
+  "stopReason" : "end_turn",
+  "version" : 1
+}

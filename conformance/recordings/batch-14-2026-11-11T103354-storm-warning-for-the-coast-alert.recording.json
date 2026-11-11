@@ -1,0 +1,720 @@
+{
+  "batchRequest" : {
+    "model" : "haiku",
+    "number" : 14,
+    "request" : "Storm warning for the coast: alert level, affected areas, timeline steps and safety tips."
+  },
+  "chunks" : [
+    {
+      "t" : 1.148,
+      "text" : "root"
+    },
+    {
+      "t" : 1.188,
+      "text" : " = Stack(["
+    },
+    {
+      "t" : 1.203,
+      "text" : "al"
+    },
+    {
+      "t" : 1.235,
+      "text" : "ertHeader, alertC"
+    },
+    {
+      "t" : 1.245,
+      "text" : "allout, are"
+    },
+    {
+      "t" : 1.267,
+      "text" : "asHeader, are"
+    },
+    {
+      "t" : 1.284,
+      "text" : "asTable, timelineH"
+    },
+    {
+      "t" : 1.305,
+      "text" : "eader, time"
+    },
+    {
+      "t" : 1.327,
+      "text" : "line, safetyHeader"
+    },
+    {
+      "t" : 1.345,
+      "text" : ", safetyT"
+    },
+    {
+      "t" : 1.367,
+      "text" : "ips])\nalertHeader"
+    },
+    {
+      "t" : 1.562,
+      "text" : " = InlineHeader(\""
+    },
+    {
+      "t" : 1.569,
+      "text" : "Co"
+    },
+    {
+      "t" : 1.58,
+      "text" : "astal Storm War"
+    },
+    {
+      "t" : 1.587,
+      "text" : "ning\", \"Current"
+    },
+    {
+      "t" : 1.598,
+      "text" : " alert level and status"
+    },
+    {
+      "t" : 1.61,
+      "text" : "\")\nalertCallout ="
+    },
+    {
+      "t" : 1.617,
+      "text" : " Callout(\"error\", \""
+    },
+    {
+      "t" : 1.629,
+      "text" : "Al"
+    },
+    {
+      "t" : 1.637,
+      "text" : "ert Level: Red"
+    },
+    {
+      "t" : 1.649,
+      "text" : " ("
+    },
+    {
+      "t" : 1.661,
+      "text" : "Sever"
+    },
+    {
+      "t" : 1.669,
+      "text" : "e)\", \"Sever"
+    },
+    {
+      "t" : 1.789,
+      "text" : "e co"
+    },
+    {
+      "t" : 1.803,
+      "text" : "astal storm expected."
+    },
+    {
+      "t" : 1.816,
+      "text" : " Wind"
+    },
+    {
+      "t" : 1.828,
+      "text" : " g"
+    },
+    {
+      "t" : 1.835,
+      "text" : "usts up"
+    },
+    {
+      "t" : 1.846,
+      "text" : " to 110"
+    },
+    {
+      "t" : 1.853,
+      "text" : " km"
+    },
+    {
+      "t" : 1.863,
+      "text" : "/h,"
+    },
+    {
+      "t" : 1.87,
+      "text" : " stor"
+    },
+    {
+      "t" : 1.882,
+      "text" : "m surge"
+    },
+    {
+      "t" : 1.894,
+      "text" : " of 2"
+    },
+    {
+      "t" : 1.902,
+      "text" : " "
+    },
+    {
+      "t" : 1.983,
+      "text" : "to 3 meters, and"
+    },
+    {
+      "t" : 1.997,
+      "text" : " heavy r"
+    },
+    {
+      "t" : 2.011,
+      "text" : "ain"
+    },
+    {
+      "t" : 2.019,
+      "text" : "fall. Co"
+    },
+    {
+      "t" : 2.031,
+      "text" : "astal fl"
+    },
+    {
+      "t" : 2.044,
+      "text" : "ooding is lik"
+    },
+    {
+      "t" : 2.053,
+      "text" : "ely at"
+    },
+    {
+      "t" : 2.067,
+      "text" : " high tide.\")\nareas"
+    },
+    {
+      "t" : 2.081,
+      "text" : "Header = InlineH"
+    },
+    {
+      "t" : 2.096,
+      "text" : "eader(\"Affected Are"
+    },
+    {
+      "t" : 2.11,
+      "text" : "as\", \"Coastal z"
+    },
+    {
+      "t" : 2.119,
+      "text" : "ones under"
+    },
+    {
+      "t" : 2.226,
+      "text" : " war"
+    },
+    {
+      "t" : 2.236,
+      "text" : "ning\")\nareasTable ="
+    },
+    {
+      "t" : 2.25,
+      "text" : " Table([Col(\"Area"
+    },
+    {
+      "t" : 2.264,
+      "text" : "\", area"
+    },
+    {
+      "t" : 2.28,
+      "text" : "Names), Col(\"War"
+    },
+    {
+      "t" : 2.295,
+      "text" : "ning\","
+    },
+    {
+      "t" : 2.311,
+      "text" : " areaLevels"
+    },
+    {
+      "t" : 2.327,
+      "text" : ","
+    },
+    {
+      "t" : 2.337,
+      "text" : " \"string\"), Col(\""
+    },
+    {
+      "t" : 2.353,
+      "text" : "Expected Sur"
+    },
+    {
+      "t" : 2.371,
+      "text" : "ge ("
+    },
+    {
+      "t" : 2.39,
+      "text" : "m)\", areaSurge"
+    },
+    {
+      "t" : 2.416,
+      "text" : ", \"number\")"
+    },
+    {
+      "t" : 2.433,
+      "text" : "])\nareaNames = "
+    },
+    {
+      "t" : 2.451,
+      "text" : "[\""
+    },
+    {
+      "t" : 2.468,
+      "text" : "Northern Har"
+    },
+    {
+      "t" : 2.486,
+      "text" : "bor\", \"Ri"
+    },
+    {
+      "t" : 2.504,
+      "text" : "verside District"
+    },
+    {
+      "t" : 2.522,
+      "text" : "\", \"E"
+    },
+    {
+      "t" : 2.54,
+      "text" : "astern Be"
+    },
+    {
+      "t" : 2.557,
+      "text" : "aches\", \"Old"
+    },
+    {
+      "t" : 2.569,
+      "text" : " Town Sho"
+    },
+    {
+      "t" : 2.588,
+      "text" : "reline\", \"Southern"
+    },
+    {
+      "t" : 2.606,
+      "text" : " Cli"
+    },
+    {
+      "t" : 2.624,
+      "text" : "ffs\"]\nareaL"
+    },
+    {
+      "t" : 2.636,
+      "text" : "evels = [\"Red\","
+    },
+    {
+      "t" : 2.654,
+      "text" : " \"Red"
+    },
+    {
+      "t" : 2.672,
+      "text" : "\", \"Or"
+    },
+    {
+      "t" : 2.692,
+      "text" : "ange\", \"Or"
+    },
+    {
+      "t" : 2.712,
+      "text" : "ange\", \"Y"
+    },
+    {
+      "t" : 2.733,
+      "text" : "ellow\"]\nareaS"
+    },
+    {
+      "t" : 2.753,
+      "text" : "urge = [3"
+    },
+    {
+      "t" : 2.774,
+      "text" : ".0, 2.5,"
+    },
+    {
+      "t" : 2.795,
+      "text" : " 2.0, 1."
+    },
+    {
+      "t" : 2.815,
+      "text" : "8, 1.0"
+    },
+    {
+      "t" : 2.835,
+      "text" : "]\ntimelineHeader"
+    },
+    {
+      "t" : 2.857,
+      "text" : " = InlineHeader(\""
+    },
+    {
+      "t" : 2.878,
+      "text" : "Timeline\", \"What"
+    },
+    {
+      "t" : 2.899,
+      "text" : " to expect and"
+    },
+    {
+      "t" : 2.919,
+      "text" : " when\")\ntimeline ="
+    },
+    {
+      "t" : 2.939,
+      "text" : " Steps([t"
+    },
+    {
+      "t" : 2.962,
+      "text" : "1, t2, t3,"
+    },
+    {
+      "t" : 2.982,
+      "text" : " t4])\nt1 ="
+    },
+    {
+      "t" : 3.003,
+      "text" : " StepsItem(\"Now"
+    },
+    {
+      "t" : 3.024,
+      "text" : " to"
+    },
+    {
+      "t" : 3.045,
+      "text" : " 6"
+    },
+    {
+      "t" : 3.067,
+      "text" : " hours\", \"G"
+    },
+    {
+      "t" : 3.088,
+      "text" : "ale"
+    },
+    {
+      "t" : 3.11,
+      "text" : "-"
+    },
+    {
+      "t" : 3.132,
+      "text" : "force winds build"
+    },
+    {
+      "t" : 3.154,
+      "text" : " and co"
+    },
+    {
+      "t" : 3.176,
+      "text" : "astal ro"
+    },
+    {
+      "t" : 3.199,
+      "text" : "ads beg"
+    },
+    {
+      "t" : 3.221,
+      "text" : "in to close. Sec"
+    },
+    {
+      "t" : 3.235,
+      "text" : "ure lo"
+    },
+    {
+      "t" : 3.258,
+      "text" : "ose out"
+    },
+    {
+      "t" : 3.281,
+      "text" : "door items.\")\nt"
+    },
+    {
+      "t" : 3.304,
+      "text" : "2 = StepsItem"
+    },
+    {
+      "t" : 3.327,
+      "text" : "(\"6 to 12 h"
+    },
+    {
+      "t" : 3.348,
+      "text" : "ours\", \"Stor"
+    },
+    {
+      "t" : 3.37,
+      "text" : "m re"
+    },
+    {
+      "t" : 3.371,
+      "text" : "aches pe"
+    },
+    {
+      "t" : 3.414,
+      "text" : "ak int"
+    },
+    {
+      "t" : 3.437,
+      "text" : "ensity. Heavy r"
+    },
+    {
+      "t" : 3.46,
+      "text" : "ain and"
+    },
+    {
+      "t" : 3.483,
+      "text" : " wind g"
+    },
+    {
+      "t" : 3.506,
+      "text" : "usts up"
+    },
+    {
+      "t" : 3.52,
+      "text" : " to 110 km/h."
+    },
+    {
+      "t" : 3.543,
+      "text" : " Avoid all"
+    },
+    {
+      "t" : 3.566,
+      "text" : " coastal areas.\")"
+    },
+    {
+      "t" : 3.591,
+      "text" : "\nt3 = StepsIt"
+    },
+    {
+      "t" : 3.615,
+      "text" : "em(\"12 to 18"
+    },
+    {
+      "t" : 3.638,
+      "text" : " hours\", \"Storm"
+    },
+    {
+      "t" : 3.653,
+      "text" : " surge co"
+    },
+    {
+      "t" : 3.677,
+      "text" : "incides with high tide,"
+    },
+    {
+      "t" : 3.703,
+      "text" : " causing the"
+    },
+    {
+      "t" : 3.727,
+      "text" : " most ser"
+    },
+    {
+      "t" : 3.752,
+      "text" : "ious flooding. St"
+    },
+    {
+      "t" : 3.777,
+      "text" : "ay ind"
+    },
+    {
+      "t" : 3.801,
+      "text" : "oors on"
+    },
+    {
+      "t" : 3.825,
+      "text" : " higher floors.\")\nt"
+    },
+    {
+      "t" : 3.851,
+      "text" : "4 = StepsItem"
+    },
+    {
+      "t" : 3.879,
+      "text" : "(\"18 to 30"
+    },
+    {
+      "t" : 3.879,
+      "text" : " hours\", \"Win"
+    },
+    {
+      "t" : 3.907,
+      "text" : "ds "
+    },
+    {
+      "t" : 3.961,
+      "text" : "ease and sur"
+    },
+    {
+      "t" : 3.989,
+      "text" : "ge rec"
+    },
+    {
+      "t" : 4.017,
+      "text" : "edes. W"
+    },
+    {
+      "t" : 4.047,
+      "text" : "ait for official"
+    },
+    {
+      "t" : 4.076,
+      "text" : " all"
+    },
+    {
+      "t" : 4.106,
+      "text" : "-clear before"
+    },
+    {
+      "t" : 4.136,
+      "text" : " in"
+    },
+    {
+      "t" : 4.166,
+      "text" : "specting damage or"
+    },
+    {
+      "t" : 4.186,
+      "text" : " returning to coastal areas"
+    },
+    {
+      "t" : 4.216,
+      "text" : ".\")\nsafetyHe"
+    },
+    {
+      "t" : 4.236,
+      "text" : "ader = InlineHeader"
+    },
+    {
+      "t" : 4.265,
+      "text" : "(\"Safety Tips\","
+    },
+    {
+      "t" : 4.295,
+      "text" : " \"Act"
+    },
+    {
+      "t" : 4.326,
+      "text" : "ions to prot"
+    },
+    {
+      "t" : 4.356,
+      "text" : "ect yourself and your property"
+    },
+    {
+      "t" : 4.384,
+      "text" : "\")\nsafetyTips ="
+    },
+    {
+      "t" : 4.411,
+      "text" : " Tag"
+    },
+    {
+      "t" : 4.437,
+      "text" : "Block([\""
+    },
+    {
+      "t" : 4.464,
+      "text" : "Stay indoors away"
+    },
+    {
+      "t" : 4.49,
+      "text" : " from wind"
+    },
+    {
+      "t" : 4.517,
+      "text" : "ows\","
+    },
+    {
+      "t" : 4.544,
+      "text" : " \"Move v"
+    },
+    {
+      "t" : 4.571,
+      "text" : "ehicles to higher "
+    },
+    {
+      "t" : 4.599,
+      "text" : "ground\", \"Keep ph"
+    },
+    {
+      "t" : 4.626,
+      "text" : "ones char"
+    },
+    {
+      "t" : 4.655,
+      "text" : "ged and em"
+    },
+    {
+      "t" : 4.684,
+      "text" : "ergency k"
+    },
+    {
+      "t" : 4.716,
+      "text" : "it"
+    },
+    {
+      "t" : 4.736,
+      "text" : " "
+    },
+    {
+      "t" : 4.765,
+      "text" : "ready\", \"Do not wal"
+    },
+    {
+      "t" : 4.796,
+      "text" : "k or"
+    },
+    {
+      "t" : 4.833,
+      "text" : " drive through flo"
+    },
+    {
+      "t" : 4.863,
+      "text" : "odwater"
+    },
+    {
+      "t" : 4.893,
+      "text" : "\", \"Foll"
+    },
+    {
+      "t" : 4.923,
+      "text" : "ow ev"
+    },
+    {
+      "t" : 4.953,
+      "text" : "acuation or"
+    },
+    {
+      "t" : 4.982,
+      "text" : "ders imm"
+    },
+    {
+      "t" : 5.002,
+      "text" : "ediately\", \"Mon"
+    },
+    {
+      "t" : 5.032,
+      "text" : "itor official"
+    },
+    {
+      "t" : 5.063,
+      "text" : " upd"
+    },
+    {
+      "t" : 5.094,
+      "text" : "ates on"
+    },
+    {
+      "t" : 5.124,
+      "text" : " local"
+    },
+    {
+      "t" : 5.154,
+      "text" : " radio\"])"
+    }
+  ],
+  "createdAt" : "2026-11-11T10:33:54Z",
+  "effort" : "low",
+  "format" : "openui-recording",
+  "inputTokens" : 14499,
+  "library" : "react-ui",
+  "model" : "claude-haiku-5-5",
+  "outputTokens" : 814,
+  "request" : "Storm warning for the coast: alert level, affected areas, timeline steps and safety tips.",
+  "servedBy" : "claude-haiku-5-5",
+  "stopReason" : "end_turn",
+  "version" : 1
+}

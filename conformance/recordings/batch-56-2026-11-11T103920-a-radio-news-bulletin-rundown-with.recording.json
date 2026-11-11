@@ -1,0 +1,532 @@
+{
+  "batchRequest" : {
+    "model" : "haiku",
+    "number" : 56,
+    "request" : "A radio news bulletin rundown with segment durations, presenter names and a total running-time card."
+  },
+  "chunks" : [
+    {
+      "t" : 0.771,
+      "text" : "root"
+    },
+    {
+      "t" : 0.929,
+      "text" : " = Stack([header"
+    },
+    {
+      "t" : 0.968,
+      "text" : ", seg"
+    },
+    {
+      "t" : 0.969,
+      "text" : "mentT"
+    },
+    {
+      "t" : 1.064,
+      "text" : "able, totalC"
+    },
+    {
+      "t" : 1.093,
+      "text" : "ard])\nheader = Inline"
+    },
+    {
+      "t" : 1.16,
+      "text" : "Header(\"Morning"
+    },
+    {
+      "t" : 1.207,
+      "text" : " News"
+    },
+    {
+      "t" : 1.242,
+      "text" : " Bulletin\", \""
+    },
+    {
+      "t" : 1.244,
+      "text" : "Rundown with"
+    },
+    {
+      "t" : 1.271,
+      "text" : " segment durations and presenters"
+    },
+    {
+      "t" : 1.302,
+      "text" : "\")\nsegmentTable ="
+    },
+    {
+      "t" : 1.349,
+      "text" : " Table([col"
+    },
+    {
+      "t" : 1.397,
+      "text" : "Segment"
+    },
+    {
+      "t" : 1.446,
+      "text" : ", colPresenter, col"
+    },
+    {
+      "t" : 1.484,
+      "text" : "Duration, colSt"
+    },
+    {
+      "t" : 1.537,
+      "text" : "at"
+    },
+    {
+      "t" : 1.59,
+      "text" : "us])\ncolSegment ="
+    },
+    {
+      "t" : 1.645,
+      "text" : " Col(\"Seg"
+    },
+    {
+      "t" : 1.706,
+      "text" : "ment\", "
+    },
+    {
+      "t" : 1.756,
+      "text" : "[\"Headlines\", \""
+    },
+    {
+      "t" : 1.806,
+      "text" : "Local"
+    },
+    {
+      "t" : 1.913,
+      "text" : " Weather\", \"Business"
+    },
+    {
+      "t" : 1.956,
+      "text" : " Update\", \"Interview:"
+    },
+    {
+      "t" : 2.047,
+      "text" : " Trans"
+    },
+    {
+      "t" : 2.094,
+      "text" : "port Minister\", \"S"
+    },
+    {
+      "t" : 2.153,
+      "text" : "ports Round"
+    },
+    {
+      "t" : 2.215,
+      "text" : "-up\", \"Community Events"
+    },
+    {
+      "t" : 2.281,
+      "text" : "\", \"Closing Head"
+    },
+    {
+      "t" : 2.318,
+      "text" : "l"
+    },
+    {
+      "t" : 2.381,
+      "text" : "ines\"])\ncolPresen"
+    },
+    {
+      "t" : 2.382,
+      "text" : "ter = Col(\"Presen"
+    },
+    {
+      "t" : 2.447,
+      "text" : "ter\", [\"Sarah"
+    },
+    {
+      "t" : 2.542,
+      "text" : " M"
+    },
+    {
+      "t" : 2.575,
+      "text" : "itchell\", \"T"
+    },
+    {
+      "t" : 2.619,
+      "text" : "om Re"
+    },
+    {
+      "t" : 2.7,
+      "text" : "y"
+    },
+    {
+      "t" : 2.765,
+      "text" : "es\", \""
+    },
+    {
+      "t" : 2.766,
+      "text" : "Priya Sh"
+    },
+    {
+      "t" : 2.826,
+      "text" : "ah\", \"James O"
+    },
+    {
+      "t" : 2.887,
+      "text" : "'Conn"
+    },
+    {
+      "t" : 2.961,
+      "text" : "or\", \"D"
+    },
+    {
+      "t" : 3.032,
+      "text" : "an Wal"
+    },
+    {
+      "t" : 3.175,
+      "text" : "sh\", \"Aisha"
+    },
+    {
+      "t" : 3.249,
+      "text" : " B"
+    },
+    {
+      "t" : 3.295,
+      "text" : "ello\", \"Sarah"
+    },
+    {
+      "t" : 3.335,
+      "text" : " Mitchell\"])\ncol"
+    },
+    {
+      "t" : 3.336,
+      "text" : "Duration = Col(\""
+    },
+    {
+      "t" : 3.38,
+      "text" : "Duration\","
+    },
+    {
+      "t" : 3.444,
+      "text" : " [\"03"
+    },
+    {
+      "t" : 3.512,
+      "text" : ":00"
+    },
+    {
+      "t" : 3.593,
+      "text" : "\", \"02:00"
+    },
+    {
+      "t" : 3.678,
+      "text" : "\", \"04"
+    },
+    {
+      "t" : 3.679,
+      "text" : ":30"
+    },
+    {
+      "t" : 3.737,
+      "text" : "\", \"08"
+    },
+    {
+      "t" : 3.793,
+      "text" : ":00\", \"03"
+    },
+    {
+      "t" : 3.857,
+      "text" : ":30"
+    },
+    {
+      "t" : 3.931,
+      "text" : "\", \"02:30"
+    },
+    {
+      "t" : 4.036,
+      "text" : "\", \"01"
+    },
+    {
+      "t" : 4.037,
+      "text" : ":30"
+    },
+    {
+      "t" : 4.106,
+      "text" : "\"], \"string"
+    },
+    {
+      "t" : 4.184,
+      "text" : "\")\ncolStatus ="
+    },
+    {
+      "t" : 4.266,
+      "text" : " Col(\"Status\", ["
+    },
+    {
+      "t" : 4.346,
+      "text" : "stat"
+    },
+    {
+      "t" : 4.424,
+      "text" : "usTag1"
+    },
+    {
+      "t" : 4.579,
+      "text" : ", statusTag2, stat"
+    },
+    {
+      "t" : 4.632,
+      "text" : "usTag3, statusT"
+    },
+    {
+      "t" : 4.703,
+      "text" : "ag4, statusTag5"
+    },
+    {
+      "t" : 4.784,
+      "text" : ", statusTag6, stat"
+    },
+    {
+      "t" : 4.869,
+      "text" : "usTag7])\nstatus"
+    },
+    {
+      "t" : 4.871,
+      "text" : "Tag1 = Tag"
+    },
+    {
+      "t" : 4.968,
+      "text" : "(\""
+    },
+    {
+      "t" : 5.065,
+      "text" : "Ready\", null, \"sm\","
+    },
+    {
+      "t" : 5.213,
+      "text" : " \"success\")\nstatusTag"
+    },
+    {
+      "t" : 5.215,
+      "text" : "2 = Tag(\""
+    },
+    {
+      "t" : 5.297,
+      "text" : "Ready\", null, \"sm"
+    },
+    {
+      "t" : 5.389,
+      "text" : "\", \"success\")\nstatusT"
+    },
+    {
+      "t" : 5.54,
+      "text" : "ag3 = Tag(\""
+    },
+    {
+      "t" : 5.541,
+      "text" : "Ready\", null, \"sm\","
+    },
+    {
+      "t" : 5.641,
+      "text" : " \"success\")\nstatusTag"
+    },
+    {
+      "t" : 5.743,
+      "text" : "4 = Tag(\""
+    },
+    {
+      "t" : 5.909,
+      "text" : "Pending\", null, \"sm"
+    },
+    {
+      "t" : 6.005,
+      "text" : "\", \"war"
+    },
+    {
+      "t" : 6.1,
+      "text" : "ning\")\nstatusTag5"
+    },
+    {
+      "t" : 6.184,
+      "text" : " = Tag(\""
+    },
+    {
+      "t" : 6.186,
+      "text" : "Ready\", null, \"sm\","
+    },
+    {
+      "t" : 6.352,
+      "text" : " \"success\")\nstatusTag"
+    },
+    {
+      "t" : 6.355,
+      "text" : "6 = Tag(\""
+    },
+    {
+      "t" : 6.452,
+      "text" : "P"
+    },
+    {
+      "t" : 6.549,
+      "text" : "ending\", null, \"sm\","
+    },
+    {
+      "t" : 6.659,
+      "text" : " \"warning\")\nstatusT"
+    },
+    {
+      "t" : 6.767,
+      "text" : "ag7 = Tag(\""
+    },
+    {
+      "t" : 6.877,
+      "text" : "Ready\", null, \"s"
+    },
+    {
+      "t" : 6.97,
+      "text" : "m\", \"success\")\ntotal"
+    },
+    {
+      "t" : 7.067,
+      "text" : "Card = Card(["
+    },
+    {
+      "t" : 7.171,
+      "text" : "totalH"
+    },
+    {
+      "t" : 7.279,
+      "text" : "eader, totalM"
+    },
+    {
+      "t" : 7.467,
+      "text" : "etric"
+    },
+    {
+      "t" : 7.468,
+      "text" : ","
+    },
+    {
+      "t" : 7.574,
+      "text" : " totalN"
+    },
+    {
+      "t" : 7.69,
+      "text" : "ote],"
+    },
+    {
+      "t" : 7.806,
+      "text" : " \""
+    },
+    {
+      "t" : 7.885,
+      "text" : "card"
+    },
+    {
+      "t" : 7.996,
+      "text" : "\")\ntotalHeader ="
+    },
+    {
+      "t" : 8.109,
+      "text" : " CardHeader(\"Total"
+    },
+    {
+      "t" : 8.29,
+      "text" : " Running Time\", \"Exc"
+    },
+    {
+      "t" : 8.293,
+      "text" : "luding "
+    },
+    {
+      "t" : 8.408,
+      "text" : "ad breaks\")\ntotal"
+    },
+    {
+      "t" : 8.532,
+      "text" : "Metric = M"
+    },
+    {
+      "t" : 8.581,
+      "text" : "etricIndicatorIn"
+    },
+    {
+      "t" : 8.68,
+      "text" : "line(\"00"
+    },
+    {
+      "t" : 8.875,
+      "text" : ":33:"
+    },
+    {
+      "t" : 8.876,
+      "text" : "00\", \"Sc"
+    },
+    {
+      "t" : 9.004,
+      "text" : "heduled run"
+    },
+    {
+      "t" : 9.188,
+      "text" : "time\")\ntotalNote"
+    },
+    {
+      "t" : 9.19,
+      "text" : " = TextCont"
+    },
+    {
+      "t" : 9.246,
+      "text" : "ent(\"Includ"
+    },
+    {
+      "t" : 9.442,
+      "text" : "es 4 min"
+    },
+    {
+      "t" : 9.556,
+      "text" : "utes of station"
+    },
+    {
+      "t" : 9.659,
+      "text" : " id"
+    },
+    {
+      "t" : 9.779,
+      "text" : "ents."
+    },
+    {
+      "t" : 9.904,
+      "text" : " Inter"
+    },
+    {
+      "t" : 10.099,
+      "text" : "view seg"
+    },
+    {
+      "t" : 10.1,
+      "text" : "ment may be sh"
+    },
+    {
+      "t" : 10.222,
+      "text" : "ortened if"
+    },
+    {
+      "t" : 10.342,
+      "text" : " the b"
+    },
+    {
+      "t" : 10.544,
+      "text" : "ulletin runs long"
+    },
+    {
+      "t" : 10.545,
+      "text" : ".\", \"small\")"
+    }
+  ],
+  "createdAt" : "2026-11-11T10:39:20Z",
+  "effort" : "low",
+  "format" : "openui-recording",
+  "inputTokens" : 14498,
+  "library" : "react-ui",
+  "model" : "claude-haiku-5-5",
+  "outputTokens" : 668,
+  "request" : "A radio news bulletin rundown with segment durations, presenter names and a total running-time card.",
+  "servedBy" : "claude-haiku-5-5",
+  "stopReason" : "end_turn",
+  "version" : 1
+}

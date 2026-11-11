@@ -1,0 +1,13 @@
+root = Stack([header, form])
+header = InlineHeader("Community Tip Line", "Share what you're seeing. Tips are reviewed by our newsroom.")
+form = Form("tip", formButtons, [topicField, locationField, descField, confidentialField])
+topicField = FormControl("Topic", topicSelect, "Choose the category that fits best")
+topicSelect = Select("topic", topicItems, "Select a topic", { required: true })
+topicItems = [SelectItem("public-safety", "Public Safety"), SelectItem("housing", "Housing"), SelectItem("schools", "Schools"), SelectItem("environment", "Environment"), SelectItem("business", "Business"), SelectItem("other", "Other")]
+locationField = FormControl("Location", locationInput, "Neighborhood, street, or landmark")
+locationInput = Input("location", "e.g. Maple Ave and 5th St", "text", { required: true, minLength: 3 })
+descField = FormControl("Description", descInput, "Include dates, times, and any details you observed")
+descInput = TextArea("description", "What happened?", 5, { required: true, minLength: 20 })
+confidentialField = CheckBoxGroup("confidential", [confidentialItem])
+confidentialItem = CheckBoxItem("Keep my identity confidential", "Our reporters will not publish your name without your permission.", "confidential", false)
+formButtons = Buttons([Button("Submit Tip", @ToAssistant("Submit community tip"), "primary"), Button("Clear", @ToAssistant("Clear tip form"), "secondary")])

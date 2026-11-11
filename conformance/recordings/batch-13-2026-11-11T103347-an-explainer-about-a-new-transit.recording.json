@@ -1,0 +1,796 @@
+{
+  "batchRequest" : {
+    "model" : "sonnet",
+    "number" : 13,
+    "request" : "An explainer about a new transit fare system, in an accordion of five questions and answers."
+  },
+  "chunks" : [
+    {
+      "t" : 0.963,
+      "text" : "root = Stack([header"
+    },
+    {
+      "t" : 1.312,
+      "text" : ", int"
+    },
+    {
+      "t" : 1.314,
+      "text" : "ro, fa"
+    },
+    {
+      "t" : 1.323,
+      "text" : "q])\nheader = C"
+    },
+    {
+      "t" : 1.337,
+      "text" : "ardHeader(\"New"
+    },
+    {
+      "t" : 1.35,
+      "text" : " Transit Fare System\","
+    },
+    {
+      "t" : 1.355,
+      "text" : " \"Ever"
+    },
+    {
+      "t" : 1.364,
+      "text" : "ything ri"
+    },
+    {
+      "t" : 1.369,
+      "text" : "ders need to know about the up"
+    },
+    {
+      "t" : 1.378,
+      "text" : "coming changes\")\nint"
+    },
+    {
+      "t" : 1.383,
+      "text" : "ro ="
+    },
+    {
+      "t" : 1.388,
+      "text" : " Callout(\"info\", \"R"
+    },
+    {
+      "t" : 1.397,
+      "text" : "ollout Date"
+    },
+    {
+      "t" : 1.669,
+      "text" : "\", \"The"
+    },
+    {
+      "t" : 1.68,
+      "text" : " new t"
+    },
+    {
+      "t" : 1.686,
+      "text" : "ap-to-pay f"
+    },
+    {
+      "t" : 1.695,
+      "text" : "are system beg"
+    },
+    {
+      "t" : 1.701,
+      "text" : "ins on"
+    },
+    {
+      "t" : 1.706,
+      "text" : " the"
+    },
+    {
+      "t" : 1.715,
+      "text" : " first of"
+    },
+    {
+      "t" : 1.721,
+      "text" : " next"
+    },
+    {
+      "t" : 1.731,
+      "text" : " month across all b"
+    },
+    {
+      "t" : 1.738,
+      "text" : "us, t"
+    },
+    {
+      "t" : 1.748,
+      "text" : "ram, and rail l"
+    },
+    {
+      "t" : 1.755,
+      "text" : "ines.\")\nfaq ="
+    },
+    {
+      "t" : 2.032,
+      "text" : " Accordion([q1, q"
+    },
+    {
+      "t" : 2.039,
+      "text" : "2, q3, q4,"
+    },
+    {
+      "t" : 2.05,
+      "text" : " q5])\nq1 ="
+    },
+    {
+      "t" : 2.062,
+      "text" : " A"
+    },
+    {
+      "t" : 2.069,
+      "text" : "ccordionItem(\"q1"
+    },
+    {
+      "t" : 2.081,
+      "text" : "\", \"What is changing?\","
+    },
+    {
+      "t" : 2.088,
+      "text" : " [a1])"
+    },
+    {
+      "t" : 2.1,
+      "text" : "\na1 = TextCont"
+    },
+    {
+      "t" : 2.113,
+      "text" : "ent(\""
+    },
+    {
+      "t" : 2.12,
+      "text" : "Paper t"
+    },
+    {
+      "t" : 2.132,
+      "text" : "ickets and f"
+    },
+    {
+      "t" : 2.145,
+      "text" : "ixed z"
+    },
+    {
+      "t" : 2.398,
+      "text" : "one fares are being replaced"
+    },
+    {
+      "t" : 2.413,
+      "text" : " by a **tap-in"
+    },
+    {
+      "t" : 2.421,
+      "text" : ","
+    },
+    {
+      "t" : 2.433,
+      "text" : " tap-out** system."
+    },
+    {
+      "t" : 2.446,
+      "text" : " F"
+    },
+    {
+      "t" : 2.454,
+      "text" : "ares"
+    },
+    {
+      "t" : 2.466,
+      "text" : " are now"
+    },
+    {
+      "t" : 2.479,
+      "text" : " calculated by"
+    },
+    {
+      "t" : 2.487,
+      "text" : " dist"
+    },
+    {
+      "t" : 2.499,
+      "text" : "ance tra"
+    },
+    {
+      "t" : 2.512,
+      "text" : "veled, and"
+    },
+    {
+      "t" : 2.541,
+      "text" : " you p"
+    },
+    {
+      "t" : 2.753,
+      "text" : "ay with a"
+    },
+    {
+      "t" : 2.767,
+      "text" : " contactless card,"
+    },
+    {
+      "t" : 2.782,
+      "text" : " phone, or a"
+    },
+    {
+      "t" : 2.797,
+      "text" : " re"
+    },
+    {
+      "t" : 2.806,
+      "text" : "lo"
+    },
+    {
+      "t" : 2.819,
+      "text" : "adable transit card.\")"
+    },
+    {
+      "t" : 2.835,
+      "text" : "\nq2 = Accordion"
+    },
+    {
+      "t" : 2.85,
+      "text" : "Item(\"q"
+    },
+    {
+      "t" : 2.866,
+      "text" : "2\", \"How much will I"
+    },
+    {
+      "t" : 2.882,
+      "text" : " pay?\", [a2,"
+    },
+    {
+      "t" : 2.908,
+      "text" : " f"
+    },
+    {
+      "t" : 2.941,
+      "text" : "are"
+    },
+    {
+      "t" : 3.104,
+      "text" : "Table])\na2 ="
+    },
+    {
+      "t" : 3.122,
+      "text" : " TextContent(\"Fares"
+    },
+    {
+      "t" : 3.139,
+      "text" : " depend on the distance of"
+    },
+    {
+      "t" : 3.157,
+      "text" : " your tr"
+    },
+    {
+      "t" : 3.174,
+      "text" : "ip. A daily cap "
+    },
+    {
+      "t" : 3.191,
+      "text" : "ensures you never pay more than"
+    },
+    {
+      "t" : 3.209,
+      "text" : " the"
+    },
+    {
+      "t" : 3.226,
+      "text" : " price of a day"
+    },
+    {
+      "t" : 3.244,
+      "text" : " pass.\")\nfareT"
+    },
+    {
+      "t" : 3.277,
+      "text" : "able = Table([Col(\""
+    },
+    {
+      "t" : 3.311,
+      "text" : "Tr"
+    },
+    {
+      "t" : 3.344,
+      "text" : "ip Distance\", d"
+    },
+    {
+      "t" : 3.461,
+      "text" : "ist"
+    },
+    {
+      "t" : 3.472,
+      "text" : "),"
+    },
+    {
+      "t" : 3.488,
+      "text" : " Col(\"Fare\", f"
+    },
+    {
+      "t" : 3.505,
+      "text" : "ares), Col(\"Daily"
+    },
+    {
+      "t" : 3.521,
+      "text" : " Cap\", ca"
+    },
+    {
+      "t" : 3.544,
+      "text" : "ps)])\ndist = "
+    },
+    {
+      "t" : 3.578,
+      "text" : "[\"Up to 3"
+    },
+    {
+      "t" : 3.611,
+      "text" : " km\", \"3"
+    },
+    {
+      "t" : 3.644,
+      "text" : " to"
+    },
+    {
+      "t" : 3.677,
+      "text" : " 10 km\", \""
+    },
+    {
+      "t" : 3.712,
+      "text" : "Over 10 km\"]"
+    },
+    {
+      "t" : 3.745,
+      "text" : "\nfares = [\"$1."
+    },
+    {
+      "t" : 3.811,
+      "text" : "75"
+    },
+    {
+      "t" : 3.822,
+      "text" : "\", \"$2.50\", \""
+    },
+    {
+      "t" : 3.845,
+      "text" : "$3.75"
+    },
+    {
+      "t" : 3.878,
+      "text" : "\"]\ncaps = [\""
+    },
+    {
+      "t" : 3.913,
+      "text" : "$6"
+    },
+    {
+      "t" : 3.947,
+      "text" : ".00\", \"$6.00"
+    },
+    {
+      "t" : 3.979,
+      "text" : "\", \"$6.00\"]"
+    },
+    {
+      "t" : 4.013,
+      "text" : "\nq3 = Accord"
+    },
+    {
+      "t" : 4.048,
+      "text" : "ionItem(\"q3\", \""
+    },
+    {
+      "t" : 4.08,
+      "text" : "How do I p"
+    },
+    {
+      "t" : 4.113,
+      "text" : "ay?"
+    },
+    {
+      "t" : 4.146,
+      "text" : "\", [ste"
+    },
+    {
+      "t" : 4.18,
+      "text" : "ps])"
+    },
+    {
+      "t" : 4.213,
+      "text" : "\nsteps = Steps(["
+    },
+    {
+      "t" : 4.246,
+      "text" : "s1, s2, s3"
+    },
+    {
+      "t" : 4.281,
+      "text" : "])\ns1 = Step"
+    },
+    {
+      "t" : 4.314,
+      "text" : "sItem(\"Get"
+    },
+    {
+      "t" : 4.346,
+      "text" : " a pay"
+    },
+    {
+      "t" : 4.38,
+      "text" : "ment method\", \"Use"
+    },
+    {
+      "t" : 4.413,
+      "text" : " a contactless b"
+    },
+    {
+      "t" : 4.446,
+      "text" : "ank card, a"
+    },
+    {
+      "t" : 4.479,
+      "text" : " m"
+    },
+    {
+      "t" : 4.512,
+      "text" : "obile w"
+    },
+    {
+      "t" : 4.546,
+      "text" : "allet, or bu"
+    },
+    {
+      "t" : 4.58,
+      "text" : "y a transit card at any"
+    },
+    {
+      "t" : 4.613,
+      "text" : " station or store"
+    },
+    {
+      "t" : 4.646,
+      "text" : ".\")\ns2 = St"
+    },
+    {
+      "t" : 4.68,
+      "text" : "epsItem(\"Tap"
+    },
+    {
+      "t" : 4.713,
+      "text" : " in"
+    },
+    {
+      "t" : 4.746,
+      "text" : "\", \"Tap your"
+    },
+    {
+      "t" : 4.78,
+      "text" : " card"
+    },
+    {
+      "t" : 4.812,
+      "text" : " or phone on the reader when"
+    },
+    {
+      "t" : 4.846,
+      "text" : " bo"
+    },
+    {
+      "t" : 4.879,
+      "text" : "arding a"
+    },
+    {
+      "t" : 4.912,
+      "text" : " bus or ent"
+    },
+    {
+      "t" : 4.946,
+      "text" : "ering a station.\")\ns3"
+    },
+    {
+      "t" : 4.979,
+      "text" : " = StepsItem(\""
+    },
+    {
+      "t" : 5.014,
+      "text" : "Tap out\", \"T"
+    },
+    {
+      "t" : 5.046,
+      "text" : "ap again"
+    },
+    {
+      "t" : 5.079,
+      "text" : " when"
+    },
+    {
+      "t" : 5.112,
+      "text" : " exiting. For"
+    },
+    {
+      "t" : 5.148,
+      "text" : "getting to tap out char"
+    },
+    {
+      "t" : 5.179,
+      "text" : "ges the"
+    },
+    {
+      "t" : 5.213,
+      "text" : " maximum fare for that"
+    },
+    {
+      "t" : 5.246,
+      "text" : " route.\")\nq4 ="
+    },
+    {
+      "t" : 5.28,
+      "text" : " AccordionItem(\"q"
+    },
+    {
+      "t" : 5.315,
+      "text" : "4\", \"Are there discoun"
+    },
+    {
+      "t" : 5.348,
+      "text" : "ts?"
+    },
+    {
+      "t" : 5.38,
+      "text" : "\", [a4, disc"
+    },
+    {
+      "t" : 5.413,
+      "text" : "ount"
+    },
+    {
+      "t" : 5.446,
+      "text" : "Tags])\na4 ="
+    },
+    {
+      "t" : 5.48,
+      "text" : " TextContent(\"Yes"
+    },
+    {
+      "t" : 5.513,
+      "text" : "."
+    },
+    {
+      "t" : 5.546,
+      "text" : " Discounted f"
+    },
+    {
+      "t" : 5.579,
+      "text" : "ares of"
+    },
+    {
+      "t" : 5.613,
+      "text" : " up to "
+    },
+    {
+      "t" : 5.646,
+      "text" : "50% are"
+    },
+    {
+      "t" : 5.679,
+      "text" : " available for e"
+    },
+    {
+      "t" : 5.715,
+      "text" : "ligible ri"
+    },
+    {
+      "t" : 5.746,
+      "text" : "ders. Register"
+    },
+    {
+      "t" : 5.779,
+      "text" : " your"
+    },
+    {
+      "t" : 5.812,
+      "text" : " card"
+    },
+    {
+      "t" : 5.845,
+      "text" : " online"
+    },
+    {
+      "t" : 5.878,
+      "text" : " to activ"
+    },
+    {
+      "t" : 5.912,
+      "text" : "ate the discount.\")\ndisc"
+    },
+    {
+      "t" : 5.945,
+      "text" : "ountTags = TagBl"
+    },
+    {
+      "t" : 5.979,
+      "text" : "ock([\"Students\", \""
+    },
+    {
+      "t" : 6.012,
+      "text" : "Seniors "
+    },
+    {
+      "t" : 6.045,
+      "text" : "65+\", \"Youth under"
+    },
+    {
+      "t" : 6.079,
+      "text" : " 18"
+    },
+    {
+      "t" : 6.112,
+      "text" : "\", \"Low-income program"
+    },
+    {
+      "t" : 6.145,
+      "text" : "\", \"Ri"
+    },
+    {
+      "t" : 6.179,
+      "text" : "ders with disabilities\"],"
+    },
+    {
+      "t" : 6.212,
+      "text" : " \"md\")\nq5 ="
+    },
+    {
+      "t" : 6.246,
+      "text" : " AccordionItem(\"q"
+    },
+    {
+      "t" : 6.28,
+      "text" : "5\", \"What"
+    },
+    {
+      "t" : 6.313,
+      "text" : " if my"
+    },
+    {
+      "t" : 6.346,
+      "text" : " card is lost or I"
+    },
+    {
+      "t" : 6.379,
+      "text" : " get"
+    },
+    {
+      "t" : 6.411,
+      "text" : " char"
+    },
+    {
+      "t" : 6.445,
+      "text" : "ged inc"
+    },
+    {
+      "t" : 6.479,
+      "text" : "orrectly?\", [a"
+    },
+    {
+      "t" : 6.512,
+      "text" : "5, help])\na5 "
+    },
+    {
+      "t" : 6.546,
+      "text" : "= TextContent(\"Regist"
+    },
+    {
+      "t" : 6.58,
+      "text" : "ered cards can"
+    },
+    {
+      "t" : 6.613,
+      "text" : " be blocked and the"
+    },
+    {
+      "t" : 6.646,
+      "text" : " balance transferred to a repl"
+    },
+    {
+      "t" : 6.68,
+      "text" : "acement."
+    },
+    {
+      "t" : 6.712,
+      "text" : " Inc"
+    },
+    {
+      "t" : 6.746,
+      "text" : "orrect charges can be dis"
+    },
+    {
+      "t" : 6.779,
+      "text" : "puted within 60"
+    },
+    {
+      "t" : 6.812,
+      "text" : " days for a full"
+    },
+    {
+      "t" : 6.846,
+      "text" : " review"
+    },
+    {
+      "t" : 6.879,
+      "text" : " and"
+    },
+    {
+      "t" : 6.912,
+      "text" : " refund.\")\nhelp ="
+    },
+    {
+      "t" : 6.946,
+      "text" : " Buttons([Button(\""
+    },
+    {
+      "t" : 6.979,
+      "text" : "Contact support"
+    },
+    {
+      "t" : 7.012,
+      "text" : "\", @ToAssistant"
+    },
+    {
+      "t" : 7.047,
+      "text" : "(\"How do I cont"
+    },
+    {
+      "t" : 7.079,
+      "text" : "act trans"
+    },
+    {
+      "t" : 7.112,
+      "text" : "it f"
+    },
+    {
+      "t" : 7.148,
+      "text" : "are support?\"), \""
+    },
+    {
+      "t" : 7.18,
+      "text" : "primary\"), Button(\""
+    },
+    {
+      "t" : 7.246,
+      "text" : "Ask another"
+    },
+    {
+      "t" : 7.279,
+      "text" : " question\", @ToAssist"
+    },
+    {
+      "t" : 7.316,
+      "text" : "ant(\"I"
+    },
+    {
+      "t" : 7.366,
+      "text" : " have another question about the new fare"
+    },
+    {
+      "t" : 7.403,
+      "text" : " system\"), \"secondary\")"
+    },
+    {
+      "t" : 7.439,
+      "text" : "])"
+    }
+  ],
+  "createdAt" : "2026-11-11T10:33:47Z",
+  "effort" : "low",
+  "format" : "openui-recording",
+  "inputTokens" : 14495,
+  "library" : "react-ui",
+  "model" : "claude-sonnet-5-5",
+  "outputTokens" : 944,
+  "request" : "An explainer about a new transit fare system, in an accordion of five questions and answers.",
+  "servedBy" : "claude-sonnet-5-5",
+  "stopReason" : "end_turn",
+  "version" : 1
+}

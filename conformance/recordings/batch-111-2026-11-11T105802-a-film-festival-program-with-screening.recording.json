@@ -1,0 +1,864 @@
+{
+  "batchRequest" : {
+    "model" : "sonnet",
+    "number" : 111,
+    "request" : "A film festival program with screening rooms, start times, film lengths and tags for sold-out sessions."
+  },
+  "chunks" : [
+    {
+      "t" : 0.727,
+      "text" : "root = Stack([title"
+    },
+    {
+      "t" : 0.999,
+      "text" : ", intro, summ"
+    },
+    {
+      "t" : 1.037,
+      "text" : "ary"
+    },
+    {
+      "t" : 1.104,
+      "text" : ", sc"
+    },
+    {
+      "t" : 1.164,
+      "text" : "heduleC"
+    },
+    {
+      "t" : 1.213,
+      "text" : "ard, so"
+    },
+    {
+      "t" : 1.293,
+      "text" : "ldOut"
+    },
+    {
+      "t" : 1.335,
+      "text" : "Card, chartC"
+    },
+    {
+      "t" : 1.362,
+      "text" : "ard])\ntitle = TextCont"
+    },
+    {
+      "t" : 1.364,
+      "text" : "ent(\"Riverside Film"
+    },
+    {
+      "t" : 1.404,
+      "text" : " Festival —"
+    },
+    {
+      "t" : 1.436,
+      "text" : " Program\", \"large-heav"
+    },
+    {
+      "t" : 1.473,
+      "text" : "y\")\nintro ="
+    },
+    {
+      "t" : 1.513,
+      "text" : " Callout(\"info\", \"Fri"
+    },
+    {
+      "t" : 1.545,
+      "text" : "day"
+    },
+    {
+      "t" : 1.579,
+      "text" : " Schedule\", \"Screen"
+    },
+    {
+      "t" : 1.616,
+      "text" : "ings across"
+    },
+    {
+      "t" : 1.69,
+      "text" : " four rooms. S"
+    },
+    {
+      "t" : 1.743,
+      "text" : "old-out sessions are t"
+    },
+    {
+      "t" : 1.79,
+      "text" : "agged; join"
+    },
+    {
+      "t" : 1.836,
+      "text" : " the"
+    },
+    {
+      "t" : 1.922,
+      "text" : " waitlist at"
+    },
+    {
+      "t" : 1.966,
+      "text" : " the box"
+    },
+    {
+      "t" : 2.009,
+      "text" : " office.\")\nsummary = S"
+    },
+    {
+      "t" : 2.069,
+      "text" : "nippetCardBlock"
+    },
+    {
+      "t" : 2.117,
+      "text" : "([k1, k2, k"
+    },
+    {
+      "t" : 2.168,
+      "text" : "3])\nk1 = S"
+    },
+    {
+      "t" : 2.195,
+      "text" : "nippetCardItem(\""
+    },
+    {
+      "t" : 2.213,
+      "text" : "screen"
+    },
+    {
+      "t" : 2.252,
+      "text" : "ings\", k1l"
+    },
+    {
+      "t" : 2.299,
+      "text" : ", k1r)\nk1"
+    },
+    {
+      "t" : 2.374,
+      "text" : "l = IconText(k1"
+    },
+    {
+      "t" : 2.471,
+      "text" : "i, \"neutral\", \""
+    },
+    {
+      "t" : 2.475,
+      "text" : "m\", \"Screenings\","
+    },
+    {
+      "t" : 2.518,
+      "text" : " \"Today\", false, \"hor"
+    },
+    {
+      "t" : 2.561,
+      "text" : "izontal\")\nk1i"
+    },
+    {
+      "t" : 2.611,
+      "text" : " = Icon(\"film\", \""
+    },
+    {
+      "t" : 2.683,
+      "text" : "media"
+    },
+    {
+      "t" : 2.684,
+      "text" : "\")\nk1r = Bo"
+    },
+    {
+      "t" : 2.748,
+      "text" : "ldText(\"number\", \"8\")"
+    },
+    {
+      "t" : 2.821,
+      "text" : "\nk2 = Snipp"
+    },
+    {
+      "t" : 2.867,
+      "text" : "etCardItem(\"so"
+    },
+    {
+      "t" : 2.925,
+      "text" : "ldout\", k2l, k"
+    },
+    {
+      "t" : 2.993,
+      "text" : "2r)\nk2l ="
+    },
+    {
+      "t" : 3.042,
+      "text" : " IconText(k2i,"
+    },
+    {
+      "t" : 3.085,
+      "text" : " \"ne"
+    },
+    {
+      "t" : 3.126,
+      "text" : "utral\", \"m\", \""
+    },
+    {
+      "t" : 3.19,
+      "text" : "Sold Out\", \"S"
+    },
+    {
+      "t" : 3.235,
+      "text" : "essions\", false, \"horiz"
+    },
+    {
+      "t" : 3.294,
+      "text" : "ontal\")\nk2i ="
+    },
+    {
+      "t" : 3.346,
+      "text" : " Icon(\"ticket-"
+    },
+    {
+      "t" : 3.428,
+      "text" : "x\", \"t"
+    },
+    {
+      "t" : 3.431,
+      "text" : "ickets\")\nk2r ="
+    },
+    {
+      "t" : 3.486,
+      "text" : " BoldText(\"number\", \""
+    },
+    {
+      "t" : 3.609,
+      "text" : "3\")\nk3 = S"
+    },
+    {
+      "t" : 3.659,
+      "text" : "nippetCardItem(\""
+    },
+    {
+      "t" : 3.66,
+      "text" : "rooms\", k3l,"
+    },
+    {
+      "t" : 3.708,
+      "text" : " k3r)\nk3l"
+    },
+    {
+      "t" : 3.763,
+      "text" : " = IconText(k3i"
+    },
+    {
+      "t" : 3.813,
+      "text" : ", \"neutral\", \"m"
+    },
+    {
+      "t" : 3.87,
+      "text" : "\", \"Rooms\", \""
+    },
+    {
+      "t" : 3.925,
+      "text" : "In"
+    },
+    {
+      "t" : 3.991,
+      "text" : " use\", false, \"horizont"
+    },
+    {
+      "t" : 4.058,
+      "text" : "al\")\nk3i ="
+    },
+    {
+      "t" : 4.118,
+      "text" : " Icon(\"door-open\", \""
+    },
+    {
+      "t" : 4.167,
+      "text" : "building"
+    },
+    {
+      "t" : 4.223,
+      "text" : "\")\nk3r = Bo"
+    },
+    {
+      "t" : 4.319,
+      "text" : "ldText(\"number\", \"4\")"
+    },
+    {
+      "t" : 4.321,
+      "text" : "\nscheduleCard ="
+    },
+    {
+      "t" : 4.388,
+      "text" : " Card([sch"
+    },
+    {
+      "t" : 4.464,
+      "text" : "edHeader, schedT"
+    },
+    {
+      "t" : 4.526,
+      "text" : "able])\nschedHeader"
+    },
+    {
+      "t" : 4.6,
+      "text" : " = CardHeader(\""
+    },
+    {
+      "t" : 4.658,
+      "text" : "Screening Schedule\", \""
+    },
+    {
+      "t" : 4.722,
+      "text" : "R"
+    },
+    {
+      "t" : 4.778,
+      "text" : "ooms, start times and run"
+    },
+    {
+      "t" : 4.83,
+      "text" : " lengths\")\nschedT"
+    },
+    {
+      "t" : 4.892,
+      "text" : "able = Table(["
+    },
+    {
+      "t" : 4.947,
+      "text" : "Col(\"Film"
+    },
+    {
+      "t" : 5.007,
+      "text" : "\", films), Col(\"Room"
+    },
+    {
+      "t" : 5.113,
+      "text" : "\", r"
+    },
+    {
+      "t" : 5.115,
+      "text" : "ooms), Col(\"Start"
+    },
+    {
+      "t" : 5.178,
+      "text" : "\", starts), Col(\""
+    },
+    {
+      "t" : 5.242,
+      "text" : "Length (min)\", lengths"
+    },
+    {
+      "t" : 5.298,
+      "text" : ", \"number\"), Col(\""
+    },
+    {
+      "t" : 5.362,
+      "text" : "Status\", statuses)])"
+    },
+    {
+      "t" : 5.432,
+      "text" : "\nfilms = "
+    },
+    {
+      "t" : 5.495,
+      "text" : "[\"The Last"
+    },
+    {
+      "t" : 5.556,
+      "text" : " L"
+    },
+    {
+      "t" : 5.619,
+      "text" : "ighthouse\", \"Pa"
+    },
+    {
+      "t" : 5.71,
+      "text" : "per Cities"
+    },
+    {
+      "t" : 5.775,
+      "text" : "\", \"Echoes of"
+    },
+    {
+      "t" : 5.844,
+      "text" : " Salt\", \"Mid"
+    },
+    {
+      "t" : 5.906,
+      "text" : "night Or"
+    },
+    {
+      "t" : 5.969,
+      "text" : "chard"
+    },
+    {
+      "t" : 6.029,
+      "text" : "\", \"Qu"
+    },
+    {
+      "t" : 6.103,
+      "text" : "iet Mach"
+    },
+    {
+      "t" : 6.168,
+      "text" : "ines\", \"Neon Har"
+    },
+    {
+      "t" : 6.282,
+      "text" : "v"
+    },
+    {
+      "t" : 6.365,
+      "text" : "est\", \"A Summer in"
+    },
+    {
+      "t" : 6.452,
+      "text" : " L"
+    },
+    {
+      "t" : 6.453,
+      "text" : "isbon\", \"The"
+    },
+    {
+      "t" : 6.529,
+      "text" : " C"
+    },
+    {
+      "t" : 6.604,
+      "text" : "art"
+    },
+    {
+      "t" : 6.681,
+      "text" : "ographer\""
+    },
+    {
+      "t" : 6.77,
+      "text" : "]\nrooms = [\""
+    },
+    {
+      "t" : 6.841,
+      "text" : "Room"
+    },
+    {
+      "t" : 6.917,
+      "text" : " A\", \"Room B\", \""
+    },
+    {
+      "t" : 6.99,
+      "text" : "Room C"
+    },
+    {
+      "t" : 7.062,
+      "text" : "\", \"Room D"
+    },
+    {
+      "t" : 7.136,
+      "text" : "\", \"Room A\", \""
+    },
+    {
+      "t" : 7.212,
+      "text" : "Room B\", \"Room C\","
+    },
+    {
+      "t" : 7.281,
+      "text" : " \"Room D\"]\nstar"
+    },
+    {
+      "t" : 7.356,
+      "text" : "ts = [\"10:00\","
+    },
+    {
+      "t" : 7.424,
+      "text" : " \"10:30\", \"11:"
+    },
+    {
+      "t" : 7.5,
+      "text" : "15\", \"12:00\", \""
+    },
+    {
+      "t" : 7.578,
+      "text" : "13"
+    },
+    {
+      "t" : 7.66,
+      "text" : ":30"
+    },
+    {
+      "t" : 7.727,
+      "text" : "\", \"14:45\", \"16"
+    },
+    {
+      "t" : 7.81,
+      "text" : ":00"
+    },
+    {
+      "t" : 7.905,
+      "text" : "\", \"18:30\"]"
+    },
+    {
+      "t" : 7.979,
+      "text" : "\nlengths = [112, "
+    },
+    {
+      "t" : 8.06,
+      "text" : "94"
+    },
+    {
+      "t" : 8.139,
+      "text" : ", 128"
+    },
+    {
+      "t" : 8.234,
+      "text" : ", 87"
+    },
+    {
+      "t" : 8.313,
+      "text" : ", 105"
+    },
+    {
+      "t" : 8.453,
+      "text" : ", 119"
+    },
+    {
+      "t" : 8.454,
+      "text" : ", 98"
+    },
+    {
+      "t" : 8.549,
+      "text" : ", 136]\nstatuses"
+    },
+    {
+      "t" : 8.636,
+      "text" : " = [t"
+    },
+    {
+      "t" : 8.803,
+      "text" : "1, t2, t3,"
+    },
+    {
+      "t" : 8.804,
+      "text" : " t4, t5, t6"
+    },
+    {
+      "t" : 8.987,
+      "text" : ", t7, t8]"
+    },
+    {
+      "t" : 9.071,
+      "text" : "\nt1 = Tag(\""
+    },
+    {
+      "t" : 9.143,
+      "text" : "Sold Out\", null,"
+    },
+    {
+      "t" : 9.216,
+      "text" : " \"sm\", \"danger\")"
+    },
+    {
+      "t" : 9.218,
+      "text" : "\nt2 = Tag"
+    },
+    {
+      "t" : 9.302,
+      "text" : "(\"Available\", null, \"s"
+    },
+    {
+      "t" : 9.401,
+      "text" : "m\", \"success\")\nt3"
+    },
+    {
+      "t" : 9.523,
+      "text" : " = Tag(\"Available"
+    },
+    {
+      "t" : 9.526,
+      "text" : "\", null, \"sm\", \""
+    },
+    {
+      "t" : 9.661,
+      "text" : "success\")\nt4 ="
+    },
+    {
+      "t" : 9.741,
+      "text" : " Tag(\"Sold Out"
+    },
+    {
+      "t" : 9.834,
+      "text" : "\", null, \"sm\", \""
+    },
+    {
+      "t" : 9.921,
+      "text" : "danger\")\nt5 ="
+    },
+    {
+      "t" : 10.008,
+      "text" : " Tag(\"Few Se"
+    },
+    {
+      "t" : 10.1,
+      "text" : "ats\", null, \"sm\","
+    },
+    {
+      "t" : 10.256,
+      "text" : " \"warning\")\nt6 "
+    },
+    {
+      "t" : 10.257,
+      "text" : "= Tag(\"Available\","
+    },
+    {
+      "t" : 10.357,
+      "text" : " null, \"sm\", \"success"
+    },
+    {
+      "t" : 10.485,
+      "text" : "\")\nt7 = T"
+    },
+    {
+      "t" : 10.569,
+      "text" : "ag(\"Sold Out\","
+    },
+    {
+      "t" : 10.66,
+      "text" : " null, \"sm\", \"dan"
+    },
+    {
+      "t" : 10.811,
+      "text" : "ger\")\nt8 ="
+    },
+    {
+      "t" : 11.04,
+      "text" : " Tag(\"Few Seats"
+    },
+    {
+      "t" : 11.159,
+      "text" : "\", null, \"sm\", \""
+    },
+    {
+      "t" : 11.267,
+      "text" : "warning\")\nsoldOut"
+    },
+    {
+      "t" : 11.386,
+      "text" : "Card = Card([sold"
+    },
+    {
+      "t" : 11.494,
+      "text" : "H"
+    },
+    {
+      "t" : 11.576,
+      "text" : "eader, soldT"
+    },
+    {
+      "t" : 11.665,
+      "text" : "ags, soldList])\nso"
+    },
+    {
+      "t" : 11.745,
+      "text" : "ldHeader = C"
+    },
+    {
+      "t" : 11.848,
+      "text" : "ardHeader(\"Sold"
+    },
+    {
+      "t" : 11.912,
+      "text" : "-Out Sessions\","
+    },
+    {
+      "t" : 12.004,
+      "text" : " \"No"
+    },
+    {
+      "t" : 12.114,
+      "text" : " t"
+    },
+    {
+      "t" : 12.203,
+      "text" : "ickets rem"
+    },
+    {
+      "t" : 12.325,
+      "text" : "aining\")\nsoldTags"
+    },
+    {
+      "t" : 12.427,
+      "text" : " = TagBlock([\""
+    },
+    {
+      "t" : 12.527,
+      "text" : "The"
+    },
+    {
+      "t" : 12.632,
+      "text" : " Last Lighthouse"
+    },
+    {
+      "t" : 12.732,
+      "text" : " ·"
+    },
+    {
+      "t" : 12.857,
+      "text" : " "
+    },
+    {
+      "t" : 12.964,
+      "text" : "10:00\","
+    },
+    {
+      "t" : 13.073,
+      "text" : " \"Midnight Orch"
+    },
+    {
+      "t" : 13.199,
+      "text" : "ard · 12:00\", \""
+    },
+    {
+      "t" : 13.323,
+      "text" : "A Summer in Lis"
+    },
+    {
+      "t" : 13.432,
+      "text" : "bon · 16:00\""
+    },
+    {
+      "t" : 13.536,
+      "text" : "], \"md\")\nsoldList"
+    },
+    {
+      "t" : 13.648,
+      "text" : " = EntityList(["
+    },
+    {
+      "t" : 13.76,
+      "text" : "r1, r2,"
+    },
+    {
+      "t" : 13.86,
+      "text" : " r3], \"default"
+    },
+    {
+      "t" : 13.97,
+      "text" : "\")\nr1 = { left"
+    },
+    {
+      "t" : 14.069,
+      "text" : ": \""
+    },
+    {
+      "t" : 14.183,
+      "text" : "Room A —"
+    },
+    {
+      "t" : 14.285,
+      "text" : " The Last Lighthou"
+    },
+    {
+      "t" : 14.386,
+      "text" : "se\", right: \"10"
+    },
+    {
+      "t" : 14.49,
+      "text" : ":00 "
+    },
+    {
+      "t" : 14.624,
+      "text" : "· 112 min\" }"
+    },
+    {
+      "t" : 14.729,
+      "text" : "\nr2 = { left: \""
+    },
+    {
+      "t" : 14.824,
+      "text" : "Room D — Midnight"
+    },
+    {
+      "t" : 14.939,
+      "text" : " Orchard\", right: \""
+    },
+    {
+      "t" : 15.079,
+      "text" : "12:00 · 87 "
+    },
+    {
+      "t" : 15.189,
+      "text" : "min\" }\nr3 ="
+    },
+    {
+      "t" : 15.304,
+      "text" : " { left: \"Room C —"
+    },
+    {
+      "t" : 15.402,
+      "text" : " A Summer in Lis"
+    },
+    {
+      "t" : 15.579,
+      "text" : "bon\", right: \"16:"
+    },
+    {
+      "t" : 15.582,
+      "text" : "00 · 98 min\""
+    },
+    {
+      "t" : 15.685,
+      "text" : " }\nchartCard ="
+    },
+    {
+      "t" : 15.795,
+      "text" : " Card([chartHeader,"
+    },
+    {
+      "t" : 15.899,
+      "text" : " l"
+    },
+    {
+      "t" : 16.022,
+      "text" : "en"
+    },
+    {
+      "t" : 16.2,
+      "text" : "Chart])\nchartHe"
+    },
+    {
+      "t" : 16.204,
+      "text" : "ader = CardHeader(\""
+    },
+    {
+      "t" : 16.334,
+      "text" : "Film Lengths\", \""
+    },
+    {
+      "t" : 16.456,
+      "text" : "Running"
+    },
+    {
+      "t" : 16.672,
+      "text" : " time in minutes\")\nl"
+    },
+    {
+      "t" : 16.822,
+      "text" : "enChart = Horizont"
+    },
+    {
+      "t" : 16.941,
+      "text" : "alBarChart(films,"
+    },
+    {
+      "t" : 16.944,
+      "text" : " [Series(\"Min"
+    },
+    {
+      "t" : 17.174,
+      "text" : "utes\", lengths)])"
+    }
+  ],
+  "createdAt" : "2026-11-11T10:58:02Z",
+  "effort" : "low",
+  "format" : "openui-recording",
+  "inputTokens" : 14500,
+  "library" : "react-ui",
+  "model" : "claude-sonnet-5-5",
+  "outputTokens" : 1314,
+  "request" : "A film festival program with screening rooms, start times, film lengths and tags for sold-out sessions.",
+  "servedBy" : "claude-sonnet-5-5",
+  "stopReason" : "end_turn",
+  "version" : 1
+}

@@ -1,0 +1,1004 @@
+{
+  "batchRequest" : {
+    "model" : "haiku",
+    "number" : 36,
+    "request" : "A course syllabus with weeks, topics and assignment due dates."
+  },
+  "chunks" : [
+    {
+      "t" : 0.763,
+      "text" : "root"
+    },
+    {
+      "t" : 0.922,
+      "text" : " = Stack(["
+    },
+    {
+      "t" : 0.957,
+      "text" : "title, int"
+    },
+    {
+      "t" : 1.015,
+      "text" : "ro, t"
+    },
+    {
+      "t" : 1.064,
+      "text" : "abs])\ntitle"
+    },
+    {
+      "t" : 1.226,
+      "text" : " = TextContent(\"Intro"
+    },
+    {
+      "t" : 1.283,
+      "text" : "duction to Data"
+    },
+    {
+      "t" : 1.334,
+      "text" : " Science:"
+    },
+    {
+      "t" : 1.368,
+      "text" : " Course"
+    },
+    {
+      "t" : 1.403,
+      "text" : " Syllabus\", \"large"
+    },
+    {
+      "t" : 1.439,
+      "text" : "-heavy\")\nintro"
+    },
+    {
+      "t" : 1.475,
+      "text" : " ="
+    },
+    {
+      "t" : 1.511,
+      "text" : " Callout(\"info"
+    },
+    {
+      "t" : 1.545,
+      "text" : "\", \"Course"
+    },
+    {
+      "t" : 1.581,
+      "text" : " Overview\", \"This"
+    },
+    {
+      "t" : 1.639,
+      "text" : " 8"
+    },
+    {
+      "t" : 1.642,
+      "text" : "-week course covers the core"
+    },
+    {
+      "t" : 1.682,
+      "text" : " t"
+    },
+    {
+      "t" : 1.721,
+      "text" : "ools and methods"
+    },
+    {
+      "t" : 1.759,
+      "text" : " of data science"
+    },
+    {
+      "t" : 1.799,
+      "text" : ". Assignments are due"
+    },
+    {
+      "t" : 1.836,
+      "text" : " Sundays at 11:59"
+    },
+    {
+      "t" : 1.881,
+      "text" : " PM un"
+    },
+    {
+      "t" : 1.923,
+      "text" : "less no"
+    },
+    {
+      "t" : 1.966,
+      "text" : "ted otherwise.\")"
+    },
+    {
+      "t" : 2.01,
+      "text" : "\ntabs = Tabs"
+    },
+    {
+      "t" : 2.061,
+      "text" : "([t"
+    },
+    {
+      "t" : 2.109,
+      "text" : "abSchedule,"
+    },
+    {
+      "t" : 2.155,
+      "text" : " tabDueDates])"
+    },
+    {
+      "t" : 2.199,
+      "text" : "\ntabSchedule = T"
+    },
+    {
+      "t" : 2.246,
+      "text" : "abItem(\"schedule\","
+    },
+    {
+      "t" : 2.309,
+      "text" : " \"We"
+    },
+    {
+      "t" : 2.312,
+      "text" : "ekly Schedule\", ["
+    },
+    {
+      "t" : 2.365,
+      "text" : "weekA"
+    },
+    {
+      "t" : 2.465,
+      "text" : "c"
+    },
+    {
+      "t" : 2.519,
+      "text" : "c])"
+    },
+    {
+      "t" : 2.521,
+      "text" : "\ntabDueDates ="
+    },
+    {
+      "t" : 2.568,
+      "text" : " TabItem(\"due\","
+    },
+    {
+      "t" : 2.626,
+      "text" : " \"Assignment Due"
+    },
+    {
+      "t" : 2.68,
+      "text" : " Dates\", [dueT"
+    },
+    {
+      "t" : 2.732,
+      "text" : "able])\nweekAcc"
+    },
+    {
+      "t" : 2.781,
+      "text" : " = Accordion([w"
+    },
+    {
+      "t" : 2.883,
+      "text" : "k1, wk2, w"
+    },
+    {
+      "t" : 2.885,
+      "text" : "k3, wk4, w"
+    },
+    {
+      "t" : 2.948,
+      "text" : "k5, wk6, w"
+    },
+    {
+      "t" : 3.01,
+      "text" : "k7, wk8])"
+    },
+    {
+      "t" : 3.136,
+      "text" : "\nwk1 = A"
+    },
+    {
+      "t" : 3.162,
+      "text" : "ccordionItem(\"w"
+    },
+    {
+      "t" : 3.241,
+      "text" : "1\", \"Week 1:"
+    },
+    {
+      "t" : 3.302,
+      "text" : " Introduction to Data"
+    },
+    {
+      "t" : 3.372,
+      "text" : " Science\", [wk1topics"
+    },
+    {
+      "t" : 3.454,
+      "text" : ","
+    },
+    {
+      "t" : 3.529,
+      "text" : " wk1due"
+    },
+    {
+      "t" : 3.612,
+      "text" : "])\nwk1topics ="
+    },
+    {
+      "t" : 3.677,
+      "text" : " TextContent(\"**"
+    },
+    {
+      "t" : 3.73,
+      "text" : "Topics:** What is data"
+    },
+    {
+      "t" : 3.781,
+      "text" : " science, the"
+    },
+    {
+      "t" : 3.845,
+      "text" : " data"
+    },
+    {
+      "t" : 3.905,
+      "text" : " lifecycle, setting"
+    },
+    {
+      "t" : 3.963,
+      "text" : " up Python and"
+    },
+    {
+      "t" : 4.025,
+      "text" : " Jupyter noteboo"
+    },
+    {
+      "t" : 4.084,
+      "text" : "ks.\")\nwk1due"
+    },
+    {
+      "t" : 4.141,
+      "text" : " ="
+    },
+    {
+      "t" : 4.193,
+      "text" : " Tag(\"Assignment "
+    },
+    {
+      "t" : 4.251,
+      "text" : "1 "
+    },
+    {
+      "t" : 4.313,
+      "text" : "due"
+    },
+    {
+      "t" : 4.419,
+      "text" : " J"
+    },
+    {
+      "t" : 4.446,
+      "text" : "an 14"
+    },
+    {
+      "t" : 4.512,
+      "text" : "\","
+    },
+    {
+      "t" : 4.587,
+      "text" : " null"
+    },
+    {
+      "t" : 4.657,
+      "text" : ", \"sm\", \"info"
+    },
+    {
+      "t" : 4.729,
+      "text" : "\")\nwk2 = A"
+    },
+    {
+      "t" : 4.798,
+      "text" : "ccordionItem(\"w2"
+    },
+    {
+      "t" : 4.866,
+      "text" : "\", \"Week 2:"
+    },
+    {
+      "t" : 4.941,
+      "text" : " Python Foundations\", [w"
+    },
+    {
+      "t" : 5.008,
+      "text" : "k2topics, wk2"
+    },
+    {
+      "t" : 5.121,
+      "text" : "due])\nwk2topics"
+    },
+    {
+      "t" : 5.123,
+      "text" : " = TextContent(\"**"
+    },
+    {
+      "t" : 5.191,
+      "text" : "Topics:** Vari"
+    },
+    {
+      "t" : 5.254,
+      "text" : "ables, data types, control"
+    },
+    {
+      "t" : 5.326,
+      "text" : " fl"
+    },
+    {
+      "t" : 5.408,
+      "text" : "ow, funct"
+    },
+    {
+      "t" : 5.475,
+      "text" : "ions, and bas"
+    },
+    {
+      "t" : 5.544,
+      "text" : "ic file"
+    },
+    {
+      "t" : 5.61,
+      "text" : " I"
+    },
+    {
+      "t" : 5.72,
+      "text" : "/O.\")\nwk2"
+    },
+    {
+      "t" : 5.722,
+      "text" : "due = Tag(\"Ass"
+    },
+    {
+      "t" : 5.792,
+      "text" : "ignment 2 due J"
+    },
+    {
+      "t" : 5.867,
+      "text" : "an 21\", null, \"s"
+    },
+    {
+      "t" : 5.937,
+      "text" : "m\", \"info\")\nwk"
+    },
+    {
+      "t" : 6.009,
+      "text" : "3 = AccordionIt"
+    },
+    {
+      "t" : 6.112,
+      "text" : "em(\"w3\", \"Week"
+    },
+    {
+      "t" : 6.211,
+      "text" : " 3: Data W"
+    },
+    {
+      "t" : 6.324,
+      "text" : "rangling with pandas\","
+    },
+    {
+      "t" : 6.422,
+      "text" : " [wk3topics, w"
+    },
+    {
+      "t" : 6.613,
+      "text" : "k3due])\nwk3"
+    },
+    {
+      "t" : 6.684,
+      "text" : "topics = TextContent(\""
+    },
+    {
+      "t" : 6.757,
+      "text" : "**Topics:** D"
+    },
+    {
+      "t" : 6.758,
+      "text" : "ataFrames, ind"
+    },
+    {
+      "t" : 6.832,
+      "text" : "exing, fil"
+    },
+    {
+      "t" : 6.911,
+      "text" : "tering, hand"
+    },
+    {
+      "t" : 6.99,
+      "text" : "ling missing values, and mer"
+    },
+    {
+      "t" : 7.112,
+      "text" : "ging dat"
+    },
+    {
+      "t" : 7.113,
+      "text" : "asets.\")\nwk3"
+    },
+    {
+      "t" : 7.193,
+      "text" : "due = Tag(\"Ass"
+    },
+    {
+      "t" : 7.274,
+      "text" : "ignment 3 due J"
+    },
+    {
+      "t" : 7.348,
+      "text" : "an 28\", null, \"s"
+    },
+    {
+      "t" : 7.43,
+      "text" : "m\", \"info\")\nwk"
+    },
+    {
+      "t" : 7.511,
+      "text" : "4 = AccordionIt"
+    },
+    {
+      "t" : 7.599,
+      "text" : "em(\"w4\", \"Week"
+    },
+    {
+      "t" : 7.675,
+      "text" : " 4: Exploratory"
+    },
+    {
+      "t" : 7.756,
+      "text" : " Data Analysis\", ["
+    },
+    {
+      "t" : 7.842,
+      "text" : "wk4topics, wk"
+    },
+    {
+      "t" : 7.93,
+      "text" : "4due])\nwk4top"
+    },
+    {
+      "t" : 8.013,
+      "text" : "ics = TextContent(\"**"
+    },
+    {
+      "t" : 8.096,
+      "text" : "Topics:** Descri"
+    },
+    {
+      "t" : 8.181,
+      "text" : "ptive statistics, gr"
+    },
+    {
+      "t" : 8.346,
+      "text" : "ouping and"
+    },
+    {
+      "t" : 8.536,
+      "text" : " aggregation, and"
+    },
+    {
+      "t" : 8.628,
+      "text" : " visualizing dist"
+    },
+    {
+      "t" : 8.799,
+      "text" : "ributions."
+    },
+    {
+      "t" : 8.884,
+      "text" : "\")\nwk4due ="
+    },
+    {
+      "t" : 8.981,
+      "text" : " Tag(\"Assignment "
+    },
+    {
+      "t" : 8.982,
+      "text" : "4 due Feb 4"
+    },
+    {
+      "t" : 9.082,
+      "text" : "\", null, \"sm\", \""
+    },
+    {
+      "t" : 9.185,
+      "text" : "info\")\nwk5 ="
+    },
+    {
+      "t" : 9.29,
+      "text" : " AccordionItem(\"w"
+    },
+    {
+      "t" : 9.391,
+      "text" : "5\", \"Week 5:"
+    },
+    {
+      "t" : 9.484,
+      "text" : " Data Visualization\", ["
+    },
+    {
+      "t" : 9.582,
+      "text" : "wk5topics, wk"
+    },
+    {
+      "t" : 9.701,
+      "text" : "5due])\nwk5top"
+    },
+    {
+      "t" : 9.814,
+      "text" : "ics = TextContent(\"**"
+    },
+    {
+      "t" : 9.935,
+      "text" : "Topics:** Matpl"
+    },
+    {
+      "t" : 10.059,
+      "text" : "otlib and Seabor"
+    },
+    {
+      "t" : 10.16,
+      "text" : "n basics, choos"
+    },
+    {
+      "t" : 10.245,
+      "text" : "ing ch"
+    },
+    {
+      "t" : 10.329,
+      "text" : "art types, and tel"
+    },
+    {
+      "t" : 10.418,
+      "text" : "ling stories with"
+    },
+    {
+      "t" : 10.54,
+      "text" : " data.\")\nwk5due"
+    },
+    {
+      "t" : 10.661,
+      "text" : " = Tag(\"Assign"
+    },
+    {
+      "t" : 10.766,
+      "text" : "ment 5 due Feb"
+    },
+    {
+      "t" : 10.862,
+      "text" : " 11\", null, \"sm"
+    },
+    {
+      "t" : 11.009,
+      "text" : "\", \"info\")\nwk6"
+    },
+    {
+      "t" : 11.178,
+      "text" : " = AccordionItem"
+    },
+    {
+      "t" : 11.265,
+      "text" : "(\"w6\", \"Week "
+    },
+    {
+      "t" : 11.358,
+      "text" : "6: Statistics"
+    },
+    {
+      "t" : 11.451,
+      "text" : " for Data"
+    },
+    {
+      "t" : 11.558,
+      "text" : " Science\", [wk6top"
+    },
+    {
+      "t" : 11.561,
+      "text" : "ics, wk6due])"
+    },
+    {
+      "t" : 11.691,
+      "text" : "\nwk6topics = Text"
+    },
+    {
+      "t" : 11.822,
+      "text" : "Content(\"**Topics:"
+    },
+    {
+      "t" : 12.041,
+      "text" : "** Prob"
+    },
+    {
+      "t" : 12.043,
+      "text" : "ability dist"
+    },
+    {
+      "t" : 12.174,
+      "text" : "ributions, hypothesis"
+    },
+    {
+      "t" : 12.326,
+      "text" : " testing, conf"
+    },
+    {
+      "t" : 12.43,
+      "text" : "idence intervals, and corre"
+    },
+    {
+      "t" : 12.516,
+      "text" : "lation.\")\nwk6"
+    },
+    {
+      "t" : 12.61,
+      "text" : "due = Tag(\"Ass"
+    },
+    {
+      "t" : 12.815,
+      "text" : "ignment 6 due Fe"
+    },
+    {
+      "t" : 12.923,
+      "text" : "b 18\", null, \"s"
+    },
+    {
+      "t" : 13.026,
+      "text" : "m\", \"info\")\nwk"
+    },
+    {
+      "t" : 13.131,
+      "text" : "7 = AccordionIt"
+    },
+    {
+      "t" : 13.232,
+      "text" : "em(\"w7\", \"Week"
+    },
+    {
+      "t" : 13.331,
+      "text" : " 7: Machine Lear"
+    },
+    {
+      "t" : 13.44,
+      "text" : "ning Bas"
+    },
+    {
+      "t" : 13.445,
+      "text" : "ics\", [wk7topics"
+    },
+    {
+      "t" : 13.599,
+      "text" : ", wk7due])\nw"
+    },
+    {
+      "t" : 13.797,
+      "text" : "k7topics = TextCont"
+    },
+    {
+      "t" : 13.798,
+      "text" : "ent(\"**Topics:**"
+    },
+    {
+      "t" : 13.873,
+      "text" : " Supervised v"
+    },
+    {
+      "t" : 13.971,
+      "text" : "s."
+    },
+    {
+      "t" : 14.096,
+      "text" : " unsupervised learning,"
+    },
+    {
+      "t" : 14.24,
+      "text" : " train/test spl"
+    },
+    {
+      "t" : 14.39,
+      "text" : "its, linear regression, and"
+    },
+    {
+      "t" : 14.63,
+      "text" : " classification.\")\nwk7"
+    },
+    {
+      "t" : 14.633,
+      "text" : "due = Tag(\"Final"
+    },
+    {
+      "t" : 14.762,
+      "text" : " Project pro"
+    },
+    {
+      "t" : 14.854,
+      "text" : "posal due Feb 25"
+    },
+    {
+      "t" : 14.946,
+      "text" : "\", null, \"sm\", \""
+    },
+    {
+      "t" : 15.064,
+      "text" : "warning\")\nwk8 "
+    },
+    {
+      "t" : 15.221,
+      "text" : "= AccordionItem(\""
+    },
+    {
+      "t" : 15.364,
+      "text" : "w8\", \"Week 8"
+    },
+    {
+      "t" : 15.51,
+      "text" : ": Model Evaluation"
+    },
+    {
+      "t" : 15.643,
+      "text" : " and Cap"
+    },
+    {
+      "t" : 15.814,
+      "text" : "stone\", [wk8top"
+    },
+    {
+      "t" : 15.959,
+      "text" : "ics, wk8due])"
+    },
+    {
+      "t" : 16.106,
+      "text" : "\nwk8topics = Text"
+    },
+    {
+      "t" : 16.212,
+      "text" : "Content(\"**Topics:"
+    },
+    {
+      "t" : 16.357,
+      "text" : "** Acc"
+    },
+    {
+      "t" : 16.514,
+      "text" : "uracy, prec"
+    },
+    {
+      "t" : 16.638,
+      "text" : "ision, recall, c"
+    },
+    {
+      "t" : 16.805,
+      "text" : "ross-validation, and"
+    },
+    {
+      "t" : 16.967,
+      "text" : " presenting final"
+    },
+    {
+      "t" : 17.131,
+      "text" : " project"
+    },
+    {
+      "t" : 17.278,
+      "text" : " results.\")\nwk8due"
+    },
+    {
+      "t" : 17.433,
+      "text" : " = Tag(\"Final"
+    },
+    {
+      "t" : 17.583,
+      "text" : " Project due"
+    },
+    {
+      "t" : 17.769,
+      "text" : " Mar 4\", null,"
+    },
+    {
+      "t" : 17.9,
+      "text" : " \"sm\", \"danger\")"
+    },
+    {
+      "t" : 18.1,
+      "text" : "\ndueTable = Table"
+    },
+    {
+      "t" : 18.102,
+      "text" : "([Col(\"Week"
+    },
+    {
+      "t" : 18.222,
+      "text" : "\", d"
+    },
+    {
+      "t" : 18.331,
+      "text" : "ueWeeks), Col"
+    },
+    {
+      "t" : 18.517,
+      "text" : "(\"Assignment\", due"
+    },
+    {
+      "t" : 18.519,
+      "text" : "N"
+    },
+    {
+      "t" : 18.647,
+      "text" : "ames), Col(\"Due"
+    },
+    {
+      "t" : 18.803,
+      "text" : " Date\", dueDates),"
+    },
+    {
+      "t" : 19.002,
+      "text" : " Col(\"We"
+    },
+    {
+      "t" : 19.23,
+      "text" : "ight\", dueWeights,"
+    },
+    {
+      "t" : 19.358,
+      "text" : " \"number\")])\ndueW"
+    },
+    {
+      "t" : 19.476,
+      "text" : "eeks = [\"Week"
+    },
+    {
+      "t" : 19.479,
+      "text" : " 1\", \"Week 2"
+    },
+    {
+      "t" : 19.603,
+      "text" : "\", \"Week 3\", \""
+    },
+    {
+      "t" : 19.722,
+      "text" : "Week 4\", \"Week"
+    },
+    {
+      "t" : 19.821,
+      "text" : " 5\", \"Week 6"
+    },
+    {
+      "t" : 19.953,
+      "text" : "\", \"Week 7\", \""
+    },
+    {
+      "t" : 20.084,
+      "text" : "Week 8\""
+    },
+    {
+      "t" : 20.211,
+      "text" : "]\ndueNames = "
+    },
+    {
+      "t" : 20.456,
+      "text" : "[\"Set"
+    },
+    {
+      "t" : 20.458,
+      "text" : "up and"
+    },
+    {
+      "t" : 20.62,
+      "text" : " Intro Quiz\","
+    },
+    {
+      "t" : 20.745,
+      "text" : " \"Python"
+    },
+    {
+      "t" : 20.95,
+      "text" : " Probl"
+    },
+    {
+      "t" : 21.16,
+      "text" : "em Set\", \"W"
+    },
+    {
+      "t" : 21.277,
+      "text" : "rangling Notebook\","
+    },
+    {
+      "t" : 21.393,
+      "text" : " \"EDA Report"
+    },
+    {
+      "t" : 21.535,
+      "text" : "\", \"Visualization D"
+    },
+    {
+      "t" : 21.639,
+      "text" : "ashboard\", \"Statist"
+    },
+    {
+      "t" : 21.771,
+      "text" : "ics Probl"
+    },
+    {
+      "t" : 21.885,
+      "text" : "em Set\", \"Project"
+    },
+    {
+      "t" : 22.062,
+      "text" : " Proposal\", \"Final"
+    },
+    {
+      "t" : 22.185,
+      "text" : " Project\"]\ndueD"
+    },
+    {
+      "t" : 22.297,
+      "text" : "ates = [\"Jan "
+    },
+    {
+      "t" : 22.405,
+      "text" : "14\", \"Jan 21"
+    },
+    {
+      "t" : 22.515,
+      "text" : "\", \"Jan 28\","
+    },
+    {
+      "t" : 22.617,
+      "text" : " \"Feb 4\", \""
+    },
+    {
+      "t" : 22.711,
+      "text" : "Feb 11\", \""
+    },
+    {
+      "t" : 22.812,
+      "text" : "Feb 18\", \"Fe"
+    },
+    {
+      "t" : 22.913,
+      "text" : "b 25\", \"Mar"
+    },
+    {
+      "t" : 23.082,
+      "text" : " 4\"]\ndueW"
+    },
+    {
+      "t" : 23.084,
+      "text" : "eights = [5, 10"
+    },
+    {
+      "t" : 23.187,
+      "text" : ", 10"
+    },
+    {
+      "t" : 23.293,
+      "text" : ", 15, 15"
+    },
+    {
+      "t" : 23.418,
+      "text" : ", 10, 5"
+    },
+    {
+      "t" : 23.532,
+      "text" : ", 30"
+    },
+    {
+      "t" : 23.706,
+      "text" : "]"
+    }
+  ],
+  "createdAt" : "2026-11-11T10:36:02Z",
+  "effort" : "low",
+  "format" : "openui-recording",
+  "inputTokens" : 14490,
+  "library" : "react-ui",
+  "model" : "claude-haiku-5-5",
+  "outputTokens" : 1537,
+  "request" : "A course syllabus with weeks, topics and assignment due dates.",
+  "servedBy" : "claude-haiku-5-5",
+  "stopReason" : "end_turn",
+  "version" : 1
+}

@@ -1,0 +1,428 @@
+{
+  "batchRequest" : {
+    "model" : "sonnet",
+    "number" : 37,
+    "request" : "A hiring pipeline: candidates per stage as a bar chart and a table of open roles."
+  },
+  "chunks" : [
+    {
+      "t" : 0.857,
+      "text" : "root = Stack([title,"
+    },
+    {
+      "t" : 1.163,
+      "text" : " chartCard, r"
+    },
+    {
+      "t" : 1.19,
+      "text" : "olesCard])\ntitle ="
+    },
+    {
+      "t" : 1.249,
+      "text" : " TextContent(\"Hi"
+    },
+    {
+      "t" : 1.282,
+      "text" : "ring Pipeline\", \""
+    },
+    {
+      "t" : 1.365,
+      "text" : "large-heavy\")\nch"
+    },
+    {
+      "t" : 1.397,
+      "text" : "artCard = Card([ch"
+    },
+    {
+      "t" : 1.43,
+      "text" : "artHeader, chart"
+    },
+    {
+      "t" : 1.464,
+      "text" : "])\nchartHeader ="
+    },
+    {
+      "t" : 1.529,
+      "text" : " CardHeader(\"Cand"
+    },
+    {
+      "t" : 1.563,
+      "text" : "idates per"
+    },
+    {
+      "t" : 1.596,
+      "text" : " Stage\", \"Current"
+    },
+    {
+      "t" : 1.629,
+      "text" : " active p"
+    },
+    {
+      "t" : 1.632,
+      "text" : "ipeline across"
+    },
+    {
+      "t" : 1.695,
+      "text" : " all roles\")\nchart ="
+    },
+    {
+      "t" : 1.731,
+      "text" : " BarChart(stages,"
+    },
+    {
+      "t" : 1.732,
+      "text" : " [cand"
+    },
+    {
+      "t" : 1.769,
+      "text" : "Series], \"grouped"
+    },
+    {
+      "t" : 1.801,
+      "text" : "\", \"St"
+    },
+    {
+      "t" : 1.852,
+      "text" : "age\", \"Candidates\")"
+    },
+    {
+      "t" : 1.854,
+      "text" : "\nstages = [\"Appl"
+    },
+    {
+      "t" : 1.884,
+      "text" : "ied\", \"Screening"
+    },
+    {
+      "t" : 1.925,
+      "text" : "\", \"Ph"
+    },
+    {
+      "t" : 1.965,
+      "text" : "one Inter"
+    },
+    {
+      "t" : 2.008,
+      "text" : "view\", \"On"
+    },
+    {
+      "t" : 2.048,
+      "text" : "site\","
+    },
+    {
+      "t" : 2.091,
+      "text" : " \"Offer\", \"H"
+    },
+    {
+      "t" : 2.132,
+      "text" : "ired\"]\ncandSeries"
+    },
+    {
+      "t" : 2.176,
+      "text" : " = Series(\"Candidates"
+    },
+    {
+      "t" : 2.215,
+      "text" : "\", [248"
+    },
+    {
+      "t" : 2.265,
+      "text" : ", 132"
+    },
+    {
+      "t" : 2.329,
+      "text" : ", 74"
+    },
+    {
+      "t" : 2.38,
+      "text" : ", 36, 12"
+    },
+    {
+      "t" : 2.424,
+      "text" : ", 8"
+    },
+    {
+      "t" : 2.465,
+      "text" : "])\nrolesCard ="
+    },
+    {
+      "t" : 2.508,
+      "text" : " Card([rolesHe"
+    },
+    {
+      "t" : 2.549,
+      "text" : "ader, rolesTable])"
+    },
+    {
+      "t" : 2.589,
+      "text" : "\nrolesHeader ="
+    },
+    {
+      "t" : 2.65,
+      "text" : " CardHeader(\"Open"
+    },
+    {
+      "t" : 2.734,
+      "text" : " Roles\", \"Posit"
+    },
+    {
+      "t" : 2.779,
+      "text" : "ions currently being"
+    },
+    {
+      "t" : 2.825,
+      "text" : " recruited\")\nroles"
+    },
+    {
+      "t" : 2.888,
+      "text" : "Table = Table([Col"
+    },
+    {
+      "t" : 2.957,
+      "text" : "(\"Role\", roles),"
+    },
+    {
+      "t" : 3.023,
+      "text" : " Col(\"Department\", dep"
+    },
+    {
+      "t" : 3.08,
+      "text" : "ts), Col(\"Location\","
+    },
+    {
+      "t" : 3.127,
+      "text" : " locs), Col(\"Open"
+    },
+    {
+      "t" : 3.175,
+      "text" : "ings\", openings,"
+    },
+    {
+      "t" : 3.224,
+      "text" : " \"number\"), Col(\""
+    },
+    {
+      "t" : 3.272,
+      "text" : "Candidates\", c"
+    },
+    {
+      "t" : 3.32,
+      "text" : "ands, \"number\"), Col"
+    },
+    {
+      "t" : 3.368,
+      "text" : "(\"Priority\", priority"
+    },
+    {
+      "t" : 3.437,
+      "text" : "Tags)])\nroles ="
+    },
+    {
+      "t" : 3.442,
+      "text" : " [\"Senior Backend"
+    },
+    {
+      "t" : 3.528,
+      "text" : " Engineer\", \"Product"
+    },
+    {
+      "t" : 3.592,
+      "text" : " Designer\", \"Data"
+    },
+    {
+      "t" : 3.666,
+      "text" : " Analyst\", \"Account"
+    },
+    {
+      "t" : 3.801,
+      "text" : " Executive\", \"D"
+    },
+    {
+      "t" : 3.803,
+      "text" : "evOps Engineer\","
+    },
+    {
+      "t" : 3.901,
+      "text" : " \"Marketing Manager"
+    },
+    {
+      "t" : 4.065,
+      "text" : "\"]\ndepts = [\""
+    },
+    {
+      "t" : 4.114,
+      "text" : "Engineering\", \"Design"
+    },
+    {
+      "t" : 4.161,
+      "text" : "\", \"Anal"
+    },
+    {
+      "t" : 4.21,
+      "text" : "ytics\", \"Sales\","
+    },
+    {
+      "t" : 4.269,
+      "text" : " \"Eng"
+    },
+    {
+      "t" : 4.324,
+      "text" : "ineering\", \"Marketing"
+    },
+    {
+      "t" : 4.326,
+      "text" : "\"]\nlocs = [\""
+    },
+    {
+      "t" : 4.385,
+      "text" : "Remote\", \"New"
+    },
+    {
+      "t" : 4.456,
+      "text" : " York\", \"London"
+    },
+    {
+      "t" : 4.516,
+      "text" : "\", \"Ch"
+    },
+    {
+      "t" : 4.561,
+      "text" : "icago\", \"Remote\","
+    },
+    {
+      "t" : 4.673,
+      "text" : " \"Aust"
+    },
+    {
+      "t" : 4.736,
+      "text" : "in\"]\nopenings = ["
+    },
+    {
+      "t" : 4.803,
+      "text" : "2, 1, 1,"
+    },
+    {
+      "t" : 4.805,
+      "text" : " 3, 1"
+    },
+    {
+      "t" : 4.865,
+      "text" : ", 1]\ncands ="
+    },
+    {
+      "t" : 4.929,
+      "text" : " [64"
+    },
+    {
+      "t" : 4.994,
+      "text" : ", 41"
+    },
+    {
+      "t" : 5.059,
+      "text" : ", 38, 57"
+    },
+    {
+      "t" : 5.14,
+      "text" : ", 29, 19"
+    },
+    {
+      "t" : 5.219,
+      "text" : "]\npriority"
+    },
+    {
+      "t" : 5.297,
+      "text" : "Tags = [t"
+    },
+    {
+      "t" : 5.373,
+      "text" : "1, t2, t3,"
+    },
+    {
+      "t" : 5.438,
+      "text" : " t4, t5, t6"
+    },
+    {
+      "t" : 5.508,
+      "text" : "]\nt1 = T"
+    },
+    {
+      "t" : 5.592,
+      "text" : "ag(\"High\", null, \"s"
+    },
+    {
+      "t" : 5.71,
+      "text" : "m\", \"danger\")\nt"
+    },
+    {
+      "t" : 5.713,
+      "text" : "2 = Tag(\""
+    },
+    {
+      "t" : 5.787,
+      "text" : "Medium\", null, \"sm"
+    },
+    {
+      "t" : 5.868,
+      "text" : "\", \"warning\")\nt3"
+    },
+    {
+      "t" : 5.954,
+      "text" : " = Tag(\"Med"
+    },
+    {
+      "t" : 6.114,
+      "text" : "ium\", null, \"sm\","
+    },
+    {
+      "t" : 6.223,
+      "text" : " \"warning\")\nt4 "
+    },
+    {
+      "t" : 6.29,
+      "text" : "= Tag(\"High\", null"
+    },
+    {
+      "t" : 6.357,
+      "text" : ", \"sm\", \"danger"
+    },
+    {
+      "t" : 6.447,
+      "text" : "\")\nt5 = T"
+    },
+    {
+      "t" : 6.536,
+      "text" : "ag(\"High"
+    },
+    {
+      "t" : 6.627,
+      "text" : "\", null, \"sm\", \""
+    },
+    {
+      "t" : 6.632,
+      "text" : "danger\")\nt6 ="
+    },
+    {
+      "t" : 6.733,
+      "text" : " Tag(\"Low\", null"
+    },
+    {
+      "t" : 6.843,
+      "text" : ", \"sm\", \"neut"
+    },
+    {
+      "t" : 6.992,
+      "text" : "ral\")"
+    }
+  ],
+  "createdAt" : "2026-11-11T10:36:27Z",
+  "effort" : "low",
+  "format" : "openui-recording",
+  "inputTokens" : 14498,
+  "library" : "react-ui",
+  "model" : "claude-sonnet-5-5",
+  "outputTokens" : 673,
+  "request" : "A hiring pipeline: candidates per stage as a bar chart and a table of open roles.",
+  "servedBy" : "claude-sonnet-5-5",
+  "stopReason" : "end_turn",
+  "version" : 1
+}

@@ -1,0 +1,242 @@
+{
+  "batchRequest" : {
+    "model" : "haiku",
+    "number" : 42,
+    "of" : 2,
+    "request" : "The power is back: change the banner to \"Power restored\" and add a timeline of the outage."
+  },
+  "chunks" : [
+    {
+      "t" : 1.997,
+      "text" : "root"
+    },
+    {
+      "t" : 2.018,
+      "text" : " = Stack([banner,"
+    },
+    {
+      "t" : 2.045,
+      "text" : " timel"
+    },
+    {
+      "t" : 2.071,
+      "text" : "ineHeader, time"
+    },
+    {
+      "t" : 2.082,
+      "text" : "line])\nbanner = Call"
+    },
+    {
+      "t" : 2.099,
+      "text" : "out(\"success\", \"Power rest"
+    },
+    {
+      "t" : 2.12,
+      "text" : "ored\", \"Lat"
+    },
+    {
+      "t" : 2.14,
+      "text" : "est update: 3:42 "
+    },
+    {
+      "t" : 2.161,
+      "text" : "PM. Power has"
+    },
+    {
+      "t" : 2.182,
+      "text" : " been restored across downtown and"
+    },
+    {
+      "t" : 2.203,
+      "text" : " surrounding neighborh"
+    },
+    {
+      "t" : 2.224,
+      "text" : "oods.\", null)\ntim"
+    },
+    {
+      "t" : 2.244,
+      "text" : "elineHeader = Inl"
+    },
+    {
+      "t" : 2.265,
+      "text" : "ineHeader(\"Outage"
+    },
+    {
+      "t" : 2.285,
+      "text" : " timeline\", \"Key"
+    },
+    {
+      "t" : 2.305,
+      "text" : " events from the power"
+    },
+    {
+      "t" : 2.325,
+      "text" : " outage\")\ntimeline ="
+    },
+    {
+      "t" : 2.347,
+      "text" : " Steps([t"
+    },
+    {
+      "t" : 2.366,
+      "text" : "1, t2, t3,"
+    },
+    {
+      "t" : 2.387,
+      "text" : " t4])\nt1 ="
+    },
+    {
+      "t" : 2.408,
+      "text" : " StepsItem(\""
+    },
+    {
+      "t" : 2.429,
+      "text" : "Outage beg"
+    },
+    {
+      "t" : 2.448,
+      "text" : "ins\", \"Wid"
+    },
+    {
+      "t" : 2.47,
+      "text" : "espread power lo"
+    },
+    {
+      "t" : 2.494,
+      "text" : "ss reported across"
+    },
+    {
+      "t" : 2.51,
+      "text" : " downtown and n"
+    },
+    {
+      "t" : 2.531,
+      "text" : "earby neighborhoods"
+    },
+    {
+      "t" : 2.55,
+      "text" : ".\")\nt2 = St"
+    },
+    {
+      "t" : 2.572,
+      "text" : "epsItem(\"Crews"
+    },
+    {
+      "t" : 2.592,
+      "text" : " d"
+    },
+    {
+      "t" : 2.612,
+      "text" : "ispatched\", \"Utility"
+    },
+    {
+      "t" : 2.632,
+      "text" : " crews were"
+    },
+    {
+      "t" : 2.653,
+      "text" : " s"
+    },
+    {
+      "t" : 2.673,
+      "text" : "ent to ass"
+    },
+    {
+      "t" : 2.694,
+      "text" : "ess dam"
+    },
+    {
+      "t" : 2.714,
+      "text" : "age and ident"
+    },
+    {
+      "t" : 2.734,
+      "text" : "ify the source of"
+    },
+    {
+      "t" : 2.754,
+      "text" : " the fail"
+    },
+    {
+      "t" : 2.774,
+      "text" : "ure.\")\nt3 ="
+    },
+    {
+      "t" : 2.796,
+      "text" : " StepsItem(\"Rest"
+    },
+    {
+      "t" : 2.815,
+      "text" : "oration under"
+    },
+    {
+      "t" : 2.836,
+      "text" : "way\", \"Cr"
+    },
+    {
+      "t" : 2.856,
+      "text" : "ews wor"
+    },
+    {
+      "t" : 2.876,
+      "text" : "ked to"
+    },
+    {
+      "t" : 2.898,
+      "text" : " restore power and"
+    },
+    {
+      "t" : 2.918,
+      "text" : " estimated rest"
+    },
+    {
+      "t" : 2.937,
+      "text" : "oration time was still being assess"
+    },
+    {
+      "t" : 2.958,
+      "text" : "ed.\")\nt4 ="
+    },
+    {
+      "t" : 2.979,
+      "text" : " StepsItem(\"Power"
+    },
+    {
+      "t" : 2.999,
+      "text" : " restored\", \"Lat"
+    },
+    {
+      "t" : 3.02,
+      "text" : "est update at"
+    },
+    {
+      "t" : 3.042,
+      "text" : " 3:42 PM conf"
+    },
+    {
+      "t" : 3.061,
+      "text" : "irms power has been restored across"
+    },
+    {
+      "t" : 3.08,
+      "text" : " the aff"
+    },
+    {
+      "t" : 3.11,
+      "text" : "ected areas.\")"
+    }
+  ],
+  "createdAt" : "2026-11-11T10:37:25Z",
+  "effort" : "low",
+  "format" : "openui-recording",
+  "inputTokens" : 14970,
+  "library" : "react-ui",
+  "model" : "claude-haiku-5-5",
+  "outputTokens" : 566,
+  "patchOf" : "root = Stack([banner])\nbanner = Callout(\"error\", \"Breaking: City-wide power outage\", \"Latest update: 3:42 PM. Crews are working to restore power across downtown and surrounding neighborhoods. Estimated restoration time is still being assessed.\", null)",
+  "request" : "The power is back: change the banner to \"Power restored\" and add a timeline of the outage.",
+  "servedBy" : "claude-haiku-5-5",
+  "stopReason" : "end_turn",
+  "version" : 1
+}

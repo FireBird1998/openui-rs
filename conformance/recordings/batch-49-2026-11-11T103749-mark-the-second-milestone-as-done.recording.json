@@ -1,0 +1,210 @@
+{
+  "batchRequest" : {
+    "model" : "sonnet",
+    "number" : 49,
+    "of" : 29,
+    "request" : "Mark the second milestone as done and add a new risk."
+  },
+  "chunks" : [
+    {
+      "t" : 2.219,
+      "text" : "m"
+    },
+    {
+      "t" : 2.276,
+      "text" : "2 = StepsItem"
+    },
+    {
+      "t" : 2.306,
+      "text" : "(\"Architecture & Design"
+    },
+    {
+      "t" : 2.344,
+      "text" : " (Done)\", \"System design"
+    },
+    {
+      "t" : 2.376,
+      "text" : " approved; UX prototyp"
+    },
+    {
+      "t" : 2.402,
+      "text" : "es validated with 12 users"
+    },
+    {
+      "t" : 2.437,
+      "text" : "."
+    },
+    {
+      "t" : 2.469,
+      "text" : " Marked as done.\")\nri"
+    },
+    {
+      "t" : 2.514,
+      "text" : "skNames = [\"Front"
+    },
+    {
+      "t" : 2.553,
+      "text" : "-end integration delay\", \""
+    },
+    {
+      "t" : 2.589,
+      "text" : "Third-party API instability\","
+    },
+    {
+      "t" : 2.626,
+      "text" : " \"Key engineer attr"
+    },
+    {
+      "t" : 2.658,
+      "text" : "ition\", \"Scope creep"
+    },
+    {
+      "t" : 2.689,
+      "text" : " from new stakeholder requ"
+    },
+    {
+      "t" : 2.727,
+      "text" : "ests\", \"Budget overr"
+    },
+    {
+      "t" : 2.76,
+      "text" : "un on cloud costs\""
+    },
+    {
+      "t" : 2.801,
+      "text" : "]\nseverityTags = ["
+    },
+    {
+      "t" : 2.843,
+      "text" : "Tag(\"High\", null,"
+    },
+    {
+      "t" : 2.892,
+      "text" : " \"sm\", \"danger\""
+    },
+    {
+      "t" : 2.901,
+      "text" : "), Tag(\"High\", null"
+    },
+    {
+      "t" : 2.939,
+      "text" : ", \"sm\", \"danger"
+    },
+    {
+      "t" : 2.971,
+      "text" : "\"), Tag(\"Med"
+    },
+    {
+      "t" : 3.008,
+      "text" : "ium\", null, \"sm\","
+    },
+    {
+      "t" : 3.043,
+      "text" : " \"warning\"), Tag"
+    },
+    {
+      "t" : 3.078,
+      "text" : "(\"Medium\", null, \""
+    },
+    {
+      "t" : 3.114,
+      "text" : "sm\", \"warning\"),"
+    },
+    {
+      "t" : 3.15,
+      "text" : " Tag(\"Low\", null"
+    },
+    {
+      "t" : 3.186,
+      "text" : ", \"sm\", \"neut"
+    },
+    {
+      "t" : 3.225,
+      "text" : "ral\")]\nowners = "
+    },
+    {
+      "t" : 3.263,
+      "text" : "[\"Dana Orti"
+    },
+    {
+      "t" : 3.293,
+      "text" : "z\", \"Priya N"
+    },
+    {
+      "t" : 3.329,
+      "text" : "air\", \"Marcus"
+    },
+    {
+      "t" : 3.364,
+      "text" : " Webb\", \"S"
+    },
+    {
+      "t" : 3.399,
+      "text" : "am Pat"
+    },
+    {
+      "t" : 3.435,
+      "text" : "el\", \"Elena R"
+    },
+    {
+      "t" : 3.47,
+      "text" : "ossi\"]\nmitig"
+    },
+    {
+      "t" : 3.506,
+      "text" : "ations = [\"Add"
+    },
+    {
+      "t" : 3.542,
+      "text" : " two contractors; daily sy"
+    },
+    {
+      "t" : 3.577,
+      "text" : "ncs\", \"Build fall"
+    },
+    {
+      "t" : 3.614,
+      "text" : "back caching layer\", \""
+    },
+    {
+      "t" : 3.648,
+      "text" : "Cross-train team; document mod"
+    },
+    {
+      "t" : 3.685,
+      "text" : "ules\", \"Form"
+    },
+    {
+      "t" : 3.719,
+      "text" : "al change-"
+    },
+    {
+      "t" : 3.754,
+      "text" : "control process; freeze scope"
+    },
+    {
+      "t" : 3.791,
+      "text" : " before UAT\", \"We"
+    },
+    {
+      "t" : 3.827,
+      "text" : "ekly cost review; set bud"
+    },
+    {
+      "t" : 3.862,
+      "text" : "get alerts\"]"
+    }
+  ],
+  "createdAt" : "2026-11-11T10:37:49Z",
+  "effort" : "low",
+  "format" : "openui-recording",
+  "inputTokens" : 15677,
+  "library" : "react-ui",
+  "model" : "claude-sonnet-5-5",
+  "outputTokens" : 545,
+  "patchOf" : "root = Stack([header, healthRow, stepsHeader, milestones, risksHeader, risksTable])\nheader = CardHeader(\"Project Phoenix: Status Report\", \"Reporting period: Q3 2025, Week 12\")\nhealthRow = Stack([healthLabel, healthTag], \"row\", \"s\", \"center\")\nhealthLabel = TextContent(\"Overall Health:\", \"large-heavy\")\nhealthTag = Tag(\"At Risk\", warnIcon, \"lg\", \"warning\")\nwarnIcon = Icon(\"triangle-alert\", \"status\")\nstepsHeader = InlineHeader(\"Milestones\", \"Progress against the delivery plan\")\nmilestones = Steps([m1, m2, m3, m4, m5])\nm1 = StepsItem(\"Discovery & Requirements (Complete)\", \"Stakeholder interviews finished and requirements signed off on June 6.\")\nm2 = StepsItem(\"Architecture & Design (Complete)\", \"System design approved; UX prototypes validated with 12 users.\")\nm3 = StepsItem(\"Core Development (In Progress, 70%)\", \"Backend APIs done; front-end integration is running about one week behind schedule.\")\nm4 = StepsItem(\"UAT & Performance Testing (Upcoming)\", \"Scheduled to begin September 15, pending completion of core development.\")\nm5 = StepsItem(\"Launch & Handover (Planned)\", \"Target go-live October 20, with a two-week hypercare period afterwards.\")\nrisksHeader = InlineHeader(\"Key Risks\", \"Ranked by severity\")\nrisksTable = Table([Col(\"Risk\", riskNames), Col(\"Severity\", severityTags), Col(\"Owner\", owners), Col(\"Mitigation\", mitigations)])\nriskNames = [\"Front-end integration delay\", \"Third-party API instability\", \"Key engineer attrition\", \"Budget overrun on cloud costs\"]\nseverityTags = [Tag(\"High\", null, \"sm\", \"danger\"), Tag(\"High\", null, \"sm\", \"danger\"), Tag(\"Medium\", null, \"sm\", \"warning\"), Tag(\"Low\", null, \"sm\", \"neutral\")]\nowners = [\"Dana Ortiz\", \"Priya Nair\", \"Marcus Webb\", \"Elena Rossi\"]\nmitigations = [\"Add two contractors; daily syncs\", \"Build fallback caching layer\", \"Cross-train team; document modules\", \"Weekly cost review; set budget alerts\"]",
+  "request" : "Mark the second milestone as done and add a new risk.",
+  "servedBy" : "claude-sonnet-5-5",
+  "stopReason" : "end_turn",
+  "version" : 1
+}

@@ -1,0 +1,222 @@
+{
+  "batchRequest" : {
+    "model" : "sonnet",
+    "number" : 47,
+    "of" : 23,
+    "request" : "Add a date range select that filters the dashboard, and remove the products table."
+  },
+  "chunks" : [
+    {
+      "t" : 1.007,
+      "text" : "root"
+    },
+    {
+      "t" : 1.383,
+      "text" : " = Stack([header, r"
+    },
+    {
+      "t" : 1.394,
+      "text" : "angeSelect, kp"
+    },
+    {
+      "t" : 1.412,
+      "text" : "iBlock, chartC"
+    },
+    {
+      "t" : 1.431,
+      "text" : "ard])\nrangeSel"
+    },
+    {
+      "t" : 1.448,
+      "text" : "ect = Select(\"range\", r"
+    },
+    {
+      "t" : 1.463,
+      "text" : "angeO"
+    },
+    {
+      "t" : 1.469,
+      "text" : "pts, \"Select date range"
+    },
+    {
+      "t" : 1.479,
+      "text" : "\", null"
+    },
+    {
+      "t" : 1.494,
+      "text" : ", \""
+    },
+    {
+      "t" : 1.501,
+      "text" : "12"
+    },
+    {
+      "t" : 1.51,
+      "text" : "\")\nrangeOpts"
+    },
+    {
+      "t" : 1.516,
+      "text" : " = [SelectItem(\""
+    },
+    {
+      "t" : 1.724,
+      "text" : "3\", \"Last 3 "
+    },
+    {
+      "t" : 1.731,
+      "text" : "months\"), SelectItem"
+    },
+    {
+      "t" : 1.741,
+      "text" : "(\"6\", \"Last 6"
+    },
+    {
+      "t" : 1.747,
+      "text" : " months\"), SelectIt"
+    },
+    {
+      "t" : 1.752,
+      "text" : "em(\"12\", \"Last "
+    },
+    {
+      "t" : 1.761,
+      "text" : "12 months\")"
+    },
+    {
+      "t" : 1.768,
+      "text" : "]\nheader"
+    },
+    {
+      "t" : 1.778,
+      "text" : " = InlineHeader(\""
+    },
+    {
+      "t" : 1.784,
+      "text" : "Sales Dashboard"
+    },
+    {
+      "t" : 1.795,
+      "text" : "\", \"Performance overview for"
+    },
+    {
+      "t" : 1.802,
+      "text" : " the selected period"
+    },
+    {
+      "t" : 1.833,
+      "text" : "\")\nlineChart = L"
+    },
+    {
+      "t" : 2.069,
+      "text" : "ineChart($"
+    },
+    {
+      "t" : 2.082,
+      "text" : "range == \"3\" ? @"
+    },
+    {
+      "t" : 2.095,
+      "text" : "Slice(months, 9"
+    },
+    {
+      "t" : 2.102,
+      "text" : ","
+    },
+    {
+      "t" : 2.114,
+      "text" : " 12) : $range == \""
+    },
+    {
+      "t" : 2.126,
+      "text" : "6\" ? @Slice"
+    },
+    {
+      "t" : 2.133,
+      "text" : "(months, 6, 12"
+    },
+    {
+      "t" : 2.146,
+      "text" : ") : months, [revSe"
+    },
+    {
+      "t" : 2.158,
+      "text" : "ries], \"natural\", \""
+    },
+    {
+      "t" : 2.167,
+      "text" : "Month\", \"Revenue "
+    },
+    {
+      "t" : 2.202,
+      "text" : "($K)\")\nrevSe"
+    },
+    {
+      "t" : 2.233,
+      "text" : "ries = Series(\"Reven"
+    },
+    {
+      "t" : 2.424,
+      "text" : "ue\", $range == \"3\""
+    },
+    {
+      "t" : 2.438,
+      "text" : " ? @Slice(rev"
+    },
+    {
+      "t" : 2.452,
+      "text" : "Val"
+    },
+    {
+      "t" : 2.466,
+      "text" : "ues, 9, 12)"
+    },
+    {
+      "t" : 2.479,
+      "text" : " : $range == \"6\" "
+    },
+    {
+      "t" : 2.493,
+      "text" : "? @Slice(revVal"
+    },
+    {
+      "t" : 2.502,
+      "text" : "ues, 6, 12)"
+    },
+    {
+      "t" : 2.517,
+      "text" : " : revValues)\nrevVal"
+    },
+    {
+      "t" : 2.534,
+      "text" : "ues = [92, 98,"
+    },
+    {
+      "t" : 2.57,
+      "text" : " 105, 110, 118"
+    },
+    {
+      "t" : 2.601,
+      "text" : ", 112, 121, "
+    },
+    {
+      "t" : 2.634,
+      "text" : "127, 124, 135,"
+    },
+    {
+      "t" : 2.912,
+      "text" : " 148, 170]"
+    }
+  ],
+  "createdAt" : "2026-11-11T10:37:41Z",
+  "effort" : "low",
+  "format" : "openui-recording",
+  "inputTokens" : 15920,
+  "library" : "react-ui",
+  "model" : "claude-sonnet-5-5",
+  "outputTokens" : 338,
+  "patchOf" : "root = Stack([header, kpiBlock, chartCard, tableCard])\nheader = InlineHeader(\"Sales Dashboard\", \"Performance overview for the last 12 months\")\nkpiBlock = OverviewCardBlock([k1, k2, k3, k4], \"grid\")\nk1 = OverviewCardItem(\"revenue\", k1top, k1m)\nk1top = IconText(k1i, \"info\", \"m\", \"Total Revenue\", \"YTD\", false, \"horizontal\")\nk1i = Icon(\"circle-dollar-sign\", \"finance\")\nk1m = MetricIndicatorInline(\"$1.42M\", \"vs last year\", { direction: \"up\", value: 12 })\nk2 = OverviewCardItem(\"orders\", k2top, k2m)\nk2top = IconText(k2i, \"success\", \"m\", \"Orders\", \"YTD\", false, \"horizontal\")\nk2i = Icon(\"shopping-cart\", \"shopping\")\nk2m = MetricIndicatorInline(\"18,240\", \"vs last year\", { direction: \"up\", value: 8 })\nk3 = OverviewCardItem(\"aov\", k3top, k3m)\nk3top = IconText(k3i, \"warning\", \"m\", \"Avg. Order Value\", \"YTD\", false, \"horizontal\")\nk3i = Icon(\"receipt\", \"finance\")\nk3m = MetricIndicatorInline(\"$77.80\", \"vs last year\", { direction: \"up\", value: 3 })\nk4 = OverviewCardItem(\"conv\", k4top, k4m)\nk4top = IconText(k4i, \"danger\", \"m\", \"Conversion Rate\", \"YTD\", false, \"horizontal\")\nk4i = Icon(\"percent\", \"finance\")\nk4m = MetricIndicatorInline(\"2.9%\", \"vs last year\", { direction: \"down\", value: 4 })\nchartCard = Card([chartHeader, lineChart])\nchartHeader = CardHeader(\"Monthly Revenue\", \"Revenue in thousands of USD\")\nlineChart = LineChart(months, [revSeries], \"natural\", \"Month\", \"Revenue ($K)\")\nmonths = [\"Jan\", \"Feb\", \"Mar\", \"Apr\", \"May\", \"Jun\", \"Jul\", \"Aug\", \"Sep\", \"Oct\", \"Nov\", \"Dec\"]\nrevSeries = Series(\"Revenue\", [92, 98, 105, 110, 118, 112, 121, 127, 124, 135, 148, 170])\ntableCard = Card([tableHeader, productTable])\ntableHeader = CardHeader(\"Top Products\", \"Ranked by revenue\")\nproductTable = Table([Col(\"Product\", pNames), Col(\"Category\", pCats), Col(\"Units Sold\", pUnits, \"number\"), Col(\"Revenue ($)\", pRev, \"number\")])\npNames = [\"Widget Pro\", \"Smart Hub\", \"Wireless Earbuds\", \"Fitness Band\", \"Desk Lamp\"]\npCats = [\"Hardware\", \"Electronics\", \"Audio\", \"Wearables\", \"Home\"]\npUnits = [4820, 3410, 2960, 2185, 1740]\npRev = [313300, 272800, 236800, 174800, 69600]",
+  "request" : "Add a date range select that filters the dashboard, and remove the products table.",
+  "servedBy" : "claude-sonnet-5-5",
+  "stopReason" : "end_turn",
+  "version" : 1
+}

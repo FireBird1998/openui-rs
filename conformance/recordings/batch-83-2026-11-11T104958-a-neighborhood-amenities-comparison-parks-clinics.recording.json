@@ -1,0 +1,444 @@
+{
+  "batchRequest" : {
+    "model" : "sonnet",
+    "number" : 83,
+    "request" : "A neighborhood amenities comparison: parks, clinics and libraries per district in a table, with a short interpretation and source notes."
+  },
+  "chunks" : [
+    {
+      "t" : 0.907,
+      "text" : "root = Stack([header"
+    },
+    {
+      "t" : 1.239,
+      "text" : ", t"
+    },
+    {
+      "t" : 1.274,
+      "text" : "bl, ch"
+    },
+    {
+      "t" : 1.306,
+      "text" : "art, interp"
+    },
+    {
+      "t" : 1.361,
+      "text" : ", sources"
+    },
+    {
+      "t" : 1.43,
+      "text" : "])\nheader = C"
+    },
+    {
+      "t" : 1.449,
+      "text" : "ardHeader(\"Neigh"
+    },
+    {
+      "t" : 1.477,
+      "text" : "borhood Amenities by"
+    },
+    {
+      "t" : 1.506,
+      "text" : " District\", \"Par"
+    },
+    {
+      "t" : 1.534,
+      "text" : "ks, clinics and libra"
+    },
+    {
+      "t" : 1.576,
+      "text" : "ries per"
+    },
+    {
+      "t" : 1.604,
+      "text" : " district\")\ntbl ="
+    },
+    {
+      "t" : 1.606,
+      "text" : " Table([Col(\"District"
+    },
+    {
+      "t" : 1.644,
+      "text" : "\", districts), Col(\""
+    },
+    {
+      "t" : 1.675,
+      "text" : "Parks\", parks, \"number"
+    },
+    {
+      "t" : 1.708,
+      "text" : "\"), Col(\"Clin"
+    },
+    {
+      "t" : 1.78,
+      "text" : "ics\", clinics, \"number"
+    },
+    {
+      "t" : 1.818,
+      "text" : "\"), Col(\"Libra"
+    },
+    {
+      "t" : 1.821,
+      "text" : "ries\", libs"
+    },
+    {
+      "t" : 1.854,
+      "text" : ", \"number\"), Col(\""
+    },
+    {
+      "t" : 1.885,
+      "text" : "Population (k)\", p"
+    },
+    {
+      "t" : 1.928,
+      "text" : "op, \"number\")])\nch"
+    },
+    {
+      "t" : 1.96,
+      "text" : "art = BarChart(distric"
+    },
+    {
+      "t" : 1.991,
+      "text" : "ts, [s1, s2"
+    },
+    {
+      "t" : 2.021,
+      "text" : ", s3], \"grouped"
+    },
+    {
+      "t" : 2.054,
+      "text" : "\", \"District"
+    },
+    {
+      "t" : 2.087,
+      "text" : "\", \"Count"
+    },
+    {
+      "t" : 2.123,
+      "text" : "\")\ns"
+    },
+    {
+      "t" : 2.158,
+      "text" : "1 = Series(\"Par"
+    },
+    {
+      "t" : 2.193,
+      "text" : "ks\", parks)\ns2"
+    },
+    {
+      "t" : 2.231,
+      "text" : " = Series(\"Clin"
+    },
+    {
+      "t" : 2.27,
+      "text" : "ics\", clinics)\ns"
+    },
+    {
+      "t" : 2.35,
+      "text" : "3 = Series(\"Lib"
+    },
+    {
+      "t" : 2.416,
+      "text" : "raries\", libs)\ninter"
+    },
+    {
+      "t" : 2.42,
+      "text" : "p = Callout(\"info"
+    },
+    {
+      "t" : 2.479,
+      "text" : "\", \"Interpretation\","
+    },
+    {
+      "t" : 2.529,
+      "text" : " \"Riverside and Old"
+    },
+    {
+      "t" : 2.578,
+      "text" : " Town are"
+    },
+    {
+      "t" : 2.641,
+      "text" : " best"
+    },
+    {
+      "t" : 2.643,
+      "text" : " served"
+    },
+    {
+      "t" : 2.693,
+      "text" : " over"
+    },
+    {
+      "t" : 2.731,
+      "text" : "all, with"
+    },
+    {
+      "t" : 2.775,
+      "text" : " str"
+    },
+    {
+      "t" : 2.846,
+      "text" : "ong cl"
+    },
+    {
+      "t" : 2.847,
+      "text" : "inic and library coverage."
+    },
+    {
+      "t" : 2.892,
+      "text" : " Northgate has"
+    },
+    {
+      "t" : 2.999,
+      "text" : " the most parks but few"
+    },
+    {
+      "t" : 3.143,
+      "text" : " clinics for"
+    },
+    {
+      "t" : 3.159,
+      "text" : " its"
+    },
+    {
+      "t" : 3.394,
+      "text" : " population. Eastf"
+    },
+    {
+      "t" : 3.497,
+      "text" : "ield and Harbor l"
+    },
+    {
+      "t" : 3.61,
+      "text" : "ag across"
+    },
+    {
+      "t" : 3.692,
+      "text" : " all three categ"
+    },
+    {
+      "t" : 3.793,
+      "text" : "ories, suggesting these"
+    },
+    {
+      "t" : 3.889,
+      "text" : " areas as"
+    },
+    {
+      "t" : 3.932,
+      "text" : " prior"
+    },
+    {
+      "t" : 3.992,
+      "text" : "ities for new"
+    },
+    {
+      "t" : 4.038,
+      "text" : " investment,"
+    },
+    {
+      "t" : 4.091,
+      "text" : " especially clinics"
+    },
+    {
+      "t" : 4.187,
+      "text" : ".\")\nsources = T"
+    },
+    {
+      "t" : 4.232,
+      "text" : "extCallout(\"ne"
+    },
+    {
+      "t" : 4.235,
+      "text" : "utral\", \"Source notes"
+    },
+    {
+      "t" : 4.319,
+      "text" : "\", \"Figures are illust"
+    },
+    {
+      "t" : 4.322,
+      "text" : "rative s"
+    },
+    {
+      "t" : 4.406,
+      "text" : "ample data,"
+    },
+    {
+      "t" : 4.409,
+      "text" : " not official"
+    },
+    {
+      "t" : 4.472,
+      "text" : " stat"
+    },
+    {
+      "t" : 4.531,
+      "text" : "istics. Counts re"
+    },
+    {
+      "t" : 4.583,
+      "text" : "flect public facilities only"
+    },
+    {
+      "t" : 4.632,
+      "text" : "; private"
+    },
+    {
+      "t" : 4.719,
+      "text" : " clinics and"
+    },
+    {
+      "t" : 4.723,
+      "text" : " school"
+    },
+    {
+      "t" : 4.799,
+      "text" : " libraries are excluded."
+    },
+    {
+      "t" : 4.844,
+      "text" : " Population values"
+    },
+    {
+      "t" : 4.846,
+      "text" : " are r"
+    },
+    {
+      "t" : 4.89,
+      "text" : "ounded estimates. Repl"
+    },
+    {
+      "t" : 4.948,
+      "text" : "ace with munic"
+    },
+    {
+      "t" : 5.04,
+      "text" : "ipal open"
+    },
+    {
+      "t" : 5.114,
+      "text" : "-"
+    },
+    {
+      "t" : 5.17,
+      "text" : "data records"
+    },
+    {
+      "t" : 5.255,
+      "text" : " before dr"
+    },
+    {
+      "t" : 5.258,
+      "text" : "awing conclusions.\")"
+    },
+    {
+      "t" : 5.31,
+      "text" : "\ndistricts = [\"Ri"
+    },
+    {
+      "t" : 5.365,
+      "text" : "verside\", \"Old Town"
+    },
+    {
+      "t" : 5.475,
+      "text" : "\", \"Northgate\", \""
+    },
+    {
+      "t" : 5.477,
+      "text" : "Westb"
+    },
+    {
+      "t" : 5.532,
+      "text" : "rook\", \"Eastf"
+    },
+    {
+      "t" : 5.62,
+      "text" : "ield\", \"Harbor\""
+    },
+    {
+      "t" : 5.622,
+      "text" : "]\nparks = [9,"
+    },
+    {
+      "t" : 5.677,
+      "text" : " 6, 12, 7"
+    },
+    {
+      "t" : 5.733,
+      "text" : ", 3"
+    },
+    {
+      "t" : 5.79,
+      "text" : ", 4]\nclinics"
+    },
+    {
+      "t" : 5.85,
+      "text" : " = [8, 7"
+    },
+    {
+      "t" : 5.907,
+      "text" : ", 3"
+    },
+    {
+      "t" : 5.966,
+      "text" : ", 5, 2, "
+    },
+    {
+      "t" : 6.025,
+      "text" : "2]\nlibs = [4"
+    },
+    {
+      "t" : 6.08,
+      "text" : ", 5"
+    },
+    {
+      "t" : 6.174,
+      "text" : ", 2, 3, "
+    },
+    {
+      "t" : 6.176,
+      "text" : "1, 1]\npop"
+    },
+    {
+      "t" : 6.233,
+      "text" : " = [62"
+    },
+    {
+      "t" : 6.292,
+      "text" : ", 48"
+    },
+    {
+      "t" : 6.352,
+      "text" : ", 55"
+    },
+    {
+      "t" : 6.414,
+      "text" : ", 51"
+    },
+    {
+      "t" : 6.507,
+      "text" : ", 44"
+    },
+    {
+      "t" : 6.509,
+      "text" : ", 39"
+    },
+    {
+      "t" : 6.568,
+      "text" : "]"
+    }
+  ],
+  "createdAt" : "2026-11-11T10:49:58Z",
+  "effort" : "low",
+  "format" : "openui-recording",
+  "inputTokens" : 14510,
+  "library" : "react-ui",
+  "model" : "claude-sonnet-5-5",
+  "outputTokens" : 553,
+  "request" : "A neighborhood amenities comparison: parks, clinics and libraries per district in a table, with a short interpretation and source notes.",
+  "servedBy" : "claude-sonnet-5-5",
+  "stopReason" : "end_turn",
+  "version" : 1
+}

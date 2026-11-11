@@ -1,0 +1,828 @@
+{
+  "batchRequest" : {
+    "model" : "haiku",
+    "number" : 8,
+    "request" : "An article page: headline, byline, publish date, lead image, four paragraphs and related links."
+  },
+  "chunks" : [
+    {
+      "t" : 0.667,
+      "text" : "root"
+    },
+    {
+      "t" : 0.827,
+      "text" : " = Stack([head"
+    },
+    {
+      "t" : 0.838,
+      "text" : "line, byline, le"
+    },
+    {
+      "t" : 0.848,
+      "text" : "adImage, p"
+    },
+    {
+      "t" : 0.884,
+      "text" : "1, p2, p3,"
+    },
+    {
+      "t" : 0.895,
+      "text" : " p4, rel"
+    },
+    {
+      "t" : 0.902,
+      "text" : "atedH"
+    },
+    {
+      "t" : 0.913,
+      "text" : "eader, relatedLin"
+    },
+    {
+      "t" : 0.92,
+      "text" : "ks])\nheadline = Text"
+    },
+    {
+      "t" : 0.932,
+      "text" : "Content(\"The"
+    },
+    {
+      "t" : 0.945,
+      "text" : " Qu"
+    },
+    {
+      "t" : 0.952,
+      "text" : "iet Rev"
+    },
+    {
+      "t" : 0.965,
+      "text" : "ival"
+    },
+    {
+      "t" : 1.001,
+      "text" : " of Ne"
+    },
+    {
+      "t" : 1.001,
+      "text" : "ighborhood Lib"
+    },
+    {
+      "t" : 1.014,
+      "text" : "raries\", \"large-heav"
+    },
+    {
+      "t" : 1.035,
+      "text" : "y\")\nbyline = Text"
+    },
+    {
+      "t" : 1.049,
+      "text" : "Content(\"By Ma"
+    },
+    {
+      "t" : 1.063,
+      "text" : "ya"
+    },
+    {
+      "t" : 1.071,
+      "text" : " Th"
+    },
+    {
+      "t" : 1.088,
+      "text" : "orn"
+    },
+    {
+      "t" : 1.108,
+      "text" : "ton ·"
+    },
+    {
+      "t" : 1.129,
+      "text" : " Published"
+    },
+    {
+      "t" : 1.148,
+      "text" : " March 14"
+    },
+    {
+      "t" : 1.169,
+      "text" : ", 2025\", \"small\")"
+    },
+    {
+      "t" : 1.19,
+      "text" : "\nleadImage = Im"
+    },
+    {
+      "t" : 1.212,
+      "text" : "ageBlock(\"https"
+    },
+    {
+      "t" : 1.231,
+      "text" : "://images"
+    },
+    {
+      "t" : 1.251,
+      "text" : ".example"
+    },
+    {
+      "t" : 1.272,
+      "text" : ".com/ne"
+    },
+    {
+      "t" : 1.291,
+      "text" : "ighborhood-library"
+    },
+    {
+      "t" : 1.312,
+      "text" : "."
+    },
+    {
+      "t" : 1.358,
+      "text" : "jpg\", \"Pat"
+    },
+    {
+      "t" : 1.374,
+      "text" : "rons re"
+    },
+    {
+      "t" : 1.389,
+      "text" : "ading at"
+    },
+    {
+      "t" : 1.406,
+      "text" : " a s"
+    },
+    {
+      "t" : 1.422,
+      "text" : "unl"
+    },
+    {
+      "t" : 1.438,
+      "text" : "it library"
+    },
+    {
+      "t" : 1.455,
+      "text" : " table\")\np1 = T"
+    },
+    {
+      "t" : 1.476,
+      "text" : "extContent(\"Across the city"
+    },
+    {
+      "t" : 1.496,
+      "text" : ", small"
+    },
+    {
+      "t" : 1.516,
+      "text" : " bran"
+    },
+    {
+      "t" : 1.539,
+      "text" : "ch libraries that"
+    },
+    {
+      "t" : 1.559,
+      "text" : " once loo"
+    },
+    {
+      "t" : 1.578,
+      "text" : "ked dest"
+    },
+    {
+      "t" : 1.597,
+      "text" : "ined for clos"
+    },
+    {
+      "t" : 1.618,
+      "text" : "ure are se"
+    },
+    {
+      "t" : 1.639,
+      "text" : "eing their bus"
+    },
+    {
+      "t" : 1.658,
+      "text" : "iest years in"
+    },
+    {
+      "t" : 1.679,
+      "text" : " a"
+    },
+    {
+      "t" : 1.699,
+      "text" : " decade. Re"
+    },
+    {
+      "t" : 1.72,
+      "text" : "ading rooms f"
+    },
+    {
+      "t" : 1.741,
+      "text" : "ill up after"
+    },
+    {
+      "t" : 1.761,
+      "text" : " school,"
+    },
+    {
+      "t" : 1.785,
+      "text" : " and summ"
+    },
+    {
+      "t" : 1.805,
+      "text" : "er program"
+    },
+    {
+      "t" : 1.823,
+      "text" : "s have"
+    },
+    {
+      "t" : 1.843,
+      "text" : " wa"
+    },
+    {
+      "t" : 1.863,
+      "text" : "itlists. Local officials"
+    },
+    {
+      "t" : 1.884,
+      "text" : " say the change is less"
+    },
+    {
+      "t" : 1.905,
+      "text" : " about books"
+    },
+    {
+      "t" : 1.924,
+      "text" : " than about the bu"
+    },
+    {
+      "t" : 1.944,
+      "text" : "ildings themselves bec"
+    },
+    {
+      "t" : 1.966,
+      "text" : "oming places people"
+    },
+    {
+      "t" : 1.986,
+      "text" : " want"
+    },
+    {
+      "t" : 2.005,
+      "text" : " to be"
+    },
+    {
+      "t" : 2.026,
+      "text" : ".\")\np2 = T"
+    },
+    {
+      "t" : 2.048,
+      "text" : "extContent(\"The"
+    },
+    {
+      "t" : 2.068,
+      "text" : " turna"
+    },
+    {
+      "t" : 2.088,
+      "text" : "round began qu"
+    },
+    {
+      "t" : 2.108,
+      "text" : "ietly."
+    },
+    {
+      "t" : 2.132,
+      "text" : " Libr"
+    },
+    {
+      "t" : 2.153,
+      "text" : "arians started"
+    },
+    {
+      "t" : 2.174,
+      "text" : " off"
+    },
+    {
+      "t" : 2.198,
+      "text" : "ering se"
+    },
+    {
+      "t" : 2.219,
+      "text" : "ed lib"
+    },
+    {
+      "t" : 2.241,
+      "text" : "raries, tool"
+    },
+    {
+      "t" : 2.254,
+      "text" : " lending, and repair work"
+    },
+    {
+      "t" : 2.383,
+      "text" : "shops al"
+    },
+    {
+      "t" : 2.405,
+      "text" : "ongside tra"
+    },
+    {
+      "t" : 2.426,
+      "text" : "ditional shelves. Resid"
+    },
+    {
+      "t" : 2.439,
+      "text" : "ents who"
+    },
+    {
+      "t" : 2.461,
+      "text" : " had not"
+    },
+    {
+      "t" : 2.483,
+      "text" : " set"
+    },
+    {
+      "t" : 2.506,
+      "text" : " foot in"
+    },
+    {
+      "t" : 2.527,
+      "text" : "side in"
+    },
+    {
+      "t" : 2.551,
+      "text" : " years began"
+    },
+    {
+      "t" : 2.573,
+      "text" : " retur"
+    },
+    {
+      "t" : 2.588,
+      "text" : "ning, often"
+    },
+    {
+      "t" : 2.61,
+      "text" : " b"
+    },
+    {
+      "t" : 2.633,
+      "text" : "ringing children"
+    },
+    {
+      "t" : 2.656,
+      "text" : " or neighbors who had"
+    },
+    {
+      "t" : 2.671,
+      "text" : " never consid"
+    },
+    {
+      "t" : 2.695,
+      "text" : "ered the bran"
+    },
+    {
+      "t" : 2.719,
+      "text" : "ch part"
+    },
+    {
+      "t" : 2.743,
+      "text" : " of their"
+    },
+    {
+      "t" : 2.767,
+      "text" : " daily routine.\")\np"
+    },
+    {
+      "t" : 2.791,
+      "text" : "3 = TextContent(\""
+    },
+    {
+      "t" : 2.816,
+      "text" : "Funding rem"
+    },
+    {
+      "t" : 2.841,
+      "text" : "ains a challenge. Many"
+    },
+    {
+      "t" : 2.856,
+      "text" : " branches still"
+    },
+    {
+      "t" : 2.866,
+      "text" : " operate on tight"
+    },
+    {
+      "t" : 2.906,
+      "text" : " budgets, rel"
+    },
+    {
+      "t" : 2.931,
+      "text" : "ying on vol"
+    },
+    {
+      "t" : 2.956,
+      "text" : "unteers"
+    },
+    {
+      "t" : 2.972,
+      "text" : " to"
+    },
+    {
+      "t" : 2.997,
+      "text" : " sta"
+    },
+    {
+      "t" : 3.022,
+      "text" : "ff ev"
+    },
+    {
+      "t" : 3.048,
+      "text" : "ening hours and on"
+    },
+    {
+      "t" : 3.074,
+      "text" : " grants to"
+    },
+    {
+      "t" : 3.099,
+      "text" : " repl"
+    },
+    {
+      "t" : 3.126,
+      "text" : "ace a"
+    },
+    {
+      "t" : 3.152,
+      "text" : "ging computers. Adv"
+    },
+    {
+      "t" : 3.179,
+      "text" : "ocates arg"
+    },
+    {
+      "t" : 3.205,
+      "text" : "ue that the return"
+    },
+    {
+      "t" : 3.231,
+      "text" : " on"
+    },
+    {
+      "t" : 3.258,
+      "text" : " investment is cl"
+    },
+    {
+      "t" : 3.285,
+      "text" : "ear:"
+    },
+    {
+      "t" : 3.312,
+      "text" : " every dollar spent on a"
+    },
+    {
+      "t" : 3.339,
+      "text" : " bran"
+    },
+    {
+      "t" : 3.367,
+      "text" : "ch supports job"
+    },
+    {
+      "t" : 3.394,
+      "text" : " sear"
+    },
+    {
+      "t" : 3.422,
+      "text" : "ches, liter"
+    },
+    {
+      "t" : 3.449,
+      "text" : "acy, and civ"
+    },
+    {
+      "t" : 3.477,
+      "text" : "ic life"
+    },
+    {
+      "t" : 3.505,
+      "text" : " in"
+    },
+    {
+      "t" : 3.533,
+      "text" : " "
+    },
+    {
+      "t" : 3.56,
+      "text" : "ways that"
+    },
+    {
+      "t" : 3.588,
+      "text" : " are h"
+    },
+    {
+      "t" : 3.616,
+      "text" : "ard to measure but"
+    },
+    {
+      "t" : 3.645,
+      "text" : " eas"
+    },
+    {
+      "t" : 3.673,
+      "text" : "y to see.\")\np4"
+    },
+    {
+      "t" : 3.702,
+      "text" : " = TextContent(\""
+    },
+    {
+      "t" : 3.73,
+      "text" : "Looking ahead, library"
+    },
+    {
+      "t" : 3.76,
+      "text" : " direct"
+    },
+    {
+      "t" : 3.789,
+      "text" : "ors are plan"
+    },
+    {
+      "t" : 3.82,
+      "text" : "ning exp"
+    },
+    {
+      "t" : 3.85,
+      "text" : "anded h"
+    },
+    {
+      "t" : 3.879,
+      "text" : "ours and"
+    },
+    {
+      "t" : 3.909,
+      "text" : " more community sp"
+    },
+    {
+      "t" : 3.94,
+      "text" : "aces design"
+    },
+    {
+      "t" : 3.97,
+      "text" : "ed for me"
+    },
+    {
+      "t" : 4,
+      "text" : "etings and small busin"
+    },
+    {
+      "t" : 4.031,
+      "text" : "esses. For"
+    },
+    {
+      "t" : 4.062,
+      "text" : " many"
+    },
+    {
+      "t" : 4.093,
+      "text" : " resid"
+    },
+    {
+      "t" : 4.123,
+      "text" : "ents, the message"
+    },
+    {
+      "t" : 4.154,
+      "text" : " is sim"
+    },
+    {
+      "t" : 4.184,
+      "text" : "ple: the library is"
+    },
+    {
+      "t" : 4.216,
+      "text" : " open"
+    },
+    {
+      "t" : 4.248,
+      "text" : ","
+    },
+    {
+      "t" : 4.28,
+      "text" : " and it is for"
+    },
+    {
+      "t" : 4.312,
+      "text" : " everyone who"
+    },
+    {
+      "t" : 4.344,
+      "text" : " wal"
+    },
+    {
+      "t" : 4.376,
+      "text" : "ks through"
+    },
+    {
+      "t" : 4.408,
+      "text" : " the"
+    },
+    {
+      "t" : 4.44,
+      "text" : " door.\")\nrelatedH"
+    },
+    {
+      "t" : 4.473,
+      "text" : "eader = InlineHe"
+    },
+    {
+      "t" : 4.506,
+      "text" : "ader(\"Related Re"
+    },
+    {
+      "t" : 4.538,
+      "text" : "ading\","
+    },
+    {
+      "t" : 4.571,
+      "text" : " \"More"
+    },
+    {
+      "t" : 4.604,
+      "text" : " from our"
+    },
+    {
+      "t" : 4.637,
+      "text" : " co"
+    },
+    {
+      "t" : 4.671,
+      "text" : "verage of"
+    },
+    {
+      "t" : 4.704,
+      "text" : " public sp"
+    },
+    {
+      "t" : 4.738,
+      "text" : "aces\")\nrelatedL"
+    },
+    {
+      "t" : 4.772,
+      "text" : "inks = Stack([link"
+    },
+    {
+      "t" : 4.806,
+      "text" : "1, link2, link3],"
+    },
+    {
+      "t" : 4.841,
+      "text" : " \"column\", \"s"
+    },
+    {
+      "t" : 4.875,
+      "text" : "\")\nlink1 = Button"
+    },
+    {
+      "t" : 4.911,
+      "text" : "(\"How"
+    },
+    {
+      "t" : 4.946,
+      "text" : " C"
+    },
+    {
+      "t" : 4.981,
+      "text" : "ities Are"
+    },
+    {
+      "t" : 5.016,
+      "text" : " R"
+    },
+    {
+      "t" : 5.038,
+      "text" : "eth"
+    },
+    {
+      "t" : 5.073,
+      "text" : "inking Public Par"
+    },
+    {
+      "t" : 5.108,
+      "text" : "ks\", @OpenUr"
+    },
+    {
+      "t" : 5.144,
+      "text" : "l(\"https://news"
+    },
+    {
+      "t" : 5.18,
+      "text" : ".example.com/par"
+    },
+    {
+      "t" : 5.217,
+      "text" : "ks-r"
+    },
+    {
+      "t" : 5.253,
+      "text" : "ethink"
+    },
+    {
+      "t" : 5.289,
+      "text" : "\"), \"t"
+    },
+    {
+      "t" : 5.325,
+      "text" : "ertiary\")\nlink2 "
+    },
+    {
+      "t" : 5.362,
+      "text" : "= Button(\"The"
+    },
+    {
+      "t" : 5.399,
+      "text" : " Econom"
+    },
+    {
+      "t" : 5.422,
+      "text" : "ics of Community"
+    },
+    {
+      "t" : 5.457,
+      "text" : " Inf"
+    },
+    {
+      "t" : 5.493,
+      "text" : "rastructure\", @Op"
+    },
+    {
+      "t" : 5.53,
+      "text" : "enUrl(\"https://news"
+    },
+    {
+      "t" : 5.566,
+      "text" : ".example.com/community"
+    },
+    {
+      "t" : 5.604,
+      "text" : "-infrastructure\"),"
+    },
+    {
+      "t" : 5.64,
+      "text" : " \"tertiary\")\nlink"
+    },
+    {
+      "t" : 5.677,
+      "text" : "3 = Button(\"Vol"
+    },
+    {
+      "t" : 5.714,
+      "text" : "unteer"
+    },
+    {
+      "t" : 5.738,
+      "text" : " Networks Ke"
+    },
+    {
+      "t" : 5.774,
+      "text" : "e"
+    },
+    {
+      "t" : 5.812,
+      "text" : "ping Bran"
+    },
+    {
+      "t" : 5.85,
+      "text" : "ches Open"
+    },
+    {
+      "t" : 5.889,
+      "text" : "\", @OpenUrl"
+    },
+    {
+      "t" : 5.926,
+      "text" : "(\"https://news.example.com"
+    },
+    {
+      "t" : 5.965,
+      "text" : "/volunteer-networks"
+    },
+    {
+      "t" : 5.99,
+      "text" : "\"), \"tertiary\")"
+    }
+  ],
+  "createdAt" : "2026-11-11T10:33:18Z",
+  "effort" : "low",
+  "format" : "openui-recording",
+  "inputTokens" : 14497,
+  "library" : "react-ui",
+  "model" : "claude-haiku-5-5",
+  "outputTokens" : 776,
+  "request" : "An article page: headline, byline, publish date, lead image, four paragraphs and related links.",
+  "servedBy" : "claude-haiku-5-5",
+  "stopReason" : "end_turn",
+  "version" : 1
+}

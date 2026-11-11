@@ -1,0 +1,14 @@
+root = Stack([header, goalCard, logTable, chartCard])
+header = InlineHeader("Music Practice Log", "Daily minutes and pieces practiced this week")
+goalCard = Card([goalHeader, goalMetric, goalBar])
+goalHeader = CardHeader("Weekly Goal", "150 minutes target")
+goalMetric = BoldText("number", "128 / 150 min", "85% complete", "metric")
+goalBar = SingleStackedBarChart(["Practiced", "Remaining"], [128, 22])
+logTable = Table([Col("Day", days), Col("Minutes", minutes, "number"), Col("Pieces Practiced", pieces), Col("Focus", focus)])
+days = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]
+minutes = [25, 30, 0, 20, 35, 18, 0]
+pieces = ["Bach Prelude in C", "Chopin Nocturne Op. 9", "Rest day", "Scales and arpeggios, Clair de Lune", "Clair de Lune, Gymnopédie No. 1", "Bach Invention No. 4", "Rest day"]
+focus = ["Tempo work", "Phrasing", "Rest", "Technique", "Dynamics", "Sight-reading", "Rest"]
+chartCard = Card([chartHeader, minutesChart])
+chartHeader = CardHeader("Minutes per Day", "Daily practice trend")
+minutesChart = BarChart(days, [Series("Minutes", minutes)], "grouped", "Day", "Minutes")

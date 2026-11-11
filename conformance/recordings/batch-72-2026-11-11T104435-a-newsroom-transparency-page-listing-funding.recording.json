@@ -1,0 +1,1096 @@
+{
+  "batchRequest" : {
+    "model" : "haiku",
+    "number" : 72,
+    "request" : "A newsroom transparency page listing funding sources, editorial independence rules and how readers can report a conflict of interest."
+  },
+  "chunks" : [
+    {
+      "t" : 0.794,
+      "text" : "root"
+    },
+    {
+      "t" : 0.936,
+      "text" : " = Stack([header"
+    },
+    {
+      "t" : 0.979,
+      "text" : ", f"
+    },
+    {
+      "t" : 1.066,
+      "text" : "undingCard, independ"
+    },
+    {
+      "t" : 1.115,
+      "text" : "enceCard, re"
+    },
+    {
+      "t" : 1.19,
+      "text" : "portCard])\nheader = In"
+    },
+    {
+      "t" : 1.224,
+      "text" : "lineHeader(\"New"
+    },
+    {
+      "t" : 1.268,
+      "text" : "sroom Transparency\","
+    },
+    {
+      "t" : 1.306,
+      "text" : " \"How"
+    },
+    {
+      "t" : 1.346,
+      "text" : " we are"
+    },
+    {
+      "t" : 1.393,
+      "text" : " funded, how"
+    },
+    {
+      "t" : 1.447,
+      "text" : " we st"
+    },
+    {
+      "t" : 1.492,
+      "text" : "ay independent, and how to"
+    },
+    {
+      "t" : 1.565,
+      "text" : " fl"
+    },
+    {
+      "t" : 1.603,
+      "text" : "ag conc"
+    },
+    {
+      "t" : 1.605,
+      "text" : "erns\")\nfundingC"
+    },
+    {
+      "t" : 1.659,
+      "text" : "ard ="
+    },
+    {
+      "t" : 1.709,
+      "text" : " Card([fundingHeader"
+    },
+    {
+      "t" : 1.786,
+      "text" : ", fundingT"
+    },
+    {
+      "t" : 1.787,
+      "text" : "able, fundingN"
+    },
+    {
+      "t" : 1.846,
+      "text" : "ote])\nfundingHe"
+    },
+    {
+      "t" : 1.957,
+      "text" : "ader = CardHeader(\""
+    },
+    {
+      "t" : 1.959,
+      "text" : "Funding Sources\", \""
+    },
+    {
+      "t" : 2.093,
+      "text" : "Dis"
+    },
+    {
+      "t" : 2.158,
+      "text" : "closed ann"
+    },
+    {
+      "t" : 2.214,
+      "text" : "ually;"
+    },
+    {
+      "t" : 2.251,
+      "text" : " perc"
+    },
+    {
+      "t" : 2.308,
+      "text" : "entages re"
+    },
+    {
+      "t" : 2.31,
+      "text" : "flect the"
+    },
+    {
+      "t" : 2.365,
+      "text" : " most"
+    },
+    {
+      "t" : 2.413,
+      "text" : " recent fiscal year\")"
+    },
+    {
+      "t" : 2.47,
+      "text" : "\nfundingTable ="
+    },
+    {
+      "t" : 2.534,
+      "text" : " Table([Col(\"Source\","
+    },
+    {
+      "t" : 2.626,
+      "text" : " fundingSources), Col"
+    },
+    {
+      "t" : 2.691,
+      "text" : "(\"Type\", fundingT"
+    },
+    {
+      "t" : 2.754,
+      "text" : "ypes), Col(\"Share"
+    },
+    {
+      "t" : 2.805,
+      "text" : " of"
+    },
+    {
+      "t" : 2.837,
+      "text" : " Revenue\", funding"
+    },
+    {
+      "t" : 2.871,
+      "text" : "Shares,"
+    },
+    {
+      "t" : 2.901,
+      "text" : " \"number\""
+    },
+    {
+      "t" : 2.932,
+      "text" : "), Col(\"Disclos"
+    },
+    {
+      "t" : 2.933,
+      "text" : "ed Ter"
+    },
+    {
+      "t" : 2.987,
+      "text" : "ms\", fundingTerms"
+    },
+    {
+      "t" : 2.988,
+      "text" : ")])\nfundingSources"
+    },
+    {
+      "t" : 3.02,
+      "text" : " = [\"Reader"
+    },
+    {
+      "t" : 3.074,
+      "text" : " Subscriptions\", \""
+    },
+    {
+      "t" : 3.147,
+      "text" : "Individ"
+    },
+    {
+      "t" : 3.21,
+      "text" : "ual Member"
+    },
+    {
+      "t" : 3.258,
+      "text" : " Donations\", \"Found"
+    },
+    {
+      "t" : 3.329,
+      "text" : "ation Grants\", \"Adv"
+    },
+    {
+      "t" : 3.431,
+      "text" : "ertising\","
+    },
+    {
+      "t" : 3.433,
+      "text" : " \"Event"
+    },
+    {
+      "t" : 3.496,
+      "text" : " Sponsorships\"]"
+    },
+    {
+      "t" : 3.559,
+      "text" : "\nfundingTypes ="
+    },
+    {
+      "t" : 3.617,
+      "text" : " [\"Ear"
+    },
+    {
+      "t" : 3.992,
+      "text" : "ned\", \"Cont"
+    },
+    {
+      "t" : 3.994,
+      "text" : "ributed\", \"Contribut"
+    },
+    {
+      "t" : 4.079,
+      "text" : "ed\", \"Comm"
+    },
+    {
+      "t" : 4.132,
+      "text" : "ercial\", \"Commerc"
+    },
+    {
+      "t" : 4.222,
+      "text" : "ial\"]\nfundingSh"
+    },
+    {
+      "t" : 4.223,
+      "text" : "ares = [46"
+    },
+    {
+      "t" : 4.325,
+      "text" : ", 22"
+    },
+    {
+      "t" : 4.371,
+      "text" : ", 18"
+    },
+    {
+      "t" : 4.464,
+      "text" : ", 9"
+    },
+    {
+      "t" : 4.534,
+      "text" : ", 5"
+    },
+    {
+      "t" : 4.586,
+      "text" : "]\nfundingTerms"
+    },
+    {
+      "t" : 4.638,
+      "text" : " = [\"No editorial input"
+    },
+    {
+      "t" : 4.689,
+      "text" : "\", \""
+    },
+    {
+      "t" : 4.735,
+      "text" : "Public"
+    },
+    {
+      "t" : 4.787,
+      "text" : " donor"
+    },
+    {
+      "t" : 4.869,
+      "text" : " list above"
+    },
+    {
+      "t" : 4.87,
+      "text" : " $"
+    },
+    {
+      "t" : 4.919,
+      "text" : "1"
+    },
+    {
+      "t" : 5.002,
+      "text" : ",000\", \"Restricted"
+    },
+    {
+      "t" : 5.004,
+      "text" : " to local"
+    },
+    {
+      "t" : 5.069,
+      "text" : " court"
+    },
+    {
+      "t" : 5.19,
+      "text" : " and"
+    },
+    {
+      "t" : 5.25,
+      "text" : " council"
+    },
+    {
+      "t" : 5.304,
+      "text" : " re"
+    },
+    {
+      "t" : 5.37,
+      "text" : "porting;"
+    },
+    {
+      "t" : 5.421,
+      "text" : " no influence on story"
+    },
+    {
+      "t" : 5.473,
+      "text" : " selection\", \""
+    },
+    {
+      "t" : 5.523,
+      "text" : "Ads labeled;"
+    },
+    {
+      "t" : 5.552,
+      "text" : " separ"
+    },
+    {
+      "t" : 5.616,
+      "text" : "ate s"
+    },
+    {
+      "t" : 5.617,
+      "text" : "ales team\", \"S"
+    },
+    {
+      "t" : 5.678,
+      "text" : "ponsors never sh"
+    },
+    {
+      "t" : 5.73,
+      "text" : "own in"
+    },
+    {
+      "t" : 5.769,
+      "text" : " editorial content"
+    },
+    {
+      "t" : 5.825,
+      "text" : "\"]\nfundingNote"
+    },
+    {
+      "t" : 5.923,
+      "text" : " = TextCallout(\"info"
+    },
+    {
+      "t" : 5.989,
+      "text" : "\", \""
+    },
+    {
+      "t" : 6.049,
+      "text" : "Full "
+    },
+    {
+      "t" : 6.107,
+      "text" : "ledger\", \"Our"
+    },
+    {
+      "t" : 6.17,
+      "text" : " aud"
+    },
+    {
+      "t" : 6.291,
+      "text" : "ited"
+    },
+    {
+      "t" : 6.358,
+      "text" : " financ"
+    },
+    {
+      "t" : 6.443,
+      "text" : "ial statements and"
+    },
+    {
+      "t" : 6.527,
+      "text" : " compl"
+    },
+    {
+      "t" : 6.61,
+      "text" : "ete grant ag"
+    },
+    {
+      "t" : 6.675,
+      "text" : "reements are available on"
+    },
+    {
+      "t" : 6.757,
+      "text" : " request.\")\nindependenceC"
+    },
+    {
+      "t" : 6.851,
+      "text" : "ard = Card([independence"
+    },
+    {
+      "t" : 6.923,
+      "text" : "Header, independenceList"
+    },
+    {
+      "t" : 7.052,
+      "text" : "])\nindependenceHeader"
+    },
+    {
+      "t" : 7.053,
+      "text" : " = CardHeader(\""
+    },
+    {
+      "t" : 7.133,
+      "text" : "Editorial Independence R"
+    },
+    {
+      "t" : 7.202,
+      "text" : "ules\", \"Comm"
+    },
+    {
+      "t" : 7.266,
+      "text" : "itments that"
+    },
+    {
+      "t" : 7.362,
+      "text" : " gov"
+    },
+    {
+      "t" : 7.364,
+      "text" : "ern every"
+    },
+    {
+      "t" : 7.423,
+      "text" : " story"
+    },
+    {
+      "t" : 7.487,
+      "text" : " we"
+    },
+    {
+      "t" : 7.55,
+      "text" : " publish\")\nindependenceList"
+    },
+    {
+      "t" : 7.617,
+      "text" : " ="
+    },
+    {
+      "t" : 7.686,
+      "text" : " Accordion(["
+    },
+    {
+      "t" : 7.754,
+      "text" : "ruleO"
+    },
+    {
+      "t" : 7.833,
+      "text" : "w"
+    },
+    {
+      "t" : 7.917,
+      "text" : "n"
+    },
+    {
+      "t" : 8.073,
+      "text" : "ership, ruleF"
+    },
+    {
+      "t" : 8.145,
+      "text" : "unders, ruleC"
+    },
+    {
+      "t" : 8.211,
+      "text" : "orrections, ruleA"
+    },
+    {
+      "t" : 8.283,
+      "text" : "ds"
+    },
+    {
+      "t" : 8.35,
+      "text" : "])\nruleOwn"
+    },
+    {
+      "t" : 8.411,
+      "text" : "ership = A"
+    },
+    {
+      "t" : 8.412,
+      "text" : "ccordionItem(\"own"
+    },
+    {
+      "t" : 8.482,
+      "text" : "ership\", \""
+    },
+    {
+      "t" : 8.55,
+      "text" : "Ownership and govern"
+    },
+    {
+      "t" : 8.67,
+      "text" : "ance\", "
+    },
+    {
+      "t" : 8.732,
+      "text" : "ownershipB"
+    },
+    {
+      "t" : 8.77,
+      "text" : "ody)\nownershipB"
+    },
+    {
+      "t" : 8.8,
+      "text" : "ody = ["
+    },
+    {
+      "t" : 8.918,
+      "text" : "TextContent(\"The news"
+    },
+    {
+      "t" : 9.033,
+      "text" : "room is owned by a n"
+    },
+    {
+      "t" : 9.123,
+      "text" : "onprofit trust with an"
+    },
+    {
+      "t" : 9.188,
+      "text" : " independent board. No"
+    },
+    {
+      "t" : 9.254,
+      "text" : " board"
+    },
+    {
+      "t" : 9.318,
+      "text" : " member may"
+    },
+    {
+      "t" : 9.453,
+      "text" : " hold a pa"
+    },
+    {
+      "t" : 9.537,
+      "text" : "id edit"
+    },
+    {
+      "t" : 9.539,
+      "text" : "orial role."
+    },
+    {
+      "t" : 9.634,
+      "text" : "\")]\nruleFun"
+    },
+    {
+      "t" : 9.728,
+      "text" : "ders = AccordionItem"
+    },
+    {
+      "t" : 9.88,
+      "text" : "(\"funders\", \"Funder"
+    },
+    {
+      "t" : 9.971,
+      "text" : " separ"
+    },
+    {
+      "t" : 10.058,
+      "text" : "ation\", funderBody)"
+    },
+    {
+      "t" : 10.189,
+      "text" : "\nfunderBody = [Text"
+    },
+    {
+      "t" : 10.311,
+      "text" : "Content(\"Funders have"
+    },
+    {
+      "t" : 10.407,
+      "text" : " no appro"
+    },
+    {
+      "t" : 10.505,
+      "text" : "val r"
+    },
+    {
+      "t" : 10.658,
+      "text" : "ights over co"
+    },
+    {
+      "t" : 10.753,
+      "text" : "verage, head"
+    },
+    {
+      "t" : 10.754,
+      "text" : "lines, or sourcing"
+    },
+    {
+      "t" : 10.869,
+      "text" : ". Any"
+    },
+    {
+      "t" : 10.977,
+      "text" : " grant tou"
+    },
+    {
+      "t" : 11.137,
+      "text" : "ching a top"
+    },
+    {
+      "t" : 11.139,
+      "text" : "ic we"
+    },
+    {
+      "t" : 11.321,
+      "text" : " cover is log"
+    },
+    {
+      "t" : 11.323,
+      "text" : "ged and"
+    },
+    {
+      "t" : 11.434,
+      "text" : " disclosed on"
+    },
+    {
+      "t" : 11.539,
+      "text" : " this"
+    },
+    {
+      "t" : 11.65,
+      "text" : " page.\")]\nrule"
+    },
+    {
+      "t" : 11.763,
+      "text" : "Corrections = Accord"
+    },
+    {
+      "t" : 12.019,
+      "text" : "ionItem(\"corrections\","
+    },
+    {
+      "t" : 12.156,
+      "text" : " \"Corrections and upd"
+    },
+    {
+      "t" : 12.157,
+      "text" : "ates\", corre"
+    },
+    {
+      "t" : 12.289,
+      "text" : "ctionsBody)\ncorre"
+    },
+    {
+      "t" : 12.444,
+      "text" : "ctionsBody = [T"
+    },
+    {
+      "t" : 12.64,
+      "text" : "extContent(\"Errors are"
+    },
+    {
+      "t" : 12.686,
+      "text" : " corrected prom"
+    },
+    {
+      "t" : 12.816,
+      "text" : "ptly and mar"
+    },
+    {
+      "t" : 12.95,
+      "text" : "ked with a vis"
+    },
+    {
+      "t" : 13.081,
+      "text" : "ible note st"
+    },
+    {
+      "t" : 13.314,
+      "text" : "ating what"
+    },
+    {
+      "t" : 13.433,
+      "text" : " changed and"
+    },
+    {
+      "t" : 13.587,
+      "text" : " when. Material"
+    },
+    {
+      "t" : 13.74,
+      "text" : " cor"
+    },
+    {
+      "t" : 13.836,
+      "text" : "rections are also"
+    },
+    {
+      "t" : 13.959,
+      "text" : " s"
+    },
+    {
+      "t" : 14.097,
+      "text" : "ent to sub"
+    },
+    {
+      "t" : 14.223,
+      "text" : "scribers by"
+    },
+    {
+      "t" : 14.336,
+      "text" : " email.\")]\nrule"
+    },
+    {
+      "t" : 14.475,
+      "text" : "Ads = AccordionIt"
+    },
+    {
+      "t" : 14.61,
+      "text" : "em(\"ads\", \"Adv"
+    },
+    {
+      "t" : 14.73,
+      "text" : "ertising and sponsored"
+    },
+    {
+      "t" : 14.836,
+      "text" : " content\", ad"
+    },
+    {
+      "t" : 14.957,
+      "text" : "sBody)\nadsB"
+    },
+    {
+      "t" : 14.959,
+      "text" : "ody = [TextContent(\""
+    },
+    {
+      "t" : 15.036,
+      "text" : "Adv"
+    },
+    {
+      "t" : 15.339,
+      "text" : "ertising is vis"
+    },
+    {
+      "t" : 15.478,
+      "text" : "ually distinct from news"
+    },
+    {
+      "t" : 15.61,
+      "text" : ". Sponsored content car"
+    },
+    {
+      "t" : 15.77,
+      "text" : "ries a"
+    },
+    {
+      "t" : 15.914,
+      "text" : " "
+    },
+    {
+      "t" : 16.027,
+      "text" : "'Sponsored' label"
+    },
+    {
+      "t" : 16.13,
+      "text" : " and is produ"
+    },
+    {
+      "t" : 16.266,
+      "text" : "ced by a team"
+    },
+    {
+      "t" : 16.413,
+      "text" : " separ"
+    },
+    {
+      "t" : 16.415,
+      "text" : "ate from re"
+    },
+    {
+      "t" : 16.571,
+      "text" : "porters.\")]\nreport"
+    },
+    {
+      "t" : 16.716,
+      "text" : "Card = Card([re"
+    },
+    {
+      "t" : 16.843,
+      "text" : "portHeader, reportFor"
+    },
+    {
+      "t" : 16.988,
+      "text" : "m])"
+    },
+    {
+      "t" : 17.152,
+      "text" : "\nreportHeader = C"
+    },
+    {
+      "t" : 17.299,
+      "text" : "ardHeader(\"Report a"
+    },
+    {
+      "t" : 17.485,
+      "text" : " Conflict of Interest"
+    },
+    {
+      "t" : 17.628,
+      "text" : "\", \"T"
+    },
+    {
+      "t" : 17.749,
+      "text" : "ell us if"
+    },
+    {
+      "t" : 17.889,
+      "text" : " you"
+    },
+    {
+      "t" : 18.03,
+      "text" : " believ"
+    },
+    {
+      "t" : 18.16,
+      "text" : "e a story"
+    },
+    {
+      "t" : 18.233,
+      "text" : ", re"
+    },
+    {
+      "t" : 18.306,
+      "text" : "porter, or source is comp"
+    },
+    {
+      "t" : 18.38,
+      "text" : "romised\")\nreportForm"
+    },
+    {
+      "t" : 18.459,
+      "text" : " = Form(\"con"
+    },
+    {
+      "t" : 18.536,
+      "text" : "flict-"
+    },
+    {
+      "t" : 18.678,
+      "text" : "report\", re"
+    },
+    {
+      "t" : 18.679,
+      "text" : "portButtons, [re"
+    },
+    {
+      "t" : 18.814,
+      "text" : "portN"
+    },
+    {
+      "t" : 19.03,
+      "text" : "ameField, reportEmail"
+    },
+    {
+      "t" : 19.108,
+      "text" : "Field, reportT"
+    },
+    {
+      "t" : 19.186,
+      "text" : "op"
+    },
+    {
+      "t" : 19.267,
+      "text" : "icField, reportD"
+    },
+    {
+      "t" : 19.268,
+      "text" : "etailsField])\nreport"
+    },
+    {
+      "t" : 19.37,
+      "text" : "NameField = FormControl"
+    },
+    {
+      "t" : 19.463,
+      "text" : "(\"Your"
+    },
+    {
+      "t" : 19.552,
+      "text" : " name (optional)\", Input"
+    },
+    {
+      "t" : 19.631,
+      "text" : "(\"name\", \"J"
+    },
+    {
+      "t" : 19.788,
+      "text" : "ane Doe\", \"text\""
+    },
+    {
+      "t" : 19.976,
+      "text" : "))\nreportEmailField"
+    },
+    {
+      "t" : 20.148,
+      "text" : " = FormControl(\"Email"
+    },
+    {
+      "t" : 20.332,
+      "text" : "\","
+    },
+    {
+      "t" : 20.492,
+      "text" : " Input(\"email\", \"you@"
+    },
+    {
+      "t" : 20.653,
+      "text" : "example.com\", \"email"
+    },
+    {
+      "t" : 20.769,
+      "text" : "\", { required: true,"
+    },
+    {
+      "t" : 20.941,
+      "text" : " email: true }),"
+    },
+    {
+      "t" : 21.082,
+      "text" : " \"We"
+    },
+    {
+      "t" : 21.24,
+      "text" : " may"
+    },
+    {
+      "t" : 21.354,
+      "text" : " contact you for foll"
+    },
+    {
+      "t" : 21.409,
+      "text" : "ow-up\")\nreportT"
+    },
+    {
+      "t" : 21.586,
+      "text" : "opicField = FormControl"
+    },
+    {
+      "t" : 21.776,
+      "text" : "(\"Article"
+    },
+    {
+      "t" : 21.969,
+      "text" : " or top"
+    },
+    {
+      "t" : 22.143,
+      "text" : "ic\", Input"
+    },
+    {
+      "t" : 22.323,
+      "text" : "(\"topic\", \"Head"
+    },
+    {
+      "t" : 22.498,
+      "text" : "line or URL\", \"text\","
+    },
+    {
+      "t" : 22.677,
+      "text" : " { required: true }))\nre"
+    },
+    {
+      "t" : 22.867,
+      "text" : "portDetailsField = F"
+    },
+    {
+      "t" : 23.129,
+      "text" : "ormControl(\"Describ"
+    },
+    {
+      "t" : 23.13,
+      "text" : "e the conc"
+    },
+    {
+      "t" : 23.286,
+      "text" : "ern\", TextArea(\"details"
+    },
+    {
+      "t" : 23.483,
+      "text" : "\", \"What"
+    },
+    {
+      "t" : 23.637,
+      "text" : " is"
+    },
+    {
+      "t" : 23.822,
+      "text" : " the pot"
+    },
+    {
+      "t" : 23.998,
+      "text" : "ential conflict?\", 5"
+    },
+    {
+      "t" : 24.311,
+      "text" : ", { required: true, minL"
+    },
+    {
+      "t" : 24.313,
+      "text" : "ength: 20"
+    },
+    {
+      "t" : 24.472,
+      "text" : " }))\nreportButt"
+    },
+    {
+      "t" : 24.626,
+      "text" : "ons = Buttons(["
+    },
+    {
+      "t" : 24.789,
+      "text" : "Button(\"Submit"
+    },
+    {
+      "t" : 24.964,
+      "text" : " Report\", @ToAssist"
+    },
+    {
+      "t" : 25.262,
+      "text" : "ant(\"Submit con"
+    },
+    {
+      "t" : 25.264,
+      "text" : "flict of"
+    },
+    {
+      "t" : 25.431,
+      "text" : " interest report\"), \"primary"
+    },
+    {
+      "t" : 25.607,
+      "text" : "\"), Button(\"Cl"
+    },
+    {
+      "t" : 25.906,
+      "text" : "ear\", @ToAssist"
+    },
+    {
+      "t" : 25.908,
+      "text" : "ant(\"Clear con"
+    },
+    {
+      "t" : 26.078,
+      "text" : "flict report form\"), \"sec"
+    },
+    {
+      "t" : 26.233,
+      "text" : "ondary\")])"
+    }
+  ],
+  "createdAt" : "2026-11-11T10:44:35Z",
+  "effort" : "low",
+  "format" : "openui-recording",
+  "inputTokens" : 14506,
+  "library" : "react-ui",
+  "model" : "claude-haiku-5-5",
+  "outputTokens" : 1315,
+  "request" : "A newsroom transparency page listing funding sources, editorial independence rules and how readers can report a conflict of interest.",
+  "servedBy" : "claude-haiku-5-5",
+  "stopReason" : "end_turn",
+  "version" : 1
+}

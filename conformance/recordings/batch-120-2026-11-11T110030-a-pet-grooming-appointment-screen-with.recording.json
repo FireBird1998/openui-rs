@@ -1,0 +1,1344 @@
+{
+  "batchRequest" : {
+    "model" : "haiku",
+    "number" : 120,
+    "request" : "A pet grooming appointment screen with pet details, service selections, special handling notes and a booking summary."
+  },
+  "chunks" : [
+    {
+      "t" : 0.703,
+      "text" : "root = Stack([header"
+    },
+    {
+      "t" : 0.832,
+      "text" : ", petC"
+    },
+    {
+      "t" : 0.835,
+      "text" : "ard, ser"
+    },
+    {
+      "t" : 0.88,
+      "text" : "viceC"
+    },
+    {
+      "t" : 0.948,
+      "text" : "ard, not"
+    },
+    {
+      "t" : 0.949,
+      "text" : "esCard, summaryC"
+    },
+    {
+      "t" : 0.993,
+      "text" : "ard])\nheader = Inline"
+    },
+    {
+      "t" : 1.047,
+      "text" : "Header(\"Book"
+    },
+    {
+      "t" : 1.078,
+      "text" : " a"
+    },
+    {
+      "t" : 1.08,
+      "text" : " Grooming Appointment"
+    },
+    {
+      "t" : 1.109,
+      "text" : "\", \"Cho"
+    },
+    {
+      "t" : 1.14,
+      "text" : "ose your"
+    },
+    {
+      "t" : 1.177,
+      "text" : " pet's"
+    },
+    {
+      "t" : 1.237,
+      "text" : " service"
+    },
+    {
+      "t" : 1.278,
+      "text" : " and confirm the details\")"
+    },
+    {
+      "t" : 1.28,
+      "text" : "\npetCard = Card([pet"
+    },
+    {
+      "t" : 1.32,
+      "text" : "H"
+    },
+    {
+      "t" : 1.469,
+      "text" : "eader, petFor"
+    },
+    {
+      "t" : 1.471,
+      "text" : "m])\npetHeader ="
+    },
+    {
+      "t" : 1.506,
+      "text" : " CardHeader(\"P"
+    },
+    {
+      "t" : 1.546,
+      "text" : "et Details\", \"T"
+    },
+    {
+      "t" : 1.582,
+      "text" : "ell us about your pet\")"
+    },
+    {
+      "t" : 1.623,
+      "text" : "\npetForm = Form(\"p"
+    },
+    {
+      "t" : 1.663,
+      "text" : "et\", pet"
+    },
+    {
+      "t" : 1.701,
+      "text" : "Buttons, [petName"
+    },
+    {
+      "t" : 1.736,
+      "text" : "Field, petT"
+    },
+    {
+      "t" : 1.775,
+      "text" : "ypeField, petB"
+    },
+    {
+      "t" : 1.825,
+      "text" : "reedField, petW"
+    },
+    {
+      "t" : 1.875,
+      "text" : "eightField])\npetN"
+    },
+    {
+      "t" : 1.979,
+      "text" : "ameField = FormControl(\""
+    },
+    {
+      "t" : 2.025,
+      "text" : "Pet Name\", Input"
+    },
+    {
+      "t" : 2.072,
+      "text" : "(\"pet"
+    },
+    {
+      "t" : 2.118,
+      "text" : "Name\", \"e"
+    },
+    {
+      "t" : 2.162,
+      "text" : ".g. Bi"
+    },
+    {
+      "t" : 2.212,
+      "text" : "scuit\", \"text\", {"
+    },
+    {
+      "t" : 2.254,
+      "text" : " required: true,"
+    },
+    {
+      "t" : 2.305,
+      "text" : " min"
+    },
+    {
+      "t" : 2.354,
+      "text" : "Length: 2 }))"
+    },
+    {
+      "t" : 2.398,
+      "text" : "\npetTypeField = F"
+    },
+    {
+      "t" : 2.446,
+      "text" : "ormControl(\"Species\","
+    },
+    {
+      "t" : 2.49,
+      "text" : " Select(\"pet"
+    },
+    {
+      "t" : 2.517,
+      "text" : "Type"
+    },
+    {
+      "t" : 2.535,
+      "text" : "\", pet"
+    },
+    {
+      "t" : 2.59,
+      "text" : "TypeOpts, \""
+    },
+    {
+      "t" : 2.643,
+      "text" : "Select species"
+    },
+    {
+      "t" : 2.687,
+      "text" : "\", { required: true }))"
+    },
+    {
+      "t" : 2.748,
+      "text" : "\npetT"
+    },
+    {
+      "t" : 2.811,
+      "text" : "ypeOpts = [S"
+    },
+    {
+      "t" : 2.887,
+      "text" : "electItem(\"dog\","
+    },
+    {
+      "t" : 2.933,
+      "text" : " \"Dog\"), Sel"
+    },
+    {
+      "t" : 3.018,
+      "text" : "ectItem(\"cat\", \""
+    },
+    {
+      "t" : 3.061,
+      "text" : "Cat\"), Select"
+    },
+    {
+      "t" : 3.186,
+      "text" : "Item(\"rabbit\","
+    },
+    {
+      "t" : 3.249,
+      "text" : " \"Rabbit\""
+    },
+    {
+      "t" : 3.303,
+      "text" : "), SelectItem(\"other"
+    },
+    {
+      "t" : 3.305,
+      "text" : "\", \"Other\")]\npet"
+    },
+    {
+      "t" : 3.379,
+      "text" : "BreedField = FormContro"
+    },
+    {
+      "t" : 3.38,
+      "text" : "l(\"Breed\", Input"
+    },
+    {
+      "t" : 3.438,
+      "text" : "(\"breed\", \"e"
+    },
+    {
+      "t" : 3.493,
+      "text" : ".g. Golden Ret"
+    },
+    {
+      "t" : 3.549,
+      "text" : "riever\", \"text\""
+    },
+    {
+      "t" : 3.595,
+      "text" : "))\npetWeightField ="
+    },
+    {
+      "t" : 3.649,
+      "text" : " FormControl(\"Weight"
+    },
+    {
+      "t" : 3.706,
+      "text" : " (lbs)\", Input"
+    },
+    {
+      "t" : 3.763,
+      "text" : "(\"weight\", \"e"
+    },
+    {
+      "t" : 3.819,
+      "text" : ".g. 45"
+    },
+    {
+      "t" : 3.9,
+      "text" : "\", \"number\", { required: true"
+    },
+    {
+      "t" : 3.901,
+      "text" : ", numeric: true,"
+    },
+    {
+      "t" : 3.958,
+      "text" : " min: 1"
+    },
+    {
+      "t" : 4.014,
+      "text" : ","
+    },
+    {
+      "t" : 4.078,
+      "text" : " max: 300"
+    },
+    {
+      "t" : 4.143,
+      "text" : " }))\npetButtons"
+    },
+    {
+      "t" : 4.199,
+      "text" : " = Buttons(["
+    },
+    {
+      "t" : 4.262,
+      "text" : "Button(\"Save"
+    },
+    {
+      "t" : 4.319,
+      "text" : " P"
+    },
+    {
+      "t" : 4.408,
+      "text" : "et\", @ToAssist"
+    },
+    {
+      "t" : 4.411,
+      "text" : "ant(\"Save pet details"
+    },
+    {
+      "t" : 4.465,
+      "text" : "\"), \"sec"
+    },
+    {
+      "t" : 4.531,
+      "text" : "ondary\")])\nservice"
+    },
+    {
+      "t" : 4.597,
+      "text" : "Card = Card([ser"
+    },
+    {
+      "t" : 4.707,
+      "text" : "viceHeader, servi"
+    },
+    {
+      "t" : 4.708,
+      "text" : "ceForm])\nservice"
+    },
+    {
+      "t" : 4.798,
+      "text" : "Header = CardHe"
+    },
+    {
+      "t" : 4.861,
+      "text" : "ader(\"Services"
+    },
+    {
+      "t" : 4.922,
+      "text" : "\", \"Select"
+    },
+    {
+      "t" : 4.984,
+      "text" : " one or more services\")\nservi"
+    },
+    {
+      "t" : 5.059,
+      "text" : "ceForm = Form(\"services"
+    },
+    {
+      "t" : 5.127,
+      "text" : "\", serviceButtons,"
+    },
+    {
+      "t" : 5.205,
+      "text" : " [serviceField"
+    },
+    {
+      "t" : 5.295,
+      "text" : ","
+    },
+    {
+      "t" : 5.406,
+      "text" : " add"
+    },
+    {
+      "t" : 5.409,
+      "text" : "O"
+    },
+    {
+      "t" : 5.474,
+      "text" : "nField"
+    },
+    {
+      "t" : 5.533,
+      "text" : "])\nserviceField = F"
+    },
+    {
+      "t" : 5.658,
+      "text" : "ormControl(\"Gr"
+    },
+    {
+      "t" : 5.66,
+      "text" : "ooming Package"
+    },
+    {
+      "t" : 5.729,
+      "text" : "\", ser"
+    },
+    {
+      "t" : 5.796,
+      "text" : "viceOptions, \""
+    },
+    {
+      "t" : 5.897,
+      "text" : "Pick a"
+    },
+    {
+      "t" : 5.899,
+      "text" : " main"
+    },
+    {
+      "t" : 5.967,
+      "text" : " package\")\nserviceOpt"
+    },
+    {
+      "t" : 6.029,
+      "text" : "ions = OptionCards(\""
+    },
+    {
+      "t" : 6.1,
+      "text" : "package"
+    },
+    {
+      "t" : 6.166,
+      "text" : "\", \"single\", [p"
+    },
+    {
+      "t" : 6.234,
+      "text" : "kgB"
+    },
+    {
+      "t" : 6.303,
+      "text" : "ath"
+    },
+    {
+      "t" : 6.387,
+      "text" : ", pkgFull, p"
+    },
+    {
+      "t" : 6.458,
+      "text" : "kgD"
+    },
+    {
+      "t" : 6.546,
+      "text" : "elu"
+    },
+    {
+      "t" : 6.625,
+      "text" : "xe])\npkgB"
+    },
+    {
+      "t" : 6.711,
+      "text" : "ath = OptionCard(\""
+    },
+    {
+      "t" : 6.788,
+      "text" : "bath\", \"Bath &"
+    },
+    {
+      "t" : 6.877,
+      "text" : " Brush\", \"Wash"
+    },
+    {
+      "t" : 6.97,
+      "text" : ", d"
+    },
+    {
+      "t" : 7.192,
+      "text" : "ry, br"
+    },
+    {
+      "t" : 7.266,
+      "text" : "ush out"
+    },
+    {
+      "t" : 7.341,
+      "text" : ","
+    },
+    {
+      "t" : 7.447,
+      "text" : " ear"
+    },
+    {
+      "t" : 7.524,
+      "text" : " c"
+    },
+    {
+      "t" : 7.601,
+      "text" : "leaning\", pkgB"
+    },
+    {
+      "t" : 7.686,
+      "text" : "athIcon)\npk"
+    },
+    {
+      "t" : 7.762,
+      "text" : "gBathIcon ="
+    },
+    {
+      "t" : 7.837,
+      "text" : " Icon(\"droplets\", \""
+    },
+    {
+      "t" : 7.914,
+      "text" : "grooming\")\npkg"
+    },
+    {
+      "t" : 8.002,
+      "text" : "Full = OptionCard"
+    },
+    {
+      "t" : 8.111,
+      "text" : "(\"full\", \"Full Gro"
+    },
+    {
+      "t" : 8.19,
+      "text" : "om\", \"B"
+    },
+    {
+      "t" : 8.272,
+      "text" : "ath,"
+    },
+    {
+      "t" : 8.359,
+      "text" : " ha"
+    },
+    {
+      "t" : 8.437,
+      "text" : "ircut, nail trim,"
+    },
+    {
+      "t" : 8.523,
+      "text" : " ear cleaning\", p"
+    },
+    {
+      "t" : 8.568,
+      "text" : "kgFullIcon)"
+    },
+    {
+      "t" : 8.649,
+      "text" : "\npkgFullIc"
+    },
+    {
+      "t" : 8.65,
+      "text" : "on = Icon(\"sciss"
+    },
+    {
+      "t" : 8.74,
+      "text" : "ors\", \"grooming\")"
+    },
+    {
+      "t" : 8.836,
+      "text" : "\npkgDeluxe"
+    },
+    {
+      "t" : 8.907,
+      "text" : " = OptionCard(\"de"
+    },
+    {
+      "t" : 8.982,
+      "text" : "luxe\", \"Delu"
+    },
+    {
+      "t" : 9.072,
+      "text" : "xe Sp"
+    },
+    {
+      "t" : 9.141,
+      "text" : "a\", \"Full"
+    },
+    {
+      "t" : 9.213,
+      "text" : " groom plus te"
+    },
+    {
+      "t" : 9.283,
+      "text" : "eth br"
+    },
+    {
+      "t" : 9.352,
+      "text" : "ushing and"
+    },
+    {
+      "t" : 9.424,
+      "text" : " a"
+    },
+    {
+      "t" : 9.526,
+      "text" : "romatherapy\", pk"
+    },
+    {
+      "t" : 9.622,
+      "text" : "gDeluxeIc"
+    },
+    {
+      "t" : 9.701,
+      "text" : "on)\npkgDe"
+    },
+    {
+      "t" : 9.788,
+      "text" : "luxeIcon ="
+    },
+    {
+      "t" : 9.868,
+      "text" : " Icon(\"sparkles\","
+    },
+    {
+      "t" : 9.956,
+      "text" : " \"gr"
+    },
+    {
+      "t" : 10.04,
+      "text" : "ooming\")\naddOnField"
+    },
+    {
+      "t" : 10.137,
+      "text" : " = FormControl(\"Add"
+    },
+    {
+      "t" : 10.224,
+      "text" : "-"
+    },
+    {
+      "t" : 10.305,
+      "text" : "ons\", add"
+    },
+    {
+      "t" : 10.392,
+      "text" : "On"
+    },
+    {
+      "t" : 10.467,
+      "text" : "Chips, \"Select all that"
+    },
+    {
+      "t" : 10.554,
+      "text" : " apply\")\naddOnCh"
+    },
+    {
+      "t" : 10.633,
+      "text" : "ips = Chips(\"addons"
+    },
+    {
+      "t" : 10.76,
+      "text" : "\", \"multiple\", [add"
+    },
+    {
+      "t" : 10.762,
+      "text" : "N"
+    },
+    {
+      "t" : 10.841,
+      "text" : "ails"
+    },
+    {
+      "t" : 10.921,
+      "text" : ", addTeeth"
+    },
+    {
+      "t" : 10.998,
+      "text" : ", addFur"
+    },
+    {
+      "t" : 11.115,
+      "text" : "M"
+    },
+    {
+      "t" : 11.251,
+      "text" : "ask"
+    },
+    {
+      "t" : 11.252,
+      "text" : "])\naddNails = Ch"
+    },
+    {
+      "t" : 11.418,
+      "text" : "ipItem(\"nails\", \""
+    },
+    {
+      "t" : 11.419,
+      "text" : "Nail Pain"
+    },
+    {
+      "t" : 11.536,
+      "text" : "ting\", addNailsIc"
+    },
+    {
+      "t" : 11.641,
+      "text" : "on)\naddNail"
+    },
+    {
+      "t" : 11.763,
+      "text" : "sIcon = Icon"
+    },
+    {
+      "t" : 11.853,
+      "text" : "(\"paint"
+    },
+    {
+      "t" : 11.95,
+      "text" : "brush\", \"grooming"
+    },
+    {
+      "t" : 12.037,
+      "text" : "\")\naddTeeth ="
+    },
+    {
+      "t" : 12.123,
+      "text" : " ChipItem(\"tee"
+    },
+    {
+      "t" : 12.269,
+      "text" : "th\", \"Teeth"
+    },
+    {
+      "t" : 12.271,
+      "text" : " Brushing\", addTeeth"
+    },
+    {
+      "t" : 12.365,
+      "text" : "Icon)\naddTe"
+    },
+    {
+      "t" : 12.469,
+      "text" : "ethIcon = Icon"
+    },
+    {
+      "t" : 12.579,
+      "text" : "(\"smile\", \"grooming"
+    },
+    {
+      "t" : 12.686,
+      "text" : "\")\naddFurMask ="
+    },
+    {
+      "t" : 12.83,
+      "text" : " ChipItem(\"mask"
+    },
+    {
+      "t" : 13.049,
+      "text" : "\", \"Fur Mask"
+    },
+    {
+      "t" : 13.193,
+      "text" : "\", addFurMaskI"
+    },
+    {
+      "t" : 13.301,
+      "text" : "con)\naddFurM"
+    },
+    {
+      "t" : 13.42,
+      "text" : "askIcon = Ic"
+    },
+    {
+      "t" : 13.55,
+      "text" : "on(\"shield\", \"groo"
+    },
+    {
+      "t" : 13.655,
+      "text" : "ming\")\nserviceButt"
+    },
+    {
+      "t" : 13.657,
+      "text" : "ons = Buttons(["
+    },
+    {
+      "t" : 13.75,
+      "text" : "Button(\"Continue\", @"
+    },
+    {
+      "t" : 13.845,
+      "text" : "ToAssistant(\"Contin"
+    },
+    {
+      "t" : 13.954,
+      "text" : "ue to"
+    },
+    {
+      "t" : 14.184,
+      "text" : " sch"
+    },
+    {
+      "t" : 14.186,
+      "text" : "edule\"), \"prim"
+    },
+    {
+      "t" : 14.319,
+      "text" : "ary\")])\nnotesCard"
+    },
+    {
+      "t" : 14.436,
+      "text" : " = Card([notesHe"
+    },
+    {
+      "t" : 14.566,
+      "text" : "ader, notesForm])"
+    },
+    {
+      "t" : 14.686,
+      "text" : "\nnotesHeader = Card"
+    },
+    {
+      "t" : 14.815,
+      "text" : "Header(\"Special Hand"
+    },
+    {
+      "t" : 14.931,
+      "text" : "ling\", \"Help"
+    },
+    {
+      "t" : 15.065,
+      "text" : " our gro"
+    },
+    {
+      "t" : 15.309,
+      "text" : "omers keep your pet com"
+    },
+    {
+      "t" : 15.311,
+      "text" : "fortable\")\nnotesFor"
+    },
+    {
+      "t" : 15.443,
+      "text" : "m = Form(\"notes\","
+    },
+    {
+      "t" : 15.575,
+      "text" : " notesButtons, [an"
+    },
+    {
+      "t" : 15.696,
+      "text" : "xietyField, notesField"
+    },
+    {
+      "t" : 15.88,
+      "text" : "])\nanxietyField ="
+    },
+    {
+      "t" : 16.046,
+      "text" : " FormControl(\"Tem"
+    },
+    {
+      "t" : 16.151,
+      "text" : "perament\","
+    },
+    {
+      "t" : 16.261,
+      "text" : " tem"
+    },
+    {
+      "t" : 16.383,
+      "text" : "peramentCh"
+    },
+    {
+      "t" : 16.503,
+      "text" : "ips, \"Select"
+    },
+    {
+      "t" : 16.637,
+      "text" : " any"
+    },
+    {
+      "t" : 16.759,
+      "text" : " that apply\")\ntemperam"
+    },
+    {
+      "t" : 16.896,
+      "text" : "entChips = Chips(\""
+    },
+    {
+      "t" : 17.065,
+      "text" : "temperament\", \"multiple"
+    },
+    {
+      "t" : 17.171,
+      "text" : "\", [t"
+    },
+    {
+      "t" : 17.295,
+      "text" : "empA"
+    },
+    {
+      "t" : 17.452,
+      "text" : "nxious, tempB"
+    },
+    {
+      "t" : 17.59,
+      "text" : "iter"
+    },
+    {
+      "t" : 17.727,
+      "text" : ", tempS"
+    },
+    {
+      "t" : 17.906,
+      "text" : "ens"
+    },
+    {
+      "t" : 18.042,
+      "text" : "itive])\ntempAn"
+    },
+    {
+      "t" : 18.195,
+      "text" : "xious = ChipItem"
+    },
+    {
+      "t" : 18.322,
+      "text" : "(\"anxious"
+    },
+    {
+      "t" : 18.538,
+      "text" : "\", \"Anxious\", t"
+    },
+    {
+      "t" : 18.72,
+      "text" : "empAnxiousIc"
+    },
+    {
+      "t" : 18.895,
+      "text" : "on)\ntempAnx"
+    },
+    {
+      "t" : 19.048,
+      "text" : "iousIcon = Ic"
+    },
+    {
+      "t" : 19.192,
+      "text" : "on(\"he"
+    },
+    {
+      "t" : 19.334,
+      "text" : "art-"
+    },
+    {
+      "t" : 19.486,
+      "text" : "pulse\", \"health"
+    },
+    {
+      "t" : 19.617,
+      "text" : "\")\ntempBiter ="
+    },
+    {
+      "t" : 19.868,
+      "text" : " ChipItem(\"biter"
+    },
+    {
+      "t" : 19.869,
+      "text" : "\", \"Bites when"
+    },
+    {
+      "t" : 20.035,
+      "text" : " n"
+    },
+    {
+      "t" : 20.215,
+      "text" : "ervous\", tempBiter"
+    },
+    {
+      "t" : 20.375,
+      "text" : "Icon)\ntempB"
+    },
+    {
+      "t" : 20.543,
+      "text" : "iterIcon = Ic"
+    },
+    {
+      "t" : 20.691,
+      "text" : "on(\"tri"
+    },
+    {
+      "t" : 20.924,
+      "text" : "angle-alert\", \"health"
+    },
+    {
+      "t" : 20.925,
+      "text" : "\")\ntempSensitive"
+    },
+    {
+      "t" : 21.08,
+      "text" : " = ChipItem(\"s"
+    },
+    {
+      "t" : 21.347,
+      "text" : "ensitive\", \"Sens"
+    },
+    {
+      "t" : 21.348,
+      "text" : "itive skin\", tempS"
+    },
+    {
+      "t" : 21.51,
+      "text" : "ensitiveIcon)"
+    },
+    {
+      "t" : 21.669,
+      "text" : "\ntempSensiti"
+    },
+    {
+      "t" : 21.811,
+      "text" : "veIcon = Icon"
+    },
+    {
+      "t" : 21.951,
+      "text" : "(\"h"
+    },
+    {
+      "t" : 22.067,
+      "text" : "and\","
+    },
+    {
+      "t" : 22.199,
+      "text" : " \"health\")\nnotesField ="
+    },
+    {
+      "t" : 22.31,
+      "text" : " FormControl(\"Addit"
+    },
+    {
+      "t" : 22.431,
+      "text" : "ional Notes\", TextAr"
+    },
+    {
+      "t" : 22.557,
+      "text" : "ea(\"notes\", \"Med"
+    },
+    {
+      "t" : 22.789,
+      "text" : "ications"
+    },
+    {
+      "t" : 22.914,
+      "text" : ", allergies, pre"
+    },
+    {
+      "t" : 23.045,
+      "text" : "ferred handling..."
+    },
+    {
+      "t" : 23.162,
+      "text" : "\", 4"
+    },
+    {
+      "t" : 23.291,
+      "text" : ", { ma"
+    },
+    {
+      "t" : 23.437,
+      "text" : "xLength: 500"
+    },
+    {
+      "t" : 23.568,
+      "text" : " }))\nnotesButt"
+    },
+    {
+      "t" : 23.696,
+      "text" : "ons = Buttons(["
+    },
+    {
+      "t" : 23.699,
+      "text" : "Button(\"Save Notes\","
+    },
+    {
+      "t" : 23.863,
+      "text" : " @ToAssistant(\""
+    },
+    {
+      "t" : 24.085,
+      "text" : "Save special handling notes\""
+    },
+    {
+      "t" : 24.231,
+      "text" : "), \"secondary\")])"
+    },
+    {
+      "t" : 24.407,
+      "text" : "\nsummaryCard = Card"
+    },
+    {
+      "t" : 24.686,
+      "text" : "([summaryHeader,"
+    },
+    {
+      "t" : 24.687,
+      "text" : " summaryR"
+    },
+    {
+      "t" : 24.908,
+      "text" : "ows, summaryBtns"
+    },
+    {
+      "t" : 25.127,
+      "text" : "])\nsummaryHeader"
+    },
+    {
+      "t" : 25.32,
+      "text" : " = CardHeader(\""
+    },
+    {
+      "t" : 25.489,
+      "text" : "Booking Summary\", \""
+    },
+    {
+      "t" : 25.695,
+      "text" : "Review before"
+    },
+    {
+      "t" : 25.868,
+      "text" : " confirming\")\nsummary"
+    },
+    {
+      "t" : 26.027,
+      "text" : "Rows = EntityList(["
+    },
+    {
+      "t" : 26.235,
+      "text" : "s"
+    },
+    {
+      "t" : 26.401,
+      "text" : "umP"
+    },
+    {
+      "t" : 26.626,
+      "text" : "et, sumService, sum"
+    },
+    {
+      "t" : 26.857,
+      "text" : "Addons, sumDate"
+    },
+    {
+      "t" : 27.082,
+      "text" : "], \""
+    },
+    {
+      "t" : 27.2,
+      "text" : "default"
+    },
+    {
+      "t" : 27.352,
+      "text" : "\", s"
+    },
+    {
+      "t" : 27.537,
+      "text" : "umH"
+    },
+    {
+      "t" : 27.76,
+      "text" : "eader, sumF"
+    },
+    {
+      "t" : 28.146,
+      "text" : "ooter)\nsumH"
+    },
+    {
+      "t" : 28.148,
+      "text" : "eader = {"
+    },
+    {
+      "t" : 28.339,
+      "text" : " left: \"Item"
+    },
+    {
+      "t" : 28.526,
+      "text" : "\", right: \"Sel"
+    },
+    {
+      "t" : 28.741,
+      "text" : "ection\" }\nsumPet"
+    },
+    {
+      "t" : 28.919,
+      "text" : " = { left: \"Pet"
+    },
+    {
+      "t" : 29.155,
+      "text" : "\", right: \"Biscu"
+    },
+    {
+      "t" : 29.316,
+      "text" : "it (D"
+    },
+    {
+      "t" : 29.589,
+      "text" : "og,"
+    },
+    {
+      "t" : 29.769,
+      "text" : " 45 lbs)\""
+    },
+    {
+      "t" : 29.907,
+      "text" : " }\nsumService = { left"
+    },
+    {
+      "t" : 30.078,
+      "text" : ": \"Package"
+    },
+    {
+      "t" : 30.27,
+      "text" : "\", right: \"Full Gro"
+    },
+    {
+      "t" : 30.463,
+      "text" : "om\" }\nsumAdd"
+    },
+    {
+      "t" : 30.695,
+      "text" : "ons = { left: \"Add"
+    },
+    {
+      "t" : 30.862,
+      "text" : "-ons\", right: \""
+    },
+    {
+      "t" : 31.023,
+      "text" : "Te"
+    },
+    {
+      "t" : 31.214,
+      "text" : "eth Brushing\" }"
+    },
+    {
+      "t" : 31.4,
+      "text" : "\nsumDate = { left"
+    },
+    {
+      "t" : 31.641,
+      "text" : ": \"Appointment\", right"
+    },
+    {
+      "t" : 31.886,
+      "text" : ": \"S"
+    },
+    {
+      "t" : 32.031,
+      "text" : "at, May"
+    },
+    {
+      "t" : 32.211,
+      "text" : " 17"
+    },
+    {
+      "t" : 32.408,
+      "text" : " "
+    },
+    {
+      "t" : 32.627,
+      "text" : "at"
+    },
+    {
+      "t" : 32.871,
+      "text" : " 10:00 AM\""
+    },
+    {
+      "t" : 33.089,
+      "text" : " }\nsumFooter ="
+    },
+    {
+      "t" : 33.291,
+      "text" : " { left: \"Total\", right"
+    },
+    {
+      "t" : 33.517,
+      "text" : ": \"$85"
+    },
+    {
+      "t" : 33.789,
+      "text" : ".00\", rightVariant"
+    },
+    {
+      "t" : 34.003,
+      "text" : ": \"number\" }\nsumma"
+    },
+    {
+      "t" : 34.199,
+      "text" : "ryBtns = Butt"
+    },
+    {
+      "t" : 34.343,
+      "text" : "ons([conf"
+    },
+    {
+      "t" : 34.549,
+      "text" : "irmBtn, edit"
+    },
+    {
+      "t" : 34.738,
+      "text" : "Btn],"
+    },
+    {
+      "t" : 34.98,
+      "text" : " \"row\")\nconfirmB"
+    },
+    {
+      "t" : 35.2,
+      "text" : "tn = Button(\"Conf"
+    },
+    {
+      "t" : 35.413,
+      "text" : "irm Booking\", @"
+    },
+    {
+      "t" : 35.617,
+      "text" : "ToAssistant(\"Conf"
+    },
+    {
+      "t" : 35.844,
+      "text" : "irm gr"
+    },
+    {
+      "t" : 36.262,
+      "text" : "ooming appointment\"), \""
+    },
+    {
+      "t" : 36.263,
+      "text" : "primary\")\neditBtn"
+    },
+    {
+      "t" : 36.447,
+      "text" : " = Button(\"Edit\","
+    },
+    {
+      "t" : 36.637,
+      "text" : " @ToAssistant(\""
+    },
+    {
+      "t" : 36.901,
+      "text" : "Edit boo"
+    },
+    {
+      "t" : 37.103,
+      "text" : "king\"), \"secondary\")"
+    }
+  ],
+  "createdAt" : "2026-11-11T11:00:30Z",
+  "effort" : "low",
+  "format" : "openui-recording",
+  "inputTokens" : 14501,
+  "library" : "react-ui",
+  "model" : "claude-haiku-5-5",
+  "outputTokens" : 1954,
+  "request" : "A pet grooming appointment screen with pet details, service selections, special handling notes and a booking summary.",
+  "servedBy" : "claude-haiku-5-5",
+  "stopReason" : "end_turn",
+  "version" : 1
+}

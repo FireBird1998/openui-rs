@@ -1,0 +1,242 @@
+{
+  "batchRequest" : {
+    "model" : "haiku",
+    "number" : 144,
+    "of" : 98,
+    "request" : "Add a fern with its care requirements and a warning about keeping plants away from a heater."
+  },
+  "chunks" : [
+    {
+      "t" : 5.083,
+      "text" : "root"
+    },
+    {
+      "t" : 5.105,
+      "text" : " = Stack([header, he"
+    },
+    {
+      "t" : 5.126,
+      "text" : "aterWarning, plant"
+    },
+    {
+      "t" : 5.349,
+      "text" : "Cards, careTabs])"
+    },
+    {
+      "t" : 5.382,
+      "text" : "\nheaterWarning ="
+    },
+    {
+      "t" : 5.417,
+      "text" : " Callout(\"warning\", \""
+    },
+    {
+      "t" : 5.448,
+      "text" : "Keep plants away from he"
+    },
+    {
+      "t" : 5.484,
+      "text" : "aters\", \"Heaters"
+    },
+    {
+      "t" : 5.523,
+      "text" : " and heating vents dry out"
+    },
+    {
+      "t" : 5.563,
+      "text" : " the air and soil quickly"
+    },
+    {
+      "t" : 5.595,
+      "text" : ". Keep every"
+    },
+    {
+      "t" : 5.635,
+      "text" : " plant at least 1 met"
+    },
+    {
+      "t" : 5.698,
+      "text" : "re from rad"
+    },
+    {
+      "t" : 5.699,
+      "text" : "iators,"
+    },
+    {
+      "t" : 5.745,
+      "text" : " vents, and hot draf"
+    },
+    {
+      "t" : 5.78,
+      "text" : "ts.\")\nplantCards"
+    },
+    {
+      "t" : 5.828,
+      "text" : " = CompositeCardB"
+    },
+    {
+      "t" : 5.869,
+      "text" : "lock([pothos, sn"
+    },
+    {
+      "t" : 5.923,
+      "text" : "ake, peace, fern])"
+    },
+    {
+      "t" : 5.975,
+      "text" : "\nfern = Composite"
+    },
+    {
+      "t" : 6.021,
+      "text" : "CardItem(\"fern\","
+    },
+    {
+      "t" : 6.073,
+      "text" : " fernHeader, [f"
+    },
+    {
+      "t" : 6.119,
+      "text" : "ernBody], fernFoo"
+    },
+    {
+      "t" : 6.173,
+      "text" : "ter)\nfernHeader"
+    },
+    {
+      "t" : 6.231,
+      "text" : " = IconText(fernI"
+    },
+    {
+      "t" : 6.289,
+      "text" : "con, \"neutral\","
+    },
+    {
+      "t" : 6.342,
+      "text" : " \"m\", \"Boston"
+    },
+    {
+      "t" : 6.396,
+      "text" : " Fern\", \"Nephr"
+    },
+    {
+      "t" : 6.453,
+      "text" : "olepis exaltata\","
+    },
+    {
+      "t" : 6.507,
+      "text" : " true, \"horizontal\")"
+    },
+    {
+      "t" : 6.555,
+      "text" : "\nfernIcon ="
+    },
+    {
+      "t" : 6.663,
+      "text" : " Icon(\"trees\", \"n"
+    },
+    {
+      "t" : 6.715,
+      "text" : "ature\")\nfernBody ="
+    },
+    {
+      "t" : 6.764,
+      "text" : " EntityList([fernL"
+    },
+    {
+      "t" : 6.815,
+      "text" : "1, fernL2, f"
+    },
+    {
+      "t" : 6.86,
+      "text" : "ernL3], \"small\")"
+    },
+    {
+      "t" : 6.907,
+      "text" : "\nfernL1 = {left"
+    },
+    {
+      "t" : 6.959,
+      "text" : ": \"Light\", right: \""
+    },
+    {
+      "t" : 7.017,
+      "text" : "Bright indirect\"}"
+    },
+    {
+      "t" : 7.018,
+      "text" : "\nfernL2 = {"
+    },
+    {
+      "t" : 7.068,
+      "text" : "left: \"Water every\", right"
+    },
+    {
+      "t" : 7.116,
+      "text" : ": \"2-3 days\""
+    },
+    {
+      "t" : 7.172,
+      "text" : "}\nfernL3 ="
+    },
+    {
+      "t" : 7.22,
+      "text" : " {left: \"Humidity"
+    },
+    {
+      "t" : 7.27,
+      "text" : "\", right: \"High\"}"
+    },
+    {
+      "t" : 7.318,
+      "text" : "\nfernFooter = {price"
+    },
+    {
+      "t" : 7.367,
+      "text" : ": BoldText(\"text\","
+    },
+    {
+      "t" : 7.417,
+      "text" : " \"Needs moist air\""
+    },
+    {
+      "t" : 7.465,
+      "text" : "), button: fernBtn"
+    },
+    {
+      "t" : 7.517,
+      "text" : "}\nfernBtn ="
+    },
+    {
+      "t" : 7.562,
+      "text" : " Button(\"Care tips\","
+    },
+    {
+      "t" : 7.615,
+      "text" : " @ToAssistant(\""
+    },
+    {
+      "t" : 7.669,
+      "text" : "Give me more care tips for"
+    },
+    {
+      "t" : 7.719,
+      "text" : " Boston fern\"), \""
+    },
+    {
+      "t" : 7.773,
+      "text" : "secondary\")"
+    }
+  ],
+  "createdAt" : "2026-11-11T11:07:10Z",
+  "effort" : "low",
+  "format" : "openui-recording",
+  "inputTokens" : 16268,
+  "library" : "react-ui",
+  "model" : "claude-haiku-5-5",
+  "outputTokens" : 1303,
+  "patchOf" : "root = Stack([header, plantCards, careTabs])\nheader = InlineHeader(\"Indoor Plant Care Guide\", \"Light, watering, and seasonal notes for three easy houseplants\")\nplantCards = CompositeCardBlock([pothos, snake, peace])\npothos = CompositeCardItem(\"pothos\", pothosHeader, [pothosBody], pothosFooter)\npothosHeader = IconText(pothosIcon, \"success\", \"m\", \"Pothos\", \"Epipremnum aureum\", true, \"horizontal\")\npothosIcon = Icon(\"leaf\", \"nature\")\npothosBody = EntityList([pothosL1, pothosL2, pothosL3], \"small\")\npothosL1 = {left: \"Light\", right: \"Bright indirect\"}\npothosL2 = {left: \"Water every\", right: \"7-10 days\"}\npothosL3 = {left: \"Humidity\", right: \"Average\"}\npothosFooter = {price: BoldText(\"text\", \"Easy care\"), button: pothosBtn}\npothosBtn = Button(\"Care tips\", @ToAssistant(\"Give me more care tips for pothos\"), \"secondary\")\nsnake = CompositeCardItem(\"snake-plant\", snakeHeader, [snakeBody], snakeFooter)\nsnakeHeader = IconText(snakeIcon, \"info\", \"m\", \"Snake Plant\", \"Sansevieria trifasciata\", true, \"horizontal\")\nsnakeIcon = Icon(\"sprout\", \"nature\")\nsnakeBody = EntityList([snakeL1, snakeL2, snakeL3], \"small\")\nsnakeL1 = {left: \"Light\", right: \"Low to bright\"}\nsnakeL2 = {left: \"Water every\", right: \"2-6 weeks\"}\nsnakeL3 = {left: \"Humidity\", right: \"Low\"}\nsnakeFooter = {price: BoldText(\"text\", \"Very low maintenance\"), button: snakeBtn}\nsnakeBtn = Button(\"Care tips\", @ToAssistant(\"Give me more care tips for snake plant\"), \"secondary\")\npeace = CompositeCardItem(\"peace-lily\", peaceHeader, [peaceBody], peaceFooter)\npeaceHeader = IconText(peaceIcon, \"warning\", \"m\", \"Peace Lily\", \"Spathiphyllum\", true, \"horizontal\")\npeaceIcon = Icon(\"flower-2\", \"nature\")\npeaceBody = EntityList([peaceL1, peaceL2, peaceL3], \"small\")\npeaceL1 = {left: \"Light\", right: \"Medium indirect\"}\npeaceL2 = {left: \"Water every\", right: \"5-7 days\"}\npeaceL3 = {left: \"Humidity\", right: \"High\"}\npeaceFooter = {price: BoldText(\"text\", \"Droops when thirsty\"), button: peaceBtn}\npeaceBtn = Button(\"Care tips\", @ToAssistant(\"Give me more care tips for peace lily\"), \"secondary\")\ncareTabs = Tabs([tabSeasons, tabLight])\ntabSeasons = TabItem(\"seasons\", \"Seasonal Care\", [seasonNote, seasonCallout])\nseasonNote = MarkDownRenderer(\"**Spring:** Resume regular watering and fertilize monthly as new growth appears.\\n\\n**Summer:** Water more often for pothos and peace lily; keep snake plant on the drier side.\\n\\n**Autumn:** Reduce watering and stop fertilizing as growth slows.\\n\\n**Winter:** Water sparingly, keep plants away from cold drafts and heating vents.\")\nseasonCallout = Callout(\"info\", \"Tip\", \"Check soil moisture with a finger two inches deep before watering any plant.\")\ntabLight = TabItem(\"light\", \"Light Guide\", [lightNote])\nlightNote = MarkDownRenderer(\"- **Pothos:** Bright indirect light. Leggy growth or pale leaves mean it needs more light.\\n- **Snake plant:** Tolerates low light. Bright indirect light gives faster growth.\\n- **Peace lily:** Medium indirect light. Direct sun scorches the leaves.\")",
+  "request" : "Add a fern with its care requirements and a warning about keeping plants away from a heater.",
+  "servedBy" : "claude-haiku-5-5",
+  "stopReason" : "end_turn",
+  "version" : 1
+}

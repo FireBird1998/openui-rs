@@ -1,0 +1,1016 @@
+{
+  "batchRequest" : {
+    "model" : "sonnet",
+    "number" : 105,
+    "request" : "A research participant scheduling page with available sessions, study duration, eligibility checklist and a registration form."
+  },
+  "chunks" : [
+    {
+      "t" : 0.721,
+      "text" : "root = Stack([header,"
+    },
+    {
+      "t" : 1.034,
+      "text" : " inf"
+    },
+    {
+      "t" : 1.065,
+      "text" : "oB"
+    },
+    {
+      "t" : 1.129,
+      "text" : "lock, sessionsH"
+    },
+    {
+      "t" : 1.21,
+      "text" : "eader, sessionsT"
+    },
+    {
+      "t" : 1.273,
+      "text" : "able, eligHeader,"
+    },
+    {
+      "t" : 1.355,
+      "text" : " eligFor"
+    },
+    {
+      "t" : 1.402,
+      "text" : "m, regHeader, reg"
+    },
+    {
+      "t" : 1.489,
+      "text" : "Form])\nheader = C"
+    },
+    {
+      "t" : 1.496,
+      "text" : "ardHeader(\"Sle"
+    },
+    {
+      "t" : 1.55,
+      "text" : "ep &"
+    },
+    {
+      "t" : 1.739,
+      "text" : " C"
+    },
+    {
+      "t" : 1.742,
+      "text" : "ognition Study\","
+    },
+    {
+      "t" : 1.781,
+      "text" : " \"Particip"
+    },
+    {
+      "t" : 1.818,
+      "text" : "ant scheduling —"
+    },
+    {
+      "t" : 1.863,
+      "text" : " Department"
+    },
+    {
+      "t" : 1.907,
+      "text" : " of Psychology\")"
+    },
+    {
+      "t" : 1.954,
+      "text" : "\ninfoBlock = S"
+    },
+    {
+      "t" : 2,
+      "text" : "nippetCardBlock"
+    },
+    {
+      "t" : 2.044,
+      "text" : "([s1, s2, s"
+    },
+    {
+      "t" : 2.079,
+      "text" : "3,"
+    },
+    {
+      "t" : 2.151,
+      "text" : " s4])\ns1 ="
+    },
+    {
+      "t" : 2.16,
+      "text" : " SnippetCardItem"
+    },
+    {
+      "t" : 2.207,
+      "text" : "(\"du"
+    },
+    {
+      "t" : 2.283,
+      "text" : "ration\", s1l"
+    },
+    {
+      "t" : 2.285,
+      "text" : ", s1r)\ns1"
+    },
+    {
+      "t" : 2.33,
+      "text" : "l = IconText(s1"
+    },
+    {
+      "t" : 2.382,
+      "text" : "i"
+    },
+    {
+      "t" : 2.43,
+      "text" : ", \"neutral\", \"m"
+    },
+    {
+      "t" : 2.475,
+      "text" : "\", \"Du"
+    },
+    {
+      "t" : 2.522,
+      "text" : "ration\", \"Per"
+    },
+    {
+      "t" : 2.569,
+      "text" : " session"
+    },
+    {
+      "t" : 2.617,
+      "text" : "\", false, \"horizontal"
+    },
+    {
+      "t" : 2.663,
+      "text" : "\")\ns1i = Ic"
+    },
+    {
+      "t" : 2.713,
+      "text" : "on(\"clock\", \"time"
+    },
+    {
+      "t" : 2.758,
+      "text" : "\")\ns1r = Bo"
+    },
+    {
+      "t" : 2.829,
+      "text" : "ldText(\"text"
+    },
+    {
+      "t" : 2.831,
+      "text" : "\", \"90 min"
+    },
+    {
+      "t" : 2.876,
+      "text" : "utes\")\ns2 ="
+    },
+    {
+      "t" : 2.922,
+      "text" : " SnippetCardItem"
+    },
+    {
+      "t" : 3,
+      "text" : "(\"vis"
+    },
+    {
+      "t" : 3.001,
+      "text" : "its\", s2l, s2"
+    },
+    {
+      "t" : 3.125,
+      "text" : "r)\ns2l = I"
+    },
+    {
+      "t" : 3.172,
+      "text" : "conText(s2i, \""
+    },
+    {
+      "t" : 3.237,
+      "text" : "neutral\", \"m\", \""
+    },
+    {
+      "t" : 3.291,
+      "text" : "Total Visits\", \""
+    },
+    {
+      "t" : 3.347,
+      "text" : "Over study"
+    },
+    {
+      "t" : 3.393,
+      "text" : "\", false, \"horizontal"
+    },
+    {
+      "t" : 3.445,
+      "text" : "\")\ns2i = Ic"
+    },
+    {
+      "t" : 3.495,
+      "text" : "on(\"calendar-"
+    },
+    {
+      "t" : 3.549,
+      "text" : "check"
+    },
+    {
+      "t" : 3.612,
+      "text" : "\", \"time"
+    },
+    {
+      "t" : 3.684,
+      "text" : "\")\ns2r = Bo"
+    },
+    {
+      "t" : 3.688,
+      "text" : "ldText(\"text"
+    },
+    {
+      "t" : 3.815,
+      "text" : "\", \"3 visits\")"
+    },
+    {
+      "t" : 3.866,
+      "text" : "\ns3 = Snippet"
+    },
+    {
+      "t" : 3.909,
+      "text" : "CardItem(\"com"
+    },
+    {
+      "t" : 3.91,
+      "text" : "p\", s3l, s3"
+    },
+    {
+      "t" : 3.962,
+      "text" : "r)\ns3l = I"
+    },
+    {
+      "t" : 4.045,
+      "text" : "conText(s3i, \""
+    },
+    {
+      "t" : 4.106,
+      "text" : "neutral\", \"m\", \""
+    },
+    {
+      "t" : 4.159,
+      "text" : "Compensation\", \"Per"
+    },
+    {
+      "t" : 4.212,
+      "text" : " complet"
+    },
+    {
+      "t" : 4.264,
+      "text" : "ed vis"
+    },
+    {
+      "t" : 4.318,
+      "text" : "it\", false, \"horizont"
+    },
+    {
+      "t" : 4.375,
+      "text" : "al\")\ns3i ="
+    },
+    {
+      "t" : 4.435,
+      "text" : " Icon(\"circle-doll"
+    },
+    {
+      "t" : 4.497,
+      "text" : "ar-sign\", \"finance"
+    },
+    {
+      "t" : 4.558,
+      "text" : "\")\ns3r = Bo"
+    },
+    {
+      "t" : 4.642,
+      "text" : "ldText(\"text"
+    },
+    {
+      "t" : 4.691,
+      "text" : "\", \"$30\")\ns4"
+    },
+    {
+      "t" : 4.753,
+      "text" : " = SnippetCard"
+    },
+    {
+      "t" : 4.807,
+      "text" : "Item(\"loc\", s4"
+    },
+    {
+      "t" : 4.859,
+      "text" : "l, s4r)\ns"
+    },
+    {
+      "t" : 4.967,
+      "text" : "4l = IconText(s"
+    },
+    {
+      "t" : 5.017,
+      "text" : "4i, \"neutral\","
+    },
+    {
+      "t" : 5.02,
+      "text" : " \"m\", \"Location\", \""
+    },
+    {
+      "t" : 5.074,
+      "text" : "Campus\", false, \"hor"
+    },
+    {
+      "t" : 5.132,
+      "text" : "izontal\")\ns4i"
+    },
+    {
+      "t" : 5.185,
+      "text" : " = Icon(\"map-p"
+    },
+    {
+      "t" : 5.259,
+      "text" : "in\", \"places"
+    },
+    {
+      "t" : 5.318,
+      "text" : "\")\ns4r = Bo"
+    },
+    {
+      "t" : 5.38,
+      "text" : "ldText(\"text\", \"H"
+    },
+    {
+      "t" : 5.525,
+      "text" : "all B"
+    },
+    {
+      "t" : 5.526,
+      "text" : ", R"
+    },
+    {
+      "t" : 5.586,
+      "text" : "m 204\")\nsession"
+    },
+    {
+      "t" : 5.648,
+      "text" : "sHeader = Inline"
+    },
+    {
+      "t" : 5.723,
+      "text" : "Header(\"Available S"
+    },
+    {
+      "t" : 5.807,
+      "text" : "essions\", \"P"
+    },
+    {
+      "t" : 5.886,
+      "text" : "ick a slot when"
+    },
+    {
+      "t" : 6.001,
+      "text" : " registering\")\nsessions"
+    },
+    {
+      "t" : 6.005,
+      "text" : "Table = Table([Col"
+    },
+    {
+      "t" : 6.075,
+      "text" : "(\"Date\", dates),"
+    },
+    {
+      "t" : 6.152,
+      "text" : " Col(\"Time\", times),"
+    },
+    {
+      "t" : 6.22,
+      "text" : " Col(\"Sp"
+    },
+    {
+      "t" : 6.304,
+      "text" : "ots Left\", sp"
+    },
+    {
+      "t" : 6.369,
+      "text" : "ots, \"number\"), Col"
+    },
+    {
+      "t" : 6.432,
+      "text" : "(\"Status\", statuses)"
+    },
+    {
+      "t" : 6.5,
+      "text" : "])\ndates = [\""
+    },
+    {
+      "t" : 6.567,
+      "text" : "Mon,"
+    },
+    {
+      "t" : 6.631,
+      "text" : " Jun 9\", \""
+    },
+    {
+      "t" : 6.711,
+      "text" : "Tue, Jun 10"
+    },
+    {
+      "t" : 6.797,
+      "text" : "\", \"Wed, J"
+    },
+    {
+      "t" : 6.864,
+      "text" : "un 11\", \"Thu"
+    },
+    {
+      "t" : 6.934,
+      "text" : ", Jun 12\", \""
+    },
+    {
+      "t" : 7,
+      "text" : "Fri, Jun "
+    },
+    {
+      "t" : 7.065,
+      "text" : "13\"]\ntimes = [\""
+    },
+    {
+      "t" : 7.132,
+      "text" : "9:00 AM\", \""
+    },
+    {
+      "t" : 7.195,
+      "text" : "1"
+    },
+    {
+      "t" : 7.265,
+      "text" : ":00"
+    },
+    {
+      "t" : 7.328,
+      "text" : " PM\", \"10:30"
+    },
+    {
+      "t" : 7.398,
+      "text" : " AM\", \"3:00"
+    },
+    {
+      "t" : 7.47,
+      "text" : " PM\", \"11"
+    },
+    {
+      "t" : 7.547,
+      "text" : ":00 AM\"]"
+    },
+    {
+      "t" : 7.631,
+      "text" : "\nspots = [4, 2"
+    },
+    {
+      "t" : 7.707,
+      "text" : ", 0"
+    },
+    {
+      "t" : 7.79,
+      "text" : ", 5"
+    },
+    {
+      "t" : 7.892,
+      "text" : ", 1]\nstatuses"
+    },
+    {
+      "t" : 8.069,
+      "text" : " = [Tag(\"Open"
+    },
+    {
+      "t" : 8.156,
+      "text" : "\", null, \"sm\", \""
+    },
+    {
+      "t" : 8.159,
+      "text" : "success\"), Tag(\""
+    },
+    {
+      "t" : 8.247,
+      "text" : "Limited\", null, \"sm"
+    },
+    {
+      "t" : 8.394,
+      "text" : "\", \"warning\"), T"
+    },
+    {
+      "t" : 8.397,
+      "text" : "ag(\"Full\", null, \""
+    },
+    {
+      "t" : 8.501,
+      "text" : "sm\", \"danger\"),"
+    },
+    {
+      "t" : 8.59,
+      "text" : " Tag(\"Open\", null"
+    },
+    {
+      "t" : 8.702,
+      "text" : ", \"sm\", \"success\""
+    },
+    {
+      "t" : 8.802,
+      "text" : "), Tag(\"Limited"
+    },
+    {
+      "t" : 8.961,
+      "text" : "\", null, \"sm\", \""
+    },
+    {
+      "t" : 9.05,
+      "text" : "warning\")]\neligH"
+    },
+    {
+      "t" : 9.051,
+      "text" : "eader = InlineHe"
+    },
+    {
+      "t" : 9.143,
+      "text" : "ader(\"Eligibility"
+    },
+    {
+      "t" : 9.244,
+      "text" : " Checklist\", \"Conf"
+    },
+    {
+      "t" : 9.324,
+      "text" : "irm all"
+    },
+    {
+      "t" : 9.42,
+      "text" : " that apply before"
+    },
+    {
+      "t" : 9.513,
+      "text" : " registering\")\neligForm"
+    },
+    {
+      "t" : 9.609,
+      "text" : " = Form(\"eligib"
+    },
+    {
+      "t" : 9.693,
+      "text" : "ility\", eligB"
+    },
+    {
+      "t" : 9.774,
+      "text" : "tns, [eligField"
+    },
+    {
+      "t" : 9.939,
+      "text" : "])\neligField = Form"
+    },
+    {
+      "t" : 9.942,
+      "text" : "Control(\"I"
+    },
+    {
+      "t" : 10.01,
+      "text" : " me"
+    },
+    {
+      "t" : 10.104,
+      "text" : "et the"
+    },
+    {
+      "t" : 10.203,
+      "text" : " following criteria\", eligCh"
+    },
+    {
+      "t" : 10.303,
+      "text" : "ecks)\neligChec"
+    },
+    {
+      "t" : 10.391,
+      "text" : "ks = CheckBox"
+    },
+    {
+      "t" : 10.475,
+      "text" : "Group(\"cri"
+    },
+    {
+      "t" : 10.567,
+      "text" : "teria\", [c1, c"
+    },
+    {
+      "t" : 10.651,
+      "text" : "2, c3, c4])"
+    },
+    {
+      "t" : 10.75,
+      "text" : "\nc1 = Check"
+    },
+    {
+      "t" : 10.853,
+      "text" : "BoxItem(\""
+    },
+    {
+      "t" : 10.939,
+      "text" : "A"
+    },
+    {
+      "t" : 11.042,
+      "text" : "ged 18–"
+    },
+    {
+      "t" : 11.126,
+      "text" : "35"
+    },
+    {
+      "t" : 11.27,
+      "text" : "\", \"Must be an adult"
+    },
+    {
+      "t" : 11.391,
+      "text" : " under"
+    },
+    {
+      "t" : 11.505,
+      "text" : " 36"
+    },
+    {
+      "t" : 11.625,
+      "text" : "\", \"age\")\nc2 "
+    },
+    {
+      "t" : 11.743,
+      "text" : "= CheckBoxIt"
+    },
+    {
+      "t" : 11.85,
+      "text" : "em(\"No di"
+    },
+    {
+      "t" : 11.978,
+      "text" : "agnosed sleep dis"
+    },
+    {
+      "t" : 12.163,
+      "text" : "order\", \"E"
+    },
+    {
+      "t" : 12.242,
+      "text" : ".g. insomnia,"
+    },
+    {
+      "t" : 12.354,
+      "text" : " sleep apnea\", \""
+    },
+    {
+      "t" : 12.438,
+      "text" : "sleep\")\nc3 "
+    },
+    {
+      "t" : 12.564,
+      "text" : "= CheckBoxIt"
+    },
+    {
+      "t" : 12.676,
+      "text" : "em(\"Normal or corr"
+    },
+    {
+      "t" : 12.781,
+      "text" : "ected v"
+    },
+    {
+      "t" : 12.878,
+      "text" : "ision\", \"Gl"
+    },
+    {
+      "t" : 13.045,
+      "text" : "asses or contacts are f"
+    },
+    {
+      "t" : 13.048,
+      "text" : "ine\", \"vision\")\nc"
+    },
+    {
+      "t" : 13.148,
+      "text" : "4 = CheckBo"
+    },
+    {
+      "t" : 13.247,
+      "text" : "xItem(\"Fluent"
+    },
+    {
+      "t" : 13.345,
+      "text" : " in English\", \"T"
+    },
+    {
+      "t" : 13.451,
+      "text" : "asks are in English\", \"l"
+    },
+    {
+      "t" : 13.617,
+      "text" : "ang\")\neligBtns"
+    },
+    {
+      "t" : 13.618,
+      "text" : " = Buttons([Button"
+    },
+    {
+      "t" : 13.743,
+      "text" : "(\"Check Eligibility"
+    },
+    {
+      "t" : 13.846,
+      "text" : "\", @ToAssistant"
+    },
+    {
+      "t" : 13.984,
+      "text" : "(\"Check my eligibility"
+    },
+    {
+      "t" : 14.092,
+      "text" : "\"), \"sec"
+    },
+    {
+      "t" : 14.188,
+      "text" : "ondary\")])\nregHe"
+    },
+    {
+      "t" : 14.294,
+      "text" : "ader = InlineHeader"
+    },
+    {
+      "t" : 14.393,
+      "text" : "(\"Register\", \"Re"
+    },
+    {
+      "t" : 14.495,
+      "text" : "serve your session"
+    },
+    {
+      "t" : 14.607,
+      "text" : "\")\nregForm = Form"
+    },
+    {
+      "t" : 14.713,
+      "text" : "(\"register"
+    },
+    {
+      "t" : 14.815,
+      "text" : "\", regBtns, [f"
+    },
+    {
+      "t" : 14.905,
+      "text" : "Name"
+    },
+    {
+      "t" : 15.01,
+      "text" : ", fEmail, fP"
+    },
+    {
+      "t" : 15.108,
+      "text" : "hone, fSession, f"
+    },
+    {
+      "t" : 15.207,
+      "text" : "Notes])\nfName ="
+    },
+    {
+      "t" : 15.311,
+      "text" : " FormControl(\"Full"
+    },
+    {
+      "t" : 15.494,
+      "text" : " Name\", Input(\"name\", \""
+    },
+    {
+      "t" : 15.498,
+      "text" : "Your name\", \"text\", {"
+    },
+    {
+      "t" : 15.615,
+      "text" : " required: true, minLength:"
+    },
+    {
+      "t" : 15.719,
+      "text" : " 2 }))\nfE"
+    },
+    {
+      "t" : 15.833,
+      "text" : "mail = FormControl(\""
+    },
+    {
+      "t" : 15.946,
+      "text" : "Email\", Input(\"email\","
+    },
+    {
+      "t" : 16.076,
+      "text" : " \"you@example.com\", \""
+    },
+    {
+      "t" : 16.297,
+      "text" : "email\", { required: true, email"
+    },
+    {
+      "t" : 16.301,
+      "text" : ": true }))\nfPh"
+    },
+    {
+      "t" : 16.416,
+      "text" : "one = FormControl(\""
+    },
+    {
+      "t" : 16.521,
+      "text" : "Phone\", Input(\"phone"
+    },
+    {
+      "t" : 16.64,
+      "text" : "\", \"555"
+    },
+    {
+      "t" : 16.743,
+      "text" : "-123"
+    },
+    {
+      "t" : 16.852,
+      "text" : "-4567\", \"text\""
+    },
+    {
+      "t" : 16.966,
+      "text" : "),"
+    },
+    {
+      "t" : 17.19,
+      "text" : " \"Optional,"
+    },
+    {
+      "t" : 17.194,
+      "text" : " for reminders\")\nfS"
+    },
+    {
+      "t" : 17.318,
+      "text" : "ession = FormControl(\""
+    },
+    {
+      "t" : 17.434,
+      "text" : "Preferred Session\", Select"
+    },
+    {
+      "t" : 17.548,
+      "text" : "(\"session\", sessO"
+    },
+    {
+      "t" : 17.657,
+      "text" : "pts, \"Select a session"
+    },
+    {
+      "t" : 17.878,
+      "text" : "..."
+    },
+    {
+      "t" : 17.879,
+      "text" : "\", { required: true }))"
+    },
+    {
+      "t" : 18.017,
+      "text" : "\nsessOpts = [S"
+    },
+    {
+      "t" : 18.119,
+      "text" : "electItem(\"j"
+    },
+    {
+      "t" : 18.242,
+      "text" : "un9\", \"Mon,"
+    },
+    {
+      "t" : 18.358,
+      "text" : " Jun 9 – "
+    },
+    {
+      "t" : 18.48,
+      "text" : "9:00 AM\"),"
+    },
+    {
+      "t" : 18.59,
+      "text" : " SelectItem(\"jun"
+    },
+    {
+      "t" : 18.783,
+      "text" : "10\", \"Tue,"
+    },
+    {
+      "t" : 18.786,
+      "text" : " Jun 10 – 1"
+    },
+    {
+      "t" : 18.905,
+      "text" : ":00 PM\"), S"
+    },
+    {
+      "t" : 19.022,
+      "text" : "electItem(\"jun12"
+    },
+    {
+      "t" : 19.134,
+      "text" : "\", \"Thu, J"
+    },
+    {
+      "t" : 19.25,
+      "text" : "un 12 – 3:"
+    },
+    {
+      "t" : 19.383,
+      "text" : "00 PM\"), Sel"
+    },
+    {
+      "t" : 19.609,
+      "text" : "ectItem(\"jun13\","
+    },
+    {
+      "t" : 19.613,
+      "text" : " \"Fri, Jun"
+    },
+    {
+      "t" : 19.754,
+      "text" : " 13 – 11:00"
+    },
+    {
+      "t" : 19.958,
+      "text" : " AM\")]\nfN"
+    },
+    {
+      "t" : 19.962,
+      "text" : "otes = FormControl(\""
+    },
+    {
+      "t" : 20.078,
+      "text" : "Notes\", TextArea"
+    },
+    {
+      "t" : 20.196,
+      "text" : "(\"notes\", \"Access"
+    },
+    {
+      "t" : 20.33,
+      "text" : "ibility need"
+    },
+    {
+      "t" : 20.55,
+      "text" : "s or quest"
+    },
+    {
+      "t" : 20.551,
+      "text" : "ions\", 3"
+    },
+    {
+      "t" : 20.674,
+      "text" : "))\nregBtns ="
+    },
+    {
+      "t" : 20.79,
+      "text" : " Buttons([Button(\""
+    },
+    {
+      "t" : 20.916,
+      "text" : "Register\", @ToAssist"
+    },
+    {
+      "t" : 21.047,
+      "text" : "ant(\"Subm"
+    },
+    {
+      "t" : 21.336,
+      "text" : "it registration\"), \"primary"
+    },
+    {
+      "t" : 21.342,
+      "text" : "\"), Button(\"Canc"
+    },
+    {
+      "t" : 21.52,
+      "text" : "el\", @ToAssist"
+    },
+    {
+      "t" : 21.728,
+      "text" : "ant(\"Cancel regist"
+    },
+    {
+      "t" : 21.859,
+      "text" : "ration\"), \"secondary\")"
+    },
+    {
+      "t" : 21.985,
+      "text" : "])"
+    }
+  ],
+  "createdAt" : "2026-11-11T10:56:22Z",
+  "effort" : "low",
+  "format" : "openui-recording",
+  "inputTokens" : 14501,
+  "library" : "react-ui",
+  "model" : "claude-sonnet-5-5",
+  "outputTokens" : 1629,
+  "request" : "A research participant scheduling page with available sessions, study duration, eligibility checklist and a registration form.",
+  "servedBy" : "claude-sonnet-5-5",
+  "stopReason" : "end_turn",
+  "version" : 1
+}

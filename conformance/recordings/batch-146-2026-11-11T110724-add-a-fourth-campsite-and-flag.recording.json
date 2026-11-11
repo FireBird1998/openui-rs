@@ -1,0 +1,242 @@
+{
+  "batchRequest" : {
+    "model" : "haiku",
+    "number" : 146,
+    "of" : 106,
+    "request" : "Add a fourth campsite and flag which sites have wheelchair-accessible facilities."
+  },
+  "chunks" : [
+    {
+      "t" : 3.994,
+      "text" : "```"
+    },
+    {
+      "t" : 4.012,
+      "text" : "\ntable"
+    },
+    {
+      "t" : 4.197,
+      "text" : " = Table([colSite,"
+    },
+    {
+      "t" : 4.226,
+      "text" : " colRate, colAmen"
+    },
+    {
+      "t" : 4.227,
+      "text" : "ities, colTent, colA"
+    },
+    {
+      "t" : 4.26,
+      "text" : "vail, colAccess])"
+    },
+    {
+      "t" : 4.291,
+      "text" : "\ncolSite = Col(\""
+    },
+    {
+      "t" : 4.327,
+      "text" : "Site\", [\"Pine"
+    },
+    {
+      "t" : 4.358,
+      "text" : " Hollow\", \"L"
+    },
+    {
+      "t" : 4.388,
+      "text" : "akeside Meadow\","
+    },
+    {
+      "t" : 4.449,
+      "text" : " \"Cedar Rid"
+    },
+    {
+      "t" : 4.451,
+      "text" : "ge\", \"Hilltop"
+    },
+    {
+      "t" : 4.483,
+      "text" : " Grove\"])\ncolR"
+    },
+    {
+      "t" : 4.521,
+      "text" : "ate = Col(\"Night"
+    },
+    {
+      "t" : 4.561,
+      "text" : "ly Rate\", [32,"
+    },
+    {
+      "t" : 4.63,
+      "text" : " 45, 28, 38"
+    },
+    {
+      "t" : 4.631,
+      "text" : "], \"number\")\ncolAm"
+    },
+    {
+      "t" : 4.672,
+      "text" : "enities = Col(\"Am"
+    },
+    {
+      "t" : 4.747,
+      "text" : "enities\", [amenA,"
+    },
+    {
+      "t" : 4.748,
+      "text" : " amenB, amenC,"
+    },
+    {
+      "t" : 4.79,
+      "text" : " amenD])\nam"
+    },
+    {
+      "t" : 4.834,
+      "text" : "enD = TagBlock"
+    },
+    {
+      "t" : 4.873,
+      "text" : "([\"Water\", \"F"
+    },
+    {
+      "t" : 4.913,
+      "text" : "ire Pit\", \"Show"
+    },
+    {
+      "t" : 4.973,
+      "text" : "ers\""
+    },
+    {
+      "t" : 4.975,
+      "text" : "])\ncolTent = Col"
+    },
+    {
+      "t" : 5.015,
+      "text" : "(\"Max Tent Size"
+    },
+    {
+      "t" : 5.054,
+      "text" : "\", [\"10x12 "
+    },
+    {
+      "t" : 5.097,
+      "text" : "ft\", \"12x16 "
+    },
+    {
+      "t" : 5.141,
+      "text" : "ft\", \"9x9 "
+    },
+    {
+      "t" : 5.182,
+      "text" : "ft\", \"11x14 "
+    },
+    {
+      "t" : 5.221,
+      "text" : "ft\"])\ncolAvail"
+    },
+    {
+      "t" : 5.263,
+      "text" : " = Col(\"Availability\","
+    },
+    {
+      "t" : 5.308,
+      "text" : " [availA, availB, avail"
+    },
+    {
+      "t" : 5.35,
+      "text" : "C, availD])\navail"
+    },
+    {
+      "t" : 5.396,
+      "text" : "D = Tag(\"Available"
+    },
+    {
+      "t" : 5.437,
+      "text" : "\", null, \"sm\", \""
+    },
+    {
+      "t" : 5.482,
+      "text" : "success\")\ncolAccess ="
+    },
+    {
+      "t" : 5.523,
+      "text" : " Col(\"Wheelch"
+    },
+    {
+      "t" : 5.563,
+      "text" : "air Acc"
+    },
+    {
+      "t" : 5.612,
+      "text" : "essible\", [accessA,"
+    },
+    {
+      "t" : 5.655,
+      "text" : " accessB, accessC,"
+    },
+    {
+      "t" : 5.729,
+      "text" : " accessD])\naccessA"
+    },
+    {
+      "t" : 5.731,
+      "text" : " = Tag(\"Access"
+    },
+    {
+      "t" : 5.777,
+      "text" : "ible\", null, \"sm\","
+    },
+    {
+      "t" : 5.842,
+      "text" : " \"success\")\naccessB ="
+    },
+    {
+      "t" : 5.843,
+      "text" : " Tag(\"Accessible"
+    },
+    {
+      "t" : 5.911,
+      "text" : "\", null, \"sm\", \""
+    },
+    {
+      "t" : 5.913,
+      "text" : "success\")\naccessC ="
+    },
+    {
+      "t" : 5.953,
+      "text" : " Tag(\"Not Access"
+    },
+    {
+      "t" : 6.061,
+      "text" : "ible\", null, \"sm\","
+    },
+    {
+      "t" : 6.122,
+      "text" : " \"neutral\")\naccess"
+    },
+    {
+      "t" : 6.172,
+      "text" : "D = Tag(\"Acc"
+    },
+    {
+      "t" : 6.221,
+      "text" : "essible\", null, \"sm"
+    },
+    {
+      "t" : 6.268,
+      "text" : "\", \"success\")\n```"
+    }
+  ],
+  "createdAt" : "2026-11-11T11:07:24Z",
+  "effort" : "low",
+  "format" : "openui-recording",
+  "inputTokens" : 15282,
+  "library" : "react-ui",
+  "model" : "claude-haiku-5-5",
+  "outputTokens" : 1009,
+  "patchOf" : "root = Stack([header, table])\nheader = InlineHeader(\"Campsite Comparison\", \"Nightly rates, amenities, and availability for three sites\")\ntable = Table([colSite, colRate, colAmenities, colTent, colAvail])\ncolSite = Col(\"Site\", [\"Pine Hollow\", \"Lakeside Meadow\", \"Cedar Ridge\"])\ncolRate = Col(\"Nightly Rate\", [32, 45, 28], \"number\")\ncolAmenities = Col(\"Amenities\", [amenA, amenB, amenC])\namenA = TagBlock([\"Water\", \"Fire Pit\", \"Restrooms\"])\namenB = TagBlock([\"Water\", \"Electric Hookup\", \"Showers\", \"Lake Access\"])\namenC = TagBlock([\"Water\", \"Picnic Table\"])\ncolTent = Col(\"Max Tent Size\", [\"10x12 ft\", \"12x16 ft\", \"9x9 ft\"])\ncolAvail = Col(\"Availability\", [availA, availB, availC])\navailA = Tag(\"Available\", null, \"sm\", \"success\")\navailB = Tag(\"Limited\", null, \"sm\", \"warning\")\navailC = Tag(\"Sold Out\", null, \"sm\", \"danger\")",
+  "request" : "Add a fourth campsite and flag which sites have wheelchair-accessible facilities.",
+  "servedBy" : "claude-haiku-5-5",
+  "stopReason" : "end_turn",
+  "version" : 1
+}

@@ -1,0 +1,186 @@
+{
+  "batchRequest" : {
+    "model" : "haiku",
+    "number" : 48,
+    "of" : 22,
+    "request" : "Add a phone number field and make the plan select default to the free plan."
+  },
+  "chunks" : [
+    {
+      "t" : 4.214,
+      "text" : "root"
+    },
+    {
+      "t" : 4.302,
+      "text" : " = Stack([title, form"
+    },
+    {
+      "t" : 4.311,
+      "text" : "])\nform"
+    },
+    {
+      "t" : 4.317,
+      "text" : " = Form(\"signup\", bt"
+    },
+    {
+      "t" : 4.365,
+      "text" : "ns, [nameField, em"
+    },
+    {
+      "t" : 4.381,
+      "text" : "ailField, phoneField,"
+    },
+    {
+      "t" : 4.386,
+      "text" : " passwordField, planField,"
+    },
+    {
+      "t" : 4.395,
+      "text" : " termsField])\nphone"
+    },
+    {
+      "t" : 4.402,
+      "text" : "Field = FormControl(\""
+    },
+    {
+      "t" : 4.411,
+      "text" : "Phone\", Input(\"phone"
+    },
+    {
+      "t" : 4.417,
+      "text" : "\", \"+1 (555)"
+    },
+    {
+      "t" : 4.434,
+      "text" : " 123-4567\", \"text"
+    },
+    {
+      "t" : 4.455,
+      "text" : "\", {p"
+    },
+    {
+      "t" : 4.476,
+      "text" : "attern: \"^\\"
+    },
+    {
+      "t" : 4.497,
+      "text" : "\\+?[0-9\\"
+    },
+    {
+      "t" : 4.517,
+      "text" : "\\s()"
+    },
+    {
+      "t" : 4.537,
+      "text" : "\\\\-]"
+    },
+    {
+      "t" : 4.559,
+      "text" : "{7,20"
+    },
+    {
+      "t" : 4.583,
+      "text" : "}$\"}),"
+    },
+    {
+      "t" : 4.598,
+      "text" : " \"Opt"
+    },
+    {
+      "t" : 4.618,
+      "text" : "ional."
+    },
+    {
+      "t" : 4.642,
+      "text" : " Include your country"
+    },
+    {
+      "t" : 4.66,
+      "text" : " code\")\nplanField = Form"
+    },
+    {
+      "t" : 4.689,
+      "text" : "Control(\"Plan\", R"
+    },
+    {
+      "t" : 4.706,
+      "text" : "adioGroup(\"plan"
+    },
+    {
+      "t" : 4.722,
+      "text" : "\", planOpts, \"free"
+    },
+    {
+      "t" : 4.743,
+      "text" : "\", {required: true}))"
+    },
+    {
+      "t" : 4.762,
+      "text" : "\nplanOpts = [Rad"
+    },
+    {
+      "t" : 4.782,
+      "text" : "ioItem(\""
+    },
+    {
+      "t" : 4.803,
+      "text" : "Free\", \""
+    },
+    {
+      "t" : 4.824,
+      "text" : "Basic features for"
+    },
+    {
+      "t" : 4.843,
+      "text" : " individ"
+    },
+    {
+      "t" : 4.864,
+      "text" : "uals\", \"free\"), R"
+    },
+    {
+      "t" : 4.889,
+      "text" : "adioItem(\"Pro"
+    },
+    {
+      "t" : 4.905,
+      "text" : "\", \"$"
+    },
+    {
+      "t" : 4.927,
+      "text" : "12/mo,"
+    },
+    {
+      "t" : 4.946,
+      "text" : " advanced features\", \"pro"
+    },
+    {
+      "t" : 4.966,
+      "text" : "\"), RadioItem(\""
+    },
+    {
+      "t" : 4.988,
+      "text" : "Team\", \"$36/m"
+    },
+    {
+      "t" : 5.008,
+      "text" : "o, collaboration for"
+    },
+    {
+      "t" : 5.027,
+      "text" : " teams\", \"team\")]"
+    }
+  ],
+  "createdAt" : "2026-11-11T10:37:44Z",
+  "effort" : "low",
+  "format" : "openui-recording",
+  "inputTokens" : 15352,
+  "library" : "react-ui",
+  "model" : "claude-haiku-5-5",
+  "outputTokens" : 969,
+  "patchOf" : "root = Stack([title, form])\ntitle = TextContent(\"Create your account\", \"large-heavy\")\nform = Form(\"signup\", btns, [nameField, emailField, passwordField, planField, termsField])\nnameField = FormControl(\"Name\", Input(\"name\", \"Your full name\", \"text\", {required: true, minLength: 2}))\nemailField = FormControl(\"Email\", Input(\"email\", \"you@example.com\", \"email\", {required: true, email: true}))\npasswordField = FormControl(\"Password\", Input(\"password\", \"At least 8 characters\", \"password\", {required: true, minLength: 8, pattern: \"^(?=.*[A-Za-z])(?=.*\\\\d).+$\"}), \"Must include a letter and a number\")\nplanField = FormControl(\"Plan\", Select(\"plan\", planOpts, \"Choose a plan\", {required: true}))\nplanOpts = [SelectItem(\"free\", \"Free\"), SelectItem(\"pro\", \"Pro — $12/mo\"), SelectItem(\"team\", \"Team — $36/mo\")]\ntermsField = FormControl(\"Terms\", CheckBoxGroup(\"terms\", [termsItem], {required: true}))\ntermsItem = CheckBoxItem(\"I agree to the Terms of Service\", \"You must accept the terms to create an account\", \"accepted\", false)\nbtns = Buttons([Button(\"Create account\", @ToAssistant(\"Create my account\"), \"primary\"), Button(\"Cancel\", @ToAssistant(\"Cancel sign-up\"), \"secondary\")])",
+  "request" : "Add a phone number field and make the plan select default to the free plan.",
+  "servedBy" : "claude-haiku-5-5",
+  "stopReason" : "end_turn",
+  "version" : 1
+}

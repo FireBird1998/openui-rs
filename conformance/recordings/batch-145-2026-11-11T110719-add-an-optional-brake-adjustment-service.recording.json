@@ -1,0 +1,246 @@
+{
+  "batchRequest" : {
+    "model" : "sonnet",
+    "number" : 145,
+    "of" : 103,
+    "request" : "Add an optional brake adjustment service and a field for the owner's preferred collection date."
+  },
+  "chunks" : [
+    {
+      "t" : 0.719,
+      "text" : "Two chang"
+    },
+    {
+      "t" : 1.039,
+      "text" : "es are"
+    },
+    {
+      "t" : 1.067,
+      "text" : " needed. The first"
+    },
+    {
+      "t" : 1.07,
+      "text" : " is an opt"
+    },
+    {
+      "t" : 1.202,
+      "text" : "ional brake adjustment add"
+    },
+    {
+      "t" : 1.253,
+      "text" : "-on,"
+    },
+    {
+      "t" : 1.295,
+      "text" : " which"
+    },
+    {
+      "t" : 1.329,
+      "text" : " I'm"
+    },
+    {
+      "t" : 1.367,
+      "text" : " adding as a switch."
+    },
+    {
+      "t" : 1.425,
+      "text" : " The second is a pre"
+    },
+    {
+      "t" : 1.428,
+      "text" : "ferred collection date, added"
+    },
+    {
+      "t" : 1.466,
+      "text" : " with a DatePicker."
+    },
+    {
+      "t" : 1.509,
+      "text" : "\n\nroot"
+    },
+    {
+      "t" : 1.557,
+      "text" : " = Stack([header, form"
+    },
+    {
+      "t" : 1.601,
+      "text" : "])\nform = Form(\"rep"
+    },
+    {
+      "t" : 1.653,
+      "text" : "airIntake\", btns,"
+    },
+    {
+      "t" : 1.703,
+      "text" : " [modelField, typeField"
+    },
+    {
+      "t" : 1.753,
+      "text" : ", symptomsField, ser"
+    },
+    {
+      "t" : 1.811,
+      "text" : "viceField, brakeField"
+    },
+    {
+      "t" : 1.856,
+      "text" : ", notesField, d"
+    },
+    {
+      "t" : 1.908,
+      "text" : "ateField, approvalField])"
+    },
+    {
+      "t" : 2.015,
+      "text" : "\nbrakeField = Form"
+    },
+    {
+      "t" : 2.076,
+      "text" : "Control(\"Opt"
+    },
+    {
+      "t" : 2.078,
+      "text" : "ional Add-On\", brak"
+    },
+    {
+      "t" : 2.14,
+      "text" : "eSwitch"
+    },
+    {
+      "t" : 2.231,
+      "text" : ", \"Not"
+    },
+    {
+      "t" : 2.232,
+      "text" : " required —"
+    },
+    {
+      "t" : 2.288,
+      "text" : " add"
+    },
+    {
+      "t" : 2.337,
+      "text" : " it"
+    },
+    {
+      "t" : 2.382,
+      "text" : " if you'"
+    },
+    {
+      "t" : 2.425,
+      "text" : "d like us"
+    },
+    {
+      "t" : 2.474,
+      "text" : " to check your brakes\")"
+    },
+    {
+      "t" : 2.556,
+      "text" : "\nbrakeSwitch ="
+    },
+    {
+      "t" : 2.558,
+      "text" : " SwitchGroup(\""
+    },
+    {
+      "t" : 2.621,
+      "text" : "add"
+    },
+    {
+      "t" : 2.685,
+      "text" : "ons\", [brakeItem"
+    },
+    {
+      "t" : 2.786,
+      "text" : "], \"card\")"
+    },
+    {
+      "t" : 2.787,
+      "text" : "\nbrakeItem = S"
+    },
+    {
+      "t" : 2.895,
+      "text" : "witchItem(\""
+    },
+    {
+      "t" : 2.898,
+      "text" : "Brake Adjustment\","
+    },
+    {
+      "t" : 2.962,
+      "text" : " \"Ad"
+    },
+    {
+      "t" : 3.024,
+      "text" : "just pads"
+    },
+    {
+      "t" : 3.092,
+      "text" : ", c"
+    },
+    {
+      "t" : 3.155,
+      "text" : "able t"
+    },
+    {
+      "t" : 3.201,
+      "text" : "ension and br"
+    },
+    {
+      "t" : 3.253,
+      "text" : "ake alignment\","
+    },
+    {
+      "t" : 3.306,
+      "text" : " \"brakeAdjust"
+    },
+    {
+      "t" : 3.372,
+      "text" : "ment\", false)\ndateField"
+    },
+    {
+      "t" : 3.443,
+      "text" : " = FormControl(\"Pre"
+    },
+    {
+      "t" : 3.519,
+      "text" : "ferred Collection Date\","
+    },
+    {
+      "t" : 3.569,
+      "text" : " D"
+    },
+    {
+      "t" : 3.622,
+      "text" : "atePicker(\"coll"
+    },
+    {
+      "t" : 3.674,
+      "text" : "ectionDate\", \"single\""
+    },
+    {
+      "t" : 3.741,
+      "text" : "), \"When"
+    },
+    {
+      "t" : 3.839,
+      "text" : " would you like to"
+    },
+    {
+      "t" : 3.842,
+      "text" : " pick up your bike?\")"
+    }
+  ],
+  "createdAt" : "2026-11-11T11:07:19Z",
+  "effort" : "low",
+  "format" : "openui-recording",
+  "inputTokens" : 15842,
+  "library" : "react-ui",
+  "model" : "claude-sonnet-5-5",
+  "outputTokens" : 302,
+  "patchOf" : "root = Stack([header, form])\nheader = CardHeader(\"Bicycle Repair Intake\", \"Tell us about your bike and what needs attention\")\nform = Form(\"repairIntake\", btns, [modelField, typeField, symptomsField, serviceField, notesField, approvalField])\nmodelField = FormControl(\"Bike Make & Model\", Input(\"bikeModel\", \"e.g. Trek Domane SL5\", \"text\", { required: true, minLength: 2 }))\ntypeField = FormControl(\"Bike Type\", Select(\"bikeType\", typeOpts, \"Select type...\", { required: true }))\ntypeOpts = [SelectItem(\"road\", \"Road\"), SelectItem(\"mountain\", \"Mountain\"), SelectItem(\"hybrid\", \"Hybrid\"), SelectItem(\"ebike\", \"E-Bike\"), SelectItem(\"kids\", \"Kids\")]\nsymptomsField = FormControl(\"Reported Symptoms\", symptomChips, \"Select all that apply\")\nsymptomChips = Chips(\"symptoms\", \"multiple\", [s1, s2, s3, s4, s5, s6])\ns1 = ChipItem(\"brakes\", \"Squeaky/weak brakes\")\ns2 = ChipItem(\"shifting\", \"Skipping gears\")\ns3 = ChipItem(\"flat\", \"Flat tire\")\ns4 = ChipItem(\"chain\", \"Noisy chain\")\ns5 = ChipItem(\"wobble\", \"Wheel wobble\")\ns6 = ChipItem(\"steering\", \"Loose steering\")\nserviceField = FormControl(\"Service Option\", serviceCards, \"Choose a service level\")\nserviceCards = OptionCards(\"service\", \"single\", [o1, o2, o3], { required: true })\no1 = OptionCard(\"basic\", \"Basic Tune-Up\", \"Brake and gear adjustment, tire inflation\", i1)\ni1 = Icon(\"wrench\", \"tools\")\no2 = OptionCard(\"full\", \"Full Overhaul\", \"Deep clean, lube, true wheels, full inspection\", i2)\ni2 = Icon(\"settings\", \"tools\")\no3 = OptionCard(\"repair\", \"Repair Only\", \"Fix only the reported symptoms\", i3)\ni3 = Icon(\"circle-check\", \"tools\")\nnotesField = FormControl(\"Additional Notes\", TextArea(\"notes\", \"Anything else we should know?\", 4))\napprovalField = FormControl(\"Estimate Approval\", approvalBox)\napprovalBox = CheckBoxGroup(\"approval\", [approveItem], { required: true })\napproveItem = CheckBoxItem(\"I approve an estimate before work begins\", \"We will contact you with a quote and wait for your OK\", \"approveEstimate\", false)\nbtns = Buttons([Button(\"Submit Intake\", @ToAssistant(\"Submit bicycle repair intake\"), \"primary\"), Button(\"Clear\", @ToAssistant(\"Clear intake form\"), \"secondary\")])",
+  "request" : "Add an optional brake adjustment service and a field for the owner's preferred collection date.",
+  "servedBy" : "claude-sonnet-5-5",
+  "stopReason" : "end_turn",
+  "version" : 1
+}

@@ -1,0 +1,19 @@
+root = Stack([title, intro, tbl, note, totalsHeader, totals])
+title = TextContent("Refill Shop Shopping List", "large-heavy")
+intro = TextContent("Bring your own containers. Net weight = gross weight minus tare. Total = net kg × price per kg.")
+tbl = Table([Col("Product", products), Col("Container", containers), Col("Tare (g)", tare, "number"), Col("Price / kg", price, "number"), Col("Gross (g)", gross, "number"), Col("Net (g)", net, "number"), Col("Total", totalCol, "number")])
+products = ["Rolled oats", "Basmati rice", "Red lentils", "Almonds", "Ground coffee", "Laundry powder", "Dish soap (liquid)"]
+containers = ["Glass jar 1L", "Cotton bag", "Glass jar 750ml", "Tin 500ml", "Steel tin", "Cardboard tub", "Glass bottle 1L"]
+tare = [420, 35, 350, 180, 150, 120, 480]
+price = [2.8, 3.4, 3.9, 14.5, 22, 4.2, 5.6]
+gross = [1420, 1035, 1100, 680, 650, 1620, 1480]
+net = [1000, 1000, 750, 500, 500, 1500, 1000]
+totalCol = ["$2.80", "$3.40", "$2.93", "$7.25", "$11.00", "$6.30", "$5.60"]
+note = Callout("info", "Tip", "Weigh each empty container at the till before filling and note the tare weight on the lid or base.")
+totalsHeader = InlineHeader("Example Basket Summary", "Sum of the items above")
+totals = EntityList([r1, r2, r3], "default", h, f)
+r1 = { left: "Total net weight", right: "5.25 kg", rightVariant: "number" }
+r2 = { left: "Total tare weight", right: "1.735 kg", rightVariant: "number" }
+r3 = { left: "Number of items", right: "7", rightVariant: "number" }
+h = { left: "Summary", right: "Value" }
+f = { left: "Basket total", right: "$39.28", rightVariant: "number" }

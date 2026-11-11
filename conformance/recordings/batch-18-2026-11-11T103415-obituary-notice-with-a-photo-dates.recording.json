@@ -1,0 +1,484 @@
+{
+  "batchRequest" : {
+    "model" : "haiku",
+    "number" : 18,
+    "request" : "Obituary notice with a photo, dates, a short biography and service details."
+  },
+  "chunks" : [
+    {
+      "t" : 3.791,
+      "text" : "root"
+    },
+    {
+      "t" : 3.835,
+      "text" : " = Stack([not"
+    },
+    {
+      "t" : 3.845,
+      "text" : "ice])\nnotice = Card"
+    },
+    {
+      "t" : 3.855,
+      "text" : "([header, photo, dates"
+    },
+    {
+      "t" : 3.883,
+      "text" : ", bio"
+    },
+    {
+      "t" : 3.907,
+      "text" : "Text"
+    },
+    {
+      "t" : 3.913,
+      "text" : ", serviceHeader,"
+    },
+    {
+      "t" : 3.93,
+      "text" : " serviceList, don"
+    },
+    {
+      "t" : 3.95,
+      "text" : "ationN"
+    },
+    {
+      "t" : 3.971,
+      "text" : "ote])\nheader = CardH"
+    },
+    {
+      "t" : 3.994,
+      "text" : "eader(\"Eleanor"
+    },
+    {
+      "t" : 4.013,
+      "text" : " Marie Whitfield"
+    },
+    {
+      "t" : 4.033,
+      "text" : "\", \"1938 – 2"
+    },
+    {
+      "t" : 4.054,
+      "text" : "024\")\nphoto = Image"
+    },
+    {
+      "t" : 4.074,
+      "text" : "(\"Portrait of E"
+    },
+    {
+      "t" : 4.096,
+      "text" : "leanor Marie Wh"
+    },
+    {
+      "t" : 4.116,
+      "text" : "itfield\")\ndates ="
+    },
+    {
+      "t" : 4.138,
+      "text" : " TextContent(\"Born March"
+    },
+    {
+      "t" : 4.157,
+      "text" : " 12, 1938,"
+    },
+    {
+      "t" : 4.18,
+      "text" : " Dayton, Oh"
+    },
+    {
+      "t" : 4.201,
+      "text" : "io  "
+    },
+    {
+      "t" : 4.238,
+      "text" : "·  Died June 3,"
+    },
+    {
+      "t" : 4.259,
+      "text" : " 2024, Asheville"
+    },
+    {
+      "t" : 4.28,
+      "text" : ", North Carolina\", \""
+    },
+    {
+      "t" : 4.301,
+      "text" : "small\")\nbioText = T"
+    },
+    {
+      "t" : 4.321,
+      "text" : "extContent(\"Elean"
+    },
+    {
+      "t" : 4.341,
+      "text" : "or Wh"
+    },
+    {
+      "t" : 4.361,
+      "text" : "itfield spent four"
+    },
+    {
+      "t" : 4.382,
+      "text" : " decades teaching elementary"
+    },
+    {
+      "t" : 4.404,
+      "text" : " music"
+    },
+    {
+      "t" : 4.422,
+      "text" : " in Dayton public"
+    },
+    {
+      "t" : 4.443,
+      "text" : " schools,"
+    },
+    {
+      "t" : 4.463,
+      "text" : " where"
+    },
+    {
+      "t" : 4.483,
+      "text" : " gener"
+    },
+    {
+      "t" : 4.507,
+      "text" : "ations of students learned their"
+    },
+    {
+      "t" : 4.524,
+      "text" : " first ch"
+    },
+    {
+      "t" : 4.544,
+      "text" : "ords and har"
+    },
+    {
+      "t" : 4.573,
+      "text" : "monies from her."
+    },
+    {
+      "t" : 4.591,
+      "text" : " A"
+    },
+    {
+      "t" : 4.608,
+      "text" : " lifelong gardener and"
+    },
+    {
+      "t" : 4.626,
+      "text" : " av"
+    },
+    {
+      "t" : 4.646,
+      "text" : "id reader, she was"
+    },
+    {
+      "t" : 4.668,
+      "text" : " known"
+    },
+    {
+      "t" : 4.687,
+      "text" : " for her war"
+    },
+    {
+      "t" : 4.707,
+      "text" : "m"
+    },
+    {
+      "t" : 4.728,
+      "text" : "th, her w"
+    },
+    {
+      "t" : 4.749,
+      "text" : "it, and the"
+    },
+    {
+      "t" : 4.77,
+      "text" : " Sunday p"
+    },
+    {
+      "t" : 4.788,
+      "text" : "ies"
+    },
+    {
+      "t" : 4.814,
+      "text" : " she sh"
+    },
+    {
+      "t" : 4.833,
+      "text" : "ared with ne"
+    },
+    {
+      "t" : 4.852,
+      "text" : "ighbors. She is survived"
+    },
+    {
+      "t" : 4.871,
+      "text" : " by her husband of"
+    },
+    {
+      "t" : 4.891,
+      "text" : " 58"
+    },
+    {
+      "t" : 4.911,
+      "text" : " years, Robert;"
+    },
+    {
+      "t" : 4.932,
+      "text" : " her children"
+    },
+    {
+      "t" : 4.951,
+      "text" : ","
+    },
+    {
+      "t" : 4.972,
+      "text" : " "
+    },
+    {
+      "t" : 4.993,
+      "text" : "Ann and Th"
+    },
+    {
+      "t" : 5.013,
+      "text" : "omas; and five"
+    },
+    {
+      "t" : 5.033,
+      "text" : " grandchildren who"
+    },
+    {
+      "t" : 5.054,
+      "text" : " were the"
+    },
+    {
+      "t" : 5.074,
+      "text" : " l"
+    },
+    {
+      "t" : 5.095,
+      "text" : "ights of her life. She moved"
+    },
+    {
+      "t" : 5.115,
+      "text" : " to Asheville in"
+    },
+    {
+      "t" : 5.135,
+      "text" : " 2015"
+    },
+    {
+      "t" : 5.155,
+      "text" : " to be"
+    },
+    {
+      "t" : 5.175,
+      "text" : " closer to family"
+    },
+    {
+      "t" : 5.196,
+      "text" : " and qu"
+    },
+    {
+      "t" : 5.217,
+      "text" : "ickly found a new"
+    },
+    {
+      "t" : 5.238,
+      "text" : " cho"
+    },
+    {
+      "t" : 5.259,
+      "text" : "ir and"
+    },
+    {
+      "t" : 5.283,
+      "text" : " a new gar"
+    },
+    {
+      "t" : 5.304,
+      "text" : "den to"
+    },
+    {
+      "t" : 5.325,
+      "text" : " t"
+    },
+    {
+      "t" : 5.346,
+      "text" : "end.\", \"default\")\nser"
+    },
+    {
+      "t" : 5.367,
+      "text" : "viceHeader = Inl"
+    },
+    {
+      "t" : 5.389,
+      "text" : "ineHeader(\"Service"
+    },
+    {
+      "t" : 5.409,
+      "text" : " Details\", \"A"
+    },
+    {
+      "t" : 5.423,
+      "text" : " celebration of"
+    },
+    {
+      "t" : 5.445,
+      "text" : " Eleanor's life\")"
+    },
+    {
+      "t" : 5.468,
+      "text" : "\nserviceList = Entity"
+    },
+    {
+      "t" : 5.49,
+      "text" : "List([{left: \"Date"
+    },
+    {
+      "t" : 5.513,
+      "text" : "\", right: \"Saturday"
+    },
+    {
+      "t" : 5.535,
+      "text" : ", June 15, 2024"
+    },
+    {
+      "t" : 5.558,
+      "text" : "\"}, {left: \""
+    },
+    {
+      "t" : 5.573,
+      "text" : "Time\", right: \"11:00"
+    },
+    {
+      "t" : 5.595,
+      "text" : " A"
+    },
+    {
+      "t" : 5.618,
+      "text" : "M\"}, {left: \""
+    },
+    {
+      "t" : 5.641,
+      "text" : "Location"
+    },
+    {
+      "t" : 5.664,
+      "text" : "\", right: \"First"
+    },
+    {
+      "t" : 5.686,
+      "text" : " Presbyterian Church"
+    },
+    {
+      "t" : 5.71,
+      "text" : ", "
+    },
+    {
+      "t" : 5.733,
+      "text" : "25"
+    },
+    {
+      "t" : 5.757,
+      "text" : " Church"
+    },
+    {
+      "t" : 5.78,
+      "text" : " Street, Asheville,"
+    },
+    {
+      "t" : 5.804,
+      "text" : " NC\"}, {left:"
+    },
+    {
+      "t" : 5.828,
+      "text" : " \"Reception\", right: \""
+    },
+    {
+      "t" : 5.852,
+      "text" : "Following the service in"
+    },
+    {
+      "t" : 5.876,
+      "text" : " the"
+    },
+    {
+      "t" : 5.901,
+      "text" : " Fellowship Hall\""
+    },
+    {
+      "t" : 5.925,
+      "text" : "},"
+    },
+    {
+      "t" : 5.941,
+      "text" : " {left: \"Officiant"
+    },
+    {
+      "t" : 5.975,
+      "text" : "\", right: \"Rev."
+    },
+    {
+      "t" : 6.001,
+      "text" : " Margaret L"
+    },
+    {
+      "t" : 6.026,
+      "text" : "ow"
+    },
+    {
+      "t" : 6.052,
+      "text" : "e\"}], \"default\")"
+    },
+    {
+      "t" : 6.077,
+      "text" : "\ndonationNote = TextCont"
+    },
+    {
+      "t" : 6.103,
+      "text" : "ent(\"In lieu of fl"
+    },
+    {
+      "t" : 6.129,
+      "text" : "owers, the"
+    },
+    {
+      "t" : 6.156,
+      "text" : " family as"
+    },
+    {
+      "t" : 6.182,
+      "text" : "ks that donations be made to the"
+    },
+    {
+      "t" : 6.208,
+      "text" : " D"
+    },
+    {
+      "t" : 6.235,
+      "text" : "ayton Community"
+    },
+    {
+      "t" : 6.261,
+      "text" : " Music F"
+    },
+    {
+      "t" : 6.287,
+      "text" : "und.\", \"small\")"
+    }
+  ],
+  "createdAt" : "2026-11-11T10:34:15Z",
+  "effort" : "low",
+  "format" : "openui-recording",
+  "inputTokens" : 14491,
+  "library" : "react-ui",
+  "model" : "claude-haiku-5-5",
+  "outputTokens" : 1200,
+  "request" : "Obituary notice with a photo, dates, a short biography and service details.",
+  "servedBy" : "claude-haiku-5-5",
+  "stopReason" : "end_turn",
+  "version" : 1
+}

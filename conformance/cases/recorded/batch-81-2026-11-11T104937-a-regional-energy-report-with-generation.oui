@@ -1,0 +1,13 @@
+root = Stack([title, mixCard, demandCard, notice])
+title = TextContent("Regional Energy Report", "large-heavy")
+mixCard = Card([mixHeader, mixChart])
+mixHeader = CardHeader("Generation Mix", "Share of total generation by source")
+mixChart = PieChart(mixLabels, mixValues, "donut")
+mixLabels = ["Natural Gas", "Wind", "Solar", "Nuclear", "Hydro", "Coal"]
+mixValues = [32, 22, 14, 18, 9, 5]
+demandCard = Card([demandHeader, demandChart])
+demandHeader = CardHeader("Monthly Demand", "Average demand in GWh")
+demandChart = LineChart(months, [demandSeries], "natural", "Month", "Demand (GWh)")
+months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
+demandSeries = Series("Demand", [1840, 1720, 1590, 1450, 1380, 1520, 1760, 1810, 1560, 1470, 1640, 1830])
+notice = Callout("warning", "Planned Maintenance", "Transmission line upgrades are scheduled for the northern grid from 14 to 18 October. Expect reduced capacity and possible short localized outages between 01:00 and 05:00.")

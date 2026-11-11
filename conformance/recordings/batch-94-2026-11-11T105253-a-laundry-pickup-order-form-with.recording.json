@@ -1,0 +1,916 @@
+{
+  "batchRequest" : {
+    "model" : "haiku",
+    "number" : 94,
+    "request" : "A laundry pickup order form with service choices, garment counts, pickup slot and a price summary."
+  },
+  "chunks" : [
+    {
+      "t" : 0.615,
+      "text" : "root = Stack([header"
+    },
+    {
+      "t" : 0.742,
+      "text" : ", form"
+    },
+    {
+      "t" : 0.766,
+      "text" : "])"
+    },
+    {
+      "t" : 0.79,
+      "text" : "\nheader = In"
+    },
+    {
+      "t" : 0.835,
+      "text" : "lineHeader(\"La"
+    },
+    {
+      "t" : 0.86,
+      "text" : "undry Pickup\", \""
+    },
+    {
+      "t" : 0.883,
+      "text" : "Schedule a"
+    },
+    {
+      "t" : 0.937,
+      "text" : " pickup and we"
+    },
+    {
+      "t" : 0.938,
+      "text" : "'ll hand"
+    },
+    {
+      "t" : 0.997,
+      "text" : "le the"
+    },
+    {
+      "t" : 1.029,
+      "text" : " rest\")\nform"
+    },
+    {
+      "t" : 1.062,
+      "text" : " = Form(\"laundry"
+    },
+    {
+      "t" : 1.063,
+      "text" : "Order\", form"
+    },
+    {
+      "t" : 1.094,
+      "text" : "Buttons, [ser"
+    },
+    {
+      "t" : 1.128,
+      "text" : "viceField, garmentField"
+    },
+    {
+      "t" : 1.195,
+      "text" : ", slotField, summ"
+    },
+    {
+      "t" : 1.227,
+      "text" : "aryField,"
+    },
+    {
+      "t" : 1.229,
+      "text" : " not"
+    },
+    {
+      "t" : 1.263,
+      "text" : "esField])\nserviceField"
+    },
+    {
+      "t" : 1.32,
+      "text" : " = FormControl(\"Service"
+    },
+    {
+      "t" : 1.361,
+      "text" : "\","
+    },
+    {
+      "t" : 1.362,
+      "text" : " ser"
+    },
+    {
+      "t" : 1.406,
+      "text" : "viceC"
+    },
+    {
+      "t" : 1.449,
+      "text" : "ards, \"Cho"
+    },
+    {
+      "t" : 1.496,
+      "text" : "ose how"
+    },
+    {
+      "t" : 1.552,
+      "text" : " you"
+    },
+    {
+      "t" : 1.636,
+      "text" : " want your la"
+    },
+    {
+      "t" : 1.639,
+      "text" : "undry cleaned\")"
+    },
+    {
+      "t" : 1.688,
+      "text" : "\nserviceCards = Opt"
+    },
+    {
+      "t" : 1.763,
+      "text" : "ionCards(\"service\", \"single"
+    },
+    {
+      "t" : 1.824,
+      "text" : "\", [svc"
+    },
+    {
+      "t" : 1.876,
+      "text" : "Wash, svcD"
+    },
+    {
+      "t" : 1.929,
+      "text" : "ry, svcP"
+    },
+    {
+      "t" : 1.992,
+      "text" : "remium])\nsvcWash"
+    },
+    {
+      "t" : 2.056,
+      "text" : " = OptionCard(\"w"
+    },
+    {
+      "t" : 2.106,
+      "text" : "ash-"
+    },
+    {
+      "t" : 2.155,
+      "text" : "fold\", \"Wash &"
+    },
+    {
+      "t" : 2.206,
+      "text" : " Fold\", \"Wash"
+    },
+    {
+      "t" : 2.258,
+      "text" : "ed, d"
+    },
+    {
+      "t" : 2.31,
+      "text" : "ried and"
+    },
+    {
+      "t" : 2.361,
+      "text" : " folded, $1"
+    },
+    {
+      "t" : 2.403,
+      "text" : ".50"
+    },
+    {
+      "t" : 2.443,
+      "text" : "/lb\", svcWash"
+    },
+    {
+      "t" : 2.487,
+      "text" : "Icon)\nsvcW"
+    },
+    {
+      "t" : 2.515,
+      "text" : "ashIcon = Icon"
+    },
+    {
+      "t" : 2.561,
+      "text" : "(\"wash"
+    },
+    {
+      "t" : 2.563,
+      "text" : "ing-machine\", \"la"
+    },
+    {
+      "t" : 2.602,
+      "text" : "undry\")\nsvcDry"
+    },
+    {
+      "t" : 2.643,
+      "text" : " = OptionCard(\"d"
+    },
+    {
+      "t" : 2.688,
+      "text" : "ry-cl"
+    },
+    {
+      "t" : 2.755,
+      "text" : "ean\", \"Dry C"
+    },
+    {
+      "t" : 2.756,
+      "text" : "leaning\", \"Professional"
+    },
+    {
+      "t" : 2.81,
+      "text" : " care for del"
+    },
+    {
+      "t" : 2.877,
+      "text" : "icate fabrics, from"
+    },
+    {
+      "t" : 2.879,
+      "text" : " $8"
+    },
+    {
+      "t" : 2.949,
+      "text" : "/item"
+    },
+    {
+      "t" : 3.029,
+      "text" : "\", svcDryIcon"
+    },
+    {
+      "t" : 3.078,
+      "text" : ")\nsvcDryIc"
+    },
+    {
+      "t" : 3.133,
+      "text" : "on = Icon(\"sh"
+    },
+    {
+      "t" : 3.18,
+      "text" : "irt\", \"laundry\")"
+    },
+    {
+      "t" : 3.23,
+      "text" : "\nsvcPremium = O"
+    },
+    {
+      "t" : 3.28,
+      "text" : "ptionCard(\"premium\","
+    },
+    {
+      "t" : 3.331,
+      "text" : " \"Premium Express"
+    },
+    {
+      "t" : 3.382,
+      "text" : "\", \"24"
+    },
+    {
+      "t" : 3.469,
+      "text" : "-hour tur"
+    },
+    {
+      "t" : 3.47,
+      "text" : "naround with"
+    },
+    {
+      "t" : 3.526,
+      "text" : " hand fin"
+    },
+    {
+      "t" : 3.58,
+      "text" : "ishing, $2"
+    },
+    {
+      "t" : 3.673,
+      "text" : "."
+    },
+    {
+      "t" : 3.674,
+      "text" : "50/lb\", svcP"
+    },
+    {
+      "t" : 3.734,
+      "text" : "remiumIcon)"
+    },
+    {
+      "t" : 3.794,
+      "text" : "\nsvcPremiumIc"
+    },
+    {
+      "t" : 3.923,
+      "text" : "on = Icon(\"z"
+    },
+    {
+      "t" : 3.99,
+      "text" : "ap\", \"laundry\")"
+    },
+    {
+      "t" : 4.051,
+      "text" : "\ngarmentField = FormContro"
+    },
+    {
+      "t" : 4.115,
+      "text" : "l(\"Garment"
+    },
+    {
+      "t" : 4.174,
+      "text" : " Count\", garmentIn"
+    },
+    {
+      "t" : 4.175,
+      "text" : "puts, \"Est"
+    },
+    {
+      "t" : 4.234,
+      "text" : "imate how many items of"
+    },
+    {
+      "t" : 4.297,
+      "text" : " each type\")\ngarmentIn"
+    },
+    {
+      "t" : 4.361,
+      "text" : "puts = St"
+    },
+    {
+      "t" : 4.428,
+      "text" : "ack([sh"
+    },
+    {
+      "t" : 4.495,
+      "text" : "irtInput, p"
+    },
+    {
+      "t" : 4.56,
+      "text" : "antsInput, b"
+    },
+    {
+      "t" : 4.628,
+      "text" : "edIn"
+    },
+    {
+      "t" : 4.693,
+      "text" : "put], \""
+    },
+    {
+      "t" : 4.779,
+      "text" : "row\", \"m"
+    },
+    {
+      "t" : 4.846,
+      "text" : "\", \"start"
+    },
+    {
+      "t" : 4.912,
+      "text" : "\", \"start"
+    },
+    {
+      "t" : 4.974,
+      "text" : "\", true)\nshirtIn"
+    },
+    {
+      "t" : 5.111,
+      "text" : "put = Input(\"shirts"
+    },
+    {
+      "t" : 5.18,
+      "text" : "\", \"0"
+    },
+    {
+      "t" : 5.246,
+      "text" : "\", \"number\", {"
+    },
+    {
+      "t" : 5.313,
+      "text" : " min: 0"
+    },
+    {
+      "t" : 5.383,
+      "text" : ", max"
+    },
+    {
+      "t" : 5.451,
+      "text" : ": 99"
+    },
+    {
+      "t" : 5.519,
+      "text" : ", numeric: true })"
+    },
+    {
+      "t" : 5.591,
+      "text" : "\npantsInput = Input"
+    },
+    {
+      "t" : 5.666,
+      "text" : "(\"pants\", \"0\", \""
+    },
+    {
+      "t" : 5.733,
+      "text" : "number\", { min: 0,"
+    },
+    {
+      "t" : 5.734,
+      "text" : " max: 99, numeric"
+    },
+    {
+      "t" : 5.8,
+      "text" : ": true })\nbedInput"
+    },
+    {
+      "t" : 5.872,
+      "text" : " = Input(\"bed"
+    },
+    {
+      "t" : 6.02,
+      "text" : "ding\", \"0\", \"number\","
+    },
+    {
+      "t" : 6.097,
+      "text" : " { min: 0, max:"
+    },
+    {
+      "t" : 6.174,
+      "text" : " 20"
+    },
+    {
+      "t" : 6.238,
+      "text" : ", numeric: true })"
+    },
+    {
+      "t" : 6.304,
+      "text" : "\nslotField = FormControl"
+    },
+    {
+      "t" : 6.377,
+      "text" : "(\"Pickup Sl"
+    },
+    {
+      "t" : 6.451,
+      "text" : "ot\", slotS"
+    },
+    {
+      "t" : 6.5,
+      "text" : "elect, \"We"
+    },
+    {
+      "t" : 6.574,
+      "text" : " p"
+    },
+    {
+      "t" : 6.576,
+      "text" : "ick up within"
+    },
+    {
+      "t" : 6.654,
+      "text" : " a"
+    },
+    {
+      "t" : 6.728,
+      "text" : " 2-hour window\")"
+    },
+    {
+      "t" : 6.807,
+      "text" : "\nslotS"
+    },
+    {
+      "t" : 6.89,
+      "text" : "elect = Select(\"pick"
+    },
+    {
+      "t" : 6.976,
+      "text" : "upSlot\", sl"
+    },
+    {
+      "t" : 7.056,
+      "text" : "otIt"
+    },
+    {
+      "t" : 7.14,
+      "text" : "ems, \"Select a time"
+    },
+    {
+      "t" : 7.218,
+      "text" : " slot\", { required: true })"
+    },
+    {
+      "t" : 7.288,
+      "text" : "\nslotItems = [S"
+    },
+    {
+      "t" : 7.364,
+      "text" : "el"
+    },
+    {
+      "t" : 7.418,
+      "text" : "ectItem(\"m"
+    },
+    {
+      "t" : 7.502,
+      "text" : "on-am"
+    },
+    {
+      "t" : 7.587,
+      "text" : "\", \"M"
+    },
+    {
+      "t" : 7.669,
+      "text" : "on,"
+    },
+    {
+      "t" : 7.747,
+      "text" : " 8:"
+    },
+    {
+      "t" : 7.83,
+      "text" : "00 A"
+    },
+    {
+      "t" : 7.915,
+      "text" : "M - 10"
+    },
+    {
+      "t" : 8.092,
+      "text" : ":00 AM\"), S"
+    },
+    {
+      "t" : 8.183,
+      "text" : "electItem(\"mon-"
+    },
+    {
+      "t" : 8.262,
+      "text" : "pm\", \"Mon,"
+    },
+    {
+      "t" : 8.336,
+      "text" : " 5"
+    },
+    {
+      "t" : 8.419,
+      "text" : ":00 PM - 7"
+    },
+    {
+      "t" : 8.509,
+      "text" : ":00 PM\"), S"
+    },
+    {
+      "t" : 8.602,
+      "text" : "electItem(\"w"
+    },
+    {
+      "t" : 8.69,
+      "text" : "ed-am\", \"Wed"
+    },
+    {
+      "t" : 8.773,
+      "text" : ", 8:00 AM"
+    },
+    {
+      "t" : 8.834,
+      "text" : " - 10:00 AM"
+    },
+    {
+      "t" : 8.864,
+      "text" : "\"), SelectItem(\""
+    },
+    {
+      "t" : 8.953,
+      "text" : "f"
+    },
+    {
+      "t" : 9.111,
+      "text" : "ri-p"
+    },
+    {
+      "t" : 9.113,
+      "text" : "m\", \"Fri, "
+    },
+    {
+      "t" : 9.205,
+      "text" : "5:00 PM - "
+    },
+    {
+      "t" : 9.291,
+      "text" : "7:00 PM\")]"
+    },
+    {
+      "t" : 9.385,
+      "text" : "\nsummaryField = Form"
+    },
+    {
+      "t" : 9.473,
+      "text" : "Control(\"Price Summary"
+    },
+    {
+      "t" : 9.563,
+      "text" : "\", summaryC"
+    },
+    {
+      "t" : 9.652,
+      "text" : "ard, \"Estimated total"
+    },
+    {
+      "t" : 9.763,
+      "text" : ","
+    },
+    {
+      "t" : 9.865,
+      "text" : " final"
+    },
+    {
+      "t" : 10.028,
+      "text" : " price"
+    },
+    {
+      "t" : 10.12,
+      "text" : " conf"
+    },
+    {
+      "t" : 10.207,
+      "text" : "irmed at pickup\")"
+    },
+    {
+      "t" : 10.297,
+      "text" : "\nsummaryCard ="
+    },
+    {
+      "t" : 10.375,
+      "text" : " Card([summaryR"
+    },
+    {
+      "t" : 10.465,
+      "text" : "ows, summaryT"
+    },
+    {
+      "t" : 10.559,
+      "text" : "otal], \"s"
+    },
+    {
+      "t" : 10.561,
+      "text" : "unk\")\nsummaryR"
+    },
+    {
+      "t" : 10.655,
+      "text" : "ows = E"
+    },
+    {
+      "t" : 10.745,
+      "text" : "ntityList([summaryService"
+    },
+    {
+      "t" : 10.838,
+      "text" : ", summaryG"
+    },
+    {
+      "t" : 10.918,
+      "text" : "arments, summaryF"
+    },
+    {
+      "t" : 11.005,
+      "text" : "ee], \"default"
+    },
+    {
+      "t" : 11.087,
+      "text" : "\")\nsummaryService = {"
+    },
+    {
+      "t" : 11.178,
+      "text" : " left: \"Service\", right:"
+    },
+    {
+      "t" : 11.265,
+      "text" : " \""
+    },
+    {
+      "t" : 11.355,
+      "text" : "Wash & Fold,"
+    },
+    {
+      "t" : 11.44,
+      "text" : " "
+    },
+    {
+      "t" : 11.525,
+      "text" : "12"
+    },
+    {
+      "t" : 11.61,
+      "text" : " lb"
+    },
+    {
+      "t" : 11.709,
+      "text" : "\", rightVariant: \""
+    },
+    {
+      "t" : 11.801,
+      "text" : "text"
+    },
+    {
+      "t" : 11.892,
+      "text" : "\" }\nsummaryGar"
+    },
+    {
+      "t" : 11.991,
+      "text" : "ments = { left: \"Gar"
+    },
+    {
+      "t" : 12.166,
+      "text" : "ments ("
+    },
+    {
+      "t" : 12.275,
+      "text" : "est"
+    },
+    {
+      "t" : 12.276,
+      "text" : ".)\", right: \"$18"
+    },
+    {
+      "t" : 12.374,
+      "text" : ".00\", rightVariant"
+    },
+    {
+      "t" : 12.481,
+      "text" : ": \"number\" }\nsumma"
+    },
+    {
+      "t" : 12.654,
+      "text" : "ryFee = { left: \""
+    },
+    {
+      "t" : 12.656,
+      "text" : "Pickup fee\", right"
+    },
+    {
+      "t" : 12.765,
+      "text" : ": \"$5.00\", r"
+    },
+    {
+      "t" : 12.955,
+      "text" : "ightVariant: \"number\""
+    },
+    {
+      "t" : 13.067,
+      "text" : " }\nsummaryTotal"
+    },
+    {
+      "t" : 13.068,
+      "text" : " = BoldText(\"number"
+    },
+    {
+      "t" : 13.182,
+      "text" : "\", \""
+    },
+    {
+      "t" : 13.282,
+      "text" : "Estimated total: $23."
+    },
+    {
+      "t" : 13.444,
+      "text" : "00\", \""
+    },
+    {
+      "t" : 13.445,
+      "text" : "T"
+    },
+    {
+      "t" : 13.66,
+      "text" : "ax included\", \"text"
+    },
+    {
+      "t" : 13.763,
+      "text" : "\","
+    },
+    {
+      "t" : 13.86,
+      "text" : " \"md"
+    },
+    {
+      "t" : 13.962,
+      "text" : "\")\nnotesField = Form"
+    },
+    {
+      "t" : 14.073,
+      "text" : "Control(\"Notes\", not"
+    },
+    {
+      "t" : 14.192,
+      "text" : "esInput, \"P"
+    },
+    {
+      "t" : 14.298,
+      "text" : "oc"
+    },
+    {
+      "t" : 14.399,
+      "text" : "ket chec"
+    },
+    {
+      "t" : 14.4,
+      "text" : "ks, stain"
+    },
+    {
+      "t" : 14.5,
+      "text" : " tre"
+    },
+    {
+      "t" : 14.613,
+      "text" : "atments, special inst"
+    },
+    {
+      "t" : 14.725,
+      "text" : "ructions\")\nnotesInput"
+    },
+    {
+      "t" : 14.834,
+      "text" : " = TextArea(\"notes"
+    },
+    {
+      "t" : 14.933,
+      "text" : "\", \"e"
+    },
+    {
+      "t" : 15.047,
+      "text" : ".g. h"
+    },
+    {
+      "t" : 15.156,
+      "text" : "ang"
+    },
+    {
+      "t" : 15.322,
+      "text" : " sh"
+    },
+    {
+      "t" : 15.432,
+      "text" : "irts, no"
+    },
+    {
+      "t" : 15.542,
+      "text" : " f"
+    },
+    {
+      "t" : 15.662,
+      "text" : "abric softener\", 3"
+    },
+    {
+      "t" : 15.782,
+      "text" : ")"
+    },
+    {
+      "t" : 15.897,
+      "text" : "\nformButtons = Bu"
+    },
+    {
+      "t" : 16.008,
+      "text" : "ttons([Button(\"Sch"
+    },
+    {
+      "t" : 16.129,
+      "text" : "edule Pickup\", @"
+    },
+    {
+      "t" : 16.242,
+      "text" : "ToAssistant(\""
+    },
+    {
+      "t" : 16.359,
+      "text" : "Schedule my"
+    },
+    {
+      "t" : 16.474,
+      "text" : " laundry pickup\"),"
+    },
+    {
+      "t" : 16.587,
+      "text" : " \"primary\""
+    },
+    {
+      "t" : 16.71,
+      "text" : "), Button(\"Cancel"
+    },
+    {
+      "t" : 16.94,
+      "text" : "\", @ToAssistant"
+    },
+    {
+      "t" : 17.044,
+      "text" : "(\"Cancel la"
+    },
+    {
+      "t" : 17.166,
+      "text" : "undry order\"), \"second"
+    },
+    {
+      "t" : 17.285,
+      "text" : "ary\")])"
+    }
+  ],
+  "createdAt" : "2026-11-11T10:52:53Z",
+  "effort" : "low",
+  "format" : "openui-recording",
+  "inputTokens" : 14499,
+  "library" : "react-ui",
+  "model" : "claude-haiku-5-5",
+  "outputTokens" : 1210,
+  "request" : "A laundry pickup order form with service choices, garment counts, pickup slot and a price summary.",
+  "servedBy" : "claude-haiku-5-5",
+  "stopReason" : "end_turn",
+  "version" : 1
+}

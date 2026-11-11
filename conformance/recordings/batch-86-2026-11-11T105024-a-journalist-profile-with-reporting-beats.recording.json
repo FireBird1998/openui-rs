@@ -1,0 +1,1068 @@
+{
+  "batchRequest" : {
+    "model" : "haiku",
+    "number" : 86,
+    "request" : "A journalist profile with reporting beats, awards, a short biography and selected investigations displayed as cards."
+  },
+  "chunks" : [
+    {
+      "t" : 0.728,
+      "text" : "root = Stack(["
+    },
+    {
+      "t" : 0.89,
+      "text" : "header"
+    },
+    {
+      "t" : 0.917,
+      "text" : ", be"
+    },
+    {
+      "t" : 0.971,
+      "text" : "atsH"
+    },
+    {
+      "t" : 1.04,
+      "text" : "eader, be"
+    },
+    {
+      "t" : 1.11,
+      "text" : "atsB"
+    },
+    {
+      "t" : 1.145,
+      "text" : "lock, awardsHe"
+    },
+    {
+      "t" : 1.151,
+      "text" : "ader, awardsBlock"
+    },
+    {
+      "t" : 1.182,
+      "text" : ", bioC"
+    },
+    {
+      "t" : 1.209,
+      "text" : "ard, investigationsHe"
+    },
+    {
+      "t" : 1.241,
+      "text" : "ader, investigationsBl"
+    },
+    {
+      "t" : 1.272,
+      "text" : "ock])\nheader"
+    },
+    {
+      "t" : 1.298,
+      "text" : " = C"
+    },
+    {
+      "t" : 1.329,
+      "text" : "ardHeader(\"Ma"
+    },
+    {
+      "t" : 1.363,
+      "text" : "ya"
+    },
+    {
+      "t" : 1.396,
+      "text" : " Ok"
+    },
+    {
+      "t" : 1.435,
+      "text" : "afor\", \"Sen"
+    },
+    {
+      "t" : 1.472,
+      "text" : "ior Investigative Corre"
+    },
+    {
+      "t" : 1.506,
+      "text" : "spondent, Metro"
+    },
+    {
+      "t" : 1.543,
+      "text" : " "
+    },
+    {
+      "t" : 1.579,
+      "text" : "Ledger\")\nbeatsH"
+    },
+    {
+      "t" : 1.614,
+      "text" : "eader = InlineHe"
+    },
+    {
+      "t" : 1.651,
+      "text" : "ader(\"Reporting Be"
+    },
+    {
+      "t" : 1.696,
+      "text" : "ats\", \"Are"
+    },
+    {
+      "t" : 1.729,
+      "text" : "as of s"
+    },
+    {
+      "t" : 1.767,
+      "text" : "ustained coverage\")\nbe"
+    },
+    {
+      "t" : 1.825,
+      "text" : "atsBlock = T"
+    },
+    {
+      "t" : 1.826,
+      "text" : "agBlock("
+    },
+    {
+      "t" : 1.902,
+      "text" : "[\"Municipal Fin"
+    },
+    {
+      "t" : 1.939,
+      "text" : "ance\", \"Hous"
+    },
+    {
+      "t" : 1.943,
+      "text" : "ing Policy\", \"Public"
+    },
+    {
+      "t" : 1.981,
+      "text" : " Health\", \"Police"
+    },
+    {
+      "t" : 2.018,
+      "text" : " Acc"
+    },
+    {
+      "t" : 2.059,
+      "text" : "ountability\", \"Environ"
+    },
+    {
+      "t" : 2.099,
+      "text" : "mental Justice\"],"
+    },
+    {
+      "t" : 2.149,
+      "text" : " \"md\")\nawardsH"
+    },
+    {
+      "t" : 2.186,
+      "text" : "eader = InlineHe"
+    },
+    {
+      "t" : 2.225,
+      "text" : "ader(\"Awards\", \""
+    },
+    {
+      "t" : 2.268,
+      "text" : "Recognition for"
+    },
+    {
+      "t" : 2.322,
+      "text" : " published"
+    },
+    {
+      "t" : 2.364,
+      "text" : " work\")\nawardsBl"
+    },
+    {
+      "t" : 2.405,
+      "text" : "ock = Stack([award"
+    },
+    {
+      "t" : 2.453,
+      "text" : "1, award2, award3],"
+    },
+    {
+      "t" : 2.503,
+      "text" : " \"row\", \"m"
+    },
+    {
+      "t" : 2.553,
+      "text" : "\", \"st"
+    },
+    {
+      "t" : 2.599,
+      "text" : "retch\", \"start"
+    },
+    {
+      "t" : 2.649,
+      "text" : "\", true"
+    },
+    {
+      "t" : 2.698,
+      "text" : ")"
+    },
+    {
+      "t" : 2.746,
+      "text" : "\naward1 = Card"
+    },
+    {
+      "t" : 2.825,
+      "text" : "([aw"
+    },
+    {
+      "t" : 2.828,
+      "text" : "ardIc"
+    },
+    {
+      "t" : 2.88,
+      "text" : "on1, award"
+    },
+    {
+      "t" : 2.939,
+      "text" : "1title"
+    },
+    {
+      "t" : 3.037,
+      "text" : ", award1s"
+    },
+    {
+      "t" : 3.088,
+      "text" : "ub], \"card"
+    },
+    {
+      "t" : 3.137,
+      "text" : "\","
+    },
+    {
+      "t" : 3.19,
+      "text" : " \"column"
+    },
+    {
+      "t" : 3.243,
+      "text" : "\", \"s"
+    },
+    {
+      "t" : 3.244,
+      "text" : "\")\nawardIcon1"
+    },
+    {
+      "t" : 3.3,
+      "text" : " = Icon(\"award"
+    },
+    {
+      "t" : 3.377,
+      "text" : "\", \"ach"
+    },
+    {
+      "t" : 3.434,
+      "text" : "ievement"
+    },
+    {
+      "t" : 3.488,
+      "text" : "\")\naward1title = B"
+    },
+    {
+      "t" : 3.544,
+      "text" : "oldText(\"text\", \"National"
+    },
+    {
+      "t" : 3.6,
+      "text" : " Re"
+    },
+    {
+      "t" : 3.662,
+      "text" : "porting"
+    },
+    {
+      "t" : 3.718,
+      "text" : " Award\", \"2"
+    },
+    {
+      "t" : 3.771,
+      "text" : "023"
+    },
+    {
+      "t" : 3.827,
+      "text" : "\", \"text"
+    },
+    {
+      "t" : 3.894,
+      "text" : "\", \"s"
+    },
+    {
+      "t" : 3.946,
+      "text" : "m\")\naward1"
+    },
+    {
+      "t" : 3.998,
+      "text" : "sub = TextContent(\""
+    },
+    {
+      "t" : 4.053,
+      "text" : "For"
+    },
+    {
+      "t" : 4.114,
+      "text" : " a"
+    },
+    {
+      "t" : 4.167,
+      "text" : " series ex"
+    },
+    {
+      "t" : 4.218,
+      "text" : "posing un"
+    },
+    {
+      "t" : 4.273,
+      "text" : "l"
+    },
+    {
+      "t" : 4.337,
+      "text" : "ic"
+    },
+    {
+      "t" : 4.397,
+      "text" : "ensed e"
+    },
+    {
+      "t" : 4.456,
+      "text" : "viction pract"
+    },
+    {
+      "t" : 4.503,
+      "text" : "ices across"
+    },
+    {
+      "t" : 4.565,
+      "text" : " three"
+    },
+    {
+      "t" : 4.622,
+      "text" : " coun"
+    },
+    {
+      "t" : 4.681,
+      "text" : "ties.\", \"small\")\naward"
+    },
+    {
+      "t" : 4.738,
+      "text" : "2 = Card([award"
+    },
+    {
+      "t" : 4.794,
+      "text" : "Icon2, award2title"
+    },
+    {
+      "t" : 4.849,
+      "text" : ", award2sub], \"card"
+    },
+    {
+      "t" : 4.905,
+      "text" : "\", \"column\", \"s\")"
+    },
+    {
+      "t" : 4.969,
+      "text" : "\nawardIcon2 ="
+    },
+    {
+      "t" : 5.03,
+      "text" : " Icon(\"trophy\","
+    },
+    {
+      "t" : 5.089,
+      "text" : " \"ach"
+    },
+    {
+      "t" : 5.152,
+      "text" : "ievement\")\naward2title ="
+    },
+    {
+      "t" : 5.226,
+      "text" : " BoldText(\"text\", \""
+    },
+    {
+      "t" : 5.291,
+      "text" : "Investigative Journalism"
+    },
+    {
+      "t" : 5.353,
+      "text" : " Pr"
+    },
+    {
+      "t" : 5.419,
+      "text" : "ize\", \"2020\", \"text"
+    },
+    {
+      "t" : 5.481,
+      "text" : "\", \"sm\")\naward2"
+    },
+    {
+      "t" : 5.549,
+      "text" : "sub = TextContent(\""
+    },
+    {
+      "t" : 5.617,
+      "text" : "Hon"
+    },
+    {
+      "t" : 5.715,
+      "text" : "ored for reporting on municip"
+    },
+    {
+      "t" : 5.716,
+      "text" : "al cont"
+    },
+    {
+      "t" : 5.78,
+      "text" : "ract over"
+    },
+    {
+      "t" : 5.841,
+      "text" : "ru"
+    },
+    {
+      "t" : 5.91,
+      "text" : "ns in"
+    },
+    {
+      "t" : 6.04,
+      "text" : " the trans"
+    },
+    {
+      "t" : 6.264,
+      "text" : "it auth"
+    },
+    {
+      "t" : 6.452,
+      "text" : "ority.\", \"small\")\naward"
+    },
+    {
+      "t" : 6.576,
+      "text" : "3 = Card([award"
+    },
+    {
+      "t" : 6.706,
+      "text" : "Icon3, award3title"
+    },
+    {
+      "t" : 6.923,
+      "text" : ", award3sub], \"card"
+    },
+    {
+      "t" : 6.993,
+      "text" : "\", \"column\", \"s\")"
+    },
+    {
+      "t" : 7.06,
+      "text" : "\nawardIcon3 ="
+    },
+    {
+      "t" : 7.128,
+      "text" : " Icon(\"med"
+    },
+    {
+      "t" : 7.199,
+      "text" : "al\", \"ach"
+    },
+    {
+      "t" : 7.263,
+      "text" : "ievement\")\naward3title ="
+    },
+    {
+      "t" : 7.346,
+      "text" : " BoldText(\"text\", \""
+    },
+    {
+      "t" : 7.413,
+      "text" : "Local"
+    },
+    {
+      "t" : 7.492,
+      "text" : " Press"
+    },
+    {
+      "t" : 7.559,
+      "text" : " Club"
+    },
+    {
+      "t" : 7.638,
+      "text" : " Excellence"
+    },
+    {
+      "t" : 7.716,
+      "text" : " Award\", \"2017"
+    },
+    {
+      "t" : 7.787,
+      "text" : "\", \"text\", \"sm\")"
+    },
+    {
+      "t" : 7.862,
+      "text" : "\naward3sub = Text"
+    },
+    {
+      "t" : 7.942,
+      "text" : "Content(\"Recognized for"
+    },
+    {
+      "t" : 8.006,
+      "text" : " a"
+    },
+    {
+      "t" : 8.088,
+      "text" : " mult"
+    },
+    {
+      "t" : 8.167,
+      "text" : "i-part investigation into l"
+    },
+    {
+      "t" : 8.239,
+      "text" : "ead cont"
+    },
+    {
+      "t" : 8.306,
+      "text" : "amination in school"
+    },
+    {
+      "t" : 8.371,
+      "text" : " buildings.\", \"small\")"
+    },
+    {
+      "t" : 8.455,
+      "text" : "\nbioCard = Card"
+    },
+    {
+      "t" : 8.531,
+      "text" : "([b"
+    },
+    {
+      "t" : 8.619,
+      "text" : "ioH"
+    },
+    {
+      "t" : 8.712,
+      "text" : "eader, bioText"
+    },
+    {
+      "t" : 8.787,
+      "text" : "])\nbioHeader ="
+    },
+    {
+      "t" : 8.876,
+      "text" : " InlineHeader(\""
+    },
+    {
+      "t" : 8.951,
+      "text" : "Biography\", \"Background"
+    },
+    {
+      "t" : 9.024,
+      "text" : " and career\")\nbioText ="
+    },
+    {
+      "t" : 9.12,
+      "text" : " M"
+    },
+    {
+      "t" : 9.209,
+      "text" : "arkDownRenderer"
+    },
+    {
+      "t" : 9.292,
+      "text" : "(\"Maya Okafor"
+    },
+    {
+      "t" : 9.375,
+      "text" : " has spent over f"
+    },
+    {
+      "t" : 9.461,
+      "text" : "ifteen years covering city government"
+    },
+    {
+      "t" : 9.553,
+      "text" : ", public health"
+    },
+    {
+      "t" : 9.643,
+      "text" : ","
+    },
+    {
+      "t" : 9.722,
+      "text" : " and hous"
+    },
+    {
+      "t" : 9.804,
+      "text" : "ing."
+    },
+    {
+      "t" : 9.882,
+      "text" : " She"
+    },
+    {
+      "t" : 9.959,
+      "text" : " began her career as"
+    },
+    {
+      "t" : 10.034,
+      "text" : " a general"
+    },
+    {
+      "t" : 10.115,
+      "text" : " ass"
+    },
+    {
+      "t" : 10.197,
+      "text" : "ignment reporter at a"
+    },
+    {
+      "t" : 10.344,
+      "text" : " regional da"
+    },
+    {
+      "t" : 10.346,
+      "text" : "ily before"
+    },
+    {
+      "t" : 10.439,
+      "text" : " joining the Metro "
+    },
+    {
+      "t" : 10.535,
+      "text" : "Ledger's"
+    },
+    {
+      "t" : 10.623,
+      "text" : " investigations des"
+    },
+    {
+      "t" : 10.773,
+      "text" : "k in"
+    },
+    {
+      "t" : 10.774,
+      "text" : " 2016"
+    },
+    {
+      "t" : 10.853,
+      "text" : ". Her work has pr"
+    },
+    {
+      "t" : 10.931,
+      "text" : "ompted polic"
+    },
+    {
+      "t" : 11.077,
+      "text" : "y reviews, two"
+    },
+    {
+      "t" : 11.078,
+      "text" : " council"
+    },
+    {
+      "t" : 11.172,
+      "text" : " hearings, and a state"
+    },
+    {
+      "t" : 11.261,
+      "text" : " aud"
+    },
+    {
+      "t" : 11.339,
+      "text" : "it."
+    },
+    {
+      "t" : 11.488,
+      "text" : " She"
+    },
+    {
+      "t" : 11.606,
+      "text" : " holds a deg"
+    },
+    {
+      "t" : 11.696,
+      "text" : "ree in journalism from the University"
+    },
+    {
+      "t" : 11.79,
+      "text" : " of Mich"
+    },
+    {
+      "t" : 11.868,
+      "text" : "igan and is a fr"
+    },
+    {
+      "t" : 12.017,
+      "text" : "equent guest l"
+    },
+    {
+      "t" : 12.018,
+      "text" : "ecturer on data-"
+    },
+    {
+      "t" : 12.113,
+      "text" : "driven reporting meth"
+    },
+    {
+      "t" : 12.216,
+      "text" : "ods.\", \"cl"
+    },
+    {
+      "t" : 12.36,
+      "text" : "ear\")\ninvestigationsH"
+    },
+    {
+      "t" : 12.361,
+      "text" : "eader = InlineHe"
+    },
+    {
+      "t" : 12.444,
+      "text" : "ader(\"Selected Investig"
+    },
+    {
+      "t" : 12.533,
+      "text" : "ations\", \"Not"
+    },
+    {
+      "t" : 12.635,
+      "text" : "able long"
+    },
+    {
+      "t" : 12.722,
+      "text" : "-form projects\")\ninvestig"
+    },
+    {
+      "t" : 12.808,
+      "text" : "ationsBlock = St"
+    },
+    {
+      "t" : 12.905,
+      "text" : "ack([inv1, inv"
+    },
+    {
+      "t" : 13.001,
+      "text" : "2, inv3], \"row"
+    },
+    {
+      "t" : 13.099,
+      "text" : "\", \"m\", \"stretch"
+    },
+    {
+      "t" : 13.317,
+      "text" : "\", \"start\", true)\nin"
+    },
+    {
+      "t" : 13.437,
+      "text" : "v1 = Card([in"
+    },
+    {
+      "t" : 13.532,
+      "text" : "v1title"
+    },
+    {
+      "t" : 13.627,
+      "text" : ", inv1des"
+    },
+    {
+      "t" : 13.71,
+      "text" : "c, inv1t"
+    },
+    {
+      "t" : 13.803,
+      "text" : "ags], \"card\", \"column\","
+    },
+    {
+      "t" : 13.908,
+      "text" : " \"s\")\ninv1title"
+    },
+    {
+      "t" : 14.001,
+      "text" : " = BoldText(\"text\","
+    },
+    {
+      "t" : 14.003,
+      "text" : " \"C"
+    },
+    {
+      "t" : 14.087,
+      "text" : "rac"
+    },
+    {
+      "t" : 14.173,
+      "text" : "ks"
+    },
+    {
+      "t" : 14.263,
+      "text" : " in the Fo"
+    },
+    {
+      "t" : 14.349,
+      "text" : "undation\", \"2023\", \""
+    },
+    {
+      "t" : 14.496,
+      "text" : "text\", \"sm\")\nin"
+    },
+    {
+      "t" : 14.498,
+      "text" : "v1desc = TextCont"
+    },
+    {
+      "t" : 14.589,
+      "text" : "ent(\"A"
+    },
+    {
+      "t" : 14.682,
+      "text" : " year"
+    },
+    {
+      "t" : 14.77,
+      "text" : "-long review of building"
+    },
+    {
+      "t" : 14.873,
+      "text" : " code"
+    },
+    {
+      "t" : 14.985,
+      "text" : " violations and"
+    },
+    {
+      "t" : 15.095,
+      "text" : " the"
+    },
+    {
+      "t" : 15.204,
+      "text" : " inspect"
+    },
+    {
+      "t" : 15.309,
+      "text" : "ors who over"
+    },
+    {
+      "t" : 15.405,
+      "text" : "looked them.\", \"small"
+    },
+    {
+      "t" : 15.598,
+      "text" : "\")\ninv1tags ="
+    },
+    {
+      "t" : 15.711,
+      "text" : " TagBlock([\""
+    },
+    {
+      "t" : 15.883,
+      "text" : "Housing\", \"Code"
+    },
+    {
+      "t" : 16.072,
+      "text" : " Enforcement\"], \""
+    },
+    {
+      "t" : 16.262,
+      "text" : "sm\")\ninv2 "
+    },
+    {
+      "t" : 16.389,
+      "text" : "= Card([inv2title"
+    },
+    {
+      "t" : 16.504,
+      "text" : ", inv2desc, in"
+    },
+    {
+      "t" : 16.674,
+      "text" : "v2tags], \"card\","
+    },
+    {
+      "t" : 16.872,
+      "text" : " \"column\", \"s\")\nin"
+    },
+    {
+      "t" : 16.874,
+      "text" : "v2title = BoldText"
+    },
+    {
+      "t" : 16.984,
+      "text" : "(\"text\", \"The Water"
+    },
+    {
+      "t" : 17.103,
+      "text" : " Below"
+    },
+    {
+      "t" : 17.335,
+      "text" : "\", \"2021\", \"text\","
+    },
+    {
+      "t" : 17.575,
+      "text" : " \"sm\")\ninv2"
+    },
+    {
+      "t" : 17.578,
+      "text" : "desc = TextContent(\""
+    },
+    {
+      "t" : 17.697,
+      "text" : "Tracing indust"
+    },
+    {
+      "t" : 17.798,
+      "text" : "rial run"
+    },
+    {
+      "t" : 17.907,
+      "text" : "off into"
+    },
+    {
+      "t" : 18.017,
+      "text" : " municipal w"
+    },
+    {
+      "t" : 18.211,
+      "text" : "ells and"
+    },
+    {
+      "t" : 18.32,
+      "text" : " the"
+    },
+    {
+      "t" : 18.392,
+      "text" : " del"
+    },
+    {
+      "t" : 18.506,
+      "text" : "ayed regulatory response"
+    },
+    {
+      "t" : 18.507,
+      "text" : ".\", \"small\")\ninv"
+    },
+    {
+      "t" : 18.733,
+      "text" : "2tags = TagBl"
+    },
+    {
+      "t" : 18.735,
+      "text" : "ock([\"Environment\", \""
+    },
+    {
+      "t" : 18.852,
+      "text" : "Public Health\"], \"s"
+    },
+    {
+      "t" : 18.989,
+      "text" : "m\")\ninv3 ="
+    },
+    {
+      "t" : 19.207,
+      "text" : " Card([inv3title,"
+    },
+    {
+      "t" : 19.322,
+      "text" : " inv3desc, inv"
+    },
+    {
+      "t" : 19.421,
+      "text" : "3tags], \"card\", \""
+    },
+    {
+      "t" : 19.523,
+      "text" : "column\", \"s\")\ninv"
+    },
+    {
+      "t" : 19.69,
+      "text" : "3title = BoldText(\""
+    },
+    {
+      "t" : 19.692,
+      "text" : "text"
+    },
+    {
+      "t" : 19.794,
+      "text" : "\", \"Off"
+    },
+    {
+      "t" : 19.893,
+      "text" : " the"
+    },
+    {
+      "t" : 20.004,
+      "text" : " Books\", \"2019"
+    },
+    {
+      "t" : 20.077,
+      "text" : "\", \"text\", \"sm\")"
+    },
+    {
+      "t" : 20.18,
+      "text" : "\ninv3desc = T"
+    },
+    {
+      "t" : 20.284,
+      "text" : "extContent(\"An"
+    },
+    {
+      "t" : 20.46,
+      "text" : " anal"
+    },
+    {
+      "t" : 20.462,
+      "text" : "ysis of over"
+    },
+    {
+      "t" : 20.569,
+      "text" : "time sp"
+    },
+    {
+      "t" : 20.687,
+      "text" : "ending in"
+    },
+    {
+      "t" : 20.803,
+      "text" : " the police department and miss"
+    },
+    {
+      "t" : 21.034,
+      "text" : "ing aud"
+    },
+    {
+      "t" : 21.151,
+      "text" : "it records"
+    },
+    {
+      "t" : 21.258,
+      "text" : ".\", \"small\")\ninv"
+    },
+    {
+      "t" : 21.375,
+      "text" : "3tags = TagBl"
+    },
+    {
+      "t" : 21.376,
+      "text" : "ock([\"Police"
+    },
+    {
+      "t" : 21.511,
+      "text" : " Accountability\", \"Municip"
+    },
+    {
+      "t" : 21.618,
+      "text" : "al Finance\"], \"s"
+    },
+    {
+      "t" : 21.744,
+      "text" : "m\")"
+    }
+  ],
+  "createdAt" : "2026-11-11T10:50:24Z",
+  "effort" : "low",
+  "format" : "openui-recording",
+  "inputTokens" : 14502,
+  "library" : "react-ui",
+  "model" : "claude-haiku-5-5",
+  "outputTokens" : 1329,
+  "request" : "A journalist profile with reporting beats, awards, a short biography and selected investigations displayed as cards.",
+  "servedBy" : "claude-haiku-5-5",
+  "stopReason" : "end_turn",
+  "version" : 1
+}

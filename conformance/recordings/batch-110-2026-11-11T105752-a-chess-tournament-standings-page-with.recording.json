@@ -1,0 +1,564 @@
+{
+  "batchRequest" : {
+    "model" : "haiku",
+    "number" : 110,
+    "request" : "A chess tournament standings page with players, points, tie-break scores and next-round pairings."
+  },
+  "chunks" : [
+    {
+      "t" : 0.642,
+      "text" : "root = Stack(["
+    },
+    {
+      "t" : 0.827,
+      "text" : "header"
+    },
+    {
+      "t" : 0.829,
+      "text" : ", standing"
+    },
+    {
+      "t" : 0.864,
+      "text" : "sC"
+    },
+    {
+      "t" : 0.958,
+      "text" : "ard, pairingsC"
+    },
+    {
+      "t" : 0.997,
+      "text" : "ard])\nheader"
+    },
+    {
+      "t" : 0.999,
+      "text" : " = In"
+    },
+    {
+      "t" : 1.03,
+      "text" : "lineHeader(\"Ch"
+    },
+    {
+      "t" : 1.085,
+      "text" : "ess Tournament:"
+    },
+    {
+      "t" : 1.115,
+      "text" : " Sp"
+    },
+    {
+      "t" : 1.183,
+      "text" : "ring Open"
+    },
+    {
+      "t" : 1.218,
+      "text" : " 2025\", \"Round"
+    },
+    {
+      "t" : 1.25,
+      "text" : " 5 of"
+    },
+    {
+      "t" : 1.252,
+      "text" : " 7 ·"
+    },
+    {
+      "t" : 1.286,
+      "text" : " Sw"
+    },
+    {
+      "t" : 1.345,
+      "text" : "iss system"
+    },
+    {
+      "t" : 1.385,
+      "text" : "\")\nstandingsCard ="
+    },
+    {
+      "t" : 1.387,
+      "text" : " Card([standingsT"
+    },
+    {
+      "t" : 1.431,
+      "text" : "itle, standingsT"
+    },
+    {
+      "t" : 1.469,
+      "text" : "able])\nstandingsTit"
+    },
+    {
+      "t" : 1.517,
+      "text" : "le = CardHeader(\""
+    },
+    {
+      "t" : 1.556,
+      "text" : "Standings\", \""
+    },
+    {
+      "t" : 1.592,
+      "text" : "Ranked by points, then"
+    },
+    {
+      "t" : 1.626,
+      "text" : " t"
+    },
+    {
+      "t" : 1.666,
+      "text" : "ie-break"
+    },
+    {
+      "t" : 1.741,
+      "text" : " scores\")\nstandingsT"
+    },
+    {
+      "t" : 1.777,
+      "text" : "able = Table([col"
+    },
+    {
+      "t" : 1.823,
+      "text" : "Rank, colP"
+    },
+    {
+      "t" : 1.871,
+      "text" : "layer, colR"
+    },
+    {
+      "t" : 1.914,
+      "text" : "ating, colPo"
+    },
+    {
+      "t" : 1.961,
+      "text" : "ints, colB"
+    },
+    {
+      "t" : 2.016,
+      "text" : "uch"
+    },
+    {
+      "t" : 2.049,
+      "text" : "holz, colS"
+    },
+    {
+      "t" : 2.084,
+      "text" : "onne"
+    },
+    {
+      "t" : 2.119,
+      "text" : "bor"
+    },
+    {
+      "t" : 2.163,
+      "text" : "n])"
+    },
+    {
+      "t" : 2.193,
+      "text" : "\ncolRank = Col(\""
+    },
+    {
+      "t" : 2.238,
+      "text" : "Rank\", "
+    },
+    {
+      "t" : 2.239,
+      "text" : "[\"1\", \"2\", \"3"
+    },
+    {
+      "t" : 2.286,
+      "text" : "\", \"4\", \"5\", \""
+    },
+    {
+      "t" : 2.328,
+      "text" : "6\","
+    },
+    {
+      "t" : 2.376,
+      "text" : " \"7\", \"8\"])"
+    },
+    {
+      "t" : 2.425,
+      "text" : "\ncolPlayer = Col"
+    },
+    {
+      "t" : 2.479,
+      "text" : "(\"Player\", [\"An"
+    },
+    {
+      "t" : 2.528,
+      "text" : "na Pet"
+    },
+    {
+      "t" : 2.572,
+      "text" : "rova\", \"Li"
+    },
+    {
+      "t" : 2.668,
+      "text" : "am Ch"
+    },
+    {
+      "t" : 2.669,
+      "text" : "en\", \"S"
+    },
+    {
+      "t" : 2.714,
+      "text" : "ofia Ross"
+    },
+    {
+      "t" : 2.758,
+      "text" : "i\", \"Marcus"
+    },
+    {
+      "t" : 2.808,
+      "text" : " We"
+    },
+    {
+      "t" : 2.858,
+      "text" : "ber\", \"Y"
+    },
+    {
+      "t" : 2.978,
+      "text" : "uki T"
+    },
+    {
+      "t" : 3.03,
+      "text" : "anaka\", \"Om"
+    },
+    {
+      "t" : 3.08,
+      "text" : "ar Ha"
+    },
+    {
+      "t" : 3.135,
+      "text" : "ddad\", \"El"
+    },
+    {
+      "t" : 3.196,
+      "text" : "ena Vol"
+    },
+    {
+      "t" : 3.252,
+      "text" : "kova\", \"David"
+    },
+    {
+      "t" : 3.316,
+      "text" : " Ok"
+    },
+    {
+      "t" : 3.367,
+      "text" : "afor\"])\ncolRating"
+    },
+    {
+      "t" : 3.439,
+      "text" : " = Col(\"Rating\","
+    },
+    {
+      "t" : 3.496,
+      "text" : " ["
+    },
+    {
+      "t" : 3.497,
+      "text" : "2510"
+    },
+    {
+      "t" : 3.556,
+      "text" : ", 2465"
+    },
+    {
+      "t" : 3.612,
+      "text" : ", 2420"
+    },
+    {
+      "t" : 3.665,
+      "text" : ", 2398"
+    },
+    {
+      "t" : 3.727,
+      "text" : ", 2375"
+    },
+    {
+      "t" : 3.792,
+      "text" : ", 2344"
+    },
+    {
+      "t" : 3.899,
+      "text" : ", 2310, 2288"
+    },
+    {
+      "t" : 3.901,
+      "text" : "], \"number"
+    },
+    {
+      "t" : 3.957,
+      "text" : "\")\ncolPoints ="
+    },
+    {
+      "t" : 4.026,
+      "text" : " Col(\"Points\", [4."
+    },
+    {
+      "t" : 4.084,
+      "text" : "0"
+    },
+    {
+      "t" : 4.14,
+      "text" : ", 3.5, 3"
+    },
+    {
+      "t" : 4.203,
+      "text" : ".5, 3.0,"
+    },
+    {
+      "t" : 4.262,
+      "text" : " 3.0, 2."
+    },
+    {
+      "t" : 4.326,
+      "text" : "5, 2.0, "
+    },
+    {
+      "t" : 4.387,
+      "text" : "1.5], \"number\")"
+    },
+    {
+      "t" : 4.49,
+      "text" : "\ncolBuchholz ="
+    },
+    {
+      "t" : 4.494,
+      "text" : " Col(\"Buchholz\","
+    },
+    {
+      "t" : 4.57,
+      "text" : " [14.5, 13."
+    },
+    {
+      "t" : 4.624,
+      "text" : "0, 13.5, "
+    },
+    {
+      "t" : 4.714,
+      "text" : "12.0, 11"
+    },
+    {
+      "t" : 4.779,
+      "text" : ".5, 11"
+    },
+    {
+      "t" : 4.848,
+      "text" : ".0, 10"
+    },
+    {
+      "t" : 4.921,
+      "text" : ".5, 9.5],"
+    },
+    {
+      "t" : 5.027,
+      "text" : " \"number\")\ncolSonne"
+    },
+    {
+      "t" : 5.028,
+      "text" : "born = Col(\"S"
+    },
+    {
+      "t" : 5.111,
+      "text" : "onneborn-"
+    },
+    {
+      "t" : 5.176,
+      "text" : "Berger"
+    },
+    {
+      "t" : 5.248,
+      "text" : "\", [6"
+    },
+    {
+      "t" : 5.339,
+      "text" : ".25"
+    },
+    {
+      "t" : 5.422,
+      "text" : ", 5.75"
+    },
+    {
+      "t" : 5.494,
+      "text" : ", 5.5, 4"
+    },
+    {
+      "t" : 5.561,
+      "text" : ".75, 4.5"
+    },
+    {
+      "t" : 5.622,
+      "text" : ", 3"
+    },
+    {
+      "t" : 5.688,
+      "text" : ".75, 3.25,"
+    },
+    {
+      "t" : 5.76,
+      "text" : " 2.0"
+    },
+    {
+      "t" : 5.837,
+      "text" : "], \"number\")\npairing"
+    },
+    {
+      "t" : 5.954,
+      "text" : "sCard = Card([p"
+    },
+    {
+      "t" : 6.084,
+      "text" : "airingsTitle, p"
+    },
+    {
+      "t" : 6.086,
+      "text" : "airingsTable])\np"
+    },
+    {
+      "t" : 6.156,
+      "text" : "airingsTitle = C"
+    },
+    {
+      "t" : 6.25,
+      "text" : "ardHeader(\"Round"
+    },
+    {
+      "t" : 6.252,
+      "text" : " 6 Pairings\","
+    },
+    {
+      "t" : 6.318,
+      "text" : " \"Board ass"
+    },
+    {
+      "t" : 6.391,
+      "text" : "ignments for"
+    },
+    {
+      "t" : 6.48,
+      "text" : " the next round\")\npairing"
+    },
+    {
+      "t" : 6.571,
+      "text" : "sTable = Table([col"
+    },
+    {
+      "t" : 6.658,
+      "text" : "Board, colW"
+    },
+    {
+      "t" : 6.785,
+      "text" : "hite, colB"
+    },
+    {
+      "t" : 6.789,
+      "text" : "lack, colResult])"
+    },
+    {
+      "t" : 6.866,
+      "text" : "\ncolBoard = Col"
+    },
+    {
+      "t" : 6.949,
+      "text" : "(\"Board\", "
+    },
+    {
+      "t" : 7.033,
+      "text" : "[\"1\", \"2\", \"3"
+    },
+    {
+      "t" : 7.119,
+      "text" : "\", \"4\"])\ncolW"
+    },
+    {
+      "t" : 7.259,
+      "text" : "hite = Col(\"White\","
+    },
+    {
+      "t" : 7.29,
+      "text" : " [\"Anna Petr"
+    },
+    {
+      "t" : 7.374,
+      "text" : "ova\", \"S"
+    },
+    {
+      "t" : 7.459,
+      "text" : "ofia Rossi\", \""
+    },
+    {
+      "t" : 7.541,
+      "text" : "Yuki Tana"
+    },
+    {
+      "t" : 7.631,
+      "text" : "ka\", \"El"
+    },
+    {
+      "t" : 7.72,
+      "text" : "ena Volkova\"])"
+    },
+    {
+      "t" : 7.81,
+      "text" : "\ncolBlack = Col(\""
+    },
+    {
+      "t" : 7.9,
+      "text" : "Black\", [\"Liam"
+    },
+    {
+      "t" : 8.017,
+      "text" : " Chen\", \"Mar"
+    },
+    {
+      "t" : 8.131,
+      "text" : "cus Weber\", \""
+    },
+    {
+      "t" : 8.222,
+      "text" : "Omar Haddad\", \""
+    },
+    {
+      "t" : 8.32,
+      "text" : "David Okafor\"])"
+    },
+    {
+      "t" : 8.407,
+      "text" : "\ncolResult = Col(\""
+    },
+    {
+      "t" : 8.514,
+      "text" : "Status"
+    },
+    {
+      "t" : 8.612,
+      "text" : "\", [\"Sc"
+    },
+    {
+      "t" : 8.704,
+      "text" : "heduled\", \"Sc"
+    },
+    {
+      "t" : 8.791,
+      "text" : "heduled\", \"Sche"
+    },
+    {
+      "t" : 8.853,
+      "text" : "duled\", \"Schedu"
+    },
+    {
+      "t" : 8.917,
+      "text" : "led\"])"
+    }
+  ],
+  "createdAt" : "2026-11-11T10:57:52Z",
+  "effort" : "low",
+  "format" : "openui-recording",
+  "inputTokens" : 14497,
+  "library" : "react-ui",
+  "model" : "claude-haiku-5-5",
+  "outputTokens" : 777,
+  "request" : "A chess tournament standings page with players, points, tie-break scores and next-round pairings.",
+  "servedBy" : "claude-haiku-5-5",
+  "stopReason" : "end_turn",
+  "version" : 1
+}

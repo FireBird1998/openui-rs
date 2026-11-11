@@ -1,0 +1,396 @@
+{
+  "batchRequest" : {
+    "model" : "haiku",
+    "number" : 58,
+    "request" : "A press conference transcript excerpt with speaker labels, timestamps and a callout highlighting the announced decision."
+  },
+  "chunks" : [
+    {
+      "t" : 0.756,
+      "text" : "root"
+    },
+    {
+      "t" : 0.913,
+      "text" : " = Stack(["
+    },
+    {
+      "t" : 0.946,
+      "text" : "he"
+    },
+    {
+      "t" : 1.026,
+      "text" : "ading, transcript, dec"
+    },
+    {
+      "t" : 1.079,
+      "text" : "isionCallout])\nhe"
+    },
+    {
+      "t" : 1.147,
+      "text" : "ading = TextContent(\""
+    },
+    {
+      "t" : 1.215,
+      "text" : "Press Conference Trans"
+    },
+    {
+      "t" : 1.252,
+      "text" : "cript\", \"large-heav"
+    },
+    {
+      "t" : 1.281,
+      "text" : "y\")\ntranscript ="
+    },
+    {
+      "t" : 1.316,
+      "text" : " Card([c"
+    },
+    {
+      "t" : 1.352,
+      "text" : "ardHeader,"
+    },
+    {
+      "t" : 1.394,
+      "text" : " exc"
+    },
+    {
+      "t" : 1.441,
+      "text" : "erpt])\ncardH"
+    },
+    {
+      "t" : 1.478,
+      "text" : "eader = CardHeader"
+    },
+    {
+      "t" : 1.479,
+      "text" : "(\"Excerpt\","
+    },
+    {
+      "t" : 1.527,
+      "text" : " \"Spe"
+    },
+    {
+      "t" : 1.573,
+      "text" : "aker labels and"
+    },
+    {
+      "t" : 1.625,
+      "text" : " timestamps\")\nexcer"
+    },
+    {
+      "t" : 1.676,
+      "text" : "pt ="
+    },
+    {
+      "t" : 1.712,
+      "text" : " Stack([line"
+    },
+    {
+      "t" : 1.756,
+      "text" : "1, line2, line3,"
+    },
+    {
+      "t" : 1.799,
+      "text" : " line4,"
+    },
+    {
+      "t" : 1.841,
+      "text" : " line5], \"column\","
+    },
+    {
+      "t" : 1.941,
+      "text" : " \"s"
+    },
+    {
+      "t" : 1.979,
+      "text" : "\")\nline1 = Text"
+    },
+    {
+      "t" : 2.033,
+      "text" : "Content(\"**"
+    },
+    {
+      "t" : 2.034,
+      "text" : "[00:00:12"
+    },
+    {
+      "t" : 2.074,
+      "text" : "] MOD"
+    },
+    {
+      "t" : 2.127,
+      "text" : "ERATOR:** Good"
+    },
+    {
+      "t" : 2.211,
+      "text" : " af"
+    },
+    {
+      "t" : 2.212,
+      "text" : "ternoon,"
+    },
+    {
+      "t" : 2.282,
+      "text" : " everyone. Thank you"
+    },
+    {
+      "t" : 2.283,
+      "text" : " for joining us today.\")"
+    },
+    {
+      "t" : 2.331,
+      "text" : "\nline2 = TextContent"
+    },
+    {
+      "t" : 2.389,
+      "text" : "(\"**[00:00"
+    },
+    {
+      "t" : 2.486,
+      "text" : ":25"
+    },
+    {
+      "t" : 2.487,
+      "text" : "] REPORTER ("
+    },
+    {
+      "t" : 2.536,
+      "text" : "J"
+    },
+    {
+      "t" : 2.595,
+      "text" : "ane Cole"
+    },
+    {
+      "t" : 2.68,
+      "text" : ", Da"
+    },
+    {
+      "t" : 2.682,
+      "text" : "ily "
+    },
+    {
+      "t" : 2.741,
+      "text" : "Ledger):** Can"
+    },
+    {
+      "t" : 2.784,
+      "text" : " you conf"
+    },
+    {
+      "t" : 2.874,
+      "text" : "irm wh"
+    },
+    {
+      "t" : 2.876,
+      "text" : "ether the board"
+    },
+    {
+      "t" : 2.928,
+      "text" : " has"
+    },
+    {
+      "t" : 2.988,
+      "text" : " re"
+    },
+    {
+      "t" : 3.057,
+      "text" : "ached a dec"
+    },
+    {
+      "t" : 3.128,
+      "text" : "ision on the pro"
+    },
+    {
+      "t" : 3.179,
+      "text" : "posed merger?\")\nline"
+    },
+    {
+      "t" : 3.241,
+      "text" : "3 = TextContent(\""
+    },
+    {
+      "t" : 3.312,
+      "text" : "**[00:00"
+    },
+    {
+      "t" : 3.389,
+      "text" : ":41"
+    },
+    {
+      "t" : 3.448,
+      "text" : "] CEO ("
+    },
+    {
+      "t" : 3.509,
+      "text" : "Ma"
+    },
+    {
+      "t" : 3.572,
+      "text" : "ria L"
+    },
+    {
+      "t" : 3.631,
+      "text" : "opez):** Yes."
+    },
+    {
+      "t" : 3.734,
+      "text" : " After months"
+    },
+    {
+      "t" : 3.735,
+      "text" : " of review"
+    },
+    {
+      "t" : 3.786,
+      "text" : ", the board has voted to pro"
+    },
+    {
+      "t" : 3.86,
+      "text" : "ceed with the merger,"
+    },
+    {
+      "t" : 3.934,
+      "text" : " subject to reg"
+    },
+    {
+      "t" : 4.004,
+      "text" : "ulatory approval.\")"
+    },
+    {
+      "t" : 4.065,
+      "text" : "\nline4 = TextContent"
+    },
+    {
+      "t" : 4.213,
+      "text" : "(\"**[00:01:03"
+    },
+    {
+      "t" : 4.214,
+      "text" : "] REPORTER ("
+    },
+    {
+      "t" : 4.281,
+      "text" : "Tom Re"
+    },
+    {
+      "t" : 4.35,
+      "text" : "iss,"
+    },
+    {
+      "t" : 4.41,
+      "text" : " Wire News"
+    },
+    {
+      "t" : 4.53,
+      "text" : "):** What"
+    },
+    {
+      "t" : 4.531,
+      "text" : " does this"
+    },
+    {
+      "t" : 4.604,
+      "text" : " mean for employees and current"
+    },
+    {
+      "t" : 4.678,
+      "text" : " cont"
+    },
+    {
+      "t" : 4.834,
+      "text" : "racts?\")\nline5 "
+    },
+    {
+      "t" : 4.915,
+      "text" : "= TextContent(\"**["
+    },
+    {
+      "t" : 4.994,
+      "text" : "00:01"
+    },
+    {
+      "t" : 5.054,
+      "text" : ":15] CEO ("
+    },
+    {
+      "t" : 5.126,
+      "text" : "Maria Lopez):**"
+    },
+    {
+      "t" : 5.216,
+      "text" : " All"
+    },
+    {
+      "t" : 5.301,
+      "text" : " current"
+    },
+    {
+      "t" : 5.381,
+      "text" : " employees will be ret"
+    },
+    {
+      "t" : 5.459,
+      "text" : "ained for"
+    },
+    {
+      "t" : 5.531,
+      "text" : " at"
+    },
+    {
+      "t" : 5.598,
+      "text" : " least tw"
+    },
+    {
+      "t" : 5.681,
+      "text" : "elve months, and exist"
+    },
+    {
+      "t" : 5.751,
+      "text" : "ing contracts will be honored"
+    },
+    {
+      "t" : 5.824,
+      "text" : " in"
+    },
+    {
+      "t" : 5.908,
+      "text" : " full.\")\ndecisionC"
+    },
+    {
+      "t" : 6.001,
+      "text" : "allout = Callout(\"success"
+    },
+    {
+      "t" : 6.078,
+      "text" : "\", \"Announced Decision"
+    },
+    {
+      "t" : 6.181,
+      "text" : "\", \"The board has vo"
+    },
+    {
+      "t" : 6.182,
+      "text" : "ted to proceed with the mer"
+    },
+    {
+      "t" : 6.242,
+      "text" : "ger, subject to regulat"
+    },
+    {
+      "t" : 6.304,
+      "text" : "ory approval.\")"
+    }
+  ],
+  "createdAt" : "2026-11-11T10:39:54Z",
+  "effort" : "low",
+  "format" : "openui-recording",
+  "inputTokens" : 14505,
+  "library" : "react-ui",
+  "model" : "claude-haiku-5-5",
+  "outputTokens" : 470,
+  "request" : "A press conference transcript excerpt with speaker labels, timestamps and a callout highlighting the announced decision.",
+  "servedBy" : "claude-haiku-5-5",
+  "stopReason" : "end_turn",
+  "version" : 1
+}

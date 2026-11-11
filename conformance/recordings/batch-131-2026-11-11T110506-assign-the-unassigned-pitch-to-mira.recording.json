@@ -1,0 +1,310 @@
+{
+  "batchRequest" : {
+    "model" : "sonnet",
+    "number" : 131,
+    "of" : 51,
+    "request" : "Assign the unassigned pitch to Mira, add a fact-check deadline column and mark the first pitch ready for editing."
+  },
+  "chunks" : [
+    {
+      "t" : 0.869,
+      "text" : "Inter"
+    },
+    {
+      "t" : 1.217,
+      "text" : "pretation: \"the"
+    },
+    {
+      "t" : 1.219,
+      "text" : " unassigned pitch\""
+    },
+    {
+      "t" : 1.301,
+      "text" : " is"
+    },
+    {
+      "t" : 1.38,
+      "text" : " ambiguous (two are"
+    },
+    {
+      "t" : 1.426,
+      "text" : " unassigned: School bus"
+    },
+    {
+      "t" : 1.467,
+      "text" : " driver shortage and Local"
+    },
+    {
+      "t" : 1.542,
+      "text" : " election profile). I'll ass"
+    },
+    {
+      "t" : 1.609,
+      "text" : "ign"
+    },
+    {
+      "t" : 1.725,
+      "text" : " Mira to the first un"
+    },
+    {
+      "t" : 1.73,
+      "text" : "assigned pitch, School"
+    },
+    {
+      "t" : 1.796,
+      "text" : " bus driver shortage."
+    },
+    {
+      "t" : 1.853,
+      "text" : " The first pitch mo"
+    },
+    {
+      "t" : 1.912,
+      "text" : "ves to \"Editing\" st"
+    },
+    {
+      "t" : 1.974,
+      "text" : "age, and a"
+    },
+    {
+      "t" : 2.032,
+      "text" : " Fact-check column"
+    },
+    {
+      "t" : 2.089,
+      "text" : " is added."
+    },
+    {
+      "t" : 2.206,
+      "text" : " Mira is also added to the"
+    },
+    {
+      "t" : 2.213,
+      "text" : " re"
+    },
+    {
+      "t" : 2.266,
+      "text" : "porter options.\n\nroot ="
+    },
+    {
+      "t" : 2.321,
+      "text" : " Stack([header, pitch"
+    },
+    {
+      "t" : 2.399,
+      "text" : "esCard, formCard])"
+    },
+    {
+      "t" : 2.474,
+      "text" : "\npitchT"
+    },
+    {
+      "t" : 2.555,
+      "text" : "able = Table([Col(\""
+    },
+    {
+      "t" : 2.64,
+      "text" : "Pitch\", titles),"
+    },
+    {
+      "t" : 2.701,
+      "text" : " Col(\"Reporter\","
+    },
+    {
+      "t" : 2.824,
+      "text" : " reporters), Col(\""
+    },
+    {
+      "t" : 2.887,
+      "text" : "Deadline\", deadlines"
+    },
+    {
+      "t" : 2.947,
+      "text" : "), Col(\"Fact-"
+    },
+    {
+      "t" : 3.017,
+      "text" : "check Due"
+    },
+    {
+      "t" : 3.022,
+      "text" : "\", factCh"
+    },
+    {
+      "t" : 3.087,
+      "text" : "ecks), Col(\"St"
+    },
+    {
+      "t" : 3.148,
+      "text" : "age\", stageTags),"
+    },
+    {
+      "t" : 3.207,
+      "text" : " Col(\"Assignment\", ass"
+    },
+    {
+      "t" : 3.273,
+      "text" : "ignTags)])\nrepor"
+    },
+    {
+      "t" : 3.339,
+      "text" : "ters = [\"Maria"
+    },
+    {
+      "t" : 3.403,
+      "text" : " Lopez\", \"Dan"
+    },
+    {
+      "t" : 3.471,
+      "text" : " Whitfield\", \""
+    },
+    {
+      "t" : 3.585,
+      "text" : "Mira\", \"Priya"
+    },
+    {
+      "t" : 3.588,
+      "text" : " Nair\", \"Un"
+    },
+    {
+      "t" : 3.653,
+      "text" : "assigned\", \"Tom"
+    },
+    {
+      "t" : 3.725,
+      "text" : " Okafor\"]\nfact"
+    },
+    {
+      "t" : 3.79,
+      "text" : "Checks = [\"2025"
+    },
+    {
+      "t" : 3.867,
+      "text" : "-06-11"
+    },
+    {
+      "t" : 3.927,
+      "text" : "\", \"2025-06-09"
+    },
+    {
+      "t" : 3.999,
+      "text" : "\", \"2025-06-17"
+    },
+    {
+      "t" : 4.059,
+      "text" : "\", \"2025-06-24"
+    },
+    {
+      "t" : 4.144,
+      "text" : "\", \"2025-06-19"
+    },
+    {
+      "t" : 4.211,
+      "text" : "\", \"2025-06-08"
+    },
+    {
+      "t" : 4.279,
+      "text" : "\"]\nst1 ="
+    },
+    {
+      "t" : 4.352,
+      "text" : " Tag(\""
+    },
+    {
+      "t" : 4.426,
+      "text" : "Ready for editing\", null, \""
+    },
+    {
+      "t" : 4.531,
+      "text" : "sm\", \"warning\")"
+    },
+    {
+      "t" : 4.533,
+      "text" : "\nas3 = Tag(\""
+    },
+    {
+      "t" : 4.697,
+      "text" : "Assigned\", null, \""
+    },
+    {
+      "t" : 4.802,
+      "text" : "sm\", \"success\")\nre"
+    },
+    {
+      "t" : 4.875,
+      "text" : "porterOpts = [S"
+    },
+    {
+      "t" : 4.946,
+      "text" : "electItem(\"unassig"
+    },
+    {
+      "t" : 5.023,
+      "text" : "ned\", \"Unassigned"
+    },
+    {
+      "t" : 5.104,
+      "text" : "\"), SelectItem(\""
+    },
+    {
+      "t" : 5.187,
+      "text" : "lopez\", \"Maria"
+    },
+    {
+      "t" : 5.267,
+      "text" : " Lopez\"), Sel"
+    },
+    {
+      "t" : 5.314,
+      "text" : "ectItem(\"whitfield"
+    },
+    {
+      "t" : 5.354,
+      "text" : "\", \"Dan Whit"
+    },
+    {
+      "t" : 5.441,
+      "text" : "field\"), SelectIt"
+    },
+    {
+      "t" : 5.516,
+      "text" : "em(\"nair\", \"Pri"
+    },
+    {
+      "t" : 5.597,
+      "text" : "ya Nair\"), Sel"
+    },
+    {
+      "t" : 5.682,
+      "text" : "ectItem(\"okafor\","
+    },
+    {
+      "t" : 5.759,
+      "text" : " \"Tom Okafor"
+    },
+    {
+      "t" : 5.894,
+      "text" : "\"), SelectItem(\""
+    },
+    {
+      "t" : 5.896,
+      "text" : "mira\", \"Mira\")"
+    },
+    {
+      "t" : 5.975,
+      "text" : "]"
+    }
+  ],
+  "createdAt" : "2026-11-11T11:05:06Z",
+  "effort" : "low",
+  "format" : "openui-recording",
+  "inputTokens" : 16223,
+  "library" : "react-ui",
+  "model" : "claude-sonnet-5-5",
+  "outputTokens" : 506,
+  "patchOf" : "root = Stack([header, pitchesCard, formCard])\nheader = CardHeader(\"Assignment Desk\", \"Six active pitches and a place to submit new ones\")\npitchesCard = Card([pitchesHeader, pitchTable])\npitchesHeader = InlineHeader(\"Active Pitches\", \"Reporter, deadline and reporting stage\")\npitchTable = Table([Col(\"Pitch\", titles), Col(\"Reporter\", reporters), Col(\"Deadline\", deadlines), Col(\"Stage\", stageTags), Col(\"Assignment\", assignTags)])\ntitles = [\"City budget shortfall\", \"Port strike impact on retailers\", \"School bus driver shortage\", \"Hospital wait times investigation\", \"Local election profile: District 4\", \"Wildfire smoke and air quality\"]\nreporters = [\"Maria Lopez\", \"Dan Whitfield\", \"Unassigned\", \"Priya Nair\", \"Unassigned\", \"Tom Okafor\"]\ndeadlines = [\"2025-06-12\", \"2025-06-10\", \"2025-06-18\", \"2025-06-25\", \"2025-06-20\", \"2025-06-09\"]\nstageTags = [st1, st2, st3, st4, st5, st6]\nst1 = Tag(\"Drafting\", null, \"sm\", \"info\")\nst2 = Tag(\"Editing\", null, \"sm\", \"warning\")\nst3 = Tag(\"Pitched\", null, \"sm\", \"neutral\")\nst4 = Tag(\"Reporting\", null, \"sm\", \"info\")\nst5 = Tag(\"Pitched\", null, \"sm\", \"neutral\")\nst6 = Tag(\"Ready to publish\", null, \"sm\", \"success\")\nassignTags = [as1, as2, as3, as4, as5, as6]\nas1 = Tag(\"Assigned\", null, \"sm\", \"success\")\nas2 = Tag(\"Assigned\", null, \"sm\", \"success\")\nas3 = Tag(\"Unassigned\", null, \"sm\", \"danger\")\nas4 = Tag(\"Assigned\", null, \"sm\", \"success\")\nas5 = Tag(\"Unassigned\", null, \"sm\", \"danger\")\nas6 = Tag(\"Assigned\", null, \"sm\", \"success\")\nformCard = Card([formHeader, pitchForm])\nformHeader = InlineHeader(\"Submit a Pitch\", \"Share a story idea with the desk\")\npitchForm = Form(\"pitch\", formBtns, [fTitle, fReporter, fDeadline, fStage, fSummary])\nfTitle = FormControl(\"Working headline\", Input(\"headline\", \"e.g. Transit fare hike explained\", \"text\", { required: true, minLength: 5 }))\nfReporter = FormControl(\"Reporter\", Select(\"reporter\", reporterOpts, \"Select reporter or leave unassigned\"), \"Leave blank if unassigned\")\nreporterOpts = [SelectItem(\"unassigned\", \"Unassigned\"), SelectItem(\"lopez\", \"Maria Lopez\"), SelectItem(\"whitfield\", \"Dan Whitfield\"), SelectItem(\"nair\", \"Priya Nair\"), SelectItem(\"okafor\", \"Tom Okafor\")]\nfDeadline = FormControl(\"Deadline\", DatePicker(\"deadline\", \"single\", { required: true }))\nfStage = FormControl(\"Reporting stage\", Select(\"stage\", stageOpts, \"Select stage\", { required: true }))\nstageOpts = [SelectItem(\"pitched\", \"Pitched\"), SelectItem(\"reporting\", \"Reporting\"), SelectItem(\"drafting\", \"Drafting\"), SelectItem(\"editing\", \"Editing\"), SelectItem(\"ready\", \"Ready to publish\")]\nfSummary = FormControl(\"Summary\", TextArea(\"summary\", \"Describe the angle, sources and why it matters now...\", 4, { required: true, minLength: 20 }))\nformBtns = Buttons([Button(\"Submit Pitch\", @ToAssistant(\"Submit new pitch\"), \"primary\"), Button(\"Clear\", @ToAssistant(\"Clear pitch form\"), \"secondary\")])",
+  "request" : "Assign the unassigned pitch to Mira, add a fact-check deadline column and mark the first pitch ready for editing.",
+  "servedBy" : "claude-sonnet-5-5",
+  "stopReason" : "end_turn",
+  "version" : 1
+}

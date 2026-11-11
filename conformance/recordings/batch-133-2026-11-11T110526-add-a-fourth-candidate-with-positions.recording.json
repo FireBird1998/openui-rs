@@ -1,0 +1,430 @@
+{
+  "batchRequest" : {
+    "model" : "sonnet",
+    "number" : 133,
+    "of" : 55,
+    "request" : "Add a fourth candidate with positions on all three issues and highlight the housing row with a short summary callout."
+  },
+  "chunks" : [
+    {
+      "t" : 2.767,
+      "text" : "root = Stack"
+    },
+    {
+      "t" : 2.909,
+      "text" : "([title, note, tbl"
+    },
+    {
+      "t" : 2.945,
+      "text" : ", housingCallout, qu"
+    },
+    {
+      "t" : 2.947,
+      "text" : "otesHeader, quot"
+    },
+    {
+      "t" : 3.175,
+      "text" : "es, sourcesHe"
+    },
+    {
+      "t" : 3.229,
+      "text" : "ader, sources])\nnames ="
+    },
+    {
+      "t" : 3.304,
+      "text" : " [\"Ma"
+    },
+    {
+      "t" : 3.332,
+      "text" : "ria Alvarez\", \""
+    },
+    {
+      "t" : 3.379,
+      "text" : "David Chen\", \"Pri"
+    },
+    {
+      "t" : 3.428,
+      "text" : "ya Nair\", \"James"
+    },
+    {
+      "t" : 3.479,
+      "text" : " Ok"
+    },
+    {
+      "t" : 3.538,
+      "text" : "afor\"]\nhousing ="
+    },
+    {
+      "t" : 3.605,
+      "text" : " [\"Build 5,000"
+    },
+    {
+      "t" : 3.676,
+      "text" : " affordable units; relax"
+    },
+    {
+      "t" : 3.742,
+      "text" : " zoning near transit\", \""
+    },
+    {
+      "t" : 3.796,
+      "text" : "Tax incentives for private"
+    },
+    {
+      "t" : 3.848,
+      "text" : " developers; first-time buy"
+    },
+    {
+      "t" : 3.899,
+      "text" : "er grants\", \"Rent"
+    },
+    {
+      "t" : 3.98,
+      "text" : " stabilization and expanded"
+    },
+    {
+      "t" : 3.982,
+      "text" : " public housing\", \"Convert"
+    },
+    {
+      "t" : 4.047,
+      "text" : " v"
+    },
+    {
+      "t" : 4.131,
+      "text" : "acant comm"
+    },
+    {
+      "t" : 4.165,
+      "text" : "ercial buildings into m"
+    },
+    {
+      "t" : 4.229,
+      "text" : "ixed-income"
+    },
+    {
+      "t" : 4.313,
+      "text" : " housing;"
+    },
+    {
+      "t" : 4.401,
+      "text" : " down"
+    },
+    {
+      "t" : 4.486,
+      "text" : "-payment a"
+    },
+    {
+      "t" : 4.554,
+      "text" : "id\""
+    },
+    {
+      "t" : 4.618,
+      "text" : "]\ntransport = [\""
+    },
+    {
+      "t" : 4.707,
+      "text" : "Expand bus rapid trans"
+    },
+    {
+      "t" : 4.782,
+      "text" : "it and protected bike lan"
+    },
+    {
+      "t" : 4.84,
+      "text" : "es\", \"Road repair first"
+    },
+    {
+      "t" : 4.844,
+      "text" : "; modest rail extension\","
+    },
+    {
+      "t" : 4.904,
+      "text" : " \"Free fares for students and"
+    },
+    {
+      "t" : 4.971,
+      "text" : " seniors; electrify b"
+    },
+    {
+      "t" : 5.03,
+      "text" : "us fleet\", \"Syn"
+    },
+    {
+      "t" : 5.098,
+      "text" : "chronize tra"
+    },
+    {
+      "t" : 5.173,
+      "text" : "ffic signals;"
+    },
+    {
+      "t" : 5.25,
+      "text" : " launch on"
+    },
+    {
+      "t" : 5.402,
+      "text" : "-demand microt"
+    },
+    {
+      "t" : 5.48,
+      "text" : "ransit in"
+    },
+    {
+      "t" : 5.483,
+      "text" : " out"
+    },
+    {
+      "t" : 5.58,
+      "text" : "er"
+    },
+    {
+      "t" : 5.669,
+      "text" : " distric"
+    },
+    {
+      "t" : 5.745,
+      "text" : "ts\"]\nschools = "
+    },
+    {
+      "t" : 5.845,
+      "text" : "[\"Raise teacher p"
+    },
+    {
+      "t" : 5.928,
+      "text" : "ay 8%; universal p"
+    },
+    {
+      "t" : 5.993,
+      "text" : "re-K\", \"School"
+    },
+    {
+      "t" : 6.083,
+      "text" : " choice expansion; more char"
+    },
+    {
+      "t" : 6.166,
+      "text" : "ter capacity\", \"Sm"
+    },
+    {
+      "t" : 6.237,
+      "text" : "aller class sizes; f"
+    },
+    {
+      "t" : 6.308,
+      "text" : "und after-school programs\", \""
+    },
+    {
+      "t" : 6.388,
+      "text" : "Expand v"
+    },
+    {
+      "t" : 6.463,
+      "text" : "ocational and"
+    },
+    {
+      "t" : 6.559,
+      "text" : " ap"
+    },
+    {
+      "t" : 6.654,
+      "text" : "prenticeship programs;"
+    },
+    {
+      "t" : 6.732,
+      "text" : " upgrade school"
+    },
+    {
+      "t" : 6.803,
+      "text" : " fac"
+    },
+    {
+      "t" : 6.873,
+      "text" : "ilities\"]\nhousingC"
+    },
+    {
+      "t" : 6.964,
+      "text" : "allout = Callout(\"info"
+    },
+    {
+      "t" : 7.04,
+      "text" : "\", \"Housing summary\","
+    },
+    {
+      "t" : 7.129,
+      "text" : " \"Cand"
+    },
+    {
+      "t" : 7.223,
+      "text" : "idates split between"
+    },
+    {
+      "t" : 7.337,
+      "text" : " supply-"
+    },
+    {
+      "t" : 7.339,
+      "text" : "side appro"
+    },
+    {
+      "t" : 7.406,
+      "text" : "aches (Alvarez"
+    },
+    {
+      "t" : 7.479,
+      "text" : ", Chen, Okaf"
+    },
+    {
+      "t" : 7.548,
+      "text" : "or) and t"
+    },
+    {
+      "t" : 7.617,
+      "text" : "enant prot"
+    },
+    {
+      "t" : 7.68,
+      "text" : "ections"
+    },
+    {
+      "t" : 7.748,
+      "text" : " (Nair). Al"
+    },
+    {
+      "t" : 7.807,
+      "text" : "varez and Ok"
+    },
+    {
+      "t" : 7.862,
+      "text" : "afor focus on building near"
+    },
+    {
+      "t" : 7.923,
+      "text" : " transit or"
+    },
+    {
+      "t" : 8.005,
+      "text" : " reusing existing buildings"
+    },
+    {
+      "t" : 8.092,
+      "text" : ";"
+    },
+    {
+      "t" : 8.173,
+      "text" : " Chen rel"
+    },
+    {
+      "t" : 8.317,
+      "text" : "ies on private"
+    },
+    {
+      "t" : 8.323,
+      "text" : " incentives.\")\nqu"
+    },
+    {
+      "t" : 8.409,
+      "text" : "otes = Stack([q"
+    },
+    {
+      "t" : 8.517,
+      "text" : "1, q2, q3,"
+    },
+    {
+      "t" : 8.612,
+      "text" : " q4])\nq4 ="
+    },
+    {
+      "t" : 8.705,
+      "text" : " Card([TextContent(\""
+    },
+    {
+      "t" : 8.855,
+      "text" : "**James Okafor**\","
+    },
+    {
+      "t" : 8.86,
+      "text" : " \"small-heavy\"),"
+    },
+    {
+      "t" : 8.951,
+      "text" : " TextContent(\"\\\""
+    },
+    {
+      "t" : 9.065,
+      "text" : "Re"
+    },
+    {
+      "t" : 9.179,
+      "text" : "use what we"
+    },
+    {
+      "t" : 9.314,
+      "text" : " already have, and"
+    },
+    {
+      "t" : 9.53,
+      "text" : " train"
+    },
+    {
+      "t" : 9.534,
+      "text" : " the work"
+    },
+    {
+      "t" : 9.665,
+      "text" : "force to build what"
+    },
+    {
+      "t" : 9.747,
+      "text" : " we need.\\\"\")], \""
+    },
+    {
+      "t" : 9.825,
+      "text" : "sunk\")\nsources ="
+    },
+    {
+      "t" : 9.898,
+      "text" : " Buttons([b1,"
+    },
+    {
+      "t" : 9.975,
+      "text" : " b2, b3, b4"
+    },
+    {
+      "t" : 10.075,
+      "text" : "])\nb4 = Button"
+    },
+    {
+      "t" : 10.188,
+      "text" : "(\"Okafor platform\","
+    },
+    {
+      "t" : 10.299,
+      "text" : " @OpenUrl(\""
+    },
+    {
+      "t" : 10.427,
+      "text" : "https://example.com/okaf"
+    },
+    {
+      "t" : 10.549,
+      "text" : "or/platform\"), \"sec"
+    },
+    {
+      "t" : 10.664,
+      "text" : "ondary\")"
+    }
+  ],
+  "createdAt" : "2026-11-11T11:05:26Z",
+  "effort" : "low",
+  "format" : "openui-recording",
+  "inputTokens" : 15693,
+  "library" : "react-ui",
+  "model" : "claude-sonnet-5-5",
+  "outputTokens" : 777,
+  "patchOf" : "root = Stack([title, note, tbl, quotesHeader, quotes, sourcesHeader, sources])\ntitle = TextContent(\"Candidate Comparison: Housing, Transport & Schools\", \"large-heavy\")\nnote = Callout(\"info\", \"Illustrative data\", \"These candidates and quotes are fictional examples. Replace with verified statements and links before publishing.\")\ntbl = Table([Col(\"Candidate\", names), Col(\"Housing\", housing), Col(\"Transport\", transport), Col(\"Schools\", schools)])\nnames = [\"Maria Alvarez\", \"David Chen\", \"Priya Nair\"]\nhousing = [\"Build 5,000 affordable units; relax zoning near transit\", \"Tax incentives for private developers; first-time buyer grants\", \"Rent stabilization and expanded public housing\"]\ntransport = [\"Expand bus rapid transit and protected bike lanes\", \"Road repair first; modest rail extension\", \"Free fares for students and seniors; electrify bus fleet\"]\nschools = [\"Raise teacher pay 8%; universal pre-K\", \"School choice expansion; more charter capacity\", \"Smaller class sizes; fund after-school programs\"]\nquotesHeader = InlineHeader(\"In their own words\", \"Short quotes from each candidate\")\nquotes = Stack([q1, q2, q3])\nq1 = Card([TextContent(\"**Maria Alvarez**\", \"small-heavy\"), TextContent(\"\\\"Housing near transit is the fastest way to cut costs for working families.\\\"\")], \"sunk\")\nq2 = Card([TextContent(\"**David Chen**\", \"small-heavy\"), TextContent(\"\\\"Let builders build, and let families keep more of what they earn.\\\"\")], \"sunk\")\nq3 = Card([TextContent(\"**Priya Nair**\", \"small-heavy\"), TextContent(\"\\\"Every child deserves a well-funded classroom and an affordable place to call home.\\\"\")], \"sunk\")\nsourcesHeader = InlineHeader(\"Sources\", \"Candidate platform pages\")\nsources = Buttons([b1, b2, b3])\nb1 = Button(\"Alvarez platform\", @OpenUrl(\"https://example.com/alvarez/platform\"), \"secondary\")\nb2 = Button(\"Chen platform\", @OpenUrl(\"https://example.com/chen/platform\"), \"secondary\")\nb3 = Button(\"Nair platform\", @OpenUrl(\"https://example.com/nair/platform\"), \"secondary\")",
+  "request" : "Add a fourth candidate with positions on all three issues and highlight the housing row with a short summary callout.",
+  "servedBy" : "claude-sonnet-5-5",
+  "stopReason" : "end_turn",
+  "version" : 1
+}

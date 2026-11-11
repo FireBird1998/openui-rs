@@ -1,0 +1,206 @@
+{
+  "batchRequest" : {
+    "model" : "haiku",
+    "number" : 148,
+    "of" : 112,
+    "request" : "Rotate the kitchen and bathroom assignments, and add a monthly window-cleaning chore."
+  },
+  "chunks" : [
+    {
+      "t" : 3.687,
+      "text" : "col"
+    },
+    {
+      "t" : 3.705,
+      "text" : "Owner = Col(\""
+    },
+    {
+      "t" : 3.807,
+      "text" : "Responsible\", [\"J"
+    },
+    {
+      "t" : 3.885,
+      "text" : "amie\", \"Pri"
+    },
+    {
+      "t" : 3.908,
+      "text" : "ya\", \"Sam\", \""
+    },
+    {
+      "t" : 3.943,
+      "text" : "Al"
+    },
+    {
+      "t" : 4.005,
+      "text" : "ex\", \"Al"
+    },
+    {
+      "t" : 4.006,
+      "text" : "ex\", \"Sam\"])"
+    },
+    {
+      "t" : 4.035,
+      "text" : "\ncolRoom = Col"
+    },
+    {
+      "t" : 4.066,
+      "text" : "(\"Room\", [\"K"
+    },
+    {
+      "t" : 4.129,
+      "text" : "itchen\", \"Bath"
+    },
+    {
+      "t" : 4.167,
+      "text" : "room\", \"Living Room"
+    },
+    {
+      "t" : 4.214,
+      "text" : "\", \"Bedroom\","
+    },
+    {
+      "t" : 4.25,
+      "text" : " \"Laundry\", \""
+    },
+    {
+      "t" : 4.298,
+      "text" : "Windows\"])\ncolTask"
+    },
+    {
+      "t" : 4.336,
+      "text" : " = Col(\"Task\", "
+    },
+    {
+      "t" : 4.372,
+      "text" : "[\"Clean counters and s"
+    },
+    {
+      "t" : 4.409,
+      "text" : "ink\", \"Scrub to"
+    },
+    {
+      "t" : 4.41,
+      "text" : "ilet and shower\", \""
+    },
+    {
+      "t" : 4.446,
+      "text" : "Vacuum and dust\","
+    },
+    {
+      "t" : 4.482,
+      "text" : " \"Change sheets\", \""
+    },
+    {
+      "t" : 4.517,
+      "text" : "Run washer and dryer"
+    },
+    {
+      "t" : 4.551,
+      "text" : "\", \"W"
+    },
+    {
+      "t" : 4.585,
+      "text" : "ash inter"
+    },
+    {
+      "t" : 4.622,
+      "text" : "ior and exterior gl"
+    },
+    {
+      "t" : 4.657,
+      "text" : "ass\"])\ncolDue ="
+    },
+    {
+      "t" : 4.693,
+      "text" : " Col(\"Due\", [\""
+    },
+    {
+      "t" : 4.767,
+      "text" : "Mon\", \"Wed"
+    },
+    {
+      "t" : 4.79,
+      "text" : "\", \"Fri\", \""
+    },
+    {
+      "t" : 4.806,
+      "text" : "Sat\", \"Sun\","
+    },
+    {
+      "t" : 4.841,
+      "text" : " \"Monthly\"])"
+    },
+    {
+      "t" : 4.885,
+      "text" : "\ncolDone = Col(\""
+    },
+    {
+      "t" : 4.923,
+      "text" : "Done\", [doneKitch"
+    },
+    {
+      "t" : 4.976,
+      "text" : "en, doneBathroom"
+    },
+    {
+      "t" : 5.027,
+      "text" : ", doneLiving, do"
+    },
+    {
+      "t" : 5.076,
+      "text" : "neBedroom, done"
+    },
+    {
+      "t" : 5.143,
+      "text" : "Laundry, doneW"
+    },
+    {
+      "t" : 5.207,
+      "text" : "indows])\ndoneWind"
+    },
+    {
+      "t" : 5.284,
+      "text" : "ows = CheckBox"
+    },
+    {
+      "t" : 5.286,
+      "text" : "Group(\"done_windows"
+    },
+    {
+      "t" : 5.33,
+      "text" : "\", [windowItem])"
+    },
+    {
+      "t" : 5.381,
+      "text" : "\nwindowItem = Check"
+    },
+    {
+      "t" : 5.453,
+      "text" : "BoxItem(\"Complet"
+    },
+    {
+      "t" : 5.512,
+      "text" : "ed\", \"Windows done this"
+    },
+    {
+      "t" : 5.584,
+      "text" : " month\", \"windows_done\","
+    },
+    {
+      "t" : 5.586,
+      "text" : " false)"
+    }
+  ],
+  "createdAt" : "2026-11-11T11:07:37Z",
+  "effort" : "low",
+  "format" : "openui-recording",
+  "inputTokens" : 15591,
+  "library" : "react-ui",
+  "model" : "claude-haiku-5-5",
+  "outputTokens" : 871,
+  "patchOf" : "root = Stack([header, chores, tip])\nheader = InlineHeader(\"Household Chore Rotation\", \"Weekly room assignments and due days\")\nchores = Table([colRoom, colOwner, colTask, colDue, colDone])\ncolRoom = Col(\"Room\", [\"Kitchen\", \"Bathroom\", \"Living Room\", \"Bedroom\", \"Laundry\"])\ncolOwner = Col(\"Responsible\", [\"Alex\", \"Jamie\", \"Priya\", \"Sam\", \"Alex\"])\ncolTask = Col(\"Task\", [\"Clean counters and sink\", \"Scrub toilet and shower\", \"Vacuum and dust\", \"Change sheets\", \"Run washer and dryer\"])\ncolDue = Col(\"Due\", [\"Mon\", \"Wed\", \"Fri\", \"Sat\", \"Sun\"])\ncolDone = Col(\"Done\", [doneKitchen, doneBathroom, doneLiving, doneBedroom, doneLaundry])\ndoneKitchen = CheckBoxGroup(\"done_kitchen\", [kitchenItem])\nkitchenItem = CheckBoxItem(\"Completed\", \"Kitchen done this week\", \"kitchen_done\", false)\ndoneBathroom = CheckBoxGroup(\"done_bathroom\", [bathroomItem])\nbathroomItem = CheckBoxItem(\"Completed\", \"Bathroom done this week\", \"bathroom_done\", false)\ndoneLiving = CheckBoxGroup(\"done_living\", [livingItem])\nlivingItem = CheckBoxItem(\"Completed\", \"Living room done this week\", \"living_done\", false)\ndoneBedroom = CheckBoxGroup(\"done_bedroom\", [bedroomItem])\nbedroomItem = CheckBoxItem(\"Completed\", \"Bedroom done this week\", \"bedroom_done\", false)\ndoneLaundry = CheckBoxGroup(\"done_laundry\", [laundryItem])\nlaundryItem = CheckBoxItem(\"Completed\", \"Laundry done this week\", \"laundry_done\", false)\ntip = TextCallout(\"info\", \"Rotation tip\", \"Swap responsible people each week so everyone covers every room over time.\")",
+  "request" : "Rotate the kitchen and bathroom assignments, and add a monthly window-cleaning chore.",
+  "servedBy" : "claude-haiku-5-5",
+  "stopReason" : "end_turn",
+  "version" : 1
+}

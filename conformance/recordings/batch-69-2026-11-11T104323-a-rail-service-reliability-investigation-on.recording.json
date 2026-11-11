@@ -1,0 +1,932 @@
+{
+  "batchRequest" : {
+    "model" : "sonnet",
+    "number" : 69,
+    "request" : "A rail service reliability investigation: on-time percentages by operator, monthly cancellation trends and a table of the worst routes."
+  },
+  "chunks" : [
+    {
+      "t" : 0.788,
+      "text" : "root = Stack([header,"
+    },
+    {
+      "t" : 1.104,
+      "text" : " kpis, op"
+    },
+    {
+      "t" : 1.138,
+      "text" : "H"
+    },
+    {
+      "t" : 1.215,
+      "text" : "eader, opCh"
+    },
+    {
+      "t" : 1.253,
+      "text" : "art, tr"
+    },
+    {
+      "t" : 1.346,
+      "text" : "endHeader, tr"
+    },
+    {
+      "t" : 1.39,
+      "text" : "endChart, rout"
+    },
+    {
+      "t" : 1.464,
+      "text" : "e"
+    },
+    {
+      "t" : 1.509,
+      "text" : "Header, routeTable"
+    },
+    {
+      "t" : 1.511,
+      "text" : ", note"
+    },
+    {
+      "t" : 1.546,
+      "text" : "])\nheader = C"
+    },
+    {
+      "t" : 1.591,
+      "text" : "ardHeader(\"Rail"
+    },
+    {
+      "t" : 1.637,
+      "text" : " Service Reliability Invest"
+    },
+    {
+      "t" : 1.728,
+      "text" : "igation\", \"Operator pun"
+    },
+    {
+      "t" : 1.781,
+      "text" : "ctuality, cancellations"
+    },
+    {
+      "t" : 1.785,
+      "text" : " and probl"
+    },
+    {
+      "t" : 1.83,
+      "text" : "em routes over"
+    },
+    {
+      "t" : 1.877,
+      "text" : " the last 6"
+    },
+    {
+      "t" : 1.927,
+      "text" : " months\")\nkpis ="
+    },
+    {
+      "t" : 1.981,
+      "text" : " SnippetCardBl"
+    },
+    {
+      "t" : 2.032,
+      "text" : "ock([k1, k2,"
+    },
+    {
+      "t" : 2.081,
+      "text" : " k3])\nk1 ="
+    },
+    {
+      "t" : 2.134,
+      "text" : " SnippetCardItem"
+    },
+    {
+      "t" : 2.185,
+      "text" : "(\"ot"
+    },
+    {
+      "t" : 2.227,
+      "text" : "p\", k1l"
+    },
+    {
+      "t" : 2.278,
+      "text" : ", k1r)\nk1"
+    },
+    {
+      "t" : 2.331,
+      "text" : "l = IconText(k1"
+    },
+    {
+      "t" : 2.389,
+      "text" : "i,"
+    },
+    {
+      "t" : 2.47,
+      "text" : " \"neutral\", \"m\","
+    },
+    {
+      "t" : 2.471,
+      "text" : " \""
+    },
+    {
+      "t" : 2.576,
+      "text" : "Network On-Time\", \""
+    },
+    {
+      "t" : 2.635,
+      "text" : "Within"
+    },
+    {
+      "t" : 2.688,
+      "text" : " 5 min"
+    },
+    {
+      "t" : 2.689,
+      "text" : " of sch"
+    },
+    {
+      "t" : 2.748,
+      "text" : "edule\", false, \"horiz"
+    },
+    {
+      "t" : 2.842,
+      "text" : "ontal\")\nk1i ="
+    },
+    {
+      "t" : 2.846,
+      "text" : " Icon(\"clock\", \""
+    },
+    {
+      "t" : 2.9,
+      "text" : "trans"
+    },
+    {
+      "t" : 2.959,
+      "text" : "port\")\nk1r = B"
+    },
+    {
+      "t" : 3.015,
+      "text" : "oldText(\"number\", \"83"
+    },
+    {
+      "t" : 3.054,
+      "text" : ".9%\", \"-"
+    },
+    {
+      "t" : 3.14,
+      "text" : "1.2"
+    },
+    {
+      "t" : 3.142,
+      "text" : "%\", \"metric\")\nk"
+    },
+    {
+      "t" : 3.193,
+      "text" : "2 = SnippetC"
+    },
+    {
+      "t" : 3.245,
+      "text" : "ardItem(\"canc\", k"
+    },
+    {
+      "t" : 3.314,
+      "text" : "2l, k2r)"
+    },
+    {
+      "t" : 3.315,
+      "text" : "\nk2l = IconText("
+    },
+    {
+      "t" : 3.36,
+      "text" : "k2i, \"neutral"
+    },
+    {
+      "t" : 3.419,
+      "text" : "\", \"m\", \"Canc"
+    },
+    {
+      "t" : 3.471,
+      "text" : "ellation Rate\", \"June"
+    },
+    {
+      "t" : 3.512,
+      "text" : "\","
+    },
+    {
+      "t" : 3.563,
+      "text" : " false, \"horizontal\")"
+    },
+    {
+      "t" : 3.624,
+      "text" : "\nk2i = Icon"
+    },
+    {
+      "t" : 3.693,
+      "text" : "(\"train"
+    },
+    {
+      "t" : 3.694,
+      "text" : "-front"
+    },
+    {
+      "t" : 3.743,
+      "text" : "\", \"transport\")\nk2"
+    },
+    {
+      "t" : 3.813,
+      "text" : "r = BoldText(\"number"
+    },
+    {
+      "t" : 3.814,
+      "text" : "\", \"3.4"
+    },
+    {
+      "t" : 3.858,
+      "text" : "%\", \"+0.6"
+    },
+    {
+      "t" : 3.899,
+      "text" : "%\", \"metric\")\nk"
+    },
+    {
+      "t" : 3.948,
+      "text" : "3 = SnippetC"
+    },
+    {
+      "t" : 3.997,
+      "text" : "ardItem(\"worst\", k"
+    },
+    {
+      "t" : 4.046,
+      "text" : "3l, k3r)"
+    },
+    {
+      "t" : 4.154,
+      "text" : "\nk3l = IconText("
+    },
+    {
+      "t" : 4.155,
+      "text" : "k3i, \"neutral"
+    },
+    {
+      "t" : 4.203,
+      "text" : "\", \"m\", \"We"
+    },
+    {
+      "t" : 4.271,
+      "text" : "akest Operator\", \""
+    },
+    {
+      "t" : 4.323,
+      "text" : "Lowest on-time\", false"
+    },
+    {
+      "t" : 4.38,
+      "text" : ", \"horizontal\")"
+    },
+    {
+      "t" : 4.424,
+      "text" : "\nk3i = Icon(\""
+    },
+    {
+      "t" : 4.475,
+      "text" : "triangle-alert\", \""
+    },
+    {
+      "t" : 4.521,
+      "text" : "alerts\")\nk3r"
+    },
+    {
+      "t" : 4.597,
+      "text" : " = BoldText(\"text"
+    },
+    {
+      "t" : 4.674,
+      "text" : "\", \"Northern Link"
+    },
+    {
+      "t" : 4.739,
+      "text" : "\", \"76"
+    },
+    {
+      "t" : 4.821,
+      "text" : ".2%\", \"text"
+    },
+    {
+      "t" : 4.886,
+      "text" : "\")\nopHeader = In"
+    },
+    {
+      "t" : 4.969,
+      "text" : "lineHeader(\"On-"
+    },
+    {
+      "t" : 5.04,
+      "text" : "Time"
+    },
+    {
+      "t" : 5.114,
+      "text" : " Performance by Operator\", \""
+    },
+    {
+      "t" : 5.172,
+      "text" : "Percentage of"
+    },
+    {
+      "t" : 5.226,
+      "text" : " services"
+    },
+    {
+      "t" : 5.279,
+      "text" : " arriving within 5 min"
+    },
+    {
+      "t" : 5.333,
+      "text" : "utes\")\nopChart ="
+    },
+    {
+      "t" : 5.386,
+      "text" : " HorizontalBarCh"
+    },
+    {
+      "t" : 5.445,
+      "text" : "art("
+    },
+    {
+      "t" : 5.502,
+      "text" : "ops, [Series(\"On"
+    },
+    {
+      "t" : 5.554,
+      "text" : "-time %\", ot"
+    },
+    {
+      "t" : 5.639,
+      "text" : "p)], \"grouped\","
+    },
+    {
+      "t" : 5.641,
+      "text" : " \"On"
+    },
+    {
+      "t" : 5.84,
+      "text" : "-time %\", \"Operator"
+    },
+    {
+      "t" : 5.923,
+      "text" : "\")\nops = [\""
+    },
+    {
+      "t" : 5.924,
+      "text" : "Co"
+    },
+    {
+      "t" : 6.015,
+      "text" : "ast"
+    },
+    {
+      "t" : 6.15,
+      "text" : "al Express\", \"Met"
+    },
+    {
+      "t" : 6.152,
+      "text" : "ro R"
+    },
+    {
+      "t" : 6.234,
+      "text" : "ail\", \"Midland Tr"
+    },
+    {
+      "t" : 6.307,
+      "text" : "ains\", \"Eastern"
+    },
+    {
+      "t" : 6.726,
+      "text" : " Railways"
+    },
+    {
+      "t" : 6.728,
+      "text" : "\", \"Penn"
+    },
+    {
+      "t" : 6.956,
+      "text" : "ine R"
+    },
+    {
+      "t" : 7.019,
+      "text" : "ail\", \"Northern Link"
+    },
+    {
+      "t" : 7.088,
+      "text" : "\"]\notp = [91"
+    },
+    {
+      "t" : 7.155,
+      "text" : ".4"
+    },
+    {
+      "t" : 7.218,
+      "text" : ", 88"
+    },
+    {
+      "t" : 7.278,
+      "text" : ".7"
+    },
+    {
+      "t" : 7.34,
+      "text" : ", 85"
+    },
+    {
+      "t" : 7.409,
+      "text" : ".3"
+    },
+    {
+      "t" : 7.467,
+      "text" : ", 82.9, 79"
+    },
+    {
+      "t" : 7.549,
+      "text" : ".1, 76.2]"
+    },
+    {
+      "t" : 7.704,
+      "text" : "\ntrendHeader = In"
+    },
+    {
+      "t" : 7.78,
+      "text" : "lineHeader(\"Mon"
+    },
+    {
+      "t" : 7.86,
+      "text" : "thly Cancellation"
+    },
+    {
+      "t" : 7.955,
+      "text" : " Trends\", \"Cancel"
+    },
+    {
+      "t" : 8.022,
+      "text" : "led services as %"
+    },
+    {
+      "t" : 8.093,
+      "text" : " of sc"
+    },
+    {
+      "t" : 8.166,
+      "text" : "heduled\")\ntrendCh"
+    },
+    {
+      "t" : 8.239,
+      "text" : "art = LineChart(months"
+    },
+    {
+      "t" : 8.321,
+      "text" : ", [Series(\"North"
+    },
+    {
+      "t" : 8.417,
+      "text" : "ern Link\", n"
+    },
+    {
+      "t" : 8.497,
+      "text" : "l), Series(\"Penn"
+    },
+    {
+      "t" : 8.57,
+      "text" : "ine Rail\", pr),"
+    },
+    {
+      "t" : 8.663,
+      "text" : " Series(\"Eastern"
+    },
+    {
+      "t" : 8.671,
+      "text" : " Railways\", er"
+    },
+    {
+      "t" : 8.755,
+      "text" : "), Series(\"Co"
+    },
+    {
+      "t" : 8.838,
+      "text" : "astal Express\", ce"
+    },
+    {
+      "t" : 8.933,
+      "text" : ")], \"natural\", \""
+    },
+    {
+      "t" : 9.031,
+      "text" : "Month\", \"Cancellation"
+    },
+    {
+      "t" : 9.133,
+      "text" : " %"
+    },
+    {
+      "t" : 9.216,
+      "text" : "\")\nmonths = [\"J"
+    },
+    {
+      "t" : 9.31,
+      "text" : "an\", \"Feb\", \""
+    },
+    {
+      "t" : 9.376,
+      "text" : "Mar\", \"Apr"
+    },
+    {
+      "t" : 9.441,
+      "text" : "\", \"May\", \"Jun"
+    },
+    {
+      "t" : 9.512,
+      "text" : "\"]\nnl = [4"
+    },
+    {
+      "t" : 9.6,
+      "text" : ".8, 5.2"
+    },
+    {
+      "t" : 9.704,
+      "text" : ", 5.9, 6"
+    },
+    {
+      "t" : 9.787,
+      "text" : ".4"
+    },
+    {
+      "t" : 9.854,
+      "text" : ", 7.1, 7"
+    },
+    {
+      "t" : 9.928,
+      "text" : ".8]\npr = ["
+    },
+    {
+      "t" : 10.027,
+      "text" : "3.9, 4.1"
+    },
+    {
+      "t" : 10.141,
+      "text" : ", 4.6, 4"
+    },
+    {
+      "t" : 10.144,
+      "text" : ".4"
+    },
+    {
+      "t" : 10.21,
+      "text" : ", 5.0"
+    },
+    {
+      "t" : 10.326,
+      "text" : ", 5.3"
+    },
+    {
+      "t" : 10.328,
+      "text" : "]\ner = [3.1"
+    },
+    {
+      "t" : 10.403,
+      "text" : ", 3.4, 3"
+    },
+    {
+      "t" : 10.479,
+      "text" : ".3, 3.8"
+    },
+    {
+      "t" : 10.564,
+      "text" : ", 4.0, 4"
+    },
+    {
+      "t" : 10.68,
+      "text" : ".2]\nce = ["
+    },
+    {
+      "t" : 10.773,
+      "text" : "1.2"
+    },
+    {
+      "t" : 10.864,
+      "text" : ", 1.1, 1"
+    },
+    {
+      "t" : 10.948,
+      "text" : ".4, 1.3"
+    },
+    {
+      "t" : 11.038,
+      "text" : ", 1.5, 1"
+    },
+    {
+      "t" : 11.262,
+      "text" : ".4]\nrouteHe"
+    },
+    {
+      "t" : 11.386,
+      "text" : "ader = InlineHeader"
+    },
+    {
+      "t" : 11.387,
+      "text" : "(\"Worst Perform"
+    },
+    {
+      "t" : 11.517,
+      "text" : "ing Routes\", \""
+    },
+    {
+      "t" : 11.641,
+      "text" : "Ranked by on-time perc"
+    },
+    {
+      "t" : 11.84,
+      "text" : "entage\")"
+    },
+    {
+      "t" : 11.841,
+      "text" : "\nrouteTable = Table"
+    },
+    {
+      "t" : 12.014,
+      "text" : "([Col(\"Route\", rout"
+    },
+    {
+      "t" : 12.015,
+      "text" : "es), Col(\"Operator"
+    },
+    {
+      "t" : 12.108,
+      "text" : "\", rout"
+    },
+    {
+      "t" : 12.23,
+      "text" : "eOps), Col(\"On"
+    },
+    {
+      "t" : 12.359,
+      "text" : "-Time %\", rout"
+    },
+    {
+      "t" : 12.509,
+      "text" : "eOtp,"
+    },
+    {
+      "t" : 12.51,
+      "text" : " \"number\"), Col(\""
+    },
+    {
+      "t" : 12.616,
+      "text" : "Cancel"
+    },
+    {
+      "t" : 12.703,
+      "text" : "led %\", rout"
+    },
+    {
+      "t" : 12.789,
+      "text" : "eCanc, \"number\""
+    },
+    {
+      "t" : 12.866,
+      "text" : "), Col(\"Avg"
+    },
+    {
+      "t" : 12.974,
+      "text" : " Delay (min)\", route"
+    },
+    {
+      "t" : 13.132,
+      "text" : "Delay, \"number\")])"
+    },
+    {
+      "t" : 13.369,
+      "text" : "\nroutes = [\"Le"
+    },
+    {
+      "t" : 13.507,
+      "text" : "eds –"
+    },
+    {
+      "t" : 13.677,
+      "text" : " Manchester"
+    },
+    {
+      "t" : 13.832,
+      "text" : " Victoria\", \"She"
+    },
+    {
+      "t" : 13.991,
+      "text" : "ffield – H"
+    },
+    {
+      "t" : 14.118,
+      "text" : "ull\", \"Li"
+    },
+    {
+      "t" : 14.252,
+      "text" : "verpool – Newcast"
+    },
+    {
+      "t" : 14.415,
+      "text" : "le\", \"Norwich –"
+    },
+    {
+      "t" : 14.76,
+      "text" : " Pe"
+    },
+    {
+      "t" : 14.762,
+      "text" : "terborough\", \"Birm"
+    },
+    {
+      "t" : 14.929,
+      "text" : "ingham – N"
+    },
+    {
+      "t" : 15.083,
+      "text" : "ottingham\", \"Pre"
+    },
+    {
+      "t" : 15.229,
+      "text" : "ston – Bl"
+    },
+    {
+      "t" : 15.361,
+      "text" : "ackpool\"]\nroute"
+    },
+    {
+      "t" : 15.645,
+      "text" : "Ops = [\"Northern"
+    },
+    {
+      "t" : 15.649,
+      "text" : " Link\", \"Northern"
+    },
+    {
+      "t" : 15.814,
+      "text" : " Link\", \"Pennine"
+    },
+    {
+      "t" : 16.038,
+      "text" : " Rail\", \"Eastern"
+    },
+    {
+      "t" : 16.225,
+      "text" : " Railways\", \"Midland"
+    },
+    {
+      "t" : 16.431,
+      "text" : " Trains\", \"Penn"
+    },
+    {
+      "t" : 16.587,
+      "text" : "ine Rail\"]\nrout"
+    },
+    {
+      "t" : 16.78,
+      "text" : "eOtp = [66"
+    },
+    {
+      "t" : 16.971,
+      "text" : ".8, 69"
+    },
+    {
+      "t" : 17.174,
+      "text" : ".4, 72"
+    },
+    {
+      "t" : 17.355,
+      "text" : ".1, 74.5"
+    },
+    {
+      "t" : 17.553,
+      "text" : ", 76"
+    },
+    {
+      "t" : 17.838,
+      "text" : ".3, 77.9]"
+    },
+    {
+      "t" : 17.844,
+      "text" : "\nrouteCanc = ["
+    },
+    {
+      "t" : 18.03,
+      "text" : "9.2"
+    },
+    {
+      "t" : 18.207,
+      "text" : ", 8.1"
+    },
+    {
+      "t" : 18.485,
+      "text" : ", 7.4"
+    },
+    {
+      "t" : 18.488,
+      "text" : ", 6.3"
+    },
+    {
+      "t" : 18.65,
+      "text" : ", 5.6, 5"
+    },
+    {
+      "t" : 18.959,
+      "text" : ".1]\nrouteDel"
+    },
+    {
+      "t" : 18.963,
+      "text" : "ay = [11.4, "
+    },
+    {
+      "t" : 19.157,
+      "text" : "9"
+    },
+    {
+      "t" : 19.355,
+      "text" : ".8, 9"
+    },
+    {
+      "t" : 19.55,
+      "text" : ".1"
+    },
+    {
+      "t" : 19.731,
+      "text" : ", 8.2"
+    },
+    {
+      "t" : 19.96,
+      "text" : ", 7.5, 7"
+    },
+    {
+      "t" : 20.157,
+      "text" : ".0]\nnote = Call"
+    },
+    {
+      "t" : 20.36,
+      "text" : "out(\"warning\", \"Key"
+    },
+    {
+      "t" : 20.563,
+      "text" : " Finding\", \"Northern"
+    },
+    {
+      "t" : 20.776,
+      "text" : " Link has wor"
+    },
+    {
+      "t" : 20.971,
+      "text" : "sened every"
+    },
+    {
+      "t" : 21.118,
+      "text" : " month,"
+    },
+    {
+      "t" : 21.24,
+      "text" : " with cancellations up"
+    },
+    {
+      "t" : 21.401,
+      "text" : " 62"
+    },
+    {
+      "t" : 21.55,
+      "text" : "% since January. Its"
+    },
+    {
+      "t" : 21.713,
+      "text" : " two rout"
+    },
+    {
+      "t" : 21.88,
+      "text" : "es d"
+    },
+    {
+      "t" : 22.066,
+      "text" : "ominate the worst-performer"
+    },
+    {
+      "t" : 22.383,
+      "text" : " list, suggesting a syst"
+    },
+    {
+      "t" : 22.386,
+      "text" : "emic fleet or crew"
+    },
+    {
+      "t" : 22.521,
+      "text" : "ing issue.\")"
+    }
+  ],
+  "createdAt" : "2026-11-11T10:43:23Z",
+  "effort" : "low",
+  "format" : "openui-recording",
+  "inputTokens" : 14509,
+  "library" : "react-ui",
+  "model" : "claude-sonnet-5-5",
+  "outputTokens" : 1400,
+  "request" : "A rail service reliability investigation: on-time percentages by operator, monthly cancellation trends and a table of the worst routes.",
+  "servedBy" : "claude-sonnet-5-5",
+  "stopReason" : "end_turn",
+  "version" : 1
+}

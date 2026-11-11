@@ -1,0 +1,980 @@
+{
+  "batchRequest" : {
+    "model" : "sonnet",
+    "number" : 109,
+    "request" : "A scholarship application tracker with eligibility notes, deadlines, required documents and submission-status tags."
+  },
+  "chunks" : [
+    {
+      "t" : 0.73,
+      "text" : "root = Stack([header"
+    },
+    {
+      "t" : 1.037,
+      "text" : ", k"
+    },
+    {
+      "t" : 1.07,
+      "text" : "pis"
+    },
+    {
+      "t" : 1.091,
+      "text" : ", t"
+    },
+    {
+      "t" : 1.138,
+      "text" : "abs])"
+    },
+    {
+      "t" : 1.228,
+      "text" : "\nheader = C"
+    },
+    {
+      "t" : 1.267,
+      "text" : "ardHeader(\"Schol"
+    },
+    {
+      "t" : 1.3,
+      "text" : "arship Application Tracker"
+    },
+    {
+      "t" : 1.378,
+      "text" : "\", \"De"
+    },
+    {
+      "t" : 1.414,
+      "text" : "adlines, eligibility"
+    },
+    {
+      "t" : 1.444,
+      "text" : ", documents and submission status\")"
+    },
+    {
+      "t" : 1.447,
+      "text" : "\nkpis"
+    },
+    {
+      "t" : 1.479,
+      "text" : " = SnippetCardB"
+    },
+    {
+      "t" : 1.512,
+      "text" : "lock([k1, k2"
+    },
+    {
+      "t" : 1.544,
+      "text" : ", k3, k4])"
+    },
+    {
+      "t" : 1.577,
+      "text" : "\nk1 = Snippet"
+    },
+    {
+      "t" : 1.611,
+      "text" : "CardItem(\"total\", k"
+    },
+    {
+      "t" : 1.648,
+      "text" : "1l, k1r)"
+    },
+    {
+      "t" : 1.691,
+      "text" : "\nk1l = IconText("
+    },
+    {
+      "t" : 1.728,
+      "text" : "Icon(\"gra"
+    },
+    {
+      "t" : 1.771,
+      "text" : "duation-cap\", \"education"
+    },
+    {
+      "t" : 1.857,
+      "text" : "\"), \"neutral\", \""
+    },
+    {
+      "t" : 1.895,
+      "text" : "m\", \"Total"
+    },
+    {
+      "t" : 1.934,
+      "text" : " Appl"
+    },
+    {
+      "t" : 1.958,
+      "text" : "ications\", \"This"
+    },
+    {
+      "t" : 1.975,
+      "text" : " cycle\", false, \"hor"
+    },
+    {
+      "t" : 2.014,
+      "text" : "izontal\")\nk1r"
+    },
+    {
+      "t" : 2.055,
+      "text" : " = BoldText(\"number\","
+    },
+    {
+      "t" : 2.096,
+      "text" : " \"6\")\nk2 ="
+    },
+    {
+      "t" : 2.13,
+      "text" : " SnippetCardItem"
+    },
+    {
+      "t" : 2.171,
+      "text" : "(\"submitted\", k2l"
+    },
+    {
+      "t" : 2.213,
+      "text" : ", k2r)\nk2"
+    },
+    {
+      "t" : 2.271,
+      "text" : "l = IconText(Ic"
+    },
+    {
+      "t" : 2.33,
+      "text" : "on(\"circle-check\", \""
+    },
+    {
+      "t" : 2.379,
+      "text" : "status\"), \"success\", \"m"
+    },
+    {
+      "t" : 2.426,
+      "text" : "\", \"Submitted\", \""
+    },
+    {
+      "t" : 2.475,
+      "text" : "Awaiting decision\","
+    },
+    {
+      "t" : 2.526,
+      "text" : " false, \"horizontal\")"
+    },
+    {
+      "t" : 2.575,
+      "text" : "\nk2r = Bold"
+    },
+    {
+      "t" : 2.639,
+      "text" : "Text(\"number\", \"2\")"
+    },
+    {
+      "t" : 2.719,
+      "text" : "\nk3 = Snippet"
+    },
+    {
+      "t" : 2.804,
+      "text" : "CardItem(\"progress\","
+    },
+    {
+      "t" : 2.885,
+      "text" : " k3l, k3r)"
+    },
+    {
+      "t" : 2.956,
+      "text" : "\nk3l = IconText"
+    },
+    {
+      "t" : 3.012,
+      "text" : "(Icon(\"p"
+    },
+    {
+      "t" : 3.056,
+      "text" : "enc"
+    },
+    {
+      "t" : 3.099,
+      "text" : "il\", \"t"
+    },
+    {
+      "t" : 3.145,
+      "text" : "ools\"), \"warning\", \""
+    },
+    {
+      "t" : 3.19,
+      "text" : "m\", \"In Progress\","
+    },
+    {
+      "t" : 3.236,
+      "text" : " \"Drafting\", false,"
+    },
+    {
+      "t" : 3.283,
+      "text" : " \"horizontal\")\nk"
+    },
+    {
+      "t" : 3.335,
+      "text" : "3r = BoldText(\""
+    },
+    {
+      "t" : 3.39,
+      "text" : "number\", \"3\")\nk4"
+    },
+    {
+      "t" : 3.476,
+      "text" : " = SnippetCard"
+    },
+    {
+      "t" : 3.48,
+      "text" : "Item(\"due\", k4l"
+    },
+    {
+      "t" : 3.539,
+      "text" : ", k4r)\nk4"
+    },
+    {
+      "t" : 3.598,
+      "text" : "l = IconText(Ic"
+    },
+    {
+      "t" : 3.681,
+      "text" : "on(\"clock\", \"time"
+    },
+    {
+      "t" : 3.755,
+      "text" : "\"), \"danger\", \"m"
+    },
+    {
+      "t" : 3.834,
+      "text" : "\", \"Due in"
+    },
+    {
+      "t" : 3.894,
+      "text" : " 14"
+    },
+    {
+      "t" : 3.959,
+      "text" : " Days\", \"Need"
+    },
+    {
+      "t" : 4.032,
+      "text" : "s attention\", false, \"hor"
+    },
+    {
+      "t" : 4.086,
+      "text" : "izontal\")\nk4r"
+    },
+    {
+      "t" : 4.152,
+      "text" : " = BoldText(\"number\","
+    },
+    {
+      "t" : 4.224,
+      "text" : " \"2\")\ntabs ="
+    },
+    {
+      "t" : 4.274,
+      "text" : " Tabs([tabO"
+    },
+    {
+      "t" : 4.327,
+      "text" : "verview, tabDocs"
+    },
+    {
+      "t" : 4.373,
+      "text" : ", tabE"
+    },
+    {
+      "t" : 4.421,
+      "text" : "ligibility])\ntabO"
+    },
+    {
+      "t" : 4.472,
+      "text" : "verview = TabItem(\""
+    },
+    {
+      "t" : 4.528,
+      "text" : "overview\", \"Overview\","
+    },
+    {
+      "t" : 4.585,
+      "text" : " [overvi"
+    },
+    {
+      "t" : 4.643,
+      "text" : "ewCall"
+    },
+    {
+      "t" : 4.757,
+      "text" : "out,"
+    },
+    {
+      "t" : 4.814,
+      "text" : " overviewTable])\nover"
+    },
+    {
+      "t" : 4.817,
+      "text" : "viewCallout = Call"
+    },
+    {
+      "t" : 4.926,
+      "text" : "out(\"warning\", \"Up"
+    },
+    {
+      "t" : 4.929,
+      "text" : "coming deadline"
+    },
+    {
+      "t" : 4.998,
+      "text" : "\", \"Gates"
+    },
+    {
+      "t" : 5.078,
+      "text" : " Mer"
+    },
+    {
+      "t" : 5.145,
+      "text" : "it Scholarship is due"
+    },
+    {
+      "t" : 5.236,
+      "text" : " on Nov 15 "
+    },
+    {
+      "t" : 5.301,
+      "text" : "— two"
+    },
+    {
+      "t" : 5.382,
+      "text" : " docum"
+    },
+    {
+      "t" : 5.46,
+      "text" : "ents are"
+    },
+    {
+      "t" : 5.525,
+      "text" : " still missing.\")\novervi"
+    },
+    {
+      "t" : 5.584,
+      "text" : "ewTable = Table(["
+    },
+    {
+      "t" : 5.671,
+      "text" : "Col(\"Scholarship\","
+    },
+    {
+      "t" : 5.758,
+      "text" : " names), Col(\"Award"
+    },
+    {
+      "t" : 5.832,
+      "text" : "\", awards), Col(\""
+    },
+    {
+      "t" : 5.919,
+      "text" : "Deadline\", de"
+    },
+    {
+      "t" : 5.995,
+      "text" : "adlines), Col(\""
+    },
+    {
+      "t" : 6.104,
+      "text" : "Status\", status"
+    },
+    {
+      "t" : 6.105,
+      "text" : "Tags)])\nnames"
+    },
+    {
+      "t" : 6.183,
+      "text" : " = [\"G"
+    },
+    {
+      "t" : 6.258,
+      "text" : "ates Merit Scholar"
+    },
+    {
+      "t" : 6.33,
+      "text" : "ship\", \"STEM Le"
+    },
+    {
+      "t" : 6.375,
+      "text" : "aders Gr"
+    },
+    {
+      "t" : 6.468,
+      "text" : "ant\", \"Community"
+    },
+    {
+      "t" : 6.555,
+      "text" : " Service"
+    },
+    {
+      "t" : 6.635,
+      "text" : " Award\", \"First-"
+    },
+    {
+      "t" : 6.707,
+      "text" : "Gen Scholars"
+    },
+    {
+      "t" : 6.772,
+      "text" : " Fund\", \"Global"
+    },
+    {
+      "t" : 6.846,
+      "text" : " Cit"
+    },
+    {
+      "t" : 6.931,
+      "text" : "izen"
+    },
+    {
+      "t" : 7.005,
+      "text" : " F"
+    },
+    {
+      "t" : 7.125,
+      "text" : "ellowship\", \"Ar"
+    },
+    {
+      "t" : 7.126,
+      "text" : "ts & Hum"
+    },
+    {
+      "t" : 7.203,
+      "text" : "anities Pr"
+    },
+    {
+      "t" : 7.279,
+      "text" : "ize\"]\nawards = "
+    },
+    {
+      "t" : 7.355,
+      "text" : "[\"$20"
+    },
+    {
+      "t" : 7.435,
+      "text" : ",000\", \"$10"
+    },
+    {
+      "t" : 7.513,
+      "text" : ",000\", \"$5,000"
+    },
+    {
+      "t" : 7.594,
+      "text" : "\", \"$8"
+    },
+    {
+      "t" : 7.682,
+      "text" : ",000\", \"$15,000"
+    },
+    {
+      "t" : 7.769,
+      "text" : "\", \"$3"
+    },
+    {
+      "t" : 7.855,
+      "text" : ",500\"]\ndeadl"
+    },
+    {
+      "t" : 7.996,
+      "text" : "ines = [\"2025-11"
+    },
+    {
+      "t" : 8.092,
+      "text" : "-15\", \"2025-11"
+    },
+    {
+      "t" : 8.183,
+      "text" : "-30\", \"2025-12"
+    },
+    {
+      "t" : 8.274,
+      "text" : "-05"
+    },
+    {
+      "t" : 8.345,
+      "text" : "\", \"2025-12-15"
+    },
+    {
+      "t" : 8.411,
+      "text" : "\", \"2026-01-10"
+    },
+    {
+      "t" : 8.478,
+      "text" : "\", \"2026-02-01"
+    },
+    {
+      "t" : 8.591,
+      "text" : "\"]\nstatu"
+    },
+    {
+      "t" : 8.592,
+      "text" : "ses = [\"In"
+    },
+    {
+      "t" : 8.666,
+      "text" : " Progress\", \"In"
+    },
+    {
+      "t" : 8.747,
+      "text" : " Progress\", \"Submit"
+    },
+    {
+      "t" : 8.822,
+      "text" : "ted\", \"Submitted\","
+    },
+    {
+      "t" : 8.965,
+      "text" : " \"Not Started\", \"In"
+    },
+    {
+      "t" : 8.969,
+      "text" : " Progress\"]\nstatus"
+    },
+    {
+      "t" : 9.057,
+      "text" : "Tags = @Each(stat"
+    },
+    {
+      "t" : 9.154,
+      "text" : "uses, \"s"
+    },
+    {
+      "t" : 9.3,
+      "text" : "\", Tag(s, null"
+    },
+    {
+      "t" : 9.302,
+      "text" : ", \"sm\", s == \""
+    },
+    {
+      "t" : 9.401,
+      "text" : "Submitted\" ? \""
+    },
+    {
+      "t" : 9.496,
+      "text" : "success\" : s == \"In"
+    },
+    {
+      "t" : 9.599,
+      "text" : " Progress\" ? \"warning"
+    },
+    {
+      "t" : 9.706,
+      "text" : "\" : \"neutral\""
+    },
+    {
+      "t" : 9.809,
+      "text" : "))\ntabDocs ="
+    },
+    {
+      "t" : 9.907,
+      "text" : " TabItem(\"docs\","
+    },
+    {
+      "t" : 10.01,
+      "text" : " \"Required Documents\", ["
+    },
+    {
+      "t" : 10.117,
+      "text" : "docsAccordion])"
+    },
+    {
+      "t" : 10.227,
+      "text" : "\ndocsAccordion ="
+    },
+    {
+      "t" : 10.327,
+      "text" : " Accordion([a"
+    },
+    {
+      "t" : 10.477,
+      "text" : "1, a2, a3])"
+    },
+    {
+      "t" : 10.481,
+      "text" : "\na1 = Accord"
+    },
+    {
+      "t" : 10.572,
+      "text" : "ionItem(\"gates\", \""
+    },
+    {
+      "t" : 10.706,
+      "text" : "Gates Merit Sc"
+    },
+    {
+      "t" : 10.818,
+      "text" : "holarship\", [d"
+    },
+    {
+      "t" : 10.908,
+      "text" : "1])\nd1 = E"
+    },
+    {
+      "t" : 11.008,
+      "text" : "ntityList(["
+    },
+    {
+      "t" : 11.133,
+      "text" : "{"
+    },
+    {
+      "t" : 11.212,
+      "text" : "left: \"Official"
+    },
+    {
+      "t" : 11.297,
+      "text" : " transcript\", right: \""
+    },
+    {
+      "t" : 11.381,
+      "text" : "Received\"}, {left: \""
+    },
+    {
+      "t" : 11.474,
+      "text" : "Two recommendation letters"
+    },
+    {
+      "t" : 11.563,
+      "text" : "\", right: \"1"
+    },
+    {
+      "t" : 11.679,
+      "text" : " of 2\"}, {"
+    },
+    {
+      "t" : 11.788,
+      "text" : "left: \"Personal essay"
+    },
+    {
+      "t" : 11.877,
+      "text" : " (650"
+    },
+    {
+      "t" : 11.979,
+      "text" : " words)\", right: \""
+    },
+    {
+      "t" : 12.147,
+      "text" : "Draft\"}, {left:"
+    },
+    {
+      "t" : 12.15,
+      "text" : " \"Financ"
+    },
+    {
+      "t" : 12.252,
+      "text" : "ial aid form"
+    },
+    {
+      "t" : 12.353,
+      "text" : "\", right: \"Missing\""
+    },
+    {
+      "t" : 12.461,
+      "text" : "}])"
+    },
+    {
+      "t" : 12.555,
+      "text" : "\na2 = Accord"
+    },
+    {
+      "t" : 12.677,
+      "text" : "ionItem(\"stem\", \""
+    },
+    {
+      "t" : 12.809,
+      "text" : "STEM Leaders"
+    },
+    {
+      "t" : 12.983,
+      "text" : " Grant\", [d2])"
+    },
+    {
+      "t" : 13.097,
+      "text" : "\nd2 = EntityList"
+    },
+    {
+      "t" : 13.196,
+      "text" : "([{left: \"Trans"
+    },
+    {
+      "t" : 13.284,
+      "text" : "cript\", right: \"Received"
+    },
+    {
+      "t" : 13.379,
+      "text" : "\"}, {left: \""
+    },
+    {
+      "t" : 13.482,
+      "text" : "Research stat"
+    },
+    {
+      "t" : 13.599,
+      "text" : "ement\", right: \"Draft"
+    },
+    {
+      "t" : 13.725,
+      "text" : "\"}, {left: \""
+    },
+    {
+      "t" : 13.827,
+      "text" : "Faculty recommendation\","
+    },
+    {
+      "t" : 13.951,
+      "text" : " right: \"Requ"
+    },
+    {
+      "t" : 14.049,
+      "text" : "ested\"}])\na3 "
+    },
+    {
+      "t" : 14.144,
+      "text" : "= AccordionItem(\""
+    },
+    {
+      "t" : 14.234,
+      "text" : "service"
+    },
+    {
+      "t" : 14.333,
+      "text" : "\", \"Community Service Award"
+    },
+    {
+      "t" : 14.433,
+      "text" : "\", [d3])\nd3"
+    },
+    {
+      "t" : 14.624,
+      "text" : " = EntityList([{"
+    },
+    {
+      "t" : 14.625,
+      "text" : "left: \"Service h"
+    },
+    {
+      "t" : 14.75,
+      "text" : "ours log\", right: \"Subm"
+    },
+    {
+      "t" : 14.942,
+      "text" : "itted\"}, {left:"
+    },
+    {
+      "t" : 14.947,
+      "text" : " \"Supervisor re"
+    },
+    {
+      "t" : 15.068,
+      "text" : "ference\", right: \"Submit"
+    },
+    {
+      "t" : 15.189,
+      "text" : "ted\"}, {left: \""
+    },
+    {
+      "t" : 15.334,
+      "text" : "Short"
+    },
+    {
+      "t" : 15.46,
+      "text" : " essay\", right: \"Subm"
+    },
+    {
+      "t" : 15.571,
+      "text" : "itted\"}])\ntab"
+    },
+    {
+      "t" : 15.681,
+      "text" : "Eligibility = TabIt"
+    },
+    {
+      "t" : 15.797,
+      "text" : "em(\"eligibility\", \""
+    },
+    {
+      "t" : 15.907,
+      "text" : "Eligibility Notes"
+    },
+    {
+      "t" : 16.024,
+      "text" : "\", [eligT"
+    },
+    {
+      "t" : 16.143,
+      "text" : "able])\neligTable ="
+    },
+    {
+      "t" : 16.366,
+      "text" : " Table([Col(\"Sc"
+    },
+    {
+      "t" : 16.369,
+      "text" : "holarship\", names"
+    },
+    {
+      "t" : 16.5,
+      "text" : "), Col(\"E"
+    },
+    {
+      "t" : 16.743,
+      "text" : "ligibility Notes\", not"
+    },
+    {
+      "t" : 16.748,
+      "text" : "es)])\nnotes = "
+    },
+    {
+      "t" : 16.866,
+      "text" : "[\""
+    },
+    {
+      "t" : 16.993,
+      "text" : "Min G"
+    },
+    {
+      "t" : 17.122,
+      "text" : "PA 3.7"
+    },
+    {
+      "t" : 17.218,
+      "text" : "; full"
+    },
+    {
+      "t" : 17.316,
+      "text" : "-time undergraduate;"
+    },
+    {
+      "t" : 17.427,
+      "text" : " US"
+    },
+    {
+      "t" : 17.54,
+      "text" : " citizen or"
+    },
+    {
+      "t" : 17.655,
+      "text" : " permanent resident\", \"ST"
+    },
+    {
+      "t" : 17.782,
+      "text" : "EM major; s"
+    },
+    {
+      "t" : 17.9,
+      "text" : "ophomore or above"
+    },
+    {
+      "t" : 18.025,
+      "text" : "; GPA 3.3"
+    },
+    {
+      "t" : 18.204,
+      "text" : "+"
+    },
+    {
+      "t" : 18.32,
+      "text" : "\", \"100"
+    },
+    {
+      "t" : 18.449,
+      "text" : "+ ver"
+    },
+    {
+      "t" : 18.556,
+      "text" : "ified volunteer hours in"
+    },
+    {
+      "t" : 18.661,
+      "text" : " the past "
+    },
+    {
+      "t" : 18.778,
+      "text" : "2"
+    },
+    {
+      "t" : 18.971,
+      "text" : " years\", \"First"
+    },
+    {
+      "t" : 18.972,
+      "text" : "-generation college"
+    },
+    {
+      "t" : 19.1,
+      "text" : " student; dem"
+    },
+    {
+      "t" : 19.216,
+      "text" : "onstrated financ"
+    },
+    {
+      "t" : 19.316,
+      "text" : "ial need\", \""
+    },
+    {
+      "t" : 19.437,
+      "text" : "Open to all maj"
+    },
+    {
+      "t" : 19.569,
+      "text" : "ors; requ"
+    },
+    {
+      "t" : 19.683,
+      "text" : "ires international"
+    },
+    {
+      "t" : 19.823,
+      "text" : " exper"
+    },
+    {
+      "t" : 19.944,
+      "text" : "ience or language"
+    },
+    {
+      "t" : 20.094,
+      "text" : " study"
+    },
+    {
+      "t" : 20.224,
+      "text" : "\", \"Hum"
+    },
+    {
+      "t" : 20.348,
+      "text" : "anities or"
+    },
+    {
+      "t" : 20.466,
+      "text" : " arts majors; portfol"
+    },
+    {
+      "t" : 20.578,
+      "text" : "io of"
+    },
+    {
+      "t" : 20.787,
+      "text" : " 5 works"
+    },
+    {
+      "t" : 20.789,
+      "text" : " required\"]"
+    }
+  ],
+  "createdAt" : "2026-11-11T10:57:30Z",
+  "effort" : "low",
+  "format" : "openui-recording",
+  "inputTokens" : 14502,
+  "library" : "react-ui",
+  "model" : "claude-sonnet-5-5",
+  "outputTokens" : 1486,
+  "request" : "A scholarship application tracker with eligibility notes, deadlines, required documents and submission-status tags.",
+  "servedBy" : "claude-sonnet-5-5",
+  "stopReason" : "end_turn",
+  "version" : 1
+}

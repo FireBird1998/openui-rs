@@ -1,0 +1,756 @@
+{
+  "batchRequest" : {
+    "model" : "haiku",
+    "number" : 122,
+    "request" : "A moving-day inventory with boxes grouped by room, fragile tags, item counts and a loading checklist."
+  },
+  "chunks" : [
+    {
+      "t" : 0.758,
+      "text" : "root"
+    },
+    {
+      "t" : 0.915,
+      "text" : " = Stack([header"
+    },
+    {
+      "t" : 0.945,
+      "text" : ", ro"
+    },
+    {
+      "t" : 1.009,
+      "text" : "omT"
+    },
+    {
+      "t" : 1.046,
+      "text" : "abs, checklistH"
+    },
+    {
+      "t" : 1.148,
+      "text" : "eader,"
+    },
+    {
+      "t" : 1.189,
+      "text" : " checklist])\nheader = In"
+    },
+    {
+      "t" : 1.228,
+      "text" : "lineHeader(\"Mo"
+    },
+    {
+      "t" : 1.295,
+      "text" : "ving"
+    },
+    {
+      "t" : 1.332,
+      "text" : " Day Inventory\", \""
+    },
+    {
+      "t" : 1.335,
+      "text" : "Boxes grouped by room"
+    },
+    {
+      "t" : 1.37,
+      "text" : ", with"
+    },
+    {
+      "t" : 1.41,
+      "text" : " fragile fl"
+    },
+    {
+      "t" : 1.451,
+      "text" : "ags and lo"
+    },
+    {
+      "t" : 1.489,
+      "text" : "ading status\")\nroomTab"
+    },
+    {
+      "t" : 1.537,
+      "text" : "s = Tabs([t"
+    },
+    {
+      "t" : 1.583,
+      "text" : "abK"
+    },
+    {
+      "t" : 1.646,
+      "text" : "itchen, tabLi"
+    },
+    {
+      "t" : 1.722,
+      "text" : "ving, tabBedroom"
+    },
+    {
+      "t" : 1.726,
+      "text" : "])\ntabKitchen"
+    },
+    {
+      "t" : 1.776,
+      "text" : " = TabItem(\"kit"
+    },
+    {
+      "t" : 1.824,
+      "text" : "chen\", \"Kitch"
+    },
+    {
+      "t" : 1.874,
+      "text" : "en\", [kitchenH"
+    },
+    {
+      "t" : 1.969,
+      "text" : "eader, kitchenT"
+    },
+    {
+      "t" : 2.024,
+      "text" : "able])\nt"
+    },
+    {
+      "t" : 2.079,
+      "text" : "abLiving = TabIt"
+    },
+    {
+      "t" : 2.081,
+      "text" : "em(\"living\", \"Living"
+    },
+    {
+      "t" : 2.16,
+      "text" : " Room\", [livingHeader"
+    },
+    {
+      "t" : 2.162,
+      "text" : ", livingTable])\nt"
+    },
+    {
+      "t" : 2.204,
+      "text" : "abBedroom = Tab"
+    },
+    {
+      "t" : 2.247,
+      "text" : "Item(\"bedroom\","
+    },
+    {
+      "t" : 2.291,
+      "text" : " \"Bedroom\", ["
+    },
+    {
+      "t" : 2.347,
+      "text" : "bedroomHeader,"
+    },
+    {
+      "t" : 2.418,
+      "text" : " bedroomTable])"
+    },
+    {
+      "t" : 2.419,
+      "text" : "\nkitchenHeader ="
+    },
+    {
+      "t" : 2.471,
+      "text" : " InlineHeader(\""
+    },
+    {
+      "t" : 2.526,
+      "text" : "Kitchen\", \"4 "
+    },
+    {
+      "t" : 2.584,
+      "text" : "boxes,"
+    },
+    {
+      "t" : 2.636,
+      "text" : " 26"
+    },
+    {
+      "t" : 2.676,
+      "text" : " items\")\nliv"
+    },
+    {
+      "t" : 2.776,
+      "text" : "ingHeader = Inline"
+    },
+    {
+      "t" : 2.777,
+      "text" : "Header(\"Living Room"
+    },
+    {
+      "t" : 2.838,
+      "text" : "\", \"3 boxes,"
+    },
+    {
+      "t" : 2.887,
+      "text" : " 19"
+    },
+    {
+      "t" : 2.934,
+      "text" : " items\")\nbedroom"
+    },
+    {
+      "t" : 2.984,
+      "text" : "Header = InlineH"
+    },
+    {
+      "t" : 3.063,
+      "text" : "eader(\"Bedroom"
+    },
+    {
+      "t" : 3.067,
+      "text" : "\", \"3"
+    },
+    {
+      "t" : 3.141,
+      "text" : " boxes, 17"
+    },
+    {
+      "t" : 3.22,
+      "text" : " items\")\nkitchen"
+    },
+    {
+      "t" : 3.273,
+      "text" : "Table = Table([Col"
+    },
+    {
+      "t" : 3.335,
+      "text" : "(\"Box\","
+    },
+    {
+      "t" : 3.388,
+      "text" : " kitchenBoxes"
+    },
+    {
+      "t" : 3.431,
+      "text" : "), Col(\"Cont"
+    },
+    {
+      "t" : 3.487,
+      "text" : "ents\", kitchenContents"
+    },
+    {
+      "t" : 3.578,
+      "text" : "), Col(\"Items"
+    },
+    {
+      "t" : 3.58,
+      "text" : "\", kitchenC"
+    },
+    {
+      "t" : 3.634,
+      "text" : "ounts,"
+    },
+    {
+      "t" : 3.679,
+      "text" : " \"number\"), Col(\""
+    },
+    {
+      "t" : 3.775,
+      "text" : "Fragile\", kitchen"
+    },
+    {
+      "t" : 3.78,
+      "text" : "Fragile)"
+    },
+    {
+      "t" : 3.846,
+      "text" : "])\nkitchenBo"
+    },
+    {
+      "t" : 3.904,
+      "text" : "xes = [\"K-01"
+    },
+    {
+      "t" : 3.993,
+      "text" : "\", \"K-02\", \"K"
+    },
+    {
+      "t" : 4.052,
+      "text" : "-03\", \"K-04\""
+    },
+    {
+      "t" : 4.123,
+      "text" : "]\nkitchenContents"
+    },
+    {
+      "t" : 4.171,
+      "text" : " = [\"Pl"
+    },
+    {
+      "t" : 4.223,
+      "text" : "ates and b"
+    },
+    {
+      "t" : 4.31,
+      "text" : "owls\", \"Glass"
+    },
+    {
+      "t" : 4.405,
+      "text" : "ware\","
+    },
+    {
+      "t" : 4.406,
+      "text" : " \"Pots"
+    },
+    {
+      "t" : 4.493,
+      "text" : " and pans\", \"P"
+    },
+    {
+      "t" : 4.549,
+      "text" : "antry food"
+    },
+    {
+      "t" : 4.602,
+      "text" : "\"]\nkitchenC"
+    },
+    {
+      "t" : 4.722,
+      "text" : "ounts = [12"
+    },
+    {
+      "t" : 4.723,
+      "text" : ", 8, 4"
+    },
+    {
+      "t" : 4.804,
+      "text" : ", 2"
+    },
+    {
+      "t" : 4.89,
+      "text" : "]\nkitchenFrag"
+    },
+    {
+      "t" : 4.966,
+      "text" : "ile = [f"
+    },
+    {
+      "t" : 5.099,
+      "text" : "ragileY"
+    },
+    {
+      "t" : 5.174,
+      "text" : "es, fragileY"
+    },
+    {
+      "t" : 5.23,
+      "text" : "es, fragileNo,"
+    },
+    {
+      "t" : 5.232,
+      "text" : " fragileNo]\nliv"
+    },
+    {
+      "t" : 5.282,
+      "text" : "ingTable = Table(["
+    },
+    {
+      "t" : 5.404,
+      "text" : "Col(\"Box\", livingB"
+    },
+    {
+      "t" : 5.408,
+      "text" : "oxes), Col(\""
+    },
+    {
+      "t" : 5.492,
+      "text" : "Contents\", livingContents),"
+    },
+    {
+      "t" : 5.564,
+      "text" : " Col(\"Items\", living"
+    },
+    {
+      "t" : 5.637,
+      "text" : "Counts, \"number\"),"
+    },
+    {
+      "t" : 5.706,
+      "text" : " Col(\"Fragile\","
+    },
+    {
+      "t" : 5.774,
+      "text" : " livingFragile)])"
+    },
+    {
+      "t" : 5.853,
+      "text" : "\nlivingBoxes = "
+    },
+    {
+      "t" : 5.938,
+      "text" : "[\"L-01\", \"L-"
+    },
+    {
+      "t" : 6.027,
+      "text" : "02\", \"L-03\""
+    },
+    {
+      "t" : 6.114,
+      "text" : "]\nlivingContents = "
+    },
+    {
+      "t" : 6.183,
+      "text" : "[\"Elect"
+    },
+    {
+      "t" : 6.256,
+      "text" : "ronics and c"
+    },
+    {
+      "t" : 6.334,
+      "text" : "ables\", \"Pic"
+    },
+    {
+      "t" : 6.414,
+      "text" : "ture frames\", \"Books\""
+    },
+    {
+      "t" : 6.54,
+      "text" : "]\nlivingCounts ="
+    },
+    {
+      "t" : 6.602,
+      "text" : " [9, 4"
+    },
+    {
+      "t" : 6.713,
+      "text" : ", 6"
+    },
+    {
+      "t" : 6.783,
+      "text" : "]\nlivingFragile ="
+    },
+    {
+      "t" : 6.855,
+      "text" : " [fragileYes, f"
+    },
+    {
+      "t" : 6.923,
+      "text" : "ragileYes, fragile"
+    },
+    {
+      "t" : 6.993,
+      "text" : "No]\nb"
+    },
+    {
+      "t" : 7.074,
+      "text" : "edroomTable ="
+    },
+    {
+      "t" : 7.154,
+      "text" : " Table([Col(\"Box\","
+    },
+    {
+      "t" : 7.156,
+      "text" : " bedroomBoxes"
+    },
+    {
+      "t" : 7.224,
+      "text" : "), Col(\"Contents\","
+    },
+    {
+      "t" : 7.343,
+      "text" : " bedroomContents),"
+    },
+    {
+      "t" : 7.409,
+      "text" : " Col(\"Items\", bedro"
+    },
+    {
+      "t" : 7.411,
+      "text" : "omCounts, \"number\""
+    },
+    {
+      "t" : 7.482,
+      "text" : "), Col(\"Fragile"
+    },
+    {
+      "t" : 7.563,
+      "text" : "\", bedroomFragile"
+    },
+    {
+      "t" : 7.637,
+      "text" : ")])\nbedroomB"
+    },
+    {
+      "t" : 7.706,
+      "text" : "oxes = [\"B-"
+    },
+    {
+      "t" : 7.794,
+      "text" : "01\", \"B-02\", \""
+    },
+    {
+      "t" : 7.873,
+      "text" : "B-03\"]\nbed"
+    },
+    {
+      "t" : 7.951,
+      "text" : "roomContents = [\""
+    },
+    {
+      "t" : 8.026,
+      "text" : "Clothing\","
+    },
+    {
+      "t" : 8.127,
+      "text" : " \"B"
+    },
+    {
+      "t" : 8.195,
+      "text" : "edding and lin"
+    },
+    {
+      "t" : 8.262,
+      "text" : "ens\", \"Lamps"
+    },
+    {
+      "t" : 8.382,
+      "text" : " and m"
+    },
+    {
+      "t" : 8.384,
+      "text" : "irror"
+    },
+    {
+      "t" : 8.457,
+      "text" : "\"]\nbedroomC"
+    },
+    {
+      "t" : 8.531,
+      "text" : "ounts = [10, 4"
+    },
+    {
+      "t" : 8.61,
+      "text" : ", 3"
+    },
+    {
+      "t" : 8.683,
+      "text" : "]\nb"
+    },
+    {
+      "t" : 8.767,
+      "text" : "edroomFragile = ["
+    },
+    {
+      "t" : 8.942,
+      "text" : "fragileNo, frag"
+    },
+    {
+      "t" : 8.945,
+      "text" : "ileNo, fragileY"
+    },
+    {
+      "t" : 9.095,
+      "text" : "es]\nfragileYes"
+    },
+    {
+      "t" : 9.169,
+      "text" : " ="
+    },
+    {
+      "t" : 9.242,
+      "text" : " Tag(\"Fragile\","
+    },
+    {
+      "t" : 9.458,
+      "text" : " null, \"sm\", \"dan"
+    },
+    {
+      "t" : 9.459,
+      "text" : "ger\")\nfragileNo"
+    },
+    {
+      "t" : 9.567,
+      "text" : " = Tag(\"Stand"
+    },
+    {
+      "t" : 9.647,
+      "text" : "ard\", null, \"sm\","
+    },
+    {
+      "t" : 9.733,
+      "text" : " \"neutral\")\ncheckl"
+    },
+    {
+      "t" : 9.838,
+      "text" : "istHeader = Inline"
+    },
+    {
+      "t" : 9.93,
+      "text" : "Header(\"Loading"
+    },
+    {
+      "t" : 10.035,
+      "text" : " Checklist\", \"T"
+    },
+    {
+      "t" : 10.126,
+      "text" : "ick off"
+    },
+    {
+      "t" : 10.318,
+      "text" : " boxes as they go"
+    },
+    {
+      "t" : 10.418,
+      "text" : " on"
+    },
+    {
+      "t" : 10.494,
+      "text" : " the truck\")\nchecklist"
+    },
+    {
+      "t" : 10.576,
+      "text" : " ="
+    },
+    {
+      "t" : 10.578,
+      "text" : " Stack([chec"
+    },
+    {
+      "t" : 10.662,
+      "text" : "k"
+    },
+    {
+      "t" : 10.75,
+      "text" : "C"
+    },
+    {
+      "t" : 10.859,
+      "text" : "ard"
+    },
+    {
+      "t" : 11.03,
+      "text" : "1"
+    },
+    {
+      "t" : 11.124,
+      "text" : ", checkCard2, chec"
+    },
+    {
+      "t" : 11.223,
+      "text" : "kCard3],"
+    },
+    {
+      "t" : 11.327,
+      "text" : " \"column"
+    },
+    {
+      "t" : 11.429,
+      "text" : "\", \"s"
+    },
+    {
+      "t" : 11.565,
+      "text" : "\")\ncheckCard1 "
+    },
+    {
+      "t" : 11.667,
+      "text" : "= Card(["
+    },
+    {
+      "t" : 11.752,
+      "text" : "T"
+    },
+    {
+      "t" : 11.87,
+      "text" : "extContent(\"Load"
+    },
+    {
+      "t" : 11.967,
+      "text" : " first"
+    },
+    {
+      "t" : 12.076,
+      "text" : ": f"
+    },
+    {
+      "t" : 12.077,
+      "text" : "ragile boxes K"
+    },
+    {
+      "t" : 12.218,
+      "text" : "-01, K-02"
+    },
+    {
+      "t" : 12.309,
+      "text" : ", L-01,"
+    },
+    {
+      "t" : 12.428,
+      "text" : " L-02, B-03"
+    },
+    {
+      "t" : 12.525,
+      "text" : "\", \"small"
+    },
+    {
+      "t" : 12.622,
+      "text" : "\")])\ncheckCard2"
+    },
+    {
+      "t" : 12.754,
+      "text" : " = Card([TextCont"
+    },
+    {
+      "t" : 12.865,
+      "text" : "ent(\"Load he"
+    },
+    {
+      "t" : 12.964,
+      "text" : "avy: p"
+    },
+    {
+      "t" : 13.052,
+      "text" : "antry food K-04, books"
+    },
+    {
+      "t" : 13.172,
+      "text" : " L-03, b"
+    },
+    {
+      "t" : 13.28,
+      "text" : "edding B-02\", \"small"
+    },
+    {
+      "t" : 13.396,
+      "text" : "\")])\ncheckCard3"
+    },
+    {
+      "t" : 13.584,
+      "text" : " = Card([TextCont"
+    },
+    {
+      "t" : 13.585,
+      "text" : "ent(\"Load last: cl"
+    },
+    {
+      "t" : 13.704,
+      "text" : "othing B-01 "
+    },
+    {
+      "t" : 13.893,
+      "text" : "and rem"
+    },
+    {
+      "t" : 14.007,
+      "text" : "aining k"
+    },
+    {
+      "t" : 14.108,
+      "text" : "itchen boxes\", \""
+    },
+    {
+      "t" : 14.37,
+      "text" : "small\")])"
+    }
+  ],
+  "createdAt" : "2026-11-11T11:01:41Z",
+  "effort" : "low",
+  "format" : "openui-recording",
+  "inputTokens" : 14504,
+  "library" : "react-ui",
+  "model" : "claude-haiku-5-5",
+  "outputTokens" : 1122,
+  "request" : "A moving-day inventory with boxes grouped by room, fragile tags, item counts and a loading checklist.",
+  "servedBy" : "claude-haiku-5-5",
+  "stopReason" : "end_turn",
+  "version" : 1
+}

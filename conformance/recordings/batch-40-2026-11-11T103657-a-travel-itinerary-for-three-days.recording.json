@@ -1,0 +1,764 @@
+{
+  "batchRequest" : {
+    "model" : "haiku",
+    "number" : 40,
+    "request" : "A travel itinerary for three days in Lisbon, each day a card with morning, afternoon and evening plans."
+  },
+  "chunks" : [
+    {
+      "t" : 0.785,
+      "text" : "root"
+    },
+    {
+      "t" : 0.973,
+      "text" : " = Stack([header"
+    },
+    {
+      "t" : 0.999,
+      "text" : ", d"
+    },
+    {
+      "t" : 1.059,
+      "text" : "ayT"
+    },
+    {
+      "t" : 1.086,
+      "text" : "abs])\nheader = Inl"
+    },
+    {
+      "t" : 1.166,
+      "text" : "ineHeader(\"L"
+    },
+    {
+      "t" : 1.203,
+      "text" : "isbon in"
+    },
+    {
+      "t" : 1.272,
+      "text" : " Three Days\", \"A"
+    },
+    {
+      "t" : 1.315,
+      "text" : " rel"
+    },
+    {
+      "t" : 1.316,
+      "text" : "axed it"
+    },
+    {
+      "t" : 1.359,
+      "text" : "inerary cov"
+    },
+    {
+      "t" : 1.403,
+      "text" : "ering history"
+    },
+    {
+      "t" : 1.472,
+      "text" : ", food"
+    },
+    {
+      "t" : 1.502,
+      "text" : ", and vi"
+    },
+    {
+      "t" : 1.536,
+      "text" : "ewpoints\")\nd"
+    },
+    {
+      "t" : 1.537,
+      "text" : "ayTabs = Tab"
+    },
+    {
+      "t" : 1.568,
+      "text" : "s([day1, day2,"
+    },
+    {
+      "t" : 1.601,
+      "text" : " day3])\nday1 ="
+    },
+    {
+      "t" : 1.63,
+      "text" : " TabItem(\"day1\","
+    },
+    {
+      "t" : 1.661,
+      "text" : " \"Day 1\", [day"
+    },
+    {
+      "t" : 1.695,
+      "text" : "1Card])\nday2"
+    },
+    {
+      "t" : 1.749,
+      "text" : " = TabItem(\"day"
+    },
+    {
+      "t" : 1.778,
+      "text" : "2\", \"Day 2\","
+    },
+    {
+      "t" : 1.814,
+      "text" : " [day2Card])\nday"
+    },
+    {
+      "t" : 1.862,
+      "text" : "3 = TabItem(\""
+    },
+    {
+      "t" : 1.865,
+      "text" : "day3\", \"Day 3"
+    },
+    {
+      "t" : 1.915,
+      "text" : "\", [day3Card])"
+    },
+    {
+      "t" : 1.951,
+      "text" : "\nday1Card = Card(["
+    },
+    {
+      "t" : 2.02,
+      "text" : "day"
+    },
+    {
+      "t" : 2.057,
+      "text" : "1Header, day1Mor"
+    },
+    {
+      "t" : 2.101,
+      "text" : "ning, day1Afterno"
+    },
+    {
+      "t" : 2.142,
+      "text" : "on, day1Evening])"
+    },
+    {
+      "t" : 2.182,
+      "text" : "\nday1Header = Card"
+    },
+    {
+      "t" : 2.22,
+      "text" : "Header(\"Day 1"
+    },
+    {
+      "t" : 2.259,
+      "text" : ":"
+    },
+    {
+      "t" : 2.301,
+      "text" : " Historic L"
+    },
+    {
+      "t" : 2.342,
+      "text" : "isbon\", \"Al"
+    },
+    {
+      "t" : 2.385,
+      "text" : "fama"
+    },
+    {
+      "t" : 2.434,
+      "text" : " and"
+    },
+    {
+      "t" : 2.473,
+      "text" : " the"
+    },
+    {
+      "t" : 2.511,
+      "text" : " ri"
+    },
+    {
+      "t" : 2.553,
+      "text" : "verf"
+    },
+    {
+      "t" : 2.592,
+      "text" : "ront\")\nday1Morning"
+    },
+    {
+      "t" : 2.638,
+      "text" : " = TextContent(\"**"
+    },
+    {
+      "t" : 2.683,
+      "text" : "Morning:** Climb"
+    },
+    {
+      "t" : 2.726,
+      "text" : " to"
+    },
+    {
+      "t" : 2.77,
+      "text" : " São"
+    },
+    {
+      "t" : 2.813,
+      "text" : " Jor"
+    },
+    {
+      "t" : 2.87,
+      "text" : "ge Castle early"
+    },
+    {
+      "t" : 2.924,
+      "text" : " for pan"
+    },
+    {
+      "t" : 2.973,
+      "text" : "oramic views over"
+    },
+    {
+      "t" : 3.026,
+      "text" : " the red"
+    },
+    {
+      "t" : 3.074,
+      "text" : " rooftops, then w"
+    },
+    {
+      "t" : 3.134,
+      "text" : "ander the"
+    },
+    {
+      "t" : 3.205,
+      "text" : " nar"
+    },
+    {
+      "t" : 3.292,
+      "text" : "row lanes of Al"
+    },
+    {
+      "t" : 3.428,
+      "text" : "fama.\","
+    },
+    {
+      "t" : 3.5,
+      "text" : " \"default"
+    },
+    {
+      "t" : 3.575,
+      "text" : "\")\nday1Afterno"
+    },
+    {
+      "t" : 3.631,
+      "text" : "on = TextContent(\"**"
+    },
+    {
+      "t" : 3.694,
+      "text" : "Afternoon:**"
+    },
+    {
+      "t" : 3.695,
+      "text" : " Vis"
+    },
+    {
+      "t" : 3.752,
+      "text" : "it the"
+    },
+    {
+      "t" : 3.821,
+      "text" : " L"
+    },
+    {
+      "t" : 3.888,
+      "text" : "isbon Cathedral"
+    },
+    {
+      "t" : 3.955,
+      "text" : " (S"
+    },
+    {
+      "t" : 4.014,
+      "text" : "é) and take"
+    },
+    {
+      "t" : 4.084,
+      "text" : " Tram 28 through"
+    },
+    {
+      "t" : 4.153,
+      "text" : " Gra"
+    },
+    {
+      "t" : 4.222,
+      "text" : "ça and Baixa."
+    },
+    {
+      "t" : 4.287,
+      "text" : "\", \"default\")\nday1"
+    },
+    {
+      "t" : 4.39,
+      "text" : "Evening = TextContent(\""
+    },
+    {
+      "t" : 4.432,
+      "text" : "**Evening:** En"
+    },
+    {
+      "t" : 4.479,
+      "text" : "joy fado"
+    },
+    {
+      "t" : 4.481,
+      "text" : " music"
+    },
+    {
+      "t" : 4.542,
+      "text" : " at a"
+    },
+    {
+      "t" : 4.628,
+      "text" : " tra"
+    },
+    {
+      "t" : 4.629,
+      "text" : "ditional t"
+    },
+    {
+      "t" : 4.681,
+      "text" : "asca"
+    },
+    {
+      "t" : 4.736,
+      "text" : " in"
+    },
+    {
+      "t" : 4.791,
+      "text" : " Alfama, followed by"
+    },
+    {
+      "t" : 4.852,
+      "text" : " gr"
+    },
+    {
+      "t" : 4.918,
+      "text" : "illed s"
+    },
+    {
+      "t" : 4.978,
+      "text" : "ardines for"
+    },
+    {
+      "t" : 5.053,
+      "text" : " dinner.\", \"default\")"
+    },
+    {
+      "t" : 5.11,
+      "text" : "\nday2Card = Card"
+    },
+    {
+      "t" : 5.169,
+      "text" : "([day2Header, day2"
+    },
+    {
+      "t" : 5.238,
+      "text" : "Morning, day2Af"
+    },
+    {
+      "t" : 5.306,
+      "text" : "ternoon, day2Ev"
+    },
+    {
+      "t" : 5.434,
+      "text" : "ening])\nday2Header ="
+    },
+    {
+      "t" : 5.436,
+      "text" : " CardHeader(\"Day"
+    },
+    {
+      "t" : 5.499,
+      "text" : " 2: Belém and the"
+    },
+    {
+      "t" : 5.626,
+      "text" : " Coast\", \"Mon"
+    },
+    {
+      "t" : 5.686,
+      "text" : "u"
+    },
+    {
+      "t" : 5.76,
+      "text" : "ments and p"
+    },
+    {
+      "t" : 5.816,
+      "text" : "astries\")\nday2Mor"
+    },
+    {
+      "t" : 5.868,
+      "text" : "ning = TextContent(\"**"
+    },
+    {
+      "t" : 5.944,
+      "text" : "Morning:** Take the"
+    },
+    {
+      "t" : 6.016,
+      "text" : " train to Belém and t"
+    },
+    {
+      "t" : 6.134,
+      "text" : "our the Jer"
+    },
+    {
+      "t" : 6.231,
+      "text" : "ónimos"
+    },
+    {
+      "t" : 6.308,
+      "text" : " Mon"
+    },
+    {
+      "t" : 6.309,
+      "text" : "astery and its"
+    },
+    {
+      "t" : 6.396,
+      "text" : " mag"
+    },
+    {
+      "t" : 6.462,
+      "text" : "nificent cloisters."
+    },
+    {
+      "t" : 6.541,
+      "text" : "\", \"default\")\nday2"
+    },
+    {
+      "t" : 6.623,
+      "text" : "Afternoon = TextCont"
+    },
+    {
+      "t" : 6.718,
+      "text" : "ent(\"**Afternoon"
+    },
+    {
+      "t" : 6.778,
+      "text" : ":** Visit the Bel"
+    },
+    {
+      "t" : 6.899,
+      "text" : "ém Tower and the Mon"
+    },
+    {
+      "t" : 6.983,
+      "text" : "ument to the Disc"
+    },
+    {
+      "t" : 6.985,
+      "text" : "overies, then st"
+    },
+    {
+      "t" : 7.072,
+      "text" : "op at Pastéis"
+    },
+    {
+      "t" : 7.158,
+      "text" : " de Belém for the"
+    },
+    {
+      "t" : 7.22,
+      "text" : " original cust"
+    },
+    {
+      "t" : 7.293,
+      "text" : "ard tarts.\", \"default"
+    },
+    {
+      "t" : 7.45,
+      "text" : "\")\nday2Evening ="
+    },
+    {
+      "t" : 7.459,
+      "text" : " TextContent(\"**Ev"
+    },
+    {
+      "t" : 7.686,
+      "text" : "ening:** St"
+    },
+    {
+      "t" : 7.69,
+      "text" : "roll along the"
+    },
+    {
+      "t" : 7.773,
+      "text" : " Tag"
+    },
+    {
+      "t" : 7.842,
+      "text" : "us wa"
+    },
+    {
+      "t" : 7.914,
+      "text" : "terfront to"
+    },
+    {
+      "t" : 7.991,
+      "text" : " Cais"
+    },
+    {
+      "t" : 8.076,
+      "text" : " do"
+    },
+    {
+      "t" : 8.2,
+      "text" : " Sod"
+    },
+    {
+      "t" : 8.202,
+      "text" : "ré and enjoy se"
+    },
+    {
+      "t" : 8.274,
+      "text" : "afood at"
+    },
+    {
+      "t" : 8.356,
+      "text" : " the Time"
+    },
+    {
+      "t" : 8.465,
+      "text" : " Out"
+    },
+    {
+      "t" : 8.663,
+      "text" : " Market.\", \"default\")"
+    },
+    {
+      "t" : 8.665,
+      "text" : "\nday3Card = Card(["
+    },
+    {
+      "t" : 8.745,
+      "text" : "day3Header, day3"
+    },
+    {
+      "t" : 8.832,
+      "text" : "Morning, day3Aftern"
+    },
+    {
+      "t" : 8.906,
+      "text" : "oon, day3Evening"
+    },
+    {
+      "t" : 8.978,
+      "text" : "])\nday3Header = C"
+    },
+    {
+      "t" : 9.055,
+      "text" : "ardHeader(\"Day "
+    },
+    {
+      "t" : 9.136,
+      "text" : "3: S"
+    },
+    {
+      "t" : 9.219,
+      "text" : "intra"
+    },
+    {
+      "t" : 9.315,
+      "text" : " Day Trip\", \"Pal"
+    },
+    {
+      "t" : 9.392,
+      "text" : "aces and for"
+    },
+    {
+      "t" : 9.554,
+      "text" : "ests\")\nday3Morning"
+    },
+    {
+      "t" : 9.639,
+      "text" : " = TextContent(\"**"
+    },
+    {
+      "t" : 9.729,
+      "text" : "Morning:** Take the train"
+    },
+    {
+      "t" : 9.822,
+      "text" : " to"
+    },
+    {
+      "t" : 9.905,
+      "text" : " Sintra and"
+    },
+    {
+      "t" : 9.986,
+      "text" : " expl"
+    },
+    {
+      "t" : 10.033,
+      "text" : "ore the col"
+    },
+    {
+      "t" : 10.089,
+      "text" : "orful Pena"
+    },
+    {
+      "t" : 10.195,
+      "text" : " Pal"
+    },
+    {
+      "t" : 10.269,
+      "text" : "ace and"
+    },
+    {
+      "t" : 10.338,
+      "text" : " its hilltop g"
+    },
+    {
+      "t" : 10.424,
+      "text" : "ardens.\", \"default\")"
+    },
+    {
+      "t" : 10.516,
+      "text" : "\nday3Afternoon ="
+    },
+    {
+      "t" : 10.604,
+      "text" : " TextContent(\"**Af"
+    },
+    {
+      "t" : 10.69,
+      "text" : "ternoon:** Wal"
+    },
+    {
+      "t" : 10.769,
+      "text" : "k through the Quin"
+    },
+    {
+      "t" : 10.845,
+      "text" : "ta da"
+    },
+    {
+      "t" : 10.939,
+      "text" : " Rega"
+    },
+    {
+      "t" : 11.033,
+      "text" : "leira est"
+    },
+    {
+      "t" : 11.122,
+      "text" : "ate,"
+    },
+    {
+      "t" : 11.215,
+      "text" : " known"
+    },
+    {
+      "t" : 11.312,
+      "text" : " for its mys"
+    },
+    {
+      "t" : 11.399,
+      "text" : "terious init"
+    },
+    {
+      "t" : 11.491,
+      "text" : "iation well"
+    },
+    {
+      "t" : 11.6,
+      "text" : ","
+    },
+    {
+      "t" : 11.712,
+      "text" : " then"
+    },
+    {
+      "t" : 11.807,
+      "text" : " have"
+    },
+    {
+      "t" : 11.908,
+      "text" : " lunch in the"
+    },
+    {
+      "t" : 11.988,
+      "text" : " village.\", \"default\")\nday"
+    },
+    {
+      "t" : 12.161,
+      "text" : "3Evening = TextCont"
+    },
+    {
+      "t" : 12.266,
+      "text" : "ent(\"**Evening:**"
+    },
+    {
+      "t" : 12.415,
+      "text" : " Return to Lisbon"
+    },
+    {
+      "t" : 12.416,
+      "text" : " and wat"
+    },
+    {
+      "t" : 12.57,
+      "text" : "ch the s"
+    },
+    {
+      "t" : 12.67,
+      "text" : "unset from"
+    },
+    {
+      "t" : 12.759,
+      "text" : " Mi"
+    },
+    {
+      "t" : 12.874,
+      "text" : "radouro da"
+    },
+    {
+      "t" : 13.11,
+      "text" : " Sen"
+    },
+    {
+      "t" : 13.231,
+      "text" : "hora do"
+    },
+    {
+      "t" : 13.356,
+      "text" : " Monte, follow"
+    },
+    {
+      "t" : 13.358,
+      "text" : "ed by dinner in"
+    },
+    {
+      "t" : 13.458,
+      "text" : " B"
+    },
+    {
+      "t" : 13.56,
+      "text" : "air"
+    },
+    {
+      "t" : 13.658,
+      "text" : "ro"
+    },
+    {
+      "t" : 13.758,
+      "text" : " Alto.\", \"default\")"
+    }
+  ],
+  "createdAt" : "2026-11-11T10:36:57Z",
+  "effort" : "low",
+  "format" : "openui-recording",
+  "inputTokens" : 14504,
+  "library" : "react-ui",
+  "model" : "claude-haiku-5-5",
+  "outputTokens" : 929,
+  "request" : "A travel itinerary for three days in Lisbon, each day a card with morning, afternoon and evening plans.",
+  "servedBy" : "claude-haiku-5-5",
+  "stopReason" : "end_turn",
+  "version" : 1
+}

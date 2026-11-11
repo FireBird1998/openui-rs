@@ -1,0 +1,904 @@
+{
+  "batchRequest" : {
+    "model" : "sonnet",
+    "number" : 73,
+    "request" : "A local school enrollment report with capacity versus enrollment by school, a district total and notes about planned expansions."
+  },
+  "chunks" : [
+    {
+      "t" : 0.733,
+      "text" : "root = Stack([header,"
+    },
+    {
+      "t" : 1.066,
+      "text" : " kpis"
+    },
+    {
+      "t" : 1.098,
+      "text" : ", ch"
+    },
+    {
+      "t" : 1.162,
+      "text" : "artCard, t"
+    },
+    {
+      "t" : 1.195,
+      "text" : "ableCard, not"
+    },
+    {
+      "t" : 1.289,
+      "text" : "esHeader,"
+    },
+    {
+      "t" : 1.312,
+      "text" : " notes])\nheader = C"
+    },
+    {
+      "t" : 1.353,
+      "text" : "ardHeader(\"School En"
+    },
+    {
+      "t" : 1.397,
+      "text" : "rollment Report\", \""
+    },
+    {
+      "t" : 1.424,
+      "text" : "Capacity versus enroll"
+    },
+    {
+      "t" : 1.501,
+      "text" : "ment by school, 2024-"
+    },
+    {
+      "t" : 1.544,
+      "text" : "25 school year\")\nkp"
+    },
+    {
+      "t" : 1.547,
+      "text" : "is = SnippetCard"
+    },
+    {
+      "t" : 1.592,
+      "text" : "Block([k1, k"
+    },
+    {
+      "t" : 1.682,
+      "text" : "2, k3])\nk1"
+    },
+    {
+      "t" : 1.744,
+      "text" : " = SnippetCard"
+    },
+    {
+      "t" : 1.747,
+      "text" : "Item(\"total"
+    },
+    {
+      "t" : 2.021,
+      "text" : "-cap\", k1l"
+    },
+    {
+      "t" : 2.111,
+      "text" : ", k1r)\nk1"
+    },
+    {
+      "t" : 2.214,
+      "text" : "l = IconText(k1"
+    },
+    {
+      "t" : 2.247,
+      "text" : "i, \"neutral\", \""
+    },
+    {
+      "t" : 2.281,
+      "text" : "m\", \"District Cap"
+    },
+    {
+      "t" : 2.346,
+      "text" : "acity\", \"All"
+    },
+    {
+      "t" : 2.376,
+      "text" : " schools\", false, \"horiz"
+    },
+    {
+      "t" : 2.406,
+      "text" : "ontal\")\nk1i ="
+    },
+    {
+      "t" : 2.435,
+      "text" : " Icon(\"building-2\","
+    },
+    {
+      "t" : 2.466,
+      "text" : " \"education\")\nk1r ="
+    },
+    {
+      "t" : 2.496,
+      "text" : " BoldText(\"number\", \""
+    },
+    {
+      "t" : 2.54,
+      "text" : "6"
+    },
+    {
+      "t" : 2.541,
+      "text" : ",350"
+    },
+    {
+      "t" : 2.569,
+      "text" : "\")\nk2 = Sn"
+    },
+    {
+      "t" : 2.599,
+      "text" : "ippetCardItem(\"total"
+    },
+    {
+      "t" : 2.667,
+      "text" : "-enr\", k2l,"
+    },
+    {
+      "t" : 2.699,
+      "text" : " k2r)\nk2l"
+    },
+    {
+      "t" : 2.744,
+      "text" : " = IconText(k2i"
+    },
+    {
+      "t" : 2.799,
+      "text" : ", \"neutral\", \"m"
+    },
+    {
+      "t" : 2.828,
+      "text" : "\", \"District En"
+    },
+    {
+      "t" : 2.856,
+      "text" : "rollment\", \"Current"
+    },
+    {
+      "t" : 2.898,
+      "text" : "\","
+    },
+    {
+      "t" : 2.937,
+      "text" : " false, \"horizontal\")"
+    },
+    {
+      "t" : 3.046,
+      "text" : "\nk2i = Icon"
+    },
+    {
+      "t" : 3.047,
+      "text" : "(\"users\", \"people\")\nk"
+    },
+    {
+      "t" : 3.118,
+      "text" : "2r = BoldText(\""
+    },
+    {
+      "t" : 3.186,
+      "text" : "number\", \"5,812"
+    },
+    {
+      "t" : 3.284,
+      "text" : "\", \"+2.6"
+    },
+    {
+      "t" : 3.285,
+      "text" : "%\", \"metric\")\nk"
+    },
+    {
+      "t" : 3.354,
+      "text" : "3 = SnippetC"
+    },
+    {
+      "t" : 3.477,
+      "text" : "ardItem(\"util"
+    },
+    {
+      "t" : 3.478,
+      "text" : "\", k3l, k3r"
+    },
+    {
+      "t" : 3.541,
+      "text" : ")\nk3l = Icon"
+    },
+    {
+      "t" : 3.61,
+      "text" : "Text(k3i, \"ne"
+    },
+    {
+      "t" : 3.675,
+      "text" : "utral\", \"m\", \""
+    },
+    {
+      "t" : 3.756,
+      "text" : "Utilization\", \"En"
+    },
+    {
+      "t" : 3.759,
+      "text" : "rollment / capacity\","
+    },
+    {
+      "t" : 3.829,
+      "text" : " false, \"horizontal\")"
+    },
+    {
+      "t" : 3.922,
+      "text" : "\nk3i = Icon"
+    },
+    {
+      "t" : 3.924,
+      "text" : "(\"gauge\","
+    },
+    {
+      "t" : 3.971,
+      "text" : " \"education\")\nk3r ="
+    },
+    {
+      "t" : 4.009,
+      "text" : " BoldText(\"number\", \""
+    },
+    {
+      "t" : 4.081,
+      "text" : "91.5%\")\nchart"
+    },
+    {
+      "t" : 4.152,
+      "text" : "Card = Card([chart"
+    },
+    {
+      "t" : 4.214,
+      "text" : "Head"
+    },
+    {
+      "t" : 4.29,
+      "text" : ", ch"
+    },
+    {
+      "t" : 4.366,
+      "text" : "art])\nchartHead ="
+    },
+    {
+      "t" : 4.45,
+      "text" : " C"
+    },
+    {
+      "t" : 4.513,
+      "text" : "ardHeader(\"Capac"
+    },
+    {
+      "t" : 4.591,
+      "text" : "ity vs Enrollment"
+    },
+    {
+      "t" : 4.646,
+      "text" : "\","
+    },
+    {
+      "t" : 4.719,
+      "text" : " \"By school\")\nchart ="
+    },
+    {
+      "t" : 4.8,
+      "text" : " BarChart(sch"
+    },
+    {
+      "t" : 4.883,
+      "text" : "ools, [cap"
+    },
+    {
+      "t" : 5.041,
+      "text" : "Series, enrSe"
+    },
+    {
+      "t" : 5.042,
+      "text" : "ries], \"grouped\","
+    },
+    {
+      "t" : 5.117,
+      "text" : " \"School"
+    },
+    {
+      "t" : 5.196,
+      "text" : "\", \"Students\")\nsch"
+    },
+    {
+      "t" : 5.255,
+      "text" : "ools = [\"Ma"
+    },
+    {
+      "t" : 5.313,
+      "text" : "ple El"
+    },
+    {
+      "t" : 5.378,
+      "text" : "ementary\", \"Oak"
+    },
+    {
+      "t" : 5.465,
+      "text" : " Ridge Elementary\","
+    },
+    {
+      "t" : 5.523,
+      "text" : " \"L"
+    },
+    {
+      "t" : 5.6,
+      "text" : "incoln Middle\", \""
+    },
+    {
+      "t" : 5.689,
+      "text" : "Riverside Middle\","
+    },
+    {
+      "t" : 5.777,
+      "text" : " \"Central"
+    },
+    {
+      "t" : 5.862,
+      "text" : " High\""
+    },
+    {
+      "t" : 5.936,
+      "text" : "]\ncapSeries ="
+    },
+    {
+      "t" : 5.994,
+      "text" : " Series(\"Capacity\", ["
+    },
+    {
+      "t" : 6.067,
+      "text" : "650"
+    },
+    {
+      "t" : 6.14,
+      "text" : ", 700, 1"
+    },
+    {
+      "t" : 6.31,
+      "text" : "000, 900"
+    },
+    {
+      "t" : 6.373,
+      "text" : ", 3"
+    },
+    {
+      "t" : 6.375,
+      "text" : "100])\nenrSeries"
+    },
+    {
+      "t" : 6.457,
+      "text" : " = Series(\"Enroll"
+    },
+    {
+      "t" : 6.602,
+      "text" : "ment\", [684"
+    },
+    {
+      "t" : 6.603,
+      "text" : ", 610, 940"
+    },
+    {
+      "t" : 6.675,
+      "text" : ", 872"
+    },
+    {
+      "t" : 6.768,
+      "text" : ", 2706"
+    },
+    {
+      "t" : 6.853,
+      "text" : "])\ntableCard ="
+    },
+    {
+      "t" : 6.945,
+      "text" : " Card([tableHead, t"
+    },
+    {
+      "t" : 7.032,
+      "text" : "bl])\ntableHead"
+    },
+    {
+      "t" : 7.168,
+      "text" : " = CardHeader(\""
+    },
+    {
+      "t" : 7.171,
+      "text" : "Enrollment Detail\","
+    },
+    {
+      "t" : 7.223,
+      "text" : " \"District total"
+    },
+    {
+      "t" : 7.31,
+      "text" : " included"
+    },
+    {
+      "t" : 7.399,
+      "text" : "\")\ntbl = Table"
+    },
+    {
+      "t" : 7.487,
+      "text" : "([Col(\"School\", t"
+    },
+    {
+      "t" : 7.586,
+      "text" : "Schools), Col(\""
+    },
+    {
+      "t" : 7.687,
+      "text" : "Capacity\", tCap,"
+    },
+    {
+      "t" : 7.781,
+      "text" : " \"number\"), Col(\""
+    },
+    {
+      "t" : 7.879,
+      "text" : "Enrollment\", tEn"
+    },
+    {
+      "t" : 7.972,
+      "text" : "r, \"number\"), Col"
+    },
+    {
+      "t" : 8.066,
+      "text" : "(\"Utilization\", tU"
+    },
+    {
+      "t" : 8.176,
+      "text" : "til), Col(\"Status"
+    },
+    {
+      "t" : 8.27,
+      "text" : "\", tStatus)])"
+    },
+    {
+      "t" : 8.431,
+      "text" : "\ntSchools = [\""
+    },
+    {
+      "t" : 8.433,
+      "text" : "Maple Elementary\", \""
+    },
+    {
+      "t" : 8.547,
+      "text" : "Oak Ridge"
+    },
+    {
+      "t" : 8.653,
+      "text" : " Elementary\", \"Linc"
+    },
+    {
+      "t" : 8.755,
+      "text" : "oln Middle\", \""
+    },
+    {
+      "t" : 8.836,
+      "text" : "Riverside Middle\", \""
+    },
+    {
+      "t" : 8.92,
+      "text" : "Central High\", \"District Total"
+    },
+    {
+      "t" : 9.06,
+      "text" : "\"]\ntCap = ["
+    },
+    {
+      "t" : 9.062,
+      "text" : "650, 700, 1000"
+    },
+    {
+      "t" : 9.166,
+      "text" : ", 900, 3100,"
+    },
+    {
+      "t" : 9.246,
+      "text" : " 6350]\ntEn"
+    },
+    {
+      "t" : 9.326,
+      "text" : "r = [684, 610,"
+    },
+    {
+      "t" : 9.435,
+      "text" : " 940, 872, 2"
+    },
+    {
+      "t" : 9.546,
+      "text" : "706, 5812]\nt"
+    },
+    {
+      "t" : 9.637,
+      "text" : "Util = [\"105%"
+    },
+    {
+      "t" : 9.742,
+      "text" : "\", \"87%\", \"94%"
+    },
+    {
+      "t" : 9.829,
+      "text" : "\", \"97%\", \"87%"
+    },
+    {
+      "t" : 9.932,
+      "text" : "\", \"91."
+    },
+    {
+      "t" : 9.996,
+      "text" : "5%\"]\ntStat"
+    },
+    {
+      "t" : 10.111,
+      "text" : "us = [Tag(\""
+    },
+    {
+      "t" : 10.214,
+      "text" : "Over capacity\", null, \""
+    },
+    {
+      "t" : 10.32,
+      "text" : "sm\", \"danger\"),"
+    },
+    {
+      "t" : 10.408,
+      "text" : " Tag(\"Available"
+    },
+    {
+      "t" : 10.505,
+      "text" : "\", null, \"sm\", \""
+    },
+    {
+      "t" : 10.621,
+      "text" : "success\"), Tag(\""
+    },
+    {
+      "t" : 10.732,
+      "text" : "Near cap"
+    },
+    {
+      "t" : 10.866,
+      "text" : "acity\", null, \"sm"
+    },
+    {
+      "t" : 10.981,
+      "text" : "\", \"warning\"), T"
+    },
+    {
+      "t" : 11.099,
+      "text" : "ag(\"Near capacity\","
+    },
+    {
+      "t" : 11.21,
+      "text" : " null, \"sm\", \"war"
+    },
+    {
+      "t" : 11.295,
+      "text" : "ning\"), Tag(\""
+    },
+    {
+      "t" : 11.392,
+      "text" : "Available\", null, \"sm\","
+    },
+    {
+      "t" : 11.502,
+      "text" : " \"success\"), Tag(\""
+    },
+    {
+      "t" : 11.615,
+      "text" : "Healthy\", null, \""
+    },
+    {
+      "t" : 11.815,
+      "text" : "sm\", \"info"
+    },
+    {
+      "t" : 11.816,
+      "text" : "\")]\nnotesHeader"
+    },
+    {
+      "t" : 11.91,
+      "text" : " = InlineHeader(\""
+    },
+    {
+      "t" : 12.012,
+      "text" : "Planned Expansions\","
+    },
+    {
+      "t" : 12.094,
+      "text" : " \"Notes from"
+    },
+    {
+      "t" : 12.202,
+      "text" : " the fac"
+    },
+    {
+      "t" : 12.339,
+      "text" : "ilities pl"
+    },
+    {
+      "t" : 12.559,
+      "text" : "an\")\nnotes = Acc"
+    },
+    {
+      "t" : 12.56,
+      "text" : "ordion([n"
+    },
+    {
+      "t" : 12.707,
+      "text" : "1, n2, n3])"
+    },
+    {
+      "t" : 12.83,
+      "text" : "\nn1 = A"
+    },
+    {
+      "t" : 12.946,
+      "text" : "ccordionItem(\"ma"
+    },
+    {
+      "t" : 13.072,
+      "text" : "ple\", \"Maple El"
+    },
+    {
+      "t" : 13.193,
+      "text" : "ementary:"
+    },
+    {
+      "t" : 13.315,
+      "text" : " 6-"
+    },
+    {
+      "t" : 13.443,
+      "text" : "classroom addition\", [T"
+    },
+    {
+      "t" : 13.577,
+      "text" : "extContent(\"Ma"
+    },
+    {
+      "t" : 13.784,
+      "text" : "ple is "
+    },
+    {
+      "t" : 13.786,
+      "text" : "34 students over capacity."
+    },
+    {
+      "t" : 13.903,
+      "text" : " A 6-classroom w"
+    },
+    {
+      "t" : 14.019,
+      "text" : "ing adding"
+    },
+    {
+      "t" : 14.148,
+      "text" : " about 150 seats is plan"
+    },
+    {
+      "t" : 14.277,
+      "text" : "ned,"
+    },
+    {
+      "t" : 14.412,
+      "text" : " with construction targ"
+    },
+    {
+      "t" : 14.551,
+      "text" : "eted for summ"
+    },
+    {
+      "t" : 14.67,
+      "text" : "er 2025 and op"
+    },
+    {
+      "t" : 14.818,
+      "text" : "ening in fall 2026."
+    },
+    {
+      "t" : 14.98,
+      "text" : " Port"
+    },
+    {
+      "t" : 15.151,
+      "text" : "able classrooms will be used"
+    },
+    {
+      "t" : 15.287,
+      "text" : " in"
+    },
+    {
+      "t" : 15.423,
+      "text" : " the interim.\")])\nn"
+    },
+    {
+      "t" : 15.537,
+      "text" : "2 = AccordionIt"
+    },
+    {
+      "t" : 15.654,
+      "text" : "em(\"riverside\", \""
+    },
+    {
+      "t" : 15.78,
+      "text" : "Riverside Middle:"
+    },
+    {
+      "t" : 15.905,
+      "text" : " Library"
+    },
+    {
+      "t" : 16.026,
+      "text" : " and class"
+    },
+    {
+      "t" : 16.172,
+      "text" : "room ren"
+    },
+    {
+      "t" : 16.297,
+      "text" : "ovation\", [TextContent"
+    },
+    {
+      "t" : 16.417,
+      "text" : "(\"Ren"
+    },
+    {
+      "t" : 16.514,
+      "text" : "ovation would"
+    },
+    {
+      "t" : 16.788,
+      "text" : " add about 80 seats and"
+    },
+    {
+      "t" : 16.917,
+      "text" : " mod"
+    },
+    {
+      "t" : 16.918,
+      "text" : "ernize science"
+    },
+    {
+      "t" : 17.089,
+      "text" : " labs. Design"
+    },
+    {
+      "t" : 17.256,
+      "text" : " is"
+    },
+    {
+      "t" : 17.421,
+      "text" : " under"
+    },
+    {
+      "t" : 17.598,
+      "text" : " review,"
+    },
+    {
+      "t" : 17.757,
+      "text" : " with a"
+    },
+    {
+      "t" : 17.908,
+      "text" : " b"
+    },
+    {
+      "t" : 18.042,
+      "text" : "ond meas"
+    },
+    {
+      "t" : 18.211,
+      "text" : "ure pro"
+    },
+    {
+      "t" : 18.391,
+      "text" : "posed for the next"
+    },
+    {
+      "t" : 18.657,
+      "text" : " election.\")])\nn3 "
+    },
+    {
+      "t" : 18.658,
+      "text" : "= AccordionItem(\""
+    },
+    {
+      "t" : 18.818,
+      "text" : "bo"
+    },
+    {
+      "t" : 18.987,
+      "text" : "undary\", \"Bo"
+    },
+    {
+      "t" : 19.171,
+      "text" : "undary review\","
+    },
+    {
+      "t" : 19.338,
+      "text" : " ["
+    },
+    {
+      "t" : 19.528,
+      "text" : "Callout(\"info"
+    },
+    {
+      "t" : 19.688,
+      "text" : "\", \"R"
+    },
+    {
+      "t" : 19.975,
+      "text" : "ebalancing under"
+    },
+    {
+      "t" : 19.978,
+      "text" : " study"
+    },
+    {
+      "t" : 20.121,
+      "text" : "\", \"Oak Rid"
+    },
+    {
+      "t" : 20.301,
+      "text" : "ge has"
+    },
+    {
+      "t" : 20.465,
+      "text" : " about"
+    },
+    {
+      "t" : 20.635,
+      "text" : " 90"
+    },
+    {
+      "t" : 20.816,
+      "text" : " open"
+    },
+    {
+      "t" : 21.012,
+      "text" : " seats. A boundary review"
+    },
+    {
+      "t" : 21.201,
+      "text" : " may"
+    },
+    {
+      "t" : 21.378,
+      "text" : " shift some"
+    },
+    {
+      "t" : 21.557,
+      "text" : " Maple attendance z"
+    },
+    {
+      "t" : 21.75,
+      "text" : "ones to Oak Rid"
+    },
+    {
+      "t" : 21.938,
+      "text" : "ge to relieve over"
+    },
+    {
+      "t" : 22.062,
+      "text" : "crowding.\")])"
+    }
+  ],
+  "createdAt" : "2026-11-11T10:45:03Z",
+  "effort" : "low",
+  "format" : "openui-recording",
+  "inputTokens" : 14503,
+  "library" : "react-ui",
+  "model" : "claude-sonnet-5-5",
+  "outputTokens" : 1340,
+  "request" : "A local school enrollment report with capacity versus enrollment by school, a district total and notes about planned expansions.",
+  "servedBy" : "claude-sonnet-5-5",
+  "stopReason" : "end_turn",
+  "version" : 1
+}

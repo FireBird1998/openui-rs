@@ -1,0 +1,704 @@
+{
+  "batchRequest" : {
+    "model" : "haiku",
+    "number" : 68,
+    "request" : "An editor's letter explaining a new weekend edition, with three sample sections and a reader feedback button."
+  },
+  "chunks" : [
+    {
+      "t" : 0.737,
+      "text" : "root = Stack(["
+    },
+    {
+      "t" : 0.919,
+      "text" : "mas"
+    },
+    {
+      "t" : 0.957,
+      "text" : "thead, letter, s"
+    },
+    {
+      "t" : 1.037,
+      "text" : "ections"
+    },
+    {
+      "t" : 1.08,
+      "text" : "Header, s"
+    },
+    {
+      "t" : 1.169,
+      "text" : "ectionCards, feedb"
+    },
+    {
+      "t" : 1.213,
+      "text" : "ackBtns"
+    },
+    {
+      "t" : 1.256,
+      "text" : "])\nmasthead = Text"
+    },
+    {
+      "t" : 1.297,
+      "text" : "Content(\"The"
+    },
+    {
+      "t" : 1.343,
+      "text" : " Weekend Edition\","
+    },
+    {
+      "t" : 1.39,
+      "text" : " \"large-heavy\")"
+    },
+    {
+      "t" : 1.424,
+      "text" : "\nletter ="
+    },
+    {
+      "t" : 1.483,
+      "text" : " Card([let"
+    },
+    {
+      "t" : 1.503,
+      "text" : "terHeader, letterB"
+    },
+    {
+      "t" : 1.551,
+      "text" : "ody])\nletterHeader"
+    },
+    {
+      "t" : 1.608,
+      "text" : " = C"
+    },
+    {
+      "t" : 1.66,
+      "text" : "ardHeader(\"A"
+    },
+    {
+      "t" : 1.718,
+      "text" : " Letter from"
+    },
+    {
+      "t" : 1.8,
+      "text" : " the Editor\", \"Intro"
+    },
+    {
+      "t" : 1.801,
+      "text" : "ducing our"
+    },
+    {
+      "t" : 1.851,
+      "text" : " new weekend edition\")"
+    },
+    {
+      "t" : 1.909,
+      "text" : "\nletterBody = Mark"
+    },
+    {
+      "t" : 2.021,
+      "text" : "DownRenderer(\""
+    },
+    {
+      "t" : 2.079,
+      "text" : "Dear read"
+    },
+    {
+      "t" : 2.116,
+      "text" : "ers,\\n\\nA"
+    },
+    {
+      "t" : 2.141,
+      "text" : "fter years of list"
+    },
+    {
+      "t" : 2.206,
+      "text" : "ening to your fe"
+    },
+    {
+      "t" : 2.261,
+      "text" : "edback, we are excited to"
+    },
+    {
+      "t" : 2.301,
+      "text" : " intro"
+    },
+    {
+      "t" : 2.358,
+      "text" : "duce **"
+    },
+    {
+      "t" : 2.419,
+      "text" : "The Weekend Edition"
+    },
+    {
+      "t" : 2.484,
+      "text" : "**:"
+    },
+    {
+      "t" : 2.615,
+      "text" : " a sl"
+    },
+    {
+      "t" : 2.686,
+      "text" : "ower, more th"
+    },
+    {
+      "t" : 2.688,
+      "text" : "oughtful compan"
+    },
+    {
+      "t" : 2.756,
+      "text" : "ion to our we"
+    },
+    {
+      "t" : 2.821,
+      "text" : "ekday co"
+    },
+    {
+      "t" : 2.885,
+      "text" : "verage. Sa"
+    },
+    {
+      "t" : 2.955,
+      "text" : "turd"
+    },
+    {
+      "t" : 3.06,
+      "text" : "ays and"
+    },
+    {
+      "t" : 3.062,
+      "text" : " Sundays will bring long"
+    },
+    {
+      "t" : 3.118,
+      "text" : "er ess"
+    },
+    {
+      "t" : 3.19,
+      "text" : "ays, deeper re"
+    },
+    {
+      "t" : 3.253,
+      "text" : "porting, and st"
+    },
+    {
+      "t" : 3.322,
+      "text" : "ories that re"
+    },
+    {
+      "t" : 3.391,
+      "text" : "ward an"
+    },
+    {
+      "t" : 3.453,
+      "text" : " unh"
+    },
+    {
+      "t" : 3.521,
+      "text" : "urried read"
+    },
+    {
+      "t" : 3.591,
+      "text" : " with"
+    },
+    {
+      "t" : 3.667,
+      "text" : " a cup of coffee."
+    },
+    {
+      "t" : 3.802,
+      "text" : "\\n\\nY"
+    },
+    {
+      "t" : 3.867,
+      "text" : "ou will"
+    },
+    {
+      "t" : 3.944,
+      "text" : " find"
+    },
+    {
+      "t" : 4.015,
+      "text" : " three new reg"
+    },
+    {
+      "t" : 4.063,
+      "text" : "ular sections wa"
+    },
+    {
+      "t" : 4.064,
+      "text" : "iting for you each"
+    },
+    {
+      "t" : 4.11,
+      "text" : " weekend."
+    },
+    {
+      "t" : 4.151,
+      "text" : " We"
+    },
+    {
+      "t" : 4.196,
+      "text" : " hope they"
+    },
+    {
+      "t" : 4.248,
+      "text" : " become"
+    },
+    {
+      "t" : 4.292,
+      "text" : " a"
+    },
+    {
+      "t" : 4.332,
+      "text" : " place to p"
+    },
+    {
+      "t" : 4.4,
+      "text" : "ause, re"
+    },
+    {
+      "t" : 4.475,
+      "text" : "flect, and disc"
+    },
+    {
+      "t" : 4.581,
+      "text" : "over something"
+    },
+    {
+      "t" : 4.582,
+      "text" : " un"
+    },
+    {
+      "t" : 4.657,
+      "text" : "expected.\\n\\n"
+    },
+    {
+      "t" : 4.752,
+      "text" : "Th"
+    },
+    {
+      "t" : 4.753,
+      "text" : "ank you for re"
+    },
+    {
+      "t" : 4.82,
+      "text" : "ading,"
+    },
+    {
+      "t" : 4.905,
+      "text" : " and for hel"
+    },
+    {
+      "t" : 4.977,
+      "text" : "ping us sh"
+    },
+    {
+      "t" : 5.039,
+      "text" : "ape what"
+    },
+    {
+      "t" : 5.121,
+      "text" : " com"
+    },
+    {
+      "t" : 5.201,
+      "text" : "es next.\\n\\nW"
+    },
+    {
+      "t" : 5.316,
+      "text" : "arm"
+    },
+    {
+      "t" : 5.393,
+      "text" : "ly,\\n"
+    },
+    {
+      "t" : 5.47,
+      "text" : "\\nThe Editor"
+    },
+    {
+      "t" : 5.551,
+      "text" : "ial Team"
+    },
+    {
+      "t" : 5.635,
+      "text" : "\", \"cl"
+    },
+    {
+      "t" : 5.728,
+      "text" : "ear\")\nsectionsH"
+    },
+    {
+      "t" : 5.8,
+      "text" : "eader = InlineHe"
+    },
+    {
+      "t" : 5.802,
+      "text" : "ader(\""
+    },
+    {
+      "t" : 5.897,
+      "text" : "Inside"
+    },
+    {
+      "t" : 5.996,
+      "text" : " Each"
+    },
+    {
+      "t" : 6.083,
+      "text" : " We"
+    },
+    {
+      "t" : 6.171,
+      "text" : "ekend\", \"Three"
+    },
+    {
+      "t" : 6.259,
+      "text" : " sample sections to start"
+    },
+    {
+      "t" : 6.35,
+      "text" : "\")"
+    },
+    {
+      "t" : 6.521,
+      "text" : "\nsectionCards ="
+    },
+    {
+      "t" : 6.608,
+      "text" : " Stack([sec1, s"
+    },
+    {
+      "t" : 6.609,
+      "text" : "ec2, sec3], \""
+    },
+    {
+      "t" : 6.706,
+      "text" : "row\", \"m"
+    },
+    {
+      "t" : 6.801,
+      "text" : "\", \""
+    },
+    {
+      "t" : 6.885,
+      "text" : "stretch\", \"start"
+    },
+    {
+      "t" : 6.968,
+      "text" : "\", true)\nsec1 "
+    },
+    {
+      "t" : 7.045,
+      "text" : "= Card(["
+    },
+    {
+      "t" : 7.1,
+      "text" : "sec1"
+    },
+    {
+      "t" : 7.164,
+      "text" : "Title"
+    },
+    {
+      "t" : 7.252,
+      "text" : ", sec1Body])"
+    },
+    {
+      "t" : 7.336,
+      "text" : "\nsec1Title = C"
+    },
+    {
+      "t" : 7.426,
+      "text" : "ardHeader(\"The"
+    },
+    {
+      "t" : 7.51,
+      "text" : " Long Read"
+    },
+    {
+      "t" : 7.593,
+      "text" : "\", \"Fe"
+    },
+    {
+      "t" : 7.649,
+      "text" : "ature journ"
+    },
+    {
+      "t" : 7.744,
+      "text" : "alism\")\nsec1"
+    },
+    {
+      "t" : 7.841,
+      "text" : "Body = TextContent(\"One"
+    },
+    {
+      "t" : 7.947,
+      "text" : " in"
+    },
+    {
+      "t" : 8.063,
+      "text" : "-depth story"
+    },
+    {
+      "t" : 8.265,
+      "text" : " each"
+    },
+    {
+      "t" : 8.362,
+      "text" : " week"
+    },
+    {
+      "t" : 8.456,
+      "text" : ", re"
+    },
+    {
+      "t" : 8.515,
+      "text" : "ported"
+    },
+    {
+      "t" : 8.628,
+      "text" : " over"
+    },
+    {
+      "t" : 8.63,
+      "text" : " months and written to"
+    },
+    {
+      "t" : 8.736,
+      "text" : " be sav"
+    },
+    {
+      "t" : 8.854,
+      "text" : "ored from"
+    },
+    {
+      "t" : 8.955,
+      "text" : " start to finish.\")\ns"
+    },
+    {
+      "t" : 9.057,
+      "text" : "ec2 = Card([s"
+    },
+    {
+      "t" : 9.155,
+      "text" : "ec2Title, sec2"
+    },
+    {
+      "t" : 9.264,
+      "text" : "Body])\nsec2"
+    },
+    {
+      "t" : 9.366,
+      "text" : "Title = CardHeader(\""
+    },
+    {
+      "t" : 9.489,
+      "text" : "Kitchen Table"
+    },
+    {
+      "t" : 9.596,
+      "text" : "\", \"Food"
+    },
+    {
+      "t" : 9.712,
+      "text" : " and"
+    },
+    {
+      "t" : 9.822,
+      "text" : " culture\")\nsec2"
+    },
+    {
+      "t" : 9.92,
+      "text" : "Body = TextContent(\""
+    },
+    {
+      "t" : 10.029,
+      "text" : "Recipes, tra"
+    },
+    {
+      "t" : 10.227,
+      "text" : "ditions, and con"
+    },
+    {
+      "t" : 10.228,
+      "text" : "versations with"
+    },
+    {
+      "t" : 10.307,
+      "text" : " the"
+    },
+    {
+      "t" : 10.445,
+      "text" : " people who"
+    },
+    {
+      "t" : 10.565,
+      "text" : " keep them"
+    },
+    {
+      "t" : 10.681,
+      "text" : " al"
+    },
+    {
+      "t" : 10.86,
+      "text" : "ive in"
+    },
+    {
+      "t" : 10.861,
+      "text" : " their"
+    },
+    {
+      "t" : 10.978,
+      "text" : " own"
+    },
+    {
+      "t" : 11.088,
+      "text" : " homes.\")\nsec3"
+    },
+    {
+      "t" : 11.211,
+      "text" : " = Card([sec3"
+    },
+    {
+      "t" : 11.328,
+      "text" : "Title, sec3Body"
+    },
+    {
+      "t" : 11.438,
+      "text" : "])\nsec3Title ="
+    },
+    {
+      "t" : 11.544,
+      "text" : " CardHeader(\"We"
+    },
+    {
+      "t" : 11.652,
+      "text" : "ekend W"
+    },
+    {
+      "t" : 11.857,
+      "text" : "an"
+    },
+    {
+      "t" : 11.859,
+      "text" : "derer"
+    },
+    {
+      "t" : 11.963,
+      "text" : "\", \"Trav"
+    },
+    {
+      "t" : 12.073,
+      "text" : "el and place"
+    },
+    {
+      "t" : 12.199,
+      "text" : "\")\nsec3Body ="
+    },
+    {
+      "t" : 12.307,
+      "text" : " TextContent(\"Short"
+    },
+    {
+      "t" : 12.428,
+      "text" : " journ"
+    },
+    {
+      "t" : 12.55,
+      "text" : "eys close"
+    },
+    {
+      "t" : 12.683,
+      "text" : " to home and"
+    },
+    {
+      "t" : 12.809,
+      "text" : " far"
+    },
+    {
+      "t" : 12.948,
+      "text" : " away"
+    },
+    {
+      "t" : 13.077,
+      "text" : ", with pract"
+    },
+    {
+      "t" : 13.202,
+      "text" : "ical tips for your"
+    },
+    {
+      "t" : 13.293,
+      "text" : " next day"
+    },
+    {
+      "t" : 13.521,
+      "text" : " out.\")\nfeedback"
+    },
+    {
+      "t" : 13.522,
+      "text" : "Btns = Bu"
+    },
+    {
+      "t" : 13.657,
+      "text" : "ttons([fe"
+    },
+    {
+      "t" : 13.782,
+      "text" : "edbackBtn], \""
+    },
+    {
+      "t" : 13.89,
+      "text" : "row\")\nfeedbackB"
+    },
+    {
+      "t" : 14.1,
+      "text" : "tn = Button(\"Share"
+    },
+    {
+      "t" : 14.183,
+      "text" : " Re"
+    },
+    {
+      "t" : 14.31,
+      "text" : "ader Feedback\", @"
+    },
+    {
+      "t" : 14.312,
+      "text" : "ToAssistant(\"I"
+    },
+    {
+      "t" : 14.437,
+      "text" : "'"
+    },
+    {
+      "t" : 14.58,
+      "text" : "d like to share fe"
+    },
+    {
+      "t" : 14.716,
+      "text" : "edback about The Weekend"
+    },
+    {
+      "t" : 14.939,
+      "text" : " Edition\"), \"primary"
+    },
+    {
+      "t" : 14.94,
+      "text" : "\")"
+    }
+  ],
+  "createdAt" : "2026-11-11T10:43:07Z",
+  "effort" : "low",
+  "format" : "openui-recording",
+  "inputTokens" : 14501,
+  "library" : "react-ui",
+  "model" : "claude-haiku-5-5",
+  "outputTokens" : 756,
+  "request" : "An editor's letter explaining a new weekend edition, with three sample sections and a reader feedback button.",
+  "servedBy" : "claude-haiku-5-5",
+  "stopReason" : "end_turn",
+  "version" : 1
+}

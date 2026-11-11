@@ -1,0 +1,612 @@
+{
+  "batchRequest" : {
+    "model" : "sonnet",
+    "number" : 27,
+    "request" : "Flight booking search: from, to, dates, passengers, and three result rows with prices."
+  },
+  "chunks" : [
+    {
+      "t" : 0.744,
+      "text" : "root = Stack([title"
+    },
+    {
+      "t" : 1.062,
+      "text" : ", searchC"
+    },
+    {
+      "t" : 1.071,
+      "text" : "ard, res"
+    },
+    {
+      "t" : 1.078,
+      "text" : "ultsHeader, results])"
+    },
+    {
+      "t" : 1.091,
+      "text" : "\ntitle = TextContent(\""
+    },
+    {
+      "t" : 1.097,
+      "text" : "Flight Search"
+    },
+    {
+      "t" : 1.106,
+      "text" : "\", \"large-heavy\")"
+    },
+    {
+      "t" : 1.112,
+      "text" : "\nsearchCard = Card"
+    },
+    {
+      "t" : 1.12,
+      "text" : "([sear"
+    },
+    {
+      "t" : 1.126,
+      "text" : "chForm])\nsearchFor"
+    },
+    {
+      "t" : 1.137,
+      "text" : "m = Form(\"fl"
+    },
+    {
+      "t" : 1.143,
+      "text" : "ight"
+    },
+    {
+      "t" : 1.158,
+      "text" : "Search\", sear"
+    },
+    {
+      "t" : 1.391,
+      "text" : "chBtns, [from"
+    },
+    {
+      "t" : 1.398,
+      "text" : "Field, toField, dateField"
+    },
+    {
+      "t" : 1.409,
+      "text" : ", pa"
+    },
+    {
+      "t" : 1.421,
+      "text" : "xField])"
+    },
+    {
+      "t" : 1.428,
+      "text" : "\nfromField = FormContro"
+    },
+    {
+      "t" : 1.44,
+      "text" : "l(\"From\", Input(\"from"
+    },
+    {
+      "t" : 1.447,
+      "text" : "\", \"City"
+    },
+    {
+      "t" : 1.457,
+      "text" : " or"
+    },
+    {
+      "t" : 1.477,
+      "text" : " airport\", \"text\", { required"
+    },
+    {
+      "t" : 1.513,
+      "text" : ": true }))\ntoField ="
+    },
+    {
+      "t" : 1.549,
+      "text" : " FormControl(\"To\","
+    },
+    {
+      "t" : 1.586,
+      "text" : " Input(\"to\", \"City or air"
+    },
+    {
+      "t" : 1.715,
+      "text" : "port\", \"text\", { required:"
+    },
+    {
+      "t" : 1.728,
+      "text" : " true }))\ndateField ="
+    },
+    {
+      "t" : 1.742,
+      "text" : " FormControl(\"Trav"
+    },
+    {
+      "t" : 1.757,
+      "text" : "el Dates\", DateP"
+    },
+    {
+      "t" : 1.771,
+      "text" : "icker(\"d"
+    },
+    {
+      "t" : 1.8,
+      "text" : "ates\", \"range\", { required:"
+    },
+    {
+      "t" : 1.9,
+      "text" : " true }))\npaxField ="
+    },
+    {
+      "t" : 1.913,
+      "text" : " FormControl(\"Passeng"
+    },
+    {
+      "t" : 1.926,
+      "text" : "ers\", Select(\"pass"
+    },
+    {
+      "t" : 1.948,
+      "text" : "engers\", paxOpts"
+    },
+    {
+      "t" : 1.983,
+      "text" : ", \"Select pass"
+    },
+    {
+      "t" : 2.015,
+      "text" : "engers\", { required: true }"
+    },
+    {
+      "t" : 2.05,
+      "text" : "))\npaxOpts ="
+    },
+    {
+      "t" : 2.085,
+      "text" : " [SelectItem(\"1"
+    },
+    {
+      "t" : 2.121,
+      "text" : "\", \"1 Pass"
+    },
+    {
+      "t" : 2.156,
+      "text" : "enger\"), SelectIt"
+    },
+    {
+      "t" : 2.193,
+      "text" : "em(\"2\", \"2 "
+    },
+    {
+      "t" : 2.229,
+      "text" : "Passengers\"), Select"
+    },
+    {
+      "t" : 2.264,
+      "text" : "Item(\"3\", \"3 "
+    },
+    {
+      "t" : 2.3,
+      "text" : "Passengers\"), Sel"
+    },
+    {
+      "t" : 2.336,
+      "text" : "ectItem(\"4\", \"4"
+    },
+    {
+      "t" : 2.37,
+      "text" : " Passengers\")]"
+    },
+    {
+      "t" : 2.406,
+      "text" : "\nsearchBtns = Bu"
+    },
+    {
+      "t" : 2.442,
+      "text" : "ttons([Button(\"Search"
+    },
+    {
+      "t" : 2.479,
+      "text" : " Flights\", @ToA"
+    },
+    {
+      "t" : 2.513,
+      "text" : "ssistant(\"Search flights"
+    },
+    {
+      "t" : 2.548,
+      "text" : " with"
+    },
+    {
+      "t" : 2.583,
+      "text" : " the entered details\"), \"prim"
+    },
+    {
+      "t" : 2.619,
+      "text" : "ary\")])\nresultsH"
+    },
+    {
+      "t" : 2.655,
+      "text" : "eader = InlineHe"
+    },
+    {
+      "t" : 2.69,
+      "text" : "ader(\"Available"
+    },
+    {
+      "t" : 2.728,
+      "text" : " Flights\", \"New"
+    },
+    {
+      "t" : 2.76,
+      "text" : " York ("
+    },
+    {
+      "t" : 2.796,
+      "text" : "JFK) to London (L"
+    },
+    {
+      "t" : 2.832,
+      "text" : "HR) ·"
+    },
+    {
+      "t" : 2.866,
+      "text" : " 2 passengers\")"
+    },
+    {
+      "t" : 2.909,
+      "text" : "\nresults = CompositeCard"
+    },
+    {
+      "t" : 2.938,
+      "text" : "Block([f"
+    },
+    {
+      "t" : 2.975,
+      "text" : "1, f2,"
+    },
+    {
+      "t" : 3.008,
+      "text" : " f3])\nf1 ="
+    },
+    {
+      "t" : 3.044,
+      "text" : " CompositeCardItem"
+    },
+    {
+      "t" : 3.079,
+      "text" : "(\"f"
+    },
+    {
+      "t" : 3.116,
+      "text" : "1\", f1h"
+    },
+    {
+      "t" : 3.15,
+      "text" : ", [f1b], f1"
+    },
+    {
+      "t" : 3.186,
+      "text" : "f)\nf1h = I"
+    },
+    {
+      "t" : 3.221,
+      "text" : "conText("
+    },
+    {
+      "t" : 3.257,
+      "text" : "Icon(\"plane\", \"trav"
+    },
+    {
+      "t" : 3.292,
+      "text" : "el\"), \"info"
+    },
+    {
+      "t" : 3.327,
+      "text" : "\", \"m\", \"S"
+    },
+    {
+      "t" : 3.366,
+      "text" : "kyJ"
+    },
+    {
+      "t" : 3.403,
+      "text" : "et "
+    },
+    {
+      "t" : 3.433,
+      "text" : "214"
+    },
+    {
+      "t" : 3.471,
+      "text" : "\", \"Nonstop ·"
+    },
+    {
+      "t" : 3.503,
+      "text" : " 7"
+    },
+    {
+      "t" : 3.538,
+      "text" : "h 05"
+    },
+    {
+      "t" : 3.575,
+      "text" : "m\", true, \"horizont"
+    },
+    {
+      "t" : 3.609,
+      "text" : "al\")\nf1b = M"
+    },
+    {
+      "t" : 3.647,
+      "text" : "etricIndicatorIn"
+    },
+    {
+      "t" : 3.68,
+      "text" : "line(\"08:15"
+    },
+    {
+      "t" : 3.716,
+      "text" : " → 20:20"
+    },
+    {
+      "t" : 3.753,
+      "text" : "\", \"J"
+    },
+    {
+      "t" : 3.787,
+      "text" : "FK → LHR\")"
+    },
+    {
+      "t" : 3.822,
+      "text" : "\nf1f = { price"
+    },
+    {
+      "t" : 3.857,
+      "text" : ": BoldText(\"text\","
+    },
+    {
+      "t" : 3.894,
+      "text" : " \"$642"
+    },
+    {
+      "t" : 3.929,
+      "text" : "\"), button: Button(\""
+    },
+    {
+      "t" : 3.964,
+      "text" : "Select\", @ToAssist"
+    },
+    {
+      "t" : 4,
+      "text" : "ant(\"Select fl"
+    },
+    {
+      "t" : 4.039,
+      "text" : "ight SkyJet 214"
+    },
+    {
+      "t" : 4.072,
+      "text" : "\"), \"prim"
+    },
+    {
+      "t" : 4.106,
+      "text" : "ary\") }\nf2 ="
+    },
+    {
+      "t" : 4.143,
+      "text" : " CompositeCardItem"
+    },
+    {
+      "t" : 4.177,
+      "text" : "(\"f2\", f2h,"
+    },
+    {
+      "t" : 4.213,
+      "text" : " [f2b], f2f"
+    },
+    {
+      "t" : 4.249,
+      "text" : ")\nf2h = Icon"
+    },
+    {
+      "t" : 4.288,
+      "text" : "Text(Icon(\"plane"
+    },
+    {
+      "t" : 4.32,
+      "text" : "\", \"travel\"), \"info"
+    },
+    {
+      "t" : 4.355,
+      "text" : "\", \"m\", \"A"
+    },
+    {
+      "t" : 4.39,
+      "text" : "e"
+    },
+    {
+      "t" : 4.425,
+      "text" : "roB"
+    },
+    {
+      "t" : 4.461,
+      "text" : "lue 88"
+    },
+    {
+      "t" : 4.498,
+      "text" : "\", \"1 stop · "
+    },
+    {
+      "t" : 4.535,
+      "text" : "9h 40m\", true,"
+    },
+    {
+      "t" : 4.57,
+      "text" : " \"horizontal\")\nf"
+    },
+    {
+      "t" : 4.603,
+      "text" : "2b = MetricInd"
+    },
+    {
+      "t" : 4.639,
+      "text" : "icatorInline(\"11:"
+    },
+    {
+      "t" : 4.675,
+      "text" : "30 → 00"
+    },
+    {
+      "t" : 4.713,
+      "text" : ":10"
+    },
+    {
+      "t" : 4.745,
+      "text" : "\", \"JFK → LH"
+    },
+    {
+      "t" : 4.78,
+      "text" : "R\")\nf2f = {"
+    },
+    {
+      "t" : 4.818,
+      "text" : " price: BoldText(\"text"
+    },
+    {
+      "t" : 4.866,
+      "text" : "\", \"$519"
+    },
+    {
+      "t" : 4.9,
+      "text" : "\"), button: Button(\""
+    },
+    {
+      "t" : 4.935,
+      "text" : "Select\", @ToAssist"
+    },
+    {
+      "t" : 4.971,
+      "text" : "ant(\"Select flight Ae"
+    },
+    {
+      "t" : 5.015,
+      "text" : "roBlue 88\"),"
+    },
+    {
+      "t" : 5.049,
+      "text" : " \"primary\") }\nf3"
+    },
+    {
+      "t" : 5.088,
+      "text" : " = CompositeCard"
+    },
+    {
+      "t" : 5.116,
+      "text" : "Item(\"f3\", f3"
+    },
+    {
+      "t" : 5.145,
+      "text" : "h, [f3b], f"
+    },
+    {
+      "t" : 5.172,
+      "text" : "3f)\nf3h ="
+    },
+    {
+      "t" : 5.208,
+      "text" : " IconText(Icon(\""
+    },
+    {
+      "t" : 5.243,
+      "text" : "plane\", \"travel\"),"
+    },
+    {
+      "t" : 5.277,
+      "text" : " \"info"
+    },
+    {
+      "t" : 5.313,
+      "text" : "\", \"m\", \"At"
+    },
+    {
+      "t" : 5.35,
+      "text" : "lantic"
+    },
+    {
+      "t" : 5.383,
+      "text" : " Air 502"
+    },
+    {
+      "t" : 5.419,
+      "text" : "\", \"Nonstop ·"
+    },
+    {
+      "t" : 5.455,
+      "text" : " 6"
+    },
+    {
+      "t" : 5.491,
+      "text" : "h 55m\", true, \""
+    },
+    {
+      "t" : 5.525,
+      "text" : "horizontal\")\nf3"
+    },
+    {
+      "t" : 5.561,
+      "text" : "b = MetricIndic"
+    },
+    {
+      "t" : 5.596,
+      "text" : "atorInline(\"19:45"
+    },
+    {
+      "t" : 5.631,
+      "text" : " → 07"
+    },
+    {
+      "t" : 5.668,
+      "text" : ":40\", \"JFK →"
+    },
+    {
+      "t" : 5.703,
+      "text" : " LHR\")\nf3f"
+    },
+    {
+      "t" : 5.738,
+      "text" : " = { price: BoldText"
+    },
+    {
+      "t" : 5.774,
+      "text" : "(\"text\", \"$705"
+    },
+    {
+      "t" : 5.809,
+      "text" : "\"), button: Button(\""
+    },
+    {
+      "t" : 5.845,
+      "text" : "Select\", @ToAssist"
+    },
+    {
+      "t" : 5.882,
+      "text" : "ant(\"Select flight At"
+    },
+    {
+      "t" : 5.916,
+      "text" : "lantic Air 502\""
+    },
+    {
+      "t" : 5.952,
+      "text" : "), \"primary\") }"
+    }
+  ],
+  "createdAt" : "2026-11-11T10:34:51Z",
+  "effort" : "low",
+  "format" : "openui-recording",
+  "inputTokens" : 14496,
+  "library" : "react-ui",
+  "model" : "claude-sonnet-5-5",
+  "outputTokens" : 958,
+  "request" : "Flight booking search: from, to, dates, passengers, and three result rows with prices.",
+  "servedBy" : "claude-sonnet-5-5",
+  "stopReason" : "end_turn",
+  "version" : 1
+}

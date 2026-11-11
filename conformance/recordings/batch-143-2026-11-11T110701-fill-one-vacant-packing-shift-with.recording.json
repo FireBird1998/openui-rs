@@ -1,0 +1,318 @@
+{
+  "batchRequest" : {
+    "model" : "sonnet",
+    "number" : 143,
+    "of" : 95,
+    "request" : "Fill one vacant packing shift with Sam and add a second sorting shift for Saturday afternoon."
+  },
+  "chunks" : [
+    {
+      "t" : 3.359,
+      "text" : "names"
+    },
+    {
+      "t" : 3.4,
+      "text" : " = [\"Ma"
+    },
+    {
+      "t" : 3.424,
+      "text" : "ria Lopez\", \"James"
+    },
+    {
+      "t" : 3.742,
+      "text" : " Chen\", \"Ais"
+    },
+    {
+      "t" : 3.78,
+      "text" : "ha Patel\", \"T"
+    },
+    {
+      "t" : 3.819,
+      "text" : "om Becker\", \"Pri"
+    },
+    {
+      "t" : 3.856,
+      "text" : "ya Singh\", \"Lu"
+    },
+    {
+      "t" : 3.948,
+      "text" : "is Ortega\", \""
+    },
+    {
+      "t" : 3.983,
+      "text" : "Open\", \"Sam\", \""
+    },
+    {
+      "t" : 4.017,
+      "text" : "Open\", \"Open\", \""
+    },
+    {
+      "t" : 4.02,
+      "text" : "Open\", \"Open\", \""
+    },
+    {
+      "t" : 4.057,
+      "text" : "Open\"]\nstations ="
+    },
+    {
+      "t" : 4.098,
+      "text" : " [\"Check-in\", \""
+    },
+    {
+      "t" : 4.159,
+      "text" : "Check-in\", \"S"
+    },
+    {
+      "t" : 4.162,
+      "text" : "orting\", \"Sorting"
+    },
+    {
+      "t" : 4.228,
+      "text" : "\", \"Packing\", \""
+    },
+    {
+      "t" : 4.232,
+      "text" : "Packing\", \"Sorting"
+    },
+    {
+      "t" : 4.285,
+      "text" : "\", \"Packing\", \""
+    },
+    {
+      "t" : 4.328,
+      "text" : "Distribution\", \"Distrib"
+    },
+    {
+      "t" : 4.383,
+      "text" : "ution\", \"Loading D"
+    },
+    {
+      "t" : 4.426,
+      "text" : "ock\", \"Cold Stor"
+    },
+    {
+      "t" : 4.521,
+      "text" : "age\", \"Sorting\""
+    },
+    {
+      "t" : 4.578,
+      "text" : "]\nshifts = [\""
+    },
+    {
+      "t" : 4.628,
+      "text" : "8am-12pm\", \""
+    },
+    {
+      "t" : 4.671,
+      "text" : "12pm-4pm\","
+    },
+    {
+      "t" : 4.724,
+      "text" : " \"8am-12pm\","
+    },
+    {
+      "t" : 4.771,
+      "text" : " \"12pm-4pm"
+    },
+    {
+      "t" : 4.826,
+      "text" : "\", \"8am-12pm"
+    },
+    {
+      "t" : 4.882,
+      "text" : "\", \"12pm-4p"
+    },
+    {
+      "t" : 4.929,
+      "text" : "m\", \"8am-12p"
+    },
+    {
+      "t" : 4.931,
+      "text" : "m\", \"12pm-4"
+    },
+    {
+      "t" : 4.977,
+      "text" : "pm\", \"8am-12"
+    },
+    {
+      "t" : 5.051,
+      "text" : "pm\", \"12pm-"
+    },
+    {
+      "t" : 5.115,
+      "text" : "4pm\", \"8"
+    },
+    {
+      "t" : 5.166,
+      "text" : "am-12pm\", \"12"
+    },
+    {
+      "t" : 5.281,
+      "text" : "pm-4pm\", \""
+    },
+    {
+      "t" : 5.284,
+      "text" : "12pm-4pm\""
+    },
+    {
+      "t" : 5.396,
+      "text" : "]\nstatuses = ["
+    },
+    {
+      "t" : 5.457,
+      "text" : "Tag(\"Confirmed"
+    },
+    {
+      "t" : 5.508,
+      "text" : "\", null, \"sm\", \""
+    },
+    {
+      "t" : 5.554,
+      "text" : "success\"), Tag(\""
+    },
+    {
+      "t" : 5.608,
+      "text" : "Confirmed\", null, \""
+    },
+    {
+      "t" : 5.663,
+      "text" : "sm\", \"success\"),"
+    },
+    {
+      "t" : 5.717,
+      "text" : " Tag(\"Confirmed"
+    },
+    {
+      "t" : 5.75,
+      "text" : "\", null, \"sm\", \""
+    },
+    {
+      "t" : 5.799,
+      "text" : "success\"), Tag(\""
+    },
+    {
+      "t" : 5.801,
+      "text" : "Confirmed\", null, \""
+    },
+    {
+      "t" : 5.854,
+      "text" : "sm\", \"success\"),"
+    },
+    {
+      "t" : 5.912,
+      "text" : " Tag(\"Confirmed"
+    },
+    {
+      "t" : 6.041,
+      "text" : "\", null, \"sm\", \""
+    },
+    {
+      "t" : 6.282,
+      "text" : "success\"), Tag(\""
+    },
+    {
+      "t" : 6.641,
+      "text" : "Pending\", null, \"sm"
+    },
+    {
+      "t" : 6.761,
+      "text" : "\", \"warning\"), T"
+    },
+    {
+      "t" : 6.866,
+      "text" : "ag(\"Vacant\", null"
+    },
+    {
+      "t" : 6.867,
+      "text" : ", \"sm\", \"danger"
+    },
+    {
+      "t" : 7.025,
+      "text" : "\"), Tag(\"Conf"
+    },
+    {
+      "t" : 7.033,
+      "text" : "irmed\", null, \"s"
+    },
+    {
+      "t" : 7.174,
+      "text" : "m\", \"success\"), T"
+    },
+    {
+      "t" : 7.284,
+      "text" : "ag(\"Vacant\", null"
+    },
+    {
+      "t" : 7.356,
+      "text" : ", \"sm\", \"danger"
+    },
+    {
+      "t" : 7.536,
+      "text" : "\"), Tag(\"V"
+    },
+    {
+      "t" : 7.54,
+      "text" : "acant\", null, \"sm"
+    },
+    {
+      "t" : 7.608,
+      "text" : "\", \"danger\"), T"
+    },
+    {
+      "t" : 7.663,
+      "text" : "ag(\"Vacant\", null"
+    },
+    {
+      "t" : 7.761,
+      "text" : ", \"sm\", \"danger"
+    },
+    {
+      "t" : 7.811,
+      "text" : "\"), Tag(\"V"
+    },
+    {
+      "t" : 7.872,
+      "text" : "acant\", null, \"sm"
+    },
+    {
+      "t" : 7.982,
+      "text" : "\", \"danger\"), T"
+    },
+    {
+      "t" : 8.061,
+      "text" : "ag(\"Vacant\", null"
+    },
+    {
+      "t" : 8.067,
+      "text" : ", \"sm\", \"danger"
+    },
+    {
+      "t" : 8.119,
+      "text" : "\")]\nk1r = B"
+    },
+    {
+      "t" : 8.17,
+      "text" : "oldText(\"number\", \"25"
+    },
+    {
+      "t" : 8.286,
+      "text" : "\")\nk2r = Bo"
+    },
+    {
+      "t" : 8.348,
+      "text" : "ldText(\"number\", \"19\")"
+    }
+  ],
+  "createdAt" : "2026-11-11T11:07:01Z",
+  "effort" : "low",
+  "format" : "openui-recording",
+  "inputTokens" : 16479,
+  "library" : "react-ui",
+  "model" : "claude-sonnet-5-5",
+  "outputTokens" : 897,
+  "patchOf" : "root = Stack([title, kpis, rosterHeader, rosterTable, vacantHeader, vacantAlert, signupHeader, signupForm])\ntitle = TextContent(\"Food Bank Volunteer Roster\", \"large-heavy\")\nkpis = SnippetCardBlock([k1, k2, k3])\nk1 = SnippetCardItem(\"total\", k1l, k1r)\nk1l = IconText(k1i, \"neutral\", \"m\", \"Total Slots\", \"This Saturday\", false, \"horizontal\")\nk1i = Icon(\"calendar-days\", \"calendar\")\nk1r = BoldText(\"number\", \"24\")\nk2 = SnippetCardItem(\"filled\", k2l, k2r)\nk2l = IconText(k2i, \"success\", \"m\", \"Filled\", \"Confirmed\", false, \"horizontal\")\nk2i = Icon(\"circle-check\", \"status\")\nk2r = BoldText(\"number\", \"18\")\nk3 = SnippetCardItem(\"vacant\", k3l, k3r)\nk3l = IconText(k3i, \"warning\", \"m\", \"Vacant\", \"Need volunteers\", false, \"horizontal\")\nk3i = Icon(\"user-plus\", \"people\")\nk3r = BoldText(\"number\", \"6\")\nrosterHeader = InlineHeader(\"Saturday Shift Roster\", \"Station assignments and status\")\nrosterTable = Table([Col(\"Volunteer\", names), Col(\"Station\", stations), Col(\"Shift\", shifts), Col(\"Status\", statuses)])\nnames = [\"Maria Lopez\", \"James Chen\", \"Aisha Patel\", \"Tom Becker\", \"Priya Singh\", \"Luis Ortega\", \"Open\", \"Open\", \"Open\", \"Open\", \"Open\", \"Open\"]\nstations = [\"Check-in\", \"Check-in\", \"Sorting\", \"Sorting\", \"Packing\", \"Packing\", \"Sorting\", \"Packing\", \"Distribution\", \"Distribution\", \"Loading Dock\", \"Cold Storage\"]\nshifts = [\"8am-12pm\", \"12pm-4pm\", \"8am-12pm\", \"12pm-4pm\", \"8am-12pm\", \"12pm-4pm\", \"8am-12pm\", \"12pm-4pm\", \"8am-12pm\", \"12pm-4pm\", \"8am-12pm\", \"12pm-4pm\"]\nstatuses = [Tag(\"Confirmed\", null, \"sm\", \"success\"), Tag(\"Confirmed\", null, \"sm\", \"success\"), Tag(\"Confirmed\", null, \"sm\", \"success\"), Tag(\"Confirmed\", null, \"sm\", \"success\"), Tag(\"Confirmed\", null, \"sm\", \"success\"), Tag(\"Pending\", null, \"sm\", \"warning\"), Tag(\"Vacant\", null, \"sm\", \"danger\"), Tag(\"Vacant\", null, \"sm\", \"danger\"), Tag(\"Vacant\", null, \"sm\", \"danger\"), Tag(\"Vacant\", null, \"sm\", \"danger\"), Tag(\"Vacant\", null, \"sm\", \"danger\"), Tag(\"Vacant\", null, \"sm\", \"danger\")]\nvacantHeader = InlineHeader(\"Vacant Slots\", \"Where we need help most\")\nvacantAlert = Callout(\"warning\", \"6 slots still open\", \"Distribution, Loading Dock and Cold Storage are the highest priority. Sign up below to help!\")\nsignupHeader = InlineHeader(\"Sign Up to Volunteer\", \"Pick a station and shift\")\nsignupForm = Form(\"signup\", signupBtns, [fName, fEmail, fStation, fShift, fNotes])\nfName = FormControl(\"Full Name\", Input(\"name\", \"Your name\", \"text\", { required: true, minLength: 2 }))\nfEmail = FormControl(\"Email\", Input(\"email\", \"you@example.com\", \"email\", { required: true, email: true }))\nfStation = FormControl(\"Station\", Select(\"station\", stationOpts, \"Select a station...\", { required: true }))\nstationOpts = [SelectItem(\"sorting\", \"Sorting\"), SelectItem(\"packing\", \"Packing\"), SelectItem(\"distribution\", \"Distribution\"), SelectItem(\"dock\", \"Loading Dock\"), SelectItem(\"cold\", \"Cold Storage\")]\nfShift = FormControl(\"Shift\", RadioGroup(\"shift\", shiftOpts, \"am\", { required: true }))\nshiftOpts = [RadioItem(\"Morning\", \"8am-12pm\", \"am\"), RadioItem(\"Afternoon\", \"12pm-4pm\", \"pm\")]\nfNotes = FormControl(\"Notes\", TextArea(\"notes\", \"Dietary, mobility or other notes...\", 3), \"Optional\")\nsignupBtns = Buttons([Button(\"Sign Up\", @ToAssistant(\"Submit volunteer signup\"), \"primary\"), Button(\"Cancel\", @ToAssistant(\"Cancel signup\"), \"secondary\")])",
+  "request" : "Fill one vacant packing shift with Sam and add a second sorting shift for Saturday afternoon.",
+  "servedBy" : "claude-sonnet-5-5",
+  "stopReason" : "end_turn",
+  "version" : 1
+}

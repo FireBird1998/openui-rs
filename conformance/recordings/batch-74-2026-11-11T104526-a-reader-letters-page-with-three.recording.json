@@ -1,0 +1,708 @@
+{
+  "batchRequest" : {
+    "model" : "haiku",
+    "number" : 74,
+    "request" : "A reader letters page with three letters, author towns and a form for submitting a new letter."
+  },
+  "chunks" : [
+    {
+      "t" : 0.732,
+      "text" : "root = Stack(["
+    },
+    {
+      "t" : 0.894,
+      "text" : "p"
+    },
+    {
+      "t" : 0.937,
+      "text" : "ageHeader, letter"
+    },
+    {
+      "t" : 0.998,
+      "text" : "1, letter2, letter"
+    },
+    {
+      "t" : 1.034,
+      "text" : "3, form"
+    },
+    {
+      "t" : 1.144,
+      "text" : "Header, let"
+    },
+    {
+      "t" : 1.171,
+      "text" : "terForm])\npageH"
+    },
+    {
+      "t" : 1.219,
+      "text" : "eader = InlineHe"
+    },
+    {
+      "t" : 1.26,
+      "text" : "ader(\"Reader Letters"
+    },
+    {
+      "t" : 1.309,
+      "text" : "\", \"Letters from"
+    },
+    {
+      "t" : 1.418,
+      "text" : " our"
+    },
+    {
+      "t" : 1.475,
+      "text" : " readers across"
+    },
+    {
+      "t" : 1.476,
+      "text" : " the region"
+    },
+    {
+      "t" : 1.529,
+      "text" : "\")\nletter1 ="
+    },
+    {
+      "t" : 1.571,
+      "text" : " Card(["
+    },
+    {
+      "t" : 1.62,
+      "text" : "let"
+    },
+    {
+      "t" : 1.662,
+      "text" : "ter"
+    },
+    {
+      "t" : 1.711,
+      "text" : "1Header"
+    },
+    {
+      "t" : 1.763,
+      "text" : ", letter1Body"
+    },
+    {
+      "t" : 1.816,
+      "text" : "])\nletter1Header ="
+    },
+    {
+      "t" : 1.868,
+      "text" : " CardHeader(\"The"
+    },
+    {
+      "t" : 1.928,
+      "text" : " Ligh"
+    },
+    {
+      "t" : 1.975,
+      "text" : "thouse Question"
+    },
+    {
+      "t" : 2.025,
+      "text" : "\", \"From"
+    },
+    {
+      "t" : 2.077,
+      "text" : " Marg"
+    },
+    {
+      "t" : 2.129,
+      "text" : "aret Do"
+    },
+    {
+      "t" : 2.182,
+      "text" : "yle, Port"
+    },
+    {
+      "t" : 2.233,
+      "text" : " Hal"
+    },
+    {
+      "t" : 2.28,
+      "text" : "den\")\nletter1Body"
+    },
+    {
+      "t" : 2.347,
+      "text" : " = TextContent(\"I"
+    },
+    {
+      "t" : 2.406,
+      "text" : " have wal"
+    },
+    {
+      "t" : 2.466,
+      "text" : "ked past"
+    },
+    {
+      "t" : 2.58,
+      "text" : " the old lighthouse every"
+    },
+    {
+      "t" : 2.637,
+      "text" : " mor"
+    },
+    {
+      "t" : 2.701,
+      "text" : "ning for for"
+    },
+    {
+      "t" : 2.769,
+      "text" : "ty years. Last"
+    },
+    {
+      "t" : 2.832,
+      "text" : " week the council"
+    },
+    {
+      "t" : 2.873,
+      "text" : " announ"
+    },
+    {
+      "t" : 2.936,
+      "text" : "ced its rep"
+    },
+    {
+      "t" : 2.938,
+      "text" : "airs, and I w"
+    },
+    {
+      "t" : 3.01,
+      "text" : "anted to th"
+    },
+    {
+      "t" : 3.084,
+      "text" : "ank ever"
+    },
+    {
+      "t" : 3.147,
+      "text" : "yone who f"
+    },
+    {
+      "t" : 3.211,
+      "text" : "ought to"
+    },
+    {
+      "t" : 3.303,
+      "text" : " keep it stand"
+    },
+    {
+      "t" : 3.305,
+      "text" : "ing. It"
+    },
+    {
+      "t" : 3.353,
+      "text" : " is more"
+    },
+    {
+      "t" : 3.399,
+      "text" : " than a land"
+    },
+    {
+      "t" : 3.505,
+      "text" : "mark; it is how"
+    },
+    {
+      "t" : 3.55,
+      "text" : " this"
+    },
+    {
+      "t" : 3.614,
+      "text" : " town kn"
+    },
+    {
+      "t" : 3.674,
+      "text" : "ows where home"
+    },
+    {
+      "t" : 3.734,
+      "text" : " is.\")\nletter2 "
+    },
+    {
+      "t" : 3.782,
+      "text" : "= Card([letter2"
+    },
+    {
+      "t" : 3.845,
+      "text" : "Header, letter2Body])"
+    },
+    {
+      "t" : 3.917,
+      "text" : "\nletter2Header = C"
+    },
+    {
+      "t" : 3.992,
+      "text" : "ardHeader(\"Bu"
+    },
+    {
+      "t" : 4.064,
+      "text" : "ses"
+    },
+    {
+      "t" : 4.11,
+      "text" : " Running Late"
+    },
+    {
+      "t" : 4.182,
+      "text" : " Again\", \"From T"
+    },
+    {
+      "t" : 4.252,
+      "text" : "om"
+    },
+    {
+      "t" : 4.323,
+      "text" : "as"
+    },
+    {
+      "t" : 4.399,
+      "text" : "z N"
+    },
+    {
+      "t" : 4.4,
+      "text" : "owak, E"
+    },
+    {
+      "t" : 4.473,
+      "text" : "astbrook\")\nletter"
+    },
+    {
+      "t" : 4.531,
+      "text" : "2Body = TextContent"
+    },
+    {
+      "t" : 4.601,
+      "text" : "(\"The"
+    },
+    {
+      "t" : 4.674,
+      "text" : " number"
+    },
+    {
+      "t" : 4.725,
+      "text" : " 14"
+    },
+    {
+      "t" : 4.81,
+      "text" : " bus has"
+    },
+    {
+      "t" : 4.889,
+      "text" : " ar"
+    },
+    {
+      "t" : 4.964,
+      "text" : "rived late every"
+    },
+    {
+      "t" : 5.089,
+      "text" : " we"
+    },
+    {
+      "t" : 5.137,
+      "text" : "ekday this"
+    },
+    {
+      "t" : 5.139,
+      "text" : " month. Parents wa"
+    },
+    {
+      "t" : 5.208,
+      "text" : "iting at the school"
+    },
+    {
+      "t" : 5.286,
+      "text" : " g"
+    },
+    {
+      "t" : 5.349,
+      "text" : "ate have"
+    },
+    {
+      "t" : 5.428,
+      "text" : " started"
+    },
+    {
+      "t" : 5.506,
+      "text" : " wal"
+    },
+    {
+      "t" : 5.585,
+      "text" : "king inst"
+    },
+    {
+      "t" : 5.652,
+      "text" : "ead,"
+    },
+    {
+      "t" : 5.721,
+      "text" : " and the"
+    },
+    {
+      "t" : 5.806,
+      "text" : " tim"
+    },
+    {
+      "t" : 5.885,
+      "text" : "etable on"
+    },
+    {
+      "t" : 5.969,
+      "text" : " the st"
+    },
+    {
+      "t" : 6.06,
+      "text" : "op board"
+    },
+    {
+      "t" : 6.143,
+      "text" : " has not"
+    },
+    {
+      "t" : 6.295,
+      "text" : " been updated since sp"
+    },
+    {
+      "t" : 6.39,
+      "text" : "ring. Please look"
+    },
+    {
+      "t" : 6.391,
+      "text" : " into"
+    },
+    {
+      "t" : 6.483,
+      "text" : " it before"
+    },
+    {
+      "t" : 6.575,
+      "text" : " win"
+    },
+    {
+      "t" : 6.646,
+      "text" : "ter."
+    },
+    {
+      "t" : 6.725,
+      "text" : "\")\nletter3 ="
+    },
+    {
+      "t" : 6.794,
+      "text" : " Card([letter3Header,"
+    },
+    {
+      "t" : 6.888,
+      "text" : " letter3Body])\nlet"
+    },
+    {
+      "t" : 7.015,
+      "text" : "ter3Header = CardH"
+    },
+    {
+      "t" : 7.016,
+      "text" : "eader(\"Th"
+    },
+    {
+      "t" : 7.091,
+      "text" : "anks to"
+    },
+    {
+      "t" : 7.163,
+      "text" : " the Library"
+    },
+    {
+      "t" : 7.245,
+      "text" : " Vol"
+    },
+    {
+      "t" : 7.38,
+      "text" : "unteers\", \"From"
+    },
+    {
+      "t" : 7.381,
+      "text" : " Pri"
+    },
+    {
+      "t" : 7.471,
+      "text" : "ya Ra"
+    },
+    {
+      "t" : 7.563,
+      "text" : "man, Millb"
+    },
+    {
+      "t" : 7.635,
+      "text" : "rook Village\")\nletter"
+    },
+    {
+      "t" : 7.729,
+      "text" : "3Body = TextContent"
+    },
+    {
+      "t" : 7.823,
+      "text" : "(\"When the library's"
+    },
+    {
+      "t" : 7.912,
+      "text" : " he"
+    },
+    {
+      "t" : 8.068,
+      "text" : "ating bro"
+    },
+    {
+      "t" : 8.069,
+      "text" : "ke in January"
+    },
+    {
+      "t" : 8.166,
+      "text" : ", a"
+    },
+    {
+      "t" : 8.247,
+      "text" : " group of volunteers organ"
+    },
+    {
+      "t" : 8.339,
+      "text" : "ised a re"
+    },
+    {
+      "t" : 8.434,
+      "text" : "ading mar"
+    },
+    {
+      "t" : 8.499,
+      "text" : "athon to"
+    },
+    {
+      "t" : 8.575,
+      "text" : " keep the do"
+    },
+    {
+      "t" : 8.651,
+      "text" : "ors open. They"
+    },
+    {
+      "t" : 8.835,
+      "text" : " kept the children"
+    },
+    {
+      "t" : 8.906,
+      "text" : "'s"
+    },
+    {
+      "t" : 8.989,
+      "text" : " cor"
+    },
+    {
+      "t" : 8.99,
+      "text" : "ner warm with"
+    },
+    {
+      "t" : 9.097,
+      "text" : " space"
+    },
+    {
+      "t" : 9.213,
+      "text" : " he"
+    },
+    {
+      "t" : 9.315,
+      "text" : "aters and h"
+    },
+    {
+      "t" : 9.409,
+      "text" : "ot chocolate. Our"
+    },
+    {
+      "t" : 9.51,
+      "text" : " village"
+    },
+    {
+      "t" : 9.596,
+      "text" : " is"
+    },
+    {
+      "t" : 9.695,
+      "text" : " l"
+    },
+    {
+      "t" : 9.778,
+      "text" : "ucky to have them."
+    },
+    {
+      "t" : 9.934,
+      "text" : "\")\nformHeader = In"
+    },
+    {
+      "t" : 9.935,
+      "text" : "lineHeader(\"Subm"
+    },
+    {
+      "t" : 10.057,
+      "text" : "it a Letter\", \""
+    },
+    {
+      "t" : 10.156,
+      "text" : "Share your th"
+    },
+    {
+      "t" : 10.258,
+      "text" : "oughts with our"
+    },
+    {
+      "t" : 10.26,
+      "text" : " readers\")\nletterForm"
+    },
+    {
+      "t" : 10.367,
+      "text" : " = Form(\"letter"
+    },
+    {
+      "t" : 10.462,
+      "text" : "\", let"
+    },
+    {
+      "t" : 10.567,
+      "text" : "terButtons, [name"
+    },
+    {
+      "t" : 10.669,
+      "text" : "Field, town"
+    },
+    {
+      "t" : 10.843,
+      "text" : "Field, let"
+    },
+    {
+      "t" : 10.949,
+      "text" : "terField])\nnameField ="
+    },
+    {
+      "t" : 11.073,
+      "text" : " FormControl(\"Your"
+    },
+    {
+      "t" : 11.162,
+      "text" : " Name\", Input(\"name\","
+    },
+    {
+      "t" : 11.164,
+      "text" : " \"Full"
+    },
+    {
+      "t" : 11.275,
+      "text" : " name\", \"text\", { required:"
+    },
+    {
+      "t" : 11.403,
+      "text" : " true, minLength: 2"
+    },
+    {
+      "t" : 11.517,
+      "text" : " }))\ntownField = F"
+    },
+    {
+      "t" : 11.636,
+      "text" : "ormControl(\"Town"
+    },
+    {
+      "t" : 11.868,
+      "text" : "\", Input(\"town"
+    },
+    {
+      "t" : 11.971,
+      "text" : "\", \"e"
+    },
+    {
+      "t" : 12.082,
+      "text" : ".g. Port"
+    },
+    {
+      "t" : 12.197,
+      "text" : " Halden\", \"text\", {"
+    },
+    {
+      "t" : 12.311,
+      "text" : " required: true }))\nletter"
+    },
+    {
+      "t" : 12.434,
+      "text" : "Field = FormControl(\""
+    },
+    {
+      "t" : 12.558,
+      "text" : "Your Letter\", TextAr"
+    },
+    {
+      "t" : 12.664,
+      "text" : "ea(\"letter\", \"Write"
+    },
+    {
+      "t" : 12.755,
+      "text" : " your letter here...\", 6"
+    },
+    {
+      "t" : 12.856,
+      "text" : ", { required: true, minL"
+    },
+    {
+      "t" : 12.949,
+      "text" : "ength: 20 }))"
+    },
+    {
+      "t" : 12.95,
+      "text" : "\nletterButtons = Bu"
+    },
+    {
+      "t" : 13.075,
+      "text" : "ttons([Button(\"Subm"
+    },
+    {
+      "t" : 13.177,
+      "text" : "it Letter\", @To"
+    },
+    {
+      "t" : 13.282,
+      "text" : "Assistant(\"Submit"
+    },
+    {
+      "t" : 13.421,
+      "text" : " a new re"
+    },
+    {
+      "t" : 13.548,
+      "text" : "ader letter\"), \"primary"
+    },
+    {
+      "t" : 13.672,
+      "text" : "\"), Button(\"Clear"
+    },
+    {
+      "t" : 13.907,
+      "text" : "\", @ToAssistant"
+    },
+    {
+      "t" : 13.909,
+      "text" : "(\"Clear the"
+    },
+    {
+      "t" : 14.141,
+      "text" : " letter form\"), \"second"
+    },
+    {
+      "t" : 14.24,
+      "text" : "ary\")])"
+    }
+  ],
+  "createdAt" : "2026-11-11T10:45:26Z",
+  "effort" : "low",
+  "format" : "openui-recording",
+  "inputTokens" : 14495,
+  "library" : "react-ui",
+  "model" : "claude-haiku-5-5",
+  "outputTokens" : 772,
+  "request" : "A reader letters page with three letters, author towns and a form for submitting a new letter.",
+  "servedBy" : "claude-haiku-5-5",
+  "stopReason" : "end_turn",
+  "version" : 1
+}

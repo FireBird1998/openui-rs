@@ -1,0 +1,372 @@
+{
+  "batchRequest" : {
+    "model" : "sonnet",
+    "number" : 21,
+    "request" : "A team task board with three columns (to do, doing, done) and cards with assignees."
+  },
+  "chunks" : [
+    {
+      "t" : 0.703,
+      "text" : "root = Stack([title,"
+    },
+    {
+      "t" : 1.024,
+      "text" : " board"
+    },
+    {
+      "t" : 1.035,
+      "text" : "])"
+    },
+    {
+      "t" : 1.041,
+      "text" : "\ntitle = TextContent(\""
+    },
+    {
+      "t" : 1.058,
+      "text" : "Team Task Board\", \""
+    },
+    {
+      "t" : 1.07,
+      "text" : "large-heavy\")\nboard"
+    },
+    {
+      "t" : 1.082,
+      "text" : " = Stack(["
+    },
+    {
+      "t" : 1.1,
+      "text" : "todoCol"
+    },
+    {
+      "t" : 1.108,
+      "text" : ", doingCol, done"
+    },
+    {
+      "t" : 1.119,
+      "text" : "Col], \"row\", \"m"
+    },
+    {
+      "t" : 1.126,
+      "text" : "\", \"start"
+    },
+    {
+      "t" : 1.144,
+      "text" : "\", \""
+    },
+    {
+      "t" : 1.151,
+      "text" : "start\", true)\ntodoC"
+    },
+    {
+      "t" : 1.345,
+      "text" : "ol = Card([todoH"
+    },
+    {
+      "t" : 1.354,
+      "text" : "eader, todoTasks"
+    },
+    {
+      "t" : 1.367,
+      "text" : "], \"s"
+    },
+    {
+      "t" : 1.382,
+      "text" : "unk\")"
+    },
+    {
+      "t" : 1.39,
+      "text" : "\ntodoHeader = C"
+    },
+    {
+      "t" : 1.404,
+      "text" : "ardHeader(\"To"
+    },
+    {
+      "t" : 1.423,
+      "text" : " Do\", \"3"
+    },
+    {
+      "t" : 1.443,
+      "text" : " tasks\")\ntodo"
+    },
+    {
+      "t" : 1.462,
+      "text" : "Tasks = List"
+    },
+    {
+      "t" : 1.476,
+      "text" : "Block([t1, t"
+    },
+    {
+      "t" : 1.504,
+      "text" : "2, t3], \"number"
+    },
+    {
+      "t" : 1.538,
+      "text" : "\")"
+    },
+    {
+      "t" : 1.673,
+      "text" : "\nt1 = ListIt"
+    },
+    {
+      "t" : 1.696,
+      "text" : "em(\"Design"
+    },
+    {
+      "t" : 1.722,
+      "text" : " on"
+    },
+    {
+      "t" : 1.749,
+      "text" : "boarding flow\", \""
+    },
+    {
+      "t" : 1.775,
+      "text" : "Assignee: Priya"
+    },
+    {
+      "t" : 1.798,
+      "text" : " Shah\")\nt2 ="
+    },
+    {
+      "t" : 1.809,
+      "text" : " ListItem(\"Write API"
+    },
+    {
+      "t" : 1.825,
+      "text" : " docum"
+    },
+    {
+      "t" : 1.859,
+      "text" : "entation\", \"Assignee"
+    },
+    {
+      "t" : 1.895,
+      "text" : ": Marcus L"
+    },
+    {
+      "t" : 1.93,
+      "text" : "ee\")\nt3 = "
+    },
+    {
+      "t" : 1.966,
+      "text" : "ListItem(\"Set"
+    },
+    {
+      "t" : 2.017,
+      "text" : " up error"
+    },
+    {
+      "t" : 2.036,
+      "text" : " mon"
+    },
+    {
+      "t" : 2.071,
+      "text" : "itoring\", \"Assign"
+    },
+    {
+      "t" : 2.105,
+      "text" : "ee: Dana "
+    },
+    {
+      "t" : 2.142,
+      "text" : "Ortiz\")\ndoingC"
+    },
+    {
+      "t" : 2.179,
+      "text" : "ol = Card([doingH"
+    },
+    {
+      "t" : 2.214,
+      "text" : "eader, doingTasks"
+    },
+    {
+      "t" : 2.248,
+      "text" : "], \"s"
+    },
+    {
+      "t" : 2.284,
+      "text" : "unk\")\ndoingHe"
+    },
+    {
+      "t" : 2.32,
+      "text" : "ader = CardHeader(\""
+    },
+    {
+      "t" : 2.356,
+      "text" : "Doing\", \"2 t"
+    },
+    {
+      "t" : 2.392,
+      "text" : "asks\")\ndoingTas"
+    },
+    {
+      "t" : 2.431,
+      "text" : "ks = ListBlock(["
+    },
+    {
+      "t" : 2.466,
+      "text" : "d1, d2], \"number"
+    },
+    {
+      "t" : 2.501,
+      "text" : "\")\nd1 = List"
+    },
+    {
+      "t" : 2.539,
+      "text" : "Item(\"Build bill"
+    },
+    {
+      "t" : 2.573,
+      "text" : "ing dashboard\", \""
+    },
+    {
+      "t" : 2.608,
+      "text" : "Assignee: Alex"
+    },
+    {
+      "t" : 2.643,
+      "text" : " Kim\")\nd2 ="
+    },
+    {
+      "t" : 2.683,
+      "text" : " ListItem(\"Mig"
+    },
+    {
+      "t" : 2.713,
+      "text" : "rate user"
+    },
+    {
+      "t" : 2.748,
+      "text" : " database\", \"Assignee:"
+    },
+    {
+      "t" : 2.783,
+      "text" : " Mar"
+    },
+    {
+      "t" : 2.818,
+      "text" : "cus Lee\")\ndo"
+    },
+    {
+      "t" : 2.854,
+      "text" : "neCol = Card([do"
+    },
+    {
+      "t" : 2.89,
+      "text" : "neHeader, doneT"
+    },
+    {
+      "t" : 2.925,
+      "text" : "asks], \"sunk\")"
+    },
+    {
+      "t" : 2.961,
+      "text" : "\ndoneHeader = C"
+    },
+    {
+      "t" : 2.996,
+      "text" : "ardHeader(\"Done\","
+    },
+    {
+      "t" : 3.032,
+      "text" : " \"3"
+    },
+    {
+      "t" : 3.068,
+      "text" : " tasks\")\ndone"
+    },
+    {
+      "t" : 3.103,
+      "text" : "Tasks = ListBl"
+    },
+    {
+      "t" : 3.142,
+      "text" : "ock([n"
+    },
+    {
+      "t" : 3.173,
+      "text" : "1, n2, n3],"
+    },
+    {
+      "t" : 3.209,
+      "text" : " \"number\")\nn1 ="
+    },
+    {
+      "t" : 3.245,
+      "text" : " ListItem(\"Laun"
+    },
+    {
+      "t" : 3.28,
+      "text" : "ch land"
+    },
+    {
+      "t" : 3.316,
+      "text" : "ing page\", \"Assignee"
+    },
+    {
+      "t" : 3.351,
+      "text" : ": Priya Shah\")"
+    },
+    {
+      "t" : 3.387,
+      "text" : "\nn2 = ListIt"
+    },
+    {
+      "t" : 3.426,
+      "text" : "em(\"Config"
+    },
+    {
+      "t" : 3.457,
+      "text" : "ure CI p"
+    },
+    {
+      "t" : 3.494,
+      "text" : "ipeline\", \"Assign"
+    },
+    {
+      "t" : 3.531,
+      "text" : "ee: Dana Ort"
+    },
+    {
+      "t" : 3.577,
+      "text" : "iz\")\nn3 ="
+    },
+    {
+      "t" : 3.604,
+      "text" : " ListItem(\"Custom"
+    },
+    {
+      "t" : 3.635,
+      "text" : "er inter"
+    },
+    {
+      "t" : 3.67,
+      "text" : "view syn"
+    },
+    {
+      "t" : 3.705,
+      "text" : "thesis\", \"Assign"
+    },
+    {
+      "t" : 3.741,
+      "text" : "ee: Alex Kim"
+    },
+    {
+      "t" : 3.777,
+      "text" : "\")"
+    }
+  ],
+  "createdAt" : "2026-11-11T10:34:27Z",
+  "effort" : "low",
+  "format" : "openui-recording",
+  "inputTokens" : 14494,
+  "library" : "react-ui",
+  "model" : "claude-sonnet-5-5",
+  "outputTokens" : 549,
+  "request" : "A team task board with three columns (to do, doing, done) and cards with assignees.",
+  "servedBy" : "claude-sonnet-5-5",
+  "stopReason" : "end_turn",
+  "version" : 1
+}

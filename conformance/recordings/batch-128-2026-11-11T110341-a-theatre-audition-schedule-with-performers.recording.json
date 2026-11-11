@@ -1,0 +1,452 @@
+{
+  "batchRequest" : {
+    "model" : "haiku",
+    "number" : 128,
+    "request" : "A theatre audition schedule with performers, requested roles, audition slots and callback-status tags."
+  },
+  "chunks" : [
+    {
+      "t" : 0.657,
+      "text" : "root = Stack(["
+    },
+    {
+      "t" : 0.837,
+      "text" : "header"
+    },
+    {
+      "t" : 0.839,
+      "text" : ", table"
+    },
+    {
+      "t" : 0.875,
+      "text" : ","
+    },
+    {
+      "t" : 0.959,
+      "text" : " stat"
+    },
+    {
+      "t" : 1.011,
+      "text" : "usCard])\nheader = In"
+    },
+    {
+      "t" : 1.115,
+      "text" : "lineHeader(\"Sp"
+    },
+    {
+      "t" : 1.178,
+      "text" : "ring Mus"
+    },
+    {
+      "t" : 1.18,
+      "text" : "ical Au"
+    },
+    {
+      "t" : 1.241,
+      "text" : "ditions\", \"Perform"
+    },
+    {
+      "t" : 1.31,
+      "text" : "ers, requ"
+    },
+    {
+      "t" : 1.366,
+      "text" : "ested roles,"
+    },
+    {
+      "t" : 1.41,
+      "text" : " sl"
+    },
+    {
+      "t" : 1.453,
+      "text" : "ots and callback status\")\ntable"
+    },
+    {
+      "t" : 1.499,
+      "text" : " = Table([col"
+    },
+    {
+      "t" : 1.677,
+      "text" : "Performer, colR"
+    },
+    {
+      "t" : 1.68,
+      "text" : "ole, colS"
+    },
+    {
+      "t" : 1.737,
+      "text" : "lot, colSt"
+    },
+    {
+      "t" : 1.794,
+      "text" : "atus])\ncolPerform"
+    },
+    {
+      "t" : 1.902,
+      "text" : "er = Col(\"Performer"
+    },
+    {
+      "t" : 1.952,
+      "text" : "\", "
+    },
+    {
+      "t" : 1.956,
+      "text" : "[\"Maya Ch"
+    },
+    {
+      "t" : 2.038,
+      "text" : "en\", \"Di"
+    },
+    {
+      "t" : 2.089,
+      "text" : "ego Ramirez\", \""
+    },
+    {
+      "t" : 2.178,
+      "text" : "Priya Pat"
+    },
+    {
+      "t" : 2.18,
+      "text" : "el\", \"Ow"
+    },
+    {
+      "t" : 2.229,
+      "text" : "en Broo"
+    },
+    {
+      "t" : 2.277,
+      "text" : "ks\", \"L"
+    },
+    {
+      "t" : 2.379,
+      "text" : "ena F"
+    },
+    {
+      "t" : 2.433,
+      "text" : "isch"
+    },
+    {
+      "t" : 2.492,
+      "text" : "er\", \"Jam"
+    },
+    {
+      "t" : 2.495,
+      "text" : "al Car"
+    },
+    {
+      "t" : 2.562,
+      "text" : "ter\"])\ncolRole ="
+    },
+    {
+      "t" : 2.616,
+      "text" : " Col(\"Requ"
+    },
+    {
+      "t" : 2.67,
+      "text" : "ested Role\", [\"El"
+    },
+    {
+      "t" : 2.731,
+      "text" : "ph"
+    },
+    {
+      "t" : 2.792,
+      "text" : "a"
+    },
+    {
+      "t" : 2.856,
+      "text" : "ba\", \"F"
+    },
+    {
+      "t" : 2.922,
+      "text" : "i"
+    },
+    {
+      "t" : 3.052,
+      "text" : "y"
+    },
+    {
+      "t" : 3.056,
+      "text" : "ero\", \"Gl"
+    },
+    {
+      "t" : 3.116,
+      "text" : "inda\", \"Bo"
+    },
+    {
+      "t" : 3.19,
+      "text" : "q"
+    },
+    {
+      "t" : 3.263,
+      "text" : "\", \"Ness"
+    },
+    {
+      "t" : 3.331,
+      "text" : "ar"
+    },
+    {
+      "t" : 3.395,
+      "text" : "ose"
+    },
+    {
+      "t" : 3.452,
+      "text" : "\", \"F"
+    },
+    {
+      "t" : 3.514,
+      "text" : "iyero\"])\ncolS"
+    },
+    {
+      "t" : 3.612,
+      "text" : "lot = Col(\"Aud"
+    },
+    {
+      "t" : 3.676,
+      "text" : "ition Slot\", [\""
+    },
+    {
+      "t" : 3.732,
+      "text" : "S"
+    },
+    {
+      "t" : 3.839,
+      "text" : "at 9:00 AM"
+    },
+    {
+      "t" : 3.924,
+      "text" : "\", \"Sat 9"
+    },
+    {
+      "t" : 4.013,
+      "text" : ":20"
+    },
+    {
+      "t" : 4.09,
+      "text" : " AM\", \"Sat"
+    },
+    {
+      "t" : 4.173,
+      "text" : " 9"
+    },
+    {
+      "t" : 4.261,
+      "text" : ":40 AM\", \""
+    },
+    {
+      "t" : 4.358,
+      "text" : "Sat 10:00 A"
+    },
+    {
+      "t" : 4.433,
+      "text" : "M\", \"Sat 10"
+    },
+    {
+      "t" : 4.525,
+      "text" : ":20 AM\", \""
+    },
+    {
+      "t" : 4.623,
+      "text" : "Sat 10:40 A"
+    },
+    {
+      "t" : 4.716,
+      "text" : "M\"])\ncolStatus"
+    },
+    {
+      "t" : 4.79,
+      "text" : " = Col(\"Call"
+    },
+    {
+      "t" : 4.855,
+      "text" : "back Status\", ["
+    },
+    {
+      "t" : 4.94,
+      "text" : "t"
+    },
+    {
+      "t" : 5.002,
+      "text" : "agC"
+    },
+    {
+      "t" : 5.075,
+      "text" : "allback1"
+    },
+    {
+      "t" : 5.08,
+      "text" : ", tagP"
+    },
+    {
+      "t" : 5.166,
+      "text" : "ending, tagCallback2"
+    },
+    {
+      "t" : 5.258,
+      "text" : ", tagD"
+    },
+    {
+      "t" : 5.376,
+      "text" : "eclined, tagPending"
+    },
+    {
+      "t" : 5.481,
+      "text" : ", tagCallback3],"
+    },
+    {
+      "t" : 5.574,
+      "text" : " \"action"
+    },
+    {
+      "t" : 5.724,
+      "text" : "\")\ntagCallback1"
+    },
+    {
+      "t" : 5.802,
+      "text" : " = Tag(\"Call"
+    },
+    {
+      "t" : 5.894,
+      "text" : "back\", null, \"sm\","
+    },
+    {
+      "t" : 5.989,
+      "text" : " \"success\")\ntagC"
+    },
+    {
+      "t" : 6.112,
+      "text" : "allback2 = Tag"
+    },
+    {
+      "t" : 6.228,
+      "text" : "(\"Callback\", null, \""
+    },
+    {
+      "t" : 6.342,
+      "text" : "sm\", \"success\")\nt"
+    },
+    {
+      "t" : 6.464,
+      "text" : "agCallback3 ="
+    },
+    {
+      "t" : 6.537,
+      "text" : " Tag(\"Callback\", null"
+    },
+    {
+      "t" : 6.587,
+      "text" : ", \"sm\", \"success\")"
+    },
+    {
+      "t" : 6.686,
+      "text" : "\ntagPending = T"
+    },
+    {
+      "t" : 6.818,
+      "text" : "ag(\"Pending\", null,"
+    },
+    {
+      "t" : 6.916,
+      "text" : " \"sm\", \"war"
+    },
+    {
+      "t" : 6.919,
+      "text" : "ning\")\ntagDecl"
+    },
+    {
+      "t" : 7.054,
+      "text" : "ined = Tag(\"Not"
+    },
+    {
+      "t" : 7.186,
+      "text" : " Inv"
+    },
+    {
+      "t" : 7.313,
+      "text" : "ited\", null, \"sm\","
+    },
+    {
+      "t" : 7.399,
+      "text" : " \"danger\")\nstatusC"
+    },
+    {
+      "t" : 7.536,
+      "text" : "ard = Card([stat"
+    },
+    {
+      "t" : 7.591,
+      "text" : "usTitle, statusT"
+    },
+    {
+      "t" : 7.727,
+      "text" : "ags])\nstatusTitle"
+    },
+    {
+      "t" : 7.966,
+      "text" : " = C"
+    },
+    {
+      "t" : 8.058,
+      "text" : "ardHeader(\"Call"
+    },
+    {
+      "t" : 8.175,
+      "text" : "back Summ"
+    },
+    {
+      "t" : 8.267,
+      "text" : "ary\", \"Current"
+    },
+    {
+      "t" : 8.362,
+      "text" : " status across"
+    },
+    {
+      "t" : 8.364,
+      "text" : " all au"
+    },
+    {
+      "t" : 8.458,
+      "text" : "ditio"
+    },
+    {
+      "t" : 8.592,
+      "text" : "ners"
+    },
+    {
+      "t" : 8.676,
+      "text" : "\")\nstatusTags = T"
+    },
+    {
+      "t" : 8.767,
+      "text" : "agBlock([\"3"
+    },
+    {
+      "t" : 8.872,
+      "text" : " Callbacks\", \""
+    },
+    {
+      "t" : 8.958,
+      "text" : "2 Pending\", \"1"
+    },
+    {
+      "t" : 9.054,
+      "text" : " Not Invited\"],"
+    },
+    {
+      "t" : 9.177,
+      "text" : " \"md\")"
+    }
+  ],
+  "createdAt" : "2026-11-11T11:03:41Z",
+  "effort" : "low",
+  "format" : "openui-recording",
+  "inputTokens" : 14499,
+  "library" : "react-ui",
+  "model" : "claude-haiku-5-5",
+  "outputTokens" : 574,
+  "request" : "A theatre audition schedule with performers, requested roles, audition slots and callback-status tags.",
+  "servedBy" : "claude-haiku-5-5",
+  "stopReason" : "end_turn",
+  "version" : 1
+}

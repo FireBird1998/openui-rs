@@ -1,0 +1,848 @@
+{
+  "batchRequest" : {
+    "model" : "haiku",
+    "number" : 82,
+    "request" : "A cultural heritage feature with cards for three endangered crafts, artisan quotes and workshop visit details."
+  },
+  "chunks" : [
+    {
+      "t" : 0.762,
+      "text" : "root"
+    },
+    {
+      "t" : 0.883,
+      "text" : " = Stack(["
+    },
+    {
+      "t" : 0.922,
+      "text" : "header"
+    },
+    {
+      "t" : 0.984,
+      "text" : ", c"
+    },
+    {
+      "t" : 1.104,
+      "text" : "ardR"
+    },
+    {
+      "t" : 1.15,
+      "text" : "ow])"
+    },
+    {
+      "t" : 1.185,
+      "text" : "\nheader = InlineHe"
+    },
+    {
+      "t" : 1.213,
+      "text" : "ader(\"Endangered Cr"
+    },
+    {
+      "t" : 1.243,
+      "text" : "afts\", \"Three"
+    },
+    {
+      "t" : 1.298,
+      "text" : " tra"
+    },
+    {
+      "t" : 1.301,
+      "text" : "ditions ke"
+    },
+    {
+      "t" : 1.333,
+      "text" : "eping their mak"
+    },
+    {
+      "t" : 1.366,
+      "text" : "ers and"
+    },
+    {
+      "t" : 1.413,
+      "text" : " st"
+    },
+    {
+      "t" : 1.415,
+      "text" : "ories alive\")\ncardR"
+    },
+    {
+      "t" : 1.444,
+      "text" : "ow = Stack([craft"
+    },
+    {
+      "t" : 1.471,
+      "text" : "1, craft2, craft"
+    },
+    {
+      "t" : 1.508,
+      "text" : "3], \"row\", \"m"
+    },
+    {
+      "t" : 1.553,
+      "text" : "\", \"st"
+    },
+    {
+      "t" : 1.586,
+      "text" : "retch\", \"start"
+    },
+    {
+      "t" : 1.618,
+      "text" : "\", true)\n\ncraft1 "
+    },
+    {
+      "t" : 1.665,
+      "text" : "= Card(["
+    },
+    {
+      "t" : 1.666,
+      "text" : "craft"
+    },
+    {
+      "t" : 1.723,
+      "text" : "1Header, craft1"
+    },
+    {
+      "t" : 1.724,
+      "text" : "Quote, craft1Vis"
+    },
+    {
+      "t" : 1.763,
+      "text" : "it],"
+    },
+    {
+      "t" : 1.806,
+      "text" : " \"card"
+    },
+    {
+      "t" : 1.841,
+      "text" : "\","
+    },
+    {
+      "t" : 1.874,
+      "text" : " \"column\","
+    },
+    {
+      "t" : 1.905,
+      "text" : " \"m"
+    },
+    {
+      "t" : 1.967,
+      "text" : "\")\ncraft1Header ="
+    },
+    {
+      "t" : 2,
+      "text" : " CardHeader(\"L"
+    },
+    {
+      "t" : 2.032,
+      "text" : "ac"
+    },
+    {
+      "t" : 2.034,
+      "text" : "quer"
+    },
+    {
+      "t" : 2.075,
+      "text" : "ware of"
+    },
+    {
+      "t" : 2.115,
+      "text" : " W"
+    },
+    {
+      "t" : 2.168,
+      "text" : "aj"
+    },
+    {
+      "t" : 2.169,
+      "text" : "ima"
+    },
+    {
+      "t" : 2.207,
+      "text" : "\", \""
+    },
+    {
+      "t" : 2.255,
+      "text" : "Ishikawa"
+    },
+    {
+      "t" : 2.293,
+      "text" : " Prefecture, Japan"
+    },
+    {
+      "t" : 2.333,
+      "text" : "\")\ncraft1Quote"
+    },
+    {
+      "t" : 2.378,
+      "text" : " ="
+    },
+    {
+      "t" : 2.438,
+      "text" : " Callout(\""
+    },
+    {
+      "t" : 2.441,
+      "text" : "ne"
+    },
+    {
+      "t" : 2.478,
+      "text" : "utral\", \"In"
+    },
+    {
+      "t" : 2.531,
+      "text" : " the art"
+    },
+    {
+      "t" : 2.568,
+      "text" : "isan's words"
+    },
+    {
+      "t" : 2.622,
+      "text" : "\", \"\\"
+    },
+    {
+      "t" : 2.665,
+      "text" : "\"Each layer of lac"
+    },
+    {
+      "t" : 2.713,
+      "text" : "quer needs we"
+    },
+    {
+      "t" : 2.761,
+      "text" : "eks to"
+    },
+    {
+      "t" : 2.809,
+      "text" : " dry. Pat"
+    },
+    {
+      "t" : 2.862,
+      "text" : "ience is the real"
+    },
+    {
+      "t" : 2.911,
+      "text" : " material we"
+    },
+    {
+      "t" : 2.965,
+      "text" : " work"
+    },
+    {
+      "t" : 3.021,
+      "text" : " with.\\\""
+    },
+    {
+      "t" : 3.079,
+      "text" : " —"
+    },
+    {
+      "t" : 3.137,
+      "text" : " Ha"
+    },
+    {
+      "t" : 3.187,
+      "text" : "ruko"
+    },
+    {
+      "t" : 3.304,
+      "text" : " M"
+    },
+    {
+      "t" : 3.335,
+      "text" : "ori, 4"
+    },
+    {
+      "t" : 3.354,
+      "text" : "th generation lacquer"
+    },
+    {
+      "t" : 3.415,
+      "text" : " master"
+    },
+    {
+      "t" : 3.473,
+      "text" : "\")\ncraft1Visit"
+    },
+    {
+      "t" : 3.523,
+      "text" : " = cra"
+    },
+    {
+      "t" : 3.604,
+      "text" : "ft1Details"
+    },
+    {
+      "t" : 3.605,
+      "text" : "\ncraft1Details"
+    },
+    {
+      "t" : 3.653,
+      "text" : " = EntityList(["
+    },
+    {
+      "t" : 3.7,
+      "text" : "craft1Row"
+    },
+    {
+      "t" : 3.749,
+      "text" : "1, craft1Row2"
+    },
+    {
+      "t" : 3.802,
+      "text" : ", craft1Row3,"
+    },
+    {
+      "t" : 3.856,
+      "text" : " craft1Row4], \""
+    },
+    {
+      "t" : 3.908,
+      "text" : "default\")\ncraft1Row"
+    },
+    {
+      "t" : 3.965,
+      "text" : "1 = {"
+    },
+    {
+      "t" : 4.031,
+      "text" : " left: \"Work"
+    },
+    {
+      "t" : 4.081,
+      "text" : "shop\", right: \"W"
+    },
+    {
+      "t" : 4.135,
+      "text" : "ajima L"
+    },
+    {
+      "t" : 4.187,
+      "text" : "acquer Studio\" }"
+    },
+    {
+      "t" : 4.25,
+      "text" : "\ncraft1Row2 "
+    },
+    {
+      "t" : 4.302,
+      "text" : "= { left: \"Vis"
+    },
+    {
+      "t" : 4.357,
+      "text" : "it length"
+    },
+    {
+      "t" : 4.414,
+      "text" : "\", right: \"2"
+    },
+    {
+      "t" : 4.51,
+      "text" : " hours\" }\ncraft"
+    },
+    {
+      "t" : 4.512,
+      "text" : "1Row3 = { left"
+    },
+    {
+      "t" : 4.567,
+      "text" : ": \"Group"
+    },
+    {
+      "t" : 4.623,
+      "text" : " size\", right: \"Up"
+    },
+    {
+      "t" : 4.698,
+      "text" : " to 8\" }\ncraft"
+    },
+    {
+      "t" : 4.7,
+      "text" : "1Row4 = { left"
+    },
+    {
+      "t" : 4.751,
+      "text" : ": \"Next op"
+    },
+    {
+      "t" : 4.8,
+      "text" : "ening\", right: \"12"
+    },
+    {
+      "t" : 4.854,
+      "text" : " May"
+    },
+    {
+      "t" : 4.903,
+      "text" : "\""
+    },
+    {
+      "t" : 4.988,
+      "text" : " }\n\ncraft2 ="
+    },
+    {
+      "t" : 4.989,
+      "text" : " Card([craft2Header,"
+    },
+    {
+      "t" : 5.051,
+      "text" : " craft2Quote, cra"
+    },
+    {
+      "t" : 5.112,
+      "text" : "ft2Visit], \"card"
+    },
+    {
+      "t" : 5.17,
+      "text" : "\", \"column\", \"m\")"
+    },
+    {
+      "t" : 5.301,
+      "text" : "\ncraft2Header = Card"
+    },
+    {
+      "t" : 5.356,
+      "text" : "Header(\"L"
+    },
+    {
+      "t" : 5.358,
+      "text" : "omb"
+    },
+    {
+      "t" : 5.41,
+      "text" : "ok"
+    },
+    {
+      "t" : 5.476,
+      "text" : " "
+    },
+    {
+      "t" : 5.538,
+      "text" : "Ikat Weaving\", \""
+    },
+    {
+      "t" : 5.598,
+      "text" : "West Nusa Ten"
+    },
+    {
+      "t" : 5.702,
+      "text" : "ggara, Indonesia"
+    },
+    {
+      "t" : 5.785,
+      "text" : "\")\ncraft2Quote"
+    },
+    {
+      "t" : 5.862,
+      "text" : " = Callout(\"ne"
+    },
+    {
+      "t" : 5.937,
+      "text" : "utral\", \"In the artis"
+    },
+    {
+      "t" : 6.002,
+      "text" : "an's words\", \"\\\"My"
+    },
+    {
+      "t" : 6.066,
+      "text" : " grandmother d"
+    },
+    {
+      "t" : 6.128,
+      "text" : "y"
+    },
+    {
+      "t" : 6.184,
+      "text" : "ed thre"
+    },
+    {
+      "t" : 6.243,
+      "text" : "ads with"
+    },
+    {
+      "t" : 6.315,
+      "text" : " indigo from"
+    },
+    {
+      "t" : 6.452,
+      "text" : " our"
+    },
+    {
+      "t" : 6.515,
+      "text" : " village. I"
+    },
+    {
+      "t" : 6.594,
+      "text" : " still"
+    },
+    {
+      "t" : 6.596,
+      "text" : " count"
+    },
+    {
+      "t" : 6.664,
+      "text" : " each"
+    },
+    {
+      "t" : 6.727,
+      "text" : " kn"
+    },
+    {
+      "t" : 6.799,
+      "text" : "ot the"
+    },
+    {
+      "t" : 6.86,
+      "text" : " way"
+    },
+    {
+      "t" : 6.92,
+      "text" : " she taught me.\\\" —"
+    },
+    {
+      "t" : 6.988,
+      "text" : " Ni"
+    },
+    {
+      "t" : 7.105,
+      "text" : " W"
+    },
+    {
+      "t" : 7.175,
+      "text" : "ayan Sari, we"
+    },
+    {
+      "t" : 7.249,
+      "text" : "aver\")\ncraft2"
+    },
+    {
+      "t" : 7.321,
+      "text" : "Visit = craft2Details"
+    },
+    {
+      "t" : 7.323,
+      "text" : "\ncraft2Details = E"
+    },
+    {
+      "t" : 7.411,
+      "text" : "ntityList([craft2"
+    },
+    {
+      "t" : 7.488,
+      "text" : "Row1, craft2Row"
+    },
+    {
+      "t" : 7.563,
+      "text" : "2, craft2Row3"
+    },
+    {
+      "t" : 7.655,
+      "text" : ", craft2Row4],"
+    },
+    {
+      "t" : 7.848,
+      "text" : " \"default\")\ncraft2"
+    },
+    {
+      "t" : 7.927,
+      "text" : "Row1 = { left: \""
+    },
+    {
+      "t" : 8.011,
+      "text" : "Workshop\", right: \""
+    },
+    {
+      "t" : 8.12,
+      "text" : "Suk"
+    },
+    {
+      "t" : 8.2,
+      "text" : "ar"
+    },
+    {
+      "t" : 8.295,
+      "text" : "ara"
+    },
+    {
+      "t" : 8.297,
+      "text" : " We"
+    },
+    {
+      "t" : 8.389,
+      "text" : "aving Village"
+    },
+    {
+      "t" : 8.507,
+      "text" : "\" }\ncraft2Row"
+    },
+    {
+      "t" : 8.605,
+      "text" : "2 = { left: \""
+    },
+    {
+      "t" : 8.695,
+      "text" : "Visit length\", right: \"3"
+    },
+    {
+      "t" : 8.786,
+      "text" : " hours\" }\ncraft"
+    },
+    {
+      "t" : 9.013,
+      "text" : "2Row3 = { left"
+    },
+    {
+      "t" : 9.108,
+      "text" : ": \"Group size\", right:"
+    },
+    {
+      "t" : 9.19,
+      "text" : " \"Up to 6\" }"
+    },
+    {
+      "t" : 9.269,
+      "text" : "\ncraft2Row4 "
+    },
+    {
+      "t" : 9.3,
+      "text" : "= { left: \"Next op"
+    },
+    {
+      "t" : 9.41,
+      "text" : "ening\", right: \"19 May"
+    },
+    {
+      "t" : 9.481,
+      "text" : "\" }\n\ncraft3 ="
+    },
+    {
+      "t" : 9.56,
+      "text" : " Card([craft3Header"
+    },
+    {
+      "t" : 9.651,
+      "text" : ", craft3Quote,"
+    },
+    {
+      "t" : 9.735,
+      "text" : " craft3Visit], \""
+    },
+    {
+      "t" : 9.822,
+      "text" : "card\", \"column\", \"m\")"
+    },
+    {
+      "t" : 9.908,
+      "text" : "\ncraft3Header = C"
+    },
+    {
+      "t" : 9.988,
+      "text" : "ardHeader(\"Hand"
+    },
+    {
+      "t" : 10.069,
+      "text" : "-Be"
+    },
+    {
+      "t" : 10.145,
+      "text" : "aten"
+    },
+    {
+      "t" : 10.237,
+      "text" : " Cop"
+    },
+    {
+      "t" : 10.322,
+      "text" : "per of"
+    },
+    {
+      "t" : 10.403,
+      "text" : " Her"
+    },
+    {
+      "t" : 10.509,
+      "text" : "at\", \"Her"
+    },
+    {
+      "t" : 10.605,
+      "text" : "at, Afghanistan"
+    },
+    {
+      "t" : 10.722,
+      "text" : "\", )"
+    },
+    {
+      "t" : 10.902,
+      "text" : "\ncraft3Quote ="
+    },
+    {
+      "t" : 11.006,
+      "text" : " Callout(\"neutral\","
+    },
+    {
+      "t" : 11.123,
+      "text" : " \"In the artisan's words"
+    },
+    {
+      "t" : 11.205,
+      "text" : "\", \"\\\"Our h"
+    },
+    {
+      "t" : 11.295,
+      "text" : "ammers have pass"
+    },
+    {
+      "t" : 11.419,
+      "text" : "ed from"
+    },
+    {
+      "t" : 11.575,
+      "text" : " father to son for"
+    },
+    {
+      "t" : 11.636,
+      "text" : " centuries. Every"
+    },
+    {
+      "t" : 11.668,
+      "text" : " d"
+    },
+    {
+      "t" : 11.754,
+      "text" : "ent in"
+    },
+    {
+      "t" : 11.833,
+      "text" : " the copper t"
+    },
+    {
+      "t" : 11.926,
+      "text" : "ells a story.\\\" —"
+    },
+    {
+      "t" : 12.012,
+      "text" : " Ab"
+    },
+    {
+      "t" : 12.095,
+      "text" : "dul Q"
+    },
+    {
+      "t" : 12.175,
+      "text" : "adir,"
+    },
+    {
+      "t" : 12.343,
+      "text" : " coppersmith\")"
+    },
+    {
+      "t" : 12.436,
+      "text" : "\ncraft3Visit ="
+    },
+    {
+      "t" : 12.54,
+      "text" : " craft3Details\ncraft"
+    },
+    {
+      "t" : 12.647,
+      "text" : "3Details = EntityList"
+    },
+    {
+      "t" : 12.649,
+      "text" : "([craft3Row1,"
+    },
+    {
+      "t" : 12.756,
+      "text" : " craft3Row2, cra"
+    },
+    {
+      "t" : 12.862,
+      "text" : "ft3Row3, craft"
+    },
+    {
+      "t" : 12.96,
+      "text" : "3Row4], \"default\")"
+    },
+    {
+      "t" : 13.056,
+      "text" : "\ncraft3Row1 "
+    },
+    {
+      "t" : 13.153,
+      "text" : "= { left: \"Worksh"
+    },
+    {
+      "t" : 13.249,
+      "text" : "op\", right: \"Old"
+    },
+    {
+      "t" : 13.35,
+      "text" : " Bazaar Co"
+    },
+    {
+      "t" : 13.489,
+      "text" : "ppersmi"
+    },
+    {
+      "t" : 13.602,
+      "text" : "ths\" }\ncraft3"
+    },
+    {
+      "t" : 13.747,
+      "text" : "Row2 = { left: \""
+    },
+    {
+      "t" : 13.859,
+      "text" : "Visit length\", right: \""
+    },
+    {
+      "t" : 13.956,
+      "text" : "90"
+    },
+    {
+      "t" : 14.068,
+      "text" : " minutes\" }\ncra"
+    },
+    {
+      "t" : 14.191,
+      "text" : "ft3Row3 = {"
+    },
+    {
+      "t" : 14.295,
+      "text" : " left: \"Group size\", right"
+    },
+    {
+      "t" : 14.389,
+      "text" : ": \"Up to 10\""
+    },
+    {
+      "t" : 14.488,
+      "text" : " }\ncraft3Row4"
+    },
+    {
+      "t" : 14.672,
+      "text" : " = { left: \"Next"
+    },
+    {
+      "t" : 14.674,
+      "text" : " opening\", right: \"26 "
+    },
+    {
+      "t" : 14.887,
+      "text" : "May\" }"
+    }
+  ],
+  "createdAt" : "2026-11-11T10:49:42Z",
+  "effort" : "low",
+  "format" : "openui-recording",
+  "inputTokens" : 14504,
+  "library" : "react-ui",
+  "model" : "claude-haiku-5-5",
+  "outputTokens" : 1079,
+  "request" : "A cultural heritage feature with cards for three endangered crafts, artisan quotes and workshop visit details.",
+  "servedBy" : "claude-haiku-5-5",
+  "stopReason" : "end_turn",
+  "version" : 1
+}

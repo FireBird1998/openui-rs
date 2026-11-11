@@ -1,0 +1,1108 @@
+{
+  "batchRequest" : {
+    "model" : "sonnet",
+    "number" : 93,
+    "request" : "A warehouse receiving checklist with expected shipments, counted quantities, damaged-item notes and a discrepancy callout."
+  },
+  "chunks" : [
+    {
+      "t" : 0.659,
+      "text" : "root = Stack([header"
+    },
+    {
+      "t" : 0.959,
+      "text" : ", summ"
+    },
+    {
+      "t" : 0.988,
+      "text" : "ary, disc"
+    },
+    {
+      "t" : 1.054,
+      "text" : "repanc"
+    },
+    {
+      "t" : 1.082,
+      "text" : "y, sh"
+    },
+    {
+      "t" : 1.167,
+      "text" : "ipmentsH"
+    },
+    {
+      "t" : 1.197,
+      "text" : "eader, sh"
+    },
+    {
+      "t" : 1.198,
+      "text" : "ipT"
+    },
+    {
+      "t" : 1.23,
+      "text" : "able, formHeader, form"
+    },
+    {
+      "t" : 1.262,
+      "text" : "])"
+    },
+    {
+      "t" : 1.327,
+      "text" : "\nheader = C"
+    },
+    {
+      "t" : 1.361,
+      "text" : "ardHeader(\"Wareh"
+    },
+    {
+      "t" : 1.395,
+      "text" : "ouse Receiving Chec"
+    },
+    {
+      "t" : 1.442,
+      "text" : "klist\", \"D"
+    },
+    {
+      "t" : 1.482,
+      "text" : "ock "
+    },
+    {
+      "t" : 1.516,
+      "text" : "3 · In"
+    },
+    {
+      "t" : 1.517,
+      "text" : "bound sh"
+    },
+    {
+      "t" : 1.558,
+      "text" : "ipments for"
+    },
+    {
+      "t" : 1.596,
+      "text" : " today"
+    },
+    {
+      "t" : 1.633,
+      "text" : "\")\nsummary = S"
+    },
+    {
+      "t" : 1.671,
+      "text" : "nippetCardBlock"
+    },
+    {
+      "t" : 1.705,
+      "text" : "([s1, s2, s"
+    },
+    {
+      "t" : 1.745,
+      "text" : "3])\ns1 "
+    },
+    {
+      "t" : 1.781,
+      "text" : "= SnippetCardIt"
+    },
+    {
+      "t" : 1.824,
+      "text" : "em(\"expected\", s1l"
+    },
+    {
+      "t" : 1.865,
+      "text" : ", s1r)\ns1"
+    },
+    {
+      "t" : 1.949,
+      "text" : "l = IconText(s1"
+    },
+    {
+      "t" : 1.989,
+      "text" : "i, \"neutral\", \""
+    },
+    {
+      "t" : 2.032,
+      "text" : "m\", \"Expected"
+    },
+    {
+      "t" : 2.079,
+      "text" : " Shipments\", \"Sc"
+    },
+    {
+      "t" : 2.127,
+      "text" : "heduled today"
+    },
+    {
+      "t" : 2.176,
+      "text" : "\", false, \"horizontal"
+    },
+    {
+      "t" : 2.217,
+      "text" : "\")\ns1i = Ic"
+    },
+    {
+      "t" : 2.265,
+      "text" : "on(\"truck\", \"sh"
+    },
+    {
+      "t" : 2.309,
+      "text" : "ipping\")\ns1r ="
+    },
+    {
+      "t" : 2.338,
+      "text" : " BoldText(\"number\", \""
+    },
+    {
+      "t" : 2.36,
+      "text" : "4\")\ns2 = S"
+    },
+    {
+      "t" : 2.412,
+      "text" : "nippetCardItem(\""
+    },
+    {
+      "t" : 2.466,
+      "text" : "received"
+    },
+    {
+      "t" : 2.517,
+      "text" : "\", s2l, s2r"
+    },
+    {
+      "t" : 2.566,
+      "text" : ")\ns2l = Icon"
+    },
+    {
+      "t" : 2.611,
+      "text" : "Text(s2i, \"ne"
+    },
+    {
+      "t" : 2.663,
+      "text" : "utral\", \"m\", \""
+    },
+    {
+      "t" : 2.708,
+      "text" : "Fully Received\", \"Mat"
+    },
+    {
+      "t" : 2.755,
+      "text" : "ches"
+    },
+    {
+      "t" : 2.8,
+      "text" : " P"
+    },
+    {
+      "t" : 2.849,
+      "text" : "O\", false, \"horizont"
+    },
+    {
+      "t" : 2.9,
+      "text" : "al\")\ns2i ="
+    },
+    {
+      "t" : 2.95,
+      "text" : " Icon(\"circle-check\","
+    },
+    {
+      "t" : 3.004,
+      "text" : " \"status"
+    },
+    {
+      "t" : 3.05,
+      "text" : "\")\ns2r = Bo"
+    },
+    {
+      "t" : 3.101,
+      "text" : "ldText(\"number\", \"1"
+    },
+    {
+      "t" : 3.157,
+      "text" : "\")\ns3 = Sn"
+    },
+    {
+      "t" : 3.206,
+      "text" : "ippetCardItem(\"iss"
+    },
+    {
+      "t" : 3.257,
+      "text" : "ues\", s3l, s3"
+    },
+    {
+      "t" : 3.304,
+      "text" : "r)\ns3l = I"
+    },
+    {
+      "t" : 3.357,
+      "text" : "conText(s3i, \""
+    },
+    {
+      "t" : 3.415,
+      "text" : "warning\", \"m\", \"With"
+    },
+    {
+      "t" : 3.47,
+      "text" : " Disc"
+    },
+    {
+      "t" : 3.525,
+      "text" : "repancies\", \"Need"
+    },
+    {
+      "t" : 3.583,
+      "text" : "s review"
+    },
+    {
+      "t" : 3.7,
+      "text" : "\", false, \"horizontal"
+    },
+    {
+      "t" : 3.759,
+      "text" : "\")\ns3i = Ic"
+    },
+    {
+      "t" : 3.817,
+      "text" : "on(\"triangle-alert"
+    },
+    {
+      "t" : 3.876,
+      "text" : "\", \"status"
+    },
+    {
+      "t" : 3.935,
+      "text" : "\")\ns3r = Bo"
+    },
+    {
+      "t" : 4.004,
+      "text" : "ldText(\"number\", \"3\")"
+    },
+    {
+      "t" : 4.007,
+      "text" : "\ndiscrepancy ="
+    },
+    {
+      "t" : 4.065,
+      "text" : " Callout(\"warning\", \"3"
+    },
+    {
+      "t" : 4.127,
+      "text" : " sh"
+    },
+    {
+      "t" : 4.179,
+      "text" : "ipments have discrepancies"
+    },
+    {
+      "t" : 4.271,
+      "text" : "\", \"S"
+    },
+    {
+      "t" : 4.291,
+      "text" : "HP-2043"
+    },
+    {
+      "t" : 4.352,
+      "text" : " is"
+    },
+    {
+      "t" : 4.416,
+      "text" : " short 12"
+    },
+    {
+      "t" : 4.477,
+      "text" : " units, SHP-2"
+    },
+    {
+      "t" : 4.538,
+      "text" : "044 has 5"
+    },
+    {
+      "t" : 4.604,
+      "text" : " damaged cart"
+    },
+    {
+      "t" : 4.666,
+      "text" : "ons, and SHP-2"
+    },
+    {
+      "t" : 4.731,
+      "text" : "046 is over by"
+    },
+    {
+      "t" : 4.799,
+      "text" : " 8 units. Not"
+    },
+    {
+      "t" : 4.865,
+      "text" : "ify the pur"
+    },
+    {
+      "t" : 4.935,
+      "text" : "chasing team"
+    },
+    {
+      "t" : 5.003,
+      "text" : " before sign"
+    },
+    {
+      "t" : 5.068,
+      "text" : "ing"
+    },
+    {
+      "t" : 5.134,
+      "text" : " off.\")\nshipment"
+    },
+    {
+      "t" : 5.193,
+      "text" : "sHeader = Inline"
+    },
+    {
+      "t" : 5.276,
+      "text" : "Header(\"Sh"
+    },
+    {
+      "t" : 5.34,
+      "text" : "ipment Re"
+    },
+    {
+      "t" : 5.404,
+      "text" : "conciliation\", \"Exp"
+    },
+    {
+      "t" : 5.469,
+      "text" : "ected vs. counted quant"
+    },
+    {
+      "t" : 5.536,
+      "text" : "ities\")\nshipTable ="
+    },
+    {
+      "t" : 5.61,
+      "text" : " Table([c"
+    },
+    {
+      "t" : 5.675,
+      "text" : "Id, cSup"
+    },
+    {
+      "t" : 5.744,
+      "text" : ", cItem, cEx"
+    },
+    {
+      "t" : 5.862,
+      "text" : "p, cCnt, c"
+    },
+    {
+      "t" : 5.866,
+      "text" : "Var, cD"
+    },
+    {
+      "t" : 5.943,
+      "text" : "m"
+    },
+    {
+      "t" : 6.083,
+      "text" : "g, cStatus])"
+    },
+    {
+      "t" : 6.156,
+      "text" : "\ncId = Col(\""
+    },
+    {
+      "t" : 6.24,
+      "text" : "Shipment\", "
+    },
+    {
+      "t" : 6.314,
+      "text" : "[\"SHP-2041"
+    },
+    {
+      "t" : 6.394,
+      "text" : "\", \"SHP-2043"
+    },
+    {
+      "t" : 6.47,
+      "text" : "\", \"SHP-2044"
+    },
+    {
+      "t" : 6.547,
+      "text" : "\", \"SHP-2046"
+    },
+    {
+      "t" : 6.55,
+      "text" : "\"])\ncSup ="
+    },
+    {
+      "t" : 6.629,
+      "text" : " Col(\"Supplier\", "
+    },
+    {
+      "t" : 6.702,
+      "text" : "[\"Ac"
+    },
+    {
+      "t" : 6.776,
+      "text" : "me Pack"
+    },
+    {
+      "t" : 6.848,
+      "text" : "aging\", \"Northwind"
+    },
+    {
+      "t" : 6.927,
+      "text" : " Fo"
+    },
+    {
+      "t" : 7.007,
+      "text" : "ods\", \"Glob"
+    },
+    {
+      "t" : 7.131,
+      "text" : "ex Parts\", \"Init"
+    },
+    {
+      "t" : 7.189,
+      "text" : "ech Sup"
+    },
+    {
+      "t" : 7.215,
+      "text" : "ply\"])\ncItem ="
+    },
+    {
+      "t" : 7.365,
+      "text" : " Col(\"Item\", [\""
+    },
+    {
+      "t" : 7.445,
+      "text" : "Corrugated bo"
+    },
+    {
+      "t" : 7.523,
+      "text" : "xes\", \"Can"
+    },
+    {
+      "t" : 7.604,
+      "text" : "ned t"
+    },
+    {
+      "t" : 7.731,
+      "text" : "omatoes\", \"P"
+    },
+    {
+      "t" : 7.733,
+      "text" : "allet w"
+    },
+    {
+      "t" : 7.87,
+      "text" : "r"
+    },
+    {
+      "t" : 7.871,
+      "text" : "ap\", \"Label"
+    },
+    {
+      "t" : 7.95,
+      "text" : " r"
+    },
+    {
+      "t" : 8.03,
+      "text" : "olls\"])\ncExp"
+    },
+    {
+      "t" : 8.171,
+      "text" : " = Col(\"Expected\","
+    },
+    {
+      "t" : 8.234,
+      "text" : " ["
+    },
+    {
+      "t" : 8.307,
+      "text" : "200"
+    },
+    {
+      "t" : 8.394,
+      "text" : ", 480"
+    },
+    {
+      "t" : 8.48,
+      "text" : ", 150, 320"
+    },
+    {
+      "t" : 8.562,
+      "text" : "], \"number\")\ncCn"
+    },
+    {
+      "t" : 8.62,
+      "text" : "t = Col(\"Counted"
+    },
+    {
+      "t" : 8.699,
+      "text" : "\", [200, 468, "
+    },
+    {
+      "t" : 8.701,
+      "text" : "150, 328"
+    },
+    {
+      "t" : 8.792,
+      "text" : "], \"number\")\ncVar"
+    },
+    {
+      "t" : 8.893,
+      "text" : " = Col(\"Variance\","
+    },
+    {
+      "t" : 9.044,
+      "text" : " [0"
+    },
+    {
+      "t" : 9.045,
+      "text" : ", -12, 0, "
+    },
+    {
+      "t" : 9.138,
+      "text" : "8], \"number\")\ncD"
+    },
+    {
+      "t" : 9.226,
+      "text" : "mg = Col(\"Dam"
+    },
+    {
+      "t" : 9.317,
+      "text" : "aged"
+    },
+    {
+      "t" : 9.403,
+      "text" : " Notes\", [\"None"
+    },
+    {
+      "t" : 9.493,
+      "text" : "\", \"None"
+    },
+    {
+      "t" : 9.587,
+      "text" : "\", \"5 cartons cr"
+    },
+    {
+      "t" : 9.68,
+      "text" : "ushed, water"
+    },
+    {
+      "t" : 9.738,
+      "text" : " st"
+    },
+    {
+      "t" : 9.814,
+      "text" : "ained"
+    },
+    {
+      "t" : 9.895,
+      "text" : "\", \"Outer w"
+    },
+    {
+      "t" : 9.994,
+      "text" : "rap torn,"
+    },
+    {
+      "t" : 10.095,
+      "text" : " cont"
+    },
+    {
+      "t" : 10.187,
+      "text" : "ents intact\"])\ncSt"
+    },
+    {
+      "t" : 10.27,
+      "text" : "atus = Col(\"Status"
+    },
+    {
+      "t" : 10.366,
+      "text" : "\", ["
+    },
+    {
+      "t" : 10.461,
+      "text" : "t"
+    },
+    {
+      "t" : 10.555,
+      "text" : "1, t2, t3,"
+    },
+    {
+      "t" : 10.648,
+      "text" : " t4])\nt1 ="
+    },
+    {
+      "t" : 10.839,
+      "text" : " Tag(\""
+    },
+    {
+      "t" : 10.84,
+      "text" : "Matched\", null, \"sm"
+    },
+    {
+      "t" : 10.941,
+      "text" : "\", \"success\")\nt2 "
+    },
+    {
+      "t" : 11.036,
+      "text" : "= Tag(\"Short\","
+    },
+    {
+      "t" : 11.105,
+      "text" : " null, \"sm\", \"dan"
+    },
+    {
+      "t" : 11.197,
+      "text" : "ger\")\nt3 ="
+    },
+    {
+      "t" : 11.288,
+      "text" : " Tag(\"Damaged\","
+    },
+    {
+      "t" : 11.457,
+      "text" : " null, \"sm\", \"war"
+    },
+    {
+      "t" : 11.46,
+      "text" : "ning\")\nt4 ="
+    },
+    {
+      "t" : 11.567,
+      "text" : " Tag(\"Over\", null,"
+    },
+    {
+      "t" : 11.671,
+      "text" : " \"sm\", \"info\")"
+    },
+    {
+      "t" : 11.77,
+      "text" : "\nformHeader = Inline"
+    },
+    {
+      "t" : 11.87,
+      "text" : "Header(\"Rece"
+    },
+    {
+      "t" : 11.969,
+      "text" : "iving Check"
+    },
+    {
+      "t" : 12.064,
+      "text" : "\","
+    },
+    {
+      "t" : 12.169,
+      "text" : " \"Compl"
+    },
+    {
+      "t" : 12.276,
+      "text" : "ete for"
+    },
+    {
+      "t" : 12.377,
+      "text" : " each shipment\")\nform ="
+    },
+    {
+      "t" : 12.477,
+      "text" : " Form(\"recei"
+    },
+    {
+      "t" : 12.582,
+      "text" : "ving\", form"
+    },
+    {
+      "t" : 12.683,
+      "text" : "Btns, [f1,"
+    },
+    {
+      "t" : 12.781,
+      "text" : " f2, f3, f4"
+    },
+    {
+      "t" : 12.885,
+      "text" : ", f5])\nf1 "
+    },
+    {
+      "t" : 12.994,
+      "text" : "= FormControl(\"Sh"
+    },
+    {
+      "t" : 13.102,
+      "text" : "ipment\", Select(\"sh"
+    },
+    {
+      "t" : 13.209,
+      "text" : "ipment\", shipO"
+    },
+    {
+      "t" : 13.316,
+      "text" : "pts, \"Select ship"
+    },
+    {
+      "t" : 13.538,
+      "text" : "ment\", { required: true }))"
+    },
+    {
+      "t" : 13.542,
+      "text" : "\nshipOpts = ["
+    },
+    {
+      "t" : 13.645,
+      "text" : "SelectItem(\"SH"
+    },
+    {
+      "t" : 13.756,
+      "text" : "P-2041\", \"SH"
+    },
+    {
+      "t" : 13.866,
+      "text" : "P-2041\""
+    },
+    {
+      "t" : 13.981,
+      "text" : "), SelectItem(\"S"
+    },
+    {
+      "t" : 14.083,
+      "text" : "HP-2043\", \"S"
+    },
+    {
+      "t" : 14.185,
+      "text" : "HP-2043\"), S"
+    },
+    {
+      "t" : 14.296,
+      "text" : "electItem(\"SHP"
+    },
+    {
+      "t" : 14.409,
+      "text" : "-2044\", \"SHP"
+    },
+    {
+      "t" : 14.518,
+      "text" : "-2044\"), Select"
+    },
+    {
+      "t" : 14.634,
+      "text" : "Item(\"SHP-2"
+    },
+    {
+      "t" : 14.738,
+      "text" : "046\", \"SHP-2"
+    },
+    {
+      "t" : 14.831,
+      "text" : "046\")]\nf2 ="
+    },
+    {
+      "t" : 14.905,
+      "text" : " FormControl(\"Counted"
+    },
+    {
+      "t" : 15.01,
+      "text" : " Quantity\", Input(\""
+    },
+    {
+      "t" : 15.121,
+      "text" : "counted\", \"En"
+    },
+    {
+      "t" : 15.349,
+      "text" : "ter units coun"
+    },
+    {
+      "t" : 15.35,
+      "text" : "ted\", \"number\", { required:"
+    },
+    {
+      "t" : 15.451,
+      "text" : " true, min: 0 }"
+    },
+    {
+      "t" : 15.57,
+      "text" : "))\nf3 = Form"
+    },
+    {
+      "t" : 15.671,
+      "text" : "Control(\"Checklist\","
+    },
+    {
+      "t" : 15.777,
+      "text" : " CheckBoxGro"
+    },
+    {
+      "t" : 15.952,
+      "text" : "up(\"checks\", [c1"
+    },
+    {
+      "t" : 16.059,
+      "text" : ", c2, c3, c"
+    },
+    {
+      "t" : 16.152,
+      "text" : "4]))\nc1 ="
+    },
+    {
+      "t" : 16.24,
+      "text" : " CheckBoxItem"
+    },
+    {
+      "t" : 16.33,
+      "text" : "(\"Se"
+    },
+    {
+      "t" : 16.332,
+      "text" : "als intact\", \"Tr"
+    },
+    {
+      "t" : 16.418,
+      "text" : "ailer and"
+    },
+    {
+      "t" : 16.517,
+      "text" : " car"
+    },
+    {
+      "t" : 16.616,
+      "text" : "ton seals un"
+    },
+    {
+      "t" : 16.719,
+      "text" : "broken\", \"seals\")"
+    },
+    {
+      "t" : 16.835,
+      "text" : "\nc2 = Check"
+    },
+    {
+      "t" : 16.965,
+      "text" : "BoxItem(\""
+    },
+    {
+      "t" : 17.103,
+      "text" : "Pack"
+    },
+    {
+      "t" : 17.23,
+      "text" : "ing sl"
+    },
+    {
+      "t" : 17.394,
+      "text" : "ip mat"
+    },
+    {
+      "t" : 17.582,
+      "text" : "ches PO\", \"Document"
+    },
+    {
+      "t" : 17.751,
+      "text" : " ver"
+    },
+    {
+      "t" : 17.887,
+      "text" : "ified against"
+    },
+    {
+      "t" : 18.003,
+      "text" : " purchase order\", \"sl"
+    },
+    {
+      "t" : 18.231,
+      "text" : "ip\")\nc3 = C"
+    },
+    {
+      "t" : 18.233,
+      "text" : "heckBoxItem(\""
+    },
+    {
+      "t" : 18.379,
+      "text" : "Labels read"
+    },
+    {
+      "t" : 18.497,
+      "text" : "able\", \"Barcodes"
+    },
+    {
+      "t" : 18.603,
+      "text" : " sc"
+    },
+    {
+      "t" : 18.71,
+      "text" : "an correctly\", \"labels"
+    },
+    {
+      "t" : 18.816,
+      "text" : "\")\nc4 = Che"
+    },
+    {
+      "t" : 18.927,
+      "text" : "ckBoxItem(\""
+    },
+    {
+      "t" : 19.025,
+      "text" : "Pallets in good"
+    },
+    {
+      "t" : 19.128,
+      "text" : " condition\", \"No bro"
+    },
+    {
+      "t" : 19.249,
+      "text" : "ken bo"
+    },
+    {
+      "t" : 19.374,
+      "text" : "ards or le"
+    },
+    {
+      "t" : 19.493,
+      "text" : "aning"
+    },
+    {
+      "t" : 19.623,
+      "text" : " st"
+    },
+    {
+      "t" : 19.769,
+      "text" : "acks\", \"pallets\")"
+    },
+    {
+      "t" : 19.912,
+      "text" : "\nf4 = FormContro"
+    },
+    {
+      "t" : 20.052,
+      "text" : "l(\"Damaged Item"
+    },
+    {
+      "t" : 20.189,
+      "text" : " Notes\", TextArea"
+    },
+    {
+      "t" : 20.32,
+      "text" : "(\"damage"
+    },
+    {
+      "t" : 20.445,
+      "text" : "Notes\", \"Describe"
+    },
+    {
+      "t" : 20.584,
+      "text" : " any"
+    },
+    {
+      "t" : 20.718,
+      "text" : " damage, quantity aff"
+    },
+    {
+      "t" : 20.863,
+      "text" : "ected, phot"
+    },
+    {
+      "t" : 21,
+      "text" : "os ta"
+    },
+    {
+      "t" : 21.146,
+      "text" : "ken...\", 4))\nf"
+    },
+    {
+      "t" : 21.286,
+      "text" : "5 = FormControl(\""
+    },
+    {
+      "t" : 21.429,
+      "text" : "Receiver"
+    },
+    {
+      "t" : 21.568,
+      "text" : " Sign-off"
+    },
+    {
+      "t" : 21.697,
+      "text" : " Date\", DatePicker(\""
+    },
+    {
+      "t" : 21.84,
+      "text" : "sign"
+    },
+    {
+      "t" : 21.977,
+      "text" : "D"
+    },
+    {
+      "t" : 22.112,
+      "text" : "ate\","
+    },
+    {
+      "t" : 22.239,
+      "text" : " \"single\","
+    },
+    {
+      "t" : 22.371,
+      "text" : " { required: true }))\nform"
+    },
+    {
+      "t" : 22.492,
+      "text" : "Btns = Buttons"
+    },
+    {
+      "t" : 22.618,
+      "text" : "(["
+    },
+    {
+      "t" : 22.756,
+      "text" : "Button(\"Submit"
+    },
+    {
+      "t" : 22.874,
+      "text" : " Receipt\", @ToA"
+    },
+    {
+      "t" : 22.993,
+      "text" : "ssistant(\"Submit rece"
+    },
+    {
+      "t" : 23.123,
+      "text" : "iving check"
+    },
+    {
+      "t" : 23.284,
+      "text" : "\"), \"primary\"),"
+    },
+    {
+      "t" : 23.585,
+      "text" : " Button(\"Flag Discr"
+    },
+    {
+      "t" : 23.721,
+      "text" : "epancy\", @ToA"
+    },
+    {
+      "t" : 23.724,
+      "text" : "ssistant(\"Flag a"
+    },
+    {
+      "t" : 23.859,
+      "text" : " discrepancy for this sh"
+    },
+    {
+      "t" : 23.989,
+      "text" : "ipment\"), \"secondary"
+    },
+    {
+      "t" : 24.13,
+      "text" : "\", \"destructive\")])"
+    }
+  ],
+  "createdAt" : "2026-11-11T10:52:28Z",
+  "effort" : "low",
+  "format" : "openui-recording",
+  "inputTokens" : 14510,
+  "library" : "react-ui",
+  "model" : "claude-sonnet-5-5",
+  "outputTokens" : 1607,
+  "request" : "A warehouse receiving checklist with expected shipments, counted quantities, damaged-item notes and a discrepancy callout.",
+  "servedBy" : "claude-sonnet-5-5",
+  "stopReason" : "end_turn",
+  "version" : 1
+}

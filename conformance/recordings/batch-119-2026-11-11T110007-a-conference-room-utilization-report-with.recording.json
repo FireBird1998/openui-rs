@@ -1,0 +1,992 @@
+{
+  "batchRequest" : {
+    "model" : "sonnet",
+    "number" : 119,
+    "request" : "A conference room utilization report with booked hours by room, peak time slots and underused-room recommendations."
+  },
+  "chunks" : [
+    {
+      "t" : 1.017,
+      "text" : "root = Stack([title,"
+    },
+    {
+      "t" : 1.415,
+      "text" : " kpis, ro"
+    },
+    {
+      "t" : 1.447,
+      "text" : "omH"
+    },
+    {
+      "t" : 1.508,
+      "text" : "eader, ro"
+    },
+    {
+      "t" : 1.548,
+      "text" : "omChart, peakH"
+    },
+    {
+      "t" : 1.645,
+      "text" : "eader, peakCh"
+    },
+    {
+      "t" : 1.675,
+      "text" : "art, t"
+    },
+    {
+      "t" : 1.707,
+      "text" : "b"
+    },
+    {
+      "t" : 1.74,
+      "text" : "l, recH"
+    },
+    {
+      "t" : 1.77,
+      "text" : "eader, rec"
+    },
+    {
+      "t" : 1.836,
+      "text" : "s,"
+    },
+    {
+      "t" : 1.871,
+      "text" : " follow"
+    },
+    {
+      "t" : 1.904,
+      "text" : "B"
+    },
+    {
+      "t" : 1.949,
+      "text" : "tn])\ntitle = T"
+    },
+    {
+      "t" : 1.953,
+      "text" : "extContent(\"Conference"
+    },
+    {
+      "t" : 2.033,
+      "text" : " Room Utilization Report\","
+    },
+    {
+      "t" : 2.071,
+      "text" : " \"large-heavy\")"
+    },
+    {
+      "t" : 2.104,
+      "text" : "\nkpis = Overview"
+    },
+    {
+      "t" : 2.105,
+      "text" : "CardBlock([k"
+    },
+    {
+      "t" : 2.14,
+      "text" : "1, k2, k3])"
+    },
+    {
+      "t" : 2.202,
+      "text" : "\nk1 = Overvi"
+    },
+    {
+      "t" : 2.206,
+      "text" : "ewCardItem(\"total\","
+    },
+    {
+      "t" : 2.278,
+      "text" : " k"
+    },
+    {
+      "t" : 2.285,
+      "text" : "1top, k"
+    },
+    {
+      "t" : 2.342,
+      "text" : "1m"
+    },
+    {
+      "t" : 2.381,
+      "text" : ")\nk1top = Icon"
+    },
+    {
+      "t" : 2.449,
+      "text" : "Text(Icon(\"cl"
+    },
+    {
+      "t" : 2.494,
+      "text" : "ock\", \"time"
+    },
+    {
+      "t" : 2.566,
+      "text" : "\"), \"neutral\", \""
+    },
+    {
+      "t" : 2.594,
+      "text" : "m\", \"Total Boo"
+    },
+    {
+      "t" : 2.613,
+      "text" : "ked Hours\", \"Last"
+    },
+    {
+      "t" : 2.666,
+      "text" : " 4 weeks\")"
+    },
+    {
+      "t" : 2.714,
+      "text" : "\nk1m = MetricI"
+    },
+    {
+      "t" : 2.76,
+      "text" : "ndicatorInline(\"1"
+    },
+    {
+      "t" : 2.803,
+      "text" : ",284"
+    },
+    {
+      "t" : 2.845,
+      "text" : " hrs\", \"v"
+    },
+    {
+      "t" : 2.883,
+      "text" : "s pr"
+    },
+    {
+      "t" : 2.92,
+      "text" : "ior period"
+    },
+    {
+      "t" : 2.973,
+      "text" : "\", { direction: \"up\","
+    },
+    {
+      "t" : 3.022,
+      "text" : " value: 6 })\nk"
+    },
+    {
+      "t" : 3.077,
+      "text" : "2 = OverviewC"
+    },
+    {
+      "t" : 3.134,
+      "text" : "ardItem(\"avg\", k"
+    },
+    {
+      "t" : 3.186,
+      "text" : "2top, k2m)"
+    },
+    {
+      "t" : 3.246,
+      "text" : "\nk2top = IconText("
+    },
+    {
+      "t" : 3.317,
+      "text" : "Icon(\"gauge\","
+    },
+    {
+      "t" : 3.394,
+      "text" : " \"char"
+    },
+    {
+      "t" : 3.461,
+      "text" : "ts\"), \"neutral\","
+    },
+    {
+      "t" : 3.533,
+      "text" : " \"m\", \"Avg"
+    },
+    {
+      "t" : 3.593,
+      "text" : " Utilization\", \"Business"
+    },
+    {
+      "t" : 3.713,
+      "text" : " hours\")\nk2m ="
+    },
+    {
+      "t" : 3.717,
+      "text" : " MetricIndicator"
+    },
+    {
+      "t" : 3.77,
+      "text" : "Inline(\"58%\", \"across"
+    },
+    {
+      "t" : 3.821,
+      "text" : " "
+    },
+    {
+      "t" : 3.913,
+      "text" : "8 rooms\", { dire"
+    },
+    {
+      "t" : 3.914,
+      "text" : "ction: \"up\", value: "
+    },
+    {
+      "t" : 3.975,
+      "text" : "3 })\nk3 ="
+    },
+    {
+      "t" : 4.041,
+      "text" : " OverviewCardItem"
+    },
+    {
+      "t" : 4.106,
+      "text" : "(\"under"
+    },
+    {
+      "t" : 4.217,
+      "text" : "\", k3top, k3m"
+    },
+    {
+      "t" : 4.22,
+      "text" : ")\nk3top = Icon"
+    },
+    {
+      "t" : 4.285,
+      "text" : "Text(Icon(\"triang"
+    },
+    {
+      "t" : 4.352,
+      "text" : "le-al"
+    },
+    {
+      "t" : 4.418,
+      "text" : "ert\", \"al"
+    },
+    {
+      "t" : 4.482,
+      "text" : "erts\"), \"warning\","
+    },
+    {
+      "t" : 4.56,
+      "text" : " \"m\", \"Underused"
+    },
+    {
+      "t" : 4.62,
+      "text" : " Rooms\", \""
+    },
+    {
+      "t" : 4.696,
+      "text" : "Below 35%"
+    },
+    {
+      "t" : 4.751,
+      "text" : "\")\nk3m = Met"
+    },
+    {
+      "t" : 4.805,
+      "text" : "ricIndicatorInline"
+    },
+    {
+      "t" : 4.867,
+      "text" : "(\"3 "
+    },
+    {
+      "t" : 4.93,
+      "text" : "rooms\", \"need"
+    },
+    {
+      "t" : 4.994,
+      "text" : "s review"
+    },
+    {
+      "t" : 5.062,
+      "text" : "\", { direction: \"down\","
+    },
+    {
+      "t" : 5.119,
+      "text" : " value: 1"
+    },
+    {
+      "t" : 5.173,
+      "text" : " })\nroomHeader"
+    },
+    {
+      "t" : 5.233,
+      "text" : " = InlineHeader(\""
+    },
+    {
+      "t" : 5.305,
+      "text" : "Booked Hours by"
+    },
+    {
+      "t" : 5.38,
+      "text" : " Room\", \"Last 4 "
+    },
+    {
+      "t" : 5.458,
+      "text" : "weeks\")"
+    },
+    {
+      "t" : 5.516,
+      "text" : "\nroomChart = H"
+    },
+    {
+      "t" : 5.584,
+      "text" : "orizontalBarChart"
+    },
+    {
+      "t" : 5.673,
+      "text" : "(rooms, [Series"
+    },
+    {
+      "t" : 5.761,
+      "text" : "(\"Booked h"
+    },
+    {
+      "t" : 5.955,
+      "text" : "ours\", hours)])"
+    },
+    {
+      "t" : 5.959,
+      "text" : "\nrooms = [\""
+    },
+    {
+      "t" : 6.051,
+      "text" : "At"
+    },
+    {
+      "t" : 6.128,
+      "text" : "las\", \"Bo"
+    },
+    {
+      "t" : 6.208,
+      "text" : "ardroom\", \"C"
+    },
+    {
+      "t" : 6.284,
+      "text" : "ed"
+    },
+    {
+      "t" : 6.403,
+      "text" : "ar\", \"Del"
+    },
+    {
+      "t" : 6.404,
+      "text" : "ta\", \"Ever"
+    },
+    {
+      "t" : 6.471,
+      "text" : "est\", \"Foc"
+    },
+    {
+      "t" : 6.539,
+      "text" : "us "
+    },
+    {
+      "t" : 6.608,
+      "text" : "1\", \"Focus 2"
+    },
+    {
+      "t" : 6.679,
+      "text" : "\", \"Gar"
+    },
+    {
+      "t" : 6.78,
+      "text" : "den\"]\nhours = ["
+    },
+    {
+      "t" : 6.895,
+      "text" : "248"
+    },
+    {
+      "t" : 6.973,
+      "text" : ", 231"
+    },
+    {
+      "t" : 7.041,
+      "text" : ", 205"
+    },
+    {
+      "t" : 7.109,
+      "text" : ", 176"
+    },
+    {
+      "t" : 7.238,
+      "text" : ", 142, 118"
+    },
+    {
+      "t" : 7.241,
+      "text" : ", 96"
+    },
+    {
+      "t" : 7.307,
+      "text" : ", 68"
+    },
+    {
+      "t" : 7.41,
+      "text" : "]\npeakH"
+    },
+    {
+      "t" : 7.473,
+      "text" : "eader = InlineHe"
+    },
+    {
+      "t" : 7.543,
+      "text" : "ader(\"Peak Time"
+    },
+    {
+      "t" : 7.607,
+      "text" : " Slots\", \"Average"
+    },
+    {
+      "t" : 7.684,
+      "text" : " utilization %"
+    },
+    {
+      "t" : 7.762,
+      "text" : " by hour,"
+    },
+    {
+      "t" : 7.843,
+      "text" : " weekdays\")\npeak"
+    },
+    {
+      "t" : 7.915,
+      "text" : "Chart = BarChart("
+    },
+    {
+      "t" : 8.003,
+      "text" : "slots, [Series(\""
+    },
+    {
+      "t" : 8.081,
+      "text" : "Utilization %\", util"
+    },
+    {
+      "t" : 8.227,
+      "text" : ")"
+    },
+    {
+      "t" : 8.229,
+      "text" : "], \"grouped\","
+    },
+    {
+      "t" : 8.319,
+      "text" : " \"Time"
+    },
+    {
+      "t" : 8.425,
+      "text" : " of"
+    },
+    {
+      "t" : 8.529,
+      "text" : " day\", \"Ut"
+    },
+    {
+      "t" : 8.627,
+      "text" : "ilization %\")\nslots ="
+    },
+    {
+      "t" : 8.704,
+      "text" : " [\"8am"
+    },
+    {
+      "t" : 8.776,
+      "text" : "\", \"9am\", \"10am"
+    },
+    {
+      "t" : 8.853,
+      "text" : "\", \"11am\", \"12p"
+    },
+    {
+      "t" : 8.92,
+      "text" : "m\", \"1pm\", \""
+    },
+    {
+      "t" : 8.989,
+      "text" : "2pm\", \"3pm"
+    },
+    {
+      "t" : 9.066,
+      "text" : "\", \"4pm\", \"5"
+    },
+    {
+      "t" : 9.194,
+      "text" : "pm\"]\nutil = ["
+    },
+    {
+      "t" : 9.271,
+      "text" : "32, 74"
+    },
+    {
+      "t" : 9.274,
+      "text" : ", 91"
+    },
+    {
+      "t" : 9.358,
+      "text" : ", 88"
+    },
+    {
+      "t" : 9.44,
+      "text" : ", 41"
+    },
+    {
+      "t" : 9.537,
+      "text" : ", 52"
+    },
+    {
+      "t" : 9.621,
+      "text" : ", 79"
+    },
+    {
+      "t" : 9.703,
+      "text" : ", 84"
+    },
+    {
+      "t" : 9.794,
+      "text" : ", 56, 24"
+    },
+    {
+      "t" : 9.878,
+      "text" : "]\ntbl = Table"
+    },
+    {
+      "t" : 10.025,
+      "text" : "([Col(\"Room\", r"
+    },
+    {
+      "t" : 10.11,
+      "text" : "ooms), Col(\"Cap"
+    },
+    {
+      "t" : 10.213,
+      "text" : "acity\", ca"
+    },
+    {
+      "t" : 10.215,
+      "text" : "ps, \"number\"), Col"
+    },
+    {
+      "t" : 10.295,
+      "text" : "(\"Booked hrs\","
+    },
+    {
+      "t" : 10.391,
+      "text" : " hours, \"number\"),"
+    },
+    {
+      "t" : 10.496,
+      "text" : " Col(\"Utilization\","
+    },
+    {
+      "t" : 10.582,
+      "text" : " utilP"
+    },
+    {
+      "t" : 10.682,
+      "text" : "ct), Col(\"Status\","
+    },
+    {
+      "t" : 10.783,
+      "text" : " statu"
+    },
+    {
+      "t" : 10.887,
+      "text" : "ses)])\ncaps = ["
+    },
+    {
+      "t" : 10.987,
+      "text" : "12, 20"
+    },
+    {
+      "t" : 11.099,
+      "text" : ", 8, 10, "
+    },
+    {
+      "t" : 11.239,
+      "text" : "14"
+    },
+    {
+      "t" : 11.321,
+      "text" : ", 4"
+    },
+    {
+      "t" : 11.411,
+      "text" : ", 4, 6]"
+    },
+    {
+      "t" : 11.489,
+      "text" : "\nutilPct = [\"81"
+    },
+    {
+      "t" : 11.602,
+      "text" : "%\", \"76"
+    },
+    {
+      "t" : 11.683,
+      "text" : "%\", \"68"
+    },
+    {
+      "t" : 11.849,
+      "text" : "%\", \"58%\", \"47"
+    },
+    {
+      "t" : 11.852,
+      "text" : "%\", \"39"
+    },
+    {
+      "t" : 11.95,
+      "text" : "%\", \"32"
+    },
+    {
+      "t" : 12.051,
+      "text" : "%\", \"23%\"]"
+    },
+    {
+      "t" : 12.158,
+      "text" : "\nstatuses = [\"Bus"
+    },
+    {
+      "t" : 12.269,
+      "text" : "y\", \"Busy\", \""
+    },
+    {
+      "t" : 12.362,
+      "text" : "Healthy\", \"Heal"
+    },
+    {
+      "t" : 12.45,
+      "text" : "thy\", \"Heal"
+    },
+    {
+      "t" : 12.536,
+      "text" : "thy\", \"Low"
+    },
+    {
+      "t" : 12.64,
+      "text" : "\", \"Underused"
+    },
+    {
+      "t" : 12.807,
+      "text" : "\", \"Underused\"]"
+    },
+    {
+      "t" : 12.81,
+      "text" : "\nrecHeader = Inline"
+    },
+    {
+      "t" : 12.943,
+      "text" : "Header(\"Rec"
+    },
+    {
+      "t" : 13.035,
+      "text" : "ommendations\", \"Underused"
+    },
+    {
+      "t" : 13.117,
+      "text" : " rooms\")\nrecs ="
+    },
+    {
+      "t" : 13.231,
+      "text" : " Accordion([r1,"
+    },
+    {
+      "t" : 13.319,
+      "text" : " r2, r3])\nr"
+    },
+    {
+      "t" : 13.418,
+      "text" : "1 = AccordionIt"
+    },
+    {
+      "t" : 13.521,
+      "text" : "em(\"garden\", \"Gar"
+    },
+    {
+      "t" : 13.628,
+      "text" : "den (23"
+    },
+    {
+      "t" : 13.729,
+      "text" : "%)"
+    },
+    {
+      "t" : 13.844,
+      "text" : "\", ["
+    },
+    {
+      "t" : 13.927,
+      "text" : "Callout(\"war"
+    },
+    {
+      "t" : 14.018,
+      "text" : "ning\", \"Conv"
+    },
+    {
+      "t" : 14.138,
+      "text" : "ert to fl"
+    },
+    {
+      "t" : 14.26,
+      "text" : "ex space\", \"Garden is"
+    },
+    {
+      "t" : 14.377,
+      "text" : " boo"
+    },
+    {
+      "t" : 14.494,
+      "text" : "ked m"
+    },
+    {
+      "t" : 14.587,
+      "text" : "ainly for "
+    },
+    {
+      "t" : 14.708,
+      "text" : "ad-hoc ch"
+    },
+    {
+      "t" : 14.824,
+      "text" : "ats. Conv"
+    },
+    {
+      "t" : 15.005,
+      "text" : "ert to a dr"
+    },
+    {
+      "t" : 15.009,
+      "text" : "op-in hu"
+    },
+    {
+      "t" : 15.129,
+      "text" : "ddle space"
+    },
+    {
+      "t" : 15.263,
+      "text" : " or"
+    },
+    {
+      "t" : 15.386,
+      "text" : " release it"
+    },
+    {
+      "t" : 15.508,
+      "text" : " for h"
+    },
+    {
+      "t" : 15.633,
+      "text" : "ot"
+    },
+    {
+      "t" : 15.743,
+      "text" : "-desking"
+    },
+    {
+      "t" : 15.87,
+      "text" : ".\")])\nr2 ="
+    },
+    {
+      "t" : 16.099,
+      "text" : " AccordionItem(\"foc"
+    },
+    {
+      "t" : 16.241,
+      "text" : "us2\", \"Focus "
+    },
+    {
+      "t" : 16.359,
+      "text" : "2 (32%)\", ["
+    },
+    {
+      "t" : 16.361,
+      "text" : "Callout(\"info"
+    },
+    {
+      "t" : 16.479,
+      "text" : "\", \"Merge or"
+    },
+    {
+      "t" : 16.588,
+      "text" : " rep"
+    },
+    {
+      "t" : 16.718,
+      "text" : "urpose\", \"Dem"
+    },
+    {
+      "t" : 16.847,
+      "text" : "and for "
+    },
+    {
+      "t" : 16.959,
+      "text" : "4-person rooms is conc"
+    },
+    {
+      "t" : 17.071,
+      "text" : "entrated at "
+    },
+    {
+      "t" : 17.171,
+      "text" : "10-"
+    },
+    {
+      "t" : 17.375,
+      "text" : "11am. Ke"
+    },
+    {
+      "t" : 17.377,
+      "text" : "ep Focus 1"
+    },
+    {
+      "t" : 17.521,
+      "text" : " b"
+    },
+    {
+      "t" : 17.71,
+      "text" : "ookable and conv"
+    },
+    {
+      "t" : 17.826,
+      "text" : "ert Focus 2 to"
+    },
+    {
+      "t" : 18.005,
+      "text" : " a phone-boo"
+    },
+    {
+      "t" : 18.141,
+      "text" : "th area"
+    },
+    {
+      "t" : 18.336,
+      "text" : ".\")])\nr3 ="
+    },
+    {
+      "t" : 18.465,
+      "text" : " AccordionItem(\"foc"
+    },
+    {
+      "t" : 18.602,
+      "text" : "us1\", \"Focus "
+    },
+    {
+      "t" : 18.828,
+      "text" : "1 (39%)\", ["
+    },
+    {
+      "t" : 18.831,
+      "text" : "Callout(\"success"
+    },
+    {
+      "t" : 18.96,
+      "text" : "\", \"Prom"
+    },
+    {
+      "t" : 19.1,
+      "text" : "ote off"
+    },
+    {
+      "t" : 19.229,
+      "text" : "-peak use"
+    },
+    {
+      "t" : 19.357,
+      "text" : "\", \"Enc"
+    },
+    {
+      "t" : 19.447,
+      "text" : "ourage b"
+    },
+    {
+      "t" : 19.589,
+      "text" : "ookings at 8"
+    },
+    {
+      "t" : 19.723,
+      "text" : "am"
+    },
+    {
+      "t" : 19.851,
+      "text" : ","
+    },
+    {
+      "t" : 20.041,
+      "text" : " 12"
+    },
+    {
+      "t" : 20.043,
+      "text" : "pm and after"
+    },
+    {
+      "t" : 20.179,
+      "text" : " 4"
+    },
+    {
+      "t" : 20.29,
+      "text" : "pm through cal"
+    },
+    {
+      "t" : 20.405,
+      "text" : "endar def"
+    },
+    {
+      "t" : 20.534,
+      "text" : "aults and room"
+    },
+    {
+      "t" : 20.679,
+      "text" : " suggestions.\")])"
+    },
+    {
+      "t" : 20.791,
+      "text" : "\nfollowBtn = Bu"
+    },
+    {
+      "t" : 20.921,
+      "text" : "ttons([Button(\"Dra"
+    },
+    {
+      "t" : 21.128,
+      "text" : "ft room"
+    },
+    {
+      "t" : 21.129,
+      "text" : " cons"
+    },
+    {
+      "t" : 21.3,
+      "text" : "olidation plan\", @"
+    },
+    {
+      "t" : 21.418,
+      "text" : "ToAssistant(\"Dra"
+    },
+    {
+      "t" : 21.558,
+      "text" : "ft a room"
+    },
+    {
+      "t" : 21.775,
+      "text" : " consolidation plan based"
+    },
+    {
+      "t" : 21.778,
+      "text" : " on this"
+    },
+    {
+      "t" : 21.917,
+      "text" : " report\"), \""
+    },
+    {
+      "t" : 22.068,
+      "text" : "primary\")])"
+    }
+  ],
+  "createdAt" : "2026-11-11T11:00:07Z",
+  "effort" : "low",
+  "format" : "openui-recording",
+  "inputTokens" : 14500,
+  "library" : "react-ui",
+  "model" : "claude-sonnet-5-5",
+  "outputTokens" : 1326,
+  "request" : "A conference room utilization report with booked hours by room, peak time slots and underused-room recommendations.",
+  "servedBy" : "claude-sonnet-5-5",
+  "stopReason" : "end_turn",
+  "version" : 1
+}

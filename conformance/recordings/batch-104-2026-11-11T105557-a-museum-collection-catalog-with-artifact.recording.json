@@ -1,0 +1,804 @@
+{
+  "batchRequest" : {
+    "model" : "haiku",
+    "number" : 104,
+    "request" : "A museum collection catalog with artifact images, origin, period and curator notes, plus a period filter."
+  },
+  "chunks" : [
+    {
+      "t" : 8.231,
+      "text" : "root"
+    },
+    {
+      "t" : 8.397,
+      "text" : " = Stack([heading,"
+    },
+    {
+      "t" : 8.432,
+      "text" : " filterRow, grid],"
+    },
+    {
+      "t" : 8.524,
+      "text" : " \"column\", \"l\")\nhe"
+    },
+    {
+      "t" : 8.565,
+      "text" : "ading = InlineHeader"
+    },
+    {
+      "t" : 8.699,
+      "text" : "(\"Museum Collection\","
+    },
+    {
+      "t" : 8.768,
+      "text" : " \"Browse artifacts"
+    },
+    {
+      "t" : 8.817,
+      "text" : " by period of origin\")\nfil"
+    },
+    {
+      "t" : 8.861,
+      "text" : "terRow = Stack(["
+    },
+    {
+      "t" : 8.903,
+      "text" : "periodSelect], \"row"
+    },
+    {
+      "t" : 8.957,
+      "text" : "\", \"s\","
+    },
+    {
+      "t" : 9.008,
+      "text" : " \"center\")\nperiodSel"
+    },
+    {
+      "t" : 9.052,
+      "text" : "ect = Select(\"period\", peri"
+    },
+    {
+      "t" : 9.097,
+      "text" : "odItems, \"Filter"
+    },
+    {
+      "t" : 9.14,
+      "text" : " by period\", null, $period)"
+    },
+    {
+      "t" : 9.181,
+      "text" : "\nperiodItems = [S"
+    },
+    {
+      "t" : 9.225,
+      "text" : "electItem(\"All\", \""
+    },
+    {
+      "t" : 9.27,
+      "text" : "All periods\"), Select"
+    },
+    {
+      "t" : 9.317,
+      "text" : "Item(\"Ancient\","
+    },
+    {
+      "t" : 9.381,
+      "text" : " \"Ancient\"), S"
+    },
+    {
+      "t" : 9.479,
+      "text" : "electItem(\"Medie"
+    },
+    {
+      "t" : 9.51,
+      "text" : "val\", \"Medieval\""
+    },
+    {
+      "t" : 9.534,
+      "text" : "), SelectItem(\""
+    },
+    {
+      "t" : 9.592,
+      "text" : "Modern\", \"Modern\")"
+    },
+    {
+      "t" : 9.646,
+      "text" : "]\ngrid = Stack"
+    },
+    {
+      "t" : 9.698,
+      "text" : "([a1, a2, a"
+    },
+    {
+      "t" : 9.75,
+      "text" : "3, a4], \"row\","
+    },
+    {
+      "t" : 9.806,
+      "text" : " \"m\", \"start\", \"start"
+    },
+    {
+      "t" : 9.861,
+      "text" : "\", true)\na1 ="
+    },
+    {
+      "t" : 9.938,
+      "text" : " $period == \"All\" || $"
+    },
+    {
+      "t" : 9.941,
+      "text" : "period == \"Ancient\""
+    },
+    {
+      "t" : 9.994,
+      "text" : " ? artCard1 :"
+    },
+    {
+      "t" : 10.06,
+      "text" : " null\na2 = $period"
+    },
+    {
+      "t" : 10.121,
+      "text" : " == \"All\" || $period =="
+    },
+    {
+      "t" : 10.193,
+      "text" : " \"Medieval\" ?"
+    },
+    {
+      "t" : 10.256,
+      "text" : " artCard2 : null"
+    },
+    {
+      "t" : 10.317,
+      "text" : "\na3 = $period == \""
+    },
+    {
+      "t" : 10.376,
+      "text" : "All\" || $period == \""
+    },
+    {
+      "t" : 10.443,
+      "text" : "Medieval\" ? artC"
+    },
+    {
+      "t" : 10.51,
+      "text" : "ard3 : null\na4"
+    },
+    {
+      "t" : 10.57,
+      "text" : " = $period == \"All\""
+    },
+    {
+      "t" : 10.63,
+      "text" : " || $period == \"Modern"
+    },
+    {
+      "t" : 10.686,
+      "text" : "\" ? artCard4 "
+    },
+    {
+      "t" : 10.757,
+      "text" : ": null\nartCard1 "
+    },
+    {
+      "t" : 10.814,
+      "text" : "= Card([art1Head"
+    },
+    {
+      "t" : 10.874,
+      "text" : ", art1Info, art1"
+    },
+    {
+      "t" : 10.971,
+      "text" : "Note], \"card"
+    },
+    {
+      "t" : 10.974,
+      "text" : "\", \"column\", \"s"
+    },
+    {
+      "t" : 11.042,
+      "text" : "\")\nart1Head = I"
+    },
+    {
+      "t" : 11.11,
+      "text" : "conText(art1Icon"
+    },
+    {
+      "t" : 11.177,
+      "text" : ", \"neutral\", \"m"
+    },
+    {
+      "t" : 11.248,
+      "text" : "\", \"Black-"
+    },
+    {
+      "t" : 11.375,
+      "text" : "Figure Amphora\", \""
+    },
+    {
+      "t" : 11.408,
+      "text" : "Ce"
+    },
+    {
+      "t" : 11.474,
+      "text" : "ramic v"
+    },
+    {
+      "t" : 11.546,
+      "text" : "essel\", true, \"horiz"
+    },
+    {
+      "t" : 11.618,
+      "text" : "ontal\")\nart1Ic"
+    },
+    {
+      "t" : 11.687,
+      "text" : "on = Icon(\"land"
+    },
+    {
+      "t" : 11.789,
+      "text" : "mark\", \"culture\")"
+    },
+    {
+      "t" : 11.793,
+      "text" : "\nart1Info = Entity"
+    },
+    {
+      "t" : 11.87,
+      "text" : "List([{left: \"Orig"
+    },
+    {
+      "t" : 11.976,
+      "text" : "in\", right: \"Athens"
+    },
+    {
+      "t" : 12.004,
+      "text" : ", Greece\"}, {"
+    },
+    {
+      "t" : 12.076,
+      "text" : "left: \"Period\", right:"
+    },
+    {
+      "t" : 12.146,
+      "text" : " \""
+    },
+    {
+      "t" : 12.222,
+      "text" : "Ancient,"
+    },
+    {
+      "t" : 12.289,
+      "text" : " c. 530 BCE"
+    },
+    {
+      "t" : 12.363,
+      "text" : "\"}, {left: \""
+    },
+    {
+      "t" : 12.443,
+      "text" : "Curator\", right: \"D"
+    },
+    {
+      "t" : 12.527,
+      "text" : "r. Elena Markou"
+    },
+    {
+      "t" : 12.63,
+      "text" : "\"}], \"default\")\nart"
+    },
+    {
+      "t" : 12.733,
+      "text" : "1Note = TextContent"
+    },
+    {
+      "t" : 12.805,
+      "text" : "(\"Curator note: Pain"
+    },
+    {
+      "t" : 12.901,
+      "text" : "ted sc"
+    },
+    {
+      "t" : 12.977,
+      "text" : "en"
+    },
+    {
+      "t" : 13.052,
+      "text" : "es of"
+    },
+    {
+      "t" : 13.132,
+      "text" : " Her"
+    },
+    {
+      "t" : 13.191,
+      "text" : "akles are"
+    },
+    {
+      "t" : 13.247,
+      "text" : " r"
+    },
+    {
+      "t" : 13.306,
+      "text" : "are on"
+    },
+    {
+      "t" : 13.363,
+      "text" : " v"
+    },
+    {
+      "t" : 13.429,
+      "text" : "essels of this size."
+    },
+    {
+      "t" : 13.492,
+      "text" : " Con"
+    },
+    {
+      "t" : 13.561,
+      "text" : "servation conf"
+    },
+    {
+      "t" : 13.629,
+      "text" : "irmed the original"
+    },
+    {
+      "t" : 13.745,
+      "text" : " glaze.\", \"small\")"
+    },
+    {
+      "t" : 13.811,
+      "text" : "\nartCard2 ="
+    },
+    {
+      "t" : 13.812,
+      "text" : " Card([art2Head, art"
+    },
+    {
+      "t" : 13.886,
+      "text" : "2Info, art2Note"
+    },
+    {
+      "t" : 13.962,
+      "text" : "], \"card\", \"column\", \""
+    },
+    {
+      "t" : 14.05,
+      "text" : "s\")\nart2Head ="
+    },
+    {
+      "t" : 14.114,
+      "text" : " IconText(art2Ic"
+    },
+    {
+      "t" : 14.186,
+      "text" : "on, \"neutral\", \""
+    },
+    {
+      "t" : 14.263,
+      "text" : "m\", \"Illuminated"
+    },
+    {
+      "t" : 14.394,
+      "text" : " Psalter\", \"Man"
+    },
+    {
+      "t" : 14.449,
+      "text" : "uscript le"
+    },
+    {
+      "t" : 14.519,
+      "text" : "af\", true, \"horiz"
+    },
+    {
+      "t" : 14.602,
+      "text" : "ontal\")\nart2Ic"
+    },
+    {
+      "t" : 14.66,
+      "text" : "on = Icon(\"book-"
+    },
+    {
+      "t" : 14.735,
+      "text" : "open\", \"culture\")\nart"
+    },
+    {
+      "t" : 14.737,
+      "text" : "2Info = EntityList"
+    },
+    {
+      "t" : 14.818,
+      "text" : "([{left: \"Origin"
+    },
+    {
+      "t" : 14.893,
+      "text" : "\", right: \""
+    },
+    {
+      "t" : 14.969,
+      "text" : "Northern"
+    },
+    {
+      "t" : 15.027,
+      "text" : " France"
+    },
+    {
+      "t" : 15.114,
+      "text" : "\"}, {left: \""
+    },
+    {
+      "t" : 15.208,
+      "text" : "Period\", right: \"Medie"
+    },
+    {
+      "t" : 15.275,
+      "text" : "val, c. 1280"
+    },
+    {
+      "t" : 15.363,
+      "text" : "\"}, {left: \""
+    },
+    {
+      "t" : 15.44,
+      "text" : "Curator\", right: \"James"
+    },
+    {
+      "t" : 15.525,
+      "text" : " Wh"
+    },
+    {
+      "t" : 15.605,
+      "text" : "itfield\"}], \"default"
+    },
+    {
+      "t" : 15.672,
+      "text" : "\")\nart2Note = T"
+    },
+    {
+      "t" : 15.746,
+      "text" : "extContent(\"Curator note"
+    },
+    {
+      "t" : 15.821,
+      "text" : ": Gold le"
+    },
+    {
+      "t" : 15.912,
+      "text" : "af and"
+    },
+    {
+      "t" : 16.066,
+      "text" : " lapis p"
+    },
+    {
+      "t" : 16.067,
+      "text" : "igments rem"
+    },
+    {
+      "t" : 16.252,
+      "text" : "ain v"
+    },
+    {
+      "t" : 16.254,
+      "text" : "iv"
+    },
+    {
+      "t" : 16.359,
+      "text" : "id. Display lim"
+    },
+    {
+      "t" : 16.444,
+      "text" : "ited to low"
+    },
+    {
+      "t" : 16.534,
+      "text" : " light."
+    },
+    {
+      "t" : 16.63,
+      "text" : "\", \"small\")\nartCard"
+    },
+    {
+      "t" : 16.716,
+      "text" : "3 = Card([art3"
+    },
+    {
+      "t" : 16.798,
+      "text" : "Head, art3Info,"
+    },
+    {
+      "t" : 16.86,
+      "text" : " art3Note], \"card\","
+    },
+    {
+      "t" : 16.965,
+      "text" : " \"column\", \"s\")\nart"
+    },
+    {
+      "t" : 17.074,
+      "text" : "3Head = IconText("
+    },
+    {
+      "t" : 17.15,
+      "text" : "art3Icon, \"ne"
+    },
+    {
+      "t" : 17.226,
+      "text" : "utral\", \"m\", \""
+    },
+    {
+      "t" : 17.306,
+      "text" : "Brass Astrolabe"
+    },
+    {
+      "t" : 17.391,
+      "text" : "\", \"Nav"
+    },
+    {
+      "t" : 17.48,
+      "text" : "igational"
+    },
+    {
+      "t" : 17.581,
+      "text" : " instrument\", true, \"hor"
+    },
+    {
+      "t" : 17.659,
+      "text" : "izontal\")\nart3"
+    },
+    {
+      "t" : 17.76,
+      "text" : "Icon = Icon(\"comp"
+    },
+    {
+      "t" : 17.909,
+      "text" : "ass\", \"science"
+    },
+    {
+      "t" : 17.948,
+      "text" : "\")\nart3Info = E"
+    },
+    {
+      "t" : 18.045,
+      "text" : "ntityList([{left: \""
+    },
+    {
+      "t" : 18.144,
+      "text" : "Origin\", right: \""
+    },
+    {
+      "t" : 18.247,
+      "text" : "Ma"
+    },
+    {
+      "t" : 18.358,
+      "text" : "rag"
+    },
+    {
+      "t" : 18.495,
+      "text" : "ha"
+    },
+    {
+      "t" : 18.6,
+      "text" : ", Pers"
+    },
+    {
+      "t" : 18.693,
+      "text" : "ia\"}, {left: \""
+    },
+    {
+      "t" : 18.776,
+      "text" : "Period\", right: \"Med"
+    },
+    {
+      "t" : 18.86,
+      "text" : "ieval, c. 1220"
+    },
+    {
+      "t" : 18.948,
+      "text" : "\"}, {left: \""
+    },
+    {
+      "t" : 19.134,
+      "text" : "Curator\", right: \"D"
+    },
+    {
+      "t" : 19.236,
+      "text" : "r. Aisha R"
+    },
+    {
+      "t" : 19.346,
+      "text" : "ahman\"}], \"default\")"
+    },
+    {
+      "t" : 19.441,
+      "text" : "\nart3Note = Text"
+    },
+    {
+      "t" : 19.538,
+      "text" : "Content(\"Curator note:"
+    },
+    {
+      "t" : 19.541,
+      "text" : " One of the few"
+    },
+    {
+      "t" : 19.642,
+      "text" : " surviving exam"
+    },
+    {
+      "t" : 19.812,
+      "text" : "ples with int"
+    },
+    {
+      "t" : 19.813,
+      "text" : "act r"
+    },
+    {
+      "t" : 19.901,
+      "text" : "ete"
+    },
+    {
+      "t" : 20.063,
+      "text" : " eng"
+    },
+    {
+      "t" : 20.064,
+      "text" : "raving.\", \"small\")"
+    },
+    {
+      "t" : 20.27,
+      "text" : "\nartCard4 = Card"
+    },
+    {
+      "t" : 20.361,
+      "text" : "([art4Head, art4"
+    },
+    {
+      "t" : 20.445,
+      "text" : "Info, art4Note],"
+    },
+    {
+      "t" : 20.544,
+      "text" : " \"card\", \"column\", \"s"
+    },
+    {
+      "t" : 20.636,
+      "text" : "\")\nart4Head = I"
+    },
+    {
+      "t" : 20.732,
+      "text" : "conText(art4Icon"
+    },
+    {
+      "t" : 20.842,
+      "text" : ", \"neutral\", \"m"
+    },
+    {
+      "t" : 20.947,
+      "text" : "\", \"T"
+    },
+    {
+      "t" : 20.949,
+      "text" : "ubular Ste"
+    },
+    {
+      "t" : 21.056,
+      "text" : "el Chair\", \"Fur"
+    },
+    {
+      "t" : 21.154,
+      "text" : "niture design\", true, \"hor"
+    },
+    {
+      "t" : 21.257,
+      "text" : "izontal\")\nart4"
+    },
+    {
+      "t" : 21.358,
+      "text" : "Icon = Icon(\"arm"
+    },
+    {
+      "t" : 21.472,
+      "text" : "chair\", \"design\")\nart"
+    },
+    {
+      "t" : 21.582,
+      "text" : "4Info = EntityList"
+    },
+    {
+      "t" : 21.711,
+      "text" : "([{left: \"Origin"
+    },
+    {
+      "t" : 21.93,
+      "text" : "\", right: \"D"
+    },
+    {
+      "t" : 22.039,
+      "text" : "essau, Germany\"}"
+    },
+    {
+      "t" : 22.136,
+      "text" : ", {left: \"Period\","
+    },
+    {
+      "t" : 22.249,
+      "text" : " right: \"Modern, c"
+    },
+    {
+      "t" : 22.377,
+      "text" : ". 1928"
+    },
+    {
+      "t" : 22.484,
+      "text" : "\"}, {left: \""
+    },
+    {
+      "t" : 22.58,
+      "text" : "Curator\", right: \"L"
+    },
+    {
+      "t" : 22.684,
+      "text" : "ena"
+    },
+    {
+      "t" : 22.779,
+      "text" : " F"
+    },
+    {
+      "t" : 22.898,
+      "text" : "ischer\"}], \"default\")"
+    },
+    {
+      "t" : 23.011,
+      "text" : "\nart4Note = Text"
+    },
+    {
+      "t" : 23.126,
+      "text" : "Content(\"Curator note:"
+    },
+    {
+      "t" : 23.234,
+      "text" : " Part of the early"
+    },
+    {
+      "t" : 23.236,
+      "text" : " Bauhaus experiments"
+    },
+    {
+      "t" : 23.36,
+      "text" : " with b"
+    },
+    {
+      "t" : 23.484,
+      "text" : "ent"
+    },
+    {
+      "t" : 23.681,
+      "text" : " t"
+    },
+    {
+      "t" : 23.682,
+      "text" : "ubular metal."
+    },
+    {
+      "t" : 23.903,
+      "text" : "\", \"small\")"
+    }
+  ],
+  "createdAt" : "2026-11-11T10:55:57Z",
+  "effort" : "low",
+  "format" : "openui-recording",
+  "inputTokens" : 14500,
+  "library" : "react-ui",
+  "model" : "claude-haiku-5-5",
+  "outputTokens" : 2870,
+  "request" : "A museum collection catalog with artifact images, origin, period and curator notes, plus a period filter.",
+  "servedBy" : "claude-haiku-5-5",
+  "stopReason" : "end_turn",
+  "version" : 1
+}

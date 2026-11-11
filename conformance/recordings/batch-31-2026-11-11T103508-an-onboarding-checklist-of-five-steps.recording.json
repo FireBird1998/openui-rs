@@ -1,0 +1,816 @@
+{
+  "batchRequest" : {
+    "model" : "sonnet",
+    "number" : 31,
+    "request" : "An onboarding checklist of five steps with progress and the next step highlighted."
+  },
+  "chunks" : [
+    {
+      "t" : 0.572,
+      "text" : "root"
+    },
+    {
+      "t" : 0.898,
+      "text" : " = Stack([header, prog"
+    },
+    {
+      "t" : 0.91,
+      "text" : "ressCard, n"
+    },
+    {
+      "t" : 0.916,
+      "text" : "extCall"
+    },
+    {
+      "t" : 0.938,
+      "text" : "out, stepsC"
+    },
+    {
+      "t" : 0.959,
+      "text" : "ard, act"
+    },
+    {
+      "t" : 0.966,
+      "text" : "ions])\nheader = Inline"
+    },
+    {
+      "t" : 0.978,
+      "text" : "Header(\"Wel"
+    },
+    {
+      "t" : 0.985,
+      "text" : "come"
+    },
+    {
+      "t" : 0.996,
+      "text" : " On"
+    },
+    {
+      "t" : 1.007,
+      "text" : "boarding\", \"Compl"
+    },
+    {
+      "t" : 1.015,
+      "text" : "ete these"
+    },
+    {
+      "t" : 1.026,
+      "text" : " five"
+    },
+    {
+      "t" : 1.224,
+      "text" : " steps to get f"
+    },
+    {
+      "t" : 1.233,
+      "text" : "ully set up\")\nprogressC"
+    },
+    {
+      "t" : 1.245,
+      "text" : "ard = Card([progressH"
+    },
+    {
+      "t" : 1.252,
+      "text" : "eader, progressBar,"
+    },
+    {
+      "t" : 1.259,
+      "text" : " progressList"
+    },
+    {
+      "t" : 1.284,
+      "text" : "])\nprogressHeader ="
+    },
+    {
+      "t" : 1.298,
+      "text" : " CardHeader(\"Your"
+    },
+    {
+      "t" : 1.313,
+      "text" : " Progress\", \"2 of"
+    },
+    {
+      "t" : 1.419,
+      "text" : " 5 steps completed ("
+    },
+    {
+      "t" : 1.435,
+      "text" : "40%)\")\nprogressB"
+    },
+    {
+      "t" : 1.449,
+      "text" : "ar = SingleStacked"
+    },
+    {
+      "t" : 1.464,
+      "text" : "BarChart("
+    },
+    {
+      "t" : 1.553,
+      "text" : "[\"Completed\", \"Rem"
+    },
+    {
+      "t" : 1.569,
+      "text" : "aining\"], [2, "
+    },
+    {
+      "t" : 1.584,
+      "text" : "3])\nprogressList = E"
+    },
+    {
+      "t" : 1.6,
+      "text" : "ntityList(["
+    },
+    {
+      "t" : 1.627,
+      "text" : "{"
+    },
+    {
+      "t" : 1.663,
+      "text" : "left: \"Completed\", right"
+    },
+    {
+      "t" : 1.698,
+      "text" : ": \"2\", rightVari"
+    },
+    {
+      "t" : 1.734,
+      "text" : "ant: \"number\"}, {"
+    },
+    {
+      "t" : 1.77,
+      "text" : "left: \""
+    },
+    {
+      "t" : 1.805,
+      "text" : "Remaining\", right: \"3"
+    },
+    {
+      "t" : 1.84,
+      "text" : "\", rightVariant: \""
+    },
+    {
+      "t" : 1.876,
+      "text" : "number\"}],"
+    },
+    {
+      "t" : 1.911,
+      "text" : " \"default\")\nnextCall"
+    },
+    {
+      "t" : 1.947,
+      "text" : "out = Callout(\"info\","
+    },
+    {
+      "t" : 1.982,
+      "text" : " \"Next up"
+    },
+    {
+      "t" : 2.018,
+      "text" : ": Inv"
+    },
+    {
+      "t" : 2.053,
+      "text" : "ite your team\", \"Step"
+    },
+    {
+      "t" : 2.089,
+      "text" : " 3 is your"
+    },
+    {
+      "t" : 2.124,
+      "text" : " next step. Inv"
+    },
+    {
+      "t" : 2.16,
+      "text" : "ite at"
+    },
+    {
+      "t" : 2.196,
+      "text" : " least one"
+    },
+    {
+      "t" : 2.23,
+      "text" : " te"
+    },
+    {
+      "t" : 2.266,
+      "text" : "ammate to start"
+    },
+    {
+      "t" : 2.301,
+      "text" : " collaborating.\")\nst"
+    },
+    {
+      "t" : 2.341,
+      "text" : "epsCard = Card(["
+    },
+    {
+      "t" : 2.372,
+      "text" : "stepsHeader, st"
+    },
+    {
+      "t" : 2.408,
+      "text" : "epsList])\nsteps"
+    },
+    {
+      "t" : 2.443,
+      "text" : "Header = C"
+    },
+    {
+      "t" : 2.479,
+      "text" : "ardHeader(\"Checkl"
+    },
+    {
+      "t" : 2.514,
+      "text" : "ist\", \"Ste"
+    },
+    {
+      "t" : 2.55,
+      "text" : "ps in order\")\nsteps"
+    },
+    {
+      "t" : 2.586,
+      "text" : "List = St"
+    },
+    {
+      "t" : 2.621,
+      "text" : "ack([s1, s2,"
+    },
+    {
+      "t" : 2.656,
+      "text" : " s3, s4, s5"
+    },
+    {
+      "t" : 2.691,
+      "text" : "],"
+    },
+    {
+      "t" : 2.728,
+      "text" : " \"column\","
+    },
+    {
+      "t" : 2.763,
+      "text" : " \"s\")\ns1 ="
+    },
+    {
+      "t" : 2.798,
+      "text" : " Card([s1row"
+    },
+    {
+      "t" : 2.833,
+      "text" : "], \"s"
+    },
+    {
+      "t" : 2.869,
+      "text" : "unk\")\ns1row ="
+    },
+    {
+      "t" : 2.905,
+      "text" : " Stack([s1icon"
+    },
+    {
+      "t" : 2.94,
+      "text" : ", s1text, s1t"
+    },
+    {
+      "t" : 2.975,
+      "text" : "ag], \"row\", \"m"
+    },
+    {
+      "t" : 3.011,
+      "text" : "\", \"center\")"
+    },
+    {
+      "t" : 3.046,
+      "text" : "\ns1icon = I"
+    },
+    {
+      "t" : 3.082,
+      "text" : "conText(i"
+    },
+    {
+      "t" : 3.117,
+      "text" : "1, \"success\", \"m\","
+    },
+    {
+      "t" : 3.153,
+      "text" : " \"1. Create your"
+    },
+    {
+      "t" : 3.188,
+      "text" : " account\", \"Done on"
+    },
+    {
+      "t" : 3.224,
+      "text" : " sign"
+    },
+    {
+      "t" : 3.261,
+      "text" : "up\", false, \"horizont"
+    },
+    {
+      "t" : 3.294,
+      "text" : "al\")\ni1 ="
+    },
+    {
+      "t" : 3.33,
+      "text" : " Icon(\"circle-check\","
+    },
+    {
+      "t" : 3.365,
+      "text" : " \"status"
+    },
+    {
+      "t" : 3.401,
+      "text" : "\")\ns1text = T"
+    },
+    {
+      "t" : 3.438,
+      "text" : "extContent(\"Account"
+    },
+    {
+      "t" : 3.472,
+      "text" : " verified\", \"small\")\ns"
+    },
+    {
+      "t" : 3.507,
+      "text" : "1tag = Tag(\""
+    },
+    {
+      "t" : 3.542,
+      "text" : "Completed\", null, \"s"
+    },
+    {
+      "t" : 3.579,
+      "text" : "m\", \"success\")\ns2"
+    },
+    {
+      "t" : 3.614,
+      "text" : " = Card([s2row"
+    },
+    {
+      "t" : 3.65,
+      "text" : "], \"sunk\")\ns"
+    },
+    {
+      "t" : 3.684,
+      "text" : "2row = Stack([s"
+    },
+    {
+      "t" : 3.721,
+      "text" : "2icon, s2text,"
+    },
+    {
+      "t" : 3.756,
+      "text" : " s2tag], \"row\","
+    },
+    {
+      "t" : 3.792,
+      "text" : " \"m\", \"center\")\ns"
+    },
+    {
+      "t" : 3.827,
+      "text" : "2icon = IconText("
+    },
+    {
+      "t" : 3.862,
+      "text" : "i2, \"success\", \"m"
+    },
+    {
+      "t" : 3.898,
+      "text" : "\", \"2. Complete your"
+    },
+    {
+      "t" : 3.934,
+      "text" : " profile\", \"Name"
+    },
+    {
+      "t" : 3.968,
+      "text" : ", photo and role\", false,"
+    },
+    {
+      "t" : 4.004,
+      "text" : " \"horizontal\")\ni"
+    },
+    {
+      "t" : 4.047,
+      "text" : "2 = Icon(\"circ"
+    },
+    {
+      "t" : 4.075,
+      "text" : "le-check\", \"status\")"
+    },
+    {
+      "t" : 4.114,
+      "text" : "\ns2text = TextContent"
+    },
+    {
+      "t" : 4.155,
+      "text" : "(\"Profile filled in"
+    },
+    {
+      "t" : 4.193,
+      "text" : "\", \"small\")\ns2t"
+    },
+    {
+      "t" : 4.223,
+      "text" : "ag = Tag(\"Complet"
+    },
+    {
+      "t" : 4.263,
+      "text" : "ed\", null, \"sm\","
+    },
+    {
+      "t" : 4.294,
+      "text" : " \"success\")\ns3 ="
+    },
+    {
+      "t" : 4.324,
+      "text" : " Card([s3row,"
+    },
+    {
+      "t" : 4.36,
+      "text" : " s3btn], \"card\")"
+    },
+    {
+      "t" : 4.395,
+      "text" : "\ns3row = Stack"
+    },
+    {
+      "t" : 4.431,
+      "text" : "([s3icon, s3"
+    },
+    {
+      "t" : 4.465,
+      "text" : "text, s3tag], \""
+    },
+    {
+      "t" : 4.501,
+      "text" : "row\", \"m\", \"center\")"
+    },
+    {
+      "t" : 4.536,
+      "text" : "\ns3icon = Icon"
+    },
+    {
+      "t" : 4.571,
+      "text" : "Text(i3, \"info\","
+    },
+    {
+      "t" : 4.608,
+      "text" : " \"m\", \"3. Inv"
+    },
+    {
+      "t" : 4.643,
+      "text" : "ite your team\", \"Coll"
+    },
+    {
+      "t" : 4.678,
+      "text" : "abo"
+    },
+    {
+      "t" : 4.713,
+      "text" : "ration works"
+    },
+    {
+      "t" : 4.749,
+      "text" : " best"
+    },
+    {
+      "t" : 4.787,
+      "text" : " together"
+    },
+    {
+      "t" : 4.82,
+      "text" : "\", true"
+    },
+    {
+      "t" : 4.855,
+      "text" : ", \"horizontal\")"
+    },
+    {
+      "t" : 4.89,
+      "text" : "\ni3 = Icon(\""
+    },
+    {
+      "t" : 4.926,
+      "text" : "users\","
+    },
+    {
+      "t" : 4.964,
+      "text" : " \"people\")\ns3text ="
+    },
+    {
+      "t" : 4.997,
+      "text" : " TextContent(\"**"
+    },
+    {
+      "t" : 5.033,
+      "text" : "Next step**"
+    },
+    {
+      "t" : 5.068,
+      "text" : " —"
+    },
+    {
+      "t" : 5.105,
+      "text" : " send"
+    },
+    {
+      "t" : 5.139,
+      "text" : " inv"
+    },
+    {
+      "t" : 5.174,
+      "text" : "ites by"
+    },
+    {
+      "t" : 5.21,
+      "text" : " email\","
+    },
+    {
+      "t" : 5.245,
+      "text" : " \"small\")\ns3tag"
+    },
+    {
+      "t" : 5.281,
+      "text" : " = Tag(\"Next\","
+    },
+    {
+      "t" : 5.316,
+      "text" : " null, \"sm\", \"info"
+    },
+    {
+      "t" : 5.353,
+      "text" : "\")\ns3btn ="
+    },
+    {
+      "t" : 5.387,
+      "text" : " Buttons([Button(\""
+    },
+    {
+      "t" : 5.423,
+      "text" : "Invite te"
+    },
+    {
+      "t" : 5.458,
+      "text" : "ammates\", @ToAss"
+    },
+    {
+      "t" : 5.494,
+      "text" : "istant(\"Help"
+    },
+    {
+      "t" : 5.529,
+      "text" : " me invite my"
+    },
+    {
+      "t" : 5.564,
+      "text" : " team\"), \"primary\")])"
+    },
+    {
+      "t" : 5.601,
+      "text" : "\ns4 = Card(["
+    },
+    {
+      "t" : 5.635,
+      "text" : "s4row], \"sunk"
+    },
+    {
+      "t" : 5.671,
+      "text" : "\")\ns4row = St"
+    },
+    {
+      "t" : 5.707,
+      "text" : "ack([s4icon, s"
+    },
+    {
+      "t" : 5.742,
+      "text" : "4text, s4tag],"
+    },
+    {
+      "t" : 5.777,
+      "text" : " \"row\", \"m\", \"center"
+    },
+    {
+      "t" : 5.812,
+      "text" : "\")\ns4icon = I"
+    },
+    {
+      "t" : 5.848,
+      "text" : "conText(i4, \"ne"
+    },
+    {
+      "t" : 5.884,
+      "text" : "utral\", \"m"
+    },
+    {
+      "t" : 5.919,
+      "text" : "\", \"4. Connect an"
+    },
+    {
+      "t" : 5.954,
+      "text" : " integration\", \"Sl"
+    },
+    {
+      "t" : 5.99,
+      "text" : "ack, G"
+    },
+    {
+      "t" : 6.026,
+      "text" : "itHub or Google"
+    },
+    {
+      "t" : 6.061,
+      "text" : "\", false, \"horizontal"
+    },
+    {
+      "t" : 6.096,
+      "text" : "\")\ni4 = Ic"
+    },
+    {
+      "t" : 6.132,
+      "text" : "on(\"plug\", \"tools"
+    },
+    {
+      "t" : 6.167,
+      "text" : "\")\ns4text = Text"
+    },
+    {
+      "t" : 6.203,
+      "text" : "Content(\"S"
+    },
+    {
+      "t" : 6.238,
+      "text" : "ync your t"
+    },
+    {
+      "t" : 6.273,
+      "text" : "ools\", \"small\")\ns4"
+    },
+    {
+      "t" : 6.309,
+      "text" : "tag = Tag(\""
+    },
+    {
+      "t" : 6.345,
+      "text" : "Pending\", null, \"sm"
+    },
+    {
+      "t" : 6.38,
+      "text" : "\", \"neutral\")\ns"
+    },
+    {
+      "t" : 6.417,
+      "text" : "5 = Card([s5"
+    },
+    {
+      "t" : 6.451,
+      "text" : "row], \"sunk\")"
+    },
+    {
+      "t" : 6.488,
+      "text" : "\ns5row = Stack(["
+    },
+    {
+      "t" : 6.524,
+      "text" : "s5icon, s5text"
+    },
+    {
+      "t" : 6.559,
+      "text" : ", s5tag], \"row"
+    },
+    {
+      "t" : 6.594,
+      "text" : "\", \"m\", \"center\")"
+    },
+    {
+      "t" : 6.632,
+      "text" : "\ns5icon = IconText"
+    },
+    {
+      "t" : 6.67,
+      "text" : "(i5, \"neutral"
+    },
+    {
+      "t" : 6.706,
+      "text" : "\", \"m\", \"5."
+    },
+    {
+      "t" : 6.745,
+      "text" : " Create your first project\", \"Start"
+    },
+    {
+      "t" : 6.783,
+      "text" : " your first"
+    },
+    {
+      "t" : 6.82,
+      "text" : " workspace\", false, \"hor"
+    },
+    {
+      "t" : 6.857,
+      "text" : "izontal\")\ni5 "
+    },
+    {
+      "t" : 6.894,
+      "text" : "= Icon(\"fol"
+    },
+    {
+      "t" : 6.932,
+      "text" : "der-pl"
+    },
+    {
+      "t" : 6.969,
+      "text" : "us\", \"files"
+    },
+    {
+      "t" : 7.006,
+      "text" : "\")\ns5text = Text"
+    },
+    {
+      "t" : 7.044,
+      "text" : "Content(\"K"
+    },
+    {
+      "t" : 7.082,
+      "text" : "ick off your work"
+    },
+    {
+      "t" : 7.119,
+      "text" : "\", \"small\")\ns5t"
+    },
+    {
+      "t" : 7.156,
+      "text" : "ag = Tag(\"P"
+    },
+    {
+      "t" : 7.194,
+      "text" : "ending\", null, \"sm\","
+    },
+    {
+      "t" : 7.219,
+      "text" : " \"neutral\")\nactions"
+    },
+    {
+      "t" : 7.257,
+      "text" : " = Buttons([Button"
+    },
+    {
+      "t" : 7.295,
+      "text" : "(\"Continue to"
+    },
+    {
+      "t" : 7.334,
+      "text" : " step 3\", @ToA"
+    },
+    {
+      "t" : 7.373,
+      "text" : "ssistant(\"Continue on"
+    },
+    {
+      "t" : 7.414,
+      "text" : "boarding at"
+    },
+    {
+      "t" : 7.453,
+      "text" : " step 3\"), \"primary"
+    },
+    {
+      "t" : 7.493,
+      "text" : "\"), Button(\"Skip"
+    },
+    {
+      "t" : 7.518,
+      "text" : " for now\", @ToAss"
+    },
+    {
+      "t" : 7.557,
+      "text" : "istant(\"Skip the"
+    },
+    {
+      "t" : 7.596,
+      "text" : " current on"
+    },
+    {
+      "t" : 7.636,
+      "text" : "boarding step\"), \"t"
+    },
+    {
+      "t" : 7.674,
+      "text" : "ertiary\")])"
+    }
+  ],
+  "createdAt" : "2026-11-11T10:35:08Z",
+  "effort" : "low",
+  "format" : "openui-recording",
+  "inputTokens" : 14493,
+  "library" : "react-ui",
+  "model" : "claude-sonnet-5-5",
+  "outputTokens" : 1261,
+  "request" : "An onboarding checklist of five steps with progress and the next step highlighted.",
+  "servedBy" : "claude-sonnet-5-5",
+  "stopReason" : "end_turn",
+  "version" : 1
+}

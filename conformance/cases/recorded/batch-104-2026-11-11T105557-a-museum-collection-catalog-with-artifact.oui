@@ -1,0 +1,30 @@
+root = Stack([heading, filterRow, grid], "column", "l")
+heading = InlineHeader("Museum Collection", "Browse artifacts by period of origin")
+filterRow = Stack([periodSelect], "row", "s", "center")
+periodSelect = Select("period", periodItems, "Filter by period", null, $period)
+periodItems = [SelectItem("All", "All periods"), SelectItem("Ancient", "Ancient"), SelectItem("Medieval", "Medieval"), SelectItem("Modern", "Modern")]
+grid = Stack([a1, a2, a3, a4], "row", "m", "start", "start", true)
+a1 = $period == "All" || $period == "Ancient" ? artCard1 : null
+a2 = $period == "All" || $period == "Medieval" ? artCard2 : null
+a3 = $period == "All" || $period == "Medieval" ? artCard3 : null
+a4 = $period == "All" || $period == "Modern" ? artCard4 : null
+artCard1 = Card([art1Head, art1Info, art1Note], "card", "column", "s")
+art1Head = IconText(art1Icon, "neutral", "m", "Black-Figure Amphora", "Ceramic vessel", true, "horizontal")
+art1Icon = Icon("landmark", "culture")
+art1Info = EntityList([{left: "Origin", right: "Athens, Greece"}, {left: "Period", right: "Ancient, c. 530 BCE"}, {left: "Curator", right: "Dr. Elena Markou"}], "default")
+art1Note = TextContent("Curator note: Painted scenes of Herakles are rare on vessels of this size. Conservation confirmed the original glaze.", "small")
+artCard2 = Card([art2Head, art2Info, art2Note], "card", "column", "s")
+art2Head = IconText(art2Icon, "neutral", "m", "Illuminated Psalter", "Manuscript leaf", true, "horizontal")
+art2Icon = Icon("book-open", "culture")
+art2Info = EntityList([{left: "Origin", right: "Northern France"}, {left: "Period", right: "Medieval, c. 1280"}, {left: "Curator", right: "James Whitfield"}], "default")
+art2Note = TextContent("Curator note: Gold leaf and lapis pigments remain vivid. Display limited to low light.", "small")
+artCard3 = Card([art3Head, art3Info, art3Note], "card", "column", "s")
+art3Head = IconText(art3Icon, "neutral", "m", "Brass Astrolabe", "Navigational instrument", true, "horizontal")
+art3Icon = Icon("compass", "science")
+art3Info = EntityList([{left: "Origin", right: "Maragha, Persia"}, {left: "Period", right: "Medieval, c. 1220"}, {left: "Curator", right: "Dr. Aisha Rahman"}], "default")
+art3Note = TextContent("Curator note: One of the few surviving examples with intact rete engraving.", "small")
+artCard4 = Card([art4Head, art4Info, art4Note], "card", "column", "s")
+art4Head = IconText(art4Icon, "neutral", "m", "Tubular Steel Chair", "Furniture design", true, "horizontal")
+art4Icon = Icon("armchair", "design")
+art4Info = EntityList([{left: "Origin", right: "Dessau, Germany"}, {left: "Period", right: "Modern, c. 1928"}, {left: "Curator", right: "Lena Fischer"}], "default")
+art4Note = TextContent("Curator note: Part of the early Bauhaus experiments with bent tubular metal.", "small")

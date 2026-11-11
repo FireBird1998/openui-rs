@@ -1,0 +1,660 @@
+{
+  "batchRequest" : {
+    "model" : "haiku",
+    "number" : 76,
+    "request" : "A union negotiation briefing: employer offers and union demands side by side, dates of talks and a list of unresolved items."
+  },
+  "chunks" : [
+    {
+      "t" : 0.837,
+      "text" : "root = Stack(["
+    },
+    {
+      "t" : 0.971,
+      "text" : "titleHeader, s"
+    },
+    {
+      "t" : 1.001,
+      "text" : "ideBySide, dat"
+    },
+    {
+      "t" : 1.076,
+      "text" : "esHeader, talksT"
+    },
+    {
+      "t" : 1.116,
+      "text" : "able, unresolvedH"
+    },
+    {
+      "t" : 1.213,
+      "text" : "eader, unresolved"
+    },
+    {
+      "t" : 1.242,
+      "text" : "Call"
+    },
+    {
+      "t" : 1.278,
+      "text" : "out])\ntitleHeader"
+    },
+    {
+      "t" : 1.307,
+      "text" : " = In"
+    },
+    {
+      "t" : 1.352,
+      "text" : "lineHeader(\"Union"
+    },
+    {
+      "t" : 1.442,
+      "text" : " Negotiation Brief"
+    },
+    {
+      "t" : 1.479,
+      "text" : "ing\", \"Employer offers"
+    },
+    {
+      "t" : 1.516,
+      "text" : " and"
+    },
+    {
+      "t" : 1.517,
+      "text" : " union demands, current"
+    },
+    {
+      "t" : 1.561,
+      "text" : " status of"
+    },
+    {
+      "t" : 1.602,
+      "text" : " talks\")\nsideByS"
+    },
+    {
+      "t" : 1.649,
+      "text" : "ide = Stack([employ"
+    },
+    {
+      "t" : 1.697,
+      "text" : "erCard, unionCard"
+    },
+    {
+      "t" : 1.73,
+      "text" : "], \""
+    },
+    {
+      "t" : 1.771,
+      "text" : "row\", \"m"
+    },
+    {
+      "t" : 1.819,
+      "text" : "\", \""
+    },
+    {
+      "t" : 1.873,
+      "text" : "stretch\", \"start\", true"
+    },
+    {
+      "t" : 1.922,
+      "text" : ")\nemployerCard ="
+    },
+    {
+      "t" : 2.005,
+      "text" : " Card([C"
+    },
+    {
+      "t" : 2.041,
+      "text" : "ardHeader(\"Employer"
+    },
+    {
+      "t" : 2.079,
+      "text" : " Offers"
+    },
+    {
+      "t" : 2.131,
+      "text" : "\", \"Lat"
+    },
+    {
+      "t" : 2.181,
+      "text" : "est position\"), off"
+    },
+    {
+      "t" : 2.215,
+      "text" : "erTable])"
+    },
+    {
+      "t" : 2.246,
+      "text" : "\noff"
+    },
+    {
+      "t" : 2.276,
+      "text" : "erTable = Table(["
+    },
+    {
+      "t" : 2.298,
+      "text" : "Col(\"Iss"
+    },
+    {
+      "t" : 2.368,
+      "text" : "ue\", off"
+    },
+    {
+      "t" : 2.369,
+      "text" : "erIssues), Col(\""
+    },
+    {
+      "t" : 2.423,
+      "text" : "Off"
+    },
+    {
+      "t" : 2.424,
+      "text" : "er\", offerValues)])"
+    },
+    {
+      "t" : 2.462,
+      "text" : "\noff"
+    },
+    {
+      "t" : 2.531,
+      "text" : "erIssues = [\""
+    },
+    {
+      "t" : 2.532,
+      "text" : "Base"
+    },
+    {
+      "t" : 2.566,
+      "text" : " wage incre"
+    },
+    {
+      "t" : 2.601,
+      "text" : "ase\", \"Health"
+    },
+    {
+      "t" : 2.666,
+      "text" : " prem"
+    },
+    {
+      "t" : 2.7,
+      "text" : "ium share"
+    },
+    {
+      "t" : 2.736,
+      "text" : "\", \"Pension"
+    },
+    {
+      "t" : 2.77,
+      "text" : " contribution\", \"Over"
+    },
+    {
+      "t" : 2.793,
+      "text" : "time r"
+    },
+    {
+      "t" : 2.823,
+      "text" : "ules\", \"Job"
+    },
+    {
+      "t" : 2.842,
+      "text" : " security"
+    },
+    {
+      "t" : 2.873,
+      "text" : "\"]\nofferValues ="
+    },
+    {
+      "t" : 2.874,
+      "text" : " [\"2"
+    },
+    {
+      "t" : 2.913,
+      "text" : ".0"
+    },
+    {
+      "t" : 2.951,
+      "text" : "% per"
+    },
+    {
+      "t" : 2.987,
+      "text" : " year\", \"15"
+    },
+    {
+      "t" : 3.021,
+      "text" : "% employee share\", \"3"
+    },
+    {
+      "t" : 3.065,
+      "text" : "% match\", \"Un"
+    },
+    {
+      "t" : 3.099,
+      "text" : "changed\","
+    },
+    {
+      "t" : 3.135,
+      "text" : " \"Stand"
+    },
+    {
+      "t" : 3.17,
+      "text" : "ard"
+    },
+    {
+      "t" : 3.206,
+      "text" : " clau"
+    },
+    {
+      "t" : 3.245,
+      "text" : "ses\"]\nunionCard"
+    },
+    {
+      "t" : 3.279,
+      "text" : " = Card([CardHe"
+    },
+    {
+      "t" : 3.32,
+      "text" : "ader(\"Union Demands\","
+    },
+    {
+      "t" : 3.377,
+      "text" : " \"Current"
+    },
+    {
+      "t" : 3.379,
+      "text" : " "
+    },
+    {
+      "t" : 3.415,
+      "text" : "ask\"), dem"
+    },
+    {
+      "t" : 3.452,
+      "text" : "andTable])\ndem"
+    },
+    {
+      "t" : 3.489,
+      "text" : "andTable = Table(["
+    },
+    {
+      "t" : 3.53,
+      "text" : "Col(\"Issue\", dem"
+    },
+    {
+      "t" : 3.568,
+      "text" : "andIssues), Col(\""
+    },
+    {
+      "t" : 3.606,
+      "text" : "Demand\", demandValues"
+    },
+    {
+      "t" : 3.646,
+      "text" : ")])\ndemandIssues"
+    },
+    {
+      "t" : 3.687,
+      "text" : " = [\""
+    },
+    {
+      "t" : 3.752,
+      "text" : "Base wage increase\", \""
+    },
+    {
+      "t" : 3.753,
+      "text" : "Health premium share\", \"P"
+    },
+    {
+      "t" : 3.796,
+      "text" : "ension contribution\", \"Over"
+    },
+    {
+      "t" : 3.852,
+      "text" : "time rules\", \"Job"
+    },
+    {
+      "t" : 3.894,
+      "text" : " security\"]\ndemandValues"
+    },
+    {
+      "t" : 3.985,
+      "text" : " = [\"5.5"
+    },
+    {
+      "t" : 4.063,
+      "text" : "% per year\", \"5% employ"
+    },
+    {
+      "t" : 4.107,
+      "text" : "ee share\", \"6% match"
+    },
+    {
+      "t" : 4.146,
+      "text" : "\", \"Time"
+    },
+    {
+      "t" : 4.187,
+      "text" : "-and"
+    },
+    {
+      "t" : 4.228,
+      "text" : "-a-half after"
+    },
+    {
+      "t" : 4.268,
+      "text" : " 40"
+    },
+    {
+      "t" : 4.31,
+      "text" : " hr"
+    },
+    {
+      "t" : 4.353,
+      "text" : "s\", \"Se"
+    },
+    {
+      "t" : 4.396,
+      "text" : "ni"
+    },
+    {
+      "t" : 4.437,
+      "text" : "ority-"
+    },
+    {
+      "t" : 4.478,
+      "text" : "based lay"
+    },
+    {
+      "t" : 4.522,
+      "text" : "off"
+    },
+    {
+      "t" : 4.566,
+      "text" : " protection\"]\ndatesH"
+    },
+    {
+      "t" : 4.609,
+      "text" : "eader = InlineHe"
+    },
+    {
+      "t" : 4.611,
+      "text" : "ader(\"Talks Sch"
+    },
+    {
+      "t" : 4.654,
+      "text" : "edule\", \"D"
+    },
+    {
+      "t" : 4.697,
+      "text" : "ates of negotiation s"
+    },
+    {
+      "t" : 4.739,
+      "text" : "essions\")\ntalksTable"
+    },
+    {
+      "t" : 4.785,
+      "text" : " = Table([Col(\""
+    },
+    {
+      "t" : 4.831,
+      "text" : "Date\", talkDates),"
+    },
+    {
+      "t" : 4.901,
+      "text" : " Col(\"Session\", talkS"
+    },
+    {
+      "t" : 4.902,
+      "text" : "essions), Col(\"Out"
+    },
+    {
+      "t" : 4.946,
+      "text" : "come\", talkOutc"
+    },
+    {
+      "t" : 4.992,
+      "text" : "omes)"
+    },
+    {
+      "t" : 5.037,
+      "text" : "])\ntalkDates = "
+    },
+    {
+      "t" : 5.084,
+      "text" : "[\"2025"
+    },
+    {
+      "t" : 5.132,
+      "text" : "-01"
+    },
+    {
+      "t" : 5.178,
+      "text" : "-14"
+    },
+    {
+      "t" : 5.225,
+      "text" : "\", \"2025-01-28"
+    },
+    {
+      "t" : 5.272,
+      "text" : "\", \"2025-02-11"
+    },
+    {
+      "t" : 5.319,
+      "text" : "\", \"2025-02-25"
+    },
+    {
+      "t" : 5.384,
+      "text" : "\", \"2025-03-11"
+    },
+    {
+      "t" : 5.477,
+      "text" : "\"]\ntalkSessions"
+    },
+    {
+      "t" : 5.508,
+      "text" : " = [\"Opening pro"
+    },
+    {
+      "t" : 5.555,
+      "text" : "posals\", \"W"
+    },
+    {
+      "t" : 5.556,
+      "text" : "ages and benefits\", \""
+    },
+    {
+      "t" : 5.604,
+      "text" : "Pension review"
+    },
+    {
+      "t" : 5.651,
+      "text" : "\", \"Overtime and"
+    },
+    {
+      "t" : 5.703,
+      "text" : " sc"
+    },
+    {
+      "t" : 5.764,
+      "text" : "heduling\", \"Medi"
+    },
+    {
+      "t" : 5.824,
+      "text" : "ator"
+    },
+    {
+      "t" : 5.875,
+      "text" : "-"
+    },
+    {
+      "t" : 5.923,
+      "text" : "led session\"]\ntalkO"
+    },
+    {
+      "t" : 5.973,
+      "text" : "utcomes = [\""
+    },
+    {
+      "t" : 6.07,
+      "text" : "Posit"
+    },
+    {
+      "t" : 6.119,
+      "text" : "ions exchanged\", \""
+    },
+    {
+      "t" : 6.168,
+      "text" : "Movement on health"
+    },
+    {
+      "t" : 6.218,
+      "text" : " prem"
+    },
+    {
+      "t" : 6.273,
+      "text" : "iums\", \"Pension tal"
+    },
+    {
+      "t" : 6.326,
+      "text" : "ks st"
+    },
+    {
+      "t" : 6.327,
+      "text" : "alled\", \"Part"
+    },
+    {
+      "t" : 6.409,
+      "text" : "ial ag"
+    },
+    {
+      "t" : 6.41,
+      "text" : "reement on sc"
+    },
+    {
+      "t" : 6.46,
+      "text" : "heduling\", \"Sche"
+    },
+    {
+      "t" : 6.514,
+      "text" : "duled for review"
+    },
+    {
+      "t" : 6.569,
+      "text" : "\"]\nunresolved"
+    },
+    {
+      "t" : 6.622,
+      "text" : "Header = InlineH"
+    },
+    {
+      "t" : 6.676,
+      "text" : "eader(\"Unresolved"
+    },
+    {
+      "t" : 6.729,
+      "text" : " Items\", \"Iss"
+    },
+    {
+      "t" : 6.781,
+      "text" : "ues still"
+    },
+    {
+      "t" : 6.835,
+      "text" : " open between"
+    },
+    {
+      "t" : 6.888,
+      "text" : " the"
+    },
+    {
+      "t" : 6.941,
+      "text" : " parties\")\nunresolv"
+    },
+    {
+      "t" : 7.046,
+      "text" : "edCallout = Callout"
+    },
+    {
+      "t" : 7.048,
+      "text" : "(\"warning\", \"Open"
+    },
+    {
+      "t" : 7.102,
+      "text" : " Items\", un"
+    },
+    {
+      "t" : 7.158,
+      "text" : "resolvedList"
+    },
+    {
+      "t" : 7.214,
+      "text" : ")"
+    },
+    {
+      "t" : 7.269,
+      "text" : "\nunresolvedList ="
+    },
+    {
+      "t" : 7.327,
+      "text" : " \"Wage gap of"
+    },
+    {
+      "t" : 7.388,
+      "text" : " 3"
+    },
+    {
+      "t" : 7.443,
+      "text" : ".5 points"
+    },
+    {
+      "t" : 7.508,
+      "text" : " per year,"
+    },
+    {
+      "t" : 7.58,
+      "text" : " pension match"
+    },
+    {
+      "t" : 7.642,
+      "text" : " dis"
+    },
+    {
+      "t" : 7.705,
+      "text" : "agreement, overtime prem"
+    },
+    {
+      "t" : 7.796,
+      "text" : "ium thre"
+    },
+    {
+      "t" : 8.009,
+      "text" : "shold, layoff protection"
+    },
+    {
+      "t" : 8.011,
+      "text" : " ter"
+    },
+    {
+      "t" : 8.268,
+      "text" : "ms, and health premium share above"
+    },
+    {
+      "t" : 8.362,
+      "text" : " 10"
+    },
+    {
+      "t" : 8.426,
+      "text" : "%.\""
+    }
+  ],
+  "createdAt" : "2026-11-11T10:45:57Z",
+  "effort" : "low",
+  "format" : "openui-recording",
+  "inputTokens" : 14506,
+  "library" : "react-ui",
+  "model" : "claude-haiku-5-5",
+  "outputTokens" : 828,
+  "request" : "A union negotiation briefing: employer offers and union demands side by side, dates of talks and a list of unresolved items.",
+  "servedBy" : "claude-haiku-5-5",
+  "stopReason" : "end_turn",
+  "version" : 1
+}

@@ -1,0 +1,520 @@
+{
+  "batchRequest" : {
+    "model" : "haiku",
+    "number" : 10,
+    "request" : "Traffic alerts for the morning commute: three incidents with severity tags and estimated delays."
+  },
+  "chunks" : [
+    {
+      "t" : 0.692,
+      "text" : "root = Stack([header"
+    },
+    {
+      "t" : 0.83,
+      "text" : ", al"
+    },
+    {
+      "t" : 0.837,
+      "text" : "erts"
+    },
+    {
+      "t" : 0.843,
+      "text" : "B"
+    },
+    {
+      "t" : 0.861,
+      "text" : "lock])"
+    },
+    {
+      "t" : 0.882,
+      "text" : "\nheader = InlineHe"
+    },
+    {
+      "t" : 0.888,
+      "text" : "ader(\"Morning Commute"
+    },
+    {
+      "t" : 0.899,
+      "text" : " Traffic\", \"Live"
+    },
+    {
+      "t" : 0.907,
+      "text" : " incidents aff"
+    },
+    {
+      "t" : 0.919,
+      "text" : "ecting your route"
+    },
+    {
+      "t" : 0.926,
+      "text" : "\")\nalertsBlock"
+    },
+    {
+      "t" : 0.937,
+      "text" : " = Stack([al"
+    },
+    {
+      "t" : 0.949,
+      "text" : "ert1, alert2, al"
+    },
+    {
+      "t" : 0.966,
+      "text" : "ert3], \""
+    },
+    {
+      "t" : 0.974,
+      "text" : "column\","
+    },
+    {
+      "t" : 0.986,
+      "text" : " \"m\")"
+    },
+    {
+      "t" : 1.008,
+      "text" : "\nalert1 ="
+    },
+    {
+      "t" : 1.027,
+      "text" : " Stack([al"
+    },
+    {
+      "t" : 1.049,
+      "text" : "ert1top"
+    },
+    {
+      "t" : 1.067,
+      "text" : ", alert1tags"
+    },
+    {
+      "t" : 1.088,
+      "text" : "], \"column\", \"s"
+    },
+    {
+      "t" : 1.11,
+      "text" : "\")\nalert1top"
+    },
+    {
+      "t" : 1.139,
+      "text" : " = IconText(alert1"
+    },
+    {
+      "t" : 1.153,
+      "text" : "icon, \"dan"
+    },
+    {
+      "t" : 1.174,
+      "text" : "ger\", \"m\", \""
+    },
+    {
+      "t" : 1.192,
+      "text" : "Mult"
+    },
+    {
+      "t" : 1.214,
+      "text" : "i-v"
+    },
+    {
+      "t" : 1.232,
+      "text" : "ehicle collision on I-"
+    },
+    {
+      "t" : 1.252,
+      "text" : "95 North"
+    },
+    {
+      "t" : 1.274,
+      "text" : "bound\", \"Ex"
+    },
+    {
+      "t" : 1.293,
+      "text" : "it 14"
+    },
+    {
+      "t" : 1.314,
+      "text" : " to"
+    },
+    {
+      "t" : 1.334,
+      "text" : " Exit 12"
+    },
+    {
+      "t" : 1.352,
+      "text" : ", two"
+    },
+    {
+      "t" : 1.374,
+      "text" : " lanes bl"
+    },
+    {
+      "t" : 1.393,
+      "text" : "ocked\", true"
+    },
+    {
+      "t" : 1.413,
+      "text" : ", \"hor"
+    },
+    {
+      "t" : 1.435,
+      "text" : "izontal\")\nalert1"
+    },
+    {
+      "t" : 1.458,
+      "text" : "icon = Icon(\"car"
+    },
+    {
+      "t" : 1.475,
+      "text" : "\","
+    },
+    {
+      "t" : 1.495,
+      "text" : " \"trans"
+    },
+    {
+      "t" : 1.519,
+      "text" : "port\")\nalert1tags"
+    },
+    {
+      "t" : 1.536,
+      "text" : " = St"
+    },
+    {
+      "t" : 1.558,
+      "text" : "ack([t"
+    },
+    {
+      "t" : 1.576,
+      "text" : "ag1s"
+    },
+    {
+      "t" : 1.597,
+      "text" : "ev, tag1del"
+    },
+    {
+      "t" : 1.618,
+      "text" : "ay], \"row\", \"s"
+    },
+    {
+      "t" : 1.638,
+      "text" : "\")"
+    },
+    {
+      "t" : 1.659,
+      "text" : "\ntag1sev ="
+    },
+    {
+      "t" : 1.679,
+      "text" : " Tag(\"Severe\", null"
+    },
+    {
+      "t" : 1.7,
+      "text" : ", \"sm\", \"danger"
+    },
+    {
+      "t" : 1.721,
+      "text" : "\")\ntag1delay ="
+    },
+    {
+      "t" : 1.741,
+      "text" : " Tag(\""
+    },
+    {
+      "t" : 1.762,
+      "text" : "Est"
+    },
+    {
+      "t" : 1.781,
+      "text" : ". del"
+    },
+    {
+      "t" : 1.802,
+      "text" : "ay 35"
+    },
+    {
+      "t" : 1.822,
+      "text" : " min\", null, \"sm"
+    },
+    {
+      "t" : 1.842,
+      "text" : "\", \"war"
+    },
+    {
+      "t" : 1.864,
+      "text" : "ning\")\nalert2 ="
+    },
+    {
+      "t" : 1.884,
+      "text" : " Stack([alert2top"
+    },
+    {
+      "t" : 1.905,
+      "text" : ", alert2tags], \""
+    },
+    {
+      "t" : 1.925,
+      "text" : "column\", \"s\")\nalert"
+    },
+    {
+      "t" : 1.948,
+      "text" : "2top = IconText(al"
+    },
+    {
+      "t" : 1.967,
+      "text" : "ert2icon, \"warning"
+    },
+    {
+      "t" : 1.988,
+      "text" : "\", \"m\", \"Road constru"
+    },
+    {
+      "t" : 2.009,
+      "text" : "ction on Route"
+    },
+    {
+      "t" : 2.031,
+      "text" : " 9"
+    },
+    {
+      "t" : 2.052,
+      "text" : " South"
+    },
+    {
+      "t" : 2.072,
+      "text" : "bound\", \"Right"
+    },
+    {
+      "t" : 2.096,
+      "text" : " l"
+    },
+    {
+      "t" : 2.109,
+      "text" : "ane clos"
+    },
+    {
+      "t" : 2.129,
+      "text" : "ed near"
+    },
+    {
+      "t" : 2.151,
+      "text" : " Main"
+    },
+    {
+      "t" : 2.172,
+      "text" : " St"
+    },
+    {
+      "t" : 2.193,
+      "text" : " b"
+    },
+    {
+      "t" : 2.214,
+      "text" : "ridge\", true, \"hor"
+    },
+    {
+      "t" : 2.235,
+      "text" : "izontal\")\nalert2"
+    },
+    {
+      "t" : 2.258,
+      "text" : "icon = Icon(\"constru"
+    },
+    {
+      "t" : 2.278,
+      "text" : "ction\", \"trans"
+    },
+    {
+      "t" : 2.292,
+      "text" : "port\")\nalert2tags"
+    },
+    {
+      "t" : 2.313,
+      "text" : " = Stack([tag2"
+    },
+    {
+      "t" : 2.335,
+      "text" : "sev, tag2delay"
+    },
+    {
+      "t" : 2.356,
+      "text" : "], \"row\", \"s\")"
+    },
+    {
+      "t" : 2.378,
+      "text" : "\ntag2sev = T"
+    },
+    {
+      "t" : 2.402,
+      "text" : "ag(\"Moderate\", null"
+    },
+    {
+      "t" : 2.424,
+      "text" : ", \"sm\", \"warning"
+    },
+    {
+      "t" : 2.447,
+      "text" : "\")\ntag2delay ="
+    },
+    {
+      "t" : 2.469,
+      "text" : " Tag(\"Est. del"
+    },
+    {
+      "t" : 2.491,
+      "text" : "ay 12"
+    },
+    {
+      "t" : 2.515,
+      "text" : " min\", null, \"sm"
+    },
+    {
+      "t" : 2.539,
+      "text" : "\", \"info\")\nalert3"
+    },
+    {
+      "t" : 2.566,
+      "text" : " = Stack([alert"
+    },
+    {
+      "t" : 2.589,
+      "text" : "3top, alert3tags"
+    },
+    {
+      "t" : 2.613,
+      "text" : "], \"column\", \"s\")"
+    },
+    {
+      "t" : 2.636,
+      "text" : "\nalert3top = IconText"
+    },
+    {
+      "t" : 2.662,
+      "text" : "(alert3icon, \""
+    },
+    {
+      "t" : 2.687,
+      "text" : "info"
+    },
+    {
+      "t" : 2.712,
+      "text" : "\", \"m\", \"Dis"
+    },
+    {
+      "t" : 2.738,
+      "text" : "ab"
+    },
+    {
+      "t" : 2.763,
+      "text" : "led vehicle on"
+    },
+    {
+      "t" : 2.788,
+      "text" : " Ma"
+    },
+    {
+      "t" : 2.813,
+      "text" : "ple "
+    },
+    {
+      "t" : 2.838,
+      "text" : "Ave E"
+    },
+    {
+      "t" : 2.863,
+      "text" : "astbound\", \"Sh"
+    },
+    {
+      "t" : 2.888,
+      "text" : "oulder l"
+    },
+    {
+      "t" : 2.915,
+      "text" : "ane blocked near"
+    },
+    {
+      "t" : 2.942,
+      "text" : " Oak Street\", true,"
+    },
+    {
+      "t" : 2.967,
+      "text" : " \"horizontal\")\nal"
+    },
+    {
+      "t" : 2.993,
+      "text" : "ert3icon = Icon"
+    },
+    {
+      "t" : 3.008,
+      "text" : "(\"tri"
+    },
+    {
+      "t" : 3.033,
+      "text" : "angle-"
+    },
+    {
+      "t" : 3.059,
+      "text" : "alert\", \"transport\")"
+    },
+    {
+      "t" : 3.085,
+      "text" : "\nalert3tags = St"
+    },
+    {
+      "t" : 3.113,
+      "text" : "ack([tag3sev,"
+    },
+    {
+      "t" : 3.141,
+      "text" : " tag3delay], \"row"
+    },
+    {
+      "t" : 3.168,
+      "text" : "\", \"s\")\ntag3"
+    },
+    {
+      "t" : 3.197,
+      "text" : "sev = Tag(\""
+    },
+    {
+      "t" : 3.225,
+      "text" : "Minor\", null, \"sm"
+    },
+    {
+      "t" : 3.251,
+      "text" : "\", \"ne"
+    },
+    {
+      "t" : 3.279,
+      "text" : "utral\")\ntag3del"
+    },
+    {
+      "t" : 3.308,
+      "text" : "ay = Tag(\"Est"
+    },
+    {
+      "t" : 3.335,
+      "text" : ". delay 5"
+    },
+    {
+      "t" : 3.362,
+      "text" : " min\", null, \"sm"
+    },
+    {
+      "t" : 3.39,
+      "text" : "\", \"success"
+    },
+    {
+      "t" : 3.417,
+      "text" : "\")"
+    }
+  ],
+  "createdAt" : "2026-11-11T10:33:30Z",
+  "effort" : "low",
+  "format" : "openui-recording",
+  "inputTokens" : 14499,
+  "library" : "react-ui",
+  "model" : "claude-haiku-5-5",
+  "outputTokens" : 679,
+  "request" : "Traffic alerts for the morning commute: three incidents with severity tags and estimated delays.",
+  "servedBy" : "claude-haiku-5-5",
+  "stopReason" : "end_turn",
+  "version" : 1
+}

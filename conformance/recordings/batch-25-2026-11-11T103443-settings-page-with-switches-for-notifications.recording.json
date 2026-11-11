@@ -1,0 +1,288 @@
+{
+  "batchRequest" : {
+    "model" : "sonnet",
+    "number" : 25,
+    "request" : "Settings page with switches for notifications, a theme radio group and a save button."
+  },
+  "chunks" : [
+    {
+      "t" : 0.732,
+      "text" : "root = Stack([title,"
+    },
+    {
+      "t" : 1.039,
+      "text" : " form"
+    },
+    {
+      "t" : 1.049,
+      "text" : "])\ntitle = TextContent"
+    },
+    {
+      "t" : 1.058,
+      "text" : "(\"Settings\", \"large-"
+    },
+    {
+      "t" : 1.075,
+      "text" : "heavy\")\nform ="
+    },
+    {
+      "t" : 1.094,
+      "text" : " Form(\"settings\", btns,"
+    },
+    {
+      "t" : 1.1,
+      "text" : " [notifField"
+    },
+    {
+      "t" : 1.11,
+      "text" : ", themeField])"
+    },
+    {
+      "t" : 1.117,
+      "text" : "\nnotifField"
+    },
+    {
+      "t" : 1.127,
+      "text" : " = FormControl(\"Not"
+    },
+    {
+      "t" : 1.133,
+      "text" : "ifications\", not"
+    },
+    {
+      "t" : 1.143,
+      "text" : "ifSwitches, \""
+    },
+    {
+      "t" : 1.149,
+      "text" : "Choose which al"
+    },
+    {
+      "t" : 1.354,
+      "text" : "erts you rece"
+    },
+    {
+      "t" : 1.361,
+      "text" : "ive\")\nnotifSwit"
+    },
+    {
+      "t" : 1.369,
+      "text" : "ches = SwitchGro"
+    },
+    {
+      "t" : 1.382,
+      "text" : "up(\"notifications\", [sw"
+    },
+    {
+      "t" : 1.393,
+      "text" : "Email, swPush,"
+    },
+    {
+      "t" : 1.4,
+      "text" : " swSms, swDig"
+    },
+    {
+      "t" : 1.411,
+      "text" : "est], \"card\")\nswE"
+    },
+    {
+      "t" : 1.425,
+      "text" : "mail = SwitchIt"
+    },
+    {
+      "t" : 1.457,
+      "text" : "em(\"Email notifications\","
+    },
+    {
+      "t" : 1.494,
+      "text" : " \"Receive updates by email"
+    },
+    {
+      "t" : 1.531,
+      "text" : "\", \"email\", true)\nsw"
+    },
+    {
+      "t" : 1.566,
+      "text" : "Push = SwitchIt"
+    },
+    {
+      "t" : 1.672,
+      "text" : "em(\"Push notifications\","
+    },
+    {
+      "t" : 1.685,
+      "text" : " \"Al"
+    },
+    {
+      "t" : 1.698,
+      "text" : "erts on your device\", \"push"
+    },
+    {
+      "t" : 1.711,
+      "text" : "\", true)\nswSms ="
+    },
+    {
+      "t" : 1.746,
+      "text" : " SwitchItem(\"S"
+    },
+    {
+      "t" : 1.779,
+      "text" : "MS notifications\", \""
+    },
+    {
+      "t" : 1.814,
+      "text" : "Text messages for ur"
+    },
+    {
+      "t" : 1.849,
+      "text" : "gent al"
+    },
+    {
+      "t" : 1.884,
+      "text" : "erts\", \"sms\", false"
+    },
+    {
+      "t" : 1.92,
+      "text" : ")\nswDigest = S"
+    },
+    {
+      "t" : 1.956,
+      "text" : "witchItem(\"We"
+    },
+    {
+      "t" : 1.992,
+      "text" : "ekly digest\", \"A"
+    },
+    {
+      "t" : 2.027,
+      "text" : " summary of activity every Mon"
+    },
+    {
+      "t" : 2.068,
+      "text" : "day\", \"digest\", true"
+    },
+    {
+      "t" : 2.098,
+      "text" : ")\nthemeField = Form"
+    },
+    {
+      "t" : 2.133,
+      "text" : "Control(\"Theme\", them"
+    },
+    {
+      "t" : 2.17,
+      "text" : "eRadio, \"Select"
+    },
+    {
+      "t" : 2.203,
+      "text" : " your"
+    },
+    {
+      "t" : 2.239,
+      "text" : " preferred appearance\")"
+    },
+    {
+      "t" : 2.275,
+      "text" : "\nthemeRadio = Rad"
+    },
+    {
+      "t" : 2.313,
+      "text" : "ioGroup(\"theme\","
+    },
+    {
+      "t" : 2.346,
+      "text" : " [rL"
+    },
+    {
+      "t" : 2.381,
+      "text" : "ight, rDark, rS"
+    },
+    {
+      "t" : 2.416,
+      "text" : "ystem], \"system"
+    },
+    {
+      "t" : 2.452,
+      "text" : "\")\nrLight = Rad"
+    },
+    {
+      "t" : 2.488,
+      "text" : "ioItem(\"Light\", \""
+    },
+    {
+      "t" : 2.523,
+      "text" : "Always use"
+    },
+    {
+      "t" : 2.563,
+      "text" : " the light theme\", \"light\")"
+    },
+    {
+      "t" : 2.594,
+      "text" : "\nrDark = Radio"
+    },
+    {
+      "t" : 2.63,
+      "text" : "Item(\"Dark\", \""
+    },
+    {
+      "t" : 2.665,
+      "text" : "Always use the dark theme"
+    },
+    {
+      "t" : 2.7,
+      "text" : "\", \"dark\")\nrS"
+    },
+    {
+      "t" : 2.736,
+      "text" : "ystem = RadioItem"
+    },
+    {
+      "t" : 2.772,
+      "text" : "(\"System\", \"Match"
+    },
+    {
+      "t" : 2.807,
+      "text" : " your device sett"
+    },
+    {
+      "t" : 2.842,
+      "text" : "ings\", \"system\")\nbtns"
+    },
+    {
+      "t" : 2.878,
+      "text" : " = Buttons([save"
+    },
+    {
+      "t" : 2.913,
+      "text" : "Btn])"
+    },
+    {
+      "t" : 2.948,
+      "text" : "\nsaveBtn ="
+    },
+    {
+      "t" : 2.984,
+      "text" : " Button(\"Save\", @To"
+    },
+    {
+      "t" : 3.02,
+      "text" : "Assistant(\"Save sett"
+    },
+    {
+      "t" : 3.056,
+      "text" : "ings\"), \"primary\")"
+    }
+  ],
+  "createdAt" : "2026-11-11T10:34:43Z",
+  "effort" : "low",
+  "format" : "openui-recording",
+  "inputTokens" : 14492,
+  "library" : "react-ui",
+  "model" : "claude-sonnet-5-5",
+  "outputTokens" : 460,
+  "request" : "Settings page with switches for notifications, a theme radio group and a save button.",
+  "servedBy" : "claude-sonnet-5-5",
+  "stopReason" : "end_turn",
+  "version" : 1
+}

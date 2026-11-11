@@ -1,0 +1,520 @@
+{
+  "batchRequest" : {
+    "model" : "sonnet",
+    "number" : 3,
+    "request" : "A live blog of a product launch event with six timestamped updates, newest first."
+  },
+  "chunks" : [
+    {
+      "t" : 0.879,
+      "text" : "root = Stack(["
+    },
+    {
+      "t" : 1.216,
+      "text" : "header, stat"
+    },
+    {
+      "t" : 1.227,
+      "text" : "usCall"
+    },
+    {
+      "t" : 1.233,
+      "text" : "out, updat"
+    },
+    {
+      "t" : 1.253,
+      "text" : "esC"
+    },
+    {
+      "t" : 1.265,
+      "text" : "ard])\nheader = C"
+    },
+    {
+      "t" : 1.276,
+      "text" : "ardHeader(\"N"
+    },
+    {
+      "t" : 1.282,
+      "text" : "im"
+    },
+    {
+      "t" : 1.293,
+      "text" : "bus X"
+    },
+    {
+      "t" : 1.3,
+      "text" : " Launch Event"
+    },
+    {
+      "t" : 1.306,
+      "text" : ":"
+    },
+    {
+      "t" : 1.318,
+      "text" : " Live Blog\", \""
+    },
+    {
+      "t" : 1.325,
+      "text" : "Upd"
+    },
+    {
+      "t" : 1.569,
+      "text" : "ates from"
+    },
+    {
+      "t" : 1.582,
+      "text" : " the"
+    },
+    {
+      "t" : 1.598,
+      "text" : " keynote, newest first\")"
+    },
+    {
+      "t" : 1.615,
+      "text" : "\nstatusCallout ="
+    },
+    {
+      "t" : 1.615,
+      "text" : " Callout(\"info\", \"Live"
+    },
+    {
+      "t" : 1.631,
+      "text" : " now"
+    },
+    {
+      "t" : 1.648,
+      "text" : "\", \"The"
+    },
+    {
+      "t" : 1.665,
+      "text" : " event is wrapping up."
+    },
+    {
+      "t" : 1.681,
+      "text" : " P"
+    },
+    {
+      "t" : 1.714,
+      "text" : "ricing and availability have"
+    },
+    {
+      "t" : 1.732,
+      "text" : " just"
+    },
+    {
+      "t" : 1.748,
+      "text" : " been announced.\")\nupdat"
+    },
+    {
+      "t" : 1.933,
+      "text" : "esCard = Card([upd"
+    },
+    {
+      "t" : 1.948,
+      "text" : "atesHeader, updat"
+    },
+    {
+      "t" : 1.961,
+      "text" : "esSteps])\nupdat"
+    },
+    {
+      "t" : 1.975,
+      "text" : "esHeader = Inline"
+    },
+    {
+      "t" : 1.983,
+      "text" : "Header(\"Tim"
+    },
+    {
+      "t" : 1.997,
+      "text" : "eline\", \"All times"
+    },
+    {
+      "t" : 2.012,
+      "text" : " P"
+    },
+    {
+      "t" : 2.027,
+      "text" : "T"
+    },
+    {
+      "t" : 2.042,
+      "text" : "\")\nupdatesSteps"
+    },
+    {
+      "t" : 2.043,
+      "text" : " = Steps([u"
+    },
+    {
+      "t" : 2.066,
+      "text" : "1, u2, u3,"
+    },
+    {
+      "t" : 2.075,
+      "text" : " u4, u5, u6"
+    },
+    {
+      "t" : 2.262,
+      "text" : "])\nu1 = Step"
+    },
+    {
+      "t" : 2.279,
+      "text" : "sItem(\"11"
+    },
+    {
+      "t" : 2.295,
+      "text" : ":42"
+    },
+    {
+      "t" : 2.312,
+      "text" : " AM · Pric"
+    },
+    {
+      "t" : 2.328,
+      "text" : "ing and avail"
+    },
+    {
+      "t" : 2.345,
+      "text" : "ability\", \"Nimbus"
+    },
+    {
+      "t" : 2.362,
+      "text" : " X starts at $799"
+    },
+    {
+      "t" : 2.38,
+      "text" : ". Preorders open today"
+    },
+    {
+      "t" : 2.398,
+      "text" : ", sh"
+    },
+    {
+      "t" : 2.415,
+      "text" : "ipping beg"
+    },
+    {
+      "t" : 2.437,
+      "text" : "ins March"
+    },
+    {
+      "t" : 2.476,
+      "text" : " 14"
+    },
+    {
+      "t" : 2.617,
+      "text" : " "
+    },
+    {
+      "t" : 2.636,
+      "text" : "in 20"
+    },
+    {
+      "t" : 2.646,
+      "text" : " countries."
+    },
+    {
+      "t" : 2.665,
+      "text" : "\")\nu2 = Step"
+    },
+    {
+      "t" : 2.675,
+      "text" : "sItem(\"11:25"
+    },
+    {
+      "t" : 2.701,
+      "text" : " AM · Batt"
+    },
+    {
+      "t" : 2.719,
+      "text" : "ery life\", \"R"
+    },
+    {
+      "t" : 2.737,
+      "text" : "ated for up to 22"
+    },
+    {
+      "t" : 2.769,
+      "text" : " hours of m"
+    },
+    {
+      "t" : 2.803,
+      "text" : "ixed use,"
+    },
+    {
+      "t" : 2.852,
+      "text" : " with"
+    },
+    {
+      "t" : 2.872,
+      "text" : " 70"
+    },
+    {
+      "t" : 2.998,
+      "text" : "%"
+    },
+    {
+      "t" : 3.018,
+      "text" : " charge in 30 minut"
+    },
+    {
+      "t" : 3.037,
+      "text" : "es via the"
+    },
+    {
+      "t" : 3.056,
+      "text" : " new"
+    },
+    {
+      "t" : 3.068,
+      "text" : " 65W ad"
+    },
+    {
+      "t" : 3.088,
+      "text" : "apter.\")\nu3 "
+    },
+    {
+      "t" : 3.11,
+      "text" : "= StepsItem(\"11"
+    },
+    {
+      "t" : 3.134,
+      "text" : ":08"
+    },
+    {
+      "t" : 3.168,
+      "text" : " AM · Live demo"
+    },
+    {
+      "t" : 3.202,
+      "text" : " of"
+    },
+    {
+      "t" : 3.267,
+      "text" : " Nimbus Ass"
+    },
+    {
+      "t" : 3.301,
+      "text" : "ist\", \"The on"
+    },
+    {
+      "t" : 3.36,
+      "text" : "-device ass"
+    },
+    {
+      "t" : 3.38,
+      "text" : "istant summ"
+    },
+    {
+      "t" : 3.402,
+      "text" : "arized"
+    },
+    {
+      "t" : 3.436,
+      "text" : " a "
+    },
+    {
+      "t" : 3.467,
+      "text" : "40"
+    },
+    {
+      "t" : 3.499,
+      "text" : "-page"
+    },
+    {
+      "t" : 3.534,
+      "text" : " document"
+    },
+    {
+      "t" : 3.565,
+      "text" : " in under five"
+    },
+    {
+      "t" : 3.599,
+      "text" : " seconds,"
+    },
+    {
+      "t" : 3.632,
+      "text" : " running"
+    },
+    {
+      "t" : 3.664,
+      "text" : " f"
+    },
+    {
+      "t" : 3.699,
+      "text" : "ully offline.\")\nu4"
+    },
+    {
+      "t" : 3.742,
+      "text" : " = StepsItem(\""
+    },
+    {
+      "t" : 3.775,
+      "text" : "10:49"
+    },
+    {
+      "t" : 3.799,
+      "text" : " AM · Camera system"
+    },
+    {
+      "t" : 3.833,
+      "text" : " unveiled\", \"A new"
+    },
+    {
+      "t" : 3.867,
+      "text" : " 50M"
+    },
+    {
+      "t" : 3.899,
+      "text" : "P triple-cam"
+    },
+    {
+      "t" : 3.932,
+      "text" : "era array"
+    },
+    {
+      "t" : 3.966,
+      "text" : " with improved low-light perform"
+    },
+    {
+      "t" : 4,
+      "text" : "ance and 8K"
+    },
+    {
+      "t" : 4.033,
+      "text" : " video rec"
+    },
+    {
+      "t" : 4.068,
+      "text" : "ording.\")\nu5 ="
+    },
+    {
+      "t" : 4.1,
+      "text" : " StepsItem(\"10:"
+    },
+    {
+      "t" : 4.133,
+      "text" : "31 AM · Me"
+    },
+    {
+      "t" : 4.167,
+      "text" : "et the"
+    },
+    {
+      "t" : 4.209,
+      "text" : " Nimbus X\", \"A"
+    },
+    {
+      "t" : 4.235,
+      "text" : " 6"
+    },
+    {
+      "t" : 4.267,
+      "text" : ".4-inch display"
+    },
+    {
+      "t" : 4.3,
+      "text" : ","
+    },
+    {
+      "t" : 4.333,
+      "text" : " a"
+    },
+    {
+      "t" : 4.366,
+      "text" : " titanium fr"
+    },
+    {
+      "t" : 4.4,
+      "text" : "ame, and a "
+    },
+    {
+      "t" : 4.433,
+      "text" : "30% fa"
+    },
+    {
+      "t" : 4.466,
+      "text" : "ster cust"
+    },
+    {
+      "t" : 4.5,
+      "text" : "om chip."
+    },
+    {
+      "t" : 4.532,
+      "text" : " Weigh"
+    },
+    {
+      "t" : 4.565,
+      "text" : "s just"
+    },
+    {
+      "t" : 4.601,
+      "text" : " 168"
+    },
+    {
+      "t" : 4.632,
+      "text" : " "
+    },
+    {
+      "t" : 4.666,
+      "text" : "grams.\")\nu6 "
+    },
+    {
+      "t" : 4.699,
+      "text" : "= StepsItem(\"10"
+    },
+    {
+      "t" : 4.733,
+      "text" : ":00 AM · Ke"
+    },
+    {
+      "t" : 4.775,
+      "text" : "ynote beg"
+    },
+    {
+      "t" : 4.802,
+      "text" : "ins\", \"C"
+    },
+    {
+      "t" : 4.834,
+      "text" : "EO Ma"
+    },
+    {
+      "t" : 4.869,
+      "text" : "ya "
+    },
+    {
+      "t" : 4.9,
+      "text" : "Ortiz takes the stage"
+    },
+    {
+      "t" : 5.005,
+      "text" : " and wel"
+    },
+    {
+      "t" : 5.033,
+      "text" : "comes attendees to the"
+    },
+    {
+      "t" : 5.061,
+      "text" : " Nimbus laun"
+    },
+    {
+      "t" : 5.088,
+      "text" : "ch event.\")"
+    }
+  ],
+  "createdAt" : "2026-11-11T10:32:52Z",
+  "effort" : "low",
+  "format" : "openui-recording",
+  "inputTokens" : 14492,
+  "library" : "react-ui",
+  "model" : "claude-sonnet-5-5",
+  "outputTokens" : 566,
+  "request" : "A live blog of a product launch event with six timestamped updates, newest first.",
+  "servedBy" : "claude-sonnet-5-5",
+  "stopReason" : "end_turn",
+  "version" : 1
+}

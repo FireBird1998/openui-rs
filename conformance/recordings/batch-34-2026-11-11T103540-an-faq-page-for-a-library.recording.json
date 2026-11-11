@@ -1,0 +1,468 @@
+{
+  "batchRequest" : {
+    "model" : "haiku",
+    "number" : 34,
+    "request" : "An FAQ page for a library: opening hours, membership, borrowing limits, in an accordion."
+  },
+  "chunks" : [
+    {
+      "t" : 0.656,
+      "text" : "root = Stack(["
+    },
+    {
+      "t" : 0.795,
+      "text" : "p"
+    },
+    {
+      "t" : 0.821,
+      "text" : "ageT"
+    },
+    {
+      "t" : 0.888,
+      "text" : "itle, fa"
+    },
+    {
+      "t" : 0.97,
+      "text" : "qAccordion])\np"
+    },
+    {
+      "t" : 1.045,
+      "text" : "ageTitle = TextCont"
+    },
+    {
+      "t" : 1.083,
+      "text" : "ent(\"Library FAQ"
+    },
+    {
+      "t" : 1.085,
+      "text" : "\", \"large-heavy\")"
+    },
+    {
+      "t" : 1.125,
+      "text" : "\nfaqAccordion ="
+    },
+    {
+      "t" : 1.172,
+      "text" : " Accordion([faqH"
+    },
+    {
+      "t" : 1.207,
+      "text" : "ours, faqMembership,"
+    },
+    {
+      "t" : 1.24,
+      "text" : " faqLimits])\nfa"
+    },
+    {
+      "t" : 1.309,
+      "text" : "qHours = A"
+    },
+    {
+      "t" : 1.327,
+      "text" : "ccordionItem(\"hours"
+    },
+    {
+      "t" : 1.359,
+      "text" : "\", \"What"
+    },
+    {
+      "t" : 1.392,
+      "text" : " are the opening hours?\","
+    },
+    {
+      "t" : 1.421,
+      "text" : " h"
+    },
+    {
+      "t" : 1.451,
+      "text" : "oursCont"
+    },
+    {
+      "t" : 1.483,
+      "text" : "ent)\nhoursContent"
+    },
+    {
+      "t" : 1.595,
+      "text" : " = ["
+    },
+    {
+      "t" : 1.645,
+      "text" : "h"
+    },
+    {
+      "t" : 1.698,
+      "text" : "oursText]"
+    },
+    {
+      "t" : 1.753,
+      "text" : "\nhoursText"
+    },
+    {
+      "t" : 1.806,
+      "text" : " = TextContent(\"**"
+    },
+    {
+      "t" : 1.85,
+      "text" : "Monday–Friday:"
+    },
+    {
+      "t" : 1.883,
+      "text" : "** 9:00 AM"
+    },
+    {
+      "t" : 1.918,
+      "text" : " – 8"
+    },
+    {
+      "t" : 1.977,
+      "text" : ":00 PM\\n\\"
+    },
+    {
+      "t" : 2.063,
+      "text" : "n**Saturday:**"
+    },
+    {
+      "t" : 2.064,
+      "text" : " 10"
+    },
+    {
+      "t" : 2.127,
+      "text" : ":00 AM – 6"
+    },
+    {
+      "t" : 2.181,
+      "text" : ":00 PM\\n\\"
+    },
+    {
+      "t" : 2.243,
+      "text" : "n**Sunday:**"
+    },
+    {
+      "t" : 2.361,
+      "text" : " 12"
+    },
+    {
+      "t" : 2.413,
+      "text" : ":00 PM – 5"
+    },
+    {
+      "t" : 2.494,
+      "text" : ":00 PM\\n\\"
+    },
+    {
+      "t" : 2.524,
+      "text" : "nTh"
+    },
+    {
+      "t" : 2.585,
+      "text" : "e library is closed on public hol"
+    },
+    {
+      "t" : 2.586,
+      "text" : "idays.\")\nfaqM"
+    },
+    {
+      "t" : 2.65,
+      "text" : "embership = AccordionIt"
+    },
+    {
+      "t" : 2.71,
+      "text" : "em(\"membership\", \"How do"
+    },
+    {
+      "t" : 2.778,
+      "text" : " I become a member?\", membersh"
+    },
+    {
+      "t" : 2.836,
+      "text" : "ipContent)\nmembership"
+    },
+    {
+      "t" : 2.901,
+      "text" : "Content = [membershipText"
+    },
+    {
+      "t" : 3.006,
+      "text" : ", membershipC"
+    },
+    {
+      "t" : 3.007,
+      "text" : "all"
+    },
+    {
+      "t" : 3.072,
+      "text" : "out]\nmembershipText ="
+    },
+    {
+      "t" : 3.116,
+      "text" : " TextContent(\"Memb"
+    },
+    {
+      "t" : 3.167,
+      "text" : "ership is free for"
+    },
+    {
+      "t" : 3.217,
+      "text" : " all"
+    },
+    {
+      "t" : 3.303,
+      "text" : " residents."
+    },
+    {
+      "t" : 3.305,
+      "text" : " B"
+    },
+    {
+      "t" : 3.359,
+      "text" : "ring a"
+    },
+    {
+      "t" : 3.41,
+      "text" : " valid photo "
+    },
+    {
+      "t" : 3.467,
+      "text" : "ID and pro"
+    },
+    {
+      "t" : 3.519,
+      "text" : "of of address to any"
+    },
+    {
+      "t" : 3.574,
+      "text" : " bran"
+    },
+    {
+      "t" : 3.62,
+      "text" : "ch des"
+    },
+    {
+      "t" : 3.672,
+      "text" : "k,"
+    },
+    {
+      "t" : 3.72,
+      "text" : " or"
+    },
+    {
+      "t" : 3.77,
+      "text" : " register online through"
+    },
+    {
+      "t" : 3.824,
+      "text" : " our website"
+    },
+    {
+      "t" : 3.878,
+      "text" : ". Your"
+    },
+    {
+      "t" : 3.932,
+      "text" : " library"
+    },
+    {
+      "t" : 3.985,
+      "text" : " card is"
+    },
+    {
+      "t" : 4.042,
+      "text" : " us"
+    },
+    {
+      "t" : 4.092,
+      "text" : "ually issued the"
+    },
+    {
+      "t" : 4.192,
+      "text" : " same day.\")\nmembership"
+    },
+    {
+      "t" : 4.247,
+      "text" : "Callout = Callout(\""
+    },
+    {
+      "t" : 4.249,
+      "text" : "info\", \"Tip\", \""
+    },
+    {
+      "t" : 4.313,
+      "text" : "Children"
+    },
+    {
+      "t" : 4.383,
+      "text" : " under 13"
+    },
+    {
+      "t" : 4.45,
+      "text" : " need"
+    },
+    {
+      "t" : 4.513,
+      "text" : " a parent or"
+    },
+    {
+      "t" : 4.58,
+      "text" : " guardian to sign their"
+    },
+    {
+      "t" : 4.648,
+      "text" : " regist"
+    },
+    {
+      "t" : 4.711,
+      "text" : "ration form"
+    },
+    {
+      "t" : 4.835,
+      "text" : ".\")\nfaqLimits"
+    },
+    {
+      "t" : 4.893,
+      "text" : " = AccordionItem(\""
+    },
+    {
+      "t" : 4.948,
+      "text" : "limits\", \"What"
+    },
+    {
+      "t" : 5.003,
+      "text" : " are the borrowing limits"
+    },
+    {
+      "t" : 5.063,
+      "text" : "?\", limitsContent)"
+    },
+    {
+      "t" : 5.127,
+      "text" : "\nlimitsContent = ["
+    },
+    {
+      "t" : 5.197,
+      "text" : "limitsTable]\nlim"
+    },
+    {
+      "t" : 5.265,
+      "text" : "itsTable = Table(["
+    },
+    {
+      "t" : 5.333,
+      "text" : "Col(\"Item"
+    },
+    {
+      "t" : 5.405,
+      "text" : " Type\", it"
+    },
+    {
+      "t" : 6.065,
+      "text" : "emTypes), Col(\""
+    },
+    {
+      "t" : 6.478,
+      "text" : "Loan Limit\", lo"
+    },
+    {
+      "t" : 6.48,
+      "text" : "anLimits), Col(\""
+    },
+    {
+      "t" : 6.565,
+      "text" : "Loan Period\", loan"
+    },
+    {
+      "t" : 6.68,
+      "text" : "Periods)])\nit"
+    },
+    {
+      "t" : 6.681,
+      "text" : "emTypes = [\""
+    },
+    {
+      "t" : 6.727,
+      "text" : "Books\", \"D"
+    },
+    {
+      "t" : 6.802,
+      "text" : "VDs\", \""
+    },
+    {
+      "t" : 6.883,
+      "text" : "Audi"
+    },
+    {
+      "t" : 6.962,
+      "text" : "obooks\", \"Magaz"
+    },
+    {
+      "t" : 7.049,
+      "text" : "ines\", \"Reference mater"
+    },
+    {
+      "t" : 7.221,
+      "text" : "ials\"]\nloanL"
+    },
+    {
+      "t" : 7.3,
+      "text" : "imits = [\"10"
+    },
+    {
+      "t" : 7.381,
+      "text" : " items\", \"5"
+    },
+    {
+      "t" : 7.463,
+      "text" : " items\", \"5 items\","
+    },
+    {
+      "t" : 7.546,
+      "text" : " \"3"
+    },
+    {
+      "t" : 7.63,
+      "text" : " items\", \"Not for"
+    },
+    {
+      "t" : 7.701,
+      "text" : " loan\"]\nloanP"
+    },
+    {
+      "t" : 7.791,
+      "text" : "eriods = [\"3 "
+    },
+    {
+      "t" : 7.869,
+      "text" : "weeks\", \"1"
+    },
+    {
+      "t" : 7.873,
+      "text" : " week\", \"2"
+    },
+    {
+      "t" : 7.965,
+      "text" : " weeks\", \"1"
+    },
+    {
+      "t" : 8.065,
+      "text" : " week\", \"In-library"
+    },
+    {
+      "t" : 8.166,
+      "text" : " use"
+    },
+    {
+      "t" : 8.262,
+      "text" : " only\"]"
+    }
+  ],
+  "createdAt" : "2026-11-11T10:35:40Z",
+  "effort" : "low",
+  "format" : "openui-recording",
+  "inputTokens" : 14500,
+  "library" : "react-ui",
+  "model" : "claude-haiku-5-5",
+  "outputTokens" : 609,
+  "request" : "An FAQ page for a library: opening hours, membership, borrowing limits, in an accordion.",
+  "servedBy" : "claude-haiku-5-5",
+  "stopReason" : "end_turn",
+  "version" : 1
+}

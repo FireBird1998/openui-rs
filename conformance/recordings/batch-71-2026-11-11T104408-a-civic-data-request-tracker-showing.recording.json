@@ -1,0 +1,1020 @@
+{
+  "batchRequest" : {
+    "model" : "sonnet",
+    "number" : 71,
+    "request" : "A civic data request tracker showing requested documents, agency, submission date and response status, plus overdue notices."
+  },
+  "chunks" : [
+    {
+      "t" : 1.16,
+      "text" : "root = Stack([header"
+    },
+    {
+      "t" : 1.476,
+      "text" : ", kpis, overdue"
+    },
+    {
+      "t" : 1.508,
+      "text" : "Callout, tabs])"
+    },
+    {
+      "t" : 1.576,
+      "text" : "\nheader = C"
+    },
+    {
+      "t" : 1.608,
+      "text" : "ardHeader(\"Civic"
+    },
+    {
+      "t" : 1.657,
+      "text" : " Data Request Tracker"
+    },
+    {
+      "t" : 1.701,
+      "text" : "\", \"Public records requ"
+    },
+    {
+      "t" : 1.753,
+      "text" : "ests,"
+    },
+    {
+      "t" : 1.767,
+      "text" : " agency responses, and overd"
+    },
+    {
+      "t" : 1.78,
+      "text" : "ue notices\")\nkpis"
+    },
+    {
+      "t" : 1.809,
+      "text" : " = SnippetCardB"
+    },
+    {
+      "t" : 1.831,
+      "text" : "lock([k"
+    },
+    {
+      "t" : 1.856,
+      "text" : "1, k2, k3,"
+    },
+    {
+      "t" : 1.88,
+      "text" : " k4])\nk1 "
+    },
+    {
+      "t" : 1.902,
+      "text" : "= SnippetCardIt"
+    },
+    {
+      "t" : 1.955,
+      "text" : "em(\"total\", k1l"
+    },
+    {
+      "t" : 1.98,
+      "text" : ", k1r)\nk1"
+    },
+    {
+      "t" : 1.981,
+      "text" : "l = IconText(k1"
+    },
+    {
+      "t" : 2.006,
+      "text" : "i, \"neutral\", \""
+    },
+    {
+      "t" : 2.031,
+      "text" : "m\", \"Total Requests"
+    },
+    {
+      "t" : 2.059,
+      "text" : "\", \"All"
+    },
+    {
+      "t" : 2.086,
+      "text" : " time"
+    },
+    {
+      "t" : 2.126,
+      "text" : "\", false, \"horizontal"
+    },
+    {
+      "t" : 2.129,
+      "text" : "\")\nk1i = Ic"
+    },
+    {
+      "t" : 2.154,
+      "text" : "on(\"file-text\", \"files"
+    },
+    {
+      "t" : 2.182,
+      "text" : "\")\nk1r = Bo"
+    },
+    {
+      "t" : 2.211,
+      "text" : "ldText(\"number\", \"8\")"
+    },
+    {
+      "t" : 2.238,
+      "text" : "\nk2 = Snipp"
+    },
+    {
+      "t" : 2.267,
+      "text" : "etCardItem(\"f"
+    },
+    {
+      "t" : 2.315,
+      "text" : "ulfilled\", k2l"
+    },
+    {
+      "t" : 2.317,
+      "text" : ", k2r)\nk2"
+    },
+    {
+      "t" : 2.349,
+      "text" : "l = IconText(k2"
+    },
+    {
+      "t" : 2.38,
+      "text" : "i, \"success\", \"m\","
+    },
+    {
+      "t" : 2.411,
+      "text" : " \"Fulfilled\","
+    },
+    {
+      "t" : 2.44,
+      "text" : " \"Docum"
+    },
+    {
+      "t" : 2.498,
+      "text" : "ents received\", false, \"horiz"
+    },
+    {
+      "t" : 2.527,
+      "text" : "ontal\")\nk2i ="
+    },
+    {
+      "t" : 2.559,
+      "text" : " Icon(\"circle-check"
+    },
+    {
+      "t" : 2.593,
+      "text" : "\", \"status"
+    },
+    {
+      "t" : 2.627,
+      "text" : "\")\nk2r = Bo"
+    },
+    {
+      "t" : 2.661,
+      "text" : "ldText(\"number\", \"3\")"
+    },
+    {
+      "t" : 2.695,
+      "text" : "\nk3 = Snipp"
+    },
+    {
+      "t" : 2.728,
+      "text" : "etCardItem(\"pending"
+    },
+    {
+      "t" : 2.762,
+      "text" : "\", k3l, k3r"
+    },
+    {
+      "t" : 2.797,
+      "text" : ")\nk3l = Icon"
+    },
+    {
+      "t" : 2.833,
+      "text" : "Text(k3i, \"info"
+    },
+    {
+      "t" : 2.872,
+      "text" : "\", \"m\", \"Pending"
+    },
+    {
+      "t" : 2.875,
+      "text" : "\", \"Within"
+    },
+    {
+      "t" : 2.908,
+      "text" : " de"
+    },
+    {
+      "t" : 2.942,
+      "text" : "adline\", false, \"horiz"
+    },
+    {
+      "t" : 2.978,
+      "text" : "ontal\")\nk3i ="
+    },
+    {
+      "t" : 3.012,
+      "text" : " Icon(\"clock\", \""
+    },
+    {
+      "t" : 3.048,
+      "text" : "time\")\nk3r = B"
+    },
+    {
+      "t" : 3.087,
+      "text" : "oldText(\"number\", \"2"
+    },
+    {
+      "t" : 3.13,
+      "text" : "\")\nk4 = Sn"
+    },
+    {
+      "t" : 3.167,
+      "text" : "ippetCardItem(\"over"
+    },
+    {
+      "t" : 3.208,
+      "text" : "due\", k4l, k"
+    },
+    {
+      "t" : 3.245,
+      "text" : "4r)\nk4l ="
+    },
+    {
+      "t" : 3.31,
+      "text" : " IconText(k4i,"
+    },
+    {
+      "t" : 3.312,
+      "text" : " \"danger\", \"m\", \""
+    },
+    {
+      "t" : 3.356,
+      "text" : "Overdue\", \"Past"
+    },
+    {
+      "t" : 3.398,
+      "text" : " deadline\", false, \"hor"
+    },
+    {
+      "t" : 3.444,
+      "text" : "izontal\")\nk4i"
+    },
+    {
+      "t" : 3.495,
+      "text" : " = Icon(\"triangle"
+    },
+    {
+      "t" : 3.549,
+      "text" : "-alert\", \"status\")"
+    },
+    {
+      "t" : 3.607,
+      "text" : "\nk4r = BoldText"
+    },
+    {
+      "t" : 3.661,
+      "text" : "(\"number\", \"3\")\nover"
+    },
+    {
+      "t" : 3.715,
+      "text" : "dueCallout = Call"
+    },
+    {
+      "t" : 3.77,
+      "text" : "out(\"warning\", \"3"
+    },
+    {
+      "t" : 3.851,
+      "text" : " requ"
+    },
+    {
+      "t" : 3.853,
+      "text" : "ests are overdue\", \""
+    },
+    {
+      "t" : 3.908,
+      "text" : "Ag"
+    },
+    {
+      "t" : 3.967,
+      "text" : "encies have"
+    },
+    {
+      "t" : 4.065,
+      "text" : " exceeded the"
+    },
+    {
+      "t" : 4.069,
+      "text" : " statutory response"
+    },
+    {
+      "t" : 4.125,
+      "text" : " window."
+    },
+    {
+      "t" : 4.184,
+      "text" : " Consider s"
+    },
+    {
+      "t" : 4.272,
+      "text" : "ending follow-up not"
+    },
+    {
+      "t" : 4.276,
+      "text" : "ices or fil"
+    },
+    {
+      "t" : 4.337,
+      "text" : "ing an appeal.\")"
+    },
+    {
+      "t" : 4.391,
+      "text" : "\ntabs = Tabs"
+    },
+    {
+      "t" : 4.442,
+      "text" : "([tA"
+    },
+    {
+      "t" : 4.496,
+      "text" : "ll, tO"
+    },
+    {
+      "t" : 4.554,
+      "text" : "ver"
+    },
+    {
+      "t" : 4.622,
+      "text" : "])"
+    },
+    {
+      "t" : 4.675,
+      "text" : "\ntAll = TabIt"
+    },
+    {
+      "t" : 4.742,
+      "text" : "em(\"all\", \"All Requ"
+    },
+    {
+      "t" : 4.787,
+      "text" : "ests\", [allT"
+    },
+    {
+      "t" : 4.829,
+      "text" : "able])\ntO"
+    },
+    {
+      "t" : 4.871,
+      "text" : "ver = TabItem(\"over"
+    },
+    {
+      "t" : 4.915,
+      "text" : "due\", \"Overdue"
+    },
+    {
+      "t" : 4.965,
+      "text" : " Notices\", [overdue"
+    },
+    {
+      "t" : 5.008,
+      "text" : "List, overdueTable])"
+    },
+    {
+      "t" : 5.055,
+      "text" : "\nallTable = Table(["
+    },
+    {
+      "t" : 5.102,
+      "text" : "Col(\""
+    },
+    {
+      "t" : 5.15,
+      "text" : "ID\", "
+    },
+    {
+      "t" : 5.226,
+      "text" : "ids), Col(\"Document"
+    },
+    {
+      "t" : 5.286,
+      "text" : " Requested\", docs), Col"
+    },
+    {
+      "t" : 5.344,
+      "text" : "(\"Agency\", agencies"
+    },
+    {
+      "t" : 5.404,
+      "text" : "), Col(\"Submit"
+    },
+    {
+      "t" : 5.469,
+      "text" : "ted\", d"
+    },
+    {
+      "t" : 5.531,
+      "text" : "ates), Col(\"Status\","
+    },
+    {
+      "t" : 5.6,
+      "text" : " statusTags)])"
+    },
+    {
+      "t" : 5.667,
+      "text" : "\nids = [\"RE"
+    },
+    {
+      "t" : 5.741,
+      "text" : "Q-1041"
+    },
+    {
+      "t" : 5.806,
+      "text" : "\", \"REQ-1042"
+    },
+    {
+      "t" : 5.876,
+      "text" : "\", \"REQ-1043"
+    },
+    {
+      "t" : 5.945,
+      "text" : "\", \"REQ-1044"
+    },
+    {
+      "t" : 6.048,
+      "text" : "\", \"REQ-1045"
+    },
+    {
+      "t" : 6.051,
+      "text" : "\", \"REQ-1046"
+    },
+    {
+      "t" : 6.118,
+      "text" : "\", \"REQ-1047"
+    },
+    {
+      "t" : 6.183,
+      "text" : "\", \"REQ-1048"
+    },
+    {
+      "t" : 6.248,
+      "text" : "\"]\ndocs = [\""
+    },
+    {
+      "t" : 6.318,
+      "text" : "City bud"
+    },
+    {
+      "t" : 6.384,
+      "text" : "get F"
+    },
+    {
+      "t" : 6.455,
+      "text" : "Y2024 "
+    },
+    {
+      "t" : 6.52,
+      "text" : "line items\", \"Police use"
+    },
+    {
+      "t" : 6.668,
+      "text" : "-of-force re"
+    },
+    {
+      "t" : 6.672,
+      "text" : "ports "
+    },
+    {
+      "t" : 6.759,
+      "text" : "2023\", \"Water"
+    },
+    {
+      "t" : 6.833,
+      "text" : " qu"
+    },
+    {
+      "t" : 6.901,
+      "text" : "ality test"
+    },
+    {
+      "t" : 7.035,
+      "text" : " results\", \"School"
+    },
+    {
+      "t" : 7.233,
+      "text" : " district"
+    },
+    {
+      "t" : 7.234,
+      "text" : " b"
+    },
+    {
+      "t" : 7.347,
+      "text" : "us contracts\", \"Z"
+    },
+    {
+      "t" : 7.479,
+      "text" : "oning vari"
+    },
+    {
+      "t" : 7.608,
+      "text" : "ance appro"
+    },
+    {
+      "t" : 7.739,
+      "text" : "vals\", \"Road"
+    },
+    {
+      "t" : 7.87,
+      "text" : " rep"
+    },
+    {
+      "t" : 8.009,
+      "text" : "air exp"
+    },
+    {
+      "t" : 8.129,
+      "text" : "enditures"
+    },
+    {
+      "t" : 8.255,
+      "text" : "\", \"Health"
+    },
+    {
+      "t" : 8.374,
+      "text" : " in"
+    },
+    {
+      "t" : 8.486,
+      "text" : "spection records\", \"Public trans"
+    },
+    {
+      "t" : 8.609,
+      "text" : "it "
+    },
+    {
+      "t" : 8.697,
+      "text" : "ridership data\"]\nagenc"
+    },
+    {
+      "t" : 8.776,
+      "text" : "ies = [\""
+    },
+    {
+      "t" : 8.874,
+      "text" : "Finance D"
+    },
+    {
+      "t" : 8.962,
+      "text" : "ept."
+    },
+    {
+      "t" : 9.058,
+      "text" : "\", \"Police D"
+    },
+    {
+      "t" : 9.167,
+      "text" : "ept.\", \"Water Auth"
+    },
+    {
+      "t" : 9.278,
+      "text" : "ority\", \"School"
+    },
+    {
+      "t" : 9.366,
+      "text" : " District\", \"Plan"
+    },
+    {
+      "t" : 9.47,
+      "text" : "ning Comm"
+    },
+    {
+      "t" : 9.568,
+      "text" : "ission\", \"Public Works\","
+    },
+    {
+      "t" : 9.664,
+      "text" : " \"Health D"
+    },
+    {
+      "t" : 9.767,
+      "text" : "ept.\", \"Transit"
+    },
+    {
+      "t" : 9.864,
+      "text" : " Agency\"]\ndates ="
+    },
+    {
+      "t" : 9.99,
+      "text" : " [\"2024-01"
+    },
+    {
+      "t" : 10.1,
+      "text" : "-08"
+    },
+    {
+      "t" : 10.287,
+      "text" : "\", \"2024-01"
+    },
+    {
+      "t" : 10.29,
+      "text" : "-15"
+    },
+    {
+      "t" : 10.409,
+      "text" : "\", \"2024-02-02"
+    },
+    {
+      "t" : 10.543,
+      "text" : "\", \"2024-02-20"
+    },
+    {
+      "t" : 10.674,
+      "text" : "\", \"2024-03-05"
+    },
+    {
+      "t" : 10.796,
+      "text" : "\", \"2024-03-18"
+    },
+    {
+      "t" : 10.92,
+      "text" : "\", \"2024-04-02"
+    },
+    {
+      "t" : 11.073,
+      "text" : "\", \"2024-04-10"
+    },
+    {
+      "t" : 11.196,
+      "text" : "\"]\nstatusTags ="
+    },
+    {
+      "t" : 11.339,
+      "text" : " ["
+    },
+    {
+      "t" : 11.494,
+      "text" : "Tag(\""
+    },
+    {
+      "t" : 11.632,
+      "text" : "Fulfilled\", null"
+    },
+    {
+      "t" : 11.774,
+      "text" : ", \"sm\", \"success\""
+    },
+    {
+      "t" : 11.916,
+      "text" : "), Tag(\"Over"
+    },
+    {
+      "t" : 12.049,
+      "text" : "due\", null, \"sm"
+    },
+    {
+      "t" : 12.185,
+      "text" : "\", \"danger\"), T"
+    },
+    {
+      "t" : 12.336,
+      "text" : "ag(\"Fulfilled"
+    },
+    {
+      "t" : 12.498,
+      "text" : "\", null, \"sm\", \""
+    },
+    {
+      "t" : 12.644,
+      "text" : "success\"), Tag(\""
+    },
+    {
+      "t" : 12.806,
+      "text" : "Overdue\", null, \"s"
+    },
+    {
+      "t" : 12.975,
+      "text" : "m\", \"danger\"),"
+    },
+    {
+      "t" : 13.162,
+      "text" : " Tag(\"F"
+    },
+    {
+      "t" : 13.351,
+      "text" : "ulfilled\", null, \""
+    },
+    {
+      "t" : 13.52,
+      "text" : "sm\", \"success\"),"
+    },
+    {
+      "t" : 13.802,
+      "text" : " Tag(\"Overdue\","
+    },
+    {
+      "t" : 13.926,
+      "text" : " null, \"sm\", \"dan"
+    },
+    {
+      "t" : 14.025,
+      "text" : "ger\"), Tag(\""
+    },
+    {
+      "t" : 14.094,
+      "text" : "Pending\", null, \"sm"
+    },
+    {
+      "t" : 14.165,
+      "text" : "\", \"info\"), Tag"
+    },
+    {
+      "t" : 14.308,
+      "text" : "(\"Pending\", null, \""
+    },
+    {
+      "t" : 14.479,
+      "text" : "sm\", \"info\")]"
+    },
+    {
+      "t" : 14.765,
+      "text" : "\noverdueList = Callout"
+    },
+    {
+      "t" : 14.768,
+      "text" : "(\"error\", \"Action"
+    },
+    {
+      "t" : 14.96,
+      "text" : " need"
+    },
+    {
+      "t" : 15.137,
+      "text" : "ed\", \"The"
+    },
+    {
+      "t" : 15.382,
+      "text" : " requ"
+    },
+    {
+      "t" : 15.553,
+      "text" : "ests below have"
+    },
+    {
+      "t" : 15.718,
+      "text" : " pass"
+    },
+    {
+      "t" : 15.892,
+      "text" : "ed the"
+    },
+    {
+      "t" : 16.096,
+      "text" : " 20 "
+    },
+    {
+      "t" : 16.334,
+      "text" : "business day response"
+    },
+    {
+      "t" : 16.337,
+      "text" : " de"
+    },
+    {
+      "t" : 16.496,
+      "text" : "adline.\")\noverdue"
+    },
+    {
+      "t" : 16.644,
+      "text" : "Table = Table([Col"
+    },
+    {
+      "t" : 16.726,
+      "text" : "(\"ID\", oI"
+    },
+    {
+      "t" : 16.98,
+      "text" : "ds), Col(\"Agency"
+    },
+    {
+      "t" : 16.981,
+      "text" : "\", oAg"
+    },
+    {
+      "t" : 17.152,
+      "text" : "), Col(\"Due"
+    },
+    {
+      "t" : 17.33,
+      "text" : " Date\", oDue"
+    },
+    {
+      "t" : 17.503,
+      "text" : "), Col(\"Days Over"
+    },
+    {
+      "t" : 17.682,
+      "text" : "due\", oDays,"
+    },
+    {
+      "t" : 17.977,
+      "text" : " \"number\"), Col(\""
+    },
+    {
+      "t" : 17.982,
+      "text" : "Action\", oAct"
+    },
+    {
+      "t" : 18.162,
+      "text" : "s"
+    },
+    {
+      "t" : 18.448,
+      "text" : ")])\noIds = "
+    },
+    {
+      "t" : 18.45,
+      "text" : "[\"REQ-1042\","
+    },
+    {
+      "t" : 18.627,
+      "text" : " \"REQ-1044\","
+    },
+    {
+      "t" : 18.812,
+      "text" : " \"REQ-1046\""
+    },
+    {
+      "t" : 18.986,
+      "text" : "]\noAg = [\""
+    },
+    {
+      "t" : 19.195,
+      "text" : "Police Dept.\", \""
+    },
+    {
+      "t" : 19.381,
+      "text" : "School District\", \"Public"
+    },
+    {
+      "t" : 19.574,
+      "text" : " Works\"]\noDue"
+    },
+    {
+      "t" : 19.748,
+      "text" : " = [\"2024-02"
+    },
+    {
+      "t" : 20.047,
+      "text" : "-13"
+    },
+    {
+      "t" : 20.05,
+      "text" : "\", \"2024-03-19"
+    },
+    {
+      "t" : 20.226,
+      "text" : "\", \"2024-04-15"
+    },
+    {
+      "t" : 20.405,
+      "text" : "\"]\noDays = ["
+    },
+    {
+      "t" : 20.562,
+      "text" : "96"
+    },
+    {
+      "t" : 20.714,
+      "text" : ", 61"
+    },
+    {
+      "t" : 20.903,
+      "text" : ", 34"
+    },
+    {
+      "t" : 21.244,
+      "text" : "]\no"
+    },
+    {
+      "t" : 21.246,
+      "text" : "Acts = [b"
+    },
+    {
+      "t" : 21.41,
+      "text" : "1, b2, b3]"
+    },
+    {
+      "t" : 21.587,
+      "text" : "\nb1 = Button(\""
+    },
+    {
+      "t" : 21.762,
+      "text" : "Send Not"
+    },
+    {
+      "t" : 21.944,
+      "text" : "ice\", @ToAssist"
+    },
+    {
+      "t" : 22.143,
+      "text" : "ant(\"Dra"
+    },
+    {
+      "t" : 22.314,
+      "text" : "ft an"
+    },
+    {
+      "t" : 22.52,
+      "text" : " overdue notice for REQ"
+    },
+    {
+      "t" : 22.699,
+      "text" : "-1042 to the"
+    },
+    {
+      "t" : 22.916,
+      "text" : " Police Dept.\"), \""
+    },
+    {
+      "t" : 23.133,
+      "text" : "prim"
+    },
+    {
+      "t" : 23.351,
+      "text" : "ary\", \"destructive\","
+    },
+    {
+      "t" : 23.551,
+      "text" : " \"small\")\nb2 ="
+    },
+    {
+      "t" : 23.716,
+      "text" : " Button(\"Send Notice"
+    },
+    {
+      "t" : 23.889,
+      "text" : "\", @ToAssistant"
+    },
+    {
+      "t" : 24.039,
+      "text" : "(\"Draft an overdue"
+    },
+    {
+      "t" : 24.216,
+      "text" : " notice for REQ-1"
+    },
+    {
+      "t" : 24.352,
+      "text" : "044 to the School District\""
+    },
+    {
+      "t" : 24.496,
+      "text" : "), \"primary\", \"destruct"
+    },
+    {
+      "t" : 24.638,
+      "text" : "ive\", \"small\")\nb3"
+    },
+    {
+      "t" : 24.759,
+      "text" : " = Button(\"Send"
+    },
+    {
+      "t" : 24.878,
+      "text" : " Notice\", @ToAss"
+    },
+    {
+      "t" : 24.994,
+      "text" : "istant(\"Draft an over"
+    },
+    {
+      "t" : 25.153,
+      "text" : "due notice for REQ"
+    },
+    {
+      "t" : 25.293,
+      "text" : "-1046 to"
+    },
+    {
+      "t" : 25.501,
+      "text" : " Public Works\"), \"primary"
+    },
+    {
+      "t" : 25.653,
+      "text" : "\", \"destructive\", \"small"
+    },
+    {
+      "t" : 25.835,
+      "text" : "\")"
+    }
+  ],
+  "createdAt" : "2026-11-11T10:44:08Z",
+  "effort" : "low",
+  "format" : "openui-recording",
+  "inputTokens" : 14502,
+  "library" : "react-ui",
+  "model" : "claude-sonnet-5-5",
+  "outputTokens" : 1544,
+  "request" : "A civic data request tracker showing requested documents, agency, submission date and response status, plus overdue notices.",
+  "servedBy" : "claude-sonnet-5-5",
+  "stopReason" : "end_turn",
+  "version" : 1
+}

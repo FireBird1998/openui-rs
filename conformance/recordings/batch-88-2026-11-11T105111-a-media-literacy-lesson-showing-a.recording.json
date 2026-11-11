@@ -1,0 +1,504 @@
+{
+  "batchRequest" : {
+    "model" : "haiku",
+    "number" : 88,
+    "request" : "A media literacy lesson showing a headline, evidence checklist and three questions readers should ask before sharing it."
+  },
+  "chunks" : [
+    {
+      "t" : 0.741,
+      "text" : "root = Stack([header"
+    },
+    {
+      "t" : 0.876,
+      "text" : "Block, headl"
+    },
+    {
+      "t" : 0.908,
+      "text" : "ineC"
+    },
+    {
+      "t" : 0.963,
+      "text" : "ard, chec"
+    },
+    {
+      "t" : 0.99,
+      "text" : "klistCard, questions"
+    },
+    {
+      "t" : 1.061,
+      "text" : "Card])\nheaderBl"
+    },
+    {
+      "t" : 1.089,
+      "text" : "ock = InlineHeader"
+    },
+    {
+      "t" : 1.146,
+      "text" : "(\"Media Literacy"
+    },
+    {
+      "t" : 1.187,
+      "text" : " Lesson\", \"Check the"
+    },
+    {
+      "t" : 1.19,
+      "text" : " evidence before you"
+    },
+    {
+      "t" : 1.215,
+      "text" : " share\")"
+    },
+    {
+      "t" : 1.246,
+      "text" : "\nheadlineCard ="
+    },
+    {
+      "t" : 1.277,
+      "text" : " Card([TextContent(\""
+    },
+    {
+      "t" : 1.307,
+      "text" : "Headline\", \"small-"
+    },
+    {
+      "t" : 1.377,
+      "text" : "heavy\"), TextCont"
+    },
+    {
+      "t" : 1.41,
+      "text" : "ent(\"\\"
+    },
+    {
+      "t" : 1.412,
+      "text" : "\"Mi"
+    },
+    {
+      "t" : 1.444,
+      "text" : "racle F"
+    },
+    {
+      "t" : 1.477,
+      "text" : "ruit Cures"
+    },
+    {
+      "t" : 1.511,
+      "text" : " S"
+    },
+    {
+      "t" : 1.567,
+      "text" : "leep Probl"
+    },
+    {
+      "t" : 1.568,
+      "text" : "ems Over"
+    },
+    {
+      "t" : 1.605,
+      "text" : "night,"
+    },
+    {
+      "t" : 1.642,
+      "text" : " Do"
+    },
+    {
+      "t" : 1.68,
+      "text" : "ctors St"
+    },
+    {
+      "t" : 1.723,
+      "text" : "unned\\\"\", \"large-"
+    },
+    {
+      "t" : 1.763,
+      "text" : "heavy\")"
+    },
+    {
+      "t" : 1.8,
+      "text" : "])\nchecklistCard ="
+    },
+    {
+      "t" : 1.843,
+      "text" : " Card([CardHeader"
+    },
+    {
+      "t" : 1.925,
+      "text" : "(\"Evidence Checkl"
+    },
+    {
+      "t" : 1.967,
+      "text" : "ist\", \"Look"
+    },
+    {
+      "t" : 1.969,
+      "text" : " for these"
+    },
+    {
+      "t" : 2.068,
+      "text" : " sign"
+    },
+    {
+      "t" : 2.115,
+      "text" : "als"
+    },
+    {
+      "t" : 2.187,
+      "text" : " before tr"
+    },
+    {
+      "t" : 2.234,
+      "text" : "usting the cla"
+    },
+    {
+      "t" : 2.304,
+      "text" : "im\"), checklist"
+    },
+    {
+      "t" : 2.362,
+      "text" : "])\nchecklist = St"
+    },
+    {
+      "t" : 2.409,
+      "text" : "ack([ch"
+    },
+    {
+      "t" : 2.448,
+      "text" : "k1, chk2, ch"
+    },
+    {
+      "t" : 2.519,
+      "text" : "k3, chk4],"
+    },
+    {
+      "t" : 2.592,
+      "text" : " \""
+    },
+    {
+      "t" : 2.629,
+      "text" : "column\","
+    },
+    {
+      "t" : 2.669,
+      "text" : " \"s\")\nchk1 "
+    },
+    {
+      "t" : 2.711,
+      "text" : "= T"
+    },
+    {
+      "t" : 2.754,
+      "text" : "extC"
+    },
+    {
+      "t" : 2.797,
+      "text" : "allout(\"ne"
+    },
+    {
+      "t" : 2.85,
+      "text" : "utral\", \"Named"
+    },
+    {
+      "t" : 2.893,
+      "text" : " source\", \"Does the story"
+    },
+    {
+      "t" : 2.895,
+      "text" : " cite a study"
+    },
+    {
+      "t" : 2.943,
+      "text" : ", organ"
+    },
+    {
+      "t" : 2.991,
+      "text" : "ization, or exp"
+    },
+    {
+      "t" : 3.042,
+      "text" : "ert you"
+    },
+    {
+      "t" : 3.214,
+      "text" : " can look"
+    },
+    {
+      "t" : 3.278,
+      "text" : " up?\")\nchk2 "
+    },
+    {
+      "t" : 3.368,
+      "text" : "= TextCallout(\"ne"
+    },
+    {
+      "t" : 3.584,
+      "text" : "utral\", \"Original"
+    },
+    {
+      "t" : 3.672,
+      "text" : " research"
+    },
+    {
+      "t" : 3.777,
+      "text" : "\", \"Is there a published"
+    },
+    {
+      "t" : 3.971,
+      "text" : " paper with"
+    },
+    {
+      "t" : 4.03,
+      "text" : " sample size, meth"
+    },
+    {
+      "t" : 4.163,
+      "text" : "ods, and pe"
+    },
+    {
+      "t" : 4.165,
+      "text" : "er review?\")\nchk3"
+    },
+    {
+      "t" : 4.223,
+      "text" : " = TextCallout(\""
+    },
+    {
+      "t" : 4.296,
+      "text" : "ne"
+    },
+    {
+      "t" : 4.346,
+      "text" : "utral\", \"Mat"
+    },
+    {
+      "t" : 4.401,
+      "text" : "ching ev"
+    },
+    {
+      "t" : 4.45,
+      "text" : "idence\", \"Does the ev"
+    },
+    {
+      "t" : 4.547,
+      "text" : "idence actually support the str"
+    },
+    {
+      "t" : 4.598,
+      "text" : "ength"
+    },
+    {
+      "t" : 4.653,
+      "text" : " of the headline?\")\nch"
+    },
+    {
+      "t" : 4.709,
+      "text" : "k4 = TextCall"
+    },
+    {
+      "t" : 4.766,
+      "text" : "out(\"neutral\", \""
+    },
+    {
+      "t" : 4.826,
+      "text" : "Independent conf"
+    },
+    {
+      "t" : 4.878,
+      "text" : "irmation\", \"Have"
+    },
+    {
+      "t" : 4.93,
+      "text" : " other cred"
+    },
+    {
+      "t" : 4.978,
+      "text" : "ible outlets reported the same"
+    },
+    {
+      "t" : 5.017,
+      "text" : " findings?\")\nquestions"
+    },
+    {
+      "t" : 5.08,
+      "text" : "Card = Card([C"
+    },
+    {
+      "t" : 5.081,
+      "text" : "ardHeader(\"Three"
+    },
+    {
+      "t" : 5.198,
+      "text" : " Questions Before You Share\","
+    },
+    {
+      "t" : 5.256,
+      "text" : " \"P"
+    },
+    {
+      "t" : 5.309,
+      "text" : "ause and ask yourself\""
+    },
+    {
+      "t" : 5.372,
+      "text" : "), quest"
+    },
+    {
+      "t" : 5.427,
+      "text" : "ions])\nquest"
+    },
+    {
+      "t" : 5.486,
+      "text" : "ions = Stack([q1"
+    },
+    {
+      "t" : 5.487,
+      "text" : ", q2, q3], \""
+    },
+    {
+      "t" : 5.545,
+      "text" : "column\", \"s\")\nq1"
+    },
+    {
+      "t" : 5.615,
+      "text" : " = TextCallout(\""
+    },
+    {
+      "t" : 5.665,
+      "text" : "info\", \"1"
+    },
+    {
+      "t" : 5.724,
+      "text" : ". Who ben"
+    },
+    {
+      "t" : 5.769,
+      "text" : "efits"
+    },
+    {
+      "t" : 5.849,
+      "text" : " from this claim?\", \""
+    },
+    {
+      "t" : 5.851,
+      "text" : "Consider whether a company, product"
+    },
+    {
+      "t" : 5.939,
+      "text" : ", or advoc"
+    },
+    {
+      "t" : 5.941,
+      "text" : "ate st"
+    },
+    {
+      "t" : 6.015,
+      "text" : "ands to gain from people"
+    },
+    {
+      "t" : 6.077,
+      "text" : " believing it.\")\nq2"
+    },
+    {
+      "t" : 6.134,
+      "text" : " = TextCallout(\""
+    },
+    {
+      "t" : 6.232,
+      "text" : "info\", \"2. What is miss"
+    },
+    {
+      "t" : 6.233,
+      "text" : "ing from the story"
+    },
+    {
+      "t" : 6.367,
+      "text" : "?\", \"Look"
+    },
+    {
+      "t" : 6.438,
+      "text" : " for abs"
+    },
+    {
+      "t" : 6.44,
+      "text" : "ent context"
+    },
+    {
+      "t" : 6.512,
+      "text" : ", sample sizes, side"
+    },
+    {
+      "t" : 6.639,
+      "text" : " effects, or opposing exp"
+    },
+    {
+      "t" : 6.64,
+      "text" : "ert views.\")\nq3 "
+    },
+    {
+      "t" : 6.712,
+      "text" : "= TextCallout(\"info"
+    },
+    {
+      "t" : 6.84,
+      "text" : "\", \"3. Would I"
+    },
+    {
+      "t" : 6.842,
+      "text" : " b"
+    },
+    {
+      "t" : 6.908,
+      "text" : "et on this being"
+    },
+    {
+      "t" : 7.049,
+      "text" : " true?\", \"If"
+    },
+    {
+      "t" : 7.12,
+      "text" : " the cla"
+    },
+    {
+      "t" : 7.195,
+      "text" : "im is w"
+    },
+    {
+      "t" : 7.273,
+      "text" : "rong, what"
+    },
+    {
+      "t" : 7.348,
+      "text" : " would it"
+    },
+    {
+      "t" : 7.402,
+      "text" : " cost? Ver"
+    },
+    {
+      "t" : 7.427,
+      "text" : "ify before pos"
+    },
+    {
+      "t" : 7.501,
+      "text" : "ting if"
+    },
+    {
+      "t" : 7.571,
+      "text" : " the st"
+    },
+    {
+      "t" : 7.65,
+      "text" : "akes are high.\")"
+    }
+  ],
+  "createdAt" : "2026-11-11T10:51:11Z",
+  "effort" : "low",
+  "format" : "openui-recording",
+  "inputTokens" : 14504,
+  "library" : "react-ui",
+  "model" : "claude-haiku-5-5",
+  "outputTokens" : 620,
+  "request" : "A media literacy lesson showing a headline, evidence checklist and three questions readers should ask before sharing it.",
+  "servedBy" : "claude-haiku-5-5",
+  "stopReason" : "end_turn",
+  "version" : 1
+}

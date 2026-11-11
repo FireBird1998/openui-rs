@@ -1,0 +1,580 @@
+{
+  "batchRequest" : {
+    "model" : "sonnet",
+    "number" : 9,
+    "request" : "A newsletter digest with five stories, each a title, a one-line summary and a \"read more\" button."
+  },
+  "chunks" : [
+    {
+      "t" : 1.233,
+      "text" : "root = Stack([header,"
+    },
+    {
+      "t" : 1.579,
+      "text" : " s"
+    },
+    {
+      "t" : 1.59,
+      "text" : "1, s2, s3,"
+    },
+    {
+      "t" : 1.596,
+      "text" : " s4, s5])"
+    },
+    {
+      "t" : 1.62,
+      "text" : "\nheader = C"
+    },
+    {
+      "t" : 1.631,
+      "text" : "ardHeader(\"Week"
+    },
+    {
+      "t" : 1.638,
+      "text" : "ly Digest\", \"Five"
+    },
+    {
+      "t" : 1.654,
+      "text" : " stories wor"
+    },
+    {
+      "t" : 1.666,
+      "text" : "th your"
+    },
+    {
+      "t" : 1.678,
+      "text" : " time this"
+    },
+    {
+      "t" : 1.684,
+      "text" : " week\")\ns1 ="
+    },
+    {
+      "t" : 1.695,
+      "text" : " Card([t"
+    },
+    {
+      "t" : 1.702,
+      "text" : "1, d"
+    },
+    {
+      "t" : 1.933,
+      "text" : "1, b1])\nt1"
+    },
+    {
+      "t" : 1.946,
+      "text" : " = TextContent(\"A"
+    },
+    {
+      "t" : 1.954,
+      "text" : "I Models"
+    },
+    {
+      "t" : 1.967,
+      "text" : " Get"
+    },
+    {
+      "t" : 1.98,
+      "text" : " Sm"
+    },
+    {
+      "t" : 1.988,
+      "text" : "a"
+    },
+    {
+      "t" : 2,
+      "text" : "ller and"
+    },
+    {
+      "t" : 2.013,
+      "text" : " Faster\", \"large-heav"
+    },
+    {
+      "t" : 2.028,
+      "text" : "y\")\nd1 = T"
+    },
+    {
+      "t" : 2.036,
+      "text" : "extContent(\"Compact language"
+    },
+    {
+      "t" : 2.05,
+      "text" : " models are now"
+    },
+    {
+      "t" : 2.064,
+      "text" : " mat"
+    },
+    {
+      "t" : 2.286,
+      "text" : "ching lar"
+    },
+    {
+      "t" : 2.301,
+      "text" : "ger r"
+    },
+    {
+      "t" : 2.316,
+      "text" : "ivals on ever"
+    },
+    {
+      "t" : 2.332,
+      "text" : "yday t"
+    },
+    {
+      "t" : 2.347,
+      "text" : "asks while running on la"
+    },
+    {
+      "t" : 2.362,
+      "text" : "ptops.\")\nb1 "
+    },
+    {
+      "t" : 2.371,
+      "text" : "= Bu"
+    },
+    {
+      "t" : 2.386,
+      "text" : "ttons([Button(\"Read"
+    },
+    {
+      "t" : 2.402,
+      "text" : " more\", @ToAssist"
+    },
+    {
+      "t" : 2.417,
+      "text" : "ant(\"T"
+    },
+    {
+      "t" : 2.433,
+      "text" : "ell me more about:"
+    },
+    {
+      "t" : 2.449,
+      "text" : " AI Models Get Sm"
+    },
+    {
+      "t" : 2.641,
+      "text" : "aller and Faster\"),"
+    },
+    {
+      "t" : 2.657,
+      "text" : " \"secondary\")])\ns"
+    },
+    {
+      "t" : 2.674,
+      "text" : "2 = Card([t2"
+    },
+    {
+      "t" : 2.689,
+      "text" : ", d2, b2])"
+    },
+    {
+      "t" : 2.705,
+      "text" : "\nt2 = TextContent"
+    },
+    {
+      "t" : 2.722,
+      "text" : "(\"C"
+    },
+    {
+      "t" : 2.738,
+      "text" : "ities Emb"
+    },
+    {
+      "t" : 2.755,
+      "text" : "race Car"
+    },
+    {
+      "t" : 2.772,
+      "text" : "-Free Down"
+    },
+    {
+      "t" : 2.789,
+      "text" : "tow"
+    },
+    {
+      "t" : 2.806,
+      "text" : "ns\", \"large-heavy"
+    },
+    {
+      "t" : 2.824,
+      "text" : "\")\nd2 = Text"
+    },
+    {
+      "t" : 3.003,
+      "text" : "Content(\""
+    },
+    {
+      "t" : 3.022,
+      "text" : "Several European cap"
+    },
+    {
+      "t" : 3.039,
+      "text" : "itals report"
+    },
+    {
+      "t" : 3.058,
+      "text" : " c"
+    },
+    {
+      "t" : 3.076,
+      "text" : "leaner air"
+    },
+    {
+      "t" : 3.087,
+      "text" : " and bus"
+    },
+    {
+      "t" : 3.105,
+      "text" : "ier sh"
+    },
+    {
+      "t" : 3.124,
+      "text" : "ops after lim"
+    },
+    {
+      "t" : 3.136,
+      "text" : "iting tra"
+    },
+    {
+      "t" : 3.154,
+      "text" : "ffic in their"
+    },
+    {
+      "t" : 3.176,
+      "text" : " centers.\")\nb2 "
+    },
+    {
+      "t" : 3.21,
+      "text" : "= Buttons([Button"
+    },
+    {
+      "t" : 3.35,
+      "text" : "(\"Read more\", @To"
+    },
+    {
+      "t" : 3.37,
+      "text" : "Assistant(\"Tell"
+    },
+    {
+      "t" : 3.39,
+      "text" : " me more about: Cities"
+    },
+    {
+      "t" : 3.403,
+      "text" : " Embrace Car-Free"
+    },
+    {
+      "t" : 3.423,
+      "text" : " Downtowns\"), \""
+    },
+    {
+      "t" : 3.444,
+      "text" : "secondary\")])\ns3"
+    },
+    {
+      "t" : 3.464,
+      "text" : " = Card([t3,"
+    },
+    {
+      "t" : 3.486,
+      "text" : " d3, b3])\nt"
+    },
+    {
+      "t" : 3.514,
+      "text" : "3 = TextContent(\""
+    },
+    {
+      "t" : 3.55,
+      "text" : "Solar Stor"
+    },
+    {
+      "t" : 3.58,
+      "text" : "age Cost"
+    },
+    {
+      "t" : 3.613,
+      "text" : "s H"
+    },
+    {
+      "t" : 3.707,
+      "text" : "it New"
+    },
+    {
+      "t" : 3.72,
+      "text" : " Lows\", \"large-he"
+    },
+    {
+      "t" : 3.741,
+      "text" : "avy\")\nd3 ="
+    },
+    {
+      "t" : 3.765,
+      "text" : " TextContent(\"Battery"
+    },
+    {
+      "t" : 3.788,
+      "text" : " pr"
+    },
+    {
+      "t" : 3.816,
+      "text" : "ices f"
+    },
+    {
+      "t" : 3.851,
+      "text" : "ell again"
+    },
+    {
+      "t" : 3.879,
+      "text" : " this"
+    },
+    {
+      "t" : 3.912,
+      "text" : " quarter, making home sol"
+    },
+    {
+      "t" : 3.945,
+      "text" : "ar-"
+    },
+    {
+      "t" : 3.978,
+      "text" : "plus-"
+    },
+    {
+      "t" : 4.011,
+      "text" : "storage vi"
+    },
+    {
+      "t" : 4.062,
+      "text" : "able for"
+    },
+    {
+      "t" : 4.086,
+      "text" : " more households"
+    },
+    {
+      "t" : 4.111,
+      "text" : ".\")\nb3 ="
+    },
+    {
+      "t" : 4.146,
+      "text" : " Buttons([Button(\""
+    },
+    {
+      "t" : 4.179,
+      "text" : "Read more\", @ToAss"
+    },
+    {
+      "t" : 4.212,
+      "text" : "istant(\"Tell me more"
+    },
+    {
+      "t" : 4.247,
+      "text" : " about: Solar Storage"
+    },
+    {
+      "t" : 4.279,
+      "text" : " Costs Hit New"
+    },
+    {
+      "t" : 4.313,
+      "text" : " Lows\"), \"secondary"
+    },
+    {
+      "t" : 4.347,
+      "text" : "\")])\ns4 ="
+    },
+    {
+      "t" : 4.38,
+      "text" : " Card([t4, d4,"
+    },
+    {
+      "t" : 4.414,
+      "text" : " b4])\nt4 ="
+    },
+    {
+      "t" : 4.448,
+      "text" : " TextContent(\"The Return"
+    },
+    {
+      "t" : 4.481,
+      "text" : " of the Four-Day"
+    },
+    {
+      "t" : 4.514,
+      "text" : " Week"
+    },
+    {
+      "t" : 4.547,
+      "text" : "\", \"large-heavy\")"
+    },
+    {
+      "t" : 4.581,
+      "text" : "\nd4 = TextCont"
+    },
+    {
+      "t" : 4.614,
+      "text" : "ent(\"New trials show ste"
+    },
+    {
+      "t" : 4.648,
+      "text" : "ady productivity and happ"
+    },
+    {
+      "t" : 4.682,
+      "text" : "ier te"
+    },
+    {
+      "t" : 4.715,
+      "text" : "ams,"
+    },
+    {
+      "t" : 4.747,
+      "text" : " pr"
+    },
+    {
+      "t" : 4.781,
+      "text" : "ompting more companies to r"
+    },
+    {
+      "t" : 4.813,
+      "text" : "ethink sch"
+    },
+    {
+      "t" : 4.847,
+      "text" : "edules.\")\nb4 "
+    },
+    {
+      "t" : 4.883,
+      "text" : "= Buttons([Button"
+    },
+    {
+      "t" : 4.915,
+      "text" : "(\"Read more\", @To"
+    },
+    {
+      "t" : 4.95,
+      "text" : "Assistant(\"Tell"
+    },
+    {
+      "t" : 4.983,
+      "text" : " me more about: The Return of"
+    },
+    {
+      "t" : 5.066,
+      "text" : " the Four-Day Week"
+    },
+    {
+      "t" : 5.094,
+      "text" : "\"), \"secondary\")"
+    },
+    {
+      "t" : 5.121,
+      "text" : "])\ns5 = Card"
+    },
+    {
+      "t" : 5.15,
+      "text" : "([t5, d5, b"
+    },
+    {
+      "t" : 5.178,
+      "text" : "5])\nt5 = T"
+    },
+    {
+      "t" : 5.249,
+      "text" : "extContent(\"De"
+    },
+    {
+      "t" : 5.278,
+      "text" : "ep-"
+    },
+    {
+      "t" : 5.306,
+      "text" : "Sea Surv"
+    },
+    {
+      "t" : 5.334,
+      "text" : "ey Reveals New"
+    },
+    {
+      "t" : 5.363,
+      "text" : " Species\", \"large"
+    },
+    {
+      "t" : 5.391,
+      "text" : "-heavy\")\nd5"
+    },
+    {
+      "t" : 5.42,
+      "text" : " = TextContent(\""
+    },
+    {
+      "t" : 5.45,
+      "text" : "Researchers cat"
+    },
+    {
+      "t" : 5.479,
+      "text" : "alogued dozens of previ"
+    },
+    {
+      "t" : 5.51,
+      "text" : "ously unknown creatures during"
+    },
+    {
+      "t" : 5.539,
+      "text" : " a"
+    },
+    {
+      "t" : 5.569,
+      "text" : " month"
+    },
+    {
+      "t" : 5.599,
+      "text" : "-long Pacific exped"
+    },
+    {
+      "t" : 5.63,
+      "text" : "ition.\")\nb5 ="
+    },
+    {
+      "t" : 5.828,
+      "text" : " Buttons([Button(\""
+    },
+    {
+      "t" : 5.858,
+      "text" : "Read more\", @ToA"
+    },
+    {
+      "t" : 5.889,
+      "text" : "ssistant(\"Tell me"
+    },
+    {
+      "t" : 5.919,
+      "text" : " more about: Deep-"
+    },
+    {
+      "t" : 5.95,
+      "text" : "Sea Survey Reve"
+    },
+    {
+      "t" : 5.981,
+      "text" : "als New Species\"), \"sec"
+    },
+    {
+      "t" : 6.011,
+      "text" : "ondary\")])"
+    }
+  ],
+  "createdAt" : "2026-11-11T10:33:24Z",
+  "effort" : "low",
+  "format" : "openui-recording",
+  "inputTokens" : 14499,
+  "library" : "react-ui",
+  "model" : "claude-sonnet-5-5",
+  "outputTokens" : 784,
+  "request" : "A newsletter digest with five stories, each a title, a one-line summary and a \"read more\" button.",
+  "servedBy" : "claude-sonnet-5-5",
+  "stopReason" : "end_turn",
+  "version" : 1
+}

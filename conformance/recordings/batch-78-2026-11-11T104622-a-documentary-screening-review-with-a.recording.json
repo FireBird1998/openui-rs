@@ -1,0 +1,584 @@
+{
+  "batchRequest" : {
+    "model" : "haiku",
+    "number" : 78,
+    "request" : "A documentary screening review with a poster image, critic's summary, accessibility details and upcoming screening dates."
+  },
+  "chunks" : [
+    {
+      "t" : 5.857,
+      "text" : "root"
+    },
+    {
+      "t" : 5.892,
+      "text" : " = Stack([heroC"
+    },
+    {
+      "t" : 5.918,
+      "text" : "ard, summaryCard,"
+    },
+    {
+      "t" : 6.083,
+      "text" : " accessCard, screening"
+    },
+    {
+      "t" : 6.124,
+      "text" : "sCard])\nheroC"
+    },
+    {
+      "t" : 6.169,
+      "text" : "ard = Card([posterIm"
+    },
+    {
+      "t" : 6.222,
+      "text" : "g, heroHeader,"
+    },
+    {
+      "t" : 6.29,
+      "text" : " heroTags])\nposter"
+    },
+    {
+      "t" : 6.326,
+      "text" : "Img = Image(\"Official"
+    },
+    {
+      "t" : 6.386,
+      "text" : " poster for the documentary"
+    },
+    {
+      "t" : 6.424,
+      "text" : " Harbor Lights\")"
+    },
+    {
+      "t" : 6.453,
+      "text" : "\nheroHeader = Card"
+    },
+    {
+      "t" : 6.483,
+      "text" : "Header(\"Harbor"
+    },
+    {
+      "t" : 6.508,
+      "text" : " Lights\", \"Document"
+    },
+    {
+      "t" : 6.538,
+      "text" : "ary · 96 min ·"
+    },
+    {
+      "t" : 6.574,
+      "text" : " Directed by Maya "
+    },
+    {
+      "t" : 6.618,
+      "text" : "Ortiz\")\nheroT"
+    },
+    {
+      "t" : 6.67,
+      "text" : "ags = TagBlock("
+    },
+    {
+      "t" : 6.716,
+      "text" : "[\"Documentary\", \"English"
+    },
+    {
+      "t" : 6.754,
+      "text" : " / Spanish\", \"P"
+    },
+    {
+      "t" : 6.794,
+      "text" : "G-13\"])\nsumma"
+    },
+    {
+      "t" : 6.841,
+      "text" : "ryCard = Card([s"
+    },
+    {
+      "t" : 6.898,
+      "text" : "umHeader, criticQ"
+    },
+    {
+      "t" : 6.952,
+      "text" : "uote, ratingList])"
+    },
+    {
+      "t" : 6.956,
+      "text" : "\nsumHeader = In"
+    },
+    {
+      "t" : 7.003,
+      "text" : "lineHeader(\"Crit"
+    },
+    {
+      "t" : 7.053,
+      "text" : "ic's Summary\", \""
+    },
+    {
+      "t" : 7.116,
+      "text" : "Consensus from "
+    },
+    {
+      "t" : 7.165,
+      "text" : "42 reviews\")\ncri"
+    },
+    {
+      "t" : 7.218,
+      "text" : "ticQuote = TextCont"
+    },
+    {
+      "t" : 7.279,
+      "text" : "ent(\"A patient, dee"
+    },
+    {
+      "t" : 7.334,
+      "text" : "ply humane portrait of a"
+    },
+    {
+      "t" : 7.406,
+      "text" : " fishing town facing its last"
+    },
+    {
+      "t" : 7.461,
+      "text" : " season. Ortiz tr"
+    },
+    {
+      "t" : 7.519,
+      "text" : "usts her subjects and her"
+    },
+    {
+      "t" : 7.598,
+      "text" : " audience, letting silence do"
+    },
+    {
+      "t" : 7.658,
+      "text" : " much of the work. The score occ"
+    },
+    {
+      "t" : 7.66,
+      "text" : "asionally oversteps,"
+    },
+    {
+      "t" : 7.701,
+      "text" : " but the film's emotional hon"
+    },
+    {
+      "t" : 7.743,
+      "text" : "esty carries it.\")"
+    },
+    {
+      "t" : 7.793,
+      "text" : "\nratingList = Entity"
+    },
+    {
+      "t" : 7.844,
+      "text" : "List(["
+    },
+    {
+      "t" : 7.908,
+      "text" : "ratingC"
+    },
+    {
+      "t" : 7.961,
+      "text" : "ritic, ratingAud"
+    },
+    {
+      "t" : 8.012,
+      "text" : "ience, ratingRe"
+    },
+    {
+      "t" : 8.059,
+      "text" : "views], \"default\")"
+    },
+    {
+      "t" : 8.146,
+      "text" : "\nratingCritic = {left"
+    },
+    {
+      "t" : 8.148,
+      "text" : ": \"Critic score\", right"
+    },
+    {
+      "t" : 8.199,
+      "text" : ": \"4.5 / "
+    },
+    {
+      "t" : 8.297,
+      "text" : "5\","
+    },
+    {
+      "t" : 8.299,
+      "text" : " rightVariant: \"number"
+    },
+    {
+      "t" : 8.37,
+      "text" : "\"}\nratingAud"
+    },
+    {
+      "t" : 8.435,
+      "text" : "ience = {left: \"Aud"
+    },
+    {
+      "t" : 8.488,
+      "text" : "ience score\", right: \"88%"
+    },
+    {
+      "t" : 8.553,
+      "text" : "\", rightVariant: \""
+    },
+    {
+      "t" : 8.632,
+      "text" : "number\"}\nratingRe"
+    },
+    {
+      "t" : 8.688,
+      "text" : "views = {left: \""
+    },
+    {
+      "t" : 8.74,
+      "text" : "Reviews counted\", right:"
+    },
+    {
+      "t" : 8.792,
+      "text" : " \"42\", rightVariant"
+    },
+    {
+      "t" : 8.844,
+      "text" : ": \"number\"}\naccess"
+    },
+    {
+      "t" : 8.882,
+      "text" : "Card = Card([accH"
+    },
+    {
+      "t" : 8.944,
+      "text" : "eader, accList])\nacc"
+    },
+    {
+      "t" : 8.946,
+      "text" : "Header = InlineH"
+    },
+    {
+      "t" : 9.01,
+      "text" : "eader(\"Accessibility"
+    },
+    {
+      "t" : 9.089,
+      "text" : "\", \"Plan your visit"
+    },
+    {
+      "t" : 9.163,
+      "text" : "\")\naccList = Entity"
+    },
+    {
+      "t" : 9.266,
+      "text" : "List([accCaptions,"
+    },
+    {
+      "t" : 9.267,
+      "text" : " accAudio"
+    },
+    {
+      "t" : 9.397,
+      "text" : ", accWheelchair,"
+    },
+    {
+      "t" : 9.461,
+      "text" : " accHearing, accSens"
+    },
+    {
+      "t" : 9.533,
+      "text" : "ory], \"default\")\naccC"
+    },
+    {
+      "t" : 9.534,
+      "text" : "aptions = {left: \""
+    },
+    {
+      "t" : 9.599,
+      "text" : "Closed captions\", right:"
+    },
+    {
+      "t" : 9.667,
+      "text" : " \"English and Spanish\""
+    },
+    {
+      "t" : 9.732,
+      "text" : "}\naccAudio = {"
+    },
+    {
+      "t" : 9.785,
+      "text" : "left: \"Audio description\","
+    },
+    {
+      "t" : 9.85,
+      "text" : " right: \"Select"
+    },
+    {
+      "t" : 9.916,
+      "text" : " screenings\"}\naccW"
+    },
+    {
+      "t" : 9.979,
+      "text" : "heelchair = {left:"
+    },
+    {
+      "t" : 10.045,
+      "text" : " \"Wheelchair access"
+    },
+    {
+      "t" : 10.109,
+      "text" : "\", right: \"Step-free"
+    },
+    {
+      "t" : 10.181,
+      "text" : " entrance, reserved se"
+    },
+    {
+      "t" : 10.276,
+      "text" : "ating\"}\naccHearing"
+    },
+    {
+      "t" : 10.278,
+      "text" : " = {left: \"Hear"
+    },
+    {
+      "t" : 10.365,
+      "text" : "ing loop\", right: \""
+    },
+    {
+      "t" : 10.436,
+      "text" : "Install"
+    },
+    {
+      "t" : 10.494,
+      "text" : "ed in Theater 2\""
+    },
+    {
+      "t" : 10.592,
+      "text" : "}\naccSensory = {"
+    },
+    {
+      "t" : 10.595,
+      "text" : "left: \"Sensory-"
+    },
+    {
+      "t" : 10.657,
+      "text" : "friendly\", right: \""
+    },
+    {
+      "t" : 10.779,
+      "text" : "Monthly, lights"
+    },
+    {
+      "t" : 10.78,
+      "text" : " up"
+    },
+    {
+      "t" : 10.856,
+      "text" : ", lower volume\"}"
+    },
+    {
+      "t" : 11.044,
+      "text" : "\nscreeningsCard ="
+    },
+    {
+      "t" : 11.15,
+      "text" : " Card([scrHeader,"
+    },
+    {
+      "t" : 11.152,
+      "text" : " scrTable])\nscr"
+    },
+    {
+      "t" : 11.302,
+      "text" : "Header = InlineH"
+    },
+    {
+      "t" : 11.304,
+      "text" : "eader(\"Upcoming"
+    },
+    {
+      "t" : 11.363,
+      "text" : " Screenings\", \"Access"
+    },
+    {
+      "t" : 11.531,
+      "text" : " options"
+    },
+    {
+      "t" : 14.152,
+      "text" : " are list"
+    },
+    {
+      "t" : 14.234,
+      "text" : "ed per show"
+    },
+    {
+      "t" : 14.317,
+      "text" : "ing\")\nscrTable ="
+    },
+    {
+      "t" : 14.374,
+      "text" : " Table([Col(\"Date"
+    },
+    {
+      "t" : 14.425,
+      "text" : "\", dates), Col(\""
+    },
+    {
+      "t" : 14.492,
+      "text" : "Venue\", venues), Col"
+    },
+    {
+      "t" : 14.559,
+      "text" : "(\"Time\", times), Col"
+    },
+    {
+      "t" : 14.831,
+      "text" : "(\"Access\", access"
+    },
+    {
+      "t" : 14.883,
+      "text" : ")])\ndates = [\""
+    },
+    {
+      "t" : 15.073,
+      "text" : "S"
+    },
+    {
+      "t" : 15.075,
+      "text" : "at,"
+    },
+    {
+      "t" : 15.147,
+      "text" : " J"
+    },
+    {
+      "t" : 15.268,
+      "text" : "un 14"
+    },
+    {
+      "t" : 15.405,
+      "text" : "\", \"Sun, J"
+    },
+    {
+      "t" : 15.587,
+      "text" : "un 15\", \"Th"
+    },
+    {
+      "t" : 15.8,
+      "text" : "u, Jun 19"
+    },
+    {
+      "t" : 15.9,
+      "text" : "\", \"Sat, J"
+    },
+    {
+      "t" : 15.956,
+      "text" : "un 21\"]\nvenues"
+    },
+    {
+      "t" : 16.015,
+      "text" : " = [\"Harbor"
+    },
+    {
+      "t" : 16.067,
+      "text" : " Cinema\", \"Ri"
+    },
+    {
+      "t" : 16.126,
+      "text" : "verside Arts H"
+    },
+    {
+      "t" : 16.182,
+      "text" : "all\", \"Har"
+    },
+    {
+      "t" : 16.271,
+      "text" : "bor Cinema\", \""
+    },
+    {
+      "t" : 16.972,
+      "text" : "Old"
+    },
+    {
+      "t" : 16.974,
+      "text" : " Town The"
+    },
+    {
+      "t" : 18.106,
+      "text" : "ater\"]\ntimes = [\""
+    },
+    {
+      "t" : 19.464,
+      "text" : "6"
+    },
+    {
+      "t" : 21.596,
+      "text" : ":30 PM\", \"2"
+    },
+    {
+      "t" : 22.711,
+      "text" : ":00 PM\", \"7"
+    },
+    {
+      "t" : 22.714,
+      "text" : ":15"
+    },
+    {
+      "t" : 22.837,
+      "text" : " PM\", \"4:00"
+    },
+    {
+      "t" : 22.955,
+      "text" : " PM\"]\naccess ="
+    },
+    {
+      "t" : 23.081,
+      "text" : " [\"Captions,"
+    },
+    {
+      "t" : 24.848,
+      "text" : " Step"
+    },
+    {
+      "t" : 24.85,
+      "text" : "-free\", \"Aud"
+    },
+    {
+      "t" : 25.162,
+      "text" : "io description\","
+    },
+    {
+      "t" : 26.338,
+      "text" : " \"S"
+    },
+    {
+      "t" : 28.802,
+      "text" : "ensory-friendly\", \""
+    },
+    {
+      "t" : 29.872,
+      "text" : "H"
+    },
+    {
+      "t" : 30.143,
+      "text" : "earing loop,"
+    },
+    {
+      "t" : 31.242,
+      "text" : " Captions\"]"
+    }
+  ],
+  "createdAt" : "2026-11-11T10:46:22Z",
+  "effort" : "low",
+  "format" : "openui-recording",
+  "inputTokens" : 14503,
+  "library" : "react-ui",
+  "model" : "claude-haiku-5-5",
+  "outputTokens" : 1999,
+  "request" : "A documentary screening review with a poster image, critic's summary, accessibility details and upcoming screening dates.",
+  "servedBy" : "claude-haiku-5-5",
+  "stopReason" : "end_turn",
+  "version" : 1
+}

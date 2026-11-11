@@ -1,0 +1,162 @@
+{
+  "batchRequest" : {
+    "model" : "haiku",
+    "number" : 134,
+    "of" : 60,
+    "request" : "Add a fifth image showing the reopened theatre, with a caption and a restoration completion date."
+  },
+  "chunks" : [
+    {
+      "t" : 2.704,
+      "text" : "root"
+    },
+    {
+      "t" : 2.727,
+      "text" : " = Stack([heading,"
+    },
+    {
+      "t" : 2.93,
+      "text" : " intro, fig1, f"
+    },
+    {
+      "t" : 2.969,
+      "text" : "ig2, fig3, f"
+    },
+    {
+      "t" : 3.109,
+      "text" : "ig4, fig5, cre"
+    },
+    {
+      "t" : 3.183,
+      "text" : "ditsHeader, credits"
+    },
+    {
+      "t" : 3.239,
+      "text" : "])\nfig5 ="
+    },
+    {
+      "t" : 3.24,
+      "text" : " Card([img5, cap5"
+    },
+    {
+      "t" : 3.332,
+      "text" : "], \"card\", \"column\", \""
+    },
+    {
+      "t" : 3.364,
+      "text" : "s\")\nimg5 ="
+    },
+    {
+      "t" : 3.42,
+      "text" : " Image(\"The"
+    },
+    {
+      "t" : 3.421,
+      "text" : " re"
+    },
+    {
+      "t" : 3.474,
+      "text" : "opened Lantern The"
+    },
+    {
+      "t" : 3.591,
+      "text" : "atre au"
+    },
+    {
+      "t" : 3.619,
+      "text" : "ditorium at"
+    },
+    {
+      "t" : 3.62,
+      "text" : " d"
+    },
+    {
+      "t" : 3.656,
+      "text" : "usk, with its"
+    },
+    {
+      "t" : 3.683,
+      "text" : " rest"
+    },
+    {
+      "t" : 3.72,
+      "text" : "ored pro"
+    },
+    {
+      "t" : 3.761,
+      "text" : "scenium l"
+    },
+    {
+      "t" : 3.798,
+      "text" : "it for"
+    },
+    {
+      "t" : 3.839,
+      "text" : " a"
+    },
+    {
+      "t" : 3.895,
+      "text" : " performance\", \"\")\ncap"
+    },
+    {
+      "t" : 3.963,
+      "text" : "5 = TextContent(\""
+    },
+    {
+      "t" : 4.051,
+      "text" : "Restoration was"
+    },
+    {
+      "t" : 4.085,
+      "text" : " completed on March 14"
+    },
+    {
+      "t" : 4.116,
+      "text" : ", 2024, when"
+    },
+    {
+      "t" : 4.151,
+      "text" : " the"
+    },
+    {
+      "t" : 4.181,
+      "text" : " Lantern Theatre's"
+    },
+    {
+      "t" : 4.218,
+      "text" : " g"
+    },
+    {
+      "t" : 4.257,
+      "text" : "ilded proscenium and h"
+    },
+    {
+      "t" : 4.321,
+      "text" : "and-painted ceiling"
+    },
+    {
+      "t" : 4.323,
+      "text" : " were lit for the first full"
+    },
+    {
+      "t" : 4.399,
+      "text" : " season"
+    },
+    {
+      "t" : 4.434,
+      "text" : ".\", \"small\")"
+    }
+  ],
+  "createdAt" : "2026-11-11T11:05:37Z",
+  "effort" : "low",
+  "format" : "openui-recording",
+  "inputTokens" : 15682,
+  "library" : "react-ui",
+  "model" : "claude-haiku-5-5",
+  "outputTokens" : 531,
+  "patchOf" : "root = Stack([heading, intro, fig1, fig2, fig3, fig4, creditsHeader, credits])\nheading = TextContent(\"The Lantern Theatre: A Restoration in Four Frames\", \"large-heavy\")\nintro = TextContent(\"For three years, the 1921 Lantern Theatre sat behind scaffolding and plywood while crews worked to bring back its gilded proscenium, hand-painted ceiling, and original oak seating. These four images follow the work from first demolition to the reopening night.\", \"default\")\nfig1 = Card([img1, cap1], \"card\", \"column\", \"s\")\nimg1 = Image(\"Workers removing plaster from the theatre's east wall to expose original lath\", \"\")\ncap1 = TextContent(\"Stripping decades of plaster from the east wall revealed the original lath and hand-mixed lime mortar beneath.\", \"small\")\nfig2 = Card([img2, cap2], \"card\", \"column\", \"s\")\nimg2 = Image(\"Restorer applying gold leaf to a carved column capital in the auditorium\", \"\")\ncap2 = TextContent(\"A restorer applies 23-karat gold leaf to a carved capital, matching a pattern found in the 1921 archives.\", \"small\")\nfig3 = Card([img3, cap3], \"card\", \"column\", \"s\")\nimg3 = Image(\"Ceiling mural partially uncovered with conservators working on scaffolding\", \"\")\ncap3 = TextContent(\"Conservators clean the ceiling mural one square foot at a time, using cotton swabs and solvent gels.\", \"small\")\nfig4 = Card([img4, cap4], \"card\", \"column\", \"s\")\nimg4 = Image(\"Audience filling restored seats on opening night under warm house lights\", \"\")\ncap4 = TextContent(\"On reopening night, the restored house lights came up over 480 seats refinished in their original oak.\", \"small\")\ncreditsHeader = InlineHeader(\"Photographer Credits\", \"Images used in this essay\")\ncredits = EntityList([creditRow1, creditRow2, creditRow3, creditRow4])\ncreditRow1 = { left: \"Figure 1\", right: \"Maya Ortiz\" }\ncreditRow2 = { left: \"Figure 2\", right: \"Daniel Okafor\" }\ncreditRow3 = { left: \"Figure 3\", right: \"Hannah Lindqvist\" }\ncreditRow4 = { left: \"Figure 4\", right: \"Samuel Reyes\" }",
+  "request" : "Add a fifth image showing the reopened theatre, with a caption and a restoration completion date.",
+  "servedBy" : "claude-haiku-5-5",
+  "stopReason" : "end_turn",
+  "version" : 1
+}

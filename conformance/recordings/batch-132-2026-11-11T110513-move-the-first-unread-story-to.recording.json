@@ -1,0 +1,338 @@
+{
+  "batchRequest" : {
+    "model" : "haiku",
+    "number" : 132,
+    "of" : 52,
+    "request" : "Move the first unread story to finished and add a topic tag to every saved story."
+  },
+  "chunks" : [
+    {
+      "t" : 7.436,
+      "text" : "```"
+    },
+    {
+      "t" : 7.471,
+      "text" : "\nun"
+    },
+    {
+      "t" : 7.504,
+      "text" : "readList = Stack(["
+    },
+    {
+      "t" : 7.665,
+      "text" : "unread2, unread3],"
+    },
+    {
+      "t" : 7.844,
+      "text" : " \"column\", \"m\")\nun"
+    },
+    {
+      "t" : 7.891,
+      "text" : "read2 = Card([u"
+    },
+    {
+      "t" : 7.934,
+      "text" : "2Stack, u2"
+    },
+    {
+      "t" : 8.021,
+      "text" : "Actions], \"card\", \"row"
+    },
+    {
+      "t" : 8.052,
+      "text" : "\", \"between\", \"center\")"
+    },
+    {
+      "t" : 8.095,
+      "text" : "\nunread3 = Card(["
+    },
+    {
+      "t" : 8.141,
+      "text" : "u3Stack, u3"
+    },
+    {
+      "t" : 8.143,
+      "text" : "Actions], \"card"
+    },
+    {
+      "t" : 8.191,
+      "text" : "\", \"row\", \"between\", \""
+    },
+    {
+      "t" : 8.234,
+      "text" : "center\")\nu2Stack"
+    },
+    {
+      "t" : 8.273,
+      "text" : " = Stack([u2"
+    },
+    {
+      "t" : 8.315,
+      "text" : "Info, u2Tags],"
+    },
+    {
+      "t" : 8.364,
+      "text" : " \"column\", \"xs\")"
+    },
+    {
+      "t" : 8.413,
+      "text" : "\nu3Stack = St"
+    },
+    {
+      "t" : 8.455,
+      "text" : "ack([u3Info, u"
+    },
+    {
+      "t" : 8.508,
+      "text" : "3Tags], \"column\","
+    },
+    {
+      "t" : 8.553,
+      "text" : " \"xs\")\nu2"
+    },
+    {
+      "t" : 8.618,
+      "text" : "Tags = TagBlock"
+    },
+    {
+      "t" : 8.673,
+      "text" : "([\"Investigation\"],"
+    },
+    {
+      "t" : 8.724,
+      "text" : " \"sm\")\nu3"
+    },
+    {
+      "t" : 8.783,
+      "text" : "Tags = TagBlock"
+    },
+    {
+      "t" : 8.867,
+      "text" : "([\"Science\"], \"s"
+    },
+    {
+      "t" : 8.868,
+      "text" : "m\")\nfinishedList ="
+    },
+    {
+      "t" : 8.93,
+      "text" : " Stack([done1, done"
+    },
+    {
+      "t" : 8.992,
+      "text" : "2, done3], \"column\","
+    },
+    {
+      "t" : 9.048,
+      "text" : " \"m\")\ndone1 ="
+    },
+    {
+      "t" : 9.11,
+      "text" : " Card([d1Stack"
+    },
+    {
+      "t" : 9.172,
+      "text" : ", d1Act"
+    },
+    {
+      "t" : 9.233,
+      "text" : "ions], \"card\", \"row\","
+    },
+    {
+      "t" : 9.293,
+      "text" : " \"between\", \"center\")\ndone"
+    },
+    {
+      "t" : 9.347,
+      "text" : "2 = Card([d2"
+    },
+    {
+      "t" : 9.396,
+      "text" : "Stack, d2Act"
+    },
+    {
+      "t" : 9.447,
+      "text" : "ions], \"card\", \"row\","
+    },
+    {
+      "t" : 9.504,
+      "text" : " \"between\", \"center\")\ndone"
+    },
+    {
+      "t" : 9.557,
+      "text" : "3 = Card([d3"
+    },
+    {
+      "t" : 9.605,
+      "text" : "Stack, d3Act"
+    },
+    {
+      "t" : 9.668,
+      "text" : "ions], \"card\", \"row\","
+    },
+    {
+      "t" : 9.727,
+      "text" : " \"between\", \"center\")\nd"
+    },
+    {
+      "t" : 9.821,
+      "text" : "1Stack = Stack"
+    },
+    {
+      "t" : 9.822,
+      "text" : "([d1Info, d1"
+    },
+    {
+      "t" : 9.886,
+      "text" : "Tags], \"column\", \""
+    },
+    {
+      "t" : 9.951,
+      "text" : "xs\")\nd2St"
+    },
+    {
+      "t" : 10.019,
+      "text" : "ack = Stack([d2"
+    },
+    {
+      "t" : 10.145,
+      "text" : "Info, d2Tags"
+    },
+    {
+      "t" : 10.204,
+      "text" : "], \"column\", \"xs\")"
+    },
+    {
+      "t" : 10.269,
+      "text" : "\nd3Stack ="
+    },
+    {
+      "t" : 10.327,
+      "text" : " Stack([d3Info,"
+    },
+    {
+      "t" : 10.409,
+      "text" : " d3Tags], \"column"
+    },
+    {
+      "t" : 10.482,
+      "text" : "\", \"xs\")\nd1"
+    },
+    {
+      "t" : 10.547,
+      "text" : "Tags = TagBl"
+    },
+    {
+      "t" : 10.548,
+      "text" : "ock([\"Essay\"],"
+    },
+    {
+      "t" : 10.622,
+      "text" : " \"sm\")\nd2"
+    },
+    {
+      "t" : 10.682,
+      "text" : "Tags = TagBlock"
+    },
+    {
+      "t" : 10.834,
+      "text" : "([\"Long read\"], \""
+    },
+    {
+      "t" : 10.905,
+      "text" : "sm\")\nd3T"
+    },
+    {
+      "t" : 10.907,
+      "text" : "ags = TagBlock("
+    },
+    {
+      "t" : 10.983,
+      "text" : "[\"Literary fiction\""
+    },
+    {
+      "t" : 11.054,
+      "text" : "], \"sm\")\nd3"
+    },
+    {
+      "t" : 11.144,
+      "text" : "Info = IconText("
+    },
+    {
+      "t" : 11.21,
+      "text" : "Icon(\"circle-check\","
+    },
+    {
+      "t" : 11.337,
+      "text" : " \"status\"), \"success\", \""
+    },
+    {
+      "t" : 11.339,
+      "text" : "m\", \"The Quiet"
+    },
+    {
+      "t" : 11.421,
+      "text" : " Harbor\","
+    },
+    {
+      "t" : 11.494,
+      "text" : " \"Maya Chen ·"
+    },
+    {
+      "t" : 11.567,
+      "text" : " Literary fiction · "
+    },
+    {
+      "t" : 11.649,
+      "text" : "12 min read\", false, \""
+    },
+    {
+      "t" : 11.731,
+      "text" : "horizontal\")\nd3"
+    },
+    {
+      "t" : 11.806,
+      "text" : "Actions = Buttons"
+    },
+    {
+      "t" : 11.874,
+      "text" : "([Button(\"Remove\","
+    },
+    {
+      "t" : 11.93,
+      "text" : " @ToAssistant(\""
+    },
+    {
+      "t" : 11.996,
+      "text" : "Remove The Quiet"
+    },
+    {
+      "t" : 12.073,
+      "text" : " Harbor from my shel"
+    },
+    {
+      "t" : 12.156,
+      "text" : "f\"), \"tertiary"
+    },
+    {
+      "t" : 12.239,
+      "text" : "\", \"destructive\", \"small"
+    },
+    {
+      "t" : 12.323,
+      "text" : "\")], \"row\")\n```"
+    }
+  ],
+  "createdAt" : "2026-11-11T11:05:13Z",
+  "effort" : "low",
+  "format" : "openui-recording",
+  "inputTokens" : 16060,
+  "library" : "react-ui",
+  "model" : "claude-haiku-5-5",
+  "outputTokens" : 1956,
+  "patchOf" : "root = Stack([shelfHeader, unreadSection, finishedSection])\nshelfHeader = InlineHeader(\"Saved Stories\", \"Your reading shelf\")\nunreadSection = Card([unreadHeader, unreadList])\nunreadHeader = CardHeader(\"Unread\", \"Stories you have not started yet\")\nunreadList = Stack([unread1, unread2, unread3], \"column\", \"m\")\nunread1 = Card([u1Info, u1Actions], \"card\", \"row\", \"between\", \"center\")\nunread2 = Card([u2Info, u2Actions], \"card\", \"row\", \"between\", \"center\")\nunread3 = Card([u3Info, u3Actions], \"card\", \"row\", \"between\", \"center\")\nu1Info = IconText(Icon(\"book-open\", \"reading\"), \"info\", \"m\", \"The Quiet Harbor\", \"Maya Chen · Literary fiction · 12 min read\", false, \"horizontal\")\nu2Info = IconText(Icon(\"newspaper\", \"reading\"), \"info\", \"m\", \"Inside the Grid Failure\", \"Daniel Ortiz · Investigation · 8 min read\", false, \"horizontal\")\nu3Info = IconText(Icon(\"flask-conical\", \"reading\"), \"info\", \"m\", \"Why Sleep Research Keeps Changing\", \"Priya Natarajan · Science · 6 min read\", false, \"horizontal\")\nu1Actions = Buttons([Button(\"Start Reading\", @ToAssistant(\"Open The Quiet Harbor\"), \"primary\", \"normal\", \"small\"), Button(\"Remove\", @ToAssistant(\"Remove The Quiet Harbor from my shelf\"), \"tertiary\", \"destructive\", \"small\")], \"row\")\nu2Actions = Buttons([Button(\"Start Reading\", @ToAssistant(\"Open Inside the Grid Failure\"), \"primary\", \"normal\", \"small\"), Button(\"Remove\", @ToAssistant(\"Remove Inside the Grid Failure from my shelf\"), \"tertiary\", \"destructive\", \"small\")], \"row\")\nu3Actions = Buttons([Button(\"Start Reading\", @ToAssistant(\"Open Why Sleep Research Keeps Changing\"), \"primary\", \"normal\", \"small\"), Button(\"Remove\", @ToAssistant(\"Remove Why Sleep Research Keeps Changing from my shelf\"), \"tertiary\", \"destructive\", \"small\")], \"row\")\nfinishedSection = Card([finishedHeader, finishedList])\nfinishedHeader = CardHeader(\"Finished\", \"Stories you have completed\")\nfinishedList = Stack([done1, done2], \"column\", \"m\")\ndone1 = Card([d1Info, d1Actions], \"card\", \"row\", \"between\", \"center\")\ndone2 = Card([d2Info, d2Actions], \"card\", \"row\", \"between\", \"center\")\nd1Info = IconText(Icon(\"circle-check\", \"status\"), \"success\", \"m\", \"The Last Lighthouse Keeper\", \"Eleanor Vance · Essay · 15 min read\", false, \"horizontal\")\nd2Info = IconText(Icon(\"circle-check\", \"status\"), \"success\", \"m\", \"Notes on a Slower City\", \"Tomas Reyes · Long read · 22 min read\", false, \"horizontal\")\nd1Actions = Buttons([Button(\"Remove\", @ToAssistant(\"Remove The Last Lighthouse Keeper from my shelf\"), \"tertiary\", \"destructive\", \"small\")], \"row\")\nd2Actions = Buttons([Button(\"Remove\", @ToAssistant(\"Remove Notes on a Slower City from my shelf\"), \"tertiary\", \"destructive\", \"small\")], \"row\")",
+  "request" : "Move the first unread story to finished and add a topic tag to every saved story.",
+  "servedBy" : "claude-haiku-5-5",
+  "stopReason" : "end_turn",
+  "version" : 1
+}

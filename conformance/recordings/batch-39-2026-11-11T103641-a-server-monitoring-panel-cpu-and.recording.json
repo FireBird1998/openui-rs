@@ -1,0 +1,756 @@
+{
+  "batchRequest" : {
+    "model" : "sonnet",
+    "number" : 39,
+    "request" : "A server monitoring panel: CPU and memory charts, uptime, and an incidents list."
+  },
+  "chunks" : [
+    {
+      "t" : 1.013,
+      "text" : "root = Stack([header,"
+    },
+    {
+      "t" : 1.391,
+      "text" : " k"
+    },
+    {
+      "t" : 1.421,
+      "text" : "pis, char"
+    },
+    {
+      "t" : 1.453,
+      "text" : "ts, inc"
+    },
+    {
+      "t" : 1.503,
+      "text" : "identsHeader, inc"
+    },
+    {
+      "t" : 1.53,
+      "text" : "identsTable"
+    },
+    {
+      "t" : 1.56,
+      "text" : "])\nheader = C"
+    },
+    {
+      "t" : 1.594,
+      "text" : "ardHeader(\"Server"
+    },
+    {
+      "t" : 1.659,
+      "text" : " Monitoring\", \"pr"
+    },
+    {
+      "t" : 1.698,
+      "text" : "od-web"
+    },
+    {
+      "t" : 1.74,
+      "text" : "-01 · Last updated"
+    },
+    {
+      "t" : 1.744,
+      "text" : " just"
+    },
+    {
+      "t" : 1.783,
+      "text" : " now\")\nkpis = O"
+    },
+    {
+      "t" : 1.823,
+      "text" : "verviewCardBlock"
+    },
+    {
+      "t" : 1.892,
+      "text" : "([k"
+    },
+    {
+      "t" : 1.894,
+      "text" : "1, k2, k3,"
+    },
+    {
+      "t" : 1.958,
+      "text" : " k4],"
+    },
+    {
+      "t" : 1.992,
+      "text" : " \"gr"
+    },
+    {
+      "t" : 1.993,
+      "text" : "id\")"
+    },
+    {
+      "t" : 2.029,
+      "text" : "\nk1 = Overvi"
+    },
+    {
+      "t" : 2.061,
+      "text" : "ewCardItem(\"c"
+    },
+    {
+      "t" : 2.095,
+      "text" : "pu\", k1top"
+    },
+    {
+      "t" : 2.144,
+      "text" : ", k1bot"
+    },
+    {
+      "t" : 2.185,
+      "text" : ")\nk1top = Icon"
+    },
+    {
+      "t" : 2.226,
+      "text" : "Text(Icon(\"c"
+    },
+    {
+      "t" : 2.316,
+      "text" : "pu\", \"t"
+    },
+    {
+      "t" : 2.318,
+      "text" : "ools"
+    },
+    {
+      "t" : 2.382,
+      "text" : "\"), \"info"
+    },
+    {
+      "t" : 2.385,
+      "text" : "\", \"m\", \"C"
+    },
+    {
+      "t" : 2.429,
+      "text" : "PU Usage\", \""
+    },
+    {
+      "t" : 2.493,
+      "text" : "Current\")\nk1bot ="
+    },
+    {
+      "t" : 2.598,
+      "text" : " MetricIndicator"
+    },
+    {
+      "t" : 2.655,
+      "text" : "Inline(\"46"
+    },
+    {
+      "t" : 2.658,
+      "text" : "%\", \"v"
+    },
+    {
+      "t" : 2.735,
+      "text" : "s last h"
+    },
+    {
+      "t" : 2.737,
+      "text" : "our\", { direction: \"up"
+    },
+    {
+      "t" : 2.784,
+      "text" : "\", value: 5"
+    },
+    {
+      "t" : 2.833,
+      "text" : " })\nk2 = O"
+    },
+    {
+      "t" : 2.908,
+      "text" : "verviewCardItem(\""
+    },
+    {
+      "t" : 2.951,
+      "text" : "mem\", k2top, k"
+    },
+    {
+      "t" : 2.994,
+      "text" : "2bot)\nk2top"
+    },
+    {
+      "t" : 3.041,
+      "text" : " = IconText(Icon"
+    },
+    {
+      "t" : 3.092,
+      "text" : "(\"memory-stick\", \""
+    },
+    {
+      "t" : 3.15,
+      "text" : "tools\"), \"war"
+    },
+    {
+      "t" : 3.26,
+      "text" : "ning\", \"m\", \"Mem"
+    },
+    {
+      "t" : 3.322,
+      "text" : "ory\", \"Current\")\nk"
+    },
+    {
+      "t" : 3.387,
+      "text" : "2bot = MetricI"
+    },
+    {
+      "t" : 3.44,
+      "text" : "ndicatorInline(\"68"
+    },
+    {
+      "t" : 3.443,
+      "text" : "%\", \"vs last hour"
+    },
+    {
+      "t" : 3.516,
+      "text" : "\", { direction: \"up\","
+    },
+    {
+      "t" : 3.602,
+      "text" : " value: 3 })\nk"
+    },
+    {
+      "t" : 3.659,
+      "text" : "3 = OverviewC"
+    },
+    {
+      "t" : 3.724,
+      "text" : "ardItem(\"u"
+    },
+    {
+      "t" : 3.849,
+      "text" : "ptime\", k3top, k"
+    },
+    {
+      "t" : 3.912,
+      "text" : "3bot)\nk3top"
+    },
+    {
+      "t" : 3.966,
+      "text" : " = IconText(Icon"
+    },
+    {
+      "t" : 4.004,
+      "text" : "(\"clock\", \"time"
+    },
+    {
+      "t" : 4.062,
+      "text" : "\"), \"success\", \"m\","
+    },
+    {
+      "t" : 4.066,
+      "text" : " \"Uptime\", \""
+    },
+    {
+      "t" : 4.137,
+      "text" : "Last 30 days\")\nk"
+    },
+    {
+      "t" : 4.209,
+      "text" : "3bot = MetricI"
+    },
+    {
+      "t" : 4.274,
+      "text" : "ndicatorInline(\"99"
+    },
+    {
+      "t" : 4.345,
+      "text" : ".94"
+    },
+    {
+      "t" : 4.434,
+      "text" : "%\", \"42"
+    },
+    {
+      "t" : 4.502,
+      "text" : "d"
+    },
+    {
+      "t" : 4.552,
+      "text" : " 6"
+    },
+    {
+      "t" : 4.598,
+      "text" : "h running"
+    },
+    {
+      "t" : 4.651,
+      "text" : "\", { direction: \"up"
+    },
+    {
+      "t" : 4.731,
+      "text" : "\", value: 1 })"
+    },
+    {
+      "t" : 4.8,
+      "text" : "\nk4 = Overview"
+    },
+    {
+      "t" : 4.867,
+      "text" : "CardItem(\"inc\","
+    },
+    {
+      "t" : 4.943,
+      "text" : " k4top, k4bot"
+    },
+    {
+      "t" : 5.035,
+      "text" : ")\nk4top = Icon"
+    },
+    {
+      "t" : 5.119,
+      "text" : "Text(Icon(\"tri"
+    },
+    {
+      "t" : 5.197,
+      "text" : "angle-alert\", \"al"
+    },
+    {
+      "t" : 5.308,
+      "text" : "erts\"), \"danger\","
+    },
+    {
+      "t" : 5.36,
+      "text" : " \"m\", \"Incidents"
+    },
+    {
+      "t" : 5.42,
+      "text" : "\", \"Last"
+    },
+    {
+      "t" : 5.477,
+      "text" : " 7"
+    },
+    {
+      "t" : 5.479,
+      "text" : " days\")\nk4bot"
+    },
+    {
+      "t" : 5.539,
+      "text" : " = MetricIndicat"
+    },
+    {
+      "t" : 5.61,
+      "text" : "orInline(\"4\", \"1"
+    },
+    {
+      "t" : 5.679,
+      "text" : " open\", { direction: \""
+    },
+    {
+      "t" : 5.75,
+      "text" : "down\", value: 20"
+    },
+    {
+      "t" : 5.855,
+      "text" : " })\ncharts = T"
+    },
+    {
+      "t" : 5.966,
+      "text" : "abs([c"
+    },
+    {
+      "t" : 6.067,
+      "text" : "puTab, mem"
+    },
+    {
+      "t" : 6.126,
+      "text" : "Tab])\ncpuT"
+    },
+    {
+      "t" : 6.191,
+      "text" : "ab = TabItem(\"c"
+    },
+    {
+      "t" : 6.275,
+      "text" : "pu\", \"CPU\","
+    },
+    {
+      "t" : 6.394,
+      "text" : " [c"
+    },
+    {
+      "t" : 6.396,
+      "text" : "puChart])\nmemT"
+    },
+    {
+      "t" : 6.517,
+      "text" : "ab = TabItem(\"m"
+    },
+    {
+      "t" : 6.589,
+      "text" : "em\", \"Memory\", ["
+    },
+    {
+      "t" : 6.592,
+      "text" : "memChart])\ncpu"
+    },
+    {
+      "t" : 6.718,
+      "text" : "Chart = AreaChart"
+    },
+    {
+      "t" : 6.721,
+      "text" : "(times, [Series(\"C"
+    },
+    {
+      "t" : 6.801,
+      "text" : "PU %\", cpuV"
+    },
+    {
+      "t" : 6.924,
+      "text" : "als)], \"natural\", \""
+    },
+    {
+      "t" : 7.023,
+      "text" : "Time\", \""
+    },
+    {
+      "t" : 7.087,
+      "text" : "Usage %\")\nmemChart"
+    },
+    {
+      "t" : 7.153,
+      "text" : " = LineChart(times,"
+    },
+    {
+      "t" : 7.221,
+      "text" : " [Series(\"Memory %"
+    },
+    {
+      "t" : 7.284,
+      "text" : "\", memVals)], \"nat"
+    },
+    {
+      "t" : 7.358,
+      "text" : "ural\", \"Time\", \""
+    },
+    {
+      "t" : 7.427,
+      "text" : "Usage %\")\ntimes = "
+    },
+    {
+      "t" : 7.495,
+      "text" : "[\"00:00\", \"04"
+    },
+    {
+      "t" : 7.578,
+      "text" : ":00\", \"08:00\","
+    },
+    {
+      "t" : 7.644,
+      "text" : " \"12:00\", \"16:"
+    },
+    {
+      "t" : 7.77,
+      "text" : "00\", \"20:00\", \""
+    },
+    {
+      "t" : 7.774,
+      "text" : "24:00\"]\ncp"
+    },
+    {
+      "t" : 7.854,
+      "text" : "uVals = [22, "
+    },
+    {
+      "t" : 7.954,
+      "text" : "18, 35, 62"
+    },
+    {
+      "t" : 8.051,
+      "text" : ", 71, 54"
+    },
+    {
+      "t" : 8.129,
+      "text" : ", 46]\nmemVals"
+    },
+    {
+      "t" : 8.225,
+      "text" : " = [55"
+    },
+    {
+      "t" : 8.294,
+      "text" : ", 56"
+    },
+    {
+      "t" : 8.384,
+      "text" : ", 58, 63"
+    },
+    {
+      "t" : 8.475,
+      "text" : ", 67"
+    },
+    {
+      "t" : 8.559,
+      "text" : ", 66"
+    },
+    {
+      "t" : 8.65,
+      "text" : ", 68]\nincident"
+    },
+    {
+      "t" : 8.735,
+      "text" : "sHeader = Inline"
+    },
+    {
+      "t" : 8.822,
+      "text" : "Header(\"Recent"
+    },
+    {
+      "t" : 8.915,
+      "text" : " Incidents\", \"Past"
+    },
+    {
+      "t" : 9.008,
+      "text" : " 7 days\")\nincid"
+    },
+    {
+      "t" : 9.075,
+      "text" : "entsTable = Table(["
+    },
+    {
+      "t" : 9.195,
+      "text" : "Col(\"Inc"
+    },
+    {
+      "t" : 9.279,
+      "text" : "ident\", names"
+    },
+    {
+      "t" : 9.376,
+      "text" : "), Col(\"Severity\","
+    },
+    {
+      "t" : 9.458,
+      "text" : " s"
+    },
+    {
+      "t" : 9.56,
+      "text" : "evT"
+    },
+    {
+      "t" : 9.672,
+      "text" : "ags), Col(\"Status"
+    },
+    {
+      "t" : 9.793,
+      "text" : "\", statT"
+    },
+    {
+      "t" : 9.942,
+      "text" : "ags), Col(\"Started\","
+    },
+    {
+      "t" : 10.075,
+      "text" : " started"
+    },
+    {
+      "t" : 10.196,
+      "text" : "), Col(\"Duration\","
+    },
+    {
+      "t" : 10.317,
+      "text" : " durations)])\nnames = "
+    },
+    {
+      "t" : 10.426,
+      "text" : "[\"High CPU spike on"
+    },
+    {
+      "t" : 10.577,
+      "text" : " web-"
+    },
+    {
+      "t" : 10.579,
+      "text" : "01\", \"Mem"
+    },
+    {
+      "t" : 10.683,
+      "text" : "ory leak in wor"
+    },
+    {
+      "t" : 10.777,
+      "text" : "ker\","
+    },
+    {
+      "t" : 10.864,
+      "text" : " \""
+    },
+    {
+      "t" : 10.97,
+      "text" : "Disk latency war"
+    },
+    {
+      "t" : 11.088,
+      "text" : "ning\", \"Network timeout"
+    },
+    {
+      "t" : 11.193,
+      "text" : " to"
+    },
+    {
+      "t" : 11.311,
+      "text" : " D"
+    },
+    {
+      "t" : 11.426,
+      "text" : "B\"]\nsevTags"
+    },
+    {
+      "t" : 11.53,
+      "text" : " = ["
+    },
+    {
+      "t" : 11.627,
+      "text" : "Tag(\""
+    },
+    {
+      "t" : 11.732,
+      "text" : "Critical\", null, \"sm"
+    },
+    {
+      "t" : 11.842,
+      "text" : "\", \"danger\"), T"
+    },
+    {
+      "t" : 11.926,
+      "text" : "ag(\"High\", null, \"s"
+    },
+    {
+      "t" : 12.028,
+      "text" : "m\", \"warning\"),"
+    },
+    {
+      "t" : 12.207,
+      "text" : " Tag(\"Low\", null,"
+    },
+    {
+      "t" : 12.271,
+      "text" : " \"sm\", \"neutral"
+    },
+    {
+      "t" : 12.31,
+      "text" : "\"), Tag(\"Med"
+    },
+    {
+      "t" : 12.386,
+      "text" : "ium\", null, \"sm\","
+    },
+    {
+      "t" : 12.563,
+      "text" : " \"info\")]\nstatTags"
+    },
+    {
+      "t" : 12.565,
+      "text" : " = [Tag(\"Open"
+    },
+    {
+      "t" : 12.675,
+      "text" : "\", null, \"sm\", \""
+    },
+    {
+      "t" : 12.756,
+      "text" : "danger\"), Tag(\""
+    },
+    {
+      "t" : 12.85,
+      "text" : "Resolved\", null, \""
+    },
+    {
+      "t" : 13.025,
+      "text" : "sm\", \"success\"),"
+    },
+    {
+      "t" : 13.123,
+      "text" : " Tag(\"Resolved\","
+    },
+    {
+      "t" : 13.211,
+      "text" : " null, \"sm\", \"success"
+    },
+    {
+      "t" : 13.397,
+      "text" : "\"), Tag(\"Res"
+    },
+    {
+      "t" : 13.399,
+      "text" : "olved\", null, \"sm"
+    },
+    {
+      "t" : 13.517,
+      "text" : "\", \"success\")]\nstarted ="
+    },
+    {
+      "t" : 13.636,
+      "text" : " [\"Today "
+    },
+    {
+      "t" : 13.752,
+      "text" : "11"
+    },
+    {
+      "t" : 13.874,
+      "text" : ":42"
+    },
+    {
+      "t" : 13.996,
+      "text" : "\", \""
+    },
+    {
+      "t" : 14.102,
+      "text" : "Yesterday 21"
+    },
+    {
+      "t" : 14.219,
+      "text" : ":10"
+    },
+    {
+      "t" : 14.375,
+      "text" : "\", \"M"
+    },
+    {
+      "t" : 14.481,
+      "text" : "on 03:25"
+    },
+    {
+      "t" : 14.569,
+      "text" : "\", \"S"
+    },
+    {
+      "t" : 14.679,
+      "text" : "un 14"
+    },
+    {
+      "t" : 14.786,
+      "text" : ":08"
+    },
+    {
+      "t" : 14.894,
+      "text" : "\"]\ndurations = [\""
+    },
+    {
+      "t" : 15.088,
+      "text" : "Ongoing\", \"1"
+    },
+    {
+      "t" : 15.237,
+      "text" : "h 20m\", \"35"
+    },
+    {
+      "t" : 15.362,
+      "text" : "m\", \"12m\"]"
+    }
+  ],
+  "createdAt" : "2026-11-11T10:36:41Z",
+  "effort" : "low",
+  "format" : "openui-recording",
+  "inputTokens" : 14498,
+  "library" : "react-ui",
+  "model" : "claude-sonnet-5-5",
+  "outputTokens" : 1148,
+  "request" : "A server monitoring panel: CPU and memory charts, uptime, and an incidents list.",
+  "servedBy" : "claude-sonnet-5-5",
+  "stopReason" : "end_turn",
+  "version" : 1
+}

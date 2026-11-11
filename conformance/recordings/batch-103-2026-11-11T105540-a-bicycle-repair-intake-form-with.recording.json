@@ -1,0 +1,648 @@
+{
+  "batchRequest" : {
+    "model" : "sonnet",
+    "number" : 103,
+    "request" : "A bicycle repair intake form with bike model, reported symptoms, service options and an estimate approval checkbox."
+  },
+  "chunks" : [
+    {
+      "t" : 1.352,
+      "text" : "root = Stack([header,"
+    },
+    {
+      "t" : 1.734,
+      "text" : " form])\nheader = C"
+    },
+    {
+      "t" : 1.777,
+      "text" : "ardHeader(\"Bic"
+    },
+    {
+      "t" : 1.847,
+      "text" : "ycle Repair Intake"
+    },
+    {
+      "t" : 1.894,
+      "text" : "\", \"T"
+    },
+    {
+      "t" : 2.022,
+      "text" : "ell us about your bike and what"
+    },
+    {
+      "t" : 2.062,
+      "text" : " needs att"
+    },
+    {
+      "t" : 2.112,
+      "text" : "ention\")\nform = Form(\""
+    },
+    {
+      "t" : 2.164,
+      "text" : "repair"
+    },
+    {
+      "t" : 2.219,
+      "text" : "Intake\", bt"
+    },
+    {
+      "t" : 2.27,
+      "text" : "ns, [modelField, typ"
+    },
+    {
+      "t" : 2.336,
+      "text" : "eField, symptomsField"
+    },
+    {
+      "t" : 2.392,
+      "text" : ", serviceField, not"
+    },
+    {
+      "t" : 2.447,
+      "text" : "esField, approvalField])"
+    },
+    {
+      "t" : 2.51,
+      "text" : "\nmodelField = FormContro"
+    },
+    {
+      "t" : 2.566,
+      "text" : "l(\"Bike Make"
+    },
+    {
+      "t" : 2.635,
+      "text" : " & Model\", Input(\"b"
+    },
+    {
+      "t" : 2.701,
+      "text" : "ikeModel\", \"e"
+    },
+    {
+      "t" : 2.812,
+      "text" : ".g. Trek Dom"
+    },
+    {
+      "t" : 2.818,
+      "text" : "ane"
+    },
+    {
+      "t" : 2.875,
+      "text" : " S"
+    },
+    {
+      "t" : 2.939,
+      "text" : "L5\", \"text\", { required"
+    },
+    {
+      "t" : 3,
+      "text" : ": true, minLength: "
+    },
+    {
+      "t" : 3.094,
+      "text" : "2 }))\ntypeField"
+    },
+    {
+      "t" : 3.099,
+      "text" : " = FormControl(\"B"
+    },
+    {
+      "t" : 3.159,
+      "text" : "ike Type\", Select(\"b"
+    },
+    {
+      "t" : 3.213,
+      "text" : "ikeType\", typeOp"
+    },
+    {
+      "t" : 3.26,
+      "text" : "ts, \"Select"
+    },
+    {
+      "t" : 3.327,
+      "text" : " type..."
+    },
+    {
+      "t" : 3.404,
+      "text" : "\", { required: true }))"
+    },
+    {
+      "t" : 3.481,
+      "text" : "\ntypeOpts = [S"
+    },
+    {
+      "t" : 3.549,
+      "text" : "electItem(\"road\", \""
+    },
+    {
+      "t" : 3.646,
+      "text" : "Road\"), SelectIt"
+    },
+    {
+      "t" : 3.72,
+      "text" : "em(\"mountain\", \""
+    },
+    {
+      "t" : 3.779,
+      "text" : "Mountain\"), Select"
+    },
+    {
+      "t" : 3.853,
+      "text" : "Item(\"hybrid\","
+    },
+    {
+      "t" : 3.855,
+      "text" : " \"Hybrid\"),"
+    },
+    {
+      "t" : 3.918,
+      "text" : " SelectItem(\"eb"
+    },
+    {
+      "t" : 3.98,
+      "text" : "ike\", \"E-"
+    },
+    {
+      "t" : 4.084,
+      "text" : "Bike\"), SelectIt"
+    },
+    {
+      "t" : 4.089,
+      "text" : "em(\"k"
+    },
+    {
+      "t" : 4.156,
+      "text" : "ids"
+    },
+    {
+      "t" : 4.219,
+      "text" : "\", \"Kids\")]"
+    },
+    {
+      "t" : 4.278,
+      "text" : "\nsymptomsField = Form"
+    },
+    {
+      "t" : 4.34,
+      "text" : "Control(\"Reported Sym"
+    },
+    {
+      "t" : 4.426,
+      "text" : "ptoms\", symptomCh"
+    },
+    {
+      "t" : 4.53,
+      "text" : "ips, \"Select all that ap"
+    },
+    {
+      "t" : 4.599,
+      "text" : "ply\")\nsymptomChips"
+    },
+    {
+      "t" : 4.608,
+      "text" : " = Chips(\"sympto"
+    },
+    {
+      "t" : 4.775,
+      "text" : "ms\", \"multiple\", ["
+    },
+    {
+      "t" : 4.881,
+      "text" : "s"
+    },
+    {
+      "t" : 4.985,
+      "text" : "1, s2, s3,"
+    },
+    {
+      "t" : 4.987,
+      "text" : " s4, s5, s6"
+    },
+    {
+      "t" : 5.066,
+      "text" : "])\ns1 = Ch"
+    },
+    {
+      "t" : 5.146,
+      "text" : "ipItem(\"br"
+    },
+    {
+      "t" : 5.188,
+      "text" : "akes\", \"Squ"
+    },
+    {
+      "t" : 5.26,
+      "text" : "eaky/we"
+    },
+    {
+      "t" : 5.34,
+      "text" : "ak brakes\")\ns2"
+    },
+    {
+      "t" : 5.404,
+      "text" : " = ChipItem(\""
+    },
+    {
+      "t" : 5.481,
+      "text" : "shifting\", \"Sk"
+    },
+    {
+      "t" : 5.565,
+      "text" : "ipping gears\")\ns3"
+    },
+    {
+      "t" : 5.648,
+      "text" : " = ChipItem(\""
+    },
+    {
+      "t" : 5.731,
+      "text" : "flat\", \"Flat t"
+    },
+    {
+      "t" : 5.826,
+      "text" : "ire\")\ns4 = "
+    },
+    {
+      "t" : 5.829,
+      "text" : "ChipItem(\"chain\","
+    },
+    {
+      "t" : 5.909,
+      "text" : " \"No"
+    },
+    {
+      "t" : 6.015,
+      "text" : "isy ch"
+    },
+    {
+      "t" : 6.018,
+      "text" : "ain\")\ns5 = "
+    },
+    {
+      "t" : 6.101,
+      "text" : "ChipItem(\"wobble"
+    },
+    {
+      "t" : 6.182,
+      "text" : "\", \"Wheel"
+    },
+    {
+      "t" : 6.284,
+      "text" : " wobble\")\ns6 "
+    },
+    {
+      "t" : 6.291,
+      "text" : "= ChipItem(\"ste"
+    },
+    {
+      "t" : 6.369,
+      "text" : "ering"
+    },
+    {
+      "t" : 6.453,
+      "text" : "\", \"Lo"
+    },
+    {
+      "t" : 6.521,
+      "text" : "ose steering\")\nservice"
+    },
+    {
+      "t" : 6.592,
+      "text" : "Field = FormControl(\""
+    },
+    {
+      "t" : 6.675,
+      "text" : "Service Option\", serviceC"
+    },
+    {
+      "t" : 6.754,
+      "text" : "ards, \"Cho"
+    },
+    {
+      "t" : 6.826,
+      "text" : "ose a"
+    },
+    {
+      "t" : 6.942,
+      "text" : " service level\")\nserviceC"
+    },
+    {
+      "t" : 6.947,
+      "text" : "ards = OptionCards(\""
+    },
+    {
+      "t" : 7.035,
+      "text" : "service\", \"single\", [o"
+    },
+    {
+      "t" : 7.14,
+      "text" : "1, o2, o3],"
+    },
+    {
+      "t" : 7.223,
+      "text" : " { required: true })\no1"
+    },
+    {
+      "t" : 7.334,
+      "text" : " = OptionCard(\""
+    },
+    {
+      "t" : 7.442,
+      "text" : "basic\", \"Basic"
+    },
+    {
+      "t" : 7.617,
+      "text" : " Tune-"
+    },
+    {
+      "t" : 7.619,
+      "text" : "Up\", \"Brake and"
+    },
+    {
+      "t" : 7.736,
+      "text" : " gear adjustment, t"
+    },
+    {
+      "t" : 7.842,
+      "text" : "ire in"
+    },
+    {
+      "t" : 7.953,
+      "text" : "flation\", i1)"
+    },
+    {
+      "t" : 8.067,
+      "text" : "\ni"
+    },
+    {
+      "t" : 8.201,
+      "text" : "1 = Icon(\"w"
+    },
+    {
+      "t" : 8.203,
+      "text" : "rench\", \"tools\")"
+    },
+    {
+      "t" : 8.287,
+      "text" : "\no2 = OptionC"
+    },
+    {
+      "t" : 8.374,
+      "text" : "ard(\"full"
+    },
+    {
+      "t" : 8.46,
+      "text" : "\", \"Full Over"
+    },
+    {
+      "t" : 8.548,
+      "text" : "haul\", \"De"
+    },
+    {
+      "t" : 8.63,
+      "text" : "ep cl"
+    },
+    {
+      "t" : 8.718,
+      "text" : "ean, l"
+    },
+    {
+      "t" : 8.824,
+      "text" : "ube"
+    },
+    {
+      "t" : 8.948,
+      "text" : ", true"
+    },
+    {
+      "t" : 9.07,
+      "text" : " w"
+    },
+    {
+      "t" : 9.195,
+      "text" : "heels, full in"
+    },
+    {
+      "t" : 9.286,
+      "text" : "spection\", i2)\ni"
+    },
+    {
+      "t" : 9.409,
+      "text" : "2 = Icon(\"sett"
+    },
+    {
+      "t" : 9.503,
+      "text" : "ings\", \"tools\")\no"
+    },
+    {
+      "t" : 9.613,
+      "text" : "3 = OptionCard"
+    },
+    {
+      "t" : 9.722,
+      "text" : "(\"repair\","
+    },
+    {
+      "t" : 9.875,
+      "text" : " \"Rep"
+    },
+    {
+      "t" : 10.113,
+      "text" : "air Only\", \"F"
+    },
+    {
+      "t" : 10.116,
+      "text" : "ix only the re"
+    },
+    {
+      "t" : 10.229,
+      "text" : "ported symptoms\", i3"
+    },
+    {
+      "t" : 10.355,
+      "text" : ")\ni3 = Ic"
+    },
+    {
+      "t" : 10.472,
+      "text" : "on(\"circ"
+    },
+    {
+      "t" : 10.59,
+      "text" : "le-check\", \"tools\")"
+    },
+    {
+      "t" : 10.704,
+      "text" : "\nnotesField = FormContro"
+    },
+    {
+      "t" : 10.818,
+      "text" : "l(\"Additional Notes"
+    },
+    {
+      "t" : 10.967,
+      "text" : "\", TextArea(\"notes"
+    },
+    {
+      "t" : 10.969,
+      "text" : "\", \"An"
+    },
+    {
+      "t" : 11.065,
+      "text" : "ything else we"
+    },
+    {
+      "t" : 11.15,
+      "text" : " should know?\", 4))"
+    },
+    {
+      "t" : 11.229,
+      "text" : "\napprovalField = Form"
+    },
+    {
+      "t" : 11.307,
+      "text" : "Control(\"Estimate"
+    },
+    {
+      "t" : 11.382,
+      "text" : " Approval\", appro"
+    },
+    {
+      "t" : 11.525,
+      "text" : "valB"
+    },
+    {
+      "t" : 11.526,
+      "text" : "ox)"
+    },
+    {
+      "t" : 11.678,
+      "text" : "\napprovalBox = C"
+    },
+    {
+      "t" : 11.681,
+      "text" : "heckBoxGroup"
+    },
+    {
+      "t" : 11.774,
+      "text" : "(\"approval\", [approve"
+    },
+    {
+      "t" : 11.879,
+      "text" : "Item],"
+    },
+    {
+      "t" : 12.02,
+      "text" : " { required: true })\napprove"
+    },
+    {
+      "t" : 12.185,
+      "text" : "Item = CheckBo"
+    },
+    {
+      "t" : 12.331,
+      "text" : "xItem(\"I"
+    },
+    {
+      "t" : 12.478,
+      "text" : " approve an"
+    },
+    {
+      "t" : 12.588,
+      "text" : " estimate before"
+    },
+    {
+      "t" : 12.691,
+      "text" : " work"
+    },
+    {
+      "t" : 12.806,
+      "text" : " begins\", \"We"
+    },
+    {
+      "t" : 12.939,
+      "text" : " will cont"
+    },
+    {
+      "t" : 13.038,
+      "text" : "act you with"
+    },
+    {
+      "t" : 13.133,
+      "text" : " a quote and"
+    },
+    {
+      "t" : 13.232,
+      "text" : " w"
+    },
+    {
+      "t" : 13.339,
+      "text" : "ait for your"
+    },
+    {
+      "t" : 13.577,
+      "text" : " O"
+    },
+    {
+      "t" : 13.581,
+      "text" : "K\", \"approve"
+    },
+    {
+      "t" : 13.764,
+      "text" : "Estimate\", false)"
+    },
+    {
+      "t" : 13.934,
+      "text" : "\nbtns = Buttons(["
+    },
+    {
+      "t" : 14.095,
+      "text" : "Button(\"Submit Int"
+    },
+    {
+      "t" : 14.277,
+      "text" : "ake\", @ToAssist"
+    },
+    {
+      "t" : 14.421,
+      "text" : "ant(\"Submit bic"
+    },
+    {
+      "t" : 14.535,
+      "text" : "ycle repair intake\"),"
+    },
+    {
+      "t" : 14.673,
+      "text" : " \"primary\"), Button(\""
+    },
+    {
+      "t" : 14.826,
+      "text" : "Clear\", @ToA"
+    },
+    {
+      "t" : 15.004,
+      "text" : "ssistant(\"Cl"
+    },
+    {
+      "t" : 15.179,
+      "text" : "ear int"
+    },
+    {
+      "t" : 15.32,
+      "text" : "ake form\"), \"secondary"
+    },
+    {
+      "t" : 15.445,
+      "text" : "\")])"
+    }
+  ],
+  "createdAt" : "2026-11-11T10:55:40Z",
+  "effort" : "low",
+  "format" : "openui-recording",
+  "inputTokens" : 14505,
+  "library" : "react-ui",
+  "model" : "claude-sonnet-5-5",
+  "outputTokens" : 964,
+  "request" : "A bicycle repair intake form with bike model, reported symptoms, service options and an estimate approval checkbox.",
+  "servedBy" : "claude-sonnet-5-5",
+  "stopReason" : "end_turn",
+  "version" : 1
+}

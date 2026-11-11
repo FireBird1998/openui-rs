@@ -1,0 +1,16 @@
+root = Stack([header, intro, form])
+header = TextContent("Request a Correction", "large-heavy")
+intro = Callout("info", "Before you submit", "Please quote the exact passage and include verifiable sources. Our standards team reviews every request.")
+form = Form("correction", btns, [urlField, passageField, issueField, evidenceField, linkField, contactField, emailField, consentField])
+urlField = FormControl("Article URL", Input("articleUrl", "https://example.com/news/article", "url", { required: true, url: true }), "Link to the article containing the error")
+passageField = FormControl("Disputed Passage", TextArea("passage", "Paste the exact text you believe is inaccurate...", 4, { required: true, minLength: 10 }))
+issueField = FormControl("Type of Issue", Select("issueType", issueOpts, "Select...", { required: true }))
+issueOpts = [SelectItem("fact", "Factual error"), SelectItem("quote", "Misquote or misattribution"), SelectItem("context", "Missing context"), SelectItem("name", "Name, title or spelling"), SelectItem("other", "Other")]
+evidenceField = FormControl("Supporting Evidence", TextArea("evidence", "Explain what is correct and why...", 5, { required: true, minLength: 20 }), "Describe documents, data or sources that support your claim")
+linkField = FormControl("Evidence Link", Input("evidenceUrl", "https://source.example.com/document", "url", { url: true }), "Optional link to a source")
+contactField = FormControl("Preferred Contact Method", RadioGroup("contactPref", contactOpts, "email", { required: true }))
+contactOpts = [RadioItem("Email", "We will reply by email", "email"), RadioItem("Phone", "A editor will call you", "phone"), RadioItem("No contact", "Do not contact me about this request", "none")]
+emailField = FormControl("Your Email", Input("email", "you@example.com", "email", { email: true }), "Required if you chose email or phone follow-up")
+consentField = FormControl("Consent", CheckBoxGroup("consent", [consentItem], { required: true }))
+consentItem = CheckBoxItem("I confirm this information is accurate", "My details may be shared with the editorial team", "agree", false)
+btns = Buttons([Button("Submit Request", @ToAssistant("Submit correction request"), "primary"), Button("Cancel", @ToAssistant("Cancel correction request"), "secondary")])

@@ -1,0 +1,452 @@
+{
+  "batchRequest" : {
+    "model" : "haiku",
+    "number" : 4,
+    "request" : "Weekend weather for three cities as cards, each with a high, a low and a short forecast."
+  },
+  "chunks" : [
+    {
+      "t" : 0.563,
+      "text" : "root"
+    },
+    {
+      "t" : 0.68,
+      "text" : " = Stack(["
+    },
+    {
+      "t" : 0.686,
+      "text" : "header"
+    },
+    {
+      "t" : 0.692,
+      "text" : ", cards"
+    },
+    {
+      "t" : 0.711,
+      "text" : "])\nheader = InlineH"
+    },
+    {
+      "t" : 0.721,
+      "text" : "eader(\"Weekend"
+    },
+    {
+      "t" : 0.738,
+      "text" : " Weather\", \"Sa"
+    },
+    {
+      "t" : 0.745,
+      "text" : "turday and Sunday for"
+    },
+    {
+      "t" : 0.762,
+      "text" : "ecast\")\ncards ="
+    },
+    {
+      "t" : 0.768,
+      "text" : " Stack([card"
+    },
+    {
+      "t" : 0.778,
+      "text" : "N"
+    },
+    {
+      "t" : 0.803,
+      "text" : "y"
+    },
+    {
+      "t" : 0.819,
+      "text" : "c, cardL"
+    },
+    {
+      "t" : 0.841,
+      "text" : "on"
+    },
+    {
+      "t" : 0.861,
+      "text" : ", cardT"
+    },
+    {
+      "t" : 0.881,
+      "text" : "ok], \""
+    },
+    {
+      "t" : 0.901,
+      "text" : "row\", \"m"
+    },
+    {
+      "t" : 0.921,
+      "text" : "\", \"st"
+    },
+    {
+      "t" : 0.941,
+      "text" : "retch\", \"start"
+    },
+    {
+      "t" : 0.963,
+      "text" : "\", true)\ncardNy"
+    },
+    {
+      "t" : 0.985,
+      "text" : "c ="
+    },
+    {
+      "t" : 1.004,
+      "text" : " Card([n"
+    },
+    {
+      "t" : 1.023,
+      "text" : "yc"
+    },
+    {
+      "t" : 1.043,
+      "text" : "Header, nycB"
+    },
+    {
+      "t" : 1.064,
+      "text" : "ody],"
+    },
+    {
+      "t" : 1.085,
+      "text" : " \"card"
+    },
+    {
+      "t" : 1.105,
+      "text" : "\", \"column\","
+    },
+    {
+      "t" : 1.124,
+      "text" : " \"s"
+    },
+    {
+      "t" : 1.146,
+      "text" : "\")\nnycHeader ="
+    },
+    {
+      "t" : 1.166,
+      "text" : " CardHeader(\"New York"
+    },
+    {
+      "t" : 1.187,
+      "text" : "\", \"Sat"
+    },
+    {
+      "t" : 1.207,
+      "text" : " &"
+    },
+    {
+      "t" : 1.227,
+      "text" : " Sun\")\nnycB"
+    },
+    {
+      "t" : 1.248,
+      "text" : "ody ="
+    },
+    {
+      "t" : 1.269,
+      "text" : " Stack([n"
+    },
+    {
+      "t" : 1.289,
+      "text" : "ycHi, nycLo"
+    },
+    {
+      "t" : 1.31,
+      "text" : ", nycF"
+    },
+    {
+      "t" : 1.329,
+      "text" : "c"
+    },
+    {
+      "t" : 1.352,
+      "text" : "],"
+    },
+    {
+      "t" : 1.371,
+      "text" : " \"column\","
+    },
+    {
+      "t" : 1.39,
+      "text" : " \"x"
+    },
+    {
+      "t" : 1.411,
+      "text" : "s\")\nnycHi ="
+    },
+    {
+      "t" : 1.451,
+      "text" : " Text(\"number"
+    },
+    {
+      "t" : 1.477,
+      "text" : "\", \"High"
+    },
+    {
+      "t" : 1.495,
+      "text" : ": 72"
+    },
+    {
+      "t" : 1.513,
+      "text" : "°F\", \"\","
+    },
+    {
+      "t" : 1.536,
+      "text" : " \"text"
+    },
+    {
+      "t" : 1.554,
+      "text" : "\", \"lg\")\nnyc"
+    },
+    {
+      "t" : 1.58,
+      "text" : "Lo = Text(\"number\","
+    },
+    {
+      "t" : 1.594,
+      "text" : " \"Low: 58°F"
+    },
+    {
+      "t" : 1.615,
+      "text" : "\", \"\", \"text\", \"md"
+    },
+    {
+      "t" : 1.636,
+      "text" : "\")\nnycFc = T"
+    },
+    {
+      "t" : 1.656,
+      "text" : "extContent(\"Partly c"
+    },
+    {
+      "t" : 1.683,
+      "text" : "loudy, light"
+    },
+    {
+      "t" : 1.703,
+      "text" : " breeze,"
+    },
+    {
+      "t" : 1.721,
+      "text" : " d"
+    },
+    {
+      "t" : 1.739,
+      "text" : "ry both"
+    },
+    {
+      "t" : 1.758,
+      "text" : " days.\","
+    },
+    {
+      "t" : 1.781,
+      "text" : " \"small\")\ncardLon"
+    },
+    {
+      "t" : 1.803,
+      "text" : " = Card([lonHe"
+    },
+    {
+      "t" : 1.822,
+      "text" : "ader, lonBody], \""
+    },
+    {
+      "t" : 1.84,
+      "text" : "card\", \"column\", \"s\")"
+    },
+    {
+      "t" : 1.86,
+      "text" : "\nlonHeader = C"
+    },
+    {
+      "t" : 1.882,
+      "text" : "ardHeader(\"London\", \""
+    },
+    {
+      "t" : 1.903,
+      "text" : "Sat & Sun\")"
+    },
+    {
+      "t" : 1.923,
+      "text" : "\nlonBody = St"
+    },
+    {
+      "t" : 1.943,
+      "text" : "ack([lonHi, l"
+    },
+    {
+      "t" : 1.963,
+      "text" : "onLo, lonFc"
+    },
+    {
+      "t" : 1.987,
+      "text" : "], \"column\", \"xs\")"
+    },
+    {
+      "t" : 2.009,
+      "text" : "\nlonHi = Text"
+    },
+    {
+      "t" : 2.029,
+      "text" : "(\"number\", \"High: 61"
+    },
+    {
+      "t" : 2.044,
+      "text" : "°F\", \"\", \"text\","
+    },
+    {
+      "t" : 2.065,
+      "text" : " \"lg\")\nlonL"
+    },
+    {
+      "t" : 2.088,
+      "text" : "o = Text(\"number\", \""
+    },
+    {
+      "t" : 2.109,
+      "text" : "Low: 49"
+    },
+    {
+      "t" : 2.13,
+      "text" : "°F\", \"\", \"text\","
+    },
+    {
+      "t" : 2.154,
+      "text" : " \"md\")\nlonFc"
+    },
+    {
+      "t" : 2.177,
+      "text" : " = TextContent(\"Over"
+    },
+    {
+      "t" : 2.189,
+      "text" : "cast with"
+    },
+    {
+      "t" : 2.211,
+      "text" : " occ"
+    },
+    {
+      "t" : 2.232,
+      "text" : "asional light"
+    },
+    {
+      "t" : 2.256,
+      "text" : " rain"
+    },
+    {
+      "t" : 2.279,
+      "text" : " Sunday.\", \"small\")"
+    },
+    {
+      "t" : 2.3,
+      "text" : "\ncardTok = Card"
+    },
+    {
+      "t" : 2.323,
+      "text" : "([t"
+    },
+    {
+      "t" : 2.335,
+      "text" : "okHeader, tokB"
+    },
+    {
+      "t" : 2.366,
+      "text" : "ody], \"card\", \"column\","
+    },
+    {
+      "t" : 2.388,
+      "text" : " \"s\")\ntokHe"
+    },
+    {
+      "t" : 2.409,
+      "text" : "ader = CardHeader(\""
+    },
+    {
+      "t" : 2.431,
+      "text" : "Tokyo\", \""
+    },
+    {
+      "t" : 2.443,
+      "text" : "Sat & Sun\")"
+    },
+    {
+      "t" : 2.464,
+      "text" : "\ntokBody = Stack"
+    },
+    {
+      "t" : 2.478,
+      "text" : "([tokHi, tok"
+    },
+    {
+      "t" : 2.503,
+      "text" : "Lo, tokFc],"
+    },
+    {
+      "t" : 2.524,
+      "text" : " \"column\", \"xs\")"
+    },
+    {
+      "t" : 2.545,
+      "text" : "\ntokHi = Text(\""
+    },
+    {
+      "t" : 2.567,
+      "text" : "number\", \"High: 78°"
+    },
+    {
+      "t" : 2.589,
+      "text" : "F\", \"\", \"text\", \""
+    },
+    {
+      "t" : 2.611,
+      "text" : "lg\")\ntokLo"
+    },
+    {
+      "t" : 2.633,
+      "text" : " = Text(\"number\", \""
+    },
+    {
+      "t" : 2.654,
+      "text" : "Low: 63°F\", \""
+    },
+    {
+      "t" : 2.677,
+      "text" : "\", \"text\", \"md\")"
+    },
+    {
+      "t" : 2.7,
+      "text" : "\ntokFc = TextCont"
+    },
+    {
+      "t" : 2.725,
+      "text" : "ent(\"Sunny"
+    },
+    {
+      "t" : 2.748,
+      "text" : " Saturday, cl"
+    },
+    {
+      "t" : 2.762,
+      "text" : "ouds building"
+    },
+    {
+      "t" : 2.784,
+      "text" : " Sunday af"
+    },
+    {
+      "t" : 2.809,
+      "text" : "ternoon.\", \"small\")"
+    }
+  ],
+  "createdAt" : "2026-11-11T10:32:57Z",
+  "effort" : "low",
+  "format" : "openui-recording",
+  "inputTokens" : 14497,
+  "library" : "react-ui",
+  "model" : "claude-haiku-5-5",
+  "outputTokens" : 615,
+  "request" : "Weekend weather for three cities as cards, each with a high, a low and a short forecast.",
+  "servedBy" : "claude-haiku-5-5",
+  "stopReason" : "end_turn",
+  "version" : 1
+}

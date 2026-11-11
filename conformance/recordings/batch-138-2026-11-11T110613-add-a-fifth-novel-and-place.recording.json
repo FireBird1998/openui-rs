@@ -1,0 +1,210 @@
+{
+  "batchRequest" : {
+    "model" : "haiku",
+    "number" : 138,
+    "of" : 70,
+    "request" : "Add a fifth novel and place the editor's recommended book first, with a recommendation tag."
+  },
+  "chunks" : [
+    {
+      "t" : 2.698,
+      "text" : "root"
+    },
+    {
+      "t" : 2.726,
+      "text" : " = Stack([he"
+    },
+    {
+      "t" : 2.755,
+      "text" : "ading, intro, reviews"
+    },
+    {
+      "t" : 3.065,
+      "text" : "])\nre"
+    },
+    {
+      "t" : 3.11,
+      "text" : "views = Stack([r"
+    },
+    {
+      "t" : 3.159,
+      "text" : "5, r1"
+    },
+    {
+      "t" : 3.209,
+      "text" : ", r2, r3, r"
+    },
+    {
+      "t" : 3.258,
+      "text" : "4], \"row\", \"m\","
+    },
+    {
+      "t" : 3.31,
+      "text" : " \"stretch\", \"start\","
+    },
+    {
+      "t" : 3.363,
+      "text" : " true)\nr5 ="
+    },
+    {
+      "t" : 3.417,
+      "text" : " Card([h5, v5,"
+    },
+    {
+      "t" : 3.501,
+      "text" : " x5])\nh5 ="
+    },
+    {
+      "t" : 3.566,
+      "text" : " IconText(ic5,"
+    },
+    {
+      "t" : 3.623,
+      "text" : " \"neutral\", \"l\","
+    },
+    {
+      "t" : 3.693,
+      "text" : " \"The Harbor of"
+    },
+    {
+      "t" : 3.792,
+      "text" : " Glass Birds\", \"by"
+    },
+    {
+      "t" : 3.854,
+      "text" : " Elena Voss\", true"
+    },
+    {
+      "t" : 3.907,
+      "text" : ", \"horizontal\")"
+    },
+    {
+      "t" : 3.991,
+      "text" : "\nic5 = Icon"
+    },
+    {
+      "t" : 4.057,
+      "text" : "(\"feather\", \"books\")"
+    },
+    {
+      "t" : 4.128,
+      "text" : "\nv5 = Tag(\""
+    },
+    {
+      "t" : 4.22,
+      "text" : "Editor's Pick:"
+    },
+    {
+      "t" : 4.302,
+      "text" : " Recommended\", null, \""
+    },
+    {
+      "t" : 4.376,
+      "text" : "md\", \"info\")\nx5"
+    },
+    {
+      "t" : 4.46,
+      "text" : " = MarkDownR"
+    },
+    {
+      "t" : 4.523,
+      "text" : "enderer(\"*\\\""
+    },
+    {
+      "t" : 4.59,
+      "text" : "Voss tur"
+    },
+    {
+      "t" : 4.652,
+      "text" : "ns a sh"
+    },
+    {
+      "t" : 4.717,
+      "text" : "u"
+    },
+    {
+      "t" : 4.78,
+      "text" : "ttered f"
+    },
+    {
+      "t" : 4.783,
+      "text" : "ishing town"
+    },
+    {
+      "t" : 4.902,
+      "text" : " into a m"
+    },
+    {
+      "t" : 4.905,
+      "text" : "\\"
+    },
+    {
+      "t" : 5.002,
+      "text" : "u00e9n"
+    },
+    {
+      "t" : 5.095,
+      "text" : "age of long"
+    },
+    {
+      "t" : 5.165,
+      "text" : "ing"
+    },
+    {
+      "t" : 5.238,
+      "text" : " and bir"
+    },
+    {
+      "t" : 5.303,
+      "text" : "dsong, and every ch"
+    },
+    {
+      "t" : 5.384,
+      "text" : "apter "
+    },
+    {
+      "t" : 5.454,
+      "text" : "ends on a qu"
+    },
+    {
+      "t" : 5.52,
+      "text" : "iet,"
+    },
+    {
+      "t" : 5.579,
+      "text" : " dev"
+    },
+    {
+      "t" : 5.657,
+      "text" : "astating note"
+    },
+    {
+      "t" : 5.726,
+      "text" : ".\\\"*\\n\\n"
+    },
+    {
+      "t" : 5.792,
+      "text" : "Reviewer: Edit"
+    },
+    {
+      "t" : 5.858,
+      "text" : "or's Des"
+    },
+    {
+      "t" : 5.94,
+      "text" : "k\")"
+    }
+  ],
+  "createdAt" : "2026-11-11T11:06:13Z",
+  "effort" : "low",
+  "format" : "openui-recording",
+  "inputTokens" : 15737,
+  "library" : "react-ui",
+  "model" : "claude-haiku-5-5",
+  "outputTokens" : 613,
+  "patchOf" : "root = Stack([heading, intro, reviews])\nheading = TextContent(\"New Novels: Book Review Roundup\", \"large-heavy\")\nintro = TextContent(\"Four new novels this season, with reviewer verdicts and short excerpts.\")\nreviews = Stack([r1, r2, r3, r4], \"row\", \"m\", \"stretch\", \"start\", true)\nr1 = Card([h1, v1, x1])\nh1 = IconText(ic1, \"neutral\", \"l\", \"The Glass Orchard\", \"by Miriam Hale\", true, \"horizontal\")\nic1 = Icon(\"book-open\", \"books\")\nv1 = Tag(\"Verdict: Recommended\", null, \"md\", \"success\")\nx1 = MarkDownRenderer(\"*\\\"Hale writes orchards the way memory writes childhood: slowly, and with the fruit already rotting at the edges.\\\"*\\n\\nReviewer: Dana Ortiz\")\nr2 = Card([h2, v2, x2])\nh2 = IconText(ic2, \"neutral\", \"l\", \"Salt and Static\", \"by Owen Price\", true, \"horizontal\")\nic2 = Icon(\"radio\", \"media\")\nv2 = Tag(\"Verdict: Mixed\", null, \"md\", \"warning\")\nx2 = MarkDownRenderer(\"*\\\"A thrilling premise buried under too many radio transmissions. The final chapter earns its patience.\\\"*\\n\\nReviewer: Sam Whitfield\")\nr3 = Card([h3, v3, x3])\nh3 = IconText(ic3, \"neutral\", \"l\", \"Low Tide Lanterns\", \"by Priya Nair\", true, \"horizontal\")\nic3 = Icon(\"ship\", \"travel\")\nv3 = Tag(\"Verdict: Highly Recommended\", null, \"md\", \"success\")\nx3 = MarkDownRenderer(\"*\\\"Nair's coastal village breathes on every page, and her dialogue lands like tide on sand.\\\"*\\n\\nReviewer: Lena Ruiz\")\nr4 = Card([h4, v4, x4])\nh4 = IconText(ic4, \"neutral\", \"l\", \"The Cartographer's Daughter\", \"by Tomas Eder\", true, \"horizontal\")\nic4 = Icon(\"map\", \"travel\")\nv4 = Tag(\"Verdict: Not for Me\", null, \"md\", \"danger\")\nx4 = MarkDownRenderer(\"*\\\"Beautifully researched, but the pacing stalls for hundreds of pages. Admirers of slow historical fiction will disagree.\\\"*\\n\\nReviewer: Marcus Lee\")",
+  "request" : "Add a fifth novel and place the editor's recommended book first, with a recommendation tag.",
+  "servedBy" : "claude-haiku-5-5",
+  "stopReason" : "end_turn",
+  "version" : 1
+}

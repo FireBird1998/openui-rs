@@ -1,0 +1,2 @@
+root = Stack([banner])
+banner = Callout("error", "Breaking: City-wide power outage", "Latest update: 3:42 PM. Crews are working to restore power across downtown and surrounding neighborhoods. Estimated restoration time is still being assessed.", null)

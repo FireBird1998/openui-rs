@@ -1,0 +1,608 @@
+{
+  "batchRequest" : {
+    "model" : "haiku",
+    "number" : 102,
+    "request" : "A wedding seating planner summary with tables, guest names, meal preferences and unassigned guests shown in a separate card."
+  },
+  "chunks" : [
+    {
+      "t" : 0.752,
+      "text" : "root = Stack(["
+    },
+    {
+      "t" : 0.869,
+      "text" : "header"
+    },
+    {
+      "t" : 0.894,
+      "text" : ", tabl"
+    },
+    {
+      "t" : 0.946,
+      "text" : "esRow, unassigned"
+    },
+    {
+      "t" : 1.003,
+      "text" : "Card])\nheader = Inl"
+    },
+    {
+      "t" : 1.074,
+      "text" : "ineHeader(\"Wed"
+    },
+    {
+      "t" : 1.1,
+      "text" : "ding Seating Planner\","
+    },
+    {
+      "t" : 1.102,
+      "text" : " \"Summary of table"
+    },
+    {
+      "t" : 1.127,
+      "text" : " assignments and meal prefer"
+    },
+    {
+      "t" : 1.161,
+      "text" : "ences\")\ntablesRow"
+    },
+    {
+      "t" : 1.199,
+      "text" : " = Stack([tableC"
+    },
+    {
+      "t" : 1.233,
+      "text" : "ard1, tableCard2"
+    },
+    {
+      "t" : 1.263,
+      "text" : ", tableCard3], \""
+    },
+    {
+      "t" : 1.315,
+      "text" : "row\", \"m"
+    },
+    {
+      "t" : 1.356,
+      "text" : "\", \""
+    },
+    {
+      "t" : 1.447,
+      "text" : "st"
+    },
+    {
+      "t" : 1.45,
+      "text" : "retch\", \"start\", true"
+    },
+    {
+      "t" : 1.492,
+      "text" : ")\ntableCard1 "
+    },
+    {
+      "t" : 1.605,
+      "text" : "= Card(["
+    },
+    {
+      "t" : 1.606,
+      "text" : "CardHeader(\"Table"
+    },
+    {
+      "t" : 1.642,
+      "text" : " 1\","
+    },
+    {
+      "t" : 1.679,
+      "text" : " \"Family\""
+    },
+    {
+      "t" : 1.714,
+      "text" : "), gu"
+    },
+    {
+      "t" : 1.751,
+      "text" : "estTable1, m"
+    },
+    {
+      "t" : 1.789,
+      "text" : "ealT"
+    },
+    {
+      "t" : 1.832,
+      "text" : "ags1])"
+    },
+    {
+      "t" : 1.881,
+      "text" : "\ntableCard2 ="
+    },
+    {
+      "t" : 1.975,
+      "text" : " Card([CardHeader"
+    },
+    {
+      "t" : 2.017,
+      "text" : "(\"Table 2\", \""
+    },
+    {
+      "t" : 2.057,
+      "text" : "Friends\"), guestTable"
+    },
+    {
+      "t" : 2.093,
+      "text" : "2, mealTags2])"
+    },
+    {
+      "t" : 2.132,
+      "text" : "\ntableCard3 ="
+    },
+    {
+      "t" : 2.174,
+      "text" : " Card([CardHeader"
+    },
+    {
+      "t" : 2.233,
+      "text" : "(\"Table 3\", \""
+    },
+    {
+      "t" : 2.281,
+      "text" : "Work"
+    },
+    {
+      "t" : 2.323,
+      "text" : " Colleagues\"), gu"
+    },
+    {
+      "t" : 2.414,
+      "text" : "estTable3, mealT"
+    },
+    {
+      "t" : 2.457,
+      "text" : "ags3])\nguestTable"
+    },
+    {
+      "t" : 2.505,
+      "text" : "1 = Table([Col"
+    },
+    {
+      "t" : 2.537,
+      "text" : "(\"Guest\","
+    },
+    {
+      "t" : 2.556,
+      "text" : " t"
+    },
+    {
+      "t" : 2.606,
+      "text" : "1"
+    },
+    {
+      "t" : 2.653,
+      "text" : "Names), Col(\"Meal"
+    },
+    {
+      "t" : 2.695,
+      "text" : "\", t1Meals)"
+    },
+    {
+      "t" : 2.739,
+      "text" : "])\nguestTable2 "
+    },
+    {
+      "t" : 2.785,
+      "text" : "= Table([Col(\""
+    },
+    {
+      "t" : 2.856,
+      "text" : "Guest\", t2Names),"
+    },
+    {
+      "t" : 2.939,
+      "text" : " Col(\"Meal\", t"
+    },
+    {
+      "t" : 3.067,
+      "text" : "2Meals)])\ngu"
+    },
+    {
+      "t" : 3.069,
+      "text" : "estTable3 = Table"
+    },
+    {
+      "t" : 3.119,
+      "text" : "([Col(\"Guest\","
+    },
+    {
+      "t" : 3.169,
+      "text" : " t3Names), Col(\""
+    },
+    {
+      "t" : 3.217,
+      "text" : "Meal\", t3Me"
+    },
+    {
+      "t" : 3.274,
+      "text" : "als)])\nt1Names"
+    },
+    {
+      "t" : 3.327,
+      "text" : " = [\"E"
+    },
+    {
+      "t" : 3.39,
+      "text" : "leanor H"
+    },
+    {
+      "t" : 3.451,
+      "text" : "art\", \"Michael H"
+    },
+    {
+      "t" : 3.545,
+      "text" : "art\", \"Gr"
+    },
+    {
+      "t" : 3.547,
+      "text" : "ace H"
+    },
+    {
+      "t" : 3.631,
+      "text" : "art\", \"Sam"
+    },
+    {
+      "t" : 3.721,
+      "text" : "uel Ow"
+    },
+    {
+      "t" : 3.781,
+      "text" : "ens"
+    },
+    {
+      "t" : 3.859,
+      "text" : "\"]\nt1Meals"
+    },
+    {
+      "t" : 3.927,
+      "text" : " = [\"V"
+    },
+    {
+      "t" : 4.061,
+      "text" : "egetarian\", \"Stand"
+    },
+    {
+      "t" : 4.127,
+      "text" : "ard\", \"G"
+    },
+    {
+      "t" : 4.199,
+      "text" : "luten-free\", \"Stand"
+    },
+    {
+      "t" : 4.292,
+      "text" : "ard\"]\nt"
+    },
+    {
+      "t" : 4.349,
+      "text" : "2Names = [\"Pri"
+    },
+    {
+      "t" : 4.414,
+      "text" : "ya Pat"
+    },
+    {
+      "t" : 4.485,
+      "text" : "el\", \"Li"
+    },
+    {
+      "t" : 4.555,
+      "text" : "am Ch"
+    },
+    {
+      "t" : 4.623,
+      "text" : "en\", \"S"
+    },
+    {
+      "t" : 4.723,
+      "text" : "of"
+    },
+    {
+      "t" : 4.772,
+      "text" : "ia Ross"
+    },
+    {
+      "t" : 4.805,
+      "text" : "i\", \"No"
+    },
+    {
+      "t" : 4.854,
+      "text" : "ah Br"
+    },
+    {
+      "t" : 4.855,
+      "text" : "oo"
+    },
+    {
+      "t" : 4.923,
+      "text" : "ks\"]\nt2Me"
+    },
+    {
+      "t" : 4.988,
+      "text" : "als = [\"Vegan"
+    },
+    {
+      "t" : 5.108,
+      "text" : "\", \"Standard\", \""
+    },
+    {
+      "t" : 5.11,
+      "text" : "Standard\", \"P"
+    },
+    {
+      "t" : 5.171,
+      "text" : "escatarian\"]\nt"
+    },
+    {
+      "t" : 5.243,
+      "text" : "3Names = [\"Da"
+    },
+    {
+      "t" : 5.3,
+      "text" : "niel Re"
+    },
+    {
+      "t" : 5.368,
+      "text" : "yes\", \"H"
+    },
+    {
+      "t" : 5.453,
+      "text" : "annah K"
+    },
+    {
+      "t" : 5.507,
+      "text" : "im\", \"O"
+    },
+    {
+      "t" : 5.571,
+      "text" : "liver Gr"
+    },
+    {
+      "t" : 5.665,
+      "text" : "ant"
+    },
+    {
+      "t" : 5.667,
+      "text" : "\", \"Ch"
+    },
+    {
+      "t" : 5.749,
+      "text" : "loe Mart"
+    },
+    {
+      "t" : 5.827,
+      "text" : "in\"]\nt3Me"
+    },
+    {
+      "t" : 5.895,
+      "text" : "als = [\"Standard\","
+    },
+    {
+      "t" : 5.97,
+      "text" : " \"Hal"
+    },
+    {
+      "t" : 6.047,
+      "text" : "al\", \"Standard\", \""
+    },
+    {
+      "t" : 6.12,
+      "text" : "Vegetarian\"]"
+    },
+    {
+      "t" : 6.179,
+      "text" : "\nmealTags1 ="
+    },
+    {
+      "t" : 6.243,
+      "text" : " TagBlock([\""
+    },
+    {
+      "t" : 6.39,
+      "text" : "Vegetarian x"
+    },
+    {
+      "t" : 6.495,
+      "text" : "1\", \"Gluten-"
+    },
+    {
+      "t" : 6.578,
+      "text" : "free x1\", \"Standard"
+    },
+    {
+      "t" : 6.67,
+      "text" : " x2"
+    },
+    {
+      "t" : 6.746,
+      "text" : "\"],"
+    },
+    {
+      "t" : 6.748,
+      "text" : " \"sm\")\nmealT"
+    },
+    {
+      "t" : 6.824,
+      "text" : "ags2 = TagBl"
+    },
+    {
+      "t" : 6.888,
+      "text" : "ock([\"Vegan x"
+    },
+    {
+      "t" : 6.971,
+      "text" : "1\", \"Pescatar"
+    },
+    {
+      "t" : 7.071,
+      "text" : "ian x1\", \"Standard"
+    },
+    {
+      "t" : 7.155,
+      "text" : " x2\"], \"sm\")"
+    },
+    {
+      "t" : 7.239,
+      "text" : "\nmealTags3 ="
+    },
+    {
+      "t" : 7.333,
+      "text" : " TagBlock([\""
+    },
+    {
+      "t" : 7.422,
+      "text" : "Halal x1\", \"V"
+    },
+    {
+      "t" : 7.486,
+      "text" : "egetarian x1\", \""
+    },
+    {
+      "t" : 7.551,
+      "text" : "Standard x2\"], \""
+    },
+    {
+      "t" : 7.639,
+      "text" : "sm\")\nunassigned"
+    },
+    {
+      "t" : 7.733,
+      "text" : "Card = Card([Card"
+    },
+    {
+      "t" : 7.821,
+      "text" : "Header(\"Unassig"
+    },
+    {
+      "t" : 7.92,
+      "text" : "ned Guests\", \"Not"
+    },
+    {
+      "t" : 8.01,
+      "text" : " yet se"
+    },
+    {
+      "t" : 8.089,
+      "text" : "ated\""
+    },
+    {
+      "t" : 8.189,
+      "text" : "), un"
+    },
+    {
+      "t" : 8.299,
+      "text" : "assignedTable, unass"
+    },
+    {
+      "t" : 8.398,
+      "text" : "ignedTags])\nunass"
+    },
+    {
+      "t" : 8.504,
+      "text" : "ignedTable = Table(["
+    },
+    {
+      "t" : 8.571,
+      "text" : "Col(\"Guest\", un"
+    },
+    {
+      "t" : 8.737,
+      "text" : "N"
+    },
+    {
+      "t" : 8.739,
+      "text" : "ames), Col(\"Meal"
+    },
+    {
+      "t" : 8.906,
+      "text" : "\", unMeals)])"
+    },
+    {
+      "t" : 8.908,
+      "text" : "\nunN"
+    },
+    {
+      "t" : 9.003,
+      "text" : "ames = [\""
+    },
+    {
+      "t" : 9.088,
+      "text" : "Ava Th"
+    },
+    {
+      "t" : 9.243,
+      "text" : "ompson\", \""
+    },
+    {
+      "t" : 9.244,
+      "text" : "Ethan Wal"
+    },
+    {
+      "t" : 9.362,
+      "text" : "s"
+    },
+    {
+      "t" : 9.453,
+      "text" : "h\", \"Mia Nov"
+    },
+    {
+      "t" : 9.57,
+      "text" : "ak\"]\nunM"
+    },
+    {
+      "t" : 9.67,
+      "text" : "eals = [\"Standard"
+    },
+    {
+      "t" : 9.761,
+      "text" : "\", \"V"
+    },
+    {
+      "t" : 9.832,
+      "text" : "egan\", \"Gluten"
+    },
+    {
+      "t" : 9.937,
+      "text" : "-free\"]\nunassign"
+    },
+    {
+      "t" : 10.034,
+      "text" : "edTags = TagBl"
+    },
+    {
+      "t" : 10.255,
+      "text" : "ock([\"Stand"
+    },
+    {
+      "t" : 10.257,
+      "text" : "ard x1\", \"Veg"
+    },
+    {
+      "t" : 10.353,
+      "text" : "an x1\", \"Glu"
+    },
+    {
+      "t" : 10.519,
+      "text" : "ten-free x1\"], \""
+    },
+    {
+      "t" : 10.521,
+      "text" : "sm\")"
+    }
+  ],
+  "createdAt" : "2026-11-11T10:55:28Z",
+  "effort" : "low",
+  "format" : "openui-recording",
+  "inputTokens" : 14507,
+  "library" : "react-ui",
+  "model" : "claude-haiku-5-5",
+  "outputTokens" : 892,
+  "request" : "A wedding seating planner summary with tables, guest names, meal preferences and unassigned guests shown in a separate card.",
+  "servedBy" : "claude-haiku-5-5",
+  "stopReason" : "end_turn",
+  "version" : 1
+}

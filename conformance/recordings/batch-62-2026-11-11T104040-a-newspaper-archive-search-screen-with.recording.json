@@ -1,0 +1,928 @@
+{
+  "batchRequest" : {
+    "model" : "haiku",
+    "number" : 62,
+    "request" : "A newspaper archive search screen with a keyword field, year select and four dated issue result cards."
+  },
+  "chunks" : [
+    {
+      "t" : 0.936,
+      "text" : "root"
+    },
+    {
+      "t" : 1.166,
+      "text" : " = Stack([header"
+    },
+    {
+      "t" : 1.191,
+      "text" : ", searchFor"
+    },
+    {
+      "t" : 1.261,
+      "text" : "m, resultsH"
+    },
+    {
+      "t" : 1.303,
+      "text" : "eader, resultC"
+    },
+    {
+      "t" : 1.413,
+      "text" : "ards])\nheader = Inline"
+    },
+    {
+      "t" : 1.452,
+      "text" : "Header(\"Newspa"
+    },
+    {
+      "t" : 1.493,
+      "text" : "per Archive\","
+    },
+    {
+      "t" : 1.522,
+      "text" : " \"Search histor"
+    },
+    {
+      "t" : 1.551,
+      "text" : "ical issues by ke"
+    },
+    {
+      "t" : 1.596,
+      "text" : "yword and year\")\nsearch"
+    },
+    {
+      "t" : 1.626,
+      "text" : "Form ="
+    },
+    {
+      "t" : 1.627,
+      "text" : " Form(\"arch"
+    },
+    {
+      "t" : 1.652,
+      "text" : "iveSearch\", sear"
+    },
+    {
+      "t" : 1.686,
+      "text" : "chButtons, [ke"
+    },
+    {
+      "t" : 1.716,
+      "text" : "ywordField, yearField])"
+    },
+    {
+      "t" : 1.754,
+      "text" : "\nkeywordField = Form"
+    },
+    {
+      "t" : 1.838,
+      "text" : "Control(\"Key"
+    },
+    {
+      "t" : 1.872,
+      "text" : "word\", ke"
+    },
+    {
+      "t" : 1.905,
+      "text" : "ywordInput,"
+    },
+    {
+      "t" : 1.945,
+      "text" : " \"Try"
+    },
+    {
+      "t" : 1.996,
+      "text" : " a"
+    },
+    {
+      "t" : 2.031,
+      "text" : " person, place, or event"
+    },
+    {
+      "t" : 2.076,
+      "text" : "\")\nke"
+    },
+    {
+      "t" : 2.108,
+      "text" : "ywordInput = Input(\""
+    },
+    {
+      "t" : 2.139,
+      "text" : "keyword\", \"e"
+    },
+    {
+      "t" : 2.173,
+      "text" : ".g. rail"
+    },
+    {
+      "t" : 2.216,
+      "text" : "way str"
+    },
+    {
+      "t" : 2.221,
+      "text" : "ike\", \"text\", {"
+    },
+    {
+      "t" : 2.559,
+      "text" : " required: true,"
+    },
+    {
+      "t" : 2.627,
+      "text" : " minLength: 2 })"
+    },
+    {
+      "t" : 2.629,
+      "text" : "\nyearField = FormContro"
+    },
+    {
+      "t" : 2.674,
+      "text" : "l(\"Year\", yearS"
+    },
+    {
+      "t" : 2.767,
+      "text" : "elect)"
+    },
+    {
+      "t" : 2.811,
+      "text" : "\nyearS"
+    },
+    {
+      "t" : 2.858,
+      "text" : "elect = Select(\"year"
+    },
+    {
+      "t" : 2.95,
+      "text" : "\", yearIt"
+    },
+    {
+      "t" : 2.952,
+      "text" : "ems, \"Select a"
+    },
+    {
+      "t" : 3.044,
+      "text" : " year\", { required: true })"
+    },
+    {
+      "t" : 3.139,
+      "text" : "\nyearItems = [S"
+    },
+    {
+      "t" : 3.353,
+      "text" : "electItem(\"1932"
+    },
+    {
+      "t" : 3.424,
+      "text" : "\", \"1"
+    },
+    {
+      "t" : 3.678,
+      "text" : "932\"), SelectItem"
+    },
+    {
+      "t" : 3.718,
+      "text" : "(\"1945"
+    },
+    {
+      "t" : 3.763,
+      "text" : "\", \"1945\"), Sel"
+    },
+    {
+      "t" : 3.832,
+      "text" : "ectItem(\"1963"
+    },
+    {
+      "t" : 3.833,
+      "text" : "\", \"1963\"), Sel"
+    },
+    {
+      "t" : 3.878,
+      "text" : "ectItem(\"1978"
+    },
+    {
+      "t" : 3.93,
+      "text" : "\", \"1978\"), Sel"
+    },
+    {
+      "t" : 3.983,
+      "text" : "ectItem(\"1989\", \""
+    },
+    {
+      "t" : 4.04,
+      "text" : "1989\")]\nsearchBut"
+    },
+    {
+      "t" : 4.091,
+      "text" : "tons = Buttons(["
+    },
+    {
+      "t" : 4.146,
+      "text" : "Button(\"Search"
+    },
+    {
+      "t" : 4.198,
+      "text" : " Archive\", @ToAss"
+    },
+    {
+      "t" : 4.239,
+      "text" : "istant(\"Search the archive"
+    },
+    {
+      "t" : 4.285,
+      "text" : "\""
+    },
+    {
+      "t" : 4.426,
+      "text" : "), \"primary\"), Button"
+    },
+    {
+      "t" : 4.478,
+      "text" : "(\"Clear\", @To"
+    },
+    {
+      "t" : 4.526,
+      "text" : "Assistant(\"Clear"
+    },
+    {
+      "t" : 4.589,
+      "text" : " arch"
+    },
+    {
+      "t" : 4.682,
+      "text" : "ive search\"), \"secondary"
+    },
+    {
+      "t" : 4.684,
+      "text" : "\")])\nresultsHe"
+    },
+    {
+      "t" : 4.751,
+      "text" : "ader = InlineHeader"
+    },
+    {
+      "t" : 4.811,
+      "text" : "(\"Results\", \"Four"
+    },
+    {
+      "t" : 4.865,
+      "text" : " issues matched"
+    },
+    {
+      "t" : 4.94,
+      "text" : " your search\")\nresultCards"
+    },
+    {
+      "t" : 5.012,
+      "text" : " = CompositeCardB"
+    },
+    {
+      "t" : 5.017,
+      "text" : "lock([r1, r2"
+    },
+    {
+      "t" : 5.066,
+      "text" : ", r3, r4])"
+    },
+    {
+      "t" : 5.128,
+      "text" : "\nr1 = Composite"
+    },
+    {
+      "t" : 5.197,
+      "text" : "CardItem(\"iss"
+    },
+    {
+      "t" : 5.258,
+      "text" : "ue-1932"
+    },
+    {
+      "t" : 5.331,
+      "text" : "-03-14\", r1header"
+    },
+    {
+      "t" : 5.41,
+      "text" : ", [r1body], r1"
+    },
+    {
+      "t" : 5.515,
+      "text" : "footer)\nr1header ="
+    },
+    {
+      "t" : 5.559,
+      "text" : " IconText(r1icon"
+    },
+    {
+      "t" : 5.609,
+      "text" : ", \"neutral\", \"m"
+    },
+    {
+      "t" : 5.668,
+      "text" : "\", \"The"
+    },
+    {
+      "t" : 5.727,
+      "text" : " Mor"
+    },
+    {
+      "t" : 6.066,
+      "text" : "ning Chronicle\", \""
+    },
+    {
+      "t" : 6.118,
+      "text" : "14"
+    },
+    {
+      "t" : 6.12,
+      "text" : " March 1932\", true,"
+    },
+    {
+      "t" : 6.202,
+      "text" : " \"horizontal\")\nr"
+    },
+    {
+      "t" : 6.307,
+      "text" : "1icon = Icon(\""
+    },
+    {
+      "t" : 6.371,
+      "text" : "newspaper\", \"media"
+    },
+    {
+      "t" : 6.417,
+      "text" : "\")\nr1body = Text"
+    },
+    {
+      "t" : 6.502,
+      "text" : "Cont"
+    },
+    {
+      "t" : 6.585,
+      "text" : "ent(\"Front"
+    },
+    {
+      "t" : 6.641,
+      "text" : " page co"
+    },
+    {
+      "t" : 6.708,
+      "text" : "verage of a"
+    },
+    {
+      "t" : 6.799,
+      "text" : " reg"
+    },
+    {
+      "t" : 6.896,
+      "text" : "ional railway strike and"
+    },
+    {
+      "t" : 6.997,
+      "text" : " the"
+    },
+    {
+      "t" : 7.086,
+      "text" : " city's response"
+    },
+    {
+      "t" : 7.261,
+      "text" : " to r"
+    },
+    {
+      "t" : 7.262,
+      "text" : "ising fre"
+    },
+    {
+      "t" : 7.335,
+      "text" : "ight del"
+    },
+    {
+      "t" : 7.397,
+      "text" : "ays.\")\nr1footer"
+    },
+    {
+      "t" : 7.462,
+      "text" : " = { price: BoldText"
+    },
+    {
+      "t" : 7.523,
+      "text" : "(\"text\", \"Page 1"
+    },
+    {
+      "t" : 7.613,
+      "text" : "\"), button: r1btn"
+    },
+    {
+      "t" : 7.751,
+      "text" : " }\nr1btn ="
+    },
+    {
+      "t" : 7.752,
+      "text" : " Button(\"View Issue\", @"
+    },
+    {
+      "t" : 7.829,
+      "text" : "ToAssistant(\""
+    },
+    {
+      "t" : 7.913,
+      "text" : "Open"
+    },
+    {
+      "t" : 8.001,
+      "text" : " the 14"
+    },
+    {
+      "t" : 8.101,
+      "text" : " March 1932 issue"
+    },
+    {
+      "t" : 8.26,
+      "text" : " of"
+    },
+    {
+      "t" : 8.261,
+      "text" : " The Morning Chronic"
+    },
+    {
+      "t" : 8.331,
+      "text" : "le\"), \"secondary\")"
+    },
+    {
+      "t" : 8.399,
+      "text" : "\nr2 = Composit"
+    },
+    {
+      "t" : 8.458,
+      "text" : "eCardItem(\"issue"
+    },
+    {
+      "t" : 8.529,
+      "text" : "-1945-08"
+    },
+    {
+      "t" : 8.622,
+      "text" : "-16"
+    },
+    {
+      "t" : 8.668,
+      "text" : "\", r2header, [r2"
+    },
+    {
+      "t" : 8.815,
+      "text" : "body], r2footer)"
+    },
+    {
+      "t" : 8.852,
+      "text" : "\nr2header = IconText("
+    },
+    {
+      "t" : 8.932,
+      "text" : "r2icon, \"neut"
+    },
+    {
+      "t" : 8.999,
+      "text" : "ral\", \"m\", \"The"
+    },
+    {
+      "t" : 9.061,
+      "text" : " Evening Stand"
+    },
+    {
+      "t" : 9.168,
+      "text" : "ard\", \"16 August 1"
+    },
+    {
+      "t" : 9.253,
+      "text" : "945\", true, \"horizont"
+    },
+    {
+      "t" : 9.401,
+      "text" : "al\")\nr2icon ="
+    },
+    {
+      "t" : 9.402,
+      "text" : " Icon(\"newspaper"
+    },
+    {
+      "t" : 9.538,
+      "text" : "\", \"media\")\nr2body"
+    },
+    {
+      "t" : 9.632,
+      "text" : " = TextContent(\"Vict"
+    },
+    {
+      "t" : 9.717,
+      "text" : "ory cel"
+    },
+    {
+      "t" : 9.925,
+      "text" : "ebrations f"
+    },
+    {
+      "t" : 9.926,
+      "text" : "ill the second"
+    },
+    {
+      "t" : 10.129,
+      "text" : " page,"
+    },
+    {
+      "t" : 10.264,
+      "text" : " with street"
+    },
+    {
+      "t" : 10.388,
+      "text" : " sc"
+    },
+    {
+      "t" : 10.461,
+      "text" : "enes and a column on"
+    },
+    {
+      "t" : 10.565,
+      "text" : " post"
+    },
+    {
+      "t" : 10.649,
+      "text" : "war ration"
+    },
+    {
+      "t" : 10.739,
+      "text" : "ing.\")\nr2footer"
+    },
+    {
+      "t" : 10.801,
+      "text" : " = { price: BoldText"
+    },
+    {
+      "t" : 10.88,
+      "text" : "(\"text\", \"Page"
+    },
+    {
+      "t" : 10.882,
+      "text" : " 2\"), button: r2"
+    },
+    {
+      "t" : 10.968,
+      "text" : "btn }\nr2btn"
+    },
+    {
+      "t" : 11.045,
+      "text" : " = Button(\"View Issue"
+    },
+    {
+      "t" : 11.178,
+      "text" : "\", @ToAssistant"
+    },
+    {
+      "t" : 11.18,
+      "text" : "(\"Open the 16 August"
+    },
+    {
+      "t" : 11.261,
+      "text" : " 1945 issue of The"
+    },
+    {
+      "t" : 11.402,
+      "text" : " Evening Standard\"),"
+    },
+    {
+      "t" : 11.404,
+      "text" : " \"secondary\")\nr3"
+    },
+    {
+      "t" : 11.482,
+      "text" : " = CompositeCard"
+    },
+    {
+      "t" : 11.581,
+      "text" : "Item(\"issue-1963"
+    },
+    {
+      "t" : 11.656,
+      "text" : "-11-22"
+    },
+    {
+      "t" : 11.783,
+      "text" : "\", r3header, [r3"
+    },
+    {
+      "t" : 11.784,
+      "text" : "body], r3footer)"
+    },
+    {
+      "t" : 11.868,
+      "text" : "\nr3header = IconText("
+    },
+    {
+      "t" : 11.946,
+      "text" : "r3icon, \"neut"
+    },
+    {
+      "t" : 12.088,
+      "text" : "ral\", \"m\", \"The"
+    },
+    {
+      "t" : 12.116,
+      "text" : " Daily "
+    },
+    {
+      "t" : 12.185,
+      "text" : "Ledger\", \"22"
+    },
+    {
+      "t" : 12.296,
+      "text" : " November 1963\", true,"
+    },
+    {
+      "t" : 12.442,
+      "text" : " \"horizontal\")\nr"
+    },
+    {
+      "t" : 12.556,
+      "text" : "3icon = Icon(\""
+    },
+    {
+      "t" : 12.673,
+      "text" : "newspaper\", \"media\")"
+    },
+    {
+      "t" : 12.786,
+      "text" : "\nr3body = TextCont"
+    },
+    {
+      "t" : 12.884,
+      "text" : "ent(\"Special"
+    },
+    {
+      "t" : 13.009,
+      "text" : " edition coverage with"
+    },
+    {
+      "t" : 13.067,
+      "text" : " a"
+    },
+    {
+      "t" : 13.165,
+      "text" : " full-width"
+    },
+    {
+      "t" : 13.244,
+      "text" : " head"
+    },
+    {
+      "t" : 13.333,
+      "text" : "line,"
+    },
+    {
+      "t" : 13.592,
+      "text" : " re"
+    },
+    {
+      "t" : 13.785,
+      "text" : "ader"
+    },
+    {
+      "t" : 13.787,
+      "text" : " let"
+    },
+    {
+      "t" : 13.895,
+      "text" : "ters,"
+    },
+    {
+      "t" : 14.034,
+      "text" : " and a late"
+    },
+    {
+      "t" : 14.123,
+      "text" : " b"
+    },
+    {
+      "t" : 14.125,
+      "text" : "ulletin in"
+    },
+    {
+      "t" : 14.212,
+      "text" : "serted on page"
+    },
+    {
+      "t" : 14.306,
+      "text" : " 1.\")\nr3foot"
+    },
+    {
+      "t" : 14.45,
+      "text" : "er = { price: Bold"
+    },
+    {
+      "t" : 14.578,
+      "text" : "Text(\"text\", \"Page"
+    },
+    {
+      "t" : 14.672,
+      "text" : " 1\""
+    },
+    {
+      "t" : 14.796,
+      "text" : "), button: r3btn }"
+    },
+    {
+      "t" : 14.799,
+      "text" : "\nr3btn = Button"
+    },
+    {
+      "t" : 14.9,
+      "text" : "(\"View Issue\", @"
+    },
+    {
+      "t" : 15.028,
+      "text" : "ToAssistant(\"Open"
+    },
+    {
+      "t" : 15.153,
+      "text" : " the 22 November 1963"
+    },
+    {
+      "t" : 15.434,
+      "text" : " issue of The Daily"
+    },
+    {
+      "t" : 15.726,
+      "text" : " Ledger\"), \"sec"
+    },
+    {
+      "t" : 16.049,
+      "text" : "ondary\")\nr4 ="
+    },
+    {
+      "t" : 16.051,
+      "text" : " CompositeCardItem"
+    },
+    {
+      "t" : 16.162,
+      "text" : "(\"issue-1989"
+    },
+    {
+      "t" : 16.373,
+      "text" : "-06"
+    },
+    {
+      "t" : 16.662,
+      "text" : "-05"
+    },
+    {
+      "t" : 17.71,
+      "text" : "\", r4header, [r4"
+    },
+    {
+      "t" : 17.986,
+      "text" : "body], r4footer)"
+    },
+    {
+      "t" : 18.215,
+      "text" : "\nr4header = IconText("
+    },
+    {
+      "t" : 18.816,
+      "text" : "r4icon, \"neut"
+    },
+    {
+      "t" : 18.924,
+      "text" : "ral\", \"m\", \"The"
+    },
+    {
+      "t" : 19.03,
+      "text" : " Har"
+    },
+    {
+      "t" : 19.143,
+      "text" : "bor"
+    },
+    {
+      "t" : 19.281,
+      "text" : " Post"
+    },
+    {
+      "t" : 19.393,
+      "text" : "\", \"5"
+    },
+    {
+      "t" : 19.499,
+      "text" : " June 1989\", true,"
+    },
+    {
+      "t" : 19.582,
+      "text" : " \"horizontal\")\nr"
+    },
+    {
+      "t" : 19.674,
+      "text" : "4icon = Icon(\""
+    },
+    {
+      "t" : 19.77,
+      "text" : "newspaper\", \"media\")"
+    },
+    {
+      "t" : 19.867,
+      "text" : "\nr4body = TextCont"
+    },
+    {
+      "t" : 20.009,
+      "text" : "ent(\"Business"
+    },
+    {
+      "t" : 20.107,
+      "text" : " section analysis of sh"
+    },
+    {
+      "t" : 20.203,
+      "text" : "ipping"
+    },
+    {
+      "t" : 20.328,
+      "text" : " volumes and a"
+    },
+    {
+      "t" : 20.524,
+      "text" : " fe"
+    },
+    {
+      "t" : 20.679,
+      "text" : "ature on the"
+    },
+    {
+      "t" : 20.783,
+      "text" : " new"
+    },
+    {
+      "t" : 20.913,
+      "text" : " wa"
+    },
+    {
+      "t" : 21.041,
+      "text" : "terfront development"
+    },
+    {
+      "t" : 21.161,
+      "text" : " pl"
+    },
+    {
+      "t" : 21.283,
+      "text" : "ans.\")\nr4footer"
+    },
+    {
+      "t" : 21.409,
+      "text" : " = { price: BoldText"
+    },
+    {
+      "t" : 21.514,
+      "text" : "(\"text\", \"Page 7"
+    },
+    {
+      "t" : 21.632,
+      "text" : "\"), button: r4btn"
+    },
+    {
+      "t" : 21.75,
+      "text" : " }"
+    },
+    {
+      "t" : 21.859,
+      "text" : "\nr4btn = Button"
+    },
+    {
+      "t" : 21.971,
+      "text" : "(\"View Issue\", @"
+    },
+    {
+      "t" : 22.091,
+      "text" : "ToAssistant(\"Open"
+    },
+    {
+      "t" : 22.214,
+      "text" : " the 5 June 1989"
+    },
+    {
+      "t" : 22.403,
+      "text" : " issue of The Harb"
+    },
+    {
+      "t" : 22.582,
+      "text" : "or Post\"), \"second"
+    },
+    {
+      "t" : 22.778,
+      "text" : "ary\")"
+    }
+  ],
+  "createdAt" : "2026-11-11T10:40:40Z",
+  "effort" : "low",
+  "format" : "openui-recording",
+  "inputTokens" : 14498,
+  "library" : "react-ui",
+  "model" : "claude-haiku-5-5",
+  "outputTokens" : 1316,
+  "request" : "A newspaper archive search screen with a keyword field, year select and four dated issue result cards.",
+  "servedBy" : "claude-haiku-5-5",
+  "stopReason" : "end_turn",
+  "version" : 1
+}

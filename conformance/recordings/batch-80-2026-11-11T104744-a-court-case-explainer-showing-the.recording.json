@@ -1,0 +1,1684 @@
+{
+  "batchRequest" : {
+    "model" : "haiku",
+    "number" : 80,
+    "request" : "A court-case explainer showing the parties, procedural timeline, disputed questions and a glossary of legal terms using fictional details."
+  },
+  "chunks" : [
+    {
+      "t" : 0.708,
+      "text" : "root"
+    },
+    {
+      "t" : 0.888,
+      "text" : " = Stack(["
+    },
+    {
+      "t" : 0.931,
+      "text" : "ca"
+    },
+    {
+      "t" : 1.112,
+      "text" : "seH"
+    },
+    {
+      "t" : 1.157,
+      "text" : "eader, part"
+    },
+    {
+      "t" : 1.229,
+      "text" : "iesH"
+    },
+    {
+      "t" : 1.25,
+      "text" : "eader, part"
+    },
+    {
+      "t" : 1.291,
+      "text" : "iesBlock, timel"
+    },
+    {
+      "t" : 1.319,
+      "text" : "ineHeader, timeline"
+    },
+    {
+      "t" : 1.32,
+      "text" : "Tab"
+    },
+    {
+      "t" : 1.347,
+      "text" : "s, iss"
+    },
+    {
+      "t" : 1.376,
+      "text" : "uesHeader, issu"
+    },
+    {
+      "t" : 1.405,
+      "text" : "esAccordion, gloss"
+    },
+    {
+      "t" : 1.446,
+      "text" : "aryHeader, gloss"
+    },
+    {
+      "t" : 1.525,
+      "text" : "a"
+    },
+    {
+      "t" : 1.556,
+      "text" : "ryTable,"
+    },
+    {
+      "t" : 1.598,
+      "text" : " disclaimer"
+    },
+    {
+      "t" : 1.601,
+      "text" : "])\ncaseHeader ="
+    },
+    {
+      "t" : 1.635,
+      "text" : " C"
+    },
+    {
+      "t" : 1.672,
+      "text" : "ardHeader(\"H"
+    },
+    {
+      "t" : 1.701,
+      "text" : "oll"
+    },
+    {
+      "t" : 1.745,
+      "text" : "is"
+    },
+    {
+      "t" : 1.778,
+      "text" : " Ren"
+    },
+    {
+      "t" : 1.819,
+      "text" : "ew"
+    },
+    {
+      "t" : 1.871,
+      "text" : "ables"
+    },
+    {
+      "t" : 1.911,
+      "text" : " v. Mar"
+    },
+    {
+      "t" : 1.954,
+      "text" : "r"
+    },
+    {
+      "t" : 1.988,
+      "text" : "ow Log"
+    },
+    {
+      "t" : 2.047,
+      "text" : "istics\","
+    },
+    {
+      "t" : 2.088,
+      "text" : " \"Fictional case ·"
+    },
+    {
+      "t" : 2.116,
+      "text" : " Super"
+    },
+    {
+      "t" : 2.148,
+      "text" : "ior Court of E"
+    },
+    {
+      "t" : 2.182,
+      "text" : "astb"
+    },
+    {
+      "t" : 2.213,
+      "text" : "rook ·"
+    },
+    {
+      "t" : 2.244,
+      "text" : " Contract d"
+    },
+    {
+      "t" : 2.246,
+      "text" : "ispute\")\npartiesH"
+    },
+    {
+      "t" : 2.279,
+      "text" : "eader = InlineHe"
+    },
+    {
+      "t" : 2.312,
+      "text" : "ader(\"Parties\", \"The"
+    },
+    {
+      "t" : 2.364,
+      "text" : " people"
+    },
+    {
+      "t" : 2.365,
+      "text" : " and"
+    },
+    {
+      "t" : 2.402,
+      "text" : " entities involved\")\nparti"
+    },
+    {
+      "t" : 2.438,
+      "text" : "esBlock = St"
+    },
+    {
+      "t" : 2.477,
+      "text" : "ack([pl"
+    },
+    {
+      "t" : 2.519,
+      "text" : "aintiffC"
+    },
+    {
+      "t" : 2.572,
+      "text" : "ard, def"
+    },
+    {
+      "t" : 2.64,
+      "text" : "endantCard,"
+    },
+    {
+      "t" : 2.642,
+      "text" : " coun"
+    },
+    {
+      "t" : 2.686,
+      "text" : "sel"
+    },
+    {
+      "t" : 2.728,
+      "text" : "C"
+    },
+    {
+      "t" : 2.822,
+      "text" : "ard], \""
+    },
+    {
+      "t" : 2.863,
+      "text" : "row\", \"m"
+    },
+    {
+      "t" : 2.902,
+      "text" : "\", \"st"
+    },
+    {
+      "t" : 2.942,
+      "text" : "retch\", \"start"
+    },
+    {
+      "t" : 2.985,
+      "text" : "\", true)\nplainti"
+    },
+    {
+      "t" : 3.026,
+      "text" : "ffCard = Card(["
+    },
+    {
+      "t" : 3.064,
+      "text" : "pl"
+    },
+    {
+      "t" : 3.109,
+      "text" : "aintiffIn"
+    },
+    {
+      "t" : 3.149,
+      "text" : "fo, plaintiff"
+    },
+    {
+      "t" : 3.187,
+      "text" : "List"
+    },
+    {
+      "t" : 3.236,
+      "text" : "])\nplaintiffIn"
+    },
+    {
+      "t" : 3.281,
+      "text" : "fo = IconText("
+    },
+    {
+      "t" : 3.325,
+      "text" : "plaintiffIcon"
+    },
+    {
+      "t" : 3.371,
+      "text" : ", \"info"
+    },
+    {
+      "t" : 3.414,
+      "text" : "\", \"m\", \"Holl"
+    },
+    {
+      "t" : 3.455,
+      "text" : "is Renewables L"
+    },
+    {
+      "t" : 3.498,
+      "text" : "LC\", \"Plaint"
+    },
+    {
+      "t" : 3.54,
+      "text" : "iff ·"
+    },
+    {
+      "t" : 3.583,
+      "text" : " Solar energ"
+    },
+    {
+      "t" : 3.63,
+      "text" : "y develop"
+    },
+    {
+      "t" : 3.679,
+      "text" : "er\", true, \"horizont"
+    },
+    {
+      "t" : 3.729,
+      "text" : "al\")\nplaintiff"
+    },
+    {
+      "t" : 4.11,
+      "text" : "Icon = Icon(\""
+    },
+    {
+      "t" : 4.113,
+      "text" : "sun\","
+    },
+    {
+      "t" : 4.17,
+      "text" : " \"energy\")\nplaint"
+    },
+    {
+      "t" : 4.23,
+      "text" : "iffList = EntityList"
+    },
+    {
+      "t" : 4.308,
+      "text" : "([{left: \"Role"
+    },
+    {
+      "t" : 4.418,
+      "text" : "\", right: \"Bu"
+    },
+    {
+      "t" : 4.654,
+      "text" : "yer under"
+    },
+    {
+      "t" : 4.903,
+      "text" : " sup"
+    },
+    {
+      "t" : 4.909,
+      "text" : "ply agreement\"}, {"
+    },
+    {
+      "t" : 5.062,
+      "text" : "left: \"Location\", right:"
+    },
+    {
+      "t" : 5.251,
+      "text" : " \"Br"
+    },
+    {
+      "t" : 5.408,
+      "text" : "ight"
+    },
+    {
+      "t" : 5.488,
+      "text" : "f"
+    },
+    {
+      "t" : 5.554,
+      "text" : "ield, E"
+    },
+    {
+      "t" : 5.617,
+      "text" : "astbrook\"}, {"
+    },
+    {
+      "t" : 5.686,
+      "text" : "left: \"Coun"
+    },
+    {
+      "t" : 5.751,
+      "text" : "sel\", right: \"D"
+    },
+    {
+      "t" : 5.811,
+      "text" : "ana Ok"
+    },
+    {
+      "t" : 5.869,
+      "text" : "afor\"}], \"default"
+    },
+    {
+      "t" : 5.927,
+      "text" : "\")\ndefendantCard ="
+    },
+    {
+      "t" : 5.994,
+      "text" : " Card([defendantInf"
+    },
+    {
+      "t" : 6.28,
+      "text" : "o, defendantList])"
+    },
+    {
+      "t" : 8.527,
+      "text" : "\ndefendantInfo = I"
+    },
+    {
+      "t" : 8.721,
+      "text" : "conText(defendantIc"
+    },
+    {
+      "t" : 9.035,
+      "text" : "on, \"warning\", \"m"
+    },
+    {
+      "t" : 9.144,
+      "text" : "\", \"Marrow Log"
+    },
+    {
+      "t" : 9.23,
+      "text" : "istics"
+    },
+    {
+      "t" : 9.307,
+      "text" : " Inc.\", \"Defend"
+    },
+    {
+      "t" : 9.365,
+      "text" : "ant · Freight and"
+    },
+    {
+      "t" : 9.477,
+      "text" : " war"
+    },
+    {
+      "t" : 9.479,
+      "text" : "ehousing\", true, \"hor"
+    },
+    {
+      "t" : 9.539,
+      "text" : "izontal\")\ndefendant"
+    },
+    {
+      "t" : 9.603,
+      "text" : "Icon = Icon(\""
+    },
+    {
+      "t" : 9.667,
+      "text" : "truck\", \"trans"
+    },
+    {
+      "t" : 9.738,
+      "text" : "port\")\ndefendantList ="
+    },
+    {
+      "t" : 9.81,
+      "text" : " EntityList([{left:"
+    },
+    {
+      "t" : 9.873,
+      "text" : " \"Role\", right: \""
+    },
+    {
+      "t" : 9.932,
+      "text" : "Se"
+    },
+    {
+      "t" : 9.996,
+      "text" : "ller and"
+    },
+    {
+      "t" : 10.059,
+      "text" : " car"
+    },
+    {
+      "t" : 10.117,
+      "text" : "rier of"
+    },
+    {
+      "t" : 10.259,
+      "text" : " panel sh"
+    },
+    {
+      "t" : 10.333,
+      "text" : "ipments\"}, {left:"
+    },
+    {
+      "t" : 10.419,
+      "text" : " \"Location\", right: \""
+    },
+    {
+      "t" : 10.495,
+      "text" : "Port "
+    },
+    {
+      "t" : 10.624,
+      "text" : "Ashford"
+    },
+    {
+      "t" : 10.626,
+      "text" : ", Eastbrook\""
+    },
+    {
+      "t" : 10.687,
+      "text" : "}, {left: \"Coun"
+    },
+    {
+      "t" : 10.744,
+      "text" : "sel\", right: \"R"
+    },
+    {
+      "t" : 10.8,
+      "text" : "af"
+    },
+    {
+      "t" : 10.865,
+      "text" : "ael Qu"
+    },
+    {
+      "t" : 10.923,
+      "text" : "ill"
+    },
+    {
+      "t" : 11.142,
+      "text" : "\"}], \"default\")\ncoun"
+    },
+    {
+      "t" : 11.219,
+      "text" : "selCard = Card([jud"
+    },
+    {
+      "t" : 11.319,
+      "text" : "g"
+    },
+    {
+      "t" : 11.387,
+      "text" : "eInfo, judge"
+    },
+    {
+      "t" : 11.49,
+      "text" : "List])\njudgeInf"
+    },
+    {
+      "t" : 11.588,
+      "text" : "o = IconText(judg"
+    },
+    {
+      "t" : 11.763,
+      "text" : "eIcon, \"ne"
+    },
+    {
+      "t" : 11.852,
+      "text" : "utral\", \"m\", \""
+    },
+    {
+      "t" : 11.855,
+      "text" : "Hon. Mi"
+    },
+    {
+      "t" : 11.956,
+      "text" : "riam T"
+    },
+    {
+      "t" : 12.061,
+      "text" : "all"
+    },
+    {
+      "t" : 12.136,
+      "text" : "is"
+    },
+    {
+      "t" : 12.218,
+      "text" : "\", \"Presiding jud"
+    },
+    {
+      "t" : 12.322,
+      "text" : "ge\", true, \"hor"
+    },
+    {
+      "t" : 12.496,
+      "text" : "izontal\")\njudge"
+    },
+    {
+      "t" : 12.497,
+      "text" : "Icon = Icon(\""
+    },
+    {
+      "t" : 12.789,
+      "text" : "gavel\", \"leg"
+    },
+    {
+      "t" : 13.55,
+      "text" : "al\")\njudgeList ="
+    },
+    {
+      "t" : 16.845,
+      "text" : " EntityList([{left:"
+    },
+    {
+      "t" : 20.295,
+      "text" : " \"Court\", right: \""
+    },
+    {
+      "t" : 21.397,
+      "text" : "Superior Court of East"
+    },
+    {
+      "t" : 22.349,
+      "text" : "brook\"}, {left"
+    },
+    {
+      "t" : 22.745,
+      "text" : ": \"Docket No"
+    },
+    {
+      "t" : 23.158,
+      "text" : ".\", right: \"E"
+    },
+    {
+      "t" : 23.986,
+      "text" : "B"
+    },
+    {
+      "t" : 25.08,
+      "text" : "-24"
+    },
+    {
+      "t" : 25.392,
+      "text" : "-01"
+    },
+    {
+      "t" : 25.84,
+      "text" : "187"
+    },
+    {
+      "t" : 26.443,
+      "text" : "\"}, {left: \""
+    },
+    {
+      "t" : 26.948,
+      "text" : "Filed\", right: \"March"
+    },
+    {
+      "t" : 28.462,
+      "text" : " 4"
+    },
+    {
+      "t" : 34.537,
+      "text" : ", 2024\"}], \""
+    },
+    {
+      "t" : 35.975,
+      "text" : "default\")\ntimelineHe"
+    },
+    {
+      "t" : 36.587,
+      "text" : "ader = InlineHeader"
+    },
+    {
+      "t" : 36.86,
+      "text" : "(\"Procedural Time"
+    },
+    {
+      "t" : 38.291,
+      "text" : "line\", \"Key"
+    },
+    {
+      "t" : 38.578,
+      "text" : " events"
+    },
+    {
+      "t" : 38.906,
+      "text" : " from fil"
+    },
+    {
+      "t" : 39.175,
+      "text" : "ing to "
+    },
+    {
+      "t" : 39.749,
+      "text" : "ruling\")\ntimelineT"
+    },
+    {
+      "t" : 40.111,
+      "text" : "abs = Tabs(["
+    },
+    {
+      "t" : 40.393,
+      "text" : "tabEv"
+    },
+    {
+      "t" : 40.612,
+      "text" : "ents,"
+    },
+    {
+      "t" : 41.123,
+      "text" : " tabDe"
+    },
+    {
+      "t" : 41.959,
+      "text" : "adlines])\ntabE"
+    },
+    {
+      "t" : 43.107,
+      "text" : "vents = TabItem(\""
+    },
+    {
+      "t" : 43.275,
+      "text" : "events\", \"Events\", ["
+    },
+    {
+      "t" : 43.416,
+      "text" : "e"
+    },
+    {
+      "t" : 43.582,
+      "text" : "ventS"
+    },
+    {
+      "t" : 43.776,
+      "text" : "teps])\ne"
+    },
+    {
+      "t" : 43.953,
+      "text" : "ventSteps = Steps"
+    },
+    {
+      "t" : 44.18,
+      "text" : "([s"
+    },
+    {
+      "t" : 44.37,
+      "text" : "1, s2, s3,"
+    },
+    {
+      "t" : 44.521,
+      "text" : " s4, s5])\ns"
+    },
+    {
+      "t" : 44.728,
+      "text" : "1 = StepsItem"
+    },
+    {
+      "t" : 44.977,
+      "text" : "(\"Mar 4, "
+    },
+    {
+      "t" : 45.227,
+      "text" : "2024 "
+    },
+    {
+      "t" : 45.749,
+      "text" : "· Complaint filed\","
+    },
+    {
+      "t" : 46.211,
+      "text" : " \"H"
+    },
+    {
+      "t" : 47.071,
+      "text" : "ollis al"
+    },
+    {
+      "t" : 47.998,
+      "text" : "leges"
+    },
+    {
+      "t" : 48.556,
+      "text" : " Marrow fail"
+    },
+    {
+      "t" : 48.937,
+      "text" : "ed to deliver "
+    },
+    {
+      "t" : 49.212,
+      "text" : "40"
+    },
+    {
+      "t" : 49.471,
+      "text" : "% of cont"
+    },
+    {
+      "t" : 49.82,
+      "text" : "racted panel sh"
+    },
+    {
+      "t" : 50.044,
+      "text" : "ipments."
+    },
+    {
+      "t" : 50.344,
+      "text" : "\")\ns2 = Step"
+    },
+    {
+      "t" : 50.654,
+      "text" : "sItem(\"Apr "
+    },
+    {
+      "t" : 51.055,
+      "text" : "18, 2024 ·"
+    },
+    {
+      "t" : 51.393,
+      "text" : " Answer and"
+    },
+    {
+      "t" : 51.72,
+      "text" : " counterclaim\", \""
+    },
+    {
+      "t" : 52.255,
+      "text" : "Marrow den"
+    },
+    {
+      "t" : 53.528,
+      "text" : "ies bre"
+    },
+    {
+      "t" : 53.817,
+      "text" : "ach and coun"
+    },
+    {
+      "t" : 54.494,
+      "text" : "terclaims for"
+    },
+    {
+      "t" : 54.863,
+      "text" : " unpaid stor"
+    },
+    {
+      "t" : 55.241,
+      "text" : "age fees.\")\ns3"
+    },
+    {
+      "t" : 55.809,
+      "text" : " = StepsItem(\""
+    },
+    {
+      "t" : 56.079,
+      "text" : "Jul"
+    },
+    {
+      "t" : 56.224,
+      "text" : " 9"
+    },
+    {
+      "t" : 56.446,
+      "text" : ", 2024 · Disc"
+    },
+    {
+      "t" : 56.625,
+      "text" : "overy clos"
+    },
+    {
+      "t" : 56.853,
+      "text" : "es"
+    },
+    {
+      "t" : 57.136,
+      "text" : "\", \"Par"
+    },
+    {
+      "t" : 57.314,
+      "text" : "ties ex"
+    },
+    {
+      "t" : 57.503,
+      "text" : "change sh"
+    },
+    {
+      "t" : 57.756,
+      "text" : "ipping man"
+    },
+    {
+      "t" : 57.965,
+      "text" : "ifests,"
+    },
+    {
+      "t" : 58.295,
+      "text" : " em"
+    },
+    {
+      "t" : 58.563,
+      "text" : "ails and warehouse logs"
+    },
+    {
+      "t" : 58.934,
+      "text" : ".\")\ns4 = St"
+    },
+    {
+      "t" : 59.659,
+      "text" : "epsItem(\"O"
+    },
+    {
+      "t" : 59.875,
+      "text" : "ct 22"
+    },
+    {
+      "t" : 60.244,
+      "text" : ", 2024 · Summ"
+    },
+    {
+      "t" : 60.552,
+      "text" : "ary judgment mot"
+    },
+    {
+      "t" : 61.007,
+      "text" : "ion\", \"Hollis mo"
+    },
+    {
+      "t" : 61.01,
+      "text" : "ves for partial jud"
+    },
+    {
+      "t" : 61.499,
+      "text" : "gment on the del"
+    },
+    {
+      "t" : 61.779,
+      "text" : "ivery sh"
+    },
+    {
+      "t" : 62.004,
+      "text" : "ortfall.\")\ns5"
+    },
+    {
+      "t" : 62.315,
+      "text" : " = StepsItem(\""
+    },
+    {
+      "t" : 62.513,
+      "text" : "J"
+    },
+    {
+      "t" : 62.847,
+      "text" : "an 15"
+    },
+    {
+      "t" : 63.017,
+      "text" : ", 2025 · "
+    },
+    {
+      "t" : 63.284,
+      "text" : "Ruling\","
+    },
+    {
+      "t" : 63.573,
+      "text" : " \"Court"
+    },
+    {
+      "t" : 63.865,
+      "text" : " gr"
+    },
+    {
+      "t" : 64.049,
+      "text" : "ants partial jud"
+    },
+    {
+      "t" : 64.226,
+      "text" : "gment on"
+    },
+    {
+      "t" : 64.608,
+      "text" : " liability;"
+    },
+    {
+      "t" : 65.081,
+      "text" : " dam"
+    },
+    {
+      "t" : 65.439,
+      "text" : "ages set"
+    },
+    {
+      "t" : 65.451,
+      "text" : " for trial.\")\ntab"
+    },
+    {
+      "t" : 65.783,
+      "text" : "Deadlines = T"
+    },
+    {
+      "t" : 66.022,
+      "text" : "abItem(\"deadlines"
+    },
+    {
+      "t" : 66.305,
+      "text" : "\", \"De"
+    },
+    {
+      "t" : 66.644,
+      "text" : "adlines\", [deadl"
+    },
+    {
+      "t" : 67.01,
+      "text" : "ineTable])\ndeadl"
+    },
+    {
+      "t" : 67.22,
+      "text" : "ineTable = Table(["
+    },
+    {
+      "t" : 67.453,
+      "text" : "Col(\"Deadline\","
+    },
+    {
+      "t" : 67.892,
+      "text" : " deadline"
+    },
+    {
+      "t" : 68.253,
+      "text" : "N"
+    },
+    {
+      "t" : 68.497,
+      "text" : "ames), Col(\"Date\","
+    },
+    {
+      "t" : 68.88,
+      "text" : " de"
+    },
+    {
+      "t" : 69.42,
+      "text" : "adlineDates), Col"
+    },
+    {
+      "t" : 69.636,
+      "text" : "(\"Status\", deadline"
+    },
+    {
+      "t" : 70.133,
+      "text" : "Status"
+    },
+    {
+      "t" : 70.135,
+      "text" : ", \"string"
+    },
+    {
+      "t" : 70.398,
+      "text" : "\")])\ndeadlineN"
+    },
+    {
+      "t" : 70.678,
+      "text" : "ames = [\"Exp"
+    },
+    {
+      "t" : 70.919,
+      "text" : "ert dis"
+    },
+    {
+      "t" : 71.455,
+      "text" : "closures"
+    },
+    {
+      "t" : 71.951,
+      "text" : "\", \"P"
+    },
+    {
+      "t" : 72.368,
+      "text" : "retrial con"
+    },
+    {
+      "t" : 72.787,
+      "text" : "ference\", \"Damages trial"
+    },
+    {
+      "t" : 73.218,
+      "text" : "\""
+    },
+    {
+      "t" : 73.686,
+      "text" : "]\ndeadlineDates"
+    },
+    {
+      "t" : 73.688,
+      "text" : " = [\"M"
+    },
+    {
+      "t" : 74.152,
+      "text" : "ar 3"
+    },
+    {
+      "t" : 74.449,
+      "text" : ", 2025\", \"May"
+    },
+    {
+      "t" : 74.708,
+      "text" : " 12"
+    },
+    {
+      "t" : 75.221,
+      "text" : ", 2025\", \"J"
+    },
+    {
+      "t" : 75.223,
+      "text" : "un 30"
+    },
+    {
+      "t" : 75.579,
+      "text" : ", 2025\"]\nde"
+    },
+    {
+      "t" : 75.924,
+      "text" : "adlineStatus = "
+    },
+    {
+      "t" : 76.549,
+      "text" : "[\"Compl"
+    },
+    {
+      "t" : 76.947,
+      "text" : "ete\", \"Sc"
+    },
+    {
+      "t" : 77.167,
+      "text" : "heduled\", \"Sche"
+    },
+    {
+      "t" : 77.626,
+      "text" : "duled\"]\nissues"
+    },
+    {
+      "t" : 77.904,
+      "text" : "Header = InlineH"
+    },
+    {
+      "t" : 78.19,
+      "text" : "eader(\"Disputed"
+    },
+    {
+      "t" : 78.495,
+      "text" : " Questions\", \"What"
+    },
+    {
+      "t" : 78.936,
+      "text" : " the court"
+    },
+    {
+      "t" : 79.158,
+      "text" : " must decide\")\nissues"
+    },
+    {
+      "t" : 79.509,
+      "text" : "Accordion = Accord"
+    },
+    {
+      "t" : 79.882,
+      "text" : "ion([iss"
+    },
+    {
+      "t" : 80.291,
+      "text" : "ue1, issue2, iss"
+    },
+    {
+      "t" : 80.532,
+      "text" : "ue3])\nissue1 "
+    },
+    {
+      "t" : 80.867,
+      "text" : "= AccordionItem(\""
+    },
+    {
+      "t" : 81.166,
+      "text" : "iss"
+    },
+    {
+      "t" : 81.612,
+      "text" : "ue-"
+    },
+    {
+      "t" : 81.88,
+      "text" : "1"
+    },
+    {
+      "t" : 82.609,
+      "text" : "\", \"1"
+    },
+    {
+      "t" : 82.966,
+      "text" : ". Did the"
+    },
+    {
+      "t" : 83.601,
+      "text" : " cont"
+    },
+    {
+      "t" : 83.865,
+      "text" : "ract require"
+    },
+    {
+      "t" : 84.061,
+      "text" : " delivery of"
+    },
+    {
+      "t" : 84.24,
+      "text" : " 100"
+    },
+    {
+      "t" : 84.537,
+      "text" : "% of panels"
+    },
+    {
+      "t" : 84.743,
+      "text" : "?\", issue1text"
+    },
+    {
+      "t" : 84.986,
+      "text" : ")\nissue1text = T"
+    },
+    {
+      "t" : 85.196,
+      "text" : "extContent(\"Hollis"
+    },
+    {
+      "t" : 85.458,
+      "text" : " argues the sup"
+    },
+    {
+      "t" : 85.774,
+      "text" : "ply agreement's"
+    },
+    {
+      "t" : 86.028,
+      "text" : " del"
+    },
+    {
+      "t" : 86.429,
+      "text" : "ivery sch"
+    },
+    {
+      "t" : 86.873,
+      "text" : "edule was m"
+    },
+    {
+      "t" : 87.171,
+      "text" : "andatory. Marrow"
+    },
+    {
+      "t" : 87.412,
+      "text" : " contends the clause all"
+    },
+    {
+      "t" : 87.761,
+      "text" : "owed short"
+    },
+    {
+      "t" : 88.162,
+      "text" : "falls cov"
+    },
+    {
+      "t" : 88.44,
+      "text" : "ered by a"
+    },
+    {
+      "t" : 89.168,
+      "text" : " force"
+    },
+    {
+      "t" : 89.587,
+      "text" : " majeure prov"
+    },
+    {
+      "t" : 90.108,
+      "text" : "ision.\")\nissue2 "
+    },
+    {
+      "t" : 90.662,
+      "text" : "= AccordionItem(\""
+    },
+    {
+      "t" : 91.71,
+      "text" : "issue-2\", \"2."
+    },
+    {
+      "t" : 92.045,
+      "text" : " Does"
+    },
+    {
+      "t" : 92.574,
+      "text" : " the"
+    },
+    {
+      "t" : 92.942,
+      "text" : " force majeure clause apply"
+    },
+    {
+      "t" : 93.172,
+      "text" : " to port"
+    },
+    {
+      "t" : 93.376,
+      "text" : " cong"
+    },
+    {
+      "t" : 93.515,
+      "text" : "estion?\", issue2text"
+    },
+    {
+      "t" : 93.648,
+      "text" : ")\nissue2text = T"
+    },
+    {
+      "t" : 93.89,
+      "text" : "extContent(\"Marrow"
+    },
+    {
+      "t" : 93.891,
+      "text" : " cla"
+    },
+    {
+      "t" : 94.031,
+      "text" : "ims a"
+    },
+    {
+      "t" : 94.177,
+      "text" : " 9"
+    },
+    {
+      "t" : 94.308,
+      "text" : "-week port back"
+    },
+    {
+      "t" : 94.517,
+      "text" : "log q"
+    },
+    {
+      "t" : 94.518,
+      "text" : "ualifies. Hollis"
+    },
+    {
+      "t" : 94.64,
+      "text" : " respon"
+    },
+    {
+      "t" : 94.784,
+      "text" : "ds that cong"
+    },
+    {
+      "t" : 94.916,
+      "text" : "estion was fo"
+    },
+    {
+      "t" : 95.146,
+      "text" : "reseeable and ther"
+    },
+    {
+      "t" : 95.149,
+      "text" : "efore excluded."
+    },
+    {
+      "t" : 95.321,
+      "text" : "\")\nissue3 = A"
+    },
+    {
+      "t" : 95.751,
+      "text" : "ccordionItem(\"issue"
+    },
+    {
+      "t" : 95.758,
+      "text" : "-3\", \"3. Are"
+    },
+    {
+      "t" : 96.386,
+      "text" : " storage fees rec"
+    },
+    {
+      "t" : 96.591,
+      "text" : "overable as"
+    },
+    {
+      "t" : 96.758,
+      "text" : " dam"
+    },
+    {
+      "t" : 96.868,
+      "text" : "ages?\", issue3text)"
+    },
+    {
+      "t" : 97.014,
+      "text" : "\nissue3text = Text"
+    },
+    {
+      "t" : 97.174,
+      "text" : "Content(\"Mar"
+    },
+    {
+      "t" : 97.368,
+      "text" : "row's counterclaim"
+    },
+    {
+      "t" : 97.526,
+      "text" : " seeks fees for"
+    },
+    {
+      "t" : 97.676,
+      "text" : " warehousing del"
+    },
+    {
+      "t" : 97.822,
+      "text" : "ay"
+    },
+    {
+      "t" : 97.993,
+      "text" : "ed panels. The court must dec"
+    },
+    {
+      "t" : 98.162,
+      "text" : "ide whether those"
+    },
+    {
+      "t" : 98.354,
+      "text" : " cost"
+    },
+    {
+      "t" : 98.521,
+      "text" : "s were ca"
+    },
+    {
+      "t" : 98.686,
+      "text" : "used by"
+    },
+    {
+      "t" : 98.986,
+      "text" : " Hollis's own"
+    },
+    {
+      "t" : 98.989,
+      "text" : " delay"
+    },
+    {
+      "t" : 99.15,
+      "text" : " in"
+    },
+    {
+      "t" : 99.315,
+      "text" : " p"
+    },
+    {
+      "t" : 99.51,
+      "text" : "ickup.\")\nglossa"
+    },
+    {
+      "t" : 99.657,
+      "text" : "ryHeader = In"
+    },
+    {
+      "t" : 99.81,
+      "text" : "lineHeader(\"Gl"
+    },
+    {
+      "t" : 99.95,
+      "text" : "ossary\", \"Common"
+    },
+    {
+      "t" : 100.108,
+      "text" : " legal terms used"
+    },
+    {
+      "t" : 100.219,
+      "text" : " in this case\")\nglossa"
+    },
+    {
+      "t" : 100.376,
+      "text" : "ryTable = Table(["
+    },
+    {
+      "t" : 100.643,
+      "text" : "Col(\"Term\", glossa"
+    },
+    {
+      "t" : 100.645,
+      "text" : "ryTerms), Col(\""
+    },
+    {
+      "t" : 100.794,
+      "text" : "Me"
+    },
+    {
+      "t" : 101.024,
+      "text" : "aning\", glossaryM"
+    },
+    {
+      "t" : 101.209,
+      "text" : "eanings)])\ngloss"
+    },
+    {
+      "t" : 101.446,
+      "text" : "aryTerms = [\""
+    },
+    {
+      "t" : 101.532,
+      "text" : "Pl"
+    },
+    {
+      "t" : 101.606,
+      "text" : "aintiff\", \"Def"
+    },
+    {
+      "t" : 101.738,
+      "text" : "endant\", \"Summary jud"
+    },
+    {
+      "t" : 101.739,
+      "text" : "gment\", \"Force"
+    },
+    {
+      "t" : 101.802,
+      "text" : " majeure\", \"Coun"
+    },
+    {
+      "t" : 101.865,
+      "text" : "terclaim\", \"Disc"
+    },
+    {
+      "t" : 102.07,
+      "text" : "overy\"]\nglossa"
+    },
+    {
+      "t" : 102.275,
+      "text" : "ryMeanings = [\""
+    },
+    {
+      "t" : 102.483,
+      "text" : "The party who"
+    },
+    {
+      "t" : 102.681,
+      "text" : " brings a"
+    },
+    {
+      "t" : 103.075,
+      "text" : " lawsuit.\", \""
+    },
+    {
+      "t" : 103.077,
+      "text" : "The party being"
+    },
+    {
+      "t" : 103.365,
+      "text" : " sued or answering"
+    },
+    {
+      "t" : 103.554,
+      "text" : " the"
+    },
+    {
+      "t" : 103.772,
+      "text" : " cla"
+    },
+    {
+      "t" : 103.958,
+      "text" : "im.\", \"A"
+    },
+    {
+      "t" : 104.184,
+      "text" : " ruling dec"
+    },
+    {
+      "t" : 104.38,
+      "text" : "ided without trial because"
+    },
+    {
+      "t" : 104.755,
+      "text" : " no material"
+    },
+    {
+      "t" : 104.963,
+      "text" : " facts are"
+    },
+    {
+      "t" : 105.278,
+      "text" : " dis"
+    },
+    {
+      "t" : 105.457,
+      "text" : "puted.\", \"A cont"
+    },
+    {
+      "t" : 105.641,
+      "text" : "ract clause exc"
+    },
+    {
+      "t" : 106.357,
+      "text" : "using perform"
+    },
+    {
+      "t" : 106.36,
+      "text" : "ance due"
+    },
+    {
+      "t" : 106.948,
+      "text" : " to unforeseeable events"
+    },
+    {
+      "t" : 107.419,
+      "text" : " be"
+    },
+    {
+      "t" : 107.712,
+      "text" : "yond a"
+    },
+    {
+      "t" : 107.884,
+      "text" : " party's control.\", \"A"
+    },
+    {
+      "t" : 108.039,
+      "text" : " claim fil"
+    },
+    {
+      "t" : 108.21,
+      "text" : "ed by a"
+    },
+    {
+      "t" : 108.38,
+      "text" : " defendant against"
+    },
+    {
+      "t" : 108.542,
+      "text" : " the plaintiff in"
+    },
+    {
+      "t" : 108.742,
+      "text" : " the same case"
+    },
+    {
+      "t" : 108.909,
+      "text" : ".\", \"The p"
+    },
+    {
+      "t" : 109.08,
+      "text" : "ret"
+    },
+    {
+      "t" : 109.243,
+      "text" : "rial process of exchanging"
+    },
+    {
+      "t" : 109.42,
+      "text" : " evidence between parties.\"]"
+    },
+    {
+      "t" : 109.604,
+      "text" : "\ndisclaimer ="
+    },
+    {
+      "t" : 109.787,
+      "text" : " Callout(\"ne"
+    },
+    {
+      "t" : 109.959,
+      "text" : "utral\", \"F"
+    },
+    {
+      "t" : 110.148,
+      "text" : "ictional example"
+    },
+    {
+      "t" : 110.457,
+      "text" : "\", \"All"
+    },
+    {
+      "t" : 110.459,
+      "text" : " parties,"
+    },
+    {
+      "t" : 110.616,
+      "text" : " courts, and details"
+    },
+    {
+      "t" : 110.783,
+      "text" : " are inv"
+    },
+    {
+      "t" : 110.951,
+      "text" : "ented for illustration"
+    },
+    {
+      "t" : 111.137,
+      "text" : " and"
+    },
+    {
+      "t" : 111.318,
+      "text" : " do not describ"
+    },
+    {
+      "t" : 111.527,
+      "text" : "e any real"
+    },
+    {
+      "t" : 111.697,
+      "text" : " case.\")"
+    }
+  ],
+  "createdAt" : "2026-11-11T10:47:44Z",
+  "effort" : "low",
+  "format" : "openui-recording",
+  "inputTokens" : 14510,
+  "library" : "react-ui",
+  "model" : "claude-haiku-5-5",
+  "outputTokens" : 2058,
+  "request" : "A court-case explainer showing the parties, procedural timeline, disputed questions and a glossary of legal terms using fictional details.",
+  "servedBy" : "claude-haiku-5-5",
+  "stopReason" : "end_turn",
+  "version" : 1
+}

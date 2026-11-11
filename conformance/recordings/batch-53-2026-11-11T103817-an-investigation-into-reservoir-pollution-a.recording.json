@@ -1,0 +1,1148 @@
+{
+  "batchRequest" : {
+    "model" : "sonnet",
+    "number" : 53,
+    "request" : "An investigation into reservoir pollution: a timeline of sampling dates, a contaminant-level line chart and cards linking the evidence documents."
+  },
+  "chunks" : [
+    {
+      "t" : 1.463,
+      "text" : "root = Stack([header"
+    },
+    {
+      "t" : 1.498,
+      "text" : ", summ"
+    },
+    {
+      "t" : 1.513,
+      "text" : "ary, timel"
+    },
+    {
+      "t" : 1.545,
+      "text" : "ineHeader, tim"
+    },
+    {
+      "t" : 1.579,
+      "text" : "eline, chart"
+    },
+    {
+      "t" : 1.604,
+      "text" : "C"
+    },
+    {
+      "t" : 1.637,
+      "text" : "ard, doc"
+    },
+    {
+      "t" : 1.674,
+      "text" : "sHeader, docC"
+    },
+    {
+      "t" : 1.709,
+      "text" : "ards])\nheader = C"
+    },
+    {
+      "t" : 1.746,
+      "text" : "ardHeader(\"Reserv"
+    },
+    {
+      "t" : 1.856,
+      "text" : "oir Pollution Invest"
+    },
+    {
+      "t" : 2.252,
+      "text" : "igation\", \"L"
+    },
+    {
+      "t" : 2.302,
+      "text" : "ak"
+    },
+    {
+      "t" : 2.303,
+      "text" : "eview Reservoir –"
+    },
+    {
+      "t" : 2.382,
+      "text" : " sampling camp"
+    },
+    {
+      "t" : 2.422,
+      "text" : "aign, March"
+    },
+    {
+      "t" : 2.459,
+      "text" : " to"
+    },
+    {
+      "t" : 2.497,
+      "text" : " August"
+    },
+    {
+      "t" : 2.549,
+      "text" : "\")"
+    },
+    {
+      "t" : 2.592,
+      "text" : "\nsummary ="
+    },
+    {
+      "t" : 2.662,
+      "text" : " Callout(\"war"
+    },
+    {
+      "t" : 2.665,
+      "text" : "ning\", \"El"
+    },
+    {
+      "t" : 2.707,
+      "text" : "evated n"
+    },
+    {
+      "t" : 2.745,
+      "text" : "it"
+    },
+    {
+      "t" : 2.788,
+      "text" : "rate and"
+    },
+    {
+      "t" : 2.831,
+      "text" : " lead levels\", \"N"
+    },
+    {
+      "t" : 2.873,
+      "text" : "itrate ex"
+    },
+    {
+      "t" : 2.911,
+      "text" : "ceeded the"
+    },
+    {
+      "t" : 2.955,
+      "text" : " "
+    },
+    {
+      "t" : 2.998,
+      "text" : "50"
+    },
+    {
+      "t" : 3.04,
+      "text" : " mg/L gu"
+    },
+    {
+      "t" : 3.101,
+      "text" : "ideline in June"
+    },
+    {
+      "t" : 3.156,
+      "text" : " and July"
+    },
+    {
+      "t" : 3.217,
+      "text" : ". Lead pe"
+    },
+    {
+      "t" : 3.257,
+      "text" : "aked at"
+    },
+    {
+      "t" : 3.329,
+      "text" : " 14"
+    },
+    {
+      "t" : 3.33,
+      "text" : " µg/L in July,"
+    },
+    {
+      "t" : 3.372,
+      "text" : " above the 10 µg/"
+    },
+    {
+      "t" : 3.424,
+      "text" : "L limit.\")\ntimel"
+    },
+    {
+      "t" : 3.475,
+      "text" : "ineHeader = Inline"
+    },
+    {
+      "t" : 3.536,
+      "text" : "Header(\"Sampling"
+    },
+    {
+      "t" : 3.591,
+      "text" : " Timeline\", \"Key"
+    },
+    {
+      "t" : 3.639,
+      "text" : " dates and find"
+    },
+    {
+      "t" : 3.689,
+      "text" : "ings\")\ntimeline ="
+    },
+    {
+      "t" : 3.762,
+      "text" : " Steps([st"
+    },
+    {
+      "t" : 3.764,
+      "text" : "1, st2, st3,"
+    },
+    {
+      "t" : 3.812,
+      "text" : " st4, st5])"
+    },
+    {
+      "t" : 3.913,
+      "text" : "\nst1 = Steps"
+    },
+    {
+      "t" : 3.961,
+      "text" : "Item(\"Mar 12"
+    },
+    {
+      "t" : 4.023,
+      "text" : " –"
+    },
+    {
+      "t" : 4.052,
+      "text" : " Baseline sampling\","
+    },
+    {
+      "t" : 4.074,
+      "text" : " \"Five sites s"
+    },
+    {
+      "t" : 4.125,
+      "text" : "ampled."
+    },
+    {
+      "t" : 4.185,
+      "text" : " All contaminants within lim"
+    },
+    {
+      "t" : 4.303,
+      "text" : "its."
+    },
+    {
+      "t" : 4.371,
+      "text" : "\")\nst2 = Step"
+    },
+    {
+      "t" : 4.436,
+      "text" : "sItem(\"Apr "
+    },
+    {
+      "t" : 4.548,
+      "text" : "18"
+    },
+    {
+      "t" : 4.631,
+      "text" : " – Routine s"
+    },
+    {
+      "t" : 4.692,
+      "text" : "ampling\", \"Sl"
+    },
+    {
+      "t" : 4.75,
+      "text" : "ight rise in nitrate"
+    },
+    {
+      "t" : 4.807,
+      "text" : " near"
+    },
+    {
+      "t" : 4.863,
+      "text" : " the"
+    },
+    {
+      "t" : 4.956,
+      "text" : " north"
+    },
+    {
+      "t" : 4.959,
+      "text" : "ern inlet."
+    },
+    {
+      "t" : 5.028,
+      "text" : "\")\nst3 = Step"
+    },
+    {
+      "t" : 5.084,
+      "text" : "sItem(\"Jun "
+    },
+    {
+      "t" : 5.152,
+      "text" : "05"
+    },
+    {
+      "t" : 5.208,
+      "text" : " – Al"
+    },
+    {
+      "t" : 5.273,
+      "text" : "ert s"
+    },
+    {
+      "t" : 5.345,
+      "text" : "ampling\", \"Following"
+    },
+    {
+      "t" : 5.401,
+      "text" : " f"
+    },
+    {
+      "t" : 5.456,
+      "text" : "ish die"
+    },
+    {
+      "t" : 5.515,
+      "text" : "-"
+    },
+    {
+      "t" : 5.567,
+      "text" : "off reports, nitrate"
+    },
+    {
+      "t" : 5.666,
+      "text" : " exceeded the gu"
+    },
+    {
+      "t" : 5.668,
+      "text" : "ideline at"
+    },
+    {
+      "t" : 5.729,
+      "text" : " 3"
+    },
+    {
+      "t" : 5.795,
+      "text" : " of"
+    },
+    {
+      "t" : 5.854,
+      "text" : " 5 sites.\")"
+    },
+    {
+      "t" : 5.913,
+      "text" : "\nst4 = StepsIt"
+    },
+    {
+      "t" : 5.981,
+      "text" : "em(\"Jul 10"
+    },
+    {
+      "t" : 6.084,
+      "text" : " – Source"
+    },
+    {
+      "t" : 6.085,
+      "text" : " t"
+    },
+    {
+      "t" : 6.175,
+      "text" : "racing\", \"Lead pe"
+    },
+    {
+      "t" : 6.243,
+      "text" : "ak det"
+    },
+    {
+      "t" : 6.357,
+      "text" : "ected near"
+    },
+    {
+      "t" : 6.359,
+      "text" : " the old indust"
+    },
+    {
+      "t" : 6.432,
+      "text" : "rial out"
+    },
+    {
+      "t" : 6.56,
+      "text" : "fall. Up"
+    },
+    {
+      "t" : 6.603,
+      "text" : "stream sam"
+    },
+    {
+      "t" : 6.632,
+      "text" : "ples coll"
+    },
+    {
+      "t" : 6.703,
+      "text" : "ected.\")\nst5 ="
+    },
+    {
+      "t" : 6.775,
+      "text" : " StepsItem(\"A"
+    },
+    {
+      "t" : 6.856,
+      "text" : "ug 14"
+    },
+    {
+      "t" : 6.857,
+      "text" : " – Post"
+    },
+    {
+      "t" : 6.928,
+      "text" : "-remediation\", \"After"
+    },
+    {
+      "t" : 7.02,
+      "text" : " inlet di"
+    },
+    {
+      "t" : 7.082,
+      "text" : "version,"
+    },
+    {
+      "t" : 7.148,
+      "text" : " levels falling but"
+    },
+    {
+      "t" : 7.227,
+      "text" : " still"
+    },
+    {
+      "t" : 7.316,
+      "text" : " above ba"
+    },
+    {
+      "t" : 7.404,
+      "text" : "seline."
+    },
+    {
+      "t" : 7.501,
+      "text" : "\")\nchartCard ="
+    },
+    {
+      "t" : 7.578,
+      "text" : " Card([chartHeader,"
+    },
+    {
+      "t" : 7.65,
+      "text" : " chart"
+    },
+    {
+      "t" : 7.722,
+      "text" : "])\nchartHeader ="
+    },
+    {
+      "t" : 7.802,
+      "text" : " CardHeader(\"Cont"
+    },
+    {
+      "t" : 7.885,
+      "text" : "aminant Levels"
+    },
+    {
+      "t" : 7.957,
+      "text" : " Over Time\", \"Nit"
+    },
+    {
+      "t" : 8.12,
+      "text" : "rate (mg/L,"
+    },
+    {
+      "t" : 8.151,
+      "text" : " left sc"
+    },
+    {
+      "t" : 8.236,
+      "text" : "ale) and lead (µg"
+    },
+    {
+      "t" : 8.304,
+      "text" : "/L),"
+    },
+    {
+      "t" : 8.374,
+      "text" : " mean of"
+    },
+    {
+      "t" : 8.447,
+      "text" : " all"
+    },
+    {
+      "t" : 8.514,
+      "text" : " sites\")\nchart = L"
+    },
+    {
+      "t" : 8.615,
+      "text" : "ineChart(months"
+    },
+    {
+      "t" : 8.702,
+      "text" : ", [n"
+    },
+    {
+      "t" : 8.769,
+      "text" : "itrate"
+    },
+    {
+      "t" : 8.839,
+      "text" : ", lead,"
+    },
+    {
+      "t" : 8.908,
+      "text" : " lim"
+    },
+    {
+      "t" : 8.975,
+      "text" : "it"
+    },
+    {
+      "t" : 9.037,
+      "text" : "Nitrate], \"natural"
+    },
+    {
+      "t" : 9.142,
+      "text" : "\", \"S"
+    },
+    {
+      "t" : 9.213,
+      "text" : "ampling date\", \"Conc"
+    },
+    {
+      "t" : 9.304,
+      "text" : "entration\")\nmonths = [\""
+    },
+    {
+      "t" : 9.38,
+      "text" : "Mar 12\", \""
+    },
+    {
+      "t" : 9.469,
+      "text" : "Apr 18\", \"May"
+    },
+    {
+      "t" : 9.551,
+      "text" : " 20"
+    },
+    {
+      "t" : 9.684,
+      "text" : "\", \"Jun 05\","
+    },
+    {
+      "t" : 9.686,
+      "text" : " \"Jul 10\", \""
+    },
+    {
+      "t" : 9.756,
+      "text" : "Aug 14\"]"
+    },
+    {
+      "t" : 9.854,
+      "text" : "\nnitrate = Series(\""
+    },
+    {
+      "t" : 9.948,
+      "text" : "Nitrate (mg"
+    },
+    {
+      "t" : 10.044,
+      "text" : "/L)\", [18"
+    },
+    {
+      "t" : 10.132,
+      "text" : ", 29"
+    },
+    {
+      "t" : 10.226,
+      "text" : ", 41"
+    },
+    {
+      "t" : 10.31,
+      "text" : ", 58"
+    },
+    {
+      "t" : 10.397,
+      "text" : ", 63"
+    },
+    {
+      "t" : 10.525,
+      "text" : ", 44"
+    },
+    {
+      "t" : 10.601,
+      "text" : "])\nlead = Series(\""
+    },
+    {
+      "t" : 10.736,
+      "text" : "Lead (µg/L"
+    },
+    {
+      "t" : 10.827,
+      "text" : ")\", [2"
+    },
+    {
+      "t" : 10.927,
+      "text" : ", 3"
+    },
+    {
+      "t" : 11.016,
+      "text" : ", 6, 11"
+    },
+    {
+      "t" : 11.106,
+      "text" : ", 14, 9])"
+    },
+    {
+      "t" : 11.19,
+      "text" : "\nlimitNitrate ="
+    },
+    {
+      "t" : 11.29,
+      "text" : " Series(\"Nitrate gu"
+    },
+    {
+      "t" : 11.385,
+      "text" : "ideline (50)"
+    },
+    {
+      "t" : 11.473,
+      "text" : "\", [50, 50, "
+    },
+    {
+      "t" : 11.84,
+      "text" : "50, 50, 50,"
+    },
+    {
+      "t" : 12.077,
+      "text" : " 50])\ndocsHe"
+    },
+    {
+      "t" : 14.333,
+      "text" : "ader = InlineHeader"
+    },
+    {
+      "t" : 14.489,
+      "text" : "(\"Evidence Documents"
+    },
+    {
+      "t" : 14.592,
+      "text" : "\", \"Source"
+    },
+    {
+      "t" : 14.669,
+      "text" : " reports and"
+    },
+    {
+      "t" : 14.744,
+      "text" : " lab results\")\ndocCards"
+    },
+    {
+      "t" : 14.82,
+      "text" : " = CompositeCardB"
+    },
+    {
+      "t" : 14.902,
+      "text" : "lock([d1, d2"
+    },
+    {
+      "t" : 14.983,
+      "text" : ", d3,"
+    },
+    {
+      "t" : 15.067,
+      "text" : " d4])\nd1 ="
+    },
+    {
+      "t" : 15.197,
+      "text" : " CompositeCardItem"
+    },
+    {
+      "t" : 15.199,
+      "text" : "(\"lab-june"
+    },
+    {
+      "t" : 15.282,
+      "text" : "\", d1h"
+    },
+    {
+      "t" : 15.358,
+      "text" : ", [d1b"
+    },
+    {
+      "t" : 15.476,
+      "text" : "], d1f)\nd1"
+    },
+    {
+      "t" : 15.555,
+      "text" : "h = IconText(i"
+    },
+    {
+      "t" : 15.702,
+      "text" : "1, \"info"
+    },
+    {
+      "t" : 15.704,
+      "text" : "\", \"m\", \"Lab"
+    },
+    {
+      "t" : 15.79,
+      "text" : " Report – June 05\", \""
+    },
+    {
+      "t" : 15.896,
+      "text" : "Acc"
+    },
+    {
+      "t" : 16.054,
+      "text" : "redited lab,"
+    },
+    {
+      "t" : 16.178,
+      "text" : " "
+    },
+    {
+      "t" : 16.353,
+      "text" : "5"
+    },
+    {
+      "t" : 16.528,
+      "text" : " sites\", true, \"hor"
+    },
+    {
+      "t" : 16.628,
+      "text" : "izontal\")\ni1 "
+    },
+    {
+      "t" : 16.782,
+      "text" : "= Icon(\"flask-"
+    },
+    {
+      "t" : 16.784,
+      "text" : "conical\", \"science"
+    },
+    {
+      "t" : 17.032,
+      "text" : "\")\nd1b = Text"
+    },
+    {
+      "t" : 17.086,
+      "text" : "(\"text"
+    },
+    {
+      "t" : 17.189,
+      "text" : "\", \"Nitrate and"
+    },
+    {
+      "t" : 17.335,
+      "text" : " phosphate results with"
+    },
+    {
+      "t" : 17.438,
+      "text" : " ch"
+    },
+    {
+      "t" : 17.52,
+      "text" : "ain-of-custody for"
+    },
+    {
+      "t" : 17.621,
+      "text" : "ms.\")\nd1f ="
+    },
+    {
+      "t" : 17.711,
+      "text" : " { button: d1btn }"
+    },
+    {
+      "t" : 17.809,
+      "text" : "\nd1btn = Button"
+    },
+    {
+      "t" : 17.926,
+      "text" : "(\""
+    },
+    {
+      "t" : 18.024,
+      "text" : "Open document\", @ToAss"
+    },
+    {
+      "t" : 18.128,
+      "text" : "istant(\"Open Lab"
+    },
+    {
+      "t" : 18.22,
+      "text" : " Report – June 05\"),"
+    },
+    {
+      "t" : 18.381,
+      "text" : " \"secondary\")\nd2"
+    },
+    {
+      "t" : 18.487,
+      "text" : " = CompositeCard"
+    },
+    {
+      "t" : 18.598,
+      "text" : "Item(\"lead-july\","
+    },
+    {
+      "t" : 18.67,
+      "text" : " d2h, [d2b"
+    },
+    {
+      "t" : 18.763,
+      "text" : "], d2f)\nd2"
+    },
+    {
+      "t" : 18.996,
+      "text" : "h = IconText(i2"
+    },
+    {
+      "t" : 19.108,
+      "text" : ", \"danger\", \"m\","
+    },
+    {
+      "t" : 19.203,
+      "text" : " \"Heavy Metals"
+    },
+    {
+      "t" : 19.324,
+      "text" : " Analysis –"
+    },
+    {
+      "t" : 19.427,
+      "text" : " July "
+    },
+    {
+      "t" : 19.541,
+      "text" : "10\", \"L"
+    },
+    {
+      "t" : 19.708,
+      "text" : "ead,"
+    },
+    {
+      "t" : 19.815,
+      "text" : " c"
+    },
+    {
+      "t" : 19.92,
+      "text" : "admium, zinc\","
+    },
+    {
+      "t" : 20.026,
+      "text" : " true, \"horizontal\")"
+    },
+    {
+      "t" : 20.207,
+      "text" : "\ni2 = Icon"
+    },
+    {
+      "t" : 20.208,
+      "text" : "(\"test"
+    },
+    {
+      "t" : 20.323,
+      "text" : "-tube\", \"science\")"
+    },
+    {
+      "t" : 20.423,
+      "text" : "\nd2b = Text(\"text"
+    },
+    {
+      "t" : 20.599,
+      "text" : "\", \"Lead pea"
+    },
+    {
+      "t" : 21.272,
+      "text" : "ked"
+    },
+    {
+      "t" : 22.282,
+      "text" : " at 14 µg/L"
+    },
+    {
+      "t" : 22.384,
+      "text" : " near the old"
+    },
+    {
+      "t" : 22.545,
+      "text" : " industrial outfall.\")"
+    },
+    {
+      "t" : 22.548,
+      "text" : "\nd2f = { button:"
+    },
+    {
+      "t" : 22.648,
+      "text" : " d2btn }\nd2"
+    },
+    {
+      "t" : 23.777,
+      "text" : "btn = Button(\"Open"
+    },
+    {
+      "t" : 24.423,
+      "text" : " document\", @ToAssist"
+    },
+    {
+      "t" : 24.533,
+      "text" : "ant(\"Open Heavy"
+    },
+    {
+      "t" : 24.646,
+      "text" : " Metals Analysis –"
+    },
+    {
+      "t" : 24.766,
+      "text" : " July 10\"), \"second"
+    },
+    {
+      "t" : 24.881,
+      "text" : "ary\")\nd3 = C"
+    },
+    {
+      "t" : 25.047,
+      "text" : "ompositeCardItem(\""
+    },
+    {
+      "t" : 25.05,
+      "text" : "site-surv"
+    },
+    {
+      "t" : 25.141,
+      "text" : "ey\", d3h, [d"
+    },
+    {
+      "t" : 25.244,
+      "text" : "3b], d3f)"
+    },
+    {
+      "t" : 25.379,
+      "text" : "\nd3h = IconText("
+    },
+    {
+      "t" : 25.489,
+      "text" : "i3, \"warning\", \""
+    },
+    {
+      "t" : 25.595,
+      "text" : "m\", \"Cat"
+    },
+    {
+      "t" : 25.715,
+      "text" : "chment Site"
+    },
+    {
+      "t" : 25.816,
+      "text" : " Survey\", \"Field"
+    },
+    {
+      "t" : 25.927,
+      "text" : " inspection not"
+    },
+    {
+      "t" : 26.021,
+      "text" : "es\", true, \"horizont"
+    },
+    {
+      "t" : 26.129,
+      "text" : "al\")\ni3 ="
+    },
+    {
+      "t" : 26.204,
+      "text" : " Icon(\"map-pin\","
+    },
+    {
+      "t" : 26.344,
+      "text" : " \"nav"
+    },
+    {
+      "t" : 26.498,
+      "text" : "igation\")\nd3b ="
+    },
+    {
+      "t" : 26.587,
+      "text" : " Text(\"text\", \"Phot"
+    },
+    {
+      "t" : 26.686,
+      "text" : "os"
+    },
+    {
+      "t" : 26.801,
+      "text" : " and not"
+    },
+    {
+      "t" : 26.917,
+      "text" : "es on far"
+    },
+    {
+      "t" : 27.021,
+      "text" : "m runoff and discharge"
+    },
+    {
+      "t" : 27.137,
+      "text" : " points"
+    },
+    {
+      "t" : 27.251,
+      "text" : " up"
+    },
+    {
+      "t" : 27.363,
+      "text" : "stream.\")\nd3f"
+    },
+    {
+      "t" : 27.477,
+      "text" : " = { button: d3btn"
+    },
+    {
+      "t" : 27.554,
+      "text" : " }\nd3btn ="
+    },
+    {
+      "t" : 27.664,
+      "text" : " Button(\"Open document\", @"
+    },
+    {
+      "t" : 27.786,
+      "text" : "ToAssistant(\"Open"
+    },
+    {
+      "t" : 27.901,
+      "text" : " Catchment Site Surv"
+    },
+    {
+      "t" : 28.021,
+      "text" : "ey\"), \"secondary\")"
+    },
+    {
+      "t" : 28.136,
+      "text" : "\nd4 = Composit"
+    },
+    {
+      "t" : 28.249,
+      "text" : "eCardItem(\"remedi"
+    },
+    {
+      "t" : 28.377,
+      "text" : "ation\", d4h, [d"
+    },
+    {
+      "t" : 28.485,
+      "text" : "4b], d4f)"
+    },
+    {
+      "t" : 28.623,
+      "text" : "\nd4h = IconText("
+    },
+    {
+      "t" : 29.251,
+      "text" : "i4, \"success\", \"m"
+    },
+    {
+      "t" : 32.533,
+      "text" : "\", \"Remediation Report"
+    },
+    {
+      "t" : 33.398,
+      "text" : " –"
+    },
+    {
+      "t" : 33.551,
+      "text" : " August"
+    },
+    {
+      "t" : 33.871,
+      "text" : "\", \"Inlet divers"
+    },
+    {
+      "t" : 34.082,
+      "text" : "ion results"
+    },
+    {
+      "t" : 34.286,
+      "text" : "\", true, \"hor"
+    },
+    {
+      "t" : 34.517,
+      "text" : "izontal\")\ni4 "
+    },
+    {
+      "t" : 34.652,
+      "text" : "= Icon(\"file"
+    },
+    {
+      "t" : 34.768,
+      "text" : "-check"
+    },
+    {
+      "t" : 34.878,
+      "text" : "\", \"files\")\nd4b"
+    },
+    {
+      "t" : 34.998,
+      "text" : " = Text(\"text\", \""
+    },
+    {
+      "t" : 35.132,
+      "text" : "Post-diversion mon"
+    },
+    {
+      "t" : 35.256,
+      "text" : "itoring sh"
+    },
+    {
+      "t" : 35.386,
+      "text" : "ows nitrate down"
+    },
+    {
+      "t" : 35.519,
+      "text" : " "
+    },
+    {
+      "t" : 35.641,
+      "text" : "30% from its"
+    },
+    {
+      "t" : 35.759,
+      "text" : " peak.\")\nd4f"
+    },
+    {
+      "t" : 35.884,
+      "text" : " = { button: d4btn"
+    },
+    {
+      "t" : 36,
+      "text" : " }\nd4btn ="
+    },
+    {
+      "t" : 36.128,
+      "text" : " Button(\"Open document\", @"
+    },
+    {
+      "t" : 36.249,
+      "text" : "ToAssistant(\"Open"
+    },
+    {
+      "t" : 36.554,
+      "text" : " Remediation Report – August"
+    },
+    {
+      "t" : 36.7,
+      "text" : "\"), \"secondary\")"
+    }
+  ],
+  "createdAt" : "2026-11-11T10:38:17Z",
+  "effort" : "low",
+  "format" : "openui-recording",
+  "inputTokens" : 14515,
+  "library" : "react-ui",
+  "model" : "claude-sonnet-5-5",
+  "outputTokens" : 1563,
+  "request" : "An investigation into reservoir pollution: a timeline of sampling dates, a contaminant-level line chart and cards linking the evidence documents.",
+  "servedBy" : "claude-sonnet-5-5",
+  "stopReason" : "end_turn",
+  "version" : 1
+}

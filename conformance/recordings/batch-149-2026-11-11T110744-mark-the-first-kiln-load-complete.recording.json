@@ -1,0 +1,186 @@
+{
+  "batchRequest" : {
+    "model" : "sonnet",
+    "number" : 149,
+    "of" : 121,
+    "request" : "Mark the first kiln load complete and add an inspection note describing one cracked bowl."
+  },
+  "chunks" : [
+    {
+      "t" : 0.819,
+      "text" : "The first load"
+    },
+    {
+      "t" : 1.137,
+      "text" : " ("
+    },
+    {
+      "t" : 1.167,
+      "text" : "L-101) needs a \""
+    },
+    {
+      "t" : 1.168,
+      "text" : "Complete\" result"
+    },
+    {
+      "t" : 1.256,
+      "text" : ". I also need a new insp"
+    },
+    {
+      "t" : 1.291,
+      "text" : "ection note"
+    },
+    {
+      "t" : 1.325,
+      "text" : " for"
+    },
+    {
+      "t" : 1.356,
+      "text" : " a cracked bowl,"
+    },
+    {
+      "t" : 1.398,
+      "text" : " added"
+    },
+    {
+      "t" : 1.433,
+      "text" : " as"
+    },
+    {
+      "t" : 1.467,
+      "text" : " a f"
+    },
+    {
+      "t" : 1.525,
+      "text" : "ourth row in the not"
+    },
+    {
+      "t" : 1.529,
+      "text" : "es table.\n\n```"
+    },
+    {
+      "t" : 1.561,
+      "text" : "\nresults = [\"Compl"
+    },
+    {
+      "t" : 1.593,
+      "text" : "ete\", \"Pass\", \""
+    },
+    {
+      "t" : 1.627,
+      "text" : "Minor defects\", \""
+    },
+    {
+      "t" : 1.671,
+      "text" : "Pass\", \"Pass\","
+    },
+    {
+      "t" : 1.703,
+      "text" : " \"Minor defects\"]"
+    },
+    {
+      "t" : 1.739,
+      "text" : "\ninspTable = Table"
+    },
+    {
+      "t" : 1.789,
+      "text" : "([Col(\"Load\", "
+    },
+    {
+      "t" : 1.842,
+      "text" : "[\"L-103"
+    },
+    {
+      "t" : 1.892,
+      "text" : "\", \"L-106\", \"L"
+    },
+    {
+      "t" : 1.969,
+      "text" : "-102\", \"L-101\""
+    },
+    {
+      "t" : 2.014,
+      "text" : "]), Col(\"Issue"
+    },
+    {
+      "t" : 2.016,
+      "text" : "\", [\"Pinholing"
+    },
+    {
+      "t" : 2.072,
+      "text" : " on glaze\", \"Cr"
+    },
+    {
+      "t" : 2.109,
+      "text" : "azing on 2 mug"
+    },
+    {
+      "t" : 2.15,
+      "text" : "s\", \"Small base crack"
+    },
+    {
+      "t" : 2.192,
+      "text" : "\", \"Cracked bow"
+    },
+    {
+      "t" : 2.233,
+      "text" : "l: hairline crack from"
+    },
+    {
+      "t" : 2.274,
+      "text" : " rim down"
+    },
+    {
+      "t" : 2.317,
+      "text" : " the wall\"]), Col"
+    },
+    {
+      "t" : 2.359,
+      "text" : "(\"Action\", [\"Sl"
+    },
+    {
+      "t" : 2.458,
+      "text" : "ow cooling next time\", \""
+    },
+    {
+      "t" : 2.504,
+      "text" : "Adjust glaze f"
+    },
+    {
+      "t" : 2.548,
+      "text" : "it\", \"Thicken base"
+    },
+    {
+      "t" : 2.597,
+      "text" : "\", \"Slow candling and"
+    },
+    {
+      "t" : 2.64,
+      "text" : " ke"
+    },
+    {
+      "t" : 2.681,
+      "text" : "ep w"
+    },
+    {
+      "t" : 2.725,
+      "text" : "all thickness even\"])"
+    },
+    {
+      "t" : 2.778,
+      "text" : "])\n```"
+    }
+  ],
+  "createdAt" : "2026-11-11T11:07:44Z",
+  "effort" : "low",
+  "format" : "openui-recording",
+  "inputTokens" : 16403,
+  "library" : "react-ui",
+  "model" : "claude-sonnet-5-5",
+  "outputTokens" : 248,
+  "patchOf" : "root = Stack([title, kpis, loadsHeader, loadsTable, chartCard, tabs, notice])\ntitle = TextContent(\"Pottery Studio Firing Log\", \"large-heavy\")\nkpis = OverviewCardBlock([k1, k2, k3, k4])\nk1 = OverviewCardItem(\"loads\", k1top, k1m)\nk1top = IconText(Icon(\"flame\", \"tools\"), \"neutral\", \"m\", \"Loads This Month\")\nk1m = MetricIndicatorInline(\"8\", \"Total firings\", { direction: \"up\", value: 14 })\nk2 = OverviewCardItem(\"pass\", k2top, k2m)\nk2top = IconText(Icon(\"circle-check\", \"status\"), \"success\", \"m\", \"Pass Rate\")\nk2m = MetricIndicatorInline(\"92%\", \"Pieces passing inspection\", { direction: \"up\", value: 3 })\nk3 = OverviewCardItem(\"pieces\", k3top, k3m)\nk3top = IconText(Icon(\"package\", \"shopping\"), \"neutral\", \"m\", \"Pieces Fired\")\nk3m = MetricIndicatorInline(\"214\", \"Across all loads\", { direction: \"up\", value: 9 })\nk4 = OverviewCardItem(\"cracks\", k4top, k4m)\nk4top = IconText(Icon(\"triangle-alert\", \"status\"), \"warning\", \"m\", \"Defects\")\nk4m = MetricIndicatorInline(\"17\", \"Cracks, pinholes, glaze flaws\", { direction: \"down\", value: 6 })\nloadsHeader = InlineHeader(\"Kiln Loads\", \"Recent firings with clay, target and inspection result\")\nloadsTable = Table([Col(\"Load\", ids), Col(\"Date\", dates), Col(\"Kiln\", kilns), Col(\"Clay Type\", clays), Col(\"Target\", targets), Col(\"Pieces\", pieces, \"number\"), Col(\"Result\", results)])\nids = [\"L-101\", \"L-102\", \"L-103\", \"L-104\", \"L-105\", \"L-106\"]\ndates = [\"2024-05-03\", \"2024-05-07\", \"2024-05-12\", \"2024-05-16\", \"2024-05-21\", \"2024-05-25\"]\nkilns = [\"Electric A\", \"Electric A\", \"Gas B\", \"Electric A\", \"Gas B\", \"Electric A\"]\nclays = [\"Earthenware\", \"Stoneware\", \"Porcelain\", \"Stoneware\", \"Raku body\", \"Porcelain\"]\ntargets = [\"Cone 04 (1945°F)\", \"Cone 6 (2232°F)\", \"Cone 10 (2345°F)\", \"Cone 6 (2232°F)\", \"Cone 06 (1828°F)\", \"Cone 6 (2232°F)\"]\npieces = [38, 42, 24, 45, 18, 47]\nresults = [\"Pass\", \"Pass\", \"Minor defects\", \"Pass\", \"Pass\", \"Minor defects\"]\nchartCard = Card([CardHeader(\"Pieces per Load\", \"Passed vs. defective\"), chart])\nchart = BarChart(ids, [Series(\"Passed\", [36, 40, 20, 43, 17, 43]), Series(\"Defective\", [2, 2, 4, 2, 1, 4])], \"stacked\")\ntabs = Tabs([t1, t2])\nt1 = TabItem(\"stages\", \"Firing Stages (L-106)\", [stagesSteps])\nstagesSteps = Steps([StepsItem(\"Candling\", \"Ramp 100°F/hr to 250°F, hold 2 hrs to drive off moisture.\"), StepsItem(\"Bisque / Early Ramp\", \"Ramp 250°F/hr to 1100°F, burning off organics.\"), StepsItem(\"Glaze Ramp\", \"Ramp 150°F/hr to 2232°F (cone 6).\"), StepsItem(\"Soak\", \"Hold at peak 15 minutes for glaze maturity.\"), StepsItem(\"Cooling\", \"Natural cool-down for 18 hrs; unload below 150°F.\")])\nt2 = TabItem(\"inspect\", \"Inspection Notes\", [inspTable])\ninspTable = Table([Col(\"Load\", [\"L-103\", \"L-106\", \"L-102\"]), Col(\"Issue\", [\"Pinholing on glaze\", \"Crazing on 2 mugs\", \"Small base crack\"]), Col(\"Action\", [\"Slow cooling next time\", \"Adjust glaze fit\", \"Thicken base\"])])\nnotice = Callout(\"warning\", \"Kiln Maintenance\", \"Gas kiln B thermocouple is due for replacement after the next firing.\")",
+  "request" : "Mark the first kiln load complete and add an inspection note describing one cracked bowl.",
+  "servedBy" : "claude-sonnet-5-5",
+  "stopReason" : "end_turn",
+  "version" : 1
+}

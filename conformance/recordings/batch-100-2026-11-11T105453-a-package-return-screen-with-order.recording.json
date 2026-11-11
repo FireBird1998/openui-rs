@@ -1,0 +1,856 @@
+{
+  "batchRequest" : {
+    "model" : "haiku",
+    "number" : 100,
+    "request" : "A package return screen with order items, return reason select, pickup address and refund method radio choices."
+  },
+  "chunks" : [
+    {
+      "t" : 0.683,
+      "text" : "root = Stack(["
+    },
+    {
+      "t" : 0.841,
+      "text" : "header"
+    },
+    {
+      "t" : 0.865,
+      "text" : ", it"
+    },
+    {
+      "t" : 0.914,
+      "text" : "emsCard, re"
+    },
+    {
+      "t" : 0.955,
+      "text" : "asonCard, add"
+    },
+    {
+      "t" : 1.001,
+      "text" : "ressCard, ref"
+    },
+    {
+      "t" : 1.047,
+      "text" : "undCard,"
+    },
+    {
+      "t" : 1.085,
+      "text" : " actionsR"
+    },
+    {
+      "t" : 1.116,
+      "text" : "ow])\nheader = Inline"
+    },
+    {
+      "t" : 1.118,
+      "text" : "Header(\"Return"
+    },
+    {
+      "t" : 1.151,
+      "text" : " a"
+    },
+    {
+      "t" : 1.189,
+      "text" : " Package\", \"Order"
+    },
+    {
+      "t" : 1.223,
+      "text" : " #48"
+    },
+    {
+      "t" : 1.255,
+      "text" : "213"
+    },
+    {
+      "t" : 1.287,
+      "text" : " ·"
+    },
+    {
+      "t" : 1.347,
+      "text" : " Del"
+    },
+    {
+      "t" : 1.383,
+      "text" : "ivered M"
+    },
+    {
+      "t" : 1.384,
+      "text" : "ar 12"
+    },
+    {
+      "t" : 1.472,
+      "text" : "\")\nitemsCard ="
+    },
+    {
+      "t" : 1.562,
+      "text" : " Card([it"
+    },
+    {
+      "t" : 1.64,
+      "text" : "emsHeader,"
+    },
+    {
+      "t" : 1.702,
+      "text" : " itemsT"
+    },
+    {
+      "t" : 1.704,
+      "text" : "able])\nitemsHe"
+    },
+    {
+      "t" : 1.769,
+      "text" : "ader = C"
+    },
+    {
+      "t" : 1.891,
+      "text" : "ardHeader(\"Order"
+    },
+    {
+      "t" : 1.929,
+      "text" : " Items\", \"Select the items"
+    },
+    {
+      "t" : 1.983,
+      "text" : " you want to return\")\nitem"
+    },
+    {
+      "t" : 1.985,
+      "text" : "sTable = Table(["
+    },
+    {
+      "t" : 2.03,
+      "text" : "Col(\"Item\", itemN"
+    },
+    {
+      "t" : 2.112,
+      "text" : "ames), Col(\"Q"
+    },
+    {
+      "t" : 2.152,
+      "text" : "ty\", it"
+    },
+    {
+      "t" : 2.187,
+      "text" : "emQty,"
+    },
+    {
+      "t" : 2.225,
+      "text" : " \"number\"), Col(\""
+    },
+    {
+      "t" : 2.305,
+      "text" : "Price\", itemPrices,"
+    },
+    {
+      "t" : 2.307,
+      "text" : " \"number\")])\nitemN"
+    },
+    {
+      "t" : 2.364,
+      "text" : "ames = [\"Wireless"
+    },
+    {
+      "t" : 2.546,
+      "text" : " Headphones\", \"US"
+    },
+    {
+      "t" : 2.596,
+      "text" : "B-"
+    },
+    {
+      "t" : 2.598,
+      "text" : "C Charging"
+    },
+    {
+      "t" : 2.661,
+      "text" : " Cable\", \"Phone"
+    },
+    {
+      "t" : 2.763,
+      "text" : " Case\"]\nitemQ"
+    },
+    {
+      "t" : 2.854,
+      "text" : "ty = ["
+    },
+    {
+      "t" : 2.93,
+      "text" : "1, 2"
+    },
+    {
+      "t" : 2.989,
+      "text" : ", 1]\nitemP"
+    },
+    {
+      "t" : 3.04,
+      "text" : "rices = ["
+    },
+    {
+      "t" : 3.135,
+      "text" : "89.99, 12"
+    },
+    {
+      "t" : 3.202,
+      "text" : ".5"
+    },
+    {
+      "t" : 3.265,
+      "text" : ", 19"
+    },
+    {
+      "t" : 3.267,
+      "text" : ".0"
+    },
+    {
+      "t" : 3.33,
+      "text" : "]\nreasonCard ="
+    },
+    {
+      "t" : 3.388,
+      "text" : " Card([reasonHe"
+    },
+    {
+      "t" : 3.447,
+      "text" : "ader, reasonFor"
+    },
+    {
+      "t" : 3.495,
+      "text" : "m])\nreasonHe"
+    },
+    {
+      "t" : 3.561,
+      "text" : "ader = CardHeader(\""
+    },
+    {
+      "t" : 3.608,
+      "text" : "Return Reason\", \""
+    },
+    {
+      "t" : 3.683,
+      "text" : "Tell us why you're"
+    },
+    {
+      "t" : 3.834,
+      "text" : " retur"
+    },
+    {
+      "t" : 3.901,
+      "text" : "ning these"
+    },
+    {
+      "t" : 3.95,
+      "text" : " items\")\nreasonForm"
+    },
+    {
+      "t" : 4.018,
+      "text" : " = Form(\"returnRe"
+    },
+    {
+      "t" : 4.081,
+      "text" : "ason\", re"
+    },
+    {
+      "t" : 4.156,
+      "text" : "asonButtons, [re"
+    },
+    {
+      "t" : 4.222,
+      "text" : "asonField])\nreason"
+    },
+    {
+      "t" : 4.294,
+      "text" : "Field = FormControl(\""
+    },
+    {
+      "t" : 4.429,
+      "text" : "Reason\", re"
+    },
+    {
+      "t" : 4.501,
+      "text" : "asonSelect, \""
+    },
+    {
+      "t" : 4.594,
+      "text" : "Required to"
+    },
+    {
+      "t" : 4.658,
+      "text" : " process"
+    },
+    {
+      "t" : 4.703,
+      "text" : " your"
+    },
+    {
+      "t" : 4.984,
+      "text" : " return\")\nreasonSel"
+    },
+    {
+      "t" : 5.063,
+      "text" : "ect = Select(\"reason\","
+    },
+    {
+      "t" : 5.162,
+      "text" : " reasonIt"
+    },
+    {
+      "t" : 5.218,
+      "text" : "ems, \"Cho"
+    },
+    {
+      "t" : 5.306,
+      "text" : "ose a reason\", {"
+    },
+    {
+      "t" : 5.369,
+      "text" : " required: true })\nreason"
+    },
+    {
+      "t" : 5.429,
+      "text" : "Items = [S"
+    },
+    {
+      "t" : 5.502,
+      "text" : "electItem(\"defective\","
+    },
+    {
+      "t" : 5.561,
+      "text" : " \"Defective or"
+    },
+    {
+      "t" : 5.7,
+      "text" : " damaged\"), Select"
+    },
+    {
+      "t" : 5.767,
+      "text" : "Item(\"wrong-"
+    },
+    {
+      "t" : 5.846,
+      "text" : "item\", \"Wrong item"
+    },
+    {
+      "t" : 5.917,
+      "text" : " received"
+    },
+    {
+      "t" : 5.919,
+      "text" : "\"), SelectItem(\""
+    },
+    {
+      "t" : 5.987,
+      "text" : "not"
+    },
+    {
+      "t" : 6.039,
+      "text" : "-as"
+    },
+    {
+      "t" : 6.093,
+      "text" : "-described\", \"Not"
+    },
+    {
+      "t" : 6.158,
+      "text" : " as described\"), SelectIt"
+    },
+    {
+      "t" : 6.303,
+      "text" : "em(\"no"
+    },
+    {
+      "t" : 6.378,
+      "text" : "-long"
+    },
+    {
+      "t" : 6.459,
+      "text" : "er-needed\", \"No long"
+    },
+    {
+      "t" : 6.462,
+      "text" : "er needed\"), Select"
+    },
+    {
+      "t" : 6.563,
+      "text" : "Item(\"other\", \"Other"
+    },
+    {
+      "t" : 6.699,
+      "text" : "\")]\nreasonButt"
+    },
+    {
+      "t" : 6.7,
+      "text" : "ons = Buttons(["
+    },
+    {
+      "t" : 6.763,
+      "text" : "Button(\"Continue\", @"
+    },
+    {
+      "t" : 6.83,
+      "text" : "ToAssistant(\"Contin"
+    },
+    {
+      "t" : 6.895,
+      "text" : "ue with return"
+    },
+    {
+      "t" : 6.985,
+      "text" : " reason\"), \"primary\")"
+    },
+    {
+      "t" : 6.987,
+      "text" : "])\naddressCard ="
+    },
+    {
+      "t" : 7.05,
+      "text" : " Card([addressHeader,"
+    },
+    {
+      "t" : 7.112,
+      "text" : " addressForm])\naddress"
+    },
+    {
+      "t" : 7.177,
+      "text" : "Header = CardHe"
+    },
+    {
+      "t" : 7.264,
+      "text" : "ader(\"Pickup Address"
+    },
+    {
+      "t" : 7.346,
+      "text" : "\", \"Where"
+    },
+    {
+      "t" : 7.502,
+      "text" : " should"
+    },
+    {
+      "t" : 7.597,
+      "text" : " we coll"
+    },
+    {
+      "t" : 7.665,
+      "text" : "ect the"
+    },
+    {
+      "t" : 7.726,
+      "text" : " package?\")\naddressForm"
+    },
+    {
+      "t" : 7.824,
+      "text" : " = Form(\"p"
+    },
+    {
+      "t" : 7.828,
+      "text" : "ickupAddress\", address"
+    },
+    {
+      "t" : 7.895,
+      "text" : "Buttons, [stre"
+    },
+    {
+      "t" : 7.969,
+      "text" : "etField, c"
+    },
+    {
+      "t" : 8.081,
+      "text" : "ityField, z"
+    },
+    {
+      "t" : 8.143,
+      "text" : "ipField])\nstreetField ="
+    },
+    {
+      "t" : 8.145,
+      "text" : " FormControl(\"Street"
+    },
+    {
+      "t" : 8.213,
+      "text" : " Address\", stre"
+    },
+    {
+      "t" : 8.285,
+      "text" : "etInput)"
+    },
+    {
+      "t" : 8.376,
+      "text" : "\nstre"
+    },
+    {
+      "t" : 8.453,
+      "text" : "etInput = Input(\"street"
+    },
+    {
+      "t" : 8.527,
+      "text" : "\", \"123 Main St\","
+    },
+    {
+      "t" : 8.603,
+      "text" : " \"text\", { required: true,"
+    },
+    {
+      "t" : 8.67,
+      "text" : " minLength: 5"
+    },
+    {
+      "t" : 8.74,
+      "text" : " })\ncityField = F"
+    },
+    {
+      "t" : 8.818,
+      "text" : "ormControl(\"City\", city"
+    },
+    {
+      "t" : 8.885,
+      "text" : "Input)\ncityInput"
+    },
+    {
+      "t" : 8.951,
+      "text" : " = Input(\"city\", \""
+    },
+    {
+      "t" : 9.036,
+      "text" : "Springfield\", \"text\", {"
+    },
+    {
+      "t" : 9.135,
+      "text" : " required: true })\nzipField"
+    },
+    {
+      "t" : 9.279,
+      "text" : " = FormControl(\"Z"
+    },
+    {
+      "t" : 9.554,
+      "text" : "IP Code\", zipIn"
+    },
+    {
+      "t" : 9.67,
+      "text" : "put)\nzipInput ="
+    },
+    {
+      "t" : 9.788,
+      "text" : " Input(\"zip\", \"62"
+    },
+    {
+      "t" : 9.978,
+      "text" : "704"
+    },
+    {
+      "t" : 9.981,
+      "text" : "\", \"text\", { required: true"
+    },
+    {
+      "t" : 10.104,
+      "text" : ", num"
+    },
+    {
+      "t" : 10.203,
+      "text" : "eric: true, min"
+    },
+    {
+      "t" : 10.368,
+      "text" : "Length: 5, max"
+    },
+    {
+      "t" : 10.376,
+      "text" : "Length: 5 })"
+    },
+    {
+      "t" : 10.454,
+      "text" : "\naddressButtons = Bu"
+    },
+    {
+      "t" : 10.528,
+      "text" : "ttons([Button(\"Save"
+    },
+    {
+      "t" : 10.652,
+      "text" : " Address\", @ToAss"
+    },
+    {
+      "t" : 10.736,
+      "text" : "istant(\"Save p"
+    },
+    {
+      "t" : 10.82,
+      "text" : "ickup address\"), \"sec"
+    },
+    {
+      "t" : 10.905,
+      "text" : "ondary\")])\nrefundC"
+    },
+    {
+      "t" : 11.012,
+      "text" : "ard = Card([refundH"
+    },
+    {
+      "t" : 11.105,
+      "text" : "eader, refundForm])"
+    },
+    {
+      "t" : 11.256,
+      "text" : "\nrefundHeader = C"
+    },
+    {
+      "t" : 11.258,
+      "text" : "ardHeader(\"Refund"
+    },
+    {
+      "t" : 11.354,
+      "text" : " Method\", \"Choose how"
+    },
+    {
+      "t" : 11.449,
+      "text" : " you"
+    },
+    {
+      "t" : 11.552,
+      "text" : "'"
+    },
+    {
+      "t" : 11.644,
+      "text" : "d like to"
+    },
+    {
+      "t" : 11.809,
+      "text" : " be refunded\")\nrefund"
+    },
+    {
+      "t" : 11.9,
+      "text" : "Form = Form(\"refund"
+    },
+    {
+      "t" : 11.998,
+      "text" : "Method\", refundButt"
+    },
+    {
+      "t" : 12.072,
+      "text" : "ons2"
+    },
+    {
+      "t" : 12.152,
+      "text" : ", [refundField])\nref"
+    },
+    {
+      "t" : 12.227,
+      "text" : "undField = FormControl(\""
+    },
+    {
+      "t" : 12.314,
+      "text" : "Refund To"
+    },
+    {
+      "t" : 12.315,
+      "text" : "\", refundR"
+    },
+    {
+      "t" : 12.408,
+      "text" : "adio)"
+    },
+    {
+      "t" : 12.497,
+      "text" : "\nrefundRadio = R"
+    },
+    {
+      "t" : 12.604,
+      "text" : "adioGroup(\"refund"
+    },
+    {
+      "t" : 12.71,
+      "text" : "Type"
+    },
+    {
+      "t" : 12.883,
+      "text" : "\", ref"
+    },
+    {
+      "t" : 12.886,
+      "text" : "undIt"
+    },
+    {
+      "t" : 13.103,
+      "text" : "ems, \"original"
+    },
+    {
+      "t" : 13.21,
+      "text" : "\", { required: true })\nref"
+    },
+    {
+      "t" : 13.318,
+      "text" : "undItems = [Radio"
+    },
+    {
+      "t" : 13.425,
+      "text" : "Item(\""
+    },
+    {
+      "t" : 13.526,
+      "text" : "Original payment method\", \"Ref"
+    },
+    {
+      "t" : 13.597,
+      "text" : "und to the"
+    },
+    {
+      "t" : 13.701,
+      "text" : " card used at"
+    },
+    {
+      "t" : 13.704,
+      "text" : " purchase,"
+    },
+    {
+      "t" : 13.827,
+      "text" : " 3"
+    },
+    {
+      "t" : 13.932,
+      "text" : "–5 business days\", \"original"
+    },
+    {
+      "t" : 14.039,
+      "text" : "\"), RadioItem(\""
+    },
+    {
+      "t" : 14.173,
+      "text" : "Store credit\", \"Inst"
+    },
+    {
+      "t" : 14.391,
+      "text" : "ant cred"
+    },
+    {
+      "t" : 14.485,
+      "text" : "it, pl"
+    },
+    {
+      "t" : 14.569,
+      "text" : "us a"
+    },
+    {
+      "t" : 14.671,
+      "text" : " 10"
+    },
+    {
+      "t" : 14.782,
+      "text" : "% bonus\", \"cred"
+    },
+    {
+      "t" : 14.905,
+      "text" : "it\"), RadioItem"
+    },
+    {
+      "t" : 15.063,
+      "text" : "(\"B"
+    },
+    {
+      "t" : 15.175,
+      "text" : "ank trans"
+    },
+    {
+      "t" : 15.177,
+      "text" : "fer\", \"Dire"
+    },
+    {
+      "t" : 15.304,
+      "text" : "ct de"
+    },
+    {
+      "t" : 15.424,
+      "text" : "posit,"
+    },
+    {
+      "t" : 15.544,
+      "text" : " 5–7 business days\","
+    },
+    {
+      "t" : 15.659,
+      "text" : " \"bank\")]\nrefund"
+    },
+    {
+      "t" : 15.776,
+      "text" : "Buttons2 = Bu"
+    },
+    {
+      "t" : 15.898,
+      "text" : "ttons([Button(\"Conf"
+    },
+    {
+      "t" : 16.021,
+      "text" : "irm"
+    },
+    {
+      "t" : 16.138,
+      "text" : " Refund"
+    },
+    {
+      "t" : 16.266,
+      "text" : " Method\", @ToAssist"
+    },
+    {
+      "t" : 16.393,
+      "text" : "ant(\"Confirm ref"
+    },
+    {
+      "t" : 16.507,
+      "text" : "und method\"), \"secondary"
+    },
+    {
+      "t" : 16.607,
+      "text" : "\")])\nactionsRow"
+    },
+    {
+      "t" : 16.707,
+      "text" : " = Buttons([Button"
+    },
+    {
+      "t" : 16.816,
+      "text" : "(\"Submit Return\", @"
+    },
+    {
+      "t" : 16.927,
+      "text" : "ToAssistant(\""
+    },
+    {
+      "t" : 17.036,
+      "text" : "Submit return request"
+    },
+    {
+      "t" : 17.148,
+      "text" : "\"), \"primary\", \"norm"
+    },
+    {
+      "t" : 17.286,
+      "text" : "al\", \"large\"), Button"
+    },
+    {
+      "t" : 17.418,
+      "text" : "(\"Cancel\", @"
+    },
+    {
+      "t" : 17.552,
+      "text" : "ToAssistant(\"C"
+    },
+    {
+      "t" : 17.675,
+      "text" : "ancel return\"), \"t"
+    },
+    {
+      "t" : 17.801,
+      "text" : "ertiary\")], \"row\")"
+    }
+  ],
+  "createdAt" : "2026-11-11T10:54:53Z",
+  "effort" : "low",
+  "format" : "openui-recording",
+  "inputTokens" : 14496,
+  "library" : "react-ui",
+  "model" : "claude-haiku-5-5",
+  "outputTokens" : 1209,
+  "request" : "A package return screen with order items, return reason select, pickup address and refund method radio choices.",
+  "servedBy" : "claude-haiku-5-5",
+  "stopReason" : "end_turn",
+  "version" : 1
+}

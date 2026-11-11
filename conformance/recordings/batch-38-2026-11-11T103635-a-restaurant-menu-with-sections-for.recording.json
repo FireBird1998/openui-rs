@@ -1,0 +1,372 @@
+{
+  "batchRequest" : {
+    "model" : "haiku",
+    "number" : 38,
+    "request" : "A restaurant menu with sections for starters, mains and desserts, with prices."
+  },
+  "chunks" : [
+    {
+      "t" : 0.87,
+      "text" : "root = Stack([title"
+    },
+    {
+      "t" : 1.013,
+      "text" : ", t"
+    },
+    {
+      "t" : 1.036,
+      "text" : "abs])"
+    },
+    {
+      "t" : 1.081,
+      "text" : "\ntitle = TextContent(\""
+    },
+    {
+      "t" : 1.112,
+      "text" : "B"
+    },
+    {
+      "t" : 1.189,
+      "text" : "istro Menu\", \"large"
+    },
+    {
+      "t" : 1.256,
+      "text" : "-heavy\")\ntab"
+    },
+    {
+      "t" : 1.259,
+      "text" : "s = Tabs([start"
+    },
+    {
+      "t" : 1.316,
+      "text" : "ersTab, mainsT"
+    },
+    {
+      "t" : 1.354,
+      "text" : "ab, dessertsTab"
+    },
+    {
+      "t" : 1.356,
+      "text" : "])\nstartersTab = T"
+    },
+    {
+      "t" : 1.398,
+      "text" : "abItem(\"starters\", \""
+    },
+    {
+      "t" : 1.488,
+      "text" : "Starters\", [startersList"
+    },
+    {
+      "t" : 1.491,
+      "text" : "])\nmainsTab ="
+    },
+    {
+      "t" : 1.578,
+      "text" : " TabItem(\"mains\","
+    },
+    {
+      "t" : 1.629,
+      "text" : " \"Mains\", [main"
+    },
+    {
+      "t" : 1.631,
+      "text" : "sList])\ndesserts"
+    },
+    {
+      "t" : 1.668,
+      "text" : "Tab = TabItem(\""
+    },
+    {
+      "t" : 1.715,
+      "text" : "des"
+    },
+    {
+      "t" : 1.764,
+      "text" : "serts\", \"Desserts"
+    },
+    {
+      "t" : 1.793,
+      "text" : "\", [dessertsList])"
+    },
+    {
+      "t" : 1.826,
+      "text" : "\nstartersList = E"
+    },
+    {
+      "t" : 1.864,
+      "text" : "ntityList([s"
+    },
+    {
+      "t" : 1.903,
+      "text" : "1, s2, s3,"
+    },
+    {
+      "t" : 1.949,
+      "text" : " s4],"
+    },
+    {
+      "t" : 2.012,
+      "text" : " \"default"
+    },
+    {
+      "t" : 2.09,
+      "text" : "\")\ns"
+    },
+    {
+      "t" : 2.124,
+      "text" : "1 = {"
+    },
+    {
+      "t" : 2.158,
+      "text" : "left: \"Bur"
+    },
+    {
+      "t" : 2.193,
+      "text" : "r"
+    },
+    {
+      "t" : 2.23,
+      "text" : "ata with"
+    },
+    {
+      "t" : 2.265,
+      "text" : " he"
+    },
+    {
+      "t" : 2.32,
+      "text" : "irloom t"
+    },
+    {
+      "t" : 2.323,
+      "text" : "omatoes\", right: \""
+    },
+    {
+      "t" : 2.371,
+      "text" : "$14"
+    },
+    {
+      "t" : 2.417,
+      "text" : "\"}\ns2 = {"
+    },
+    {
+      "t" : 2.462,
+      "text" : "left: \"Cr"
+    },
+    {
+      "t" : 2.513,
+      "text" : "ispy cal"
+    },
+    {
+      "t" : 2.556,
+      "text" : "amari\","
+    },
+    {
+      "t" : 2.597,
+      "text" : " right: \"$12"
+    },
+    {
+      "t" : 2.647,
+      "text" : "\"}\ns3 = {"
+    },
+    {
+      "t" : 2.746,
+      "text" : "left: \"Ro"
+    },
+    {
+      "t" : 2.803,
+      "text" : "asted be"
+    },
+    {
+      "t" : 2.861,
+      "text" : "et sal"
+    },
+    {
+      "t" : 2.927,
+      "text" : "ad\", right: \"$11\""
+    },
+    {
+      "t" : 2.988,
+      "text" : "}\ns4 = {left"
+    },
+    {
+      "t" : 3.06,
+      "text" : ": \"Soup of"
+    },
+    {
+      "t" : 3.136,
+      "text" : " the day\", right: \"$8"
+    },
+    {
+      "t" : 3.167,
+      "text" : "\"}\nmainsList ="
+    },
+    {
+      "t" : 3.22,
+      "text" : " EntityList([m1,"
+    },
+    {
+      "t" : 3.223,
+      "text" : " m2, m3, m4"
+    },
+    {
+      "t" : 3.28,
+      "text" : "], \"default\")\nm1 "
+    },
+    {
+      "t" : 3.375,
+      "text" : "= {left: \"P"
+    },
+    {
+      "t" : 3.438,
+      "text" : "an"
+    },
+    {
+      "t" : 3.488,
+      "text" : "-seared sal"
+    },
+    {
+      "t" : 3.548,
+      "text" : "mon\", right: \"$28"
+    },
+    {
+      "t" : 3.584,
+      "text" : "\"}\nm2 = {"
+    },
+    {
+      "t" : 3.644,
+      "text" : "left: \"Ribeye"
+    },
+    {
+      "t" : 3.646,
+      "text" : " steak,"
+    },
+    {
+      "t" : 3.707,
+      "text" : " 300"
+    },
+    {
+      "t" : 3.767,
+      "text" : "g\", right: \"$36"
+    },
+    {
+      "t" : 3.829,
+      "text" : "\"}\nm3 = {"
+    },
+    {
+      "t" : 3.894,
+      "text" : "left: \"W"
+    },
+    {
+      "t" : 3.951,
+      "text" : "ild mushroom ris"
+    },
+    {
+      "t" : 4.024,
+      "text" : "otto\", right: \"$22"
+    },
+    {
+      "t" : 4.095,
+      "text" : "\"}\nm4 = {"
+    },
+    {
+      "t" : 4.178,
+      "text" : "left: \"Ch"
+    },
+    {
+      "t" : 4.229,
+      "text" : "icken mil"
+    },
+    {
+      "t" : 4.282,
+      "text" : "an"
+    },
+    {
+      "t" : 4.335,
+      "text" : "ese\", right: \"$24"
+    },
+    {
+      "t" : 4.39,
+      "text" : "\"}\ndessertsList"
+    },
+    {
+      "t" : 4.517,
+      "text" : " = EntityList([d1"
+    },
+    {
+      "t" : 4.582,
+      "text" : ", d2, d3],"
+    },
+    {
+      "t" : 4.584,
+      "text" : " \"default\")\nd1 ="
+    },
+    {
+      "t" : 4.652,
+      "text" : " {left: \"D"
+    },
+    {
+      "t" : 4.732,
+      "text" : "ark chocolate f"
+    },
+    {
+      "t" : 4.834,
+      "text" : "ondant"
+    },
+    {
+      "t" : 4.836,
+      "text" : "\", right: \"$10\"}"
+    },
+    {
+      "t" : 4.906,
+      "text" : "\nd2 = {left:"
+    },
+    {
+      "t" : 4.982,
+      "text" : " \"L"
+    },
+    {
+      "t" : 5.051,
+      "text" : "emon pos"
+    },
+    {
+      "t" : 5.128,
+      "text" : "set"
+    },
+    {
+      "t" : 5.199,
+      "text" : "\", right: \"$9\"}"
+    },
+    {
+      "t" : 5.281,
+      "text" : "\nd3 = {left:"
+    },
+    {
+      "t" : 5.36,
+      "text" : " \"Se"
+    },
+    {
+      "t" : 5.421,
+      "text" : "asonal f"
+    },
+    {
+      "t" : 5.481,
+      "text" : "ruit sorbet\", right"
+    },
+    {
+      "t" : 5.546,
+      "text" : ": \"$7\"}"
+    }
+  ],
+  "createdAt" : "2026-11-11T10:36:35Z",
+  "effort" : "low",
+  "format" : "openui-recording",
+  "inputTokens" : 14494,
+  "library" : "react-ui",
+  "model" : "claude-haiku-5-5",
+  "outputTokens" : 507,
+  "request" : "A restaurant menu with sections for starters, mains and desserts, with prices.",
+  "servedBy" : "claude-haiku-5-5",
+  "stopReason" : "end_turn",
+  "version" : 1
+}

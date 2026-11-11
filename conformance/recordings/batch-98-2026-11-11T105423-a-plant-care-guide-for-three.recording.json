@@ -1,0 +1,992 @@
+{
+  "batchRequest" : {
+    "model" : "haiku",
+    "number" : 98,
+    "request" : "A plant care guide for three indoor plants with light requirements, watering intervals and seasonal care notes."
+  },
+  "chunks" : [
+    {
+      "t" : 0.728,
+      "text" : "root = Stack([header"
+    },
+    {
+      "t" : 0.862,
+      "text" : ", pl"
+    },
+    {
+      "t" : 0.885,
+      "text" : "antCards, care"
+    },
+    {
+      "t" : 0.931,
+      "text" : "Tab"
+    },
+    {
+      "t" : 0.978,
+      "text" : "s])\nheader"
+    },
+    {
+      "t" : 1.056,
+      "text" : " = In"
+    },
+    {
+      "t" : 1.086,
+      "text" : "lineHeader(\"Ind"
+    },
+    {
+      "t" : 1.118,
+      "text" : "oor Plant Care"
+    },
+    {
+      "t" : 1.119,
+      "text" : " Guide\", \"Light"
+    },
+    {
+      "t" : 1.148,
+      "text" : ", watering, and season"
+    },
+    {
+      "t" : 1.175,
+      "text" : "al notes for three eas"
+    },
+    {
+      "t" : 1.214,
+      "text" : "y houseplants\")\npl"
+    },
+    {
+      "t" : 1.246,
+      "text" : "antCards = C"
+    },
+    {
+      "t" : 1.248,
+      "text" : "ompositeCardBlock"
+    },
+    {
+      "t" : 1.274,
+      "text" : "([poth"
+    },
+    {
+      "t" : 1.29,
+      "text" : "os, sn"
+    },
+    {
+      "t" : 1.343,
+      "text" : "ake, pe"
+    },
+    {
+      "t" : 1.376,
+      "text" : "ace"
+    },
+    {
+      "t" : 1.378,
+      "text" : "])\npothos = Comp"
+    },
+    {
+      "t" : 1.408,
+      "text" : "ositeCardItem(\"p"
+    },
+    {
+      "t" : 1.44,
+      "text" : "othos\", pothos"
+    },
+    {
+      "t" : 1.472,
+      "text" : "Header, [pothos"
+    },
+    {
+      "t" : 1.509,
+      "text" : "Body], pothosFoo"
+    },
+    {
+      "t" : 1.544,
+      "text" : "ter)\npothosHe"
+    },
+    {
+      "t" : 1.577,
+      "text" : "ader = IconText(poth"
+    },
+    {
+      "t" : 1.612,
+      "text" : "osIcon, \"success"
+    },
+    {
+      "t" : 1.658,
+      "text" : "\", \"m\", \"Poth"
+    },
+    {
+      "t" : 1.693,
+      "text" : "os\", \"Ep"
+    },
+    {
+      "t" : 1.727,
+      "text" : "ip"
+    },
+    {
+      "t" : 1.76,
+      "text" : "rem"
+    },
+    {
+      "t" : 1.802,
+      "text" : "num a"
+    },
+    {
+      "t" : 1.845,
+      "text" : "ure"
+    },
+    {
+      "t" : 1.883,
+      "text" : "um\", true, \"horizont"
+    },
+    {
+      "t" : 1.926,
+      "text" : "al\")\npothosIc"
+    },
+    {
+      "t" : 1.968,
+      "text" : "on = Icon(\"lea"
+    },
+    {
+      "t" : 2.009,
+      "text" : "f\", \"n"
+    },
+    {
+      "t" : 2.093,
+      "text" : "ature\")\npothosBody"
+    },
+    {
+      "t" : 2.134,
+      "text" : " = E"
+    },
+    {
+      "t" : 2.177,
+      "text" : "ntityList(["
+    },
+    {
+      "t" : 2.216,
+      "text" : "p"
+    },
+    {
+      "t" : 2.24,
+      "text" : "othosL"
+    },
+    {
+      "t" : 2.28,
+      "text" : "1, pothosL"
+    },
+    {
+      "t" : 2.282,
+      "text" : "2, pothosL3],"
+    },
+    {
+      "t" : 2.345,
+      "text" : " \""
+    },
+    {
+      "t" : 2.346,
+      "text" : "small"
+    },
+    {
+      "t" : 2.391,
+      "text" : "\")\npothosL1 "
+    },
+    {
+      "t" : 2.44,
+      "text" : "= {left: \"Light\","
+    },
+    {
+      "t" : 2.512,
+      "text" : " right: \"Bright indir"
+    },
+    {
+      "t" : 2.584,
+      "text" : "ect\""
+    },
+    {
+      "t" : 2.664,
+      "text" : "}\npothosL2 "
+    },
+    {
+      "t" : 2.714,
+      "text" : "= {left: \"Water every"
+    },
+    {
+      "t" : 2.759,
+      "text" : "\", right: \"7"
+    },
+    {
+      "t" : 2.814,
+      "text" : "-"
+    },
+    {
+      "t" : 2.919,
+      "text" : "10 days\"}\npoth"
+    },
+    {
+      "t" : 2.964,
+      "text" : "osL3 = {left:"
+    },
+    {
+      "t" : 3.021,
+      "text" : " \"Humidity\", right:"
+    },
+    {
+      "t" : 3.068,
+      "text" : " \"Average\"}\npoth"
+    },
+    {
+      "t" : 3.07,
+      "text" : "osFooter = {"
+    },
+    {
+      "t" : 3.122,
+      "text" : "price: B"
+    },
+    {
+      "t" : 3.169,
+      "text" : "oldText(\"text\", \""
+    },
+    {
+      "t" : 3.218,
+      "text" : "Eas"
+    },
+    {
+      "t" : 3.266,
+      "text" : "y care"
+    },
+    {
+      "t" : 3.323,
+      "text" : "\"), button: pothosB"
+    },
+    {
+      "t" : 3.523,
+      "text" : "tn}\npothosB"
+    },
+    {
+      "t" : 3.531,
+      "text" : "tn = Button(\"Care"
+    },
+    {
+      "t" : 3.603,
+      "text" : " t"
+    },
+    {
+      "t" : 3.655,
+      "text" : "ips\", @ToAssist"
+    },
+    {
+      "t" : 3.705,
+      "text" : "ant(\"Give"
+    },
+    {
+      "t" : 3.79,
+      "text" : " me more care"
+    },
+    {
+      "t" : 3.792,
+      "text" : " tips for p"
+    },
+    {
+      "t" : 3.842,
+      "text" : "othos\"), \"secondary"
+    },
+    {
+      "t" : 3.889,
+      "text" : "\")\nsnake = Composit"
+    },
+    {
+      "t" : 3.938,
+      "text" : "eCardItem(\"snake"
+    },
+    {
+      "t" : 3.984,
+      "text" : "-plant\", snakeH"
+    },
+    {
+      "t" : 4.035,
+      "text" : "eader, [snakeB"
+    },
+    {
+      "t" : 4.082,
+      "text" : "ody], snakeFooter"
+    },
+    {
+      "t" : 4.135,
+      "text" : ")\nsnakeHeader"
+    },
+    {
+      "t" : 4.201,
+      "text" : " = IconText(snake"
+    },
+    {
+      "t" : 4.259,
+      "text" : "Icon, \"info"
+    },
+    {
+      "t" : 4.312,
+      "text" : "\", \"m\", \"Snake"
+    },
+    {
+      "t" : 4.376,
+      "text" : " Plant\", \"Sans"
+    },
+    {
+      "t" : 4.431,
+      "text" : "evieria tr"
+    },
+    {
+      "t" : 4.493,
+      "text" : "ifasciata\", true, \""
+    },
+    {
+      "t" : 4.629,
+      "text" : "horizontal\")\nsnak"
+    },
+    {
+      "t" : 4.725,
+      "text" : "eIcon = Icon"
+    },
+    {
+      "t" : 4.794,
+      "text" : "(\"s"
+    },
+    {
+      "t" : 4.856,
+      "text" : "prout\", \"nature\")"
+    },
+    {
+      "t" : 4.924,
+      "text" : "\nsnakeBody = Ent"
+    },
+    {
+      "t" : 4.988,
+      "text" : "ityList([snakeL1"
+    },
+    {
+      "t" : 5.059,
+      "text" : ", snakeL2, sn"
+    },
+    {
+      "t" : 5.06,
+      "text" : "akeL3], \"small\")"
+    },
+    {
+      "t" : 5.122,
+      "text" : "\nsnakeL1 ="
+    },
+    {
+      "t" : 5.19,
+      "text" : " {left: \"Light\", right"
+    },
+    {
+      "t" : 5.305,
+      "text" : ": \"Low to b"
+    },
+    {
+      "t" : 5.378,
+      "text" : "right\"}\nsnakeL"
+    },
+    {
+      "t" : 5.38,
+      "text" : "2 = {left: \""
+    },
+    {
+      "t" : 5.453,
+      "text" : "Water every\", right: \"2-"
+    },
+    {
+      "t" : 5.526,
+      "text" : "6"
+    },
+    {
+      "t" : 5.59,
+      "text" : " weeks\"}\nsn"
+    },
+    {
+      "t" : 5.66,
+      "text" : "akeL3 = {left"
+    },
+    {
+      "t" : 5.737,
+      "text" : ": \"Humidity\", right"
+    },
+    {
+      "t" : 5.807,
+      "text" : ": \"Low\"}\nsn"
+    },
+    {
+      "t" : 5.879,
+      "text" : "akeFooter = {price"
+    },
+    {
+      "t" : 5.949,
+      "text" : ": BoldText(\"text\","
+    },
+    {
+      "t" : 6.023,
+      "text" : " \"Very"
+    },
+    {
+      "t" : 6.087,
+      "text" : " low"
+    },
+    {
+      "t" : 6.16,
+      "text" : " ma"
+    },
+    {
+      "t" : 6.226,
+      "text" : "intenance\"), button: sn"
+    },
+    {
+      "t" : 6.298,
+      "text" : "akeBtn}\nsn"
+    },
+    {
+      "t" : 6.371,
+      "text" : "akeBtn = Button"
+    },
+    {
+      "t" : 6.441,
+      "text" : "(\"Care tips\", @"
+    },
+    {
+      "t" : 6.504,
+      "text" : "ToAssistant(\"Give"
+    },
+    {
+      "t" : 6.578,
+      "text" : " me more care tips for snake"
+    },
+    {
+      "t" : 6.732,
+      "text" : " plant\"), \"secondary"
+    },
+    {
+      "t" : 6.814,
+      "text" : "\")\npeace = Composit"
+    },
+    {
+      "t" : 6.893,
+      "text" : "eCardItem(\"peace"
+    },
+    {
+      "t" : 6.972,
+      "text" : "-lily\", peaceH"
+    },
+    {
+      "t" : 7.053,
+      "text" : "eader, [peaceB"
+    },
+    {
+      "t" : 7.055,
+      "text" : "ody], peaceFooter"
+    },
+    {
+      "t" : 7.181,
+      "text" : ")\npeaceHeader"
+    },
+    {
+      "t" : 7.239,
+      "text" : " = IconText(peace"
+    },
+    {
+      "t" : 7.317,
+      "text" : "Icon, \"warning\","
+    },
+    {
+      "t" : 7.319,
+      "text" : " \"m\", \"Peace"
+    },
+    {
+      "t" : 7.396,
+      "text" : " Lily\", \"Sp"
+    },
+    {
+      "t" : 7.479,
+      "text" : "ath"
+    },
+    {
+      "t" : 7.563,
+      "text" : "iph"
+    },
+    {
+      "t" : 7.646,
+      "text" : "yllum\","
+    },
+    {
+      "t" : 7.732,
+      "text" : " true, \"hor"
+    },
+    {
+      "t" : 7.816,
+      "text" : "izontal\")\npeace"
+    },
+    {
+      "t" : 7.905,
+      "text" : "Icon = Icon(\""
+    },
+    {
+      "t" : 8.072,
+      "text" : "flower-"
+    },
+    {
+      "t" : 8.074,
+      "text" : "2\", \"nature\")\npe"
+    },
+    {
+      "t" : 8.155,
+      "text" : "aceBody = Entity"
+    },
+    {
+      "t" : 8.232,
+      "text" : "List([peaceL1,"
+    },
+    {
+      "t" : 8.319,
+      "text" : " peaceL2, pea"
+    },
+    {
+      "t" : 8.491,
+      "text" : "ceL3], \"small\")"
+    },
+    {
+      "t" : 8.578,
+      "text" : "\npeaceL1 = {"
+    },
+    {
+      "t" : 8.666,
+      "text" : "left: \"Light"
+    },
+    {
+      "t" : 8.754,
+      "text" : "\", right: \"Medium ind"
+    },
+    {
+      "t" : 8.841,
+      "text" : "irect\"}\npeace"
+    },
+    {
+      "t" : 8.929,
+      "text" : "L2 = {left: \""
+    },
+    {
+      "t" : 9.021,
+      "text" : "Water every\", right: \"5"
+    },
+    {
+      "t" : 9.102,
+      "text" : "-7 days\"}\npe"
+    },
+    {
+      "t" : 9.104,
+      "text" : "aceL3 = {left"
+    },
+    {
+      "t" : 9.19,
+      "text" : ": \"Humidity\", right"
+    },
+    {
+      "t" : 9.276,
+      "text" : ": \"High\"}\npea"
+    },
+    {
+      "t" : 9.364,
+      "text" : "ceFooter = {price:"
+    },
+    {
+      "t" : 9.507,
+      "text" : " BoldText(\"text\", \""
+    },
+    {
+      "t" : 9.508,
+      "text" : "Dro"
+    },
+    {
+      "t" : 9.591,
+      "text" : "ops when th"
+    },
+    {
+      "t" : 9.697,
+      "text" : "irsty\"), button: pe"
+    },
+    {
+      "t" : 9.793,
+      "text" : "aceBtn}\npe"
+    },
+    {
+      "t" : 9.879,
+      "text" : "aceBtn = Button"
+    },
+    {
+      "t" : 9.974,
+      "text" : "(\"Care tips\", @"
+    },
+    {
+      "t" : 10.065,
+      "text" : "ToAssistant(\"Give"
+    },
+    {
+      "t" : 10.166,
+      "text" : " me more care tips for peace"
+    },
+    {
+      "t" : 10.358,
+      "text" : " lily\"), \"secondary"
+    },
+    {
+      "t" : 10.456,
+      "text" : "\")\ncareTabs ="
+    },
+    {
+      "t" : 10.551,
+      "text" : " Tabs([tabS"
+    },
+    {
+      "t" : 10.552,
+      "text" : "easons"
+    },
+    {
+      "t" : 10.652,
+      "text" : ", tabL"
+    },
+    {
+      "t" : 10.746,
+      "text" : "ight])\ntabSeas"
+    },
+    {
+      "t" : 10.846,
+      "text" : "ons = TabItem(\"se"
+    },
+    {
+      "t" : 10.948,
+      "text" : "asons"
+    },
+    {
+      "t" : 11.051,
+      "text" : "\", \"Seasonal"
+    },
+    {
+      "t" : 11.154,
+      "text" : " Care\", [seasonN"
+    },
+    {
+      "t" : 11.25,
+      "text" : "ote,"
+    },
+    {
+      "t" : 11.349,
+      "text" : " seasonC"
+    },
+    {
+      "t" : 11.45,
+      "text" : "all"
+    },
+    {
+      "t" : 11.55,
+      "text" : "out])\nseasonNote"
+    },
+    {
+      "t" : 11.653,
+      "text" : " = M"
+    },
+    {
+      "t" : 11.751,
+      "text" : "arkDownRenderer"
+    },
+    {
+      "t" : 11.852,
+      "text" : "(\"**Sp"
+    },
+    {
+      "t" : 11.924,
+      "text" : "ring:** Res"
+    },
+    {
+      "t" : 12.018,
+      "text" : "ume reg"
+    },
+    {
+      "t" : 12.119,
+      "text" : "ular watering and"
+    },
+    {
+      "t" : 12.321,
+      "text" : " fertilize"
+    },
+    {
+      "t" : 12.415,
+      "text" : " mon"
+    },
+    {
+      "t" : 12.52,
+      "text" : "thly as new"
+    },
+    {
+      "t" : 12.593,
+      "text" : " growth app"
+    },
+    {
+      "t" : 12.695,
+      "text" : "ears.\\n\\"
+    },
+    {
+      "t" : 12.804,
+      "text" : "n**Summer:**"
+    },
+    {
+      "t" : 12.911,
+      "text" : " Water more"
+    },
+    {
+      "t" : 12.992,
+      "text" : " often"
+    },
+    {
+      "t" : 13.083,
+      "text" : " for"
+    },
+    {
+      "t" : 13.189,
+      "text" : " p"
+    },
+    {
+      "t" : 13.289,
+      "text" : "othos and"
+    },
+    {
+      "t" : 13.29,
+      "text" : " peace lily; keep sn"
+    },
+    {
+      "t" : 13.399,
+      "text" : "ake plant on"
+    },
+    {
+      "t" : 13.515,
+      "text" : " the"
+    },
+    {
+      "t" : 13.623,
+      "text" : " drier side.\\n\\n"
+    },
+    {
+      "t" : 13.734,
+      "text" : "**Aut"
+    },
+    {
+      "t" : 13.848,
+      "text" : "umn:** Re"
+    },
+    {
+      "t" : 13.954,
+      "text" : "duce watering and"
+    },
+    {
+      "t" : 14.063,
+      "text" : " st"
+    },
+    {
+      "t" : 14.176,
+      "text" : "op fertilizing as"
+    },
+    {
+      "t" : 14.287,
+      "text" : " grow"
+    },
+    {
+      "t" : 14.396,
+      "text" : "th slows.\\n\\n"
+    },
+    {
+      "t" : 14.583,
+      "text" : "**Winter:** Water"
+    },
+    {
+      "t" : 14.585,
+      "text" : " s"
+    },
+    {
+      "t" : 14.709,
+      "text" : "paringly,"
+    },
+    {
+      "t" : 14.822,
+      "text" : " ke"
+    },
+    {
+      "t" : 14.929,
+      "text" : "ep pl"
+    },
+    {
+      "t" : 15.049,
+      "text" : "ants away from c"
+    },
+    {
+      "t" : 15.165,
+      "text" : "old dr"
+    },
+    {
+      "t" : 15.287,
+      "text" : "afts and he"
+    },
+    {
+      "t" : 15.402,
+      "text" : "ating v"
+    },
+    {
+      "t" : 15.683,
+      "text" : "ents.\")\nseasonC"
+    },
+    {
+      "t" : 16.073,
+      "text" : "allout = Callout(\"info"
+    },
+    {
+      "t" : 16.463,
+      "text" : "\", \"T"
+    },
+    {
+      "t" : 16.586,
+      "text" : "ip\", \"Check"
+    },
+    {
+      "t" : 16.692,
+      "text" : " so"
+    },
+    {
+      "t" : 16.804,
+      "text" : "il mo"
+    },
+    {
+      "t" : 16.926,
+      "text" : "isture with a finger two"
+    },
+    {
+      "t" : 17.124,
+      "text" : " inches deep before watering any"
+    },
+    {
+      "t" : 17.16,
+      "text" : " pl"
+    },
+    {
+      "t" : 17.241,
+      "text" : "ant.\")\ntabLight"
+    },
+    {
+      "t" : 17.357,
+      "text" : " = TabItem(\"light\","
+    },
+    {
+      "t" : 17.556,
+      "text" : " \"Light Guide\", ["
+    },
+    {
+      "t" : 17.557,
+      "text" : "lightN"
+    },
+    {
+      "t" : 17.676,
+      "text" : "ote])\nlightNote ="
+    },
+    {
+      "t" : 17.782,
+      "text" : " MarkDownRender"
+    },
+    {
+      "t" : 17.89,
+      "text" : "er(\"-"
+    },
+    {
+      "t" : 18.015,
+      "text" : " **Pothos:**"
+    },
+    {
+      "t" : 18.142,
+      "text" : " Bright indirect light"
+    },
+    {
+      "t" : 18.34,
+      "text" : ". Legg"
+    },
+    {
+      "t" : 18.341,
+      "text" : "y grow"
+    },
+    {
+      "t" : 18.463,
+      "text" : "th or"
+    },
+    {
+      "t" : 18.591,
+      "text" : " p"
+    },
+    {
+      "t" : 18.717,
+      "text" : "ale leaves m"
+    },
+    {
+      "t" : 18.974,
+      "text" : "ean it needs more light.\\"
+    },
+    {
+      "t" : 18.976,
+      "text" : "n- **Snake pl"
+    },
+    {
+      "t" : 19.105,
+      "text" : "ant:** T"
+    },
+    {
+      "t" : 19.22,
+      "text" : "olerates low light"
+    },
+    {
+      "t" : 19.341,
+      "text" : ". B"
+    },
+    {
+      "t" : 19.557,
+      "text" : "right indirect light gives fa"
+    },
+    {
+      "t" : 19.708,
+      "text" : "ster growth.\\n- **"
+    },
+    {
+      "t" : 19.711,
+      "text" : "Peace lily:**"
+    },
+    {
+      "t" : 19.833,
+      "text" : " Medium indirect light."
+    },
+    {
+      "t" : 19.961,
+      "text" : " Direct sun"
+    },
+    {
+      "t" : 20.086,
+      "text" : " sc"
+    },
+    {
+      "t" : 20.194,
+      "text" : "orches the"
+    },
+    {
+      "t" : 20.315,
+      "text" : " leaves.\")"
+    }
+  ],
+  "createdAt" : "2026-11-11T10:54:23Z",
+  "effort" : "low",
+  "format" : "openui-recording",
+  "inputTokens" : 14502,
+  "library" : "react-ui",
+  "model" : "claude-haiku-5-5",
+  "outputTokens" : 1390,
+  "request" : "A plant care guide for three indoor plants with light requirements, watering intervals and seasonal care notes.",
+  "servedBy" : "claude-haiku-5-5",
+  "stopReason" : "end_turn",
+  "version" : 1
+}

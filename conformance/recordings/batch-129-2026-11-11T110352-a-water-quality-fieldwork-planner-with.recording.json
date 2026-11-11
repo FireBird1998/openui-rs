@@ -1,0 +1,1432 @@
+{
+  "batchRequest" : {
+    "model" : "sonnet",
+    "number" : 129,
+    "request" : "A water-quality fieldwork planner with sampling sites, required bottles, transport assignments and chain-of-custody checklist."
+  },
+  "chunks" : [
+    {
+      "t" : 1.038,
+      "text" : "root = Stack([header,"
+    },
+    {
+      "t" : 1.146,
+      "text" : " kpis, sit"
+    },
+    {
+      "t" : 1.148,
+      "text" : "esHe"
+    },
+    {
+      "t" : 1.176,
+      "text" : "ader, sitesTable"
+    },
+    {
+      "t" : 1.238,
+      "text" : ", bottlesHeader"
+    },
+    {
+      "t" : 1.267,
+      "text" : ", bottleChart, trans"
+    },
+    {
+      "t" : 1.322,
+      "text" : "H"
+    },
+    {
+      "t" : 1.361,
+      "text" : "eader, transT"
+    },
+    {
+      "t" : 1.367,
+      "text" : "able, c"
+    },
+    {
+      "t" : 1.45,
+      "text" : "ocHeader, cocS"
+    },
+    {
+      "t" : 1.491,
+      "text" : "teps, c"
+    },
+    {
+      "t" : 2.206,
+      "text" : "ocForm])"
+    },
+    {
+      "t" : 2.215,
+      "text" : "\nheader = C"
+    },
+    {
+      "t" : 2.255,
+      "text" : "ardHeader(\"Water-"
+    },
+    {
+      "t" : 2.599,
+      "text" : "Quality Fieldw"
+    },
+    {
+      "t" : 2.649,
+      "text" : "ork Planner\", \"S"
+    },
+    {
+      "t" : 2.695,
+      "text" : "ampling run"
+    },
+    {
+      "t" : 2.737,
+      "text" : ": Tues"
+    },
+    {
+      "t" : 2.789,
+      "text" : " 14"
+    },
+    {
+      "t" : 2.95,
+      "text" : " May — Ri"
+    },
+    {
+      "t" : 2.954,
+      "text" : "verbend"
+    },
+    {
+      "t" : 2.988,
+      "text" : " Watershed\")\nkp"
+    },
+    {
+      "t" : 3.026,
+      "text" : "is = S"
+    },
+    {
+      "t" : 3.065,
+      "text" : "nippetCardBlock"
+    },
+    {
+      "t" : 3.102,
+      "text" : "([k1, k2, k"
+    },
+    {
+      "t" : 3.142,
+      "text" : "3,"
+    },
+    {
+      "t" : 3.184,
+      "text" : " k4])\nk1 ="
+    },
+    {
+      "t" : 3.228,
+      "text" : " SnippetCardItem"
+    },
+    {
+      "t" : 3.289,
+      "text" : "(\"sites\", k1l"
+    },
+    {
+      "t" : 3.292,
+      "text" : ", k1r)\nk1"
+    },
+    {
+      "t" : 3.336,
+      "text" : "l = IconText(k1"
+    },
+    {
+      "t" : 3.385,
+      "text" : "i,"
+    },
+    {
+      "t" : 3.426,
+      "text" : " \"neutral\", \"m\","
+    },
+    {
+      "t" : 3.465,
+      "text" : " \"Sampling Sites"
+    },
+    {
+      "t" : 3.51,
+      "text" : "\", \"Planned\","
+    },
+    {
+      "t" : 3.548,
+      "text" : " false, \"horizontal\")"
+    },
+    {
+      "t" : 3.633,
+      "text" : "\nk1i = Icon"
+    },
+    {
+      "t" : 3.677,
+      "text" : "(\"map-pin\", \"places"
+    },
+    {
+      "t" : 3.719,
+      "text" : "\")\nk1r = Bo"
+    },
+    {
+      "t" : 3.757,
+      "text" : "ldText(\"number\", \"6\")"
+    },
+    {
+      "t" : 3.786,
+      "text" : "\nk2 = Snipp"
+    },
+    {
+      "t" : 3.839,
+      "text" : "etCardItem(\"bott"
+    },
+    {
+      "t" : 3.843,
+      "text" : "les\", k2l, k2"
+    },
+    {
+      "t" : 3.893,
+      "text" : "r)\nk2l = I"
+    },
+    {
+      "t" : 3.969,
+      "text" : "conText(k2i, \""
+    },
+    {
+      "t" : 3.97,
+      "text" : "neutral\", \"m\", \""
+    },
+    {
+      "t" : 4.026,
+      "text" : "Bottles\","
+    },
+    {
+      "t" : 4.075,
+      "text" : " \"Total required"
+    },
+    {
+      "t" : 4.149,
+      "text" : "\", false, \"horizontal"
+    },
+    {
+      "t" : 4.151,
+      "text" : "\")\nk2i = Ic"
+    },
+    {
+      "t" : 4.276,
+      "text" : "on(\"flask-"
+    },
+    {
+      "t" : 4.279,
+      "text" : "conical\", \"science\")\nk"
+    },
+    {
+      "t" : 4.336,
+      "text" : "2r = BoldText(\""
+    },
+    {
+      "t" : 4.394,
+      "text" : "number\", \"38"
+    },
+    {
+      "t" : 4.446,
+      "text" : "\")\nk3 = Sn"
+    },
+    {
+      "t" : 4.513,
+      "text" : "ippetCardItem(\"v"
+    },
+    {
+      "t" : 4.577,
+      "text" : "ehicles\", k3l,"
+    },
+    {
+      "t" : 4.676,
+      "text" : " k3r)\nk3l"
+    },
+    {
+      "t" : 4.677,
+      "text" : " = IconText(k3i"
+    },
+    {
+      "t" : 4.74,
+      "text" : ", \"neutral\", \"m"
+    },
+    {
+      "t" : 4.799,
+      "text" : "\", \"Vehicles\","
+    },
+    {
+      "t" : 4.862,
+      "text" : " \"Assigned\", false,"
+    },
+    {
+      "t" : 4.92,
+      "text" : " \"horizontal\")\nk"
+    },
+    {
+      "t" : 5.038,
+      "text" : "3i = Icon(\"tru"
+    },
+    {
+      "t" : 5.041,
+      "text" : "ck\", \"trans"
+    },
+    {
+      "t" : 5.096,
+      "text" : "port\")\nk3r = B"
+    },
+    {
+      "t" : 5.163,
+      "text" : "oldText(\"number\", \"2"
+    },
+    {
+      "t" : 5.246,
+      "text" : "\")\nk4 = Sn"
+    },
+    {
+      "t" : 5.324,
+      "text" : "ippetCardItem(\"hol"
+    },
+    {
+      "t" : 5.407,
+      "text" : "d"
+    },
+    {
+      "t" : 5.473,
+      "text" : "time\", k4l, k"
+    },
+    {
+      "t" : 5.524,
+      "text" : "4r)\nk4l ="
+    },
+    {
+      "t" : 5.587,
+      "text" : " IconText(k4i,"
+    },
+    {
+      "t" : 5.638,
+      "text" : " \"neutral\", \"m\","
+    },
+    {
+      "t" : 5.684,
+      "text" : " \"Max"
+    },
+    {
+      "t" : 5.753,
+      "text" : " Hold Time\", \"To"
+    },
+    {
+      "t" : 5.898,
+      "text" : " lab\","
+    },
+    {
+      "t" : 5.906,
+      "text" : " false, \"horizontal\")"
+    },
+    {
+      "t" : 5.988,
+      "text" : "\nk4i = Icon"
+    },
+    {
+      "t" : 6.077,
+      "text" : "(\"clock\", \"time"
+    },
+    {
+      "t" : 6.165,
+      "text" : "\")\nk4r = Bo"
+    },
+    {
+      "t" : 6.267,
+      "text" : "ldText(\"text"
+    },
+    {
+      "t" : 6.27,
+      "text" : "\", \"6 hrs\")"
+    },
+    {
+      "t" : 6.352,
+      "text" : "\nsitesHeader ="
+    },
+    {
+      "t" : 6.498,
+      "text" : " InlineHeader(\""
+    },
+    {
+      "t" : 6.627,
+      "text" : "Sampling Sites\", \""
+    },
+    {
+      "t" : 6.721,
+      "text" : "Loc"
+    },
+    {
+      "t" : 6.788,
+      "text" : "ations, parameters and priority"
+    },
+    {
+      "t" : 6.857,
+      "text" : "\")\nsitesTable ="
+    },
+    {
+      "t" : 6.959,
+      "text" : " Table([Col(\"Site"
+    },
+    {
+      "t" : 7.085,
+      "text" : " "
+    },
+    {
+      "t" : 7.087,
+      "text" : "ID\", siteIds),"
+    },
+    {
+      "t" : 7.151,
+      "text" : " Col(\"Location"
+    },
+    {
+      "t" : 7.226,
+      "text" : "\", siteNames), Col"
+    },
+    {
+      "t" : 7.306,
+      "text" : "(\"Wa"
+    },
+    {
+      "t" : 7.38,
+      "text" : "terbody\", b"
+    },
+    {
+      "t" : 7.459,
+      "text" : "odies), Col(\"Par"
+    },
+    {
+      "t" : 7.538,
+      "text" : "ameters\", params"
+    },
+    {
+      "t" : 7.615,
+      "text" : "), Col(\"Priority\","
+    },
+    {
+      "t" : 7.703,
+      "text" : " pr"
+    },
+    {
+      "t" : 7.78,
+      "text" : "ios)])\nsiteIds"
+    },
+    {
+      "t" : 7.916,
+      "text" : " = [\"R"
+    },
+    {
+      "t" : 8.05,
+      "text" : "B"
+    },
+    {
+      "t" : 8.199,
+      "text" : "-01\", \"RB-02"
+    },
+    {
+      "t" : 8.32,
+      "text" : "\", \"RB-03\", \""
+    },
+    {
+      "t" : 8.436,
+      "text" : "RB-04\", \"RB"
+    },
+    {
+      "t" : 8.509,
+      "text" : "-05\", \"RB-06"
+    },
+    {
+      "t" : 8.632,
+      "text" : "\"]\nsiteNames ="
+    },
+    {
+      "t" : 8.634,
+      "text" : " [\"Head"
+    },
+    {
+      "t" : 8.724,
+      "text" : "waters Bridge\","
+    },
+    {
+      "t" : 8.854,
+      "text" : " \"Mill Cre"
+    },
+    {
+      "t" : 8.936,
+      "text" : "ek Conf"
+    },
+    {
+      "t" : 9.026,
+      "text" : "luence\", \"Oak"
+    },
+    {
+      "t" : 9.109,
+      "text" : " Street Out"
+    },
+    {
+      "t" : 9.185,
+      "text" : "fall\", \"H"
+    },
+    {
+      "t" : 9.261,
+      "text" : "at"
+    },
+    {
+      "t" : 9.377,
+      "text" : "ch"
+    },
+    {
+      "t" : 9.379,
+      "text" : "ery P"
+    },
+    {
+      "t" : 9.458,
+      "text" : "ond\", \"Lower"
+    },
+    {
+      "t" : 9.534,
+      "text" : " We"
+    },
+    {
+      "t" : 9.652,
+      "text" : "ir\","
+    },
+    {
+      "t" : 9.724,
+      "text" : " \"Est"
+    },
+    {
+      "t" : 9.802,
+      "text" : "uary M"
+    },
+    {
+      "t" : 9.874,
+      "text" : "outh\"]\nbodies"
+    },
+    {
+      "t" : 9.996,
+      "text" : " = [\"Riverbend"
+    },
+    {
+      "t" : 9.998,
+      "text" : " River\", \"M"
+    },
+    {
+      "t" : 10.068,
+      "text" : "ill Creek\", \"Ri"
+    },
+    {
+      "t" : 10.15,
+      "text" : "verbend River\", \"P"
+    },
+    {
+      "t" : 10.235,
+      "text" : "ond\", \"Riverbend"
+    },
+    {
+      "t" : 10.374,
+      "text" : " River\", \"Estuary\""
+    },
+    {
+      "t" : 10.379,
+      "text" : "]\nparams = [\"N"
+    },
+    {
+      "t" : 10.462,
+      "text" : "utrients, E"
+    },
+    {
+      "t" : 10.559,
+      "text" : ". coli\", \"Met"
+    },
+    {
+      "t" : 10.673,
+      "text" : "als,"
+    },
+    {
+      "t" : 10.845,
+      "text" : " Nutrients\", \"E."
+    },
+    {
+      "t" : 11.02,
+      "text" : " coli, Metals,"
+    },
+    {
+      "t" : 11.127,
+      "text" : " BOD\", \""
+    },
+    {
+      "t" : 11.244,
+      "text" : "Nutrients, DO\","
+    },
+    {
+      "t" : 11.407,
+      "text" : " \"Full"
+    },
+    {
+      "t" : 11.409,
+      "text" : " su"
+    },
+    {
+      "t" : 11.587,
+      "text" : "ite\", \"Salinity,"
+    },
+    {
+      "t" : 11.706,
+      "text" : " Nutrients\"]"
+    },
+    {
+      "t" : 11.828,
+      "text" : "\nprios = [Tag(\""
+    },
+    {
+      "t" : 11.955,
+      "text" : "Rout"
+    },
+    {
+      "t" : 12.086,
+      "text" : "ine\", null, \"sm\","
+    },
+    {
+      "t" : 12.218,
+      "text" : " \"neutral\"), T"
+    },
+    {
+      "t" : 12.327,
+      "text" : "ag(\""
+    },
+    {
+      "t" : 12.462,
+      "text" : "Routine\", null, \"sm"
+    },
+    {
+      "t" : 12.587,
+      "text" : "\", \"neutral\"),"
+    },
+    {
+      "t" : 12.709,
+      "text" : " Tag(\"High\", null, \""
+    },
+    {
+      "t" : 12.844,
+      "text" : "sm\", \"danger\"),"
+    },
+    {
+      "t" : 12.99,
+      "text" : " Tag(\"Routine\","
+    },
+    {
+      "t" : 13.216,
+      "text" : " null, \"sm\", \"ne"
+    },
+    {
+      "t" : 13.218,
+      "text" : "utral\"), Tag(\""
+    },
+    {
+      "t" : 13.365,
+      "text" : "Medium\", null, \"s"
+    },
+    {
+      "t" : 13.565,
+      "text" : "m\", \"warning\"),"
+    },
+    {
+      "t" : 13.569,
+      "text" : " Tag(\"Medium\", null"
+    },
+    {
+      "t" : 13.715,
+      "text" : ", \"sm\", \"warning"
+    },
+    {
+      "t" : 13.841,
+      "text" : "\")]\nbottlesH"
+    },
+    {
+      "t" : 14.013,
+      "text" : "eader = InlineHe"
+    },
+    {
+      "t" : 14.015,
+      "text" : "ader(\"Required Bottles"
+    },
+    {
+      "t" : 14.204,
+      "text" : "\", \"By"
+    },
+    {
+      "t" : 14.242,
+      "text" : " site and"
+    },
+    {
+      "t" : 14.377,
+      "text" : " bottle type\")\nbott"
+    },
+    {
+      "t" : 14.511,
+      "text" : "leChart = BarChart"
+    },
+    {
+      "t" : 14.66,
+      "text" : "(si"
+    },
+    {
+      "t" : 14.771,
+      "text" : "teIds, [b"
+    },
+    {
+      "t" : 14.926,
+      "text" : "1, b2, b3],"
+    },
+    {
+      "t" : 15.093,
+      "text" : " \"stacked\", \"Site"
+    },
+    {
+      "t" : 15.234,
+      "text" : "\", \"Bottles\")"
+    },
+    {
+      "t" : 15.395,
+      "text" : "\nb1 = Series(\"1"
+    },
+    {
+      "t" : 15.552,
+      "text" : " "
+    },
+    {
+      "t" : 15.694,
+      "text" : "L Pl"
+    },
+    {
+      "t" : 15.837,
+      "text" : "astic (n"
+    },
+    {
+      "t" : 16.037,
+      "text" : "utrients)\", [2,"
+    },
+    {
+      "t" : 16.227,
+      "text" : " 2, 2"
+    },
+    {
+      "t" : 16.231,
+      "text" : ", 2"
+    },
+    {
+      "t" : 16.367,
+      "text" : ", 3"
+    },
+    {
+      "t" : 16.544,
+      "text" : ", 2])\nb2 "
+    },
+    {
+      "t" : 16.546,
+      "text" : "= Series(\"250 mL"
+    },
+    {
+      "t" : 16.651,
+      "text" : " Sterile (E. co"
+    },
+    {
+      "t" : 16.796,
+      "text" : "li)\", [1, 0"
+    },
+    {
+      "t" : 17.006,
+      "text" : ", 2, 0, "
+    },
+    {
+      "t" : 17.163,
+      "text" : "2, 0])\nb3"
+    },
+    {
+      "t" : 17.257,
+      "text" : " = Series(\"125"
+    },
+    {
+      "t" : 17.344,
+      "text" : " mL Acid-wash"
+    },
+    {
+      "t" : 17.454,
+      "text" : "ed (metals)\", [0"
+    },
+    {
+      "t" : 17.568,
+      "text" : ", 2, 2, "
+    },
+    {
+      "t" : 17.807,
+      "text" : "0, 3"
+    },
+    {
+      "t" : 17.894,
+      "text" : ", 0])\ntransHe"
+    },
+    {
+      "t" : 18,
+      "text" : "ader = InlineHeader"
+    },
+    {
+      "t" : 18.116,
+      "text" : "(\"Transport Assignments"
+    },
+    {
+      "t" : 18.122,
+      "text" : "\", \"Dr"
+    },
+    {
+      "t" : 18.211,
+      "text" : "ivers, vehicles and"
+    },
+    {
+      "t" : 18.308,
+      "text" : " c"
+    },
+    {
+      "t" : 18.411,
+      "text" : "ooler"
+    },
+    {
+      "t" : 18.526,
+      "text" : " set"
+    },
+    {
+      "t" : 18.614,
+      "text" : "up\")\ntransTable ="
+    },
+    {
+      "t" : 18.718,
+      "text" : " Table([Col(\"V"
+    },
+    {
+      "t" : 18.819,
+      "text" : "ehicle\", vehicles"
+    },
+    {
+      "t" : 19.026,
+      "text" : "), Col(\"Driver\","
+    },
+    {
+      "t" : 19.029,
+      "text" : " drivers), Col(\""
+    },
+    {
+      "t" : 19.156,
+      "text" : "Sites\", rout"
+    },
+    {
+      "t" : 19.282,
+      "text" : "es), Col(\"Depart"
+    },
+    {
+      "t" : 19.425,
+      "text" : "s"
+    },
+    {
+      "t" : 19.536,
+      "text" : "\", depart"
+    },
+    {
+      "t" : 19.666,
+      "text" : "s), Col(\"Coo"
+    },
+    {
+      "t" : 19.785,
+      "text" : "ler"
+    },
+    {
+      "t" : 19.918,
+      "text" : "\", coolers)])\nv"
+    },
+    {
+      "t" : 20.038,
+      "text" : "ehicles = [\"Tru"
+    },
+    {
+      "t" : 20.167,
+      "text" : "ck A\", \"Truck B"
+    },
+    {
+      "t" : 20.283,
+      "text" : "\"]\ndrivers = "
+    },
+    {
+      "t" : 20.412,
+      "text" : "[\"Maria Santos\","
+    },
+    {
+      "t" : 20.556,
+      "text" : " \"T"
+    },
+    {
+      "t" : 20.692,
+      "text" : "om Okafor\"]"
+    },
+    {
+      "t" : 20.885,
+      "text" : "\nroutes = [\"RB-"
+    },
+    {
+      "t" : 20.887,
+      "text" : "01, RB-02"
+    },
+    {
+      "t" : 21.126,
+      "text" : ", RB-03\", \"R"
+    },
+    {
+      "t" : 21.278,
+      "text" : "B-04, RB-05"
+    },
+    {
+      "t" : 21.411,
+      "text" : ", RB-06\"]"
+    },
+    {
+      "t" : 21.585,
+      "text" : "\ndeparts = [\"07:30"
+    },
+    {
+      "t" : 21.769,
+      "text" : "\", \"08:00\"]"
+    },
+    {
+      "t" : 21.911,
+      "text" : "\ncoolers = [\""
+    },
+    {
+      "t" : 22.048,
+      "text" : "C"
+    },
+    {
+      "t" : 22.286,
+      "text" : "ooler "
+    },
+    {
+      "t" : 22.289,
+      "text" : "1 —"
+    },
+    {
+      "t" : 22.463,
+      "text" : " ice packs,"
+    },
+    {
+      "t" : 22.587,
+      "text" : " "
+    },
+    {
+      "t" : 22.938,
+      "text" : "4°C\", \"Coo"
+    },
+    {
+      "t" : 23.067,
+      "text" : "ler 2 — ice pack"
+    },
+    {
+      "t" : 23.183,
+      "text" : "s, 4°C\"]"
+    },
+    {
+      "t" : 23.309,
+      "text" : "\ncocHeader = In"
+    },
+    {
+      "t" : 23.565,
+      "text" : "lineHeader(\"Ch"
+    },
+    {
+      "t" : 23.567,
+      "text" : "ain-of-Custody"
+    },
+    {
+      "t" : 23.758,
+      "text" : " Checklist\", \"Compl"
+    },
+    {
+      "t" : 23.921,
+      "text" : "ete at"
+    },
+    {
+      "t" : 24.134,
+      "text" : " each"
+    },
+    {
+      "t" : 24.299,
+      "text" : " hand"
+    },
+    {
+      "t" : 24.494,
+      "text" : "off\")\ncocSte"
+    },
+    {
+      "t" : 24.665,
+      "text" : "ps = Steps([s"
+    },
+    {
+      "t" : 24.834,
+      "text" : "1, s2, s3,"
+    },
+    {
+      "t" : 24.98,
+      "text" : " s4, s5])\ns"
+    },
+    {
+      "t" : 25.153,
+      "text" : "1 = StepsItem"
+    },
+    {
+      "t" : 25.354,
+      "text" : "(\"Label bottles\", \""
+    },
+    {
+      "t" : 25.554,
+      "text" : "P"
+    },
+    {
+      "t" : 25.93,
+      "text" : "re-label with site ID,"
+    },
+    {
+      "t" : 25.934,
+      "text" : " date, time,"
+    },
+    {
+      "t" : 26.099,
+      "text" : " s"
+    },
+    {
+      "t" : 26.368,
+      "text" : "ampler init"
+    },
+    {
+      "t" : 26.383,
+      "text" : "ials and preservative.\")"
+    },
+    {
+      "t" : 26.57,
+      "text" : "\ns2 = StepsIt"
+    },
+    {
+      "t" : 26.848,
+      "text" : "em(\"Record field"
+    },
+    {
+      "t" : 26.851,
+      "text" : " data\", \"Log p"
+    },
+    {
+      "t" : 27.01,
+      "text" : "H, temperature, con"
+    },
+    {
+      "t" : 27.167,
+      "text" : "ductivity and DO on the"
+    },
+    {
+      "t" : 27.333,
+      "text" : " field sheet at"
+    },
+    {
+      "t" : 27.594,
+      "text" : " coll"
+    },
+    {
+      "t" : 27.596,
+      "text" : "ection.\")\ns3 ="
+    },
+    {
+      "t" : 27.758,
+      "text" : " StepsItem(\"Se"
+    },
+    {
+      "t" : 27.93,
+      "text" : "al and cool\", \"Place"
+    },
+    {
+      "t" : 28.106,
+      "text" : " sam"
+    },
+    {
+      "t" : 28.3,
+      "text" : "ples in the"
+    },
+    {
+      "t" : 28.533,
+      "text" : " cooler at"
+    },
+    {
+      "t" : 28.775,
+      "text" : " 4°C, se"
+    },
+    {
+      "t" : 28.993,
+      "text" : "al with cust"
+    },
+    {
+      "t" : 29.149,
+      "text" : "ody tape and note"
+    },
+    {
+      "t" : 29.394,
+      "text" : " the"
+    },
+    {
+      "t" : 29.648,
+      "text" : " tem"
+    },
+    {
+      "t" : 29.878,
+      "text" : "perature.\")\ns4 "
+    },
+    {
+      "t" : 30.052,
+      "text" : "= StepsItem(\""
+    },
+    {
+      "t" : 30.273,
+      "text" : "Sign cust"
+    },
+    {
+      "t" : 30.459,
+      "text" : "ody form"
+    },
+    {
+      "t" : 30.68,
+      "text" : "\", \"S"
+    },
+    {
+      "t" : 30.945,
+      "text" : "ampler sign"
+    },
+    {
+      "t" : 31.125,
+      "text" : "s, d"
+    },
+    {
+      "t" : 31.289,
+      "text" : "ates and times the"
+    },
+    {
+      "t" : 31.491,
+      "text" : " relinquished"
+    },
+    {
+      "t" : 31.644,
+      "text" : " section"
+    },
+    {
+      "t" : 31.778,
+      "text" : " at"
+    },
+    {
+      "t" : 31.97,
+      "text" : " every trans"
+    },
+    {
+      "t" : 32.188,
+      "text" : "fer.\")\ns5 "
+    },
+    {
+      "t" : 32.409,
+      "text" : "= StepsItem(\""
+    },
+    {
+      "t" : 32.608,
+      "text" : "Lab rece"
+    },
+    {
+      "t" : 32.824,
+      "text" : "ipt\", \"L"
+    },
+    {
+      "t" : 33.019,
+      "text" : "ab verifies se"
+    },
+    {
+      "t" : 33.189,
+      "text" : "als, tem"
+    },
+    {
+      "t" : 33.377,
+      "text" : "perature and b"
+    },
+    {
+      "t" : 33.576,
+      "text" : "ottle count, then signs the"
+    },
+    {
+      "t" : 33.777,
+      "text" : " received section.\")\ncocFor"
+    },
+    {
+      "t" : 34.019,
+      "text" : "m = Form(\"cust"
+    },
+    {
+      "t" : 34.206,
+      "text" : "ody\", c"
+    },
+    {
+      "t" : 34.471,
+      "text" : "ocBtns, [f"
+    },
+    {
+      "t" : 34.744,
+      "text" : "1, f2, f3])"
+    },
+    {
+      "t" : 35.064,
+      "text" : "\nf1 = FormContro"
+    },
+    {
+      "t" : 35.069,
+      "text" : "l(\"Chec"
+    },
+    {
+      "t" : 35.269,
+      "text" : "klist items completed\", c"
+    },
+    {
+      "t" : 35.488,
+      "text" : "ocChecks)\ncoc"
+    },
+    {
+      "t" : 35.645,
+      "text" : "Checks = CheckB"
+    },
+    {
+      "t" : 35.822,
+      "text" : "oxGroup(\"co"
+    },
+    {
+      "t" : 36.081,
+      "text" : "c\", [c"
+    },
+    {
+      "t" : 36.325,
+      "text" : "1, c2, c3,"
+    },
+    {
+      "t" : 36.513,
+      "text" : " c4])\nc1 ="
+    },
+    {
+      "t" : 36.656,
+      "text" : " CheckBoxItem"
+    },
+    {
+      "t" : 36.791,
+      "text" : "(\"B"
+    },
+    {
+      "t" : 36.989,
+      "text" : "ottles labeled\", \"All"
+    },
+    {
+      "t" : 37.161,
+      "text" : " lab"
+    },
+    {
+      "t" : 37.455,
+      "text" : "els leg"
+    },
+    {
+      "t" : 37.641,
+      "text" : "ible and"
+    },
+    {
+      "t" : 37.802,
+      "text" : " waterproof\", \"labe"
+    },
+    {
+      "t" : 37.969,
+      "text" : "led\")\nc2 = C"
+    },
+    {
+      "t" : 38.135,
+      "text" : "heckBoxItem(\""
+    },
+    {
+      "t" : 38.326,
+      "text" : "Field"
+    },
+    {
+      "t" : 38.505,
+      "text" : " data recorded\", \"Field"
+    },
+    {
+      "t" : 38.716,
+      "text" : " sheet complete\", \"f"
+    },
+    {
+      "t" : 38.963,
+      "text" : "iel"
+    },
+    {
+      "t" : 39.231,
+      "text" : "ddata\")\nc3 ="
+    },
+    {
+      "t" : 39.413,
+      "text" : " CheckBoxItem"
+    },
+    {
+      "t" : 39.607,
+      "text" : "(\"Cooler at"
+    },
+    {
+      "t" : 39.776,
+      "text" : " 4°C\", \"Tem"
+    },
+    {
+      "t" : 40.048,
+      "text" : "perature logged\","
+    },
+    {
+      "t" : 40.232,
+      "text" : " \"cooler\")\nc4"
+    },
+    {
+      "t" : 40.439,
+      "text" : " = CheckBox"
+    },
+    {
+      "t" : 40.443,
+      "text" : "Item(\"Cust"
+    },
+    {
+      "t" : 40.633,
+      "text" : "ody seal appl"
+    },
+    {
+      "t" : 40.86,
+      "text" : "ied\", \"Seal number"
+    },
+    {
+      "t" : 41.057,
+      "text" : " no"
+    },
+    {
+      "t" : 41.279,
+      "text" : "ted\", \"seal\")\nf"
+    },
+    {
+      "t" : 41.522,
+      "text" : "2 = FormControl(\""
+    },
+    {
+      "t" : 41.735,
+      "text" : "Rel"
+    },
+    {
+      "t" : 41.954,
+      "text" : "inquished by\", Input(\""
+    },
+    {
+      "t" : 42.337,
+      "text" : "sampler\", \"S"
+    },
+    {
+      "t" : 42.34,
+      "text" : "ampler name\", \"text\", {"
+    },
+    {
+      "t" : 42.569,
+      "text" : " required: true }))\nf3"
+    },
+    {
+      "t" : 42.815,
+      "text" : " = FormControl(\""
+    },
+    {
+      "t" : 43.034,
+      "text" : "Notes\", TextArea(\""
+    },
+    {
+      "t" : 43.258,
+      "text" : "notes\", \"De"
+    },
+    {
+      "t" : 43.487,
+      "text" : "viations, dam"
+    },
+    {
+      "t" : 43.711,
+      "text" : "a"
+    },
+    {
+      "t" : 43.931,
+      "text" : "ged bottles, access"
+    },
+    {
+      "t" : 44.155,
+      "text" : " issues...\", 3))"
+    },
+    {
+      "t" : 44.366,
+      "text" : "\ncocBtns = Bu"
+    },
+    {
+      "t" : 44.603,
+      "text" : "ttons([Button(\"Subm"
+    },
+    {
+      "t" : 44.833,
+      "text" : "it"
+    },
+    {
+      "t" : 45.051,
+      "text" : " Custody Record"
+    },
+    {
+      "t" : 45.292,
+      "text" : "\", @ToAssistant"
+    },
+    {
+      "t" : 45.53,
+      "text" : "(\"Submit ch"
+    },
+    {
+      "t" : 45.775,
+      "text" : "ain-of-custody record\""
+    },
+    {
+      "t" : 45.999,
+      "text" : "), \"primary\"), Button"
+    },
+    {
+      "t" : 46.23,
+      "text" : "(\"Flag Issue"
+    },
+    {
+      "t" : 46.481,
+      "text" : "\", @ToAssistant"
+    },
+    {
+      "t" : 46.684,
+      "text" : "(\"Flag a cust"
+    },
+    {
+      "t" : 46.916,
+      "text" : "ody issue\"), \"second"
+    },
+    {
+      "t" : 47.159,
+      "text" : "ary\")])"
+    }
+  ],
+  "createdAt" : "2026-11-11T11:03:52Z",
+  "effort" : "low",
+  "format" : "openui-recording",
+  "inputTokens" : 14510,
+  "library" : "react-ui",
+  "model" : "claude-sonnet-5-5",
+  "outputTokens" : 2133,
+  "request" : "A water-quality fieldwork planner with sampling sites, required bottles, transport assignments and chain-of-custody checklist.",
+  "servedBy" : "claude-sonnet-5-5",
+  "stopReason" : "end_turn",
+  "version" : 1
+}

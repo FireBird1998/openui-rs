@@ -1,0 +1,676 @@
+{
+  "batchRequest" : {
+    "model" : "sonnet",
+    "number" : 23,
+    "request" : "A sales dashboard: four KPI cards, monthly revenue line chart and a table of top products."
+  },
+  "chunks" : [
+    {
+      "t" : 0.733,
+      "text" : "root"
+    },
+    {
+      "t" : 1.044,
+      "text" : " = Stack([header, k"
+    },
+    {
+      "t" : 1.055,
+      "text" : "piBlock, chart"
+    },
+    {
+      "t" : 1.061,
+      "text" : "Card, tableCard])"
+    },
+    {
+      "t" : 1.084,
+      "text" : "\nheader = InlineHe"
+    },
+    {
+      "t" : 1.105,
+      "text" : "ader(\"Sales Dash"
+    },
+    {
+      "t" : 1.113,
+      "text" : "board\", \"Perform"
+    },
+    {
+      "t" : 1.123,
+      "text" : "ance overview for the last 12"
+    },
+    {
+      "t" : 1.13,
+      "text" : " months\")\nkpiB"
+    },
+    {
+      "t" : 1.141,
+      "text" : "lock = OverviewC"
+    },
+    {
+      "t" : 1.147,
+      "text" : "ardBlock([k1,"
+    },
+    {
+      "t" : 1.159,
+      "text" : " k2, k3, k4"
+    },
+    {
+      "t" : 1.18,
+      "text" : "], \"grid\")"
+    },
+    {
+      "t" : 1.371,
+      "text" : "\nk1 = Overvi"
+    },
+    {
+      "t" : 1.379,
+      "text" : "ewCardItem(\"reven"
+    },
+    {
+      "t" : 1.392,
+      "text" : "ue\", k1top,"
+    },
+    {
+      "t" : 1.406,
+      "text" : " k1m)\nk1top"
+    },
+    {
+      "t" : 1.414,
+      "text" : " = IconText(k1i"
+    },
+    {
+      "t" : 1.428,
+      "text" : ", \"info"
+    },
+    {
+      "t" : 1.442,
+      "text" : "\", \"m\", \"Total"
+    },
+    {
+      "t" : 1.47,
+      "text" : " Revenue\","
+    },
+    {
+      "t" : 1.504,
+      "text" : " \"Y"
+    },
+    {
+      "t" : 1.54,
+      "text" : "TD\", false, \"horiz"
+    },
+    {
+      "t" : 1.57,
+      "text" : "ontal\")\nk1i ="
+    },
+    {
+      "t" : 1.606,
+      "text" : " Icon(\"circle-d"
+    },
+    {
+      "t" : 1.687,
+      "text" : "ollar-sign\", \"fin"
+    },
+    {
+      "t" : 1.697,
+      "text" : "ance\")\nk1m = M"
+    },
+    {
+      "t" : 1.712,
+      "text" : "etricIndicatorIn"
+    },
+    {
+      "t" : 1.752,
+      "text" : "line(\"$1.42"
+    },
+    {
+      "t" : 1.783,
+      "text" : "M\", \"v"
+    },
+    {
+      "t" : 1.819,
+      "text" : "s last year\", { direction:"
+    },
+    {
+      "t" : 1.865,
+      "text" : " \"up\", value: 12 "
+    },
+    {
+      "t" : 1.89,
+      "text" : "})\nk2 = Over"
+    },
+    {
+      "t" : 1.924,
+      "text" : "viewCardItem(\"or"
+    },
+    {
+      "t" : 1.96,
+      "text" : "ders\", k2top, k2"
+    },
+    {
+      "t" : 1.995,
+      "text" : "m)\nk2top = I"
+    },
+    {
+      "t" : 2.031,
+      "text" : "conText(k2i, \""
+    },
+    {
+      "t" : 2.066,
+      "text" : "success\", \"m\", \"Or"
+    },
+    {
+      "t" : 2.102,
+      "text" : "ders\", \"YTD\", false"
+    },
+    {
+      "t" : 2.137,
+      "text" : ", \"horizontal\")"
+    },
+    {
+      "t" : 2.174,
+      "text" : "\nk2i = Icon(\""
+    },
+    {
+      "t" : 2.208,
+      "text" : "shopping-cart\", \""
+    },
+    {
+      "t" : 2.245,
+      "text" : "shopping\")\nk2m"
+    },
+    {
+      "t" : 2.28,
+      "text" : " = MetricIndicat"
+    },
+    {
+      "t" : 2.315,
+      "text" : "orInline(\"18,240"
+    },
+    {
+      "t" : 2.351,
+      "text" : "\", \"vs last year\", {"
+    },
+    {
+      "t" : 2.386,
+      "text" : " direction: \"up\", value:"
+    },
+    {
+      "t" : 2.421,
+      "text" : " 8 })\nk3 "
+    },
+    {
+      "t" : 2.457,
+      "text" : "= OverviewCardIt"
+    },
+    {
+      "t" : 2.492,
+      "text" : "em(\"a"
+    },
+    {
+      "t" : 2.527,
+      "text" : "ov\", k3top, k3"
+    },
+    {
+      "t" : 2.565,
+      "text" : "m)\nk3top = I"
+    },
+    {
+      "t" : 2.599,
+      "text" : "conText(k3i, \""
+    },
+    {
+      "t" : 2.634,
+      "text" : "warning\", \"m\", \""
+    },
+    {
+      "t" : 2.669,
+      "text" : "Avg. Order Value\","
+    },
+    {
+      "t" : 2.707,
+      "text" : " \"Y"
+    },
+    {
+      "t" : 2.741,
+      "text" : "TD\", false, \"horiz"
+    },
+    {
+      "t" : 2.776,
+      "text" : "ontal\")\nk3i ="
+    },
+    {
+      "t" : 2.812,
+      "text" : " Icon(\"receipt\","
+    },
+    {
+      "t" : 2.849,
+      "text" : " \"finance\")\nk3m"
+    },
+    {
+      "t" : 2.89,
+      "text" : " = MetricIndicat"
+    },
+    {
+      "t" : 2.918,
+      "text" : "orInline(\"$77"
+    },
+    {
+      "t" : 2.953,
+      "text" : ".80\", \"vs last year"
+    },
+    {
+      "t" : 2.99,
+      "text" : "\", { direction: \"up\","
+    },
+    {
+      "t" : 3.024,
+      "text" : " value: 3 })\nk"
+    },
+    {
+      "t" : 3.06,
+      "text" : "4 = OverviewC"
+    },
+    {
+      "t" : 3.095,
+      "text" : "ardItem(\"con"
+    },
+    {
+      "t" : 3.13,
+      "text" : "v\", k4top, k4"
+    },
+    {
+      "t" : 3.166,
+      "text" : "m)\nk4top = I"
+    },
+    {
+      "t" : 3.201,
+      "text" : "conText(k4i, \""
+    },
+    {
+      "t" : 3.238,
+      "text" : "danger\", \"m\", \""
+    },
+    {
+      "t" : 3.272,
+      "text" : "Conversion Rate\", \""
+    },
+    {
+      "t" : 3.308,
+      "text" : "YTD\", false, \"hor"
+    },
+    {
+      "t" : 3.344,
+      "text" : "izontal\")\nk4i"
+    },
+    {
+      "t" : 3.379,
+      "text" : " = Icon(\"perc"
+    },
+    {
+      "t" : 3.415,
+      "text" : "ent\", \"fin"
+    },
+    {
+      "t" : 3.45,
+      "text" : "ance\")\nk4m = M"
+    },
+    {
+      "t" : 3.485,
+      "text" : "etricIndicatorIn"
+    },
+    {
+      "t" : 3.52,
+      "text" : "line(\"2.9%\", \""
+    },
+    {
+      "t" : 3.556,
+      "text" : "vs last year"
+    },
+    {
+      "t" : 3.591,
+      "text" : "\", { direction: \"down\","
+    },
+    {
+      "t" : 3.628,
+      "text" : " value: 4"
+    },
+    {
+      "t" : 3.662,
+      "text" : " })\nchartCard ="
+    },
+    {
+      "t" : 3.698,
+      "text" : " Card([chartHeader"
+    },
+    {
+      "t" : 3.734,
+      "text" : ", l"
+    },
+    {
+      "t" : 3.771,
+      "text" : "ineChart])\nchartH"
+    },
+    {
+      "t" : 3.804,
+      "text" : "eader = CardHeader"
+    },
+    {
+      "t" : 3.839,
+      "text" : "(\"Monthly Reven"
+    },
+    {
+      "t" : 3.874,
+      "text" : "ue\", \"Rev"
+    },
+    {
+      "t" : 3.91,
+      "text" : "enue in thousands of US"
+    },
+    {
+      "t" : 3.947,
+      "text" : "D\")\nlineChart ="
+    },
+    {
+      "t" : 3.981,
+      "text" : " LineChart(months, ["
+    },
+    {
+      "t" : 4.019,
+      "text" : "rev"
+    },
+    {
+      "t" : 4.052,
+      "text" : "Series], \"natural\","
+    },
+    {
+      "t" : 4.087,
+      "text" : " \"Month\", \"Reven"
+    },
+    {
+      "t" : 4.124,
+      "text" : "ue ($K)\")\nmonths"
+    },
+    {
+      "t" : 4.162,
+      "text" : " = [\"Jan\", \""
+    },
+    {
+      "t" : 4.196,
+      "text" : "Feb\", \"Mar"
+    },
+    {
+      "t" : 4.229,
+      "text" : "\", \"Apr\", \"May"
+    },
+    {
+      "t" : 4.265,
+      "text" : "\", \"Jun\", \""
+    },
+    {
+      "t" : 4.301,
+      "text" : "Jul\", \"Aug\","
+    },
+    {
+      "t" : 4.337,
+      "text" : " \"Sep\", \"O"
+    },
+    {
+      "t" : 4.372,
+      "text" : "ct\", \"Nov\", \""
+    },
+    {
+      "t" : 4.407,
+      "text" : "Dec\"]\nrevS"
+    },
+    {
+      "t" : 4.442,
+      "text" : "eries = Series(\"Rev"
+    },
+    {
+      "t" : 4.478,
+      "text" : "enue\", [92"
+    },
+    {
+      "t" : 4.513,
+      "text" : ", 98"
+    },
+    {
+      "t" : 4.548,
+      "text" : ", 105, 110"
+    },
+    {
+      "t" : 4.586,
+      "text" : ", 118, 112"
+    },
+    {
+      "t" : 4.619,
+      "text" : ", 121"
+    },
+    {
+      "t" : 4.655,
+      "text" : ", 127"
+    },
+    {
+      "t" : 4.693,
+      "text" : ", 124"
+    },
+    {
+      "t" : 4.726,
+      "text" : ", 135"
+    },
+    {
+      "t" : 4.761,
+      "text" : ", 148"
+    },
+    {
+      "t" : 4.797,
+      "text" : ", 170"
+    },
+    {
+      "t" : 4.833,
+      "text" : "])\ntableCard ="
+    },
+    {
+      "t" : 4.869,
+      "text" : " Card([tableHeader,"
+    },
+    {
+      "t" : 4.903,
+      "text" : " product"
+    },
+    {
+      "t" : 4.938,
+      "text" : "Table"
+    },
+    {
+      "t" : 4.975,
+      "text" : "])\ntableHeader ="
+    },
+    {
+      "t" : 5.009,
+      "text" : " CardHeader(\"Top"
+    },
+    {
+      "t" : 5.045,
+      "text" : " Products\", \""
+    },
+    {
+      "t" : 5.08,
+      "text" : "Ranked by rev"
+    },
+    {
+      "t" : 5.116,
+      "text" : "enue\")\nproductTable ="
+    },
+    {
+      "t" : 5.152,
+      "text" : " Table([Col(\"Product"
+    },
+    {
+      "t" : 5.187,
+      "text" : "\", p"
+    },
+    {
+      "t" : 5.222,
+      "text" : "Names), Col(\"Category"
+    },
+    {
+      "t" : 5.258,
+      "text" : "\", p"
+    },
+    {
+      "t" : 5.294,
+      "text" : "Cats), Col(\"Units"
+    },
+    {
+      "t" : 5.329,
+      "text" : " Sold\", pUnits"
+    },
+    {
+      "t" : 5.366,
+      "text" : ", \"number\"), Col(\""
+    },
+    {
+      "t" : 5.4,
+      "text" : "Revenue ($)"
+    },
+    {
+      "t" : 5.435,
+      "text" : "\", pRev, \"number\")"
+    },
+    {
+      "t" : 5.47,
+      "text" : "])\npNames = [\""
+    },
+    {
+      "t" : 5.506,
+      "text" : "Widget Pro\", \""
+    },
+    {
+      "t" : 5.542,
+      "text" : "Sm"
+    },
+    {
+      "t" : 5.577,
+      "text" : "art H"
+    },
+    {
+      "t" : 5.615,
+      "text" : "ub\","
+    },
+    {
+      "t" : 5.647,
+      "text" : " \"W"
+    },
+    {
+      "t" : 5.684,
+      "text" : "ireless Ear"
+    },
+    {
+      "t" : 5.718,
+      "text" : "buds\", \"F"
+    },
+    {
+      "t" : 5.754,
+      "text" : "itness Band"
+    },
+    {
+      "t" : 5.79,
+      "text" : "\", \"Desk Lam"
+    },
+    {
+      "t" : 5.825,
+      "text" : "p\"]\npCats ="
+    },
+    {
+      "t" : 5.86,
+      "text" : " [\"H"
+    },
+    {
+      "t" : 5.896,
+      "text" : "ardware\", \"Electronics"
+    },
+    {
+      "t" : 5.931,
+      "text" : "\", \"Audio\", \""
+    },
+    {
+      "t" : 5.967,
+      "text" : "Wearables\", \"Home"
+    },
+    {
+      "t" : 6.002,
+      "text" : "\"]\npUnits ="
+    },
+    {
+      "t" : 6.038,
+      "text" : " [4"
+    },
+    {
+      "t" : 6.074,
+      "text" : "820"
+    },
+    {
+      "t" : 6.109,
+      "text" : ", 3410"
+    },
+    {
+      "t" : 6.144,
+      "text" : ", 2960, 2185"
+    },
+    {
+      "t" : 6.181,
+      "text" : ", 1740"
+    },
+    {
+      "t" : 6.222,
+      "text" : "]\npRev = [313"
+    },
+    {
+      "t" : 6.252,
+      "text" : "300"
+    },
+    {
+      "t" : 6.285,
+      "text" : ", 272"
+    },
+    {
+      "t" : 6.321,
+      "text" : "800"
+    },
+    {
+      "t" : 6.357,
+      "text" : ", 236"
+    },
+    {
+      "t" : 6.392,
+      "text" : "800"
+    },
+    {
+      "t" : 6.428,
+      "text" : ", 174"
+    },
+    {
+      "t" : 6.463,
+      "text" : "800"
+    },
+    {
+      "t" : 6.498,
+      "text" : ", 69"
+    },
+    {
+      "t" : 6.537,
+      "text" : "600]"
+    }
+  ],
+  "createdAt" : "2026-11-11T10:34:33Z",
+  "effort" : "low",
+  "format" : "openui-recording",
+  "inputTokens" : 14500,
+  "library" : "react-ui",
+  "model" : "claude-sonnet-5-5",
+  "outputTokens" : 1047,
+  "request" : "A sales dashboard: four KPI cards, monthly revenue line chart and a table of top products.",
+  "servedBy" : "claude-sonnet-5-5",
+  "stopReason" : "end_turn",
+  "version" : 1
+}

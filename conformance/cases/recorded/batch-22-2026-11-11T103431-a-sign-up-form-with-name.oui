@@ -1,0 +1,11 @@
+root = Stack([title, form])
+title = TextContent("Create your account", "large-heavy")
+form = Form("signup", btns, [nameField, emailField, passwordField, planField, termsField])
+nameField = FormControl("Name", Input("name", "Your full name", "text", {required: true, minLength: 2}))
+emailField = FormControl("Email", Input("email", "you@example.com", "email", {required: true, email: true}))
+passwordField = FormControl("Password", Input("password", "At least 8 characters", "password", {required: true, minLength: 8, pattern: "^(?=.*[A-Za-z])(?=.*\\d).+$"}), "Must include a letter and a number")
+planField = FormControl("Plan", Select("plan", planOpts, "Choose a plan", {required: true}))
+planOpts = [SelectItem("free", "Free"), SelectItem("pro", "Pro — $12/mo"), SelectItem("team", "Team — $36/mo")]
+termsField = FormControl("Terms", CheckBoxGroup("terms", [termsItem], {required: true}))
+termsItem = CheckBoxItem("I agree to the Terms of Service", "You must accept the terms to create an account", "accepted", false)
+btns = Buttons([Button("Create account", @ToAssistant("Create my account"), "primary"), Button("Cancel", @ToAssistant("Cancel sign-up"), "secondary")])

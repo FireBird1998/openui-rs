@@ -1,0 +1,312 @@
+{
+  "batchRequest" : {
+    "model" : "haiku",
+    "number" : 106,
+    "request" : "A campsite comparison with nightly rates, amenities, maximum tent size and availability for three sites."
+  },
+  "chunks" : [
+    {
+      "t" : 0.701,
+      "text" : "root = Stack(["
+    },
+    {
+      "t" : 0.86,
+      "text" : "header"
+    },
+    {
+      "t" : 0.89,
+      "text" : ", table"
+    },
+    {
+      "t" : 0.947,
+      "text" : "])\nheader = InlineH"
+    },
+    {
+      "t" : 0.974,
+      "text" : "eader(\"Campsite"
+    },
+    {
+      "t" : 1.008,
+      "text" : " Comparison\", \"N"
+    },
+    {
+      "t" : 1.072,
+      "text" : "ightly rates, amenities"
+    },
+    {
+      "t" : 1.108,
+      "text" : ","
+    },
+    {
+      "t" : 1.137,
+      "text" : " and availability for three sites\")"
+    },
+    {
+      "t" : 1.141,
+      "text" : "\ntable = Table([col"
+    },
+    {
+      "t" : 1.171,
+      "text" : "S"
+    },
+    {
+      "t" : 1.208,
+      "text" : "ite, colR"
+    },
+    {
+      "t" : 1.278,
+      "text" : "ate, colA"
+    },
+    {
+      "t" : 1.305,
+      "text" : "menities, colTent,"
+    },
+    {
+      "t" : 1.307,
+      "text" : " colAvail])\ncolS"
+    },
+    {
+      "t" : 1.339,
+      "text" : "ite = Col(\"Site\","
+    },
+    {
+      "t" : 1.386,
+      "text" : " "
+    },
+    {
+      "t" : 1.425,
+      "text" : "[\"P"
+    },
+    {
+      "t" : 1.495,
+      "text" : "ine H"
+    },
+    {
+      "t" : 1.497,
+      "text" : "ollow\", \"Lak"
+    },
+    {
+      "t" : 1.538,
+      "text" : "eside Me"
+    },
+    {
+      "t" : 1.576,
+      "text" : "adow"
+    },
+    {
+      "t" : 1.612,
+      "text" : "\", \"C"
+    },
+    {
+      "t" : 1.651,
+      "text" : "edar Ridge\""
+    },
+    {
+      "t" : 1.695,
+      "text" : "])\ncolRate = Col"
+    },
+    {
+      "t" : 1.731,
+      "text" : "(\"N"
+    },
+    {
+      "t" : 1.766,
+      "text" : "ightly Rate\","
+    },
+    {
+      "t" : 1.809,
+      "text" : " ["
+    },
+    {
+      "t" : 1.848,
+      "text" : "32"
+    },
+    {
+      "t" : 1.89,
+      "text" : ", 45"
+    },
+    {
+      "t" : 1.982,
+      "text" : ", 28"
+    },
+    {
+      "t" : 2.03,
+      "text" : "], \"number\")\ncolAm"
+    },
+    {
+      "t" : 2.095,
+      "text" : "enities = Col(\"Am"
+    },
+    {
+      "t" : 2.122,
+      "text" : "enities\", ["
+    },
+    {
+      "t" : 2.159,
+      "text" : "amenA"
+    },
+    {
+      "t" : 2.16,
+      "text" : ", amenB, amenC"
+    },
+    {
+      "t" : 2.208,
+      "text" : "])\namenA = Tag"
+    },
+    {
+      "t" : 2.269,
+      "text" : "Block([\"Water"
+    },
+    {
+      "t" : 2.314,
+      "text" : "\", \"F"
+    },
+    {
+      "t" : 2.38,
+      "text" : "ire P"
+    },
+    {
+      "t" : 2.381,
+      "text" : "it\", \"Rest"
+    },
+    {
+      "t" : 2.427,
+      "text" : "r"
+    },
+    {
+      "t" : 2.474,
+      "text" : "ooms\"])\namenB"
+    },
+    {
+      "t" : 2.519,
+      "text" : " = TagBlock([\""
+    },
+    {
+      "t" : 2.573,
+      "text" : "Water\", \"Elect"
+    },
+    {
+      "t" : 2.623,
+      "text" : "ric"
+    },
+    {
+      "t" : 2.679,
+      "text" : " Hookup\", \"Showers"
+    },
+    {
+      "t" : 2.726,
+      "text" : "\", \"Lake"
+    },
+    {
+      "t" : 2.778,
+      "text" : " Access\"])\namenC ="
+    },
+    {
+      "t" : 2.831,
+      "text" : " TagBlock([\""
+    },
+    {
+      "t" : 2.885,
+      "text" : "Water\", \"Pic"
+    },
+    {
+      "t" : 2.945,
+      "text" : "nic Table"
+    },
+    {
+      "t" : 3.027,
+      "text" : "\"])\ncolTent ="
+    },
+    {
+      "t" : 3.03,
+      "text" : " Col(\"Max Tent"
+    },
+    {
+      "t" : 3.091,
+      "text" : " Size\", [\"10x"
+    },
+    {
+      "t" : 3.143,
+      "text" : "12"
+    },
+    {
+      "t" : 3.193,
+      "text" : " ft\", \"12"
+    },
+    {
+      "t" : 3.247,
+      "text" : "x16 ft\", \"9"
+    },
+    {
+      "t" : 3.301,
+      "text" : "x9"
+    },
+    {
+      "t" : 3.363,
+      "text" : " ft\"])"
+    },
+    {
+      "t" : 3.469,
+      "text" : "\ncolAvail = Col"
+    },
+    {
+      "t" : 3.534,
+      "text" : "(\"Availability\", [avail"
+    },
+    {
+      "t" : 3.589,
+      "text" : "A"
+    },
+    {
+      "t" : 3.621,
+      "text" : ", availB"
+    },
+    {
+      "t" : 3.684,
+      "text" : ", availC])\navailA ="
+    },
+    {
+      "t" : 3.686,
+      "text" : " Tag(\"Available\", null"
+    },
+    {
+      "t" : 3.741,
+      "text" : ", \"sm\", \"success"
+    },
+    {
+      "t" : 3.791,
+      "text" : "\")\navailB = Tag"
+    },
+    {
+      "t" : 3.823,
+      "text" : "(\"Limited\", null, \""
+    },
+    {
+      "t" : 3.87,
+      "text" : "sm\", \"warning\")"
+    },
+    {
+      "t" : 3.914,
+      "text" : "\navailC = Tag(\""
+    },
+    {
+      "t" : 3.967,
+      "text" : "Sold Out\", null, \""
+    },
+    {
+      "t" : 4.027,
+      "text" : "sm\", \"danger\")"
+    }
+  ],
+  "createdAt" : "2026-11-11T10:56:45Z",
+  "effort" : "low",
+  "format" : "openui-recording",
+  "inputTokens" : 14501,
+  "library" : "react-ui",
+  "model" : "claude-haiku-5-5",
+  "outputTokens" : 402,
+  "request" : "A campsite comparison with nightly rates, amenities, maximum tent size and availability for three sites.",
+  "servedBy" : "claude-haiku-5-5",
+  "stopReason" : "end_turn",
+  "version" : 1
+}

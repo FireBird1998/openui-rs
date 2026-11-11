@@ -1,0 +1,160 @@
+{
+  "batchRequest" : {
+    "model" : "haiku",
+    "number" : 28,
+    "request" : "A contact card for a support team with hours, phone, email and a button to start a chat."
+  },
+  "chunks" : [
+    {
+      "t" : 0.637,
+      "text" : "root = Card"
+    },
+    {
+      "t" : 0.779,
+      "text" : "([header"
+    },
+    {
+      "t" : 0.784,
+      "text" : ", details"
+    },
+    {
+      "t" : 0.793,
+      "text" : ", ch"
+    },
+    {
+      "t" : 0.811,
+      "text" : "atBtn])\nheader ="
+    },
+    {
+      "t" : 0.819,
+      "text" : " CardHeader(\"Custom"
+    },
+    {
+      "t" : 0.833,
+      "text" : "er Support\", \"We"
+    },
+    {
+      "t" : 0.842,
+      "text" : "'re here to help\")\ndetails ="
+    },
+    {
+      "t" : 0.848,
+      "text" : " EntityList([h"
+    },
+    {
+      "t" : 0.854,
+      "text" : "o"
+    },
+    {
+      "t" : 0.864,
+      "text" : "ursRow, ph"
+    },
+    {
+      "t" : 0.87,
+      "text" : "oneRow, emailR"
+    },
+    {
+      "t" : 0.885,
+      "text" : "ow])"
+    },
+    {
+      "t" : 0.96,
+      "text" : "\nhoursRow = {"
+    },
+    {
+      "t" : 0.966,
+      "text" : "left: \"Hours\", right"
+    },
+    {
+      "t" : 0.976,
+      "text" : ": \"Mon–"
+    },
+    {
+      "t" : 0.983,
+      "text" : "Fri, 9am–"
+    },
+    {
+      "t" : 0.993,
+      "text" : "6"
+    },
+    {
+      "t" : 1.009,
+      "text" : "pm\"}\nphone"
+    },
+    {
+      "t" : 1.035,
+      "text" : "Row = {left: \""
+    },
+    {
+      "t" : 1.05,
+      "text" : "Phone\", right: \"+1"
+    },
+    {
+      "t" : 1.073,
+      "text" : " ("
+    },
+    {
+      "t" : 1.094,
+      "text" : "555) 014"
+    },
+    {
+      "t" : 1.11,
+      "text" : "-2"
+    },
+    {
+      "t" : 1.129,
+      "text" : "290"
+    },
+    {
+      "t" : 1.349,
+      "text" : "\"}\nemailRow ="
+    },
+    {
+      "t" : 1.363,
+      "text" : " {left: \"Email\", right"
+    },
+    {
+      "t" : 1.377,
+      "text" : ": \"support@example"
+    },
+    {
+      "t" : 1.386,
+      "text" : ".com\"}\nchatB"
+    },
+    {
+      "t" : 1.399,
+      "text" : "tn = Buttons(["
+    },
+    {
+      "t" : 1.413,
+      "text" : "Button(\"Start Chat"
+    },
+    {
+      "t" : 1.428,
+      "text" : "\", @ToAssistant"
+    },
+    {
+      "t" : 1.437,
+      "text" : "(\"Start a chat with the"
+    },
+    {
+      "t" : 1.451,
+      "text" : " support team\"), \"primary\")"
+    },
+    {
+      "t" : 1.466,
+      "text" : "])"
+    }
+  ],
+  "createdAt" : "2026-11-11T10:34:57Z",
+  "effort" : "low",
+  "format" : "openui-recording",
+  "inputTokens" : 14494,
+  "library" : "react-ui",
+  "model" : "claude-haiku-5-5",
+  "outputTokens" : 198,
+  "request" : "A contact card for a support team with hours, phone, email and a button to start a chat.",
+  "servedBy" : "claude-haiku-5-5",
+  "stopReason" : "end_turn",
+  "version" : 1
+}

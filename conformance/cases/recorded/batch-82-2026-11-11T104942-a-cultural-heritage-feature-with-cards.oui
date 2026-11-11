@@ -1,0 +1,33 @@
+root = Stack([header, cardRow])
+header = InlineHeader("Endangered Crafts", "Three traditions keeping their makers and stories alive")
+cardRow = Stack([craft1, craft2, craft3], "row", "m", "stretch", "start", true)
+
+craft1 = Card([craft1Header, craft1Quote, craft1Visit], "card", "column", "m")
+craft1Header = CardHeader("Lacquerware of Wajima", "Ishikawa Prefecture, Japan")
+craft1Quote = Callout("neutral", "In the artisan's words", "\"Each layer of lacquer needs weeks to dry. Patience is the real material we work with.\" — Haruko Mori, 4th generation lacquer master")
+craft1Visit = craft1Details
+craft1Details = EntityList([craft1Row1, craft1Row2, craft1Row3, craft1Row4], "default")
+craft1Row1 = { left: "Workshop", right: "Wajima Lacquer Studio" }
+craft1Row2 = { left: "Visit length", right: "2 hours" }
+craft1Row3 = { left: "Group size", right: "Up to 8" }
+craft1Row4 = { left: "Next opening", right: "12 May" }
+
+craft2 = Card([craft2Header, craft2Quote, craft2Visit], "card", "column", "m")
+craft2Header = CardHeader("Lombok Ikat Weaving", "West Nusa Tenggara, Indonesia")
+craft2Quote = Callout("neutral", "In the artisan's words", "\"My grandmother dyed threads with indigo from our village. I still count each knot the way she taught me.\" — Ni Wayan Sari, weaver")
+craft2Visit = craft2Details
+craft2Details = EntityList([craft2Row1, craft2Row2, craft2Row3, craft2Row4], "default")
+craft2Row1 = { left: "Workshop", right: "Sukarara Weaving Village" }
+craft2Row2 = { left: "Visit length", right: "3 hours" }
+craft2Row3 = { left: "Group size", right: "Up to 6" }
+craft2Row4 = { left: "Next opening", right: "19 May" }
+
+craft3 = Card([craft3Header, craft3Quote, craft3Visit], "card", "column", "m")
+craft3Header = CardHeader("Hand-Beaten Copper of Herat", "Herat, Afghanistan", )
+craft3Quote = Callout("neutral", "In the artisan's words", "\"Our hammers have passed from father to son for centuries. Every dent in the copper tells a story.\" — Abdul Qadir, coppersmith")
+craft3Visit = craft3Details
+craft3Details = EntityList([craft3Row1, craft3Row2, craft3Row3, craft3Row4], "default")
+craft3Row1 = { left: "Workshop", right: "Old Bazaar Coppersmiths" }
+craft3Row2 = { left: "Visit length", right: "90 minutes" }
+craft3Row3 = { left: "Group size", right: "Up to 10" }
+craft3Row4 = { left: "Next opening", right: "26 May" }

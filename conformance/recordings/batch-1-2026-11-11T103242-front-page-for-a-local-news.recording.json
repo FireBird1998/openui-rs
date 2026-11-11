@@ -1,0 +1,844 @@
+{
+  "batchRequest" : {
+    "model" : "sonnet",
+    "number" : 1,
+    "request" : "Front page for a local news site: a lead story with an image, three secondary headlines, and a \"most read\" list."
+  },
+  "chunks" : [
+    {
+      "t" : 0.853,
+      "text" : "root = Stack([mas"
+    },
+    {
+      "t" : 1.168,
+      "text" : "thead, s"
+    },
+    {
+      "t" : 1.179,
+      "text" : "ep, lead, secH"
+    },
+    {
+      "t" : 1.185,
+      "text" : "eader, secC"
+    },
+    {
+      "t" : 1.204,
+      "text" : "ards, m"
+    },
+    {
+      "t" : 1.22,
+      "text" : "ostH"
+    },
+    {
+      "t" : 1.23,
+      "text" : "eader, mostList"
+    },
+    {
+      "t" : 1.237,
+      "text" : "])"
+    },
+    {
+      "t" : 1.247,
+      "text" : "\nmasthead = C"
+    },
+    {
+      "t" : 1.254,
+      "text" : "ardHeader(\"River"
+    },
+    {
+      "t" : 1.271,
+      "text" : "ton Daily\","
+    },
+    {
+      "t" : 1.283,
+      "text" : " \"Local"
+    },
+    {
+      "t" : 1.295,
+      "text" : " news for"
+    },
+    {
+      "t" : 1.487,
+      "text" : " Riverton and"
+    },
+    {
+      "t" : 1.5,
+      "text" : " the"
+    },
+    {
+      "t" : 1.511,
+      "text" : " surrounding val"
+    },
+    {
+      "t" : 1.52,
+      "text" : "ley\")\nsep = Separ"
+    },
+    {
+      "t" : 1.531,
+      "text" : "ator()\nlead = Card"
+    },
+    {
+      "t" : 1.544,
+      "text" : "([le"
+    },
+    {
+      "t" : 1.552,
+      "text" : "adImg, leadT"
+    },
+    {
+      "t" : 1.564,
+      "text" : "ag, leadTitle,"
+    },
+    {
+      "t" : 1.583,
+      "text" : " leadB"
+    },
+    {
+      "t" : 1.618,
+      "text" : "ody, leadBtns"
+    },
+    {
+      "t" : 1.653,
+      "text" : "])\nleadImg ="
+    },
+    {
+      "t" : 1.691,
+      "text" : " Image(\"Cr"
+    },
+    {
+      "t" : 1.805,
+      "text" : "owd gathered at the"
+    },
+    {
+      "t" : 1.82,
+      "text" : " Riverton wa"
+    },
+    {
+      "t" : 1.834,
+      "text" : "terfront for the annual l"
+    },
+    {
+      "t" : 1.849,
+      "text" : "antern festival\")\nlead"
+    },
+    {
+      "t" : 1.868,
+      "text" : "Tag = T"
+    },
+    {
+      "t" : 1.904,
+      "text" : "agBlock([\"Community"
+    },
+    {
+      "t" : 1.939,
+      "text" : "\", \"Top"
+    },
+    {
+      "t" : 1.974,
+      "text" : " Story\"],"
+    },
+    {
+      "t" : 2.009,
+      "text" : " \"s"
+    },
+    {
+      "t" : 2.045,
+      "text" : "m\")\nleadTitle"
+    },
+    {
+      "t" : 2.081,
+      "text" : " = TextContent(\"Wa"
+    },
+    {
+      "t" : 2.118,
+      "text" : "terfront Lantern"
+    },
+    {
+      "t" : 2.153,
+      "text" : " Festival Dra"
+    },
+    {
+      "t" : 2.189,
+      "text" : "ws Record Crowd"
+    },
+    {
+      "t" : 2.236,
+      "text" : " of 12,000\", \"large"
+    },
+    {
+      "t" : 2.26,
+      "text" : "-heavy\")\nlead"
+    },
+    {
+      "t" : 2.297,
+      "text" : "Body = TextContent(\""
+    },
+    {
+      "t" : 2.332,
+      "text" : "Thousands fil"
+    },
+    {
+      "t" : 2.37,
+      "text" : "led the Riverton wa"
+    },
+    {
+      "t" : 2.403,
+      "text" : "terfront on Saturday"
+    },
+    {
+      "t" : 2.439,
+      "text" : " evening as the"
+    },
+    {
+      "t" : 2.473,
+      "text" : " city"
+    },
+    {
+      "t" : 2.509,
+      "text" : "'s"
+    },
+    {
+      "t" : 2.545,
+      "text" : " annual lantern festival retur"
+    },
+    {
+      "t" : 2.579,
+      "text" : "ned with"
+    },
+    {
+      "t" : 2.614,
+      "text" : " exp"
+    },
+    {
+      "t" : 2.648,
+      "text" : "anded food"
+    },
+    {
+      "t" : 2.684,
+      "text" : " st"
+    },
+    {
+      "t" : 2.718,
+      "text" : "alls, live"
+    },
+    {
+      "t" : 2.754,
+      "text" : " music and a new flo"
+    },
+    {
+      "t" : 2.807,
+      "text" : "ating l"
+    },
+    {
+      "t" : 2.826,
+      "text" : "antern display. Organizers"
+    },
+    {
+      "t" : 2.859,
+      "text" : " say att"
+    },
+    {
+      "t" : 2.895,
+      "text" : "endance is"
+    },
+    {
+      "t" : 2.929,
+      "text" : " up"
+    },
+    {
+      "t" : 2.964,
+      "text" : " "
+    },
+    {
+      "t" : 2.999,
+      "text" : "30"
+    },
+    {
+      "t" : 3.036,
+      "text" : "% from last year,"
+    },
+    {
+      "t" : 3.07,
+      "text" : " and local busin"
+    },
+    {
+      "t" : 3.111,
+      "text" : "esses report their"
+    },
+    {
+      "t" : 3.145,
+      "text" : " busiest week"
+    },
+    {
+      "t" : 3.178,
+      "text" : "end of the season.\")\nle"
+    },
+    {
+      "t" : 3.213,
+      "text" : "adBtns = Butt"
+    },
+    {
+      "t" : 3.26,
+      "text" : "ons([Button(\"Read full"
+    },
+    {
+      "t" : 3.285,
+      "text" : " story\", @ToAssist"
+    },
+    {
+      "t" : 3.32,
+      "text" : "ant(\"Show"
+    },
+    {
+      "t" : 3.354,
+      "text" : " the"
+    },
+    {
+      "t" : 3.395,
+      "text" : " full story:"
+    },
+    {
+      "t" : 3.428,
+      "text" : " Waterfront Lant"
+    },
+    {
+      "t" : 3.462,
+      "text" : "ern Festival Draws"
+    },
+    {
+      "t" : 3.497,
+      "text" : " Record Crowd\""
+    },
+    {
+      "t" : 3.533,
+      "text" : "), \"primary\"), Button"
+    },
+    {
+      "t" : 3.569,
+      "text" : "(\"Phot"
+    },
+    {
+      "t" : 3.604,
+      "text" : "o gallery\", @To"
+    },
+    {
+      "t" : 3.642,
+      "text" : "Assistant(\"Show phot"
+    },
+    {
+      "t" : 3.676,
+      "text" : "o gallery of the lant"
+    },
+    {
+      "t" : 3.711,
+      "text" : "ern festival\"), \"second"
+    },
+    {
+      "t" : 3.755,
+      "text" : "ary\")])\nsecHeader"
+    },
+    {
+      "t" : 3.783,
+      "text" : " = InlineHeader(\""
+    },
+    {
+      "t" : 3.819,
+      "text" : "More Headlines\", \""
+    },
+    {
+      "t" : 3.854,
+      "text" : "Latest from around"
+    },
+    {
+      "t" : 3.895,
+      "text" : " town\")\nsecCards = "
+    },
+    {
+      "t" : 3.928,
+      "text" : "ContextCardBlock(["
+    },
+    {
+      "t" : 3.962,
+      "text" : "c1, c2, c3"
+    },
+    {
+      "t" : 3.997,
+      "text" : "],"
+    },
+    {
+      "t" : 4.032,
+      "text" : " \"gr"
+    },
+    {
+      "t" : 4.067,
+      "text" : "id\")\nc1 = "
+    },
+    {
+      "t" : 4.103,
+      "text" : "ContextCardItem(\"h"
+    },
+    {
+      "t" : 4.138,
+      "text" : "1\", t"
+    },
+    {
+      "t" : 4.173,
+      "text" : "1,"
+    },
+    {
+      "t" : 4.212,
+      "text" : " \"City"
+    },
+    {
+      "t" : 4.244,
+      "text" : " council approves $"
+    },
+    {
+      "t" : 4.279,
+      "text" : "4"
+    },
+    {
+      "t" : 4.316,
+      "text" : ".2"
+    },
+    {
+      "t" : 4.349,
+      "text" : "M pl"
+    },
+    {
+      "t" : 4.384,
+      "text" : "an to"
+    },
+    {
+      "t" : 4.42,
+      "text" : " repave Main Street and add"
+    },
+    {
+      "t" : 4.456,
+      "text" : " prot"
+    },
+    {
+      "t" : 4.491,
+      "text" : "ected bike lanes.\","
+    },
+    {
+      "t" : 4.53,
+      "text" : " \"gray\")\nt"
+    },
+    {
+      "t" : 4.564,
+      "text" : "1 = Tag(\""
+    },
+    {
+      "t" : 4.599,
+      "text" : "Politics\", null, \"sm"
+    },
+    {
+      "t" : 4.635,
+      "text" : "\", \"info\")\nc2 "
+    },
+    {
+      "t" : 4.671,
+      "text" : "= ContextCardItem"
+    },
+    {
+      "t" : 4.705,
+      "text" : "(\"h2\", t2, \""
+    },
+    {
+      "t" : 4.745,
+      "text" : "Ri"
+    },
+    {
+      "t" : 4.778,
+      "text" : "verton High's"
+    },
+    {
+      "t" : 4.811,
+      "text" : " gir"
+    },
+    {
+      "t" : 4.845,
+      "text" : "ls so"
+    },
+    {
+      "t" : 4.882,
+      "text" : "ccer team adv"
+    },
+    {
+      "t" : 4.916,
+      "text" : "ances to the"
+    },
+    {
+      "t" : 4.951,
+      "text" : " state sem"
+    },
+    {
+      "t" : 4.987,
+      "text" : "ifinals after"
+    },
+    {
+      "t" : 5.022,
+      "text" : " 2"
+    },
+    {
+      "t" : 5.058,
+      "text" : "-1 win."
+    },
+    {
+      "t" : 5.094,
+      "text" : "\", \"g"
+    },
+    {
+      "t" : 5.129,
+      "text" : "ray\")\nt2 ="
+    },
+    {
+      "t" : 5.164,
+      "text" : " Tag(\"Sports\", null"
+    },
+    {
+      "t" : 5.2,
+      "text" : ", \"sm\", \"success\")"
+    },
+    {
+      "t" : 5.236,
+      "text" : "\nc3 = Context"
+    },
+    {
+      "t" : 5.272,
+      "text" : "CardItem(\"h3\","
+    },
+    {
+      "t" : 5.308,
+      "text" : " t3, \"New"
+    },
+    {
+      "t" : 5.344,
+      "text" : " b"
+    },
+    {
+      "t" : 5.378,
+      "text" : "akery on"
+    },
+    {
+      "t" : 5.413,
+      "text" : " El"
+    },
+    {
+      "t" : 5.447,
+      "text" : "m Street dra"
+    },
+    {
+      "t" : 5.484,
+      "text" : "ws l"
+    },
+    {
+      "t" : 5.52,
+      "text" : "ines with"
+    },
+    {
+      "t" : 5.553,
+      "text" : " its"
+    },
+    {
+      "t" : 5.589,
+      "text" : " c"
+    },
+    {
+      "t" : 5.627,
+      "text" : "ard"
+    },
+    {
+      "t" : 5.661,
+      "text" : "amom mor"
+    },
+    {
+      "t" : 5.695,
+      "text" : "ning bu"
+    },
+    {
+      "t" : 5.729,
+      "text" : "ns.\", \"gray\")"
+    },
+    {
+      "t" : 5.767,
+      "text" : "\nt3 = Tag(\""
+    },
+    {
+      "t" : 5.804,
+      "text" : "Food\","
+    },
+    {
+      "t" : 5.839,
+      "text" : " null, \"sm\", \"war"
+    },
+    {
+      "t" : 5.875,
+      "text" : "ning\")\nmostHeader"
+    },
+    {
+      "t" : 5.91,
+      "text" : " = InlineHeader(\""
+    },
+    {
+      "t" : 5.945,
+      "text" : "Most Read\", \"Tr"
+    },
+    {
+      "t" : 5.979,
+      "text" : "ending stories today\")\nmost"
+    },
+    {
+      "t" : 6.016,
+      "text" : "List = ListBlock(["
+    },
+    {
+      "t" : 6.05,
+      "text" : "m"
+    },
+    {
+      "t" : 6.089,
+      "text" : "1, m2, m3,"
+    },
+    {
+      "t" : 6.123,
+      "text" : " m4, m5], \"number"
+    },
+    {
+      "t" : 6.158,
+      "text" : "\")"
+    },
+    {
+      "t" : 6.194,
+      "text" : "\nm1 = ListIt"
+    },
+    {
+      "t" : 6.228,
+      "text" : "em(\"Lantern fest"
+    },
+    {
+      "t" : 6.266,
+      "text" : "ival dra"
+    },
+    {
+      "t" : 6.299,
+      "text" : "ws record crowd\", \""
+    },
+    {
+      "t" : 6.335,
+      "text" : "Community ·"
+    },
+    {
+      "t" : 6.37,
+      "text" : " 6"
+    },
+    {
+      "t" : 6.405,
+      "text" : " min read\", null, \""
+    },
+    {
+      "t" : 6.441,
+      "text" : "Read\", @ToAssist"
+    },
+    {
+      "t" : 6.476,
+      "text" : "ant(\"Open"
+    },
+    {
+      "t" : 6.519,
+      "text" : " story: Lantern festival"
+    },
+    {
+      "t" : 6.553,
+      "text" : " draws record crowd\"))"
+    },
+    {
+      "t" : 6.587,
+      "text" : "\nm2 = ListIt"
+    },
+    {
+      "t" : 6.621,
+      "text" : "em(\"Main Street repa"
+    },
+    {
+      "t" : 6.655,
+      "text" : "ving plan approved\", \""
+    },
+    {
+      "t" : 6.69,
+      "text" : "Politics · 4"
+    },
+    {
+      "t" : 6.725,
+      "text" : " min read\", null, \""
+    },
+    {
+      "t" : 6.772,
+      "text" : "Read\", @ToAssist"
+    },
+    {
+      "t" : 6.805,
+      "text" : "ant(\"Open story: Main"
+    },
+    {
+      "t" : 6.84,
+      "text" : " Street repaving plan appro"
+    },
+    {
+      "t" : 6.874,
+      "text" : "ved\"))\nm3 ="
+    },
+    {
+      "t" : 6.91,
+      "text" : " ListItem(\"Where"
+    },
+    {
+      "t" : 6.945,
+      "text" : " to find"
+    },
+    {
+      "t" : 6.979,
+      "text" : " the best f"
+    },
+    {
+      "t" : 7.014,
+      "text" : "all h"
+    },
+    {
+      "t" : 7.05,
+      "text" : "ik"
+    },
+    {
+      "t" : 7.085,
+      "text" : "es n"
+    },
+    {
+      "t" : 7.119,
+      "text" : "earby\", \"Out"
+    },
+    {
+      "t" : 7.154,
+      "text" : "doors"
+    },
+    {
+      "t" : 7.19,
+      "text" : " · 5 min read\", null"
+    },
+    {
+      "t" : 7.225,
+      "text" : ", \"Read\", @To"
+    },
+    {
+      "t" : 7.261,
+      "text" : "Assistant(\"Open story"
+    },
+    {
+      "t" : 7.297,
+      "text" : ": best"
+    },
+    {
+      "t" : 7.332,
+      "text" : " fall hikes nearby"
+    },
+    {
+      "t" : 7.368,
+      "text" : "\"))\nm4 = "
+    },
+    {
+      "t" : 7.403,
+      "text" : "ListItem(\"School"
+    },
+    {
+      "t" : 7.439,
+      "text" : " board deb"
+    },
+    {
+      "t" : 7.475,
+      "text" : "ates later"
+    },
+    {
+      "t" : 7.512,
+      "text" : " start times"
+    },
+    {
+      "t" : 7.549,
+      "text" : "\", \"Education · 7 "
+    },
+    {
+      "t" : 7.585,
+      "text" : "min read\", null, \"Read"
+    },
+    {
+      "t" : 7.622,
+      "text" : "\", @ToAssistant"
+    },
+    {
+      "t" : 7.659,
+      "text" : "(\"Open story: school board start"
+    },
+    {
+      "t" : 7.696,
+      "text" : " times\"))\nm5 ="
+    },
+    {
+      "t" : 7.732,
+      "text" : " ListItem(\"Elm"
+    },
+    {
+      "t" : 7.77,
+      "text" : " Street bakery's"
+    },
+    {
+      "t" : 7.806,
+      "text" : " bu"
+    },
+    {
+      "t" : 7.843,
+      "text" : "ns s"
+    },
+    {
+      "t" : 7.88,
+      "text" : "ell out by"
+    },
+    {
+      "t" : 7.919,
+      "text" : " "
+    },
+    {
+      "t" : 7.956,
+      "text" : "9am\", \"Food · "
+    },
+    {
+      "t" : 7.994,
+      "text" : "3 min read\", null, \""
+    },
+    {
+      "t" : 8.033,
+      "text" : "Read\", @ToAss"
+    },
+    {
+      "t" : 8.072,
+      "text" : "istant(\"Open story:"
+    },
+    {
+      "t" : 8.11,
+      "text" : " Elm Street bakery\""
+    },
+    {
+      "t" : 8.152,
+      "text" : "))"
+    }
+  ],
+  "createdAt" : "2026-11-11T10:32:42Z",
+  "effort" : "low",
+  "format" : "openui-recording",
+  "inputTokens" : 14502,
+  "library" : "react-ui",
+  "model" : "claude-sonnet-5-5",
+  "outputTokens" : 1077,
+  "request" : "Front page for a local news site: a lead story with an image, three secondary headlines, and a \"most read\" list.",
+  "servedBy" : "claude-sonnet-5-5",
+  "stopReason" : "end_turn",
+  "version" : 1
+}

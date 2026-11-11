@@ -1,0 +1,572 @@
+{
+  "batchRequest" : {
+    "model" : "haiku",
+    "number" : 90,
+    "request" : "A bilingual news brief presenting the same fictional museum opening in English and Spanish in two clearly labeled cards."
+  },
+  "chunks" : [
+    {
+      "t" : 1.074,
+      "text" : "root = Stack([header"
+    },
+    {
+      "t" : 1.238,
+      "text" : ", c"
+    },
+    {
+      "t" : 1.264,
+      "text" : "ardEn"
+    },
+    {
+      "t" : 1.311,
+      "text" : ", cardE"
+    },
+    {
+      "t" : 1.344,
+      "text" : "s])\nheader = Inline"
+    },
+    {
+      "t" : 1.404,
+      "text" : "Header(\"Biling"
+    },
+    {
+      "t" : 1.445,
+      "text" : "ual News Brief\", \"The"
+    },
+    {
+      "t" : 1.469,
+      "text" : " same story"
+    },
+    {
+      "t" : 1.495,
+      "text" : ", pres"
+    },
+    {
+      "t" : 1.523,
+      "text" : "ented in English and Spanish"
+    },
+    {
+      "t" : 1.546,
+      "text" : "\")\ncardEn ="
+    },
+    {
+      "t" : 1.61,
+      "text" : " Card([en"
+    },
+    {
+      "t" : 1.662,
+      "text" : "H"
+    },
+    {
+      "t" : 1.664,
+      "text" : "eader, enB"
+    },
+    {
+      "t" : 1.711,
+      "text" : "ody,"
+    },
+    {
+      "t" : 1.776,
+      "text" : " enB"
+    },
+    {
+      "t" : 1.811,
+      "text" : "tn])\nenHeader"
+    },
+    {
+      "t" : 1.812,
+      "text" : " = CardHeader(\"English"
+    },
+    {
+      "t" : 1.843,
+      "text" : "\", \"Museum op"
+    },
+    {
+      "t" : 1.877,
+      "text" : "ening\")\nenBody = M"
+    },
+    {
+      "t" : 1.914,
+      "text" : "arkDownRenderer"
+    },
+    {
+      "t" : 1.95,
+      "text" : "(\"**"
+    },
+    {
+      "t" : 1.988,
+      "text" : "Har"
+    },
+    {
+      "t" : 2.024,
+      "text" : "bor City"
+    },
+    {
+      "t" : 2.061,
+      "text" : " Op"
+    },
+    {
+      "t" : 2.096,
+      "text" : "ens the"
+    },
+    {
+      "t" : 2.151,
+      "text" : " L"
+    },
+    {
+      "t" : 2.153,
+      "text" : "um"
+    },
+    {
+      "t" : 2.192,
+      "text" : "en"
+    },
+    {
+      "t" : 2.265,
+      "text" : " Co"
+    },
+    {
+      "t" : 2.304,
+      "text" : "ast Museum**"
+    },
+    {
+      "t" : 2.343,
+      "text" : "\\n\\nH"
+    },
+    {
+      "t" : 2.344,
+      "text" : "AR"
+    },
+    {
+      "t" : 2.39,
+      "text" : "BOR CITY —"
+    },
+    {
+      "t" : 2.437,
+      "text" : " The Lumen Coast"
+    },
+    {
+      "t" : 2.488,
+      "text" : " Museum opened its"
+    },
+    {
+      "t" : 2.543,
+      "text" : " doors this"
+    },
+    {
+      "t" : 2.581,
+      "text" : " we"
+    },
+    {
+      "t" : 2.618,
+      "text" : "ekend,"
+    },
+    {
+      "t" : 2.657,
+      "text" : " un"
+    },
+    {
+      "t" : 2.695,
+      "text" : "veiling a wa"
+    },
+    {
+      "t" : 2.749,
+      "text" : "terfront camp"
+    },
+    {
+      "t" : 2.792,
+      "text" : "us d"
+    },
+    {
+      "t" : 2.834,
+      "text" : "edicated to ma"
+    },
+    {
+      "t" : 2.923,
+      "text" : "ritime art, clim"
+    },
+    {
+      "t" : 2.967,
+      "text" : "ate science, and local"
+    },
+    {
+      "t" : 3.014,
+      "text" : " history"
+    },
+    {
+      "t" : 3.063,
+      "text" : ". The"
+    },
+    {
+      "t" : 3.115,
+      "text" : " 42"
+    },
+    {
+      "t" : 3.165,
+      "text" : ",000-square-foot building"
+    },
+    {
+      "t" : 3.204,
+      "text" : " features three perm"
+    },
+    {
+      "t" : 3.253,
+      "text" : "anent galleries, a children"
+    },
+    {
+      "t" : 3.254,
+      "text" : "'s disc"
+    },
+    {
+      "t" : 3.303,
+      "text" : "overy l"
+    },
+    {
+      "t" : 3.349,
+      "text" : "ab, and a r"
+    },
+    {
+      "t" : 3.399,
+      "text" : "ooftop ter"
+    },
+    {
+      "t" : 3.449,
+      "text" : "race overlooking the b"
+    },
+    {
+      "t" : 3.55,
+      "text" : "ay. Muse"
+    },
+    {
+      "t" : 3.601,
+      "text" : "um director El"
+    },
+    {
+      "t" : 3.652,
+      "text" : "ena Var"
+    },
+    {
+      "t" : 3.7,
+      "text" : "ga"
+    },
+    {
+      "t" : 3.751,
+      "text" : " said the instit"
+    },
+    {
+      "t" : 3.809,
+      "text" : "ution aims to wel"
+    },
+    {
+      "t" : 3.873,
+      "text" : "come "
+    },
+    {
+      "t" : 3.929,
+      "text" : "300"
+    },
+    {
+      "t" : 3.979,
+      "text" : ",000 visitors in"
+    },
+    {
+      "t" : 4.033,
+      "text" : " its first year."
+    },
+    {
+      "t" : 4.086,
+      "text" : " Admission for"
+    },
+    {
+      "t" : 4.134,
+      "text" : " resid"
+    },
+    {
+      "t" : 4.135,
+      "text" : "ents is free on"
+    },
+    {
+      "t" : 4.186,
+      "text" : " the"
+    },
+    {
+      "t" : 4.24,
+      "text" : " first S"
+    },
+    {
+      "t" : 4.292,
+      "text" : "unday of every month.\", \""
+    },
+    {
+      "t" : 4.343,
+      "text" : "cl"
+    },
+    {
+      "t" : 4.563,
+      "text" : "ear\")\nenBtn ="
+    },
+    {
+      "t" : 4.845,
+      "text" : " Button(\""
+    },
+    {
+      "t" : 4.954,
+      "text" : "Ask a"
+    },
+    {
+      "t" : 5.048,
+      "text" : " follow-up\", @To"
+    },
+    {
+      "t" : 5.183,
+      "text" : "Assistant(\"Give"
+    },
+    {
+      "t" : 5.374,
+      "text" : " me more details about the Lum"
+    },
+    {
+      "t" : 5.46,
+      "text" : "en Coast Museum op"
+    },
+    {
+      "t" : 5.551,
+      "text" : "ening in English\"), \"second"
+    },
+    {
+      "t" : 5.669,
+      "text" : "ary\")\ncardEs ="
+    },
+    {
+      "t" : 5.671,
+      "text" : " Card([es"
+    },
+    {
+      "t" : 5.741,
+      "text" : "Header, esBody,"
+    },
+    {
+      "t" : 5.793,
+      "text" : " esBtn])\nesH"
+    },
+    {
+      "t" : 5.842,
+      "text" : "eader = CardHeader"
+    },
+    {
+      "t" : 5.945,
+      "text" : "(\"Español\", \"In"
+    },
+    {
+      "t" : 5.999,
+      "text" : "auguración del"
+    },
+    {
+      "t" : 6.058,
+      "text" : " museo\")\nesBody ="
+    },
+    {
+      "t" : 6.113,
+      "text" : " MarkDownRender"
+    },
+    {
+      "t" : 6.169,
+      "text" : "er(\"**Har"
+    },
+    {
+      "t" : 6.229,
+      "text" : "bor City in"
+    },
+    {
+      "t" : 6.231,
+      "text" : "augura el Museo"
+    },
+    {
+      "t" : 6.288,
+      "text" : " Lumen Coast**\\"
+    },
+    {
+      "t" : 6.353,
+      "text" : "n\\nH"
+    },
+    {
+      "t" : 6.447,
+      "text" : "ARBOR CITY —"
+    },
+    {
+      "t" : 6.621,
+      "text" : " El Museo Lumen"
+    },
+    {
+      "t" : 6.623,
+      "text" : " Coast abrió sus"
+    },
+    {
+      "t" : 6.699,
+      "text" : " puertas este fin de sem"
+    },
+    {
+      "t" : 6.761,
+      "text" : "ana, pres"
+    },
+    {
+      "t" : 6.805,
+      "text" : "entando un campus junto al"
+    },
+    {
+      "t" : 6.87,
+      "text" : " mar d"
+    },
+    {
+      "t" : 6.946,
+      "text" : "edicado al arte marít"
+    },
+    {
+      "t" : 7.043,
+      "text" : "imo, la ciencia"
+    },
+    {
+      "t" : 7.143,
+      "text" : " climática y la historia local."
+    },
+    {
+      "t" : 7.231,
+      "text" : " El edificio,"
+    },
+    {
+      "t" : 7.288,
+      "text" : " de 42.000 p"
+    },
+    {
+      "t" : 7.349,
+      "text" : "ies c"
+    },
+    {
+      "t" : 7.43,
+      "text" : "uadrados, cuen"
+    },
+    {
+      "t" : 7.507,
+      "text" : "ta con tres galerías perm"
+    },
+    {
+      "t" : 7.568,
+      "text" : "anentes, un laborat"
+    },
+    {
+      "t" : 7.633,
+      "text" : "orio de desc"
+    },
+    {
+      "t" : 7.706,
+      "text" : "ubrimiento para niños"
+    },
+    {
+      "t" : 7.771,
+      "text" : " y una terraza en"
+    },
+    {
+      "t" : 7.838,
+      "text" : " la az"
+    },
+    {
+      "t" : 7.904,
+      "text" : "otea con vista a"
+    },
+    {
+      "t" : 7.974,
+      "text" : " la bahía. La directora"
+    },
+    {
+      "t" : 8.056,
+      "text" : " del"
+    },
+    {
+      "t" : 8.168,
+      "text" : " museo, Elena Var"
+    },
+    {
+      "t" : 8.17,
+      "text" : "ga, af"
+    },
+    {
+      "t" : 8.245,
+      "text" : "irmó que la"
+    },
+    {
+      "t" : 8.307,
+      "text" : " institución esp"
+    },
+    {
+      "t" : 8.37,
+      "text" : "era recibir "
+    },
+    {
+      "t" : 8.441,
+      "text" : "300.000 visitantes"
+    },
+    {
+      "t" : 8.514,
+      "text" : " en su primer año. La ent"
+    },
+    {
+      "t" : 8.664,
+      "text" : "rada para residentes será"
+    },
+    {
+      "t" : 8.743,
+      "text" : " gratuita el primer dom"
+    },
+    {
+      "t" : 8.84,
+      "text" : "ingo de cada mes."
+    },
+    {
+      "t" : 8.921,
+      "text" : "\", \"clear\")\nesB"
+    },
+    {
+      "t" : 9.031,
+      "text" : "tn = Button(\"H"
+    },
+    {
+      "t" : 9.145,
+      "text" : "acer una pregunta\","
+    },
+    {
+      "t" : 9.208,
+      "text" : " @ToAssistant(\""
+    },
+    {
+      "t" : 9.272,
+      "text" : "Dame"
+    },
+    {
+      "t" : 9.273,
+      "text" : " más detalles sobre la"
+    },
+    {
+      "t" : 9.351,
+      "text" : " inauguración del Museo"
+    },
+    {
+      "t" : 9.42,
+      "text" : " Lumen Coast en"
+    },
+    {
+      "t" : 9.574,
+      "text" : " español\"), \"secondary\")"
+    }
+  ],
+  "createdAt" : "2026-11-11T10:51:48Z",
+  "effort" : "low",
+  "format" : "openui-recording",
+  "inputTokens" : 14507,
+  "library" : "react-ui",
+  "model" : "claude-haiku-5-5",
+  "outputTokens" : 718,
+  "request" : "A bilingual news brief presenting the same fictional museum opening in English and Spanish in two clearly labeled cards.",
+  "servedBy" : "claude-haiku-5-5",
+  "stopReason" : "end_turn",
+  "version" : 1
+}

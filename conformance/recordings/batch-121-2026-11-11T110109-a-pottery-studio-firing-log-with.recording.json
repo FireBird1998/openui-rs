@@ -1,0 +1,1100 @@
+{
+  "batchRequest" : {
+    "model" : "sonnet",
+    "number" : 121,
+    "request" : "A pottery studio firing log with kiln loads, clay types, target temperatures, firing stages and inspection results."
+  },
+  "chunks" : [
+    {
+      "t" : 1.246,
+      "text" : "root = Stack([title,"
+    },
+    {
+      "t" : 1.638,
+      "text" : " k"
+    },
+    {
+      "t" : 1.676,
+      "text" : "pis, load"
+    },
+    {
+      "t" : 1.698,
+      "text" : "sH"
+    },
+    {
+      "t" : 1.746,
+      "text" : "eader, loadsTable"
+    },
+    {
+      "t" : 1.86,
+      "text" : ", ch"
+    },
+    {
+      "t" : 1.894,
+      "text" : "artC"
+    },
+    {
+      "t" : 1.949,
+      "text" : "ard, tabs, not"
+    },
+    {
+      "t" : 1.985,
+      "text" : "ice])\ntitle = TextCont"
+    },
+    {
+      "t" : 2.015,
+      "text" : "ent(\"Pottery Stud"
+    },
+    {
+      "t" : 2.049,
+      "text" : "io Firing Log\", \""
+    },
+    {
+      "t" : 2.087,
+      "text" : "large-heavy\")\nk"
+    },
+    {
+      "t" : 2.12,
+      "text" : "pis = O"
+    },
+    {
+      "t" : 2.157,
+      "text" : "verviewCardBlock"
+    },
+    {
+      "t" : 2.189,
+      "text" : "([k"
+    },
+    {
+      "t" : 2.256,
+      "text" : "1, k2, k3,"
+    },
+    {
+      "t" : 2.292,
+      "text" : " k4])\nk1 ="
+    },
+    {
+      "t" : 2.325,
+      "text" : " OverviewCardItem"
+    },
+    {
+      "t" : 2.328,
+      "text" : "(\""
+    },
+    {
+      "t" : 2.36,
+      "text" : "lo"
+    },
+    {
+      "t" : 2.395,
+      "text" : "ads\","
+    },
+    {
+      "t" : 2.461,
+      "text" : " k"
+    },
+    {
+      "t" : 2.462,
+      "text" : "1top"
+    },
+    {
+      "t" : 2.514,
+      "text" : ", k1m"
+    },
+    {
+      "t" : 2.561,
+      "text" : ")\nk1top = Icon"
+    },
+    {
+      "t" : 2.625,
+      "text" : "Text(Icon(\"fl"
+    },
+    {
+      "t" : 2.705,
+      "text" : "ame\", \"t"
+    },
+    {
+      "t" : 2.782,
+      "text" : "ools\"), \"neutral\","
+    },
+    {
+      "t" : 2.841,
+      "text" : " \"m\", \"Loads This"
+    },
+    {
+      "t" : 2.885,
+      "text" : " Month\")\nk1m ="
+    },
+    {
+      "t" : 2.927,
+      "text" : " MetricIndicator"
+    },
+    {
+      "t" : 2.978,
+      "text" : "Inline(\"8\", \"Total"
+    },
+    {
+      "t" : 3.019,
+      "text" : " fir"
+    },
+    {
+      "t" : 3.062,
+      "text" : "ings\", { direction: \"up"
+    },
+    {
+      "t" : 3.104,
+      "text" : "\", value: 14"
+    },
+    {
+      "t" : 3.151,
+      "text" : " })\nk2 = O"
+    },
+    {
+      "t" : 3.19,
+      "text" : "verviewCardItem(\""
+    },
+    {
+      "t" : 3.252,
+      "text" : "p"
+    },
+    {
+      "t" : 3.254,
+      "text" : "ass\", k2top, k2"
+    },
+    {
+      "t" : 3.298,
+      "text" : "m)\nk2top = I"
+    },
+    {
+      "t" : 3.353,
+      "text" : "conText(Icon(\"circ"
+    },
+    {
+      "t" : 3.414,
+      "text" : "le-check\", \"status"
+    },
+    {
+      "t" : 3.46,
+      "text" : "\"), \"success\", \"m\","
+    },
+    {
+      "t" : 3.52,
+      "text" : " \"Pass Rate\")"
+    },
+    {
+      "t" : 3.597,
+      "text" : "\nk2m = Metric"
+    },
+    {
+      "t" : 3.648,
+      "text" : "IndicatorInline(\""
+    },
+    {
+      "t" : 3.711,
+      "text" : "92"
+    },
+    {
+      "t" : 3.776,
+      "text" : "%\", \"P"
+    },
+    {
+      "t" : 3.867,
+      "text" : "ieces pass"
+    },
+    {
+      "t" : 3.959,
+      "text" : "ing in"
+    },
+    {
+      "t" : 4.069,
+      "text" : "spection\", { direction: \""
+    },
+    {
+      "t" : 4.231,
+      "text" : "up\", value: 3"
+    },
+    {
+      "t" : 4.352,
+      "text" : " })\nk3 = O"
+    },
+    {
+      "t" : 4.418,
+      "text" : "verviewCardItem(\""
+    },
+    {
+      "t" : 4.515,
+      "text" : "pieces\", k3top,"
+    },
+    {
+      "t" : 4.516,
+      "text" : " k3m)\nk3top"
+    },
+    {
+      "t" : 4.57,
+      "text" : " = IconText(Icon"
+    },
+    {
+      "t" : 4.625,
+      "text" : "(\"package"
+    },
+    {
+      "t" : 4.736,
+      "text" : "\", \"sh"
+    },
+    {
+      "t" : 4.921,
+      "text" : "opping\"), \"ne"
+    },
+    {
+      "t" : 5.037,
+      "text" : "utral\", \"m\", \""
+    },
+    {
+      "t" : 5.042,
+      "text" : "Pieces Fired\")"
+    },
+    {
+      "t" : 5.132,
+      "text" : "\nk3m = MetricI"
+    },
+    {
+      "t" : 5.232,
+      "text" : "ndicatorInline(\"214"
+    },
+    {
+      "t" : 5.331,
+      "text" : "\", \"Across"
+    },
+    {
+      "t" : 5.487,
+      "text" : " all loads\", { direction:"
+    },
+    {
+      "t" : 5.491,
+      "text" : " \"up\", value: 9"
+    },
+    {
+      "t" : 5.586,
+      "text" : " })\nk4 = O"
+    },
+    {
+      "t" : 5.73,
+      "text" : "verviewCardItem(\""
+    },
+    {
+      "t" : 5.733,
+      "text" : "c"
+    },
+    {
+      "t" : 5.794,
+      "text" : "rac"
+    },
+    {
+      "t" : 5.867,
+      "text" : "ks\", k4top, k4"
+    },
+    {
+      "t" : 5.946,
+      "text" : "m)\nk4top = I"
+    },
+    {
+      "t" : 6.039,
+      "text" : "conText(Icon(\"tri"
+    },
+    {
+      "t" : 6.131,
+      "text" : "angle-alert\", \"status"
+    },
+    {
+      "t" : 6.228,
+      "text" : "\"), \"warning\", \"m"
+    },
+    {
+      "t" : 6.317,
+      "text" : "\", \"Def"
+    },
+    {
+      "t" : 6.437,
+      "text" : "ects\")\nk4m = M"
+    },
+    {
+      "t" : 6.441,
+      "text" : "etricIndicatorIn"
+    },
+    {
+      "t" : 6.522,
+      "text" : "line(\"17\", \"C"
+    },
+    {
+      "t" : 6.608,
+      "text" : "racks, pinholes,"
+    },
+    {
+      "t" : 6.69,
+      "text" : " glaze fl"
+    },
+    {
+      "t" : 6.765,
+      "text" : "aws\", { direction: \""
+    },
+    {
+      "t" : 6.849,
+      "text" : "down\", value: 6 })"
+    },
+    {
+      "t" : 6.928,
+      "text" : "\nloadsHeader ="
+    },
+    {
+      "t" : 7.011,
+      "text" : " InlineHeader(\""
+    },
+    {
+      "t" : 7.16,
+      "text" : "Kiln Loads\", \""
+    },
+    {
+      "t" : 7.165,
+      "text" : "Recent firings with clay"
+    },
+    {
+      "t" : 7.264,
+      "text" : ","
+    },
+    {
+      "t" : 7.373,
+      "text" : " target and"
+    },
+    {
+      "t" : 7.518,
+      "text" : " in"
+    },
+    {
+      "t" : 7.521,
+      "text" : "spection result\")\nloads"
+    },
+    {
+      "t" : 7.628,
+      "text" : "Table = Table(["
+    },
+    {
+      "t" : 7.764,
+      "text" : "Col(\"Load\", ids),"
+    },
+    {
+      "t" : 7.864,
+      "text" : " Col(\"Date"
+    },
+    {
+      "t" : 7.955,
+      "text" : "\", dates), Col(\""
+    },
+    {
+      "t" : 8.045,
+      "text" : "Kiln\", kilns),"
+    },
+    {
+      "t" : 8.137,
+      "text" : " Col(\"Clay"
+    },
+    {
+      "t" : 8.141,
+      "text" : " Type\", clays"
+    },
+    {
+      "t" : 8.244,
+      "text" : "), Col(\"Target\","
+    },
+    {
+      "t" : 8.328,
+      "text" : " targets), Col(\"P"
+    },
+    {
+      "t" : 8.486,
+      "text" : "ieces\", pieces,"
+    },
+    {
+      "t" : 8.491,
+      "text" : " \"number\"), Col(\""
+    },
+    {
+      "t" : 8.583,
+      "text" : "Result\", results"
+    },
+    {
+      "t" : 8.673,
+      "text" : ")])\nids = [\""
+    },
+    {
+      "t" : 8.769,
+      "text" : "L-101"
+    },
+    {
+      "t" : 8.864,
+      "text" : "\", \"L-102\", \"L"
+    },
+    {
+      "t" : 8.956,
+      "text" : "-103\", \"L-104\","
+    },
+    {
+      "t" : 9.057,
+      "text" : " \"L-105\", \"L-"
+    },
+    {
+      "t" : 9.137,
+      "text" : "106\"]\ndates = "
+    },
+    {
+      "t" : 9.223,
+      "text" : "[\"2024-05"
+    },
+    {
+      "t" : 9.302,
+      "text" : "-03\", \"2024-05"
+    },
+    {
+      "t" : 9.371,
+      "text" : "-07"
+    },
+    {
+      "t" : 9.45,
+      "text" : "\", \"2024-05-12"
+    },
+    {
+      "t" : 9.524,
+      "text" : "\", \"2024-05-16"
+    },
+    {
+      "t" : 9.604,
+      "text" : "\", \"2024-05-21"
+    },
+    {
+      "t" : 9.7,
+      "text" : "\", \"2024-05-25"
+    },
+    {
+      "t" : 9.859,
+      "text" : "\"]\nkilns = "
+    },
+    {
+      "t" : 9.862,
+      "text" : "[\"Electric A\", \""
+    },
+    {
+      "t" : 9.966,
+      "text" : "Electric A\", \"Gas"
+    },
+    {
+      "t" : 10.058,
+      "text" : " B"
+    },
+    {
+      "t" : 10.138,
+      "text" : "\", \"Electric A"
+    },
+    {
+      "t" : 10.229,
+      "text" : "\", \"Gas B\", \""
+    },
+    {
+      "t" : 10.322,
+      "text" : "Electric A\"]\ncl"
+    },
+    {
+      "t" : 10.424,
+      "text" : "ays = [\"Earthen"
+    },
+    {
+      "t" : 10.509,
+      "text" : "ware\", \"Stoneware"
+    },
+    {
+      "t" : 10.615,
+      "text" : "\", \"Porcelain\","
+    },
+    {
+      "t" : 10.707,
+      "text" : " \"Stoneware\", \""
+    },
+    {
+      "t" : 10.821,
+      "text" : "Raku"
+    },
+    {
+      "t" : 10.993,
+      "text" : " body"
+    },
+    {
+      "t" : 10.996,
+      "text" : "\", \"Por"
+    },
+    {
+      "t" : 11.11,
+      "text" : "celain\"]\ntargets"
+    },
+    {
+      "t" : 11.222,
+      "text" : " = [\""
+    },
+    {
+      "t" : 11.334,
+      "text" : "Cone "
+    },
+    {
+      "t" : 11.445,
+      "text" : "04 (1945"
+    },
+    {
+      "t" : 11.56,
+      "text" : "°"
+    },
+    {
+      "t" : 11.742,
+      "text" : "F)\", \"Cone "
+    },
+    {
+      "t" : 11.744,
+      "text" : "6 (2"
+    },
+    {
+      "t" : 11.845,
+      "text" : "232"
+    },
+    {
+      "t" : 11.938,
+      "text" : "°F)\", \"Cone"
+    },
+    {
+      "t" : 12.019,
+      "text" : " 10 (2345"
+    },
+    {
+      "t" : 12.1,
+      "text" : "°F)\", \"Cone"
+    },
+    {
+      "t" : 12.183,
+      "text" : " 6 (2232°F"
+    },
+    {
+      "t" : 12.272,
+      "text" : ")\", \"Cone 06"
+    },
+    {
+      "t" : 12.365,
+      "text" : " (1828"
+    },
+    {
+      "t" : 12.471,
+      "text" : "°F)\", \"Cone"
+    },
+    {
+      "t" : 12.588,
+      "text" : " 6 (2232°F"
+    },
+    {
+      "t" : 12.704,
+      "text" : ")\"]\npieces ="
+    },
+    {
+      "t" : 12.808,
+      "text" : " [38"
+    },
+    {
+      "t" : 12.936,
+      "text" : ", 42, 24"
+    },
+    {
+      "t" : 13.053,
+      "text" : ", 45"
+    },
+    {
+      "t" : 13.171,
+      "text" : ", 18, 47"
+    },
+    {
+      "t" : 13.277,
+      "text" : "]\nresults = [\"P"
+    },
+    {
+      "t" : 13.393,
+      "text" : "ass\", \"Pass\", \""
+    },
+    {
+      "t" : 13.503,
+      "text" : "Minor defects"
+    },
+    {
+      "t" : 13.624,
+      "text" : "\", \"Pass\", \""
+    },
+    {
+      "t" : 13.734,
+      "text" : "Pass\", \"Min"
+    },
+    {
+      "t" : 13.899,
+      "text" : "or defects\"]\nchart"
+    },
+    {
+      "t" : 14.042,
+      "text" : "Card ="
+    },
+    {
+      "t" : 14.166,
+      "text" : " Card([C"
+    },
+    {
+      "t" : 14.367,
+      "text" : "ardHeader(\"P"
+    },
+    {
+      "t" : 14.373,
+      "text" : "ieces per Load\", \""
+    },
+    {
+      "t" : 14.493,
+      "text" : "Pass"
+    },
+    {
+      "t" : 14.634,
+      "text" : "ed vs. def"
+    },
+    {
+      "t" : 14.749,
+      "text" : "ective\""
+    },
+    {
+      "t" : 14.886,
+      "text" : "), chart])\nchart ="
+    },
+    {
+      "t" : 15.072,
+      "text" : " BarChart("
+    },
+    {
+      "t" : 15.074,
+      "text" : "ids, ["
+    },
+    {
+      "t" : 15.216,
+      "text" : "Series(\"Passed\", ["
+    },
+    {
+      "t" : 15.372,
+      "text" : "36, 40"
+    },
+    {
+      "t" : 15.534,
+      "text" : ", 20"
+    },
+    {
+      "t" : 15.685,
+      "text" : ", 43, 17"
+    },
+    {
+      "t" : 15.898,
+      "text" : ", 43"
+    },
+    {
+      "t" : 15.903,
+      "text" : "]), Series(\"Defective"
+    },
+    {
+      "t" : 16.027,
+      "text" : "\", [2, 2, "
+    },
+    {
+      "t" : 16.185,
+      "text" : "4, 2, 1"
+    },
+    {
+      "t" : 16.336,
+      "text" : ", 4])], \"stac"
+    },
+    {
+      "t" : 16.484,
+      "text" : "ked\")\ntabs ="
+    },
+    {
+      "t" : 16.713,
+      "text" : " Tabs([t"
+    },
+    {
+      "t" : 16.837,
+      "text" : "1, t2])"
+    },
+    {
+      "t" : 16.973,
+      "text" : "\nt1 = TabIt"
+    },
+    {
+      "t" : 17.118,
+      "text" : "em(\"stages\", \"Fir"
+    },
+    {
+      "t" : 17.257,
+      "text" : "ing Stages (L-106"
+    },
+    {
+      "t" : 17.262,
+      "text" : ")\", [st"
+    },
+    {
+      "t" : 17.406,
+      "text" : "agesS"
+    },
+    {
+      "t" : 17.634,
+      "text" : "teps])\nst"
+    },
+    {
+      "t" : 17.637,
+      "text" : "agesSteps = Ste"
+    },
+    {
+      "t" : 17.784,
+      "text" : "ps([StepsItem(\""
+    },
+    {
+      "t" : 17.913,
+      "text" : "Cand"
+    },
+    {
+      "t" : 18.056,
+      "text" : "ling\", \"Ramp "
+    },
+    {
+      "t" : 18.208,
+      "text" : "100"
+    },
+    {
+      "t" : 18.334,
+      "text" : "°F/"
+    },
+    {
+      "t" : 18.458,
+      "text" : "hr to"
+    },
+    {
+      "t" : 18.616,
+      "text" : " 250°F, h"
+    },
+    {
+      "t" : 18.761,
+      "text" : "old 2"
+    },
+    {
+      "t" : 18.91,
+      "text" : " hrs to drive off"
+    },
+    {
+      "t" : 19.059,
+      "text" : " moisture.\"), Steps"
+    },
+    {
+      "t" : 19.224,
+      "text" : "Item(\"Bisque /"
+    },
+    {
+      "t" : 19.359,
+      "text" : " Early"
+    },
+    {
+      "t" : 19.486,
+      "text" : " Ramp\", \""
+    },
+    {
+      "t" : 19.627,
+      "text" : "Ramp 250"
+    },
+    {
+      "t" : 19.775,
+      "text" : "°F/hr to"
+    },
+    {
+      "t" : 19.925,
+      "text" : " 1100"
+    },
+    {
+      "t" : 20.08,
+      "text" : "°F, bur"
+    },
+    {
+      "t" : 20.225,
+      "text" : "ning off"
+    },
+    {
+      "t" : 20.372,
+      "text" : " organics.\""
+    },
+    {
+      "t" : 20.51,
+      "text" : "), StepsItem(\""
+    },
+    {
+      "t" : 20.656,
+      "text" : "Gl"
+    },
+    {
+      "t" : 20.782,
+      "text" : "aze Ramp\", \""
+    },
+    {
+      "t" : 20.926,
+      "text" : "Ramp "
+    },
+    {
+      "t" : 21.037,
+      "text" : "150°F/hr to "
+    },
+    {
+      "t" : 21.19,
+      "text" : "2"
+    },
+    {
+      "t" : 21.473,
+      "text" : "232"
+    },
+    {
+      "t" : 21.476,
+      "text" : "°F ("
+    },
+    {
+      "t" : 21.637,
+      "text" : "c"
+    },
+    {
+      "t" : 21.791,
+      "text" : "one 6).\"), Step"
+    },
+    {
+      "t" : 21.965,
+      "text" : "sItem(\"Soak\","
+    },
+    {
+      "t" : 22.245,
+      "text" : " \"Hold at"
+    },
+    {
+      "t" : 22.25,
+      "text" : " pe"
+    },
+    {
+      "t" : 22.401,
+      "text" : "ak "
+    },
+    {
+      "t" : 22.564,
+      "text" : "15"
+    },
+    {
+      "t" : 22.699,
+      "text" : " minutes for gl"
+    },
+    {
+      "t" : 22.869,
+      "text" : "aze ma"
+    },
+    {
+      "t" : 23.034,
+      "text" : "turity"
+    },
+    {
+      "t" : 23.212,
+      "text" : ".\"), StepsItem(\""
+    },
+    {
+      "t" : 23.378,
+      "text" : "Cooling\", \"Nat"
+    },
+    {
+      "t" : 23.523,
+      "text" : "ural cool"
+    },
+    {
+      "t" : 23.796,
+      "text" : "-"
+    },
+    {
+      "t" : 23.801,
+      "text" : "down for 18"
+    },
+    {
+      "t" : 24.005,
+      "text" : " hrs; unload"
+    },
+    {
+      "t" : 24.18,
+      "text" : " below"
+    },
+    {
+      "t" : 24.349,
+      "text" : " 150"
+    },
+    {
+      "t" : 24.514,
+      "text" : "°F.\")])\nt2"
+    },
+    {
+      "t" : 24.684,
+      "text" : " = TabItem(\"in"
+    },
+    {
+      "t" : 24.853,
+      "text" : "spect\", \"Inspection"
+    },
+    {
+      "t" : 25.015,
+      "text" : " Notes\", [inspT"
+    },
+    {
+      "t" : 25.157,
+      "text" : "able])\ninspTable ="
+    },
+    {
+      "t" : 25.304,
+      "text" : " Table([Col(\"Load"
+    },
+    {
+      "t" : 25.479,
+      "text" : "\", "
+    },
+    {
+      "t" : 25.644,
+      "text" : "[\"L-103\", \"L-"
+    },
+    {
+      "t" : 25.806,
+      "text" : "106\", \"L-102"
+    },
+    {
+      "t" : 25.965,
+      "text" : "\"]), Col(\"Iss"
+    },
+    {
+      "t" : 26.136,
+      "text" : "ue\", [\"Pinhol"
+    },
+    {
+      "t" : 26.321,
+      "text" : "ing"
+    },
+    {
+      "t" : 26.506,
+      "text" : " on"
+    },
+    {
+      "t" : 26.689,
+      "text" : " glaze\", \"Craz"
+    },
+    {
+      "t" : 26.874,
+      "text" : "ing"
+    },
+    {
+      "t" : 27.052,
+      "text" : " on"
+    },
+    {
+      "t" : 27.23,
+      "text" : " "
+    },
+    {
+      "t" : 27.413,
+      "text" : "2 mug"
+    },
+    {
+      "t" : 27.59,
+      "text" : "s\", \"Small"
+    },
+    {
+      "t" : 27.756,
+      "text" : " base"
+    },
+    {
+      "t" : 27.938,
+      "text" : " crack\"]), Col(\""
+    },
+    {
+      "t" : 28.127,
+      "text" : "Action\", [\"Sl"
+    },
+    {
+      "t" : 28.305,
+      "text" : "ow c"
+    },
+    {
+      "t" : 28.552,
+      "text" : "ooling next"
+    },
+    {
+      "t" : 28.555,
+      "text" : " time\", \"Adjust gl"
+    },
+    {
+      "t" : 28.737,
+      "text" : "aze f"
+    },
+    {
+      "t" : 28.921,
+      "text" : "it\", \"Th"
+    },
+    {
+      "t" : 29.117,
+      "text" : "icken base"
+    },
+    {
+      "t" : 29.32,
+      "text" : "\"])])\nnotice ="
+    },
+    {
+      "t" : 29.495,
+      "text" : " Callout(\"warning\", \""
+    },
+    {
+      "t" : 29.682,
+      "text" : "Kiln Maintenance"
+    },
+    {
+      "t" : 29.865,
+      "text" : "\", \"G"
+    },
+    {
+      "t" : 30.025,
+      "text" : "as k"
+    },
+    {
+      "t" : 30.341,
+      "text" : "iln B th"
+    },
+    {
+      "t" : 30.346,
+      "text" : "ermocouple is"
+    },
+    {
+      "t" : 30.502,
+      "text" : " due for replacement after the"
+    },
+    {
+      "t" : 30.679,
+      "text" : " next fir"
+    },
+    {
+      "t" : 30.867,
+      "text" : "ing.\")"
+    }
+  ],
+  "createdAt" : "2026-11-11T11:01:09Z",
+  "effort" : "low",
+  "format" : "openui-recording",
+  "inputTokens" : 14505,
+  "library" : "react-ui",
+  "model" : "claude-sonnet-5-5",
+  "outputTokens" : 1524,
+  "request" : "A pottery studio firing log with kiln loads, clay types, target temperatures, firing stages and inspection results.",
+  "servedBy" : "claude-sonnet-5-5",
+  "stopReason" : "end_turn",
+  "version" : 1
+}

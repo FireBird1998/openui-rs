@@ -1,0 +1,324 @@
+{
+  "batchRequest" : {
+    "model" : "sonnet",
+    "number" : 81,
+    "request" : "A regional energy report with generation mix in a pie chart, monthly demand in a line chart and a planned maintenance notice."
+  },
+  "chunks" : [
+    {
+      "t" : 0.803,
+      "text" : "root = Stack([title"
+    },
+    {
+      "t" : 1.116,
+      "text" : ", mixCard, dem"
+    },
+    {
+      "t" : 1.143,
+      "text" : "andCard, not"
+    },
+    {
+      "t" : 1.2,
+      "text" : "ice])\ntitle = TextCont"
+    },
+    {
+      "t" : 1.247,
+      "text" : "ent(\"Regional Energy"
+    },
+    {
+      "t" : 1.308,
+      "text" : " Report\","
+    },
+    {
+      "t" : 1.339,
+      "text" : " \"large-heavy\")"
+    },
+    {
+      "t" : 1.363,
+      "text" : "\nmixCard = Card(["
+    },
+    {
+      "t" : 1.388,
+      "text" : "mixHeader, mix"
+    },
+    {
+      "t" : 1.416,
+      "text" : "Chart])\nmixHe"
+    },
+    {
+      "t" : 1.448,
+      "text" : "ader = CardHeader(\""
+    },
+    {
+      "t" : 1.479,
+      "text" : "Generation Mix\", \""
+    },
+    {
+      "t" : 1.528,
+      "text" : "Share"
+    },
+    {
+      "t" : 1.566,
+      "text" : " of total gener"
+    },
+    {
+      "t" : 1.567,
+      "text" : "ation by source\")\nmixCh"
+    },
+    {
+      "t" : 1.599,
+      "text" : "art = PieChart(m"
+    },
+    {
+      "t" : 1.649,
+      "text" : "ixLabels, mixVal"
+    },
+    {
+      "t" : 1.683,
+      "text" : "ues, \"donut\")\nm"
+    },
+    {
+      "t" : 1.686,
+      "text" : "ixLabels = [\""
+    },
+    {
+      "t" : 1.716,
+      "text" : "Natural Gas\", \""
+    },
+    {
+      "t" : 1.757,
+      "text" : "Wind\", \"Solar\","
+    },
+    {
+      "t" : 1.797,
+      "text" : " \"Nuclear\", \""
+    },
+    {
+      "t" : 1.835,
+      "text" : "Hydro\", \"Co"
+    },
+    {
+      "t" : 1.873,
+      "text" : "al\"]\nmixValues"
+    },
+    {
+      "t" : 1.908,
+      "text" : " = [32"
+    },
+    {
+      "t" : 1.945,
+      "text" : ", 22"
+    },
+    {
+      "t" : 1.988,
+      "text" : ", 14, 18"
+    },
+    {
+      "t" : 2.028,
+      "text" : ", 9, 5]"
+    },
+    {
+      "t" : 2.089,
+      "text" : "\ndemandCard = Card(["
+    },
+    {
+      "t" : 2.093,
+      "text" : "demandHeader, demand"
+    },
+    {
+      "t" : 2.136,
+      "text" : "Chart])\ndemandHe"
+    },
+    {
+      "t" : 2.189,
+      "text" : "ader = CardHeader(\""
+    },
+    {
+      "t" : 2.235,
+      "text" : "Monthly Demand\","
+    },
+    {
+      "t" : 2.302,
+      "text" : " \"Average demand in"
+    },
+    {
+      "t" : 2.343,
+      "text" : " GWh\")"
+    },
+    {
+      "t" : 2.388,
+      "text" : "\ndemandChart = Line"
+    },
+    {
+      "t" : 2.444,
+      "text" : "Chart(months, [dem"
+    },
+    {
+      "t" : 2.498,
+      "text" : "andSeries], \"natural"
+    },
+    {
+      "t" : 2.548,
+      "text" : "\", \"Month"
+    },
+    {
+      "t" : 2.595,
+      "text" : "\", \"Demand (GW"
+    },
+    {
+      "t" : 2.675,
+      "text" : "h)\")\nmonths = [\""
+    },
+    {
+      "t" : 2.676,
+      "text" : "Jan\", \"Feb"
+    },
+    {
+      "t" : 2.727,
+      "text" : "\", \"Mar\", \""
+    },
+    {
+      "t" : 2.803,
+      "text" : "Apr\", \"May\", \""
+    },
+    {
+      "t" : 2.805,
+      "text" : "Jun\", \"Jul\","
+    },
+    {
+      "t" : 2.85,
+      "text" : " \"Aug\", \"S"
+    },
+    {
+      "t" : 2.899,
+      "text" : "ep\", \"Oct\", \""
+    },
+    {
+      "t" : 2.95,
+      "text" : "Nov\", \"Dec"
+    },
+    {
+      "t" : 2.995,
+      "text" : "\"]\ndemandSeries"
+    },
+    {
+      "t" : 3.085,
+      "text" : " = Series(\"Demand\","
+    },
+    {
+      "t" : 3.089,
+      "text" : " [1840, 1720"
+    },
+    {
+      "t" : 3.13,
+      "text" : ", 1590"
+    },
+    {
+      "t" : 3.174,
+      "text" : ", 1450, 1380"
+    },
+    {
+      "t" : 3.22,
+      "text" : ", 1520, 1760"
+    },
+    {
+      "t" : 3.269,
+      "text" : ", 1810"
+    },
+    {
+      "t" : 3.326,
+      "text" : ", 1560"
+    },
+    {
+      "t" : 3.37,
+      "text" : ", 1470"
+    },
+    {
+      "t" : 3.415,
+      "text" : ", 1640"
+    },
+    {
+      "t" : 3.465,
+      "text" : ", 1830"
+    },
+    {
+      "t" : 3.546,
+      "text" : "])\nnotice = Callout"
+    },
+    {
+      "t" : 3.549,
+      "text" : "(\"warning\", \"Planned"
+    },
+    {
+      "t" : 3.594,
+      "text" : " Maintenance\", \""
+    },
+    {
+      "t" : 3.646,
+      "text" : "Trans"
+    },
+    {
+      "t" : 3.691,
+      "text" : "mission line up"
+    },
+    {
+      "t" : 3.753,
+      "text" : "grades are"
+    },
+    {
+      "t" : 3.798,
+      "text" : " scheduled for the north"
+    },
+    {
+      "t" : 3.847,
+      "text" : "ern gr"
+    },
+    {
+      "t" : 3.897,
+      "text" : "id from 14 to 18"
+    },
+    {
+      "t" : 3.949,
+      "text" : " October"
+    },
+    {
+      "t" : 4.011,
+      "text" : ". Expect reduced cap"
+    },
+    {
+      "t" : 4.129,
+      "text" : "acity and poss"
+    },
+    {
+      "t" : 4.178,
+      "text" : "ible short local"
+    },
+    {
+      "t" : 4.229,
+      "text" : "ized outages between"
+    },
+    {
+      "t" : 4.289,
+      "text" : " 01"
+    },
+    {
+      "t" : 4.351,
+      "text" : ":00 and 05:00"
+    },
+    {
+      "t" : 4.412,
+      "text" : ".\")"
+    }
+  ],
+  "createdAt" : "2026-11-11T10:49:37Z",
+  "effort" : "low",
+  "format" : "openui-recording",
+  "inputTokens" : 14508,
+  "library" : "react-ui",
+  "model" : "claude-sonnet-5-5",
+  "outputTokens" : 488,
+  "request" : "A regional energy report with generation mix in a pie chart, monthly demand in a line chart and a planned maintenance notice.",
+  "servedBy" : "claude-sonnet-5-5",
+  "stopReason" : "end_turn",
+  "version" : 1
+}

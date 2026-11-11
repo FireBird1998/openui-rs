@@ -1,0 +1,456 @@
+{
+  "batchRequest" : {
+    "model" : "haiku",
+    "number" : 96,
+    "request" : "A music practice log with daily minutes, pieces practiced and a weekly goal progress summary."
+  },
+  "chunks" : [
+    {
+      "t" : 0.849,
+      "text" : "root"
+    },
+    {
+      "t" : 1.01,
+      "text" : " = Stack([header"
+    },
+    {
+      "t" : 1.036,
+      "text" : ", goalC"
+    },
+    {
+      "t" : 1.091,
+      "text" : "ard, log"
+    },
+    {
+      "t" : 1.129,
+      "text" : "T"
+    },
+    {
+      "t" : 1.191,
+      "text" : "able, ch"
+    },
+    {
+      "t" : 1.234,
+      "text" : "artCard])\nheader = In"
+    },
+    {
+      "t" : 1.293,
+      "text" : "lineHeader(\"Music"
+    },
+    {
+      "t" : 1.326,
+      "text" : " Practice Log\", \""
+    },
+    {
+      "t" : 1.357,
+      "text" : "Da"
+    },
+    {
+      "t" : 1.389,
+      "text" : "ily minutes and"
+    },
+    {
+      "t" : 1.423,
+      "text" : " pieces practiced this week"
+    },
+    {
+      "t" : 1.454,
+      "text" : "\")\ngoalCard ="
+    },
+    {
+      "t" : 1.484,
+      "text" : " Card([go"
+    },
+    {
+      "t" : 1.513,
+      "text" : "alHeader, goalM"
+    },
+    {
+      "t" : 1.548,
+      "text" : "etric, goalB"
+    },
+    {
+      "t" : 1.582,
+      "text" : "ar])\ngoalHeader"
+    },
+    {
+      "t" : 1.616,
+      "text" : " = CardHeader(\""
+    },
+    {
+      "t" : 1.657,
+      "text" : "Weekly Goal\", \""
+    },
+    {
+      "t" : 1.709,
+      "text" : "150"
+    },
+    {
+      "t" : 1.71,
+      "text" : " minutes target"
+    },
+    {
+      "t" : 1.758,
+      "text" : "\")\ngoalMetric ="
+    },
+    {
+      "t" : 1.76,
+      "text" : " B"
+    },
+    {
+      "t" : 1.81,
+      "text" : "oldText(\"number"
+    },
+    {
+      "t" : 1.811,
+      "text" : "\", \"128"
+    },
+    {
+      "t" : 1.86,
+      "text" : " /"
+    },
+    {
+      "t" : 1.861,
+      "text" : " 150 min\", \"85"
+    },
+    {
+      "t" : 1.911,
+      "text" : "% complete\", \"metric\")"
+    },
+    {
+      "t" : 1.946,
+      "text" : "\ngoalBar = S"
+    },
+    {
+      "t" : 1.983,
+      "text" : "ingleStackedBarCh"
+    },
+    {
+      "t" : 2.022,
+      "text" : "art("
+    },
+    {
+      "t" : 2.074,
+      "text" : "[\"Pract"
+    },
+    {
+      "t" : 2.119,
+      "text" : "iced\","
+    },
+    {
+      "t" : 2.163,
+      "text" : " \"Rem"
+    },
+    {
+      "t" : 2.207,
+      "text" : "aining\"], [128, "
+    },
+    {
+      "t" : 2.253,
+      "text" : "22])\nlogTable ="
+    },
+    {
+      "t" : 2.299,
+      "text" : " Table([Col(\"Day\","
+    },
+    {
+      "t" : 2.341,
+      "text" : " days"
+    },
+    {
+      "t" : 2.387,
+      "text" : "), Col(\"Minutes"
+    },
+    {
+      "t" : 2.434,
+      "text" : "\", minutes,"
+    },
+    {
+      "t" : 2.482,
+      "text" : " \"number\"), Col(\""
+    },
+    {
+      "t" : 2.527,
+      "text" : "Pieces"
+    },
+    {
+      "t" : 2.577,
+      "text" : " Practiced\", pieces),"
+    },
+    {
+      "t" : 2.578,
+      "text" : " Col(\"Foc"
+    },
+    {
+      "t" : 2.632,
+      "text" : "us\","
+    },
+    {
+      "t" : 2.684,
+      "text" : " focus"
+    },
+    {
+      "t" : 2.765,
+      "text" : ")])\ndays = [\""
+    },
+    {
+      "t" : 2.766,
+      "text" : "Mon\", \"Tue\","
+    },
+    {
+      "t" : 2.828,
+      "text" : " \"Wed\", \"Th"
+    },
+    {
+      "t" : 2.882,
+      "text" : "u\", \"Fri\", \""
+    },
+    {
+      "t" : 2.938,
+      "text" : "Sat\", \"Sun"
+    },
+    {
+      "t" : 2.991,
+      "text" : "\"]\nminutes = ["
+    },
+    {
+      "t" : 3.048,
+      "text" : "25, 30, 0"
+    },
+    {
+      "t" : 3.104,
+      "text" : ", 20, 35"
+    },
+    {
+      "t" : 3.159,
+      "text" : ", 18"
+    },
+    {
+      "t" : 3.245,
+      "text" : ", 0"
+    },
+    {
+      "t" : 3.267,
+      "text" : "]\npieces = [\""
+    },
+    {
+      "t" : 3.323,
+      "text" : "Bach"
+    },
+    {
+      "t" : 3.374,
+      "text" : " Prelude in"
+    },
+    {
+      "t" : 3.427,
+      "text" : " C\","
+    },
+    {
+      "t" : 3.479,
+      "text" : " \"Ch"
+    },
+    {
+      "t" : 3.536,
+      "text" : "opin N"
+    },
+    {
+      "t" : 3.585,
+      "text" : "octurne"
+    },
+    {
+      "t" : 3.642,
+      "text" : " Op. 9"
+    },
+    {
+      "t" : 3.736,
+      "text" : "\", \"R"
+    },
+    {
+      "t" : 3.737,
+      "text" : "est day"
+    },
+    {
+      "t" : 3.797,
+      "text" : "\", \"Scales"
+    },
+    {
+      "t" : 3.855,
+      "text" : " and"
+    },
+    {
+      "t" : 3.91,
+      "text" : " ar"
+    },
+    {
+      "t" : 3.97,
+      "text" : "peggios,"
+    },
+    {
+      "t" : 4.034,
+      "text" : " Cl"
+    },
+    {
+      "t" : 4.099,
+      "text" : "air"
+    },
+    {
+      "t" : 4.161,
+      "text" : " de"
+    },
+    {
+      "t" : 4.222,
+      "text" : " Lune\", \"Cl"
+    },
+    {
+      "t" : 4.286,
+      "text" : "air de Lune, G"
+    },
+    {
+      "t" : 4.337,
+      "text" : "ym"
+    },
+    {
+      "t" : 4.392,
+      "text" : "nop"
+    },
+    {
+      "t" : 4.449,
+      "text" : "éd"
+    },
+    {
+      "t" : 4.519,
+      "text" : "ie No"
+    },
+    {
+      "t" : 4.593,
+      "text" : ". 1\", \"B"
+    },
+    {
+      "t" : 4.744,
+      "text" : "ach Inv"
+    },
+    {
+      "t" : 4.81,
+      "text" : "ention"
+    },
+    {
+      "t" : 4.812,
+      "text" : " No"
+    },
+    {
+      "t" : 4.968,
+      "text" : ". 4"
+    },
+    {
+      "t" : 5.05,
+      "text" : "\", \"Rest day\"]"
+    },
+    {
+      "t" : 5.112,
+      "text" : "\nfocus = "
+    },
+    {
+      "t" : 5.159,
+      "text" : "[\"Tempo work\", \""
+    },
+    {
+      "t" : 5.325,
+      "text" : "Ph"
+    },
+    {
+      "t" : 5.328,
+      "text" : "rasing\", \"R"
+    },
+    {
+      "t" : 5.541,
+      "text" : "est\", \"Techn"
+    },
+    {
+      "t" : 5.643,
+      "text" : "ique\", \"D"
+    },
+    {
+      "t" : 5.702,
+      "text" : "ynamics\", \"Sight"
+    },
+    {
+      "t" : 5.703,
+      "text" : "-reading\", \"Rest"
+    },
+    {
+      "t" : 5.772,
+      "text" : "\"]\nchartCard ="
+    },
+    {
+      "t" : 5.843,
+      "text" : " Card([ch"
+    },
+    {
+      "t" : 5.922,
+      "text" : "artHeader, minutes"
+    },
+    {
+      "t" : 6.024,
+      "text" : "Chart])\nchartHe"
+    },
+    {
+      "t" : 6.236,
+      "text" : "ader = CardHeader(\""
+    },
+    {
+      "t" : 6.372,
+      "text" : "Min"
+    },
+    {
+      "t" : 6.48,
+      "text" : "utes per"
+    },
+    {
+      "t" : 6.546,
+      "text" : " Day\", \"Daily pract"
+    },
+    {
+      "t" : 6.594,
+      "text" : "ice tr"
+    },
+    {
+      "t" : 6.688,
+      "text" : "end\")\nminutesChart"
+    },
+    {
+      "t" : 6.932,
+      "text" : " = B"
+    },
+    {
+      "t" : 7.021,
+      "text" : "arChart(days, ["
+    },
+    {
+      "t" : 7.155,
+      "text" : "Series(\"Min"
+    },
+    {
+      "t" : 7.228,
+      "text" : "utes\", minutes)],"
+    },
+    {
+      "t" : 7.344,
+      "text" : " \"grouped\", \""
+    },
+    {
+      "t" : 7.347,
+      "text" : "Day\", \"Minutes\")"
+    }
+  ],
+  "createdAt" : "2026-11-11T10:53:32Z",
+  "effort" : "low",
+  "format" : "openui-recording",
+  "inputTokens" : 14499,
+  "library" : "react-ui",
+  "model" : "claude-haiku-5-5",
+  "outputTokens" : 550,
+  "request" : "A music practice log with daily minutes, pieces practiced and a weekly goal progress summary.",
+  "servedBy" : "claude-haiku-5-5",
+  "stopReason" : "end_turn",
+  "version" : 1
+}

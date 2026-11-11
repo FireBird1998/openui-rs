@@ -1,0 +1,964 @@
+{
+  "batchRequest" : {
+    "model" : "haiku",
+    "number" : 12,
+    "request" : "Top headlines by section, in tabs for World, Business, Tech and Sport, three per tab."
+  },
+  "chunks" : [
+    {
+      "t" : 0.742,
+      "text" : "root"
+    },
+    {
+      "t" : 0.93,
+      "text" : " = Stack([title"
+    },
+    {
+      "t" : 0.938,
+      "text" : ", tabs])\ntitle ="
+    },
+    {
+      "t" : 0.944,
+      "text" : " TextContent(\"Top"
+    },
+    {
+      "t" : 0.963,
+      "text" : " Headlines by Section\", \""
+    },
+    {
+      "t" : 0.978,
+      "text" : "large-heavy\")\nt"
+    },
+    {
+      "t" : 0.983,
+      "text" : "abs = Tabs(["
+    },
+    {
+      "t" : 0.993,
+      "text" : "t"
+    },
+    {
+      "t" : 0.999,
+      "text" : "abWorld, tabB"
+    },
+    {
+      "t" : 1.008,
+      "text" : "usiness, tabTech"
+    },
+    {
+      "t" : 1.014,
+      "text" : ", tabSport])\nt"
+    },
+    {
+      "t" : 1.024,
+      "text" : "abWorld = TabIt"
+    },
+    {
+      "t" : 1.031,
+      "text" : "em(\"world\", \"World\", wor"
+    },
+    {
+      "t" : 1.042,
+      "text" : "ldCont"
+    },
+    {
+      "t" : 1.048,
+      "text" : "ent)\ntabBusi"
+    },
+    {
+      "t" : 1.063,
+      "text" : "ness = TabItem(\"business"
+    },
+    {
+      "t" : 1.087,
+      "text" : "\", \"Business\", businessCont"
+    },
+    {
+      "t" : 1.106,
+      "text" : "ent)\ntabTech ="
+    },
+    {
+      "t" : 1.128,
+      "text" : " TabItem(\"tech\","
+    },
+    {
+      "t" : 1.145,
+      "text" : " \"Tech\", techContent"
+    },
+    {
+      "t" : 1.166,
+      "text" : ")\ntabSport = T"
+    },
+    {
+      "t" : 1.187,
+      "text" : "abItem(\"sport\", \""
+    },
+    {
+      "t" : 1.207,
+      "text" : "Sport\", sportContent"
+    },
+    {
+      "t" : 1.227,
+      "text" : ")\nworldCont"
+    },
+    {
+      "t" : 1.247,
+      "text" : "ent = [w"
+    },
+    {
+      "t" : 1.268,
+      "text" : "1, w2, w3]"
+    },
+    {
+      "t" : 1.288,
+      "text" : "\nw1 ="
+    },
+    {
+      "t" : 1.31,
+      "text" : " Card(["
+    },
+    {
+      "t" : 1.33,
+      "text" : "CardHeader(\"Global"
+    },
+    {
+      "t" : 1.349,
+      "text" : " leaders conv"
+    },
+    {
+      "t" : 1.37,
+      "text" : "ene for"
+    },
+    {
+      "t" : 1.391,
+      "text" : " climate fin"
+    },
+    {
+      "t" : 1.412,
+      "text" : "ance talks\", \"World"
+    },
+    {
+      "t" : 1.431,
+      "text" : " ·"
+    },
+    {
+      "t" : 1.451,
+      "text" : " 2 hours ago\""
+    },
+    {
+      "t" : 1.472,
+      "text" : "), TextContent(\"Del"
+    },
+    {
+      "t" : 1.492,
+      "text" : "egates from"
+    },
+    {
+      "t" : 1.515,
+      "text" : " more than 60 countries are"
+    },
+    {
+      "t" : 1.533,
+      "text" : " neg"
+    },
+    {
+      "t" : 1.554,
+      "text" : "otiating a new f"
+    },
+    {
+      "t" : 1.573,
+      "text" : "und to"
+    },
+    {
+      "t" : 1.594,
+      "text" : " help develop"
+    },
+    {
+      "t" : 1.617,
+      "text" : "ing nations adapt to r"
+    },
+    {
+      "t" : 1.637,
+      "text" : "ising tem"
+    },
+    {
+      "t" : 1.658,
+      "text" : "peratures.\")])\nw"
+    },
+    {
+      "t" : 1.676,
+      "text" : "2 = Card([Card"
+    },
+    {
+      "t" : 1.695,
+      "text" : "Header(\"Ceas"
+    },
+    {
+      "t" : 1.719,
+      "text" : "efire hol"
+    },
+    {
+      "t" : 1.737,
+      "text" : "ds in"
+    },
+    {
+      "t" : 1.757,
+      "text" : " key"
+    },
+    {
+      "t" : 1.779,
+      "text" : " border"
+    },
+    {
+      "t" : 1.798,
+      "text" : " region for"
+    },
+    {
+      "t" : 1.818,
+      "text" : " third"
+    },
+    {
+      "t" : 1.838,
+      "text" : " day"
+    },
+    {
+      "t" : 1.858,
+      "text" : "\", \"World · 4"
+    },
+    {
+      "t" : 1.879,
+      "text" : " hours ago\"), T"
+    },
+    {
+      "t" : 1.899,
+      "text" : "extContent(\"Aid conv"
+    },
+    {
+      "t" : 1.92,
+      "text" : "oys have"
+    },
+    {
+      "t" : 1.94,
+      "text" : " beg"
+    },
+    {
+      "t" : 1.961,
+      "text" : "un re"
+    },
+    {
+      "t" : 1.981,
+      "text" : "aching displ"
+    },
+    {
+      "t" : 2.005,
+      "text" : "aced families"
+    },
+    {
+      "t" : 2.028,
+      "text" : " as both"
+    },
+    {
+      "t" : 2.047,
+      "text" : " sides ag"
+    },
+    {
+      "t" : 2.064,
+      "text" : "ree to a"
+    },
+    {
+      "t" : 2.083,
+      "text" : " temporary pause in"
+    },
+    {
+      "t" : 2.105,
+      "text" : " fighting.\")])\nw"
+    },
+    {
+      "t" : 2.128,
+      "text" : "3 = Card([Card"
+    },
+    {
+      "t" : 2.146,
+      "text" : "Header(\"Election results point"
+    },
+    {
+      "t" : 2.166,
+      "text" : " to co"
+    },
+    {
+      "t" : 2.185,
+      "text" : "alition government"
+    },
+    {
+      "t" : 2.205,
+      "text" : "\", \"World · 6"
+    },
+    {
+      "t" : 2.231,
+      "text" : " hours ago\"), T"
+    },
+    {
+      "t" : 2.248,
+      "text" : "extContent(\"No"
+    },
+    {
+      "t" : 2.267,
+      "text" : " party sec"
+    },
+    {
+      "t" : 2.287,
+      "text" : "ured a majority,"
+    },
+    {
+      "t" : 2.307,
+      "text" : " pr"
+    },
+    {
+      "t" : 2.328,
+      "text" : "ompting we"
+    },
+    {
+      "t" : 2.349,
+      "text" : "eks of talks over"
+    },
+    {
+      "t" : 2.369,
+      "text" : " a"
+    },
+    {
+      "t" : 2.39,
+      "text" : " govern"
+    },
+    {
+      "t" : 2.411,
+      "text" : "ing ag"
+    },
+    {
+      "t" : 2.432,
+      "text" : "reement.\")])\nbusiness"
+    },
+    {
+      "t" : 2.451,
+      "text" : "Content = [b1, b"
+    },
+    {
+      "t" : 2.471,
+      "text" : "2, b3]\nb1"
+    },
+    {
+      "t" : 2.492,
+      "text" : " = Card([CardH"
+    },
+    {
+      "t" : 2.512,
+      "text" : "eader(\"Central bank hol"
+    },
+    {
+      "t" : 2.533,
+      "text" : "ds interest rates steady\","
+    },
+    {
+      "t" : 2.553,
+      "text" : " \""
+    },
+    {
+      "t" : 2.576,
+      "text" : "Business · 1"
+    },
+    {
+      "t" : 2.598,
+      "text" : " hour ago\"), T"
+    },
+    {
+      "t" : 2.618,
+      "text" : "extContent(\"Officials sign"
+    },
+    {
+      "t" : 2.638,
+      "text" : "aled that"
+    },
+    {
+      "t" : 2.66,
+      "text" : " inflation is"
+    },
+    {
+      "t" : 2.682,
+      "text" : " c"
+    },
+    {
+      "t" : 2.703,
+      "text" : "ooling but said"
+    },
+    {
+      "t" : 2.717,
+      "text" : " they need"
+    },
+    {
+      "t" : 2.74,
+      "text" : " more ev"
+    },
+    {
+      "t" : 2.763,
+      "text" : "idence before consid"
+    },
+    {
+      "t" : 2.787,
+      "text" : "ering cu"
+    },
+    {
+      "t" : 2.81,
+      "text" : "ts.\")])\nb2 "
+    },
+    {
+      "t" : 2.836,
+      "text" : "= Card([CardHe"
+    },
+    {
+      "t" : 2.85,
+      "text" : "ader(\"Major retailer pos"
+    },
+    {
+      "t" : 2.873,
+      "text" : "ts str"
+    },
+    {
+      "t" : 2.897,
+      "text" : "ong hol"
+    },
+    {
+      "t" : 2.922,
+      "text" : "iday sales\", \"Business"
+    },
+    {
+      "t" : 2.946,
+      "text" : " · 3 hours ago"
+    },
+    {
+      "t" : 2.97,
+      "text" : "\"), TextContent(\""
+    },
+    {
+      "t" : 2.984,
+      "text" : "Online or"
+    },
+    {
+      "t" : 3.005,
+      "text" : "ders r"
+    },
+    {
+      "t" : 3.018,
+      "text" : "ose s"
+    },
+    {
+      "t" : 3.047,
+      "text" : "harply,"
+    },
+    {
+      "t" : 3.071,
+      "text" : " off"
+    },
+    {
+      "t" : 3.095,
+      "text" : "setting soft"
+    },
+    {
+      "t" : 3.122,
+      "text" : "er fo"
+    },
+    {
+      "t" : 3.149,
+      "text" : "ot traffic at"
+    },
+    {
+      "t" : 3.175,
+      "text" : " phys"
+    },
+    {
+      "t" : 3.202,
+      "text" : "ical stores.\")])\nb"
+    },
+    {
+      "t" : 3.202,
+      "text" : "3 = Card([Card"
+    },
+    {
+      "t" : 3.218,
+      "text" : "Header(\"Oil pr"
+    },
+    {
+      "t" : 3.271,
+      "text" : "ices clim"
+    },
+    {
+      "t" : 3.3,
+      "text" : "b on"
+    },
+    {
+      "t" : 3.333,
+      "text" : " supply conc"
+    },
+    {
+      "t" : 3.359,
+      "text" : "erns\", \"Business · "
+    },
+    {
+      "t" : 3.385,
+      "text" : "5 hours ago\"),"
+    },
+    {
+      "t" : 3.411,
+      "text" : " TextContent(\"Mark"
+    },
+    {
+      "t" : 3.438,
+      "text" : "ets re"
+    },
+    {
+      "t" : 3.464,
+      "text" : "acted to production"
+    },
+    {
+      "t" : 3.49,
+      "text" : " cuts announced by"
+    },
+    {
+      "t" : 3.515,
+      "text" : " several"
+    },
+    {
+      "t" : 3.54,
+      "text" : " major"
+    },
+    {
+      "t" : 3.566,
+      "text" : " ex"
+    },
+    {
+      "t" : 3.591,
+      "text" : "porters.\")])\ntechCont"
+    },
+    {
+      "t" : 3.619,
+      "text" : "ent = [t1, t2"
+    },
+    {
+      "t" : 3.645,
+      "text" : ", t3]\nt1 "
+    },
+    {
+      "t" : 3.673,
+      "text" : "= Card([CardHe"
+    },
+    {
+      "t" : 3.699,
+      "text" : "ader(\"AI start"
+    },
+    {
+      "t" : 3.724,
+      "text" : "up un"
+    },
+    {
+      "t" : 3.751,
+      "text" : "veils model"
+    },
+    {
+      "t" : 3.778,
+      "text" : " that run"
+    },
+    {
+      "t" : 3.805,
+      "text" : "s on la"
+    },
+    {
+      "t" : 3.831,
+      "text" : "ptops\", \"Tech ·"
+    },
+    {
+      "t" : 3.857,
+      "text" : " 30"
+    },
+    {
+      "t" : 3.885,
+      "text" : " minutes ago\"),"
+    },
+    {
+      "t" : 3.913,
+      "text" : " TextContent(\"The"
+    },
+    {
+      "t" : 3.941,
+      "text" : " comp"
+    },
+    {
+      "t" : 3.968,
+      "text" : "act model prom"
+    },
+    {
+      "t" : 3.996,
+      "text" : "ises near"
+    },
+    {
+      "t" : 4.023,
+      "text" : "-c"
+    },
+    {
+      "t" : 4.05,
+      "text" : "loud performance for"
+    },
+    {
+      "t" : 4.078,
+      "text" : " ever"
+    },
+    {
+      "t" : 4.106,
+      "text" : "yday t"
+    },
+    {
+      "t" : 4.132,
+      "text" : "asks without an"
+    },
+    {
+      "t" : 4.16,
+      "text" : " internet connection.\")])"
+    },
+    {
+      "t" : 4.187,
+      "text" : "\nt2 = Card([C"
+    },
+    {
+      "t" : 4.215,
+      "text" : "ardHeader(\"Regul"
+    },
+    {
+      "t" : 4.242,
+      "text" : "ators open"
+    },
+    {
+      "t" : 4.27,
+      "text" : " prob"
+    },
+    {
+      "t" : 4.297,
+      "text" : "e into sm"
+    },
+    {
+      "t" : 4.324,
+      "text" : "artphone app"
+    },
+    {
+      "t" : 4.352,
+      "text" : " st"
+    },
+    {
+      "t" : 4.38,
+      "text" : "ores\", \"Tech · "
+    },
+    {
+      "t" : 4.408,
+      "text" : "3 hours ago\"),"
+    },
+    {
+      "t" : 4.436,
+      "text" : " TextContent(\"The"
+    },
+    {
+      "t" : 4.465,
+      "text" : " inquiry will"
+    },
+    {
+      "t" : 4.494,
+      "text" : " examine whether plat"
+    },
+    {
+      "t" : 4.523,
+      "text" : "form fees limit compet"
+    },
+    {
+      "t" : 4.552,
+      "text" : "ition among"
+    },
+    {
+      "t" : 4.581,
+      "text" : " developers.\")])\nt3"
+    },
+    {
+      "t" : 4.61,
+      "text" : " = Card([CardH"
+    },
+    {
+      "t" : 4.64,
+      "text" : "eader(\"Chip"
+    },
+    {
+      "t" : 4.67,
+      "text" : "maker announces next"
+    },
+    {
+      "t" : 4.701,
+      "text" : "-generation process"
+    },
+    {
+      "t" : 4.731,
+      "text" : "or"
+    },
+    {
+      "t" : 4.762,
+      "text" : "\", \"Tech · 7"
+    },
+    {
+      "t" : 4.783,
+      "text" : " hours ago\"), T"
+    },
+    {
+      "t" : 4.813,
+      "text" : "extContent(\"The new chip"
+    },
+    {
+      "t" : 4.833,
+      "text" : " targ"
+    },
+    {
+      "t" : 4.863,
+      "text" : "ets data"
+    },
+    {
+      "t" : 4.893,
+      "text" : " centers with a"
+    },
+    {
+      "t" : 4.923,
+      "text" : " significant bo"
+    },
+    {
+      "t" : 4.954,
+      "text" : "ost in energy efficiency"
+    },
+    {
+      "t" : 4.986,
+      "text" : ".\")])\nsportContent"
+    },
+    {
+      "t" : 5.017,
+      "text" : " = [s1, s2,"
+    },
+    {
+      "t" : 5.047,
+      "text" : " s3]\ns1 ="
+    },
+    {
+      "t" : 5.08,
+      "text" : " Card([CardHeader"
+    },
+    {
+      "t" : 5.112,
+      "text" : "(\"Champ"
+    },
+    {
+      "t" : 5.133,
+      "text" : "ions sec"
+    },
+    {
+      "t" : 5.163,
+      "text" : "ure d"
+    },
+    {
+      "t" : 5.184,
+      "text" : "ram"
+    },
+    {
+      "t" : 5.215,
+      "text" : "atic last"
+    },
+    {
+      "t" : 5.247,
+      "text" : "-minute win\", \"S"
+    },
+    {
+      "t" : 5.28,
+      "text" : "port · 1 hour "
+    },
+    {
+      "t" : 5.3,
+      "text" : "ago\"), TextContent(\""
+    },
+    {
+      "t" : 5.332,
+      "text" : "A sto"
+    },
+    {
+      "t" : 5.366,
+      "text" : "ppage-"
+    },
+    {
+      "t" : 5.398,
+      "text" : "time goal s"
+    },
+    {
+      "t" : 5.429,
+      "text" : "ealed three"
+    },
+    {
+      "t" : 5.461,
+      "text" : " points in front"
+    },
+    {
+      "t" : 5.494,
+      "text" : " of a"
+    },
+    {
+      "t" : 5.526,
+      "text" : " sold-out home"
+    },
+    {
+      "t" : 5.56,
+      "text" : " cr"
+    },
+    {
+      "t" : 5.593,
+      "text" : "owd.\")])\ns2"
+    },
+    {
+      "t" : 5.627,
+      "text" : " = Card([CardH"
+    },
+    {
+      "t" : 5.66,
+      "text" : "eader(\"Star s"
+    },
+    {
+      "t" : 5.693,
+      "text" : "printer s"
+    },
+    {
+      "t" : 5.727,
+      "text" : "ets new season"
+    },
+    {
+      "t" : 5.749,
+      "text" : " best"
+    },
+    {
+      "t" : 5.783,
+      "text" : "\", \"Sport · 4"
+    },
+    {
+      "t" : 5.816,
+      "text" : " hours ago\"), T"
+    },
+    {
+      "t" : 5.839,
+      "text" : "extContent(\"The ath"
+    },
+    {
+      "t" : 5.851,
+      "text" : "lete's time"
+    },
+    {
+      "t" : 5.886,
+      "text" : " places"
+    },
+    {
+      "t" : 5.955,
+      "text" : " her among"
+    },
+    {
+      "t" : 5.99,
+      "text" : " the fav"
+    },
+    {
+      "t" : 6.025,
+      "text" : "our"
+    },
+    {
+      "t" : 6.06,
+      "text" : "ites for the up"
+    },
+    {
+      "t" : 6.083,
+      "text" : "coming championships"
+    },
+    {
+      "t" : 6.118,
+      "text" : ".\")])\ns3 ="
+    },
+    {
+      "t" : 6.153,
+      "text" : " Card([CardHeader"
+    },
+    {
+      "t" : 6.188,
+      "text" : "(\"Tennis ve"
+    },
+    {
+      "t" : 6.223,
+      "text" : "teran announ"
+    },
+    {
+      "t" : 6.258,
+      "text" : "ces retirement pl"
+    },
+    {
+      "t" : 6.294,
+      "text" : "ans\", \"Sport · "
+    },
+    {
+      "t" : 6.317,
+      "text" : "8 hours ago\"),"
+    },
+    {
+      "t" : 6.352,
+      "text" : " TextContent(\"The"
+    },
+    {
+      "t" : 6.388,
+      "text" : " former"
+    },
+    {
+      "t" : 6.423,
+      "text" : " world"
+    },
+    {
+      "t" : 6.459,
+      "text" : " number"
+    },
+    {
+      "t" : 6.483,
+      "text" : " one"
+    },
+    {
+      "t" : 6.518,
+      "text" : " will play"
+    },
+    {
+      "t" : 6.553,
+      "text" : " one"
+    },
+    {
+      "t" : 6.59,
+      "text" : " final tourn"
+    },
+    {
+      "t" : 6.628,
+      "text" : "ament later"
+    },
+    {
+      "t" : 6.665,
+      "text" : " this year"
+    },
+    {
+      "t" : 6.702,
+      "text" : ".\")])"
+    }
+  ],
+  "createdAt" : "2026-11-11T10:33:40Z",
+  "effort" : "low",
+  "format" : "openui-recording",
+  "inputTokens" : 14500,
+  "library" : "react-ui",
+  "model" : "claude-haiku-5-5",
+  "outputTokens" : 1122,
+  "request" : "Top headlines by section, in tabs for World, Business, Tech and Sport, three per tab.",
+  "servedBy" : "claude-haiku-5-5",
+  "stopReason" : "end_turn",
+  "version" : 1
+}

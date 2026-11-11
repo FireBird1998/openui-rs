@@ -1,0 +1,250 @@
+{
+  "batchRequest" : {
+    "model" : "sonnet",
+    "number" : 43,
+    "of" : 5,
+    "request" : "Add a second race for city council below the mayor's, with its own chart."
+  },
+  "chunks" : [
+    {
+      "t" : 0.822,
+      "text" : "root = Stack([header,"
+    },
+    {
+      "t" : 1.138,
+      "text" : " kpis, shareCard"
+    },
+    {
+      "t" : 1.147,
+      "text" : ", tableCard, precin"
+    },
+    {
+      "t" : 1.156,
+      "text" : "ctCard, councilC"
+    },
+    {
+      "t" : 1.202,
+      "text" : "ard])\ncouncilCard ="
+    },
+    {
+      "t" : 1.223,
+      "text" : " Card([councilHeader"
+    },
+    {
+      "t" : 1.23,
+      "text" : ", councilChart,"
+    },
+    {
+      "t" : 1.24,
+      "text" : " councilTable])\ncouncil"
+    },
+    {
+      "t" : 1.248,
+      "text" : "Header = CardHe"
+    },
+    {
+      "t" : 1.26,
+      "text" : "ader(\"City Council — District "
+    },
+    {
+      "t" : 1.272,
+      "text" : "4\","
+    },
+    {
+      "t" : 1.279,
+      "text" : " \"Percent of votes coun"
+    },
+    {
+      "t" : 1.291,
+      "text" : "ted · 82"
+    },
+    {
+      "t" : 1.463,
+      "text" : "% of precincts reporting"
+    },
+    {
+      "t" : 1.476,
+      "text" : "\")\ncouncilChart = H"
+    },
+    {
+      "t" : 1.483,
+      "text" : "orizontalBarChart"
+    },
+    {
+      "t" : 1.496,
+      "text" : "(councilNames, [counc"
+    },
+    {
+      "t" : 1.509,
+      "text" : "ilSeries], \"grou"
+    },
+    {
+      "t" : 1.523,
+      "text" : "ped\", \"V"
+    },
+    {
+      "t" : 1.531,
+      "text" : "ote share (%)\", \""
+    },
+    {
+      "t" : 1.544,
+      "text" : "Candidate\")\ncouncilN"
+    },
+    {
+      "t" : 1.56,
+      "text" : "ames = [\"Linda"
+    },
+    {
+      "t" : 1.597,
+      "text" : " Park"
+    },
+    {
+      "t" : 1.63,
+      "text" : "\", \"James"
+    },
+    {
+      "t" : 1.665,
+      "text" : " Ortiz\", \""
+    },
+    {
+      "t" : 1.788,
+      "text" : "Pri"
+    },
+    {
+      "t" : 1.804,
+      "text" : "ya Nair\", \"Col"
+    },
+    {
+      "t" : 1.818,
+      "text" : "in Wal"
+    },
+    {
+      "t" : 1.832,
+      "text" : "sh\"]\ncouncilS"
+    },
+    {
+      "t" : 1.848,
+      "text" : "eries = Series(\"V"
+    },
+    {
+      "t" : 1.877,
+      "text" : "ote share %\", [38.5"
+    },
+    {
+      "t" : 1.912,
+      "text" : ", 29.9"
+    },
+    {
+      "t" : 1.946,
+      "text" : ", 21"
+    },
+    {
+      "t" : 1.981,
+      "text" : ".4"
+    },
+    {
+      "t" : 2.016,
+      "text" : ", 10.2"
+    },
+    {
+      "t" : 2.053,
+      "text" : "])\ncouncilTable ="
+    },
+    {
+      "t" : 2.09,
+      "text" : " Table([Col(\"Candid"
+    },
+    {
+      "t" : 2.124,
+      "text" : "ate\", councilNames),"
+    },
+    {
+      "t" : 2.161,
+      "text" : " Col(\"Party\", councilPar"
+    },
+    {
+      "t" : 2.196,
+      "text" : "ties), Col(\"Votes"
+    },
+    {
+      "t" : 2.231,
+      "text" : "\", councilVotes, \""
+    },
+    {
+      "t" : 2.266,
+      "text" : "number\"), Col(\"Share"
+    },
+    {
+      "t" : 2.31,
+      "text" : " %\", councilShares, \""
+    },
+    {
+      "t" : 2.339,
+      "text" : "number\")])\ncouncilParties"
+    },
+    {
+      "t" : 2.375,
+      "text" : " = [\"Democratic\","
+    },
+    {
+      "t" : 2.41,
+      "text" : " \"Republican\", \"Independ"
+    },
+    {
+      "t" : 2.446,
+      "text" : "ent\", \"Green\"]"
+    },
+    {
+      "t" : 2.484,
+      "text" : "\ncouncilVotes = [11"
+    },
+    {
+      "t" : 2.522,
+      "text" : "842"
+    },
+    {
+      "t" : 2.627,
+      "text" : ", 9196"
+    },
+    {
+      "t" : 2.646,
+      "text" : ", 6"
+    },
+    {
+      "t" : 2.664,
+      "text" : "583"
+    },
+    {
+      "t" : 2.682,
+      "text" : ", 3137"
+    },
+    {
+      "t" : 2.701,
+      "text" : "]\ncouncilShares = ["
+    },
+    {
+      "t" : 2.727,
+      "text" : "38.5, 29.9"
+    },
+    {
+      "t" : 2.761,
+      "text" : ", 21.4, 10"
+    },
+    {
+      "t" : 2.797,
+      "text" : ".2]"
+    }
+  ],
+  "createdAt" : "2026-11-11T10:37:29Z",
+  "effort" : "low",
+  "format" : "openui-recording",
+  "inputTokens" : 15855,
+  "library" : "react-ui",
+  "model" : "claude-sonnet-5-5",
+  "outputTokens" : 369,
+  "patchOf" : "root = Stack([header, kpis, shareCard, tableCard, precinctCard])\nheader = CardHeader(\"Mayoral Race — Election Night Results\", \"Updated 11:42 PM · 87% of precincts reporting\")\nkpis = OverviewCardBlock([k1, k2, k3])\nk1 = OverviewCardItem(\"votes\", k1top, k1bot)\nk1top = IconText(Icon(\"vote\", \"general\"), \"neutral\", \"m\", \"Total Votes\", \"Counted so far\", false, \"horizontal\")\nk1bot = MetricIndicatorInline(\"184,320\", \"Turnout 46%\", { direction: \"up\", value: 5 })\nk2 = OverviewCardItem(\"reporting\", k2top, k2bot)\nk2top = IconText(Icon(\"map-pin\", \"maps\"), \"neutral\", \"m\", \"Precincts Reporting\", \"Of 200 total\", false, \"horizontal\")\nk2bot = MetricIndicatorInline(\"174 / 200\", \"87% reporting\")\nk3 = OverviewCardItem(\"margin\", k3top, k3bot)\nk3top = IconText(Icon(\"trending-up\", \"finance\"), \"neutral\", \"m\", \"Leading Margin\", \"Rivera over Chen\", false, \"horizontal\")\nk3bot = MetricIndicatorInline(\"6.4 pts\", \"Rivera leads\", { direction: \"up\", value: 6 })\nshareCard = Card([shareHeader, shareChart])\nshareHeader = CardHeader(\"Vote Share\", \"Percent of votes counted\")\nshareChart = BarChart(names, [shareSeries], \"grouped\", \"Candidate\", \"Vote share (%)\")\nnames = [\"Maria Rivera\", \"David Chen\", \"Aisha Okafor\", \"Tom Brennan\", \"Write-ins\"]\nshareSeries = Series(\"Vote share %\", [41.2, 34.8, 15.6, 7.7, 0.7])\ntableCard = Card([tableHeader, tbl])\ntableHeader = CardHeader(\"Candidate Totals\", \"Party and votes counted\")\ntbl = Table([Col(\"Candidate\", names), Col(\"Party\", parties), Col(\"Votes\", votes, \"number\"), Col(\"Share %\", shares, \"number\")])\nparties = [\"Democratic\", \"Republican\", \"Independent\", \"Green\", \"—\"]\nvotes = [75940, 64154, 28754, 14192, 1280]\nshares = [41.2, 34.8, 15.6, 7.7, 0.7]\nprecinctCard = Card([precinctHeader, precinctBar, precinctLegend])\nprecinctHeader = CardHeader(\"Precincts Reporting\", \"174 of 200 precincts\")\nprecinctBar = SingleStackedBarChart([\"Reporting\", \"Outstanding\"], [174, 26])\nprecinctLegend = Callout(\"info\", \"26 precincts outstanding\", \"Remaining precincts are mostly in the East District, where early results favored Rivera and Chen.\")",
+  "request" : "Add a second race for city council below the mayor's, with its own chart.",
+  "servedBy" : "claude-sonnet-5-5",
+  "stopReason" : "end_turn",
+  "version" : 1
+}

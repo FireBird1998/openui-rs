@@ -1,0 +1,354 @@
+{
+  "batchRequest" : {
+    "model" : "sonnet",
+    "number" : 41,
+    "of" : 1,
+    "request" : "Add a weather strip at the top and make the lead story's image larger."
+  },
+  "chunks" : [
+    {
+      "t" : 4.438,
+      "text" : "root"
+    },
+    {
+      "t" : 4.467,
+      "text" : " = Stack([masthead"
+    },
+    {
+      "t" : 4.588,
+      "text" : ", weat"
+    },
+    {
+      "t" : 4.729,
+      "text" : "herSt"
+    },
+    {
+      "t" : 4.85,
+      "text" : "rip, sep, lead"
+    },
+    {
+      "t" : 4.895,
+      "text" : ", secHeader, secC"
+    },
+    {
+      "t" : 4.944,
+      "text" : "ards, mostHeader,"
+    },
+    {
+      "t" : 4.989,
+      "text" : " mostList])\nweather"
+    },
+    {
+      "t" : 5.045,
+      "text" : "Strip = Overview"
+    },
+    {
+      "t" : 5.113,
+      "text" : "CardBlock([w1"
+    },
+    {
+      "t" : 5.175,
+      "text" : ", w2, w3, w"
+    },
+    {
+      "t" : 5.215,
+      "text" : "4], \"carousel\")"
+    },
+    {
+      "t" : 5.263,
+      "text" : "\nw1 = Overview"
+    },
+    {
+      "t" : 5.3,
+      "text" : "CardItem(\"now\", w"
+    },
+    {
+      "t" : 5.36,
+      "text" : "1top, w1bot"
+    },
+    {
+      "t" : 5.362,
+      "text" : ")\nw1top = Icon"
+    },
+    {
+      "t" : 5.433,
+      "text" : "Text(w"
+    },
+    {
+      "t" : 5.47,
+      "text" : "1icon, \"info"
+    },
+    {
+      "t" : 5.513,
+      "text" : "\", \"m\", \"Now\","
+    },
+    {
+      "t" : 5.569,
+      "text" : " \"Riverton\", false"
+    },
+    {
+      "t" : 5.671,
+      "text" : ", \"horizontal\")"
+    },
+    {
+      "t" : 5.731,
+      "text" : "\nw1icon = Icon"
+    },
+    {
+      "t" : 5.736,
+      "text" : "(\"sun\", \"weather\")"
+    },
+    {
+      "t" : 5.843,
+      "text" : "\nw1bot = Met"
+    },
+    {
+      "t" : 5.964,
+      "text" : "ricIndicatorInline"
+    },
+    {
+      "t" : 6.058,
+      "text" : "(\"68°F\", \"S"
+    },
+    {
+      "t" : 6.154,
+      "text" : "unny\")"
+    },
+    {
+      "t" : 6.247,
+      "text" : "\nw2 = Overvi"
+    },
+    {
+      "t" : 6.336,
+      "text" : "ewCardItem(\"ton"
+    },
+    {
+      "t" : 6.475,
+      "text" : "ight\", w2top, w2"
+    },
+    {
+      "t" : 6.478,
+      "text" : "bot)\nw2top ="
+    },
+    {
+      "t" : 6.591,
+      "text" : " IconText(w2icon"
+    },
+    {
+      "t" : 6.654,
+      "text" : ", \"ne"
+    },
+    {
+      "t" : 6.743,
+      "text" : "utral\", \"m\", \""
+    },
+    {
+      "t" : 6.825,
+      "text" : "Tonight\", \""
+    },
+    {
+      "t" : 7.017,
+      "text" : "Low"
+    },
+    {
+      "t" : 7.122,
+      "text" : "\","
+    },
+    {
+      "t" : 7.125,
+      "text" : " false, \"horizontal\")"
+    },
+    {
+      "t" : 7.298,
+      "text" : "\nw2icon = Ic"
+    },
+    {
+      "t" : 7.302,
+      "text" : "on(\"moon\", \"weather"
+    },
+    {
+      "t" : 7.429,
+      "text" : "\")\nw2bot = M"
+    },
+    {
+      "t" : 7.533,
+      "text" : "etricIndicatorIn"
+    },
+    {
+      "t" : 7.65,
+      "text" : "line(\"51°F\", \""
+    },
+    {
+      "t" : 7.744,
+      "text" : "Clear skies\","
+    },
+    {
+      "t" : 7.863,
+      "text" : " { direction: \"down\", value"
+    },
+    {
+      "t" : 7.982,
+      "text" : ": 8"
+    },
+    {
+      "t" : 8.06,
+      "text" : " })\nw3 = O"
+    },
+    {
+      "t" : 8.142,
+      "text" : "verviewCardItem(\""
+    },
+    {
+      "t" : 8.372,
+      "text" : "tomorrow\", w3"
+    },
+    {
+      "t" : 8.376,
+      "text" : "top, w3bot)"
+    },
+    {
+      "t" : 8.487,
+      "text" : "\nw3top = IconText("
+    },
+    {
+      "t" : 8.597,
+      "text" : "w3icon, \"warning"
+    },
+    {
+      "t" : 8.731,
+      "text" : "\", \"m\", \"Tom"
+    },
+    {
+      "t" : 8.861,
+      "text" : "orrow\", \"High\", false"
+    },
+    {
+      "t" : 8.992,
+      "text" : ", \"horizontal\")"
+    },
+    {
+      "t" : 9.091,
+      "text" : "\nw3icon = Icon"
+    },
+    {
+      "t" : 9.201,
+      "text" : "(\"cloud-sun\","
+    },
+    {
+      "t" : 9.297,
+      "text" : " \"weather\")\nw3b"
+    },
+    {
+      "t" : 9.391,
+      "text" : "ot = MetricIndic"
+    },
+    {
+      "t" : 9.658,
+      "text" : "atorInline(\"72"
+    },
+    {
+      "t" : 9.786,
+      "text" : "°F\", \"Partly c"
+    },
+    {
+      "t" : 9.917,
+      "text" : "loudy\", { direction:"
+    },
+    {
+      "t" : 9.924,
+      "text" : " \"up\", value: 6"
+    },
+    {
+      "t" : 10.046,
+      "text" : " })\nw4 "
+    },
+    {
+      "t" : 10.136,
+      "text" : "= OverviewCardIt"
+    },
+    {
+      "t" : 10.213,
+      "text" : "em(\"weekend\", w4"
+    },
+    {
+      "t" : 10.426,
+      "text" : "top, w4bot)"
+    },
+    {
+      "t" : 10.43,
+      "text" : "\nw4top = IconText("
+    },
+    {
+      "t" : 10.549,
+      "text" : "w4icon, \"info"
+    },
+    {
+      "t" : 10.636,
+      "text" : "\", \"m\", \"S"
+    },
+    {
+      "t" : 10.735,
+      "text" : "unday\", \"Out"
+    },
+    {
+      "t" : 10.855,
+      "text" : "look\", false, \"horiz"
+    },
+    {
+      "t" : 11.024,
+      "text" : "ontal\")\nw4icon"
+    },
+    {
+      "t" : 11.031,
+      "text" : " = Icon(\"cloud"
+    },
+    {
+      "t" : 11.156,
+      "text" : "-rain\", \"weather\")"
+    },
+    {
+      "t" : 11.263,
+      "text" : "\nw4bot = M"
+    },
+    {
+      "t" : 11.375,
+      "text" : "etricIndicatorIn"
+    },
+    {
+      "t" : 11.49,
+      "text" : "line(\"61"
+    },
+    {
+      "t" : 11.606,
+      "text" : "°F\", \"Showers lik"
+    },
+    {
+      "t" : 11.728,
+      "text" : "ely\","
+    },
+    {
+      "t" : 11.842,
+      "text" : " { direction: \"down\", value"
+    },
+    {
+      "t" : 11.972,
+      "text" : ": 15"
+    },
+    {
+      "t" : 12.094,
+      "text" : " })"
+    }
+  ],
+  "createdAt" : "2026-11-11T10:37:12Z",
+  "effort" : "low",
+  "format" : "openui-recording",
+  "inputTokens" : 15949,
+  "library" : "react-ui",
+  "model" : "claude-sonnet-5-5",
+  "outputTokens" : 1004,
+  "patchOf" : "root = Stack([masthead, sep, lead, secHeader, secCards, mostHeader, mostList])\nmasthead = CardHeader(\"Riverton Daily\", \"Local news for Riverton and the surrounding valley\")\nsep = Separator()\nlead = Card([leadImg, leadTag, leadTitle, leadBody, leadBtns])\nleadImg = Image(\"Crowd gathered at the Riverton waterfront for the annual lantern festival\")\nleadTag = TagBlock([\"Community\", \"Top Story\"], \"sm\")\nleadTitle = TextContent(\"Waterfront Lantern Festival Draws Record Crowd of 12,000\", \"large-heavy\")\nleadBody = TextContent(\"Thousands filled the Riverton waterfront on Saturday evening as the city's annual lantern festival returned with expanded food stalls, live music and a new floating lantern display. Organizers say attendance is up 30% from last year, and local businesses report their busiest weekend of the season.\")\nleadBtns = Buttons([Button(\"Read full story\", @ToAssistant(\"Show the full story: Waterfront Lantern Festival Draws Record Crowd\"), \"primary\"), Button(\"Photo gallery\", @ToAssistant(\"Show photo gallery of the lantern festival\"), \"secondary\")])\nsecHeader = InlineHeader(\"More Headlines\", \"Latest from around town\")\nsecCards = ContextCardBlock([c1, c2, c3], \"grid\")\nc1 = ContextCardItem(\"h1\", t1, \"City council approves $4.2M plan to repave Main Street and add protected bike lanes.\", \"gray\")\nt1 = Tag(\"Politics\", null, \"sm\", \"info\")\nc2 = ContextCardItem(\"h2\", t2, \"Riverton High's girls soccer team advances to the state semifinals after 2-1 win.\", \"gray\")\nt2 = Tag(\"Sports\", null, \"sm\", \"success\")\nc3 = ContextCardItem(\"h3\", t3, \"New bakery on Elm Street draws lines with its cardamom morning buns.\", \"gray\")\nt3 = Tag(\"Food\", null, \"sm\", \"warning\")\nmostHeader = InlineHeader(\"Most Read\", \"Trending stories today\")\nmostList = ListBlock([m1, m2, m3, m4, m5], \"number\")\nm1 = ListItem(\"Lantern festival draws record crowd\", \"Community · 6 min read\", null, \"Read\", @ToAssistant(\"Open story: Lantern festival draws record crowd\"))\nm2 = ListItem(\"Main Street repaving plan approved\", \"Politics · 4 min read\", null, \"Read\", @ToAssistant(\"Open story: Main Street repaving plan approved\"))\nm3 = ListItem(\"Where to find the best fall hikes nearby\", \"Outdoors · 5 min read\", null, \"Read\", @ToAssistant(\"Open story: best fall hikes nearby\"))\nm4 = ListItem(\"School board debates later start times\", \"Education · 7 min read\", null, \"Read\", @ToAssistant(\"Open story: school board start times\"))\nm5 = ListItem(\"Elm Street bakery's buns sell out by 9am\", \"Food · 3 min read\", null, \"Read\", @ToAssistant(\"Open story: Elm Street bakery\"))",
+  "request" : "Add a weather strip at the top and make the lead story's image larger.",
+  "servedBy" : "claude-sonnet-5-5",
+  "stopReason" : "end_turn",
+  "version" : 1
+}

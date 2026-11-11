@@ -1,0 +1,320 @@
+{
+  "batchRequest" : {
+    "model" : "haiku",
+    "number" : 22,
+    "request" : "A sign-up form with name, email, a password with rules, a plan select and terms checkbox."
+  },
+  "chunks" : [
+    {
+      "t" : 0.635,
+      "text" : "root = Stack(["
+    },
+    {
+      "t" : 0.789,
+      "text" : "title, form])\ntitle = T"
+    },
+    {
+      "t" : 0.799,
+      "text" : "extContent(\"Create"
+    },
+    {
+      "t" : 0.81,
+      "text" : " your"
+    },
+    {
+      "t" : 0.84,
+      "text" : " account\", \"large-heavy"
+    },
+    {
+      "t" : 0.847,
+      "text" : "\")\nform = Form(\"sign"
+    },
+    {
+      "t" : 0.858,
+      "text" : "up\", btns, [name"
+    },
+    {
+      "t" : 0.869,
+      "text" : "Field, emailField, pass"
+    },
+    {
+      "t" : 0.877,
+      "text" : "wordField, plan"
+    },
+    {
+      "t" : 0.889,
+      "text" : "Field, term"
+    },
+    {
+      "t" : 0.897,
+      "text" : "sField])\nnameField ="
+    },
+    {
+      "t" : 0.908,
+      "text" : " FormControl(\"Name\","
+    },
+    {
+      "t" : 0.921,
+      "text" : " Input(\"name\", \"Your"
+    },
+    {
+      "t" : 0.956,
+      "text" : " full"
+    },
+    {
+      "t" : 0.963,
+      "text" : " name\", \"text\", {required:"
+    },
+    {
+      "t" : 0.975,
+      "text" : " true, minLength: 2"
+    },
+    {
+      "t" : 0.989,
+      "text" : "}))\nemailField = F"
+    },
+    {
+      "t" : 0.997,
+      "text" : "ormControl(\"Email\","
+    },
+    {
+      "t" : 1.01,
+      "text" : " Input(\"email\", \"you@example"
+    },
+    {
+      "t" : 1.023,
+      "text" : ".com\", \"email\", {required"
+    },
+    {
+      "t" : 1.044,
+      "text" : ": true, email: true}))"
+    },
+    {
+      "t" : 1.064,
+      "text" : "\npasswordField = Form"
+    },
+    {
+      "t" : 1.088,
+      "text" : "Control(\"Password\", Input"
+    },
+    {
+      "t" : 1.104,
+      "text" : "(\"password\", \"At"
+    },
+    {
+      "t" : 1.125,
+      "text" : " least 8 characters\", \""
+    },
+    {
+      "t" : 1.146,
+      "text" : "password\", {required: true, min"
+    },
+    {
+      "t" : 1.167,
+      "text" : "Length: 8, p"
+    },
+    {
+      "t" : 1.194,
+      "text" : "attern: \"^"
+    },
+    {
+      "t" : 1.209,
+      "text" : "("
+    },
+    {
+      "t" : 1.226,
+      "text" : "?=.*[A-"
+    },
+    {
+      "t" : 1.247,
+      "text" : "Za-z])(?=."
+    },
+    {
+      "t" : 1.268,
+      "text" : "*\\\\d)."
+    },
+    {
+      "t" : 1.288,
+      "text" : "+$\"}), \""
+    },
+    {
+      "t" : 1.308,
+      "text" : "Must include a"
+    },
+    {
+      "t" : 1.329,
+      "text" : " letter and a number\")\nplan"
+    },
+    {
+      "t" : 1.349,
+      "text" : "Field = FormControl(\""
+    },
+    {
+      "t" : 1.37,
+      "text" : "Plan\", Select(\"plan"
+    },
+    {
+      "t" : 1.39,
+      "text" : "\", planOpts, \""
+    },
+    {
+      "t" : 1.411,
+      "text" : "Choose a plan\", {required"
+    },
+    {
+      "t" : 1.431,
+      "text" : ": true}))\nplanOp"
+    },
+    {
+      "t" : 1.452,
+      "text" : "ts = [SelectItem"
+    },
+    {
+      "t" : 1.474,
+      "text" : "(\"free\", \"Free\""
+    },
+    {
+      "t" : 1.492,
+      "text" : "), SelectItem(\"p"
+    },
+    {
+      "t" : 1.513,
+      "text" : "ro\", \"P"
+    },
+    {
+      "t" : 1.533,
+      "text" : "ro —"
+    },
+    {
+      "t" : 1.554,
+      "text" : " $12/m"
+    },
+    {
+      "t" : 1.574,
+      "text" : "o\"), SelectItem"
+    },
+    {
+      "t" : 1.594,
+      "text" : "(\"team\", \"Team — $"
+    },
+    {
+      "t" : 1.615,
+      "text" : "36"
+    },
+    {
+      "t" : 1.634,
+      "text" : "/mo\")]\nterms"
+    },
+    {
+      "t" : 1.655,
+      "text" : "Field = FormControl(\""
+    },
+    {
+      "t" : 1.676,
+      "text" : "Terms\", CheckBo"
+    },
+    {
+      "t" : 1.697,
+      "text" : "xGroup(\"terms\","
+    },
+    {
+      "t" : 1.717,
+      "text" : " [termsItem], {required"
+    },
+    {
+      "t" : 1.737,
+      "text" : ": true}))\ntermsIt"
+    },
+    {
+      "t" : 1.758,
+      "text" : "em = CheckBox"
+    },
+    {
+      "t" : 1.778,
+      "text" : "Item(\"I agree to the"
+    },
+    {
+      "t" : 1.799,
+      "text" : " Terms of Service\", \""
+    },
+    {
+      "t" : 1.819,
+      "text" : "You"
+    },
+    {
+      "t" : 1.839,
+      "text" : " must"
+    },
+    {
+      "t" : 1.859,
+      "text" : " accept the"
+    },
+    {
+      "t" : 1.88,
+      "text" : " terms to create"
+    },
+    {
+      "t" : 1.899,
+      "text" : " an account\", \"acc"
+    },
+    {
+      "t" : 1.92,
+      "text" : "ep"
+    },
+    {
+      "t" : 1.94,
+      "text" : "ted\", false)\nbtns ="
+    },
+    {
+      "t" : 1.961,
+      "text" : " Buttons([Button(\""
+    },
+    {
+      "t" : 1.981,
+      "text" : "Create account"
+    },
+    {
+      "t" : 2.002,
+      "text" : "\", @ToAssistant"
+    },
+    {
+      "t" : 2.023,
+      "text" : "(\"Create my"
+    },
+    {
+      "t" : 2.044,
+      "text" : " account\"), \"primary\""
+    },
+    {
+      "t" : 2.066,
+      "text" : "), Button(\"Cancel"
+    },
+    {
+      "t" : 2.087,
+      "text" : "\", @ToAssistant"
+    },
+    {
+      "t" : 2.107,
+      "text" : "(\"Cancel s"
+    },
+    {
+      "t" : 2.128,
+      "text" : "ign-up\"), \"second"
+    },
+    {
+      "t" : 2.149,
+      "text" : "ary\")])"
+    }
+  ],
+  "createdAt" : "2026-11-11T10:34:31Z",
+  "effort" : "low",
+  "format" : "openui-recording",
+  "inputTokens" : 14498,
+  "library" : "react-ui",
+  "model" : "claude-haiku-5-5",
+  "outputTokens" : 481,
+  "request" : "A sign-up form with name, email, a password with rules, a plan select and terms checkbox.",
+  "servedBy" : "claude-haiku-5-5",
+  "stopReason" : "end_turn",
+  "version" : 1
+}

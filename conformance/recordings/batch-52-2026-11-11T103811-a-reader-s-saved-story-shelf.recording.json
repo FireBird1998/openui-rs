@@ -1,0 +1,816 @@
+{
+  "batchRequest" : {
+    "model" : "haiku",
+    "number" : 52,
+    "request" : "A reader's saved-story shelf with unread and finished sections, estimated reading times and remove buttons."
+  },
+  "chunks" : [
+    {
+      "t" : 0.702,
+      "text" : "root"
+    },
+    {
+      "t" : 0.858,
+      "text" : " = Stack(["
+    },
+    {
+      "t" : 0.866,
+      "text" : "sh"
+    },
+    {
+      "t" : 0.875,
+      "text" : "elfHeader, un"
+    },
+    {
+      "t" : 0.891,
+      "text" : "readSection, finished"
+    },
+    {
+      "t" : 0.901,
+      "text" : "Section])\nshelfH"
+    },
+    {
+      "t" : 0.918,
+      "text" : "eader = InlineHe"
+    },
+    {
+      "t" : 0.927,
+      "text" : "ader(\""
+    },
+    {
+      "t" : 0.933,
+      "text" : "Sa"
+    },
+    {
+      "t" : 0.941,
+      "text" : "ved Stories\", \"Your"
+    },
+    {
+      "t" : 0.946,
+      "text" : " reading shelf\")"
+    },
+    {
+      "t" : 0.951,
+      "text" : "\nunreadS"
+    },
+    {
+      "t" : 0.962,
+      "text" : "ection = Card"
+    },
+    {
+      "t" : 1.017,
+      "text" : "([unreadH"
+    },
+    {
+      "t" : 1.028,
+      "text" : "eader, unreadList"
+    },
+    {
+      "t" : 1.034,
+      "text" : "])\nunreadHeader"
+    },
+    {
+      "t" : 1.045,
+      "text" : " = C"
+    },
+    {
+      "t" : 1.064,
+      "text" : "ardHeader(\"Unread"
+    },
+    {
+      "t" : 1.085,
+      "text" : "\", \"St"
+    },
+    {
+      "t" : 1.103,
+      "text" : "ories you have"
+    },
+    {
+      "t" : 1.124,
+      "text" : " not"
+    },
+    {
+      "t" : 1.144,
+      "text" : " started"
+    },
+    {
+      "t" : 1.164,
+      "text" : " y"
+    },
+    {
+      "t" : 1.185,
+      "text" : "et\")\nunreadList ="
+    },
+    {
+      "t" : 1.205,
+      "text" : " Stack([unread"
+    },
+    {
+      "t" : 1.226,
+      "text" : "1, unread2, unread"
+    },
+    {
+      "t" : 1.246,
+      "text" : "3], \"column\", \"m"
+    },
+    {
+      "t" : 1.266,
+      "text" : "\")\nun"
+    },
+    {
+      "t" : 1.287,
+      "text" : "read1 = Card([u"
+    },
+    {
+      "t" : 1.309,
+      "text" : "1Info"
+    },
+    {
+      "t" : 1.328,
+      "text" : ", u1Act"
+    },
+    {
+      "t" : 1.348,
+      "text" : "ions], \"card"
+    },
+    {
+      "t" : 1.369,
+      "text" : "\", \"row"
+    },
+    {
+      "t" : 1.389,
+      "text" : "\", \"between"
+    },
+    {
+      "t" : 1.409,
+      "text" : "\", \"center"
+    },
+    {
+      "t" : 1.43,
+      "text" : "\")\nunread2 ="
+    },
+    {
+      "t" : 1.45,
+      "text" : " Card([u2Info, u"
+    },
+    {
+      "t" : 1.471,
+      "text" : "2Actions], \"card\","
+    },
+    {
+      "t" : 1.491,
+      "text" : " \"row\", \"between\", \"center"
+    },
+    {
+      "t" : 1.511,
+      "text" : "\")\nunread3 ="
+    },
+    {
+      "t" : 1.532,
+      "text" : " Card([u3Info, u"
+    },
+    {
+      "t" : 1.552,
+      "text" : "3Actions], \"card\","
+    },
+    {
+      "t" : 1.573,
+      "text" : " \"row\", \"between\", \"center"
+    },
+    {
+      "t" : 1.594,
+      "text" : "\")\nu1"
+    },
+    {
+      "t" : 1.614,
+      "text" : "Info = IconText(Ic"
+    },
+    {
+      "t" : 1.634,
+      "text" : "on(\"book-open\","
+    },
+    {
+      "t" : 1.654,
+      "text" : " \"re"
+    },
+    {
+      "t" : 1.675,
+      "text" : "ading\"), \"info"
+    },
+    {
+      "t" : 1.695,
+      "text" : "\", \"m\", \"The Qu"
+    },
+    {
+      "t" : 1.718,
+      "text" : "iet Har"
+    },
+    {
+      "t" : 1.739,
+      "text" : "bor\", \"Ma"
+    },
+    {
+      "t" : 1.757,
+      "text" : "ya"
+    },
+    {
+      "t" : 1.777,
+      "text" : " Ch"
+    },
+    {
+      "t" : 1.797,
+      "text" : "en ·"
+    },
+    {
+      "t" : 1.817,
+      "text" : " Liter"
+    },
+    {
+      "t" : 1.84,
+      "text" : "ary"
+    },
+    {
+      "t" : 1.859,
+      "text" : " fiction ·"
+    },
+    {
+      "t" : 1.879,
+      "text" : " 12"
+    },
+    {
+      "t" : 1.899,
+      "text" : " min read"
+    },
+    {
+      "t" : 1.919,
+      "text" : "\", false"
+    },
+    {
+      "t" : 1.94,
+      "text" : ", \"hor"
+    },
+    {
+      "t" : 1.96,
+      "text" : "izontal\")\nu2"
+    },
+    {
+      "t" : 1.98,
+      "text" : "Info = IconText(Ic"
+    },
+    {
+      "t" : 2.001,
+      "text" : "on(\"new"
+    },
+    {
+      "t" : 2.021,
+      "text" : "spaper\", \"reading\""
+    },
+    {
+      "t" : 2.043,
+      "text" : "), \"info"
+    },
+    {
+      "t" : 2.063,
+      "text" : "\", \"m\", \"In"
+    },
+    {
+      "t" : 2.083,
+      "text" : "side the"
+    },
+    {
+      "t" : 2.103,
+      "text" : " Grid"
+    },
+    {
+      "t" : 2.124,
+      "text" : " Failure"
+    },
+    {
+      "t" : 2.144,
+      "text" : "\", \"Da"
+    },
+    {
+      "t" : 2.164,
+      "text" : "niel "
+    },
+    {
+      "t" : 2.185,
+      "text" : "Ortiz · Invest"
+    },
+    {
+      "t" : 2.311,
+      "text" : "igation · 8 min read"
+    },
+    {
+      "t" : 2.331,
+      "text" : "\", false, \"horizontal"
+    },
+    {
+      "t" : 2.351,
+      "text" : "\")\nu3Info = I"
+    },
+    {
+      "t" : 2.371,
+      "text" : "conText(Icon(\"fl"
+    },
+    {
+      "t" : 2.383,
+      "text" : "ask-"
+    },
+    {
+      "t" : 2.402,
+      "text" : "conical\", \"reading\"),"
+    },
+    {
+      "t" : 2.422,
+      "text" : " \"info"
+    },
+    {
+      "t" : 2.434,
+      "text" : "\", \"m\", \"Why"
+    },
+    {
+      "t" : 2.452,
+      "text" : " Sleep Research"
+    },
+    {
+      "t" : 2.504,
+      "text" : " Ke"
+    },
+    {
+      "t" : 2.522,
+      "text" : "eps Chang"
+    },
+    {
+      "t" : 2.54,
+      "text" : "ing\", \"Pri"
+    },
+    {
+      "t" : 2.552,
+      "text" : "ya Nat"
+    },
+    {
+      "t" : 2.57,
+      "text" : "arajan · Science · "
+    },
+    {
+      "t" : 2.588,
+      "text" : "6 min read\", false, \""
+    },
+    {
+      "t" : 2.606,
+      "text" : "horizontal\")\nu1"
+    },
+    {
+      "t" : 2.618,
+      "text" : "Actions = Buttons"
+    },
+    {
+      "t" : 2.636,
+      "text" : "([Button(\"Start Re"
+    },
+    {
+      "t" : 2.647,
+      "text" : "ading\", @"
+    },
+    {
+      "t" : 2.665,
+      "text" : "ToAssistant(\""
+    },
+    {
+      "t" : 2.683,
+      "text" : "Open The Quiet Har"
+    },
+    {
+      "t" : 2.702,
+      "text" : "bor\"), \"prim"
+    },
+    {
+      "t" : 2.721,
+      "text" : "ary\", \"norm"
+    },
+    {
+      "t" : 2.739,
+      "text" : "al\", \"small\"), Button"
+    },
+    {
+      "t" : 2.75,
+      "text" : "(\"Remove\", @To"
+    },
+    {
+      "t" : 2.768,
+      "text" : "Assistant(\"Remove"
+    },
+    {
+      "t" : 2.785,
+      "text" : " The Quiet Harb"
+    },
+    {
+      "t" : 2.803,
+      "text" : "or from my"
+    },
+    {
+      "t" : 2.82,
+      "text" : " sh"
+    },
+    {
+      "t" : 2.838,
+      "text" : "elf\"), \"t"
+    },
+    {
+      "t" : 2.851,
+      "text" : "ertiary\", \"dest"
+    },
+    {
+      "t" : 2.869,
+      "text" : "ructive\", \"small\")],"
+    },
+    {
+      "t" : 2.882,
+      "text" : " \"row"
+    },
+    {
+      "t" : 2.902,
+      "text" : "\")\nu2Actions ="
+    },
+    {
+      "t" : 2.922,
+      "text" : " Buttons([Button(\""
+    },
+    {
+      "t" : 2.935,
+      "text" : "Start Reading\", @"
+    },
+    {
+      "t" : 2.957,
+      "text" : "ToAssistant(\"Open"
+    },
+    {
+      "t" : 2.978,
+      "text" : " Inside the Grid"
+    },
+    {
+      "t" : 3,
+      "text" : " Failure\"), \"primary\","
+    },
+    {
+      "t" : 3.022,
+      "text" : " \"normal\", \"small\"),"
+    },
+    {
+      "t" : 3.036,
+      "text" : " Button(\"Remove\", @"
+    },
+    {
+      "t" : 3.066,
+      "text" : "ToAssistant(\""
+    },
+    {
+      "t" : 3.088,
+      "text" : "Remove Inside the Gr"
+    },
+    {
+      "t" : 3.111,
+      "text" : "id Failure from my shel"
+    },
+    {
+      "t" : 3.132,
+      "text" : "f\"), \"tertiary"
+    },
+    {
+      "t" : 3.153,
+      "text" : "\", \"destructive\", \"small"
+    },
+    {
+      "t" : 3.174,
+      "text" : "\")], \"row\")\nu3"
+    },
+    {
+      "t" : 3.196,
+      "text" : "Actions = Buttons"
+    },
+    {
+      "t" : 3.217,
+      "text" : "([Button(\"Start Re"
+    },
+    {
+      "t" : 3.239,
+      "text" : "ading\", @ToAssist"
+    },
+    {
+      "t" : 3.26,
+      "text" : "ant(\"Open Why S"
+    },
+    {
+      "t" : 3.282,
+      "text" : "leep Research Keeps"
+    },
+    {
+      "t" : 3.304,
+      "text" : " Changing\"), \"primary"
+    },
+    {
+      "t" : 3.318,
+      "text" : "\", \"normal\", \"small\""
+    },
+    {
+      "t" : 3.34,
+      "text" : "), Button(\"Remove\","
+    },
+    {
+      "t" : 3.362,
+      "text" : " @ToAssistant(\""
+    },
+    {
+      "t" : 3.384,
+      "text" : "Remove Why Sle"
+    },
+    {
+      "t" : 3.405,
+      "text" : "ep Research Keeps"
+    },
+    {
+      "t" : 3.427,
+      "text" : " Changing from my shelf\""
+    },
+    {
+      "t" : 3.448,
+      "text" : "), \"tertiary\", \""
+    },
+    {
+      "t" : 3.471,
+      "text" : "destructive\", \"small\")],"
+    },
+    {
+      "t" : 3.485,
+      "text" : " \"row\")\nfinishedS"
+    },
+    {
+      "t" : 3.507,
+      "text" : "ection = Card([fin"
+    },
+    {
+      "t" : 3.528,
+      "text" : "ishedHeader, finish"
+    },
+    {
+      "t" : 3.551,
+      "text" : "edList])\nfinishedH"
+    },
+    {
+      "t" : 3.574,
+      "text" : "eader = CardHeader"
+    },
+    {
+      "t" : 3.597,
+      "text" : "(\"Finished\", \"St"
+    },
+    {
+      "t" : 3.619,
+      "text" : "ories you have complet"
+    },
+    {
+      "t" : 3.634,
+      "text" : "ed\")\nfinishedList ="
+    },
+    {
+      "t" : 3.658,
+      "text" : " Stack([done"
+    },
+    {
+      "t" : 3.682,
+      "text" : "1, done2], \"column\","
+    },
+    {
+      "t" : 3.705,
+      "text" : " \"m\")\ndone1 ="
+    },
+    {
+      "t" : 3.729,
+      "text" : " Card([d"
+    },
+    {
+      "t" : 3.753,
+      "text" : "1Info, d1Act"
+    },
+    {
+      "t" : 3.769,
+      "text" : "ions], \"card\", \"row\","
+    },
+    {
+      "t" : 3.792,
+      "text" : " \"between\", \"center\")\ndone"
+    },
+    {
+      "t" : 3.817,
+      "text" : "2 = Card([d2"
+    },
+    {
+      "t" : 3.842,
+      "text" : "Info, d2Actions"
+    },
+    {
+      "t" : 3.866,
+      "text" : "], \"card\", \"row\", \""
+    },
+    {
+      "t" : 3.892,
+      "text" : "between\", \"center\")\nd1"
+    },
+    {
+      "t" : 3.918,
+      "text" : "Info = IconText("
+    },
+    {
+      "t" : 3.943,
+      "text" : "Icon(\"circ"
+    },
+    {
+      "t" : 3.971,
+      "text" : "le-check\", \"status"
+    },
+    {
+      "t" : 3.996,
+      "text" : "\"), \"success"
+    },
+    {
+      "t" : 4.022,
+      "text" : "\", \"m\", \"The Last"
+    },
+    {
+      "t" : 4.048,
+      "text" : " L"
+    },
+    {
+      "t" : 4.074,
+      "text" : "ighthouse"
+    },
+    {
+      "t" : 4.101,
+      "text" : " Keeper\", \"E"
+    },
+    {
+      "t" : 4.127,
+      "text" : "leanor V"
+    },
+    {
+      "t" : 4.155,
+      "text" : "ance · Ess"
+    },
+    {
+      "t" : 4.181,
+      "text" : "ay · 15"
+    },
+    {
+      "t" : 4.209,
+      "text" : " min read\", false, \"hor"
+    },
+    {
+      "t" : 4.236,
+      "text" : "izontal\")\nd2"
+    },
+    {
+      "t" : 4.265,
+      "text" : "Info = IconText("
+    },
+    {
+      "t" : 4.292,
+      "text" : "Icon(\"circle-check\","
+    },
+    {
+      "t" : 4.319,
+      "text" : " \"status\"), \"success"
+    },
+    {
+      "t" : 4.346,
+      "text" : "\", \"m\", \"Not"
+    },
+    {
+      "t" : 4.374,
+      "text" : "es on a"
+    },
+    {
+      "t" : 4.401,
+      "text" : " Sl"
+    },
+    {
+      "t" : 4.427,
+      "text" : "ower"
+    },
+    {
+      "t" : 4.454,
+      "text" : " City"
+    },
+    {
+      "t" : 4.481,
+      "text" : "\", \"T"
+    },
+    {
+      "t" : 4.508,
+      "text" : "om"
+    },
+    {
+      "t" : 4.534,
+      "text" : "as Re"
+    },
+    {
+      "t" : 4.561,
+      "text" : "yes · Long"
+    },
+    {
+      "t" : 4.588,
+      "text" : " read"
+    },
+    {
+      "t" : 4.615,
+      "text" : " · 22"
+    },
+    {
+      "t" : 4.643,
+      "text" : " min read\", false, \"hor"
+    },
+    {
+      "t" : 4.669,
+      "text" : "izontal\")\nd1"
+    },
+    {
+      "t" : 4.695,
+      "text" : "Actions = Buttons(["
+    },
+    {
+      "t" : 4.721,
+      "text" : "Button(\"Rem"
+    },
+    {
+      "t" : 4.748,
+      "text" : "ove\", @ToAssist"
+    },
+    {
+      "t" : 4.775,
+      "text" : "ant(\"Remove The"
+    },
+    {
+      "t" : 4.803,
+      "text" : " Last Lighthouse"
+    },
+    {
+      "t" : 4.831,
+      "text" : " Keeper from my shel"
+    },
+    {
+      "t" : 4.858,
+      "text" : "f\"), \"tertiary"
+    },
+    {
+      "t" : 4.887,
+      "text" : "\", \"destructive\", \"small"
+    },
+    {
+      "t" : 4.916,
+      "text" : "\")], \"row\")\nd2"
+    },
+    {
+      "t" : 4.944,
+      "text" : "Actions = Buttons"
+    },
+    {
+      "t" : 4.971,
+      "text" : "([Button(\"Remove\","
+    },
+    {
+      "t" : 5,
+      "text" : " @ToAssistant(\""
+    },
+    {
+      "t" : 5.027,
+      "text" : "Remove Notes on a"
+    },
+    {
+      "t" : 5.056,
+      "text" : " Slower City from my shel"
+    },
+    {
+      "t" : 5.085,
+      "text" : "f\"), \"tertiary"
+    },
+    {
+      "t" : 5.115,
+      "text" : "\", \"destructive\", \"small"
+    },
+    {
+      "t" : 5.135,
+      "text" : "\")], \"row\")"
+    }
+  ],
+  "createdAt" : "2026-11-11T10:38:11Z",
+  "effort" : "low",
+  "format" : "openui-recording",
+  "inputTokens" : 14502,
+  "library" : "react-ui",
+  "model" : "claude-haiku-5-5",
+  "outputTokens" : 1186,
+  "request" : "A reader's saved-story shelf with unread and finished sections, estimated reading times and remove buttons.",
+  "servedBy" : "claude-haiku-5-5",
+  "stopReason" : "end_turn",
+  "version" : 1
+}

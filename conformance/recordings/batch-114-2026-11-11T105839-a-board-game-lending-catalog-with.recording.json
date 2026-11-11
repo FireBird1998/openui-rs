@@ -1,0 +1,388 @@
+{
+  "batchRequest" : {
+    "model" : "haiku",
+    "number" : 114,
+    "request" : "A board-game lending catalog with player counts, playing time, availability tags and reserve buttons."
+  },
+  "chunks" : [
+    {
+      "t" : 0.757,
+      "text" : "root = Stack(["
+    },
+    {
+      "t" : 0.959,
+      "text" : "header"
+    },
+    {
+      "t" : 0.991,
+      "text" : ", catalogT"
+    },
+    {
+      "t" : 1.046,
+      "text" : "able, re"
+    },
+    {
+      "t" : 1.082,
+      "text" : "ser"
+    },
+    {
+      "t" : 1.145,
+      "text" : "veN"
+    },
+    {
+      "t" : 1.172,
+      "text" : "ote])\nheader = In"
+    },
+    {
+      "t" : 1.205,
+      "text" : "lineHeader(\"Board"
+    },
+    {
+      "t" : 1.267,
+      "text" : " Game L"
+    },
+    {
+      "t" : 1.27,
+      "text" : "ending Library"
+    },
+    {
+      "t" : 1.308,
+      "text" : "\", \"Brow"
+    },
+    {
+      "t" : 1.341,
+      "text" : "se tit"
+    },
+    {
+      "t" : 1.377,
+      "text" : "les, check"
+    },
+    {
+      "t" : 1.458,
+      "text" : " availability, and reserve a"
+    },
+    {
+      "t" : 1.491,
+      "text" : " cop"
+    },
+    {
+      "t" : 1.493,
+      "text" : "y\")\ncatalogTable"
+    },
+    {
+      "t" : 1.524,
+      "text" : " = Table([col"
+    },
+    {
+      "t" : 1.554,
+      "text" : "T"
+    },
+    {
+      "t" : 1.585,
+      "text" : "itle, colP"
+    },
+    {
+      "t" : 1.618,
+      "text" : "layers, colT"
+    },
+    {
+      "t" : 1.649,
+      "text" : "ime, colA"
+    },
+    {
+      "t" : 1.686,
+      "text" : "vail, colReserve])"
+    },
+    {
+      "t" : 1.725,
+      "text" : "\ncolTitle = Col"
+    },
+    {
+      "t" : 1.786,
+      "text" : "(\"Game"
+    },
+    {
+      "t" : 1.788,
+      "text" : "\", "
+    },
+    {
+      "t" : 1.853,
+      "text" : "[\"Catan"
+    },
+    {
+      "t" : 1.9,
+      "text" : "\", \"Tic"
+    },
+    {
+      "t" : 1.951,
+      "text" : "ket to "
+    },
+    {
+      "t" : 1.999,
+      "text" : "Ride\", \"Pand"
+    },
+    {
+      "t" : 2.045,
+      "text" : "emic\", \"Azul"
+    },
+    {
+      "t" : 2.094,
+      "text" : "\","
+    },
+    {
+      "t" : 2.096,
+      "text" : " \"Wing"
+    },
+    {
+      "t" : 2.152,
+      "text" : "span\","
+    },
+    {
+      "t" : 2.202,
+      "text" : " \"Cod"
+    },
+    {
+      "t" : 2.231,
+      "text" : "en"
+    },
+    {
+      "t" : 2.28,
+      "text" : "ames\"])\ncolPlay"
+    },
+    {
+      "t" : 2.333,
+      "text" : "ers = Col(\"Players\","
+    },
+    {
+      "t" : 2.387,
+      "text" : " [\"3"
+    },
+    {
+      "t" : 2.442,
+      "text" : "-4"
+    },
+    {
+      "t" : 2.491,
+      "text" : "\", \"2"
+    },
+    {
+      "t" : 2.542,
+      "text" : "-5\", \"2"
+    },
+    {
+      "t" : 2.594,
+      "text" : "-4\", \"2"
+    },
+    {
+      "t" : 2.644,
+      "text" : "-4\", \"1"
+    },
+    {
+      "t" : 2.693,
+      "text" : "-5"
+    },
+    {
+      "t" : 2.737,
+      "text" : "\", \"2-8"
+    },
+    {
+      "t" : 2.791,
+      "text" : "\"])\ncolTime ="
+    },
+    {
+      "t" : 2.836,
+      "text" : " Col(\"Play"
+    },
+    {
+      "t" : 2.877,
+      "text" : "ing Time\", [\"60"
+    },
+    {
+      "t" : 2.919,
+      "text" : "-120 min"
+    },
+    {
+      "t" : 2.96,
+      "text" : "\", \"30-60"
+    },
+    {
+      "t" : 3.007,
+      "text" : " min\", \"45 "
+    },
+    {
+      "t" : 3.054,
+      "text" : "min\", \"30-"
+    },
+    {
+      "t" : 3.101,
+      "text" : "45 min\", \"40"
+    },
+    {
+      "t" : 3.177,
+      "text" : "-70 min\", \"15"
+    },
+    {
+      "t" : 3.224,
+      "text" : "-"
+    },
+    {
+      "t" : 3.271,
+      "text" : "30"
+    },
+    {
+      "t" : 3.323,
+      "text" : " min\"])\ncolAv"
+    },
+    {
+      "t" : 3.37,
+      "text" : "ail = Col(\"Availability"
+    },
+    {
+      "t" : 3.433,
+      "text" : "\", @Each([\""
+    },
+    {
+      "t" : 3.486,
+      "text" : "Cat"
+    },
+    {
+      "t" : 3.543,
+      "text" : "an\", \""
+    },
+    {
+      "t" : 3.599,
+      "text" : "Ticket to "
+    },
+    {
+      "t" : 3.603,
+      "text" : "Ride\", \"Pandemic"
+    },
+    {
+      "t" : 3.659,
+      "text" : "\", \"Azul\", \""
+    },
+    {
+      "t" : 3.73,
+      "text" : "Wingspan\", \"Cod"
+    },
+    {
+      "t" : 3.788,
+      "text" : "enames\"], \"g"
+    },
+    {
+      "t" : 3.853,
+      "text" : "\", Tag(\""
+    },
+    {
+      "t" : 3.918,
+      "text" : "Available\", null, \"sm\","
+    },
+    {
+      "t" : 4.022,
+      "text" : " \"success\")))\ncolReser"
+    },
+    {
+      "t" : 4.024,
+      "text" : "ve = Col(\"Reser"
+    },
+    {
+      "t" : 4.107,
+      "text" : "ve\", @Each([\""
+    },
+    {
+      "t" : 4.169,
+      "text" : "Catan\", \"Ticket"
+    },
+    {
+      "t" : 4.222,
+      "text" : " to Ride\", \"P"
+    },
+    {
+      "t" : 4.279,
+      "text" : "andemic\", \"Azul"
+    },
+    {
+      "t" : 4.398,
+      "text" : "\", \"Wingspan\","
+    },
+    {
+      "t" : 4.46,
+      "text" : " \"Codenames\"], \""
+    },
+    {
+      "t" : 4.526,
+      "text" : "g\", Button(\"Reser"
+    },
+    {
+      "t" : 4.59,
+      "text" : "ve\", @"
+    },
+    {
+      "t" : 4.646,
+      "text" : "ToAssistant(\""
+    },
+    {
+      "t" : 4.704,
+      "text" : "Reserve a"
+    },
+    {
+      "t" : 4.706,
+      "text" : " copy of \" + g),"
+    },
+    {
+      "t" : 4.768,
+      "text" : " \"secondary\","
+    },
+    {
+      "t" : 4.83,
+      "text" : " \"norm"
+    },
+    {
+      "t" : 4.891,
+      "text" : "al\", \"small\")))\nre"
+    },
+    {
+      "t" : 5.021,
+      "text" : "serveNote = Call"
+    },
+    {
+      "t" : 5.09,
+      "text" : "out(\"info\", \"Reserv"
+    },
+    {
+      "t" : 5.156,
+      "text" : "ations\", \"Reserved"
+    },
+    {
+      "t" : 5.231,
+      "text" : " games"
+    },
+    {
+      "t" : 5.303,
+      "text" : " can be picked up at"
+    },
+    {
+      "t" : 5.372,
+      "text" : " the front"
+    },
+    {
+      "t" : 5.444,
+      "text" : " desk within 48"
+    },
+    {
+      "t" : 5.539,
+      "text" : " hours.\")"
+    }
+  ],
+  "createdAt" : "2026-11-11T10:58:39Z",
+  "effort" : "low",
+  "format" : "openui-recording",
+  "inputTokens" : 14499,
+  "library" : "react-ui",
+  "model" : "claude-haiku-5-5",
+  "outputTokens" : 475,
+  "request" : "A board-game lending catalog with player counts, playing time, availability tags and reserve buttons.",
+  "servedBy" : "claude-haiku-5-5",
+  "stopReason" : "end_turn",
+  "version" : 1
+}

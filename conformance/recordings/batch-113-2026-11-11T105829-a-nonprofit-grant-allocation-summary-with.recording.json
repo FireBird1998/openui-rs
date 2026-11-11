@@ -1,0 +1,572 @@
+{
+  "batchRequest" : {
+    "model" : "sonnet",
+    "number" : 113,
+    "request" : "A nonprofit grant allocation summary with funding by program as a pie chart, beneficiaries served and a restricted-funds note."
+  },
+  "chunks" : [
+    {
+      "t" : 0.664,
+      "text" : "root = Stack([header,"
+    },
+    {
+      "t" : 0.966,
+      "text" : " k"
+    },
+    {
+      "t" : 0.99,
+      "text" : "piBlock, ch"
+    },
+    {
+      "t" : 1.016,
+      "text" : "artCard, ben"
+    },
+    {
+      "t" : 1.061,
+      "text" : "C"
+    },
+    {
+      "t" : 1.141,
+      "text" : "ard, note])"
+    },
+    {
+      "t" : 1.172,
+      "text" : "\nheader = C"
+    },
+    {
+      "t" : 1.203,
+      "text" : "ardHeader(\"Grant"
+    },
+    {
+      "t" : 1.238,
+      "text" : " Allocation Summary\","
+    },
+    {
+      "t" : 1.275,
+      "text" : " \"Fiscal"
+    },
+    {
+      "t" : 1.333,
+      "text" : " Year 2024"
+    },
+    {
+      "t" : 1.37,
+      "text" : " — Program fun"
+    },
+    {
+      "t" : 1.411,
+      "text" : "ding over"
+    },
+    {
+      "t" : 1.412,
+      "text" : "view\")\nkpiBl"
+    },
+    {
+      "t" : 1.452,
+      "text" : "ock = O"
+    },
+    {
+      "t" : 1.522,
+      "text" : "verviewCardBlock"
+    },
+    {
+      "t" : 1.561,
+      "text" : "([k1, k2, k"
+    },
+    {
+      "t" : 1.602,
+      "text" : "3])\nk1 = O"
+    },
+    {
+      "t" : 1.603,
+      "text" : "verviewCardItem(\""
+    },
+    {
+      "t" : 1.643,
+      "text" : "total\", k1top, k1"
+    },
+    {
+      "t" : 1.685,
+      "text" : "m"
+    },
+    {
+      "t" : 1.723,
+      "text" : ")\nk1top = Icon"
+    },
+    {
+      "t" : 1.789,
+      "text" : "Text(k1i"
+    },
+    {
+      "t" : 1.791,
+      "text" : ", \"neutral\", \"m"
+    },
+    {
+      "t" : 1.831,
+      "text" : "\", \"Total Gran"
+    },
+    {
+      "t" : 1.899,
+      "text" : "ted\")\nk1i ="
+    },
+    {
+      "t" : 1.938,
+      "text" : " Icon(\"h"
+    },
+    {
+      "t" : 1.968,
+      "text" : "and-co"
+    },
+    {
+      "t" : 1.988,
+      "text" : "ins\", \"finance\")\nk"
+    },
+    {
+      "t" : 2.034,
+      "text" : "1m = MetricInd"
+    },
+    {
+      "t" : 2.082,
+      "text" : "icatorInline(\"$2"
+    },
+    {
+      "t" : 2.127,
+      "text" : ".4M\", \"v"
+    },
+    {
+      "t" : 2.177,
+      "text" : "s last"
+    },
+    {
+      "t" : 2.228,
+      "text" : " year\", { direction: \"up"
+    },
+    {
+      "t" : 2.275,
+      "text" : "\", value: 9"
+    },
+    {
+      "t" : 2.319,
+      "text" : " })\nk2 = O"
+    },
+    {
+      "t" : 2.355,
+      "text" : "verviewCardItem(\""
+    },
+    {
+      "t" : 2.407,
+      "text" : "ben\", k2top, k"
+    },
+    {
+      "t" : 2.486,
+      "text" : "2m)\nk2top ="
+    },
+    {
+      "t" : 2.489,
+      "text" : " IconText(k2i,"
+    },
+    {
+      "t" : 2.539,
+      "text" : " \"neutral\", \"m\","
+    },
+    {
+      "t" : 2.608,
+      "text" : " \"Beneficiaries"
+    },
+    {
+      "t" : 2.61,
+      "text" : "\")\nk2i = Ic"
+    },
+    {
+      "t" : 2.66,
+      "text" : "on(\"users\", \"people\")"
+    },
+    {
+      "t" : 2.706,
+      "text" : "\nk2m = MetricI"
+    },
+    {
+      "t" : 2.757,
+      "text" : "ndicatorInline(\"18"
+    },
+    {
+      "t" : 2.812,
+      "text" : ",450"
+    },
+    {
+      "t" : 2.865,
+      "text" : "\", \"people"
+    },
+    {
+      "t" : 2.926,
+      "text" : " served\", { direction: \"up"
+    },
+    {
+      "t" : 2.989,
+      "text" : "\", value: 14 })"
+    },
+    {
+      "t" : 3.054,
+      "text" : "\nk3 = Overview"
+    },
+    {
+      "t" : 3.139,
+      "text" : "CardItem(\"programs\","
+    },
+    {
+      "t" : 3.207,
+      "text" : " k3top, k3m)"
+    },
+    {
+      "t" : 3.28,
+      "text" : "\nk3top = IconText"
+    },
+    {
+      "t" : 3.334,
+      "text" : "(k3i, \"neut"
+    },
+    {
+      "t" : 3.395,
+      "text" : "ral\", \"m\", \"Active"
+    },
+    {
+      "t" : 3.45,
+      "text" : " Programs\")\nk3i"
+    },
+    {
+      "t" : 3.505,
+      "text" : " = Icon(\"layers\","
+    },
+    {
+      "t" : 3.556,
+      "text" : " \"tools\")\nk3m"
+    },
+    {
+      "t" : 3.616,
+      "text" : " = MetricIndicat"
+    },
+    {
+      "t" : 3.672,
+      "text" : "orInline(\"5\", \"fun"
+    },
+    {
+      "t" : 3.729,
+      "text" : "ded programs\")\nchartC"
+    },
+    {
+      "t" : 3.791,
+      "text" : "ard = Card([ch"
+    },
+    {
+      "t" : 3.853,
+      "text" : "artHeader, p"
+    },
+    {
+      "t" : 3.91,
+      "text" : "ie])\nchartHeader"
+    },
+    {
+      "t" : 3.968,
+      "text" : " = InlineHeader(\""
+    },
+    {
+      "t" : 4.023,
+      "text" : "Funding by Program\", \""
+    },
+    {
+      "t" : 4.075,
+      "text" : "Share"
+    },
+    {
+      "t" : 4.133,
+      "text" : " of $"
+    },
+    {
+      "t" : 4.215,
+      "text" : "2.4M total"
+    },
+    {
+      "t" : 4.216,
+      "text" : " gr"
+    },
+    {
+      "t" : 4.27,
+      "text" : "ants\")\npie = Pie"
+    },
+    {
+      "t" : 4.326,
+      "text" : "Chart([\""
+    },
+    {
+      "t" : 4.377,
+      "text" : "Education\", \"Health"
+    },
+    {
+      "t" : 4.437,
+      "text" : "\", \"Food Security\", \""
+    },
+    {
+      "t" : 4.501,
+      "text" : "Housing\", \"Adm"
+    },
+    {
+      "t" : 4.567,
+      "text" : "in &"
+    },
+    {
+      "t" : 4.629,
+      "text" : " Outreach\"], [850"
+    },
+    {
+      "t" : 4.684,
+      "text" : "000, 620"
+    },
+    {
+      "t" : 4.762,
+      "text" : "000, 440"
+    },
+    {
+      "t" : 4.831,
+      "text" : "000, 320"
+    },
+    {
+      "t" : 4.895,
+      "text" : "000, 170"
+    },
+    {
+      "t" : 4.967,
+      "text" : "000], \"donut\")\nben"
+    },
+    {
+      "t" : 5.039,
+      "text" : "Card = Card([benH"
+    },
+    {
+      "t" : 5.115,
+      "text" : "eader, benTable])"
+    },
+    {
+      "t" : 5.183,
+      "text" : "\nbenHeader = Inline"
+    },
+    {
+      "t" : 5.277,
+      "text" : "Header(\"Benefic"
+    },
+    {
+      "t" : 5.278,
+      "text" : "iaries Served\","
+    },
+    {
+      "t" : 5.353,
+      "text" : " \"By"
+    },
+    {
+      "t" : 5.427,
+      "text" : " program\")"
+    },
+    {
+      "t" : 5.504,
+      "text" : "\nbenTable = Table(["
+    },
+    {
+      "t" : 5.589,
+      "text" : "Col(\"Program\", prog"
+    },
+    {
+      "t" : 5.693,
+      "text" : "s), Col(\"Fun"
+    },
+    {
+      "t" : 5.777,
+      "text" : "ding "
+    },
+    {
+      "t" : 5.881,
+      "text" : "($)\", fun"
+    },
+    {
+      "t" : 5.883,
+      "text" : "ds, \"number\"), Col"
+    },
+    {
+      "t" : 5.974,
+      "text" : "(\"Beneficiaries"
+    },
+    {
+      "t" : 6.044,
+      "text" : "\", bens, \"number\"),"
+    },
+    {
+      "t" : 6.125,
+      "text" : " Col(\"Cost per"
+    },
+    {
+      "t" : 6.261,
+      "text" : " Person "
+    },
+    {
+      "t" : 6.263,
+      "text" : "($)\", cp"
+    },
+    {
+      "t" : 6.347,
+      "text" : "p, \"number\")])\nprog"
+    },
+    {
+      "t" : 6.41,
+      "text" : "s = [\"Education\", \""
+    },
+    {
+      "t" : 6.475,
+      "text" : "Health\", \"Food Security"
+    },
+    {
+      "t" : 6.546,
+      "text" : "\", \"Housing\", \""
+    },
+    {
+      "t" : 6.609,
+      "text" : "Admin & Outreach\""
+    },
+    {
+      "t" : 6.67,
+      "text" : "]\nfunds = [850000"
+    },
+    {
+      "t" : 6.744,
+      "text" : ", 620000, 440000"
+    },
+    {
+      "t" : 6.821,
+      "text" : ", 320000, 170000"
+    },
+    {
+      "t" : 6.898,
+      "text" : "]\nbens = [5"
+    },
+    {
+      "t" : 6.978,
+      "text" : "200, 3800"
+    },
+    {
+      "t" : 7.058,
+      "text" : ", 6"
+    },
+    {
+      "t" : 7.17,
+      "text" : "900"
+    },
+    {
+      "t" : 7.172,
+      "text" : ", 950"
+    },
+    {
+      "t" : 7.232,
+      "text" : ", 1600"
+    },
+    {
+      "t" : 7.349,
+      "text" : "]\ncpp = [163"
+    },
+    {
+      "t" : 7.35,
+      "text" : ", 163"
+    },
+    {
+      "t" : 7.425,
+      "text" : ", 64"
+    },
+    {
+      "t" : 7.515,
+      "text" : ", 337"
+    },
+    {
+      "t" : 7.69,
+      "text" : ", 106"
+    },
+    {
+      "t" : 7.692,
+      "text" : "]\nnote = Callout(\""
+    },
+    {
+      "t" : 7.78,
+      "text" : "warning\", \"Restricted"
+    },
+    {
+      "t" : 7.861,
+      "text" : " Funds\","
+    },
+    {
+      "t" : 7.95,
+      "text" : " \"$1.1M of the"
+    },
+    {
+      "t" : 8.029,
+      "text" : " total is don"
+    },
+    {
+      "t" : 8.121,
+      "text" : "or-restricted:"
+    },
+    {
+      "t" : 8.184,
+      "text" : " $600"
+    },
+    {
+      "t" : 8.253,
+      "text" : ",000 for Education"
+    },
+    {
+      "t" : 8.317,
+      "text" : " ("
+    },
+    {
+      "t" : 8.409,
+      "text" : "scholarships only"
+    },
+    {
+      "t" : 8.516,
+      "text" : ") and $500"
+    },
+    {
+      "t" : 8.609,
+      "text" : ",000 for Hous"
+    },
+    {
+      "t" : 8.693,
+      "text" : "ing (capital cost"
+    },
+    {
+      "t" : 8.864,
+      "text" : "s only"
+    },
+    {
+      "t" : 8.945,
+      "text" : "). These funds cannot be"
+    },
+    {
+      "t" : 9.038,
+      "text" : " reallocated to other programs"
+    },
+    {
+      "t" : 9.134,
+      "text" : " or to"
+    },
+    {
+      "t" : 9.136,
+      "text" : " general operations.\")"
+    }
+  ],
+  "createdAt" : "2026-11-11T10:58:29Z",
+  "effort" : "low",
+  "format" : "openui-recording",
+  "inputTokens" : 14511,
+  "library" : "react-ui",
+  "model" : "claude-sonnet-5-5",
+  "outputTokens" : 830,
+  "request" : "A nonprofit grant allocation summary with funding by program as a pie chart, beneficiaries served and a restricted-funds note.",
+  "servedBy" : "claude-sonnet-5-5",
+  "stopReason" : "end_turn",
+  "version" : 1
+}

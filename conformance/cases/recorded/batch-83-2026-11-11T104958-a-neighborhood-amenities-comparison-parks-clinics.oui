@@ -1,0 +1,14 @@
+root = Stack([header, tbl, chart, interp, sources])
+header = CardHeader("Neighborhood Amenities by District", "Parks, clinics and libraries per district")
+tbl = Table([Col("District", districts), Col("Parks", parks, "number"), Col("Clinics", clinics, "number"), Col("Libraries", libs, "number"), Col("Population (k)", pop, "number")])
+chart = BarChart(districts, [s1, s2, s3], "grouped", "District", "Count")
+s1 = Series("Parks", parks)
+s2 = Series("Clinics", clinics)
+s3 = Series("Libraries", libs)
+interp = Callout("info", "Interpretation", "Riverside and Old Town are best served overall, with strong clinic and library coverage. Northgate has the most parks but few clinics for its population. Eastfield and Harbor lag across all three categories, suggesting these areas as priorities for new investment, especially clinics.")
+sources = TextCallout("neutral", "Source notes", "Figures are illustrative sample data, not official statistics. Counts reflect public facilities only; private clinics and school libraries are excluded. Population values are rounded estimates. Replace with municipal open-data records before drawing conclusions.")
+districts = ["Riverside", "Old Town", "Northgate", "Westbrook", "Eastfield", "Harbor"]
+parks = [9, 6, 12, 7, 3, 4]
+clinics = [8, 7, 3, 5, 2, 2]
+libs = [4, 5, 2, 3, 1, 1]
+pop = [62, 48, 55, 51, 44, 39]

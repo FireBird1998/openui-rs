@@ -1,0 +1,278 @@
+{
+  "batchRequest" : {
+    "model" : "haiku",
+    "number" : 46,
+    "of" : 12,
+    "request" : "Add a Science tab with three headlines."
+  },
+  "chunks" : [
+    {
+      "t" : 1.055,
+      "text" : "tabs"
+    },
+    {
+      "t" : 1.118,
+      "text" : " = Tabs([tab"
+    },
+    {
+      "t" : 1.123,
+      "text" : "World, tabBus"
+    },
+    {
+      "t" : 1.128,
+      "text" : "iness, tabTech,"
+    },
+    {
+      "t" : 1.153,
+      "text" : " tabSport, tabSc"
+    },
+    {
+      "t" : 1.169,
+      "text" : "ience])\ntabScience ="
+    },
+    {
+      "t" : 1.194,
+      "text" : " TabItem(\"science\", \""
+    },
+    {
+      "t" : 1.209,
+      "text" : "Science\", scienceContent"
+    },
+    {
+      "t" : 1.227,
+      "text" : ")\nscienceContent ="
+    },
+    {
+      "t" : 1.25,
+      "text" : " [sc1, sc2"
+    },
+    {
+      "t" : 1.269,
+      "text" : ", sc3]\nsc"
+    },
+    {
+      "t" : 1.29,
+      "text" : "1 = Card([Card"
+    },
+    {
+      "t" : 1.311,
+      "text" : "Header(\"Tel"
+    },
+    {
+      "t" : 1.33,
+      "text" : "escope capt"
+    },
+    {
+      "t" : 1.35,
+      "text" : "ures ear"
+    },
+    {
+      "t" : 1.37,
+      "text" : "liest images"
+    },
+    {
+      "t" : 1.39,
+      "text" : " of a"
+    },
+    {
+      "t" : 1.415,
+      "text" : " distant galaxy\", \""
+    },
+    {
+      "t" : 1.432,
+      "text" : "Science · 2"
+    },
+    {
+      "t" : 1.453,
+      "text" : " hours ago\"), T"
+    },
+    {
+      "t" : 1.478,
+      "text" : "extContent(\"Ast"
+    },
+    {
+      "t" : 1.493,
+      "text" : "ronomers say"
+    },
+    {
+      "t" : 1.512,
+      "text" : " the light"
+    },
+    {
+      "t" : 1.533,
+      "text" : " from the galaxy left"
+    },
+    {
+      "t" : 1.553,
+      "text" : " ro"
+    },
+    {
+      "t" : 1.573,
+      "text" : "ughly 300 million years after"
+    },
+    {
+      "t" : 1.595,
+      "text" : " the Big Bang.\")"
+    },
+    {
+      "t" : 1.615,
+      "text" : "])\nsc2 ="
+    },
+    {
+      "t" : 1.636,
+      "text" : " Card([CardHeader(\""
+    },
+    {
+      "t" : 1.656,
+      "text" : "New study"
+    },
+    {
+      "t" : 1.676,
+      "text" : " links"
+    },
+    {
+      "t" : 1.696,
+      "text" : " g"
+    },
+    {
+      "t" : 1.716,
+      "text" : "ut b"
+    },
+    {
+      "t" : 1.737,
+      "text" : "acteria to s"
+    },
+    {
+      "t" : 1.757,
+      "text" : "leep quality\", \"Science"
+    },
+    {
+      "t" : 1.779,
+      "text" : " · 5 hours ago"
+    },
+    {
+      "t" : 1.798,
+      "text" : "\"), TextContent(\""
+    },
+    {
+      "t" : 1.818,
+      "text" : "Researchers t"
+    },
+    {
+      "t" : 1.839,
+      "text" : "racked more"
+    },
+    {
+      "t" : 1.859,
+      "text" : " than 1,000 vol"
+    },
+    {
+      "t" : 1.879,
+      "text" : "unteers and found dist"
+    },
+    {
+      "t" : 1.899,
+      "text" : "inct micro"
+    },
+    {
+      "t" : 1.92,
+      "text" : "be"
+    },
+    {
+      "t" : 1.94,
+      "text" : " patterns in"
+    },
+    {
+      "t" : 1.961,
+      "text" : " po"
+    },
+    {
+      "t" : 1.981,
+      "text" : "or sleepers.\")])"
+    },
+    {
+      "t" : 2.002,
+      "text" : "\nsc3 = Card"
+    },
+    {
+      "t" : 2.023,
+      "text" : "([CardHeader(\""
+    },
+    {
+      "t" : 2.042,
+      "text" : "Sc"
+    },
+    {
+      "t" : 2.062,
+      "text" : "ientists ach"
+    },
+    {
+      "t" : 2.082,
+      "text" : "ieve st"
+    },
+    {
+      "t" : 2.102,
+      "text" : "able qu"
+    },
+    {
+      "t" : 2.123,
+      "text" : "antum mem"
+    },
+    {
+      "t" : 2.144,
+      "text" : "ory at room"
+    },
+    {
+      "t" : 2.163,
+      "text" : " temperature\", \"Science ·"
+    },
+    {
+      "t" : 2.184,
+      "text" : " 9 hours ago\""
+    },
+    {
+      "t" : 2.205,
+      "text" : "), TextContent(\"The"
+    },
+    {
+      "t" : 2.225,
+      "text" : " breakthrough could make"
+    },
+    {
+      "t" : 2.246,
+      "text" : " quantum computing components"
+    },
+    {
+      "t" : 2.266,
+      "text" : " far"
+    },
+    {
+      "t" : 2.286,
+      "text" : " c"
+    },
+    {
+      "t" : 2.308,
+      "text" : "heaper to"
+    },
+    {
+      "t" : 2.328,
+      "text" : " build and oper"
+    },
+    {
+      "t" : 2.364,
+      "text" : "ate.\")])"
+    }
+  ],
+  "createdAt" : "2026-11-11T10:37:38Z",
+  "effort" : "low",
+  "format" : "openui-recording",
+  "inputTokens" : 15986,
+  "library" : "react-ui",
+  "model" : "claude-haiku-5-5",
+  "outputTokens" : 414,
+  "patchOf" : "root = Stack([title, tabs])\ntitle = TextContent(\"Top Headlines by Section\", \"large-heavy\")\ntabs = Tabs([tabWorld, tabBusiness, tabTech, tabSport])\ntabWorld = TabItem(\"world\", \"World\", worldContent)\ntabBusiness = TabItem(\"business\", \"Business\", businessContent)\ntabTech = TabItem(\"tech\", \"Tech\", techContent)\ntabSport = TabItem(\"sport\", \"Sport\", sportContent)\nworldContent = [w1, w2, w3]\nw1 = Card([CardHeader(\"Global leaders convene for climate finance talks\", \"World · 2 hours ago\"), TextContent(\"Delegates from more than 60 countries are negotiating a new fund to help developing nations adapt to rising temperatures.\")])\nw2 = Card([CardHeader(\"Ceasefire holds in key border region for third day\", \"World · 4 hours ago\"), TextContent(\"Aid convoys have begun reaching displaced families as both sides agree to a temporary pause in fighting.\")])\nw3 = Card([CardHeader(\"Election results point to coalition government\", \"World · 6 hours ago\"), TextContent(\"No party secured a majority, prompting weeks of talks over a governing agreement.\")])\nbusinessContent = [b1, b2, b3]\nb1 = Card([CardHeader(\"Central bank holds interest rates steady\", \"Business · 1 hour ago\"), TextContent(\"Officials signaled that inflation is cooling but said they need more evidence before considering cuts.\")])\nb2 = Card([CardHeader(\"Major retailer posts strong holiday sales\", \"Business · 3 hours ago\"), TextContent(\"Online orders rose sharply, offsetting softer foot traffic at physical stores.\")])\nb3 = Card([CardHeader(\"Oil prices climb on supply concerns\", \"Business · 5 hours ago\"), TextContent(\"Markets reacted to production cuts announced by several major exporters.\")])\ntechContent = [t1, t2, t3]\nt1 = Card([CardHeader(\"AI startup unveils model that runs on laptops\", \"Tech · 30 minutes ago\"), TextContent(\"The compact model promises near-cloud performance for everyday tasks without an internet connection.\")])\nt2 = Card([CardHeader(\"Regulators open probe into smartphone app stores\", \"Tech · 3 hours ago\"), TextContent(\"The inquiry will examine whether platform fees limit competition among developers.\")])\nt3 = Card([CardHeader(\"Chipmaker announces next-generation processor\", \"Tech · 7 hours ago\"), TextContent(\"The new chip targets data centers with a significant boost in energy efficiency.\")])\nsportContent = [s1, s2, s3]\ns1 = Card([CardHeader(\"Champions secure dramatic last-minute win\", \"Sport · 1 hour ago\"), TextContent(\"A stoppage-time goal sealed three points in front of a sold-out home crowd.\")])\ns2 = Card([CardHeader(\"Star sprinter sets new season best\", \"Sport · 4 hours ago\"), TextContent(\"The athlete's time places her among the favourites for the upcoming championships.\")])\ns3 = Card([CardHeader(\"Tennis veteran announces retirement plans\", \"Sport · 8 hours ago\"), TextContent(\"The former world number one will play one final tournament later this year.\")])",
+  "request" : "Add a Science tab with three headlines.",
+  "servedBy" : "claude-haiku-5-5",
+  "stopReason" : "end_turn",
+  "version" : 1
+}

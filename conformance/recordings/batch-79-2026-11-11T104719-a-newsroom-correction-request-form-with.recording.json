@@ -1,0 +1,596 @@
+{
+  "batchRequest" : {
+    "model" : "sonnet",
+    "number" : 79,
+    "request" : "A newsroom correction request form with article URL, disputed passage, supporting evidence and contact preference fields."
+  },
+  "chunks" : [
+    {
+      "t" : 1.285,
+      "text" : "root = Stack([header,"
+    },
+    {
+      "t" : 1.915,
+      "text" : " intro, form])\nheader"
+    },
+    {
+      "t" : 1.987,
+      "text" : " = T"
+    },
+    {
+      "t" : 2.118,
+      "text" : "extContent(\"Request"
+    },
+    {
+      "t" : 2.921,
+      "text" : " a Correction\", \"large-"
+    },
+    {
+      "t" : 4.068,
+      "text" : "heavy\")\nintro ="
+    },
+    {
+      "t" : 4.565,
+      "text" : " Callout(\"info\", \""
+    },
+    {
+      "t" : 4.668,
+      "text" : "Before you"
+    },
+    {
+      "t" : 5.141,
+      "text" : " submit\", \"Please"
+    },
+    {
+      "t" : 6.006,
+      "text" : " qu"
+    },
+    {
+      "t" : 6.771,
+      "text" : "ote the exact pass"
+    },
+    {
+      "t" : 7.36,
+      "text" : "age and include"
+    },
+    {
+      "t" : 7.492,
+      "text" : " ver"
+    },
+    {
+      "t" : 7.93,
+      "text" : "ifiable sources. Our"
+    },
+    {
+      "t" : 8.209,
+      "text" : " stand"
+    },
+    {
+      "t" : 8.25,
+      "text" : "ards team reviews every"
+    },
+    {
+      "t" : 8.294,
+      "text" : " request."
+    },
+    {
+      "t" : 8.361,
+      "text" : "\")\nform = Form(\"corre"
+    },
+    {
+      "t" : 8.443,
+      "text" : "ction\", btns, [ur"
+    },
+    {
+      "t" : 8.517,
+      "text" : "lField, pass"
+    },
+    {
+      "t" : 8.57,
+      "text" : "ageField, iss"
+    },
+    {
+      "t" : 8.643,
+      "text" : "ueField, evidenceField"
+    },
+    {
+      "t" : 8.757,
+      "text" : ", linkField, contactField"
+    },
+    {
+      "t" : 8.808,
+      "text" : ", em"
+    },
+    {
+      "t" : 8.86,
+      "text" : "ailField, cons"
+    },
+    {
+      "t" : 8.913,
+      "text" : "entField])\nurlField ="
+    },
+    {
+      "t" : 8.969,
+      "text" : " FormControl(\"Article UR"
+    },
+    {
+      "t" : 9.039,
+      "text" : "L\", Input(\"artic"
+    },
+    {
+      "t" : 9.189,
+      "text" : "leUrl\", \"https://"
+    },
+    {
+      "t" : 9.191,
+      "text" : "example"
+    },
+    {
+      "t" : 9.277,
+      "text" : ".com/news"
+    },
+    {
+      "t" : 9.353,
+      "text" : "/article\", \"url\", {"
+    },
+    {
+      "t" : 9.404,
+      "text" : " required: true, url: true }"
+    },
+    {
+      "t" : 9.454,
+      "text" : "), \"Link"
+    },
+    {
+      "t" : 9.481,
+      "text" : " to the article"
+    },
+    {
+      "t" : 9.6,
+      "text" : " contain"
+    },
+    {
+      "t" : 9.602,
+      "text" : "ing the error"
+    },
+    {
+      "t" : 9.651,
+      "text" : "\")\npassageField = Form"
+    },
+    {
+      "t" : 9.701,
+      "text" : "Control(\"Disputed"
+    },
+    {
+      "t" : 9.755,
+      "text" : " Passage\", TextArea(\""
+    },
+    {
+      "t" : 9.812,
+      "text" : "passage\", \"Pa"
+    },
+    {
+      "t" : 10.246,
+      "text" : "ste the exact text"
+    },
+    {
+      "t" : 10.28,
+      "text" : " you"
+    },
+    {
+      "t" : 10.338,
+      "text" : " believe is in"
+    },
+    {
+      "t" : 10.4,
+      "text" : "accurate...\", 4"
+    },
+    {
+      "t" : 10.479,
+      "text" : ", { required: true, minL"
+    },
+    {
+      "t" : 10.553,
+      "text" : "ength: 10 }))"
+    },
+    {
+      "t" : 10.602,
+      "text" : "\nissueField = FormContro"
+    },
+    {
+      "t" : 10.656,
+      "text" : "l(\"Type of Iss"
+    },
+    {
+      "t" : 10.774,
+      "text" : "ue\", Select(\"issueType"
+    },
+    {
+      "t" : 10.778,
+      "text" : "\", issueOpts, \""
+    },
+    {
+      "t" : 10.843,
+      "text" : "Select...\", { required: true"
+    },
+    {
+      "t" : 10.919,
+      "text" : " }))\nissueOpts"
+    },
+    {
+      "t" : 10.97,
+      "text" : " = [SelectItem(\""
+    },
+    {
+      "t" : 11.07,
+      "text" : "f"
+    },
+    {
+      "t" : 11.145,
+      "text" : "act\", \"Factual error"
+    },
+    {
+      "t" : 11.211,
+      "text" : "\"), SelectItem(\""
+    },
+    {
+      "t" : 11.217,
+      "text" : "quote\", \"Misquote"
+    },
+    {
+      "t" : 11.298,
+      "text" : " or"
+    },
+    {
+      "t" : 11.333,
+      "text" : " misattribution\"), Sel"
+    },
+    {
+      "t" : 11.379,
+      "text" : "ectItem(\"context"
+    },
+    {
+      "t" : 11.427,
+      "text" : "\", \"Miss"
+    },
+    {
+      "t" : 11.485,
+      "text" : "ing context\"), SelectIt"
+    },
+    {
+      "t" : 11.568,
+      "text" : "em(\"name\", \"Name"
+    },
+    {
+      "t" : 11.63,
+      "text" : ", title or sp"
+    },
+    {
+      "t" : 11.681,
+      "text" : "elling\"), SelectIt"
+    },
+    {
+      "t" : 11.812,
+      "text" : "em(\"other\", \"Other\")"
+    },
+    {
+      "t" : 11.869,
+      "text" : "]\nevidenceField ="
+    },
+    {
+      "t" : 11.912,
+      "text" : " FormControl(\"Suppor"
+    },
+    {
+      "t" : 11.969,
+      "text" : "ting Evidence\", Text"
+    },
+    {
+      "t" : 11.972,
+      "text" : "Area(\"evidence\", \""
+    },
+    {
+      "t" : 12.03,
+      "text" : "Expl"
+    },
+    {
+      "t" : 12.112,
+      "text" : "ain what is correct and why..."
+    },
+    {
+      "t" : 12.115,
+      "text" : "\", 5, { required: true"
+    },
+    {
+      "t" : 12.167,
+      "text" : ", minLength: 20 "
+    },
+    {
+      "t" : 12.223,
+      "text" : "}), \"Describe docum"
+    },
+    {
+      "t" : 12.283,
+      "text" : "ents, data"
+    },
+    {
+      "t" : 12.33,
+      "text" : " or sources that"
+    },
+    {
+      "t" : 12.381,
+      "text" : " support your claim\")\nlink"
+    },
+    {
+      "t" : 12.427,
+      "text" : "Field = FormControl(\""
+    },
+    {
+      "t" : 12.547,
+      "text" : "Evidence Link"
+    },
+    {
+      "t" : 12.602,
+      "text" : "\", Input(\"evidence"
+    },
+    {
+      "t" : 12.67,
+      "text" : "Url\", \"https"
+    },
+    {
+      "t" : 12.68,
+      "text" : "://source"
+    },
+    {
+      "t" : 12.979,
+      "text" : ".example.com/document\", \""
+    },
+    {
+      "t" : 13.238,
+      "text" : "url\", { url: true }),"
+    },
+    {
+      "t" : 13.36,
+      "text" : " \"Optional link to a source"
+    },
+    {
+      "t" : 13.47,
+      "text" : "\")\ncontactField = Form"
+    },
+    {
+      "t" : 13.612,
+      "text" : "Control(\"Preferred"
+    },
+    {
+      "t" : 13.613,
+      "text" : " Contact Method\", Radio"
+    },
+    {
+      "t" : 13.725,
+      "text" : "Group(\"contact"
+    },
+    {
+      "t" : 13.763,
+      "text" : "Pref\", cont"
+    },
+    {
+      "t" : 13.828,
+      "text" : "actOpts, \"email\","
+    },
+    {
+      "t" : 13.832,
+      "text" : " { required: true }))\ncont"
+    },
+    {
+      "t" : 13.886,
+      "text" : "actOpts = [Rad"
+    },
+    {
+      "t" : 13.946,
+      "text" : "ioItem(\""
+    },
+    {
+      "t" : 14.013,
+      "text" : "Email\", \"We"
+    },
+    {
+      "t" : 14.071,
+      "text" : " will reply by email\", \"email"
+    },
+    {
+      "t" : 14.129,
+      "text" : "\"), RadioItem(\""
+    },
+    {
+      "t" : 14.186,
+      "text" : "Phone\", \"A"
+    },
+    {
+      "t" : 14.24,
+      "text" : " edit"
+    },
+    {
+      "t" : 14.316,
+      "text" : "or will call you\", \"phone"
+    },
+    {
+      "t" : 14.38,
+      "text" : "\"), RadioItem(\""
+    },
+    {
+      "t" : 14.481,
+      "text" : "No contact\", \"Do not"
+    },
+    {
+      "t" : 14.482,
+      "text" : " cont"
+    },
+    {
+      "t" : 14.55,
+      "text" : "act me about"
+    },
+    {
+      "t" : 14.607,
+      "text" : " this request"
+    },
+    {
+      "t" : 14.667,
+      "text" : "\", \"none\")]\nemail"
+    },
+    {
+      "t" : 14.724,
+      "text" : "Field = FormControl(\""
+    },
+    {
+      "t" : 14.781,
+      "text" : "Your Email\","
+    },
+    {
+      "t" : 14.848,
+      "text" : " Input(\"email"
+    },
+    {
+      "t" : 14.932,
+      "text" : "\", \"you@example.com\","
+    },
+    {
+      "t" : 15.014,
+      "text" : " \"email\", { email"
+    },
+    {
+      "t" : 15.124,
+      "text" : ": true }), \"Required"
+    },
+    {
+      "t" : 15.126,
+      "text" : " if you"
+    },
+    {
+      "t" : 17.265,
+      "text" : " ch"
+    },
+    {
+      "t" : 17.27,
+      "text" : "ose email or phone foll"
+    },
+    {
+      "t" : 19.412,
+      "text" : "ow-up\")\nconsentField"
+    },
+    {
+      "t" : 19.531,
+      "text" : " = FormControl(\"Cons"
+    },
+    {
+      "t" : 20.086,
+      "text" : "ent\", CheckBox"
+    },
+    {
+      "t" : 20.219,
+      "text" : "Group(\""
+    },
+    {
+      "t" : 20.326,
+      "text" : "consent\", [cons"
+    },
+    {
+      "t" : 20.543,
+      "text" : "ent"
+    },
+    {
+      "t" : 20.757,
+      "text" : "Item], { required: true }"
+    },
+    {
+      "t" : 20.951,
+      "text" : "))\nconsentItem = C"
+    },
+    {
+      "t" : 21.099,
+      "text" : "heckBoxItem(\""
+    },
+    {
+      "t" : 21.271,
+      "text" : "I"
+    },
+    {
+      "t" : 21.352,
+      "text" : " confirm this"
+    },
+    {
+      "t" : 21.463,
+      "text" : " information is accurate\", \"My"
+    },
+    {
+      "t" : 21.466,
+      "text" : " details"
+    },
+    {
+      "t" : 21.556,
+      "text" : " may"
+    },
+    {
+      "t" : 21.707,
+      "text" : " be shared with the edit"
+    },
+    {
+      "t" : 21.815,
+      "text" : "orial team\", \"ag"
+    },
+    {
+      "t" : 21.924,
+      "text" : "ree\","
+    },
+    {
+      "t" : 22.023,
+      "text" : " false)\nbtns = Bu"
+    },
+    {
+      "t" : 22.131,
+      "text" : "ttons([Button(\"Subm"
+    },
+    {
+      "t" : 22.133,
+      "text" : "it Request"
+    },
+    {
+      "t" : 22.195,
+      "text" : "\", @ToAssistant"
+    },
+    {
+      "t" : 22.263,
+      "text" : "(\"Submit correction request\""
+    },
+    {
+      "t" : 22.324,
+      "text" : "), \"primary\"), Button"
+    },
+    {
+      "t" : 22.39,
+      "text" : "(\"Cancel\", @"
+    },
+    {
+      "t" : 22.499,
+      "text" : "ToAssistant(\"C"
+    },
+    {
+      "t" : 22.502,
+      "text" : "ancel correction request\"), \""
+    },
+    {
+      "t" : 22.603,
+      "text" : "secondary\")])"
+    }
+  ],
+  "createdAt" : "2026-11-11T10:47:19Z",
+  "effort" : "low",
+  "format" : "openui-recording",
+  "inputTokens" : 14503,
+  "library" : "react-ui",
+  "model" : "claude-sonnet-5-5",
+  "outputTokens" : 850,
+  "request" : "A newsroom correction request form with article URL, disputed passage, supporting evidence and contact preference fields.",
+  "servedBy" : "claude-sonnet-5-5",
+  "stopReason" : "end_turn",
+  "version" : 1
+}

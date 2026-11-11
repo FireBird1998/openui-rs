@@ -1,0 +1,318 @@
+{
+  "batchRequest" : {
+    "model" : "sonnet",
+    "number" : 135,
+    "of" : 61,
+    "request" : "Add a library services department and a callout stating which department gained the most funding."
+  },
+  "chunks" : [
+    {
+      "t" : 3.22,
+      "text" : "root"
+    },
+    {
+      "t" : 3.541,
+      "text" : " = Stack([title, int"
+    },
+    {
+      "t" : 3.616,
+      "text" : "ro, chartCard, t"
+    },
+    {
+      "t" : 3.781,
+      "text" : "ableCard, note, gain"
+    },
+    {
+      "t" : 3.829,
+      "text" : "Callout])\ndepts ="
+    },
+    {
+      "t" : 4.086,
+      "text" : " [\"Police\", \"F"
+    },
+    {
+      "t" : 4.167,
+      "text" : "ire\", \"Public Works\","
+    },
+    {
+      "t" : 4.228,
+      "text" : " \"Parks\", \"Lib"
+    },
+    {
+      "t" : 4.271,
+      "text" : "raries\", \"Housing\","
+    },
+    {
+      "t" : 4.413,
+      "text" : " \"Transit\", \"Health"
+    },
+    {
+      "t" : 4.473,
+      "text" : "\", \"Library Services\""
+    },
+    {
+      "t" : 4.475,
+      "text" : "]\nsProposed ="
+    },
+    {
+      "t" : 4.531,
+      "text" : " Series(\"Proposed\", ["
+    },
+    {
+      "t" : 4.584,
+      "text" : "310, 185, 142,"
+    },
+    {
+      "t" : 4.653,
+      "text" : " 64, 38, 72"
+    },
+    {
+      "t" : 4.715,
+      "text" : ", 120, 88, "
+    },
+    {
+      "t" : 4.785,
+      "text" : "22])\nsApproved ="
+    },
+    {
+      "t" : 4.872,
+      "text" : " Series(\"Approved\", ["
+    },
+    {
+      "t" : 5.083,
+      "text" : "298, 192, 151,"
+    },
+    {
+      "t" : 5.202,
+      "text" : " 71, 41, 85"
+    },
+    {
+      "t" : 5.222,
+      "text" : ", 118, 96, "
+    },
+    {
+      "t" : 5.343,
+      "text" : "27])\nproposed = ["
+    },
+    {
+      "t" : 5.446,
+      "text" : "310, 185, 142,"
+    },
+    {
+      "t" : 5.562,
+      "text" : " 64, 38, 72"
+    },
+    {
+      "t" : 5.835,
+      "text" : ", 120, 88, "
+    },
+    {
+      "t" : 5.974,
+      "text" : "22]\napproved = [298"
+    },
+    {
+      "t" : 6.051,
+      "text" : ", 192, 151, "
+    },
+    {
+      "t" : 6.142,
+      "text" : "71, 41, 85,"
+    },
+    {
+      "t" : 6.304,
+      "text" : " 118, 96, 27"
+    },
+    {
+      "t" : 6.418,
+      "text" : "]\nchanges = [-12"
+    },
+    {
+      "t" : 6.48,
+      "text" : ", 7, 9, "
+    },
+    {
+      "t" : 6.594,
+      "text" : "7, 3, 13,"
+    },
+    {
+      "t" : 6.686,
+      "text" : " -2, 8, 5"
+    },
+    {
+      "t" : 6.727,
+      "text" : "]\npct = [\"-"
+    },
+    {
+      "t" : 6.81,
+      "text" : "3.9%\", \"+3"
+    },
+    {
+      "t" : 6.811,
+      "text" : ".8%\", \"+6."
+    },
+    {
+      "t" : 6.87,
+      "text" : "3%\", \"+10.9"
+    },
+    {
+      "t" : 6.922,
+      "text" : "%\", \"+7.9%"
+    },
+    {
+      "t" : 6.976,
+      "text" : "\", \"+18.1%\","
+    },
+    {
+      "t" : 7.031,
+      "text" : " \"-1.7%\", \""
+    },
+    {
+      "t" : 7.083,
+      "text" : "+9.1%\", \"+"
+    },
+    {
+      "t" : 7.139,
+      "text" : "22.7%\"]\nd"
+    },
+    {
+      "t" : 7.204,
+      "text" : "irTags = [t1,"
+    },
+    {
+      "t" : 7.278,
+      "text" : " t2, t3, t4"
+    },
+    {
+      "t" : 7.373,
+      "text" : ", t5, t6, t"
+    },
+    {
+      "t" : 7.47,
+      "text" : "7, t8, t9]"
+    },
+    {
+      "t" : 7.516,
+      "text" : "\nt9 = Tag"
+    },
+    {
+      "t" : 7.59,
+      "text" : "(\"Increase\", null, \""
+    },
+    {
+      "t" : 7.653,
+      "text" : "sm\", \"success\")\nnote"
+    },
+    {
+      "t" : 7.718,
+      "text" : " = Callout(\"info"
+    },
+    {
+      "t" : 7.773,
+      "text" : "\", \"Key takeaway"
+    },
+    {
+      "t" : 7.829,
+      "text" : "\", \"Total spending rose"
+    },
+    {
+      "t" : 7.889,
+      "text" : " from $1,041M propos"
+    },
+    {
+      "t" : 7.96,
+      "text" : "ed to $1,079M appro"
+    },
+    {
+      "t" : 8.036,
+      "text" : "ved (+3.7%)."
+    },
+    {
+      "t" : 8.106,
+      "text" : " Police had the largest doll"
+    },
+    {
+      "t" : 8.262,
+      "text" : "ar reduction,"
+    },
+    {
+      "t" : 8.336,
+      "text" : " while Library Services saw the"
+    },
+    {
+      "t" : 8.422,
+      "text" : " biggest percentage boost"
+    },
+    {
+      "t" : 8.423,
+      "text" : ".\")\ngainCallout"
+    },
+    {
+      "t" : 8.512,
+      "text" : " = Callout(\"success\", \""
+    },
+    {
+      "t" : 8.589,
+      "text" : "Bi"
+    },
+    {
+      "t" : 8.661,
+      "text" : "ggest funding gain\", \""
+    },
+    {
+      "t" : 8.739,
+      "text" : "Housing gained the most fun"
+    },
+    {
+      "t" : 8.893,
+      "text" : "ding in dollar"
+    },
+    {
+      "t" : 8.973,
+      "text" : " terms ("
+    },
+    {
+      "t" : 9.05,
+      "text" : "+$13M,"
+    },
+    {
+      "t" : 9.133,
+      "text" : " from $72M to $85M"
+    },
+    {
+      "t" : 9.223,
+      "text" : "). In"
+    },
+    {
+      "t" : 9.226,
+      "text" : " percentage terms, the"
+    },
+    {
+      "t" : 9.331,
+      "text" : " new"
+    },
+    {
+      "t" : 9.417,
+      "text" : " Library Services department gained the"
+    },
+    {
+      "t" : 9.537,
+      "text" : " most (+22.7%)."
+    },
+    {
+      "t" : 9.691,
+      "text" : "\")"
+    }
+  ],
+  "createdAt" : "2026-11-11T11:05:43Z",
+  "effort" : "low",
+  "format" : "openui-recording",
+  "inputTokens" : 15778,
+  "library" : "react-ui",
+  "model" : "claude-sonnet-5-5",
+  "outputTokens" : 858,
+  "patchOf" : "root = Stack([title, intro, chartCard, tableCard, note])\ntitle = TextContent(\"City Budget Explainer: Proposed vs. Approved Spending\", \"large-heavy\")\nintro = TextContent(\"How the City Council's approved budget differs from the Mayor's original proposal, by department (in $ millions).\")\nchartCard = Card([chartHeader, chart])\nchartHeader = CardHeader(\"Spending by Department\", \"Proposed vs. approved, $ millions\")\nchart = BarChart(depts, [sProposed, sApproved], \"grouped\", \"Department\", \"Spending ($M)\")\ndepts = [\"Police\", \"Fire\", \"Public Works\", \"Parks\", \"Libraries\", \"Housing\", \"Transit\", \"Health\"]\nsProposed = Series(\"Proposed\", [310, 185, 142, 64, 38, 72, 120, 88])\nsApproved = Series(\"Approved\", [298, 192, 151, 71, 41, 85, 118, 96])\ntableCard = Card([tableHeader, tbl])\ntableHeader = CardHeader(\"Changes by Department\", \"Approved minus proposed\")\ntbl = Table([Col(\"Department\", depts), Col(\"Proposed ($M)\", proposed, \"number\"), Col(\"Approved ($M)\", approved, \"number\"), Col(\"Change ($M)\", changes, \"number\"), Col(\"Change (%)\", pct, \"string\"), Col(\"Direction\", dirTags)])\nproposed = [310, 185, 142, 64, 38, 72, 120, 88]\napproved = [298, 192, 151, 71, 41, 85, 118, 96]\nchanges = [-12, 7, 9, 7, 3, 13, -2, 8]\npct = [\"-3.9%\", \"+3.8%\", \"+6.3%\", \"+10.9%\", \"+7.9%\", \"+18.1%\", \"-1.7%\", \"+9.1%\"]\ndirTags = [t1, t2, t3, t4, t5, t6, t7, t8]\nt1 = Tag(\"Cut\", null, \"sm\", \"danger\")\nt2 = Tag(\"Increase\", null, \"sm\", \"success\")\nt3 = Tag(\"Increase\", null, \"sm\", \"success\")\nt4 = Tag(\"Increase\", null, \"sm\", \"success\")\nt5 = Tag(\"Increase\", null, \"sm\", \"success\")\nt6 = Tag(\"Increase\", null, \"sm\", \"success\")\nt7 = Tag(\"Cut\", null, \"sm\", \"danger\")\nt8 = Tag(\"Increase\", null, \"sm\", \"success\")\nnote = Callout(\"info\", \"Key takeaway\", \"Total spending rose from $1,019M proposed to $1,052M approved (+3.2%). Housing saw the largest percentage boost, while Police had the largest dollar reduction.\")",
+  "request" : "Add a library services department and a callout stating which department gained the most funding.",
+  "servedBy" : "claude-sonnet-5-5",
+  "stopReason" : "end_turn",
+  "version" : 1
+}

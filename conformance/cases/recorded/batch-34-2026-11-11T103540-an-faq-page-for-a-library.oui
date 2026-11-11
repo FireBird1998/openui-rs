@@ -1,0 +1,16 @@
+root = Stack([pageTitle, faqAccordion])
+pageTitle = TextContent("Library FAQ", "large-heavy")
+faqAccordion = Accordion([faqHours, faqMembership, faqLimits])
+faqHours = AccordionItem("hours", "What are the opening hours?", hoursContent)
+hoursContent = [hoursText]
+hoursText = TextContent("**Monday–Friday:** 9:00 AM – 8:00 PM\n\n**Saturday:** 10:00 AM – 6:00 PM\n\n**Sunday:** 12:00 PM – 5:00 PM\n\nThe library is closed on public holidays.")
+faqMembership = AccordionItem("membership", "How do I become a member?", membershipContent)
+membershipContent = [membershipText, membershipCallout]
+membershipText = TextContent("Membership is free for all residents. Bring a valid photo ID and proof of address to any branch desk, or register online through our website. Your library card is usually issued the same day.")
+membershipCallout = Callout("info", "Tip", "Children under 13 need a parent or guardian to sign their registration form.")
+faqLimits = AccordionItem("limits", "What are the borrowing limits?", limitsContent)
+limitsContent = [limitsTable]
+limitsTable = Table([Col("Item Type", itemTypes), Col("Loan Limit", loanLimits), Col("Loan Period", loanPeriods)])
+itemTypes = ["Books", "DVDs", "Audiobooks", "Magazines", "Reference materials"]
+loanLimits = ["10 items", "5 items", "5 items", "3 items", "Not for loan"]
+loanPeriods = ["3 weeks", "1 week", "2 weeks", "1 week", "In-library use only"]

@@ -1,0 +1,668 @@
+{
+  "batchRequest" : {
+    "model" : "sonnet",
+    "number" : 85,
+    "request" : "A disaster recovery spending tracker with pledged versus disbursed funds by project and completion-status tags."
+  },
+  "chunks" : [
+    {
+      "t" : 0.885,
+      "text" : "root = Stack([header,"
+    },
+    {
+      "t" : 1.188,
+      "text" : " kpis"
+    },
+    {
+      "t" : 1.213,
+      "text" : ", chart"
+    },
+    {
+      "t" : 1.302,
+      "text" : "Card, table"
+    },
+    {
+      "t" : 1.332,
+      "text" : "Card])\nheader = C"
+    },
+    {
+      "t" : 1.384,
+      "text" : "ardHeader(\"Disa"
+    },
+    {
+      "t" : 1.439,
+      "text" : "ster Recovery Spending"
+    },
+    {
+      "t" : 1.497,
+      "text" : " Tracker\", \"P"
+    },
+    {
+      "t" : 1.525,
+      "text" : "ledged v"
+    },
+    {
+      "t" : 1.527,
+      "text" : "s. disbursed funds"
+    },
+    {
+      "t" : 1.555,
+      "text" : " by project\")"
+    },
+    {
+      "t" : 1.584,
+      "text" : "\nkpis = Snipp"
+    },
+    {
+      "t" : 1.611,
+      "text" : "etCardBlock([k"
+    },
+    {
+      "t" : 1.671,
+      "text" : "1, k2, k3])"
+    },
+    {
+      "t" : 1.7,
+      "text" : "\nk1 = Snipp"
+    },
+    {
+      "t" : 1.704,
+      "text" : "etCardItem(\"pled"
+    },
+    {
+      "t" : 1.734,
+      "text" : "ged\", k1l"
+    },
+    {
+      "t" : 1.765,
+      "text" : ", k1r)\nk1"
+    },
+    {
+      "t" : 1.815,
+      "text" : "l = IconText(k1"
+    },
+    {
+      "t" : 1.848,
+      "text" : "i, \"neutral\", \""
+    },
+    {
+      "t" : 1.88,
+      "text" : "m\", \"Total Pled"
+    },
+    {
+      "t" : 1.881,
+      "text" : "ged\", \"All"
+    },
+    {
+      "t" : 1.913,
+      "text" : " projects\", false, \"horiz"
+    },
+    {
+      "t" : 1.946,
+      "text" : "ontal\")\nk1i ="
+    },
+    {
+      "t" : 1.982,
+      "text" : " Icon(\"h"
+    },
+    {
+      "t" : 2.022,
+      "text" : "and-co"
+    },
+    {
+      "t" : 2.053,
+      "text" : "ins"
+    },
+    {
+      "t" : 2.091,
+      "text" : "\", \"finance\")\nk1"
+    },
+    {
+      "t" : 2.13,
+      "text" : "r = BoldText(\"number"
+    },
+    {
+      "t" : 2.164,
+      "text" : "\", \"$48"
+    },
+    {
+      "t" : 2.216,
+      "text" : ".6"
+    },
+    {
+      "t" : 2.252,
+      "text" : "M\")"
+    },
+    {
+      "t" : 2.292,
+      "text" : "\nk2 = Snipp"
+    },
+    {
+      "t" : 2.34,
+      "text" : "etCardItem(\"disb"
+    },
+    {
+      "t" : 2.38,
+      "text" : "ursed\", k2l, k"
+    },
+    {
+      "t" : 2.4,
+      "text" : "2r)\nk2l ="
+    },
+    {
+      "t" : 2.439,
+      "text" : " IconText(k2i,"
+    },
+    {
+      "t" : 2.441,
+      "text" : " \"success"
+    },
+    {
+      "t" : 2.521,
+      "text" : "\", \"m\", \"Total"
+    },
+    {
+      "t" : 2.561,
+      "text" : " Disbursed\", \"To"
+    },
+    {
+      "t" : 2.563,
+      "text" : " date\", false, \"horizont"
+    },
+    {
+      "t" : 2.621,
+      "text" : "al\")\nk2i ="
+    },
+    {
+      "t" : 2.624,
+      "text" : " Icon(\"ban"
+    },
+    {
+      "t" : 2.661,
+      "text" : "knote\", \"finance\")"
+    },
+    {
+      "t" : 2.705,
+      "text" : "\nk2r = BoldText"
+    },
+    {
+      "t" : 2.744,
+      "text" : "(\"number\", \"$31.2"
+    },
+    {
+      "t" : 2.784,
+      "text" : "M\", \"64"
+    },
+    {
+      "t" : 2.826,
+      "text" : "%"
+    },
+    {
+      "t" : 2.872,
+      "text" : " of pledged"
+    },
+    {
+      "t" : 2.916,
+      "text" : "\")"
+    },
+    {
+      "t" : 2.961,
+      "text" : "\nk3 = Snipp"
+    },
+    {
+      "t" : 3.011,
+      "text" : "etCardItem(\"rema"
+    },
+    {
+      "t" : 3.053,
+      "text" : "ining\", k3l, k3"
+    },
+    {
+      "t" : 3.098,
+      "text" : "r)\nk3l = I"
+    },
+    {
+      "t" : 3.146,
+      "text" : "conText(k3i, \""
+    },
+    {
+      "t" : 3.204,
+      "text" : "warning\", \"m\", \""
+    },
+    {
+      "t" : 3.262,
+      "text" : "Remaining\", \"Aw"
+    },
+    {
+      "t" : 3.323,
+      "text" : "aiting release"
+    },
+    {
+      "t" : 3.381,
+      "text" : "\", false, \"horizontal"
+    },
+    {
+      "t" : 3.492,
+      "text" : "\")\nk3i = Ic"
+    },
+    {
+      "t" : 3.544,
+      "text" : "on(\"hourglass\", \""
+    },
+    {
+      "t" : 3.609,
+      "text" : "time"
+    },
+    {
+      "t" : 3.669,
+      "text" : "\")\nk3r = Bo"
+    },
+    {
+      "t" : 3.738,
+      "text" : "ldText(\"number\", \"$17"
+    },
+    {
+      "t" : 3.799,
+      "text" : ".4M\")\nchartC"
+    },
+    {
+      "t" : 3.861,
+      "text" : "ard = Card([chart"
+    },
+    {
+      "t" : 3.924,
+      "text" : "Head"
+    },
+    {
+      "t" : 3.989,
+      "text" : ", chart"
+    },
+    {
+      "t" : 4.031,
+      "text" : "])\nchartHead = C"
+    },
+    {
+      "t" : 4.089,
+      "text" : "ardHeader(\"Pled"
+    },
+    {
+      "t" : 4.144,
+      "text" : "ged vs."
+    },
+    {
+      "t" : 4.212,
+      "text" : " Disbursed "
+    },
+    {
+      "t" : 4.284,
+      "text" : "($M)\", \"By"
+    },
+    {
+      "t" : 4.342,
+      "text" : " project\")\nchart = Bar"
+    },
+    {
+      "t" : 4.345,
+      "text" : "Chart(projects, [s"
+    },
+    {
+      "t" : 4.406,
+      "text" : "Pledged, sDisb"
+    },
+    {
+      "t" : 4.473,
+      "text" : "ursed], \"grouped\","
+    },
+    {
+      "t" : 4.538,
+      "text" : " \"Project\", \"US"
+    },
+    {
+      "t" : 4.586,
+      "text" : "D mill"
+    },
+    {
+      "t" : 4.679,
+      "text" : "ions\")\nprojects = [\""
+    },
+    {
+      "t" : 4.718,
+      "text" : "Road Repair\", \""
+    },
+    {
+      "t" : 4.745,
+      "text" : "Housing Rebuild\","
+    },
+    {
+      "t" : 4.815,
+      "text" : " \"Water System\", \"School"
+    },
+    {
+      "t" : 4.891,
+      "text" : " Rebuild\", \""
+    },
+    {
+      "t" : 4.97,
+      "text" : "Hospital W"
+    },
+    {
+      "t" : 5.037,
+      "text" : "ing\", \"Power"
+    },
+    {
+      "t" : 5.108,
+      "text" : " Grid\"]\nsP"
+    },
+    {
+      "t" : 5.178,
+      "text" : "ledged = Series(\"P"
+    },
+    {
+      "t" : 5.251,
+      "text" : "ledged\", [9.5,"
+    },
+    {
+      "t" : 5.316,
+      "text" : " 14.2, 6."
+    },
+    {
+      "t" : 5.383,
+      "text" : "8, 5.4, "
+    },
+    {
+      "t" : 5.452,
+      "text" : "8.1"
+    },
+    {
+      "t" : 5.515,
+      "text" : ", 4"
+    },
+    {
+      "t" : 5.598,
+      "text" : ".6])\nsDisb"
+    },
+    {
+      "t" : 5.685,
+      "text" : "ursed = Series(\"Dis"
+    },
+    {
+      "t" : 5.751,
+      "text" : "bursed\", [9.5"
+    },
+    {
+      "t" : 5.82,
+      "text" : ", 8"
+    },
+    {
+      "t" : 5.882,
+      "text" : ".7"
+    },
+    {
+      "t" : 5.942,
+      "text" : ", 5.1"
+    },
+    {
+      "t" : 6.006,
+      "text" : ", 3.2"
+    },
+    {
+      "t" : 6.075,
+      "text" : ", 2"
+    },
+    {
+      "t" : 6.142,
+      "text" : ".9"
+    },
+    {
+      "t" : 6.212,
+      "text" : ", 1.8"
+    },
+    {
+      "t" : 6.317,
+      "text" : "])\ntableCard ="
+    },
+    {
+      "t" : 6.32,
+      "text" : " Card([tableHead, t"
+    },
+    {
+      "t" : 6.388,
+      "text" : "bl])\ntableHead"
+    },
+    {
+      "t" : 6.5,
+      "text" : " = CardHeader(\""
+    },
+    {
+      "t" : 6.75,
+      "text" : "Project Status\", \"Completion"
+    },
+    {
+      "t" : 6.785,
+      "text" : " t"
+    },
+    {
+      "t" : 6.862,
+      "text" : "ags"
+    },
+    {
+      "t" : 6.978,
+      "text" : " and"
+    },
+    {
+      "t" : 7.094,
+      "text" : " fun"
+    },
+    {
+      "t" : 7.197,
+      "text" : "ding prog"
+    },
+    {
+      "t" : 7.307,
+      "text" : "ress\")\ntbl ="
+    },
+    {
+      "t" : 7.408,
+      "text" : " Table([c"
+    },
+    {
+      "t" : 7.491,
+      "text" : "Project, cPledged,"
+    },
+    {
+      "t" : 7.556,
+      "text" : " cDisb"
+    },
+    {
+      "t" : 7.697,
+      "text" : "ursed, cPct, c"
+    },
+    {
+      "t" : 7.781,
+      "text" : "Status])\ncProject"
+    },
+    {
+      "t" : 7.859,
+      "text" : " = Col(\"Project\", proj"
+    },
+    {
+      "t" : 7.941,
+      "text" : "ects)\ncPledged ="
+    },
+    {
+      "t" : 8.023,
+      "text" : " Col(\"Pledged "
+    },
+    {
+      "t" : 8.103,
+      "text" : "($M)\", ["
+    },
+    {
+      "t" : 8.183,
+      "text" : "9.5, 14.2"
+    },
+    {
+      "t" : 8.264,
+      "text" : ", 6.8, 5"
+    },
+    {
+      "t" : 8.344,
+      "text" : ".4, 8.1,"
+    },
+    {
+      "t" : 8.424,
+      "text" : " 4.6], \"number\")"
+    },
+    {
+      "t" : 8.503,
+      "text" : "\ncDisbursed ="
+    },
+    {
+      "t" : 8.586,
+      "text" : " Col(\"Disbursed"
+    },
+    {
+      "t" : 8.658,
+      "text" : " ($M)\", [9."
+    },
+    {
+      "t" : 8.732,
+      "text" : "5, 8.7, "
+    },
+    {
+      "t" : 8.812,
+      "text" : "5.1, 3.2"
+    },
+    {
+      "t" : 8.814,
+      "text" : ", 2.9, 1"
+    },
+    {
+      "t" : 8.894,
+      "text" : ".8], \"number\")\nc"
+    },
+    {
+      "t" : 8.975,
+      "text" : "Pct = Col(\"%"
+    },
+    {
+      "t" : 9.142,
+      "text" : " Disbursed\", [\"100"
+    },
+    {
+      "t" : 9.239,
+      "text" : "%\", \"61%\", \"75"
+    },
+    {
+      "t" : 9.337,
+      "text" : "%\", \"59"
+    },
+    {
+      "t" : 9.423,
+      "text" : "%\", \"36%\", \"39"
+    },
+    {
+      "t" : 9.508,
+      "text" : "%\"], \"string"
+    },
+    {
+      "t" : 9.592,
+      "text" : "\")\ncStatus ="
+    },
+    {
+      "t" : 9.68,
+      "text" : " Col(\"Status\", [t1"
+    },
+    {
+      "t" : 9.764,
+      "text" : ", t2, t3, t"
+    },
+    {
+      "t" : 9.844,
+      "text" : "4, t5, t6])"
+    },
+    {
+      "t" : 9.925,
+      "text" : "\nt1 = Tag"
+    },
+    {
+      "t" : 9.984,
+      "text" : "(\"Complete\", null, \""
+    },
+    {
+      "t" : 10.062,
+      "text" : "sm\", \"success\")\nt"
+    },
+    {
+      "t" : 10.141,
+      "text" : "2 = Tag(\"In"
+    },
+    {
+      "t" : 10.241,
+      "text" : " Progress\", null, \"s"
+    },
+    {
+      "t" : 10.334,
+      "text" : "m\", \"info\")\nt3"
+    },
+    {
+      "t" : 10.427,
+      "text" : " = Tag(\"In"
+    },
+    {
+      "t" : 10.526,
+      "text" : " Progress\", null, \"sm"
+    },
+    {
+      "t" : 10.616,
+      "text" : "\", \"info\")\nt4 "
+    },
+    {
+      "t" : 10.714,
+      "text" : "= Tag(\"Delay"
+    },
+    {
+      "t" : 10.806,
+      "text" : "ed\", null, \"sm\","
+    },
+    {
+      "t" : 10.891,
+      "text" : " \"warning\")\nt5 "
+    },
+    {
+      "t" : 10.98,
+      "text" : "= Tag(\"At"
+    },
+    {
+      "t" : 10.982,
+      "text" : " Risk\", null, \"s"
+    },
+    {
+      "t" : 11.072,
+      "text" : "m\", \"danger\")\nt"
+    },
+    {
+      "t" : 11.153,
+      "text" : "6 = Tag(\""
+    },
+    {
+      "t" : 11.243,
+      "text" : "Not Started\", null, \"s"
+    },
+    {
+      "t" : 11.339,
+      "text" : "m\", \"neutral\")"
+    }
+  ],
+  "createdAt" : "2026-11-11T10:50:12Z",
+  "effort" : "low",
+  "format" : "openui-recording",
+  "inputTokens" : 14503,
+  "library" : "react-ui",
+  "model" : "claude-sonnet-5-5",
+  "outputTokens" : 1059,
+  "request" : "A disaster recovery spending tracker with pledged versus disbursed funds by project and completion-status tags.",
+  "servedBy" : "claude-sonnet-5-5",
+  "stopReason" : "end_turn",
+  "version" : 1
+}

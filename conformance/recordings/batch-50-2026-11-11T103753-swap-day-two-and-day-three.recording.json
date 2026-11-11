@@ -1,0 +1,262 @@
+{
+  "batchRequest" : {
+    "model" : "haiku",
+    "number" : 50,
+    "of" : 40,
+    "request" : "Swap day two and day three, and add a restaurant suggestion to each evening."
+  },
+  "chunks" : [
+    {
+      "t" : 8.282,
+      "text" : "```"
+    },
+    {
+      "t" : 8.318,
+      "text" : "\ndayTabs ="
+    },
+    {
+      "t" : 8.348,
+      "text" : " Tabs([day1, day"
+    },
+    {
+      "t" : 8.361,
+      "text" : "3, day2])\nday2"
+    },
+    {
+      "t" : 8.382,
+      "text" : " = TabItem(\"day"
+    },
+    {
+      "t" : 8.393,
+      "text" : "2\", \"Day 3\","
+    },
+    {
+      "t" : 8.4,
+      "text" : " [day2Card])\nday"
+    },
+    {
+      "t" : 8.425,
+      "text" : "3 = TabItem(\""
+    },
+    {
+      "t" : 8.44,
+      "text" : "day3\", \"Day 2"
+    },
+    {
+      "t" : 8.465,
+      "text" : "\", [day3Card])"
+    },
+    {
+      "t" : 8.487,
+      "text" : "\nday2Header = CardH"
+    },
+    {
+      "t" : 8.514,
+      "text" : "eader(\"Day 3:"
+    },
+    {
+      "t" : 8.537,
+      "text" : " Belém and the Coast"
+    },
+    {
+      "t" : 8.549,
+      "text" : "\", \"Monuments and p"
+    },
+    {
+      "t" : 8.563,
+      "text" : "astries\")\nday3Header"
+    },
+    {
+      "t" : 8.582,
+      "text" : " = CardHeader(\""
+    },
+    {
+      "t" : 8.604,
+      "text" : "Day 2: Sintra"
+    },
+    {
+      "t" : 8.65,
+      "text" : " Day Trip\", \""
+    },
+    {
+      "t" : 8.686,
+      "text" : "Palaces and forests\")"
+    },
+    {
+      "t" : 8.699,
+      "text" : "\nday1Evening = Text"
+    },
+    {
+      "t" : 8.712,
+      "text" : "Content(\"**Evening:"
+    },
+    {
+      "t" : 8.725,
+      "text" : "** Enjoy fado"
+    },
+    {
+      "t" : 8.732,
+      "text" : " music at a traditional tas"
+    },
+    {
+      "t" : 8.747,
+      "text" : "ca in Alfama, follow"
+    },
+    {
+      "t" : 8.767,
+      "text" : "ed by grilled sardines"
+    },
+    {
+      "t" : 8.787,
+      "text" : " for dinner. **"
+    },
+    {
+      "t" : 8.809,
+      "text" : "Restaurant suggest"
+    },
+    {
+      "t" : 8.828,
+      "text" : "ion:** Tasca do"
+    },
+    {
+      "t" : 8.848,
+      "text" : " Chico in"
+    },
+    {
+      "t" : 8.869,
+      "text" : " Alfama.\", \"default"
+    },
+    {
+      "t" : 8.89,
+      "text" : "\")\nday2Evening ="
+    },
+    {
+      "t" : 8.91,
+      "text" : " TextContent(\"**Ev"
+    },
+    {
+      "t" : 8.931,
+      "text" : "ening:** Stroll along"
+    },
+    {
+      "t" : 8.951,
+      "text" : " the Tagus waterf"
+    },
+    {
+      "t" : 8.972,
+      "text" : "ront to Cais do S"
+    },
+    {
+      "t" : 8.991,
+      "text" : "odré and enjoy se"
+    },
+    {
+      "t" : 9.012,
+      "text" : "afood at the Time Out"
+    },
+    {
+      "t" : 9.034,
+      "text" : " Market. **Restaur"
+    },
+    {
+      "t" : 9.053,
+      "text" : "ant suggestion:**"
+    },
+    {
+      "t" : 9.076,
+      "text" : " Cerveja"
+    },
+    {
+      "t" : 9.094,
+      "text" : "ria Ramiro for gar"
+    },
+    {
+      "t" : 9.115,
+      "text" : "lic pr"
+    },
+    {
+      "t" : 9.135,
+      "text" : "awns and se"
+    },
+    {
+      "t" : 9.155,
+      "text" : "afood.\", \"default\")"
+    },
+    {
+      "t" : 9.176,
+      "text" : "\nday3Evening = Text"
+    },
+    {
+      "t" : 9.196,
+      "text" : "Content(\"**Evening:"
+    },
+    {
+      "t" : 9.216,
+      "text" : "** Return to Lisb"
+    },
+    {
+      "t" : 9.237,
+      "text" : "on and watch the sunset"
+    },
+    {
+      "t" : 9.257,
+      "text" : " from Miradouro da"
+    },
+    {
+      "t" : 9.278,
+      "text" : " Senhora do Monte,"
+    },
+    {
+      "t" : 9.298,
+      "text" : " followed by dinner in"
+    },
+    {
+      "t" : 9.319,
+      "text" : " Bairro Alto. **"
+    },
+    {
+      "t" : 9.339,
+      "text" : "Restaurant suggest"
+    },
+    {
+      "t" : 9.36,
+      "text" : "ion:** Taberna da"
+    },
+    {
+      "t" : 9.38,
+      "text" : " Rua das Flores for"
+    },
+    {
+      "t" : 9.4,
+      "text" : " small"
+    },
+    {
+      "t" : 9.421,
+      "text" : " pl"
+    },
+    {
+      "t" : 9.441,
+      "text" : "ates and nat"
+    },
+    {
+      "t" : 9.464,
+      "text" : "ural wine"
+    },
+    {
+      "t" : 9.481,
+      "text" : ".\", \"default\")\n```"
+    }
+  ],
+  "createdAt" : "2026-11-11T10:37:53Z",
+  "effort" : "low",
+  "format" : "openui-recording",
+  "inputTokens" : 15805,
+  "library" : "react-ui",
+  "model" : "claude-haiku-5-5",
+  "outputTokens" : 2063,
+  "patchOf" : "root = Stack([header, dayTabs])\nheader = InlineHeader(\"Lisbon in Three Days\", \"A relaxed itinerary covering history, food, and viewpoints\")\ndayTabs = Tabs([day1, day2, day3])\nday1 = TabItem(\"day1\", \"Day 1\", [day1Card])\nday2 = TabItem(\"day2\", \"Day 2\", [day2Card])\nday3 = TabItem(\"day3\", \"Day 3\", [day3Card])\nday1Card = Card([day1Header, day1Morning, day1Afternoon, day1Evening])\nday1Header = CardHeader(\"Day 1: Historic Lisbon\", \"Alfama and the riverfront\")\nday1Morning = TextContent(\"**Morning:** Climb to São Jorge Castle early for panoramic views over the red rooftops, then wander the narrow lanes of Alfama.\", \"default\")\nday1Afternoon = TextContent(\"**Afternoon:** Visit the Lisbon Cathedral (Sé) and take Tram 28 through Graça and Baixa.\", \"default\")\nday1Evening = TextContent(\"**Evening:** Enjoy fado music at a traditional tasca in Alfama, followed by grilled sardines for dinner.\", \"default\")\nday2Card = Card([day2Header, day2Morning, day2Afternoon, day2Evening])\nday2Header = CardHeader(\"Day 2: Belém and the Coast\", \"Monuments and pastries\")\nday2Morning = TextContent(\"**Morning:** Take the train to Belém and tour the Jerónimos Monastery and its magnificent cloisters.\", \"default\")\nday2Afternoon = TextContent(\"**Afternoon:** Visit the Belém Tower and the Monument to the Discoveries, then stop at Pastéis de Belém for the original custard tarts.\", \"default\")\nday2Evening = TextContent(\"**Evening:** Stroll along the Tagus waterfront to Cais do Sodré and enjoy seafood at the Time Out Market.\", \"default\")\nday3Card = Card([day3Header, day3Morning, day3Afternoon, day3Evening])\nday3Header = CardHeader(\"Day 3: Sintra Day Trip\", \"Palaces and forests\")\nday3Morning = TextContent(\"**Morning:** Take the train to Sintra and explore the colorful Pena Palace and its hilltop gardens.\", \"default\")\nday3Afternoon = TextContent(\"**Afternoon:** Walk through the Quinta da Regaleira estate, known for its mysterious initiation well, then have lunch in the village.\", \"default\")\nday3Evening = TextContent(\"**Evening:** Return to Lisbon and watch the sunset from Miradouro da Senhora do Monte, followed by dinner in Bairro Alto.\", \"default\")",
+  "request" : "Swap day two and day three, and add a restaurant suggestion to each evening.",
+  "servedBy" : "claude-haiku-5-5",
+  "stopReason" : "end_turn",
+  "version" : 1
+}

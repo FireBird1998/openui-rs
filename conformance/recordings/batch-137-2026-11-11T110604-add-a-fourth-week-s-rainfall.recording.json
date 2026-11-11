@@ -1,0 +1,166 @@
+{
+  "batchRequest" : {
+    "model" : "sonnet",
+    "number" : 137,
+    "of" : 67,
+    "request" : "Add a fourth week's rainfall readings and mark the driest town with a severe-restrictions tag."
+  },
+  "chunks" : [
+    {
+      "t" : 5.583,
+      "text" : "r"
+    },
+    {
+      "t" : 5.938,
+      "text" : "ainTable = Table(["
+    },
+    {
+      "t" : 5.992,
+      "text" : "Col(\"Town\", towns),"
+    },
+    {
+      "t" : 5.999,
+      "text" : " Col(\"Week 1 "
+    },
+    {
+      "t" : 6.204,
+      "text" : "(mm)\", w1,"
+    },
+    {
+      "t" : 6.269,
+      "text" : " \"number\"), Col(\""
+    },
+    {
+      "t" : 6.332,
+      "text" : "Week 2 (mm)"
+    },
+    {
+      "t" : 6.394,
+      "text" : "\", w2, \"number\"),"
+    },
+    {
+      "t" : 6.45,
+      "text" : " Col(\"Week 3 "
+    },
+    {
+      "t" : 6.511,
+      "text" : "(mm)\", w3,"
+    },
+    {
+      "t" : 6.575,
+      "text" : " \"number\"), Col(\""
+    },
+    {
+      "t" : 6.698,
+      "text" : "Week 4 (mm)"
+    },
+    {
+      "t" : 6.764,
+      "text" : "\", th"
+    },
+    {
+      "t" : 6.833,
+      "text" : "isWeek, \"number\""
+    },
+    {
+      "t" : 6.889,
+      "text" : "), Col(\"4-week total"
+    },
+    {
+      "t" : 6.892,
+      "text" : " (mm)\", totals,"
+    },
+    {
+      "t" : 6.954,
+      "text" : " \"number\")])\nw1 "
+    },
+    {
+      "t" : 7.017,
+      "text" : "= [12, 9, "
+    },
+    {
+      "t" : 7.106,
+      "text" : "5, 14]\nw2"
+    },
+    {
+      "t" : 7.192,
+      "text" : " = [8, 6,"
+    },
+    {
+      "t" : 7.283,
+      "text" : " 3, 10]\nw"
+    },
+    {
+      "t" : 7.362,
+      "text" : "3 = [5, 4"
+    },
+    {
+      "t" : 7.435,
+      "text" : ", 2, 8]"
+    },
+    {
+      "t" : 7.502,
+      "text" : "\ntags = [Tag(\""
+    },
+    {
+      "t" : 7.574,
+      "text" : "Level 2 - Mo"
+    },
+    {
+      "t" : 7.658,
+      "text" : "derate\", null, \"sm"
+    },
+    {
+      "t" : 7.73,
+      "text" : "\", \"warning\"), T"
+    },
+    {
+      "t" : 7.831,
+      "text" : "ag(\"Level 3 -"
+    },
+    {
+      "t" : 7.836,
+      "text" : " Severe\", null, \"s"
+    },
+    {
+      "t" : 7.904,
+      "text" : "m\", \"danger\"),"
+    },
+    {
+      "t" : 7.976,
+      "text" : " Tag(\"Driest town"
+    },
+    {
+      "t" : 8.041,
+      "text" : " - Severe restrictions"
+    },
+    {
+      "t" : 8.107,
+      "text" : "\", null, \"sm\", \""
+    },
+    {
+      "t" : 8.165,
+      "text" : "danger\"), Tag(\""
+    },
+    {
+      "t" : 8.238,
+      "text" : "No restrictions\", null,"
+    },
+    {
+      "t" : 8.352,
+      "text" : " \"sm\", \"success\")]"
+    }
+  ],
+  "createdAt" : "2026-11-11T11:06:04Z",
+  "effort" : "low",
+  "format" : "openui-recording",
+  "inputTokens" : 16036,
+  "library" : "react-ui",
+  "model" : "claude-sonnet-5-5",
+  "outputTokens" : 957,
+  "patchOf" : "root = Stack([title, kpis, levelsCard, rainCard, restrictionsCard])\ntitle = TextContent(\"Drought Tracker\", \"large-heavy\")\nkpis = SnippetCardBlock([k1, k2, k3])\nk1 = SnippetCardItem(\"avg\", k1l, k1r)\nk1l = IconText(k1i, \"neutral\", \"m\", \"Avg Reservoir Level\", \"All four towns\", false, \"horizontal\")\nk1i = Icon(\"droplets\", \"nature\")\nk1r = BoldText(\"number\", \"46%\", \"-3.2%\", \"metric\")\nk2 = SnippetCardItem(\"rain\", k2l, k2r)\nk2l = IconText(k2i, \"neutral\", \"m\", \"Weekly Rainfall\", \"Avg this week\", false, \"horizontal\")\nk2i = Icon(\"cloud-rain\", \"weather\")\nk2r = BoldText(\"number\", \"7.6 mm\", \"-1.4%\", \"metric\")\nk3 = SnippetCardItem(\"restr\", k3l, k3r)\nk3l = IconText(k3i, \"warning\", \"m\", \"Towns Restricted\", \"Current status\", false, \"horizontal\")\nk3i = Icon(\"triangle-alert\", \"alerts\")\nk3r = BoldText(\"number\", \"3 of 4\")\nlevelsCard = Card([levelsHeader, levelsChart])\nlevelsHeader = CardHeader(\"Reservoir Levels\", \"Percent of capacity\")\nlevelsChart = BarChart(towns, [levelSeries], \"grouped\", \"Town\", \"% capacity\")\ntowns = [\"Ashford\", \"Brookvale\", \"Carlton\", \"Dunmore\"]\nlevelSeries = Series(\"Reservoir level\", [58, 41, 27, 63])\nrainCard = Card([rainHeader, rainChart, rainTable])\nrainHeader = CardHeader(\"Weekly Rainfall\", \"Millimetres, last four weeks\")\nrainChart = LineChart(weeks, [r1, r2, r3, r4], \"natural\", \"Week\", \"mm\")\nweeks = [\"Week 1\", \"Week 2\", \"Week 3\", \"Week 4\"]\nr1 = Series(\"Ashford\", [12, 8, 5, 9])\nr2 = Series(\"Brookvale\", [9, 6, 4, 7])\nr3 = Series(\"Carlton\", [5, 3, 2, 4])\nr4 = Series(\"Dunmore\", [14, 10, 8, 11])\nrainTable = Table([Col(\"Town\", towns), Col(\"This week (mm)\", thisWeek, \"number\"), Col(\"4-week total (mm)\", totals, \"number\")])\nthisWeek = [9, 7, 4, 11]\ntotals = [34, 26, 14, 43]\nrestrictionsCard = Card([restrictHeader, restrictTable])\nrestrictHeader = CardHeader(\"Water Restrictions\", \"Current level by town\")\nrestrictTable = Table([Col(\"Town\", towns), Col(\"Restriction\", tags), Col(\"Notes\", notes)])\ntags = [Tag(\"Level 2 - Moderate\", null, \"sm\", \"warning\"), Tag(\"Level 3 - Severe\", null, \"sm\", \"danger\"), Tag(\"Level 4 - Critical\", null, \"sm\", \"danger\"), Tag(\"No restrictions\", null, \"sm\", \"success\")]\nnotes = [\"Sprinkler ban\", \"Hose use banned, no car washing\", \"Outdoor use prohibited\", \"Voluntary conservation\"]",
+  "request" : "Add a fourth week's rainfall readings and mark the driest town with a severe-restrictions tag.",
+  "servedBy" : "claude-sonnet-5-5",
+  "stopReason" : "end_turn",
+  "version" : 1
+}

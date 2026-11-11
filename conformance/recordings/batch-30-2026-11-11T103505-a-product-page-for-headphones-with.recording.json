@@ -1,0 +1,508 @@
+{
+  "batchRequest" : {
+    "model" : "haiku",
+    "number" : 30,
+    "request" : "A product page for headphones with an image gallery, specs table and add-to-cart button."
+  },
+  "chunks" : [
+    {
+      "t" : 0.661,
+      "text" : "root"
+    },
+    {
+      "t" : 0.785,
+      "text" : " = Stack(["
+    },
+    {
+      "t" : 0.792,
+      "text" : "he"
+    },
+    {
+      "t" : 0.798,
+      "text" : "ro"
+    },
+    {
+      "t" : 0.817,
+      "text" : "C"
+    },
+    {
+      "t" : 0.833,
+      "text" : "ard, spec"
+    },
+    {
+      "t" : 0.843,
+      "text" : "sC"
+    },
+    {
+      "t" : 0.85,
+      "text" : "ard,"
+    },
+    {
+      "t" : 0.86,
+      "text" : " act"
+    },
+    {
+      "t" : 0.867,
+      "text" : "ionsR"
+    },
+    {
+      "t" : 0.879,
+      "text" : "ow])\nheroCard ="
+    },
+    {
+      "t" : 0.895,
+      "text" : " Card([g"
+    },
+    {
+      "t" : 0.916,
+      "text" : "allery, product"
+    },
+    {
+      "t" : 0.936,
+      "text" : "T"
+    },
+    {
+      "t" : 0.957,
+      "text" : "itle,"
+    },
+    {
+      "t" : 0.979,
+      "text" : " productSubtitle])"
+    },
+    {
+      "t" : 0.999,
+      "text" : "\ngallery = ImageG"
+    },
+    {
+      "t" : 1.02,
+      "text" : "allery([img1, img2"
+    },
+    {
+      "t" : 1.04,
+      "text" : ", img3])\nimg1 "
+    },
+    {
+      "t" : 1.061,
+      "text" : "= {"
+    },
+    {
+      "t" : 1.081,
+      "text" : "src: \"https://images"
+    },
+    {
+      "t" : 1.102,
+      "text" : ".example"
+    },
+    {
+      "t" : 1.124,
+      "text" : ".com/headphones-front"
+    },
+    {
+      "t" : 1.144,
+      "text" : ".jpg\", alt:"
+    },
+    {
+      "t" : 1.163,
+      "text" : " \"Front view of the"
+    },
+    {
+      "t" : 1.184,
+      "text" : " A"
+    },
+    {
+      "t" : 1.204,
+      "text" : "urora X"
+    },
+    {
+      "t" : 1.224,
+      "text" : "1"
+    },
+    {
+      "t" : 1.245,
+      "text" : " headphones\", details: \""
+    },
+    {
+      "t" : 1.265,
+      "text" : "Front"
+    },
+    {
+      "t" : 1.286,
+      "text" : " view\"}\nimg2 ="
+    },
+    {
+      "t" : 1.307,
+      "text" : " {src: \"https://images."
+    },
+    {
+      "t" : 1.327,
+      "text" : "example.com/headphones-"
+    },
+    {
+      "t" : 1.348,
+      "text" : "side.jpg\", alt"
+    },
+    {
+      "t" : 1.368,
+      "text" : ": \"Side prof"
+    },
+    {
+      "t" : 1.388,
+      "text" : "ile of the Aurora X"
+    },
+    {
+      "t" : 1.409,
+      "text" : "1 headphones\", details:"
+    },
+    {
+      "t" : 1.429,
+      "text" : " \"Side profile\"}"
+    },
+    {
+      "t" : 1.45,
+      "text" : "\nimg3 = {src: \""
+    },
+    {
+      "t" : 1.47,
+      "text" : "https://images.example.com/"
+    },
+    {
+      "t" : 1.49,
+      "text" : "headphones-case.jp"
+    },
+    {
+      "t" : 1.511,
+      "text" : "g\", alt: \"A"
+    },
+    {
+      "t" : 1.532,
+      "text" : "urora X1 headphones"
+    },
+    {
+      "t" : 1.552,
+      "text" : " with carrying case\", details:"
+    },
+    {
+      "t" : 1.572,
+      "text" : " \"With"
+    },
+    {
+      "t" : 1.593,
+      "text" : " case\"}\nproductTitle"
+    },
+    {
+      "t" : 1.613,
+      "text" : " = TextContent(\"A"
+    },
+    {
+      "t" : 1.634,
+      "text" : "urora X1 Wire"
+    },
+    {
+      "t" : 1.655,
+      "text" : "less Headphones\", \"large"
+    },
+    {
+      "t" : 1.678,
+      "text" : "-heavy\")\nproductS"
+    },
+    {
+      "t" : 1.697,
+      "text" : "ubtitle = TextCont"
+    },
+    {
+      "t" : 1.719,
+      "text" : "ent(\"Active no"
+    },
+    {
+      "t" : 1.738,
+      "text" : "ise cancellation,"
+    },
+    {
+      "t" : 1.759,
+      "text" : " 40"
+    },
+    {
+      "t" : 1.778,
+      "text" : "-"
+    },
+    {
+      "t" : 1.797,
+      "text" : "hour batt"
+    },
+    {
+      "t" : 1.818,
+      "text" : "ery,"
+    },
+    {
+      "t" : 1.838,
+      "text" : " prem"
+    },
+    {
+      "t" : 1.858,
+      "text" : "ium com"
+    },
+    {
+      "t" : 1.878,
+      "text" : "fort f"
+    },
+    {
+      "t" : 1.899,
+      "text" : "it\", \"default"
+    },
+    {
+      "t" : 1.921,
+      "text" : "\")\nspecsCard ="
+    },
+    {
+      "t" : 1.942,
+      "text" : " Card([specsHeader,"
+    },
+    {
+      "t" : 1.962,
+      "text" : " specsTable])\nspecs"
+    },
+    {
+      "t" : 1.981,
+      "text" : "Header = C"
+    },
+    {
+      "t" : 2.001,
+      "text" : "ardHeader(\"Specif"
+    },
+    {
+      "t" : 2.022,
+      "text" : "ications\", \"Key"
+    },
+    {
+      "t" : 2.043,
+      "text" : " technical details\")\nspecsT"
+    },
+    {
+      "t" : 2.065,
+      "text" : "able = Table([spec"
+    },
+    {
+      "t" : 2.085,
+      "text" : "L"
+    },
+    {
+      "t" : 2.105,
+      "text" : "abels"
+    },
+    {
+      "t" : 2.126,
+      "text" : ", specVal"
+    },
+    {
+      "t" : 2.146,
+      "text" : "ues])\nspecLabels ="
+    },
+    {
+      "t" : 2.167,
+      "text" : " Col(\"Specification\", "
+    },
+    {
+      "t" : 2.187,
+      "text" : "[\"Driver size"
+    },
+    {
+      "t" : 2.21,
+      "text" : "\", \""
+    },
+    {
+      "t" : 2.232,
+      "text" : "Batt"
+    },
+    {
+      "t" : 2.253,
+      "text" : "ery life\", \"Char"
+    },
+    {
+      "t" : 2.277,
+      "text" : "ging\","
+    },
+    {
+      "t" : 2.299,
+      "text" : " \"B"
+    },
+    {
+      "t" : 2.321,
+      "text" : "luetooth\", \"No"
+    },
+    {
+      "t" : 2.334,
+      "text" : "ise cancellation\", \""
+    },
+    {
+      "t" : 2.365,
+      "text" : "Weight\", \"Microphone"
+    },
+    {
+      "t" : 2.387,
+      "text" : "\"])\nspecValues ="
+    },
+    {
+      "t" : 2.401,
+      "text" : " Col(\"Value\", [\"40"
+    },
+    {
+      "t" : 2.432,
+      "text" : " mm\", \"40"
+    },
+    {
+      "t" : 2.455,
+      "text" : " hours\", \"US"
+    },
+    {
+      "t" : 2.479,
+      "text" : "B-"
+    },
+    {
+      "t" : 2.502,
+      "text" : "C, "
+    },
+    {
+      "t" : 2.516,
+      "text" : "10"
+    },
+    {
+      "t" : 2.54,
+      "text" : " min ="
+    },
+    {
+      "t" : 2.563,
+      "text" : " 5 h"
+    },
+    {
+      "t" : 2.586,
+      "text" : "ours\", \"5"
+    },
+    {
+      "t" : 2.601,
+      "text" : ".3"
+    },
+    {
+      "t" : 2.634,
+      "text" : " with"
+    },
+    {
+      "t" : 2.659,
+      "text" : " mult"
+    },
+    {
+      "t" : 2.683,
+      "text" : "ip"
+    },
+    {
+      "t" : 2.707,
+      "text" : "oint\", \"H"
+    },
+    {
+      "t" : 2.732,
+      "text" : "ybrid adaptive "
+    },
+    {
+      "t" : 2.758,
+      "text" : "ANC\", \"250"
+    },
+    {
+      "t" : 2.783,
+      "text" : " g\", \"D"
+    },
+    {
+      "t" : 2.808,
+      "text" : "ual be"
+    },
+    {
+      "t" : 2.833,
+      "text" : "am"
+    },
+    {
+      "t" : 2.859,
+      "text" : "forming\"])\nactions"
+    },
+    {
+      "t" : 2.886,
+      "text" : "Row = St"
+    },
+    {
+      "t" : 2.919,
+      "text" : "ack([pri"
+    },
+    {
+      "t" : 2.945,
+      "text" : "ceText, addToCartB"
+    },
+    {
+      "t" : 2.971,
+      "text" : "tn],"
+    },
+    {
+      "t" : 2.997,
+      "text" : " \"row\", \"m"
+    },
+    {
+      "t" : 3.023,
+      "text" : "\", \"center"
+    },
+    {
+      "t" : 3.05,
+      "text" : "\", \"between\")\npriceText"
+    },
+    {
+      "t" : 3.077,
+      "text" : " = TextContent(\"$199"
+    },
+    {
+      "t" : 3.104,
+      "text" : ".00\", \"large-heav"
+    },
+    {
+      "t" : 3.131,
+      "text" : "y\")\naddToCartB"
+    },
+    {
+      "t" : 3.159,
+      "text" : "tn = Button(\"Add"
+    },
+    {
+      "t" : 3.187,
+      "text" : " to Cart\", @To"
+    },
+    {
+      "t" : 3.215,
+      "text" : "Assistant(\"Add"
+    },
+    {
+      "t" : 3.243,
+      "text" : " Aurora X1 "
+    },
+    {
+      "t" : 3.271,
+      "text" : "Wireless Headphones to"
+    },
+    {
+      "t" : 3.299,
+      "text" : " cart\"), \"primary\","
+    },
+    {
+      "t" : 3.327,
+      "text" : " \"norm"
+    },
+    {
+      "t" : 3.355,
+      "text" : "al\", \"large\")"
+    }
+  ],
+  "createdAt" : "2026-11-11T10:35:05Z",
+  "effort" : "low",
+  "format" : "openui-recording",
+  "inputTokens" : 14495,
+  "library" : "react-ui",
+  "model" : "claude-haiku-5-5",
+  "outputTokens" : 632,
+  "request" : "A product page for headphones with an image gallery, specs table and add-to-cart button.",
+  "servedBy" : "claude-haiku-5-5",
+  "stopReason" : "end_turn",
+  "version" : 1
+}

@@ -1,0 +1,1220 @@
+{
+  "batchRequest" : {
+    "model" : "haiku",
+    "number" : 126,
+    "request" : "A genealogy research notebook with ancestor profile cards, document citations and unresolved questions, without a family-tree diagram."
+  },
+  "chunks" : [
+    {
+      "t" : 0.87,
+      "text" : "root"
+    },
+    {
+      "t" : 1.05,
+      "text" : " = Stack([not"
+    },
+    {
+      "t" : 1.083,
+      "text" : "ebookH"
+    },
+    {
+      "t" : 1.181,
+      "text" : "eader, prof"
+    },
+    {
+      "t" : 1.21,
+      "text" : "il"
+    },
+    {
+      "t" : 1.324,
+      "text" : "esHeader, prof"
+    },
+    {
+      "t" : 1.366,
+      "text" : "ileCards, citationsH"
+    },
+    {
+      "t" : 1.405,
+      "text" : "eader, cit"
+    },
+    {
+      "t" : 1.483,
+      "text" : "ationsCard, quest"
+    },
+    {
+      "t" : 1.54,
+      "text" : "ionsHeader, question"
+    },
+    {
+      "t" : 1.599,
+      "text" : "sCard])\nnotebook"
+    },
+    {
+      "t" : 1.67,
+      "text" : "Header = InlineH"
+    },
+    {
+      "t" : 1.673,
+      "text" : "eader(\"Wh"
+    },
+    {
+      "t" : 1.732,
+      "text" : "itfield Family"
+    },
+    {
+      "t" : 1.796,
+      "text" : " Research Notebook\", \""
+    },
+    {
+      "t" : 1.853,
+      "text" : "Ancestor profiles, source"
+    },
+    {
+      "t" : 1.944,
+      "text" : " citations and open questions\")"
+    },
+    {
+      "t" : 1.992,
+      "text" : "\nprofilesHeader = In"
+    },
+    {
+      "t" : 2.024,
+      "text" : "lineHeader(\""
+    },
+    {
+      "t" : 2.046,
+      "text" : "Ancestor Profiles\","
+    },
+    {
+      "t" : 2.099,
+      "text" : " \"Core"
+    },
+    {
+      "t" : 2.151,
+      "text" : " bi"
+    },
+    {
+      "t" : 2.21,
+      "text" : "ographical records\")\nprofileC"
+    },
+    {
+      "t" : 2.299,
+      "text" : "ards = CompositeCard"
+    },
+    {
+      "t" : 2.429,
+      "text" : "Block([p1, p"
+    },
+    {
+      "t" : 2.51,
+      "text" : "2,"
+    },
+    {
+      "t" : 2.57,
+      "text" : " p3])\np1 ="
+    },
+    {
+      "t" : 2.624,
+      "text" : " CompositeCardItem"
+    },
+    {
+      "t" : 2.695,
+      "text" : "(\"margaret-whitf"
+    },
+    {
+      "t" : 2.763,
+      "text" : "ield\", p1header, [p"
+    },
+    {
+      "t" : 2.833,
+      "text" : "1body], p1footer)"
+    },
+    {
+      "t" : 2.89,
+      "text" : "\np1header = IconText"
+    },
+    {
+      "t" : 2.943,
+      "text" : "(p1icon, \""
+    },
+    {
+      "t" : 2.996,
+      "text" : "neutral\", \"m\", \""
+    },
+    {
+      "t" : 3.052,
+      "text" : "Margaret Whitf"
+    },
+    {
+      "t" : 3.118,
+      "text" : "ield\", \"b"
+    },
+    {
+      "t" : 3.173,
+      "text" : ". 1868"
+    },
+    {
+      "t" : 3.226,
+      "text" : ","
+    },
+    {
+      "t" : 3.286,
+      "text" : " Le"
+    },
+    {
+      "t" : 3.35,
+      "text" : "eds, England"
+    },
+    {
+      "t" : 3.428,
+      "text" : "\", true, \"horizontal"
+    },
+    {
+      "t" : 3.509,
+      "text" : "\")\np1icon ="
+    },
+    {
+      "t" : 3.592,
+      "text" : " Icon(\"user\", \"people"
+    },
+    {
+      "t" : 3.666,
+      "text" : "\")\np1body = Ent"
+    },
+    {
+      "t" : 3.764,
+      "text" : "ityList(["
+    },
+    {
+      "t" : 3.828,
+      "text" : "p"
+    },
+    {
+      "t" : 3.892,
+      "text" : "1r"
+    },
+    {
+      "t" : 3.961,
+      "text" : "1, p1r2, p"
+    },
+    {
+      "t" : 4.036,
+      "text" : "1r3,"
+    },
+    {
+      "t" : 4.141,
+      "text" : " p1r4], \"small\")"
+    },
+    {
+      "t" : 4.225,
+      "text" : "\np1r1 = {"
+    },
+    {
+      "t" : 4.309,
+      "text" : " left: \"Spouse\","
+    },
+    {
+      "t" : 4.42,
+      "text" : " right: \"John"
+    },
+    {
+      "t" : 4.495,
+      "text" : " Whitfield ("
+    },
+    {
+      "t" : 4.582,
+      "text" : "m. 1889"
+    },
+    {
+      "t" : 4.624,
+      "text" : ")\" }\np1r2"
+    },
+    {
+      "t" : 4.649,
+      "text" : " = { left: \"Occ"
+    },
+    {
+      "t" : 4.732,
+      "text" : "upation\", right: \"Text"
+    },
+    {
+      "t" : 4.8,
+      "text" : "ile mill wor"
+    },
+    {
+      "t" : 4.877,
+      "text" : "ker\" }\np1r3"
+    },
+    {
+      "t" : 4.946,
+      "text" : " = { left: \"Imm"
+    },
+    {
+      "t" : 5.055,
+      "text" : "igrated\", right: \"1"
+    },
+    {
+      "t" : 5.148,
+      "text" : "892, New"
+    },
+    {
+      "t" : 5.255,
+      "text" : " York\" }\np1r4"
+    },
+    {
+      "t" : 5.329,
+      "text" : " = { left: \"Died"
+    },
+    {
+      "t" : 5.411,
+      "text" : "\", right: \"1941"
+    },
+    {
+      "t" : 5.48,
+      "text" : ", P"
+    },
+    {
+      "t" : 5.547,
+      "text" : "ittsburgh,"
+    },
+    {
+      "t" : 5.618,
+      "text" : " PA\" }\np1foot"
+    },
+    {
+      "t" : 5.728,
+      "text" : "er = {"
+    },
+    {
+      "t" : 5.73,
+      "text" : " price: BoldText(\"text"
+    },
+    {
+      "t" : 5.823,
+      "text" : "\", \"3"
+    },
+    {
+      "t" : 5.885,
+      "text" : " sources\"), button: p"
+    },
+    {
+      "t" : 5.971,
+      "text" : "1btn }\np1bt"
+    },
+    {
+      "t" : 6.116,
+      "text" : "n = Button(\"View Record"
+    },
+    {
+      "t" : 6.191,
+      "text" : "\", @ToAssistant"
+    },
+    {
+      "t" : 6.266,
+      "text" : "(\"Show full record for Marg"
+    },
+    {
+      "t" : 6.337,
+      "text" : "aret Whitfield\""
+    },
+    {
+      "t" : 6.407,
+      "text" : "),"
+    },
+    {
+      "t" : 6.465,
+      "text" : " \"secondary\")\np2"
+    },
+    {
+      "t" : 6.467,
+      "text" : " = CompositeCard"
+    },
+    {
+      "t" : 6.524,
+      "text" : "Item(\"john"
+    },
+    {
+      "t" : 6.618,
+      "text" : "-whitfield\", p2"
+    },
+    {
+      "t" : 6.706,
+      "text" : "header, [p2body], p"
+    },
+    {
+      "t" : 6.801,
+      "text" : "2footer)\np2header"
+    },
+    {
+      "t" : 6.894,
+      "text" : " = IconText(p2ic"
+    },
+    {
+      "t" : 7.05,
+      "text" : "on, \"neutral\", \""
+    },
+    {
+      "t" : 7.051,
+      "text" : "m\", \"John Whitf"
+    },
+    {
+      "t" : 7.164,
+      "text" : "ield\", \"b. 1862"
+    },
+    {
+      "t" : 7.274,
+      "text" : ", Y"
+    },
+    {
+      "t" : 7.34,
+      "text" : "orkshire, England\", true"
+    },
+    {
+      "t" : 7.344,
+      "text" : ", \"horizontal\")"
+    },
+    {
+      "t" : 7.406,
+      "text" : "\np2icon = Icon"
+    },
+    {
+      "t" : 7.469,
+      "text" : "(\"user\", \"people\")\np"
+    },
+    {
+      "t" : 7.569,
+      "text" : "2body = EntityList(["
+    },
+    {
+      "t" : 7.57,
+      "text" : "p2r1, p2r"
+    },
+    {
+      "t" : 7.627,
+      "text" : "2, p2r3, p"
+    },
+    {
+      "t" : 7.701,
+      "text" : "2r4], \"small\")"
+    },
+    {
+      "t" : 7.787,
+      "text" : "\np2r1 = { left"
+    },
+    {
+      "t" : 7.852,
+      "text" : ": \"Spouse\", right"
+    },
+    {
+      "t" : 7.921,
+      "text" : ": \"Margaret Wh"
+    },
+    {
+      "t" : 7.986,
+      "text" : "itfield ("
+    },
+    {
+      "t" : 8.092,
+      "text" : "m. 1889)\" }"
+    },
+    {
+      "t" : 8.093,
+      "text" : "\np2r2 = {"
+    },
+    {
+      "t" : 8.199,
+      "text" : " left: \"Occupation\","
+    },
+    {
+      "t" : 8.201,
+      "text" : " right: \"Coal miner"
+    },
+    {
+      "t" : 8.27,
+      "text" : ","
+    },
+    {
+      "t" : 8.338,
+      "text" : " later foreman\" }\np"
+    },
+    {
+      "t" : 8.472,
+      "text" : "2r3 = { left:"
+    },
+    {
+      "t" : 8.542,
+      "text" : " \"Immigrated\", right"
+    },
+    {
+      "t" : 8.543,
+      "text" : ": \"1891"
+    },
+    {
+      "t" : 8.613,
+      "text" : ", Phil"
+    },
+    {
+      "t" : 8.68,
+      "text" : "adelphia,"
+    },
+    {
+      "t" : 8.743,
+      "text" : " PA\" }\np2r"
+    },
+    {
+      "t" : 8.812,
+      "text" : "4 = { left: \""
+    },
+    {
+      "t" : 8.875,
+      "text" : "Died\", right: \"1915"
+    },
+    {
+      "t" : 8.948,
+      "text" : ", Pittsburgh"
+    },
+    {
+      "t" : 9.02,
+      "text" : ", PA\" }\np2"
+    },
+    {
+      "t" : 9.129,
+      "text" : "footer = { price: Bo"
+    },
+    {
+      "t" : 9.13,
+      "text" : "ldText(\"text\", \"2"
+    },
+    {
+      "t" : 9.213,
+      "text" : " sources\"), button: p"
+    },
+    {
+      "t" : 9.305,
+      "text" : "2btn }\np2bt"
+    },
+    {
+      "t" : 9.374,
+      "text" : "n = Button(\"View Record"
+    },
+    {
+      "t" : 9.448,
+      "text" : "\", @ToAssistant"
+    },
+    {
+      "t" : 9.52,
+      "text" : "(\"Show full record for John"
+    },
+    {
+      "t" : 9.587,
+      "text" : " Whitfield\"), \"sec"
+    },
+    {
+      "t" : 9.739,
+      "text" : "ondary\")\np3 ="
+    },
+    {
+      "t" : 9.741,
+      "text" : " CompositeCardItem"
+    },
+    {
+      "t" : 9.92,
+      "text" : "(\"els"
+    },
+    {
+      "t" : 10.023,
+      "text" : "ie-whitfield\", p"
+    },
+    {
+      "t" : 10.146,
+      "text" : "3header, [p3body],"
+    },
+    {
+      "t" : 10.147,
+      "text" : " p3footer)\np3"
+    },
+    {
+      "t" : 10.282,
+      "text" : "header = IconText(p3"
+    },
+    {
+      "t" : 10.409,
+      "text" : "icon, \"neutral\","
+    },
+    {
+      "t" : 10.495,
+      "text" : " \"m\", \"Elsie"
+    },
+    {
+      "t" : 10.563,
+      "text" : " Whitfield"
+    },
+    {
+      "t" : 10.642,
+      "text" : " Hart\", \"b. 1"
+    },
+    {
+      "t" : 10.735,
+      "text" : "894"
+    },
+    {
+      "t" : 10.837,
+      "text" : ", P"
+    },
+    {
+      "t" : 10.915,
+      "text" : "ittsburgh, PA"
+    },
+    {
+      "t" : 10.993,
+      "text" : "\", true, \"horizontal"
+    },
+    {
+      "t" : 11.127,
+      "text" : "\")\np3icon ="
+    },
+    {
+      "t" : 11.346,
+      "text" : " Icon(\"user\", \"people\")"
+    },
+    {
+      "t" : 11.451,
+      "text" : "\np3body = Entity"
+    },
+    {
+      "t" : 11.56,
+      "text" : "List([p3r1, p"
+    },
+    {
+      "t" : 11.707,
+      "text" : "3r2, p3r3"
+    },
+    {
+      "t" : 11.709,
+      "text" : "],"
+    },
+    {
+      "t" : 11.798,
+      "text" : " \"small\")\np3r1"
+    },
+    {
+      "t" : 11.883,
+      "text" : " = { left: \"Par"
+    },
+    {
+      "t" : 12.021,
+      "text" : "ents\", right: \"John &"
+    },
+    {
+      "t" : 12.024,
+      "text" : " Margaret Whitf"
+    },
+    {
+      "t" : 12.106,
+      "text" : "ield\" }\np3r2"
+    },
+    {
+      "t" : 12.188,
+      "text" : " = { left: \"Sp"
+    },
+    {
+      "t" : 12.273,
+      "text" : "ouse\", right: \"Wal"
+    },
+    {
+      "t" : 12.374,
+      "text" : "ter Hart (m. "
+    },
+    {
+      "t" : 12.467,
+      "text" : "1916"
+    },
+    {
+      "t" : 12.525,
+      "text" : ")\" }\np3r3"
+    },
+    {
+      "t" : 12.605,
+      "text" : " = { left: \"Died"
+    },
+    {
+      "t" : 12.692,
+      "text" : "\", right: \"1972"
+    },
+    {
+      "t" : 12.78,
+      "text" : ", Pittsburgh"
+    },
+    {
+      "t" : 12.867,
+      "text" : ", PA\" }\np3"
+    },
+    {
+      "t" : 12.958,
+      "text" : "footer = { price: Bo"
+    },
+    {
+      "t" : 13.055,
+      "text" : "ldText(\"text\", \"4 "
+    },
+    {
+      "t" : 13.148,
+      "text" : "sources\"), button: p3"
+    },
+    {
+      "t" : 13.238,
+      "text" : "btn }\np3btn"
+    },
+    {
+      "t" : 13.34,
+      "text" : " = Button(\"View Record\","
+    },
+    {
+      "t" : 13.498,
+      "text" : " @ToAssistant(\""
+    },
+    {
+      "t" : 13.5,
+      "text" : "Show full record for Els"
+    },
+    {
+      "t" : 13.59,
+      "text" : "ie Whitfield H"
+    },
+    {
+      "t" : 13.749,
+      "text" : "art\"), \"secondary\")"
+    },
+    {
+      "t" : 13.829,
+      "text" : "\ncitationsHeader ="
+    },
+    {
+      "t" : 13.92,
+      "text" : " InlineHeader(\""
+    },
+    {
+      "t" : 14.001,
+      "text" : "Document Citations\", \"S"
+    },
+    {
+      "t" : 14.123,
+      "text" : "ources sup"
+    },
+    {
+      "t" : 14.208,
+      "text" : "porting each record"
+    },
+    {
+      "t" : 14.209,
+      "text" : "\")\ncitationsCard ="
+    },
+    {
+      "t" : 14.303,
+      "text" : " Card([cit"
+    },
+    {
+      "t" : 14.358,
+      "text" : "ationTable])\ncitationT"
+    },
+    {
+      "t" : 14.435,
+      "text" : "able = Table([Col(\""
+    },
+    {
+      "t" : 14.573,
+      "text" : "Document\", doc"
+    },
+    {
+      "t" : 14.575,
+      "text" : "s), Col(\"Type"
+    },
+    {
+      "t" : 14.661,
+      "text" : "\", types), Col(\"Date"
+    },
+    {
+      "t" : 14.76,
+      "text" : "\", dates), Col(\""
+    },
+    {
+      "t" : 14.845,
+      "text" : "Ancestor\", ancest"
+    },
+    {
+      "t" : 14.929,
+      "text" : "ors), Col(\"Location"
+    },
+    {
+      "t" : 15.032,
+      "text" : "\", locations)])\ndocs"
+    },
+    {
+      "t" : 15.183,
+      "text" : " = [\"Mar"
+    },
+    {
+      "t" : 15.325,
+      "text" : "riage Register"
+    },
+    {
+      "t" : 15.476,
+      "text" : ", St"
+    },
+    {
+      "t" : 15.674,
+      "text" : ". Pe"
+    },
+    {
+      "t" : 15.79,
+      "text" : "ter's Church\","
+    },
+    {
+      "t" : 15.904,
+      "text" : " \"Pass"
+    },
+    {
+      "t" : 16.054,
+      "text" : "enger"
+    },
+    {
+      "t" : 16.358,
+      "text" : " Manifest, S"
+    },
+    {
+      "t" : 16.359,
+      "text" : "S Germ"
+    },
+    {
+      "t" : 16.65,
+      "text" : "an"
+    },
+    {
+      "t" : 16.727,
+      "text" : "ic\", \"P"
+    },
+    {
+      "t" : 16.882,
+      "text" : "enn"
+    },
+    {
+      "t" : 17.091,
+      "text" : "sylvania Death"
+    },
+    {
+      "t" : 17.204,
+      "text" : " Index"
+    },
+    {
+      "t" : 17.325,
+      "text" : "\", \"1"
+    },
+    {
+      "t" : 17.463,
+      "text" : "900"
+    },
+    {
+      "t" : 17.587,
+      "text" : " US Feder"
+    },
+    {
+      "t" : 17.702,
+      "text" : "al Census\", \"Par"
+    },
+    {
+      "t" : 17.892,
+      "text" : "ish Ba"
+    },
+    {
+      "t" : 18.076,
+      "text" : "ptism Record\", \"M"
+    },
+    {
+      "t" : 18.27,
+      "text" : "ine Employ"
+    },
+    {
+      "t" : 18.456,
+      "text" : "ment "
+    },
+    {
+      "t" : 18.63,
+      "text" : "Ledger\"]\ntypes = "
+    },
+    {
+      "t" : 18.756,
+      "text" : "[\"Church"
+    },
+    {
+      "t" : 18.907,
+      "text" : " record"
+    },
+    {
+      "t" : 19.101,
+      "text" : "\", \"Imm"
+    },
+    {
+      "t" : 19.262,
+      "text" : "igration\","
+    },
+    {
+      "t" : 19.407,
+      "text" : " \""
+    },
+    {
+      "t" : 19.547,
+      "text" : "Vital record"
+    },
+    {
+      "t" : 19.745,
+      "text" : "\", \"Census\", \"Church"
+    },
+    {
+      "t" : 19.882,
+      "text" : " record\", \"Employ"
+    },
+    {
+      "t" : 20.039,
+      "text" : "ment\""
+    },
+    {
+      "t" : 20.209,
+      "text" : "]\ndates = [\"1"
+    },
+    {
+      "t" : 20.402,
+      "text" : "889-"
+    },
+    {
+      "t" : 20.732,
+      "text" : "06-14\", \"1892-"
+    },
+    {
+      "t" : 20.733,
+      "text" : "05"
+    },
+    {
+      "t" : 20.939,
+      "text" : "-03"
+    },
+    {
+      "t" : 21.119,
+      "text" : "\", \"1915-08"
+    },
+    {
+      "t" : 21.299,
+      "text" : "-22\", \"1900-06"
+    },
+    {
+      "t" : 21.407,
+      "text" : "-05"
+    },
+    {
+      "t" : 21.534,
+      "text" : "\", \"1868"
+    },
+    {
+      "t" : 21.722,
+      "text" : "-03"
+    },
+    {
+      "t" : 22.059,
+      "text" : "-19"
+    },
+    {
+      "t" : 22.06,
+      "text" : "\", \"1906"
+    },
+    {
+      "t" : 22.227,
+      "text" : "-11"
+    },
+    {
+      "t" : 22.41,
+      "text" : "-30"
+    },
+    {
+      "t" : 22.591,
+      "text" : "\"]\nancestors ="
+    },
+    {
+      "t" : 22.736,
+      "text" : " [\"John &"
+    },
+    {
+      "t" : 22.872,
+      "text" : " Margaret"
+    },
+    {
+      "t" : 22.984,
+      "text" : " Whitfield\", \"Marg"
+    },
+    {
+      "t" : 23.086,
+      "text" : "aret Whitfield\","
+    },
+    {
+      "t" : 23.208,
+      "text" : " \"John"
+    },
+    {
+      "t" : 23.356,
+      "text" : " Whitfield\", \""
+    },
+    {
+      "t" : 23.531,
+      "text" : "Whitfield Household"
+    },
+    {
+      "t" : 23.713,
+      "text" : "\", \"Marg"
+    },
+    {
+      "t" : 23.946,
+      "text" : "aret Whitfield\","
+    },
+    {
+      "t" : 24.172,
+      "text" : " \"John Whitfield\""
+    },
+    {
+      "t" : 24.33,
+      "text" : "]\nlocations = [\""
+    },
+    {
+      "t" : 24.453,
+      "text" : "Leeds, England\", \"New"
+    },
+    {
+      "t" : 24.599,
+      "text" : " York, N"
+    },
+    {
+      "t" : 24.78,
+      "text" : "Y\", \"Pittsbur"
+    },
+    {
+      "t" : 25.006,
+      "text" : "gh, PA\", \""
+    },
+    {
+      "t" : 25.206,
+      "text" : "Pittsburgh, P"
+    },
+    {
+      "t" : 25.408,
+      "text" : "A\", \"Leeds,"
+    },
+    {
+      "t" : 25.571,
+      "text" : " England\", \"Pittsbur"
+    },
+    {
+      "t" : 25.785,
+      "text" : "gh, PA\"]"
+    },
+    {
+      "t" : 25.968,
+      "text" : "\nquestionsHeader = In"
+    },
+    {
+      "t" : 26.136,
+      "text" : "lineHeader(\"Un"
+    },
+    {
+      "t" : 26.406,
+      "text" : "resolved Questions\", \""
+    },
+    {
+      "t" : 26.408,
+      "text" : "Le"
+    },
+    {
+      "t" : 26.587,
+      "text" : "ads to"
+    },
+    {
+      "t" : 26.842,
+      "text" : " invest"
+    },
+    {
+      "t" : 27.07,
+      "text" : "igate next"
+    },
+    {
+      "t" : 27.354,
+      "text" : "\")\nquestionsCard ="
+    },
+    {
+      "t" : 27.357,
+      "text" : " Card([quest"
+    },
+    {
+      "t" : 27.525,
+      "text" : "ions"
+    },
+    {
+      "t" : 27.798,
+      "text" : "C"
+    },
+    {
+      "t" : 27.802,
+      "text" : "allout,"
+    },
+    {
+      "t" : 27.983,
+      "text" : " questionsTags"
+    },
+    {
+      "t" : 28.193,
+      "text" : "])\nquestionsCallout"
+    },
+    {
+      "t" : 28.354,
+      "text" : " = Callout(\"warning\","
+    },
+    {
+      "t" : 28.518,
+      "text" : " \"Open Research Questions"
+    },
+    {
+      "t" : 28.685,
+      "text" : "\", \"Several"
+    },
+    {
+      "t" : 28.952,
+      "text" : " records"
+    },
+    {
+      "t" : 29.197,
+      "text" : " con"
+    },
+    {
+      "t" : 29.458,
+      "text" : "flict or rem"
+    },
+    {
+      "t" : 29.683,
+      "text" : "ain unf"
+    },
+    {
+      "t" : 29.865,
+      "text" : "ound."
+    },
+    {
+      "t" : 30.068,
+      "text" : " Review before"
+    },
+    {
+      "t" : 30.263,
+      "text" : " dr"
+    },
+    {
+      "t" : 30.418,
+      "text" : "aw"
+    },
+    {
+      "t" : 30.587,
+      "text" : "ing conclusions.\")"
+    },
+    {
+      "t" : 30.778,
+      "text" : "\nquestionsTags = Tag"
+    },
+    {
+      "t" : 30.96,
+      "text" : "Block([\"Un"
+    },
+    {
+      "t" : 31.145,
+      "text" : "known m"
+    },
+    {
+      "t" : 31.328,
+      "text" : "other of"
+    },
+    {
+      "t" : 31.484,
+      "text" : " John"
+    },
+    {
+      "t" : 31.645,
+      "text" : " Whitfield\", \"Con"
+    },
+    {
+      "t" : 31.815,
+      "text" : "flicting imm"
+    },
+    {
+      "t" : 32.304,
+      "text" : "igration year"
+    },
+    {
+      "t" : 32.451,
+      "text" : "\", \"Missing "
+    },
+    {
+      "t" : 32.708,
+      "text" : "1910"
+    },
+    {
+      "t" : 32.841,
+      "text" : " census"
+    },
+    {
+      "t" : 32.978,
+      "text" : "\", \"Poss"
+    },
+    {
+      "t" : 33.212,
+      "text" : "ible name"
+    },
+    {
+      "t" : 33.214,
+      "text" : " vari"
+    },
+    {
+      "t" : 33.348,
+      "text" : "ant:"
+    },
+    {
+      "t" : 33.493,
+      "text" : " Wh"
+    },
+    {
+      "t" : 33.64,
+      "text" : "itfe"
+    },
+    {
+      "t" : 33.785,
+      "text" : "ld\","
+    },
+    {
+      "t" : 34.081,
+      "text" : " \"El"
+    },
+    {
+      "t" : 34.24,
+      "text" : "sie's first"
+    },
+    {
+      "t" : 34.425,
+      "text" : " marriage?"
+    },
+    {
+      "t" : 34.427,
+      "text" : "\"])"
+    }
+  ],
+  "createdAt" : "2026-11-11T11:02:46Z",
+  "effort" : "low",
+  "format" : "openui-recording",
+  "inputTokens" : 14509,
+  "library" : "react-ui",
+  "model" : "claude-haiku-5-5",
+  "outputTokens" : 1744,
+  "request" : "A genealogy research notebook with ancestor profile cards, document citations and unresolved questions, without a family-tree diagram.",
+  "servedBy" : "claude-haiku-5-5",
+  "stopReason" : "end_turn",
+  "version" : 1
+}

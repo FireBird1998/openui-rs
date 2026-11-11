@@ -1,0 +1,820 @@
+{
+  "batchRequest" : {
+    "model" : "sonnet",
+    "number" : 77,
+    "request" : "A public-health data bulletin with fictional weekly clinic visits, a line chart by week and a note explaining the data lag."
+  },
+  "chunks" : [
+    {
+      "t" : 1.129,
+      "text" : "root = Stack([header"
+    },
+    {
+      "t" : 1.49,
+      "text" : ", note"
+    },
+    {
+      "t" : 1.51,
+      "text" : ", k"
+    },
+    {
+      "t" : 1.544,
+      "text" : "pis, chart"
+    },
+    {
+      "t" : 1.584,
+      "text" : "Card, t"
+    },
+    {
+      "t" : 1.639,
+      "text" : "ableCard,"
+    },
+    {
+      "t" : 1.652,
+      "text" : " l"
+    },
+    {
+      "t" : 1.672,
+      "text" : "agCallout])\nheader ="
+    },
+    {
+      "t" : 1.674,
+      "text" : " CardHeader(\"Reg"
+    },
+    {
+      "t" : 1.707,
+      "text" : "ional Public Health Bul"
+    },
+    {
+      "t" : 1.721,
+      "text" : "letin\", \"Weekly"
+    },
+    {
+      "t" : 1.742,
+      "text" : " clinic visits ·"
+    },
+    {
+      "t" : 1.767,
+      "text" : " Fictional data for"
+    },
+    {
+      "t" : 1.897,
+      "text" : " illustration"
+    },
+    {
+      "t" : 1.92,
+      "text" : " · Weeks 1–"
+    },
+    {
+      "t" : 1.921,
+      "text" : "8\")\nnote = TextCont"
+    },
+    {
+      "t" : 1.946,
+      "text" : "ent(\"This"
+    },
+    {
+      "t" : 1.969,
+      "text" : " bulletin summ"
+    },
+    {
+      "t" : 1.994,
+      "text" : "arizes out"
+    },
+    {
+      "t" : 2.017,
+      "text" : "patient clinic visits"
+    },
+    {
+      "t" : 2.044,
+      "text" : " across three"
+    },
+    {
+      "t" : 2.083,
+      "text" : " fictional distric"
+    },
+    {
+      "t" : 2.109,
+      "text" : "ts. Fig"
+    },
+    {
+      "t" : 2.135,
+      "text" : "ures are provisional and may"
+    },
+    {
+      "t" : 2.162,
+      "text" : " be revised."
+    },
+    {
+      "t" : 2.24,
+      "text" : "\", \"small\")\nkpis"
+    },
+    {
+      "t" : 2.266,
+      "text" : " = O"
+    },
+    {
+      "t" : 2.292,
+      "text" : "verviewCardBlock"
+    },
+    {
+      "t" : 2.32,
+      "text" : "([k1, k2, k"
+    },
+    {
+      "t" : 2.346,
+      "text" : "3])\nk1 = O"
+    },
+    {
+      "t" : 2.347,
+      "text" : "verviewCardItem(\""
+    },
+    {
+      "t" : 2.375,
+      "text" : "total\", k1top, k1"
+    },
+    {
+      "t" : 2.404,
+      "text" : "bot)\nk1top ="
+    },
+    {
+      "t" : 2.464,
+      "text" : " IconText(k1icon"
+    },
+    {
+      "t" : 2.492,
+      "text" : ", \"info"
+    },
+    {
+      "t" : 2.522,
+      "text" : "\", \"m\", \"Total"
+    },
+    {
+      "t" : 2.551,
+      "text" : " Visits (W"
+    },
+    {
+      "t" : 2.611,
+      "text" : "k 8)\", \"All distric"
+    },
+    {
+      "t" : 2.614,
+      "text" : "ts\", false,"
+    },
+    {
+      "t" : 2.645,
+      "text" : " \"horizontal\")\nk"
+    },
+    {
+      "t" : 2.676,
+      "text" : "1icon = Icon(\""
+    },
+    {
+      "t" : 2.709,
+      "text" : "st"
+    },
+    {
+      "t" : 2.742,
+      "text" : "ethoscope\", \"health"
+    },
+    {
+      "t" : 2.774,
+      "text" : "\")\nk1bot = M"
+    },
+    {
+      "t" : 2.805,
+      "text" : "etricIndicatorIn"
+    },
+    {
+      "t" : 2.844,
+      "text" : "line(\"4"
+    },
+    {
+      "t" : 2.875,
+      "text" : ",980"
+    },
+    {
+      "t" : 2.908,
+      "text" : "\", \"v"
+    },
+    {
+      "t" : 2.942,
+      "text" : "s."
+    },
+    {
+      "t" : 3.007,
+      "text" : " last week\", { direction: \""
+    },
+    {
+      "t" : 3.042,
+      "text" : "up\", value: 5"
+    },
+    {
+      "t" : 3.076,
+      "text" : " "
+    },
+    {
+      "t" : 3.11,
+      "text" : "})\nk2 = Over"
+    },
+    {
+      "t" : 3.146,
+      "text" : "viewCardItem(\"res"
+    },
+    {
+      "t" : 3.181,
+      "text" : "p\", k2top, k2"
+    },
+    {
+      "t" : 3.214,
+      "text" : "bot)\nk2top ="
+    },
+    {
+      "t" : 3.257,
+      "text" : " IconText(k2icon"
+    },
+    {
+      "t" : 3.318,
+      "text" : ", \"warning\", \"m\","
+    },
+    {
+      "t" : 3.385,
+      "text" : " \"Respiratory C"
+    },
+    {
+      "t" : 3.386,
+      "text" : "ases\", \"Week 8\","
+    },
+    {
+      "t" : 3.501,
+      "text" : " false, \"horizontal\")"
+    },
+    {
+      "t" : 3.504,
+      "text" : "\nk2icon = Ic"
+    },
+    {
+      "t" : 3.621,
+      "text" : "on(\"wind\", \"health\")"
+    },
+    {
+      "t" : 3.649,
+      "text" : "\nk2bot = Met"
+    },
+    {
+      "t" : 3.727,
+      "text" : "ricIndicatorInline"
+    },
+    {
+      "t" : 3.796,
+      "text" : "(\"1,120"
+    },
+    {
+      "t" : 3.87,
+      "text" : "\", \"v"
+    },
+    {
+      "t" : 3.943,
+      "text" : "s. last week\", { direction"
+    },
+    {
+      "t" : 4.012,
+      "text" : ": \"up\", value: 9"
+    },
+    {
+      "t" : 4.095,
+      "text" : " })\nk3 = O"
+    },
+    {
+      "t" : 4.175,
+      "text" : "verviewCardItem(\""
+    },
+    {
+      "t" : 4.247,
+      "text" : "report\", k3top, k3"
+    },
+    {
+      "t" : 4.308,
+      "text" : "bot)\nk3top ="
+    },
+    {
+      "t" : 4.39,
+      "text" : " IconText(k3icon"
+    },
+    {
+      "t" : 4.488,
+      "text" : ", \"success\", \"m\", \""
+    },
+    {
+      "t" : 4.579,
+      "text" : "Reporting Cl"
+    },
+    {
+      "t" : 4.666,
+      "text" : "inics\", \"Of"
+    },
+    {
+      "t" : 4.814,
+      "text" : " 60 "
+    },
+    {
+      "t" : 4.817,
+      "text" : "total"
+    },
+    {
+      "t" : 4.892,
+      "text" : "\", false, \"horizontal"
+    },
+    {
+      "t" : 4.974,
+      "text" : "\")\nk3icon ="
+    },
+    {
+      "t" : 5.072,
+      "text" : " Icon(\"h"
+    },
+    {
+      "t" : 5.17,
+      "text" : "ospital\", \"health\")\nk"
+    },
+    {
+      "t" : 5.269,
+      "text" : "3bot = MetricI"
+    },
+    {
+      "t" : 5.366,
+      "text" : "ndicatorInline(\"52"
+    },
+    {
+      "t" : 5.461,
+      "text" : "\", \"Clinics reported"
+    },
+    {
+      "t" : 5.561,
+      "text" : "\", { direction: \"down\","
+    },
+    {
+      "t" : 5.653,
+      "text" : " value: 3"
+    },
+    {
+      "t" : 5.753,
+      "text" : " })\nchartCard ="
+    },
+    {
+      "t" : 5.838,
+      "text" : " Card([chartHeader"
+    },
+    {
+      "t" : 5.933,
+      "text" : ", chart])\nchartH"
+    },
+    {
+      "t" : 6.008,
+      "text" : "eader = CardHeader"
+    },
+    {
+      "t" : 6.109,
+      "text" : "(\"We"
+    },
+    {
+      "t" : 6.214,
+      "text" : "ekly Clinic Vis"
+    },
+    {
+      "t" : 6.32,
+      "text" : "its by District\", \"Number"
+    },
+    {
+      "t" : 6.389,
+      "text" : " of visits per week\")\nch"
+    },
+    {
+      "t" : 6.47,
+      "text" : "art = LineChart(we"
+    },
+    {
+      "t" : 6.619,
+      "text" : "eks, [s1, s"
+    },
+    {
+      "t" : 6.621,
+      "text" : "2, s3], \"natural"
+    },
+    {
+      "t" : 6.702,
+      "text" : "\", \"Week"
+    },
+    {
+      "t" : 6.775,
+      "text" : "\", \"Visits\")\nwe"
+    },
+    {
+      "t" : 6.846,
+      "text" : "eks = [\"W"
+    },
+    {
+      "t" : 6.942,
+      "text" : "k "
+    },
+    {
+      "t" : 7.033,
+      "text" : "1\", \"Wk 2"
+    },
+    {
+      "t" : 7.142,
+      "text" : "\", \"Wk 3\","
+    },
+    {
+      "t" : 7.233,
+      "text" : " \"Wk 4\", \""
+    },
+    {
+      "t" : 7.312,
+      "text" : "Wk 5\", \""
+    },
+    {
+      "t" : 7.453,
+      "text" : "Wk 6\", \"W"
+    },
+    {
+      "t" : 7.454,
+      "text" : "k 7\", \"Wk"
+    },
+    {
+      "t" : 7.54,
+      "text" : " 8\"]\ns1 "
+    },
+    {
+      "t" : 7.625,
+      "text" : "= Series(\"North District"
+    },
+    {
+      "t" : 7.716,
+      "text" : "\", [1620"
+    },
+    {
+      "t" : 7.794,
+      "text" : ", 1580"
+    },
+    {
+      "t" : 7.875,
+      "text" : ", 1710"
+    },
+    {
+      "t" : 7.968,
+      "text" : ", 1750, 1800"
+    },
+    {
+      "t" : 8.055,
+      "text" : ", 1830"
+    },
+    {
+      "t" : 8.145,
+      "text" : ", 1880, 1950"
+    },
+    {
+      "t" : 8.233,
+      "text" : "])\ns2 = Series"
+    },
+    {
+      "t" : 8.393,
+      "text" : "(\"Central District\", [1900"
+    },
+    {
+      "t" : 8.397,
+      "text" : ", 1940"
+    },
+    {
+      "t" : 8.493,
+      "text" : ", 1920"
+    },
+    {
+      "t" : 8.646,
+      "text" : ", 2"
+    },
+    {
+      "t" : 8.648,
+      "text" : "010, 2060, 2"
+    },
+    {
+      "t" : 8.752,
+      "text" : "100"
+    },
+    {
+      "t" : 8.871,
+      "text" : ", 2140, 2230"
+    },
+    {
+      "t" : 8.981,
+      "text" : "])\ns3 = Series"
+    },
+    {
+      "t" : 9.097,
+      "text" : "(\"South"
+    },
+    {
+      "t" : 9.336,
+      "text" : " District\", [680"
+    },
+    {
+      "t" : 9.47,
+      "text" : ", 700, 720"
+    },
+    {
+      "t" : 9.593,
+      "text" : ", 710"
+    },
+    {
+      "t" : 9.665,
+      "text" : ", 760, 790, "
+    },
+    {
+      "t" : 9.761,
+      "text" : "770"
+    },
+    {
+      "t" : 9.868,
+      "text" : ", 800])\ntableC"
+    },
+    {
+      "t" : 9.991,
+      "text" : "ard = Card([tableH"
+    },
+    {
+      "t" : 9.992,
+      "text" : "eader, t"
+    },
+    {
+      "t" : 10.072,
+      "text" : "bl])\ntableHe"
+    },
+    {
+      "t" : 10.174,
+      "text" : "ader = CardHeader(\""
+    },
+    {
+      "t" : 10.268,
+      "text" : "Data Table\", \"Same"
+    },
+    {
+      "t" : 10.333,
+      "text" : " fig"
+    },
+    {
+      "t" : 10.432,
+      "text" : "ures as the chart,"
+    },
+    {
+      "t" : 10.498,
+      "text" : " with"
+    },
+    {
+      "t" : 10.554,
+      "text" : " totals\")\ntbl ="
+    },
+    {
+      "t" : 10.611,
+      "text" : " Table([Col(\"Week"
+    },
+    {
+      "t" : 10.668,
+      "text" : "\", weeks),"
+    },
+    {
+      "t" : 10.726,
+      "text" : " Col(\"North\", s"
+    },
+    {
+      "t" : 10.784,
+      "text" : "1v"
+    },
+    {
+      "t" : 10.85,
+      "text" : ", \"number\"), Col(\""
+    },
+    {
+      "t" : 10.918,
+      "text" : "Central\", s2v, \""
+    },
+    {
+      "t" : 11.041,
+      "text" : "number\"), Col(\"South\","
+    },
+    {
+      "t" : 11.044,
+      "text" : " s3v, \"number\"),"
+    },
+    {
+      "t" : 11.109,
+      "text" : " Col(\"Total\", totals"
+    },
+    {
+      "t" : 11.171,
+      "text" : ", \"number\")])\ns1"
+    },
+    {
+      "t" : 11.23,
+      "text" : "v = [1620, 1"
+    },
+    {
+      "t" : 11.343,
+      "text" : "580, 1710, 1"
+    },
+    {
+      "t" : 11.401,
+      "text" : "750, 1800, 1"
+    },
+    {
+      "t" : 11.474,
+      "text" : "830, 1880, 1"
+    },
+    {
+      "t" : 11.532,
+      "text" : "950]\ns2v = ["
+    },
+    {
+      "t" : 11.595,
+      "text" : "1900, 1940, "
+    },
+    {
+      "t" : 11.655,
+      "text" : "1920, 2010, "
+    },
+    {
+      "t" : 11.718,
+      "text" : "2060, 2100, "
+    },
+    {
+      "t" : 11.781,
+      "text" : "2140, 2230]"
+    },
+    {
+      "t" : 11.782,
+      "text" : "\ns3v = [680, "
+    },
+    {
+      "t" : 11.844,
+      "text" : "700, 720, 710,"
+    },
+    {
+      "t" : 11.91,
+      "text" : " 760, 790, 770"
+    },
+    {
+      "t" : 11.976,
+      "text" : ", 800]\ntotals ="
+    },
+    {
+      "t" : 12.065,
+      "text" : " [4200, 4220"
+    },
+    {
+      "t" : 12.153,
+      "text" : ", 4350"
+    },
+    {
+      "t" : 12.231,
+      "text" : ", 4470"
+    },
+    {
+      "t" : 12.354,
+      "text" : ", 4620"
+    },
+    {
+      "t" : 12.434,
+      "text" : ", 4720"
+    },
+    {
+      "t" : 12.501,
+      "text" : ", 4790"
+    },
+    {
+      "t" : 12.571,
+      "text" : ", 4"
+    },
+    {
+      "t" : 12.663,
+      "text" : "980]\nlagCallout"
+    },
+    {
+      "t" : 12.736,
+      "text" : " = Callout(\"warning\","
+    },
+    {
+      "t" : 12.824,
+      "text" : " \""
+    },
+    {
+      "t" : 12.9,
+      "text" : "Note on Data Lag\","
+    },
+    {
+      "t" : 12.967,
+      "text" : " \"Clinics subm"
+    },
+    {
+      "t" : 13.032,
+      "text" : "it visit counts up"
+    },
+    {
+      "t" : 13.101,
+      "text" : " to 14"
+    },
+    {
+      "t" : 13.176,
+      "text" : " days after the week"
+    },
+    {
+      "t" : 13.27,
+      "text" : " ends,"
+    },
+    {
+      "t" : 13.381,
+      "text" : " so the most recent "
+    },
+    {
+      "t" : 13.48,
+      "text" : "2–3 weeks are"
+    },
+    {
+      "t" : 13.552,
+      "text" : " typ"
+    },
+    {
+      "t" : 13.621,
+      "text" : "ically und"
+    },
+    {
+      "t" : 13.743,
+      "text" : "ercounted and rev"
+    },
+    {
+      "t" : 13.746,
+      "text" : "ised upward in"
+    },
+    {
+      "t" : 13.816,
+      "text" : " later b"
+    },
+    {
+      "t" : 13.898,
+      "text" : "ulletins. Inter"
+    },
+    {
+      "t" : 13.966,
+      "text" : "pret recent trends with"
+    },
+    {
+      "t" : 14.036,
+      "text" : " caution;"
+    },
+    {
+      "t" : 14.104,
+      "text" : " late"
+    },
+    {
+      "t" : 14.172,
+      "text" : "-reporting clinics are"
+    },
+    {
+      "t" : 14.243,
+      "text" : " not"
+    },
+    {
+      "t" : 14.313,
+      "text" : " y"
+    },
+    {
+      "t" : 14.381,
+      "text" : "et included in"
+    },
+    {
+      "t" : 14.453,
+      "text" : " Week 7"
+    },
+    {
+      "t" : 14.52,
+      "text" : "–"
+    },
+    {
+      "t" : 14.598,
+      "text" : "8 tot"
+    },
+    {
+      "t" : 14.678,
+      "text" : "als.\")"
+    }
+  ],
+  "createdAt" : "2026-11-11T10:46:06Z",
+  "effort" : "low",
+  "format" : "openui-recording",
+  "inputTokens" : 14508,
+  "library" : "react-ui",
+  "model" : "claude-sonnet-5-5",
+  "outputTokens" : 1199,
+  "request" : "A public-health data bulletin with fictional weekly clinic visits, a line chart by week and a note explaining the data lag.",
+  "servedBy" : "claude-sonnet-5-5",
+  "stopReason" : "end_turn",
+  "version" : 1
+}

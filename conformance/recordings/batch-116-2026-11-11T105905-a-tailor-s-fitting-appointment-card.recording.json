@@ -1,0 +1,1020 @@
+{
+  "batchRequest" : {
+    "model" : "haiku",
+    "number" : 116,
+    "request" : "A tailor's fitting appointment card with garment measurements, requested alterations, fittings schedule and estimated price."
+  },
+  "chunks" : [
+    {
+      "t" : 0.989,
+      "text" : "root = Stack(["
+    },
+    {
+      "t" : 1.137,
+      "text" : "header, measure"
+    },
+    {
+      "t" : 1.163,
+      "text" : "Card"
+    },
+    {
+      "t" : 1.226,
+      "text" : ", al"
+    },
+    {
+      "t" : 1.252,
+      "text" : "terCard, sc"
+    },
+    {
+      "t" : 1.294,
+      "text" : "heduleCard, pri"
+    },
+    {
+      "t" : 1.335,
+      "text" : "ceCard])\nheader = In"
+    },
+    {
+      "t" : 1.365,
+      "text" : "lineHeader(\"F"
+    },
+    {
+      "t" : 1.423,
+      "text" : "itting Appointment\", \""
+    },
+    {
+      "t" : 1.453,
+      "text" : "B"
+    },
+    {
+      "t" : 1.455,
+      "text" : "espoke T"
+    },
+    {
+      "t" : 1.492,
+      "text" : "ailoring Stud"
+    },
+    {
+      "t" : 1.527,
+      "text" : "io · Order"
+    },
+    {
+      "t" : 1.556,
+      "text" : " #T"
+    },
+    {
+      "t" : 1.602,
+      "text" : "L"
+    },
+    {
+      "t" : 1.636,
+      "text" : "R-2847"
+    },
+    {
+      "t" : 1.669,
+      "text" : "\")\nmeasureCard ="
+    },
+    {
+      "t" : 1.699,
+      "text" : " Card([meas"
+    },
+    {
+      "t" : 1.732,
+      "text" : "ureH"
+    },
+    {
+      "t" : 1.768,
+      "text" : "eader, measureTable])"
+    },
+    {
+      "t" : 1.801,
+      "text" : "\nmeasureHeader = C"
+    },
+    {
+      "t" : 1.865,
+      "text" : "ardHeader(\"Garment"
+    },
+    {
+      "t" : 1.9,
+      "text" : " Measurements\", \"Ta"
+    },
+    {
+      "t" : 1.925,
+      "text" : "ken on"
+    },
+    {
+      "t" : 1.969,
+      "text" : " 12"
+    },
+    {
+      "t" : 1.993,
+      "text" : " May"
+    },
+    {
+      "t" : 2.022,
+      "text" : " 2025 "
+    },
+    {
+      "t" : 2.061,
+      "text" : "by Mar"
+    },
+    {
+      "t" : 2.096,
+      "text" : "co"
+    },
+    {
+      "t" : 2.166,
+      "text" : " B"
+    },
+    {
+      "t" : 2.213,
+      "text" : "ellini\")\nmeasureTable"
+    },
+    {
+      "t" : 2.255,
+      "text" : " = Table([Col(\""
+    },
+    {
+      "t" : 2.299,
+      "text" : "Measurement\", measureL"
+    },
+    {
+      "t" : 2.35,
+      "text" : "abels), Col(\"In"
+    },
+    {
+      "t" : 2.398,
+      "text" : "ches\", measureVal"
+    },
+    {
+      "t" : 2.458,
+      "text" : "ues, \"number\"), Col"
+    },
+    {
+      "t" : 2.506,
+      "text" : "(\"Not"
+    },
+    {
+      "t" : 2.508,
+      "text" : "es\", measureNotes)"
+    },
+    {
+      "t" : 2.556,
+      "text" : "])\nmeasureLabels ="
+    },
+    {
+      "t" : 2.602,
+      "text" : " [\"Chest\", \""
+    },
+    {
+      "t" : 2.649,
+      "text" : "Waist\", \"Hips\","
+    },
+    {
+      "t" : 2.702,
+      "text" : " \"Shoulder width"
+    },
+    {
+      "t" : 2.755,
+      "text" : "\", \"S"
+    },
+    {
+      "t" : 2.852,
+      "text" : "leeve length\", \"In"
+    },
+    {
+      "t" : 2.854,
+      "text" : "se"
+    },
+    {
+      "t" : 2.913,
+      "text" : "am\","
+    },
+    {
+      "t" : 2.971,
+      "text" : " \"J"
+    },
+    {
+      "t" : 3.064,
+      "text" : "acket length\"]\nmeasure"
+    },
+    {
+      "t" : 3.066,
+      "text" : "Values = [40"
+    },
+    {
+      "t" : 3.116,
+      "text" : ".0"
+    },
+    {
+      "t" : 3.172,
+      "text" : ", 34"
+    },
+    {
+      "t" : 3.258,
+      "text" : ".5"
+    },
+    {
+      "t" : 3.328,
+      "text" : ", 39"
+    },
+    {
+      "t" : 3.407,
+      "text" : ".0, 18"
+    },
+    {
+      "t" : 3.479,
+      "text" : ".25"
+    },
+    {
+      "t" : 3.557,
+      "text" : ", 25"
+    },
+    {
+      "t" : 3.643,
+      "text" : ".5, 32.0"
+    },
+    {
+      "t" : 3.72,
+      "text" : ", 29"
+    },
+    {
+      "t" : 3.78,
+      "text" : ".0"
+    },
+    {
+      "t" : 3.831,
+      "text" : "]\nmeasureNotes ="
+    },
+    {
+      "t" : 3.881,
+      "text" : " [\"+"
+    },
+    {
+      "t" : 3.94,
+      "text" : "0"
+    },
+    {
+      "t" : 3.986,
+      "text" : ".5 ease\", \""
+    },
+    {
+      "t" : 4.036,
+      "text" : "Taken"
+    },
+    {
+      "t" : 4.084,
+      "text" : " rel"
+    },
+    {
+      "t" : 4.132,
+      "text" : "axed\", \"Stand"
+    },
+    {
+      "t" : 4.184,
+      "text" : "ard\", \"Nar"
+    },
+    {
+      "t" : 4.24,
+      "text" : "row sh"
+    },
+    {
+      "t" : 4.29,
+      "text" : "oulder\", \"Left"
+    },
+    {
+      "t" : 4.343,
+      "text" : " ar"
+    },
+    {
+      "t" : 4.4,
+      "text" : "m "
+    },
+    {
+      "t" : 4.454,
+      "text" : "0"
+    },
+    {
+      "t" : 4.5,
+      "text" : ".25"
+    },
+    {
+      "t" : 4.548,
+      "text" : " long"
+    },
+    {
+      "t" : 4.604,
+      "text" : "er\", \"Tr"
+    },
+    {
+      "t" : 4.657,
+      "text" : "ou"
+    },
+    {
+      "t" : 4.717,
+      "text" : "ser break"
+    },
+    {
+      "t" : 4.766,
+      "text" : " "
+    },
+    {
+      "t" : 4.823,
+      "text" : "1 "
+    },
+    {
+      "t" : 4.913,
+      "text" : "in\", \"Half"
+    },
+    {
+      "t" : 4.914,
+      "text" : "-l"
+    },
+    {
+      "t" : 4.97,
+      "text" : "ined\"]\nalterCard"
+    },
+    {
+      "t" : 5.03,
+      "text" : " = Card([alterHe"
+    },
+    {
+      "t" : 5.098,
+      "text" : "ader, alterList"
+    },
+    {
+      "t" : 5.167,
+      "text" : "])\nalterHeader ="
+    },
+    {
+      "t" : 5.242,
+      "text" : " CardHeader(\"Requ"
+    },
+    {
+      "t" : 5.334,
+      "text" : "ested Alterations\", \""
+    },
+    {
+      "t" : 5.422,
+      "text" : "Disc"
+    },
+    {
+      "t" : 5.499,
+      "text" : "ussed with client"
+    },
+    {
+      "t" : 5.574,
+      "text" : "\")\nalterList = List"
+    },
+    {
+      "t" : 5.658,
+      "text" : "Block([alt"
+    },
+    {
+      "t" : 5.733,
+      "text" : "1, alt2, alt"
+    },
+    {
+      "t" : 5.823,
+      "text" : "3, alt4], \"number"
+    },
+    {
+      "t" : 5.91,
+      "text" : "\")\nalt1 = "
+    },
+    {
+      "t" : 6.081,
+      "text" : "ListItem(\"Take in"
+    },
+    {
+      "t" : 6.165,
+      "text" : " waist by"
+    },
+    {
+      "t" : 6.25,
+      "text" : " 1"
+    },
+    {
+      "t" : 6.31,
+      "text" : " in"
+    },
+    {
+      "t" : 6.342,
+      "text" : "ch\", \"Dar"
+    },
+    {
+      "t" : 6.423,
+      "text" : "ted"
+    },
+    {
+      "t" : 6.505,
+      "text" : " back"
+    },
+    {
+      "t" : 6.624,
+      "text" : ", center se"
+    },
+    {
+      "t" : 6.704,
+      "text" : "am\")\nalt2 ="
+    },
+    {
+      "t" : 6.787,
+      "text" : " ListItem(\"Shor"
+    },
+    {
+      "t" : 6.878,
+      "text" : "ten sleeves by"
+    },
+    {
+      "t" : 6.968,
+      "text" : " 0.5"
+    },
+    {
+      "t" : 7.044,
+      "text" : " inch"
+    },
+    {
+      "t" : 7.134,
+      "text" : "\", \"Ma"
+    },
+    {
+      "t" : 7.237,
+      "text" : "intain cuff button"
+    },
+    {
+      "t" : 7.343,
+      "text" : " sp"
+    },
+    {
+      "t" : 7.461,
+      "text" : "acing\")\nalt3 "
+    },
+    {
+      "t" : 7.54,
+      "text" : "= ListItem(\"Ta"
+    },
+    {
+      "t" : 7.628,
+      "text" : "per tr"
+    },
+    {
+      "t" : 7.675,
+      "text" : "ou"
+    },
+    {
+      "t" : 7.746,
+      "text" : "ser legs\", \"Sl"
+    },
+    {
+      "t" : 7.747,
+      "text" : "im f"
+    },
+    {
+      "t" : 7.834,
+      "text" : "it from kn"
+    },
+    {
+      "t" : 7.908,
+      "text" : "ee to hem"
+    },
+    {
+      "t" : 8.009,
+      "text" : "\")\nalt4 = "
+    },
+    {
+      "t" : 8.1,
+      "text" : "ListItem(\"Replace hor"
+    },
+    {
+      "t" : 8.172,
+      "text" : "n bu"
+    },
+    {
+      "t" : 8.267,
+      "text" : "ttons\", \"M"
+    },
+    {
+      "t" : 8.346,
+      "text" : "other"
+    },
+    {
+      "t" : 8.393,
+      "text" : "-of-pearl, "
+    },
+    {
+      "t" : 8.483,
+      "text" : "6 p"
+    },
+    {
+      "t" : 8.569,
+      "text" : "ieces\")\nschedule"
+    },
+    {
+      "t" : 8.663,
+      "text" : "Card = Card([sche"
+    },
+    {
+      "t" : 8.753,
+      "text" : "duleHeader, sche"
+    },
+    {
+      "t" : 8.85,
+      "text" : "duleS"
+    },
+    {
+      "t" : 8.954,
+      "text" : "teps])\nschedule"
+    },
+    {
+      "t" : 9.128,
+      "text" : "Header = C"
+    },
+    {
+      "t" : 9.226,
+      "text" : "ardHeader(\"Fit"
+    },
+    {
+      "t" : 9.228,
+      "text" : "ting Schedule\", \""
+    },
+    {
+      "t" : 9.342,
+      "text" : "Three s"
+    },
+    {
+      "t" : 9.446,
+      "text" : "essions plan"
+    },
+    {
+      "t" : 9.554,
+      "text" : "ned\")\nscheduleS"
+    },
+    {
+      "t" : 9.649,
+      "text" : "teps = Steps([step"
+    },
+    {
+      "t" : 9.739,
+      "text" : "1, step2, step3])"
+    },
+    {
+      "t" : 9.875,
+      "text" : "\nstep1 = Steps"
+    },
+    {
+      "t" : 9.877,
+      "text" : "Item(\"First"
+    },
+    {
+      "t" : 10.018,
+      "text" : " fitting ·"
+    },
+    {
+      "t" : 10.164,
+      "text" : " 20"
+    },
+    {
+      "t" : 10.166,
+      "text" : " May 2025,"
+    },
+    {
+      "t" : 10.252,
+      "text" : " 10:00\", \"Ba"
+    },
+    {
+      "t" : 10.363,
+      "text" : "ste"
+    },
+    {
+      "t" : 10.445,
+      "text" : " al"
+    },
+    {
+      "t" : 10.527,
+      "text" : "terations and check dr"
+    },
+    {
+      "t" : 10.609,
+      "text" : "ape and bal"
+    },
+    {
+      "t" : 10.695,
+      "text" : "ance\")\nstep2 = St"
+    },
+    {
+      "t" : 10.862,
+      "text" : "epsItem(\"Second f"
+    },
+    {
+      "t" : 10.949,
+      "text" : "itting · 27"
+    },
+    {
+      "t" : 11.033,
+      "text" : " May 2025, 14"
+    },
+    {
+      "t" : 11.105,
+      "text" : ":30\", \"Ref"
+    },
+    {
+      "t" : 11.175,
+      "text" : "ine shoulder line"
+    },
+    {
+      "t" : 11.261,
+      "text" : " and tr"
+    },
+    {
+      "t" : 11.262,
+      "text" : "ouser break\")\nstep3 "
+    },
+    {
+      "t" : 11.365,
+      "text" : "= StepsItem(\""
+    },
+    {
+      "t" : 11.456,
+      "text" : "Final fitting · 3"
+    },
+    {
+      "t" : 11.53,
+      "text" : " June"
+    },
+    {
+      "t" : 11.647,
+      "text" : " 2025, 11"
+    },
+    {
+      "t" : 11.742,
+      "text" : ":00\", \"P"
+    },
+    {
+      "t" : 11.851,
+      "text" : "ressing and"
+    },
+    {
+      "t" : 11.929,
+      "text" : " finishing check before"
+    },
+    {
+      "t" : 12.016,
+      "text" : " collection\")\npriceCard"
+    },
+    {
+      "t" : 12.098,
+      "text" : " = Card([priceHe"
+    },
+    {
+      "t" : 12.344,
+      "text" : "ader, priceList"
+    },
+    {
+      "t" : 12.483,
+      "text" : ", priceT"
+    },
+    {
+      "t" : 12.598,
+      "text" : "otal,"
+    },
+    {
+      "t" : 12.698,
+      "text" : " priceBut"
+    },
+    {
+      "t" : 12.796,
+      "text" : "tons])\npriceHe"
+    },
+    {
+      "t" : 12.888,
+      "text" : "ader = CardHeader(\""
+    },
+    {
+      "t" : 12.976,
+      "text" : "Estimated Price\", \""
+    },
+    {
+      "t" : 13.068,
+      "text" : "Exc"
+    },
+    {
+      "t" : 13.189,
+      "text" : "ludes f"
+    },
+    {
+      "t" : 13.276,
+      "text" : "abric already"
+    },
+    {
+      "t" : 13.352,
+      "text" : " sup"
+    },
+    {
+      "t" : 13.452,
+      "text" : "plied\")\npriceList ="
+    },
+    {
+      "t" : 13.549,
+      "text" : " EntityList([pri"
+    },
+    {
+      "t" : 13.661,
+      "text" : "ceR"
+    },
+    {
+      "t" : 13.775,
+      "text" : "ow1, priceRow2"
+    },
+    {
+      "t" : 13.913,
+      "text" : ", priceRow3, pri"
+    },
+    {
+      "t" : 14.044,
+      "text" : "ceRow4], \"default"
+    },
+    {
+      "t" : 14.159,
+      "text" : "\","
+    },
+    {
+      "t" : 14.265,
+      "text" : " priceHead"
+    },
+    {
+      "t" : 14.346,
+      "text" : ", priceF"
+    },
+    {
+      "t" : 14.434,
+      "text" : "oot)\npriceH"
+    },
+    {
+      "t" : 14.52,
+      "text" : "ead = {"
+    },
+    {
+      "t" : 14.62,
+      "text" : "left: \"Item\", right:"
+    },
+    {
+      "t" : 14.726,
+      "text" : " \"C"
+    },
+    {
+      "t" : 14.894,
+      "text" : "ost\", rightVariant:"
+    },
+    {
+      "t" : 14.897,
+      "text" : " \"text"
+    },
+    {
+      "t" : 14.989,
+      "text" : "\"}\npriceRow1"
+    },
+    {
+      "t" : 15.694,
+      "text" : " = {left: \"Al"
+    },
+    {
+      "t" : 15.819,
+      "text" : "ter"
+    },
+    {
+      "t" : 15.947,
+      "text" : "ations lab"
+    },
+    {
+      "t" : 16.077,
+      "text" : "our\", right: \"£"
+    },
+    {
+      "t" : 16.197,
+      "text" : "185"
+    },
+    {
+      "t" : 16.319,
+      "text" : "\", rightVariant: \""
+    },
+    {
+      "t" : 16.459,
+      "text" : "number\"}\npriceRow"
+    },
+    {
+      "t" : 16.582,
+      "text" : "2 = {left: \""
+    },
+    {
+      "t" : 16.776,
+      "text" : "Sleeve and"
+    },
+    {
+      "t" : 16.954,
+      "text" : " cuff work\", right: \""
+    },
+    {
+      "t" : 17.082,
+      "text" : "£60\", rightVariant"
+    },
+    {
+      "t" : 17.191,
+      "text" : ": \"number\"}\nprice"
+    },
+    {
+      "t" : 17.301,
+      "text" : "Row3 = {left:"
+    },
+    {
+      "t" : 17.435,
+      "text" : " \"Button"
+    },
+    {
+      "t" : 17.566,
+      "text" : " replacement ("
+    },
+    {
+      "t" : 17.716,
+      "text" : "6)\", right: \"£36"
+    },
+    {
+      "t" : 17.857,
+      "text" : "\", rightVariant: \""
+    },
+    {
+      "t" : 18.024,
+      "text" : "number\"}\npriceRow"
+    },
+    {
+      "t" : 18.354,
+      "text" : "4 = {left: \""
+    },
+    {
+      "t" : 18.356,
+      "text" : "R"
+    },
+    {
+      "t" : 18.555,
+      "text" : "ush fin"
+    },
+    {
+      "t" : 18.675,
+      "text" : "ish"
+    },
+    {
+      "t" : 18.788,
+      "text" : "ing\","
+    },
+    {
+      "t" : 18.914,
+      "text" : " right: \"£"
+    },
+    {
+      "t" : 19.17,
+      "text" : "40\", rightVariant:"
+    },
+    {
+      "t" : 19.172,
+      "text" : " \"number\"}\npriceF"
+    },
+    {
+      "t" : 19.357,
+      "text" : "oot = {left: \""
+    },
+    {
+      "t" : 19.475,
+      "text" : "Estimated total\", right: \""
+    },
+    {
+      "t" : 19.613,
+      "text" : "£321"
+    },
+    {
+      "t" : 19.758,
+      "text" : "\", rightVariant: \""
+    },
+    {
+      "t" : 19.987,
+      "text" : "number\"}\npriceTot"
+    },
+    {
+      "t" : 20.145,
+      "text" : "al = TextCallout(\""
+    },
+    {
+      "t" : 20.25,
+      "text" : "info\", \"De"
+    },
+    {
+      "t" : 20.371,
+      "text" : "posit pa"
+    },
+    {
+      "t" : 20.487,
+      "text" : "id\", \"£"
+    },
+    {
+      "t" : 20.656,
+      "text" : "100"
+    },
+    {
+      "t" : 20.764,
+      "text" : " received"
+    },
+    {
+      "t" : 20.882,
+      "text" : ";"
+    },
+    {
+      "t" : 20.959,
+      "text" : " bal"
+    },
+    {
+      "t" : 21.075,
+      "text" : "ance due"
+    },
+    {
+      "t" : 21.076,
+      "text" : " at"
+    },
+    {
+      "t" : 21.313,
+      "text" : " collection\")\npriceButt"
+    },
+    {
+      "t" : 21.414,
+      "text" : "ons = Buttons([conf"
+    },
+    {
+      "t" : 21.541,
+      "text" : "irmBtn, r"
+    },
+    {
+      "t" : 21.684,
+      "text" : "escheduleBtn])"
+    },
+    {
+      "t" : 21.686,
+      "text" : "\nconfirmBtn ="
+    },
+    {
+      "t" : 21.829,
+      "text" : " Button(\"Confirm"
+    },
+    {
+      "t" : 22.108,
+      "text" : " Appointment\", @ToA"
+    },
+    {
+      "t" : 22.238,
+      "text" : "ssistant(\"Confirm"
+    },
+    {
+      "t" : 22.38,
+      "text" : " my"
+    },
+    {
+      "t" : 22.538,
+      "text" : " fitting appointment\"),"
+    },
+    {
+      "t" : 22.713,
+      "text" : " \"primary\")\nresche"
+    },
+    {
+      "t" : 22.901,
+      "text" : "duleBtn = Button"
+    },
+    {
+      "t" : 23.098,
+      "text" : "(\"Reschedule\", @"
+    },
+    {
+      "t" : 23.266,
+      "text" : "ToAssistant(\"I"
+    },
+    {
+      "t" : 23.434,
+      "text" : " need to reschedule my"
+    },
+    {
+      "t" : 23.586,
+      "text" : " fitting\"), \"second"
+    },
+    {
+      "t" : 23.707,
+      "text" : "ary\")"
+    }
+  ],
+  "createdAt" : "2026-11-11T10:59:05Z",
+  "effort" : "low",
+  "format" : "openui-recording",
+  "inputTokens" : 14506,
+  "library" : "react-ui",
+  "model" : "claude-haiku-5-5",
+  "outputTokens" : 1272,
+  "request" : "A tailor's fitting appointment card with garment measurements, requested alterations, fittings schedule and estimated price.",
+  "servedBy" : "claude-haiku-5-5",
+  "stopReason" : "end_turn",
+  "version" : 1
+}

@@ -1,0 +1,1048 @@
+{
+  "batchRequest" : {
+    "model" : "sonnet",
+    "number" : 87,
+    "request" : "A coastal erosion report with shoreline retreat measurements by beach, a before-and-after image pair and a monitoring schedule."
+  },
+  "chunks" : [
+    {
+      "t" : 0.854,
+      "text" : "root = Stack([title,"
+    },
+    {
+      "t" : 1.163,
+      "text" : " intro, k"
+    },
+    {
+      "t" : 1.201,
+      "text" : "piHeader, kp"
+    },
+    {
+      "t" : 1.291,
+      "text" : "iBlock, retreat"
+    },
+    {
+      "t" : 1.321,
+      "text" : "C"
+    },
+    {
+      "t" : 1.416,
+      "text" : "ard, t"
+    },
+    {
+      "t" : 1.458,
+      "text" : "ableC"
+    },
+    {
+      "t" : 1.459,
+      "text" : "ard, img"
+    },
+    {
+      "t" : 1.488,
+      "text" : "Header, imgN"
+    },
+    {
+      "t" : 1.543,
+      "text" : "ote, scheduleHe"
+    },
+    {
+      "t" : 1.588,
+      "text" : "ader, scheduleT"
+    },
+    {
+      "t" : 1.59,
+      "text" : "able, n"
+    },
+    {
+      "t" : 1.633,
+      "text" : "extS"
+    },
+    {
+      "t" : 1.685,
+      "text" : "teps])\ntitle = Text"
+    },
+    {
+      "t" : 1.686,
+      "text" : "Content(\"Coastal"
+    },
+    {
+      "t" : 1.718,
+      "text" : " Erosion Report 2024"
+    },
+    {
+      "t" : 1.753,
+      "text" : "\", \"large-heavy\")"
+    },
+    {
+      "t" : 1.787,
+      "text" : "\nintro ="
+    },
+    {
+      "t" : 1.841,
+      "text" : " Callout(\"war"
+    },
+    {
+      "t" : 1.879,
+      "text" : "ning\", \"Acc"
+    },
+    {
+      "t" : 1.916,
+      "text" : "elerating Retreat\","
+    },
+    {
+      "t" : 1.95,
+      "text" : " \"Three of five mon"
+    },
+    {
+      "t" : 1.982,
+      "text" : "itored beaches ex"
+    },
+    {
+      "t" : 2.018,
+      "text" : "ceeded their 5"
+    },
+    {
+      "t" : 2.052,
+      "text" : "-year average sh"
+    },
+    {
+      "t" : 2.087,
+      "text" : "oreline retreat this"
+    },
+    {
+      "t" : 2.135,
+      "text" : " year,"
+    },
+    {
+      "t" : 2.202,
+      "text" : " driven by winter storm"
+    },
+    {
+      "t" : 2.258,
+      "text" : " surges.\")\nkpi"
+    },
+    {
+      "t" : 2.352,
+      "text" : "Header = InlineH"
+    },
+    {
+      "t" : 2.399,
+      "text" : "eader(\"Key"
+    },
+    {
+      "t" : 2.444,
+      "text" : " Findings\", \"Ann"
+    },
+    {
+      "t" : 2.489,
+      "text" : "ual summary across five"
+    },
+    {
+      "t" : 2.541,
+      "text" : " monitored beaches\")"
+    },
+    {
+      "t" : 2.544,
+      "text" : "\nkpiBlock = S"
+    },
+    {
+      "t" : 2.588,
+      "text" : "nippetCardBlock"
+    },
+    {
+      "t" : 2.63,
+      "text" : "([k1, k2, k"
+    },
+    {
+      "t" : 2.669,
+      "text" : "3])\nk1 = S"
+    },
+    {
+      "t" : 2.75,
+      "text" : "nippetCardItem(\""
+    },
+    {
+      "t" : 2.754,
+      "text" : "avg\","
+    },
+    {
+      "t" : 2.791,
+      "text" : " k1l"
+    },
+    {
+      "t" : 2.831,
+      "text" : ", k1r)\nk1"
+    },
+    {
+      "t" : 2.87,
+      "text" : "l = IconText(k1"
+    },
+    {
+      "t" : 2.913,
+      "text" : "i, \"neutral\", \""
+    },
+    {
+      "t" : 2.97,
+      "text" : "m\", \"Av"
+    },
+    {
+      "t" : 3.019,
+      "text" : "g."
+    },
+    {
+      "t" : 3.063,
+      "text" : " Retreat\", \"All"
+    },
+    {
+      "t" : 3.111,
+      "text" : " beaches\", false, \"hor"
+    },
+    {
+      "t" : 3.155,
+      "text" : "izontal\")\nk1i"
+    },
+    {
+      "t" : 3.212,
+      "text" : " = Icon(\"waves\","
+    },
+    {
+      "t" : 3.268,
+      "text" : " \"n"
+    },
+    {
+      "t" : 3.311,
+      "text" : "ature\")\nk1r = B"
+    },
+    {
+      "t" : 3.399,
+      "text" : "oldText(\"number\", \"1"
+    },
+    {
+      "t" : 3.452,
+      "text" : ".9 m\", \"+0"
+    },
+    {
+      "t" : 3.504,
+      "text" : ".4 m\", \"metric"
+    },
+    {
+      "t" : 3.547,
+      "text" : "\")\nk2 = Sn"
+    },
+    {
+      "t" : 3.59,
+      "text" : "ippetCardItem(\"max"
+    },
+    {
+      "t" : 3.593,
+      "text" : "\", k2l, k2r"
+    },
+    {
+      "t" : 3.65,
+      "text" : ")\nk2l = Icon"
+    },
+    {
+      "t" : 3.707,
+      "text" : "Text(k2i, \"ne"
+    },
+    {
+      "t" : 3.752,
+      "text" : "utral\", \"m\", \""
+    },
+    {
+      "t" : 3.799,
+      "text" : "Max"
+    },
+    {
+      "t" : 3.88,
+      "text" : " Retreat\", \"Har"
+    },
+    {
+      "t" : 3.989,
+      "text" : "l"
+    },
+    {
+      "t" : 4.044,
+      "text" : "ow Point"
+    },
+    {
+      "t" : 4.103,
+      "text" : "\", false, \"horizontal"
+    },
+    {
+      "t" : 4.187,
+      "text" : "\")\nk2i = Ic"
+    },
+    {
+      "t" : 4.254,
+      "text" : "on(\"triangle-al"
+    },
+    {
+      "t" : 4.256,
+      "text" : "ert\", \"al"
+    },
+    {
+      "t" : 4.332,
+      "text" : "erts\")\nk2r ="
+    },
+    {
+      "t" : 4.495,
+      "text" : " BoldText(\"number\", \""
+    },
+    {
+      "t" : 4.562,
+      "text" : "3.4 m\", \"+"
+    },
+    {
+      "t" : 4.7,
+      "text" : "0.9"
+    },
+    {
+      "t" : 4.818,
+      "text" : " m\", \"metric\")"
+    },
+    {
+      "t" : 4.819,
+      "text" : "\nk3 = Snippet"
+    },
+    {
+      "t" : 4.867,
+      "text" : "CardItem(\"stable\","
+    },
+    {
+      "t" : 4.913,
+      "text" : " k3l, k3r)"
+    },
+    {
+      "t" : 4.963,
+      "text" : "\nk3l = IconText"
+    },
+    {
+      "t" : 5.02,
+      "text" : "(k3i, \"neut"
+    },
+    {
+      "t" : 5.072,
+      "text" : "ral\", \"m\", \"St"
+    },
+    {
+      "t" : 5.119,
+      "text" : "able Beaches\", \""
+    },
+    {
+      "t" : 5.195,
+      "text" : "Under"
+    },
+    {
+      "t" : 5.289,
+      "text" : " 1"
+    },
+    {
+      "t" : 5.29,
+      "text" : " m\", false, \"horiz"
+    },
+    {
+      "t" : 5.338,
+      "text" : "ontal\")\nk3i ="
+    },
+    {
+      "t" : 5.409,
+      "text" : " Icon(\"shield-check"
+    },
+    {
+      "t" : 5.533,
+      "text" : "\", \"security"
+    },
+    {
+      "t" : 5.639,
+      "text" : "\")\nk3r = Bo"
+    },
+    {
+      "t" : 5.641,
+      "text" : "ldText(\"number\", \"1"
+    },
+    {
+      "t" : 5.719,
+      "text" : " "
+    },
+    {
+      "t" : 5.776,
+      "text" : "of 5\")\nretreat"
+    },
+    {
+      "t" : 5.843,
+      "text" : "Card = Card([ret"
+    },
+    {
+      "t" : 5.915,
+      "text" : "reatHeader, retre"
+    },
+    {
+      "t" : 5.976,
+      "text" : "atChart])\nretreat"
+    },
+    {
+      "t" : 6.035,
+      "text" : "Header = CardHe"
+    },
+    {
+      "t" : 6.089,
+      "text" : "ader(\"Shoreline"
+    },
+    {
+      "t" : 6.151,
+      "text" : " Retreat by Beach\","
+    },
+    {
+      "t" : 6.308,
+      "text" : " \"Met"
+    },
+    {
+      "t" : 6.31,
+      "text" : "res l"
+    },
+    {
+      "t" : 6.501,
+      "text" : "ost,"
+    },
+    {
+      "t" : 6.564,
+      "text" : " 2022"
+    },
+    {
+      "t" : 6.63,
+      "text" : " to"
+    },
+    {
+      "t" : 6.702,
+      "text" : " 2024\")\nretreat"
+    },
+    {
+      "t" : 6.902,
+      "text" : "Chart = BarChart("
+    },
+    {
+      "t" : 6.907,
+      "text" : "bea"
+    },
+    {
+      "t" : 6.991,
+      "text" : "ches, [s22"
+    },
+    {
+      "t" : 7.067,
+      "text" : ", s23,"
+    },
+    {
+      "t" : 7.204,
+      "text" : " s24], \"grouped\","
+    },
+    {
+      "t" : 7.271,
+      "text" : " \"Be"
+    },
+    {
+      "t" : 7.427,
+      "text" : "ach\", \"Retreat ("
+    },
+    {
+      "t" : 7.429,
+      "text" : "m)\")\nbe"
+    },
+    {
+      "t" : 7.539,
+      "text" : "aches = [\"Har"
+    },
+    {
+      "t" : 7.54,
+      "text" : "low Point\", \"S"
+    },
+    {
+      "t" : 7.605,
+      "text" : "andy C"
+    },
+    {
+      "t" : 7.666,
+      "text" : "ove\", \"Gull"
+    },
+    {
+      "t" : 7.782,
+      "text" : " Bay\", \"Pine"
+    },
+    {
+      "t" : 7.866,
+      "text" : " Str"
+    },
+    {
+      "t" : 7.924,
+      "text" : "and\", \"Mar"
+    },
+    {
+      "t" : 7.984,
+      "text" : "l"
+    },
+    {
+      "t" : 8.049,
+      "text" : "ow Sands"
+    },
+    {
+      "t" : 8.112,
+      "text" : "\"]\ns22 ="
+    },
+    {
+      "t" : 8.171,
+      "text" : " Series(\"2022\", [2"
+    },
+    {
+      "t" : 8.245,
+      "text" : ".1, 1.2"
+    },
+    {
+      "t" : 8.303,
+      "text" : ", 1.5"
+    },
+    {
+      "t" : 8.34,
+      "text" : ", 0.6"
+    },
+    {
+      "t" : 8.398,
+      "text" : ", 1.0])\ns"
+    },
+    {
+      "t" : 8.4,
+      "text" : "23 = Series(\"2023"
+    },
+    {
+      "t" : 8.466,
+      "text" : "\", [2.5"
+    },
+    {
+      "t" : 8.536,
+      "text" : ", 1.4"
+    },
+    {
+      "t" : 8.598,
+      "text" : ", 1.8, 0"
+    },
+    {
+      "t" : 8.667,
+      "text" : ".7, 1"
+    },
+    {
+      "t" : 8.735,
+      "text" : ".3"
+    },
+    {
+      "t" : 8.814,
+      "text" : "])\ns24 = Series"
+    },
+    {
+      "t" : 8.893,
+      "text" : "(\"2024\", [3.4"
+    },
+    {
+      "t" : 8.962,
+      "text" : ", 2.0, 2"
+    },
+    {
+      "t" : 9.032,
+      "text" : ".3"
+    },
+    {
+      "t" : 9.155,
+      "text" : ", 0.8, 1"
+    },
+    {
+      "t" : 9.237,
+      "text" : ".2"
+    },
+    {
+      "t" : 9.318,
+      "text" : "])\ntableCard ="
+    },
+    {
+      "t" : 9.483,
+      "text" : " Card([tableHeader,"
+    },
+    {
+      "t" : 9.484,
+      "text" : " meas"
+    },
+    {
+      "t" : 9.577,
+      "text" : "ureTable])\ntableH"
+    },
+    {
+      "t" : 9.658,
+      "text" : "eader = CardHeader"
+    },
+    {
+      "t" : 9.729,
+      "text" : "(\"Meas"
+    },
+    {
+      "t" : 9.799,
+      "text" : "urement Details"
+    },
+    {
+      "t" : 9.921,
+      "text" : "\", \"Surv"
+    },
+    {
+      "t" : 9.924,
+      "text" : "ey data"
+    },
+    {
+      "t" : 9.994,
+      "text" : " and"
+    },
+    {
+      "t" : 10.075,
+      "text" : " risk rating\")\nmeasure"
+    },
+    {
+      "t" : 10.155,
+      "text" : "Table = Table([Col"
+    },
+    {
+      "t" : 10.228,
+      "text" : "(\"Beach\", beaches"
+    },
+    {
+      "t" : 10.312,
+      "text" : "), Col(\"Retreat"
+    },
+    {
+      "t" : 10.411,
+      "text" : " "
+    },
+    {
+      "t" : 10.495,
+      "text" : "2024 (m)\", r"
+    },
+    {
+      "t" : 10.586,
+      "text" : "24, \"number\"), Col"
+    },
+    {
+      "t" : 10.712,
+      "text" : "(\"5-y"
+    },
+    {
+      "t" : 10.714,
+      "text" : "r Avg (m)\","
+    },
+    {
+      "t" : 10.821,
+      "text" : " avg"
+    },
+    {
+      "t" : 10.89,
+      "text" : "5"
+    },
+    {
+      "t" : 10.962,
+      "text" : ", \"number\"), Col(\""
+    },
+    {
+      "t" : 11.042,
+      "text" : "Ris"
+    },
+    {
+      "t" : 11.114,
+      "text" : "k\", risk)])\nr"
+    },
+    {
+      "t" : 11.203,
+      "text" : "24 = [3.4,"
+    },
+    {
+      "t" : 11.282,
+      "text" : " 2.0, 2."
+    },
+    {
+      "t" : 11.422,
+      "text" : "3, 0.8, "
+    },
+    {
+      "t" : 11.423,
+      "text" : "1.2]\navg5"
+    },
+    {
+      "t" : 11.497,
+      "text" : " = [2.3"
+    },
+    {
+      "t" : 11.588,
+      "text" : ", 1.5"
+    },
+    {
+      "t" : 11.669,
+      "text" : ", 1.7"
+    },
+    {
+      "t" : 11.821,
+      "text" : ", 0.7, 1"
+    },
+    {
+      "t" : 11.896,
+      "text" : ".1]\nrisk = ["
+    },
+    {
+      "t" : 11.899,
+      "text" : "Tag(\"High\", null"
+    },
+    {
+      "t" : 11.989,
+      "text" : ", \"sm\", \"danger"
+    },
+    {
+      "t" : 12.089,
+      "text" : "\"), Tag(\""
+    },
+    {
+      "t" : 12.191,
+      "text" : "Moderate\", null, \"s"
+    },
+    {
+      "t" : 12.289,
+      "text" : "m\", \"warning\"),"
+    },
+    {
+      "t" : 12.394,
+      "text" : " Tag(\"Moderate\","
+    },
+    {
+      "t" : 12.477,
+      "text" : " null, \"sm\", \"war"
+    },
+    {
+      "t" : 12.563,
+      "text" : "ning\"), Tag(\""
+    },
+    {
+      "t" : 12.66,
+      "text" : "Low\", null, \"sm\","
+    },
+    {
+      "t" : 12.76,
+      "text" : " \"success\"), Tag(\""
+    },
+    {
+      "t" : 12.86,
+      "text" : "Low\", null, \"sm"
+    },
+    {
+      "t" : 12.963,
+      "text" : "\", \"success\")]\nimg"
+    },
+    {
+      "t" : 13.068,
+      "text" : "Header = InlineH"
+    },
+    {
+      "t" : 13.224,
+      "text" : "eader(\"Before and After\","
+    },
+    {
+      "t" : 13.309,
+      "text" : " \"Harlow Point c"
+    },
+    {
+      "t" : 13.414,
+      "text" : "liff ed"
+    },
+    {
+      "t" : 13.49,
+      "text" : "ge, 2019"
+    },
+    {
+      "t" : 13.602,
+      "text" : " v"
+    },
+    {
+      "t" : 13.738,
+      "text" : "s 2024\")\nimg"
+    },
+    {
+      "t" : 13.835,
+      "text" : "Note ="
+    },
+    {
+      "t" : 13.837,
+      "text" : " Callout(\"info\", \"Image"
+    },
+    {
+      "t" : 13.954,
+      "text" : " Com"
+    },
+    {
+      "t" : 14.051,
+      "text" : "parison\", \"Pa"
+    },
+    {
+      "t" : 14.152,
+      "text" : "ired photos were not"
+    },
+    {
+      "t" : 14.256,
+      "text" : " available in this report"
+    },
+    {
+      "t" : 14.361,
+      "text" : ". Upload site"
+    },
+    {
+      "t" : 14.477,
+      "text" : " photos from"
+    },
+    {
+      "t" : 14.582,
+      "text" : " the same"
+    },
+    {
+      "t" : 14.77,
+      "text" : " v"
+    },
+    {
+      "t" : 14.771,
+      "text" : "antage point to add"
+    },
+    {
+      "t" : 14.878,
+      "text" : " the"
+    },
+    {
+      "t" : 14.991,
+      "text" : " comparison here.\")\nsc"
+    },
+    {
+      "t" : 15.137,
+      "text" : "heduleHeader = In"
+    },
+    {
+      "t" : 15.251,
+      "text" : "lineHeader(\"Mon"
+    },
+    {
+      "t" : 15.395,
+      "text" : "itoring Schedule\","
+    },
+    {
+      "t" : 15.544,
+      "text" : " \"Plan"
+    },
+    {
+      "t" : 15.7,
+      "text" : "ned surv"
+    },
+    {
+      "t" : 15.887,
+      "text" : "ey activ"
+    },
+    {
+      "t" : 16.016,
+      "text" : "ity"
+    },
+    {
+      "t" : 16.191,
+      "text" : "\")\nscheduleTable"
+    },
+    {
+      "t" : 16.393,
+      "text" : " = Table([Col(\""
+    },
+    {
+      "t" : 16.558,
+      "text" : "Beach\", beaches),"
+    },
+    {
+      "t" : 16.687,
+      "text" : " Col(\"Method"
+    },
+    {
+      "t" : 16.804,
+      "text" : "\", meth"
+    },
+    {
+      "t" : 16.973,
+      "text" : "ods), Col(\"Frequ"
+    },
+    {
+      "t" : 17.108,
+      "text" : "ency\", freq), Col(\""
+    },
+    {
+      "t" : 17.217,
+      "text" : "Next Survey\", n"
+    },
+    {
+      "t" : 17.312,
+      "text" : "extDates)])\nmethods"
+    },
+    {
+      "t" : 17.554,
+      "text" : " = [\"Drone L"
+    },
+    {
+      "t" : 17.672,
+      "text" : "iDAR\", \"G"
+    },
+    {
+      "t" : 17.799,
+      "text" : "P"
+    },
+    {
+      "t" : 17.956,
+      "text" : "S trans"
+    },
+    {
+      "t" : 18.133,
+      "text" : "ect\", \"Drone Li"
+    },
+    {
+      "t" : 18.243,
+      "text" : "DAR\", \"GPS"
+    },
+    {
+      "t" : 18.368,
+      "text" : " transect\", \""
+    },
+    {
+      "t" : 18.476,
+      "text" : "Photo"
+    },
+    {
+      "t" : 18.633,
+      "text" : " monitoring\"]\nfre"
+    },
+    {
+      "t" : 18.769,
+      "text" : "q = [\"Monthly"
+    },
+    {
+      "t" : 18.91,
+      "text" : "\", \"Quarterly\","
+    },
+    {
+      "t" : 19.067,
+      "text" : " \"Mon"
+    },
+    {
+      "t" : 19.173,
+      "text" : "thly\", \"Bi"
+    },
+    {
+      "t" : 19.297,
+      "text" : "annual\", \"Quarter"
+    },
+    {
+      "t" : 19.476,
+      "text" : "ly\"]\nnextDates"
+    },
+    {
+      "t" : 19.629,
+      "text" : " = [\"2025-01"
+    },
+    {
+      "t" : 20.058,
+      "text" : "-10\", \"2025-02"
+    },
+    {
+      "t" : 20.064,
+      "text" : "-05"
+    },
+    {
+      "t" : 20.424,
+      "text" : "\", \"2025-01-17"
+    },
+    {
+      "t" : 20.549,
+      "text" : "\", \"2025-04"
+    },
+    {
+      "t" : 20.753,
+      "text" : "-20\", \"2025-02"
+    },
+    {
+      "t" : 20.934,
+      "text" : "-12\"]\nnextS"
+    },
+    {
+      "t" : 21.118,
+      "text" : "teps = Bu"
+    },
+    {
+      "t" : 21.417,
+      "text" : "ttons(["
+    },
+    {
+      "t" : 21.419,
+      "text" : "Button(\"Request"
+    },
+    {
+      "t" : 21.528,
+      "text" : " det"
+    },
+    {
+      "t" : 21.64,
+      "text" : "ailed anal"
+    },
+    {
+      "t" : 21.838,
+      "text" : "ysis\", @ToAss"
+    },
+    {
+      "t" : 21.84,
+      "text" : "istant(\"Prov"
+    },
+    {
+      "t" : 21.955,
+      "text" : "ide a detailed analysis"
+    },
+    {
+      "t" : 22.081,
+      "text" : " of Harlow Point er"
+    },
+    {
+      "t" : 22.221,
+      "text" : "osion\"), \"primary\""
+    },
+    {
+      "t" : 22.352,
+      "text" : "), Button(\"Su"
+    },
+    {
+      "t" : 22.478,
+      "text" : "ggest mitigation options"
+    },
+    {
+      "t" : 22.614,
+      "text" : "\", @ToAssistant"
+    },
+    {
+      "t" : 22.744,
+      "text" : "(\"Suggest er"
+    },
+    {
+      "t" : 22.879,
+      "text" : "osion mitigation options\""
+    },
+    {
+      "t" : 23.009,
+      "text" : "), \"secondary\")])"
+    }
+  ],
+  "createdAt" : "2026-11-11T10:50:47Z",
+  "effort" : "low",
+  "format" : "openui-recording",
+  "inputTokens" : 14511,
+  "library" : "react-ui",
+  "model" : "claude-sonnet-5-5",
+  "outputTokens" : 1547,
+  "request" : "A coastal erosion report with shoreline retreat measurements by beach, a before-and-after image pair and a monitoring schedule.",
+  "servedBy" : "claude-sonnet-5-5",
+  "stopReason" : "end_turn",
+  "version" : 1
+}

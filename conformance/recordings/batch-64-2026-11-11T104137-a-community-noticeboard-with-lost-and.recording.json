@@ -1,0 +1,824 @@
+{
+  "batchRequest" : {
+    "model" : "haiku",
+    "number" : 64,
+    "request" : "A community noticeboard with lost-and-found notices, volunteer requests and public meetings grouped into separate cards."
+  },
+  "chunks" : [
+    {
+      "t" : 0.791,
+      "text" : "root"
+    },
+    {
+      "t" : 0.998,
+      "text" : " = Stack(["
+    },
+    {
+      "t" : 1.154,
+      "text" : "header"
+    },
+    {
+      "t" : 1.375,
+      "text" : ", lost"
+    },
+    {
+      "t" : 1.397,
+      "text" : "C"
+    },
+    {
+      "t" : 1.463,
+      "text" : "ard, volunteerCard"
+    },
+    {
+      "t" : 1.491,
+      "text" : ", meetingCard])"
+    },
+    {
+      "t" : 1.517,
+      "text" : "\nheader = In"
+    },
+    {
+      "t" : 1.564,
+      "text" : "lineHeader(\"Community"
+    },
+    {
+      "t" : 1.572,
+      "text" : " Noticeboard\", \""
+    },
+    {
+      "t" : 1.645,
+      "text" : "L"
+    },
+    {
+      "t" : 1.679,
+      "text" : "ost and"
+    },
+    {
+      "t" : 1.685,
+      "text" : " found, volunteer"
+    },
+    {
+      "t" : 1.764,
+      "text" : " requ"
+    },
+    {
+      "t" : 1.788,
+      "text" : "ests and public meetings\")"
+    },
+    {
+      "t" : 1.816,
+      "text" : "\nlostCard = Card(["
+    },
+    {
+      "t" : 1.854,
+      "text" : "lostH"
+    },
+    {
+      "t" : 1.886,
+      "text" : "eader, lostB"
+    },
+    {
+      "t" : 1.923,
+      "text" : "lock])\nlostH"
+    },
+    {
+      "t" : 1.925,
+      "text" : "eader = CardHeader"
+    },
+    {
+      "t" : 1.951,
+      "text" : "(\"Lost & Found\","
+    },
+    {
+      "t" : 2.011,
+      "text" : " \"Recently"
+    },
+    {
+      "t" : 2.044,
+      "text" : " reported items\")\nlostB"
+    },
+    {
+      "t" : 2.083,
+      "text" : "lock = S"
+    },
+    {
+      "t" : 2.12,
+      "text" : "nippetCardBlock"
+    },
+    {
+      "t" : 2.179,
+      "text" : "([lost1, lost2"
+    },
+    {
+      "t" : 2.181,
+      "text" : ","
+    },
+    {
+      "t" : 2.206,
+      "text" : " lost3])\nlost1"
+    },
+    {
+      "t" : 2.247,
+      "text" : " = SnippetCard"
+    },
+    {
+      "t" : 2.272,
+      "text" : "Item(\"lost-keys"
+    },
+    {
+      "t" : 2.318,
+      "text" : "\", lost1lhs,"
+    },
+    {
+      "t" : 2.349,
+      "text" : " lost1rhs)"
+    },
+    {
+      "t" : 2.409,
+      "text" : "\nlost1lhs = I"
+    },
+    {
+      "t" : 2.44,
+      "text" : "conText(lost1icon"
+    },
+    {
+      "t" : 2.484,
+      "text" : ", \"war"
+    },
+    {
+      "t" : 2.511,
+      "text" : "ning\", \"m\", \"Set"
+    },
+    {
+      "t" : 2.538,
+      "text" : " of house"
+    },
+    {
+      "t" : 2.613,
+      "text" : " keys\", \"L"
+    },
+    {
+      "t" : 2.653,
+      "text" : "ost near Ri"
+    },
+    {
+      "t" : 2.7,
+      "text" : "verside Park\", false,"
+    },
+    {
+      "t" : 2.759,
+      "text" : " \"horizontal\")\nl"
+    },
+    {
+      "t" : 2.85,
+      "text" : "ost1icon = Icon"
+    },
+    {
+      "t" : 2.931,
+      "text" : "(\"key-round"
+    },
+    {
+      "t" : 2.933,
+      "text" : "\", \"t"
+    },
+    {
+      "t" : 3.014,
+      "text" : "ools\")\nlost1rh"
+    },
+    {
+      "t" : 3.09,
+      "text" : "s ="
+    },
+    {
+      "t" : 3.164,
+      "text" : " Text(\"text"
+    },
+    {
+      "t" : 3.219,
+      "text" : "\", \"M"
+    },
+    {
+      "t" : 3.291,
+      "text" : "on"
+    },
+    {
+      "t" : 3.361,
+      "text" : ","
+    },
+    {
+      "t" : 3.421,
+      "text" : " 3"
+    },
+    {
+      "t" : 3.485,
+      "text" : " M"
+    },
+    {
+      "t" : 3.661,
+      "text" : "ar\")"
+    },
+    {
+      "t" : 3.773,
+      "text" : "\nlost2 = Sn"
+    },
+    {
+      "t" : 3.894,
+      "text" : "ippetCardItem(\"l"
+    },
+    {
+      "t" : 4.008,
+      "text" : "ost-c"
+    },
+    {
+      "t" : 4.112,
+      "text" : "at\", lost2lhs"
+    },
+    {
+      "t" : 4.208,
+      "text" : ", lost2rhs)"
+    },
+    {
+      "t" : 4.294,
+      "text" : "\nlost2lhs ="
+    },
+    {
+      "t" : 4.383,
+      "text" : " IconText(lost2ic"
+    },
+    {
+      "t" : 4.386,
+      "text" : "on, \"info"
+    },
+    {
+      "t" : 4.532,
+      "text" : "\", \"m\", \"Grey"
+    },
+    {
+      "t" : 4.536,
+      "text" : " tabby cat\", \""
+    },
+    {
+      "t" : 4.649,
+      "text" : "Last seen on"
+    },
+    {
+      "t" : 4.752,
+      "text" : " El"
+    },
+    {
+      "t" : 4.862,
+      "text" : "m Street\", false, \"hor"
+    },
+    {
+      "t" : 4.957,
+      "text" : "izontal\")\nlost2"
+    },
+    {
+      "t" : 5.057,
+      "text" : "icon = Icon(\"c"
+    },
+    {
+      "t" : 5.153,
+      "text" : "at\", \"anim"
+    },
+    {
+      "t" : 5.237,
+      "text" : "als\")\nlost2rh"
+    },
+    {
+      "t" : 5.352,
+      "text" : "s = Text(\"text\", \""
+    },
+    {
+      "t" : 5.466,
+      "text" : "Sun,"
+    },
+    {
+      "t" : 5.567,
+      "text" : " 2 Mar\")"
+    },
+    {
+      "t" : 5.654,
+      "text" : "\nlost3 = Snipp"
+    },
+    {
+      "t" : 5.741,
+      "text" : "etCardItem(\"lost"
+    },
+    {
+      "t" : 5.901,
+      "text" : "-wallet\", lost3"
+    },
+    {
+      "t" : 5.903,
+      "text" : "lhs, lost3r"
+    },
+    {
+      "t" : 6.011,
+      "text" : "hs)\nlost3l"
+    },
+    {
+      "t" : 6.134,
+      "text" : "hs = IconText(l"
+    },
+    {
+      "t" : 6.301,
+      "text" : "ost3icon, \"warning"
+    },
+    {
+      "t" : 6.423,
+      "text" : "\", \"m\", \"Brown"
+    },
+    {
+      "t" : 6.541,
+      "text" : " le"
+    },
+    {
+      "t" : 6.647,
+      "text" : "ather wallet\", \"Near"
+    },
+    {
+      "t" : 6.707,
+      "text" : " the"
+    },
+    {
+      "t" : 6.709,
+      "text" : " library ent"
+    },
+    {
+      "t" : 6.765,
+      "text" : "rance\", false, \"horiz"
+    },
+    {
+      "t" : 6.825,
+      "text" : "ontal\")\nlost3ic"
+    },
+    {
+      "t" : 6.924,
+      "text" : "on = Icon(\"wall"
+    },
+    {
+      "t" : 7.051,
+      "text" : "et\", \"fin"
+    },
+    {
+      "t" : 7.146,
+      "text" : "ance\")\nlost3rh"
+    },
+    {
+      "t" : 7.261,
+      "text" : "s = Text(\"text\", \""
+    },
+    {
+      "t" : 7.387,
+      "text" : "F"
+    },
+    {
+      "t" : 7.506,
+      "text" : "ri, 28"
+    },
+    {
+      "t" : 7.607,
+      "text" : " Feb\")\nvolun"
+    },
+    {
+      "t" : 7.717,
+      "text" : "teerCard = Card(["
+    },
+    {
+      "t" : 7.832,
+      "text" : "volunteerHeader,"
+    },
+    {
+      "t" : 7.977,
+      "text" : " volunteerBlock])"
+    },
+    {
+      "t" : 8.206,
+      "text" : "\nvolunteerHeader"
+    },
+    {
+      "t" : 8.21,
+      "text" : " = CardHeader(\""
+    },
+    {
+      "t" : 8.341,
+      "text" : "Volunteer Requests\","
+    },
+    {
+      "t" : 8.457,
+      "text" : " \"Help"
+    },
+    {
+      "t" : 8.59,
+      "text" : " make"
+    },
+    {
+      "t" : 8.791,
+      "text" : " the"
+    },
+    {
+      "t" : 9.1,
+      "text" : " neighbourhood better"
+    },
+    {
+      "t" : 9.198,
+      "text" : "\")\nvolunteerBl"
+    },
+    {
+      "t" : 9.361,
+      "text" : "ock ="
+    },
+    {
+      "t" : 9.559,
+      "text" : " Stack([v"
+    },
+    {
+      "t" : 9.708,
+      "text" : "ol1, vol2, v"
+    },
+    {
+      "t" : 9.955,
+      "text" : "ol3],"
+    },
+    {
+      "t" : 10.307,
+      "text" : " \"column"
+    },
+    {
+      "t" : 10.59,
+      "text" : "\", \"s"
+    },
+    {
+      "t" : 10.791,
+      "text" : "\")\nvol1 ="
+    },
+    {
+      "t" : 10.897,
+      "text" : " Call"
+    },
+    {
+      "t" : 11.129,
+      "text" : "out(\"info"
+    },
+    {
+      "t" : 11.184,
+      "text" : "\", \"Food b"
+    },
+    {
+      "t" : 11.228,
+      "text" : "ank s"
+    },
+    {
+      "t" : 11.344,
+      "text" : "or"
+    },
+    {
+      "t" : 11.467,
+      "text" : "ting\","
+    },
+    {
+      "t" : 11.575,
+      "text" : " \"Sa"
+    },
+    {
+      "t" : 11.673,
+      "text" : "turday "
+    },
+    {
+      "t" : 11.751,
+      "text" : "9am to"
+    },
+    {
+      "t" : 11.845,
+      "text" : " 1"
+    },
+    {
+      "t" : 12.199,
+      "text" : "pm,"
+    },
+    {
+      "t" : 12.29,
+      "text" : " H"
+    },
+    {
+      "t" : 12.377,
+      "text" : "all"
+    },
+    {
+      "t" : 12.452,
+      "text" : " on"
+    },
+    {
+      "t" : 12.583,
+      "text" : " O"
+    },
+    {
+      "t" : 12.997,
+      "text" : "ak Road"
+    },
+    {
+      "t" : 13.003,
+      "text" : ". Need 4"
+    },
+    {
+      "t" : 13.5,
+      "text" : " helpers.\")\nv"
+    },
+    {
+      "t" : 13.727,
+      "text" : "ol2 = Callout(\""
+    },
+    {
+      "t" : 13.823,
+      "text" : "success\", \"Park"
+    },
+    {
+      "t" : 13.899,
+      "text" : " cl"
+    },
+    {
+      "t" : 13.968,
+      "text" : "ean-up\", \"Sun"
+    },
+    {
+      "t" : 14.095,
+      "text" : "day 10am,"
+    },
+    {
+      "t" : 14.199,
+      "text" : " me"
+    },
+    {
+      "t" : 14.292,
+      "text" : "et at the"
+    },
+    {
+      "t" : 14.38,
+      "text" : " north"
+    },
+    {
+      "t" : 14.511,
+      "text" : " gate. G"
+    },
+    {
+      "t" : 14.513,
+      "text" : "loves and"
+    },
+    {
+      "t" : 14.591,
+      "text" : " bags provided.\")\nv"
+    },
+    {
+      "t" : 14.697,
+      "text" : "ol3 = Callout(\""
+    },
+    {
+      "t" : 14.823,
+      "text" : "warning\", \"Tuto"
+    },
+    {
+      "t" : 14.939,
+      "text" : "ring for prim"
+    },
+    {
+      "t" : 15.087,
+      "text" : "ary p"
+    },
+    {
+      "t" : 15.197,
+      "text" : "upils\", \"We"
+    },
+    {
+      "t" : 15.319,
+      "text" : "ekdays after"
+    },
+    {
+      "t" : 15.564,
+      "text" : " school"
+    },
+    {
+      "t" : 15.565,
+      "text" : ". Ma"
+    },
+    {
+      "t" : 15.662,
+      "text" : "ths and reading support"
+    },
+    {
+      "t" : 15.834,
+      "text" : " need"
+    },
+    {
+      "t" : 15.939,
+      "text" : "ed.\")\nmeetingC"
+    },
+    {
+      "t" : 16.05,
+      "text" : "ard = Card([meeting"
+    },
+    {
+      "t" : 16.216,
+      "text" : "Header, meetingT"
+    },
+    {
+      "t" : 16.286,
+      "text" : "able])\nmeetingHe"
+    },
+    {
+      "t" : 16.288,
+      "text" : "ader = CardHeader(\""
+    },
+    {
+      "t" : 16.398,
+      "text" : "Public Meetings\", \""
+    },
+    {
+      "t" : 16.399,
+      "text" : "Upcoming community"
+    },
+    {
+      "t" : 16.469,
+      "text" : " s"
+    },
+    {
+      "t" : 16.588,
+      "text" : "essions\")\nmeetingT"
+    },
+    {
+      "t" : 16.589,
+      "text" : "able = Table(["
+    },
+    {
+      "t" : 16.707,
+      "text" : "Col(\"Me"
+    },
+    {
+      "t" : 16.708,
+      "text" : "eting\", meetingN"
+    },
+    {
+      "t" : 16.788,
+      "text" : "ames), Col(\"Date\","
+    },
+    {
+      "t" : 16.893,
+      "text" : " meetingDates), Col"
+    },
+    {
+      "t" : 16.97,
+      "text" : "(\"Time"
+    },
+    {
+      "t" : 17.09,
+      "text" : "\", meetingTimes),"
+    },
+    {
+      "t" : 17.092,
+      "text" : " Col(\"Location\", meet"
+    },
+    {
+      "t" : 17.167,
+      "text" : "ingP"
+    },
+    {
+      "t" : 17.253,
+      "text" : "laces)])\nmeet"
+    },
+    {
+      "t" : 17.478,
+      "text" : "ingNames = [\"Ne"
+    },
+    {
+      "t" : 17.589,
+      "text" : "ighbourhood Planning"
+    },
+    {
+      "t" : 17.728,
+      "text" : "\", \"Bud"
+    },
+    {
+      "t" : 17.879,
+      "text" : "get Open"
+    },
+    {
+      "t" : 18.055,
+      "text" : " Forum\", \"You"
+    },
+    {
+      "t" : 18.227,
+      "text" : "th Services"
+    },
+    {
+      "t" : 18.402,
+      "text" : " Review\"]\nmeeting"
+    },
+    {
+      "t" : 18.557,
+      "text" : "Dates = [\""
+    },
+    {
+      "t" : 18.728,
+      "text" : "T"
+    },
+    {
+      "t" : 18.881,
+      "text" : "ue, 11 Mar"
+    },
+    {
+      "t" : 19.054,
+      "text" : "\", \"Th"
+    },
+    {
+      "t" : 19.246,
+      "text" : "u, 13"
+    },
+    {
+      "t" : 19.41,
+      "text" : " Mar\", \"M"
+    },
+    {
+      "t" : 19.577,
+      "text" : "on, 17"
+    },
+    {
+      "t" : 19.778,
+      "text" : " Mar\"]\nme"
+    },
+    {
+      "t" : 19.965,
+      "text" : "etingTimes = [\""
+    },
+    {
+      "t" : 20.157,
+      "text" : "18"
+    },
+    {
+      "t" : 20.159,
+      "text" : ":30"
+    },
+    {
+      "t" : 20.336,
+      "text" : "\", \"19"
+    },
+    {
+      "t" : 20.52,
+      "text" : ":00\", \"17"
+    },
+    {
+      "t" : 20.726,
+      "text" : ":45"
+    },
+    {
+      "t" : 20.937,
+      "text" : "\"]\nmeetingPl"
+    },
+    {
+      "t" : 21.129,
+      "text" : "aces = [\"Community"
+    },
+    {
+      "t" : 21.305,
+      "text" : " H"
+    },
+    {
+      "t" : 21.511,
+      "text" : "all\","
+    },
+    {
+      "t" : 21.731,
+      "text" : " \"Town Library"
+    },
+    {
+      "t" : 21.949,
+      "text" : " Room B"
+    },
+    {
+      "t" : 22.127,
+      "text" : "\", \"Civ"
+    },
+    {
+      "t" : 22.295,
+      "text" : "ic Centre,"
+    },
+    {
+      "t" : 22.447,
+      "text" : " Flo"
+    },
+    {
+      "t" : 22.649,
+      "text" : "or 2\"]"
+    }
+  ],
+  "createdAt" : "2026-11-11T10:41:37Z",
+  "effort" : "low",
+  "format" : "openui-recording",
+  "inputTokens" : 14506,
+  "library" : "react-ui",
+  "model" : "claude-haiku-5-5",
+  "outputTokens" : 1054,
+  "request" : "A community noticeboard with lost-and-found notices, volunteer requests and public meetings grouped into separate cards.",
+  "servedBy" : "claude-haiku-5-5",
+  "stopReason" : "end_turn",
+  "version" : 1
+}

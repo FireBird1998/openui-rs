@@ -1,0 +1,884 @@
+{
+  "batchRequest" : {
+    "model" : "sonnet",
+    "number" : 115,
+    "request" : "A compost monitoring notebook with temperature readings over time, material additions and a moisture observation table."
+  },
+  "chunks" : [
+    {
+      "t" : 1.084,
+      "text" : "root = Stack([header,"
+    },
+    {
+      "t" : 1.422,
+      "text" : " k"
+    },
+    {
+      "t" : 1.449,
+      "text" : "pis, tempC"
+    },
+    {
+      "t" : 1.469,
+      "text" : "ard, add"
+    },
+    {
+      "t" : 1.506,
+      "text" : "Card, moist"
+    },
+    {
+      "t" : 1.585,
+      "text" : "C"
+    },
+    {
+      "t" : 1.614,
+      "text" : "ard,"
+    },
+    {
+      "t" : 1.669,
+      "text" : " t"
+    },
+    {
+      "t" : 1.702,
+      "text" : "ip"
+    },
+    {
+      "t" : 1.703,
+      "text" : "C"
+    },
+    {
+      "t" : 1.736,
+      "text" : "allout])\nheader = C"
+    },
+    {
+      "t" : 1.763,
+      "text" : "ardHeader(\"Compost"
+    },
+    {
+      "t" : 1.815,
+      "text" : " Monitoring Noteb"
+    },
+    {
+      "t" : 1.829,
+      "text" : "ook\", \"Backyard b"
+    },
+    {
+      "t" : 1.858,
+      "text" : "in #"
+    },
+    {
+      "t" : 1.897,
+      "text" : "2"
+    },
+    {
+      "t" : 1.933,
+      "text" : " –"
+    },
+    {
+      "t" : 1.968,
+      "text" : " tracking since"
+    },
+    {
+      "t" : 2.001,
+      "text" : " March"
+    },
+    {
+      "t" : 2.037,
+      "text" : "\")\nkpis = Sn"
+    },
+    {
+      "t" : 2.102,
+      "text" : "ippetCardBlock(["
+    },
+    {
+      "t" : 2.103,
+      "text" : "k"
+    },
+    {
+      "t" : 2.164,
+      "text" : "1, k2, k3])"
+    },
+    {
+      "t" : 2.207,
+      "text" : "\nk1 = Snipp"
+    },
+    {
+      "t" : 2.26,
+      "text" : "etCardItem(\"temp"
+    },
+    {
+      "t" : 2.305,
+      "text" : "\", k1l,"
+    },
+    {
+      "t" : 2.374,
+      "text" : " k1r)\nk1l"
+    },
+    {
+      "t" : 2.376,
+      "text" : " = IconText(k1i"
+    },
+    {
+      "t" : 2.442,
+      "text" : ", \"neutral\", \"m"
+    },
+    {
+      "t" : 2.443,
+      "text" : "\", \"Current Temp"
+    },
+    {
+      "t" : 2.491,
+      "text" : "\", \"Core"
+    },
+    {
+      "t" : 2.541,
+      "text" : " re"
+    },
+    {
+      "t" : 2.59,
+      "text" : "ading\", false, \"horizont"
+    },
+    {
+      "t" : 2.639,
+      "text" : "al\")\nk1i ="
+    },
+    {
+      "t" : 2.688,
+      "text" : " Icon(\"thermometer\","
+    },
+    {
+      "t" : 2.74,
+      "text" : " \"we"
+    },
+    {
+      "t" : 2.832,
+      "text" : "ather\")\nk1r = B"
+    },
+    {
+      "t" : 2.88,
+      "text" : "oldText(\"number\", \"138"
+    },
+    {
+      "t" : 2.882,
+      "text" : "°F\", \"+4"
+    },
+    {
+      "t" : 2.933,
+      "text" : "°F\", \"metric\")"
+    },
+    {
+      "t" : 2.983,
+      "text" : "\nk2 = Snippet"
+    },
+    {
+      "t" : 3.025,
+      "text" : "CardItem(\"moisture"
+    },
+    {
+      "t" : 3.118,
+      "text" : "\", k2l, k2r"
+    },
+    {
+      "t" : 3.119,
+      "text" : ")\nk2l = Icon"
+    },
+    {
+      "t" : 3.171,
+      "text" : "Text(k2i, \"ne"
+    },
+    {
+      "t" : 3.227,
+      "text" : "utral\", \"m\", \""
+    },
+    {
+      "t" : 3.285,
+      "text" : "Moisture\", \"Lat"
+    },
+    {
+      "t" : 3.366,
+      "text" : "est check\", false, \"horiz"
+    },
+    {
+      "t" : 3.369,
+      "text" : "ontal\")\nk2i ="
+    },
+    {
+      "t" : 3.427,
+      "text" : " Icon(\"droplets"
+    },
+    {
+      "t" : 3.549,
+      "text" : "\", \"weather\")\nk2"
+    },
+    {
+      "t" : 3.55,
+      "text" : "r = BoldText(\"text"
+    },
+    {
+      "t" : 3.609,
+      "text" : "\", \""
+    },
+    {
+      "t" : 3.668,
+      "text" : "Damp\", \""
+    },
+    {
+      "t" : 3.736,
+      "text" : "Ideal\", \"text"
+    },
+    {
+      "t" : 3.806,
+      "text" : "\")\nk3 = Sn"
+    },
+    {
+      "t" : 3.86,
+      "text" : "ippetCardItem(\"age"
+    },
+    {
+      "t" : 3.919,
+      "text" : "\", k3l, k3r"
+    },
+    {
+      "t" : 3.994,
+      "text" : ")\nk3l = Icon"
+    },
+    {
+      "t" : 4.046,
+      "text" : "Text(k3i, \"ne"
+    },
+    {
+      "t" : 4.098,
+      "text" : "utral\", \"m\", \""
+    },
+    {
+      "t" : 4.165,
+      "text" : "Pile Age\", \"Days"
+    },
+    {
+      "t" : 4.221,
+      "text" : "\","
+    },
+    {
+      "t" : 4.285,
+      "text" : " false, \"horizontal\")"
+    },
+    {
+      "t" : 4.349,
+      "text" : "\nk3i = Icon"
+    },
+    {
+      "t" : 4.411,
+      "text" : "(\"calendar\", \"time"
+    },
+    {
+      "t" : 4.476,
+      "text" : "\")\nk3r = Bo"
+    },
+    {
+      "t" : 4.544,
+      "text" : "ldText(\"number\", \"21"
+    },
+    {
+      "t" : 4.61,
+      "text" : "\", \"+1"
+    },
+    {
+      "t" : 4.677,
+      "text" : "\", \"metric\")\ntemp"
+    },
+    {
+      "t" : 4.737,
+      "text" : "Card = Card([temp"
+    },
+    {
+      "t" : 4.845,
+      "text" : "Hd"
+    },
+    {
+      "t" : 4.9,
+      "text" : "r, tempChart])"
+    },
+    {
+      "t" : 4.949,
+      "text" : "\ntempHdr = Card"
+    },
+    {
+      "t" : 4.999,
+      "text" : "Header(\"Temperature"
+    },
+    {
+      "t" : 5.002,
+      "text" : " Over"
+    },
+    {
+      "t" : 5.071,
+      "text" : " Time\", \"Core temper"
+    },
+    {
+      "t" : 5.142,
+      "text" : "ature in °F (ideal"
+    },
+    {
+      "t" : 5.196,
+      "text" : " "
+    },
+    {
+      "t" : 5.261,
+      "text" : "130–150°"
+    },
+    {
+      "t" : 5.326,
+      "text" : "F)\")\ntempChart"
+    },
+    {
+      "t" : 5.38,
+      "text" : " = LineChart(days,"
+    },
+    {
+      "t" : 5.457,
+      "text" : " [t"
+    },
+    {
+      "t" : 5.52,
+      "text" : "empS"
+    },
+    {
+      "t" : 5.587,
+      "text" : "eries, "
+    },
+    {
+      "t" : 5.651,
+      "text" : "ambient"
+    },
+    {
+      "t" : 5.753,
+      "text" : "Series], \"nat"
+    },
+    {
+      "t" : 5.757,
+      "text" : "ural\", \"Day\", \"°"
+    },
+    {
+      "t" : 5.819,
+      "text" : "F\")\ndays = [\""
+    },
+    {
+      "t" : 5.875,
+      "text" : "Day 1\", \"Day "
+    },
+    {
+      "t" : 5.975,
+      "text" : "3\", \"Day 5\","
+    },
+    {
+      "t" : 5.978,
+      "text" : " \"Day 7\", \""
+    },
+    {
+      "t" : 6.056,
+      "text" : "Day 9\", \"Day "
+    },
+    {
+      "t" : 6.111,
+      "text" : "11\", \"Day 14"
+    },
+    {
+      "t" : 6.177,
+      "text" : "\", \"Day 17"
+    },
+    {
+      "t" : 6.245,
+      "text" : "\", \"Day 21\"]"
+    },
+    {
+      "t" : 6.313,
+      "text" : "\ntempSeries ="
+    },
+    {
+      "t" : 6.392,
+      "text" : " Series(\"Core\", ["
+    },
+    {
+      "t" : 6.467,
+      "text" : "72"
+    },
+    {
+      "t" : 6.543,
+      "text" : ", 95, 124"
+    },
+    {
+      "t" : 6.609,
+      "text" : ", 145"
+    },
+    {
+      "t" : 6.68,
+      "text" : ", 152"
+    },
+    {
+      "t" : 6.744,
+      "text" : ", 146"
+    },
+    {
+      "t" : 6.846,
+      "text" : ", 138, 129"
+    },
+    {
+      "t" : 6.849,
+      "text" : ", 138"
+    },
+    {
+      "t" : 6.916,
+      "text" : "])\nambientSeries"
+    },
+    {
+      "t" : 6.981,
+      "text" : " = Series(\"Ambient"
+    },
+    {
+      "t" : 7.048,
+      "text" : "\", [58"
+    },
+    {
+      "t" : 7.113,
+      "text" : ", 60, 57"
+    },
+    {
+      "t" : 7.184,
+      "text" : ", 62, 64"
+    },
+    {
+      "t" : 7.256,
+      "text" : ", 61, 59, "
+    },
+    {
+      "t" : 7.34,
+      "text" : "63, 65])\naddC"
+    },
+    {
+      "t" : 7.42,
+      "text" : "ard = Card([addHd"
+    },
+    {
+      "t" : 7.535,
+      "text" : "r, addTable])\nadd"
+    },
+    {
+      "t" : 7.537,
+      "text" : "Hdr = CardHe"
+    },
+    {
+      "t" : 7.608,
+      "text" : "ader(\"Material Additions\","
+    },
+    {
+      "t" : 7.694,
+      "text" : " \"Gre"
+    },
+    {
+      "t" : 7.806,
+      "text" : "ens and browns log\")\nadd"
+    },
+    {
+      "t" : 7.924,
+      "text" : "Table = Table([Col"
+    },
+    {
+      "t" : 8.039,
+      "text" : "(\"Date\", add"
+    },
+    {
+      "t" : 8.119,
+      "text" : "Dates), Col(\"Material"
+    },
+    {
+      "t" : 8.203,
+      "text" : "\", addMats), Col(\""
+    },
+    {
+      "t" : 8.274,
+      "text" : "Type\", addTypes),"
+    },
+    {
+      "t" : 8.343,
+      "text" : " Col(\"Amount (l"
+    },
+    {
+      "t" : 8.419,
+      "text" : "b)\", addA"
+    },
+    {
+      "t" : 8.496,
+      "text" : "mts, \"number\")])"
+    },
+    {
+      "t" : 8.574,
+      "text" : "\naddDates = [\"M"
+    },
+    {
+      "t" : 8.661,
+      "text" : "ar 1\", \"Mar"
+    },
+    {
+      "t" : 8.766,
+      "text" : " 1"
+    },
+    {
+      "t" : 8.882,
+      "text" : "\", \"Mar 6"
+    },
+    {
+      "t" : 8.966,
+      "text" : "\", \"Mar 12\","
+    },
+    {
+      "t" : 9.064,
+      "text" : " \"Mar 15"
+    },
+    {
+      "t" : 9.197,
+      "text" : "\", \"Mar 19\","
+    },
+    {
+      "t" : 9.308,
+      "text" : " \"Mar 22"
+    },
+    {
+      "t" : 9.402,
+      "text" : "\"]\naddMats = "
+    },
+    {
+      "t" : 9.531,
+      "text" : "[\"Sh"
+    },
+    {
+      "t" : 9.623,
+      "text" : "redded leaves\", \""
+    },
+    {
+      "t" : 9.719,
+      "text" : "Kitchen sc"
+    },
+    {
+      "t" : 9.797,
+      "text" : "raps\", \"Gr"
+    },
+    {
+      "t" : 9.896,
+      "text" : "ass clippings\", \"Stra"
+    },
+    {
+      "t" : 10.058,
+      "text" : "w\", \"Co"
+    },
+    {
+      "t" : 10.06,
+      "text" : "ffee grounds\", \""
+    },
+    {
+      "t" : 10.282,
+      "text" : "Cardboard\", \"V"
+    },
+    {
+      "t" : 10.284,
+      "text" : "egetable tr"
+    },
+    {
+      "t" : 10.453,
+      "text" : "immings\"]\naddT"
+    },
+    {
+      "t" : 10.454,
+      "text" : "ypes = [\"Br"
+    },
+    {
+      "t" : 10.559,
+      "text" : "own\", \"Green\", \""
+    },
+    {
+      "t" : 10.667,
+      "text" : "Green\", \"Brown\", \""
+    },
+    {
+      "t" : 10.767,
+      "text" : "Green\", \"Brown\","
+    },
+    {
+      "t" : 10.885,
+      "text" : " \"Green\"]\naddA"
+    },
+    {
+      "t" : 10.989,
+      "text" : "mts = [12"
+    },
+    {
+      "t" : 11.073,
+      "text" : ", 6, 8, "
+    },
+    {
+      "t" : 11.183,
+      "text" : "5, 3"
+    },
+    {
+      "t" : 11.284,
+      "text" : ", 4, 5"
+    },
+    {
+      "t" : 11.371,
+      "text" : "]\nmoistC"
+    },
+    {
+      "t" : 11.471,
+      "text" : "ard = Card([moistH"
+    },
+    {
+      "t" : 11.577,
+      "text" : "dr, moistTable])"
+    },
+    {
+      "t" : 11.679,
+      "text" : "\nmoistHdr = C"
+    },
+    {
+      "t" : 11.802,
+      "text" : "ardHeader(\"Mois"
+    },
+    {
+      "t" : 11.898,
+      "text" : "ture Observations\", \"Squ"
+    },
+    {
+      "t" : 12.009,
+      "text" : "eeze test and"
+    },
+    {
+      "t" : 12.117,
+      "text" : " not"
+    },
+    {
+      "t" : 12.22,
+      "text" : "es\")\nmoistTable ="
+    },
+    {
+      "t" : 12.343,
+      "text" : " Table([Col(\"Date"
+    },
+    {
+      "t" : 12.448,
+      "text" : "\", m"
+    },
+    {
+      "t" : 12.545,
+      "text" : "Dates), Col(\"Squ"
+    },
+    {
+      "t" : 12.65,
+      "text" : "eeze Test\", mT"
+    },
+    {
+      "t" : 12.869,
+      "text" : "ests"
+    },
+    {
+      "t" : 12.987,
+      "text" : "), Col(\"Mo"
+    },
+    {
+      "t" : 13.127,
+      "text" : "isture\", mL"
+    },
+    {
+      "t" : 13.242,
+      "text" : "evels), Col(\"Not"
+    },
+    {
+      "t" : 13.357,
+      "text" : "es\", mNotes)])"
+    },
+    {
+      "t" : 13.481,
+      "text" : "\nmDates = [\""
+    },
+    {
+      "t" : 13.666,
+      "text" : "Mar 3\", \"M"
+    },
+    {
+      "t" : 13.669,
+      "text" : "ar 8\", \"Mar"
+    },
+    {
+      "t" : 13.792,
+      "text" : " 13\", \"Mar "
+    },
+    {
+      "t" : 13.888,
+      "text" : "18\", \"Mar 22"
+    },
+    {
+      "t" : 13.996,
+      "text" : "\"]\nmTests = "
+    },
+    {
+      "t" : 14.091,
+      "text" : "[\"Few drops\", \"No"
+    },
+    {
+      "t" : 14.188,
+      "text" : " drops,"
+    },
+    {
+      "t" : 14.285,
+      "text" : " crumbles"
+    },
+    {
+      "t" : 14.401,
+      "text" : "\", \"Many"
+    },
+    {
+      "t" : 14.528,
+      "text" : " drops\", \"One"
+    },
+    {
+      "t" : 14.638,
+      "text" : " or"
+    },
+    {
+      "t" : 14.761,
+      "text" : " two drops\", \"One"
+    },
+    {
+      "t" : 14.915,
+      "text" : " or two drops\"]\nm"
+    },
+    {
+      "t" : 15.044,
+      "text" : "Levels = [\"Good"
+    },
+    {
+      "t" : 15.168,
+      "text" : "\", \"Dry\", \""
+    },
+    {
+      "t" : 15.323,
+      "text" : "Too wet\", \"Good\","
+    },
+    {
+      "t" : 15.426,
+      "text" : " \"Good\"]\nmN"
+    },
+    {
+      "t" : 15.538,
+      "text" : "otes = [\"Heal"
+    },
+    {
+      "t" : 15.683,
+      "text" : "thy start"
+    },
+    {
+      "t" : 15.837,
+      "text" : "\", \"Added"
+    },
+    {
+      "t" : 15.839,
+      "text" : " water,"
+    },
+    {
+      "t" : 16.108,
+      "text" : " turned pile\", \"Added"
+    },
+    {
+      "t" : 16.111,
+      "text" : " straw to"
+    },
+    {
+      "t" : 16.223,
+      "text" : " abs"
+    },
+    {
+      "t" : 16.367,
+      "text" : "orb excess\", \"Bal"
+    },
+    {
+      "t" : 16.474,
+      "text" : "anced after turning\", \""
+    },
+    {
+      "t" : 16.598,
+      "text" : "Ste"
+    },
+    {
+      "t" : 16.72,
+      "text" : "am"
+    },
+    {
+      "t" : 16.834,
+      "text" : "y, earthy sm"
+    },
+    {
+      "t" : 16.936,
+      "text" : "ell\"]\ntipCall"
+    },
+    {
+      "t" : 17.048,
+      "text" : "out = Callout(\"info\","
+    },
+    {
+      "t" : 17.149,
+      "text" : " \"Next ste"
+    },
+    {
+      "t" : 17.263,
+      "text" : "ps\", \"Tur"
+    },
+    {
+      "t" : 17.36,
+      "text" : "n the"
+    },
+    {
+      "t" : 17.534,
+      "text" : " pile this we"
+    },
+    {
+      "t" : 17.632,
+      "text" : "ekend and add a"
+    },
+    {
+      "t" : 17.763,
+      "text" : " lay"
+    },
+    {
+      "t" : 17.923,
+      "text" : "er of brow"
+    },
+    {
+      "t" : 18.087,
+      "text" : "ns if"
+    },
+    {
+      "t" : 18.232,
+      "text" : " tem"
+    },
+    {
+      "t" : 18.34,
+      "text" : "perature clim"
+    },
+    {
+      "t" : 18.481,
+      "text" : "bs above 150"
+    },
+    {
+      "t" : 18.595,
+      "text" : "°F.\")"
+    }
+  ],
+  "createdAt" : "2026-11-11T10:58:45Z",
+  "effort" : "low",
+  "format" : "openui-recording",
+  "inputTokens" : 14500,
+  "library" : "react-ui",
+  "model" : "claude-sonnet-5-5",
+  "outputTokens" : 1295,
+  "request" : "A compost monitoring notebook with temperature readings over time, material additions and a moisture observation table.",
+  "servedBy" : "claude-sonnet-5-5",
+  "stopReason" : "end_turn",
+  "version" : 1
+}

@@ -1,0 +1,996 @@
+{
+  "batchRequest" : {
+    "model" : "sonnet",
+    "number" : 63,
+    "request" : "A science story comparing two telescope discoveries: observation facts in a table, an image for each and a plain-language glossary."
+  },
+  "chunks" : [
+    {
+      "t" : 1.15,
+      "text" : "root = Stack([title,"
+    },
+    {
+      "t" : 1.953,
+      "text" : " intro, comp"
+    },
+    {
+      "t" : 2.029,
+      "text" : "areH"
+    },
+    {
+      "t" : 2.18,
+      "text" : "eader, t"
+    },
+    {
+      "t" : 2.307,
+      "text" : "bl, imgH"
+    },
+    {
+      "t" : 2.54,
+      "text" : "eader, im"
+    },
+    {
+      "t" : 2.58,
+      "text" : "gN"
+    },
+    {
+      "t" : 2.635,
+      "text" : "ote, glossH"
+    },
+    {
+      "t" : 2.709,
+      "text" : "eader, g"
+    },
+    {
+      "t" : 2.816,
+      "text" : "loss,"
+    },
+    {
+      "t" : 2.819,
+      "text" : " callout])\ntitle = Text"
+    },
+    {
+      "t" : 2.892,
+      "text" : "Content(\"Two Wind"
+    },
+    {
+      "t" : 2.957,
+      "text" : "ows on"
+    },
+    {
+      "t" : 3.265,
+      "text" : " the Universe: Hub"
+    },
+    {
+      "t" : 3.268,
+      "text" : "ble vs. James"
+    },
+    {
+      "t" : 3.352,
+      "text" : " Webb\", \"large-he"
+    },
+    {
+      "t" : 3.421,
+      "text" : "avy\")\nintro = T"
+    },
+    {
+      "t" : 3.503,
+      "text" : "extContent(\""
+    },
+    {
+      "t" : 3.574,
+      "text" : "Two space"
+    },
+    {
+      "t" : 3.654,
+      "text" : " telescopes,"
+    },
+    {
+      "t" : 3.733,
+      "text" : " two"
+    },
+    {
+      "t" : 3.817,
+      "text" : " land"
+    },
+    {
+      "t" : 3.901,
+      "text" : "mark discoveries. The"
+    },
+    {
+      "t" : 3.995,
+      "text" : " Hubble Deep"
+    },
+    {
+      "t" : 4.075,
+      "text" : " Field (1"
+    },
+    {
+      "t" : 4.161,
+      "text" : "995) showed that"
+    },
+    {
+      "t" : 4.249,
+      "text" : " the"
+    },
+    {
+      "t" : 4.337,
+      "text" : " "
+    },
+    {
+      "t" : 4.511,
+      "text" : "'emp"
+    },
+    {
+      "t" : 4.597,
+      "text" : "ty' sky hol"
+    },
+    {
+      "t" : 4.681,
+      "text" : "ds th"
+    },
+    {
+      "t" : 4.761,
+      "text" : "ousands of galaxies."
+    },
+    {
+      "t" : 4.841,
+      "text" : " Webb's First"
+    },
+    {
+      "t" : 4.914,
+      "text" : " Deep Field (2022"
+    },
+    {
+      "t" : 5.02,
+      "text" : ") loo"
+    },
+    {
+      "t" : 5.026,
+      "text" : "ked even farther back"
+    },
+    {
+      "t" : 5.085,
+      "text" : ", revealing gal"
+    },
+    {
+      "t" : 5.151,
+      "text" : "axies sh"
+    },
+    {
+      "t" : 5.222,
+      "text" : "aped when"
+    },
+    {
+      "t" : 5.305,
+      "text" : " the universe was very"
+    },
+    {
+      "t" : 5.399,
+      "text" : " young.\")\ncompareHe"
+    },
+    {
+      "t" : 5.489,
+      "text" : "ader = InlineHeader"
+    },
+    {
+      "t" : 5.583,
+      "text" : "(\"Observation Facts\","
+    },
+    {
+      "t" : 5.68,
+      "text" : " \"Side-"
+    },
+    {
+      "t" : 5.769,
+      "text" : "by-side comparison of the"
+    },
+    {
+      "t" : 5.848,
+      "text" : " two discoveries\")\nt"
+    },
+    {
+      "t" : 5.94,
+      "text" : "bl = Table([Col"
+    },
+    {
+      "t" : 6.027,
+      "text" : "(\"Fe"
+    },
+    {
+      "t" : 6.127,
+      "text" : "ature\", features"
+    },
+    {
+      "t" : 6.221,
+      "text" : "),"
+    },
+    {
+      "t" : 6.319,
+      "text" : " Col(\"H"
+    },
+    {
+      "t" : 6.381,
+      "text" : "ubble Deep Field\","
+    },
+    {
+      "t" : 6.458,
+      "text" : " h"
+    },
+    {
+      "t" : 6.526,
+      "text" : "ubble), Col(\""
+    },
+    {
+      "t" : 6.601,
+      "text" : "Webb's"
+    },
+    {
+      "t" : 6.672,
+      "text" : " First Deep Field\", web"
+    },
+    {
+      "t" : 6.746,
+      "text" : "b)])\nfeatures"
+    },
+    {
+      "t" : 6.818,
+      "text" : " = [\"Year"
+    },
+    {
+      "t" : 6.905,
+      "text" : "\","
+    },
+    {
+      "t" : 6.983,
+      "text" : " \"Telescope laun"
+    },
+    {
+      "t" : 7.082,
+      "text" : "ched"
+    },
+    {
+      "t" : 7.17,
+      "text" : "\", \"Main"
+    },
+    {
+      "t" : 7.249,
+      "text" : " light observ"
+    },
+    {
+      "t" : 7.31,
+      "text" : "ed\", \"M"
+    },
+    {
+      "t" : 7.378,
+      "text" : "irror size"
+    },
+    {
+      "t" : 7.423,
+      "text" : "\", \"Pat"
+    },
+    {
+      "t" : 7.49,
+      "text" : "ch of sky\","
+    },
+    {
+      "t" : 7.542,
+      "text" : " \"Galaxies se"
+    },
+    {
+      "t" : 7.608,
+      "text" : "en\", \"Fur"
+    },
+    {
+      "t" : 7.664,
+      "text" : "thest look-"
+    },
+    {
+      "t" : 7.725,
+      "text" : "back\", \"Key finding\""
+    },
+    {
+      "t" : 7.786,
+      "text" : "]\nhubble = [\""
+    },
+    {
+      "t" : 7.917,
+      "text" : "1995\", \"1990\", \""
+    },
+    {
+      "t" : 7.991,
+      "text" : "Visible and some"
+    },
+    {
+      "t" : 7.995,
+      "text" : " ultraviolet\", \""
+    },
+    {
+      "t" : 8.065,
+      "text" : "2.4 m"
+    },
+    {
+      "t" : 8.163,
+      "text" : "\", \"About"
+    },
+    {
+      "t" : 8.257,
+      "text" : " a"
+    },
+    {
+      "t" : 8.344,
+      "text" : " grain of s"
+    },
+    {
+      "t" : 8.491,
+      "text" : "and held"
+    },
+    {
+      "t" : 8.495,
+      "text" : " at arm's length\", \"About"
+    },
+    {
+      "t" : 8.611,
+      "text" : " 3,000\", \"About"
+    },
+    {
+      "t" : 8.706,
+      "text" : " 12 billion years\", \""
+    },
+    {
+      "t" : 8.799,
+      "text" : "The"
+    },
+    {
+      "t" : 8.898,
+      "text" : " d"
+    },
+    {
+      "t" : 8.981,
+      "text" : "ark sky pat"
+    },
+    {
+      "t" : 9.046,
+      "text" : "ch is cr"
+    },
+    {
+      "t" : 9.172,
+      "text" : "owded with galaxies\""
+    },
+    {
+      "t" : 9.253,
+      "text" : "]\nwebb = [\"2"
+    },
+    {
+      "t" : 9.369,
+      "text" : "022\", \"2021\", \""
+    },
+    {
+      "t" : 9.448,
+      "text" : "Infrared\", \"6.5"
+    },
+    {
+      "t" : 9.547,
+      "text" : " m\", \"About a grain"
+    },
+    {
+      "t" : 9.548,
+      "text" : " of sand held"
+    },
+    {
+      "t" : 9.621,
+      "text" : " at arm's length\", \""
+    },
+    {
+      "t" : 9.672,
+      "text" : "Thousands,"
+    },
+    {
+      "t" : 9.733,
+      "text" : " in far"
+    },
+    {
+      "t" : 9.785,
+      "text" : " gre"
+    },
+    {
+      "t" : 9.836,
+      "text" : "ater detail\", \"More"
+    },
+    {
+      "t" : 9.892,
+      "text" : " than 13 billion years\","
+    },
+    {
+      "t" : 9.952,
+      "text" : " \"Very"
+    },
+    {
+      "t" : 10.027,
+      "text" : " early galaxies, already"
+    },
+    {
+      "t" : 10.157,
+      "text" : " sur"
+    },
+    {
+      "t" : 10.216,
+      "text" : "prisingly mature\"]"
+    },
+    {
+      "t" : 10.279,
+      "text" : "\nimgHeader = In"
+    },
+    {
+      "t" : 10.282,
+      "text" : "lineHeader(\"Images"
+    },
+    {
+      "t" : 10.605,
+      "text" : "\", \"Look"
+    },
+    {
+      "t" : 10.676,
+      "text" : " up the official p"
+    },
+    {
+      "t" : 10.773,
+      "text" : "ictures at"
+    },
+    {
+      "t" : 10.86,
+      "text" : " the"
+    },
+    {
+      "t" : 10.966,
+      "text" : " links"
+    },
+    {
+      "t" : 11.071,
+      "text" : " below\")\nimgNote ="
+    },
+    {
+      "t" : 11.137,
+      "text" : " Bu"
+    },
+    {
+      "t" : 11.24,
+      "text" : "ttons([b1,"
+    },
+    {
+      "t" : 11.37,
+      "text" : " b2])\nb1 ="
+    },
+    {
+      "t" : 11.503,
+      "text" : " Button(\"View"
+    },
+    {
+      "t" : 11.632,
+      "text" : " Hubble Deep"
+    },
+    {
+      "t" : 12.084,
+      "text" : " Field\", @OpenUr"
+    },
+    {
+      "t" : 12.09,
+      "text" : "l(\"https://es"
+    },
+    {
+      "t" : 12.251,
+      "text" : "ah"
+    },
+    {
+      "t" : 12.497,
+      "text" : "ub"
+    },
+    {
+      "t" : 12.5,
+      "text" : "ble.org"
+    },
+    {
+      "t" : 12.638,
+      "text" : "/images/he"
+    },
+    {
+      "t" : 12.859,
+      "text" : "ic"
+    },
+    {
+      "t" : 12.861,
+      "text" : "0"
+    },
+    {
+      "t" : 13.003,
+      "text" : "611"
+    },
+    {
+      "t" : 13.165,
+      "text" : "b"
+    },
+    {
+      "t" : 13.297,
+      "text" : "/\"), \"secondary\")"
+    },
+    {
+      "t" : 13.443,
+      "text" : "\nb2 = Button(\""
+    },
+    {
+      "t" : 13.574,
+      "text" : "View Webb's First De"
+    },
+    {
+      "t" : 13.725,
+      "text" : "ep Field\", @Open"
+    },
+    {
+      "t" : 13.882,
+      "text" : "Url(\"https://webb"
+    },
+    {
+      "t" : 14.131,
+      "text" : "telescope.org/cont"
+    },
+    {
+      "t" : 14.134,
+      "text" : "ents/media"
+    },
+    {
+      "t" : 14.305,
+      "text" : "/images"
+    },
+    {
+      "t" : 14.451,
+      "text" : "/2"
+    },
+    {
+      "t" : 14.602,
+      "text" : "022/035"
+    },
+    {
+      "t" : 14.773,
+      "text" : "/01"
+    },
+    {
+      "t" : 14.938,
+      "text" : "G"
+    },
+    {
+      "t" : 15.2,
+      "text" : "7"
+    },
+    {
+      "t" : 15.203,
+      "text" : "D"
+    },
+    {
+      "t" : 15.337,
+      "text" : "D"
+    },
+    {
+      "t" : 15.502,
+      "text" : "B"
+    },
+    {
+      "t" : 15.609,
+      "text" : "W"
+    },
+    {
+      "t" : 15.771,
+      "text" : "5N"
+    },
+    {
+      "t" : 15.945,
+      "text" : "HZN"
+    },
+    {
+      "t" : 16.107,
+      "text" : "J"
+    },
+    {
+      "t" : 16.269,
+      "text" : "9DZ4E4"
+    },
+    {
+      "t" : 16.42,
+      "text" : "XQ"
+    },
+    {
+      "t" : 16.57,
+      "text" : "3BPX\"), \""
+    },
+    {
+      "t" : 16.746,
+      "text" : "secondary\")\nglossH"
+    },
+    {
+      "t" : 16.896,
+      "text" : "eader = InlineHe"
+    },
+    {
+      "t" : 17.166,
+      "text" : "ader(\"Plain-"
+    },
+    {
+      "t" : 17.174,
+      "text" : "Language Glossary\", \""
+    },
+    {
+      "t" : 17.338,
+      "text" : "Key terms expl"
+    },
+    {
+      "t" : 17.522,
+      "text" : "ained sim"
+    },
+    {
+      "t" : 17.695,
+      "text" : "ply\")\ngloss ="
+    },
+    {
+      "t" : 17.854,
+      "text" : " Accordion([g1, g"
+    },
+    {
+      "t" : 18.025,
+      "text" : "2, g3, g4,"
+    },
+    {
+      "t" : 18.193,
+      "text" : " g5])\ng1 ="
+    },
+    {
+      "t" : 18.328,
+      "text" : " AccordionItem(\"inf"
+    },
+    {
+      "t" : 18.484,
+      "text" : "rared\", \"Infrared"
+    },
+    {
+      "t" : 18.629,
+      "text" : " light"
+    },
+    {
+      "t" : 18.763,
+      "text" : "\", [TextContent(\""
+    },
+    {
+      "t" : 19.004,
+      "text" : "Light our"
+    },
+    {
+      "t" : 19.005,
+      "text" : " eyes can't see, fel"
+    },
+    {
+      "t" : 19.128,
+      "text" : "t by us"
+    },
+    {
+      "t" : 19.231,
+      "text" : " as heat. It pass"
+    },
+    {
+      "t" : 19.35,
+      "text" : "es through dust cl"
+    },
+    {
+      "t" : 19.519,
+      "text" : "ouds and is"
+    },
+    {
+      "t" : 19.613,
+      "text" : " how"
+    },
+    {
+      "t" : 19.763,
+      "text" : " Webb s"
+    },
+    {
+      "t" : 20.267,
+      "text" : "ees the"
+    },
+    {
+      "t" : 20.391,
+      "text" : " ear"
+    },
+    {
+      "t" : 20.393,
+      "text" : "liest galaxies.\")"
+    },
+    {
+      "t" : 20.499,
+      "text" : "])\ng2 = Acc"
+    },
+    {
+      "t" : 20.587,
+      "text" : "ordionItem(\"redshift"
+    },
+    {
+      "t" : 20.695,
+      "text" : "\", \"Redshift\", ["
+    },
+    {
+      "t" : 20.781,
+      "text" : "TextContent(\"As the univers"
+    },
+    {
+      "t" : 20.864,
+      "text" : "e expands, light from"
+    },
+    {
+      "t" : 21.023,
+      "text" : " far-away"
+    },
+    {
+      "t" : 21.156,
+      "text" : " galaxies is"
+    },
+    {
+      "t" : 21.309,
+      "text" : " stretched to"
+    },
+    {
+      "t" : 21.55,
+      "text" : " long"
+    },
+    {
+      "t" : 21.551,
+      "text" : "er,"
+    },
+    {
+      "t" : 21.662,
+      "text" : " redder wavelengths."
+    },
+    {
+      "t" : 21.738,
+      "text" : " More"
+    },
+    {
+      "t" : 21.818,
+      "text" : " redshift means a"
+    },
+    {
+      "t" : 21.908,
+      "text" : " more distant,"
+    },
+    {
+      "t" : 21.991,
+      "text" : " older galaxy.\")])"
+    },
+    {
+      "t" : 22.078,
+      "text" : "\ng3 = Accord"
+    },
+    {
+      "t" : 22.162,
+      "text" : "ionItem(\"lookback\","
+    },
+    {
+      "t" : 22.248,
+      "text" : " \"Look-back time\", ["
+    },
+    {
+      "t" : 22.415,
+      "text" : "TextContent(\""
+    },
+    {
+      "t" : 22.563,
+      "text" : "Light takes time to trav"
+    },
+    {
+      "t" : 22.734,
+      "text" : "el. Se"
+    },
+    {
+      "t" : 22.901,
+      "text" : "eing a gal"
+    },
+    {
+      "t" : 23.084,
+      "text" : "axy 13 billion"
+    },
+    {
+      "t" : 23.275,
+      "text" : " light"
+    },
+    {
+      "t" : 23.709,
+      "text" : "-years away means se"
+    },
+    {
+      "t" : 23.916,
+      "text" : "eing it as it was 13"
+    },
+    {
+      "t" : 23.92,
+      "text" : " billion years ago.\")"
+    },
+    {
+      "t" : 24.141,
+      "text" : "])\ng4 = Acc"
+    },
+    {
+      "t" : 24.372,
+      "text" : "ordionItem(\"deepf"
+    },
+    {
+      "t" : 24.563,
+      "text" : "ield\", \"Deep field\","
+    },
+    {
+      "t" : 24.782,
+      "text" : " [TextContent(\"A long"
+    },
+    {
+      "t" : 25.003,
+      "text" : " exposure of a tiny"
+    },
+    {
+      "t" : 25.223,
+      "text" : ", seemingly empty pat"
+    },
+    {
+      "t" : 25.437,
+      "text" : "ch of sky, collecting"
+    },
+    {
+      "t" : 25.628,
+      "text" : " fa"
+    },
+    {
+      "t" : 25.864,
+      "text" : "int light over"
+    },
+    {
+      "t" : 26.073,
+      "text" : " many h"
+    },
+    {
+      "t" : 26.291,
+      "text" : "ours to"
+    },
+    {
+      "t" : 26.486,
+      "text" : " reveal distant obj"
+    },
+    {
+      "t" : 26.701,
+      "text" : "ects.\")])\ng5 "
+    },
+    {
+      "t" : 26.941,
+      "text" : "= AccordionItem(\""
+    },
+    {
+      "t" : 27.151,
+      "text" : "g"
+    },
+    {
+      "t" : 27.382,
+      "text" : "ravl"
+    },
+    {
+      "t" : 27.589,
+      "text" : "ens\", \"Gravitational"
+    },
+    {
+      "t" : 27.808,
+      "text" : " lensing\", [TextCont"
+    },
+    {
+      "t" : 28.016,
+      "text" : "ent(\"Mass"
+    },
+    {
+      "t" : 28.288,
+      "text" : "ive obj"
+    },
+    {
+      "t" : 28.29,
+      "text" : "ects b"
+    },
+    {
+      "t" : 28.498,
+      "text" : "end space,"
+    },
+    {
+      "t" : 28.731,
+      "text" : " ac"
+    },
+    {
+      "t" : 28.93,
+      "text" : "ting like a mag"
+    },
+    {
+      "t" : 29.092,
+      "text" : "nifying glass that"
+    },
+    {
+      "t" : 29.366,
+      "text" : " st"
+    },
+    {
+      "t" : 29.75,
+      "text" : "retches and br"
+    },
+    {
+      "t" : 29.753,
+      "text" : "ightens light"
+    },
+    {
+      "t" : 29.94,
+      "text" : " from"
+    },
+    {
+      "t" : 30.057,
+      "text" : " gal"
+    },
+    {
+      "t" : 30.23,
+      "text" : "axies behind them.\")"
+    },
+    {
+      "t" : 30.412,
+      "text" : "])\ncallout = Callout"
+    },
+    {
+      "t" : 30.592,
+      "text" : "(\"info\", \"The"
+    },
+    {
+      "t" : 30.774,
+      "text" : " story in"
+    },
+    {
+      "t" : 30.985,
+      "text" : " one line\", \"Hubble"
+    },
+    {
+      "t" : 31.173,
+      "text" : " show"
+    },
+    {
+      "t" : 31.361,
+      "text" : "ed us the universe was full"
+    },
+    {
+      "t" : 31.51,
+      "text" : " of galaxies; Web"
+    },
+    {
+      "t" : 31.673,
+      "text" : "b is"
+    },
+    {
+      "t" : 31.868,
+      "text" : " showing us how the"
+    },
+    {
+      "t" : 32.028,
+      "text" : " first of them"
+    },
+    {
+      "t" : 32.164,
+      "text" : " began"
+    },
+    {
+      "t" : 32.297,
+      "text" : ".\")"
+    }
+  ],
+  "createdAt" : "2026-11-11T10:41:04Z",
+  "effort" : "low",
+  "format" : "openui-recording",
+  "inputTokens" : 14506,
+  "library" : "react-ui",
+  "model" : "claude-sonnet-5-5",
+  "outputTokens" : 1177,
+  "request" : "A science story comparing two telescope discoveries: observation facts in a table, an image for each and a plain-language glossary.",
+  "servedBy" : "claude-sonnet-5-5",
+  "stopReason" : "end_turn",
+  "version" : 1
+}

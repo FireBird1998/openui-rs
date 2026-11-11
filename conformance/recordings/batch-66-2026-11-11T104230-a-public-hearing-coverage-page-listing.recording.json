@@ -1,0 +1,872 @@
+{
+  "batchRequest" : {
+    "model" : "haiku",
+    "number" : 66,
+    "request" : "A public hearing coverage page listing agenda items, testimony summaries and the next consultation deadline."
+  },
+  "chunks" : [
+    {
+      "t" : 0.584,
+      "text" : "root"
+    },
+    {
+      "t" : 0.746,
+      "text" : " = Stack(["
+    },
+    {
+      "t" : 0.77,
+      "text" : "p"
+    },
+    {
+      "t" : 0.824,
+      "text" : "ageHeader, de"
+    },
+    {
+      "t" : 0.851,
+      "text" : "adlineCall"
+    },
+    {
+      "t" : 0.934,
+      "text" : "out, agendaH"
+    },
+    {
+      "t" : 0.966,
+      "text" : "eader, ag"
+    },
+    {
+      "t" : 1.052,
+      "text" : "endaTabs, test"
+    },
+    {
+      "t" : 1.092,
+      "text" : "im"
+    },
+    {
+      "t" : 1.185,
+      "text" : "onyHeader, testim"
+    },
+    {
+      "t" : 1.229,
+      "text" : "onyA"
+    },
+    {
+      "t" : 1.298,
+      "text" : "ccordion])\npageH"
+    },
+    {
+      "t" : 1.3,
+      "text" : "eader = InlineHe"
+    },
+    {
+      "t" : 1.343,
+      "text" : "ader(\"Public Hearing"
+    },
+    {
+      "t" : 1.344,
+      "text" : " Coverage\", \"Munic"
+    },
+    {
+      "t" : 1.377,
+      "text" : "ipal Plan"
+    },
+    {
+      "t" : 1.407,
+      "text" : "ning Comm"
+    },
+    {
+      "t" : 1.435,
+      "text" : "ission ·"
+    },
+    {
+      "t" : 1.467,
+      "text" : " Ri"
+    },
+    {
+      "t" : 1.501,
+      "text" : "verside Zoning Am"
+    },
+    {
+      "t" : 1.539,
+      "text" : "endment\")\ndeadline"
+    },
+    {
+      "t" : 1.575,
+      "text" : "Callout = Callout(\""
+    },
+    {
+      "t" : 1.615,
+      "text" : "warning\", \"Next cons"
+    },
+    {
+      "t" : 1.656,
+      "text" : "ultation deadline\", \""
+    },
+    {
+      "t" : 1.693,
+      "text" : "Written comments close"
+    },
+    {
+      "t" : 1.73,
+      "text" : " Friday, "
+    },
+    {
+      "t" : 1.781,
+      "text" : "14 March"
+    },
+    {
+      "t" : 1.782,
+      "text" : " 2025"
+    },
+    {
+      "t" : 1.816,
+      "text" : " at 5:00 P"
+    },
+    {
+      "t" : 1.868,
+      "text" : "M. Submit via"
+    },
+    {
+      "t" : 1.869,
+      "text" : " the city"
+    },
+    {
+      "t" : 1.917,
+      "text" : " cl"
+    },
+    {
+      "t" : 1.953,
+      "text" : "erk portal or in"
+    },
+    {
+      "t" : 1.999,
+      "text" : " person.\")\nagendaH"
+    },
+    {
+      "t" : 2.044,
+      "text" : "eader = InlineHe"
+    },
+    {
+      "t" : 2.096,
+      "text" : "ader(\"Agenda Items"
+    },
+    {
+      "t" : 2.158,
+      "text" : "\", \"Items"
+    },
+    {
+      "t" : 2.159,
+      "text" : " consid"
+    },
+    {
+      "t" : 2.202,
+      "text" : "ered at this"
+    },
+    {
+      "t" : 2.241,
+      "text" : " session"
+    },
+    {
+      "t" : 2.639,
+      "text" : "\")\nagendaTabs"
+    },
+    {
+      "t" : 2.681,
+      "text" : " = Tabs([tab"
+    },
+    {
+      "t" : 2.794,
+      "text" : "Agenda1"
+    },
+    {
+      "t" : 2.796,
+      "text" : ", tabAgenda2"
+    },
+    {
+      "t" : 2.869,
+      "text" : ", tabAgenda3"
+    },
+    {
+      "t" : 2.915,
+      "text" : "])\ntabAgenda"
+    },
+    {
+      "t" : 3.009,
+      "text" : "1 = TabItem(\""
+    },
+    {
+      "t" : 3.199,
+      "text" : "item1\", \"1. Z"
+    },
+    {
+      "t" : 3.253,
+      "text" : "oning Amendment\", ag"
+    },
+    {
+      "t" : 3.324,
+      "text" : "en"
+    },
+    {
+      "t" : 3.382,
+      "text" : "da1"
+    },
+    {
+      "t" : 3.449,
+      "text" : "Content)\ntabAgen"
+    },
+    {
+      "t" : 3.516,
+      "text" : "da2 = TabItem"
+    },
+    {
+      "t" : 3.572,
+      "text" : "(\"item2\", \"2."
+    },
+    {
+      "t" : 3.615,
+      "text" : " Parking Stand"
+    },
+    {
+      "t" : 3.667,
+      "text" : "ards\", agenda2Content"
+    },
+    {
+      "t" : 3.72,
+      "text" : ")\ntabAgenda"
+    },
+    {
+      "t" : 3.784,
+      "text" : "3 = TabItem(\""
+    },
+    {
+      "t" : 3.883,
+      "text" : "item3\", \"3. Park"
+    },
+    {
+      "t" : 3.928,
+      "text" : " Bud"
+    },
+    {
+      "t" : 3.978,
+      "text" : "get\", agenda3Content"
+    },
+    {
+      "t" : 4.029,
+      "text" : ")\nagenda1Content"
+    },
+    {
+      "t" : 4.073,
+      "text" : " = [TextContent(\""
+    },
+    {
+      "t" : 4.125,
+      "text" : "Proposal"
+    },
+    {
+      "t" : 4.178,
+      "text" : " to rezone "
+    },
+    {
+      "t" : 4.22,
+      "text" : "14"
+    },
+    {
+      "t" : 4.309,
+      "text" : " par"
+    },
+    {
+      "t" : 4.378,
+      "text" : "cels along"
+    },
+    {
+      "t" : 4.428,
+      "text" : " Riverside Avenue"
+    },
+    {
+      "t" : 4.475,
+      "text" : " from light"
+    },
+    {
+      "t" : 4.533,
+      "text" : " industrial to mixed-"
+    },
+    {
+      "t" : 4.602,
+      "text" : "use resid"
+    },
+    {
+      "t" : 4.753,
+      "text" : "ential, allowing up to four"
+    },
+    {
+      "t" : 4.757,
+      "text" : " st"
+    },
+    {
+      "t" : 4.816,
+      "text" : "ories of"
+    },
+    {
+      "t" : 4.877,
+      "text" : " hous"
+    },
+    {
+      "t" : 4.933,
+      "text" : "ing above"
+    },
+    {
+      "t" : 5.086,
+      "text" : " "
+    },
+    {
+      "t" : 5.112,
+      "text" : "ground-floor ret"
+    },
+    {
+      "t" : 5.164,
+      "text" : "ail.\", \"default"
+    },
+    {
+      "t" : 5.22,
+      "text" : "\"), E"
+    },
+    {
+      "t" : 5.274,
+      "text" : "ntityList(["
+    },
+    {
+      "t" : 5.33,
+      "text" : "{left: \"Status\", right"
+    },
+    {
+      "t" : 5.394,
+      "text" : ": \"Under review"
+    },
+    {
+      "t" : 5.449,
+      "text" : "\"}, {left: \""
+    },
+    {
+      "t" : 5.521,
+      "text" : "Sponsor\", right: \""
+    },
+    {
+      "t" : 5.611,
+      "text" : "Planning D"
+    },
+    {
+      "t" : 5.612,
+      "text" : "ept.\"}, {left: \""
+    },
+    {
+      "t" : 5.67,
+      "text" : "V"
+    },
+    {
+      "t" : 5.725,
+      "text" : "ote\", right: \"De"
+    },
+    {
+      "t" : 5.793,
+      "text" : "ferred to"
+    },
+    {
+      "t" : 5.88,
+      "text" : " April"
+    },
+    {
+      "t" : 5.962,
+      "text" : "\"}], \"default\")]"
+    },
+    {
+      "t" : 6.032,
+      "text" : "\nagenda2Content = ["
+    },
+    {
+      "t" : 6.171,
+      "text" : "TextContent(\"Rev"
+    },
+    {
+      "t" : 6.256,
+      "text" : "ised minimum parking requir"
+    },
+    {
+      "t" : 6.335,
+      "text" : "ements for transit-ad"
+    },
+    {
+      "t" : 6.441,
+      "text" : "jacent develop"
+    },
+    {
+      "t" : 6.519,
+      "text" : "ments,"
+    },
+    {
+      "t" : 6.569,
+      "text" : " reducing sp"
+    },
+    {
+      "t" : 6.651,
+      "text" : "aces from"
+    },
+    {
+      "t" : 6.653,
+      "text" : " 1.5 to 0"
+    },
+    {
+      "t" : 6.729,
+      "text" : ".75 per unit within"
+    },
+    {
+      "t" : 6.809,
+      "text" : " a half"
+    },
+    {
+      "t" : 6.92,
+      "text" : "-mile of"
+    },
+    {
+      "t" : 7.073,
+      "text" : " stations.\", \"default\"),"
+    },
+    {
+      "t" : 7.196,
+      "text" : " EntityList([{left:"
+    },
+    {
+      "t" : 7.343,
+      "text" : " \"Status\", right: \""
+    },
+    {
+      "t" : 7.459,
+      "text" : "Public com"
+    },
+    {
+      "t" : 7.538,
+      "text" : "ment open"
+    },
+    {
+      "t" : 7.632,
+      "text" : "\"}, {left: \""
+    },
+    {
+      "t" : 7.718,
+      "text" : "Sponsor\", right: \""
+    },
+    {
+      "t" : 7.807,
+      "text" : "Transportation Committ"
+    },
+    {
+      "t" : 7.916,
+      "text" : "ee\"}, {left: \""
+    },
+    {
+      "t" : 7.918,
+      "text" : "Vote\", right: \""
+    },
+    {
+      "t" : 7.986,
+      "text" : "Scheduled "
+    },
+    {
+      "t" : 8.117,
+      "text" : "2"
+    },
+    {
+      "t" : 8.213,
+      "text" : " April\"}], \"default\")"
+    },
+    {
+      "t" : 8.214,
+      "text" : "]\nagenda3Content"
+    },
+    {
+      "t" : 8.286,
+      "text" : " = [TextContent(\""
+    },
+    {
+      "t" : 8.336,
+      "text" : "Proposed $1"
+    },
+    {
+      "t" : 8.402,
+      "text" : ".2M"
+    },
+    {
+      "t" : 8.47,
+      "text" : " allocation for ren"
+    },
+    {
+      "t" : 8.56,
+      "text" : "ovation of E"
+    },
+    {
+      "t" : 8.63,
+      "text" : "astside"
+    },
+    {
+      "t" : 8.732,
+      "text" : " Park play"
+    },
+    {
+      "t" : 8.813,
+      "text" : "ground"
+    },
+    {
+      "t" : 8.884,
+      "text" : " and"
+    },
+    {
+      "t" : 8.958,
+      "text" : " acc"
+    },
+    {
+      "t" : 8.96,
+      "text" : "essible"
+    },
+    {
+      "t" : 9.028,
+      "text" : " p"
+    },
+    {
+      "t" : 9.1,
+      "text" : "athways.\", \"default\"),"
+    },
+    {
+      "t" : 9.175,
+      "text" : " EntityList([{left:"
+    },
+    {
+      "t" : 9.254,
+      "text" : " \"Status\", right: \""
+    },
+    {
+      "t" : 9.423,
+      "text" : "Approved in"
+    },
+    {
+      "t" : 9.505,
+      "text" : " princip"
+    },
+    {
+      "t" : 9.599,
+      "text" : "le\"}, {left: \""
+    },
+    {
+      "t" : 9.707,
+      "text" : "Sponsor\", right:"
+    },
+    {
+      "t" : 9.807,
+      "text" : " \"Par"
+    },
+    {
+      "t" : 9.927,
+      "text" : "ks & Recreation\"}"
+    },
+    {
+      "t" : 10.112,
+      "text" : ", {left: \"V"
+    },
+    {
+      "t" : 10.196,
+      "text" : "ote\", right: \"Final v"
+    },
+    {
+      "t" : 10.297,
+      "text" : "ote p"
+    },
+    {
+      "t" : 10.418,
+      "text" : "ending\"}], \"default\")]"
+    },
+    {
+      "t" : 10.553,
+      "text" : "\ntestimonyHeader"
+    },
+    {
+      "t" : 10.555,
+      "text" : " = InlineHeader(\""
+    },
+    {
+      "t" : 10.697,
+      "text" : "Testimony Summaries"
+    },
+    {
+      "t" : 10.834,
+      "text" : "\", \"Key"
+    },
+    {
+      "t" : 10.964,
+      "text" : " points from members"
+    },
+    {
+      "t" : 11.106,
+      "text" : " of the public\")\ntestimon"
+    },
+    {
+      "t" : 11.223,
+      "text" : "yAccordion = Acc"
+    },
+    {
+      "t" : 11.358,
+      "text" : "ordion([accT"
+    },
+    {
+      "t" : 11.507,
+      "text" : "1, accT2, accT"
+    },
+    {
+      "t" : 11.652,
+      "text" : "3])\naccT1 ="
+    },
+    {
+      "t" : 11.94,
+      "text" : " AccordionItem(\"t"
+    },
+    {
+      "t" : 12.071,
+      "text" : "1\", \"Ma"
+    },
+    {
+      "t" : 12.209,
+      "text" : "ria Al"
+    },
+    {
+      "t" : 12.333,
+      "text" : "varez, Resident ("
+    },
+    {
+      "t" : 12.435,
+      "text" : "Item"
+    },
+    {
+      "t" : 12.576,
+      "text" : " 1)\", [TextCont"
+    },
+    {
+      "t" : 12.577,
+      "text" : "ent(\"Sup"
+    },
+    {
+      "t" : 12.722,
+      "text" : "ports m"
+    },
+    {
+      "t" : 12.859,
+      "text" : "ixed-use r"
+    },
+    {
+      "t" : 13.031,
+      "text" : "ezoning but as"
+    },
+    {
+      "t" : 13.191,
+      "text" : "ked for st"
+    },
+    {
+      "t" : 13.333,
+      "text" : "ronger t"
+    },
+    {
+      "t" : 13.58,
+      "text" : "enant protections and a comm"
+    },
+    {
+      "t" : 13.717,
+      "text" : "itment to affordable units"
+    },
+    {
+      "t" : 13.874,
+      "text" : " in"
+    },
+    {
+      "t" : 13.875,
+      "text" : " the first"
+    },
+    {
+      "t" : 14.038,
+      "text" : " ph"
+    },
+    {
+      "t" : 14.203,
+      "text" : "ase.\")])\naccT2"
+    },
+    {
+      "t" : 14.363,
+      "text" : " = AccordionItem"
+    },
+    {
+      "t" : 14.528,
+      "text" : "(\"t2\", \"James"
+    },
+    {
+      "t" : 14.633,
+      "text" : " Ok"
+    },
+    {
+      "t" : 14.719,
+      "text" : "afor, Small"
+    },
+    {
+      "t" : 14.864,
+      "text" : " Business Owner (Item"
+    },
+    {
+      "t" : 15.031,
+      "text" : " 2)\", [TextCont"
+    },
+    {
+      "t" : 15.203,
+      "text" : "ent(\"Opposes"
+    },
+    {
+      "t" : 15.358,
+      "text" : " reduced parking min"
+    },
+    {
+      "t" : 15.498,
+      "text" : "imums,"
+    },
+    {
+      "t" : 15.669,
+      "text" : " cit"
+    },
+    {
+      "t" : 15.842,
+      "text" : "ing lim"
+    },
+    {
+      "t" : 16.012,
+      "text" : "ited b"
+    },
+    {
+      "t" : 16.183,
+      "text" : "us fr"
+    },
+    {
+      "t" : 16.342,
+      "text" : "equency and"
+    },
+    {
+      "t" : 16.513,
+      "text" : " the need"
+    },
+    {
+      "t" : 16.688,
+      "text" : " for custom"
+    },
+    {
+      "t" : 16.976,
+      "text" : "er par"
+    },
+    {
+      "t" : 16.978,
+      "text" : "king for"
+    },
+    {
+      "t" : 17.132,
+      "text" : " local"
+    },
+    {
+      "t" : 17.299,
+      "text" : " sh"
+    },
+    {
+      "t" : 17.469,
+      "text" : "ops.\")])\naccT3"
+    },
+    {
+      "t" : 17.763,
+      "text" : " = AccordionItem"
+    },
+    {
+      "t" : 17.764,
+      "text" : "(\"t3\", \"Pri"
+    },
+    {
+      "t" : 17.92,
+      "text" : "ya Sh"
+    },
+    {
+      "t" : 18.106,
+      "text" : "ah, Par"
+    },
+    {
+      "t" : 18.273,
+      "text" : "ent"
+    },
+    {
+      "t" : 18.447,
+      "text" : " Council"
+    },
+    {
+      "t" : 18.625,
+      "text" : " (Item 3)\", ["
+    },
+    {
+      "t" : 18.765,
+      "text" : "TextContent(\"Wel"
+    },
+    {
+      "t" : 18.886,
+      "text" : "comed"
+    },
+    {
+      "t" : 19.052,
+      "text" : " the"
+    },
+    {
+      "t" : 19.352,
+      "text" : " Eastside Park investment and"
+    },
+    {
+      "t" : 19.353,
+      "text" : " requ"
+    },
+    {
+      "t" : 19.537,
+      "text" : "ested that"
+    },
+    {
+      "t" : 19.695,
+      "text" : " accessible p"
+    },
+    {
+      "t" : 19.82,
+      "text" : "athways be"
+    },
+    {
+      "t" : 20.009,
+      "text" : " complet"
+    },
+    {
+      "t" : 20.202,
+      "text" : "ed before play"
+    },
+    {
+      "t" : 20.395,
+      "text" : "ground work"
+    },
+    {
+      "t" : 20.646,
+      "text" : " beg"
+    },
+    {
+      "t" : 20.648,
+      "text" : "ins.\")])"
+    }
+  ],
+  "createdAt" : "2026-11-11T10:42:30Z",
+  "effort" : "low",
+  "format" : "openui-recording",
+  "inputTokens" : 14501,
+  "library" : "react-ui",
+  "model" : "claude-haiku-5-5",
+  "outputTokens" : 1062,
+  "request" : "A public hearing coverage page listing agenda items, testimony summaries and the next consultation deadline.",
+  "servedBy" : "claude-haiku-5-5",
+  "stopReason" : "end_turn",
+  "version" : 1
+}

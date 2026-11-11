@@ -1,0 +1,202 @@
+{
+  "batchRequest" : {
+    "model" : "haiku",
+    "number" : 142,
+    "of" : 92,
+    "request" : "Mark the oldest animal as adopted and add a card for a newly arrived rabbit."
+  },
+  "chunks" : [
+    {
+      "t" : 4.077,
+      "text" : "```"
+    },
+    {
+      "t" : 4.096,
+      "text" : "\ncards = Stack(["
+    },
+    {
+      "t" : 4.306,
+      "text" : "petA, petB, petC"
+    },
+    {
+      "t" : 4.341,
+      "text" : ", petD, petE], \""
+    },
+    {
+      "t" : 4.342,
+      "text" : "row\", \"m\", \"stret"
+    },
+    {
+      "t" : 4.371,
+      "text" : "ch\", \"start\", true)"
+    },
+    {
+      "t" : 4.405,
+      "text" : "\npetD = Card([photo"
+    },
+    {
+      "t" : 4.447,
+      "text" : "D, nameD, age"
+    },
+    {
+      "t" : 4.477,
+      "text" : "D, tagsD, ad"
+    },
+    {
+      "t" : 4.512,
+      "text" : "optedD, btnD"
+    },
+    {
+      "t" : 4.541,
+      "text" : "])\nadoptedD ="
+    },
+    {
+      "t" : 4.573,
+      "text" : " Tag(\"Adopted"
+    },
+    {
+      "t" : 4.646,
+      "text" : "\", null, \"sm\", \""
+    },
+    {
+      "t" : 4.692,
+      "text" : "success\")\nbtnD ="
+    },
+    {
+      "t" : 4.694,
+      "text" : " Button(\"Adopted\", @"
+    },
+    {
+      "t" : 4.757,
+      "text" : "ToAssistant(\""
+    },
+    {
+      "t" : 4.824,
+      "text" : "Ask"
+    },
+    {
+      "t" : 4.909,
+      "text" : " about ad"
+    },
+    {
+      "t" : 4.984,
+      "text" : "option process"
+    },
+    {
+      "t" : 5.048,
+      "text" : "\""
+    },
+    {
+      "t" : 5.179,
+      "text" : "), \"secondary\")\npet"
+    },
+    {
+      "t" : 5.352,
+      "text" : "E = Card([nameE"
+    },
+    {
+      "t" : 5.455,
+      "text" : ", new"
+    },
+    {
+      "t" : 5.477,
+      "text" : "E"
+    },
+    {
+      "t" : 5.782,
+      "text" : ", ageE, tags"
+    },
+    {
+      "t" : 5.925,
+      "text" : "E, btnE])\nn"
+    },
+    {
+      "t" : 6.025,
+      "text" : "ameE = CardHeader"
+    },
+    {
+      "t" : 6.125,
+      "text" : "(\"Pebble\", \""
+    },
+    {
+      "t" : 6.185,
+      "text" : "Netherland Dwarf"
+    },
+    {
+      "t" : 6.253,
+      "text" : " Rabbit\")\nnew"
+    },
+    {
+      "t" : 21.026,
+      "text" : "E = Tag(\"New"
+    },
+    {
+      "t" : 21.462,
+      "text" : " Arrival\", null, \"s"
+    },
+    {
+      "t" : 21.602,
+      "text" : "m\", \"info\")\nage"
+    },
+    {
+      "t" : 21.847,
+      "text" : "E = TextContent(\""
+    },
+    {
+      "t" : 22.011,
+      "text" : "Age: 1 year\", \""
+    },
+    {
+      "t" : 22.108,
+      "text" : "small\")\ntagsE ="
+    },
+    {
+      "t" : 22.228,
+      "text" : " TagBlock([\""
+    },
+    {
+      "t" : 22.297,
+      "text" : "Curious\", \"Small"
+    },
+    {
+      "t" : 22.364,
+      "text" : "\", \"Quiet\"])"
+    },
+    {
+      "t" : 22.434,
+      "text" : "\nbtnE = Button(\""
+    },
+    {
+      "t" : 22.495,
+      "text" : "Meet & Greet\","
+    },
+    {
+      "t" : 22.631,
+      "text" : " @ToAssistant(\""
+    },
+    {
+      "t" : 22.716,
+      "text" : "Schedule a meet and"
+    },
+    {
+      "t" : 22.79,
+      "text" : " greet with Pebble\""
+    },
+    {
+      "t" : 22.87,
+      "text" : "), \"primary\")\n```"
+    }
+  ],
+  "createdAt" : "2026-11-11T11:06:37Z",
+  "effort" : "low",
+  "format" : "openui-recording",
+  "inputTokens" : 15799,
+  "library" : "react-ui",
+  "model" : "claude-haiku-5-5",
+  "outputTokens" : 981,
+  "patchOf" : "root = Stack([header, cards])\nheader = InlineHeader(\"Adoptable Pets\", \"Four friends looking for a home\")\ncards = Stack([petA, petB, petC, petD], \"row\", \"m\", \"stretch\", \"start\", true)\npetA = Card([photoA, nameA, ageA, tagsA, btnA])\nphotoA = ImageBlock(\"https://images.unsplash.com/photo-1543466835-00a7907e9de1?w=600\", \"Golden retriever puppy\")\nnameA = CardHeader(\"Biscuit\", \"Golden Retriever\")\nageA = TextContent(\"Age: 1 year\", \"small\")\ntagsA = TagBlock([\"Playful\", \"Friendly\", \"Good with kids\"])\nbtnA = Button(\"Meet & Greet\", @ToAssistant(\"Schedule a meet and greet with Biscuit\"), \"primary\")\npetB = Card([photoB, nameB, ageB, tagsB, btnB])\nphotoB = ImageBlock(\"https://images.unsplash.com/photo-1514888286974-6c03e2ca1dba?w=600\", \"Tabby cat resting\")\nnameB = CardHeader(\"Mochi\", \"Domestic Shorthair Cat\")\nageB = TextContent(\"Age: 3 years\", \"small\")\ntagsB = TagBlock([\"Calm\", \"Affectionate\", \"Indoor\"])\nbtnB = Button(\"Meet & Greet\", @ToAssistant(\"Schedule a meet and greet with Mochi\"), \"primary\")\npetC = Card([photoC, nameC, ageC, tagsC, btnC])\nphotoC = ImageBlock(\"https://images.unsplash.com/photo-1583511655857-d19b40a7a54e?w=600\", \"Gray and white rabbit\")\nnameC = CardHeader(\"Clover\", \"Holland Lop Rabbit\")\nageC = TextContent(\"Age: 2 years\", \"small\")\ntagsC = TagBlock([\"Gentle\", \"Quiet\", \"Litter trained\"])\nbtnC = Button(\"Meet & Greet\", @ToAssistant(\"Schedule a meet and greet with Clover\"), \"primary\")\npetD = Card([photoD, nameD, ageD, tagsD, btnD])\nphotoD = ImageBlock(\"https://images.unsplash.com/photo-1518717758536-85ae29035b6d?w=600\", \"Grey dog with a sunny face\")\nnameD = CardHeader(\"Ranger\", \"Australian Shepherd Mix\")\nageD = TextContent(\"Age: 5 years\", \"small\")\ntagsD = TagBlock([\"Energetic\", \"Loyal\", \"Trained\"])\nbtnD = Button(\"Meet & Greet\", @ToAssistant(\"Schedule a meet and greet with Ranger\"), \"primary\")",
+  "request" : "Mark the oldest animal as adopted and add a card for a newly arrived rabbit.",
+  "servedBy" : "claude-haiku-5-5",
+  "stopReason" : "end_turn",
+  "version" : 1
+}

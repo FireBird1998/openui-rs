@@ -1,0 +1,456 @@
+{
+  "batchRequest" : {
+    "model" : "sonnet",
+    "number" : 15,
+    "request" : "Opinion section: three columnists with photos, their latest piece title and a short excerpt."
+  },
+  "chunks" : [
+    {
+      "t" : 0.687,
+      "text" : "root = Stack([header"
+    },
+    {
+      "t" : 1.003,
+      "text" : ", c"
+    },
+    {
+      "t" : 1.013,
+      "text" : "ols"
+    },
+    {
+      "t" : 1.018,
+      "text" : "])\nheader = InlineH"
+    },
+    {
+      "t" : 1.033,
+      "text" : "eader(\"Opinion\","
+    },
+    {
+      "t" : 1.047,
+      "text" : " \"Lat"
+    },
+    {
+      "t" : 1.056,
+      "text" : "est p"
+    },
+    {
+      "t" : 1.062,
+      "text" : "ieces from our"
+    },
+    {
+      "t" : 1.068,
+      "text" : " columnists\")\ncols ="
+    },
+    {
+      "t" : 1.078,
+      "text" : " "
+    },
+    {
+      "t" : 1.084,
+      "text" : "ContextCardBlock(["
+    },
+    {
+      "t" : 1.094,
+      "text" : "c1, c2, c3"
+    },
+    {
+      "t" : 1.101,
+      "text" : "],"
+    },
+    {
+      "t" : 1.322,
+      "text" : " \"grid\")\nc1 "
+    },
+    {
+      "t" : 1.329,
+      "text" : "= ContextCardItem"
+    },
+    {
+      "t" : 1.334,
+      "text" : "(\"c"
+    },
+    {
+      "t" : 1.339,
+      "text" : "1\", t"
+    },
+    {
+      "t" : 1.359,
+      "text" : "1, \"**"
+    },
+    {
+      "t" : 1.365,
+      "text" : "The"
+    },
+    {
+      "t" : 1.374,
+      "text" : " Qu"
+    },
+    {
+      "t" : 1.38,
+      "text" : "iet"
+    },
+    {
+      "t" : 1.409,
+      "text" : " Cost of C"
+    },
+    {
+      "t" : 1.443,
+      "text" : "heap Conv"
+    },
+    {
+      "t" : 1.478,
+      "text" : "enience**"
+    },
+    {
+      "t" : 1.512,
+      "text" : " — *"
+    },
+    {
+      "t" : 1.666,
+      "text" : "Ma"
+    },
+    {
+      "t" : 1.693,
+      "text" : "ya Ok"
+    },
+    {
+      "t" : 1.712,
+      "text" : "afor*. Our"
+    },
+    {
+      "t" : 1.728,
+      "text" : " app"
+    },
+    {
+      "t" : 1.742,
+      "text" : "etite for one-click"
+    },
+    {
+      "t" : 1.758,
+      "text" : " ever"
+    },
+    {
+      "t" : 1.791,
+      "text" : "ything is"
+    },
+    {
+      "t" : 1.826,
+      "text" : " reshaping c"
+    },
+    {
+      "t" : 1.862,
+      "text" : "ities, and not"
+    },
+    {
+      "t" : 1.896,
+      "text" : " always for"
+    },
+    {
+      "t" : 1.933,
+      "text" : " the better."
+    },
+    {
+      "t" : 1.966,
+      "text" : " Who"
+    },
+    {
+      "t" : 2,
+      "text" : " p"
+    },
+    {
+      "t" : 2.035,
+      "text" : "ays when"
+    },
+    {
+      "t" : 2.133,
+      "text" : " spe"
+    },
+    {
+      "t" : 2.15,
+      "text" : "ed bec"
+    },
+    {
+      "t" : 2.164,
+      "text" : "omes the default?\","
+    },
+    {
+      "t" : 2.18,
+      "text" : " \"gray\")\nt1"
+    },
+    {
+      "t" : 2.214,
+      "text" : " = Tag(\"Ma"
+    },
+    {
+      "t" : 2.253,
+      "text" : "ya Okafor ·"
+    },
+    {
+      "t" : 2.286,
+      "text" : " Ur"
+    },
+    {
+      "t" : 2.323,
+      "text" : "ban Affairs\", i"
+    },
+    {
+      "t" : 2.359,
+      "text" : "1, \""
+    },
+    {
+      "t" : 2.395,
+      "text" : "md\", \"info\")\ni1"
+    },
+    {
+      "t" : 2.431,
+      "text" : " = Icon(\"building"
+    },
+    {
+      "t" : 2.466,
+      "text" : "-2\", \"city"
+    },
+    {
+      "t" : 2.503,
+      "text" : "\")\nc2 = Cont"
+    },
+    {
+      "t" : 2.54,
+      "text" : "extCardItem(\"c2"
+    },
+    {
+      "t" : 2.577,
+      "text" : "\", t2, \"**Why"
+    },
+    {
+      "t" : 2.61,
+      "text" : " We"
+    },
+    {
+      "t" : 2.646,
+      "text" : " Should"
+    },
+    {
+      "t" : 2.682,
+      "text" : " F"
+    },
+    {
+      "t" : 2.717,
+      "text" : "ear F"
+    },
+    {
+      "t" : 2.751,
+      "text" : "ewer Dis"
+    },
+    {
+      "t" : 2.788,
+      "text" : "agreements** — *Da"
+    },
+    {
+      "t" : 2.822,
+      "text" : "niel Re"
+    },
+    {
+      "t" : 2.859,
+      "text" : "yes*. A polit"
+    },
+    {
+      "t" : 2.894,
+      "text" : "ics of const"
+    },
+    {
+      "t" : 2.93,
+      "text" : "ant consensus s"
+    },
+    {
+      "t" : 2.965,
+      "text" : "ounds so"
+    },
+    {
+      "t" : 3,
+      "text" : "othing,"
+    },
+    {
+      "t" : 3.035,
+      "text" : " but"
+    },
+    {
+      "t" : 3.069,
+      "text" : " heal"
+    },
+    {
+      "t" : 3.106,
+      "text" : "thy democ"
+    },
+    {
+      "t" : 3.14,
+      "text" : "racies dep"
+    },
+    {
+      "t" : 3.179,
+      "text" : "end on fri"
+    },
+    {
+      "t" : 3.211,
+      "text" : "ction, arg"
+    },
+    {
+      "t" : 3.247,
+      "text" : "ument and hon"
+    },
+    {
+      "t" : 3.282,
+      "text" : "est d"
+    },
+    {
+      "t" : 3.317,
+      "text" : "issent.\", \"gray\")"
+    },
+    {
+      "t" : 3.353,
+      "text" : "\nt2 = Tag"
+    },
+    {
+      "t" : 3.394,
+      "text" : "(\"Daniel Rey"
+    },
+    {
+      "t" : 3.426,
+      "text" : "es · Politics\", i2"
+    },
+    {
+      "t" : 3.461,
+      "text" : ", \"md"
+    },
+    {
+      "t" : 3.498,
+      "text" : "\", \"warning\")\ni2"
+    },
+    {
+      "t" : 3.533,
+      "text" : " = Icon(\"landm"
+    },
+    {
+      "t" : 3.569,
+      "text" : "ark\", \"government"
+    },
+    {
+      "t" : 3.605,
+      "text" : "\")\nc3 = Cont"
+    },
+    {
+      "t" : 3.641,
+      "text" : "extCardItem(\"c3"
+    },
+    {
+      "t" : 3.678,
+      "text" : "\", t3, \"**"
+    },
+    {
+      "t" : 3.712,
+      "text" : "R"
+    },
+    {
+      "t" : 3.748,
+      "text" : "ebuilding Tr"
+    },
+    {
+      "t" : 3.783,
+      "text" : "ust,"
+    },
+    {
+      "t" : 3.818,
+      "text" : " One Local"
+    },
+    {
+      "t" : 3.853,
+      "text" : " Pa"
+    },
+    {
+      "t" : 3.895,
+      "text" : "per at a Time** — *"
+    },
+    {
+      "t" : 3.925,
+      "text" : "Priya Nair*."
+    },
+    {
+      "t" : 3.961,
+      "text" : " As"
+    },
+    {
+      "t" : 3.997,
+      "text" : " new"
+    },
+    {
+      "t" : 4.03,
+      "text" : "srooms sh"
+    },
+    {
+      "t" : 4.067,
+      "text" : "rink, small"
+    },
+    {
+      "t" : 4.105,
+      "text" : " community"
+    },
+    {
+      "t" : 4.136,
+      "text" : " outlets may"
+    },
+    {
+      "t" : 4.172,
+      "text" : " h"
+    },
+    {
+      "t" : 4.207,
+      "text" : "old the key to rest"
+    },
+    {
+      "t" : 4.247,
+      "text" : "oring fa"
+    },
+    {
+      "t" : 4.278,
+      "text" : "ith in the press"
+    },
+    {
+      "t" : 4.315,
+      "text" : ".\", \"gray\")\nt"
+    },
+    {
+      "t" : 4.349,
+      "text" : "3 = Tag(\""
+    },
+    {
+      "t" : 4.386,
+      "text" : "Priya Nair · Media"
+    },
+    {
+      "t" : 4.422,
+      "text" : "\", i3, \"md\", \""
+    },
+    {
+      "t" : 4.458,
+      "text" : "success\")\ni3 ="
+    },
+    {
+      "t" : 4.493,
+      "text" : " Icon(\"newspaper\","
+    },
+    {
+      "t" : 4.53,
+      "text" : " \"media\")"
+    }
+  ],
+  "createdAt" : "2026-11-11T10:34:00Z",
+  "effort" : "low",
+  "format" : "openui-recording",
+  "inputTokens" : 14497,
+  "library" : "react-ui",
+  "model" : "claude-sonnet-5-5",
+  "outputTokens" : 485,
+  "request" : "Opinion section: three columnists with photos, their latest piece title and a short excerpt.",
+  "servedBy" : "claude-sonnet-5-5",
+  "stopReason" : "end_turn",
+  "version" : 1
+}

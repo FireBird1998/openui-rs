@@ -1,0 +1,1092 @@
+{
+  "batchRequest" : {
+    "model" : "sonnet",
+    "number" : 107,
+    "request" : "A bakery production plan with batches, ingredient requirements, oven slots and packing deadlines in coordinated tables."
+  },
+  "chunks" : [
+    {
+      "t" : 0.783,
+      "text" : "root = Stack([title,"
+    },
+    {
+      "t" : 1.091,
+      "text" : " k"
+    },
+    {
+      "t" : 1.116,
+      "text" : "pis, batchH"
+    },
+    {
+      "t" : 1.164,
+      "text" : "eader, batchTable,"
+    },
+    {
+      "t" : 1.19,
+      "text" : " ingH"
+    },
+    {
+      "t" : 1.241,
+      "text" : "eader, ingTable,"
+    },
+    {
+      "t" : 1.309,
+      "text" : " ovenHeader, "
+    },
+    {
+      "t" : 1.33,
+      "text" : "ovenTable, packHe"
+    },
+    {
+      "t" : 1.349,
+      "text" : "ader, packT"
+    },
+    {
+      "t" : 1.394,
+      "text" : "able, note])\ntitle = T"
+    },
+    {
+      "t" : 1.445,
+      "text" : "extContent(\"B"
+    },
+    {
+      "t" : 1.447,
+      "text" : "akery Production Plan –"
+    },
+    {
+      "t" : 1.484,
+      "text" : " Saturday\", \"large-"
+    },
+    {
+      "t" : 1.519,
+      "text" : "heavy\")\nkpis"
+    },
+    {
+      "t" : 1.553,
+      "text" : " = S"
+    },
+    {
+      "t" : 1.59,
+      "text" : "nippetCardBlock"
+    },
+    {
+      "t" : 1.645,
+      "text" : "([k1, k2, k"
+    },
+    {
+      "t" : 1.701,
+      "text" : "3])\nk1 = S"
+    },
+    {
+      "t" : 1.705,
+      "text" : "nippetCardItem(\""
+    },
+    {
+      "t" : 1.745,
+      "text" : "batches\", k1l, k"
+    },
+    {
+      "t" : 1.797,
+      "text" : "1r)\nk1l ="
+    },
+    {
+      "t" : 1.802,
+      "text" : " IconText(k1i"
+    },
+    {
+      "t" : 1.839,
+      "text" : ", \"neutral\", \"m"
+    },
+    {
+      "t" : 1.892,
+      "text" : "\", \"Batches\", \""
+    },
+    {
+      "t" : 1.954,
+      "text" : "Planned today\", false, \"hor"
+    },
+    {
+      "t" : 1.956,
+      "text" : "izontal\")\nk1i"
+    },
+    {
+      "t" : 1.996,
+      "text" : " = Icon(\"lay"
+    },
+    {
+      "t" : 2.075,
+      "text" : "ers\", \"food"
+    },
+    {
+      "t" : 2.134,
+      "text" : "\")\nk1r = Bo"
+    },
+    {
+      "t" : 2.181,
+      "text" : "ldText(\"number\", \"6\")"
+    },
+    {
+      "t" : 2.228,
+      "text" : "\nk2 = Snipp"
+    },
+    {
+      "t" : 2.276,
+      "text" : "etCardItem(\"units"
+    },
+    {
+      "t" : 2.278,
+      "text" : "\", k2l, k2r"
+    },
+    {
+      "t" : 2.322,
+      "text" : ")\nk2l = Icon"
+    },
+    {
+      "t" : 2.379,
+      "text" : "Text(k2i, \"ne"
+    },
+    {
+      "t" : 2.426,
+      "text" : "utral\", \"m\", \""
+    },
+    {
+      "t" : 2.475,
+      "text" : "Total Units\", \"All"
+    },
+    {
+      "t" : 2.519,
+      "text" : " products"
+    },
+    {
+      "t" : 2.564,
+      "text" : "\", false, \"horizontal"
+    },
+    {
+      "t" : 2.631,
+      "text" : "\")\nk2i = Ic"
+    },
+    {
+      "t" : 2.724,
+      "text" : "on(\"cro"
+    },
+    {
+      "t" : 2.774,
+      "text" : "issant\", \"food\")\nk"
+    },
+    {
+      "t" : 2.841,
+      "text" : "2r = BoldText(\""
+    },
+    {
+      "t" : 2.888,
+      "text" : "number\", \"1,080\")"
+    },
+    {
+      "t" : 2.938,
+      "text" : "\nk3 = Snippet"
+    },
+    {
+      "t" : 2.964,
+      "text" : "CardItem(\"oven"
+    },
+    {
+      "t" : 2.986,
+      "text" : "h"
+    },
+    {
+      "t" : 3.066,
+      "text" : "r"
+    },
+    {
+      "t" : 3.067,
+      "text" : "s\", k3l, k3"
+    },
+    {
+      "t" : 3.143,
+      "text" : "r)\nk3l = I"
+    },
+    {
+      "t" : 3.145,
+      "text" : "conText(k3i, \""
+    },
+    {
+      "t" : 3.201,
+      "text" : "neutral\", \"m\", \""
+    },
+    {
+      "t" : 3.261,
+      "text" : "Oven Time"
+    },
+    {
+      "t" : 3.315,
+      "text" : "\", \"H"
+    },
+    {
+      "t" : 3.374,
+      "text" : "ours boo"
+    },
+    {
+      "t" : 3.431,
+      "text" : "ked\", false, \"horizont"
+    },
+    {
+      "t" : 3.481,
+      "text" : "al\")\nk3i ="
+    },
+    {
+      "t" : 3.539,
+      "text" : " Icon(\"flame\", \"t"
+    },
+    {
+      "t" : 3.605,
+      "text" : "ools\")\nk3r = B"
+    },
+    {
+      "t" : 3.668,
+      "text" : "oldText(\"number\", \"7"
+    },
+    {
+      "t" : 3.758,
+      "text" : ".5 "
+    },
+    {
+      "t" : 3.834,
+      "text" : "h\")\nbatchHeader"
+    },
+    {
+      "t" : 3.887,
+      "text" : " = InlineHeader(\""
+    },
+    {
+      "t" : 3.942,
+      "text" : "Batches\", \"What"
+    },
+    {
+      "t" : 3.998,
+      "text" : " we"
+    },
+    {
+      "t" : 4.056,
+      "text" : " bake and how much"
+    },
+    {
+      "t" : 4.113,
+      "text" : "\")\nbatchTable ="
+    },
+    {
+      "t" : 4.177,
+      "text" : " Table([Col(\"Batch"
+    },
+    {
+      "t" : 4.27,
+      "text" : "\", b"
+    },
+    {
+      "t" : 4.272,
+      "text" : "Id"
+    },
+    {
+      "t" : 4.337,
+      "text" : "), Col(\"Product\", b"
+    },
+    {
+      "t" : 4.396,
+      "text" : "Prod), Col(\"Units"
+    },
+    {
+      "t" : 4.47,
+      "text" : "\", bUnits,"
+    },
+    {
+      "t" : 4.562,
+      "text" : " \"number\"), Col(\""
+    },
+    {
+      "t" : 4.565,
+      "text" : "Start"
+    },
+    {
+      "t" : 4.621,
+      "text" : "\", bStart), Col(\""
+    },
+    {
+      "t" : 4.688,
+      "text" : "Ba"
+    },
+    {
+      "t" : 4.76,
+      "text" : "ker\", bBa"
+    },
+    {
+      "t" : 4.843,
+      "text" : "ker)])\nbId = "
+    },
+    {
+      "t" : 4.925,
+      "text" : "[\"B1\", \"B2\","
+    },
+    {
+      "t" : 5.018,
+      "text" : " \"B3\", \"B4\","
+    },
+    {
+      "t" : 5.103,
+      "text" : " \"B5\", \"B6\""
+    },
+    {
+      "t" : 5.17,
+      "text" : "]\nbProd = [\""
+    },
+    {
+      "t" : 5.241,
+      "text" : "Sourdough Lo"
+    },
+    {
+      "t" : 5.328,
+      "text" : "af\", \"Baguette"
+    },
+    {
+      "t" : 5.398,
+      "text" : "\", \"Croissant\", \""
+    },
+    {
+      "t" : 5.468,
+      "text" : "Pain au"
+    },
+    {
+      "t" : 5.583,
+      "text" : " Chocolat\", \""
+    },
+    {
+      "t" : 5.586,
+      "text" : "Bl"
+    },
+    {
+      "t" : 5.647,
+      "text" : "ueberry Muffin\","
+    },
+    {
+      "t" : 5.714,
+      "text" : " \"Cinnamon"
+    },
+    {
+      "t" : 5.786,
+      "text" : " Roll\"]\nbUn"
+    },
+    {
+      "t" : 5.863,
+      "text" : "its = [120"
+    },
+    {
+      "t" : 5.991,
+      "text" : ", 200"
+    },
+    {
+      "t" : 5.994,
+      "text" : ", 300, 160"
+    },
+    {
+      "t" : 6.067,
+      "text" : ", 180"
+    },
+    {
+      "t" : 6.144,
+      "text" : ", 120"
+    },
+    {
+      "t" : 6.252,
+      "text" : "]\nbStart = [\""
+    },
+    {
+      "t" : 6.256,
+      "text" : "02:00\", \"03"
+    },
+    {
+      "t" : 6.345,
+      "text" : ":00"
+    },
+    {
+      "t" : 6.425,
+      "text" : "\", \"03"
+    },
+    {
+      "t" : 6.496,
+      "text" : ":30\", \"05"
+    },
+    {
+      "t" : 6.579,
+      "text" : ":00\", \"05:30\","
+    },
+    {
+      "t" : 6.677,
+      "text" : " \"06:30\"]\nb"
+    },
+    {
+      "t" : 6.791,
+      "text" : "Baker = [\"Ma"
+    },
+    {
+      "t" : 6.915,
+      "text" : "ria\", \"T"
+    },
+    {
+      "t" : 7.036,
+      "text" : "om\", \"Pri"
+    },
+    {
+      "t" : 7.18,
+      "text" : "ya\", \"Priya\", \""
+    },
+    {
+      "t" : 7.388,
+      "text" : "Tom\", \"Maria"
+    },
+    {
+      "t" : 7.474,
+      "text" : "\"]\ningHeader"
+    },
+    {
+      "t" : 7.55,
+      "text" : " = InlineHeader(\""
+    },
+    {
+      "t" : 7.648,
+      "text" : "Ingredient Requir"
+    },
+    {
+      "t" : 7.746,
+      "text" : "ements\", \"Tot"
+    },
+    {
+      "t" : 7.838,
+      "text" : "als per batch\")\ning"
+    },
+    {
+      "t" : 7.956,
+      "text" : "Table = Table([Col"
+    },
+    {
+      "t" : 8.026,
+      "text" : "(\"Batch\", i"
+    },
+    {
+      "t" : 8.097,
+      "text" : "Batch), Col(\""
+    },
+    {
+      "t" : 8.199,
+      "text" : "Flour (kg)\", i"
+    },
+    {
+      "t" : 8.284,
+      "text" : "Flour, \"number\"),"
+    },
+    {
+      "t" : 8.37,
+      "text" : " Col(\"Butter (k"
+    },
+    {
+      "t" : 8.448,
+      "text" : "g)\", iBut"
+    },
+    {
+      "t" : 8.53,
+      "text" : "ter, \"number\"), Col"
+    },
+    {
+      "t" : 8.626,
+      "text" : "(\"Yeast /"
+    },
+    {
+      "t" : 8.724,
+      "text" : " Star"
+    },
+    {
+      "t" : 8.802,
+      "text" : "ter (k"
+    },
+    {
+      "t" : 8.88,
+      "text" : "g)\", iYeast,"
+    },
+    {
+      "t" : 9.055,
+      "text" : " \"number\"), Col(\""
+    },
+    {
+      "t" : 9.137,
+      "text" : "Sugar (kg)\","
+    },
+    {
+      "t" : 9.222,
+      "text" : " iSugar, \"number\")"
+    },
+    {
+      "t" : 9.305,
+      "text" : "])\niBatch = "
+    },
+    {
+      "t" : 9.388,
+      "text" : "[\"B1\", \"B2\","
+    },
+    {
+      "t" : 9.477,
+      "text" : " \"B3\", \"B4\","
+    },
+    {
+      "t" : 9.569,
+      "text" : " \"B5\", \"B6\""
+    },
+    {
+      "t" : 9.641,
+      "text" : "]\niFlour = ["
+    },
+    {
+      "t" : 9.716,
+      "text" : "60, 70, 55"
+    },
+    {
+      "t" : 9.72,
+      "text" : ", 35, 30, "
+    },
+    {
+      "t" : 9.801,
+      "text" : "25]\niButter = ["
+    },
+    {
+      "t" : 9.923,
+      "text" : "0, 0, 28"
+    },
+    {
+      "t" : 9.925,
+      "text" : ", 18"
+    },
+    {
+      "t" : 10.026,
+      "text" : ", 8"
+    },
+    {
+      "t" : 10.097,
+      "text" : ", 6]\niYe"
+    },
+    {
+      "t" : 10.17,
+      "text" : "ast = [12"
+    },
+    {
+      "t" : 10.259,
+      "text" : ", 1"
+    },
+    {
+      "t" : 10.346,
+      "text" : "."
+    },
+    {
+      "t" : 10.432,
+      "text" : "4, 1"
+    },
+    {
+      "t" : 10.519,
+      "text" : ".1, 0"
+    },
+    {
+      "t" : 10.606,
+      "text" : ".7, 0,"
+    },
+    {
+      "t" : 10.72,
+      "text" : " 0.5]\niS"
+    },
+    {
+      "t" : 10.82,
+      "text" : "ugar = [0, 0"
+    },
+    {
+      "t" : 10.987,
+      "text" : ", 5, 4"
+    },
+    {
+      "t" : 10.989,
+      "text" : ", 14"
+    },
+    {
+      "t" : 11.076,
+      "text" : ", 10]\noven"
+    },
+    {
+      "t" : 11.222,
+      "text" : "Header = InlineH"
+    },
+    {
+      "t" : 11.224,
+      "text" : "eader(\"Oven Sl"
+    },
+    {
+      "t" : 11.329,
+      "text" : "ots\", \"Two"
+    },
+    {
+      "t" : 11.434,
+      "text" : " deck "
+    },
+    {
+      "t" : 11.535,
+      "text" : "ovens, no"
+    },
+    {
+      "t" : 11.634,
+      "text" : " overla"
+    },
+    {
+      "t" : 11.754,
+      "text" : "ps\")\novenTable"
+    },
+    {
+      "t" : 11.854,
+      "text" : " = Table([Col(\""
+    },
+    {
+      "t" : 11.963,
+      "text" : "Oven\", oO"
+    },
+    {
+      "t" : 12.055,
+      "text" : "ven), Col(\"Slot"
+    },
+    {
+      "t" : 12.161,
+      "text" : "\", oSlot), Col"
+    },
+    {
+      "t" : 12.273,
+      "text" : "(\"Batch\", oBat"
+    },
+    {
+      "t" : 12.354,
+      "text" : "ch), Col(\"Temp"
+    },
+    {
+      "t" : 12.504,
+      "text" : " (°C)\", oTem"
+    },
+    {
+      "t" : 12.506,
+      "text" : "p, \"number\"), Col"
+    },
+    {
+      "t" : 12.611,
+      "text" : "(\"Duration (min)\","
+    },
+    {
+      "t" : 12.738,
+      "text" : " oDur, \"number\")])"
+    },
+    {
+      "t" : 12.841,
+      "text" : "\noOven = [\""
+    },
+    {
+      "t" : 12.953,
+      "text" : "Oven 1\", \"O"
+    },
+    {
+      "t" : 13.055,
+      "text" : "ven 1\", \"Oven"
+    },
+    {
+      "t" : 13.145,
+      "text" : " 1\", \"Oven "
+    },
+    {
+      "t" : 13.249,
+      "text" : "2\", \"Oven 2"
+    },
+    {
+      "t" : 13.381,
+      "text" : "\", \"Oven 2\""
+    },
+    {
+      "t" : 13.534,
+      "text" : "]\noSlot = "
+    },
+    {
+      "t" : 13.678,
+      "text" : "[\"04:30–"
+    },
+    {
+      "t" : 13.808,
+      "text" : "05:15"
+    },
+    {
+      "t" : 13.937,
+      "text" : "\", \"05:30"
+    },
+    {
+      "t" : 14.052,
+      "text" : "–06:15"
+    },
+    {
+      "t" : 14.172,
+      "text" : "\", \"07"
+    },
+    {
+      "t" : 14.348,
+      "text" : ":00–07:25"
+    },
+    {
+      "t" : 14.451,
+      "text" : "\", \"05"
+    },
+    {
+      "t" : 14.612,
+      "text" : ":00–05:25"
+    },
+    {
+      "t" : 14.902,
+      "text" : "\", \"06:15–06:"
+    },
+    {
+      "t" : 14.907,
+      "text" : "45\", \"07"
+    },
+    {
+      "t" : 15.118,
+      "text" : ":15"
+    },
+    {
+      "t" : 15.276,
+      "text" : "–07:45\"]\no"
+    },
+    {
+      "t" : 15.455,
+      "text" : "Batch = [\"B1"
+    },
+    {
+      "t" : 15.596,
+      "text" : "\", \"B2\", \"B6"
+    },
+    {
+      "t" : 15.734,
+      "text" : "\", \"B3\", \"B4"
+    },
+    {
+      "t" : 16.145,
+      "text" : "\", \"B5\"]\no"
+    },
+    {
+      "t" : 16.149,
+      "text" : "Temp = [240"
+    },
+    {
+      "t" : 16.326,
+      "text" : ", 250"
+    },
+    {
+      "t" : 16.735,
+      "text" : ", 180"
+    },
+    {
+      "t" : 16.739,
+      "text" : ", 190"
+    },
+    {
+      "t" : 16.877,
+      "text" : ", 190, 200"
+    },
+    {
+      "t" : 17.164,
+      "text" : "]\noDur = [45"
+    },
+    {
+      "t" : 17.295,
+      "text" : ", 45, 25, "
+    },
+    {
+      "t" : 17.444,
+      "text" : "25, 30, 30"
+    },
+    {
+      "t" : 17.625,
+      "text" : "]\npackHeader = In"
+    },
+    {
+      "t" : 17.764,
+      "text" : "lineHeader(\"Pack"
+    },
+    {
+      "t" : 17.896,
+      "text" : "ing Deadlines\", \""
+    },
+    {
+      "t" : 18.04,
+      "text" : "Ready times"
+    },
+    {
+      "t" : 18.182,
+      "text" : " for dispatch\")\npack"
+    },
+    {
+      "t" : 18.313,
+      "text" : "Table = Table([Col"
+    },
+    {
+      "t" : 18.483,
+      "text" : "(\"Batch\", pBat"
+    },
+    {
+      "t" : 18.697,
+      "text" : "ch), Col(\"Dest"
+    },
+    {
+      "t" : 18.868,
+      "text" : "ination\", pDest), Col"
+    },
+    {
+      "t" : 19.083,
+      "text" : "(\"P"
+    },
+    {
+      "t" : 19.244,
+      "text" : "ack By"
+    },
+    {
+      "t" : 19.574,
+      "text" : "\", pT"
+    },
+    {
+      "t" : 19.717,
+      "text" : "ime), Col(\"Status"
+    },
+    {
+      "t" : 19.769,
+      "text" : "\", pStatus)"
+    },
+    {
+      "t" : 19.955,
+      "text" : "])\npBatch = "
+    },
+    {
+      "t" : 20.148,
+      "text" : "[\"B1\", \"B2\","
+    },
+    {
+      "t" : 20.499,
+      "text" : " \"B3\", \"B4\","
+    },
+    {
+      "t" : 20.501,
+      "text" : " \"B5\", \"B6\""
+    },
+    {
+      "t" : 20.703,
+      "text" : "]\npDest = [\""
+    },
+    {
+      "t" : 20.915,
+      "text" : "Far"
+    },
+    {
+      "t" : 21.08,
+      "text" : "mers Market\", \"C"
+    },
+    {
+      "t" : 21.227,
+      "text" : "afe Or"
+    },
+    {
+      "t" : 21.379,
+      "text" : "ders\", \"Ret"
+    },
+    {
+      "t" : 21.519,
+      "text" : "ail Counter\", \"Ret"
+    },
+    {
+      "t" : 21.672,
+      "text" : "ail Counter\", \"C"
+    },
+    {
+      "t" : 21.86,
+      "text" : "afe Orders\", \""
+    },
+    {
+      "t" : 22.07,
+      "text" : "Farmers Market\"]"
+    },
+    {
+      "t" : 22.072,
+      "text" : "\npTime = [\"06"
+    },
+    {
+      "t" : 22.266,
+      "text" : ":30\", \"07"
+    },
+    {
+      "t" : 22.412,
+      "text" : ":00\", \"07"
+    },
+    {
+      "t" : 22.536,
+      "text" : ":15"
+    },
+    {
+      "t" : 22.669,
+      "text" : "\", \"07:45\", \"08"
+    },
+    {
+      "t" : 22.814,
+      "text" : ":00"
+    },
+    {
+      "t" : 22.951,
+      "text" : "\", \"08:30\"]"
+    },
+    {
+      "t" : 23.103,
+      "text" : "\npStatus = [s"
+    },
+    {
+      "t" : 23.261,
+      "text" : "1, s2, s3,"
+    },
+    {
+      "t" : 23.389,
+      "text" : " s4, s5, s6"
+    },
+    {
+      "t" : 23.533,
+      "text" : "]\ns1 = T"
+    },
+    {
+      "t" : 23.674,
+      "text" : "ag(\"Scheduled\","
+    },
+    {
+      "t" : 23.806,
+      "text" : " null, \"sm\", \"info"
+    },
+    {
+      "t" : 23.954,
+      "text" : "\")\ns2 = T"
+    },
+    {
+      "t" : 24.1,
+      "text" : "ag(\"Scheduled\","
+    },
+    {
+      "t" : 24.271,
+      "text" : " null, \"sm\", \"info"
+    },
+    {
+      "t" : 24.417,
+      "text" : "\")\ns3 = T"
+    },
+    {
+      "t" : 24.564,
+      "text" : "ag(\""
+    },
+    {
+      "t" : 24.706,
+      "text" : "Tight\", null, \"sm"
+    },
+    {
+      "t" : 24.872,
+      "text" : "\", \"warning\")\ns4"
+    },
+    {
+      "t" : 25.017,
+      "text" : " = Tag(\"Sc"
+    },
+    {
+      "t" : 25.167,
+      "text" : "heduled\", null, \"s"
+    },
+    {
+      "t" : 25.365,
+      "text" : "m\", \"info\")\ns5"
+    },
+    {
+      "t" : 25.536,
+      "text" : " = Tag(\"Sc"
+    },
+    {
+      "t" : 25.789,
+      "text" : "heduled\", null, \"s"
+    },
+    {
+      "t" : 25.793,
+      "text" : "m\", \"info\")\ns6"
+    },
+    {
+      "t" : 25.939,
+      "text" : " = Tag(\""
+    },
+    {
+      "t" : 26.108,
+      "text" : "T"
+    },
+    {
+      "t" : 26.289,
+      "text" : "ight\", null, \"sm\","
+    },
+    {
+      "t" : 26.414,
+      "text" : " \"warning\")\nnote ="
+    },
+    {
+      "t" : 26.554,
+      "text" : " Callout(\"warning\", \""
+    },
+    {
+      "t" : 26.699,
+      "text" : "Watch the gap\", \""
+    },
+    {
+      "t" : 26.845,
+      "text" : "O"
+    },
+    {
+      "t" : 26.983,
+      "text" : "ven 2"
+    },
+    {
+      "t" : 27.135,
+      "text" : " has only 15"
+    },
+    {
+      "t" : 27.269,
+      "text" : " minutes between B3"
+    },
+    {
+      "t" : 27.417,
+      "text" : " and B4 –"
+    },
+    {
+      "t" : 27.566,
+      "text" : " preheat early"
+    },
+    {
+      "t" : 27.719,
+      "text" : " and have"
+    },
+    {
+      "t" : 27.861,
+      "text" : " tr"
+    },
+    {
+      "t" : 27.992,
+      "text" : "ays ready.\")"
+    }
+  ],
+  "createdAt" : "2026-11-11T10:56:50Z",
+  "effort" : "low",
+  "format" : "openui-recording",
+  "inputTokens" : 14507,
+  "library" : "react-ui",
+  "model" : "claude-sonnet-5-5",
+  "outputTokens" : 1716,
+  "request" : "A bakery production plan with batches, ingredient requirements, oven slots and packing deadlines in coordinated tables.",
+  "servedBy" : "claude-sonnet-5-5",
+  "stopReason" : "end_turn",
+  "version" : 1
+}

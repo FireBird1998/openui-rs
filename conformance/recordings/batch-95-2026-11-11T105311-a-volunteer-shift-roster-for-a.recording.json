@@ -1,0 +1,960 @@
+{
+  "batchRequest" : {
+    "model" : "sonnet",
+    "number" : 95,
+    "request" : "A volunteer shift roster for a food bank with station assignments, vacant slots and a signup form."
+  },
+  "chunks" : [
+    {
+      "t" : 0.66,
+      "text" : "root = Stack([title"
+    },
+    {
+      "t" : 0.967,
+      "text" : ", k"
+    },
+    {
+      "t" : 0.999,
+      "text" : "pis"
+    },
+    {
+      "t" : 1.058,
+      "text" : ", r"
+    },
+    {
+      "t" : 1.121,
+      "text" : "osterH"
+    },
+    {
+      "t" : 1.166,
+      "text" : "eader, rosterT"
+    },
+    {
+      "t" : 1.217,
+      "text" : "able, vacantH"
+    },
+    {
+      "t" : 1.244,
+      "text" : "eader, vacantA"
+    },
+    {
+      "t" : 1.246,
+      "text" : "lert, signupHeader"
+    },
+    {
+      "t" : 1.277,
+      "text" : ", signupForm])\ntitle"
+    },
+    {
+      "t" : 1.299,
+      "text" : " = TextContent(\"Food"
+    },
+    {
+      "t" : 1.334,
+      "text" : " Bank Volunteer"
+    },
+    {
+      "t" : 1.366,
+      "text" : " Roster\","
+    },
+    {
+      "t" : 1.439,
+      "text" : " \"large-heavy\")"
+    },
+    {
+      "t" : 1.482,
+      "text" : "\nkpis = Snippet"
+    },
+    {
+      "t" : 1.483,
+      "text" : "CardBlock([k1"
+    },
+    {
+      "t" : 1.518,
+      "text" : ", k2, k3])"
+    },
+    {
+      "t" : 1.555,
+      "text" : "\nk1 = Snippet"
+    },
+    {
+      "t" : 1.586,
+      "text" : "CardItem(\"total"
+    },
+    {
+      "t" : 1.623,
+      "text" : "\", k1l"
+    },
+    {
+      "t" : 1.687,
+      "text" : ", k1r)"
+    },
+    {
+      "t" : 1.724,
+      "text" : "\nk1l = IconText"
+    },
+    {
+      "t" : 1.765,
+      "text" : "(k1i, \"neut"
+    },
+    {
+      "t" : 1.804,
+      "text" : "ral\", \"m\", \"Total"
+    },
+    {
+      "t" : 1.847,
+      "text" : " Slots\", \"This"
+    },
+    {
+      "t" : 1.889,
+      "text" : " Saturday\", false, \"hor"
+    },
+    {
+      "t" : 1.975,
+      "text" : "izontal\")\nk1i"
+    },
+    {
+      "t" : 2.018,
+      "text" : " = Icon(\"calendar"
+    },
+    {
+      "t" : 2.062,
+      "text" : "-days"
+    },
+    {
+      "t" : 2.111,
+      "text" : "\", \"calendar\")\nk"
+    },
+    {
+      "t" : 2.114,
+      "text" : "1r = BoldText(\""
+    },
+    {
+      "t" : 2.181,
+      "text" : "number\", \"24"
+    },
+    {
+      "t" : 2.243,
+      "text" : "\")\nk2 = Sn"
+    },
+    {
+      "t" : 2.296,
+      "text" : "ippetCardItem(\"fil"
+    },
+    {
+      "t" : 2.3,
+      "text" : "led\", k2l, k2"
+    },
+    {
+      "t" : 2.347,
+      "text" : "r)\nk2l = I"
+    },
+    {
+      "t" : 2.393,
+      "text" : "conText(k2i, \""
+    },
+    {
+      "t" : 2.447,
+      "text" : "success\", \"m\", \"Fil"
+    },
+    {
+      "t" : 2.494,
+      "text" : "led\", \"Conf"
+    },
+    {
+      "t" : 2.545,
+      "text" : "irmed\", false, \"hor"
+    },
+    {
+      "t" : 2.594,
+      "text" : "izontal\")\nk2i"
+    },
+    {
+      "t" : 2.643,
+      "text" : " = Icon(\"circ"
+    },
+    {
+      "t" : 2.698,
+      "text" : "le-check\", \"status"
+    },
+    {
+      "t" : 2.749,
+      "text" : "\")\nk2r = Bo"
+    },
+    {
+      "t" : 2.795,
+      "text" : "ldText(\"number\", \"18\")"
+    },
+    {
+      "t" : 2.846,
+      "text" : "\nk3 = Snipp"
+    },
+    {
+      "t" : 2.894,
+      "text" : "etCardItem(\"vac"
+    },
+    {
+      "t" : 2.941,
+      "text" : "ant\", k3l, k3"
+    },
+    {
+      "t" : 2.993,
+      "text" : "r)\nk3l = I"
+    },
+    {
+      "t" : 3.047,
+      "text" : "conText(k3i, \""
+    },
+    {
+      "t" : 3.097,
+      "text" : "warning\", \"m\", \""
+    },
+    {
+      "t" : 3.146,
+      "text" : "Vacant\", \"Need vol"
+    },
+    {
+      "t" : 3.197,
+      "text" : "unteers\", false, \"hor"
+    },
+    {
+      "t" : 3.286,
+      "text" : "izontal\")\nk3i"
+    },
+    {
+      "t" : 3.287,
+      "text" : " = Icon(\"user"
+    },
+    {
+      "t" : 3.348,
+      "text" : "-pl"
+    },
+    {
+      "t" : 3.407,
+      "text" : "us\", \"people"
+    },
+    {
+      "t" : 3.464,
+      "text" : "\")\nk3r = Bo"
+    },
+    {
+      "t" : 3.498,
+      "text" : "ldText(\"number\", \"6\")"
+    },
+    {
+      "t" : 3.551,
+      "text" : "\nrosterHeader ="
+    },
+    {
+      "t" : 3.609,
+      "text" : " InlineHeader(\""
+    },
+    {
+      "t" : 3.704,
+      "text" : "Saturday Sh"
+    },
+    {
+      "t" : 3.706,
+      "text" : "ift Roster\", \"Station"
+    },
+    {
+      "t" : 3.761,
+      "text" : " assignments and status"
+    },
+    {
+      "t" : 3.822,
+      "text" : "\")\nrosterTable ="
+    },
+    {
+      "t" : 3.887,
+      "text" : " Table([Col(\"Vol"
+    },
+    {
+      "t" : 3.951,
+      "text" : "unteer\", names), Col"
+    },
+    {
+      "t" : 4.015,
+      "text" : "(\"Station\", stations),"
+    },
+    {
+      "t" : 4.077,
+      "text" : " Col(\"Sh"
+    },
+    {
+      "t" : 4.196,
+      "text" : "ift\", shifts), Col"
+    },
+    {
+      "t" : 4.199,
+      "text" : "(\"Status\", statuses)"
+    },
+    {
+      "t" : 4.261,
+      "text" : "])\nnames = [\"Ma"
+    },
+    {
+      "t" : 4.324,
+      "text" : "ria Lopez\", \"James"
+    },
+    {
+      "t" : 4.392,
+      "text" : " Chen\", \"A"
+    },
+    {
+      "t" : 4.459,
+      "text" : "isha Patel\", \""
+    },
+    {
+      "t" : 4.521,
+      "text" : "Tom Bec"
+    },
+    {
+      "t" : 4.582,
+      "text" : "ker\", \"Priya Sing"
+    },
+    {
+      "t" : 4.677,
+      "text" : "h\", \"Lu"
+    },
+    {
+      "t" : 4.678,
+      "text" : "is"
+    },
+    {
+      "t" : 4.725,
+      "text" : " "
+    },
+    {
+      "t" : 4.844,
+      "text" : "Ort"
+    },
+    {
+      "t" : 4.911,
+      "text" : "ega"
+    },
+    {
+      "t" : 4.984,
+      "text" : "\", \""
+    },
+    {
+      "t" : 5.056,
+      "text" : "Open"
+    },
+    {
+      "t" : 5.13,
+      "text" : "\", \""
+    },
+    {
+      "t" : 5.201,
+      "text" : "Open\", \"Open\", \""
+    },
+    {
+      "t" : 5.202,
+      "text" : "Open\","
+    },
+    {
+      "t" : 5.315,
+      "text" : " \"Open\", \"Open\""
+    },
+    {
+      "t" : 5.317,
+      "text" : "]\nstations = [\""
+    },
+    {
+      "t" : 5.387,
+      "text" : "Check-in\", \"Check"
+    },
+    {
+      "t" : 5.497,
+      "text" : "-in\", \"Sorting"
+    },
+    {
+      "t" : 5.524,
+      "text" : "\", \"Sorting\", \""
+    },
+    {
+      "t" : 5.591,
+      "text" : "Pack"
+    },
+    {
+      "t" : 5.659,
+      "text" : "ing\", \"Packing\", \""
+    },
+    {
+      "t" : 5.795,
+      "text" : "S"
+    },
+    {
+      "t" : 5.86,
+      "text" : "orting\", \"Packing\","
+    },
+    {
+      "t" : 5.929,
+      "text" : " \"Distribution\", \""
+    },
+    {
+      "t" : 5.993,
+      "text" : "Distribution\", \"Lo"
+    },
+    {
+      "t" : 6.06,
+      "text" : "ading"
+    },
+    {
+      "t" : 6.133,
+      "text" : " Dock\", \"C"
+    },
+    {
+      "t" : 6.198,
+      "text" : "old Storage\"]\nsh"
+    },
+    {
+      "t" : 6.274,
+      "text" : "ifts = [\"8am"
+    },
+    {
+      "t" : 6.355,
+      "text" : "-12pm\", \"12"
+    },
+    {
+      "t" : 6.432,
+      "text" : "pm-4"
+    },
+    {
+      "t" : 6.497,
+      "text" : "pm\", \"8am-12"
+    },
+    {
+      "t" : 6.57,
+      "text" : "pm\", \"12"
+    },
+    {
+      "t" : 6.65,
+      "text" : "pm-4pm\", \""
+    },
+    {
+      "t" : 6.728,
+      "text" : "8am-12pm\", \""
+    },
+    {
+      "t" : 6.802,
+      "text" : "12pm-4pm\","
+    },
+    {
+      "t" : 6.877,
+      "text" : " \"8am-12pm\","
+    },
+    {
+      "t" : 6.955,
+      "text" : " \"12pm-4pm"
+    },
+    {
+      "t" : 7.036,
+      "text" : "\", \"8am-12pm"
+    },
+    {
+      "t" : 7.11,
+      "text" : "\", \"12pm-4p"
+    },
+    {
+      "t" : 7.189,
+      "text" : "m\", \"8am-12p"
+    },
+    {
+      "t" : 7.273,
+      "text" : "m\", \"12"
+    },
+    {
+      "t" : 7.357,
+      "text" : "pm-4pm\"]"
+    },
+    {
+      "t" : 7.436,
+      "text" : "\nstatuses = ["
+    },
+    {
+      "t" : 7.517,
+      "text" : "Tag(\"Confirmed"
+    },
+    {
+      "t" : 7.597,
+      "text" : "\", null, \"sm\", \""
+    },
+    {
+      "t" : 7.674,
+      "text" : "success\"), Tag(\""
+    },
+    {
+      "t" : 7.755,
+      "text" : "Confirmed\", null, \""
+    },
+    {
+      "t" : 7.84,
+      "text" : "sm\", \"success\"),"
+    },
+    {
+      "t" : 7.921,
+      "text" : " Tag(\"Confirmed"
+    },
+    {
+      "t" : 8.004,
+      "text" : "\", null, \"sm\", \""
+    },
+    {
+      "t" : 8.094,
+      "text" : "success\"), Tag(\""
+    },
+    {
+      "t" : 8.229,
+      "text" : "Confirmed\", null, \""
+    },
+    {
+      "t" : 8.231,
+      "text" : "sm\", \"success\"),"
+    },
+    {
+      "t" : 8.316,
+      "text" : " Tag(\"Confirmed"
+    },
+    {
+      "t" : 8.392,
+      "text" : "\", null, \"sm\", \""
+    },
+    {
+      "t" : 8.483,
+      "text" : "success\"), Tag(\""
+    },
+    {
+      "t" : 8.566,
+      "text" : "Pending\", null, \"sm"
+    },
+    {
+      "t" : 8.647,
+      "text" : "\", \"warning\"), T"
+    },
+    {
+      "t" : 8.731,
+      "text" : "ag(\"Vacant\", null"
+    },
+    {
+      "t" : 8.819,
+      "text" : ", \"sm\", \"danger"
+    },
+    {
+      "t" : 8.881,
+      "text" : "\"), Tag(\"V"
+    },
+    {
+      "t" : 8.966,
+      "text" : "acant\", null, \"sm"
+    },
+    {
+      "t" : 9.056,
+      "text" : "\", \"danger\"), T"
+    },
+    {
+      "t" : 9.144,
+      "text" : "ag(\"Vacant\", null"
+    },
+    {
+      "t" : 9.23,
+      "text" : ", \"sm\", \"danger"
+    },
+    {
+      "t" : 9.321,
+      "text" : "\"), Tag(\"V"
+    },
+    {
+      "t" : 9.416,
+      "text" : "acant\", null, \"sm"
+    },
+    {
+      "t" : 9.507,
+      "text" : "\", \"danger\"), T"
+    },
+    {
+      "t" : 9.597,
+      "text" : "ag(\"Vacant\", null"
+    },
+    {
+      "t" : 9.737,
+      "text" : ", \"sm\", \"danger"
+    },
+    {
+      "t" : 9.738,
+      "text" : "\"), Tag(\"V"
+    },
+    {
+      "t" : 9.838,
+      "text" : "acant\", null, \"sm"
+    },
+    {
+      "t" : 9.934,
+      "text" : "\", \"danger\")]\nv"
+    },
+    {
+      "t" : 10.09,
+      "text" : "acantHeader = Inl"
+    },
+    {
+      "t" : 10.092,
+      "text" : "ineHeader(\"V"
+    },
+    {
+      "t" : 10.191,
+      "text" : "acant Slots\", \""
+    },
+    {
+      "t" : 10.278,
+      "text" : "Where we"
+    },
+    {
+      "t" : 10.368,
+      "text" : " need help"
+    },
+    {
+      "t" : 10.458,
+      "text" : " most\")\nvacantAl"
+    },
+    {
+      "t" : 10.553,
+      "text" : "ert = Callout(\"warning"
+    },
+    {
+      "t" : 10.645,
+      "text" : "\", \"6"
+    },
+    {
+      "t" : 10.739,
+      "text" : " sl"
+    },
+    {
+      "t" : 10.84,
+      "text" : "ots still"
+    },
+    {
+      "t" : 10.937,
+      "text" : " open\", \"Distribution,"
+    },
+    {
+      "t" : 11.031,
+      "text" : " Loading Dock and"
+    },
+    {
+      "t" : 11.124,
+      "text" : " Cold Storage are"
+    },
+    {
+      "t" : 11.221,
+      "text" : " the high"
+    },
+    {
+      "t" : 11.319,
+      "text" : "est priority. S"
+    },
+    {
+      "t" : 11.417,
+      "text" : "ign up below to help!\")"
+    },
+    {
+      "t" : 11.522,
+      "text" : "\nsignupHeader = Inl"
+    },
+    {
+      "t" : 11.616,
+      "text" : "ineHeader(\"Sign"
+    },
+    {
+      "t" : 11.805,
+      "text" : " Up to"
+    },
+    {
+      "t" : 11.903,
+      "text" : " Vol"
+    },
+    {
+      "t" : 12.006,
+      "text" : "unteer\", \"P"
+    },
+    {
+      "t" : 12.107,
+      "text" : "ick a"
+    },
+    {
+      "t" : 12.194,
+      "text" : " station and shift\")\nsignup"
+    },
+    {
+      "t" : 12.288,
+      "text" : "Form = Form(\"signup"
+    },
+    {
+      "t" : 12.386,
+      "text" : "\", sign"
+    },
+    {
+      "t" : 12.489,
+      "text" : "upBtns, [fName"
+    },
+    {
+      "t" : 12.594,
+      "text" : ", fEmail, fSt"
+    },
+    {
+      "t" : 12.688,
+      "text" : "ation, fShift, fN"
+    },
+    {
+      "t" : 12.779,
+      "text" : "otes])\nfName = F"
+    },
+    {
+      "t" : 12.878,
+      "text" : "ormControl(\"Full Name"
+    },
+    {
+      "t" : 12.881,
+      "text" : "\", Input(\"name\", \""
+    },
+    {
+      "t" : 12.984,
+      "text" : "Your name\", \"text\", { required"
+    },
+    {
+      "t" : 13.097,
+      "text" : ": true, minLength: "
+    },
+    {
+      "t" : 13.205,
+      "text" : "2 }))\nfEm"
+    },
+    {
+      "t" : 13.387,
+      "text" : "ail = FormControl(\""
+    },
+    {
+      "t" : 13.39,
+      "text" : "Email\", Input(\"email\", \""
+    },
+    {
+      "t" : 13.499,
+      "text" : "you@example.com\", \"email"
+    },
+    {
+      "t" : 13.609,
+      "text" : "\", { required: true, email:"
+    },
+    {
+      "t" : 13.726,
+      "text" : " true }))\nfStation ="
+    },
+    {
+      "t" : 13.841,
+      "text" : " FormControl(\"Station\","
+    },
+    {
+      "t" : 13.951,
+      "text" : " Select(\"station\", stationO"
+    },
+    {
+      "t" : 14.06,
+      "text" : "pts, \"Select"
+    },
+    {
+      "t" : 14.169,
+      "text" : " a"
+    },
+    {
+      "t" : 14.274,
+      "text" : " station..."
+    },
+    {
+      "t" : 14.39,
+      "text" : "\", { required: true }))"
+    },
+    {
+      "t" : 14.505,
+      "text" : "\nstationOpts = [S"
+    },
+    {
+      "t" : 14.619,
+      "text" : "electItem(\"sorting"
+    },
+    {
+      "t" : 14.728,
+      "text" : "\", \"Sorting\"),"
+    },
+    {
+      "t" : 14.818,
+      "text" : " SelectItem(\"packing"
+    },
+    {
+      "t" : 14.93,
+      "text" : "\", \"Packing\"), S"
+    },
+    {
+      "t" : 15.037,
+      "text" : "electItem(\"distribution"
+    },
+    {
+      "t" : 15.14,
+      "text" : "\", \"Distribution\"),"
+    },
+    {
+      "t" : 15.253,
+      "text" : " SelectItem(\"dock"
+    },
+    {
+      "t" : 15.359,
+      "text" : "\", \"Loading Dock"
+    },
+    {
+      "t" : 15.459,
+      "text" : "\"), SelectItem(\""
+    },
+    {
+      "t" : 15.555,
+      "text" : "cold\", \"Cold"
+    },
+    {
+      "t" : 15.661,
+      "text" : " Storage\")]\nfShift"
+    },
+    {
+      "t" : 15.777,
+      "text" : " = FormControl(\"Sh"
+    },
+    {
+      "t" : 15.886,
+      "text" : "ift\", RadioGroup"
+    },
+    {
+      "t" : 16.001,
+      "text" : "(\"shift\", shiftO"
+    },
+    {
+      "t" : 16.241,
+      "text" : "pts, \"am"
+    },
+    {
+      "t" : 16.354,
+      "text" : "\", { required: true }))"
+    },
+    {
+      "t" : 16.474,
+      "text" : "\nshiftOpts = ["
+    },
+    {
+      "t" : 16.583,
+      "text" : "RadioItem(\""
+    },
+    {
+      "t" : 16.586,
+      "text" : "Morning\", \"8am-12"
+    },
+    {
+      "t" : 16.728,
+      "text" : "pm\", \"am\"), R"
+    },
+    {
+      "t" : 16.846,
+      "text" : "adioItem(\"Aftern"
+    },
+    {
+      "t" : 16.963,
+      "text" : "oon\", \"12pm-"
+    },
+    {
+      "t" : 17.072,
+      "text" : "4pm\", \"pm\")"
+    },
+    {
+      "t" : 17.186,
+      "text" : "]\nfNotes = F"
+    },
+    {
+      "t" : 17.408,
+      "text" : "ormControl(\"Notes\","
+    },
+    {
+      "t" : 17.521,
+      "text" : " TextArea(\"notes\","
+    },
+    {
+      "t" : 17.637,
+      "text" : " \"D"
+    },
+    {
+      "t" : 17.763,
+      "text" : "ietary,"
+    },
+    {
+      "t" : 17.764,
+      "text" : " mobility or other"
+    },
+    {
+      "t" : 17.883,
+      "text" : " not"
+    },
+    {
+      "t" : 18.08,
+      "text" : "es...\", 3), \""
+    },
+    {
+      "t" : 18.081,
+      "text" : "Optional\")\nsignupBt"
+    },
+    {
+      "t" : 18.191,
+      "text" : "ns = Buttons(["
+    },
+    {
+      "t" : 18.313,
+      "text" : "Button(\"Sign Up\","
+    },
+    {
+      "t" : 18.428,
+      "text" : " @ToAssistant(\""
+    },
+    {
+      "t" : 18.553,
+      "text" : "Submit volunteer sign"
+    },
+    {
+      "t" : 18.679,
+      "text" : "up\"), \"primary\"),"
+    },
+    {
+      "t" : 18.804,
+      "text" : " Button(\"Cancel\","
+    },
+    {
+      "t" : 18.922,
+      "text" : " @ToAssistant(\""
+    },
+    {
+      "t" : 19.054,
+      "text" : "Cancel sign"
+    },
+    {
+      "t" : 19.191,
+      "text" : "up\"), \"secondary\")"
+    },
+    {
+      "t" : 19.325,
+      "text" : "])"
+    }
+  ],
+  "createdAt" : "2026-11-11T10:53:11Z",
+  "effort" : "low",
+  "format" : "openui-recording",
+  "inputTokens" : 14500,
+  "library" : "react-ui",
+  "model" : "claude-sonnet-5-5",
+  "outputTokens" : 1594,
+  "request" : "A volunteer shift roster for a food bank with station assignments, vacant slots and a signup form.",
+  "servedBy" : "claude-sonnet-5-5",
+  "stopReason" : "end_turn",
+  "version" : 1
+}

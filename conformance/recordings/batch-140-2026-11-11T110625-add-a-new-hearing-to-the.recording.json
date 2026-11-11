@@ -1,0 +1,246 @@
+{
+  "batchRequest" : {
+    "model" : "haiku",
+    "number" : 140,
+    "of" : 80,
+    "request" : "Add a new hearing to the procedural timeline and define two more terms in the glossary."
+  },
+  "chunks" : [
+    {
+      "t" : 3.621,
+      "text" : "e"
+    },
+    {
+      "t" : 3.643,
+      "text" : "ventSteps = Steps"
+    },
+    {
+      "t" : 3.866,
+      "text" : "([s1, s2, s"
+    },
+    {
+      "t" : 3.867,
+      "text" : "3, s4, sHear"
+    },
+    {
+      "t" : 3.9,
+      "text" : "ing, s5])\nsH"
+    },
+    {
+      "t" : 3.932,
+      "text" : "earing = StepsItem"
+    },
+    {
+      "t" : 3.963,
+      "text" : "(\"Dec 3, "
+    },
+    {
+      "t" : 4.001,
+      "text" : "2024 · Summary jud"
+    },
+    {
+      "t" : 4.053,
+      "text" : "gment hearing\", \""
+    },
+    {
+      "t" : 4.054,
+      "text" : "Coun"
+    },
+    {
+      "t" : 4.136,
+      "text" : "sel argue"
+    },
+    {
+      "t" : 4.179,
+      "text" : " the del"
+    },
+    {
+      "t" : 4.182,
+      "text" : "ivery shortfall mot"
+    },
+    {
+      "t" : 4.22,
+      "text" : "ion before"
+    },
+    {
+      "t" : 4.256,
+      "text" : " Judge T"
+    },
+    {
+      "t" : 4.291,
+      "text" : "allis;"
+    },
+    {
+      "t" : 4.331,
+      "text" : " the"
+    },
+    {
+      "t" : 4.366,
+      "text" : " court takes the mat"
+    },
+    {
+      "t" : 4.408,
+      "text" : "ter under advisement.\")"
+    },
+    {
+      "t" : 4.447,
+      "text" : "\nglossaryTerms ="
+    },
+    {
+      "t" : 4.496,
+      "text" : " [\"Pl"
+    },
+    {
+      "t" : 4.57,
+      "text" : "aintiff\", \"Def"
+    },
+    {
+      "t" : 4.571,
+      "text" : "endant\", \"Summary jud"
+    },
+    {
+      "t" : 4.623,
+      "text" : "gment\", \"Force maje"
+    },
+    {
+      "t" : 4.664,
+      "text" : "ure\", \"Countercla"
+    },
+    {
+      "t" : 4.711,
+      "text" : "im\", \"Discovery\","
+    },
+    {
+      "t" : 4.778,
+      "text" : " \"Breach of contract\","
+    },
+    {
+      "t" : 4.821,
+      "text" : " \"Damages\"]\ngl"
+    },
+    {
+      "t" : 4.864,
+      "text" : "ossaryMeanings ="
+    },
+    {
+      "t" : 4.865,
+      "text" : " [\"The party who brings a"
+    },
+    {
+      "t" : 4.908,
+      "text" : " lawsuit.\", \""
+    },
+    {
+      "t" : 4.95,
+      "text" : "The party being sued or answering"
+    },
+    {
+      "t" : 5.002,
+      "text" : " the claim.\", \"A "
+    },
+    {
+      "t" : 5.084,
+      "text" : "ruling decided without trial because"
+    },
+    {
+      "t" : 5.136,
+      "text" : " no material facts are disputed"
+    },
+    {
+      "t" : 5.187,
+      "text" : ".\", \"A contract clause"
+    },
+    {
+      "t" : 5.235,
+      "text" : " excusing performance due to un"
+    },
+    {
+      "t" : 5.278,
+      "text" : "foreseeable events bey"
+    },
+    {
+      "t" : 5.331,
+      "text" : "ond a party's control.\", \""
+    },
+    {
+      "t" : 5.394,
+      "text" : "A claim filed by a def"
+    },
+    {
+      "t" : 5.441,
+      "text" : "endant against the plainti"
+    },
+    {
+      "t" : 5.501,
+      "text" : "ff in the same case.\", \""
+    },
+    {
+      "t" : 5.563,
+      "text" : "The pretrial process of ex"
+    },
+    {
+      "t" : 5.628,
+      "text" : "changing evidence between par"
+    },
+    {
+      "t" : 5.683,
+      "text" : "ties.\", \"A failure by"
+    },
+    {
+      "t" : 5.729,
+      "text" : " one party to perform its"
+    },
+    {
+      "t" : 5.788,
+      "text" : " obligations under a contract without"
+    },
+    {
+      "t" : 5.848,
+      "text" : " leg"
+    },
+    {
+      "t" : 5.902,
+      "text" : "al excuse.\", \""
+    },
+    {
+      "t" : 5.963,
+      "text" : "Monetary compensation aw"
+    },
+    {
+      "t" : 6.024,
+      "text" : "arded to a party for losses"
+    },
+    {
+      "t" : 6.079,
+      "text" : " ca"
+    },
+    {
+      "t" : 6.136,
+      "text" : "used by another"
+    },
+    {
+      "t" : 6.194,
+      "text" : " party"
+    },
+    {
+      "t" : 6.246,
+      "text" : "'s wrongful conduct"
+    },
+    {
+      "t" : 6.303,
+      "text" : ".\"]"
+    }
+  ],
+  "createdAt" : "2026-11-11T11:06:25Z",
+  "effort" : "low",
+  "format" : "openui-recording",
+  "inputTokens" : 16936,
+  "library" : "react-ui",
+  "model" : "claude-haiku-5-5",
+  "outputTokens" : 736,
+  "patchOf" : "root = Stack([caseHeader, partiesHeader, partiesBlock, timelineHeader, timelineTabs, issuesHeader, issuesAccordion, glossaryHeader, glossaryTable, disclaimer])\ncaseHeader = CardHeader(\"Hollis Renewables v. Marrow Logistics\", \"Fictional case · Superior Court of Eastbrook · Contract dispute\")\npartiesHeader = InlineHeader(\"Parties\", \"The people and entities involved\")\npartiesBlock = Stack([plaintiffCard, defendantCard, counselCard], \"row\", \"m\", \"stretch\", \"start\", true)\nplaintiffCard = Card([plaintiffInfo, plaintiffList])\nplaintiffInfo = IconText(plaintiffIcon, \"info\", \"m\", \"Hollis Renewables LLC\", \"Plaintiff · Solar energy developer\", true, \"horizontal\")\nplaintiffIcon = Icon(\"sun\", \"energy\")\nplaintiffList = EntityList([{left: \"Role\", right: \"Buyer under supply agreement\"}, {left: \"Location\", right: \"Brightfield, Eastbrook\"}, {left: \"Counsel\", right: \"Dana Okafor\"}], \"default\")\ndefendantCard = Card([defendantInfo, defendantList])\ndefendantInfo = IconText(defendantIcon, \"warning\", \"m\", \"Marrow Logistics Inc.\", \"Defendant · Freight and warehousing\", true, \"horizontal\")\ndefendantIcon = Icon(\"truck\", \"transport\")\ndefendantList = EntityList([{left: \"Role\", right: \"Seller and carrier of panel shipments\"}, {left: \"Location\", right: \"Port Ashford, Eastbrook\"}, {left: \"Counsel\", right: \"Rafael Quill\"}], \"default\")\ncounselCard = Card([judgeInfo, judgeList])\njudgeInfo = IconText(judgeIcon, \"neutral\", \"m\", \"Hon. Miriam Tallis\", \"Presiding judge\", true, \"horizontal\")\njudgeIcon = Icon(\"gavel\", \"legal\")\njudgeList = EntityList([{left: \"Court\", right: \"Superior Court of Eastbrook\"}, {left: \"Docket No.\", right: \"EB-24-01187\"}, {left: \"Filed\", right: \"March 4, 2024\"}], \"default\")\ntimelineHeader = InlineHeader(\"Procedural Timeline\", \"Key events from filing to ruling\")\ntimelineTabs = Tabs([tabEvents, tabDeadlines])\ntabEvents = TabItem(\"events\", \"Events\", [eventSteps])\neventSteps = Steps([s1, s2, s3, s4, s5])\ns1 = StepsItem(\"Mar 4, 2024 · Complaint filed\", \"Hollis alleges Marrow failed to deliver 40% of contracted panel shipments.\")\ns2 = StepsItem(\"Apr 18, 2024 · Answer and counterclaim\", \"Marrow denies breach and counterclaims for unpaid storage fees.\")\ns3 = StepsItem(\"Jul 9, 2024 · Discovery closes\", \"Parties exchange shipping manifests, emails and warehouse logs.\")\ns4 = StepsItem(\"Oct 22, 2024 · Summary judgment motion\", \"Hollis moves for partial judgment on the delivery shortfall.\")\ns5 = StepsItem(\"Jan 15, 2025 · Ruling\", \"Court grants partial judgment on liability; damages set for trial.\")\ntabDeadlines = TabItem(\"deadlines\", \"Deadlines\", [deadlineTable])\ndeadlineTable = Table([Col(\"Deadline\", deadlineNames), Col(\"Date\", deadlineDates), Col(\"Status\", deadlineStatus, \"string\")])\ndeadlineNames = [\"Expert disclosures\", \"Pretrial conference\", \"Damages trial\"]\ndeadlineDates = [\"Mar 3, 2025\", \"May 12, 2025\", \"Jun 30, 2025\"]\ndeadlineStatus = [\"Complete\", \"Scheduled\", \"Scheduled\"]\nissuesHeader = InlineHeader(\"Disputed Questions\", \"What the court must decide\")\nissuesAccordion = Accordion([issue1, issue2, issue3])\nissue1 = AccordionItem(\"issue-1\", \"1. Did the contract require delivery of 100% of panels?\", issue1text)\nissue1text = TextContent(\"Hollis argues the supply agreement's delivery schedule was mandatory. Marrow contends the clause allowed shortfalls covered by a force majeure provision.\")\nissue2 = AccordionItem(\"issue-2\", \"2. Does the force majeure clause apply to port congestion?\", issue2text)\nissue2text = TextContent(\"Marrow claims a 9-week port backlog qualifies. Hollis responds that congestion was foreseeable and therefore excluded.\")\nissue3 = AccordionItem(\"issue-3\", \"3. Are storage fees recoverable as damages?\", issue3text)\nissue3text = TextContent(\"Marrow's counterclaim seeks fees for warehousing delayed panels. The court must decide whether those costs were caused by Hollis's own delay in pickup.\")\nglossaryHeader = InlineHeader(\"Glossary\", \"Common legal terms used in this case\")\nglossaryTable = Table([Col(\"Term\", glossaryTerms), Col(\"Meaning\", glossaryMeanings)])\nglossaryTerms = [\"Plaintiff\", \"Defendant\", \"Summary judgment\", \"Force majeure\", \"Counterclaim\", \"Discovery\"]\nglossaryMeanings = [\"The party who brings a lawsuit.\", \"The party being sued or answering the claim.\", \"A ruling decided without trial because no material facts are disputed.\", \"A contract clause excusing performance due to unforeseeable events beyond a party's control.\", \"A claim filed by a defendant against the plaintiff in the same case.\", \"The pretrial process of exchanging evidence between parties.\"]\ndisclaimer = Callout(\"neutral\", \"Fictional example\", \"All parties, courts, and details are invented for illustration and do not describe any real case.\")",
+  "request" : "Add a new hearing to the procedural timeline and define two more terms in the glossary.",
+  "servedBy" : "claude-haiku-5-5",
+  "stopReason" : "end_turn",
+  "version" : 1
+}

@@ -1,0 +1,844 @@
+{
+  "batchRequest" : {
+    "model" : "sonnet",
+    "number" : 127,
+    "request" : "A rowing club training plan with session intensity, distance, crew assignments and a weekly distance chart."
+  },
+  "chunks" : [
+    {
+      "t" : 0.738,
+      "text" : "root = Stack([title"
+    },
+    {
+      "t" : 1.033,
+      "text" : ", k"
+    },
+    {
+      "t" : 1.063,
+      "text" : "pis"
+    },
+    {
+      "t" : 1.13,
+      "text" : ", ch"
+    },
+    {
+      "t" : 1.165,
+      "text" : "artC"
+    },
+    {
+      "t" : 1.244,
+      "text" : "ard, plan"
+    },
+    {
+      "t" : 1.281,
+      "text" : "C"
+    },
+    {
+      "t" : 1.318,
+      "text" : "ard, crewCard])"
+    },
+    {
+      "t" : 1.351,
+      "text" : "\ntitle = TextContent(\""
+    },
+    {
+      "t" : 1.376,
+      "text" : "Ri"
+    },
+    {
+      "t" : 1.411,
+      "text" : "verside R"
+    },
+    {
+      "t" : 1.49,
+      "text" : "owing Club – Week"
+    },
+    {
+      "t" : 1.553,
+      "text" : "ly Training Plan\", \""
+    },
+    {
+      "t" : 1.642,
+      "text" : "large-heavy\")\nk"
+    },
+    {
+      "t" : 1.672,
+      "text" : "pis = OverviewC"
+    },
+    {
+      "t" : 1.739,
+      "text" : "ardBlock([k1,"
+    },
+    {
+      "t" : 1.828,
+      "text" : " k2, k3])\nk"
+    },
+    {
+      "t" : 1.912,
+      "text" : "1 = OverviewC"
+    },
+    {
+      "t" : 1.985,
+      "text" : "ardItem(\"d"
+    },
+    {
+      "t" : 2.06,
+      "text" : "ist\", k1top,"
+    },
+    {
+      "t" : 2.137,
+      "text" : " k1m"
+    },
+    {
+      "t" : 2.159,
+      "text" : ")\nk1top = Icon"
+    },
+    {
+      "t" : 2.221,
+      "text" : "Text(k1i"
+    },
+    {
+      "t" : 2.264,
+      "text" : ", \"info"
+    },
+    {
+      "t" : 2.313,
+      "text" : "\", \"m\", \"Week"
+    },
+    {
+      "t" : 2.368,
+      "text" : "ly Distance\")\nk1"
+    },
+    {
+      "t" : 2.415,
+      "text" : "i = Icon(\"route\","
+    },
+    {
+      "t" : 2.442,
+      "text" : " \"sports\")\nk1m"
+    },
+    {
+      "t" : 2.485,
+      "text" : " = MetricIndicat"
+    },
+    {
+      "t" : 2.489,
+      "text" : "orInline(\"86"
+    },
+    {
+      "t" : 2.533,
+      "text" : " km\", \"Plan"
+    },
+    {
+      "t" : 2.577,
+      "text" : "ned this"
+    },
+    {
+      "t" : 2.626,
+      "text" : " week\", { direction: \"up"
+    },
+    {
+      "t" : 2.678,
+      "text" : "\", value: 6 })"
+    },
+    {
+      "t" : 2.734,
+      "text" : "\nk2 = Overview"
+    },
+    {
+      "t" : 2.791,
+      "text" : "CardItem(\"sessions"
+    },
+    {
+      "t" : 2.851,
+      "text" : "\", k2top, k2m"
+    },
+    {
+      "t" : 2.905,
+      "text" : ")\nk2top = Icon"
+    },
+    {
+      "t" : 2.956,
+      "text" : "Text(k2i, \"success"
+    },
+    {
+      "t" : 3.013,
+      "text" : "\", \"m\", \"Sess"
+    },
+    {
+      "t" : 3.088,
+      "text" : "ions\")\nk2i ="
+    },
+    {
+      "t" : 3.093,
+      "text" : " Icon(\"calendar-"
+    },
+    {
+      "t" : 3.146,
+      "text" : "check\", \"time"
+    },
+    {
+      "t" : 3.204,
+      "text" : "\")\nk2m = Met"
+    },
+    {
+      "t" : 3.262,
+      "text" : "ricIndicatorInline"
+    },
+    {
+      "t" : 3.322,
+      "text" : "(\"7\","
+    },
+    {
+      "t" : 3.372,
+      "text" : " \"Water"
+    },
+    {
+      "t" : 3.421,
+      "text" : " and"
+    },
+    {
+      "t" : 3.474,
+      "text" : " land"
+    },
+    {
+      "t" : 3.526,
+      "text" : "\")\nk3 = Over"
+    },
+    {
+      "t" : 3.578,
+      "text" : "viewCardItem(\"cr"
+    },
+    {
+      "t" : 3.632,
+      "text" : "ews\", k3top, k3"
+    },
+    {
+      "t" : 3.684,
+      "text" : "m)\nk3top = I"
+    },
+    {
+      "t" : 3.735,
+      "text" : "conText(k3i, \""
+    },
+    {
+      "t" : 3.785,
+      "text" : "warning\", \"m\", \""
+    },
+    {
+      "t" : 3.842,
+      "text" : "Active"
+    },
+    {
+      "t" : 3.894,
+      "text" : " Crews\")\nk3i"
+    },
+    {
+      "t" : 3.955,
+      "text" : " = Icon(\"users\", \""
+    },
+    {
+      "t" : 4.008,
+      "text" : "people\")\nk3m = M"
+    },
+    {
+      "t" : 4.085,
+      "text" : "etricIndicatorIn"
+    },
+    {
+      "t" : 4.156,
+      "text" : "line(\"4\", \"Across all"
+    },
+    {
+      "t" : 4.225,
+      "text" : " sessions\")\nchartC"
+    },
+    {
+      "t" : 4.3,
+      "text" : "ard = Card([chartH"
+    },
+    {
+      "t" : 4.359,
+      "text" : "eader, chart"
+    },
+    {
+      "t" : 4.392,
+      "text" : "])\nchartHeader ="
+    },
+    {
+      "t" : 4.567,
+      "text" : " CardHeader(\"Dist"
+    },
+    {
+      "t" : 4.638,
+      "text" : "ance by Day\", \"K"
+    },
+    {
+      "t" : 4.696,
+      "text" : "ilometres plan"
+    },
+    {
+      "t" : 4.769,
+      "text" : "ned per session"
+    },
+    {
+      "t" : 4.859,
+      "text" : " day"
+    },
+    {
+      "t" : 4.864,
+      "text" : "\")\nchart = BarCh"
+    },
+    {
+      "t" : 5.062,
+      "text" : "art(days, [Series(\""
+    },
+    {
+      "t" : 5.067,
+      "text" : "Distance (km)\", d"
+    },
+    {
+      "t" : 5.15,
+      "text" : "ists"
+    },
+    {
+      "t" : 5.284,
+      "text" : ")], \"grouped\","
+    },
+    {
+      "t" : 5.343,
+      "text" : " \"Day\", \"km"
+    },
+    {
+      "t" : 5.412,
+      "text" : "\")\ndays = [\"M"
+    },
+    {
+      "t" : 5.472,
+      "text" : "on\", \"Tue\", \""
+    },
+    {
+      "t" : 5.539,
+      "text" : "Wed\", \"Thu"
+    },
+    {
+      "t" : 5.588,
+      "text" : "\", \"Fri\", \""
+    },
+    {
+      "t" : 5.634,
+      "text" : "Sat\", \"Sun\""
+    },
+    {
+      "t" : 5.691,
+      "text" : "]\ndists = [12,"
+    },
+    {
+      "t" : 5.766,
+      "text" : " 10"
+    },
+    {
+      "t" : 5.891,
+      "text" : ", 14"
+    },
+    {
+      "t" : 5.892,
+      "text" : ", 8"
+    },
+    {
+      "t" : 5.959,
+      "text" : ", 12"
+    },
+    {
+      "t" : 6.081,
+      "text" : ", 20"
+    },
+    {
+      "t" : 6.082,
+      "text" : ", 10"
+    },
+    {
+      "t" : 6.182,
+      "text" : "]\nplanCard = Card"
+    },
+    {
+      "t" : 6.296,
+      "text" : "([planHeader, planT"
+    },
+    {
+      "t" : 6.298,
+      "text" : "able])\nplanHeader ="
+    },
+    {
+      "t" : 6.403,
+      "text" : " CardHeader(\"Session"
+    },
+    {
+      "t" : 6.509,
+      "text" : " Pl"
+    },
+    {
+      "t" : 6.594,
+      "text" : "an\", \"Int"
+    },
+    {
+      "t" : 6.66,
+      "text" : "ensity, distance and crew"
+    },
+    {
+      "t" : 6.74,
+      "text" : " per session"
+    },
+    {
+      "t" : 6.805,
+      "text" : "\")\nplanTable = Table"
+    },
+    {
+      "t" : 6.873,
+      "text" : "([Col(\"Day\", p"
+    },
+    {
+      "t" : 6.975,
+      "text" : "Days), Col(\"Session"
+    },
+    {
+      "t" : 7.073,
+      "text" : "\", pSessions), Col"
+    },
+    {
+      "t" : 7.143,
+      "text" : "(\"Intensity\", pIn"
+    },
+    {
+      "t" : 7.21,
+      "text" : "t), Col(\"Distance"
+    },
+    {
+      "t" : 7.277,
+      "text" : " (km)\", pDist,"
+    },
+    {
+      "t" : 7.393,
+      "text" : " \"number\"), Col(\""
+    },
+    {
+      "t" : 7.427,
+      "text" : "Crew\", pCrew)"
+    },
+    {
+      "t" : 7.508,
+      "text" : "])\npDays = [\""
+    },
+    {
+      "t" : 7.587,
+      "text" : "Mon\", \"Tue"
+    },
+    {
+      "t" : 7.664,
+      "text" : "\", \"Wed\", \""
+    },
+    {
+      "t" : 7.73,
+      "text" : "Thu\", \"Fri\","
+    },
+    {
+      "t" : 7.828,
+      "text" : " \"Sat\", \"S"
+    },
+    {
+      "t" : 7.896,
+      "text" : "un\"]\npSessions"
+    },
+    {
+      "t" : 8.026,
+      "text" : " = [\"Steady state"
+    },
+    {
+      "t" : 8.113,
+      "text" : " UT"
+    },
+    {
+      "t" : 8.114,
+      "text" : "2"
+    },
+    {
+      "t" : 8.2,
+      "text" : "\", \"Technique dr"
+    },
+    {
+      "t" : 8.273,
+      "text" : "ills\", \"Intervals "
+    },
+    {
+      "t" : 8.351,
+      "text" : "6"
+    },
+    {
+      "t" : 8.429,
+      "text" : "x1"
+    },
+    {
+      "t" : 8.504,
+      "text" : "000m\", \"Rec"
+    },
+    {
+      "t" : 8.638,
+      "text" : "overy pa"
+    },
+    {
+      "t" : 8.639,
+      "text" : "ddle\", \"Race p"
+    },
+    {
+      "t" : 8.714,
+      "text" : "ace p"
+    },
+    {
+      "t" : 8.8,
+      "text" : "ieces\", \"Long dist"
+    },
+    {
+      "t" : 8.889,
+      "text" : "ance row"
+    },
+    {
+      "t" : 8.983,
+      "text" : "\", \""
+    },
+    {
+      "t" : 9.075,
+      "text" : "Ergo and"
+    },
+    {
+      "t" : 9.166,
+      "text" : " core"
+    },
+    {
+      "t" : 9.307,
+      "text" : "\"]\npInt = ["
+    },
+    {
+      "t" : 9.31,
+      "text" : "t"
+    },
+    {
+      "t" : 9.391,
+      "text" : "1, t2, t3,"
+    },
+    {
+      "t" : 9.48,
+      "text" : " t4, t5, t6"
+    },
+    {
+      "t" : 9.562,
+      "text" : ", t7]\nt1 "
+    },
+    {
+      "t" : 9.647,
+      "text" : "= Tag(\"Moder"
+    },
+    {
+      "t" : 9.733,
+      "text" : "ate\", null, \"sm\","
+    },
+    {
+      "t" : 9.82,
+      "text" : " \"info"
+    },
+    {
+      "t" : 9.915,
+      "text" : "\")\nt2 = T"
+    },
+    {
+      "t" : 10.006,
+      "text" : "ag(\"Low\", null, \""
+    },
+    {
+      "t" : 10.1,
+      "text" : "sm\", \"success\")\nt"
+    },
+    {
+      "t" : 10.188,
+      "text" : "3 = Tag(\"High"
+    },
+    {
+      "t" : 10.279,
+      "text" : "\", null, \"sm\", \""
+    },
+    {
+      "t" : 10.372,
+      "text" : "danger\")\nt4 ="
+    },
+    {
+      "t" : 10.47,
+      "text" : " Tag(\"Low\", null"
+    },
+    {
+      "t" : 10.571,
+      "text" : ", \"sm\", \"success\")"
+    },
+    {
+      "t" : 10.657,
+      "text" : "\nt5 = Tag"
+    },
+    {
+      "t" : 10.899,
+      "text" : "(\"High\", null, \"sm"
+    },
+    {
+      "t" : 10.987,
+      "text" : "\", \"danger\")\nt6"
+    },
+    {
+      "t" : 11.078,
+      "text" : " = Tag(\"Mo"
+    },
+    {
+      "t" : 11.172,
+      "text" : "derate\", null, \"s"
+    },
+    {
+      "t" : 11.27,
+      "text" : "m\", \"warning\")\nt"
+    },
+    {
+      "t" : 11.356,
+      "text" : "7 = Tag(\""
+    },
+    {
+      "t" : 11.448,
+      "text" : "Moderate\", null, \"s"
+    },
+    {
+      "t" : 11.554,
+      "text" : "m\", \"info\")\npD"
+    },
+    {
+      "t" : 11.646,
+      "text" : "ist = [12, 10,"
+    },
+    {
+      "t" : 11.743,
+      "text" : " 14, 8, 12"
+    },
+    {
+      "t" : 11.831,
+      "text" : ", 20, 10]"
+    },
+    {
+      "t" : 11.94,
+      "text" : "\npCrew = [\""
+    },
+    {
+      "t" : 12.147,
+      "text" : "Eight A"
+    },
+    {
+      "t" : 12.149,
+      "text" : "\", \"Qu"
+    },
+    {
+      "t" : 12.254,
+      "text" : "ad "
+    },
+    {
+      "t" : 12.369,
+      "text" : "1\", \"E"
+    },
+    {
+      "t" : 12.464,
+      "text" : "ight A\", \"Pair cr"
+    },
+    {
+      "t" : 12.56,
+      "text" : "ews\", \"Eight B\","
+    },
+    {
+      "t" : 12.668,
+      "text" : " \"E"
+    },
+    {
+      "t" : 12.778,
+      "text" : "ight A +"
+    },
+    {
+      "t" : 12.959,
+      "text" : " B\", \"All"
+    },
+    {
+      "t" : 13.13,
+      "text" : " squ"
+    },
+    {
+      "t" : 13.213,
+      "text" : "ads\"]\ncrewCard"
+    },
+    {
+      "t" : 13.307,
+      "text" : " = Card([crewHe"
+    },
+    {
+      "t" : 13.416,
+      "text" : "ader, crewList])\ncr"
+    },
+    {
+      "t" : 13.567,
+      "text" : "ewHeader = CardH"
+    },
+    {
+      "t" : 13.568,
+      "text" : "eader(\"Crew Ass"
+    },
+    {
+      "t" : 13.68,
+      "text" : "ignments\", \"Bo"
+    },
+    {
+      "t" : 13.783,
+      "text" : "ats"
+    },
+    {
+      "t" : 13.887,
+      "text" : " and co"
+    },
+    {
+      "t" : 13.987,
+      "text" : "aches\")\ncrewList ="
+    },
+    {
+      "t" : 14.09,
+      "text" : " EntityList([r"
+    },
+    {
+      "t" : 14.264,
+      "text" : "1, r2, r3,"
+    },
+    {
+      "t" : 14.265,
+      "text" : " r4], \"default"
+    },
+    {
+      "t" : 14.374,
+      "text" : "\")"
+    },
+    {
+      "t" : 14.494,
+      "text" : "\nr1 = { left:"
+    },
+    {
+      "t" : 14.612,
+      "text" : " \"Eight A – Co"
+    },
+    {
+      "t" : 14.731,
+      "text" : "ach"
+    },
+    {
+      "t" : 14.857,
+      "text" : " Mor"
+    },
+    {
+      "t" : 14.957,
+      "text" : "gan\", right: \"C"
+    },
+    {
+      "t" : 15.093,
+      "text" : "ox:"
+    },
+    {
+      "t" : 15.214,
+      "text" : " Pri"
+    },
+    {
+      "t" : 15.351,
+      "text" : "ya S"
+    },
+    {
+      "t" : 15.468,
+      "text" : ".\""
+    },
+    {
+      "t" : 15.584,
+      "text" : " }\nr2 = { left"
+    },
+    {
+      "t" : 15.676,
+      "text" : ": \"Eight B –"
+    },
+    {
+      "t" : 15.802,
+      "text" : " Coach Al"
+    },
+    {
+      "t" : 16.002,
+      "text" : "varez\", right: \""
+    },
+    {
+      "t" : 16.077,
+      "text" : "Cox: T"
+    },
+    {
+      "t" : 16.115,
+      "text" : "om H"
+    },
+    {
+      "t" : 16.222,
+      "text" : ".\" }\nr3 = {"
+    },
+    {
+      "t" : 16.431,
+      "text" : " left: \"Quad 1"
+    },
+    {
+      "t" : 16.558,
+      "text" : " – Coach L"
+    },
+    {
+      "t" : 16.674,
+      "text" : "ind"
+    },
+    {
+      "t" : 16.773,
+      "text" : "qvist\", right: \""
+    },
+    {
+      "t" : 16.885,
+      "text" : "Stroke: H"
+    },
+    {
+      "t" : 17.065,
+      "text" : "ana K"
+    },
+    {
+      "t" : 17.067,
+      "text" : ".\" }\nr4 = {"
+    },
+    {
+      "t" : 17.188,
+      "text" : " left: \"Pair crews"
+    },
+    {
+      "t" : 17.343,
+      "text" : " – Coach Mor"
+    },
+    {
+      "t" : 17.497,
+      "text" : "gan\", right: \"4"
+    },
+    {
+      "t" : 17.646,
+      "text" : " rowers\" }"
+    }
+  ],
+  "createdAt" : "2026-11-11T11:03:22Z",
+  "effort" : "low",
+  "format" : "openui-recording",
+  "inputTokens" : 14501,
+  "library" : "react-ui",
+  "model" : "claude-sonnet-5-5",
+  "outputTokens" : 1244,
+  "request" : "A rowing club training plan with session intensity, distance, crew assignments and a weekly distance chart.",
+  "servedBy" : "claude-sonnet-5-5",
+  "stopReason" : "end_turn",
+  "version" : 1
+}

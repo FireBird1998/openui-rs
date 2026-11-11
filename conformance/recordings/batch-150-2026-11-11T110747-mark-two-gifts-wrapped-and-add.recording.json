@@ -1,0 +1,238 @@
+{
+  "batchRequest" : {
+    "model" : "haiku",
+    "number" : 150,
+    "of" : 130,
+    "request" : "Mark two gifts wrapped and add a delivery deadline and a dietary-preferences note to the organizer."
+  },
+  "chunks" : [
+    {
+      "t" : 3.919,
+      "text" : "```"
+    },
+    {
+      "t" : 3.937,
+      "text" : "\nroot = Stack([header"
+    },
+    {
+      "t" : 4.151,
+      "text" : ", limitCard, participant"
+    },
+    {
+      "t" : 4.182,
+      "text" : "sCard, wishCard"
+    },
+    {
+      "t" : 4.187,
+      "text" : ", checklistCard, det"
+    },
+    {
+      "t" : 4.22,
+      "text" : "ailsCard])\npartSt"
+    },
+    {
+      "t" : 4.259,
+      "text" : "atus = [Tag(\""
+    },
+    {
+      "t" : 4.29,
+      "text" : "Wrapped\", null,"
+    },
+    {
+      "t" : 4.321,
+      "text" : " \"sm\", \"success\"),"
+    },
+    {
+      "t" : 4.355,
+      "text" : " Tag(\"Wrap"
+    },
+    {
+      "t" : 4.389,
+      "text" : "ped\", null, \"sm\","
+    },
+    {
+      "t" : 4.425,
+      "text" : " \"success\"), Tag(\""
+    },
+    {
+      "t" : 4.465,
+      "text" : "Wrapped\", null,"
+    },
+    {
+      "t" : 4.503,
+      "text" : " \"sm\", \"success\"),"
+    },
+    {
+      "t" : 4.549,
+      "text" : " Tag(\"Wrap"
+    },
+    {
+      "t" : 4.595,
+      "text" : "ped\", null, \"sm\","
+    },
+    {
+      "t" : 4.631,
+      "text" : " \"success\"), Tag(\""
+    },
+    {
+      "t" : 4.671,
+      "text" : "Shopping\", null, \""
+    },
+    {
+      "t" : 4.713,
+      "text" : "sm\", \"warning\"),"
+    },
+    {
+      "t" : 4.811,
+      "text" : " Tag(\"Wrap"
+    },
+    {
+      "t" : 4.846,
+      "text" : "ped\", null, \"sm\","
+    },
+    {
+      "t" : 4.882,
+      "text" : " \"success\")]\nchkCh"
+    },
+    {
+      "t" : 4.917,
+      "text" : "loe = CheckBo"
+    },
+    {
+      "t" : 4.956,
+      "text" : "xItem(\"Chloe"
+    },
+    {
+      "t" : 4.994,
+      "text" : " Rivera\", \"G"
+    },
+    {
+      "t" : 5.033,
+      "text" : "ift wrapped and labe"
+    },
+    {
+      "t" : 5.084,
+      "text" : "led\", \"chloe\", true"
+    },
+    {
+      "t" : 5.121,
+      "text" : ")\nchkDaniel"
+    },
+    {
+      "t" : 5.164,
+      "text" : " = CheckBoxIt"
+    },
+    {
+      "t" : 5.208,
+      "text" : "em(\"Daniel Park"
+    },
+    {
+      "t" : 5.248,
+      "text" : "\", \"Gift wrap"
+    },
+    {
+      "t" : 5.287,
+      "text" : "ped and labeled\", \"da"
+    },
+    {
+      "t" : 5.377,
+      "text" : "niel\", true)\ndetail"
+    },
+    {
+      "t" : 5.4,
+      "text" : "sCard = Card([det"
+    },
+    {
+      "t" : 5.438,
+      "text" : "ailsHeader, dead"
+    },
+    {
+      "t" : 5.44,
+      "text" : "lineNote, dietN"
+    },
+    {
+      "t" : 5.486,
+      "text" : "ote])\ndetailsHe"
+    },
+    {
+      "t" : 5.53,
+      "text" : "ader = CardHeader(\""
+    },
+    {
+      "t" : 5.592,
+      "text" : "Event Details\", \"De"
+    },
+    {
+      "t" : 5.66,
+      "text" : "adlines and preferences\")"
+    },
+    {
+      "t" : 5.721,
+      "text" : "\ndeadlineNote ="
+    },
+    {
+      "t" : 5.792,
+      "text" : " Callout(\"warning\", \""
+    },
+    {
+      "t" : 5.794,
+      "text" : "Delivery deadline\","
+    },
+    {
+      "t" : 5.848,
+      "text" : " \"All gifts must arr"
+    },
+    {
+      "t" : 5.889,
+      "text" : "ive by Friday, December "
+    },
+    {
+      "t" : 5.932,
+      "text" : "18.\")\ndietNote"
+    },
+    {
+      "t" : 5.975,
+      "text" : " = TextCallout(\"info"
+    },
+    {
+      "t" : 6.022,
+      "text" : "\", \"Dietary prefer"
+    },
+    {
+      "t" : 6.051,
+      "text" : "ences\", \"Check with each"
+    },
+    {
+      "t" : 6.097,
+      "text" : " participant about"
+    },
+    {
+      "t" : 6.144,
+      "text" : " allergies and dietary rest"
+    },
+    {
+      "t" : 6.194,
+      "text" : "rictions before cho"
+    },
+    {
+      "t" : 6.243,
+      "text" : "osing any food or treat"
+    },
+    {
+      "t" : 6.303,
+      "text" : " gifts.\")\n```"
+    }
+  ],
+  "createdAt" : "2026-11-11T11:07:47Z",
+  "effort" : "low",
+  "format" : "openui-recording",
+  "inputTokens" : 16358,
+  "library" : "react-ui",
+  "model" : "claude-haiku-5-5",
+  "outputTokens" : 1040,
+  "patchOf" : "root = Stack([header, limitCard, participantsCard, wishCard, checklistCard])\nheader = InlineHeader(\"Holiday Gift Exchange\", \"Secret Santa organizer with budget, wish lists and wrap tracking\")\nlimitCard = Card([limitHeader, limitRow])\nlimitHeader = CardHeader(\"Spending Limit\", \"Agreed budget per gift\")\nlimitRow = Stack([limitAmount, limitTags], \"row\", \"m\", \"center\", \"between\", true)\nlimitAmount = BoldText(\"number\", \"$30.00\", \"per person\", \"text\", \"lg\")\nlimitTags = TagBlock([\"Gifts under $30\", \"Shipping not included\", \"Handmade counts\"], \"md\")\nparticipantsCard = Card([partHeader, partTable])\npartHeader = CardHeader(\"Participants\", \"Who is giving to whom\")\npartTable = Table([Col(\"Name\", partNames), Col(\"Email\", partEmails), Col(\"Giving To\", partTargets), Col(\"Status\", partStatus, \"action\")])\npartNames = [\"Ava Thompson\", \"Ben Carter\", \"Chloe Rivera\", \"Daniel Park\", \"Emma Wilson\", \"Farah Khan\"]\npartEmails = [\"ava@example.com\", \"ben@example.com\", \"chloe@example.com\", \"daniel@example.com\", \"emma@example.com\", \"farah@example.com\"]\npartTargets = [\"Hidden\", \"Hidden\", \"Hidden\", \"Hidden\", \"Hidden\", \"Hidden\"]\npartStatus = [Tag(\"Wrapped\", null, \"sm\", \"success\"), Tag(\"Wrapped\", null, \"sm\", \"success\"), Tag(\"Shopping\", null, \"sm\", \"warning\"), Tag(\"Not started\", null, \"sm\", \"danger\"), Tag(\"Shopping\", null, \"sm\", \"warning\"), Tag(\"Wrapped\", null, \"sm\", \"success\")]\nwishCard = Card([wishHeader, wishes])\nwishHeader = CardHeader(\"Wish Lists\", \"Gift ideas from each participant\")\nwishes = Accordion([wishAva, wishBen, wishChloe])\nwishAva = AccordionItem(\"ava\", \"Ava's Wish List\", [avaList])\navaList = ListBlock([avaItem1, avaItem2, avaItem3], \"number\")\navaItem1 = ListItem(\"Cozy knit socks\", \"Wool blend, size 9\")\navaItem2 = ListItem(\"Ceramic pour-over set\", \"Any neutral color\")\navaItem3 = ListItem(\"Mystery novel\", \"Anything by Tana French\")\nwishBen = AccordionItem(\"ben\", \"Ben's Wish List\", [benList])\nbenList = ListBlock([benItem1, benItem2], \"number\")\nbenItem1 = ListItem(\"Bluetooth speaker\", \"Compact, waterproof\")\nbenItem2 = ListItem(\"Coffee beans\", \"Medium roast, whole bean\")\nwishChloe = AccordionItem(\"chloe\", \"Chloe's Wish List\", [chloeList])\nchloeList = ListBlock([chloeItem1, chloeItem2], \"number\")\nchloeItem1 = ListItem(\"Yoga mat\", \"Thick, non-slip\")\nchloeItem2 = ListItem(\"Plant care kit\", \"Succulent-friendly\")\nchecklistCard = Card([checkHeader, checklist])\ncheckHeader = CardHeader(\"Wrapping Checklist\", \"Track gifts that are ready\")\nchecklist = CheckBoxGroup(\"wrapped\", [chkAva, chkBen, chkChloe, chkDaniel, chkEmma, chkFarah])\nchkAva = CheckBoxItem(\"Ava Thompson\", \"Gift wrapped and labeled\", \"ava\", true)\nchkBen = CheckBoxItem(\"Ben Carter\", \"Gift wrapped and labeled\", \"ben\", true)\nchkChloe = CheckBoxItem(\"Chloe Rivera\", \"Gift wrapped and labeled\", \"chloe\", false)\nchkDaniel = CheckBoxItem(\"Daniel Park\", \"Gift wrapped and labeled\", \"daniel\", false)\nchkEmma = CheckBoxItem(\"Emma Wilson\", \"Gift wrapped and labeled\", \"emma\", false)\nchkFarah = CheckBoxItem(\"Farah Khan\", \"Gift wrapped and labeled\", \"farah\", true)",
+  "request" : "Mark two gifts wrapped and add a delivery deadline and a dietary-preferences note to the organizer.",
+  "servedBy" : "claude-haiku-5-5",
+  "stopReason" : "end_turn",
+  "version" : 1
+}

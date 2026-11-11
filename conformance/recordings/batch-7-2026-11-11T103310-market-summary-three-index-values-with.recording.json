@@ -1,0 +1,696 @@
+{
+  "batchRequest" : {
+    "model" : "sonnet",
+    "number" : 7,
+    "request" : "Market summary: three index values with daily change, a line chart of the week, and top movers in a table."
+  },
+  "chunks" : [
+    {
+      "t" : 0.926,
+      "text" : "root = Stack([header,"
+    },
+    {
+      "t" : 1.304,
+      "text" : " indexBlock, ch"
+    },
+    {
+      "t" : 1.309,
+      "text" : "artC"
+    },
+    {
+      "t" : 1.314,
+      "text" : "ard, mo"
+    },
+    {
+      "t" : 1.333,
+      "text" : "versC"
+    },
+    {
+      "t" : 1.338,
+      "text" : "ard])\nheader = Inline"
+    },
+    {
+      "t" : 1.342,
+      "text" : "Header(\"Market Summ"
+    },
+    {
+      "t" : 1.353,
+      "text" : "ary\", \"Daily sn"
+    },
+    {
+      "t" : 1.362,
+      "text" : "apshot of major indices\")"
+    },
+    {
+      "t" : 1.367,
+      "text" : "\nindexBlock = O"
+    },
+    {
+      "t" : 1.377,
+      "text" : "verviewCardBlock"
+    },
+    {
+      "t" : 1.383,
+      "text" : "([o"
+    },
+    {
+      "t" : 1.387,
+      "text" : "1, o2, o3])"
+    },
+    {
+      "t" : 1.722,
+      "text" : "\no1 = Overvi"
+    },
+    {
+      "t" : 1.735,
+      "text" : "ewCardItem(\"s"
+    },
+    {
+      "t" : 1.752,
+      "text" : "p\", o1top, o1"
+    },
+    {
+      "t" : 1.768,
+      "text" : "m"
+    },
+    {
+      "t" : 1.783,
+      "text" : ")\no1top = Icon"
+    },
+    {
+      "t" : 1.798,
+      "text" : "Text(o1i"
+    },
+    {
+      "t" : 1.812,
+      "text" : ", \"neutral\", \"m"
+    },
+    {
+      "t" : 1.813,
+      "text" : "\", \"S&P 500\","
+    },
+    {
+      "t" : 1.827,
+      "text" : " \"US"
+    },
+    {
+      "t" : 1.841,
+      "text" : " Large"
+    },
+    {
+      "t" : 1.862,
+      "text" : " Cap\", true"
+    },
+    {
+      "t" : 1.87,
+      "text" : ", \"horizontal\")"
+    },
+    {
+      "t" : 2.101,
+      "text" : "\no1i = Icon(\""
+    },
+    {
+      "t" : 2.122,
+      "text" : "tr"
+    },
+    {
+      "t" : 2.134,
+      "text" : "ending-up\", \"finance\")"
+    },
+    {
+      "t" : 2.152,
+      "text" : "\no1m = Metric"
+    },
+    {
+      "t" : 2.17,
+      "text" : "IndicatorInline(\""
+    },
+    {
+      "t" : 2.18,
+      "text" : "5,254"
+    },
+    {
+      "t" : 2.194,
+      "text" : ".35"
+    },
+    {
+      "t" : 2.203,
+      "text" : "\", \"v"
+    },
+    {
+      "t" : 2.22,
+      "text" : "s pr"
+    },
+    {
+      "t" : 2.232,
+      "text" : "ior close\", { direction: \""
+    },
+    {
+      "t" : 2.251,
+      "text" : "up\", value: 0.62"
+    },
+    {
+      "t" : 2.272,
+      "text" : " })\no2 = O"
+    },
+    {
+      "t" : 2.479,
+      "text" : "verviewCardItem(\""
+    },
+    {
+      "t" : 2.498,
+      "text" : "nas"
+    },
+    {
+      "t" : 2.517,
+      "text" : "\", o2top, o2m"
+    },
+    {
+      "t" : 2.536,
+      "text" : ")\no2top = Icon"
+    },
+    {
+      "t" : 2.554,
+      "text" : "Text(o2i, \"ne"
+    },
+    {
+      "t" : 2.572,
+      "text" : "utral\", \"m\", \"N"
+    },
+    {
+      "t" : 2.589,
+      "text" : "ASDAQ\", \"US"
+    },
+    {
+      "t" : 2.607,
+      "text" : " Tech\", true, \"hor"
+    },
+    {
+      "t" : 2.62,
+      "text" : "izontal\")\no2i"
+    },
+    {
+      "t" : 2.645,
+      "text" : " = Icon(\"cpu"
+    },
+    {
+      "t" : 2.662,
+      "text" : "\", \"finance\")\no2"
+    },
+    {
+      "t" : 2.677,
+      "text" : "m = MetricIndic"
+    },
+    {
+      "t" : 2.867,
+      "text" : "atorInline(\"16,438"
+    },
+    {
+      "t" : 2.894,
+      "text" : ".12\", \"vs prior"
+    },
+    {
+      "t" : 2.918,
+      "text" : " close\", { direction: \"up"
+    },
+    {
+      "t" : 2.939,
+      "text" : "\", value: 0.91 "
+    },
+    {
+      "t" : 2.95,
+      "text" : "})\no3 = Over"
+    },
+    {
+      "t" : 2.968,
+      "text" : "viewCardItem(\"d"
+    },
+    {
+      "t" : 2.989,
+      "text" : "ow\", o3top, o3"
+    },
+    {
+      "t" : 3.009,
+      "text" : "m)\no3top = I"
+    },
+    {
+      "t" : 3.02,
+      "text" : "conText(o3i, \""
+    },
+    {
+      "t" : 3.054,
+      "text" : "neutral\", \"m\", \""
+    },
+    {
+      "t" : 3.065,
+      "text" : "Dow"
+    },
+    {
+      "t" : 3.085,
+      "text" : " Jones\", \"US"
+    },
+    {
+      "t" : 3.248,
+      "text" : " Bl"
+    },
+    {
+      "t" : 3.265,
+      "text" : "ue Chip"
+    },
+    {
+      "t" : 3.275,
+      "text" : "\", true, \"horizontal"
+    },
+    {
+      "t" : 3.283,
+      "text" : "\")\no3i ="
+    },
+    {
+      "t" : 3.301,
+      "text" : " Icon(\"land"
+    },
+    {
+      "t" : 3.318,
+      "text" : "mark\", \"finance\")"
+    },
+    {
+      "t" : 3.354,
+      "text" : "\no3m = MetricI"
+    },
+    {
+      "t" : 3.365,
+      "text" : "ndicatorInline(\"39"
+    },
+    {
+      "t" : 3.383,
+      "text" : ",127"
+    },
+    {
+      "t" : 3.401,
+      "text" : ".80"
+    },
+    {
+      "t" : 3.42,
+      "text" : "\", \"vs prior close\","
+    },
+    {
+      "t" : 3.439,
+      "text" : " { direction: \"down\", value"
+    },
+    {
+      "t" : 3.641,
+      "text" : ": 0.18"
+    },
+    {
+      "t" : 3.652,
+      "text" : " })\nchartCard ="
+    },
+    {
+      "t" : 3.671,
+      "text" : " Card([chartHead"
+    },
+    {
+      "t" : 3.683,
+      "text" : ", we"
+    },
+    {
+      "t" : 3.701,
+      "text" : "ekChart])\nchartH"
+    },
+    {
+      "t" : 3.721,
+      "text" : "ead = CardHeader(\""
+    },
+    {
+      "t" : 3.733,
+      "text" : "This"
+    },
+    {
+      "t" : 3.753,
+      "text" : " Week\", \"Index"
+    },
+    {
+      "t" : 3.774,
+      "text" : " closing values,"
+    },
+    {
+      "t" : 3.797,
+      "text" : " indexed to"
+    },
+    {
+      "t" : 3.818,
+      "text" : " 100 "
+    },
+    {
+      "t" : 3.839,
+      "text" : "at Mon"
+    },
+    {
+      "t" : 3.998,
+      "text" : "day\")\nweekChart ="
+    },
+    {
+      "t" : 4.025,
+      "text" : " LineChart(days, ["
+    },
+    {
+      "t" : 4.025,
+      "text" : "s"
+    },
+    {
+      "t" : 4.047,
+      "text" : "p,"
+    },
+    {
+      "t" : 4.07,
+      "text" : " nas, dow], \"nat"
+    },
+    {
+      "t" : 4.092,
+      "text" : "ural\", \"Day"
+    },
+    {
+      "t" : 4.125,
+      "text" : "\", \"Ind"
+    },
+    {
+      "t" : 4.148,
+      "text" : "exed Value"
+    },
+    {
+      "t" : 4.171,
+      "text" : "\")\ndays"
+    },
+    {
+      "t" : 4.185,
+      "text" : " = [\"Mon\", \""
+    },
+    {
+      "t" : 4.21,
+      "text" : "Tue\", \"Wed"
+    },
+    {
+      "t" : 4.235,
+      "text" : "\", \"Thu\", \""
+    },
+    {
+      "t" : 4.376,
+      "text" : "Fri\"]\nsp ="
+    },
+    {
+      "t" : 4.401,
+      "text" : " Series(\"S"
+    },
+    {
+      "t" : 4.426,
+      "text" : "&P 500\", [100,"
+    },
+    {
+      "t" : 4.451,
+      "text" : " 100"
+    },
+    {
+      "t" : 4.478,
+      "text" : ".4"
+    },
+    {
+      "t" : 4.503,
+      "text" : ", 100.2"
+    },
+    {
+      "t" : 4.52,
+      "text" : ", 100.9"
+    },
+    {
+      "t" : 4.545,
+      "text" : ", 101.3])\nn"
+    },
+    {
+      "t" : 4.572,
+      "text" : "as = Series(\"NASD"
+    },
+    {
+      "t" : 4.602,
+      "text" : "AQ\", [100, "
+    },
+    {
+      "t" : 4.628,
+      "text" : "100.7"
+    },
+    {
+      "t" : 4.653,
+      "text" : ", 100.3"
+    },
+    {
+      "t" : 4.753,
+      "text" : ", 101.2"
+    },
+    {
+      "t" : 4.779,
+      "text" : ", 102"
+    },
+    {
+      "t" : 4.804,
+      "text" : ".0"
+    },
+    {
+      "t" : 4.834,
+      "text" : "])\ndow = Series(\""
+    },
+    {
+      "t" : 4.864,
+      "text" : "Dow Jones\", ["
+    },
+    {
+      "t" : 4.891,
+      "text" : "100, 99"
+    },
+    {
+      "t" : 4.919,
+      "text" : ".9"
+    },
+    {
+      "t" : 4.947,
+      "text" : ", 100.1"
+    },
+    {
+      "t" : 4.974,
+      "text" : ", 99"
+    },
+    {
+      "t" : 5.002,
+      "text" : ".8"
+    },
+    {
+      "t" : 5.029,
+      "text" : ", 99.6])\nmo"
+    },
+    {
+      "t" : 5.058,
+      "text" : "versCard = Card([mo"
+    },
+    {
+      "t" : 5.128,
+      "text" : "versHead, mo"
+    },
+    {
+      "t" : 5.155,
+      "text" : "versTable])\nmoversH"
+    },
+    {
+      "t" : 5.156,
+      "text" : "ead = CardHeader(\""
+    },
+    {
+      "t" : 5.186,
+      "text" : "Top Movers\", \""
+    },
+    {
+      "t" : 5.214,
+      "text" : "Largest daily perc"
+    },
+    {
+      "t" : 5.243,
+      "text" : "entage changes\")\nmovers"
+    },
+    {
+      "t" : 5.271,
+      "text" : "Table = Table(["
+    },
+    {
+      "t" : 5.3,
+      "text" : "Col(\"Symbol\", sy"
+    },
+    {
+      "t" : 5.329,
+      "text" : "ms), Col(\"Company"
+    },
+    {
+      "t" : 5.358,
+      "text" : "\", names"
+    },
+    {
+      "t" : 5.413,
+      "text" : "), Col(\"Price ($"
+    },
+    {
+      "t" : 5.442,
+      "text" : ")\", prices, \"number\""
+    },
+    {
+      "t" : 5.507,
+      "text" : "), Col(\"Change ("
+    },
+    {
+      "t" : 5.537,
+      "text" : "%)\", changes, \"number"
+    },
+    {
+      "t" : 5.567,
+      "text" : "\")])\nsyms = [\""
+    },
+    {
+      "t" : 5.568,
+      "text" : "NVDA\", \"T"
+    },
+    {
+      "t" : 5.598,
+      "text" : "SL"
+    },
+    {
+      "t" : 5.628,
+      "text" : "A\", \"AMD\", \""
+    },
+    {
+      "t" : 5.659,
+      "text" : "META\", \"IN"
+    },
+    {
+      "t" : 5.723,
+      "text" : "TC\", \"N"
+    },
+    {
+      "t" : 5.752,
+      "text" : "K"
+    },
+    {
+      "t" : 5.789,
+      "text" : "E\"]\nnames = [\""
+    },
+    {
+      "t" : 5.819,
+      "text" : "NVIDIA\", \""
+    },
+    {
+      "t" : 5.85,
+      "text" : "Tesla\", \"AM"
+    },
+    {
+      "t" : 5.89,
+      "text" : "D\", \"Me"
+    },
+    {
+      "t" : 5.92,
+      "text" : "ta Platforms\", \""
+    },
+    {
+      "t" : 5.949,
+      "text" : "Intel\", \"Nike\""
+    },
+    {
+      "t" : 5.98,
+      "text" : "]\nprices = [892"
+    },
+    {
+      "t" : 6.01,
+      "text" : ".45"
+    },
+    {
+      "t" : 6.042,
+      "text" : ", 178"
+    },
+    {
+      "t" : 6.073,
+      "text" : ".20"
+    },
+    {
+      "t" : 6.104,
+      "text" : ", 164"
+    },
+    {
+      "t" : 6.134,
+      "text" : ".80"
+    },
+    {
+      "t" : 6.154,
+      "text" : ", 498"
+    },
+    {
+      "t" : 6.166,
+      "text" : ".10"
+    },
+    {
+      "t" : 6.197,
+      "text" : ", 30"
+    },
+    {
+      "t" : 6.788,
+      "text" : ".65"
+    },
+    {
+      "t" : 6.821,
+      "text" : ", 94"
+    },
+    {
+      "t" : 6.855,
+      "text" : ".30"
+    },
+    {
+      "t" : 6.89,
+      "text" : "]\nchanges = ["
+    },
+    {
+      "t" : 6.924,
+      "text" : "4.82"
+    },
+    {
+      "t" : 6.959,
+      "text" : ", 3.15"
+    },
+    {
+      "t" : 6.994,
+      "text" : ", 2.67"
+    },
+    {
+      "t" : 7.029,
+      "text" : ", -2"
+    },
+    {
+      "t" : 7.064,
+      "text" : ".41"
+    },
+    {
+      "t" : 7.086,
+      "text" : ", -3.38"
+    },
+    {
+      "t" : 7.12,
+      "text" : ", -4.05"
+    },
+    {
+      "t" : 7.155,
+      "text" : "]"
+    }
+  ],
+  "createdAt" : "2026-11-11T10:33:10Z",
+  "effort" : "low",
+  "format" : "openui-recording",
+  "inputTokens" : 14498,
+  "library" : "react-ui",
+  "model" : "claude-sonnet-5-5",
+  "outputTokens" : 962,
+  "request" : "Market summary: three index values with daily change, a line chart of the week, and top movers in a table.",
+  "servedBy" : "claude-sonnet-5-5",
+  "stopReason" : "end_turn",
+  "version" : 1
+}

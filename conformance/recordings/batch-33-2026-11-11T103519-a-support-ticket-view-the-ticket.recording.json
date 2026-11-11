@@ -1,0 +1,672 @@
+{
+  "batchRequest" : {
+    "model" : "sonnet",
+    "number" : 33,
+    "request" : "A support ticket view: the ticket details, a conversation thread and status actions."
+  },
+  "chunks" : [
+    {
+      "t" : 1.241,
+      "text" : "root = Stack([header"
+    },
+    {
+      "t" : 1.581,
+      "text" : ", det"
+    },
+    {
+      "t" : 1.615,
+      "text" : "ailsC"
+    },
+    {
+      "t" : 1.666,
+      "text" : "ard, thre"
+    },
+    {
+      "t" : 1.757,
+      "text" : "adH"
+    },
+    {
+      "t" : 1.909,
+      "text" : "eader, th"
+    },
+    {
+      "t" : 1.922,
+      "text" : "read, action"
+    },
+    {
+      "t" : 2.126,
+      "text" : "sHeader, actionB"
+    },
+    {
+      "t" : 2.191,
+      "text" : "tns])\nheader = C"
+    },
+    {
+      "t" : 2.259,
+      "text" : "ardHeader(\""
+    },
+    {
+      "t" : 2.314,
+      "text" : "Ticket #48"
+    },
+    {
+      "t" : 2.537,
+      "text" : "213"
+    },
+    {
+      "t" : 2.669,
+      "text" : "\", \"Un"
+    },
+    {
+      "t" : 2.671,
+      "text" : "able to export"
+    },
+    {
+      "t" : 2.738,
+      "text" : " re"
+    },
+    {
+      "t" : 2.793,
+      "text" : "ports to CSV\")"
+    },
+    {
+      "t" : 2.859,
+      "text" : "\ndetailsCard ="
+    },
+    {
+      "t" : 2.917,
+      "text" : " Card([detailsList"
+    },
+    {
+      "t" : 2.969,
+      "text" : ", t"
+    },
+    {
+      "t" : 3.016,
+      "text" : "ags])\ndetailsList ="
+    },
+    {
+      "t" : 3.098,
+      "text" : " EntityList([r"
+    },
+    {
+      "t" : 3.291,
+      "text" : "1, r2, r3,"
+    },
+    {
+      "t" : 3.649,
+      "text" : " r4, r5], \"default"
+    },
+    {
+      "t" : 3.684,
+      "text" : "\")\nr1 = { left"
+    },
+    {
+      "t" : 4.105,
+      "text" : ": \"Status"
+    },
+    {
+      "t" : 4.4,
+      "text" : "\", right: \"Open\""
+    },
+    {
+      "t" : 4.485,
+      "text" : " }\nr2 = { left"
+    },
+    {
+      "t" : 4.579,
+      "text" : ": \"Pri"
+    },
+    {
+      "t" : 4.651,
+      "text" : "ority\", right: \"High\" }"
+    },
+    {
+      "t" : 4.786,
+      "text" : "\nr3 = { left:"
+    },
+    {
+      "t" : 4.91,
+      "text" : " \"Requester\", right: \""
+    },
+    {
+      "t" : 4.986,
+      "text" : "Dana Wh"
+    },
+    {
+      "t" : 5.075,
+      "text" : "itfield ("
+    },
+    {
+      "t" : 5.138,
+      "text" : "dana@ac"
+    },
+    {
+      "t" : 5.254,
+      "text" : "me.io"
+    },
+    {
+      "t" : 5.321,
+      "text" : ")\" }\nr4 ="
+    },
+    {
+      "t" : 5.408,
+      "text" : " { left: \"Assign"
+    },
+    {
+      "t" : 5.536,
+      "text" : "ee\", right: \"Mar"
+    },
+    {
+      "t" : 5.635,
+      "text" : "cus Chen\" }"
+    },
+    {
+      "t" : 5.717,
+      "text" : "\nr5 = { left: \""
+    },
+    {
+      "t" : 5.817,
+      "text" : "Created\", right: \"2"
+    },
+    {
+      "t" : 5.95,
+      "text" : "024-06-12"
+    },
+    {
+      "t" : 6.089,
+      "text" : " 09"
+    },
+    {
+      "t" : 6.207,
+      "text" : ":41"
+    },
+    {
+      "t" : 6.351,
+      "text" : "\" }\ntags = Tag"
+    },
+    {
+      "t" : 6.441,
+      "text" : "Block([\"export"
+    },
+    {
+      "t" : 6.8,
+      "text" : "\", \"re"
+    },
+    {
+      "t" : 7.385,
+      "text" : "ports\", \"bug\"], \""
+    },
+    {
+      "t" : 7.783,
+      "text" : "sm\")\nthreadHe"
+    },
+    {
+      "t" : 8.127,
+      "text" : "ader = InlineHeader"
+    },
+    {
+      "t" : 8.394,
+      "text" : "(\"Conversation\", \"4"
+    },
+    {
+      "t" : 8.4,
+      "text" : " messages\")"
+    },
+    {
+      "t" : 8.52,
+      "text" : "\nthread = St"
+    },
+    {
+      "t" : 8.642,
+      "text" : "ack([m1, m2,"
+    },
+    {
+      "t" : 8.813,
+      "text" : " m3, m4])\nm"
+    },
+    {
+      "t" : 8.95,
+      "text" : "1 = Card([m1"
+    },
+    {
+      "t" : 9.017,
+      "text" : "h,"
+    },
+    {
+      "t" : 9.079,
+      "text" : " m1t],"
+    },
+    {
+      "t" : 9.139,
+      "text" : " \"card"
+    },
+    {
+      "t" : 9.201,
+      "text" : "\")\nm1h = Card"
+    },
+    {
+      "t" : 9.271,
+      "text" : "Header(\"Dana"
+    },
+    {
+      "t" : 9.416,
+      "text" : " Whitfield\", \"Custom"
+    },
+    {
+      "t" : 9.497,
+      "text" : "er · Jun 12,"
+    },
+    {
+      "t" : 9.536,
+      "text" : " 09"
+    },
+    {
+      "t" : 9.567,
+      "text" : ":41\")\nm1t ="
+    },
+    {
+      "t" : 9.667,
+      "text" : " TextContent(\"Hi"
+    },
+    {
+      "t" : 9.778,
+      "text" : ", when I click Export C"
+    },
+    {
+      "t" : 9.903,
+      "text" : "SV on the mon"
+    },
+    {
+      "t" : 10.262,
+      "text" : "thly report"
+    },
+    {
+      "t" : 10.284,
+      "text" : " page n"
+    },
+    {
+      "t" : 10.392,
+      "text" : "othing down"
+    },
+    {
+      "t" : 10.486,
+      "text" : "loads. It"
+    },
+    {
+      "t" : 10.6,
+      "text" : " wor"
+    },
+    {
+      "t" : 10.724,
+      "text" : "ked last"
+    },
+    {
+      "t" : 10.915,
+      "text" : " week."
+    },
+    {
+      "t" : 10.916,
+      "text" : "\")\nm2 = Card"
+    },
+    {
+      "t" : 11.093,
+      "text" : "([m2h, m2t"
+    },
+    {
+      "t" : 11.272,
+      "text" : "], \"sunk\")"
+    },
+    {
+      "t" : 11.422,
+      "text" : "\nm2h = CardH"
+    },
+    {
+      "t" : 11.736,
+      "text" : "eader(\"Marcus"
+    },
+    {
+      "t" : 11.885,
+      "text" : " Chen\", \"Support ·"
+    },
+    {
+      "t" : 11.992,
+      "text" : " Jun 12, 10:"
+    },
+    {
+      "t" : 12.118,
+      "text" : "05\")\nm2t = T"
+    },
+    {
+      "t" : 12.264,
+      "text" : "extContent(\"Thanks"
+    },
+    {
+      "t" : 12.472,
+      "text" : " for rea"
+    },
+    {
+      "t" : 12.603,
+      "text" : "ching out,"
+    },
+    {
+      "t" : 12.842,
+      "text" : " Dana. Which"
+    },
+    {
+      "t" : 12.965,
+      "text" : " browser and version are you using?"
+    },
+    {
+      "t" : 13.144,
+      "text" : " Any"
+    },
+    {
+      "t" : 13.255,
+      "text" : " error sh"
+    },
+    {
+      "t" : 13.328,
+      "text" : "own in the console?\")\nm"
+    },
+    {
+      "t" : 13.454,
+      "text" : "3 = Card([m3"
+    },
+    {
+      "t" : 13.608,
+      "text" : "h, m3t], \"card"
+    },
+    {
+      "t" : 13.978,
+      "text" : "\")\nm3h = Card"
+    },
+    {
+      "t" : 14.059,
+      "text" : "Header(\"Dana"
+    },
+    {
+      "t" : 14.148,
+      "text" : " Whitfield\", \"Custom"
+    },
+    {
+      "t" : 14.251,
+      "text" : "er · Jun 12,"
+    },
+    {
+      "t" : 14.252,
+      "text" : " 10:22"
+    },
+    {
+      "t" : 14.321,
+      "text" : "\")\nm3t = Text"
+    },
+    {
+      "t" : 14.394,
+      "text" : "Content(\"Chrome "
+    },
+    {
+      "t" : 14.469,
+      "text" : "125"
+    },
+    {
+      "t" : 14.533,
+      "text" : ". The"
+    },
+    {
+      "t" : 14.619,
+      "text" : " console shows a"
+    },
+    {
+      "t" : 14.687,
+      "text" : " `403`"
+    },
+    {
+      "t" : 14.755,
+      "text" : " on"
+    },
+    {
+      "t" : 14.824,
+      "text" : " `"
+    },
+    {
+      "t" : 14.893,
+      "text" : "/api/re"
+    },
+    {
+      "t" : 14.992,
+      "text" : "ports/export`.\")\nm"
+    },
+    {
+      "t" : 14.993,
+      "text" : "4 = Card([m4"
+    },
+    {
+      "t" : 15.073,
+      "text" : "h, m4t], \"s"
+    },
+    {
+      "t" : 15.15,
+      "text" : "unk\")\nm4h ="
+    },
+    {
+      "t" : 15.221,
+      "text" : " CardHeader(\"Mar"
+    },
+    {
+      "t" : 15.295,
+      "text" : "cus Chen\", \""
+    },
+    {
+      "t" : 15.368,
+      "text" : "Support · Jun 12,"
+    },
+    {
+      "t" : 15.441,
+      "text" : " 10:40"
+    },
+    {
+      "t" : 15.557,
+      "text" : "\")\nm4t = Text"
+    },
+    {
+      "t" : 15.637,
+      "text" : "Content(\""
+    },
+    {
+      "t" : 15.726,
+      "text" : "Found it"
+    },
+    {
+      "t" : 15.813,
+      "text" : " — a"
+    },
+    {
+      "t" : 15.893,
+      "text" : " permiss"
+    },
+    {
+      "t" : 15.974,
+      "text" : "ions change"
+    },
+    {
+      "t" : 16.05,
+      "text" : " aff"
+    },
+    {
+      "t" : 16.135,
+      "text" : "ected export"
+    },
+    {
+      "t" : 16.138,
+      "text" : " t"
+    },
+    {
+      "t" : 16.207,
+      "text" : "okens. I"
+    },
+    {
+      "t" : 16.291,
+      "text" : "'m escalating to engine"
+    },
+    {
+      "t" : 16.382,
+      "text" : "ering and"
+    },
+    {
+      "t" : 16.471,
+      "text" : " will update"
+    },
+    {
+      "t" : 16.579,
+      "text" : " you shortly.\")\nact"
+    },
+    {
+      "t" : 16.742,
+      "text" : "ionsHeader = Inl"
+    },
+    {
+      "t" : 16.743,
+      "text" : "ineHeader(\"Act"
+    },
+    {
+      "t" : 16.822,
+      "text" : "ions\", \"Update "
+    },
+    {
+      "t" : 16.898,
+      "text" : "ticket status\")"
+    },
+    {
+      "t" : 16.977,
+      "text" : "\nactionBtns ="
+    },
+    {
+      "t" : 17.05,
+      "text" : " Buttons([b1, b"
+    },
+    {
+      "t" : 17.134,
+      "text" : "2, b3, b4],"
+    },
+    {
+      "t" : 17.219,
+      "text" : " \"row\")\nb1 ="
+    },
+    {
+      "t" : 17.306,
+      "text" : " Button(\"Reply\", @"
+    },
+    {
+      "t" : 17.39,
+      "text" : "ToAssistant(\""
+    },
+    {
+      "t" : 17.473,
+      "text" : "Draft a"
+    },
+    {
+      "t" : 17.593,
+      "text" : " reply to"
+    },
+    {
+      "t" : 17.594,
+      "text" : " the"
+    },
+    {
+      "t" : 17.675,
+      "text" : " customer for"
+    },
+    {
+      "t" : 17.762,
+      "text" : " ticket #48213\"),"
+    },
+    {
+      "t" : 17.855,
+      "text" : " \"primary\")\nb2 "
+    },
+    {
+      "t" : 17.934,
+      "text" : "= Button(\"Mark"
+    },
+    {
+      "t" : 18.022,
+      "text" : " Pending\", @ToAss"
+    },
+    {
+      "t" : 18.108,
+      "text" : "istant(\"Set"
+    },
+    {
+      "t" : 18.241,
+      "text" : " ticket #48213 to"
+    },
+    {
+      "t" : 18.423,
+      "text" : " Pending\"), \"secondary"
+    },
+    {
+      "t" : 18.554,
+      "text" : "\")\nb3 = Button"
+    },
+    {
+      "t" : 18.666,
+      "text" : "(\"Res"
+    },
+    {
+      "t" : 18.758,
+      "text" : "olve\", @ToAss"
+    },
+    {
+      "t" : 18.835,
+      "text" : "istant(\"Res"
+    },
+    {
+      "t" : 18.939,
+      "text" : "olve ticket #48213"
+    },
+    {
+      "t" : 18.944,
+      "text" : "\"), \"secondary\")"
+    },
+    {
+      "t" : 19.058,
+      "text" : "\nb4 = Button(\""
+    },
+    {
+      "t" : 19.181,
+      "text" : "Close"
+    },
+    {
+      "t" : 19.282,
+      "text" : " Ticket\", @ToA"
+    },
+    {
+      "t" : 19.415,
+      "text" : "ssistant(\"Close tic"
+    },
+    {
+      "t" : 19.528,
+      "text" : "ket #48213\"), \"t"
+    },
+    {
+      "t" : 19.621,
+      "text" : "ertiary\", \"destructive"
+    },
+    {
+      "t" : 19.729,
+      "text" : "\")"
+    }
+  ],
+  "createdAt" : "2026-11-11T10:35:19Z",
+  "effort" : "low",
+  "format" : "openui-recording",
+  "inputTokens" : 14493,
+  "library" : "react-ui",
+  "model" : "claude-sonnet-5-5",
+  "outputTokens" : 923,
+  "request" : "A support ticket view: the ticket details, a conversation thread and status actions.",
+  "servedBy" : "claude-sonnet-5-5",
+  "stopReason" : "end_turn",
+  "version" : 1
+}

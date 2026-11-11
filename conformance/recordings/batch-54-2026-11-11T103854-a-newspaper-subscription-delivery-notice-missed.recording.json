@@ -1,0 +1,628 @@
+{
+  "batchRequest" : {
+    "model" : "haiku",
+    "number" : 54,
+    "request" : "A newspaper subscription delivery notice: missed delivery dates, current address and a form to request a replacement copy."
+  },
+  "chunks" : [
+    {
+      "t" : 1.172,
+      "text" : "root = Stack(["
+    },
+    {
+      "t" : 1.329,
+      "text" : "header"
+    },
+    {
+      "t" : 1.361,
+      "text" : ", miss"
+    },
+    {
+      "t" : 1.477,
+      "text" : "edC"
+    },
+    {
+      "t" : 1.529,
+      "text" : "ard, add"
+    },
+    {
+      "t" : 1.634,
+      "text" : "ressCard, requ"
+    },
+    {
+      "t" : 1.66,
+      "text" : "estForm])\nheader = In"
+    },
+    {
+      "t" : 1.685,
+      "text" : "lineHeader(\"Del"
+    },
+    {
+      "t" : 1.713,
+      "text" : "ivery Notice\", \"We"
+    },
+    {
+      "t" : 1.743,
+      "text" : " no"
+    },
+    {
+      "t" : 1.77,
+      "text" : "ticed some"
+    },
+    {
+      "t" : 1.8,
+      "text" : " rec"
+    },
+    {
+      "t" : 1.851,
+      "text" : "ent new"
+    },
+    {
+      "t" : 1.878,
+      "text" : "spaper deliveries were"
+    },
+    {
+      "t" : 1.905,
+      "text" : " missed\")\nmissedCard"
+    },
+    {
+      "t" : 1.907,
+      "text" : " ="
+    },
+    {
+      "t" : 1.94,
+      "text" : " Card([miss"
+    },
+    {
+      "t" : 1.977,
+      "text" : "edHeader, missedT"
+    },
+    {
+      "t" : 2.008,
+      "text" : "able])\nmissedHeader"
+    },
+    {
+      "t" : 2.043,
+      "text" : " = CardHeader(\""
+    },
+    {
+      "t" : 2.104,
+      "text" : "Missed De"
+    },
+    {
+      "t" : 2.143,
+      "text" : "liveries\", \"D"
+    },
+    {
+      "t" : 2.19,
+      "text" : "ates we"
+    },
+    {
+      "t" : 2.24,
+      "text" : " did"
+    },
+    {
+      "t" : 2.285,
+      "text" : " not deliver your paper\")"
+    },
+    {
+      "t" : 2.317,
+      "text" : "\nmissedTable = Table"
+    },
+    {
+      "t" : 2.359,
+      "text" : "([Col(\"Date\", miss"
+    },
+    {
+      "t" : 2.398,
+      "text" : "edDates), Col(\""
+    },
+    {
+      "t" : 2.44,
+      "text" : "Ed"
+    },
+    {
+      "t" : 2.477,
+      "text" : "ition\", edit"
+    },
+    {
+      "t" : 2.515,
+      "text" : "ions), Col(\"Status\","
+    },
+    {
+      "t" : 2.579,
+      "text" : " stat"
+    },
+    {
+      "t" : 2.581,
+      "text" : "uses,"
+    },
+    {
+      "t" : 2.627,
+      "text" : " \"string"
+    },
+    {
+      "t" : 2.669,
+      "text" : "\")])\nmissedDates ="
+    },
+    {
+      "t" : 2.706,
+      "text" : " [\"Mon,"
+    },
+    {
+      "t" : 2.744,
+      "text" : " M"
+    },
+    {
+      "t" : 2.785,
+      "text" : "ar 3"
+    },
+    {
+      "t" : 2.824,
+      "text" : "\", \"W"
+    },
+    {
+      "t" : 2.867,
+      "text" : "ed, Mar 5"
+    },
+    {
+      "t" : 2.904,
+      "text" : "\", \"S"
+    },
+    {
+      "t" : 2.951,
+      "text" : "at, Mar 8\""
+    },
+    {
+      "t" : 2.996,
+      "text" : "]\neditions = [\""
+    },
+    {
+      "t" : 3.067,
+      "text" : "Daily\","
+    },
+    {
+      "t" : 3.068,
+      "text" : " \"Da"
+    },
+    {
+      "t" : 3.154,
+      "text" : "ily\", \"Sunday\""
+    },
+    {
+      "t" : 3.155,
+      "text" : "]\nstatuses = [\""
+    },
+    {
+      "t" : 3.208,
+      "text" : "Open"
+    },
+    {
+      "t" : 3.239,
+      "text" : "\", \"Open\", \"Open"
+    },
+    {
+      "t" : 3.288,
+      "text" : "\"]\naddressCard ="
+    },
+    {
+      "t" : 3.337,
+      "text" : " Card([addr"
+    },
+    {
+      "t" : 3.39,
+      "text" : "Header, addrInf"
+    },
+    {
+      "t" : 3.442,
+      "text" : "o])"
+    },
+    {
+      "t" : 3.493,
+      "text" : "\naddrHeader = In"
+    },
+    {
+      "t" : 3.554,
+      "text" : "lineHeader(\"Current"
+    },
+    {
+      "t" : 3.608,
+      "text" : " Del"
+    },
+    {
+      "t" : 3.657,
+      "text" : "ivery Address\", \"Conf"
+    },
+    {
+      "t" : 3.717,
+      "text" : "irm this is still"
+    },
+    {
+      "t" : 3.772,
+      "text" : " correct\")\naddrInf"
+    },
+    {
+      "t" : 3.816,
+      "text" : "o = EntityList([add"
+    },
+    {
+      "t" : 3.882,
+      "text" : "rName"
+    },
+    {
+      "t" : 3.938,
+      "text" : ", addrLine,"
+    },
+    {
+      "t" : 4.045,
+      "text" : " addrC"
+    },
+    {
+      "t" : 4.109,
+      "text" : "ity, addrA"
+    },
+    {
+      "t" : 4.171,
+      "text" : "ccount], \"default"
+    },
+    {
+      "t" : 4.234,
+      "text" : "\")\naddrName = {"
+    },
+    {
+      "t" : 4.235,
+      "text" : "left: \"Name\", right:"
+    },
+    {
+      "t" : 4.303,
+      "text" : " \"Jord"
+    },
+    {
+      "t" : 4.403,
+      "text" : "an Pat"
+    },
+    {
+      "t" : 4.404,
+      "text" : "el\"}\naddrLine"
+    },
+    {
+      "t" : 4.479,
+      "text" : " = {left: \"Street"
+    },
+    {
+      "t" : 4.594,
+      "text" : "\", right: \"418"
+    },
+    {
+      "t" : 4.595,
+      "text" : " Maple Av"
+    },
+    {
+      "t" : 4.716,
+      "text" : "enue, Apt 3"
+    },
+    {
+      "t" : 4.784,
+      "text" : "B\"}\naddrCity"
+    },
+    {
+      "t" : 4.859,
+      "text" : " = {left: \"City"
+    },
+    {
+      "t" : 4.918,
+      "text" : "\","
+    },
+    {
+      "t" : 4.992,
+      "text" : " right: \"Springfield,"
+    },
+    {
+      "t" : 5.072,
+      "text" : " IL 62704"
+    },
+    {
+      "t" : 5.158,
+      "text" : "\"}\naddrAccount"
+    },
+    {
+      "t" : 5.16,
+      "text" : " = {left: \"Account\","
+    },
+    {
+      "t" : 5.221,
+      "text" : " right: \"S"
+    },
+    {
+      "t" : 5.293,
+      "text" : "U"
+    },
+    {
+      "t" : 5.352,
+      "text" : "B-204"
+    },
+    {
+      "t" : 5.416,
+      "text" : "817"
+    },
+    {
+      "t" : 5.473,
+      "text" : "\"}\nrequestForm ="
+    },
+    {
+      "t" : 5.534,
+      "text" : " Form(\"repl"
+    },
+    {
+      "t" : 5.631,
+      "text" : "acement\", form"
+    },
+    {
+      "t" : 5.632,
+      "text" : "Buttons, [d"
+    },
+    {
+      "t" : 5.691,
+      "text" : "ateField, de"
+    },
+    {
+      "t" : 5.824,
+      "text" : "liveryField, not"
+    },
+    {
+      "t" : 5.896,
+      "text" : "esField])\ndateField ="
+    },
+    {
+      "t" : 5.959,
+      "text" : " FormControl(\"Missed"
+    },
+    {
+      "t" : 6.025,
+      "text" : " Date"
+    },
+    {
+      "t" : 6.094,
+      "text" : "\","
+    },
+    {
+      "t" : 6.174,
+      "text" : " dateIn"
+    },
+    {
+      "t" : 6.255,
+      "text" : "put, \"Select the date you"
+    },
+    {
+      "t" : 6.319,
+      "text" : " did"
+    },
+    {
+      "t" : 6.321,
+      "text" : " not receive your"
+    },
+    {
+      "t" : 6.421,
+      "text" : " paper\")\ndateInput"
+    },
+    {
+      "t" : 6.522,
+      "text" : " = DatePicker(\"miss"
+    },
+    {
+      "t" : 6.523,
+      "text" : "edDate\", \""
+    },
+    {
+      "t" : 6.619,
+      "text" : "single\","
+    },
+    {
+      "t" : 6.684,
+      "text" : " {required: true})\ndeli"
+    },
+    {
+      "t" : 6.75,
+      "text" : "veryField = FormControl"
+    },
+    {
+      "t" : 6.826,
+      "text" : "(\"Repl"
+    },
+    {
+      "t" : 6.886,
+      "text" : "acement Pre"
+    },
+    {
+      "t" : 7.006,
+      "text" : "ference\", deliveryCho"
+    },
+    {
+      "t" : 7.008,
+      "text" : "ice"
+    },
+    {
+      "t" : 7.09,
+      "text" : ")"
+    },
+    {
+      "t" : 7.164,
+      "text" : "\ndeliveryChoice"
+    },
+    {
+      "t" : 7.301,
+      "text" : " = R"
+    },
+    {
+      "t" : 7.39,
+      "text" : "adioGroup(\"replac"
+    },
+    {
+      "t" : 7.454,
+      "text" : "ementType"
+    },
+    {
+      "t" : 7.534,
+      "text" : "\", [repl"
+    },
+    {
+      "t" : 7.535,
+      "text" : "a"
+    },
+    {
+      "t" : 7.629,
+      "text" : "ceOpt,"
+    },
+    {
+      "t" : 7.712,
+      "text" : " cre"
+    },
+    {
+      "t" : 7.78,
+      "text" : "ditOpt], \"repl"
+    },
+    {
+      "t" : 7.974,
+      "text" : "ace\", {required: true})"
+    },
+    {
+      "t" : 8.088,
+      "text" : "\nreplaceOpt = R"
+    },
+    {
+      "t" : 8.152,
+      "text" : "adioItem(\""
+    },
+    {
+      "t" : 8.153,
+      "text" : "Send a replacement copy\","
+    },
+    {
+      "t" : 8.26,
+      "text" : " \"Del"
+    },
+    {
+      "t" : 8.367,
+      "text" : "ivered within"
+    },
+    {
+      "t" : 8.544,
+      "text" : " 24 hours\", \"repl"
+    },
+    {
+      "t" : 8.624,
+      "text" : "ace\")\ncreditOpt"
+    },
+    {
+      "t" : 8.769,
+      "text" : " = RadioItem(\""
+    },
+    {
+      "t" : 8.91,
+      "text" : "Credit my"
+    },
+    {
+      "t" : 9.031,
+      "text" : " account\", \"Applied to your"
+    },
+    {
+      "t" : 9.158,
+      "text" : " next billing c"
+    },
+    {
+      "t" : 9.254,
+      "text" : "ycle\", \"cred"
+    },
+    {
+      "t" : 9.321,
+      "text" : "it\")\nnotesField = F"
+    },
+    {
+      "t" : 9.322,
+      "text" : "ormControl(\"Additional"
+    },
+    {
+      "t" : 9.397,
+      "text" : " Notes\", notesInput)"
+    },
+    {
+      "t" : 9.473,
+      "text" : "\nnotesInput = Text"
+    },
+    {
+      "t" : 9.552,
+      "text" : "Area(\"notes\", \""
+    },
+    {
+      "t" : 9.683,
+      "text" : "Anything we"
+    },
+    {
+      "t" : 9.807,
+      "text" : " should know?"
+    },
+    {
+      "t" : 9.911,
+      "text" : "\", 3)"
+    },
+    {
+      "t" : 10.018,
+      "text" : "\nformButtons = Bu"
+    },
+    {
+      "t" : 10.13,
+      "text" : "ttons([Button(\"Request"
+    },
+    {
+      "t" : 10.228,
+      "text" : " Replacement\", @To"
+    },
+    {
+      "t" : 10.329,
+      "text" : "Assistant(\"Request a"
+    },
+    {
+      "t" : 10.418,
+      "text" : " replacement copy for the miss"
+    },
+    {
+      "t" : 10.533,
+      "text" : "ed de"
+    },
+    {
+      "t" : 10.638,
+      "text" : "liveries\"), \"primary"
+    },
+    {
+      "t" : 10.735,
+      "text" : "\"), Button(\"C"
+    },
+    {
+      "t" : 10.891,
+      "text" : "ancel\", @ToAss"
+    },
+    {
+      "t" : 10.892,
+      "text" : "istant(\"Cancel repl"
+    },
+    {
+      "t" : 11.006,
+      "text" : "acement request\"), \"second"
+    },
+    {
+      "t" : 11.119,
+      "text" : "ary\")])"
+    }
+  ],
+  "createdAt" : "2026-11-11T10:38:54Z",
+  "effort" : "low",
+  "format" : "openui-recording",
+  "inputTokens" : 14505,
+  "library" : "react-ui",
+  "model" : "claude-haiku-5-5",
+  "outputTokens" : 817,
+  "request" : "A newspaper subscription delivery notice: missed delivery dates, current address and a form to request a replacement copy.",
+  "servedBy" : "claude-haiku-5-5",
+  "stopReason" : "end_turn",
+  "version" : 1
+}

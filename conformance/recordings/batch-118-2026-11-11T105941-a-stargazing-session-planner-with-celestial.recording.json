@@ -1,0 +1,1060 @@
+{
+  "batchRequest" : {
+    "model" : "haiku",
+    "number" : 118,
+    "request" : "A stargazing session planner with celestial targets, viewing windows, equipment checklist and a sky-condition note."
+  },
+  "chunks" : [
+    {
+      "t" : 0.586,
+      "text" : "root"
+    },
+    {
+      "t" : 0.72,
+      "text" : " = Stack(["
+    },
+    {
+      "t" : 0.747,
+      "text" : "header"
+    },
+    {
+      "t" : 0.748,
+      "text" : ", targ"
+    },
+    {
+      "t" : 0.857,
+      "text" : "etsHeader, targ"
+    },
+    {
+      "t" : 1.004,
+      "text" : "etC"
+    },
+    {
+      "t" : 1.039,
+      "text" : "ards, windowsHeader"
+    },
+    {
+      "t" : 1.069,
+      "text" : ", windowsTable"
+    },
+    {
+      "t" : 1.105,
+      "text" : ", checklistHeader,"
+    },
+    {
+      "t" : 1.164,
+      "text" : " checklistCard, sky"
+    },
+    {
+      "t" : 1.202,
+      "text" : "Note])\nheader"
+    },
+    {
+      "t" : 1.203,
+      "text" : " = InlineHeader(\""
+    },
+    {
+      "t" : 1.24,
+      "text" : "Stargazing Session"
+    },
+    {
+      "t" : 1.274,
+      "text" : " Planner\", \"T"
+    },
+    {
+      "t" : 1.335,
+      "text" : "onight's targets, view"
+    },
+    {
+      "t" : 1.373,
+      "text" : "ing windows and g"
+    },
+    {
+      "t" : 1.375,
+      "text" : "ear\")\ntargetsHe"
+    },
+    {
+      "t" : 1.412,
+      "text" : "ader = InlineHeader"
+    },
+    {
+      "t" : 1.456,
+      "text" : "(\"Celestial Targets"
+    },
+    {
+      "t" : 1.497,
+      "text" : "\", \""
+    },
+    {
+      "t" : 1.546,
+      "text" : "Ranked by alt"
+    },
+    {
+      "t" : 1.598,
+      "text" : "itude during"
+    },
+    {
+      "t" : 1.647,
+      "text" : " the vi"
+    },
+    {
+      "t" : 1.695,
+      "text" : "ewing window\")\ntargetC"
+    },
+    {
+      "t" : 1.738,
+      "text" : "ards = O"
+    },
+    {
+      "t" : 1.794,
+      "text" : "verviewCardBlock"
+    },
+    {
+      "t" : 1.892,
+      "text" : "([t1, t2,"
+    },
+    {
+      "t" : 1.895,
+      "text" : " t3])\nt1 ="
+    },
+    {
+      "t" : 2.086,
+      "text" : " OverviewCardItem"
+    },
+    {
+      "t" : 2.148,
+      "text" : "(\"j"
+    },
+    {
+      "t" : 2.209,
+      "text" : "upiter\", t"
+    },
+    {
+      "t" : 2.265,
+      "text" : "1top, t"
+    },
+    {
+      "t" : 2.336,
+      "text" : "1bottom)\nt1"
+    },
+    {
+      "t" : 2.375,
+      "text" : "top = IconText(t1"
+    },
+    {
+      "t" : 2.409,
+      "text" : "icon, \"info"
+    },
+    {
+      "t" : 2.451,
+      "text" : "\", \"m\", \"Jup"
+    },
+    {
+      "t" : 2.504,
+      "text" : "iter\", \"Plan"
+    },
+    {
+      "t" : 2.555,
+      "text" : "et ·"
+    },
+    {
+      "t" : 2.598,
+      "text" : " M"
+    },
+    {
+      "t" : 2.668,
+      "text" : "ag -"
+    },
+    {
+      "t" : 2.671,
+      "text" : "2.4"
+    },
+    {
+      "t" : 2.733,
+      "text" : "\", true, \"hor"
+    },
+    {
+      "t" : 2.777,
+      "text" : "izontal\")\nt1ic"
+    },
+    {
+      "t" : 2.84,
+      "text" : "on = Icon(\"plan"
+    },
+    {
+      "t" : 2.927,
+      "text" : "et\", \"space"
+    },
+    {
+      "t" : 2.983,
+      "text" : "\")\nt1bottom ="
+    },
+    {
+      "t" : 3.113,
+      "text" : " MetricIndicator"
+    },
+    {
+      "t" : 3.196,
+      "text" : "Inline(\"68"
+    },
+    {
+      "t" : 3.201,
+      "text" : "°"
+    },
+    {
+      "t" : 3.468,
+      "text" : " altitude\", \"Best at"
+    },
+    {
+      "t" : 3.53,
+      "text" : " 22"
+    },
+    {
+      "t" : 3.616,
+      "text" : ":30\")\nt2 ="
+    },
+    {
+      "t" : 3.621,
+      "text" : " OverviewCardItem"
+    },
+    {
+      "t" : 3.68,
+      "text" : "(\"orion-"
+    },
+    {
+      "t" : 3.741,
+      "text" : "nebula\", t2top,"
+    },
+    {
+      "t" : 3.799,
+      "text" : " t2bottom)\nt"
+    },
+    {
+      "t" : 3.881,
+      "text" : "2top = IconText(t"
+    },
+    {
+      "t" : 3.955,
+      "text" : "2icon, \"info\", \""
+    },
+    {
+      "t" : 4.03,
+      "text" : "m\", \"Orion N"
+    },
+    {
+      "t" : 4.13,
+      "text" : "ebula ("
+    },
+    {
+      "t" : 4.133,
+      "text" : "M42"
+    },
+    {
+      "t" : 4.206,
+      "text" : ")\", \"Nebula ·"
+    },
+    {
+      "t" : 4.265,
+      "text" : " Mag 4.0\","
+    },
+    {
+      "t" : 4.323,
+      "text" : " true,"
+    },
+    {
+      "t" : 4.418,
+      "text" : " \"horizontal\")\nt"
+    },
+    {
+      "t" : 4.419,
+      "text" : "2icon = Icon(\""
+    },
+    {
+      "t" : 4.476,
+      "text" : "s"
+    },
+    {
+      "t" : 4.543,
+      "text" : "parkles\", \"space"
+    },
+    {
+      "t" : 4.606,
+      "text" : "\")\nt2bottom ="
+    },
+    {
+      "t" : 4.669,
+      "text" : " MetricIndicator"
+    },
+    {
+      "t" : 4.739,
+      "text" : "Inline(\"54"
+    },
+    {
+      "t" : 4.817,
+      "text" : "° altitude\", \"Best"
+    },
+    {
+      "t" : 4.891,
+      "text" : " at 23"
+    },
+    {
+      "t" : 4.955,
+      "text" : ":10"
+    },
+    {
+      "t" : 5.03,
+      "text" : "\")\nt3 = Over"
+    },
+    {
+      "t" : 5.095,
+      "text" : "viewCardItem(\"and"
+    },
+    {
+      "t" : 5.157,
+      "text" : "romeda\", t3top,"
+    },
+    {
+      "t" : 5.232,
+      "text" : " t3bottom)\nt"
+    },
+    {
+      "t" : 5.295,
+      "text" : "3top = IconText(t"
+    },
+    {
+      "t" : 5.363,
+      "text" : "3icon, \"info\", \""
+    },
+    {
+      "t" : 5.434,
+      "text" : "m\", \"Andromeda"
+    },
+    {
+      "t" : 5.487,
+      "text" : " Galaxy ("
+    },
+    {
+      "t" : 5.544,
+      "text" : "M31)\", \"Gala"
+    },
+    {
+      "t" : 5.608,
+      "text" : "xy · Mag 3"
+    },
+    {
+      "t" : 5.68,
+      "text" : ".4\", true, \"hor"
+    },
+    {
+      "t" : 5.733,
+      "text" : "izontal\")\nt3ic"
+    },
+    {
+      "t" : 5.81,
+      "text" : "on = Icon(\"tel"
+    },
+    {
+      "t" : 5.889,
+      "text" : "escope\", \"space\")\nt"
+    },
+    {
+      "t" : 5.947,
+      "text" : "3bottom = Metric"
+    },
+    {
+      "t" : 6.007,
+      "text" : "IndicatorInline(\""
+    },
+    {
+      "t" : 6.072,
+      "text" : "41° altitude\", \""
+    },
+    {
+      "t" : 6.123,
+      "text" : "Best at 00"
+    },
+    {
+      "t" : 6.231,
+      "text" : ":20"
+    },
+    {
+      "t" : 6.232,
+      "text" : "\")\nwindowsHeader"
+    },
+    {
+      "t" : 6.311,
+      "text" : " = InlineHeader(\""
+    },
+    {
+      "t" : 6.391,
+      "text" : "Viewing Windows\","
+    },
+    {
+      "t" : 6.48,
+      "text" : " \"Opt"
+    },
+    {
+      "t" : 6.56,
+      "text" : "imal observ"
+    },
+    {
+      "t" : 6.632,
+      "text" : "ing times for each target\")\nwind"
+    },
+    {
+      "t" : 6.712,
+      "text" : "owsTable = Table(["
+    },
+    {
+      "t" : 6.791,
+      "text" : "Col(\"Target\", window"
+    },
+    {
+      "t" : 6.862,
+      "text" : "T"
+    },
+    {
+      "t" : 6.949,
+      "text" : "argets), Col(\"Start"
+    },
+    {
+      "t" : 7.1,
+      "text" : "\", windowStart"
+    },
+    {
+      "t" : 7.192,
+      "text" : "), Col(\"End\", window"
+    },
+    {
+      "t" : 7.276,
+      "text" : "End), Col(\""
+    },
+    {
+      "t" : 7.356,
+      "text" : "Se"
+    },
+    {
+      "t" : 7.438,
+      "text" : "eing\", windowSee"
+    },
+    {
+      "t" : 7.517,
+      "text" : "ing,"
+    },
+    {
+      "t" : 7.565,
+      "text" : " \"number\")])\nwindowT"
+    },
+    {
+      "t" : 7.627,
+      "text" : "argets = [\"Jup"
+    },
+    {
+      "t" : 7.629,
+      "text" : "iter\", \"Orion"
+    },
+    {
+      "t" : 7.711,
+      "text" : " Nebula\","
+    },
+    {
+      "t" : 7.785,
+      "text" : " \"Andromeda Gal"
+    },
+    {
+      "t" : 7.853,
+      "text" : "axy\", \"P"
+    },
+    {
+      "t" : 7.927,
+      "text" : "leiades\"]\nwindow"
+    },
+    {
+      "t" : 8.076,
+      "text" : "Start = [\"21:30"
+    },
+    {
+      "t" : 8.153,
+      "text" : "\", \"22:45"
+    },
+    {
+      "t" : 8.231,
+      "text" : "\", \"23:30"
+    },
+    {
+      "t" : 8.313,
+      "text" : "\", \"01"
+    },
+    {
+      "t" : 8.392,
+      "text" : ":00"
+    },
+    {
+      "t" : 8.478,
+      "text" : "\"]\nwindowEnd"
+    },
+    {
+      "t" : 8.562,
+      "text" : " = [\"01"
+    },
+    {
+      "t" : 8.669,
+      "text" : ":15"
+    },
+    {
+      "t" : 8.772,
+      "text" : "\", \"03"
+    },
+    {
+      "t" : 8.858,
+      "text" : ":00"
+    },
+    {
+      "t" : 8.935,
+      "text" : "\", \"04:30"
+    },
+    {
+      "t" : 9.029,
+      "text" : "\", \"05:15"
+    },
+    {
+      "t" : 9.114,
+      "text" : "\"]\nwindowSee"
+    },
+    {
+      "t" : 9.189,
+      "text" : "ing = [4, 3,"
+    },
+    {
+      "t" : 9.191,
+      "text" : " 3"
+    },
+    {
+      "t" : 9.291,
+      "text" : ", 5"
+    },
+    {
+      "t" : 9.372,
+      "text" : "]\nchecklistHeader"
+    },
+    {
+      "t" : 9.456,
+      "text" : " = InlineHeader(\""
+    },
+    {
+      "t" : 9.535,
+      "text" : "Equipment Checklist"
+    },
+    {
+      "t" : 9.632,
+      "text" : "\", \"Conf"
+    },
+    {
+      "t" : 9.72,
+      "text" : "irm g"
+    },
+    {
+      "t" : 9.864,
+      "text" : "ear before he"
+    },
+    {
+      "t" : 9.865,
+      "text" : "ading out\")\nchecklistC"
+    },
+    {
+      "t" : 9.957,
+      "text" : "ard = Card([chec"
+    },
+    {
+      "t" : 10.056,
+      "text" : "klistItems,"
+    },
+    {
+      "t" : 10.143,
+      "text" : " checklistBt"
+    },
+    {
+      "t" : 10.235,
+      "text" : "ns"
+    },
+    {
+      "t" : 10.337,
+      "text" : "])\nchecklistItems ="
+    },
+    {
+      "t" : 10.446,
+      "text" : " Form(\"g"
+    },
+    {
+      "t" : 10.539,
+      "text" : "ear\", chec"
+    },
+    {
+      "t" : 10.648,
+      "text" : "klistBtns, [g"
+    },
+    {
+      "t" : 10.754,
+      "text" : "earField"
+    },
+    {
+      "t" : 10.833,
+      "text" : "1, gearField2])"
+    },
+    {
+      "t" : 10.942,
+      "text" : "\ngearField1 = Form"
+    },
+    {
+      "t" : 11.016,
+      "text" : "Control(\"Equ"
+    },
+    {
+      "t" : 11.102,
+      "text" : "ipment\", g"
+    },
+    {
+      "t" : 11.234,
+      "text" : "earCh"
+    },
+    {
+      "t" : 11.344,
+      "text" : "ips,"
+    },
+    {
+      "t" : 11.456,
+      "text" : " \"Select ever"
+    },
+    {
+      "t" : 11.558,
+      "text" : "ything you are"
+    },
+    {
+      "t" : 11.664,
+      "text" : " bringing\")\ngearCh"
+    },
+    {
+      "t" : 11.756,
+      "text" : "ips = Chips(\"gear"
+    },
+    {
+      "t" : 11.858,
+      "text" : "\", \"multiple\", [g"
+    },
+    {
+      "t" : 11.986,
+      "text" : "ear1, gear2, g"
+    },
+    {
+      "t" : 12.108,
+      "text" : "ear3, gear4, g"
+    },
+    {
+      "t" : 12.288,
+      "text" : "ear5])\ngear1 "
+    },
+    {
+      "t" : 12.389,
+      "text" : "= ChipItem(\"tel"
+    },
+    {
+      "t" : 12.484,
+      "text" : "escope\", \"Telescope"
+    },
+    {
+      "t" : 12.585,
+      "text" : "\", gear1icon)"
+    },
+    {
+      "t" : 12.697,
+      "text" : "\ngear1icon = Ic"
+    },
+    {
+      "t" : 12.787,
+      "text" : "on(\"telescope\", \"space"
+    },
+    {
+      "t" : 12.788,
+      "text" : "\")\ngear2 = "
+    },
+    {
+      "t" : 12.894,
+      "text" : "ChipItem(\"e"
+    },
+    {
+      "t" : 13.003,
+      "text" : "yepie"
+    },
+    {
+      "t" : 13.089,
+      "text" : "ces\", \"Eyepie"
+    },
+    {
+      "t" : 13.202,
+      "text" : "ces\", gear2icon)"
+    },
+    {
+      "t" : 13.266,
+      "text" : "\ngear2icon ="
+    },
+    {
+      "t" : 13.373,
+      "text" : " Icon(\"eye"
+    },
+    {
+      "t" : 13.503,
+      "text" : "\", \"tools\")\ngear"
+    },
+    {
+      "t" : 13.618,
+      "text" : "3 = ChipItem"
+    },
+    {
+      "t" : 13.735,
+      "text" : "(\"red"
+    },
+    {
+      "t" : 13.835,
+      "text" : "-fl"
+    },
+    {
+      "t" : 13.955,
+      "text" : "ashlight\", \"Red fl"
+    },
+    {
+      "t" : 14.175,
+      "text" : "ashlight\", gear3ic"
+    },
+    {
+      "t" : 14.289,
+      "text" : "on)\ngear3icon"
+    },
+    {
+      "t" : 14.417,
+      "text" : " = Icon(\"flashl"
+    },
+    {
+      "t" : 14.534,
+      "text" : "ight\", \"t"
+    },
+    {
+      "t" : 14.652,
+      "text" : "ools\")\ngear4 ="
+    },
+    {
+      "t" : 14.761,
+      "text" : " ChipItem(\"star-"
+    },
+    {
+      "t" : 14.871,
+      "text" : "chart\", \"Star ch"
+    },
+    {
+      "t" : 15.004,
+      "text" : "art /"
+    },
+    {
+      "t" : 15.083,
+      "text" : " app\", gear4icon)"
+    },
+    {
+      "t" : 15.119,
+      "text" : "\ngear4icon ="
+    },
+    {
+      "t" : 15.32,
+      "text" : " Icon(\"map\", \"nav"
+    },
+    {
+      "t" : 15.322,
+      "text" : "igation\")\ngear5 "
+    },
+    {
+      "t" : 15.543,
+      "text" : "= ChipItem(\"war"
+    },
+    {
+      "t" : 15.654,
+      "text" : "m-lay"
+    },
+    {
+      "t" : 15.78,
+      "text" : "ers\", \"Warm layers"
+    },
+    {
+      "t" : 15.916,
+      "text" : "\", gear5icon)"
+    },
+    {
+      "t" : 15.917,
+      "text" : "\ngear5icon = Ic"
+    },
+    {
+      "t" : 16.025,
+      "text" : "on(\"sn"
+    },
+    {
+      "t" : 16.134,
+      "text" : "owflake\", \"we"
+    },
+    {
+      "t" : 16.231,
+      "text" : "ather\")\ngearField2 "
+    },
+    {
+      "t" : 16.358,
+      "text" : "= FormControl(\"M"
+    },
+    {
+      "t" : 16.613,
+      "text" : "ount\", m"
+    },
+    {
+      "t" : 16.615,
+      "text" : "ountO"
+    },
+    {
+      "t" : 16.763,
+      "text" : "ptions, \"Choose your"
+    },
+    {
+      "t" : 16.856,
+      "text" : " mount type"
+    },
+    {
+      "t" : 16.973,
+      "text" : "\")\nmountOptions ="
+    },
+    {
+      "t" : 17.091,
+      "text" : " RadioGroup(\"m"
+    },
+    {
+      "t" : 17.247,
+      "text" : "ount\", [m"
+    },
+    {
+      "t" : 17.355,
+      "text" : "ountA"
+    },
+    {
+      "t" : 17.491,
+      "text" : "lt"
+    },
+    {
+      "t" : 17.599,
+      "text" : ", mountE"
+    },
+    {
+      "t" : 17.768,
+      "text" : "q"
+    },
+    {
+      "t" : 17.878,
+      "text" : "])\nmountAlt ="
+    },
+    {
+      "t" : 18.014,
+      "text" : " RadioItem(\""
+    },
+    {
+      "t" : 18.136,
+      "text" : "Alt-az"
+    },
+    {
+      "t" : 18.281,
+      "text" : "imuth\", \"Sim"
+    },
+    {
+      "t" : 18.472,
+      "text" : "ple and"
+    },
+    {
+      "t" : 18.6,
+      "text" : " quick to set"
+    },
+    {
+      "t" : 18.725,
+      "text" : " up\", \"alt"
+    },
+    {
+      "t" : 18.931,
+      "text" : "a"
+    },
+    {
+      "t" : 18.932,
+      "text" : "z\")\nmountEq ="
+    },
+    {
+      "t" : 19.119,
+      "text" : " RadioItem(\"Equ"
+    },
+    {
+      "t" : 19.12,
+      "text" : "atorial\", \"Trac"
+    },
+    {
+      "t" : 19.255,
+      "text" : "ks objects as"
+    },
+    {
+      "t" : 19.44,
+      "text" : " the"
+    },
+    {
+      "t" : 19.552,
+      "text" : " s"
+    },
+    {
+      "t" : 19.671,
+      "text" : "ky rot"
+    },
+    {
+      "t" : 19.94,
+      "text" : "ates\", \"e"
+    },
+    {
+      "t" : 20.073,
+      "text" : "q\")\nchecklistBt"
+    },
+    {
+      "t" : 20.191,
+      "text" : "ns = Bu"
+    },
+    {
+      "t" : 20.328,
+      "text" : "ttons([Button(\"Save"
+    },
+    {
+      "t" : 20.444,
+      "text" : " Checklist\", @To"
+    },
+    {
+      "t" : 20.548,
+      "text" : "Assistant(\"Save my"
+    },
+    {
+      "t" : 20.676,
+      "text" : " equipment checklist\"),"
+    },
+    {
+      "t" : 20.678,
+      "text" : " \"primary\""
+    },
+    {
+      "t" : 20.831,
+      "text" : "), Button(\"Re"
+    },
+    {
+      "t" : 20.998,
+      "text" : "set\", @ToAssist"
+    },
+    {
+      "t" : 21.127,
+      "text" : "ant(\"Reset equ"
+    },
+    {
+      "t" : 21.283,
+      "text" : "ipment checklist\"), \""
+    },
+    {
+      "t" : 21.442,
+      "text" : "secondary\")])\nsky"
+    },
+    {
+      "t" : 21.617,
+      "text" : "Note = Callout(\"info"
+    },
+    {
+      "t" : 21.766,
+      "text" : "\", \"Sky"
+    },
+    {
+      "t" : 21.919,
+      "text" : " Conditions\", \"Cl"
+    },
+    {
+      "t" : 22.069,
+      "text" : "ear skies exp"
+    },
+    {
+      "t" : 22.223,
+      "text" : "ected with light"
+    },
+    {
+      "t" : 22.395,
+      "text" : " win"
+    },
+    {
+      "t" : 22.527,
+      "text" : "ds and"
+    },
+    {
+      "t" : 22.687,
+      "text" : " about"
+    },
+    {
+      "t" : 22.897,
+      "text" : " 15"
+    },
+    {
+      "t" : 22.898,
+      "text" : "% humidity. Se"
+    },
+    {
+      "t" : 23.044,
+      "text" : "eing is good after"
+    },
+    {
+      "t" : 23.193,
+      "text" : " 22"
+    },
+    {
+      "t" : 23.338,
+      "text" : ":00, though"
+    },
+    {
+      "t" : 23.478,
+      "text" : " a"
+    },
+    {
+      "t" : 23.787,
+      "text" : " th"
+    },
+    {
+      "t" : 23.948,
+      "text" : "in ha"
+    },
+    {
+      "t" : 24.101,
+      "text" : "ze may app"
+    },
+    {
+      "t" : 24.102,
+      "text" : "ear near"
+    },
+    {
+      "t" : 24.293,
+      "text" : " the hor"
+    },
+    {
+      "t" : 24.492,
+      "text" : "izon around mid"
+    },
+    {
+      "t" : 24.66,
+      "text" : "night.\")"
+    }
+  ],
+  "createdAt" : "2026-11-11T10:59:41Z",
+  "effort" : "low",
+  "format" : "openui-recording",
+  "inputTokens" : 14505,
+  "library" : "react-ui",
+  "model" : "claude-haiku-5-5",
+  "outputTokens" : 1475,
+  "request" : "A stargazing session planner with celestial targets, viewing windows, equipment checklist and a sky-condition note.",
+  "servedBy" : "claude-haiku-5-5",
+  "stopReason" : "end_turn",
+  "version" : 1
+}

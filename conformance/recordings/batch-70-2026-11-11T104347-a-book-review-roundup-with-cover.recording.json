@@ -1,0 +1,656 @@
+{
+  "batchRequest" : {
+    "model" : "haiku",
+    "number" : 70,
+    "request" : "A book review roundup with cover images, reviewer verdicts and short excerpts for four new novels."
+  },
+  "chunks" : [
+    {
+      "t" : 5.419,
+      "text" : "root"
+    },
+    {
+      "t" : 5.511,
+      "text" : " = Stack([he"
+    },
+    {
+      "t" : 5.512,
+      "text" : "ading, intro, reviews"
+    },
+    {
+      "t" : 5.536,
+      "text" : "])\nheading = TextCont"
+    },
+    {
+      "t" : 5.594,
+      "text" : "ent(\"New Novels:"
+    },
+    {
+      "t" : 5.649,
+      "text" : " Book Review Roundup\","
+    },
+    {
+      "t" : 5.665,
+      "text" : " \"large-heavy\")"
+    },
+    {
+      "t" : 5.678,
+      "text" : "\nintro = TextContent(\""
+    },
+    {
+      "t" : 5.712,
+      "text" : "Four new novels this season,"
+    },
+    {
+      "t" : 5.74,
+      "text" : " with reviewer verdic"
+    },
+    {
+      "t" : 5.773,
+      "text" : "ts and short excerpts."
+    },
+    {
+      "t" : 5.83,
+      "text" : "\")\nreviews = St"
+    },
+    {
+      "t" : 5.865,
+      "text" : "ack([r1, r2,"
+    },
+    {
+      "t" : 5.868,
+      "text" : " r3, r4], \"row"
+    },
+    {
+      "t" : 5.904,
+      "text" : "\", \"m\", \"stretch"
+    },
+    {
+      "t" : 5.935,
+      "text" : "\", \"start\", true)\nr"
+    },
+    {
+      "t" : 5.964,
+      "text" : "1 = Card([h1"
+    },
+    {
+      "t" : 5.996,
+      "text" : ", v1, x1])"
+    },
+    {
+      "t" : 6.043,
+      "text" : "\nh1 = IconText("
+    },
+    {
+      "t" : 6.102,
+      "text" : "ic1, \"neutral"
+    },
+    {
+      "t" : 6.209,
+      "text" : "\", \"l\", \"The Gl"
+    },
+    {
+      "t" : 6.253,
+      "text" : "ass Orchard\", \"by"
+    },
+    {
+      "t" : 6.288,
+      "text" : " Miriam Hale\","
+    },
+    {
+      "t" : 6.336,
+      "text" : " true, \"horizontal\")"
+    },
+    {
+      "t" : 6.379,
+      "text" : "\nic1 = Ic"
+    },
+    {
+      "t" : 6.432,
+      "text" : "on(\"book-open\", \"books"
+    },
+    {
+      "t" : 6.472,
+      "text" : "\")\nv1 = T"
+    },
+    {
+      "t" : 6.513,
+      "text" : "ag(\"Ver"
+    },
+    {
+      "t" : 6.552,
+      "text" : "dict: Recommended\","
+    },
+    {
+      "t" : 6.553,
+      "text" : " null, \"md\", \"success\")"
+    },
+    {
+      "t" : 6.601,
+      "text" : "\nx1 = M"
+    },
+    {
+      "t" : 6.664,
+      "text" : "arkDownRenderer"
+    },
+    {
+      "t" : 6.709,
+      "text" : "(\"*"
+    },
+    {
+      "t" : 6.762,
+      "text" : "\\"
+    },
+    {
+      "t" : 6.82,
+      "text" : "\"Hale writes orch"
+    },
+    {
+      "t" : 6.884,
+      "text" : "ards the"
+    },
+    {
+      "t" : 6.944,
+      "text" : " way memory writ"
+    },
+    {
+      "t" : 7.012,
+      "text" : "es child"
+    },
+    {
+      "t" : 7.079,
+      "text" : "hood:"
+    },
+    {
+      "t" : 7.146,
+      "text" : " slow"
+    },
+    {
+      "t" : 7.219,
+      "text" : "ly, and"
+    },
+    {
+      "t" : 7.28,
+      "text" : " with the"
+    },
+    {
+      "t" : 7.339,
+      "text" : " fru"
+    },
+    {
+      "t" : 7.406,
+      "text" : "it already"
+    },
+    {
+      "t" : 7.467,
+      "text" : " r"
+    },
+    {
+      "t" : 7.532,
+      "text" : "otting at"
+    },
+    {
+      "t" : 7.589,
+      "text" : " the edges.\\\"*\\"
+    },
+    {
+      "t" : 7.625,
+      "text" : "n\\nReviewer:"
+    },
+    {
+      "t" : 7.661,
+      "text" : " D"
+    },
+    {
+      "t" : 7.715,
+      "text" : "ana "
+    },
+    {
+      "t" : 7.787,
+      "text" : "Ort"
+    },
+    {
+      "t" : 7.848,
+      "text" : "iz\")\nr2 ="
+    },
+    {
+      "t" : 7.926,
+      "text" : " Card([h2, v2"
+    },
+    {
+      "t" : 8.005,
+      "text" : ", x2])\nh2 "
+    },
+    {
+      "t" : 8.078,
+      "text" : "= IconText(ic2"
+    },
+    {
+      "t" : 8.217,
+      "text" : ", \"neutral\", \"l"
+    },
+    {
+      "t" : 8.219,
+      "text" : "\", \"Sal"
+    },
+    {
+      "t" : 8.292,
+      "text" : "t and Static"
+    },
+    {
+      "t" : 8.367,
+      "text" : "\", \"by Ow"
+    },
+    {
+      "t" : 8.426,
+      "text" : "en Price"
+    },
+    {
+      "t" : 8.502,
+      "text" : "\", true, \"horizontal"
+    },
+    {
+      "t" : 8.582,
+      "text" : "\")\nic2 ="
+    },
+    {
+      "t" : 8.658,
+      "text" : " Icon(\"radio\","
+    },
+    {
+      "t" : 8.819,
+      "text" : " \"media"
+    },
+    {
+      "t" : 8.821,
+      "text" : "\")\nv2 = T"
+    },
+    {
+      "t" : 8.892,
+      "text" : "ag(\"Verdict:"
+    },
+    {
+      "t" : 8.956,
+      "text" : " Mixed\", null, \"md"
+    },
+    {
+      "t" : 9.035,
+      "text" : "\", \"warning\")\nx2"
+    },
+    {
+      "t" : 9.12,
+      "text" : " = MarkDownR"
+    },
+    {
+      "t" : 9.204,
+      "text" : "enderer(\"*\\"
+    },
+    {
+      "t" : 9.274,
+      "text" : "\"A"
+    },
+    {
+      "t" : 9.358,
+      "text" : " thr"
+    },
+    {
+      "t" : 9.53,
+      "text" : "illing prem"
+    },
+    {
+      "t" : 9.622,
+      "text" : "ise bu"
+    },
+    {
+      "t" : 9.623,
+      "text" : "ried under"
+    },
+    {
+      "t" : 9.709,
+      "text" : " too"
+    },
+    {
+      "t" : 9.782,
+      "text" : " many rad"
+    },
+    {
+      "t" : 9.872,
+      "text" : "io trans"
+    },
+    {
+      "t" : 9.956,
+      "text" : "missions. The"
+    },
+    {
+      "t" : 10.055,
+      "text" : " final"
+    },
+    {
+      "t" : 10.146,
+      "text" : " chapter ear"
+    },
+    {
+      "t" : 10.243,
+      "text" : "ns its"
+    },
+    {
+      "t" : 10.349,
+      "text" : " pat"
+    },
+    {
+      "t" : 10.452,
+      "text" : "ience.\\\"*\\n\\"
+    },
+    {
+      "t" : 10.572,
+      "text" : "nReviewer: S"
+    },
+    {
+      "t" : 10.683,
+      "text" : "am Wh"
+    },
+    {
+      "t" : 10.792,
+      "text" : "itfield\")\nr3 "
+    },
+    {
+      "t" : 10.904,
+      "text" : "= Card([h3, v"
+    },
+    {
+      "t" : 11.003,
+      "text" : "3, x3])\nh3"
+    },
+    {
+      "t" : 11.112,
+      "text" : " = IconText(ic"
+    },
+    {
+      "t" : 11.226,
+      "text" : "3, \"neutral\", \""
+    },
+    {
+      "t" : 11.333,
+      "text" : "l\", \""
+    },
+    {
+      "t" : 11.446,
+      "text" : "Low"
+    },
+    {
+      "t" : 11.544,
+      "text" : " Tide"
+    },
+    {
+      "t" : 11.64,
+      "text" : " Lan"
+    },
+    {
+      "t" : 11.746,
+      "text" : "terns\", \"by Priya"
+    },
+    {
+      "t" : 11.835,
+      "text" : " Nair\", true, \"hor"
+    },
+    {
+      "t" : 11.942,
+      "text" : "izontal\")\nic3"
+    },
+    {
+      "t" : 12.054,
+      "text" : " = Icon(\""
+    },
+    {
+      "t" : 12.168,
+      "text" : "ship\", \"trav"
+    },
+    {
+      "t" : 12.289,
+      "text" : "el\")\nv3 ="
+    },
+    {
+      "t" : 12.478,
+      "text" : " Tag(\"Verdict:"
+    },
+    {
+      "t" : 12.48,
+      "text" : " High"
+    },
+    {
+      "t" : 12.597,
+      "text" : "ly"
+    },
+    {
+      "t" : 12.696,
+      "text" : " Recommended\", null, \"md"
+    },
+    {
+      "t" : 12.786,
+      "text" : "\", \"success\")\nx3 "
+    },
+    {
+      "t" : 12.873,
+      "text" : "= MarkDownRen"
+    },
+    {
+      "t" : 12.958,
+      "text" : "derer(\"*\\\"N"
+    },
+    {
+      "t" : 13.043,
+      "text" : "air's co"
+    },
+    {
+      "t" : 13.18,
+      "text" : "astal"
+    },
+    {
+      "t" : 13.264,
+      "text" : " village"
+    },
+    {
+      "t" : 13.266,
+      "text" : " bre"
+    },
+    {
+      "t" : 13.35,
+      "text" : "athes on"
+    },
+    {
+      "t" : 13.438,
+      "text" : " every"
+    },
+    {
+      "t" : 13.547,
+      "text" : " page,"
+    },
+    {
+      "t" : 13.657,
+      "text" : " and her"
+    },
+    {
+      "t" : 13.761,
+      "text" : " dialogue l"
+    },
+    {
+      "t" : 13.955,
+      "text" : "ands like t"
+    },
+    {
+      "t" : 13.957,
+      "text" : "ide on s"
+    },
+    {
+      "t" : 14.082,
+      "text" : "and.\\\"*\\n\\"
+    },
+    {
+      "t" : 14.189,
+      "text" : "nReviewer: L"
+    },
+    {
+      "t" : 14.295,
+      "text" : "ena"
+    },
+    {
+      "t" : 14.395,
+      "text" : " "
+    },
+    {
+      "t" : 14.483,
+      "text" : "Ru"
+    },
+    {
+      "t" : 14.669,
+      "text" : "iz\")\nr4 ="
+    },
+    {
+      "t" : 14.775,
+      "text" : " Card([h4, v4"
+    },
+    {
+      "t" : 14.882,
+      "text" : ", x4])\nh4 "
+    },
+    {
+      "t" : 14.991,
+      "text" : "= IconText(ic4"
+    },
+    {
+      "t" : 15.1,
+      "text" : ", \"neutral\", \"l"
+    },
+    {
+      "t" : 15.2,
+      "text" : "\", \"The"
+    },
+    {
+      "t" : 15.296,
+      "text" : " Cart"
+    },
+    {
+      "t" : 15.408,
+      "text" : "ographer's Da"
+    },
+    {
+      "t" : 15.536,
+      "text" : "ughter\", \"by T"
+    },
+    {
+      "t" : 15.661,
+      "text" : "om"
+    },
+    {
+      "t" : 15.82,
+      "text" : "as Eder"
+    },
+    {
+      "t" : 15.955,
+      "text" : "\", true, \"hor"
+    },
+    {
+      "t" : 16.077,
+      "text" : "izontal\")\nic4"
+    },
+    {
+      "t" : 16.139,
+      "text" : " = Icon(\"map\","
+    },
+    {
+      "t" : 18.041,
+      "text" : " \"trav"
+    },
+    {
+      "t" : 18.046,
+      "text" : "el\")\nv4 ="
+    },
+    {
+      "t" : 18.181,
+      "text" : " Tag(\"Verdict:"
+    },
+    {
+      "t" : 18.335,
+      "text" : " Not for"
+    },
+    {
+      "t" : 18.434,
+      "text" : " Me\", null, \"md"
+    },
+    {
+      "t" : 18.493,
+      "text" : "\", \"danger\")\nx4"
+    },
+    {
+      "t" : 18.557,
+      "text" : " = MarkDownR"
+    },
+    {
+      "t" : 18.636,
+      "text" : "enderer(\"*\\\""
+    },
+    {
+      "t" : 18.701,
+      "text" : "Be"
+    },
+    {
+      "t" : 18.818,
+      "text" : "autifully resear"
+    },
+    {
+      "t" : 18.819,
+      "text" : "ched, but the pacing st"
+    },
+    {
+      "t" : 18.897,
+      "text" : "alls for"
+    },
+    {
+      "t" : 18.967,
+      "text" : " hund"
+    },
+    {
+      "t" : 19.078,
+      "text" : "reds of pages. Adm"
+    },
+    {
+      "t" : 19.079,
+      "text" : "irers of"
+    },
+    {
+      "t" : 19.144,
+      "text" : " sl"
+    },
+    {
+      "t" : 19.218,
+      "text" : "ow historical fiction will dis"
+    },
+    {
+      "t" : 19.283,
+      "text" : "agree.\\\"*\\n"
+    },
+    {
+      "t" : 19.399,
+      "text" : "\\nReviewer:"
+    },
+    {
+      "t" : 19.4,
+      "text" : " Marcus L"
+    },
+    {
+      "t" : 19.483,
+      "text" : "ee\")"
+    }
+  ],
+  "createdAt" : "2026-11-11T10:43:47Z",
+  "effort" : "low",
+  "format" : "openui-recording",
+  "inputTokens" : 14500,
+  "library" : "react-ui",
+  "model" : "claude-haiku-5-5",
+  "outputTokens" : 1892,
+  "request" : "A book review roundup with cover images, reviewer verdicts and short excerpts for four new novels.",
+  "servedBy" : "claude-haiku-5-5",
+  "stopReason" : "end_turn",
+  "version" : 1
+}

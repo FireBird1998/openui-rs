@@ -1,0 +1,460 @@
+{
+  "batchRequest" : {
+    "model" : "haiku",
+    "number" : 24,
+    "request" : "A recipe card for pancakes with ingredients, numbered steps and prep time."
+  },
+  "chunks" : [
+    {
+      "t" : 0.618,
+      "text" : "root = Stack(["
+    },
+    {
+      "t" : 0.815,
+      "text" : "header"
+    },
+    {
+      "t" : 0.823,
+      "text" : ", pr"
+    },
+    {
+      "t" : 0.832,
+      "text" : "epC"
+    },
+    {
+      "t" : 0.846,
+      "text" : "ard, ingredientsC"
+    },
+    {
+      "t" : 0.859,
+      "text" : "ard, stepsCard])"
+    },
+    {
+      "t" : 0.868,
+      "text" : "\nheader = InlineHe"
+    },
+    {
+      "t" : 0.873,
+      "text" : "ader(\"Class"
+    },
+    {
+      "t" : 0.881,
+      "text" : "ic Pancakes\", \""
+    },
+    {
+      "t" : 0.887,
+      "text" : "Fluffy bre"
+    },
+    {
+      "t" : 0.892,
+      "text" : "akfast pancakes for"
+    },
+    {
+      "t" : 0.901,
+      "text" : " the"
+    },
+    {
+      "t" : 0.907,
+      "text" : " whole family\")\nprepC"
+    },
+    {
+      "t" : 0.979,
+      "text" : "ard = Card([pr"
+    },
+    {
+      "t" : 0.985,
+      "text" : "epIn"
+    },
+    {
+      "t" : 0.991,
+      "text" : "fo])\nprepInf"
+    },
+    {
+      "t" : 1,
+      "text" : "o = EntityList([pr"
+    },
+    {
+      "t" : 1.006,
+      "text" : "epR"
+    },
+    {
+      "t" : 1.016,
+      "text" : "ow, c"
+    },
+    {
+      "t" : 1.023,
+      "text" : "ookRow, servR"
+    },
+    {
+      "t" : 1.033,
+      "text" : "ow], \"default"
+    },
+    {
+      "t" : 1.039,
+      "text" : "\")\nprepRow = {"
+    },
+    {
+      "t" : 1.058,
+      "text" : "left: \"Prep time\","
+    },
+    {
+      "t" : 1.078,
+      "text" : " right: \"10 min"
+    },
+    {
+      "t" : 1.099,
+      "text" : "\"}\ncookRow ="
+    },
+    {
+      "t" : 1.152,
+      "text" : " {left: \"Cook time"
+    },
+    {
+      "t" : 1.16,
+      "text" : "\", right: \"15 min\""
+    },
+    {
+      "t" : 1.171,
+      "text" : "}\nservRow = {left"
+    },
+    {
+      "t" : 1.183,
+      "text" : ": \"Servings\", right:"
+    },
+    {
+      "t" : 1.202,
+      "text" : " \"4 p"
+    },
+    {
+      "t" : 1.223,
+      "text" : "ancakes\"}\ning"
+    },
+    {
+      "t" : 1.244,
+      "text" : "redientsCard = Card"
+    },
+    {
+      "t" : 1.265,
+      "text" : "([ingHeader, "
+    },
+    {
+      "t" : 1.284,
+      "text" : "ingList"
+    },
+    {
+      "t" : 1.304,
+      "text" : "])\ningHeader ="
+    },
+    {
+      "t" : 1.325,
+      "text" : " CardHeader(\""
+    },
+    {
+      "t" : 1.346,
+      "text" : "Ingredients\", \"P"
+    },
+    {
+      "t" : 1.366,
+      "text" : "antry sta"
+    },
+    {
+      "t" : 1.386,
+      "text" : "ples\")\ningList = T"
+    },
+    {
+      "t" : 1.407,
+      "text" : "agBlock([\""
+    },
+    {
+      "t" : 1.427,
+      "text" : "1 cup all"
+    },
+    {
+      "t" : 1.447,
+      "text" : "-purpose flour\", \""
+    },
+    {
+      "t" : 1.469,
+      "text" : "2 t"
+    },
+    {
+      "t" : 1.489,
+      "text" : "bsp s"
+    },
+    {
+      "t" : 1.509,
+      "text" : "ugar\", \"2"
+    },
+    {
+      "t" : 1.529,
+      "text" : " tsp baking pow"
+    },
+    {
+      "t" : 1.549,
+      "text" : "der\", \"1/"
+    },
+    {
+      "t" : 1.57,
+      "text" : "4 tsp salt\","
+    },
+    {
+      "t" : 1.591,
+      "text" : " \"1 cup milk\","
+    },
+    {
+      "t" : 1.611,
+      "text" : " \"1 egg\", \"2"
+    },
+    {
+      "t" : 1.633,
+      "text" : " tbsp mel"
+    },
+    {
+      "t" : 1.651,
+      "text" : "ted butter\", \"1 t"
+    },
+    {
+      "t" : 1.672,
+      "text" : "sp vanilla extract"
+    },
+    {
+      "t" : 1.693,
+      "text" : "\"])\nstepsCard"
+    },
+    {
+      "t" : 1.714,
+      "text" : " = Card([stepsH"
+    },
+    {
+      "t" : 1.734,
+      "text" : "eader, stepsList])"
+    },
+    {
+      "t" : 1.755,
+      "text" : "\nstepsHeader ="
+    },
+    {
+      "t" : 1.776,
+      "text" : " CardHeader(\"Ste"
+    },
+    {
+      "t" : 1.796,
+      "text" : "ps\", \"Mak"
+    },
+    {
+      "t" : 1.816,
+      "text" : "es about 8"
+    },
+    {
+      "t" : 1.836,
+      "text" : " pancakes\")\nst"
+    },
+    {
+      "t" : 1.857,
+      "text" : "epsList = Steps(["
+    },
+    {
+      "t" : 1.878,
+      "text" : "s1, s2, s3"
+    },
+    {
+      "t" : 1.905,
+      "text" : ", s4, s5])"
+    },
+    {
+      "t" : 1.923,
+      "text" : "\ns1 = StepsIt"
+    },
+    {
+      "t" : 1.941,
+      "text" : "em(\"M"
+    },
+    {
+      "t" : 1.96,
+      "text" : "ix d"
+    },
+    {
+      "t" : 1.98,
+      "text" : "ry ingredients\", \""
+    },
+    {
+      "t" : 2.001,
+      "text" : "Whisk the flour, s"
+    },
+    {
+      "t" : 2.021,
+      "text" : "ugar, baking powder and"
+    },
+    {
+      "t" : 2.041,
+      "text" : " salt in a large bowl"
+    },
+    {
+      "t" : 2.062,
+      "text" : ".\")\ns2 = St"
+    },
+    {
+      "t" : 2.081,
+      "text" : "epsItem(\"Comb"
+    },
+    {
+      "t" : 2.102,
+      "text" : "ine wet ingredients\","
+    },
+    {
+      "t" : 2.123,
+      "text" : " \"In a separate bowl"
+    },
+    {
+      "t" : 2.142,
+      "text" : ","
+    },
+    {
+      "t" : 2.163,
+      "text" : " beat the milk, egg"
+    },
+    {
+      "t" : 2.184,
+      "text" : ", melted butter and van"
+    },
+    {
+      "t" : 2.203,
+      "text" : "illa."
+    },
+    {
+      "t" : 2.224,
+      "text" : "\")\ns3 = Step"
+    },
+    {
+      "t" : 2.245,
+      "text" : "sItem(\"Join the"
+    },
+    {
+      "t" : 2.265,
+      "text" : " batter\", \"Pour the"
+    },
+    {
+      "t" : 2.287,
+      "text" : " wet mixture into the d"
+    },
+    {
+      "t" : 2.307,
+      "text" : "ry and"
+    },
+    {
+      "t" : 2.326,
+      "text" : " stir until just"
+    },
+    {
+      "t" : 2.347,
+      "text" : " combined."
+    },
+    {
+      "t" : 2.369,
+      "text" : " Lumps are"
+    },
+    {
+      "t" : 2.39,
+      "text" : " fine.\")\ns4 "
+    },
+    {
+      "t" : 2.414,
+      "text" : "= StepsItem(\""
+    },
+    {
+      "t" : 2.435,
+      "text" : "Rest the"
+    },
+    {
+      "t" : 2.457,
+      "text" : " batter\", \"Let the bat"
+    },
+    {
+      "t" : 2.478,
+      "text" : "ter sit for 5 min"
+    },
+    {
+      "t" : 2.491,
+      "text" : "utes while you he"
+    },
+    {
+      "t" : 2.513,
+      "text" : "at a"
+    },
+    {
+      "t" : 2.535,
+      "text" : " l"
+    },
+    {
+      "t" : 2.557,
+      "text" : "ightly greased sk"
+    },
+    {
+      "t" : 2.58,
+      "text" : "illet over medium heat."
+    },
+    {
+      "t" : 2.593,
+      "text" : "\")\ns5 = Step"
+    },
+    {
+      "t" : 2.618,
+      "text" : "sItem(\"Cook\","
+    },
+    {
+      "t" : 2.642,
+      "text" : " \"P"
+    },
+    {
+      "t" : 2.667,
+      "text" : "our about"
+    },
+    {
+      "t" : 2.691,
+      "text" : " 1/4 cup bat"
+    },
+    {
+      "t" : 2.716,
+      "text" : "ter per pancake."
+    },
+    {
+      "t" : 2.74,
+      "text" : " Flip when bubbles"
+    },
+    {
+      "t" : 2.765,
+      "text" : " form"
+    },
+    {
+      "t" : 2.789,
+      "text" : " and edges look"
+    },
+    {
+      "t" : 2.814,
+      "text" : " set, then cook "
+    },
+    {
+      "t" : 2.839,
+      "text" : "1 to"
+    },
+    {
+      "t" : 2.864,
+      "text" : " 2 min"
+    },
+    {
+      "t" : 2.889,
+      "text" : "utes more.\")"
+    }
+  ],
+  "createdAt" : "2026-11-11T10:34:40Z",
+  "effort" : "low",
+  "format" : "openui-recording",
+  "inputTokens" : 14495,
+  "library" : "react-ui",
+  "model" : "claude-haiku-5-5",
+  "outputTokens" : 671,
+  "request" : "A recipe card for pancakes with ingredients, numbered steps and prep time.",
+  "servedBy" : "claude-haiku-5-5",
+  "stopReason" : "end_turn",
+  "version" : 1
+}

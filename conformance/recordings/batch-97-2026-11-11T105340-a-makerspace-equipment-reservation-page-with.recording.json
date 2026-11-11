@@ -1,0 +1,1316 @@
+{
+  "batchRequest" : {
+    "model" : "sonnet",
+    "number" : 97,
+    "request" : "A makerspace equipment reservation page with machine availability, safety certification status and a booking form."
+  },
+  "chunks" : [
+    {
+      "t" : 1.174,
+      "text" : "root = Stack([header"
+    },
+    {
+      "t" : 1.543,
+      "text" : ", k"
+    },
+    {
+      "t" : 1.583,
+      "text" : "pis, availH"
+    },
+    {
+      "t" : 1.665,
+      "text" : "eader, avail"
+    },
+    {
+      "t" : 1.713,
+      "text" : "Table, cert"
+    },
+    {
+      "t" : 1.86,
+      "text" : "Header, certC"
+    },
+    {
+      "t" : 1.931,
+      "text" : "ards, formHeader, b"
+    },
+    {
+      "t" : 1.995,
+      "text" : "ookForm])\nheader = C"
+    },
+    {
+      "t" : 2.116,
+      "text" : "ardHeader(\"Maker"
+    },
+    {
+      "t" : 2.166,
+      "text" : "space Equ"
+    },
+    {
+      "t" : 2.168,
+      "text" : "ipment Re"
+    },
+    {
+      "t" : 2.231,
+      "text" : "servations\", \"Check"
+    },
+    {
+      "t" : 2.302,
+      "text" : " availability, conf"
+    },
+    {
+      "t" : 2.36,
+      "text" : "irm your saf"
+    },
+    {
+      "t" : 2.419,
+      "text" : "ety certifications,"
+    },
+    {
+      "t" : 2.479,
+      "text" : " and book a machine\")\nk"
+    },
+    {
+      "t" : 2.539,
+      "text" : "pis = S"
+    },
+    {
+      "t" : 2.588,
+      "text" : "nippetCardBlock"
+    },
+    {
+      "t" : 2.712,
+      "text" : "([k1, k2,"
+    },
+    {
+      "t" : 2.77,
+      "text" : " k3])\nk1 ="
+    },
+    {
+      "t" : 2.773,
+      "text" : " SnippetCardItem"
+    },
+    {
+      "t" : 2.859,
+      "text" : "(\"available\", k1l"
+    },
+    {
+      "t" : 2.928,
+      "text" : ", k1r)\nk1"
+    },
+    {
+      "t" : 3.002,
+      "text" : "l = IconText(k"
+    },
+    {
+      "t" : 3.056,
+      "text" : "1i,"
+    },
+    {
+      "t" : 3.128,
+      "text" : " \"success"
+    },
+    {
+      "t" : 3.21,
+      "text" : "\", \"m\", \"Available"
+    },
+    {
+      "t" : 3.269,
+      "text" : " Now\", \"Mach"
+    },
+    {
+      "t" : 3.337,
+      "text" : "ines free"
+    },
+    {
+      "t" : 3.425,
+      "text" : "\", false, \"horizontal"
+    },
+    {
+      "t" : 3.484,
+      "text" : "\")\nk1i = Ic"
+    },
+    {
+      "t" : 3.557,
+      "text" : "on(\"circle-check\","
+    },
+    {
+      "t" : 3.652,
+      "text" : " \"status"
+    },
+    {
+      "t" : 3.709,
+      "text" : "\")\nk1r = Bo"
+    },
+    {
+      "t" : 3.769,
+      "text" : "ldText(\"number\", \"6"
+    },
+    {
+      "t" : 3.854,
+      "text" : "\")\nk2 = Sn"
+    },
+    {
+      "t" : 3.929,
+      "text" : "ippetCardItem(\"in"
+    },
+    {
+      "t" : 4.04,
+      "text" : "use\", k2l, k"
+    },
+    {
+      "t" : 4.12,
+      "text" : "2r)\nk2l ="
+    },
+    {
+      "t" : 4.188,
+      "text" : " IconText(k2i,"
+    },
+    {
+      "t" : 4.324,
+      "text" : " \"warning\", \"m\", \""
+    },
+    {
+      "t" : 4.33,
+      "text" : "In Use\", \"Currently"
+    },
+    {
+      "t" : 4.406,
+      "text" : " booked\", false, \"horiz"
+    },
+    {
+      "t" : 4.497,
+      "text" : "ontal\")\nk2i ="
+    },
+    {
+      "t" : 4.573,
+      "text" : " Icon(\"clock\", \""
+    },
+    {
+      "t" : 4.658,
+      "text" : "time\")\nk2r = B"
+    },
+    {
+      "t" : 4.738,
+      "text" : "oldText(\"number\", \"3"
+    },
+    {
+      "t" : 4.84,
+      "text" : "\")\nk3 = Sn"
+    },
+    {
+      "t" : 4.913,
+      "text" : "ippetCardItem(\"ma"
+    },
+    {
+      "t" : 5.012,
+      "text" : "int"
+    },
+    {
+      "t" : 5.112,
+      "text" : "\", k3l, k3r"
+    },
+    {
+      "t" : 5.207,
+      "text" : ")\nk3l = Icon"
+    },
+    {
+      "t" : 5.307,
+      "text" : "Text(k3i, \"dan"
+    },
+    {
+      "t" : 5.375,
+      "text" : "ger\", \"m\", \"Ma"
+    },
+    {
+      "t" : 5.457,
+      "text" : "intenance\", \"Out"
+    },
+    {
+      "t" : 5.594,
+      "text" : " of service\", false, \"horiz"
+    },
+    {
+      "t" : 5.6,
+      "text" : "ontal\")\nk3i ="
+    },
+    {
+      "t" : 5.698,
+      "text" : " Icon(\"wrench\","
+    },
+    {
+      "t" : 5.778,
+      "text" : " \"tools\")\nk3r"
+    },
+    {
+      "t" : 5.87,
+      "text" : " = BoldText(\"number\","
+    },
+    {
+      "t" : 5.948,
+      "text" : " \"1\")\navailHeader"
+    },
+    {
+      "t" : 6.018,
+      "text" : " = InlineHeader(\""
+    },
+    {
+      "t" : 6.099,
+      "text" : "Machine Availability\", \""
+    },
+    {
+      "t" : 6.213,
+      "text" : "Live"
+    },
+    {
+      "t" : 6.286,
+      "text" : " status and next open"
+    },
+    {
+      "t" : 6.358,
+      "text" : " slot\")\navailTable ="
+    },
+    {
+      "t" : 6.429,
+      "text" : " Table([Col(\"Mach"
+    },
+    {
+      "t" : 6.512,
+      "text" : "ine\", machines),"
+    },
+    {
+      "t" : 6.608,
+      "text" : " Col(\"Location"
+    },
+    {
+      "t" : 6.669,
+      "text" : "\", locs"
+    },
+    {
+      "t" : 6.742,
+      "text" : "), Col(\"Status\", stat"
+    },
+    {
+      "t" : 6.828,
+      "text" : "uses), Col(\"Next"
+    },
+    {
+      "t" : 6.924,
+      "text" : " Open\", nextOpen"
+    },
+    {
+      "t" : 6.991,
+      "text" : "), Col(\"C"
+    },
+    {
+      "t" : 7.081,
+      "text" : "ert Required\", certRe"
+    },
+    {
+      "t" : 7.204,
+      "text" : "q)])\nmachines = "
+    },
+    {
+      "t" : 7.354,
+      "text" : "[\"Laser Cutter"
+    },
+    {
+      "t" : 7.402,
+      "text" : " (60"
+    },
+    {
+      "t" : 7.513,
+      "text" : "W"
+    },
+    {
+      "t" : 7.594,
+      "text" : ")\", \""
+    },
+    {
+      "t" : 7.688,
+      "text" : "Prusa 3D"
+    },
+    {
+      "t" : 7.785,
+      "text" : " Printer\", \"CNC"
+    },
+    {
+      "t" : 7.885,
+      "text" : " Router\", \"Table Saw"
+    },
+    {
+      "t" : 7.988,
+      "text" : "\", \"Vinyl"
+    },
+    {
+      "t" : 8.213,
+      "text" : " Cutter\", \"So"
+    },
+    {
+      "t" : 8.309,
+      "text" : "ldering Station"
+    },
+    {
+      "t" : 8.452,
+      "text" : "\", \"Metal L"
+    },
+    {
+      "t" : 8.547,
+      "text" : "athe\", \"Sewing"
+    },
+    {
+      "t" : 8.552,
+      "text" : " Machine\","
+    },
+    {
+      "t" : 8.647,
+      "text" : " \"Band"
+    },
+    {
+      "t" : 8.756,
+      "text" : "saw\","
+    },
+    {
+      "t" : 8.859,
+      "text" : " \"Resin Print"
+    },
+    {
+      "t" : 8.949,
+      "text" : "er\"]\nlocs = "
+    },
+    {
+      "t" : 9.088,
+      "text" : "[\"F"
+    },
+    {
+      "t" : 9.198,
+      "text" : "ab"
+    },
+    {
+      "t" : 9.293,
+      "text" : " Lab\","
+    },
+    {
+      "t" : 9.415,
+      "text" : " \"F"
+    },
+    {
+      "t" : 9.672,
+      "text" : "ab Lab\", \"W"
+    },
+    {
+      "t" : 9.675,
+      "text" : "ood Shop\", \"W"
+    },
+    {
+      "t" : 9.768,
+      "text" : "ood Shop\", \"Stud"
+    },
+    {
+      "t" : 9.909,
+      "text" : "io\", \"Electronics"
+    },
+    {
+      "t" : 10.018,
+      "text" : " Bench"
+    },
+    {
+      "t" : 10.144,
+      "text" : "\", \"Metal Shop"
+    },
+    {
+      "t" : 10.271,
+      "text" : "\", \"Text"
+    },
+    {
+      "t" : 10.341,
+      "text" : "ile Cor"
+    },
+    {
+      "t" : 10.454,
+      "text" : "ner\", \"Wood Sh"
+    },
+    {
+      "t" : 10.565,
+      "text" : "op\", \"Fab L"
+    },
+    {
+      "t" : 10.674,
+      "text" : "ab\"]\nstatuses ="
+    },
+    {
+      "t" : 10.819,
+      "text" : " [Tag(\""
+    },
+    {
+      "t" : 10.947,
+      "text" : "Available\", null, \"sm\","
+    },
+    {
+      "t" : 11.058,
+      "text" : " \"success\"), Tag(\""
+    },
+    {
+      "t" : 11.184,
+      "text" : "In Use\", null, \"s"
+    },
+    {
+      "t" : 11.319,
+      "text" : "m\", \"warning\"),"
+    },
+    {
+      "t" : 11.453,
+      "text" : " Tag(\"Available\", null,"
+    },
+    {
+      "t" : 11.598,
+      "text" : " \"sm\", \"success\"),"
+    },
+    {
+      "t" : 11.717,
+      "text" : " Tag(\"In Use\","
+    },
+    {
+      "t" : 11.836,
+      "text" : " null, \"sm\", \"war"
+    },
+    {
+      "t" : 11.955,
+      "text" : "ning\"), Tag(\""
+    },
+    {
+      "t" : 12.099,
+      "text" : "Available\", null, \"sm\","
+    },
+    {
+      "t" : 12.223,
+      "text" : " \"success\"), Tag(\""
+    },
+    {
+      "t" : 12.355,
+      "text" : "Available\", null, \"sm"
+    },
+    {
+      "t" : 12.503,
+      "text" : "\", \"success\"), Tag"
+    },
+    {
+      "t" : 12.632,
+      "text" : "(\"Maintenance\", null"
+    },
+    {
+      "t" : 12.756,
+      "text" : ", \"sm\", \"danger"
+    },
+    {
+      "t" : 12.986,
+      "text" : "\"), Tag(\"Available"
+    },
+    {
+      "t" : 12.988,
+      "text" : "\", null, \"sm\", \""
+    },
+    {
+      "t" : 13.114,
+      "text" : "success\"), Tag(\"In"
+    },
+    {
+      "t" : 13.232,
+      "text" : " Use\", null, \"sm"
+    },
+    {
+      "t" : 13.383,
+      "text" : "\", \"warning\"), T"
+    },
+    {
+      "t" : 13.516,
+      "text" : "ag(\"Available\", null, \""
+    },
+    {
+      "t" : 13.648,
+      "text" : "sm\", \"success\")]"
+    },
+    {
+      "t" : 13.799,
+      "text" : "\nnextOpen = [\""
+    },
+    {
+      "t" : 13.926,
+      "text" : "Today"
+    },
+    {
+      "t" : 14.073,
+      "text" : " 2:00"
+    },
+    {
+      "t" : 14.2,
+      "text" : " PM\", \"Today "
+    },
+    {
+      "t" : 14.336,
+      "text" : "4:30 PM\", \""
+    },
+    {
+      "t" : 14.471,
+      "text" : "Today 1"
+    },
+    {
+      "t" : 14.612,
+      "text" : ":00 PM\", \""
+    },
+    {
+      "t" : 14.754,
+      "text" : "Tomorrow 9"
+    },
+    {
+      "t" : 14.925,
+      "text" : ":00 AM\", \""
+    },
+    {
+      "t" : 14.926,
+      "text" : "Today 11"
+    },
+    {
+      "t" : 15.009,
+      "text" : ":00 AM\", \""
+    },
+    {
+      "t" : 15.09,
+      "text" : "Today 10"
+    },
+    {
+      "t" : 15.26,
+      "text" : ":00 AM\", \""
+    },
+    {
+      "t" : 15.361,
+      "text" : "Mar"
+    },
+    {
+      "t" : 15.462,
+      "text" : " 18"
+    },
+    {
+      "t" : 15.575,
+      "text" : "\", \"Today 12"
+    },
+    {
+      "t" : 15.694,
+      "text" : ":00 PM\", \""
+    },
+    {
+      "t" : 15.822,
+      "text" : "Today 3:00 PM"
+    },
+    {
+      "t" : 15.942,
+      "text" : "\", \"Today 5:00"
+    },
+    {
+      "t" : 16.046,
+      "text" : " PM\"]\ncertRe"
+    },
+    {
+      "t" : 16.16,
+      "text" : "q = [\"Laser"
+    },
+    {
+      "t" : 16.297,
+      "text" : " Safety\", \"3"
+    },
+    {
+      "t" : 16.418,
+      "text" : "D Printing Basics\","
+    },
+    {
+      "t" : 16.543,
+      "text" : " \"C"
+    },
+    {
+      "t" : 16.547,
+      "text" : "NC Saf"
+    },
+    {
+      "t" : 16.68,
+      "text" : "ety\", \"Woodsh"
+    },
+    {
+      "t" : 16.811,
+      "text" : "op Saf"
+    },
+    {
+      "t" : 16.932,
+      "text" : "ety\", \"None"
+    },
+    {
+      "t" : 17.063,
+      "text" : "\", \"Electronics Bas"
+    },
+    {
+      "t" : 17.197,
+      "text" : "ics\", \"Metal Sh"
+    },
+    {
+      "t" : 17.344,
+      "text" : "op Safety\", \"None\","
+    },
+    {
+      "t" : 17.544,
+      "text" : " \"Woodshop Saf"
+    },
+    {
+      "t" : 17.549,
+      "text" : "ety\", \"Resin Hand"
+    },
+    {
+      "t" : 17.682,
+      "text" : "ling\"]\ncertHeader"
+    },
+    {
+      "t" : 17.83,
+      "text" : " = InlineHeader(\""
+    },
+    {
+      "t" : 17.973,
+      "text" : "Your Saf"
+    },
+    {
+      "t" : 18.098,
+      "text" : "ety Certifications\", \""
+    },
+    {
+      "t" : 18.236,
+      "text" : "Member"
+    },
+    {
+      "t" : 18.375,
+      "text" : ":"
+    },
+    {
+      "t" : 18.495,
+      "text" : " Jordan R"
+    },
+    {
+      "t" : 18.703,
+      "text" : "ivera\")\ncertCards ="
+    },
+    {
+      "t" : 18.706,
+      "text" : " ContextCardBlock"
+    },
+    {
+      "t" : 18.847,
+      "text" : "([c1, c2, c"
+    },
+    {
+      "t" : 18.985,
+      "text" : "3, c4])"
+    },
+    {
+      "t" : 19.138,
+      "text" : "\nc1 = Context"
+    },
+    {
+      "t" : 19.267,
+      "text" : "CardItem(\"la"
+    },
+    {
+      "t" : 19.427,
+      "text" : "ser\", t1, \"Val"
+    },
+    {
+      "t" : 19.56,
+      "text" : "id until"
+    },
+    {
+      "t" : 19.712,
+      "text" : " N"
+    },
+    {
+      "t" : 19.875,
+      "text" : "ov 2"
+    },
+    {
+      "t" : 20.127,
+      "text" : "025\", \"gray\")\nt"
+    },
+    {
+      "t" : 20.308,
+      "text" : "1 = Tag(\""
+    },
+    {
+      "t" : 20.452,
+      "text" : "Laser Safety\", null,"
+    },
+    {
+      "t" : 20.595,
+      "text" : " \"s"
+    },
+    {
+      "t" : 20.764,
+      "text" : "m\", \"success\")\nc2"
+    },
+    {
+      "t" : 20.904,
+      "text" : " = ContextCardIt"
+    },
+    {
+      "t" : 21.05,
+      "text" : "em(\"wo"
+    },
+    {
+      "t" : 21.057,
+      "text" : "odshop\", t2, \""
+    },
+    {
+      "t" : 21.21,
+      "text" : "Valid until Aug "
+    },
+    {
+      "t" : 21.358,
+      "text" : "2025\", \"gray\")"
+    },
+    {
+      "t" : 21.508,
+      "text" : "\nt2 = Tag(\""
+    },
+    {
+      "t" : 21.664,
+      "text" : "Woodshop Safety"
+    },
+    {
+      "t" : 21.838,
+      "text" : "\", null, \"sm\", \""
+    },
+    {
+      "t" : 22.025,
+      "text" : "success\")\nc3 = "
+    },
+    {
+      "t" : 22.219,
+      "text" : "ContextCardItem(\"c"
+    },
+    {
+      "t" : 22.356,
+      "text" : "nc\", t3, \""
+    },
+    {
+      "t" : 22.471,
+      "text" : "Expires in 12"
+    },
+    {
+      "t" : 22.633,
+      "text" : " days - renew so"
+    },
+    {
+      "t" : 22.813,
+      "text" : "on\", \"gray\")\nt"
+    },
+    {
+      "t" : 23.031,
+      "text" : "3 = Tag(\"C"
+    },
+    {
+      "t" : 23.238,
+      "text" : "NC Safety\", null,"
+    },
+    {
+      "t" : 23.415,
+      "text" : " \"sm\", \"warning\")"
+    },
+    {
+      "t" : 23.584,
+      "text" : "\nc4 = Context"
+    },
+    {
+      "t" : 23.735,
+      "text" : "CardItem(\"metal\","
+    },
+    {
+      "t" : 23.901,
+      "text" : " t4, \"Not complet"
+    },
+    {
+      "t" : 24.05,
+      "text" : "ed -"
+    },
+    {
+      "t" : 24.167,
+      "text" : " book a class\", \"gray\")"
+    },
+    {
+      "t" : 24.315,
+      "text" : "\nt4 = Tag"
+    },
+    {
+      "t" : 24.517,
+      "text" : "(\"Metal Shop"
+    },
+    {
+      "t" : 24.726,
+      "text" : " Safety\", null, \"sm"
+    },
+    {
+      "t" : 24.927,
+      "text" : "\", \"danger\")\nformH"
+    },
+    {
+      "t" : 25.116,
+      "text" : "eader = InlineHe"
+    },
+    {
+      "t" : 25.279,
+      "text" : "ader(\"Book a Machine"
+    },
+    {
+      "t" : 25.471,
+      "text" : "\", \"Re"
+    },
+    {
+      "t" : 25.642,
+      "text" : "servations are limited to "
+    },
+    {
+      "t" : 25.831,
+      "text" : "4 hours per session\")"
+    },
+    {
+      "t" : 25.997,
+      "text" : "\nbookForm = Form(\""
+    },
+    {
+      "t" : 26.129,
+      "text" : "boo"
+    },
+    {
+      "t" : 26.317,
+      "text" : "king\", form"
+    },
+    {
+      "t" : 26.522,
+      "text" : "Btns, [f"
+    },
+    {
+      "t" : 26.704,
+      "text" : "1, f2, f3,"
+    },
+    {
+      "t" : 26.892,
+      "text" : " f4, f5,"
+    },
+    {
+      "t" : 27.089,
+      "text" : " f6])"
+    },
+    {
+      "t" : 27.297,
+      "text" : "\nf1 = FormContro"
+    },
+    {
+      "t" : 27.432,
+      "text" : "l(\"Machine\","
+    },
+    {
+      "t" : 27.572,
+      "text" : " Select(\"machine\", machineO"
+    },
+    {
+      "t" : 27.741,
+      "text" : "pts, \"Select a"
+    },
+    {
+      "t" : 27.881,
+      "text" : " machine\", { required: true }"
+    },
+    {
+      "t" : 28.01,
+      "text" : "))\nmachineOpts ="
+    },
+    {
+      "t" : 28.177,
+      "text" : " [SelectItem(\"la"
+    },
+    {
+      "t" : 28.315,
+      "text" : "ser\", \"Laser C"
+    },
+    {
+      "t" : 28.439,
+      "text" : "utter (60W)\"),"
+    },
+    {
+      "t" : 28.566,
+      "text" : " SelectItem(\"prus"
+    },
+    {
+      "t" : 28.694,
+      "text" : "a\", \"Prusa "
+    },
+    {
+      "t" : 28.834,
+      "text" : "3D Printer\"), S"
+    },
+    {
+      "t" : 28.956,
+      "text" : "electItem(\"cnc"
+    },
+    {
+      "t" : 29.082,
+      "text" : "\", \"CNC Router\""
+    },
+    {
+      "t" : 29.208,
+      "text" : "), SelectItem(\"sa"
+    },
+    {
+      "t" : 29.336,
+      "text" : "w\", \"Table Saw"
+    },
+    {
+      "t" : 29.558,
+      "text" : "\"), SelectItem(\""
+    },
+    {
+      "t" : 29.559,
+      "text" : "vinyl\", \"V"
+    },
+    {
+      "t" : 29.685,
+      "text" : "inyl Cutter\""
+    },
+    {
+      "t" : 29.816,
+      "text" : "), SelectItem(\"sol"
+    },
+    {
+      "t" : 29.958,
+      "text" : "der\", \"Soldering"
+    },
+    {
+      "t" : 30.072,
+      "text" : " Station\"), SelectItem"
+    },
+    {
+      "t" : 30.203,
+      "text" : "(\"sewing\", \"S"
+    },
+    {
+      "t" : 30.327,
+      "text" : "ewing Machine\"), S"
+    },
+    {
+      "t" : 30.565,
+      "text" : "electItem(\"band"
+    },
+    {
+      "t" : 30.568,
+      "text" : "\", \"Bandsaw"
+    },
+    {
+      "t" : 30.697,
+      "text" : "\"), SelectItem(\""
+    },
+    {
+      "t" : 30.835,
+      "text" : "resin\", \"Resin"
+    },
+    {
+      "t" : 30.974,
+      "text" : " Printer\")]\nf2 "
+    },
+    {
+      "t" : 31.104,
+      "text" : "= FormControl(\"Date"
+    },
+    {
+      "t" : 31.242,
+      "text" : "\", DatePicker(\"date"
+    },
+    {
+      "t" : 31.46,
+      "text" : "\", \"single\", { required: true"
+    },
+    {
+      "t" : 31.463,
+      "text" : " }))\nf3 = F"
+    },
+    {
+      "t" : 31.609,
+      "text" : "ormControl(\"Start Time"
+    },
+    {
+      "t" : 31.74,
+      "text" : "\","
+    },
+    {
+      "t" : 31.865,
+      "text" : " Select(\"start\", timeO"
+    },
+    {
+      "t" : 31.999,
+      "text" : "pts, \"Select start"
+    },
+    {
+      "t" : 32.141,
+      "text" : " time\", { required: true }))"
+    },
+    {
+      "t" : 32.291,
+      "text" : "\ntimeOpts = ["
+    },
+    {
+      "t" : 32.44,
+      "text" : "SelectItem(\"9\","
+    },
+    {
+      "t" : 32.584,
+      "text" : " \"9:00 AM\""
+    },
+    {
+      "t" : 32.732,
+      "text" : "), SelectItem(\"11"
+    },
+    {
+      "t" : 32.886,
+      "text" : "\", \"11:00 AM"
+    },
+    {
+      "t" : 33.019,
+      "text" : "\"), SelectItem(\""
+    },
+    {
+      "t" : 33.163,
+      "text" : "13\", \"1:00 P"
+    },
+    {
+      "t" : 33.431,
+      "text" : "M\"), SelectItem"
+    },
+    {
+      "t" : 33.571,
+      "text" : "(\"15\", \"3:00 "
+    },
+    {
+      "t" : 33.706,
+      "text" : "PM\"), SelectIt"
+    },
+    {
+      "t" : 33.71,
+      "text" : "em(\"17\", \"5:00"
+    },
+    {
+      "t" : 33.86,
+      "text" : " PM\")]\nf4"
+    },
+    {
+      "t" : 34.015,
+      "text" : " = FormControl(\""
+    },
+    {
+      "t" : 34.161,
+      "text" : "Duration (hours)\","
+    },
+    {
+      "t" : 34.31,
+      "text" : " Slider(\"duration\", \""
+    },
+    {
+      "t" : 34.602,
+      "text" : "discrete\", 1, "
+    },
+    {
+      "t" : 34.751,
+      "text" : "4, 1, [1]"
+    },
+    {
+      "t" : 34.898,
+      "text" : "),"
+    },
+    {
+      "t" : 35.044,
+      "text" : " \"Ma"
+    },
+    {
+      "t" : 35.18,
+      "text" : "ximum 4 hours\")"
+    },
+    {
+      "t" : 35.311,
+      "text" : "\nf5 = FormContro"
+    },
+    {
+      "t" : 35.46,
+      "text" : "l(\"Project Description"
+    },
+    {
+      "t" : 35.594,
+      "text" : "\", TextArea(\"project"
+    },
+    {
+      "t" : 35.597,
+      "text" : "\", \"What are"
+    },
+    {
+      "t" : 35.742,
+      "text" : " you making"
+    },
+    {
+      "t" : 35.989,
+      "text" : "?\", 3, { required:"
+    },
+    {
+      "t" : 35.992,
+      "text" : " true, minLength: 10"
+    },
+    {
+      "t" : 36.108,
+      "text" : " }))\nf6 ="
+    },
+    {
+      "t" : 36.263,
+      "text" : " FormControl(\"Ag"
+    },
+    {
+      "t" : 36.474,
+      "text" : "reements\", CheckBo"
+    },
+    {
+      "t" : 36.594,
+      "text" : "xGroup(\"ag"
+    },
+    {
+      "t" : 36.73,
+      "text" : "ree\", ["
+    },
+    {
+      "t" : 36.865,
+      "text" : "ag1, ag2], {"
+    },
+    {
+      "t" : 37.009,
+      "text" : " required: true }))\nag"
+    },
+    {
+      "t" : 37.326,
+      "text" : "1 = CheckBo"
+    },
+    {
+      "t" : 37.506,
+      "text" : "xItem(\"I"
+    },
+    {
+      "t" : 37.668,
+      "text" : " have"
+    },
+    {
+      "t" : 37.672,
+      "text" : " read"
+    },
+    {
+      "t" : 37.866,
+      "text" : " the"
+    },
+    {
+      "t" : 38.04,
+      "text" : " safety rules\", \"Required"
+    },
+    {
+      "t" : 38.272,
+      "text" : " for all re"
+    },
+    {
+      "t" : 38.506,
+      "text" : "servations\", \"safety"
+    },
+    {
+      "t" : 38.704,
+      "text" : "\")\nag2 = C"
+    },
+    {
+      "t" : 38.853,
+      "text" : "heckBoxItem(\""
+    },
+    {
+      "t" : 39.104,
+      "text" : "I will clean up after use"
+    },
+    {
+      "t" : 39.283,
+      "text" : "\", \"Le"
+    },
+    {
+      "t" : 39.415,
+      "text" : "ave the"
+    },
+    {
+      "t" : 39.553,
+      "text" : " workspace t"
+    },
+    {
+      "t" : 39.701,
+      "text" : "idy\", \"cleanup"
+    },
+    {
+      "t" : 39.837,
+      "text" : "\")\nformBtns ="
+    },
+    {
+      "t" : 40.085,
+      "text" : " Buttons([Button(\""
+    },
+    {
+      "t" : 40.289,
+      "text" : "Reserve Mach"
+    },
+    {
+      "t" : 40.435,
+      "text" : "ine\", @ToAssist"
+    },
+    {
+      "t" : 40.575,
+      "text" : "ant(\"Submit mach"
+    },
+    {
+      "t" : 40.794,
+      "text" : "ine reservation\"), \"prim"
+    },
+    {
+      "t" : 40.947,
+      "text" : "ary\"), Button(\"Check"
+    },
+    {
+      "t" : 41.107,
+      "text" : " My"
+    },
+    {
+      "t" : 41.256,
+      "text" : " Certifications\", @To"
+    },
+    {
+      "t" : 41.411,
+      "text" : "Assistant(\"Show"
+    },
+    {
+      "t" : 41.573,
+      "text" : " my cert"
+    },
+    {
+      "t" : 41.744,
+      "text" : "ification details"
+    },
+    {
+      "t" : 41.897,
+      "text" : "\"), \"secondary\")])"
+    }
+  ],
+  "createdAt" : "2026-11-11T10:53:40Z",
+  "effort" : "low",
+  "format" : "openui-recording",
+  "inputTokens" : 14498,
+  "library" : "react-ui",
+  "model" : "claude-sonnet-5-5",
+  "outputTokens" : 2139,
+  "request" : "A makerspace equipment reservation page with machine availability, safety certification status and a booking form.",
+  "servedBy" : "claude-sonnet-5-5",
+  "stopReason" : "end_turn",
+  "version" : 1
+}

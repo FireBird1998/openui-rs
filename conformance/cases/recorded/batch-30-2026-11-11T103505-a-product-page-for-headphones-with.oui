@@ -1,0 +1,16 @@
+root = Stack([heroCard, specsCard, actionsRow])
+heroCard = Card([gallery, productTitle, productSubtitle])
+gallery = ImageGallery([img1, img2, img3])
+img1 = {src: "https://images.example.com/headphones-front.jpg", alt: "Front view of the Aurora X1 headphones", details: "Front view"}
+img2 = {src: "https://images.example.com/headphones-side.jpg", alt: "Side profile of the Aurora X1 headphones", details: "Side profile"}
+img3 = {src: "https://images.example.com/headphones-case.jpg", alt: "Aurora X1 headphones with carrying case", details: "With case"}
+productTitle = TextContent("Aurora X1 Wireless Headphones", "large-heavy")
+productSubtitle = TextContent("Active noise cancellation, 40-hour battery, premium comfort fit", "default")
+specsCard = Card([specsHeader, specsTable])
+specsHeader = CardHeader("Specifications", "Key technical details")
+specsTable = Table([specLabels, specValues])
+specLabels = Col("Specification", ["Driver size", "Battery life", "Charging", "Bluetooth", "Noise cancellation", "Weight", "Microphone"])
+specValues = Col("Value", ["40 mm", "40 hours", "USB-C, 10 min = 5 hours", "5.3 with multipoint", "Hybrid adaptive ANC", "250 g", "Dual beamforming"])
+actionsRow = Stack([priceText, addToCartBtn], "row", "m", "center", "between")
+priceText = TextContent("$199.00", "large-heavy")
+addToCartBtn = Button("Add to Cart", @ToAssistant("Add Aurora X1 Wireless Headphones to cart"), "primary", "normal", "large")

@@ -1,0 +1,816 @@
+{
+  "batchRequest" : {
+    "model" : "sonnet",
+    "number" : 57,
+    "request" : "A housing affordability report: median rent by district in a horizontal bar chart, household-income figures and a methodology note."
+  },
+  "chunks" : [
+    {
+      "t" : 0.869,
+      "text" : "root = Stack([title,"
+    },
+    {
+      "t" : 1.188,
+      "text" : " intro, rentC"
+    },
+    {
+      "t" : 1.24,
+      "text" : "ard, inc"
+    },
+    {
+      "t" : 1.329,
+      "text" : "omeH"
+    },
+    {
+      "t" : 1.376,
+      "text" : "eader, incomeCards"
+    },
+    {
+      "t" : 1.478,
+      "text" : ", inc"
+    },
+    {
+      "t" : 1.52,
+      "text" : "omeTable, methodology"
+    },
+    {
+      "t" : 1.571,
+      "text" : "])\ntitle = TextContent"
+    },
+    {
+      "t" : 1.662,
+      "text" : "(\"Housing Affordability"
+    },
+    {
+      "t" : 1.717,
+      "text" : " Report\", \"large-heav"
+    },
+    {
+      "t" : 1.718,
+      "text" : "y\")\nintro = Text"
+    },
+    {
+      "t" : 1.768,
+      "text" : "Content(\"Median monthly"
+    },
+    {
+      "t" : 1.807,
+      "text" : " rent comp"
+    },
+    {
+      "t" : 1.832,
+      "text" : "ared with household income across city"
+    },
+    {
+      "t" : 1.88,
+      "text" : " districts, with the"
+    },
+    {
+      "t" : 1.884,
+      "text" : " share"
+    },
+    {
+      "t" : 1.966,
+      "text" : " of income sp"
+    },
+    {
+      "t" : 2.019,
+      "text" : "ent on rent.\")\nr"
+    },
+    {
+      "t" : 2.079,
+      "text" : "entCard = Card([r"
+    },
+    {
+      "t" : 2.131,
+      "text" : "entHeader, rentCh"
+    },
+    {
+      "t" : 2.132,
+      "text" : "art])\nrentHeader"
+    },
+    {
+      "t" : 2.185,
+      "text" : " = CardHeader(\""
+    },
+    {
+      "t" : 2.234,
+      "text" : "Median Monthly Rent"
+    },
+    {
+      "t" : 2.345,
+      "text" : " by District\", \"US"
+    },
+    {
+      "t" : 2.407,
+      "text" : "D, "
+    },
+    {
+      "t" : 2.408,
+      "text" : "2-"
+    },
+    {
+      "t" : 2.475,
+      "text" : "bedroom units"
+    },
+    {
+      "t" : 2.539,
+      "text" : "\")"
+    },
+    {
+      "t" : 2.581,
+      "text" : "\nrentChart = Hor"
+    },
+    {
+      "t" : 2.63,
+      "text" : "izontalBarChart("
+    },
+    {
+      "t" : 2.698,
+      "text" : "districts, [r"
+    },
+    {
+      "t" : 2.767,
+      "text" : "entSeries], \"gr"
+    },
+    {
+      "t" : 2.833,
+      "text" : "ouped\", \""
+    },
+    {
+      "t" : 2.895,
+      "text" : "Monthly r"
+    },
+    {
+      "t" : 2.96,
+      "text" : "ent (USD)\", \"District"
+    },
+    {
+      "t" : 3.034,
+      "text" : "\")\ndistricts = [\""
+    },
+    {
+      "t" : 3.089,
+      "text" : "Downtown\", \"River"
+    },
+    {
+      "t" : 3.137,
+      "text" : "side\", \"Mid"
+    },
+    {
+      "t" : 3.189,
+      "text" : "town\", \"Har"
+    },
+    {
+      "t" : 3.238,
+      "text" : "bor"
+    },
+    {
+      "t" : 3.314,
+      "text" : " Point"
+    },
+    {
+      "t" : 3.382,
+      "text" : "\", \"O"
+    },
+    {
+      "t" : 3.461,
+      "text" : "akwood\", \"E"
+    },
+    {
+      "t" : 3.54,
+      "text" : "astg"
+    },
+    {
+      "t" : 3.693,
+      "text" : "ate\", \"North"
+    },
+    {
+      "t" : 3.743,
+      "text" : "f"
+    },
+    {
+      "t" : 3.744,
+      "text" : "ield\", \"Southp"
+    },
+    {
+      "t" : 3.779,
+      "text" : "ark\"]\nrentSe"
+    },
+    {
+      "t" : 3.815,
+      "text" : "ries = Series(\"Median"
+    },
+    {
+      "t" : 3.855,
+      "text" : " Rent\", [2850"
+    },
+    {
+      "t" : 3.909,
+      "text" : ", 2420"
+    },
+    {
+      "t" : 3.984,
+      "text" : ", 2190"
+    },
+    {
+      "t" : 4.07,
+      "text" : ", 2"
+    },
+    {
+      "t" : 4.12,
+      "text" : "010, 1760"
+    },
+    {
+      "t" : 4.18,
+      "text" : ", 1540"
+    },
+    {
+      "t" : 4.272,
+      "text" : ", 1425"
+    },
+    {
+      "t" : 4.359,
+      "text" : ", 1310"
+    },
+    {
+      "t" : 4.444,
+      "text" : "])\nincomeHeader"
+    },
+    {
+      "t" : 4.587,
+      "text" : " = InlineHeader(\""
+    },
+    {
+      "t" : 4.591,
+      "text" : "Household Income\", \"Median"
+    },
+    {
+      "t" : 4.651,
+      "text" : " annual household income,"
+    },
+    {
+      "t" : 4.739,
+      "text" : " citywide and"
+    },
+    {
+      "t" : 4.811,
+      "text" : " select"
+    },
+    {
+      "t" : 4.922,
+      "text" : " districts\")\nincomeC"
+    },
+    {
+      "t" : 4.924,
+      "text" : "ards = O"
+    },
+    {
+      "t" : 4.997,
+      "text" : "verviewCardBlock"
+    },
+    {
+      "t" : 5.089,
+      "text" : "([o"
+    },
+    {
+      "t" : 5.147,
+      "text" : "1, o2, o3])"
+    },
+    {
+      "t" : 5.222,
+      "text" : "\no1 = Overvi"
+    },
+    {
+      "t" : 5.287,
+      "text" : "ewCardItem(\"city"
+    },
+    {
+      "t" : 5.444,
+      "text" : "\", o1top, o1b"
+    },
+    {
+      "t" : 5.447,
+      "text" : "ottom)\no1top ="
+    },
+    {
+      "t" : 5.546,
+      "text" : " I"
+    },
+    {
+      "t" : 5.621,
+      "text" : "conText(o"
+    },
+    {
+      "t" : 5.714,
+      "text" : "1icon, \"neutral"
+    },
+    {
+      "t" : 5.807,
+      "text" : "\", \"m\", \"Cityw"
+    },
+    {
+      "t" : 5.891,
+      "text" : "ide Median\", \"All"
+    },
+    {
+      "t" : 5.991,
+      "text" : " households"
+    },
+    {
+      "t" : 6.095,
+      "text" : "\", false, \"horizontal"
+    },
+    {
+      "t" : 6.188,
+      "text" : "\")\no1icon ="
+    },
+    {
+      "t" : 6.291,
+      "text" : " Icon(\"users\", \"people\")"
+    },
+    {
+      "t" : 6.398,
+      "text" : "\no1bottom = M"
+    },
+    {
+      "t" : 6.479,
+      "text" : "etricIndicatorIn"
+    },
+    {
+      "t" : 6.58,
+      "text" : "line(\"$71,400"
+    },
+    {
+      "t" : 6.674,
+      "text" : "\", \"per"
+    },
+    {
+      "t" : 6.777,
+      "text" : " year\", { direction: \"up"
+    },
+    {
+      "t" : 6.952,
+      "text" : "\", value: 3.2 "
+    },
+    {
+      "t" : 6.953,
+      "text" : "})\no2 = Over"
+    },
+    {
+      "t" : 7.068,
+      "text" : "viewCardItem(\"r"
+    },
+    {
+      "t" : 7.24,
+      "text" : "ent-"
+    },
+    {
+      "t" : 7.241,
+      "text" : "burden\", o2top, o"
+    },
+    {
+      "t" : 7.337,
+      "text" : "2bottom)\no2"
+    },
+    {
+      "t" : 7.442,
+      "text" : "top = IconText(o2"
+    },
+    {
+      "t" : 7.535,
+      "text" : "icon, \"war"
+    },
+    {
+      "t" : 7.644,
+      "text" : "ning\", \"m\", \"R"
+    },
+    {
+      "t" : 7.757,
+      "text" : "ent Burden\", \"R"
+    },
+    {
+      "t" : 7.868,
+      "text" : "ent as"
+    },
+    {
+      "t" : 7.969,
+      "text" : " % of income\", false, \"hor"
+    },
+    {
+      "t" : 8.089,
+      "text" : "izontal\")\no2ic"
+    },
+    {
+      "t" : 8.194,
+      "text" : "on = Icon(\"percent"
+    },
+    {
+      "t" : 8.3,
+      "text" : "\", \"finance\")\no2"
+    },
+    {
+      "t" : 8.493,
+      "text" : "bottom = MetricI"
+    },
+    {
+      "t" : 8.494,
+      "text" : "ndicatorInline(\"32"
+    },
+    {
+      "t" : 8.606,
+      "text" : "%"
+    },
+    {
+      "t" : 8.715,
+      "text" : "\", \"cit"
+    },
+    {
+      "t" : 8.834,
+      "text" : "ywide average"
+    },
+    {
+      "t" : 8.949,
+      "text" : "\", { direction: \"up\","
+    },
+    {
+      "t" : 9.053,
+      "text" : " value: 1.4 })"
+    },
+    {
+      "t" : 9.158,
+      "text" : "\no3 = Overvi"
+    },
+    {
+      "t" : 9.284,
+      "text" : "ewCardItem(\"renters"
+    },
+    {
+      "t" : 9.413,
+      "text" : "\", o3top, o3b"
+    },
+    {
+      "t" : 9.54,
+      "text" : "ottom)\no3ic"
+    },
+    {
+      "t" : 9.666,
+      "text" : "on ="
+    },
+    {
+      "t" : 9.793,
+      "text" : " Icon(\"house"
+    },
+    {
+      "t" : 9.895,
+      "text" : "\", \"bu"
+    },
+    {
+      "t" : 10.129,
+      "text" : "ildings\")\no3top ="
+    },
+    {
+      "t" : 10.248,
+      "text" : " IconText(o3icon"
+    },
+    {
+      "t" : 10.373,
+      "text" : ", \"info\", \"m\", \""
+    },
+    {
+      "t" : 10.5,
+      "text" : "Renter Households"
+    },
+    {
+      "t" : 10.627,
+      "text" : "\", \"Share of all households\","
+    },
+    {
+      "t" : 10.628,
+      "text" : " false, \"horizontal\")"
+    },
+    {
+      "t" : 10.747,
+      "text" : "\no3bottom = M"
+    },
+    {
+      "t" : 10.88,
+      "text" : "etricIndicatorIn"
+    },
+    {
+      "t" : 11.008,
+      "text" : "line(\"46%\", \"of households"
+    },
+    {
+      "t" : 11.103,
+      "text" : "\", { direction: \"down\","
+    },
+    {
+      "t" : 11.305,
+      "text" : " value: 0.8 })"
+    },
+    {
+      "t" : 11.306,
+      "text" : "\nincomeTable ="
+    },
+    {
+      "t" : 11.451,
+      "text" : " Table([Col(\"District\", t"
+    },
+    {
+      "t" : 11.572,
+      "text" : "Districts), Col(\""
+    },
+    {
+      "t" : 11.699,
+      "text" : "Median Income\", tInc"
+    },
+    {
+      "t" : 11.821,
+      "text" : "ome, \"number"
+    },
+    {
+      "t" : 11.886,
+      "text" : "\"), Col(\"Median"
+    },
+    {
+      "t" : 11.958,
+      "text" : " Rent\", tRent,"
+    },
+    {
+      "t" : 12.088,
+      "text" : " \"number\"), Col(\""
+    },
+    {
+      "t" : 12.235,
+      "text" : "Rent /"
+    },
+    {
+      "t" : 12.349,
+      "text" : " Income %"
+    },
+    {
+      "t" : 12.478,
+      "text" : "\", tSh"
+    },
+    {
+      "t" : 12.621,
+      "text" : "are, \"number\")])\nt"
+    },
+    {
+      "t" : 12.776,
+      "text" : "Districts = [\""
+    },
+    {
+      "t" : 12.927,
+      "text" : "Downtown\", \"River"
+    },
+    {
+      "t" : 13.08,
+      "text" : "side\", \"Midtown\","
+    },
+    {
+      "t" : 13.222,
+      "text" : " \"Harbor Point\","
+    },
+    {
+      "t" : 13.377,
+      "text" : " \"Oakwood\", \""
+    },
+    {
+      "t" : 13.622,
+      "text" : "Eastgate\", \""
+    },
+    {
+      "t" : 13.624,
+      "text" : "Northfield\", \"Southp"
+    },
+    {
+      "t" : 13.777,
+      "text" : "ark\"]\ntIncome"
+    },
+    {
+      "t" : 13.904,
+      "text" : " = ["
+    },
+    {
+      "t" : 14.053,
+      "text" : "96500, 88"
+    },
+    {
+      "t" : 14.189,
+      "text" : "200, 79"
+    },
+    {
+      "t" : 14.273,
+      "text" : "800"
+    },
+    {
+      "t" : 14.422,
+      "text" : ", 72300"
+    },
+    {
+      "t" : 14.577,
+      "text" : ", 64"
+    },
+    {
+      "t" : 14.716,
+      "text" : "100, 52"
+    },
+    {
+      "t" : 14.975,
+      "text" : "800"
+    },
+    {
+      "t" : 15.139,
+      "text" : ", 55"
+    },
+    {
+      "t" : 15.298,
+      "text" : "400"
+    },
+    {
+      "t" : 15.46,
+      "text" : ", 47900"
+    },
+    {
+      "t" : 15.615,
+      "text" : "]\ntRent = [2"
+    },
+    {
+      "t" : 15.729,
+      "text" : "850, 2420, 2"
+    },
+    {
+      "t" : 15.888,
+      "text" : "190, 2010, 1"
+    },
+    {
+      "t" : 15.89,
+      "text" : "760, 1540, 1"
+    },
+    {
+      "t" : 16.053,
+      "text" : "425, 1310]\nt"
+    },
+    {
+      "t" : 16.201,
+      "text" : "Share = [35.4,"
+    },
+    {
+      "t" : 16.334,
+      "text" : " 32"
+    },
+    {
+      "t" : 16.474,
+      "text" : ".9, 32"
+    },
+    {
+      "t" : 16.591,
+      "text" : ".9, 33"
+    },
+    {
+      "t" : 16.7,
+      "text" : ".4"
+    },
+    {
+      "t" : 16.863,
+      "text" : ", 32"
+    },
+    {
+      "t" : 17.031,
+      "text" : ".9, 35"
+    },
+    {
+      "t" : 17.191,
+      "text" : ".0, 30"
+    },
+    {
+      "t" : 17.317,
+      "text" : ".9"
+    },
+    {
+      "t" : 17.42,
+      "text" : ", 32.8]\nmeth"
+    },
+    {
+      "t" : 17.555,
+      "text" : "odology = Callout(\"info"
+    },
+    {
+      "t" : 17.686,
+      "text" : "\", \"Methodology\", \""
+    },
+    {
+      "t" : 17.826,
+      "text" : "Rent fig"
+    },
+    {
+      "t" : 17.939,
+      "text" : "ures are medians of active"
+    },
+    {
+      "t" : 18.072,
+      "text" : " "
+    },
+    {
+      "t" : 18.198,
+      "text" : "2-bedroom listings"
+    },
+    {
+      "t" : 18.368,
+      "text" : " and lease ren"
+    },
+    {
+      "t" : 18.37,
+      "text" : "ewals from the"
+    },
+    {
+      "t" : 18.511,
+      "text" : " past 12 months. Income"
+    },
+    {
+      "t" : 18.662,
+      "text" : " figures come from the American Community"
+    },
+    {
+      "t" : 18.78,
+      "text" : " Survey "
+    },
+    {
+      "t" : 18.906,
+      "text" : "5-year estimates."
+    },
+    {
+      "t" : 19.031,
+      "text" : " Rent bur"
+    },
+    {
+      "t" : 19.158,
+      "text" : "den is median"
+    },
+    {
+      "t" : 19.328,
+      "text" : " ann"
+    },
+    {
+      "t" : 19.45,
+      "text" : "ual rent divided by median household"
+    },
+    {
+      "t" : 19.597,
+      "text" : " income;"
+    },
+    {
+      "t" : 19.726,
+      "text" : " values"
+    },
+    {
+      "t" : 19.868,
+      "text" : " above 30% are considered c"
+    },
+    {
+      "t" : 19.962,
+      "text" : "ost-burdened. District"
+    },
+    {
+      "t" : 20.119,
+      "text" : " bo"
+    },
+    {
+      "t" : 20.271,
+      "text" : "undaries foll"
+    },
+    {
+      "t" : 20.429,
+      "text" : "ow munic"
+    },
+    {
+      "t" : 20.573,
+      "text" : "ipal planning z"
+    },
+    {
+      "t" : 20.705,
+      "text" : "ones. Figures are illust"
+    },
+    {
+      "t" : 20.814,
+      "text" : "rative."
+    },
+    {
+      "t" : 20.983,
+      "text" : "\")"
+    }
+  ],
+  "createdAt" : "2026-11-11T10:39:32Z",
+  "effort" : "low",
+  "format" : "openui-recording",
+  "inputTokens" : 14505,
+  "library" : "react-ui",
+  "model" : "claude-sonnet-5-5",
+  "outputTokens" : 1147,
+  "request" : "A housing affordability report: median rent by district in a horizontal bar chart, household-income figures and a methodology note.",
+  "servedBy" : "claude-sonnet-5-5",
+  "stopReason" : "end_turn",
+  "version" : 1
+}

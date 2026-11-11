@@ -1,0 +1,644 @@
+{
+  "batchRequest" : {
+    "model" : "sonnet",
+    "number" : 35,
+    "request" : "A personal finance overview: balances, a pie chart of spending categories and recent transactions."
+  },
+  "chunks" : [
+    {
+      "t" : 0.656,
+      "text" : "root = Stack([header"
+    },
+    {
+      "t" : 0.97,
+      "text" : ", balanceB"
+    },
+    {
+      "t" : 1.003,
+      "text" : "lock, ch"
+    },
+    {
+      "t" : 1.066,
+      "text" : "artC"
+    },
+    {
+      "t" : 1.133,
+      "text" : "ard, tx"
+    },
+    {
+      "t" : 1.235,
+      "text" : "Card])\nheader = C"
+    },
+    {
+      "t" : 1.266,
+      "text" : "ardHeader(\"Personal"
+    },
+    {
+      "t" : 1.3,
+      "text" : " Finance Overview\", \""
+    },
+    {
+      "t" : 1.334,
+      "text" : "Your acc"
+    },
+    {
+      "t" : 1.371,
+      "text" : "ounts and"
+    },
+    {
+      "t" : 1.467,
+      "text" : " spending this"
+    },
+    {
+      "t" : 1.469,
+      "text" : " month\")\nbalanceBl"
+    },
+    {
+      "t" : 1.551,
+      "text" : "ock = O"
+    },
+    {
+      "t" : 1.554,
+      "text" : "verviewCardBlock"
+    },
+    {
+      "t" : 1.594,
+      "text" : "([b1, b2, b"
+    },
+    {
+      "t" : 1.657,
+      "text" : "3, b4])\nb1"
+    },
+    {
+      "t" : 1.661,
+      "text" : " = OverviewCard"
+    },
+    {
+      "t" : 1.706,
+      "text" : "Item(\"chec"
+    },
+    {
+      "t" : 1.781,
+      "text" : "king\", b1top, b1"
+    },
+    {
+      "t" : 1.828,
+      "text" : "m"
+    },
+    {
+      "t" : 1.89,
+      "text" : ")\nb1top = Icon"
+    },
+    {
+      "t" : 1.931,
+      "text" : "Text(b"
+    },
+    {
+      "t" : 2.03,
+      "text" : "1i"
+    },
+    {
+      "t" : 2.031,
+      "text" : ", \"info"
+    },
+    {
+      "t" : 2.077,
+      "text" : "\", \"m\", \"Checking"
+    },
+    {
+      "t" : 2.128,
+      "text" : "\", \"Main"
+    },
+    {
+      "t" : 2.178,
+      "text" : " account\", false, \"horizont"
+    },
+    {
+      "t" : 2.225,
+      "text" : "al\")\nb1i ="
+    },
+    {
+      "t" : 2.275,
+      "text" : " Icon(\"wallet\", \""
+    },
+    {
+      "t" : 2.372,
+      "text" : "finance\")\nb1m ="
+    },
+    {
+      "t" : 2.42,
+      "text" : " MetricIndicator"
+    },
+    {
+      "t" : 2.473,
+      "text" : "Inline(\"$4"
+    },
+    {
+      "t" : 2.526,
+      "text" : ",820"
+    },
+    {
+      "t" : 2.579,
+      "text" : "\", \"v"
+    },
+    {
+      "t" : 2.637,
+      "text" : "s last"
+    },
+    {
+      "t" : 2.688,
+      "text" : " month\", { direction: \"up"
+    },
+    {
+      "t" : 2.691,
+      "text" : "\", value: 3"
+    },
+    {
+      "t" : 2.744,
+      "text" : " "
+    },
+    {
+      "t" : 2.797,
+      "text" : "})\nb2 = Over"
+    },
+    {
+      "t" : 2.844,
+      "text" : "viewCardItem(\"sav"
+    },
+    {
+      "t" : 2.897,
+      "text" : "ings\", b2top, b2"
+    },
+    {
+      "t" : 2.952,
+      "text" : "m)\nb2top = I"
+    },
+    {
+      "t" : 3.024,
+      "text" : "conText(b2i, \""
+    },
+    {
+      "t" : 3.133,
+      "text" : "success\", \"m\", \"Sav"
+    },
+    {
+      "t" : 3.218,
+      "text" : "ings\", \""
+    },
+    {
+      "t" : 3.297,
+      "text" : "Emergency fund\", false,"
+    },
+    {
+      "t" : 3.405,
+      "text" : " \"horizontal\")\nb"
+    },
+    {
+      "t" : 3.501,
+      "text" : "2i = Icon(\"pi"
+    },
+    {
+      "t" : 3.596,
+      "text" : "ggy-bank\", \"fin"
+    },
+    {
+      "t" : 3.679,
+      "text" : "ance\")\nb2m = M"
+    },
+    {
+      "t" : 3.766,
+      "text" : "etricIndicatorIn"
+    },
+    {
+      "t" : 3.899,
+      "text" : "line(\"$12,350"
+    },
+    {
+      "t" : 3.904,
+      "text" : "\", \"vs last month\", {"
+    },
+    {
+      "t" : 3.955,
+      "text" : " direction: \"up\", value:"
+    },
+    {
+      "t" : 4.016,
+      "text" : " 5"
+    },
+    {
+      "t" : 4.074,
+      "text" : " })\nb3 = O"
+    },
+    {
+      "t" : 4.126,
+      "text" : "verviewCardItem(\""
+    },
+    {
+      "t" : 4.185,
+      "text" : "credit\", b3top, b"
+    },
+    {
+      "t" : 4.278,
+      "text" : "3m)\nb3top ="
+    },
+    {
+      "t" : 4.28,
+      "text" : " IconText(b3i,"
+    },
+    {
+      "t" : 4.346,
+      "text" : " \"warning\", \"m\", \""
+    },
+    {
+      "t" : 4.419,
+      "text" : "Credit Card\", \""
+    },
+    {
+      "t" : 4.481,
+      "text" : "Balance ow"
+    },
+    {
+      "t" : 4.553,
+      "text" : "ed\", false, \"horizont"
+    },
+    {
+      "t" : 4.609,
+      "text" : "al\")\nb3i ="
+    },
+    {
+      "t" : 4.661,
+      "text" : " Icon(\"credit-card\","
+    },
+    {
+      "t" : 4.714,
+      "text" : " \"finance\")\nb3m"
+    },
+    {
+      "t" : 4.774,
+      "text" : " = MetricIndicat"
+    },
+    {
+      "t" : 4.856,
+      "text" : "orInline(\"$1,240"
+    },
+    {
+      "t" : 4.923,
+      "text" : "\", \"vs last month\", {"
+    },
+    {
+      "t" : 5.035,
+      "text" : " direction: \"down\", value:"
+    },
+    {
+      "t" : 5.107,
+      "text" : " 8 })\nb4 "
+    },
+    {
+      "t" : 5.165,
+      "text" : "= OverviewCardIt"
+    },
+    {
+      "t" : 5.224,
+      "text" : "em(\"invest\", b4top"
+    },
+    {
+      "t" : 5.284,
+      "text" : ", b4m)\nb4"
+    },
+    {
+      "t" : 5.345,
+      "text" : "top = IconText(b"
+    },
+    {
+      "t" : 5.404,
+      "text" : "4i, \"ne"
+    },
+    {
+      "t" : 5.531,
+      "text" : "utral\", \"m\", \""
+    },
+    {
+      "t" : 5.535,
+      "text" : "Investments\", \"Br"
+    },
+    {
+      "t" : 5.602,
+      "text" : "okerage\", false, \"hor"
+    },
+    {
+      "t" : 5.664,
+      "text" : "izontal\")\nb4i"
+    },
+    {
+      "t" : 5.77,
+      "text" : " = Icon(\"trending-"
+    },
+    {
+      "t" : 5.774,
+      "text" : "up\", \"finance\")\nb"
+    },
+    {
+      "t" : 5.843,
+      "text" : "4m = MetricInd"
+    },
+    {
+      "t" : 5.929,
+      "text" : "icatorInline(\"$"
+    },
+    {
+      "t" : 6.016,
+      "text" : "28,900"
+    },
+    {
+      "t" : 6.209,
+      "text" : "\", \"vs last month\", {"
+    },
+    {
+      "t" : 6.315,
+      "text" : " direction: \"up\", value:"
+    },
+    {
+      "t" : 6.412,
+      "text" : " 2 })\nchartC"
+    },
+    {
+      "t" : 6.51,
+      "text" : "ard = Card([chartH"
+    },
+    {
+      "t" : 6.615,
+      "text" : "eader, p"
+    },
+    {
+      "t" : 6.719,
+      "text" : "ie])\nchartHeader"
+    },
+    {
+      "t" : 6.723,
+      "text" : " = C"
+    },
+    {
+      "t" : 6.805,
+      "text" : "ardHeader(\"Spending"
+    },
+    {
+      "t" : 6.892,
+      "text" : " by Category\", \"This month\")"
+    },
+    {
+      "t" : 6.987,
+      "text" : "\npie = PieChart"
+    },
+    {
+      "t" : 7.122,
+      "text" : "(c"
+    },
+    {
+      "t" : 7.125,
+      "text" : "ats, am"
+    },
+    {
+      "t" : 7.197,
+      "text" : "ounts, \"donut\")"
+    },
+    {
+      "t" : 7.295,
+      "text" : "\ncats = [\"Housing"
+    },
+    {
+      "t" : 7.473,
+      "text" : "\", \"Food\","
+    },
+    {
+      "t" : 7.475,
+      "text" : " \"Transport\", \"Ent"
+    },
+    {
+      "t" : 7.549,
+      "text" : "ertainment\", \"Ut"
+    },
+    {
+      "t" : 7.624,
+      "text" : "ilities\", \"Sh"
+    },
+    {
+      "t" : 7.698,
+      "text" : "opping\"]\namounts"
+    },
+    {
+      "t" : 7.808,
+      "text" : " = [1450"
+    },
+    {
+      "t" : 7.886,
+      "text" : ", 620"
+    },
+    {
+      "t" : 7.96,
+      "text" : ", 280"
+    },
+    {
+      "t" : 8.047,
+      "text" : ", 210, 240"
+    },
+    {
+      "t" : 8.123,
+      "text" : ", 390"
+    },
+    {
+      "t" : 8.211,
+      "text" : "]\ntxC"
+    },
+    {
+      "t" : 8.304,
+      "text" : "ard = Card([txHe"
+    },
+    {
+      "t" : 8.381,
+      "text" : "ader, tx"
+    },
+    {
+      "t" : 8.489,
+      "text" : "Table])\ntxHeader"
+    },
+    {
+      "t" : 8.577,
+      "text" : " = CardHeader(\""
+    },
+    {
+      "t" : 8.682,
+      "text" : "Recent Transactions\", \""
+    },
+    {
+      "t" : 8.684,
+      "text" : "Last"
+    },
+    {
+      "t" : 8.748,
+      "text" : " 7 days\")\ntxT"
+    },
+    {
+      "t" : 8.827,
+      "text" : "able = Table([Col(\""
+    },
+    {
+      "t" : 8.915,
+      "text" : "Date\", dates),"
+    },
+    {
+      "t" : 9.011,
+      "text" : " Col(\"Description"
+    },
+    {
+      "t" : 9.09,
+      "text" : "\", desc"
+    },
+    {
+      "t" : 9.174,
+      "text" : "s), Col(\"Category\","
+    },
+    {
+      "t" : 9.257,
+      "text" : " tx"
+    },
+    {
+      "t" : 9.389,
+      "text" : "Cats), Col(\"Am"
+    },
+    {
+      "t" : 9.392,
+      "text" : "ount "
+    },
+    {
+      "t" : 9.478,
+      "text" : "($)\", tx"
+    },
+    {
+      "t" : 9.576,
+      "text" : "Amts"
+    },
+    {
+      "t" : 9.667,
+      "text" : ", \"number\")])\ndates"
+    },
+    {
+      "t" : 9.759,
+      "text" : " = [\"Jun 14"
+    },
+    {
+      "t" : 9.845,
+      "text" : "\", \"Jun 13"
+    },
+    {
+      "t" : 9.947,
+      "text" : "\", \"Jun 12\","
+    },
+    {
+      "t" : 10.049,
+      "text" : " \"Jun 11\", \""
+    },
+    {
+      "t" : 10.151,
+      "text" : "Jun 10\", \""
+    },
+    {
+      "t" : 10.256,
+      "text" : "Jun 9\"]\ndesc"
+    },
+    {
+      "t" : 10.347,
+      "text" : "s = [\"Whole"
+    },
+    {
+      "t" : 10.447,
+      "text" : " Foods Market\", \"Mon"
+    },
+    {
+      "t" : 10.622,
+      "text" : "thly Rent\", \""
+    },
+    {
+      "t" : 10.624,
+      "text" : "Uber "
+    },
+    {
+      "t" : 10.723,
+      "text" : "Ride\", \"Netflix\","
+    },
+    {
+      "t" : 10.838,
+      "text" : " \"Electric Bill\","
+    },
+    {
+      "t" : 10.997,
+      "text" : " \"Amazon Purch"
+    },
+    {
+      "t" : 11.095,
+      "text" : "ase\"]\ntxCats ="
+    },
+    {
+      "t" : 11.188,
+      "text" : " [\"Food\", \"Hous"
+    },
+    {
+      "t" : 11.28,
+      "text" : "ing\", \"Transport\", \""
+    },
+    {
+      "t" : 11.429,
+      "text" : "Entertainment\", \""
+    },
+    {
+      "t" : 11.432,
+      "text" : "Utilities\", \"Shop"
+    },
+    {
+      "t" : 11.546,
+      "text" : "ping\"]\ntxAmts"
+    },
+    {
+      "t" : 11.657,
+      "text" : " = [-84.32"
+    },
+    {
+      "t" : 11.753,
+      "text" : ", -1450."
+    },
+    {
+      "t" : 11.941,
+      "text" : "00, -18.75"
+    },
+    {
+      "t" : 11.944,
+      "text" : ", -15"
+    },
+    {
+      "t" : 12.055,
+      "text" : ".99, -92"
+    },
+    {
+      "t" : 12.171,
+      "text" : ".40, -63"
+    },
+    {
+      "t" : 12.281,
+      "text" : ".15"
+    },
+    {
+      "t" : 12.381,
+      "text" : "]"
+    }
+  ],
+  "createdAt" : "2026-11-11T10:35:49Z",
+  "effort" : "low",
+  "format" : "openui-recording",
+  "inputTokens" : 14497,
+  "library" : "react-ui",
+  "model" : "claude-sonnet-5-5",
+  "outputTokens" : 988,
+  "request" : "A personal finance overview: balances, a pie chart of spending categories and recent transactions.",
+  "servedBy" : "claude-sonnet-5-5",
+  "stopReason" : "end_turn",
+  "version" : 1
+}

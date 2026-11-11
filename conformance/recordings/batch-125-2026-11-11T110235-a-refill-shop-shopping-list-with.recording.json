@@ -1,0 +1,572 @@
+{
+  "batchRequest" : {
+    "model" : "sonnet",
+    "number" : 125,
+    "request" : "A refill shop shopping list with container tare weights, product price per kilogram and example totals in a table."
+  },
+  "chunks" : [
+    {
+      "t" : 0.861,
+      "text" : "root = Stack([title,"
+    },
+    {
+      "t" : 1.157,
+      "text" : " intro, tbl, note"
+    },
+    {
+      "t" : 1.177,
+      "text" : ", totalsH"
+    },
+    {
+      "t" : 1.194,
+      "text" : "eader, totals"
+    },
+    {
+      "t" : 1.262,
+      "text" : "])\ntitle = TextContent"
+    },
+    {
+      "t" : 1.302,
+      "text" : "(\"Refill Shop"
+    },
+    {
+      "t" : 1.324,
+      "text" : " Shopping List\", \"large-"
+    },
+    {
+      "t" : 1.347,
+      "text" : "heavy\")\nintro ="
+    },
+    {
+      "t" : 1.407,
+      "text" : " TextContent(\"Bring"
+    },
+    {
+      "t" : 1.442,
+      "text" : " your own contain"
+    },
+    {
+      "t" : 1.444,
+      "text" : "ers. Net we"
+    },
+    {
+      "t" : 1.483,
+      "text" : "ight = gross weight minus"
+    },
+    {
+      "t" : 1.525,
+      "text" : " tare."
+    },
+    {
+      "t" : 1.618,
+      "text" : " Total = net k"
+    },
+    {
+      "t" : 1.661,
+      "text" : "g ×"
+    },
+    {
+      "t" : 1.666,
+      "text" : " price per kg.\")\nt"
+    },
+    {
+      "t" : 1.709,
+      "text" : "bl = Table([Col"
+    },
+    {
+      "t" : 1.75,
+      "text" : "(\"Product\", products"
+    },
+    {
+      "t" : 1.781,
+      "text" : "), Col(\"Container\", contain"
+    },
+    {
+      "t" : 1.838,
+      "text" : "ers), Col(\"Tare"
+    },
+    {
+      "t" : 1.898,
+      "text" : " (g)\", tare"
+    },
+    {
+      "t" : 1.957,
+      "text" : ", \"number\"), Col(\""
+    },
+    {
+      "t" : 2.069,
+      "text" : "Price / kg\", price,"
+    },
+    {
+      "t" : 2.071,
+      "text" : " \"number\"), Col(\""
+    },
+    {
+      "t" : 2.117,
+      "text" : "Gross (g)\", gross"
+    },
+    {
+      "t" : 2.153,
+      "text" : ", \"number\"), Col(\""
+    },
+    {
+      "t" : 2.202,
+      "text" : "Net (g)\", net"
+    },
+    {
+      "t" : 2.269,
+      "text" : ", \"number\"), Col(\""
+    },
+    {
+      "t" : 2.318,
+      "text" : "Total"
+    },
+    {
+      "t" : 2.407,
+      "text" : "\","
+    },
+    {
+      "t" : 2.409,
+      "text" : " tot"
+    },
+    {
+      "t" : 2.459,
+      "text" : "al"
+    },
+    {
+      "t" : 2.5,
+      "text" : "Col"
+    },
+    {
+      "t" : 2.563,
+      "text" : ", \"number\")])\nproducts ="
+    },
+    {
+      "t" : 2.606,
+      "text" : " [\"Rol"
+    },
+    {
+      "t" : 2.641,
+      "text" : "led oats\", \"Bas"
+    },
+    {
+      "t" : 2.694,
+      "text" : "mati rice\", \"Red"
+    },
+    {
+      "t" : 2.697,
+      "text" : " lentils\", \"Alm"
+    },
+    {
+      "t" : 2.732,
+      "text" : "onds\", \""
+    },
+    {
+      "t" : 2.767,
+      "text" : "Ground co"
+    },
+    {
+      "t" : 2.807,
+      "text" : "ffee\", \"Laundry"
+    },
+    {
+      "t" : 2.845,
+      "text" : " pow"
+    },
+    {
+      "t" : 2.883,
+      "text" : "der\", \"Dish so"
+    },
+    {
+      "t" : 2.921,
+      "text" : "ap ("
+    },
+    {
+      "t" : 3.001,
+      "text" : "liquid)\"]\ncontain"
+    },
+    {
+      "t" : 3.006,
+      "text" : "ers = [\""
+    },
+    {
+      "t" : 3.047,
+      "text" : "Glass jar 1L\","
+    },
+    {
+      "t" : 3.096,
+      "text" : " \"C"
+    },
+    {
+      "t" : 3.138,
+      "text" : "ot"
+    },
+    {
+      "t" : 3.204,
+      "text" : "ton b"
+    },
+    {
+      "t" : 3.207,
+      "text" : "ag\", \"Gl"
+    },
+    {
+      "t" : 3.281,
+      "text" : "ass jar 750"
+    },
+    {
+      "t" : 3.353,
+      "text" : "ml\", \"Tin "
+    },
+    {
+      "t" : 3.451,
+      "text" : "500ml\", \"Steel"
+    },
+    {
+      "t" : 3.505,
+      "text" : " t"
+    },
+    {
+      "t" : 3.571,
+      "text" : "in\", \"C"
+    },
+    {
+      "t" : 3.663,
+      "text" : "ardboard t"
+    },
+    {
+      "t" : 3.665,
+      "text" : "ub\", \"Gl"
+    },
+    {
+      "t" : 3.725,
+      "text" : "ass bottle "
+    },
+    {
+      "t" : 3.78,
+      "text" : "1L\"]\ntare ="
+    },
+    {
+      "t" : 3.841,
+      "text" : " [420"
+    },
+    {
+      "t" : 3.914,
+      "text" : ", 35"
+    },
+    {
+      "t" : 3.969,
+      "text" : ", 350, 180"
+    },
+    {
+      "t" : 4.022,
+      "text" : ", 150"
+    },
+    {
+      "t" : 4.073,
+      "text" : ", 120"
+    },
+    {
+      "t" : 4.123,
+      "text" : ", 480"
+    },
+    {
+      "t" : 4.177,
+      "text" : "]\nprice = [2.8"
+    },
+    {
+      "t" : 4.233,
+      "text" : ", 3"
+    },
+    {
+      "t" : 4.318,
+      "text" : ".4, 3"
+    },
+    {
+      "t" : 4.319,
+      "text" : ".9, 14"
+    },
+    {
+      "t" : 4.369,
+      "text" : ".5, 22"
+    },
+    {
+      "t" : 4.461,
+      "text" : ","
+    },
+    {
+      "t" : 4.525,
+      "text" : " 4.2, 5"
+    },
+    {
+      "t" : 4.605,
+      "text" : ".6]\ngross = ["
+    },
+    {
+      "t" : 4.687,
+      "text" : "1420"
+    },
+    {
+      "t" : 4.776,
+      "text" : ", 1"
+    },
+    {
+      "t" : 4.868,
+      "text" : "035"
+    },
+    {
+      "t" : 4.951,
+      "text" : ", 1100"
+    },
+    {
+      "t" : 5.038,
+      "text" : ", 680"
+    },
+    {
+      "t" : 5.167,
+      "text" : ", 650"
+    },
+    {
+      "t" : 5.172,
+      "text" : ", 1620"
+    },
+    {
+      "t" : 5.266,
+      "text" : ", 1480]\nnet ="
+    },
+    {
+      "t" : 5.353,
+      "text" : " [1"
+    },
+    {
+      "t" : 5.441,
+      "text" : "000, 1"
+    },
+    {
+      "t" : 5.532,
+      "text" : "000, 750, 500"
+    },
+    {
+      "t" : 5.614,
+      "text" : ", 500, 1500"
+    },
+    {
+      "t" : 5.744,
+      "text" : ", 1000]\ntotal"
+    },
+    {
+      "t" : 5.751,
+      "text" : "Col = [\"$2."
+    },
+    {
+      "t" : 5.846,
+      "text" : "80\", \"$3.40\","
+    },
+    {
+      "t" : 5.946,
+      "text" : " \"$2.93\", \"$"
+    },
+    {
+      "t" : 6.035,
+      "text" : "7.25\", \"$11"
+    },
+    {
+      "t" : 6.122,
+      "text" : ".00\", \"$6"
+    },
+    {
+      "t" : 6.272,
+      "text" : ".30\", \"$5.60"
+    },
+    {
+      "t" : 6.274,
+      "text" : "\"]\nnote ="
+    },
+    {
+      "t" : 6.362,
+      "text" : " Callout(\"info\", \"T"
+    },
+    {
+      "t" : 6.442,
+      "text" : "ip\", \"Weigh each"
+    },
+    {
+      "t" : 6.516,
+      "text" : " empty container at the till"
+    },
+    {
+      "t" : 6.65,
+      "text" : " before"
+    },
+    {
+      "t" : 6.654,
+      "text" : " filling and"
+    },
+    {
+      "t" : 6.746,
+      "text" : " note"
+    },
+    {
+      "t" : 6.859,
+      "text" : " the"
+    },
+    {
+      "t" : 6.86,
+      "text" : " tare we"
+    },
+    {
+      "t" : 6.93,
+      "text" : "ight on the l"
+    },
+    {
+      "t" : 7.022,
+      "text" : "id or"
+    },
+    {
+      "t" : 7.102,
+      "text" : " base"
+    },
+    {
+      "t" : 7.177,
+      "text" : ".\")\ntotalsHe"
+    },
+    {
+      "t" : 7.26,
+      "text" : "ader = InlineHeader"
+    },
+    {
+      "t" : 7.39,
+      "text" : "(\"Example Bas"
+    },
+    {
+      "t" : 7.393,
+      "text" : "ket Summ"
+    },
+    {
+      "t" : 7.472,
+      "text" : "ary\", \"Sum of the"
+    },
+    {
+      "t" : 7.544,
+      "text" : " items"
+    },
+    {
+      "t" : 7.633,
+      "text" : " above\")\ntotals = Ent"
+    },
+    {
+      "t" : 7.748,
+      "text" : "ityList([r"
+    },
+    {
+      "t" : 8.074,
+      "text" : "1, r2, r3],"
+    },
+    {
+      "t" : 8.14,
+      "text" : " \"default"
+    },
+    {
+      "t" : 8.214,
+      "text" : "\","
+    },
+    {
+      "t" : 8.307,
+      "text" : " h,"
+    },
+    {
+      "t" : 8.398,
+      "text" : " f)\nr1 = {"
+    },
+    {
+      "t" : 8.482,
+      "text" : " left: \"Total net"
+    },
+    {
+      "t" : 8.586,
+      "text" : " weight\", right: \"5"
+    },
+    {
+      "t" : 8.664,
+      "text" : ".25 kg\", right"
+    },
+    {
+      "t" : 8.734,
+      "text" : "Variant: \"number\" }"
+    },
+    {
+      "t" : 8.819,
+      "text" : "\nr2 = { left:"
+    },
+    {
+      "t" : 8.899,
+      "text" : " \"Total tare weight\","
+    },
+    {
+      "t" : 8.977,
+      "text" : " right: \"1.735"
+    },
+    {
+      "t" : 9.054,
+      "text" : " kg\", rightVari"
+    },
+    {
+      "t" : 9.132,
+      "text" : "ant: \"number\" }\nr"
+    },
+    {
+      "t" : 9.212,
+      "text" : "3 = { left: \""
+    },
+    {
+      "t" : 9.33,
+      "text" : "Number"
+    },
+    {
+      "t" : 9.333,
+      "text" : " of items\", right: \"7\","
+    },
+    {
+      "t" : 9.408,
+      "text" : " rightVariant: \"number"
+    },
+    {
+      "t" : 9.496,
+      "text" : "\" }\nh = { left:"
+    },
+    {
+      "t" : 9.569,
+      "text" : " \"Summary\", right: \""
+    },
+    {
+      "t" : 9.647,
+      "text" : "Value\" }\nf = {"
+    },
+    {
+      "t" : 9.731,
+      "text" : " left: \"Basket total\","
+    },
+    {
+      "t" : 9.815,
+      "text" : " right: \"$39.28\","
+    },
+    {
+      "t" : 10.024,
+      "text" : " rightVariant: \"number"
+    },
+    {
+      "t" : 10.027,
+      "text" : "\" }"
+    }
+  ],
+  "createdAt" : "2026-11-11T11:02:35Z",
+  "effort" : "low",
+  "format" : "openui-recording",
+  "inputTokens" : 14500,
+  "library" : "react-ui",
+  "model" : "claude-sonnet-5-5",
+  "outputTokens" : 756,
+  "request" : "A refill shop shopping list with container tare weights, product price per kilogram and example totals in a table.",
+  "servedBy" : "claude-sonnet-5-5",
+  "stopReason" : "end_turn",
+  "version" : 1
+}

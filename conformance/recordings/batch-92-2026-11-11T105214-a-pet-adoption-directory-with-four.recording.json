@@ -1,0 +1,732 @@
+{
+  "batchRequest" : {
+    "model" : "haiku",
+    "number" : 92,
+    "request" : "A pet adoption directory with four animal portraits, ages, temperament tags and meet-and-greet buttons."
+  },
+  "chunks" : [
+    {
+      "t" : 1.168,
+      "text" : "root"
+    },
+    {
+      "t" : 1.349,
+      "text" : " = Stack([header"
+    },
+    {
+      "t" : 1.361,
+      "text" : ", c"
+    },
+    {
+      "t" : 1.389,
+      "text" : "ards])"
+    },
+    {
+      "t" : 1.435,
+      "text" : "\nheader = InlineHe"
+    },
+    {
+      "t" : 1.483,
+      "text" : "ader(\"Ad"
+    },
+    {
+      "t" : 1.519,
+      "text" : "o"
+    },
+    {
+      "t" : 1.542,
+      "text" : "ptable P"
+    },
+    {
+      "t" : 1.569,
+      "text" : "ets\", \"Four"
+    },
+    {
+      "t" : 1.595,
+      "text" : " fri"
+    },
+    {
+      "t" : 1.624,
+      "text" : "ends looking for a home\")"
+    },
+    {
+      "t" : 1.646,
+      "text" : "\ncards = Stack(["
+    },
+    {
+      "t" : 1.657,
+      "text" : "pet"
+    },
+    {
+      "t" : 1.687,
+      "text" : "A, petB,"
+    },
+    {
+      "t" : 1.718,
+      "text" : " petC, petD], \""
+    },
+    {
+      "t" : 1.752,
+      "text" : "row\", \"m"
+    },
+    {
+      "t" : 1.787,
+      "text" : "\", \"st"
+    },
+    {
+      "t" : 1.818,
+      "text" : "retch\", \"start"
+    },
+    {
+      "t" : 1.859,
+      "text" : "\", true)\npetA ="
+    },
+    {
+      "t" : 1.891,
+      "text" : " Card([phot"
+    },
+    {
+      "t" : 1.923,
+      "text" : "oA, n"
+    },
+    {
+      "t" : 1.977,
+      "text" : "ameA, "
+    },
+    {
+      "t" : 1.978,
+      "text" : "ageA, tagsA,"
+    },
+    {
+      "t" : 2.01,
+      "text" : " btnA])\nphotoA"
+    },
+    {
+      "t" : 2.059,
+      "text" : " = "
+    },
+    {
+      "t" : 2.06,
+      "text" : "ImageBlock(\"https://"
+    },
+    {
+      "t" : 2.095,
+      "text" : "images.unsplash.com"
+    },
+    {
+      "t" : 2.129,
+      "text" : "/photo-1543"
+    },
+    {
+      "t" : 2.168,
+      "text" : "466"
+    },
+    {
+      "t" : 2.201,
+      "text" : "835"
+    },
+    {
+      "t" : 2.263,
+      "text" : "-00"
+    },
+    {
+      "t" : 2.294,
+      "text" : "a"
+    },
+    {
+      "t" : 2.331,
+      "text" : "7"
+    },
+    {
+      "t" : 2.333,
+      "text" : "907"
+    },
+    {
+      "t" : 2.372,
+      "text" : "e"
+    },
+    {
+      "t" : 2.413,
+      "text" : "9de"
+    },
+    {
+      "t" : 2.451,
+      "text" : "1?w"
+    },
+    {
+      "t" : 2.495,
+      "text" : "=600"
+    },
+    {
+      "t" : 2.537,
+      "text" : "\", \"Gol"
+    },
+    {
+      "t" : 2.578,
+      "text" : "den retriever pu"
+    },
+    {
+      "t" : 2.617,
+      "text" : "ppy\")\nnameA ="
+    },
+    {
+      "t" : 2.66,
+      "text" : " C"
+    },
+    {
+      "t" : 2.704,
+      "text" : "ardHeader(\"Bi"
+    },
+    {
+      "t" : 2.742,
+      "text" : "sc"
+    },
+    {
+      "t" : 2.785,
+      "text" : "uit\", \"Gol"
+    },
+    {
+      "t" : 2.825,
+      "text" : "den"
+    },
+    {
+      "t" : 2.91,
+      "text" : " Retriever\")\nageA"
+    },
+    {
+      "t" : 2.952,
+      "text" : " = TextContent(\""
+    },
+    {
+      "t" : 3.003,
+      "text" : "Age: 1"
+    },
+    {
+      "t" : 3.054,
+      "text" : " year\", \"small\")\nt"
+    },
+    {
+      "t" : 3.105,
+      "text" : "agsA = TagBl"
+    },
+    {
+      "t" : 3.149,
+      "text" : "ock([\"Playful\", \""
+    },
+    {
+      "t" : 3.189,
+      "text" : "Fri"
+    },
+    {
+      "t" : 3.213,
+      "text" : "endly\", \"Good with"
+    },
+    {
+      "t" : 3.258,
+      "text" : " kids\"])\nbtnA"
+    },
+    {
+      "t" : 3.26,
+      "text" : " = Button(\"Meet &"
+    },
+    {
+      "t" : 3.317,
+      "text" : " Greet\", @ToA"
+    },
+    {
+      "t" : 3.41,
+      "text" : "ssistant(\"Sch"
+    },
+    {
+      "t" : 3.411,
+      "text" : "edule a meet and greet"
+    },
+    {
+      "t" : 3.518,
+      "text" : " with Biscuit\"),"
+    },
+    {
+      "t" : 3.57,
+      "text" : " \"primary\")\npetB ="
+    },
+    {
+      "t" : 3.628,
+      "text" : " Card([photoB, n"
+    },
+    {
+      "t" : 3.674,
+      "text" : "ameB, ageB, t"
+    },
+    {
+      "t" : 3.719,
+      "text" : "agsB, btnB])"
+    },
+    {
+      "t" : 3.774,
+      "text" : "\nphotoB = Image"
+    },
+    {
+      "t" : 3.831,
+      "text" : "Block(\"https://images."
+    },
+    {
+      "t" : 3.832,
+      "text" : "unsplash.com/phot"
+    },
+    {
+      "t" : 3.877,
+      "text" : "o-1514"
+    },
+    {
+      "t" : 3.924,
+      "text" : "888"
+    },
+    {
+      "t" : 3.977,
+      "text" : "286"
+    },
+    {
+      "t" : 4.031,
+      "text" : "974"
+    },
+    {
+      "t" : 4.117,
+      "text" : "-6"
+    },
+    {
+      "t" : 4.171,
+      "text" : "c"
+    },
+    {
+      "t" : 4.225,
+      "text" : "03"
+    },
+    {
+      "t" : 4.3,
+      "text" : "e"
+    },
+    {
+      "t" : 4.4,
+      "text" : "2"
+    },
+    {
+      "t" : 4.496,
+      "text" : "ca1"
+    },
+    {
+      "t" : 4.575,
+      "text" : "dba"
+    },
+    {
+      "t" : 4.576,
+      "text" : "?w=600\", \"T"
+    },
+    {
+      "t" : 4.627,
+      "text" : "abby cat res"
+    },
+    {
+      "t" : 4.676,
+      "text" : "ting\")"
+    },
+    {
+      "t" : 4.728,
+      "text" : "\nnameB = CardH"
+    },
+    {
+      "t" : 4.781,
+      "text" : "eader(\"M"
+    },
+    {
+      "t" : 4.838,
+      "text" : "och"
+    },
+    {
+      "t" : 4.896,
+      "text" : "i\", \"Dom"
+    },
+    {
+      "t" : 4.955,
+      "text" : "estic Sh"
+    },
+    {
+      "t" : 5.017,
+      "text" : "orthair"
+    },
+    {
+      "t" : 5.073,
+      "text" : " Cat\")\nageB ="
+    },
+    {
+      "t" : 5.129,
+      "text" : " TextContent(\"Age:"
+    },
+    {
+      "t" : 5.218,
+      "text" : " 3 years\", \"small\")"
+    },
+    {
+      "t" : 5.276,
+      "text" : "\ntagsB = Tag"
+    },
+    {
+      "t" : 5.342,
+      "text" : "Block([\"Calm"
+    },
+    {
+      "t" : 5.409,
+      "text" : "\", \"Aff"
+    },
+    {
+      "t" : 5.447,
+      "text" : "ectionate\", \"Ind"
+    },
+    {
+      "t" : 5.512,
+      "text" : "oor"
+    },
+    {
+      "t" : 5.513,
+      "text" : "\""
+    },
+    {
+      "t" : 5.588,
+      "text" : "])\nbtnB = Button"
+    },
+    {
+      "t" : 5.648,
+      "text" : "(\"Meet & Greet"
+    },
+    {
+      "t" : 5.71,
+      "text" : "\", @ToAssistant"
+    },
+    {
+      "t" : 5.775,
+      "text" : "(\"Schedule a meet"
+    },
+    {
+      "t" : 5.84,
+      "text" : " and greet with Mochi"
+    },
+    {
+      "t" : 5.942,
+      "text" : "\"), \"prim"
+    },
+    {
+      "t" : 5.944,
+      "text" : "ary\")\npetC = Card"
+    },
+    {
+      "t" : 6.009,
+      "text" : "([photoC, nameC"
+    },
+    {
+      "t" : 6.068,
+      "text" : ", ageC, tags"
+    },
+    {
+      "t" : 6.133,
+      "text" : "C, btnC])\nphot"
+    },
+    {
+      "t" : 6.199,
+      "text" : "oC = ImageBl"
+    },
+    {
+      "t" : 6.262,
+      "text" : "ock(\"https://images.uns"
+    },
+    {
+      "t" : 6.333,
+      "text" : "plash.com/photo-"
+    },
+    {
+      "t" : 6.454,
+      "text" : "1583"
+    },
+    {
+      "t" : 6.519,
+      "text" : "511"
+    },
+    {
+      "t" : 6.592,
+      "text" : "655"
+    },
+    {
+      "t" : 6.651,
+      "text" : "857"
+    },
+    {
+      "t" : 6.709,
+      "text" : "-d"
+    },
+    {
+      "t" : 6.778,
+      "text" : "19"
+    },
+    {
+      "t" : 6.838,
+      "text" : "b"
+    },
+    {
+      "t" : 6.909,
+      "text" : "40a"
+    },
+    {
+      "t" : 7.007,
+      "text" : "7"
+    },
+    {
+      "t" : 7.065,
+      "text" : "a54"
+    },
+    {
+      "t" : 7.108,
+      "text" : "e"
+    },
+    {
+      "t" : 7.214,
+      "text" : "?w=600\", \"G"
+    },
+    {
+      "t" : 7.379,
+      "text" : "ray and"
+    },
+    {
+      "t" : 7.505,
+      "text" : " white rabbit\")\nn"
+    },
+    {
+      "t" : 7.508,
+      "text" : "ameC = CardHeader"
+    },
+    {
+      "t" : 7.58,
+      "text" : "(\"Cl"
+    },
+    {
+      "t" : 7.655,
+      "text" : "over\", \"Hol"
+    },
+    {
+      "t" : 7.73,
+      "text" : "land"
+    },
+    {
+      "t" : 7.805,
+      "text" : " Lop"
+    },
+    {
+      "t" : 7.888,
+      "text" : " Rabbit\")\nage"
+    },
+    {
+      "t" : 7.97,
+      "text" : "C = TextContent(\""
+    },
+    {
+      "t" : 8.053,
+      "text" : "Age: 2 years\", \""
+    },
+    {
+      "t" : 8.136,
+      "text" : "small\")\ntagsC ="
+    },
+    {
+      "t" : 8.291,
+      "text" : " TagBlock([\""
+    },
+    {
+      "t" : 8.362,
+      "text" : "Gentle\", \"Qui"
+    },
+    {
+      "t" : 8.453,
+      "text" : "et\", \"Lit"
+    },
+    {
+      "t" : 8.527,
+      "text" : "ter tr"
+    },
+    {
+      "t" : 8.601,
+      "text" : "ained\"])\nbtnC ="
+    },
+    {
+      "t" : 8.682,
+      "text" : " Button(\"Meet &"
+    },
+    {
+      "t" : 8.683,
+      "text" : " Greet\", @ToAss"
+    },
+    {
+      "t" : 8.766,
+      "text" : "istant(\"Schedule a"
+    },
+    {
+      "t" : 8.859,
+      "text" : " meet and greet with Cl"
+    },
+    {
+      "t" : 8.944,
+      "text" : "over\"), \"primary\")"
+    },
+    {
+      "t" : 9.068,
+      "text" : "\npetD = Card([photo"
+    },
+    {
+      "t" : 9.07,
+      "text" : "D, nameD, age"
+    },
+    {
+      "t" : 9.157,
+      "text" : "D, tagsD, bt"
+    },
+    {
+      "t" : 9.229,
+      "text" : "nD])\nphotoD ="
+    },
+    {
+      "t" : 9.314,
+      "text" : " ImageBlock(\"https"
+    },
+    {
+      "t" : 9.396,
+      "text" : "://images.unsplash."
+    },
+    {
+      "t" : 9.527,
+      "text" : "com/photo-1518717"
+    },
+    {
+      "t" : 9.683,
+      "text" : "758"
+    },
+    {
+      "t" : 9.766,
+      "text" : "536"
+    },
+    {
+      "t" : 9.846,
+      "text" : "-85"
+    },
+    {
+      "t" : 9.929,
+      "text" : "ae29"
+    },
+    {
+      "t" : 9.93,
+      "text" : "035"
+    },
+    {
+      "t" : 10.02,
+      "text" : "b"
+    },
+    {
+      "t" : 10.17,
+      "text" : "6d?w=600\", \""
+    },
+    {
+      "t" : 10.172,
+      "text" : "Grey d"
+    },
+    {
+      "t" : 10.35,
+      "text" : "og with"
+    },
+    {
+      "t" : 10.45,
+      "text" : " a"
+    },
+    {
+      "t" : 10.536,
+      "text" : " sunny"
+    },
+    {
+      "t" : 10.678,
+      "text" : " face\")\nnameD = C"
+    },
+    {
+      "t" : 10.765,
+      "text" : "ardHeader(\""
+    },
+    {
+      "t" : 10.806,
+      "text" : "Ran"
+    },
+    {
+      "t" : 10.955,
+      "text" : "ger\", \"Austral"
+    },
+    {
+      "t" : 11.088,
+      "text" : "ian Shepherd"
+    },
+    {
+      "t" : 11.181,
+      "text" : " Mix\")\nageD ="
+    },
+    {
+      "t" : 11.264,
+      "text" : " TextContent(\"Age:"
+    },
+    {
+      "t" : 11.342,
+      "text" : " 5 years\", \"small\")"
+    },
+    {
+      "t" : 11.425,
+      "text" : "\ntagsD = Tag"
+    },
+    {
+      "t" : 11.598,
+      "text" : "Block([\"Energet"
+    },
+    {
+      "t" : 11.623,
+      "text" : "ic\", \"Loyal\","
+    },
+    {
+      "t" : 11.698,
+      "text" : " \"Trained"
+    },
+    {
+      "t" : 11.782,
+      "text" : "\"])\nbtnD ="
+    },
+    {
+      "t" : 11.867,
+      "text" : " Button(\"Meet & Gre"
+    },
+    {
+      "t" : 11.955,
+      "text" : "et\", @ToAssist"
+    },
+    {
+      "t" : 12.053,
+      "text" : "ant(\"Schedule a me"
+    },
+    {
+      "t" : 12.152,
+      "text" : "et and greet with Ran"
+    },
+    {
+      "t" : 12.256,
+      "text" : "ger\"), \"primary\")"
+    }
+  ],
+  "createdAt" : "2026-11-11T10:52:14Z",
+  "effort" : "low",
+  "format" : "openui-recording",
+  "inputTokens" : 14505,
+  "library" : "react-ui",
+  "model" : "claude-haiku-5-5",
+  "outputTokens" : 919,
+  "request" : "A pet adoption directory with four animal portraits, ages, temperament tags and meet-and-greet buttons.",
+  "servedBy" : "claude-haiku-5-5",
+  "stopReason" : "end_turn",
+  "version" : 1
+}

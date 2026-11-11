@@ -1,0 +1,584 @@
+{
+  "batchRequest" : {
+    "model" : "sonnet",
+    "number" : 117,
+    "request" : "A community tool borrowing form with tool select, loan dates, deposit acknowledgment and a short care checklist."
+  },
+  "chunks" : [
+    {
+      "t" : 1.381,
+      "text" : "root = Stack([header,"
+    },
+    {
+      "t" : 1.395,
+      "text" : " inf"
+    },
+    {
+      "t" : 1.411,
+      "text" : "oCall"
+    },
+    {
+      "t" : 1.522,
+      "text" : "out, form])\nheader = C"
+    },
+    {
+      "t" : 1.559,
+      "text" : "ardHeader(\"Community"
+    },
+    {
+      "t" : 1.612,
+      "text" : " Tool Library"
+    },
+    {
+      "t" : 1.643,
+      "text" : "\", \"Borrow a t"
+    },
+    {
+      "t" : 1.644,
+      "text" : "ool for your next"
+    },
+    {
+      "t" : 1.681,
+      "text" : " project\")\ninfoCallout"
+    },
+    {
+      "t" : 1.719,
+      "text" : " = Callout(\"info\", \""
+    },
+    {
+      "t" : 1.755,
+      "text" : "Deposit required"
+    },
+    {
+      "t" : 1.793,
+      "text" : "\", \"A refundable de"
+    },
+    {
+      "t" : 1.831,
+      "text" : "posit is held until"
+    },
+    {
+      "t" : 1.872,
+      "text" : " the"
+    },
+    {
+      "t" : 1.961,
+      "text" : " tool is returned in good cond"
+    },
+    {
+      "t" : 2.009,
+      "text" : "ition.\")\nform = Form"
+    },
+    {
+      "t" : 2.013,
+      "text" : "(\"borrow\", btns,"
+    },
+    {
+      "t" : 2.057,
+      "text" : " [n"
+    },
+    {
+      "t" : 2.094,
+      "text" : "ameField, em"
+    },
+    {
+      "t" : 2.149,
+      "text" : "ailField, toolField, start"
+    },
+    {
+      "t" : 2.225,
+      "text" : "Field"
+    },
+    {
+      "t" : 2.227,
+      "text" : ", endField, care"
+    },
+    {
+      "t" : 2.279,
+      "text" : "Field, depositField])"
+    },
+    {
+      "t" : 2.344,
+      "text" : "\nnameField = FormContro"
+    },
+    {
+      "t" : 2.403,
+      "text" : "l(\"Full Name\","
+    },
+    {
+      "t" : 2.472,
+      "text" : " Input(\"name\", \"Your"
+    },
+    {
+      "t" : 2.476,
+      "text" : " name\", \"text\", { required:"
+    },
+    {
+      "t" : 2.526,
+      "text" : " true, minLength: 2"
+    },
+    {
+      "t" : 2.639,
+      "text" : " }))\nemailField ="
+    },
+    {
+      "t" : 2.696,
+      "text" : " FormControl(\"Email\","
+    },
+    {
+      "t" : 2.747,
+      "text" : " Input(\"email\", \"you@"
+    },
+    {
+      "t" : 2.794,
+      "text" : "example.com\", \"email\", {"
+    },
+    {
+      "t" : 2.841,
+      "text" : " required: true, email: true }"
+    },
+    {
+      "t" : 2.889,
+      "text" : "))\ntoolField = Form"
+    },
+    {
+      "t" : 2.942,
+      "text" : "Control(\"Tool\","
+    },
+    {
+      "t" : 2.983,
+      "text" : " Select(\"t"
+    },
+    {
+      "t" : 3.044,
+      "text" : "ool\", toolOpts,"
+    },
+    {
+      "t" : 3.093,
+      "text" : " \"Select a tool..."
+    },
+    {
+      "t" : 3.149,
+      "text" : "\", { required: true }))"
+    },
+    {
+      "t" : 3.211,
+      "text" : "\ntoolOpts = ["
+    },
+    {
+      "t" : 3.258,
+      "text" : "SelectItem(\"drill"
+    },
+    {
+      "t" : 3.321,
+      "text" : "\", \"Cordless Dr"
+    },
+    {
+      "t" : 3.397,
+      "text" : "ill\"), SelectItem"
+    },
+    {
+      "t" : 3.469,
+      "text" : "(\"saw\", \"Circular"
+    },
+    {
+      "t" : 3.614,
+      "text" : " Saw\"), Select"
+    },
+    {
+      "t" : 3.621,
+      "text" : "Item(\"ladder\", \""
+    },
+    {
+      "t" : 3.736,
+      "text" : "Extension Ladder\""
+    },
+    {
+      "t" : 3.742,
+      "text" : "), SelectItem(\"s"
+    },
+    {
+      "t" : 3.81,
+      "text" : "ander\", \"Or"
+    },
+    {
+      "t" : 3.876,
+      "text" : "bital Sander\"), S"
+    },
+    {
+      "t" : 3.951,
+      "text" : "electItem(\"pressure"
+    },
+    {
+      "t" : 4.021,
+      "text" : "\", \"Pressure Wash"
+    },
+    {
+      "t" : 4.134,
+      "text" : "er\"), SelectItem"
+    },
+    {
+      "t" : 4.136,
+      "text" : "(\"t"
+    },
+    {
+      "t" : 4.205,
+      "text" : "iller\", \"Gar"
+    },
+    {
+      "t" : 4.281,
+      "text" : "den Tiller\")]"
+    },
+    {
+      "t" : 4.343,
+      "text" : "\nstartField = FormControl(\""
+    },
+    {
+      "t" : 4.417,
+      "text" : "Pickup Date\", D"
+    },
+    {
+      "t" : 4.542,
+      "text" : "atePicker(\"start"
+    },
+    {
+      "t" : 4.544,
+      "text" : "Date\", \"single\", { required"
+    },
+    {
+      "t" : 4.619,
+      "text" : ": true }))"
+    },
+    {
+      "t" : 4.697,
+      "text" : "\nendField = FormControl"
+    },
+    {
+      "t" : 4.814,
+      "text" : "(\"Return Date\", Dat"
+    },
+    {
+      "t" : 4.817,
+      "text" : "ePicker(\"endDate\","
+    },
+    {
+      "t" : 4.872,
+      "text" : " \"single\", { required: true }"
+    },
+    {
+      "t" : 4.933,
+      "text" : "), \"Lo"
+    },
+    {
+      "t" : 4.998,
+      "text" : "ans are typically up"
+    },
+    {
+      "t" : 5.055,
+      "text" : " to "
+    },
+    {
+      "t" : 5.107,
+      "text" : "7 days\")\ncareField ="
+    },
+    {
+      "t" : 5.16,
+      "text" : " FormControl(\"Care"
+    },
+    {
+      "t" : 5.216,
+      "text" : " Checklist\", care"
+    },
+    {
+      "t" : 5.264,
+      "text" : "G"
+    },
+    {
+      "t" : 5.347,
+      "text" : "roup, \"Please"
+    },
+    {
+      "t" : 5.404,
+      "text" : " confirm each"
+    },
+    {
+      "t" : 5.456,
+      "text" : " item"
+    },
+    {
+      "t" : 5.507,
+      "text" : "\")\ncareGroup = C"
+    },
+    {
+      "t" : 5.564,
+      "text" : "heckBoxGroup"
+    },
+    {
+      "t" : 5.566,
+      "text" : "(\"care"
+    },
+    {
+      "t" : 5.63,
+      "text" : "\", [c"
+    },
+    {
+      "t" : 5.692,
+      "text" : "1, c2, c3,"
+    },
+    {
+      "t" : 5.76,
+      "text" : " c4], { required: true })"
+    },
+    {
+      "t" : 5.83,
+      "text" : "\nc1 = Check"
+    },
+    {
+      "t" : 5.903,
+      "text" : "BoxItem(\"In"
+    },
+    {
+      "t" : 5.963,
+      "text" : "spect on"
+    },
+    {
+      "t" : 6.03,
+      "text" : " p"
+    },
+    {
+      "t" : 6.101,
+      "text" : "ickup\", \"I checked the"
+    },
+    {
+      "t" : 6.174,
+      "text" : " tool for dam"
+    },
+    {
+      "t" : 6.255,
+      "text" : "age before le"
+    },
+    {
+      "t" : 6.337,
+      "text" : "aving\", \"in"
+    },
+    {
+      "t" : 6.433,
+      "text" : "spect\")\nc2 ="
+    },
+    {
+      "t" : 6.524,
+      "text" : " CheckBoxItem"
+    },
+    {
+      "t" : 6.609,
+      "text" : "(\"Use"
+    },
+    {
+      "t" : 6.694,
+      "text" : " as"
+    },
+    {
+      "t" : 6.768,
+      "text" : " intended\", \"I will"
+    },
+    {
+      "t" : 6.886,
+      "text" : " only use the tool for its"
+    },
+    {
+      "t" : 6.89,
+      "text" : " designed pur"
+    },
+    {
+      "t" : 6.958,
+      "text" : "pose\", \"int"
+    },
+    {
+      "t" : 7.024,
+      "text" : "ended\")\nc3 = C"
+    },
+    {
+      "t" : 7.089,
+      "text" : "heckBoxItem(\""
+    },
+    {
+      "t" : 7.153,
+      "text" : "Clean before"
+    },
+    {
+      "t" : 7.225,
+      "text" : " return\", \"I will clean the"
+    },
+    {
+      "t" : 7.288,
+      "text" : " tool and rem"
+    },
+    {
+      "t" : 7.35,
+      "text" : "ove deb"
+    },
+    {
+      "t" : 7.467,
+      "text" : "ris\", \"cl"
+    },
+    {
+      "t" : 7.469,
+      "text" : "ean\")\nc4 = C"
+    },
+    {
+      "t" : 7.53,
+      "text" : "heckBoxItem(\""
+    },
+    {
+      "t" : 7.596,
+      "text" : "Report probl"
+    },
+    {
+      "t" : 7.683,
+      "text" : "ems\", \"I will report any dam"
+    },
+    {
+      "t" : 7.781,
+      "text" : "age or mal"
+    },
+    {
+      "t" : 7.85,
+      "text" : "function prom"
+    },
+    {
+      "t" : 7.924,
+      "text" : "ptly\", \"report\")\ndep"
+    },
+    {
+      "t" : 8.008,
+      "text" : "ositField = FormControl(\""
+    },
+    {
+      "t" : 8.15,
+      "text" : "Deposit\","
+    },
+    {
+      "t" : 8.229,
+      "text" : " depositG"
+    },
+    {
+      "t" : 8.313,
+      "text" : "roup)"
+    },
+    {
+      "t" : 8.315,
+      "text" : "\ndepositGroup = C"
+    },
+    {
+      "t" : 8.405,
+      "text" : "heckBoxGroup"
+    },
+    {
+      "t" : 8.518,
+      "text" : "(\"deposit\", [d"
+    },
+    {
+      "t" : 8.619,
+      "text" : "1], { required: true })"
+    },
+    {
+      "t" : 8.722,
+      "text" : "\nd1 = CheckB"
+    },
+    {
+      "t" : 8.812,
+      "text" : "oxItem(\"I ackn"
+    },
+    {
+      "t" : 8.902,
+      "text" : "owledge the deposit\","
+    },
+    {
+      "t" : 9.021,
+      "text" : " \"I"
+    },
+    {
+      "t" : 9.113,
+      "text" : " understand a $20 refund"
+    },
+    {
+      "t" : 9.184,
+      "text" : "able deposit is required"
+    },
+    {
+      "t" : 9.26,
+      "text" : " and may be for"
+    },
+    {
+      "t" : 9.331,
+      "text" : "feited for"
+    },
+    {
+      "t" : 9.407,
+      "text" : " dam"
+    },
+    {
+      "t" : 9.495,
+      "text" : "age or late"
+    },
+    {
+      "t" : 9.568,
+      "text" : " return\", \"dep"
+    },
+    {
+      "t" : 9.646,
+      "text" : "ositAck\")\nbtns ="
+    },
+    {
+      "t" : 9.721,
+      "text" : " Buttons([Button(\""
+    },
+    {
+      "t" : 9.789,
+      "text" : "Submit Request"
+    },
+    {
+      "t" : 9.872,
+      "text" : "\", @ToAssistant"
+    },
+    {
+      "t" : 9.96,
+      "text" : "(\"Submit t"
+    },
+    {
+      "t" : 10.034,
+      "text" : "ool borrowing request\"),"
+    },
+    {
+      "t" : 10.12,
+      "text" : " \"primary\"), Button(\""
+    },
+    {
+      "t" : 10.192,
+      "text" : "Cancel\", @To"
+    },
+    {
+      "t" : 10.288,
+      "text" : "Assistant(\"Canc"
+    },
+    {
+      "t" : 10.359,
+      "text" : "el borrowing request\"),"
+    },
+    {
+      "t" : 10.433,
+      "text" : " \"secondary\")])"
+    }
+  ],
+  "createdAt" : "2026-11-11T10:59:30Z",
+  "effort" : "low",
+  "format" : "openui-recording",
+  "inputTokens" : 14505,
+  "library" : "react-ui",
+  "model" : "claude-sonnet-5-5",
+  "outputTokens" : 869,
+  "request" : "A community tool borrowing form with tool select, loan dates, deposit acknowledgment and a short care checklist.",
+  "servedBy" : "claude-sonnet-5-5",
+  "stopReason" : "end_turn",
+  "version" : 1
+}

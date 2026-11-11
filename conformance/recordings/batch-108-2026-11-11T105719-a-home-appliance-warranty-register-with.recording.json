@@ -1,0 +1,604 @@
+{
+  "batchRequest" : {
+    "model" : "haiku",
+    "number" : 108,
+    "request" : "A home appliance warranty register with purchase dates, coverage expiry and buttons to view receipts."
+  },
+  "chunks" : [
+    {
+      "t" : 0.813,
+      "text" : "root = Stack(["
+    },
+    {
+      "t" : 1.081,
+      "text" : "header"
+    },
+    {
+      "t" : 1.082,
+      "text" : ", table"
+    },
+    {
+      "t" : 1.123,
+      "text" : ", act"
+    },
+    {
+      "t" : 1.182,
+      "text" : "ions"
+    },
+    {
+      "t" : 1.232,
+      "text" : "R"
+    },
+    {
+      "t" : 1.257,
+      "text" : "ow])\nheader = Inline"
+    },
+    {
+      "t" : 1.29,
+      "text" : "Header(\"Warranty"
+    },
+    {
+      "t" : 1.324,
+      "text" : " Register\", \"Track"
+    },
+    {
+      "t" : 1.376,
+      "text" : " co"
+    },
+    {
+      "t" : 1.451,
+      "text" : "verage for"
+    },
+    {
+      "t" : 1.497,
+      "text" : " your home appliances\")"
+    },
+    {
+      "t" : 1.499,
+      "text" : "\ntable = Table([col"
+    },
+    {
+      "t" : 1.632,
+      "text" : "A"
+    },
+    {
+      "t" : 1.669,
+      "text" : "ppliance, colB"
+    },
+    {
+      "t" : 1.708,
+      "text" : "rand, colPurchased"
+    },
+    {
+      "t" : 1.762,
+      "text" : ", colExpiry, col"
+    },
+    {
+      "t" : 1.763,
+      "text" : "Status, colReceip"
+    },
+    {
+      "t" : 1.799,
+      "text" : "ts])\ncolAppliance"
+    },
+    {
+      "t" : 1.84,
+      "text" : " = Col(\"Appliance"
+    },
+    {
+      "t" : 1.876,
+      "text" : "\", "
+    },
+    {
+      "t" : 1.939,
+      "text" : "[\"Refrigerator\","
+    },
+    {
+      "t" : 1.941,
+      "text" : " \"Wash"
+    },
+    {
+      "t" : 2.013,
+      "text" : "ing Machine\", \"D"
+    },
+    {
+      "t" : 2.055,
+      "text" : "ishwasher\", \"O"
+    },
+    {
+      "t" : 2.057,
+      "text" : "ven\", \"Microwave\""
+    },
+    {
+      "t" : 2.129,
+      "text" : "])\ncolBrand ="
+    },
+    {
+      "t" : 2.175,
+      "text" : " Col(\"Brand\", [\""
+    },
+    {
+      "t" : 2.221,
+      "text" : "Sam"
+    },
+    {
+      "t" : 2.274,
+      "text" : "sung\", \"L"
+    },
+    {
+      "t" : 2.334,
+      "text" : "G\", \"Bosch\","
+    },
+    {
+      "t" : 2.389,
+      "text" : " \"Whirlpool\","
+    },
+    {
+      "t" : 2.431,
+      "text" : " \"Panasonic\"])"
+    },
+    {
+      "t" : 2.473,
+      "text" : "\ncolPurchased ="
+    },
+    {
+      "t" : 2.509,
+      "text" : " Col(\"Purchased"
+    },
+    {
+      "t" : 2.55,
+      "text" : "\", [\"2023"
+    },
+    {
+      "t" : 2.662,
+      "text" : "-03-14"
+    },
+    {
+      "t" : 2.728,
+      "text" : "\", \"2022"
+    },
+    {
+      "t" : 2.729,
+      "text" : "-11"
+    },
+    {
+      "t" : 2.781,
+      "text" : "-02"
+    },
+    {
+      "t" : 2.862,
+      "text" : "\", \"2024"
+    },
+    {
+      "t" : 2.863,
+      "text" : "-01"
+    },
+    {
+      "t" : 2.911,
+      "text" : "-20"
+    },
+    {
+      "t" : 2.951,
+      "text" : "\", \"2021"
+    },
+    {
+      "t" : 2.994,
+      "text" : "-07"
+    },
+    {
+      "t" : 3.077,
+      "text" : "-08"
+    },
+    {
+      "t" : 3.119,
+      "text" : "\", \"2023-09"
+    },
+    {
+      "t" : 3.164,
+      "text" : "-30"
+    },
+    {
+      "t" : 3.209,
+      "text" : "\"])\ncolExpiry"
+    },
+    {
+      "t" : 3.317,
+      "text" : " = Col(\"Co"
+    },
+    {
+      "t" : 3.36,
+      "text" : "verage Expires\", [\""
+    },
+    {
+      "t" : 3.408,
+      "text" : "2026-03-14\", \""
+    },
+    {
+      "t" : 3.445,
+      "text" : "2025-11-02\", \""
+    },
+    {
+      "t" : 3.495,
+      "text" : "2027"
+    },
+    {
+      "t" : 3.496,
+      "text" : "-01-20\", \"2024"
+    },
+    {
+      "t" : 3.547,
+      "text" : "-07-08\", \"2026"
+    },
+    {
+      "t" : 3.596,
+      "text" : "-09-30\"])\ncol"
+    },
+    {
+      "t" : 3.643,
+      "text" : "Status = Col(\""
+    },
+    {
+      "t" : 3.71,
+      "text" : "Status\", ["
+    },
+    {
+      "t" : 3.779,
+      "text" : "stat"
+    },
+    {
+      "t" : 3.842,
+      "text" : "usF"
+    },
+    {
+      "t" : 3.893,
+      "text" : "rid"
+    },
+    {
+      "t" : 3.954,
+      "text" : "ge, statusW"
+    },
+    {
+      "t" : 4.018,
+      "text" : "as"
+    },
+    {
+      "t" : 4.089,
+      "text" : "her, statusDishwas"
+    },
+    {
+      "t" : 4.163,
+      "text" : "her, statusOven"
+    },
+    {
+      "t" : 4.246,
+      "text" : ", statusMicrowave"
+    },
+    {
+      "t" : 4.353,
+      "text" : "])\nstat"
+    },
+    {
+      "t" : 4.423,
+      "text" : "usFridge = Tag"
+    },
+    {
+      "t" : 4.497,
+      "text" : "(\"Active\", null"
+    },
+    {
+      "t" : 4.566,
+      "text" : ", \"sm\", \"success\")"
+    },
+    {
+      "t" : 4.632,
+      "text" : "\nstatusWasher ="
+    },
+    {
+      "t" : 4.695,
+      "text" : " Tag(\"Exp"
+    },
+    {
+      "t" : 4.766,
+      "text" : "i"
+    },
+    {
+      "t" : 4.854,
+      "text" : "ring"
+    },
+    {
+      "t" : 4.991,
+      "text" : " Soon\", null, \"sm"
+    },
+    {
+      "t" : 4.994,
+      "text" : "\", \"warning\")\nstatus"
+    },
+    {
+      "t" : 5.089,
+      "text" : "Dishwasher = T"
+    },
+    {
+      "t" : 5.16,
+      "text" : "ag(\"Active\", null, \""
+    },
+    {
+      "t" : 5.256,
+      "text" : "sm\", \"success\")\nstat"
+    },
+    {
+      "t" : 5.407,
+      "text" : "usOven = Tag(\""
+    },
+    {
+      "t" : 5.475,
+      "text" : "Expired\", null, \"s"
+    },
+    {
+      "t" : 5.536,
+      "text" : "m\", \"danger\")\nstat"
+    },
+    {
+      "t" : 5.611,
+      "text" : "usMicrowave ="
+    },
+    {
+      "t" : 5.675,
+      "text" : " Tag(\"Active\", null,"
+    },
+    {
+      "t" : 5.729,
+      "text" : " \"sm\", \"success\")"
+    },
+    {
+      "t" : 5.785,
+      "text" : "\ncolReceipts = Col"
+    },
+    {
+      "t" : 5.786,
+      "text" : "(\"Receipts\", ["
+    },
+    {
+      "t" : 5.845,
+      "text" : "receiptF"
+    },
+    {
+      "t" : 5.908,
+      "text" : "ridge, receiptW"
+    },
+    {
+      "t" : 5.967,
+      "text" : "asher, receiptDish"
+    },
+    {
+      "t" : 6.041,
+      "text" : "washer, receiptO"
+    },
+    {
+      "t" : 6.128,
+      "text" : "ven, receiptMicr"
+    },
+    {
+      "t" : 6.196,
+      "text" : "owave], \"action\")\nrece"
+    },
+    {
+      "t" : 6.269,
+      "text" : "iptFridge = Button"
+    },
+    {
+      "t" : 6.332,
+      "text" : "(\"View Receipt\", @"
+    },
+    {
+      "t" : 6.4,
+      "text" : "ToAssistant(\""
+    },
+    {
+      "t" : 6.458,
+      "text" : "Show receipt for Sam"
+    },
+    {
+      "t" : 6.522,
+      "text" : "sung Refrigerator"
+    },
+    {
+      "t" : 6.626,
+      "text" : "\"), \"sec"
+    },
+    {
+      "t" : 6.629,
+      "text" : "ondary\", \"norm"
+    },
+    {
+      "t" : 6.694,
+      "text" : "al\", \"small\")\nrecei"
+    },
+    {
+      "t" : 6.773,
+      "text" : "ptWasher = Button(\""
+    },
+    {
+      "t" : 6.844,
+      "text" : "View Receipt\", @"
+    },
+    {
+      "t" : 6.925,
+      "text" : "ToAssistant(\"Show"
+    },
+    {
+      "t" : 7.003,
+      "text" : " receipt for LG Wash"
+    },
+    {
+      "t" : 7.094,
+      "text" : "ing Machine\"), \"sec"
+    },
+    {
+      "t" : 7.2,
+      "text" : "ondary\", \"normal\", \""
+    },
+    {
+      "t" : 7.266,
+      "text" : "small\")\nreceiptDish"
+    },
+    {
+      "t" : 7.337,
+      "text" : "washer = Button(\"View"
+    },
+    {
+      "t" : 7.428,
+      "text" : " Receipt\", @To"
+    },
+    {
+      "t" : 7.496,
+      "text" : "Assistant(\"Show rece"
+    },
+    {
+      "t" : 7.566,
+      "text" : "ipt for Bosch"
+    },
+    {
+      "t" : 7.695,
+      "text" : " Dishwasher\"), \""
+    },
+    {
+      "t" : 7.696,
+      "text" : "secondary\", \"normal\","
+    },
+    {
+      "t" : 7.787,
+      "text" : " \"small\")\nreceiptO"
+    },
+    {
+      "t" : 7.888,
+      "text" : "ven = Button(\"View Rece"
+    },
+    {
+      "t" : 7.992,
+      "text" : "ipt\", @ToAss"
+    },
+    {
+      "t" : 8.108,
+      "text" : "istant(\"Show receipt"
+    },
+    {
+      "t" : 8.184,
+      "text" : " for Whirlpool"
+    },
+    {
+      "t" : 8.292,
+      "text" : " Oven\"), \"secondary"
+    },
+    {
+      "t" : 8.294,
+      "text" : "\", \"normal\", \"small\")"
+    },
+    {
+      "t" : 8.357,
+      "text" : "\nreceiptMicrow"
+    },
+    {
+      "t" : 8.464,
+      "text" : "ave = Button(\"View Rece"
+    },
+    {
+      "t" : 8.53,
+      "text" : "ipt\", @ToAss"
+    },
+    {
+      "t" : 8.604,
+      "text" : "istant(\"Show receipt"
+    },
+    {
+      "t" : 8.679,
+      "text" : " for Panasonic Micro"
+    },
+    {
+      "t" : 8.756,
+      "text" : "wave\"), \"secondary"
+    },
+    {
+      "t" : 8.758,
+      "text" : "\", \"normal\", \"small\")"
+    },
+    {
+      "t" : 8.884,
+      "text" : "\nactionsRow ="
+    },
+    {
+      "t" : 8.977,
+      "text" : " Bu"
+    },
+    {
+      "t" : 9.095,
+      "text" : "ttons([add"
+    },
+    {
+      "t" : 9.097,
+      "text" : "B"
+    },
+    {
+      "t" : 9.205,
+      "text" : "tn, exportBtn"
+    },
+    {
+      "t" : 9.324,
+      "text" : "])\naddBtn ="
+    },
+    {
+      "t" : 9.416,
+      "text" : " Button(\"Add Appliance"
+    },
+    {
+      "t" : 9.508,
+      "text" : "\", @ToAssistant"
+    },
+    {
+      "t" : 9.614,
+      "text" : "(\"Add a"
+    },
+    {
+      "t" : 9.704,
+      "text" : " new appliance to"
+    },
+    {
+      "t" : 9.8,
+      "text" : " the warranty register\"), \""
+    },
+    {
+      "t" : 9.891,
+      "text" : "primary\")\nexportBt"
+    },
+    {
+      "t" : 9.987,
+      "text" : "n = Button(\"Export"
+    },
+    {
+      "t" : 10.087,
+      "text" : " Register\", @ToAssist"
+    },
+    {
+      "t" : 10.237,
+      "text" : "ant(\"Export the war"
+    },
+    {
+      "t" : 10.24,
+      "text" : "ranty register\"), \"second"
+    },
+    {
+      "t" : 10.332,
+      "text" : "ary\")"
+    }
+  ],
+  "createdAt" : "2026-11-11T10:57:19Z",
+  "effort" : "low",
+  "format" : "openui-recording",
+  "inputTokens" : 14501,
+  "library" : "react-ui",
+  "model" : "claude-haiku-5-5",
+  "outputTokens" : 909,
+  "request" : "A home appliance warranty register with purchase dates, coverage expiry and buttons to view receipts.",
+  "servedBy" : "claude-haiku-5-5",
+  "stopReason" : "end_turn",
+  "version" : 1
+}

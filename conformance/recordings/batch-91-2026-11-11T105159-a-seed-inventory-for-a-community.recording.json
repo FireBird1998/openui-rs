@@ -1,0 +1,832 @@
+{
+  "batchRequest" : {
+    "model" : "sonnet",
+    "number" : 91,
+    "request" : "A seed inventory for a community garden: crop, variety, quantity and sowing month, with low-stock tags and a restock form."
+  },
+  "chunks" : [
+    {
+      "t" : 1.011,
+      "text" : "root = Stack([title,"
+    },
+    {
+      "t" : 1.356,
+      "text" : " k"
+    },
+    {
+      "t" : 1.381,
+      "text" : "pis, lowC"
+    },
+    {
+      "t" : 1.424,
+      "text" : "allout, tbl, form"
+    },
+    {
+      "t" : 1.452,
+      "text" : "Header, form"
+    },
+    {
+      "t" : 1.485,
+      "text" : "])\ntitle = TextContent"
+    },
+    {
+      "t" : 1.528,
+      "text" : "(\"Community Garden Se"
+    },
+    {
+      "t" : 1.559,
+      "text" : "ed Inventory\", \"large"
+    },
+    {
+      "t" : 1.592,
+      "text" : "-heavy\")\nkp"
+    },
+    {
+      "t" : 1.623,
+      "text" : "is = SnippetCard"
+    },
+    {
+      "t" : 1.652,
+      "text" : "Block([k1, k"
+    },
+    {
+      "t" : 1.728,
+      "text" : "2, k3])\nk1"
+    },
+    {
+      "t" : 1.762,
+      "text" : " = SnippetCard"
+    },
+    {
+      "t" : 1.764,
+      "text" : "Item(\"total\", k1l"
+    },
+    {
+      "t" : 1.796,
+      "text" : ", k1r)\nk1"
+    },
+    {
+      "t" : 1.833,
+      "text" : "l = IconText(k"
+    },
+    {
+      "t" : 1.869,
+      "text" : "1i,"
+    },
+    {
+      "t" : 1.9,
+      "text" : " \"neutral\", \"m\","
+    },
+    {
+      "t" : 1.936,
+      "text" : " \"Se"
+    },
+    {
+      "t" : 1.969,
+      "text" : "ed Varieties\", \"In"
+    },
+    {
+      "t" : 2.012,
+      "text" : " inventory\", false, \"hor"
+    },
+    {
+      "t" : 2.056,
+      "text" : "izontal\")\nk1i"
+    },
+    {
+      "t" : 2.099,
+      "text" : " = Icon(\"sprout"
+    },
+    {
+      "t" : 2.147,
+      "text" : "\", \"n"
+    },
+    {
+      "t" : 2.188,
+      "text" : "ature\")\nk1r = B"
+    },
+    {
+      "t" : 2.249,
+      "text" : "oldText(\"number\", \"8"
+    },
+    {
+      "t" : 2.252,
+      "text" : "\")\nk2 "
+    },
+    {
+      "t" : 2.323,
+      "text" : "= SnippetCardIt"
+    },
+    {
+      "t" : 2.363,
+      "text" : "em(\"pack"
+    },
+    {
+      "t" : 2.406,
+      "text" : "ets\", k2l, k2"
+    },
+    {
+      "t" : 2.452,
+      "text" : "r)\nk2l = I"
+    },
+    {
+      "t" : 2.454,
+      "text" : "conText(k2i, \""
+    },
+    {
+      "t" : 2.499,
+      "text" : "neutral\", \"m\", \""
+    },
+    {
+      "t" : 2.54,
+      "text" : "Total Packets\", \"All"
+    },
+    {
+      "t" : 2.587,
+      "text" : " cr"
+    },
+    {
+      "t" : 2.637,
+      "text" : "ops\", false, \"horizont"
+    },
+    {
+      "t" : 2.687,
+      "text" : "al\")\nk2i ="
+    },
+    {
+      "t" : 2.736,
+      "text" : " Icon(\"package\", \"sh"
+    },
+    {
+      "t" : 2.786,
+      "text" : "opping\")\nk2r ="
+    },
+    {
+      "t" : 2.826,
+      "text" : " BoldText(\"number\", \""
+    },
+    {
+      "t" : 2.881,
+      "text" : "283"
+    },
+    {
+      "t" : 2.954,
+      "text" : "\")\nk3 = Sn"
+    },
+    {
+      "t" : 2.956,
+      "text" : "ippetCardItem(\"low"
+    },
+    {
+      "t" : 3.002,
+      "text" : "\", k3l, k3r"
+    },
+    {
+      "t" : 3.056,
+      "text" : ")\nk3l = Icon"
+    },
+    {
+      "t" : 3.11,
+      "text" : "Text(k3i, \"war"
+    },
+    {
+      "t" : 3.155,
+      "text" : "ning\", \"m\", \"Low"
+    },
+    {
+      "t" : 3.201,
+      "text" : " Stock\", \"Under"
+    },
+    {
+      "t" : 3.274,
+      "text" : " 20 packets\", false,"
+    },
+    {
+      "t" : 3.275,
+      "text" : " \"horizontal\")\nk"
+    },
+    {
+      "t" : 3.323,
+      "text" : "3i = Icon(\"tri"
+    },
+    {
+      "t" : 3.369,
+      "text" : "angle-alert\", \"al"
+    },
+    {
+      "t" : 3.42,
+      "text" : "erts\")\nk3r ="
+    },
+    {
+      "t" : 3.469,
+      "text" : " BoldText(\"number\", \""
+    },
+    {
+      "t" : 3.517,
+      "text" : "3\")\nlowCallout"
+    },
+    {
+      "t" : 3.591,
+      "text" : " = Callout(\"warning\","
+    },
+    {
+      "t" : 3.593,
+      "text" : " \"Rest"
+    },
+    {
+      "t" : 3.645,
+      "text" : "ock needed\", \"Be"
+    },
+    {
+      "t" : 3.693,
+      "text" : "ans, Carrots and"
+    },
+    {
+      "t" : 3.741,
+      "text" : " Sunflowers are running"
+    },
+    {
+      "t" : 3.788,
+      "text" : " low."
+    },
+    {
+      "t" : 3.876,
+      "text" : "\")\ntbl = Table"
+    },
+    {
+      "t" : 3.877,
+      "text" : "([Col(\"Crop\","
+    },
+    {
+      "t" : 3.925,
+      "text" : " crops), Col(\"Vari"
+    },
+    {
+      "t" : 3.977,
+      "text" : "ety\", var"
+    },
+    {
+      "t" : 4.032,
+      "text" : "ieties), Col(\"Qu"
+    },
+    {
+      "t" : 4.086,
+      "text" : "antity\", q"
+    },
+    {
+      "t" : 4.14,
+      "text" : "ty, \"number\"), Col"
+    },
+    {
+      "t" : 4.2,
+      "text" : "(\"Sowing Month\","
+    },
+    {
+      "t" : 4.264,
+      "text" : " months"
+    },
+    {
+      "t" : 4.332,
+      "text" : "), Col(\"Status\", stat"
+    },
+    {
+      "t" : 4.385,
+      "text" : "uses)])\ncrops ="
+    },
+    {
+      "t" : 4.446,
+      "text" : " [\"Tomato\", \""
+    },
+    {
+      "t" : 4.506,
+      "text" : "Carrot\", \"L"
+    },
+    {
+      "t" : 4.568,
+      "text" : "ettuce\", \"Pea"
+    },
+    {
+      "t" : 4.636,
+      "text" : "\", \"Bean\", \""
+    },
+    {
+      "t" : 4.689,
+      "text" : "Pumpkin\", \""
+    },
+    {
+      "t" : 4.748,
+      "text" : "Sunflower\", \"Rad"
+    },
+    {
+      "t" : 4.809,
+      "text" : "ish\"]\nvarieties ="
+    },
+    {
+      "t" : 4.875,
+      "text" : " [\"Ro"
+    },
+    {
+      "t" : 4.93,
+      "text" : "ma\", \"N"
+    },
+    {
+      "t" : 4.985,
+      "text" : "antes\", \"But"
+    },
+    {
+      "t" : 5.045,
+      "text" : "ter"
+    },
+    {
+      "t" : 5.158,
+      "text" : "head\", \"S"
+    },
+    {
+      "t" : 5.212,
+      "text" : "ugar Snap\", \""
+    },
+    {
+      "t" : 5.215,
+      "text" : "Kent"
+    },
+    {
+      "t" : 5.276,
+      "text" : "ucky"
+    },
+    {
+      "t" : 5.336,
+      "text" : " Wonder\", \"S"
+    },
+    {
+      "t" : 5.391,
+      "text" : "ugar P"
+    },
+    {
+      "t" : 5.453,
+      "text" : "ie\", \"Mammoth"
+    },
+    {
+      "t" : 5.514,
+      "text" : "\", \"C"
+    },
+    {
+      "t" : 5.575,
+      "text" : "herry"
+    },
+    {
+      "t" : 5.669,
+      "text" : " Belle\"]\nqty ="
+    },
+    {
+      "t" : 5.673,
+      "text" : " [45"
+    },
+    {
+      "t" : 5.735,
+      "text" : ", 12, 60"
+    },
+    {
+      "t" : 5.793,
+      "text" : ", 38"
+    },
+    {
+      "t" : 5.858,
+      "text" : ", 15"
+    },
+    {
+      "t" : 5.949,
+      "text" : ", 30, 8"
+    },
+    {
+      "t" : 5.951,
+      "text" : ", 75"
+    },
+    {
+      "t" : 6.015,
+      "text" : "]\nmonths = [\"March\","
+    },
+    {
+      "t" : 6.078,
+      "text" : " \"April\", \"March"
+    },
+    {
+      "t" : 6.139,
+      "text" : "\", \"February"
+    },
+    {
+      "t" : 6.177,
+      "text" : "\", \"May\", \"May"
+    },
+    {
+      "t" : 6.24,
+      "text" : "\", \"April\", \"April"
+    },
+    {
+      "t" : 6.307,
+      "text" : "\"]\nstatuses = ["
+    },
+    {
+      "t" : 6.41,
+      "text" : "Tag(\"In"
+    },
+    {
+      "t" : 6.412,
+      "text" : " stock\", null, \"sm"
+    },
+    {
+      "t" : 6.476,
+      "text" : "\", \"success\"), Tag"
+    },
+    {
+      "t" : 6.554,
+      "text" : "(\"Low\", null, \"s"
+    },
+    {
+      "t" : 6.622,
+      "text" : "m\", \"danger\"),"
+    },
+    {
+      "t" : 6.727,
+      "text" : " Tag(\"In stock\", null"
+    },
+    {
+      "t" : 6.799,
+      "text" : ", \"sm\", \"success\""
+    },
+    {
+      "t" : 6.884,
+      "text" : "), Tag(\"In stock"
+    },
+    {
+      "t" : 6.967,
+      "text" : "\", null, \"sm\", \""
+    },
+    {
+      "t" : 7.042,
+      "text" : "success\"), Tag(\""
+    },
+    {
+      "t" : 7.125,
+      "text" : "Low\", null, \"sm\","
+    },
+    {
+      "t" : 7.25,
+      "text" : " \"danger\"), Tag"
+    },
+    {
+      "t" : 7.33,
+      "text" : "(\"In stock\", null, \""
+    },
+    {
+      "t" : 7.41,
+      "text" : "sm\", \"success\"),"
+    },
+    {
+      "t" : 7.492,
+      "text" : " Tag(\"Low\", null,"
+    },
+    {
+      "t" : 7.57,
+      "text" : " \"sm\", \"danger\""
+    },
+    {
+      "t" : 7.642,
+      "text" : "), Tag(\"In stock"
+    },
+    {
+      "t" : 7.712,
+      "text" : "\", null, \"sm\", \""
+    },
+    {
+      "t" : 7.788,
+      "text" : "success\")]\nformHeader"
+    },
+    {
+      "t" : 7.869,
+      "text" : " = InlineHeader(\""
+    },
+    {
+      "t" : 7.945,
+      "text" : "Restock Request\", \""
+    },
+    {
+      "t" : 8.022,
+      "text" : "Order"
+    },
+    {
+      "t" : 8.094,
+      "text" : " more"
+    },
+    {
+      "t" : 8.167,
+      "text" : " seeds for the gar"
+    },
+    {
+      "t" : 8.24,
+      "text" : "den\")\nform = Form(\""
+    },
+    {
+      "t" : 8.317,
+      "text" : "restock\", btns, [f"
+    },
+    {
+      "t" : 8.397,
+      "text" : "C"
+    },
+    {
+      "t" : 8.467,
+      "text" : "rop, fQ"
+    },
+    {
+      "t" : 8.543,
+      "text" : "ty, fM"
+    },
+    {
+      "t" : 8.626,
+      "text" : "onth, fNotes])"
+    },
+    {
+      "t" : 8.697,
+      "text" : "\nfCrop = Form"
+    },
+    {
+      "t" : 8.774,
+      "text" : "Control(\"Crop\","
+    },
+    {
+      "t" : 8.848,
+      "text" : " Select(\"crop\", c"
+    },
+    {
+      "t" : 8.926,
+      "text" : "ropO"
+    },
+    {
+      "t" : 9,
+      "text" : "pts, \"Select cr"
+    },
+    {
+      "t" : 9.076,
+      "text" : "op..."
+    },
+    {
+      "t" : 9.152,
+      "text" : "\", { required: true }))"
+    },
+    {
+      "t" : 9.228,
+      "text" : "\ncropOpts = [S"
+    },
+    {
+      "t" : 9.348,
+      "text" : "electItem(\"t"
+    },
+    {
+      "t" : 9.35,
+      "text" : "omato\", \"Tomato"
+    },
+    {
+      "t" : 9.42,
+      "text" : " - Roma\"), Sel"
+    },
+    {
+      "t" : 9.504,
+      "text" : "ectItem(\"carrot\","
+    },
+    {
+      "t" : 9.582,
+      "text" : " \"Carrot - N"
+    },
+    {
+      "t" : 9.657,
+      "text" : "antes\"), SelectIt"
+    },
+    {
+      "t" : 9.782,
+      "text" : "em(\"lettuce\", \""
+    },
+    {
+      "t" : 9.868,
+      "text" : "Lettuce - But"
+    },
+    {
+      "t" : 9.959,
+      "text" : "terhead\"), Select"
+    },
+    {
+      "t" : 10.037,
+      "text" : "Item(\"pea\", \""
+    },
+    {
+      "t" : 10.114,
+      "text" : "Pea - Sugar"
+    },
+    {
+      "t" : 10.197,
+      "text" : " Snap\"), SelectIt"
+    },
+    {
+      "t" : 10.349,
+      "text" : "em(\"bean\", \"B"
+    },
+    {
+      "t" : 10.456,
+      "text" : "ean - Kentucky"
+    },
+    {
+      "t" : 10.588,
+      "text" : " Wonder\"), Select"
+    },
+    {
+      "t" : 10.71,
+      "text" : "Item(\"pumpkin"
+    },
+    {
+      "t" : 10.712,
+      "text" : "\", \"Pumpkin"
+    },
+    {
+      "t" : 10.82,
+      "text" : " - Sugar Pie"
+    },
+    {
+      "t" : 10.9,
+      "text" : "\"), SelectItem(\""
+    },
+    {
+      "t" : 10.991,
+      "text" : "sunflower\", \"S"
+    },
+    {
+      "t" : 11.074,
+      "text" : "unflower - Mammo"
+    },
+    {
+      "t" : 11.158,
+      "text" : "th\"), SelectItem"
+    },
+    {
+      "t" : 11.296,
+      "text" : "(\"radish\", \"Radish"
+    },
+    {
+      "t" : 11.297,
+      "text" : " - Cherry Belle"
+    },
+    {
+      "t" : 11.376,
+      "text" : "\")]\nfQty = F"
+    },
+    {
+      "t" : 11.458,
+      "text" : "ormControl(\"Quantity"
+    },
+    {
+      "t" : 11.552,
+      "text" : " (packets)\", Input(\""
+    },
+    {
+      "t" : 11.653,
+      "text" : "quantity\", \"e"
+    },
+    {
+      "t" : 11.756,
+      "text" : ".g. 25"
+    },
+    {
+      "t" : 11.851,
+      "text" : "\", \"number\", { required: true"
+    },
+    {
+      "t" : 11.95,
+      "text" : ", min: 1 "
+    },
+    {
+      "t" : 12.035,
+      "text" : "}))\nfMonth ="
+    },
+    {
+      "t" : 12.187,
+      "text" : " FormControl(\"Plan"
+    },
+    {
+      "t" : 12.283,
+      "text" : "ned Sowing Month\","
+    },
+    {
+      "t" : 12.389,
+      "text" : " Select(\"month\", mon"
+    },
+    {
+      "t" : 12.46,
+      "text" : "thOpts, \"Select"
+    },
+    {
+      "t" : 12.556,
+      "text" : " month...\", { required: true }"
+    },
+    {
+      "t" : 12.559,
+      "text" : "))\nmonthOpts ="
+    },
+    {
+      "t" : 12.646,
+      "text" : " [SelectItem(\"fe"
+    },
+    {
+      "t" : 12.75,
+      "text" : "b\", \"February\"), Sel"
+    },
+    {
+      "t" : 12.854,
+      "text" : "ectItem(\"mar\", \""
+    },
+    {
+      "t" : 12.955,
+      "text" : "March\"), SelectItem"
+    },
+    {
+      "t" : 13.063,
+      "text" : "(\"apr\", \"April\"),"
+    },
+    {
+      "t" : 13.171,
+      "text" : " SelectItem(\"may\","
+    },
+    {
+      "t" : 13.266,
+      "text" : " \"May\")]\nfNot"
+    },
+    {
+      "t" : 13.368,
+      "text" : "es = FormControl(\""
+    },
+    {
+      "t" : 13.463,
+      "text" : "Notes\", TextArea(\""
+    },
+    {
+      "t" : 13.566,
+      "text" : "notes\", \"Sup"
+    },
+    {
+      "t" : 13.676,
+      "text" : "plier or"
+    },
+    {
+      "t" : 13.779,
+      "text" : " special"
+    },
+    {
+      "t" : 13.875,
+      "text" : " requests...\", 3))"
+    },
+    {
+      "t" : 13.973,
+      "text" : "\nbtns = Buttons(["
+    },
+    {
+      "t" : 14.081,
+      "text" : "Button(\"Submit Request"
+    },
+    {
+      "t" : 14.192,
+      "text" : "\", @ToAssistant"
+    },
+    {
+      "t" : 14.331,
+      "text" : "(\"Submit restock request\""
+    },
+    {
+      "t" : 14.439,
+      "text" : "), \"primary\"), Button"
+    },
+    {
+      "t" : 14.55,
+      "text" : "(\"Cl"
+    },
+    {
+      "t" : 14.66,
+      "text" : "ear\", @ToAssist"
+    },
+    {
+      "t" : 14.767,
+      "text" : "ant(\"Clear restock form"
+    },
+    {
+      "t" : 14.869,
+      "text" : "\"), \"secondary\")])"
+    }
+  ],
+  "createdAt" : "2026-11-11T10:51:59Z",
+  "effort" : "low",
+  "format" : "openui-recording",
+  "inputTokens" : 14509,
+  "library" : "react-ui",
+  "model" : "claude-sonnet-5-5",
+  "outputTokens" : 1386,
+  "request" : "A seed inventory for a community garden: crop, variety, quantity and sowing month, with low-stock tags and a restock form.",
+  "servedBy" : "claude-sonnet-5-5",
+  "stopReason" : "end_turn",
+  "version" : 1
+}
