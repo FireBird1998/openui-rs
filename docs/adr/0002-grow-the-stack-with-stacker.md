@@ -34,6 +34,14 @@ alone never sets `depth_limited`. This is a core bug, never
 bad input. Finished-tree walks (serialization, equality, schema/prompt
 rendering and freeing) remain uncapped, even inside a scoped entry.
 
+A debug build also panics once **1,024 segments past the ceiling** are nested
+(1,024 outside any entry), whichever walk grew them. A bug that makes every
+fresh segment look low nests them without end in an uncapped walk, and under
+mutation testing one such bug took about 7 GB a second and froze the worker
+Mac before the watchdog's next look (2026-11-11). At the stack a level was
+measured to take, 1,024 segments carry a walk some 260,000 levels deep, so a
+real tree doesn't reach it. Release builds are unchanged.
+
 Measured at opt-level 0 on 512 KiB threads, `tests/depth.rs` needed at most
 2 nested segments; `tests/drop.rs`'s raised-depth case needed 30. The
 respective ceilings are 16 (depth 256) and 633 (depth 20,000): **8× and

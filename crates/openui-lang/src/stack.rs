@@ -15,7 +15,8 @@
 //! walk; release builds use the stall channel to flag a cut result. Capped
 //! walks then stop, including their sibling loops. Finished-tree walks use
 //! the one-argument form and may grow past the ceiling, even inside a parse;
-//! none calls back into an input-building walk to bypass its checks.
+//! none calls back into an input-building walk to bypass its checks. A debug
+//! build panics 1,024 segments past the ceiling, whichever walk grew them.
 
 use std::cell::Cell;
 
@@ -84,9 +85,33 @@ pub(crate) fn on_new_segment<R>(f: impl FnOnce() -> R) -> R {
     stacker::grow(SEGMENT, || {
         let _restore = Restore(ON_SEGMENT.replace(true));
         SEGMENTS.set(SEGMENTS.get() + 1);
-        testing::bound(SEGMENTS.get());
+        debug_assert!(
+            SEGMENTS.get() <= runaway_bound(),
+            "runaway: {} nested stack segments",
+            SEGMENTS.get()
+        );
         f()
     })
+}
+
+/// Nested segments a debug build grows past the ceiling before it panics.
+///
+/// A finished-tree walk has no ceiling, and a bug that makes every fresh
+/// segment look low nests segments without end: gigabytes a second, which
+/// froze a Mac before any outside watchdog could act (2026-11-11). The whole
+/// suite nests 30 at most, and at the stack a level was measured to take,
+/// 1,024 segments carry a walk some 260,000 levels deep. The unit tests nest
+/// two, and the ones that say the stack is low hold more on each segment, so
+/// they stop sooner.
+const RUNAWAY: usize = if cfg!(test) { 64 } else { 1024 };
+
+/// Where a debug build stops nesting segments: [`RUNAWAY`] past the ceiling
+/// in force, or [`RUNAWAY`] alone outside any entry.
+fn runaway_bound() -> usize {
+    match CEILING.get() {
+        usize::MAX => RUNAWAY,
+        ceiling => RUNAWAY.saturating_add(ceiling),
+    }
 }
 
 /// Number of nested segments allowed for an input-building walk.
@@ -185,21 +210,6 @@ pub(crate) mod testing {
         let _restore = Restore(ZERO.replace(true));
         f()
     }
-    /// More nested segments than any unit test needs (two, when measured
-    /// 2026-11-11).
-    pub(super) const SEGMENT_BOUND: usize = 256;
-    /// Stop a unit test that nests segments without end. An injected cut
-    /// says the stack is low at every step, so if a bug in the stall path
-    /// stops the cut being taken, the walk starts again on a fresh segment
-    /// forever. That took gigabytes a second and froze a Mac before any
-    /// outside watchdog could act. It counts with `SEGMENTS`, as the ceiling
-    /// does, and covers unit tests only.
-    pub(super) fn bound(segments: usize) {
-        assert!(
-            segments <= SEGMENT_BOUND,
-            "runaway: {segments} nested stack segments in a unit test"
-        );
-    }
     pub(super) fn injected(walk: &str) -> bool {
         let hit = WALK.get().is_some_and(|name| walk.starts_with(name));
         if hit {
@@ -216,8 +226,6 @@ mod testing {
     pub(super) fn injected(_: &str) -> bool {
         false
     }
-    #[inline(always)]
-    pub(super) fn bound(_: usize) {}
 }
 
 /// At the top of a function that recurses (or starts a walk), with the call
@@ -276,15 +284,17 @@ mod tests {
     }
 
     #[test]
-    fn unit_tests_stop_a_runaway_of_nested_segments() {
+    fn a_debug_build_stops_a_runaway_of_nested_segments() {
         fn nest(levels: usize) {
             if levels > 0 {
                 on_new_segment(|| nest(levels - 1));
             }
         }
-        nest(testing::SEGMENT_BOUND);
-        let runaway = std::panic::catch_unwind(|| nest(testing::SEGMENT_BOUND + 1));
-        assert!(runaway.is_err());
+        let runs_away = |levels| std::panic::catch_unwind(|| nest(levels)).is_err();
+        // Outside any entry, and past an entry's ceiling (8 at depth 0).
+        assert!(!runs_away(RUNAWAY) && runs_away(RUNAWAY + 1));
+        let _ceiling = limit(0);
+        assert!(!runs_away(RUNAWAY + 8) && runs_away(RUNAWAY + 9));
         assert_eq!(SEGMENTS.get(), 0);
     }
 
