@@ -339,6 +339,22 @@ final class CorpusModel {
         return ClaudeSource(request: request, apiKey: key, status: status)
     }
 
+    /// The batch's source factory: the same Keychain path, read once for
+    /// the run and held in memory only. A rebuilt viewer has a new signature,
+    /// so the Keychain asks the maintainer to allow each read; one answer
+    /// then covers all the batch's requests.
+    @MainActor
+    static func batchSource() -> BatchRecorder.SourceFactory {
+        var key: String?
+        return { request, status in
+            if key == nil { key = APIKeyStore.read() }
+            guard let key, !key.isEmpty else {
+                throw ClaudeError(description: "No API key in the Keychain. Add one in Settings.")
+            }
+            return ClaudeSource(request: request, apiKey: key, status: status)
+        }
+    }
+
     func streamLive(_ prepared: PreparedLive, status: LiveStatus, source: any ChunkSource) async {
         let draft = prepared.draft
         selected = nil

@@ -113,12 +113,12 @@ final class BatchRecorder {
     let output: (String) -> Void
 
     init(model: CorpusModel, directory: URL = Recordings.directory, budget: BatchBudget = .viewer,
-         source: @escaping SourceFactory = CorpusModel.liveSource,
+         source: SourceFactory? = nil,
          output: @escaping (String) -> Void = { print($0); fflush(stdout) }) {
         self.model = model
         self.directory = directory
         self.budget = budget
-        self.source = source
+        self.source = source ?? CorpusModel.batchSource()
         self.output = output
     }
 
@@ -229,6 +229,10 @@ final class BatchRecorder {
                 switch status.phase {
                 case .finished("refusal"): reason = "model refused request"
                 case .cancelled: reason = "stream cancelled; reservation retained if usage unknown"
+                // Only the status number: the API's message is untrusted text.
+                case .failed(let message) where message.hasPrefix("HTTP "):
+                    let code = message.dropFirst(5).prefix(while: \.isNumber)
+                    reason = "stream failed with HTTP \(code); reservation retained if usage unknown"
                 default: reason = "stream failed or incomplete; reservation retained if usage unknown"
                 }
                 line(item, "failed", reason, status: status, cost: cost)
