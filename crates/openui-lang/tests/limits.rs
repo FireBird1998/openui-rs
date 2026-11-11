@@ -671,3 +671,88 @@ fn a_cached_reference_at_the_depth_edge_is_walked_again() {
         "Text"
     );
 }
+
+/// Pin the byte at which each complete result fits, including statement
+/// wrappers, dependency names, orphan names and retained iterator references.
+#[test]
+fn statement_and_iterator_prices_have_exact_result_size_edges() {
+    let lib = library();
+    for (program, edge) in [
+        ("root = Stack([$s ? @Sum([1]) : 0, 2])", 454),
+        ("root = Stack([@Each($xs, item, item), 2])", 269),
+        ("root = Stack([@Each($xs, \"item\", item), 2])", 269),
+        ("root = Stack([])\nunused = 1\nother = 2", 137),
+        ("root = Stack([])\nm = Mutation(\"tool\", {})", 220),
+        ("root = Stack([])\nq = Query(\"tool\", {a: $state})", 349),
+        ("root = Stack([])\na = Query(b)\nb = Query(a)", 657),
+        (
+            "root = Stack([])\na = Query(b, c)\nb = Query(a)\nc = Query(c)",
+            1072,
+        ),
+        ("root = Stack([])\n$x = 1 + 2", 250),
+    ] {
+        let whole = parse(program, &lib, None);
+        for (limit, cut) in [(edge, false), (edge - 1, true)] {
+            let limits = Limits::default().with_result_size(limit);
+            let result = parse_with_limits(program, &lib, None, limits);
+            assert_eq!(result.size_limited, cut, "{program}, limit {limit}");
+            if !cut {
+                assert_eq!(result, whole, "{program}");
+            }
+            let mut stream = StreamParser::with_limits(lib.clone(), None, limits);
+            stream.push(program);
+            assert_eq!(stream.finish(), result, "{program}, limit {limit}");
+        }
+    }
+}
+
+#[test]
+fn function_action_and_branched_cycle_prices_have_exact_edges() {
+    let schema = serde_json::json!({"$defs": {
+        "Stack": {"properties": {"children": {"type": "array"}}}
+    }, "functions": {"Twice": {"params": {"properties": {"n": {"type": "number"}}, "required": ["n"]}}},
+    "actions": {"Ping": {"params": {"properties": {"target": {"type": "string"}}, "required": ["target"]}}}});
+    let lib = Library::from_json_schema(&schema);
+    for (program, edge) in [
+        ("root = Stack([$s ? @Twice(1) : 0, 2])", 416),
+        ("root = Stack([@Ping(), 2])", 347),
+        (
+            "root = Stack([])\na = Query(b, c)\nb = Query(\"t\")\nc = Query(a)",
+            834,
+        ),
+    ] {
+        let whole = parse(program, &lib, None);
+        for (limit, cut) in [(edge, false), (edge - 1, true)] {
+            let result = parse_with_limits(
+                program,
+                &lib,
+                None,
+                Limits::default().with_result_size(limit),
+            );
+            assert_eq!(result.size_limited, cut, "{program}, limit {limit}");
+            if !cut {
+                assert_eq!(result, whole);
+            }
+        }
+    }
+}
+
+/// At exactly the array's price, its first child's failed fit still leaves
+/// a null placeholder. One byte below, the array itself cannot fit.
+#[test]
+fn an_exactly_full_array_attempts_its_first_child() {
+    let lib = library();
+    for (limit, children) in [
+        (53, serde_json::json!(null)),
+        (54, serde_json::json!([null])),
+    ] {
+        let limits = Limits::default().with_result_size(limit);
+        let result = parse_with_limits("root = Stack([1, 2])", &lib, None, limits);
+        assert!(result.size_limited);
+        let json: serde_json::Value = serde_json::from_str(&result.to_json()).unwrap();
+        assert_eq!(json["root"]["props"]["children"], children, "limit {limit}");
+        let mut stream = StreamParser::with_limits(lib.clone(), None, limits);
+        stream.push("root = Stack([1, 2])");
+        assert_eq!(stream.finish(), result);
+    }
+}

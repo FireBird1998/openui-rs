@@ -311,3 +311,52 @@ fn references_to_a_chain_the_depth_limit_cuts_stop_at_the_size_limit() {
 
 #[global_allocator]
 static ALLOCATOR: test_alloc::Allocator = test_alloc::Allocator::with_cap(test_alloc::LIMITS);
+
+/// Each element already knows whether its subtree has dynamic props.
+#[test]
+fn nested_static_elements_check_dynamic_props_once() {
+    let shape = |n| {
+        format!(
+            "root = {}Text(\"x\"){}",
+            "Stack([".repeat(n),
+            "])".repeat(n)
+        )
+    };
+    check_linear(200, shape, |text| {
+        let result = openui_lang::parse_with_limits(
+            text,
+            &library(),
+            None,
+            openui_lang::Limits::default().with_depth(4000),
+        );
+        assert!(!result.size_limited && !result.depth_limited);
+        std::hint::black_box(result);
+    });
+}
+
+/// Validation keeps an element unchanged; equality must compare its identity
+/// rather than walking its entire subtree again at each parent.
+#[test]
+fn validating_nested_elements_compares_identity_once() {
+    let lib = Library::from_json_schema(&serde_json::json!({"$defs": {
+        "Text": {"properties": {"value": {}}},
+        "Stack": {"properties": {"children": {"type": "array", "items": {}}}}
+    }}));
+    let shape = |n| {
+        format!(
+            "root = {}Text(\"x\"){}",
+            "Stack([".repeat(n),
+            "])".repeat(n)
+        )
+    };
+    check_linear(200, shape, |text| {
+        let result = openui_lang::parse_with_limits(
+            text,
+            &lib,
+            None,
+            openui_lang::Limits::default().with_depth(4000),
+        );
+        assert!(!result.size_limited && !result.depth_limited);
+        std::hint::black_box(result);
+    });
+}

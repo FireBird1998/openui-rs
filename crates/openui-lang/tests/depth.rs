@@ -246,3 +246,41 @@ fn json_deeper_than_any_parse_result_is_refused() {
 
 #[global_allocator]
 static ALLOCATOR: test_alloc::Allocator = test_alloc::Allocator::with_cap(test_alloc::LIMITS);
+
+/// Joining sibling arrays must release each sibling's evaluator depth.
+#[test]
+fn stringifying_sibling_arrays_releases_each_depth_level() {
+    let program = format!(
+        "root = Stack([])\n$a = [{}] + \"\"",
+        vec!["[1]"; 30].join(", ")
+    );
+    let result = openui_lang::parse_with_limits(
+        &program,
+        &library(),
+        None,
+        openui_lang::Limits::default().with_depth(10),
+    );
+    assert!(!result.depth_limited && !result.size_limited);
+    let json: serde_json::Value = serde_json::from_str(&result.to_json()).unwrap();
+    assert_eq!(json["stateDeclarations"]["$a"], vec!["1"; 30].join(","));
+}
+
+/// Reaching a shallowly parsed call through an alias puts its materialization
+/// at the limit without cutting the iterator string during parsing.
+#[test]
+fn an_each_iterator_string_is_kept_at_the_depth_limit() {
+    let result = openui_lang::parse_with_limits(
+        "root = Stack([a])\na = @Each($xs, \"item\", item)",
+        &library(),
+        None,
+        openui_lang::Limits::default().with_depth(4),
+    );
+    assert!(result.depth_limited && !result.size_limited);
+    let json: serde_json::Value = serde_json::from_str(&result.to_json()).unwrap();
+    assert_eq!(
+        json["root"]["props"]["children"][0]["args"],
+        serde_json::json!([
+            {"k": "Null"}, {"k": "Str", "v": "item"}, {"k": "Null"}
+        ])
+    );
+}

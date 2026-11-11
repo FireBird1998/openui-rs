@@ -199,3 +199,29 @@ fn runtime_inside_element_shaped_data_does_not_charge_evaluation() {
         assert!(!under(program, 0, 2_000_000).size_limited);
     }
 }
+
+#[test]
+fn a_depth_cut_default_still_consumes_result_room() {
+    let mut program = "root = Stack()\n$n0 = 1\n".to_owned();
+    for i in 1..=32 {
+        program.push_str(&format!("$n{i} = [$n{}]\n", i - 1));
+    }
+    // The 18th wrapper exceeds the evaluator's 18 JSON levels. The orphan
+    // comes after evaluation in the result, exposing the room already spent
+    // by that cut default even though its value is replaced with null.
+    program.push_str(&format!("{} = 1\n", "unused".repeat(100)));
+    let lib =
+        Library::from_json_schema(&serde_json::json!({"$defs": {"Stack": {"properties": {}}}}));
+    let run = |room| {
+        parse_with_limits(
+            &program,
+            &lib,
+            None,
+            Limits::default().with_depth(6).with_result_size(room),
+        )
+    };
+    let whole = run(20000);
+    assert!(whole.depth_limited && !whole.size_limited);
+    assert_eq!(run(1888), whole);
+    assert!(run(1887).size_limited);
+}
