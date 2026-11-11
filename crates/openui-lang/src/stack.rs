@@ -84,6 +84,7 @@ pub(crate) fn on_new_segment<R>(f: impl FnOnce() -> R) -> R {
     stacker::grow(SEGMENT, || {
         let _restore = Restore(ON_SEGMENT.replace(true));
         SEGMENTS.set(SEGMENTS.get() + 1);
+        testing::bound(SEGMENTS.get());
         f()
     })
 }
@@ -184,6 +185,21 @@ pub(crate) mod testing {
         let _restore = Restore(ZERO.replace(true));
         f()
     }
+    /// More nested segments than any unit test needs (two, when measured
+    /// 2026-11-11).
+    pub(super) const SEGMENT_BOUND: usize = 256;
+    /// Stop a unit test that nests segments without end. An injected cut
+    /// says the stack is low at every step, so if a bug in the stall path
+    /// stops the cut being taken, the walk starts again on a fresh segment
+    /// forever. That took gigabytes a second and froze a Mac before any
+    /// outside watchdog could act. It counts with `SEGMENTS`, as the ceiling
+    /// does, and covers unit tests only.
+    pub(super) fn bound(segments: usize) {
+        assert!(
+            segments <= SEGMENT_BOUND,
+            "runaway: {segments} nested stack segments in a unit test"
+        );
+    }
     pub(super) fn injected(walk: &str) -> bool {
         let hit = WALK.get().is_some_and(|name| walk.starts_with(name));
         if hit {
@@ -200,6 +216,8 @@ mod testing {
     pub(super) fn injected(_: &str) -> bool {
         false
     }
+    #[inline(always)]
+    pub(super) fn bound(_: usize) {}
 }
 
 /// At the top of a function that recurses (or starts a walk), with the call
@@ -255,6 +273,19 @@ mod tests {
     fn an_unmeasured_stack_is_low_until_on_a_segment_the_core_grew() {
         assert!(low_given(None, false));
         assert!(!low_given(None, true));
+    }
+
+    #[test]
+    fn unit_tests_stop_a_runaway_of_nested_segments() {
+        fn nest(levels: usize) {
+            if levels > 0 {
+                on_new_segment(|| nest(levels - 1));
+            }
+        }
+        nest(testing::SEGMENT_BOUND);
+        let runaway = std::panic::catch_unwind(|| nest(testing::SEGMENT_BOUND + 1));
+        assert!(runaway.is_err());
+        assert_eq!(SEGMENTS.get(), 0);
     }
 
     #[test]
