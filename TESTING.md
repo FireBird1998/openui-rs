@@ -496,5 +496,36 @@ pass-through, cuts, Count, First and element-prop reads peak below 2× input;
 and Round and a missing-field pluck (`$x.a`) stay below 2.5×. Object coercion
 over 100,000 fields stays below 2×. Tests check the returned values too.
 
-Tree, store and action conformance will join the runtime when implemented.
+`store_reference.rs` compares the pinned store's snapshots, identities, reads,
+notification/version mapping and pristine behavior after every call. The
+reference probes pristine through initialization; Rust reads `is_pristine`
+directly. The fixture has directed cases, four seeds generating varied names
+and nested values, typed ASTs, and three real recordings under three persistence
+assumptions. Rust also parses every recorded chunk before initializing. Three synthetic
+ASCII programs stream one byte at a time under the same three persistence modes,
+covering non-null scalar/container defaults, user edits, rewinds and expressions.
+A bidirectional id map checks snapshot/read container identity across steps;
+parsed inputs are checked structurally and for aliases within each result. One
+separately named case pins the nested-undefined representation divergence.
+Regenerate from `reference/`:
+
+```bash
+bun --no-install store-interface.ts > ../crates/openui-runtime/tests/store.json
+```
+
+The fixture stores one call and its observations per line, with shared value
+and snapshot pools; its header names the observation positions. `store.rs`
+tests the individual rules, snapshot COW and shared container bodies, including
+50,000 nested arrays on a 64 KiB stack. `test_alloc::allocation_calls` counts
+allocation/reallocation requests, including temporary allocations: unchanged
+initialization of unique names and ignored scalar sets allocate zero times
+with 1 and 4,096 names, even with a retained snapshot. A real scalar set without a retained
+snapshot also allocates zero times. Both store binaries have 64 MiB caps.
+
+Store admission limits remain #39's work. Creation retains `Limits`, and
+initialization returns accepted-change status plus per-name refusals, so one
+rejected entry need not discard the rest of a chunk. A total-state cap must
+also count pristine names whose undefined writes left no snapshot entry.
+
+Tree and action conformance will join the runtime when implemented.
 The core's existing suite still runs by itself with `cargo test -p openui-lang`.

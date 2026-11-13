@@ -14,6 +14,7 @@ struct Account {
     live: AtomicUsize,
     peak: AtomicUsize,
     measured_peak: AtomicUsize,
+    allocation_calls: AtomicUsize,
 }
 
 struct ThreadAccount {
@@ -75,12 +76,35 @@ pub fn reset_peak() {
     });
 }
 
+/// Cumulative allocation/reallocation requests charged to this thread's account.
+/// Unlike peak live bytes, this catches temporary allocations freed in a loop.
+pub fn allocation_calls() -> usize {
+    CURRENT.with(|c| {
+        let p = c.owner.get();
+        if p.is_null() {
+            0
+        } else {
+            // SAFETY: owner records survive until process exit.
+            unsafe { (*p).allocation_calls.load(Relaxed) }
+        }
+    })
+}
+
 fn reserve(owner: *const Account, bytes: usize) {
     if owner.is_null() {
         return;
     }
     // SAFETY: every header points to a permanent owner record.
     let a = unsafe { &*owner };
+    let mut previous = a.allocation_calls.load(Relaxed);
+    while let Err(actual) = a.allocation_calls.compare_exchange_weak(
+        previous,
+        previous.saturating_add(1),
+        Relaxed,
+        Relaxed,
+    ) {
+        previous = actual;
+    }
     let live = a.live.fetch_add(bytes, Relaxed) + bytes;
     a.peak.fetch_max(live, Relaxed);
     a.measured_peak.fetch_max(live, Relaxed);
@@ -132,6 +156,7 @@ impl Allocator {
                             live: AtomicUsize::new(layout.size()),
                             peak: AtomicUsize::new(layout.size()),
                             measured_peak: AtomicUsize::new(layout.size()),
+                            allocation_calls: AtomicUsize::new(0),
                         });
                         owner = allocated;
                     }

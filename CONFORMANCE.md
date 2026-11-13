@@ -7,7 +7,7 @@ The `openui-lang` crate is a port of the OpenUI Lang language layer in `@openuid
 
 The reference is lang-core 1.1.0 (OpenUI Lang 1.1), and the core matches it on every case in the corpus: nothing is pending. The quirks and divergences below were checked against 1.1.0 on 2026-11-06, and quirks 21 and 22 added on 2026-11-07. Three quirks were fixed upstream in 1.1, and the core follows. The core conformed to 1.0.1 and to 0.3.0 before; those states are the local tags `lang-core-1.0.1` and `lang-core-0.3.0`, and aren't kept up.
 
-Behaviour that looks wrong in the reference is reproduced anyway and recorded as a [quirk](conformance/QUIRKS.md) with a draft upstream report. The core departs from the reference only where the list of [divergences](#divergences) below says so, all on inputs no real program produces.
+Behaviour that looks wrong in the reference is reproduced anyway and recorded as a [quirk](conformance/QUIRKS.md) with a draft upstream report. The core and runtime depart from the reference only where the list of [divergences](#divergences) below says so. The runtime representation divergence can arise when evaluating an action value.
 
 ## What's checked
 
@@ -29,6 +29,30 @@ Not matched yet, listed in `conformance/pending/`: none.
 
 
 Cases the core doesn't match yet would be listed in `conformance/pending/`, one list per test; the line above counts them. A listed case may fail, and one that matches again fails its test until it's taken off the list.
+
+Store: 25 sequences, 2411 steps, no pending sequences.
+`openui-runtime/tests/store_reference.rs` checks this count, snapshots and value
+identity, reads, pristine status and changes. It includes three recorded model
+streams under no persistence, first-call persistence and every-call persistence.
+These recordings cover almost no state: the museum stream declares only
+`$period: null`, and the other two have no defaults. No recorded step replaces
+a non-null pristine default. Three synthetic
+ASCII programs run one byte at a time under all three assumptions, exercising
+truncated strings, arrays and objects, expression defaults, user edits, and
+declarations disappearing and returning. Pristine containers finish these
+programs; reuse while subsequent declarations stream is outside these cases.
+Snapshot/read container identities are
+mapped bijectively across the runtimes; default inputs are checked for content
+and aliases within each parse result. Persistence timing remains an explicit
+assumption; the renderer is not vendored.
+
+The reference uses `Object.is` (NaN equals NaN; signed zeros differ). Upstream
+has no version. The fixture's `mappedVersion` counts listener notifications,
+plus one deliberate runtime extension: disposing nonempty state advances the
+version even though upstream clears its listeners without notifying. Pristine
+metadata changes and empty disposal do not advance it. Snapshot identity is
+checked separately, including replacement on empty disposal. Disposal always
+clears; at version exhaustion the version stays at its maximum.
 
 `cargo test` runs all of it without Bun or the network: the reference's outputs are committed as goldens in `conformance/golden/` (full JSON for one-shot results, prompts and edits; an FNV-1a fingerprint per streaming step and per prefix). On a mismatch, the test prints the case, the step and its chunk sizes, and, if Bun is installed, a diff against the reference's JSON.
 
@@ -96,10 +120,11 @@ Also reported, though not a quirk because the core doesn't reproduce it: a few l
 
 ## Divergences
 
-Documented, not emulated. None occurs in the corpus, and none comes from a real model's output.
+Documented, not emulated. The parser divergences do not occur in the corpus. The runtime divergence below is pinned separately by a store test.
 
-| Input | Reference | Core |
+| Input | Reference | Core/runtime |
 |---|---|---|
+| Nested undefined in runtime state (`$f = {}`, then set `{a: $m.b}` with `$m = {}`) | retains an undefined-valued own field; setting the one-key object over `{}` notifies | the evaluator omits undefined object fields and writes null array items; the store sees that normalized value. This set is ignored. Stored JSON agrees; a call can count as one version step more or fewer |
 | Nesting 257 to about 8,000 levels | parses (throws `RangeError` past that) | stops at 256, sets `depth_limited` |
 | A result past the result-size limit: by default the larger of 64 KiB and 64 times the program's size, never above 8 MiB (statements inlined until it doubles per level, a root expression written out as a large AST, a validation error for each item of a long list) | parses quickly, since 1.1 builds each statement once and shares it, but its JSON doubles per level: about 1 GB at 22 levels, and at 24 `JSON.stringify` runs out of memory | cuts it, errors and unresolved names included, sets `size_limited`. A stream's limit is that of the text so far, so an early push can be cut where the reference's isn't, and a later one whole |
 | A state default building past what the result-size limit leaves, or nesting past 768 levels, from the ones above it (`$b = [$a, $a]` line after line, a string added to itself, nested lists around the one above) | evaluates it, sharing lists and objects, so lists are quick but their JSON doubles per line; a string grown that way makes `parse` throw a `RangeError` (`Out of memory`) | that default is null, stopping there, and so is every expression default after the result size or work runs out (even one whose value would be `undefined`); sets `size_limited` or `depth_limited` |
@@ -118,6 +143,12 @@ Documented, not emulated. None occurs in the corpus, and none comes from a real 
 | A library function or action without `params`, or one that isn't an object | throws a `TypeError` building the library | has no params |
 | A slot schema whose `anyOf` or `oneOf` isn't an array of objects (`anyOf: [null]`, `oneOf: "x"`) | throws a `TypeError` validating a value in it | treats the slot as one that takes data |
 | An action shape in `$defs` that refers to itself, such as `ActionExpression: {anyOf: [{$ref: "#/$defs/ActionExpression"}]}` | recurses until the engine's stack overflows (`RangeError`) building the library | leaves that `$ref` in place |
+
+The runtime divergence is pinned by `nested_undefined_normalization_can_suppress_one_store_change`
+and the explicitly excluded case in `openui-runtime/tests/store.json`. JSON,
+parsing and bindings cannot represent nested undefined. Parity would require
+changing the evaluator and value model together under a separate ADR, rather
+than adding a runtime-only variant to the parser's public enum.
 
 Error messages where the reference throws aren't compared, only that it throws. For system prompts, the reference's own error messages are compared exactly. Where it crashes inside the JavaScript engine instead (a `TypeError`, for a spec that's a JSON array, say), the core only has to return an error too.
 
