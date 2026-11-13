@@ -12,7 +12,7 @@ for f in crates/*/tests/*.rs; do
     || { echo "check.sh: $f declares no test_alloc allocator (see TESTING.md)" >&2; exit 1; }
 done
 cargo clippy --all-targets --all-features -- -D warnings
-RUSTDOCFLAGS="-D warnings" cargo doc --no-deps -q -p openui-lang
+RUSTDOCFLAGS="-D warnings" cargo doc --no-deps -q -p openui-lang -p openui-runtime
 cargo test --all
 
 # The workspace's rust-version. The toolchain is named exactly and rustup's

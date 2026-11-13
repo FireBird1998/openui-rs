@@ -20,7 +20,7 @@ cargo test -p openui-lang --test conformance streaming_   # tests whose names ma
 
 ## Allocation caps
 
-Every core and binding Rust test binary uses the counting global allocator in
+Every core, runtime and binding Rust test binary uses the counting global allocator in
 `crates/test-alloc`, a private, unpublished dev dependency. The published libraries
 keep their unsafe-code prohibition and have no allocator, public API or default
 feature changes. Only the test helper implements the unsafe `GlobalAlloc` contract.
@@ -36,7 +36,12 @@ has its own account too.
 
 The **64 MiB allocation cap** applies to the core's `size`, `depth`, `work`,
 `limits`, `drop`, `entry_points`, `streaming_cost`, `streaming_reuse` and `cli` binaries, and the
-binding's `stack` and `binding` binaries. All other core and binding test
+binding's `stack` and `binding` binaries, and the runtime's `expressions`,
+`limits`, `allowances`, `nesting`, `lookup_scope`, `reference_allowance`,
+`supplied_values` binaries. Runtime `session_reentry` and
+`parse_policy` use 128 MiB; `supplied_memory` uses 256 MiB for 900,000-array
+inputs, with a stricter shape assertion that peak heap stays below twice the input heap for pass-through, cuts,
+`Count`, `First` and object coercion. All other core and binding test
 binaries, including unit tests, example tests and doc examples, use **256 MiB**.
 The mixed CLI and binding suites fit comfortably under the stricter cap.
 `prompt_depth` uses 256 MiB: its 900-level object schema must cross the default
@@ -454,3 +459,42 @@ The 64-bit ARM run stays on the Mac's emulator or a phone.
 | `DEPTH_STACK_KB=<n>` | The thread stack the depth tests run on, in KB (default 64) |
 
 When you point `OPENUI_CONFORMANCE_DIR` at a copy, turn live diffs off too. A live diff runs the reference on the repository's corpus, not the copy's.
+
+## Expression evaluation
+
+`cargo test -p openui-runtime` checks the expression interface through the
+runtime crate. `reference/expression-interface.ts` runs the pinned upstream
+evaluator with supplied state, references and extra scope; its saved outputs
+are in `crates/openui-runtime/tests/expressions.json`. Regenerate them with:
+
+```bash
+bun reference/expression-interface.ts > crates/openui-runtime/tests/expressions.json
+```
+
+The tests use public interfaces. `allowances.rs` checks shared work and room,
+input credits, AST JSON byte edges and default scaling. `nesting.rs` covers
+references, fresh nested evaluations, unwind restoration and stack ceilings.
+`session_reentry.rs` resolves 4,000 statements through the session itself,
+including raised depth, shared work, loop bindings and cached names.
+`reference_allowance.rs` checks that wrapped computed values cannot buy credit,
+and that external reference data needs its size prepaid. `lookup_scope.rs`
+checks root evaluation from lookup callbacks and session re-entry. Pinned
+upstream cases cover statement lookups inside and outside loops, lookup order,
+and RuntimeRefs inlined by parsing. `parse_policy.rs` compares nested parsing,
+JSON and expression reading, and streaming against top-level results during a
+16,000-statement evaluation. Earlier segments must not spend these entries'
+stack allowances. Mixed session, callback and fresh hops count the same depth.
+Deferred-AST tests bound sizing by remaining work, including a shared DAG with
+2^40 virtual leaves. Larger deferred ASTs can require an explicit work limit.
+`supplied_values.rs` checks undefined, typed values and identity.
+
+`supplied_memory.rs` runs under a 256 MiB allocation cap. Bounds include the
+supplied input and the live result; they are for these shapes, not a universal
+multiple for every expression. For 900,000 distinct empty arrays, direct
+pass-through, cuts, Count, First and element-prop reads peak below 2× input;
+`@Each($x,"i",i)` stays below 4×. Over 900,000 numbers, Sum stays below 1.1×,
+and Round and a missing-field pluck (`$x.a`) stay below 2.5×. Object coercion
+over 100,000 fields stays below 2×. Tests check the returned values too.
+
+Tree, store and action conformance will join the runtime when implemented.
+The core's existing suite still runs by itself with `cargo test -p openui-lang`.

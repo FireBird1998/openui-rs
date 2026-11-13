@@ -20,7 +20,10 @@ Grown segments are mapped directly, outside the test allocator. A core bug
 that recurses forever could therefore grow gigabytes despite the allocation
 cap. Each input-building entry scopes a thread-local ceiling, restored even
 on unwind: **8 segments plus 64 KiB per depth level**, rounded up to 2 MiB
-segments, with saturating arithmetic. All currently nested segments count.
+segments, with saturating arithmetic, above the segment count at that entry.
+Segments already grown by an enclosing public call do not spend the new
+entry's allowance. Expression evaluations sharing an active depth chain keep
+that chain's original base, including across fresh nested evaluations.
 Raising `Limits::depth` raises the ceiling; there is no new public limit.
 
 Capped recursive walks name themselves in a panic in debug/test builds. In

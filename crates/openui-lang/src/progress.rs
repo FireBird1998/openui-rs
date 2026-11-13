@@ -62,10 +62,31 @@ pub(crate) fn stack_stalled(walk: &str) {
 
 /// Run `f`, and say whether a loop stalled in it.
 pub(crate) fn watch<T>(f: impl FnOnce() -> T) -> (T, bool) {
-    let outer = STALLED.with(|s| s.replace(false));
+    struct Restore {
+        outer: bool,
+        active: bool,
+    }
+    impl Drop for Restore {
+        fn drop(&mut self) {
+            if self.active {
+                STALLED.with(|s| s.set(self.outer || s.get()));
+            }
+        }
+    }
+    let outer = replace_stalled(false);
+    let mut restore = Restore {
+        outer,
+        active: true,
+    };
     let value = f();
     let stalled = STALLED.with(|s| s.replace(outer || s.get()));
+    restore.active = false;
     (value, stalled)
+}
+
+/// Exchange a suspended evaluator's stall channel, including on unwind.
+pub(crate) fn replace_stalled(value: bool) -> bool {
+    STALLED.with(|s| s.replace(value))
 }
 
 /// Whether a loop has stalled since the innermost [`watch`] began, so the

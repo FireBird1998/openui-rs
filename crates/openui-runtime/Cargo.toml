@@ -1,0 +1,13 @@
+[package]
+name = "openui-runtime"
+version = "0.1.0"
+description = "OpenUI Lang runtime over the core's expression evaluator"
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+
+[dependencies]
+openui-lang = { path = "../openui-lang" }
+
+[dev-dependencies]
+test-alloc = { path = "../test-alloc" }

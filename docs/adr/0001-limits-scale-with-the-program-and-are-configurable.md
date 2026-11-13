@@ -14,6 +14,15 @@ So every limit (program size, result size, depth, evaluation work) is one `Limit
 
 Work is counted in steps and bytes, never in time, so results stay the same on every machine. Hitting a limit gives a cut result flagged `size_limited` or `depth_limited`, never an error or a panic. A stall in a release build (a bug in the core, not a limit) ends the parse the same way, flagged `size_limited`, as decided in openui-rs #1. Entry points with no result to cut (`parse_json_with_limits`, `json_to_openui_with_limits`, `generate_system_prompt_with_limits` and `generate_prompt_with_limits`) refuse over-limit input with their existing error, as decided in #1/#6. No default may cut a program in the conformance corpus: if one would, the default is raised.
 
+For public expression evaluation, input means the caller's initial byte size
+plus the JSON bytes of state and extra scope actually read (ADR 0003). Each
+shared container body counts once; keys, punctuation and scalar occurrences
+count in their containing body. Reference and call results never add credit.
+Statements are paid for by the program's bytes; external reference data must
+be included in the initial size. The free functions size their allowance once
+from the root expression's AST JSON. Multiple evaluations can share one
+allowance. Fixed limits remain fixed, and scaled limits retain their ceilings.
+
 ## Considered options
 
 - **A fixed cap only (8 MiB, as before).** It bounds memory but not amplification. A streaming caller serializing per push could still write gigabytes for one reply.

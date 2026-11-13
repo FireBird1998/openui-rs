@@ -1,8 +1,8 @@
-//! State defaults evaluated while parsing, as 1.1's parser does with the
-//! runtime evaluator: built-in functions, operators, member and index access,
+//! One evaluator for state defaults and caller-supplied expression scopes:
+//! built-in functions, operators, member and index access,
 //! ternaries and `@Each`, over data, with JavaScript's semantics. Not the
-//! renderer's runtime: references to statements and queries read as null, and
-//! a default that calls anything but a built-in function is null.
+//! renderer's runtime. While parsing, statement and query references read as
+//! null, and a default that calls anything but a built-in function is null.
 //!
 //! Values are JavaScript's: `undefined` apart from `null`, arrays and objects
 //! compared by identity, `==` with its coercions, strings indexed by UTF-16
@@ -24,6 +24,38 @@ use crate::js::{self, JsObject, OBJECT_PROTOTYPE_KEYS, array_index, number_to_st
 use crate::result::{Element, Value, json_number_value};
 use crate::validation::{element_parts, is_ast_node};
 
+mod expression;
+use expression::expression_bytes;
+pub use expression::{
+    EvaluationFlags, EvaluationResult, EvaluationScope, EvaluationSession, ExpressionEvaluator,
+    evaluate_expression, evaluate_expression_with_limits,
+};
+
+pub(crate) fn expression_ceiling_cut() {
+    expression::ceiling_cut();
+}
+
+// Statically dispatched so parsing keeps its existing path through Declared.
+trait Names: Sized {
+    const RUNTIME: bool = false;
+    fn state(&self, name: &str, scope: &Scope<Self>) -> Option<Js>;
+    fn undefined_state(&self) -> Js {
+        Js::Null
+    }
+    fn reference(&self, _name: &str, _scope: &Scope<Self>) -> Js {
+        Js::Null
+    }
+    fn call(&self, _node: &Ast, _scope: &Scope<'_, Self>) -> Js {
+        Js::Null
+    }
+}
+
+impl Names for Declared {
+    fn state(&self, name: &str, _scope: &Scope<Self>) -> Option<Js> {
+        self.get(name)
+    }
+}
+
 /// A JavaScript value, as the evaluator sees one.
 #[derive(Clone, Debug)]
 pub(crate) enum Js {
@@ -41,6 +73,10 @@ pub(crate) enum Js {
     /// an `@Each` template assigning a large expression costs nothing per
     /// item to read it.
     Ast(Arc<Ast>),
+    /// Caller-owned data. Containers stay shared and are read on demand.
+    Data(Arc<Value>),
+    /// Borrowed props of a supplied element.
+    Props(Arc<Element>),
     /// A built-in method or constructor read off a value (`[].map`). It's
     /// the property of the first prototype in the chain that has it, its
     /// `owner`, so `(1).toString` (`Number.prototype`'s) isn't `{}.toString`
@@ -203,6 +239,7 @@ const VALUE_LEVELS_PER_LEVEL: usize = 3;
 /// They reach the evaluator through a thread-local, set for one parse's
 /// defaults at a time: evaluating is synchronous, and passing them through
 /// every coercion would touch nearly every function here.
+#[derive(Clone)]
 struct EvalLimits {
     /// About how many bytes may still be built.
     room: Cell<usize>,
@@ -342,13 +379,19 @@ fn step(steps: usize) -> bool {
 fn out_of_work(next: impl FnOnce() -> Js) -> Js {
     let work = LIMITS.with(|l| l.work.get());
     if LIMITS.with(|l| l.work.get() == 0 || l.cut.get().is_some()) {
-        ran_out_of_work();
+        // A public depth cut already names the limit. Parsing retains its
+        // existing recovery and exact-work reuse rules.
+        if !(crate::stack::expression_active() && LIMITS.with(|l| l.cut.get().is_some())) {
+            ran_out_of_work();
+        }
         return Js::Null;
     }
     let value = next();
     // A stack stall can cut the continuation before its first draw.
     debug_assert!(
-        crate::progress::stalled_so_far() || LIMITS.with(|l| l.work.get() < work),
+        crate::progress::stalled_so_far()
+            || LIMITS.with(|l| l.work.get() < work)
+            || (crate::stack::expression_active() && LIMITS.with(|l| l.cut.get().is_some())),
         "out_of_work continuation must draw positive work"
     );
     value
@@ -541,39 +584,36 @@ pub(crate) fn state_defaults(
             work: l.work.get(),
             room: l.room.get(),
         });
-        let decision = match &before {
-            Some(record) => record.decide(left, most),
-            None => Decision::Evaluate(left),
-        };
+        let decision = before.map(|record| (record.decide(left, most), record));
         // Out of step (an earlier default changed, or the depth limit did),
         // the later records read a different prefix: `in_step` never turns
         // back on, so the guard on `before` uses none of them again at this
         // push. Not even after a default runs out and every expression default
         // after it is null: a record saying so may still hold values computed
         // from the old defaults.
-        let record = match (decision, before) {
-            (Decision::Take, Some(record)) => {
+        let record = match decision {
+            Some((Decision::Take, record)) => {
                 record.take(id, &mut declared, &mut out);
                 record.moved_to(value, &mut compared)
             }
-            (Decision::RunsOut, Some(record)) => {
+            Some((Decision::RunsOut, record)) => {
                 ran_out(id, &mut declared, &mut out);
                 record.moved_to(value, &mut compared)
             }
-            (Decision::Evaluate(given), before) => {
+            Some((Decision::Evaluate(given), record)) => {
                 // Only RanOut records choose Evaluate; every such record declared null.
-                let was_null = before.is_some();
-                if let Some(record) = before {
-                    compared.push(record.value);
-                }
+                compared.push(record.value);
                 let (record, ended) =
                     evaluate_default((id, value), &mut declared, &mut out, left, given);
                 // The defaults after it, as the last push found them, read it
                 // as it was: they hold if it's null now as then.
-                in_step &= was_null && ended != Ended::Whole;
+                in_step &= ended != Ended::Whole;
                 record
             }
-            (_, None) => unreachable!("a default is taken or found out by its record only"),
+            None => {
+                in_step = false;
+                evaluate_default((id, value), &mut declared, &mut out, left, left).0
+            }
         };
         reuse.records.push(record);
     }
@@ -880,7 +920,7 @@ impl Record {
             took, first, gave, ..
         } = &self.outcome
         else {
-            unreachable!("only a default that ran is taken");
+            return;
         };
         LIMITS.with(|l| {
             l.work.set(l.work.get() - took.work);
@@ -1424,15 +1464,33 @@ fn ast_property(node: &Arc<Ast>, key: &str) -> Option<Js> {
 /// out (`undefined`, a function): a property is dropped, an array item is
 /// null. Null where the limits cut it.
 fn to_value(js: &Js) -> Option<Value> {
-    LIMITS.with(|limits| to_value_in(js, limits))
+    LIMITS.with(|limits| to_value_in::<false>(js, limits))
 }
 
-fn to_value_in(js: &Js, limits: &EvalLimits) -> Option<Value> {
-    crate::stack::grow_stack!(to_value(js), budget else None);
+fn to_value_in<const PRESERVE: bool>(js: &Js, limits: &EvalLimits) -> Option<Value> {
+    if PRESERVE {
+        crate::stack::grow_stack!(to_value_in::<true>(js, limits), budget else None);
+    } else {
+        crate::stack::grow_stack!(to_value(js), budget else None);
+    }
+    if PRESERVE && let Js::Data(value) = js {
+        return Some(expression::output_data(value));
+    }
+    if PRESERVE && let Js::Props(el) = js {
+        return Some(expression::output_props(el));
+    }
     if matches!(js, Js::Undefined | Js::Function { .. }) {
         return None;
     }
     if let Js::Ast(node) = js {
+        if PRESERVE {
+            let bytes = expression_bytes(node);
+            return Some(if spend(bytes) {
+                Value::Ast(Arc::clone(node))
+            } else {
+                Value::Null
+            });
+        }
         return to_value(&whole_ast(node));
     }
     let Some(_level) = BorrowedLevel::enter(limits) else {
@@ -1441,8 +1499,10 @@ fn to_value_in(js: &Js, limits: &EvalLimits) -> Option<Value> {
     if !spend_in(limits, json_cost(js)) {
         return Some(Value::Null);
     }
-    Some(match js {
-        Js::Undefined | Js::Function { .. } | Js::Ast(_) => return None,
+    let value = match js {
+        Js::Undefined | Js::Function { .. } | Js::Ast(_) | Js::Data(_) | Js::Props(_) => {
+            return None;
+        }
         Js::Null => Value::Null,
         Js::Bool(b) => Value::Bool(*b),
         Js::Num(n) => Value::Num(*n),
@@ -1451,7 +1511,7 @@ fn to_value_in(js: &Js, limits: &EvalLimits) -> Option<Value> {
             items
                 .iter()
                 .take_while(|_| limits.cut.get().is_none())
-                .map(|v| to_value_in(v, limits).unwrap_or(Value::Null))
+                .map(|v| to_value_in::<PRESERVE>(v, limits).unwrap_or(Value::Null))
                 .collect(),
         )),
         Js::Obj(o) => {
@@ -1460,7 +1520,7 @@ fn to_value_in(js: &Js, limits: &EvalLimits) -> Option<Value> {
                 if limits.cut.get().is_some() {
                     break;
                 }
-                if let Some(v) = to_value_in(v, limits) {
+                if let Some(v) = to_value_in::<PRESERVE>(v, limits) {
                     out.define(key.clone(), v);
                 }
             }
@@ -1474,7 +1534,8 @@ fn to_value_in(js: &Js, limits: &EvalLimits) -> Option<Value> {
             Kind::Number => Value::Num(0.0),
             Kind::Boolean => Value::Bool(false),
         },
-    })
+    };
+    Some(value)
 }
 
 // ─── Evaluating ─────────────────────────────────────────────────────────────
@@ -1484,48 +1545,68 @@ fn to_value_in(js: &Js, limits: &EvalLimits) -> Option<Value> {
 /// `Ref` nodes named after its variable (`substituteRef`, here [`substitute`])
 /// and evaluates the template in a child context whose `resolveRef` gives the
 /// item itself for that name. A `RuntimeRef` isn't substituted, and one named
-/// after the variable reaches the template through a statement it inlines
-/// (`y = q` read inside `@Each(…, "q", y)`), so the lookup is needed too. Other
-/// references are null here.
-enum Scope<'a> {
-    Root(&'a Declared),
+/// after the variable can be inlined by parsing from another statement
+/// (`y = q` read inside `@Each(…, "q", y)`), so that node in the template
+/// still reads the item. Runtime statement lookups evaluate at the root;
+/// they do not inherit this child context. Parsing reads other references
+/// as null; supplied scopes resolve them.
+enum Scope<'a, S> {
+    Root(&'a S),
     Each {
         name: &'a str,
         item: &'a Js,
-        parent: &'a Scope<'a>,
+        parent: &'a Scope<'a, S>,
     },
 }
 
-impl Scope<'_> {
-    /// `getState(name)`: `declared[name] ?? null`.
+impl<S: Names> Scope<'_, S> {
+    /// `getState(name)`: the root scope's state, with missing values as null.
     fn state(&self, name: &str) -> Js {
-        match self {
-            Scope::Root(declared) => match declared.get(name) {
-                Some(Js::Undefined | Js::Null) | None => Js::Null,
-                Some(v) => v,
-            },
-            Scope::Each { parent, .. } => parent.state(name),
+        let mut scope = self;
+        loop {
+            match scope {
+                Scope::Root(names) => {
+                    return match names.state(name, self) {
+                        Some(Js::Undefined) => names.undefined_state(),
+                        Some(Js::Null) | None => Js::Null,
+                        Some(v) => v,
+                    };
+                }
+                Scope::Each { parent, .. } => scope = parent,
+            }
         }
     }
 
-    /// `resolveRef(name)`: the innermost `@Each` item of that name, the item
-    /// itself (not a copy), else null.
+    /// The innermost iterator of that name, else the supplied reference.
     fn reference(&self, name: &str) -> Js {
-        match self {
-            Scope::Root(_) => Js::Null,
-            Scope::Each {
-                name: var, item, ..
-            } if *var == name => (*item).clone(),
-            Scope::Each { parent, .. } => parent.reference(name),
+        let mut scope = self;
+        loop {
+            match scope {
+                Scope::Root(names) => return names.reference(name, self),
+                Scope::Each {
+                    name: var, item, ..
+                } if *var == name => return (*item).clone(),
+                Scope::Each { parent, .. } => scope = parent,
+            }
+        }
+    }
+
+    fn call(&self, node: &Ast) -> Js {
+        let mut scope = self;
+        loop {
+            match scope {
+                Scope::Root(names) => return names.call(node, self),
+                Scope::Each { parent, .. } => scope = parent,
+            }
         }
     }
 }
 
-fn evaluate(node: &Ast, scope: &Scope) -> Js {
+fn evaluate<S: Names>(node: &Ast, scope: &Scope<S>) -> Js {
     LIMITS.with(|limits| evaluate_in(node, scope, limits))
 }
 
-fn evaluate_in(node: &Ast, scope: &Scope, limits: &EvalLimits) -> Js {
+fn evaluate_in<S: Names>(node: &Ast, scope: &Scope<S>, limits: &EvalLimits) -> Js {
     crate::stack::grow_stack!(evaluate(node, scope), budget else Js::Null);
     let Some(_level) = BorrowedLevel::enter(limits) else {
         return Js::Null;
@@ -1566,7 +1647,7 @@ fn evaluate_in(node: &Ast, scope: &Scope, limits: &EvalLimits) -> Js {
                 return each(args, scope);
             }
             let Some(params) = builtin_function_params(name) else {
-                return Js::Null;
+                return scope.call(node);
             };
             // `node.mappedProps ?? nameArgs(node.args, params)`, evaluated.
             let mut named = JsObject::new();
@@ -1588,7 +1669,7 @@ fn evaluate_in(node: &Ast, scope: &Scope, limits: &EvalLimits) -> Js {
                     }
                 }
             }
-            call(name, &named)
+            call::<S>(name, &named)
         }
         Ast::BinOp { op, left, right } => binary(op, left, right, scope),
         Ast::UnaryOp { op, operand } => match *op {
@@ -1609,6 +1690,11 @@ fn evaluate_in(node: &Ast, scope: &Scope, limits: &EvalLimits) -> Js {
         }
         Ast::Member { obj, field } => {
             let obj = evaluate_in(obj, scope, limits);
+            if S::RUNTIME
+                && let Js::Data(value) = &obj
+            {
+                return expression::data_member(value, field);
+            }
             match &obj {
                 Js::Undefined | Js::Null => Js::Null,
                 // A field plucked from every item.
@@ -1634,6 +1720,11 @@ fn evaluate_in(node: &Ast, scope: &Scope, limits: &EvalLimits) -> Js {
             if is_nullish(&obj) || is_nullish(&index) {
                 return Js::Null;
             }
+            if S::RUNTIME
+                && let Js::Data(value) = &obj
+            {
+                return expression::data_index(value, &index);
+            }
             match &obj {
                 Js::Arr(items) => {
                     let n = to_number(&index);
@@ -1657,7 +1748,7 @@ fn evaluate_in(node: &Ast, scope: &Scope, limits: &EvalLimits) -> Js {
     }
 }
 
-fn binary(op: &str, left: &Ast, right: &Ast, scope: &Scope) -> Js {
+fn binary<S: Names>(op: &str, left: &Ast, right: &Ast, scope: &Scope<S>) -> Js {
     let left = evaluate(left, scope);
     match op {
         "&&" => {
@@ -1716,37 +1807,49 @@ fn binary(op: &str, left: &Ast, right: &Ast, scope: &Scope) -> Js {
 
 /// `@Each(array, varName, template)`: the template once per item, its
 /// iterator variable replaced by the item's literal first.
-fn each(args: &[Ast], scope: &Scope) -> Js {
+fn each<S: Names>(args: &[Ast], scope: &Scope<S>) -> Js {
     if args.len() < 3 {
         return Js::Arr(Arc::new(Vec::new()));
     }
     let array = evaluate(&args[0], scope);
-    let Js::Arr(items) = &array else {
-        return Js::Arr(Arc::new(Vec::new()));
-    };
     let var = match &args[1] {
         Ast::Ref(name) | Ast::Str(name) if !name.is_empty() => name.as_str(),
         _ => return Js::Arr(Arc::new(Vec::new())),
     };
-    Js::Arr(Arc::new(
-        items
+    let eval_item = |item: &Js| {
+        if !step(1) {
+            return Js::Null;
+        }
+        // A step per node of the template (see `substitute`).
+        let copy = substitute(&args[2], var, item);
+        let child = Scope::Each {
+            name: var,
+            item,
+            parent: scope,
+        };
+        evaluate(copy.as_ref().unwrap_or(&args[2]), &child)
+    };
+    let running = || {
+        !crate::progress::stalled_so_far()
+            && (!S::RUNTIME || LIMITS.with(|l| l.cut.get().is_none()))
+    };
+    let out = match &array {
+        Js::Arr(items) => items
             .iter()
-            .take_while(|_| !crate::progress::stalled_so_far())
-            .map(|item| {
-                if !step(1) {
-                    return Js::Null;
-                }
-                // A step per node of the template (see `substitute`).
-                let copy = substitute(&args[2], var, item);
-                let child = Scope::Each {
-                    name: var,
-                    item,
-                    parent: scope,
-                };
-                evaluate(copy.as_ref().unwrap_or(&args[2]), &child)
-            })
+            .take_while(|_| running())
+            .map(eval_item)
             .collect(),
-    ))
+        Js::Data(value) if S::RUNTIME => match value.as_ref() {
+            Value::Arr(items) => items
+                .iter()
+                .take_while(|_| running())
+                .map(|value| eval_item(&expression::data_value(value)))
+                .collect(),
+            _ => Vec::new(),
+        },
+        _ => Vec::new(),
+    };
+    Js::Arr(Arc::new(out))
 }
 
 /// `substituteRef`: the template with its iterator variable replaced by the
@@ -1890,6 +1993,9 @@ fn literal(value: &Js) -> Ast {
 }
 
 fn literal_in(value: &Js, limits: &EvalLimits) -> Ast {
+    if matches!(value, Js::Data(_) | Js::Props(_)) {
+        return literal_in(&expression::expand(value), limits);
+    }
     crate::stack::grow_stack!(literal(value), budget else Ast::Null);
     if let Js::Ast(node) = value {
         return literal(&whole_ast(node));
@@ -1901,7 +2007,12 @@ fn literal_in(value: &Js, limits: &EvalLimits) -> Ast {
         return Ast::Null;
     }
     match value {
-        Js::Undefined | Js::Null | Js::Function { .. } | Js::Ast(_) => Ast::Null,
+        Js::Undefined
+        | Js::Null
+        | Js::Function { .. }
+        | Js::Ast(_)
+        | Js::Data(_)
+        | Js::Props(_) => Ast::Null,
         Js::Str(s) => Ast::Str(s.to_string()),
         Js::Num(n) => Ast::Num(*n),
         Js::Bool(b) => Ast::Bool(*b),
@@ -1926,8 +2037,18 @@ fn literal_in(value: &Js, limits: &EvalLimits) -> Ast {
 
 // ─── The built-in functions ─────────────────────────────────────────────────
 
-fn call(name: &str, args: &JsObject<Js>) -> Js {
-    let arg = |key: &str| args.get(key).cloned().unwrap_or(Js::Undefined);
+fn call<S: Names>(name: &str, args: &JsObject<Js>) -> Js {
+    let arg = |key: &str| {
+        let value = args.get(key).cloned().unwrap_or(Js::Undefined);
+        if S::RUNTIME
+            && matches!(name, "Sort" | "Filter")
+            && matches!(&value, Js::Data(v) if matches!(v.as_ref(), Value::Arr(_)))
+        {
+            expression::expand(&value)
+        } else {
+            value
+        }
+    };
     let array = arg("array");
     let numbers = arg("numbers");
     // A step for each number an aggregate reads.
@@ -1940,6 +2061,10 @@ fn call(name: &str, args: &JsObject<Js>) -> Js {
     match name {
         "Count" => Js::Num(match &array {
             Js::Arr(items) => items.len() as f64,
+            Js::Data(value) if S::RUNTIME => match value.as_ref() {
+                Value::Arr(items) => items.len() as f64,
+                _ => 0.0,
+            },
             _ => 0.0,
         }),
         "First" | "Last" => match &array {
@@ -1954,8 +2079,22 @@ fn call(name: &str, args: &JsObject<Js>) -> Js {
                     Some(v) => v.clone(),
                 }
             }
+            Js::Data(value) if S::RUNTIME => match value.as_ref() {
+                Value::Arr(items) => {
+                    let item = if name == "First" {
+                        items.first()
+                    } else {
+                        items.last()
+                    };
+                    item.map(expression::data_value).unwrap_or(Js::Null)
+                }
+                _ => Js::Null,
+            },
             _ => Js::Null,
         },
+        "Sum" | "Avg" | "Min" | "Max" if S::RUNTIME && matches!(&numbers, Js::Data(_)) => {
+            expression::aggregate(&numbers, name)
+        }
         "Sum" => Js::Num(match &numbers {
             Js::Arr(items) => sum(items),
             _ => 0.0,
@@ -1983,11 +2122,11 @@ fn call(name: &str, args: &JsObject<Js>) -> Js {
                 to_number(&decimals)
             };
             let factor = 10f64.powf(d);
-            elementwise(&arg("number"), &|n| js_round(n * factor) / factor)
+            elementwise_in::<S>(&arg("number"), &|n| js_round(n * factor) / factor)
         }
-        "Abs" => elementwise(&arg("number"), &f64::abs),
-        "Floor" => elementwise(&arg("number"), &f64::floor),
-        "Ceil" => elementwise(&arg("number"), &f64::ceil),
+        "Abs" => elementwise_in::<S>(&arg("number"), &f64::abs),
+        "Floor" => elementwise_in::<S>(&arg("number"), &f64::floor),
+        "Ceil" => elementwise_in::<S>(&arg("number"), &f64::ceil),
         _ => Js::Null,
     }
 }
@@ -2028,7 +2167,18 @@ fn js_round(x: f64) -> f64 {
 
 /// A number function on a number, or on each item of a list, nested lists too.
 fn elementwise(value: &Js, f: &dyn Fn(f64) -> f64) -> Js {
-    crate::stack::grow_stack!(elementwise(value, f), budget else Js::Null);
+    elementwise_in::<Declared>(value, f)
+}
+
+fn elementwise_in<S: Names>(value: &Js, f: &dyn Fn(f64) -> f64) -> Js {
+    if S::RUNTIME && matches!(value, Js::Data(v) if matches!(v.as_ref(), Value::Arr(_))) {
+        return expression::elementwise_data(value, f);
+    }
+    if S::RUNTIME {
+        crate::stack::grow_stack!(elementwise_in::<S>(value, f), budget else Js::Null);
+    } else {
+        crate::stack::grow_stack!(elementwise(value, f), budget else Js::Null);
+    }
     if !step(1) {
         return Js::Null;
     }
@@ -2037,7 +2187,7 @@ fn elementwise(value: &Js, f: &dyn Fn(f64) -> f64) -> Js {
             items
                 .iter()
                 .take_while(|_| !crate::progress::stalled_so_far())
-                .map(|v| elementwise(v, f))
+                .map(|v| elementwise_in::<S>(v, f))
                 .collect(),
         )),
         v => Js::Num(f(to_number(v))),
@@ -2356,6 +2506,12 @@ fn radix_number(digits: &str, radix: u32) -> f64 {
 
 /// `String(value)`.
 fn to_string(v: &Js) -> String {
+    if let Js::Data(value) = v {
+        if matches!(value.as_ref(), Value::Obj(_) | Value::Element(_)) {
+            return "[object Object]".to_owned();
+        }
+        return to_string(&expression::expand(v));
+    }
     crate::stack::grow_stack!(to_string(v), budget else String::new());
     match v {
         Js::Undefined => "undefined".to_owned(),
@@ -2368,7 +2524,9 @@ fn to_string(v: &Js) -> String {
             join(items, &mut out);
             out
         }
-        Js::Obj(_) | Js::Ast(_) | Js::Proto(Kind::Object) => "[object Object]".to_owned(),
+        Js::Obj(_) | Js::Ast(_) | Js::Data(_) | Js::Props(_) | Js::Proto(Kind::Object) => {
+            "[object Object]".to_owned()
+        }
         // The text is the name's, wherever the function is from.
         Js::Function {
             name,
@@ -2422,9 +2580,13 @@ fn to_primitive(v: &Js) -> Js {
     match v {
         Js::Proto(Kind::Number) => Js::Num(0.0),
         Js::Proto(Kind::Boolean) => Js::Bool(false),
-        Js::Arr(_) | Js::Obj(_) | Js::Ast(_) | Js::Function { .. } | Js::Proto(_) => {
-            Js::Str(to_string(v).into())
-        }
+        Js::Arr(_)
+        | Js::Obj(_)
+        | Js::Ast(_)
+        | Js::Data(_)
+        | Js::Props(_)
+        | Js::Function { .. }
+        | Js::Proto(_) => Js::Str(to_string(v).into()),
         _ => v.clone(),
     }
 }
@@ -2432,7 +2594,13 @@ fn to_primitive(v: &Js) -> Js {
 fn is_object(v: &Js) -> bool {
     matches!(
         v,
-        Js::Arr(_) | Js::Obj(_) | Js::Ast(_) | Js::Function { .. } | Js::Proto(_)
+        Js::Arr(_)
+            | Js::Obj(_)
+            | Js::Ast(_)
+            | Js::Data(_)
+            | Js::Props(_)
+            | Js::Function { .. }
+            | Js::Proto(_)
     )
 }
 
@@ -2449,6 +2617,8 @@ fn loose_eq(a: &Js, b: &Js) -> bool {
         (Js::Bool(x), other) | (other, Js::Bool(x)) => {
             loose_eq(&Js::Num(f64::from(u8::from(*x))), other)
         }
+        (Js::Data(x), Js::Data(y)) => expression::data_identity(x) == expression::data_identity(y),
+        (Js::Props(x), Js::Props(y)) => Arc::ptr_eq(x, y),
         (Js::Arr(x), Js::Arr(y)) => Arc::ptr_eq(x, y),
         (Js::Obj(x), Js::Obj(y)) => Arc::ptr_eq(x, y),
         (Js::Ast(x), Js::Ast(y)) => {
@@ -2527,6 +2697,30 @@ fn property(value: &Js, key: &str) -> Js {
             .unwrap_or(Js::Undefined)
     };
     match value {
+        Js::Data(value) => match value.as_ref() {
+            Value::Arr(items) => {
+                if key == "length" {
+                    return Js::Num(items.len() as f64);
+                }
+                match array_index(key) {
+                    Some(i) => items
+                        .get(i as usize)
+                        .map(expression::data_value)
+                        .unwrap_or(Js::Undefined),
+                    None => inherited(Kind::Array, &ARRAY_METHODS),
+                }
+            }
+            Value::Obj(o) => o
+                .get(key)
+                .map(expression::data_value)
+                .unwrap_or_else(|| inherited(Kind::Object, &[])),
+            _ => expression::data_property(value, key),
+        },
+        Js::Props(el) => el
+            .props
+            .get(key)
+            .map(expression::data_value)
+            .unwrap_or_else(|| inherited(Kind::Object, &[])),
         Js::Obj(o) => match o.get(key) {
             Some(v) => v.clone(),
             None => inherited(Kind::Object, &[]),

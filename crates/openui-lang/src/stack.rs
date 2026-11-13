@@ -8,8 +8,8 @@
 //!
 //! Input-building walks use the two-argument form, with a minimal cut
 //! value. A Limits entry scopes a ceiling of eight segments plus 64 KiB per
-//! depth level, rounded up to segments, using saturating arithmetic. Nested
-//! segments on this thread count even when an uncapped walk grew them. A
+//! depth level above the entry's segment count, rounded up to segments, using
+//! saturating arithmetic. A shared expression chain keeps its original base. A
 //! guard restores the enclosing ceiling and segment count on unwind too.
 //! Reaching the ceiling is a core bug: debug/test builds panic naming the
 //! walk; release builds use the stall channel to flag a cut result. Capped
@@ -17,6 +17,8 @@
 //! the one-argument form and may grow past the ceiling, even inside a parse;
 //! none calls back into an input-building walk to bypass its checks. A debug
 //! build panics 1,024 segments past the ceiling, whichever walk grew them.
+//! Public expression evaluation treats reaching its ceiling as a depth cut in
+//! every build, and saves this policy with its suspended context (ADR 0003).
 
 use std::cell::Cell;
 
@@ -68,6 +70,7 @@ thread_local! {
     static ON_SEGMENT: Cell<bool> = const { Cell::new(false) };
     static SEGMENTS: Cell<usize> = const { Cell::new(0) };
     static CEILING: Cell<usize> = const { Cell::new(usize::MAX) };
+    static EXPRESSION: Cell<bool> = const { Cell::new(false) };
 }
 
 /// Run `f` on a fresh stack segment.
@@ -127,10 +130,74 @@ impl Drop for Ceiling {
         CEILING.set(self.0);
     }
 }
+/// Parsing always uses its own ceiling policy, even inside evaluation.
+pub(crate) struct ParsingLimit {
+    _ceiling: Ceiling,
+    expression: bool,
+}
+impl Drop for ParsingLimit {
+    fn drop(&mut self) {
+        EXPRESSION.set(self.expression);
+    }
+}
 
 #[inline]
-pub(crate) fn limit(depth: usize) -> Ceiling {
-    Ceiling(CEILING.replace(testing::ceiling_override().unwrap_or_else(|| ceiling(depth))))
+pub(crate) fn limit(depth: usize) -> ParsingLimit {
+    ParsingLimit {
+        _ceiling: Ceiling(
+            CEILING.replace(
+                SEGMENTS
+                    .get()
+                    .saturating_add(testing::ceiling_override().unwrap_or_else(|| ceiling(depth))),
+            ),
+        ),
+        expression: EXPRESSION.replace(false),
+    }
+}
+
+/// Segments already owned by an enclosing entry do not spend a new allowance.
+pub(crate) fn segments() -> usize {
+    SEGMENTS.get()
+}
+
+/// Stack policy saved with a public evaluator's context.
+pub(crate) struct Context {
+    ceiling: usize,
+    expression: bool,
+}
+pub(crate) fn context() -> Context {
+    Context {
+        ceiling: CEILING.get(),
+        expression: EXPRESSION.get(),
+    }
+}
+/// Suspend expression policy before calling caller code, including parsers.
+pub(crate) fn suspend_context() -> Context {
+    let old = context();
+    CEILING.set(usize::MAX);
+    EXPRESSION.set(false);
+    old
+}
+pub(crate) fn swap_context(context: &mut Context) {
+    context.ceiling = CEILING.replace(context.ceiling);
+    context.expression = EXPRESSION.replace(context.expression);
+}
+pub(crate) struct ExpressionLimit(Context);
+impl Drop for ExpressionLimit {
+    fn drop(&mut self) {
+        swap_context(&mut self.0);
+    }
+}
+/// Whether a public evaluation owns the current ceiling policy.
+pub(crate) fn expression_active() -> bool {
+    EXPRESSION.get()
+}
+
+pub(crate) fn expression_limit(depth: usize, base: usize) -> ExpressionLimit {
+    let old = context();
+    CEILING.set(base.saturating_add(ceiling(depth)));
+    EXPRESSION.set(true);
+    ExpressionLimit(old)
 }
 
 /// Only called when a capped walk needs a fresh segment.
@@ -138,6 +205,10 @@ pub(crate) fn limit(depth: usize) -> Ceiling {
 #[inline(never)]
 pub(crate) fn exhausted(walk: &str) -> bool {
     if SEGMENTS.get() >= CEILING.get() || testing::injected(walk) {
+        if EXPRESSION.get() {
+            crate::evaluate::expression_ceiling_cut();
+            return true;
+        }
         crate::progress::stack_stalled(walk);
     }
     crate::progress::stalled_so_far()

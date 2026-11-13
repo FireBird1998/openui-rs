@@ -46,6 +46,40 @@ _Avoid_: prompt config, prompt options (when meaning the whole input)
 The text generated from a prompt spec that tells the model how to write OpenUI Lang for a given component library.
 _Avoid_: instructions, preamble (that's one part of it)
 
+### Evaluation
+
+**Store**:
+State values held by name, with declared starting values, pristine status and a version that rises when state changes.
+_Avoid_: state manager, model, cache
+
+**Evaluated tree**:
+The element tree after expressions have been resolved against the store, with bindings marked and actions kept as plans.
+_Avoid_: rendered tree, parse result (when meaning the evaluated tree)
+
+**Binding**:
+A component prop that reads and writes a state variable, optionally transforming a written value with an expression.
+_Avoid_: reactive prop, link
+
+**Binding marker**:
+A value naming the state variable a binding writes and the expression that transforms a written value.
+_Avoid_: reactive assignment, binding object
+
+**Action plan**:
+An ordered list of steps kept in an evaluated tree and run when the embedder asks, such as after a click.
+_Avoid_: action object, command list, handler
+
+**Step**:
+One operation in an action plan: set, reset, run, to assistant, open URL or custom action. A set step keeps its value expression until the plan runs.
+_Avoid_: command, instruction, action (when meaning one step)
+
+**Host event**:
+A step the runtime returns for the embedder to perform, with its checked parameters and form fields.
+_Avoid_: callback, effect, notification
+
+**Pristine**:
+A state name still holding a declared starting value. A later parse may replace that value; a value set by an app or a user is no longer pristine.
+_Avoid_: untouched, clean, initial (when meaning pristine status)
+
 ### Correctness
 
 **Reference parser**:
@@ -120,7 +154,12 @@ _Avoid_: bug report, issue
 
 **Core**:
 The `openui-lang` Rust crate: parsing, streaming parsing, validation and prompt generation. It evaluates a state variable's starting value while parsing; it keeps no live state and runs no queries.
-_Avoid_: runtime, engine, SDK
+For live state and actions, see **Runtime**.
+_Avoid_: engine, SDK
+
+**Runtime**:
+The `openui-runtime` Rust crate over the core's one evaluator: live state, evaluated trees, bindings and action plans. It depends on the core; the core does not depend on it.
+_Avoid_: engine, renderer, core (when meaning the runtime)
 
 **Dynamic News**:
 The showcase Android app whose story screens are written by an LLM, parsed by the core on the phone, and drawn with Jetpack Compose.

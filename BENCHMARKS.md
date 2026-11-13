@@ -106,3 +106,10 @@ the change, a push still costs 8 to 12 µs and doubling a program 2.1×.
 - `synthetic/dashboard-x2`, `-x4` and `-x8` are conformance cases, so the
   incremental machinery is checked byte for byte against the reference at
   every step under several chunkings and resyncs.
+
+
+## Runtime evaluator interface (#31)
+
+Four interleaved rounds compared `main` with `ticket-31` on the benchmark
+samples and synthetic programs above. Every case was within ±1%. Parsing shows no
+regression; the ticket's parsing-cost criterion is met.

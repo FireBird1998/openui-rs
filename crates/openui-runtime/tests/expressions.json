@@ -1,0 +1,1495 @@
+[
+  {
+    "expression": "title + $hp",
+    "state": {
+      "$hp": 5,
+      "$value": 7,
+      "$fallback": 9,
+      "$nil": null,
+      "$list": [
+        {
+          "n": 2
+        },
+        {
+          "n": 8
+        }
+      ]
+    },
+    "references": {
+      "title": "HP: ",
+      "rows": [
+        3,
+        6
+      ],
+      "query": {
+        "total": 12
+      },
+      "nil": null
+    },
+    "extra": {
+      "$value": 10,
+      "$hp": null
+    },
+    "defined": true,
+    "value": "HP: 5"
+  },
+  {
+    "expression": "$value * 2",
+    "state": {
+      "$hp": 5,
+      "$value": 7,
+      "$fallback": 9,
+      "$nil": null,
+      "$list": [
+        {
+          "n": 2
+        },
+        {
+          "n": 8
+        }
+      ]
+    },
+    "references": {
+      "title": "HP: ",
+      "rows": [
+        3,
+        6
+      ],
+      "query": {
+        "total": 12
+      },
+      "nil": null
+    },
+    "extra": {
+      "$value": 10,
+      "$hp": null
+    },
+    "defined": true,
+    "value": 20
+  },
+  {
+    "expression": "$hp + 1",
+    "state": {
+      "$hp": 5,
+      "$value": 7,
+      "$fallback": 9,
+      "$nil": null,
+      "$list": [
+        {
+          "n": 2
+        },
+        {
+          "n": 8
+        }
+      ]
+    },
+    "references": {
+      "title": "HP: ",
+      "rows": [
+        3,
+        6
+      ],
+      "query": {
+        "total": 12
+      },
+      "nil": null
+    },
+    "extra": {
+      "$value": 10,
+      "$hp": null
+    },
+    "defined": true,
+    "value": 6
+  },
+  {
+    "expression": "missing",
+    "state": {
+      "$hp": 5,
+      "$value": 7,
+      "$fallback": 9,
+      "$nil": null,
+      "$list": [
+        {
+          "n": 2
+        },
+        {
+          "n": 8
+        }
+      ]
+    },
+    "references": {
+      "title": "HP: ",
+      "rows": [
+        3,
+        6
+      ],
+      "query": {
+        "total": 12
+      },
+      "nil": null
+    },
+    "extra": {
+      "$value": 10,
+      "$hp": null
+    },
+    "defined": false,
+    "value": null
+  },
+  {
+    "expression": "$missing",
+    "state": {
+      "$hp": 5,
+      "$value": 7,
+      "$fallback": 9,
+      "$nil": null,
+      "$list": [
+        {
+          "n": 2
+        },
+        {
+          "n": 8
+        }
+      ]
+    },
+    "references": {
+      "title": "HP: ",
+      "rows": [
+        3,
+        6
+      ],
+      "query": {
+        "total": 12
+      },
+      "nil": null
+    },
+    "extra": {
+      "$value": 10,
+      "$hp": null
+    },
+    "defined": false,
+    "value": null
+  },
+  {
+    "expression": "$hp > 3 ? query.total : 0",
+    "state": {
+      "$hp": 5,
+      "$value": 7,
+      "$fallback": 9,
+      "$nil": null,
+      "$list": [
+        {
+          "n": 2
+        },
+        {
+          "n": 8
+        }
+      ]
+    },
+    "references": {
+      "title": "HP: ",
+      "rows": [
+        3,
+        6
+      ],
+      "query": {
+        "total": 12
+      },
+      "nil": null
+    },
+    "extra": {
+      "$value": 10,
+      "$hp": null
+    },
+    "defined": true,
+    "value": 12
+  },
+  {
+    "expression": "@Sum(rows)",
+    "state": {
+      "$hp": 5,
+      "$value": 7,
+      "$fallback": 9,
+      "$nil": null,
+      "$list": [
+        {
+          "n": 2
+        },
+        {
+          "n": 8
+        }
+      ]
+    },
+    "references": {
+      "title": "HP: ",
+      "rows": [
+        3,
+        6
+      ],
+      "query": {
+        "total": 12
+      },
+      "nil": null
+    },
+    "extra": {
+      "$value": 10,
+      "$hp": null
+    },
+    "defined": true,
+    "value": 9
+  },
+  {
+    "expression": "@Count($list)",
+    "state": {
+      "$hp": 5,
+      "$value": 7,
+      "$fallback": 9,
+      "$nil": null,
+      "$list": [
+        {
+          "n": 2
+        },
+        {
+          "n": 8
+        }
+      ]
+    },
+    "references": {
+      "title": "HP: ",
+      "rows": [
+        3,
+        6
+      ],
+      "query": {
+        "total": 12
+      },
+      "nil": null
+    },
+    "extra": {
+      "$value": 10,
+      "$hp": null
+    },
+    "defined": true,
+    "value": 2
+  },
+  {
+    "expression": "$list.n",
+    "state": {
+      "$hp": 5,
+      "$value": 7,
+      "$fallback": 9,
+      "$nil": null,
+      "$list": [
+        {
+          "n": 2
+        },
+        {
+          "n": 8
+        }
+      ]
+    },
+    "references": {
+      "title": "HP: ",
+      "rows": [
+        3,
+        6
+      ],
+      "query": {
+        "total": 12
+      },
+      "nil": null
+    },
+    "extra": {
+      "$value": 10,
+      "$hp": null
+    },
+    "defined": true,
+    "value": [
+      2,
+      8
+    ]
+  },
+  {
+    "expression": "$list[1].n",
+    "state": {
+      "$hp": 5,
+      "$value": 7,
+      "$fallback": 9,
+      "$nil": null,
+      "$list": [
+        {
+          "n": 2
+        },
+        {
+          "n": 8
+        }
+      ]
+    },
+    "references": {
+      "title": "HP: ",
+      "rows": [
+        3,
+        6
+      ],
+      "query": {
+        "total": 12
+      },
+      "nil": null
+    },
+    "extra": {
+      "$value": 10,
+      "$hp": null
+    },
+    "defined": true,
+    "value": 8
+  },
+  {
+    "expression": "\"x\" + null",
+    "state": {
+      "$hp": 5,
+      "$value": 7,
+      "$fallback": 9,
+      "$nil": null,
+      "$list": [
+        {
+          "n": 2
+        },
+        {
+          "n": 8
+        }
+      ]
+    },
+    "references": {
+      "title": "HP: ",
+      "rows": [
+        3,
+        6
+      ],
+      "query": {
+        "total": 12
+      },
+      "nil": null
+    },
+    "extra": {
+      "$value": 10,
+      "$hp": null
+    },
+    "defined": true,
+    "value": "x"
+  },
+  {
+    "expression": "5 == \"5\"",
+    "state": {
+      "$hp": 5,
+      "$value": 7,
+      "$fallback": 9,
+      "$nil": null,
+      "$list": [
+        {
+          "n": 2
+        },
+        {
+          "n": 8
+        }
+      ]
+    },
+    "references": {
+      "title": "HP: ",
+      "rows": [
+        3,
+        6
+      ],
+      "query": {
+        "total": 12
+      },
+      "nil": null
+    },
+    "extra": {
+      "$value": 10,
+      "$hp": null
+    },
+    "defined": true,
+    "value": true
+  },
+  {
+    "expression": "1 / 0",
+    "state": {
+      "$hp": 5,
+      "$value": 7,
+      "$fallback": 9,
+      "$nil": null,
+      "$list": [
+        {
+          "n": 2
+        },
+        {
+          "n": 8
+        }
+      ]
+    },
+    "references": {
+      "title": "HP: ",
+      "rows": [
+        3,
+        6
+      ],
+      "query": {
+        "total": 12
+      },
+      "nil": null
+    },
+    "extra": {
+      "$value": 10,
+      "$hp": null
+    },
+    "defined": true,
+    "value": 0
+  },
+  {
+    "expression": "@Each($list, \"row\", row.n + $hp)",
+    "state": {
+      "$hp": 5,
+      "$value": 7,
+      "$fallback": 9,
+      "$nil": null,
+      "$list": [
+        {
+          "n": 2
+        },
+        {
+          "n": 8
+        }
+      ]
+    },
+    "references": {
+      "title": "HP: ",
+      "rows": [
+        3,
+        6
+      ],
+      "query": {
+        "total": 12
+      },
+      "nil": null
+    },
+    "extra": {
+      "$value": 10,
+      "$hp": null
+    },
+    "defined": true,
+    "value": [
+      7,
+      13
+    ]
+  },
+  {
+    "expression": "@Each([1, 2], \"row\", @Each([3], \"other\", row + other))",
+    "state": {
+      "$hp": 5,
+      "$value": 7,
+      "$fallback": 9,
+      "$nil": null,
+      "$list": [
+        {
+          "n": 2
+        },
+        {
+          "n": 8
+        }
+      ]
+    },
+    "references": {
+      "title": "HP: ",
+      "rows": [
+        3,
+        6
+      ],
+      "query": {
+        "total": 12
+      },
+      "nil": null
+    },
+    "extra": {
+      "$value": 10,
+      "$hp": null
+    },
+    "defined": true,
+    "value": [
+      [
+        4
+      ],
+      [
+        5
+      ]
+    ]
+  },
+  {
+    "expression": "@Each([1, 2], \"row\", row)",
+    "state": {
+      "$hp": 5,
+      "$value": 7,
+      "$fallback": 9,
+      "$nil": null,
+      "$list": [
+        {
+          "n": 2
+        },
+        {
+          "n": 8
+        }
+      ]
+    },
+    "references": {
+      "title": "HP: ",
+      "rows": [
+        3,
+        6
+      ],
+      "query": {
+        "total": 12
+      },
+      "nil": null
+    },
+    "extra": {
+      "$value": 10,
+      "$hp": null
+    },
+    "defined": true,
+    "value": [
+      1,
+      2
+    ]
+  },
+  {
+    "expression": "@Each(null, \"row\", row)",
+    "state": {
+      "$hp": 5,
+      "$value": 7,
+      "$fallback": 9,
+      "$nil": null,
+      "$list": [
+        {
+          "n": 2
+        },
+        {
+          "n": 8
+        }
+      ]
+    },
+    "references": {
+      "title": "HP: ",
+      "rows": [
+        3,
+        6
+      ],
+      "query": {
+        "total": 12
+      },
+      "nil": null
+    },
+    "extra": {
+      "$value": 10,
+      "$hp": null
+    },
+    "defined": true,
+    "value": []
+  },
+  {
+    "expression": "@Each([1], \"\", 1)",
+    "state": {
+      "$hp": 5,
+      "$value": 7,
+      "$fallback": 9,
+      "$nil": null,
+      "$list": [
+        {
+          "n": 2
+        },
+        {
+          "n": 8
+        }
+      ]
+    },
+    "references": {
+      "title": "HP: ",
+      "rows": [
+        3,
+        6
+      ],
+      "query": {
+        "total": 12
+      },
+      "nil": null
+    },
+    "extra": {
+      "$value": 10,
+      "$hp": null
+    },
+    "defined": true,
+    "value": []
+  },
+  {
+    "expression": "@Each([1])",
+    "state": {
+      "$hp": 5,
+      "$value": 7,
+      "$fallback": 9,
+      "$nil": null,
+      "$list": [
+        {
+          "n": 2
+        },
+        {
+          "n": 8
+        }
+      ]
+    },
+    "references": {
+      "title": "HP: ",
+      "rows": [
+        3,
+        6
+      ],
+      "query": {
+        "total": 12
+      },
+      "nil": null
+    },
+    "extra": {
+      "$value": 10,
+      "$hp": null
+    },
+    "defined": true,
+    "value": []
+  },
+  {
+    "expression": "{a: query.total, b: $missing, c: {n: 1}.missing}",
+    "state": {
+      "$hp": 5,
+      "$value": 7,
+      "$fallback": 9,
+      "$nil": null,
+      "$list": [
+        {
+          "n": 2
+        },
+        {
+          "n": 8
+        }
+      ]
+    },
+    "references": {
+      "title": "HP: ",
+      "rows": [
+        3,
+        6
+      ],
+      "query": {
+        "total": 12
+      },
+      "nil": null
+    },
+    "extra": {
+      "$value": 10,
+      "$hp": null
+    },
+    "defined": true,
+    "value": {
+      "a": 12
+    }
+  },
+  {
+    "expression": "[{n: 1}.missing, null]",
+    "state": {
+      "$hp": 5,
+      "$value": 7,
+      "$fallback": 9,
+      "$nil": null,
+      "$list": [
+        {
+          "n": 2
+        },
+        {
+          "n": 8
+        }
+      ]
+    },
+    "references": {
+      "title": "HP: ",
+      "rows": [
+        3,
+        6
+      ],
+      "query": {
+        "total": 12
+      },
+      "nil": null
+    },
+    "extra": {
+      "$value": 10,
+      "$hp": null
+    },
+    "defined": true,
+    "value": [
+      null,
+      null
+    ]
+  },
+  {
+    "expression": "{n: 1}.missing",
+    "state": {
+      "$hp": 5,
+      "$value": 7,
+      "$fallback": 9,
+      "$nil": null,
+      "$list": [
+        {
+          "n": 2
+        },
+        {
+          "n": 8
+        }
+      ]
+    },
+    "references": {
+      "title": "HP: ",
+      "rows": [
+        3,
+        6
+      ],
+      "query": {
+        "total": 12
+      },
+      "nil": null
+    },
+    "extra": {
+      "$value": 10,
+      "$hp": null
+    },
+    "defined": false,
+    "value": null
+  },
+  {
+    "expression": "null",
+    "state": {
+      "$hp": 5,
+      "$value": 7,
+      "$fallback": 9,
+      "$nil": null,
+      "$list": [
+        {
+          "n": 2
+        },
+        {
+          "n": 8
+        }
+      ]
+    },
+    "references": {
+      "title": "HP: ",
+      "rows": [
+        3,
+        6
+      ],
+      "query": {
+        "total": 12
+      },
+      "nil": null
+    },
+    "extra": {
+      "$value": 10,
+      "$hp": null
+    },
+    "defined": true,
+    "value": null
+  },
+  {
+    "expression": "$list == $list",
+    "state": {
+      "$hp": 5,
+      "$value": 7,
+      "$fallback": 9,
+      "$nil": null,
+      "$list": [
+        {
+          "n": 2
+        },
+        {
+          "n": 8
+        }
+      ]
+    },
+    "references": {
+      "title": "HP: ",
+      "rows": [
+        3,
+        6
+      ],
+      "query": {
+        "total": 12
+      },
+      "nil": null
+    },
+    "extra": {
+      "$value": 10,
+      "$hp": null
+    },
+    "defined": true,
+    "value": true
+  },
+  {
+    "expression": "rows == rows",
+    "state": {
+      "$hp": 5,
+      "$value": 7,
+      "$fallback": 9,
+      "$nil": null,
+      "$list": [
+        {
+          "n": 2
+        },
+        {
+          "n": 8
+        }
+      ]
+    },
+    "references": {
+      "title": "HP: ",
+      "rows": [
+        3,
+        6
+      ],
+      "query": {
+        "total": 12
+      },
+      "nil": null
+    },
+    "extra": {
+      "$value": 10,
+      "$hp": null
+    },
+    "defined": true,
+    "value": true
+  },
+  {
+    "expression": "[] == []",
+    "state": {
+      "$hp": 5,
+      "$value": 7,
+      "$fallback": 9,
+      "$nil": null,
+      "$list": [
+        {
+          "n": 2
+        },
+        {
+          "n": 8
+        }
+      ]
+    },
+    "references": {
+      "title": "HP: ",
+      "rows": [
+        3,
+        6
+      ],
+      "query": {
+        "total": 12
+      },
+      "nil": null
+    },
+    "extra": {
+      "$value": 10,
+      "$hp": null
+    },
+    "defined": true,
+    "value": false
+  },
+  {
+    "expression": "@Abs(-4)",
+    "state": {
+      "$hp": 5,
+      "$value": 7,
+      "$fallback": 9,
+      "$nil": null,
+      "$list": [
+        {
+          "n": 2
+        },
+        {
+          "n": 8
+        }
+      ]
+    },
+    "references": {
+      "title": "HP: ",
+      "rows": [
+        3,
+        6
+      ],
+      "query": {
+        "total": 12
+      },
+      "nil": null
+    },
+    "extra": {
+      "$value": 10,
+      "$hp": null
+    },
+    "defined": true,
+    "value": 4
+  },
+  {
+    "expression": "{k: x}",
+    "state": {
+      "$hp": 5,
+      "$value": 7,
+      "$fallback": 9,
+      "$nil": null,
+      "$list": [
+        {
+          "n": 2
+        },
+        {
+          "n": 8
+        }
+      ]
+    },
+    "references": {
+      "title": "HP: ",
+      "rows": [
+        3,
+        6
+      ],
+      "query": {
+        "total": 12
+      },
+      "nil": null
+    },
+    "extra": {
+      "$value": 10,
+      "$hp": null
+    },
+    "defined": true,
+    "value": {}
+  },
+  {
+    "expression": "[x]",
+    "state": {
+      "$hp": 5,
+      "$value": 7,
+      "$fallback": 9,
+      "$nil": null,
+      "$list": [
+        {
+          "n": 2
+        },
+        {
+          "n": 8
+        }
+      ]
+    },
+    "references": {
+      "title": "HP: ",
+      "rows": [
+        3,
+        6
+      ],
+      "query": {
+        "total": 12
+      },
+      "nil": null
+    },
+    "extra": {
+      "$value": 10,
+      "$hp": null
+    },
+    "defined": true,
+    "value": [
+      null
+    ]
+  },
+  {
+    "expression": "x == null",
+    "state": {
+      "$hp": 5,
+      "$value": 7,
+      "$fallback": 9,
+      "$nil": null,
+      "$list": [
+        {
+          "n": 2
+        },
+        {
+          "n": 8
+        }
+      ]
+    },
+    "references": {
+      "title": "HP: ",
+      "rows": [
+        3,
+        6
+      ],
+      "query": {
+        "total": 12
+      },
+      "nil": null
+    },
+    "extra": {
+      "$value": 10,
+      "$hp": null
+    },
+    "defined": true,
+    "value": true
+  },
+  {
+    "expression": "{s: $missing}",
+    "state": {
+      "$hp": 5,
+      "$value": 7,
+      "$fallback": 9,
+      "$nil": null,
+      "$list": [
+        {
+          "n": 2
+        },
+        {
+          "n": 8
+        }
+      ]
+    },
+    "references": {
+      "title": "HP: ",
+      "rows": [
+        3,
+        6
+      ],
+      "query": {
+        "total": 12
+      },
+      "nil": null
+    },
+    "extra": {
+      "$value": 10,
+      "$hp": null
+    },
+    "defined": true,
+    "value": {}
+  },
+  {
+    "expression": "[$missing]",
+    "state": {
+      "$hp": 5,
+      "$value": 7,
+      "$fallback": 9,
+      "$nil": null,
+      "$list": [
+        {
+          "n": 2
+        },
+        {
+          "n": 8
+        }
+      ]
+    },
+    "references": {
+      "title": "HP: ",
+      "rows": [
+        3,
+        6
+      ],
+      "query": {
+        "total": 12
+      },
+      "nil": null
+    },
+    "extra": {
+      "$value": 10,
+      "$hp": null
+    },
+    "defined": true,
+    "value": [
+      null
+    ]
+  },
+  {
+    "expression": "$fallback",
+    "state": {
+      "$hp": 5,
+      "$value": 7,
+      "$fallback": 9,
+      "$nil": null,
+      "$list": [
+        {
+          "n": 2
+        },
+        {
+          "n": 8
+        }
+      ]
+    },
+    "references": {
+      "title": "HP: ",
+      "rows": [
+        3,
+        6
+      ],
+      "query": {
+        "total": 12
+      },
+      "nil": null
+    },
+    "extra": {
+      "$value": 10,
+      "$hp": null
+    },
+    "defined": true,
+    "value": 9
+  },
+  {
+    "expression": "{n: nil, s: $nil}",
+    "state": {
+      "$hp": 5,
+      "$value": 7,
+      "$fallback": 9,
+      "$nil": null,
+      "$list": [
+        {
+          "n": 2
+        },
+        {
+          "n": 8
+        }
+      ]
+    },
+    "references": {
+      "title": "HP: ",
+      "rows": [
+        3,
+        6
+      ],
+      "query": {
+        "total": 12
+      },
+      "nil": null
+    },
+    "extra": {
+      "$value": 10,
+      "$hp": null
+    },
+    "defined": true,
+    "value": {
+      "n": null,
+      "s": null
+    }
+  },
+  {
+    "expression": "{k: $nil}",
+    "state": {
+      "$hp": 5,
+      "$value": 7,
+      "$fallback": 9,
+      "$nil": null,
+      "$list": [
+        {
+          "n": 2
+        },
+        {
+          "n": 8
+        }
+      ]
+    },
+    "references": {
+      "title": "HP: ",
+      "rows": [
+        3,
+        6
+      ],
+      "query": {
+        "total": 12
+      },
+      "nil": null
+    },
+    "extra": {
+      "$value": 10,
+      "$hp": null
+    },
+    "defined": true,
+    "value": {
+      "k": null
+    }
+  },
+  {
+    "expression": "@Abs([[1, -2], [-3]])",
+    "state": {
+      "$hp": 5,
+      "$value": 7,
+      "$fallback": 9,
+      "$nil": null,
+      "$list": [
+        {
+          "n": 2
+        },
+        {
+          "n": 8
+        }
+      ]
+    },
+    "references": {
+      "title": "HP: ",
+      "rows": [
+        3,
+        6
+      ],
+      "query": {
+        "total": 12
+      },
+      "nil": null
+    },
+    "extra": {
+      "$value": 10,
+      "$hp": null
+    },
+    "defined": true,
+    "value": [
+      [
+        1,
+        2
+      ],
+      [
+        3
+      ]
+    ]
+  },
+  {
+    "expression": "@Each([1,2,3],\"i\",r)",
+    "state": {
+      "$hp": 5,
+      "$value": 7,
+      "$fallback": 9,
+      "$nil": null,
+      "$list": [
+        {
+          "n": 2
+        },
+        {
+          "n": 8
+        }
+      ]
+    },
+    "references": {
+      "i": 7,
+      "query": 17
+    },
+    "extra": {
+      "$value": 10,
+      "$hp": null
+    },
+    "statements": {
+      "r": "i * 10",
+      "y": "query"
+    },
+    "defined": true,
+    "value": [
+      70,
+      70,
+      70
+    ]
+  },
+  {
+    "expression": "[@Each([1,2],\"i\",r),@Each([5,6],\"i\",r)]",
+    "state": {
+      "$hp": 5,
+      "$value": 7,
+      "$fallback": 9,
+      "$nil": null,
+      "$list": [
+        {
+          "n": 2
+        },
+        {
+          "n": 8
+        }
+      ]
+    },
+    "references": {
+      "i": 7,
+      "query": 17
+    },
+    "extra": {
+      "$value": 10,
+      "$hp": null
+    },
+    "statements": {
+      "r": "i * 10",
+      "y": "query"
+    },
+    "defined": true,
+    "value": [
+      [
+        70,
+        70
+      ],
+      [
+        70,
+        70
+      ]
+    ]
+  },
+  {
+    "expression": "[@Each([1,2],\"i\",r),r]",
+    "state": {
+      "$hp": 5,
+      "$value": 7,
+      "$fallback": 9,
+      "$nil": null,
+      "$list": [
+        {
+          "n": 2
+        },
+        {
+          "n": 8
+        }
+      ]
+    },
+    "references": {
+      "i": 7,
+      "query": 17
+    },
+    "extra": {
+      "$value": 10,
+      "$hp": null
+    },
+    "statements": {
+      "r": "i * 10",
+      "y": "query"
+    },
+    "defined": true,
+    "value": [
+      [
+        70,
+        70
+      ],
+      70
+    ]
+  },
+  {
+    "expression": "[r,@Each([1,2],\"i\",r)]",
+    "state": {
+      "$hp": 5,
+      "$value": 7,
+      "$fallback": 9,
+      "$nil": null,
+      "$list": [
+        {
+          "n": 2
+        },
+        {
+          "n": 8
+        }
+      ]
+    },
+    "references": {
+      "i": 7,
+      "query": 17
+    },
+    "extra": {
+      "$value": 10,
+      "$hp": null
+    },
+    "statements": {
+      "r": "i * 10",
+      "y": "query"
+    },
+    "defined": true,
+    "value": [
+      70,
+      [
+        70,
+        70
+      ]
+    ]
+  },
+  {
+    "expression": "@Each([1,2],\"query\",y)",
+    "state": {
+      "$hp": 5,
+      "$value": 7,
+      "$fallback": 9,
+      "$nil": null,
+      "$list": [
+        {
+          "n": 2
+        },
+        {
+          "n": 8
+        }
+      ]
+    },
+    "references": {
+      "i": 7,
+      "query": 17
+    },
+    "extra": {
+      "$value": 10,
+      "$hp": null
+    },
+    "statements": {
+      "r": "i * 10",
+      "y": "query"
+    },
+    "defined": true,
+    "value": [
+      17,
+      17
+    ]
+  },
+  {
+    "expression": "@Each([1,2],\"r\",r)",
+    "state": {
+      "$hp": 5,
+      "$value": 7,
+      "$fallback": 9,
+      "$nil": null,
+      "$list": [
+        {
+          "n": 2
+        },
+        {
+          "n": 8
+        }
+      ]
+    },
+    "references": {
+      "i": 7,
+      "query": 17
+    },
+    "extra": {
+      "$value": 10,
+      "$hp": null
+    },
+    "statements": {
+      "r": "i * 10",
+      "y": "query"
+    },
+    "defined": true,
+    "value": [
+      1,
+      2
+    ]
+  },
+  {
+    "expression": "@Each([1,2],\"query\",query)",
+    "state": {},
+    "references": {
+      "query": 17
+    },
+    "extra": {},
+    "inlineRuntimeRef": "query",
+    "defined": true,
+    "value": [
+      1,
+      2
+    ]
+  }
+]

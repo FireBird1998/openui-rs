@@ -415,6 +415,14 @@ dependencies = [
 ]
 
 [[package]]
+name = "openui-runtime"
+version = "0.1.0"
+dependencies = [
+ "openui-lang",
+ "test-alloc",
+]
+
+[[package]]
 name = "openui-wasm"
 version = "0.1.0"
 dependencies = [
