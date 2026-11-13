@@ -119,14 +119,18 @@ _Avoid_: bug report, issue
 ### Products
 
 **Core**:
-The `openui-lang` Rust crate: parsing, streaming parsing, validation and prompt generation. Not evaluation, state or queries.
+The `openui-lang` Rust crate: parsing, streaming parsing, validation and prompt generation. It evaluates a state variable's starting value while parsing; it keeps no live state and runs no queries.
 _Avoid_: runtime, engine, SDK
 
 **Dynamic News**:
 The showcase Android app whose story screens are written by an LLM, parsed by the core on the phone, and drawn with Jetpack Compose.
 
+**OpenUINative**:
+The Swift package that draws a parse result as native SwiftUI views, for any Mac app; it holds the core's Swift binding.
+_Avoid_: the Mac binding (the binding is one part of it), UI kit, renderer
+
 **Viewer**:
-The Mac app that plays a program as a stream and draws it natively beside its parse result: a playground for the core and a rehearsal for Dynamic News's binding.
+The Mac app that plays a program as a stream and draws it natively beside its parse result: a development tool for the core, built on OpenUINative, and a rehearsal for Dynamic News's binding.
 _Avoid_: playground, inspector, demo app, Mac app
 
 **Story screen**:

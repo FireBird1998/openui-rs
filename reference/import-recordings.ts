@@ -1,5 +1,5 @@
 // Turns the viewer's recordings (conformance/recordings/*.recording.json, the
-// format documented on `Recording` in viewer/Sources/ViewerKit/Recording.swift)
+// format documented on `Recording` in tools/viewer/Sources/ViewerKit/Recording.swift)
 // into corpus cases. Run by scripts/import-recordings.sh, which copies new
 // recordings in first and regenerates the goldens after.
 //

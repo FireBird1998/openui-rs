@@ -1,15 +1,17 @@
 target/
 node_modules/
 .DS_Store
-# The viewer's generated parts; scripts/viewer.sh makes them.
-viewer/.build/
-viewer/Frameworks/
-viewer/Sources/OpenUIFFI/
+# The Swift binding's generated parts; scripts/swift-binding.sh makes them.
+swift/OpenUINative/.build/
+swift/OpenUINative/.swiftpm/
+swift/OpenUINative/Frameworks/
+swift/OpenUINative/Sources/OpenUIFFI/
+tools/viewer/.build/
 # Xcode's package state, except the shared scheme that builds the binding first.
-viewer/.swiftpm/*
-!viewer/.swiftpm/xcode/
-viewer/.swiftpm/xcode/*
-!viewer/.swiftpm/xcode/xcshareddata/
+tools/viewer/.swiftpm/*
+!tools/viewer/.swiftpm/xcode/
+tools/viewer/.swiftpm/xcode/*
+!tools/viewer/.swiftpm/xcode/xcshareddata/
 
 # Hunts write their reports and findings here (scripts/hunt.sh).
 findings/

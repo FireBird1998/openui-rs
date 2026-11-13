@@ -13,7 +13,7 @@ scripts/check.sh
 The check runs formatting, clippy, the docs and every Rust test, including the doc examples and this repository's README example. It then builds the workspace on Rust 1.88.0, the oldest version the crates claim. That build is skipped, with a note, when the toolchain isn't installed; the check never installs one. It takes a minute or two.
 
 ```bash
-scripts/check-viewer.sh                                   # the viewer's Swift tests (needs Xcode)
+scripts/check-viewer.sh                                   # OpenUINative's and the viewer's Swift tests (needs Xcode)
 cargo test -p openui-lang --test conformance              # one test file
 cargo test -p openui-lang --test conformance streaming_   # tests whose names match
 ```
@@ -399,7 +399,7 @@ scripts/import-recordings.sh            # from the viewer's own folder
 scripts/import-recordings.sh <folder>   # or any folder of *.recording.json
 ```
 
-The viewer saves each live request it streams from Claude as a recording (the format is documented on `Recording` in `viewer/Sources/ViewerKit/Recording.swift`): the request, the models, the effort, the library, and each text delta as it arrived. The command copies new recordings into `conformance/recordings/`, turns every recording there into cases (`reference/import-recordings.ts`), and regenerates the goldens:
+The viewer saves each live request it streams from Claude as a recording (the format is documented on `Recording` in `tools/viewer/Sources/ViewerKit/Recording.swift`): the request, the models, the effort, the library, and each text delta as it arrived. The command copies new recordings into `conformance/recordings/`, turns every recording there into cases (`reference/import-recordings.ts`), and regenerates the goldens:
 
 - **A fresh recording** becomes a parse case, `recorded/<file>`, in its library, with a **recorded chunking**: the text cut where the deltas arrived, in code points. The reference computes that chunking's golden alongside the corpus's others, and the conformance test checks it at every step.
 - **A follow-up** (an edit-mode request, which records the program it patched) becomes a merge case, that program with its text as the patch, and a parse case of the merged program, `recorded/<file>-merged`.
