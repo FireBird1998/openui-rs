@@ -244,6 +244,42 @@ fn json_deeper_than_any_parse_result_is_refused() {
         .expect("deep JSON panicked");
 }
 
+/// State declarations nested deeper than the stack could follow are refused
+/// without being copied: copying or dropping such a tree recurses.
+#[test]
+fn deep_state_declarations_are_refused_without_being_copied() {
+    std::thread::Builder::new()
+        .name(format!(
+            "{}::worker",
+            std::thread::current().name().unwrap_or("test")
+        ))
+        .stack_size(stack())
+        .spawn(|| {
+            use serde_json::Value;
+            let deep = || {
+                let mut value = Value::from(1);
+                for _ in 0..100_000 {
+                    value = Value::Array(vec![value]);
+                }
+                value
+            };
+            let root: Value = serde_json::from_str(
+                r#"{"type":"element","typeName":"Stack","props":{},"partial":false}"#,
+            )
+            .unwrap();
+            let mut by_name = serde_json::Map::new();
+            by_name.insert("$a".into(), deep());
+            // Leaked, not dropped: dropping them recurses too.
+            for declarations in [Value::Object(by_name), Value::Array(vec![deep()])] {
+                let declarations = std::mem::ManuallyDrop::new(declarations);
+                assert!(json_to_openui(&root, &library(), Some(&declarations)).is_err());
+            }
+        })
+        .unwrap()
+        .join()
+        .expect("deep state declarations panicked");
+}
+
 #[global_allocator]
 static ALLOCATOR: test_alloc::Allocator = test_alloc::Allocator::with_cap(test_alloc::LIMITS);
 
