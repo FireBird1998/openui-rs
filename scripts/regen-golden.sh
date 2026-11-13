@@ -28,7 +28,11 @@ if [[ -n "$into" && -e "$into" ]]; then
   exit 2
 fi
 
-(cd "$ROOT/reference" && bun install --frozen-lockfile --silent)
+# Dependencies must already exist. Reference runners never install packages.
+if [[ ! -d "$node_modules" ]]; then
+  echo "regen-golden.sh: missing cached node_modules: $node_modules" >&2
+  exit 1
+fi
 mkdir -p "$ROOT/target"
 work="$(mktemp -d "$ROOT/target/golden.XXXXXX")"
 trap 'rm -rf "$work"' EXIT
@@ -44,9 +48,11 @@ done
   cd "$work/reference"
   export OPENUI_TELEMETRY_DISABLED=1 DO_NOT_TRACK=1
   unset OPENUI_RUNTIME_TELEMETRY_ENABLED
-  bun run.ts golden
-  bun prompts.ts golden
-  bun edits.ts golden
+  bun --no-install run.ts golden
+  bun --no-install prompts.ts golden
+  bun --no-install edits.ts golden
+  bun --no-install runtime.ts golden
+  bun --no-install tree-interface.ts > ../conformance/golden/runtime-interface.json
 )
 if [[ -n "$into" ]]; then
   mkdir -p "$(dirname "$into")"

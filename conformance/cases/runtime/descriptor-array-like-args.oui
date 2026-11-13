@@ -1,0 +1,2 @@
+root = Box({k:"Comp",name:"Count",args:{length:1,"0":{k:"Arr",els:[{k:"Num",v:1},{k:"Num",v:2}]}}},$n)
+$n=1

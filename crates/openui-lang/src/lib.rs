@@ -361,8 +361,9 @@ pub use ast::{Ast, RefType};
 pub use builtins::{is_builtin, is_reserved_call};
 pub use enrich::{EnrichedError, enrich_errors, enriched_errors_to_json};
 pub use evaluate::{
-    EvaluationFlags, EvaluationResult, EvaluationScope, EvaluationSession, ExpressionEvaluator,
-    evaluate_expression, evaluate_expression_with_limits,
+    EvaluationFailure, EvaluationFlags, EvaluationResult, EvaluationScope, EvaluationSession,
+    ExpressionEvaluator, ExpressionOperation, ExpressionType, evaluate_expression,
+    evaluate_expression_with_limits,
 };
 pub use expr::{parse_expression, parse_expression_with_limits};
 pub use free::free_json;

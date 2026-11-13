@@ -1,0 +1,6 @@
+root = Box("HP: " + $hp, label, [$text, $items], $obj.n)
+label = "score " + $hp
+$hp = 12345
+$text = "a default replaced as its statement arrives"
+$items = [1, 2, 3]
+$obj = {n: 7}

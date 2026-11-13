@@ -55,6 +55,8 @@ impl EvaluationScope for () {}
 /// Evaluation within a callback, with the same scope, depth and allowance.
 pub struct ExpressionEvaluator<'a> {
     evaluate: &'a dyn Fn(&Ast) -> EvaluationResult,
+    evaluate_value: &'a dyn Fn(&Value) -> EvaluationResult,
+    operate: &'a dyn Fn(&mut dyn FnMut()),
 }
 impl ExpressionEvaluator<'_> {
     /// Evaluate a statement or argument; `None` denotes undefined.
@@ -65,6 +67,62 @@ impl ExpressionEvaluator<'_> {
     pub fn evaluate_result(&self, expression: &Ast) -> EvaluationResult {
         (self.evaluate)(expression)
     }
+    /// Evaluate an AST-shaped data value. Literal descriptors return their raw
+    /// value; child fields are read lazily by the same operator implementation.
+    pub fn evaluate_value(&self, expression: &Value) -> EvaluationResult {
+        (self.evaluate_value)(expression)
+    }
+    /// Run a recursive caller walk within one shared logical depth level.
+    /// Returns None on a cut. The level and stack context leave on return or
+    /// unwind; a closure prevents guards escaping across session boundaries.
+    pub fn with_level<T>(&self, f: impl FnOnce() -> T) -> Option<T> {
+        let mut f = Some(f);
+        let mut out = None;
+        (self.operate)(&mut || {
+            if let Some(f) = f.take() {
+                out = caller_level(f);
+            }
+        });
+        out
+    }
+    /// Reserve caller-produced JSON bytes, charging work and result room.
+    /// Retaining unevaluated supplied input after a cut needs no reservation.
+    pub fn reserve_result(&self, bytes: usize) -> bool {
+        let mut ok = false;
+        (self.operate)(&mut || ok = spend(bytes));
+        ok
+    }
+    /// Reserve an unchanged supplied value's JSON, without earning input credit
+    /// or copying its body. Its bounded measurement also charges work/depth.
+    pub fn reserve_value(&self, value: &Value) -> bool {
+        let mut ok = false;
+        (self.operate)(&mut || ok = spend(measure_data(value, false)));
+        ok
+    }
+    /// Sticky cuts affecting the shared allowance.
+    pub fn flags(&self) -> EvaluationFlags {
+        let mut flags = EvaluationFlags::default();
+        (self.operate)(&mut || {
+            record_flags();
+            flags = ACCOUNT.with(|a| a.borrow().flags.get());
+        });
+        flags
+    }
+}
+
+fn caller_level<T>(f: impl FnOnce() -> T) -> Option<T> {
+    // T need not implement Debug (the test-only macro assertion requires it).
+    if crate::stack::budget_low("caller_level") {
+        if crate::stack::exhausted("caller_level") {
+            return None;
+        }
+        return crate::stack::on_new_segment(|| caller_level(f));
+    }
+    let _levels = [Level::enter()?, Level::enter()?, Level::enter()?];
+    if !step(1) {
+        return None;
+    }
+    Some(f())
 }
 
 /// Limits reached by any evaluation sharing an allowance. Flags are sticky.
@@ -77,6 +135,54 @@ pub struct EvaluationFlags {
     pub depth_limited: bool,
 }
 
+/// A failure of expression evaluation, independent of a component or prop.
+#[derive(Clone, Debug, PartialEq, Eq)]
+#[non_exhaustive]
+pub enum EvaluationFailure {
+    /// An object could not produce a primitive for JavaScript coercion.
+    CannotConvertToPrimitive,
+    /// An untyped AST descriptor supplied an invalid field.
+    #[non_exhaustive]
+    InvalidExpression {
+        /// The descriptor field, or `node` for the descriptor itself.
+        field: &'static str,
+        /// The operation that required that field.
+        operation: ExpressionOperation,
+        /// The supplied field's relevant type.
+        actual: ExpressionType,
+    },
+}
+/// The operation that failed on an untyped expression field.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[non_exhaustive]
+pub enum ExpressionOperation {
+    /// Read an expression's kind.
+    ReadKind,
+    /// Map a collection of child expressions.
+    Map,
+    /// Read a call's positional argument count.
+    Length,
+    /// Destructure one object entry.
+    Entry,
+}
+/// The distinction needed to identify an invalid expression field.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[non_exhaustive]
+pub enum ExpressionType {
+    /// The field was absent or undefined.
+    Undefined,
+    /// The field was null.
+    Null,
+    /// A numeric field.
+    Number,
+    /// A boolean field, retaining its primitive identity.
+    Boolean(bool),
+    /// An object field.
+    Object,
+    /// The field had another incompatible type.
+    Other,
+}
+
 /// One expression's result, with flags for cuts affecting that evaluation.
 #[derive(Clone, Debug, PartialEq)]
 #[non_exhaustive]
@@ -84,6 +190,10 @@ pub struct EvaluationResult {
     /// Undefined is `None`; null is `Some(Value::Null)`. Deferred ASTs and
     /// caller-owned containers retain their types and ownership.
     pub value: Option<Value>,
+    /// The first failure in this evaluation, including nested callback work.
+    /// A failure stops expression evaluation and makes `value` undefined.
+    /// Sequential evaluations start with no failure; cut flags remain sticky.
+    pub failure: Option<EvaluationFailure>,
     /// Work or result room was exhausted, or a stall stopped evaluation.
     pub size_limited: bool,
     /// Logical depth or the grown-stack ceiling was reached.
@@ -121,7 +231,7 @@ pub struct EvaluationResult {
 /// including stall flags and stack ceilings, restores on unwind (ADR 0002).
 pub struct EvaluationSession<'a> {
     names: Supplied<'a>,
-    saved: RefCell<Saved>,
+    saved: Rc<RefCell<Saved>>,
     flags: Rc<Cell<EvaluationFlags>>,
 }
 
@@ -156,7 +266,7 @@ impl<'a> EvaluationSession<'a> {
                 read: RefCell::new(HashMap::new()),
                 callbacks: RefCell::new(Vec::new()),
             },
-            saved: RefCell::new(saved),
+            saved: Rc::new(RefCell::new(saved)),
             flags,
         }
     }
@@ -170,13 +280,59 @@ impl<'a> EvaluationSession<'a> {
             return self.names.resume(&frame, expression);
         }
         let outer = DepthContext::current();
-        let _resume = Resume::enter(&self.saved);
+        let active = ACCOUNT.with(|a| Rc::ptr_eq(&a.borrow().flags, &self.flags));
+        let _resume = if active {
+            None
+        } else {
+            Some(Resume::for_account(&self.saved, &self.flags))
+        };
         let _depth = DepthEntry::enter(outer);
         let _stack = crate::stack::expression_limit(
             DepthContext::total_limit().div_ceil(VALUE_LEVELS_PER_LEVEL),
             DEPTH.with(|d| d.borrow().stack_base),
         );
         evaluate_result(expression, &Scope::Root(&self.names))
+    }
+    /// Run a caller's walk under this allowance. Use `with_level` at each
+    /// recursive hop and the reservation methods for caller-produced output.
+    /// State reads still go through evaluated expressions and EvaluationScope.
+    pub fn with_evaluator<T>(&self, f: impl FnOnce(&ExpressionEvaluator<'_>) -> T) -> T {
+        let frame = self.names.callbacks.borrow().last().cloned();
+        if let Some(frame) = frame {
+            return self
+                .names
+                .resume_context(&frame, || self.names.evaluator(&frame, f));
+        }
+        self.root_context(|| {
+            let eval =
+                |node: &Ast| self.root_context(|| evaluate_result(node, &Scope::Root(&self.names)));
+            let value = |node: &Value| {
+                self.root_context(|| evaluate_value_result(node, &Scope::Root(&self.names)))
+            };
+            let operate = |f: &mut dyn FnMut()| self.root_context(f);
+            f(&ExpressionEvaluator {
+                evaluate: &eval,
+                evaluate_value: &value,
+                operate: &operate,
+            })
+        })
+    }
+    fn root_context<T>(&self, f: impl FnOnce() -> T) -> T {
+        let outer = DepthContext::current();
+        let active = ACCOUNT.with(|a| Rc::ptr_eq(&a.borrow().flags, &self.flags));
+        let _resume = if active {
+            None
+        } else {
+            Some(Resume::for_account(&self.saved, &self.flags))
+        };
+        let _depth = DepthEntry::enter(outer);
+        let _stack = crate::stack::expression_limit(
+            DepthContext::total_limit().div_ceil(VALUE_LEVELS_PER_LEVEL),
+            DEPTH.with(|d| d.borrow().stack_base),
+        );
+        let out = f();
+        record_flags();
+        out
     }
     /// The aggregate cut flags, including cuts preceding the latest evaluation.
     pub fn flags(&self) -> EvaluationFlags {
@@ -223,12 +379,78 @@ pub fn evaluate_expression_with_limits(
 }
 
 fn evaluate_result(expression: &Ast, scope: &Scope<Supplied<'_>>) -> EvaluationResult {
+    let _evaluation = FailureEntry::enter();
     let js = evaluate(expression, scope);
-    let value = runtime_value(&js);
+    let value = if failed() { None } else { runtime_value(&js) };
     if let Some(v) = &value {
         remember_result(v, &js);
     }
     result(value)
+}
+fn evaluate_value_result(expression: &Value, scope: &Scope<Supplied<'_>>) -> EvaluationResult {
+    let _evaluation = FailureEntry::enter();
+    let js = super::descriptor::evaluate(Some(expression), scope);
+    let value = if failed() { None } else { runtime_value(&js) };
+    if let Some(v) = &value {
+        remember_result(v, &js);
+    }
+    result(value)
+}
+/// Report only the first failure of the active expression chain.
+pub(super) fn fail(failure: EvaluationFailure) {
+    ACCOUNT.with(|a| {
+        let mut a = a.borrow_mut();
+        if a.failure.is_none() {
+            a.failure = Some(failure);
+        }
+    });
+}
+pub(super) fn failed() -> bool {
+    ACCOUNT.with(|a| a.borrow().failure.is_some())
+}
+struct FailureEntry;
+impl FailureEntry {
+    fn enter() -> Self {
+        ACCOUNT.with(|a| {
+            let mut a = a.borrow_mut();
+            if a.evaluations == 0 {
+                a.failure = None;
+            }
+            a.evaluations = a.evaluations.saturating_add(1);
+        });
+        Self
+    }
+}
+impl Drop for FailureEntry {
+    fn drop(&mut self) {
+        ACCOUNT.with(|a| {
+            let mut a = a.borrow_mut();
+            a.evaluations = a.evaluations.saturating_sub(1);
+        });
+    }
+}
+fn in_scope_value(
+    node: &Value,
+    bindings: &[(String, Js)],
+    scope: &Scope<Supplied<'_>>,
+) -> EvaluationResult {
+    crate::stack::grow_stack!(in_scope_value(node, bindings, scope), budget else result(Some(Value::Null)));
+    if let Some(((name, item), rest)) = bindings.split_first() {
+        if !step(1) {
+            return result(Some(Value::Null));
+        }
+        in_scope_value(
+            node,
+            rest,
+            &Scope::Each {
+                name,
+                item,
+                parent: scope,
+            },
+        )
+    } else {
+        evaluate_value_result(node, scope)
+    }
 }
 fn result(value: Option<Value>) -> EvaluationResult {
     LIMITS.with(|l| {
@@ -240,19 +462,20 @@ fn result(value: Option<Value>) -> EvaluationResult {
         }
         EvaluationResult {
             value,
+            failure: ACCOUNT.with(|a| a.borrow().failure.clone()),
             size_limited: l.size_limited.get() || crate::progress::stalled_so_far(),
             depth_limited: l.depth_limited.get(),
         }
     })
 }
 
-struct Supplied<'a> {
+pub(super) struct Supplied<'a> {
     scope: &'a dyn EvaluationScope,
     read: RefCell<HashMap<(bool, String), Js>>,
     callbacks: RefCell<Vec<Rc<Suspension>>>,
 }
 struct Suspension {
-    saved: RefCell<Saved>,
+    saved: Rc<RefCell<Saved>>,
     bindings: Vec<(String, Js)>,
     flags: Rc<Cell<EvaluationFlags>>,
 }
@@ -308,15 +531,14 @@ impl Supplied<'_> {
         bindings.reverse();
         let flags = ACCOUNT.with(|a| a.borrow().flags.clone());
         let frame = Rc::new(Suspension {
-            saved: RefCell::new(Saved::enter()),
+            saved: Rc::new(RefCell::new(Saved::enter())),
             bindings,
             flags,
         });
         self.callbacks.borrow_mut().push(frame.clone());
         let guard = CallbackGuard(&self.callbacks);
         DepthContext::suspend(&frame.saved.borrow());
-        let eval = |node: &Ast| self.resume(&frame, node);
-        let value = callback(&ExpressionEvaluator { evaluate: &eval });
+        let value = self.evaluator(&frame, callback);
         if DEPTH.with(|d| d.borrow().cut.get()) {
             frame.saved.borrow().limits.cut_by(Cut::Depth);
         }
@@ -324,6 +546,37 @@ impl Supplied<'_> {
         drop(frame);
         ACCOUNT.with(|a| a.borrow_mut().collect_bridges());
         value
+    }
+    fn evaluator<T>(&self, frame: &Suspension, f: impl FnOnce(&ExpressionEvaluator<'_>) -> T) -> T {
+        let eval = |node: &Ast| self.resume(frame, node);
+        let value = |node: &Value| {
+            self.resume_context(frame, || {
+                in_scope_value(node, &frame.bindings, &Scope::Root(self))
+            })
+        };
+        let operate = |f: &mut dyn FnMut()| self.resume_context(frame, f);
+        f(&ExpressionEvaluator {
+            evaluate: &eval,
+            evaluate_value: &value,
+            operate: &operate,
+        })
+    }
+    fn resume_context<T>(&self, frame: &Suspension, f: impl FnOnce() -> T) -> T {
+        let outer = DepthContext::current();
+        let active = ACCOUNT.with(|a| Rc::ptr_eq(&a.borrow().flags, &frame.flags));
+        let _resume = if active {
+            None
+        } else {
+            Some(Resume::for_account(&frame.saved, &frame.flags))
+        };
+        let _depth = DepthEntry::enter(outer);
+        let _stack = crate::stack::expression_limit(
+            DepthContext::total_limit().div_ceil(VALUE_LEVELS_PER_LEVEL),
+            DEPTH.with(|d| d.borrow().stack_base),
+        );
+        let out = f();
+        record_flags();
+        out
     }
     fn resume(&self, frame: &Suspension, node: &Ast) -> EvaluationResult {
         let outer = DepthContext::current();
@@ -333,7 +586,7 @@ impl Supplied<'_> {
         let _resume = if active {
             None
         } else {
-            Some(Resume::enter(&frame.saved))
+            Some(Resume::for_account(&frame.saved, &frame.flags))
         };
         let _depth = DepthEntry::enter(outer);
         let _stack = crate::stack::expression_limit(
@@ -351,12 +604,26 @@ impl Supplied<'_> {
             if reference {
                 self.scope.reference(name, eval)
             } else {
-                self.scope
-                    .extra(name, eval)
-                    .filter(|v| !matches!(v, Value::Null))
-                    .or_else(|| self.scope.state(name, eval))
+                let extra = self.scope.extra(name, eval);
+                // Callback evaluation is suspended here: its first failure is
+                // in this frame's saved allowance, not the caller's context.
+                let failed = self
+                    .callbacks
+                    .borrow()
+                    .last()
+                    .is_some_and(|frame| frame.saved.borrow().account.failure.is_some());
+                if failed {
+                    None
+                } else {
+                    extra
+                        .filter(|v| !matches!(v, Value::Null))
+                        .or_else(|| self.scope.state(name, eval))
+                }
             }
         });
+        if failed() {
+            return Js::Undefined;
+        }
         if let Some(value) = &value {
             if reference {
                 measure_data(value, false);
@@ -382,6 +649,9 @@ impl Names for Supplied<'_> {
     }
     fn call(&self, node: &Ast, scope: &Scope<Self>) -> Js {
         let value = self.callback(scope, |eval| self.scope.call(node, eval));
+        if failed() {
+            return Js::Undefined;
+        }
         if let Some(value) = &value {
             measure_data(value, false);
         }
@@ -400,6 +670,9 @@ fn record_flags() {
         size_limited: l.size_limited.get() || crate::progress::stalled_so_far(),
         depth_limited: l.depth_limited.get(),
     });
+    if now.depth_limited {
+        DEPTH.with(|d| d.borrow().cut.set(true));
+    }
     ACCOUNT.with(|a| {
         let a = a.borrow();
         let old = a.flags.get();
@@ -412,6 +685,8 @@ fn record_flags() {
 
 struct Account {
     limits: Limits,
+    failure: Option<EvaluationFailure>,
+    evaluations: usize,
     flags: Rc<Cell<EvaluationFlags>>,
     bytes: usize,
     inputs: HashSet<(u8, usize)>,
@@ -423,6 +698,8 @@ impl Account {
     fn new(limits: Limits, bytes: usize) -> Self {
         Self {
             limits,
+            failure: None,
+            evaluations: 0,
             flags: Rc::new(Cell::new(EvaluationFlags::default())),
             bytes,
             inputs: HashSet::new(),
@@ -909,7 +1186,11 @@ pub(super) fn data_index(value: &Value, index: &Js) -> Js {
         }
         Js::Undefined
     } else {
-        data_property(value, &to_string(index))
+        let key = to_string_in::<Supplied<'_>>(index);
+        if failed() {
+            return Js::Null;
+        }
+        data_property(value, &key)
     }
 }
 
@@ -1130,15 +1411,42 @@ impl Drop for Saved {
         }
     }
 }
-struct Resume<'a>(&'a RefCell<Saved>);
-impl<'a> Resume<'a> {
-    fn enter(saved: &'a RefCell<Saved>) -> Self {
+// A nested session can temporarily hold another session's account. Retain
+// those saved locations while resumed, so captured evaluators find their own
+// account even when their usual saved slot currently holds an outer context.
+thread_local! {
+    static SUSPENDED: RefCell<Vec<std::rc::Weak<RefCell<Saved>>>> = const { RefCell::new(Vec::new()) };
+}
+struct Resume(Rc<RefCell<Saved>>);
+impl Resume {
+    fn for_account(saved: &Rc<RefCell<Saved>>, flags: &Rc<Cell<EvaluationFlags>>) -> Self {
+        let location = if Rc::ptr_eq(&saved.borrow().account.flags, flags) {
+            saved.clone()
+        } else {
+            SUSPENDED
+                .with(|slots| {
+                    slots
+                        .borrow()
+                        .iter()
+                        .rev()
+                        .filter_map(std::rc::Weak::upgrade)
+                        .find(|slot| Rc::ptr_eq(&slot.borrow().account.flags, flags))
+                })
+                .unwrap_or_else(|| saved.clone())
+        };
+        Self::enter(&location)
+    }
+    fn enter(saved: &Rc<RefCell<Saved>>) -> Self {
         saved.borrow_mut().swap();
-        Self(saved)
+        SUSPENDED.with(|slots| slots.borrow_mut().push(Rc::downgrade(saved)));
+        Self(saved.clone())
     }
 }
-impl Drop for Resume<'_> {
+impl Drop for Resume {
     fn drop(&mut self) {
+        SUSPENDED.with(|slots| {
+            slots.borrow_mut().pop();
+        });
         self.0.borrow_mut().swap();
     }
 }

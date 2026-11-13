@@ -418,6 +418,22 @@ root = Root([a])
 
 > **The stream parser and `parse()` split statements differently when a bracket opened before a statement closes after its `?`.** For `(\na = $flag ?)\nroot = Root([a])`, `scanNewCompleted` pairs the `)` with the first line's `(` and ends `a` at the newline, so a stream's end has `root`. The batch split starts `a` after the `(`, reads the `?` as an open ternary, and takes `root = Root([a])` into `a`, so `parse()` has no root. language.md, section 1.4 says the batch parser, the streaming parser and the merge must agree on these boundaries byte for byte. Either reset the stream's bracket depth where the batch split starts a statement, or keep the batch's depth across skipped text.
 
+## 24. An expression result revisits elements, but leaves other objects and AST-shaped list items alone
+
+- **Found:** 2026-11-13, while implementing runtime tree evaluation (#33), against 1.1.0 (`47b9cae`).
+- **Pinned by:** `expression_results_revisit_only_elements` in `openui-runtime/tests/tree_rules.rs`; `runtime/objects` covers structural ASTs supplied directly as props. The former supplies the store value below through the public interface.
+- **Status:** reproduced deliberately; no upstream report filed.
+
+Given `root = Box($items)` and `$items` supplied as an array containing
+`{k:"StateRef",n:"$n"}` and an element whose `a` prop is that same expression,
+with `$n = 4`, the first item stays an AST object and the element's prop becomes
+4. Supplying that array directly as a parsed prop instead evaluates both.
+Likewise an expression producing a plain object does not recursively evaluate
+that object's fields. This follows the AST-result branch of `evaluatePropCore`,
+which revisits only elements (including elements immediately inside an array).
+The runtime preserves the distinction rather than recursively evaluating every
+computed value a second time.
+
 # Fixed upstream
 
 The reference no longer behaves this way, so the core doesn't either. The cases that pinned each quirk now pin the fixed behaviour.

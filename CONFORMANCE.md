@@ -23,7 +23,7 @@ Reference: `@openuidev/lang-core 1.1.0` at commit `47b9cae0d3b26a8c9d7514d5887a6
 | Element trees back to source | 826 | 826 | 1 fuzz, 71 hand-written, 723 parse corpus root, 31 reference-test |
 | Enriched errors | 419 | 419 | every parse corpus case with errors |
 
-Quirks recorded: 20.
+Quirks recorded: 21.
 Not matched yet, listed in `conformance/pending/`: none.
 <!-- /counts -->
 
@@ -45,6 +45,80 @@ Snapshot/read container identities are
 mapped bijectively across the runtimes; default inputs are checked for content
 and aliases within each parse result. Persistence timing remains an explicit
 assumption; the renderer is not vendored.
+
+<!-- runtime-counts -->
+Runtime trees: 878 total, 689 matching, 186 pending, 3 divergences.
+
+Runtime pending: #34=32, #35=6, #36=124, #38=24.
+
+Runtime coverage: 280 dynamic, 79 reading state, 430 referencing statements, 25 with runtime errors; 1449579 streaming steps per scenario, 141090 differing observations, 19836 differing trees.
+
+Original runtime coverage: 859 cases, 261 dynamic, 62 reading state, 426 referencing statements, 11 with runtime errors; recorded: 152 cases, 2 declaring state.
+
+Runtime pending partial comparison: 360 one-shot observations, 12438 props.
+<!-- /runtime-counts -->
+
+`reference/runtime.ts` runs the pinned parser, store and tree evaluator, with
+no function implementations and with the schema's action definitions. JSON
+Schema cannot carry upstream's in-memory binding marks; binding configuration
+is #35's work. Its runtime library uses the compiled component prop shapes.
+Persistence is generated from the full case's declared names and value shapes
+using Mulberry32 seeded by FNV-1a of `<case>:persisted`, and reapplied on every
+initialize. The persistence map is JSON-round-tripped before use: its saved
+JSON defines its values, non-finite normalization and absence of cross-name
+aliases on both sides. Defaults and persistence each retain their own store per stream.
+Both scenarios replay all core chunkings, including resets and recorded deltas.
+Only evaluated trees, runtime errors, snapshots and their JSON are compared;
+notification counts, snapshot identity and versions are outside this harness.
+In particular, issue #45's extra upstream notifications for rebuilt completed
+container defaults do not affect these comparisons.
+
+The nineteen runtime additions live in `conformance/runtime.json`, in the corpus's
+normal format, without enlarging the parser corpus. They cover state props,
+inlined references and cycles, nested objects and structural ASTs, a 64-element
+deep tree, failures with statement and inline attribution, malformed descriptors, and a default that
+changes an already evaluated prop as it streams. The review additions cover
+long concatenations, numeric descriptor fields, missing call arguments,
+array-like arguments, invalid collections, Assign-shaped data, strict name lookups,
+non-string and malformed descriptor fields, element-shaped state, and an independent
+failed prop alongside an action. Coverage is the union of both
+scenarios and all prefixes; state reads count actual runtime `getState` calls,
+and statement references are measured on the preprocessed source AST with
+`Each` locals excluded. The original 859 cases have 261 cases with dynamic
+props, 62 reading state, 426 referencing statements and 11 with runtime errors.
+Only 2 of the 152 recorded cases declare state. That measurement is why the
+runtime additions are needed.
+
+Runtime goldens are compact JSON in `conformance/golden/runtime/`: full results
+for each one-shot scenario and FNV-1a per streaming step. Identical scenario
+fingerprint arrays are shared via `persisted: "defaults"`. Runs are a hash for
+one step or `[hash,count]` for two or more equal consecutive hashes. Adjacent
+equal runs and invalid counts fail the test. Existing cases read `sizes` and
+`ops` from the core's goldens rather than copying them; step counts and missing
+or extra chunkings are checked. Runtime-only cases retain their own plans. A mismatch names the case,
+scenario, step and plan, with a JSON diff when Bun is available, or the hashes,
+Rust JSON and an exact `bun --no-install runtime.ts show ...` command otherwise.
+
+`pending/runtime.json` has one primary feature reason per case, with the latest
+required ticket chosen first (#38, #36, #35, then #34). Each reason needs both
+reference evidence and an independent Rust AST/plan witness. There is no
+pending-list update mode: matching entries, unknown names and wrong reasons
+fail the test. The same removal rule applies to the separate visible divergence
+list. Assign-shaped data has the explicit `35:assign-descriptor` reason: its
+non-binding result requires the #35 getState/marker rule. All pending one-shot
+observations still compare snapshots, existing-root metadata, and every root
+or nested element prop whose raw value contains no deferred feature. The counts
+above include rooted observations even when all their props are deferred.
+Partial prop comparison is one-shot: streaming expected results are hashes;
+a second per-step projection oracle would add substantial fixture size and
+regeneration work. Whole-result streaming comparisons remain unchanged.
+Counts and coverage above are checked by `tree_conformance.rs`.
+
+Regenerate from `reference/` with `bun --no-install runtime.ts golden`. Two
+complete regenerations were byte-identical; the measured command takes about
+105 seconds here. Run-length encoded runtime goldens use about 11.3 MB,
+plus the roughly 0.3 MB focused interface golden. The general regeneration script also
+runs this harness and requires cached dependencies; it never installs packages.
 
 The reference uses `Object.is` (NaN equals NaN; signed zeros differ). Upstream
 has no version. The fixture's `mappedVersion` counts listener notifications,
@@ -131,11 +205,12 @@ Documented, not emulated. The parser divergences do not occur in the corpus. The
 | An object assigned to `__proto__`, or `null` in an object literal | replaces the prototype; later reads and `in` checks see through it | ignores the assignment (`null` for a param named `__proto__` is reproduced) |
 | An object literal shaped like an element used as the root | returns that object as `root` | `root` is `None` (it still counts as a root, so no `no-root`) |
 | An object literal shaped like an AST node used as the root (`root = {k: "Comp", name: "Card", args: []}`) | returns that object as `rootExpression` when it holds a component call, and throws a `TypeError` when a node in it lacks the children its kind has (`root = {k: "Comp"}`) | no `rootExpression`, and `no-root` |
-| A state default sorting text outside ASCII with `@Sort` (accents, other scripts) | orders it with ICU's root collation (`localeCompare`) | orders ASCII exactly as ICU does, other characters by code point after it |
+| A state default or runtime prop sorting text outside ASCII with `@Sort` (accents, other scripts) | orders it with ICU's root collation (`localeCompare`) | orders ASCII exactly as ICU does, other characters by code point after it |
 | A state default sorting values whose comparison loops: numbers and numeric text compare as numbers, other text as text, so `2 < "10"`, `"10" < "1a"` and `"1a" < 2` (`$s = @Sort([2, "10", "1a", 9, "9a", "x", 1, "01"], "")`); and since blank text reads as 0, `0 == " "`, `" " < ","` and `"," < 0`. Engine-dependent: ECMAScript leaves the order of an inconsistent comparison to the engine | the order JavaScriptCore's sort gives | follows JavaScriptCore's algorithm (binary insertion under 66 values after a first run of at least 8, a stable merge sort past 65). It agrees for most lists but not every one, such as 65 values whose first run descends (pinned in the evaluator's unit tests), and never panics |
 | A state default turning a built-in constructor into text (`$s = (1).constructor + ""`). Engine-dependent: a built-in function's text is the engine's | JavaScriptCore's text: `Object` and `Array`'s constructors on one line, `Number`, `String` and `Boolean`'s across three (`function Number() {\n    [native code]\n}`) | every constructor on one line, `function Number() { [native code] }` (pinned in the evaluator's unit tests) |
 | A state default reading a property of a built-in method or prototype (`$a = [].map.length`, `$b = $o.__proto__.x`) | that property | `undefined` (the method itself, `[].map`, is reproduced) |
 | An object literal shaped like an AST node in a state default (`$x = {k: "Num", v: 1}`) | evaluates it as that node | keeps it as the object |
+| One invalid array descriptor call target: `{k:"Arr",els:{map:3}}` in `runtime/descriptor-map-target` | the error identifies the invalid `node.els.map` value as `3` | the typed failure identifies the field and invalid receiver, but the runtime diagnostic identifies the map target as undefined. This named case pins only that wording difference; both complete outputs are committed |
 | A state default turning an object with its own `toString` or `valueOf` into text (`$a = {toString: 1}` then `$b = $a + ""`, or in `@Sort`, `@Filter`'s `contains`, `==`) | `parse` throws a `TypeError`: the object can't become text | `"[object Object]"` |
 | JSON nested deeper than 800 levels (three per level of the depth limit and 32 more, under raised `Limits`), for `json_to_openui`, `parse_json` or a prompt spec for `generate_system_prompt` | handled, up to the engine's recursion limit | refused with an error |
 | `1e400` in JSON read back | `Infinity` | refused: a `serde_json::Value` can't hold it |
@@ -143,6 +218,26 @@ Documented, not emulated. The parser divergences do not occur in the corpus. The
 | A library function or action without `params`, or one that isn't an object | throws a `TypeError` building the library | has no params |
 | A slot schema whose `anyOf` or `oneOf` isn't an array of objects (`anyOf: [null]`, `oneOf: "x"`) | throws a `TypeError` validating a value in it | treats the slot as one that takes data |
 | An action shape in `$defs` that refers to itself, such as `ActionExpression: {anyOf: [{$ref: "#/$defs/ActionExpression"}]}` | recurses until the engine's stack overflows (`RangeError`) building the library | leaves that `$ref` in place |
+
+The tree harness visibly classifies `runtime/nested-undefined` under the
+nested-undefined divergence: an undefined own `toString` field disappears in
+Rust, so upstream's failed prop becomes a successful coercion. It also
+classifies `spec/evaluation/008-builtin-sort-locale` under the existing non-ASCII
+sorting divergence. Neither is hidden on a future feature's pending list.
+
+The former blanket malformed-descriptor divergence is removed. Numeric Member
+fields, absent/null call arguments, array-like argument objects, invalid
+collections and entries, and lazy malformed branches have reference cases.
+`runtime/malformed-data-ast` now matches, including `number is not iterable`.
+The one named remaining diagnostic difference is `runtime/descriptor-map-target`.
+All three runtime divergences commit both reference and Rust outputs for both
+state scenarios in `conformance/divergences/runtime-<reason>.json`. The test
+checks each complete output, so neither side may widen silently. For the map
+target only, a normalizer additionally checks equality after changing just the
+single pinned error message. It asserts its exact case name and reason and
+cannot apply to general comparisons or other divergence entries.
+It avoids adding engine-specific invalid-member inspection to the core failure
+channel. Other descriptor errors are compared byte for byte.
 
 The runtime divergence is pinned by `nested_undefined_normalization_can_suppress_one_store_change`
 and the explicitly excluded case in `openui-runtime/tests/store.json`. JSON,
@@ -163,3 +258,10 @@ scripts/fuzz.sh --seed 1 --count 10000  # parse fuzzing (Bun)
 scripts/fuzz.sh --edits --seed 1 --count 10000
 ```
 
+
+Pending one-shot comparison also checks the ordered errors belonging to
+independent props. An error identifies its component, optional statement and
+prop, but has no tree path. If multiple elements share that identity, errors
+are compared only when every corresponding raw prop is in scope; an identity
+shared with an out-of-scope prop cannot be separated reliably. Snapshots and
+independent prop values remain checked as before.

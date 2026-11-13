@@ -1,0 +1,2 @@
+root = Box({k: "Obj", entries: [3]}, $n)
+$n = 1

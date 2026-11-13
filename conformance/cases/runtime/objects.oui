@@ -1,0 +1,3 @@
+root = Box({plain: 1, structural: {k: "BinOp", op: "+", left: {k: "StateRef", n: "$x"}, right: {k: "Num", v: 1}}, literal: {k: "Str", v: {raw: 1}}, dataList: {k: "Arr", els: [{k: "Num", v: 3}, false, {}]}, nested: {v: $x}, list: [$x, Box($x)]}, [$x, {v: $x}], shared, shared)
+shared = Box($x, {n: {value: $x}})
+$x = 9

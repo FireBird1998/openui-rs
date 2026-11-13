@@ -24,11 +24,13 @@ use crate::js::{self, JsObject, OBJECT_PROTOTYPE_KEYS, array_index, number_to_st
 use crate::result::{Element, Value, json_number_value};
 use crate::validation::{element_parts, is_ast_node};
 
+mod descriptor;
 mod expression;
 use expression::expression_bytes;
 pub use expression::{
-    EvaluationFlags, EvaluationResult, EvaluationScope, EvaluationSession, ExpressionEvaluator,
-    evaluate_expression, evaluate_expression_with_limits,
+    EvaluationFailure, EvaluationFlags, EvaluationResult, EvaluationScope, EvaluationSession,
+    ExpressionEvaluator, ExpressionOperation, ExpressionType, evaluate_expression,
+    evaluate_expression_with_limits,
 };
 
 pub(crate) fn expression_ceiling_cut() {
@@ -1608,6 +1610,9 @@ fn evaluate<S: Names>(node: &Ast, scope: &Scope<S>) -> Js {
 
 fn evaluate_in<S: Names>(node: &Ast, scope: &Scope<S>, limits: &EvalLimits) -> Js {
     crate::stack::grow_stack!(evaluate(node, scope), budget else Js::Null);
+    if S::RUNTIME && expression::failed() {
+        return Js::Null;
+    }
     let Some(_level) = BorrowedLevel::enter(limits) else {
         return Js::Null;
     };
@@ -1623,14 +1628,16 @@ fn evaluate_in<S: Names>(node: &Ast, scope: &Scope<S>, limits: &EvalLimits) -> J
         Ast::Ref(name) | Ast::RuntimeRef { n: name, .. } => scope.reference(name),
         Ast::Arr(els) => Js::Arr(Arc::new(
             els.iter()
-                .take_while(|_| limits.cut.get().is_none())
+                .take_while(|_| {
+                    limits.cut.get().is_none() && (!S::RUNTIME || !expression::failed())
+                })
                 .map(|e| evaluate_in(e, scope, limits))
                 .collect(),
         )),
         Ast::Obj(entries) => {
             let mut out = JsObject::new();
             for (key, v) in entries.iter() {
-                if limits.cut.get().is_some() {
+                if limits.cut.get().is_some() || (S::RUNTIME && expression::failed()) {
                     break;
                 }
                 out.define(key.clone(), evaluate_in(v, scope, limits));
@@ -1654,7 +1661,7 @@ fn evaluate_in<S: Names>(node: &Ast, scope: &Scope<S>, limits: &EvalLimits) -> J
             match mapped_props {
                 Some(props) => {
                     for (key, v) in props.iter() {
-                        if limits.cut.get().is_some() {
+                        if limits.cut.get().is_some() || (S::RUNTIME && expression::failed()) {
                             break;
                         }
                         named.define(key.clone(), evaluate_in(v, scope, limits));
@@ -1662,7 +1669,7 @@ fn evaluate_in<S: Names>(node: &Ast, scope: &Scope<S>, limits: &EvalLimits) -> J
                 }
                 None => {
                     for (param, arg) in params.iter().zip(args.iter()) {
-                        if limits.cut.get().is_some() {
+                        if limits.cut.get().is_some() || (S::RUNTIME && expression::failed()) {
                             break;
                         }
                         named.define(*param, evaluate_in(arg, scope, limits));
@@ -1671,71 +1678,30 @@ fn evaluate_in<S: Names>(node: &Ast, scope: &Scope<S>, limits: &EvalLimits) -> J
             }
             call::<S>(name, &named)
         }
-        Ast::BinOp { op, left, right } => binary(op, left, right, scope),
-        Ast::UnaryOp { op, operand } => match *op {
-            "!" => Js::Bool(!truthy(&evaluate_in(operand, scope, limits))),
-            "-" => Js::Num(-to_number(&evaluate_in(operand, scope, limits))),
-            _ => Js::Null,
-        },
+        Ast::BinOp { op, left, right } => {
+            if S::RUNTIME && *op == "+" {
+                return concatenate(node, scope);
+            }
+            binary(op, left, right, scope)
+        }
+        Ast::UnaryOp { op, operand } => unary(op, || evaluate_in(operand, scope, limits)),
         Ast::Ternary {
             cond,
             then,
             otherwise,
-        } => {
-            if truthy(&evaluate_in(cond, scope, limits)) {
-                evaluate_in(then, scope, limits)
-            } else {
-                evaluate_in(otherwise, scope, limits)
-            }
-        }
-        Ast::Member { obj, field } => {
+        } => conditional::<S>(
+            || evaluate_in(cond, scope, limits),
+            || evaluate_in(then, scope, limits),
+            || evaluate_in(otherwise, scope, limits),
+        ),
+        Ast::Member { obj, field } => member::<S>(evaluate_in(obj, scope, limits), field, limits),
+        Ast::Index { obj, index: at } => {
             let obj = evaluate_in(obj, scope, limits);
-            if S::RUNTIME
-                && let Js::Data(value) = &obj
-            {
-                return expression::data_member(value, field);
-            }
-            match &obj {
-                Js::Undefined | Js::Null => Js::Null,
-                // A field plucked from every item.
-                Js::Arr(items) if field == "length" => Js::Num(items.len() as f64),
-                // A step per item plucked from.
-                Js::Arr(items) if !draw(limits, Cut::Work, items.len()) => Js::Null,
-                Js::Arr(items) => Js::Arr(Arc::new(
-                    items
-                        .iter()
-                        .take_while(|_| limits.cut.get().is_none())
-                        .map(|item| match property(item, field) {
-                            Js::Undefined | Js::Null => Js::Null,
-                            v => v,
-                        })
-                        .collect(),
-                )),
-                _ => property(&obj, field),
-            }
-        }
-        Ast::Index { obj, index } => {
-            let obj = evaluate_in(obj, scope, limits);
-            let index = evaluate_in(index, scope, limits);
-            if is_nullish(&obj) || is_nullish(&index) {
+            if S::RUNTIME && expression::failed() {
                 return Js::Null;
             }
-            if S::RUNTIME
-                && let Js::Data(value) = &obj
-            {
-                return expression::data_index(value, &index);
-            }
-            match &obj {
-                Js::Arr(items) => {
-                    let n = to_number(&index);
-                    if n.fract() == 0.0 && n >= 0.0 && n < items.len() as f64 {
-                        items[n as usize].clone()
-                    } else {
-                        Js::Undefined
-                    }
-                }
-                _ => property(&obj, &to_string(&index)),
-            }
+            let at = evaluate_in(at, scope, limits);
+            index::<S>(obj, at)
         }
         // A reactive binding, as data: `{__reactive: "assign", target, expr}`.
         Ast::Assign { target, value } => {
@@ -1748,36 +1714,125 @@ fn evaluate_in<S: Names>(node: &Ast, scope: &Scope<S>, limits: &EvalLimits) -> J
     }
 }
 
+#[inline(always)]
+fn unary(op: &str, operand: impl FnOnce() -> Js) -> Js {
+    match op {
+        "!" => Js::Bool(!truthy(&operand())),
+        "-" => Js::Num(-to_number(&operand())),
+        _ => Js::Null,
+    }
+}
+#[inline(always)]
+fn conditional<S: Names>(
+    cond: impl FnOnce() -> Js,
+    yes: impl FnOnce() -> Js,
+    no: impl FnOnce() -> Js,
+) -> Js {
+    let cond = cond();
+    if S::RUNTIME && expression::failed() {
+        return Js::Null;
+    }
+    if truthy(&cond) { yes() } else { no() }
+}
+#[inline(always)]
+fn member<S: Names>(obj: Js, field: &str, limits: &EvalLimits) -> Js {
+    if S::RUNTIME && expression::failed() {
+        return Js::Null;
+    }
+    if S::RUNTIME
+        && let Js::Data(value) = &obj
+    {
+        return expression::data_member(value, field);
+    }
+    match &obj {
+        Js::Undefined | Js::Null => Js::Null,
+        // A field plucked from every item.
+        Js::Arr(items) if field == "length" => Js::Num(items.len() as f64),
+        // A step per item plucked from.
+        Js::Arr(items) if !draw(limits, Cut::Work, items.len()) => Js::Null,
+        Js::Arr(items) => Js::Arr(Arc::new(
+            items
+                .iter()
+                .take_while(|_| {
+                    limits.cut.get().is_none() && (!S::RUNTIME || !expression::failed())
+                })
+                .map(|item| match property(item, field) {
+                    Js::Undefined | Js::Null => Js::Null,
+                    v => v,
+                })
+                .collect(),
+        )),
+        _ => property(&obj, field),
+    }
+}
+#[inline(always)]
+fn index<S: Names>(obj: Js, index: Js) -> Js {
+    if is_nullish(&obj) || is_nullish(&index) {
+        return Js::Null;
+    }
+    if S::RUNTIME
+        && let Js::Data(value) = &obj
+    {
+        return expression::data_index(value, &index);
+    }
+    match &obj {
+        Js::Arr(items) => {
+            let n = to_number(&index);
+            if n.fract() == 0.0 && n >= 0.0 && n < items.len() as f64 {
+                items[n as usize].clone()
+            } else {
+                Js::Undefined
+            }
+        }
+        _ => {
+            let key = if S::RUNTIME {
+                to_string_in::<S>(&index)
+            } else {
+                to_string(&index)
+            };
+            if S::RUNTIME && expression::failed() {
+                return Js::Null;
+            }
+            property(&obj, &key)
+        }
+    }
+}
 fn binary<S: Names>(op: &str, left: &Ast, right: &Ast, scope: &Scope<S>) -> Js {
-    let left = evaluate(left, scope);
+    binary_lazy::<S>(op, |right_side| {
+        evaluate(if right_side { right } else { left }, scope)
+    })
+}
+fn binary_lazy<S: Names>(op: &str, mut operand: impl FnMut(bool) -> Js) -> Js {
+    let left = operand(false);
+    if S::RUNTIME && expression::failed() {
+        return Js::Null;
+    }
     match op {
         "&&" => {
-            return if truthy(&left) {
-                evaluate(right, scope)
-            } else {
-                left
-            };
+            return if truthy(&left) { operand(true) } else { left };
         }
         "||" => {
-            return if truthy(&left) {
-                left
-            } else {
-                evaluate(right, scope)
-            };
+            return if truthy(&left) { left } else { operand(true) };
         }
         _ => {}
     }
-    let right = evaluate(right, scope);
+    let right = operand(true);
+    if S::RUNTIME && expression::failed() {
+        return Js::Null;
+    }
     match op {
         "+" if matches!(left, Js::Str(_)) || matches!(right, Js::Str(_)) => {
             let text = |v: &Js| {
                 if is_nullish(v) {
                     String::new()
                 } else {
-                    to_string(v)
+                    to_string_in::<S>(v)
                 }
             };
             let (left, right) = (text(&left), text(&right));
+            if S::RUNTIME && expression::failed() {
+                return Js::Null;
+            }
             if !spend(left.len() + right.len()) {
                 return Js::Str("".into());
             }
@@ -1795,14 +1850,80 @@ fn binary<S: Names>(op: &str, left: &Ast, right: &Ast, scope: &Scope<S>) -> Js {
                 (false, _) => a % b,
             })
         }
-        "==" => Js::Bool(loose_eq(&left, &right)),
-        "!=" => Js::Bool(!loose_eq(&left, &right)),
+        "==" => Js::Bool(loose_eq_in::<S>(&left, &right)),
+        "!=" => Js::Bool(!loose_eq_in::<S>(&left, &right)),
         ">" => Js::Bool(to_number(&left) > to_number(&right)),
         "<" => Js::Bool(to_number(&left) < to_number(&right)),
         ">=" => Js::Bool(to_number(&left) >= to_number(&right)),
         "<=" => Js::Bool(to_number(&left) <= to_number(&right)),
         _ => Js::Null,
     }
+}
+
+// A string prefix can be appended in place at runtime. Flatten only the
+// native left spine, preserving grouping, operand order, logical depth and
+// short-circuit failure. Parsing retains its existing byte accounting.
+fn concatenate<S: Names>(node: &Ast, scope: &Scope<S>) -> Js {
+    let mut rights = Vec::new();
+    let mut levels = Vec::new();
+    let mut cursor = node;
+    while let Ast::BinOp {
+        op: "+",
+        left,
+        right,
+    } = cursor
+    {
+        rights.push(right.as_ref());
+        cursor = left;
+        if matches!(cursor, Ast::BinOp { op: "+", .. }) {
+            let Some(level) = Level::enter() else {
+                return Js::Null;
+            };
+            if !step(1) {
+                return Js::Null;
+            }
+            levels.push(level);
+        }
+    }
+    let mut value = evaluate(cursor, scope);
+    let mut text: Option<String> = None;
+    while let Some(right) = rights.pop() {
+        if expression::failed() {
+            return Js::Null;
+        }
+        let right = evaluate(right, scope);
+        if expression::failed() {
+            return Js::Null;
+        }
+        if text.is_some() || matches!(value, Js::Str(_)) || matches!(right, Js::Str(_)) {
+            if text.is_none() {
+                let prefix = if is_nullish(&value) {
+                    String::new()
+                } else {
+                    to_string_in::<S>(&value)
+                };
+                if !spend(prefix.len()) {
+                    return Js::Null;
+                }
+                text = Some(prefix);
+            }
+            let next = if is_nullish(&right) {
+                String::new()
+            } else {
+                to_string_in::<S>(&right)
+            };
+            if expression::failed() || !spend(next.len()) {
+                return Js::Null;
+            }
+            if let Some(out) = &mut text {
+                out.push_str(&next);
+            }
+        } else {
+            value = Js::Num(to_number(&value) + to_number(&right));
+        }
+        levels.pop();
+    }
+    text.map(|s| Js::Str(s.into())).unwrap_or(value)
 }
 
 /// `@Each(array, varName, template)`: the template once per item, its
@@ -1831,7 +1952,7 @@ fn each<S: Names>(args: &[Ast], scope: &Scope<S>) -> Js {
     };
     let running = || {
         !crate::progress::stalled_so_far()
-            && (!S::RUNTIME || LIMITS.with(|l| l.cut.get().is_none()))
+            && (!S::RUNTIME || (LIMITS.with(|l| l.cut.get().is_none()) && !expression::failed()))
     };
     let out = match &array {
         Js::Arr(items) => items
@@ -2038,6 +2159,9 @@ fn literal_in(value: &Js, limits: &EvalLimits) -> Ast {
 // ─── The built-in functions ─────────────────────────────────────────────────
 
 fn call<S: Names>(name: &str, args: &JsObject<Js>) -> Js {
+    if S::RUNTIME && expression::failed() {
+        return Js::Null;
+    }
     let arg = |key: &str| {
         let value = args.get(key).cloned().unwrap_or(Js::Undefined);
         if S::RUNTIME
@@ -2112,8 +2236,20 @@ fn call<S: Names>(name: &str, args: &JsObject<Js>) -> Js {
             }
             _ => 0.0,
         }),
-        "Sort" => sort(&array, &arg("field"), &arg("direction")),
-        "Filter" => filter(&array, &arg("field"), &arg("operator"), &arg("value")),
+        "Sort" => {
+            if S::RUNTIME {
+                sort_in::<S>(&array, &arg("field"), &arg("direction"))
+            } else {
+                sort(&array, &arg("field"), &arg("direction"))
+            }
+        }
+        "Filter" => {
+            if S::RUNTIME {
+                filter_in::<S>(&array, &arg("field"), &arg("operator"), &arg("value"))
+            } else {
+                filter(&array, &arg("field"), &arg("operator"), &arg("value"))
+            }
+        }
         "Round" => {
             let decimals = arg("decimals");
             let d = if is_nullish(&decimals) {
@@ -2223,19 +2359,32 @@ fn field_of(item: &Js, field: &str) -> Js {
 }
 
 fn text_or(value: &Js, otherwise: &str) -> String {
+    text_or_in::<Declared>(value, otherwise)
+}
+fn text_or_in<S: Names>(value: &Js, otherwise: &str) -> String {
     if is_nullish(value) {
         otherwise.to_owned()
     } else {
-        to_string(value)
+        to_string_in::<S>(value)
     }
 }
 
 fn sort(array: &Js, field: &Js, direction: &Js) -> Js {
+    sort_in::<Declared>(array, field, direction)
+}
+fn sort_in<S: Names>(array: &Js, field: &Js, direction: &Js) -> Js {
     let Js::Arr(items) = array else {
         return array.clone();
     };
-    let field = text_or(field, "");
-    let desc = text_or(direction, "asc") == "desc";
+    let field = if S::RUNTIME {
+        text_or_in::<S>(field, "")
+    } else {
+        text_or(field, "")
+    };
+    let desc = text_or_in::<S>(direction, "asc") == "desc";
+    if S::RUNTIME && expression::failed() {
+        return Js::Null;
+    }
     let numeric = |v: &Js| match v {
         Js::Num(_) => true,
         Js::Str(s) => !s.is_empty() && !js_number(s).is_nan(),
@@ -2245,7 +2394,7 @@ fn sort(array: &Js, field: &Js, direction: &Js) -> Js {
     // the work runs out the rest compare equal, so the sort ends quickly; the
     // default is cut anyway.
     let compare = |a: &Js, b: &Js| -> Ordering {
-        if !step(1) {
+        if (S::RUNTIME && expression::failed()) || !step(1) {
             return Ordering::Equal;
         }
         let (av, bv) = (field_of(a, &field), field_of(b, &field));
@@ -2255,7 +2404,7 @@ fn sort(array: &Js, field: &Js, direction: &Js) -> Js {
                 .partial_cmp(&0.0)
                 .unwrap_or(Ordering::Equal)
         } else {
-            let (at, bt) = (text_or(&av, ""), text_or(&bv, ""));
+            let (at, bt) = (text_or_in::<S>(&av, ""), text_or_in::<S>(&bv, ""));
             if !step(at.len() + bt.len()) {
                 return Ordering::Equal;
             }
@@ -2271,7 +2420,11 @@ fn sort(array: &Js, field: &Js, direction: &Js) -> Js {
         .iter()
         .cloned()
         .partition(|v| !matches!(v, Js::Undefined));
-    let mut sorted = js_sort(defined, &|a, b| compare(a, b) == Ordering::Less);
+    let mut sorted = if S::RUNTIME {
+        js_sort_in::<S>(defined, &|a, b| compare(a, b) == Ordering::Less)
+    } else {
+        js_sort(defined, &|a, b| compare(a, b) == Ordering::Less)
+    };
     sorted.extend(undefined);
     Js::Arr(Arc::new(sorted))
 }
@@ -2285,10 +2438,17 @@ fn sort(array: &Js, field: &Js, direction: &Js) -> Js {
 /// binary insertion after it; past 65, runs merged. That last is a stable
 /// merge sort here, which agrees whenever the comparison is consistent. It
 /// never panics, as `slice::sort_by` may.
-fn js_sort(mut items: Vec<Js>, less: &dyn Fn(&Js, &Js) -> bool) -> Vec<Js> {
+fn js_sort(items: Vec<Js>, less: &dyn Fn(&Js, &Js) -> bool) -> Vec<Js> {
+    js_sort_in::<Declared>(items, less)
+}
+fn js_sort_in<S: Names>(mut items: Vec<Js>, less: &dyn Fn(&Js, &Js) -> bool) -> Vec<Js> {
     let n = items.len();
     if n > 65 {
-        return merge_sort(items, less);
+        return if S::RUNTIME {
+            merge_sort_in::<S>(items, less)
+        } else {
+            merge_sort(items, less)
+        };
     }
     if n < 2 {
         return items;
@@ -2299,22 +2459,26 @@ fn js_sort(mut items: Vec<Js>, less: &dyn Fn(&Js, &Js) -> bool) -> Vec<Js> {
         1
     } else if less(&items[1], &items[0]) {
         let run = (2..n)
-            .find(|&i| !less(&items[i], &items[i - 1]))
+            .find(|&i| (S::RUNTIME && expression::failed()) || !less(&items[i], &items[i - 1]))
             .unwrap_or(n);
         items[..run].reverse();
         run
     } else {
         (2..n)
-            .find(|&i| less(&items[i], &items[i - 1]))
+            .find(|&i| (S::RUNTIME && expression::failed()) || less(&items[i], &items[i - 1]))
             .unwrap_or(n)
     };
     for i in start..n {
-        if crate::progress::stalled_so_far() {
+        if crate::progress::stalled_so_far()
+            || (S::RUNTIME && (expression::failed() || LIMITS.with(|l| l.cut.get().is_some())))
+        {
             break;
         }
         let (mut lo, mut hi) = (0, i);
         while lo < hi {
-            if crate::progress::stalled_so_far() {
+            if crate::progress::stalled_so_far()
+                || (S::RUNTIME && (expression::failed() || LIMITS.with(|l| l.cut.get().is_some())))
+            {
                 break;
             }
             let mid = (lo + hi) / 2;
@@ -2333,22 +2497,32 @@ fn js_sort(mut items: Vec<Js>, less: &dyn Fn(&Js, &Js) -> bool) -> Vec<Js> {
 /// A bottom-up merge sort that takes the right item only when it's strictly
 /// less, so it's stable. It never panics, whatever the comparison does.
 fn merge_sort(items: Vec<Js>, less: &dyn Fn(&Js, &Js) -> bool) -> Vec<Js> {
+    merge_sort_in::<Declared>(items, less)
+}
+fn merge_sort_in<S: Names>(items: Vec<Js>, less: &dyn Fn(&Js, &Js) -> bool) -> Vec<Js> {
     let n = items.len();
     let mut src = items;
     let mut width = 1;
     while runs_to_merge(width, n) {
-        if crate::progress::stalled_so_far() {
+        if crate::progress::stalled_so_far()
+            || (S::RUNTIME && (expression::failed() || LIMITS.with(|l| l.cut.get().is_some())))
+        {
             break;
         }
         let mut dst = Vec::with_capacity(n);
         for start in (0..n).step_by(2 * width) {
-            if crate::progress::stalled_so_far() {
+            if crate::progress::stalled_so_far()
+                || (S::RUNTIME && (expression::failed() || LIMITS.with(|l| l.cut.get().is_some())))
+            {
                 break;
             }
             let (mut left, left_end) = (start, (start + width).min(n));
             let (mut right, right_end) = (left_end, (left_end + width).min(n));
             while left < left_end || right < right_end {
-                if crate::progress::stalled_so_far() {
+                if crate::progress::stalled_so_far()
+                    || (S::RUNTIME
+                        && (expression::failed() || LIMITS.with(|l| l.cut.get().is_some())))
+                {
                     break;
                 }
                 if right < right_end && (left >= left_end || less(&src[right], &src[left])) {
@@ -2374,27 +2548,38 @@ fn runs_to_merge(width: usize, n: usize) -> bool {
 }
 
 fn filter(array: &Js, field: &Js, operator: &Js, value: &Js) -> Js {
-    crate::stack::grow_stack!(filter(array, field, operator, value), else Js::Null);
+    filter_in::<Declared>(array, field, operator, value)
+}
+fn filter_in<S: Names>(array: &Js, field: &Js, operator: &Js, value: &Js) -> Js {
+    if S::RUNTIME {
+        crate::stack::grow_stack!(filter_in::<S>(array, field, operator, value), budget else Js::Null);
+    } else {
+        crate::stack::grow_stack!(filter(array, field, operator, value), else Js::Null);
+    }
     let Js::Arr(items) = array else {
         return Js::Arr(Arc::new(Vec::new()));
     };
-    let field = text_or(field, "");
-    let operator = text_or(operator, "==");
+    let field = if S::RUNTIME {
+        text_or_in::<S>(field, "")
+    } else {
+        text_or(field, "")
+    };
+    let operator = text_or_in::<S>(operator, "==");
     // A step per item, and per byte of the text `contains` searches.
     let keep = |item: &Js| {
-        if !step(1) {
+        if !step(1) || (S::RUNTIME && expression::failed()) {
             return false;
         }
         let v = field_of(item, &field);
         match operator.as_str() {
-            "==" => loose_eq(&v, value),
-            "!=" => !loose_eq(&v, value),
+            "==" => loose_eq_in::<S>(&v, value),
+            "!=" => !loose_eq_in::<S>(&v, value),
             ">" => to_number(&v) > to_number(value),
             "<" => to_number(&v) < to_number(value),
             ">=" => to_number(&v) >= to_number(value),
             "<=" => to_number(&v) <= to_number(value),
             "contains" => {
-                let (text, part) = (text_or(&v, ""), text_or(value, ""));
+                let (text, part) = (text_or_in::<S>(&v, ""), text_or_in::<S>(value, ""));
                 step(text.len() + part.len()) && text.contains(&part)
             }
             _ => false,
@@ -2403,7 +2588,9 @@ fn filter(array: &Js, field: &Js, operator: &Js, value: &Js) -> Js {
     Js::Arr(Arc::new(
         items
             .iter()
-            .take_while(|_| !crate::progress::stalled_so_far())
+            .take_while(|_| {
+                !crate::progress::stalled_so_far() && (!S::RUNTIME || !expression::failed())
+            })
             .filter(|v| keep(v))
             .cloned()
             .collect(),
@@ -2506,13 +2693,36 @@ fn radix_number(digits: &str, radix: u32) -> f64 {
 
 /// `String(value)`.
 fn to_string(v: &Js) -> String {
+    to_string_in::<Declared>(v)
+}
+fn to_string_in<S: Names>(v: &Js) -> String {
+    if S::RUNTIME {
+        if expression::failed() {
+            return String::new();
+        }
+        let own = match v {
+            Js::Obj(o) => o.has_own("toString"),
+            Js::Data(v) => matches!(v.as_ref(), Value::Obj(o) if o.has_own("toString")),
+            Js::Props(e) => e.props.has_own("toString"),
+            _ => false,
+        };
+        if own {
+            expression::fail(EvaluationFailure::CannotConvertToPrimitive);
+            return String::new();
+        }
+    }
+
     if let Js::Data(value) = v {
         if matches!(value.as_ref(), Value::Obj(_) | Value::Element(_)) {
             return "[object Object]".to_owned();
         }
-        return to_string(&expression::expand(v));
+        return to_string_in::<S>(&expression::expand(v));
     }
-    crate::stack::grow_stack!(to_string(v), budget else String::new());
+    if S::RUNTIME {
+        crate::stack::grow_stack!(to_string_in::<S>(v), budget else String::new());
+    } else {
+        crate::stack::grow_stack!(to_string(v), budget else String::new());
+    }
     match v {
         Js::Undefined => "undefined".to_owned(),
         Js::Null => "null".to_owned(),
@@ -2521,7 +2731,11 @@ fn to_string(v: &Js) -> String {
         Js::Str(s) => s.to_string(),
         Js::Arr(items) => {
             let mut out = String::new();
-            join(items, &mut out);
+            if S::RUNTIME {
+                join_in::<S>(items, &mut out);
+            } else {
+                join(items, &mut out);
+            }
             out
         }
         Js::Obj(_) | Js::Ast(_) | Js::Data(_) | Js::Props(_) | Js::Proto(Kind::Object) => {
@@ -2543,23 +2757,37 @@ fn to_string(v: &Js) -> String {
 /// `Array.prototype.join(",")` into `out`, nested arrays and all: a string
 /// built from an array costs its length, and stops where the limits cut it.
 fn join(items: &[Js], out: &mut String) {
-    crate::stack::grow_stack!(join(items, out), budget else {});
+    join_in::<Declared>(items, out)
+}
+fn join_in<S: Names>(items: &[Js], out: &mut String) {
+    if S::RUNTIME {
+        crate::stack::grow_stack!(join_in::<S>(items, out), budget else {});
+    } else {
+        crate::stack::grow_stack!(join(items, out), budget else {});
+    }
     let Some(_level) = Level::enter() else {
         return;
     };
     // A step per item, as well as the bytes it adds.
-    if !step(1 + items.len()) {
+    if !step(if S::RUNTIME {
+        1usize.saturating_add(items.len())
+    } else {
+        1 + items.len()
+    }) {
         return;
     }
     for (i, item) in items.iter().enumerate() {
+        if S::RUNTIME && expression::failed() {
+            return;
+        }
         if i > 0 && !push(out, ",") {
             return;
         }
         match item {
             Js::Undefined | Js::Null => {}
-            Js::Arr(inner) => join(inner, out),
+            Js::Arr(inner) => join_in::<S>(inner, out),
             _ => {
-                if !push(out, &to_string(item)) {
+                if !push(out, &to_string_in::<S>(item)) {
                     return;
                 }
             }
@@ -2577,6 +2805,9 @@ fn push(out: &mut String, text: &str) -> bool {
 
 /// `ToPrimitive` of an object, as `==` takes it.
 fn to_primitive(v: &Js) -> Js {
+    to_primitive_in::<Declared>(v)
+}
+fn to_primitive_in<S: Names>(v: &Js) -> Js {
     match v {
         Js::Proto(Kind::Number) => Js::Num(0.0),
         Js::Proto(Kind::Boolean) => Js::Bool(false),
@@ -2586,7 +2817,14 @@ fn to_primitive(v: &Js) -> Js {
         | Js::Data(_)
         | Js::Props(_)
         | Js::Function { .. }
-        | Js::Proto(_) => Js::Str(to_string(v).into()),
+        | Js::Proto(_) => Js::Str(
+            if S::RUNTIME {
+                to_string_in::<S>(v)
+            } else {
+                to_string(v)
+            }
+            .into(),
+        ),
         _ => v.clone(),
     }
 }
@@ -2606,7 +2844,17 @@ fn is_object(v: &Js) -> bool {
 
 /// `a == b`.
 fn loose_eq(a: &Js, b: &Js) -> bool {
-    crate::stack::grow_stack!(loose_eq(a, b), budget else false);
+    loose_eq_in::<Declared>(a, b)
+}
+fn loose_eq_in<S: Names>(a: &Js, b: &Js) -> bool {
+    if S::RUNTIME && expression::failed() {
+        return false;
+    }
+    if S::RUNTIME {
+        crate::stack::grow_stack!(loose_eq_in::<S>(a, b), budget else false);
+    } else {
+        crate::stack::grow_stack!(loose_eq(a, b), budget else false);
+    }
     match (a, b) {
         (Js::Undefined | Js::Null, Js::Undefined | Js::Null) => true,
         (Js::Undefined | Js::Null, _) | (_, Js::Undefined | Js::Null) => false,
@@ -2615,7 +2863,7 @@ fn loose_eq(a: &Js, b: &Js) -> bool {
         (Js::Bool(x), Js::Bool(y)) => x == y,
         (Js::Num(x), Js::Str(s)) | (Js::Str(s), Js::Num(x)) => *x == js_number(s),
         (Js::Bool(x), other) | (other, Js::Bool(x)) => {
-            loose_eq(&Js::Num(f64::from(u8::from(*x))), other)
+            loose_eq_in::<S>(&Js::Num(f64::from(u8::from(*x))), other)
         }
         (Js::Data(x), Js::Data(y)) => expression::data_identity(x) == expression::data_identity(y),
         (Js::Props(x), Js::Props(y)) => Arc::ptr_eq(x, y),
@@ -2639,8 +2887,20 @@ fn loose_eq(a: &Js, b: &Js) -> bool {
         ) => x == y && cx == cy && ox == oy,
         (Js::Proto(x), Js::Proto(y)) => x == y,
         (x, y) if is_object(x) && is_object(y) => false,
-        (x, y) if is_object(x) => loose_eq(&to_primitive(x), y),
-        (x, y) => loose_eq(x, &to_primitive(y)),
+        (x, y) if is_object(x) => {
+            if S::RUNTIME {
+                loose_eq_in::<S>(&to_primitive_in::<S>(x), y)
+            } else {
+                loose_eq(&to_primitive(x), y)
+            }
+        }
+        (x, y) => {
+            if S::RUNTIME {
+                loose_eq_in::<S>(x, &to_primitive_in::<S>(y))
+            } else {
+                loose_eq(x, &to_primitive(y))
+            }
+        }
     }
 }
 

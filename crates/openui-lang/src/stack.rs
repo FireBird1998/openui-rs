@@ -88,11 +88,21 @@ pub(crate) fn on_new_segment<R>(f: impl FnOnce() -> R) -> R {
     stacker::grow(SEGMENT, || {
         let _restore = Restore(ON_SEGMENT.replace(true));
         SEGMENTS.set(SEGMENTS.get() + 1);
-        debug_assert!(
-            SEGMENTS.get() <= runaway_bound(),
-            "runaway: {} nested stack segments",
-            SEGMENTS.get()
-        );
+        // The unit suite exercises this guard in release too. Production
+        // keeps its debug-only policy, with this cfg branch folded away.
+        if cfg!(test) {
+            assert!(
+                SEGMENTS.get() <= runaway_bound(),
+                "runaway: {} nested stack segments",
+                SEGMENTS.get()
+            );
+        } else {
+            debug_assert!(
+                SEGMENTS.get() <= runaway_bound(),
+                "runaway: {} nested stack segments",
+                SEGMENTS.get()
+            );
+        }
         f()
     })
 }

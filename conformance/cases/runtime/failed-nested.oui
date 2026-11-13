@@ -1,0 +1,4 @@
+root = Box(child, Box("inline " + $bad), {nested: ["object " + $bad]}, $ok)
+child = Box("statement " + $bad, @Sort([$bad, {}], ""), @Filter([$bad], "", "contains", "x"), $ok)
+$bad = {toString: null}
+$ok = "still evaluated"

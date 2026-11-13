@@ -1,0 +1,3 @@
+root = Box({k:"Member",obj:{k:"StateRef",n:"$o"},field:5},$n)
+$o = {a:1,"5":2}
+$n = 1

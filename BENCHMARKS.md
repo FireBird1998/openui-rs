@@ -113,3 +113,21 @@ the change, a push still costs 8 to 12 µs and doubling a program 2.1×.
 Four interleaved rounds compared `main` with `ticket-31` on the benchmark
 samples and synthetic programs above. Every case was within ±1%. Parsing shows no
 regression; the ticket's parsing-cost criterion is met.
+
+## Tree evaluation and failure reporting (#33)
+
+The second independent review measured `154cbf4` against `main` in six A/B/A
+rounds, with A as main and B as the branch, alongside an A/A control using main
+in both positions. The branch measured +0.55% on the geometric mean; the A/A control
+measured +0.76%. No parsing regression was detectable. This experiment could
+have missed effects of about ±5% per program or 1–2% on the geometric mean.
+The reviewer also compared 5,835 CLI runs, including limits, with zero output
+differences. These are the reviewer's measurements, supplied with the review.
+
+The optimized LLVM IR separately checks the parsing `Declared` instantiations:
+the added `S::RUNTIME` failure checks are constant-folded away. Their emitted
+functions contain no accesses to the runtime `ACCOUNT` and no failure calls;
+the audit is `target/review33-declared-ir.json`. Parsing keeps its existing
+coercion normalization and concatenation accounting. Existing parser tests and
+parser goldens are unchanged. Failure-test calls were migrated off the two
+removed public helpers, retaining their assertions.

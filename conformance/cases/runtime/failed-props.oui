@@ -1,0 +1,3 @@
+root = Box("value: " + $bad, $bad - 1, @Abs($bad), $ok)
+$bad = {toString: 1, valueOf: 2}
+$ok = "survives"

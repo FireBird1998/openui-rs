@@ -1,0 +1,5 @@
+root = Box(a + $x, b, Box(c))
+a = b
+b = a
+c = c + 1
+$x = 2

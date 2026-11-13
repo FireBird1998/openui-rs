@@ -527,5 +527,82 @@ initialization returns accepted-change status plus per-name refusals, so one
 rejected entry need not discard the rest of a chunk. A total-state cap must
 also count pristine names whose undefined writes left no snapshot entry.
 
-Tree and action conformance will join the runtime when implemented.
+Tree conformance runs with `cargo test -p openui-runtime --test tree_conformance`.
+It covers the entire parse corpus plus `conformance/runtime.json`, both state
+scenarios, and every streaming step. `RUNTIME_CASE=<substring>` limits a local
+investigation; the normal suite checks every case, pending reason, divergence,
+chunk plan and the runtime counts in CONFORMANCE.md. `OPENUI_NO_LIVE_DIFFS=1`
+keeps diagnosis offline without starting Bun. `UPDATE_REPORT=1 cargo test -p
+openui-runtime --test tree_conformance` refreshes the separate runtime counts
+block after a successful comparison. To show one reference result:
+
+```bash
+(cd reference && bun --no-install runtime.ts show runtime/objects defaults 1 20)
+```
+
+`tree_rules.rs` checks the public tree interface directly: per-value ordering,
+static/container sharing, raw fallback and exact errors, structural AST data,
+undefined, shared work and result room, and state credit only on read. Value
+statements are already inlined; caller-supplied statement tables are absent.
+A 200,000-element tree and expression cut on 64 KiB stacks; raised depth admits
+a 1,000-expression chain. A combined tree/expression path cuts even when each
+part fits alone. Widths 128/256/512 require allocation calls to grow by at most
+2.2x on doubling. A 50,000-number state list stays shared and peaks below twice
+the input heap. This binary has a 128 MiB cap. A 32 KB component name under a
+40 KB result limit gets past the header and evaluates a preceding prop, then
+cuts before allocating its large diagnostic; peak remains below 3x input.
+
+`tree_supplied_memory.rs` has a 256 MiB cap: 900,000 distinct empty arrays pass
+through by identity below 2x input heap, and a 64-level shared DAG compares by
+identity without expanding its bodies. There is no runtime diagnostic scan.
+The same binary distinguishes object index coercion from array indexing.
+These bounds cover those shapes rather than every possible supplied value.
+
+`tree_revision.rs` (256 MiB cap) compares the core-backed runtime against
+`reference/tree-interface.ts`, using explicit persisted values for the reviewer's
+five concatenations, coercion failures, and descriptor cases. A deterministic
+work bound grows linearly for 32/64/128/200 concatenated terms. Work, room and
+depth edge cases retain fitted props, raw remaining props and earlier errors.
+The corpus binary has a 256 MiB cap. Its pending cases also compare independent
+one-shot props, nested elements, root metadata and snapshots. Its only message
+normalization is structurally restricted to the named map-target divergence.
+
+The core's new `expression_failures.rs` uses only public APIs. It pins typed
+failures, immediate stop at work edges, callback propagation, sequential reset,
+uncached failed lookups, extra-scope failure before state fallback, descriptor
+laziness and loop bindings, caller work/room/depth, fresh nested cuts and unwind.
+The caller depth closure runs 200,000 requested hops on 64 KiB; logical depth
+stops it first. Parser tests and goldens are unchanged.
+
+Regenerate the focused golden from `reference/` with:
+
+```bash
+bun --no-install tree-interface.ts > ../conformance/golden/runtime-interface.json
+```
+
+Action execution and scripted interactions remain later runtime tickets.
 The core's existing suite still runs by itself with `cargo test -p openui-lang`.
+The unchanged runaway-stack unit test also runs under release: its assertion
+is enabled for unit-test builds while production retains the existing
+debug-only guard. Before this test-only fix, the same release test failed on
+`main` because `debug_assert!` was compiled out.
+
+`evaluator_ownership.rs` captures a session's root evaluator inside a foreign
+session's state callback, with both work-limit directions and with/without an
+enclosing caller level. AST evaluation, descriptor evaluation, result and value
+reservations, flags and an intervening unwind must all use the owner's account.
+Direct `reserve_value` tests check work, room, depth, cumulative reservations and
+absence of state-input credit. Tests formerly using removed `charge_work` and
+session-level descriptor evaluation now use caller levels and the callback
+evaluator respectively, retaining their assertions.
+
+Pending cases compare in-scope errors as well as independent props and snapshots;
+`runtime/pending-error` supplies a failing prop beside a deferred action. All
+three runtime divergences pin complete reference and Rust one-shot observations
+under both state scenarios, independently of the regenerated goldens.
+
+The descriptor matrix starts its streaming root with a state prop, so the root
+is already dynamic while structural element data is incomplete. Without that
+prefix, the two parsers disagree on `hasDynamicProps` at an early partial
+structural-element prefix (16-character chunk 6). Changing parsing is outside
+this fix round; the direct one-shot name regressions are pinned separately.

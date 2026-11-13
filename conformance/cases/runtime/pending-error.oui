@@ -1,0 +1,2 @@
+root=Box(@Set($x,2),{k:"Comp",name:"Count"},7)
+$x=1

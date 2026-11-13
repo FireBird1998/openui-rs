@@ -1,0 +1,1 @@
+{"saved":{"$t":false},"defaults":{"root":{"type":"element","typeName":"Title","props":{"text":"A"},"partial":false,"hasDynamicProps":true},"errors":[],"snapshot":{"$t":true}},"persisted":{"root":{"type":"element","typeName":"Title","props":{"text":"B"},"partial":false,"hasDynamicProps":true},"errors":[],"snapshot":{"$t":false}}}

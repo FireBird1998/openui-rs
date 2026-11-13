@@ -1,0 +1,2 @@
+root = Box({k:"Arr",els:3},{k:"Obj",entries:3},{k:"Obj",entries:["ab"]},{k:"BinOp",op:"+",left:null,right:{k:"Num",v:1}})
+$n = 1

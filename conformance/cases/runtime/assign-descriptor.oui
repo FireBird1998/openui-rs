@@ -1,0 +1,2 @@
+root = Box({k:"Assign",target:"$n",value:{k:"Num",v:1}},{k:"Assign"},$n)
+$n = 7
