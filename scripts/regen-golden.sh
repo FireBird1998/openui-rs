@@ -53,6 +53,7 @@ done
   bun --no-install edits.ts golden
   bun --no-install runtime.ts golden
   bun --no-install tree-interface.ts > ../conformance/golden/runtime-interface.json
+  bun --no-install action-definitions.ts
 )
 if [[ -n "$into" ]]; then
   mkdir -p "$(dirname "$into")"

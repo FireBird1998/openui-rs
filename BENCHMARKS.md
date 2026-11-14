@@ -161,3 +161,30 @@ repository's `test_alloc` helper. All **1,858 allocation-call measurements**
 identical to main. Library compilation and input setup are outside each
 measurement; parser construction, pushes and finish are inside the streaming
 measurement. No production dependency was added.
+
+
+## Action-plan validation (#36)
+
+Action plans validate custom-action arguments with the validator parsing uses,
+so the parsing path was measured against the previous `main` on the final
+commit of that work: ten rounds of main / branch / main with `BENCH_RUNS=10`,
+over the seven samples, dashboard-x2 to x16, and two validation-heavy programs
+(60 calls of a 40-prop typed component, one valid and one producing 800
+errors). Branch ratios per program were **0.982–1.011** (geometric mean
+**0.998**); the same-binary control was **0.979–1.030** (geometric mean
+**1.0005**); the two validation-heavy programs were **0.994** and **1.001**.
+No parsing regression was detectable.
+
+Parsing output was identical: **4,765 case-and-schema pairs in four modes**
+(parse, stream, and stream with chunk sizes 1 and 3), 19,060 runs, with no
+difference in stdout, stderr or exit status.
+
+The parse path's compiled code is not identical. The 37 evaluator symbols are
+unchanged (**27,840 bytes**), but the validation symbols changed shape:
+`validate_schema_value` (**3,160 bytes**), `validate_object` (**6,744**) and
+`validate_array` (**2,036**) became `validate_schema_value_in<false>`
+(**2,360**), `validate_object<false>` (**6,244**, plus a **408**-byte closure)
+and `validate_array<false>` (**2,004**), with out-of-line `scalar_json`
+(**540**), `enum_includes` (**388**) and `js_type` (**72**). Validation code on
+the parse path totals **17,544 bytes** against **17,452**. The interleaved
+measurements above, not symbol identity, establish the cost result.

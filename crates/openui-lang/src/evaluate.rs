@@ -29,8 +29,12 @@ mod expression;
 use expression::expression_bytes;
 pub use expression::{
     EvaluationFailure, EvaluationFlags, EvaluationResult, EvaluationScope, EvaluationSession,
-    ExpressionEvaluator, ExpressionOperation, ExpressionType, ExpressionValue,
+    ExpressionEvaluator, ExpressionOperation, ExpressionOutput, ExpressionType, ExpressionValue,
     PreparedReferenceValue, evaluate_expression, evaluate_expression_with_limits,
+};
+
+pub(crate) use expression::{
+    validation_default, validation_name, validation_node, validation_work,
 };
 
 pub(crate) fn expression_ceiling_cut() {
@@ -49,6 +53,9 @@ trait Names: Sized {
     }
     fn call(&self, _node: &Ast, _scope: &Scope<'_, Self>) -> Js {
         Js::Null
+    }
+    fn wants_unmapped_call(&self, _node: &Value, _name: &str) -> bool {
+        false
     }
     fn call_value(&self, _node: &Value, _name: &str, _scope: &Scope<'_, Self>) -> Js {
         Js::Null
@@ -1534,6 +1541,9 @@ fn to_value_mode<const PRESERVE: bool, const CHARGE: bool>(
         Js::Bool(b) => Value::Bool(*b),
         Js::Num(n) => Value::Num(*n),
         Js::Str(s) => Value::Str(s.to_string()),
+        Js::Arr(items) if PRESERVE && CHARGE && expression::buffered_projection() => {
+            return expression::project_buffered_array(items, limits);
+        }
         Js::Arr(items) => Value::Arr(Arc::new(
             items
                 .iter()
@@ -1623,6 +1633,15 @@ impl<S: Names> Scope<'_, S> {
         loop {
             match scope {
                 Scope::Root(names) => return names.each_item(value, self),
+                Scope::Each { parent, .. } => scope = parent,
+            }
+        }
+    }
+    fn wants_unmapped_call(&self, node: &Value, name: &str) -> bool {
+        let mut scope = self;
+        loop {
+            match scope {
+                Scope::Root(names) => return names.wants_unmapped_call(node, name),
                 Scope::Each { parent, .. } => scope = parent,
             }
         }

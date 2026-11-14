@@ -165,6 +165,7 @@ pub(super) fn evaluate(value: Option<&Value>, scope: &Scope<Supplied<'_>>) -> Js
                 if !get("mappedProps")
                     .map(expression::data_value)
                     .is_some_and(|v| truthy(&v))
+                    && !scope.wants_unmapped_call(value, &name)
                 {
                     return Js::Null;
                 }

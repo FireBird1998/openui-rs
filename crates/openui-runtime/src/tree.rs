@@ -9,6 +9,7 @@ use std::{
     collections::BTreeMap,
     sync::Arc,
 };
+pub(crate) mod actions;
 mod bindings;
 mod fields;
 pub use bindings::{BindingProps, BindingWriteError, write_binding, write_binding_with_limits};
@@ -19,11 +20,15 @@ pub use prepared::PreparedReferenceValues;
 
 /// Extensible input to tree evaluation. Parsing already inlines value statements.
 /// Parsing has already named component arguments. Library definitions separate
-/// components from the function and action dispatch still due in #38 and #36.
+/// components from library functions (due in #38) and declared actions.
 /// Binding props are supplied independently of JSON Schema.
 #[derive(Clone)]
 #[non_exhaustive]
 pub struct TreeInput<'a> {
+    /// Original library action definitions (`schema.actions`). The compiled
+    /// parsing library intentionally does not retain their whole schemas.
+    /// Without these definitions custom calls evaluate to null.
+    pub actions: Option<&'a openui_lang::JsonValue>,
     /// Props whose schema objects upstream marks reactive.
     pub binding_props: Option<&'a BindingProps>,
     /// The parse result. Evaluation reads the store without initializing it.
@@ -43,11 +48,17 @@ impl<'a> TreeInput<'a> {
     pub fn new(result: &'a ParseResult) -> Self {
         Self {
             result,
+            actions: None,
             binding_props: None,
             reference_values: None,
             library: None,
             prepared_reference_values: None,
         }
+    }
+    /// Supply original action definitions, including each `params` schema.
+    pub fn with_actions(mut self, actions: &'a openui_lang::JsonValue) -> Self {
+        self.actions = Some(actions);
+        self
     }
     /// Supply binding prop names, independently of the parsing library.
     pub fn with_binding_props(mut self, props: &'a BindingProps) -> Self {
@@ -180,6 +191,13 @@ pub(crate) fn value_json(value: &Value) -> String {
 /// A completed nested subtree keeps its fitted props by the same rule. Raw
 /// input retained on a cut does not spend generated-result room. Retained props
 /// still use JavaScript property-assignment semantics, like failed props.
+/// Raw props retained on a cut may display forged custom-step objects. Their
+/// position in the tree grants no authority: execution must check the store's
+/// private registry, including for retained or cut values. Evaluating an AST
+/// call to a declared action earns a real mark, whether the call came from
+/// program text or from an evaluated prop in state/query data. Such data can
+/// invoke declared actions with its chosen arguments; a finished custom step
+/// supplied as data cannot manufacture the mark.
 pub fn evaluate_tree(input: TreeInput<'_>, store: &Store) -> TreeResult {
     evaluate_tree_with_limits(input, store, Limits::DEFAULT)
 }
@@ -262,6 +280,7 @@ struct TreeScope<'a> {
     store: &'a Store,
     errors: RefCell<Vec<RuntimeError>>,
     inline: Cell<bool>,
+    report_bytes: Cell<Option<usize>>,
     // Only newly constructed markers can reuse a projection reservation.
     // Supplied data can alias unevaluated props elsewhere in the input, so
     // each of its output positions must reserve independently. Retaining the
@@ -269,6 +288,9 @@ struct TreeScope<'a> {
     paid_markers: RefCell<std::collections::HashMap<usize, Arc<JsObject<Value>>>>,
     references: BTreeMap<&'a str, Option<(bool, Option<&'a Ast>)>>,
     reference_values: Option<&'a PreparedReferenceValues<'a>>,
+    actions: Option<&'a openui_lang::JsonValue>,
+    checked_schemas:
+        RefCell<BTreeMap<usize, std::rc::Rc<openui_lang::PreparedValidationSchema<'a>>>>,
     library: Option<&'a Library>,
     binding_props: Option<&'a BindingProps>,
 }
@@ -282,6 +304,7 @@ impl<'a> TreeScope<'a> {
             store,
             errors: RefCell::new(Vec::new()),
             inline: Cell::new(false),
+            report_bytes: Cell::new(None),
             paid_markers: RefCell::new(std::collections::HashMap::new()),
             references: {
                 let mut references = BTreeMap::new();
@@ -296,12 +319,50 @@ impl<'a> TreeScope<'a> {
                 references
             },
             reference_values: supplied,
+            actions: input.actions,
+            checked_schemas: RefCell::new(BTreeMap::new()),
             library: input.library,
             binding_props: input.binding_props,
         }
     }
 }
 impl EvaluationScope for TreeScope<'_> {
+    fn wants_unmapped_call(&self, call: &Value, name: &str) -> bool {
+        matches!(call,Value::Obj(o) if matches!(o.get("name"),Some(Value::Str(n)) if matches!(n.as_str(),"Action"|"Run"|"Set"|"Reset"|"ToAssistant"|"OpenUrl")))
+            || self
+                .actions
+                .and_then(|a| a.as_object())
+                .is_some_and(|a| a.contains_key(name))
+    }
+    fn call_output(
+        &self,
+        call: &Ast,
+        eval: &ExpressionEvaluator<'_>,
+    ) -> openui_lang::ExpressionOutput {
+        if let Ast::Comp { name, .. } = call
+            && name == "Action"
+        {
+            let value = Value::Ast(Arc::new(call.clone()));
+            if let Some(output) = self.aggregate(&own_fields(&value), eval) {
+                return output;
+            }
+        }
+        self.call(call, eval).into()
+    }
+    fn call_value_output(
+        &self,
+        call: &Value,
+        name: &str,
+        eval: &ExpressionEvaluator<'_>,
+    ) -> openui_lang::ExpressionOutput {
+        if let Value::Obj(o) = call
+            && let Some(output) = self.aggregate(o, eval)
+        {
+            return output;
+        }
+        self.call_value_named(call, name, eval).into()
+    }
+
     fn project_result<'v>(
         &self,
         value: ExpressionValue<'v>,
@@ -334,6 +395,12 @@ impl EvaluationScope for TreeScope<'_> {
             }
             Some((false, _)) => Some(Value::Null),
             Some((true, default)) => default.map_or(Some(Value::Null), |a| {
+                // Query registration evaluates defaults with the root context,
+                // before any prop installs its diagnostic reporter.
+                let _report = ReportContext {
+                    bytes: &self.report_bytes,
+                    old: self.report_bytes.replace(None),
+                };
                 eval.with_call_context(false, || eval.evaluate(a)).flatten()
             }),
         }
@@ -370,6 +437,21 @@ impl EvaluationScope for TreeScope<'_> {
         self.expression_result(Some(value.clone()), eval)
     }
     fn call(&self, call: &Ast, eval: &ExpressionEvaluator<'_>) -> Option<Value> {
+        if let Ast::Comp { name, .. } = call
+            && (matches!(
+                name.as_str(),
+                "Action" | "Run" | "Set" | "Reset" | "ToAssistant" | "OpenUrl"
+            ) || self
+                .actions
+                .and_then(|a| a.as_object())
+                .is_some_and(|a| a.contains_key(name)))
+        {
+            let value = Value::Ast(Arc::new(call.clone()));
+            let node = own_fields(&value);
+            if let Some(plan) = self.action(&node, name, eval) {
+                return Some(plan);
+            }
+        }
         let Ast::Comp {
             name,
             mapped_props: Some(mapped),
@@ -394,7 +476,15 @@ impl EvaluationScope for TreeScope<'_> {
         let Value::Obj(o) = call else {
             return Some(Value::Null);
         };
-        let Some(mapped) = o.get("mappedProps") else {
+        if let Some(plan) = self.action(o, name, eval) {
+            return Some(plan);
+        }
+        let Some(mapped) = o.get("mappedProps").filter(|v| match v {
+            Value::Null | Value::Bool(false) => false,
+            Value::Num(n) => *n != 0.0 && !n.is_nan(),
+            Value::Str(s) => !s.is_empty(),
+            _ => true,
+        }) else {
             return Some(Value::Null);
         };
         match mapped {
@@ -551,6 +641,33 @@ struct PropOwner<'a> {
     statement: Option<&'a str>,
     bindings: Option<&'a std::collections::BTreeSet<String>>,
 }
+struct ReportContext<'a> {
+    bytes: &'a Cell<Option<usize>>,
+    old: Option<usize>,
+}
+impl<'a> ReportContext<'a> {
+    fn enter(bytes: &'a Cell<Option<usize>>, value: usize) -> Self {
+        Self {
+            bytes,
+            old: bytes.replace(Some(value)),
+        }
+    }
+}
+impl Drop for ReportContext<'_> {
+    fn drop(&mut self) {
+        self.bytes.set(self.old);
+    }
+}
+fn error_bytes(owner: PropOwner<'_>, key: &str) -> usize {
+    160usize
+        .saturating_add(text_bytes(owner.component).saturating_mul(2))
+        .saturating_add(text_bytes(key).saturating_mul(2))
+        .saturating_add(
+            owner
+                .statement
+                .map_or(0, |s| text_bytes(s).saturating_add(15)),
+        )
+}
 fn cut(eval: &ExpressionEvaluator<'_>) -> bool {
     let f = eval.flags();
     f.size_limited || f.depth_limited
@@ -623,6 +740,18 @@ impl TreeScope<'_> {
     }
 
     fn prop(
+        &self,
+        raw: &Value,
+        binding: bool,
+        eval: &ExpressionEvaluator<'_>,
+    ) -> Result<Option<Value>, EvaluationFailure> {
+        // Cuts preserve raw input, including raw plans, rather than running
+        // an unbounded sanitizing walk with no work left. Tree position never
+        // confers authority: custom steps must pass the store registry check.
+        self.prop_value(raw, binding, eval)
+            .map(|v| v.map(|v| if cut(eval) { v } else { self.own_plan(v) }))
+    }
+    fn prop_value(
         &self,
         raw: &Value,
         binding: bool,
@@ -702,6 +831,10 @@ impl TreeScope<'_> {
                     Ok(Some(Value::Arr(Arc::new(out))))
                 }
                 Value::Obj(o) if shaped_element(o) => Ok(Some(self.shaped(raw, o, eval))),
+                Value::Obj(_) if actions::is_plan(raw) => {
+                    eval.reserve_value(raw);
+                    Ok(Some(raw.clone()))
+                }
                 Value::Obj(o) if o.values().any(object) => {
                     if !eval.reserve_result(2usize.saturating_add(o.len().saturating_sub(1))) {
                         return Ok(Some(raw.clone()));
@@ -760,35 +893,51 @@ impl TreeScope<'_> {
         if cut(eval) || !eval.reserve_result(text_bytes(key).saturating_add(1)) {
             return Some(raw.clone());
         }
-        match self.prop(raw, owner.bindings.is_some_and(|b| b.contains(key)), eval) {
+        let _report = (!self.inline.get())
+            .then(|| ReportContext::enter(&self.report_bytes, error_bytes(owner, key)));
+        let before = self.errors.borrow().len();
+        let result = self.prop(raw, owner.bindings.is_some_and(|b| b.contains(key)), eval);
+        if !self.inline.get() {
+            for error in self.errors.borrow_mut().iter_mut().skip(before) {
+                if error.component.is_none() {
+                    error.component = Some(owner.component.to_owned());
+                    error.statement_id = owner.statement.map(str::to_owned);
+                    error.message = format!(
+                        "Evaluating prop \"{key}\" on {} failed: {}",
+                        owner.component, error.message
+                    );
+                    error.hint = Some(format!("Check the expression used for prop \"{key}\""));
+                }
+            }
+        }
+        match result {
             Ok(value) => value,
             Err(_) if self.inline.get() => Some(raw.clone()),
             Err(failure) => {
-                let message = failure_message(&failure);
-                // Reserve repeated owner/key text before formatting the diagnostic.
-                let bytes = 160usize
-                    .saturating_add(text_bytes(owner.component).saturating_mul(2))
-                    .saturating_add(text_bytes(key).saturating_mul(2))
-                    .saturating_add(text_bytes(&message))
-                    .saturating_add(
-                        owner
-                            .statement
-                            .map_or(0, |s| text_bytes(s).saturating_add(15)),
-                    );
-                if eval.reserve_result(bytes) {
-                    self.errors.borrow_mut().push(RuntimeError {
-                        code: "runtime-error",
-                        component: Some(owner.component.to_owned()),
-                        statement_id: owner.statement.map(str::to_owned),
-                        message: format!(
-                            "Evaluating prop \"{key}\" on {} failed: {message}",
-                            owner.component
-                        ),
-                        hint: Some(format!("Check the expression used for prop \"{key}\"")),
-                    });
-                }
+                self.report(owner, key, failure_message(&failure), eval);
                 Some(raw.clone())
             }
+        }
+    }
+    fn report(
+        &self,
+        owner: PropOwner<'_>,
+        key: &str,
+        message: String,
+        eval: &ExpressionEvaluator<'_>,
+    ) {
+        let bytes = error_bytes(owner, key).saturating_add(text_bytes(&message));
+        if eval.reserve_result(bytes) {
+            self.errors.borrow_mut().push(RuntimeError {
+                code: "runtime-error",
+                component: Some(owner.component.to_owned()),
+                statement_id: owner.statement.map(str::to_owned),
+                message: format!(
+                    "Evaluating prop \"{key}\" on {} failed: {message}",
+                    owner.component
+                ),
+                hint: Some(format!("Check the expression used for prop \"{key}\"")),
+            });
         }
     }
     fn element(&self, e: &Element, eval: &ExpressionEvaluator<'_>) -> Value {
@@ -884,6 +1033,7 @@ impl TreeScope<'_> {
 }
 fn failure_message(failure: &EvaluationFailure) -> String {
     match failure {
+        EvaluationFailure::Callback(message) => message.clone(),
         EvaluationFailure::CannotConvertToPrimitive => "No default value".into(),
         EvaluationFailure::BuiltinNotCallable => "builtin.fn is not a function. (In 'builtin.fn(evaluateArgs(node, context))', 'builtin.fn' is undefined)".into(),
         EvaluationFailure::InvalidExpression {

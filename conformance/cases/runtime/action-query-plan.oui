@@ -1,0 +1,2 @@
+root=Box(q,Action([q]),@Each([1],i,Box(q)),true?Box(q):null)
+q=Query("q",{})

@@ -668,3 +668,37 @@ The per-item callback preserves the original JS value when it returns no
 replacement. `tree-interface.ts` pins undefined array entries and own fields
 through an unhandled Each item; `tree_concatenation_and_cuts` compares that reference result.
 `tree_reference_input_limits` also checks that static Each elements avoid replacement room.
+
+`action_allowances` (256 MiB) pins equal room thresholds for one through five
+plan aggregation levels, one byte below each threshold, the ordinary descriptor
+program's exact `main` work, and bounded buffering of 100,000 shared data steps.
+It requires a described 30-field action and nested object/array/enum arguments
+to fit default limits, checks linear work growth for a fixed schema, and cuts
+wide enums, repeated required/default copies, deep metadata keys and expanded
+composites. `action_definitions` compares complete trees and errors for all 268
+reference observations of action metadata. `action_plans` checks separate-store
+identity and revocation on disposal, including retained plans and forged raw
+props retained by a cut.
+
+
+`validation_sessions` pins default-limit evaluation of 100 row actions with
+100 properties and 60- or 1,000-character descriptions. Marginal work is the
+same with no descriptions, and scales with present fields and required names.
+Prepared-check and positional-naming allocations are independent of absent
+schema width. Computed keys are admitted before copying, malformed string
+properties cut before numeric-index materialization, and cached required names
+preserve explicit nulls even without a schema type. Foreign
+sessions readmit metadata, and recursive required-name joins are bounded before
+copying. The prepared-schema compile-fail example forbids mutation of the
+borrowed schema. Existing hostile-schema cases remain cut and flagged.
+`expression_transform_buffers` uses a 2 GiB allocation cap specifically to test
+real 64 KiB and 1,000,000,000-byte limits. It measures live allocation peaks
+within the vector limit plus 16 KiB of fixed evaluator/allocator overhead, and
+requires interrupted transforms to return no exposed partial buffer. It does
+not allocate the previous 1.69 GB excess: capacity admission cuts first. Nested
+vectors share the ceiling, projected vectors are included, and discarded
+vectors release credit. A prior transform must not change the work needed by
+a later ordinary array evaluation in the same session.
+`action_plans` names and checks invocation of a declared action from AST-shaped
+props in element-shaped state and query data, followed by same-store plan reuse;
+finished steps supplied as data are still rejected.

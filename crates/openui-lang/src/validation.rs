@@ -12,6 +12,9 @@ use crate::library::Param;
 use crate::materialize::{Ctx, js_strict_eq};
 use crate::result::{Severity, ValidationErrorCode, Value};
 
+mod prepared;
+pub use prepared::PreparedValidationSchema;
+
 /// The varying parts of a validation error; the wording lives in [`Issue::message`].
 pub(crate) enum Issue {
     TypeMismatch { expected: String, actual: String },
@@ -359,6 +362,7 @@ fn schema_default(schema: Option<&Json>) -> Option<&Json> {
 /// Validate `value` against a JSON Schema fragment, reporting every problem
 /// and pruning what can't be salvaged. True when the value itself is invalid
 /// and its parent must resolve it.
+#[inline(always)]
 pub(crate) fn validate_schema_value(
     value: &mut Value,
     schema: &Json,
@@ -366,7 +370,31 @@ pub(crate) fn validate_schema_value(
     path: &str,
     ctx: &mut Ctx,
 ) -> bool {
-    crate::stack::grow_stack!(validate_schema_value(value, schema, component, path, ctx), budget else { *value = Value::Null; ctx.stack_stalled(); false });
+    validate_schema_value_in::<false>(value, schema, component, path, ctx, None)
+}
+pub(crate) fn validate_bounded_value(
+    value: &mut Value,
+    prepared: &PreparedValidationSchema<'_>,
+    component: &str,
+    path: &str,
+    ctx: &mut Ctx,
+) -> bool {
+    validate_schema_value_in::<true>(value, prepared.root, component, path, ctx, Some(prepared))
+}
+fn validate_schema_value_in<const BOUNDED: bool>(
+    value: &mut Value,
+    schema: &Json,
+    component: &str,
+    path: &str,
+    ctx: &mut Ctx,
+    prepared: Option<&PreparedValidationSchema<'_>>,
+) -> bool {
+    let validate_schema_value = validate_schema_value_in::<BOUNDED>;
+    crate::stack::grow_stack!(validate_schema_value(value, schema, component, path, ctx, prepared), budget else { *value = Value::Null; ctx.stack_stalled(); false });
+    if BOUNDED && !crate::evaluate::validation_node(value, schema, path) {
+        ctx.stack_cut = true;
+        return false;
+    }
     let Some(s) = schema.as_object() else {
         return false;
     };
@@ -395,9 +423,9 @@ pub(crate) fn validate_schema_value(
         return true;
     }
     match s.get("type").and_then(Json::as_str) {
-        Some("object") => validate_object(value, s, component, path, ctx),
-        Some("array") => validate_array(value, s, component, path, ctx),
-        _ => validate_leaf(value, s, component, path, ctx),
+        Some("object") => validate_object::<BOUNDED>(value, s, component, path, ctx, prepared),
+        Some("array") => validate_array::<BOUNDED>(value, s, component, path, ctx, prepared),
+        _ => validate_leaf::<BOUNDED>(value, s, component, path, ctx),
     }
 }
 
@@ -456,12 +484,13 @@ fn validate_element_position(
     false
 }
 
-fn validate_object(
+fn validate_object<const BOUNDED: bool>(
     value: &mut Value,
     s: &serde_json::Map<String, Json>,
     component: &str,
     path: &str,
     ctx: &mut Ctx,
+    prepared: Option<&PreparedValidationSchema<'_>>,
 ) -> bool {
     let Value::Obj(obj) = value else {
         let actual = js_type(value).to_owned();
@@ -477,7 +506,12 @@ fn validate_object(
     };
     // Match the reference's lazy copy: unchanged containers keep identity.
     let mut out: Option<JsObject<Value>> = None;
-    let props: Vec<(String, &Json)> = match s.get("properties") {
+    let cached = if BOUNDED {
+        prepared.and_then(|p| p.object(s))
+    } else {
+        None
+    };
+    let owned_props: Vec<(String, &Json)> = match s.get("properties").filter(|_| cached.is_none()) {
         Some(Json::Object(m)) => json_entries(m)
             .into_iter()
             .map(|(k, v)| (k.clone(), v))
@@ -489,12 +523,26 @@ fn validate_object(
             .collect(),
         _ => Vec::new(),
     };
-    let prop = |key: &str| props.iter().find(|(k, _)| k == key).map(|(_, v)| *v);
-    let required: Vec<String> = match s.get("required") {
+    let props = cached.map_or(owned_props.as_slice(), |c| c.props.as_slice());
+    let prop = |key: &str| {
+        if let Some(c) = cached {
+            c.prop(key)
+        } else {
+            props.iter().find(|(k, _)| k == key).map(|(_, v)| *v)
+        }
+    };
+    let owned_required: Vec<String> = match s.get("required").filter(|_| cached.is_none()) {
         Some(Json::Array(items)) => items.iter().map(js_string).collect(),
         _ => Vec::new(),
     };
-    let is_required = |key: &str| matches!(s.get("required"), Some(Json::Array(items)) if items.iter().any(|r| r.as_str() == Some(key)));
+    let required = cached.map_or(owned_required.as_slice(), |c| c.required.as_slice());
+    let is_required = |key: &str| {
+        if let Some(c) = cached {
+            c.is_required(key)
+        } else {
+            matches!(s.get("required"), Some(Json::Array(items)) if items.iter().any(|r| r.as_str() == Some(key)))
+        }
+    };
 
     let mut invalid = false;
     // Keys filled from their default here, which aren't validated after: the
@@ -502,13 +550,21 @@ fn validate_object(
     let mut filled: Vec<String> = Vec::new();
     // Structural checks are streaming-sensitive: only on complete input.
     if !ctx.partial {
-        for key in &required {
+        for key in required {
+            if BOUNDED && !crate::evaluate::validation_work(key.len().saturating_add(1)) {
+                ctx.stack_cut = true;
+                break;
+            }
             if ctx.stack_cut {
                 break;
             }
             let present = obj.has(key);
             if !present || matches!(obj.get(key), Some(Value::Null)) {
                 if let Some(fallback) = schema_default(prop(key)) {
+                    if BOUNDED && !crate::evaluate::validation_default(fallback) {
+                        ctx.stack_cut = true;
+                        break;
+                    }
                     copied(&mut out, obj).set(key.clone(), Value::from_json(fallback));
                     filled.push(key.clone());
                     continue;
@@ -526,11 +582,45 @@ fn validate_object(
             }
         }
     }
-    for (key, sub) in &props {
+    let order = if let Some(c) = cached {
+        match c.order(obj) {
+            Some(o) => o,
+            None => {
+                ctx.stack_cut = true;
+                return invalid;
+            }
+        }
+    } else {
+        Vec::new()
+    };
+    let count = if cached.is_some() {
+        order.len()
+    } else {
+        props.len()
+    };
+    let mut filled_index = std::collections::BTreeSet::new();
+    if BOUNDED {
+        for key in &filled {
+            filled_index.insert(key.as_str());
+        }
+    }
+    for offset in 0..count {
+        let index = if cached.is_some() {
+            order.get(offset).copied()
+        } else {
+            Some(offset)
+        };
+        let Some((key, sub)) = index.and_then(|i| props.get(i)) else {
+            break;
+        };
         if ctx.stack_cut {
             break;
         }
-        if filled.contains(key) {
+        if if BOUNDED {
+            filled_index.contains(key.as_str())
+        } else {
+            filled.contains(key)
+        } {
             continue;
         }
         let child_path = format!("{path}/{key}");
@@ -538,7 +628,15 @@ fn validate_object(
             // Inherited methods are functions, not representable as Value.
             if key != "__proto__"
                 && OBJECT_PROTOTYPE_KEYS.contains(&key.as_str())
-                && validate_inherited_function(sub, component, &child_path, ctx)
+                && validate_inherited_function::<BOUNDED>(sub, component, &child_path, ctx)
+                && (!BOUNDED
+                    || schema_default(Some(sub)).is_none_or(|d| {
+                        let ok = crate::evaluate::validation_default(d);
+                        if !ok {
+                            ctx.stack_cut = true;
+                        }
+                        ok
+                    }))
                 && resolve_invalid_value(
                     copied(&mut out, obj),
                     key,
@@ -552,9 +650,20 @@ fn validate_object(
             continue;
         };
         let mut next = before.clone();
-        if validate_schema_value(&mut next, sub, component, &child_path, ctx) {
+        if validate_schema_value_in::<BOUNDED>(
+            &mut next,
+            sub,
+            component,
+            &child_path,
+            ctx,
+            prepared,
+        ) {
             match invalid_fallback(is_required(key), schema_default(Some(sub))) {
                 Fallback::Default(default) => {
+                    if BOUNDED && !crate::evaluate::validation_default(default) {
+                        ctx.stack_cut = true;
+                        break;
+                    }
                     ctx.default_used(default, 1);
                     next = Value::from_json(default);
                 }
@@ -580,7 +689,16 @@ fn validate_object(
 }
 
 /// What validating an inherited method (a function) against `schema` reports.
-fn validate_inherited_function(schema: &Json, component: &str, path: &str, ctx: &mut Ctx) -> bool {
+fn validate_inherited_function<const BOUNDED: bool>(
+    schema: &Json,
+    component: &str,
+    path: &str,
+    ctx: &mut Ctx,
+) -> bool {
+    if BOUNDED && !crate::evaluate::validation_node(&Value::Bool(false), schema, path) {
+        ctx.stack_cut = true;
+        return false;
+    }
     let Some(s) = schema.as_object() else {
         return false;
     };
@@ -612,12 +730,13 @@ fn validate_inherited_function(schema: &Json, component: &str, path: &str, ctx: 
 
 /// An array slot: invalid items are pruned (after validating all of them, so
 /// error paths keep the original indices). Never invalid itself.
-fn validate_array(
+fn validate_array<const BOUNDED: bool>(
     value: &mut Value,
     s: &serde_json::Map<String, Json>,
     component: &str,
     path: &str,
     ctx: &mut Ctx,
+    prepared: Option<&PreparedValidationSchema<'_>>,
 ) -> bool {
     let Value::Arr(items) = value else {
         let actual = js_type(value).to_owned();
@@ -640,12 +759,13 @@ fn validate_array(
             break;
         }
         let mut next = before.clone();
-        let invalid = validate_schema_value(
+        let invalid = validate_schema_value_in::<BOUNDED>(
             &mut next,
             item_schema,
             component,
             &format!("{path}/{i}"),
             ctx,
+            prepared,
         );
         // Reference: `next !== value[i]`; NaN counts as changed even if kept.
         if invalid || !js_strict_eq(&next, before) {
@@ -665,7 +785,7 @@ fn validate_array(
 
 /// A scalar or enum leaf. Enum membership waits while streaming (a partial
 /// literal may still become valid); scalar type checks don't.
-fn validate_leaf(
+fn validate_leaf<const BOUNDED: bool>(
     value: &Value,
     s: &serde_json::Map<String, Json>,
     component: &str,
@@ -679,6 +799,14 @@ fn validate_leaf(
             let scalar = matches!(value, Value::Str(_) | Value::Num(_) | Value::Bool(_));
             if !scalar || enum_includes(&values, value) {
                 return false;
+            }
+            if BOUNDED {
+                for value in &values {
+                    if !crate::evaluate::validation_default(value) {
+                        ctx.stack_cut = true;
+                        return false;
+                    }
+                }
             }
             let listed: Vec<String> = values.into_iter().map(json_value_string).collect();
             Issue::TypeMismatch {

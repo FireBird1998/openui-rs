@@ -362,7 +362,7 @@ pub use builtins::{is_builtin, is_reserved_call};
 pub use enrich::{EnrichedError, enrich_errors, enriched_errors_to_json};
 pub use evaluate::{
     EvaluationFailure, EvaluationFlags, EvaluationResult, EvaluationScope, EvaluationSession,
-    ExpressionEvaluator, ExpressionOperation, ExpressionType, ExpressionValue,
+    ExpressionEvaluator, ExpressionOperation, ExpressionOutput, ExpressionType, ExpressionValue,
     PreparedReferenceValue, evaluate_expression, evaluate_expression_with_limits,
 };
 pub use expr::{parse_expression, parse_expression_with_limits};
@@ -385,6 +385,7 @@ pub use result::{
 pub use serialize::{SerializeError, json_to_openui, json_to_openui_with_limits};
 pub use statements::{IdKind, RawStatement, auto_close, split};
 pub use stream::StreamParser;
+pub use validation::PreparedValidationSchema;
 
 // Embedders parse off the UI thread and share one library between parsers, so
 // these stay shareable across threads; this stops compiling if one stops.
@@ -401,3 +402,6 @@ static TEST_ALLOCATOR: test_alloc::Allocator = test_alloc::Allocator::with_cap(t
 
 /// Allocation-free JSON number sizing for embedders preparing input allowances.
 pub use js::json_number_len;
+
+/// JSON values used for runtime schema configuration, without a second dependency.
+pub use serde_json::Value as JsonValue;

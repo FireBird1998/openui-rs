@@ -1,0 +1,6 @@
+root=Box($a=@Set($b,1),$c=@ToAssistant("hi"),$d=@Go("ok"),$e=@OpenUrl(2))
+$a=null
+$b=0
+$c=null
+$d=null
+$e=null

@@ -1,0 +1,5 @@
+root=Box(Action([@Set($n,$n+1),@Reset($n,$other),@ToAssistant(12,{x:1}),@OpenUrl(false),@Run(q),@Run(m),@Run(nope)]),[@Set($n),@Set(1,2),@Reset(3)],@ToAssistant(null,null),@OpenUrl())
+$n=1
+$other=2
+q=Query("q",{})
+m=Mutation("m",{})

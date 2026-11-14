@@ -463,6 +463,25 @@ pub fn write_binding_with_limits(
         value: Value,
     }
     impl EvaluationScope for Scope<'_> {
+        fn wants_unmapped_call(&self, call: &Value, name: &str) -> bool {
+            self.tree.wants_unmapped_call(call, name)
+        }
+        fn call_output(
+            &self,
+            call: &Ast,
+            eval: &ExpressionEvaluator<'_>,
+        ) -> openui_lang::ExpressionOutput {
+            self.tree.call_output(call, eval)
+        }
+        fn call_value_output(
+            &self,
+            call: &Value,
+            name: &str,
+            eval: &ExpressionEvaluator<'_>,
+        ) -> openui_lang::ExpressionOutput {
+            self.tree.call_value_output(call, name, eval)
+        }
+
         fn state(&self, name: &str, eval: &ExpressionEvaluator<'_>) -> Option<Value> {
             self.tree.state(name, eval)
         }

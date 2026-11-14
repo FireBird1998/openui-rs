@@ -23,7 +23,7 @@ Reference: `@openuidev/lang-core 1.1.0` at commit `47b9cae0d3b26a8c9d7514d5887a6
 | Element trees back to source | 826 | 826 | 1 fuzz, 71 hand-written, 723 parse corpus root, 31 reference-test |
 | Enriched errors | 419 | 419 | every parse corpus case with errors |
 
-Quirks recorded: 25.
+Quirks recorded: 28.
 Not matched yet, listed in `conformance/pending/`: none.
 <!-- /counts -->
 
@@ -47,15 +47,15 @@ and aliases within each parse result. Persistence timing remains an explicit
 assumption; the renderer is not vendored.
 
 <!-- runtime-counts -->
-Runtime trees: 973 total, 817 matching, 148 pending, 8 divergences.
+Runtime trees: 992 total, 960 matching, 24 pending, 8 divergences.
 
-Runtime pending: #34=0, #35=0, #36=124, #38=24.
+Runtime pending: #34=0, #35=0, #36=0, #38=24.
 
-Runtime coverage: 365 dynamic, 141 reading state, 460 referencing statements, 48 with runtime errors; 1460826 streaming steps per scenario, 147872 differing observations, 15619 differing trees.
+Runtime coverage: 384 dynamic, 152 reading state, 465 referencing statements, 56 with runtime errors; 1463305 streaming steps per scenario, 148636 differing observations, 15732 differing trees.
 
 Original runtime coverage: 859 cases, 261 dynamic, 61 reading state, 426 referencing statements, 11 with runtime errors; recorded: 152 cases, 2 declaring state.
 
-Runtime pending partial comparison: 296 one-shot observations, 11482 props.
+Runtime pending partial comparison: 48 one-shot observations, 28 props.
 
 Runtime field writes: 44 cases, 2124 steps across both scenarios; nine values per marker per scenario.
 <!-- /runtime-counts -->
@@ -383,7 +383,7 @@ outputs, and the tree harness witnesses the raw Rust declaration and reference
 snapshot. #34 leaves parsing unchanged. Runtime descriptor tests use explicit
 `stateValues` to isolate tree behavior from this difference. Other runtime
 additions cover all loop-item kinds, nested loops, shadowing in either lookup
-order, deferred item capture (pending #36), component collections and branches,
+order, deferred item capture, component collections and branches,
 root outcomes, and absent/defaulted/supplied/forward query and mutation reads.
 
 The `root-expression-throw` runtime divergence pins a lang-core `TypeError`
@@ -417,3 +417,45 @@ reads under fixed work limits and that prepared claims cannot finance output.
 Inherited non-callable builtins evaluate arguments in order without retaining
 an argument record that cannot be consumed; a large-array test bounds that
 otherwise discarded buffer too.
+
+Action plans use the runtime's call hooks for both typed syntax and data
+ASTs. Custom calls take the original `schema.actions` through
+`TreeInput::with_actions`; the parser's compiled positional metadata is not a
+replacement for a whole runtime validation schema. The action fixtures cover
+all step types, nested loop capture, state/query descriptors, array-like
+arguments, forged custom steps, binding writes and original-schema validation.
+`action_plans.rs` additionally checks retained identity across redraws and state,
+JSON copies, separate stores, small-stack nested loops and exact room edges.
+[ADR 0004](docs/adr/0004-custom-action-identity-stays-in-the-runtime-session.md)
+records the private identity registry and the future session-handle boundary.
+All 124 action-plan pending cases were resolved by evaluation; none needed
+execution or a move to #37, and the 24 function pending cases remain on #38.
+
+Runtime action definitions: 268 observations.
+`reference/action-definitions.ts` pins missing, null and wrongly typed action
+metadata, defaults and positional names through unmapped and mapped AST data,
+including list props. `action_definitions.rs` compares the full trees and errors.
+
+Action validation prepares immutable borrowed schema indexes once per tree
+session. Admission measures the schema, including ignored metadata, before
+indexing; properties and positional names are ordered/indexed and required
+names coerced/indexed at that point. Constructing argument keys charges their
+actual copied bytes, including keys subsequently omitted with optional nulls. An opaque prepared handle cannot outlive or mutate its schema, and
+a foreign session must admit it under its own limits. Each check then walks the
+value, its present schema fields, required names and applied keywords. Defaults
+and enum-error text pay for actual copies; descriptions and property ordering
+have no per-call charge. Candidate ordering is bounded-word radix order (or a
+bounded small insertion sort), preserving upstream error order without scanning
+absent properties. The conservative bound is 4096 byte/key/bucket visits per
+charged unit on 64-bit targets, independent of schema width and descriptions.
+Composite option refs stay opaque without a component catalog.
+
+Plan aggregation transforms internal evaluator results before projection, so
+the same final steps spend room once at any aggregation depth. Array builders
+share a live-memory ceiling equal to the result-size limit, counting internal
+and projected vector capacities, control blocks and weak tracking entries.
+Dropped vectors release credit; projection reserves exact capacity before
+allocation. This accounting is separate from serialized room. Interrupted
+transforms expose no buffered partial value,
+including when final projection cuts. Declined unmapped calls retain the
+ordinary null fallback without callback/result charges.

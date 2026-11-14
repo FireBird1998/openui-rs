@@ -1,7 +1,7 @@
 //! OpenUI Lang's runtime, built on the core's one expression evaluator.
 //!
 //! Evaluate expressions against caller-supplied names and keep live state in a
-//! [`Store`]. Evaluate parsed trees with [`evaluate_tree`]. Write input bindings with [`write_binding`]. Actions will follow. Parsing remains in `openui-lang`, which
+//! [`Store`]. Evaluate parsed trees with [`evaluate_tree`]. Write input bindings with [`write_binding`]. Parsing remains in `openui-lang`, which
 //! does not depend on this crate.
 //!
 //! References follow lang-core 1.1.0's query manager before any tool runs:
@@ -23,6 +23,14 @@
 //! input walk. Output and operations still pay their normal limits. Defaults and props share
 //! the same evaluation session. Reading data earns no additional allowance.
 //!
+//! Action calls produce deferred `{steps:[...]}` plans. Pass the original
+//! library's `actions` JSON with [`TreeInput::with_actions`] for custom calls:
+//! compiled parsing definitions do not retain the whole validation schema.
+//! AST-shaped calls in evaluated state/query props can invoke declared actions
+//! with arguments chosen by that data. Finished custom steps cannot forge marks.
+//! Retained Values keep custom-step identity within their Store; serializing
+//! and restoring JSON does not grant that identity. Running plans is separate.
+//!
 //! The reference harness registers and reads lang-core's own query manager with
 //! no provider, refresh or tool execution. See `CONFORMANCE.md` for its source
 //! locations and the pinned supplied overlay. Both parsers currently mark an
@@ -43,6 +51,7 @@ pub use tree::{
 
 pub use openui_lang::{
     Ast, EvaluationFailure, EvaluationFlags, EvaluationResult, EvaluationScope, EvaluationSession,
-    ExpressionEvaluator, ExpressionOperation, ExpressionType, ExpressionValue, JsObject, Limits,
-    PreparedReferenceValue, Value, evaluate_expression, evaluate_expression_with_limits,
+    ExpressionEvaluator, ExpressionOperation, ExpressionOutput, ExpressionType, ExpressionValue,
+    JsObject, Limits, PreparedReferenceValue, PreparedValidationSchema, Value, evaluate_expression,
+    evaluate_expression_with_limits,
 };

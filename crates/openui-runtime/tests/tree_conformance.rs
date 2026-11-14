@@ -99,6 +99,7 @@ fn fp(s: &str) -> String {
     }
     format!("{h:08x}")
 }
+#[allow(clippy::too_many_arguments)]
 fn observe(
     result: &ParseResult,
     library: &Library,
@@ -107,6 +108,7 @@ fn observe(
     source: &str,
     case_input: &Value,
     bindings: &BindingProps,
+    actions: Option<&openui_lang::JsonValue>,
 ) -> String {
     let p = entries(saved);
     // JSON omits top-level undefined declarations. Preserve their *presence*
@@ -149,7 +151,7 @@ fn observe(
         ),
     );
     assert!(initialized.refused.is_empty());
-    evaluated_observation(result, library, store, case_input, bindings)
+    evaluated_observation(result, library, store, case_input, bindings, actions)
 }
 fn evaluated_observation(
     result: &ParseResult,
@@ -157,6 +159,7 @@ fn evaluated_observation(
     store: &Store,
     case_input: &Value,
     bindings: &BindingProps,
+    actions: Option<&openui_lang::JsonValue>,
 ) -> String {
     let mut completion_override;
     let result = if matches!(get(case_input, "queryComplete"), Value::Bool(false)) {
@@ -172,6 +175,9 @@ fn evaluated_observation(
     let mut input = TreeInput::new(result)
         .with_library(library)
         .with_binding_props(bindings);
+    if let Some(actions) = actions {
+        input = input.with_actions(actions);
+    }
     if let Value::Obj(values) = get(case_input, "referenceValues") {
         input = input.with_reference_values(values);
     }
@@ -282,7 +288,6 @@ fn corpus_trees_snapshots_and_json_match_the_reference() {
         )
         .unwrap();
         let library = Arc::new(Library::from_json_schema(&schema));
-        free_json(schema);
         let spec_path = text(get(&binding_sources, text(get(c, "schema"))));
         let bindings = if spec_path.is_empty() {
             BindingProps::new()
@@ -463,6 +468,7 @@ fn corpus_trees_snapshots_and_json_match_the_reference() {
                 &input,
                 c,
                 &bindings,
+                schema.get("actions"),
             );
             if !divergence.is_empty() {
                 let pin = load(&dir.join(format!("divergences/runtime-{divergence}.json")));
@@ -530,6 +536,7 @@ fn corpus_trees_snapshots_and_json_match_the_reference() {
                     &input,
                     c,
                     &bindings,
+                    schema.get("actions"),
                 );
                 let initial = from_json(&first);
                 let mut visits: BTreeMap<Vec<String>, Vec<&str>> = initial_markers
@@ -577,6 +584,9 @@ fn corpus_trees_snapshots_and_json_match_the_reference() {
                     let mut write_input = TreeInput::new(write_result)
                         .with_library(&library)
                         .with_binding_props(&bindings);
+                    if let Some(actions) = schema.get("actions") {
+                        write_input = write_input.with_actions(actions);
+                    }
                     if let Value::Obj(values) = get(c, "referenceValues") {
                         write_input = write_input.with_reference_values(values);
                     }
@@ -616,8 +626,14 @@ fn corpus_trees_snapshots_and_json_match_the_reference() {
                         }
                         Err(error) => panic!("{name}/{scenario}/write {step}: {error}"),
                     };
-                    let mut actual =
-                        evaluated_observation(&parsed_full, &library, &store, c, &bindings);
+                    let mut actual = evaluated_observation(
+                        &parsed_full,
+                        &library,
+                        &store,
+                        c,
+                        &bindings,
+                        schema.get("actions"),
+                    );
                     if let Some(error) = write_error {
                         let mut observation_value = from_json(&actual);
                         let Value::Obj(observation) = &mut observation_value else {
@@ -793,6 +809,7 @@ fn corpus_trees_snapshots_and_json_match_the_reference() {
                         &source,
                         c,
                         &bindings,
+                        schema.get("actions"),
                     );
                     if fp(&actual) != *want && !reported {
                         reported = true;
@@ -813,6 +830,7 @@ fn corpus_trees_snapshots_and_json_match_the_reference() {
                 }
             }
         }
+        free_json(schema);
         if !mismatches.is_empty() {
             failing.insert(name.to_owned());
             if !listed {
@@ -1111,7 +1129,7 @@ fn compare_pending_props(
                 let context = format!("{path}.props.{k}");
                 let mut features = BTreeSet::new();
                 features_value(v, l, &mut features);
-                features.retain(|f| !f.starts_with("34:") && !f.starts_with("35:"));
+                features.retain(|f| f.starts_with("38:"));
                 let w = wp.and_then(|o| own(o, k));
                 let g = gp.and_then(|o| own(o, k));
                 let (component, statement) = match raw {

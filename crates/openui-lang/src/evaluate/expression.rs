@@ -1,7 +1,7 @@
 //! Public expression evaluation, separate from parsing's entry and caches.
 
 use super::*;
-use crate::Limits;
+use crate::{Limits, PreparedValidationSchema};
 use std::rc::Rc;
 use std::sync::Weak;
 
@@ -92,7 +92,30 @@ pub trait EvaluationScope {
     fn wants_each_item(&self, _value: &ExpressionValue<'_>, _call_context: bool) -> bool {
         false
     }
-    /// Handle a call descriptor supplied through data. Children remain lazy.
+    /// Opt in to unmapped data calls before any callback frame or result
+    /// measurement is made. Mapped calls retain their existing dispatch.
+    /// The name has object-property coercion; inspecting this predicate must
+    /// not evaluate children. False keeps the ordinary null fallback free.
+    fn wants_unmapped_call(&self, _call: &Value, _name: &str) -> bool {
+        false
+    }
+    /// Return an opaque evaluated output, optionally transforming a child
+    /// expression before public projection. Defaults to the ordinary call hook.
+    fn call_output(&self, call: &Ast, evaluator: &ExpressionEvaluator<'_>) -> ExpressionOutput {
+        self.call(call, evaluator).into()
+    }
+    /// Data counterpart of `call_output`. Also receives unmapped calls when
+    /// `wants_unmapped_call` opts in; children remain unevaluated.
+    fn call_value_output(
+        &self,
+        call: &Value,
+        name: &str,
+        evaluator: &ExpressionEvaluator<'_>,
+    ) -> ExpressionOutput {
+        self.call_value_named(call, name, evaluator).into()
+    }
+    /// Handle a mapped call descriptor supplied through data. Opted-in unmapped
+    /// descriptors also arrive here through the default output hook. Children remain lazy.
     fn call_value(&self, _call: &Value, _evaluator: &ExpressionEvaluator<'_>) -> Option<Value> {
         Some(Value::Null)
     }
@@ -181,6 +204,170 @@ impl<'a> ExpressionValue<'a> {
             operate: self.operate,
         }
     }
+    /// Whether the value is an array, without property reads or coercion.
+    pub fn is_array(&self) -> bool {
+        matches!(self.value.as_ref(), Js::Arr(_))
+            || matches!(self.value.as_ref(),Js::Data(v) if matches!(v.as_ref(),Value::Arr(_)))
+    }
+    /// Iterate array entries using bounded property reads, without projecting
+    /// any public containers. Non-arrays yield no entries.
+    pub fn items(&self) -> impl Iterator<Item = ExpressionValue<'a>> + use<'a> {
+        let owner = ExpressionValue {
+            value: std::borrow::Cow::Owned(self.value.clone().into_owned()),
+            operate: self.operate,
+        };
+        let len = match self.value.as_ref() {
+            Js::Arr(a) => a.len(),
+            Js::Data(v) => match v.as_ref() {
+                Value::Arr(a) => a.len(),
+                _ => 0,
+            },
+            _ => 0,
+        };
+        let operate = owner.operate;
+        (0..len)
+            .take_while(move |_| {
+                let mut live = false;
+                let mut check = || live = LIMITS.with(|l| l.cut.get().is_none());
+                if let Some(op) = operate {
+                    op(&mut check)
+                } else {
+                    check()
+                };
+                live
+            })
+            .map(move |i| owner.property(&i.to_string()))
+    }
+    /// An existing caller-owned data value, borrowed without projection.
+    pub fn data(&self) -> Option<&Value> {
+        match self.value.as_ref() {
+            Js::Data(v) => Some(v.as_ref()),
+            _ => None,
+        }
+    }
+    /// JavaScript property presence, including an own undefined property.
+    pub fn has_property(&self, name: &str) -> bool {
+        let mut present = false;
+        let mut read = || {
+            present = match self.value.as_ref() {
+                Js::Obj(o) => o.has(name),
+                Js::Data(v) => match v.as_ref() {
+                    Value::Obj(o) => o.has(name),
+                    _ => !matches!(property(&self.value, name), Js::Undefined),
+                },
+                _ => !matches!(property(&self.value, name), Js::Undefined),
+            }
+        };
+        if let Some(op) = self.operate {
+            op(&mut read)
+        } else {
+            read()
+        };
+        present
+    }
+    /// Build an internal array of views. Each retained entry spends work;
+    /// public output room is charged by the enclosing expression projection.
+    /// Live internal and public array capacities share a byte ceiling equal
+    /// to the session's result-size limit. This includes nested retained arrays;
+    /// discarded arrays release memory credit. Final JSON projection is priced
+    /// separately, so flattened steps do not spend serialized room twice.
+    /// A cut discards the interrupted transform instead of exposing its buffer.
+    pub fn array(&self, values: impl IntoIterator<Item = ExpressionValue<'a>>) -> Self {
+        let mut values = Some(values);
+        let mut result = Js::Undefined;
+        let mut build = || {
+            let Some(mut reservation) = BufferReservation::new(BUFFER_OVERHEAD) else {
+                return;
+            };
+            let mut out = Vec::new();
+            if let Some(values) = values.take() {
+                for value in values {
+                    if !step(1) || !builder_fits(out.len().saturating_add(3)) {
+                        break;
+                    }
+                    if out.len() == out.capacity() {
+                        let maximum = buffer_limit()
+                            .saturating_sub(BUFFER_OVERHEAD.saturating_mul(2))
+                            / std::mem::size_of::<Js>()
+                                .saturating_add(std::mem::size_of::<Value>())
+                                .max(1);
+                        let next = out.capacity().max(2).saturating_mul(2).min(maximum);
+                        let bytes = next
+                            .saturating_mul(std::mem::size_of::<Js>())
+                            .saturating_add(BUFFER_OVERHEAD);
+                        if next <= out.len()
+                            || !reservation.grow(bytes)
+                            || out
+                                .try_reserve_exact(next.saturating_sub(out.len()))
+                                .is_err()
+                        {
+                            LIMITS.with(|l| l.cut_by(Cut::Room));
+                            break;
+                        }
+                        let actual = out
+                            .capacity()
+                            .saturating_mul(std::mem::size_of::<Js>())
+                            .saturating_add(BUFFER_OVERHEAD);
+                        if !reservation.grow(actual) {
+                            break;
+                        }
+                    }
+                    out.push(value.value.into_owned());
+                }
+            }
+            if LIMITS.with(|l| l.cut.get().is_some()) {
+                return;
+            }
+            let out = Arc::new(out);
+            reservation.finish(BufferOwner::Js(Arc::downgrade(&out)));
+            result = Js::Arr(out);
+        };
+        if let Some(op) = self.operate {
+            op(&mut build)
+        } else {
+            build()
+        };
+        Self {
+            value: std::borrow::Cow::Owned(result),
+            operate: self.operate,
+        }
+    }
+    /// Build an internal object of views. Keys spend work; its public
+    /// projection measures and charges the complete resulting object.
+    pub fn object(
+        &self,
+        fields: impl IntoIterator<Item = (&'static str, ExpressionValue<'a>)>,
+    ) -> Self {
+        let mut fields = Some(fields);
+        let mut out = JsObject::new();
+        let mut minimum = 2usize;
+        let mut build = || {
+            if let Some(fields) = fields.take() {
+                for (key, value) in fields {
+                    if !step(key.len().saturating_add(1)) {
+                        break;
+                    }
+                    if !out.has_own(key) {
+                        minimum =
+                            minimum.saturating_add(js::json_string_len(key).saturating_add(4));
+                        if !builder_fits(minimum) {
+                            break;
+                        }
+                    }
+                    out.define(key, value.value.into_owned());
+                }
+            }
+        };
+        if let Some(op) = self.operate {
+            op(&mut build)
+        } else {
+            build()
+        };
+        Self {
+            value: std::borrow::Cow::Owned(Js::Obj(Arc::new(out))),
+            operate: self.operate,
+        }
+    }
     /// A null replacement; projection still charges its output.
     pub fn null() -> Self {
         Self {
@@ -215,11 +402,62 @@ impl<'a> ExpressionValue<'a> {
     }
 }
 
+/// An opaque callback output. Values constructed by the caller are measured
+/// on admission. Evaluated/transformed values retain their internal objects
+/// until the enclosing expression projects them, spending its shared limits.
+/// This never grants input credit and exposes no serialized provenance.
+#[derive(Debug)]
+pub struct ExpressionOutput {
+    value: Output,
+}
+#[derive(Debug)]
+enum Output {
+    Data(Option<Value>),
+    Evaluated(Js),
+}
+impl From<Option<Value>> for ExpressionOutput {
+    fn from(value: Option<Value>) -> Self {
+        Self {
+            value: Output::Data(value),
+        }
+    }
+}
+impl ExpressionOutput {
+    fn data(self) -> Option<Value> {
+        match self.value {
+            Output::Data(v) => v,
+            Output::Evaluated(_) => None,
+        }
+    }
+}
+fn admit_output(output: ExpressionOutput) -> Js {
+    if failed() {
+        return Js::Undefined;
+    }
+    match output.value {
+        Output::Data(value) => {
+            if let Some(value) = &value {
+                measure_data(value, false);
+            }
+            value.as_ref().map(data_value).unwrap_or(Js::Undefined)
+        }
+        Output::Evaluated(js) => {
+            ACCOUNT.with(|a| {
+                let mut a = a.borrow_mut();
+                a.transformed = a.transformed.saturating_add(1);
+            });
+            js
+        }
+    }
+}
+type ValueTransform<'a> = dyn for<'v> FnMut(ExpressionValue<'v>) -> ExpressionValue<'v> + 'a;
+
 /// Evaluation within a callback, with the same scope, depth and allowance.
 pub struct ExpressionEvaluator<'a> {
     evaluate: &'a dyn Fn(&Ast, bool) -> (EvaluationResult, bool),
     evaluate_value: &'a dyn Fn(&Value, bool, bool) -> (EvaluationResult, bool),
     operate: &'a dyn Fn(&mut dyn FnMut()),
+    transform: &'a dyn Fn(&Value, &mut ValueTransform<'_>) -> ExpressionOutput,
     projection: Option<&'a Cell<bool>>,
 }
 impl ExpressionEvaluator<'_> {
@@ -240,6 +478,18 @@ impl ExpressionEvaluator<'_> {
             self.projection.is_some(),
         ))
     }
+    /// Evaluate and transform an expression in internal form. The transform's
+    /// views cannot escape; its output is projected only by the owning call.
+    /// Operations and builders share work/depth, and never earn input credit.
+    /// A cut while transforming or projecting discards the transformed value;
+    /// its unpriced buffer never escapes in the public evaluation result.
+    pub fn transform_value(
+        &self,
+        expression: &Value,
+        mut transform: impl for<'v> FnMut(ExpressionValue<'v>) -> ExpressionValue<'v>,
+    ) -> ExpressionOutput {
+        (self.transform)(expression, &mut transform)
+    }
     /// Evaluate a named call prop, retaining the call site's `val.k` failure
     /// when a raw null is supplied instead of an AST descriptor.
     pub fn evaluate_call_prop(&self, expression: &Value) -> EvaluationResult {
@@ -259,6 +509,7 @@ impl ExpressionEvaluator<'_> {
             evaluate: self.evaluate,
             evaluate_value: self.evaluate_value,
             operate: self.operate,
+            transform: self.transform,
             projection: Some(&replaced),
         };
         let result = f(&evaluator);
@@ -296,6 +547,168 @@ impl ExpressionEvaluator<'_> {
         let mut ok = false;
         (self.operate)(&mut || ok = spend(measure_data(value, false)));
         ok
+    }
+    /// Report a caller callback failure through the shared failure channel.
+    pub fn fail(&self, message: impl Into<String>) {
+        let mut message = Some(message.into());
+        (self.operate)(&mut || {
+            if let Some(message) = message.take() {
+                fail(EvaluationFailure::Callback(message));
+            }
+        });
+    }
+    /// JavaScript `String(value)`, using this allowance and failure channel.
+    /// No result room is reserved until the caller projects its final value.
+    pub fn coerce_string(&self, value: &Value) -> Option<String> {
+        let mut out = None;
+        (self.operate)(&mut || {
+            let text = to_string_in::<Supplied<'_>>(&data_value(value));
+            if !failed() && LIMITS.with(|l| l.cut.get().is_none()) {
+                out = Some(text);
+            }
+        });
+        out
+    }
+    /// Copy caller-produced text after charging its bytes to shared work.
+    /// This grants no input credit and reserves no final result room. It lets
+    /// a host build a computed record without allocating a key before admission.
+    pub fn copy_text(&self, text: &str) -> Option<String> {
+        let mut out = None;
+        (self.operate)(&mut || {
+            if step(text.len().saturating_add(1)) {
+                out = Some(text.to_owned());
+            }
+        });
+        out
+    }
+    /// Coerce borrowed JSON to text after a bounded preflight, so a deeply
+    /// nested metadata key is refused before any temporary value is copied.
+    pub fn coerce_json_string(&self, value: &serde_json::Value) -> Option<String> {
+        let mut out = None;
+        (self.operate)(&mut || {
+            measure_schema(value);
+            if LIMITS.with(|l| l.cut.get().is_some()) {
+                return;
+            }
+            let value = Value::from_json(value);
+            let text = to_string_in::<Supplied<'_>>(&data_value(&value));
+            if !failed() && LIMITS.with(|l| l.cut.get().is_none()) {
+                out = Some(text);
+            }
+        });
+        out
+    }
+    /// JavaScript numeric coercion using this allowance and failure channel.
+    /// Like `coerce_string`, this reserves no final result room.
+    pub fn coerce_number(&self, value: &Value) -> Option<f64> {
+        let mut out = None;
+        (self.operate)(&mut || {
+            let value = data_value(value);
+            let primitive = to_primitive_in::<Supplied<'_>>(&value);
+            let number = to_number(&primitive);
+            if !failed() && LIMITS.with(|l| l.cut.get().is_none()) {
+                out = Some(number);
+            }
+        });
+        out
+    }
+    /// Prepare immutable schema indexes under shared depth/work limits.
+    /// The borrow prevents schema mutation while this handle exists. Reuse it
+    /// for repeated checks; schema admission/indexing is paid once per session.
+    pub fn prepare_validation_schema<'s>(
+        &self,
+        schema: &'s serde_json::Value,
+    ) -> Option<PreparedValidationSchema<'s>> {
+        let mut out = None;
+        (self.operate)(&mut || {
+            measure_schema(schema);
+            if LIMITS.with(|l| l.cut.get().is_some()) {
+                return;
+            }
+            let before = LIMITS.with(|l| l.work.get());
+            if let Some(mut prepared) = PreparedValidationSchema::build(schema) {
+                prepared.index_work = before.saturating_sub(LIMITS.with(|l| l.work.get()));
+                let key = Arc::as_ptr(&prepared.token) as usize;
+                ACCOUNT.with(|a| {
+                    a.borrow_mut().schemas.insert(key, prepared.token.clone());
+                });
+                out = Some(prepared);
+            }
+        });
+        out
+    }
+    /// Strictly validate a value using prepared schema indexes. Any diagnostic
+    /// rejects the complete value, even when a default could salvage it.
+    /// Component references stay unchecked without a component catalog.
+    /// Final caller projection charges result room. Foreign sessions pay the
+    /// schema's bounded admission/indexing work before using it; callers cannot
+    /// supply or forge prepaid sizes. Actual value walks still pay per check.
+    pub fn check_value(
+        &self,
+        value: &Value,
+        schema: &PreparedValidationSchema<'_>,
+    ) -> (Option<Value>, Vec<String>) {
+        let mut out = None;
+        let mut messages = Vec::new();
+        (self.operate)(&mut || {
+            let key = Arc::as_ptr(&schema.token) as usize;
+            let admitted = ACCOUNT.with(|a| a.borrow().schemas.contains_key(&key));
+            if !admitted {
+                measure_schema(schema.root);
+                if !step(schema.index_work) {
+                    return;
+                }
+                if LIMITS.with(|l| l.cut.get().is_some()) {
+                    return;
+                }
+                ACCOUNT.with(|a| {
+                    a.borrow_mut().schemas.insert(key, schema.token.clone());
+                });
+            }
+            measure_data(value, false);
+            if LIMITS.with(|l| l.cut.get().is_some()) {
+                return;
+            }
+            let table = crate::table::Table::default();
+            let mut cache = crate::table::Cache::default();
+            let limits = LIMITS.with(|l| {
+                Limits::DEFAULT
+                    .with_depth(l.max_depth.get())
+                    .with_result_size(l.room.get())
+            });
+            static CATALOG: std::sync::OnceLock<crate::Library> = std::sync::OnceLock::new();
+            let mut ctx = crate::materialize::Ctx {
+                table: &table,
+                cache: &mut cache,
+                library: CATALOG.get_or_init(crate::Library::default),
+                partial: false,
+                visited: Vec::new(),
+                current_statement_id: None,
+                depth: 0,
+                stack_cut: false,
+                size: 0,
+                limits,
+                cuts: 0,
+                cut_inside: false,
+                frame: crate::materialize::Frame::default(),
+            };
+            let mut checked = value.clone();
+            let invalid =
+                crate::validation::validate_bounded_value(&mut checked, schema, "", "", &mut ctx);
+            if ctx.frame.size_limited {
+                LIMITS.with(|l| l.cut_by(Cut::Room));
+            }
+            let valid = ctx.frame.errors.is_empty();
+            for error in &ctx.frame.errors {
+                if let crate::materialize::ErrorPart::Own(error) = error {
+                    messages.push(error.message.clone());
+                }
+            }
+            if !invalid && valid && !ctx.stack_cut && LIMITS.with(|l| l.cut.get().is_none()) {
+                out = Some(checked);
+            }
+        });
+        (out, messages)
     }
     /// Whether this call inherits the caller's context. Public evaluation starts
     /// enabled. `@Each` passes it to its template; operators, collections and
@@ -389,6 +802,8 @@ pub struct EvaluationFlags {
 #[derive(Clone, Debug, PartialEq, Eq)]
 #[non_exhaustive]
 pub enum EvaluationFailure {
+    /// A caller callback's failure, using its host-facing wording.
+    Callback(String),
     /// An object could not produce a primitive for JavaScript coercion.
     CannotConvertToPrimitive,
     /// An inherited entry in the builtins object has no callable `fn` member.
@@ -611,10 +1026,16 @@ impl<'a> EvaluationSession<'a> {
                     evaluate_value_result(node, &Scope::Root(&self.names), project, &operate)
                 })
             };
+            let transform = |node: &Value, map: &mut ValueTransform<'_>| {
+                self.root_context(|| {
+                    in_scope_transform(node, &[], &Scope::Root(&self.names), map, &operate)
+                })
+            };
             f(&ExpressionEvaluator {
                 evaluate: &eval,
                 evaluate_value: &value,
                 operate: &operate,
+                transform: &transform,
                 projection: None,
             })
         })
@@ -686,6 +1107,7 @@ fn evaluate_result(
     project: bool,
     operate: &dyn Fn(&mut dyn FnMut()),
 ) -> (EvaluationResult, bool) {
+    let transform_before = ACCOUNT.with(|a| a.borrow().transformed);
     let _evaluation = FailureEntry::enter();
     let _projection = ProjectionEntry::enter();
     let js = evaluate(expression, scope);
@@ -695,7 +1117,17 @@ fn evaluate_result(
     } else {
         (js, false)
     };
+    let transformed = ACCOUNT.with(|a| {
+        let n = a.borrow().transformed;
+        n != transform_before || n == usize::MAX
+    });
+    let _buffers = BufferProjection::enter(transformed || resolved);
     let value = if failed() { None } else { runtime_value(&js) };
+    let value = if transformed && LIMITS.with(|l| l.cut.get().is_some()) {
+        None
+    } else {
+        value
+    };
     if let Some(v) = &value {
         remember_result(v, &js);
     }
@@ -709,6 +1141,7 @@ fn evaluate_value_result(
     project: bool,
     operate: &dyn Fn(&mut dyn FnMut()),
 ) -> (EvaluationResult, bool) {
+    let transform_before = ACCOUNT.with(|a| a.borrow().transformed);
     let _evaluation = FailureEntry::enter();
     let _projection = ProjectionEntry::enter();
     let js = super::descriptor::evaluate(Some(expression), scope);
@@ -718,7 +1151,17 @@ fn evaluate_value_result(
     } else {
         (js, false)
     };
+    let transformed = ACCOUNT.with(|a| {
+        let n = a.borrow().transformed;
+        n != transform_before || n == usize::MAX
+    });
+    let _buffers = BufferProjection::enter(transformed || resolved);
     let value = if failed() { None } else { runtime_value(&js) };
+    let value = if transformed && LIMITS.with(|l| l.cut.get().is_some()) {
+        None
+    } else {
+        value
+    };
     if let Some(v) = &value {
         remember_result(v, &js);
     }
@@ -834,6 +1277,66 @@ fn in_scope_value(
         evaluate_value_result(node, scope, project, operate)
     }
 }
+fn in_scope_transform(
+    node: &Value,
+    bindings: &[(String, Js)],
+    scope: &Scope<Supplied<'_>>,
+    map: &mut ValueTransform<'_>,
+    operate: &dyn Fn(&mut dyn FnMut()),
+) -> ExpressionOutput {
+    crate::stack::grow_stack!(in_scope_transform(node,bindings,scope,map,operate), budget else Some(Value::Null).into());
+    if let Some(((name, item), rest)) = bindings.split_first() {
+        if !step(1) {
+            return Some(Value::Null).into();
+        }
+        return in_scope_transform(
+            node,
+            rest,
+            &Scope::Each {
+                name,
+                item,
+                parent: scope,
+            },
+            map,
+            operate,
+        );
+    }
+    let _failure = FailureEntry::enter();
+    let _projection = ProjectionEntry::enter();
+    let js = super::descriptor::evaluate(Some(node), scope);
+    let js = if !failed() && LIMITS.with(|l| l.cut.get().is_none()) {
+        map(ExpressionValue {
+            value: std::borrow::Cow::Owned(js),
+            operate: Some(operate),
+        })
+        .value
+        .into_owned()
+    } else {
+        Js::Undefined
+    };
+    let js = if LIMITS.with(|l| l.cut.get().is_some()) {
+        Js::Undefined
+    } else {
+        js
+    };
+    // Forward reservations of Each replacements until the owning projection.
+    let credit = ACCOUNT.with(|a| {
+        a.borrow_mut()
+            .projection_room
+            .last_mut()
+            .map(std::mem::take)
+            .unwrap_or(0)
+    });
+    drop(_projection);
+    ACCOUNT.with(|a| {
+        if let Some(parent) = a.borrow_mut().projection_room.last_mut() {
+            *parent = parent.saturating_add(credit)
+        }
+    });
+    ExpressionOutput {
+        value: Output::Evaluated(js),
+    }
+}
 fn result(value: Option<Value>) -> EvaluationResult {
     LIMITS.with(|l| {
         if l.depth_limited.get() {
@@ -901,6 +1404,14 @@ impl Supplied<'_> {
         scope: &Scope<Self>,
         callback: impl FnOnce(&ExpressionEvaluator<'_>) -> Option<Value>,
     ) -> Option<Value> {
+        self.callback_output(scope, |eval| callback(eval).into())
+            .data()
+    }
+    fn callback_output(
+        &self,
+        scope: &Scope<Self>,
+        callback: impl FnOnce(&ExpressionEvaluator<'_>) -> ExpressionOutput,
+    ) -> ExpressionOutput {
         let mut bindings = Vec::new();
         let mut parent = scope;
         while let Scope::Each {
@@ -910,7 +1421,7 @@ impl Supplied<'_> {
         } = parent
         {
             if !step(name.len().saturating_add(1)) {
-                return Some(Value::Null);
+                return Some(Value::Null).into();
             }
             bindings.push(((*name).to_owned(), (*item).clone()));
             parent = next;
@@ -950,10 +1461,16 @@ impl Supplied<'_> {
                 in_scope_value(node, &frame.bindings, &Scope::Root(self), project, &operate)
             })
         };
+        let transform = |node: &Value, map: &mut ValueTransform<'_>| {
+            self.resume_context(frame, || {
+                in_scope_transform(node, &frame.bindings, &Scope::Root(self), map, &operate)
+            })
+        };
         f(&ExpressionEvaluator {
             evaluate: &eval,
             evaluate_value: &value,
             operate: &operate,
+            transform: &transform,
             projection: None,
         })
     }
@@ -1173,15 +1690,13 @@ impl Names for Supplied<'_> {
             js
         }
     }
+    fn wants_unmapped_call(&self, node: &Value, name: &str) -> bool {
+        self.scope.wants_unmapped_call(node, name)
+    }
     fn call_value(&self, node: &Value, name: &str, scope: &Scope<Self>) -> Js {
-        let value = self.callback(scope, |eval| self.scope.call_value_named(node, name, eval));
-        if failed() {
-            return Js::Undefined;
-        }
-        if let Some(value) = &value {
-            measure_data(value, false);
-        }
-        value.as_ref().map(data_value).unwrap_or(Js::Undefined)
+        admit_output(
+            self.callback_output(scope, |eval| self.scope.call_value_output(node, name, eval)),
+        )
     }
     fn call(&self, node: &Ast, scope: &Scope<Self>) -> Js {
         if let Ast::Comp {
@@ -1204,14 +1719,7 @@ impl Names for Supplied<'_> {
             fail(EvaluationFailure::BuiltinNotCallable);
             return Js::Undefined;
         }
-        let value = self.callback(scope, |eval| self.scope.call(node, eval));
-        if failed() {
-            return Js::Undefined;
-        }
-        if let Some(value) = &value {
-            measure_data(value, false);
-        }
-        value.as_ref().map(data_value).unwrap_or(Js::Undefined)
+        admit_output(self.callback_output(scope, |eval| self.scope.call_output(node, eval)))
     }
 }
 // Keep the original computed/data representation when replacing an item. The
@@ -1316,6 +1824,180 @@ fn record_flags() {
     });
 }
 
+// Array storage has a separate live-byte ceiling equal to the session's
+// result ceiling. It is not subtracted from serialized room: that would price
+// final steps twice. Weak entries track aliases without retaining outputs.
+const BUFFER_OVERHEAD: usize = std::mem::size_of::<Vec<Js>>()
+    + 2 * std::mem::size_of::<usize>()
+    + 2 * std::mem::size_of::<(BufferOwner, usize)>();
+enum BufferOwner {
+    Js(Weak<Vec<Js>>),
+    Value(Weak<Vec<Value>>),
+}
+impl BufferOwner {
+    fn alive(&self) -> bool {
+        match self {
+            Self::Js(v) => v.strong_count() > 0,
+            Self::Value(v) => v.strong_count() > 0,
+        }
+    }
+}
+#[derive(Default)]
+struct Buffers {
+    owners: Vec<(BufferOwner, usize)>,
+    live: usize,
+    reserved: usize,
+    collect_at: usize,
+}
+impl Buffers {
+    fn collect(&mut self) {
+        self.owners.retain(|(owner, bytes)| {
+            if owner.alive() {
+                true
+            } else {
+                self.live = self.live.saturating_sub(*bytes);
+                false
+            }
+        });
+        if self.owners.capacity() > self.owners.len().saturating_mul(2) {
+            self.owners.shrink_to_fit();
+        }
+        self.collect_at = self.owners.len().saturating_mul(2).max(32);
+    }
+}
+fn buffer_limit() -> usize {
+    ACCOUNT.with(|a| {
+        let a = a.borrow();
+        a.limits.result_size_for(a.bytes)
+    })
+}
+struct BufferReservation {
+    bytes: usize,
+}
+impl BufferReservation {
+    fn new(bytes: usize) -> Option<Self> {
+        if !step(1) {
+            return None;
+        }
+        let mut r = Self { bytes: 0 };
+        r.grow(bytes).then_some(r)
+    }
+    fn grow(&mut self, bytes: usize) -> bool {
+        if bytes <= self.bytes {
+            return LIMITS.with(|l| l.cut.get().is_none());
+        }
+        let extra = bytes.saturating_sub(self.bytes);
+        let limit = buffer_limit();
+        let fits = ACCOUNT.with(|a| {
+            let mut a = a.borrow_mut();
+            let b = &mut a.buffers;
+            if b.reserved.saturating_add(b.live).saturating_add(extra) > limit {
+                if !step(b.owners.len().saturating_add(1)) {
+                    return false;
+                }
+                b.collect();
+            }
+            if b.reserved.saturating_add(b.live).saturating_add(extra) > limit {
+                return false;
+            }
+            b.reserved = b.reserved.saturating_add(extra);
+            true
+        });
+        if fits {
+            self.bytes = bytes;
+        } else {
+            LIMITS.with(|l| {
+                if l.cut.get().is_none() {
+                    l.cut_by(Cut::Room)
+                }
+            });
+        }
+        fits
+    }
+    fn finish(mut self, owner: BufferOwner) {
+        ACCOUNT.with(|a| {
+            let mut a = a.borrow_mut();
+            let b = &mut a.buffers;
+            b.reserved = b.reserved.saturating_sub(self.bytes);
+            if b.owners.len() >= b.collect_at {
+                step(b.owners.len().saturating_add(1));
+                b.collect();
+            }
+            b.live = b.live.saturating_add(self.bytes);
+            b.owners.push((owner, self.bytes));
+        });
+        self.bytes = 0;
+    }
+}
+impl Drop for BufferReservation {
+    fn drop(&mut self) {
+        ACCOUNT.with(|a| {
+            let mut a = a.borrow_mut();
+            a.buffers.reserved = a.buffers.reserved.saturating_sub(self.bytes);
+        });
+    }
+}
+// Runtime projection of transformed arrays uses exact capacity, and includes
+// both the retained internal vector and the public vector in the live ceiling.
+// Parsing and ordinary runtime projections keep their existing collection path.
+struct BufferProjection(bool);
+impl BufferProjection {
+    fn enter(enabled: bool) -> Self {
+        Self(ACCOUNT.with(|a| std::mem::replace(&mut a.borrow_mut().buffer_projection, enabled)))
+    }
+}
+impl Drop for BufferProjection {
+    fn drop(&mut self) {
+        ACCOUNT.with(|a| a.borrow_mut().buffer_projection = self.0);
+    }
+}
+pub(super) fn buffered_projection() -> bool {
+    ACCOUNT.with(|a| a.borrow().buffer_projection)
+}
+pub(super) fn project_buffered_array(items: &[Js], limits: &EvalLimits) -> Option<Value> {
+    let bytes = items
+        .len()
+        .saturating_mul(std::mem::size_of::<Value>())
+        .saturating_add(BUFFER_OVERHEAD);
+    let _reservation = BufferReservation::new(bytes)?;
+    let mut out = Vec::new();
+    if out.try_reserve_exact(items.len()).is_err() {
+        limits.cut_by(Cut::Room);
+        return None;
+    }
+    for item in items {
+        if limits.cut.get().is_some() {
+            return None;
+        }
+        out.push(to_value_mode::<true, true>(item, limits).unwrap_or(Value::Null));
+    }
+    if limits.cut.get().is_some() {
+        return None;
+    }
+    let out = Arc::new(out);
+    _reservation.finish(BufferOwner::Value(Arc::downgrade(&out)));
+    Some(Value::Arr(out))
+}
+// A cheap lower bound for JSON construction; final projection prices bytes.
+fn builder_room() -> usize {
+    let prepaid = ACCOUNT.with(|a| a.borrow().projection_room.last().copied().unwrap_or(0));
+    LIMITS.with(|l| l.room.get().saturating_add(prepaid))
+}
+fn builder_fits(minimum: usize) -> bool {
+    let available = builder_room();
+    LIMITS.with(|l| {
+        if l.cut.get().is_some() {
+            return false;
+        }
+        if minimum > available {
+            l.cut_by(Cut::Room);
+            false
+        } else {
+            true
+        }
+    })
+}
+
 struct Account {
     limits: Limits,
     failure: Option<EvaluationFailure>,
@@ -1330,6 +2012,10 @@ struct Account {
     bridges: HashMap<(u8, usize), Bridge>,
     collect_at: usize,
     owners: Vec<Value>,
+    schemas: std::collections::BTreeMap<usize, Arc<u8>>,
+    transformed: usize,
+    buffers: Buffers,
+    buffer_projection: bool,
 }
 impl Account {
     fn new(limits: Limits, bytes: usize) -> Self {
@@ -1347,6 +2033,10 @@ impl Account {
             bridges: HashMap::new(),
             collect_at: 128,
             owners: Vec::new(),
+            schemas: std::collections::BTreeMap::new(),
+            transformed: 0,
+            buffers: Buffers::default(),
+            buffer_projection: false,
         }
     }
     fn collect_bridges(&mut self) {
@@ -1505,7 +2195,189 @@ fn data_text(text: &str, input: bool) -> usize {
     bytes
 }
 
-// Input counts each container body once; output counts every occurrence.
+// Schema admission, ordering, required-name coercion and indexes are setup.
+// Per check we price value bytes, required-name bytes and applied keywords.
+// Ordered indexes have at most usize::BITS+1 levels and at most 11 key
+// comparisons per B-tree node. Candidate order uses at most 32 insertion
+// comparisons per index, or eight radix passes (<160 visits per index even
+// including the fixed buckets at the smallest radix input). Allowing four
+// indexed lookups and byte copies gives a conservative 4096 byte/key/bucket
+// visits per charged unit on 64-bit targets (less on 32-bit). This bound is
+// independent of schema width and description length, unlike the old product.
+pub(crate) fn validation_work(cost: usize) -> bool {
+    step(cost)
+}
+// Price js_string's recursive array joins before copying prepared required
+// names. Each byte copied at every enclosing join is charged; ignored object
+// bodies are not copied by js_string. This is setup, never per-call work.
+pub(crate) fn validation_name(value: &serde_json::Value) -> Option<String> {
+    validation_name_bytes(value);
+    if LIMITS.with(|l| l.cut.get().is_some()) {
+        None
+    } else {
+        Some(crate::js::js_string(value))
+    }
+}
+fn validation_name_bytes(value: &serde_json::Value) -> usize {
+    crate::stack::grow_stack!(validation_name_bytes(value), budget else 0);
+    let Some(_level) = Level::enter() else {
+        return 0;
+    };
+    use serde_json::Value as J;
+    let bytes = match value {
+        J::String(s) => s.len(),
+        J::Array(a) => {
+            let mut n = a.len().saturating_sub(1);
+            for v in a {
+                if !step(1) {
+                    return 0;
+                }
+                if !v.is_null() {
+                    n = n.saturating_add(validation_name_bytes(v));
+                }
+            }
+            n
+        }
+        J::Object(_) => 15,
+        J::Number(_) => 32,
+        J::Bool(_) | J::Null => 5,
+    };
+    if step(bytes.saturating_add(1)) {
+        bytes
+    } else {
+        0
+    }
+}
+pub(crate) fn validation_default(schema: &serde_json::Value) -> bool {
+    let bytes = measure_schema(schema);
+    step(bytes) && LIMITS.with(|l| l.cut.get().is_none())
+}
+pub(crate) fn validation_node(value: &Value, schema: &serde_json::Value, path: &str) -> bool {
+    let scalar_bytes = |v: &Value| match v {
+        Value::Str(s) => s.len(),
+        _ => 1,
+    };
+    let mut cost = path.len().saturating_add(1);
+    match value {
+        Value::Obj(o) => {
+            for (k, v) in o.iter() {
+                cost = cost.saturating_add(k.len()).saturating_add(scalar_bytes(v));
+            }
+        }
+        Value::Arr(a) => {
+            for v in a.iter() {
+                cost = cost.saturating_add(scalar_bytes(v));
+            }
+        }
+        _ => cost = cost.saturating_add(scalar_bytes(value)),
+    }
+    if !step(cost) {
+        return false;
+    }
+    if let Some(s) = schema.as_object() {
+        if matches!(value, Value::Null) || crate::validation::is_ast_node(value) {
+            return LIMITS.with(|l| l.cut.get().is_none());
+        }
+        if crate::validation::element_parts(value).is_some() {
+            return true;
+        }
+        // Upstream treats composites as opaque without a component catalog.
+        // It inspects the immediate option refs, never expands nested branches.
+        if ["$ref", "anyOf", "oneOf", "allOf"]
+            .iter()
+            .any(|k| s.contains_key(*k))
+        {
+            let options = s
+                .get("anyOf")
+                .filter(|v| !v.is_null())
+                .or_else(|| s.get("oneOf").filter(|v| !v.is_null()));
+            if let Some(serde_json::Value::Array(options)) = options {
+                if !step(options.len()) {
+                    return false;
+                }
+                for option in options {
+                    if let Some(r) = option.get("$ref").and_then(|r| r.as_str())
+                        && !step(r.len().saturating_add(1))
+                    {
+                        return false;
+                    }
+                }
+            } else if let Some(r) = s.get("$ref").and_then(|r| r.as_str()) {
+                step(r.len().saturating_add(1));
+            }
+            return LIMITS.with(|l| l.cut.get().is_none());
+        }
+        if matches!(
+            s.get("type").and_then(serde_json::Value::as_str),
+            Some("object" | "array")
+        ) {
+            return true;
+        }
+        if let Some(values) = s.get("enum").and_then(|e| e.as_array())
+            && !step(
+                values
+                    .len()
+                    .saturating_mul(scalar_bytes(value).saturating_add(1)),
+            )
+        {
+            return false;
+        }
+        if s.contains_key("const") {
+            step(scalar_bytes(value).saturating_add(1));
+        }
+    }
+    LIMITS.with(|l| l.cut.get().is_none())
+}
+// Measure borrowed schema JSON before converting or cloning any subtree. A
+// library can contain a very deep ignored schema branch; admission must cut
+// that branch before validation or a temporary Value walks the whole thing.
+fn measure_schema(schema: &serde_json::Value) -> usize {
+    crate::stack::grow_stack!(measure_schema(schema), budget else 0);
+    let Some(_level) = Level::enter() else {
+        return 0;
+    };
+    use serde_json::Value as Json;
+    if let Json::String(text) = schema {
+        return data_text(text, false);
+    }
+    let own = match schema {
+        Json::Null => 4,
+        Json::Bool(true) => 4,
+        Json::Bool(false) => 5,
+        Json::Number(n) => crate::js::json_number_len(crate::js::json_number(n)),
+        Json::Array(a) => 2usize.saturating_add(a.len().saturating_sub(1)),
+        Json::Object(o) => 2usize.saturating_add(o.len().saturating_sub(1)),
+        Json::String(_) => 0,
+    };
+    data_bytes(own, false);
+    if !step(1) {
+        return 0;
+    }
+    let mut bytes = own;
+    match schema {
+        Json::Array(a) => {
+            for value in a {
+                if LIMITS.with(|l| l.cut.get().is_some()) {
+                    break;
+                }
+                bytes = bytes.saturating_add(measure_schema(value));
+            }
+        }
+        Json::Object(o) => {
+            for (key, value) in o {
+                if LIMITS.with(|l| l.cut.get().is_some()) {
+                    break;
+                }
+                bytes = bytes.saturating_add(data_text(key, false).saturating_add(1));
+                data_bytes(1, false);
+                bytes = bytes.saturating_add(measure_schema(value));
+            }
+        }
+        _ => {}
+    }
+    bytes
+}
+
 fn measure_data(value: &Value, input: bool) -> usize {
     crate::stack::grow_stack!(measure_data(value, input), budget else 0);
     let Some(_level) = Level::enter() else {

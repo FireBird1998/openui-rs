@@ -66,6 +66,7 @@ pub struct InitializationResult {
 /// too: `set_pristine(name, None)` can add an absent name without changing the
 /// snapshot. `with_limits` retains configuration for that work.
 pub struct Store {
+    pub(crate) actions: crate::tree::actions::Provenance,
     snapshot: StoreSnapshot,
     pristine: HashSet<String>,
     version: u64,
@@ -85,6 +86,7 @@ impl Store {
     /// An empty store retaining these limits for state admission (#39).
     pub fn with_limits(limits: Limits) -> Self {
         Self {
+            actions: Default::default(),
             snapshot: Arc::new(JsObject::new()),
             pristine: HashSet::new(),
             version: 0,
@@ -246,12 +248,14 @@ impl Store {
             }
         }
     }
-    /// Clear values and pristine status; the store can be reused.
+    /// Clear values, pristine status and custom-call authority; the store can
+    /// be reused, but retained plans lose their old custom marks.
     /// Upstream clears listeners without notifying. This runtime extends that
     /// behavior by advancing version for nonempty state. Empty disposal replaces
     /// the snapshot too, but does not advance version. Disposal always clears;
     /// at version exhaustion it leaves the version at `u64::MAX`.
     pub fn dispose(&mut self) -> bool {
+        self.actions.clear();
         let changed = !self.snapshot.is_empty();
         if changed {
             self.version = self.version.saturating_add(1);

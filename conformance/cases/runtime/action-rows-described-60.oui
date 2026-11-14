@@ -1,0 +1,1 @@
+root=Box(@Each($rows,r,Box(Action([@Submit({field0:"row "+r,field1:"x"})]))))

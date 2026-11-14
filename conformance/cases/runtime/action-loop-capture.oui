@@ -1,0 +1,5 @@
+root=Box(@Each($rows,x,Box(@Set($a,x),@Set($b,x.id),Action([@Go(x.text),@Set($c,x)]),@Each([1,2],y,@Set($d,[x,y])))))
+$a=null
+$b=null
+$c=null
+$d=null

@@ -1,0 +1,1 @@
+root=Box(Action([@Go("ok"),{type:"custom_action",name:"Go",params:{x:"ok",req:3}},{steps:[{type:"custom_action",name:"Go"},{type:"set",target:"$n",valueAST:{k:"Num",v:3}},null,9]},false,[],{type:9},{}]),Action(@Go("ok")),@set("yes"),[@open_url(4),Action(@Each([1],i,Box($data)))])

@@ -1,0 +1,2 @@
+root=Box([@Go("ok",null),@Go("ok","bad"),@Go(null),@Go($wrong),@Go("ok",2,null,{n:"bad"}),@Go("ok",2,null,{n:2},[1,"bad"])],@Go("ok"),@Go("ok",2,null,{n:2},[1,2]),@Odd())
+$wrong=7

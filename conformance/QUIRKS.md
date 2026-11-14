@@ -576,3 +576,47 @@ patch:     // say "hi
 **Draft upstream report:**
 
 > **A quote or bracket in a comment makes `mergeStatements` lose statements.** `splitStatementSource` tracks brackets and quotes but not comments, so a patch `// say "hi\na = Text("A2")` has no statements as the merge reads it (the quote opens a string that runs to the end), and `mergeStatements('root = Root([a, b])\na = Text("A")\nb = Text("B")', patch)` returns the program unchanged. language.md, section 7 says the merge reads both texts with section 1.2, which strips comments first. Strip comments (as `preprocess` does) before splitting, or skip them while scanning.
+
+## 29. Custom actions validate their original whole schema, including its missing type
+
+- **Found:** 2026-11-14, implementing action plans (#36), against 1.1.0 (`47b9cae`).
+- **Pinned by:** `test/actions-14`, `test/actions-16`, `test/actions-20`, and
+  `runtime/action-validation`.
+- **Status:** reproduced deliberately; nothing filed upstream.
+
+`callArgs` names arguments and checks missing required parameters, then passes
+that object to `validateSchemaValue` with the original `params` schema. A schema
+with `properties` but no `type: "object"` skips object validation. A numeric
+`CopyToClipboard` argument can therefore survive a schema whose `text` property
+says string, and a missing parameter with a default can stay absent. Adding
+`type: "object"` enables validation and required-default insertion. The runtime
+accepts original action definitions separately from compiled parser metadata
+because reconstructing an object schema would change this behavior.
+
+## 30. Run trusts the RuntimeRef tag supplied through data
+
+- **Found:** 2026-11-14, implementing action plans (#36), against 1.1.0 (`47b9cae`).
+- **Pinned by:** `runtime/action-steps`, `runtime/action-data-state`, and
+  `runtime/action-data-query`.
+- **Status:** reproduced deliberately; nothing filed upstream.
+
+Program text only produces a run step for a resolved query or mutation
+reference. A data-shaped call is checked only for `args[0].k === "RuntimeRef"`:
+it need not name a declaration, and its `n` and `refType` fields are passed
+through with their original types (or omitted when missing). A plain Ref is
+invalid. The runtime preserves that structural distinction.
+
+## 31. A string required list compiles but throws when an action is evaluated
+
+- **Found:** 2026-11-14, reviewing action plans (#36), against 1.1.0 (`47b9cae`).
+- **Pinned by:** `runtime/action-required-string`, its list/ref/extra variants,
+  and `conformance/golden/action-definitions.json`.
+- **Status:** reproduced deliberately; nothing filed upstream.
+
+The parser accepts a string `params.required` because compilation uses
+`includes`. Runtime optional-null removal also uses `includes`, but the
+subsequent missing-required check calls `some`. A string therefore throws
+`params.required?.some is not a function`, retaining the raw prop and producing
+its evaluation error instead of creating a custom step. Other non-null
+non-array kinds can throw earlier at `includes` when an explicit null argument
+is visited. The metadata matrix pins both orders and the native messages.
