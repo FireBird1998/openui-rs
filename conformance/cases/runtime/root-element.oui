@@ -1,0 +1,3 @@
+root=$choose?Box($n):Box("other")
+$choose=true
+$n=3

@@ -39,4 +39,5 @@ for (const value of [
  '{k:"Ref",n:{toString:1}}', '{k:"Comp",name:["Count"],args:[{k:"Arr",els:[{k:"Num",v:1}]}]}'
 ]) add('strict-name-'+rows.length,`root=Box(${value})\n$x=7`);
 for (const name of ['descriptor-names-types','descriptor-fields-types','descriptor-state-names']) add(name,(await import('fs')).readFileSync('../conformance/cases/runtime/'+name+'.oui','utf8'));
+add('each-keeps-unhandled-js-values', 'root=Box(@Each([1],x,[$o.missing])[0][0],@Each([1],x,{toString:$o.missing})[0]+"",@Each([1],x,[$o.missing]),@Each([1],x,{type:"element",typeName:"Box",props:{a:[$o.missing]},partial:false,hasDynamicProps:false})[0].props.a[0])\n$o={}');
 process.stdout.write(JSON.stringify(rows)+'\n');

@@ -1,0 +1,4 @@
+root=Box(q)
+q=Query("get",{},other)
+other=Query("next",{},{n:$n})
+$n=5

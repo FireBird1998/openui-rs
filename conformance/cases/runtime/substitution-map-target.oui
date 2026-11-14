@@ -1,0 +1,1 @@
+root=Box({k:"Comp",name:"Each",args:[{k:"Arr",els:[{k:"Num",v:1}]},{k:"Ref",n:"x"},{k:"Arr",els:{map:3}}]},{k:"Comp",name:"Each",args:[{k:"Arr",els:[{k:"Num",v:1}]},{k:"Ref",n:"x"},{k:"Obj",entries:{map:3}}]},{k:"Comp",name:"Each",args:[{k:"Arr",els:[{k:"Num",v:1}]},{k:"Ref",n:"x"},{k:"Comp",name:"Box",args:{map:3},mappedProps:{}}]})

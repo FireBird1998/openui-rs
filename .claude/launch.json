@@ -1,0 +1,11 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "next-compare",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["--prefix", "examples/next-compare", "run", "start", "--", "-p", "3460"],
+      "port": 3460
+    }
+  ]
+}

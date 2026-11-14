@@ -1,0 +1,2 @@
+root=Box({k:"RuntimeRef",n:["q"]},{k:"RuntimeRef",n:null},{k:"RuntimeRef",n:"q"})
+q=Query("fetch",{},4)

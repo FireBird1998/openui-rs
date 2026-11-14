@@ -183,6 +183,16 @@ pub(crate) fn write_json_number(out: &mut String, n: f64) {
     }
 }
 
+/// The UTF-8 byte length of a JSON number, without allocating. Non-finite
+/// numbers count as `null`, and negative zero as `0`.
+pub fn json_number_len(n: f64) -> usize {
+    if n.is_finite() {
+        ryu_js::Buffer::new().format_finite(n).len()
+    } else {
+        4
+    }
+}
+
 /// `String(n)` in JavaScript: like [`write_json_number`] for finite numbers,
 /// and `NaN`, `Infinity` or `-Infinity` otherwise.
 pub(crate) fn number_to_string(n: f64) -> String {

@@ -1,6 +1,6 @@
 //! Every parse corpus case, both state scenarios, and every core stream plan.
 use openui_lang::{Element, Library, ParseResult, StreamParser, free_json, parse, parse_json};
-use openui_runtime::{JsObject, Store, Value, evaluate_tree};
+use openui_runtime::{JsObject, Store, TreeInput, Value, evaluate_tree};
 use std::{
     collections::{BTreeMap, BTreeSet},
     fmt::Write as _,
@@ -98,11 +98,23 @@ fn fp(s: &str) -> String {
 }
 fn observe(
     result: &ParseResult,
-    _library: &Library,
+    library: &Library,
     store: &mut Store,
     saved: &Value,
     source: &str,
+    case_input: &Value,
 ) -> String {
+    let mut completion_override;
+    let result = if matches!(get(case_input, "queryComplete"), Value::Bool(false)) {
+        completion_override = result.clone();
+        for q in &mut completion_override.query_statements {
+            q.complete = false;
+        }
+        &completion_override
+    } else {
+        result
+    };
+
     let p = entries(saved);
     // JSON omits top-level undefined declarations. Preserve their *presence*
     // for initialize using public statement stages, without changing the core.
@@ -137,10 +149,18 @@ fn observe(
     }
     let initialized = store.initialize(
         defaults.iter().map(|(k, v)| (k.as_str(), *v)),
-        p.iter().map(|(k, v)| (k.as_str(), Some(*v))),
+        p.iter().map(|(k, v)| (k.as_str(), Some(*v))).chain(
+            entries(get(case_input, "stateValues"))
+                .iter()
+                .map(|(k, v)| (k.as_str(), Some(*v))),
+        ),
     );
     assert!(initialized.refused.is_empty());
-    let evaluated = evaluate_tree(result.into(), store);
+    let mut input = TreeInput::new(result).with_library(library);
+    if let Value::Obj(values) = get(case_input, "referenceValues") {
+        input = input.with_reference_values(values);
+    }
+    let evaluated = evaluate_tree(input, store);
     assert!(
         !evaluated.size_limited && !evaluated.depth_limited,
         "corpus evaluation cut"
@@ -328,6 +348,33 @@ fn corpus_trees_snapshots_and_json_match_the_reference() {
                 assert!(json(get(get(&one, "defaults"), "errors")).contains("No default value"));
             }
             "locale-sort" => assert!(input.contains("@Sort") && !input.is_ascii()),
+            "root-expression-throw" => {
+                assert!(parsed_full.root_expression.is_some());
+                assert_eq!(
+                    text(get(get(get(&one, "defaults"), "throw"), "message")),
+                    "No default value"
+                );
+            }
+            "parser-state-descriptor-default" => {
+                assert_eq!(name, "runtime/state-descriptor-default");
+                let value = parsed_full.state_declarations.get("$x").unwrap();
+                assert_eq!(text(get(value, "k")), "Num");
+                assert_eq!(get(value, "v"), &Value::Num(5.0));
+                assert_eq!(
+                    get(get(get(&one, "defaults"), "snapshot"), "$x"),
+                    &Value::Num(5.0)
+                );
+            }
+            "substitution-map-target" => {
+                assert_eq!(name, "runtime/substitution-map-target");
+                let root = parsed_full.root.as_ref().unwrap();
+                for (key, field) in [("a", "els"), ("b", "entries"), ("c", "args")] {
+                    let raw = root.props.get(key).unwrap();
+                    assert_eq!(text(get(raw, "name")), "Each");
+                    let template = arr(get(raw, "args")).get(2).unwrap();
+                    assert_eq!(get(get(template, field), "map"), &Value::Num(3.0));
+                }
+            }
             "descriptor-map-target" => {
                 assert_eq!(name, "runtime/descriptor-map-target");
                 let raw = parsed_full.root.as_ref().unwrap().props.get("a").unwrap();
@@ -349,6 +396,7 @@ fn corpus_trees_snapshots_and_json_match_the_reference() {
                 &mut Store::new(),
                 persistence,
                 &input,
+                c,
             );
             if !divergence.is_empty() {
                 let pin = load(&dir.join(format!("divergences/runtime-{divergence}.json")));
@@ -467,7 +515,7 @@ fn corpus_trees_snapshots_and_json_match_the_reference() {
                             features_in(&parsed, &library, witnessed.get_mut(name).unwrap());
                         }
                     }
-                    let actual = observe(&parsed, &library, &mut store, persistence, &source);
+                    let actual = observe(&parsed, &library, &mut store, persistence, &source, c);
                     if fp(&actual) != *want && !reported {
                         reported = true;
                         let detail = if !listed && mismatches.is_empty() {
@@ -496,6 +544,14 @@ fn corpus_trees_snapshots_and_json_match_the_reference() {
     }
     if std::env::var_os("RUNTIME_CASE").is_some() {
         assert!(report.is_empty(), "{report}");
+        for (name, _) in entries(&pending) {
+            if witnessed.contains_key(name) {
+                assert!(
+                    failing.contains(name),
+                    "{name} matches now: remove its pending entry"
+                );
+            }
+        }
         return;
     }
     for (name, reason) in entries(&pending) {
@@ -760,6 +816,7 @@ fn compare_pending_props(
                 let context = format!("{path}.props.{k}");
                 let mut features = BTreeSet::new();
                 features_value(v, l, &mut features);
+                features.retain(|f| !f.starts_with("34:"));
                 let w = wp.and_then(|o| own(o, k));
                 let g = gp.and_then(|o| own(o, k));
                 let (component, statement) = match raw {

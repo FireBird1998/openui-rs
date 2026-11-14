@@ -1,0 +1,2 @@
+root=Box([true?Box({nested:Box($n)},[Box($n)]):null],true?Box($missing):null)
+$n=6

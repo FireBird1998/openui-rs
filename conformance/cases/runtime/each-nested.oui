@@ -1,0 +1,2 @@
+root=Box(@Each($rows,x,Box(@Each(x,y,Box(y,x)))))
+$rows=[[1,2],[3],[]]

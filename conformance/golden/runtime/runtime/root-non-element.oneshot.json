@@ -1,0 +1,1 @@
+{"saved":{"$choose":true},"defaults":{"root":null,"errors":[{"source":"runtime","code":"no-root","statementId":"root","message":"root does not evaluate to a component"}],"snapshot":{"$choose":false}},"persisted":{"root":{"type":"element","typeName":"Box","props":{"a":1},"partial":false,"hasDynamicProps":true},"errors":[],"snapshot":{"$choose":true}}}

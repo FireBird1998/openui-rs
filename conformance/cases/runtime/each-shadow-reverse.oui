@@ -1,0 +1,3 @@
+root=Box(alias,@Each([2,3],x,Box(x,alias)),@Each([4],x,alias))
+x=Query("get",{},{n:9})
+alias=x

@@ -1,0 +1,3 @@
+root=Box(@Each($rows,x,Box(x.id,@Set($picked,x.id))))
+$rows=[{id:1},{id:2}]
+$picked=null

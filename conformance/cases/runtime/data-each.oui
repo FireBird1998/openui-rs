@@ -1,0 +1,7 @@
+root=Box({k:"Comp",name:"Each",args:[{k:"Arr",els:[{k:"Num",v:1},{k:"Num",v:2}]},{k:"Ref",n:"x"},{k:"Ref",n:"x"}]},[
+{k:"Comp",name:"Each",args:[]},
+{k:"Comp",name:"Each",args:[{k:"Num",v:1},null,{k:"Ref",n:"x"}]},
+{k:"Comp",name:"Each",args:[{k:"Arr",els:[{k:"Num",v:7}]},{k:"Str",v:""},{k:"Ref",n:"x"}]},
+{k:"Comp",name:"Each",args:[{k:"Arr",els:[{k:"Num",v:7}]},{k:"Ref",n:1},{k:"Ref",n:1}]},
+{k:"Comp",name:"Each",args:{length:3,"0":{k:"Arr",els:[{k:"Num",v:9}]},"1":{k:"Ref",n:"x"},"2":{k:"Ref",n:"x"}}}
+])

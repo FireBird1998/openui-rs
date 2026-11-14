@@ -29,8 +29,8 @@ mod expression;
 use expression::expression_bytes;
 pub use expression::{
     EvaluationFailure, EvaluationFlags, EvaluationResult, EvaluationScope, EvaluationSession,
-    ExpressionEvaluator, ExpressionOperation, ExpressionType, evaluate_expression,
-    evaluate_expression_with_limits,
+    ExpressionEvaluator, ExpressionOperation, ExpressionType, ExpressionValue,
+    PreparedReferenceValue, evaluate_expression, evaluate_expression_with_limits,
 };
 
 pub(crate) fn expression_ceiling_cut() {
@@ -49,6 +49,12 @@ trait Names: Sized {
     }
     fn call(&self, _node: &Ast, _scope: &Scope<'_, Self>) -> Js {
         Js::Null
+    }
+    fn call_value(&self, _node: &Value, _scope: &Scope<'_, Self>) -> Js {
+        Js::Null
+    }
+    fn each_item(&self, value: Js, _scope: &Scope<'_, Self>) -> Js {
+        value
     }
 }
 
@@ -1470,16 +1476,31 @@ fn to_value(js: &Js) -> Option<Value> {
 }
 
 fn to_value_in<const PRESERVE: bool>(js: &Js, limits: &EvalLimits) -> Option<Value> {
+    to_value_mode::<PRESERVE, true>(js, limits)
+}
+
+fn to_value_mode<const PRESERVE: bool, const CHARGE: bool>(
+    js: &Js,
+    limits: &EvalLimits,
+) -> Option<Value> {
     if PRESERVE {
-        crate::stack::grow_stack!(to_value_in::<true>(js, limits), budget else None);
+        crate::stack::grow_stack!(to_value_mode::<true, CHARGE>(js, limits), budget else None);
     } else {
         crate::stack::grow_stack!(to_value(js), budget else None);
     }
     if PRESERVE && let Js::Data(value) = js {
-        return Some(expression::output_data(value));
+        return Some(if CHARGE {
+            expression::output_data(value)
+        } else {
+            value.as_ref().clone()
+        });
     }
     if PRESERVE && let Js::Props(el) = js {
-        return Some(expression::output_props(el));
+        return Some(if CHARGE {
+            expression::output_props(el)
+        } else {
+            Value::Obj(Arc::new(el.props.clone()))
+        });
     }
     if matches!(js, Js::Undefined | Js::Function { .. }) {
         return None;
@@ -1487,7 +1508,7 @@ fn to_value_in<const PRESERVE: bool>(js: &Js, limits: &EvalLimits) -> Option<Val
     if let Js::Ast(node) = js {
         if PRESERVE {
             let bytes = expression_bytes(node);
-            return Some(if spend(bytes) {
+            return Some(if !CHARGE || spend(bytes) {
                 Value::Ast(Arc::clone(node))
             } else {
                 Value::Null
@@ -1498,7 +1519,11 @@ fn to_value_in<const PRESERVE: bool>(js: &Js, limits: &EvalLimits) -> Option<Val
     let Some(_level) = BorrowedLevel::enter(limits) else {
         return Some(Value::Null);
     };
-    if !spend_in(limits, json_cost(js)) {
+    if !(if CHARGE {
+        spend_in(limits, json_cost(js))
+    } else {
+        step(json_cost(js))
+    }) {
         return Some(Value::Null);
     }
     let value = match js {
@@ -1513,7 +1538,7 @@ fn to_value_in<const PRESERVE: bool>(js: &Js, limits: &EvalLimits) -> Option<Val
             items
                 .iter()
                 .take_while(|_| limits.cut.get().is_none())
-                .map(|v| to_value_in::<PRESERVE>(v, limits).unwrap_or(Value::Null))
+                .map(|v| to_value_mode::<PRESERVE, CHARGE>(v, limits).unwrap_or(Value::Null))
                 .collect(),
         )),
         Js::Obj(o) => {
@@ -1522,7 +1547,7 @@ fn to_value_in<const PRESERVE: bool>(js: &Js, limits: &EvalLimits) -> Option<Val
                 if limits.cut.get().is_some() {
                     break;
                 }
-                if let Some(v) = to_value_in::<PRESERVE>(v, limits) {
+                if let Some(v) = to_value_mode::<PRESERVE, CHARGE>(v, limits) {
                     out.define(key.clone(), v);
                 }
             }
@@ -1593,6 +1618,24 @@ impl<S: Names> Scope<'_, S> {
         }
     }
 
+    fn each_item(&self, value: Js) -> Js {
+        let mut scope = self;
+        loop {
+            match scope {
+                Scope::Root(names) => return names.each_item(value, self),
+                Scope::Each { parent, .. } => scope = parent,
+            }
+        }
+    }
+    fn call_value(&self, node: &Value) -> Js {
+        let mut scope = self;
+        loop {
+            match scope {
+                Scope::Root(names) => return names.call_value(node, self),
+                Scope::Each { parent, .. } => scope = parent,
+            }
+        }
+    }
     fn call(&self, node: &Ast) -> Js {
         let mut scope = self;
         loop {
@@ -1619,6 +1662,13 @@ fn evaluate_in<S: Names>(node: &Ast, scope: &Scope<S>, limits: &EvalLimits) -> J
     if !draw(limits, Cut::Work, 1) {
         return Js::Null;
     }
+    // Only the runtime carries opaque caller context. Parsing instantiations
+    // erase this branch and retain their existing evaluation path.
+    let _context = if S::RUNTIME && !matches!(node, Ast::Comp { .. }) {
+        Some(expression::CallContext::set(false))
+    } else {
+        None
+    };
     match node {
         Ast::Str(s) => Js::Str(s.as_str().into()),
         Ast::Num(n) => Js::Num(*n),
@@ -1656,6 +1706,7 @@ fn evaluate_in<S: Names>(node: &Ast, scope: &Scope<S>, limits: &EvalLimits) -> J
             let Some(params) = builtin_function_params(name) else {
                 return scope.call(node);
             };
+            let _context = S::RUNTIME.then(|| expression::CallContext::set(false));
             // `node.mappedProps ?? nameArgs(node.args, params)`, evaluated.
             let mut named = JsObject::new();
             match mapped_props {
@@ -1932,23 +1983,42 @@ fn each<S: Names>(args: &[Ast], scope: &Scope<S>) -> Js {
     if args.len() < 3 {
         return Js::Arr(Arc::new(Vec::new()));
     }
-    let array = evaluate(&args[0], scope);
+    let array = {
+        let _context = S::RUNTIME.then(|| expression::CallContext::set(false));
+        evaluate(&args[0], scope)
+    };
     let var = match &args[1] {
         Ast::Ref(name) | Ast::Str(name) if !name.is_empty() => name.as_str(),
         _ => return Js::Arr(Arc::new(Vec::new())),
     };
+    each_array(array, Some(var), scope, |item, child| {
+        let copy = substitute(&args[2], var, item);
+        evaluate(copy.as_ref().unwrap_or(&args[2]), child)
+    })
+}
+
+fn each_array<S: Names>(
+    array: Js,
+    var: Option<&str>,
+    scope: &Scope<S>,
+    evaluate_item: impl Fn(&Js, &Scope<S>) -> Js,
+) -> Js {
     let eval_item = |item: &Js| {
         if !step(1) {
             return Js::Null;
         }
-        // A step per node of the template (see `substitute`).
-        let copy = substitute(&args[2], var, item);
-        let child = Scope::Each {
-            name: var,
+        let binding = var.map(|name| Scope::Each {
+            name,
             item,
             parent: scope,
-        };
-        evaluate(copy.as_ref().unwrap_or(&args[2]), &child)
+        });
+        let child = binding.as_ref().unwrap_or(scope);
+        let value = evaluate_item(item, child);
+        if S::RUNTIME {
+            child.each_item(value)
+        } else {
+            value
+        }
     };
     let running = || {
         !crate::progress::stalled_so_far()

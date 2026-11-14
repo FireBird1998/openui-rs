@@ -7,14 +7,16 @@ use std::sync::Weak;
 
 /// Names and calls supplied by the caller. State names include `$`.
 ///
-/// `None` is JavaScript undefined; `Some(Value::Null)` is explicit null.
+/// For name and call callbacks, `None` is JavaScript undefined;
+/// `Some(Value::Null)` is explicit null. The per-item hook instead uses `None`
+/// for no replacement.
 /// Extra scope falls back to state for both undefined and null. References
 /// and state otherwise preserve undefined, as upstream's evaluator does.
 /// Lookups are lazy and cached for an allowance, so they must stay stable.
 ///
 /// Every callback receives an evaluator sharing the allowance. Lookup callbacks
 /// (`state`, `reference`, `extra`) evaluate at the root, without enclosing
-/// `@Each` bindings. Call callbacks retain those bindings for their arguments.
+/// `@Each` bindings. Call and per-item callbacks retain those bindings.
 /// Session re-entry follows the same rule.
 ///
 /// Fresh public evaluations have separate work and room. Collect their result
@@ -39,9 +41,36 @@ pub trait EvaluationScope {
     fn reference(&self, _name: &str, _evaluator: &ExpressionEvaluator<'_>) -> Option<Value> {
         None
     }
+    /// Prepared external data already included in the session's initial input.
+    /// Reading its cached representation takes constant work and adds no input
+    /// credit. Computed references retain the normal bounded measurement path.
+    fn prepared_reference(&self, _name: &str) -> Option<&PreparedReferenceValue> {
+        None
+    }
     /// Supplied extra scope such as `$value`; null and undefined fall back to
     /// state. Return supplied data, never evaluator output: it earns input credit.
     fn extra(&self, _name: &str, _evaluator: &ExpressionEvaluator<'_>) -> Option<Value> {
+        None
+    }
+    /// Inspect an item without allocating its public projection or spending
+    /// result room. Return true only when `each_item` will use the projection.
+    fn wants_each_item(&self, _value: &ExpressionValue<'_>, _call_context: bool) -> bool {
+        false
+    }
+    /// Handle a call descriptor supplied through data. Children remain lazy.
+    fn call_value(&self, _call: &Value, _evaluator: &ExpressionEvaluator<'_>) -> Option<Value> {
+        Some(Value::Null)
+    }
+    /// Optionally replace an evaluated `@Each` item, with its iteration's
+    /// bindings and shared allowance. `None` preserves the original JS value,
+    /// including undefined fields and array items that `Value` cannot represent.
+    /// The borrowed input is that value's public projection; None is undefined.
+    /// Tree evaluation uses a replacement only when revisiting an element.
+    fn each_item(
+        &self,
+        _value: Option<&Value>,
+        _evaluator: &ExpressionEvaluator<'_>,
+    ) -> Option<Value> {
         None
     }
     /// Handle a non-builtin call with unevaluated, already substituted args.
@@ -52,10 +81,74 @@ pub trait EvaluationScope {
 }
 impl EvaluationScope for () {}
 
+/// An external reference's cached representation and prepaid input size.
+///
+/// The size must come from a prior bounded measurement and be included in
+/// [`EvaluationSession::new`]'s initial input bytes. This grants no credit on
+/// read and never discounts output construction. Containers remain shared;
+/// scalar strings are copied into shared storage once, when prepared.
+pub struct PreparedReferenceValue {
+    value: Js,
+    bytes: usize,
+}
+impl PreparedReferenceValue {
+    /// Cache a measured input value. This does not evaluate it or measure it
+    /// again; the caller supplies its already-paid input byte contribution.
+    pub fn new(value: &Value, input_bytes: usize) -> Self {
+        let value = match value {
+            Value::Null => Js::Null,
+            Value::Bool(v) => Js::Bool(*v),
+            Value::Num(v) => Js::Num(*v),
+            Value::Str(v) => Js::Str(v.as_str().into()),
+            Value::Ast(v) => Js::Ast(v.clone()),
+            _ => Js::Data(Arc::new(value.clone())),
+        };
+        Self {
+            value,
+            bytes: input_bytes,
+        }
+    }
+}
+
+/// A scoped read-only view of an internal JS value. Inspection does not
+/// normalize undefined entries or allocate a public container projection.
+pub struct ExpressionValue<'a> {
+    value: std::borrow::Cow<'a, Js>,
+}
+impl ExpressionValue<'_> {
+    /// Read an object property using the evaluator's JS property semantics.
+    pub fn property(&self, name: &str) -> ExpressionValue<'_> {
+        ExpressionValue {
+            value: std::borrow::Cow::Owned(property(&self.value, name)),
+        }
+    }
+    /// A string value, without coercion.
+    pub fn as_str(&self) -> Option<&str> {
+        match self.value.as_ref() {
+            Js::Str(s) => Some(s),
+            _ => None,
+        }
+    }
+    /// A boolean value, without coercion.
+    pub fn as_bool(&self) -> Option<bool> {
+        match self.value.as_ref() {
+            Js::Bool(b) => Some(*b),
+            _ => None,
+        }
+    }
+    /// A non-null JS object, including arrays, excluding functions.
+    pub fn is_object(&self) -> bool {
+        matches!(
+            self.value.as_ref(),
+            Js::Arr(_) | Js::Obj(_) | Js::Ast(_) | Js::Props(_)
+        ) || matches!(self.value.as_ref(), Js::Data(v) if matches!(v.as_ref(), Value::Arr(_) | Value::Obj(_) | Value::Ast(_) | Value::Element(_)))
+    }
+}
+
 /// Evaluation within a callback, with the same scope, depth and allowance.
 pub struct ExpressionEvaluator<'a> {
     evaluate: &'a dyn Fn(&Ast) -> EvaluationResult,
-    evaluate_value: &'a dyn Fn(&Value) -> EvaluationResult,
+    evaluate_value: &'a dyn Fn(&Value, bool) -> EvaluationResult,
     operate: &'a dyn Fn(&mut dyn FnMut()),
 }
 impl ExpressionEvaluator<'_> {
@@ -70,7 +163,12 @@ impl ExpressionEvaluator<'_> {
     /// Evaluate an AST-shaped data value. Literal descriptors return their raw
     /// value; child fields are read lazily by the same operator implementation.
     pub fn evaluate_value(&self, expression: &Value) -> EvaluationResult {
-        (self.evaluate_value)(expression)
+        (self.evaluate_value)(expression, false)
+    }
+    /// Evaluate a named call prop, retaining the call site's `val.k` failure
+    /// when a raw null is supplied instead of an AST descriptor.
+    pub fn evaluate_call_prop(&self, expression: &Value) -> EvaluationResult {
+        (self.evaluate_value)(expression, true)
     }
     /// Run a recursive caller walk within one shared logical depth level.
     /// Returns None on a cut. The level and stack context leave on return or
@@ -98,6 +196,43 @@ impl ExpressionEvaluator<'_> {
         let mut ok = false;
         (self.operate)(&mut || ok = spend(measure_data(value, false)));
         ok
+    }
+    /// Whether this call inherits the caller's context. Public evaluation starts
+    /// enabled. `@Each` passes it to its template; operators, collections and
+    /// eager builtin-function arguments disable it. The core does not interpret that context:
+    /// tree evaluation uses it for upstream's schema-aware call behavior.
+    pub fn call_context(&self) -> bool {
+        let mut enabled = false;
+        (self.operate)(&mut || enabled = ACCOUNT.with(|a| a.borrow().call_context));
+        enabled
+    }
+    /// Run callback evaluation with an explicit call context, restoring it on
+    /// return or unwind. Returns the closure's result when the evaluator runs it.
+    /// Tree props start a new context; statement defaults evaluate without one.
+    pub fn with_call_context<T>(&self, enabled: bool, f: impl FnOnce() -> T) -> Option<T> {
+        let mut f = Some(f);
+        let mut out = None;
+        (self.operate)(&mut || {
+            let _context = CallContext::set(enabled);
+            if let Some(f) = f.take() {
+                out = Some(f());
+            }
+        });
+        out
+    }
+    /// Mark a refused external value as cut when it is actually read.
+    /// Flags remain sticky in this evaluator's session.
+    pub fn mark_cut(&self, flags: EvaluationFlags) {
+        (self.operate)(&mut || {
+            LIMITS.with(|l| {
+                if flags.size_limited {
+                    l.cut_by(Cut::Room);
+                }
+                if flags.depth_limited {
+                    l.cut_by(Cut::Depth);
+                }
+            })
+        });
     }
     /// Sticky cuts affecting the shared allowance.
     pub fn flags(&self) -> EvaluationFlags {
@@ -141,6 +276,8 @@ pub struct EvaluationFlags {
 pub enum EvaluationFailure {
     /// An object could not produce a primitive for JavaScript coercion.
     CannotConvertToPrimitive,
+    /// An inherited entry in the builtins object has no callable `fn` member.
+    BuiltinNotCallable,
     /// An untyped AST descriptor supplied an invalid field.
     #[non_exhaustive]
     InvalidExpression {
@@ -160,6 +297,8 @@ pub enum ExpressionOperation {
     ReadKind,
     /// Map a collection of child expressions.
     Map,
+    /// Map child expressions while substituting a loop variable.
+    SubstituteMap,
     /// Read a call's positional argument count.
     Length,
     /// Destructure one object entry.
@@ -272,8 +411,8 @@ impl<'a> EvaluationSession<'a> {
     }
     /// Evaluate another expression under the same allowance, including when
     /// re-entered from this session's own callback. Re-entry uses the callback's
-    /// caches, remaining work and room, and current depth. Only call callbacks
-    /// retain enclosing loop bindings; lookup callbacks use the root.
+    /// caches, remaining work and room, and current depth. Call and per-item
+    /// callbacks retain enclosing loop bindings; lookup callbacks use the root.
     pub fn evaluate(&self, expression: &Ast) -> EvaluationResult {
         let frame = self.names.callbacks.borrow().last().cloned();
         if let Some(frame) = frame {
@@ -306,8 +445,18 @@ impl<'a> EvaluationSession<'a> {
         self.root_context(|| {
             let eval =
                 |node: &Ast| self.root_context(|| evaluate_result(node, &Scope::Root(&self.names)));
-            let value = |node: &Value| {
-                self.root_context(|| evaluate_value_result(node, &Scope::Root(&self.names)))
+            let value = |node: &Value, call_prop: bool| {
+                self.root_context(|| {
+                    let _entry = FailureEntry::enter();
+                    if call_prop && matches!(node, Value::Null) {
+                        fail(EvaluationFailure::InvalidExpression {
+                            field: "callProp",
+                            operation: ExpressionOperation::ReadKind,
+                            actual: ExpressionType::Null,
+                        });
+                    }
+                    evaluate_value_result(node, &Scope::Root(&self.names))
+                })
             };
             let operate = |f: &mut dyn FnMut()| self.root_context(f);
             f(&ExpressionEvaluator {
@@ -380,6 +529,7 @@ pub fn evaluate_expression_with_limits(
 
 fn evaluate_result(expression: &Ast, scope: &Scope<Supplied<'_>>) -> EvaluationResult {
     let _evaluation = FailureEntry::enter();
+    let _projection = ProjectionEntry::enter();
     let js = evaluate(expression, scope);
     let value = if failed() { None } else { runtime_value(&js) };
     if let Some(v) = &value {
@@ -389,6 +539,7 @@ fn evaluate_result(expression: &Ast, scope: &Scope<Supplied<'_>>) -> EvaluationR
 }
 fn evaluate_value_result(expression: &Value, scope: &Scope<Supplied<'_>>) -> EvaluationResult {
     let _evaluation = FailureEntry::enter();
+    let _projection = ProjectionEntry::enter();
     let js = super::descriptor::evaluate(Some(expression), scope);
     let value = if failed() { None } else { runtime_value(&js) };
     if let Some(v) = &value {
@@ -549,8 +700,16 @@ impl Supplied<'_> {
     }
     fn evaluator<T>(&self, frame: &Suspension, f: impl FnOnce(&ExpressionEvaluator<'_>) -> T) -> T {
         let eval = |node: &Ast| self.resume(frame, node);
-        let value = |node: &Value| {
+        let value = |node: &Value, call_prop: bool| {
             self.resume_context(frame, || {
+                let _entry = FailureEntry::enter();
+                if call_prop && matches!(node, Value::Null) {
+                    fail(EvaluationFailure::InvalidExpression {
+                        field: "callProp",
+                        operation: ExpressionOperation::ReadKind,
+                        actual: ExpressionType::Null,
+                    });
+                }
                 in_scope_value(node, &frame.bindings, &Scope::Root(self))
             })
         };
@@ -600,6 +759,20 @@ impl Supplied<'_> {
         if let Some(js) = self.read.borrow().get(&key) {
             return js.clone();
         }
+        if reference && let Some(prepared) = self.scope.prepared_reference(name) {
+            // The prepared set was paid before this session. A claim larger
+            // than the admitted input cannot use the fast path.
+            if ACCOUNT.with(|a| prepared.bytes > a.borrow().bytes) {
+                LIMITS.with(|l| l.cut_by(Cut::Work));
+                return Js::Null;
+            }
+            if !step(1) {
+                return Js::Null;
+            }
+            let js = prepared.value.clone();
+            self.read.borrow_mut().insert(key, js.clone());
+            return js;
+        }
         let value = self.callback(&Scope::Root(self), |eval| {
             if reference {
                 self.scope.reference(name, eval)
@@ -647,7 +820,73 @@ impl Names for Supplied<'_> {
     fn reference(&self, name: &str, _scope: &Scope<Self>) -> Js {
         self.get(name, true)
     }
+    fn each_item(&self, js: Js, scope: &Scope<Self>) -> Js {
+        if failed() {
+            return Js::Undefined;
+        }
+        let context = ACCOUNT.with(|a| a.borrow().call_context);
+        let view = ExpressionValue {
+            value: std::borrow::Cow::Borrowed(&js),
+        };
+        if !self.scope.wants_each_item(&view, context) {
+            return js;
+        }
+        let value = LIMITS.with(|limits| to_value_mode::<true, false>(&js, limits));
+        let before = room_used();
+        let replacement = self.callback(scope, |eval| self.scope.each_item(value.as_ref(), eval));
+        if failed() {
+            return Js::Undefined;
+        }
+        if let Some(value) = replacement {
+            let bytes = measure_data(&value, false);
+            // Keep this reservation while the loop buffers replacements. The
+            // owning expression releases their final footprints only when its
+            // projection is ready to charge them; nested argument projections
+            // cannot release earlier items still retained by the outer loop.
+            let spent = room_used().saturating_sub(before);
+            if LIMITS.with(|l| l.cut.get().is_none()) {
+                ACCOUNT.with(|a| {
+                    if let Some(room) = a.borrow_mut().projection_room.last_mut() {
+                        *room = room.saturating_add(bytes.min(spent));
+                    }
+                });
+            }
+            replacement_value(&js, &value)
+        } else {
+            js
+        }
+    }
+    fn call_value(&self, node: &Value, scope: &Scope<Self>) -> Js {
+        let value = self.callback(scope, |eval| self.scope.call_value(node, eval));
+        if failed() {
+            return Js::Undefined;
+        }
+        if let Some(value) = &value {
+            measure_data(value, false);
+        }
+        value.as_ref().map(data_value).unwrap_or(Js::Undefined)
+    }
     fn call(&self, node: &Ast, scope: &Scope<Self>) -> Js {
+        if let Ast::Comp {
+            name, mapped_props, ..
+        } = node
+            && OBJECT_PROTOTYPE_KEYS.contains(&name.as_str())
+        {
+            let _context = CallContext::set(false);
+            if let Some(props) = mapped_props {
+                for arg in props.values() {
+                    if failed() || LIMITS.with(|l| l.cut.get().is_some()) {
+                        break;
+                    }
+                    super::evaluate(arg, scope);
+                }
+            }
+            if failed() || LIMITS.with(|l| l.cut.get().is_some()) {
+                return Js::Null;
+            }
+            fail(EvaluationFailure::BuiltinNotCallable);
+            return Js::Undefined;
+        }
         let value = self.callback(scope, |eval| self.scope.call(node, eval));
         if failed() {
             return Js::Undefined;
@@ -658,8 +897,85 @@ impl Names for Supplied<'_> {
         value.as_ref().map(data_value).unwrap_or(Js::Undefined)
     }
 }
+// Keep the original computed/data representation when replacing an item. The
+// existing converter prices computed objects/arrays differently from borrowed
+// data. Turning a computed item into Data would change its established room
+// cost even after releasing the discarded pass. This only adapts containers;
+// expression evaluation and projection pricing remain in their existing paths.
+fn replacement_value(original: &Js, value: &Value) -> Js {
+    crate::stack::grow_stack!(replacement_value(original,value), budget else Js::Null);
+    let Some(_level) = Level::enter() else {
+        return Js::Null;
+    };
+    if !step(1) {
+        return Js::Null;
+    }
+    match (original, value) {
+        (Js::Obj(old), Value::Obj(new)) => {
+            let mut out = JsObject::new();
+            for (key, value) in new.iter() {
+                if !step(key.len().saturating_add(1)) {
+                    break;
+                }
+                let next = old
+                    .get(key)
+                    .map_or_else(|| data_value(value), |old| replacement_value(old, value));
+                out.define(key.clone(), next);
+            }
+            Js::Obj(Arc::new(out))
+        }
+        (Js::Arr(old), Value::Arr(new)) => Js::Arr(Arc::new(
+            new.iter()
+                .enumerate()
+                .take_while(|_| LIMITS.with(|l| l.cut.get().is_none()))
+                .map(|(i, value)| {
+                    old.get(i)
+                        .map_or_else(|| data_value(value), |old| replacement_value(old, value))
+                })
+                .collect(),
+        )),
+        _ => data_value(value),
+    }
+}
+
+// Account for input credit earned inside a callback as well as room draws.
+fn room_used() -> usize {
+    ACCOUNT.with(|a| {
+        let a = a.borrow();
+        a.limits
+            .result_size_for(a.bytes)
+            .saturating_sub(LIMITS.with(|l| l.room.get()))
+    })
+}
+
+struct ProjectionEntry;
+impl ProjectionEntry {
+    fn enter() -> Self {
+        ACCOUNT.with(|a| a.borrow_mut().projection_room.push(0));
+        Self
+    }
+}
+impl Drop for ProjectionEntry {
+    fn drop(&mut self) {
+        ACCOUNT.with(|a| {
+            a.borrow_mut().projection_room.pop();
+        });
+    }
+}
 fn runtime_value(js: &Js) -> Option<Value> {
-    LIMITS.with(|l| to_value_in::<true>(js, l))
+    let released = ACCOUNT.with(|a| {
+        a.borrow_mut()
+            .projection_room
+            .last_mut()
+            .map(std::mem::take)
+            .unwrap_or(0)
+    });
+    LIMITS.with(|l| {
+        if l.cut.get().is_none() {
+            l.room.set(l.room.get().saturating_add(released));
+        }
+        to_value_in::<true>(js, l)
+    })
 }
 
 fn record_flags() {
@@ -687,6 +1003,8 @@ struct Account {
     limits: Limits,
     failure: Option<EvaluationFailure>,
     evaluations: usize,
+    call_context: bool,
+    projection_room: Vec<usize>,
     flags: Rc<Cell<EvaluationFlags>>,
     bytes: usize,
     inputs: HashSet<(u8, usize)>,
@@ -700,6 +1018,8 @@ impl Account {
             limits,
             failure: None,
             evaluations: 0,
+            call_context: true,
+            projection_room: Vec::new(),
             flags: Rc::new(Cell::new(EvaluationFlags::default())),
             bytes,
             inputs: HashSet::new(),
@@ -733,6 +1053,17 @@ impl Account {
                 ),
             );
         });
+    }
+}
+pub(super) struct CallContext(bool);
+impl CallContext {
+    pub(super) fn set(enabled: bool) -> Self {
+        Self(ACCOUNT.with(|a| std::mem::replace(&mut a.borrow_mut().call_context, enabled)))
+    }
+}
+impl Drop for CallContext {
+    fn drop(&mut self) {
+        ACCOUNT.with(|a| a.borrow_mut().call_context = self.0);
     }
 }
 thread_local! {
@@ -866,13 +1197,7 @@ fn measure_data(value: &Value, input: bool) -> usize {
                 5
             }
         }
-        Value::Num(n) => {
-            if n.is_finite() {
-                number_to_string(*n).len()
-            } else {
-                4
-            }
-        }
+        Value::Num(n) => crate::js::json_number_len(*n),
         Value::Arr(items) => 2usize.saturating_add(items.len().saturating_sub(1)),
         Value::Obj(o) => 2usize.saturating_add(o.len().saturating_sub(1)),
         Value::Element(el) => {

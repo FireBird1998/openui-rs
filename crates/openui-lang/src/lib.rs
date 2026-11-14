@@ -362,8 +362,8 @@ pub use builtins::{is_builtin, is_reserved_call};
 pub use enrich::{EnrichedError, enrich_errors, enriched_errors_to_json};
 pub use evaluate::{
     EvaluationFailure, EvaluationFlags, EvaluationResult, EvaluationScope, EvaluationSession,
-    ExpressionEvaluator, ExpressionOperation, ExpressionType, evaluate_expression,
-    evaluate_expression_with_limits,
+    ExpressionEvaluator, ExpressionOperation, ExpressionType, ExpressionValue,
+    PreparedReferenceValue, evaluate_expression, evaluate_expression_with_limits,
 };
 pub use expr::{parse_expression, parse_expression_with_limits};
 pub use free::free_json;
@@ -398,3 +398,6 @@ const _: () = {
 #[cfg(test)]
 #[global_allocator]
 static TEST_ALLOCATOR: test_alloc::Allocator = test_alloc::Allocator::with_cap(test_alloc::DEFAULT);
+
+/// Allocation-free JSON number sizing for embedders preparing input allowances.
+pub use js::json_number_len;

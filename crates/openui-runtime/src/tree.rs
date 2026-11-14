@@ -1,28 +1,69 @@
 //! Evaluating parsed prop trees with one expression allowance.
 use crate::{
     Ast, EvaluationFailure, EvaluationScope, EvaluationSession, ExpressionEvaluator,
-    ExpressionOperation, ExpressionType, JsObject, Limits, Store, Value,
+    ExpressionOperation, ExpressionType, ExpressionValue, JsObject, Limits, Store, Value,
 };
-use openui_lang::{Element, ParseResult};
-use std::{cell::RefCell, sync::Arc};
+use openui_lang::{Element, Library, ParseResult};
+use std::{
+    cell::{Cell, RefCell},
+    collections::BTreeMap,
+    sync::Arc,
+};
 mod fields;
 mod input;
+mod prepared;
 use fields::{own_fields, shaped_element};
+pub use prepared::PreparedReferenceValues;
 
 /// Extensible input to tree evaluation. Parsing already inlines value statements.
-/// Binding-prop configuration will be added here in ticket 35. Component
-/// arguments are already mapped by parsing; custom-action validation in ticket
-/// 36 is the first planned use of library definitions during tree evaluation.
+/// Parsing has already named component arguments. Library definitions separate
+/// components from the function and action dispatch still due in #38 and #36.
+/// Binding-prop configuration follows in #35.
 #[derive(Clone)]
 #[non_exhaustive]
 pub struct TreeInput<'a> {
     /// The parse result. Evaluation reads the store without initializing it.
     pub result: &'a ParseResult,
+    /// Supplied query/mutation results, keyed by statement id. Explicit null wins.
+    /// Borrowed for the evaluation; container bodies are never copied on read.
+    pub reference_values: Option<&'a JsObject<Value>>,
+    /// Library definitions distinguish components from functions and actions.
+    /// Parsing has already named the component props. Without a library, mapped
+    /// calls use upstream's component fallback.
+    pub library: Option<&'a Library>,
+    /// A set measured once by the embedder. Takes precedence over `reference_values`.
+    pub prepared_reference_values: Option<&'a PreparedReferenceValues<'a>>,
 }
 impl<'a> TreeInput<'a> {
     /// Evaluate this parse result; future options have compatible defaults.
     pub fn new(result: &'a ParseResult) -> Self {
-        Self { result }
+        Self {
+            result,
+            reference_values: None,
+            library: None,
+            prepared_reference_values: None,
+        }
+    }
+    /// Supply the library used to parse this result.
+    pub fn with_library(mut self, library: &'a Library) -> Self {
+        self.library = Some(library);
+        self
+    }
+    /// Use reference values prepared once and reused across stream evaluations.
+    pub fn with_prepared_reference_values(
+        mut self,
+        values: &'a PreparedReferenceValues<'a>,
+    ) -> Self {
+        self.prepared_reference_values = Some(values);
+        self.reference_values = None;
+        self
+    }
+    /// Supply reference values, measuring them for this call. Undeclared names
+    /// do not resolve, but admitted supplied data contributes input allowance.
+    pub fn with_reference_values(mut self, values: &'a JsObject<Value>) -> Self {
+        self.reference_values = Some(values);
+        self.prepared_reference_values = None;
+        self
     }
 }
 impl<'a> From<&'a ParseResult> for TreeInput<'a> {
@@ -31,7 +72,7 @@ impl<'a> From<&'a ParseResult> for TreeInput<'a> {
     }
 }
 
-/// A prop failure, in upstream's encounter order.
+/// A runtime diagnostic, in upstream's encounter order.
 #[derive(Clone, Debug, PartialEq, Eq)]
 #[non_exhaustive]
 pub struct RuntimeError {
@@ -70,7 +111,8 @@ impl RuntimeError {
 #[non_exhaustive]
 pub struct TreeResult {
     /// The evaluated root. Value also preserves structurally shaped elements.
-    /// None when the parse has no root; cuts retain the root and fitted props.
+    /// None when neither the root nor its expression yields an element. Cuts
+    /// retain an existing root and fitted props.
     pub root: Option<Value>,
     /// Failed props retain their original value.
     pub errors: Vec<RuntimeError>,
@@ -138,7 +180,7 @@ pub fn evaluate_tree_with_limits(
     store: &Store,
     limits: Limits,
 ) -> TreeResult {
-    let bytes = match input::input_size(input.result, limits) {
+    let bytes = match input::input_size(&input, limits) {
         Ok(bytes) => bytes,
         Err(depth) => {
             return TreeResult {
@@ -153,16 +195,69 @@ pub fn evaluate_tree_with_limits(
             };
         }
     };
+    let measured = if input.prepared_reference_values.is_none() {
+        input.reference_values.map(PreparedReferenceValues::new)
+    } else {
+        None
+    };
+    let supplied = input.prepared_reference_values.or(measured.as_ref());
+    let bytes = bytes.saturating_add(supplied.map_or(0, |v| v.bytes));
     let scope = TreeScope {
         store,
         errors: RefCell::new(Vec::new()),
+        inline: Cell::new(false),
+        references: {
+            let mut references = BTreeMap::new();
+            for q in &input.result.query_statements {
+                references
+                    .entry(q.statement_id.as_str())
+                    .or_insert(Some((q.complete, q.defaults.as_ref())));
+            }
+            for m in &input.result.mutation_statements {
+                references.entry(m.statement_id.as_str()).or_insert(None);
+            }
+            references
+        },
+        reference_values: supplied,
+        library: input.library,
     };
     let session = EvaluationSession::with_limits(&scope, bytes, limits);
-    let root = input
-        .result
-        .root
-        .as_ref()
-        .map(|e| session.with_evaluator(|eval| scope.element(e, eval)));
+    let root = session.with_evaluator(|eval| {
+        if let Some(e) = &input.result.root {
+            return Some(scope.element(e, eval));
+        }
+        let expression = input.result.root_expression.as_ref()?;
+        let value = eval.evaluate_result(expression);
+        if cut(eval) {
+            return None;
+        }
+        if let Some(failure) = value.failure {
+            let message = failure_message(&failure);
+            if eval.reserve_result(160usize.saturating_add(text_bytes(&message))) {
+                scope.errors.borrow_mut().push(RuntimeError {
+                    code: "runtime-error",
+                    component: None,
+                    statement_id: Some("root".into()),
+                    message: format!("Evaluating root failed: {message}"),
+                    hint: Some("Check the expression used for root".into()),
+                });
+            }
+            return None;
+        }
+        if let Some(value) = value.value.filter(element_value) {
+            return scope.expression_result(Some(value), eval);
+        }
+        if eval.reserve_result(120) {
+            scope.errors.borrow_mut().push(RuntimeError {
+                code: "no-root",
+                component: None,
+                statement_id: Some("root".into()),
+                message: "root does not evaluate to a component".into(),
+                hint: None,
+            });
+        }
+        None
+    });
     let flags = session.flags();
     TreeResult {
         root,
@@ -174,14 +269,216 @@ pub fn evaluate_tree_with_limits(
 struct TreeScope<'a> {
     store: &'a Store,
     errors: RefCell<Vec<RuntimeError>>,
+    inline: Cell<bool>,
+    references: BTreeMap<&'a str, Option<(bool, Option<&'a Ast>)>>,
+    reference_values: Option<&'a PreparedReferenceValues<'a>>,
+    library: Option<&'a Library>,
 }
 impl EvaluationScope for TreeScope<'_> {
     fn state(&self, name: &str, _: &ExpressionEvaluator<'_>) -> Option<Value> {
         self.store.get(name)
     }
-    // Parsed value statements are inlined. External query/mutation values are #34.
-    fn reference(&self, _: &str, _: &ExpressionEvaluator<'_>) -> Option<Value> {
-        Some(Value::Null)
+    fn reference(&self, name: &str, eval: &ExpressionEvaluator<'_>) -> Option<Value> {
+        let Some(default) = self.references.get(name) else {
+            return Some(Value::Null);
+        };
+        if let Some(values) = self.reference_values {
+            match values.get(name) {
+                Ok(Some((value, _))) => return Some(value.clone()),
+                Err(flags) => {
+                    eval.mark_cut(flags);
+                    return Some(Value::Null);
+                }
+                Ok(None) => {}
+            }
+        }
+        match default {
+            None => {
+                let mut idle = JsObject::new();
+                idle.define("status", Value::Str("idle".into()));
+                Some(Value::Obj(Arc::new(idle)))
+            }
+            Some((false, _)) => Some(Value::Null),
+            Some((true, default)) => default.map_or(Some(Value::Null), |a| {
+                eval.with_call_context(false, || eval.evaluate(a)).flatten()
+            }),
+        }
+    }
+    fn prepared_reference(&self, name: &str) -> Option<&crate::PreparedReferenceValue> {
+        if !self.references.contains_key(name) {
+            return None;
+        }
+        self.reference_values?
+            .get(name)
+            .ok()
+            .flatten()
+            .map(|(_, prepared)| prepared)
+    }
+    fn wants_each_item(&self, value: &ExpressionValue<'_>, context: bool) -> bool {
+        context
+            && value.property("type").as_str() == Some("element")
+            && value.property("typeName").as_str().is_some()
+            && value.property("props").is_object()
+            && value.property("partial").as_bool().is_some()
+            && value.property("hasDynamicProps").as_bool() != Some(false)
+    }
+    fn each_item(&self, value: Option<&Value>, eval: &ExpressionEvaluator<'_>) -> Option<Value> {
+        let value = value.filter(|v| element_value(v))?;
+        let dynamic = match value {
+            Value::Element(e) => e.has_dynamic_props,
+            Value::Obj(o) => !matches!(o.get("hasDynamicProps"), Some(Value::Bool(false))),
+            _ => false,
+        };
+        if !dynamic || !eval.call_context() {
+            return None;
+        }
+        let _inline = Inline::enter(&self.inline);
+        self.expression_result(Some(value.clone()), eval)
+    }
+    fn call(&self, call: &Ast, eval: &ExpressionEvaluator<'_>) -> Option<Value> {
+        let Ast::Comp {
+            name,
+            mapped_props: Some(mapped),
+            ..
+        } = call
+        else {
+            return Some(Value::Null);
+        };
+        self.component(
+            Some(Value::Str(name.clone())),
+            mapped.iter().map(|(k, v)| (k.clone(), CallProp::Typed(v))),
+            eval,
+        )
+    }
+    fn call_value(&self, call: &Value, eval: &ExpressionEvaluator<'_>) -> Option<Value> {
+        let Value::Obj(o) = call else {
+            return Some(Value::Null);
+        };
+        let Some(mapped) = o.get("mappedProps") else {
+            return Some(Value::Null);
+        };
+        match mapped {
+            Value::Obj(fields) => self.component(
+                o.get("name").cloned(),
+                fields.iter().map(|(k, v)| (k.clone(), CallProp::Data(v))),
+                eval,
+            ),
+            Value::Arr(fields) => self.component(
+                o.get("name").cloned(),
+                fields
+                    .iter()
+                    .enumerate()
+                    .map(|(i, v)| (i.to_string(), CallProp::Data(v))),
+                eval,
+            ),
+            _ => {
+                let fields = own_fields(mapped);
+                self.component(
+                    o.get("name").cloned(),
+                    fields.iter().map(|(k, v)| (k.clone(), CallProp::Data(v))),
+                    eval,
+                )
+            }
+        }
+    }
+}
+enum CallProp<'a> {
+    Typed(&'a Ast),
+    Data(&'a Value),
+}
+impl TreeScope<'_> {
+    fn component<'v>(
+        &self,
+        name: Option<Value>,
+        mapped: impl IntoIterator<Item = (String, CallProp<'v>)>,
+        eval: &ExpressionEvaluator<'_>,
+    ) -> Option<Value> {
+        if let Some(Value::Str(name)) = &name
+            && self.library.and_then(|l| l.call(name)).is_some()
+        {
+            return Some(Value::Null);
+        }
+        let contextual = eval.call_context();
+        let mut props = JsObject::new();
+        for (key, value) in mapped {
+            if cut(eval) {
+                break;
+            }
+            let state_ref = match &value {
+                CallProp::Typed(a) => matches!(a, Ast::StateRef(_)),
+                CallProp::Data(Value::Ast(a)) => matches!(a.as_ref(), Ast::StateRef(_)),
+                CallProp::Data(Value::Obj(o)) => {
+                    matches!(o.get("k"),Some(Value::Str(k)) if k=="StateRef")
+                }
+                _ => false,
+            };
+            if !contextual && state_ref {
+                props.set(
+                    key,
+                    match value {
+                        CallProp::Typed(a) => Value::Ast(Arc::new(a.clone())),
+                        CallProp::Data(v) => v.clone(),
+                    },
+                );
+            } else {
+                let result = match value {
+                    CallProp::Typed(a) => eval.evaluate(a),
+                    CallProp::Data(v) => eval.evaluate_call_prop(v).value,
+                };
+                if let Some(value) = result {
+                    props.set(key, value);
+                }
+            }
+        }
+        if contextual
+            && props
+                .values()
+                .any(|v| element_value(v) || matches!(v, Value::Arr(_)))
+        {
+            let _inline = Inline::enter(&self.inline);
+            for (key, value) in props.clone().iter() {
+                if (element_value(value) || matches!(value, Value::Arr(_)))
+                    && let Some(value) = self.expression_result(Some(value.clone()), eval)
+                {
+                    props.set(key.clone(), value);
+                }
+            }
+        }
+        if let Some(Value::Str(name)) = &name {
+            return Some(Value::Element(Arc::new(Element {
+                type_name: name.clone(),
+                props,
+                partial: false,
+                has_dynamic_props: true,
+                statement_id: None,
+            })));
+        }
+        let mut out = JsObject::new();
+        out.define("type", Value::Str("element".into()));
+        if let Some(name) = name {
+            out.define("typeName", name);
+        }
+        out.define("props", Value::Obj(Arc::new(props)));
+        out.define("partial", Value::Bool(false));
+        out.define("hasDynamicProps", Value::Bool(true));
+        Some(Value::Obj(Arc::new(out)))
+    }
+}
+struct Inline<'a> {
+    flag: &'a Cell<bool>,
+    old: bool,
+}
+impl<'a> Inline<'a> {
+    fn enter(flag: &'a Cell<bool>) -> Self {
+        Self {
+            flag,
+            old: flag.replace(true),
+        }
+    }
+}
+impl Drop for Inline<'_> {
+    fn drop(&mut self) {
+        self.flag.set(self.old);
     }
 }
 #[derive(Clone, Copy)]
@@ -240,9 +537,11 @@ impl TreeScope<'_> {
                 if assign_descriptor(raw) {
                     return Ok(Some(Value::Null));
                 }
-                let result = match raw {
+                let Some(result) = eval.with_call_context(true, || match raw {
                     Value::Ast(a) => eval.evaluate_result(a),
                     _ => eval.evaluate_value(raw),
+                }) else {
+                    return Ok(Some(raw.clone()));
                 };
                 if result.size_limited || result.depth_limited {
                     return Ok(Some(raw.clone()));
@@ -329,6 +628,7 @@ impl TreeScope<'_> {
         }
         match self.prop(raw, eval) {
             Ok(value) => value,
+            Err(_) if self.inline.get() => Some(raw.clone()),
             Err(failure) => {
                 let message = failure_message(&failure);
                 // Reserve repeated owner/key text before formatting the diagnostic.
@@ -448,6 +748,7 @@ impl TreeScope<'_> {
 fn failure_message(failure: &EvaluationFailure) -> String {
     match failure {
         EvaluationFailure::CannotConvertToPrimitive => "No default value".into(),
+        EvaluationFailure::BuiltinNotCallable => "builtin.fn is not a function. (In 'builtin.fn(evaluateArgs(node, context))', 'builtin.fn' is undefined)".into(),
         EvaluationFailure::InvalidExpression {
             field,
             operation,
@@ -460,24 +761,31 @@ fn failure_message(failure: &EvaluationFailure) -> String {
             };
             match operation {
                 ExpressionOperation::ReadKind => {
-                    format!("{nullish} is not an object (evaluating 'node.k')")
+                    let receiver = match *field {
+                        "callProp" => "val",
+                        "eachVar" => "args[1]",
+                        _ => "node",
+                    };
+                    format!("{nullish} is not an object (evaluating '{receiver}.k')")
                 }
                 ExpressionOperation::Length => {
                     format!("{nullish} is not an object (evaluating 'args.length')")
                 }
-                ExpressionOperation::Map
+                ExpressionOperation::Map | ExpressionOperation::SubstituteMap
                     if !matches!(actual, ExpressionType::Undefined | ExpressionType::Null) =>
                 {
-                    let map = if *field == "els" {
-                        "(el) => evaluate(el, context)"
-                    } else {
-                        "([k, v]) => [k, evaluate(v, context)]"
+                    let map = match (*operation,*field) {
+                        (ExpressionOperation::SubstituteMap,"els") => "(e) => substituteRef(e, varName, value)",
+                        (ExpressionOperation::SubstituteMap,"args") => "sub",
+                        (ExpressionOperation::SubstituteMap,_) => "([k, v]) => [k, substituteRef(v, varName, value)]",
+                        (_,"els") => "(el) => evaluate(el, context)",
+                        _ => "([k, v]) => [k, evaluate(v, context)]",
                     };
                     format!(
                         "node.{field}.map is not a function. (In 'node.{field}.map({map})', 'node.{field}.map' is undefined)"
                     )
                 }
-                ExpressionOperation::Map => {
+                ExpressionOperation::Map | ExpressionOperation::SubstituteMap => {
                     format!("{nullish} is not an object (evaluating 'node.{field}.map')")
                 }
                 ExpressionOperation::Entry => match actual {

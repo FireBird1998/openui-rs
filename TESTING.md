@@ -43,6 +43,12 @@ binding's `stack` and `binding` binaries, and the runtime's `expressions`,
 inputs, with a stricter shape assertion that peak heap stays below twice the input heap for pass-through, cuts,
 `Count`, `First` and object coercion. All other core and binding test
 binaries, including unit tests, example tests and doc examples, use **256 MiB**.
+Runtime `tree_review34` uses 512 MiB to prepare four million unread numbers;
+its repeated-evaluation allocation and timing checks exclude preparation, and
+preparation separately forbids per-number allocation.
+Runtime `tree_replacement_room_and_inherited_calls` uses 256 MiB. Its fixed-room replacement-buffer and
+failed-builtin argument-buffer cases also pin peak heap below twice their
+input heap; prepared reads have fixed-work and allocation checks.
 The mixed CLI and binding suites fit comfortably under the stricter cap.
 `prompt_depth` uses 256 MiB: its 900-level object schema must cross the default
 JSON depth limit and render successfully with a raised limit, which retains
@@ -558,7 +564,7 @@ identity without expanding its bodies. There is no runtime diagnostic scan.
 The same binary distinguishes object index coercion from array indexing.
 These bounds cover those shapes rather than every possible supplied value.
 
-`tree_revision.rs` (256 MiB cap) compares the core-backed runtime against
+`tree_concatenation_and_cuts.rs` (256 MiB cap) compares the core-backed runtime against
 `reference/tree-interface.ts`, using explicit persisted values for the reviewer's
 five concatenations, coercion failures, and descriptor cases. A deterministic
 work bound grows linearly for 32/64/128/200 concatenated terms. Work, room and
@@ -606,3 +612,16 @@ is already dynamic while structural element data is incomplete. Without that
 prefix, the two parsers disagree on `hasDynamicProps` at an early partial
 structural-element prefix (16-character chunk 6). Changing parsing is outside
 this fix round; the direct one-shot name regressions are pinned separately.
+
+`tree_reference_input_limits` (128 MiB): supplied reference bytes increase
+scaled allowances before evaluation (including unread data) while fixed limits
+still cut; large
+reference lists retain identity below twice input heap; loop allocations grow
+linearly; loop cuts retain earlier props/errors; cycles, nested loops and deep
+supplied data cut on a 64 KiB worker stack. Tree conformance also pins caller
+context through components and query defaults using explicit embedder state.
+
+The per-item callback preserves the original JS value when it returns no
+replacement. `tree-interface.ts` pins undefined array entries and own fields
+through an unhandled Each item; `tree_concatenation_and_cuts` compares that reference result.
+`tree_reference_input_limits` also checks that static Each elements avoid replacement room.

@@ -1,0 +1,3 @@
+root=Box(q,q.x)
+q=Query("fetch",{},{x:$n+1})
+$n=8

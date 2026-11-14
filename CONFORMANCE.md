@@ -23,7 +23,7 @@ Reference: `@openuidev/lang-core 1.1.0` at commit `47b9cae0d3b26a8c9d7514d5887a6
 | Element trees back to source | 826 | 826 | 1 fuzz, 71 hand-written, 723 parse corpus root, 31 reference-test |
 | Enriched errors | 419 | 419 | every parse corpus case with errors |
 
-Quirks recorded: 21.
+Quirks recorded: 24.
 Not matched yet, listed in `conformance/pending/`: none.
 <!-- /counts -->
 
@@ -47,15 +47,15 @@ and aliases within each parse result. Persistence timing remains an explicit
 assumption; the renderer is not vendored.
 
 <!-- runtime-counts -->
-Runtime trees: 878 total, 689 matching, 186 pending, 3 divergences.
+Runtime trees: 929 total, 768 matching, 155 pending, 6 divergences.
 
-Runtime pending: #34=32, #35=6, #36=124, #38=24.
+Runtime pending: #34=0, #35=6, #36=125, #38=24.
 
-Runtime coverage: 280 dynamic, 79 reading state, 430 referencing statements, 25 with runtime errors; 1449579 streaming steps per scenario, 141090 differing observations, 19836 differing trees.
+Runtime coverage: 325 dynamic, 106 reading state, 450 referencing statements, 45 with runtime errors; 1455301 streaming steps per scenario, 142367 differing observations, 20569 differing trees.
 
 Original runtime coverage: 859 cases, 261 dynamic, 62 reading state, 426 referencing statements, 11 with runtime errors; recorded: 152 cases, 2 declaring state.
 
-Runtime pending partial comparison: 360 one-shot observations, 12438 props.
+Runtime pending partial comparison: 310 one-shot observations, 11742 props.
 <!-- /runtime-counts -->
 
 `reference/runtime.ts` runs the pinned parser, store and tree evaluator, with
@@ -68,12 +68,53 @@ initialize. The persistence map is JSON-round-tripped before use: its saved
 JSON defines its values, non-finite normalization and absence of cross-name
 aliases on both sides. Defaults and persistence each retain their own store per stream.
 Both scenarios replay all core chunkings, including resets and recorded deltas.
+Runtime cases may additionally declare `referenceValues` (query/mutation data)
+and `stateValues` (explicit embedder state applied after generated persistence).
+Both are plain JSON in the case manifest and apply to both scenarios. The
+reference adapter uses lang-core's actual `createQueryManager(null)`, registers
+mutations, registers normalized query nodes with `evaluateQueries`, and reads
+results before anything runs. It supplies no provider or refresh interval and
+always disposes the manager. Normalization uses statement ids as inert tool
+names and null args, since registration/read semantics are all that is tested.
+`queryManager.ts:389` skips incomplete nodes; `:468–472` reads defaults or null;
+`:508–531` registers fresh mutations with `{status:"idle"}` and `:606–607` reads
+them. Defaults are evaluated by the adapter's declaration resolver, as the
+manager's `toQueryNode` evaluates defaults using its caller context (`:145–157`).
+`registerMutations` also resets an existing mutation to
+`{status:"idle",data:null,error:null}` when its tool name changes (`:517–522`).
+A renderer retaining one manager can observe that transition while a
+`Mutation("…` statement streams in, before anything has run. This harness
+creates a fresh manager per observation and uses statement ids as inert tool
+names, so that history-dependent transition is not observed or modelled here.
+The runtime does not retain a query manager; an embedder can supply its result.
+
+These are lang-core's observable pre-execution results. The supplied overlay is
+ours: own `referenceValues` entries for declared query/mutation ids win,
+including null, false and empty containers, standing in for loaded data.
+Declaration lookup is independent of textual order and loop scope. Undeclared
+names do not resolve, but admitted supplied entries still contribute input size.
+
+Both parsers currently set every query statement's `complete` to true, even
+when streaming auto-close completed its syntax (`parser.ts:204`, Rust
+`parser.rs`'s QueryStatement constructor). Their global `meta.incomplete` does
+not identify which query is unfinished. The explicit `queryComplete:false`
+corpus fixture tests the registration rule using the public statement metadata;
+we do not infer per-query completeness from global metadata or source text.
+Actual unfinished-query detection remains unavailable from the parse result.
+The renderer consumes the same true flag, so this currently creates no
+observable query-result mismatch with it.
+Prepared supplied values have separate bounded iterative sizing; unread or
+undeclared refused values cannot cut unrelated evaluation. The prepared form
+reuses the measurement and a cached core value representation across evaluations,
+including when read. Containers stay shared; scalar strings are converted once.
+Full output construction and actual operations still draw on work, room and
+depth. Numeric sizing allocates no string.
 Only evaluated trees, runtime errors, snapshots and their JSON are compared;
 notification counts, snapshot identity and versions are outside this harness.
 In particular, issue #45's extra upstream notifications for rebuilt completed
 container defaults do not affect these comparisons.
 
-The nineteen runtime additions live in `conformance/runtime.json`, in the corpus's
+The runtime additions live in `conformance/runtime.json`, in the corpus's
 normal format, without enlarging the parser corpus. They cover state props,
 inlined references and cycles, nested objects and structural ASTs, a 64-element
 deep tree, failures with statement and inline attribution, malformed descriptors, and a default that
@@ -81,7 +122,8 @@ changes an already evaluated prop as it streams. The review additions cover
 long concatenations, numeric descriptor fields, missing call arguments,
 array-like arguments, invalid collections, Assign-shaped data, strict name lookups,
 non-string and malformed descriptor fields, element-shaped state, and an independent
-failed prop alongside an action. Coverage is the union of both
+failed prop alongside an action. The #34 additions cover loops, components,
+root expressions and references, with caller context pinned by quirk 25. Coverage is the union of both
 scenarios and all prefixes; state reads count actual runtime `getState` calls,
 and statement references are measured on the preprocessed source AST with
 `Each` locals excluded. The original 859 cases have 261 cases with dynamic
@@ -107,11 +149,15 @@ fail the test. The same removal rule applies to the separate visible divergence
 list. Assign-shaped data has the explicit `35:assign-descriptor` reason: its
 non-binding result requires the #35 getState/marker rule. All pending one-shot
 observations still compare snapshots, existing-root metadata, and every root
-or nested element prop whose raw value contains no deferred feature. The counts
+or nested element prop whose raw value contains no deferred feature. Completed
+#34 features no longer mask those props. The runtime receives the parsed
+library so declared functions and actions retain their existing feature
+classification; this harness supplies no function implementations. The counts
 above include rooted observations even when all their props are deferred.
 Partial prop comparison is one-shot: streaming expected results are hashes;
 a second per-step projection oracle would add substantial fixture size and
-regeneration work. Whole-result streaming comparisons remain unchanged.
+regeneration work. Whole-result streaming comparisons remain unchanged. Filtered
+runs also reject a selected pending case that now matches.
 Counts and coverage above are checked by `tree_conformance.rs`.
 
 Regenerate from `reference/` with `bun --no-install runtime.ts golden`. Two
@@ -210,6 +256,8 @@ Documented, not emulated. The parser divergences do not occur in the corpus. The
 | A state default turning a built-in constructor into text (`$s = (1).constructor + ""`). Engine-dependent: a built-in function's text is the engine's | JavaScriptCore's text: `Object` and `Array`'s constructors on one line, `Number`, `String` and `Boolean`'s across three (`function Number() {\n    [native code]\n}`) | every constructor on one line, `function Number() { [native code] }` (pinned in the evaluator's unit tests) |
 | A state default reading a property of a built-in method or prototype (`$a = [].map.length`, `$b = $o.__proto__.x`) | that property | `undefined` (the method itself, `[].map`, is reproduced) |
 | An object literal shaped like an AST node in a state default (`$x = {k: "Num", v: 1}`) | evaluates it as that node | keeps it as the object |
+| A tree root expression that throws (`root=$c ? Box(1) : ""+$bad`, `$c=false`, `$bad={toString:null}`) | `evaluateRoot` throws a `TypeError` with `No default value` | returns no root and a `runtime-error` attributed to `root`, preserving the cause; both outputs are pinned by `runtime/root-expression-throw` |
+| Invalid own `map:3` targets during loop-template substitution (`runtime/substitution-map-target`) | identifies the target as `3`, with callbacks naming `substituteRef` | identifies it as undefined; both complete outputs are pinned separately from normal descriptor evaluation |
 | One invalid array descriptor call target: `{k:"Arr",els:{map:3}}` in `runtime/descriptor-map-target` | the error identifies the invalid `node.els.map` value as `3` | the typed failure identifies the field and invalid receiver, but the runtime diagnostic identifies the map target as undefined. This named case pins only that wording difference; both complete outputs are committed |
 | A state default turning an object with its own `toString` or `valueOf` into text (`$a = {toString: 1}` then `$b = $a + ""`, or in `@Sort`, `@Filter`'s `contains`, `==`) | `parse` throws a `TypeError`: the object can't become text | `"[object Object]"` |
 | JSON nested deeper than 800 levels (three per level of the depth limit and 32 more, under raised `Limits`), for `json_to_openui`, `parse_json` or a prompt spec for `generate_system_prompt` | handled, up to the engine's recursion limit | refused with an error |
@@ -230,7 +278,7 @@ fields, absent/null call arguments, array-like argument objects, invalid
 collections and entries, and lazy malformed branches have reference cases.
 `runtime/malformed-data-ast` now matches, including `number is not iterable`.
 The one named remaining diagnostic difference is `runtime/descriptor-map-target`.
-All three runtime divergences commit both reference and Rust outputs for both
+All runtime divergences commit both reference and Rust outputs for both
 state scenarios in `conformance/divergences/runtime-<reason>.json`. The test
 checks each complete output, so neither side may widen silently. For the map
 target only, a normalizer additionally checks equality after changing just the
@@ -245,7 +293,7 @@ parsing and bindings cannot represent nested undefined. Parity would require
 changing the evaluator and value model together under a separate ADR, rather
 than adding a runtime-only variant to the parser's public enum.
 
-Error messages where the reference throws aren't compared, only that it throws. For system prompts, the reference's own error messages are compared exactly. Where it crashes inside the JavaScript engine instead (a `TypeError`, for a spec that's a JSON array, say), the core only has to return an error too.
+Core entry-point errors where the reference throws compare only that it throws. The runtime `root-expression-throw` divergence also pins the exception's name and message. For system prompts, the reference's own error messages are compared exactly. Where it crashes inside the JavaScript engine instead (a `TypeError`, for a spec that's a JSON array, say), the core only has to return an error too.
 
 ## Reproducing
 
@@ -265,3 +313,46 @@ prop, but has no tree path. If multiple elements share that identity, errors
 are compared only when every corresponding raw prop is in scope; an identity
 shared with an out-of-scope prop cannot be separated reliably. Snapshots and
 independent prop values remain checked as before.
+
+The runtime case `runtime/state-descriptor-default` pins a parser difference
+outside #34: a declared `$x={k:"Num",v:5}` is interpreted as an AST by the
+reference's state-default path and becomes 5, while Rust preserves the object.
+Its separate `parser-state-descriptor-default` divergence commits both complete
+outputs, and the tree harness witnesses the raw Rust declaration and reference
+snapshot. #34 leaves parsing unchanged. Runtime descriptor tests use explicit
+`stateValues` to isolate tree behavior from this difference. Other runtime
+additions cover all loop-item kinds, nested loops, shadowing in either lookup
+order, deferred item capture (pending #36), component collections and branches,
+root outcomes, and absent/defaulted/supplied/forward query and mutation reads.
+
+The `root-expression-throw` runtime divergence pins a lang-core `TypeError`
+(`No default value`) escaping `evaluateRoot`. The reference driver records
+its name and message. Rust returns no root and a `runtime-error` attributed to
+`root`, preserving that cause. A successful non-element still gets `no-root`.
+Both one-shot state scenarios are fully pinned; this case has no pending feature.
+
+The second review's additions exercise all twelve shared `Object.prototype`
+names as component descriptors in element state, loop-built elements and
+supplied query data, including argument failures before the failed builtin
+call. `runtime/substitution-errors` pins malformed loop templates against the
+reference, including map callbacks naming `substituteRef` and missing children
+reporting `node.k`. The separate `runtime/substitution-map-target` case pins the remaining
+call-target wording difference for a non-callable own `map:3` on each of the
+three collections (array elements, object entries and call args). Both complete
+outputs are committed; no other case or pending feature receives that allowance.
+The typed and descriptor substitution walkers remain separate: consolidating
+traversal requires refactoring the typed walker used by parsing, which this
+round leaves unchanged. Operators, iteration and literal construction remain
+shared; traversal consolidation is left for the review follow-up.
+
+Per-item inline replacements retain their room reservation while buffered.
+The owning expression releases that footprint immediately before its public
+projection charges it, retaining the original computed/data representation's
+pricing. Nested argument projections release only their own reservations;
+work and cut flags remain spent. `tree_replacement_room_and_inherited_calls` pins the exact element room
+thresholds and limits buffered replacements to the available room, including
+when a prop needs nested evaluation. It also checks prepared list and string
+reads under fixed work limits and that prepared claims cannot finance output.
+Inherited non-callable builtins evaluate arguments in order without retaining
+an argument record that cannot be consumed; a large-array test bounds that
+otherwise discarded buffer too.

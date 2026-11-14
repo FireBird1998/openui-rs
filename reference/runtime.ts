@@ -12,6 +12,7 @@ const { compileSchema, parse, createStreamParser, preprocess } = await import('.
 const { evaluateRoot } = await import('./lang-core/src/runtime/evaluate-tree');
 const { evaluate } = await import('./lang-core/src/runtime/evaluator');
 const { createStore } = await import('./lang-core/src/runtime/store');
+const { createQueryManager } = await import('./lang-core/src/runtime/queryManager');
 const { tokenize } = await import('./lang-core/src/parser/lexer');
 const { autoClose, split } = await import('./lang-core/src/parser/statements');
 const { parseExpression } = await import('./lang-core/src/parser/expressions');
@@ -55,15 +56,29 @@ function persisted(c,result) {
     typeof v==='string'?'saved-'+Math.floor(next()*1000):typeof v==='boolean'?!v:typeof v==='number'?v+1+Math.floor(next()*9):Array.isArray(v)?[...v, Math.floor(next()*10)]:v&&typeof v==='object'?{...v,saved:Math.floor(next()*1000)}:Math.floor(next()*1000)]))));
 }
 function observe(c,result,store,saved,coverage) {
-  store.initialize(result.stateDeclarations??{},saved);
+  if(c.queryComplete===false)result={...result,queryStatements:result.queryStatements.map(q=>({...q,complete:false}))};
+  store.initialize(result.stateDeclarations??{},{...saved,...(c.stateValues??{})});
   const errors=[];
   if(!rawSchemas.has(c.schema)) rawSchemas.set(c.schema,JSON.parse(readFileSync(join(C,schemas[c.schema]),'utf8')));
+  // No provider or refresh interval: register/read using the pinned manager,
+  // without fetching or starting timers. Defaults use the caller's declaration
+  // resolver while registering, just as toQueryNode accepts a caller context.
+  const manager=createQueryManager(null);let registered=false;
+  manager.registerMutations((result.mutationStatements??[]).map(m=>({statementId:m.statementId,toolName:m.statementId})));
   const ctx={actions:rawSchemas.get(c.schema).actions,getState:n=>{if(coverage)coverage.state=true;return store.get(n);},resolveRef:n=>{
     const q=result.queryStatements?.find(s=>s.statementId===n);
-    if(q) return q.defaultsAST?evaluate(q.defaultsAST,ctx):null;
-    return result.mutationStatements?.some(s=>s.statementId===n)?{status:'idle',data:null,error:null}:null;
+    const m=result.mutationStatements?.some(s=>s.statementId===n);
+    if((q||m)&&Object.prototype.hasOwnProperty.call(c.referenceValues??{},n))return c.referenceValues[n];
+    if(q) return registered?manager.getResult(n):q.complete?(q.defaultsAST?evaluate(q.defaultsAST,ctx):null):null;
+    return m?manager.getMutationResult(n):null;
   }};
-  const root=evaluateRoot(result,{ctx,library:runtimeLibrary(c),store,errors});
+  let root=null,thrown;
+  try {
+    manager.evaluateQueries((result.queryStatements??[]).map(q=>({statementId:q.statementId,toolName:q.statementId,args:null,defaults:q.complete&&q.defaultsAST?evaluate(q.defaultsAST,ctx):null,complete:q.complete})));
+    registered=true;
+    root=evaluateRoot(result,{ctx,library:runtimeLibrary(c),store,errors});
+  } catch(e) { thrown={name:e instanceof Error?e.name:'Error',message:e instanceof Error?e.message:String(e)}; }
+  finally {manager.dispose();}
   if(coverage) {
     const walk=v=>{if(!v||typeof v!=='object')return;
       if(v.hasDynamicProps)coverage.dynamic=true;
@@ -82,7 +97,7 @@ function observe(c,result,store,saved,coverage) {
     if(result.rootExpression)coverage.features.add('34:root');
     if(errors.length)coverage.errors=true;
   }
-  return JSON.stringify({root,errors,snapshot:store.getSnapshot()});
+  return JSON.stringify({root,errors,snapshot:store.getSnapshot(),...(thrown?{throw:thrown}:{})});
 }
 function run(c,k,coverage) {
   const full=parse(input(c),library(c),c.root), saved=persisted(c,full), stores=[createStore(),createStore()], results=[[],[]];

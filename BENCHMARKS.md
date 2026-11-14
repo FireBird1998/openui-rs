@@ -131,3 +131,33 @@ the audit is `target/review33-declared-ir.json`. Parsing keeps its existing
 coercion normalization and concatenation accounting. Existing parser tests and
 parser goldens are unchanged. Failure-test calls were migrated off the two
 removed public helpers, retaining their assertions.
+
+## Remaining tree evaluation (#34)
+
+Runtime call context, descriptor evaluation and per-item inspection use the
+runtime evaluator path (`Supplied`, with `S::RUNTIME`); parsing uses `Declared`.
+The shared iteration helper retains parsing's operations. No existing core
+test or parser golden changed. Against `main` (`729567f0`), the final optimized
+CLIs produced identical output and status in **3,716 runs**: parse and
+four-character streaming for all **929 cases**, including runtime-only cases.
+The CLI has no root-name override; ordinary Rust conformance covers the
+corpus's actual root configuration.
+
+The second independent review ran twelve interleaved benchmark rounds with a
+same-binary control. The branch was **-0.17%** and the control **+0.34%**; no
+regression was detectable at about **±1%**.
+
+Parsing's machine code is **not byte-identical** to main. Through the shared
+`each_array`, `each::<Declared>` grew from **1,088 to 1,260 bytes**, and
+`evaluate_in::<Declared>` grew from **3,672 to 3,688 bytes** (16 bytes).
+These symbol sizes were independently confirmed locally with `nm -nm` on the
+optimized CLIs. Timing
+and identical allocations establish the measured cost bounds, not identical
+instructions.
+
+A separate allocator-instrumented pair compared parsing cost using the
+repository's `test_alloc` helper. All **1,858 allocation-call measurements**
+(one-shot and four-character streaming for each of the 929 cases) were
+identical to main. Library compilation and input setup are outside each
+measurement; parser construction, pushes and finish are inside the streaming
+measurement. No production dependency was added.

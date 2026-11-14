@@ -1,0 +1,2 @@
+root=Box(@Each($rows,x,Box(x)),@Each($rows,"x",x))
+$rows=[null,false,true,0,2,"", "text",[1,2],{v:3}]

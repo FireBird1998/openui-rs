@@ -1,0 +1,2 @@
+root=Box(true?Box($x):null,@Each([1],item,Box($x)),true?Box([$x]):null)
+$x=null

@@ -434,6 +434,52 @@ which revisits only elements (including elements immediately inside an array).
 The runtime preserves the distinction rather than recursively evaluating every
 computed value a second time.
 
+## 25. Component calls revisit state data differently through a ternary
+
+- **Found:** 2026-11-14, implementing the remaining tree evaluator (#34), against 1.1.0 (`47b9cae`).
+- **Pinned by:** `runtime/components-state-descriptors`, `runtime/components-inline-descriptors`, `runtime/components-inline-errors`, and `runtime/query-component-default`.
+- **Status:** reproduced deliberately; nothing filed upstream.
+
+With `$x` supplied as `{k:"Num",v:5}`, `@Each([1],item,Box($x))` gives a Box whose
+prop is 5, while `true?Box($x):null` gives a Box whose prop remains
+`{k:"Num",v:5}`. Ternaries and collections evaluate their children without
+schema context; `Each` passes its context to its template. A component without
+that context preserves a direct StateRef for tree evaluation. A component with
+it reads state immediately, then tree evaluation can interpret that result as
+an expression. Nested elements are revisited inline only with that context;
+inline failures reach the owning outer prop, while later tree evaluation
+reports the nested prop. Query defaults evaluate without schema context too.
+The core carries an opaque call-context flag so the runtime can match these
+paths without reimplementing expression evaluation. `Each` also revisits each
+resulting element inline under its iteration scope, before the containing prop
+revisits the returned array; `runtime/each-item-descriptors` pins that extra pass.
+
+## 26. Descriptor loops accept truthy non-string variable names
+
+- **Found:** 2026-11-14, reviewing #34 against 1.1.0 (`47b9cae`).
+- **Pinned by:** `runtime/data-each`.
+- **Status:** reproduced deliberately; nothing filed upstream.
+
+A raw `Each` descriptor with `{k:"Ref",n:1}` as its variable and template
+iterates normally: substitution compares the names with `===`, without string
+conversion. An empty string variable yields an empty list. Array-like argument
+objects with numeric properties and `length:3` also work. Syntax still names
+variables with strings; these cases enter through AST-shaped data.
+
+## 27. Inherited names in the builtins object fail as non-callable builtins
+
+- **Found:** 2026-11-14, second independent review of #34, against 1.1.0 (`47b9cae`).
+- **Pinned by:** `runtime/inherited-components-state`, `runtime/inherited-components-each`, `runtime/inherited-components-query`, and `runtime/inherited-components-fields`.
+- **Status:** reproduced deliberately; nothing filed upstream.
+
+`BUILTINS[node.name]` reads a plain object's inherited properties. All twelve
+`Object.prototype` names, including `toString`, `constructor`, `__proto__` and
+the legacy getter/setter names, select a truthy entry with no callable `fn`.
+Argument evaluation happens first; if it succeeds the call reports
+`builtin.fn is not a function`. `__proto__` returns the prototype object,
+where the other names return functions; its missing `fn` fails the same way.
+The runtime uses the core's existing prototype-key list so lookups agree.
+
 # Fixed upstream
 
 The reference no longer behaves this way, so the core doesn't either. The cases that pinned each quirk now pin the fixed behaviour.

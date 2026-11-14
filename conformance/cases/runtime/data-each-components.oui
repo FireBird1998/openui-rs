@@ -1,0 +1,2 @@
+root=Box({k:"Comp",name:"Each",args:[{k:"StateRef",n:"$rows"},{k:"Str",v:"x"},{k:"Comp",name:"Box",args:[],mappedProps:{a:{k:"Ref",n:"x"}}}]})
+$rows=[1,2]

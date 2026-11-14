@@ -1,0 +1,1 @@
+{"saved":{"$n":16},"defaults":{"root":{"type":"element","typeName":"Box","props":{"a":{"x":9},"b":9},"partial":false,"hasDynamicProps":true,"statementId":"root"},"errors":[],"snapshot":{"$n":8}},"persisted":{"root":{"type":"element","typeName":"Box","props":{"a":{"x":17},"b":17},"partial":false,"hasDynamicProps":true,"statementId":"root"},"errors":[],"snapshot":{"$n":16}}}

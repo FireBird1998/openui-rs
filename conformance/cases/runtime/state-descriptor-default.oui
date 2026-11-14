@@ -1,0 +1,2 @@
+root=Box($x)
+$x={k:"Num",v:5}
