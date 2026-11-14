@@ -1,0 +1,2 @@
+q=Query("t",{},{a:@Identity(5)})
+root=Box(q)

@@ -620,3 +620,20 @@ subsequent missing-required check calls `some`. A string therefore throws
 its evaluation error instead of creating a custom step. Other non-null
 non-array kinds can throw earlier at `includes` when an explicit null argument
 is visited. The metadata matrix pins both orders and the native messages.
+
+## 32. Function validation salvages defaults and prunes data after reporting errors
+
+- **Found:** 2026-11-14, implementing library functions, against lang-core 1.1.0.
+- **Pinned by:** `runtime/function-calls`, `function-definitions.json` and the
+  `function_definitions` public-interface test.
+- **Status:** reproduced deliberately; nothing filed upstream.
+
+Functions use non-strict whole-schema validation. A wrong optional argument
+with a default can report a diagnostic and still reach the implementation with
+that default. Invalid array items are removed and the implementation can run
+with the remaining items. The same applies to a returned array or object;
+return diagnostics use `/returns` paths. Optional defaults are not filled just
+because an argument is absent: default insertion is driven by required keys,
+and a parameter schema lacking `type: "object"` skips object validation, as in
+quirk 29. Undefined without a return schema remains undefined (an omitted prop);
+with a truthy return schema it becomes null.

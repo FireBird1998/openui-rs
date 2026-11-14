@@ -12,6 +12,8 @@ use std::{
 };
 #[global_allocator]
 static ALLOCATOR: test_alloc::Allocator = test_alloc::Allocator::with_cap(256 * 1024 * 1024);
+#[path = "support/functions.rs"]
+mod functions;
 static NULL: Value = Value::Null;
 fn get<'a>(v: &'a Value, k: &str) -> &'a Value {
     if let Value::Obj(o) = v {
@@ -108,7 +110,7 @@ fn observe(
     source: &str,
     case_input: &Value,
     bindings: &BindingProps,
-    actions: Option<&openui_lang::JsonValue>,
+    schema: &openui_lang::JsonValue,
 ) -> String {
     let p = entries(saved);
     // JSON omits top-level undefined declarations. Preserve their *presence*
@@ -151,7 +153,7 @@ fn observe(
         ),
     );
     assert!(initialized.refused.is_empty());
-    evaluated_observation(result, library, store, case_input, bindings, actions)
+    evaluated_observation(result, library, store, case_input, bindings, schema)
 }
 fn evaluated_observation(
     result: &ParseResult,
@@ -159,7 +161,7 @@ fn evaluated_observation(
     store: &Store,
     case_input: &Value,
     bindings: &BindingProps,
-    actions: Option<&openui_lang::JsonValue>,
+    schema: &openui_lang::JsonValue,
 ) -> String {
     let mut completion_override;
     let result = if matches!(get(case_input, "queryComplete"), Value::Bool(false)) {
@@ -175,9 +177,17 @@ fn evaluated_observation(
     let mut input = TreeInput::new(result)
         .with_library(library)
         .with_binding_props(bindings);
-    if let Some(actions) = actions {
+    if let Some(actions) = schema.get("actions") {
         input = input.with_actions(actions);
     }
+    let empty_functions = openui_lang::JsonValue::Null;
+    let counts = Arc::new(std::sync::Mutex::new(BTreeMap::new()));
+    let functions = if let Some(definitions) = schema.get("functions") {
+        functions::counted_registry(definitions, Some(counts.clone()))
+    } else {
+        functions::registry(&empty_functions)
+    };
+    input = input.with_functions(&functions);
     if let Value::Obj(values) = get(case_input, "referenceValues") {
         input = input.with_reference_values(values);
     }
@@ -196,6 +206,20 @@ fn evaluated_observation(
         }
     }
     j.push_str(&json(&Value::Obj(Arc::new(snapshot))));
+    if let Some(defs) = schema
+        .get("functions")
+        .and_then(openui_lang::JsonValue::as_object)
+    {
+        let mut c = JsObject::new();
+        for name in defs.keys() {
+            c.define(
+                name.clone(),
+                Value::Num(*counts.lock().unwrap().get(name).unwrap_or(&0) as f64),
+            );
+        }
+        j.push_str(",\"callCounts\":");
+        j.push_str(&json(&Value::Obj(Arc::new(c))));
+    }
     j.push('}');
     j
 }
@@ -432,6 +456,10 @@ fn corpus_trees_snapshots_and_json_match_the_reference() {
                 assert_eq!(name, "runtime/binding-function-value");
                 assert!(input.contains("$n={}.constructor"));
             }
+            "function-prototype" => {
+                assert_eq!(name, "runtime/function-inherited");
+                assert!(input.contains(r#"__proto__:{k:"Str",v:null}"#));
+            }
             "descriptor-map-target" => {
                 assert_eq!(name, "runtime/descriptor-map-target");
                 let raw = parsed_full.root.as_ref().unwrap().props.get("a").unwrap();
@@ -468,7 +496,7 @@ fn corpus_trees_snapshots_and_json_match_the_reference() {
                 &input,
                 c,
                 &bindings,
-                schema.get("actions"),
+                &schema,
             );
             if !divergence.is_empty() {
                 let pin = load(&dir.join(format!("divergences/runtime-{divergence}.json")));
@@ -536,7 +564,7 @@ fn corpus_trees_snapshots_and_json_match_the_reference() {
                     &input,
                     c,
                     &bindings,
-                    schema.get("actions"),
+                    &schema,
                 );
                 let initial = from_json(&first);
                 let mut visits: BTreeMap<Vec<String>, Vec<&str>> = initial_markers
@@ -587,6 +615,13 @@ fn corpus_trees_snapshots_and_json_match_the_reference() {
                     if let Some(actions) = schema.get("actions") {
                         write_input = write_input.with_actions(actions);
                     }
+                    let empty_functions = openui_lang::JsonValue::Null;
+                    let write_counts = Arc::new(std::sync::Mutex::new(BTreeMap::new()));
+                    let functions = functions::counted_registry(
+                        schema.get("functions").unwrap_or(&empty_functions),
+                        Some(write_counts.clone()),
+                    );
+                    write_input = write_input.with_functions(&functions);
                     if let Value::Obj(values) = get(c, "referenceValues") {
                         write_input = write_input.with_reference_values(values);
                     }
@@ -626,13 +661,32 @@ fn corpus_trees_snapshots_and_json_match_the_reference() {
                         }
                         Err(error) => panic!("{name}/{scenario}/write {step}: {error}"),
                     };
+                    if let Some(defs) = schema
+                        .get("functions")
+                        .and_then(openui_lang::JsonValue::as_object)
+                    {
+                        let mut counts = JsObject::new();
+                        for name in defs.keys() {
+                            counts.define(
+                                name.clone(),
+                                Value::Num(
+                                    *write_counts.lock().unwrap().get(name).unwrap_or(&0) as f64
+                                ),
+                            );
+                        }
+                        assert_eq!(
+                            json(&Value::Obj(Arc::new(counts))),
+                            json(get(write, "writeCallCounts")),
+                            "{name}/{scenario}/write {step}: implementation counts"
+                        );
+                    }
                     let mut actual = evaluated_observation(
                         &parsed_full,
                         &library,
                         &store,
                         c,
                         &bindings,
-                        schema.get("actions"),
+                        &schema,
                     );
                     if let Some(error) = write_error {
                         let mut observation_value = from_json(&actual);
@@ -809,8 +863,19 @@ fn corpus_trees_snapshots_and_json_match_the_reference() {
                         &source,
                         c,
                         &bindings,
-                        schema.get("actions"),
+                        &schema,
                     );
+                    if divergence == "function-prototype" {
+                        let pin = load(&dir.join("divergences/runtime-function-prototype.json"));
+                        let trace = get(get(get(&pin, "streams"), k), scenario);
+                        let observation = arr(trace).get(step).expect("complete divergence trace");
+                        assert_eq!(
+                            fp(&json(get(observation, "reference"))),
+                            *want,
+                            "reference stream pin"
+                        );
+                        assert_eq!(json(get(observation, "rust")), actual, "Rust stream pin");
+                    }
                     if fp(&actual) != *want && !reported {
                         reported = true;
                         let detail = if !listed && mismatches.is_empty() {

@@ -7,6 +7,10 @@ cd "$(dirname "$0")/.."
 cargo fmt --all --check
 # Every test binary runs under an allocation cap (TESTING.md): one declared
 # without the counting allocator would run uncapped.
+if find crates -path '*/tests/*/main.rs' -print -quit | grep -q .; then
+  echo "check.sh: nested test binaries are forbidden; use tests/<name>.rs" >&2
+  exit 1
+fi
 for f in crates/*/tests/*.rs; do
   grep -q 'static ALLOCATOR: test_alloc::Allocator' "$f" \
     || { echo "check.sh: $f declares no test_alloc allocator (see TESTING.md)" >&2; exit 1; }

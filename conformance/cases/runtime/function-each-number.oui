@@ -1,0 +1,2 @@
+root=Box(@Each($rows,r,Box(@Identity(r),@Echo(2),@Percent(1,4))))
+$rows=[]

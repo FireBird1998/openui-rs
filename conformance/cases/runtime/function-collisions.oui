@@ -1,0 +1,1 @@
+root=Box([{k:"Comp",name:"Count",args:[{k:"Arr",els:[{k:"Num",v:1}]}]},{k:"Comp",name:"Each",args:[]},{k:"Comp",name:"Set",args:[]},{k:"Comp",name:"Box",args:[{k:"Num",v:2}]},{k:"Comp",name:"Clash",args:[{k:"Num",v:3}]}])

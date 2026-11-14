@@ -1,0 +1,3 @@
+root=Field($n=@Percent($value,4),$n,Field($m=@Identity($value),$m))
+$n=0
+$m=null

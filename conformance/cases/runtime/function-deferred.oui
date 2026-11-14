@@ -1,0 +1,2 @@
+root=Box(@Each([1,2],r,Box(@Set($n,@Identity(r)),@Set($n,@Throw()))))
+$n=0

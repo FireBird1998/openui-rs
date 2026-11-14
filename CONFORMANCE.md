@@ -23,7 +23,7 @@ Reference: `@openuidev/lang-core 1.1.0` at commit `47b9cae0d3b26a8c9d7514d5887a6
 | Element trees back to source | 826 | 826 | 1 fuzz, 71 hand-written, 723 parse corpus root, 31 reference-test |
 | Enriched errors | 419 | 419 | every parse corpus case with errors |
 
-Quirks recorded: 28.
+Quirks recorded: 29.
 Not matched yet, listed in `conformance/pending/`: none.
 <!-- /counts -->
 
@@ -47,21 +47,25 @@ and aliases within each parse result. Persistence timing remains an explicit
 assumption; the renderer is not vendored.
 
 <!-- runtime-counts -->
-Runtime trees: 992 total, 960 matching, 24 pending, 8 divergences.
+Runtime trees: 1036 total, 1027 matching, 0 pending, 9 divergences.
 
-Runtime pending: #34=0, #35=0, #36=0, #38=24.
+Runtime pending: #34=0, #35=0, #36=0, #38=0.
 
-Runtime coverage: 384 dynamic, 152 reading state, 465 referencing statements, 56 with runtime errors; 1463305 streaming steps per scenario, 148636 differing observations, 15732 differing trees.
+Runtime coverage: 422 dynamic, 166 reading state, 485 referencing statements, 76 with runtime errors; 1464426 streaming steps per scenario, 148753 differing observations, 15404 differing trees.
 
-Original runtime coverage: 859 cases, 261 dynamic, 61 reading state, 426 referencing statements, 11 with runtime errors; recorded: 152 cases, 2 declaring state.
+Original runtime coverage: 859 cases, 261 dynamic, 61 reading state, 426 referencing statements, 16 with runtime errors; recorded: 152 cases, 2 declaring state.
 
-Runtime pending partial comparison: 48 one-shot observations, 28 props.
+Runtime pending partial comparison: 0 one-shot observations, 0 props.
 
-Runtime field writes: 44 cases, 2124 steps across both scenarios; nine values per marker per scenario.
+Runtime field writes: 47 cases, 2214 steps across both scenarios; nine values per marker per scenario.
 <!-- /runtime-counts -->
 
 `reference/runtime.ts` runs the pinned parser, store and tree evaluator, with
-no function implementations and with the schema's action definitions. JSON
+synchronous implementations for every declared function and the schema's action definitions.
+`conformance/function-implementations.json` selects shared pure-JSON recipes,
+implemented in `reference/function-implementations.ts` and the Rust harness's
+`tests/support/functions.rs`. Returned undefined, errors, invalid return types,
+huge/deep values and AST/element-shaped values have direct reference probes. JSON
 Schema cannot carry upstream's in-memory binding marks. `conformance/bindings.json`
 links schemas to their upstream prompt specs; the adapter restores direct
 `$binding<…>` marks on fresh prop-schema objects with upstream's `markReactive`.
@@ -459,3 +463,81 @@ allocation. This accounting is separate from serialized room. Interrupted
 transforms expose no buffered partial value,
 including when final projection cuts. Declined unmapped calls retain the
 ordinary null fallback without callback/result charges.
+
+Runtime function definitions: 5292 observations.
+
+`reference/function-definitions.ts` bypasses parsing to check missing, null and
+wrongly typed definitions, parameter schemas, properties, required lists,
+defaults and return schemas. The public tree interface compares every complete
+output, including diagnostic order and attribution. `function-results.ts`
+pins eight returned-value observations; the Rust test admits huge/deep results
+with raised limits, and checks cuts with ordinary or lowered limits.
+`function_allowances` pins room/work thresholds and schema preparation once per
+session. Nested identity calls need exactly the same result room as the
+unwrapped result; returning a value does not earn input allowance.
+
+`runtime/function-inherited` pins the narrow `function-prototype` divergence.
+Assigning an AST object to `mappedProps.__proto__` creates a custom JavaScript
+prototype. Its inherited enumerable `v: null` is evaluated by `for-in` and
+throws upstream. Rust's public Value retains own fields and the ordinary
+Object.prototype membership model, but cannot retain this custom prototype.
+Both complete one-shot outputs and every streaming observation are committed
+in `conformance/divergences/runtime-function-prototype.json` and enforced.
+This does not exempt own JSON argument keys or ordinary inherited names:
+the definition probes and `runtime/function-collisions` compare those normally.
+
+A function declared as `Each` hits the existing parser issue #51.
+For schema `{"$defs":{"Box":{"properties":{"value":{}}}},"functions":{"Each":{"params":{"properties":{"x":{}}}}}}`
+and `root=Box(@Each([1],x,x))`, upstream parses both `x` references as placeholders,
+adds `mappedProps.x` and an excess-arguments error. Rust retains two Refs,
+adds no mapped props and reports no error. The runtime collision corpus uses
+AST-shaped data to isolate and pin evaluator dispatch from that parser issue.
+
+Query defaults are registered in root state scope (excluding a binding write's
+extra $value) before each tree evaluation and binding write,
+in parse-result declaration order. Every complete query's defaults run once
+at registration, preserving undefined results distinctly from null, including unused queries and queries with supplied values.
+During registration, references to other queries evaluate that declaration's
+first defaults afresh (unless supplied); these lookups are not cached. After
+registration, reads use the registered value (last complete duplicate wins; incomplete duplicates are skipped), with
+supplied values taking priority. Mutations do not evaluate defaults. Streaming
+uses each parse result's explicit complete flag, not global incompleteness.
+Function errors in defaults have no prop reporter and yield null silently;
+cuts remain sticky in the shared session. Function-bearing corpus observations
+include per-implementation call counts, including zero calls, in both state
+scenarios, streaming steps and post-write draws.
+
+Work thresholds, before / after eager registration, with no functions:
+`root=Box(1)`: 142 / 142; adding unused
+`q=Query("t",{},@Sum([1,2,3]))`: 142 / 151; reading that query with
+`root=Box(q)`: 129 / 129. `eager_defaults_work_thresholds` pins the new
+thresholds and cuts one step below; this extra unused-default work is deliberate.
+
+Unimplemented functions returning null is a platform policy, not upstream
+behavior. Upstream libraries carry implementations; omitting one from its
+runtime context can fall through to component construction. The named public
+interface test `unimplemented_functions_are_null_by_platform_policy` pins our
+choice for embedders lacking an implementation.
+
+`function-argument-undefined` is a separate named representation divergence.
+Implementations receive projected Value objects, so own undefined keys are
+omitted, including nested keys. `function-argument-undefined.json` pins both
+received argument records, tagging upstream undefined explicitly. This also
+covers the enumerable AST fields introduced by a positional __proto__ parameter.
+It is separate from custom-prototype preservation in `runtime-function-prototype`.
+
+Supplied container arguments retain their shared bodies and admission is reused
+at equal or shallower depth within a session. Validation still pays for fields
+actually checked. A million-item list passed to Len in 1,000 iterations finishes
+uncut by default and keeps allocation identity. Strings remain owned String
+values in Value: each argument projection copies them, admission rereads their bytes, and
+schema-driven object rebuilds can copy fields again. These copies and walks
+spend work per call. A 500,000-byte string reaches 41 calls before a work cut. Changing that requires a Value representation
+change and is outside this round.
+
+The parser's pre-existing __proto__ schema-validation difference remains:
+Box's object prop `a`, with a string __proto__ property, accepts `{}` here while
+upstream reports `/a/__proto__ expects string but got object`; making that key
+required also drops a upstream. The runtime bounded-path fix shows the missing
+inherited Object.prototype read, but parsing is deliberately unchanged.
+The #51 Each-function witness also has upstream unresolved `["x","x"]`.

@@ -1,1 +1,1 @@
-{"saved":{},"defaults":{"root":null,"errors":[],"snapshot":{}},"persisted":{"root":null,"errors":[],"snapshot":{}}}
+{"saved":{},"defaults":{"root":null,"errors":[],"snapshot":{},"callCounts":{"Keep":0,"Prune":0,"Default":0,"Walk":0,"Object":0,"Choose":0,"RequiredCall":0,"ObjectDefault":0,"ArrayDefault":0,"Nested":0,"Zero":0}},"persisted":{"root":null,"errors":[],"snapshot":{},"callCounts":{"Keep":0,"Prune":0,"Default":0,"Walk":0,"Object":0,"Choose":0,"RequiredCall":0,"ObjectDefault":0,"ArrayDefault":0,"Nested":0,"Zero":0}}}

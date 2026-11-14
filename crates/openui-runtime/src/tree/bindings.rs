@@ -463,6 +463,9 @@ pub fn write_binding_with_limits(
         value: Value,
     }
     impl EvaluationScope for Scope<'_> {
+        fn cache_references(&self) -> bool {
+            self.tree.cache_references()
+        }
         fn wants_unmapped_call(&self, call: &Value, name: &str) -> bool {
             self.tree.wants_unmapped_call(call, name)
         }
@@ -527,6 +530,7 @@ pub fn write_binding_with_limits(
         };
         let session = EvaluationSession::with_limits(&scope, bytes, limits);
         let evaluated = session.with_evaluator(|eval| {
+            eval.without_extra(|| scope.tree.initialize_queries(input.result, eval));
             eval.with_call_context(false, || match expr {
                 Value::Ast(a) => eval.evaluate_result(a),
                 _ => eval.evaluate_value(expr),

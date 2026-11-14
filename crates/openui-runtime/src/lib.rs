@@ -45,8 +45,9 @@ mod store;
 mod tree;
 pub use store::{InitializationResult, StateRefusal, StateValue, Store, StoreError, StoreSnapshot};
 pub use tree::{
-    BindingProps, BindingWriteError, PreparedReferenceValues, RuntimeError, TreeInput, TreeResult,
-    evaluate_tree, evaluate_tree_with_limits, write_binding, write_binding_with_limits,
+    BindingProps, BindingWriteError, FunctionResult, LibraryFunctions, PreparedReferenceValues,
+    RuntimeError, TreeInput, TreeResult, evaluate_tree, evaluate_tree_with_limits, write_binding,
+    write_binding_with_limits,
 };
 
 pub use openui_lang::{

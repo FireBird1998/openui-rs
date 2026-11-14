@@ -3,6 +3,7 @@
 // Diagnose: bun --no-install runtime.ts show <case> <scenario> <chunking> <step>
 import { readFileSync, writeFileSync, mkdirSync, existsSync, rmSync } from 'fs';
 import { join, dirname } from 'path';
+import {runtimeFunctions} from './function-implementations';
 import { plugin } from 'bun';
 // Same read-only export hook as run.ts; vendored parser stays untouched.
 plugin({name:'runtime-parser-stages',setup(build){build.onLoad({filter:/lang-core\/src\/parser\/parser\.ts$/},({path})=>({contents:readFileSync(path,'utf8')+'\nexport { preprocess };\n',loader:'ts'}));}});
@@ -109,7 +110,9 @@ function observe(c,result,store,saved,coverage,interaction) {
   // resolver while registering, just as toQueryNode accepts a caller context.
   const manager=createQueryManager(null);let registered=false;
   manager.registerMutations((result.mutationStatements??[]).map(m=>({statementId:m.statementId,toolName:m.statementId})));
-  const ctx={actions:rawSchemas.get(c.schema).actions,getState:n=>{if(coverage)coverage.state=true;return store.get(n);},resolveRef:n=>{
+  const definitions=rawSchemas.get(c.schema).functions;
+  const callCounts=definitions?Object.fromEntries(Object.keys(definitions).map(n=>[n,0])):undefined;
+  const ctx={functions:runtimeFunctions(definitions,callCounts),actions:rawSchemas.get(c.schema).actions,getState:n=>{if(coverage)coverage.state=true;return store.get(n);},resolveRef:n=>{
     const q=result.queryStatements?.find(s=>s.statementId===n);
     const m=result.mutationStatements?.some(s=>s.statementId===n);
     if((q||m)&&Object.prototype.hasOwnProperty.call(c.referenceValues??{},n))return c.referenceValues[n];
@@ -123,7 +126,7 @@ function observe(c,result,store,saved,coverage,interaction) {
     if(interaction?.write) {
       const {marker,value}=interaction.write;
       resolveStateField('field',marker,store,ctx,()=>undefined,()=>{throw Error('not reactive')}).setValue(value);
-      if(interaction.writeOnly)return;
+      if(interaction.writeOnly)return callCounts?JSON.stringify({callCounts}):undefined;
     }
     root=evaluateRoot(result,{ctx,library:runtimeLibrary(c),store,errors});
   } catch(e) { thrown={name:e instanceof Error?e.name:'Error',message:e instanceof Error?e.message:String(e)}; }
@@ -146,7 +149,7 @@ function observe(c,result,store,saved,coverage,interaction) {
     if(result.rootExpression)coverage.features.add('34:root');
     if(errors.length)coverage.errors=true;
   }
-  return JSON.stringify({root,errors,snapshot:store.getSnapshot(),...(thrown?{throw:thrown}:{})});
+  return JSON.stringify({root,errors,snapshot:store.getSnapshot(),...(callCounts?{callCounts}:{}),...(thrown?{throw:thrown}:{})});
 }
 function markers(root) {
   const out=[];
@@ -172,7 +175,7 @@ function writes(c,saved) {
       // updated store, matching this adapter's existing fresh-manager policy.
       const observation=JSON.parse(observe(c,result,store,saved,null,{skipInitialize:true}));
       if(failure)observation.writeError=JSON.parse(failure).throw;
-      steps.push({path,marker,value,observation});
+      steps.push({path,marker,value,observation,...(failure&&JSON.parse(failure).callCounts?{writeCallCounts:JSON.parse(failure).callCounts}:{})});
     }
   }
   return steps;

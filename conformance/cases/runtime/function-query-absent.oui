@@ -1,0 +1,2 @@
+root=Box(@Identity(q),@Each([1,2],other,Box(@Identity(q))))
+q=Query("get",{})

@@ -1,0 +1,1 @@
+root=Box([{k:"Comp",name:"toString",args:[]},{k:"Comp",name:"constructor",args:[]},{k:"Comp",name:"__proto__",args:[]}],{k:"Comp",name:["Echo"],args:[{k:"Num",v:2}]},{k:"Comp",name:"Echo",args:[],mappedProps:{toString:{k:"Str",v:"own"},constructor:{k:"Str",v:"ctor"},__proto__:{k:"Str",v:null}}})

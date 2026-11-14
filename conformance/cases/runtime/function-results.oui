@@ -1,0 +1,1 @@
+root=Box([@AstData(),@ElementData(),@Identity({k:"Comp",name:"Throw",args:[]})],Box(@Wrong()))

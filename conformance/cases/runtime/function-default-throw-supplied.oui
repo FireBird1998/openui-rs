@@ -1,0 +1,2 @@
+q=Query("t",{},{a:@Throw()})
+root=Box(1)

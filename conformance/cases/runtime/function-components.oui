@@ -1,0 +1,1 @@
+root=Box(true?Box(@Identity(1)):Box(@Throw()),[true?Box(@Wrong()):null,Box(@Identity(2))])

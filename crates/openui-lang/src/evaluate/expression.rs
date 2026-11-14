@@ -13,6 +13,8 @@ use std::sync::Weak;
 /// Extra scope falls back to state for both undefined and null. References
 /// and state otherwise preserve undefined, as upstream's evaluator does.
 /// Lookups are lazy and cached for an allowance, so they must stay stable.
+/// A registration phase can opt reference reads out through `cache_references`;
+/// state and extra lookups remain cached.
 ///
 /// Every callback receives an evaluator sharing the allowance. Lookup callbacks
 /// (`state`, `reference`, `extra`) evaluate at the root, without enclosing
@@ -40,6 +42,10 @@ pub trait EvaluationScope {
     /// as query results, in the session's initial `input_bytes`.
     fn reference(&self, _name: &str, _evaluator: &ExpressionEvaluator<'_>) -> Option<Value> {
         None
+    }
+    /// Whether reference lookups are stable enough to cache in this phase.
+    fn cache_references(&self) -> bool {
+        true
     }
     /// Prepared external data already included in the session's initial input.
     /// Reading its cached representation takes constant work and adds no input
@@ -548,6 +554,24 @@ impl ExpressionEvaluator<'_> {
         (self.operate)(&mut || ok = spend(measure_data(value, false)));
         ok
     }
+    /// Scope projected intermediate results to a callback. Their room remains
+    /// charged while the closure runs, then is released before the callback's
+    /// final output is admitted. Work, diagnostics and cuts are retained.
+    /// Sizes are measured by the evaluator; callers cannot claim credit.
+    /// The scope restores on unwind too. Values escaping the closure still
+    /// need normal final-output admission and projection.
+    pub fn with_temporary_results<T>(&self, f: impl FnOnce() -> T) -> Option<T> {
+        let mut f = Some(f);
+        let mut out = None;
+        (self.operate)(&mut || {
+            if let Some(f) = f.take() {
+                ACCOUNT.with(|a| a.borrow_mut().temporary_room.push(0));
+                let _room = TemporaryResults;
+                out = Some(f());
+            }
+        });
+        out
+    }
     /// Report a caller callback failure through the shared failure channel.
     pub fn fail(&self, message: impl Into<String>) {
         let mut message = Some(message.into());
@@ -648,6 +672,27 @@ impl ExpressionEvaluator<'_> {
         value: &Value,
         schema: &PreparedValidationSchema<'_>,
     ) -> (Option<Value>, Vec<String>) {
+        self.validate_prepared(value, schema, "", true)
+    }
+    /// Validate and salvage a value, retaining schema defaults and pruned
+    /// containers even when diagnostics were reported. `path` prefixes field
+    /// diagnostics. Like `check_value`, this shares limits and grants no input
+    /// credit; an invalid whole value returns None.
+    pub fn validate_value(
+        &self,
+        value: &Value,
+        schema: &PreparedValidationSchema<'_>,
+        path: &str,
+    ) -> (Option<Value>, Vec<String>) {
+        self.validate_prepared(value, schema, path, false)
+    }
+    fn validate_prepared(
+        &self,
+        value: &Value,
+        schema: &PreparedValidationSchema<'_>,
+        path: &str,
+        strict: bool,
+    ) -> (Option<Value>, Vec<String>) {
         let mut out = None;
         let mut messages = Vec::new();
         (self.operate)(&mut || {
@@ -694,7 +739,7 @@ impl ExpressionEvaluator<'_> {
             };
             let mut checked = value.clone();
             let invalid =
-                crate::validation::validate_bounded_value(&mut checked, schema, "", "", &mut ctx);
+                crate::validation::validate_bounded_value(&mut checked, schema, "", path, &mut ctx);
             if ctx.frame.size_limited {
                 LIMITS.with(|l| l.cut_by(Cut::Room));
             }
@@ -704,7 +749,11 @@ impl ExpressionEvaluator<'_> {
                     messages.push(error.message.clone());
                 }
             }
-            if !invalid && valid && !ctx.stack_cut && LIMITS.with(|l| l.cut.get().is_none()) {
+            if !invalid
+                && (!strict || valid)
+                && !ctx.stack_cut
+                && LIMITS.with(|l| l.cut.get().is_none())
+            {
                 out = Some(checked);
             }
         });
@@ -1542,7 +1591,8 @@ impl Supplied<'_> {
             (reference || a.extra_enabled, a.extra_object)
         });
         let key = (reference, name.to_owned(), extra_enabled, false);
-        if let Some(js) = self.read.borrow().get(&key) {
+        let cached = !reference || self.scope.cache_references();
+        if let Some(js) = self.read.borrow().get(&key).filter(|_| cached) {
             return js.clone();
         }
         if !reference && extra_enabled && extra_object {
@@ -1570,7 +1620,9 @@ impl Supplied<'_> {
                 return Js::Null;
             }
             let js = prepared.value.clone();
-            self.read.borrow_mut().insert(key, js.clone());
+            if cached {
+                self.read.borrow_mut().insert(key, js.clone());
+            }
             return js;
         }
         let value = self.callback(&Scope::Root(self), |eval| {
@@ -1609,7 +1661,9 @@ impl Supplied<'_> {
             }
         }
         let js = value.as_ref().map(data_value).unwrap_or(Js::Undefined);
-        self.read.borrow_mut().insert(key, js.clone());
+        if cached {
+            self.read.borrow_mut().insert(key, js.clone());
+        }
         js
     }
 }
@@ -1774,6 +1828,17 @@ fn room_used() -> usize {
 }
 
 struct ProjectionEntry;
+struct TemporaryResults;
+impl Drop for TemporaryResults {
+    fn drop(&mut self) {
+        let released = ACCOUNT.with(|a| a.borrow_mut().temporary_room.pop().unwrap_or(0));
+        LIMITS.with(|l| {
+            if l.cut.get().is_none() {
+                l.room.set(l.room.get().saturating_add(released));
+            }
+        });
+    }
+}
 impl ProjectionEntry {
     fn enter() -> Self {
         ACCOUNT.with(|a| a.borrow_mut().projection_room.push(0));
@@ -1799,7 +1864,16 @@ fn runtime_value(js: &Js) -> Option<Value> {
         if l.cut.get().is_none() {
             l.room.set(l.room.get().saturating_add(released));
         }
-        to_value_in::<true>(js, l)
+        let before = l.room.get();
+        let value = to_value_in::<true>(js, l);
+        if l.cut.get().is_none() {
+            ACCOUNT.with(|a| {
+                if let Some(room) = a.borrow_mut().temporary_room.last_mut() {
+                    *room = room.saturating_add(before.saturating_sub(l.room.get()));
+                }
+            });
+        }
+        value
     })
 }
 
@@ -2006,9 +2080,12 @@ struct Account {
     extra_enabled: bool,
     extra_object: bool,
     projection_room: Vec<usize>,
+    temporary_room: Vec<usize>,
     flags: Rc<Cell<EvaluationFlags>>,
     bytes: usize,
     inputs: HashSet<(u8, usize)>,
+    argument_collect_at: usize,
+    argument_bodies: HashMap<(u8, usize), (WeakValue, usize)>,
     bridges: HashMap<(u8, usize), Bridge>,
     collect_at: usize,
     owners: Vec<Value>,
@@ -2027,9 +2104,12 @@ impl Account {
             extra_enabled: true,
             extra_object: false,
             projection_room: Vec::new(),
+            temporary_room: Vec::new(),
             flags: Rc::new(Cell::new(EvaluationFlags::default())),
             bytes,
             inputs: HashSet::new(),
+            argument_collect_at: 256,
+            argument_bodies: HashMap::new(),
             bridges: HashMap::new(),
             collect_at: 128,
             owners: Vec::new(),
@@ -2389,6 +2469,22 @@ fn measure_data(value: &Value, input: bool) -> usize {
     {
         return 0;
     }
+    let memo = !input && ACCOUNT.with(|a| !a.borrow().temporary_room.is_empty());
+    // A foreign re-entry can lower max_depth without changing local depth.
+    // Reuse only with at least the remaining depth of a successful walk.
+    let depth = LIMITS.with(|l| l.max_depth.get().saturating_sub(l.depth.get()));
+    if memo && let Some(key) = data_identity(value) {
+        let hit = ACCOUNT.with(|a| {
+            a.borrow()
+                .argument_bodies
+                .get(&key)
+                .is_some_and(|(weak, d)| weak.alive() && depth >= *d)
+        });
+        if hit {
+            step(1);
+            return 0;
+        }
+    }
     if let Value::Str(text) = value {
         return data_text(text, input);
     }
@@ -2475,6 +2571,23 @@ fn measure_data(value: &Value, input: bool) -> usize {
         }
         _ => {}
     }
+    if memo && LIMITS.with(|l| l.cut.get().is_none()) {
+        let weak = match value {
+            Value::Arr(v) => Some(WeakValue::Arr(Arc::downgrade(v))),
+            Value::Obj(v) => Some(WeakValue::Obj(Arc::downgrade(v))),
+            _ => None,
+        };
+        if let (Some(key), Some(weak)) = (data_identity(value), weak) {
+            ACCOUNT.with(|a| {
+                let mut a = a.borrow_mut();
+                if a.argument_bodies.len() >= a.argument_collect_at {
+                    a.argument_bodies.retain(|_, (w, _)| w.alive());
+                    a.argument_collect_at = a.argument_bodies.len().saturating_mul(2).max(256);
+                }
+                a.argument_bodies.insert(key, (weak, depth));
+            });
+        }
+    }
     bytes
 }
 
@@ -2504,6 +2617,14 @@ pub(super) fn data_value(value: &Value) -> Js {
     }
 }
 pub(super) fn output_data(value: &Value) -> Value {
+    let shared = ACCOUNT.with(|a| {
+        let a = a.borrow();
+        !a.temporary_room.is_empty() && data_identity(value).is_some_and(|k| a.inputs.contains(&k))
+    });
+    if shared {
+        measure_data(value, false);
+        return value.clone();
+    }
     let bytes = measure_data(value, false);
     if spend(bytes) {
         value.clone()

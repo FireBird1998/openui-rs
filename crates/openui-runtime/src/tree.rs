@@ -12,7 +12,9 @@ use std::{
 pub(crate) mod actions;
 mod bindings;
 mod fields;
+mod functions;
 pub use bindings::{BindingProps, BindingWriteError, write_binding, write_binding_with_limits};
+pub use functions::{FunctionResult, LibraryFunctions};
 mod input;
 mod prepared;
 use fields::{own_fields, shaped_element};
@@ -20,7 +22,7 @@ pub use prepared::PreparedReferenceValues;
 
 /// Extensible input to tree evaluation. Parsing already inlines value statements.
 /// Parsing has already named component arguments. Library definitions separate
-/// components from library functions (due in #38) and declared actions.
+/// components from library functions and declared actions.
 /// Binding props are supplied independently of JSON Schema.
 #[derive(Clone)]
 #[non_exhaustive]
@@ -29,6 +31,8 @@ pub struct TreeInput<'a> {
     /// parsing library intentionally does not retain their whole schemas.
     /// Without these definitions custom calls evaluate to null.
     pub actions: Option<&'a openui_lang::JsonValue>,
+    /// Synchronous function implementations and their original schemas.
+    pub functions: Option<&'a LibraryFunctions<'a>>,
     /// Props whose schema objects upstream marks reactive.
     pub binding_props: Option<&'a BindingProps>,
     /// The parse result. Evaluation reads the store without initializing it.
@@ -49,11 +53,17 @@ impl<'a> TreeInput<'a> {
         Self {
             result,
             actions: None,
+            functions: None,
             binding_props: None,
             reference_values: None,
             library: None,
             prepared_reference_values: None,
         }
+    }
+    /// Supply synchronous library implementations and original definitions.
+    pub fn with_functions(mut self, functions: &'a LibraryFunctions<'a>) -> Self {
+        self.functions = Some(functions);
+        self
     }
     /// Supply original action definitions, including each `params` schema.
     pub fn with_actions(mut self, actions: &'a openui_lang::JsonValue) -> Self {
@@ -233,6 +243,7 @@ pub fn evaluate_tree_with_limits(
     let scope = TreeScope::new(&input, store, supplied);
     let session = EvaluationSession::with_limits(&scope, bytes, limits);
     let root = session.with_evaluator(|eval| {
+        scope.initialize_queries(input.result, eval);
         if let Some(e) = &input.result.root {
             return Some(scope.element(e, eval));
         }
@@ -277,6 +288,8 @@ pub fn evaluate_tree_with_limits(
     }
 }
 struct TreeScope<'a> {
+    registering: Cell<bool>,
+    defaults: RefCell<BTreeMap<&'a str, Option<Value>>>,
     store: &'a Store,
     errors: RefCell<Vec<RuntimeError>>,
     inline: Cell<bool>,
@@ -289,6 +302,7 @@ struct TreeScope<'a> {
     references: BTreeMap<&'a str, Option<(bool, Option<&'a Ast>)>>,
     reference_values: Option<&'a PreparedReferenceValues<'a>>,
     actions: Option<&'a openui_lang::JsonValue>,
+    functions: Option<&'a LibraryFunctions<'a>>,
     checked_schemas:
         RefCell<BTreeMap<usize, std::rc::Rc<openui_lang::PreparedValidationSchema<'a>>>>,
     library: Option<&'a Library>,
@@ -301,6 +315,8 @@ impl<'a> TreeScope<'a> {
         supplied: Option<&'a PreparedReferenceValues<'a>>,
     ) -> Self {
         Self {
+            registering: Cell::new(true),
+            defaults: RefCell::new(BTreeMap::new()),
             store,
             errors: RefCell::new(Vec::new()),
             inline: Cell::new(false),
@@ -320,15 +336,42 @@ impl<'a> TreeScope<'a> {
             },
             reference_values: supplied,
             actions: input.actions,
+            functions: input.functions,
             checked_schemas: RefCell::new(BTreeMap::new()),
             library: input.library,
             binding_props: input.binding_props,
         }
     }
 }
+impl<'a> TreeScope<'a> {
+    fn initialize_queries(&self, result: &'a ParseResult, eval: &ExpressionEvaluator<'_>) {
+        for q in &result.query_statements {
+            if cut(eval) {
+                break;
+            }
+            if !q.complete {
+                continue;
+            }
+            let value = q.defaults.as_ref().map_or(Some(Value::Null), |a| {
+                eval.with_temporary_results(|| {
+                    eval.with_call_context(false, || eval.evaluate(a)).flatten()
+                })
+                .flatten()
+            });
+            self.defaults
+                .borrow_mut()
+                .insert(q.statement_id.as_str(), value);
+        }
+        self.registering.set(false);
+    }
+}
 impl EvaluationScope for TreeScope<'_> {
+    fn cache_references(&self) -> bool {
+        !self.registering.get()
+    }
     fn wants_unmapped_call(&self, call: &Value, name: &str) -> bool {
-        matches!(call,Value::Obj(o) if matches!(o.get("name"),Some(Value::Str(n)) if matches!(n.as_str(),"Action"|"Run"|"Set"|"Reset"|"ToAssistant"|"OpenUrl")))
+        self.functions.is_some_and(|f| f.get(name).is_some())
+            || matches!(call,Value::Obj(o) if matches!(o.get("name"),Some(Value::Str(n)) if matches!(n.as_str(),"Action"|"Run"|"Set"|"Reset"|"ToAssistant"|"OpenUrl")))
             || self
                 .actions
                 .and_then(|a| a.as_object())
@@ -387,6 +430,14 @@ impl EvaluationScope for TreeScope<'_> {
                 Ok(None) => {}
             }
         }
+        if !self.registering.get() && default.is_some() {
+            return self
+                .defaults
+                .borrow()
+                .get(name)
+                .cloned()
+                .unwrap_or(Some(Value::Null));
+        }
         match default {
             None => {
                 let mut idle = JsObject::new();
@@ -441,14 +492,22 @@ impl EvaluationScope for TreeScope<'_> {
             && (matches!(
                 name.as_str(),
                 "Action" | "Run" | "Set" | "Reset" | "ToAssistant" | "OpenUrl"
-            ) || self
-                .actions
-                .and_then(|a| a.as_object())
-                .is_some_and(|a| a.contains_key(name)))
+            ) || self.functions.is_some_and(|f| f.get(name).is_some())
+                || self
+                    .actions
+                    .and_then(|a| a.as_object())
+                    .is_some_and(|a| a.contains_key(name)))
         {
             let value = Value::Ast(Arc::new(call.clone()));
             let node = own_fields(&value);
-            if let Some(plan) = self.action(&node, name, eval) {
+            if self.functions.is_some_and(|f| f.get(name).is_some())
+                && !matches!(node.get("name"),Some(Value::Str(n)) if matches!(n.as_str(),"Action"|"Run"|"Set"|"Reset"|"ToAssistant"|"OpenUrl"))
+            {
+                return eval
+                    .with_temporary_results(|| self.declared_call(&node, name, eval))
+                    .flatten();
+            }
+            if let Some(plan) = self.declared_call(&node, name, eval) {
                 return Some(plan);
             }
         }
@@ -476,7 +535,14 @@ impl EvaluationScope for TreeScope<'_> {
         let Value::Obj(o) = call else {
             return Some(Value::Null);
         };
-        if let Some(plan) = self.action(o, name, eval) {
+        if self.functions.is_some_and(|f| f.get(name).is_some())
+            && !matches!(o.get("name"),Some(Value::Str(n)) if matches!(n.as_str(),"Action"|"Run"|"Set"|"Reset"|"ToAssistant"|"OpenUrl"))
+        {
+            return eval
+                .with_temporary_results(|| self.declared_call(o, name, eval))
+                .flatten();
+        }
+        if let Some(plan) = self.declared_call(o, name, eval) {
             return Some(plan);
         }
         let Some(mapped) = o.get("mappedProps").filter(|v| match v {

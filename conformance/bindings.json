@@ -1,1 +1,1 @@
-{"spec-1.0":"prompts/spec-1.0-library.json","react-ui":"prompts/react-ui-schema.json","runtime-bindings":"schemas/bindings-spec.json"}
+{"spec-1.0":"prompts/spec-1.0-library.json","react-ui":"prompts/react-ui-schema.json","runtime-bindings":"schemas/bindings-spec.json","runtime-functions":"schemas/runtime-functions-spec.json"}

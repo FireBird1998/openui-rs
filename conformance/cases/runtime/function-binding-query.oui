@@ -1,0 +1,3 @@
+root=Field($n=@Identity(q),$n)
+$n=0
+q=Query("get",{},@Identity(7))

@@ -1,4 +1,4 @@
-//! Action plans and private, session-owned custom-step identities.
+//! Plans, private custom-step identities, and shared checked call arguments.
 use super::*;
 use std::{
     collections::HashMap,
@@ -174,7 +174,7 @@ impl<'a> TreeScope<'a> {
             .unwrap_or_else(|| None.into()),
         )
     }
-    pub(super) fn action(
+    pub(super) fn declared_call(
         &self,
         node: &JsObject<Value>,
         name: &str,
@@ -183,16 +183,27 @@ impl<'a> TreeScope<'a> {
         // Builtin step detection is Map.get: an array coercing to "Set" is not Set.
         let original = node.get("name");
         let builtin = matches!(original,Some(Value::Str(n)) if matches!(n.as_str(),"Action"|"Run"|"Set"|"Reset"|"ToAssistant"|"OpenUrl"));
-        let custom = self
-            .actions
-            .and_then(|a| a.as_object())
-            .and_then(|a| a.get(name));
+        let function = (!builtin)
+            .then(|| self.functions.and_then(|f| f.get(name)))
+            .flatten();
+        let empty = || {
+            if function.is_some() {
+                Value::Null
+            } else {
+                plan(vec![])
+            }
+        };
+        let custom = function.map(|(definition, _)| definition).or_else(|| {
+            self.actions
+                .and_then(|a| a.as_object())
+                .and_then(|a| a.get(name))
+        });
         if !builtin && custom.is_none() {
             return None;
         }
         if !builtin && matches!(custom, Some(openui_lang::JsonValue::Null)) {
             eval.fail("null is not an object (evaluating 'def.params')");
-            return Some(plan(vec![]));
+            return Some(empty());
         }
         let schema = custom.and_then(|a| a.get("params"));
         if !builtin && schema.is_none_or(|s| s.is_null()) {
@@ -204,7 +215,7 @@ impl<'a> TreeScope<'a> {
                     "null"
                 }
             ));
-            return Some(plan(vec![]));
+            return Some(empty());
         }
         let properties = schema.and_then(|s| s.get("properties"));
         let args = node.get("args");
@@ -237,7 +248,7 @@ impl<'a> TreeScope<'a> {
                 _ => "args.length",
             };
             eval.fail(nullish_message(receiver));
-            return Some(plan(vec![]));
+            return Some(empty());
         }
         // Eager naming reads increasing indices; lazy steps may reread zero.
         // Keep a cursor instead of rescanning a supplied string per parameter.
@@ -284,7 +295,7 @@ impl<'a> TreeScope<'a> {
             match name {
                 "Run" => {
                     let Some(a) = at(0).filter(|a| kind(a, "RuntimeRef")) else {
-                        return Some(plan(vec![]));
+                        return Some(empty());
                     };
                     step.define("type", text("run"));
                     if let Some(n) = field(&a, "n") {
@@ -302,12 +313,12 @@ impl<'a> TreeScope<'a> {
                             "{} is not an object (evaluating 'args[0].k')",
                             if at(0).is_none() { "undefined" } else { "null" }
                         ));
-                        return Some(plan(vec![]));
+                        return Some(empty());
                     }
                     let Some(a) =
                         at(0).filter(|a| kind(a, "StateRef") && (len >= 2.0 || len.is_nan()))
                     else {
-                        return Some(plan(vec![]));
+                        return Some(empty());
                     };
                     step.define("type", text("set"));
                     if let Some(n) = field(&a, "n") {
@@ -321,7 +332,7 @@ impl<'a> TreeScope<'a> {
                     let mut targets = Vec::new();
                     if !matches!(args, Some(Value::Arr(_))) {
                         eval.fail("args.filter is not a function. (In 'args.filter((a) => a.k === \"StateRef\")', 'args.filter' is undefined)");
-                        return Some(plan(vec![]));
+                        return Some(empty());
                     }
                     if let Some(Value::Arr(args)) = args {
                         for a in args.iter() {
@@ -338,7 +349,7 @@ impl<'a> TreeScope<'a> {
                         }
                     }
                     if targets.is_empty() {
-                        return Some(plan(vec![]));
+                        return Some(empty());
                     }
                     step.define("type", text("reset"));
                     step.define("targets", Value::Arr(Arc::new(targets)));
@@ -355,7 +366,7 @@ impl<'a> TreeScope<'a> {
             None
         } else {
             let Some(schema) = schema else {
-                return Some(plan(vec![]));
+                return Some(empty());
             };
             let key = schema as *const _ as usize;
             let cached = self.checked_schemas.borrow().get(&key).cloned();
@@ -363,7 +374,7 @@ impl<'a> TreeScope<'a> {
                 cached
             } else {
                 let Some(validation) = eval.prepare_validation_schema(schema) else {
-                    return Some(plan(vec![]));
+                    return Some(empty());
                 };
                 let prepared = std::rc::Rc::new(validation);
                 self.checked_schemas
@@ -374,6 +385,7 @@ impl<'a> TreeScope<'a> {
             Some(prepared)
         };
         let mut named = JsObject::new();
+        let mut undefined = std::collections::BTreeSet::new();
         if let Some(mapped) = node
             .get("mappedProps")
             .filter(|v| !matches!(v, Value::Null))
@@ -382,15 +394,24 @@ impl<'a> TreeScope<'a> {
                 if cut(eval) {
                     break;
                 }
-                if let Some(v) = eval
-                    .with_call_context(false, || eval.evaluate_value(v).value)
-                    .flatten()
-                {
-                    let Some(key) = eval.copy_text(k) else {
-                        break;
-                    };
-                    named.set(key, v);
+                if matches!(v, Value::Null) {
+                    eval.fail("null is not an object (evaluating 'node.k')");
+                    return Some(empty());
                 }
+                let Some(result) = eval.with_call_context(false, || eval.evaluate_value(v)) else {
+                    return Some(empty());
+                };
+                if result.failure.is_some() || result.size_limited || result.depth_limited {
+                    return Some(empty());
+                }
+                let v = result.value;
+                let Some(key) = eval.copy_text(k) else {
+                    break;
+                };
+                if v.is_none() {
+                    undefined.insert(key.clone());
+                }
+                named.set(key, v.unwrap_or(Value::Null));
             }
         } else {
             let builtin_iter = builtin
@@ -399,6 +420,7 @@ impl<'a> TreeScope<'a> {
                 .flatten()
                 .copied();
             let declared_iter = prepared.iter().flat_map(|p| p.property_names());
+            let mut prototype = JsObject::new();
             for (i, name) in builtin_iter.chain(declared_iter).enumerate() {
                 if cut(eval) {
                     break;
@@ -406,15 +428,57 @@ impl<'a> TreeScope<'a> {
                 if (i as f64) >= len || len.is_nan() {
                     break;
                 }
-                if let Some(v) = at(i).and_then(|v| {
-                    eval.with_call_context(false, || eval.evaluate_value(&v).value)
-                        .flatten()
-                }) {
+                if let Some(arg) = at(i) {
+                    // nameArgs assigns descriptors onto a plain object before
+                    // evaluateArgs walks it. __proto__ sets that intermediate
+                    // object's prototype instead of naming an argument.
+                    if name == "__proto__" {
+                        prototype = own_fields(&arg).into_owned();
+                        continue;
+                    }
+                    if matches!(arg, Value::Null) {
+                        eval.fail("null is not an object (evaluating 'node.k')");
+                        return Some(empty());
+                    }
+                    let Some(result) = eval.with_call_context(false, || eval.evaluate_value(&arg))
+                    else {
+                        return Some(empty());
+                    };
+                    if result.failure.is_some() || result.size_limited || result.depth_limited {
+                        return Some(empty());
+                    }
+                    let v = result.value;
                     let Some(name) = eval.copy_text(name) else {
                         break;
                     };
-                    named.set(name, v);
+                    if v.is_none() {
+                        undefined.insert(name.clone());
+                    }
+                    named.set(name, v.unwrap_or(Value::Null));
                 }
+            }
+            for (key, raw) in prototype.iter() {
+                if named.has_own(key) {
+                    continue;
+                }
+                if matches!(raw, Value::Null) {
+                    eval.fail("null is not an object (evaluating 'node.k')");
+                    return Some(empty());
+                }
+                let Some(result) = eval.with_call_context(false, || eval.evaluate_value(raw))
+                else {
+                    return Some(empty());
+                };
+                if result.failure.is_some() || result.size_limited || result.depth_limited {
+                    return Some(empty());
+                }
+                let Some(key) = eval.copy_text(key) else {
+                    return Some(empty());
+                };
+                if result.value.is_none() {
+                    undefined.insert(key.clone());
+                }
+                named.set(key, result.value.unwrap_or(Value::Null));
             }
         }
         if builtin {
@@ -453,12 +517,12 @@ impl<'a> TreeScope<'a> {
                     "null"
                 }
             ));
-            return Some(plan(vec![]));
+            return Some(empty());
         };
         let required = schema.get("required").filter(|r| !r.is_null());
         let mut nulls = Vec::new();
         for (key, value) in named.iter() {
-            if !matches!(value, Value::Null) {
+            if !matches!(value, Value::Null) || undefined.contains(key) {
                 continue;
             }
             let required_name = match required {
@@ -467,19 +531,19 @@ impl<'a> TreeScope<'a> {
                 }
                 Some(raw @ openui_lang::JsonValue::String(_)) => {
                     let Some(required) = eval.coerce_json_string(raw) else {
-                        return Some(plan(vec![]));
+                        return Some(empty());
                     };
                     required.contains(key)
                 }
                 None => false,
                 _ => {
                     eval.fail(format!("params.required?.includes is not a function. (In 'params.required?.includes(key)', 'params.required?.includes' is {})",method_value(required.and_then(|r|r.get("includes")))));
-                    return Some(plan(vec![]));
+                    return Some(empty());
                 }
             };
             if !required_name {
                 let Some(key) = eval.copy_text(key) else {
-                    return Some(plan(vec![]));
+                    return Some(empty());
                 };
                 nulls.push(key);
             }
@@ -487,14 +551,15 @@ impl<'a> TreeScope<'a> {
         for key in nulls {
             named.remove(&key);
         }
+        let mut defaulted = std::collections::BTreeSet::new();
         if let Some(required) = required {
             let Some(required) = required.as_array() else {
                 eval.fail(format!("params.required?.some is not a function. (In 'params.required?.some((key) => args[key] == null && getSchemaDefaultValue(params.properties?.[key]) === void 0)', 'params.required?.some' is {})",method_value(required.get("some"))));
-                return Some(plan(vec![]));
+                return Some(empty());
             };
             for raw_key in required {
                 let Some(key) = eval.coerce_json_string(raw_key) else {
-                    return Some(plan(vec![]));
+                    return Some(empty());
                 };
                 let nullish = !named.has(&key) || matches!(named.get(&key), Some(Value::Null));
                 let sub = match properties {
@@ -510,31 +575,102 @@ impl<'a> TreeScope<'a> {
                     .and_then(|s| s.as_object())
                     .and_then(|s| s.get("default"));
                 if nullish && default.is_none() {
-                    return Some(plan(vec![]));
+                    return Some(empty());
+                }
+                if nullish
+                    && schema.get("type").and_then(openui_lang::JsonValue::as_str) == Some("object")
+                {
+                    defaulted.insert(key);
                 }
             }
         }
         let Some(prepared) = prepared else {
-            return Some(plan(vec![]));
+            return Some(empty());
         };
-        let (params, messages) = eval.check_value(&Value::Obj(Arc::new(named)), &prepared);
+        let raw = Value::Obj(Arc::new(named));
+        let (params, messages) = if function.is_some() {
+            eval.validate_value(&raw, &prepared, "")
+        } else {
+            eval.check_value(&raw, &prepared)
+        };
         for message in messages {
-            if let Some(bytes) = self.report_bytes.get() {
-                let message = format!("@{name}: {message}");
-                if eval.reserve_result(bytes.saturating_add(text_bytes(&message))) {
-                    self.errors.borrow_mut().push(RuntimeError {
-                        code: "runtime-error",
-                        component: None,
-                        statement_id: None,
-                        message,
-                        hint: None,
-                    });
+            self.report_call(format!("@{name}: {message}"), eval);
+        }
+        let Some(mut params) = params else {
+            return Some(empty());
+        };
+        // Value's public projection omits undefined own fields. Keep a nullish
+        // placeholder through validation so they shadow inherited members;
+        // remove it afterwards unless a required default supplied real null.
+        if let Value::Obj(object) = &params {
+            undefined.retain(|key| {
+                !defaulted.contains(key) && matches!(object.get(key), Some(Value::Null))
+            });
+            if !undefined.is_empty() {
+                // Rebuild once: repeated shift-removal would be quadratic for
+                // a wide object of undefined arguments. Price actual copies.
+                let mut projected = JsObject::new();
+                for (key, value) in object.iter() {
+                    if undefined.contains(key) {
+                        continue;
+                    }
+                    let Some(key) = eval.copy_text(key) else {
+                        return Some(empty());
+                    };
+                    let value = if let Value::Str(s) = value {
+                        let Some(s) = eval.copy_text(s) else {
+                            return Some(empty());
+                        };
+                        Value::Str(s)
+                    } else {
+                        value.clone()
+                    };
+                    projected.define(key, value);
                 }
+                params = Value::Obj(Arc::new(projected));
             }
         }
-        let Some(params) = params else {
-            return Some(plan(vec![]));
-        };
+        if cut(eval) {
+            return Some(empty());
+        }
+        if let Some((definition, implementation)) = function {
+            let result = match implementation(params) {
+                Ok(result) => result,
+                Err(message) => {
+                    if let Some(message) = eval.copy_text(&message) {
+                        self.report_call(format!("@{name} threw: {message}"), eval);
+                    }
+                    return Some(Value::Null);
+                }
+            };
+            let returns = definition.get("returns").filter(|s| match s {
+                openui_lang::JsonValue::Null => false,
+                openui_lang::JsonValue::Bool(b) => *b,
+                openui_lang::JsonValue::Number(n) => n.as_f64().is_some_and(|n| n != 0.0),
+                openui_lang::JsonValue::String(s) => !s.is_empty(),
+                _ => true,
+            });
+            let Some(returns) = returns else {
+                return result;
+            };
+            let key = returns as *const _ as usize;
+            let cached = self.checked_schemas.borrow().get(&key).cloned();
+            let schema = if let Some(schema) = cached {
+                schema
+            } else {
+                let schema = std::rc::Rc::new(eval.prepare_validation_schema(returns)?);
+                self.checked_schemas
+                    .borrow_mut()
+                    .insert(key, schema.clone());
+                schema
+            };
+            let (checked, messages) =
+                eval.validate_value(result.as_ref().unwrap_or(&Value::Null), &schema, "/returns");
+            for message in messages {
+                self.report_call(format!("@{name}: {message}"), eval);
+            }
+            return Some(checked.unwrap_or(Value::Null));
+        }
         let step = obj([
             ("type", text("custom_action")),
             ("name", original.cloned().unwrap_or_else(|| text(name))),

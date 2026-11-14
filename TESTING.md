@@ -702,3 +702,20 @@ a later ordinary array evaluation in the same session.
 `action_plans` names and checks invocation of a declared action from AST-shaped
 props in element-shaped state and query data, followed by same-store plan reuse;
 finished steps supplied as data are still rejected.
+
+Library function tests use the public tree interface. `function_definitions`
+compares 5,292 direct lang-core observations; `library_functions` covers
+unregistered names, replacement registration, host unwind recovery, deferred
+set expressions, returned data, and admission cuts. `function_allowances` uses
+a 64 MiB allocator cap and pins exact work/room thresholds, shared schema work,
+large host errors and shared DAG results. The other two use 256 MiB.
+Regenerate their direct goldens from `reference/` with
+`bun --no-install function-definitions.ts` and `bun --no-install function-results.ts`;
+`bun --no-install runtime.ts golden` includes the 37 function corpus cases.
+
+Nested integration binary layouts (`tests/<directory>/main.rs`) are forbidden
+by scripts/check.sh before compilation; every supported integration binary
+must be tests/<name>.rs and declare the counting allocator. Query registration
+and large shared arguments are covered by query_default_calls, with a 256 MiB
+allocation cap. Its definition-argument divergence is regenerated with
+`bun --no-install function-undefined-arguments.ts` from reference/.

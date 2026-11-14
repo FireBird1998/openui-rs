@@ -1,0 +1,3 @@
+root=Box([@Echo(),@Echo(null,null,[1,"bad",2]),@Percent($n),@Percent($bad),@Percent($missing),@Throw(),@Wrong(),@Undefined(),@Null(),@Echo(2,"b",[],"s",@Throw())])
+$n=25
+$bad="bad"

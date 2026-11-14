@@ -1,0 +1,2 @@
+m=Mutation("t",{},@Identity(1))
+root=Box(m)

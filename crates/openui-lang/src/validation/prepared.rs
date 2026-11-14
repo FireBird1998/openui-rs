@@ -175,7 +175,7 @@ impl<'s> PreparedValidationSchema<'s> {
                             return false;
                         }
                         lookup.insert(key.clone(), i);
-                        if key != "__proto__" && OBJECT_PROTOTYPE_KEYS.contains(&key.as_str()) {
+                        if OBJECT_PROTOTYPE_KEYS.contains(&key.as_str()) {
                             inherited.push(i);
                         }
                     }

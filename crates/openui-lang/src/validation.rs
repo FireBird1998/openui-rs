@@ -624,7 +624,15 @@ fn validate_object<const BOUNDED: bool>(
             continue;
         }
         let child_path = format!("{path}/{key}");
-        let Some(before) = obj.get(key) else {
+        // Runtime validation reads Object.prototype through the inherited
+        // __proto__ accessor. Parsing retains its established own-value path.
+        let prototype = if BOUNDED && key == "__proto__" && obj.has(key) {
+            static PROTOTYPE: std::sync::OnceLock<Value> = std::sync::OnceLock::new();
+            Some(PROTOTYPE.get_or_init(|| Value::Obj(std::sync::Arc::new(JsObject::new()))))
+        } else {
+            None
+        };
+        let Some(before) = obj.get(key).or(prototype) else {
             // Inherited methods are functions, not representable as Value.
             if key != "__proto__"
                 && OBJECT_PROTOTYPE_KEYS.contains(&key.as_str())
