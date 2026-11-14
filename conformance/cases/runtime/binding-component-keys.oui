@@ -1,0 +1,2 @@
+root=Field(null,null,[{k:"Comp",name:1,mappedProps:{value:{k:"StateRef",n:"$n"}}},{k:"Comp",name:null,mappedProps:{value:{k:"StateRef",n:"$n"}}},{k:"Comp",name:{},mappedProps:{value:{k:"StateRef",n:"$n"}}},{k:"Comp",name:[],mappedProps:{value:{k:"StateRef",n:"$n"}}},{k:"Comp",mappedProps:{value:{k:"StateRef",n:"$n"}}},{k:"Comp",name:true,mappedProps:{value:{k:"StateRef",n:"$n"}}}])
+$n=4

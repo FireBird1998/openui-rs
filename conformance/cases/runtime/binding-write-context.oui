@@ -1,0 +1,6 @@
+root=Field($total=$value+q.n,q.total,[$node,Field($node=Field($value,$n))],$node=$value?Field($n,$n):Field("empty"))
+q=Query("get",{},{n:$value,total:$total})
+$total=0
+$node=null
+$n=3
+$value=9

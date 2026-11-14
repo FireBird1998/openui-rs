@@ -1,0 +1,5 @@
+root=Field($total=$value+q.n+(m.status=="idle"?1:2),$total,null,$n)
+q=Query("get",{},{n:2})
+m=Mutation("save",{})
+$total=0
+$n=3

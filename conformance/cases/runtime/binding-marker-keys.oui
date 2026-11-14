@@ -1,0 +1,2 @@
+root=Field($n,[{__reactive:"assign"},{__reactive:"assign",target:null},{__reactive:"assign",target:1},{__reactive:"assign",target:"toString"},{__reactive:"assign",target:"constructor"},{__reactive:"assign",target:"__proto__"},{__reactive:null,target:"$n"}])
+$n=4

@@ -1,0 +1,3 @@
+root=Field(null,null,q.child)
+q=Query("get",{},{child:true?Field($n,$n):null})
+$n=3

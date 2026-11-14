@@ -1,0 +1,3 @@
+root=Field(null,null,[@Each([1,2],item,Field($n,item)),item])
+item=Field($n)
+$n=3

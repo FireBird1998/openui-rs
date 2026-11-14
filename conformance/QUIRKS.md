@@ -480,6 +480,19 @@ Argument evaluation happens first; if it succeeds the call reports
 where the other names return functions; its missing `fn` fails the same way.
 The runtime uses the core's existing prototype-key list so lookups agree.
 
+## 28. A null field write falls back to state named `$value`
+
+- **Found:** 2026-11-14, implementing runtime bindings (#35), against 1.1.0 (`47b9cae`).
+- **Pinned by:** `runtime/binding-plain` scripted writes and
+  `markers_preserve_ast_json_and_transform_writes_use_current_state`.
+- **Status:** reproduced deliberately; nothing filed upstream.
+
+`resolveStateField` injects `{ $value: newValue }` through `extraScope`.
+The evaluator reads `extraScope[node.n] ?? getState(node.n)`, so writing null
+through a plain marker stores the current state named `$value`, or undefined
+if absent, rather than necessarily storing null. False, zero and empty strings
+do not fall back. The runtime uses the core's extra-scope hook for the same rule.
+
 # Fixed upstream
 
 The reference no longer behaves this way, so the core doesn't either. The cases that pinned each quirk now pin the fixed behaviour.

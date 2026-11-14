@@ -1,0 +1,2 @@
+root=Field({__reactive:"assign",target:"$n",expr:{k:"StateRef",n:"$value"}},{__reactive:"assign",target:"$n",expr:{k:"Num",v:99}})
+$n=7

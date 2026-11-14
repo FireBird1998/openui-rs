@@ -7,7 +7,7 @@ The `openui-lang` crate is a port of the OpenUI Lang language layer in `@openuid
 
 The reference is lang-core 1.1.0 (OpenUI Lang 1.1), and the core matches it on every case in the corpus: nothing is pending. The quirks and divergences below were checked against 1.1.0 on 2026-11-06, and quirks 21 and 22 added on 2026-11-07. Three quirks were fixed upstream in 1.1, and the core follows. The core conformed to 1.0.1 and to 0.3.0 before; those states are the local tags `lang-core-1.0.1` and `lang-core-0.3.0`, and aren't kept up.
 
-Behaviour that looks wrong in the reference is reproduced anyway and recorded as a [quirk](conformance/QUIRKS.md) with a draft upstream report. The core and runtime depart from the reference only where the list of [divergences](#divergences) below says so. The runtime representation divergence can arise when evaluating an action value.
+Behaviour that looks wrong in the reference is reproduced anyway and recorded as a [quirk](conformance/QUIRKS.md) with a draft upstream report. The core and runtime depart from the reference only where the list of [divergences](#divergences) below says so. The runtime representation divergences include nested undefined and function-valued state.
 
 ## What's checked
 
@@ -23,7 +23,7 @@ Reference: `@openuidev/lang-core 1.1.0` at commit `47b9cae0d3b26a8c9d7514d5887a6
 | Element trees back to source | 826 | 826 | 1 fuzz, 71 hand-written, 723 parse corpus root, 31 reference-test |
 | Enriched errors | 419 | 419 | every parse corpus case with errors |
 
-Quirks recorded: 24.
+Quirks recorded: 25.
 Not matched yet, listed in `conformance/pending/`: none.
 <!-- /counts -->
 
@@ -47,21 +47,47 @@ and aliases within each parse result. Persistence timing remains an explicit
 assumption; the renderer is not vendored.
 
 <!-- runtime-counts -->
-Runtime trees: 929 total, 768 matching, 155 pending, 6 divergences.
+Runtime trees: 973 total, 817 matching, 148 pending, 8 divergences.
 
-Runtime pending: #34=0, #35=6, #36=125, #38=24.
+Runtime pending: #34=0, #35=0, #36=124, #38=24.
 
-Runtime coverage: 325 dynamic, 106 reading state, 450 referencing statements, 45 with runtime errors; 1455301 streaming steps per scenario, 142367 differing observations, 20569 differing trees.
+Runtime coverage: 365 dynamic, 141 reading state, 460 referencing statements, 48 with runtime errors; 1460826 streaming steps per scenario, 147872 differing observations, 15619 differing trees.
 
-Original runtime coverage: 859 cases, 261 dynamic, 62 reading state, 426 referencing statements, 11 with runtime errors; recorded: 152 cases, 2 declaring state.
+Original runtime coverage: 859 cases, 261 dynamic, 61 reading state, 426 referencing statements, 11 with runtime errors; recorded: 152 cases, 2 declaring state.
 
-Runtime pending partial comparison: 310 one-shot observations, 11742 props.
+Runtime pending partial comparison: 296 one-shot observations, 11482 props.
+
+Runtime field writes: 44 cases, 2124 steps across both scenarios; nine values per marker per scenario.
 <!-- /runtime-counts -->
 
 `reference/runtime.ts` runs the pinned parser, store and tree evaluator, with
 no function implementations and with the schema's action definitions. JSON
-Schema cannot carry upstream's in-memory binding marks; binding configuration
-is #35's work. Its runtime library uses the compiled component prop shapes.
+Schema cannot carry upstream's in-memory binding marks. `conformance/bindings.json`
+links schemas to their upstream prompt specs; the adapter restores direct
+`$binding<…>` marks on fresh prop-schema objects with upstream's `markReactive`.
+The `BindingTypes` fixture uses live upstream Zod schemas for marked arrays
+and unions and for unmarked arrays/unions with marked children. A binding
+wrapper must enclose the whole annotation: `$binding<T>[]` marks an item,
+while `$binding<T[]>` marks the prop.
+Every component prop in every corpus schema is checked against those live marks
+by `BindingProps::from_prompt_spec`. Specs cannot recover absent annotations,
+identity changes after spec generation, or marks on schemas whose type could
+not be rendered. Embedders can supply the component/prop pairs directly.
+Property names in the spec's `schema.$defs` anchor individual annotations.
+The live `SignatureOdd` fixture checks punctuation in names and upstream's
+unescaped quote/backslash literal text. Repeated parameter delimiters in
+literal text, and delimiter names such as `a, b` alongside `b`, can be ambiguous.
+`BindingProps::undecided()` reports each affected component/prop pair; an
+unreadable outer binding wrapper is reported independently and later fields
+still resolve. The live `binding-undecided-spec.json` fixture pins E10's quoted
+literal, E11's backslash literal, the delimiter collision and an unambiguous
+delimiter name. Every upstream mark there is either recovered or explicitly
+reported as undecided, and no recovered mark is wrong. `insert` resolves a
+reported pair as a binding. Without structural properties only well-formed,
+ordinary-name signatures are reliable, and diagnostics cannot enumerate names
+hidden by malformed signature-only text. Structural names with missing or
+malformed signatures are reported as undecided. The tree harness refuses
+undecided configurations for its ordinary corpus schemas.
 Persistence is generated from the full case's declared names and value shapes
 using Mulberry32 seeded by FNV-1a of `<case>:persisted`, and reapplied on every
 initialize. The persistence map is JSON-round-tripped before use: its saved
@@ -127,9 +153,39 @@ root expressions and references, with caller context pinned by quirk 25. Coverag
 scenarios and all prefixes; state reads count actual runtime `getState` calls,
 and statement references are measured on the preprocessed source AST with
 `Each` locals excluded. The original 859 cases have 261 cases with dynamic
-props, 62 reading state, 426 referencing statements and 11 with runtime errors.
+props, 61 reading state, 426 referencing statements and 11 with runtime errors.
 Only 2 of the 152 recorded cases declare state. That measurement is why the
 runtime additions are needed.
+
+Field-write scenarios start from each one-shot scenario and retain the markers
+found in its evaluated tree across redraws. For each marker, Mulberry32 seeded
+by FNV-1a of `<case>:writes` orders nine values: null, false, true, a number, a
+string, empty and populated arrays, and empty and populated objects. Each step
+calls lang-core's `resolveStateField(...).setValue`, then `evaluateRoot`, with
+query defaults registered by its query manager. Write expressions use the
+pre-write context; the post-write draw registers defaults from the updated
+store under the adapter's existing fresh-manager-per-observation policy.
+Stores continue across the
+sequence; persistence is initialized once. `.writes.json` records paths, original
+markers, values, and complete tree/error/snapshot observations. Rust checks the
+marker came from its evaluated tree, replays each write, compares every step,
+and enforces nine writes per marker and the reported totals. Pending cases
+retain their partial prop/error comparisons during writes too.
+
+The binding additions cover nested bindings and transforms, StateRef and Assign
+descriptors, loops over nulls, booleans, numbers, strings, arrays, objects,
+elements and AST-shaped values, nested loops with transforms capturing both loop variables, shadowed statement names,
+components in lists and ternaries, all three root outcomes, query defaults,
+supplied elements/null, absent query results and idle mutations. Write transforms
+also read complete/incomplete query defaults and supplied query/mutation data,
+and construct components without a schema context, as `state-field.ts` does. Binding target
+reads use exact Map keys, including inherited names; marker writes require a
+string target because the public Store addresses string names. Raw marker
+values, including JSON round trips, carry no host-call authority. Writes run
+in a fresh bounded core session over state, `$value`, and the supplied tree
+context (query defaults, loaded references, and component classification), and
+use `Store::set`;
+errors and cuts leave the store unchanged. Total-store admission remains #39.
 
 Runtime goldens are compact JSON in `conformance/golden/runtime/`: full results
 for each one-shot scenario and FNV-1a per streaming step. Identical scenario
@@ -146,11 +202,10 @@ required ticket chosen first (#38, #36, #35, then #34). Each reason needs both
 reference evidence and an independent Rust AST/plan witness. There is no
 pending-list update mode: matching entries, unknown names and wrong reasons
 fail the test. The same removal rule applies to the separate visible divergence
-list. Assign-shaped data has the explicit `35:assign-descriptor` reason: its
-non-binding result requires the #35 getState/marker rule. All pending one-shot
+list. Assign-shaped data follows the same marker/getState path as typed assignments. All pending one-shot
 observations still compare snapshots, existing-root metadata, and every root
 or nested element prop whose raw value contains no deferred feature. Completed
-#34 features no longer mask those props. The runtime receives the parsed
+#34 and #35 features no longer mask those props. The runtime receives the parsed
 library so declared functions and actions retain their existing feature
 classification; this harness supplies no function implementations. The counts
 above include rooted observations even when all their props are deferred.
@@ -160,10 +215,7 @@ regeneration work. Whole-result streaming comparisons remain unchanged. Filtered
 runs also reject a selected pending case that now matches.
 Counts and coverage above are checked by `tree_conformance.rs`.
 
-Regenerate from `reference/` with `bun --no-install runtime.ts golden`. Two
-complete regenerations were byte-identical; the measured command takes about
-105 seconds here. Run-length encoded runtime goldens use about 11.3 MB,
-plus the roughly 0.3 MB focused interface golden. The general regeneration script also
+Regenerate from `reference/` with `bun --no-install runtime.ts golden`. The general regeneration script also
 runs this harness and requires cached dependencies; it never installs packages.
 
 The reference uses `Object.is` (NaN equals NaN; signed zeros differ). Upstream
@@ -259,6 +311,8 @@ Documented, not emulated. The parser divergences do not occur in the corpus. The
 | A tree root expression that throws (`root=$c ? Box(1) : ""+$bad`, `$c=false`, `$bad={toString:null}`) | `evaluateRoot` throws a `TypeError` with `No default value` | returns no root and a `runtime-error` attributed to `root`, preserving the cause; both outputs are pinned by `runtime/root-expression-throw` |
 | Invalid own `map:3` targets during loop-template substitution (`runtime/substitution-map-target`) | identifies the target as `3`, with callbacks naming `substituteRef` | identifies it as undefined; both complete outputs are pinned separately from normal descriptor evaluation |
 | One invalid array descriptor call target: `{k:"Arr",els:{map:3}}` in `runtime/descriptor-map-target` | the error identifies the invalid `node.els.map` value as `3` | the typed failure identifies the field and invalid receiver, but the runtime diagnostic identifies the map target as undefined. This named case pins only that wording difference; both complete outputs are committed |
+| Writing a JavaScript function through a marker (`runtime/binding-function-value`) | stores `Object` from `{}.constructor`; a later `!$n` is false | the public core `Value` projects functions to undefined; the store receives undefined and `!$n` is true. Both initial scenarios and every scripted write are pinned; function-valued state needs a broader core representation change |
+| Writing a marker with a non-string or absent target (`runtime/binding-non-string-target`) | stores numeric, null, undefined, boolean and object keys in its Map; snapshots stringify keys and primitive-key reads can find the values | refuses with `BindingWriteError::InvalidMarker` because Store keys are strings. Both initial outputs and every full write step (marker, value, refusal, tree and snapshot) are pinned under `non-string-binding-target` |
 | A state default turning an object with its own `toString` or `valueOf` into text (`$a = {toString: 1}` then `$b = $a + ""`, or in `@Sort`, `@Filter`'s `contains`, `==`) | `parse` throws a `TypeError`: the object can't become text | `"[object Object]"` |
 | JSON nested deeper than 800 levels (three per level of the depth limit and 32 more, under raised `Limits`), for `json_to_openui`, `parse_json` or a prompt spec for `generate_system_prompt` | handled, up to the engine's recursion limit | refused with an error |
 | `1e400` in JSON read back | `Infinity` | refused: a `serde_json::Value` can't hold it |
@@ -280,7 +334,14 @@ collections and entries, and lazy malformed branches have reference cases.
 The one named remaining diagnostic difference is `runtime/descriptor-map-target`.
 All runtime divergences commit both reference and Rust outputs for both
 state scenarios in `conformance/divergences/runtime-<reason>.json`. The test
-checks each complete output, so neither side may widen silently. For the map
+checks each complete output, so neither side may widen silently. The
+`function-state-value` pin also records every field write. Its initial trees
+and streaming observations match; only writes expose the lost function value.
+The `non-string-binding-target` pin retains complete write records on both
+sides, including Rust's explicit refusal and unchanged store. No key is
+converted to a string to make that replay run.
+A named structural comparison permits just the resulting `display` truthiness
+difference, with both snapshots omitting the non-JSON value. For the map
 target only, a normalizer additionally checks equality after changing just the
 single pinned error message. It asserts its exact case name and reason and
 cannot apply to general comparisons or other divergence entries.

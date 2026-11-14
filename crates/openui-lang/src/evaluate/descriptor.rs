@@ -70,7 +70,7 @@ pub(super) fn evaluate(value: Option<&Value>, scope: &Scope<Supplied<'_>>) -> Js
         "Null" | "Ph" => Js::Null,
         "StateRef" => match get("n") {
             Some(Value::Str(name)) => scope.state(name),
-            _ => Js::Undefined,
+            _ => expression::extra_state(get("n"), scope),
         },
         "Ref" | "RuntimeRef" => match get("n") {
             Some(Value::Str(name)) => scope.reference(name),
@@ -168,7 +168,7 @@ pub(super) fn evaluate(value: Option<&Value>, scope: &Scope<Supplied<'_>>) -> Js
                 {
                     return Js::Null;
                 }
-                return scope.call_value(value);
+                return scope.call_value(value, &name);
             }
             let _context = expression::CallContext::set(false);
             // BUILTINS indexes an object (coerced key); parameter definitions

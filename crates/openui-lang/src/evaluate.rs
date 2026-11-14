@@ -50,7 +50,7 @@ trait Names: Sized {
     fn call(&self, _node: &Ast, _scope: &Scope<'_, Self>) -> Js {
         Js::Null
     }
-    fn call_value(&self, _node: &Value, _scope: &Scope<'_, Self>) -> Js {
+    fn call_value(&self, _node: &Value, _name: &str, _scope: &Scope<'_, Self>) -> Js {
         Js::Null
     }
     fn each_item(&self, value: Js, _scope: &Scope<'_, Self>) -> Js {
@@ -1627,11 +1627,11 @@ impl<S: Names> Scope<'_, S> {
             }
         }
     }
-    fn call_value(&self, node: &Value) -> Js {
+    fn call_value(&self, node: &Value, name: &str) -> Js {
         let mut scope = self;
         loop {
             match scope {
-                Scope::Root(names) => return names.call_value(node, self),
+                Scope::Root(names) => return names.call_value(node, name, self),
                 Scope::Each { parent, .. } => scope = parent,
             }
         }

@@ -1,7 +1,7 @@
 // Runs the pinned parser, store and tree evaluator; no runtime transcription.
 // From reference/: bun --no-install runtime.ts golden
 // Diagnose: bun --no-install runtime.ts show <case> <scenario> <chunking> <step>
-import { readFileSync, writeFileSync, mkdirSync, existsSync } from 'fs';
+import { readFileSync, writeFileSync, mkdirSync, existsSync, rmSync } from 'fs';
 import { join, dirname } from 'path';
 import { plugin } from 'bun';
 // Same read-only export hook as run.ts; vendored parser stays untouched.
@@ -11,6 +11,8 @@ process.env.DO_NOT_TRACK = '1';
 const { compileSchema, parse, createStreamParser, preprocess } = await import('./lang-core/src/parser/parser');
 const { evaluateRoot } = await import('./lang-core/src/runtime/evaluate-tree');
 const { evaluate } = await import('./lang-core/src/runtime/evaluator');
+const { markReactive, isReactiveSchema } = await import('./lang-core/src/reactive');
+const { resolveStateField } = await import('./lang-core/src/runtime/state-field');
 const { createStore } = await import('./lang-core/src/runtime/store');
 const { createQueryManager } = await import('./lang-core/src/runtime/queryManager');
 const { tokenize } = await import('./lang-core/src/parser/lexer');
@@ -24,8 +26,50 @@ const library = c => {
   if (!libraries.has(c.schema)) libraries.set(c.schema, compileSchema(JSON.parse(readFileSync(join(C, schemas[c.schema]),'utf8'))));
   return libraries.get(c.schema);
 };
+const bindingSpecs=JSON.parse(readFileSync(join(C,'bindings.json'),'utf8'));
+const specs=Object.fromEntries(Object.entries(bindingSpecs).map(([name,path])=>[name,JSON.parse(readFileSync(join(C,path),'utf8')).library]));
+// This synthetic component uses real upstream schemas, not signature parsing,
+// so the oracle distinguishes an inner reactive type from an outer prop mark.
+const { z }=await import('zod');
+const { createLibrary, defineComponent }=await import('./lang-core/src/library');
+const item=z.string();markReactive(item);
+const boundList=z.array(z.string()),boundUnion=z.union([z.string(),z.number()]);
+markReactive(boundList);markReactive(boundUnion);
+const bindingTypesProps=z.object({list:z.array(item),union:z.union([item,z.number()]),boundList,boundUnion});
+const bindingTypesLibrary=createLibrary({components:[defineComponent({name:'BindingTypes',description:'Binding annotations',props:bindingTypesProps,component:null})],root:'BindingTypes'});
+const oddBound=()=>{const schema=z.string();markReactive(schema);return schema;};
+const oddProps=z.object({quoted:z.enum(['a"b','c']),afterQuote:oddBound(),slash:z.literal('end\\'),afterSlash:oddBound(),'a:b':oddBound(),'x?':oddBound(),'lt<':oddBound(),'p(':oddBound(),'c,':oddBound(),"it's":oddBound(),last:oddBound()});
+const oddLibrary=createLibrary({components:[defineComponent({name:'SignatureOdd',description:'Odd signature text',props:oddProps,component:null})],root:'SignatureOdd'});
+const liveProps={BindingTypes:[bindingTypesProps,bindingTypesLibrary],SignatureOdd:[oddProps,oddLibrary]};
+// These literal signatures cannot all be disambiguated from their text.
+// Keep the actual weak-set marks alongside the spec for helper diagnostics.
+const diagnosticBinding=schema=>{markReactive(schema);return schema;};
+const diagnosticProps={
+  E10:z.object({e10:diagnosticBinding(z.literal('a"b')),after:oddBound()}),
+  E11:z.object({e11:diagnosticBinding(z.literal('\\')),after:oddBound()}),
+  E12:z.object({'a, b':oddBound(),b:z.string(),after:oddBound()}),
+  E13:z.object({'a, b':oddBound(),after:oddBound()}),
+};
+const diagnosticLibrary=createLibrary({components:Object.entries(diagnosticProps).map(([name,props])=>defineComponent({name,description:'Binding extraction diagnostics',props,component:null})),root:'E10'});
 const runtimeLibrary=c=>{
-  if(!runtimeLibraries.has(c.schema))runtimeLibraries.set(c.schema,{components:Object.fromEntries([...library(c)].map(([n,d])=>[n,{props:{shape:Object.fromEntries(d.params.map(p=>[p.name,p.schema]))}}]))});
+  if(!runtimeLibraries.has(c.schema)) {
+    const spec=specs[c.schema];
+    const components=Object.fromEntries([...library(c)].map(([n,d])=>{
+      const signature=spec?.components?.[n]?.signature??'';
+      if(c.schema==='runtime-bindings'&&Object.hasOwn(liveProps,n)) {
+        const [props,library]=liveProps[n];
+        if(signature!==library.toSpec().components[n].signature)throw Error(n+' signature drift');
+        return [n,{props}];
+      }
+      const bound=new Set([...signature.matchAll(/(\w+)\??: \$binding</g)].map(m=>m[1]));
+      return [n,{props:{shape:Object.fromEntries(d.params.map(p=>{
+        // Fresh identities: markReactive never mutates the compiled schema.
+        const schema={...p.schema};if(bound.has(p.name))markReactive(schema);
+        return [p.name,schema];
+      }))}}];
+    }));
+    runtimeLibraries.set(c.schema,{components});
+  }
   return runtimeLibraries.get(c.schema);
 };
 const input = c => readFileSync(join(C,c.file),'utf8');
@@ -55,9 +99,9 @@ function persisted(c,result) {
   return JSON.parse(JSON.stringify(Object.fromEntries(Object.entries(result.stateDeclarations??{}).map(([k,v])=>[k,
     typeof v==='string'?'saved-'+Math.floor(next()*1000):typeof v==='boolean'?!v:typeof v==='number'?v+1+Math.floor(next()*9):Array.isArray(v)?[...v, Math.floor(next()*10)]:v&&typeof v==='object'?{...v,saved:Math.floor(next()*1000)}:Math.floor(next()*1000)]))));
 }
-function observe(c,result,store,saved,coverage) {
+function observe(c,result,store,saved,coverage,interaction) {
   if(c.queryComplete===false)result={...result,queryStatements:result.queryStatements.map(q=>({...q,complete:false}))};
-  store.initialize(result.stateDeclarations??{},{...saved,...(c.stateValues??{})});
+  if(!interaction?.skipInitialize)store.initialize(result.stateDeclarations??{},{...saved,...(c.stateValues??{})});
   const errors=[];
   if(!rawSchemas.has(c.schema)) rawSchemas.set(c.schema,JSON.parse(readFileSync(join(C,schemas[c.schema]),'utf8')));
   // No provider or refresh interval: register/read using the pinned manager,
@@ -76,6 +120,11 @@ function observe(c,result,store,saved,coverage) {
   try {
     manager.evaluateQueries((result.queryStatements??[]).map(q=>({statementId:q.statementId,toolName:q.statementId,args:null,defaults:q.complete&&q.defaultsAST?evaluate(q.defaultsAST,ctx):null,complete:q.complete})));
     registered=true;
+    if(interaction?.write) {
+      const {marker,value}=interaction.write;
+      resolveStateField('field',marker,store,ctx,()=>undefined,()=>{throw Error('not reactive')}).setValue(value);
+      if(interaction.writeOnly)return;
+    }
     root=evaluateRoot(result,{ctx,library:runtimeLibrary(c),store,errors});
   } catch(e) { thrown={name:e instanceof Error?e.name:'Error',message:e instanceof Error?e.message:String(e)}; }
   finally {manager.dispose();}
@@ -99,6 +148,35 @@ function observe(c,result,store,saved,coverage) {
   }
   return JSON.stringify({root,errors,snapshot:store.getSnapshot(),...(thrown?{throw:thrown}:{})});
 }
+function markers(root) {
+  const out=[];
+  function walk(v,path=[]) {
+    if(!v||typeof v!=='object')return;
+    if(v.__reactive==='assign'){out.push({path,marker:v});return;}
+    for(const [k,child]of Object.entries(v))walk(child,[...path,k]);
+  }
+  walk(root);return out;
+}
+function writes(c,saved) {
+  const store=createStore(),result=parse(input(c),library(c),c.root);
+  const initial=JSON.parse(observe(c,result,store,saved));
+  const next=generator(parseInt(fp(c.name+':writes'),16)),steps=[];
+  // Each discovered marker receives every JSON kind, in a seeded order and
+  // in one continuing store. Keep the original marker across redraws.
+  for(const {path,marker}of markers(initial.root)) {
+    const values=[null,false,true,Math.floor(next()*21)-10,'write-'+Math.floor(next()*1000),[],[1,'x',null],{}, {n:2,active:false}];
+    for(let i=values.length-1;i>0;i--){const j=Math.floor(next()*(i+1));[values[i],values[j]]=[values[j],values[i]];}
+    for(const value of values) {
+      const failure=observe(c,result,store,saved,null,{skipInitialize:true,writeOnly:true,write:{marker,value}});
+      // A post-write draw is a new observation: register defaults from the
+      // updated store, matching this adapter's existing fresh-manager policy.
+      const observation=JSON.parse(observe(c,result,store,saved,null,{skipInitialize:true}));
+      if(failure)observation.writeError=JSON.parse(failure).throw;
+      steps.push({path,marker,value,observation});
+    }
+  }
+  return steps;
+}
 function run(c,k,coverage) {
   const full=parse(input(c),library(c),c.root), saved=persisted(c,full), stores=[createStore(),createStore()], results=[[],[]];
   const add=r=>{for(let i=0;i<2;i++)results[i].push(observe(c,r,stores[i],i?saved:{},coverage));};
@@ -120,7 +198,7 @@ const [cmd,...args]=process.argv.slice(2);
 if(cmd==='golden') {
   const stats={total:cases.length,dynamic:0,state:0,references:0,errors:0,recorded:0,recordedState:0,steps:0,scenarioDifferences:0,treeDifferences:0,features:{},original:{dynamic:0,state:0,references:0,errors:0}};
   const evidence={};
-  for(const c of cases) {
+  for(const c of cases.filter(c=>!process.env.RUNTIME_CASE||c.name.includes(process.env.RUNTIME_CASE))) {
     const coverage={dynamic:false,state:false,errors:false,features:new Set()};
     const statements=split(tokenize(autoClose(preprocess(input(c))).text));
     const names=new Set(statements.filter(s=>!s.id.startsWith('$')).map(s=>s.id));
@@ -138,6 +216,9 @@ if(cmd==='golden') {
     for(const s of statements)visit(parseExpression(s.tokens));
     const one=run(c,'oneshot',coverage);
     write(c.name+'.oneshot.json',{saved:one.saved,defaults:JSON.parse(one.defaults[0]),persisted:JSON.parse(one.persisted[0])});
+    const fieldWrites={defaults:writes(c,{}),persisted:writes(c,one.saved)};
+    if(fieldWrites.defaults.length||fieldWrites.persisted.length)write(c.name+'.writes.json',fieldWrites);
+    else rmSync(join(G,c.name+'.writes.json'),{force:true});
     const streams={};
     for(const k of [...(c.chunkings??chunkings),...(c.recorded?['recorded']:[])]) {
       const r=run(c,k,coverage); stats.steps+=r.defaults.length;
@@ -154,7 +235,10 @@ if(cmd==='golden') {
     const features=[...coverage.features].sort();for(const f of features)stats.features[f]=(stats.features[f]??0)+1;
     evidence[c.name]={features,dynamic:coverage.dynamic,state:coverage.state,errors:coverage.errors,references:refs};
   }
-  write('coverage.json',stats);write('evidence.json',evidence);console.log(JSON.stringify(stats));
+  const bindingPairs=Object.fromEntries(Object.keys(schemas).map(schema=>[schema,Object.entries(runtimeLibrary({schema}).components).flatMap(([name,d])=>Object.entries(d.props.shape).filter(([k,v])=>isReactiveSchema(v)).map(([key])=>[name,key]))]));
+  write('bindings.json',bindingPairs);
+  write('binding-undecided-spec.json',{spec:diagnosticLibrary.toSpec(),bindings:Object.entries(diagnosticProps).flatMap(([name,props])=>Object.entries(props.shape).filter(([,schema])=>isReactiveSchema(schema)).map(([prop])=>[name,prop]))});
+  if(!process.env.RUNTIME_CASE){write('coverage.json',stats);write('evidence.json',evidence);}console.log(JSON.stringify(stats));
 } else if(cmd==='show') {
   const [name,scenario,k,step]=args,c=cases.find(c=>c.name===name);if(!c)throw Error(name);
   process.stdout.write(run(c,k)[scenario][Number(step)-1]);

@@ -1,0 +1,3 @@
+root=Field([{x:$n},$n],{x:{$n:$n}},null,[$total=$value+1])
+$n=2
+$total=0

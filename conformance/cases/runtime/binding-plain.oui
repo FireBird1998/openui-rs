@@ -1,0 +1,4 @@
+root=Field($n,$n,"named",$total=$value*2)
+$n=3
+$total=5
+$value=11

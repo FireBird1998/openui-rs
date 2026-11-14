@@ -1,6 +1,9 @@
 //! Every parse corpus case, both state scenarios, and every core stream plan.
 use openui_lang::{Element, Library, ParseResult, StreamParser, free_json, parse, parse_json};
-use openui_runtime::{JsObject, Store, TreeInput, Value, evaluate_tree};
+use openui_runtime::{
+    BindingProps, BindingWriteError, JsObject, Store, TreeInput, Value, evaluate_tree,
+    write_binding,
+};
 use std::{
     collections::{BTreeMap, BTreeSet},
     fmt::Write as _,
@@ -103,18 +106,8 @@ fn observe(
     saved: &Value,
     source: &str,
     case_input: &Value,
+    bindings: &BindingProps,
 ) -> String {
-    let mut completion_override;
-    let result = if matches!(get(case_input, "queryComplete"), Value::Bool(false)) {
-        completion_override = result.clone();
-        for q in &mut completion_override.query_statements {
-            q.complete = false;
-        }
-        &completion_override
-    } else {
-        result
-    };
-
     let p = entries(saved);
     // JSON omits top-level undefined declarations. Preserve their *presence*
     // for initialize using public statement stages, without changing the core.
@@ -156,7 +149,29 @@ fn observe(
         ),
     );
     assert!(initialized.refused.is_empty());
-    let mut input = TreeInput::new(result).with_library(library);
+    evaluated_observation(result, library, store, case_input, bindings)
+}
+fn evaluated_observation(
+    result: &ParseResult,
+    library: &Library,
+    store: &Store,
+    case_input: &Value,
+    bindings: &BindingProps,
+) -> String {
+    let mut completion_override;
+    let result = if matches!(get(case_input, "queryComplete"), Value::Bool(false)) {
+        completion_override = result.clone();
+        for q in &mut completion_override.query_statements {
+            q.complete = false;
+        }
+        &completion_override
+    } else {
+        result
+    };
+
+    let mut input = TreeInput::new(result)
+        .with_library(library)
+        .with_binding_props(bindings);
     if let Value::Obj(values) = get(case_input, "referenceValues") {
         input = input.with_reference_values(values);
     }
@@ -237,6 +252,8 @@ fn corpus_trees_snapshots_and_json_match_the_reference() {
         }
         cases.extend(arr(get(m, "cases")));
     }
+    let binding_sources = load(&dir.join("bindings.json"));
+    let binding_oracle = load(&golden.join("bindings.json"));
     let pending_path = dir.join("pending/runtime.json");
     let pending = load(&pending_path);
     let divergences = load(&dir.join("pending/runtime-divergences.json"));
@@ -250,6 +267,8 @@ fn corpus_trees_snapshots_and_json_match_the_reference() {
     let mut scenario_differences = 0usize;
     let mut counts: BTreeMap<String, usize> = BTreeMap::new();
     let mut witnessed = BTreeMap::new();
+    let mut write_cases = 0usize;
+    let mut write_steps = 0usize;
     let mut partial_observations = 0usize;
     let mut partial_props = 0usize;
     for c in &cases {
@@ -264,6 +283,31 @@ fn corpus_trees_snapshots_and_json_match_the_reference() {
         .unwrap();
         let library = Arc::new(Library::from_json_schema(&schema));
         free_json(schema);
+        let spec_path = text(get(&binding_sources, text(get(c, "schema"))));
+        let bindings = if spec_path.is_empty() {
+            BindingProps::new()
+        } else {
+            BindingProps::from_prompt_spec(get(&load(&dir.join(spec_path)), "library"))
+        };
+        assert_eq!(
+            bindings.undecided().collect::<Vec<_>>(),
+            Vec::<(&str, &str)>::new(),
+            "{name}: binding configuration must be complete"
+        );
+        let oracle = arr(get(&binding_oracle, text(get(c, "schema"))));
+        for component in library.component_names() {
+            let definition = library.component(component).unwrap();
+            for prop in &definition.params {
+                assert_eq!(
+                    bindings.contains(component, &prop.name),
+                    oracle
+                        .iter()
+                        .any(|p| text(&arr(p)[0]) == component && text(&arr(p)[1]) == prop.name),
+                    "binding mark {component}.{}",
+                    prop.name
+                );
+            }
+        }
         let root = match text(get(c, "root")) {
             "" => None,
             s => Some(s),
@@ -375,6 +419,14 @@ fn corpus_trees_snapshots_and_json_match_the_reference() {
                     assert_eq!(get(get(template, field), "map"), &Value::Num(3.0));
                 }
             }
+            "non-string-binding-target" => {
+                assert_eq!(name, "runtime/binding-non-string-target");
+                assert!(matches!(get(c, "stateValues"), Value::Obj(_)));
+            }
+            "function-state-value" => {
+                assert_eq!(name, "runtime/binding-function-value");
+                assert!(input.contains("$n={}.constructor"));
+            }
             "descriptor-map-target" => {
                 assert_eq!(name, "runtime/descriptor-map-target");
                 let raw = parsed_full.root.as_ref().unwrap().props.get("a").unwrap();
@@ -383,6 +435,19 @@ fn corpus_trees_snapshots_and_json_match_the_reference() {
             }
             _ => panic!("{name}: unknown divergence {divergence}"),
         }
+        let non_string_pin = (divergence == "non-string-binding-target")
+            .then(|| load(&dir.join("divergences/runtime-non-string-binding-target.json")));
+        let write_override = if matches!(get(c, "queryComplete"), Value::Bool(false)) {
+            let mut result = parsed_full.clone();
+            for q in &mut result.query_statements {
+                q.complete = false;
+            }
+            Some(result)
+        } else {
+            None
+        };
+        let write_result = write_override.as_ref().unwrap_or(&parsed_full);
+        let mut counted_writes = false;
         for scenario in ["defaults", "persisted"] {
             let persistence = if scenario == "persisted" {
                 saved
@@ -397,6 +462,7 @@ fn corpus_trees_snapshots_and_json_match_the_reference() {
                 persistence,
                 &input,
                 c,
+                &bindings,
             );
             if !divergence.is_empty() {
                 let pin = load(&dir.join(format!("divergences/runtime-{divergence}.json")));
@@ -438,6 +504,210 @@ fn corpus_trees_snapshots_and_json_match_the_reference() {
                     "case {name}, scenario {scenario}, oneshot step 1\n{}",
                     diff(&expected, &actual)
                 );
+            }
+            let writes_path = golden.join(format!("{name}.writes.json"));
+            let writes = writes_path.exists().then(|| load(&writes_path));
+            let steps = writes
+                .as_ref()
+                .map(|w| arr(get(w, scenario)))
+                .unwrap_or(&[]);
+            let initial_markers = marker_paths(get(&from_json(&actual), "root"));
+            assert_eq!(
+                steps.len(),
+                initial_markers.len() * 9,
+                "{name}/{scenario}: missing scripted writes"
+            );
+            if !steps.is_empty() {
+                write_cases += usize::from(!counted_writes);
+                counted_writes = true;
+                write_steps += steps.len();
+                let mut store = Store::new();
+                let first = observe(
+                    &parsed_full,
+                    &library,
+                    &mut store,
+                    persistence,
+                    &input,
+                    c,
+                    &bindings,
+                );
+                let initial = from_json(&first);
+                let mut visits: BTreeMap<Vec<String>, Vec<&str>> = initial_markers
+                    .into_iter()
+                    .map(|p| (p, Vec::new()))
+                    .collect();
+                for (step, write) in steps.iter().enumerate() {
+                    let path: Vec<_> = arr(get(write, "path"))
+                        .iter()
+                        .map(|k| text(k).to_owned())
+                        .collect();
+                    let kind = match get(write, "value") {
+                        Value::Null => "null",
+                        Value::Bool(false) => "false",
+                        Value::Bool(true) => "true",
+                        Value::Num(_) => "number",
+                        Value::Str(_) => "string",
+                        Value::Arr(a) if a.is_empty() => "empty array",
+                        Value::Arr(_) => "array",
+                        Value::Obj(o) if o.is_empty() => "empty object",
+                        Value::Obj(_) => "object",
+                        _ => panic!("not JSON data"),
+                    };
+                    visits
+                        .get_mut(&path)
+                        .expect("write path from evaluated tree")
+                        .push(kind);
+                    let mut marker = get(&initial, "root");
+                    for key in arr(get(write, "path")) {
+                        marker = match marker {
+                            Value::Obj(o) => o.get(text(key)).unwrap_or(&NULL),
+                            Value::Arr(a) => text(key)
+                                .parse::<usize>()
+                                .ok()
+                                .and_then(|i| a.get(i))
+                                .unwrap_or(&NULL),
+                            _ => &NULL,
+                        };
+                    }
+                    assert_eq!(
+                        json(marker),
+                        json(get(write, "marker")),
+                        "{name}/{scenario}/write {step}: marker from tree"
+                    );
+                    let mut write_input = TreeInput::new(write_result)
+                        .with_library(&library)
+                        .with_binding_props(&bindings);
+                    if let Value::Obj(values) = get(c, "referenceValues") {
+                        write_input = write_input.with_reference_values(values);
+                    }
+                    let before = store.snapshot();
+                    let version = store.version();
+                    let pristine: Vec<_> = before
+                        .iter()
+                        .map(|(name, _)| (name.clone(), store.is_pristine(name)))
+                        .collect();
+                    let result =
+                        write_binding(write_input, &mut store, marker, get(write, "value").clone());
+                    let write_error = match result {
+                        Ok(_) => None,
+                        Err(
+                            error @ (BindingWriteError::Evaluation(_)
+                            | BindingWriteError::InvalidMarker),
+                        ) => {
+                            assert!(
+                                Arc::ptr_eq(&store.snapshot(), &before),
+                                "{name}/{scenario}/write {step}: error snapshot identity"
+                            );
+                            assert_eq!(store.version(), version);
+                            for (target, was_pristine) in &pristine {
+                                assert_eq!(store.is_pristine(target), *was_pristine);
+                            }
+                            let error_name = if matches!(error, BindingWriteError::InvalidMarker) {
+                                assert_eq!(divergence, "non-string-binding-target");
+                                assert!(!matches!(get(marker, "target"), Value::Str(_)));
+                                "InvalidMarker"
+                            } else {
+                                "TypeError"
+                            };
+                            let mut error_value = JsObject::new();
+                            error_value.define("name", Value::Str(error_name.into()));
+                            error_value.define("message", Value::Str(error.to_string()));
+                            Some(Value::Obj(Arc::new(error_value)))
+                        }
+                        Err(error) => panic!("{name}/{scenario}/write {step}: {error}"),
+                    };
+                    let mut actual =
+                        evaluated_observation(&parsed_full, &library, &store, c, &bindings);
+                    if let Some(error) = write_error {
+                        let mut observation_value = from_json(&actual);
+                        let Value::Obj(observation) = &mut observation_value else {
+                            panic!("observation")
+                        };
+                        Arc::make_mut(observation).define("writeError", error);
+                        actual = json(&observation_value);
+                    }
+                    let expected = get(write, "observation");
+                    if divergence == "non-string-binding-target" {
+                        let pin = non_string_pin.as_ref().unwrap();
+                        let wanted = arr(get(get(get(pin, "reference"), "writes"), scenario));
+                        let pinned = arr(get(get(get(pin, "rust"), "writes"), scenario));
+                        assert_eq!(wanted.len(), steps.len());
+                        assert_eq!(pinned.len(), steps.len());
+                        assert_eq!(json(&wanted[step]), json(write), "reference full write pin");
+                        let mut actual_step = write.clone();
+                        let Value::Obj(fields) = &mut actual_step else {
+                            panic!("write object")
+                        };
+                        Arc::make_mut(fields).define("observation", from_json(&actual));
+                        assert_eq!(
+                            json(&pinned[step]),
+                            json(&actual_step),
+                            "Rust full write pin"
+                        );
+                        assert_ne!(
+                            actual,
+                            json(expected),
+                            "refused write must remain a divergence"
+                        );
+                        let _ = writeln!(
+                            mismatches,
+                            "{name}/{scenario}/write {step}: pinned non-string target refusal"
+                        );
+                    } else if divergence == "function-state-value" {
+                        let pin = load(&dir.join("divergences/runtime-function-state-value.json"));
+                        let wanted = arr(get(get(get(&pin, "reference"), "writes"), scenario));
+                        let pinned = arr(get(get(get(&pin, "rust"), "writes"), scenario));
+                        assert_eq!(wanted.len(), steps.len());
+                        assert_eq!(pinned.len(), steps.len());
+                        assert_eq!(
+                            json(&wanted[step]),
+                            json(expected),
+                            "{name}/{scenario}/write {step}: reference pin"
+                        );
+                        assert_eq!(
+                            json(&pinned[step]),
+                            actual,
+                            "{name}/{scenario}/write {step}: Rust pin"
+                        );
+                        compare_function_state_value(expected, &from_json(&actual));
+                        if actual != json(expected) {
+                            let _ = writeln!(
+                                mismatches,
+                                "{name}/{scenario}/write {step}: pinned function-state-value divergence"
+                            );
+                        }
+                    } else if listed {
+                        compare_pending_props(
+                            &parsed_full,
+                            &library,
+                            expected,
+                            &from_json(&actual),
+                            name,
+                            scenario,
+                        );
+                    } else {
+                        assert_eq!(actual, json(expected), "{name}/{scenario}/write {step}");
+                    }
+                }
+                let mut kinds = vec![
+                    "null",
+                    "false",
+                    "true",
+                    "number",
+                    "string",
+                    "empty array",
+                    "array",
+                    "empty object",
+                    "object",
+                ];
+                kinds.sort();
+                for (path, mut actual) in visits {
+                    actual.sort();
+                    assert_eq!(
+                        actual, kinds,
+                        "{name}/{scenario}/{path:?}: each value kind through each marker"
+                    );
+                }
             }
             for (k, stream) in entries(&streams) {
                 let plan = core_streams.as_ref().map(|c| get(c, k)).unwrap_or(stream);
@@ -515,7 +785,15 @@ fn corpus_trees_snapshots_and_json_match_the_reference() {
                             features_in(&parsed, &library, witnessed.get_mut(name).unwrap());
                         }
                     }
-                    let actual = observe(&parsed, &library, &mut store, persistence, &source, c);
+                    let actual = observe(
+                        &parsed,
+                        &library,
+                        &mut store,
+                        persistence,
+                        &source,
+                        c,
+                        &bindings,
+                    );
                     if fp(&actual) != *want && !reported {
                         reported = true;
                         let detail = if !listed && mismatches.is_empty() {
@@ -554,6 +832,14 @@ fn corpus_trees_snapshots_and_json_match_the_reference() {
         }
         return;
     }
+    println!(
+        "Matching pending: {:?}",
+        entries(&pending)
+            .iter()
+            .filter(|(n, _)| !failing.contains(n.as_str()))
+            .map(|(n, _)| n.as_str())
+            .collect::<Vec<_>>()
+    );
     for (name, reason) in entries(&pending) {
         assert!(
             cases.iter().any(|c| text(get(c, "name")) == name),
@@ -653,10 +939,13 @@ fn corpus_trees_snapshots_and_json_match_the_reference() {
         number(get(original, "references")),
         number(get(original, "errors"))
     );
+    let write_line = format!(
+        "Runtime field writes: {write_cases} cases, {write_steps} steps across both scenarios; nine values per marker per scenario."
+    );
     let partial_line = format!(
         "Runtime pending partial comparison: {partial_observations} one-shot observations, {partial_props} props."
     );
-    println!("{line}\n{pending_line}\n{coverage_line}\n{partial_line}");
+    println!("{line}\n{pending_line}\n{coverage_line}\n{partial_line}\n{write_line}");
     assert!(report.is_empty(), "{report}");
     let path = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../CONFORMANCE.md");
     let mut doc = std::fs::read_to_string(&path).unwrap();
@@ -667,11 +956,17 @@ fn corpus_trees_snapshots_and_json_match_the_reference() {
         let b = doc[a..].find(end).unwrap() + a;
         doc.replace_range(
             a..b,
-            &format!("\n{line}\n\n{pending_line}\n\n{coverage_line}\n\n{original_line}\n\n{partial_line}\n"),
+            &format!("\n{line}\n\n{pending_line}\n\n{coverage_line}\n\n{original_line}\n\n{partial_line}\n\n{write_line}\n"),
         );
         std::fs::write(&path, &doc).unwrap();
     }
-    for needed in [&original_line, &pending_line, &coverage_line, &partial_line] {
+    for needed in [
+        &original_line,
+        &pending_line,
+        &coverage_line,
+        &partial_line,
+        &write_line,
+    ] {
         assert!(doc.contains(needed), "CONFORMANCE.md needs: {needed}");
     }
     assert!(doc.contains(&line), "CONFORMANCE.md needs: {line}");
@@ -816,7 +1111,7 @@ fn compare_pending_props(
                 let context = format!("{path}.props.{k}");
                 let mut features = BTreeSet::new();
                 features_value(v, l, &mut features);
-                features.retain(|f| !f.starts_with("34:"));
+                features.retain(|f| !f.starts_with("34:") && !f.starts_with("35:"));
                 let w = wp.and_then(|o| own(o, k));
                 let g = gp.and_then(|o| own(o, k));
                 let (component, statement) = match raw {
@@ -970,5 +1265,70 @@ fn compare_map_target_wording(case: &str, reason: &str, expected: &Value, actual
         json(expected),
         json(&Value::Obj(Arc::new(normalized))),
         "{case}: only the pinned call-target wording may differ"
+    );
+}
+
+fn marker_paths(root: &Value) -> Vec<Vec<String>> {
+    fn walk(v: &Value, path: &mut Vec<String>, out: &mut Vec<Vec<String>>) {
+        match v {
+            Value::Obj(_) if text(get(v, "__reactive")) == "assign" => out.push(path.clone()),
+            Value::Obj(o) => {
+                for (k, v) in o.iter() {
+                    path.push(k.clone());
+                    walk(v, path, out);
+                    path.pop();
+                }
+            }
+            Value::Arr(a) => {
+                for (i, v) in a.iter().enumerate() {
+                    path.push(i.to_string());
+                    walk(v, path, out);
+                    path.pop();
+                }
+            }
+            _ => {}
+        }
+    }
+    let mut result = Vec::new();
+    walk(root, &mut Vec::new(), &mut result);
+    result
+}
+
+// The public core Value erases functions to undefined. Pin this single
+// consequence: after storing Object, !state is false upstream and true here.
+fn compare_function_state_value(expected: &Value, actual: &Value) {
+    assert_eq!(
+        get(get(get(expected, "root"), "props"), "display"),
+        &Value::Bool(false)
+    );
+    assert_eq!(
+        get(get(get(actual, "root"), "props"), "display"),
+        &Value::Bool(true)
+    );
+    for observation in [expected, actual] {
+        let Value::Obj(snapshot) = get(observation, "snapshot") else {
+            panic!("snapshot")
+        };
+        assert!(!snapshot.has_own("$n"));
+    }
+    let Value::Obj(observation) = actual else {
+        panic!("observation")
+    };
+    let Value::Obj(root) = get(actual, "root") else {
+        panic!("root")
+    };
+    let Value::Obj(props) = get(get(actual, "root"), "props") else {
+        panic!("props")
+    };
+    let mut props = (**props).clone();
+    props.define("display", Value::Bool(false));
+    let mut root = (**root).clone();
+    root.define("props", Value::Obj(Arc::new(props)));
+    let mut observation = (**observation).clone();
+    observation.define("root", Value::Obj(Arc::new(root)));
+    assert_eq!(
+        json(expected),
+        json(&Value::Obj(Arc::new(observation))),
+        "only function-state truthiness may differ"
     );
 }

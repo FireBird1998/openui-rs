@@ -52,6 +52,41 @@ pub trait EvaluationScope {
     fn extra(&self, _name: &str, _evaluator: &ExpressionEvaluator<'_>) -> Option<Value> {
         None
     }
+    /// Whether `extra` supplies own properties of a JavaScript plain object.
+    /// Enables property-key coercion and inherited object members for data-shaped
+    /// StateRef names. `None` from `extra` means an absent own property.
+    /// Sampled once when the session starts. Defaults to the existing
+    /// string-key callback behavior.
+    fn extra_is_object(&self) -> bool {
+        false
+    }
+    /// Inspect an opted-in expression result before its public projection.
+    /// Return None to keep it, or a replacement view. `state` reads at the root,
+    /// bypassing extra scope and retaining normal state-input credit. Replacement
+    /// output always spends this evaluation's work, room and depth; it is not
+    /// reinvoked on the replacement. Failed or cut evaluations skip the hook;
+    /// view operations and lookups stop after a cut. Nested callbacks opt in separately.
+    /// Inspection and other host work remain the caller's responsibility.
+    /// Views cannot escape the callback's owner lifetime:
+    /// ```compile_fail
+    /// # use openui_lang::{EvaluationScope, ExpressionValue};
+    /// # use std::cell::RefCell;
+    /// struct Keep(RefCell<Option<ExpressionValue<'static>>>);
+    /// impl EvaluationScope for Keep {
+    ///     fn project_result<'v>(&self, value: ExpressionValue<'v>,
+    ///         _: &dyn Fn(&str) -> ExpressionValue<'v>) -> Option<ExpressionValue<'v>> {
+    ///         *self.0.borrow_mut() = Some(value.property("payload"));
+    ///         None
+    ///     }
+    /// }
+    /// ```
+    fn project_result<'v>(
+        &self,
+        _value: ExpressionValue<'v>,
+        _state: &dyn Fn(&str) -> ExpressionValue<'v>,
+    ) -> Option<ExpressionValue<'v>> {
+        None
+    }
     /// Inspect an item without allocating its public projection or spending
     /// result room. Return true only when `each_item` will use the projection.
     fn wants_each_item(&self, _value: &ExpressionValue<'_>, _call_context: bool) -> bool {
@@ -60,6 +95,18 @@ pub trait EvaluationScope {
     /// Handle a call descriptor supplied through data. Children remain lazy.
     fn call_value(&self, _call: &Value, _evaluator: &ExpressionEvaluator<'_>) -> Option<Value> {
         Some(Value::Null)
+    }
+    /// Handle a call descriptor with its already-coerced object-property name.
+    /// The core computes this key for builtin dispatch on the runtime path;
+    /// reusing it avoids another coercion or result reservation in library lookup.
+    /// The default preserves existing `call_value` implementations.
+    fn call_value_named(
+        &self,
+        call: &Value,
+        _name: &str,
+        evaluator: &ExpressionEvaluator<'_>,
+    ) -> Option<Value> {
+        self.call_value(call, evaluator)
     }
     /// Optionally replace an evaluated `@Each` item, with its iteration's
     /// bindings and shared allowance. `None` preserves the original JS value,
@@ -110,17 +157,40 @@ impl PreparedReferenceValue {
     }
 }
 
+type ScopedOperation<'a> = dyn Fn(&mut dyn FnMut()) + 'a;
+
 /// A scoped read-only view of an internal JS value. Inspection does not
 /// normalize undefined entries or allocate a public container projection.
+/// Views stay on the owning thread; hook views also retain their owner's allowance.
 pub struct ExpressionValue<'a> {
     value: std::borrow::Cow<'a, Js>,
+    operate: Option<&'a ScopedOperation<'a>>,
 }
-impl ExpressionValue<'_> {
+impl<'a> ExpressionValue<'a> {
     /// Read an object property using the evaluator's JS property semantics.
-    pub fn property(&self, name: &str) -> ExpressionValue<'_> {
-        ExpressionValue {
-            value: std::borrow::Cow::Owned(property(&self.value, name)),
+    pub fn property(&self, name: &str) -> ExpressionValue<'a> {
+        let mut value = Js::Undefined;
+        let mut read = || value = property(&self.value, name);
+        if let Some(operate) = self.operate {
+            operate(&mut read);
+        } else {
+            read();
         }
+        ExpressionValue {
+            value: std::borrow::Cow::Owned(value),
+            operate: self.operate,
+        }
+    }
+    /// A null replacement; projection still charges its output.
+    pub fn null() -> Self {
+        Self {
+            value: std::borrow::Cow::Owned(Js::Null),
+            operate: None,
+        }
+    }
+    /// Whether the value is null or undefined, without coercion.
+    pub fn is_nullish(&self) -> bool {
+        is_nullish(&self.value)
     }
     /// A string value, without coercion.
     pub fn as_str(&self) -> Option<&str> {
@@ -140,16 +210,17 @@ impl ExpressionValue<'_> {
     pub fn is_object(&self) -> bool {
         matches!(
             self.value.as_ref(),
-            Js::Arr(_) | Js::Obj(_) | Js::Ast(_) | Js::Props(_)
+            Js::Arr(_) | Js::Obj(_) | Js::Ast(_) | Js::Props(_) | Js::Proto(_)
         ) || matches!(self.value.as_ref(), Js::Data(v) if matches!(v.as_ref(), Value::Arr(_) | Value::Obj(_) | Value::Ast(_) | Value::Element(_)))
     }
 }
 
 /// Evaluation within a callback, with the same scope, depth and allowance.
 pub struct ExpressionEvaluator<'a> {
-    evaluate: &'a dyn Fn(&Ast) -> EvaluationResult,
-    evaluate_value: &'a dyn Fn(&Value, bool) -> EvaluationResult,
+    evaluate: &'a dyn Fn(&Ast, bool) -> (EvaluationResult, bool),
+    evaluate_value: &'a dyn Fn(&Value, bool, bool) -> (EvaluationResult, bool),
     operate: &'a dyn Fn(&mut dyn FnMut()),
+    projection: Option<&'a Cell<bool>>,
 }
 impl ExpressionEvaluator<'_> {
     /// Evaluate a statement or argument; `None` denotes undefined.
@@ -158,17 +229,46 @@ impl ExpressionEvaluator<'_> {
     }
     /// Evaluate and inspect the limits affecting this evaluation.
     pub fn evaluate_result(&self, expression: &Ast) -> EvaluationResult {
-        (self.evaluate)(expression)
+        self.projected((self.evaluate)(expression, self.projection.is_some()))
     }
     /// Evaluate an AST-shaped data value. Literal descriptors return their raw
     /// value; child fields are read lazily by the same operator implementation.
     pub fn evaluate_value(&self, expression: &Value) -> EvaluationResult {
-        (self.evaluate_value)(expression, false)
+        self.projected((self.evaluate_value)(
+            expression,
+            false,
+            self.projection.is_some(),
+        ))
     }
     /// Evaluate a named call prop, retaining the call site's `val.k` failure
     /// when a raw null is supplied instead of an AST descriptor.
     pub fn evaluate_call_prop(&self, expression: &Value) -> EvaluationResult {
-        (self.evaluate_value)(expression, true)
+        self.projected((self.evaluate_value)(
+            expression,
+            true,
+            self.projection.is_some(),
+        ))
+    }
+    /// Opt evaluations in this closure into `EvaluationScope::project_result`.
+    /// The boolean records replacements through the supplied evaluator. It keeps
+    /// its owner, allowance and loop bindings. Nested callbacks receive their
+    /// ordinary evaluator and opt in independently. No result is pre-projected.
+    pub fn with_projection<T>(&self, f: impl FnOnce(&ExpressionEvaluator<'_>) -> T) -> (T, bool) {
+        let replaced = Cell::new(false);
+        let evaluator = ExpressionEvaluator {
+            evaluate: self.evaluate,
+            evaluate_value: self.evaluate_value,
+            operate: self.operate,
+            projection: Some(&replaced),
+        };
+        let result = f(&evaluator);
+        (result, replaced.get())
+    }
+    fn projected(&self, (result, replaced): (EvaluationResult, bool)) -> EvaluationResult {
+        if let Some(flag) = self.projection {
+            flag.set(flag.get() || replaced);
+        }
+        result
     }
     /// Run a recursive caller walk within one shared logical depth level.
     /// Returns None on a cut. The level and stack context leave on return or
@@ -214,6 +314,21 @@ impl ExpressionEvaluator<'_> {
         let mut out = None;
         (self.operate)(&mut || {
             let _context = CallContext::set(enabled);
+            if let Some(f) = f.take() {
+                out = Some(f());
+            }
+        });
+        out
+    }
+    /// Resolve declarations against state without the caller's extra overlay.
+    /// Uses this session's allowance and a separate state-name cache, restoring
+    /// the overlay on return or unwind. Reference results keep their shared cache.
+    /// This is for query defaults resolved outside a field write's `$value` scope.
+    pub fn without_extra<T>(&self, f: impl FnOnce() -> T) -> Option<T> {
+        let mut f = Some(f);
+        let mut out = None;
+        (self.operate)(&mut || {
+            let _extra = ExtraContext::disable();
             if let Some(f) = f.take() {
                 out = Some(f());
             }
@@ -323,12 +438,18 @@ pub enum ExpressionType {
 }
 
 /// One expression's result, with flags for cuts affecting that evaluation.
-#[derive(Clone, Debug, PartialEq)]
+/// Equality compares the value, failure and cut flags, independently of the
+/// representation provenance used for output accounting.
+#[derive(Clone, Debug)]
 #[non_exhaustive]
 pub struct EvaluationResult {
     /// Undefined is `None`; null is `Some(Value::Null)`. Deferred ASTs and
     /// caller-owned containers retain their types and ownership.
     pub value: Option<Value>,
+    /// The result reuses a public data container or deferred AST rather than
+    /// constructing a new JavaScript object. Reused identity does not imply
+    /// that distinct output positions share one result reservation.
+    reused_data: bool,
     /// The first failure in this evaluation, including nested callback work.
     /// A failure stops expression evaluation and makes `value` undefined.
     /// Sequential evaluations start with no failure; cut flags remain sticky.
@@ -337,6 +458,28 @@ pub struct EvaluationResult {
     pub size_limited: bool,
     /// Logical depth or the grown-stack ceiling was reached.
     pub depth_limited: bool,
+}
+impl EvaluationResult {
+    /// Whether the result reuses supplied data or a deferred AST. This is
+    /// representation provenance for accounting, not part of result equality.
+    /// Accounting provenance is read-only.
+    /// ```compile_fail
+    /// # use openui_lang::EvaluationResult;
+    /// fn forge(mut result: EvaluationResult) {
+    ///     result.reused_data = false;
+    /// }
+    /// ```
+    pub fn reuses_data(&self) -> bool {
+        self.reused_data
+    }
+}
+impl PartialEq for EvaluationResult {
+    fn eq(&self, other: &Self) -> bool {
+        self.value == other.value
+            && self.failure == other.failure
+            && self.size_limited == other.size_limited
+            && self.depth_limited == other.depth_limited
+    }
 }
 
 /// Several expression evaluations sharing work, result room and input credits.
@@ -395,7 +538,12 @@ impl<'a> EvaluationSession<'a> {
             l.depth_limited.set(false);
             l.cut.set(None);
         });
-        ACCOUNT.with(|a| *a.borrow_mut() = Account::new(limits, input_bytes));
+        let extra_object = scope.extra_is_object();
+        ACCOUNT.with(|a| {
+            let mut account = Account::new(limits, input_bytes);
+            account.extra_object = extra_object;
+            *a.borrow_mut() = account;
+        });
         let flags = ACCOUNT.with(|a| a.borrow().flags.clone());
         saved.swap();
         saved.restore = false;
@@ -416,7 +564,7 @@ impl<'a> EvaluationSession<'a> {
     pub fn evaluate(&self, expression: &Ast) -> EvaluationResult {
         let frame = self.names.callbacks.borrow().last().cloned();
         if let Some(frame) = frame {
-            return self.names.resume(&frame, expression);
+            return self.names.resume(&frame, expression, false).0;
         }
         let outer = DepthContext::current();
         let active = ACCOUNT.with(|a| Rc::ptr_eq(&a.borrow().flags, &self.flags));
@@ -430,7 +578,8 @@ impl<'a> EvaluationSession<'a> {
             DepthContext::total_limit().div_ceil(VALUE_LEVELS_PER_LEVEL),
             DEPTH.with(|d| d.borrow().stack_base),
         );
-        evaluate_result(expression, &Scope::Root(&self.names))
+        let operate = |f: &mut dyn FnMut()| self.root_context(f);
+        evaluate_result(expression, &Scope::Root(&self.names), false, &operate).0
     }
     /// Run a caller's walk under this allowance. Use `with_level` at each
     /// recursive hop and the reservation methods for caller-produced output.
@@ -443,9 +592,13 @@ impl<'a> EvaluationSession<'a> {
                 .resume_context(&frame, || self.names.evaluator(&frame, f));
         }
         self.root_context(|| {
-            let eval =
-                |node: &Ast| self.root_context(|| evaluate_result(node, &Scope::Root(&self.names)));
-            let value = |node: &Value, call_prop: bool| {
+            let operate = |f: &mut dyn FnMut()| self.root_context(f);
+            let eval = |node: &Ast, project: bool| {
+                self.root_context(|| {
+                    evaluate_result(node, &Scope::Root(&self.names), project, &operate)
+                })
+            };
+            let value = |node: &Value, call_prop: bool, project: bool| {
                 self.root_context(|| {
                     let _entry = FailureEntry::enter();
                     if call_prop && matches!(node, Value::Null) {
@@ -455,14 +608,14 @@ impl<'a> EvaluationSession<'a> {
                             actual: ExpressionType::Null,
                         });
                     }
-                    evaluate_value_result(node, &Scope::Root(&self.names))
+                    evaluate_value_result(node, &Scope::Root(&self.names), project, &operate)
                 })
             };
-            let operate = |f: &mut dyn FnMut()| self.root_context(f);
             f(&ExpressionEvaluator {
                 evaluate: &eval,
                 evaluate_value: &value,
                 operate: &operate,
+                projection: None,
             })
         })
     }
@@ -527,25 +680,99 @@ pub fn evaluate_expression_with_limits(
     session.evaluate(expression)
 }
 
-fn evaluate_result(expression: &Ast, scope: &Scope<Supplied<'_>>) -> EvaluationResult {
+fn evaluate_result(
+    expression: &Ast,
+    scope: &Scope<Supplied<'_>>,
+    project: bool,
+    operate: &dyn Fn(&mut dyn FnMut()),
+) -> (EvaluationResult, bool) {
     let _evaluation = FailureEntry::enter();
     let _projection = ProjectionEntry::enter();
     let js = evaluate(expression, scope);
+    let (js, resolved) = if project && !failed() && LIMITS.with(|limits| limits.cut.get().is_none())
+    {
+        project_result(js, scope, operate)
+    } else {
+        (js, false)
+    };
     let value = if failed() { None } else { runtime_value(&js) };
     if let Some(v) = &value {
         remember_result(v, &js);
     }
-    result(value)
+    let mut result = result(value);
+    result.reused_data = matches!(js, Js::Data(_) | Js::Props(_) | Js::Ast(_));
+    (result, resolved)
 }
-fn evaluate_value_result(expression: &Value, scope: &Scope<Supplied<'_>>) -> EvaluationResult {
+fn evaluate_value_result(
+    expression: &Value,
+    scope: &Scope<Supplied<'_>>,
+    project: bool,
+    operate: &dyn Fn(&mut dyn FnMut()),
+) -> (EvaluationResult, bool) {
     let _evaluation = FailureEntry::enter();
     let _projection = ProjectionEntry::enter();
     let js = super::descriptor::evaluate(Some(expression), scope);
+    let (js, resolved) = if project && !failed() && LIMITS.with(|limits| limits.cut.get().is_none())
+    {
+        project_result(js, scope, operate)
+    } else {
+        (js, false)
+    };
     let value = if failed() { None } else { runtime_value(&js) };
     if let Some(v) = &value {
         remember_result(v, &js);
     }
-    result(value)
+    let mut result = result(value);
+    result.reused_data = matches!(js, Js::Data(_) | Js::Props(_) | Js::Ast(_));
+    (result, resolved)
+}
+fn project_result(
+    js: Js,
+    scope: &Scope<Supplied<'_>>,
+    operate: &dyn Fn(&mut dyn FnMut()),
+) -> (Js, bool) {
+    let mut root = scope;
+    let names = loop {
+        match root {
+            Scope::Root(names) => break names,
+            Scope::Each { parent, .. } => root = parent,
+        }
+    };
+    let flags = ACCOUNT.with(|a| a.borrow().flags.clone());
+    let owned = |f: &mut dyn FnMut()| {
+        let mut checked = || {
+            if !failed() && LIMITS.with(|limits| limits.cut.get().is_none()) {
+                f();
+            }
+        };
+        if ACCOUNT.with(|a| Rc::ptr_eq(&a.borrow().flags, &flags)) {
+            checked();
+        } else {
+            operate(&mut checked);
+        }
+    };
+    let state = |name: &str| {
+        let mut js = Js::Undefined;
+        owned(&mut || {
+            let _extra = ExtraContext::disable();
+            js = names.get(name, false);
+        });
+        ExpressionValue {
+            value: std::borrow::Cow::Owned(js),
+            operate: Some(&owned),
+        }
+    };
+    let replacement = names.scope.project_result(
+        ExpressionValue {
+            value: std::borrow::Cow::Borrowed(&js),
+            operate: Some(&owned),
+        },
+        &state,
+    );
+    match replacement {
+        Some(value) => (value.value.into_owned(), true),
+        None => (js, false),
+    }
 }
 /// Report only the first failure of the active expression chain.
 pub(super) fn fail(failure: EvaluationFailure) {
@@ -584,11 +811,13 @@ fn in_scope_value(
     node: &Value,
     bindings: &[(String, Js)],
     scope: &Scope<Supplied<'_>>,
-) -> EvaluationResult {
-    crate::stack::grow_stack!(in_scope_value(node, bindings, scope), budget else result(Some(Value::Null)));
+    project: bool,
+    operate: &dyn Fn(&mut dyn FnMut()),
+) -> (EvaluationResult, bool) {
+    crate::stack::grow_stack!(in_scope_value(node, bindings, scope, project, operate), budget else (result(Some(Value::Null)), false));
     if let Some(((name, item), rest)) = bindings.split_first() {
         if !step(1) {
-            return result(Some(Value::Null));
+            return (result(Some(Value::Null)), false);
         }
         in_scope_value(
             node,
@@ -598,9 +827,11 @@ fn in_scope_value(
                 item,
                 parent: scope,
             },
+            project,
+            operate,
         )
     } else {
-        evaluate_value_result(node, scope)
+        evaluate_value_result(node, scope, project, operate)
     }
 }
 fn result(value: Option<Value>) -> EvaluationResult {
@@ -613,6 +844,7 @@ fn result(value: Option<Value>) -> EvaluationResult {
         }
         EvaluationResult {
             value,
+            reused_data: false,
             failure: ACCOUNT.with(|a| a.borrow().failure.clone()),
             size_limited: l.size_limited.get() || crate::progress::stalled_so_far(),
             depth_limited: l.depth_limited.get(),
@@ -622,7 +854,7 @@ fn result(value: Option<Value>) -> EvaluationResult {
 
 pub(super) struct Supplied<'a> {
     scope: &'a dyn EvaluationScope,
-    read: RefCell<HashMap<(bool, String), Js>>,
+    read: RefCell<HashMap<(bool, String, bool, bool), Js>>,
     callbacks: RefCell<Vec<Rc<Suspension>>>,
 }
 struct Suspension {
@@ -640,11 +872,13 @@ fn in_scope(
     node: &Ast,
     bindings: &[(String, Js)],
     scope: &Scope<Supplied<'_>>,
-) -> EvaluationResult {
-    crate::stack::grow_stack!(in_scope(node, bindings, scope), budget else result(Some(Value::Null)));
+    project: bool,
+    operate: &dyn Fn(&mut dyn FnMut()),
+) -> (EvaluationResult, bool) {
+    crate::stack::grow_stack!(in_scope(node, bindings, scope, project, operate), budget else (result(Some(Value::Null)), false));
     if let Some(((name, item), rest)) = bindings.split_first() {
         if !step(1) {
-            return evaluate_result(&Ast::Null, scope);
+            return evaluate_result(&Ast::Null, scope, project, operate);
         }
         in_scope(
             node,
@@ -654,9 +888,11 @@ fn in_scope(
                 item,
                 parent: scope,
             },
+            project,
+            operate,
         )
     } else {
-        evaluate_result(node, scope)
+        evaluate_result(node, scope, project, operate)
     }
 }
 impl Supplied<'_> {
@@ -699,8 +935,9 @@ impl Supplied<'_> {
         value
     }
     fn evaluator<T>(&self, frame: &Suspension, f: impl FnOnce(&ExpressionEvaluator<'_>) -> T) -> T {
-        let eval = |node: &Ast| self.resume(frame, node);
-        let value = |node: &Value, call_prop: bool| {
+        let operate = |f: &mut dyn FnMut()| self.resume_context(frame, f);
+        let eval = |node: &Ast, project: bool| self.resume(frame, node, project);
+        let value = |node: &Value, call_prop: bool, project: bool| {
             self.resume_context(frame, || {
                 let _entry = FailureEntry::enter();
                 if call_prop && matches!(node, Value::Null) {
@@ -710,14 +947,14 @@ impl Supplied<'_> {
                         actual: ExpressionType::Null,
                     });
                 }
-                in_scope_value(node, &frame.bindings, &Scope::Root(self))
+                in_scope_value(node, &frame.bindings, &Scope::Root(self), project, &operate)
             })
         };
-        let operate = |f: &mut dyn FnMut()| self.resume_context(frame, f);
         f(&ExpressionEvaluator {
             evaluate: &eval,
             evaluate_value: &value,
             operate: &operate,
+            projection: None,
         })
     }
     fn resume_context<T>(&self, frame: &Suspension, f: impl FnOnce() -> T) -> T {
@@ -737,7 +974,7 @@ impl Supplied<'_> {
         record_flags();
         out
     }
-    fn resume(&self, frame: &Suspension, node: &Ast) -> EvaluationResult {
+    fn resume(&self, frame: &Suspension, node: &Ast, project: bool) -> (EvaluationResult, bool) {
         let outer = DepthContext::current();
         let active = ACCOUNT.with(|a| Rc::ptr_eq(&a.borrow().flags, &frame.flags));
         // The saved frame holds this allowance while suspended, and the
@@ -752,12 +989,58 @@ impl Supplied<'_> {
             DepthContext::total_limit().div_ceil(VALUE_LEVELS_PER_LEVEL),
             DEPTH.with(|d| d.borrow().stack_base),
         );
-        in_scope(node, &frame.bindings, &Scope::Root(self))
+        let operate = |f: &mut dyn FnMut()| self.resume_context(frame, f);
+        in_scope(node, &frame.bindings, &Scope::Root(self), project, &operate)
+    }
+    fn object_extra(&self, name: &str) -> Js {
+        let key = (false, name.to_owned(), true, true);
+        if let Some(value) = self.read.borrow().get(&key) {
+            return value.clone();
+        }
+        let value = self.callback(&Scope::Root(self), |eval| self.scope.extra(name, eval));
+        if failed() {
+            return Js::Undefined;
+        }
+        let value = match value {
+            Some(Value::Null) => Js::Null,
+            Some(value) => {
+                register_input(&value);
+                data_value(&value)
+            }
+            None if OBJECT_PROTOTYPE_KEYS.contains(&name) => {
+                property(&Js::Obj(Arc::new(JsObject::new())), name)
+            }
+            None => Js::Undefined,
+        };
+        // Missing own fields need no second cache entry; the combined state
+        // lookup caches their fallback. Actual extra values are credited once.
+        if !matches!(value, Js::Undefined) {
+            self.read.borrow_mut().insert(key, value.clone());
+        }
+        value
     }
     fn get(&self, name: &str, reference: bool) -> Js {
-        let key = (reference, name.to_owned());
+        let (extra_enabled, extra_object) = ACCOUNT.with(|a| {
+            let a = a.borrow();
+            (reference || a.extra_enabled, a.extra_object)
+        });
+        let key = (reference, name.to_owned(), extra_enabled, false);
         if let Some(js) = self.read.borrow().get(&key) {
             return js.clone();
+        }
+        if !reference && extra_enabled && extra_object {
+            let extra = self.object_extra(name);
+            if failed() {
+                return Js::Undefined;
+            }
+            let value = if is_nullish(&extra) {
+                let _extra = ExtraContext::disable();
+                self.get(name, false)
+            } else {
+                extra
+            };
+            self.read.borrow_mut().insert(key, value.clone());
+            return value;
         }
         if reference && let Some(prepared) = self.scope.prepared_reference(name) {
             // The prepared set was paid before this session. A claim larger
@@ -777,7 +1060,11 @@ impl Supplied<'_> {
             if reference {
                 self.scope.reference(name, eval)
             } else {
-                let extra = self.scope.extra(name, eval);
+                let extra = if extra_enabled {
+                    self.scope.extra(name, eval)
+                } else {
+                    None
+                };
                 // Callback evaluation is suspended here: its first failure is
                 // in this frame's saved allowance, not the caller's context.
                 let failed = self
@@ -809,6 +1096,35 @@ impl Supplied<'_> {
         js
     }
 }
+// Extra scope is an object lookup, while state is Map.get. A non-string
+// descriptor name can match the extra object after coercion, but cannot match
+// the string-key store. With no extra object it must not coerce at all.
+pub(super) fn extra_state(name: Option<&Value>, scope: &Scope<Supplied<'_>>) -> Js {
+    if !ACCOUNT.with(|a| {
+        let a = a.borrow();
+        a.extra_enabled && a.extra_object
+    }) {
+        return Js::Undefined;
+    }
+    let mut root = scope;
+    let names = loop {
+        match root {
+            Scope::Root(names) => break names,
+            Scope::Each { parent, .. } => root = parent,
+        }
+    };
+    let value = name.map(data_value).unwrap_or(Js::Undefined);
+    let key = to_string_in::<Supplied<'_>>(&value);
+    if failed() {
+        return Js::Undefined;
+    }
+    let value = names.object_extra(&key);
+    if is_nullish(&value) {
+        Js::Undefined
+    } else {
+        value
+    }
+}
 impl Names for Supplied<'_> {
     const RUNTIME: bool = true;
     fn state(&self, name: &str, _scope: &Scope<Self>) -> Option<Js> {
@@ -827,6 +1143,7 @@ impl Names for Supplied<'_> {
         let context = ACCOUNT.with(|a| a.borrow().call_context);
         let view = ExpressionValue {
             value: std::borrow::Cow::Borrowed(&js),
+            operate: None,
         };
         if !self.scope.wants_each_item(&view, context) {
             return js;
@@ -856,8 +1173,8 @@ impl Names for Supplied<'_> {
             js
         }
     }
-    fn call_value(&self, node: &Value, scope: &Scope<Self>) -> Js {
-        let value = self.callback(scope, |eval| self.scope.call_value(node, eval));
+    fn call_value(&self, node: &Value, name: &str, scope: &Scope<Self>) -> Js {
+        let value = self.callback(scope, |eval| self.scope.call_value_named(node, name, eval));
         if failed() {
             return Js::Undefined;
         }
@@ -1004,6 +1321,8 @@ struct Account {
     failure: Option<EvaluationFailure>,
     evaluations: usize,
     call_context: bool,
+    extra_enabled: bool,
+    extra_object: bool,
     projection_room: Vec<usize>,
     flags: Rc<Cell<EvaluationFlags>>,
     bytes: usize,
@@ -1019,6 +1338,8 @@ impl Account {
             failure: None,
             evaluations: 0,
             call_context: true,
+            extra_enabled: true,
+            extra_object: false,
             projection_room: Vec::new(),
             flags: Rc::new(Cell::new(EvaluationFlags::default())),
             bytes,
@@ -1053,6 +1374,17 @@ impl Account {
                 ),
             );
         });
+    }
+}
+struct ExtraContext(bool);
+impl ExtraContext {
+    fn disable() -> Self {
+        Self(ACCOUNT.with(|a| std::mem::replace(&mut a.borrow_mut().extra_enabled, false)))
+    }
+}
+impl Drop for ExtraContext {
+    fn drop(&mut self) {
+        ACCOUNT.with(|a| a.borrow_mut().extra_enabled = self.0);
     }
 }
 pub(super) struct CallContext(bool);

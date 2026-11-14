@@ -1,0 +1,3 @@
+root=Field({k:"Assign",target:"$total",value:{k:"BinOp",op:"*",left:{k:"StateRef",n:"$value"},right:{k:"Num",v:2}}},{k:"Assign",target:"$total",value:{k:"Num",v:9}},null,{k:"StateRef",n:"$n"})
+$total=3
+$n=4

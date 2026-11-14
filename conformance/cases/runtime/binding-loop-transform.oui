@@ -1,0 +1,3 @@
+root=Field(null,$total,@Each([1,2],row,Field($n,row,@Each([3,4],item,Field($n,item,null,$total=$value*2+row+item)))))
+$n=3
+$total=0

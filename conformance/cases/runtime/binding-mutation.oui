@@ -1,0 +1,3 @@
+root=Field($n,m)
+m=Mutation("set",{})
+$n=3

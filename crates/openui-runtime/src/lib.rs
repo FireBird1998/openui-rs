@@ -1,7 +1,7 @@
 //! OpenUI Lang's runtime, built on the core's one expression evaluator.
 //!
 //! Evaluate expressions against caller-supplied names and keep live state in a
-//! [`Store`]. Evaluate parsed trees with [`evaluate_tree`]. Bindings and actions will follow. Parsing remains in `openui-lang`, which
+//! [`Store`]. Evaluate parsed trees with [`evaluate_tree`]. Write input bindings with [`write_binding`]. Actions will follow. Parsing remains in `openui-lang`, which
 //! does not depend on this crate.
 //!
 //! References follow lang-core 1.1.0's query manager before any tool runs:
@@ -37,8 +37,8 @@ mod store;
 mod tree;
 pub use store::{InitializationResult, StateRefusal, StateValue, Store, StoreError, StoreSnapshot};
 pub use tree::{
-    PreparedReferenceValues, RuntimeError, TreeInput, TreeResult, evaluate_tree,
-    evaluate_tree_with_limits,
+    BindingProps, BindingWriteError, PreparedReferenceValues, RuntimeError, TreeInput, TreeResult,
+    evaluate_tree, evaluate_tree_with_limits, write_binding, write_binding_with_limits,
 };
 
 pub use openui_lang::{

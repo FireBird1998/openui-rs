@@ -43,7 +43,7 @@ binding's `stack` and `binding` binaries, and the runtime's `expressions`,
 inputs, with a stricter shape assertion that peak heap stays below twice the input heap for pass-through, cuts,
 `Count`, `First` and object coercion. All other core and binding test
 binaries, including unit tests, example tests and doc examples, use **256 MiB**.
-Runtime `tree_review34` uses 512 MiB to prepare four million unread numbers;
+Runtime `tree_loops_and_prepared_references` uses 512 MiB to prepare four million unread numbers;
 its repeated-evaluation allocation and timing checks exclude preparation, and
 preparation separately forbids per-number allocation.
 Runtime `tree_replacement_room_and_inherited_calls` uses 256 MiB. Its fixed-room replacement-buffer and
@@ -586,7 +586,50 @@ Regenerate the focused golden from `reference/` with:
 bun --no-install tree-interface.ts > ../conformance/golden/runtime-interface.json
 ```
 
-Action execution and scripted interactions remain later runtime tickets.
+`bindings.rs` checks marker JSON, plain and transformed writes against current
+state, JSON round trips, null extra-scope fallback, inherited target names,
+literal strings, typed/data Assign parity, and refusal preserving snapshot,
+version and pristine status. It pins exact room for plain and loop-produced
+markers, assignment markers, and shared supplied marker bodies in separate
+output positions, cuts one byte below, and retains the interrupted raw prop. Deep
+expressions and large writes exercise bounded failure without partial state.
+Declaration-scope reads have separate caches, restore on unwind, and retain
+the same allowance. Query defaults read state without the field-value overlay. Extra scope reads
+use object key coercion and inherited members; state keeps exact Map keys.
+Failed field writes compare TypeError messages and post-write trees with the
+reference, and preserve snapshot identity, version and pristine status.
+The function-valued-write divergence pins both outputs at every write step.
+The non-string-target divergence pins entire write records, including markers,
+refusal errors and both post-write observations. Refusals check every existing
+name's pristine status without pretending a non-string target is a string.
+Overlapping element/marker data cases pin expression-result priority separately
+from raw-marker priority in state, member, query, ternary, list and inline paths.
+Signature tests use structural names, live Zod marks and explicit ambiguous
+annotation cases. `BindingProps::undecided` exposes every unresolved pair in
+four live Zod specs; tests check all true marks are recovered or reported and
+that explicit insertion clears its diagnostic.
+`prop_projection.rs` exercises the general pre-projection scope hook, with
+marker interpretation entirely in the runtime. It checks typed and data-shaped
+results, state-only reads, callback opt-in, one substitution per result,
+unchanged and identity hooks with identical room/work/depth, and view/lookup
+ownership inside foreign sessions. Replacement output spends the normal
+allowance, including borrowed values, nulls, large strings and deep containers.
+Hooks skip failed/cut results and view operations stop after a cut.
+The hook's views cannot escape their owner lifetime, enforced by a compile-fail
+doctest. Markerless string fields pin main's exact work: 781431 for eleven
+60000-byte strings and 1200241 for one 400000-byte string in the Box fixture;
+one unit below cuts, and the eleven-field case fits one million work.
+Public APIs exercise the state-only lookup and one-read rule. `reuses_data`
+exposes read-only provenance, with a compile-fail
+doctest rejecting mutation and existing result-equality tests unchanged.
+Assignment stripping pins main's 292 room/338 work with bindings, and
+165/179 after stripping without bindings. Eleven repeated data markers fit
+main's 3030/5946 baseline
+and now pin 214/655 exactly. Each boundary cuts one unit below.
+
+The corpus also replays seeded `.writes.json` sequences through public marker
+writes; missing sequences fail, and pending cases keep partial comparisons.
+Action execution remains a later runtime ticket.
 The core's existing suite still runs by itself with `cargo test -p openui-lang`.
 The unchanged runaway-stack unit test also runs under release: its assertion
 is enabled for unit-test builds while production retains the existing
@@ -604,7 +647,7 @@ evaluator respectively, retaining their assertions.
 
 Pending cases compare in-scope errors as well as independent props and snapshots;
 `runtime/pending-error` supplies a failing prop beside a deferred action. All
-three runtime divergences pin complete reference and Rust one-shot observations
+runtime divergences pin complete reference and Rust one-shot observations
 under both state scenarios, independently of the regenerated goldens.
 
 The descriptor matrix starts its streaming root with a state prop, so the root

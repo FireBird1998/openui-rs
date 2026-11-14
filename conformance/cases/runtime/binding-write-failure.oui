@@ -1,0 +1,2 @@
+root=Field({k:"Assign",target:"$n",value:{k:"StateRef",n:{toString:3}}},$n,[{k:"StateRef",n:{toString:3}}],"name")
+$n=3
