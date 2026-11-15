@@ -837,3 +837,20 @@ and configurations; empty containers require more bookkeeping per output byte,
 and these figures do not establish a universal room-to-heap constant.
 `loop_peak_witness` reports peak allocation alongside unique retained string
 payload and output bytes for a seven-level, three-item element loop.
+
+### Bounded Store state
+
+Store writes enforce the retained `Limits` result-size ceiling for both individual
+values and combined state (ADR 0005). Total state includes JSON-escaped keys and
+punctuation; undefined and pristine-only names count as null, aliases count per
+occurrence, and empty state costs zero. Per-name cached sizes make updates
+incremental. A refusal returns a typed Store error without changing that name's
+value, pristine status or version. Binding/form/action writes share this admission
+path; a refused reset preserves the whole step. Initialization loads entries that
+fit and reports each refusal, including persisted entries. Persisted duplicates
+are normalized before pristine flags can change.
+
+This intentionally differs from the reference's unbounded Store. The ordinary
+conformance fixtures continue to use the default 8 MiB state ceiling. This state
+cap does not yet establish a peak-memory bound for all intermediate loop/default
+shapes; the amplification and unique-leaf nesting follow-ups remain unresolved.

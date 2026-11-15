@@ -788,6 +788,20 @@ impl ExpressionEvaluator<'_> {
         (self.operate)(&mut || ok = spend(measure_data(value, false)));
         ok
     }
+
+    /// Reserve a caller-produced value and return its exact serialized byte
+    /// size. Measurement uses this allowance's work, depth and room; a cut
+    /// returns `None`. Shared bodies count at every output position.
+    pub fn reserve_value_size(&self, value: &Value) -> Option<usize> {
+        let mut out = None;
+        (self.operate)(&mut || {
+            let bytes = measure_data(value, false);
+            if spend(bytes) && LIMITS.with(|l| l.cut.get().is_none()) {
+                out = Some(bytes);
+            }
+        });
+        out
+    }
     /// Recheck an already reserved value's depth without another output
     /// reservation or input credit. Successful identity measurements are
     /// reusable only where their measured height fits.

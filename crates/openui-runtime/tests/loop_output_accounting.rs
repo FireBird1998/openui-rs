@@ -122,7 +122,7 @@ fn dynamic_element_work_stays_linear_under_the_default_ceiling() {
     // db80c86: native 70,800,148 / data 76,200,199 (exact work edges).
     for data in [false, true] {
         for n in [100, 200, 100_000] {
-            let mut s = Store::new();
+            let mut s = Store::with_limits(Limits::DEFAULT.with_result_size(64_000_000));
             s.set("$n", Some(Value::Num(1.))).unwrap();
             s.set(
                 "$list",
@@ -357,7 +357,7 @@ fn arithmetic_element_work_fits_below_the_pre_replacement_cost() {
     for dynamic in [true] {
         for data in [false, true] {
             let build = |n| {
-                let mut store = Store::new();
+                let mut store = Store::with_limits(Limits::DEFAULT.with_result_size(64_000_000));
                 store.set("$n", Some(Value::Num(1.))).unwrap();
                 store
                     .set(

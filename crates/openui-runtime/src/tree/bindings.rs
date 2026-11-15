@@ -431,7 +431,7 @@ pub fn write_binding(
 /// Query defaults resolve without that overlay; component-valued transforms
 /// evaluate without a prop schema context, like upstream state-field writes.
 /// A cut or failure never writes; successful results use the store's ordinary
-/// admission path (including the total-state admission limits due in #39).
+/// admission path, including the Store's independent total-state ceiling.
 pub fn write_binding_with_limits(
     input: TreeInput<'_>,
     store: &mut Store,

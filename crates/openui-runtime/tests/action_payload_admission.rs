@@ -84,8 +84,20 @@ fn a_large_snapshot_emits_before_an_oversized_set_is_refused() {
     assert!(r.size_limited);
     assert_eq!(s.get("$n"), Some(Value::Num(0.)));
     let snapshot = s.snapshot();
-    s.set("$huge", Some(Value::Str("x".repeat(8 * 1024 * 1024))))
+    assert!(
+        s.set("$huge", Some(Value::Str("x".repeat(8 * 1024 * 1024))))
+            .is_err()
+    );
+    assert!(std::sync::Arc::ptr_eq(&snapshot, &s.snapshot()));
+    // An explicit larger Store cap permits setup for the independent run cap.
+    let mut larger =
+        Store::with_limits(openui_runtime::Limits::DEFAULT.with_result_size(16 * 1024 * 1024));
+    let initialized = larger.initialize([], snapshot.iter().map(|(k, v)| (k.as_str(), v.as_ref())));
+    assert!(initialized.refused.is_empty());
+    larger
+        .set("$huge", Some(Value::Str("x".repeat(8 * 1024 * 1024))))
         .unwrap();
+    s = larger;
     let r = run_action(TreeInput::new(&p), &mut s, None, "", None);
     assert!(r.size_limited);
     assert!(r.events.is_empty());

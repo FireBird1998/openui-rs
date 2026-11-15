@@ -398,7 +398,7 @@ fn set_functions_run_at_click_time_and_library_errors_write_null_and_continue() 
 #[test]
 fn long_plans_share_work_and_preserve_depth_cuts() {
     let p = ParseResult::default();
-    let mut s = Store::new();
+    let mut s = Store::with_limits(Limits::DEFAULT.with_depth(20_000));
     s.set("$n", Some(Value::Num(0.))).unwrap();
     let steps=Value::Arr(Arc::new((0..1000).map(|_|value(r#"{"type":"set","target":"$n","valueAST":{"k":"BinOp","op":"+","left":{"k":"StateRef","n":"$n"},"right":{"k":"Num","v":1}}}"#)).collect()));
     let mut o = JsObject::new();
@@ -530,7 +530,7 @@ fn single_set_has_exact_result_and_work_boundaries_and_a_cut_does_not_poison_lat
 #[test]
 fn malformed_plan_kinds_and_deep_inputs_are_safe_on_a_small_stack() {
     std::thread::Builder::new().name("malformed_plan_kinds_and_deep_inputs_are_safe_on_a_small_stack::worker".into()).stack_size(64*1024).spawn(|| {
-        let p=ParseResult::default();let mut store=Store::new();
+        let p=ParseResult::default();let mut store=Store::with_limits(Limits::DEFAULT.with_depth(20_000));
         for input in ["null","false","0","\"\"","true","1","\"x\"","[]","{}",r#"{"steps":null}"#,r#"{"steps":false}"#,r#"{"steps":{}}"#,r#"{"steps":3}"#,r#"{"steps":"x"}"#,r#"{"steps":[null]}"#,r#"{"steps":[false,3,"x",[],{"type":["open_url"]}]}"#] {
             let action=value(input);let _=run_action(TreeInput::new(&p),&mut store,Some(&action),"",None);
         }

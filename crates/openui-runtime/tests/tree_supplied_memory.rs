@@ -45,16 +45,28 @@ fn large_supplied_tree_prop_shares_bodies_below_twice_the_input_heap() {
 #[test]
 fn shared_dag_identity_avoids_exponential_diagnostic_walks() {
     let l = library();
-    let p = parse("root=Box($a==$b,$c==$d)", &l, None);
+    let p = parse(
+        "a=Query(\"a\",{})\nb=Query(\"b\",{})\nc=Query(\"c\",{})\nd=Query(\"d\",{})\nroot=Box(a==b,c==d)",
+        &l,
+        None,
+    );
     let mut value = Value::Num(1.0);
     for _ in 0..64 {
         value = Value::Arr(Arc::new(vec![value.clone(), value]));
     }
     let mut s = Store::new();
     for name in ["$a", "$b", "$c", "$d"] {
-        s.set(name, Some(value.clone())).unwrap();
+        assert!(s.set(name, Some(value.clone())).is_err());
     }
-    let r = evaluate_tree((&p).into(), &s);
+    assert!(s.snapshot().is_empty());
+    let mut references = JsObject::new();
+    for name in ["a", "b", "c", "d"] {
+        references.define(name, value.clone());
+    }
+    let r = evaluate_tree(
+        openui_runtime::TreeInput::new(&p).with_reference_values(&references),
+        &s,
+    );
     assert!(!r.size_limited && !r.depth_limited, "{r:?}");
     for name in ["a", "b"] {
         assert_eq!(root(&r).props.get(name), Some(&Value::Bool(true)));

@@ -1,7 +1,11 @@
 //! The pinned store's state transitions, without embedder callbacks.
 
 use crate::{Ast, JsObject, Limits, Value};
-use std::{collections::HashSet, fmt, sync::Arc};
+use std::{
+    collections::{HashMap, HashSet},
+    fmt,
+    sync::Arc,
+};
 
 /// An owned value; `None` is top-level JavaScript undefined.
 /// Cloning shares container bodies and copies scalar strings, as `Value` does.
@@ -17,11 +21,23 @@ pub type StoreSnapshot = Arc<JsObject<StateValue>>;
 pub enum StoreError {
     /// A state write cannot advance the exhausted version.
     VersionExhausted,
+    /// Measuring a write exhausted the configured work allowance.
+    WorkLimited,
+    /// The value exceeds the configured nesting depth.
+    DepthLimited,
+    /// Value measurement exhausted result room or its work allowance.
+    ValueTooLarge,
+    /// The combined state, including names and pristine-only names, is full.
+    StateTooLarge,
 }
 impl fmt::Display for StoreError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             Self::VersionExhausted => f.write_str("store version exhausted"),
+            Self::WorkLimited => f.write_str("state measurement work exhausted"),
+            Self::DepthLimited => f.write_str("state value depth exceeded"),
+            Self::ValueTooLarge => f.write_str("state value size or measurement work exceeded"),
+            Self::StateTooLarge => f.write_str("total state size exceeded"),
         }
     }
 }
@@ -33,13 +49,13 @@ impl std::error::Error for StoreError {}
 pub struct StateRefusal {
     /// The name whose write was refused.
     pub name: String,
-    /// Why it was refused. #39 can add admission-limit errors here.
+    /// Why it was refused.
     pub error: StoreError,
 }
 
 /// Initialization's accepted changes and per-name refusals.
-/// Limits are not enforced yet; #39 will report and skip each refused entry,
-/// continuing the batch. A successful entry is not rolled back by a later refusal.
+/// A refused entry is skipped and the batch continues. A successful entry is
+/// not rolled back by a later refusal.
 #[derive(Debug, Default)]
 #[non_exhaustive]
 #[must_use]
@@ -62,9 +78,12 @@ pub struct InitializationResult {
 /// Unchanged initialization and ignored scalar sets do not copy the snapshot
 /// or pristine set. Use borrowed iterators to avoid constructing input maps.
 ///
-/// Admission limits belong to #39. A total-state cap must count pristine names
-/// too: `set_pristine(name, None)` can add an absent name without changing the
-/// snapshot. `with_limits` retains configuration for that work.
+/// Admission uses the configured result-size ceiling, independent of program
+/// size. Total state is the exact JSON object size of all retained names and
+/// values, projecting undefined (including pristine-only names) to null. Empty
+/// state costs zero. Shared values count separately at each name. Each write
+/// measures only its new value and name; retained per-name sizes make the total
+/// update constant-time. Refusals preserve values, pristine flags and version.
 pub struct Store {
     pub(crate) action_session: Arc<()>,
     pub(crate) actions: crate::tree::actions::Provenance,
@@ -72,8 +91,11 @@ pub struct Store {
     snapshot: StoreSnapshot,
     pristine: HashSet<String>,
     version: u64,
-    // Retained for #39; there is no current read-only configuration API to maintain.
-    _limits: Limits,
+    limits: Limits,
+    // Per-entry size includes a trailing comma. A nonempty object adds one
+    // byte: two braces minus the final comma. This also bounds pristine names.
+    sizes: HashMap<String, usize>,
+    entry_bytes: usize,
 }
 impl Default for Store {
     fn default() -> Self {
@@ -85,7 +107,7 @@ impl Store {
     pub fn new() -> Self {
         Self::default()
     }
-    /// An empty store retaining these limits for state admission (#39).
+    /// An empty store using these limits for every state admission route.
     pub fn with_limits(limits: Limits) -> Self {
         Self {
             action_session: Arc::new(()),
@@ -94,7 +116,9 @@ impl Store {
             snapshot: Arc::new(JsObject::new()),
             pristine: HashSet::new(),
             version: 0,
-            _limits: limits,
+            limits,
+            sizes: HashMap::new(),
+            entry_bytes: 0,
         }
     }
     /// Read a value. Absent and explicitly undefined both return `None`;
@@ -129,7 +153,7 @@ impl Store {
             != value.is_some_and(|v| self.undefined_fields.owns(v));
         undefined_shape_changed || (!same(existing, value) && !shallow_equal(existing, value))
     }
-    // A reset is one atomic step. Preflight the only possible Store refusal;
+    // A reset is one atomic step. Preflight all possible Store refusals;
     // duplicate targets have the same declared default and change at most once.
     pub(crate) fn reset_batch(
         &mut self,
@@ -137,17 +161,45 @@ impl Store {
     ) -> Result<(), StoreError> {
         let mut seen = HashSet::new();
         let mut changes = 0u64;
-        for (name, value) in &writes {
-            if seen.insert(name.as_str()) && self.would_change(name, value.as_ref()) {
-                changes = changes.checked_add(1).ok_or(StoreError::VersionExhausted)?;
+        let mut total = self.entry_bytes;
+        let mut admitted = Vec::new();
+        for (name, value) in writes {
+            if seen.insert(name.clone()) {
+                let changed = self.would_change(&name, value.as_ref());
+                if changed {
+                    changes = changes.checked_add(1).ok_or(StoreError::VersionExhausted)?;
+                }
+                let bytes = self.measure_entry(&name, value.as_ref())?;
+                total = total.saturating_sub(self.sizes.get(&name).copied().unwrap_or(0));
+                admitted.push((name, value, bytes, changed));
             }
         }
+        // Remove all old entries before adding candidates. A fitting final
+        // reset must not overflow merely because an early target grows before
+        // a later target shrinks.
+        for (_, _, bytes, _) in &admitted {
+            total = total.checked_add(*bytes).ok_or(StoreError::StateTooLarge)?;
+        }
+        self.check_total(total)?;
         self.version
             .checked_add(changes)
             .ok_or(StoreError::VersionExhausted)?;
-        for (name, value) in writes {
-            self.write(&name, value, true)?;
+        // Apply after the combined check: intermediate reset order must not
+        // reject a batch whose final state fits.
+        // Use only core-measured preflight receipts. Re-measuring here could
+        // change work pricing as earlier replacements release shared owners,
+        // and a second refusal must never leave a reset prefix committed.
+        for (name, value, bytes, changed) in admitted {
+            self.record_size(&name, bytes);
+            self.mark_pristine(&name);
+            if changed {
+                self.put(&name, value);
+                self.version = self.version.saturating_add(1);
+            }
         }
+        // Intermediate replacement order may saturate the running counter;
+        // the independently checked final sum is exact.
+        self.entry_bytes = total;
         Ok(())
     }
     fn mark_pristine(&mut self, name: &str) {
@@ -165,11 +217,24 @@ impl Store {
     }
     fn write(&mut self, name: &str, value: StateValue, pristine: bool) -> Result<bool, StoreError> {
         let changed = self.would_change(name, value.as_ref());
+        let retained = changed || self.snapshot.has_own(name) || pristine;
+        let bytes = if !retained {
+            0
+        } else if !changed {
+            match self.sizes.get(name) {
+                Some(bytes) => *bytes,
+                None => self.measure_entry(name, value.as_ref())?,
+            }
+        } else {
+            self.measure_entry(name, value.as_ref())?
+        };
+        self.check_total(self.replacement_total(name, bytes)?)?;
         let version = if changed {
             self.next_version()?
         } else {
             self.version
         };
+        self.record_size(name, bytes);
         if pristine {
             self.mark_pristine(name);
         } else {
@@ -181,6 +246,89 @@ impl Store {
         }
         Ok(changed)
     }
+    fn measure_entry(&self, name: &str, value: Option<&Value>) -> Result<usize, StoreError> {
+        let work = self.limits.work_for(usize::MAX);
+        if name.len() > work {
+            return Err(StoreError::WorkLimited);
+        }
+        // The name scan and value walk share one admission-work budget.
+        let value_work = work.saturating_sub(name.len());
+        let key = openui_lang::json_string_len(name).saturating_add(2);
+        // The core's scalar JSON lengths need no recursive walk or session.
+        // Keep scalar replacement allocation-free, as it was before admission.
+        let scalar = match value {
+            None | Some(Value::Null) => Some(4usize),
+            Some(Value::Bool(v)) => Some(if *v { 4 } else { 5 }),
+            Some(Value::Num(v)) => Some(openui_lang::json_number_len(*v)),
+            _ => None,
+        };
+        if let Some(bytes) = scalar {
+            if self.limits.depth() == 0 {
+                return Err(StoreError::DepthLimited);
+            }
+            if bytes.saturating_add(1) > value_work {
+                return Err(StoreError::WorkLimited);
+            }
+            if bytes > self.limits.result_size() {
+                return Err(StoreError::ValueTooLarge);
+            }
+            return key
+                .checked_add(bytes)
+                .and_then(|n| n.checked_add(2))
+                .ok_or(StoreError::StateTooLarge);
+        }
+        let limits = self
+            .limits
+            .with_result_size(self.limits.result_size())
+            .with_work(value_work);
+        let session = crate::EvaluationSession::with_limits(&(), 0, limits);
+        let bytes =
+            session.with_evaluator(|eval| eval.reserve_value_size(value.unwrap_or(&Value::Null)));
+        match bytes {
+            Some(bytes) => key
+                .checked_add(bytes)
+                .and_then(|n| n.checked_add(2))
+                .ok_or(StoreError::StateTooLarge),
+            None if session.flags().depth_limited => Err(StoreError::DepthLimited),
+            None => {
+                // Both work and room cuts are typed refusals. Distinguishing
+                // them is unnecessary for atomic admission.
+                Err(StoreError::ValueTooLarge)
+            }
+        }
+    }
+    fn replacement_total(&self, name: &str, bytes: usize) -> Result<usize, StoreError> {
+        self.entry_bytes
+            .saturating_sub(self.sizes.get(name).copied().unwrap_or(0))
+            .checked_add(bytes)
+            .ok_or(StoreError::StateTooLarge)
+    }
+    fn check_total(&self, entries: usize) -> Result<(), StoreError> {
+        let bytes = if entries == 0 {
+            0
+        } else {
+            entries.checked_add(1).ok_or(StoreError::StateTooLarge)?
+        };
+        if bytes > self.limits.result_size() {
+            Err(StoreError::StateTooLarge)
+        } else {
+            Ok(())
+        }
+    }
+    fn record_size(&mut self, name: &str, bytes: usize) {
+        let previous = if bytes == 0 {
+            self.sizes.remove(name)
+        } else if let Some(entry) = self.sizes.get_mut(name) {
+            Some(std::mem::replace(entry, bytes))
+        } else {
+            self.sizes.insert(name.to_owned(), bytes);
+            None
+        };
+        self.entry_bytes = self
+            .entry_bytes
+            .saturating_sub(previous.unwrap_or(0))
+            .saturating_add(bytes);
+    }
     /// Apply persisted entries first, then declared defaults, retaining names.
     ///
     /// Inputs are borrowed `(name, value)` entries in JavaScript property order;
@@ -189,12 +337,13 @@ impl Store {
     /// Core `JsObject::iter` builds an ordering vector; slice and ordinary map
     /// iterators avoid even that input-adapter allocation. Within each input,
     /// the last value for a duplicate name wins, as in a JavaScript object.
-    /// Normalization is deferred until a candidate value change, preserving
-    /// the allocation-free path for unchanged, unique entries.
+    /// Default normalization is deferred until a candidate value change,
+    /// preserving the allocation-free path for unchanged defaults. Persisted
+    /// entries normalize first so duplicate refusals preserve pristine flags.
     ///
     /// Each refusal leaves that entry untouched and is reported by name; the
-    /// rest of the batch continues. #39 will use this for individual admission
-    /// failures, rather than dropping every default in a streaming chunk.
+    /// rest of the batch continues. Persisted snapshots load what fits in input
+    /// order, reporting each refusal, just like streaming defaults.
     pub fn initialize<'a>(
         &mut self,
         defaults: impl IntoIterator<Item = (&'a str, Option<&'a Value>)>,
@@ -217,6 +366,19 @@ impl Store {
         result: &mut InitializationResult,
     ) {
         let mut entries = entries.into_iter();
+        // Persisted no-ops can clear pristine. Normalize their duplicates
+        // before applying even those flags, so a refused last occurrence
+        // cannot inherit an earlier duplicate's flag change.
+        if persisted {
+            let mut last = JsObject::new();
+            for (name, value) in entries {
+                last.define(name, value);
+            }
+            for (name, value) in last.iter() {
+                self.initialize_entry(name, *value, true, result);
+            }
+            return;
+        }
         while let Some((name, value)) = entries.next() {
             // A prefix of value no-ops can only change persisted pristine flags.
             // Once a value might change, normalize the remaining entries before
@@ -247,10 +409,31 @@ impl Store {
     ) {
         let absent = !self.snapshot.has_own(name);
         let changed = self.initial_change(name, value, persisted);
+        let bytes = if changed {
+            let admission = self.measure_entry(name, value).and_then(|bytes| {
+                self.check_total(self.replacement_total(name, bytes)?)?;
+                Ok(bytes)
+            });
+            match admission {
+                Ok(bytes) => Some(bytes),
+                Err(error) => {
+                    result.refused.push(StateRefusal {
+                        name: name.to_owned(),
+                        error,
+                    });
+                    return;
+                }
+            }
+        } else {
+            None
+        };
         if changed && !self.admit_initial_change(name, result) {
             return;
         }
         if changed {
+            if let Some(bytes) = bytes {
+                self.record_size(name, bytes);
+            }
             self.put(name, value.cloned());
         }
         if persisted {
@@ -293,6 +476,8 @@ impl Store {
         }
         self.snapshot = Arc::new(JsObject::new());
         self.pristine.clear();
+        self.sizes.clear();
+        self.entry_bytes = 0;
         changed
     }
     fn next_version(&self) -> Result<u64, StoreError> {

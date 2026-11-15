@@ -38,6 +38,32 @@
 //! keep renderer form fields in the Store, and [`initialize_field_default`]
 //! applies settled defaults without overwriting user values.
 //!
+//! Runtime admission and entry points:
+//!
+//! | Entry points | Configuration and bounds | Cut/refusal |
+//! |---|---|---|
+//! | `Store::new`, `Default`, `with_limits` | Default or retained core `Limits` | Empty state |
+//! | `Store::set`, `set_pristine`, `initialize` | Store work/depth and result ceiling; exact incremental total-state cap | `StoreError`, or per-name `InitializationResult::refused`; refused names unchanged |
+//! | `Store::get`, `snapshot`, `is_pristine`, `version`, `dispose` | Work/data bounded by admitted state; snapshots share bodies; disposal revokes continuations | No evaluation cut |
+//! | `evaluate_tree`, `evaluate_tree_with_limits` | Default/explicit shared evaluation work, depth, room and grown stack | Tree flags; evaluated props and errors retained, remaining props raw |
+//! | `write_binding`, `set_field_value`, `initialize_field_default`, and their `_with_limits` variants | Default/explicit operation limits, then Store admission | `BindingWriteError`; no refused write effect |
+//! | `get_field_value` | One admitted Store value, shallow field projection | Undefined as `None` |
+//! | `run_action`, `run_action_with_limits`, `resume_action` | Default/explicit one run-wide work allowance retained on resume; per-operation room, then Store admission | Flags and typed failure; earlier effects/events retained; cut ends the run |
+//! | `PreparedReferenceValues::new`, `with_limits` | Default/explicit bounded supply measurement; no evaluation work spent | Refused entries flag only when read |
+//! | `TreeInput` constructors and builders | Borrowed configuration and retained Arc, constant work | No evaluation |
+//! | `BindingProps` construction, insertion, queries; `LibraryFunctions::new`, `register` | Caller-owned host configuration; registration and spec extraction have no configurable admission bound | No refusal channel |
+//! | `TreeResult::to_json`, `HostEvent::to_json`, `HostEvent::value`, `ActionRun::is_suspended` | Finished data; core stack-safe serialization, borrowed access or constant work | Serialization has no configurable output cap |
+//! | Re-exported expression/session/scope/value interfaces | Core defaults or explicit/inherited `Limits`; one evaluator | Core flags and failures |
+//!
+//! The Store cap is `Limits::result_size()` (8 MiB by default), independent
+//! of the program's scaled evaluation allowance. It counts the exact JSON
+//! object bytes of retained names, including pristine-only names, with
+//! undefined projected to null. Empty state costs zero. Aliases count at each
+//! name. Persisted initialization loads entries that fit and reports others;
+//! duplicate names use their last input value. Reset batches preflight their
+//! combined final size atomically. A smaller replacement fits the total cap
+//! provided it passes its own work/depth/value admission. See ADR 0005.
+//!
 //! The reference harness registers and reads lang-core's own query manager with
 //! no provider, refresh or tool execution. See `CONFORMANCE.md` for its source
 //! locations and the pinned supplied overlay. Both parsers currently mark an

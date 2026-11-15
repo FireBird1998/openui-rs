@@ -56,6 +56,8 @@ done
   bun --no-install renderer-form-prototypes.ts
   bun --no-install tree-interface.ts > ../conformance/golden/runtime-interface.json
   bun --no-install action-definitions.ts
+  bun --no-install function-definitions.ts
+  bun --no-install function-results.ts
 )
 if [[ -n "$into" ]]; then
   mkdir -p "$(dirname "$into")"

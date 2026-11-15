@@ -897,3 +897,32 @@ output hashes and forbids increased work, and reports the allocation ratios
 separately. Allocation ratios vary with leaf shape; the finite loop grid in
 `evaluation_reuse` enforces 5 × room for 1,000-byte string leaves and 20 × room
 for each of eight-empty-array and `{a:[]}` leaves, without a universal bound.
+
+## Store admission sequences
+
+Runtime `state_admission` pins exact JSON byte boundaries (escaped names and
+aliased bodies included), pristine-only names, persisted duplicates, field and
+binding writes, action sets, atomic resets and resumed writes. A 64 KiB worker
+admits, snapshots, serializes, disposes and drops a 10,000-level value with a
+raised depth limit, and refuses it under default limits. Allocation counters pin
+admission cost independently of unrelated state names and its growth with the
+written value. Both test binaries use a 128 MiB allocator cap.
+
+`public_call_sequences` runs 3,000 seeded sequences of 32 public calls (96,000
+operations) with small random programs, values and limits, including continuation
+consumption and disposal. Refused single writes preserve snapshot identity,
+version and pristine flags; snapshots remain within the configured state cap.
+It is a deterministic sequence test, not a differential oracle for every possible
+program or a general proof of panic freedom.
+
+`limit_measurements` is a runtime example that prints 8,192 observations: 4,096 unique
+programs in both native and AST-shaped data form with exact minimum work and result room. Its output can be
+compared against a separate checkout to detect changed values, flags or prices.
+
+`operation_edges` also uses a 128 MiB cap. It pins adjacent work/depth/room
+boundaries for drawing, binding writes, named form writes, direct writes,
+initialization and a write after mutation suspension, plus total-state edges.
+Its 64 KiB worker drives a 10,000-level value through prepared references,
+drawing/JSON, bindings, forms/defaults, action sets, mutation resume, event JSON,
+snapshot, disposal and Drop. These are successful deep-walk tests; they do not
+assert exact physical segment counts for every route.

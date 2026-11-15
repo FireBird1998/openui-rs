@@ -71,6 +71,10 @@ thread_local! {
     static SEGMENTS: Cell<usize> = const { Cell::new(0) };
     static CEILING: Cell<usize> = const { Cell::new(usize::MAX) };
     static EXPRESSION: Cell<bool> = const { Cell::new(false) };
+    // Uncapped callback walks start above the segments already owned by the
+    // suspended evaluator. Save with Context so nested callbacks and unwind
+    // restore exactly their enclosing policy.
+    static UNCAP_BASE: Cell<usize> = const { Cell::new(0) };
 }
 
 /// Run `f` on a fresh stack segment.
@@ -122,7 +126,7 @@ const RUNAWAY: usize = if cfg!(test) { 64 } else { 1024 };
 /// in force, or [`RUNAWAY`] alone outside any entry.
 fn runaway_bound() -> usize {
     match CEILING.get() {
-        usize::MAX => RUNAWAY,
+        usize::MAX => UNCAP_BASE.get().saturating_add(RUNAWAY),
         ceiling => RUNAWAY.saturating_add(ceiling),
     }
 }
@@ -174,11 +178,13 @@ pub(crate) fn segments() -> usize {
 pub(crate) struct Context {
     ceiling: usize,
     expression: bool,
+    uncap_base: usize,
 }
 pub(crate) fn context() -> Context {
     Context {
         ceiling: CEILING.get(),
         expression: EXPRESSION.get(),
+        uncap_base: UNCAP_BASE.get(),
     }
 }
 /// Suspend expression policy before calling caller code, including parsers.
@@ -186,11 +192,13 @@ pub(crate) fn suspend_context() -> Context {
     let old = context();
     CEILING.set(usize::MAX);
     EXPRESSION.set(false);
+    UNCAP_BASE.set(SEGMENTS.get());
     old
 }
 pub(crate) fn swap_context(context: &mut Context) {
     context.ceiling = CEILING.replace(context.ceiling);
     context.expression = EXPRESSION.replace(context.expression);
+    context.uncap_base = UNCAP_BASE.replace(context.uncap_base);
 }
 pub(crate) struct ExpressionLimit(Context);
 impl Drop for ExpressionLimit {
@@ -377,6 +385,55 @@ mod tests {
         let _ceiling = limit(0);
         assert!(!runs_away(RUNAWAY + 8) && runs_away(RUNAWAY + 9));
         assert_eq!(SEGMENTS.get(), 0);
+    }
+
+    #[test]
+    fn callback_uncapped_walks_start_above_the_suspended_segments_and_restore_on_unwind() {
+        // Exercise the high-chain boundary without mapping gigabytes of real
+        // stack. All segment/context transitions below are production paths;
+        // only the already-owned segment count is supplied by this unit test.
+        struct Restore(Context, usize);
+        impl Drop for Restore {
+            fn drop(&mut self) {
+                swap_context(&mut self.0);
+                SEGMENTS.set(self.1);
+            }
+        }
+        let _restore = Restore(context(), SEGMENTS.get());
+        SEGMENTS.set(RUNAWAY + 10);
+        let suspended = std::cell::Cell::new(false);
+        struct Callback<'a>(&'a std::cell::Cell<bool>);
+        impl crate::EvaluationScope for Callback<'_> {
+            fn reference(
+                &self,
+                _: &str,
+                _: &crate::ExpressionEvaluator<'_>,
+            ) -> Option<crate::Value> {
+                assert_eq!(CEILING.get(), usize::MAX);
+                assert_eq!(UNCAP_BASE.get(), SEGMENTS.get());
+                let mut out = String::new();
+                // A finished-tree serializer may grow while policy is lifted.
+                on_new_segment(|| crate::result::write_value(&mut out, &crate::Value::Null));
+                assert_eq!(out, "null");
+                self.0.set(true);
+                Some(crate::Value::Null)
+            }
+        }
+        let limits = crate::Limits::DEFAULT.with_depth(40_000);
+        let result = crate::evaluate_expression_with_limits(
+            &crate::Ast::Ref("bottom".into()),
+            &Callback(&suspended),
+            limits,
+        );
+        assert!(suspended.get());
+        assert!(!result.depth_limited && !result.size_limited);
+        let base = UNCAP_BASE.get();
+        let mut old = suspend_context();
+        let panic = std::panic::catch_unwind(|| on_new_segment(|| panic!("host panic")));
+        swap_context(&mut old);
+        assert!(panic.is_err());
+        assert_eq!(UNCAP_BASE.get(), base);
+        assert_eq!(SEGMENTS.get(), RUNAWAY + 10);
     }
 
     /// A ceiling stall in the evaluator spends its work, so the default being

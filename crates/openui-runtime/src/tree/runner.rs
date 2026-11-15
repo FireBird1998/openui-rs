@@ -49,6 +49,15 @@ impl ActionRun {
             self.size_limited = flags.size_limited;
             self.depth_limited = flags.depth_limited;
         }
+        if let BindingWriteError::Store(error) = &cause {
+            match error {
+                crate::StoreError::DepthLimited => self.depth_limited = true,
+                crate::StoreError::WorkLimited
+                | crate::StoreError::ValueTooLarge
+                | crate::StoreError::StateTooLarge => self.size_limited = true,
+                crate::StoreError::VersionExhausted => {}
+            }
+        }
         self.failure = Some(ActionFailure { step, cause });
     }
 }
