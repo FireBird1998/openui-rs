@@ -120,8 +120,8 @@ struct PropReader {
     }
 }
 
-/// Text a native view shows: literal, or an expression only a runtime could
-/// evaluate, shown as its source.
+/// Text a native view shows: literal, or an expression that wasn't evaluated
+/// (it failed or was cut, or nothing evaluated the tree), shown as its source.
 enum TextPiece: Equatable {
     case literal(String)
     case dynamic(String)

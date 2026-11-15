@@ -160,6 +160,8 @@ public struct Step: Sendable {
     public var timings: Timings
     /// In edit mode, the merged program this step parsed.
     public var program: String?
+    /// The parse result itself, for a runtime session to evaluate.
+    let parsed: ParsedProgram
 
     /// Calls the core, then decodes, timing each part. Core thread only.
     static func measure(chunks: Int, _ call: () -> ParseOutput) throws -> Step {
@@ -169,12 +171,13 @@ public struct Step: Sendable {
         let result = try ParseResult(json: output.json, depthLimited: output.depthLimited, sizeLimited: output.sizeLimited)
         let decoded = ContinuousClock.now
         let parse = Duration.nanoseconds(Int64(clamping: output.parseNanos))
-        return Step(result: result, json: output.json, timings: Timings(
+        let timings = Timings(
             chunks: chunks,
             parse: parse,
             crossing: (called - started) - parse,
             decode: decoded - called
-        ))
+        )
+        return Step(result: result, json: output.json, timings: timings, program: nil, parsed: output.program)
     }
 }
 
@@ -188,6 +191,9 @@ public struct Timings: Sendable, Equatable {
     public var crossing: Duration
     /// Decoding the JSON into the viewer's model.
     public var decode: Duration
+    /// Evaluating the tree in a runtime session and decoding it; filled in by
+    /// whoever evaluates it.
+    public var evaluate: Duration?
     /// From handing the result to the UI until it was drawn; filled in by the UI.
     public var redraw: Duration?
 }

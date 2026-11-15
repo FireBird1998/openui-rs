@@ -276,16 +276,19 @@ final class CorpusModel {
         selected = nil
         do {
             let library: Library
+            var libraryName: String?
             switch request.library {
             case let .corpus(name):
                 guard let corpus else { return }
                 library = try await self.library(named: name, in: corpus)
+                libraryName = name
             case let .file(url):
                 let scoped = url.startAccessingSecurityScopedResource()
                 defer { if scoped { url.stopAccessingSecurityScopedResource() } }
                 library = try await core.library(schema: String(contentsOf: url, encoding: .utf8))
             }
-            await show(OpenProgram(title: "\(request.title) · \(request.library.label)", text: request.text, golden: nil),
+            await show(OpenProgram(title: "\(request.title) · \(request.library.label)", text: request.text, golden: nil,
+                                   libraryName: libraryName),
                        library: library, root: request.root)
         } catch {
             failure = String(describing: error)
@@ -403,7 +406,8 @@ final class CorpusModel {
         current = program
         liveStatus = live
         savedRecording = nil
-        let playback = Playback(core: core, library: library, root: root, base: base)
+        let spec = program.libraryName.flatMap { corpus?.bindingSpec(forSchema: $0) }
+        let playback = Playback(core: core, library: library, root: root, base: base, promptSpec: spec)
         self.playback = playback
         loadedChunking = chunking
         if let source {

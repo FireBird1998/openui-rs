@@ -133,6 +133,18 @@ extension Corpus {
         return JSONValue.object(entries).compact
     }
 
+    /// The prompt spec that says which of a schema's props are bindings
+    /// (`$binding<…>` in its signatures), for evaluating programs: the one
+    /// `bindings.json` names for the schema, else the library's prompt spec.
+    public func bindingSpec(forSchema name: String) -> String? {
+        if let manifest = try? JSONValue.parse(String(contentsOf: directory.appendingPathComponent("bindings.json"), encoding: .utf8)),
+           let path = manifest[name]?.string,
+           let spec = try? String(contentsOf: directory.appendingPathComponent(path), encoding: .utf8) {
+            return spec
+        }
+        return promptSpec(forLibrary: name)
+    }
+
     /// The library live requests start with: upstream's own react-ui library,
     /// the one its apps ask models for.
     public static let preferredLibrary = "react-ui"

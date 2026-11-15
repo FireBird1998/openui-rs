@@ -117,7 +117,7 @@ struct PropValueView: View {
                     PropRow(prop: field, path: ElementPath.child(of: path, field.name))
                 }
             }
-        case .expression, .scalar:
+        case .expression, .binding, .plan, .scalar:
             Text(value.summary).font(.body.monospaced())
         }
     }

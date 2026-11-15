@@ -9,6 +9,10 @@ import OpenUINative
 /// Going back shows exactly the result the step had going forward: recent
 /// steps are kept, and older ones are rebuilt by pushing the same chunks into
 /// a new session, which the core turns into the same result.
+///
+/// Every step shown is evaluated in a runtime session, as an app would: its
+/// store carries over from step to step (what was set survives the next
+/// chunk) until the program is loaded again.
 @MainActor @Observable
 public final class Playback {
     public private(set) var chunks: [String] = []
@@ -36,9 +40,18 @@ public final class Playback {
     public private(set) var stamp = 0
     /// Told each step's redraw time as the UI reports it.
     @ObservationIgnored public var onDrawn: ((Duration) -> Void)?
+    /// The shown step evaluated, with its store; nil before the first load.
+    public private(set) var live: LiveProgram?
+    /// Every host event the program has sent since it was loaded, oldest first.
+    public private(set) var hostEvents: [HostEvent] = []
+    /// Why the shown step couldn't be evaluated (or why there's no runtime
+    /// session); the drawing then shows its parse result instead.
+    public private(set) var evaluationError: String?
 
     private let core: Core
     private let library: Library
+    /// Which props are bindings: a prompt spec for the library, if it has one.
+    private let promptSpec: String?
     private let root: String?
     /// In edit mode, the program the chunks patch: each step shows it merged
     /// with the patch so far.
@@ -56,9 +69,11 @@ public final class Playback {
 
     /// `cacheBudget` bounds the JSON kept for stepping back, in bytes. With a
     /// `base`, the chunks are an edit-mode patch to it.
-    public init(core: Core, library: Library, root: String?, base: String? = nil, cacheBudget: Int = 32 << 20) {
+    public init(core: Core, library: Library, root: String?, base: String? = nil, promptSpec: String? = nil,
+                cacheBudget: Int = 32 << 20) {
         self.core = core
         self.library = library
+        self.promptSpec = promptSpec
         self.root = root
         self.base = base
         self.cacheBudget = cacheBudget
@@ -87,6 +102,7 @@ public final class Playback {
             session = nil
             sessionPosition = 0
             error = nil
+            startLive()
             isStreaming = true
             do {
                 for try await batch in source.chunks() {
@@ -248,11 +264,34 @@ public final class Playback {
         }
     }
 
+    /// A new runtime session, with nothing in its store.
+    private func startLive() {
+        hostEvents = []
+        evaluationError = nil
+        do {
+            live = try LiveProgram(library: library, promptSpec: promptSpec) { [weak self] event in
+                self?.hostEvents.append(event)
+            }
+        } catch {
+            live = nil
+            evaluationError = "No runtime session: \(error)"
+        }
+    }
+
     private func hand(_ step: Step, at target: Int, fromCache: Bool) {
         position = target
         self.step = step
         self.fromCache = fromCache
         timings = step.timings
+        if let live {
+            do {
+                try live.show(step)
+                timings?.evaluate = live.evaluation
+                evaluationError = nil
+            } catch {
+                evaluationError = "Couldn't evaluate this step: \(error)"
+            }
+        }
         stamp += 1
         handedAt = .now
     }

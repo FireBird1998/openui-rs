@@ -165,11 +165,15 @@ _Avoid_: engine, renderer, core (when meaning the runtime)
 The showcase Android app whose story screens are written by an LLM, parsed by the core on the phone, and drawn with Jetpack Compose.
 
 **OpenUINative**:
-The Swift package that draws a parse result as native SwiftUI views, for any Mac app; it holds the core's Swift binding.
+The Swift package that draws programs as native SwiftUI views, for any Mac app: a live program's evaluated tree, or a bare parse result. It holds the core's Swift binding.
 _Avoid_: the Mac binding (the binding is one part of it), UI kit, renderer
 
+**Live program**:
+In OpenUINative, a program kept live by a runtime session (`LiveProgram`): the app sets and reads state, `ElementView` draws the evaluated tree and redraws when the store changes, built-in buttons run their action plans, built-in inputs write through binding markers or form fields, and one handler receives the host events.
+_Avoid_: state runtime (its name before the runtime existed), runtime (that's the crate)
+
 **Viewer**:
-The Mac app that plays a program as a stream and draws it natively beside its parse result: a development tool for the core, built on OpenUINative, and a rehearsal for Dynamic News's binding.
+The Mac app that plays a program as a stream, evaluates every step and draws it natively beside its store and parse result: a development tool for the core and the runtime, built on OpenUINative, and a rehearsal for Dynamic News's binding.
 _Avoid_: playground, inspector, demo app, Mac app
 
 **Story screen**:

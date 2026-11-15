@@ -60,7 +60,7 @@ public struct TreeRow: Identifiable, Sendable, Equatable {
                 for field in fields {
                     walk(field.value, path: ElementPath.child(of: path, field.name), depth: depth, key: "\(key).\(field.name)")
                 }
-            case .expression, .scalar:
+            case .expression, .binding, .plan, .scalar:
                 break
             }
         }

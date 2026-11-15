@@ -4,21 +4,45 @@ import SwiftUI
 /// Draws an element: as the app's own component when the app has one for it,
 /// natively when its component is one this package knows and its props make
 /// sense, and otherwise as the app's fallback.
+///
+/// Drawn from a `LiveProgram`, it draws the evaluated tree and redraws when
+/// the store changes; buttons run their actions and inputs read and write
+/// state. An element drawn on its own (a parse result, or a child an app's
+/// component draws) takes the live program from the environment, if any.
+/// An element of an evaluated tree knows its own path, so an app's component
+/// draws its children with `ElementView(element: child)` and nothing more.
 public struct ElementView: View {
-    let element: Element
-    let path: String
+    private enum Source {
+        case element(Element, path: String)
+        case live(LiveProgram)
+    }
+
+    private let source: Source
     @Environment(\.elementDrawing) private var drawing
 
+    /// Draws `element` at its own path in the evaluated tree it came from;
+    /// `path` is used only for an element without one (a parse result's).
     public init(element: Element, path: String = ElementPath.root) {
-        self.element = element
-        self.path = path
+        source = .element(element, path: element.path ?? path)
+    }
+
+    /// Draws the live program's evaluated tree; nothing while it has no root.
+    public init(live: LiveProgram) {
+        source = .live(live)
     }
 
     public var body: some View {
-        if let drawn = drawing.component(element, path) ?? NativeComponents.view(for: element, path: path) {
-            drawing.chrome(drawn, element, path)
-        } else {
-            drawing.fallback(element, path)
+        switch source {
+        case let .element(element, path):
+            if let drawn = drawing.component(element, path) ?? NativeComponents.view(for: element, path: path) {
+                drawing.chrome(drawn, element, path)
+            } else {
+                drawing.fallback(element, path)
+            }
+        case let .live(live):
+            if let root = live.root {
+                ElementView(element: root).environment(\.liveProgram, live)
+            }
         }
     }
 }
@@ -49,6 +73,11 @@ public struct ElementDrawing: Sendable {
 
 extension EnvironmentValues {
     @Entry public var elementDrawing = ElementDrawing()
+    /// The live program being drawn, for components that read or write its
+    /// state or run its actions; nil when drawing a parse result.
+    @Entry public var liveProgram: LiveProgram? = nil
+    /// The name of the form being drawn, for inputs' fields and actions' events.
+    @Entry public var formName: String? = nil
 }
 
 /// The default fallback: the component's name, marked as not drawn.
@@ -146,7 +175,7 @@ struct PieceText: View {
             Text(source)
                 .italic()
                 .foregroundStyle(.secondary)
-                .help("Dynamic: a runtime would evaluate this")
+                .help("Not evaluated: its expression failed or was cut (see the runtime errors), or there's no runtime")
         }
     }
 }
@@ -385,17 +414,28 @@ struct ButtonView: View {
     let variant: String
     let destructive: Bool
     let size: String
+    /// The element it was drawn from: a click runs this element's action, if
+    /// it's still the one in the tree.
+    let element: Element
+    @Environment(\.liveProgram) private var live
+    @Environment(\.formName) private var formName
 
     init(_ props: PropReader) throws {
         label = try props.text("label")
         variant = props.keyword("variant", "primary")
         destructive = props.keyword("type", "normal") == "destructive"
         size = props.keyword("size", "medium")
+        element = props.element
     }
 
     var body: some View {
-        let button = Button(role: destructive ? .destructive : nil) {} label: { PieceText(piece: label) }
-            .controlSize(controlSize)
+        let button = Button(role: destructive ? .destructive : nil) {
+            guard let live else { return }
+            live.attempt { try live.run("action", of: element, message: label.plain, form: formName) }
+        } label: {
+            PieceText(piece: label)
+        }
+        .controlSize(controlSize)
         switch variant {
         case "secondary": button.buttonStyle(.bordered)
         case "tertiary": button.buttonStyle(.borderless)
@@ -542,12 +582,13 @@ struct TableView: View {
 }
 
 struct FormView: View {
+    let name: String
     let fields: [PropValue]
     let buttons: Element?
     let path: String
 
     init(_ props: PropReader, path: String) throws {
-        _ = try props.text("name")
+        name = try props.text("name").plain
         fields = try props.list("fields")
         buttons = try props.optionalElement("buttons")
         self.path = path
@@ -560,6 +601,7 @@ struct FormView: View {
                 ElementView(element: buttons, path: ElementPath.child(of: path, "buttons"))
             }
         }
+        .environment(\.formName, name)
     }
 }
 
@@ -589,21 +631,75 @@ struct FormControlView: View {
     }
 }
 
+/// What an input or select shows and where typing goes: a binding marker's
+/// state variable, or else the form field named by the input's name, which
+/// starts as the value prop.
+@MainActor struct FieldValue {
+    let name: String
+    let value: PropValue?
+    /// The input it was drawn from; it writes only while that's still the
+    /// one in the tree.
+    let element: Element
+
+    init(_ props: PropReader, name: String) {
+        self.name = name
+        value = props.value("value")
+        element = props.element
+    }
+
+    func text(in live: LiveProgram?, form: String?) -> String {
+        let current: JSONValue? = switch value {
+        case let .binding(marker)?: live?.value(of: marker.target)
+        case let .scalar(json)?: live?.field(form: form, name: name) ?? json
+        default: live?.field(form: form, name: name)
+        }
+        switch current {
+        case nil, .null?: return ""
+        case let .string(s)?: return s
+        case let .number(n)?: return JSONValue.format(n)
+        case let other?: return other.compact
+        }
+    }
+
+    /// Writes what was typed or picked. SwiftUI hands a field's own new value
+    /// back when it redraws one that isn't being edited; that changes nothing,
+    /// so it isn't written again (through a transform, it would compound).
+    func write(_ text: String, to live: LiveProgram?, form: String?) {
+        guard let live, text != self.text(in: live, form: form) else { return }
+        live.attempt {
+            guard live.isCurrent(element) else { throw LiveProgram.stale }
+            if case let .binding(marker)? = value {
+                try live.write(marker, .string(text))
+            } else {
+                try live.setField(form: form, name: name, to: .string(text))
+            }
+        }
+    }
+}
+
 struct InputView: View {
     let placeholder: String
     let secure: Bool
+    let field: FieldValue
+    @Environment(\.liveProgram) private var live
+    @Environment(\.formName) private var formName
 
     init(_ props: PropReader) throws {
         let name = try props.text("name").plain
         placeholder = try props.optionalText("placeholder")?.plain ?? name
         secure = props.keyword("type", "text") == "password"
+        field = FieldValue(props, name: name)
     }
 
     var body: some View {
+        let text = Binding(
+            get: { field.text(in: live, form: formName) },
+            set: { field.write($0, to: live, form: formName) }
+        )
         if secure {
-            SecureField(placeholder, text: .constant(""))
+            SecureField(placeholder, text: text)
         } else {
-            TextField(placeholder, text: .constant(""))
+            TextField(placeholder, text: text)
         }
     }
 }
@@ -611,6 +707,9 @@ struct InputView: View {
 struct SelectView: View {
     let placeholder: String
     let items: [(value: String, label: String)]
+    let field: FieldValue
+    @Environment(\.liveProgram) private var live
+    @Environment(\.formName) private var formName
 
     init(_ props: PropReader) throws {
         let name = try props.text("name").plain
@@ -619,10 +718,15 @@ struct SelectView: View {
             let reader = PropReader(element: item)
             return (try reader.text("value").plain, try reader.text("label").plain)
         }
+        field = FieldValue(props, name: name)
     }
 
     var body: some View {
-        Picker(placeholder, selection: .constant("")) {
+        let selection = Binding(
+            get: { field.text(in: live, form: formName) },
+            set: { field.write($0, to: live, form: formName) }
+        )
+        Picker(placeholder, selection: selection) {
             Text(placeholder).tag("")
             ForEach(Array(items.enumerated()), id: \.offset) { _, item in
                 Text(item.label).tag(item.value)

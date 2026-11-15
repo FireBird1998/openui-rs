@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 # The viewer's timing run: an optimized build plays a fixed set of programs in
 # the real window and reports, per update, the median and worst time to parse,
-# cross into Swift, decode and redraw, plus the main thread's longest stall.
+# cross into Swift, decode, evaluate in the runtime session and redraw, plus
+# the main thread's longest stall.
 # Needs Xcode and a logged-in screen; takes about three minutes.
 #
 #   scripts/viewer-timing.sh

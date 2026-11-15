@@ -92,6 +92,7 @@ enum ScriptedRun {
         \(part("parse", updates.map(\.parse)))
         \(part("crossing", updates.map(\.crossing)))
         \(part("decode", updates.map(\.decode)))
+        \(part("evaluate", updates.compactMap(\.evaluate)))
         \(part("redraw", updates.compactMap(\.redraw)))
           main thread's longest stall: \(TimingsLine.ms(heartbeat.longestStall))
           jump back to chunk \(back) mid-play: \(TimingsLine.ms(seekTook))

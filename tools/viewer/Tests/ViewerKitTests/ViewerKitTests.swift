@@ -310,14 +310,10 @@ func pending(_ list: String, in corpus: Corpus) -> Set<String> {
         return try await core.library(schema: String(contentsOf: corpus.directory.appendingPathComponent(path), encoding: .utf8))
     }
 
-    func root(_ program: String) async throws -> Element {
-        let core = Core()
-        return try #require(try await core.parseOneShot(program, library: bench(core)).result.root)
-    }
-
-    /// Every corpus case's final result draws, natively where it can, without
-    /// crashing. A root with nothing to draw, such as a stack whose only child
-    /// was an unknown component the core dropped, makes an empty image.
+    /// Every corpus case's final result, evaluated in a runtime session,
+    /// draws, natively where it can, without crashing. A root with nothing to
+    /// draw, such as a stack whose only child was an unknown component the
+    /// core dropped, makes an empty image.
     @Test func everyCorpusCaseDrawsOffscreen() async throws {
         let corpus = try Corpus.load()
         let core = Core()
@@ -333,8 +329,10 @@ func pending(_ list: String, in corpus: Corpus) -> Set<String> {
                 libraries[c.schemaName] = library
             }
             let step = try await core.parseOneShot(corpus.program(of: c), library: library, root: c.root)
-            guard let root = step.result.root else { continue }
-            let renderer = ImageRenderer(content: ElementView(element: root).environment(\.elementDrawing, .inspecting))
+            let live = try LiveProgram(library: library, promptSpec: corpus.bindingSpec(forSchema: c.schemaName))
+            try live.show(step)
+            guard live.root != nil else { continue }
+            let renderer = ImageRenderer(content: ElementView(live: live).environment(\.elementDrawing, .inspecting))
             renderer.proposedSize = ProposedViewSize(width: 800, height: nil)
             if renderer.nsImage == nil {
                 var size = CGSize.zero
@@ -394,10 +392,24 @@ func pending(_ list: String, in corpus: Corpus) -> Set<String> {
         }
     }
 
-    @Test func dynamicTextIsDrawnAsItsSource() async throws {
-        let text = try await root(#"root = TextContent($name)"#)
-        #expect(try PropReader(element: text).text("text") == .dynamic("ƒ " + #"{"k":"StateRef","n":"$name"}"#))
-        #expect(NativeComponents.view(for: text, path: "/") != nil)
+    /// Evaluated, text is its value; only a prop whose evaluation failed is
+    /// drawn as its source.
+    @Test func onlyTextThatFailedToEvaluateIsDrawnAsItsSource() async throws {
+        let core = Core()
+        let library = try await bench(core)
+        let live = try LiveProgram(library: library)
+        try live.show(try await core.parseOneShot("""
+        $name = "Ann"
+        $bad = {toString: 1, valueOf: 2}
+        root = Stack([TextContent($name), TextContent("bad: " + $bad)])
+        """, library: library))
+        guard case let .element(stack)? = live.root.map(PropValue.element),
+              case let .list(children)? = stack.props.first?.value,
+              case let .element(good) = children[0], case let .element(bad) = children[1]
+        else { Issue.record("not the tree drawn"); return }
+        #expect(try PropReader(element: good).text("text") == .literal("Ann"))
+        guard case .dynamic = try PropReader(element: bad).text("text") else { Issue.record("failed text isn't its source"); return }
+        #expect(NativeComponents.view(for: bad, path: "/children/1") != nil)
     }
 
     private func visit(_ element: Element, path: String, _ body: (Element, String) -> Void) {
@@ -856,5 +868,313 @@ extension StreamingFromClaude {
                                   createdAt: Date(), patchOf: editBase)
         #expect(recording.patchOf == editBase)
         #expect(try Recording.decode(recording.encoded()).patchOf == editBase)
+    }
+}
+
+// MARK: The runtime session and the store panel
+
+@MainActor @Suite struct EvaluatingPlayback {
+    static let program = """
+    $n = 3
+    $bad = {toString: 1, valueOf: 2}
+    root = Stack([shown, broken])
+    shown = TextContent("n: " + $n)
+    broken = TextContent("bad: " + $bad)
+    """
+
+    func playback(_ program: String = Self.program, schema: String = "bench") async throws -> Playback {
+        let core = Core()
+        let corpus = try Corpus.load()
+        let library = try await core.library(schema: String(contentsOf: corpus.directory.appendingPathComponent(try #require(corpus.schemas[schema])), encoding: .utf8))
+        let playback = Playback(core: core, library: library, root: nil, promptSpec: corpus.bindingSpec(forSchema: schema))
+        await playback.load(ReplaySource(program: program, chunkSize: 5))
+        return playback
+    }
+
+    /// The text of the evaluated TextContent at `path`, if it evaluated.
+    func text(_ playback: Playback, at path: String) -> String? {
+        guard var value = playback.live?.root.map(PropValue.element) else { return nil }
+        for part in path.split(separator: "/") {
+            switch value {
+            case let .element(e): guard let v = e.props.first(where: { $0.name == part })?.value else { return nil }; value = v
+            case let .list(items): guard let i = Int(part), items.indices.contains(i) else { return nil }; value = items[i]
+            default: return nil
+            }
+        }
+        guard case let .element(e) = value, case let .scalar(.string(s))? = e.props.first?.value else { return nil }
+        return s
+    }
+
+    @Test func everyStepIsEvaluated() async throws {
+        let playback = try await playback()
+        #expect(text(playback, at: "/children/0") == "n: 3")
+        #expect(playback.timings?.evaluate != nil)
+        for k in 0...playback.chunks.count {
+            await playback.move(to: k)
+            #expect((playback.live?.root == nil) == (playback.step?.result.root == nil), "step \(k)")
+        }
+    }
+
+    @Test func thePanelShowsTheStoreAndTheRuntimeErrors() async throws {
+        let playback = try await playback()
+        let live = try #require(playback.live)
+        let rows = StoreRow.rows(of: live)
+        #expect(rows.first { $0.name == "$n" } == StoreRow(name: "$n", json: "3", pristine: true))
+        #expect(live.errors.map(\.component) == ["TextContent"])
+        #expect(live.errors.first?.statementId == "broken")
+    }
+
+    @Test func editingAValueRedraws() async throws {
+        let playback = try await playback()
+        let live = try #require(playback.live)
+        #expect(StoreRow.commit("7", to: "$n", in: live) == nil)
+        #expect(text(playback, at: "/children/0") == "n: 7")
+        #expect(StoreRow.rows(of: live).first { $0.name == "$n" } == StoreRow(name: "$n", json: "7", pristine: false))
+        #expect(StoreRow.commit("not json", to: "$n", in: live) != nil)
+        #expect(live.value(of: "$n") == .number(7))
+    }
+
+    @Test func anEditedValueSurvivesTheNextChunks() async throws {
+        let playback = try await playback()
+        await playback.move(to: playback.chunks.count / 2)
+        let live = try #require(playback.live)
+        #expect(StoreRow.commit("42", to: "$n", in: live) == nil)
+        await playback.move(to: playback.chunks.count)
+        #expect(text(playback, at: "/children/0") == "n: 42")
+    }
+
+    @Test func reloadingStartsWithAnEmptyStore() async throws {
+        let playback = try await playback()
+        _ = StoreRow.commit("42", to: "$n", in: try #require(playback.live))
+        await playback.load(ReplaySource(program: Self.program, chunkSize: 7))
+        #expect(text(playback, at: "/children/0") == "n: 3")
+    }
+
+    /// react-ui's prompt spec marks Input's value as a binding.
+    @Test func aLibrarysPromptSpecSaysWhichPropsAreBindings() async throws {
+        let playback = try await playback(#"""
+        $q = "hi"
+        root = Form("f", Buttons([]), [FormControl("Q", Input("q", "", "text", null, $q))])
+        """#, schema: "react-ui")
+        guard case let .element(form)? = playback.live?.root.map(PropValue.element),
+              case let .list(fields)? = form.props.first(where: { $0.name == "fields" })?.value,
+              case let .element(control)? = fields.first,
+              case let .element(input)? = control.props.first(where: { $0.name == "input" })?.value,
+              case let .binding(marker)? = input.props.first(where: { $0.name == "value" })?.value
+        else { Issue.record("no binding marker on Input's value: \(String(describing: playback.live?.root))"); return }
+        #expect(marker.target == "$q")
+    }
+}
+
+/// The viewer's drawing selects an element on a click; buttons and text
+/// fields in it still work. Drawn in a window far off screen, clicked and
+/// typed in the way AppKit delivers a person's.
+@MainActor @Suite struct InteractingWithTheDrawing {
+    final class Frames { var byPath: [String: CGRect] = [:] }
+
+    @Test func aClickRunsTheButtonsActionAndTypingWritesState() async throws {
+        let core = Core()
+        let corpus = try Corpus.load()
+        let library = try await core.library(schema: String(contentsOf: corpus.directory.appendingPathComponent(try #require(corpus.schemas["react-ui"])), encoding: .utf8))
+        let live = try LiveProgram(library: library, promptSpec: corpus.bindingSpec(forSchema: "react-ui"))
+        try live.show(try await core.parseOneShot(#"""
+        $n = 1
+        $q = ""
+        root = Stack([Button("Add", @Set($n, $n + 1)), Input("q", "", "text", null, $q)])
+        """#, library: library))
+        let frames = Frames()
+        let inspecting = ElementDrawing.inspecting
+        let drawing = ElementDrawing(
+            chrome: { view, element, path in
+                AnyView(inspecting.chrome(view, element, path)
+                    .onGeometryChange(for: CGRect.self) { $0.frame(in: .global) } action: { frames.byPath[path] = $0 })
+            },
+            fallback: inspecting.fallback
+        )
+        let selection = ElementSelection()
+        let host = NSHostingView(rootView: ElementView(live: live).environment(\.elementDrawing, drawing).environment(selection))
+        let window = NSWindow(contentRect: NSRect(x: -20000, y: -20000, width: 400, height: 200),
+                              styleMask: [.borderless], backing: .buffered, defer: false)
+        window.isReleasedWhenClosed = false
+        defer { window.close() }
+        window.contentView = host
+        window.orderFrontRegardless()
+        func settle() { RunLoop.main.run(until: Date().addingTimeInterval(0.05)); host.layoutSubtreeIfNeeded() }
+        settle()
+
+        let button = try #require(frames.byPath["/children/0"])
+        let point = host.convert(CGPoint(x: button.midX, y: button.midY), to: nil)
+        for type in [NSEvent.EventType.leftMouseDown, .leftMouseUp] {
+            window.sendEvent(try #require(NSEvent.mouseEvent(
+                with: type, location: point, modifierFlags: [], timestamp: ProcessInfo.processInfo.systemUptime,
+                windowNumber: window.windowNumber, context: nil, eventNumber: 0, clickCount: 1, pressure: 1)))
+        }
+        settle()
+        #expect(live.value(of: "$n") == .number(2))
+
+        func field(in view: NSView) -> NSTextField? {
+            if let field = view as? NSTextField, field.isEditable { return field }
+            return view.subviews.lazy.compactMap(field(in:)).first
+        }
+        let input = try #require(field(in: host))
+        #expect(window.makeFirstResponder(input))
+        try #require(input.currentEditor()).insertText("hello")
+        settle()
+        #expect(live.value(of: "$q") == .string("hello"))
+    }
+}
+
+// MARK: Decoding, bare drawing, selects and a missing runtime
+
+@MainActor @Suite struct LosslessDecoding {
+    func roundTrips(_ json: JSONValue) -> Bool { PropValue(json: json).json == json }
+
+    /// Every parse result's and every evaluated tree's root decodes into
+    /// values that give the same JSON back.
+    @Test func everyCorpusTreeRoundTrips() async throws {
+        let corpus = try Corpus.load()
+        let core = Core()
+        var libraries: [String: Library] = [:]
+        var failures: [String] = []
+        var evaluated = 0
+        for c in corpus.cases {
+            let library: Library
+            if let loaded = libraries[c.schemaName] { library = loaded } else {
+                library = try await core.library(schema: corpus.schema(of: c))
+                libraries[c.schemaName] = library
+            }
+            let step = try await core.parseOneShot(corpus.program(of: c), library: library, root: c.root)
+            if let root = step.result.json["root"], !roundTrips(root) { failures.append("\(c.name) parse result") }
+            let live = try LiveProgram(library: library, promptSpec: corpus.bindingSpec(forSchema: c.schemaName))
+            try live.show(step)
+            if let root = live.rootJSON {
+                evaluated += 1
+                if !roundTrips(root) { failures.append("\(c.name) evaluated") }
+            }
+        }
+        #expect(evaluated > 200)
+        #expect(failures.isEmpty, "\(failures.joined(separator: "\n"))")
+    }
+
+    @Test func oddObjectsRoundTripAndStayData() throws {
+        let odd = [
+            #"{"steps":[1,2],"name":"x"}"#,
+            #"{"steps":[1,2]}"#,
+            #"{"steps":"no"}"#,
+            #"{"steps":[{"type":"set"}],"extra":1}"#,
+            #"{"name":"x","steps":[{"type":"set"}]}"#,
+            #"{"steps":[{"target":"$x","type":"set"}]}"#,
+            #"{"__reactive":"assign","target":"$x"}"#,
+            #"{"__reactive":"assign","target":"$x","expr":{"k":"Num","v":1},"more":true}"#,
+            #"{"__reactive":"assign","target":1,"expr":null}"#,
+            #"{"type":"element","typeName":"Stack","props":{}}"#,
+            #"{"type":"element","typeName":"Stack","props":{},"partial":false,"hasDynamicProps":false,"extra":1}"#,
+            #"{"typeName":"Stack","type":"element","props":{},"partial":false,"hasDynamicProps":false}"#,
+            #"{"type":"element","typeName":"Stack","props":[],"partial":false,"hasDynamicProps":false}"#,
+            #"{"type":"element","typeName":"Stack","props":{},"partial":"no","hasDynamicProps":false}"#,
+            #"{"k":"Str","v":"x"}"#,
+            #"{"a":{"steps":[1]},"b":[{"steps":[]},null,1.5,"s"]}"#,
+            #"{"a":1,"a":2}"#,
+            #"{}"#, #"[]"#, #"null"#, #"-0.5"#, #""""#,
+        ]
+        for text in odd {
+            let json = try JSONValue.parse(text)
+            #expect(roundTrips(json), "\(text)")
+        }
+        guard case .record = PropValue(json: try JSONValue.parse(#"{"steps":[1,2],"name":"x"}"#)) else {
+            Issue.record("data with steps isn't data"); return
+        }
+        guard case .record = PropValue(json: try JSONValue.parse(#"{"steps":[1,2]}"#)) else {
+            Issue.record("steps that aren't steps aren't data"); return
+        }
+        guard case .plan = PropValue(json: try JSONValue.parse(#"{"steps":[{"type":"set","target":"$x"}]}"#)) else {
+            Issue.record("the runtime's plan shape isn't a plan"); return
+        }
+        #expect(PropValue(json: try JSONValue.parse(#"{"steps":[1,2],"name":"x"}"#)).summary == #"{steps: [1, 2], name: "x"}"#)
+    }
+}
+
+@MainActor @Suite struct DrawingParseResults {
+    func bench(_ core: Core) async throws -> Library {
+        let corpus = try Corpus.load()
+        return try await core.library(schema: String(contentsOf: corpus.directory.appendingPathComponent(try #require(corpus.schemas["bench"])), encoding: .utf8))
+    }
+
+    /// A parse result, not evaluated, still draws: every corpus case.
+    @Test func everyCorpusCaseDrawsAsABareParseResult() async throws {
+        let corpus = try Corpus.load()
+        let core = Core()
+        var libraries: [String: Library] = [:]
+        var drawn = 0
+        var empty = 0
+        for c in corpus.cases {
+            let library: Library
+            if let loaded = libraries[c.schemaName] { library = loaded } else {
+                library = try await core.library(schema: corpus.schema(of: c))
+                libraries[c.schemaName] = library
+            }
+            let step = try await core.parseOneShot(corpus.program(of: c), library: library, root: c.root)
+            guard let root = step.result.root else { continue }
+            let renderer = ImageRenderer(content: ElementView(element: root).environment(\.elementDrawing, .inspecting))
+            renderer.proposedSize = ProposedViewSize(width: 800, height: nil)
+            if renderer.nsImage == nil { empty += 1 }
+            drawn += 1
+        }
+        #expect(drawn > 200)
+        #expect(empty < 25)
+    }
+
+    @Test func aParseResultsExpressionIsDrawnAsItsSource() async throws {
+        let core = Core()
+        let text = try #require(try await core.parseOneShot(#"root = TextContent($name)"#, library: bench(core)).result.root)
+        #expect(text.path == nil)
+        #expect(try PropReader(element: text).text("text") == .dynamic("ƒ " + #"{"k":"StateRef","n":"$name"}"#))
+        #expect(NativeComponents.view(for: text, path: "/") != nil)
+    }
+
+    /// With no runtime session, playback still shows each parse result, and says why.
+    @Test func withoutARuntimeSessionPlaybackShowsTheParseResult() async throws {
+        let core = Core()
+        let playback = Playback(core: core, library: try await bench(core), root: nil, promptSpec: "not a prompt spec")
+        await playback.load(ReplaySource(program: #"root = TextContent("hi")"#, chunkSize: 4))
+        #expect(playback.live == nil)
+        #expect(playback.evaluationError != nil)
+        #expect(playback.step?.result.root?.typeName == "TextContent")
+    }
+}
+
+/// Selects read and write as inputs do: through a binding marker, or a form field.
+@MainActor @Suite struct Selects {
+    @Test func aBoundSelectAndAFormFieldSelectReadAndWrite() async throws {
+        let core = Core()
+        let corpus = try Corpus.load()
+        let library = try await core.library(schema: String(contentsOf: corpus.directory.appendingPathComponent(try #require(corpus.schemas["react-ui"])), encoding: .utf8))
+        let live = try LiveProgram(library: library, promptSpec: corpus.bindingSpec(forSchema: "react-ui"))
+        try live.show(try await core.parseOneShot(#"""
+        $v = "b"
+        root = Stack([Select("s", [SelectItem("a", "A"), SelectItem("b", "B")], null, null, $v), Select("u", [SelectItem("a", "A")]), TextContent("v: " + $v)])
+        """#, library: library))
+        func select(_ i: Int) throws -> SelectView {
+            guard case let .list(children)? = live.root?.props.first?.value, case let .element(e) = children[i] else {
+                throw DecodeError(description: "no select \(i)")
+            }
+            return try SelectView(PropReader(element: e))
+        }
+        #expect(try select(0).field.text(in: live, form: nil) == "b")
+        try select(0).field.write("a", to: live, form: nil)
+        #expect(live.value(of: "$v") == .string("a"))
+        let version = live.version
+        try select(0).field.write("a", to: live, form: nil)
+        #expect(live.version == version)
+        #expect(try select(1).field.text(in: live, form: "f") == "")
+        try select(1).field.write("a", to: live, form: "f")
+        #expect(live.field(form: "f", name: "u") == .string("a"))
+        #expect(try select(1).field.text(in: live, form: "f") == "a")
+        // A select drawn before the last evaluation writes nothing.
+        let stale = try select(0)
+        try live.set("$other", to: .number(1))
+        stale.field.write("b", to: live, form: nil)
+        #expect(live.value(of: "$v") == .string("a"))
+        #expect(live.failure != nil)
     }
 }

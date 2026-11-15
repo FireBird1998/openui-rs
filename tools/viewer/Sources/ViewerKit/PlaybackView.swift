@@ -2,8 +2,8 @@ import AppKit
 import OpenUINative
 import SwiftUI
 
-/// The playback controls, where each update's time went, the drawing, and
-/// the program's text with what's been received so far.
+/// The playback controls, where each update's time went, the drawing with
+/// the store beside it, and the program's text with what's been received so far.
 public struct PlaybackView: View {
     @Bindable var playback: Playback
     @Binding var chunking: Chunking
@@ -30,7 +30,10 @@ public struct PlaybackView: View {
             controls.padding(.horizontal).padding(.vertical, 8)
             Divider()
             VSplitView {
-                drawing.frame(minHeight: 120)
+                HSplitView {
+                    drawing.frame(minWidth: 200, minHeight: 120)
+                    StorePanel(playback: playback).frame(minWidth: 180, idealWidth: 260, maxWidth: 480)
+                }
                 programText.frame(minHeight: 60, idealHeight: 140)
             }
         }
@@ -115,6 +118,9 @@ public struct PlaybackView: View {
             if let error = playback.error {
                 Text(error).foregroundStyle(.red).font(.callout)
             }
+            if let error = playback.evaluationError {
+                Text(error + " The drawing shows the parse result, not evaluated.").foregroundStyle(.orange).font(.callout)
+            }
         }
     }
 
@@ -131,7 +137,10 @@ public struct PlaybackView: View {
             ScrollViewReader { proxy in
                 ScrollView(.vertical) {
                     Group {
-                        if let root = playback.step?.result.root {
+                        if let live = playback.live, playback.evaluationError == nil, live.root != nil {
+                            ElementView(live: live).environment(\.elementDrawing, .inspecting)
+                        } else if playback.evaluationError != nil, let root = playback.step?.result.root {
+                            // Not evaluated: the parse result, as it was before there was a runtime.
                             ElementView(element: root).environment(\.elementDrawing, .inspecting)
                         } else if playback.step != nil {
                             Text("No root element yet").foregroundStyle(.secondary)
@@ -163,7 +172,7 @@ public struct PlaybackView: View {
     }
 }
 
-/// "parse 0.12 ms · crossing 0.03 ms · decode 0.20 ms · redraw 4.1 ms"
+/// "parse 0.12 ms · crossing 0.03 ms · decode 0.20 ms · evaluate 0.31 ms · redraw 4.1 ms"
 struct TimingsLine: View {
     let timings: Timings?
     let fromCache: Bool
@@ -178,11 +187,12 @@ struct TimingsLine: View {
                 }
                 Text(
                     "parse \(Self.ms(t.parse)) · crossing \(Self.ms(t.crossing)) · decode \(Self.ms(t.decode))"
+                        + (t.evaluate.map { " · evaluate \(Self.ms($0))" } ?? "")
                         + " · redraw \(t.redraw.map(Self.ms) ?? "…")"
                 )
             }
             .font(.caption.monospacedDigit())
-            .help("Parse: the core. Crossing: serializing to JSON and into Swift. Decode: JSON into the viewer's model. Redraw: until the step was on screen.")
+            .help("Parse: the core. Crossing: serializing to JSON and into Swift. Decode: JSON into the viewer's model. Evaluate: the runtime session evaluating the tree, and decoding it. Redraw: until the step was on screen.")
         }
     }
 
