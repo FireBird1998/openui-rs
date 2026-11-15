@@ -8,22 +8,41 @@ use std::{cell::Cell, sync::Arc};
 static ALLOCATOR: test_alloc::Allocator = test_alloc::Allocator::with_cap(2 * 1024 * 1024 * 1024);
 struct Build {
     count: usize,
+    levels: usize,
     visited: Cell<usize>,
 }
 impl EvaluationScope for Build {
     fn call_output(&self, _: &Ast, e: &ExpressionEvaluator<'_>) -> ExpressionOutput {
         e.transform_value(&Value::Ast(Arc::new(Ast::Num(123456789.))), |v| {
-            v.array((0..self.count).map(|_| {
-                self.visited.set(self.visited.get() + 1);
-                v.property("nothing")
-            }))
+            fn build<'a>(
+                v: &openui_lang::ExpressionValue<'a>,
+                count: usize,
+                levels: usize,
+                visited: &Cell<usize>,
+            ) -> openui_lang::ExpressionValue<'a> {
+                v.array((0..count).map(|_| {
+                    visited.set(visited.get() + 1);
+                    if levels == 0 {
+                        v.property("nothing")
+                    } else {
+                        build(v, 64, levels - 1, visited)
+                    }
+                }))
+            }
+            build(&v, self.count, self.levels, &self.visited)
         })
     }
 }
 #[test]
 fn transform_arrays_bound_result_and_buffer_bytes() {
-    for room in [65_536, 1_000_000_000] {
+    for (room, levels) in [
+        (65_536, 0),
+        (65_536, 2),
+        (1_000_000_000, 0),
+        (1_000_000_000, 2),
+    ] {
         let s = Build {
+            levels,
             count: 100_000_000,
             visited: Cell::new(0),
         };
@@ -150,6 +169,7 @@ fn earlier_transforms_do_not_change_later_ordinary_array_work() {
             let mid = lo + (hi - lo) / 2;
             let scope = Build {
                 count: 0,
+                levels: 0,
                 visited: Cell::new(0),
             };
             let session = EvaluationSession::with_limits(

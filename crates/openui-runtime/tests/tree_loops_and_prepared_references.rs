@@ -1,4 +1,4 @@
-//! Regression contracts from the independent ticket 34 review.
+//! Loop reservations and prepared reference reads.
 use openui_lang::{Library, free_json, parse, parse_json};
 use openui_runtime::{
     JsObject, Limits, PreparedReferenceValues, Store, TreeInput, Value, evaluate_tree,
@@ -18,16 +18,16 @@ fn library() -> Library {
     l
 }
 #[test]
-fn non_element_each_room_matches_main() {
+fn data_items_release_substitution_reservations() {
     let xs = (0..100)
         .map(|n| n.to_string())
         .collect::<Vec<_>>()
         .join(",");
     let y = "y".repeat(200);
     for (template, room) in [
-        (format!("{{a:x,b:\"{y}\"}}"), 21992),
-        (format!("[x,\"{y}\"]"), 21192),
-        (format!("x+\"{y}\""), 40982),
+        (format!("{{a:x,b:\"{y}\"}}"), 21802),
+        (format!("[x,\"{y}\"]"), 21002),
+        (format!("x+\"{y}\""), 40792),
     ] {
         let p = parse(
             &format!("root=Box(@Each([{xs}],x,{template}))"),

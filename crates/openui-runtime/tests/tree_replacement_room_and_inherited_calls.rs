@@ -1,4 +1,4 @@
-//! Contracts from the second independent ticket 34 review.
+//! Replacement room, bounded buffers and inherited call dispatch.
 use openui_lang::{Library, free_json, parse, parse_json};
 use openui_runtime::{
     JsObject, Limits, PreparedReferenceValues, Store, TreeInput, Value, evaluate_tree_with_limits,
@@ -24,15 +24,15 @@ fn element(width: Option<usize>) -> Value {
     v
 }
 #[test]
-fn dynamic_element_room_matches_main() {
+fn dynamic_elements_retain_one_output_reservation() {
     let l = library();
     for native in [false, true] {
         for (n, width, kind, room) in [
-            (10, Some(1000), 0, 21941),
-            (10, Some(1000), 1, 21942),
-            (10, Some(1000), 2, 32872),
-            (100, None, 1, 18212),
-            (100, None, 2, 27412),
+            (10, Some(1000), 0, 11031),
+            (10, Some(1000), 1, 11032),
+            (10, Some(1000), 2, 11032),
+            (100, None, 1, 9212),
+            (100, None, 2, 9212),
         ] {
             let raw = element(width);
             let e = if native {

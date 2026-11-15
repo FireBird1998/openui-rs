@@ -64,7 +64,7 @@ fn aggregate_plans_and_unmapped_descriptors_have_bounded_costs() {
         body = format!("Action([{body}])");
     }
     for (body, room, work) in [
-        ("@Set($n,1)".to_string(), 179, 269),
+        ("@Set($n,1)".to_string(), 179, 226),
         (
             format!(
                 "@Each([{}],i,@Set($n,i))",
@@ -73,8 +73,8 @@ fn aggregate_plans_and_unmapped_descriptors_have_bounded_costs() {
                     .collect::<Vec<_>>()
                     .join(",")
             ),
-            7392,
-            16896,
+            7202,
+            12596,
         ),
         (
             format!(
@@ -84,8 +84,8 @@ fn aggregate_plans_and_unmapped_descriptors_have_bounded_costs() {
                     .collect::<Vec<_>>()
                     .join(",")
             ),
-            30182,
-            50566,
+            9512,
+            38766,
         ),
     ] {
         let p = parse(&format!("root=Box({body})"), &l, None);

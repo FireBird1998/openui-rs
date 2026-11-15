@@ -820,3 +820,80 @@ shared million-number body to cost only a constant number of extra allocations
 when aliased by 100/400/1,000 references, even after an unmeasurable entry.
 `input_measurement_cost` also requires over-deep action parts to earn no input
 credit; `action_reference_reads` keeps earlier writes when their evaluation cuts.
+
+Runtime replacement accounting is pinned by `loop_output_accounting`: four
+native/data exact room thresholds measured against 729567f, a deterministic
+100,000-element work boundary, marker stripping and wrapped plain/plan output,
+and 768 generated programs under 3,072 limit configurations. It uses a
+512 MiB allocator cap. `replacement_reservations` uses 64 MiB and checks
+nested loops, re-entrant callbacks, a caught host panic, a cut mid-item,
+separately retained output, and memoized bodies without name caches.
+`query_default_limits` uses 1 GiB for amplifying defaults near the shared 64M
+work boundary; its room/depth cuts stay local until read. It pins four query
+cycle divergences and their flags, plus lazy defaults during action runs.
+`value_use_depth` uses 256 MiB for 748-deep values at different positions in
+both syntax forms and both orders. `expression_transform_buffers` now runs
+its 64 KiB / 1 GB peak bound for flat and three-level transformed arrays.
+`query_default_calls` pins string allocation identity through ordinary,
+member and extra-scope reads, undefined-key cleanup, returned argument aliases,
+transformed text admission and call order before a malformed argument.
+
+`cargo run --release -p openui-runtime --example accounting` bisects minimum
+work and room per complete corpus case. Passing `persisted` uses the saved
+input from the runtime golden. It reuses the corpus's function recipes and
+binding declarations; measurement never times evaluation. Compare its TSV
+output between revisions. Its allocator cap is 512 MiB.
+
+## Runtime accounting measurements
+
+The TSV files in `crates/openui-runtime/tests/support/` record deterministic
+public-API observations, not elapsed time. `reuse-work.tsv` and `mixed-work.tsv`
+have columns `seed`, `data`, `main work`, `current work`. Work is the smallest
+work limit that finishes uncut; tests also require a cut one unit below it.
+The generator, schema, callbacks, and supplied values are in `support/reuse.rs`
+and `support/mixed.rs`. The depth fixtures have columns `kind`, `data`, `object`,
+`loop levels`, `slot`, `first cut`; their baseline is the first isolated use,
+without earlier reads priming a cache.
+
+Produce a main baseline from `git archive db80c86`, extracted into a scratch
+directory, and copy the current measurement example and its `tests/support/`
+dependencies there. Use an independent `CARGO_TARGET_DIR` for that archive;
+never share compiled artifacts across revisions. The following commands run
+from each checkout, offline (redirect each revision to a separate TSV):
+
+```sh
+cargo run --offline --release -p openui-runtime --example reuse_measurements -- costs 9216
+cargo run --offline --release -p openui-runtime --example mixed_prop_measurements -- generator 4096
+cargo run --offline --release -p openui-runtime --example depth_boundaries
+cargo run --offline --release -p openui-runtime --example depth_boundaries -- bare
+```
+
+For `reuse-work.tsv`, retain the fixture's existing seed/data pairs, join the two
+cost outputs on those columns, and take the baseline and current work columns.
+For `mixed-work.tsv`, retain seeds below 48 or divisible by 37, both data forms,
+and take the same four columns. Do not update the baseline column from a branch
+build. The depth command outputs are the complete respective fixtures
+`depth-first-use.tsv` and `depth-first-use-bare.tsv` from the archived main build.
+`position_depth_boundaries` checks these independent first-use boundaries at
+same, shallower, and deeper positions; `shared_subtree_depth` additionally checks
+that combined uses cut exactly when either isolated use cuts.
+
+Other runtime measurement examples:
+
+- `accounting [persisted]`: per-corpus-case minimum work and result room with
+  default or corpus-supplied state/query data.
+- `reuse_measurements`: the `costs` mode above records work, peak live bytes,
+  cut status, output size/hash, and source; `loops` records loop allocation
+  grids. Its other modes measure action depth and parameter/return behavior.
+- `mixed_prop_measurements cases`: the large element/text witnesses, both forms;
+  `generator` records work and output size/hash for mixed prop programs.
+- `depth_boundaries [bare]`: isolated-use depth thresholds described above.
+- `subtree_depth_measurements`: shared-parent/child uses alone and combined.
+- `loop_peak_witness [unique] [room]`: peak live bytes, unique retained string
+  payload, and output bytes for seven-level element loops.
+
+`scripts/compare-runtime-reuse.py main.tsv current.tsv` checks the generated
+output hashes and forbids increased work, and reports the allocation ratios
+separately. Allocation ratios vary with leaf shape; the finite loop grid in
+`evaluation_reuse` enforces 5 × room for 1,000-byte string leaves and 20 × room
+for each of eight-empty-array and `{a:[]}` leaves, without a universal bound.

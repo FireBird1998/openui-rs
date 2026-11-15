@@ -271,13 +271,21 @@ pub fn evaluate_tree_with_limits(
             return Some(scope.element(e, eval));
         }
         let expression = input.result.root_expression.as_ref()?;
-        let value = eval.evaluate_result(expression);
+        // A revisited root is re-reserved by unpaid_expression_result below.
+        let (value, revisit) = eval.with_intermediate_results(|| {
+            let value = eval.evaluate_result(expression);
+            let revisit = value
+                .value
+                .as_ref()
+                .is_some_and(|v| scope.needs_revisit(v, eval));
+            ((value, revisit), revisit)
+        })?;
         if cut(eval) {
             return None;
         }
         if let Some(failure) = value.failure {
             let message = failure_message(&failure);
-            if eval.reserve_result(160usize.saturating_add(text_bytes(&message))) {
+            if eval.reserve_retained_result(160usize.saturating_add(text_bytes(&message))) {
                 scope.errors.borrow_mut().push(RuntimeError {
                     code: "runtime-error",
                     component: None,
@@ -289,9 +297,13 @@ pub fn evaluate_tree_with_limits(
             return None;
         }
         if let Some(value) = value.value.filter(element_value) {
-            return scope.expression_result(Some(value), eval);
+            return if revisit {
+                scope.unpaid_expression_result(Some(value), eval)
+            } else {
+                scope.expression_result(Some(value), eval)
+            };
         }
-        if eval.reserve_result(120) {
+        if eval.reserve_retained_result(120) {
             scope.errors.borrow_mut().push(RuntimeError {
                 code: "no-root",
                 component: None,
@@ -336,23 +348,30 @@ impl<'a> ReferenceIndex<'a> {
         self.entries.contains_key(name)
     }
 }
+type QueryDefault = Result<Option<Value>, crate::EvaluationFlags>;
+type PaidMarker = (std::sync::Weak<JsObject<Value>>, usize);
 struct TreeScope<'a> {
     registering: Cell<bool>,
-    defaults: RefCell<BTreeMap<&'a str, Option<Value>>>,
+    defaults: RefCell<BTreeMap<&'a str, QueryDefault>>,
     store: &'a Store,
     errors: RefCell<Vec<RuntimeError>>,
     inline: Cell<bool>,
+    unpaid: Cell<bool>,
     report_bytes: Cell<Option<usize>>,
     // Only newly constructed markers can reuse a projection reservation.
     // Supplied data can alias unevaluated props elsewhere in the input, so
     // each of its output positions must reserve independently. Retaining the
     // Arc also prevents a discarded marker's address being reused here.
-    paid_markers: RefCell<std::collections::HashMap<usize, Arc<JsObject<Value>>>>,
+    paid_markers: RefCell<std::collections::HashMap<usize, PaidMarker>>,
+    // Stable per-item results can bypass upstream's otherwise redundant second
+    // pass. Keep owners to prevent address reuse; this is session-local.
+    stable_elements: RefCell<std::collections::HashMap<usize, (ElementOwner, usize)>>,
     references: ReferenceIndex<'a>,
-    run_defaults: Option<&'a std::collections::HashMap<String, crate::StateValue>>,
+    run_defaults: Option<&'a std::collections::HashMap<String, QueryDefault>>,
     reference_values: Option<&'a PreparedReferenceValues<'a>>,
     actions: Option<&'a openui_lang::JsonValue>,
     functions: Option<&'a LibraryFunctions<'a>>,
+    function_arguments: RefCell<Option<functions::ArgumentCache>>,
     checked_schemas:
         RefCell<BTreeMap<usize, std::rc::Rc<openui_lang::PreparedValidationSchema<'a>>>>,
     library: Option<&'a Library>,
@@ -397,13 +416,16 @@ impl<'a> TreeScope<'a> {
             store,
             errors: RefCell::new(Vec::new()),
             inline: Cell::new(false),
+            unpaid: Cell::new(false),
             report_bytes: Cell::new(None),
             paid_markers: RefCell::new(std::collections::HashMap::new()),
+            stable_elements: RefCell::new(std::collections::HashMap::new()),
             references,
             run_defaults: None,
             reference_values: supplied,
             actions: input.actions,
             functions: input.functions,
+            function_arguments: RefCell::new(None),
             checked_schemas: RefCell::new(BTreeMap::new()),
             library: input.library,
             binding_props: input.binding_props,
@@ -419,11 +441,22 @@ impl<'a> TreeScope<'a> {
             if !q.complete {
                 continue;
             }
-            let value = q.defaults.as_ref().map_or(Some(Value::Null), |a| {
-                eval.with_temporary_results(|| {
-                    eval.with_call_context(false, || eval.evaluate(a)).flatten()
-                })
-                .flatten()
+            let value = q.defaults.as_ref().map_or(Ok(Some(Value::Null)), |a| {
+                // Defaults are not retained in the drawn result; a read re-reserves
+                // their value through Supplied::get and the normal projection.
+                let (value, flags) = eval
+                    .with_discarded_result(|| {
+                        eval.with_temporary_results(|| {
+                            eval.with_call_context(false, || eval.evaluate(a)).flatten()
+                        })
+                        .flatten()
+                    })
+                    .unwrap_or((None, eval.flags()));
+                if flags.size_limited || flags.depth_limited {
+                    Err(flags)
+                } else {
+                    Ok(value)
+                }
             });
             self.defaults
                 .borrow_mut()
@@ -498,15 +531,19 @@ impl EvaluationScope for TreeScope<'_> {
             }
         }
         if !self.registering.get() && default.is_some() {
-            if let Some(defaults) = self.run_defaults {
-                return defaults.get(name).cloned().unwrap_or(Some(Value::Null));
-            }
-            return self
-                .defaults
-                .borrow()
-                .get(name)
-                .cloned()
-                .unwrap_or(Some(Value::Null));
+            let value = if let Some(defaults) = self.run_defaults {
+                defaults.get(name).cloned()
+            } else {
+                self.defaults.borrow().get(name).cloned()
+            };
+            return match value {
+                Some(Ok(value)) => value,
+                Some(Err(flags)) => {
+                    eval.mark_cut(flags);
+                    Some(Value::Null)
+                }
+                None => Some(Value::Null),
+            };
         }
         match default {
             None => {
@@ -537,6 +574,17 @@ impl EvaluationScope for TreeScope<'_> {
             .map(|(_, prepared)| prepared)
     }
     fn wants_each_item(&self, value: &ExpressionValue<'_>, context: bool) -> bool {
+        if let Some(data) = value.data() {
+            return context
+                && match data {
+                    Value::Element(e) => e.has_dynamic_props,
+                    Value::Obj(o) => {
+                        shaped_element(o)
+                            && !matches!(o.get("hasDynamicProps"), Some(Value::Bool(false)))
+                    }
+                    _ => false,
+                };
+        }
         context
             && value.property("type").as_str() == Some("element")
             && value.property("typeName").as_str().is_some()
@@ -544,9 +592,16 @@ impl EvaluationScope for TreeScope<'_> {
             && value.property("partial").as_bool().is_some()
             && value.property("hasDynamicProps").as_bool() != Some(false)
     }
-    fn each_item(&self, value: Option<&Value>, eval: &ExpressionEvaluator<'_>) -> Option<Value> {
-        let value = value.filter(|v| element_value(v))?;
-        let dynamic = match value {
+    fn allow_direct_each_reference(&self) -> bool {
+        true
+    }
+    fn each_item_owned(
+        &self,
+        value: &mut Option<Value>,
+        eval: &ExpressionEvaluator<'_>,
+    ) -> Option<Value> {
+        let item = value.as_ref().filter(|v| element_value(v))?;
+        let dynamic = match item {
             Value::Element(e) => e.has_dynamic_props,
             Value::Obj(o) => !matches!(o.get("hasDynamicProps"), Some(Value::Bool(false))),
             _ => false,
@@ -555,7 +610,12 @@ impl EvaluationScope for TreeScope<'_> {
             return None;
         }
         let _inline = Inline::enter(&self.inline);
-        self.expression_result(Some(value.clone()), eval)
+        let item = value.take()?;
+        if matches!(&item, Value::Element(_)) {
+            Some(self.owned_element(item, eval))
+        } else {
+            self.expression_result(Some(item), eval)
+        }
     }
     fn call(&self, call: &Ast, eval: &ExpressionEvaluator<'_>) -> Option<Value> {
         if let Ast::Comp { name, .. } = call
@@ -589,12 +649,15 @@ impl EvaluationScope for TreeScope<'_> {
         else {
             return Some(Value::Null);
         };
-        self.component(
-            Some(Value::Str(name.clone())),
-            name,
-            mapped.iter().map(|(k, v)| (k.clone(), CallProp::Typed(v))),
-            eval,
-        )
+        eval.with_temporary_results(|| {
+            self.component(
+                Some(Value::Str(name.clone())),
+                name,
+                mapped.iter().map(|(k, v)| (k.clone(), CallProp::Typed(v))),
+                eval,
+            )
+        })
+        .flatten()
     }
     fn call_value_named(
         &self,
@@ -623,7 +686,7 @@ impl EvaluationScope for TreeScope<'_> {
         }) else {
             return Some(Value::Null);
         };
-        match mapped {
+        eval.with_temporary_results(|| match mapped {
             Value::Obj(fields) => self.component(
                 o.get("name").cloned(),
                 name,
@@ -648,7 +711,8 @@ impl EvaluationScope for TreeScope<'_> {
                     eval,
                 )
             }
-        }
+        })
+        .flatten()
     }
 }
 enum CallProp<'a> {
@@ -695,7 +759,7 @@ impl TreeScope<'_> {
                 };
                 if let Some(marker) = marker {
                     // The enclosing expression projection charges this once.
-                    self.remember_marker(&marker);
+                    self.remember_marker(&marker, eval);
                     props.set(key, marker);
                 }
             } else if !contextual && state_ref {
@@ -714,7 +778,7 @@ impl TreeScope<'_> {
                 let fresh = !result.reuses_data();
                 if let Some(value) = result.value {
                     if fresh && !element_value(&value) && bindings::is_marker(&value) {
-                        self.remember_marker(&value);
+                        self.remember_marker(&value, eval);
                     }
                     props.set(key, value);
                 }
@@ -835,11 +899,12 @@ fn object(v: &Value) -> bool {
     )
 }
 impl TreeScope<'_> {
-    fn remember_marker(&self, value: &Value) {
+    fn remember_marker(&self, value: &Value, eval: &ExpressionEvaluator<'_>) {
         if let Value::Obj(o) = value {
-            self.paid_markers
-                .borrow_mut()
-                .insert(Arc::as_ptr(o) as usize, o.clone());
+            self.paid_markers.borrow_mut().insert(
+                Arc::as_ptr(o) as usize,
+                (Arc::downgrade(o), eval.remaining_depth()),
+            );
         }
     }
     fn reserve_marker(&self, value: &Value, eval: &ExpressionEvaluator<'_>) {
@@ -847,11 +912,15 @@ impl TreeScope<'_> {
             Value::Obj(o) => self
                 .paid_markers
                 .borrow()
-                .contains_key(&(Arc::as_ptr(o) as usize)),
-            _ => false,
+                .get(&(Arc::as_ptr(o) as usize))
+                .filter(|(owner, _)| owner.strong_count() != 0)
+                .map(|(_, depth)| *depth),
+            _ => None,
         };
-        if !paid {
+        if self.unpaid.get() || paid.is_none() {
             eval.reserve_value(value);
+        } else if paid.is_some_and(|depth| eval.remaining_depth() < depth) {
+            eval.check_depth(value);
         }
     }
     fn marker_value(
@@ -907,19 +976,35 @@ impl TreeScope<'_> {
                     if cut(eval) {
                         return Ok(Some(raw.clone()));
                     }
-                    self.remember_marker(&marker);
+                    self.remember_marker(&marker, eval);
                     return Ok(Some(marker));
                 }
-                let Some((result, resolved)) = eval.with_call_context(true, || {
-                    let evaluate = |eval: &ExpressionEvaluator<'_>| match raw {
-                        Value::Ast(a) => eval.evaluate_result(a),
-                        _ => eval.evaluate_value(raw),
-                    };
-                    if binding {
-                        (evaluate(eval), false)
-                    } else {
-                        eval.with_projection(evaluate)
-                    }
+                // A revisited prop is re-reserved by unpaid_expression_result below.
+                let Some(((result, resolved), revisit)) = eval.with_intermediate_results(|| {
+                    let result = eval.with_call_context(true, || {
+                        let evaluate = |eval: &ExpressionEvaluator<'_>| match raw {
+                            Value::Ast(a) => eval.evaluate_result(a),
+                            _ => eval.evaluate_value(raw),
+                        };
+                        if binding {
+                            (evaluate(eval), false)
+                        } else {
+                            eval.with_projection(evaluate)
+                        }
+                    });
+                    let revisit = result.as_ref().is_some_and(|(r, resolved)| {
+                        !resolved
+                            && r.value
+                                .as_ref()
+                                .is_some_and(|v| self.needs_revisit(v, eval))
+                    });
+                    (
+                        (
+                            result.unwrap_or_else(|| (eval.evaluate_result(&Ast::Null), false)),
+                            revisit,
+                        ),
+                        revisit,
+                    )
                 }) else {
                     return Ok(Some(raw.clone()));
                 };
@@ -939,23 +1024,38 @@ impl TreeScope<'_> {
                     .as_ref()
                     .is_some_and(|v| element_value(v) || matches!(v, Value::Arr(_)))
                 {
-                    return Ok(self.expression_result(result.value, eval));
+                    return Ok(if revisit {
+                        self.unpaid_expression_result(result.value, eval)
+                    } else {
+                        self.expression_result(result.value, eval)
+                    });
                 }
                 if let Some(marker) = result.value.as_ref().filter(|v| bindings::is_marker(v)) {
                     // The evaluator has already charged this marker's output.
                     if !result.reuses_data() {
-                        self.remember_marker(marker);
+                        self.remember_marker(marker, eval);
                     }
                     return Ok(result.value);
                 }
-                return Ok(self.expression_result(result.value, eval));
+                return Ok(if revisit {
+                    self.unpaid_expression_result(result.value, eval)
+                } else {
+                    self.expression_result(result.value, eval)
+                });
             }
             match raw {
                 Value::Element(e) if !e.has_dynamic_props => {
                     eval.reserve_value(raw);
                     Ok(Some(raw.clone()))
                 }
-                Value::Element(e) => Ok(Some(self.element(e, eval))),
+                Value::Element(e) => {
+                    if self.can_reuse_stable(raw, eval) {
+                        eval.reserve_value(raw);
+                        Ok(Some(raw.clone()))
+                    } else {
+                        Ok(Some(self.element(e, eval)))
+                    }
+                }
                 Value::Arr(items) => {
                     if !eval.reserve_result(2usize.saturating_add(items.len().saturating_sub(1))) {
                         return Ok(Some(raw.clone()));
@@ -998,6 +1098,12 @@ impl TreeScope<'_> {
         result: Option<Value>,
         eval: &ExpressionEvaluator<'_>,
     ) -> Option<Value> {
+        if result
+            .as_ref()
+            .is_some_and(|v| self.can_reuse_stable(v, eval))
+        {
+            return result;
+        }
         match result {
             Some(Value::Element(ref e)) if !e.has_dynamic_props => result,
             Some(Value::Element(ref e)) => Some(self.element(e, eval)),
@@ -1017,6 +1123,58 @@ impl TreeScope<'_> {
                 Some(Value::Arr(Arc::new(out)))
             }
             other => other,
+        }
+    }
+    fn needs_revisit(&self, value: &Value, eval: &ExpressionEvaluator<'_>) -> bool {
+        if element_value(value) {
+            return !self.can_reuse_stable(value, eval);
+        }
+        matches!(value, Value::Arr(a) if a.iter().any(|v| element_value(v) && !self.can_reuse_stable(v, eval)))
+    }
+    fn unpaid_expression_result(
+        &self,
+        value: Option<Value>,
+        eval: &ExpressionEvaluator<'_>,
+    ) -> Option<Value> {
+        let _unpaid = Inline::enter(&self.unpaid);
+        match value {
+            Some(Value::Arr(ref items)) => {
+                // Reading these bodies was paid by the discarded projection.
+                // Restore unchanged room from its one-use receipt; recursive
+                // calls below reserve each rebuilt element's replacement.
+                let prepaid = value
+                    .as_ref()
+                    .and_then(|v| eval.reserve_array_remainder(v, element_value));
+                if prepaid == Some(false)
+                    || (prepaid.is_none()
+                        && !value.as_ref().is_some_and(|v| eval.reserve_array_header(v)))
+                {
+                    return value;
+                }
+                let mut out = Vec::new();
+                for item in items.iter() {
+                    if element_value(item) {
+                        out.push(
+                            self.unpaid_expression_result(Some(item.clone()), eval)
+                                .unwrap_or(Value::Null),
+                        );
+                    } else {
+                        if prepaid.is_none() {
+                            eval.reserve_value(item);
+                        }
+                        out.push(item.clone());
+                    }
+                }
+                Some(Value::Arr(Arc::new(out)))
+            }
+            Some(ref item) if element_value(item) && !self.can_reuse_stable(item, eval) => {
+                self.expression_result(value, eval)
+            }
+            Some(ref item) => {
+                eval.reserve_value(item);
+                value
+            }
+            None => None,
         }
     }
     fn prop_on(
@@ -1063,7 +1221,7 @@ impl TreeScope<'_> {
         eval: &ExpressionEvaluator<'_>,
     ) {
         let bytes = error_bytes(owner, key).saturating_add(text_bytes(&message));
-        if eval.reserve_result(bytes) {
+        if eval.reserve_retained_result(bytes) {
             self.errors.borrow_mut().push(RuntimeError {
                 code: "runtime-error",
                 component: Some(owner.component.to_owned()),
@@ -1075,6 +1233,53 @@ impl TreeScope<'_> {
                 hint: Some(format!("Check the expression used for prop \"{key}\"")),
             });
         }
+    }
+    // Transfer primitive props while rebuilding a uniquely owned item. Shared
+    // input and host-retained values still clone through Arc::make_mut.
+    fn prop_on_owned(
+        &self,
+        owner: PropOwner<'_>,
+        key: &str,
+        raw: Value,
+        eval: &ExpressionEvaluator<'_>,
+    ) -> Option<Value> {
+        if matches!(
+            &raw,
+            Value::Null | Value::Bool(_) | Value::Num(_) | Value::Str(_)
+        ) {
+            if !cut(eval) && eval.reserve_result(text_bytes(key).saturating_add(1)) {
+                eval.with_level(|| eval.reserve_value(&raw));
+            }
+            Some(raw)
+        } else {
+            self.prop_on(owner, key, &raw, eval)
+        }
+    }
+    fn owned_element(&self, mut value: Value, eval: &ExpressionEvaluator<'_>) -> Value {
+        if cut(eval) {
+            return value;
+        }
+        eval.with_level(||{
+            let Value::Element(arc)=&mut value else{return};
+            let e=Arc::make_mut(arc);
+            let bytes=r#"{"type":"element","typeName":,"props":{},"partial":false,"hasDynamicProps":false}"#.len()
+                .saturating_sub(usize::from(e.partial)).saturating_sub(usize::from(e.has_dynamic_props))
+                .saturating_add(text_bytes(&e.type_name)).saturating_add(e.props.len().saturating_sub(1))
+                .saturating_add(e.statement_id.as_ref().map_or(0,|s|text_bytes(s).saturating_add(15)));
+            if !eval.reserve_result(bytes){return;}
+            let owner=PropOwner{component:&e.type_name,statement:e.statement_id.as_deref(),bindings:self.binding_props.and_then(|b|b.component(&e.type_name))};
+            let mut raw=std::mem::take(&mut e.props);
+            let keys=raw.iter().map(|(k,_)|k.clone()).collect::<Vec<_>>();
+            let mut props=JsObject::new();
+            for key in keys {
+                if let Some(v)=raw.remove(&key) && let Some(v)=self.prop_on_owned(owner,&key,v,eval){props.set(key,v);}
+            }
+            drop(raw);
+            let stable=props.iter().all(|(key,v)|self.stable_value(v,eval)||(owner.bindings.is_some_and(|b|b.contains(key))&&bindings::is_marker(v)));
+            e.props=props;
+            self.remember_stable(&value,stable,eval);
+        });
+        value
     }
     fn element(&self, e: &Element, eval: &ExpressionEvaluator<'_>) -> Value {
         if cut(eval) {
@@ -1108,13 +1313,14 @@ impl TreeScope<'_> {
                     props.set(k.clone(), v);
                 }
             }
-            Value::Element(Arc::new(Element {
-                type_name: e.type_name.clone(),
-                props,
-                partial: e.partial,
-                has_dynamic_props: e.has_dynamic_props,
-                statement_id: e.statement_id.clone(),
-            }))
+            let stable = self.inline.get() && props.iter().all(|(key, v)| self.stable_value(v, eval)
+                || (owner.bindings.is_some_and(|b| b.contains(key)) && bindings::is_marker(v)));
+            let value = Value::Element(Arc::new(Element {
+                type_name: e.type_name.clone(), props, partial: e.partial,
+                has_dynamic_props: e.has_dynamic_props, statement_id: e.statement_id.clone(),
+            }));
+            self.remember_stable(&value, stable, eval);
+            value
         })
         .unwrap_or_else(|| Value::Element(Arc::new(e.clone())))
     }
@@ -1160,11 +1366,115 @@ impl TreeScope<'_> {
                     props.set(k.clone(), v);
                 }
             }
+            let stable = self.inline.get()
+                && props.iter().all(|(key, v)| {
+                    self.stable_value(v, eval)
+                        || (owner.bindings.is_some_and(|b| b.contains(key))
+                            && bindings::is_marker(v))
+                });
             let mut out = o.clone();
             out.define("props", Value::Obj(Arc::new(props)));
-            Value::Obj(Arc::new(out))
+            let value = Value::Obj(Arc::new(out));
+            self.remember_stable(&value, stable, eval);
+            value
         })
         .unwrap_or_else(|| raw.clone())
+    }
+}
+enum ElementOwner {
+    Element(std::sync::Weak<Element>),
+    Object(std::sync::Weak<JsObject<Value>>),
+}
+impl ElementOwner {
+    fn alive(&self) -> bool {
+        match self {
+            Self::Element(v) => v.strong_count() != 0,
+            Self::Object(v) => v.strong_count() != 0,
+        }
+    }
+}
+fn element_identity(value: &Value) -> Option<usize> {
+    match value {
+        Value::Element(e) => Some(Arc::as_ptr(e) as usize),
+        Value::Obj(o) => Some(Arc::as_ptr(o) as usize),
+        _ => None,
+    }
+}
+impl TreeScope<'_> {
+    fn remember_stable(&self, value: &Value, stable: bool, eval: &ExpressionEvaluator<'_>) {
+        if stable
+            && !cut(eval)
+            && let Some(key) = element_identity(value)
+        {
+            let owner = match value {
+                Value::Element(e) => ElementOwner::Element(Arc::downgrade(e)),
+                Value::Obj(o) => ElementOwner::Object(Arc::downgrade(o)),
+                _ => return,
+            };
+            let mut entries = self.stable_elements.borrow_mut();
+            if entries.len() >= 128 {
+                entries.retain(|_, (v, _)| v.alive());
+            }
+            entries.insert(key, (owner, eval.remaining_depth()));
+        }
+    }
+    fn can_reuse_stable(&self, value: &Value, eval: &ExpressionEvaluator<'_>) -> bool {
+        let checked = element_identity(value).and_then(|key| {
+            self.stable_elements
+                .borrow()
+                .get(&key)
+                .filter(|(v, _)| v.alive())
+                .map(|(_, d)| *d)
+        });
+        let Some(checked) = checked else { return false };
+        let remaining = eval.remaining_depth();
+        // A raw tree walk opens a prop frame as well as each value frame.
+        // Twice its measured JSON height safely bounds that walk. Close to
+        // the limit use the existing walk, preserving its exact first-use cut.
+        remaining >= checked
+            || eval
+                .measured_depth(value)
+                .is_some_and(|height| remaining >= height.saturating_mul(2))
+    }
+    fn stable_value(&self, value: &Value, eval: &ExpressionEvaluator<'_>) -> bool {
+        // This predicate only inspects a just-admitted prop result. Its
+        // traversal is bounded by that result's already priced projection;
+        // shared aliases still count in its serialized footprint. Do not
+        // charge another evaluation for deciding to omit the second pass.
+        let mut pending = vec![value];
+        while let Some(value) = pending.pop() {
+            match value {
+                Value::Null | Value::Bool(_) | Value::Num(_) | Value::Str(_) => {}
+                Value::Element(e) if !e.has_dynamic_props => {}
+                _ if element_value(value) => {
+                    if !element_identity(value).is_some_and(|key| {
+                        self.stable_elements
+                            .borrow()
+                            .get(&key)
+                            .is_some_and(|(v, _)| v.alive())
+                    }) {
+                        return false;
+                    }
+                }
+                Value::Arr(a) => {
+                    if !eval.charge_work(0) {
+                        return false;
+                    }
+                    pending.extend(a.iter());
+                }
+                Value::Obj(o) if !expression(value) && !bindings::is_marker(value) => {
+                    if actions::is_plan(value) {
+                        continue;
+                    }
+                    if !eval.charge_work(0) {
+                        return false;
+                    }
+                    pending.extend(o.values());
+                }
+                _ => return false,
+            }
+        }
+        true
     }
 }
 fn failure_message(failure: &EvaluationFailure) -> String {

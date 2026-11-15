@@ -1,11 +1,15 @@
 //! Public expression evaluation, separate from parsing's entry and caches.
 
+mod input_identity;
 mod input_size;
+use input_identity::InputIndex;
 mod inputs;
+mod reference_input;
 pub use inputs::PreparedInput;
 
 use super::*;
 use crate::{Limits, PreparedValidationSchema};
+use std::collections::BTreeMap;
 use std::rc::Rc;
 use std::sync::Weak;
 
@@ -153,6 +157,27 @@ pub trait EvaluationScope {
     ) -> Option<Value> {
         None
     }
+    /// Opt in to a literal-equivalent lazy view for a direct iterator read.
+    /// The evaluator restricts this to canonical elements with bounded simple
+    /// props, in per-item context and away from the depth boundary. The default
+    /// retains the fully literalized public projection for custom scopes.
+    #[doc(hidden)]
+    fn allow_direct_each_reference(&self) -> bool {
+        false
+    }
+    /// Owning counterpart of `each_item`. The default preserves that hook.
+    /// An implementation may take the projection to rebuild it without keeping
+    /// its discarded contents alive. If it takes or changes it, it must return
+    /// a replacement; returning None must leave the projection unchanged.
+    /// Every replacement is still measured and charged by the evaluator.
+    #[doc(hidden)]
+    fn each_item_owned(
+        &self,
+        value: &mut Option<Value>,
+        evaluator: &ExpressionEvaluator<'_>,
+    ) -> Option<Value> {
+        self.each_item(value.as_ref(), evaluator)
+    }
     /// Handle a non-builtin call with unevaluated, already substituted args.
     /// An unimplemented call defaults to null; a handler can return undefined.
     fn call(&self, _call: &Ast, _evaluator: &ExpressionEvaluator<'_>) -> Option<Value> {
@@ -168,13 +193,24 @@ impl EvaluationScope for () {}
 /// read and never discounts output construction. Containers remain shared;
 /// scalar strings are copied into shared storage once, when prepared.
 pub struct PreparedReferenceValue {
+    measured: ReferenceMeasurement,
+}
+enum ReferenceMeasurement {
+    Small { value: Js, bytes: u32, depth: u32 },
+    Large(Box<LargeReference>),
+}
+struct LargeReference {
     value: Js,
     bytes: usize,
+    depth: usize,
 }
 impl PreparedReferenceValue {
-    /// Cache a measured input value. This does not evaluate it or measure it
-    /// again; the caller supplies its already-paid input byte contribution.
+    /// Cache a measured input value without evaluating it. The caller supplies
+    /// its already-paid byte contribution; this constructor adds no height claim.
     pub fn new(value: &Value, input_bytes: usize) -> Self {
+        Self::measured(value, input_bytes, 0)
+    }
+    fn measured(value: &Value, input_bytes: usize, depth: usize) -> Self {
         let value = match value {
             Value::Null => Js::Null,
             Value::Bool(v) => Js::Bool(*v),
@@ -183,10 +219,49 @@ impl PreparedReferenceValue {
             Value::Ast(v) => Js::Ast(v.clone()),
             _ => Js::Data(Arc::new(value.clone())),
         };
-        Self {
-            value,
-            bytes: input_bytes,
+        let measured = match (u32::try_from(input_bytes), u32::try_from(depth)) {
+            (Ok(bytes), Ok(depth)) => ReferenceMeasurement::Small {
+                value,
+                bytes,
+                depth,
+            },
+            _ => ReferenceMeasurement::Large(Box::new(LargeReference {
+                value,
+                bytes: input_bytes,
+                depth,
+            })),
+        };
+        Self { measured }
+    }
+    fn value(&self) -> &Js {
+        match &self.measured {
+            ReferenceMeasurement::Small { value, .. } => value,
+            ReferenceMeasurement::Large(v) => &v.value,
         }
+    }
+    fn bytes(&self) -> usize {
+        match &self.measured {
+            ReferenceMeasurement::Small { bytes, .. } => *bytes as usize,
+            ReferenceMeasurement::Large(v) => v.bytes,
+        }
+    }
+    fn depth(&self) -> usize {
+        match &self.measured {
+            ReferenceMeasurement::Small { depth, .. } => *depth as usize,
+            ReferenceMeasurement::Large(v) => v.depth,
+        }
+    }
+    /// Prepare named external values with one shared bounded measurement.
+    /// Successful entries carry core-verified byte and height measurements;
+    /// failed entries earn no input and retain their individual cut flags.
+    /// Returns the entries and their combined supplied-object byte contribution.
+    /// Preparation does not spend an active evaluation's work or earn credit.
+    #[doc(hidden)]
+    pub fn measure_all(
+        values: &JsObject<Value>,
+        limits: Limits,
+    ) -> (BTreeMap<&str, Result<Self, EvaluationFlags>>, usize) {
+        reference_input::prepare(values, limits)
     }
 }
 
@@ -278,7 +353,8 @@ impl<'a> ExpressionValue<'a> {
     /// Build an internal array of views. Each retained entry spends work;
     /// public output room is charged by the enclosing expression projection.
     /// Live internal and public array capacities share a byte ceiling equal
-    /// to the session's result-size limit. This includes nested retained arrays;
+    /// to the session's result-size limit, with a fixed 64-byte ledger header.
+    /// This includes nested retained arrays;
     /// discarded arrays release memory credit. Final JSON projection is priced
     /// separately, so flattened steps do not spend serialized room twice.
     /// A cut discards the interrupted transform instead of exposing its buffer.
@@ -447,7 +523,7 @@ fn admit_output(output: ExpressionOutput) -> Js {
     match output.value {
         Output::Data(value) => {
             if let Some(value) = &value {
-                measure_data(value, false);
+                measure_boundary(value);
             }
             value.as_ref().map(data_value).unwrap_or(Js::Undefined)
         }
@@ -468,6 +544,7 @@ pub struct ExpressionEvaluator<'a> {
     evaluate_value: &'a dyn Fn(&Value, bool, bool) -> (EvaluationResult, bool),
     operate: &'a dyn Fn(&mut dyn FnMut()),
     transform: &'a dyn Fn(&Value, &mut ValueTransform<'_>) -> ExpressionOutput,
+    fields: &'a dyn Fn(&JsObject<Value>) -> EvaluationResult,
     projection: Option<&'a Cell<bool>>,
 }
 impl ExpressionEvaluator<'_> {
@@ -520,6 +597,7 @@ impl ExpressionEvaluator<'_> {
             evaluate_value: self.evaluate_value,
             operate: self.operate,
             transform: self.transform,
+            fields: self.fields,
             projection: Some(&replaced),
         };
         let result = f(&evaluator);
@@ -551,12 +629,112 @@ impl ExpressionEvaluator<'_> {
         (self.operate)(&mut || ok = spend(bytes));
         ok
     }
+    /// Reserve caller output retained separately from the expression value,
+    /// for example a diagnostic. Replacing/discarding an intermediate value
+    /// cannot release this room. This grants no input or work credit.
+    pub fn reserve_retained_result(&self, bytes: usize) -> bool {
+        let mut ok = false;
+        (self.operate)(&mut || {
+            ok = spend(bytes);
+            if ok {
+                ACCOUNT.with(|a| {
+                    let mut a = a.borrow_mut();
+                    a.retained_room = a.retained_room.saturating_add(bytes);
+                });
+            }
+        });
+        ok
+    }
+    /// Retain an array's unchanged punctuation while its items are revisited.
+    /// The evaluator derives the room from the actual container. Reading and
+    /// producing item bodies must be charged separately. This does not produce
+    /// punctuation again, so it consumes no additional serialization work.
+    #[doc(hidden)]
+    pub fn reserve_array_header(&self, value: &Value) -> bool {
+        let mut ok = false;
+        (self.operate)(&mut || {
+            if let Value::Arr(items) = value {
+                ok = LIMITS.with(|l| {
+                    draw(
+                        l,
+                        Cut::Room,
+                        2usize.saturating_add(items.len().saturating_sub(1)),
+                    )
+                });
+            }
+        });
+        ok
+    }
+    /// Restore the unchanged part of a projected array after discarding its
+    /// intermediate reservation. The selector names items rebuilt separately.
+    /// Sizes come from this evaluator's projection/admission records, not the
+    /// caller. The projection receipt is consumed once; missing proof returns
+    /// None so callers can use ordinary admission. No spent work is refunded.
+    #[doc(hidden)]
+    pub fn reserve_array_remainder(
+        &self,
+        value: &Value,
+        replaced: impl Fn(&Value) -> bool,
+    ) -> Option<bool> {
+        let mut out = None;
+        (self.operate)(&mut || {
+            let Value::Arr(items) = value else { return };
+            let key = data_identity(value);
+            let bytes = key.and_then(|key| {
+                ACCOUNT.with(|a| {
+                    let mut a = a.borrow_mut();
+                    let entry = a.argument_bodies.get_mut(&key)?;
+                    if !entry.projected || !entry.owner.alive() {
+                        return None;
+                    }
+                    entry.projected = false;
+                    Some(entry.bytes)
+                })
+            });
+            let Some(mut remaining) = bytes else { return };
+            // This structural pass is covered by the original projection's
+            // item/punctuation work. Text and unchanged bodies are not read.
+            for item in items.iter().filter(|v| replaced(v)) {
+                let cached = data_identity(item).and_then(|key| {
+                    ACCOUNT.with(|a| {
+                        let a = a.borrow();
+                        a.inputs
+                            .measurement(&key)
+                            .and_then(|(bytes, _)| bytes)
+                            .or_else(|| {
+                                a.argument_bodies
+                                    .get(&key)
+                                    .filter(|m| m.owner.alive() && m.bytes != 0)
+                                    .map(|m| m.bytes)
+                            })
+                    })
+                });
+                let bytes = cached.unwrap_or_else(|| measure_data(item, false));
+                let Some(rest) = remaining.checked_sub(bytes) else {
+                    return;
+                };
+                remaining = rest;
+            }
+            out = Some(LIMITS.with(|l| draw(l, Cut::Room, remaining)));
+        });
+        out
+    }
     /// Charge caller work in this allowance. Cuts remain sticky; this does not
     /// reserve output room or add input credit.
     pub fn charge_work(&self, units: usize) -> bool {
         let mut ok = false;
         (self.operate)(&mut || ok = step(units));
         ok
+    }
+    /// Remaining logical value levels at this position, including enclosing
+    /// callbacks and foreign sessions. A successful walk can only be reused
+    /// where at least as many levels remain.
+    pub fn remaining_depth(&self) -> usize {
+        let mut depth = 0;
+        (self.operate)(&mut || {
+            depth = LIMITS.with(|l| l.max_depth.get().saturating_sub(l.depth.get()))
+        });
+        depth
     }
     /// Read supplied input using the same bounded measurement and credit rules
     /// as state reads. Shared container bodies earn credit once per allowance.
@@ -610,6 +788,41 @@ impl ExpressionEvaluator<'_> {
         (self.operate)(&mut || ok = spend(measure_data(value, false)));
         ok
     }
+    /// Recheck an already reserved value's depth without another output
+    /// reservation or input credit. Successful identity measurements are
+    /// reusable only where their measured height fits.
+    pub fn check_depth(&self, value: &Value) -> bool {
+        let mut ok = false;
+        (self.operate)(&mut || {
+            let _mode = DepthOnly::enter();
+            measure_data(value, false);
+            ok = LIMITS.with(|l| l.cut.get().is_none());
+        });
+        ok
+    }
+    /// Previously measured value-walk height, including the value's root. This
+    /// reads only live, exact evaluator measurements; it performs no walk,
+    /// changes no allowance and makes no claim about a new position's depth.
+    pub fn measured_depth(&self, value: &Value) -> Option<usize> {
+        let mut out = None;
+        (self.operate)(&mut || {
+            if let Some(key) = data_identity(value) {
+                out = ACCOUNT.with(|a| {
+                    let a = a.borrow();
+                    a.inputs
+                        .measurement(&key)
+                        .map(|(_, h)| h.saturating_add(1))
+                        .or_else(|| {
+                            a.argument_bodies
+                                .get(&key)
+                                .filter(|v| v.owner.alive() && v.exact)
+                                .map(|v| (v.depth as usize).saturating_add(1))
+                        })
+                });
+            }
+        });
+        out
+    }
     /// Check unchanged supplied output without retaining its result room.
     /// Work and depth remain charged and cuts stay sticky. Every serialized
     /// occurrence counts, including aliases discounted in argument buffers.
@@ -619,15 +832,15 @@ impl ExpressionEvaluator<'_> {
     pub fn check_result_value(&self, value: &Value) -> bool {
         let mut ok = false;
         (self.operate)(&mut || {
-            ACCOUNT.with(|a| a.borrow_mut().temporary_room.push(0));
-            let _room = TemporaryResults;
+            ACCOUNT.with(|a| a.borrow_mut().temporary_room.push((0, true)));
+            let _room = TemporaryResults { release: true };
             let before = LIMITS.with(|l| l.room.get());
-            ok = spend(measure_data_with_memo::<false>(value, false));
+            ok = spend(measure_data(value, false));
             if ok {
                 let consumed = LIMITS.with(|l| before.saturating_sub(l.room.get()));
                 ACCOUNT.with(|a| {
                     if let Some(room) = a.borrow_mut().temporary_room.last_mut() {
-                        *room = room.saturating_add(consumed);
+                        room.0 = room.0.saturating_add(consumed);
                     }
                 });
             }
@@ -645,9 +858,53 @@ impl ExpressionEvaluator<'_> {
         let mut out = None;
         (self.operate)(&mut || {
             if let Some(f) = f.take() {
-                ACCOUNT.with(|a| a.borrow_mut().temporary_room.push(0));
-                let _room = TemporaryResults;
+                ACCOUNT.with(|a| a.borrow_mut().temporary_room.push((0, true)));
+                let _room = TemporaryResults { release: true };
                 out = Some(f());
+            }
+        });
+        out
+    }
+    /// Scope projections that may be replaced by a caller walk. The closure's
+    /// boolean discards their room before rebuilding the final value; false
+    /// retains it. Persistent caller reservations and spent work are unchanged.
+    /// Escaping discarded values require normal output reservation.
+    pub fn with_intermediate_results<T>(&self, f: impl FnOnce() -> (T, bool)) -> Option<T> {
+        let mut f = Some(f);
+        let mut out = None;
+        (self.operate)(&mut || {
+            if let Some(f) = f.take() {
+                ACCOUNT.with(|a| a.borrow_mut().temporary_room.push((0, false)));
+                let mut room = TemporaryResults { release: true };
+                let (value, discard) = f();
+                room.release = discard;
+                out = Some(value);
+            }
+        });
+        out
+    }
+    /// Evaluate named descriptors as one object. Supplied identities may reuse
+    /// their public argument object; undefined fields are omitted. Reuse still
+    /// checks depth at this position and never grants input credit.
+    #[doc(hidden)]
+    pub fn evaluate_fields(&self, fields: &JsObject<Value>) -> EvaluationResult {
+        (self.fields)(fields)
+    }
+    /// Evaluate an intermediate that will be discarded on a cut. Room and
+    /// depth cuts are returned locally; spent work is never restored, and a
+    /// work cut remains sticky. The closure must not retain partial output.
+    /// Context and reservations restore on unwind.
+    pub fn with_discarded_result<T>(&self, f: impl FnOnce() -> T) -> Option<(T, EvaluationFlags)> {
+        let mut f = Some(f);
+        let mut out = None;
+        (self.operate)(&mut || {
+            if let Some(f) = f.take() {
+                let guard = DiscardedResult::enter();
+                let value = f();
+                record_flags();
+                let flags = ACCOUNT.with(|a| a.borrow().flags.get());
+                drop(guard);
+                out = Some((value, flags));
             }
         });
         out
@@ -794,6 +1051,21 @@ impl ExpressionEvaluator<'_> {
             if LIMITS.with(|l| l.cut.get().is_some()) {
                 return;
             }
+            let remaining = LIMITS.with(|l| l.max_depth.get().saturating_sub(l.depth.get()));
+            let validation_key =
+                data_identity(value).map(|identity| (key, identity, path.to_owned(), strict));
+            if validation_key.as_ref().is_some_and(|key| {
+                ACCOUNT.with(|a| {
+                    a.borrow()
+                        .validated
+                        .get(key)
+                        .is_some_and(|(owner, depth)| owner.alive() && remaining >= *depth)
+                })
+            }) {
+                step(1);
+                out = Some(value.clone());
+                return;
+            }
             let table = crate::table::Table::default();
             let mut cache = crate::table::Cache::default();
             let limits = LIMITS.with(|l| {
@@ -834,6 +1106,32 @@ impl ExpressionEvaluator<'_> {
                 && !ctx.stack_cut
                 && LIMITS.with(|l| l.cut.get().is_none())
             {
+                if valid
+                    && data_identity(value).is_some()
+                    && data_identity(&checked) == data_identity(value)
+                {
+                    let weak = match value {
+                        Value::Obj(v) if Arc::strong_count(v) > 2 => {
+                            Some(WeakValue::Obj(Arc::downgrade(v)))
+                        }
+                        Value::Arr(v) if Arc::strong_count(v) > 2 => {
+                            Some(WeakValue::Arr(Arc::downgrade(v)))
+                        }
+                        _ => None,
+                    };
+                    if let (Some(key), Some(weak)) = (validation_key, weak) {
+                        ACCOUNT.with(|a| {
+                            let mut a = a.borrow_mut();
+                            if a.validated.len() >= 4 {
+                                a.validated.retain(|_, (w, _)| w.alive());
+                            }
+                            if a.validated.len() >= 8 {
+                                a.validated.clear();
+                            }
+                            a.validated.insert(key, (weak, remaining));
+                        });
+                    }
+                }
                 out = Some(checked);
             }
         });
@@ -1184,7 +1482,11 @@ impl<'a> EvaluationSession<'a> {
                     in_scope_transform(node, &[], &Scope::Root(&self.names), map, &operate)
                 })
             };
+            let fields = |fields: &JsObject<Value>| {
+                self.root_context(|| evaluate_fields(fields, &[], &Scope::Root(&self.names)))
+            };
             f(&ExpressionEvaluator {
+                fields: &fields,
                 evaluate: &eval,
                 evaluate_value: &value,
                 operate: &operate,
@@ -1485,6 +1787,129 @@ fn in_scope_value(
         evaluate_value_result(node, scope, project, operate)
     }
 }
+#[derive(PartialEq, Eq)]
+enum FieldIdentity {
+    Undefined,
+    Null,
+    Bool(bool),
+    Num(u64),
+    Shared(u8, usize),
+}
+struct FieldCache {
+    key: Vec<(String, FieldIdentity)>,
+    value: Value,
+}
+fn evaluate_fields(
+    fields: &JsObject<Value>,
+    bindings: &[(String, Js)],
+    scope: &Scope<Supplied<'_>>,
+) -> EvaluationResult {
+    crate::stack::grow_stack!(evaluate_fields(fields, bindings, scope), budget else result(None));
+    if let Some(((name, item), rest)) = bindings.split_first() {
+        if !step(1) {
+            return result(None);
+        }
+        return evaluate_fields(
+            fields,
+            rest,
+            &Scope::Each {
+                name,
+                item,
+                parent: scope,
+            },
+        );
+    }
+    let _texts = ArgumentTexts::enter();
+    let _failure = FailureEntry::enter();
+    let _projection = ProjectionEntry::enter();
+    let mut out = Vec::with_capacity(fields.len().min(4));
+    let mut key = Some(Vec::with_capacity(fields.len().min(4)));
+    let mut supplied = false;
+    for (name, node) in fields.iter() {
+        if failed() || !step(1) {
+            break;
+        }
+        let value = super::descriptor::evaluate(Some(node), scope);
+        let identity = match &value {
+            Js::Undefined => Some(FieldIdentity::Undefined),
+            Js::Null => Some(FieldIdentity::Null),
+            Js::Bool(b) => Some(FieldIdentity::Bool(*b)),
+            Js::Num(n) => Some(FieldIdentity::Num(n.to_bits())),
+            Js::Str(s)
+                if ACCOUNT
+                    .with(|a| a.borrow().supplied_strings.contains(&(s.as_ptr() as usize))) =>
+            {
+                supplied = true;
+                Some(FieldIdentity::Shared(4, s.as_ptr() as usize))
+            }
+            Js::Data(v) => data_identity(v)
+                .filter(|k| ACCOUNT.with(|a| a.borrow().inputs.contains(k)))
+                .map(|(tag, ptr)| {
+                    supplied = true;
+                    FieldIdentity::Shared(tag, ptr)
+                }),
+            _ => None,
+        };
+        if let (Some(keys), Some(identity)) = (&mut key, identity) {
+            keys.push((name.clone(), identity));
+        } else {
+            key = None;
+        }
+        out.push((name.clone(), value));
+    }
+    let key = key.filter(|_| supplied && !failed() && LIMITS.with(|l| l.cut.get().is_none()));
+    if let Some(key) = &key {
+        let hit = ACCOUNT.with(|a| {
+            a.borrow()
+                .field_cache
+                .as_ref()
+                .filter(|v| &v.key == key)
+                .map(|v| v.value.clone())
+        });
+        if let Some(value) = hit {
+            // A successful cached admission can be reused only at a position
+            // with sufficient remaining depth. measure_data enforces this.
+            let bytes = measure_data(&value, false);
+            if !ACCOUNT.with(|a| a.borrow().temporary_room.last().is_some_and(|v| v.1)) {
+                spend(bytes);
+            }
+            return result(Some(value));
+        }
+    }
+    // Discard the old projection before allocating a replacement. Keep only
+    // the current combination: a cache miss must not retain copies of text.
+    ACCOUNT.with(|a| a.borrow_mut().field_cache = None);
+    let value = if failed() {
+        None
+    } else if !ACCOUNT.with(|a| a.borrow().temporary_room.last().is_some_and(|v| v.1)) {
+        let mut object = JsObject::new();
+        for (name, value) in out {
+            object.define(name, value);
+        }
+        runtime_value(&Js::Obj(Arc::new(object)))
+    } else {
+        let mut fields = JsObject::new();
+        for (name, child) in out {
+            if let Some(value) = runtime_value(&child) {
+                fields.define(name, value);
+            }
+        }
+        Some(Value::Obj(Arc::new(fields)))
+    };
+    if let (Some(key), Some(value)) = (key, &value)
+        && LIMITS.with(|l| l.cut.get().is_none())
+    {
+        // Bound retained projection metadata independently of call count.
+        ACCOUNT.with(|a| {
+            let mut a = a.borrow_mut();
+            a.field_cache = Some(FieldCache {
+                key,
+                value: value.clone(),
+            });
+        });
+    }
+    result(value)
+}
 fn in_scope_transform(
     node: &Value,
     bindings: &[(String, Js)],
@@ -1563,9 +1988,53 @@ fn result(value: Option<Value>) -> EvaluationResult {
     })
 }
 
+struct CachedRead {
+    value: Js,
+    depth: u32,
+    height: u32,
+}
+fn recheck_read(value: &Js) {
+    crate::stack::grow_stack!(recheck_read(value), budget else ());
+    let _mode = DepthOnly::enter();
+    match value {
+        Js::Data(v) => {
+            measure_data(v, false);
+        }
+        Js::Ast(a) => {
+            expression_bytes(a);
+        }
+        Js::Props(e) => {
+            measure_data(&Value::Element(e.clone()), false);
+        }
+        Js::Arr(a) => {
+            let Some(_level) = Level::enter() else {
+                return;
+            };
+            for value in a.iter() {
+                if !step(1) {
+                    break;
+                }
+                recheck_read(value);
+            }
+        }
+        Js::Obj(o) => {
+            let Some(_level) = Level::enter() else {
+                return;
+            };
+            for value in o.values() {
+                if !step(1) {
+                    break;
+                }
+                recheck_read(value);
+            }
+        }
+        _ => {}
+    }
+}
+type ReadKey = (bool, Box<str>, bool, bool);
 pub(super) struct Supplied<'a> {
     scope: &'a dyn EvaluationScope,
-    read: RefCell<HashMap<(bool, String, bool, bool), Js>>,
+    read: RefCell<HashMap<ReadKey, CachedRead>>,
     callbacks: RefCell<Vec<Rc<Suspension>>>,
 }
 struct Suspension {
@@ -1674,7 +2143,13 @@ impl Supplied<'_> {
                 in_scope_transform(node, &frame.bindings, &Scope::Root(self), map, &operate)
             })
         };
+        let fields = |fields: &JsObject<Value>| {
+            self.resume_context(frame, || {
+                evaluate_fields(fields, &frame.bindings, &Scope::Root(self))
+            })
+        };
         f(&ExpressionEvaluator {
+            fields: &fields,
             evaluate: &eval,
             evaluate_value: &value,
             operate: &operate,
@@ -1717,10 +2192,87 @@ impl Supplied<'_> {
         let operate = |f: &mut dyn FnMut()| self.resume_context(frame, f);
         in_scope(node, &frame.bindings, &Scope::Root(self), project, &operate)
     }
-    fn object_extra(&self, name: &str) -> Js {
-        let key = (false, name.to_owned(), true, true);
-        if let Some(value) = self.read.borrow().get(&key) {
-            return value.clone();
+    fn remember_read(&self, key: ReadKey, value: Js) {
+        self.remember_read_height(key, value, 0);
+    }
+    fn remember_read_height(&self, key: ReadKey, value: Js, height: usize) {
+        if let Js::Str(text) = &value
+            && ACCOUNT.with(|a| a.borrow().argument_texts)
+        {
+            ACCOUNT.with(|a| {
+                a.borrow_mut()
+                    .supplied_strings
+                    .insert(text.as_ptr() as usize)
+            });
+        }
+        let depth = LIMITS.with(|l| l.max_depth.get().saturating_sub(l.depth.get()));
+        self.read.borrow_mut().insert(
+            key,
+            CachedRead {
+                value,
+                depth: u32::try_from(depth).unwrap_or(u32::MAX),
+                height: u32::try_from(height).unwrap_or(0),
+            },
+        );
+    }
+    fn cached_read(&self, key: &ReadKey) -> Option<Js> {
+        let (value, checked, prepared_height) = self
+            .read
+            .borrow()
+            .get(key)
+            .map(|v| (v.value.clone(), v.depth, v.height))?;
+        let depth = LIMITS.with(|l| l.max_depth.get().saturating_sub(l.depth.get()));
+        let required = if prepared_height != 0 {
+            // A prepared read admits no body here. Its first read is lazy too;
+            // member/index receivers may consume only a shallow child. Full
+            // projections and argument admission check their actual values.
+            None
+        } else if let Js::Data(v) = &value {
+            data_identity(v).and_then(|key| {
+                ACCOUNT.with(|a| {
+                    let a = a.borrow();
+                    if let Some((_, height)) = a.inputs.measurement(&key) {
+                        return Some(height.saturating_add(1));
+                    }
+                    a.argument_bodies
+                        .get(&key)
+                        .filter(|v| v.owner.alive() && v.exact)
+                        .map(|v| (v.depth as usize).saturating_add(1))
+                })
+            })
+        } else {
+            None
+        };
+        if let Some(required) = required {
+            if (checked == u32::MAX || depth < checked as usize) && depth < required {
+                LIMITS.with(|l| l.cut_by(Cut::Depth));
+            }
+        } else if prepared_height == 0 && (checked == u32::MAX || depth < checked as usize) {
+            recheck_read(&value);
+            if LIMITS.with(|l| l.cut.get().is_none())
+                && let Some(cached) = self.read.borrow_mut().get_mut(key)
+            {
+                cached.depth = u32::try_from(depth).unwrap_or(u32::MAX);
+            }
+        }
+        if let Js::Str(text) = &value
+            && ACCOUNT.with(|a| a.borrow().argument_texts)
+        {
+            ACCOUNT.with(|a| {
+                a.borrow_mut()
+                    .supplied_strings
+                    .insert(text.as_ptr() as usize);
+            });
+        }
+        Some(value)
+    }
+    fn object_extra(&self, name: &str, receiver: bool) -> Js {
+        let key = (false, name.into(), true, true);
+        if let Some(value) = {
+            let _position = ReadPosition::enter(receiver);
+            self.cached_read(&key)
+        } {
+            return value;
         }
         let value = self.callback(&Scope::Root(self), |eval| self.scope.extra(name, eval));
         if failed() {
@@ -1729,7 +2281,10 @@ impl Supplied<'_> {
         let value = match value {
             Some(Value::Null) => Js::Null,
             Some(value) => {
-                register_input(&value);
+                {
+                    let _position = ReadPosition::enter(receiver);
+                    register_input(&value);
+                }
                 data_value(&value)
             }
             None if OBJECT_PROTOTYPE_KEYS.contains(&name) => {
@@ -1740,47 +2295,70 @@ impl Supplied<'_> {
         // Missing own fields need no second cache entry; the combined state
         // lookup caches their fallback. Actual extra values are credited once.
         if !matches!(value, Js::Undefined) {
-            self.read.borrow_mut().insert(key, value.clone());
+            let _position = ReadPosition::enter(receiver);
+            self.remember_read(key, value.clone());
         }
         value
     }
     fn get(&self, name: &str, reference: bool) -> Js {
+        let receiver =
+            ACCOUNT.with(|a| std::mem::replace(&mut a.borrow_mut().receiver_read, false));
+        self.get_at(name, reference, receiver)
+    }
+    fn get_at(&self, name: &str, reference: bool, receiver: bool) -> Js {
         let (extra_enabled, extra_object) = ACCOUNT.with(|a| {
             let a = a.borrow();
             (reference || a.extra_enabled, a.extra_object)
         });
-        let key = (reference, name.to_owned(), extra_enabled, false);
+        let key = (reference, name.into(), extra_enabled, false);
         let cached = !reference || self.scope.cache_references();
-        if let Some(js) = self.read.borrow().get(&key).filter(|_| cached) {
-            return js.clone();
+        if cached
+            && let Some(value) = {
+                let _position = ReadPosition::enter(receiver);
+                self.cached_read(&key)
+            }
+        {
+            return value;
         }
         if !reference && extra_enabled && extra_object {
-            let extra = self.object_extra(name);
+            let extra = self.object_extra(name, receiver);
             if failed() {
                 return Js::Undefined;
             }
             let value = if is_nullish(&extra) {
                 let _extra = ExtraContext::disable();
-                self.get(name, false)
+                self.get_at(name, false, receiver)
             } else {
                 extra
             };
-            self.read.borrow_mut().insert(key, value.clone());
+            {
+                let _position = ReadPosition::enter(receiver);
+                self.remember_read(key, value.clone());
+            }
             return value;
         }
         if reference && let Some(prepared) = self.scope.prepared_reference(name) {
             // The prepared set was paid before this session. A claim larger
             // than the admitted input cannot use the fast path.
-            if ACCOUNT.with(|a| prepared.bytes > a.borrow().bytes) {
+            if ACCOUNT.with(|a| prepared.bytes() > a.borrow().bytes) {
                 LIMITS.with(|l| l.cut_by(Cut::Work));
                 return Js::Null;
             }
             if !step(1) {
                 return Js::Null;
             }
-            let js = prepared.value.clone();
+            let js = prepared.value().clone();
+            if let Js::Str(text) = &js
+                && ACCOUNT.with(|a| a.borrow().argument_texts)
+            {
+                ACCOUNT.with(|a| {
+                    a.borrow_mut()
+                        .supplied_strings
+                        .insert(text.as_ptr() as usize)
+                });
+            }
             if cached {
-                self.read.borrow_mut().insert(key, js.clone());
+                self.remember_read_height(key, js.clone(), prepared.depth().max(1));
             }
             return js;
         }
@@ -1813,15 +2391,17 @@ impl Supplied<'_> {
             return Js::Undefined;
         }
         if let Some(value) = &value {
+            let _position = ReadPosition::enter(receiver);
             if reference {
-                measure_data(value, false);
+                measure_boundary(value);
             } else {
                 register_input(value);
             }
         }
         let js = value.as_ref().map(data_value).unwrap_or(Js::Undefined);
         if cached {
-            self.read.borrow_mut().insert(key, js.clone());
+            let _position = ReadPosition::enter(receiver);
+            self.remember_read(key, js.clone());
         }
         js
     }
@@ -1848,7 +2428,7 @@ pub(super) fn extra_state(name: Option<&Value>, scope: &Scope<Supplied<'_>>) -> 
     if failed() {
         return Js::Undefined;
     }
-    let value = names.object_extra(&key);
+    let value = names.object_extra(&key, false);
     if is_nullish(&value) {
         Js::Undefined
     } else {
@@ -1866,7 +2446,7 @@ impl Names for Supplied<'_> {
     fn reference(&self, name: &str, _scope: &Scope<Self>) -> Js {
         self.get(name, true)
     }
-    fn each_item(&self, js: Js, scope: &Scope<Self>) -> Js {
+    fn each_item(&self, mut js: Js, scope: &Scope<Self>) -> Js {
         if failed() {
             return Js::Undefined;
         }
@@ -1878,30 +2458,67 @@ impl Names for Supplied<'_> {
         if !self.scope.wants_each_item(&view, context) {
             return js;
         }
-        let value = LIMITS.with(|limits| to_value_mode::<true, false>(&js, limits));
+        // A data projection is already public data. Move a unique owner out
+        // instead of retaining a second copy across the per-item callback.
+        let moved = if let Js::Data(data) = &mut js {
+            Arc::get_mut(data).map(|v| std::mem::replace(v, Value::Null))
+        } else {
+            None
+        };
+        let was_moved = moved.is_some();
+        let mut value =
+            moved.or_else(|| LIMITS.with(|limits| to_value_mode::<true, false>(&js, limits)));
         let before = room_used();
-        let replacement = self.callback(scope, |eval| self.scope.each_item(value.as_ref(), eval));
+        let retained_before = ACCOUNT.with(|a| a.borrow().retained_room);
+        // Callback projections belong to this item, never an enclosing
+        // temporary argument buffer. On unwind/cut keep all reservations.
+        let _temporary = ItemRoom::enter();
+        let replacement = self.callback(scope, |eval| self.scope.each_item_owned(&mut value, eval));
         if failed() {
             return Js::Undefined;
         }
         if let Some(value) = replacement {
-            let bytes = measure_data(&value, false);
+            let bytes = measure_boundary(&value);
             // Keep this reservation while the loop buffers replacements. The
             // owning expression releases their final footprints only when its
             // projection is ready to charge them; nested argument projections
             // cannot release earlier items still retained by the outer loop.
-            let spent = room_used().saturating_sub(before);
+            let retained =
+                ACCOUNT.with(|a| a.borrow().retained_room.saturating_sub(retained_before));
+            let spent = room_used().saturating_sub(before).saturating_sub(retained);
             if LIMITS.with(|l| l.cut.get().is_none()) {
+                release_substitution();
+                if bytes > spent {
+                    spend(bytes.saturating_sub(spent));
+                } else {
+                    LIMITS.with(|l| l.room.set(l.room.get().saturating_add(spent - bytes)));
+                }
                 ACCOUNT.with(|a| {
                     if let Some(room) = a.borrow_mut().projection_room.last_mut() {
-                        *room = room.saturating_add(bytes.min(spent));
+                        *room = room.saturating_add(bytes);
                     }
                 });
             }
-            replacement_value(&js, &value)
+            data_value(&value)
         } else {
+            if was_moved
+                && let Js::Data(data) = &mut js
+                && let Some(data) = Arc::get_mut(data)
+            {
+                *data = value.take().unwrap_or(Value::Null);
+            }
             js
         }
+    }
+    fn direct_each_reference(&self, value: &Js) -> Option<Js> {
+        if !self.scope.allow_direct_each_reference()
+            || !ACCOUNT.with(|a| a.borrow().call_context)
+            || LIMITS.with(|l| l.max_depth.get().saturating_sub(l.depth.get()) < 64)
+            || !literal_identity_element(value)
+        {
+            return None;
+        }
+        Some(expand(value))
     }
     fn wants_unmapped_call(&self, node: &Value, name: &str) -> bool {
         self.scope.wants_unmapped_call(node, name)
@@ -1935,47 +2552,91 @@ impl Names for Supplied<'_> {
         admit_output(self.callback_output(scope, |eval| self.scope.call_output(node, eval)))
     }
 }
-// Keep the original computed/data representation when replacing an item. The
-// existing converter prices computed objects/arrays differently from borrowed
-// data. Turning a computed item into Data would change its established room
-// cost even after releasing the discarded pass. This only adapts containers;
-// expression evaluation and projection pricing remain in their existing paths.
-fn replacement_value(original: &Js, value: &Value) -> Js {
-    crate::stack::grow_stack!(replacement_value(original,value), budget else Js::Null);
-    let Some(_level) = Level::enter() else {
-        return Js::Null;
-    };
-    if !step(1) {
-        return Js::Null;
-    }
-    match (original, value) {
-        (Js::Obj(old), Value::Obj(new)) => {
-            let mut out = JsObject::new();
-            for (key, value) in new.iter() {
-                if !step(key.len().saturating_add(1)) {
-                    break;
-                }
-                let next = old
-                    .get(key)
-                    .map_or_else(|| data_value(value), |old| replacement_value(old, value));
-                out.define(key.clone(), next);
-            }
-            Js::Obj(Arc::new(out))
+// This is a representation shortcut, not evaluation: the existing per-item
+// hook still evaluates each prop once. Reject unknown fields, prototypes and
+// expressions whose literal expansion could change dispatch or exceed 64 levels.
+fn literal_identity_element(value: &Js) -> bool {
+    fn ast(a: &Ast, n: usize) -> bool {
+        if n == 0 || !step(1) {
+            return false;
         }
-        (Js::Arr(old), Value::Arr(new)) => Js::Arr(Arc::new(
-            new.iter()
-                .enumerate()
-                .take_while(|_| LIMITS.with(|l| l.cut.get().is_none()))
-                .map(|(i, value)| {
-                    old.get(i)
-                        .map_or_else(|| data_value(value), |old| replacement_value(old, value))
+        match a {
+            Ast::Str(_) | Ast::Num(_) | Ast::Bool(_) | Ast::Null | Ast::StateRef(_) => true,
+            Ast::BinOp { left, right, .. } => ast(left, n - 1) && ast(right, n - 1),
+            Ast::UnaryOp { operand, .. } => ast(operand, n - 1),
+            _ => false,
+        }
+    }
+    fn node(v: &Value, n: usize) -> bool {
+        if n == 0 || !step(1) {
+            return false;
+        }
+        match v {
+            Value::Ast(a) => ast(a, n - 1),
+            Value::Obj(o) => {
+                let Some(Value::Str(k)) = o.get("k") else {
+                    return false;
+                };
+                match k.as_str() {
+                    "Num" => o.len() == 2 && matches!(o.get("v"), Some(Value::Num(_))),
+                    "Str" => o.len() == 2 && matches!(o.get("v"), Some(Value::Str(_))),
+                    "Bool" => o.len() == 2 && matches!(o.get("v"), Some(Value::Bool(_))),
+                    "Null" => o.len() == 1,
+                    "StateRef" => o.len() == 2 && matches!(o.get("n"), Some(Value::Str(_))),
+                    "BinOp" => {
+                        o.len() == 4
+                            && matches!(o.get("op"), Some(Value::Str(_)))
+                            && o.get("left").is_some_and(|v| node(v, n - 1))
+                            && o.get("right").is_some_and(|v| node(v, n - 1))
+                    }
+                    "UnaryOp" => {
+                        o.len() == 3
+                            && matches!(o.get("op"), Some(Value::Str(_)))
+                            && o.get("operand").is_some_and(|v| node(v, n - 1))
+                    }
+                    _ => false,
+                }
+            }
+            _ => false,
+        }
+    }
+    fn props(p: &JsObject<Value>) -> bool {
+        p.len() <= 8
+            && p.iter().all(|(key, value)| {
+                key != "__proto__"
+                    && match value {
+                        Value::Null | Value::Bool(_) | Value::Num(_) | Value::Str(_) => step(1),
+                        _ => node(value, 6),
+                    }
+            })
+    }
+    let Js::Data(value) = value else { return false };
+    match value.as_ref() {
+        Value::Element(e) => e.has_dynamic_props && props(&e.props),
+        Value::Obj(o) => {
+            o.len() <= 6
+                && o.iter().all(|(key, _)| {
+                    matches!(
+                        key.as_str(),
+                        "type"
+                            | "typeName"
+                            | "props"
+                            | "partial"
+                            | "hasDynamicProps"
+                            | "statementId"
+                    )
                 })
-                .collect(),
-        )),
-        _ => data_value(value),
+                && matches!(o.get("type"),Some(Value::Str(s)) if s=="element")
+                && matches!(o.get("typeName"), Some(Value::Str(_)))
+                && matches!(o.get("partial"), Some(Value::Bool(_)))
+                && matches!(o.get("hasDynamicProps"), Some(Value::Bool(true)))
+                && o.get("statementId")
+                    .is_none_or(|v| matches!(v, Value::Str(_)))
+                && matches!(o.get("props"),Some(Value::Obj(p)) if props(p))
+        }
+        _ => false,
     }
 }
-
 // Account for input credit earned inside a callback as well as room draws.
 fn room_used() -> usize {
     ACCOUNT.with(|a| {
@@ -1984,6 +2645,80 @@ fn room_used() -> usize {
             .result_size_for(a.bytes)
             .saturating_sub(LIMITS.with(|l| l.room.get()))
     })
+}
+// Substitution constructs literal descriptors, not additional output positions.
+// Keep their room while evaluating the item, then let the owning projection
+// replace exactly those reservations. No caller supplies a size or credit.
+pub(super) struct SubstitutionRoom(usize);
+impl SubstitutionRoom {
+    pub(super) fn enter() -> Self {
+        Self(room_used())
+    }
+    pub(super) fn finish(self) {
+        if LIMITS.with(|l| l.cut.get().is_none()) {
+            let bytes = room_used().saturating_sub(self.0);
+            if bytes == 0 {
+                return;
+            }
+            ACCOUNT.with(|a| {
+                let mut a = a.borrow_mut();
+                let frame = a.projection_room.len().saturating_sub(1);
+                let depth = a.loop_item_depth;
+                if depth != 0 {
+                    a.receipts.push((depth, frame, bytes));
+                }
+                if let Some(parent) = a.projection_room.last_mut() {
+                    *parent = parent.saturating_add(bytes);
+                }
+            });
+        }
+    }
+}
+pub(super) struct LoopItem;
+impl LoopItem {
+    pub(super) fn enter() -> Self {
+        ACCOUNT.with(|a| {
+            let mut a = a.borrow_mut();
+            a.loop_item_depth = a.loop_item_depth.saturating_add(1);
+        });
+        Self
+    }
+}
+impl Drop for LoopItem {
+    fn drop(&mut self) {
+        ACCOUNT.with(|a| {
+            let mut a = a.borrow_mut();
+            let depth = a.loop_item_depth;
+            if a.metadata.is_some() {
+                a.receipts.retain(|(d, _, _)| *d < depth);
+            }
+            a.loop_item_depth = a.loop_item_depth.saturating_sub(1);
+        });
+    }
+}
+fn release_substitution() {
+    let released = ACCOUNT.with(|a| {
+        let mut a = a.borrow_mut();
+        let depth = a.loop_item_depth;
+        let mut receipts = Vec::new();
+        if a.metadata.is_some() {
+            while a.receipts.last().is_some_and(|(d, _, _)| *d == depth) {
+                if let Some((_, frame, bytes)) = a.receipts.pop() {
+                    receipts.push((frame, bytes));
+                }
+            }
+        }
+        let mut released = 0usize;
+        for (frame, bytes) in receipts {
+            if let Some(room) = a.projection_room.get_mut(frame) {
+                let paid = bytes.min(*room);
+                *room -= paid;
+                released = released.saturating_add(paid);
+            }
+        }
+        released
+    });
+    LIMITS.with(|l| l.room.set(l.room.get().saturating_add(released)));
 }
 
 struct ProjectionEntry;
@@ -2005,6 +2740,17 @@ impl Drop for SequentialRoom {
         ACCOUNT.with(|a| {
             let mut account = a.borrow_mut();
             account.extra_object = self.extra_object;
+            // Argument projections belong to this operation's borrowed scope.
+            // In particular, do not retain reference supplies in a suspended run.
+            if let Some(cache) = account.metadata.as_deref_mut() {
+                cache.field_cache = None;
+                cache.supplied_strings.clear();
+                cache.argument_bodies.clear();
+                cache.validated.clear();
+            }
+            if let Some(text) = account.supplied.text.as_deref_mut() {
+                text.shared.clear();
+            }
             LIMITS.with(|l| {
                 if l.cut.get().is_none() {
                     l.room.set(
@@ -2018,10 +2764,80 @@ impl Drop for SequentialRoom {
         });
     }
 }
-struct TemporaryResults;
+struct TemporaryResults {
+    release: bool,
+}
+struct DiscardedResult {
+    used: usize,
+    flags: EvaluationFlags,
+    size: bool,
+    depth: bool,
+    cut: Option<Cut>,
+    depth_cut: Rc<Cell<bool>>,
+    retained: usize,
+}
+impl DiscardedResult {
+    fn enter() -> Self {
+        Self {
+            retained: ACCOUNT.with(|a| a.borrow().retained_room),
+            used: room_used(),
+            flags: ACCOUNT.with(|a| a.borrow().flags.get()),
+            size: LIMITS.with(|l| l.size_limited.get()),
+            depth: LIMITS.with(|l| l.depth_limited.get()),
+            cut: LIMITS.with(|l| l.cut.get()),
+            depth_cut: DEPTH
+                .with(|d| std::mem::replace(&mut d.borrow_mut().cut, Rc::new(Cell::new(false)))),
+        }
+    }
+}
+impl Drop for DiscardedResult {
+    fn drop(&mut self) {
+        DEPTH.with(|d| d.borrow_mut().cut = self.depth_cut.clone());
+        // Exhausted work affects the rest of the evaluation. Room consumed
+        // solely by the discarded intermediate does not.
+        if LIMITS.with(|l| l.cut.get() == Some(Cut::Work)) || crate::progress::stalled_so_far() {
+            return;
+        }
+        let ceiling = ACCOUNT.with(|a| {
+            let a = a.borrow();
+            a.flags.set(self.flags);
+            a.limits
+                .result_size_for(a.bytes)
+                .saturating_sub(a.retained_room.saturating_sub(self.retained))
+        });
+        LIMITS.with(|l| {
+            l.room.set(ceiling.saturating_sub(self.used));
+            l.size_limited.set(self.size);
+            l.depth_limited.set(self.depth);
+            l.cut.set(self.cut);
+        });
+    }
+}
+struct ItemRoom;
+impl ItemRoom {
+    fn enter() -> Self {
+        ACCOUNT.with(|a| a.borrow_mut().temporary_room.push((0, false)));
+        Self
+    }
+}
+impl Drop for ItemRoom {
+    fn drop(&mut self) {
+        ACCOUNT.with(|a| {
+            a.borrow_mut().temporary_room.pop();
+        });
+    }
+}
 impl Drop for TemporaryResults {
     fn drop(&mut self) {
-        let released = ACCOUNT.with(|a| a.borrow_mut().temporary_room.pop().unwrap_or(0));
+        let released = ACCOUNT.with(|a| a.borrow_mut().temporary_room.pop().map_or(0, |v| v.0));
+        if !self.release {
+            ACCOUNT.with(|a| {
+                if let Some(parent) = a.borrow_mut().temporary_room.last_mut() {
+                    parent.0 = parent.0.saturating_add(released);
+                }
+            });
+            return;
+        }
         LIMITS.with(|l| {
             if l.cut.get().is_none() {
                 l.room.set(l.room.get().saturating_add(released));
@@ -2057,9 +2873,12 @@ fn runtime_value(js: &Js) -> Option<Value> {
         let before = l.room.get();
         let value = to_value_in::<true>(js, l);
         if l.cut.get().is_none() {
+            if let Some(value) = &value {
+                remember_projected(value, before.saturating_sub(l.room.get()), true);
+            }
             ACCOUNT.with(|a| {
                 if let Some(room) = a.borrow_mut().temporary_room.last_mut() {
-                    *room = room.saturating_add(before.saturating_sub(l.room.get()));
+                    room.0 = room.0.saturating_add(before.saturating_sub(l.room.get()));
                 }
             });
         }
@@ -2089,10 +2908,13 @@ fn record_flags() {
 }
 
 // Array storage has a separate live-byte ceiling equal to the session's
-// result ceiling. It is not subtracted from serialized room: that would price
+// result ceiling plus a fixed 64-byte ledger header. It is not subtracted
+// from serialized room: that would price
 // final steps twice. Weak entries track aliases without retaining outputs.
 const BUFFER_OVERHEAD: usize = std::mem::size_of::<Vec<Js>>()
-    + 2 * std::mem::size_of::<usize>()
+    // Arc counters and one word per allocation for allocation bookkeeping.
+    // The latter matters for thousands of small nested vectors too.
+    + 4 * std::mem::size_of::<usize>()
     + 2 * std::mem::size_of::<(BufferOwner, usize)>();
 enum BufferOwner {
     Js(Weak<Vec<Js>>),
@@ -2132,7 +2954,7 @@ impl Buffers {
 fn buffer_limit() -> usize {
     ACCOUNT.with(|a| {
         let a = a.borrow();
-        a.limits.result_size_for(a.bytes)
+        a.limits.result_size_for(a.bytes).saturating_add(64)
     })
 }
 struct BufferReservation {
@@ -2262,7 +3084,72 @@ fn builder_fits(minimum: usize) -> bool {
     })
 }
 
+type ValidationIdentity = (usize, (u8, usize), String, bool);
+// Keep empty callback suspension frames small. Metadata belongs to the one
+// active allowance; suspending it moves one pointer, not dozens of empty maps.
+// Raw string addresses are valid only while these source containers live.
+// Keep the owners, the address index, and their shared conversions together;
+// no operation can drop an owner while leaving an eligible address behind.
+#[derive(Default)]
+struct SuppliedOwners {
+    owners: Vec<Value>,
+    text: Option<Box<SuppliedText>>,
+}
+#[derive(Default)]
+struct SuppliedText {
+    texts: HashSet<usize>,
+    shared: HashMap<usize, Arc<str>>,
+}
+static EMPTY_TEXT: std::sync::LazyLock<SuppliedText> =
+    std::sync::LazyLock::new(SuppliedText::default);
+impl std::ops::Deref for SuppliedOwners {
+    type Target = SuppliedText;
+    fn deref(&self) -> &SuppliedText {
+        self.text.as_deref().unwrap_or(&EMPTY_TEXT)
+    }
+}
+impl std::ops::DerefMut for SuppliedOwners {
+    fn deref_mut(&mut self) -> &mut SuppliedText {
+        self.text
+            .get_or_insert_with(|| Box::new(SuppliedText::default()))
+    }
+}
+struct Metadata {
+    receipts: Vec<(usize, usize, usize)>,
+    field_cache: Option<FieldCache>,
+    supplied_strings: HashSet<usize>,
+    validated: HashMap<ValidationIdentity, (WeakValue, usize)>,
+    argument_collect_at: usize,
+    argument_bodies: HashMap<(u8, usize), BodyMeasurement>,
+    bridges: HashMap<(u8, usize), Bridge>,
+    collect_at: usize,
+    schemas: std::collections::BTreeMap<usize, Arc<u8>>,
+    buffers: Buffers,
+}
+impl Metadata {
+    fn new() -> Self {
+        Self {
+            receipts: Vec::new(),
+            field_cache: None,
+            supplied_strings: HashSet::new(),
+            validated: HashMap::new(),
+            argument_collect_at: 8,
+            argument_bodies: HashMap::new(),
+            bridges: HashMap::new(),
+            collect_at: 128,
+            schemas: std::collections::BTreeMap::new(),
+            buffers: Buffers::default(),
+        }
+    }
+}
+static EMPTY_METADATA: std::sync::LazyLock<Metadata> = std::sync::LazyLock::new(Metadata::new);
 struct Account {
+    projection_room: Vec<usize>,
+    temporary_room: Vec<(usize, bool)>,
+    inputs: InputIndex,
+    supplied: SuppliedOwners,
+    loop_item_depth: usize,
+    retained_room: usize,
     limits: Limits,
     supplied_floor: usize,
     failure: Option<EvaluationFailure>,
@@ -2270,24 +3157,39 @@ struct Account {
     call_context: bool,
     extra_enabled: bool,
     extra_object: bool,
-    projection_room: Vec<usize>,
-    temporary_room: Vec<usize>,
     flags: Rc<Cell<EvaluationFlags>>,
     bytes: usize,
-    inputs: HashSet<(u8, usize)>,
-    argument_collect_at: usize,
-    argument_bodies: HashMap<(u8, usize), (WeakValue, usize)>,
-    bridges: HashMap<(u8, usize), Bridge>,
-    collect_at: usize,
-    owners: Vec<Value>,
-    schemas: std::collections::BTreeMap<usize, Arc<u8>>,
+    measure_peak: usize,
+    measure_exact: bool,
+    depth_only: bool,
+    argument_texts: bool,
+    receiver_read: bool,
+    input_owner: bool,
     transformed: usize,
-    buffers: Buffers,
     buffer_projection: bool,
+    metadata: Option<Box<Metadata>>,
+}
+impl std::ops::Deref for Account {
+    type Target = Metadata;
+    fn deref(&self) -> &Metadata {
+        self.metadata.as_deref().unwrap_or(&EMPTY_METADATA)
+    }
+}
+impl std::ops::DerefMut for Account {
+    fn deref_mut(&mut self) -> &mut Metadata {
+        self.metadata
+            .get_or_insert_with(|| Box::new(Metadata::new()))
+    }
 }
 impl Account {
     fn new(limits: Limits, bytes: usize) -> Self {
         Self {
+            projection_room: Vec::new(),
+            temporary_room: Vec::new(),
+            inputs: InputIndex::default(),
+            supplied: SuppliedOwners::default(),
+            loop_item_depth: 0,
+            retained_room: 0,
             limits,
             supplied_floor: bytes,
             failure: None,
@@ -2295,20 +3197,17 @@ impl Account {
             call_context: true,
             extra_enabled: true,
             extra_object: false,
-            projection_room: Vec::new(),
-            temporary_room: Vec::new(),
             flags: Rc::new(Cell::new(EvaluationFlags::default())),
             bytes,
-            inputs: HashSet::new(),
-            argument_collect_at: 256,
-            argument_bodies: HashMap::new(),
-            bridges: HashMap::new(),
-            collect_at: 128,
-            owners: Vec::new(),
-            schemas: std::collections::BTreeMap::new(),
+            measure_peak: 0,
+            measure_exact: true,
+            depth_only: false,
+            argument_texts: false,
+            receiver_read: false,
+            input_owner: false,
             transformed: 0,
-            buffers: Buffers::default(),
             buffer_projection: false,
+            metadata: None,
         }
     }
     fn collect_bridges(&mut self) {
@@ -2375,25 +3274,65 @@ fn register_input(value: &Value) {
             if a.inputs.contains(&key) {
                 true
             } else {
-                a.owners.push(value.clone());
+                a.supplied.owners.push(value.clone());
                 false
             }
         });
         if skip {
+            check_input_depth(value);
             return;
         }
     }
+    let old = ACCOUNT.with(|a| {
+        std::mem::replace(
+            &mut a.borrow_mut().input_owner,
+            data_identity(value).is_some(),
+        )
+    });
+    let _owner = InputOwner(old);
     measure_data(value, true);
+}
+struct InputOwner(bool);
+impl Drop for InputOwner {
+    fn drop(&mut self) {
+        ACCOUNT.with(|a| a.borrow_mut().input_owner = self.0);
+    }
+}
+pub(super) fn check_input_depth(value: &Value) {
+    let required = data_identity(value).and_then(|key| {
+        ACCOUNT.with(|a| {
+            let a = a.borrow();
+            if let Some((_, height)) = a.inputs.measurement(&key) {
+                return Some(height.saturating_add(1));
+            }
+            a.argument_bodies
+                .get(&key)
+                .filter(|v| v.owner.alive() && v.exact)
+                .map(|v| (v.depth as usize).saturating_add(1))
+        })
+    });
+    if let Some(required) = required {
+        if LIMITS.with(|l| l.max_depth.get().saturating_sub(l.depth.get()) < required) {
+            LIMITS.with(|l| l.cut_by(Cut::Depth));
+        }
+    } else {
+        let _mode = DepthOnly::enter();
+        measure_data(value, false);
+    }
 }
 // Only values crossing the public callback boundary need an identity bridge.
 // Weak entries neither keep discarded results alive nor index every input node.
 enum WeakValue {
+    Ast(Weak<Ast>),
+    Element(Weak<Element>),
     Arr(Weak<Vec<Value>>),
     Obj(Weak<JsObject<Value>>),
 }
 impl WeakValue {
     fn alive(&self) -> bool {
         match self {
+            Self::Ast(v) => v.strong_count() != 0,
+            Self::Element(v) => v.strong_count() != 0,
             Self::Arr(v) => v.strong_count() != 0,
             Self::Obj(v) => v.strong_count() != 0,
         }
@@ -2458,6 +3397,9 @@ fn data_bytes(bytes: usize, input: bool) {
     }
 }
 fn data_text(text: &str, input: bool) -> usize {
+    if ACCOUNT.with(|a| a.borrow().depth_only) {
+        return 0;
+    }
     data_bytes(text.len(), input);
     if !step(text.len().saturating_add(1)) {
         return 0;
@@ -2650,38 +3592,186 @@ fn measure_schema(schema: &serde_json::Value) -> usize {
     bytes
 }
 
-#[inline(always)]
+// A member/index receiver is evaluated one expression frame below the use.
+// Consume the marker at the name lookup so nested callbacks do not inherit it.
+pub(super) struct ReceiverRead(bool);
+impl ReceiverRead {
+    pub(super) fn enter() -> Self {
+        Self(ACCOUNT.with(|a| std::mem::replace(&mut a.borrow_mut().receiver_read, true)))
+    }
+}
+impl Drop for ReceiverRead {
+    fn drop(&mut self) {
+        ACCOUNT.with(|a| a.borrow_mut().receiver_read = self.0);
+    }
+}
+struct ReadPosition(Option<usize>);
+impl ReadPosition {
+    fn enter(receiver: bool) -> Self {
+        Self(receiver.then(|| {
+            LIMITS.with(|l| {
+                let old = l.depth.get();
+                l.depth.set(old.saturating_sub(1));
+                old
+            })
+        }))
+    }
+}
+impl Drop for ReadPosition {
+    fn drop(&mut self) {
+        if let Some(depth) = self.0 {
+            LIMITS.with(|l| l.depth.set(depth));
+        }
+    }
+}
+struct ArgumentTexts(bool);
+impl ArgumentTexts {
+    fn enter() -> Self {
+        Self(ACCOUNT.with(|a| std::mem::replace(&mut a.borrow_mut().argument_texts, true)))
+    }
+}
+impl Drop for ArgumentTexts {
+    fn drop(&mut self) {
+        ACCOUNT.with(|a| a.borrow_mut().argument_texts = self.0);
+    }
+}
+// A position check traverses shape only. String contents and JSON sizes are
+// already admitted; checking their depth must never price them a second time.
+struct DepthOnly(bool);
+impl DepthOnly {
+    fn enter() -> Self {
+        Self(ACCOUNT.with(|a| std::mem::replace(&mut a.borrow_mut().depth_only, true)))
+    }
+}
+impl Drop for DepthOnly {
+    fn drop(&mut self) {
+        ACCOUNT.with(|a| a.borrow_mut().depth_only = self.0);
+    }
+}
+fn argument_measurement() -> bool {
+    ACCOUNT.with(|a| a.borrow().temporary_room.last().is_some_and(|v| v.1))
+}
 fn measure_data(value: &Value, input: bool) -> usize {
     measure_data_with_memo::<true>(value, input)
+}
+fn measure_boundary(value: &Value) -> usize {
+    // This root is about to be shared with the internal representation. Keep
+    // its identity eligible without indexing every uniquely owned descendant.
+    let _owner = if data_identity(value).is_some() {
+        Some(value.clone())
+    } else {
+        None
+    };
+    measure_data(value, false)
+}
+struct BodyMeasurement {
+    owner: WeakValue,
+    // A successful root projection permits one room-only reservation.
+    projected: bool,
+    bytes: usize,
+    depth: u32,
+    exact: bool,
+}
+struct MeasuredDepth {
+    start: usize,
+    previous: usize,
+    previous_exact: bool,
+}
+impl MeasuredDepth {
+    fn enter() -> Self {
+        let start = LIMITS.with(|l| l.depth.get());
+        let (previous, previous_exact) = ACCOUNT.with(|a| {
+            let mut a = a.borrow_mut();
+            (
+                std::mem::replace(&mut a.measure_peak, start),
+                std::mem::replace(&mut a.measure_exact, true),
+            )
+        });
+        Self {
+            start,
+            previous,
+            previous_exact,
+        }
+    }
+    fn include(&self, height: usize, exact: bool) {
+        ACCOUNT.with(|a| {
+            let mut a = a.borrow_mut();
+            a.measure_peak = a.measure_peak.max(self.start.saturating_add(height));
+            a.measure_exact &= exact;
+        });
+    }
+    fn height(&self) -> usize {
+        ACCOUNT.with(|a| a.borrow().measure_peak.saturating_sub(self.start))
+    }
+    fn exact(&self) -> bool {
+        ACCOUNT.with(|a| a.borrow().measure_exact)
+    }
+}
+impl Drop for MeasuredDepth {
+    fn drop(&mut self) {
+        ACCOUNT.with(|a| {
+            let mut a = a.borrow_mut();
+            a.measure_peak = a.measure_peak.max(self.previous);
+            a.measure_exact &= self.previous_exact;
+        });
+    }
 }
 fn measure_data_with_memo<const MEMO: bool>(value: &Value, input: bool) -> usize {
     crate::stack::grow_stack!(measure_data_with_memo::<MEMO>(value, input), budget else 0);
     let Some(_level) = Level::enter() else {
         return 0;
     };
+    let measured_depth = MeasuredDepth::enter();
     if input
         && let Some(key) = data_identity(value)
         && !ACCOUNT.with(|a| a.borrow_mut().inputs.insert(key))
     {
+        let checked = ACCOUNT.with(|a| a.borrow().inputs.measurement(&key));
+        if let Some((bytes, height)) = checked {
+            measured_depth.include(height, true);
+            if LIMITS.with(|l| l.max_depth.get().saturating_sub(l.depth.get()) < height) {
+                LIMITS.with(|l| l.cut_by(Cut::Depth));
+            }
+            return bytes.unwrap_or(0);
+        }
+        measured_depth.include(LIMITS.with(|l| l.max_depth.get()), false);
         return 0;
     }
-    let memo = MEMO && !input && ACCOUNT.with(|a| !a.borrow().temporary_room.is_empty());
+    let memo = MEMO && !input;
     // A foreign re-entry can lower max_depth without changing local depth.
     // Reuse only with at least the remaining depth of a successful walk.
     let depth = LIMITS.with(|l| l.max_depth.get().saturating_sub(l.depth.get()));
     if memo && let Some(key) = data_identity(value) {
+        let prepaid = ACCOUNT.with(|a| a.borrow().inputs.measurement(&key));
+        if let Some((Some(bytes), height)) = prepaid {
+            if depth >= height {
+                measured_depth.include(height, true);
+                return bytes;
+            }
+            LIMITS.with(|l| l.cut_by(Cut::Depth));
+            return 0;
+        }
         let hit = ACCOUNT.with(|a| {
             a.borrow()
                 .argument_bodies
                 .get(&key)
-                .is_some_and(|(weak, d)| weak.alive() && depth >= *d)
+                .filter(|v| v.owner.alive() && depth >= v.depth as usize)
+                .and_then(|v| (v.bytes != 0).then_some((v.bytes, v.depth as usize, v.exact)))
         });
-        if hit {
-            step(1);
-            return 0;
+        if let Some((bytes, height, exact)) = hit {
+            measured_depth.include(height, exact);
+            return bytes;
         }
     }
     if let Value::Str(text) = value {
+        if input {
+            ACCOUNT.with(|a| {
+                let mut a = a.borrow_mut();
+                if a.input_owner && a.argument_texts {
+                    a.supplied.texts.insert(text.as_ptr() as usize);
+                }
+            });
+        }
         return data_text(text, input);
     }
     let own = match value {
@@ -2717,6 +3807,9 @@ fn measure_data_with_memo<const MEMO: bool>(value: &Value, input: bool) -> usize
             let bytes = expression_bytes(node);
             if input {
                 data_bytes(bytes, true);
+            }
+            if MEMO {
+                remember_measurement(value, bytes, &measured_depth);
             }
             return bytes;
         }
@@ -2767,26 +3860,122 @@ fn measure_data_with_memo<const MEMO: bool>(value: &Value, input: bool) -> usize
         }
         _ => {}
     }
-    if memo && LIMITS.with(|l| l.cut.get().is_none()) {
-        let weak = match value {
-            Value::Arr(v) => Some(WeakValue::Arr(Arc::downgrade(v))),
-            Value::Obj(v) => Some(WeakValue::Obj(Arc::downgrade(v))),
-            _ => None,
-        };
-        if let (Some(key), Some(weak)) = (data_identity(value), weak) {
-            ACCOUNT.with(|a| {
-                let mut a = a.borrow_mut();
-                if a.argument_bodies.len() >= a.argument_collect_at {
-                    a.argument_bodies.retain(|_, (w, _)| w.alive());
-                    a.argument_collect_at = a.argument_bodies.len().saturating_mul(2).max(256);
-                }
-                a.argument_bodies.insert(key, (weak, depth));
-            });
-        }
+    if MEMO {
+        remember_measurement(value, bytes, &measured_depth);
     }
     bytes
 }
 
+fn remember_measurement(value: &Value, bytes: usize, measured_depth: &MeasuredDepth) {
+    if LIMITS.with(|l| l.cut.get().is_none()) {
+        let key = data_identity(value);
+        if let Some(key) = key
+            && ACCOUNT.with(|a| a.borrow().inputs.contains(&key))
+        {
+            let height = measured_depth.height();
+            let exact = measured_depth.exact();
+            ACCOUNT.with(|a| {
+                let mut a = a.borrow_mut();
+                let bytes = (!a.depth_only).then_some(bytes);
+                a.inputs.record(key, bytes, height, exact);
+            });
+            return;
+        }
+        let weak = match value {
+            Value::Ast(v) if argument_measurement() || Arc::strong_count(v) > 1 => {
+                Some(WeakValue::Ast(Arc::downgrade(v)))
+            }
+            Value::Element(v) => Some(WeakValue::Element(Arc::downgrade(v))),
+            Value::Arr(v) if argument_measurement() || Arc::strong_count(v) > 1 => {
+                Some(WeakValue::Arr(Arc::downgrade(v)))
+            }
+            Value::Obj(v)
+                if argument_measurement() || Arc::strong_count(v) > 1 || projected_element(v) =>
+            {
+                Some(WeakValue::Obj(Arc::downgrade(v)))
+            }
+            _ => None,
+        };
+        if let (Some(key), Some(weak)) = (data_identity(value), weak) {
+            let height = measured_depth.height();
+            let exact = measured_depth.exact();
+            ACCOUNT.with(|a| {
+                let mut a = a.borrow_mut();
+                if a.argument_bodies.len() >= a.argument_collect_at {
+                    a.argument_bodies.retain(|_, v| v.owner.alive());
+                    a.argument_collect_at = a.argument_bodies.len().saturating_mul(2).max(8);
+                }
+                let bytes = if a.depth_only {
+                    a.argument_bodies.get(&key).map_or(0, |v| v.bytes)
+                } else {
+                    bytes
+                };
+                let Ok(height) = u32::try_from(height) else {
+                    return;
+                };
+                a.argument_bodies.insert(
+                    key,
+                    BodyMeasurement {
+                        owner: weak,
+                        projected: false,
+                        depth: height,
+                        exact,
+                        bytes,
+                    },
+                );
+            });
+        }
+    }
+}
+
+fn projected_element(o: &JsObject<Value>) -> bool {
+    matches!(o.get("type"),Some(Value::Str(s)) if s=="element")
+}
+// Cache only array roots and element-shaped objects, whose footprints can be
+// needed when a caller rebuilds part of an already charged projection. A weak
+// owner rejects mutation/reallocation; unknown height is never a depth proof.
+pub(super) fn remember_projected(value: &Value, bytes: usize, root: bool) {
+    if argument_measurement() {
+        return;
+    }
+    let owner = match value {
+        Value::Arr(v) if root => WeakValue::Arr(Arc::downgrade(v)),
+        Value::Obj(v) if projected_element(v) => WeakValue::Obj(Arc::downgrade(v)),
+        _ => return,
+    };
+    if let Some(key) = data_identity(value) {
+        ACCOUNT.with(|a| {
+            let mut a = a.borrow_mut();
+            if a.argument_bodies.len() >= a.argument_collect_at {
+                a.argument_bodies.retain(|_, m| m.owner.alive());
+                a.argument_collect_at = a.argument_bodies.len().saturating_mul(2).max(8);
+            }
+            let entry = a.argument_bodies.entry(key).or_insert(BodyMeasurement {
+                owner,
+                bytes,
+                depth: u32::MAX,
+                exact: false,
+                projected: false,
+            });
+            entry.bytes = bytes;
+            entry.projected = root;
+        });
+    }
+}
+
+pub(super) fn data_child(owner: &Value, child: &Value) -> Js {
+    if let Value::Str(text) = child
+        && ACCOUNT.with(|a| {
+            let a = a.borrow();
+            a.argument_texts && data_identity(owner).is_some_and(|k| a.inputs.contains(&k))
+        })
+    {
+        ACCOUNT.with(|a| {
+            a.borrow_mut().supplied.texts.insert(text.as_ptr() as usize);
+        });
+    }
+    data_value(child)
+}
 pub(super) fn data_value(value: &Value) -> Js {
     if !step(1) {
         return Js::Null;
@@ -2802,11 +3991,25 @@ pub(super) fn data_value(value: &Value) -> Js {
         Value::Bool(v) => Js::Bool(*v),
         Value::Num(v) => Js::Num(*v),
         Value::Str(v) => {
-            if step(v.len()) {
-                Js::Str(v.as_str().into())
-            } else {
-                Js::Null
+            let key = v.as_ptr() as usize;
+            let supplied = ACCOUNT.with(|a| a.borrow().supplied.texts.contains(&key));
+            if supplied
+                && let Some(text) = ACCOUNT.with(|a| a.borrow().supplied.shared.get(&key).cloned())
+            {
+                return Js::Str(text);
             }
+            if !step(v.len()) {
+                return Js::Null;
+            }
+            let text: Arc<str> = v.as_str().into();
+            if supplied {
+                ACCOUNT.with(|a| {
+                    let mut a = a.borrow_mut();
+                    a.supplied_strings.insert(text.as_ptr() as usize);
+                    a.supplied.shared.insert(key, text.clone());
+                });
+            }
+            Js::Str(text)
         }
         Value::Ast(node) => Js::Ast(node.clone()),
         _ => Js::Data(Arc::new(value.clone())),
@@ -2815,7 +4018,13 @@ pub(super) fn data_value(value: &Value) -> Js {
 pub(super) fn output_data(value: &Value) -> Value {
     let shared = ACCOUNT.with(|a| {
         let a = a.borrow();
-        !a.temporary_room.is_empty() && data_identity(value).is_some_and(|k| a.inputs.contains(&k))
+        a.temporary_room.last().is_some_and(|v| v.1)
+            && data_identity(value).is_some_and(|k| {
+                a.inputs.contains(&k)
+                    || a.argument_bodies
+                        .get(&k)
+                        .is_some_and(|v| v.owner.alive() && v.bytes != 0)
+            })
     });
     if shared {
         measure_data(value, false);
@@ -3050,6 +4259,7 @@ fn measure_ast(node: &Ast) -> usize {
     let Some(_level) = Level::enter() else {
         return 0;
     };
+    let _measured_depth = MeasuredDepth::enter();
     if !step(1) {
         return 0;
     }
@@ -3121,6 +4331,9 @@ fn measure_ast(node: &Ast) -> usize {
 }
 
 fn text_bytes(s: &str) -> usize {
+    if ACCOUNT.with(|a| a.borrow().depth_only) {
+        return 0;
+    }
     if !step(s.len()) {
         return 0;
     }

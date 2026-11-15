@@ -89,7 +89,7 @@ struct RunState {
     form: Option<String>,
     limits: Limits,
     budget: EvaluationSession<'static>,
-    defaults: Option<HashMap<String, crate::StateValue>>,
+    defaults: Option<HashMap<String, QueryDefault>>,
     program: Option<CachedProgram>,
     started_with: openui_lang::PreparedInput,
 }

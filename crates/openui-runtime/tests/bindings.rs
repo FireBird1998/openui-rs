@@ -197,9 +197,9 @@ fn loop_markers_are_charged_once_and_share_one_allowance() {
             Limits::DEFAULT.with_result_size(room),
         )
     };
-    // Existing element revisits retain their room policy; each new marker
-    // contributes its 74 JSON bytes once, including the inline Each pass.
-    let threshold = 733;
+    // Each retained Field and its 74-byte marker are reserved once,
+    // including the inline Each pass.
+    let threshold = 513;
     assert!(!run(threshold).size_limited);
     assert!(run(threshold - 1).size_limited);
     let cut = evaluate_tree_with_limits(
@@ -450,7 +450,7 @@ fn assignment_markers_keep_their_loop_projection_reservation() {
             Limits::DEFAULT.with_result_size(room),
         )
     };
-    let threshold = 1053;
+    let threshold = 601;
     assert!(!run(threshold).size_limited);
     assert!(run(threshold - 1).size_limited);
 }
@@ -671,7 +671,7 @@ fn repeated_data_markers_fit_the_previous_allowance() {
             Limits::DEFAULT.with_result_size(room).with_work(work),
         )
     };
-    // The same program on main needs 3030 room and 5946 work.
+    // The same program at db80c86 needed 3030 room and 5946 work.
     assert!(!run(3030, 5946).size_limited);
     assert!(!run(214, 100000).size_limited);
     assert!(run(213, 100000).size_limited);

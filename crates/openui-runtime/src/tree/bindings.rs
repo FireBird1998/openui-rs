@@ -333,6 +333,14 @@ pub(super) fn project_marker<'v>(
     value: ExpressionValue<'v>,
     state: &dyn Fn(&str) -> ExpressionValue<'v>,
 ) -> Option<ExpressionValue<'v>> {
+    // Caller-owned records can answer this fixed-key predicate directly;
+    // no expression, projection or property coercion is involved.
+    if let Some(data) = value.data() {
+        match data {
+            Value::Obj(o) if matches!(o.get("__reactive"),Some(Value::Str(s)) if s=="assign") => {}
+            _ => return None,
+        }
+    }
     if !value.is_object() || value.property("__reactive").as_str() != Some("assign") {
         return None;
     }

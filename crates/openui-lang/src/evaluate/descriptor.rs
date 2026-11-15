@@ -41,6 +41,12 @@ fn running() -> bool {
     !expression::failed() && LIMITS.with(|l| l.cut.get().is_none())
 }
 
+fn receiver(value: Option<&Value>, scope: &Scope<Supplied<'_>>) -> Js {
+    let direct = matches!(value,Some(Value::Ast(a)) if matches!(a.as_ref(),Ast::StateRef(_)|Ast::Ref(_)|Ast::RuntimeRef{..}))
+        || matches!(value,Some(Value::Obj(o)) if matches!(o.get("k"),Some(Value::Str(k)) if matches!(k.as_str(),"StateRef"|"Ref"|"RuntimeRef")) && matches!(o.get("n"),Some(Value::Str(_))));
+    let _receiver = direct.then(expression::ReceiverRead::enter);
+    evaluate(value, scope)
+}
 pub(super) fn evaluate(value: Option<&Value>, scope: &Scope<Supplied<'_>>) -> Js {
     crate::stack::grow_stack!(evaluate(value, scope), budget else Js::Null);
     if !running() {
@@ -86,14 +92,14 @@ pub(super) fn evaluate(value: Option<&Value>, scope: &Scope<Supplied<'_>>) -> Js
             || evaluate(get("else"), scope),
         ),
         "Member" => {
-            let obj = evaluate(get("obj"), scope);
+            let obj = receiver(get("obj"), scope);
             if is_nullish(&obj) || !running() {
                 return Js::Null;
             }
             member_field(obj, get("field"))
         }
         "Index" => {
-            let obj = evaluate(get("obj"), scope);
+            let obj = receiver(get("obj"), scope);
             if !running() {
                 return Js::Null;
             }
@@ -408,7 +414,13 @@ fn each_descriptor(node: &Value, scope: &Scope<Supplied<'_>>) -> Js {
         let Some(template) = arg(2) else {
             return invalid("node", Op::ReadKind, None);
         };
+        let direct = matches!(template,Value::Obj(o) if matches!(o.get("k"),Some(Value::Str(k)) if k=="Ref") && o.get("n")==Some(&var));
+        if direct && let Some(value) = child.direct_each_reference(item) {
+            return value;
+        }
+        let room = expression::SubstitutionRoom::enter();
         let copy = substitute_descriptor(template, &var, item);
+        room.finish();
         evaluate(Some(copy.as_ref().unwrap_or(template)), child)
     })
 }

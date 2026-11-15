@@ -384,15 +384,42 @@ impl<'a> TreeScope<'a> {
             };
             Some(prepared)
         };
-        let mut named = JsObject::new();
+        let supplied_descriptor = |value: &Value| match value {
+            Value::Ast(a) => matches!(
+                a.as_ref(),
+                Ast::StateRef(_) | Ast::RuntimeRef { .. } | Ast::Member { .. } | Ast::Index { .. }
+            ),
+            Value::Obj(o) => {
+                matches!(o.get("k"),Some(Value::Str(k)) if matches!(k.as_str(),"StateRef"|"RuntimeRef"|"Member"|"Index"))
+            }
+            _ => false,
+        };
+        let share_arguments = function.is_some()
+            && (mapped.is_some_and(|v| own_fields(v).values().any(supplied_descriptor))
+                || matches!(args,Some(Value::Arr(a)) if a.iter().any(supplied_descriptor)));
+        let borrowed = mapped.and_then(|v| match v {
+            Value::Obj(o) if share_arguments && !o.has_own("__proto__") => Some(o.as_ref()),
+            _ => None,
+        });
+        let mut named = borrowed.map_or_else(
+            || std::borrow::Cow::Owned(JsObject::new()),
+            std::borrow::Cow::Borrowed,
+        );
         let mut undefined = std::collections::BTreeSet::new();
         if let Some(mapped) = node
             .get("mappedProps")
             .filter(|v| !matches!(v, Value::Null))
         {
             for (k, v) in own_fields(mapped).iter() {
+                if borrowed.is_some() {
+                    break;
+                }
                 if cut(eval) {
                     break;
+                }
+                if share_arguments {
+                    named.to_mut().set(k.clone(), v.clone());
+                    continue;
                 }
                 if matches!(v, Value::Null) {
                     eval.fail("null is not an object (evaluating 'node.k')");
@@ -411,7 +438,7 @@ impl<'a> TreeScope<'a> {
                 if v.is_none() {
                     undefined.insert(key.clone());
                 }
-                named.set(key, v.unwrap_or(Value::Null));
+                named.to_mut().set(key, v.unwrap_or(Value::Null));
             }
         } else {
             let builtin_iter = builtin
@@ -436,6 +463,10 @@ impl<'a> TreeScope<'a> {
                         prototype = own_fields(&arg).into_owned();
                         continue;
                     }
+                    if share_arguments {
+                        named.to_mut().set(name.to_owned(), arg);
+                        continue;
+                    }
                     if matches!(arg, Value::Null) {
                         eval.fail("null is not an object (evaluating 'node.k')");
                         return Some(empty());
@@ -454,11 +485,15 @@ impl<'a> TreeScope<'a> {
                     if v.is_none() {
                         undefined.insert(name.clone());
                     }
-                    named.set(name, v.unwrap_or(Value::Null));
+                    named.to_mut().set(name, v.unwrap_or(Value::Null));
                 }
             }
             for (key, raw) in prototype.iter() {
                 if named.has_own(key) {
+                    continue;
+                }
+                if share_arguments {
+                    named.to_mut().set(key.clone(), raw.clone());
                     continue;
                 }
                 if matches!(raw, Value::Null) {
@@ -478,9 +513,39 @@ impl<'a> TreeScope<'a> {
                 if result.value.is_none() {
                     undefined.insert(key.clone());
                 }
-                named.set(key, result.value.unwrap_or(Value::Null));
+                named.to_mut().set(key, result.value.unwrap_or(Value::Null));
             }
         }
+        let evaluated;
+        let cacheable_arguments;
+        let mut named = if share_arguments {
+            let result = eval.with_call_context(false, || eval.evaluate_fields(&named))?;
+            if result.failure.is_some() || result.size_limited || result.depth_limited {
+                return Some(empty());
+            }
+            evaluated = result.value?;
+            cacheable_arguments = matches!(&evaluated,Value::Obj(o) if Arc::strong_count(o)>1);
+            if let Some(params) = self.cached_arguments(&evaluated, schema, eval) {
+                return self.invoke_function(name, params, eval);
+            }
+            let Value::Obj(fields) = &evaluated else {
+                return Some(empty());
+            };
+            for (key, _) in named.iter() {
+                if !fields.has_own(key) {
+                    undefined.insert(key.clone());
+                }
+            }
+            let mut fields = std::borrow::Cow::Borrowed(fields.as_ref());
+            for key in &undefined {
+                fields.to_mut().set(key.clone(), Value::Null);
+            }
+            fields
+        } else {
+            evaluated = Value::Null;
+            cacheable_arguments = false;
+            std::borrow::Cow::Owned(named.into_owned())
+        };
         if builtin {
             let key = if name == "ToAssistant" {
                 "message"
@@ -549,7 +614,7 @@ impl<'a> TreeScope<'a> {
             }
         }
         for key in nulls {
-            named.remove(&key);
+            named.to_mut().remove(&key);
         }
         let mut defaulted = std::collections::BTreeSet::new();
         if let Some(required) = required {
@@ -587,12 +652,17 @@ impl<'a> TreeScope<'a> {
         let Some(prepared) = prepared else {
             return Some(empty());
         };
-        let raw = Value::Obj(Arc::new(named));
+        let argument_source = (share_arguments && cacheable_arguments).then(|| evaluated.clone());
+        let raw = match named {
+            std::borrow::Cow::Borrowed(_) => evaluated,
+            std::borrow::Cow::Owned(named) => Value::Obj(Arc::new(named)),
+        };
         let (params, messages) = if function.is_some() {
             eval.validate_value(&raw, &prepared, "")
         } else {
             eval.check_value(&raw, &prepared)
         };
+        let valid_arguments = messages.is_empty();
         for message in messages {
             self.report_call(format!("@{name}: {message}"), eval);
         }
@@ -633,43 +703,11 @@ impl<'a> TreeScope<'a> {
         if cut(eval) {
             return Some(empty());
         }
-        if let Some((definition, implementation)) = function {
-            let result = match implementation(params) {
-                Ok(result) => result,
-                Err(message) => {
-                    if let Some(message) = eval.copy_text(&message) {
-                        self.report_call(format!("@{name} threw: {message}"), eval);
-                    }
-                    return Some(Value::Null);
-                }
-            };
-            let returns = definition.get("returns").filter(|s| match s {
-                openui_lang::JsonValue::Null => false,
-                openui_lang::JsonValue::Bool(b) => *b,
-                openui_lang::JsonValue::Number(n) => n.as_f64().is_some_and(|n| n != 0.0),
-                openui_lang::JsonValue::String(s) => !s.is_empty(),
-                _ => true,
-            });
-            let Some(returns) = returns else {
-                return result;
-            };
-            let key = returns as *const _ as usize;
-            let cached = self.checked_schemas.borrow().get(&key).cloned();
-            let schema = if let Some(schema) = cached {
-                schema
-            } else {
-                let schema = std::rc::Rc::new(eval.prepare_validation_schema(returns)?);
-                self.checked_schemas
-                    .borrow_mut()
-                    .insert(key, schema.clone());
-                schema
-            };
-            let (checked, messages) =
-                eval.validate_value(result.as_ref().unwrap_or(&Value::Null), &schema, "/returns");
-            for message in messages {
-                self.report_call(format!("@{name}: {message}"), eval);
+        if function.is_some() {
+            if valid_arguments && let Some(source) = argument_source {
+                self.remember_arguments(source, schema, params.clone(), eval);
             }
-            return Some(checked.unwrap_or(Value::Null));
+            return self.invoke_function(name, params, eval);
         }
         let step = obj([
             ("type", text("custom_action")),

@@ -52,13 +52,13 @@ fn replacements_release_intermediates_and_thresholds_fit_exactly() {
         .collect::<Vec<_>>()
         .join(",");
     let main = parse(&format!("root=Box(@Each([{values}],i,i))"), &l, None);
-    assert_eq!(threshold(&main, &l, &f, false), 596);
+    assert_eq!(threshold(&main, &l, &f, false), 406);
     assert!(405 <= threshold(&main, &l, &f, false));
     for (source, expected_room, expected_work) in [
-        ("root=Box(@Make())", 405, 642),
-        ("root=Box(@Identity(@Make()))", 405, 937),
-        ("root=Box(@Identity(@Identity(@Make())))", 405, 1078),
-        ("root=Box(@Each([1,2],i,@Make()))", 700, 1156),
+        ("root=Box(@Make())", 405, 541),
+        ("root=Box(@Identity(@Make()))", 405, 733),
+        ("root=Box(@Identity(@Identity(@Make())))", 405, 871),
+        ("root=Box(@Each([1,2],i,@Make()))", 700, 954),
     ] {
         let p = parse(source, &l, None);
         let room = threshold(&p, &l, &f, false);

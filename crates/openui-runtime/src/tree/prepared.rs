@@ -1,7 +1,6 @@
 //! Bounded reference-data preparation, independent of evaluation depth.
 use super::*;
 use crate::{EvaluationFlags, PreparedReferenceValue};
-use std::collections::HashSet;
 
 /// Borrowed reference values measured once for repeated tree evaluations.
 ///
@@ -24,28 +23,7 @@ impl<'a> PreparedReferenceValues<'a> {
     }
     /// Set preparation bounds; these do not spend an evaluation's allowance.
     pub fn with_limits(values: &'a JsObject<Value>, limits: Limits) -> Self {
-        let mut seen = HashSet::new();
-        let mut work = limits.work_for(usize::MAX);
-        let mut bytes = 2usize;
-        let mut measurements = BTreeMap::new();
-        for (name, value) in values.iter() {
-            match input::value_size(value, limits, &mut seen, &mut work) {
-                Ok(size) => {
-                    measurements
-                        .insert(name.as_str(), Ok(PreparedReferenceValue::new(value, size)));
-                    bytes = bytes
-                        .saturating_add(text_bytes(name))
-                        .saturating_add(size)
-                        .saturating_add(2)
-                }
-                Err(depth) => {
-                    let mut flags = EvaluationFlags::default();
-                    flags.depth_limited = depth;
-                    flags.size_limited = !depth;
-                    measurements.insert(name.as_str(), Err(flags));
-                }
-            }
-        }
+        let (measurements, bytes) = PreparedReferenceValue::measure_all(values, limits);
         let input = openui_lang::PreparedInput::from_prepared_references(
             measurements
                 .iter()

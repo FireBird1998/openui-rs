@@ -499,6 +499,7 @@ Documented, not emulated. The parser divergences do not occur in the corpus. The
 | A state default turning a built-in constructor into text (`$s = (1).constructor + ""`). Engine-dependent: a built-in function's text is the engine's | JavaScriptCore's text: `Object` and `Array`'s constructors on one line, `Number`, `String` and `Boolean`'s across three (`function Number() {\n    [native code]\n}`) | every constructor on one line, `function Number() { [native code] }` (pinned in the evaluator's unit tests) |
 | A state default reading a property of a built-in method or prototype (`$a = [].map.length`, `$b = $o.__proto__.x`) | that property | `undefined` (the method itself, `[].map`, is reproduced) |
 | An object literal shaped like an AST node in a state default (`$x = {k: "Num", v: 1}`) | evaluates it as that node | keeps it as the object |
+| Cycles in query defaults, including an unread cycle | Node throws `RangeError`; Bun loops forever without the probe’s extra frame; four framed observations are pinned separately | records a depth-cut unset default; flags reads of it, and renders unread cycles without a flag |
 | A tree root expression that throws (`root=$c ? Box(1) : ""+$bad`, `$c=false`, `$bad={toString:null}`) | `evaluateRoot` throws a `TypeError` with `No default value` | returns no root and a `runtime-error` attributed to `root`, preserving the cause; both outputs are pinned by `runtime/root-expression-throw` |
 | Invalid own `map:3` targets during loop-template substitution (`runtime/substitution-map-target`) | identifies the target as `3`, with callbacks naming `substituteRef` | identifies it as undefined; both complete outputs are pinned separately from normal descriptor evaluation |
 | One invalid array descriptor call target: `{k:"Arr",els:{map:3}}` in `runtime/descriptor-map-target` | the error identifies the invalid `node.els.map` value as `3` | the typed failure identifies the field and invalid receiver, but the runtime diagnostic identifies the map target as undefined. This named case pins only that wording difference; both complete outputs are committed |
@@ -690,7 +691,9 @@ registration, reads use the registered value (last complete duplicate wins; inco
 supplied values taking priority. Mutations do not evaluate defaults. Streaming
 uses each parse result's explicit complete flag, not global incompleteness.
 Function errors in defaults have no prop reporter and yield null silently;
-cuts remain sticky in the shared session. Function-bearing corpus observations
+a default's room/depth cut leaves that default unset and is raised only on
+reads of that query. Work already spent stays spent, and exhaustion of shared
+work still cuts the tree. Function-bearing corpus observations
 include per-implementation call counts, including zero calls, in both state
 scenarios, streaming steps and post-write draws.
 
@@ -713,14 +716,109 @@ received argument records, tagging upstream undefined explicitly. This also
 covers the enumerable AST fields introduced by a positional __proto__ parameter.
 It is separate from custom-prototype preservation in `runtime-function-prototype`.
 
-Supplied container arguments retain their shared bodies and admission is reused
-at equal or shallower depth within a session. Validation still pays for fields
-actually checked. A million-item list passed to Len in 1,000 iterations finishes
-uncut by default and keeps allocation identity. Strings remain owned String
-values in Value: each argument projection copies them, admission rereads their bytes, and
-schema-driven object rebuilds can copy fields again. These copies and walks
-spend work per call. A 500,000-byte string reaches 41 calls before a work cut. Changing that requires a Value representation
-change and is outside this round.
+Supplied argument containers retain their shared bodies. Successful admission
+records the measured height, so reuse still checks the new position's depth.
+Unchanged validated argument objects reuse their allocation. Value keeps its
+public `String` representation: direct supplied text and text read through a
+member/index are projected into a bounded, operation-local argument cache.
+The 500,000-byte string / 1,000-call Len loop now completes, with one argument
+allocation identity. A million-item argument survives 1,000 Id calls followed
+by Len, without repeated admission walks. Fresh transformed text still pays
+for its produced bytes; cloning an owned String to return it still copies it.
+The argument cache retains one current projection. A miss drops that projection
+before allocating its replacement; unchanged validation entries hold weak
+identities, with at most one transformed validation result retained separately.
+A distinct combination can rebuild its owned record and copy scalar text again.
+A 1,000-call, 500 KB changing-combination allocation test caps this at 2.1 MB.
+The argument cache is released before an action run suspends. None of these
+caches earns input allowance; ADR 0003's state/extra-only rule is unchanged.
+
+For `L=[0,...,m-1]`, `q=Query("t",{},@Each(L,i,L))`, `root=Box(1)`,
+the former unread-default room cut at m=143 no longer flags the tree. Defaults
+still run eagerly, in declaration order, with the same library call counts.
+An unset default reads as null (`getResult` for an unregistered query); the
+read carries its recorded cut, so normal tree cut recovery retains the raw
+reference, and an action read refuses that write. `query_default_limits`
+pins unread and read cases, cycles, and lazy defaults during action runs.
+For that exact no-space program, default shared work first runs out at
+m=2653 (12,199 source bytes); m=2652 (12,194 bytes) remains unflagged.
+Both parser results are uncut. Raising only work to 128M clears this boundary;
+the discarded default's result-room cut stays local. These two sides are
+asserted by `unread_defaults_stop_flagging_only_at_actual_shared_work_exhaustion`.
+
+The literal retained `@Each($rows,r,@Id($big))`, with 1,000 rows and a
+million-item list, needs about 2 GB even when every number is one digit, so
+it must still hit the default 8 MiB result ceiling. The test also places that
+exact loop in an unread query default: all 1,000 calls execute, its local
+projection cut is discarded, and Box(1) remains unflagged. Consuming each
+identity result with Len verifies all 1,000 returns under default limits.
+
+Self-referential, paired and longer query defaults recursively evaluate the
+same declarations upstream. This behaviour depends on the JavaScript engine:
+Node throws `RangeError: Maximum call stack size exceeded`, even for an unread
+cycle; Bun (JavaScriptCore, proper tail calls) loops forever in the unmodified
+resolver, including the unread case.
+`reference/query-default-cycles.ts` and four
+`conformance/divergences/runtime-query-default-cycle-*.json` files pin
+`RangeError: Maximum call stack size exceeded.` and both complete Rust state
+scenarios. The pinned exception text comes from the probe’s added resolver frame.
+JavaScriptCore proper tail calls
+otherwise erase that frame and turn the probe into an endless tail-call loop.
+Rust keeps the default unset with a depth cut. Reading it raises that cut;
+an unread cycle renders without a flag. These four additional probes sit
+outside the unchanged corpus counts above.
+
+Loop replacements retain exactly their replacement's reservation, keeping
+separate reservations for diagnostics. Substitution receipts are scoped to an
+item and its owning projection, and unwind without granting unearned room.
+Pure evaluated elements skip the redundant pass; descriptor-producing props
+still receive upstream's second pass (quirk 25). The four dynamic-element room
+thresholds, measured at 729567f in a scratch build, were 42,812 / 44,672 /
+12,172 / 68,222 bytes. They are now 23,020 / 23,020 / 11,032 / 33,932,
+with exact-fit and one-byte-below tests for native and AST-shaped data.
+The literal-child row never regressed. The state-reference-child variant
+measures 69,032 before #34, 101,042 on main and 33,936 now.
+The 100,000-element work test requires 35,800,148 units for native elements
+and 41,000,199 for data-shaped elements, below the 64M work ceiling; it raises
+the separate result-room ceiling because that element JSON itself exceeds 8 MiB.
+Arithmetic `$n+1` props need 36,200,165 / 41,500,234 work units, compared with
+53,000,165 / 59,000,234 at 729567f. These numbers include the upstream per-item
+pass. Canonical direct iterator reads avoid rebuilding an equivalent literal
+AST; function arguments and values near the depth boundary retain the old path.
+A 100-item loop stripping 20 KB markers needs 2,009,312
+bytes for 2,009,311 output bytes. Wrapped plain-data and plan loops need exactly
+380 and 7,180 bytes respectively. Nested transformed arrays include per-array
+allocation/owner bookkeeping; flat and three-level cases pin peak allocation
+below the room limit plus 16 KiB of fixed test/driver overhead, at 64 KiB and
+1 GB. Interrupted transformed buffers never escape as public results.
+
+Cached name reads, argument admission, validation, markers and evaluated-element
+reuse all retain position-sensitive depth checks. `value_use_depth` checks
+748-deep state/query data, aliases, prepared query values, function arguments,
+binding values and action parameters, in both orders and both syntax forms.
+`position_depth_boundaries` adds archived main first-use boundaries and checks
+840 first, equal, deeper and shallower position observations for arrays and
+objects, including bare-read priming,
+raw/prepared queries and action-run parameters. Uncached depth-only checks walk
+structure without scanning text bytes.
+`shared_subtree_depth` adds 360 threshold observations and 3,072 seeded checks
+that combined uses have exactly the union of the isolated uses' depth flags,
+including a child selected after its shared parent was measured. Reference
+lookups remain lazy; projection and function-argument admission check the
+selected value. Member/index receiver admission uses the containing use's
+position rather than counting the receiver frame as another retained level.
+For its four combined array-shaped witnesses, first cuts are respectively
+755 (`[[q2],[q2[0]]]`), 754 (`[[q2],[@Id(q2[0])]]`), 755
+(`[[q3],[q3.a]]`), and 754 (`[[$e],[$e[0]]]`), with the same pins for objects,
+text/data and raw/prepared queries. Main itself cuts the isolated state-child
+use `[null,[$e[0]]]` and the reversed state pair at 753, yet the parent-first
+pair at 754; these now all cut at 754, enforcing the position/union rule rather
+than preserving that priming-dependent discrepancy.
+`replacement_reservations` additionally checks a cached callback body with no
+name cache, nested loops, callback re-entry, a caught embedder panic, and a cut
+mid-item. Generated retained bytes stay covered by charged result room. Existing
+raw-input cut recovery remains unchanged: retaining unevaluated supplied input
+is not new generated output and does not spend generated-result room.
 
 The parser's pre-existing __proto__ schema-validation difference remains:
 Box's object prop `a`, with a string __proto__ property, accepts `{}` here while
@@ -728,3 +826,14 @@ upstream reports `/a/__proto__ expects string but got object`; making that key
 required also drops a upstream. The runtime bounded-path fix shows the missing
 inherited Object.prototype read, but parsing is deliberately unchanged.
 The #51 Each-function witness also has upstream unresolved `["x","x"]`.
+
+The allocation grid in `evaluation_reuse` checks nesting levels 1–8,
+one/three items, text/data, and four rooms (64 KiB through 128 MB) for each
+of three supplied leaf shapes: 384 configurations. Its measured peak-live-byte
+ceilings are 5 × configured room for a 1,000-byte string, 20 × for an array
+of eight empty arrays, and 20 × for `{a:[]}`. Completion is also required at
+the fitting rooms identified in the test. These are bounds for those shapes
+and configurations; empty containers require more bookkeeping per output byte,
+and these figures do not establish a universal room-to-heap constant.
+`loop_peak_witness` reports peak allocation alongside unique retained string
+payload and output bytes for a seven-level, three-item element loop.

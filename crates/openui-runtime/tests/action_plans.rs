@@ -180,7 +180,7 @@ fn plans_fit_at_their_room_threshold_and_loop_lists_remain_shared() {
         ("@Set($n,1)", 179),
         ("@ToAssistant(\"hi\")", 173),
         ("@Go(\"ok\")", 182),
-        ("@Each([1,2],x,@Set($n,x))", 254),
+        ("@Each([1,2],x,@Set($n,x))", 252),
     ] {
         let p = parse(&format!("root=Box({body})"), &l, None);
         assert!(
@@ -374,7 +374,7 @@ fn retained_plans_and_cut_data_keep_authority_separate_from_tree_position() {
     let cut = evaluate_tree_with_limits(
         input(&p, &l, &j),
         &store,
-        Limits::DEFAULT.with_result_size(312),
+        Limits::DEFAULT.with_result_size(4096).with_work(620),
     );
     assert!(cut.size_limited);
     assert!(cut.to_json().contains("forged"));

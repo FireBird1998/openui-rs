@@ -20,6 +20,8 @@ struct Account {
 struct ThreadAccount {
     owner: Cell<*const Account>,
     bypass: Cell<bool>,
+    recycle_size: Cell<usize>,
+    recycled: Cell<*mut u8>,
 }
 
 thread_local! {
@@ -28,6 +30,7 @@ thread_local! {
     // GlobalAlloc. It survives thread exit for cross-thread frees.
     static CURRENT: ThreadAccount = const { ThreadAccount {
         owner: Cell::new(ptr::null()), bypass: Cell::new(false),
+        recycle_size: Cell::new(0), recycled: Cell::new(ptr::null_mut()),
     } };
 }
 
@@ -88,6 +91,42 @@ pub fn allocation_calls() -> usize {
             unsafe { (*p).allocation_calls.load(Relaxed) }
         }
     })
+}
+
+/// Deterministically reuse one freed byte allocation of `size` on this thread.
+/// The allocator keeps the cached block charged until reused or this guard drops.
+/// This is test-only allocator machinery for checking address-based caches.
+pub fn recycle_bytes(size: usize) -> RecycleBytes {
+    assert!(size > 0);
+    CURRENT.with(|c| {
+        assert_eq!(c.recycle_size.get(), 0);
+        c.recycle_size.set(size);
+    });
+    RecycleBytes(std::marker::PhantomData)
+}
+/// Thread-bound scope returned by [`recycle_bytes`].
+pub struct RecycleBytes(std::marker::PhantomData<std::rc::Rc<()>>);
+impl Drop for RecycleBytes {
+    fn drop(&mut self) {
+        CURRENT.with(|c| {
+            let size = c.recycle_size.replace(0);
+            let base = c.recycled.replace(ptr::null_mut());
+            if base.is_null() {
+                return;
+            }
+            let requested = Layout::array::<u8>(size).expect("previously allocated byte layout");
+            let (layout, _) = layout(requested).expect("previously allocated header layout");
+            // SAFETY: only a matching dealloc stores this block. It has no
+            // live payload owner; its prefix and original layout remain valid.
+            unsafe {
+                let owner = base.cast::<*const Account>().read();
+                if !owner.is_null() {
+                    (*owner).live.fetch_sub(layout.size(), Relaxed);
+                }
+                System.dealloc(base, layout);
+            }
+        });
+    }
 }
 
 fn reserve(owner: *const Account, bytes: usize) {
@@ -182,6 +221,23 @@ unsafe impl GlobalAlloc for Allocator {
         let Some((layout, offset)) = layout(requested) else {
             return ptr::null_mut();
         };
+        let recycled = CURRENT
+            .try_with(|c| {
+                if requested.align() == 1 && requested.size() == c.recycle_size.get() {
+                    c.recycled.replace(ptr::null_mut())
+                } else {
+                    ptr::null_mut()
+                }
+            })
+            .unwrap_or(ptr::null_mut());
+        if !recycled.is_null() {
+            // SAFETY: this block came from a matching dealloc, with the same
+            // owner/header/layout. Its live bytes remained charged in the cache.
+            unsafe {
+                reserve(recycled.cast::<*const Account>().read(), 0);
+                return recycled.add(offset);
+            }
+        }
         let owner = self.owner();
         reserve(owner, layout.size());
         // SAFETY: layout is valid, including space for the prefix.
@@ -238,6 +294,23 @@ unsafe impl GlobalAlloc for Allocator {
         unsafe {
             let base = payload.sub(offset);
             let owner = base.cast::<*const Account>().read();
+            let cached = CURRENT
+                .try_with(|c| {
+                    if requested.align() == 1
+                        && requested.size() == c.recycle_size.get()
+                        && owner == c.owner.get()
+                        && c.recycled.get().is_null()
+                    {
+                        c.recycled.set(base);
+                        true
+                    } else {
+                        false
+                    }
+                })
+                .unwrap_or(false);
+            if cached {
+                return;
+            }
             if !owner.is_null() {
                 (*owner).live.fetch_sub(layout.size(), Relaxed);
             }

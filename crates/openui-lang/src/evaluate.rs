@@ -63,6 +63,9 @@ trait Names: Sized {
     fn each_item(&self, value: Js, _scope: &Scope<'_, Self>) -> Js {
         value
     }
+    fn direct_each_reference(&self, _value: &Js) -> Option<Js> {
+        None
+    }
 }
 
 impl Names for Declared {
@@ -1523,6 +1526,7 @@ fn to_value_mode<const PRESERVE: bool, const CHARGE: bool>(
         }
         return to_value(&whole_ast(node));
     }
+    let before = limits.room.get();
     let Some(_level) = BorrowedLevel::enter(limits) else {
         return Some(Value::Null);
     };
@@ -1572,6 +1576,9 @@ fn to_value_mode<const PRESERVE: bool, const CHARGE: bool>(
             Kind::Boolean => Value::Bool(false),
         },
     };
+    if PRESERVE && CHARGE && limits.cut.get().is_none() {
+        expression::remember_projected(&value, before.saturating_sub(limits.room.get()), false);
+    }
     Some(value)
 }
 
@@ -1637,6 +1644,13 @@ impl<S: Names> Scope<'_, S> {
             }
         }
     }
+    fn direct_each_reference(&self, value: &Js) -> Option<Js> {
+        match self {
+            Scope::Root(names) => names.direct_each_reference(value),
+            Scope::Each { parent, .. } => parent.direct_each_reference(value),
+        }
+    }
+
     fn wants_unmapped_call(&self, node: &Value, name: &str) -> bool {
         let mut scope = self;
         loop {
@@ -1668,6 +1682,16 @@ impl<S: Names> Scope<'_, S> {
 
 fn evaluate<S: Names>(node: &Ast, scope: &Scope<S>) -> Js {
     LIMITS.with(|limits| evaluate_in(node, scope, limits))
+}
+
+fn evaluate_receiver<S: Names>(node: &Ast, scope: &Scope<S>, limits: &EvalLimits) -> Js {
+    let _receiver = (S::RUNTIME
+        && matches!(
+            node,
+            Ast::StateRef(_) | Ast::Ref(_) | Ast::RuntimeRef { .. }
+        ))
+    .then(expression::ReceiverRead::enter);
+    evaluate_in(node, scope, limits)
 }
 
 fn evaluate_in<S: Names>(node: &Ast, scope: &Scope<S>, limits: &EvalLimits) -> Js {
@@ -1764,9 +1788,11 @@ fn evaluate_in<S: Names>(node: &Ast, scope: &Scope<S>, limits: &EvalLimits) -> J
             || evaluate_in(then, scope, limits),
             || evaluate_in(otherwise, scope, limits),
         ),
-        Ast::Member { obj, field } => member::<S>(evaluate_in(obj, scope, limits), field, limits),
+        Ast::Member { obj, field } => {
+            member::<S>(evaluate_receiver(obj, scope, limits), field, limits)
+        }
         Ast::Index { obj, index: at } => {
-            let obj = evaluate_in(obj, scope, limits);
+            let obj = evaluate_receiver(obj, scope, limits);
             if S::RUNTIME && expression::failed() {
                 return Js::Null;
             }
@@ -2011,7 +2037,17 @@ fn each<S: Names>(args: &[Ast], scope: &Scope<S>) -> Js {
         _ => return Js::Arr(Arc::new(Vec::new())),
     };
     each_array(array, Some(var), scope, |item, child| {
+        if S::RUNTIME
+            && matches!(&args[2],Ast::Ref(n) if n==var)
+            && let Some(value) = child.direct_each_reference(item)
+        {
+            return value;
+        }
+        let room = S::RUNTIME.then(expression::SubstitutionRoom::enter);
         let copy = substitute(&args[2], var, item);
+        if let Some(room) = room {
+            room.finish();
+        }
         evaluate(copy.as_ref().unwrap_or(&args[2]), child)
     })
 }
@@ -2032,6 +2068,7 @@ fn each_array<S: Names>(
             parent: scope,
         });
         let child = binding.as_ref().unwrap_or(scope);
+        let _item = S::RUNTIME.then(expression::LoopItem::enter);
         let value = evaluate_item(item, child);
         if S::RUNTIME {
             child.each_item(value)
@@ -3054,21 +3091,21 @@ fn property(value: &Js, key: &str) -> Js {
                 match array_index(key) {
                     Some(i) => items
                         .get(i as usize)
-                        .map(expression::data_value)
+                        .map(|child| expression::data_child(value, child))
                         .unwrap_or(Js::Undefined),
                     None => inherited(Kind::Array, &ARRAY_METHODS),
                 }
             }
             Value::Obj(o) => o
                 .get(key)
-                .map(expression::data_value)
+                .map(|child| expression::data_child(value, child))
                 .unwrap_or_else(|| inherited(Kind::Object, &[])),
             _ => expression::data_property(value, key),
         },
         Js::Props(el) => el
             .props
             .get(key)
-            .map(expression::data_value)
+            .map(|child| expression::data_child(&Value::Element(el.clone()), child))
             .unwrap_or_else(|| inherited(Kind::Object, &[])),
         Js::Obj(o) => match o.get(key) {
             Some(v) => v.clone(),

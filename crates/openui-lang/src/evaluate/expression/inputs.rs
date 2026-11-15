@@ -36,7 +36,7 @@ impl PreparedInput {
             });
             bytes = bytes
                 .saturating_add(key)
-                .saturating_add(value.bytes)
+                .saturating_add(value.bytes())
                 .saturating_add(2);
         }
         Self { bytes }
@@ -222,11 +222,12 @@ pub(super) fn register_value(value: &Value) {
             if a.inputs.contains(&key) {
                 true
             } else {
-                a.owners.push(value.clone());
+                a.supplied.owners.push(value.clone());
                 false
             }
         });
         if seen {
+            super::check_input_depth(value);
             return;
         }
     }
