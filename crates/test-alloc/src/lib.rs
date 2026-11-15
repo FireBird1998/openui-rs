@@ -6,6 +6,16 @@ use std::io::Write;
 use std::ptr;
 use std::sync::atomic::{AtomicUsize, Ordering::Relaxed};
 
+// Process-wide tracked payloads/headers, including cross-thread frees. Account
+// metadata and stacker's mapped segments remain outside this measurement.
+static LIVE_BYTES: AtomicUsize = AtomicUsize::new(0);
+
+/// Current tracked heap bytes across all threads. Use an isolated test binary
+/// when comparing samples, since other tests would contribute to this count.
+pub fn live_bytes() -> usize {
+    LIVE_BYTES.load(Relaxed)
+}
+
 pub const DEFAULT: usize = 256 * 1024 * 1024;
 pub const LIMITS: usize = 64 * 1024 * 1024;
 
@@ -122,6 +132,7 @@ impl Drop for RecycleBytes {
                 let owner = base.cast::<*const Account>().read();
                 if !owner.is_null() {
                     (*owner).live.fetch_sub(layout.size(), Relaxed);
+                    LIVE_BYTES.fetch_sub(layout.size(), Relaxed);
                 }
                 System.dealloc(base, layout);
             }
@@ -144,6 +155,7 @@ fn reserve(owner: *const Account, bytes: usize) {
     ) {
         previous = actual;
     }
+    LIVE_BYTES.fetch_add(bytes, Relaxed);
     let live = a.live.fetch_add(bytes, Relaxed) + bytes;
     a.peak.fetch_max(live, Relaxed);
     a.measured_peak.fetch_max(live, Relaxed);
@@ -246,6 +258,7 @@ unsafe impl GlobalAlloc for Allocator {
             if !owner.is_null() {
                 unsafe {
                     (*owner).live.fetch_sub(layout.size(), Relaxed);
+                    LIVE_BYTES.fetch_sub(layout.size(), Relaxed);
                 }
             }
             return base;
@@ -276,6 +289,7 @@ unsafe impl GlobalAlloc for Allocator {
             if resized.is_null() {
                 if !owner.is_null() {
                     (*owner).live.fetch_sub(growth, Relaxed);
+                    LIVE_BYTES.fetch_sub(growth, Relaxed);
                 }
                 return resized;
             }
@@ -283,6 +297,7 @@ unsafe impl GlobalAlloc for Allocator {
                 (*owner)
                     .live
                     .fetch_sub(old.size().saturating_sub(new.size()), Relaxed);
+                LIVE_BYTES.fetch_sub(old.size().saturating_sub(new.size()), Relaxed);
             }
             resized.add(offset)
         }
@@ -313,6 +328,7 @@ unsafe impl GlobalAlloc for Allocator {
             }
             if !owner.is_null() {
                 (*owner).live.fetch_sub(layout.size(), Relaxed);
+                LIVE_BYTES.fetch_sub(layout.size(), Relaxed);
             }
             System.dealloc(base, layout);
         }

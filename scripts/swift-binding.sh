@@ -33,6 +33,7 @@ out="$(mktemp -d)"
 trap 'rm -rf "$out"' EXIT
 "$gen/debug/uniffi-bindgen" generate "$gen/debug/libopenui_ffi.dylib" \
   --language swift --out-dir "$out" >/dev/null
+python3 scripts/check-runtime-binding-api.py "$out/openui_ffi.swift"
 
 mkdir -p swift/OpenUINative/Sources/OpenUIFFI "$out/headers"
 cp "$out/openui_ffi.swift" swift/OpenUINative/Sources/OpenUIFFI/openui_ffi.swift

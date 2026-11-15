@@ -78,6 +78,9 @@ When a test fails, it prints the case, the streaming step and a diff against the
 
 `swift/OpenUINative/` is for Mac apps that want to draw OpenUI Lang: the crate's Swift binding (through `crates/openui-ffi`, a UniFFI binding that Kotlin will use too), the parse result as Swift values, and `ElementView`, which draws an element tree as SwiftUI. It draws the most used components of upstream's example library itself. An app adds its own components, wraps what's drawn and chooses what an undrawable element looks like through `ElementDrawing`, set in the environment.
 
+The same UniFFI binding exposes [runtime sessions](docs/runtime-binding.md) for Swift and Kotlin: state, evaluated trees, binding markers, forms, action handles and mutation continuations. The session owns a worker thread; tree and event JSON come directly from the Rust runtime. The runtime Store enforces the session's result-size ceiling on individual values and total state.
+
+
 ```bash
 scripts/swift-binding.sh   # build the binding into the package (generated, not committed)
 ```

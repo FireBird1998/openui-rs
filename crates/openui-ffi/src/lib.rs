@@ -6,6 +6,15 @@
 //! has no field for and how long the core took. Callers may call in from any
 //! thread, whatever its stack: the core grows its stack on demand, and a
 //! result frees its tree without recursion (ADR 0002).
+//!
+//! [`RuntimeSession`] shares [`ParsedProgram`] objects from parser outputs and
+//! confines state, action plans and mutation continuations to one worker thread.
+//! Evaluation and event JSON come directly from `openui-runtime`. See
+//! `docs/runtime-binding.md` and ADR 0006 for capability lifetime and threading.
+//! A marker is a bounded expression-write capability, never a host action.
+//! Embedders suppress clicks while a response bundle is blocked. The runtime
+//! Store enforces the evaluation result-size ceiling on values and total state
+//! (ADR 0005); the binding does not duplicate its admission rules.
 
 #![forbid(unsafe_code)]
 
@@ -15,12 +24,39 @@ use std::time::Instant;
 
 use openui_lang::{Library, Limits, ParseResult, StreamParser};
 
+mod runtime;
+pub use runtime::*;
+
 uniffi::setup_scaffolding!();
 
 /// Something the core couldn't accept. The field is `reason`, not `message`,
 /// which Kotlin's exceptions already have.
 #[derive(Debug, uniffi::Error)]
 pub enum OpenUiError {
+    /// The runtime session was normally disposed.
+    Disposed,
+    /// A capability belongs to a different session.
+    ForeignHandle,
+    /// An evaluation released the capability's generation.
+    StaleHandle,
+    /// A continuation was already resumed.
+    ConsumedHandle,
+    /// A newer mutation suspension evicted this pending continuation.
+    EvictedHandle,
+    /// No retained action exists at that path.
+    InvalidHandle,
+    /// The input is not a binding marker.
+    InvalidMarker,
+    /// Host JSON is malformed, too deep, or has the wrong top-level shape.
+    InvalidJson { reason: String },
+    /// A runtime write was refused before changing that value.
+    RefusedWrite { reason: String },
+    /// Expression evaluation failed before a write or while running an action.
+    Evaluation { reason: String },
+    /// A binding resource limit was exceeded.
+    LimitExceeded { reason: String },
+    /// Worker creation, transport or a caught Rust panic failed the session.
+    Worker { reason: String },
     /// The component library's JSON Schema isn't valid JSON.
     InvalidSchema { reason: String },
     /// The prompt spec isn't valid JSON.
@@ -33,6 +69,18 @@ pub enum OpenUiError {
 impl fmt::Display for OpenUiError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
+            Self::Disposed => f.write_str("session disposed"),
+            Self::ForeignHandle => f.write_str("foreign capability"),
+            Self::StaleHandle => f.write_str("stale action capability"),
+            Self::ConsumedHandle => f.write_str("continuation consumed"),
+            Self::EvictedHandle => f.write_str("continuation evicted"),
+            Self::InvalidHandle => f.write_str("invalid action path"),
+            Self::InvalidMarker => f.write_str("invalid binding marker"),
+            Self::InvalidJson { reason }
+            | Self::RefusedWrite { reason }
+            | Self::Evaluation { reason }
+            | Self::LimitExceeded { reason }
+            | Self::Worker { reason } => f.write_str(reason),
             OpenUiError::InvalidSchema { reason } => write!(f, "invalid JSON Schema: {reason}"),
             OpenUiError::InvalidPromptSpec { reason } => {
                 write!(f, "invalid prompt spec: {reason}")
@@ -48,6 +96,7 @@ impl std::error::Error for OpenUiError {}
 #[derive(uniffi::Object)]
 pub struct ComponentLibrary {
     inner: Arc<Library>,
+    schema: Arc<serde_json::Value>,
 }
 
 #[uniffi::export]
@@ -61,6 +110,7 @@ impl ComponentLibrary {
             })?;
         Ok(Arc::new(ComponentLibrary {
             inner: Arc::new(Library::from_json_schema(&json)),
+            schema: Arc::new(json),
         }))
     }
 
@@ -70,9 +120,19 @@ impl ComponentLibrary {
     }
 }
 
+/// An immutable parsed program, created only by parsing or streaming.
+/// Passing it to a runtime session clones one Arc, never the program or JSON.
+#[derive(Debug, uniffi::Object)]
+pub struct ParsedProgram {
+    inner: Arc<ParseResult>,
+    json_bytes: u64,
+}
+
 /// A parse result as it crosses the boundary.
-#[derive(Debug, uniffi::Record)]
+#[derive(Clone, Debug, uniffi::Record)]
 pub struct ParseOutput {
+    /// The actual shared program. Changing the JSON fields cannot change it.
+    pub program: Arc<ParsedProgram>,
     /// The parse result, serialized exactly as the reference serializes it.
     pub json: String,
     /// Nesting went past the core's depth limit and was cut.
@@ -90,10 +150,16 @@ impl ParseOutput {
     fn timed(result: ParseResult, started: Instant) -> ParseOutput {
         let parsed = Instant::now();
         let json = result.to_json();
+        let depth_limited = result.depth_limited;
+        let size_limited = result.size_limited;
         ParseOutput {
+            program: Arc::new(ParsedProgram {
+                json_bytes: u64::try_from(json.len()).unwrap_or(u64::MAX),
+                inner: Arc::new(result),
+            }),
             json,
-            depth_limited: result.depth_limited,
-            size_limited: result.size_limited,
+            depth_limited,
+            size_limited,
             parse_nanos: nanos(started, parsed),
             json_nanos: nanos(parsed, Instant::now()),
         }
@@ -280,12 +346,66 @@ pub fn merge_statements_with_limits(
 /// are serialized; a viewer drives it from a single thread anyway.
 #[derive(uniffi::Object)]
 pub struct StreamSession {
-    parser: Mutex<StreamParser>,
+    parser: Mutex<StreamState>,
 }
 
+struct StreamState {
+    parser: StreamParser,
+    output: Option<ParseOutput>,
+    complete: bool,
+    known_text: Option<String>,
+    program_limit: usize,
+}
+impl StreamState {
+    fn new(parser: StreamParser, program_limit: usize) -> Self {
+        Self {
+            parser,
+            output: None,
+            complete: false,
+            known_text: Some(String::new()),
+            program_limit,
+        }
+    }
+    fn remember_chunk(&mut self, chunk: String) {
+        if let Some(mut text) = self.known_text.take()
+            && text.len().saturating_add(chunk.len()) <= self.program_limit
+        {
+            if text.is_empty() {
+                self.known_text = Some(chunk);
+            } else {
+                text.push_str(&chunk);
+                self.known_text = Some(text);
+            }
+        }
+    }
+    fn output(&mut self, result: ParseResult, started: Instant, complete: bool) -> ParseOutput {
+        // Never deduplicate by JSON: equal JSON can hide fresh container
+        // identities relevant to Store initialization. Cache only known no-ops.
+        let output = ParseOutput::timed(result, started);
+        self.complete = complete;
+        self.output = Some(output.clone());
+        output
+    }
+    fn current(&mut self, started: Instant, complete: bool) -> ParseOutput {
+        if complete == self.complete
+            && let Some(output) = &self.output
+        {
+            let parsed = Instant::now();
+            let mut output = output.clone();
+            output.parse_nanos = nanos(started, parsed);
+            output.json_nanos = nanos(parsed, Instant::now());
+            return output;
+        }
+        let result = if complete {
+            self.parser.finish()
+        } else {
+            self.parser.result()
+        };
+        self.output(result, started, complete)
+    }
+}
 impl StreamSession {
-    fn parser(&self) -> MutexGuard<'_, StreamParser> {
-        // The core doesn't panic, so the lock is never poisoned in practice.
+    fn parser(&self) -> MutexGuard<'_, StreamState> {
         self.parser
             .lock()
             .unwrap_or_else(|poisoned| poisoned.into_inner())
@@ -300,7 +420,7 @@ impl StreamSession {
     pub fn new(library: Arc<ComponentLibrary>, root_name: Option<String>) -> Arc<Self> {
         let parser = StreamParser::new(library.inner.clone(), root_name.as_deref());
         Arc::new(StreamSession {
-            parser: Mutex::new(parser),
+            parser: Mutex::new(StreamState::new(parser, Limits::DEFAULT.program_size())),
         })
     }
 
@@ -319,15 +439,20 @@ impl StreamSession {
             limits.to_core(),
         );
         Arc::new(StreamSession {
-            parser: Mutex::new(parser),
+            parser: Mutex::new(StreamState::new(parser, limits.to_core().program_size())),
         })
     }
 
     /// Pushes the next chunk; the result after it.
     pub fn push(&self, chunk: String) -> ParseOutput {
         let started = Instant::now();
-        let result = self.parser().push(&chunk);
-        ParseOutput::timed(result, started)
+        let mut state = self.parser();
+        if chunk.is_empty() || state.known_text.is_none() {
+            return state.current(started, false);
+        }
+        let result = state.parser.push(&chunk);
+        state.remember_chunk(chunk);
+        state.output(result, started, false)
     }
 
     /// Pushes several chunks one by one and returns only the result after the
@@ -335,27 +460,39 @@ impl StreamSession {
     /// would have seen one call at a time, so the result is the same.
     pub fn push_all(&self, chunks: Vec<String>) -> ParseOutput {
         let started = Instant::now();
-        let mut parser = self.parser();
-        let mut result = None;
-        for chunk in &chunks {
-            result = Some(parser.push(chunk));
+        let mut state = self.parser();
+        if state.known_text.is_none() {
+            return state.current(started, false);
         }
-        let result = result.unwrap_or_else(|| parser.result());
-        ParseOutput::timed(result, started)
+        let mut result = None;
+        for chunk in chunks.into_iter().filter(|c| !c.is_empty()) {
+            result = Some(state.parser.push(&chunk));
+            state.remember_chunk(chunk);
+        }
+        match result {
+            Some(result) => state.output(result, started, false),
+            None => state.current(started, false),
+        }
     }
 
     /// Gives the whole text so far, as after a reconnect.
     pub fn set(&self, text: String) -> ParseOutput {
         let started = Instant::now();
-        let result = self.parser().set(&text);
-        ParseOutput::timed(result, started)
+        let mut state = self.parser();
+        if state.known_text.as_deref() == Some(text.as_str())
+            && state.output.as_ref().is_some_and(|o| !o.size_limited)
+        {
+            return state.current(started, false);
+        }
+        let result = state.parser.set(&text);
+        state.known_text = (text.len() <= state.program_limit).then_some(text);
+        state.output(result, started, false)
     }
 
     /// The latest result, without new text.
     pub fn result(&self) -> ParseOutput {
         let started = Instant::now();
-        let result = self.parser().result();
-        ParseOutput::timed(result, started)
+        self.parser().current(started, false)
     }
 
     /// The result once the stream has ended, after its last chunk. Until
@@ -363,8 +500,7 @@ impl StreamSession {
     /// as state yet.
     pub fn finish(&self) -> ParseOutput {
         let started = Instant::now();
-        let result = self.parser().finish();
-        ParseOutput::timed(result, started)
+        self.parser().current(started, true)
     }
 }
 

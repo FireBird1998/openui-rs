@@ -528,10 +528,10 @@ initialization of unique names and ignored scalar sets allocate zero times
 with 1 and 4,096 names, even with a retained snapshot. A real scalar set without a retained
 snapshot also allocates zero times. Both store binaries have 64 MiB caps.
 
-Store admission limits remain #39's work. Creation retains `Limits`, and
-initialization returns accepted-change status plus per-name refusals, so one
-rejected entry need not discard the rest of a chunk. A total-state cap must
-also count pristine names whose undefined writes left no snapshot entry.
+Store admission uses the retained `Limits` result-size ceiling (ADR 0005).
+Initialization returns accepted-change status plus per-name refusals, so one
+rejected entry does not discard independent accepted values. The total-state
+count includes pristine-only names even when they have no snapshot entry.
 
 Tree conformance runs with `cargo test -p openui-runtime --test tree_conformance`.
 It covers the entire parse corpus plus `conformance/runtime.json`, both state
@@ -926,3 +926,61 @@ Its 64 KiB worker drives a 10,000-level value through prepared references,
 drawing/JSON, bindings, forms/defaults, action sets, mutation resume, event JSON,
 snapshot, disposal and Drop. These are successful deep-walk tests; they do not
 assert exact physical segment counts for every route.
+
+## Native runtime binding (#41)
+
+`openui-ffi/tests/runtime_session.rs` compares exported session calls with direct
+Rust runtime calls: corpus binding-plain (defaults/persistence), binding-write-supplied
+(query/mutation data), action-steps (every step, mutation true/false), action-loop-capture
+(nested Each/arrays), run-forms (fields/defaults/save/events), streaming and program
+replacement. Additional scenarios cover custom identity surviving a binding, JSON
+copies losing it, legacy/default events, and current inputs on resume. Trees and
+events compare exact strings, including errors and flags. Refusal edges cover JSON
+bytes, program admission, action paths, pending outcomes, evaluator depth/work/room,
+marker/form writes and typed capability errors. A 500-level supplied reference
+with a cheap length read pins preparation independently of evaluation, including
+custom preparation work edges and a refused replacement preserving old data.
+The two formerly parked per-value/total Store-admission tests are active.
+`runtime_state_cap` checks 1024/1023-byte edges for set, top-level/named forms,
+bindings, action sets, atomic two-target resets, resumes against current state,
+and persisted initialization. Refusals preserve snapshot/version/pristine;
+partial batches report each refused entry and load independent entries. Another
+case pins the fixed Store ceiling independently of scaled drawing room.
+
+`runtime_threads_and_sequences.rs` exercises 16 threads × 200 state/action rounds,
+32 disposal races, foreign-thread last-owner destruction and 16 deterministic
+seeds × 500 exported operations under a 256-byte state cap. Every step asserts
+snapshot size within the cap; refused calls and failed single action writes
+preserve snapshot, version and all probed pristine flags. The run must exercise
+Store refusals and check their typed cap reasons. Worker unit tests inject a panic (sticky typed Worker)
+and synchronize an in-flight call with disposal; integration scenarios remain
+exclusively on the exported API. `stack.rs` adds 10,000-level JSON and action
+paths plus pending-run destruction on a 64 KiB caller stack. All binaries use
+test_alloc. Run these in debug and release.
+
+`cargo run --offline --release -p openui-ffi --example session_overhead` reports
+20,000 direct/worker version reads after warm-up; it has no timing assertions.
+Generated Swift/Kotlin signatures are checked by scripts/check-runtime-binding-api.py.
+Native tests live in OpenUINativeTests/RuntimeSessionTests.swift and Android's
+androidTest/RuntimeSessionTest.kt; compile/run them on the platform machines,
+including native ill-formed UTF-16 conversion. See docs/runtime-binding.md.
+
+### Ticket 41 independent-review regressions
+
+`runtime_large_draws` compares 4097 plans (including execution of the last) and
+2.2 million values / 4,400,132 JSON bytes against direct runtime JSON and flags.
+`runtime_abandonment` isolates process-wide test_alloc::live_bytes measurement:
+10000 abandoned mutations, 100 ~800 KB program replacements, cross-thread token
+drops, cleanup barriers and zero pending slots, with flat tracked heap checkpoints.
+Mapped stack segments and allocator account metadata are outside that counter.
+`stream_output_memory` retains 51 unchanged 50 KB outputs and requires incremental
+live bytes to equal their JSON plus at most 16 KB, with shared opaque program Arcs.
+New session tests cover full-table completed/default/legacy runs, oldest-only
+eviction, typed Evaluation failures and sticky Worker failures (the existing
+unit fault injector triggers the otherwise unreachable panic). All integration
+regressions use exported FFI APIs. Their red-before-fix logs live in target/.
+Android tests exercise generated MalformedInputException rejection, a real
+caller-side Utf16StreamBuffer and the JSON-escape route; they require Android.
+
+Native session lifetime follows [ADR 0006](docs/adr/0006-native-runtime-sessions-own-a-worker-and-opaque-capabilities.md);
+the Store admission rules remain [ADR 0005](docs/adr/0005-admit-total-state-incrementally.md).

@@ -105,3 +105,30 @@ fn a_raised_depth_limit_runs_on_a_small_stack() {
 
 #[global_allocator]
 static ALLOCATOR: test_alloc::Allocator = test_alloc::Allocator::with_cap(test_alloc::LIMITS);
+
+#[test]
+fn runtime_deep_values_plans_and_pending_runs_drop_on_a_small_caller_stack() {
+    use openui_ffi::{RuntimeLimits, RuntimeSession};
+    std::thread::Builder::new().stack_size(STACK).spawn(|| {
+        let library = ComponentLibrary::new(r#"{"$defs":{"Box":{"properties":{"a":{},"b":{}}}}}"#.into()).unwrap();
+        let limits = ParseLimits { depth:Some(20_000),..Default::default() };
+        let session = RuntimeSession::with_limits(library.clone(),None,RuntimeLimits {evaluation:limits.clone(),..Default::default()}).unwrap();
+        let source = format!("$n=0\nm=Mutation(\"m\",{{}})\nroot=Box({}@Set($n,1){},Action([@Run(m),@Set($n,2)]))","[".repeat(10_000),"]".repeat(10_000));
+        let output = parse_with_limits(source,library,None,limits);
+        session.set_program(output.program).unwrap(); session.initialize(None).unwrap();
+        let tree = session.evaluate().unwrap();
+        assert!(!tree.depth_limited);
+        let mut path = vec!["props".into(),"a".into()]; path.extend(std::iter::repeat_n("0".into(),10_000));
+        let action = session.action_at(tree.evaluation.clone(),path).unwrap();
+        session.run(Some(action),"".into(),None).unwrap();
+        assert_eq!(session.get("$n".into()).unwrap().as_deref(),Some("1"));
+        let pending = session.action_at(tree.evaluation,vec!["props".into(),"b".into()]).unwrap();
+        let continuation = session.run(Some(pending),"".into(),None).unwrap().continuation.unwrap();
+        let deep = format!("{}1{}","[".repeat(10_000),"]".repeat(10_000));
+        session.set("$deep".into(),Some(deep.clone())).unwrap();
+        assert_eq!(session.get("$deep".into()).unwrap().unwrap(),deep);
+        session.set_reference_values(format!("{{\"unused\":{deep}}}")).unwrap();
+        assert!(session.snapshot().unwrap().contains("$deep"));
+        drop(session); drop(continuation);
+    }).unwrap().join().unwrap();
+}

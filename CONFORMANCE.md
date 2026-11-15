@@ -186,11 +186,14 @@ also read complete/incomplete query defaults and supplied query/mutation data,
 and construct components without a schema context, as `state-field.ts` does. Binding target
 reads use exact Map keys, including inherited names; marker writes require a
 string target because the public Store addresses string names. Raw marker
-values, including JSON round trips, carry no host-call authority. Writes run
+values run no host action while writing, but their expressions may call declared
+actions and store real custom steps for later clicks (ADR 0004). Apps accept
+marker JSON only from the evaluated tree, never directly from model/tool data. Writes run
 in a fresh bounded core session over state, `$value`, and the supplied tree
 context (query defaults, loaded references, and component classification), and
 use `Store::set`;
-errors and cuts leave the store unchanged. Total-store admission remains #39.
+errors and cuts leave that write unchanged. Total-store admission now uses the
+Store's fixed result-size ceiling; see ADR 0005 and Bounded Store state below.
 
 Runtime goldens are compact JSON in `conformance/golden/runtime/`: full results
 for each one-shot scenario and FNV-1a per streaming step. Identical scenario
@@ -854,3 +857,16 @@ This intentionally differs from the reference's unbounded Store. The ordinary
 conformance fixtures continue to use the default 8 MiB state ceiling. This state
 cap does not yet establish a peak-memory bound for all intermediate loop/default
 shapes; the amplification and unique-leaf nesting follow-ups remain unresolved.
+
+The UniFFI runtime seam (#41) compares the exported RuntimeSession with the
+public Rust runtime on the scripted cases listed in TESTING.md. These checks
+compare full tree/error JSON and each ordered HostEvent JSON byte for byte;
+they do not add new upstream goldens or change the reference counts above.
+Custom plans retain original step identity behind opaque session-owned objects;
+no handle IDs or authority fields enter JSON. Native session ownership and opaque
+capabilities follow [ADR 0006](docs/adr/0006-native-runtime-sessions-own-a-worker-and-opaque-capabilities.md).
+The binding's Store uses the evaluation result-size ceiling for the admission
+rules above ([ADR 0005](docs/adr/0005-admit-total-state-incrementally.md)). Exported
+binding tests cover adjacent state-cap edges, atomic refused writes/resets/resumes,
+per-entry persisted refusals and capped seeded sequences; no admission tests are
+parked. These checks do not establish the unresolved intermediate-heap bounds.

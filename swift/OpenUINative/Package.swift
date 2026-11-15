@@ -21,6 +21,6 @@ let package = Package(
             swiftSettings: [.swiftLanguageMode(.v5)]
         ),
         .target(name: "OpenUINative", dependencies: ["OpenUIFFI"]),
-        .testTarget(name: "OpenUINativeTests", dependencies: ["OpenUINative"]),
+        .testTarget(name: "OpenUINativeTests", dependencies: ["OpenUINative", "OpenUIFFI"]),
     ]
 )

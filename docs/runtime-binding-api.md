@@ -1,0 +1,138 @@
+# Runtime binding application interface
+
+Taken from UniFFI 0.32.2 output. Generated converters, unsafe/testing
+constructors and native-object cleanup machinery are omitted. Capabilities
+are objects: ParsedProgram, EvaluationHandle, ActionHandle and ContinuationHandle.
+They have no application constructor or numeric slot. See [session semantics
+and limits](runtime-binding.md).
+
+Swift (`import OpenUIFFI`); fallible calls throw OpenUiError:
+
+```swift
+convenience init(library: ComponentLibrary, promptSpec: String?) throws
+static func withLimits(library: ComponentLibrary, promptSpec: String?, limits: RuntimeLimits) throws -> RuntimeSession
+func actionAt(evaluation: EvaluationHandle, path: [String]) throws -> ActionHandle
+func dispose()
+func evaluate() throws -> EvaluationOutput
+func get(name: String) throws -> String?
+func getField(form: String?, name: String) throws -> String?
+func initialize(persisted: String?) throws -> InitializationOutput
+func initializeField(form: String?, componentType: String?, name: String, json: String?, streaming: Bool) throws -> FieldWriteOutput?
+func isPristine(name: String) throws -> Bool
+func markBinding(component: String, prop: String) throws
+func pendingContinuations() throws -> UInt64
+func resume(continuation: ContinuationHandle, succeeded: Bool) throws -> ActionOutput
+func run(action: ActionHandle?, message: String, form: String?) throws -> ActionOutput
+func runLegacy(json: String, message: String, form: String?) throws -> ActionOutput
+func set(name: String, json: String?) throws -> Bool
+func setField(form: String?, componentType: String?, name: String, json: String?, save: Bool) throws -> FieldWriteOutput
+func setProgram(program: ParsedProgram) throws
+func setReferenceValues(json: String) throws
+func snapshot() throws -> String
+func undecidedBindings() throws -> [BindingPair]
+func version() throws -> UInt64
+func writeBinding(marker: String, json: String) throws -> Bool
+```
+
+Kotlin (`import uniffi.openui_ffi.*`); constructors and fallible methods
+carry @Throws(OpenUiException::class), while dispose is infallible:
+
+```kotlin
+constructor(library: ComponentLibrary, promptSpec: String?)
+// companion object:
+fun withLimits(library: ComponentLibrary, promptSpec: String?, limits: RuntimeLimits): RuntimeSession
+fun actionAt(evaluation: EvaluationHandle, path: List<kotlin.String>): ActionHandle
+fun dispose()
+fun evaluate(): EvaluationOutput
+fun get(name: kotlin.String): kotlin.String?
+fun getField(form: kotlin.String?, name: kotlin.String): kotlin.String?
+fun initialize(persisted: kotlin.String?): InitializationOutput
+fun initializeField(form: kotlin.String?, componentType: kotlin.String?, name: kotlin.String, json: kotlin.String?, streaming: kotlin.Boolean): FieldWriteOutput?
+fun isPristine(name: kotlin.String): kotlin.Boolean
+fun markBinding(component: kotlin.String, prop: kotlin.String)
+fun pendingContinuations(): kotlin.ULong
+fun resume(continuation: ContinuationHandle, succeeded: kotlin.Boolean): ActionOutput
+fun run(action: ActionHandle?, message: kotlin.String, form: kotlin.String?): ActionOutput
+fun runLegacy(json: kotlin.String, message: kotlin.String, form: kotlin.String?): ActionOutput
+fun set(name: kotlin.String, json: kotlin.String?): kotlin.Boolean
+fun setField(form: kotlin.String?, componentType: kotlin.String?, name: kotlin.String, json: kotlin.String?, save: kotlin.Boolean): FieldWriteOutput
+fun setProgram(program: ParsedProgram)
+fun setReferenceValues(json: kotlin.String)
+fun snapshot(): kotlin.String
+fun undecidedBindings(): List<BindingPair>
+fun version(): kotlin.ULong
+fun writeBinding(marker: kotlin.String, json: kotlin.String): kotlin.Boolean
+```
+
+Records (Swift field types; Kotlin maps Bool to Boolean, UInt64 to ULong,
+arrays to List, OpenUiError to OpenUiException, and keeps record/object names):
+
+```swift
+struct RuntimeLimits {
+    public var evaluation: ParseLimits
+    public var referencePreparation: ParseLimits
+    public var maxJsonBytes: UInt64
+    public var maxContinuations: UInt64
+}
+struct BindingPair {
+    public var component: String
+    public var prop: String
+}
+struct EvaluationOutput {
+    public var json: String
+    public var sizeLimited: Bool
+    public var depthLimited: Bool
+    public var evaluation: EvaluationHandle
+}
+struct InitializationOutput {
+    public var changed: Bool
+    public var refused: [StateRefusal]
+}
+struct StateRefusal {
+    public var name: String
+    public var error: OpenUiError
+}
+struct FieldWriteOutput {
+    public var changed: Bool
+    public var saveRequested: Bool
+}
+struct ActionOutput {
+    public var events: [String]
+    public var failure: ActionFailureOutput?
+    public var sizeLimited: Bool
+    public var depthLimited: Bool
+    public var continuation: ContinuationHandle?
+}
+struct ActionFailureOutput {
+    public var step: UInt64?
+    public var error: OpenUiError
+}
+struct ParseOutput {
+    public var program: ParsedProgram
+    public var json: String
+    public var depthLimited: Bool
+    public var sizeLimited: Bool
+    public var parseNanos: UInt64
+    public var jsonNanos: UInt64
+}
+```
+
+Swift error cases / Kotlin OpenUiException subclasses: Disposed, ForeignHandle,
+StaleHandle, ConsumedHandle, EvictedHandle, InvalidHandle, InvalidMarker; InvalidJson(reason),
+RefusedWrite(reason), Evaluation(reason), LimitExceeded(reason), Worker(reason), and existing
+InvalidSchema(reason), InvalidPromptSpec(reason), Prompt(reason). Reasons are
+String. ActionOutput.failure.error and StateRefusal.error use the same typed error.
+ParseLimits retains seven optional UInt64/ULong fields: programSize, resultSize,
+resultFloor, amplification, resultCeiling, depth, work; all default to absent.
+RuntimeSession's default constructor uses RuntimeLimits defaults; withLimits
+takes a record containing all four fields.
+
+State admission uses the existing `RuntimeLimits.evaluation` result-size ceiling
+(`resultCeiling`, or `resultSize` which sets both floor and ceiling); default
+8 MiB. It is independent of drawing's scaled room and referencePreparation.
+No separate field, method or error variant was added. All Store refusals use
+RefusedWrite(reason), whose reason includes the configured byte cap. Initialize
+reports each refused persisted/default entry in InitializationOutput.refused and
+can accept other entries in the same batch. See [state admission](runtime-binding.md)
+and [ADR 0005](adr/0005-admit-total-state-incrementally.md); native session
+ownership remains [ADR 0006](adr/0006-native-runtime-sessions-own-a-worker-and-opaque-capabilities.md).
