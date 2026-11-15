@@ -363,7 +363,7 @@ pub use enrich::{EnrichedError, enrich_errors, enriched_errors_to_json};
 pub use evaluate::{
     EvaluationFailure, EvaluationFlags, EvaluationResult, EvaluationScope, EvaluationSession,
     ExpressionEvaluator, ExpressionOperation, ExpressionOutput, ExpressionType, ExpressionValue,
-    PreparedReferenceValue, evaluate_expression, evaluate_expression_with_limits,
+    PreparedInput, PreparedReferenceValue, evaluate_expression, evaluate_expression_with_limits,
 };
 pub use expr::{parse_expression, parse_expression_with_limits};
 pub use free::free_json;
@@ -401,7 +401,7 @@ const _: () = {
 static TEST_ALLOCATOR: test_alloc::Allocator = test_alloc::Allocator::with_cap(test_alloc::DEFAULT);
 
 /// Allocation-free JSON number sizing for embedders preparing input allowances.
-pub use js::json_number_len;
+pub use js::{json_number_len, json_string_len, utf16_unit_string, utf16_units};
 
 /// JSON values used for runtime schema configuration, without a second dependency.
 pub use serde_json::Value as JsonValue;

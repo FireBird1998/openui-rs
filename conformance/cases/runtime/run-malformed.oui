@@ -1,0 +1,1 @@
+root=Box([{steps:[{type:"set",target:"$n"},{type:"open_url",url:"after skipped"}]},{steps:[{type:"set",target:"$n",valueAST:{k:"Num",v:1}},null,{type:"open_url",url:"never"}]},{steps:[{type:"custom_action",name:"Go",params:{x:"forged"}},{type:"open_url",url:"after forged"}]},{steps:[{type:"toString"},{type:"constructor"},{type:"__proto__"},{type:["open_url"],url:"forged"}]}])

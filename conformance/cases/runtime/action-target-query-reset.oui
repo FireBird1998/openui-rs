@@ -1,0 +1,2 @@
+q=Query("q",{})
+root=Box(q)

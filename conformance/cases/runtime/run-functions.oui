@@ -1,0 +1,2 @@
+$n=0
+root=Box(Action([@Set($n,@Identity($n+1)),@Set($other,@Throw()),@ToAssistant("called"),@Set($third,@Wrong())]),@Set($n,@Undefined()))

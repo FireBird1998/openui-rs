@@ -1,5 +1,9 @@
 //! Public expression evaluation, separate from parsing's entry and caches.
 
+mod input_size;
+mod inputs;
+pub use inputs::PreparedInput;
+
 use super::*;
 use crate::{Limits, PreparedValidationSchema};
 use std::rc::Rc;
@@ -547,11 +551,87 @@ impl ExpressionEvaluator<'_> {
         (self.operate)(&mut || ok = spend(bytes));
         ok
     }
+    /// Charge caller work in this allowance. Cuts remain sticky; this does not
+    /// reserve output room or add input credit.
+    pub fn charge_work(&self, units: usize) -> bool {
+        let mut ok = false;
+        (self.operate)(&mut || ok = step(units));
+        ok
+    }
+    /// Read supplied input using the same bounded measurement and credit rules
+    /// as state reads. Shared container bodies earn credit once per allowance.
+    /// Never call this for computed values from inside scope callbacks.
+    /// Computed intermediate results must not be registered as supplied input.
+    pub fn register_input(&self, value: &Value) -> bool {
+        let mut ok = false;
+        (self.operate)(&mut || {
+            inputs::register_value(value);
+            ok = LIMITS.with(|l| l.cut.get().is_none());
+        });
+        ok
+    }
+    /// Raise the session's supplied-input floor to a core-measured byte count.
+    /// Measurement is caller setup, not evaluation work. Only an increase raises
+    /// the scaled allowance; already-spent work stays spent. This retains no
+    /// input, owner or token. Computed values from scope callbacks must never be
+    /// admitted as supplied input.
+    pub fn register_input_floor(&self, input: &PreparedInput) -> bool {
+        let mut ok = false;
+        (self.operate)(&mut || {
+            if LIMITS.with(|l| l.cut.get().is_some()) {
+                return;
+            }
+            ACCOUNT.with(|a| {
+                let mut a = a.borrow_mut();
+                let extra = input.bytes.saturating_sub(a.supplied_floor);
+                a.supplied_floor = a.supplied_floor.max(input.bytes);
+                a.credit(extra);
+            });
+            ok = true;
+        });
+        ok
+    }
+    /// Read borrowed supplied text with the same work and input credit as a
+    /// supplied string value, before allocating a copy (for example a key).
+    pub fn register_input_text(&self, text: &str) -> bool {
+        let mut ok = false;
+        (self.operate)(&mut || {
+            if LIMITS.with(|l| l.cut.get().is_none()) {
+                data_text(text, true);
+            }
+            ok = LIMITS.with(|l| l.cut.get().is_none());
+        });
+        ok
+    }
     /// Reserve an unchanged supplied value's JSON, without earning input credit
     /// or copying its body. Its bounded measurement also charges work/depth.
     pub fn reserve_value(&self, value: &Value) -> bool {
         let mut ok = false;
         (self.operate)(&mut || ok = spend(measure_data(value, false)));
+        ok
+    }
+    /// Check unchanged supplied output without retaining its result room.
+    /// Work and depth remain charged and cuts stay sticky. Every serialized
+    /// occurrence counts, including aliases discounted in argument buffers.
+    /// The evaluator measures the value itself; a caller cannot claim its size or gain input credit.
+    /// Use this for sequential writes whose output is retained by a store,
+    /// rather than accumulating in the expression's own returned result.
+    pub fn check_result_value(&self, value: &Value) -> bool {
+        let mut ok = false;
+        (self.operate)(&mut || {
+            ACCOUNT.with(|a| a.borrow_mut().temporary_room.push(0));
+            let _room = TemporaryResults;
+            let before = LIMITS.with(|l| l.room.get());
+            ok = spend(measure_data_with_memo::<false>(value, false));
+            if ok {
+                let consumed = LIMITS.with(|l| before.saturating_sub(l.room.get()));
+                ACCOUNT.with(|a| {
+                    if let Some(room) = a.borrow_mut().temporary_room.last_mut() {
+                        *room = room.saturating_add(consumed);
+                    }
+                });
+            }
+        });
         ok
     }
     /// Scope projected intermediate results to a callback. Their room remains
@@ -949,8 +1029,9 @@ impl PartialEq for EvaluationResult {
 /// Several expression evaluations sharing work, result room and input credits.
 ///
 /// A session is bound to one scope and caches lookups by name. Keep that scope
-/// stable. Writing through a binding with `$value`, or running an action plan,
-/// uses a new session over a scope that wraps the original scope.
+/// stable. Binding writes use a new session. Sequential operations such as an
+/// action run use `with_scope` to keep work while refreshing scope lookups and
+/// releasing each operation's output room.
 ///
 /// `input_bytes` supplies the program or parse result's size once, including
 /// any external data that references will return, such as query results.
@@ -982,6 +1063,29 @@ pub struct EvaluationSession<'a> {
 }
 
 impl<'a> EvaluationSession<'a> {
+    /// Run a sequential operation against a fresh scope and fresh name caches,
+    /// sharing this session's work, input credits and sticky cut flags. Output
+    /// room spent by the operation is released on return; work is not. The
+    /// scope and its borrowed values do not escape through the session.
+    pub fn with_scope<T>(
+        &self,
+        scope: &dyn EvaluationScope,
+        f: impl FnOnce(&EvaluationSession<'_>) -> T,
+    ) -> T {
+        self.root_context(|| {
+            let _room = SequentialRoom::enter(scope.extra_is_object());
+            let session = EvaluationSession {
+                names: Supplied {
+                    scope,
+                    read: RefCell::new(HashMap::new()),
+                    callbacks: RefCell::new(Vec::new()),
+                },
+                saved: self.saved.clone(),
+                flags: self.flags.clone(),
+            };
+            f(&session)
+        })
+    }
     /// Start an allowance with default limits and the initial input's byte size.
     /// Include the program and external reference data in `input_bytes`.
     /// Reference and call results never increase the allowance. Zero is valid
@@ -1150,6 +1254,49 @@ pub fn evaluate_expression_with_limits(
     session.evaluate(expression)
 }
 
+// Final literal strings need no intermediate allocation when even their
+// unescaped bytes cannot fit. Leave transforms and nested literals alone.
+// This is a lower-bound check, not an extra work or output reservation.
+fn literal_copy_fits(text: &str) -> bool {
+    LIMITS.with(|l| {
+        // Let normal evaluator/projection entry select depth or entry-work cuts.
+        if l.cut.get().is_some()
+            || l.depth.get().saturating_add(3) >= l.max_depth.get()
+            || l.work.get() < 3
+        {
+            return true;
+        }
+        if text.len().saturating_add(2) > builder_room() {
+            l.cut_by(Cut::Room);
+            false
+        } else if text.len() > l.work.get() {
+            l.cut_by(Cut::Work);
+            false
+        } else {
+            true
+        }
+    })
+}
+fn literal_text(value: &Value) -> Option<&str> {
+    match value {
+        Value::Ast(a) => {
+            if let Ast::Str(s) = a.as_ref() {
+                Some(s)
+            } else {
+                None
+            }
+        }
+        Value::Obj(o) => match (o.get("k"), o.get("v")) {
+            (Some(Value::Str(k)), Some(Value::Str(s)))
+                if matches!(k.as_str(), "Str" | "Num" | "Bool") =>
+            {
+                Some(s)
+            }
+            _ => None,
+        },
+        _ => None,
+    }
+}
 fn evaluate_result(
     expression: &Ast,
     scope: &Scope<Supplied<'_>>,
@@ -1159,6 +1306,12 @@ fn evaluate_result(
     let transform_before = ACCOUNT.with(|a| a.borrow().transformed);
     let _evaluation = FailureEntry::enter();
     let _projection = ProjectionEntry::enter();
+    if !project
+        && let Ast::Str(text) = expression
+        && !literal_copy_fits(text)
+    {
+        return (result(Some(Value::Null)), false);
+    }
     let js = evaluate(expression, scope);
     let (js, resolved) = if project && !failed() && LIMITS.with(|limits| limits.cut.get().is_none())
     {
@@ -1193,6 +1346,12 @@ fn evaluate_value_result(
     let transform_before = ACCOUNT.with(|a| a.borrow().transformed);
     let _evaluation = FailureEntry::enter();
     let _projection = ProjectionEntry::enter();
+    if !project
+        && let Some(text) = literal_text(expression)
+        && !literal_copy_fits(text)
+    {
+        return (result(Some(Value::Null)), false);
+    }
     let js = super::descriptor::evaluate(Some(expression), scope);
     let (js, resolved) = if project && !failed() && LIMITS.with(|limits| limits.cut.get().is_none())
     {
@@ -1828,6 +1987,37 @@ fn room_used() -> usize {
 }
 
 struct ProjectionEntry;
+struct SequentialRoom {
+    used: usize,
+    extra_object: bool,
+}
+impl SequentialRoom {
+    fn enter(extra_object: bool) -> Self {
+        Self {
+            used: room_used(),
+            extra_object: ACCOUNT
+                .with(|a| std::mem::replace(&mut a.borrow_mut().extra_object, extra_object)),
+        }
+    }
+}
+impl Drop for SequentialRoom {
+    fn drop(&mut self) {
+        ACCOUNT.with(|a| {
+            let mut account = a.borrow_mut();
+            account.extra_object = self.extra_object;
+            LIMITS.with(|l| {
+                if l.cut.get().is_none() {
+                    l.room.set(
+                        account
+                            .limits
+                            .result_size_for(account.bytes)
+                            .saturating_sub(self.used),
+                    );
+                }
+            });
+        });
+    }
+}
 struct TemporaryResults;
 impl Drop for TemporaryResults {
     fn drop(&mut self) {
@@ -2074,6 +2264,7 @@ fn builder_fits(minimum: usize) -> bool {
 
 struct Account {
     limits: Limits,
+    supplied_floor: usize,
     failure: Option<EvaluationFailure>,
     evaluations: usize,
     call_context: bool,
@@ -2098,6 +2289,7 @@ impl Account {
     fn new(limits: Limits, bytes: usize) -> Self {
         Self {
             limits,
+            supplied_floor: bytes,
             failure: None,
             evaluations: 0,
             call_context: true,
@@ -2458,8 +2650,12 @@ fn measure_schema(schema: &serde_json::Value) -> usize {
     bytes
 }
 
+#[inline(always)]
 fn measure_data(value: &Value, input: bool) -> usize {
-    crate::stack::grow_stack!(measure_data(value, input), budget else 0);
+    measure_data_with_memo::<true>(value, input)
+}
+fn measure_data_with_memo<const MEMO: bool>(value: &Value, input: bool) -> usize {
+    crate::stack::grow_stack!(measure_data_with_memo::<MEMO>(value, input), budget else 0);
     let Some(_level) = Level::enter() else {
         return 0;
     };
@@ -2469,7 +2665,7 @@ fn measure_data(value: &Value, input: bool) -> usize {
     {
         return 0;
     }
-    let memo = !input && ACCOUNT.with(|a| !a.borrow().temporary_room.is_empty());
+    let memo = MEMO && !input && ACCOUNT.with(|a| !a.borrow().temporary_room.is_empty());
     // A foreign re-entry can lower max_depth without changing local depth.
     // Reuse only with at least the remaining depth of a successful walk.
     let depth = LIMITS.with(|l| l.max_depth.get().saturating_sub(l.depth.get()));
@@ -2536,7 +2732,7 @@ fn measure_data(value: &Value, input: bool) -> usize {
         data_bytes(1, input);
         bytes = bytes
             .saturating_add(n)
-            .saturating_add(measure_data(value, input));
+            .saturating_add(measure_data_with_memo::<MEMO>(value, input));
     };
     match value {
         Value::Arr(items) => {
@@ -2544,7 +2740,7 @@ fn measure_data(value: &Value, input: bool) -> usize {
                 if LIMITS.with(|l| l.cut.get().is_some()) {
                     break;
                 }
-                bytes = bytes.saturating_add(measure_data(item, input));
+                bytes = bytes.saturating_add(measure_data_with_memo::<MEMO>(item, input));
             }
         }
         Value::Obj(o) => {

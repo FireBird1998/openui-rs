@@ -1,0 +1,3 @@
+$n=0
+$bad={toString:null,valueOf:null}
+root=Box(Action([@Set($n,1),@OpenUrl("before"),@Set($n,""+$bad),@ToAssistant("never"),@Set($n,99)]))

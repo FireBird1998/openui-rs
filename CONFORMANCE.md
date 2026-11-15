@@ -23,7 +23,7 @@ Reference: `@openuidev/lang-core 1.1.0` at commit `47b9cae0d3b26a8c9d7514d5887a6
 | Element trees back to source | 826 | 826 | 1 fuzz, 71 hand-written, 723 parse corpus root, 31 reference-test |
 | Enriched errors | 419 | 419 | every parse corpus case with errors |
 
-Quirks recorded: 29.
+Quirks recorded: 31.
 Not matched yet, listed in `conformance/pending/`: none.
 <!-- /counts -->
 
@@ -47,17 +47,18 @@ and aliases within each parse result. Persistence timing remains an explicit
 assumption; the renderer is not vendored.
 
 <!-- runtime-counts -->
-Runtime trees: 1036 total, 1027 matching, 0 pending, 9 divergences.
+Runtime trees: 1071 total, 1062 matching, 0 pending, 9 divergences.
 
 Runtime pending: #34=0, #35=0, #36=0, #38=0.
 
-Runtime coverage: 422 dynamic, 166 reading state, 485 referencing statements, 76 with runtime errors; 1464426 streaming steps per scenario, 148753 differing observations, 15404 differing trees.
+Runtime coverage: 452 dynamic, 175 reading state, 501 referencing statements, 78 with runtime errors; 1465336 streaming steps per scenario, 149346 differing observations, 15420 differing trees.
 
 Original runtime coverage: 859 cases, 261 dynamic, 61 reading state, 426 referencing statements, 16 with runtime errors; recorded: 152 cases, 2 declaring state.
 
 Runtime pending partial comparison: 0 one-shot observations, 0 props.
 
-Runtime field writes: 47 cases, 2214 steps across both scenarios; nine values per marker per scenario.
+Runtime field writes: 49 cases, 2250 steps across both scenarios; nine values per marker per scenario.
+Runtime action runs: 178 cases (171 matching, 7 divergences), 349 scenarios, 5952 steps (5938 matching, 14 pinned), 1400 retained plans.
 <!-- /runtime-counts -->
 
 `reference/runtime.ts` runs the pinned parser, store and tree evaluator, with
@@ -157,7 +158,7 @@ root expressions and references, with caller context pinned by quirk 25. Coverag
 scenarios and all prefixes; state reads count actual runtime `getState` calls,
 and statement references are measured on the preprocessed source AST with
 `Each` locals excluded. The original 859 cases have 261 cases with dynamic
-props, 61 reading state, 426 referencing statements and 11 with runtime errors.
+props, 61 reading state, 426 referencing statements and 16 with runtime errors.
 Only 2 of the 152 recorded cases declare state. That measurement is why the
 runtime additions are needed.
 
@@ -211,13 +212,199 @@ observations still compare snapshots, existing-root metadata, and every root
 or nested element prop whose raw value contains no deferred feature. Completed
 #34 and #35 features no longer mask those props. The runtime receives the parsed
 library so declared functions and actions retain their existing feature
-classification; this harness supplies no function implementations. The counts
+classification; the harness supplies the shared synchronous function recipes. The counts
 above include rooted observations even when all their props are deferred.
 Partial prop comparison is one-shot: streaming expected results are hashes;
 a second per-step projection oracle would add substantial fixture size and
 regeneration work. Whole-result streaming comparisons remain unchanged. Filtered
 runs also reject a selected pending case that now matches.
 Counts and coverage above are checked by `tree_conformance.rs`.
+
+The core adds only `ExpressionEvaluator::check_result_value(&Value) -> bool`
+for runtime callers. It measures a raw value under the owning session, retains
+work/depth and sticky cuts, measures full JSON including aliases, and releases
+successful result room. Sequential reset writes need this without accumulating
+room for discarded write buffers. Existing `reserve_value` keeps its behavior;
+no parser-path function changes. `borrowed_output_checks` pins exact room,
+repeated scalar work, aliased-output size, depth and captured-evaluator ownership.
+
+Renderer action lookups: 84 observations.
+
+`reference/renderer-action-lookups.ts` probes missing/null/false/string/array/object
+action definitions against missing, falsy, inherited, array and non-coercible
+legacy type keys, with string/array/object params, paired and lone surrogates. The public runner compares
+every handler argument and failure flag. `renderer-form-prototypes.ts` pins
+null-prototype form reads and ordinary-object spread after a field write in
+`form-prototypes.json`, through the public form API. Regenerate these with
+`bun --no-install renderer-form-prototypes.ts` and
+`bun --no-install renderer-action-lookups.ts` from `reference/`.
+
+The renderer-only action seam is transcribed in `reference/renderer-actions.ts`
+from the MIT `@openuidev/react-lang` 1.1.0 built `dist/index.mjs`,
+`src/hooks/useOpenUIState.ts`: lines 570–574 (unwrapping), 716–824 (fields,
+payload and runner), and line 241 in the default-value hook (237–252). React
+callback wrappers and dependency lists are removed; the runner body retains
+the original switch, evaluation calls and mutation await/early return. This is
+the one runtime reference seam that transcribes upstream rather than executing
+it unchanged. Parsing, evaluation, validation, action builtins, ownership
+filtering, `resolveStateField`, the store and query manager remain lang-core code.
+The schema's original action definitions still decide legacy shadowing.
+
+`reference/action-scenarios.ts` finds every plan in the evaluated tree and
+snapshot, including nested props and lists, and retains the actual objects.
+Mulberry32 seeded by FNV-1a of `<case>:actions` shuffles the run order and
+interleaves marker writes, form writes, redraws, retaining a plan through a
+binding, a later program, and disposal. Explicit corpus interactions cover
+legacy objects, no action, defaults during/after streaming, and undefined form
+values. Every discovered plan must be run. Observations contain ordered events,
+failure status, the snapshot, pristine names, the next tree/errors, draw call
+counts and action call counts. Repeated object/array observation fields are
+interned in each compact `.actions.json` value table; Rust expands them and
+compares their complete serialized bytes. No observation is compared only by
+its fingerprint. The replay and reference coverage totals enforce the report.
+
+The original corpus supplies 127 action cases; the added cases exercise fresh
+state reads, loop capture across every JSON kind and nested loops, shadowing,
+AST-shaped calls in state/query data, each step alone/in sequence, all query
+reference situations, failures, forged custom steps and forms. The action
+reference lazily registers its no-provider query manager only when a set value
+or mutation argument expression is first evaluated. Defaults are evaluated at
+most once per run, stay frozen across suspension, and the manager is disposed
+when the run ends. Event-only plans, resets, legacy objects and no-action
+clicks do not evaluate defaults. A later draw registers defaults independently.
+This differs from React, which evaluates query defaults in an effect when its
+snapshot changes. Golden function call counts describe this harness policy,
+not React's effect scheduling or query/mutation result transitions.
+
+Run steps are host handoffs: `{type:"run",params:{statementId,refType},
+humanFriendlyMessage:"",formState,formName}`; mutations additionally put their
+actual evaluated `args` in params (undefined args are omitted). `refType` is
+`mutation` only on an exact string match, otherwise `query`. A query invalidation
+continues immediately. A mutation suspends after its event, including when it
+is the last step. The reference holds a promise in `fireMutation` and scripts
+true/false outcomes through the transcription's actual await. Generated runs
+receive explicit success resumes; `runtime/mutation-outcomes` pins failure,
+mixed outcomes, two mutations, a last mutation, intervening field writes,
+program replacement and disposal. The refreshed-query scenarios replace query
+rows while suspended (0→200 and 2,000→2,100); subsequent sets read the new data.
+False ends the run without later effects.
+True resumes against current state and the caller's current program inputs.
+Native Rust continuations follow ADR 0004; stale/foreign/disposed/consumed
+continuations are refused without effects. The reference revokes its opaque
+session token on disposal and resolves the outstanding promise false to release
+it. No tool is executed. Handler return values are not awaited.
+
+Input measurement is bounded caller setup, never charged to a run's evaluation
+work. Runs, resumes and drawing use `PreparedReferenceValues::new`/`with_limits`
+for references: one walk, one shared seen-set and one work budget, identical
+ceilings and per-entry sizes/refusals. The reference floor is drawing's total
+for that supply; refused entries earn no credit and cut only on read. There is
+no clamp-then-lazy path or fresh per-entry budget. Unread large/deep references
+cannot refuse an unrelated run/resume. Program and retained starting
+action/message/form-name measurements still use the core measure; together
+with references they form one supply. The floor is the largest combined supply,
+not a sum across supplies. Only a raised floor increases the allowance; spent
+evaluation work stays spent and state reads retain normal credit.
+
+Borrowed/raw and shared/prepared inputs have identical events, state and failure
+points, including runs ending in a cut. Shared programs cache measurement and
+statement indexes for the current immutable allocation. A suspended run holds
+that Arc, so `Arc::make_mut` by the embedder clones the program. Borrowed programs,
+fresh equal programs and alternating Arcs pay bounded measurement per supply,
+outside evaluation work. Raw references are prepared once; prepared references
+take precedence without preparing unused raw values. Preparation retains the
+existing tree lookup representation and caches its measured input token without
+walking reference bodies again. PreparedReferenceValues, PreparedInput and Store
+remain Send + Sync.
+The reference supplies and prior measurement owners are never retained in the
+suspended run. Lazy computed defaults and the current shared-program cache are
+run state; neither grows with the number of resumes.
+
+Public regressions complete 1,000/5,000 distinct mutations with borrowed, reparsed,
+fresh shared and alternating shared programs; 5,000 outcomes with raw 3,000/30,000
+row supplies; and 200 mutations followed by 4,000 filters over 3,000 rows. Allocator
+checks bound retained memory for 5,000 freshly fetched equal supplies and separate
+O(number of supplies × program bytes) borrowed setup from O(steps) evaluation.
+Alternating/growing references cannot enlarge a write beyond a fresh run with the
+largest supply: the 5.8 MB write is refused at the same step. Shared/prepared
+forms only reduce setup cost. Per-write/event room is released with configured
+floor/amplification/hard ceilings enforced, and payload copying costs O(events ×
+state read). Reference preparation defaults to a 32,768-level depth bound and
+64,000,000 work/size ceilings. An entry over those bounds is recorded as refused,
+contributes no bytes, and cuts only a step/prop that reads it. Earlier entries
+and work spent preparing them stay accounted; later entries share the remaining
+budget. The reference-read grid compares strings from 1 KiB through 70 MiB and
+arrays through 10 million numbers, with unread 5 MiB or 40,000-level entries in
+either order, fresh/resumed and borrowed/shared/raw/prepared forms. Aliases of a
+million-number array after an oversized/deep entry have allocation bounds that
+exclude repeated walks. Existing unread-data and default-limit form-cut tests
+remain enforced. An over-depth/over-work core program or action measurement
+contributes zero bytes instead of a full ceiling; setup continues. A deep kept
+value then depth-cuts at its own step, retaining earlier effects. Successful
+program/action measurement retains size saturation and earlier byte counts.
+
+Undefined snapshot entries are omitted before copying or reserving their names.
+Cuts and refused writes stop later steps and retain completed effects. Missing/falsy
+valueAST, unknown and unowned custom steps skip. Expression scopes refresh
+lookups after writes without replenishing work; captured expressions retain
+the input credit supplied by their plan. Mutation argument ASTs stay borrowed
+until evaluation. The embedder ignores clicks while a bundled response is
+blocked (`bundleBlocked`); the runtime has no bundle lifecycle or implicit redraw.
+
+Forms share the Store. No/empty form name stores a top-level wrapped field;
+named forms contain fields as `{value,componentType}`. Reads unwrap `value`;
+state-marker reads/writes use state directly and create no form entry. A valid
+object-valued named form produces `{[formName]:rawFormObject}`; absent, scalar,
+array or unnamed forms produce the full snapshot. Wrappers are retained in
+payloads, and undefined keys are omitted. Each event captures the state at that
+step. `componentType` is metadata. The save flag requests the renderer's extra
+save callback independently of a normal store change; Rust returns that flag.
+Defaults are component-side effects: while streaming they do nothing; after
+settling only an undefined existing value permits a defined default, normally
+with save false. `initialize_field_default` implements this guard for unbound
+fields, including inherited functions; its ordinary save request is false. Null
+counts as an existing value. Private weak identities
+retain an undefined wrapper's missing JSON property in this Store; they carry
+no action authority, survive retained values/disposal, and cannot be recovered
+by JSON reconstruction. A reconstructed object without `value` is ordinary data.
+
+Seven tiny cases (`runtime/action-target-{state,query}-{boolean,missing,reset}`
+and `runtime/action-target-reset-mixed`)
+pin the string-key Store boundary, with both full outputs in
+`conformance/divergences/runtime-action-target-*-runs.json`. Only 14 observations
+differ. Each invalid row is followed by OpenUrl and then disposal; the original
+`runtime/action-data-state` and `runtime/action-data-query` cases now contain
+only ordinarily compared rows. Tests independently witness the invalid target
+and require each divergence to remain visible.
+Upstream accepts non-string/missing Map keys and continues. Rust evaluates the
+expression, refuses the target as `InvalidMarker`, and stops the plan. Thus
+`{steps:[{type:"set",valueAST:{k:"Num",v:1}},{type:"open_url",url:"after"}]}`
+emits `after` upstream and no event in Rust. This continuation difference is
+part of the pin, not just a difference in snapshot key representation.
+The mixed reset pin has targets `["$a",1,"$b"]`: upstream resets all targets,
+writes the key `"1"`, and emits `after`; Rust refuses the whole reset without
+changing any target or pristine flag. Every reset validates targets and admits
+all defaults before committing its writes. Earlier completed steps remain.
+
+Output-size refusal also stops the Rust plan where the renderer continues. With
+a 2 MiB `$s`, `[ToAssistant, oversized Set, Set, ToAssistant]` emits the first
+event, then cuts with no effect from the refused set or later steps. The renderer
+has no corresponding output-size bound and continues. The public regression
+`a_large_snapshot_emits_before_an_oversized_set_is_refused` enforces this limit
+boundary.
+The existing `function-state-value` representation boundary also applies when
+Reset reads an inherited native function from the plain defaults object.
+`renderer-reset-native-defaults.ts` and `runtime-reset-native-defaults.json`
+pin both complete outputs (regenerate with `bun --no-install
+renderer-reset-native-defaults.ts` from `reference/`): event/snapshot JSON agrees, but a later `!constructor`
+or `!toString` state read is false upstream and true after Value projects the
+function to undefined. The public-interface test compares both outputs and
+requires that narrow difference to remain visible. No native function value
+variant is introduced in this ticket.
+
+Session-owned custom authority and revocation on disposal follow ADR 0004;
+the reference applies lang-core `ownSteps` at execution and filters retained
+custom steps after its session generation changes.
 
 Regenerate from `reference/` with `bun --no-install runtime.ts golden`. The general regeneration script also
 runs this harness and requires cached dependencies; it never installs packages.

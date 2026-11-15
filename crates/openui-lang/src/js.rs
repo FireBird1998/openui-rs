@@ -26,6 +26,29 @@ pub(crate) fn lone_surrogate_unit(c: char) -> Option<u16> {
     (code >= LONE_SURROGATE_BASE).then(|| (code - LONE_SURROGATE_BASE + 0xD800) as u16)
 }
 
+/// Iterate JavaScript UTF-16 units without allocating, including lone
+/// surrogates in the core's public string representation. Unlike Rust's
+/// `encode_utf16`, the reserved surrogate scalars each produce one unit.
+pub fn utf16_units(text: &str) -> impl Iterator<Item = u16> + '_ {
+    text.chars().flat_map(|c| {
+        let (units, len) = if let Some(unit) = lone_surrogate_unit(c) {
+            ([unit, 0], 1)
+        } else {
+            let mut units = [0u16; 2];
+            let len = c.encode_utf16(&mut units).len();
+            (units, len)
+        };
+        units.into_iter().take(len)
+    })
+}
+
+/// Encode one JavaScript UTF-16 unit in the core's Rust string representation.
+pub fn utf16_unit_string(unit: u16) -> String {
+    char::from_u32(u32::from(unit))
+        .unwrap_or_else(|| lone_surrogate(unit))
+        .to_string()
+}
+
 /// The characters `String.prototype.trim` removes (WhiteSpace + LineTerminator).
 /// Differs from `char::is_whitespace`: includes U+FEFF, excludes U+0085.
 pub(crate) fn is_js_whitespace(c: char) -> bool {
@@ -153,10 +176,9 @@ pub(crate) fn write_json_string(out: &mut String, s: &str) {
     out.push('"');
 }
 
-/// How many bytes [`write_json_string`] writes for `s`, quotes left out: what
-/// the result-size limit charges for a string, since escaping a control
-/// character takes up to six bytes for one.
-pub(crate) fn json_string_len(s: &str) -> usize {
+/// UTF-8 bytes in JSON.stringify's escaped string body, without quotes.
+/// A control character or lone surrogate can require six bytes.
+pub fn json_string_len(s: &str) -> usize {
     s.chars()
         .map(|c| match c {
             '"' | '\\' | '\u{08}' | '\u{0C}' | '\n' | '\r' | '\t' => 2,

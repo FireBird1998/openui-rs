@@ -12,6 +12,16 @@ use std::{
 pub(crate) mod actions;
 mod bindings;
 mod fields;
+mod form;
+mod runner;
+pub use form::{
+    FieldWrite, get_field_value, initialize_field_default, initialize_field_default_with_limits,
+    set_field_value, set_field_value_with_limits,
+};
+pub use runner::{
+    ActionContinuation, ActionFailure, ActionResumeError, ActionRun, HostEvent, resume_action,
+    run_action, run_action_with_limits,
+};
 mod functions;
 pub use bindings::{BindingProps, BindingWriteError, write_binding, write_binding_with_limits};
 pub use functions::{FunctionResult, LibraryFunctions};
@@ -46,6 +56,7 @@ pub struct TreeInput<'a> {
     pub library: Option<&'a Library>,
     /// A set measured once by the embedder. Takes precedence over `reference_values`.
     pub prepared_reference_values: Option<&'a PreparedReferenceValues<'a>>,
+    shared_result: Option<&'a Arc<ParseResult>>,
 }
 impl<'a> TreeInput<'a> {
     /// Evaluate this parse result; future options have compatible defaults.
@@ -58,7 +69,19 @@ impl<'a> TreeInput<'a> {
             reference_values: None,
             library: None,
             prepared_reference_values: None,
+            shared_result: None,
         }
+    }
+    /// Retain an immutable shared program identity for action continuations.
+    /// The runner caches its bounded measurement and indexes once per run.
+    /// A suspended run holds the Arc, so Arc::make_mut by the embedder clones
+    /// the program. Only the current cached program is retained. Ordinary
+    /// borrowed results are remeasured on each supply, outside evaluation work;
+    /// both forms have identical credit, effects and cut points.
+    pub fn from_shared_result(result: &'a Arc<ParseResult>) -> Self {
+        let mut input = Self::new(result.as_ref());
+        input.shared_result = Some(result);
+        input
     }
     /// Supply synchronous library implementations and original definitions.
     pub fn with_functions(mut self, functions: &'a LibraryFunctions<'a>) -> Self {
@@ -287,6 +310,32 @@ pub fn evaluate_tree_with_limits(
         depth_limited: flags.depth_limited,
     }
 }
+#[derive(Clone, Copy)]
+enum ReferenceLocation {
+    Query(usize),
+    Mutation,
+}
+type ReferenceLocations = std::rc::Rc<std::collections::HashMap<String, ReferenceLocation>>;
+#[derive(Clone)]
+struct ReferenceIndex<'a> {
+    program: &'a ParseResult,
+    entries: ReferenceLocations,
+}
+impl<'a> ReferenceIndex<'a> {
+    fn get(&self, name: &str) -> Option<Option<(bool, Option<&'a Ast>)>> {
+        match self.entries.get(name)? {
+            ReferenceLocation::Mutation => Some(None),
+            ReferenceLocation::Query(i) => self
+                .program
+                .query_statements
+                .get(*i)
+                .map(|q| Some((q.complete, q.defaults.as_ref()))),
+        }
+    }
+    fn contains_key(&self, name: &str) -> bool {
+        self.entries.contains_key(name)
+    }
+}
 struct TreeScope<'a> {
     registering: Cell<bool>,
     defaults: RefCell<BTreeMap<&'a str, Option<Value>>>,
@@ -299,7 +348,8 @@ struct TreeScope<'a> {
     // each of its output positions must reserve independently. Retaining the
     // Arc also prevents a discarded marker's address being reused here.
     paid_markers: RefCell<std::collections::HashMap<usize, Arc<JsObject<Value>>>>,
-    references: BTreeMap<&'a str, Option<(bool, Option<&'a Ast>)>>,
+    references: ReferenceIndex<'a>,
+    run_defaults: Option<&'a std::collections::HashMap<String, crate::StateValue>>,
     reference_values: Option<&'a PreparedReferenceValues<'a>>,
     actions: Option<&'a openui_lang::JsonValue>,
     functions: Option<&'a LibraryFunctions<'a>>,
@@ -314,6 +364,33 @@ impl<'a> TreeScope<'a> {
         store: &'a Store,
         supplied: Option<&'a PreparedReferenceValues<'a>>,
     ) -> Self {
+        let mut entries = std::collections::HashMap::new();
+        for (i, q) in input.result.query_statements.iter().enumerate() {
+            entries
+                .entry(q.statement_id.clone())
+                .or_insert(ReferenceLocation::Query(i));
+        }
+        for m in &input.result.mutation_statements {
+            entries
+                .entry(m.statement_id.clone())
+                .or_insert(ReferenceLocation::Mutation);
+        }
+        Self::with_references(
+            input,
+            store,
+            supplied,
+            ReferenceIndex {
+                program: input.result,
+                entries: std::rc::Rc::new(entries),
+            },
+        )
+    }
+    fn with_references(
+        input: &TreeInput<'a>,
+        store: &'a Store,
+        supplied: Option<&'a PreparedReferenceValues<'a>>,
+        references: ReferenceIndex<'a>,
+    ) -> Self {
         Self {
             registering: Cell::new(true),
             defaults: RefCell::new(BTreeMap::new()),
@@ -322,18 +399,8 @@ impl<'a> TreeScope<'a> {
             inline: Cell::new(false),
             report_bytes: Cell::new(None),
             paid_markers: RefCell::new(std::collections::HashMap::new()),
-            references: {
-                let mut references = BTreeMap::new();
-                for q in &input.result.query_statements {
-                    references
-                        .entry(q.statement_id.as_str())
-                        .or_insert(Some((q.complete, q.defaults.as_ref())));
-                }
-                for m in &input.result.mutation_statements {
-                    references.entry(m.statement_id.as_str()).or_insert(None);
-                }
-                references
-            },
+            references,
+            run_defaults: None,
             reference_values: supplied,
             actions: input.actions,
             functions: input.functions,
@@ -414,7 +481,7 @@ impl EvaluationScope for TreeScope<'_> {
         bindings::project_marker(value, state)
     }
     fn state(&self, name: &str, _: &ExpressionEvaluator<'_>) -> Option<Value> {
-        self.store.get(name)
+        form::unwrap_field(self.store, self.store.get(name))
     }
     fn reference(&self, name: &str, eval: &ExpressionEvaluator<'_>) -> Option<Value> {
         let Some(default) = self.references.get(name) else {
@@ -431,6 +498,9 @@ impl EvaluationScope for TreeScope<'_> {
             }
         }
         if !self.registering.get() && default.is_some() {
+            if let Some(defaults) = self.run_defaults {
+                return defaults.get(name).cloned().unwrap_or(Some(Value::Null));
+            }
             return self
                 .defaults
                 .borrow()

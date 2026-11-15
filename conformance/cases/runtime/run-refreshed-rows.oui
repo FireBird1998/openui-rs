@@ -1,0 +1,4 @@
+$rows=[]
+q=Query("t",{},{rows:[]})
+m=Mutation("t",{})
+root=Box(Action([@Run(m),@Set($rows,q.rows)]))

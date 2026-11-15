@@ -1,9 +1,12 @@
-// Runs the pinned parser, store and tree evaluator; no runtime transcription.
+// Runs the pinned parser, store and tree evaluator. The renderer-only runner
+// is explicitly transcribed in renderer-actions.ts.
 // From reference/: bun --no-install runtime.ts golden
 // Diagnose: bun --no-install runtime.ts show <case> <scenario> <chunking> <step>
 import { readFileSync, writeFileSync, mkdirSync, existsSync, rmSync } from 'fs';
 import { join, dirname } from 'path';
 import {runtimeFunctions} from './function-implementations';
+import {rendererState,unwrapFieldValue,persistDefaultValue} from './renderer-actions';
+import {actionScenarios} from './action-scenarios';
 import { plugin } from 'bun';
 // Same read-only export hook as run.ts; vendored parser stays untouched.
 plugin({name:'runtime-parser-stages',setup(build){build.onLoad({filter:/lang-core\/src\/parser\/parser\.ts$/},({path})=>({contents:readFileSync(path,'utf8')+'\nexport { preprocess };\n',loader:'ts'}));}});
@@ -112,7 +115,7 @@ function observe(c,result,store,saved,coverage,interaction) {
   manager.registerMutations((result.mutationStatements??[]).map(m=>({statementId:m.statementId,toolName:m.statementId})));
   const definitions=rawSchemas.get(c.schema).functions;
   const callCounts=definitions?Object.fromEntries(Object.keys(definitions).map(n=>[n,0])):undefined;
-  const ctx={functions:runtimeFunctions(definitions,callCounts),actions:rawSchemas.get(c.schema).actions,getState:n=>{if(coverage)coverage.state=true;return store.get(n);},resolveRef:n=>{
+  const ctx={functions:runtimeFunctions(definitions,callCounts),actions:rawSchemas.get(c.schema).actions,getState:n=>{if(coverage)coverage.state=true;return unwrapFieldValue(store.get(n));},resolveRef:n=>{
     const q=result.queryStatements?.find(s=>s.statementId===n);
     const m=result.mutationStatements?.some(s=>s.statementId===n);
     if((q||m)&&Object.prototype.hasOwnProperty.call(c.referenceValues??{},n))return c.referenceValues[n];
@@ -129,6 +132,7 @@ function observe(c,result,store,saved,coverage,interaction) {
       if(interaction.writeOnly)return callCounts?JSON.stringify({callCounts}):undefined;
     }
     root=evaluateRoot(result,{ctx,library:runtimeLibrary(c),store,errors});
+    if(interaction?.capture)interaction.capture.root=root;
   } catch(e) { thrown={name:e instanceof Error?e.name:'Error',message:e instanceof Error?e.message:String(e)}; }
   finally {manager.dispose();}
   if(coverage) {
@@ -196,9 +200,21 @@ function run(c,k,coverage) {
   }
   return {...p,defaults:results[0],persisted:results[1],saved};
 }
+function actionCounts(){return {cases:0,scenarios:0,steps:0,plans:0,originalCases:0,kinds:Object.create(null),events:Object.create(null)};}
+function countActions(c,actions,counts){
+ if(!actions)return;
+ counts.cases++;if(!c.name.startsWith('runtime/'))counts.originalCases++;
+ for(const name of ['defaults','persisted'])if(actions[name]){
+  counts.scenarios++;counts.plans+=actions[name].handles.length;counts.steps+=actions[name].steps.length;
+  for(const {op,observation} of actions[name].steps){counts.kinds[op.kind]=(counts.kinds[op.kind]??0)+1;
+   const events=actions.values[observation.events.$value];for(const event of events)counts.events[event.type]=(counts.events[event.type]??0)+1;
+  }
+ }
+}
 function write(name,value){const p=join(G,name);mkdirSync(dirname(p),{recursive:true});writeFileSync(p,JSON.stringify(value)+'\n');}
 const [cmd,...args]=process.argv.slice(2);
 if(cmd==='golden') {
+  const actionStats=actionCounts();
   const stats={total:cases.length,dynamic:0,state:0,references:0,errors:0,recorded:0,recordedState:0,steps:0,scenarioDifferences:0,treeDifferences:0,features:{},original:{dynamic:0,state:0,references:0,errors:0}};
   const evidence={};
   for(const c of cases.filter(c=>!process.env.RUNTIME_CASE||c.name.includes(process.env.RUNTIME_CASE))) {
@@ -222,6 +238,10 @@ if(cmd==='golden') {
     const fieldWrites={defaults:writes(c,{}),persisted:writes(c,one.saved)};
     if(fieldWrites.defaults.length||fieldWrites.persisted.length)write(c.name+'.writes.json',fieldWrites);
     else rmSync(join(G,c.name+'.writes.json'),{force:true});
+    const actions=await actionScenarios(c,one.saved,{observe,parse,library,input,generator,fp,rawSchemas,runtimeLibrary,createStore,createQueryManager,evaluate,evaluateRoot,resolveStateField,runtimeFunctions,rendererState,unwrapFieldValue,persistDefaultValue});
+    countActions(c,actions,actionStats);
+    if(actions)write(c.name+'.actions.json',actions);
+    else rmSync(join(G,c.name+'.actions.json'),{force:true});
     const streams={};
     for(const k of [...(c.chunkings??chunkings),...(c.recorded?['recorded']:[])]) {
       const r=run(c,k,coverage); stats.steps+=r.defaults.length;
@@ -241,8 +261,20 @@ if(cmd==='golden') {
   const bindingPairs=Object.fromEntries(Object.keys(schemas).map(schema=>[schema,Object.entries(runtimeLibrary({schema}).components).flatMap(([name,d])=>Object.entries(d.props.shape).filter(([k,v])=>isReactiveSchema(v)).map(([key])=>[name,key]))]));
   write('bindings.json',bindingPairs);
   write('binding-undecided-spec.json',{spec:diagnosticLibrary.toSpec(),bindings:Object.entries(diagnosticProps).flatMap(([name,props])=>Object.entries(props.shape).filter(([,schema])=>isReactiveSchema(schema)).map(([prop])=>[name,prop]))});
-  if(!process.env.RUNTIME_CASE){write('coverage.json',stats);write('evidence.json',evidence);}console.log(JSON.stringify(stats));
+  if(!process.env.RUNTIME_CASE){write('coverage.json',stats);write('evidence.json',evidence);write('action-coverage.json',actionStats);}console.log(JSON.stringify(stats));
+} else if(cmd==='actions') {
+  const counts=actionCounts();
+  for(const c of cases.filter(c=>!process.env.RUNTIME_CASE||c.name.includes(process.env.RUNTIME_CASE))) {
+    const one=JSON.parse(readFileSync(join(G,c.name+'.oneshot.json'),'utf8'));
+    // observe caches the raw schema, just as full regeneration does.
+    observe(c,parse(input(c),library(c),c.root),createStore(),{});
+    const actions=await actionScenarios(c,one.saved,{observe,parse,library,input,generator,fp,rawSchemas,runtimeLibrary,createStore,createQueryManager,evaluate,evaluateRoot,resolveStateField,runtimeFunctions,rendererState,unwrapFieldValue,persistDefaultValue});
+    countActions(c,actions,counts);
+    if(actions)write(c.name+'.actions.json',actions); else rmSync(join(G,c.name+'.actions.json'),{force:true});
+  }
+  if(!process.env.RUNTIME_CASE)write('action-coverage.json',counts);
+  console.log(JSON.stringify(counts));
 } else if(cmd==='show') {
   const [name,scenario,k,step]=args,c=cases.find(c=>c.name===name);if(!c)throw Error(name);
   process.stdout.write(run(c,k)[scenario][Number(step)-1]);
-} else throw Error('golden | show <case> <defaults|persisted> <chunking> <step>');
+} else throw Error('golden | actions | show <case> <defaults|persisted> <chunking> <step>');

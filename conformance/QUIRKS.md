@@ -637,3 +637,33 @@ because an argument is absent: default insertion is driven by required keys,
 and a parameter schema lacking `type: "object"` skips object validation, as in
 quirk 29. Undefined without a return schema remains undefined (an omitted prop);
 with a truthy return schema it becomes null.
+
+## 33. Form payloads retain wrappers and an invalid named form falls back to all state
+
+- **Found:** 2026-11-15, implementing the renderer action runner, against React Lang 1.1.0.
+- **Pinned by:** `runtime/run-forms` interactions and `form_fields_keep_wrappers_save_requests_and_bound_state_separate`.
+- **Status:** reproduced deliberately; nothing filed upstream.
+
+`getFieldValue` unwraps `{value,componentType}`, but `getFormPayload` does not.
+A named object-valued form sends `{[formName]:rawFormData}`, including those
+wrappers. A missing/scalar/array form sends the entire snapshot instead, and
+an empty form name behaves as unnamed for storage while remaining an empty
+`formName` in the event. The save flag only suppresses the extra explicit
+save callback: a changed store still notifies its subscribers. A settled
+default does not overwrite null, and inherited fields such as `constructor`
+are present even though they are not JSON values.
+
+## 34. Action evaluation failures abort the remaining plan; skipped steps do not
+
+- **Found:** 2026-11-15, implementing the renderer action runner, against React Lang 1.1.0.
+- **Pinned by:** `runtime/run-failure`, `runtime/run-malformed`, and `runtime/run-functions` interactions.
+- **Status:** reproduced deliberately; nothing filed upstream.
+
+The async runner has no per-step catch. A thrown expression keeps earlier
+writes/events and prevents later steps from running. A missing/falsy
+`valueAST`, unknown step type, or unowned custom step skips and continues.
+A library implementation throwing is different: lang-core catches it and
+returns null, so the set writes null and subsequent steps run. The renderer's
+click evaluation context has no error reporter, so that swallowed library
+error does not add a draw diagnostic. Host handler promises are not awaited;
+mutation promises are awaited in sequence and a false result stops the plan.

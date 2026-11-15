@@ -1,0 +1,3 @@
+$a=1
+$b=2
+root=Box({steps:[{type:"reset",targets:["$a",1,"$b"]},{type:"open_url",url:"after"}]})

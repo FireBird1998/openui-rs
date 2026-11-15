@@ -1,0 +1,4 @@
+$n=0
+q=Query("q",{},7)
+m=Mutation("m",{n:@Identity($n)})
+root=Box(Action([@Run(q),@Set($n,q),@Run(m),@ToAssistant("done")]))

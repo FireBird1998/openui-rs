@@ -1,0 +1,2 @@
+$n=0
+root=Box(@Each([[1,2],[3]],r,Box(@Each(r,i,Box(@Set($n,i+@Count(r)))))))

@@ -446,9 +446,38 @@ pub fn write_binding_with_limits(
         &mut Default::default(),
         &mut limits.work_for(usize::MAX),
     )
-    .map_err(|depth| BindingWriteError::Cut(flags(!depth, depth)))?;
-    let tree_bytes = input::input_size(&input, limits)
-        .map_err(|depth| BindingWriteError::Cut(flags(!depth, depth)))?;
+    .map_err(runner::sizing_cut)?;
+    let evaluated = evaluate_kept(input, store, expr, value, marker_bytes, limits)?;
+    store
+        .set(target, evaluated)
+        .map_err(BindingWriteError::Store)
+}
+
+#[derive(Clone, Copy)]
+pub(super) enum KeptExpression<'a> {
+    Ast(&'a Ast),
+    Value(&'a Value),
+}
+impl<'a> From<&'a Ast> for KeptExpression<'a> {
+    fn from(value: &'a Ast) -> Self {
+        Self::Ast(value)
+    }
+}
+impl<'a> From<&'a Value> for KeptExpression<'a> {
+    fn from(value: &'a Value) -> Self {
+        Self::Value(value)
+    }
+}
+// Binding writes always have a value overlay and a measured marker.
+fn evaluate_kept(
+    input: TreeInput<'_>,
+    store: &Store,
+    expr: &Value,
+    value: Value,
+    marker_bytes: usize,
+    limits: Limits,
+) -> Result<crate::StateValue, BindingWriteError> {
+    let tree_bytes = input::input_size(&input, limits).map_err(runner::sizing_cut)?;
     let measured = if input.prepared_reference_values.is_none() {
         input.reference_values.map(PreparedReferenceValues::new)
     } else {
@@ -532,8 +561,8 @@ pub fn write_binding_with_limits(
         let evaluated = session.with_evaluator(|eval| {
             eval.without_extra(|| scope.tree.initialize_queries(input.result, eval));
             eval.with_call_context(false, || match expr {
-                Value::Ast(a) => eval.evaluate_result(a),
-                _ => eval.evaluate_value(expr),
+                Value::Ast(ast) => eval.evaluate_result(ast),
+                value => eval.evaluate_value(value),
             })
         });
         match evaluated {
@@ -542,22 +571,15 @@ pub fn write_binding_with_limits(
         }
     };
     if evaluated.size_limited || evaluated.depth_limited {
-        return Err(BindingWriteError::Cut(flags(
-            evaluated.size_limited,
-            evaluated.depth_limited,
-        )));
+        return Err({
+            let mut flags = crate::EvaluationFlags::default();
+            flags.size_limited = evaluated.size_limited;
+            flags.depth_limited = evaluated.depth_limited;
+            BindingWriteError::Cut(flags)
+        });
     }
     if let Some(failure) = evaluated.failure {
         return Err(BindingWriteError::Evaluation(failure));
     }
-    store
-        .set(target, evaluated.value)
-        .map_err(BindingWriteError::Store)
-}
-
-fn flags(size: bool, depth: bool) -> crate::EvaluationFlags {
-    let mut flags = crate::EvaluationFlags::default();
-    flags.size_limited = size;
-    flags.depth_limited = depth;
-    flags
+    Ok(evaluated.value)
 }

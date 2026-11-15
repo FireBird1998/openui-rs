@@ -66,7 +66,9 @@ pub struct InitializationResult {
 /// too: `set_pristine(name, None)` can add an absent name without changing the
 /// snapshot. `with_limits` retains configuration for that work.
 pub struct Store {
+    pub(crate) action_session: Arc<()>,
     pub(crate) actions: crate::tree::actions::Provenance,
+    pub(crate) undefined_fields: crate::tree::actions::Provenance,
     snapshot: StoreSnapshot,
     pristine: HashSet<String>,
     version: u64,
@@ -86,7 +88,9 @@ impl Store {
     /// An empty store retaining these limits for state admission (#39).
     pub fn with_limits(limits: Limits) -> Self {
         Self {
+            action_session: Arc::new(()),
             actions: Default::default(),
+            undefined_fields: Default::default(),
             snapshot: Arc::new(JsObject::new()),
             pristine: HashSet::new(),
             version: 0,
@@ -119,6 +123,33 @@ impl Store {
     pub fn set_pristine(&mut self, name: &str, value: StateValue) -> Result<bool, StoreError> {
         self.write(name, value, true)
     }
+    fn would_change(&self, name: &str, value: Option<&Value>) -> bool {
+        let existing = self.snapshot.get(name).and_then(Option::as_ref);
+        let undefined_shape_changed = existing.is_some_and(|v| self.undefined_fields.owns(v))
+            != value.is_some_and(|v| self.undefined_fields.owns(v));
+        undefined_shape_changed || (!same(existing, value) && !shallow_equal(existing, value))
+    }
+    // A reset is one atomic step. Preflight the only possible Store refusal;
+    // duplicate targets have the same declared default and change at most once.
+    pub(crate) fn reset_batch(
+        &mut self,
+        writes: Vec<(String, StateValue)>,
+    ) -> Result<(), StoreError> {
+        let mut seen = HashSet::new();
+        let mut changes = 0u64;
+        for (name, value) in &writes {
+            if seen.insert(name.as_str()) && self.would_change(name, value.as_ref()) {
+                changes = changes.checked_add(1).ok_or(StoreError::VersionExhausted)?;
+            }
+        }
+        self.version
+            .checked_add(changes)
+            .ok_or(StoreError::VersionExhausted)?;
+        for (name, value) in writes {
+            self.write(&name, value, true)?;
+        }
+        Ok(())
+    }
     fn mark_pristine(&mut self, name: &str) {
         if !self.pristine.contains(name) {
             self.pristine.insert(name.to_owned());
@@ -133,8 +164,7 @@ impl Store {
         }
     }
     fn write(&mut self, name: &str, value: StateValue, pristine: bool) -> Result<bool, StoreError> {
-        let existing = self.snapshot.get(name).and_then(Option::as_ref);
-        let changed = !same(existing, value.as_ref()) && !shallow_equal(existing, value.as_ref());
+        let changed = self.would_change(name, value.as_ref());
         let version = if changed {
             self.next_version()?
         } else {
@@ -256,6 +286,7 @@ impl Store {
     /// at version exhaustion it leaves the version at `u64::MAX`.
     pub fn dispose(&mut self) -> bool {
         self.actions.clear();
+        self.action_session = Arc::new(());
         let changed = !self.snapshot.is_empty();
         if changed {
             self.version = self.version.saturating_add(1);

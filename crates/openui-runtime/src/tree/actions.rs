@@ -25,7 +25,7 @@ impl Provenance {
             *m = Marks::default();
         });
     }
-    fn mark(&self, step: &Arc<JsObject<Value>>) {
+    pub(super) fn mark(&self, step: &Arc<JsObject<Value>>) {
         self.with(|m| {
             if m.steps.len() >= m.sweep_at {
                 m.steps.retain(|_, v| v.strong_count() > 0);
@@ -35,7 +35,7 @@ impl Provenance {
                 .insert(Arc::as_ptr(step) as usize, Arc::downgrade(step));
         });
     }
-    fn owns(&self, step: &Value) -> bool {
+    pub(crate) fn owns(&self, step: &Value) -> bool {
         let Value::Obj(step) = step else {
             return false;
         };

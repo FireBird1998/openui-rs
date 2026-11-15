@@ -29,7 +29,14 @@
 //! AST-shaped calls in evaluated state/query props can invoke declared actions
 //! with arguments chosen by that data. Finished custom steps cannot forge marks.
 //! Retained Values keep custom-step identity within their Store; serializing
-//! and restoring JSON does not grant that identity. Running plans is separate.
+//! and restoring JSON does not grant that identity. [`run_action`] consumes a
+//! retained plan by reference and returns ordered [`HostEvent`] values; it does
+//! not invoke a handler or redraw. Mutations return an opaque continuation;
+//! [`resume_action`] consumes the host outcome against current state/program
+//! inputs with the original work allowance. Embedders suppress clicks while
+//! their response bundle is blocked. [`get_field_value`] and [`set_field_value`]
+//! keep renderer form fields in the Store, and [`initialize_field_default`]
+//! applies settled defaults without overwriting user values.
 //!
 //! The reference harness registers and reads lang-core's own query manager with
 //! no provider, refresh or tool execution. See `CONFORMANCE.md` for its source
@@ -45,9 +52,12 @@ mod store;
 mod tree;
 pub use store::{InitializationResult, StateRefusal, StateValue, Store, StoreError, StoreSnapshot};
 pub use tree::{
-    BindingProps, BindingWriteError, FunctionResult, LibraryFunctions, PreparedReferenceValues,
-    RuntimeError, TreeInput, TreeResult, evaluate_tree, evaluate_tree_with_limits, write_binding,
-    write_binding_with_limits,
+    ActionContinuation, ActionFailure, ActionResumeError, ActionRun, BindingProps,
+    BindingWriteError, FieldWrite, FunctionResult, HostEvent, LibraryFunctions,
+    PreparedReferenceValues, RuntimeError, TreeInput, TreeResult, evaluate_tree,
+    evaluate_tree_with_limits, get_field_value, initialize_field_default,
+    initialize_field_default_with_limits, resume_action, run_action, run_action_with_limits,
+    set_field_value, set_field_value_with_limits, write_binding, write_binding_with_limits,
 };
 
 pub use openui_lang::{

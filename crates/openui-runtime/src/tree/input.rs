@@ -69,6 +69,19 @@ pub(super) fn value_size(
 ) -> Result<usize, bool> {
     measure(vec![Item::V(value, 0)], 0, limits, seen, work, true)
 }
+pub(super) fn text_size(text: &str, limits: Limits) -> Result<usize, bool> {
+    let work = limits.work_for(usize::MAX);
+    if text.len() > work {
+        return Err(false);
+    }
+    let bytes = openui_lang::json_string_len(text).saturating_add(2);
+    if bytes > limits.result_size().max(work) {
+        Err(false)
+    } else {
+        Ok(bytes)
+    }
+}
+
 fn measure(
     mut todo: Vec<Item<'_>>,
     mut bytes: usize,

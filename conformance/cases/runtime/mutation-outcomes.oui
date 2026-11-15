@@ -1,0 +1,4 @@
+$draft="initial"
+$seen=null
+m=Mutation("m",{text:$draft})
+root=Box(null)

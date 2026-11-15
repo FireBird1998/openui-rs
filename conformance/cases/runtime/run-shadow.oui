@@ -1,0 +1,3 @@
+$n=0
+r=100
+root=Box([@Each([1,2],r,Box(@Set($n,r))),Box(@Set($n,r))])

@@ -25,9 +25,54 @@ time, under ADRs 0001 and 0002. Parsing keeps its own behaviour and cost.
 Supplied state and extra scope count as input when read. Reference and call
 results do not add input credit: wrapping computed output cannot increase the
 allowance. Statements are paid for by the program's size. External reference
-data, such as query results, must be included in the caller's initial input
-size. This keeps ADR 0001's amplification bound relative to input, rather than
-to intermediate results.
+data, such as query results, must be admitted as supplied input before use.
+New program/reference input on resume earns credit before it is read; spent
+work is never refreshed. This keeps ADR 0001's amplification bound relative to
+input, rather than to intermediate results.
+
+An action run has one evaluation-work allowance across steps and mutation
+continuations. Input measurement is the caller's setup cost, never evaluation
+work: neither a fresh run nor a resume debits it. Runs, resumes and drawing
+prepare reference supplies through `PreparedReferenceValues::new`/`with_limits`:
+one walk, one shared identity set, one work budget, identical ceilings and
+per-entry results. Successful entries earn exactly drawing's total input credit;
+refused entries earn none and raise their recorded cut only if read. Unread
+large/deep entries cannot refuse an unrelated action. No entry gets a separate
+preparation budget or a lazy re-measurement. Prepared input tokens retain only
+bytes; the reference token reuses the existing prepaid-size contract of
+`PreparedReferenceValue`, without accepting another size claim or re-walking data.
+Computed values from scope callbacks must never be admitted as supplied input.
+
+For each supply, combine the current program and reference measurements with
+the retained starting action/message/form-name measurement. The supplied-input
+floor is the maximum of those combined sizes, not independent maxima for the
+parts and not a sum over successive supplies. The core raises work and result
+allowances only by the difference earned by that floor. Already-spent evaluation
+work stays spent. State reads retain their normal credit. With that state
+credit, remaining work is `work_for(current floor + state credit) - spent work`.
+Per-write/event output room is released between operations; hard ceilings remain.
+This replaces the historical spec's steps-times-per-evaluation rule.
+
+A supplied action is bounded evaluated-tree output retained for a later run.
+Its input measurement earns credit once as part of the run's starting input;
+wrapping or re-supplying it cannot accumulate credit. References are measured as
+one current supply, with shared bodies counted once within that measurement.
+No identity memo, reference supply, or strong owner for supplied references is
+retained by the suspended run. Consequently equal, alternating and growing
+supplies have the same limits as a fresh run with the largest combined supply,
+short of evaluation work already spent. Borrowed/raw and shared/prepared forms
+have identical effects and cut points. Caching changes only caller setup cost.
+
+The runtime's tree-evaluation program measure remains separate from this core
+measure. Action starts and resumes consistently use the core program measure;
+references reuse drawing's preparation directly, including cached read
+representations. All prepared types and Store remain Send + Sync. Parser AST
+measurement memoizes shared allocations rather than every borrowed node.
+An over-depth or over-work program/action measurement contributes zero bytes,
+rather than inflating the floor to a ceiling; it does not refuse setup. An
+over-deep kept value still depth-cuts when evaluated, keeping earlier effects.
+Successful program/action measures retain the earlier byte counts and size
+saturation. The program measurement is independent of reference preparation.
 
 ## Considered options
 

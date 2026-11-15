@@ -1,0 +1,3 @@
+$n=0
+$yes=true
+root=$yes?Box(@Set($n,$n+1)):null

@@ -52,6 +52,8 @@ done
   bun --no-install prompts.ts golden
   bun --no-install edits.ts golden
   bun --no-install runtime.ts golden
+  bun --no-install renderer-action-lookups.ts
+  bun --no-install renderer-form-prototypes.ts
   bun --no-install tree-interface.ts > ../conformance/golden/runtime-interface.json
   bun --no-install action-definitions.ts
 )

@@ -1,0 +1,2 @@
+$n=3
+root=Box(Action([@Set($n,$n-1),@ToAssistant("after set"),@Set($n,$n-1),@OpenUrl("https://example.test"),@Reset($n,$absent),@ToAssistant("after reset",{x:1}),@Go("ok")]),[@Set($n,$n+1),@Reset($n),@ToAssistant("alone"),@OpenUrl("alone"),@Go("alone")])

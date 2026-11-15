@@ -1,0 +1,1 @@
+root=Box({steps:[{type:"reset",targets:["__proto__","constructor","toString"]},{type:"continue_conversation",message:"inherited"}]})

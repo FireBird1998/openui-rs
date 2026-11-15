@@ -14,6 +14,7 @@ pub struct PreparedReferenceValues<'a> {
     values: &'a JsObject<Value>,
     measurements: BTreeMap<&'a str, Result<PreparedReferenceValue, EvaluationFlags>>,
     pub(super) bytes: usize,
+    pub(super) input: openui_lang::PreparedInput,
 }
 impl<'a> PreparedReferenceValues<'a> {
     /// Prepare with a 32,768-level iterative measurement bound and the default
@@ -45,20 +46,31 @@ impl<'a> PreparedReferenceValues<'a> {
                 }
             }
         }
+        let input = openui_lang::PreparedInput::from_prepared_references(
+            measurements
+                .iter()
+                .filter_map(|(name, entry)| entry.as_ref().ok().map(|v| (*name, v))),
+        );
         Self {
             values,
             measurements,
             bytes,
+            input,
         }
     }
     pub(super) fn get(
         &self,
         name: &str,
     ) -> Result<Option<(&Value, &PreparedReferenceValue)>, EvaluationFlags> {
-        match self.measurements.get(name) {
-            Some(Err(flags)) => Err(*flags),
-            Some(Ok(prepared)) => Ok(self.values.get(name).map(|v| (v, prepared))),
-            None => Ok(None),
+        let Some(entry) = self.measurements.get(name) else {
+            return Ok(None);
+        };
+        let Some(value) = self.values.get(name) else {
+            return Ok(None);
+        };
+        match entry {
+            Ok(prepared) => Ok(Some((value, prepared))),
+            Err(flags) => Err(*flags),
         }
     }
 }

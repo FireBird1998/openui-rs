@@ -1,0 +1,2 @@
+q=Query("q",{},@Identity(7))
+root=Box(@OpenUrl("u"),@ToAssistant("send"),@Reset($n))

@@ -1,0 +1,1 @@
+root=Box({type:"continue_conversation",params:{x:1},url:"u",context:{c:2}},{type:"open_url",url:"u"},{type:"other",params:[1,2]},{type:"Go",params:{x:"blocked"}})

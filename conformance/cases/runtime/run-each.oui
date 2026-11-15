@@ -1,0 +1,2 @@
+$n=0
+root=Box(@Each($rows,r,Box(@Set($n,r),@ToAssistant("row"))))

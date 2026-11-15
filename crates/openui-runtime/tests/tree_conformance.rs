@@ -12,6 +12,8 @@ use std::{
 };
 #[global_allocator]
 static ALLOCATOR: test_alloc::Allocator = test_alloc::Allocator::with_cap(256 * 1024 * 1024);
+#[path = "support/action_scenarios.rs"]
+mod action_scenarios;
 #[path = "support/functions.rs"]
 mod functions;
 static NULL: Value = Value::Null;
@@ -112,6 +114,22 @@ fn observe(
     bindings: &BindingProps,
     schema: &openui_lang::JsonValue,
 ) -> String {
+    observe_retained(
+        result, library, store, saved, source, case_input, bindings, schema,
+    )
+    .0
+}
+#[allow(clippy::too_many_arguments)]
+fn observe_retained(
+    result: &ParseResult,
+    library: &Library,
+    store: &mut Store,
+    saved: &Value,
+    source: &str,
+    case_input: &Value,
+    bindings: &BindingProps,
+    schema: &openui_lang::JsonValue,
+) -> (String, Option<Value>) {
     let p = entries(saved);
     // JSON omits top-level undefined declarations. Preserve their *presence*
     // for initialize using public statement stages, without changing the core.
@@ -153,7 +171,7 @@ fn observe(
         ),
     );
     assert!(initialized.refused.is_empty());
-    evaluated_observation(result, library, store, case_input, bindings, schema)
+    evaluated_retained(result, library, store, case_input, bindings, schema)
 }
 fn evaluated_observation(
     result: &ParseResult,
@@ -163,6 +181,16 @@ fn evaluated_observation(
     bindings: &BindingProps,
     schema: &openui_lang::JsonValue,
 ) -> String {
+    evaluated_retained(result, library, store, case_input, bindings, schema).0
+}
+fn evaluated_retained(
+    result: &ParseResult,
+    library: &Library,
+    store: &Store,
+    case_input: &Value,
+    bindings: &BindingProps,
+    schema: &openui_lang::JsonValue,
+) -> (String, Option<Value>) {
     let mut completion_override;
     let result = if matches!(get(case_input, "queryComplete"), Value::Bool(false)) {
         completion_override = result.clone();
@@ -221,7 +249,7 @@ fn evaluated_observation(
         j.push_str(&json(&Value::Obj(Arc::new(c))));
     }
     j.push('}');
-    j
+    (j, evaluated.root)
 }
 fn diff(expected: &str, actual: &str) -> String {
     let n = expected
@@ -1033,13 +1061,18 @@ fn corpus_trees_snapshots_and_json_match_the_reference() {
     let path = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../CONFORMANCE.md");
     let mut doc = std::fs::read_to_string(&path).unwrap();
     if std::env::var_os("UPDATE_REPORT").is_some() {
+        let action_line = doc
+            .lines()
+            .find(|line| line.starts_with("Runtime action runs:"))
+            .unwrap_or("")
+            .to_owned();
         let start = "<!-- runtime-counts -->";
         let end = "<!-- /runtime-counts -->";
         let a = doc.find(start).unwrap() + start.len();
         let b = doc[a..].find(end).unwrap() + a;
         doc.replace_range(
             a..b,
-            &format!("\n{line}\n\n{pending_line}\n\n{coverage_line}\n\n{original_line}\n\n{partial_line}\n\n{write_line}\n"),
+            &format!("\n{line}\n\n{pending_line}\n\n{coverage_line}\n\n{original_line}\n\n{partial_line}\n\n{write_line}\n\n{action_line}\n"),
         );
         std::fs::write(&path, &doc).unwrap();
     }

@@ -30,7 +30,7 @@ use expression::expression_bytes;
 pub use expression::{
     EvaluationFailure, EvaluationFlags, EvaluationResult, EvaluationScope, EvaluationSession,
     ExpressionEvaluator, ExpressionOperation, ExpressionOutput, ExpressionType, ExpressionValue,
-    PreparedReferenceValue, evaluate_expression, evaluate_expression_with_limits,
+    PreparedInput, PreparedReferenceValue, evaluate_expression, evaluate_expression_with_limits,
 };
 
 pub(crate) use expression::{
