@@ -27,7 +27,8 @@ fn defaults_run_before_the_tree_even_when_unused_or_supplied() {
     f.register("Id", |v| {
         seen.lock().unwrap().push(v.clone());
         Ok(Some(v))
-    });
+    })
+    .unwrap();
     for supplied in [false, true] {
         seen.lock().unwrap().clear();
         let p = parse("q=Query(\"t\",{},@Id(5))\nroot=Box(1)", &l, None);
@@ -58,7 +59,8 @@ fn a_million_item_argument_is_shared_through_a_thousand_calls() {
             assert!(Arc::ptr_eq(a, &big));
             *calls.lock().unwrap() += 1;
             Ok(Some(Value::Num(a.len() as f64)))
-        });
+        })
+        .unwrap();
         let mut store = Store::new();
         store.set("$big", Some(Value::Arr(big.clone()))).unwrap();
         store
@@ -93,7 +95,8 @@ fn undefined_argument_keys_are_a_pinned_representation_divergence() {
         f.register("K2", |v| {
             *received.lock().unwrap() = Some(v);
             Ok(None)
-        });
+        })
+        .unwrap();
         let p = parse(c["source"].as_str().unwrap(), &l, None);
         let mut store = Store::new();
         store
@@ -172,7 +175,8 @@ fn supplied_string_arguments_reuse_their_projection_across_calls() {
             }
             *calls.lock().unwrap() += 1;
             Ok(Some(Value::Num(s.len() as f64)))
-        });
+        })
+        .unwrap();
         let mut store = Store::new();
         store
             .set("$big", Some(Value::Str("x".repeat(500_000))))
@@ -234,7 +238,8 @@ fn registration_reference_reads_repeat_in_declaration_order() {
         let n = o.get("value").cloned();
         calls.lock().unwrap().push(n.clone());
         Ok(n)
-    });
+    })
+    .unwrap();
     let p = parse(
         "q=Query(\"t\",{},@Id(r))\nr=Query(\"t\",{},@Id(5))\nroot=Box([q,r,@Id(9)])",
         &l,
@@ -265,15 +270,19 @@ fn incomplete_duplicates_do_not_replace_registered_defaults_and_undefined_stays_
     duplicate.complete = false;
     p.query_statements.push(duplicate);
     let r = evaluate_tree(TreeInput::new(&p).with_library(&l), &Store::new());
-    assert!(r.to_json().contains("\"value\":5"));
+    assert!(r.to_json().unwrap().contains("\"value\":5"));
     let mut f = LibraryFunctions::new(&j["functions"]);
-    f.register("Id", |_| Ok(None));
+    f.register("Id", |_| Ok(None)).unwrap();
     let p = parse("q=Query(\"t\",{},@Id(1))\nroot=Box(q)", &l, None);
     let r = evaluate_tree(
         TreeInput::new(&p).with_library(&l).with_functions(&f),
         &Store::new(),
     );
-    assert!(r.to_json().contains("\"props\":{}"), "{}", r.to_json());
+    assert!(
+        r.to_json().unwrap().contains("\"props\":{}"),
+        "{}",
+        r.to_json().unwrap()
+    );
 }
 
 #[test]
@@ -281,7 +290,7 @@ fn a_primed_argument_body_does_not_bypass_deeper_call_limits() {
     let j = schema();
     let l = Library::from_json_schema(&j);
     let mut f = LibraryFunctions::new(&j["functions"]);
-    f.register("Len", |_| Ok(Some(Value::Num(1.))));
+    f.register("Len", |_| Ok(Some(Value::Num(1.)))).unwrap();
     let mut body = Value::Null;
     for _ in 0..40 {
         body = Value::Arr(Arc::new(vec![body]));
@@ -380,14 +389,16 @@ fn returning_the_same_argument_does_not_repeat_its_admission_walk() {
             *calls.lock().unwrap() += 1;
             let Value::Obj(o) = &v else { panic!("args") };
             Ok(o.get("value").cloned())
-        });
+        })
+        .unwrap();
         f.register("Len", |v| {
             let Value::Obj(o) = &v else { panic!("args") };
             let Some(Value::Arr(a)) = o.get("value") else {
                 panic!("list")
             };
             Ok(Some(Value::Num(a.len() as f64)))
-        });
+        })
+        .unwrap();
         let mut s = Store::new();
         s.set(
             "$big",
@@ -420,7 +431,8 @@ fn transformed_argument_text_still_pays_for_new_output() {
             };
             *calls.lock().unwrap() += 1;
             Ok(Some(Value::Str(s.to_uppercase())))
-        });
+        })
+        .unwrap();
         let mut store = Store::new();
         store
             .set("$big", Some(Value::Str("x".repeat(500_000))))
@@ -452,7 +464,8 @@ fn returning_an_argument_a_thousand_times_cannot_make_two_gigabytes_fit_default_
             let Value::Obj(o) = &v else { panic!("args") };
             *calls.lock().unwrap() += 1;
             Ok(o.get("value").cloned())
-        });
+        })
+        .unwrap();
         let mut store = Store::new();
         store
             .set(
@@ -496,20 +509,22 @@ fn bound_text_arguments_keep_one_allocation_through_extra_scope() {
     let calls = Mutex::new(0);
     let pointer = Mutex::new(None);
     let mut functions = LibraryFunctions::new(&j["functions"]);
-    functions.register("Len", |v| {
-        let Value::Obj(o) = &v else { panic!("args") };
-        let Some(Value::Str(text)) = o.get("value") else {
-            panic!("text")
-        };
-        let mut previous = pointer.lock().unwrap();
-        if let Some(old) = *previous {
-            assert_eq!(old, text.as_ptr() as usize);
-        } else {
-            *previous = Some(text.as_ptr() as usize);
-        }
-        *calls.lock().unwrap() += 1;
-        Ok(Some(Value::Num(text.len() as f64)))
-    });
+    functions
+        .register("Len", |v| {
+            let Value::Obj(o) = &v else { panic!("args") };
+            let Some(Value::Str(text)) = o.get("value") else {
+                panic!("text")
+            };
+            let mut previous = pointer.lock().unwrap();
+            if let Some(old) = *previous {
+                assert_eq!(old, text.as_ptr() as usize);
+            } else {
+                *previous = Some(text.as_ptr() as usize);
+            }
+            *calls.lock().unwrap() += 1;
+            Ok(Some(Value::Num(text.len() as f64)))
+        })
+        .unwrap();
     let p = parse("root=Box(1)", &l, None);
     let mut store = Store::new();
     store
@@ -545,11 +560,15 @@ fn named_argument_sharing_preserves_calls_before_a_malformed_argument() {
     let l = Library::from_json_schema(&j);
     let calls = Mutex::new(0);
     let mut functions = LibraryFunctions::new(&j["functions"]);
-    functions.register("F", |_| panic!("invalid args cannot invoke F"));
-    functions.register("Side", |_| {
-        *calls.lock().unwrap() += 1;
-        Ok(Some(Value::Num(1.)))
-    });
+    functions
+        .register("F", |_| panic!("invalid args cannot invoke F"))
+        .unwrap();
+    functions
+        .register("Side", |_| {
+            *calls.lock().unwrap() += 1;
+            Ok(Some(Value::Num(1.)))
+        })
+        .unwrap();
     let p = parse(
         r#"root=Box({k:"Comp",name:"F",args:[{k:"Comp",name:"Side",args:[]},{k:"StateRef",n:"$big"},null]})"#,
         &l,

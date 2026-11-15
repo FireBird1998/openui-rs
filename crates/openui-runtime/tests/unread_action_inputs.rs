@@ -69,7 +69,7 @@ fn unread_large_and_deep_references_allow_events_sets_and_resumes() {
                         "kind={kind}, shared={shared}, cached={cached}: {:?}",
                         r.failure
                     );
-                    events.extend(r.events.iter().map(|e| e.to_json()));
+                    events.extend(r.events.iter().map(|e| e.to_json().unwrap()));
                     let Some(c) = r.continuation.take() else {
                         break;
                     };

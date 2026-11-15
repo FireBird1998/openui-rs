@@ -174,5 +174,5 @@ fn undefined_snapshot_entries_do_not_consume_payload_room() {
     );
     assert!(r.failure.is_none(), "{:?}", r.failure);
     assert_eq!(r.events.len(), 1);
-    assert!(r.events[0].to_json().contains(r#""formState":{}"#));
+    assert!(r.events[0].to_json().unwrap().contains(r#""formState":{}"#));
 }

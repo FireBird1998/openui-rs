@@ -13,6 +13,7 @@ pub struct PreparedReferenceValues<'a> {
     values: &'a JsObject<Value>,
     measurements: BTreeMap<&'a str, Result<PreparedReferenceValue, EvaluationFlags>>,
     pub(super) bytes: usize,
+    tail: EvaluationFlags,
     pub(super) input: openui_lang::PreparedInput,
 }
 impl<'a> PreparedReferenceValues<'a> {
@@ -23,16 +24,21 @@ impl<'a> PreparedReferenceValues<'a> {
     }
     /// Set preparation bounds; these do not spend an evaluation's allowance.
     pub fn with_limits(values: &'a JsObject<Value>, limits: Limits) -> Self {
-        let (measurements, bytes) = PreparedReferenceValue::measure_all(values, limits);
-        let input = openui_lang::PreparedInput::from_prepared_references(
+        let (measurements, bytes, tail) =
+            PreparedReferenceValue::measure_all_with_tail(values, limits);
+        let input = openui_lang::PreparedInput::from_prepared_references_with_limits(
             measurements
                 .iter()
                 .filter_map(|(name, entry)| entry.as_ref().ok().map(|v| (*name, v))),
+            // Keys were measured by the core above. Combining their receipt
+            // may revisit those bytes, but never refreshes evaluation work.
+            limits.with_work(limits.work_for(usize::MAX).max(bytes)),
         );
         Self {
             values,
             measurements,
             bytes,
+            tail,
             input,
         }
     }
@@ -41,7 +47,13 @@ impl<'a> PreparedReferenceValues<'a> {
         name: &str,
     ) -> Result<Option<(&Value, &PreparedReferenceValue)>, EvaluationFlags> {
         let Some(entry) = self.measurements.get(name) else {
-            return Ok(None);
+            return if (self.tail.size_limited || self.tail.depth_limited)
+                && self.values.has_own(name)
+            {
+                Err(self.tail)
+            } else {
+                Ok(None)
+            };
         };
         let Some(value) = self.values.get(name) else {
             return Ok(None);

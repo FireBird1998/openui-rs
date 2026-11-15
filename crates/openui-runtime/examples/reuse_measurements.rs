@@ -60,7 +60,7 @@ fn main() {
                 let before = test_alloc::peak();
                 let r = run(1_000_000_000);
                 let peak = test_alloc::peak() - before;
-                let json = r.to_json();
+                let json = r.to_json().unwrap();
                 let bytes = json.len();
                 let hash = json.bytes().fold(0xcbf29ce484222325u64, |h, b| {
                     (h ^ u64::from(b)).wrapping_mul(0x100000001b3)
@@ -111,7 +111,7 @@ fn main() {
                             out,
                             "{family}\t{items}\t{levels}\t{room}\t{peak}\t{}\t{}",
                             r.size_limited,
-                            r.to_json().len()
+                            r.to_json().unwrap().len()
                         )
                         .unwrap();
                     }

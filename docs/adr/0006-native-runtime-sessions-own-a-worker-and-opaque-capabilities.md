@@ -22,8 +22,11 @@ The parser's own result construction and requested serialization remain.
 
 Every successful evaluation retains its root unchanged. Action lookup walks a
 root-relative JSON path lazily (props, named keys, canonical decimal indices).
-There is no up-front indexing, plan-count limit or smaller bookkeeping budget
-that can refuse a runtime draw. Root retention is bounded by the runtime's
+There is no up-front indexing or plan-count bookkeeping budget. Runtime
+evaluation determines draw flags; tree serialization adds no independent quota
+before publishing a generation. maxJsonBytes bounds host input only. Snapshot,
+value and event exports likewise add no quota to already admitted data. Root
+retention is bounded by the runtime's
 result limits. Original step identity reaches its authority checks (ADR 0004).
 Tree JSON is exactly TreeResult::to_json. Evaluation/ActionHandle carry only
 session identity, non-wrapping generation and path, never old roots/programs.

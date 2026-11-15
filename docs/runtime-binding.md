@@ -55,7 +55,10 @@ parser's program-size bound. Serialization and parser work for actual updates
 remain the core's; retaining unchanged outputs adds program reference counts.
 
 Evaluate returns exactly TreeResult::to_json (`{root,errors}`), separate cut flags
-and an EvaluationHandle. Only runtime evaluation limits cut the draw. The worker
+and an EvaluationHandle. Runtime evaluation determines the cut flags and draws
+use only runtime limits.
+Encoding adds no independent size, work or depth quota. `maxJsonBytes` bounds
+host input, not tree JSON or its envelope. The worker
 retains just the latest evaluated root; it does no plan indexing, node-budget
 walk or per-plan allocation. **maxPlans has been removed.** actionAt walks the
 root lazily in O(path length), borrowing props rather than copying them. For
@@ -123,7 +126,7 @@ InvalidJson, and byte/cut refusals are LimitExceeded.
 RuntimeLimits has evaluation, referencePreparation, maxJsonBytes (8 MiB), and
 maxContinuations (64). Limits are fixed for the lifetime. maxJsonBytes bounds
 host strings/JSON, accepted program JSON, action path text and explicit binding
-annotations; it never imposes a separate draw budget. JSON reading uses the
+annotations. Draws use only runtime limits. JSON reading uses the
 core's iterative parser and stack-safe freeing and its evaluation.depth nesting
 bound. Reference preparation has independent work/depth bounds. Generations
 never wrap.
@@ -165,3 +168,25 @@ camelCase methods, bigint limits, one-thread ownership, output/handle free,
 reentry, typed errors and UTF-16 differences. Native interface signatures and
 worker behavior above are unchanged. The source checker runs without arguments
 and checks both bindings; generated Swift/Kotlin checks remain supported.
+
+JSON export retains the runtime's fallible signatures but uses its default
+compatibility serializers. No second size, work or depth quota applies to data
+already evaluated or admitted by the Store. Root room excludes the JSON envelope
+and cut trees can retain raw props, so exported tree bytes may exceed root room.
+Raised evaluation limits remain effective with the default host-input ceiling.
+Snapshot JSON continues to omit undefined entries (the runtime Store helper
+projects them to null, so the session exports its own shallow view). Empty state
+costs zero for admission and always exports `{}`, even with zero result room.
+
+Events serialize before a continuation is published or evicted. Potential
+continuation-generation exhaustion is checked before effects or consuming a
+pending run; abandoning a pending outcome is still allowed. Runtime LimitError
+maps to LimitExceeded in openui-session's single runtime error translator.
+
+Binding configuration retains the existing host JSON/input-size admission and
+raw-byte annotation bookkeeping. It does not add evaluation-depth, escaped-name,
+or estimated extraction-work quotas. A refused mark changes neither its binding
+map nor its annotation bookkeeping. Library function callbacks remain
+unregistered, so these bindings have no function-registration call to adapt.
+Explicit-limit Rust runtime configuration and export APIs remain available to
+callers who request an additional quota.

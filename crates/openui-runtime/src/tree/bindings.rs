@@ -7,20 +7,84 @@ use std::collections::{BTreeMap, BTreeSet};
 pub struct BindingProps {
     marked: BTreeMap<String, BTreeSet<String>>,
     undecided: BTreeMap<String, BTreeSet<String>>,
+    limits: Option<Limits>,
+    name_bytes: usize,
 }
 impl BindingProps {
-    /// An empty configuration.
+    /// An empty configuration without an implicit name quota.
+    /// Use `with_limits` to opt into a retained-name quota.
     pub fn new() -> Self {
         Self::default()
     }
-    /// Mark one prop as a binding. Names are literal, including prototype names.
-    pub fn insert(&mut self, component: impl Into<String>, prop: impl Into<String>) {
-        let component = component.into();
-        let prop = prop.into();
-        if let Some(props) = self.undecided.get_mut(&component) {
-            props.remove(&prop);
+    /// An empty configuration with explicit name and extraction limits.
+    pub fn with_limits(limits: Limits) -> Self {
+        Self {
+            limits: Some(limits),
+            ..Self::default()
         }
-        self.marked.entry(component).or_default().insert(prop);
+    }
+    /// Mark one prop as a binding. Names are literal, including prototype names.
+    pub fn insert(
+        &mut self,
+        component: impl AsRef<str>,
+        prop: impl AsRef<str>,
+    ) -> Result<(), crate::LimitError> {
+        let component = component.as_ref();
+        let prop = prop.as_ref();
+        let total = if let Some(limits) = self.limits {
+            let component_bytes = crate::admission::text(component, limits)?.saturating_add(1);
+            let prop_bytes = crate::admission::text(prop, limits)?.saturating_add(1);
+            let exists = self.marked.get(component).is_some_and(|p| p.contains(prop));
+            let resolves = self
+                .undecided
+                .get(component)
+                .is_some_and(|p| p.contains(prop));
+            let add = if exists {
+                0
+            } else {
+                prop_bytes.saturating_add(if self.marked.contains_key(component) {
+                    0
+                } else {
+                    component_bytes
+                })
+            };
+            let remove = if resolves {
+                prop_bytes.saturating_add(
+                    if self.undecided.get(component).is_some_and(|p| p.len() == 1) {
+                        component_bytes
+                    } else {
+                        0
+                    },
+                )
+            } else {
+                0
+            };
+            let total = self
+                .name_bytes
+                .saturating_sub(remove)
+                .checked_add(add)
+                .ok_or_else(crate::admission::size_error)?;
+            if total > limits.result_size() {
+                return Err(crate::admission::size_error());
+            }
+            Some(total)
+        } else {
+            None
+        };
+        if let Some(props) = self.undecided.get_mut(component) {
+            props.remove(prop);
+            if props.is_empty() {
+                self.undecided.remove(component);
+            }
+        }
+        self.marked
+            .entry(component.to_owned())
+            .or_default()
+            .insert(prop.to_owned());
+        if let Some(total) = total {
+            self.name_bytes = total;
+        }
+        Ok(())
     }
     /// Whether this exact component and prop pair is marked.
     pub fn contains(&self, component: &str, prop: &str) -> bool {
@@ -55,7 +119,40 @@ impl BindingProps {
     /// reported independently of later fields. Without structural properties,
     /// only well-formed signatures with ordinary names can be read reliably.
     /// Supply undecidable pairs explicitly with `insert`.
-    pub fn from_prompt_spec(spec: &Value) -> Self {
+    /// Default extraction adds no size/depth/work quota to its input.
+    pub fn from_prompt_spec(spec: &Value) -> Result<Self, crate::LimitError> {
+        Ok(Self::extract_prompt_spec(spec))
+    }
+    /// Extract under explicit input-size, depth, work and retained-name limits.
+    /// Refusal returns no partial configuration.
+    pub fn from_prompt_spec_with_limits(
+        spec: &Value,
+        limits: Limits,
+    ) -> Result<Self, crate::LimitError> {
+        crate::admission::measure(spec, limits)?;
+        // The core's admission walk charges actual input bytes/nodes once.
+        // A signature-length times property-count estimate is not actual work
+        // and must not reject ordinary libraries that fit this explicit budget.
+        let mut result = Self::extract_prompt_spec(spec);
+        result.limits = Some(limits);
+        let mut bytes = 0usize;
+        for (component, props) in result.marked.iter().chain(result.undecided.iter()) {
+            bytes = bytes
+                .checked_add(crate::admission::text(component, limits)?.saturating_add(1))
+                .ok_or_else(crate::admission::size_error)?;
+            for prop in props {
+                bytes = bytes
+                    .checked_add(crate::admission::text(prop, limits)?.saturating_add(1))
+                    .ok_or_else(crate::admission::size_error)?;
+                if bytes > limits.result_size() {
+                    return Err(crate::admission::size_error());
+                }
+            }
+        }
+        result.name_bytes = bytes;
+        Ok(result)
+    }
+    fn extract_prompt_spec(spec: &Value) -> Self {
         let mut result = Self::new();
         let Value::Obj(spec) = spec else {
             return result;

@@ -37,7 +37,7 @@ fn four_thousand_and_ninety_seven_plans_draw_and_the_last_plan_runs() {
     );
     assert!(!expected.size_limited && !expected.depth_limited);
     let got = session.evaluate().unwrap();
-    assert_eq!(got.json, expected.to_json());
+    assert_eq!(got.json, expected.to_json().unwrap());
     assert_eq!((got.size_limited, got.depth_limited), (false, false));
     let action = session
         .action_at(
@@ -75,7 +75,7 @@ fn two_point_two_million_values_draw_with_the_runtimes_exact_json_and_flags() {
     let expected = evaluate_tree(TreeInput::new(&program).with_library(&core_library), &state);
     assert!(!expected.size_limited && !expected.depth_limited);
     let got = session.evaluate().unwrap();
-    assert_eq!(got.json, expected.to_json());
+    assert_eq!(got.json, expected.to_json().unwrap());
     assert_eq!((got.size_limited, got.depth_limited), (false, false));
     println!(
         "2200000 values: {} JSON bytes; byte-identical, uncut",

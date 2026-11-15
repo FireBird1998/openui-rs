@@ -263,7 +263,9 @@ fn refused_reference_entries_earn_no_extra_write_room() {
     let schema = parse_json(r#"{"$defs":{"Box":{"properties":{"a":{}}}},"functions":{"Large":{"params":{"type":"object","properties":{}}}}}"#).unwrap();
     let l = Library::from_json_schema(&schema);
     let mut functions = openui_runtime::LibraryFunctions::new(&schema["functions"]);
-    functions.register("Large", |_| Ok(Some(Value::Str("x".repeat(100_000)))));
+    functions
+        .register("Large", |_| Ok(Some(Value::Str("x".repeat(100_000)))))
+        .unwrap();
     let p = Arc::new(parse(
         "q=Query(\"t\",{})\nroot=Box(Action([@Set($s,@Large())]))",
         &l,

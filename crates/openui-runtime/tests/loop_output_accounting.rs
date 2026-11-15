@@ -205,7 +205,7 @@ fn stripped_markers_and_component_wrappers_keep_one_output_reservation() {
                 .with_work(1_000_000_000)
                 .with_result_size(room),
         );
-        let json = r.to_json();
+        let json = r.to_json().unwrap();
         let bytes = json.rfind(",\"errors\":").unwrap() - 8;
         println!(
             "wrapper={} plans={} room={room} bytes={bytes}",
@@ -231,11 +231,15 @@ fn generated_nested_loops_keep_generated_output_inside_their_room() {
     let schema=parse_json(r#"{"$defs":{"Box":{"properties":{"a":{},"b":{},"c":{}}}},"functions":{"Id":{"params":{"properties":{"value":{}}}},"Throw":{"params":{"properties":{}}}}}"#).unwrap();
     let l = Library::from_json_schema(&schema);
     let mut functions = openui_runtime::LibraryFunctions::new(&schema["functions"]);
-    functions.register("Id", |args| {
-        let Value::Obj(o) = &args else { panic!("args") };
-        Ok(o.get("value").cloned())
-    });
-    functions.register("Throw", |_| Err("failure".repeat(50)));
+    functions
+        .register("Id", |args| {
+            let Value::Obj(o) = &args else { panic!("args") };
+            Ok(o.get("value").cloned())
+        })
+        .unwrap();
+    functions
+        .register("Throw", |_| Err("failure".repeat(50)))
+        .unwrap();
     let mut s = Store::new();
     s.set("$el", Some(element(vec![expr("$n+1")]))).unwrap();
     s.set("$n", Some(Value::Num(3.))).unwrap();
@@ -291,7 +295,7 @@ fn generated_nested_loops_keep_generated_output_inside_their_room() {
                 if !r.size_limited && !r.depth_limited {
                     completed += 1;
                     with_errors += usize::from(!r.errors.is_empty());
-                    let json = r.to_json();
+                    let json = r.to_json().unwrap();
                     let bytes = json.rfind(",\"errors\":").unwrap() - 8;
                     assert!(
                         json.len() <= room + 21,
@@ -343,9 +347,9 @@ fn a_second_element_pass_interprets_a_descriptor_returned_by_the_first() {
         assert!(!r.size_limited && !r.depth_limited && r.errors.is_empty());
         // Pinned against runtime/each-item-descriptors in the upstream harness.
         assert!(
-            r.to_json().contains("\"props\":{\"a\":7}"),
+            r.to_json().unwrap().contains("\"props\":{\"a\":7}"),
             "{}",
-            r.to_json()
+            r.to_json().unwrap()
         );
     }
 }

@@ -335,9 +335,9 @@ fn untyped_required_names_keep_explicit_null_arguments() {
     );
     assert!(!r.size_limited && !r.depth_limited && r.errors.is_empty());
     assert!(
-        r.to_json().contains(r#""params":{"x":null}"#),
+        r.to_json().unwrap().contains(r#""params":{"x":null}"#),
         "{}",
-        r.to_json()
+        r.to_json().unwrap()
     );
     free_json(actions);
     free_json(j);

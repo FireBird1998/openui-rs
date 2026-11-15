@@ -42,11 +42,11 @@ fn definition_fields_match_the_reference() {
         );
         assert!(!r.size_limited && !r.depth_limited, "{}", c["name"]);
         let want = openui_lang::stringify_json(&c["expected"]);
-        if r.to_json() != want {
+        if r.to_json().unwrap() != want {
             mismatches.push(format!(
                 "{}\nactual: {}\nexpected: {}",
                 c["name"],
-                r.to_json(),
+                r.to_json().unwrap(),
                 want
             ));
         }
@@ -72,8 +72,8 @@ fn ordinary_mapped_components_do_not_read_action_metadata() {
             .with_actions(&actions),
         &Store::new(),
     );
-    assert!(r.errors.is_empty(), "{}", r.to_json());
-    assert!(r.to_json().contains(r#""props":{"a":"nested"}"#));
+    assert!(r.errors.is_empty(), "{}", r.to_json().unwrap());
+    assert!(r.to_json().unwrap().contains(r#""props":{"a":"nested"}"#));
     free_json(actions);
     free_json(libjson);
 }

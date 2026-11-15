@@ -100,7 +100,7 @@ fn prepared_index_reads_reuse_the_measurement() {
                 Limits::DEFAULT.with_work(100_000).with_result_size(4096),
             );
             assert!(!r.size_limited && !r.depth_limited);
-            assert!(r.to_json().contains("\"a\":7"));
+            assert!(r.to_json().unwrap().contains("\"a\":7"));
         }
         (start.elapsed(), test_alloc::allocation_calls() - before)
     };
@@ -136,7 +136,7 @@ fn prepared_strings_are_converted_once_before_reads() {
             Limits::DEFAULT.with_work(10_000).with_result_size(4096),
         );
         assert!(!r.size_limited && !r.depth_limited);
-        assert!(r.to_json().contains("\"a\":7"));
+        assert!(r.to_json().unwrap().contains("\"a\":7"));
     }
 }
 #[test]
@@ -195,7 +195,7 @@ fn item_projection_of_native_props_keeps_the_props_object() {
     let r = evaluate_tree_with_limits((&p).into(), &store, Limits::DEFAULT);
     assert!(!r.size_limited && !r.depth_limited);
     assert!(r.errors.is_empty());
-    let json = r.to_json();
+    let json = r.to_json().unwrap();
     assert_eq!(json.matches("\"typeName\":\"Box\"").count(), 2, "{json}");
     assert!(!json.contains("Container"));
 }

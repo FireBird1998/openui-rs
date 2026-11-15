@@ -419,7 +419,8 @@ fn each_descriptor(node: &Value, scope: &Scope<Supplied<'_>>) -> Js {
             return value;
         }
         let room = expression::SubstitutionRoom::enter();
-        let copy = substitute_descriptor(template, &var, item);
+        let policy = |name: &str| child.mapped_call_only(name);
+        let copy = substitute_descriptor(template, &var, item, Some(&policy));
         room.finish();
         evaluate(Some(copy.as_ref().unwrap_or(template)), child)
     })
@@ -427,14 +428,19 @@ fn each_descriptor(node: &Value, scope: &Scope<Supplied<'_>>) -> Js {
 
 // Representation adapter for substituteRef. Typed children use the existing
 // typed walker and both forms use `literal` for captured loop values.
-fn substitute_descriptor(node: &Value, var: &Value, item: &Js) -> Option<Value> {
-    crate::stack::grow_stack!(substitute_descriptor(node,var,item), budget else None);
+fn substitute_descriptor(
+    node: &Value,
+    var: &Value,
+    item: &Js,
+    policy: Option<&dyn Fn(&str) -> bool>,
+) -> Option<Value> {
+    crate::stack::grow_stack!(substitute_descriptor(node,var,item,policy), budget else None);
     if !step(1) || !running() {
         return None;
     }
     if let Value::Ast(a) = node {
         return if let Value::Str(var) = var {
-            substitute(a, var, item).map(|a| Value::Ast(Arc::new(a)))
+            substitute_shared(a, var, item, policy).map(|a| Value::Ast(Arc::new(a)))
         } else {
             None
         };
@@ -452,6 +458,13 @@ fn substitute_descriptor(node: &Value, var: &Value, item: &Js) -> Option<Value> 
     {
         return Some(Value::Ast(Arc::new(literal(item))));
     }
+    let mapped_only = kind == "Comp"
+        && text(o.get("name")) != "Each"
+        && matches!(o.get("mappedProps"), Some(Value::Obj(_) | Value::Arr(_)))
+        && policy.is_some_and(|p| p(text(o.get("name"))));
+    let policy = policy.filter(|_| {
+        kind != "Assign" && (kind != "Comp" || text(o.get("name")) == "Each" || mapped_only)
+    });
     let fields: &[&str] = match kind {
         "Member" => &["obj"],
         "Index" => &["obj", "index"],
@@ -467,7 +480,7 @@ fn substitute_descriptor(node: &Value, var: &Value, item: &Js) -> Option<Value> 
             if matches!(kind, "Member" | "Index") && !is_descriptor(child) {
                 continue;
             }
-            if let Some(new) = substitute_descriptor(child, var, item) {
+            if let Some(new) = substitute_descriptor(child, var, item, policy) {
                 out.get_or_insert_with(|| o.as_ref().clone())
                     .define(*key, new);
             }
@@ -519,7 +532,7 @@ fn substitute_descriptor(node: &Value, var: &Value, item: &Js) -> Option<Value> 
                 if !running() {
                     break;
                 }
-                let new = substitute_descriptor(child, var, item);
+                let new = substitute_descriptor(child, var, item, policy);
                 changed |= new.is_some();
                 items.push(new.unwrap_or_else(|| child.clone()));
             }
@@ -541,7 +554,7 @@ fn substitute_descriptor(node: &Value, var: &Value, item: &Js) -> Option<Value> 
                 }
                 if let Value::Arr(pair) = entry {
                     if let Some(child) = pair.get(1) {
-                        let new = substitute_descriptor(child, var, item);
+                        let new = substitute_descriptor(child, var, item, policy);
                         changed |= new.is_some();
                         if let Some(new) = new {
                             let mut pair = pair.as_ref().clone();
@@ -586,12 +599,13 @@ fn substitute_descriptor(node: &Value, var: &Value, item: &Js) -> Option<Value> 
     if kind == "Comp" {
         let mapped = match o.get("mappedProps") {
             Some(Value::Obj(props)) => {
-                substitute_props(props.iter().map(|(k, v)| (k.clone(), v)), var, item)
+                substitute_props(props.iter().map(|(k, v)| (k.clone(), v)), var, item, policy)
             }
             Some(Value::Arr(props)) => substitute_props(
                 props.iter().enumerate().map(|(i, v)| (i.to_string(), v)),
                 var,
                 item,
+                policy,
             ),
             _ => None,
         };
@@ -600,12 +614,31 @@ fn substitute_descriptor(node: &Value, var: &Value, item: &Js) -> Option<Value> 
                 .define("mappedProps", Value::Obj(Arc::new(mapped)));
         }
     }
+    if mapped_only
+        && let (Some(Value::Arr(args)), Some(Value::Obj(props)), Some(out)) =
+            (o.get("args"), o.get("mappedProps"), &mut out)
+        && args.len() == 1
+        && props.len() == 1
+        && let (Some(Value::Obj(arg)), Some((key, Value::Obj(prop)))) =
+            (args.first(), props.iter().next())
+        && Arc::ptr_eq(arg, prop)
+        && let (Some(Value::Arr(args)), Some(Value::Obj(props))) =
+            (out.get("args"), out.get("mappedProps"))
+        // Preserve the mapped writer's assignment semantics (notably __proto__).
+        && props.has_own(key)
+        && let Some(replacement) = args.first()
+    {
+        let mut props = props.as_ref().clone();
+        props.define(key, replacement.clone());
+        out.define("mappedProps", Value::Obj(Arc::new(props)));
+    }
     out.map(|o| Value::Obj(Arc::new(o)))
 }
 fn substitute_props<'a>(
     props: impl Iterator<Item = (String, &'a Value)>,
     var: &Value,
     item: &Js,
+    policy: Option<&dyn Fn(&str) -> bool>,
 ) -> Option<JsObject<Value>> {
     let mut changed = false;
     let mut mapped = JsObject::new();
@@ -613,7 +646,7 @@ fn substitute_props<'a>(
         if !running() {
             break;
         }
-        let new = substitute_descriptor(v, var, item);
+        let new = substitute_descriptor(v, var, item, policy);
         changed |= new.is_some();
         mapped.set(k, new.unwrap_or_else(|| v.clone()));
     }

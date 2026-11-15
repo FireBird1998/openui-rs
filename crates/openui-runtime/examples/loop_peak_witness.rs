@@ -106,6 +106,6 @@ fn main() {
         "peak={peak} cut={} unique_strings={} retained_string_payload={payload} json_bytes={}",
         r.size_limited || r.depth_limited,
         strings.len(),
-        r.to_json().len()
+        r.to_json().unwrap().len()
     );
 }

@@ -28,7 +28,7 @@ fn snapshot_size(store: &Store) -> usize {
         Limits::DEFAULT,
     );
     tree.root = Some(Value::Obj(Arc::new(fields)));
-    tree.to_json().len() - r#"{"root":,"errors":[]}"#.len()
+    tree.to_json().unwrap().len() - r#"{"root":,"errors":[]}"#.len()
 }
 #[test]
 fn thousands_of_small_random_call_sequences_never_panic_or_exceed_state_room() {

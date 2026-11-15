@@ -53,7 +53,7 @@ fn scalars_and_null_pass_through() {
     assert_eq!(prop(&r, "c"), &Value::Bool(true));
     assert_eq!(prop(&r, "d"), &Value::Str("hello".into()));
     assert_eq!(
-        r.to_json(),
+        r.to_json().unwrap(),
         r#"{"root":{"type":"element","typeName":"Box","props":{"a":null,"b":42,"c":true,"d":"hello"},"partial":false,"hasDynamicProps":true,"statementId":"root"},"errors":[]}"#
     );
     assert!(r.errors.is_empty());
@@ -82,7 +82,7 @@ fn lists_elements_and_nested_objects() {
         None,
     );
     let r = whole(evaluate_tree((&p).into(), &initialized(&p)));
-    let j = r.to_json();
+    let j = r.to_json().unwrap();
     assert!(!j.contains("StateRef"), "{j}");
     assert!(j.contains(r#""nested":{"v":9},"list":[9]"#));
     assert!(j.contains(r#""a":[9,{"type":"element","typeName":"Box","props":{"a":9}"#));
@@ -153,7 +153,7 @@ fn failed_props_preserve_raw_values_and_report_in_order() {
     );
     assert_eq!(r.errors[0].statement_id.as_deref(), Some("root"));
     assert_eq!(r.errors[1].statement_id.as_deref(), Some("child"));
-    assert!(r.to_json().contains(r#""source":"runtime","code":"runtime-error","component":"Box","statementId":"root","message":"Evaluating prop \"a\" on Box failed: No default value","hint":"Check the expression used for prop \"a\""#));
+    assert!(r.to_json().unwrap().contains(r#""source":"runtime","code":"runtime-error","component":"Box","statementId":"root","message":"Evaluating prop \"a\" on Box failed: No default value","hint":"Check the expression used for prop \"a\""#));
 }
 #[test]
 fn failed_sort_and_filter_props_keep_raw_calls() {
@@ -365,7 +365,11 @@ $n=4"#,
     let r = whole(evaluate_tree((&p).into(), &initialized(&p)));
     assert_eq!(prop(&r, "a"), &Value::Num(5.0));
     assert_eq!(prop(&r, "b"), &Value::Num(4.0));
-    assert!(r.to_json().contains(r#""c":{"raw":1},"d":["x",null,null]"#));
+    assert!(
+        r.to_json()
+            .unwrap()
+            .contains(r#""c":{"raw":1},"d":["x",null,null]"#)
+    );
 }
 #[test]
 fn result_room_is_shared_when_final_tree_is_small() {
@@ -381,7 +385,7 @@ fn result_room_is_shared_when_final_tree_is_small() {
     let mut s = Store::new();
     s.set("$text", Some(Value::Str("x".repeat(1000)))).unwrap();
     let complete = whole(evaluate_tree((&p).into(), &s));
-    assert!(complete.to_json().len() < 2000);
+    assert!(complete.to_json().unwrap().len() < 2000);
     let r = evaluate_tree_with_limits((&p).into(), &s, Limits::DEFAULT.with_result_size(2000));
     assert!(r.size_limited && !r.depth_limited);
 }

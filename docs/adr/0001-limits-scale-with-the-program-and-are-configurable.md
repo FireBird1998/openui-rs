@@ -25,6 +25,9 @@ allowance. Fixed limits remain fixed, and scaled limits retain their ceilings.
 
 ## Considered options
 
-- **A fixed cap only (8 MiB, as before).** It bounds memory but not amplification. A streaming caller serializing per push could still write gigabytes for one reply.
+- **A fixed cap only (8 MiB, as before).** It bounds serialized output but not temporary live memory or amplification. A streaming caller serializing per push could still write gigabytes for one reply.
 - **Refusing oversized input with an error.** It's simpler, but a stream already being drawn would lose everything at once. A cut result keeps what fits, and says so.
 - **Hard-coded limits.** They're safe, but an embedder with a different budget (a desktop app or a watch) couldn't adapt them without forking.
+
+Runtime memory qualification: ADR 0008 distinguishes serialized room from peak
+live memory and records the compatibility obstruction to a universal peak bound.

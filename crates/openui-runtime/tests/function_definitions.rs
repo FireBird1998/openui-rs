@@ -21,17 +21,19 @@ fn definition_fields_match_the_reference() {
         let mut functions = LibraryFunctions::new(&definitions);
         let outcome = c["outcome"].as_str().unwrap();
         let result = c.get("result").map(Value::from_json);
-        functions.register("Probe", move |args| {
-            if outcome == "throw" {
-                Err("boom".into())
-            } else {
-                Ok(if outcome == "args" {
-                    Some(args)
+        functions
+            .register("Probe", move |args| {
+                if outcome == "throw" {
+                    Err("boom".into())
                 } else {
-                    result.clone()
-                })
-            }
-        });
+                    Ok(if outcome == "args" {
+                        Some(args)
+                    } else {
+                        result.clone()
+                    })
+                }
+            })
+            .unwrap();
         let root = Value::from_json(&c["root"]);
         let Value::Obj(root) = &root else {
             panic!("root")
@@ -52,11 +54,11 @@ fn definition_fields_match_the_reference() {
         let r = evaluate_tree(TreeInput::new(&p).with_functions(&functions), &Store::new());
         assert!(!r.size_limited && !r.depth_limited, "{}", c["name"]);
         let want = openui_lang::stringify_json(&c["expected"]);
-        if r.to_json() != want {
+        if r.to_json().unwrap() != want {
             mismatches.push(format!(
                 "{}\nactual: {}\nexpected: {}",
                 c["name"],
-                r.to_json(),
+                r.to_json().unwrap(),
                 want
             ));
         }

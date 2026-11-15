@@ -20,8 +20,8 @@ fn setup(source: &str) -> (ParseResult, Library, BindingProps, Store) {
     free_json(j);
     let parsed = parse(source, &library, None);
     let mut bindings = BindingProps::new();
-    bindings.insert("Field", "value");
-    bindings.insert("Field", "transform");
+    bindings.insert("Field", "value").unwrap();
+    bindings.insert("Field", "transform").unwrap();
     let mut store = Store::new();
     let initialized = store.initialize(
         parsed
@@ -48,7 +48,7 @@ fn markers_preserve_ast_json_and_transform_writes_use_current_state() {
         TreeInput::new(&p).with_library(&l).with_binding_props(&b),
         &store,
     );
-    assert!(evaluated.to_json().contains(
+    assert!(evaluated.to_json().unwrap().contains(
         r#""value":{"__reactive":"assign","target":"$n","expr":{"k":"StateRef","n":"$value"}}"#
     ));
     let root = evaluated.root.unwrap();
@@ -111,8 +111,12 @@ $n=4"#;
         TreeInput::new(&p).with_library(&l).with_binding_props(&b),
         &store,
     );
-    assert!(r.to_json().contains(r#""display":[null,null,4]"#));
-    assert!(r.to_json().contains(r#""value":[{"__reactive":"assign""#));
+    assert!(r.to_json().unwrap().contains(r#""display":[null,null,4]"#));
+    assert!(
+        r.to_json()
+            .unwrap()
+            .contains(r#""value":[{"__reactive":"assign""#)
+    );
 }
 #[test]
 fn refused_writes_leave_snapshot_version_and_pristine_unchanged() {
@@ -154,7 +158,7 @@ fn refused_writes_leave_snapshot_version_and_pristine_unchanged() {
 fn helper_marks_only_direct_annotations_and_keeps_literal_names() {
     let b = BindingProps::from_prompt_spec(&value(
         r#"{"components":{"constructor":{"signature":"constructor(toString?: $binding<Record<string, boolean>>, __proto__: $binding<any>, nested: {x: $binding<string>}, list: $binding<string>[], boundList: $binding<string[]>, union: $binding<string> | number, boundUnion: $binding<string | number>, quoted: \"$binding<\")"}}}"#,
-    ));
+    )).unwrap();
     assert!(b.contains("constructor", "toString"));
     assert!(b.contains("constructor", "__proto__"));
     assert!(!b.contains("constructor", "list"));
@@ -282,7 +286,7 @@ fn component_binding_lookup_uses_javascript_property_keys() {
 $n=4"#,
     );
     for name in ["1", "null", "[object Object]", ""] {
-        b.insert(name, "value");
+        b.insert(name, "value").unwrap();
     }
     let r = evaluate_tree(
         TreeInput::new(&p).with_library(&l).with_binding_props(&b),
@@ -323,6 +327,7 @@ $n=3"#,
     );
     assert!(
         r.to_json()
+            .unwrap()
             .contains(r#""display":[null,null,null,null,null,null,99]"#)
     );
 }
@@ -524,7 +529,7 @@ fn signature_extraction_does_not_copy_the_component_name_per_prop() {
     spec.define("components", Value::Obj(Arc::new(components)));
     let spec = Value::Obj(Arc::new(spec));
     let before = test_alloc::allocation_calls();
-    let bindings = BindingProps::from_prompt_spec(&spec);
+    let bindings = BindingProps::from_prompt_spec(&spec).unwrap();
     let allocations = test_alloc::allocation_calls() - before;
     assert!(bindings.contains(&name, "p255"));
     assert!(
@@ -538,7 +543,7 @@ fn signature_properties_anchor_odd_names_and_unescaped_literals() {
     let spec = value(
         r#"{"components":{"Odd":{"signature":"Odd(e1: \"a\"b\", after: $binding<string>, a:b: $binding<string>, x?: $binding<string>, lt<: $binding<string>, p(: $binding<string>, c,: $binding<string>, it's: $binding<string>, tail: \"end\\\", last: $binding<string>)"}},"schema":{"$defs":{"Odd":{"properties":{"e1":{},"after":{},"a:b":{},"x?":{},"lt<":{},"p(":{},"c,":{},"it's":{},"tail":{},"last":{}}}}}}"#,
     );
-    let bindings = BindingProps::from_prompt_spec(&spec);
+    let bindings = BindingProps::from_prompt_spec(&spec).unwrap();
     for name in ["after", "a:b", "x?", "lt<", "p(", "c,", "it's", "last"] {
         assert!(bindings.contains("Odd", name), "missing {name}");
     }
@@ -570,7 +575,7 @@ fn stripped_markers_fit_the_previous_room_and_work_allowance() {
         )
     };
     let mut bindings = BindingProps::new();
-    bindings.insert("Field", "change");
+    bindings.insert("Field", "change").unwrap();
     let bound = |room, work| {
         evaluate_tree_with_limits(
             TreeInput::new(&p)
@@ -611,29 +616,29 @@ fn undecidable_signature_annotations_do_not_hide_later_props() {
                 _ => panic!("object"),
             };
         spec.define("components", Value::Obj(Arc::new(components)));
-        let bindings = BindingProps::from_prompt_spec(&Value::Obj(Arc::new(spec)));
+        let bindings = BindingProps::from_prompt_spec(&Value::Obj(Arc::new(spec))).unwrap();
         assert!(!bindings.contains("Odd", "first"), "ambiguous {first}");
         assert!(bindings.contains("Odd", "after"));
     }
     let spec = value(
         r#"{"components":{"Odd":{"signature":"Odd(first: \"x, after: $binding<string>\", after: string, last: $binding<string>)"}},"schema":{"$defs":{"Odd":{"properties":{"first":{},"after":{},"last":{}}}}}}"#,
     );
-    let bindings = BindingProps::from_prompt_spec(&spec);
+    let bindings = BindingProps::from_prompt_spec(&spec).unwrap();
     assert!(!bindings.contains("Odd", "after"));
     assert!(bindings.contains("Odd", "last"));
     let spec = value(
         r#"{"components":{"Odd":{"signature":"Odd(first: \"x, after: string\", after: $binding<string>, last: $binding<string>)"}},"schema":{"$defs":{"Odd":{"properties":{"first":{},"after":{},"last":{}}}}}}"#,
     );
-    let bindings = BindingProps::from_prompt_spec(&spec);
+    let bindings = BindingProps::from_prompt_spec(&spec).unwrap();
     assert!(!bindings.contains("Odd", "after"));
     assert!(bindings.contains("Odd", "last"));
     // Without structural anchors this unescaped signature is undecidable.
     let spec = value(
         r#"{"components":{"Odd":{"signature":"Odd(first: \"a\"b\", after: $binding<string>)"}}}"#,
     );
-    let mut bindings = BindingProps::from_prompt_spec(&spec);
+    let mut bindings = BindingProps::from_prompt_spec(&spec).unwrap();
     assert!(!bindings.contains("Odd", "after"));
-    bindings.insert("Odd", "after");
+    bindings.insert("Odd", "after").unwrap();
     assert!(bindings.contains("Odd", "after"));
 }
 
@@ -701,7 +706,7 @@ fn undecided_binding_pairs_are_reported_and_can_be_resolved() {
         "../../../conformance/golden/runtime/binding-undecided-spec.json"
     ));
     let spec = prop(&fixture, "spec");
-    let mut bindings = BindingProps::from_prompt_spec(spec);
+    let mut bindings = BindingProps::from_prompt_spec(spec).unwrap();
     assert_eq!(
         bindings.undecided().collect::<Vec<_>>(),
         vec![
@@ -757,6 +762,7 @@ fn undecided_binding_pairs_are_reported_and_can_be_resolved() {
         ));
         assert_eq!(
             BindingProps::from_prompt_spec(&spec)
+                .unwrap()
                 .undecided()
                 .collect::<Vec<_>>(),
             vec![("Bad", "x")]
@@ -765,7 +771,7 @@ fn undecided_binding_pairs_are_reported_and_can_be_resolved() {
     let plain = value(
         r#"{"components":{"C":{"signature":"C(value: string, trend: {value: number})"}},"schema":{"$defs":{"C":{"properties":{"value":{},"trend":{}}}}}}"#,
     );
-    let plain = BindingProps::from_prompt_spec(&plain);
+    let plain = BindingProps::from_prompt_spec(&plain).unwrap();
     assert!(plain.undecided().next().is_none());
     assert!(!plain.contains("C", "value"));
     let sources = value(include_str!("../../../conformance/bindings.json"));
@@ -780,14 +786,14 @@ fn undecided_binding_pairs_are_reported_and_can_be_resolved() {
             .join("../../conformance")
             .join(path);
         let spec = value(&std::fs::read_to_string(path).unwrap());
-        let cfg = BindingProps::from_prompt_spec(prop(&spec, "library"));
+        let cfg = BindingProps::from_prompt_spec(prop(&spec, "library")).unwrap();
         assert_eq!(
             cfg.undecided().collect::<Vec<_>>(),
             vec![],
             "ordinary spec {schema}"
         );
     }
-    bindings.insert("E10", "e10");
+    bindings.insert("E10", "e10").unwrap();
     assert!(bindings.contains("E10", "e10"));
     assert!(!bindings.undecided().any(|p| p == ("E10", "e10")));
     assert!(bindings.undecided().any(|p| p == ("E11", "e11")));

@@ -177,7 +177,72 @@ pub struct TreeResult {
 }
 impl TreeResult {
     /// `{root,errors}` in upstream's JSON.stringify order. Flags are not JSON.
-    pub fn to_json(&self) -> String {
+    /// Export preserves completed evaluations, including raw cut props and an
+    /// envelope larger/deeper than the evaluated root. No new allowance is imposed.
+    /// Use `to_json_with_limits` only to request a separate export limit.
+    pub fn to_json(&self) -> Result<String, crate::LimitError> {
+        Ok(value_json(&self.json_value()))
+    }
+    /// Serialize under explicit work, depth and output ceilings. Caller-mutated
+    /// roots and diagnostics are admitted before they are copied or serialized.
+    pub fn to_json_with_limits(&self, limits: Limits) -> Result<String, crate::LimitError> {
+        let session = EvaluationSession::with_limits(&(), 0, crate::admission::fixed(limits));
+        let preflight = session.with_evaluator(|eval| {
+            eval.with_discarded_result(|| {
+                if !eval.reserve_result(r#"{"root":,"errors":[]}"#.len()) {
+                    return false;
+                }
+                if let Some(root) = &self.root {
+                    if !eval.reserve_value(root) {
+                        return false;
+                    }
+                } else if !eval.reserve_result(4) {
+                    return false;
+                }
+                for (i, error) in self.errors.iter().enumerate() {
+                    // Build only one diagnostic at a time, after checking its text.
+                    for text in [
+                        Some(error.code),
+                        error.component.as_deref(),
+                        error.statement_id.as_deref(),
+                        Some(&error.message),
+                        error.hint.as_deref(),
+                    ]
+                    .into_iter()
+                    .flatten()
+                    {
+                        if text.len() > limits.work_for(usize::MAX)
+                            || text.len() > limits.result_size()
+                        {
+                            return false;
+                        }
+                    }
+                    if !eval.reserve_value(&error.value())
+                        || !eval.reserve_result(usize::from(i != 0))
+                    {
+                        return false;
+                    }
+                }
+                true
+            })
+        });
+        let (admitted, flags) = preflight.unwrap_or((false, session.flags()));
+        if !admitted {
+            return Err(if flags.size_limited || flags.depth_limited {
+                crate::LimitError { flags }
+            } else {
+                crate::admission::size_error()
+            });
+        }
+        let value = self.json_value();
+        if !session.with_evaluator(|eval| eval.reserve_value(&value)) {
+            return Err(crate::LimitError {
+                flags: session.flags(),
+            });
+        }
+        Ok(value_json(&value))
+    }
+    fn json_value(&self) -> Value {
         let mut o = JsObject::new();
         o.define("root", self.root.as_ref().cloned().unwrap_or(Value::Null));
         o.define(
@@ -186,7 +251,7 @@ impl TreeResult {
                 self.errors.iter().map(RuntimeError::value).collect(),
             )),
         );
-        value_json(&Value::Obj(Arc::new(o)))
+        Value::Obj(Arc::new(o))
     }
 }
 
@@ -572,6 +637,18 @@ impl EvaluationScope for TreeScope<'_> {
             .ok()
             .flatten()
             .map(|(_, prepared)| prepared)
+    }
+    fn mapped_call_only(&self, name: &str) -> bool {
+        // Plans and host implementations may observe/retain argument syntax.
+        // Ordinary components evaluate mapped props exclusively.
+        !matches!(
+            name,
+            "Action" | "Run" | "Set" | "Reset" | "ToAssistant" | "OpenUrl"
+        ) && !self.functions.is_some_and(|f| f.get(name).is_some())
+            && !self
+                .actions
+                .and_then(|a| a.as_object())
+                .is_some_and(|a| a.contains_key(name))
     }
     fn wants_each_item(&self, value: &ExpressionValue<'_>, context: bool) -> bool {
         if let Some(data) = value.data() {

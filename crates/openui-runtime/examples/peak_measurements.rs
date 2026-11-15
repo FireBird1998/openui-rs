@@ -45,7 +45,7 @@ fn main() {
         println!(
             "repeated-reference unread={unread} input={} peak={peak} json={} size={} depth={}",
             text.len(),
-            r.to_json().len(),
+            r.to_json().unwrap().len(),
             r.size_limited,
             r.depth_limited
         );
@@ -83,7 +83,7 @@ fn main() {
             let peak = test_alloc::peak().saturating_sub(before);
             println!(
                 "unique-leaf rows={rows} depth={depth} peak={peak} json={} size={} depth_cut={}",
-                r.to_json().len(),
+                r.to_json().unwrap().len(),
                 r.size_limited,
                 r.depth_limited
             );

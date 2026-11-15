@@ -106,21 +106,26 @@ fn events_snapshot_each_step_and_unknown_missing_and_unowned_steps_are_skipped()
     assert!(r.failure.is_none());
     assert_eq!(r.events.len(), 3);
     assert_eq!(
-        r.events[0].to_json(),
+        r.events[0].to_json().unwrap(),
         r#"{"type":"continue_conversation","params":{},"humanFriendlyMessage":"first","formState":{"$n":1}}"#
     );
     assert_eq!(
-        r.events[1].to_json(),
+        r.events[1].to_json().unwrap(),
         r#"{"type":"open_url","params":{"url":"url"},"humanFriendlyMessage":"","formState":{"$n":2}}"#
     );
-    assert!(r.events[2].to_json().contains(r#""type":"Go""#));
+    assert!(r.events[2].to_json().unwrap().contains(r#""type":"Go""#));
     let a = value(
         r#"{"steps":[{"type":"set","target":"$n"},{"type":"constructor"},{"type":"custom_action","name":"Go","params":{}},{"type":"open_url","url":"ok"}]}"#,
     );
     let r = run_action(TreeInput::new(&p), &mut s, Some(&a), "", Some(""));
     assert!(r.failure.is_none());
     assert_eq!(r.events.len(), 1);
-    assert!(r.events[0].to_json().ends_with(r#""formName":""}"#));
+    assert!(
+        r.events[0]
+            .to_json()
+            .unwrap()
+            .ends_with(r#""formName":""}"#)
+    );
     assert_eq!(s.get("$n"), Some(Value::Num(2.)));
 }
 
@@ -234,7 +239,7 @@ fn legacy_shadowing_null_context_and_default_event_match_renderer() {
         None,
     );
     assert_eq!(
-        r.events[0].to_json(),
+        r.events[0].to_json().unwrap(),
         r#"{"type":"other","params":{"url":"new","x":1},"humanFriendlyMessage":"label","formState":{}}"#
     );
     assert!(
@@ -249,13 +254,16 @@ fn legacy_shadowing_null_context_and_default_event_match_renderer() {
         .is_empty()
     );
     assert_eq!(
-        run_action(TreeInput::new(&p), &mut s, None, "default", None).events[0].to_json(),
+        run_action(TreeInput::new(&p), &mut s, None, "default", None).events[0]
+            .to_json()
+            .unwrap(),
         r#"{"type":"continue_conversation","params":{},"humanFriendlyMessage":"default","formState":{}}"#
     );
     let a = value(r#"{"steps":[{"type":"continue_conversation","message":"m","context":null}]}"#);
     assert!(
         run_action(TreeInput::new(&p), &mut s, Some(&a), "", None).events[0]
             .to_json()
+            .unwrap()
             .contains(r#""params":{"context":null}"#)
     );
 }
@@ -286,7 +294,7 @@ fn form_fields_keep_wrappers_save_requests_and_bound_state_separate() {
     assert_eq!(s.version(), version);
     let a = run_action(TreeInput::new(&p), &mut s, None, "submit", Some("contact"));
     assert_eq!(
-        a.events[0].to_json(),
+        a.events[0].to_json().unwrap(),
         r#"{"type":"continue_conversation","params":{},"humanFriendlyMessage":"submit","formState":{"contact":{"email":{"value":"x","componentType":"Input"}}},"formName":"contact"}"#
     );
     let marker =
@@ -374,8 +382,9 @@ fn set_functions_run_at_click_time_and_library_errors_write_null_and_continue() 
         } else {
             None
         })
-    });
-    f.register("Throw", |_| Err("failure".into()));
+    })
+    .unwrap();
+    f.register("Throw", |_| Err("failure".into())).unwrap();
     let p = parse(
         "$n=0\nroot=Box(Action([@Set($n,@Identity($n+1)),@Set($bad,@Throw()),@ToAssistant(\"ok\")]))",
         &l,
@@ -434,14 +443,16 @@ fn runner_does_not_redraw_or_refresh_query_defaults_between_steps() {
     let calls = Arc::new(std::sync::atomic::AtomicUsize::new(0));
     let count = calls.clone();
     let mut functions = LibraryFunctions::new(&j["functions"]);
-    functions.register("Identity", move |v| {
-        count.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
-        Ok(if let Value::Obj(o) = &v {
-            o.get("value").cloned()
-        } else {
-            None
+    functions
+        .register("Identity", move |v| {
+            count.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+            Ok(if let Value::Obj(o) = &v {
+                o.get("value").cloned()
+            } else {
+                None
+            })
         })
-    });
+        .unwrap();
     let p = parse(
         "$n=0\nq=Query(\"q\",{},@Identity($n))\nroot=Box(Action([@Set($n,q+1),@Set($n,q+1)]),@Identity(99))",
         &l,
@@ -472,6 +483,7 @@ fn undefined_form_wrappers_keep_reads_and_default_eligibility_until_disposed() {
     assert!(
         r.events[0]
             .to_json()
+            .unwrap()
             .contains(r#""x":{"componentType":"Input"}"#)
     );
     let wrapper = s.get("x").unwrap();
@@ -923,7 +935,7 @@ fn native_function_reset_defaults_pin_the_existing_value_representation_boundary
     actual.define("snapshot", Value::Obj(Arc::new(snapshot)));
     actual.define(
         "tree",
-        value(&evaluate_tree(TreeInput::new(&p), &store).to_json()),
+        value(&evaluate_tree(TreeInput::new(&p), &store).to_json().unwrap()),
     );
     let actual = Value::Obj(Arc::new(actual));
     let reference = Value::from_json(&pin["reference"]);
@@ -1174,7 +1186,9 @@ fn retained_typed_and_data_expressions_receive_the_same_input_credit() {
     let definitions =
         parse_json(r#"{"Build":{"params":{"type":"object","properties":{"xs":{}}}}}"#).unwrap();
     let mut functions = LibraryFunctions::new(&definitions);
-    functions.register("Build", |_| Ok(Some(Value::Str("x".repeat(400000)))));
+    functions
+        .register("Build", |_| Ok(Some(Value::Str("x".repeat(400000)))))
+        .unwrap();
     let expr = Value::Ast(Arc::new(openui_lang::Ast::Comp {
         name: "Build".into(),
         args: Arc::new(vec![openui_lang::Ast::Arr(Arc::new(

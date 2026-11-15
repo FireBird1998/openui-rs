@@ -356,7 +356,9 @@ impl SessionCore {
                     reason: "expected a prompt library object".into(),
                 });
             }
-            s.bindings = BindingProps::from_prompt_spec(library);
+            s.bindings = BindingProps::from_prompt_spec(library).map_err(|e| {
+                runtime_error(RuntimeFailure::Limit(e), s.core_limits.result_size())
+            })?;
         }
         Ok(s)
     }
@@ -390,6 +392,18 @@ impl SessionCore {
                 reason: "expected a JSON object".into(),
             }),
         }
+    }
+    // Retained values were already admitted. Export does not spend a new
+    // evaluation allowance or charge empty-object/envelope bytes to Store room.
+    fn retained_json(&self, value: &Value) -> Result<String, OpenUiError> {
+        openui_runtime::value_to_json(value)
+            .map_err(|e| runtime_error(RuntimeFailure::Limit(e), self.core_limits.result_size()))
+    }
+    fn continuation_room(&self) -> Result<(), OpenUiError> {
+        self.next_continuation
+            .checked_add(1)
+            .map(|_| ())
+            .ok_or_else(|| limit("continuation generations exhausted"))
     }
     fn field_text(
         &self,
@@ -431,6 +445,8 @@ impl SessionCore {
         form: Option<&str>,
     ) -> Result<ActionOutput, OpenUiError> {
         self.field_text(form, None, message)?;
+        // Reserve the possibility of a handoff before running any effects.
+        self.continuation_room()?;
         let input = tree_input(&self.program, &self.library, &self.bindings, refs);
         let run = openui_runtime::run_action_with_limits(
             input,
@@ -443,6 +459,16 @@ impl SessionCore {
         self.output(run)
     }
     fn output(&mut self, mut run: openui_runtime::ActionRun) -> Result<ActionOutput, OpenUiError> {
+        // Events were checked by the runtime against the same result ceiling.
+        // No smaller host-input, work or depth allowance may newly refuse them
+        // after earlier action effects. Serialize before publishing/evicting a
+        // continuation; all runtime admission errors use the same mapper.
+        let events = run
+            .events
+            .iter()
+            .map(|event| event.to_json())
+            .collect::<Result<Vec<_>, _>>()
+            .map_err(|e| runtime_error(RuntimeFailure::Limit(e), self.core_limits.result_size()))?;
         let continuation = if let Some(continuation) = run.continuation.take() {
             self.next_continuation = self
                 .next_continuation
@@ -473,7 +499,7 @@ impl SessionCore {
             None
         };
         Ok(ActionOutput {
-            events: run.events.iter().map(|event| event.to_json()).collect(),
+            events,
             failure: run.failure.map(|f| ActionFailureOutput {
                 step: f.step.map(|v| v as u64),
                 error: runtime_error(
@@ -576,7 +602,9 @@ impl SessionCore {
                 if total > s.limits.max_json_bytes {
                     return Err(limit("binding annotation byte limit"));
                 }
-                s.bindings.insert(key.0.clone(), key.1.clone());
+                s.bindings.insert(&key.0, &key.1).map_err(|e| {
+                    runtime_error(RuntimeFailure::Limit(e), s.core_limits.result_size())
+                })?;
                 s.explicit_bindings.insert(key);
                 s.binding_bytes = total;
             }
@@ -630,7 +658,9 @@ impl SessionCore {
         self.call(refs, |s, refs| {
             let tree =
                 openui_runtime::evaluate_tree_with_limits(s.input(refs), &s.store, s.core_limits);
-            let json = tree.to_json();
+            let json = tree.to_json().map_err(|e| {
+                runtime_error(RuntimeFailure::Limit(e), s.core_limits.result_size())
+            })?;
             s.release_evaluation()?;
             s.root = tree.root;
             Ok(EvaluationOutput {
@@ -677,7 +707,11 @@ impl SessionCore {
     ) -> Result<Option<String>, OpenUiError> {
         self.call(refs, move |s, _| {
             s.text(&name)?;
-            Ok(s.store.get(&name).as_ref().map(value_json))
+            s.store
+                .get(&name)
+                .as_ref()
+                .map(|v| s.retained_json(v))
+                .transpose()
         })
     }
     /// Host JSON never grants custom-step identity. None writes undefined.
@@ -704,7 +738,7 @@ impl SessionCore {
                     object.define(name, value.clone());
                 }
             }
-            Ok(value_json(&Value::Obj(Arc::new(object))))
+            s.retained_json(&Value::Obj(Arc::new(object)))
         })
     }
     /// Number of mutation outcomes currently retained by this session.
@@ -762,11 +796,10 @@ impl SessionCore {
     ) -> Result<Option<String>, OpenUiError> {
         self.call(refs, move |s, _| {
             s.field_text(form.as_deref(), None, &name)?;
-            Ok(
-                openui_runtime::get_field_value(&s.store, form.as_deref(), &name)
-                    .as_ref()
-                    .map(value_json),
-            )
+            openui_runtime::get_field_value(&s.store, form.as_deref(), &name)
+                .as_ref()
+                .map(|v| s.retained_json(v))
+                .transpose()
         })
     }
     /// Write a renderer field; report the runtime's save request separately.
@@ -876,6 +909,12 @@ impl SessionCore {
             if continuation.evicted.load(Ordering::Acquire) {
                 return Err(OpenUiError::EvictedHandle);
             }
+            if !s.continuations.contains_key(&continuation.generation) {
+                return Err(OpenUiError::ConsumedHandle);
+            }
+            if succeeded {
+                s.continuation_room()?;
+            }
             let entry = s
                 .continuations
                 .remove(&continuation.generation)
@@ -930,6 +969,7 @@ struct PendingContinuation {
 }
 
 enum RuntimeFailure {
+    Limit(openui_runtime::LimitError),
     Store(openui_runtime::StoreError),
     Binding(openui_runtime::BindingWriteError),
     Resume(openui_runtime::ActionResumeError),
@@ -938,6 +978,7 @@ enum RuntimeFailure {
 fn runtime_error(error: RuntimeFailure, state_cap: usize) -> OpenUiError {
     use openui_runtime::{ActionResumeError as R, BindingWriteError as B};
     match error {
+        RuntimeFailure::Limit(e) => limit(&e.to_string()),
         RuntimeFailure::Store(e) => OpenUiError::RefusedWrite {
             reason: format!("{e} (state cap: {state_cap} JSON bytes)"),
         },
@@ -962,30 +1003,6 @@ fn worker_error(reason: &str) -> OpenUiError {
     OpenUiError::Worker {
         reason: reason.into(),
     }
-}
-
-// Keep all JSON escaping, number formatting and AST projection in the core.
-// Use a fixed core-owned wrapper, as the runtime's own serializer does.
-fn value_json(value: &Value) -> String {
-    let mut props = JsObject::new();
-    props.define("v", value.clone());
-    let result = ParseResult {
-        root: Some(openui_lang::Element {
-            type_name: String::new(),
-            props,
-            partial: false,
-            has_dynamic_props: false,
-            statement_id: None,
-        }),
-        ..ParseResult::default()
-    };
-    let json = result.to_json();
-    let prefix = "{\"root\":{\"type\":\"element\",\"typeName\":\"\",\"props\":{\"v\":";
-    let suffix = "},\"partial\":false,\"hasDynamicProps\":false},\"meta\":";
-    json.strip_prefix(prefix)
-        .and_then(|s| s.rfind(suffix).map(|n| s.get(..n).unwrap_or("null")))
-        .unwrap_or("null")
-        .into()
 }
 
 struct Json(serde_json::Value);
@@ -1016,6 +1033,66 @@ static TEST_ALLOCATOR: test_alloc::Allocator = test_alloc::Allocator::with_cap(t
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn continuation_generation_refusals_precede_effects_and_consumption() {
+        let schema = serde_json::json!({"$defs":{"Box":{"properties":{"a":{}}}}});
+        let library = Arc::new(ComponentLibrary {
+            inner: Arc::new(openui_lang::Library::from_json_schema(&schema)),
+            schema: Arc::new(schema),
+        });
+        let parsed = Arc::new(openui_lang::parse(
+            "$n=0\nm=Mutation(\"m\",{})\nroot=Box(Action([@Set($n,$n+1),@Run(m),@Set($n,$n+1)]))",
+            &library.inner,
+            None,
+        ));
+        let program = Arc::new(ParsedProgram {
+            json_bytes: parsed.to_json().len() as u64,
+            inner: parsed,
+        });
+        let mut session = SessionCore::new(library, None, RuntimeLimits::default()).unwrap();
+        let values = JsObject::new();
+        let refs = PreparedReferenceValues::new(&values);
+        session.set_program(&refs, program).unwrap();
+        session.initialize(&refs, None).unwrap();
+        let tree = session.evaluate(&refs).unwrap();
+        let action = session
+            .action_at(&refs, tree.evaluation, vec!["props".into(), "a".into()])
+            .unwrap();
+        session.next_continuation = u64::MAX;
+        let before = session.snapshot(&refs).unwrap();
+        let version = session.store.version();
+        assert!(matches!(
+            session.run(&refs, Some(action.clone()), String::new(), None),
+            Err(OpenUiError::LimitExceeded { .. })
+        ));
+        assert_eq!(session.snapshot(&refs).unwrap(), before);
+        assert_eq!(session.store.version(), version);
+        assert!(session.continuations.is_empty());
+        session.next_continuation = 0;
+        let pending = session
+            .run(&refs, Some(action), String::new(), None)
+            .unwrap()
+            .continuation
+            .unwrap();
+        session.next_continuation = u64::MAX;
+        let before = session.snapshot(&refs).unwrap();
+        let version = session.store.version();
+        assert!(matches!(
+            session.resume(&refs, pending.clone(), true),
+            Err(OpenUiError::LimitExceeded { .. })
+        ));
+        assert_eq!(session.snapshot(&refs).unwrap(), before);
+        assert_eq!(session.store.version(), version);
+        assert_eq!(session.continuations.len(), 1);
+        // Abandoning remains possible at exhaustion and consumes exactly once.
+        session.resume(&refs, pending.clone(), false).unwrap();
+        assert!(session.continuations.is_empty());
+        assert!(matches!(
+            session.resume(&refs, pending, true),
+            Err(OpenUiError::ConsumedHandle)
+        ));
+    }
+
     #[test]
     fn program_handoff_keeps_the_original_shared_parse_result() {
         let schema = serde_json::json!({"$defs":{}});

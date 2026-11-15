@@ -62,7 +62,7 @@ fn unavailable_references_cut_only_when_read() {
         &Store::new(),
     );
     assert!(!r.depth_limited && !r.size_limited);
-    assert!(r.to_json().contains("\"a\":2"));
+    assert!(r.to_json().unwrap().contains("\"a\":2"));
     // The convenience form admits a 300-deep value with its independent bound.
     let r = evaluate_tree(
         TreeInput::new(&p).with_reference_values(&values),
@@ -75,7 +75,7 @@ fn unavailable_references_cut_only_when_read() {
         &Store::new(),
     );
     assert!(r.depth_limited && !r.size_limited);
-    let text = r.to_json();
+    let text = r.to_json().unwrap();
     assert!(text.contains("\"a\":2"));
     assert!(
         text.contains("\"b\":{\"k\":\"RuntimeRef\",\"n\":\"q\",\"refType\":\"query\"}"),
@@ -102,7 +102,7 @@ fn oversized_preparation_is_unavailable_only_on_read() {
         );
         assert_eq!(r.size_limited, cut);
         assert!(!r.depth_limited);
-        assert!(r.to_json().contains("\"a\":2"));
+        assert!(r.to_json().unwrap().contains("\"a\":2"));
     }
 }
 
@@ -165,7 +165,7 @@ fn string_each_arguments_evaluate_to_an_empty_list() {
     );
     let r = evaluate_tree((&p).into(), &Store::new());
     assert!(r.errors.is_empty());
-    assert!(r.to_json().contains("\"a\":[]"));
+    assert!(r.to_json().unwrap().contains("\"a\":[]"));
 }
 
 #[test]
@@ -178,9 +178,9 @@ fn descriptor_loop_substitutes_array_mapped_props() {
     let r = evaluate_tree((&p).into(), &Store::new());
     assert!(r.errors.is_empty());
     assert!(
-        r.to_json().contains("\"props\":{\"0\":7}"),
+        r.to_json().unwrap().contains("\"props\":{\"0\":7}"),
         "{}",
-        r.to_json()
+        r.to_json().unwrap()
     );
 }
 

@@ -73,6 +73,7 @@ fn outcomes_see_intervening_fields_and_tokens_are_single_use_and_session_owned()
     assert!(
         r.events[0]
             .to_json()
+            .unwrap()
             .contains(r#""args":{"text":"initial"}"#)
     );
     let c = r.continuation.unwrap();
@@ -135,7 +136,7 @@ fn two_mutations_and_a_last_mutation_each_require_an_outcome() {
     let r = resume_action(TreeInput::new(&p), &mut s, &c, true).unwrap();
     assert!(r.is_suspended());
     assert_eq!(r.events.len(), 1);
-    assert!(r.events[0].to_json().contains(r#""args":{"n":1}"#));
+    assert!(r.events[0].to_json().unwrap().contains(r#""args":{"n":1}"#));
     let r = resume_action(TreeInput::new(&p), &mut s, &r.continuation.unwrap(), false).unwrap();
     assert!(!r.is_suspended());
     assert!(r.events.is_empty());
@@ -156,7 +157,12 @@ fn resumed_steps_use_the_current_program_and_keep_the_original_work_allowance() 
     );
     let r = resume_action(TreeInput::new(&next), &mut s, &c, true).unwrap();
     assert_eq!(s.get("$n"), Some(Value::Num(42.)));
-    assert!(r.events[0].to_json().contains(r#""args":{"version":2}"#));
+    assert!(
+        r.events[0]
+            .to_json()
+            .unwrap()
+            .contains(r#""args":{"version":2}"#)
+    );
     let source = format!(
         "$n=0\nm=Mutation(\"m\",@Count(@Each($rows,r,r+1)))\nroot=Box(Action([{}]))",
         vec!["@Run(m)"; 100].join(",")

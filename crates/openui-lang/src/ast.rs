@@ -14,7 +14,7 @@ use crate::result::{Value, json_number_value};
 /// It frees its tree with a loop rather than recursion, so dropping one needs
 /// no stack however deep it nests. That makes it [`Drop`]: a pattern can't
 /// move a field out, so borrow it and clone the `Arc` instead.
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone)]
 pub enum Ast {
     /// A component or builtin call: `Header("Hello")`, `@Count(items)`.
     /// Materializing adds `mapped_props`, its args by param name, to a library
@@ -102,6 +102,193 @@ pub enum Ast {
         /// The value assigned.
         value: Arc<Ast>,
     },
+}
+
+impl std::fmt::Debug for Ast {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        if matches!(
+            self,
+            Self::Comp { .. }
+                | Self::Arr(_)
+                | Self::Obj(_)
+                | Self::BinOp { .. }
+                | Self::UnaryOp { .. }
+                | Self::Ternary { .. }
+                | Self::Member { .. }
+                | Self::Index { .. }
+                | Self::Assign { .. }
+        ) {
+            crate::stack::grow_stack!(std::fmt::Debug::fmt(self, f));
+        }
+        match self {
+            Self::Comp {
+                name,
+                args,
+                function,
+                mapped_props,
+            } => f
+                .debug_struct("Comp")
+                .field("name", name)
+                .field("args", args)
+                .field("function", function)
+                .field("mapped_props", mapped_props)
+                .finish(),
+            Self::Str(v) => f.debug_tuple("Str").field(v).finish(),
+            Self::Num(v) => f.debug_tuple("Num").field(v).finish(),
+            Self::Bool(v) => f.debug_tuple("Bool").field(v).finish(),
+            Self::Null => f.write_str("Null"),
+            Self::Arr(v) => f.debug_tuple("Arr").field(v).finish(),
+            Self::Obj(v) => f.debug_tuple("Obj").field(v).finish(),
+            Self::Ref(v) => f.debug_tuple("Ref").field(v).finish(),
+            Self::Ph(v) => f.debug_tuple("Ph").field(v).finish(),
+            Self::StateRef(v) => f.debug_tuple("StateRef").field(v).finish(),
+            Self::RuntimeRef { n, ref_type } => f
+                .debug_struct("RuntimeRef")
+                .field("n", n)
+                .field("ref_type", ref_type)
+                .finish(),
+            Self::BinOp { op, left, right } => f
+                .debug_struct("BinOp")
+                .field("op", op)
+                .field("left", left)
+                .field("right", right)
+                .finish(),
+            Self::UnaryOp { op, operand } => f
+                .debug_struct("UnaryOp")
+                .field("op", op)
+                .field("operand", operand)
+                .finish(),
+            Self::Ternary {
+                cond,
+                then,
+                otherwise,
+            } => f
+                .debug_struct("Ternary")
+                .field("cond", cond)
+                .field("then", then)
+                .field("otherwise", otherwise)
+                .finish(),
+            Self::Member { obj, field } => f
+                .debug_struct("Member")
+                .field("obj", obj)
+                .field("field", field)
+                .finish(),
+            Self::Index { obj, index } => f
+                .debug_struct("Index")
+                .field("obj", obj)
+                .field("index", index)
+                .finish(),
+            Self::Assign { target, value } => f
+                .debug_struct("Assign")
+                .field("target", target)
+                .field("value", value)
+                .finish(),
+        }
+    }
+}
+impl PartialEq for Ast {
+    fn eq(&self, other: &Self) -> bool {
+        if matches!(
+            self,
+            Self::Comp { .. }
+                | Self::Arr(_)
+                | Self::Obj(_)
+                | Self::BinOp { .. }
+                | Self::UnaryOp { .. }
+                | Self::Ternary { .. }
+                | Self::Member { .. }
+                | Self::Index { .. }
+                | Self::Assign { .. }
+        ) {
+            crate::stack::grow_stack!(self.eq(other));
+        }
+        match (self, other) {
+            (
+                Self::Comp {
+                    name: a0,
+                    args: a1,
+                    function: a2,
+                    mapped_props: a3,
+                },
+                Self::Comp {
+                    name: b0,
+                    args: b1,
+                    function: b2,
+                    mapped_props: b3,
+                },
+            ) => a0 == b0 && a1 == b1 && a2 == b2 && a3 == b3,
+            (Self::Str(a), Self::Str(b)) => a == b,
+            (Self::Num(a), Self::Num(b)) => a == b,
+            (Self::Bool(a), Self::Bool(b)) => a == b,
+            (Self::Null, Self::Null) => true,
+            (Self::Arr(a), Self::Arr(b)) => a == b,
+            (Self::Obj(a), Self::Obj(b)) => a == b,
+            (Self::Ref(a), Self::Ref(b)) => a == b,
+            (Self::Ph(a), Self::Ph(b)) => a == b,
+            (Self::StateRef(a), Self::StateRef(b)) => a == b,
+            (
+                Self::RuntimeRef {
+                    n: a0,
+                    ref_type: a1,
+                },
+                Self::RuntimeRef {
+                    n: b0,
+                    ref_type: b1,
+                },
+            ) => a0 == b0 && a1 == b1,
+            (
+                Self::BinOp {
+                    op: a0,
+                    left: a1,
+                    right: a2,
+                },
+                Self::BinOp {
+                    op: b0,
+                    left: b1,
+                    right: b2,
+                },
+            ) => a0 == b0 && a1 == b1 && a2 == b2,
+            (
+                Self::UnaryOp {
+                    op: a0,
+                    operand: a1,
+                },
+                Self::UnaryOp {
+                    op: b0,
+                    operand: b1,
+                },
+            ) => a0 == b0 && a1 == b1,
+            (
+                Self::Ternary {
+                    cond: a0,
+                    then: a1,
+                    otherwise: a2,
+                },
+                Self::Ternary {
+                    cond: b0,
+                    then: b1,
+                    otherwise: b2,
+                },
+            ) => a0 == b0 && a1 == b1 && a2 == b2,
+            (Self::Member { obj: a0, field: a1 }, Self::Member { obj: b0, field: b1 }) => {
+                a0 == b0 && a1 == b1
+            }
+            (Self::Index { obj: a0, index: a1 }, Self::Index { obj: b0, index: b1 }) => {
+                a0 == b0 && a1 == b1
+            }
+            (
+                Self::Assign {
+                    target: a0,
+                    value: a1,
+                },
+                Self::Assign {
+                    target: b0,
+                    value: b1,
+                },
+            ) => a0 == b0 && a1 == b1,
+            _ => false,
+        }
+    }
 }
 
 /// What a [`Ast::RuntimeRef`] points at.

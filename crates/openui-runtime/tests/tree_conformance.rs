@@ -224,7 +224,7 @@ fn evaluated_retained(
         !evaluated.size_limited && !evaluated.depth_limited,
         "corpus evaluation cut"
     );
-    let mut j = evaluated.to_json();
+    let mut j = evaluated.to_json().unwrap();
     j.pop();
     j.push_str(",\"snapshot\":");
     let mut snapshot = JsObject::new();
@@ -344,7 +344,7 @@ fn corpus_trees_snapshots_and_json_match_the_reference() {
         let bindings = if spec_path.is_empty() {
             BindingProps::new()
         } else {
-            BindingProps::from_prompt_spec(get(&load(&dir.join(spec_path)), "library"))
+            BindingProps::from_prompt_spec(get(&load(&dir.join(spec_path)), "library")).unwrap()
         };
         assert_eq!(
             bindings.undecided().collect::<Vec<_>>(),

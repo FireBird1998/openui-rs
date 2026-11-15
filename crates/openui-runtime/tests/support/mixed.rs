@@ -15,7 +15,8 @@ pub fn functions(j: &openui_lang::JsonValue) -> LibraryFunctions<'_> {
         } else {
             None
         })
-    });
+    })
+    .unwrap();
     f.register("Len", |v| {
         Ok(Some(Value::Num(if let Value::Obj(o) = &v {
             match o.get("value") {
@@ -26,7 +27,8 @@ pub fn functions(j: &openui_lang::JsonValue) -> LibraryFunctions<'_> {
         } else {
             0.
         })))
-    });
+    })
+    .unwrap();
     f.register("Grow", |v| {
         Ok(if let Value::Obj(o) = &v {
             if let Some(Value::Arr(a)) = o.get("value") {
@@ -39,7 +41,8 @@ pub fn functions(j: &openui_lang::JsonValue) -> LibraryFunctions<'_> {
         } else {
             None
         })
-    });
+    })
+    .unwrap();
     f.register("Two", |v| {
         Ok(if let Value::Obj(o) = &v {
             Some(Value::Arr(Arc::new(vec![
@@ -49,8 +52,9 @@ pub fn functions(j: &openui_lang::JsonValue) -> LibraryFunctions<'_> {
         } else {
             None
         })
-    });
-    f.register("Throw", |_| Err("boom".into()));
+    })
+    .unwrap();
+    f.register("Throw", |_| Err("boom".into())).unwrap();
     f
 }
 pub fn supplied(n: usize, data: bool) -> Store {

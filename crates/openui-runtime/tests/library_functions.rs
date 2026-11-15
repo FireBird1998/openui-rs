@@ -53,7 +53,7 @@ fn returned_values_match_reference_and_are_bounded_on_entry() {
         let r = evaluate_tree_with_limits(input.clone(), &store, limits);
         assert!(!r.size_limited && !r.depth_limited, "{}", c["name"]);
         assert_eq!(
-            r.to_json(),
+            r.to_json().unwrap(),
             openui_lang::stringify_json(&c["expected"]),
             "{}",
             c["name"]
@@ -81,24 +81,34 @@ fn unimplemented_functions_are_null_by_platform_policy() {
     let j = schema();
     let l = Library::from_json_schema(&j);
     let mut funcs = LibraryFunctions::new(&j["functions"]);
-    funcs.register("NotDeclared", |_| {
-        panic!("must not call an undeclared implementation")
-    });
+    funcs
+        .register("NotDeclared", |_| {
+            panic!("must not call an undeclared implementation")
+        })
+        .unwrap();
     let p = parse("root=Box(@Identity(2),@NotDeclared(2))", &l, None);
     let r = evaluate_tree(
         TreeInput::new(&p).with_library(&l).with_functions(&funcs),
         &Store::new(),
     );
     assert!(r.errors.is_empty());
-    assert!(r.to_json().contains("\"value\":null"), "{}", r.to_json());
+    assert!(
+        r.to_json().unwrap().contains("\"value\":null"),
+        "{}",
+        r.to_json().unwrap()
+    );
     let mut funcs = LibraryFunctions::new(&j["functions"]);
-    funcs.register("Identity", |_| Ok(Some(Value::Num(1.0))));
-    funcs.register("Identity", |_| Ok(Some(Value::Num(2.0))));
+    funcs
+        .register("Identity", |_| Ok(Some(Value::Num(1.0))))
+        .unwrap();
+    funcs
+        .register("Identity", |_| Ok(Some(Value::Num(2.0))))
+        .unwrap();
     let r = evaluate_tree(
         TreeInput::new(&p).with_library(&l).with_functions(&funcs),
         &Store::new(),
     );
-    assert!(r.to_json().contains("\"value\":2"));
+    assert!(r.to_json().unwrap().contains("\"value\":2"));
     drop(funcs);
 }
 #[test]
@@ -107,12 +117,14 @@ fn host_panics_unwind_contexts_and_leave_the_store_reusable() {
     let l = Library::from_json_schema(&j);
     let calls = AtomicUsize::new(0);
     let mut funcs = LibraryFunctions::new(&j["functions"]);
-    funcs.register("Identity", |args| {
-        if calls.fetch_add(1, Ordering::SeqCst) == 0 {
-            panic!("embedder panic")
-        };
-        Ok(Some(args))
-    });
+    funcs
+        .register("Identity", |args| {
+            if calls.fetch_add(1, Ordering::SeqCst) == 0 {
+                panic!("embedder panic")
+            };
+            Ok(Some(args))
+        })
+        .unwrap();
     let p = parse("root=Box(@Each([1,2],r,@Identity(r)))", &l, None);
     let mut store = Store::new();
     store.set("$n", Some(Value::Num(7.0))).unwrap();
@@ -130,9 +142,11 @@ fn host_panics_unwind_contexts_and_leave_the_store_reusable() {
     let r = run();
     assert!(!r.size_limited && !r.depth_limited && r.errors.is_empty());
     assert!(
-        r.to_json().contains("[{\"value\":1},{\"value\":2}]"),
-        "{}",
         r.to_json()
+            .unwrap()
+            .contains("[{\"value\":1},{\"value\":2}]"),
+        "{}",
+        r.to_json().unwrap()
     );
     drop(funcs);
 }
@@ -141,7 +155,9 @@ fn deferred_set_expressions_never_call_implementations() {
     let j = schema();
     let l = Library::from_json_schema(&j);
     let mut funcs = LibraryFunctions::new(&j["functions"]);
-    funcs.register("Throw", |_| panic!("set values must stay deferred"));
+    funcs
+        .register("Throw", |_| panic!("set values must stay deferred"))
+        .unwrap();
     let p = parse("root=Box(@Each([1,2],r,Box(@Set($n,@Throw(r)))))", &l, None);
     let r = evaluate_tree(
         TreeInput::new(&p).with_library(&l).with_functions(&funcs),
@@ -150,9 +166,10 @@ fn deferred_set_expressions_never_call_implementations() {
     assert!(r.errors.is_empty());
     assert!(
         r.to_json()
+            .unwrap()
             .contains("\"valueAST\":{\"k\":\"Comp\",\"name\":\"Throw\""),
         "{}",
-        r.to_json()
+        r.to_json().unwrap()
     );
     drop(funcs);
 }
@@ -174,7 +191,7 @@ fn cuts_keep_earlier_errors_and_props_and_call_results_earn_no_allowance() {
         assert!(r.size_limited);
         assert_eq!(r.errors.len(), 1);
         assert!(r.errors[0].message.ends_with("@Throw threw: host failure"));
-        let s = r.to_json();
+        let s = r.to_json().unwrap();
         assert!(s.contains("\"value\":null"));
         assert!(s.contains("\"name\":\"Wrong\""), "{s}");
     }
@@ -186,7 +203,9 @@ fn failed_argument_evaluation_never_calls_the_host() {
     let j = schema();
     let l = Library::from_json_schema(&j);
     let mut funcs = LibraryFunctions::new(&j["functions"]);
-    funcs.register("Identity", |_| panic!("arguments failed before invocation"));
+    funcs
+        .register("Identity", |_| panic!("arguments failed before invocation"))
+        .unwrap();
     let p = parse(
         r#"root=Box({k:"Comp",name:"Identity",args:[null]})"#,
         &l,
@@ -213,13 +232,15 @@ fn deep_host_results_cut_and_drop_on_a_small_stack() {
             let j = schema();
             let l = Library::from_json_schema(&j);
             let mut funcs = LibraryFunctions::new(&j["functions"]);
-            funcs.register("Deep", |_| {
-                let mut v = Value::Null;
-                for _ in 0..10_000 {
-                    v = Value::Arr(Arc::new(vec![v]));
-                }
-                Ok(Some(v))
-            });
+            funcs
+                .register("Deep", |_| {
+                    let mut v = Value::Null;
+                    for _ in 0..10_000 {
+                        v = Value::Arr(Arc::new(vec![v]));
+                    }
+                    Ok(Some(v))
+                })
+                .unwrap();
             let p = parse("root=Box(@Deep())", &l, None);
             let r = evaluate_tree(
                 TreeInput::new(&p).with_library(&l).with_functions(&funcs),
@@ -231,4 +252,46 @@ fn deep_host_results_cut_and_drop_on_a_small_stack() {
         .unwrap()
         .join()
         .unwrap();
+}
+
+#[test]
+fn callbacks_can_read_and_evaluate_the_same_store_and_recover_from_nested_panic() {
+    let j = schema();
+    let library = Library::from_json_schema(&j);
+    let mut store = Store::new();
+    store.set("$n", Some(Value::Num(7.))).unwrap();
+    let inner = parse("root=Box($n)", &library, None);
+    let mut functions = LibraryFunctions::new(&j["functions"]);
+    let calls = AtomicUsize::new(0);
+    functions
+        .register("Identity", |args| {
+            assert_eq!(store.get("$n"), Some(Value::Num(7.)));
+            let snapshot = store.snapshot();
+            assert_eq!(snapshot.get("$n"), Some(&Some(Value::Num(7.))));
+            let nested = evaluate_tree(TreeInput::new(&inner), &store);
+            assert!(!nested.size_limited && !nested.depth_limited);
+            if calls.fetch_add(1, Ordering::SeqCst) == 0 {
+                panic!("host caught after nested evaluation");
+            }
+            Ok(Some(args))
+        })
+        .unwrap();
+    let program = parse("root=Box(@Identity($n))", &library, None);
+    let before = store.snapshot();
+    let version = store.version();
+    let run = || {
+        evaluate_tree(
+            TreeInput::new(&program)
+                .with_library(&library)
+                .with_functions(&functions),
+            &store,
+        )
+    };
+    assert!(std::panic::catch_unwind(std::panic::AssertUnwindSafe(run)).is_err());
+    let result = run();
+    assert!(!result.size_limited && !result.depth_limited && result.errors.is_empty());
+    assert_eq!(store.version(), version);
+    assert!(Arc::ptr_eq(&before, &store.snapshot()));
+    drop(functions);
+    assert!(store.set("$after", Some(Value::Num(1.))).unwrap());
 }

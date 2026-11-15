@@ -13,16 +13,9 @@ fn value(json: &str) -> Value {
     Value::from_json(&openui_lang::parse_json(json).unwrap())
 }
 fn encode(value: &Value) -> String {
-    let mut result =
-        openui_runtime::evaluate_tree(TreeInput::new(&Default::default()), &Store::new());
-    result.root = Some(value.clone());
-    let json = result.to_json();
-    json.strip_prefix("{\"root\":")
-        .unwrap()
-        .strip_suffix(",\"errors\":[]}")
-        .unwrap()
-        .to_owned()
+    openui_runtime::value_to_json_with_limits(value, limits(100_000).with_depth(20_000)).unwrap()
 }
+
 fn json(store: &Store) -> String {
     let snapshot = store.snapshot();
     let mut fields = JsObject::new();

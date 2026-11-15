@@ -40,13 +40,15 @@ fn replacements_release_intermediates_and_thresholds_fit_exactly() {
         Ok(Some(Value::Arr(Arc::new(
             (0..100).map(|n| Value::Num(n as f64)).collect(),
         ))))
-    });
+    })
+    .unwrap();
     f.register("Identity", |args| {
         Ok(match &args {
             Value::Obj(o) => o.get("value").cloned(),
             _ => None,
         })
-    });
+    })
+    .unwrap();
     let values = (0..100)
         .map(|n| n.to_string())
         .collect::<Vec<_>>()
@@ -84,7 +86,7 @@ fn schema_only_work_is_paid_once_and_value_checks_scale_linearly() {
             JsonValue::String("d".repeat(description));
         let l = Library::from_json_schema(&j);
         let mut f = LibraryFunctions::new(&j["functions"]);
-        f.register("Probe", |_| Ok(Some(Value::Num(1.0))));
+        f.register("Probe", |_| Ok(Some(Value::Num(1.0)))).unwrap();
         let xs = (0..rows)
             .map(|n| n.to_string())
             .collect::<Vec<_>>()
@@ -116,7 +118,7 @@ fn large_error_messages_and_shared_dags_cut_without_panicking() {
     let l = Library::from_json_schema(&j);
     let p = parse("root=Box(@Host())", &l, None);
     let mut f = LibraryFunctions::new(&j["functions"]);
-    f.register("Host", |_| Err("x".repeat(200_000)));
+    f.register("Host", |_| Err("x".repeat(200_000))).unwrap();
     let r = run(&p, &l, &f, Limits::DEFAULT.with_work(1000));
     assert!(r.size_limited);
     assert!(r.errors.is_empty());
@@ -124,7 +126,7 @@ fn large_error_messages_and_shared_dags_cut_without_panicking() {
     for _ in 0..40 {
         v = Value::Arr(Arc::new(vec![v.clone(), v]));
     }
-    f.register("Host", move |_| Ok(Some(v.clone())));
+    f.register("Host", move |_| Ok(Some(v.clone()))).unwrap();
     let r = run(&p, &l, &f, Limits::DEFAULT);
     assert!(r.size_limited || r.depth_limited);
 }
@@ -136,7 +138,9 @@ fn builtin_steps_ignore_shadowing_functions_in_values_and_costs() {
     let absent = LibraryFunctions::new(&j["functions"]);
     let mut shadowing = LibraryFunctions::new(&j["functions"]);
     for name in ["ToAssistant", "OpenUrl", "Set"] {
-        shadowing.register(name, |_| panic!("builtins win"));
+        shadowing
+            .register(name, |_| panic!("builtins win"))
+            .unwrap();
     }
     for source in [
         r#"root=Box(@ToAssistant("hi"))"#,
@@ -152,8 +156,8 @@ fn builtin_steps_ignore_shadowing_functions_in_values_and_costs() {
             );
         }
         assert_eq!(
-            run(&p, &l, &absent, Limits::DEFAULT).to_json(),
-            run(&p, &l, &shadowing, Limits::DEFAULT).to_json()
+            run(&p, &l, &absent, Limits::DEFAULT).to_json().unwrap(),
+            run(&p, &l, &shadowing, Limits::DEFAULT).to_json().unwrap()
         );
     }
 }
@@ -166,7 +170,8 @@ fn wide_undefined_arguments_are_projected_in_one_pass() {
     f.register("Echo", |args| {
         assert!(matches!(&args,Value::Obj(o) if o.is_empty()));
         Ok(Some(args))
-    });
+    })
+    .unwrap();
     let mut costs = Vec::new();
     for width in [1000, 2000] {
         let props = (0..width)
@@ -190,13 +195,15 @@ fn temporary_arguments_with_each_replacements_never_refund_live_output() {
     let j=parse_json(r#"{"$defs":{"Box":{"properties":{"value":{}}}},"functions":{"Make":{"params":{}},"Identity":{"params":{"properties":{"value":{}}}}}}"#).unwrap();
     let l = Library::from_json_schema(&j);
     let mut f = LibraryFunctions::new(&j["functions"]);
-    f.register("Make", |_| Ok(Some(Value::Str("x".repeat(1000)))));
+    f.register("Make", |_| Ok(Some(Value::Str("x".repeat(1000)))))
+        .unwrap();
     f.register("Identity", |v| {
         Ok(match &v {
             Value::Obj(o) => o.get("value").cloned(),
             _ => None,
         })
-    });
+    })
+    .unwrap();
     for suffix in [0, 1, 2, 4, 8] {
         let more = ",@Make()".repeat(suffix);
         let p = parse(
@@ -206,7 +213,7 @@ fn temporary_arguments_with_each_replacements_never_refund_live_output() {
         );
         let room = threshold(&p, &l, &f, false);
         let r = run(&p, &l, &f, Limits::DEFAULT.with_result_size(room));
-        let json = parse_json(&r.to_json()).unwrap();
+        let json = parse_json(&r.to_json().unwrap()).unwrap();
         let bytes = openui_lang::stringify_json(&json["root"]).len();
         assert!(
             bytes <= room,

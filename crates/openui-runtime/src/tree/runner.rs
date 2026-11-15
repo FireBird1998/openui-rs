@@ -10,9 +10,14 @@ impl HostEvent {
     pub fn value(&self) -> &Value {
         &self.0
     }
-    /// JSON in the renderer's handler-argument property order.
-    pub fn to_json(&self) -> String {
-        value_json(&self.0)
+    /// JSON in the renderer's handler-argument property order, without a new
+    /// admission limit. The run already checked each emitted event.
+    pub fn to_json(&self) -> Result<String, crate::LimitError> {
+        crate::value_to_json(&self.0)
+    }
+    /// Serialize an event under explicit work, depth and output ceilings.
+    pub fn to_json_with_limits(&self, limits: Limits) -> Result<String, crate::LimitError> {
+        crate::value_to_json_with_limits(&self.0, limits)
     }
 }
 /// A stopped action. Earlier writes and host events are retained.

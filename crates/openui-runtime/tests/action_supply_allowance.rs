@@ -191,7 +191,7 @@ fn observe(r: &ActionRun, s: &Store) -> String {
         r.failure,
         r.events
             .iter()
-            .map(|e| e.to_json())
+            .map(|e| e.to_json().unwrap())
             .collect::<Vec<_>>()
             .join("\n"),
         match s.get("$n") {
@@ -263,7 +263,9 @@ fn one_write_uses_the_largest_supply_not_the_sum_of_supplies() {
     let schema=parse_json(r#"{"$defs":{"Box":{"properties":{"a":{}}}},"functions":{"Large":{"params":{"type":"object","properties":{}}}}}"#).unwrap();
     let l = Library::from_json_schema(&schema);
     let mut functions = openui_runtime::LibraryFunctions::new(&schema["functions"]);
-    functions.register("Large", |_| Ok(Some(Value::Str("x".repeat(5_800_000)))));
+    functions
+        .register("Large", |_| Ok(Some(Value::Str("x".repeat(5_800_000)))))
+        .unwrap();
     let p = Arc::new(parse(
         "q=Query(\"t\",{},{})\nm=Mutation(\"t\")\nroot=Box(Action([@Run(m),@Run(m),@Run(m),@Run(m),@Run(m),@Set($n,@Large())]))",
         &l,
@@ -388,10 +390,10 @@ fn prepared_reference_values_take_precedence_at_start_and_resume() {
         Limits::DEFAULT.with_work(10_000),
     );
     assert!(r.failure.is_none(), "{:?}", r.failure);
-    assert!(r.events[0].to_json().contains(r#""args":{"n":1}"#));
+    assert!(r.events[0].to_json().unwrap().contains(r#""args":{"n":1}"#));
     let r = resume_action(input, &mut s, &r.continuation.unwrap(), true).unwrap();
     assert!(r.failure.is_none(), "{:?}", r.failure);
-    assert!(r.events[0].to_json().contains(r#""args":{"n":1}"#));
+    assert!(r.events[0].to_json().unwrap().contains(r#""args":{"n":1}"#));
 }
 fn mutation_allocations(n: usize, shared: bool) -> usize {
     let l = library();
@@ -471,7 +473,9 @@ fn program_and_references_share_one_combined_supply_floor() {
     let schema=parse_json(r#"{"$defs":{"Box":{"properties":{"a":{}}}},"functions":{"Large":{"params":{"type":"object","properties":{}}}}}"#).unwrap();
     let l = Library::from_json_schema(&schema);
     let mut functions = openui_runtime::LibraryFunctions::new(&schema["functions"]);
-    functions.register("Large", |_| Ok(Some(Value::Str("x".repeat(5_800_000)))));
+    functions
+        .register("Large", |_| Ok(Some(Value::Str("x".repeat(5_800_000)))))
+        .unwrap();
     let text = "q=Query(\"t\",{},{})\nm=Mutation(\"t\")\nroot=Box(Action([@Run(m),@Run(m),@Set($n,@Large())]))";
     let small = parse(text, &l, None);
     let large = parse(
@@ -522,15 +526,17 @@ fn default_scaled_limits_give_all_input_forms_the_same_room_and_work_cuts() {
         let schema=parse_json(r#"{"$defs":{"Box":{"properties":{"a":{}}}},"functions":{"Make":{"params":{"type":"object","properties":{"size":{"type":"number"}}}}}}"#).unwrap();
         let l = Library::from_json_schema(&schema);
         let mut functions = openui_runtime::LibraryFunctions::new(&schema["functions"]);
-        functions.register("Make", |args| {
-            let Value::Obj(o) = &args else {
-                return Ok(None);
-            };
-            let Some(Value::Num(n)) = o.get("size") else {
-                return Ok(None);
-            };
-            Ok(Some(Value::Str("x".repeat(*n as usize))))
-        });
+        functions
+            .register("Make", |args| {
+                let Value::Obj(o) = &args else {
+                    return Ok(None);
+                };
+                let Some(Value::Num(n)) = o.get("size") else {
+                    return Ok(None);
+                };
+                Ok(Some(Value::Str("x".repeat(*n as usize))))
+            })
+            .unwrap();
         let expr = "@Set($n,$n+@Count(@Each(q.rows,r,@Count(@Each(q.rows,x,r.id+x.id)))))";
         let source = if work_cut {
             format!(

@@ -36,6 +36,11 @@ pub(super) fn unwrap_field(store: &Store, value: crate::StateValue) -> crate::St
 /// Absent or undefined returns None; null stays null. Inherited JS functions
 /// project to undefined in Value, like the core's expression interface.
 pub fn get_field_value(store: &Store, form_name: Option<&str>, name: &str) -> crate::StateValue {
+    if (name != "__proto__" && !store.possible_name(name))
+        || form_name.is_some_and(|form| !store.possible_name(form))
+    {
+        return None;
+    }
     if let Some(form) = form_name.filter(|s| !s.is_empty()) {
         let snapshot = store.snapshot();
         let raw = snapshot.get(form)?.as_ref()?;

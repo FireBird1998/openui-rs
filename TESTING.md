@@ -988,10 +988,10 @@ the Store admission rules remain [ADR 0005](docs/adr/0005-admit-total-state-incr
 
 ## Shared sessions and WebAssembly (#42)
 
-`openui-session` owns binding-neutral session policy. The original ffi integration
-files are unchanged; its program-sharing unit assertion moved with the owning
-fields to the session crate. `openui-wasm/tests/runtime_session.rs` reuses all 25
-native scenario/attack cases through a test adapter over the Rust-callable
+`openui-session` owns binding-neutral session policy. Existing ffi scenario assertions and expected JSON bytes
+are unchanged; their direct runtime oracles unwrap the fallible exports. Its
+program-sharing unit assertion lives with the owning fields in the session crate.
+`openui-wasm/tests/runtime_session.rs` reuses all 28 native scenario/attack cases through a test adapter over the Rust-callable
 `openui_wasm::session::Session`; all exported RuntimeSession operations forward
 to that inner type one-to-one. `runtime_state_cap.rs` adds the same five boundary
 cases; `runtime_abandonment.rs` checks 10,000 dropped outcomes. The test adapter
@@ -1027,3 +1027,76 @@ Without that variable the Rust test verifies the checked-in expectation bytes.
 No test uses a wall-clock assertion. The package suite requires the built node
 package; it deliberately fails to import when the toolchain build was omitted.
 The comparison page's README lists browser/typecheck/parser-comparison commands.
+
+## Runtime adapter and nested-substitution pins
+
+`nested_loop_memory` (512 MiB cap) measures additional Rust heap for a unique
+1,000-byte leaf at depths 1–8 with one/three items, typed AST and shared descriptor
+data. Each one-item case must stay below 128,000 bytes. The support files
+`nested-loop-oracle.tsv` and `nested-loop-prices.tsv` were generated independently
+against archived 8ffe3b0: 32 output-hash/cut observations and 16 exact work/room
+threshold pairs. Changed results or prices fail, including cut cases. The test
+does not assert a universal flat memory bound; active templates still cost space
+with depth. Existing `evaluation_reuse` retains its 384-configuration leaf grid
+and its 5/20-times-room shape bounds.
+
+`temporary_array_semantics` (128 MiB cap) pins an otherwise uncut eager temporary:
+32–32,768 opaque host strings, followed by a callback choosing an array index
+after all producers ran. Only one leaf reaches the result. The test records heap
+peaks without a minimum-peak assertion that would forbid future compaction. It is a compatibility counterexample
+to a universal peak/room formula (ADR 0008), not an amplification safety test.
+`peak_measurements` continues to expose the unresolved 2,652-row read/unread
+`Each(L,i,L)` peaks.
+
+`admission_helpers` (64 MiB) pins adjacent serialization bytes, bounded refusal
+before copying caller-edited results, incremental/atomic configuration caps,
+prepared-token cuts and finite reference-combination iteration. Bulk preparation
+uses input-linear key-ordering scratch; a refused tail does not allocate an error
+for every remaining key. `read_bounds` checks allocation-free impossible-name
+lookups and input-linear shallow form reads. `owner_walks` (128 MiB) exercises
+Debug/equality/serialization, snapshot, event, pending-plan, continuation and
+prepared-token last-owner release on a 64 KiB stack. Existing `operation_edges`
+covers the other evaluation/write/resume/default/preparation deep routes.
+
+`deep_callback_walk` (128 MiB Rust-heap cap) runs a real 34,000-level reference
+callback chain on a 64 KiB thread. Each callback reserves an uninitialized 64 KiB
+frame so optimized builds also cross 1,024 stack segments without initializing
+gigabytes of padding. At the bottom, it walks and serializes 100,000 AST nodes.
+The archived implementation panics at 1,174 nested segments; the relative base
+passes. Stacker's mapped segments are outside the Rust test allocator.
+
+All allocator assertions use deterministic byte/allocation counters, never
+wall-clock cutoffs. None establishes a global peak bound for arbitrary host
+computation, retained provenance history or unprojected eager temporaries.
+
+## Default export and configuration compatibility
+
+`default_export_compatibility` (512 MiB allocator) pins the 8,388,616-byte
+uncut draw envelope, 8,392,146-byte raw cut draw, a raised-depth draw, empty
+snapshot at room 0/1, ordinary large prompt libraries and control-character
+binding/function names. Explicit admission remains covered by `admission_helpers`.
+`prepared_reference_compatibility` (512 MiB) pins unmeasured opaque preparation:
+40,000-deep tokens have uncut shallow reads on 64 KiB; explicit preparation still
+refuses depth. Nine-MiB strings and five-million-item arrays are not value-size
+admission failures. Neither default nor explicit preparation promises an 8 MiB
+per-token value cap. Default reference combination also retains all prepaid
+contributions when evaluation limits are raised; explicit limited iteration
+remains bounded.
+
+Both bindings' `runtime_session` suites exercise these public-surface rules:
+`tree_exports_over_the_host_input_cap_replace_draws_without_consuming_pending_runs`
+returns a tree larger than the host-input ceiling, stales the previous draw, and
+keeps pending mutations and state intact. `empty_snapshot_exports_at_zero_and_one_byte_store_ceilings`
+pins `{}` without changing state or the current evaluation.
+`binding_annotations_keep_the_raw_host_byte_budget` accepts JSON-expanding names
+while retaining the original raw annotation budget.
+`draw_exports_keep_the_runtime_ceiling_and_envelope` covers the exact default
+ceiling, raw cut props and a 12,312,139-byte draw with raised result ceiling.
+`prompt_configuration_accepts_ordinary_libraries_independently_of_evaluation_depth`
+checks five ordinary large spec shapes and evaluation depths 0–8.
+
+The session unit test `continuation_generation_refusals_precede_effects_and_consumption`
+seeds the counter at exhaustion: run/resume refuse before writes or table removal,
+and abandoning an existing outcome remains possible. Neither binding introduces
+another policy or exported interface. Existing fitting JSON oracles, including
+wasm's checked-in `js/scenarios.json`, remain unchanged.

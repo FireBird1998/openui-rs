@@ -111,7 +111,7 @@ fn corpus_action_scenarios_match_the_renderer() {
             }
         }
         let bindings = if let Value::Str(p) = get(&bindings_manifest, schema_name) {
-            BindingProps::from_prompt_spec(get(&load(&dir.join(p)), "library"))
+            BindingProps::from_prompt_spec(get(&load(&dir.join(p)), "library")).unwrap()
         } else {
             BindingProps::new()
         };

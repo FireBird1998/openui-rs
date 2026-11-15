@@ -62,18 +62,41 @@ fn first<'a>(
     }
     true
 }
+pub(super) fn one(value: &Value, limits: Limits) -> Result<(usize, usize), EvaluationFlags> {
+    measure(
+        vec![Item::V(value, 0)],
+        0,
+        limits,
+        &mut HashSet::new(),
+        &mut limits.work_for(usize::MAX),
+        true,
+    )
+    .map(|(bytes, depth)| (bytes, depth.unwrap_or(0)))
+    .map_err(|depth| EvaluationFlags {
+        depth_limited: depth,
+        size_limited: !depth,
+    })
+}
 pub(super) fn prepare(
     values: &JsObject<Value>,
     limits: Limits,
 ) -> (
     BTreeMap<&str, Result<PreparedReferenceValue, EvaluationFlags>>,
     usize,
+    EvaluationFlags,
 ) {
     let mut seen = HashSet::new();
     let mut work = limits.work_for(usize::MAX);
+    let mut tail = EvaluationFlags::default();
     let mut bytes = 2usize;
     let mut out = BTreeMap::new();
     for (name, value) in values.iter() {
+        // Every visited value spends measurement work. Once it is exhausted,
+        // record one refusal for the tail instead of allocating per-key errors.
+        if work == 0 {
+            tail.size_limited = true;
+            break;
+        }
         let entry = match measure(
             vec![Item::V(value, 0)],
             0,
@@ -106,7 +129,7 @@ pub(super) fn prepare(
         };
         out.insert(name.as_str(), entry);
     }
-    (out, bytes)
+    (out, bytes, tail)
 }
 fn measure(
     mut todo: Vec<Item<'_>>,

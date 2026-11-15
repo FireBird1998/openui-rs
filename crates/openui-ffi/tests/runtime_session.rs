@@ -23,6 +23,7 @@ fn value_json(value: &Value) -> String {
     tree.root = Some(value.clone());
     tree.errors.clear();
     tree.to_json()
+        .unwrap()
         .strip_prefix("{\"root\":")
         .unwrap()
         .strip_suffix(",\"errors\":[]}")
@@ -83,7 +84,7 @@ impl Scenario {
                     Value::Obj(o) => o.get("library").unwrap_or(&value),
                     _ => &value,
                 };
-                BindingProps::from_prompt_spec(v)
+                BindingProps::from_prompt_spec(v).unwrap()
             })
             .unwrap_or_default();
         let ffi = RuntimeSession::new(library.clone(), spec).unwrap();
@@ -143,7 +144,7 @@ impl Scenario {
         let refs = PreparedReferenceValues::new(&self.refs);
         let want = openui_runtime::evaluate_tree(self.input(&refs), &self.store);
         let got = self.ffi.evaluate().unwrap();
-        assert_eq!(got.json, want.to_json());
+        assert_eq!(got.json, want.to_json().unwrap());
         assert_eq!(
             (got.size_limited, got.depth_limited),
             (want.size_limited, want.depth_limited)
@@ -206,7 +207,10 @@ impl Scenario {
 fn compare_run(got: &ActionOutput, want: &openui_runtime::ActionRun) {
     assert_eq!(
         got.events,
-        want.events.iter().map(|v| v.to_json()).collect::<Vec<_>>()
+        want.events
+            .iter()
+            .map(|v| v.to_json().unwrap())
+            .collect::<Vec<_>>()
     );
     assert_eq!(
         (got.size_limited, got.depth_limited),
@@ -336,7 +340,7 @@ fn reference_preparation_uses_its_own_allowance_like_the_rust_runtime() {
         );
         let expected = openui_runtime::evaluate_tree(s.input(&prepared), &s.store);
         let got = session.evaluate().unwrap();
-        assert_eq!(got.json, expected.to_json());
+        assert_eq!(got.json, expected.to_json().unwrap());
         assert_eq!(
             (got.size_limited, got.depth_limited),
             (expected.size_limited, expected.depth_limited)
@@ -572,7 +576,7 @@ fn custom_plans_written_by_bindings_keep_identity_and_json_copies_do_not() {
         "root=Box($saved=@Go(\"real\"),$saved,$copy)",
     );
     s.ffi.mark_binding("Box".into(), "a".into()).unwrap();
-    s.bindings.insert("Box", "a");
+    s.bindings.insert("Box", "a").unwrap();
     s.initialize(None);
     let (_, root) = s.evaluate();
     let marker = at(root, &path(&["props", "a"]));
@@ -862,7 +866,7 @@ fn evaluation_flags_match_runtime_at_work_depth_and_room_edges() {
                 &Store::new(),
                 limits,
             );
-            assert_eq!(got.json, want.to_json());
+            assert_eq!(got.json, want.to_json().unwrap());
             assert_eq!(
                 (got.size_limited, got.depth_limited),
                 (want.size_limited, want.depth_limited)
@@ -1239,4 +1243,239 @@ fn total_state_admission_refuses_before_changing_state() {
         }
     }
     assert!(refused, "total state was never refused");
+}
+
+#[test]
+fn tree_exports_over_the_host_input_cap_replace_draws_without_consuming_pending_runs() {
+    let library = ComponentLibrary::new(text("schemas/runtime-actions.json")).unwrap();
+    let session = RuntimeSession::with_limits(
+        library.clone(),
+        None,
+        RuntimeLimits {
+            max_json_bytes: 8192,
+            ..Default::default()
+        },
+    )
+    .unwrap();
+    let source = "$n=0\n$x=\"s\"\nm=Mutation(\"m\",{})\nroot=Box(@Each([1,2,3,4],i,$x),Action([@Run(m),@Set($n,$n+1)]))";
+    session
+        .set_program(parse(source.into(), library, None).program)
+        .unwrap();
+    session.initialize(None).unwrap();
+    let tree = session.evaluate().unwrap();
+    let action = session
+        .action_at(tree.evaluation.clone(), path(&["props", "b"]))
+        .unwrap();
+    let pending = session
+        .run(Some(action), "".into(), None)
+        .unwrap()
+        .continuation
+        .unwrap();
+    session
+        .set("$x".into(), Some(format!("\"{}\"", "x".repeat(4096))))
+        .unwrap();
+    let before = session.snapshot().unwrap();
+    let version = session.version().unwrap();
+    let pristine = [
+        session.is_pristine("$n".into()).unwrap(),
+        session.is_pristine("$x".into()).unwrap(),
+    ];
+    let next = session.evaluate().unwrap();
+    assert!(next.json.len() > 8192);
+    assert!(!next.size_limited && !next.depth_limited);
+    assert_eq!(session.snapshot().unwrap(), before);
+    assert_eq!(session.version().unwrap(), version);
+    assert_eq!(
+        [
+            session.is_pristine("$n".into()).unwrap(),
+            session.is_pristine("$x".into()).unwrap()
+        ],
+        pristine
+    );
+    assert_eq!(session.pending_continuations().unwrap(), 1);
+    // A completed draw replaces its predecessor; pending runs remain independent.
+    assert!(matches!(
+        session.action_at(tree.evaluation, path(&["props", "b"])),
+        Err(OpenUiError::StaleHandle)
+    ));
+    assert!(
+        session
+            .action_at(next.evaluation, path(&["props", "b"]))
+            .is_ok()
+    );
+    assert!(session.resume(pending, true).unwrap().failure.is_none());
+    assert_eq!(session.get("$n".into()).unwrap().as_deref(), Some("1"));
+    assert_eq!(session.pending_continuations().unwrap(), 0);
+}
+
+#[test]
+fn empty_snapshot_exports_at_zero_and_one_byte_store_ceilings() {
+    let library = ComponentLibrary::new(text("schemas/runtime-actions.json")).unwrap();
+    for ceiling in [0, 1, 2] {
+        let session = RuntimeSession::with_limits(
+            library.clone(),
+            None,
+            RuntimeLimits {
+                evaluation: ParseLimits {
+                    result_size: Some(ceiling),
+                    ..Default::default()
+                },
+                ..Default::default()
+            },
+        )
+        .unwrap();
+        session
+            .set_program(parse("root=Box(1)".into(), library.clone(), None).program)
+            .unwrap();
+        let tree = session.evaluate().unwrap();
+        assert_eq!(session.snapshot().unwrap(), "{}");
+        assert_eq!(session.snapshot().unwrap(), "{}");
+        assert_eq!(session.version().unwrap(), 0);
+        assert_eq!(session.get("$absent".into()).unwrap(), None);
+        assert!(!session.is_pristine("$absent".into()).unwrap());
+        assert_eq!(session.pending_continuations().unwrap(), 0);
+        // Invalid path rather than StaleHandle: snapshot did not revoke generation.
+        assert!(matches!(
+            session.action_at(tree.evaluation, path(&["absent"])),
+            Err(OpenUiError::InvalidHandle)
+        ));
+    }
+}
+
+#[test]
+fn binding_annotations_keep_the_raw_host_byte_budget() {
+    let library = ComponentLibrary::new(text("schemas/runtime-actions.json")).unwrap();
+    let session = RuntimeSession::with_limits(
+        library,
+        None,
+        RuntimeLimits {
+            max_json_bytes: 128,
+            ..Default::default()
+        },
+    )
+    .unwrap();
+    let before = session.snapshot().unwrap();
+    // Main counts raw name bytes plus bookkeeping, not JSON escaping.
+    for _ in 0..2 {
+        session
+            .mark_binding("\u{1}".repeat(22), "a".into())
+            .unwrap();
+    }
+    // The original aggregate annotation budget still applies (87 + 68 > 128).
+    assert!(matches!(
+        session.mark_binding("Box".into(), "a".into()),
+        Err(OpenUiError::LimitExceeded { .. })
+    ));
+    assert_eq!(session.snapshot().unwrap(), before);
+    assert_eq!(session.version().unwrap(), 0);
+    assert_eq!(session.pending_continuations().unwrap(), 0);
+}
+
+#[test]
+fn draw_exports_keep_the_runtime_ceiling_and_envelope() {
+    let schema = r#"{"$defs":{"Box":{"properties":{"a":{},"b":{},"c":{},"d":{}}}}}"#;
+    let library = ComponentLibrary::new(schema.into()).unwrap();
+    let list = (0..2000)
+        .map(|i| i.to_string())
+        .collect::<Vec<_>>()
+        .join(",");
+    let k = (8 * 1024 * 1024 - 140_000 - 200) / 2000 - 3;
+    for (pad, bytes, cut) in [(470, 8_388_616, false), (4000, 8_392_146, true)] {
+        let source = format!(
+            "root = Box(@Each([{list}], i, \"{}\"), \"{}\", \"{}\")",
+            "x".repeat(k),
+            "f".repeat(140_000),
+            "p".repeat(pad)
+        );
+        let session = RuntimeSession::new(library.clone(), None).unwrap();
+        session
+            .set_program(parse(source, library.clone(), None).program)
+            .unwrap();
+        let out = session.evaluate().unwrap();
+        assert_eq!(
+            (out.json.len(), out.size_limited, out.depth_limited),
+            (bytes, cut, false)
+        );
+    }
+    let session = RuntimeSession::with_limits(
+        library.clone(),
+        None,
+        RuntimeLimits {
+            evaluation: ParseLimits {
+                result_ceiling: Some(32 << 20),
+                ..Default::default()
+            },
+            ..Default::default()
+        },
+    )
+    .unwrap();
+    let list = (0..4000)
+        .map(|i| i.to_string())
+        .collect::<Vec<_>>()
+        .join(",");
+    let source = format!(
+        "root = Box(@Each([{list}], i, \"{}\"), \"{}\")",
+        "x".repeat(3000),
+        "f".repeat(300_000)
+    );
+    session
+        .set_program(parse(source, library, None).program)
+        .unwrap();
+    let out = session.evaluate().unwrap();
+    assert_eq!(
+        (out.json.len(), out.size_limited, out.depth_limited),
+        (12_312_139, false, false)
+    );
+}
+
+#[test]
+fn prompt_configuration_accepts_ordinary_libraries_independently_of_evaluation_depth() {
+    for (components, props) in [(1, 1200), (11, 300), (60, 150), (100, 100), (200, 50)] {
+        let mut cs = serde_json::Map::new();
+        let mut defs = serde_json::Map::new();
+        for c in 0..components {
+            let names = (0..props)
+                .map(|p| format!("p{}{p}", "n".repeat(20)))
+                .collect::<Vec<_>>();
+            let signature = names
+                .iter()
+                .map(|p| format!("{p}?: $binding<string>"))
+                .collect::<Vec<_>>()
+                .join(", ");
+            cs.insert(
+                format!("C{c}"),
+                serde_json::json!({"signature":format!("C{c}({signature})")}),
+            );
+            let ps = names
+                .into_iter()
+                .map(|p| (p, serde_json::json!({})))
+                .collect::<serde_json::Map<_, _>>();
+            defs.insert(format!("C{c}"), serde_json::json!({"properties":ps}));
+        }
+        let schema = serde_json::json!({"$defs":defs});
+        let spec = serde_json::json!({"library":{"components":cs,"schema":schema}}).to_string();
+        let library = ComponentLibrary::new(schema.to_string()).unwrap();
+        assert!(
+            RuntimeSession::new(library.clone(), Some(spec.clone()))
+                .unwrap()
+                .undecided_bindings()
+                .unwrap()
+                .is_empty()
+        );
+        for depth in 0..=8 {
+            let session = RuntimeSession::with_limits(
+                library.clone(),
+                Some(spec.clone()),
+                RuntimeLimits {
+                    evaluation: ParseLimits {
+                        depth: Some(depth),
+                        ..Default::default()
+                    },
+                    ..Default::default()
+                },
+            )
+            .unwrap();
+            assert!(session.undecided_bindings().unwrap().is_empty());
+        }
+    }
 }

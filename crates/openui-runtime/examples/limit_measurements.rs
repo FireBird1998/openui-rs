@@ -76,7 +76,7 @@ fn main() {
                 threshold(&p, &store, false),
                 result.size_limited,
                 result.depth_limited,
-                result.to_json()
+                result.to_json().unwrap()
             );
         }
     }

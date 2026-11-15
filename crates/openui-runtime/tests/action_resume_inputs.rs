@@ -171,7 +171,12 @@ fn replacing_a_shared_program_uses_its_new_mutation_arguments() {
     )
     .unwrap();
     assert!(r.failure.is_none());
-    assert!(r.events[0].to_json().contains(r#""args":{"version":2}"#));
+    assert!(
+        r.events[0]
+            .to_json()
+            .unwrap()
+            .contains(r#""args":{"version":2}"#)
+    );
 }
 
 #[test]
@@ -195,5 +200,10 @@ fn replacing_the_public_result_field_cannot_reuse_an_unrelated_program_index() {
     input.result = &next;
     let r = resume_action(input, &mut s, &r.continuation.unwrap(), true).unwrap();
     assert!(r.failure.is_none());
-    assert!(r.events[0].to_json().contains(r#""args":{"version":3}"#));
+    assert!(
+        r.events[0]
+            .to_json()
+            .unwrap()
+            .contains(r#""args":{"version":3}"#)
+    );
 }

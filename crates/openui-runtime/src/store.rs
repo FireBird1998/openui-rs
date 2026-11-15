@@ -124,16 +124,49 @@ impl Store {
     /// Read a value. Absent and explicitly undefined both return `None`;
     /// snapshot membership distinguishes their presence.
     pub fn get(&self, name: &str) -> StateValue {
+        if !self.possible_name(name) {
+            return None;
+        }
+        #[cfg(test)]
+        lookup_work::record(name);
         self.snapshot.get(name).cloned().flatten()
     }
     /// Whether a later declared default may replace this name, including absent
     /// names marked pristine by an ignored undefined set.
     pub fn is_pristine(&self, name: &str) -> bool {
+        if !self.possible_name(name) {
+            return false;
+        }
+        #[cfg(test)]
+        lookup_work::record(name);
         self.pristine.contains(name)
+    }
+    // Every retained key/field spends at least its raw UTF-8 length. Reject an
+    // impossible lookup by length before hashing any caller-controlled text.
+    pub(crate) fn possible_name(&self, name: &str) -> bool {
+        name.len() <= self.entry_bytes
     }
     /// Read the current immutable snapshot. Reads and ignored sets retain identity.
     pub fn snapshot(&self) -> StoreSnapshot {
         self.snapshot.clone()
+    }
+    /// Serialize the already-admitted snapshot without a second allowance.
+    /// Empty state still exports as `{}` even when its admission cap is zero.
+    /// Undefined entries serialize as null; pristine-only names are not snapshot
+    /// members. State was already admitted, so the shallow view is bounded.
+    pub fn snapshot_json(&self) -> Result<String, crate::LimitError> {
+        crate::value_to_json(&self.snapshot_value())
+    }
+    /// Serialize admitted state under explicit work, depth and output ceilings.
+    pub fn snapshot_json_with_limits(&self, limits: Limits) -> Result<String, crate::LimitError> {
+        crate::value_to_json_with_limits(&self.snapshot_value(), limits)
+    }
+    fn snapshot_value(&self) -> Value {
+        let mut values = JsObject::new();
+        for (key, value) in self.snapshot.iter() {
+            values.define(key, value.clone().unwrap_or(Value::Null));
+        }
+        Value::Obj(Arc::new(values))
     }
     /// Upstream notification count, plus nonempty disposals (see `Store`).
     pub fn version(&self) -> u64 {
@@ -714,5 +747,29 @@ impl<'a> Object<'a> {
                     }
                 }),
         }
+    }
+}
+
+#[cfg(test)]
+mod lookup_work {
+    use super::*;
+    thread_local! { static HASHED: std::cell::Cell<usize> = const { std::cell::Cell::new(0) }; }
+    pub(super) fn record(name: &str) {
+        HASHED.set(HASHED.get().saturating_add(name.len()));
+    }
+    #[test]
+    fn impossible_names_never_reach_store_hash_lookups() {
+        let mut store = Store::new();
+        store.set("$n", Some(Value::Num(1.))).unwrap();
+        let name = "n".repeat(1_000_000);
+        HASHED.set(0);
+        for _ in 0..1000 {
+            assert!(store.get(&name).is_none());
+            assert!(!store.is_pristine(&name));
+        }
+        assert_eq!(HASHED.get(), 0);
+        assert!(store.get("$n").is_some());
+        assert!(!store.is_pristine("$n"));
+        assert_eq!(HASHED.get(), 4);
     }
 }

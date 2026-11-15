@@ -85,7 +85,9 @@ fn deep_function_arguments_binding_values_and_action_params_recheck_depth() {
     let schema = parse_json(r#"{"$defs":{"Box":{"properties":{"a":{},"b":{}}}},"functions":{"Len":{"params":{"properties":{"value":{}}}}},"actions":{"Probe":{"params":{"type":"object","properties":{"value":{}}}}}}"#).unwrap();
     let l = Library::from_json_schema(&schema);
     let mut functions = LibraryFunctions::new(&schema["functions"]);
-    functions.register("Len", |_| Ok(Some(Value::Num(1.))));
+    functions
+        .register("Len", |_| Ok(Some(Value::Num(1.))))
+        .unwrap();
     for data in [false, true] {
         for first in [false, true] {
             for call in ["@Len($d)", "@Probe($d)"] {

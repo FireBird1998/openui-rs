@@ -56,7 +56,7 @@ fn default_cycles_cut_reads_and_do_not_flag_unread_trees() {
                 None,
             );
             let r = evaluate_tree((&p).into(), &Store::new());
-            assert_eq!(r.depth_limited, read, "{}", r.to_json());
+            assert_eq!(r.depth_limited, read, "{}", r.to_json().unwrap());
             assert!(!r.size_limited);
         }
     }
@@ -96,7 +96,7 @@ fn cycle_divergences_pin_reference_throws_rust_output_and_flags() {
             let r = evaluate_tree((&p).into(), &Store::new());
             let actual = format!(
                 "{},\"snapshot\":{{}}}}",
-                r.to_json().strip_suffix('}').unwrap()
+                r.to_json().unwrap().strip_suffix('}').unwrap()
             );
             assert_eq!(
                 actual,

@@ -84,6 +84,7 @@ fn main() {
             .and_then(JsonValue::as_str)
             .map_or_else(BindingProps::new, |path| {
                 BindingProps::from_prompt_spec(&Value::from_json(&load(dir.join(path))["library"]))
+                    .unwrap()
             });
         let f = functions::registry(schema.get("functions").unwrap_or(&JsonValue::Null));
         let input = TreeInput::new(&p)

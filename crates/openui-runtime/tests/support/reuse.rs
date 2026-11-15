@@ -12,7 +12,8 @@ pub fn functions(j: &openui_lang::JsonValue) -> LibraryFunctions<'_> {
             Value::Obj(o) => o.get("value").cloned(),
             _ => None,
         })
-    });
+    })
+    .unwrap();
     f.register("Len", |v| {
         Ok(Some(Value::Num(match &v {
             Value::Obj(o) => match o.get("value") {
@@ -22,7 +23,8 @@ pub fn functions(j: &openui_lang::JsonValue) -> LibraryFunctions<'_> {
             },
             _ => 0.,
         })))
-    });
+    })
+    .unwrap();
     f.register("Clone", |v| {
         Ok(match &v {
             Value::Obj(o) => o.get("value").map(|v| match v {
@@ -31,11 +33,13 @@ pub fn functions(j: &openui_lang::JsonValue) -> LibraryFunctions<'_> {
             }),
             _ => None,
         })
-    });
+    })
+    .unwrap();
     f.register("Grow", |v| {
         Ok(Some(Value::Arr(Arc::new(vec![v.clone(), v]))))
-    });
-    f.register("Throw", |_| Err("boom".into()));
+    })
+    .unwrap();
+    f.register("Throw", |_| Err("boom".into())).unwrap();
     f
 }
 pub fn shaped(mut p: ParseResult) -> ParseResult {

@@ -21,6 +21,8 @@ impl PreparedInput {
     /// Refused entries must be omitted. Each value's size has the same prepaid
     /// measurement contract as [`PreparedReferenceValue::new`]. Keys and object
     /// punctuation are included; no value is measured again or retained.
+    /// Default combination adds no new quota; request the explicit-limit variant
+    /// to bound an iterator supplied by the embedder.
     pub fn from_prepared_references<'a>(
         references: impl IntoIterator<Item = (&'a str, &'a PreparedReferenceValue)>,
     ) -> Self {
@@ -38,6 +40,43 @@ impl PreparedInput {
                 .saturating_add(key)
                 .saturating_add(value.bytes())
                 .saturating_add(2);
+        }
+        Self { bytes }
+    }
+    /// Combine a bounded number of references under explicit setup limits.
+    /// An incomplete combination earns no input credit. Refused tokens cannot
+    /// contribute bytes. The iterator itself is embedder code.
+    pub fn from_prepared_references_with_limits<'a>(
+        references: impl IntoIterator<Item = (&'a str, &'a PreparedReferenceValue)>,
+        limits: Limits,
+    ) -> Self {
+        let mut bytes = 2usize;
+        let mut work = limits.work_for(usize::MAX);
+        for (name, value) in references {
+            let Some(left) = work.checked_sub(name.len().saturating_add(1)) else {
+                return Self { bytes: 0 };
+            };
+            work = left;
+            if matches!(value.measured, ReferenceMeasurement::Refused(_)) {
+                continue;
+            }
+            // Match supplied-object sizing, including literal encoded surrogates.
+            let key = name.chars().fold(2usize, |n, c| {
+                n.saturating_add(match c {
+                    '"' | '\\' | '\n' | '\r' | '\t' | '\u{8}' | '\u{c}' => 2,
+                    c if c < '\u{20}' => 6,
+                    c => c.len_utf8(),
+                })
+            });
+            bytes = bytes
+                .saturating_add(key)
+                .saturating_add(value.bytes())
+                .saturating_add(2);
+            if bytes >= limits.result_size().max(limits.work_for(usize::MAX)) {
+                return Self {
+                    bytes: limits.result_size().max(limits.work_for(usize::MAX)),
+                };
+            }
         }
         Self { bytes }
     }

@@ -44,15 +44,20 @@
 //! |---|---|---|
 //! | `Store::new`, `Default`, `with_limits` | Default or retained core `Limits` | Empty state |
 //! | `Store::set`, `set_pristine`, `initialize` | Store work/depth and result ceiling; exact incremental total-state cap | `StoreError`, or per-name `InitializationResult::refused`; refused names unchanged |
-//! | `Store::get`, `snapshot`, `is_pristine`, `version`, `dispose` | Work/data bounded by admitted state; snapshots share bodies; disposal revokes continuations | No evaluation cut |
+//! | `Store::get`, `snapshot`, `is_pristine`, `version`, `dispose` | Reads bounded by admitted state; snapshots share bodies; disposal also visits private authority records | No evaluation cut |
 //! | `evaluate_tree`, `evaluate_tree_with_limits` | Default/explicit shared evaluation work, depth, room and grown stack | Tree flags; evaluated props and errors retained, remaining props raw |
 //! | `write_binding`, `set_field_value`, `initialize_field_default`, and their `_with_limits` variants | Default/explicit operation limits, then Store admission | `BindingWriteError`; no refused write effect |
 //! | `get_field_value` | One admitted Store value, shallow field projection | Undefined as `None` |
 //! | `run_action`, `run_action_with_limits`, `resume_action` | Default/explicit one run-wide work allowance retained on resume; per-operation room, then Store admission | Flags and typed failure; earlier effects/events retained; cut ends the run |
 //! | `PreparedReferenceValues::new`, `with_limits` | Default/explicit bounded supply measurement; no evaluation work spent | Refused entries flag only when read |
+//! | `PreparedReferenceValue::new`, `with_limits` | Default opaque clone without measurement; explicit work/depth preparation | Explicit refusal flags only when read |
+//! | `PreparedInput::from_prepared_references`, its `_with_limits` variant | Default combines all prepaid contributions; explicit iterator allowance | Incomplete explicit combination earns no input |
 //! | `TreeInput` constructors and builders | Borrowed configuration and retained Arc, constant work | No evaluation |
-//! | `BindingProps` construction, insertion, queries; `LibraryFunctions::new`, `register` | Caller-owned host configuration; registration and spec extraction have no configurable admission bound | No refusal channel |
-//! | `TreeResult::to_json`, `HostEvent::to_json`, `HostEvent::value`, `ActionRun::is_suspended` | Finished data; core stack-safe serialization, borrowed access or constant work | Serialization has no configurable output cap |
+//! | `BindingProps::{new,with_limits,insert,from_prompt_spec,from_prompt_spec_with_limits}` | No implicit quota; explicit spec admission and incremental retained-name cap | Typed `LimitError`; refused insertion unchanged |
+//! | `LibraryFunctions::{new,with_limits,register}` | Borrow schemas without walking; explicit opt-in name cap; used schemas checked during evaluation | Typed `LimitError`; implementation unchanged on refusal |
+//! | `TreeResult::to_json`, `HostEvent::to_json`, their `_with_limits` variants, `value_to_json`, `value_to_json_with_limits` | Default preserves admitted results; explicit variants admit work/depth/output before serialization | `Result<String, LimitError>` |
+//! | `Store::snapshot_json`, `snapshot_json_with_limits` | Default exports admitted state; explicit serialization limits | `Result<String, LimitError>` |
+//! | `BindingProps::{contains,undecided}`, `HostEvent::value`, `ActionRun::is_suspended` | Bounded configuration, borrowed access or constant work | No evaluation |
 //! | Re-exported expression/session/scope/value interfaces | Core defaults or explicit/inherited `Limits`; one evaluator | Core flags and failures |
 //!
 //! The Store cap is `Limits::result_size()` (8 MiB by default), independent
@@ -64,6 +69,20 @@
 //! combined final size atomically. A smaller replacement fits the total cap
 //! provided it passes its own work/depth/value admission. See ADR 0005.
 //!
+//! Serialized result room is not a universal live-memory allowance. Eager
+//! temporaries can retain many individually admitted callback results before
+//! an opaque later callback selects one. Host computation and allocation have
+//! no runtime quota. Finite allocator shape bounds, and the unresolved general
+//! amplification bound, are documented in ADR 0001/0008 and `TESTING.md`.
+//! Disposal is linear in retained state and private identity records for custom
+//! plans; keeping plans alive can grow those records independently of Store JSON.
+//! Re-exported raw core `Ast::to_json`/`walk` and `Value::from_json` are stack-safe
+//! finished-input walks without a configurable quota. Use the explicit-limit runtime
+//! JSON helpers for bounded exports of caller-created or edited data.
+//! Substitution shares matching argument/mapped-prop bodies without changing
+//! their walks or charges; deferred syntax and arbitrary scopes keep their
+//! independent representations.
+//!
 //! The reference harness registers and reads lang-core's own query manager with
 //! no provider, refresh or tool execution. See `CONFORMANCE.md` for its source
 //! locations and the pinned supplied overlay. Both parsers currently mark an
@@ -74,6 +93,8 @@
 #![forbid(unsafe_code)]
 #![deny(missing_docs)]
 
+mod admission;
+pub use admission::{LimitError, value_to_json, value_to_json_with_limits};
 mod store;
 mod tree;
 pub use store::{InitializationResult, StateRefusal, StateValue, Store, StoreError, StoreSnapshot};
@@ -92,3 +113,7 @@ pub use openui_lang::{
     JsObject, Limits, PreparedReferenceValue, PreparedValidationSchema, Value, evaluate_expression,
     evaluate_expression_with_limits,
 };
+
+#[cfg(test)]
+#[global_allocator]
+static ALLOCATOR: test_alloc::Allocator = test_alloc::Allocator::with_cap(64 * 1024 * 1024);

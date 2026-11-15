@@ -54,6 +54,9 @@ trait Names: Sized {
     fn call(&self, _node: &Ast, _scope: &Scope<'_, Self>) -> Js {
         Js::Null
     }
+    fn mapped_call_only(&self, _name: &str) -> bool {
+        false
+    }
     fn wants_unmapped_call(&self, _node: &Value, _name: &str) -> bool {
         false
     }
@@ -1651,6 +1654,15 @@ impl<S: Names> Scope<'_, S> {
         }
     }
 
+    fn mapped_call_only(&self, name: &str) -> bool {
+        let mut scope = self;
+        loop {
+            match scope {
+                Scope::Root(names) => return names.mapped_call_only(name),
+                Scope::Each { parent, .. } => scope = parent,
+            }
+        }
+    }
     fn wants_unmapped_call(&self, node: &Value, name: &str) -> bool {
         let mut scope = self;
         loop {
@@ -2044,7 +2056,12 @@ fn each<S: Names>(args: &[Ast], scope: &Scope<S>) -> Js {
             return value;
         }
         let room = S::RUNTIME.then(expression::SubstitutionRoom::enter);
-        let copy = substitute(&args[2], var, item);
+        let copy = if S::RUNTIME {
+            let policy = |name: &str| child.mapped_call_only(name);
+            substitute_shared(&args[2], var, item, Some(&policy))
+        } else {
+            substitute(&args[2], var, item)
+        };
         if let Some(room) = room {
             room.finish();
         }
@@ -2103,18 +2120,75 @@ fn each_array<S: Names>(
 /// item's literal, at a step per node. `None` where nothing changed: an AST
 /// never changes once built, so the parts without the variable are shared,
 /// not copied, and only the paths down to it are new.
+// Unit is a zero-sized policy: the parser passes no callback/context words,
+// and its policy operations disappear even in an unoptimized build.
+trait SubstitutionPolicy: Copy {
+    const SHARE: bool;
+    fn mapped_only(self, name: &str) -> bool;
+    fn at_call(self, name: &str, mapped: bool) -> Self;
+    fn escaped(self) -> Self;
+}
+impl SubstitutionPolicy for () {
+    const SHARE: bool = false;
+    #[inline(always)]
+    fn mapped_only(self, _: &str) -> bool {
+        false
+    }
+    #[inline(always)]
+    fn at_call(self, _: &str, _: bool) -> Self {
+        self
+    }
+    #[inline(always)]
+    fn escaped(self) -> Self {
+        self
+    }
+}
+impl SubstitutionPolicy for Option<&dyn Fn(&str) -> bool> {
+    const SHARE: bool = true;
+    #[inline(always)]
+    fn mapped_only(self, name: &str) -> bool {
+        self.is_some_and(|p| p(name))
+    }
+    #[inline(always)]
+    fn at_call(self, name: &str, mapped: bool) -> Self {
+        self.filter(|_| name == "Each" || mapped)
+    }
+    #[inline(always)]
+    fn escaped(self) -> Self {
+        None
+    }
+}
+#[inline(always)]
 fn substitute(node: &Ast, var: &str, value: &Js) -> Option<Ast> {
-    crate::stack::grow_stack!(substitute(node, var, value), budget else None);
+    substitute_in(node, var, value, ())
+}
+#[inline(always)]
+fn substitute_shared(
+    node: &Ast,
+    var: &str,
+    value: &Js,
+    policy: Option<&dyn Fn(&str) -> bool>,
+) -> Option<Ast> {
+    substitute_in(node, var, value, policy)
+}
+
+fn substitute_in<P: SubstitutionPolicy>(
+    node: &Ast,
+    var: &str,
+    value: &Js,
+    policy: P,
+) -> Option<Ast> {
+    crate::stack::grow_stack!(named "substitute(node, var, value)", substitute_in::<P>(node, var, value, policy), budget else None);
     if !step(1) {
         return Some(Ast::Null);
     }
-    let shared = |n: &Arc<Ast>| substitute(n, var, value).map(Arc::new);
+    let shared = |n: &Arc<Ast>| substitute_in::<P>(n, var, value, policy).map(Arc::new);
     // Each part substituted, or as it was where the other parts changed.
     let either = |new: Option<Arc<Ast>>, old: &Arc<Ast>| new.unwrap_or_else(|| Arc::clone(old));
     match node {
         Ast::Ref(name) if name == var => Some(literal(value)),
         Ast::Member { obj, field } => {
-            let new = substitute(obj, var, value);
+            let new = substitute_in::<P>(obj, var, value, policy);
             // A field of an object literal is that entry's value.
             if let Ast::Obj(entries) = new.as_ref().unwrap_or(obj)
                 && let Some((_, v)) = entries.iter().find(|(k, _)| k == field)
@@ -2157,14 +2231,16 @@ fn substitute(node: &Ast, var: &str, value: &Js) -> Option<Ast> {
                 otherwise: either(o, otherwise),
             }),
         },
-        Ast::Arr(els) => Some(Ast::Arr(Arc::new(substitute_all(els, var, value)?))),
+        Ast::Arr(els) => Some(Ast::Arr(Arc::new(substitute_all::<P>(
+            els, var, value, policy,
+        )?))),
         Ast::Obj(entries) => {
             let mut out: Option<Vec<(String, Ast)>> = None;
             for (i, (k, v)) in entries.iter().enumerate() {
                 if crate::progress::stalled_so_far() {
                     break;
                 }
-                match substitute(v, var, value) {
+                match substitute_in::<P>(v, var, value, policy) {
                     Some(new) => out
                         .get_or_insert_with(|| entries[..i].to_vec())
                         .push((k.clone(), new)),
@@ -2183,20 +2259,41 @@ fn substitute(node: &Ast, var: &str, value: &Js) -> Option<Ast> {
             function,
             mapped_props,
         } => {
-            let new_args = substitute_all(args, var, value);
-            let new_props = mapped_props.as_ref().and_then(|props| {
+            // Opaque/deferred calls may retain or inspect positional syntax.
+            // Only opt in for calls whose positional syntax is unobserved.
+            let mapped_only =
+                P::SHARE && name != "Each" && mapped_props.is_some() && policy.mapped_only(name);
+            let policy = policy.at_call(name, mapped_only);
+            let new_args = substitute_all::<P>(args, var, value, policy);
+            let mut new_props = mapped_props.as_ref().and_then(|props| {
                 let mut changed = false;
                 let mut out = JsObject::new();
                 for (key, v) in props.iter() {
                     if crate::progress::stalled_so_far() {
                         break;
                     }
-                    let new = substitute(v, var, value);
+                    let new = substitute_in::<P>(v, var, value, policy);
                     changed |= new.is_some();
                     out.define(key.clone(), new.unwrap_or_else(|| v.clone()));
                 }
                 changed.then(|| Arc::new(out))
             });
+            // The two representations are still walked and charged separately.
+            // If their single source child is the same immutable subtree,
+            // share the transformed body's allocations after both walks. This
+            // preserves later substitution costs and the full argument syntax.
+            if P::SHARE
+                && mapped_only
+                && args.len() == 1
+                && let (Some(props), Some(new_args), Some(new_props)) =
+                    (mapped_props, &new_args, &mut new_props)
+                && props.len() == 1
+                && let (Some((key, old)), Some(arg), Some(replacement)) =
+                    (props.iter().next(), args.first(), new_args.first())
+                && same_ast_body(arg, old)
+            {
+                Arc::make_mut(new_props).define(key, replacement.clone());
+            }
             if new_args.is_none() && new_props.is_none() {
                 return None;
             }
@@ -2209,20 +2306,91 @@ fn substitute(node: &Ast, var: &str, value: &Js) -> Option<Ast> {
         }
         Ast::Assign { target, value: v } => Some(Ast::Assign {
             target: target.clone(),
-            value: shared(v)?,
+            value: Arc::new(substitute_in::<P>(v, var, value, policy.escaped())?),
         }),
         _ => None,
     }
 }
 
+// A constant number of header comparisons, never a structural tree walk.
+// Scalars are deliberately excluded: they have no shared body to reuse.
+fn same_ast_body(a: &Ast, b: &Ast) -> bool {
+    match (a, b) {
+        (Ast::Arr(a), Ast::Arr(b)) => Arc::ptr_eq(a, b),
+        (Ast::Obj(a), Ast::Obj(b)) => Arc::ptr_eq(a, b),
+        (
+            Ast::Comp {
+                name: a,
+                args: aa,
+                function: af,
+                mapped_props: ap,
+            },
+            Ast::Comp {
+                name: b,
+                args: ba,
+                function: bf,
+                mapped_props: bp,
+            },
+        ) => {
+            a == b
+                && af == bf
+                && Arc::ptr_eq(aa, ba)
+                && match (ap, bp) {
+                    (None, None) => true,
+                    (Some(a), Some(b)) => Arc::ptr_eq(a, b),
+                    _ => false,
+                }
+        }
+        (
+            Ast::BinOp {
+                op: a,
+                left: al,
+                right: ar,
+            },
+            Ast::BinOp {
+                op: b,
+                left: bl,
+                right: br,
+            },
+        ) => a == b && Arc::ptr_eq(al, bl) && Arc::ptr_eq(ar, br),
+        (Ast::UnaryOp { op: a, operand: ao }, Ast::UnaryOp { op: b, operand: bo }) => {
+            a == b && Arc::ptr_eq(ao, bo)
+        }
+        (
+            Ast::Ternary {
+                cond: a,
+                then: at,
+                otherwise: ao,
+            },
+            Ast::Ternary {
+                cond: b,
+                then: bt,
+                otherwise: bo,
+            },
+        ) => Arc::ptr_eq(a, b) && Arc::ptr_eq(at, bt) && Arc::ptr_eq(ao, bo),
+        (Ast::Index { obj: a, index: ai }, Ast::Index { obj: b, index: bi }) => {
+            Arc::ptr_eq(a, b) && Arc::ptr_eq(ai, bi)
+        }
+        (Ast::Member { obj: a, field: af }, Ast::Member { obj: b, field: bf }) => {
+            af == bf && Arc::ptr_eq(a, b)
+        }
+        _ => false,
+    }
+}
+
 /// [`substitute`] over a list: `None` if no item changed.
-fn substitute_all(nodes: &[Ast], var: &str, value: &Js) -> Option<Vec<Ast>> {
+fn substitute_all<P: SubstitutionPolicy>(
+    nodes: &[Ast],
+    var: &str,
+    value: &Js,
+    policy: P,
+) -> Option<Vec<Ast>> {
     let mut out: Option<Vec<Ast>> = None;
     for (i, node) in nodes.iter().enumerate() {
         if crate::progress::stalled_so_far() {
             break;
         }
-        match substitute(node, var, value) {
+        match substitute_in::<P>(node, var, value, policy) {
             Some(new) => out.get_or_insert_with(|| nodes[..i].to_vec()).push(new),
             None => {
                 if let Some(out) = &mut out {

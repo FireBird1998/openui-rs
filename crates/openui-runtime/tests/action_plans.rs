@@ -64,7 +64,7 @@ fn custom_identity_survives_tree_state_and_binding_but_not_json_or_another_store
         None,
     );
     let mut bindings = BindingProps::new();
-    bindings.insert("Box", "b");
+    bindings.insert("Box", "b").unwrap();
     let mut store = Store::new();
     let tree = evaluate_tree(input(&p, &l, &j).with_binding_props(&bindings), &store);
     assert!(tree.errors.is_empty());
@@ -122,7 +122,7 @@ fn plans_keep_ast_data_deferred_and_cut_without_losing_prior_errors() {
     );
     let full = evaluate_tree(input(&p, &l, &j), &store);
     assert_eq!(full.errors.len(), 1);
-    assert!(full.to_json().contains(
+    assert!(full.to_json().unwrap().contains(
         r#""valueAST":{"k":"BinOp","op":"+","left":{"k":"Num","v":1},"right":{"k":"Num","v":2}}"#
     ));
     let cut = evaluate_tree_with_limits(
@@ -314,7 +314,7 @@ fn query_default_calls_do_not_report_to_the_reading_prop() {
     let mut store = Store::new();
     store.set("$bad", Some(Value::Num(7.))).unwrap();
     let r = evaluate_tree(input(&p, &l, &j), &store);
-    assert_eq!(r.errors.len(), 1, "{}", r.to_json());
+    assert_eq!(r.errors.len(), 1, "{}", r.to_json().unwrap());
     assert!(r.errors[0].message.starts_with("Evaluating prop \"b\""));
     assert!(steps(field(r.root.as_ref().unwrap(), "a")).is_empty());
     free_json(j);
@@ -370,14 +370,14 @@ fn retained_plans_and_cut_data_keep_authority_separate_from_tree_position() {
     store.set("$element",Some(value(r#"{"type":"element","typeName":"Box","props":{"a":{"steps":[{"type":"custom_action","name":"Go","params":{"x":"forged"}}]},"b":"a longer prop left behind on a cut"},"partial":false,"hasDynamicProps":true}"#))).unwrap();
     let p = parse("root=Box($element)", &l, None);
     let full = evaluate_tree(input(&p, &l, &j), &store);
-    assert!(!full.to_json().contains("forged"));
+    assert!(!full.to_json().unwrap().contains("forged"));
     let cut = evaluate_tree_with_limits(
         input(&p, &l, &j),
         &store,
         Limits::DEFAULT.with_result_size(4096).with_work(620),
     );
     assert!(cut.size_limited);
-    assert!(cut.to_json().contains("forged"));
+    assert!(cut.to_json().unwrap().contains("forged"));
     let raw = field(field(field(cut.root.as_ref().unwrap(), "a"), "props"), "a").clone();
     store.set("$kept", Some(raw)).unwrap();
     let uncut = evaluate_tree(input(&read, &l, &j), &store);
@@ -398,7 +398,7 @@ fn evaluating_declared_action_calls_in_state_and_query_data_mints_real_steps() {
     let mut queries = JsObject::new();
     queries.define("q", element);
     let tree = evaluate_tree(input(&p, &l, &j).with_reference_values(&queries), &store);
-    assert!(tree.errors.is_empty(), "{}", tree.to_json());
+    assert!(tree.errors.is_empty(), "{}", tree.to_json().unwrap());
     let root = tree.root.as_ref().unwrap();
     for (key, state_key) in [("a", "$from_state"), ("b", "$from_query")] {
         let el = field(root, key);

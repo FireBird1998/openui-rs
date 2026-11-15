@@ -33,28 +33,72 @@ type Implementation<'a> = dyn Fn(Value) -> FunctionResult + Send + Sync + 'a;
 /// null. Host panics propagate; evaluator contexts restore during unwinding,
 /// and evaluation leaves Store values and its version unchanged. Catching a host panic allows
 /// subsequent evaluations to use that Store normally. Host side effects cannot
-/// be rolled back by the runtime.
+/// be rolled back by the runtime. Callbacks may read and evaluate the same
+/// Store recursively; nested evaluator contexts restore on return and unwind.
+/// A mutable Store operation cannot alias its active shared borrow in safe
+/// Rust. Locks held by the embedder, recursive host calls and closure-captured
+/// allocations are host responsibilities, outside the runtime allowance.
 pub struct LibraryFunctions<'a> {
     pub(super) definitions: &'a openui_lang::JsonValue,
     implementations: BTreeMap<String, Box<Implementation<'a>>>,
+    limits: Option<Limits>,
+    name_bytes: usize,
 }
 impl<'a> LibraryFunctions<'a> {
     /// Pair implementations with the original library's `functions` object.
+    /// Default registration imposes no new quota on host-supplied names.
     pub fn new(definitions: &'a openui_lang::JsonValue) -> Self {
         Self {
             definitions,
             implementations: BTreeMap::new(),
+            limits: None,
+            name_bytes: 0,
+        }
+    }
+    /// Borrow definitions and set limits for retained implementation names.
+    /// Construction does not walk schemas. Evaluation admits each used schema
+    /// under the evaluation's own shared limits.
+    pub fn with_limits(definitions: &'a openui_lang::JsonValue, limits: Limits) -> Self {
+        Self {
+            limits: Some(limits),
+            ..Self::new(definitions)
         }
     }
     /// Register or replace a synchronous implementation. Names are literal.
     /// A name absent from the definitions is ignored during evaluation.
+    /// Retained names cost their JSON string size plus one separator byte.
+    /// Refusal leaves the previous implementation and registry total unchanged.
     pub fn register(
         &mut self,
-        name: impl Into<String>,
+        name: impl AsRef<str>,
         implementation: impl Fn(Value) -> FunctionResult + Send + Sync + 'a,
-    ) {
+    ) -> Result<(), crate::LimitError> {
+        let name = name.as_ref();
+        let total = if let Some(limits) = self.limits {
+            let bytes = crate::admission::text(name, limits)?.saturating_add(1);
+            let old = if self.implementations.contains_key(name) {
+                bytes
+            } else {
+                0
+            };
+            let total = self
+                .name_bytes
+                .saturating_sub(old)
+                .checked_add(bytes)
+                .ok_or_else(crate::admission::size_error)?;
+            if total > limits.result_size() {
+                return Err(crate::admission::size_error());
+            }
+            Some(total)
+        } else {
+            None
+        };
         self.implementations
-            .insert(name.into(), Box::new(implementation));
+            .insert(name.to_owned(), Box::new(implementation));
+        if let Some(total) = total {
+            self.name_bytes = total;
+        }
+        Ok(())
     }
     pub(super) fn get(
         &self,

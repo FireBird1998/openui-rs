@@ -256,7 +256,7 @@ fn deep_values_cross_tree_binding_form_preparation_action_and_resume_on_a_small_
         let mut store=Store::with_limits(limits);
         store.set("$source",Some(deep.clone())).unwrap();
         let tree=evaluate_tree_with_limits(TreeInput::new(&p).with_prepared_reference_values(&prepared),&store,limits);
-        assert!(!tree.size_limited&&!tree.depth_limited);drop(tree.to_json());drop(tree);
+        assert!(!tree.size_limited&&!tree.depth_limited);drop(tree.to_json_with_limits(limits).unwrap());drop(tree);
         write_binding_with_limits(TreeInput::new(&p),&mut store,&marker(),deep.clone(),limits).unwrap();
         set_field_value_with_limits(&mut store,Some("f"),None,"x",Some(deep.clone()),false,limits).unwrap();
         openui_runtime::initialize_field_default_with_limits(&mut store,None,None,"default",Some(deep.clone()),false,limits).unwrap();
@@ -266,7 +266,7 @@ fn deep_values_cross_tree_binding_form_preparation_action_and_resume_on_a_small_
         assert!(first.failure.is_none(),"{:?}",first.failure);let continuation=first.continuation.unwrap();
         let resumed=resume_action(TreeInput::new(&p).with_prepared_reference_values(&prepared),&mut store,&continuation,true).unwrap();
         assert!(resumed.failure.is_none(),"{:?}",resumed.failure);
-        for event in first.events.iter().chain(&resumed.events){drop(event.to_json());}
+        for event in first.events.iter().chain(&resumed.events){drop(event.to_json_with_limits(limits).unwrap());}
         let snapshot=store.snapshot();drop(store.get("before"));store.dispose();drop(snapshot);drop(deep);drop(prepared);drop(references);
     }).unwrap().join().unwrap();
 }

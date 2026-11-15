@@ -85,7 +85,7 @@ fn supplied_concatenations_throw_sites_and_descriptors_match_upstream() {
         let r = evaluate_tree((&p).into(), &s);
         assert!(!r.size_limited && !r.depth_limited, "{name} cut");
         let want = json(get(c, "expected"));
-        let actual = r.to_json();
+        let actual = r.to_json().unwrap();
         if want != actual {
             let byte = want
                 .bytes()

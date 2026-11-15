@@ -328,6 +328,17 @@ mod testing {
 /// }
 /// ```
 macro_rules! grow_stack {
+    (named $name:literal, $call:expr, budget else $cut:expr) => {
+        if $crate::stack::budget_low($name) {
+            if $crate::stack::exhausted($name) {
+                let cut = $cut;
+                #[cfg(test)]
+                $crate::stack::testing::assert_cut($name, &cut);
+                return cut;
+            }
+            return $crate::stack::on_new_segment(|| $call);
+        }
+    };
     ($call:expr, else $cut:expr) => {
         $crate::stack::grow_stack!(@check $call, $crate::stack::capped_low(stringify!($call)), $cut);
     };

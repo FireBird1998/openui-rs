@@ -855,8 +855,8 @@ are normalized before pristine flags can change.
 
 This intentionally differs from the reference's unbounded Store. The ordinary
 conformance fixtures continue to use the default 8 MiB state ceiling. This state
-cap does not yet establish a peak-memory bound for all intermediate loop/default
-shapes; the amplification and unique-leaf nesting follow-ups remain unresolved.
+cap does not establish a peak-memory bound for all intermediate loop/default
+shapes; the general amplification follow-up remains unresolved.
 
 The UniFFI runtime seam (#41) compares the exported RuntimeSession with the
 public Rust runtime on the scripted cases listed in TESTING.md. These checks
@@ -869,4 +869,47 @@ The binding's Store uses the evaluation result-size ceiling for the admission
 rules above ([ADR 0005](docs/adr/0005-admit-total-state-incrementally.md)). Exported
 binding tests cover adjacent state-cap edges, atomic refused writes/resets/resumes,
 per-entry persisted refusals and capped seeded sequences; no admission tests are
-parked. These checks do not establish the unresolved intermediate-heap bounds.
+parked. These checks do not establish general intermediate-heap bounds.
+
+[ADR 0008](docs/adr/0008-share-runtime-substitution-bodies.md) records an eager temporary/opaque callback family that prevents a universal
+room-plus-input peak bound while preserving every currently uncut program.
+`temporary_array_semantics` pins the counterexample. Matching component
+substitutions now share bodies: `nested_loop_memory` pins unchanged archived
+outputs/flags and one-row prices, and a 128,000-byte additional-heap ceiling
+at levels 1–8 in typed and shared-descriptor forms. This removes the observed
+per-level doubling; it does not assert a depth-independent peak.
+
+Runtime configuration and serialization retain their fallible signatures, with
+explicit opt-in limits. Default binding/function configuration adds no quota;
+explicit constructors bound input and retained names. Default tree/event/value
+and snapshot serializers preserve main's bytes without a second size, work or
+depth admission. Evaluation and Store admission already constrain their results;
+raw props in cut trees, errors and JSON envelopes need not fit root room.
+Caller-created or edited data can use the `_with_limits` serializers for bounded
+export. Core `Ast::to_json`, `Ast::walk`, `Value::from_json` and
+`ParseResult::to_json` remain finished-input walks with stack growth.
+`owner_walks` additionally pins deep Debug/equality and last-owner releases on
+64 KiB. `deep_callback_walk` exercises a real 34,000-level callback chain and
+an uncapped 100,000-node walk at its bottom; the old absolute bound panics at
+1,174 segments. Individual prepared reference tokens keep the legacy unmeasured default
+constructor. Explicit preparation enforces work and depth; its measuring ceiling
+is the larger of result room and the maximum input-work allowance, not an 8 MiB
+value-admission cap. In particular 9 MiB strings and five-million-item arrays
+can be prepared. An explicitly refused token flags only when read. The legacy
+prepaid-byte contract is retained; this does not change the open credit surface.
+Runtime reference sets continue to use core-verified receipts. Bulk
+preparation records an exhausted tail once and flags a declared reference only
+when read. Name enumeration remains caller setup, linear in supplied key data
+plus JavaScript key ordering; it does not spend run evaluation work.
+
+The shared session core maps runtime `LimitError` to the bindings' existing
+`LimitExceeded` variant. Default exports apply no new admission quota: tree JSON
+is exactly the runtime's `{root,errors}` representation, including raw cut props
+and raised-depth/room draws. `maxJsonBytes` limits host input, not output. Store
+value, field, snapshot and event JSON export admitted data without a second
+quota; snapshots still omit undefined entries and empty state exports `{}` even
+at zero room. Prompt configuration retains main's host-input parsing/byte limits
+and does not inherit evaluation depth or an estimated extraction-work allowance.
+Binding annotations retain main's raw-name budget, without JSON-escaping charges.
+Serialization precedes publishing the generation; explicit refusals preserve
+visible state and handles. Both exported binding interfaces remain unchanged.

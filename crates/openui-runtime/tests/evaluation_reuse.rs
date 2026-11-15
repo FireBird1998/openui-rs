@@ -17,7 +17,8 @@ fn functions(j: &openui_lang::JsonValue) -> LibraryFunctions<'_> {
             Value::Obj(o) => o.get("value").cloned(),
             _ => None,
         })
-    });
+    })
+    .unwrap();
     f.register("Len", |v| {
         Ok(Some(Value::Num(match &v {
             Value::Obj(o) => match o.get("value") {
@@ -27,7 +28,8 @@ fn functions(j: &openui_lang::JsonValue) -> LibraryFunctions<'_> {
             },
             _ => 0.,
         })))
-    });
+    })
+    .unwrap();
     f.register("Clone", |v| {
         Ok(match &v {
             Value::Obj(o) => o.get("value").map(|v| match v {
@@ -36,11 +38,13 @@ fn functions(j: &openui_lang::JsonValue) -> LibraryFunctions<'_> {
             }),
             _ => None,
         })
-    });
+    })
+    .unwrap();
     f.register("Grow", |v| {
         Ok(Some(Value::Arr(Arc::new(vec![v.clone(), v]))))
-    });
-    f.register("Throw", |_| Err("boom".into()));
+    })
+    .unwrap();
+    f.register("Throw", |_| Err("boom".into())).unwrap();
     f
 }
 fn shaped(mut p: ParseResult) -> ParseResult {
@@ -239,7 +243,8 @@ fn repeated_large_arguments_fit_the_default_work_allowance() {
             panic!("array")
         };
         Ok(Some(Value::Num(a.len() as f64)))
-    });
+    })
+    .unwrap();
     let rows = (0..65).map(|n| n.to_string()).collect::<Vec<_>>().join(",");
     let source = format!("root=Box(@Each([{rows}],v0,@Len(@Id([$s,$s,$s,$s]))))");
     let mut s = Store::new();
@@ -291,7 +296,8 @@ fn direct_iterator_optimization_preserves_the_host_argument_representation() {
         }
         calls.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
         Ok(Some(Value::Num(1.)))
-    });
+    })
+    .unwrap();
     let (s, _) = crate_supplied();
     for data in [false, true] {
         let p = parse("root=Box(@Inspect(@Each($elements,e,e)))", &l, None);
@@ -334,7 +340,7 @@ fn changing_argument_combinations_keep_only_the_current_text_projection() {
         parse_json(r#"{"params":{"properties":{"text":{},"index":{}}}}"#).unwrap();
     let l = Library::from_json_schema(&j);
     let mut f = functions(&j);
-    f.register("Pair", |_| Ok(Some(Value::Num(1.))));
+    f.register("Pair", |_| Ok(Some(Value::Num(1.)))).unwrap();
     let mut s = Store::new();
     s.set("$big", Some(Value::Str("x".repeat(500_000))))
         .unwrap();

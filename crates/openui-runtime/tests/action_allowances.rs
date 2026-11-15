@@ -59,7 +59,7 @@ fn aggregate_plans_and_unmapped_descriptors_have_bounded_costs() {
             "action {level}: room={} work={} json={}",
             threshold(&p, &l, &j, false),
             threshold(&p, &l, &j, true),
-            r.to_json().len()
+            r.to_json().unwrap().len()
         );
         body = format!("Action([{body}])");
     }
@@ -118,7 +118,7 @@ fn aggregate_plans_and_unmapped_descriptors_have_bounded_costs() {
             &body[..body.len().min(25)],
             threshold(&p, &l, &j, false),
             threshold(&p, &l, &j, true),
-            r.to_json().len()
+            r.to_json().unwrap().len()
         );
     }
     free_json(j);
@@ -188,7 +188,7 @@ fn nested_objects_arrays_and_enums_scale_linearly_in_the_value() {
         );
         assert!(!r.size_limited && !r.depth_limited);
         assert!(r.errors.is_empty());
-        assert!(r.to_json().contains("custom_action"));
+        assert!(r.to_json().unwrap().contains("custom_action"));
         let w = threshold_for(&p, &l, &j, &store, true);
         println!("nested Submit rows={n}: work={w}");
         work.push(w);
@@ -309,7 +309,7 @@ fn symbolic_reference_cycles_stay_opaque_and_expanded_schemas_are_bounded() {
     );
     assert!(!r.size_limited && !r.depth_limited);
     assert!(r.errors.is_empty());
-    assert!(r.to_json().contains("custom_action"));
+    assert!(r.to_json().unwrap().contains("custom_action"));
     let mut branch = parse_json(r#"{"type":"string"}"#).unwrap();
     for _ in 0..12 {
         let mut next = parse_json(r#"{"anyOf":[]}"#).unwrap();

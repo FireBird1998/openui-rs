@@ -17,7 +17,8 @@ pub fn cut(source: &str, k: usize, data: bool, prepared: bool, object: bool) -> 
         } else {
             None
         })
-    });
+    })
+    .unwrap();
     let x = reuse::deep(k, object);
     let mut refs = JsObject::new();
     refs.define("q1", x.clone());

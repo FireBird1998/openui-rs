@@ -23,7 +23,8 @@ fn event_only_runs_do_not_call_unrelated_query_defaults() {
     f.register("Tick", move |_| {
         c.fetch_add(1, Ordering::Relaxed);
         Ok(Some(Value::Num(7.)))
-    });
+    })
+    .unwrap();
     let input = TreeInput::new(&p).with_library(&l).with_functions(&f);
     let Value::Element(ref root) = evaluate_tree(input.clone(), &s).root.unwrap() else {
         panic!()
@@ -99,7 +100,8 @@ fn defaults_initialize_once_at_the_first_expression_across_resumes() {
     f.register("Tick", move |_| {
         c.fetch_add(1, Ordering::Relaxed);
         Ok(Some(Value::Num(7.)))
-    });
+    })
+    .unwrap();
     let mut s = Store::new();
     let input = TreeInput::new(&p).with_library(&l).with_functions(&f);
     let tree = evaluate_tree(input.clone(), &s);

@@ -39,6 +39,14 @@ use std::sync::Weak;
 /// Callback work and allocations outside the evaluator remain the caller's.
 /// Evaluator, stall and stack context restore on return and unwind.
 pub trait EvaluationScope {
+    /// Whether this call consumes only mapped props, without inspecting or
+    /// retaining positional argument syntax. Allows matching transformed
+    /// argument and mapped-prop bodies to share allocations. Both syntax walks
+    /// and their charges are preserved. The default preserves separate copies
+    /// for arbitrary scope implementations.
+    fn mapped_call_only(&self, _name: &str) -> bool {
+        false
+    }
     /// Read supplied state; `None` means undefined.
     /// Return supplied data, never evaluator output: these values earn input
     /// credit. Use `reference` or `call` for computed results.
@@ -196,6 +204,7 @@ pub struct PreparedReferenceValue {
     measured: ReferenceMeasurement,
 }
 enum ReferenceMeasurement {
+    Refused(EvaluationFlags),
     Small { value: Js, bytes: u32, depth: u32 },
     Large(Box<LargeReference>),
 }
@@ -205,10 +214,25 @@ struct LargeReference {
     depth: usize,
 }
 impl PreparedReferenceValue {
-    /// Cache a measured input value without evaluating it. The caller supplies
-    /// its already-paid byte contribution; this constructor adds no height claim.
+    /// Cache opaque supplied input without a new measuring/depth allowance.
+    /// The prepaid-byte contract is unchanged; reads earn no new credit.
+    /// Use `with_limits` to request a bounded measuring walk explicitly.
     pub fn new(value: &Value, input_bytes: usize) -> Self {
         Self::measured(value, input_bytes, 0)
+    }
+    /// Set independent preparation limits, without spending evaluation work.
+    /// Measurement finishes before copying a scalar string into the token.
+    /// This bounds setup work/depth, not stored value size at result_size:
+    /// the measurement ceiling is max(result_size, work ceiling).
+    pub fn with_limits(value: &Value, input_bytes: usize, limits: Limits) -> Self {
+        match reference_input::one(value, limits) {
+            // Preserve the opaque constructor's legacy prepaid/height contract.
+            // The bounded setup check does not add a new evaluation height claim.
+            Ok(_) => Self::measured(value, input_bytes, 0),
+            Err(flags) => Self {
+                measured: ReferenceMeasurement::Refused(flags),
+            },
+        }
     }
     fn measured(value: &Value, input_bytes: usize, depth: usize) -> Self {
         let value = match value {
@@ -233,34 +257,57 @@ impl PreparedReferenceValue {
         };
         Self { measured }
     }
-    fn value(&self) -> &Js {
+    fn value(&self) -> Option<&Js> {
         match &self.measured {
-            ReferenceMeasurement::Small { value, .. } => value,
-            ReferenceMeasurement::Large(v) => &v.value,
+            ReferenceMeasurement::Refused(_) => None,
+            ReferenceMeasurement::Small { value, .. } => Some(value),
+            ReferenceMeasurement::Large(v) => Some(&v.value),
         }
     }
     fn bytes(&self) -> usize {
         match &self.measured {
+            ReferenceMeasurement::Refused(_) => 0,
             ReferenceMeasurement::Small { bytes, .. } => *bytes as usize,
             ReferenceMeasurement::Large(v) => v.bytes,
         }
     }
     fn depth(&self) -> usize {
         match &self.measured {
+            ReferenceMeasurement::Refused(_) => 0,
             ReferenceMeasurement::Small { depth, .. } => *depth as usize,
             ReferenceMeasurement::Large(v) => v.depth,
         }
     }
-    /// Prepare named external values with one shared bounded measurement.
-    /// Successful entries carry core-verified byte and height measurements;
-    /// failed entries earn no input and retain their individual cut flags.
-    /// Returns the entries and their combined supplied-object byte contribution.
-    /// Preparation does not spend an active evaluation's work or earn credit.
+    /// Prepare named external values with one shared bounded value measurement.
+    /// Successful entries carry core-verified bytes/heights; failed entries earn
+    /// no input. This compatibility form reports every refused name, including
+    /// after work exhaustion. Enumeration/diagnostic metadata is caller setup.
     #[doc(hidden)]
     pub fn measure_all(
         values: &JsObject<Value>,
         limits: Limits,
     ) -> (BTreeMap<&str, Result<Self, EvaluationFlags>>, usize) {
+        let (mut entries, bytes, tail) = Self::measure_all_with_tail(values, limits);
+        if tail.size_limited || tail.depth_limited {
+            for (name, _) in values.iter() {
+                entries.entry(name.as_str()).or_insert(Err(tail));
+            }
+        }
+        (entries, bytes)
+    }
+    /// Prepare a bounded prefix and record an exhausted tail once. Returns the
+    /// visited entries, combined byte contribution, and the tail's refusal.
+    /// Missing keys in a truncated set must be refused with that flag if read.
+    /// Preparation does not spend evaluation work or earn evaluation credit.
+    #[doc(hidden)]
+    pub fn measure_all_with_tail(
+        values: &JsObject<Value>,
+        limits: Limits,
+    ) -> (
+        BTreeMap<&str, Result<Self, EvaluationFlags>>,
+        usize,
+        EvaluationFlags,
+    ) {
         reference_input::prepare(values, limits)
     }
 }
@@ -2352,6 +2399,17 @@ impl Supplied<'_> {
             return value;
         }
         if reference && let Some(prepared) = self.scope.prepared_reference(name) {
+            if let ReferenceMeasurement::Refused(flags) = prepared.measured {
+                LIMITS.with(|l| {
+                    if flags.size_limited {
+                        l.cut_by(Cut::Work);
+                    }
+                    if flags.depth_limited {
+                        l.cut_by(Cut::Depth);
+                    }
+                });
+                return Js::Null;
+            }
             // The prepared set was paid before this session. A claim larger
             // than the admitted input cannot use the fast path.
             if ACCOUNT.with(|a| prepared.bytes() > a.borrow().bytes) {
@@ -2361,7 +2419,10 @@ impl Supplied<'_> {
             if !step(1) {
                 return Js::Null;
             }
-            let js = prepared.value().clone();
+            let Some(js) = prepared.value().cloned() else {
+                LIMITS.with(|l| l.cut_by(Cut::Work));
+                return Js::Null;
+            };
             if let Js::Str(text) = &js
                 && ACCOUNT.with(|a| a.borrow().argument_texts)
             {
@@ -2533,6 +2594,9 @@ impl Names for Supplied<'_> {
             return None;
         }
         Some(expand(value))
+    }
+    fn mapped_call_only(&self, name: &str) -> bool {
+        self.scope.mapped_call_only(name)
     }
     fn wants_unmapped_call(&self, node: &Value, name: &str) -> bool {
         self.scope.wants_unmapped_call(node, name)

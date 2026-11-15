@@ -13,7 +13,7 @@ use crate::js::{JsObject, json_number, write_json_number, write_json_string};
 /// It frees its tree with a loop rather than recursion, so dropping one needs
 /// no stack however deep it nests. That makes it [`Drop`]: a pattern can't
 /// move a field out, so borrow it and clone the `Arc` instead.
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone)]
 pub enum Value {
     /// `null`: a literal, a dropped component, or an unresolved reference.
     Null,
@@ -34,6 +34,51 @@ pub enum Value {
     Element(Arc<Element>),
     /// A builtin call or runtime expression, kept for evaluation.
     Ast(Arc<Ast>),
+}
+
+impl std::fmt::Debug for Value {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        if matches!(
+            self,
+            Self::Arr(_) | Self::Obj(_) | Self::Element(_) | Self::Ast(_)
+        ) {
+            crate::stack::grow_stack!(std::fmt::Debug::fmt(self, f));
+        }
+        match self {
+            Self::Null => f.write_str("Null"),
+            Self::Bool(v) => f.debug_tuple("Bool").field(v).finish(),
+            Self::Num(v) => f.debug_tuple("Num").field(v).finish(),
+            Self::Str(v) => f.debug_tuple("Str").field(v).finish(),
+            Self::Arr(v) => f.debug_tuple("Arr").field(v).finish(),
+            Self::Obj(v) => f.debug_tuple("Obj").field(v).finish(),
+            Self::Element(v) => f.debug_tuple("Element").field(v).finish(),
+            Self::Ast(v) => f.debug_tuple("Ast").field(v).finish(),
+        }
+    }
+}
+impl PartialEq for Value {
+    fn eq(&self, other: &Self) -> bool {
+        if matches!(
+            (self, other),
+            (Self::Arr(_), Self::Arr(_))
+                | (Self::Obj(_), Self::Obj(_))
+                | (Self::Element(_), Self::Element(_))
+                | (Self::Ast(_), Self::Ast(_))
+        ) {
+            crate::stack::grow_stack!(self.eq(other));
+        }
+        match (self, other) {
+            (Self::Null, Self::Null) => true,
+            (Self::Bool(a), Self::Bool(b)) => a == b,
+            (Self::Num(a), Self::Num(b)) => a == b,
+            (Self::Str(a), Self::Str(b)) => a == b,
+            (Self::Arr(a), Self::Arr(b)) => a == b,
+            (Self::Obj(a), Self::Obj(b)) => a == b,
+            (Self::Element(a), Self::Element(b)) => a == b,
+            (Self::Ast(a), Self::Ast(b)) => a == b,
+            _ => false,
+        }
+    }
 }
 
 impl Value {

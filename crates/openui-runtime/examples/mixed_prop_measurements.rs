@@ -63,7 +63,7 @@ fn main() {
                         .with_result_size(64_000_000),
                 );
                 assert!(!r.size_limited && !r.depth_limited, "{source}");
-                let json = r.to_json();
+                let json = r.to_json().unwrap();
                 let hash = json.bytes().fold(0xcbf29ce484222325u64, |h, b| {
                     (h ^ u64::from(b)).wrapping_mul(0x100000001b3)
                 });
