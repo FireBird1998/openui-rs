@@ -8,29 +8,36 @@
 use std::sync::Arc;
 
 use openui_lang::{Library, StreamParser};
+mod runtime;
+pub mod session;
+pub use runtime::*;
 use wasm_bindgen::prelude::*;
 
 /// A component library, from the JSON Schema lang-core's
 /// `library.toJSONSchema()` gives.
 #[wasm_bindgen]
-pub struct ComponentLibrary(Arc<Library>);
+pub struct ComponentLibrary(Arc<openui_session::ComponentLibrary>);
 
 #[wasm_bindgen]
 impl ComponentLibrary {
-    /// Throws when `schema` isn't JSON.
+    /// Throws InvalidSchema when `schema` isn't JSON.
     #[wasm_bindgen(constructor)]
-    pub fn new(schema: &str) -> Result<ComponentLibrary, JsError> {
-        let schema: serde_json::Value = serde_json::from_str(schema)?;
-        Ok(ComponentLibrary(Arc::new(Library::from_json_schema(
-            &schema,
-        ))))
+    pub fn new(schema: &str) -> Result<ComponentLibrary, JsValue> {
+        let schema: serde_json::Value = serde_json::from_str(schema)
+            .map_err(|e| runtime::thrown("InvalidSchema", &e.to_string()))?;
+        Ok(ComponentLibrary(Arc::new(
+            openui_session::ComponentLibrary {
+                inner: Arc::new(Library::from_json_schema(&schema)),
+                schema: Arc::new(schema),
+            },
+        )))
     }
 }
 
 /// The whole of `program` parsed at once: the result as JSON.
 #[wasm_bindgen]
 pub fn parse(program: &str, library: &ComponentLibrary, root_name: Option<String>) -> String {
-    openui_lang::parse(program, &library.0, root_name.as_deref()).to_json()
+    openui_lang::parse(program, &library.0.inner, root_name.as_deref()).to_json()
 }
 
 /// A program arriving in pieces. Every call gives the result so far as JSON.
@@ -41,7 +48,10 @@ pub struct StreamSession(StreamParser);
 impl StreamSession {
     #[wasm_bindgen(constructor)]
     pub fn new(library: &ComponentLibrary, root_name: Option<String>) -> StreamSession {
-        StreamSession(StreamParser::new(library.0.clone(), root_name.as_deref()))
+        StreamSession(StreamParser::new(
+            library.0.inner.clone(),
+            root_name.as_deref(),
+        ))
     }
 
     /// The next piece of text.
@@ -69,5 +79,55 @@ impl StreamSession {
     /// The stream has ended: the final result.
     pub fn finish(&mut self) -> String {
         self.0.finish().to_json()
+    }
+}
+
+/// Actual parser output shared with a runtime, without JSON round-tripping.
+#[wasm_bindgen]
+pub struct ParsedProgram(Arc<openui_session::ParsedProgram>);
+fn program(result: openui_lang::ParseResult) -> ParsedProgram {
+    let json_bytes = result.to_json().len() as u64;
+    ParsedProgram(Arc::new(openui_session::ParsedProgram {
+        inner: Arc::new(result),
+        json_bytes,
+    }))
+}
+#[wasm_bindgen(js_name = parseProgram)]
+pub fn parse_program(
+    text: &str,
+    library: &ComponentLibrary,
+    root_name: Option<String>,
+) -> ParsedProgram {
+    program(openui_lang::parse(
+        text,
+        &library.0.inner,
+        root_name.as_deref(),
+    ))
+}
+#[wasm_bindgen]
+impl StreamSession {
+    #[wasm_bindgen(js_name = program)]
+    pub fn program(&mut self, complete: bool) -> ParsedProgram {
+        program(if complete {
+            self.0.finish()
+        } else {
+            self.0.result()
+        })
+    }
+}
+#[cfg(test)]
+#[global_allocator]
+static TEST_ALLOCATOR: test_alloc::Allocator = test_alloc::Allocator::with_cap(test_alloc::DEFAULT);
+
+impl ParsedProgram {
+    /// Rust adapter access to the actual parser output.
+    pub fn shared(&self) -> Arc<openui_session::ParsedProgram> {
+        self.0.clone()
+    }
+}
+impl ComponentLibrary {
+    /// Rust adapter access to the compiled schema.
+    pub fn shared(&self) -> Arc<openui_session::ComponentLibrary> {
+        self.0.clone()
     }
 }

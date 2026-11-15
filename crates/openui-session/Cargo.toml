@@ -1,0 +1,15 @@
+[package]
+name = "openui-session"
+version = "0.1.0"
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish = false
+
+[dependencies]
+openui-lang = { path = "../openui-lang" }
+openui-runtime = { path = "../openui-runtime" }
+serde_json = { version = "1", features = ["preserve_order", "float_roundtrip"] }
+
+[dev-dependencies]
+test-alloc = { path = "../test-alloc" }

@@ -21,5 +21,16 @@ for target in web nodejs; do
   out="target/wasm-pkg/${target%js}"
   rm -rf "$out"
   wasm-bindgen --target "$target" --out-dir "$out" "$module"
+  python3 scripts/check-runtime-binding-api.py --wasm "$out/openui_wasm.d.ts"
+  cat crates/openui-wasm/js/package-guards.js >> "$out/openui_wasm.js"
 done
+# Load the Node package once: the guard refuses to load when a generated
+# public member (string- or symbol-keyed) is not covered by its surface table.
+if command -v node > /dev/null; then
+  node -e 'require(process.argv[1])' "$ROOT/target/wasm-pkg/node/openui_wasm.js"
+elif command -v bun > /dev/null; then
+  bun --no-install -e 'require(process.argv[1])' "$ROOT/target/wasm-pkg/node/openui_wasm.js"
+else
+  echo "wasm.sh: neither node nor bun found; the package guard's load check was skipped" >&2
+fi
 echo "Built target/wasm-pkg/web and target/wasm-pkg/node ($(wc -c < target/wasm-pkg/web/openui_wasm_bg.wasm | tr -d ' ') bytes of WebAssembly)"

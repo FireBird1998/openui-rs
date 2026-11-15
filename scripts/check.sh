@@ -5,6 +5,7 @@
 set -euo pipefail
 cd "$(dirname "$0")/.."
 cargo fmt --all --check
+python3 scripts/check-runtime-binding-api.py
 # Every test binary runs under an allocation cap (TESTING.md): one declared
 # without the counting allocator would run uncapped.
 if find crates -path '*/tests/*/main.rs' -print -quit | grep -q .; then
@@ -16,7 +17,7 @@ for f in crates/*/tests/*.rs; do
     || { echo "check.sh: $f declares no test_alloc allocator (see TESTING.md)" >&2; exit 1; }
 done
 cargo clippy --all-targets --all-features -- -D warnings
-RUSTDOCFLAGS="-D warnings" cargo doc --no-deps -q -p openui-lang -p openui-runtime
+RUSTDOCFLAGS="-D warnings" cargo doc --no-deps -q -p openui-lang -p openui-runtime -p openui-session -p openui-ffi -p openui-wasm
 cargo test --all
 
 # The workspace's rust-version. The toolchain is named exactly and rustup's

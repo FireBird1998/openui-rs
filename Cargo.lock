@@ -395,6 +395,7 @@ version = "0.1.1"
 dependencies = [
  "openui-lang",
  "openui-runtime",
+ "openui-session",
  "serde_json",
  "similar",
  "test-alloc",
@@ -424,11 +425,24 @@ dependencies = [
 ]
 
 [[package]]
+name = "openui-session"
+version = "0.1.0"
+dependencies = [
+ "openui-lang",
+ "openui-runtime",
+ "serde_json",
+ "test-alloc",
+]
+
+[[package]]
 name = "openui-wasm"
 version = "0.1.0"
 dependencies = [
  "openui-lang",
+ "openui-runtime",
+ "openui-session",
  "serde_json",
+ "test-alloc",
  "wasm-bindgen",
 ]
 

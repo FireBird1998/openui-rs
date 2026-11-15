@@ -17,16 +17,20 @@ export interface WasmSession {
   finish(): string;
 }
 
-export function wasmStreamParser(session: WasmSession): StreamParser {
+export function wasmStreamParser(session: WasmSession, onResult?: (result: ParseResult, complete: boolean) => void): StreamParser {
   let given = "";
-  const read = (json: string) => JSON.parse(json) as ParseResult;
+  const read = (json: string, complete = false) => {
+    const result = JSON.parse(json) as ParseResult;
+    onResult?.(result, complete);
+    return result;
+  };
 
   // The new text, then the result: when the stream has ended, the new text
   // is fed without writing a result, and finish() writes the only one.
   function advance(delta: string, complete?: boolean): ParseResult {
     if (complete) {
       if (delta) session.feed(delta);
-      return read(session.finish());
+      return read(session.finish(), true);
     }
     return read(delta ? session.push(delta) : session.result());
   }
@@ -49,7 +53,7 @@ export function wasmStreamParser(session: WasmSession): StreamParser {
       return advance(fullText, true);
     },
     getResult(complete) {
-      return read(complete ? session.finish() : session.result());
+      return read(complete ? session.finish() : session.result(), !!complete);
     },
   };
 }

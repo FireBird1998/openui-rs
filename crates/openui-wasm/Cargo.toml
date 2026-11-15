@@ -11,6 +11,11 @@ publish = false
 crate-type = ["cdylib", "rlib"]
 
 [dependencies]
+openui-session = { path = "../openui-session" }
+openui-runtime = { path = "../openui-runtime" }
 openui-lang = { path = "../openui-lang" }
 serde_json = { version = "1", features = ["preserve_order", "float_roundtrip"] }
 wasm-bindgen = "0.2"
+
+[dev-dependencies]
+test-alloc = { path = "../test-alloc" }

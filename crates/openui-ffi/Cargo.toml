@@ -23,6 +23,7 @@ required-features = ["bindgen"]
 bindgen = ["uniffi/cli", "uniffi/cargo-metadata"]
 
 [dependencies]
+openui-session = { path = "../openui-session" }
 openui-lang = { path = "../openui-lang" }
 openui-runtime = { path = "../openui-runtime" }
 serde_json = { version = "1", features = ["preserve_order", "float_roundtrip"] }

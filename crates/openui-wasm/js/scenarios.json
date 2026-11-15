@@ -1,0 +1,588 @@
+[
+  {
+    "name": "state-transform-query",
+    "schema": "{\"$defs\":{\"Field\":{\"properties\":{\"value\":{},\"display\":{},\"children\":{},\"transform\":{}}},\"constructor\":{\"properties\":{\"toString\":{},\"__proto__\":{}}},\"1\":{\"properties\":{\"value\":{}}},\"null\":{\"properties\":{\"value\":{}}},\"[object Object]\":{\"properties\":{\"value\":{}}},\"\":{\"properties\":{\"value\":{}}},\"undefined\":{\"properties\":{\"value\":{}}},\"true\":{\"properties\":{\"value\":{}}},\"BindingTypes\":{\"type\":\"object\",\"properties\":{\"list\":{\"type\":\"array\",\"items\":{\"type\":\"string\"}},\"union\":{\"type\":[\"string\",\"number\"]},\"boundList\":{\"type\":\"array\",\"items\":{\"type\":\"string\"}},\"boundUnion\":{\"type\":[\"string\",\"number\"]}},\"required\":[\"list\",\"union\",\"boundList\",\"boundUnion\"],\"additionalProperties\":false,\"description\":\"Binding annotations\"},\"Box\":{\"properties\":{\"children\":{},\"label\":{}}},\"SignatureOdd\":{\"type\":\"object\",\"properties\":{\"quoted\":{\"type\":\"string\",\"enum\":[\"a\\\"b\",\"c\"]},\"afterQuote\":{\"type\":\"string\"},\"slash\":{\"type\":\"string\",\"const\":\"end\\\\\"},\"afterSlash\":{\"type\":\"string\"},\"a:b\":{\"type\":\"string\"},\"x?\":{\"type\":\"string\"},\"lt<\":{\"type\":\"string\"},\"p(\":{\"type\":\"string\"},\"c,\":{\"type\":\"string\"},\"it's\":{\"type\":\"string\"},\"last\":{\"type\":\"string\"}},\"required\":[\"quoted\",\"afterQuote\",\"slash\",\"afterSlash\",\"a:b\",\"x?\",\"lt<\",\"p(\",\"c,\",\"it's\",\"last\"],\"additionalProperties\":false,\"description\":\"Odd signature text\"}}}\n",
+    "spec": "{\"library\":{\"components\":{\"Field\":{\"signature\":\"Field(value?: $binding<any>, display?: any, children?: any, transform?: $binding<any>)\"},\"constructor\":{\"signature\":\"constructor(toString?: $binding<any>, __proto__?: $binding<any>)\"},\"1\":{\"signature\":\"Field(value?: $binding<any>)\"},\"null\":{\"signature\":\"Field(value?: $binding<any>)\"},\"[object Object]\":{\"signature\":\"Field(value?: $binding<any>)\"},\"\":{\"signature\":\"Field(value?: $binding<any>)\"},\"undefined\":{\"signature\":\"Field(value?: $binding<any>)\"},\"true\":{\"signature\":\"Field(value?: $binding<any>)\"},\"BindingTypes\":{\"signature\":\"BindingTypes(list: $binding<string>[], union: $binding<string> | number, boundList: $binding<string[]>, boundUnion: $binding<string | number>)\",\"description\":\"Binding annotations\"},\"Box\":{\"signature\":\"Box(children?: any, label?: $binding<any>)\"},\"SignatureOdd\":{\"signature\":\"SignatureOdd(quoted: \\\"a\\\"b\\\" | \\\"c\\\", afterQuote: $binding<string>, slash: \\\"end\\\\\\\", afterSlash: $binding<string>, a:b: $binding<string>, x?: $binding<string>, lt<: $binding<string>, p(: $binding<string>, c,: $binding<string>, it's: $binding<string>, last: $binding<string>)\",\"description\":\"Odd signature text\"}},\"schema\":{\"$defs\":{\"Field\":{\"properties\":{\"value\":{},\"display\":{},\"children\":{},\"transform\":{}}},\"constructor\":{\"properties\":{\"toString\":{},\"__proto__\":{}}},\"1\":{\"properties\":{\"value\":{}}},\"null\":{\"properties\":{\"value\":{}}},\"[object Object]\":{\"properties\":{\"value\":{}}},\"\":{\"properties\":{\"value\":{}}},\"undefined\":{\"properties\":{\"value\":{}}},\"true\":{\"properties\":{\"value\":{}}},\"BindingTypes\":{\"type\":\"object\",\"properties\":{\"list\":{\"type\":\"array\",\"items\":{\"type\":\"string\"}},\"union\":{\"type\":[\"string\",\"number\"]},\"boundList\":{\"type\":\"array\",\"items\":{\"type\":\"string\"}},\"boundUnion\":{\"type\":[\"string\",\"number\"]}},\"required\":[\"list\",\"union\",\"boundList\",\"boundUnion\"],\"additionalProperties\":false,\"description\":\"Binding annotations\"},\"Box\":{\"properties\":{\"children\":{},\"label\":{}}},\"SignatureOdd\":{\"type\":\"object\",\"properties\":{\"quoted\":{\"type\":\"string\",\"enum\":[\"a\\\"b\",\"c\"]},\"afterQuote\":{\"type\":\"string\"},\"slash\":{\"type\":\"string\",\"const\":\"end\\\\\"},\"afterSlash\":{\"type\":\"string\"},\"a:b\":{\"type\":\"string\"},\"x?\":{\"type\":\"string\"},\"lt<\":{\"type\":\"string\"},\"p(\":{\"type\":\"string\"},\"c,\":{\"type\":\"string\"},\"it's\":{\"type\":\"string\"},\"last\":{\"type\":\"string\"}},\"required\":[\"quoted\",\"afterQuote\",\"slash\",\"afterSlash\",\"a:b\",\"x?\",\"lt<\",\"p(\",\"c,\",\"it's\",\"last\"],\"additionalProperties\":false,\"description\":\"Odd signature text\"}}}}}\n",
+    "source": "root=Field($total=$value+q.n+(m.status==\"done\"?1:2),$total,null,$n)\nq=Query(\"get\",{},{n:2})\nm=Mutation(\"save\",{})\n$total=0\n$n=3\n",
+    "steps": [
+      {
+        "op": "initialize",
+        "saved": {
+          "$n": 19
+        }
+      },
+      {
+        "op": "references",
+        "value": {
+          "q": {
+            "n": 20
+          },
+          "m": {
+            "status": "done"
+          }
+        }
+      },
+      {
+        "op": "binding",
+        "path": [
+          "props",
+          "value"
+        ],
+        "value": 4
+      },
+      {
+        "op": "set",
+        "name": "$n",
+        "value": 17
+      }
+    ],
+    "expected": [
+      {
+        "tree": "{\"root\":{\"type\":\"element\",\"typeName\":\"Field\",\"props\":{\"value\":{\"__reactive\":\"assign\",\"target\":\"$total\",\"expr\":{\"k\":\"BinOp\",\"op\":\"+\",\"left\":{\"k\":\"BinOp\",\"op\":\"+\",\"left\":{\"k\":\"StateRef\",\"n\":\"$value\"},\"right\":{\"k\":\"Member\",\"obj\":{\"k\":\"RuntimeRef\",\"n\":\"q\",\"refType\":\"query\"},\"field\":\"n\"}},\"right\":{\"k\":\"Ternary\",\"cond\":{\"k\":\"BinOp\",\"op\":\"==\",\"left\":{\"k\":\"Member\",\"obj\":{\"k\":\"RuntimeRef\",\"n\":\"m\",\"refType\":\"mutation\"},\"field\":\"status\"},\"right\":{\"k\":\"Str\",\"v\":\"done\"}},\"then\":{\"k\":\"Num\",\"v\":1},\"else\":{\"k\":\"Num\",\"v\":2}}}},\"display\":0,\"children\":null,\"transform\":{\"__reactive\":\"assign\",\"target\":\"$n\",\"expr\":{\"k\":\"StateRef\",\"n\":\"$value\"}}},\"partial\":false,\"hasDynamicProps\":true,\"statementId\":\"root\"},\"errors\":[]}",
+        "snapshot": "{\"$n\":19,\"$total\":0,\"$value\":null}",
+        "version": "1",
+        "runs": [],
+        "field": null
+      },
+      {
+        "tree": "{\"root\":{\"type\":\"element\",\"typeName\":\"Field\",\"props\":{\"value\":{\"__reactive\":\"assign\",\"target\":\"$total\",\"expr\":{\"k\":\"BinOp\",\"op\":\"+\",\"left\":{\"k\":\"BinOp\",\"op\":\"+\",\"left\":{\"k\":\"StateRef\",\"n\":\"$value\"},\"right\":{\"k\":\"Member\",\"obj\":{\"k\":\"RuntimeRef\",\"n\":\"q\",\"refType\":\"query\"},\"field\":\"n\"}},\"right\":{\"k\":\"Ternary\",\"cond\":{\"k\":\"BinOp\",\"op\":\"==\",\"left\":{\"k\":\"Member\",\"obj\":{\"k\":\"RuntimeRef\",\"n\":\"m\",\"refType\":\"mutation\"},\"field\":\"status\"},\"right\":{\"k\":\"Str\",\"v\":\"done\"}},\"then\":{\"k\":\"Num\",\"v\":1},\"else\":{\"k\":\"Num\",\"v\":2}}}},\"display\":0,\"children\":null,\"transform\":{\"__reactive\":\"assign\",\"target\":\"$n\",\"expr\":{\"k\":\"StateRef\",\"n\":\"$value\"}}},\"partial\":false,\"hasDynamicProps\":true,\"statementId\":\"root\"},\"errors\":[]}",
+        "snapshot": "{\"$n\":19,\"$total\":0,\"$value\":null}",
+        "version": "1",
+        "runs": [],
+        "field": null
+      },
+      {
+        "tree": "{\"root\":{\"type\":\"element\",\"typeName\":\"Field\",\"props\":{\"value\":{\"__reactive\":\"assign\",\"target\":\"$total\",\"expr\":{\"k\":\"BinOp\",\"op\":\"+\",\"left\":{\"k\":\"BinOp\",\"op\":\"+\",\"left\":{\"k\":\"StateRef\",\"n\":\"$value\"},\"right\":{\"k\":\"Member\",\"obj\":{\"k\":\"RuntimeRef\",\"n\":\"q\",\"refType\":\"query\"},\"field\":\"n\"}},\"right\":{\"k\":\"Ternary\",\"cond\":{\"k\":\"BinOp\",\"op\":\"==\",\"left\":{\"k\":\"Member\",\"obj\":{\"k\":\"RuntimeRef\",\"n\":\"m\",\"refType\":\"mutation\"},\"field\":\"status\"},\"right\":{\"k\":\"Str\",\"v\":\"done\"}},\"then\":{\"k\":\"Num\",\"v\":1},\"else\":{\"k\":\"Num\",\"v\":2}}}},\"display\":25,\"children\":null,\"transform\":{\"__reactive\":\"assign\",\"target\":\"$n\",\"expr\":{\"k\":\"StateRef\",\"n\":\"$value\"}}},\"partial\":false,\"hasDynamicProps\":true,\"statementId\":\"root\"},\"errors\":[]}",
+        "snapshot": "{\"$n\":19,\"$total\":25,\"$value\":null}",
+        "version": "2",
+        "runs": [],
+        "field": null
+      },
+      {
+        "tree": "{\"root\":{\"type\":\"element\",\"typeName\":\"Field\",\"props\":{\"value\":{\"__reactive\":\"assign\",\"target\":\"$total\",\"expr\":{\"k\":\"BinOp\",\"op\":\"+\",\"left\":{\"k\":\"BinOp\",\"op\":\"+\",\"left\":{\"k\":\"StateRef\",\"n\":\"$value\"},\"right\":{\"k\":\"Member\",\"obj\":{\"k\":\"RuntimeRef\",\"n\":\"q\",\"refType\":\"query\"},\"field\":\"n\"}},\"right\":{\"k\":\"Ternary\",\"cond\":{\"k\":\"BinOp\",\"op\":\"==\",\"left\":{\"k\":\"Member\",\"obj\":{\"k\":\"RuntimeRef\",\"n\":\"m\",\"refType\":\"mutation\"},\"field\":\"status\"},\"right\":{\"k\":\"Str\",\"v\":\"done\"}},\"then\":{\"k\":\"Num\",\"v\":1},\"else\":{\"k\":\"Num\",\"v\":2}}}},\"display\":25,\"children\":null,\"transform\":{\"__reactive\":\"assign\",\"target\":\"$n\",\"expr\":{\"k\":\"StateRef\",\"n\":\"$value\"}}},\"partial\":false,\"hasDynamicProps\":true,\"statementId\":\"root\"},\"errors\":[]}",
+        "snapshot": "{\"$n\":17,\"$total\":25,\"$value\":null}",
+        "version": "3",
+        "runs": [],
+        "field": null
+      }
+    ]
+  },
+  {
+    "name": "custom",
+    "schema": "{\"$defs\":{\"Box\":{\"properties\":{\"a\":{},\"b\":{},\"c\":{},\"d\":{}}}},\"actions\":{\"Go\":{\"params\":{\"type\":\"object\",\"properties\":{\"x\":{\"type\":\"string\"},\"opt\":{\"type\":\"number\",\"default\":4},\"req\":{\"type\":\"number\",\"default\":3},\"nested\":{\"type\":\"object\",\"properties\":{\"n\":{\"type\":\"number\"}},\"required\":[\"n\"]},\"list\":{\"type\":\"array\",\"items\":{\"type\":\"number\"}}},\"required\":[\"x\",\"req\"]}},\"set\":{\"params\":{\"type\":\"object\",\"properties\":{\"x\":{\"type\":\"string\"}},\"required\":[\"x\"]}},\"open_url\":{\"params\":{\"type\":\"object\",\"properties\":{\"x\":{}},\"required\":[\"x\"]}},\"Set\":{\"params\":{\"type\":\"object\",\"properties\":{\"x\":{\"type\":\"string\"}}}},\"Odd\":{\"params\":{\"type\":\"object\",\"properties\":{\"toString\":{\"type\":\"number\"},\"constructor\":{\"type\":\"number\"},\"__proto__\":{}},\"required\":[\"toString\"]}},\"StrReq\":{\"params\":{\"type\":\"object\",\"properties\":{\"x\":{\"type\":\"string\"}},\"required\":\"xy\"}}}}\n",
+    "source": "$n=3\nroot=Box(Action([@Go(\"ok\"),@Set($n,$n+1),@OpenUrl(\"url\")]))",
+    "steps": [
+      {
+        "op": "initialize"
+      },
+      {
+        "op": "run",
+        "path": [
+          "props",
+          "a"
+        ],
+        "success": true
+      }
+    ],
+    "expected": [
+      {
+        "tree": "{\"root\":{\"type\":\"element\",\"typeName\":\"Box\",\"props\":{\"a\":{\"steps\":[{\"type\":\"custom_action\",\"name\":\"Go\",\"params\":{\"x\":\"ok\",\"req\":3}},{\"type\":\"set\",\"target\":\"$n\",\"valueAST\":{\"k\":\"BinOp\",\"op\":\"+\",\"left\":{\"k\":\"StateRef\",\"n\":\"$n\"},\"right\":{\"k\":\"Num\",\"v\":1}}},{\"type\":\"open_url\",\"url\":\"url\"}]}},\"partial\":false,\"hasDynamicProps\":true,\"statementId\":\"root\"},\"errors\":[]}",
+        "snapshot": "{\"$n\":3}",
+        "version": "1",
+        "runs": [],
+        "field": null
+      },
+      {
+        "tree": "{\"root\":{\"type\":\"element\",\"typeName\":\"Box\",\"props\":{\"a\":{\"steps\":[{\"type\":\"custom_action\",\"name\":\"Go\",\"params\":{\"x\":\"ok\",\"req\":3}},{\"type\":\"set\",\"target\":\"$n\",\"valueAST\":{\"k\":\"BinOp\",\"op\":\"+\",\"left\":{\"k\":\"StateRef\",\"n\":\"$n\"},\"right\":{\"k\":\"Num\",\"v\":1}}},{\"type\":\"open_url\",\"url\":\"url\"}]}},\"partial\":false,\"hasDynamicProps\":true,\"statementId\":\"root\"},\"errors\":[]}",
+        "snapshot": "{\"$n\":4}",
+        "version": "2",
+        "runs": [
+          {
+            "events": [
+              "{\"type\":\"Go\",\"params\":{\"x\":\"ok\",\"req\":3},\"humanFriendlyMessage\":\"\",\"formState\":{\"$n\":3}}",
+              "{\"type\":\"open_url\",\"params\":{\"url\":\"url\"},\"humanFriendlyMessage\":\"\",\"formState\":{\"$n\":4}}"
+            ],
+            "failure": null,
+            "sizeLimited": false,
+            "depthLimited": false,
+            "pending": false
+          }
+        ],
+        "field": null
+      }
+    ]
+  },
+  {
+    "name": "forms",
+    "schema": "{\"$defs\":{\"Box\":{\"properties\":{\"a\":{},\"b\":{},\"c\":{},\"d\":{}}},\"Field\":{\"properties\":{\"value\":{},\"display\":{},\"children\":{}}}},\"actions\":{\"Go\":{\"params\":{\"type\":\"object\",\"properties\":{\"x\":{\"type\":\"string\"},\"opt\":{\"type\":\"number\",\"default\":4},\"req\":{\"type\":\"number\",\"default\":3},\"nested\":{\"type\":\"object\",\"properties\":{\"n\":{\"type\":\"number\"}},\"required\":[\"n\"]},\"list\":{\"type\":\"array\",\"items\":{\"type\":\"number\"}}},\"required\":[\"x\",\"req\"]}},\"set\":{\"params\":{\"type\":\"object\",\"properties\":{\"x\":{\"type\":\"string\"}},\"required\":[\"x\"]}},\"open_url\":{\"params\":{\"type\":\"object\",\"properties\":{\"x\":{}},\"required\":[\"x\"]}},\"Set\":{\"params\":{\"type\":\"object\",\"properties\":{\"x\":{\"type\":\"string\"}}}},\"Odd\":{\"params\":{\"type\":\"object\",\"properties\":{\"toString\":{\"type\":\"number\"},\"constructor\":{\"type\":\"number\"},\"__proto__\":{}},\"required\":[\"toString\"]}},\"StrReq\":{\"params\":{\"type\":\"object\",\"properties\":{\"x\":{\"type\":\"string\"}},\"required\":\"xy\"}}},\"functions\":{\"Throw\":{\"params\":{\"type\":\"object\",\"properties\":{}}},\"Wrong\":{\"params\":{\"type\":\"object\",\"properties\":{}},\"returns\":{\"type\":\"string\"}},\"Undefined\":{\"params\":{\"type\":\"object\",\"properties\":{}}},\"Identity\":{\"params\":{\"type\":\"object\",\"properties\":{\"value\":{}}}}}}\n",
+    "spec": "{\"library\":{\"schema\":{\"$defs\":{\"Box\":{\"properties\":{\"a\":{},\"b\":{},\"c\":{},\"d\":{}}},\"Field\":{\"properties\":{\"value\":{},\"display\":{},\"children\":{}}}}},\"components\":{\"Field\":{\"signature\":\"Field(value: $binding<any>, display: any, children: any)\"}}}}\n",
+    "source": "$n=0\nroot=Box(@ToAssistant(\"submit\"),Field($n),Field(\"unbound\"))\n",
+    "steps": [
+      {
+        "op": "initialize"
+      },
+      {
+        "op": "field",
+        "form": "form",
+        "name": "name",
+        "value": "answer",
+        "save": true
+      },
+      {
+        "op": "default",
+        "form": "form",
+        "name": "other",
+        "value": 7,
+        "streaming": true
+      },
+      {
+        "op": "default",
+        "form": "form",
+        "name": "other",
+        "value": 7,
+        "streaming": false
+      },
+      {
+        "op": "run",
+        "form": "form",
+        "path": [
+          "props",
+          "a"
+        ],
+        "success": true
+      }
+    ],
+    "expected": [
+      {
+        "tree": "{\"root\":{\"type\":\"element\",\"typeName\":\"Box\",\"props\":{\"a\":{\"steps\":[{\"type\":\"continue_conversation\",\"message\":\"submit\"}]},\"b\":{\"type\":\"element\",\"typeName\":\"Field\",\"props\":{\"value\":{\"__reactive\":\"assign\",\"target\":\"$n\",\"expr\":{\"k\":\"StateRef\",\"n\":\"$value\"}}},\"partial\":false,\"hasDynamicProps\":true},\"c\":{\"type\":\"element\",\"typeName\":\"Field\",\"props\":{\"value\":\"unbound\"},\"partial\":false,\"hasDynamicProps\":false}},\"partial\":false,\"hasDynamicProps\":true,\"statementId\":\"root\"},\"errors\":[]}",
+        "snapshot": "{\"$n\":0}",
+        "version": "1",
+        "runs": [],
+        "field": null
+      },
+      {
+        "tree": "{\"root\":{\"type\":\"element\",\"typeName\":\"Box\",\"props\":{\"a\":{\"steps\":[{\"type\":\"continue_conversation\",\"message\":\"submit\"}]},\"b\":{\"type\":\"element\",\"typeName\":\"Field\",\"props\":{\"value\":{\"__reactive\":\"assign\",\"target\":\"$n\",\"expr\":{\"k\":\"StateRef\",\"n\":\"$value\"}}},\"partial\":false,\"hasDynamicProps\":true},\"c\":{\"type\":\"element\",\"typeName\":\"Field\",\"props\":{\"value\":\"unbound\"},\"partial\":false,\"hasDynamicProps\":false}},\"partial\":false,\"hasDynamicProps\":true,\"statementId\":\"root\"},\"errors\":[]}",
+        "snapshot": "{\"$n\":0,\"form\":{\"name\":{\"value\":\"answer\",\"componentType\":\"Field\"}}}",
+        "version": "2",
+        "runs": [],
+        "field": {
+          "changed": true,
+          "saveRequested": true
+        }
+      },
+      {
+        "tree": "{\"root\":{\"type\":\"element\",\"typeName\":\"Box\",\"props\":{\"a\":{\"steps\":[{\"type\":\"continue_conversation\",\"message\":\"submit\"}]},\"b\":{\"type\":\"element\",\"typeName\":\"Field\",\"props\":{\"value\":{\"__reactive\":\"assign\",\"target\":\"$n\",\"expr\":{\"k\":\"StateRef\",\"n\":\"$value\"}}},\"partial\":false,\"hasDynamicProps\":true},\"c\":{\"type\":\"element\",\"typeName\":\"Field\",\"props\":{\"value\":\"unbound\"},\"partial\":false,\"hasDynamicProps\":false}},\"partial\":false,\"hasDynamicProps\":true,\"statementId\":\"root\"},\"errors\":[]}",
+        "snapshot": "{\"$n\":0,\"form\":{\"name\":{\"value\":\"answer\",\"componentType\":\"Field\"}}}",
+        "version": "2",
+        "runs": [],
+        "field": null
+      },
+      {
+        "tree": "{\"root\":{\"type\":\"element\",\"typeName\":\"Box\",\"props\":{\"a\":{\"steps\":[{\"type\":\"continue_conversation\",\"message\":\"submit\"}]},\"b\":{\"type\":\"element\",\"typeName\":\"Field\",\"props\":{\"value\":{\"__reactive\":\"assign\",\"target\":\"$n\",\"expr\":{\"k\":\"StateRef\",\"n\":\"$value\"}}},\"partial\":false,\"hasDynamicProps\":true},\"c\":{\"type\":\"element\",\"typeName\":\"Field\",\"props\":{\"value\":\"unbound\"},\"partial\":false,\"hasDynamicProps\":false}},\"partial\":false,\"hasDynamicProps\":true,\"statementId\":\"root\"},\"errors\":[]}",
+        "snapshot": "{\"$n\":0,\"form\":{\"name\":{\"value\":\"answer\",\"componentType\":\"Field\"},\"other\":{\"value\":7,\"componentType\":\"Field\"}}}",
+        "version": "3",
+        "runs": [],
+        "field": {
+          "changed": true,
+          "saveRequested": false
+        }
+      },
+      {
+        "tree": "{\"root\":{\"type\":\"element\",\"typeName\":\"Box\",\"props\":{\"a\":{\"steps\":[{\"type\":\"continue_conversation\",\"message\":\"submit\"}]},\"b\":{\"type\":\"element\",\"typeName\":\"Field\",\"props\":{\"value\":{\"__reactive\":\"assign\",\"target\":\"$n\",\"expr\":{\"k\":\"StateRef\",\"n\":\"$value\"}}},\"partial\":false,\"hasDynamicProps\":true},\"c\":{\"type\":\"element\",\"typeName\":\"Field\",\"props\":{\"value\":\"unbound\"},\"partial\":false,\"hasDynamicProps\":false}},\"partial\":false,\"hasDynamicProps\":true,\"statementId\":\"root\"},\"errors\":[]}",
+        "snapshot": "{\"$n\":0,\"form\":{\"name\":{\"value\":\"answer\",\"componentType\":\"Field\"},\"other\":{\"value\":7,\"componentType\":\"Field\"}}}",
+        "version": "3",
+        "runs": [
+          {
+            "events": [
+              "{\"type\":\"continue_conversation\",\"params\":{},\"humanFriendlyMessage\":\"submit\",\"formState\":{\"form\":{\"name\":{\"value\":\"answer\",\"componentType\":\"Field\"},\"other\":{\"value\":7,\"componentType\":\"Field\"}}},\"formName\":\"form\"}"
+            ],
+            "failure": null,
+            "sizeLimited": false,
+            "depthLimited": false,
+            "pending": false
+          }
+        ],
+        "field": null
+      }
+    ]
+  },
+  {
+    "name": "stream-replace",
+    "schema": "{\"$defs\":{\"Field\":{\"properties\":{\"value\":{},\"display\":{},\"children\":{},\"transform\":{}}},\"constructor\":{\"properties\":{\"toString\":{},\"__proto__\":{}}},\"1\":{\"properties\":{\"value\":{}}},\"null\":{\"properties\":{\"value\":{}}},\"[object Object]\":{\"properties\":{\"value\":{}}},\"\":{\"properties\":{\"value\":{}}},\"undefined\":{\"properties\":{\"value\":{}}},\"true\":{\"properties\":{\"value\":{}}},\"BindingTypes\":{\"type\":\"object\",\"properties\":{\"list\":{\"type\":\"array\",\"items\":{\"type\":\"string\"}},\"union\":{\"type\":[\"string\",\"number\"]},\"boundList\":{\"type\":\"array\",\"items\":{\"type\":\"string\"}},\"boundUnion\":{\"type\":[\"string\",\"number\"]}},\"required\":[\"list\",\"union\",\"boundList\",\"boundUnion\"],\"additionalProperties\":false,\"description\":\"Binding annotations\"},\"Box\":{\"properties\":{\"children\":{},\"label\":{}}},\"SignatureOdd\":{\"type\":\"object\",\"properties\":{\"quoted\":{\"type\":\"string\",\"enum\":[\"a\\\"b\",\"c\"]},\"afterQuote\":{\"type\":\"string\"},\"slash\":{\"type\":\"string\",\"const\":\"end\\\\\"},\"afterSlash\":{\"type\":\"string\"},\"a:b\":{\"type\":\"string\"},\"x?\":{\"type\":\"string\"},\"lt<\":{\"type\":\"string\"},\"p(\":{\"type\":\"string\"},\"c,\":{\"type\":\"string\"},\"it's\":{\"type\":\"string\"},\"last\":{\"type\":\"string\"}},\"required\":[\"quoted\",\"afterQuote\",\"slash\",\"afterSlash\",\"a:b\",\"x?\",\"lt<\",\"p(\",\"c,\",\"it's\",\"last\"],\"additionalProperties\":false,\"description\":\"Odd signature text\"}}}\n",
+    "spec": "{\"library\":{\"components\":{\"Field\":{\"signature\":\"Field(value?: $binding<any>, display?: any, children?: any, transform?: $binding<any>)\"},\"constructor\":{\"signature\":\"constructor(toString?: $binding<any>, __proto__?: $binding<any>)\"},\"1\":{\"signature\":\"Field(value?: $binding<any>)\"},\"null\":{\"signature\":\"Field(value?: $binding<any>)\"},\"[object Object]\":{\"signature\":\"Field(value?: $binding<any>)\"},\"\":{\"signature\":\"Field(value?: $binding<any>)\"},\"undefined\":{\"signature\":\"Field(value?: $binding<any>)\"},\"true\":{\"signature\":\"Field(value?: $binding<any>)\"},\"BindingTypes\":{\"signature\":\"BindingTypes(list: $binding<string>[], union: $binding<string> | number, boundList: $binding<string[]>, boundUnion: $binding<string | number>)\",\"description\":\"Binding annotations\"},\"Box\":{\"signature\":\"Box(children?: any, label?: $binding<any>)\"},\"SignatureOdd\":{\"signature\":\"SignatureOdd(quoted: \\\"a\\\"b\\\" | \\\"c\\\", afterQuote: $binding<string>, slash: \\\"end\\\\\\\", afterSlash: $binding<string>, a:b: $binding<string>, x?: $binding<string>, lt<: $binding<string>, p(: $binding<string>, c,: $binding<string>, it's: $binding<string>, last: $binding<string>)\",\"description\":\"Odd signature text\"}},\"schema\":{\"$defs\":{\"Field\":{\"properties\":{\"value\":{},\"display\":{},\"children\":{},\"transform\":{}}},\"constructor\":{\"properties\":{\"toString\":{},\"__proto__\":{}}},\"1\":{\"properties\":{\"value\":{}}},\"null\":{\"properties\":{\"value\":{}}},\"[object Object]\":{\"properties\":{\"value\":{}}},\"\":{\"properties\":{\"value\":{}}},\"undefined\":{\"properties\":{\"value\":{}}},\"true\":{\"properties\":{\"value\":{}}},\"BindingTypes\":{\"type\":\"object\",\"properties\":{\"list\":{\"type\":\"array\",\"items\":{\"type\":\"string\"}},\"union\":{\"type\":[\"string\",\"number\"]},\"boundList\":{\"type\":\"array\",\"items\":{\"type\":\"string\"}},\"boundUnion\":{\"type\":[\"string\",\"number\"]}},\"required\":[\"list\",\"union\",\"boundList\",\"boundUnion\"],\"additionalProperties\":false,\"description\":\"Binding annotations\"},\"Box\":{\"properties\":{\"children\":{},\"label\":{}}},\"SignatureOdd\":{\"type\":\"object\",\"properties\":{\"quoted\":{\"type\":\"string\",\"enum\":[\"a\\\"b\",\"c\"]},\"afterQuote\":{\"type\":\"string\"},\"slash\":{\"type\":\"string\",\"const\":\"end\\\\\"},\"afterSlash\":{\"type\":\"string\"},\"a:b\":{\"type\":\"string\"},\"x?\":{\"type\":\"string\"},\"lt<\":{\"type\":\"string\"},\"p(\":{\"type\":\"string\"},\"c,\":{\"type\":\"string\"},\"it's\":{\"type\":\"string\"},\"last\":{\"type\":\"string\"}},\"required\":[\"quoted\",\"afterQuote\",\"slash\",\"afterSlash\",\"a:b\",\"x?\",\"lt<\",\"p(\",\"c,\",\"it's\",\"last\"],\"additionalProperties\":false,\"description\":\"Odd signature text\"}}}}}\n",
+    "source": "",
+    "steps": [
+      {
+        "op": "push",
+        "value": "$n=1\n"
+      },
+      {
+        "op": "push",
+        "value": "root=Field($n)"
+      },
+      {
+        "op": "set",
+        "name": "$n",
+        "value": 123
+      },
+      {
+        "op": "finish"
+      },
+      {
+        "op": "replace",
+        "value": "$n=999\nroot=Field($n)"
+      }
+    ],
+    "expected": [
+      {
+        "tree": "{\"root\":null,\"errors\":[]}",
+        "snapshot": "{\"$n\":1}",
+        "version": "1",
+        "runs": [],
+        "field": null
+      },
+      {
+        "tree": "{\"root\":{\"type\":\"element\",\"typeName\":\"Field\",\"props\":{\"value\":{\"__reactive\":\"assign\",\"target\":\"$n\",\"expr\":{\"k\":\"StateRef\",\"n\":\"$value\"}}},\"partial\":false,\"hasDynamicProps\":true,\"statementId\":\"root\"},\"errors\":[]}",
+        "snapshot": "{\"$n\":1}",
+        "version": "1",
+        "runs": [],
+        "field": null
+      },
+      {
+        "tree": "{\"root\":{\"type\":\"element\",\"typeName\":\"Field\",\"props\":{\"value\":{\"__reactive\":\"assign\",\"target\":\"$n\",\"expr\":{\"k\":\"StateRef\",\"n\":\"$value\"}}},\"partial\":false,\"hasDynamicProps\":true,\"statementId\":\"root\"},\"errors\":[]}",
+        "snapshot": "{\"$n\":123}",
+        "version": "2",
+        "runs": [],
+        "field": null
+      },
+      {
+        "tree": "{\"root\":{\"type\":\"element\",\"typeName\":\"Field\",\"props\":{\"value\":{\"__reactive\":\"assign\",\"target\":\"$n\",\"expr\":{\"k\":\"StateRef\",\"n\":\"$value\"}}},\"partial\":false,\"hasDynamicProps\":true,\"statementId\":\"root\"},\"errors\":[]}",
+        "snapshot": "{\"$n\":123}",
+        "version": "2",
+        "runs": [],
+        "field": null
+      },
+      {
+        "tree": "{\"root\":{\"type\":\"element\",\"typeName\":\"Field\",\"props\":{\"value\":{\"__reactive\":\"assign\",\"target\":\"$n\",\"expr\":{\"k\":\"StateRef\",\"n\":\"$value\"}}},\"partial\":false,\"hasDynamicProps\":true,\"statementId\":\"root\"},\"errors\":[]}",
+        "snapshot": "{\"$n\":123}",
+        "version": "2",
+        "runs": [],
+        "field": null
+      }
+    ]
+  },
+  {
+    "name": "new-inputs-on-resume",
+    "schema": "{\"$defs\":{\"Box\":{\"properties\":{\"a\":{},\"b\":{},\"c\":{},\"d\":{}}}},\"actions\":{\"Go\":{\"params\":{\"type\":\"object\",\"properties\":{\"x\":{\"type\":\"string\"},\"opt\":{\"type\":\"number\",\"default\":4},\"req\":{\"type\":\"number\",\"default\":3},\"nested\":{\"type\":\"object\",\"properties\":{\"n\":{\"type\":\"number\"}},\"required\":[\"n\"]},\"list\":{\"type\":\"array\",\"items\":{\"type\":\"number\"}}},\"required\":[\"x\",\"req\"]}},\"set\":{\"params\":{\"type\":\"object\",\"properties\":{\"x\":{\"type\":\"string\"}},\"required\":[\"x\"]}},\"open_url\":{\"params\":{\"type\":\"object\",\"properties\":{\"x\":{}},\"required\":[\"x\"]}},\"Set\":{\"params\":{\"type\":\"object\",\"properties\":{\"x\":{\"type\":\"string\"}}}},\"Odd\":{\"params\":{\"type\":\"object\",\"properties\":{\"toString\":{\"type\":\"number\"},\"constructor\":{\"type\":\"number\"},\"__proto__\":{}},\"required\":[\"toString\"]}},\"StrReq\":{\"params\":{\"type\":\"object\",\"properties\":{\"x\":{\"type\":\"string\"}},\"required\":\"xy\"}}}}\n",
+    "source": "$n=0\nm=Mutation(\"m\",{})\nq=Query(\"q\",{},{x:1})\nroot=Box(Action([@Run(m),@Set($n,q.x+$edit),@OpenUrl(\"after\")]))",
+    "steps": [
+      {
+        "op": "initialize"
+      },
+      {
+        "op": "suspend",
+        "path": [
+          "props",
+          "a"
+        ]
+      },
+      {
+        "op": "replace",
+        "value": "$n=99\nm=Mutation(\"new\",{})\nq=Query(\"new\",{},{x:10})\nroot=Box($n)"
+      },
+      {
+        "op": "set",
+        "name": "$edit",
+        "value": 7
+      },
+      {
+        "op": "references",
+        "value": {
+          "q": {
+            "x": 20
+          }
+        }
+      },
+      {
+        "op": "resume",
+        "success": true
+      }
+    ],
+    "expected": [
+      {
+        "tree": "{\"root\":{\"type\":\"element\",\"typeName\":\"Box\",\"props\":{\"a\":{\"steps\":[{\"type\":\"run\",\"statementId\":\"m\",\"refType\":\"mutation\"},{\"type\":\"set\",\"target\":\"$n\",\"valueAST\":{\"k\":\"BinOp\",\"op\":\"+\",\"left\":{\"k\":\"Member\",\"obj\":{\"k\":\"RuntimeRef\",\"n\":\"q\",\"refType\":\"query\"},\"field\":\"x\"},\"right\":{\"k\":\"StateRef\",\"n\":\"$edit\"}}},{\"type\":\"open_url\",\"url\":\"after\"}]}},\"partial\":false,\"hasDynamicProps\":true,\"statementId\":\"root\"},\"errors\":[]}",
+        "snapshot": "{\"$n\":0,\"$edit\":null}",
+        "version": "1",
+        "runs": [],
+        "field": null
+      },
+      {
+        "tree": "{\"root\":{\"type\":\"element\",\"typeName\":\"Box\",\"props\":{\"a\":{\"steps\":[{\"type\":\"run\",\"statementId\":\"m\",\"refType\":\"mutation\"},{\"type\":\"set\",\"target\":\"$n\",\"valueAST\":{\"k\":\"BinOp\",\"op\":\"+\",\"left\":{\"k\":\"Member\",\"obj\":{\"k\":\"RuntimeRef\",\"n\":\"q\",\"refType\":\"query\"},\"field\":\"x\"},\"right\":{\"k\":\"StateRef\",\"n\":\"$edit\"}}},{\"type\":\"open_url\",\"url\":\"after\"}]}},\"partial\":false,\"hasDynamicProps\":true,\"statementId\":\"root\"},\"errors\":[]}",
+        "snapshot": "{\"$n\":0,\"$edit\":null}",
+        "version": "1",
+        "runs": [
+          {
+            "events": [
+              "{\"type\":\"run\",\"params\":{\"statementId\":\"m\",\"refType\":\"mutation\",\"args\":{}},\"humanFriendlyMessage\":\"\",\"formState\":{\"$n\":0,\"$edit\":null}}"
+            ],
+            "failure": null,
+            "sizeLimited": false,
+            "depthLimited": false,
+            "pending": true
+          }
+        ],
+        "field": null
+      },
+      {
+        "tree": "{\"root\":{\"type\":\"element\",\"typeName\":\"Box\",\"props\":{\"a\":99},\"partial\":false,\"hasDynamicProps\":true,\"statementId\":\"root\"},\"errors\":[]}",
+        "snapshot": "{\"$n\":99,\"$edit\":null}",
+        "version": "2",
+        "runs": [],
+        "field": null
+      },
+      {
+        "tree": "{\"root\":{\"type\":\"element\",\"typeName\":\"Box\",\"props\":{\"a\":99},\"partial\":false,\"hasDynamicProps\":true,\"statementId\":\"root\"},\"errors\":[]}",
+        "snapshot": "{\"$n\":99,\"$edit\":7}",
+        "version": "3",
+        "runs": [],
+        "field": null
+      },
+      {
+        "tree": "{\"root\":{\"type\":\"element\",\"typeName\":\"Box\",\"props\":{\"a\":99},\"partial\":false,\"hasDynamicProps\":true,\"statementId\":\"root\"},\"errors\":[]}",
+        "snapshot": "{\"$n\":99,\"$edit\":7}",
+        "version": "3",
+        "runs": [],
+        "field": null
+      },
+      {
+        "tree": "{\"root\":{\"type\":\"element\",\"typeName\":\"Box\",\"props\":{\"a\":27},\"partial\":false,\"hasDynamicProps\":true,\"statementId\":\"root\"},\"errors\":[]}",
+        "snapshot": "{\"$n\":27,\"$edit\":7}",
+        "version": "4",
+        "runs": [
+          {
+            "events": [
+              "{\"type\":\"open_url\",\"params\":{\"url\":\"after\"},\"humanFriendlyMessage\":\"\",\"formState\":{\"$n\":27,\"$edit\":7}}"
+            ],
+            "failure": null,
+            "sizeLimited": false,
+            "depthLimited": false,
+            "pending": false
+          }
+        ],
+        "field": null
+      }
+    ]
+  },
+  {
+    "name": "mutation-false",
+    "schema": "{\"$defs\":{\"Box\":{\"properties\":{\"a\":{},\"b\":{},\"c\":{},\"d\":{}}}},\"actions\":{\"Go\":{\"params\":{\"type\":\"object\",\"properties\":{\"x\":{\"type\":\"string\"},\"opt\":{\"type\":\"number\",\"default\":4},\"req\":{\"type\":\"number\",\"default\":3},\"nested\":{\"type\":\"object\",\"properties\":{\"n\":{\"type\":\"number\"}},\"required\":[\"n\"]},\"list\":{\"type\":\"array\",\"items\":{\"type\":\"number\"}}},\"required\":[\"x\",\"req\"]}},\"set\":{\"params\":{\"type\":\"object\",\"properties\":{\"x\":{\"type\":\"string\"}},\"required\":[\"x\"]}},\"open_url\":{\"params\":{\"type\":\"object\",\"properties\":{\"x\":{}},\"required\":[\"x\"]}},\"Set\":{\"params\":{\"type\":\"object\",\"properties\":{\"x\":{\"type\":\"string\"}}}},\"Odd\":{\"params\":{\"type\":\"object\",\"properties\":{\"toString\":{\"type\":\"number\"},\"constructor\":{\"type\":\"number\"},\"__proto__\":{}},\"required\":[\"toString\"]}},\"StrReq\":{\"params\":{\"type\":\"object\",\"properties\":{\"x\":{\"type\":\"string\"}},\"required\":\"xy\"}}}}\n",
+    "source": "$n=0\nm=Mutation(\"m\",{})\nroot=Box(Action([@Run(m),@Set($n,$n+1),@OpenUrl(\"after\")]))",
+    "steps": [
+      {
+        "op": "initialize"
+      },
+      {
+        "op": "run",
+        "path": [
+          "props",
+          "a"
+        ],
+        "success": false
+      }
+    ],
+    "expected": [
+      {
+        "tree": "{\"root\":{\"type\":\"element\",\"typeName\":\"Box\",\"props\":{\"a\":{\"steps\":[{\"type\":\"run\",\"statementId\":\"m\",\"refType\":\"mutation\"},{\"type\":\"set\",\"target\":\"$n\",\"valueAST\":{\"k\":\"BinOp\",\"op\":\"+\",\"left\":{\"k\":\"StateRef\",\"n\":\"$n\"},\"right\":{\"k\":\"Num\",\"v\":1}}},{\"type\":\"open_url\",\"url\":\"after\"}]}},\"partial\":false,\"hasDynamicProps\":true,\"statementId\":\"root\"},\"errors\":[]}",
+        "snapshot": "{\"$n\":0}",
+        "version": "1",
+        "runs": [],
+        "field": null
+      },
+      {
+        "tree": "{\"root\":{\"type\":\"element\",\"typeName\":\"Box\",\"props\":{\"a\":{\"steps\":[{\"type\":\"run\",\"statementId\":\"m\",\"refType\":\"mutation\"},{\"type\":\"set\",\"target\":\"$n\",\"valueAST\":{\"k\":\"BinOp\",\"op\":\"+\",\"left\":{\"k\":\"StateRef\",\"n\":\"$n\"},\"right\":{\"k\":\"Num\",\"v\":1}}},{\"type\":\"open_url\",\"url\":\"after\"}]}},\"partial\":false,\"hasDynamicProps\":true,\"statementId\":\"root\"},\"errors\":[]}",
+        "snapshot": "{\"$n\":0}",
+        "version": "1",
+        "runs": [
+          {
+            "events": [
+              "{\"type\":\"run\",\"params\":{\"statementId\":\"m\",\"refType\":\"mutation\",\"args\":{}},\"humanFriendlyMessage\":\"\",\"formState\":{\"$n\":0}}"
+            ],
+            "failure": null,
+            "sizeLimited": false,
+            "depthLimited": false,
+            "pending": true
+          },
+          {
+            "events": [],
+            "failure": null,
+            "sizeLimited": false,
+            "depthLimited": false,
+            "pending": false
+          }
+        ],
+        "field": null
+      }
+    ]
+  },
+  {
+    "name": "all-steps-false",
+    "schema": "{\"$defs\":{\"Box\":{\"properties\":{\"a\":{},\"b\":{},\"c\":{},\"d\":{}}}},\"actions\":{\"Go\":{\"params\":{\"type\":\"object\",\"properties\":{\"x\":{\"type\":\"string\"},\"opt\":{\"type\":\"number\",\"default\":4},\"req\":{\"type\":\"number\",\"default\":3},\"nested\":{\"type\":\"object\",\"properties\":{\"n\":{\"type\":\"number\"}},\"required\":[\"n\"]},\"list\":{\"type\":\"array\",\"items\":{\"type\":\"number\"}}},\"required\":[\"x\",\"req\"]}},\"set\":{\"params\":{\"type\":\"object\",\"properties\":{\"x\":{\"type\":\"string\"}},\"required\":[\"x\"]}},\"open_url\":{\"params\":{\"type\":\"object\",\"properties\":{\"x\":{}},\"required\":[\"x\"]}},\"Set\":{\"params\":{\"type\":\"object\",\"properties\":{\"x\":{\"type\":\"string\"}}}},\"Odd\":{\"params\":{\"type\":\"object\",\"properties\":{\"toString\":{\"type\":\"number\"},\"constructor\":{\"type\":\"number\"},\"__proto__\":{}},\"required\":[\"toString\"]}},\"StrReq\":{\"params\":{\"type\":\"object\",\"properties\":{\"x\":{\"type\":\"string\"}},\"required\":\"xy\"}}}}\n",
+    "source": "root=Box(Action([@Set($n,$n+1),@Reset($n,$other),@ToAssistant(12,{x:1}),@OpenUrl(false),@Run(q),@Run(m),@Run(nope)]),[@Set($n),@Set(1,2),@Reset(3)],@ToAssistant(null,null),@OpenUrl())\n$n=1\n$other=2\nq=Query(\"q\",{})\nm=Mutation(\"m\",{})\n",
+    "steps": [
+      {
+        "op": "initialize"
+      },
+      {
+        "op": "run",
+        "path": [
+          "props",
+          "a"
+        ],
+        "success": false
+      }
+    ],
+    "expected": [
+      {
+        "tree": "{\"root\":{\"type\":\"element\",\"typeName\":\"Box\",\"props\":{\"a\":{\"steps\":[{\"type\":\"set\",\"target\":\"$n\",\"valueAST\":{\"k\":\"BinOp\",\"op\":\"+\",\"left\":{\"k\":\"StateRef\",\"n\":\"$n\"},\"right\":{\"k\":\"Num\",\"v\":1}}},{\"type\":\"reset\",\"targets\":[\"$n\",\"$other\"]},{\"type\":\"continue_conversation\",\"message\":\"12\",\"context\":{\"x\":1}},{\"type\":\"open_url\",\"url\":\"false\"},{\"type\":\"run\",\"statementId\":\"q\",\"refType\":\"query\"},{\"type\":\"run\",\"statementId\":\"m\",\"refType\":\"mutation\"}]},\"b\":[{\"steps\":[]},{\"steps\":[]},{\"steps\":[]}],\"c\":{\"steps\":[{\"type\":\"continue_conversation\",\"message\":\"\"}]},\"d\":{\"steps\":[{\"type\":\"open_url\",\"url\":\"\"}]}},\"partial\":false,\"hasDynamicProps\":true,\"statementId\":\"root\"},\"errors\":[]}",
+        "snapshot": "{\"$n\":1,\"$other\":2}",
+        "version": "1",
+        "runs": [],
+        "field": null
+      },
+      {
+        "tree": "{\"root\":{\"type\":\"element\",\"typeName\":\"Box\",\"props\":{\"a\":{\"steps\":[{\"type\":\"set\",\"target\":\"$n\",\"valueAST\":{\"k\":\"BinOp\",\"op\":\"+\",\"left\":{\"k\":\"StateRef\",\"n\":\"$n\"},\"right\":{\"k\":\"Num\",\"v\":1}}},{\"type\":\"reset\",\"targets\":[\"$n\",\"$other\"]},{\"type\":\"continue_conversation\",\"message\":\"12\",\"context\":{\"x\":1}},{\"type\":\"open_url\",\"url\":\"false\"},{\"type\":\"run\",\"statementId\":\"q\",\"refType\":\"query\"},{\"type\":\"run\",\"statementId\":\"m\",\"refType\":\"mutation\"}]},\"b\":[{\"steps\":[]},{\"steps\":[]},{\"steps\":[]}],\"c\":{\"steps\":[{\"type\":\"continue_conversation\",\"message\":\"\"}]},\"d\":{\"steps\":[{\"type\":\"open_url\",\"url\":\"\"}]}},\"partial\":false,\"hasDynamicProps\":true,\"statementId\":\"root\"},\"errors\":[]}",
+        "snapshot": "{\"$n\":1,\"$other\":2}",
+        "version": "3",
+        "runs": [
+          {
+            "events": [
+              "{\"type\":\"continue_conversation\",\"params\":{\"context\":{\"x\":1}},\"humanFriendlyMessage\":\"12\",\"formState\":{\"$n\":1,\"$other\":2}}",
+              "{\"type\":\"open_url\",\"params\":{\"url\":\"false\"},\"humanFriendlyMessage\":\"\",\"formState\":{\"$n\":1,\"$other\":2}}",
+              "{\"type\":\"run\",\"params\":{\"statementId\":\"q\",\"refType\":\"query\"},\"humanFriendlyMessage\":\"\",\"formState\":{\"$n\":1,\"$other\":2}}",
+              "{\"type\":\"run\",\"params\":{\"statementId\":\"m\",\"refType\":\"mutation\",\"args\":{}},\"humanFriendlyMessage\":\"\",\"formState\":{\"$n\":1,\"$other\":2}}"
+            ],
+            "failure": null,
+            "sizeLimited": false,
+            "depthLimited": false,
+            "pending": true
+          },
+          {
+            "events": [],
+            "failure": null,
+            "sizeLimited": false,
+            "depthLimited": false,
+            "pending": false
+          }
+        ],
+        "field": null
+      }
+    ]
+  },
+  {
+    "name": "mutation-true",
+    "schema": "{\"$defs\":{\"Box\":{\"properties\":{\"a\":{},\"b\":{},\"c\":{},\"d\":{}}}},\"actions\":{\"Go\":{\"params\":{\"type\":\"object\",\"properties\":{\"x\":{\"type\":\"string\"},\"opt\":{\"type\":\"number\",\"default\":4},\"req\":{\"type\":\"number\",\"default\":3},\"nested\":{\"type\":\"object\",\"properties\":{\"n\":{\"type\":\"number\"}},\"required\":[\"n\"]},\"list\":{\"type\":\"array\",\"items\":{\"type\":\"number\"}}},\"required\":[\"x\",\"req\"]}},\"set\":{\"params\":{\"type\":\"object\",\"properties\":{\"x\":{\"type\":\"string\"}},\"required\":[\"x\"]}},\"open_url\":{\"params\":{\"type\":\"object\",\"properties\":{\"x\":{}},\"required\":[\"x\"]}},\"Set\":{\"params\":{\"type\":\"object\",\"properties\":{\"x\":{\"type\":\"string\"}}}},\"Odd\":{\"params\":{\"type\":\"object\",\"properties\":{\"toString\":{\"type\":\"number\"},\"constructor\":{\"type\":\"number\"},\"__proto__\":{}},\"required\":[\"toString\"]}},\"StrReq\":{\"params\":{\"type\":\"object\",\"properties\":{\"x\":{\"type\":\"string\"}},\"required\":\"xy\"}}}}\n",
+    "source": "$n=0\nm=Mutation(\"m\",{})\nroot=Box(Action([@Run(m),@Set($n,$n+1),@OpenUrl(\"after\")]))",
+    "steps": [
+      {
+        "op": "initialize"
+      },
+      {
+        "op": "run",
+        "path": [
+          "props",
+          "a"
+        ],
+        "success": true
+      }
+    ],
+    "expected": [
+      {
+        "tree": "{\"root\":{\"type\":\"element\",\"typeName\":\"Box\",\"props\":{\"a\":{\"steps\":[{\"type\":\"run\",\"statementId\":\"m\",\"refType\":\"mutation\"},{\"type\":\"set\",\"target\":\"$n\",\"valueAST\":{\"k\":\"BinOp\",\"op\":\"+\",\"left\":{\"k\":\"StateRef\",\"n\":\"$n\"},\"right\":{\"k\":\"Num\",\"v\":1}}},{\"type\":\"open_url\",\"url\":\"after\"}]}},\"partial\":false,\"hasDynamicProps\":true,\"statementId\":\"root\"},\"errors\":[]}",
+        "snapshot": "{\"$n\":0}",
+        "version": "1",
+        "runs": [],
+        "field": null
+      },
+      {
+        "tree": "{\"root\":{\"type\":\"element\",\"typeName\":\"Box\",\"props\":{\"a\":{\"steps\":[{\"type\":\"run\",\"statementId\":\"m\",\"refType\":\"mutation\"},{\"type\":\"set\",\"target\":\"$n\",\"valueAST\":{\"k\":\"BinOp\",\"op\":\"+\",\"left\":{\"k\":\"StateRef\",\"n\":\"$n\"},\"right\":{\"k\":\"Num\",\"v\":1}}},{\"type\":\"open_url\",\"url\":\"after\"}]}},\"partial\":false,\"hasDynamicProps\":true,\"statementId\":\"root\"},\"errors\":[]}",
+        "snapshot": "{\"$n\":1}",
+        "version": "2",
+        "runs": [
+          {
+            "events": [
+              "{\"type\":\"run\",\"params\":{\"statementId\":\"m\",\"refType\":\"mutation\",\"args\":{}},\"humanFriendlyMessage\":\"\",\"formState\":{\"$n\":0}}"
+            ],
+            "failure": null,
+            "sizeLimited": false,
+            "depthLimited": false,
+            "pending": true
+          },
+          {
+            "events": [
+              "{\"type\":\"open_url\",\"params\":{\"url\":\"after\"},\"humanFriendlyMessage\":\"\",\"formState\":{\"$n\":1}}"
+            ],
+            "failure": null,
+            "sizeLimited": false,
+            "depthLimited": false,
+            "pending": false
+          }
+        ],
+        "field": null
+      }
+    ]
+  },
+  {
+    "name": "all-steps-true",
+    "schema": "{\"$defs\":{\"Box\":{\"properties\":{\"a\":{},\"b\":{},\"c\":{},\"d\":{}}}},\"actions\":{\"Go\":{\"params\":{\"type\":\"object\",\"properties\":{\"x\":{\"type\":\"string\"},\"opt\":{\"type\":\"number\",\"default\":4},\"req\":{\"type\":\"number\",\"default\":3},\"nested\":{\"type\":\"object\",\"properties\":{\"n\":{\"type\":\"number\"}},\"required\":[\"n\"]},\"list\":{\"type\":\"array\",\"items\":{\"type\":\"number\"}}},\"required\":[\"x\",\"req\"]}},\"set\":{\"params\":{\"type\":\"object\",\"properties\":{\"x\":{\"type\":\"string\"}},\"required\":[\"x\"]}},\"open_url\":{\"params\":{\"type\":\"object\",\"properties\":{\"x\":{}},\"required\":[\"x\"]}},\"Set\":{\"params\":{\"type\":\"object\",\"properties\":{\"x\":{\"type\":\"string\"}}}},\"Odd\":{\"params\":{\"type\":\"object\",\"properties\":{\"toString\":{\"type\":\"number\"},\"constructor\":{\"type\":\"number\"},\"__proto__\":{}},\"required\":[\"toString\"]}},\"StrReq\":{\"params\":{\"type\":\"object\",\"properties\":{\"x\":{\"type\":\"string\"}},\"required\":\"xy\"}}}}\n",
+    "source": "root=Box(Action([@Set($n,$n+1),@Reset($n,$other),@ToAssistant(12,{x:1}),@OpenUrl(false),@Run(q),@Run(m),@Run(nope)]),[@Set($n),@Set(1,2),@Reset(3)],@ToAssistant(null,null),@OpenUrl())\n$n=1\n$other=2\nq=Query(\"q\",{})\nm=Mutation(\"m\",{})\n",
+    "steps": [
+      {
+        "op": "initialize"
+      },
+      {
+        "op": "run",
+        "path": [
+          "props",
+          "a"
+        ],
+        "success": true
+      }
+    ],
+    "expected": [
+      {
+        "tree": "{\"root\":{\"type\":\"element\",\"typeName\":\"Box\",\"props\":{\"a\":{\"steps\":[{\"type\":\"set\",\"target\":\"$n\",\"valueAST\":{\"k\":\"BinOp\",\"op\":\"+\",\"left\":{\"k\":\"StateRef\",\"n\":\"$n\"},\"right\":{\"k\":\"Num\",\"v\":1}}},{\"type\":\"reset\",\"targets\":[\"$n\",\"$other\"]},{\"type\":\"continue_conversation\",\"message\":\"12\",\"context\":{\"x\":1}},{\"type\":\"open_url\",\"url\":\"false\"},{\"type\":\"run\",\"statementId\":\"q\",\"refType\":\"query\"},{\"type\":\"run\",\"statementId\":\"m\",\"refType\":\"mutation\"}]},\"b\":[{\"steps\":[]},{\"steps\":[]},{\"steps\":[]}],\"c\":{\"steps\":[{\"type\":\"continue_conversation\",\"message\":\"\"}]},\"d\":{\"steps\":[{\"type\":\"open_url\",\"url\":\"\"}]}},\"partial\":false,\"hasDynamicProps\":true,\"statementId\":\"root\"},\"errors\":[]}",
+        "snapshot": "{\"$n\":1,\"$other\":2}",
+        "version": "1",
+        "runs": [],
+        "field": null
+      },
+      {
+        "tree": "{\"root\":{\"type\":\"element\",\"typeName\":\"Box\",\"props\":{\"a\":{\"steps\":[{\"type\":\"set\",\"target\":\"$n\",\"valueAST\":{\"k\":\"BinOp\",\"op\":\"+\",\"left\":{\"k\":\"StateRef\",\"n\":\"$n\"},\"right\":{\"k\":\"Num\",\"v\":1}}},{\"type\":\"reset\",\"targets\":[\"$n\",\"$other\"]},{\"type\":\"continue_conversation\",\"message\":\"12\",\"context\":{\"x\":1}},{\"type\":\"open_url\",\"url\":\"false\"},{\"type\":\"run\",\"statementId\":\"q\",\"refType\":\"query\"},{\"type\":\"run\",\"statementId\":\"m\",\"refType\":\"mutation\"}]},\"b\":[{\"steps\":[]},{\"steps\":[]},{\"steps\":[]}],\"c\":{\"steps\":[{\"type\":\"continue_conversation\",\"message\":\"\"}]},\"d\":{\"steps\":[{\"type\":\"open_url\",\"url\":\"\"}]}},\"partial\":false,\"hasDynamicProps\":true,\"statementId\":\"root\"},\"errors\":[]}",
+        "snapshot": "{\"$n\":1,\"$other\":2}",
+        "version": "3",
+        "runs": [
+          {
+            "events": [
+              "{\"type\":\"continue_conversation\",\"params\":{\"context\":{\"x\":1}},\"humanFriendlyMessage\":\"12\",\"formState\":{\"$n\":1,\"$other\":2}}",
+              "{\"type\":\"open_url\",\"params\":{\"url\":\"false\"},\"humanFriendlyMessage\":\"\",\"formState\":{\"$n\":1,\"$other\":2}}",
+              "{\"type\":\"run\",\"params\":{\"statementId\":\"q\",\"refType\":\"query\"},\"humanFriendlyMessage\":\"\",\"formState\":{\"$n\":1,\"$other\":2}}",
+              "{\"type\":\"run\",\"params\":{\"statementId\":\"m\",\"refType\":\"mutation\",\"args\":{}},\"humanFriendlyMessage\":\"\",\"formState\":{\"$n\":1,\"$other\":2}}"
+            ],
+            "failure": null,
+            "sizeLimited": false,
+            "depthLimited": false,
+            "pending": true
+          },
+          {
+            "events": [],
+            "failure": null,
+            "sizeLimited": false,
+            "depthLimited": false,
+            "pending": false
+          }
+        ],
+        "field": null
+      }
+    ]
+  }
+]

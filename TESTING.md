@@ -985,3 +985,45 @@ caller-side Utf16StreamBuffer and the JSON-escape route; they require Android.
 
 Native session lifetime follows [ADR 0006](docs/adr/0006-native-runtime-sessions-own-a-worker-and-opaque-capabilities.md);
 the Store admission rules remain [ADR 0005](docs/adr/0005-admit-total-state-incrementally.md).
+
+## Shared sessions and WebAssembly (#42)
+
+`openui-session` owns binding-neutral session policy. The original ffi integration
+files are unchanged; its program-sharing unit assertion moved with the owning
+fields to the session crate. `openui-wasm/tests/runtime_session.rs` reuses all 25
+native scenario/attack cases through a test adapter over the Rust-callable
+`openui_wasm::session::Session`; all exported RuntimeSession operations forward
+to that inner type one-to-one. `runtime_state_cap.rs` adds the same five boundary
+cases; `runtime_abandonment.rs` checks 10,000 dropped outcomes. The test adapter
+preserves the native test shapes, not another session implementation.
+
+The inner type's unit tests exercise nested operation/disposal refusal and a
+sticky caught-panic error on native Rust. A third unit test drops an actual
+exported continuation token and checks release without allowing the following
+operation to drain first; weak cleanup also remains safe after session drop. All public wasm calls are additionally
+guarded in generated package glue (`js/package-guards.js`), including argument
+conversion, free and `[Symbol.dispose]`; the guard is tested only on the built
+package.
+
+After `scripts/wasm.sh`, run `bun --no-install test crates/openui-wasm/js`.
+`session.test.ts` drives nine scripts and attack/cap/reentry cases.
+`lifetime.test.ts` checks that every free goes through the guard and that no
+argument conversion runs application code (hostile `valueOf`/`length`/getters,
+every member of every freed object). `errors.test.ts` patches `JSON`,
+`Reflect`, `Error`, `TextDecoder`, `WebAssembly.Table` and an
+`Object.prototype.kind` setter and checks results are unchanged and sessions
+stay freeable. `package.test.ts` checks exports, the module's import allowlist,
+pointer/private-helper hardening, the web build, and that mutated glue with an
+uncovered member refuses to load.
+`js/scenarios.json` carries full tree/event JSON strings, snapshots, versions and
+form decisions generated from the public Rust runtime and checked against the
+thin wasm adapter. It is a binding-seam oracle, not new upstream goldens:
+
+```bash
+UPDATE_WASM_EXPECTATIONS=1 cargo test --offline -p openui-wasm --test runtime_session javascript_expectations
+```
+
+Without that variable the Rust test verifies the checked-in expectation bytes.
+No test uses a wall-clock assertion. The package suite requires the built node
+package; it deliberately fails to import when the toolchain build was omitted.
+The comparison page's README lists browser/typecheck/parser-comparison commands.

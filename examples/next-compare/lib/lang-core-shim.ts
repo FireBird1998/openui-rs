@@ -11,3 +11,12 @@ export * from "../node_modules/@openuidev/lang-core/dist/index.mjs";
 export function createStreamingParser(schema: LibraryJSONSchema, rootName?: string): StreamParser {
   return chooseParser(jsCreateStreamingParser, schema, rootName);
 }
+
+// Explicit export overrides export*: the Rust pane hands the renderer its
+// evaluated root directly, without a second upstream evaluation pass.
+import { evaluateRoot as jsEvaluateRoot } from "../node_modules/@openuidev/lang-core/dist/index.mjs";
+import { rustEvaluation } from "./runtime-adapter.ts";
+export function evaluateRoot(...args: Parameters<typeof jsEvaluateRoot>): ReturnType<typeof jsEvaluateRoot> {
+  const rust = rustEvaluation(args[0], args[1]);
+  return rust ? rust.root : jsEvaluateRoot(...args);
+}

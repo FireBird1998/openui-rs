@@ -7,7 +7,8 @@
 // toJSONSchema() returns, with the engine and the sink its timings go to.
 // Anything else (an untagged library) gets lang-core, counted as JS.
 import type { Library, LibraryJSONSchema, StreamParser } from "@openuidev/lang-core";
-import initWasm, { ComponentLibrary, StreamSession, initSync } from "../wasm/openui_wasm.js";
+import initWasm, { ComponentLibrary, StreamSession, RuntimeSession, initSync } from "../wasm/openui_wasm.js";
+import { attachRuntime, retainRuntime } from "./runtime-adapter.ts";
 import { wasmStreamParser } from "./wasm-adapter.ts";
 
 export type Engine = "js" | "rust";
@@ -17,7 +18,7 @@ export interface ParseSink {
   parse(ms: number): void;
 }
 
-type Tag = { engine: Engine; sink?: ParseSink };
+type Tag = { engine: Engine; sink?: ParseSink; promptSpec?: string };
 const tags = new WeakMap<object, Tag>();
 
 /** Calls made into each engine since the page loaded: proof of which one ran. */
@@ -34,7 +35,7 @@ export function tagLibrary<L extends Library>(library: L, engine: Engine, sink?:
       if (key === "toJSONSchema") {
         return () => {
           const schema = { ...target.toJSONSchema() };
-          tags.set(schema, { engine, sink });
+          tags.set(schema, { engine, sink, promptSpec: JSON.stringify(target.toSpec()) });
           return schema;
         };
       }
@@ -66,14 +67,20 @@ export function loadWasmSync(bytes: BufferSource): void {
 // per library, so this is built once per pane.
 const compiled = new WeakMap<object, ComponentLibrary>();
 
-function rustParser(schema: LibraryJSONSchema, rootName?: string): StreamParser {
+function rustParser(schema: LibraryJSONSchema, rootName?: string, promptSpec?: string): StreamParser {
   if (!wasmLoaded) throw new Error("openui-rs: WebAssembly isn't loaded yet (await loadWasm())");
   let library = compiled.get(schema);
   if (!library) {
     library = new ComponentLibrary(JSON.stringify(schema));
     compiled.set(schema, library);
   }
-  return wasmStreamParser(new StreamSession(library, rootName));
+  const stream = new StreamSession(library, rootName);
+  const runtime = new RuntimeSession(library, promptSpec);
+  const parser = wasmStreamParser(stream, (result, complete) => {
+    attachRuntime(result, runtime, stream.program(complete));
+  });
+  retainRuntime(parser, runtime, stream);
+  return parser;
 }
 
 // ─── The seam ───
@@ -83,7 +90,7 @@ type Create = (schema: LibraryJSONSchema, rootName?: string) => StreamParser;
 /** The parser for `schema`: the core for a schema a "rust" library returned, lang-core otherwise. */
 export function chooseParser(jsCreate: Create, schema: LibraryJSONSchema, rootName?: string): StreamParser {
   const tag = tags.get(schema) ?? { engine: "js" as const };
-  const parser = tag.engine === "rust" ? rustParser(schema, rootName) : jsCreate(schema, rootName);
+  const parser = tag.engine === "rust" ? rustParser(schema, rootName, tag.promptSpec) : jsCreate(schema, rootName);
   return timed(parser, tag.engine, tag.sink);
 }
 
@@ -93,7 +100,7 @@ function timed(parser: StreamParser, engine: Engine, sink?: ParseSink): StreamPa
   function wrap<A extends unknown[], R>(call: (...args: A) => R) {
     return (...args: A): R => {
       const started = performance.now();
-      const result = call(...args);
+      const result = call.apply(parser, args);
       const ms = performance.now() - started;
       parserCalls[engine]++;
       sink?.parse(ms);

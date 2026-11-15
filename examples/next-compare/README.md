@@ -148,3 +148,35 @@ are unset, the Live tab says so and Replay still works.
 - The core cuts a stream that passes its size or time limits (see
   `ParseResult::size_limited` in the crate). lang-core has no such limits, so
   results differ only for programs that hit them.
+
+
+The Rust pane also evaluates through `RuntimeSession`. Its parser results are
+registered with the shim's `evaluateRoot` override, which supplies the current
+renderer Store snapshot/query results and hands Rust's evaluated root directly
+to the upstream renderer. Parser-result recordings stay unchanged. Renderer
+interactions, fetching and host effects still belong to upstream; this page is
+an evaluation comparison, not a replacement action dispatcher. Library
+functions return null on the Rust side until #56. `runtimeCalls.rust` in
+`lib/runtime-adapter.ts` counts Rust draws; expressions such as state-derived
+labels should show values, with Rust runtime errors appended to renderer errors.
+
+On a machine with the wasm toolchain and package dependencies:
+
+```bash
+scripts/wasm.sh
+bun --no-install test crates/openui-wasm/js
+cd examples/next-compare
+npm ci
+npm run typecheck
+npm run compare
+npm run dev
+```
+
+Open http://localhost:3000, select a program containing state/expressions, and
+play its stream. Both panes should draw; the Rust pane's labels should contain
+evaluated values. Parser comparison must still match. Library function policy
+and recorded upstream divergences can produce intentional drawing differences.
+The new built-package tests compare complete tree/event JSON strings against
+Rust-generated `crates/openui-wasm/js/scenarios.json`, including streaming,
+transforms, mutation outcomes, forms, query data and program replacement.
+EOF

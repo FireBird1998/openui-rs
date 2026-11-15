@@ -155,3 +155,13 @@ now checks the generated Swift application signatures; the checker optionally
 accepts Kotlin too. On Xcode rebuild with scripts/swift-binding.sh and run swift
 test in swift/OpenUINative. On Android rebuild with scripts/android-demo.sh and
 run connectedDebugAndroidTest on API 34+. See [ADR 0006](adr/0006-native-runtime-sessions-own-a-worker-and-opaque-capabilities.md) for lifecycle decisions.
+
+
+## WebAssembly
+
+The same session policy now lives in `openui-session`, shared by both bindings.
+See the [WebAssembly application interface](wasm-runtime-binding-api.md) for
+camelCase methods, bigint limits, one-thread ownership, output/handle free,
+reentry, typed errors and UTF-16 differences. Native interface signatures and
+worker behavior above are unchanged. The source checker runs without arguments
+and checks both bindings; generated Swift/Kotlin checks remain supported.
