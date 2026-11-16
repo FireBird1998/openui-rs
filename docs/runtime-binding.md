@@ -224,15 +224,24 @@ action execution keeps the same writes, events and flags as a direct Rust
 throwing implementation. Both bindings pin the action's continuing writes;
 native tests additionally cover panic containment.
 
-Native callbacks execute synchronously on the session's existing worker, with
-no timeout and no thread spawned per invocation. A correct implementation gives
-the same result however long it takes. Any session call on that worker, including
-from a replacement/disposal destructor, refuses with
-Worker("session already in use"). Foreign destruction on a caller thread uses a
-scoped, thread-local refusal guard for that session. Native dispose is infallible
-and cleanly does nothing only on such reentry. Refused reentrant operations
-change no session state. Host panics, including destructor panics, are caught
-before they leave the binding.
+Native callbacks execute synchronously on one ordinary-stack callback thread
+per session, created lazily on its first processed registration. There is no
+timeout and no thread spawned per invocation. The worker sends JSON and waits;
+the callback thread owns accepted implementations and also releases replaced,
+refused and disposed registrations. The core may grow the worker's stack, so
+entering foreign runtimes directly there would be unsafe (Android ART aborts).
+Disposal and final drop join the callback thread after worker teardown; sessions
+without functions need no callback thread.
+
+A correct implementation gives the same result however long it takes. Any
+same-session call on the worker or callback thread, including from a replacement
+or disposal destructor, refuses with Worker("session already in use"). Commands
+carry active session ancestry across nested calls: A → B → A refuses at the last
+call; acyclic calls to another session remain allowed. Foreign destruction of
+jobs refused on native caller threads uses the same scoped thread-local guard.
+Native dispose is infallible and cleanly does nothing on such reentry. Refused
+reentrant operations change no session state. Host panics, including destructor
+panics, are caught on the thread that enters host code.
 
 Calls from other threads queue in submission order while a callback runs.
 Disposal from another thread closes submission, queues shutdown after accepted
@@ -240,9 +249,8 @@ calls, and waits for the callback and worker destruction to finish. Concurrent
 disposers wait for the same join. Transport locks are released before waits,
 joins and foreign destruction. A callback or destructor must not wait for another
 thread to call this same session: that call queues behind the callback/destructor,
-so the host would deadlock itself. The same holds across sessions: if one session's
-callback calls a second session whose own callback calls back into the first, both
-workers wait on each other. A host function that never returns keeps its caller
+so the host would deadlock itself. Ancestry follows synchronous binding calls;
+it does not follow arbitrary host-created threads. A host function that never returns keeps its caller
 waiting, and with it every other thread's call to that session and any disposal
 or final drop from another thread; the binding does not cancel host code or undo
 external effects.

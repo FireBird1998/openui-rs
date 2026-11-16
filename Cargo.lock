@@ -398,6 +398,7 @@ dependencies = [
  "openui-session",
  "serde_json",
  "similar",
+ "stacker",
  "test-alloc",
  "uniffi",
 ]

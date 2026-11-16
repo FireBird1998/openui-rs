@@ -30,6 +30,8 @@ serde_json = { version = "1", features = ["preserve_order", "float_roundtrip"] }
 uniffi = { version = "0.32", default-features = false }
 
 [dev-dependencies]
+# Already used by the core; only measures ordinary stacks in binding tests.
+stacker = "0.1"
 test-alloc = { path = "../test-alloc" }
 # Used by the core's shared test helpers, which these tests include.
 similar = "2"

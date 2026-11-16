@@ -18,6 +18,48 @@ cargo test -p openui-lang --test conformance              # one test file
 cargo test -p openui-lang --test conformance streaming_   # tests whose names match
 ```
 
+For **any change to the native binding**, run the Kotlin instrumented tests on
+an Android device or emulator (API 34+, including arm64). This exercises JNA and
+ART's thread attachment, which host Rust tests cannot cover. With the Android
+SDK/NDK, Rust Android target, cargo-ndk, Java and Gradle already installed:
+
+```sh
+scripts/android-demo.sh
+cd android-demo
+"$GRADLE" --no-daemon connectedDebugAndroidTest
+```
+
+Set `GRADLE` to the installed Gradle 9 executable, as used by the build script.
+Run both `RuntimeFunctionTest` and `RuntimeSessionTest` (the command runs all
+instrumented tests). For Swift, with Xcode installed:
+
+```sh
+scripts/swift-binding.sh
+(cd swift/OpenUINative && swift test)
+```
+
+The #65 native regressions use public session operations. The unit test
+`deep_callbacks_run_on_the_callback_threads_original_stack` measures ordinary
+thread stacks at startup with the core's existing `stacker` dependency (test-only
+in the binding), then draws shallow, 12,000-level and shallow programs. Where
+stack measurement is available it requires the deep invocation to originate
+outside the worker's ordinary stack, while every host invocation stays on the
+callback thread's original stack. `foreign_releases_use_the_original_callback_stack_on_replacement_refusal_and_worker_unwind`
+checks foreign release on that stack, including after a worker panic.
+`queued_registration_destruction_after_worker_failure_preserves_ancestry` gates a
+worker panic after a nested public registration is queued, then checks destruction on the ordinary
+stack and refusal of both the owning and submitting sessions.
+`cross_session_cycles_refuse_ancestors_and_restore_scopes` and
+`nested_replacement_and_disposal_destructors_refuse_ancestors_even_when_they_panic`
+check nested calls and destruction. `many_sessions_join_callback_threads_on_disposal_and_final_drop`
+uses callback-thread TLS exit counters for 48 simultaneously registered sessions,
+including sessions never evaluated; disposal/final drop must have joined each
+thread before returning. Existing all-operation reentry and exact Rust result,
+call-count, throw and continuing-action comparisons remain in force.
+The added Kotlin deep/replacement test checks generated callback registry counts
+without GC or elapsed-time assertions. Swift callback tests make no thread-identity
+assertion and need no source change.
+
 ## Allocation caps
 
 Every core, runtime and binding Rust test binary uses the counting global allocator in
@@ -1131,7 +1173,7 @@ Session callback and follow-up checks (#56–#60):
   function failures producing null while the action continues like direct Rust.
 - `runtime_callback_concurrency.rs` uses gated schedules for registration and
   disposal during callbacks, long callbacks with direct Rust output comparison,
-  worker reuse and destructor reentry. Its seeded stress runs 8 seeds, 4 callers
+  callback-thread reuse and destructor reentry. Its seeded stress runs 8 seeds, 4 callers
   and 40 operations per caller, mixing slow callbacks/destructors, replacement,
   disposal and calls. A child-process watchdog detects stalls; tests assert
   results and bounded progress, never execution speed. Other-thread calls queue.

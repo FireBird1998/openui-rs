@@ -167,8 +167,8 @@ impl From<uniffi::UnexpectedUniFFICallbackError> for FunctionError {
     }
 }
 /// Implement on the host. JSON null is Some("null"); None is undefined.
-/// Called synchronously on the session worker, without a time bound. Calls back
-/// into this session on that thread refuse; other threads queue normally.
+/// Called synchronously on the session callback thread, without a time bound.
+/// Calls back into an active ancestor session refuse; other threads queue normally.
 #[uniffi::export(callback_interface)]
 pub trait LibraryFunction: Send + Sync {
     fn call(&self, arguments_json: String) -> Result<Option<String>, FunctionError>;
@@ -197,32 +197,40 @@ impl ReentryFence {
             })
     }
     fn enter(&self) -> HostScope {
-        let active = std::thread::current().id() != self.worker;
-        if active {
-            HOST_SCOPES.with(|scopes| scopes.borrow_mut().push(self.owner.clone()));
-        }
-        HostScope {
-            active,
+        HostScope::enter(vec![self.owner.clone()])
+    }
+}
+fn host_scopes() -> Vec<Arc<()>> {
+    HOST_SCOPES.with(|scopes| scopes.borrow().to_vec())
+}
+struct HostScope {
+    previous: usize,
+    _thread: std::marker::PhantomData<std::rc::Rc<()>>,
+}
+impl HostScope {
+    fn enter(owners: Vec<Arc<()>>) -> Self {
+        let previous = HOST_SCOPES.with(|scopes| {
+            let mut scopes = scopes.borrow_mut();
+            let previous = scopes.len();
+            scopes.extend(owners);
+            previous
+        });
+        Self {
+            previous,
             _thread: std::marker::PhantomData,
         }
     }
 }
-struct HostScope {
-    active: bool,
-    _thread: std::marker::PhantomData<std::rc::Rc<()>>,
-}
 impl Drop for HostScope {
     fn drop(&mut self) {
-        if self.active {
-            HOST_SCOPES.with(|scopes| {
-                let mut scopes = scopes.borrow_mut();
-                scopes.pop();
-                if scopes.is_empty() {
-                    // ManuallyDrop makes the TLS key immortal, not its heap.
-                    drop(std::mem::take(&mut **scopes));
-                }
-            });
-        }
+        HOST_SCOPES.with(|scopes| {
+            let mut scopes = scopes.borrow_mut();
+            scopes.truncate(self.previous);
+            if scopes.is_empty() {
+                // ManuallyDrop makes the TLS key immortal, not its heap.
+                drop(std::mem::take(&mut **scopes));
+            }
+        });
     }
 }
 // Destroy host implementations outside transport locks, even on refused calls.
@@ -248,16 +256,174 @@ impl Drop for CallbackHolder {
     }
 }
 
-type Job = Box<dyn FnOnce(&mut Worker, &PreparedReferenceValues<'_>) -> bool + Send>;
+// Only this thread owns accepted foreign implementations. Worker-side closures
+// contain private keys and a sender, so even their final drop on a grown segment
+// can only send a release request. No foreign value travels back to the worker.
+struct CallbackMailbox {
+    sender: mpsc::Sender<CallbackCommand>,
+}
+struct CallbackCommand {
+    scopes: Vec<Arc<()>>,
+    operation: CallbackOperation,
+    #[cfg(test)]
+    origin_on_stack: Option<bool>,
+}
+enum CallbackOperation {
+    Register(Arc<()>, CallbackHolder, mpsc::SyncSender<()>),
+    Invoke(
+        Arc<()>,
+        String,
+        mpsc::SyncSender<Result<Option<String>, String>>,
+    ),
+    Release(Arc<()>, mpsc::SyncSender<()>),
+}
+impl CallbackMailbox {
+    fn send(&self, operation: CallbackOperation) -> Result<(), OpenUiError> {
+        self.sender
+            .send(CallbackCommand {
+                scopes: host_scopes(),
+                operation,
+                #[cfg(test)]
+                origin_on_stack: tests::on_original_stack(),
+            })
+            .map_err(|_| worker_error("callback thread stopped unexpectedly"))
+    }
+}
+struct CallbackThread {
+    mailbox: Arc<CallbackMailbox>,
+    thread: JoinHandle<()>,
+}
+impl CallbackThread {
+    fn new() -> Result<Self, OpenUiError> {
+        let (sender, receiver) = mpsc::channel::<CallbackCommand>();
+        let thread = std::thread::Builder::new()
+            .name("openui-callback".into())
+            .spawn(move || {
+                #[cfg(test)]
+                tests::record_stack();
+                // Declared before the registry so an unexpected unwind also releases
+                // implementations under the active command's ancestry.
+                let mut scope = None;
+                let mut functions: Vec<(Arc<()>, CallbackHolder)> = Vec::new();
+                while let Ok(command) = receiver.recv() {
+                    drop(scope.take());
+                    scope = Some(HostScope::enter(command.scopes));
+                    #[cfg(test)]
+                    tests::ORIGIN_ON_STACK.set(command.origin_on_stack);
+                    match command.operation {
+                        CallbackOperation::Register(key, callback, reply) => {
+                            functions.push((key, callback));
+                            let _ = reply.send(());
+                        }
+                        CallbackOperation::Invoke(key, json, reply) => {
+                            let result = match functions.iter().find(|(k, _)| Arc::ptr_eq(k, &key))
+                            {
+                                Some((_, callback)) => {
+                                    catch_unwind(AssertUnwindSafe(|| callback.call(json)))
+                                        .map_err(|_| "host function panicked".to_owned())
+                                        .and_then(|result| result.map_err(|e| e.to_string()))
+                                }
+                                None => Err("host function released".into()),
+                            };
+                            let _ = reply.send(result);
+                        }
+                        CallbackOperation::Release(key, reply) => {
+                            if let Some(index) =
+                                functions.iter().position(|(k, _)| Arc::ptr_eq(k, &key))
+                            {
+                                drop(functions.swap_remove(index));
+                            }
+                            let _ = reply.send(());
+                        }
+                    }
+                }
+            })
+            .map_err(|e| worker_error(&e.to_string()))?;
+        Ok(Self {
+            mailbox: Arc::new(CallbackMailbox { sender }),
+            thread,
+        })
+    }
+    fn register(&self, callback: CallbackHolder) -> Result<CallbackProxy, OpenUiError> {
+        let key = Arc::new(());
+        let (reply, received) = mpsc::sync_channel(1);
+        self.mailbox
+            .send(CallbackOperation::Register(key.clone(), callback, reply))?;
+        received
+            .recv()
+            .map_err(|_| worker_error("callback thread stopped unexpectedly"))?;
+        Ok(CallbackProxy {
+            key,
+            mailbox: self.mailbox.clone(),
+        })
+    }
+    fn join(self) {
+        // The worker and all its proxies have gone before the final sender.
+        drop(self.mailbox);
+        let _ = self.thread.join();
+    }
+}
+struct CallbackProxy {
+    key: Arc<()>,
+    mailbox: Arc<CallbackMailbox>,
+}
+impl CallbackProxy {
+    fn call(&self, json: String) -> Result<Option<String>, String> {
+        let (reply, received) = mpsc::sync_channel(1);
+        self.mailbox
+            .send(CallbackOperation::Invoke(self.key.clone(), json, reply))
+            .map_err(|e| e.to_string())?;
+        received
+            .recv()
+            .map_err(|_| "callback thread stopped unexpectedly".to_owned())?
+    }
+}
+impl Drop for CallbackProxy {
+    fn drop(&mut self) {
+        let (reply, received) = mpsc::sync_channel(1);
+        if self
+            .mailbox
+            .send(CallbackOperation::Release(self.key.clone(), reply))
+            .is_ok()
+        {
+            let _ = received.recv();
+        }
+    }
+}
+
+type Job = Box<
+    dyn FnOnce(&mut Worker, &PreparedReferenceValues<'_>, &mut Option<CallbackThread>) -> bool
+        + Send,
+>;
 enum Command {
     Call(Job),
     References(String, mpsc::SyncSender<Result<(), OpenUiError>>),
     DrainReleases,
     Stop,
 }
+struct ScopedCommand {
+    scopes: Vec<Arc<()>>,
+    command: Option<Command>,
+}
+impl ScopedCommand {
+    fn new(command: Command) -> Self {
+        Self {
+            scopes: host_scopes(),
+            command: Some(command),
+        }
+    }
+}
+impl Drop for ScopedCommand {
+    fn drop(&mut self) {
+        // A failed worker also destroys accepted, unexecuted registrations.
+        // Their foreign destructors inherit the submitting callback's ancestry.
+        let _scope = HostScope::enter(std::mem::take(&mut self.scopes));
+        drop(self.command.take());
+    }
+}
 #[derive(Debug)]
 struct Mailbox {
-    sender: mpsc::Sender<Command>,
+    sender: mpsc::Sender<ScopedCommand>,
 }
 #[derive(Default)]
 struct TransportSlot {
@@ -298,7 +464,7 @@ impl RuntimeSession {
             return Err(worker_error("session already in use"));
         }
         let (sender, receiver) = mpsc::sync_channel(1);
-        let command = command(sender);
+        let command = ScopedCommand::new(command(sender));
         let transport = self
             .transport
             .lock()
@@ -311,6 +477,8 @@ impl RuntimeSession {
         drop(transport);
         // A rejected job can own a foreign callback; destroy it outside the lock.
         sent.map_err(|_| record_failure(&self.failure, "runtime worker stopped unexpectedly"))?;
+        #[cfg(test)]
+        tests::notify_submission();
         receiver
             .recv()
             .map_err(|_| record_failure(&self.failure, "runtime worker stopped unexpectedly"))?
@@ -321,12 +489,24 @@ impl RuntimeSession {
         + Send
         + 'static,
     ) -> Result<T, OpenUiError> {
+        self.call_with_callbacks(move |state, refs, _| operation(state, refs))
+    }
+    fn call_with_callbacks<T: Send + 'static>(
+        &self,
+        operation: impl FnOnce(
+            &mut Worker,
+            &PreparedReferenceValues<'_>,
+            &mut Option<CallbackThread>,
+        ) -> Result<T, OpenUiError>
+        + Send
+        + 'static,
+    ) -> Result<T, OpenUiError> {
         let failure = self.failure.clone();
         self.dispatch(move |sender| {
-            Command::Call(Box::new(move |state, refs| {
+            Command::Call(Box::new(move |state, refs, callbacks| {
                 let result = catch_unwind(AssertUnwindSafe(|| {
                     state.drain_releases();
-                    operation(state, refs)
+                    operation(state, refs, callbacks)
                 }));
                 match result {
                     Ok(result) => {
@@ -359,7 +539,10 @@ impl RuntimeSession {
         guard.closing = transport.is_some();
         drop(guard);
         if let Some(transport) = transport {
-            let _ = transport.mailbox.sender.send(Command::Stop);
+            let _ = transport
+                .mailbox
+                .sender
+                .send(ScopedCommand::new(Command::Stop));
             let _ = transport.worker.join();
             let mut guard = self.transport.lock().unwrap_or_else(|p| p.into_inner());
             guard.closing = false;
@@ -405,6 +588,9 @@ impl RuntimeSession {
             .spawn(move || {
                 // Construction, operations and destruction of every thread-affine
                 // runtime value happen inside this closure.
+                #[cfg(test)]
+                tests::record_stack();
+                let mut callbacks = None;
                 let result = catch_unwind(AssertUnwindSafe(|| {
                     let state = Worker::new(
                         Arc::new(openui_session::ComponentLibrary {
@@ -419,12 +605,14 @@ impl RuntimeSession {
                             state.set_release_notifier(openui_session::ReleaseNotifier(Arc::new(
                                 move || {
                                     if let Some(mailbox) = worker_mailbox.upgrade() {
-                                        let _ = mailbox.sender.send(Command::DrainReleases);
+                                        let _ = mailbox
+                                            .sender
+                                            .send(ScopedCommand::new(Command::DrainReleases));
                                     }
                                 },
                             )));
                             let _ = ready.send(Ok(()));
-                            worker_loop(&mut state, receiver, &worker_failure);
+                            worker_loop(state, receiver, &worker_failure, &mut callbacks);
                         }
                         Err(error) => {
                             let _ = ready.send(Err(error));
@@ -433,6 +621,9 @@ impl RuntimeSession {
                 }));
                 if result.is_err() {
                     let _ = record_failure(&worker_failure, "runtime worker panicked");
+                }
+                if let Some(callbacks) = callbacks {
+                    callbacks.join();
                 }
             })
             .map_err(|e| worker_error(&e.to_string()))?;
@@ -463,7 +654,7 @@ impl RuntimeSession {
     }
 
     /// Register or replace a declared synchronous JSON implementation. Calls
-    /// execute on the session worker without a time bound. A host callback must
+    /// execute on the session callback thread without a time bound. A host callback must
     /// not wait for another thread to call this same session: that call queues
     /// behind the callback, so the host would deadlock itself.
     pub fn register_function(
@@ -475,16 +666,14 @@ impl RuntimeSession {
             callback: Some(callback),
             fence: self.fence.clone(),
         };
-        self.call(move |s, _| {
-            s.register_function(
-                name,
-                Arc::new(move |json| {
-                    catch_unwind(AssertUnwindSafe(|| callback.call(json)))
-                        .map_err(|_| "host function panicked".to_owned())
-                        .and_then(|result| result.map_err(|e| e.to_string()))
-                }),
-            )
-            .map_err(Into::into)
+        self.call_with_callbacks(move |s, _, callbacks| {
+            let thread = match callbacks {
+                Some(thread) => thread,
+                None => callbacks.insert(CallbackThread::new()?),
+            };
+            let callback = thread.register(callback)?;
+            s.register_function(name, Arc::new(move |json| callback.call(json)))
+                .map_err(Into::into)
         })
     }
 
@@ -680,10 +869,14 @@ impl RuntimeSession {
 }
 
 fn worker_loop(
-    state: &mut Worker,
-    receiver: mpsc::Receiver<Command>,
+    state: Worker,
+    receiver: mpsc::Receiver<ScopedCommand>,
     failure: &Mutex<Option<String>>,
+    callbacks: &mut Option<CallbackThread>,
 ) {
+    // State drops before its last command's ancestry, including on unwind.
+    let mut scope = None;
+    let mut state = state;
     let mut values = JsObject::new();
     let mut acknowledge: Option<mpsc::SyncSender<Result<(), OpenUiError>>> = None;
     loop {
@@ -709,13 +902,22 @@ fn worker_loop(
             let _ = reply.send(Ok(()));
         }
         let replacement = loop {
-            match receiver.recv() {
-                Ok(Command::Call(job)) => {
-                    if !job(state, &prepared) {
+            let mut command = match receiver.recv() {
+                Ok(command) => command,
+                Err(_) => return,
+            };
+            drop(scope.take());
+            scope = Some(HostScope::enter(std::mem::take(&mut command.scopes)));
+            let Some(command) = command.command.take() else {
+                continue;
+            };
+            match command {
+                Command::Call(job) => {
+                    if !job(&mut state, &prepared, callbacks) {
                         return;
                     }
                 }
-                Ok(Command::References(json, reply)) => {
+                Command::References(json, reply) => {
                     match catch_unwind(AssertUnwindSafe(|| {
                         state.object(&json).map_err(OpenUiError::from)
                     })) {
@@ -734,10 +936,10 @@ fn worker_loop(
                         }
                     }
                 }
-                Ok(Command::DrainReleases) => {
+                Command::DrainReleases => {
                     state.drain_releases();
                 }
-                Ok(Command::Stop) | Err(_) => return,
+                Command::Stop => return,
             }
         };
         drop(prepared);
@@ -878,6 +1080,255 @@ impl From<openui_session::OpenUiError> for OpenUiError {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    // stacker measures the ordinary OS stack before any core walk starts.
+    // The anchor gives its upper end with a conservative 128 KiB margin.
+    thread_local! {
+        static ORIGINAL_STACK: std::cell::Cell<Option<(usize, usize)>> = const { std::cell::Cell::new(None) };
+        pub(super) static ORIGIN_ON_STACK: std::cell::Cell<Option<bool>> = const { std::cell::Cell::new(None) };
+        static SUBMISSION: RefCell<Option<mpsc::Sender<()>>> = const { RefCell::new(None) };
+    }
+    pub(super) fn notify_submission() {
+        SUBMISSION.with(|reply| {
+            if let Some(reply) = reply.borrow().as_ref() {
+                let _ = reply.send(());
+            }
+        });
+    }
+    pub(super) fn record_stack() {
+        let anchor = 0u8;
+        let address = &anchor as *const u8 as usize;
+        ORIGINAL_STACK.set(stacker::remaining_stack().map(|left| {
+            (
+                address.saturating_sub(left),
+                address.saturating_add(128 * 1024),
+            )
+        }));
+    }
+    pub(super) fn on_original_stack() -> Option<bool> {
+        let local = 0u8;
+        let address = &local as *const u8 as usize;
+        ORIGINAL_STACK
+            .get()
+            .map(|(low, high)| (low..high).contains(&address))
+    }
+    struct Function<F>(F);
+    impl<F: Fn(String) -> Result<Option<String>, FunctionError> + Send + Sync> LibraryFunction
+        for Function<F>
+    {
+        fn call(&self, json: String) -> Result<Option<String>, FunctionError> {
+            (self.0)(json)
+        }
+    }
+    const FUNCTION_SCHEMA: &str = r#"{"$defs":{"Box":{"properties":{"value":{}}}},"functions":{"Echo":{"params":{"properties":{"value":{}}}}}}"#;
+
+    struct StackDropProbe(Arc<std::sync::atomic::AtomicUsize>);
+    impl LibraryFunction for StackDropProbe {
+        fn call(&self, _: String) -> Result<Option<String>, FunctionError> {
+            Ok(None)
+        }
+    }
+    impl Drop for StackDropProbe {
+        fn drop(&mut self) {
+            assert_eq!(std::thread::current().name(), Some("openui-callback"));
+            if let Some(on_stack) = on_original_stack() {
+                assert!(on_stack);
+            }
+            self.0.fetch_add(1, std::sync::atomic::Ordering::SeqCst);
+        }
+    }
+    #[test]
+    fn foreign_releases_use_the_original_callback_stack_on_replacement_refusal_and_worker_unwind() {
+        let library = ComponentLibrary::new(FUNCTION_SCHEMA.into()).unwrap();
+        let session = RuntimeSession::new(library, None).unwrap();
+        let drops = Arc::new(std::sync::atomic::AtomicUsize::new(0));
+        let make = || Box::new(StackDropProbe(drops.clone())) as Box<dyn LibraryFunction>;
+        session.register_function("Echo".into(), make()).unwrap();
+        session.register_function("Echo".into(), make()).unwrap();
+        assert_eq!(drops.load(std::sync::atomic::Ordering::SeqCst), 1);
+        assert!(matches!(
+            session.register_function("missing".into(), make()),
+            Err(OpenUiError::InvalidJson { .. })
+        ));
+        assert_eq!(drops.load(std::sync::atomic::Ordering::SeqCst), 2);
+        let result: Result<(), OpenUiError> =
+            session.call(|_, _| panic!("worker unwind with a registration"));
+        assert!(matches!(result, Err(OpenUiError::Worker { .. })));
+        session.dispose();
+        assert_eq!(drops.load(std::sync::atomic::Ordering::SeqCst), 3);
+    }
+
+    #[test]
+    fn callback_thread_is_lazy_and_keeps_its_identity_after_registration_refusal() {
+        let library = ComponentLibrary::new(FUNCTION_SCHEMA.into()).unwrap();
+        let session = RuntimeSession::new(library, None).unwrap();
+        let callback_id = || {
+            session
+                .call_with_callbacks(|_, _, callbacks| {
+                    Ok(callbacks.as_ref().map(|thread| thread.thread.thread().id()))
+                })
+                .unwrap()
+        };
+        assert_eq!(callback_id(), None);
+        session.evaluate().unwrap();
+        assert_eq!(callback_id(), None);
+        session
+            .register_function("Echo".into(), Box::new(Function(|_| Ok(None))))
+            .unwrap();
+        let first = callback_id().unwrap();
+        assert!(matches!(
+            session.register_function("missing".into(), Box::new(Function(|_| Ok(None)))),
+            Err(OpenUiError::InvalidJson { .. })
+        ));
+        assert_eq!(callback_id(), Some(first));
+        session.dispose();
+    }
+
+    struct QueuedDropProbe {
+        ancestor: std::sync::Weak<RuntimeSession>,
+        own: std::sync::Weak<RuntimeSession>,
+        dropped: Arc<std::sync::atomic::AtomicUsize>,
+    }
+    impl LibraryFunction for QueuedDropProbe {
+        fn call(&self, _: String) -> Result<Option<String>, FunctionError> {
+            Ok(None)
+        }
+    }
+    impl Drop for QueuedDropProbe {
+        fn drop(&mut self) {
+            // This unexecuted registration is released on B's ordinary worker
+            // stack, under A's submitting scope and B's destructor fence.
+            if let Some(on_stack) = on_original_stack() {
+                assert!(on_stack);
+            }
+            for session in [&self.ancestor, &self.own] {
+                let session = session.upgrade().unwrap();
+                assert_eq!(
+                    session.version().unwrap_err().to_string(),
+                    "session already in use"
+                );
+                session.dispose();
+            }
+            self.dropped
+                .fetch_add(1, std::sync::atomic::Ordering::SeqCst);
+        }
+    }
+    #[test]
+    fn queued_registration_destruction_after_worker_failure_preserves_ancestry() {
+        let library = ComponentLibrary::new(FUNCTION_SCHEMA.into()).unwrap();
+        let a = RuntimeSession::new(library.clone(), None).unwrap();
+        let b = RuntimeSession::new(library.clone(), None).unwrap();
+        a.set_program(crate::parse("root=Box(@Echo())".into(), library, None).program)
+            .unwrap();
+        let (entered, active) = mpsc::channel();
+        let (release, wait) = mpsc::channel();
+        let blocked = b.clone();
+        let failure = std::thread::spawn(move || {
+            let result: Result<(), OpenUiError> = blocked.call(move |_, _| {
+                entered.send(()).unwrap();
+                wait.recv().unwrap();
+                panic!("injected worker failure with queued registration");
+            });
+            assert!(matches!(result, Err(OpenUiError::Worker { .. })));
+        });
+        active.recv().unwrap();
+        let (submitted, queued) = mpsc::channel();
+        let ancestor = Arc::downgrade(&a);
+        let other = b.clone();
+        let dropped = Arc::new(std::sync::atomic::AtomicUsize::new(0));
+        let count = dropped.clone();
+        a.register_function(
+            "Echo".into(),
+            Box::new(Function(move |_| {
+                SUBMISSION.with(|reply| *reply.borrow_mut() = Some(submitted.clone()));
+                let result = other.register_function(
+                    "Echo".into(),
+                    Box::new(QueuedDropProbe {
+                        ancestor: ancestor.clone(),
+                        own: Arc::downgrade(&other),
+                        dropped: count.clone(),
+                    }),
+                );
+                SUBMISSION.with(|reply| *reply.borrow_mut() = None);
+                assert!(matches!(result, Err(OpenUiError::Worker { .. })));
+                Ok(Some("7".into()))
+            })),
+        )
+        .unwrap();
+        let evaluating = a.clone();
+        let evaluation = std::thread::spawn(move || evaluating.evaluate().unwrap().json);
+        queued.recv().unwrap();
+        release.send(()).unwrap();
+        failure.join().unwrap();
+        assert!(evaluation.join().unwrap().contains("\"value\":7"));
+        b.dispose();
+        assert_eq!(dropped.load(std::sync::atomic::Ordering::SeqCst), 1);
+        assert!(a.version().is_ok());
+        a.dispose();
+    }
+
+    #[test]
+    fn deep_callbacks_run_on_the_callback_threads_original_stack() {
+        let library = ComponentLibrary::new(FUNCTION_SCHEMA.into()).unwrap();
+        let limits = ParseLimits {
+            depth: Some(20_000),
+            result_size: Some(8 * 1024 * 1024),
+            ..Default::default()
+        };
+        let session = RuntimeSession::with_limits(
+            library.clone(),
+            None,
+            RuntimeLimits {
+                evaluation: limits.clone(),
+                ..Default::default()
+            },
+        )
+        .unwrap();
+        let ids = Arc::new(Mutex::new(Vec::new()));
+        let seen = ids.clone();
+        session
+            .register_function(
+                "Echo".into(),
+                Box::new(Function(move |json: String| {
+                    assert_eq!(std::thread::current().name(), Some("openui-callback"));
+                    // A reroute onto a grown segment of the callback thread also fails.
+                    if let Some(on_stack) = on_original_stack() {
+                        assert!(on_stack);
+                    }
+                    seen.lock()
+                        .unwrap()
+                        .push((std::thread::current().id(), ORIGIN_ON_STACK.get()));
+                    Ok(Some(json))
+                })),
+            )
+            .unwrap();
+        for depth in [0, 12_000, 0] {
+            let source = format!(
+                "root=Box({}@Echo(7){})",
+                "[".repeat(depth),
+                "]".repeat(depth)
+            );
+            let parsed = crate::parse_with_limits(source, library.clone(), None, limits.clone());
+            assert!(!parsed.depth_limited && !parsed.size_limited);
+            session.set_program(parsed.program).unwrap();
+            let tree = session.evaluate().unwrap();
+            assert!(!tree.depth_limited && !tree.size_limited, "{}", tree.json);
+            assert!(tree.json.ends_with(r#""errors":[]}"#), "{}", tree.json);
+        }
+        session.dispose();
+        let ids = ids.lock().unwrap();
+        assert_eq!(ids.len(), 3);
+        assert!(ids.iter().all(|(id, _)| *id == ids[0].0));
+        if ids[0].1.is_some() {
+            assert_eq!(ids[0].1, Some(true));
+            assert_eq!(
+                ids[1].1,
+                Some(false),
+                "deep evaluation must actually leave the worker's OS stack"
+            );
+            assert_eq!(ids[2].1, Some(true));
+        }
+    }
 
     #[test]
     fn a_worker_panic_returns_a_typed_error_and_revokes_the_session() {

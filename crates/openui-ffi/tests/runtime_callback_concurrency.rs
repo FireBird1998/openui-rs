@@ -195,7 +195,10 @@ fn long_callback_matches_rust_and_replacement_destructor_never_queues_to_itself(
             assert_eq!(session.evaluate().unwrap().json, expected);
             let ids = ids.lock().unwrap();
             assert_eq!(ids.len(), 2);
-            assert_eq!(ids[0], ids[1], "callbacks reuse the session worker");
+            assert_eq!(
+                ids[0], ids[1],
+                "callbacks reuse the session callback thread"
+            );
             assert_eq!(drops.load(Ordering::SeqCst), 1);
             session.dispose();
             assert_eq!(drops.load(Ordering::SeqCst), 2);
@@ -372,6 +375,293 @@ fn sessions_without_functions_keep_queueing_during_thread_local_teardown() {
             .unwrap();
             assert_eq!(done.load(Ordering::SeqCst), 1);
             assert!(matches!(session.version(), Err(OpenUiError::Disposed)));
+        },
+    );
+}
+
+#[test]
+fn cross_session_cycles_refuse_ancestors_and_restore_scopes() {
+    watched(
+        "cross_session_cycles_refuse_ancestors_and_restore_scopes",
+        || {
+            let a = setup();
+            let b = setup();
+            let c = setup();
+            let order = Arc::new(Mutex::new(Vec::new()));
+            let ancestors = [Arc::downgrade(&a), Arc::downgrade(&b), Arc::downgrade(&c)];
+            let seen = order.clone();
+            c.register_function(
+                "Echo".into(),
+                Box::new(Function(move |_| {
+                    seen.lock().unwrap().push(3);
+                    for ancestor in &ancestors {
+                        let session = ancestor.upgrade().unwrap();
+                        assert_eq!(
+                            session.version().unwrap_err().to_string(),
+                            "session already in use"
+                        );
+                        assert_eq!(
+                            session
+                                .set("$n".into(), Some("99".into()))
+                                .unwrap_err()
+                                .to_string(),
+                            "session already in use"
+                        );
+                        session.dispose();
+                    }
+                    Ok(Some("7".into()))
+                })),
+            )
+            .unwrap();
+            let next = b.clone();
+            let last = c.clone();
+            let seen = order.clone();
+            b.register_function(
+                "Echo".into(),
+                Box::new(Function(move |_| {
+                    seen.lock().unwrap().push(2);
+                    assert!(last.evaluate().unwrap().json.contains("\"value\":7"));
+                    seen.lock().unwrap().push(4);
+                    Ok(Some("7".into()))
+                })),
+            )
+            .unwrap();
+            let seen = order.clone();
+            a.register_function(
+                "Echo".into(),
+                Box::new(Function(move |_| {
+                    seen.lock().unwrap().push(1);
+                    assert!(next.version().is_ok()); // an acyclic nested call is allowed
+                    assert!(next.evaluate().unwrap().json.contains("\"value\":7"));
+                    seen.lock().unwrap().push(5);
+                    Ok(Some("7".into()))
+                })),
+            )
+            .unwrap();
+            for _ in 0..2 {
+                assert!(a.evaluate().unwrap().json.contains("\"value\":7"));
+                for session in [&a, &b, &c] {
+                    assert_eq!(session.get("$n".into()).unwrap().as_deref(), Some("0"));
+                    assert!(session.version().is_ok());
+                }
+            }
+            assert_eq!(*order.lock().unwrap(), [1, 2, 3, 4, 5, 1, 2, 3, 4, 5]);
+            a.dispose();
+            b.dispose();
+            c.dispose();
+        },
+    );
+}
+
+struct AncestorOnDrop {
+    ancestor: Weak<RuntimeSession>,
+    own: Weak<RuntimeSession>,
+    drops: Arc<AtomicUsize>,
+}
+impl LibraryFunction for AncestorOnDrop {
+    fn call(&self, _: String) -> Result<Option<String>, FunctionError> {
+        Ok(None)
+    }
+}
+impl Drop for AncestorOnDrop {
+    fn drop(&mut self) {
+        for session in [&self.ancestor, &self.own] {
+            let session = session.upgrade().unwrap();
+            assert_eq!(
+                session.version().unwrap_err().to_string(),
+                "session already in use"
+            );
+            session.dispose();
+        }
+        self.drops.fetch_add(1, Ordering::SeqCst);
+        panic!("foreign destructor panic is contained here");
+    }
+}
+#[test]
+fn nested_replacement_and_disposal_destructors_refuse_ancestors_even_when_they_panic() {
+    watched(
+        "nested_replacement_and_disposal_destructors_refuse_ancestors_even_when_they_panic",
+        || {
+            let a = setup();
+            let b = setup();
+            let drops = Arc::new(AtomicUsize::new(0));
+            b.register_function(
+                "Other".into(),
+                Box::new(AncestorOnDrop {
+                    ancestor: Arc::downgrade(&a),
+                    own: Arc::downgrade(&b),
+                    drops: drops.clone(),
+                }),
+            )
+            .unwrap();
+            let ancestor = Arc::downgrade(&a);
+            let next = b.clone();
+            let count = drops.clone();
+            a.register_function(
+                "Echo".into(),
+                Box::new(Function(move |_| {
+                    next.register_function(
+                        "Other".into(),
+                        Box::new(AncestorOnDrop {
+                            ancestor: ancestor.clone(),
+                            own: Arc::downgrade(&next),
+                            drops: count.clone(),
+                        }),
+                    )
+                    .unwrap();
+                    assert_eq!(count.load(Ordering::SeqCst), 1);
+                    next.dispose(); // shutdown must carry ancestry through state destruction
+                    assert_eq!(count.load(Ordering::SeqCst), 2);
+                    Ok(Some("7".into()))
+                })),
+            )
+            .unwrap();
+            assert!(a.evaluate().unwrap().json.contains("\"value\":7"));
+            assert!(a.version().is_ok());
+            assert!(matches!(b.version(), Err(OpenUiError::Disposed)));
+            a.dispose();
+        },
+    );
+}
+
+struct OnCallbackThreadExit(Arc<AtomicUsize>);
+impl Drop for OnCallbackThreadExit {
+    fn drop(&mut self) {
+        self.0.fetch_add(1, Ordering::SeqCst);
+    }
+}
+thread_local! {
+    static EXIT: std::cell::RefCell<Option<OnCallbackThreadExit>> = const { std::cell::RefCell::new(None) };
+}
+struct ThreadProbe {
+    exits: Arc<AtomicUsize>,
+    drops: Arc<AtomicUsize>,
+    owner: Arc<Mutex<Option<std::thread::ThreadId>>>,
+}
+impl ThreadProbe {
+    fn observe(&self) {
+        assert_eq!(std::thread::current().name(), Some("openui-callback"));
+        let id = std::thread::current().id();
+        let mut owner = self.owner.lock().unwrap();
+        assert_eq!(*owner.get_or_insert(id), id);
+        EXIT.with(|exit| {
+            let mut exit = exit.borrow_mut();
+            if exit.is_none() {
+                *exit = Some(OnCallbackThreadExit(self.exits.clone()));
+            }
+        });
+    }
+}
+impl LibraryFunction for ThreadProbe {
+    fn call(&self, _: String) -> Result<Option<String>, FunctionError> {
+        self.observe();
+        Ok(Some("7".into()))
+    }
+}
+impl Drop for ThreadProbe {
+    fn drop(&mut self) {
+        self.observe();
+        self.drops.fetch_add(1, Ordering::SeqCst);
+    }
+}
+#[test]
+fn many_sessions_join_callback_threads_on_disposal_and_final_drop() {
+    watched(
+        "many_sessions_join_callback_threads_on_disposal_and_final_drop",
+        || {
+            let exits = Arc::new(AtomicUsize::new(0));
+            let drops = Arc::new(AtomicUsize::new(0));
+            let mut sessions = Vec::new();
+            for _ in 0..48 {
+                let session = setup();
+                session
+                    .register_function(
+                        "Echo".into(),
+                        Box::new(ThreadProbe {
+                            exits: exits.clone(),
+                            drops: drops.clone(),
+                            owner: Arc::new(Mutex::new(None)),
+                        }),
+                    )
+                    .unwrap();
+                sessions.push(session);
+            }
+            for (i, session) in sessions.into_iter().enumerate() {
+                if i % 2 == 0 {
+                    for _ in 0..3 {
+                        assert!(session.evaluate().unwrap().json.contains("\"value\":7"));
+                    }
+                    session.dispose();
+                }
+                // Odd sessions never invoke the implementation before final drop.
+                drop(session);
+                assert_eq!(drops.load(Ordering::SeqCst), i + 1);
+                // TLS destruction happens at thread exit, after registry destruction.
+                assert_eq!(
+                    exits.load(Ordering::SeqCst),
+                    i + 1,
+                    "callback thread was not joined"
+                );
+            }
+        },
+    );
+}
+
+#[test]
+fn replacement_and_disposal_share_the_invocation_thread() {
+    let session = setup();
+    let exits = Arc::new(AtomicUsize::new(0));
+    let drops = Arc::new(AtomicUsize::new(0));
+    let owner = Arc::new(Mutex::new(None));
+    for _ in 0..8 {
+        session
+            .register_function(
+                "Echo".into(),
+                Box::new(ThreadProbe {
+                    exits: exits.clone(),
+                    drops: drops.clone(),
+                    owner: owner.clone(),
+                }),
+            )
+            .unwrap();
+        assert!(session.evaluate().unwrap().json.contains("\"value\":7"));
+    }
+    assert_eq!(drops.load(Ordering::SeqCst), 7);
+    session.dispose();
+    assert_eq!(drops.load(Ordering::SeqCst), 8);
+    assert_eq!(exits.load(Ordering::SeqCst), 1);
+}
+
+#[test]
+fn a_blocked_callback_leaves_other_sessions_running_and_disposable() {
+    watched(
+        "a_blocked_callback_leaves_other_sessions_running_and_disposable",
+        || {
+            let a = setup();
+            let b = setup();
+            let (entered, active) = mpsc::channel();
+            let (release, wait) = mpsc::channel();
+            let wait = Mutex::new(wait);
+            a.register_function(
+                "Echo".into(),
+                Box::new(Function(move |_| {
+                    entered.send(()).unwrap();
+                    wait.lock().unwrap().recv().unwrap();
+                    Ok(Some("7".into()))
+                })),
+            )
+            .unwrap();
+            let calling = a.clone();
+            let evaluation = std::thread::spawn(move || calling.evaluate().unwrap().json);
+            active.recv().unwrap();
+            b.register_function("Echo".into(), Box::new(Function(|_| Ok(Some("8".into())))))
+                .unwrap();
+            assert!(b.evaluate().unwrap().json.contains("\"value\":8"));
+            b.dispose();
+            assert!(matches!(b.version(), Err(OpenUiError::Disposed)));
+            release.send(()).unwrap();
+            assert!(evaluation.join().unwrap().contains("\"value\":7"));
+            a.dispose();
         },
     );
 }

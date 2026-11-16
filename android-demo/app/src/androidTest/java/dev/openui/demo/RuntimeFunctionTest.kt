@@ -18,7 +18,7 @@ class RuntimeFunctionTest {
                 override fun call(argumentsJson: String): String? {
                     try { session.set("${'$'}n", "9"); fail("callback reentered") }
                     catch (_: OpenUiException.Worker) { }
-                    session.dispose() // same-worker disposal is a clean refusal
+                    session.dispose() // callback-thread disposal is a clean refusal
                     return argumentsJson
                 }
             })
@@ -29,6 +29,47 @@ class RuntimeFunctionTest {
             })
             val tree = org.json.JSONObject(session.evaluate().json)
             assertEquals("Evaluating prop \"value\" on Box failed: @Echo threw: bad value", tree.getJSONArray("errors").getJSONObject(0).getString("message"))
+        } finally { session.dispose() }
+    }
+    @Test fun deepFunctionsReuseOneThreadAndReplacementReleasesTheOldImplementation() {
+        val library = ComponentLibrary("""{"${'$'}defs":{"Box":{"properties":{"value":{}}}},"functions":{"Echo":{"params":{}}}}""")
+        val evaluation = ParseLimits(null, 8_388_608uL, null, null, null, 20_000uL, null)
+        val session = RuntimeSession.withLimits(library, null, RuntimeLimits(evaluation, evaluation, 8_388_608uL, 64uL))
+        // Generated UniFFI registry size proves native release without GC timing.
+        val baseline = FfiConverterTypeLibraryFunction.handleMap.size
+        val calls = java.util.concurrent.atomic.AtomicInteger()
+        val thread = java.util.concurrent.atomic.AtomicInteger()
+        try {
+            session.registerFunction("Echo", object : LibraryFunction {
+                override fun call(argumentsJson: String): String? {
+                    val current = android.os.Process.myTid()
+                    thread.compareAndSet(0, current)
+                    assertEquals(thread.get(), current)
+                    calls.incrementAndGet()
+                    return "7"
+                }
+            })
+            assertEquals(baseline + 1, FfiConverterTypeLibraryFunction.handleMap.size)
+            for (depth in listOf(0, 12_000)) {
+                val source = "root=Box(" + "[".repeat(depth) + "@Echo()" + "]".repeat(depth) + ")"
+                val parsed = parseWithLimits(source, library, null, evaluation)
+                assertFalse(parsed.depthLimited)
+                assertFalse(parsed.sizeLimited)
+                session.setProgram(parsed.program)
+                val tree = session.evaluate()
+                assertFalse(tree.depthLimited)
+                assertFalse(tree.sizeLimited)
+                assertTrue(tree.json.endsWith("\"errors\":[]}"))
+            }
+            assertEquals(2, calls.get())
+            session.registerFunction("Echo", object : LibraryFunction {
+                override fun call(argumentsJson: String): String? = "8"
+            })
+            assertEquals(baseline + 1, FfiConverterTypeLibraryFunction.handleMap.size)
+            session.setProgram(parse("root=Box(@Echo())", library, null).program)
+            assertTrue(session.evaluate().json.contains("\"value\":8"))
+            session.dispose()
+            assertEquals(baseline, FfiConverterTypeLibraryFunction.handleMap.size)
         } finally { session.dispose() }
     }
     @Test fun otherThreadsQueueDuringCallbacksAndDisposeAfterTheyReturn() {

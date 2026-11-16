@@ -8,21 +8,40 @@ schema validation, argument caching, defaults, diagnostics and execution order.
 Registration is per session and bounded; replacement is atomic. Both bindings
 use the same core adapter, and source/generated-interface checks cover it.
 
-Native callbacks execute directly on the session worker without a time bound or
-per-call thread. A correct synchronous implementation must give the Rust runtime's
-result independently of elapsed time. Timeouts that substitute null were rejected:
-they change output, and Rust cannot kill the outstanding host thread anyway.
+Native sessions lazily create one long-lived callback thread on the first
+registration processed by the worker, and join it after worker teardown at
+disposal or final drop. Sessions without registrations create no callback thread.
+The worker sends each invocation and waits synchronously, without a timeout or
+per-invocation thread. A correct synchronous implementation must give the Rust
+runtime's result independently of elapsed time. Timeouts that substitute null
+were rejected: they change output, and Rust cannot kill outstanding host code.
+
+This replaces direct invocation on the session worker (#65). The core can grow
+its stack; Android and iOS start every walk on such a segment (ADR 0002). Entering
+a foreign runtime there is unsafe: Android's ART aborts while attaching the Rust
+worker because its stack pointer is outside the thread's own stack. The callback
+thread starts on an ordinary OS thread stack and performs no core walks before
+entering host code. It owns the foreign implementations. Worker closures carry
+only private allocation-identity keys and a sender; invocation and final release
+both cross the same synchronous channel. Replacement and rejected registration
+release complete before acknowledgement. Worker teardown releases registrations
+before closing and joining the callback thread, including after a worker panic.
+No evaluator or stack-growth policy changes are needed.
 
 A worker must never queue a request to itself. Every same-session operation on
-that worker therefore refuses before transport locking, including host invocation
-and replacement/disposal destructors. Refused jobs can destroy implementations
-on caller threads too: a scoped thread-local stack of private per-session owner
-tokens fences that destruction. No shared flag is saved/restored across threads;
-independent destructors cannot overwrite another scope's exit or poison a session.
-The TLS key has no destructor; its stack storage is released explicitly when
-empty, so scopes remain usable during host thread-local destruction too.
-Panics are caught at the invocation/destruction boundary. Native dispose is
-infallible and cleanly refuses only such reentry.
+its worker or callback thread refuses before transport locking, including host
+invocation and replacement/disposal destructors. Refused jobs can destroy
+implementations on native caller threads too: a scoped thread-local stack of
+private per-session owner tokens fences that destruction. Commands carry the
+calling scope's ancestry to the destination worker and callback thread, including
+shutdown destruction and queued registrations discarded after worker failure. Thus A's function may call B, but B's function or destructor
+calling A refuses with Worker("session already in use") rather than queueing
+behind A. Scopes restore on return and unwind. No shared flag is saved/restored
+across threads; independent destructors cannot overwrite another scope's exit or
+poison a session. The TLS key has no destructor; its storage is released when
+empty so scopes remain usable during host thread-local destruction too.
+Panics are caught at the invocation/destruction boundary on the thread entering
+foreign code. Native dispose is infallible and cleanly refuses such reentry.
 
 Other threads retain the existing queueing contract. Submission releases the
 transport mutex before waiting; disposal closes submission, queues Stop after

@@ -555,3 +555,114 @@ fn failed_function_results_become_null_and_run_continues_exactly_as_rust() {
         assert_eq!(session.snapshot().unwrap(), r#"{"$a":1,"$b":null,"$c":2}"#);
     }
 }
+
+#[test]
+fn invocation_order_results_and_counts_match_direct_rust() {
+    let source = "root=Box([@Echo(1),@Echo(2),@Echo(1)])";
+    let (_, session) = setup(source);
+    let calls = Arc::new(std::sync::Mutex::new(Vec::new()));
+    let seen = calls.clone();
+    session
+        .register_function(
+            "Echo".into(),
+            Box::new(Function(move |json: String| {
+                seen.lock().unwrap().push(json.clone());
+                Ok(Some(json))
+            })),
+        )
+        .unwrap();
+    let schema: serde_json::Value = serde_json::from_str(SCHEMA).unwrap();
+    let library = openui_lang::Library::from_json_schema(&schema);
+    let program = openui_lang::parse(source, &library, None);
+    let expected_calls = std::sync::Mutex::new(Vec::new());
+    let mut functions = openui_runtime::LibraryFunctions::new(&schema["functions"]);
+    functions
+        .register("Echo", |args| {
+            expected_calls
+                .lock()
+                .unwrap()
+                .push(openui_runtime::value_to_json(&args).unwrap());
+            Ok(Some(args))
+        })
+        .unwrap();
+    for _ in 0..2 {
+        let expected = openui_runtime::evaluate_tree(
+            openui_runtime::TreeInput::new(&program)
+                .with_library(&library)
+                .with_functions(&functions),
+            &openui_runtime::Store::new(),
+        );
+        assert_eq!(
+            session.evaluate().unwrap().json,
+            expected.to_json().unwrap()
+        );
+        assert_eq!(*calls.lock().unwrap(), *expected_calls.lock().unwrap());
+    }
+    session.dispose();
+}
+
+struct RefusedDropProbe {
+    session: std::sync::Weak<RuntimeSession>,
+    caller: std::thread::ThreadId,
+    drops: Arc<AtomicUsize>,
+}
+impl LibraryFunction for RefusedDropProbe {
+    fn call(&self, _: String) -> Result<Option<String>, FunctionError> {
+        panic!("refused implementation was invoked")
+    }
+}
+impl Drop for RefusedDropProbe {
+    fn drop(&mut self) {
+        assert_eq!(std::thread::current().id(), self.caller);
+        let session = self.session.upgrade().unwrap();
+        assert_eq!(
+            session.version().unwrap_err().to_string(),
+            "session already in use"
+        );
+        session.dispose();
+        self.drops.fetch_add(1, Ordering::SeqCst);
+        panic!("refused foreign destructor panic");
+    }
+}
+#[test]
+fn panicking_refused_implementations_drop_on_the_caller_under_the_reentry_fence() {
+    let (_, session) = setup("root=Box(@Echo(1))");
+    let weak = Arc::downgrade(&session);
+    let drops = Arc::new(AtomicUsize::new(0));
+    let count = drops.clone();
+    session
+        .register_function(
+            "Echo".into(),
+            Box::new(Function(move |_| {
+                let session = weak.upgrade().unwrap();
+                let error = session
+                    .register_function(
+                        "Echo".into(),
+                        Box::new(RefusedDropProbe {
+                            session: weak.clone(),
+                            caller: std::thread::current().id(),
+                            drops: count.clone(),
+                        }),
+                    )
+                    .unwrap_err();
+                assert_eq!(error.to_string(), "session already in use");
+                assert_eq!(count.load(Ordering::SeqCst), 1);
+                Ok(Some("7".into()))
+            })),
+        )
+        .unwrap();
+    assert!(session.evaluate().unwrap().json.contains("\"value\":7"));
+    session.dispose();
+    assert!(matches!(
+        session.register_function(
+            "Echo".into(),
+            Box::new(RefusedDropProbe {
+                session: Arc::downgrade(&session),
+                caller: std::thread::current().id(),
+                drops: drops.clone(),
+            })
+        ),
+        Err(OpenUiError::Disposed)
+    ));
+    assert_eq!(drops.load(Ordering::SeqCst), 2);
+}

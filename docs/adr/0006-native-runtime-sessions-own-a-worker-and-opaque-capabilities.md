@@ -74,7 +74,8 @@ their JSON. Actual updates keep actual parser identities, even for equal JSON,
 because default container identity affects Store initialization. There is no
 history cache and no JSON-derived authority or identity substitution.
 
-Library function callbacks execute synchronously on the worker, with JSON-only
+Library function callbacks execute synchronously through the session callback
+thread, with JSON-only
 arguments/results and runtime validation/caching. See ADR 0009 for containment,
 reentry and the host's responsibility to return without awaiting another thread
 that needs the same session.
