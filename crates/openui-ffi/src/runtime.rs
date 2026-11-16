@@ -362,7 +362,7 @@ impl CallbackThread {
                         failure: callback_failure,
                     };
                     #[cfg(test)]
-                    let _observed_exit = tests::observe_callback_thread(control.clone());
+                    tests::observe_callback_thread(control.clone());
                     #[cfg(test)]
                     tests::record_stack();
                     // Declared before the registry so an unexpected unwind also releases
@@ -463,13 +463,8 @@ impl CallbackThread {
     fn join(self) {
         // The worker and all its proxies have gone before the final sender.
         self.closing.store(true, Ordering::Release);
-        #[cfg(test)]
-        let control = self.mailbox.control.clone();
         drop(self.mailbox);
-        if self.thread.join().is_ok() {
-            #[cfg(test)]
-            control.joined.fetch_add(1, Ordering::SeqCst);
-        }
+        let _ = self.thread.join();
     }
 }
 struct CallbackProxy {
@@ -539,23 +534,8 @@ struct Transport {
     worker: JoinHandle<()>,
 }
 
-// Before the first registration the live core has no registered functions.
-// Use that same empty-core admission policy without touching its live state.
-// Keep this configuration shared rather than copying name/limit rules here.
 struct CallbackState {
     thread: Option<CallbackThread>,
-    admission: FirstFunctionAdmission,
-}
-struct FirstFunctionAdmission {
-    library: Arc<openui_session::ComponentLibrary>,
-    limits: openui_session::RuntimeLimits,
-}
-impl FirstFunctionAdmission {
-    fn check(&self, name: &str) -> Result<(), OpenUiError> {
-        let mut admission = Worker::new(self.library.clone(), None, self.limits.clone())?;
-        admission.register_function(name.to_owned(), Arc::new(|_| Ok(None)))?;
-        Ok(())
-    }
 }
 
 /// A live runtime confined to its own worker thread. Calls from any thread
@@ -727,26 +707,18 @@ impl RuntimeSession {
                 tests::record_stack();
                 let mut callbacks = None;
                 let result = catch_unwind(AssertUnwindSafe(|| {
-                    // Keep admission configuration and schema cloning/destruction
-                    // on the worker; native callers may have small stacks.
-                    let admission = FirstFunctionAdmission {
-                        library: Arc::new(openui_session::ComponentLibrary {
+                    // Construct and destroy session policy on its owning worker.
+                    let state = Worker::new(
+                        Arc::new(openui_session::ComponentLibrary {
                             inner: library.inner.clone(),
                             schema: library.schema.clone(),
                         }),
-                        limits: limits.into(),
-                    };
-                    let state = Worker::new(
-                        admission.library.clone(),
                         prompt_spec,
-                        admission.limits.clone(),
+                        limits.into(),
                     );
                     match state {
                         Ok(mut state) => {
-                            let callbacks = callbacks.insert(CallbackState {
-                                thread: None,
-                                admission,
-                            });
+                            let callbacks = callbacks.insert(CallbackState { thread: None });
                             state.set_release_notifier(openui_session::ReleaseNotifier(Arc::new(
                                 move || {
                                     if let Some(mailbox) = worker_mailbox.upgrade() {
@@ -850,9 +822,9 @@ impl RuntimeSession {
             });
             let implementation = proxy.clone();
             if let Some(receiver) = receiver {
-                // Name/limit refusals must not start a thread. Preflight through
-                // the shared core, then start before changing the live core.
-                callbacks.admission.check(&name)?;
+                // Ask the live core through the same path as real admission.
+                // Starting first keeps spawn failure atomic and retryable.
+                s.check_function_registration(&name)?;
                 callbacks.thread = Some(CallbackThread::start(mailbox, receiver)?);
             }
             // An uninstalled proxy owns no foreign code and sends no releases.
@@ -1286,7 +1258,6 @@ mod tests {
         fault: AtomicUsize,
         started: AtomicUsize,
         exited: AtomicUsize,
-        pub(super) joined: AtomicUsize,
         worker_exited: AtomicUsize,
     }
     impl CallbackControl {
@@ -1304,23 +1275,34 @@ mod tests {
             }
         }
     }
-    pub(super) struct ObservedExit(Arc<CallbackControl>, bool);
-    impl Drop for ObservedExit {
+    pub(super) struct ObservedWorkerExit(Arc<CallbackControl>);
+    impl Drop for ObservedWorkerExit {
         fn drop(&mut self) {
-            let counter = if self.1 {
-                &self.0.worker_exited
-            } else {
-                &self.0.exited
-            };
-            counter.fetch_add(1, Ordering::SeqCst);
+            self.0.worker_exited.fetch_add(1, Ordering::SeqCst);
         }
     }
-    pub(super) fn observe_callback_thread(control: Arc<CallbackControl>) -> ObservedExit {
-        control.started.fetch_add(1, Ordering::SeqCst);
-        ObservedExit(control, false)
+    struct ObservedCallbackExit(Arc<CallbackControl>);
+    impl Drop for ObservedCallbackExit {
+        fn drop(&mut self) {
+            // Exercise late teardown scheduling before publishing the thread's
+            // final witness. Joining must cover this too, without a time bound.
+            for _ in 0..64 {
+                std::thread::yield_now();
+            }
+            self.0.exited.fetch_add(1, Ordering::SeqCst);
+        }
     }
-    pub(super) fn observe_worker_thread(control: Arc<CallbackControl>) -> ObservedExit {
-        ObservedExit(control, true)
+    thread_local! {
+        // Runs during actual thread teardown, after the callback loop's locals
+        // (including the registry and unexpected-exit guard) have been dropped.
+        static CALLBACK_EXIT: RefCell<Option<ObservedCallbackExit>> = const { RefCell::new(None) };
+    }
+    pub(super) fn observe_callback_thread(control: Arc<CallbackControl>) {
+        control.started.fetch_add(1, Ordering::SeqCst);
+        CALLBACK_EXIT.with(|exit| *exit.borrow_mut() = Some(ObservedCallbackExit(control)));
+    }
+    pub(super) fn observe_worker_thread(control: Arc<CallbackControl>) -> ObservedWorkerExit {
+        ObservedWorkerExit(control)
     }
 
     // stacker measures the ordinary OS stack before any core walk starts.
@@ -1484,7 +1466,6 @@ mod tests {
         let control = &session.callback_control;
         assert_eq!(control.started.load(Ordering::SeqCst), callbacks);
         assert_eq!(control.exited.load(Ordering::SeqCst), callbacks);
-        assert_eq!(control.joined.load(Ordering::SeqCst), callbacks);
         assert_eq!(control.worker_exited.load(Ordering::SeqCst), 1);
     }
     fn assert_sticky_failure(session: &RuntimeSession, reason: &str) {
@@ -1791,7 +1772,7 @@ mod tests {
         watched(
             "disposal_and_final_drop_complete_callback_thread_joins",
             || {
-                for dispose in [false, true] {
+                for dispose in [false, true].into_iter().cycle().take(64) {
                     let library = ComponentLibrary::new(FUNCTION_SCHEMA.into()).unwrap();
                     let session = RuntimeSession::new(library, None).unwrap();
                     let drops = Arc::new(AtomicUsize::new(0));
@@ -1802,15 +1783,12 @@ mod tests {
                     if dispose {
                         session.dispose();
                         session.dispose();
-                        assert_eq!(control.joined.load(Ordering::SeqCst), 1);
+                        assert_eq!(control.exited.load(Ordering::SeqCst), 1);
                     }
                     drop(session);
                     assert_eq!(drops.load(Ordering::SeqCst), 1);
                     assert_eq!(control.started.load(Ordering::SeqCst), 1);
                     assert_eq!(control.exited.load(Ordering::SeqCst), 1);
-                    // Count successful JoinHandle::join completions, not thread exit
-                    // scheduling. Dropping a handle can never increment this witness.
-                    assert_eq!(control.joined.load(Ordering::SeqCst), 1);
                     assert_eq!(control.worker_exited.load(Ordering::SeqCst), 1);
                 }
             },
@@ -1984,22 +1962,46 @@ mod tests {
         watched(
             "an_idle_callback_thread_death_revokes_calls_that_do_not_invoke_functions",
             || {
-                let library = ComponentLibrary::new(FUNCTION_SCHEMA.into()).unwrap();
-                let session = RuntimeSession::new(library, None).unwrap();
+                let schema = FUNCTION_SCHEMA.replace(
+                    "\"functions\":{",
+                    "\"functions\":{\"Next\":{\"params\":{}},",
+                );
+                let library = ComponentLibrary::new(schema).unwrap();
+                let limits = RuntimeLimits {
+                    max_json_bytes: 68,
+                    ..Default::default()
+                };
+                let session =
+                    RuntimeSession::with_limits(library.clone(), None, limits.clone()).unwrap();
                 let releases = Releases::default();
                 session
                     .register_function("Echo".into(), probe(&session, &releases, true))
                     .unwrap();
                 // Infrastructure-only injection: kill and join the callback thread,
                 // without asking the mailbox to record a send/receive failure.
-                let _: Result<(), OpenUiError> = session.call_with_callbacks(|_, _, callbacks| {
-                    let thread = callbacks.thread.take().unwrap();
-                    thread.mailbox.send(CallbackOperation::Stop).unwrap();
-                    let control = thread.mailbox.control.clone();
-                    thread.thread.join().unwrap();
-                    control.joined.fetch_add(1, Ordering::SeqCst);
-                    Ok(())
-                });
+                let _: Result<(), OpenUiError> =
+                    session.call_with_callbacks(move |state, _, callbacks| {
+                        assert!(matches!(
+                            state.check_function_registration("Next"),
+                            Err(openui_session::OpenUiError::LimitExceeded { .. })
+                        ));
+                        // Reset the test core (and thus release all registry proxies)
+                        // before removing their callback transport. No stale registry
+                        // or charged registration room may outlive the removed thread.
+                        *state = Worker::new(
+                            Arc::new(openui_session::ComponentLibrary {
+                                inner: library.inner.clone(),
+                                schema: library.schema.clone(),
+                            }),
+                            None,
+                            limits.into(),
+                        )?;
+                        state.check_function_registration("Next")?;
+                        let thread = callbacks.thread.take().unwrap();
+                        thread.mailbox.send(CallbackOperation::Stop).unwrap();
+                        thread.thread.join().unwrap();
+                        Ok(())
+                    });
                 // Only the exported calls below determine the observed failure.
                 assert_sticky_failure(&session, "callback thread stopped unexpectedly");
                 assert_joined(&session, 1);

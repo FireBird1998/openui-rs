@@ -385,20 +385,31 @@ impl SessionCore {
         name: String,
         callback: Arc<HostFunction>,
     ) -> Result<(), OpenUiError> {
-        self.text(&name)?;
+        let total = self.function_registration_bytes(&name)?;
+        self.functions.insert(name, callback);
+        self.function_bytes = total;
+        Ok(())
+    }
+    /// Check registration against the live registry without changing callbacks
+    /// or retained room. Uses the same admission path as `register_function`.
+    pub fn check_function_registration(&self, name: &str) -> Result<(), OpenUiError> {
+        self.function_registration_bytes(name).map(|_| ())
+    }
+    fn function_registration_bytes(&self, name: &str) -> Result<u64, OpenUiError> {
+        self.text(name)?;
         if self
             .library
             .schema
             .get("functions")
             .and_then(|f| f.as_object())
-            .and_then(|f| f.get(&name))
+            .and_then(|f| f.get(name))
             .is_none()
         {
             return Err(OpenUiError::InvalidJson {
                 reason: "expected a declared library function name".into(),
             });
         }
-        let replacing = self.functions.contains_key(&name);
+        let replacing = self.functions.contains_key(name);
         let bytes = (name.len() as u64).saturating_add(64);
         let total = self
             .function_bytes
@@ -406,9 +417,7 @@ impl SessionCore {
         if total > self.limits.max_json_bytes || (!replacing && self.functions.len() >= 256) {
             return Err(limit("function registration limit"));
         }
-        self.functions.insert(name, callback);
-        self.function_bytes = total;
-        Ok(())
+        Ok(total)
     }
     // Borrow only definitions. Each operation uses the runtime's own function
     // validation and argument cache, without replaying or pre-evaluating calls.

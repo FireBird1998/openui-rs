@@ -30,9 +30,9 @@ Name/limit refusals create no callback thread; their implementations, failed
 spawn/send handoffs and unexecuted queued registrations are released on the
 registering caller under its reentry fence. Only the callback thread may take
 the slot, so a failed worker cannot release foreign code while discarding jobs.
-As corrected in #72, first-registration preflight uses a temporary empty core
-with the same library and limits. Thread creation precedes live admission, so a
-failed start returns Worker without changing the session and can be retried.
+As corrected in #73, first-registration admission queries the live core without
+mutation, sharing the exact admission path used by registration. Thread creation
+precedes live admission, so a failed start returns Worker without changing the session and can be retried.
 An admitted failed handoff still revokes the session rather than exposing a
 partially installed replacement. A reclaimed handoff receives an explicit error;
 the callback loop keeps serving jobs.

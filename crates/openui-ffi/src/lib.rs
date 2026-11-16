@@ -12,8 +12,8 @@
 //! Evaluation and event JSON come directly from `openui-runtime`. See
 //! `docs/runtime-binding.md` and ADR 0006 for capability lifetime and threading.
 //! [`RuntimeSession::register_function`] supplies JSON-only [`LibraryFunction`]
-//! callbacks on one ordinary-stack callback thread, started after admission
-//! preflight and before the first live registration. A failed start returns
+//! callbacks on one ordinary-stack callback thread, started after a non-mutating
+//! live-core admission query and before the first registration. A failed start returns
 //! [`OpenUiError::Worker`] without changing the session, so registration may retry.
 //! Refused/failed handoffs release on the fenced registering caller; an admitted
 //! handoff or callback transport failure revokes the session with a sticky

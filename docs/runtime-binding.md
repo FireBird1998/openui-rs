@@ -225,7 +225,7 @@ throwing implementation. Both bindings pin the action's continuing writes;
 native tests additionally cover panic containment.
 
 Native callbacks execute synchronously on one ordinary-stack callback thread
-per session, created lazily after its first registration passes admission preflight
+per session, created lazily after a non-mutating query admits its first registration
 and before admission to the live session. There is no
 timeout and no thread spawned per invocation. The worker sends JSON and waits;
 the callback thread owns accepted implementations and releases replaced and
@@ -249,9 +249,9 @@ Callback transport loss or unexpected callback-thread exit revokes the session:
 an operation whose callback handoff fails and later calls return the same typed
 Worker error, including
 calls that invoke no function and calls after disposal. First-registration
-preflight uses an empty shared core with the same library and limits, so refused
-names/limits create no thread without duplicating admission rules. A failed thread
-start returns Worker without live admission, preserving state, evaluated handles
+admission queries the live shared core through the same code path as real
+registration, so refused names/limits create no thread without duplicating rules.
+A failed thread start returns Worker without live admission, preserving state, evaluated handles
 and registration room; a later registration can succeed. Normal disposal
 still yields Disposed. Host throws and caught host/destructor panics do not kill
 the callback thread or revoke the session. Infrastructure fault-injection tests

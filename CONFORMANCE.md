@@ -990,8 +990,8 @@ No identity is reconstructed from JSON, including function callback results.
 Registered functions reuse the runtime's JSON serializer, validation, defaults
 and argument caching. Native callbacks run on one ordinary-stack callback thread
 per session without a timeout or per-call thread. Its first registration is
-preflighted through an empty shared core with the same library and limits;
-thread creation precedes admission to the live core. Accepted implementation
+checked against the live shared core without mutation, using the same admission
+path as registration; thread creation precedes admission to the live core. Accepted implementation
 release uses that same stack;
 refused registrations and failed/unexecuted handoffs release on the fenced
 registering caller, never on the evaluator worker or a grown stack segment.
@@ -1009,8 +1009,15 @@ remains Disposed; disposal/final drop join both native threads. Public-operation
 regressions with infrastructure injection pin caller release, refusal laziness,
 registration acknowledgement loss, callback death and shutdown in
 `openui-ffi`'s `runtime::tests`; the existing deep-stack and concurrency tests
-continue to pin #65. No parser/evaluator prices, bytes, flags or limits change. Function faults retain Rust's null and continuing-action
-semantics, pinned by
+continue to pin #65. The #73 table-driven test
+`registration_preserves_main_errors_precedence_implementations_and_room` compares
+22 public registration scenarios with independently captured main f641ded results:
+new/replaced/invalid names, name/total-byte/count bounds, replacements at capacity,
+disposal and reentry precedence, tree bytes/flags and subsequent admission room.
+`live_admission_queries_preserve_room_and_match_real_registration` checks repeated
+queries against actual admission on empty and populated live cores. No parser or
+evaluator prices, bytes, flags or limits change. Function faults retain Rust's
+null and continuing-action semantics, pinned by
 `failed_function_results_become_null_and_run_continues_exactly_as_rust`.
 `long_callback_matches_rust_and_replacement_destructor_never_queues_to_itself`
 pins long-callback output and worker reuse. Host code must return without waiting

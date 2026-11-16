@@ -55,12 +55,13 @@ and submitting sessions.
 check nested calls and destruction. `many_sessions_join_callback_threads_on_disposal_and_final_drop`
 uses callback-thread TLS exit counters for 48 simultaneously registered sessions,
 including sessions never evaluated; disposal/final drop must have joined each
-thread before returning. The #72 unit test
-`disposal_and_final_drop_complete_callback_thread_joins` also observes successful
-`JoinHandle::join` completions through a test-only counter. Dropping a handle
-cannot increment this counter, so its mutation failure is deterministic even if
-the callback thread exits before its disposer returns. Existing all-operation
-reentry and exact Rust result,
+thread before returning. The #73 unit test
+`disposal_and_final_drop_complete_callback_thread_joins` observes a callback-thread
+TLS destructor for 64 sessions split between disposal and final drop. The exit
+witness is written by the terminating callback thread, after its registry and
+exit guard are destroyed. The test-only TLS destructor yields before its final
+witness to exercise late teardown scheduling; no assertion uses elapsed time.
+Existing all-operation reentry and exact Rust result,
 call-count, throw and continuing-action comparisons remain in force.
 The Kotlin `deepFunctionsReuseOneThreadAndReplacementReleasesTheOldImplementation`
 test counts generated registry entries by identity for only its own implementations,
@@ -97,6 +98,30 @@ caught destructors, ordinary-stack measurements and thread-exit counters:
 - `an_idle_callback_thread_death_revokes_calls_that_do_not_invoke_functions`
   stops the callback thread independently of mailbox error handling; its exit
   guard must revoke even version/snapshot/write/reference operations.
+
+The #73 table-driven test
+`registration_preserves_main_errors_precedence_implementations_and_room` compares
+22 scenarios with `crates/openui-ffi/tests/support/registration-main.jsonl`, captured
+independently on main f641ded. It pins typed errors and precedence, tree bytes and
+flags, callable replacements and remaining room through subsequent public
+registrations and a replacement probe after reaching capacity. Tight byte limits that cannot admit a program pin that program
+refusal too; larger byte/count-capacity cases check callable implementations.
+With unchanged limits a previously admitted name cannot later exceed its own
+name-byte bound; the smallest admissible registration and its replacement are
+both pinned at the exact byte boundary.
+`live_admission_queries_preserve_room_and_match_real_registration` exercises the
+shared query repeatedly on empty and populated cores, including byte/count
+refusals and replacements at capacity.
+The idle-death injection resets its core before taking the callback thread and
+checks that a different name fits again, so retained proxies and charged room
+cannot outlive the removed transport.
+
+Scratch negative controls for #73 replace the live query with an empty-core
+query, increment a synthetic join counter while dropping the handle, omit the
+idle-death core reset, validate declared names before their byte bound, and
+charge room for a refused registration. They fail the live-query, thread-exit,
+idle-death and main-comparison tests, respectively (both final mutations fail
+the main comparison). The scratch changes are restored after each run.
 
 The lifecycle children have a deadlock watchdog only; no result depends on
 elapsed time. Fault hooks and thread counters are compiled only in unit tests.

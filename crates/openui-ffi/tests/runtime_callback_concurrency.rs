@@ -527,9 +527,8 @@ fn nested_replacement_and_disposal_destructors_refuse_ancestors_even_when_they_p
 struct OnCallbackThreadExit(Arc<AtomicUsize>);
 impl Drop for OnCallbackThreadExit {
     fn drop(&mut self) {
-        // TLS teardown outlives registry destruction. The lifecycle unit tests
-        // additionally count completed joins so omitting a join is caught even
-        // when this thread happens to exit before its disposer returns.
+        // TLS teardown outlives registry destruction. The lifecycle unit test
+        // also observes TLS teardown, including sessions never invoked.
         self.0.fetch_add(1, Ordering::SeqCst);
     }
 }
