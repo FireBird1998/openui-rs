@@ -2266,6 +2266,10 @@ impl Supplied<'_> {
             flags,
         });
         self.callbacks.borrow_mut().push(frame.clone());
+        // Register the actual suspended owner before entering host code.
+        // Same-session with_scope must charge nested reads and projection here,
+        // rather than spending a temporary account whose flags/work disappear.
+        // reentry_accounting pins the complete 29-unit example and every cut.
         let location = SuspendedSlot::enter(&frame.saved);
         let guard = CallbackGuard(&self.callbacks);
         DepthContext::suspend(&frame.saved.borrow());

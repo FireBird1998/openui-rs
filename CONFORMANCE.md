@@ -1175,3 +1175,33 @@ remove it on return or unwind. Constructor callbacks run before an account is
 moved into a temporary saved slot. The old debug assertion was reachable and is
 removed; `own_session_with_scope_reentry_uses_its_suspended_account_and_limits`
 pins both returned values and work/room charged to the owning session.
+
+
+## Substitution and re-entry accounting review (#49, #64)
+
+Typed syntax, descriptor data and mixed templates use one substitution
+traversal. No conversion of an entire template precedes substitution. The
+adapters preserve typed copy-on-change, descriptor malformed-data errors and
+assignment semantics, and the descriptor-to-typed bridge's extra node charge.
+`substitution_preserves_main_values_failures_flags_work_and_room` pins 60
+archived-main observations plus every work and room boundary from 0 through
+256 for each observation. `nested_loop_memory` retains the independent mapped
+component output, allocation and work/room fixtures.
+
+Same-session core `with_scope` re-entry intentionally spends the suspended
+owner's work for nested evaluation and projection. In `reentry_accounting`,
+`$z`'s state callback re-enters that session in a scope where `$x=100` and
+`$y=20`, evaluates `[$x,$y]`, and returns it. The complete result costs exactly
+29 work units: four expression visits, four scalar input-measurement visits,
+nine inner projection units (including the historical array punctuation
+price), four returned-array measurement visits, and eight outer projection
+units. Limits 0–28 flag a cut; 29–40 complete with
+exact remaining work. The sequential scope releases its projection room, not
+its work. This preserves current main's behavior. Earlier code could spend a
+temporary suspended account and discard its work/flags; that undercharge is
+not restored.
+
+No nested-rebuild room refund is introduced. The existing one-row work/room
+thresholds and unique-leaf cut result/peak remain binding (ADR 0008).
+The removed `PreparedInput` export is documented in [CHANGELOG.md](CHANGELOG.md);
+its replacements have different meanings, so it has no alias.

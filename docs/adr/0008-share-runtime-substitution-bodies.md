@@ -12,10 +12,14 @@ scopes can inspect or retain positional syntax.
 
 For a component with one positional argument and one mapped prop, reuse the
 transformed argument's backing allocations when the original children have the
-same body identity. Both substitution walks still run, in their original order,
+same body identity. The positional and mapped children are each visited, in their original order,
 and pay their original work and room. Keep the complete positional syntax.
 Identity checks inspect a fixed number of header fields; they do not compare
-whole trees. Typed ASTs and descriptor data use this same substitution path.
+whole trees. Typed ASTs and descriptor data use one statically dispatched substitution
+traversal, with adapters for their respective construction and malformed-data
+semantics. Arrays and positional arguments use the same list traversal; typed lists copy
+after the first change, while descriptor lists retain their eager scratch
+allocation. Descriptor object entries preserve their permissive destructuring.
 
 `EvaluationScope::mapped_call_only` opts in to this representation change.
 Its default is false. The runtime opts ordinary components in and excludes
@@ -27,9 +31,12 @@ policy state from its monomorphization. No runtime concept enters its evaluator.
 The allocator regression covers a unique 1,000-byte string leaf, depths 1–8,
 one/three rows, typed AST and shared descriptor data. Independently archived
 8ffe3b0 results pin output hashes, cut flags and the exact work/room thresholds
-for the one-row cases. The #55 follow-up keeps the completed outputs and work
-pins, with separate current fixtures for intermediate-room refunds and newly
-admitted results. The one-row additional heap peak is below 128,000 bytes
+for the one-row cases. The #64 review retains main's room charges as well as its completed outputs
+and work pins. The nested-rebuild refund remains deferred: the attempted refund
+admitted more live unique-leaf results and doubled the cut peak. Releasing
+serialized room is not proof that the corresponding live temporary was freed.
+A future refund must satisfy the existing exact work/room fixtures and the
+unique-leaf cut peak bound, or explicitly obtain a change to that contract. The one-row additional heap peak is below 128,000 bytes
 at every tested level. This is a finite shape bound, not a universal flat peak:
 active rewritten templates and traversal metadata still grow with depth.
 

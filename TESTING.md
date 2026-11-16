@@ -1341,3 +1341,104 @@ only in `program_setup`'s refusal check; it never grants input credit. Program
 credit itself uses one core measure shared by drawing and action runs. Removing
 or modernizing the historical guard is deferred because it conflicts with
 main's completed results.
+
+## Shared substitution and accounting review (#49 item 2, #64)
+
+`evaluate/substitution.rs::walk` is the one recursive substitution traversal for
+native syntax, descriptor data and mixed templates. Representation adapters
+handle child lookup and construction. Arrays and positional arguments share
+`rewrite_list`: native lists copy only after a change; descriptor lists still
+allocate their eager scratch. Descriptor object entries keep their permissive
+string/pair destructuring, missing-field errors and assignment semantics.
+A descriptor wrapping a native AST retains both entry charges. The parser uses
+static dispatch and its zero-sized policy, without converting its template.
+Native assignment construction deliberately clones the target before visiting
+its value, including when that visit finds no change, preserving main's parser
+allocation order.
+
+`substitution_compatibility` uses a 128 MiB allocator. Its
+`substitution_preserves_main_values_failures_flags_work_and_room` compares 60
+independently captured `388ede7` observations in `support/substitution-main.tsv`:
+16 templates in native/data/mixed forms and 12 permissive or malformed data
+shapes. Each record pins the full result, remaining work/room after the ordinary
+observation, and a fingerprint of all work limits 0–256 and all room limits
+0–256 (30,840 boundary observations). The templates exercise every traversed
+expression kind, nested/shadowed loops, unchanged members, assignments,
+missing fields, scalar children, string entries and array-valued mapped props.
+`unchanged_assignment_templates_preserve_parser_allocation_counts` separately
+pins 295 allocation requests for a warmed public parse with four unchanged
+assignment templates. Moving the assignment target copy after the child visit
+fails that test, even though the output and work prices are unchanged.
+
+`reentry_accounting` uses a 64 MiB allocator. Its
+`reentry_charges_nested_reads_and_projection_to_the_owning_session` re-enters
+the same session from `$z`'s state callback with a fresh scope, evaluates
+`[$x,$y]` where `$x=100` and `$y=20`, and returns that value. It pins every work
+limit 0–40: exactly 29 units complete; lower limits propagate sticky cuts.
+The 29 units are four expression visits, four scalar measurement visits,
+nine inner projection units (including the evaluator's historical array
+punctuation price), four returned-array measurement visits, and eight outer
+projection units. `reentry_releases_inner_projection_room_without_refunding_its_work`
+pins room limits 0–20: nine units are needed during the nested call; its
+sequential scope releases that room, leaving eight units spent by the outer
+result. No evaluation work is refunded. The suspended callback's account must
+be registered before host code can re-enter it. Removing that registration
+fails both tests; spending the temporary account and losing its work/flags is
+not an intended discount. These are current main's charges, with no new limit.
+
+`review_peaks::runtime_container_capacity_keeps_both_review_peaks_below_main`
+now caps read and unread repeated-reference witnesses independently at
+268,851,088 and 268,851,144 bytes. It also caps the one-row, one-level unique-leaf
+witness at 9,536 bytes, with its complete 1,225-byte result, and keeps the
+three-row/eight-level cut's 3,732,632-byte bound and 163,573-byte result.
+
+Profiling that small witness on the 64-bit host reproduced the prior
+8,016-byte peak and current 9,536-byte peak. The extra 1,520 bytes comprise:
+
+- 1,240 bytes retained by scalar-credit comparison: 1,008 for the 1,000-byte
+  string with its allocator header, 16 for its copied name, and 216 for the
+  initial scalar index table. Omitting only the comparison copy gives 8,528;
+  omitting the scalar index gives 8,296. Neither is an acceptable optimization
+  of the required consecutive-value credit contract.
+- 144 bytes in the three added, initially empty metadata map headers (metadata
+  is 496 bytes versus 352), including argument-string recycling and state/key
+  credit indexes. The state-key table itself is unused in this drawing witness.
+- 16 bytes from the optional large input-measurement index in the live saved
+  accounts (`InputIndex` grows 48→56 bytes, `Saved` 648→656). Replaying with the
+  previous compact index gives 9,520 bytes; removing callback-slot registration
+  alone leaves 9,536, so that registration does not explain this peak.
+- 120 bytes of outer prop capacity allocated before its child is evaluated.
+  With the previous core, using the current tree code gives 8,136 bytes;
+  restoring lazy `JsObject::new()` for those output props gives 8,016 again.
+  This changes overlapping lifetimes, rather than the leaf's payload size.
+  Keep that eager capacity: it avoids oversized retained prop buffers in the
+  large repeated-reference witnesses, while the small witness is bounded
+  separately. Removing it to save 120 bytes would give up that optimization.
+
+These measurements explain this finite witness; the test enforces its total
+upper bound, not a universal decomposition or peak bound. All figures include
+`test_alloc` headers. The unrelated scalar-credit and argument-reuse tests
+continue to enforce their accounting and allocation contracts.
+
+The nested-rebuild room refund stays deferred under ADR 0008. The existing
+`nested_loop_memory::one_item_loops_keep_unique_leaf_memory_instead_of_doubling_it`
+checks independently archived work/room thresholds and output/cut hashes; the
+unique-leaf cut above protects the peak that the attempted refund doubled.
+Changing serialized room without proving the temporary's lifetime ended would
+admit more simultaneously live results. No refund or new limit is introduced.
+
+Eight isolated scratch negative controls were caught: replacing a binary right
+child (`substitution_preserves_main_values_failures_flags_work_and_room`),
+removing unchanged assignment target copies (the 295-allocation parser test),
+using define instead of assignment for descriptor mapped props
+(`an_omitted_prototype_prop_is_not_restored_by_sharing_substituted_bodies`), losing
+the suspended owner (both re-entry tests), refunding loop room (the nested-loop
+price test), retaining a second scalar copy (the small peak bound), padding
+only the read witness above its own old cap (the repeated-reference read
+bound), and restoring the removed export (the crate's `PreparedInput`
+compile-fail import). The scratch tree was restored and its public pins passed.
+No mutation or fuzz configuration was changed.
+
+`CHANGELOG.md` records the removed `PreparedInput` export and the distinct
+meanings of `PreparedReferenceInput` and `SuppliedInput`. The crate's
+compile-fail import enforces that the old export remains absent.

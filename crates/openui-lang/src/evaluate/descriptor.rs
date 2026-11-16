@@ -426,74 +426,118 @@ fn each_descriptor(node: &Value, scope: &Scope<Supplied<'_>>) -> Js {
     })
 }
 
-// Representation adapter for substituteRef. Typed children use the existing
-// typed walker and both forms use `literal` for captured loop values.
+// All recursion and child order live in substitution::walk. This adapter keeps
+// descriptor assignment, malformed entries and typed-child bridge semantics.
 fn substitute_descriptor(
     node: &Value,
     var: &Value,
     item: &Js,
     policy: Option<&dyn Fn(&str) -> bool>,
 ) -> Option<Value> {
-    crate::stack::grow_stack!(substitute_descriptor(node,var,item,policy), budget else None);
-    if !step(1) || !running() {
-        return None;
-    }
-    if let Value::Ast(a) = node {
-        return if let Value::Str(var) = var {
-            substitute_shared(a, var, item, policy).map(|a| Value::Ast(Arc::new(a)))
-        } else {
-            None
+    substitution::walk(node, var, item, policy)
+}
+
+use substitution::{Field, Kind, Template};
+impl<'a> Template for &'a Value {
+    type Variable = Value;
+    type Output = Value;
+    type Child = Value;
+    type Sequence = Arc<Vec<Value>>;
+    type Props = JsObject<Value>;
+    fn enter<P: SubstitutionPolicy>(
+        self,
+        var: &Value,
+        item: &Js,
+        policy: P,
+    ) -> std::ops::ControlFlow<Option<Value>> {
+        use std::ops::ControlFlow::{Break, Continue};
+        if !step(1) || !running() {
+            return Break(None);
+        }
+        if let Value::Ast(a) = self {
+            return Break(if let Value::Str(var) = var {
+                substitution::walk(a.as_ref(), var.as_str(), item, policy)
+                    .map(|a| Value::Ast(Arc::new(a)))
+            } else {
+                None
+            });
+        }
+        let Value::Obj(o) = self else {
+            if matches!(self, Value::Null) {
+                invalid("node", Op::ReadKind, Some(self));
+            }
+            return Break(None);
         };
-    }
-    let Value::Obj(o) = node else {
-        if matches!(node, Value::Null) {
-            invalid("node", Op::ReadKind, Some(node));
+        if text(o.get("k")) == "Ref"
+            && o.get("n")
+                .is_some_and(|n| crate::materialize::js_strict_eq(n, var))
+        {
+            return Break(Some(Value::Ast(Arc::new(literal(item)))));
         }
-        return None;
-    };
-    let kind = text(o.get("k"));
-    if kind == "Ref"
-        && o.get("n")
-            .is_some_and(|n| crate::materialize::js_strict_eq(n, var))
-    {
-        return Some(Value::Ast(Arc::new(literal(item))));
+        Continue(())
     }
-    let mapped_only = kind == "Comp"
-        && text(o.get("name")) != "Each"
-        && matches!(o.get("mappedProps"), Some(Value::Obj(_) | Value::Arr(_)))
-        && policy.is_some_and(|p| p(text(o.get("name"))));
-    let policy = policy.filter(|_| {
-        kind != "Assign" && (kind != "Comp" || text(o.get("name")) == "Each" || mapped_only)
-    });
-    let fields: &[&str] = match kind {
-        "Member" => &["obj"],
-        "Index" => &["obj", "index"],
-        "BinOp" => &["left", "right"],
-        "UnaryOp" => &["operand"],
-        "Ternary" => &["cond", "then", "else"],
-        "Assign" => &["value"],
-        _ => &[],
-    };
-    let mut out = None;
-    for key in fields {
-        if let Some(child) = o.get(key) {
-            if matches!(kind, "Member" | "Index") && !is_descriptor(child) {
-                continue;
+    fn kind(self) -> Kind {
+        match text(field(self, "k")) {
+            "Member" => Kind::Member,
+            "Index" => Kind::Index,
+            "BinOp" => Kind::Binary,
+            "UnaryOp" => Kind::Unary,
+            "Ternary" => Kind::Ternary,
+            "Assign" => Kind::Assign,
+            "Arr" => Kind::Array,
+            "Obj" => Kind::Object,
+            "Comp" => Kind::Call,
+            _ => Kind::Leaf,
+        }
+    }
+    fn child(self, key: Field) -> Option<Self> {
+        let child = field(self, key.key());
+        if matches!(self.kind(), Kind::Member | Kind::Index) {
+            child.filter(|v| is_descriptor(v))
+        } else {
+            if child.is_none() {
+                invalid("node", Op::ReadKind, None);
             }
-            if let Some(new) = substitute_descriptor(child, var, item, policy) {
+            child
+        }
+    }
+    fn call_policy<P: SubstitutionPolicy>(self, policy: P) -> (bool, P) {
+        let name = text(field(self, "name"));
+        let mapped = name != "Each"
+            && matches!(
+                field(self, "mappedProps"),
+                Some(Value::Obj(_) | Value::Arr(_))
+            )
+            && policy.mapped_only(name);
+        (mapped, policy.at_call(name, mapped))
+    }
+    fn fields(self, fields: &mut [(Field, Option<Value>)]) -> Option<Value> {
+        let Value::Obj(o) = self else {
+            return None;
+        };
+        let mut out = None;
+        for (key, new) in fields {
+            if let Some(new) = new.take() {
                 out.get_or_insert_with(|| o.as_ref().clone())
-                    .define(*key, new);
+                    .define(key.key(), new);
             }
-        } else if !matches!(kind, "Member" | "Index") {
-            invalid("node", Op::ReadKind, None);
         }
+        out.map(|o| Value::Obj(Arc::new(o)))
     }
-    if kind == "Member" {
+    fn assignment(self, visit: impl FnOnce(Self) -> Option<Value>) -> Option<Value> {
+        let value = self.child(Field::Value).and_then(visit);
+        self.fields(&mut [(Field::Value, value)])
+    }
+    fn shared(child: Value) -> Value {
+        child
+    }
+    fn member(self, child: Option<Value>) -> Option<Value> {
+        let out = self.fields(&mut [(Field::Object, child)]);
         let obj = out
             .as_ref()
-            .and_then(|o: &JsObject<Value>| o.get("obj"))
-            .or_else(|| o.get("obj"));
-        if let (Some(obj), Some(Value::Str(name))) = (obj, o.get("field")) {
+            .and_then(|o| field(o, "obj"))
+            .or_else(|| field(self, "obj"));
+        if let (Some(obj), Some(Value::Str(name))) = (obj, field(self, "field")) {
             match obj {
                 Value::Ast(a) => {
                     if let Ast::Obj(entries) = a.as_ref()
@@ -516,36 +560,40 @@ fn substitute_descriptor(
                 _ => {}
             }
         }
+        out
     }
-    let sequence = if kind == "Arr" {
-        Some("els")
-    } else if kind == "Comp" {
-        Some("args")
-    } else {
-        None
-    };
-    if let Some(key) = sequence {
-        if let Some(Value::Arr(children)) = o.get(key) {
-            let mut changed = false;
-            let mut items = Vec::new();
-            for child in children.iter() {
-                if !running() {
-                    break;
-                }
-                let new = substitute_descriptor(child, var, item, policy);
-                changed |= new.is_some();
-                items.push(new.unwrap_or_else(|| child.clone()));
-            }
-            if changed {
-                out.get_or_insert_with(|| o.as_ref().clone())
-                    .define(key, Value::Arr(Arc::new(items)));
-            }
+    fn sequence<P: SubstitutionPolicy>(
+        self,
+        policy: P,
+        mut visit: impl FnMut(Self, P) -> Option<Value>,
+    ) -> Option<Arc<Vec<Value>>> {
+        let key = if self.kind() == Kind::Array {
+            "els"
         } else {
-            invalid(key, Op::SubstituteMap, o.get(key));
-        }
+            "args"
+        };
+        let Some(Value::Arr(children)) = field(self, key) else {
+            invalid(key, Op::SubstituteMap, field(self, key));
+            return None;
+        };
+        substitution::rewrite_list::<_, false>(children, running, |n| visit(n, policy))
+            .map(Arc::new)
     }
-    if kind == "Obj" {
-        if let Some(Value::Arr(entries)) = o.get("entries") {
+
+    fn array(self, items: Arc<Vec<Value>>) -> Value {
+        let Value::Obj(o) = self else {
+            return self.clone();
+        };
+        let mut out = o.as_ref().clone();
+        out.define("els", Value::Arr(items));
+        Value::Obj(Arc::new(out))
+    }
+    fn entries<P: SubstitutionPolicy>(
+        self,
+        policy: P,
+        mut visit: impl FnMut(Self, P) -> Option<Value>,
+    ) -> Option<Value> {
+        if let Some(Value::Arr(entries)) = field(self, "entries") {
             let mut changed = false;
             let mut items = Vec::new();
             for entry in entries.iter() {
@@ -554,7 +602,7 @@ fn substitute_descriptor(
                 }
                 if let Value::Arr(pair) = entry {
                     if let Some(child) = pair.get(1) {
-                        let new = substitute_descriptor(child, var, item, policy);
+                        let new = visit(child, policy);
                         changed |= new.is_some();
                         if let Some(new) = new {
                             let mut pair = pair.as_ref().clone();
@@ -589,68 +637,88 @@ fn substitute_descriptor(
                 }
             }
             if changed {
-                out.get_or_insert_with(|| o.as_ref().clone())
-                    .define("entries", Value::Arr(Arc::new(items)));
+                let Value::Obj(o) = self else {
+                    return None;
+                };
+                let mut out = o.as_ref().clone();
+                out.define("entries", Value::Arr(Arc::new(items)));
+                return Some(Value::Obj(Arc::new(out)));
             }
         } else {
-            invalid("entries", Op::SubstituteMap, o.get("entries"));
+            invalid("entries", Op::SubstituteMap, field(self, "entries"));
         }
+        None
     }
-    if kind == "Comp" {
-        let mapped = match o.get("mappedProps") {
-            Some(Value::Obj(props)) => {
-                substitute_props(props.iter().map(|(k, v)| (k.clone(), v)), var, item, policy)
+    fn props<P: SubstitutionPolicy>(
+        self,
+        policy: P,
+        mut visit: impl FnMut(Self, P) -> Option<Value>,
+    ) -> Option<JsObject<Value>> {
+        let mut changed = false;
+        let mut out = JsObject::new();
+        let mut put = |key: String, v: &'a Value| {
+            if !running() {
+                return false;
             }
-            Some(Value::Arr(props)) => substitute_props(
-                props.iter().enumerate().map(|(i, v)| (i.to_string(), v)),
-                var,
-                item,
-                policy,
-            ),
-            _ => None,
+            let new = visit(v, policy);
+            changed |= new.is_some();
+            out.set(key, new.unwrap_or_else(|| v.clone()));
+            true
         };
-        if let Some(mapped) = mapped {
-            out.get_or_insert_with(|| o.as_ref().clone())
-                .define("mappedProps", Value::Obj(Arc::new(mapped)));
+        match field(self, "mappedProps") {
+            Some(Value::Obj(props)) => {
+                for (k, v) in props.iter() {
+                    if !put(k.clone(), v) {
+                        break;
+                    }
+                }
+            }
+            Some(Value::Arr(props)) => {
+                for (i, v) in props.iter().enumerate() {
+                    if !put(i.to_string(), v) {
+                        break;
+                    }
+                }
+            }
+            _ => return None,
         }
+        changed.then_some(out)
     }
-    if mapped_only
-        && let (Some(Value::Arr(args)), Some(Value::Obj(props)), Some(out)) =
-            (o.get("args"), o.get("mappedProps"), &mut out)
-        && args.len() == 1
-        && props.len() == 1
-        && let (Some(Value::Obj(arg)), Some((key, Value::Obj(prop)))) =
-            (args.first(), props.iter().next())
-        && Arc::ptr_eq(arg, prop)
-        && let (Some(Value::Arr(args)), Some(Value::Obj(props))) =
-            (out.get("args"), out.get("mappedProps"))
-        // Preserve the mapped writer's assignment semantics (notably __proto__).
-        && props.has_own(key)
-        && let Some(replacement) = args.first()
-    {
-        let mut props = props.as_ref().clone();
-        props.define(key, replacement.clone());
-        out.define("mappedProps", Value::Obj(Arc::new(props)));
-    }
-    out.map(|o| Value::Obj(Arc::new(o)))
-}
-fn substitute_props<'a>(
-    props: impl Iterator<Item = (String, &'a Value)>,
-    var: &Value,
-    item: &Js,
-    policy: Option<&dyn Fn(&str) -> bool>,
-) -> Option<JsObject<Value>> {
-    let mut changed = false;
-    let mut mapped = JsObject::new();
-    for (k, v) in props {
-        if !running() {
-            break;
+    fn call(
+        self,
+        args: Option<Arc<Vec<Value>>>,
+        props: Option<JsObject<Value>>,
+        mapped_only: bool,
+    ) -> Option<Value> {
+        if args.is_none() && props.is_none() {
+            return None;
         }
-        let new = substitute_descriptor(v, var, item, policy);
-        changed |= new.is_some();
-        mapped.set(k, new.unwrap_or_else(|| v.clone()));
+        let Value::Obj(o) = self else {
+            return None;
+        };
+        let mut out = o.as_ref().clone();
+        if let Some(args) = args {
+            out.define("args", Value::Arr(args));
+        }
+        if let Some(props) = props {
+            out.define("mappedProps", Value::Obj(Arc::new(props)));
+        }
+        if mapped_only
+            && let (Some(Value::Arr(args)), Some(Value::Obj(props))) = (o.get("args"), o.get("mappedProps"))
+            && args.len() == 1 && props.len() == 1
+            && let (Some(Value::Obj(arg)), Some((key, Value::Obj(prop)))) = (args.first(), props.iter().next())
+            && Arc::ptr_eq(arg, prop)
+            && let (Some(Value::Arr(args)), Some(Value::Obj(props))) = (out.get("args"), out.get("mappedProps"))
+            // The mapped writer may have discarded __proto__.
+            && props.has_own(key)
+            && let Some(replacement) = args.first()
+        {
+            let mut props = props.as_ref().clone();
+            props.define(key, replacement.clone());
+            out.define("mappedProps", Value::Obj(Arc::new(props)));
+        }
+        Some(Value::Obj(Arc::new(out)))
     }
-    changed.then_some(mapped)
 }
 
 fn is_descriptor(v: &Value) -> bool {

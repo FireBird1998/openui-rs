@@ -18,6 +18,17 @@
 //! refusal. State and raw/prepared query receivers do not impose expression
 //! depth on unvisited parts; whole-value consumption still enforces depth.
 //!
+//! `PreparedInput` was removed when supplied-input receipts were separated;
+//! use [`PreparedReferenceInput`] with [`SuppliedInput`], rather than treating
+//! the change as a type rename. See the repository's `CHANGELOG.md`.
+//!
+//! ```compile_fail
+//! use openui_lang::PreparedInput;
+//! ```
+//!
+//! `@Each` shares one substitution traversal for typed syntax and descriptor
+//! data, preserving their respective copy rules and work/room charges.
+//!
 //! # Parsing
 //!
 //! A [`Library`] comes from the JSON Schema that `library.toJSONSchema()`

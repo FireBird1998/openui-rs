@@ -188,3 +188,32 @@ and `validate_array<false>` (**2,004**), with out-of-line `scalar_json`
 (**540**), `enum_includes` (**388**) and `js_type` (**72**). Validation code on
 the parse path totals **17,544 bytes** against **17,452**. The interleaved
 measurements above, not symbol identity, establish the cost result.
+
+## Shared substitution traversal (#49 item 2, #64)
+
+Against `main` at `388ede7`, the native/data traversal refactor preserved all
+2,372 allocation-call observations from `parse_allocations` (1,186 cases,
+one-shot and 16-character streaming pushes). Input/library setup is outside
+those measurements; this existing helper includes stream construction and
+pushes, but not `finish`. The CLI differential separately compared parse,
+stream-7 and stream-1 over all 1,186 cases: 3,558 paired comparisons, 638,915
+result lines, no difference in stdout, stderr or exit status. Both golden
+regenerations also left the golden directory unchanged.
+
+Twelve interleaved main/branch/main rounds, `BENCH_RUNS=12`, covered the seven
+upstream samples, dashboard-x2/x4/x8/x16 and two `Each` defaults. Concurrent
+workspace checks made this wall-time run noisy: geometric-mean branch/main
+was 1.044 and the same-binary control was 1.010; individual median ratios ranged
+0.967–1.233 and 0.900–1.288 respectively. Those timings do not isolate a parser
+regression.
+
+A follow-up measured child-process user CPU, excluding scheduling waits, for
+three defaults exercising the changed traversal: replaced, unchanged and
+assignment templates. Each case ran 12 main/branch/main rounds with
+`BENCH_RUNS=300`, using the same optimized CLIs. Median branch/main CPU ratios
+were 1.0005, 0.9949 and 0.9984; same-binary controls were 1.0090, 0.9930 and
+0.9975. Their geometric means were **0.9979** and **0.9998**. No CPU regression
+was detectable on the changed path. These are measurements, not timing test
+assertions or a claim of identical machine instructions. The parser's separate
+295-allocation regression pins assignment-target copies even for unchanged
+templates; runtime fixtures pin work, room, output and flags for both forms.

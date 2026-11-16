@@ -6,6 +6,7 @@ The repository also holds OpenUINative, a Swift package that draws programs as n
 
 **Status:** conforms to lang-core 1.1.0 (OpenUI Lang 1.1), at commit [`47b9cae0d3b26a8c9d7514d5887a6d6608801ac9`](https://github.com/thesysdev/openui/tree/47b9cae0d3b26a8c9d7514d5887a6d6608801ac9/packages/lang-core): 972 parse cases at every streaming step and at each stream's end, 65 prompts, 3,269 merges, 939 serializations and 510 enriched error lists, plus 100,000 fuzzed programs against 1.1.0 with every difference a documented divergence. Nothing is pending. The local tags `lang-core-1.0.1` and `lang-core-0.3.0` are the last states that conformed to those versions, which aren't kept up.
 
+- [CHANGELOG.md](CHANGELOG.md): Rust API and behavior changes before release
 - [CONFORMANCE.md](CONFORMANCE.md): what's checked and how, fuzzing, what it found, and the few deliberate divergences
 - [conformance/QUIRKS.md](conformance/QUIRKS.md): reference behaviour that looks wrong but is reproduced, with draft upstream reports
 - [BENCHMARKS.md](BENCHMARKS.md): streaming speed against the reference, and why it grows linearly
@@ -78,8 +79,9 @@ When a test fails, it prints the case, the streaming step and a diff against the
 
 The Rust runtime uses one run-wide work allowance across action resumptions.
 The core measures supplied program/action/reference input; resupply can raise
-only the largest combined input floor. Prepared inputs cache setup work, and
-shared programs retain only a weak cache identity. Snapshot JSON omits undefined
+only the largest combined input floor. Prepared inputs cache setup work; `PreparedReferenceInput` and `SuppliedInput`
+replace the removed `PreparedInput` API (see [CHANGELOG.md](CHANGELOG.md)).
+Shared programs retain only a weak cache identity. Snapshot JSON omits undefined
 state entries like the bindings. Serialized room is not a general peak-memory
 bound; see [CONFORMANCE.md](CONFORMANCE.md) and [ADR 0008](docs/adr/0008-share-runtime-substitution-bodies.md).
 
@@ -182,3 +184,7 @@ credit across mutation resumes; unchanged consecutive scalar reads earn it once.
 re-initialization an omitted declared name takes its default (previous Rust
 exports wrote null), and an undeclared undefined name disappears. See
 [CONFORMANCE.md](CONFORMANCE.md) for the pinned compatibility changes.
+
+Typed and data `@Each` templates share one substitution traversal and retain
+existing work and room prices. Same-session core `with_scope` re-entry shares
+the suspended owner's work and cut flags; `reentry_accounting` pins its charges.

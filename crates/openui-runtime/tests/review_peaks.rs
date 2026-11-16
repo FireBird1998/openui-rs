@@ -43,7 +43,11 @@ fn runtime_container_capacity_keeps_both_review_peaks_below_main() {
         let before = test_alloc::peak();
         let r = evaluate_tree_with_limits(TreeInput::new(&p), &s, Limits::DEFAULT);
         let peak = test_alloc::peak().saturating_sub(before);
-        assert!(peak <= 268_851_144, "repeated-reference peak {peak}");
+        let cap = if unread { 268_851_144 } else { 268_851_088 };
+        assert!(
+            peak <= cap,
+            "repeated-reference unread={unread} peak {peak} > {cap}"
+        );
         assert_eq!(r.size_limited, !unread);
         assert!(!r.depth_limited && r.errors.is_empty());
         println!(
@@ -85,6 +89,13 @@ fn runtime_container_capacity_keeps_both_review_peaks_below_main() {
                     .with_work(1_000_000_000),
             );
             let peak = test_alloc::peak().saturating_sub(before);
+            if rows == 1 && depth == 1 {
+                // Scalar input-credit bookkeeping retains one string comparison
+                // copy plus name/index capacity; see TESTING.md (#64).
+                assert!(peak <= 9_536, "one-row scalar-credit peak {peak}");
+                assert!(!r.size_limited && !r.depth_limited && r.errors.is_empty());
+                assert_eq!(r.to_json().unwrap().len(), 1_225);
+            }
             if rows == 3 && depth == 8 {
                 assert!(peak <= 3_732_632, "unique-leaf peak {peak}");
                 assert!(r.size_limited && !r.depth_limited && r.errors.is_empty());
