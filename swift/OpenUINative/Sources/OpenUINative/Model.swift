@@ -95,10 +95,12 @@ public struct BindingMarker: Sendable, Equatable {
     var origin: Origin? = nil
 }
 
-/// An action plan: the steps a click runs, in order. Run it with
-/// `LiveProgram.run(_:of:message:form:)`, which checks the element is still
-/// the one in the tree. Drawing one grants nothing: only the session's own
-/// plan at that place in the current evaluation runs.
+/// An action plan: the steps a click runs, in order, as the evaluated tree
+/// shows them. Run it with `LiveProgram.run(_:of:message:form:)`, which
+/// checks the element is still what the tree holds there. These steps are
+/// only a picture of the plan: what runs is what the session holds at that
+/// place in its current evaluation, and a custom action can't be forged
+/// (ADR 0004).
 public struct ActionPlan: Sendable, Equatable {
     public var steps: [JSONValue]
 }

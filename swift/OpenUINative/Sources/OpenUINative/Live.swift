@@ -11,7 +11,12 @@ import OpenUIFFI
 /// Every call reaches the session's own worker thread and waits for it (ADR
 /// 0006), so a call costs a round trip plus the work. Writes and clicks
 /// re-evaluate the tree before they return, on the main actor, so the drawing
-/// and a text field being typed in never disagree.
+/// and a text field being typed in never disagree. That's cheap enough for
+/// the programs a model writes: a release build redraws `bench/dashboard`
+/// (3.5 KB) in about 0.2 ms and eight copies of it (30 KB) in about 1.5 ms,
+/// roughly 22 µs per KB of the evaluated tree's JSON, most of it decoding in
+/// Swift. Past about 350 KB of tree, a keystroke costs more than half a frame
+/// (TESTING.md, "The runtime session's cost").
 @MainActor @Observable
 public final class LiveProgram {
     /// The evaluated tree's root; nil before a program is shown, or when the
@@ -33,13 +38,24 @@ public final class LiveProgram {
     public private(set) var failure: String?
     /// How long the last evaluation took, decoding included.
     public private(set) var evaluation: Duration?
+    /// A response is still streaming into the program. The app sets it while
+    /// the program's text is arriving and clears it once the response is
+    /// complete. Meanwhile built-in buttons, inputs and selects are disabled,
+    /// a click that still arrives is ignored, and `run` refuses, as upstream's
+    /// renderer does until its response is complete. Writes, `set` and
+    /// `resume` still work.
+    public var isStreaming = false
     /// Receives every host event, in order: what the program asks the app to
     /// do (send a message to the assistant, open a URL, a custom action, a
     /// query or mutation to run). It's called after the store has changed and
     /// the tree has been evaluated again.
     @ObservationIgnored public var onHostEvent: @MainActor (HostEvent) -> Void
 
-    @ObservationIgnored private let session: RuntimeSession
+    /// Internal so tests can reach it: the viewer's count its pending
+    /// mutations, and the package's dispose it under a redraw.
+    @ObservationIgnored let session: RuntimeSession
+    /// The pristine state variables at a store version, read once.
+    @ObservationIgnored private var pristineCache: (version: UInt64, names: Set<String>)?
     @ObservationIgnored private var handle: EvaluationHandle?
     @ObservationIgnored private var hasProgram = false
     /// The last evaluated tree's root as the runtime gave it.
@@ -74,6 +90,7 @@ public final class LiveProgram {
     /// one still pristine), `persisted` values win over both, and the tree is
     /// evaluated. Call it with each new step of a stream.
     public func show(_ step: Step, persisted: JSONValue? = nil) throws {
+        pristineCache = nil
         try session.setProgram(program: step.parsed)
         hasProgram = true
         let initialized = try session.initialize(persisted: persisted?.compact)
@@ -89,10 +106,16 @@ public final class LiveProgram {
         state[name]
     }
 
-    /// Whether a state variable still holds its declared starting value, which
-    /// a later declaration may replace.
-    public func isPristine(_ name: String) -> Bool {
-        (try? session.isPristine(name: name)) ?? false
+    /// The state variables in `state` that still hold their declared starting
+    /// value, which a later declaration may replace. The session answers for
+    /// one name at a time, so this asks once per name after each change to the
+    /// store and keeps the answer until the next.
+    public var pristineNames: Set<String> {
+        if let cached = pristineCache, cached.version == version { return cached.names }
+        guard case let .object(entries) = state else { return [] }
+        let names = Set(entries.map(\.key).filter { (try? session.isPristine(name: $0)) ?? false })
+        pristineCache = (version, names)
+        return names
     }
 
     /// Sets a state variable (nil makes it undefined) and redraws if that
@@ -103,26 +126,62 @@ public final class LiveProgram {
     }
 
     /// Writes a value through a binding marker from the tree: the marker's
-    /// expression turns it into what's stored. Only a marker from this
-    /// program's current evaluation writes; one from an earlier evaluation,
-    /// which may no longer be what was drawn, throws and changes nothing.
+    /// expression turns it into what's stored. A marker from this program's
+    /// current evaluation writes. One from an earlier evaluation (a second
+    /// keystroke that arrived before the redraw) writes only while the same
+    /// marker is at its place in the tree now; otherwise it throws and
+    /// changes nothing.
     public func write(_ marker: BindingMarker, _ value: JSONValue) throws {
-        guard let origin = marker.origin, isCurrent(origin) else { throw Self.stale }
+        guard let origin = marker.origin, origin.program == id else { throw Self.stale }
+        if origin.generation != generation {
+            guard case let .binding(now)? = locate(origin.steps)?.value, now.json == marker.json else { throw Self.stale }
+        }
         _ = try session.writeBinding(marker: marker.json.compact, json: value.compact)
         try refresh()
     }
 
     /// An unbound form field's value: in `form`'s fields, or a top-level
-    /// field when `form` is nil.
+    /// field when `form` is nil; nil when it has none. It's read from `state`,
+    /// with no call to the session, by the runtime's rules: a field's
+    /// `{value, componentType}` unwraps to its value, and one written as
+    /// undefined, which keeps only its component type, has none.
     public func field(form: String?, name: String) -> JSONValue? {
-        guard let json = try? session.getField(form: form, name: name) else { return nil }
-        return try? JSONValue.parse(json)
+        let raw: JSONValue?
+        if let form, !form.isEmpty {
+            guard case .object? = state[form] else { return nil }
+            raw = state[form]?[name]
+        } else {
+            raw = state[name]
+        }
+        guard case let .object(entries)? = raw else { return raw }
+        if let value = entries.first(where: { $0.key == "value" }) { return value.value }
+        if entries.allSatisfy({ $0.key == "componentType" && $0.value.string != nil }) { return nil }
+        return raw
     }
 
     /// Writes an unbound form field and redraws if that changed anything.
+    /// `componentType` is kept beside the value and travels in events' form
+    /// state; upstream's own Input and Select give none, while a component
+    /// that writes its field itself (such as Chips) gives its name.
     public func setField(form: String?, componentType: String? = nil, name: String, to value: JSONValue?) throws {
         _ = try session.setField(form: form, componentType: componentType, name: name, json: value?.compact, save: true)
         try refresh()
+    }
+
+    /// Writes what a person typed or picked in a built-in input or select
+    /// drawn from `element`: through its binding marker, or else into its
+    /// form field. Refused, changing nothing, when what was drawn is gone
+    /// (see `current(_:form:)`).
+    func enter(_ value: JSONValue, into element: Element, form: String?) throws {
+        guard let element = current(element, form: form) else { throw Self.stale }
+        let props = PropReader(element: element)
+        if case let .binding(marker)? = props.value("value") {
+            try write(marker, value)
+        } else {
+            // Upstream's Input and Select write their field with no component
+            // type (react-lang's useStateField passes undefined); so do these.
+            try setField(form: form, name: try props.text("name").plain, to: value)
+        }
     }
 
     // MARK: Actions
@@ -130,14 +189,26 @@ public final class LiveProgram {
     /// Whether `element` is from this program's current evaluation: what's
     /// drawn from it is what the tree holds now.
     public func isCurrent(_ element: Element) -> Bool {
-        element.origin.map(isCurrent) ?? false
+        guard let origin = element.origin else { return false }
+        return origin.program == id && origin.generation == generation
     }
 
-    private func isCurrent(_ origin: Origin) -> Bool {
-        origin.program == id && origin.generation == generation
+    /// What a click or a write from `element`, drawn inside `form`, acts on.
+    /// While `element` is from the current evaluation, itself. From an earlier
+    /// evaluation of this program (an event that arrived before the redraw),
+    /// the element now at the same place, but only if it is exactly what was
+    /// drawn (the same component, props, actions and markers) inside a form
+    /// of the same name. Otherwise nil: what was drawn there is gone.
+    func current(_ element: Element, form: String?) -> Element? {
+        guard let origin = element.origin, origin.program == id else { return nil }
+        if origin.generation == generation { return element }
+        guard let found = locate(origin.steps), case let .element(now)? = found.value,
+              found.form == form, now.json == element.json else { return nil }
+        return now
     }
 
     static let stale = LiveError(description: "the program changed since this was drawn, so nothing was done")
+    static let streaming = LiveError(description: "a response is streaming, so nothing was done")
 
     /// Runs the action in `element`'s prop `prop`, as a click on it does: a
     /// plan runs its steps, an older `{type, …}` action object becomes one
@@ -145,17 +216,21 @@ public final class LiveProgram {
     /// with `message`. Host events go to `onHostEvent`, after the redraw.
     /// `form` is the form the action sits in; its fields go with the events.
     ///
-    /// Only an element from this program's current evaluation runs anything:
-    /// once the tree has been evaluated again, an element drawn from the old
-    /// one throws and nothing happens, so a click runs exactly the action
-    /// that was on screen, or none.
+    /// Only an element of this program runs anything, and only while what
+    /// was drawn from it is still there: one from the current evaluation, or
+    /// one from an earlier evaluation that is exactly the element now at its
+    /// place, in a form of the same name (see `current(_:form:)`). Otherwise
+    /// it throws and nothing happens, so a click runs exactly the action that
+    /// was on screen, or none. While `isStreaming`, it throws too.
     public func run(_ prop: String, of element: Element, message: String, form: String? = nil) throws {
-        guard let origin = element.origin, isCurrent(origin) else { throw Self.stale }
-        guard let (value, jsonPath) = locate(origin.steps + [prop]) else {
+        guard !isStreaming else { throw Self.streaming }
+        guard let element = current(element, form: form), let origin = element.origin else { throw Self.stale }
+        guard let found = locate(origin.steps + [prop]) else {
             throw LiveError(description: "nothing at \(origin.path) in the tree")
         }
+        let jsonPath = found.jsonPath
         let output: ActionOutput
-        switch value {
+        switch found.value {
         case nil, .scalar(.null)?:
             output = try session.run(action: nil, message: message, form: form)
         case .plan?:
@@ -170,6 +245,17 @@ public final class LiveProgram {
         try finish(output)
     }
 
+    /// Runs a table's action cell, as a click on it does: like a button with
+    /// no action, it asks to continue the conversation with the cell's text.
+    /// The same checks as `run`: the table must still be what was drawn.
+    func runActionCell(row: Int, column: Int, of table: Element, form: String?) throws {
+        guard !isStreaming else { throw Self.streaming }
+        guard let table = current(table, form: form), let origin = table.origin,
+              case let .scalar(.string(label))? = locate(origin.steps + ["rows", String(row), String(column)])?.value
+        else { throw Self.stale }
+        try finish(try session.run(action: nil, message: label, form: form))
+    }
+
     /// Ends the mutation a host event asked for: with `succeeded`, the plan
     /// carries on from the step after it; otherwise it stops there. Events
     /// that don't wait on a mutation are ignored.
@@ -181,7 +267,8 @@ public final class LiveProgram {
     /// Redraws, then hands over the events. The store may have changed even
     /// when redrawing fails, so the events (and a mutation's continuation)
     /// are delivered regardless, and the redraw's failure is thrown after.
-    private func finish(_ output: ActionOutput) throws {
+    /// Internal so the package's tests can make the redraw fail.
+    func finish(_ output: ActionOutput) throws {
         var redrawError: (any Error)?
         do { try refresh() } catch { redrawError = error }
         let stepFailure = output.failure.map { failure in
@@ -213,6 +300,7 @@ public final class LiveProgram {
 
     /// Evaluates the tree again if the store has changed since it last was.
     private func refresh() throws {
+        pristineCache = nil
         if try session.version() != version {
             if hasProgram { try evaluate() } else { try readStore() }
         }
@@ -234,25 +322,38 @@ public final class LiveProgram {
         evaluation = ContinuousClock.now - started
     }
 
+    /// Reads the store's version and snapshot. The version is kept only once
+    /// the snapshot has been read, so a failed read is retried on the next
+    /// refresh rather than taken as up to date.
     private func readStore() throws {
-        version = try session.version()
+        let version = try session.version()
         state = try JSONValue.parse(session.snapshot())
+        self.version = version
     }
 
-    /// The value at the end of `parts` (prop names, list indices and record
-    /// keys from the root), and its path in the runtime's JSON (`props`
-    /// before each prop name). A prop the element doesn't have is a nil
-    /// value; nil overall when the path leads nowhere.
-    private func locate(_ parts: [String]) -> (PropValue?, [String])? {
+    private struct Located {
+        /// The value; nil for a prop the element doesn't have.
+        var value: PropValue?
+        /// Its path in the runtime's JSON: `props` before each prop name.
+        var jsonPath: [String]
+        /// The name of the innermost Form above it, as a Form's view names it.
+        var form: String?
+    }
+
+    /// What's at the end of `parts` (prop names, list indices and record keys
+    /// from the root); nil when the path leads nowhere.
+    private func locate(_ parts: [String]) -> Located? {
         guard let root else { return nil }
         var current = PropValue.element(root)
         var jsonPath: [String] = []
+        var form: String?
         for (i, part) in parts.enumerated() {
             switch current {
             case let .element(element):
                 jsonPath += ["props", part]
+                if element.typeName == "Form" { form = try? PropReader(element: element).text("name").plain }
                 guard let prop = element.props.first(where: { $0.name == part }) else {
-                    return i == parts.count - 1 ? (nil, jsonPath) : nil
+                    return i == parts.count - 1 ? Located(value: nil, jsonPath: jsonPath, form: form) : nil
                 }
                 current = prop.value
             case let .list(items):
@@ -267,7 +368,7 @@ public final class LiveProgram {
                 return nil
             }
         }
-        return (current, jsonPath)
+        return Located(value: current, jsonPath: jsonPath, form: form)
     }
 
     static func describe(_ error: any Error) -> String {

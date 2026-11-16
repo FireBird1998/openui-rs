@@ -113,7 +113,7 @@ public enum NativeComponents {
             case "CardHeader": return AnyView(try CardHeaderView(props))
             case "Button": return AnyView(try ButtonView(props))
             case "Buttons": return AnyView(try ButtonsView(props, path: path))
-            case "Table": return AnyView(try TableView(props))
+            case "Table": return AnyView(try TableView(props, path: path))
             case "Form": return AnyView(try FormView(props, path: path))
             case "FormControl": return AnyView(try FormControlView(props, path: path))
             case "Input": return AnyView(try InputView(props))
@@ -414,32 +414,63 @@ struct ButtonView: View {
     let variant: String
     let destructive: Bool
     let size: String
+    /// Upstream's primary button, which checks its form's fields first: the
+    /// variant is "primary", or falsy and so primary by default.
+    let primary: Bool
     /// The element it was drawn from: a click runs this element's action, if
-    /// it's still the one in the tree.
+    /// it's still what the tree holds.
     let element: Element
     @Environment(\.liveProgram) private var live
     @Environment(\.formName) private var formName
+    @Environment(\.formContext) private var form
 
     init(_ props: PropReader) throws {
         label = try props.text("label")
         variant = props.keyword("variant", "primary")
         destructive = props.keyword("type", "normal") == "destructive"
         size = props.keyword("size", "medium")
+        primary = switch props.value("variant") {
+        case nil, .scalar(.string("primary"))?, .scalar(.string(""))?, .scalar(.bool(false))?, .scalar(.number(0))?: true
+        default: false
+        }
         element = props.element
     }
 
     var body: some View {
         let button = Button(role: destructive ? .destructive : nil) {
-            guard let live else { return }
-            live.attempt { try live.run("action", of: element, message: label.plain, form: formName) }
+            guard let live, !live.isStreaming else { return }
+            live.attempt {
+                guard let element = live.current(element, form: formName) else { throw LiveProgram.stale }
+                if let form, primary, Self.validates(PropReader(element: element).value("action")),
+                   !form.validation.validate(form.element, in: live, formName: formName) {
+                    return
+                }
+                try live.run("action", of: element, message: label.plain, form: formName)
+            }
         } label: {
             PieceText(piece: label)
         }
         .controlSize(controlSize)
+        .disabled(live?.isStreaming ?? false)
         switch variant {
         case "secondary": button.buttonStyle(.bordered)
         case "tertiary": button.buttonStyle(.borderless)
         default: button.buttonStyle(.borderedProminent).tint(destructive ? .red : .accentColor)
+        }
+    }
+
+    /// Whether a primary button checks its form before running `action`, as
+    /// upstream's does: for a plan, when a step sends something away (a
+    /// message to the assistant, a custom action, a mutation); for an older
+    /// action object or no action at all, always.
+    static func validates(_ action: PropValue?) -> Bool {
+        guard case let .plan(plan)? = action else { return true }
+        return plan.steps.contains { step in
+            switch step["type"]?.string {
+            case "continue_conversation", "custom_action": true
+            case "run": step["refType"] == .string("mutation")
+            default: false
+            }
         }
     }
 
@@ -533,13 +564,22 @@ struct TableView: View {
     let columns: [Column]
     /// Rows of cells; a row that isn't a list is drawn as one line of text.
     let rows: [PropValue]
+    /// Where the rows sit: cell `c` of row `r` is at `<rows>/r/c`.
+    let rowsPath: String
+    /// The table it was drawn from: an action cell runs only while this is
+    /// still what the tree holds.
+    let element: Element
+    @Environment(\.liveProgram) private var live
+    @Environment(\.formName) private var formName
 
-    init(_ props: PropReader) throws {
+    init(_ props: PropReader, path: String) throws {
         columns = try props.elements("columns", of: "Col").map { _, col in
             let reader = PropReader(element: col)
             return Column(label: try reader.text("label").plain, type: reader.keyword("type", "string"))
         }
         rows = try props.list("rows")
+        rowsPath = ElementPath.child(of: path, "rows")
+        element = props.element
     }
 
     var body: some View {
@@ -551,11 +591,11 @@ struct TableView: View {
                 }
             }
             Divider()
-            ForEach(Array(rows.enumerated()), id: \.offset) { _, row in
+            ForEach(Array(rows.enumerated()), id: \.offset) { r, row in
                 GridRow {
                     if case let .list(cells) = row {
                         ForEach(Array(columns.indices), id: \.self) { c in
-                            cell(c < cells.count ? cells[c] : nil, type: columns[c].type)
+                            cell(c < cells.count ? cells[c] : nil, type: columns[c].type, row: r, column: c)
                         }
                     } else {
                         Text(row.summary).foregroundStyle(.secondary).gridCellColumns(max(columns.count, 1))
@@ -565,12 +605,21 @@ struct TableView: View {
         }
     }
 
-    @ViewBuilder private func cell(_ value: PropValue?, type: String) -> some View {
+    /// An action cell is a button that, like one with no action, asks to
+    /// continue the conversation with its text; an element is drawn.
+    @ViewBuilder private func cell(_ value: PropValue?, type: String, row: Int, column: Int) -> some View {
         switch value {
         case nil, .scalar(.null)?:
             Text("")
         case let .scalar(.string(s))? where type == "action":
-            Button(s) {}.controlSize(.small)
+            Button(s) {
+                guard let live, !live.isStreaming else { return }
+                live.attempt { try live.runActionCell(row: row, column: column, of: element, form: formName) }
+            }
+            .controlSize(.small)
+            .disabled(live?.isStreaming ?? false)
+        case let .element(element)?:
+            ElementView(element: element, path: ElementPath.child(of: ElementPath.child(of: rowsPath, String(row)), String(column)))
         case let .scalar(.number(n))?:
             Text(JSONValue.format(n)).monospacedDigit()
         case let .scalar(.string(s))?:
@@ -586,12 +635,16 @@ struct FormView: View {
     let fields: [PropValue]
     let buttons: Element?
     let path: String
+    let element: Element
+    /// The fields' errors from the last check, kept while the form is drawn.
+    @State private var validation = FormValidation()
 
     init(_ props: PropReader, path: String) throws {
         name = try props.text("name").plain
         fields = try props.list("fields")
         buttons = try props.optionalElement("buttons")
         self.path = path
+        element = props.element
     }
 
     var body: some View {
@@ -602,29 +655,56 @@ struct FormView: View {
             }
         }
         .environment(\.formName, name)
+        .environment(\.formContext, FormContext(element: element, validation: validation))
     }
 }
 
+/// A labelled field. Inside a form, as upstream's does, it shows its input's
+/// error in place of the hint and marks a field whose rules say `required`.
 struct FormControlView: View {
     let label: TextPiece
     let input: Element?
     let hint: TextPiece?
     let path: String
+    /// The input's name, which its error is kept under.
+    let fieldName: String?
+    let required: Bool
+    @Environment(\.formContext) private var form
 
     init(_ props: PropReader, path: String) throws {
         label = try props.text("label")
         input = try props.element("input")
         hint = try props.optionalText("hint")
         self.path = path
+        let inputProps = input.map { PropReader(element: $0) }
+        fieldName = switch inputProps?.value("name") {
+        case let .scalar(.string(name))?: name
+        case let .record(fields)?: fields.first { $0.name == "name" }?.value.json.string
+        default: nil
+        }
+        if case let .record(rules)? = inputProps?.value("rules"),
+           case .scalar(.bool(true))? = rules.first(where: { $0.name == "required" })?.value {
+            required = true
+        } else {
+            required = false
+        }
     }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 4) {
-            PieceText(piece: label).font(.callout.weight(.medium))
+            HStack(spacing: 2) {
+                PieceText(piece: label)
+                if required { Text("*").foregroundStyle(.red) }
+            }
+            .font(.callout.weight(.medium))
             if let input {
                 ElementView(element: input, path: ElementPath.child(of: path, "input"))
             }
-            if let hint {
+            if let error = fieldName.flatMap({ form?.validation.errors[$0] }) {
+                Label(error, systemImage: "exclamationmark.circle")
+                    .font(.caption)
+                    .foregroundStyle(.red)
+            } else if let hint {
                 PieceText(piece: hint).font(.caption).foregroundStyle(.secondary)
             }
         }
@@ -647,13 +727,18 @@ struct FormControlView: View {
         element = props.element
     }
 
-    func text(in live: LiveProgram?, form: String?) -> String {
-        let current: JSONValue? = switch value {
+    /// What the field holds, read from the store's snapshot: the bound
+    /// state variable, or the form field (until it has a value, the value prop).
+    func value(in live: LiveProgram?, form: String?) -> JSONValue? {
+        switch value {
         case let .binding(marker)?: live?.value(of: marker.target)
         case let .scalar(json)?: live?.field(form: form, name: name) ?? json
         default: live?.field(form: form, name: name)
         }
-        switch current {
+    }
+
+    func text(in live: LiveProgram?, form: String?) -> String {
+        switch value(in: live, form: form) {
         case nil, .null?: return ""
         case let .string(s)?: return s
         case let .number(n)?: return JSONValue.format(n)
@@ -664,52 +749,71 @@ struct FormControlView: View {
     /// Writes what was typed or picked. SwiftUI hands a field's own new value
     /// back when it redraws one that isn't being edited; that changes nothing,
     /// so it isn't written again (through a transform, it would compound).
-    func write(_ text: String, to live: LiveProgram?, form: String?) {
-        guard let live, text != self.text(in: live, form: form) else { return }
-        live.attempt {
-            guard live.isCurrent(element) else { throw LiveProgram.stale }
-            if case let .binding(marker)? = value {
-                try live.write(marker, .string(text))
-            } else {
-                try live.setField(form: form, name: name, to: .string(text))
-            }
-        }
+    /// Returns whether it was written.
+    @discardableResult
+    func write(_ text: String, to live: LiveProgram?, form: String?) -> Bool {
+        guard let live, text != self.text(in: live, form: form) else { return false }
+        live.attempt { try live.enter(.string(text), into: element, form: form) }
+        return live.failure == nil
     }
 }
 
+/// A text field. In a form, as upstream's: focusing it clears its error,
+/// typing clears it when it has rules, and leaving it checks them.
 struct InputView: View {
     let placeholder: String
     let secure: Bool
     let field: FieldValue
+    let rules: [ValidationRule]
     @Environment(\.liveProgram) private var live
     @Environment(\.formName) private var formName
+    @Environment(\.formContext) private var form
+    @FocusState private var focused: Bool
 
     init(_ props: PropReader) throws {
         let name = try props.text("name").plain
         placeholder = try props.optionalText("placeholder")?.plain ?? name
         secure = props.keyword("type", "text") == "password"
         field = FieldValue(props, name: name)
+        rules = Validation.rules(props.value("rules"))
     }
 
     var body: some View {
         let text = Binding(
             get: { field.text(in: live, form: formName) },
-            set: { field.write($0, to: live, form: formName) }
+            set: { typed in
+                if field.write(typed, to: live, form: formName), !rules.isEmpty { form?.validation.clear(field.name) }
+            }
         )
-        if secure {
-            SecureField(placeholder, text: text)
-        } else {
-            TextField(placeholder, text: text)
+        Group {
+            if secure {
+                SecureField(placeholder, text: text)
+            } else {
+                TextField(placeholder, text: text)
+            }
+        }
+        .focused($focused)
+        .disabled(live?.isStreaming ?? false)
+        .onChange(of: focused) {
+            guard let form else { return }
+            if focused {
+                form.validation.clear(field.name)
+            } else if !rules.isEmpty {
+                form.validation.validate(field.name, value: field.value(in: live, form: formName), rules: rules)
+            }
         }
     }
 }
 
+/// A pop-up menu. In a form, picking checks its rules, as upstream's does.
 struct SelectView: View {
     let placeholder: String
     let items: [(value: String, label: String)]
     let field: FieldValue
+    let rules: [ValidationRule]
     @Environment(\.liveProgram) private var live
     @Environment(\.formName) private var formName
+    @Environment(\.formContext) private var form
 
     init(_ props: PropReader) throws {
         let name = try props.text("name").plain
@@ -719,12 +823,17 @@ struct SelectView: View {
             return (try reader.text("value").plain, try reader.text("label").plain)
         }
         field = FieldValue(props, name: name)
+        rules = Validation.rules(props.value("rules"))
     }
 
     var body: some View {
         let selection = Binding(
             get: { field.text(in: live, form: formName) },
-            set: { field.write($0, to: live, form: formName) }
+            set: { picked in
+                if field.write(picked, to: live, form: formName), !rules.isEmpty {
+                    form?.validation.validate(field.name, value: field.value(in: live, form: formName), rules: rules)
+                }
+            }
         )
         Picker(placeholder, selection: selection) {
             Text(placeholder).tag("")
@@ -734,6 +843,7 @@ struct SelectView: View {
         }
         .labelsHidden()
         .fixedSize()
+        .disabled(live?.isStreaming ?? false)
     }
 }
 

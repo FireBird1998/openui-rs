@@ -12,7 +12,9 @@ import OpenUINative
 ///
 /// Every step shown is evaluated in a runtime session, as an app would: its
 /// store carries over from step to step (what was set survives the next
-/// chunk) until the program is loaded again.
+/// chunk) until the program is loaded again. Until the shown step has every
+/// chunk, the program counts as still streaming, so its buttons and inputs
+/// are disabled as an app's are while a response arrives.
 @MainActor @Observable
 public final class Playback {
     public private(set) var chunks: [String] = []
@@ -42,8 +44,14 @@ public final class Playback {
     @ObservationIgnored public var onDrawn: ((Duration) -> Void)?
     /// The shown step evaluated, with its store; nil before the first load.
     public private(set) var live: LiveProgram?
-    /// Every host event the program has sent since it was loaded, oldest first.
+    /// The newest host events the program has sent since it was loaded,
+    /// oldest first, at most `hostEventLimit` of them.
     public private(set) var hostEvents: [HostEvent] = []
+    /// How many older host events were let go to keep within the limit. A
+    /// mutation's continuation goes with its event, which ends that run.
+    public private(set) var droppedHostEvents = 0
+    /// How many host events are kept.
+    public let hostEventLimit: Int
     /// Why the shown step couldn't be evaluated (or why there's no runtime
     /// session); the drawing then shows its parse result instead.
     public private(set) var evaluationError: String?
@@ -61,22 +69,28 @@ public final class Playback {
     private var sessionPosition = 0
     private var cache: [Int: Step] = [:]
     private let cacheBudget: Int
+    /// The memory the kept steps hold, estimated (see `cost(of:)`).
+    private(set) var keptBytes = 0
+    /// The JSON the kept steps hold, in bytes.
+    var keptJSONBytes: Int { cache.values.reduce(0) { $0 + $1.json.utf8.count } }
     private var requested: Int?
     private var navigator: Task<Void, Never>?
     private var playing: Task<Void, Never>?
     private var loading: Task<Void, Never>?
     private var handedAt = ContinuousClock.now
 
-    /// `cacheBudget` bounds the JSON kept for stepping back, in bytes. With a
-    /// `base`, the chunks are an edit-mode patch to it.
+    /// `cacheBudget` bounds the memory the steps kept for stepping back hold,
+    /// in bytes, as `cost(of:)` estimates it. With a `base`, the chunks are an
+    /// edit-mode patch to it.
     public init(core: Core, library: Library, root: String?, base: String? = nil, promptSpec: String? = nil,
-                cacheBudget: Int = 32 << 20) {
+                cacheBudget: Int = 128 << 20, hostEventLimit: Int = 200) {
         self.core = core
         self.library = library
         self.promptSpec = promptSpec
         self.root = root
         self.base = base
         self.cacheBudget = cacheBudget
+        self.hostEventLimit = max(hostEventLimit, 1)
     }
 
     /// Replaces the program with the chunks `source` yields. While they
@@ -99,6 +113,7 @@ public final class Playback {
             scalarOffsets = [0]
             position = 0
             cache = [:]
+            keptBytes = 0
             session = nil
             sessionPosition = 0
             error = nil
@@ -117,7 +132,7 @@ public final class Playback {
             }
             isStreaming = false
             // The last step was the newest push; now it's the stream's end.
-            cache[chunks.count] = nil
+            keptBytes -= cache.removeValue(forKey: chunks.count).map(Self.cost) ?? 0
             await request(target(resumingAt: resumeAt))
         }
         loading = task
@@ -267,10 +282,11 @@ public final class Playback {
     /// A new runtime session, with nothing in its store.
     private func startLive() {
         hostEvents = []
+        droppedHostEvents = 0
         evaluationError = nil
         do {
             live = try LiveProgram(library: library, promptSpec: promptSpec) { [weak self] event in
-                self?.hostEvents.append(event)
+                self?.received(event)
             }
         } catch {
             live = nil
@@ -278,12 +294,32 @@ public final class Playback {
         }
     }
 
+    /// Keeps the newest events; the ones let go take their continuations with them.
+    private func received(_ event: HostEvent) {
+        hostEvents.append(event)
+        let over = hostEvents.count - hostEventLimit
+        if over > 0 {
+            hostEvents.removeFirst(over)
+            droppedHostEvents += over
+        }
+    }
+
+    /// Whether the drawing is the shown step evaluated; otherwise it's the
+    /// step's parse result, and `evaluationError` says why.
+    public var isDrawingEvaluated: Bool { live != nil && evaluationError == nil }
+
+    /// The root of the tree the drawing shows, whose paths the selection uses:
+    /// the evaluated tree's, or the parse result's when the step couldn't be
+    /// evaluated.
+    public var drawnRoot: Element? { isDrawingEvaluated ? live?.root : step?.result.root }
+
     private func hand(_ step: Step, at target: Int, fromCache: Bool) {
         position = target
         self.step = step
         self.fromCache = fromCache
         timings = step.timings
         if let live {
+            live.isStreaming = isStreaming || target < chunks.count
             do {
                 try live.show(step)
                 timings?.evaluate = live.evaluation
@@ -305,14 +341,23 @@ public final class Playback {
     }
 
     /// Keeps `step` for stepping back, dropping the steps farthest from it
-    /// while the kept JSON is over budget.
+    /// while what's kept is over budget.
     private func keep(_ step: Step, at target: Int) {
-        cache[target] = step
-        var size = cache.values.reduce(0) { $0 + $1.json.utf8.count }
-        while size > cacheBudget, cache.count > 1,
+        keptBytes -= cache.updateValue(step, forKey: target).map(Self.cost) ?? 0
+        keptBytes += Self.cost(of: step)
+        while keptBytes > cacheBudget, cache.count > 1,
               let farthest = cache.keys.max(by: { abs($0 - target) < abs($1 - target) }) {
-            size -= cache.removeValue(forKey: farthest)?.json.utf8.count ?? 0
+            keptBytes -= cache.removeValue(forKey: farthest).map(Self.cost) ?? 0
         }
+    }
+
+    /// The memory a kept step holds, estimated from its JSON: the JSON
+    /// itself, the decoded `result` (about 6 times the JSON) and the core's
+    /// parse result in `parsed` (about 4 times), measured on
+    /// `synthetic/dashboard-x8` in a release build. The binding reports no
+    /// size for a parse result, so this is an estimate.
+    static func cost(of step: Step) -> Int {
+        step.json.utf8.count * 11
     }
 }
 

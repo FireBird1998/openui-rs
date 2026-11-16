@@ -1,8 +1,10 @@
 import OpenUINative
 import SwiftUI
 
-/// The parse result at the shown step: whether it's the reference's, its
-/// flags, the element tree, and what's unresolved, orphaned or invalid.
+/// The shown step: whether its parse result is the reference's, its flags,
+/// the tree the drawing shows (evaluated, so `@Each` rows and the branch a
+/// ternary took are elements with the drawing's paths), and what's
+/// unresolved, orphaned or invalid.
 public struct InspectorView: View {
     let playback: Playback
     let golden: GoldenSteps?
@@ -17,7 +19,7 @@ public struct InspectorView: View {
 
     public var body: some View {
         let result = playback.step?.result
-        let rows = result?.root.map(TreeRow.rows(of:)) ?? []
+        let rows = playback.drawnRoot.map(TreeRow.rows(of:)) ?? []
         ScrollViewReader { proxy in
             List(selection: Binding(
                 get: { selection.path },
@@ -36,7 +38,7 @@ public struct InspectorView: View {
                         Flag("Cut at the depth limit", on: result.depthLimited, warn: true)
                         Flag("Cut at the size limit", on: result.sizeLimited, warn: true)
                     }
-                    Section("Elements (\(rows.count))") {
+                    Section(playback.isDrawingEvaluated ? "Elements, evaluated (\(rows.count))" : "Elements (\(rows.count))") {
                         ForEach(rows) { row in
                             TreeRowLabel(row: row).tag(row.id)
                         }

@@ -60,6 +60,71 @@ import Testing
         #expect(live.failure == nil)
     }
 
+    /// Two clicks arrive before the redraw and the first leaves the button
+    /// exactly as it was drawn: the second runs too, as it would on a page.
+    @Test func aSecondClickOnAnUnchangedButtonBeforeTheRedrawRunsAgain() async throws {
+        let live = try await live("""
+        $n = 0
+        root = Stack([TextContent("n: " + $n), Button("Add", @Set($n, $n + 1))])
+        """)
+        let window = Window(live)
+        defer { window.close() }
+        for event in try window.clickEvents("/children/1", clicks: 2) { window.window.sendEvent(event) }
+        window.settle()
+        #expect(live.value(of: "$n") == .number(2))
+        #expect(live.failure == nil)
+        #expect(window.texts["/children/0"] == "n: 2")
+    }
+
+    /// Two keystrokes arrive before the redraw: both are written.
+    @Test func twoKeystrokesBeforeTheRedrawAreBothWritten() async throws {
+        let live = try await live("""
+        $q = ""
+        root = Stack([TextContent("q: " + $q), Input("q", $q)])
+        """)
+        let window = Window(live)
+        defer { window.close() }
+        try window.typeAtOnce(["a", "b"])
+        #expect(live.value(of: "$q") == .string("ab"))
+        #expect(live.failure == nil)
+        #expect(window.texts["/children/0"] == "q: ab")
+    }
+
+    /// A button drawn in a form that has since been renamed runs nothing,
+    /// though the button itself is unchanged: its event would carry another
+    /// form's fields.
+    @Test func anUnchangedButtonInARenamedFormRunsNothing() async throws {
+        var events: [HostEvent] = []
+        let live = try await live("""
+        $f = "a"
+        root = Form($f, [], Buttons([Button("Send", @ToAssistant("sent"))]))
+        """) { events.append($0) }
+        let drawn = try #require(element(live, at: "/buttons/buttons/0"))
+        try live.set("$f", to: .string("b"))
+        #expect(throws: LiveError.self) { try live.run("action", of: drawn, message: "Send", form: "a") }
+        #expect(events.isEmpty)
+        try live.run("action", of: try #require(element(live, at: "/buttons/buttons/0")), message: "Send", form: "b")
+        #expect(events.map(\.formName) == ["b"])
+    }
+
+    /// The field on screen was drawn for one name, and the tree now has
+    /// another there: what's typed in it is refused, not written to either.
+    @Test func anUnboundFieldWhoseInputChangedRefusesAStaleWrite() async throws {
+        let live = try await live("""
+        $name = "first"
+        root = Form("f", [FormControl("Name", Input($name))])
+        """)
+        let window = Window(live)
+        defer { window.close() }
+        try live.set("$name", to: .string("second"))
+        let field = try #require(window.fields.first)
+        #expect(window.window.makeFirstResponder(field))
+        try #require(field.currentEditor()).insertText("x")
+        #expect(live.field(form: "f", name: "first") == nil)
+        #expect(live.field(form: "f", name: "second") == nil)
+        #expect(live.failure?.contains("changed since this was drawn") == true)
+    }
+
     @Test func eachRowsButtonRunsItsOwnRow() async throws {
         let live = try await live("""
         $items = ["a", "b", "c"]
@@ -100,16 +165,21 @@ import Testing
         #expect(window.texts["/children/0"] == "q: hi")
     }
 
-    @Test func anElementFromAnEarlierEvaluationRunsNothing() async throws {
+    /// An element from an earlier evaluation runs only while the element at
+    /// its place now is exactly the same.
+    @Test func anElementFromAnEarlierEvaluationRunsOnlyWhileItIsStillWhatIsThere() async throws {
         let live = try await live("""
         $n = 0
-        root = Stack([Button("Add", @Set($n, $n + 1))])
+        root = Stack([Button("Add to " + $n, @Set($n, $n + 1)), Button("Reset", @Set($n, 0))])
         """)
-        let old = try #require(element(live, at: "/children/0"))
-        #expect(live.isCurrent(old))
-        try live.set("$m", to: .number(1))
-        #expect(!live.isCurrent(old))
-        #expect(throws: LiveError.self) { try live.run("action", of: old, message: "") }
+        let add = try #require(element(live, at: "/children/0"))
+        let reset = try #require(element(live, at: "/children/1"))
+        #expect(live.isCurrent(add))
+        try live.set("$n", to: .number(5))
+        #expect(!live.isCurrent(add))
+        #expect(throws: LiveError.self) { try live.run("action", of: add, message: "") }
+        #expect(live.value(of: "$n") == .number(5))
+        try live.run("action", of: reset, message: "")
         #expect(live.value(of: "$n") == .number(0))
         try live.run("action", of: try #require(element(live, at: "/children/0")), message: "")
         #expect(live.value(of: "$n") == .number(1))
@@ -125,18 +195,66 @@ import Testing
         #expect(two.value(of: "$n") == .number(0))
     }
 
-    @Test func aMarkerFromAnEarlierEvaluationWritesNothing() async throws {
-        let live = try await live("$hp = 5\nroot = Stack([Gauge(1, $hp, null)])", bindings: [("Gauge", "value")])
+    @Test func aMarkerFromAnEarlierEvaluationWritesNothingOnceItIsGone() async throws {
+        let live = try await live("""
+        $shown = true
+        $hp = 5
+        root = Stack($shown ? [Gauge(1, $hp, null)] : [TextContent("gone")])
+        """, bindings: [("Gauge", "value")])
         guard case let .binding(marker)? = element(live, at: "/children/0")?.props.first(where: { $0.name == "value" })?.value else {
             Issue.record("no marker"); return
         }
         try live.set("$other", to: .number(1))
+        try live.write(marker, .number(6))
+        #expect(live.value(of: "$hp") == .number(6))
+        try live.set("$shown", to: .bool(false))
         #expect(throws: LiveError.self) { try live.write(marker, .number(9)) }
-        #expect(live.value(of: "$hp") == .number(5))
+        #expect(live.value(of: "$hp") == .number(6))
+    }
+}
+
+@Suite @MainActor struct DrawingAtPaths {
+    /// An app's component draws its child with a path of its own choosing;
+    /// the child, from an evaluated tree, is drawn at its own path anyway.
+    @Test func anElementOfAnEvaluatedTreeIsDrawnAtItsOwnPath() async throws {
+        let live = try await live(#"root = Stack([TextContent("x"), Panel(TextContent("inside"))])"#)
+        var paths: [String: String] = [:]
+        let drawing = ElementDrawing(component: { element, _ in
+            guard element.typeName == "Panel", case let .element(child)? = element.props.first?.value else { return nil }
+            return AnyView(ElementView(element: child, path: "/somewhere/else"))
+        }, chrome: { view, element, path in
+            if case let .scalar(.string(text))? = element.props.first?.value { paths[text] = path }
+            return view
+        })
+        _ = ImageRenderer(content: ElementView(live: live).environment(\.elementDrawing, drawing)).nsImage
+        #expect(paths == ["x": "/children/0", "inside": "/children/1/child"])
     }
 }
 
 @Suite @MainActor struct DecodingProps {
+    /// Only the runtime's own marker, exactly `{__reactive: "assign", target,
+    /// expr}`, is a marker; data that comes close stays data.
+    @Test func onlyTheExactMarkerShapeIsAMarker() async throws {
+        let live = try await live("""
+        $hp = 1
+        $near = [{__reactive: "assign", target: "$hp"}, {__reactive: "assign", target: "$hp", expr: 1, more: true}, {target: "$hp", __reactive: "assign", expr: 1}, {__reactive: "set", target: "$hp", expr: 1}, {__reactive: "assign", target: 1, expr: 1}]
+        root = Stack([Gauge(1, $hp, null), Panel($near)])
+        """, bindings: [("Gauge", "value")])
+        guard case let .binding(marker)? = element(live, at: "/children/0")?.props.first(where: { $0.name == "value" })?.value,
+              case let .object(entries) = marker.json else {
+            Issue.record("the runtime's marker isn't a marker"); return
+        }
+        #expect(entries.map(\.key) == ["__reactive", "target", "expr"])
+        #expect(marker.target == "$hp")
+        guard case let .list(near)? = element(live, at: "/children/1")?.props.first?.value else {
+            Issue.record("no data"); return
+        }
+        #expect(near.count == 5)
+        for value in near {
+            guard case .record = value else { Issue.record("\(value.summary) isn't data"); continue }
+        }
+    }
+
     /// Data with a `steps` key is data: all its keys reach a component.
     @Test func dataWithAStepsKeyIsDataNotAPlan() async throws {
         let live = try await live("""
@@ -250,6 +368,120 @@ import Testing
         #expect(live.version == version)
         #expect(live.value(of: "$big") == nil)
         #expect(texts(drawing: live) == before)
+    }
+}
+
+@Suite @MainActor struct WhileAResponseStreams {
+    /// The app says a response is streaming: buttons run nothing, a click
+    /// already on its way is ignored, inputs can't be typed in, and `run`
+    /// refuses. Once it's done, they work again.
+    @Test func clicksAreIgnoredAndInputsDisabled() async throws {
+        var events: [HostEvent] = []
+        let live = try await live(liveProgram) { events.append($0) }
+        let window = Window(live)
+        defer { window.close() }
+        live.isStreaming = true
+        for event in try window.clickEvents("/children/1") { window.window.sendEvent(event) }
+        window.settle()
+        try window.click("/children/1")
+        #expect(live.value(of: "$hp") == .number(5))
+        #expect(events.isEmpty)
+        #expect(live.failure == nil)
+        #expect(window.fields.isEmpty || window.fields.allSatisfy { !$0.isEnabled })
+        #expect(throws: LiveError.self) { try live.run("action", of: try #require(element(live, at: "/children/1")), message: "Hit") }
+        #expect(live.value(of: "$hp") == .number(5))
+
+        live.isStreaming = false
+        window.settle()
+        try window.click("/children/1")
+        #expect(live.value(of: "$hp") == .number(4))
+        #expect(events.count == 1)
+        try window.type("3")
+        #expect(live.value(of: "$total") == .number(6))
+    }
+}
+
+@Suite @MainActor struct TableActions {
+    static let program = """
+    $label = "Open"
+    root = Stack([Table([Col("Go", "action"), Col("Name")], [[$label, "first"]]), TextContent("t")])
+    """
+
+    /// Just inside the bottom-left corner of the table: its last row's first cell.
+    static func firstCellOfLastRow(_ frame: CGRect) -> CGPoint { CGPoint(x: frame.minX + 8, y: frame.maxY - 6) }
+
+    @Test func anActionCellAsksToContinueWithItsText() async throws {
+        var events: [HostEvent] = []
+        let live = try await live(Self.program) { events.append($0) }
+        let window = Window(live)
+        defer { window.close() }
+        try window.click("/children/0", at: Self.firstCellOfLastRow)
+        #expect(events.map(\.type) == ["continue_conversation"])
+        #expect(events.first?.humanFriendlyMessage == "Open")
+        #expect(live.failure == nil)
+    }
+
+    /// A click on a cell of a table that has changed since it was drawn runs
+    /// nothing; once redrawn, the cell runs with its new text.
+    @Test func anActionCellRunsOnlyWhileItsTableIsWhatWasDrawn() async throws {
+        var events: [HostEvent] = []
+        let live = try await live(Self.program) { events.append($0) }
+        let window = Window(live)
+        defer { window.close() }
+        try live.set("$label", to: .string("Close"))
+        for event in try window.clickEvents("/children/0", at: Self.firstCellOfLastRow) { window.window.sendEvent(event) }
+        window.settle()
+        #expect(events.isEmpty)
+        #expect(live.failure?.contains("changed since this was drawn") == true)
+        try window.click("/children/0", at: Self.firstCellOfLastRow)
+        #expect(events.map(\.humanFriendlyMessage) == ["Close"])
+    }
+
+    @Test func anElementInACellIsDrawnAtItsPathAndRunsItsOwnAction() async throws {
+        let live = try await live("""
+        $n = 0
+        root = Stack([Table([Col("Do")], [[Button("Bump", @Set($n, $n + 1))]]), TextContent("t")])
+        """)
+        let window = Window(live)
+        defer { window.close() }
+        try window.click("/children/0/rows/0/0")
+        #expect(live.value(of: "$n") == .number(1))
+    }
+}
+
+@Suite @MainActor struct ASelect {
+    /// Picked from the menu its pop-up opens, as a person picks: a bound
+    /// select writes its state variable and shows it as the choice.
+    @Test func pickingFromItsMenuWritesItsBinding() async throws {
+        let live = try await live("""
+        $v = "a"
+        root = Stack([Select("s", [SelectItem("a", "A"), SelectItem("b", "B")], $v), TextContent("v: " + $v)])
+        """, bindings: [("Select", "value")])
+        let window = Window(live)
+        defer { window.close() }
+        let first = try window.pick("B", at: "/children/0")
+        #expect(first.map(\.title) == ["s", "A", "B"])
+        #expect(first.filter(\.checked).map(\.title) == ["A"])
+        #expect(live.value(of: "$v") == .string("b"))
+        #expect(window.texts["/children/1"] == "v: b")
+        let second = try window.pick(nil, at: "/children/0")
+        #expect(second.filter(\.checked).map(\.title) == ["B"])
+        #expect(live.value(of: "$v") == .string("b"))
+    }
+
+    /// An unbound select in a form writes its form field, with no component
+    /// type, as upstream's does.
+    @Test func pickingInAFormWritesItsField() async throws {
+        var events: [HostEvent] = []
+        let live = try await live("""
+        root = Form("f", [FormControl("U", Select("u", [SelectItem("a", "A"), SelectItem("b", "B")]))], Buttons([Button("Send", @ToAssistant("sent"))]))
+        """) { events.append($0) }
+        let window = Window(live)
+        defer { window.close() }
+        try window.pick("B", at: "/fields/0/input")
+        #expect(live.field(form: "f", name: "u") == .string("b"))
+        try window.click("/buttons/buttons/0")
+        #expect(events.first?.formState == .object([("f", .object([("u", .object([("value", .string("b"))]))]))]))
     }
 }
 

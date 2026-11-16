@@ -966,6 +966,114 @@ extension StreamingFromClaude {
     }
 }
 
+/// What the inspector, the store panel and playback keep while a program plays.
+@MainActor @Suite struct ThePanels {
+    func playback(_ program: String, schema: String = "bench", hostEventLimit: Int = 200, cacheBudget: Int = 128 << 20) async throws -> Playback {
+        let core = Core()
+        let corpus = try Corpus.load()
+        let library = try await core.library(schema: String(contentsOf: corpus.directory.appendingPathComponent(try #require(corpus.schemas[schema])), encoding: .utf8))
+        let playback = Playback(core: core, library: library, root: nil, promptSpec: corpus.bindingSpec(forSchema: schema),
+                                cacheBudget: cacheBudget, hostEventLimit: hostEventLimit)
+        await playback.load(ReplaySource(program: program, chunkSize: 5))
+        return playback
+    }
+
+    /// The inspector's tree is the tree the drawing draws: under `@Each` and a
+    /// ternary, its rows are the elements drawn, at the paths the drawing
+    /// selects them by.
+    @Test func theInspectorsTreeIsTheEvaluatedTreeTheDrawingShows() async throws {
+        let playback = try await playback("""
+        $items = ["a", "b"]
+        $wide = true
+        root = Stack([Stack(@Each($items, "x", TextContent(x))), $wide ? Card([TextContent("w")]) : TextContent("n")])
+        """)
+        var drawn: [String] = []
+        let drawing = ElementDrawing(chrome: { view, _, path in
+            drawn.append(path)
+            return view
+        })
+        let renderer = ImageRenderer(content: ElementView(live: try #require(playback.live)).environment(\.elementDrawing, drawing))
+        renderer.proposedSize = ProposedViewSize(width: 600, height: nil)
+        _ = renderer.nsImage
+        let rows = TreeRow.rows(of: try #require(playback.drawnRoot)).map(\.id)
+        #expect(rows == ["/", "/children/0", "/children/0/children/0", "/children/0/children/1", "/children/1", "/children/1/children/0"])
+        #expect(Set(rows) == Set(drawn))
+        let parsed = TreeRow.rows(of: try #require(playback.step?.result.root)).map(\.id)
+        #expect(parsed == ["/", "/children/0"])
+    }
+
+    /// Until the shown step has every chunk, the program counts as streaming,
+    /// so its buttons and inputs are disabled.
+    @Test func theProgramIsStreamingUntilTheShownStepHasEveryChunk() async throws {
+        let playback = try await playback(#"root = Stack([TextContent("a"), TextContent("b")])"#)
+        let live = try #require(playback.live)
+        #expect(!live.isStreaming)
+        await playback.move(to: playback.chunks.count / 2)
+        #expect(live.isStreaming)
+        await playback.move(to: playback.chunks.count)
+        #expect(!live.isStreaming)
+    }
+
+    /// Only the newest host events are kept, with a count of the rest; the
+    /// mutation runs waiting on events that were let go end with them.
+    @Test func hostEventsKeepTheNewestAndLetTheRestGo() async throws {
+        let playback = try await playback(#"""
+        m = Mutation("t")
+        root = Stack([Button("Go", Action([@Run(m)]))])
+        """#, schema: "react-ui", hostEventLimit: 3)
+        let live = try #require(playback.live)
+        for _ in 0..<5 {
+            guard case let .element(stack)? = live.root.map(PropValue.element),
+                  case let .list(children)? = stack.props.first?.value, case let .element(button)? = children.first
+            else { Issue.record("no button"); return }
+            try live.run("action", of: button, message: "Go")
+        }
+        #expect(playback.hostEvents.count == 3)
+        #expect(playback.droppedHostEvents == 2)
+        #expect(playback.hostEvents.allSatisfy { $0.awaitsResume })
+        let pending = try live.session.pendingContinuations()
+        #expect(pending == 3)
+        await playback.load(ReplaySource(program: "root = Stack([])", chunkSize: 5))
+        #expect(playback.hostEvents.isEmpty)
+        #expect(playback.droppedHostEvents == 0)
+    }
+
+    /// What's kept for stepping back counts the core's parse result and the
+    /// decoded one, not just the JSON: the JSON kept is a small part of the budget.
+    @Test func theStepCacheBudgetCountsMoreThanTheJSON() async throws {
+        let corpus = try Corpus.load()
+        let c = try #require(corpus.cases.first { $0.name == "bench/dashboard" })
+        let playback = try await playback(try corpus.program(of: c), cacheBudget: 2 << 20)
+        for k in stride(from: 0, through: playback.chunks.count, by: 7) { await playback.move(to: k) }
+        #expect(playback.keptBytes <= 2 << 20)
+        #expect(playback.keptBytes > 0)
+        #expect(playback.keptBytes >= 10 * playback.keptJSONBytes)
+    }
+
+    /// A value that changes while it's being edited doesn't overwrite the
+    /// edit; the panel shows the new value beside it, to take or type over.
+    @Test func aValueThatChangesWhileItIsEditedIsShownBesideTheEdit() {
+        var draft = StoreDraft("1")
+        draft.valueChanged(to: "2", editing: false)
+        #expect(draft.text == "2" && draft.newer == nil)
+        draft.text = "25"
+        draft.valueChanged(to: "3", editing: true)
+        #expect(draft.text == "25")
+        #expect(draft.newer == "3")
+        draft.valueChanged(to: "2", editing: true)
+        #expect(draft.text == "25" && draft.newer == nil)
+        draft.valueChanged(to: "4", editing: true)
+        draft.takeNewer()
+        #expect(draft.text == "4" && draft.newer == nil && !draft.isEdited)
+        draft.text = "5"
+        draft.committed(as: "5")
+        #expect(!draft.isEdited)
+        // Focused but not yet edited: the field follows the value.
+        draft.valueChanged(to: "6", editing: true)
+        #expect(draft.text == "6" && draft.newer == nil)
+    }
+}
+
 /// The viewer's drawing selects an element on a click; buttons and text
 /// fields in it still work. Drawn in a window far off screen, clicked and
 /// typed in the way AppKit delivers a person's.
@@ -1024,7 +1132,7 @@ extension StreamingFromClaude {
     }
 }
 
-// MARK: Decoding, bare drawing, selects and a missing runtime
+// MARK: Decoding, bare drawing and a missing runtime
 
 @MainActor @Suite struct LosslessDecoding {
     func roundTrips(_ json: JSONValue) -> Bool { PropValue(json: json).json == json }
@@ -1140,41 +1248,5 @@ extension StreamingFromClaude {
         #expect(playback.live == nil)
         #expect(playback.evaluationError != nil)
         #expect(playback.step?.result.root?.typeName == "TextContent")
-    }
-}
-
-/// Selects read and write as inputs do: through a binding marker, or a form field.
-@MainActor @Suite struct Selects {
-    @Test func aBoundSelectAndAFormFieldSelectReadAndWrite() async throws {
-        let core = Core()
-        let corpus = try Corpus.load()
-        let library = try await core.library(schema: String(contentsOf: corpus.directory.appendingPathComponent(try #require(corpus.schemas["react-ui"])), encoding: .utf8))
-        let live = try LiveProgram(library: library, promptSpec: corpus.bindingSpec(forSchema: "react-ui"))
-        try live.show(try await core.parseOneShot(#"""
-        $v = "b"
-        root = Stack([Select("s", [SelectItem("a", "A"), SelectItem("b", "B")], null, null, $v), Select("u", [SelectItem("a", "A")]), TextContent("v: " + $v)])
-        """#, library: library))
-        func select(_ i: Int) throws -> SelectView {
-            guard case let .list(children)? = live.root?.props.first?.value, case let .element(e) = children[i] else {
-                throw DecodeError(description: "no select \(i)")
-            }
-            return try SelectView(PropReader(element: e))
-        }
-        #expect(try select(0).field.text(in: live, form: nil) == "b")
-        try select(0).field.write("a", to: live, form: nil)
-        #expect(live.value(of: "$v") == .string("a"))
-        let version = live.version
-        try select(0).field.write("a", to: live, form: nil)
-        #expect(live.version == version)
-        #expect(try select(1).field.text(in: live, form: "f") == "")
-        try select(1).field.write("a", to: live, form: "f")
-        #expect(live.field(form: "f", name: "u") == .string("a"))
-        #expect(try select(1).field.text(in: live, form: "f") == "a")
-        // A select drawn before the last evaluation writes nothing.
-        let stale = try select(0)
-        try live.set("$other", to: .number(1))
-        stale.field.write("b", to: live, form: nil)
-        #expect(live.value(of: "$v") == .string("a"))
-        #expect(live.failure != nil)
     }
 }

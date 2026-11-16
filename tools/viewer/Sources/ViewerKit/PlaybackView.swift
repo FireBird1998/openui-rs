@@ -30,6 +30,15 @@ public struct PlaybackView: View {
             controls.padding(.horizontal).padding(.vertical, 8)
             Divider()
             VSplitView {
+                // The drawing's pane needs a minimum size of its own, never
+                // one that follows what it draws. Before the store panel, the
+                // drawing was the vertical split's pane itself with only a
+                // minimum height; its minimum width then changed as text
+                // wrapped, the split view laid out again on every change, and
+                // a fast play of bench/dashboard died with "more Update
+                // Constraints in Window passes than there are views". Either
+                // this minimum width or the horizontal split around it stops
+                // that (TESTING.md, "The viewer's layout loop").
                 HSplitView {
                     drawing.frame(minWidth: 200, minHeight: 120)
                     StorePanel(playback: playback).frame(minWidth: 180, idealWidth: 260, maxWidth: 480)
@@ -137,9 +146,9 @@ public struct PlaybackView: View {
             ScrollViewReader { proxy in
                 ScrollView(.vertical) {
                     Group {
-                        if let live = playback.live, playback.evaluationError == nil, live.root != nil {
+                        if playback.isDrawingEvaluated, let live = playback.live, live.root != nil {
                             ElementView(live: live).environment(\.elementDrawing, .inspecting)
-                        } else if playback.evaluationError != nil, let root = playback.step?.result.root {
+                        } else if !playback.isDrawingEvaluated, let root = playback.step?.result.root {
                             // Not evaluated: the parse result, as it was before there was a runtime.
                             ElementView(element: root).environment(\.elementDrawing, .inspecting)
                         } else if playback.step != nil {

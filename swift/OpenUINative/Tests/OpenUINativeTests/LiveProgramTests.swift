@@ -11,8 +11,12 @@ let liveSchema = #"""
 {"$defs": {
   "Stack": {"properties": {"children": {"type": "array"}}},
   "TextContent": {"properties": {"text": {"type": "string"}}},
-  "Button": {"properties": {"label": {"type": "string"}, "action": {}}},
-  "Input": {"properties": {"name": {"type": "string"}, "value": {}}},
+  "Button": {"properties": {"label": {"type": "string"}, "action": {}, "variant": {"type": "string"}}},
+  "Input": {"properties": {"name": {"type": "string"}, "value": {}, "rules": {}}},
+  "Select": {"properties": {"name": {"type": "string"}, "items": {"type": "array"}, "value": {}, "rules": {}}},
+  "SelectItem": {"properties": {"value": {"type": "string"}, "label": {"type": "string"}}},
+  "Table": {"properties": {"columns": {"type": "array"}, "rows": {"type": "array"}}},
+  "Col": {"properties": {"label": {"type": "string"}, "type": {"type": "string"}}},
   "Gauge": {"properties": {"level": {"type": "number"}, "value": {}, "onTap": {}}},
   "Panel": {"properties": {"child": {}}},
   "Form": {"properties": {"name": {"type": "string"}, "fields": {"type": "array"}, "buttons": {}}},
@@ -100,10 +104,11 @@ total = TextContent("Total: " + $total)
         host.layoutSubtreeIfNeeded()
     }
 
-    /// The mouse events of `clicks` clicks in the middle of what's drawn at `key`.
-    func clickEvents(_ key: String, clicks: Int = 1) throws -> [NSEvent] {
+    /// The mouse events of `clicks` clicks on what's drawn at `key`: in its
+    /// middle, or where `at` says in its frame (flipped: y grows downward).
+    func clickEvents(_ key: String, clicks: Int = 1, at: (CGRect) -> CGPoint = { CGPoint(x: $0.midX, y: $0.midY) }) throws -> [NSEvent] {
         let frame = try #require(frames[key], "nothing drawn at \(key)")
-        let point = host.convert(CGPoint(x: frame.midX, y: frame.midY), to: nil)
+        let point = host.convert(at(frame), to: nil)
         var events: [NSEvent] = []
         for _ in 0..<clicks {
             for type in [NSEvent.EventType.leftMouseDown, .leftMouseUp] {
@@ -116,9 +121,52 @@ total = TextContent("Total: " + $total)
         return events
     }
 
-    /// Clicks the middle of what's drawn at `key`, then lets it redraw.
-    func click(_ key: String) throws {
-        for event in try clickEvents(key) { window.sendEvent(event) }
+    /// Clicks the middle of what's drawn at `key` (or where `at` says), then
+    /// lets it redraw.
+    func click(_ key: String, at: (CGRect) -> CGPoint = { CGPoint(x: $0.midX, y: $0.midY) }) throws {
+        for event in try clickEvents(key, at: at) { window.sendEvent(event) }
+        settle()
+    }
+
+    /// Clicks the pop-up drawn at `key`, as a person does, and from the menu
+    /// that opens picks the item titled `title` (or, with nil, picks nothing).
+    /// Returns the menu's items as it showed them, with whether each was
+    /// checked as the current choice.
+    @discardableResult
+    func pick(_ title: String?, at key: String) throws -> [(title: String, checked: Bool)] {
+        var shown: [(title: String, checked: Bool)] = []
+        let token = NotificationCenter.default.addObserver(forName: NSMenu.didBeginTrackingNotification, object: nil, queue: nil) { note in
+            nonisolated(unsafe) let object = note.object
+            MainActor.assumeIsolated {
+                guard let menu = object as? NSMenu else { return }
+                shown = menu.items.map { ($0.title, $0.state == .on) }
+                nonisolated(unsafe) let tracked = menu
+                // The menu tracks the mouse in a loop of its own; choose from inside it.
+                let choose = Timer(timeInterval: 0.02, repeats: false) { _ in
+                    MainActor.assumeIsolated {
+                        if let title, let i = tracked.items.firstIndex(where: { $0.title == title }) {
+                            tracked.performActionForItem(at: i)
+                        }
+                        tracked.cancelTracking()
+                    }
+                }
+                RunLoop.main.add(choose, forMode: .common)
+            }
+        }
+        defer { NotificationCenter.default.removeObserver(token) }
+        try click(key)
+        settle()
+        try #require(!shown.isEmpty, "no menu opened at \(key)")
+        return shown
+    }
+
+    /// Types each of `texts` into the first text field, one after another
+    /// with no pass of the run loop between them, then lets it redraw.
+    func typeAtOnce(_ texts: [String]) throws {
+        let found = try #require(fields.first, "no text field")
+        #expect(window.makeFirstResponder(found))
+        let editor = try #require(found.currentEditor())
+        for text in texts { editor.insertText(text) }
         settle()
     }
 
@@ -229,7 +277,8 @@ total = TextContent("Total: " + $total)
         try window.click("/buttons/buttons/0")
         let event = try #require(events.first)
         #expect(event.formName == "signup")
-        #expect(event.formState["signup"]?["name"]?["value"] == .string("Ann"))
+        // Upstream's Input writes its field with no component type.
+        #expect(event.formState == .object([("signup", .object([("name", .object([("value", .string("Ann"))]))]))]))
     }
 
     @Test func aButtonWithNoActionAsksToContinueWithItsLabel() async throws {
