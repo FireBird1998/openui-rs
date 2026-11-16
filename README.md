@@ -1,6 +1,6 @@
 # openui-rs
 
-`openui-lang` is the OpenUI Lang language layer in Rust: parsing (one-shot and streaming), prop validation, system prompt generation, edit-mode merging, and turning element trees back into source. It's a port of `@openuidev/lang-core`, the TypeScript reference, and its output is the same byte for byte, after every streamed chunk, so a screen looks the same on every platform. It's written to run on phones: no input can panic it, overflow its stack or exhaust its memory.
+`openui-lang` is the OpenUI Lang language layer in Rust: parsing (one-shot and streaming), prop validation, system prompt generation, edit-mode merging, and turning element trees back into source. It's a port of `@openuidev/lang-core`, the TypeScript reference, and its output is the same byte for byte, after every streamed chunk, so a screen looks the same on every platform. It's written to run on phones, with configurable limits on program size, result room, depth and work, plus opt-in accounted evaluation memory.
 
 The repository also holds OpenUINative, a Swift package that draws programs as native SwiftUI views; the viewer, a Mac app built on it that is a development tool for the crate (both below); and will hold Dynamic News, an Android app whose story screens are written by an LLM and drawn natively with this crate. That part is still being designed ([map](.scratch/dynamic-news/map.md)).
 
@@ -40,6 +40,22 @@ for chunk in ["root = Stack([ti", "tle])\ntitle = Te", "xt(\"Hello\")"] {
 ```
 
 `cargo doc -p openui-lang --open` has the rest, with examples for prompts, merging and serializing. The core grows its stack on demand and its results free their trees without recursion, so it runs, and its results drop, on any thread. Its limits on program size, result size, depth and the work evaluating state defaults may take are one `Limits` value with documented defaults, which an embedder may raise or lower. The result-size limit scales with the program (by default the larger of 64 KiB and 64 times its size, never above 8 MiB), so a result's amplification is bounded and serializing every push of a stream has a known cost. So does the work limit (by default the larger of a million steps and 1,000 per byte, never above 64 million), so a small program can't keep it busy. Every entry point takes it: parsing and streaming, merging, converting back to source, reading JSON and generating prompts.
+
+Evaluation also has an optional portable memory allowance. It is **off by
+default**: `Limits::DEFAULT.with_peak_memory(bytes)` enables it; session/native
+`ParseLimits.peak_memory` and wasm `ParseLimits.peakMemory` carry the same optional
+setting. These are conservative reservation bytes, retained for the whole
+allowance, rather than process heap bytes. A cut sets `size_limited` and a cut
+write changes no state. See [ADR 0011](docs/adr/0011-opt-in-portable-evaluation-memory.md)
+for the weights, excluded paths and profiling rule.
+
+| Limit | Default | Configuration |
+| --- | --- | --- |
+| Program text | 1 MiB | `with_program_size` |
+| Result room | max(64 KiB, 64 × program), at most 8 MiB | `with_result_size`, or floor/amplification/ceiling |
+| Evaluation work | max(1,000,000, 1,000 × input), at most 64,000,000 | `with_work` |
+| Logical depth | 256 | `with_depth` |
+| Accounted evaluation memory | **Unset** | `with_peak_memory` |
 
 Parser conformance includes element-shaped dynamic flags, library names that shadow built-in calls, and inherited schema property names. Late-arriving aliases preserve diagnostic suppression when depth cuts are replayed. Object-valued prototype assignments remain a pinned divergence with main-compatible completed results. Alias-chain cost regressions count traversal steps and allocations at raised limits; see [TESTING.md](TESTING.md#parser-materialisation-regressions).
 

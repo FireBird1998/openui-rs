@@ -33,6 +33,7 @@ pub struct ActionFailure {
 #[derive(Debug, Default)]
 #[non_exhaustive]
 pub struct ActionRun {
+    memory: Option<crate::EvaluationMemory>,
     /// Handler arguments, in step order. Nothing has been sent to the host.
     pub events: Vec<HostEvent>,
     /// The first failure stops the plan; completed effects remain.
@@ -45,6 +46,15 @@ pub struct ActionRun {
     pub continuation: Option<ActionContinuation>,
 }
 impl ActionRun {
+    /// Portable memory accounting for this run, including previous segments.
+    /// Absent when disabled or setup refused before executing the plan.
+    pub fn memory(&self) -> Option<crate::EvaluationMemory> {
+        self.memory
+    }
+    fn record_memory(&mut self, run: &RunState) {
+        self.memory = run.limits.peak_memory().and_then(|_| run.budget.memory());
+    }
+
     /// Whether a mutation outcome is required to continue this run.
     pub fn is_suspended(&self) -> bool {
         self.continuation.is_some()
@@ -233,7 +243,9 @@ pub fn resume_action(
         .take()
         .ok_or(ActionResumeError::Consumed)?;
     if !succeeded {
-        return Ok(ActionRun::default());
+        let mut out = ActionRun::default();
+        out.record_memory(&run);
+        return Ok(out);
     }
     Ok(execute(input, store, run, true))
 }
@@ -382,6 +394,7 @@ fn execute(
         Ok(context) => context,
         Err(cause) => {
             out.fail(resuming.then_some(run.next), cause);
+            out.record_memory(&run);
             return out;
         }
     };
@@ -389,6 +402,7 @@ fn execute(
         if let Err(cause) = run.legacy(&context.input, store, &mut out) {
             out.fail(None, cause);
         }
+        out.record_memory(&run);
         return out;
     }
     let plan = run.plan.clone();
@@ -402,16 +416,22 @@ fn execute(
             Ok(e) => out.events.push(e),
             Err(cause) => out.fail(None, cause),
         };
+        out.record_memory(&run);
         return out;
     };
     let steps = match steps {
         Value::Arr(a) => a,
-        Value::Str(_) => return out,
+        Value::Str(_) => {
+            out.record_memory(&run);
+            return out;
+        }
         _ => {
             out.fail(None, invalid("actionPlan.steps is not iterable"));
+            out.record_memory(&run);
             return out;
         }
     };
+    out.record_memory(&run);
     for (index, step) in steps.iter().enumerate().skip(run.next) {
         let result = run
             .budget
@@ -421,6 +441,7 @@ fn execute(
             break;
         }
         let result = run.step(&context, store, step, supplied, &mut out);
+        out.record_memory(&run);
         match result {
             Ok(true) => {
                 run.next = index.saturating_add(1);
@@ -466,6 +487,9 @@ impl RunState {
         message: Option<Value>,
     ) -> Result<HostEvent, BindingWriteError> {
         let value = self.scope(|eval| {
+            if !eval.reserve_container_storage(5) {
+                return Err(BindingWriteError::Cut(eval.flags()));
+            }
             let mut out = JsObject::new();
             if let Some(v) = kind {
                 out.define("type", v);
@@ -708,6 +732,13 @@ impl RunState {
         out: &mut ActionRun,
     ) -> Result<bool, BindingWriteError> {
         let mutation = matches!(fields.get("refType"),Some(Value::Str(t))if t=="mutation");
+        self.scope(|e| {
+            if e.reserve_container_storage(3) {
+                Ok(())
+            } else {
+                Err(BindingWriteError::Cut(e.flags()))
+            }
+        })?;
         let mut params = JsObject::new();
         if let Some(id) = self.clone_field(fields, "statementId")? {
             params.define("statementId", id);

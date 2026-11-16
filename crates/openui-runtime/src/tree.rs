@@ -167,7 +167,8 @@ impl RuntimeError {
 pub struct TreeResult {
     /// The evaluated root. Value also preserves structurally shaped elements.
     /// None when neither the root nor its expression yields an element. Cuts
-    /// retain an existing root and fitted props.
+    /// retain an existing root and fitted props; an opt-in memory refusal may
+    /// replace unadmitted recovery values with null.
     pub root: Option<Value>,
     /// Failed props retain their original value.
     pub errors: Vec<RuntimeError>,
@@ -307,19 +308,33 @@ pub fn evaluate_tree_with_limits(
     store: &Store,
     limits: Limits,
 ) -> TreeResult {
+    evaluate_tree_with_memory(input, store, limits).0
+}
+/// Evaluate with the same limits and recovery as [`evaluate_tree_with_limits`],
+/// also returning the optional portable memory-accounting diagnostic (ADR 0011).
+/// Setup refused before evaluation has no memory account. Serialized result
+/// bytes and the existing flags are unchanged when the allowance fits.
+pub fn evaluate_tree_with_memory(
+    input: TreeInput<'_>,
+    store: &Store,
+    limits: Limits,
+) -> (TreeResult, Option<crate::EvaluationMemory>) {
     let bytes = match input::input_size(&input, limits) {
         Ok(bytes) => bytes,
         Err(depth) => {
-            return TreeResult {
-                root: input
-                    .result
-                    .root
-                    .as_ref()
-                    .map(|e| Value::Element(Arc::new(e.clone()))),
-                errors: Vec::new(),
-                size_limited: !depth,
-                depth_limited: depth,
-            };
+            return (
+                TreeResult {
+                    root: input
+                        .result
+                        .root
+                        .as_ref()
+                        .map(|e| Value::Element(Arc::new(e.clone()))),
+                    errors: Vec::new(),
+                    size_limited: !depth,
+                    depth_limited: depth,
+                },
+                None,
+            );
         }
     };
     let measured = if input.prepared_reference_values.is_none() {
@@ -381,12 +396,16 @@ pub fn evaluate_tree_with_limits(
         None
     });
     let flags = session.flags();
-    TreeResult {
-        root,
-        errors: scope.errors.into_inner(),
-        size_limited: flags.size_limited,
-        depth_limited: flags.depth_limited,
-    }
+    let memory = limits.peak_memory().and_then(|_| session.memory());
+    (
+        TreeResult {
+            root,
+            errors: scope.errors.into_inner(),
+            size_limited: flags.size_limited,
+            depth_limited: flags.depth_limited,
+        },
+        memory,
+    )
 }
 #[derive(Clone, Copy)]
 enum ReferenceLocation {
@@ -1014,7 +1033,7 @@ impl TreeScope<'_> {
     ) -> Option<Value> {
         if binding {
             self.reserve_marker(raw, eval);
-            return Some(raw.clone());
+            return Some(recover_value(raw, eval));
         }
         if let Value::Obj(o) = raw
             && let Some(Value::Str(name)) = o.get("target")
@@ -1046,18 +1065,25 @@ impl TreeScope<'_> {
         eval: &ExpressionEvaluator<'_>,
     ) -> Result<Option<Value>, EvaluationFailure> {
         if cut(eval) {
-            return Ok(Some(raw.clone()));
+            return Ok(Some(recover_value(raw, eval)));
         }
         eval.with_level(|| {
+            if !eval.reserve_value_storage(raw) {
+                return Ok(Some(recover_value(raw, eval)));
+            }
             if bindings::is_marker(raw) {
                 let value = self.marker_value(raw, binding, eval);
-                return Ok(if cut(eval) { Some(raw.clone()) } else { value });
+                return Ok(if cut(eval) {
+                    Some(recover_value(raw, eval))
+                } else {
+                    value
+                });
             }
             if expression(raw) {
                 if binding && let Some(marker) = bindings::state_marker(raw) {
                     self.reserve_marker(&marker, eval);
                     if cut(eval) {
-                        return Ok(Some(raw.clone()));
+                        return Ok(Some(recover_value(raw, eval)));
                     }
                     self.remember_marker(&marker, eval);
                     return Ok(Some(marker));
@@ -1089,10 +1115,10 @@ impl TreeScope<'_> {
                         revisit,
                     )
                 }) else {
-                    return Ok(Some(raw.clone()));
+                    return Ok(Some(recover_value(raw, eval)));
                 };
                 if result.size_limited || result.depth_limited {
-                    return Ok(Some(raw.clone()));
+                    return Ok(Some(recover_value(raw, eval)));
                 }
                 if let Some(failure) = result.failure {
                     return Err(failure);
@@ -1129,19 +1155,19 @@ impl TreeScope<'_> {
             match raw {
                 Value::Element(e) if !e.has_dynamic_props => {
                     eval.reserve_value(raw);
-                    Ok(Some(raw.clone()))
+                    Ok(Some(recover_value(raw, eval)))
                 }
                 Value::Element(e) => {
                     if self.can_reuse_stable(raw, eval) {
                         eval.reserve_value(raw);
-                        Ok(Some(raw.clone()))
+                        Ok(Some(recover_value(raw, eval)))
                     } else {
                         Ok(Some(self.element(e, eval)))
                     }
                 }
                 Value::Arr(items) => {
                     if !eval.reserve_result(2usize.saturating_add(items.len().saturating_sub(1))) {
-                        return Ok(Some(raw.clone()));
+                        return Ok(Some(recover_value(raw, eval)));
                     }
                     let mut out = Vec::new();
                     for item in items.iter() {
@@ -1152,16 +1178,16 @@ impl TreeScope<'_> {
                 Value::Obj(o) if shaped_element(o) => Ok(Some(self.shaped(raw, o, eval))),
                 Value::Obj(_) if actions::is_plan(raw) => {
                     eval.reserve_value(raw);
-                    Ok(Some(raw.clone()))
+                    Ok(Some(recover_value(raw, eval)))
                 }
                 Value::Obj(o) if o.values().any(object) => {
                     if !eval.reserve_result(2usize.saturating_add(o.len().saturating_sub(1))) {
-                        return Ok(Some(raw.clone()));
+                        return Ok(Some(recover_value(raw, eval)));
                     }
                     let mut out = JsObject::new();
                     for (k, v) in o.iter() {
                         if cut(eval) || !eval.reserve_result(text_bytes(k).saturating_add(1)) {
-                            out.set(k.clone(), v.clone());
+                            out.set(k.clone(), recover_value(v, eval));
                         } else if let Some(v) = self.prop(v, binding, eval)? {
                             out.set(k.clone(), v);
                         }
@@ -1170,11 +1196,11 @@ impl TreeScope<'_> {
                 }
                 _ => {
                     eval.reserve_value(raw);
-                    Ok(Some(raw.clone()))
+                    Ok(Some(recover_value(raw, eval)))
                 }
             }
         })
-        .unwrap_or_else(|| Ok(Some(raw.clone())))
+        .unwrap_or_else(|| Ok(Some(recover_value(raw, eval))))
     }
     fn expression_result(
         &self,
@@ -1194,6 +1220,12 @@ impl TreeScope<'_> {
                 Some(self.shaped(result.as_ref()?, o, eval))
             }
             Some(Value::Arr(ref a)) if a.iter().any(element_value) => {
+                if !result
+                    .as_ref()
+                    .is_some_and(|v| eval.reserve_value_storage(v))
+                {
+                    return result;
+                }
                 let mut out = Vec::new();
                 for item in a.iter() {
                     out.push(if element_value(item) {
@@ -1222,6 +1254,12 @@ impl TreeScope<'_> {
         let _unpaid = Inline::enter(&self.unpaid);
         match value {
             Some(Value::Arr(ref items)) => {
+                if !value
+                    .as_ref()
+                    .is_some_and(|v| eval.reserve_value_storage(v))
+                {
+                    return value;
+                }
                 // Reading these bodies was paid by the discarded projection.
                 // Restore unchanged room from its one-use receipt; recursive
                 // calls below reserve each rebuilt element's replacement.
@@ -1268,7 +1306,7 @@ impl TreeScope<'_> {
         eval: &ExpressionEvaluator<'_>,
     ) -> Option<Value> {
         if cut(eval) || !eval.reserve_result(text_bytes(key).saturating_add(1)) {
-            return Some(raw.clone());
+            return Some(recover_value(raw, eval));
         }
         let _report = (!self.inline.get())
             .then(|| ReportContext::enter(&self.report_bytes, error_bytes(owner, key)));
@@ -1289,10 +1327,10 @@ impl TreeScope<'_> {
         }
         match result {
             Ok(value) => value,
-            Err(_) if self.inline.get() => Some(raw.clone()),
+            Err(_) if self.inline.get() => Some(recover_value(raw, eval)),
             Err(failure) => {
                 self.report(owner, key, failure_message(&failure), eval);
-                Some(raw.clone())
+                Some(recover_value(raw, eval))
             }
         }
     }
@@ -1339,7 +1377,7 @@ impl TreeScope<'_> {
         }
     }
     fn owned_element(&self, mut value: Value, eval: &ExpressionEvaluator<'_>) -> Value {
-        if cut(eval) {
+        if cut(eval) || !eval.reserve_value_storage(&value) {
             return value;
         }
         eval.with_level(||{
@@ -1365,7 +1403,10 @@ impl TreeScope<'_> {
         value
     }
     fn element(&self, e: &Element, eval: &ExpressionEvaluator<'_>) -> Value {
-        if cut(eval) {
+        if cut(eval) || !eval.reserve_element_storage(e) {
+            if eval.memory().is_some_and(|m| m.limited) {
+                return Value::Null;
+            }
             return Value::Element(Arc::new(e.clone()));
         }
         eval.with_level(|| {
@@ -1408,28 +1449,33 @@ impl TreeScope<'_> {
         .unwrap_or_else(|| Value::Element(Arc::new(e.clone())))
     }
     fn shaped(&self, raw: &Value, o: &JsObject<Value>, eval: &ExpressionEvaluator<'_>) -> Value {
-        if cut(eval) {
-            return raw.clone();
+        if cut(eval) || !eval.reserve_value_storage(raw) {
+            return recover_value(raw, eval);
         }
         eval.with_level(|| {
             if matches!(o.get("hasDynamicProps"), Some(Value::Bool(false))) {
                 eval.reserve_value(raw);
-                return raw.clone();
+                return recover_value(raw, eval);
             }
             if !eval.reserve_result(2usize.saturating_add(o.len().saturating_sub(1))) {
-                return raw.clone();
+                return recover_value(raw, eval);
             }
             for (k, v) in o.iter() {
                 if !eval.reserve_result(text_bytes(k).saturating_add(1)) {
-                    return raw.clone();
+                    return recover_value(raw, eval);
                 }
                 if k != "props" && !eval.reserve_value(v) {
-                    return raw.clone();
+                    return recover_value(raw, eval);
                 }
+            }
+            if o.get("props")
+                .is_some_and(|props| !eval.reserve_object_fields_storage(props))
+            {
+                return recover_value(raw, eval);
             }
             let fields = o.get("props").map(own_fields).unwrap_or_default();
             if !eval.reserve_result(2usize.saturating_add(fields.len().saturating_sub(1))) {
-                return raw.clone();
+                return recover_value(raw, eval);
             }
             let component = match o.get("typeName") {
                 Some(Value::Str(s)) => s.as_str(),
@@ -1461,7 +1507,7 @@ impl TreeScope<'_> {
             self.remember_stable(&value, stable, eval);
             value
         })
-        .unwrap_or_else(|| raw.clone())
+        .unwrap_or_else(|| recover_value(raw, eval))
     }
 }
 enum ElementOwner {
@@ -1617,5 +1663,15 @@ fn failure_message(failure: &EvaluationFailure) -> String {
             }
         }
         _ => "Expression evaluation failed".into(),
+    }
+}
+
+// Legacy cuts preserve raw props. A memory refusal may not copy an unadmitted
+// payload merely to recover it; retain null in the reserved slot instead.
+fn recover_value(raw: &Value, eval: &ExpressionEvaluator<'_>) -> Value {
+    if cut(eval) && eval.memory().is_some_and(|m| m.limited) {
+        Value::Null
+    } else {
+        raw.clone()
     }
 }

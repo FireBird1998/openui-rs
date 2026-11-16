@@ -1290,3 +1290,23 @@ undecided/resolved tests pin exact refunds and unchanged refused insertions.
 This deliberately increases room after removal compared with main's under-refund;
 default configuration still has no implicit quota. There is no upstream bounded
 configuration/refund interface to match.
+
+
+## Opt-in evaluation-memory accounting (#55)
+
+There is no new divergence at defaults. `Limits::peak_memory()` defaults to
+`None`; completed bytes, errors, flags, work, room and pinned allocation-call
+counts remain those of main. Explicitly setting it enables the portable arena
+reservation measure in [ADR 0011](docs/adr/0011-opt-in-portable-evaluation-memory.md).
+The reference has no corresponding allowance. A refused reservation cuts with
+`size_limited`; rejected raw recovery values may become null. A refused write
+preserves Store value, pristine status and version. Completed earlier action
+steps retain their effects. One memory allowance spans mutation resumes.
+
+The public `peak_memory` tests cover the read and unread `Each(L,i,L)` witnesses,
+exact accounted thresholds, monotonic sweeps, parse defaults, descriptors,
+reentry, tree rebuilds, atomic cut writes, and the native/wasm session configuration
+field. Default CLI differential and same-binary controls are described in
+TESTING.md. This resolves #55's two goals for **accounted evaluation storage**;
+it does not turn serialized room or portable reservations into a universal heap
+bound. The ADR explicitly lists the uncounted paths.

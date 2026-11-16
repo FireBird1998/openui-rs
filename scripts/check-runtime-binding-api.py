@@ -44,6 +44,8 @@ for record_name, source in [("RuntimeLimits", native), ("ParseLimits", ffi_lib)]
     native_fields = set(native_field_order)
     core_fields = set(re.findall(r"pub (\w+):", core.split("pub struct " + record_name + " {", 1)[1].split("\n}", 1)[0]))
     assert native_fields == core_fields, record_name + " core/native drift"
+    if record_name == "ParseLimits":
+        assert "peak_memory" in native_fields, "missing opt-in memory field"
     getters, setters = wasm_accessors("ParseLimits" if record_name == "ParseLimits" else "RuntimeLimits")
     expected = {camel(field) for field in native_fields}
     assert getters == expected, f"{record_name} wasm getters {sorted(getters ^ expected)} drift"
@@ -84,7 +86,7 @@ if len(sys.argv) == 3 and sys.argv[1] == "--wasm":
         assert "export class " + name in declarations, name
     # Each limit field is both readable and writable under its native name.
     for record_name, fields in [("RuntimeLimits", ["evaluation", "referencePreparation", "maxJsonBytes", "maxActionPathBytes", "maxContinuations"]),
-                                ("ParseLimits", ["programSize", "resultSize", "resultFloor", "amplification", "resultCeiling", "depth", "work"])]:
+                                ("ParseLimits", ["programSize", "resultSize", "resultFloor", "amplification", "resultCeiling", "depth", "work", "peakMemory"])]:
         body = re.search(r"export class " + record_name + r"\s*\{(.*?)\n\}", declarations, re.S)[1]
         for field in fields:
             plain = re.search(r"^\s*" + field + r":", body, re.M)
@@ -111,6 +113,7 @@ for name, kind in [("action", "ActionHandle?"), ("continuation", "ContinuationHa
     assert f"{name}: {kind}" in api[1]
 assert "public var referencePreparation: ParseLimits" in swift
 assert "maxActionPathBytes: UInt64? = nil" in swift, "new Swift limit must stay opt-in"
+assert "peakMemory: UInt64? = nil" in swift, "memory limit must stay optional in Swift"
 assert re.search(r"public\s+protocol LibraryFunction", swift)
 assert re.search(r"func\s+call\(argumentsJson: String\)\s*throws\s*->\s*String\?", swift), "Swift callback signature drift"
 assert "case Thrown(reason: String" in swift
@@ -133,6 +136,7 @@ if len(sys.argv) == 3:
     assert "@Throws(OpenUiException::class)" in kotlin
     assert "`referencePreparation`: ParseLimits" in kotlin
     assert "`maxActionPathBytes`: kotlin.ULong? = null" in kotlin, "new Kotlin limit must stay opt-in"
+    assert "`peakMemory`: kotlin.ULong? = null" in kotlin, "memory limit must stay optional in Kotlin"
     assert "`maxPlans`:" not in kotlin
     assert "onMalformedInput(CodingErrorAction.REPORT)" in kotlin
     assert "encode(CharBuffer.wrap(value))" in kotlin

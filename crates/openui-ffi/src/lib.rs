@@ -213,6 +213,9 @@ pub struct ParseLimits {
     /// unset, it scales with the program.
     #[uniffi(default = None)]
     pub work: Option<u64>,
+    /// Optional portable evaluation-memory allowance (ADR 0011); unset by default.
+    #[uniffi(default = None)]
+    pub peak_memory: Option<u64>,
 }
 
 impl ParseLimits {
@@ -241,6 +244,9 @@ impl ParseLimits {
         }
         if let Some(n) = self.work {
             limits = limits.with_work(size(n));
+        }
+        if let Some(n) = self.peak_memory {
+            limits = limits.with_peak_memory(size(n));
         }
         limits
     }

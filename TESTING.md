@@ -1486,7 +1486,7 @@ and its 5/20-times-room shape bounds.
 after all producers ran. Only one leaf reaches the result. The test records heap
 peaks without a minimum-peak assertion that would forbid future compaction. It is a compatibility counterexample
 to a universal peak/room formula (ADR 0008), not an amplification safety test.
-`peak_measurements` continues to expose the unresolved 2,652-row read/unread
+`peak_measurements` continues to expose the default-limit 2,652-row read/unread
 `Each(L,i,L)` peaks.
 
 `admission_helpers` (64 MiB) pins adjacent serialization bytes, bounded refusal
@@ -1746,8 +1746,10 @@ isolated uses. This is not a one-level adjustment.
 The changed fourth columns of mixed/reuse work fixtures record approved false
 projection and ownership-cache prices; archived main columns are retained.
 
-The two general peak-memory goals in #55 remain deferred under ADR 0008.
-Finite shape checks and caller-input measurement are not a universal peak bound.
+The default path retains ADR 0008's compatibility obstruction to a universal
+heap bound. #55 adds only the opt-in portable evaluation allowance in ADR 0011;
+its accounting scope and exclusions are explicit. Finite shape checks and
+caller-input measurement are not a universal peak bound.
 
 Drawing retains its historical setup saturation guard separately from input
 credit. `drawing_keeps_the_existing_saturated_setup_bound_before_unread_deep_declarations`
@@ -2022,3 +2024,57 @@ Unicode word/space classes and syntax accepted by only one engine remain outside
 that compatibility claim. The URL adapter likewise does not claim complete
 WHATWG normalization or numeric-host parsing. The named checks are pinned by
 `eachRule` and compared to the vendored lang-core validators by the offline probe.
+
+
+## Opt-in evaluation-memory allowance (#55)
+
+`crates/openui-runtime/tests/peak_memory.rs` declares a 512 MiB `test_alloc`
+allocator. Its public-interface tests are:
+
+| Test | Enforced behavior |
+| --- | --- |
+| `memory_settings_do_not_invalidate_setup_only_receipts` | Memory-only settings can change without invalidating core setup receipts; setup spends no memory allowance |
+| `memory_is_opt_in_and_has_an_exact_portable_edge` | Default unset; exact and one-byte-adjacent accounted thresholds; sticky memory cuts; monotonic sweeps over scalar, string, array, object, Each, sort and filter expressions |
+| `tree_rebuilds_share_the_account_and_keep_completed_bytes` | Shared tree/rebuild reservations, exact completed bytes at/above the observed peak, flagged cuts below it, monotonic sweeps |
+| `repeated_references_cut_before_the_quadratic_result_including_unread_defaults` | 2,652-row read/unread Each witnesses cut under 2 MiB of accounted memory, with additional measured heap below one third of the same-process unset control (32 KiB tolerance) |
+| `parse_time_defaults_cut_and_streams_reaccount_each_prefix` | Parse-time evaluated defaults cut; opt-in streaming equals fresh parsing at every tested prefix; a large allowance keeps default bytes |
+| `action_resumes_keep_one_memory_allowance_and_cut_writes_change_no_state` | Adjacent whole-run thresholds, no refresh after mutation suspension, monotonic resumed runs, and unchanged Store snapshot/version/pristine status on a cut write |
+| `shaped_element_props_are_admitted_before_the_fields_helper_copies_them` | Array-, element- and AST-valued shaped props preflight immediate owned copies before helper conversion; same-process/payload-relative peak comparisons |
+| `static_element_payloads_are_admitted_before_the_root_clone` | A static element’s large directly owned string is refused before cloning the root; same-process peak comparison with 16 KiB tolerance |
+| `a_one_byte_short_allowance_refuses_the_large_public_copy` | A large public string copy is refused before allocation at exactly one byte below the accounted peak; same-process measured heap comparison with 16 KiB tolerance |
+| `descriptor_substitution_and_reentrant_scopes_share_memory_cuts` | Descriptor evaluation/substitution and evaluator callback reentry keep the same account and flags |
+| `representative_shapes_report_portable_bytes_and_loose_heap_ratios` | Representative empty-array, nested-array, object and string leaves; diagnostic heap/account ratios and only a loose `32*account + 64 KiB` finite-shape guard |
+
+The separate native/wasm `peak_memory` test binaries declare capped allocators
+and exercise the optional session configuration with unchanged completed JSON,
+cut flags and unchanged state. Native also checks parse-time defaults; wasm
+checks the generated-facing optional accessor. Existing pinned allocation/work/
+room tests are unchanged. No measured bytes or elapsed times are exact pins.
+
+On the development machine the 2,652-row witnesses measured about 199 MB unset
+and 230 KiB with the 2 MiB accounted allowance, for both read and unread defaults.
+The four representative leaf shapes measured heap/account ratios approximately
+0.403, 0.223, 0.606 and 0.333. These observations include allocator instrumentation,
+are not Linux baselines, and are not universal multipliers. Reservations are
+retained until the allowance ends, so account/heap can grow without a finite
+upper ratio on long sequential runs. The uncounted paths in ADR 0011 also rule
+out a universal heap/account multiplier.
+
+The implementation review compared against main `92c9b23cf6ebd4215ded34faa8df617782f56f1f`:
+972 corpus cases through both CLIs (`parse` and `stream`, chunk 97), and a single
+release binary linking an archived/renamed main core/runtime and the current
+core/runtime. That binary compared full bytes/flags and deterministic parse/tree/
+stream allocation-call counts over all cases and 17,359 chunk-31 pushes, plus
+10 expression work/room thresholds. The controls asserted equality; balanced
+same-binary timing batches were diagnostic only. Recreate the baseline using
+`git archive main` into a scratch directory, never a checkout that can disturb
+another agent's files. The report under `target/peak-limit-report.txt` records
+the exact commands, logs and final counts. Goldens are regenerated twice into
+fresh `target/` destinations and compared without changing `conformance/`.
+
+Scratch mutations are kept outside the worktree sources: drop the memory check;
+delay it until after Each has constructed its output; reset the retained allowance
+on mutation resume. The first is caught by the exact-edge test, the second by the
+repeated-reference allocator comparison, and the third by the action-resume test.
+The report records actual mutation runs. Allocation and work assertions never
+use a wall-clock threshold, so none of these checks depend on machine speed.

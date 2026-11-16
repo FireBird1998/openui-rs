@@ -656,7 +656,14 @@ fn extract_statements(
         .limits
         .result_size()
         .saturating_sub(ctx.size - expressions_size);
-    let evaluated = state_defaults(state, room, ctx.limits.depth(), work, reuse);
+    let evaluated = state_defaults(
+        state,
+        room,
+        ctx.limits.depth(),
+        work,
+        ctx.limits.peak_memory(),
+        reuse,
+    );
     ctx.frame.size_limited |= evaluated.size_limited;
     ctx.frame.limited |= evaluated.depth_limited;
     // The evaluated defaults are written in the expressions' place: what's

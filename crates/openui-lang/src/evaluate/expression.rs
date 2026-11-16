@@ -434,7 +434,10 @@ impl<'a> ExpressionValue<'a> {
             let mut out = Vec::new();
             if let Some(values) = values.take() {
                 for value in values {
-                    if !step(1) || !builder_fits(out.len().saturating_add(3)) {
+                    if !step(1)
+                        || !memory::container(1)
+                        || !builder_fits(out.len().saturating_add(3))
+                    {
                         break;
                     }
                     if out.len() == out.capacity() {
@@ -496,7 +499,10 @@ impl<'a> ExpressionValue<'a> {
         let mut build = || {
             if let Some(fields) = fields.take() {
                 for (key, value) in fields {
-                    if !step(key.len().saturating_add(1)) {
+                    if !step(key.len().saturating_add(1))
+                        || !memory::container(1)
+                        || !memory::text(key.len())
+                    {
                         break;
                     }
                     if !out.has_own(key) {
@@ -789,6 +795,45 @@ impl ExpressionEvaluator<'_> {
         let mut ok = false;
         (self.operate)(&mut || ok = step(units));
         ok
+    }
+    /// Admit known logical container slots before a caller builds a new
+    /// evaluation container. Keys and descendants need their own reservations.
+    /// This consumes only portable memory allowance, never work or result room.
+    pub fn reserve_container_storage(&self, slots: usize) -> bool {
+        let mut ok = false;
+        (self.operate)(&mut || ok = memory::container(slots));
+        ok
+    }
+    /// Admit a shallow value rebuild in the optional memory allowance before
+    /// copying it. Descendants need their own admissions. No work or room is
+    /// added, and the unset path performs no shape walk.
+    pub fn reserve_value_storage(&self, value: &Value) -> bool {
+        let mut ok = false;
+        (self.operate)(&mut || {
+            ok = LIMITS.with(|l| l.memory.get().is_none() || memory::value(value))
+        });
+        ok
+    }
+    /// Admit an own-fields conversion before a caller constructs it. Objects
+    /// can borrow fields; arrays, elements and syntax may copy immediate text
+    /// and child headers. Lazy descendants are not traversed by this preflight.
+    pub fn reserve_object_fields_storage(&self, value: &Value) -> bool {
+        let mut ok = false;
+        (self.operate)(&mut || ok = memory::object_fields(value));
+        ok
+    }
+    /// Admit a shallow element rebuild before copying its props or text.
+    /// Its descendants are admitted separately. No work/room charge is added.
+    pub fn reserve_element_storage(&self, element: &Element) -> bool {
+        let mut ok = false;
+        (self.operate)(&mut || ok = memory::element(element));
+        ok
+    }
+    /// The active allowance's portable memory accounting, when enabled.
+    pub fn memory(&self) -> Option<EvaluationMemory> {
+        let mut usage = None;
+        (self.operate)(&mut || usage = LIMITS.with(|l| l.memory.get().map(|m| m.usage)));
+        usage
     }
     /// Remaining logical value levels at this position, including enclosing
     /// callbacks and foreign sessions. A successful walk can only be reused
@@ -1505,6 +1550,7 @@ impl<'a> EvaluationSession<'a> {
             l.size_limited.set(false);
             l.depth_limited.set(false);
             l.cut.set(None);
+            l.memory.set(limits.peak_memory().map(memory::Account::new));
         });
         ACCOUNT.with(|a| {
             let mut account = Account::new(limits, input_bytes);
@@ -1616,6 +1662,12 @@ impl<'a> EvaluationSession<'a> {
     /// The aggregate cut flags, including cuts preceding the latest evaluation.
     pub fn flags(&self) -> EvaluationFlags {
         self.flags.get()
+    }
+    /// Accounted memory high-water mark and typed memory-cut diagnostic.
+    /// `None` means accounting is disabled. This survives `with_scope` and
+    /// suspension; unlike per-operation result room it is never refreshed.
+    pub fn memory(&self) -> Option<EvaluationMemory> {
+        self.root_context(|| LIMITS.with(|l| l.memory.get().map(|m| m.usage)))
     }
 }
 
@@ -1973,6 +2025,9 @@ fn evaluate_fields(
                 parent: scope,
             },
         );
+    }
+    if !memory::object(fields) {
+        return result(None);
     }
     let _texts = ArgumentTexts::enter();
     let _failure = FailureEntry::enter();
@@ -2978,7 +3033,9 @@ impl Drop for DiscardedResult {
         DEPTH.with(|d| d.borrow_mut().cut = self.depth_cut.clone());
         // Exhausted work affects the rest of the evaluation. Room consumed
         // solely by the discarded intermediate does not.
-        if LIMITS.with(|l| l.cut.get() == Some(Cut::Work)) || crate::progress::stalled_so_far() {
+        if LIMITS.with(|l| matches!(l.cut.get(), Some(Cut::Work | Cut::Memory)))
+            || crate::progress::stalled_so_far()
+        {
             return;
         }
         let ceiling = ACCOUNT.with(|a| {
@@ -4237,6 +4294,9 @@ pub(super) fn data_child(owner: &Value, child: &Value) -> Js {
     data_value(child)
 }
 pub(super) fn data_value(value: &Value) -> Js {
+    if !memory::value(value) {
+        return Js::Null;
+    }
     if !step(1) {
         return Js::Null;
     }
@@ -4298,6 +4358,9 @@ pub(super) fn output_data(value: &Value) -> Value {
     }
 }
 pub(super) fn output_props(el: &Element) -> Value {
+    if !memory::object(&el.props) {
+        return Value::Null;
+    }
     let Some(_level) = Level::enter() else {
         return Value::Null;
     };
@@ -4318,6 +4381,9 @@ pub(super) fn output_props(el: &Element) -> Value {
     }
 }
 fn expand_props(props: &JsObject<Value>) -> Js {
+    if !memory::object(props) {
+        return Js::Null;
+    }
     let mut out = JsObject::new();
     for (key, value) in props.iter() {
         if !step(key.len().saturating_add(1)) {
@@ -4336,7 +4402,7 @@ pub(super) fn expand(value: &Js) -> Js {
     };
     match value.as_ref() {
         Value::Arr(items) => {
-            if !step(items.len()) {
+            if !step(items.len()) || !memory::container(items.len()) {
                 return Js::Null;
             }
             Js::Arr(Arc::new(
@@ -4426,6 +4492,9 @@ pub(super) fn elementwise_data(value: &Js, f: &dyn Fn(f64) -> f64) -> Js {
     Js::Data(Arc::new(map_data(value, f)))
 }
 fn map_data(value: &Value, f: &dyn Fn(f64) -> f64) -> Value {
+    if !memory::value(value) {
+        return Value::Null;
+    }
     crate::stack::grow_stack!(map_data(value, f), budget else Value::Null);
     let Some(_level) = Level::enter() else {
         return Value::Null;
@@ -4447,7 +4516,7 @@ fn map_data(value: &Value, f: &dyn Fn(f64) -> f64) -> Value {
 pub(super) fn data_member(value: &Value, field: &str) -> Js {
     match value {
         Value::Arr(items) if field != "length" => {
-            if !step(items.len()) {
+            if !step(items.len()) || !memory::container(items.len()) {
                 return Js::Null;
             }
             // Own object fields and missing scalar fields can be kept as
@@ -4467,7 +4536,7 @@ pub(super) fn data_member(value: &Value, field: &str) -> Js {
                         Value::Obj(o) => {
                             let value = o.get(field);
                             if let Some(Value::Str(text)) = value
-                                && !step(text.len())
+                                && (!step(text.len()) || !memory::text(text.len()))
                             {
                                 Value::Null
                             } else {
@@ -4743,6 +4812,7 @@ impl Saved {
             l.size_limited.swap(&self.limits.size_limited);
             l.depth_limited.swap(&self.limits.depth_limited);
             l.cut.swap(&self.limits.cut);
+            l.memory.swap(&self.limits.memory);
         });
         ACCOUNT.with(|a| std::mem::swap(&mut *a.borrow_mut(), &mut self.account));
         DEPTH.with(|d| std::mem::swap(&mut *d.borrow_mut(), &mut self.depth));

@@ -254,7 +254,7 @@ const openuiSurface = new Map([
     accessors: { programSize: openuiOptionalLimitField, resultSize: openuiOptionalLimitField,
       resultFloor: openuiOptionalLimitField, amplification: openuiOptionalLimitField,
       resultCeiling: openuiOptionalLimitField, depth: openuiOptionalLimitField,
-      work: openuiOptionalLimitField },
+      work: openuiOptionalLimitField, peakMemory: openuiOptionalLimitField },
   }],
   [ComponentLibrary, { construct: openuiSpec([openuiStr]), methods: { free: openuiFree } }],
   [StreamSession, {

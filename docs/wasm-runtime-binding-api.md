@@ -52,12 +52,15 @@ session.free(): void
 ```
 
 `new ParseLimits()` has optional bigint properties programSize, resultSize,
-resultFloor, amplification, resultCeiling, depth, work; defaults are undefined.
+resultFloor, amplification, resultCeiling, depth, work, peakMemory; defaults are undefined.
 `new RuntimeLimits()` has evaluation and referencePreparation (ParseLimits),
 maxJsonBytes (8388608n), maxContinuations (64n), optional maxActionPathBytes
 (undefined). Set e.g. 4096n for a smaller opt-in retained-path cap. referencePreparation.depth is
 32768n; all other ParseLimits fields default to undefined. Limit getters return
-copies: edit one, assign it back, then free the copy. Limits are fixed when a
+copies: edit one, assign it back, then free the copy. `ParseLimits.peakMemory`
+is an optional bigint (undefined by default), measured in portable reservation
+bytes under ADR 0011. Set it on `RuntimeLimits.evaluation`; resumes keep one
+run-wide allowance. It is not a process-heap limit. Limits are fixed when a
 session is constructed. `ActionHandle.retain()` returns another opaque token;
 the package uses this to borrow an optional action without consuming the caller's
 object (wasm-bindgen cannot lower Option<&ActionHandle>).

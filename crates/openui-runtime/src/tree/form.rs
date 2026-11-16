@@ -213,6 +213,9 @@ pub(super) fn form_payload(
             if !eval.read_state_value(form, raw) || !eval.reserve_value(raw) {
                 return Err(BindingWriteError::Cut(eval.flags()));
             }
+            if !eval.reserve_container_storage(1) {
+                return Err(BindingWriteError::Cut(eval.flags()));
+            }
             let mut out = JsObject::new();
             out.define(
                 eval.copy_text(form)
@@ -223,6 +226,9 @@ pub(super) fn form_payload(
         }
     }
     let snapshot = store.snapshot();
+    if !eval.reserve_container_storage(snapshot.len()) {
+        return Err(BindingWriteError::Cut(eval.flags()));
+    }
     let mut out = JsObject::new();
     let admitted = (|| {
         if !eval.reserve_result(2) {

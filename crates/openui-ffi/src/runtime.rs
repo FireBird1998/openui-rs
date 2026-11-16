@@ -1211,6 +1211,7 @@ impl From<crate::ParseLimits> for openui_session::ParseLimits {
             result_ceiling: v.result_ceiling,
             depth: v.depth,
             work: v.work,
+            peak_memory: v.peak_memory,
         }
     }
 }

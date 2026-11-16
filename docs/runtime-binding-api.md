@@ -125,8 +125,9 @@ StaleHandle, ConsumedHandle, EvictedHandle, InvalidHandle, InvalidMarker; Invali
 RefusedWrite(reason), Evaluation(reason), LimitExceeded(reason), Worker(reason), and existing
 InvalidSchema(reason), InvalidPromptSpec(reason), Prompt(reason). Reasons are
 String. ActionOutput.failure.error and StateRefusal.error use the same typed error.
-ParseLimits retains seven optional UInt64/ULong fields: programSize, resultSize,
-resultFloor, amplification, resultCeiling, depth, work; all default to absent.
+ParseLimits has eight optional UInt64/ULong fields: programSize, resultSize,
+resultFloor, amplification, resultCeiling, depth, work, peakMemory; all default to absent.
+peakMemory counts portable evaluation reservations (ADR 0011), not process heap.
 RuntimeSession's default constructor uses RuntimeLimits defaults; withLimits
 takes a record containing the four existing fields and optional maxActionPathBytes.
 

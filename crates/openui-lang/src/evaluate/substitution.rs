@@ -158,7 +158,7 @@ impl Template for &Ast {
         value: &Js,
         _: P,
     ) -> std::ops::ControlFlow<Option<Ast>> {
-        if !step(1) {
+        if !step(1) || !memory::ast(self) {
             return std::ops::ControlFlow::Break(Some(Ast::Null));
         }
         if matches!(self, Ast::Ref(name) if name == var) {
@@ -376,6 +376,9 @@ pub(super) fn rewrite_list<'a, T: Clone, const LAZY: bool>(
     running: impl Fn() -> bool,
     mut visit: impl FnMut(&'a T) -> Option<T>,
 ) -> Option<Vec<T>> {
+    if !memory::container(nodes.len()) {
+        return None;
+    }
     let mut changed = false;
     let mut out = if LAZY { None } else { Some(Vec::new()) };
     for (i, node) in nodes.iter().enumerate() {

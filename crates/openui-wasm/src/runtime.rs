@@ -496,6 +496,14 @@ impl ParseLimits {
     pub fn set_work(&mut self, value: Option<u64>) {
         self.inner.work = value;
     }
+    #[wasm_bindgen(getter, js_name = peakMemory)]
+    pub fn peak_memory(&self) -> Option<u64> {
+        self.inner.peak_memory
+    }
+    #[wasm_bindgen(setter, js_name = peakMemory)]
+    pub fn set_peak_memory(&mut self, value: Option<u64>) {
+        self.inner.peak_memory = value;
+    }
 }
 impl Default for ParseLimits {
     fn default() -> Self {

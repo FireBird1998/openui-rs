@@ -36,6 +36,7 @@ pub struct Limits {
     depth: usize,
     /// Set with [`Limits::with_work`]; `None` scales with the program.
     work: Option<usize>,
+    peak_memory: Option<usize>,
 }
 
 /// The default work limit's floor, its steps per byte of program, and its
@@ -56,6 +57,7 @@ impl Limits {
         result_ceiling: MAX_RESULT_SIZE,
         depth: MAX_DEPTH,
         work: None,
+        peak_memory: None,
     };
 
     /// How many bytes of a program are read; the rest is ignored as if the
@@ -113,6 +115,34 @@ impl Limits {
     /// [`Limits::work_for`]).
     pub const fn work(&self) -> Option<usize> {
         self.work
+    }
+
+    /// Optional evaluation-memory allowance in portable reservation bytes.
+    /// Unset by default. This is the conservative arena measure in ADR 0011,
+    /// not allocator bytes: reservations are retained for the whole allowance,
+    /// including action resumes. A refusal sets the existing `size_limited` flag.
+    /// Parser syntax, materialisation, host callbacks, bookkeeping and stacks are
+    /// excluded. This bounds admitted evaluation storage, not process heap.
+    pub const fn peak_memory(&self) -> Option<usize> {
+        self.peak_memory
+    }
+
+    /// Enable the evaluation-memory allowance. See [`Self::peak_memory`].
+    #[must_use]
+    pub const fn with_peak_memory(self, bytes: usize) -> Limits {
+        Limits {
+            peak_memory: Some(bytes),
+            ..self
+        }
+    }
+
+    /// Disable evaluation-memory accounting, restoring the default path.
+    #[must_use]
+    pub const fn without_peak_memory(self) -> Limits {
+        Limits {
+            peak_memory: None,
+            ..self
+        }
     }
 
     /// How many steps evaluating a program's state defaults may take, for a

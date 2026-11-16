@@ -49,7 +49,8 @@ pub struct PreparedStart {
 pub enum SuppliedProgram<'a> {
     /// A borrowed program measured as caller setup.
     Raw(&'a crate::ParseResult),
-    /// A core receipt; reuse under different limits is refused.
+    /// A core receipt; reuse under different measuring limits is refused.
+    /// The independent evaluation-memory allowance does not affect measurement.
     Prepared(&'a PreparedProgram),
 }
 /// Starting input, either measured now or retained as a receipt across resumes.
@@ -116,11 +117,19 @@ pub(super) fn supply(
 ) -> Result<SuppliedInputReceipt, InputSupplyError> {
     let program = match parts.program {
         SuppliedProgram::Raw(p) => PreparedProgram::new(p, limits),
-        SuppliedProgram::Prepared(p) if p.limits == limits => *p,
+        SuppliedProgram::Prepared(p)
+            if p.limits.without_peak_memory() == limits.without_peak_memory() =>
+        {
+            *p
+        }
         _ => return Err(InputSupplyError::DifferentLimits),
     };
     let start = match parts.start {
-        SuppliedStart::Prepared(s) if s.limits == limits => *s,
+        SuppliedStart::Prepared(s)
+            if s.limits.without_peak_memory() == limits.without_peak_memory() =>
+        {
+            *s
+        }
         SuppliedStart::Prepared(_) => return Err(InputSupplyError::DifferentLimits),
         SuppliedStart::Raw {
             action,

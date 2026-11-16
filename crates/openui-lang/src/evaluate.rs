@@ -26,6 +26,7 @@ use crate::validation::{element_parts, is_ast_node};
 
 mod descriptor;
 mod expression;
+mod memory;
 mod substitution;
 use expression::expression_bytes;
 pub use expression::{
@@ -35,6 +36,7 @@ pub use expression::{
     PreparedStart, SuppliedInput, SuppliedInputReceipt, SuppliedProgram, SuppliedStart,
     evaluate_expression, evaluate_expression_with_limits,
 };
+pub use memory::EvaluationMemory;
 
 pub(crate) use expression::{
     validation_default, validation_name, validation_node, validation_work,
@@ -265,6 +267,7 @@ const VALUE_LEVELS_PER_LEVEL: usize = 3;
 /// every coercion would touch nearly every function here.
 #[derive(Clone)]
 struct EvalLimits {
+    memory: Cell<Option<memory::Account>>,
     /// About how many bytes may still be built.
     room: Cell<usize>,
     /// How many steps are left.
@@ -288,13 +291,14 @@ enum Cut {
     Room,
     Work,
     Depth,
+    Memory,
 }
 
 impl EvalLimits {
     fn cut_by(&self, cut: Cut) {
         match cut {
             Cut::Depth => self.depth_limited.set(true),
-            Cut::Room | Cut::Work => self.size_limited.set(true),
+            Cut::Room | Cut::Work | Cut::Memory => self.size_limited.set(true),
         }
         if self.cut.get().is_none() {
             self.cut.set(Some(cut));
@@ -317,6 +321,7 @@ thread_local! {
             max_depth: Cell::new(0),
             size_limited: Cell::new(false),
             depth_limited: Cell::new(false),
+            memory: Cell::new(None),
             cut: Cell::new(None),
         }
     };
@@ -352,9 +357,12 @@ fn draw(l: &EvalLimits, which: Cut, cost: usize) -> bool {
     if l.cut.get().is_some() {
         return false;
     }
+    if which == Cut::Room && !memory::reserve_in(l, cost) {
+        return false;
+    }
     let counter = match which {
         Cut::Room => &l.room,
-        Cut::Work | Cut::Depth => &l.work,
+        Cut::Work | Cut::Depth | Cut::Memory => &l.work,
     };
     match counter.get().checked_sub(cost) {
         Some(left) => {
@@ -538,6 +546,7 @@ pub(crate) fn state_defaults(
     room: usize,
     depth: usize,
     work: usize,
+    peak_memory: Option<usize>,
     reuse: Option<&mut Reuse>,
 ) -> Evaluated {
     let mut out = Evaluated {
@@ -553,13 +562,20 @@ pub(crate) fn state_defaults(
     }
     let max_depth = depth.saturating_mul(VALUE_LEVELS_PER_LEVEL);
     LIMITS.with(|l| {
+        l.memory.set(peak_memory.map(memory::Account::new));
         l.room.set(room);
         l.work.set(work);
         l.depth.set(0);
         l.max_depth.set(max_depth);
     });
     let mut scratch = Reuse::default();
-    let reuse = reuse.unwrap_or(&mut scratch);
+    // Cached runs have work/room receipts, not memory reservations. The
+    // opt-in path evaluates afresh so every push accounts the same way.
+    let reuse = if peak_memory.is_some() {
+        &mut scratch
+    } else {
+        reuse.unwrap_or(&mut scratch)
+    };
     // What the last push found holds while every default before it is as it
     // was, under the same depth limit.
     let mut in_step = reuse.max_depth == max_depth;
@@ -644,6 +660,7 @@ pub(crate) fn state_defaults(
     LIMITS.with(|l| {
         l.room.set(usize::MAX);
         l.work.set(usize::MAX);
+        l.memory.set(None);
     });
     READ.with(|r| r.borrow_mut().clear());
     READ_LOG.with(|l| l.borrow_mut().clear());
@@ -917,7 +934,10 @@ impl Record {
                     })
                 }
             }
-            Outcome::RanOut { of: Cut::Depth, .. } => Decision::Evaluate(left),
+            Outcome::RanOut {
+                of: Cut::Depth | Cut::Memory,
+                ..
+            } => Decision::Evaluate(left),
         }
     }
 
@@ -1268,6 +1288,9 @@ pub(crate) fn has_runtime(value: &Value) -> bool {
 /// evaluated, reading `declared`, the defaults declared before it. An object
 /// literal shaped like an AST node isn't evaluated (a divergence).
 fn state_default(value: &Value, declared: &Declared) -> Js {
+    if !memory::value(value) {
+        return Js::Null;
+    }
     crate::stack::grow_stack!(state_default(value, declared), budget else Js::Null);
     match value {
         Value::Ast(ast) => {
@@ -1321,6 +1344,9 @@ fn from_value(value: &Value) -> Js {
 fn from_value_in(value: &Value, limits: &EvalLimits) -> Js {
     crate::stack::grow_stack!(from_value(value), budget else Js::Null);
     if !draw(limits, Cut::Work, 1) {
+        return Js::Null;
+    }
+    if !memory::value(value) {
         return Js::Null;
     }
     match value {
@@ -1395,6 +1421,9 @@ fn from_value_in(value: &Value, limits: &EvalLimits) -> Js {
 
 /// Convert an object's entries as they are priced, without copying it first.
 fn from_object(object: &JsObject<Value>) -> Js {
+    if !memory::object(object) {
+        return Js::Null;
+    }
     let mut out = JsObject::new();
     for (key, value) in object.iter() {
         if crate::progress::stalled_so_far() {
@@ -1411,6 +1440,9 @@ fn from_object(object: &JsObject<Value>) -> Js {
 /// A runtime expression read as a value, built whole: the object its JSON
 /// reads back as, for the result or a literal.
 fn whole_ast(node: &Ast) -> Js {
+    if !memory::syntax(node) {
+        return Js::Null;
+    }
     out_of_work(|| from_value(&json_shaped_ast(node)))
 }
 
@@ -1424,6 +1456,9 @@ fn ast_property(node: &Arc<Ast>, key: &str) -> Option<Js> {
         return Some(value);
     }
     let (_, field) = fields(node).into_iter().find(|(k, _)| *k == key)?;
+    if !memory::field(&field) {
+        return Some(Js::Null);
+    }
     let read = |node: &Ast| Js::Ast(Arc::new(node.clone()));
     let value = match field {
         Field::Text(s) => Js::Str(s.into()),
@@ -1549,6 +1584,7 @@ fn to_value_mode<const PRESERVE: bool, const CHARGE: bool>(
         return Some(Value::Null);
     }
     let value = match js {
+        _ if !memory::js(js) => return Some(Value::Null),
         Js::Undefined | Js::Function { .. } | Js::Ast(_) | Js::Data(_) | Js::Props(_) => {
             return None;
         }
@@ -1729,6 +1765,9 @@ fn evaluate_in<S: Names>(node: &Ast, scope: &Scope<S>, limits: &EvalLimits) -> J
     if !draw(limits, Cut::Work, 1) {
         return Js::Null;
     }
+    if !memory::ast(node) {
+        return Js::Null;
+    }
     // Only the runtime carries opaque caller context. Parsing instantiations
     // erase this branch and retain their existing evaluation path.
     let _context = if S::RUNTIME && !matches!(node, Ast::Comp { .. }) {
@@ -1877,7 +1916,11 @@ fn member<S: Names>(obj: Js, field: &str, limits: &EvalLimits) -> Js {
         // A field plucked from every item.
         Js::Arr(items) if field == "length" => Js::Num(items.len() as f64),
         // A step per item plucked from.
-        Js::Arr(items) if !draw(limits, Cut::Work, items.len()) => Js::Null,
+        Js::Arr(items)
+            if !draw(limits, Cut::Work, items.len()) || !memory::container(items.len()) =>
+        {
+            Js::Null
+        }
         Js::Arr(items) => Js::Arr(Arc::new(
             items
                 .iter()
@@ -2117,6 +2160,17 @@ fn each_array<S: Names>(
         !crate::progress::stalled_so_far()
             && (!S::RUNTIME || (LIMITS.with(|l| l.cut.get().is_none()) && !expression::failed()))
     };
+    let slots = match &array {
+        Js::Arr(items) => items.len(),
+        Js::Data(value) => match value.as_ref() {
+            Value::Arr(items) => items.len(),
+            _ => 0,
+        },
+        _ => 0,
+    };
+    if !memory::container(slots) {
+        return Js::Null;
+    }
     let out = match &array {
         Js::Arr(items) => items
             .iter()
@@ -2284,6 +2338,9 @@ fn literal_in(value: &Js, limits: &EvalLimits) -> Ast {
         return Ast::Null;
     };
     if !spend_in(limits, json_cost(value)) {
+        return Ast::Null;
+    }
+    if !memory::js(value) {
         return Ast::Null;
     }
     match value {
@@ -2466,6 +2523,9 @@ fn elementwise(value: &Js, f: &dyn Fn(f64) -> f64) -> Js {
 }
 
 fn elementwise_in<S: Names>(value: &Js, f: &dyn Fn(f64) -> f64) -> Js {
+    if !memory::js(value) {
+        return Js::Null;
+    }
     if S::RUNTIME && matches!(value, Js::Data(v) if matches!(v.as_ref(), Value::Arr(_))) {
         return expression::elementwise_data(value, f);
     }
@@ -2535,6 +2595,9 @@ fn sort_in<S: Names>(array: &Js, field: &Js, direction: &Js) -> Js {
     let Js::Arr(items) = array else {
         return array.clone();
     };
+    if !memory::container(items.len().saturating_mul(2)) {
+        return Js::Null;
+    }
     let field = if S::RUNTIME {
         text_or_in::<S>(field, "")
     } else {
@@ -2668,6 +2731,9 @@ fn merge_sort_in<S: Names>(items: Vec<Js>, less: &dyn Fn(&Js, &Js) -> bool) -> V
         {
             break;
         }
+        if !memory::container(n) {
+            return Vec::new();
+        }
         let mut dst = Vec::with_capacity(n);
         for start in (0..n).step_by(2 * width) {
             if crate::progress::stalled_so_far()
@@ -2718,6 +2784,9 @@ fn filter_in<S: Names>(array: &Js, field: &Js, operator: &Js, value: &Js) -> Js 
     let Js::Arr(items) = array else {
         return Js::Arr(Arc::new(Vec::new()));
     };
+    if !memory::container(items.len().saturating_mul(2)) {
+        return Js::Null;
+    }
     let field = if S::RUNTIME {
         text_or_in::<S>(field, "")
     } else {
@@ -2855,6 +2924,10 @@ fn to_string(v: &Js) -> String {
     to_string_in::<Declared>(v)
 }
 fn to_string_in<S: Names>(v: &Js) -> String {
+    let bytes = if let Js::Str(s) = v { s.len() } else { 32 };
+    if !memory::text(bytes) {
+        return String::new();
+    }
     if S::RUNTIME {
         if expression::failed() {
             return String::new();
@@ -3065,6 +3138,9 @@ fn loose_eq_in<S: Names>(a: &Js, b: &Js) -> bool {
 
 /// The string's UTF-16 units, lone surrogates included.
 fn utf16(s: &str) -> Vec<u16> {
+    if !memory::text(s.len().saturating_mul(2)) {
+        return Vec::new();
+    }
     let mut units = Vec::with_capacity(s.len());
     for c in s.chars() {
         match js::lone_surrogate_unit(c) {

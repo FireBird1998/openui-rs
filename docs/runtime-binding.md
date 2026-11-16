@@ -86,8 +86,15 @@ event JSON strings come directly from HostEvent::to_json, with failure/cut flags
 The host performs effects. **Ignoring clicks while a response is bundleBlocked
 is the embedder's job.**
 
+`RuntimeLimits.evaluation.peakMemory` optionally bounds portable evaluation
+reservations (ADR 0011). It defaults to nil/null; existing calls and result
+records keep their shape. Memory cuts reuse `sizeLimited`; refused writes keep
+state unchanged. This is an evaluation-storage allowance, with the exclusions
+in the ADR, rather than a process-heap limit. The generated wasm getter/setter
+uses the same `peakMemory` name and defaults to undefined.
+
 Mutations return a single-use ContinuationHandle. Resume true uses current inputs
-and the original work allowance; false ends it. Pending runs survive draws and
+and the original work and optional memory allowances; false ends it. Pending runs survive draws and
 program changes. **Dropping the last native handle releases the pending run.**
 Its destructor upgrades a Weak transport and sends a fire-and-forget release;
 it never waits, and only the worker removes/drops thread-affine state. It is safe

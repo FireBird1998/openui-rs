@@ -110,6 +110,9 @@ pub(super) fn evaluate(value: Option<&Value>, scope: &Scope<Supplied<'_>>) -> Js
             let Some(Value::Arr(items)) = get("els") else {
                 return invalid("els", Op::Map, get("els"));
             };
+            if !memory::container(items.len()) {
+                return Js::Null;
+            }
             Js::Arr(Arc::new(
                 items
                     .iter()
@@ -122,6 +125,9 @@ pub(super) fn evaluate(value: Option<&Value>, scope: &Scope<Supplied<'_>>) -> Js
             let Some(Value::Arr(entries)) = get("entries") else {
                 return invalid("entries", Op::Map, get("entries"));
             };
+            if !memory::container(entries.len().saturating_mul(2)) {
+                return Js::Null;
+            }
             let mut mapped = Vec::new();
             for entry in entries.iter() {
                 if !running() {
@@ -187,6 +193,9 @@ pub(super) fn evaluate(value: Option<&Value>, scope: &Scope<Supplied<'_>>) -> Js
             // An inherited entry cannot consume the argument record. Its
             // children still run in order, but their unused results need not
             // accumulate in a potentially huge temporary map.
+            if !memory::value(value) {
+                return Js::Null;
+            }
             let mut named = JsObject::new();
             match get("mappedProps") {
                 Some(Value::Obj(p)) => {
@@ -302,7 +311,7 @@ fn member_field(obj: Js, raw: Option<&Value>) -> Js {
         };
         match &obj {
             Js::Arr(items) => {
-                if !step(items.len()) {
+                if !step(items.len()) || !memory::container(items.len()) {
                     return Js::Null;
                 }
                 return Js::Arr(Arc::new(
@@ -316,7 +325,7 @@ fn member_field(obj: Js, raw: Option<&Value>) -> Js {
             }
             Js::Data(value) => {
                 if let Value::Arr(items) = value.as_ref() {
-                    if !step(items.len()) {
+                    if !step(items.len()) || !memory::container(items.len()) {
                         return Js::Null;
                     }
                     return Js::Arr(Arc::new(
@@ -451,7 +460,7 @@ impl<'a> Template for &'a Value {
         policy: P,
     ) -> std::ops::ControlFlow<Option<Value>> {
         use std::ops::ControlFlow::{Break, Continue};
-        if !step(1) || !running() {
+        if !step(1) || !running() || !memory::value(self) {
             return Break(None);
         }
         if let Value::Ast(a) = self {

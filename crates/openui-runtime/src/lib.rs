@@ -90,7 +90,9 @@
 //! Serialized result room is not a universal live-memory allowance. Eager
 //! temporaries can retain many individually admitted callback results before
 //! an opaque later callback selects one. Host computation and allocation have
-//! no runtime quota. Finite allocator shape bounds, and the unresolved general
+//! no runtime quota. The opt-in `Limits::with_peak_memory` bounds portable
+//! evaluation reservations (ADR 0011), with explicit exclusions; it is disabled
+//! by default and is not a process-heap limit. Finite allocator shape bounds, and the unresolved general
 //! amplification bound, are documented in ADR 0001/0008 and `TESTING.md`.
 //! Disposal is linear in retained state and private identity records for custom
 //! plans; keeping plans alive can grow those records independently of Store JSON.
@@ -120,16 +122,17 @@ pub use tree::{
     ActionContinuation, ActionFailure, ActionResumeError, ActionRun, BindingProps,
     BindingWriteError, FieldWrite, FunctionResult, HostEvent, LibraryFunctions,
     PreparedReferenceValues, RuntimeError, TreeInput, TreeResult, evaluate_tree,
-    evaluate_tree_with_limits, get_field_value, initialize_field_default,
-    initialize_field_default_with_limits, resume_action, run_action, run_action_with_limits,
-    set_field_value, set_field_value_with_limits, write_binding, write_binding_with_limits,
+    evaluate_tree_with_limits, evaluate_tree_with_memory, get_field_value,
+    initialize_field_default, initialize_field_default_with_limits, resume_action, run_action,
+    run_action_with_limits, set_field_value, set_field_value_with_limits, write_binding,
+    write_binding_with_limits,
 };
 
 pub use openui_lang::{
-    Ast, EvaluationFailure, EvaluationFlags, EvaluationResult, EvaluationScope, EvaluationSession,
-    ExpressionEvaluator, ExpressionOperation, ExpressionOutput, ExpressionType, ExpressionValue,
-    JsObject, Limits, PreparedReferenceValue, PreparedValidationSchema, Value, evaluate_expression,
-    evaluate_expression_with_limits,
+    Ast, EvaluationFailure, EvaluationFlags, EvaluationMemory, EvaluationResult, EvaluationScope,
+    EvaluationSession, ExpressionEvaluator, ExpressionOperation, ExpressionOutput, ExpressionType,
+    ExpressionValue, JsObject, Limits, PreparedReferenceValue, PreparedValidationSchema, Value,
+    evaluate_expression, evaluate_expression_with_limits,
 };
 
 #[cfg(test)]
