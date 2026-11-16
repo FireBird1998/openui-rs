@@ -1,0 +1,1 @@
+{"root":{"type":"element","typeName":"Box","props":{"a":{"k":"Str","v":"y","z":2},"b":[{"k":"Num","v":3,"z":4},{"k":"Bool","v":false,"z":1}]},"partial":false,"hasDynamicProps":true,"statementId":"root"},"meta":{"incomplete":false,"unresolved":[],"orphaned":[],"statementCount":1,"errors":[]},"stateDeclarations":{},"queryStatements":[],"mutationStatements":[]}

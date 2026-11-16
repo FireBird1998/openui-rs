@@ -1,0 +1,104 @@
+{
+  "schema": {
+    "$defs": {
+      "Stack": {
+        "properties": {
+          "children": {}
+        }
+      },
+      "Text": {
+        "properties": {
+          "value": {
+            "type": "number"
+          }
+        }
+      }
+    }
+  },
+  "cases": [
+    {
+      "program": "root=Stack([a0,x])\na0=a1\na1=a2\na2=a3\na3=x\nx=Text(\"bad\")\n",
+      "depth": 8,
+      "expected": "{\"root\":{\"type\":\"element\",\"typeName\":\"Stack\",\"props\":{\"children\":[{\"type\":\"element\",\"typeName\":\"Text\",\"props\":{\"value\":null},\"partial\":false,\"hasDynamicProps\":false,\"statementId\":\"a0\"},{\"type\":\"element\",\"typeName\":\"Text\",\"props\":{},\"partial\":false,\"hasDynamicProps\":false,\"statementId\":\"x\"}]},\"partial\":false,\"hasDynamicProps\":false,\"statementId\":\"root\"},\"meta\":{\"incomplete\":false,\"unresolved\":[],\"orphaned\":[],\"statementCount\":6,\"errors\":[]},\"stateDeclarations\":{},\"queryStatements\":[],\"mutationStatements\":[]}",
+      "depth_limited": true,
+      "size_limited": false
+    },
+    {
+      "program": "root=Stack([x,a0])\na0=a1\na1=a2\na2=a3\na3=x\nx=Text(\"bad\")\n",
+      "depth": 8,
+      "expected": "{\"root\":{\"type\":\"element\",\"typeName\":\"Stack\",\"props\":{\"children\":[{\"type\":\"element\",\"typeName\":\"Text\",\"props\":{},\"partial\":false,\"hasDynamicProps\":false,\"statementId\":\"x\"},{\"type\":\"element\",\"typeName\":\"Text\",\"props\":{\"value\":null},\"partial\":false,\"hasDynamicProps\":false,\"statementId\":\"a0\"}]},\"partial\":false,\"hasDynamicProps\":false,\"statementId\":\"root\"},\"meta\":{\"incomplete\":false,\"unresolved\":[],\"orphaned\":[],\"statementCount\":6,\"errors\":[{\"code\":\"type-mismatch\",\"component\":\"Text\",\"path\":\"/value\",\"message\":\"field \\\"/value\\\" expects number but got string\",\"statementId\":\"x\"}]},\"stateDeclarations\":{},\"queryStatements\":[],\"mutationStatements\":[]}",
+      "depth_limited": true,
+      "size_limited": false
+    },
+    {
+      "program": "root=Stack([a0,x])\na0=a1\na1=a2\na2=a3\na3=a4\na4=x\nx=Text(\"bad\")\n",
+      "depth": 8,
+      "expected": "{\"root\":{\"type\":\"element\",\"typeName\":\"Stack\",\"props\":{\"children\":[{\"type\":\"element\",\"typeName\":\"Text\",\"props\":{},\"partial\":false,\"hasDynamicProps\":false,\"statementId\":\"x\"}]},\"partial\":false,\"hasDynamicProps\":false,\"statementId\":\"root\"},\"meta\":{\"incomplete\":false,\"unresolved\":[],\"orphaned\":[],\"statementCount\":7,\"errors\":[]},\"stateDeclarations\":{},\"queryStatements\":[],\"mutationStatements\":[]}",
+      "depth_limited": true,
+      "size_limited": false
+    },
+    {
+      "program": "root=Stack([x,a0])\na0=a1\na1=a2\na2=a3\na3=a4\na4=x\nx=Text(\"bad\")\n",
+      "depth": 8,
+      "expected": "{\"root\":{\"type\":\"element\",\"typeName\":\"Stack\",\"props\":{\"children\":[{\"type\":\"element\",\"typeName\":\"Text\",\"props\":{},\"partial\":false,\"hasDynamicProps\":false,\"statementId\":\"x\"}]},\"partial\":false,\"hasDynamicProps\":false,\"statementId\":\"root\"},\"meta\":{\"incomplete\":false,\"unresolved\":[],\"orphaned\":[],\"statementCount\":7,\"errors\":[{\"code\":\"type-mismatch\",\"component\":\"Text\",\"path\":\"/value\",\"message\":\"field \\\"/value\\\" expects number but got string\",\"statementId\":\"x\"}]},\"stateDeclarations\":{},\"queryStatements\":[],\"mutationStatements\":[]}",
+      "depth_limited": true,
+      "size_limited": false
+    },
+    {
+      "program": "root=Stack([a0,x])\na0=a1\na1=a2\na2=a3\na3=a4\na4=a5\na5=a6\na6=a7\na7=a8\na8=a9\na9=a10\na10=a11\na11=a12\na12=a13\na13=a14\na14=a15\na15=a16\na16=a17\na17=a18\na18=a19\na19=a20\na20=a21\na21=a22\na22=a23\na23=a24\na24=a25\na25=a26\na26=a27\na27=x\nx=Text(\"bad\")\n",
+      "depth": 32,
+      "expected": "{\"root\":{\"type\":\"element\",\"typeName\":\"Stack\",\"props\":{\"children\":[{\"type\":\"element\",\"typeName\":\"Text\",\"props\":{\"value\":null},\"partial\":false,\"hasDynamicProps\":false,\"statementId\":\"a0\"},{\"type\":\"element\",\"typeName\":\"Text\",\"props\":{},\"partial\":false,\"hasDynamicProps\":false,\"statementId\":\"x\"}]},\"partial\":false,\"hasDynamicProps\":false,\"statementId\":\"root\"},\"meta\":{\"incomplete\":false,\"unresolved\":[],\"orphaned\":[],\"statementCount\":30,\"errors\":[]},\"stateDeclarations\":{},\"queryStatements\":[],\"mutationStatements\":[]}",
+      "depth_limited": true,
+      "size_limited": false
+    },
+    {
+      "program": "root=Stack([x,a0])\na0=a1\na1=a2\na2=a3\na3=a4\na4=a5\na5=a6\na6=a7\na7=a8\na8=a9\na9=a10\na10=a11\na11=a12\na12=a13\na13=a14\na14=a15\na15=a16\na16=a17\na17=a18\na18=a19\na19=a20\na20=a21\na21=a22\na22=a23\na23=a24\na24=a25\na25=a26\na26=a27\na27=x\nx=Text(\"bad\")\n",
+      "depth": 32,
+      "expected": "{\"root\":{\"type\":\"element\",\"typeName\":\"Stack\",\"props\":{\"children\":[{\"type\":\"element\",\"typeName\":\"Text\",\"props\":{},\"partial\":false,\"hasDynamicProps\":false,\"statementId\":\"x\"},{\"type\":\"element\",\"typeName\":\"Text\",\"props\":{\"value\":null},\"partial\":false,\"hasDynamicProps\":false,\"statementId\":\"a0\"}]},\"partial\":false,\"hasDynamicProps\":false,\"statementId\":\"root\"},\"meta\":{\"incomplete\":false,\"unresolved\":[],\"orphaned\":[],\"statementCount\":30,\"errors\":[{\"code\":\"type-mismatch\",\"component\":\"Text\",\"path\":\"/value\",\"message\":\"field \\\"/value\\\" expects number but got string\",\"statementId\":\"x\"}]},\"stateDeclarations\":{},\"queryStatements\":[],\"mutationStatements\":[]}",
+      "depth_limited": true,
+      "size_limited": false
+    },
+    {
+      "program": "root=Stack([a0,x])\na0=a1\na1=a2\na2=a3\na3=a4\na4=a5\na5=a6\na6=a7\na7=a8\na8=a9\na9=a10\na10=a11\na11=a12\na12=a13\na13=a14\na14=a15\na15=a16\na16=a17\na17=a18\na18=a19\na19=a20\na20=a21\na21=a22\na22=a23\na23=a24\na24=a25\na25=a26\na26=a27\na27=a28\na28=x\nx=Text(\"bad\")\n",
+      "depth": 32,
+      "expected": "{\"root\":{\"type\":\"element\",\"typeName\":\"Stack\",\"props\":{\"children\":[{\"type\":\"element\",\"typeName\":\"Text\",\"props\":{},\"partial\":false,\"hasDynamicProps\":false,\"statementId\":\"x\"}]},\"partial\":false,\"hasDynamicProps\":false,\"statementId\":\"root\"},\"meta\":{\"incomplete\":false,\"unresolved\":[],\"orphaned\":[],\"statementCount\":31,\"errors\":[]},\"stateDeclarations\":{},\"queryStatements\":[],\"mutationStatements\":[]}",
+      "depth_limited": true,
+      "size_limited": false
+    },
+    {
+      "program": "root=Stack([x,a0])\na0=a1\na1=a2\na2=a3\na3=a4\na4=a5\na5=a6\na6=a7\na7=a8\na8=a9\na9=a10\na10=a11\na11=a12\na12=a13\na13=a14\na14=a15\na15=a16\na16=a17\na17=a18\na18=a19\na19=a20\na20=a21\na21=a22\na22=a23\na23=a24\na24=a25\na25=a26\na26=a27\na27=a28\na28=x\nx=Text(\"bad\")\n",
+      "depth": 32,
+      "expected": "{\"root\":{\"type\":\"element\",\"typeName\":\"Stack\",\"props\":{\"children\":[{\"type\":\"element\",\"typeName\":\"Text\",\"props\":{},\"partial\":false,\"hasDynamicProps\":false,\"statementId\":\"x\"}]},\"partial\":false,\"hasDynamicProps\":false,\"statementId\":\"root\"},\"meta\":{\"incomplete\":false,\"unresolved\":[],\"orphaned\":[],\"statementCount\":31,\"errors\":[{\"code\":\"type-mismatch\",\"component\":\"Text\",\"path\":\"/value\",\"message\":\"field \\\"/value\\\" expects number but got string\",\"statementId\":\"x\"}]},\"stateDeclarations\":{},\"queryStatements\":[],\"mutationStatements\":[]}",
+      "depth_limited": true,
+      "size_limited": false
+    },
+    {
+      "program": "root=Stack([a0,x])\na0=a1\na1=a2\na2=a3\na3=a4\na4=a5\na5=a6\na6=a7\na7=a8\na8=a9\na9=a10\na10=a11\na11=a12\na12=a13\na13=a14\na14=a15\na15=a16\na16=a17\na17=a18\na18=a19\na19=a20\na20=a21\na21=a22\na22=a23\na23=a24\na24=a25\na25=a26\na26=a27\na27=a28\na28=a29\na29=a30\na30=a31\na31=a32\na32=a33\na33=a34\na34=a35\na35=a36\na36=a37\na37=a38\na38=a39\na39=a40\na40=a41\na41=a42\na42=a43\na43=a44\na44=a45\na45=a46\na46=a47\na47=a48\na48=a49\na49=a50\na50=a51\na51=a52\na52=a53\na53=a54\na54=a55\na55=a56\na56=a57\na57=a58\na58=a59\na59=a60\na60=a61\na61=a62\na62=a63\na63=a64\na64=a65\na65=a66\na66=a67\na67=a68\na68=a69\na69=a70\na70=a71\na71=a72\na72=a73\na73=a74\na74=a75\na75=a76\na76=a77\na77=a78\na78=a79\na79=a80\na80=a81\na81=a82\na82=a83\na83=a84\na84=a85\na85=a86\na86=a87\na87=a88\na88=a89\na89=a90\na90=a91\na91=a92\na92=a93\na93=a94\na94=a95\na95=a96\na96=a97\na97=a98\na98=a99\na99=a100\na100=a101\na101=a102\na102=a103\na103=a104\na104=a105\na105=a106\na106=a107\na107=a108\na108=a109\na109=a110\na110=a111\na111=a112\na112=a113\na113=a114\na114=a115\na115=a116\na116=a117\na117=a118\na118=a119\na119=a120\na120=a121\na121=a122\na122=a123\na123=a124\na124=a125\na125=a126\na126=a127\na127=a128\na128=a129\na129=a130\na130=a131\na131=a132\na132=a133\na133=a134\na134=a135\na135=a136\na136=a137\na137=a138\na138=a139\na139=a140\na140=a141\na141=a142\na142=a143\na143=a144\na144=a145\na145=a146\na146=a147\na147=a148\na148=a149\na149=a150\na150=a151\na151=a152\na152=a153\na153=a154\na154=a155\na155=a156\na156=a157\na157=a158\na158=a159\na159=a160\na160=a161\na161=a162\na162=a163\na163=a164\na164=a165\na165=a166\na166=a167\na167=a168\na168=a169\na169=a170\na170=a171\na171=a172\na172=a173\na173=a174\na174=a175\na175=a176\na176=a177\na177=a178\na178=a179\na179=a180\na180=a181\na181=a182\na182=a183\na183=a184\na184=a185\na185=a186\na186=a187\na187=a188\na188=a189\na189=a190\na190=a191\na191=a192\na192=a193\na193=a194\na194=a195\na195=a196\na196=a197\na197=a198\na198=a199\na199=a200\na200=a201\na201=a202\na202=a203\na203=a204\na204=a205\na205=a206\na206=a207\na207=a208\na208=a209\na209=a210\na210=a211\na211=a212\na212=a213\na213=a214\na214=a215\na215=a216\na216=a217\na217=a218\na218=a219\na219=a220\na220=a221\na221=a222\na222=a223\na223=a224\na224=a225\na225=a226\na226=a227\na227=a228\na228=a229\na229=a230\na230=a231\na231=a232\na232=a233\na233=a234\na234=a235\na235=a236\na236=a237\na237=a238\na238=a239\na239=a240\na240=a241\na241=a242\na242=a243\na243=a244\na244=a245\na245=a246\na246=a247\na247=a248\na248=a249\na249=a250\na250=a251\na251=x\nx=Text(\"bad\")\n",
+      "depth": 256,
+      "expected": "{\"root\":{\"type\":\"element\",\"typeName\":\"Stack\",\"props\":{\"children\":[{\"type\":\"element\",\"typeName\":\"Text\",\"props\":{\"value\":null},\"partial\":false,\"hasDynamicProps\":false,\"statementId\":\"a0\"},{\"type\":\"element\",\"typeName\":\"Text\",\"props\":{},\"partial\":false,\"hasDynamicProps\":false,\"statementId\":\"x\"}]},\"partial\":false,\"hasDynamicProps\":false,\"statementId\":\"root\"},\"meta\":{\"incomplete\":false,\"unresolved\":[],\"orphaned\":[],\"statementCount\":254,\"errors\":[]},\"stateDeclarations\":{},\"queryStatements\":[],\"mutationStatements\":[]}",
+      "depth_limited": true,
+      "size_limited": false
+    },
+    {
+      "program": "root=Stack([x,a0])\na0=a1\na1=a2\na2=a3\na3=a4\na4=a5\na5=a6\na6=a7\na7=a8\na8=a9\na9=a10\na10=a11\na11=a12\na12=a13\na13=a14\na14=a15\na15=a16\na16=a17\na17=a18\na18=a19\na19=a20\na20=a21\na21=a22\na22=a23\na23=a24\na24=a25\na25=a26\na26=a27\na27=a28\na28=a29\na29=a30\na30=a31\na31=a32\na32=a33\na33=a34\na34=a35\na35=a36\na36=a37\na37=a38\na38=a39\na39=a40\na40=a41\na41=a42\na42=a43\na43=a44\na44=a45\na45=a46\na46=a47\na47=a48\na48=a49\na49=a50\na50=a51\na51=a52\na52=a53\na53=a54\na54=a55\na55=a56\na56=a57\na57=a58\na58=a59\na59=a60\na60=a61\na61=a62\na62=a63\na63=a64\na64=a65\na65=a66\na66=a67\na67=a68\na68=a69\na69=a70\na70=a71\na71=a72\na72=a73\na73=a74\na74=a75\na75=a76\na76=a77\na77=a78\na78=a79\na79=a80\na80=a81\na81=a82\na82=a83\na83=a84\na84=a85\na85=a86\na86=a87\na87=a88\na88=a89\na89=a90\na90=a91\na91=a92\na92=a93\na93=a94\na94=a95\na95=a96\na96=a97\na97=a98\na98=a99\na99=a100\na100=a101\na101=a102\na102=a103\na103=a104\na104=a105\na105=a106\na106=a107\na107=a108\na108=a109\na109=a110\na110=a111\na111=a112\na112=a113\na113=a114\na114=a115\na115=a116\na116=a117\na117=a118\na118=a119\na119=a120\na120=a121\na121=a122\na122=a123\na123=a124\na124=a125\na125=a126\na126=a127\na127=a128\na128=a129\na129=a130\na130=a131\na131=a132\na132=a133\na133=a134\na134=a135\na135=a136\na136=a137\na137=a138\na138=a139\na139=a140\na140=a141\na141=a142\na142=a143\na143=a144\na144=a145\na145=a146\na146=a147\na147=a148\na148=a149\na149=a150\na150=a151\na151=a152\na152=a153\na153=a154\na154=a155\na155=a156\na156=a157\na157=a158\na158=a159\na159=a160\na160=a161\na161=a162\na162=a163\na163=a164\na164=a165\na165=a166\na166=a167\na167=a168\na168=a169\na169=a170\na170=a171\na171=a172\na172=a173\na173=a174\na174=a175\na175=a176\na176=a177\na177=a178\na178=a179\na179=a180\na180=a181\na181=a182\na182=a183\na183=a184\na184=a185\na185=a186\na186=a187\na187=a188\na188=a189\na189=a190\na190=a191\na191=a192\na192=a193\na193=a194\na194=a195\na195=a196\na196=a197\na197=a198\na198=a199\na199=a200\na200=a201\na201=a202\na202=a203\na203=a204\na204=a205\na205=a206\na206=a207\na207=a208\na208=a209\na209=a210\na210=a211\na211=a212\na212=a213\na213=a214\na214=a215\na215=a216\na216=a217\na217=a218\na218=a219\na219=a220\na220=a221\na221=a222\na222=a223\na223=a224\na224=a225\na225=a226\na226=a227\na227=a228\na228=a229\na229=a230\na230=a231\na231=a232\na232=a233\na233=a234\na234=a235\na235=a236\na236=a237\na237=a238\na238=a239\na239=a240\na240=a241\na241=a242\na242=a243\na243=a244\na244=a245\na245=a246\na246=a247\na247=a248\na248=a249\na249=a250\na250=a251\na251=x\nx=Text(\"bad\")\n",
+      "depth": 256,
+      "expected": "{\"root\":{\"type\":\"element\",\"typeName\":\"Stack\",\"props\":{\"children\":[{\"type\":\"element\",\"typeName\":\"Text\",\"props\":{},\"partial\":false,\"hasDynamicProps\":false,\"statementId\":\"x\"},{\"type\":\"element\",\"typeName\":\"Text\",\"props\":{\"value\":null},\"partial\":false,\"hasDynamicProps\":false,\"statementId\":\"a0\"}]},\"partial\":false,\"hasDynamicProps\":false,\"statementId\":\"root\"},\"meta\":{\"incomplete\":false,\"unresolved\":[],\"orphaned\":[],\"statementCount\":254,\"errors\":[{\"code\":\"type-mismatch\",\"component\":\"Text\",\"path\":\"/value\",\"message\":\"field \\\"/value\\\" expects number but got string\",\"statementId\":\"x\"}]},\"stateDeclarations\":{},\"queryStatements\":[],\"mutationStatements\":[]}",
+      "depth_limited": true,
+      "size_limited": false
+    },
+    {
+      "program": "root=Stack([a0,x])\na0=a1\na1=a2\na2=a3\na3=a4\na4=a5\na5=a6\na6=a7\na7=a8\na8=a9\na9=a10\na10=a11\na11=a12\na12=a13\na13=a14\na14=a15\na15=a16\na16=a17\na17=a18\na18=a19\na19=a20\na20=a21\na21=a22\na22=a23\na23=a24\na24=a25\na25=a26\na26=a27\na27=a28\na28=a29\na29=a30\na30=a31\na31=a32\na32=a33\na33=a34\na34=a35\na35=a36\na36=a37\na37=a38\na38=a39\na39=a40\na40=a41\na41=a42\na42=a43\na43=a44\na44=a45\na45=a46\na46=a47\na47=a48\na48=a49\na49=a50\na50=a51\na51=a52\na52=a53\na53=a54\na54=a55\na55=a56\na56=a57\na57=a58\na58=a59\na59=a60\na60=a61\na61=a62\na62=a63\na63=a64\na64=a65\na65=a66\na66=a67\na67=a68\na68=a69\na69=a70\na70=a71\na71=a72\na72=a73\na73=a74\na74=a75\na75=a76\na76=a77\na77=a78\na78=a79\na79=a80\na80=a81\na81=a82\na82=a83\na83=a84\na84=a85\na85=a86\na86=a87\na87=a88\na88=a89\na89=a90\na90=a91\na91=a92\na92=a93\na93=a94\na94=a95\na95=a96\na96=a97\na97=a98\na98=a99\na99=a100\na100=a101\na101=a102\na102=a103\na103=a104\na104=a105\na105=a106\na106=a107\na107=a108\na108=a109\na109=a110\na110=a111\na111=a112\na112=a113\na113=a114\na114=a115\na115=a116\na116=a117\na117=a118\na118=a119\na119=a120\na120=a121\na121=a122\na122=a123\na123=a124\na124=a125\na125=a126\na126=a127\na127=a128\na128=a129\na129=a130\na130=a131\na131=a132\na132=a133\na133=a134\na134=a135\na135=a136\na136=a137\na137=a138\na138=a139\na139=a140\na140=a141\na141=a142\na142=a143\na143=a144\na144=a145\na145=a146\na146=a147\na147=a148\na148=a149\na149=a150\na150=a151\na151=a152\na152=a153\na153=a154\na154=a155\na155=a156\na156=a157\na157=a158\na158=a159\na159=a160\na160=a161\na161=a162\na162=a163\na163=a164\na164=a165\na165=a166\na166=a167\na167=a168\na168=a169\na169=a170\na170=a171\na171=a172\na172=a173\na173=a174\na174=a175\na175=a176\na176=a177\na177=a178\na178=a179\na179=a180\na180=a181\na181=a182\na182=a183\na183=a184\na184=a185\na185=a186\na186=a187\na187=a188\na188=a189\na189=a190\na190=a191\na191=a192\na192=a193\na193=a194\na194=a195\na195=a196\na196=a197\na197=a198\na198=a199\na199=a200\na200=a201\na201=a202\na202=a203\na203=a204\na204=a205\na205=a206\na206=a207\na207=a208\na208=a209\na209=a210\na210=a211\na211=a212\na212=a213\na213=a214\na214=a215\na215=a216\na216=a217\na217=a218\na218=a219\na219=a220\na220=a221\na221=a222\na222=a223\na223=a224\na224=a225\na225=a226\na226=a227\na227=a228\na228=a229\na229=a230\na230=a231\na231=a232\na232=a233\na233=a234\na234=a235\na235=a236\na236=a237\na237=a238\na238=a239\na239=a240\na240=a241\na241=a242\na242=a243\na243=a244\na244=a245\na245=a246\na246=a247\na247=a248\na248=a249\na249=a250\na250=a251\na251=a252\na252=x\nx=Text(\"bad\")\n",
+      "depth": 256,
+      "expected": "{\"root\":{\"type\":\"element\",\"typeName\":\"Stack\",\"props\":{\"children\":[{\"type\":\"element\",\"typeName\":\"Text\",\"props\":{},\"partial\":false,\"hasDynamicProps\":false,\"statementId\":\"x\"}]},\"partial\":false,\"hasDynamicProps\":false,\"statementId\":\"root\"},\"meta\":{\"incomplete\":false,\"unresolved\":[],\"orphaned\":[],\"statementCount\":255,\"errors\":[]},\"stateDeclarations\":{},\"queryStatements\":[],\"mutationStatements\":[]}",
+      "depth_limited": true,
+      "size_limited": false
+    },
+    {
+      "program": "root=Stack([x,a0])\na0=a1\na1=a2\na2=a3\na3=a4\na4=a5\na5=a6\na6=a7\na7=a8\na8=a9\na9=a10\na10=a11\na11=a12\na12=a13\na13=a14\na14=a15\na15=a16\na16=a17\na17=a18\na18=a19\na19=a20\na20=a21\na21=a22\na22=a23\na23=a24\na24=a25\na25=a26\na26=a27\na27=a28\na28=a29\na29=a30\na30=a31\na31=a32\na32=a33\na33=a34\na34=a35\na35=a36\na36=a37\na37=a38\na38=a39\na39=a40\na40=a41\na41=a42\na42=a43\na43=a44\na44=a45\na45=a46\na46=a47\na47=a48\na48=a49\na49=a50\na50=a51\na51=a52\na52=a53\na53=a54\na54=a55\na55=a56\na56=a57\na57=a58\na58=a59\na59=a60\na60=a61\na61=a62\na62=a63\na63=a64\na64=a65\na65=a66\na66=a67\na67=a68\na68=a69\na69=a70\na70=a71\na71=a72\na72=a73\na73=a74\na74=a75\na75=a76\na76=a77\na77=a78\na78=a79\na79=a80\na80=a81\na81=a82\na82=a83\na83=a84\na84=a85\na85=a86\na86=a87\na87=a88\na88=a89\na89=a90\na90=a91\na91=a92\na92=a93\na93=a94\na94=a95\na95=a96\na96=a97\na97=a98\na98=a99\na99=a100\na100=a101\na101=a102\na102=a103\na103=a104\na104=a105\na105=a106\na106=a107\na107=a108\na108=a109\na109=a110\na110=a111\na111=a112\na112=a113\na113=a114\na114=a115\na115=a116\na116=a117\na117=a118\na118=a119\na119=a120\na120=a121\na121=a122\na122=a123\na123=a124\na124=a125\na125=a126\na126=a127\na127=a128\na128=a129\na129=a130\na130=a131\na131=a132\na132=a133\na133=a134\na134=a135\na135=a136\na136=a137\na137=a138\na138=a139\na139=a140\na140=a141\na141=a142\na142=a143\na143=a144\na144=a145\na145=a146\na146=a147\na147=a148\na148=a149\na149=a150\na150=a151\na151=a152\na152=a153\na153=a154\na154=a155\na155=a156\na156=a157\na157=a158\na158=a159\na159=a160\na160=a161\na161=a162\na162=a163\na163=a164\na164=a165\na165=a166\na166=a167\na167=a168\na168=a169\na169=a170\na170=a171\na171=a172\na172=a173\na173=a174\na174=a175\na175=a176\na176=a177\na177=a178\na178=a179\na179=a180\na180=a181\na181=a182\na182=a183\na183=a184\na184=a185\na185=a186\na186=a187\na187=a188\na188=a189\na189=a190\na190=a191\na191=a192\na192=a193\na193=a194\na194=a195\na195=a196\na196=a197\na197=a198\na198=a199\na199=a200\na200=a201\na201=a202\na202=a203\na203=a204\na204=a205\na205=a206\na206=a207\na207=a208\na208=a209\na209=a210\na210=a211\na211=a212\na212=a213\na213=a214\na214=a215\na215=a216\na216=a217\na217=a218\na218=a219\na219=a220\na220=a221\na221=a222\na222=a223\na223=a224\na224=a225\na225=a226\na226=a227\na227=a228\na228=a229\na229=a230\na230=a231\na231=a232\na232=a233\na233=a234\na234=a235\na235=a236\na236=a237\na237=a238\na238=a239\na239=a240\na240=a241\na241=a242\na242=a243\na243=a244\na244=a245\na245=a246\na246=a247\na247=a248\na248=a249\na249=a250\na250=a251\na251=a252\na252=x\nx=Text(\"bad\")\n",
+      "depth": 256,
+      "expected": "{\"root\":{\"type\":\"element\",\"typeName\":\"Stack\",\"props\":{\"children\":[{\"type\":\"element\",\"typeName\":\"Text\",\"props\":{},\"partial\":false,\"hasDynamicProps\":false,\"statementId\":\"x\"}]},\"partial\":false,\"hasDynamicProps\":false,\"statementId\":\"root\"},\"meta\":{\"incomplete\":false,\"unresolved\":[],\"orphaned\":[],\"statementCount\":255,\"errors\":[{\"code\":\"type-mismatch\",\"component\":\"Text\",\"path\":\"/value\",\"message\":\"field \\\"/value\\\" expects number but got string\",\"statementId\":\"x\"}]},\"stateDeclarations\":{},\"queryStatements\":[],\"mutationStatements\":[]}",
+      "depth_limited": true,
+      "size_limited": false
+    }
+  ]
+}

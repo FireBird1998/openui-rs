@@ -274,12 +274,31 @@ fn js_property_order<'a>(keys: impl Iterator<Item = &'a str>) -> Vec<usize> {
 /// A string-keyed object with JavaScript's semantics: re-setting a key keeps
 /// its place, and iteration lists array-index keys first (ascending), then the
 /// rest in insertion order.
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone)]
 pub struct JsObject<V> {
     entries: indexmap::IndexMap<String, V>,
     /// `obj.__proto__ = null` was assigned: nothing is inherited, and a later
     /// `__proto__` assignment makes an own property.
     null_prototype: bool,
+    /// An object-valued prototype assignment was intentionally discarded.
+    /// Parser validation must not substitute Object.prototype for this unknown
+    /// prototype. This is provenance, not an own property or a different value.
+    unrepresented_prototype: bool,
+}
+
+impl<V: std::fmt::Debug> std::fmt::Debug for JsObject<V> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("JsObject")
+            .field("entries", &self.entries)
+            .field("null_prototype", &self.null_prototype)
+            .finish()
+    }
+}
+
+impl<V: PartialEq> PartialEq for JsObject<V> {
+    fn eq(&self, other: &Self) -> bool {
+        self.entries == other.entries && self.null_prototype == other.null_prototype
+    }
 }
 
 impl<V> Default for JsObject<V> {
@@ -287,6 +306,7 @@ impl<V> Default for JsObject<V> {
         JsObject {
             entries: indexmap::IndexMap::new(),
             null_prototype: false,
+            unrepresented_prototype: false,
         }
     }
 }
@@ -307,9 +327,30 @@ impl<V> JsObject<V> {
         }
     }
 
+    /// A copy made by object spread has ordinary inheritance, even when
+    /// its source has none. Own properties retain their order and values.
+    pub(crate) fn spread(&self) -> Self
+    where
+        V: Clone,
+    {
+        let mut copy = self.clone();
+        copy.null_prototype = false;
+        copy.unrepresented_prototype = false;
+        copy
+    }
+
     /// `obj.__proto__ = null`, on an object that still has its prototype.
     pub(crate) fn drop_prototype(&mut self) {
         self.null_prototype = true;
+        self.unrepresented_prototype = false;
+    }
+
+    pub(crate) fn note_unrepresented_prototype(&mut self) {
+        self.unrepresented_prototype = true;
+    }
+
+    pub(crate) fn has_unrepresented_prototype(&self) -> bool {
+        self.unrepresented_prototype
     }
 
     /// Add an own property even if it's `__proto__`, as `JSON.parse` does.

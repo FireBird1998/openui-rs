@@ -360,3 +360,291 @@ fn validating_nested_elements_compares_identity_once() {
         std::hint::black_box(result);
     });
 }
+
+mod scaling_cases;
+
+/// Count allocations and peak requested heap, independently of elapsed time.
+/// The unit companion counts traversal steps too (including the sharing mutant).
+#[test]
+fn alias_references_at_raised_limits_allocate_linearly() {
+    for repeated in [false, true] {
+        let mut measurements = Vec::new();
+        for n in if repeated { [50, 200] } else { [2_000, 8_000] } {
+            let text = scaling_cases::aliases(n, repeated);
+            let limits = openui_lang::Limits::default()
+                .with_depth(if repeated { 256 } else { 20_000 })
+                .with_result_size(1024 * 1024 * 1024);
+            let lib = library();
+            test_alloc::reset_peak();
+            let before = test_alloc::allocation_calls();
+            let result = openui_lang::parse_with_limits(&text, &lib, None, limits);
+            let allocations = test_alloc::allocation_calls() - before;
+            let peak = test_alloc::peak();
+            assert!(!result.depth_limited && !result.size_limited);
+            assert_eq!(
+                result.meta.unresolved.len(),
+                if repeated { 100 * n } else { n }
+            );
+            assert!(result.meta.unresolved.iter().all(|s| s == "missing"));
+            assert!(result.meta.orphaned.is_empty());
+            assert!(
+                peak < 16 * 1024 * 1024,
+                "n={n}, repeated={repeated}: {peak}"
+            );
+            println!("aliases n={n} repeated={repeated}: allocations={allocations}, peak={peak}");
+            measurements.push(allocations);
+        }
+        assert!(measurements[1] < 5 * measurements[0], "{measurements:?}");
+    }
+}
+
+#[test]
+fn cut_alias_references_keep_heap_proportional_to_result_room() {
+    let lib = library();
+    for room in [64 * 1024, 256 * 1024, 1024 * 1024] {
+        let text = scaling_cases::aliases(300, true);
+        test_alloc::reset_peak();
+        let result = openui_lang::parse_with_limits(
+            &text,
+            &lib,
+            None,
+            openui_lang::Limits::default().with_result_size(room),
+        );
+        let peak = test_alloc::peak();
+        assert!(result.size_limited && result.depth_limited);
+        // Includes input/table/cache storage; the fixed allowance covers this
+        // 120 KB program, and each followed reference still costs 32 bytes.
+        assert!(
+            peak < 2 * room + 9 * 1024 * 1024,
+            "room={room}, peak={peak}"
+        );
+        println!("cut aliases room={room}: peak={peak}");
+    }
+}
+
+/// These bytes came from archived main, including the unchanged cut paths.
+#[test]
+fn alias_limit_results_keep_their_main_bytes() {
+    let lib = library();
+    let pins = include_str!("support/alias-main-limits.tsv");
+    let mut checks = 0;
+    for line in pins.lines().filter(|line| !line.starts_with('#')) {
+        let fields = line.split_whitespace().collect::<Vec<_>>();
+        let n = fields[0].parse().unwrap();
+        let repeated = fields[1].parse().unwrap();
+        let depth = fields[2].parse().unwrap();
+        let room = fields[3].parse().unwrap();
+        let text = scaling_cases::aliases(n, repeated);
+        let result = openui_lang::parse_with_limits(
+            &text,
+            &lib,
+            None,
+            openui_lang::Limits::default()
+                .with_depth(depth)
+                .with_result_size(room),
+        );
+        let hash = result.to_json().bytes().fold(2166136261_u32, |h, b| {
+            (h ^ u32::from(b)).wrapping_mul(16777619)
+        });
+        assert_eq!(format!("{hash:08x}"), fields[4], "{line}");
+        checks += 1;
+    }
+    assert_eq!(checks, 72);
+}
+
+#[test]
+fn cached_depth_cuts_respect_open_paths_depth_and_stream_changes() {
+    let pins: serde_json::Value =
+        serde_json::from_str(include_str!("support/alias-context-main.json")).unwrap();
+    let limits = openui_lang::Limits::default()
+        .with_depth(32)
+        .with_result_size(65536);
+    for case in pins.as_array().unwrap() {
+        let text = case["program"].as_str().unwrap();
+        let expected = case["expected"].as_str().unwrap();
+        assert_eq!(
+            openui_lang::parse_with_limits(text, &library(), None, limits).to_json(),
+            expected,
+            "{}",
+            case["name"]
+        );
+        let mut stream = StreamParser::with_limits(library(), None, limits);
+        stream.push(text);
+        assert_eq!(stream.finish().to_json(), expected);
+        for next in [
+            text.replace("missing", "7"),
+            text.replace("a3=b", "a3=null"),
+            text.to_owned(),
+        ] {
+            stream.set(&next);
+            assert_eq!(
+                stream.finish(),
+                openui_lang::parse_with_limits(&next, &library(), None, limits)
+            );
+        }
+    }
+}
+
+#[test]
+fn replayed_depth_cuts_keep_their_flags_on_later_stream_results() {
+    let text = scaling_cases::aliases(50, true);
+    let limits = openui_lang::Limits::default()
+        .with_depth(32)
+        .with_result_size(1024 * 1024 * 1024);
+    let mut stream = StreamParser::with_limits(library(), None, limits);
+    let first = stream.push(&text);
+    assert!(first.depth_limited && !first.size_limited);
+    let text = text + "unrelated=7\n";
+    stream.push("unrelated=7\n");
+    // The alias chain is now completed; the pending unrelated statement's
+    // temporary overlay cannot invalidate it on the next observation.
+    let later = stream.push("another=8\n");
+    assert!(later.depth_limited && !later.size_limited);
+    let mut fresh = StreamParser::with_limits(library(), None, limits);
+    assert_eq!(later, fresh.push(&(text + "another=8\n")));
+}
+
+#[test]
+fn depth_cut_containers_keep_fresh_identities_at_each_reach() {
+    let mut text = String::from("root=Stack([a0,a0])\n");
+    for i in 0..50 {
+        text.push_str(&format!("a{i}=Stack(a{})\n", i + 1));
+    }
+    text.push_str("a50=missing\n");
+    let result = openui_lang::parse_with_limits(
+        &text,
+        &library(),
+        None,
+        openui_lang::Limits::default()
+            .with_depth(32)
+            .with_result_size(65536),
+    );
+    assert!(result.depth_limited && !result.size_limited);
+    let openui_lang::Value::Arr(children) =
+        result.root.as_ref().unwrap().props.get("children").unwrap()
+    else {
+        panic!("children")
+    };
+    let [
+        openui_lang::Value::Element(first),
+        openui_lang::Value::Element(second),
+    ] = children.as_slice()
+    else {
+        panic!("two elements")
+    };
+    assert!(!Arc::ptr_eq(first, second));
+    assert_eq!(first, second);
+}
+
+#[test]
+fn raised_alias_depth_cuts_keep_small_results_and_input_sized_heap() {
+    let text = scaling_cases::aliases(32_000, false);
+    test_alloc::reset_peak();
+    let result = openui_lang::parse_with_limits(
+        &text,
+        &library(),
+        None,
+        openui_lang::Limits::default()
+            .with_depth(20_000)
+            .with_result_size(1024 * 1024 * 1024),
+    );
+    let peak = test_alloc::peak();
+    assert!(result.depth_limited && result.size_limited);
+    assert_eq!(
+        result.to_json().trim(),
+        include_str!("support/raised-alias-main.json").trim()
+    );
+    assert!(peak < 48 * 1024 * 1024, "peak={peak}");
+    println!("32,000 raised aliases: {peak} peak heap bytes");
+}
+
+#[test]
+fn raised_alias_cuts_preserve_reference_prices_at_each_boundary() {
+    let lib = library();
+    let mut checked = 0;
+    for line in include_str!("support/raised-alias-prices-main.tsv")
+        .lines()
+        .filter(|s| !s.starts_with('#'))
+    {
+        let f = line.split_whitespace().collect::<Vec<_>>();
+        let n = f[0].parse().unwrap();
+        let repeated = f[1].parse().unwrap();
+        let expression: bool = f[2].parse().unwrap();
+        let limits = openui_lang::Limits::default()
+            .with_depth(f[3].parse().unwrap())
+            .with_result_size(f[4].parse().unwrap());
+        let mut text = scaling_cases::aliases(n, repeated);
+        if expression {
+            text = text
+                .replacen("root=Stack([", "root=Stack(@Count([", 1)
+                .replacen("])\n", "]))\n", 1);
+        }
+        let result = openui_lang::parse_with_limits(&text, &lib, None, limits);
+        let hash = result.to_json().bytes().fold(2166136261u32, |h, b| {
+            (h ^ u32::from(b)).wrapping_mul(16777619)
+        });
+        assert_eq!(format!("{hash:08x}"), f[5], "{line}");
+        assert_eq!(
+            result.depth_limited,
+            f[6].parse::<bool>().unwrap(),
+            "{line}"
+        );
+        assert_eq!(result.size_limited, f[7].parse::<bool>().unwrap(), "{line}");
+        let mut stream = StreamParser::with_limits(lib.clone(), None, limits);
+        stream.push(&text);
+        assert_eq!(stream.finish(), result, "stream {line}");
+        checked += 1;
+    }
+    assert_eq!(checked, 552);
+}
+
+#[test]
+fn raised_alias_cuts_keep_failed_lookup_marks_flags_and_required_checks() {
+    let rows: serde_json::Value =
+        serde_json::from_str(include_str!("support/raised-alias-edges-main.json")).unwrap();
+    for row in rows.as_array().unwrap() {
+        let limits = openui_lang::Limits::default()
+            .with_depth(row["depth"].as_u64().unwrap() as usize)
+            .with_result_size(row["room"].as_u64().unwrap() as usize);
+        let text = row["program"].as_str().unwrap();
+        let result = openui_lang::parse_with_limits(text, &library(), None, limits);
+        assert_eq!(
+            result.to_json(),
+            row["expected"].as_str().unwrap(),
+            "{}",
+            row["name"]
+        );
+        assert_eq!(
+            result.depth_limited,
+            row["depth_limited"].as_bool().unwrap()
+        );
+        assert_eq!(result.size_limited, row["size_limited"].as_bool().unwrap());
+        let mut stream = StreamParser::with_limits(library(), None, limits);
+        stream.push(text);
+        assert_eq!(stream.finish(), result);
+    }
+}
+
+#[test]
+fn empty_memoized_error_records_preserve_later_reach_suppression() {
+    let pins: serde_json::Value =
+        serde_json::from_str(include_str!("support/empty-errors-main.json")).unwrap();
+    let lib = Arc::new(Library::from_json_schema(&pins["schema"]));
+    let cases = pins["cases"].as_array().unwrap();
+    assert_eq!(cases.len(), 12);
+    for case in cases {
+        let text = case["program"].as_str().unwrap();
+        let limits =
+            openui_lang::Limits::default().with_depth(case["depth"].as_u64().unwrap() as usize);
+        let result = openui_lang::parse_with_limits(text, &lib, None, limits);
+        assert_eq!(result.to_json(), case["expected"].as_str().unwrap());
+        assert_eq!(
+            result.depth_limited,
+            case["depth_limited"].as_bool().unwrap()
+        );
+        assert_eq!(result.size_limited, case["size_limited"].as_bool().unwrap());
+        let mut stream = StreamParser::with_limits(lib.clone(), None, limits);
+        stream.push(text);
+        assert_eq!(stream.finish(), result);
+    }
+}

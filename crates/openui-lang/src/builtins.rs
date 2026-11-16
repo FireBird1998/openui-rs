@@ -102,9 +102,3 @@ pub fn is_builtin(name: &str) -> bool {
 pub fn is_reserved_call(name: &str) -> bool {
     matches!(name, "Query" | "Mutation") || crate::js::OBJECT_PROTOTYPE_KEYS.contains(&name)
 }
-
-/// Builtins whose arguments are kept as expressions with a scoped iterator
-/// variable (`@Each(items, "item", template)`).
-pub(crate) fn is_lazy_builtin(name: &str) -> bool {
-    name == "Each"
-}

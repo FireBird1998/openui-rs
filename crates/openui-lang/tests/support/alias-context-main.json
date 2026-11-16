@@ -1,0 +1,17 @@
+[
+  {
+    "name": "open-path-cycle",
+    "program": "root=Stack([[[[[[[[[[[[[[[[[[[[[[[[a0]]]]]]]]]]]]]]]]]]]]]]],b0])\na0=a1\na1=a2\na2=a3\na3=b0\nb0=b1\nb1=b2\nb2=b3\nb3=b4\nb4=b5\nb5=b6\nb6=b7\nb7=b8\nb8=b9\nb9=b10\nb10=b11\nb11=b12\nb12=b13\nb13=b14\nb14=b15\nb15=b16\nb16=b17\nb17=b18\nb18=b19\nb19=b20\nb20=b21\nb21=b22\nb22=a0\n",
+    "expected": "{\"root\":{\"type\":\"element\",\"typeName\":\"Stack\",\"props\":{\"children\":[[[[[[[[[[[[[[[[[[[[[[[[]]]]]]]]]]]]]]]]]]]]]]]]},\"partial\":false,\"hasDynamicProps\":false,\"statementId\":\"root\"},\"meta\":{\"incomplete\":false,\"unresolved\":[\"b0\"],\"orphaned\":[],\"statementCount\":28,\"errors\":[]},\"stateDeclarations\":{},\"queryStatements\":[],\"mutationStatements\":[]}"
+  },
+  {
+    "name": "changed-depth",
+    "program": "root=Stack([[[[[[[[[[[[[[[[[[[[[[a0]]]]]]]]]]]]]]]]]]]]],a0])\na0=a1\na1=a2\na2=a3\na3=a4\na4=a5\na5=a6\na6=a7\na7=a8\na8=a9\na9=a10\na10=a11\na11=a12\na12=a13\na13=a14\na14=a15\na15=a16\na16=a17\na17=a18\na18=a19\na19=a20\na20=missing\n",
+    "expected": "{\"root\":{\"type\":\"element\",\"typeName\":\"Stack\",\"props\":{\"children\":[[[[[[[[[[[[[[[[[[[[[[]]]]]]]]]]]]]]]]]]]]]]},\"partial\":false,\"hasDynamicProps\":false,\"statementId\":\"root\"},\"meta\":{\"incomplete\":false,\"unresolved\":[\"missing\"],\"orphaned\":[],\"statementCount\":22,\"errors\":[]},\"stateDeclarations\":{},\"queryStatements\":[],\"mutationStatements\":[]}"
+  },
+  {
+    "name": "cached-cuts-suppress-false-required-errors",
+    "program": "root=Stack([Text(a0),Text(a0)])\na0=a1\na1=a2\na2=a3\na3=a4\na4=a5\na5=a6\na6=a7\na7=a8\na8=a9\na9=a10\na10=a11\na11=a12\na12=a13\na13=a14\na14=a15\na15=a16\na16=a17\na17=a18\na18=a19\na19=a20\na20=a21\na21=a22\na22=a23\na23=a24\na24=a25\na25=a26\na26=a27\na27=a28\na28=a29\na29=a30\na30=a31\na31=a32\na32=a33\na33=a34\na34=a35\na35=a36\na36=a37\na37=a38\na38=a39\na39=a40\na40=a41\na41=a42\na42=a43\na43=a44\na44=a45\na45=a46\na46=a47\na47=a48\na48=a49\na49=a50\na50=missing\n",
+    "expected": "{\"root\":{\"type\":\"element\",\"typeName\":\"Stack\",\"props\":{\"children\":[]},\"partial\":false,\"hasDynamicProps\":false,\"statementId\":\"root\"},\"meta\":{\"incomplete\":false,\"unresolved\":[],\"orphaned\":[\"a29\",\"a30\",\"a31\",\"a32\",\"a33\",\"a34\",\"a35\",\"a36\",\"a37\",\"a38\",\"a39\",\"a40\",\"a41\",\"a42\",\"a43\",\"a44\",\"a45\",\"a46\",\"a47\",\"a48\",\"a49\",\"a50\"],\"statementCount\":52,\"errors\":[]},\"stateDeclarations\":{},\"queryStatements\":[],\"mutationStatements\":[]}"
+  }
+]

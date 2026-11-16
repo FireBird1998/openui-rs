@@ -16,12 +16,12 @@ Reference: `@openuidev/lang-core 1.1.0` at commit `47b9cae0d3b26a8c9d7514d5887a6
 
 | Compared with the reference | Cases | Checks | Cases by source |
 |---|---:|---:|---|
-| Parse results: one-shot, and after every push and at the end of 8 chunkings, 2 resync sequences and any recorded chunks | 859 | 1,447,316 results | 7 benchmark, 107 docs, 46 examples, 14 fuzz, 213 hand-written, 152 recorded, 259 reference-test, 58 spec-fixture, 3 synthetic |
-| Stages on every prefix: preprocessing, tokens, statements and expression trees | 857 | 467,735 prefixes | the parse corpus, less its largest synthetic programs |
+| Parse results: one-shot, and after every push and at the end of 8 chunkings, 2 resync sequences and any recorded chunks | 972 | 1,482,782 results | 7 benchmark, 107 docs, 46 examples, 14 fuzz, 326 hand-written, 152 recorded, 259 reference-test, 58 spec-fixture, 3 synthetic |
+| Stages on every prefix: preprocessing, tokens, statements and expression trees | 970 | 478,746 prefixes | the parse corpus, less its largest synthetic programs |
 | System prompts | 65 | 65 | |
 | Edit-mode merges | 3,269 | 3,269 | 3,179 generated, 53 hand-written, 31 recorded, 1 reference-test, 5 spec-fixture |
-| Element trees back to source | 826 | 826 | 1 fuzz, 71 hand-written, 723 parse corpus root, 31 reference-test |
-| Enriched errors | 419 | 419 | every parse corpus case with errors |
+| Element trees back to source | 939 | 939 | 1 fuzz, 71 hand-written, 836 parse corpus root, 31 reference-test |
+| Enriched errors | 510 | 510 | every parse corpus case with errors |
 
 Quirks recorded: 31.
 Not matched yet, listed in `conformance/pending/`: none.
@@ -47,18 +47,19 @@ and aliases within each parse result. Persistence timing remains an explicit
 assumption; the renderer is not vendored.
 
 <!-- runtime-counts -->
-Runtime trees: 1071 total, 1062 matching, 0 pending, 9 divergences.
+Runtime trees: 1184 total, 1175 matching, 0 pending, 9 divergences.
 
 Runtime pending: #34=0, #35=0, #36=0, #38=0.
 
-Runtime coverage: 452 dynamic, 175 reading state, 501 referencing statements, 78 with runtime errors; 1465336 streaming steps per scenario, 149346 differing observations, 15420 differing trees.
+Runtime coverage: 547 dynamic, 183 reading state, 581 referencing statements, 78 with runtime errors; 1500687 streaming steps per scenario, 156638 differing observations, 14539 differing trees.
 
-Original runtime coverage: 859 cases, 261 dynamic, 61 reading state, 426 referencing statements, 16 with runtime errors; recorded: 152 cases, 2 declaring state.
+Original runtime coverage: 972 cases, 356 dynamic, 70 reading state, 506 referencing statements, 16 with runtime errors; recorded: 152 cases, 2 declaring state.
 
 Runtime pending partial comparison: 0 one-shot observations, 0 props.
 
 Runtime field writes: 49 cases, 2250 steps across both scenarios; nine values per marker per scenario.
-Runtime action runs: 178 cases (171 matching, 7 divergences), 349 scenarios, 5952 steps (5938 matching, 14 pinned), 1400 retained plans.
+
+Runtime action runs: 202 cases (195 matching, 7 divergences), 397 scenarios, 6688 steps (6674 matching, 14 pinned), 1552 retained plans.
 <!-- /runtime-counts -->
 
 `reference/runtime.ts` runs the pinned parser, store and tree evaluator, with
@@ -157,8 +158,8 @@ failed prop alongside an action. The #34 additions cover loops, components,
 root expressions and references, with caller context pinned by quirk 25. Coverage is the union of both
 scenarios and all prefixes; state reads count actual runtime `getState` calls,
 and statement references are measured on the preprocessed source AST with
-`Each` locals excluded. The original 859 cases have 261 cases with dynamic
-props, 61 reading state, 426 referencing statements and 16 with runtime errors.
+`Each` locals excluded. The parser corpus has 972 cases, with 356 cases containing dynamic
+props, 70 reading state, 506 referencing statements and 16 with runtime errors.
 Only 2 of the 152 recorded cases declare state. That measurement is why the
 runtime additions are needed.
 
@@ -494,7 +495,7 @@ Documented, not emulated. The parser divergences do not occur in the corpus. The
 | Nesting 257 to about 8,000 levels | parses (throws `RangeError` past that) | stops at 256, sets `depth_limited` |
 | A result past the result-size limit: by default the larger of 64 KiB and 64 times the program's size, never above 8 MiB (statements inlined until it doubles per level, a root expression written out as a large AST, a validation error for each item of a long list) | parses quickly, since 1.1 builds each statement once and shares it, but its JSON doubles per level: about 1 GB at 22 levels, and at 24 `JSON.stringify` runs out of memory | cuts it, errors and unresolved names included, sets `size_limited`. A stream's limit is that of the text so far, so an early push can be cut where the reference's isn't, and a later one whole |
 | A state default building past what the result-size limit leaves, or nesting past 768 levels, from the ones above it (`$b = [$a, $a]` line after line, a string added to itself, nested lists around the one above) | evaluates it, sharing lists and objects, so lists are quick but their JSON doubles per line; a string grown that way makes `parse` throw a `RangeError` (`Out of memory`) | that default is null, stopping there, and so is every expression default after the result size or work runs out (even one whose value would be `undefined`); sets `size_limited` or `depth_limited` |
-| An object assigned to `__proto__`, or `null` in an object literal | replaces the prototype; later reads and `in` checks see through it | ignores the assignment (`null` for a param named `__proto__` is reproduced) |
+| An object assigned to `__proto__`, or `null` in an evaluated state-default object literal | replaces the prototype; later reads and `in` checks see through it. An AST-valued prototype also makes the object pass inherited AST-kind checks | ignores that assignment. For a discarded object-valued parser assignment, does not validate an invented Object.prototype in its place. Thus `root=Box({"__proto__": $v})` keeps main's non-dynamic object and main's validation results; upstream recognizes inherited AST fields, skips validation and marks it dynamic. Parser null-prototype literals and null params are reproduced with inert metadata; arbitrary object prototypes and evaluated state-default null assignments remain unsupported |
 | An object literal shaped like an element used as the root | returns that object as `root` | `root` is `None` (it still counts as a root, so no `no-root`) |
 | An object literal shaped like an AST node used as the root (`root = {k: "Comp", name: "Card", args: []}`) | returns that object as `rootExpression` when it holds a component call, and throws a `TypeError` when a node in it lacks the children its kind has (`root = {k: "Comp"}`) | no `rootExpression`, and `no-root` |
 | A state default or runtime prop sorting text outside ASCII with `@Sort` (accents, other scripts) | orders it with ICU's root collation (`localeCompare`) | orders ASCII exactly as ICU does, other characters by code point after it |
@@ -677,12 +678,12 @@ in `conformance/divergences/runtime-function-prototype.json` and enforced.
 This does not exempt own JSON argument keys or ordinary inherited names:
 the definition probes and `runtime/function-collisions` compare those normally.
 
-A function declared as `Each` hits the existing parser issue #51.
+A function declared as `Each` replaces the built-in call definition (#51).
 For schema `{"$defs":{"Box":{"properties":{"value":{}}}},"functions":{"Each":{"params":{"properties":{"x":{}}}}}}`
 and `root=Box(@Each([1],x,x))`, upstream parses both `x` references as placeholders,
-adds `mappedProps.x` and an excess-arguments error. Rust retains two Refs,
-adds no mapped props and reports no error. The runtime collision corpus uses
-AST-shaped data to isolate and pin evaluator dispatch from that parser issue.
+adds `mappedProps.x` and an excess-arguments error. Rust matches these results.
+The runtime collision corpus also uses AST-shaped data to isolate evaluator
+dispatch; the `parser/shadow-*` cases exercise the source syntax directly.
 
 Query defaults are registered in root state scope (excluding a binding write's
 extra $value) before each tree evaluation and binding write,
@@ -823,12 +824,11 @@ mid-item. Generated retained bytes stay covered by charged result room. Existing
 raw-input cut recovery remains unchanged: retaining unevaluated supplied input
 is not new generated output and does not spend generated-result room.
 
-The parser's pre-existing __proto__ schema-validation difference remains:
-Box's object prop `a`, with a string __proto__ property, accepts `{}` here while
-upstream reports `/a/__proto__ expects string but got object`; making that key
-required also drops a upstream. The runtime bounded-path fix shows the missing
-inherited Object.prototype read, but parsing is deliberately unchanged.
-The #51 Each-function witness also has upstream unresolved `["x","x"]`.
+The parser now matches the inherited `__proto__` validation witness (#52):
+Box's object prop `a`, with a string `__proto__` property, reports
+`/a/__proto__ expects string but got object` for `{}`; making that key required
+also drops `a`. The #51 Each-function witness likewise matches upstream's
+unresolved `["x","x"]`. The parser corpus pins both fixes.
 
 The allocation grid in `evaluation_reuse` checks nesting levels 1–8,
 one/three items, text/data, and four rooms (64 KiB through 128 MB) for each
@@ -952,3 +952,80 @@ implementation, pinned by
 `json_function_results_cannot_restore_custom_authority_even_from_real_arguments`.
 Ordinary JSON-facing implementations compare directly; arbitrary Rust identity-
 preserving implementations are not equivalent across a JSON boundary.
+
+## Parser materialisation rules (#46, #51, #52, #28)
+
+The `parser/dynamic-*` cases exercise an element-shaped value's own
+`hasDynamicProps`: a non-null value wins, with JavaScript truthiness; null and
+absence scan props. They cover static and state-reading props, scalar flags and
+empty containers, one-shot and under every corpus chunking. The runtime harness
+includes these parser cases. Its descriptor streaming matrices no longer start
+with an otherwise unnecessary state prop to force a dynamic root.
+
+The `parser/shadow-*` cases cover all 20 built-in call spellings. The reference
+compiles built-ins, then library functions, then library actions into one call
+registry (`parser.ts:771–777`). Components occupy a separate registry and do not
+replace calls. Iterator scoping requires the selected call definition to be a
+lazy function (`materialize.ts:188–191`); a library `Each` is not lazy. Library
+params then control mapping and validation. This applies in value and expression
+positions and through statement references. The lexical rule is independent:
+built-in spellings require `@`, except `Action`, even when a component has the
+same name (`expressions.ts:132–143`). Actions win when all registries declare a
+name. These behaviours match upstream rather than adding a divergence.
+
+The `parser/inherited-*` cases cover all twelve `Object.prototype` names as
+schema properties and required entries, optional/required validation, defaults,
+enums and supplied own values. An inherited `__proto__` validates as an inert
+object; inherited methods validate as functions. Required-only entries see these
+names as present. `the_inert_object_prototype_has_a_null_parent` additionally
+pins the inherited object's null parent. A null literal assignment removes inheritance in inert object metadata; a later
+`__proto__` assignment can then make an own property. No real prototype is accessed or
+modified. Literal call arguments use the same assignment rule, and validation
+spread copies restore ordinary inheritance (`literal_call_arguments_use_the_same_inert_prototype_assignment`
+and `validation_spread_restores_ordinary_inheritance`). The existing divergence
+for assigning a new prototype remains.
+`reference/parser-materialisation-probe.ts` reproduces the original reports,
+all twelve inherited names and the null parent, using the pinned source.
+
+`parser/descriptor-extra-keys` pins `{k:"Str",v:"y",z:2}`: parsing retains the
+object and marks the prop dynamic; the reference runtime evaluates it to `"y"`.
+Extra keys do not disqualify a recognized expression kind (`ast.ts:111–114`).
+This is existing matching behaviour, not a new evaluator change.
+
+For alias chains, cycle membership uses dense slot bits, empty non-memoized
+error records are omitted, and reach tracking walks a shared record's children only when that
+record becomes live or ceases to be live. Unresolved lists retain singleton-tail
+sharing. A null depth-cut entry can be reused only at the same starting depth with
+no open reference path; its exact charge, cut count and depth flag are replayed.
+Cut containers keep fresh identities at each reach. At raised depth, acyclic
+alias tails ending in missing names can jump directly to a cut: the original
+per-reference prices and failed lookup are retained, while per-frame successor
+marks record each reached slot once. Complete tails and other statement shapes
+keep the ordinary cache/walker.
+Empty memoized error records remain: even a depth-cut reach with no errors
+marks that statement as reported, suppressing a later reach's errors.
+`empty_memoized_error_records_preserve_later_reach_suppression` pins this
+behaviour against main at default and lowered depth, in both reach orders.
+Replay also retains an empty reported marker for memoized depth-cut entries
+without unresolved names. Otherwise a late alias can reveal an error suppressed
+by an earlier deep reach. Complete empty replays still omit the record, keeping
+streaming invalidation linear. `streaming_aliases` pins the review's depth-5 and
+default-depth examples and compares 13,500 generated late-alias programs with
+fresh parses at each complete-line prefix, including limits and finish.
+
+`conformance/parser-prototype-assignments.json` is a separate twelve-case
+divergence corpus. `parser_prototype_divergences` compares complete results with
+archived main and pins every 1/3/4/5-character push and finish, alongside the
+reference's generated outputs in `golden/parser-prototype-assignments.json`.
+Prefixes before the expression is assigned can still differ from main because
+ordinary inherited validation now matches upstream (#52). Once `$v` is assigned,
+the results must match main exactly. No pending list exempts these cases.
+Only inert provenance records that the discarded assignment did not leave an
+ordinary prototype; it adds no own field and changes neither value equality nor
+Debug/JSON output. Bounded runtime validation retains its existing policy.
+Matching this divergence would require inherited AST-field recognition and
+evaluator property lookup, beyond the inert ordinary prototype used by #52.
+These are representation changes: reference charges, cut points and
+ordered errors/unresolved/orphaned names keep their existing rules. The counted
+and allocator regressions are described in TESTING.md; their finite bounds do
+not establish a universal runtime heap bound (ADR 0008).

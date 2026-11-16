@@ -1,0 +1,2 @@
+root=Box(@Max(0,x,x),true?@Max(0,x,x):null,alias,Max(0,x,x))
+alias=@Max(0,x,x)

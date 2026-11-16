@@ -116,10 +116,10 @@ a stream staying cut until `set`. Finished-tree walks remain uncapped.
 
 | Test | Checks | Catches |
 |---|---|---|
-| `conformance` | Every corpus case (534), one-shot, after every streaming push and at each stream's end, under each of the corpus's chunkings, against the reference's goldens. Also that a stream, once ended, gives what one-shot parsing gives, apart from programs where the reference itself doesn't. | Any difference from the reference in parsing or streaming |
+| `conformance` | Every corpus case (972), one-shot, after every streaming push and at each stream's end, under each of the corpus's chunkings, against the reference's goldens. Also that a stream, once ended, gives what one-shot parsing gives, apart from programs where the reference itself doesn't. | Any difference from the reference in parsing or streaming |
 | `stages` | Tokens, statements and expressions, and fence and comment stripping, on every prefix of every program | Which stage of the pipeline a difference starts in |
-| `edits` | Merging (over 1,400 cases), converting element trees back to source, and error hints, against the reference | Differences in the edit-mode and error layer |
-| `prompt` | Every prompt spec in the corpus (61) against the reference's `generateSystemPrompt`. Its error messages are compared exactly; for crashes inside the JavaScript engine, only that it fails. | Differences in system prompts |
+| `edits` | Merging (3,269 cases), converting element trees back to source, and error hints, against the reference | Differences in the edit-mode and error layer |
+| `prompt` | Every prompt spec in the corpus (65) against the reference's `generateSystemPrompt`. Its error messages are compared exactly; for crashes inside the JavaScript engine, only that it fails. | Differences in system prompts |
 | `robustness` | Property tests: any text, cut anywhere, through every stage and every entry point, finishes without panicking | Crashes on arbitrary input |
 | `depth` | Absurdly deep nesting stops at 256 levels with `depth_limited`, on a 64 KB thread stack, because the core grows its stack on demand; so do state defaults nesting the ones above them, at 768 JSON levels | Stack overflows, a recursive walk the stack growth misses |
 | `size` | Programs that double with every line stop at the result-size limit with `size_limited` (by default about 64 KiB for these short programs, up to 8 MiB with the limit fixed there), state defaults evaluated from the ones above them too | Runaway memory |
@@ -1161,3 +1161,97 @@ in that same realm; no preemption or timeout is claimed.
 
 `node --test examples/next-compare/scripts/copy-wasm.test.mjs` checks copying an
 existing built package and the clear missing-build error without invoking Rust.
+
+## Parser materialisation regressions
+
+`parser_materialisation` uses public parsing calls to check nullish element
+flags and JavaScript truthiness, shadowed `Each` in values and expressions,
+all twelve inherited schema names, required-only entries, null-prototype
+literals and call arguments, validation spread copies, and the inert prototype's null parent. The parser corpus adds `parser/dynamic-*`,
+`parser/shadow-*`, `parser/inherited-*` and `parser/descriptor-extra-keys`.
+The existing one-shot, streaming, stage and runtime conformance tests pick up
+these cases without a separate pending list.
+
+`scaling::alias_references_at_raised_limits_allocate_linearly` counts allocator
+requests for references to distinct chain positions (2,000/8,000 aliases at
+depth 20,000), and 100 × N reaches of the head (50/200 aliases at default depth).
+Both use 1 GiB result room and must finish uncut with ordered unresolved names
+and no orphans. Fourfold growth permits fewer than five times the allocations;
+peak requested heap stays below 16 MiB. The unit companion
+`materialize::cost_tests::alias_metadata_walks_scale_with_statements_and_references`
+counts actual error/unresolved/reach traversal steps under those same public
+parse calls, with a fivefold ceiling. Its instrumentation is compiled only for
+unit tests and does not change evaluator work or parser limits. Deleting the
+singleton unresolved-sharing arm in `fold` fails this counted regression.
+
+`scaling::cut_alias_references_keep_heap_proportional_to_result_room` keeps a
+300-alias/30,000-reach program fixed and varies result room across 64 KiB,
+256 KiB and 1 MiB. Each parse must retain its size/depth flags and fit below
+2 × room + 9 MiB of requested heap, including the program's parsed storage.
+These are finite shape checks, not a bound for every program or a measurement
+of stacker's mappings. None of the new tests asserts elapsed time.
+
+Reproduce the focused upstream observations offline from `reference/`:
+
+```sh
+bun --no-install parser-materialisation-probe.ts
+```
+
+`alias_limit_results_keep_their_main_bytes` pins 72 combinations of both shapes,
+depth 32/256/20,000 and room 64 KiB/1 MiB/1 GiB against archived main
+`6367d530` JSON fingerprints. `cached_depth_cuts_respect_open_paths_depth_and_stream_changes`
+pins three full main outputs, including an ancestor cycle, a changed starting
+depth and required-prop error suppression; it also checks streaming cache
+invalidation. The unit test `repeated_depth_cut_aliases_walk_metadata_once_per_reach`
+uses 50/200 aliases at depth 32, with 100 × N reaches and 1 GiB room, and limits
+traversal visits to 300 × N + 200. This catches disabling depth-cut reuse even
+though the serialized reference charges remain unchanged.
+
+`replayed_depth_cuts_keep_their_flags_on_later_stream_results` checks a completed
+alias chain after two unrelated streaming statements, so a fresh walk cannot
+mask a lost replay flag.
+
+`depth_cut_containers_keep_fresh_identities_at_each_reach` pins main's container
+identity on cut results. Only null cuts may be cached. For raised depth, a
+separate iterative alias index certifies acyclic tails ending in a missing name;
+per-frame successor marks skip slots already reached. The full original
+32,000-alias witness, depth 20,000 and room 1 GiB, must stay below 48 MiB counted
+heap and retain its 292-byte JSON cut result (293 bytes with the CLI newline).
+The saved main result was captured with 1 MiB room; both rooms exhaust before
+any missing name is reached, leaving the same empty unresolved/orphan lists.
+`raised_depth_cuts_over_distinct_aliases_scale_with_the_program` counts visits
+at 600/2,400 aliases with depth N/2 and permits less than fivefold growth.
+`raised_alias_cuts_preserve_reference_prices_at_each_boundary` pins 552 archived
+main byte/flag observations across value/expression mode, distinct/head reaches,
+depths 257/280/300 and byte-price boundaries, then checks streaming finishes.
+`raised_alias_cuts_keep_failed_lookup_marks_flags_and_required_checks` pins
+three additional full main results: the lookup whose price fails still counts
+as reached, a size failure stays flagged when no orphan can expose it, and
+virtual depth cuts suppress false required-prop errors.
+
+`empty_memoized_error_records_preserve_later_reach_suppression` pins twelve
+archived-main results at depth 8/32/256, with the cut and uncut reaches in both
+orders. An empty memoized error record still marks its statement as reported;
+omitting it would expose a later validation error. One-shot and streaming finish
+must retain the saved bytes and flags. Only empty non-memoized records can be
+discarded without this side effect.
+
+`streaming_aliases::replayed_depth_cuts_keep_reported_markers_after_a_late_alias`
+and `replayed_default_depth_cuts_keep_reported_markers_after_a_late_alias` pin
+zero errors through both pushes and finish in the review's depth-5/default-depth
+examples. `late_alias_stream_results_match_fresh_prefixes_at_small_limits`
+generates 13,500 programs over nine depths, five alias-chain lengths, ten depth
+positions, three root shapes and ten late statements/rooms. Each complete-line
+push and finish must equal a fresh parse, including both limit flags. These
+programs also match archived main at every push, finish and set in the offline
+differential; no elapsed-time assertion is added.
+
+`parser_prototype_divergences` tests the separate twelve-case corpus in
+`conformance/parser-prototype-assignments.json`. Complete results and all pushes
+after `$v` is assigned must retain archived main's bytes. Every prefix and finish
+is pinned, alongside upstream outputs generated by
+`reference/parser-prototype-assignments.ts` during `scripts/regen-golden.sh`.
+Earlier prefixes can still differ from main under the intended #52 ordinary
+inherited-validation fix. These intentional divergences use explicit expected
+results, not a pending list. `discarded_prototype_assignments_keep_value_equality_and_debug`
+additionally protects public equality, Debug output and the non-dynamic flag.

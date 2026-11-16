@@ -352,7 +352,40 @@ fn copied<'a>(
     out: &'a mut Option<JsObject<Value>>,
     obj: &JsObject<Value>,
 ) -> &'a mut JsObject<Value> {
-    out.get_or_insert_with(|| obj.clone())
+    out.get_or_insert_with(|| {
+        // Object.prototype's own methods/accessor are non-enumerable.
+        if is_inert_prototype(obj) {
+            JsObject::new()
+        } else {
+            obj.spread()
+        }
+    })
+}
+
+static INERT_PROTOTYPE: std::sync::OnceLock<Value> = std::sync::OnceLock::new();
+fn inert_prototype() -> &'static Value {
+    INERT_PROTOTYPE.get_or_init(|| Value::Obj(std::sync::Arc::new(JsObject::new())))
+}
+fn is_inert_prototype(obj: &JsObject<Value>) -> bool {
+    matches!(INERT_PROTOTYPE.get(), Some(Value::Obj(prototype)) if std::ptr::eq(obj, prototype.as_ref()))
+}
+fn object_property<'a, const BOUNDED: bool>(
+    obj: &'a JsObject<Value>,
+    key: &str,
+) -> Option<&'a Value> {
+    obj.get(key).or_else(|| {
+        if key != "__proto__" || !obj.has(key) || (!BOUNDED && obj.has_unrepresented_prototype()) {
+            return None;
+        }
+        // Object.prototype itself has a null prototype. These are inert Rust
+        // values, not host objects, and never invoke an accessor or setter.
+        static NULL: Value = Value::Null;
+        Some(if is_inert_prototype(obj) {
+            &NULL
+        } else {
+            inert_prototype()
+        })
+    })
 }
 
 fn schema_default(schema: Option<&Json>) -> Option<&Json> {
@@ -559,7 +592,7 @@ fn validate_object<const BOUNDED: bool>(
                 break;
             }
             let present = obj.has(key);
-            if !present || matches!(obj.get(key), Some(Value::Null)) {
+            if !present || matches!(object_property::<BOUNDED>(obj, key), Some(Value::Null)) {
                 if let Some(fallback) = schema_default(prop(key)) {
                     if BOUNDED && !crate::evaluate::validation_default(fallback) {
                         ctx.stack_cut = true;
@@ -624,17 +657,10 @@ fn validate_object<const BOUNDED: bool>(
             continue;
         }
         let child_path = format!("{path}/{key}");
-        // Runtime validation reads Object.prototype through the inherited
-        // __proto__ accessor. Parsing retains its established own-value path.
-        let prototype = if BOUNDED && key == "__proto__" && obj.has(key) {
-            static PROTOTYPE: std::sync::OnceLock<Value> = std::sync::OnceLock::new();
-            Some(PROTOTYPE.get_or_init(|| Value::Obj(std::sync::Arc::new(JsObject::new()))))
-        } else {
-            None
-        };
-        let Some(before) = obj.get(key).or(prototype) else {
+        let Some(before) = object_property::<BOUNDED>(obj, key) else {
             // Inherited methods are functions, not representable as Value.
-            if key != "__proto__"
+            if obj.has(key)
+                && key != "__proto__"
                 && OBJECT_PROTOTYPE_KEYS.contains(&key.as_str())
                 && validate_inherited_function::<BOUNDED>(sub, component, &child_path, ctx)
                 && (!BOUNDED

@@ -1,0 +1,2 @@
+root=Box(@Action(0,x,x),true?@Action(0,x,x):null,alias,Action(0,x,x))
+alias=@Action(0,x,x)

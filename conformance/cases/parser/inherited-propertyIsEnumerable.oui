@@ -1,0 +1,1 @@
+root=Box([Optional8({}),Required8({}),Default8({}),RequiredOnly8({}),Enum8({}),Optional8({"propertyIsEnumerable":"own"}),Required8({"propertyIsEnumerable":null})])

@@ -1,0 +1,2 @@
+root=Box(@Avg(0,x,x),true?@Avg(0,x,x):null,alias,Avg(0,x,x))
+alias=@Avg(0,x,x)

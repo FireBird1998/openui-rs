@@ -1,0 +1,2 @@
+root=Box(@Each(0,x,x),true?@Each(0,x,x):null,alias,Each(0,x,x))
+alias=@Each(0,x,x)

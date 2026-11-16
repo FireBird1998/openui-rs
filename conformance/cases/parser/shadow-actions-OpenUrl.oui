@@ -1,0 +1,2 @@
+root=Box(@OpenUrl(0,x,x),true?@OpenUrl(0,x,x):null,alias,OpenUrl(0,x,x))
+alias=@OpenUrl(0,x,x)

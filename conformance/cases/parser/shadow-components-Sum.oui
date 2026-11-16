@@ -1,0 +1,2 @@
+root=Box(@Sum(0,x,x),true?@Sum(0,x,x):null,alias,Sum(0,x,x))
+alias=@Sum(0,x,x)

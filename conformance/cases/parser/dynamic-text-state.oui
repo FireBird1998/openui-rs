@@ -1,0 +1,2 @@
+root=Box([{"type":"element","typeName":"Box","partial":false,"hasDynamicProps":"yes","props":{"a":{"k":"StateRef","n":"$x"}}}])
+$x=7

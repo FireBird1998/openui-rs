@@ -1,0 +1,2 @@
+root=Box(@Min(0,x,x),true?@Min(0,x,x):null,alias,Min(0,x,x))
+alias=@Min(0,x,x)

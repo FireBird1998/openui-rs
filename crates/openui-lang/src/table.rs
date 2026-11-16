@@ -11,7 +11,10 @@
 //! chain from the entry down to the change, not the whole program.
 
 use std::collections::HashMap;
-use std::sync::Arc;
+use std::sync::{
+    Arc,
+    atomic::{AtomicUsize, Ordering::Relaxed},
+};
 
 use crate::ast::Ast;
 use crate::materialize::{ErrorPart, UnresolvedPart};
@@ -59,6 +62,10 @@ pub(crate) struct Undo {
 /// of the cached statements it took as they were. Shared between results,
 /// so two results' trees can be compared by pointer where nothing changed.
 pub(crate) struct Reach {
+    /// Incoming links in the owning Table's current result. Only transitions
+    /// between zero and one walk children. Atomic solely to keep streams
+    /// Send + Sync; every update happens under the Table's mutable borrow.
+    pub active: AtomicUsize,
     /// Looked up directly, sorted and deduplicated.
     pub direct: Vec<Slot>,
     pub children: Vec<Arc<Reach>>,
@@ -209,6 +216,11 @@ impl Table {
         &self.specials
     }
 
+    /// Defined and referenced names, including missing terminals.
+    pub(crate) fn slot_count(&self) -> usize {
+        self.names.len()
+    }
+
     /// How many statements are defined.
     pub(crate) fn len(&self) -> usize {
         self.order.len()
@@ -282,8 +294,13 @@ impl Table {
         }
     }
 
-    fn reach_add(&mut self, reach: &Reach) {
+    fn reach_add(&mut self, reach: &Arc<Reach>) {
         crate::stack::grow_stack!(self.reach_add(reach));
+        #[cfg(test)]
+        crate::materialize::cost_tests::visit();
+        if reach.active.fetch_add(1, Relaxed) != 0 {
+            return;
+        }
         for &slot in &reach.direct {
             self.reach_inc(slot);
         }
@@ -292,8 +309,13 @@ impl Table {
         }
     }
 
-    fn reach_remove(&mut self, reach: &Reach) {
+    fn reach_remove(&mut self, reach: &Arc<Reach>) {
         crate::stack::grow_stack!(self.reach_remove(reach));
+        #[cfg(test)]
+        crate::materialize::cost_tests::visit();
+        if reach.active.fetch_sub(1, Relaxed) != 1 {
+            return;
+        }
         for &slot in &reach.direct {
             self.reach_dec(slot);
         }
@@ -302,32 +324,14 @@ impl Table {
         }
     }
 
-    /// Move the counts from `old`'s tree to `new`'s, skipping shared nodes.
+    /// Add before removing: unchanged shared tails stay live throughout.
     fn reach_diff(&mut self, old: Option<&Arc<Reach>>, new: &Arc<Reach>) {
-        crate::stack::grow_stack!(self.reach_diff(old, new));
-        let Some(old) = old else {
-            return self.reach_add(new);
-        };
-        if Arc::ptr_eq(old, new) {
+        if old.is_some_and(|old| Arc::ptr_eq(old, new)) {
             return;
         }
-        if old.direct != new.direct {
-            for &slot in &new.direct {
-                self.reach_inc(slot);
-            }
-            for &slot in &old.direct {
-                self.reach_dec(slot);
-            }
-        }
-        let common = old.children.len().min(new.children.len());
-        for (o, n) in old.children.iter().zip(&new.children) {
-            self.reach_diff(Some(o), n);
-        }
-        for child in &new.children[common..] {
-            self.reach_add(child);
-        }
-        for child in &old.children[common..] {
-            self.reach_remove(child);
+        self.reach_add(new);
+        if let Some(old) = old {
+            self.reach_remove(old);
         }
     }
 
@@ -377,6 +381,9 @@ pub(crate) struct Entry {
     /// For a state default's value: the statement its errors were attributed
     /// to (the entry's), which a reuse must share. `None` for the rest.
     pub context: Option<String>,
+    /// A depth-cut result is reusable only at this starting depth with no
+    /// open reference path; replay retains its exact number of cuts.
+    pub depth_cut: Option<(usize, usize)>,
 }
 
 pub(crate) enum Output {

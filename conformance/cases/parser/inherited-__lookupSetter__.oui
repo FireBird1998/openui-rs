@@ -1,0 +1,1 @@
+root=Box([Optional3({}),Required3({}),Default3({}),RequiredOnly3({}),Enum3({}),Optional3({"__lookupSetter__":"own"}),Required3({"__lookupSetter__":null})])

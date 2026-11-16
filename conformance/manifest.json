@@ -21,7 +21,13 @@
   "pricing-validation": "schemas/pricing-validation.json",
   "batch-mapped-default": "schemas/batch-mapped-default.json",
   "batch-mapped-removal": "schemas/batch-mapped-removal.json",
-  "batch-validation": "schemas/batch-validation.json"
+  "batch-validation": "schemas/batch-validation.json",
+  "parser-box": "schemas/parser-box.json",
+  "shadow-functions": "schemas/shadow-functions.json",
+  "shadow-actions": "schemas/shadow-actions.json",
+  "shadow-components": "schemas/shadow-components.json",
+  "shadow-precedence": "schemas/shadow-precedence.json",
+  "inherited-properties": "schemas/inherited-properties.json"
  },
  "cases": [
   {
@@ -1316,6 +1322,684 @@
    "name": "hand/250-a-bracket-before-a-statement-closed-after-its-ternary",
    "schema": "hand",
    "file": "cases/hand/250-a-bracket-before-a-statement-closed-after-its-ternary.oui",
+   "source": "hand-written"
+  },
+  {
+   "name": "parser/dynamic-true-static",
+   "schema": "parser-box",
+   "file": "cases/parser/dynamic-true-static.oui",
+   "source": "hand-written"
+  },
+  {
+   "name": "parser/dynamic-true-state",
+   "schema": "parser-box",
+   "file": "cases/parser/dynamic-true-state.oui",
+   "source": "hand-written"
+  },
+  {
+   "name": "parser/dynamic-false-static",
+   "schema": "parser-box",
+   "file": "cases/parser/dynamic-false-static.oui",
+   "source": "hand-written"
+  },
+  {
+   "name": "parser/dynamic-false-state",
+   "schema": "parser-box",
+   "file": "cases/parser/dynamic-false-state.oui",
+   "source": "hand-written"
+  },
+  {
+   "name": "parser/dynamic-one-static",
+   "schema": "parser-box",
+   "file": "cases/parser/dynamic-one-static.oui",
+   "source": "hand-written"
+  },
+  {
+   "name": "parser/dynamic-one-state",
+   "schema": "parser-box",
+   "file": "cases/parser/dynamic-one-state.oui",
+   "source": "hand-written"
+  },
+  {
+   "name": "parser/dynamic-zero-static",
+   "schema": "parser-box",
+   "file": "cases/parser/dynamic-zero-static.oui",
+   "source": "hand-written"
+  },
+  {
+   "name": "parser/dynamic-zero-state",
+   "schema": "parser-box",
+   "file": "cases/parser/dynamic-zero-state.oui",
+   "source": "hand-written"
+  },
+  {
+   "name": "parser/dynamic-text-static",
+   "schema": "parser-box",
+   "file": "cases/parser/dynamic-text-static.oui",
+   "source": "hand-written"
+  },
+  {
+   "name": "parser/dynamic-text-state",
+   "schema": "parser-box",
+   "file": "cases/parser/dynamic-text-state.oui",
+   "source": "hand-written"
+  },
+  {
+   "name": "parser/dynamic-empty-static",
+   "schema": "parser-box",
+   "file": "cases/parser/dynamic-empty-static.oui",
+   "source": "hand-written"
+  },
+  {
+   "name": "parser/dynamic-empty-state",
+   "schema": "parser-box",
+   "file": "cases/parser/dynamic-empty-state.oui",
+   "source": "hand-written"
+  },
+  {
+   "name": "parser/dynamic-array-static",
+   "schema": "parser-box",
+   "file": "cases/parser/dynamic-array-static.oui",
+   "source": "hand-written"
+  },
+  {
+   "name": "parser/dynamic-array-state",
+   "schema": "parser-box",
+   "file": "cases/parser/dynamic-array-state.oui",
+   "source": "hand-written"
+  },
+  {
+   "name": "parser/dynamic-object-static",
+   "schema": "parser-box",
+   "file": "cases/parser/dynamic-object-static.oui",
+   "source": "hand-written"
+  },
+  {
+   "name": "parser/dynamic-object-state",
+   "schema": "parser-box",
+   "file": "cases/parser/dynamic-object-state.oui",
+   "source": "hand-written"
+  },
+  {
+   "name": "parser/dynamic-null-static",
+   "schema": "parser-box",
+   "file": "cases/parser/dynamic-null-static.oui",
+   "source": "hand-written"
+  },
+  {
+   "name": "parser/dynamic-null-state",
+   "schema": "parser-box",
+   "file": "cases/parser/dynamic-null-state.oui",
+   "source": "hand-written"
+  },
+  {
+   "name": "parser/dynamic-missing-static",
+   "schema": "parser-box",
+   "file": "cases/parser/dynamic-missing-static.oui",
+   "source": "hand-written"
+  },
+  {
+   "name": "parser/dynamic-missing-state",
+   "schema": "parser-box",
+   "file": "cases/parser/dynamic-missing-state.oui",
+   "source": "hand-written"
+  },
+  {
+   "name": "parser/descriptor-extra-keys",
+   "schema": "parser-box",
+   "file": "cases/parser/descriptor-extra-keys.oui",
+   "source": "hand-written"
+  },
+  {
+   "name": "parser/shadow-functions-Count",
+   "schema": "shadow-functions",
+   "file": "cases/parser/shadow-functions-Count.oui",
+   "source": "hand-written"
+  },
+  {
+   "name": "parser/shadow-functions-First",
+   "schema": "shadow-functions",
+   "file": "cases/parser/shadow-functions-First.oui",
+   "source": "hand-written"
+  },
+  {
+   "name": "parser/shadow-functions-Last",
+   "schema": "shadow-functions",
+   "file": "cases/parser/shadow-functions-Last.oui",
+   "source": "hand-written"
+  },
+  {
+   "name": "parser/shadow-functions-Sum",
+   "schema": "shadow-functions",
+   "file": "cases/parser/shadow-functions-Sum.oui",
+   "source": "hand-written"
+  },
+  {
+   "name": "parser/shadow-functions-Avg",
+   "schema": "shadow-functions",
+   "file": "cases/parser/shadow-functions-Avg.oui",
+   "source": "hand-written"
+  },
+  {
+   "name": "parser/shadow-functions-Min",
+   "schema": "shadow-functions",
+   "file": "cases/parser/shadow-functions-Min.oui",
+   "source": "hand-written"
+  },
+  {
+   "name": "parser/shadow-functions-Max",
+   "schema": "shadow-functions",
+   "file": "cases/parser/shadow-functions-Max.oui",
+   "source": "hand-written"
+  },
+  {
+   "name": "parser/shadow-functions-Sort",
+   "schema": "shadow-functions",
+   "file": "cases/parser/shadow-functions-Sort.oui",
+   "source": "hand-written"
+  },
+  {
+   "name": "parser/shadow-functions-Filter",
+   "schema": "shadow-functions",
+   "file": "cases/parser/shadow-functions-Filter.oui",
+   "source": "hand-written"
+  },
+  {
+   "name": "parser/shadow-functions-Round",
+   "schema": "shadow-functions",
+   "file": "cases/parser/shadow-functions-Round.oui",
+   "source": "hand-written"
+  },
+  {
+   "name": "parser/shadow-functions-Abs",
+   "schema": "shadow-functions",
+   "file": "cases/parser/shadow-functions-Abs.oui",
+   "source": "hand-written"
+  },
+  {
+   "name": "parser/shadow-functions-Floor",
+   "schema": "shadow-functions",
+   "file": "cases/parser/shadow-functions-Floor.oui",
+   "source": "hand-written"
+  },
+  {
+   "name": "parser/shadow-functions-Ceil",
+   "schema": "shadow-functions",
+   "file": "cases/parser/shadow-functions-Ceil.oui",
+   "source": "hand-written"
+  },
+  {
+   "name": "parser/shadow-functions-Each",
+   "schema": "shadow-functions",
+   "file": "cases/parser/shadow-functions-Each.oui",
+   "source": "hand-written"
+  },
+  {
+   "name": "parser/shadow-functions-Run",
+   "schema": "shadow-functions",
+   "file": "cases/parser/shadow-functions-Run.oui",
+   "source": "hand-written"
+  },
+  {
+   "name": "parser/shadow-functions-ToAssistant",
+   "schema": "shadow-functions",
+   "file": "cases/parser/shadow-functions-ToAssistant.oui",
+   "source": "hand-written"
+  },
+  {
+   "name": "parser/shadow-functions-OpenUrl",
+   "schema": "shadow-functions",
+   "file": "cases/parser/shadow-functions-OpenUrl.oui",
+   "source": "hand-written"
+  },
+  {
+   "name": "parser/shadow-functions-Set",
+   "schema": "shadow-functions",
+   "file": "cases/parser/shadow-functions-Set.oui",
+   "source": "hand-written"
+  },
+  {
+   "name": "parser/shadow-functions-Reset",
+   "schema": "shadow-functions",
+   "file": "cases/parser/shadow-functions-Reset.oui",
+   "source": "hand-written"
+  },
+  {
+   "name": "parser/shadow-functions-Action",
+   "schema": "shadow-functions",
+   "file": "cases/parser/shadow-functions-Action.oui",
+   "source": "hand-written"
+  },
+  {
+   "name": "parser/shadow-actions-Count",
+   "schema": "shadow-actions",
+   "file": "cases/parser/shadow-actions-Count.oui",
+   "source": "hand-written"
+  },
+  {
+   "name": "parser/shadow-actions-First",
+   "schema": "shadow-actions",
+   "file": "cases/parser/shadow-actions-First.oui",
+   "source": "hand-written"
+  },
+  {
+   "name": "parser/shadow-actions-Last",
+   "schema": "shadow-actions",
+   "file": "cases/parser/shadow-actions-Last.oui",
+   "source": "hand-written"
+  },
+  {
+   "name": "parser/shadow-actions-Sum",
+   "schema": "shadow-actions",
+   "file": "cases/parser/shadow-actions-Sum.oui",
+   "source": "hand-written"
+  },
+  {
+   "name": "parser/shadow-actions-Avg",
+   "schema": "shadow-actions",
+   "file": "cases/parser/shadow-actions-Avg.oui",
+   "source": "hand-written"
+  },
+  {
+   "name": "parser/shadow-actions-Min",
+   "schema": "shadow-actions",
+   "file": "cases/parser/shadow-actions-Min.oui",
+   "source": "hand-written"
+  },
+  {
+   "name": "parser/shadow-actions-Max",
+   "schema": "shadow-actions",
+   "file": "cases/parser/shadow-actions-Max.oui",
+   "source": "hand-written"
+  },
+  {
+   "name": "parser/shadow-actions-Sort",
+   "schema": "shadow-actions",
+   "file": "cases/parser/shadow-actions-Sort.oui",
+   "source": "hand-written"
+  },
+  {
+   "name": "parser/shadow-actions-Filter",
+   "schema": "shadow-actions",
+   "file": "cases/parser/shadow-actions-Filter.oui",
+   "source": "hand-written"
+  },
+  {
+   "name": "parser/shadow-actions-Round",
+   "schema": "shadow-actions",
+   "file": "cases/parser/shadow-actions-Round.oui",
+   "source": "hand-written"
+  },
+  {
+   "name": "parser/shadow-actions-Abs",
+   "schema": "shadow-actions",
+   "file": "cases/parser/shadow-actions-Abs.oui",
+   "source": "hand-written"
+  },
+  {
+   "name": "parser/shadow-actions-Floor",
+   "schema": "shadow-actions",
+   "file": "cases/parser/shadow-actions-Floor.oui",
+   "source": "hand-written"
+  },
+  {
+   "name": "parser/shadow-actions-Ceil",
+   "schema": "shadow-actions",
+   "file": "cases/parser/shadow-actions-Ceil.oui",
+   "source": "hand-written"
+  },
+  {
+   "name": "parser/shadow-actions-Each",
+   "schema": "shadow-actions",
+   "file": "cases/parser/shadow-actions-Each.oui",
+   "source": "hand-written"
+  },
+  {
+   "name": "parser/shadow-actions-Run",
+   "schema": "shadow-actions",
+   "file": "cases/parser/shadow-actions-Run.oui",
+   "source": "hand-written"
+  },
+  {
+   "name": "parser/shadow-actions-ToAssistant",
+   "schema": "shadow-actions",
+   "file": "cases/parser/shadow-actions-ToAssistant.oui",
+   "source": "hand-written"
+  },
+  {
+   "name": "parser/shadow-actions-OpenUrl",
+   "schema": "shadow-actions",
+   "file": "cases/parser/shadow-actions-OpenUrl.oui",
+   "source": "hand-written"
+  },
+  {
+   "name": "parser/shadow-actions-Set",
+   "schema": "shadow-actions",
+   "file": "cases/parser/shadow-actions-Set.oui",
+   "source": "hand-written"
+  },
+  {
+   "name": "parser/shadow-actions-Reset",
+   "schema": "shadow-actions",
+   "file": "cases/parser/shadow-actions-Reset.oui",
+   "source": "hand-written"
+  },
+  {
+   "name": "parser/shadow-actions-Action",
+   "schema": "shadow-actions",
+   "file": "cases/parser/shadow-actions-Action.oui",
+   "source": "hand-written"
+  },
+  {
+   "name": "parser/shadow-components-Count",
+   "schema": "shadow-components",
+   "file": "cases/parser/shadow-components-Count.oui",
+   "source": "hand-written"
+  },
+  {
+   "name": "parser/shadow-components-First",
+   "schema": "shadow-components",
+   "file": "cases/parser/shadow-components-First.oui",
+   "source": "hand-written"
+  },
+  {
+   "name": "parser/shadow-components-Last",
+   "schema": "shadow-components",
+   "file": "cases/parser/shadow-components-Last.oui",
+   "source": "hand-written"
+  },
+  {
+   "name": "parser/shadow-components-Sum",
+   "schema": "shadow-components",
+   "file": "cases/parser/shadow-components-Sum.oui",
+   "source": "hand-written"
+  },
+  {
+   "name": "parser/shadow-components-Avg",
+   "schema": "shadow-components",
+   "file": "cases/parser/shadow-components-Avg.oui",
+   "source": "hand-written"
+  },
+  {
+   "name": "parser/shadow-components-Min",
+   "schema": "shadow-components",
+   "file": "cases/parser/shadow-components-Min.oui",
+   "source": "hand-written"
+  },
+  {
+   "name": "parser/shadow-components-Max",
+   "schema": "shadow-components",
+   "file": "cases/parser/shadow-components-Max.oui",
+   "source": "hand-written"
+  },
+  {
+   "name": "parser/shadow-components-Sort",
+   "schema": "shadow-components",
+   "file": "cases/parser/shadow-components-Sort.oui",
+   "source": "hand-written"
+  },
+  {
+   "name": "parser/shadow-components-Filter",
+   "schema": "shadow-components",
+   "file": "cases/parser/shadow-components-Filter.oui",
+   "source": "hand-written"
+  },
+  {
+   "name": "parser/shadow-components-Round",
+   "schema": "shadow-components",
+   "file": "cases/parser/shadow-components-Round.oui",
+   "source": "hand-written"
+  },
+  {
+   "name": "parser/shadow-components-Abs",
+   "schema": "shadow-components",
+   "file": "cases/parser/shadow-components-Abs.oui",
+   "source": "hand-written"
+  },
+  {
+   "name": "parser/shadow-components-Floor",
+   "schema": "shadow-components",
+   "file": "cases/parser/shadow-components-Floor.oui",
+   "source": "hand-written"
+  },
+  {
+   "name": "parser/shadow-components-Ceil",
+   "schema": "shadow-components",
+   "file": "cases/parser/shadow-components-Ceil.oui",
+   "source": "hand-written"
+  },
+  {
+   "name": "parser/shadow-components-Each",
+   "schema": "shadow-components",
+   "file": "cases/parser/shadow-components-Each.oui",
+   "source": "hand-written"
+  },
+  {
+   "name": "parser/shadow-components-Run",
+   "schema": "shadow-components",
+   "file": "cases/parser/shadow-components-Run.oui",
+   "source": "hand-written"
+  },
+  {
+   "name": "parser/shadow-components-ToAssistant",
+   "schema": "shadow-components",
+   "file": "cases/parser/shadow-components-ToAssistant.oui",
+   "source": "hand-written"
+  },
+  {
+   "name": "parser/shadow-components-OpenUrl",
+   "schema": "shadow-components",
+   "file": "cases/parser/shadow-components-OpenUrl.oui",
+   "source": "hand-written"
+  },
+  {
+   "name": "parser/shadow-components-Set",
+   "schema": "shadow-components",
+   "file": "cases/parser/shadow-components-Set.oui",
+   "source": "hand-written"
+  },
+  {
+   "name": "parser/shadow-components-Reset",
+   "schema": "shadow-components",
+   "file": "cases/parser/shadow-components-Reset.oui",
+   "source": "hand-written"
+  },
+  {
+   "name": "parser/shadow-components-Action",
+   "schema": "shadow-components",
+   "file": "cases/parser/shadow-components-Action.oui",
+   "source": "hand-written"
+  },
+  {
+   "name": "parser/shadow-precedence-Count",
+   "schema": "shadow-precedence",
+   "file": "cases/parser/shadow-precedence-Count.oui",
+   "source": "hand-written"
+  },
+  {
+   "name": "parser/shadow-precedence-First",
+   "schema": "shadow-precedence",
+   "file": "cases/parser/shadow-precedence-First.oui",
+   "source": "hand-written"
+  },
+  {
+   "name": "parser/shadow-precedence-Last",
+   "schema": "shadow-precedence",
+   "file": "cases/parser/shadow-precedence-Last.oui",
+   "source": "hand-written"
+  },
+  {
+   "name": "parser/shadow-precedence-Sum",
+   "schema": "shadow-precedence",
+   "file": "cases/parser/shadow-precedence-Sum.oui",
+   "source": "hand-written"
+  },
+  {
+   "name": "parser/shadow-precedence-Avg",
+   "schema": "shadow-precedence",
+   "file": "cases/parser/shadow-precedence-Avg.oui",
+   "source": "hand-written"
+  },
+  {
+   "name": "parser/shadow-precedence-Min",
+   "schema": "shadow-precedence",
+   "file": "cases/parser/shadow-precedence-Min.oui",
+   "source": "hand-written"
+  },
+  {
+   "name": "parser/shadow-precedence-Max",
+   "schema": "shadow-precedence",
+   "file": "cases/parser/shadow-precedence-Max.oui",
+   "source": "hand-written"
+  },
+  {
+   "name": "parser/shadow-precedence-Sort",
+   "schema": "shadow-precedence",
+   "file": "cases/parser/shadow-precedence-Sort.oui",
+   "source": "hand-written"
+  },
+  {
+   "name": "parser/shadow-precedence-Filter",
+   "schema": "shadow-precedence",
+   "file": "cases/parser/shadow-precedence-Filter.oui",
+   "source": "hand-written"
+  },
+  {
+   "name": "parser/shadow-precedence-Round",
+   "schema": "shadow-precedence",
+   "file": "cases/parser/shadow-precedence-Round.oui",
+   "source": "hand-written"
+  },
+  {
+   "name": "parser/shadow-precedence-Abs",
+   "schema": "shadow-precedence",
+   "file": "cases/parser/shadow-precedence-Abs.oui",
+   "source": "hand-written"
+  },
+  {
+   "name": "parser/shadow-precedence-Floor",
+   "schema": "shadow-precedence",
+   "file": "cases/parser/shadow-precedence-Floor.oui",
+   "source": "hand-written"
+  },
+  {
+   "name": "parser/shadow-precedence-Ceil",
+   "schema": "shadow-precedence",
+   "file": "cases/parser/shadow-precedence-Ceil.oui",
+   "source": "hand-written"
+  },
+  {
+   "name": "parser/shadow-precedence-Each",
+   "schema": "shadow-precedence",
+   "file": "cases/parser/shadow-precedence-Each.oui",
+   "source": "hand-written"
+  },
+  {
+   "name": "parser/shadow-precedence-Run",
+   "schema": "shadow-precedence",
+   "file": "cases/parser/shadow-precedence-Run.oui",
+   "source": "hand-written"
+  },
+  {
+   "name": "parser/shadow-precedence-ToAssistant",
+   "schema": "shadow-precedence",
+   "file": "cases/parser/shadow-precedence-ToAssistant.oui",
+   "source": "hand-written"
+  },
+  {
+   "name": "parser/shadow-precedence-OpenUrl",
+   "schema": "shadow-precedence",
+   "file": "cases/parser/shadow-precedence-OpenUrl.oui",
+   "source": "hand-written"
+  },
+  {
+   "name": "parser/shadow-precedence-Set",
+   "schema": "shadow-precedence",
+   "file": "cases/parser/shadow-precedence-Set.oui",
+   "source": "hand-written"
+  },
+  {
+   "name": "parser/shadow-precedence-Reset",
+   "schema": "shadow-precedence",
+   "file": "cases/parser/shadow-precedence-Reset.oui",
+   "source": "hand-written"
+  },
+  {
+   "name": "parser/shadow-precedence-Action",
+   "schema": "shadow-precedence",
+   "file": "cases/parser/shadow-precedence-Action.oui",
+   "source": "hand-written"
+  },
+  {
+   "name": "parser/inherited-__defineGetter__",
+   "schema": "inherited-properties",
+   "file": "cases/parser/inherited-__defineGetter__.oui",
+   "source": "hand-written"
+  },
+  {
+   "name": "parser/inherited-__defineSetter__",
+   "schema": "inherited-properties",
+   "file": "cases/parser/inherited-__defineSetter__.oui",
+   "source": "hand-written"
+  },
+  {
+   "name": "parser/inherited-__lookupGetter__",
+   "schema": "inherited-properties",
+   "file": "cases/parser/inherited-__lookupGetter__.oui",
+   "source": "hand-written"
+  },
+  {
+   "name": "parser/inherited-__lookupSetter__",
+   "schema": "inherited-properties",
+   "file": "cases/parser/inherited-__lookupSetter__.oui",
+   "source": "hand-written"
+  },
+  {
+   "name": "parser/inherited-__proto__",
+   "schema": "inherited-properties",
+   "file": "cases/parser/inherited-__proto__.oui",
+   "source": "hand-written"
+  },
+  {
+   "name": "parser/inherited-constructor",
+   "schema": "inherited-properties",
+   "file": "cases/parser/inherited-constructor.oui",
+   "source": "hand-written"
+  },
+  {
+   "name": "parser/inherited-hasOwnProperty",
+   "schema": "inherited-properties",
+   "file": "cases/parser/inherited-hasOwnProperty.oui",
+   "source": "hand-written"
+  },
+  {
+   "name": "parser/inherited-isPrototypeOf",
+   "schema": "inherited-properties",
+   "file": "cases/parser/inherited-isPrototypeOf.oui",
+   "source": "hand-written"
+  },
+  {
+   "name": "parser/inherited-propertyIsEnumerable",
+   "schema": "inherited-properties",
+   "file": "cases/parser/inherited-propertyIsEnumerable.oui",
+   "source": "hand-written"
+  },
+  {
+   "name": "parser/inherited-toLocaleString",
+   "schema": "inherited-properties",
+   "file": "cases/parser/inherited-toLocaleString.oui",
+   "source": "hand-written"
+  },
+  {
+   "name": "parser/inherited-toString",
+   "schema": "inherited-properties",
+   "file": "cases/parser/inherited-toString.oui",
+   "source": "hand-written"
+  },
+  {
+   "name": "parser/inherited-valueOf",
+   "schema": "inherited-properties",
+   "file": "cases/parser/inherited-valueOf.oui",
    "source": "hand-written"
   }
  ]

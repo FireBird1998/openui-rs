@@ -1,0 +1,220 @@
+{
+  "chunkings": [
+    1,
+    3,
+    4,
+    5
+  ],
+  "cases": [
+    {
+      "name": "untyped",
+      "schema": {
+        "$defs": {
+          "Box": {
+            "properties": {
+              "a": {}
+            }
+          }
+        }
+      },
+      "program": "root=Box({\"__proto__\": $v})\n"
+    },
+    {
+      "name": "object",
+      "schema": {
+        "$defs": {
+          "Box": {
+            "properties": {
+              "a": {
+                "type": "object"
+              }
+            }
+          }
+        }
+      },
+      "program": "root=Box({\"__proto__\": $v})\n"
+    },
+    {
+      "name": "string",
+      "schema": {
+        "$defs": {
+          "Box": {
+            "properties": {
+              "a": {
+                "type": "string"
+              }
+            }
+          }
+        }
+      },
+      "program": "root=Box({\"__proto__\": $v})\n"
+    },
+    {
+      "name": "number",
+      "schema": {
+        "$defs": {
+          "Box": {
+            "properties": {
+              "a": {
+                "type": "number"
+              }
+            }
+          }
+        }
+      },
+      "program": "root=Box({\"__proto__\": $v})\n"
+    },
+    {
+      "name": "array",
+      "schema": {
+        "$defs": {
+          "Box": {
+            "properties": {
+              "a": {
+                "type": "array"
+              }
+            }
+          }
+        }
+      },
+      "program": "root=Box({\"__proto__\": $v})\n"
+    },
+    {
+      "name": "boolean",
+      "schema": {
+        "$defs": {
+          "Box": {
+            "properties": {
+              "a": {
+                "type": "boolean"
+              }
+            }
+          }
+        }
+      },
+      "program": "root=Box({\"__proto__\": $v})\n"
+    },
+    {
+      "name": "required-only",
+      "schema": {
+        "$defs": {
+          "Box": {
+            "properties": {
+              "a": {
+                "type": "object",
+                "required": [
+                  "__proto__"
+                ]
+              }
+            }
+          }
+        }
+      },
+      "program": "root=Box({\"__proto__\": $v})\n"
+    },
+    {
+      "name": "untyped-proto",
+      "schema": {
+        "$defs": {
+          "Box": {
+            "properties": {
+              "a": {
+                "type": "object",
+                "properties": {
+                  "__proto__": {}
+                }
+              }
+            }
+          }
+        }
+      },
+      "program": "root=Box({\"__proto__\": $v})\n"
+    },
+    {
+      "name": "proto-string-optional",
+      "schema": {
+        "$defs": {
+          "Box": {
+            "properties": {
+              "a": {
+                "type": "object",
+                "properties": {
+                  "__proto__": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "program": "root=Box({\"__proto__\": $v})\n"
+    },
+    {
+      "name": "proto-string-required",
+      "schema": {
+        "$defs": {
+          "Box": {
+            "properties": {
+              "a": {
+                "type": "object",
+                "properties": {
+                  "__proto__": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "__proto__"
+                ]
+              }
+            }
+          }
+        }
+      },
+      "program": "root=Box({\"__proto__\": $v})\n"
+    },
+    {
+      "name": "proto-number-optional",
+      "schema": {
+        "$defs": {
+          "Box": {
+            "properties": {
+              "a": {
+                "type": "object",
+                "properties": {
+                  "__proto__": {
+                    "type": "number"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "program": "root=Box({\"__proto__\": $v})\n"
+    },
+    {
+      "name": "proto-number-required",
+      "schema": {
+        "$defs": {
+          "Box": {
+            "properties": {
+              "a": {
+                "type": "object",
+                "properties": {
+                  "__proto__": {
+                    "type": "number"
+                  }
+                },
+                "required": [
+                  "__proto__"
+                ]
+              }
+            }
+          }
+        }
+      },
+      "program": "root=Box({\"__proto__\": $v})\n"
+    }
+  ]
+}

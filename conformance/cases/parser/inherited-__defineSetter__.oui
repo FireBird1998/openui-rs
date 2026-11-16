@@ -1,0 +1,1 @@
+root=Box([Optional1({}),Required1({}),Default1({}),RequiredOnly1({}),Enum1({}),Optional1({"__defineSetter__":"own"}),Required1({"__defineSetter__":null})])

@@ -1,0 +1,1 @@
+root=Box([Optional11({}),Required11({}),Default11({}),RequiredOnly11({}),Enum11({}),Optional11({"valueOf":"own"}),Required11({"valueOf":null})])

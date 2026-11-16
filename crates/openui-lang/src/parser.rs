@@ -441,7 +441,8 @@ pub(crate) fn build_result(
         cache,
         library,
         partial: was_incomplete,
-        visited: Vec::new(),
+        visited: Default::default(),
+        aliases: None,
         current_statement_id: entry_id.clone(),
         depth: 0,
         stack_cut: false,
@@ -508,6 +509,7 @@ pub(crate) fn build_result(
     let mut orphaned = match entry {
         Some((slot, _)) => {
             let reach = Arc::new(Reach {
+                active: Default::default(),
                 direct: frame.reached,
                 children: frame.children,
             });

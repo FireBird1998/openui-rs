@@ -8,7 +8,7 @@ use std::sync::Arc;
 
 use crate::Limits;
 use crate::ast::{Ast, RefType};
-use crate::builtins::{is_lazy_builtin, is_reserved_call};
+use crate::builtins::is_reserved_call;
 use crate::js::{JsObject, OBJECT_PROTOTYPE_KEYS, json_string_len};
 use crate::library::{Call, CallKind, Library, Param};
 use crate::result::{Element, ValidationError, Value, json_shaped};
@@ -18,13 +18,16 @@ use crate::validation::{
     validate_schema_value,
 };
 
+mod aliases;
+
 pub(crate) struct Ctx<'a> {
     pub table: &'a Table,
     pub cache: &'a mut Cache,
     pub library: &'a Library,
     pub partial: bool,
     /// Statements being materialized right now, to break reference cycles.
-    pub visited: Vec<Slot>,
+    pub visited: Visiting,
+    pub aliases: Option<Box<aliases::Aliases>>,
     /// The statement errors are attributed to.
     pub current_statement_id: Option<String>,
     /// Open materialize calls, across references too: a chain of references
@@ -49,6 +52,42 @@ pub(crate) struct Ctx<'a> {
     pub cut_inside: bool,
     /// What the materialization in progress has done on the side.
     pub frame: Frame,
+}
+
+/// Dense statement slots make cycle membership a constant-time bit lookup.
+/// Unlike scanning the open alias path, this stays linear at raised depth.
+#[derive(Default)]
+pub(crate) struct Visiting {
+    bits: Vec<u64>,
+    count: usize,
+}
+impl Visiting {
+    fn contains(&self, slot: &Slot) -> bool {
+        #[cfg(test)]
+        cost_tests::visit();
+        self.bits
+            .get(*slot as usize / 64)
+            .is_some_and(|word| word & (1 << (*slot % 64)) != 0)
+    }
+    fn is_empty(&self) -> bool {
+        self.count == 0
+    }
+    fn insert(&mut self, slot: Slot) {
+        self.count += 1;
+        let index = slot as usize / 64;
+        if self.bits.len() <= index {
+            self.bits.resize(index + 1, 0);
+        }
+        if let Some(word) = self.bits.get_mut(index) {
+            *word |= 1 << (slot % 64);
+        }
+    }
+    fn remove(&mut self, slot: &Slot) {
+        self.count -= 1;
+        if let Some(word) = self.bits.get_mut(*slot as usize / 64) {
+            *word &= !(1 << (*slot % 64));
+        }
+    }
 }
 
 /// An error, or the errors of a statement reached, in the order met. The
@@ -78,6 +117,8 @@ pub(crate) fn flatten_errors(parts: &[ErrorPart]) -> Vec<ValidationError> {
     ) -> bool {
         crate::stack::grow_stack!(walk(parts, seen, out), budget else false);
         for part in parts {
+            #[cfg(test)]
+            cost_tests::visit();
             match part {
                 ErrorPart::Own(error) => out.push(error.clone()),
                 ErrorPart::Reached {
@@ -123,6 +164,8 @@ pub(crate) fn flatten_unresolved(parts: &[UnresolvedPart]) -> Vec<String> {
     fn walk(parts: &[UnresolvedPart], out: &mut Vec<String>) -> bool {
         crate::stack::grow_stack!(walk(parts, out), budget else false);
         for part in parts {
+            #[cfg(test)]
+            cost_tests::visit();
             match part {
                 UnresolvedPart::Own(name) => out.push(name.clone()),
                 UnresolvedPart::Reached(parts) => {
@@ -170,6 +213,7 @@ pub(crate) struct Frame {
     /// this frame's own checks matter: a state default reaching another
     /// statement already forbids sharing modes, whatever that statement reads.
     pub partial_read: bool,
+    alias_marks: Option<Box<aliases::Marked>>,
 }
 
 /// What each piece adds to [`Ctx::size`]: about the bytes of JSON it writes,
@@ -184,7 +228,7 @@ const NULL_EXPR: usize = 13;
 const NULL_VALUE: usize = 6;
 /// What following a reference into its statement adds, whatever the
 /// statement writes. An alias writes nothing of its own, so a chain of them
-/// the depth limit cuts (and so never caches) would otherwise be walked again
+/// the depth limit cuts and cannot reuse here would otherwise be walked again
 /// for every reference to it at no count: time and memory with no bound but
 /// the program's size (35 s and some 20 GB at the default limits). Counted,
 /// the walks end where the result-size limit does. A statement followed
@@ -470,9 +514,31 @@ fn materialize_object(entries: &[(String, Ast)], ctx: &mut Ctx) -> Value {
             break;
         }
         let value = materialize_value(value, ctx);
-        obj.set(key.clone(), value);
+        set_object_literal(&mut obj, key, value);
     }
     Value::Obj(Arc::new(obj))
+}
+
+/// The inert equivalent of assignment while constructing a literal object.
+#[inline]
+fn set_object_literal(obj: &mut JsObject<Value>, key: &str, value: Value) {
+    // A null assignment removes inheritance without making an own key.
+    // A later assignment then creates an ordinary own __proto__ field.
+    if key == "__proto__" && matches!(value, Value::Null) && obj.has(key) && !obj.has_own(key) {
+        obj.drop_prototype();
+    } else {
+        if key == "__proto__"
+            && !obj.has_own(key)
+            && obj.has(key)
+            && matches!(
+                value,
+                Value::Obj(_) | Value::Arr(_) | Value::Element(_) | Value::Ast(_)
+            )
+        {
+            obj.note_unrepresented_prototype();
+        }
+        obj.set(key, value);
+    }
 }
 
 #[derive(Clone, Copy)]
@@ -553,9 +619,21 @@ fn resolve_ref(name: &str, ctx: &mut Ctx, mode: Mode) -> Resolved {
         };
     }
 
+    // Raised-depth cuts can span thousands of aliases per reference. Keep
+    // the default path unchanged and jump only proven, missing-name tails.
+    if ctx.limits.depth() > crate::MAX_DEPTH
+        && matches!(target, Ast::Ref(_))
+        && let Some(resolved) = aliases::resolve(slot, mode, ctx)
+    {
+        return resolved;
+    }
+
     let expr = matches!(mode, Mode::Expr);
     if let Some(entry) = ctx.cache.get(slot, ctx.partial, expr)
-        && ctx.depth + entry.r_max < ctx.limits.depth()
+        && match entry.depth_cut {
+            Some((depth, _)) => ctx.depth == depth && ctx.visited.is_empty(),
+            None => ctx.depth + entry.r_max < ctx.limits.depth(),
+        }
         && ctx.would_fit(entry.size)
     {
         // Replay only a whole subtree that fits. Otherwise walk it afresh:
@@ -570,6 +648,9 @@ fn resolve_ref(name: &str, ctx: &mut Ctx, mode: Mode) -> Resolved {
                 Mode::Expr => Resolved::Ast(Ast::Null),
             };
         }
+        if let Some((_, cuts)) = entry.depth_cut {
+            ctx.cuts += cuts;
+        }
         return match &entry.output {
             Output::Value(v) => Resolved::Value(v.clone()),
             Output::Ast(a) => Resolved::Ast(a.clone()),
@@ -579,10 +660,11 @@ fn resolve_ref(name: &str, ctx: &mut Ctx, mode: Mode) -> Resolved {
     // Part of what the statement adds, so a cached one counts it again on
     // each reuse, as a walk afresh does.
     let start_size = ctx.size;
+    let start_cuts = ctx.cuts;
     if !ctx.grow(REFERENCE_SIZE) {
         return cut_reference(ctx, mode);
     }
-    ctx.visited.push(slot);
+    ctx.visited.insert(slot);
     let previous = ctx.current_statement_id.replace(name.to_owned());
     let outer = std::mem::take(&mut ctx.frame);
     let start_depth = ctx.depth;
@@ -598,13 +680,20 @@ fn resolve_ref(name: &str, ctx: &mut Ctx, mode: Mode) -> Resolved {
     };
     let frame = std::mem::replace(&mut ctx.frame, outer);
     ctx.current_statement_id = previous;
-    ctx.visited.pop();
+    ctx.visited.remove(&slot);
     let resolved = match &output {
         Output::Value(v) => Resolved::Value(v.clone()),
         Output::Ast(a) => Resolved::Ast(a.clone()),
     };
     let size = ctx.size - start_size;
-    finish(frame, output, slot, expr, (start_depth, size), ctx);
+    finish(
+        frame,
+        output,
+        slot,
+        expr,
+        (start_depth, size, ctx.cuts - start_cuts),
+        ctx,
+    );
     resolved
 }
 
@@ -634,16 +723,24 @@ fn replay(
     depth: usize,
 ) -> bool {
     crate::stack::grow_stack!(replay(entry, key, memoize, frame, depth), budget else false);
-    frame.errors.push(ErrorPart::Reached {
-        key,
-        memoized: memoize && entry.unresolved.is_empty(),
-        parts: entry.errors.clone(),
-    });
+    let memoized = memoize && entry.unresolved.is_empty();
+    // A depth cut can hide diagnostics that a shallower reach would report.
+    // Replaying it must mark the statement as reported, just as fold does.
+    // Complete empty entries need no marker: their cached empty diagnostics
+    // cannot reveal new errors on a later reach that fits.
+    if !entry.errors.is_empty() || (memoized && entry.depth_cut.is_some()) {
+        frame.errors.push(ErrorPart::Reached {
+            key,
+            memoized,
+            parts: entry.errors.clone(),
+        });
+    }
     if !entry.unresolved.is_empty() {
         frame
             .unresolved
             .push(UnresolvedPart::Reached(entry.unresolved.clone()));
     }
+    frame.limited |= entry.depth_cut.is_some();
     frame.children.push(entry.reach.clone());
     frame.max_depth = frame.max_depth.max(depth + entry.r_max);
     true
@@ -655,9 +752,10 @@ struct Folded {
     errors: Arc<Vec<ErrorPart>>,
     unresolved: Arc<Vec<UnresolvedPart>>,
     max_depth: usize,
-    /// It met a cycle or a limit: what it came to depends on where it was
-    /// reached from, so it isn't cached.
+    /// It met a cycle or a limit. Only a depth-only cut with an empty open
+    /// path can be cached, under an exact starting-depth condition.
     cut: bool,
+    depth_cut_only: bool,
     reached_nothing: bool,
     partial_read: bool,
 }
@@ -676,11 +774,13 @@ fn fold(frame: Frame, key: (Slot, bool), memoize: bool, ctx: &mut Ctx) -> Folded
         limited,
         size_limited,
         partial_read,
+        alias_marks: _,
     } = frame;
     let reached_nothing = reached.is_empty();
     reached.sort_unstable();
     reached.dedup();
     let reach = Arc::new(Reach {
+        active: Default::default(),
         direct: reached,
         children,
     });
@@ -693,11 +793,17 @@ fn fold(frame: Frame, key: (Slot, bool), memoize: bool, ctx: &mut Ctx) -> Folded
         [UnresolvedPart::Reached(only)] => only.clone(),
         _ => Arc::new(unresolved),
     };
-    ctx.frame.errors.push(ErrorPart::Reached {
-        key,
-        memoized: memoize && !cycle && unresolved.is_empty(),
-        parts: errors.clone(),
-    });
+    // Even an empty memoized record marks the statement as reported. A cut
+    // may have hidden errors that a later, shallower reach would otherwise
+    // report. Non-memoized empty records have no such effect.
+    let memoized = memoize && !cycle && unresolved.is_empty();
+    if !errors.is_empty() || memoized {
+        ctx.frame.errors.push(ErrorPart::Reached {
+            key,
+            memoized,
+            parts: errors.clone(),
+        });
+    }
     if !unresolved.is_empty() {
         ctx.frame
             .unresolved
@@ -714,24 +820,31 @@ fn fold(frame: Frame, key: (Slot, bool), memoize: bool, ctx: &mut Ctx) -> Folded
         unresolved,
         max_depth,
         cut: cycle || limited || size_limited,
+        depth_cut_only: limited && !cycle && !size_limited,
         reached_nothing,
         partial_read,
     }
 }
 
-/// Fold a finished statement's frame into the outer one, and cache it unless
-/// it met a cycle or the depth limit (then it depends on where it was reached from).
+/// Fold a finished statement's frame into the outer one. Cache whole results
+/// and depth-only cuts from an empty open path; the latter retain their exact
+/// starting depth and cuts, and never reuse under an open reference path.
 #[inline(never)]
 fn finish(
     frame: Frame,
     output: Output,
     slot: Slot,
     expr: bool,
-    (start_depth, size): (usize, usize),
+    (start_depth, size, cuts): (usize, usize, usize),
     ctx: &mut Ctx,
 ) {
     let folded = fold(frame, (slot, expr), true, ctx);
-    if folded.cut {
+    // Cut containers previously had fresh identities at each reach. Only
+    // identity-free null outputs can reuse a depth cut without changing that.
+    let null_output = matches!(&output, Output::Value(Value::Null) | Output::Ast(Ast::Null));
+    let depth_cut = (folded.depth_cut_only && null_output && ctx.visited.is_empty())
+        .then_some((start_depth, cuts));
+    if folded.cut && depth_cut.is_none() {
         return;
     }
     let entry = Entry {
@@ -742,6 +855,7 @@ fn finish(
         r_max: folded.max_depth.saturating_sub(start_depth),
         size,
         context: None,
+        depth_cut,
     };
     ctx.cache.put(slot, ctx.partial, expr, entry);
 }
@@ -794,6 +908,7 @@ pub(crate) fn materialize_state(slot: Slot, init: &Ast, ctx: &mut Ctx) -> Value 
         r_max: folded.max_depth.saturating_sub(start_depth),
         size: ctx.size - start_size,
         context: ctx.current_statement_id.clone(),
+        depth_cut: None,
     };
     if either_way {
         let other = entry(&value);
@@ -1096,7 +1211,7 @@ fn literal_value(node: &Ast) -> Option<Value> {
                 if crate::progress::stalled_so_far() {
                     break;
                 }
-                obj.set(key.clone(), literal_value(value)?);
+                set_object_literal(&mut obj, key, literal_value(value)?);
             }
             Value::Obj(Arc::new(obj))
         }
@@ -1276,7 +1391,13 @@ fn materialize_lazy_builtin(
     ctx: &mut Ctx,
     scope: &Scope,
 ) -> Option<Ast> {
-    if !is_lazy_builtin(name) || args.len() < 3 {
+    if name != "Each"
+        || args.len() < 3
+        || !ctx
+            .library
+            .call(name)
+            .is_some_and(|def| def.kind == CallKind::Function && def.lazy)
+    {
         return None;
     }
     let var = match &args[1] {
@@ -1492,6 +1613,18 @@ fn values_contain_dynamic(props: &Value) -> bool {
     matches!(&fields, Value::Obj(fields) if fields.values().any(contains_dynamic_value))
 }
 
+/// The reference's nullish fallback followed by `.some`'s ToBoolean.
+fn element_dynamic_flag(value: &Value) -> Option<bool> {
+    let Value::Obj(obj) = value else { return None };
+    match obj.get("hasDynamicProps")? {
+        Value::Null => None,
+        Value::Bool(v) => Some(*v),
+        Value::Num(v) => Some(*v != 0.0 && !v.is_nan()),
+        Value::Str(v) => Some(!v.is_empty()),
+        _ => Some(true),
+    }
+}
+
 /// Whether a prop value holds anything that needs runtime evaluation.
 ///
 /// An element answers from its own flag: it was set from this same check over
@@ -1507,9 +1640,12 @@ fn contains_dynamic_value(value: &Value) -> bool {
         Value::Arr(items) => items.iter().any(contains_dynamic_value),
         Value::Element(e) => e.has_dynamic_props,
         _ => match element_parts(value) {
-            Some((_, Some(props))) => props.values().any(contains_dynamic_value),
+            Some((_, Some(props))) => element_dynamic_flag(value)
+                .unwrap_or_else(|| props.values().any(contains_dynamic_value)),
             Some((_, None)) => {
-                matches!(value, Value::Obj(o) if o.get("props").is_some_and(values_contain_dynamic))
+                element_dynamic_flag(value).unwrap_or_else(|| {
+                    matches!(value, Value::Obj(o) if o.get("props").is_some_and(values_contain_dynamic))
+                })
             }
             // A `{steps: [...]}` literal is evaluated too, so data can't pose as
             // custom action steps.
@@ -1533,6 +1669,7 @@ mod stack_cut_tests {
         let entry = Entry {
             output: Output::Value(Value::Num(1.0)),
             reach: Arc::new(Reach {
+                active: Default::default(),
                 direct: vec![0],
                 children: vec![],
             }),
@@ -1541,6 +1678,7 @@ mod stack_cut_tests {
             r_max: 2,
             size: 1,
             context: None,
+            depth_cut: None,
         };
         let mut frame = Frame::default();
         let (_, stalled) = crate::progress::testing::as_release(|| {
@@ -1555,5 +1693,103 @@ mod stack_cut_tests {
         assert!(frame.reached.is_empty() && frame.children.is_empty());
         assert_eq!(frame.max_depth, 0);
         assert!(!frame.cycle && !frame.limited && !frame.size_limited && !frame.partial_read);
+    }
+}
+
+#[cfg(test)]
+#[path = "../tests/scaling_cases/mod.rs"]
+mod cost_shapes;
+
+#[cfg(test)]
+pub(crate) mod cost_tests {
+    use std::cell::Cell;
+    thread_local! { static VISITS: Cell<usize> = const { Cell::new(0) }; }
+    pub(crate) fn visit() {
+        VISITS.set(VISITS.get() + 1);
+    }
+
+    use super::cost_shapes as shapes;
+
+    #[test]
+    fn alias_metadata_walks_scale_with_statements_and_references() {
+        let lib = crate::Library::from_json_schema(&serde_json::json!({"$defs":{
+            "Stack":{"properties":{"children":{}}}
+        }}));
+        for repeated in [false, true] {
+            let mut counts = Vec::new();
+            for n in if repeated { [50, 200] } else { [2_000, 8_000] } {
+                let text = shapes::aliases(n, repeated);
+                VISITS.set(0);
+                let result = crate::parse_with_limits(
+                    &text,
+                    &lib,
+                    None,
+                    crate::Limits::default()
+                        .with_depth(if repeated { 256 } else { 20_000 })
+                        .with_result_size(1024 * 1024 * 1024),
+                );
+                let visits = VISITS.get();
+                assert!(!result.depth_limited && !result.size_limited);
+                assert_eq!(
+                    result.meta.unresolved.len(),
+                    if repeated { 100 * n } else { n }
+                );
+                println!("alias traversal n={n} repeated={repeated}: {visits}");
+                counts.push(visits);
+            }
+            assert!(
+                counts[1] <= 5 * counts[0],
+                "repeated={repeated}: {counts:?}"
+            );
+        }
+    }
+    #[test]
+    fn repeated_depth_cut_aliases_walk_metadata_once_per_reach() {
+        let lib = crate::Library::from_json_schema(&serde_json::json!({"$defs":{
+            "Stack":{"properties":{"children":{}}}
+        }}));
+        for n in [50, 200] {
+            let text = shapes::aliases(n, true);
+            VISITS.set(0);
+            let result = crate::parse_with_limits(
+                &text,
+                &lib,
+                None,
+                crate::Limits::default()
+                    .with_depth(32)
+                    .with_result_size(1024 * 1024 * 1024),
+            );
+            let visits = VISITS.get();
+            assert!(result.depth_limited && !result.size_limited);
+            assert!(result.meta.unresolved.is_empty());
+            assert!(visits < 3 * 100 * n + 200, "n={n}: {visits}");
+            println!("depth-cut alias traversal n={n}: {visits}");
+        }
+    }
+    #[test]
+    fn raised_depth_cuts_over_distinct_aliases_scale_with_the_program() {
+        let lib = crate::Library::from_json_schema(&serde_json::json!({"$defs":{
+            "Stack":{"properties":{"children":{}}}
+        }}));
+        let mut counts = Vec::new();
+        for n in [600, 2400] {
+            let text = shapes::aliases(n, false);
+            VISITS.set(0);
+            let result = crate::parse_with_limits(
+                &text,
+                &lib,
+                None,
+                crate::Limits::default()
+                    .with_depth(n / 2)
+                    .with_result_size(1024 * 1024 * 1024),
+            );
+            let count = VISITS.get();
+            assert!(result.depth_limited && !result.size_limited);
+            assert!(result.meta.orphaned.is_empty());
+            assert_eq!(result.meta.unresolved.len(), n / 2 - 4);
+            println!("raised cut aliases n={n}: {count} visits");
+            counts.push(count);
+        }
+        assert!(counts[1] < 5 * counts[0], "{counts:?}");
     }
 }

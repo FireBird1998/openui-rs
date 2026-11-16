@@ -59,6 +59,7 @@ done
   bun --no-install function-definitions.ts
   bun --no-install function-results.ts
   bun --no-install session-data.ts
+  bun --no-install parser-prototype-assignments.ts
 )
 if [[ -n "$into" ]]; then
   mkdir -p "$(dirname "$into")"

@@ -1,0 +1,2 @@
+root=Box(@Ceil(0,x,x),true?@Ceil(0,x,x):null,alias,Ceil(0,x,x))
+alias=@Ceil(0,x,x)

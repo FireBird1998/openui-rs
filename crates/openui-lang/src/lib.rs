@@ -53,7 +53,13 @@
 //! `actions`. They stay expressions for the runtime to evaluate, with their
 //! args also by param name; a library call's literal args are checked like
 //! props. An `@` name that's neither is reported as `unknown-function` and is
-//! null.
+//! null. Library functions replace built-in call definitions, and actions
+//! replace functions; components do not shadow the call registry. A library
+//! `Each` therefore uses ordinary argument mapping rather than iterator scope.
+//! Element-shaped prop data honours its own non-null `hasDynamicProps` through
+//! JavaScript truthiness; inherited schema names are validated as inert data.
+//! Object-valued prototype assignments remain unsupported: parser validation
+//! does not replace the discarded prototype with an invented ordinary one.
 //!
 //! # Streaming
 //!

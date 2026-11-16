@@ -1,0 +1,1 @@
+root=Box([Optional6({}),Required6({}),Default6({}),RequiredOnly6({}),Enum6({}),Optional6({"hasOwnProperty":"own"}),Required6({"hasOwnProperty":null})])
