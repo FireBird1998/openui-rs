@@ -9,7 +9,7 @@ Registration is per session and bounded; replacement is atomic. Both bindings
 use the same core adapter, and source/generated-interface checks cover it.
 
 Native sessions lazily create one long-lived callback thread on the first
-registration processed by the worker, and join it after worker teardown at
+registration accepted by the shared core, and join it after worker teardown at
 disposal or final drop. Sessions without registrations create no callback thread.
 The worker sends each invocation and waits synchronously, without a timeout or
 per-invocation thread. A correct synchronous implementation must give the Rust
@@ -23,9 +23,23 @@ worker because its stack pointer is outside the thread's own stack. The callback
 thread starts on an ordinary OS thread stack and performs no core walks before
 entering host code. It owns the foreign implementations. Worker closures carry
 only private allocation-identity keys and a sender; invocation and final release
-both cross the same synchronous channel. Replacement and rejected registration
-release complete before acknowledgement. Worker teardown releases registrations
-before closing and joining the callback thread, including after a worker panic.
+both cross the same synchronous channel. Successful replacement and ordinary
+registration refusal release complete before acknowledgement. A registration's caller retains its
+implementation in a shared handoff slot until the callback thread takes it.
+Name/limit refusals create no callback thread; their implementations, failed
+spawn/send handoffs and unexecuted queued registrations are released on the
+registering caller under its reentry fence. Only the callback thread may take
+the slot, so a failed worker cannot release foreign code while discarding jobs.
+Core admission happens once, before thread creation; subsequent setup failure
+revokes the session rather than exposing a partially installed replacement.
+Callback transport loss or unexpected callback-thread exit records a sticky
+Worker error, including for later operations that use no functions. An operation that detects callback
+transport failure returns Worker too; host throws and caught host/destructor panics
+remain ordinary function failures. Safe host code has no way to terminate the
+callback thread: these terminal paths are tested with infrastructure injection.
+Normal shutdown closes the callback mailbox deliberately and remains Disposed.
+Worker teardown releases registrations before closing and joining the callback
+thread, including after a worker panic.
 No evaluator or stack-growth policy changes are needed.
 
 A worker must never queue a request to itself. Every same-session operation on
@@ -34,7 +48,9 @@ invocation and replacement/disposal destructors. Refused jobs can destroy
 implementations on native caller threads too: a scoped thread-local stack of
 private per-session owner tokens fences that destruction. Commands carry the
 calling scope's ancestry to the destination worker and callback thread, including
-shutdown destruction and queued registrations discarded after worker failure. Thus A's function may call B, but B's function or destructor
+shutdown destruction. Queued registrations discarded after worker failure
+release under their registering caller's original scope. Thus A's function may
+call B, but B's function or destructor
 calling A refuses with Worker("session already in use") rather than queueing
 behind A. Scopes restore on return and unwind. No shared flag is saved/restored
 across threads; independent destructors cannot overwrite another scope's exit or

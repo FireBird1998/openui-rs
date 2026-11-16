@@ -976,10 +976,23 @@ pins this security divergence in both bindings; tree JSON itself still matches.
 No identity is reconstructed from JSON, including function callback results.
 
 Registered functions reuse the runtime's JSON serializer, validation, defaults
-and argument caching. Native callbacks run on the session worker without a
-timeout or per-call thread. Same-session reentry on that worker or in a host
-destructor refuses with Worker; other threads queue, preserving the no-function
-transport contract. Function faults retain Rust's null and continuing-action
+and argument caching. Native callbacks run on one ordinary-stack callback thread
+per session without a timeout or per-call thread. It starts only after shared-core
+registration admission. Accepted implementation release uses that same stack;
+refused registrations and failed/unexecuted handoffs release on the fenced
+registering caller, never on the evaluator worker or a grown stack segment.
+Same-session reentry on the worker, callback thread or in a host destructor
+refuses with Worker; other threads queue, preserving the no-function transport
+contract. Callback infrastructure failure revokes the session with a sticky typed
+Worker error for the failing callback operation and later calls, including after
+disposal. Startup
+failure is terminal too, because core admission already succeeded. Ordinary host
+throws and contained panics retain function-failure behavior. Normal disposal
+remains Disposed; disposal/final drop join both native threads. Public-operation
+regressions with infrastructure injection pin caller release, refusal laziness,
+registration acknowledgement loss, callback death and shutdown in
+`openui-ffi`'s `runtime::tests`; the existing deep-stack and concurrency tests
+continue to pin #65. No parser/evaluator prices, bytes, flags or limits change. Function faults retain Rust's null and continuing-action
 semantics, pinned by
 `failed_function_results_become_null_and_run_continues_exactly_as_rust`.
 `long_callback_matches_rust_and_replacement_destructor_never_queues_to_itself`

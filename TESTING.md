@@ -44,20 +44,55 @@ thread stacks at startup with the core's existing `stacker` dependency (test-onl
 in the binding), then draws shallow, 12,000-level and shallow programs. Where
 stack measurement is available it requires the deep invocation to originate
 outside the worker's ordinary stack, while every host invocation stays on the
-callback thread's original stack. `foreign_releases_use_the_original_callback_stack_on_replacement_refusal_and_worker_unwind`
-checks foreign release on that stack, including after a worker panic.
+callback thread's original stack. `accepted_foreign_releases_use_the_original_callback_stack_on_replacement_and_worker_unwind`
+checks accepted foreign release on that stack, including after a worker panic.
 `queued_registration_destruction_after_worker_failure_preserves_ancestry` gates a
-worker panic after a nested public registration is queued, then checks destruction on the ordinary
-stack and refusal of both the owning and submitting sessions.
+worker panic after a nested public registration is queued, then checks destruction
+on the submitting callback thread's ordinary stack and refusal of both the owning
+and submitting sessions.
 `cross_session_cycles_refuse_ancestors_and_restore_scopes` and
 `nested_replacement_and_disposal_destructors_refuse_ancestors_even_when_they_panic`
 check nested calls and destruction. `many_sessions_join_callback_threads_on_disposal_and_final_drop`
 uses callback-thread TLS exit counters for 48 simultaneously registered sessions,
 including sessions never evaluated; disposal/final drop must have joined each
-thread before returning. Existing all-operation reentry and exact Rust result,
+thread before returning. TLS teardown performs 4,096 fixed yields before recording
+exit, exercising cleanup after registry destruction without a wall-clock assertion.
+Omitting the join is caught by this counter check. Existing all-operation reentry and exact Rust result,
 call-count, throw and continuing-action comparisons remain in force.
-The added Kotlin deep/replacement test checks generated callback registry counts
-without GC or elapsed-time assertions. Swift callback tests make no thread-identity
+The Kotlin `deepFunctionsReuseOneThreadAndReplacementReleasesTheOldImplementation`
+test counts generated registry entries by identity for only its own implementations,
+while an unrelated registered session stays alive. It checks release without GC
+or elapsed-time assertions; a process-wide size count would fail its initial zero.
+The #67 unit regressions use exported registration/evaluation/disposal operations
+with session-local infrastructure fault injection, release observations outside
+caught destructors, ordinary-stack measurements and thread-exit counters:
+
+- `refused_registrations_release_on_the_caller_without_starting_a_callback_thread`
+  checks unknown names, name-byte and registration-byte bounds, unchanged state,
+  existing implementation output/flags, caller release and zero spawned threads.
+- `callback_start_and_registration_failures_release_once_on_the_fenced_caller`
+  injects spawn, registration-send and pre-transfer receive failures; release
+  must complete once on the caller, and sticky Worker errors survive disposal.
+- `lost_registration_acknowledgements_release_each_owner_once_and_final_drop_joins`
+  covers first/replacement handoffs, failure before/after ownership transfer,
+  exact release counts and final-drop joining after callback death.
+- `a_caller_unwind_reclaims_its_queued_implementation_before_handoff` injects
+  a caller unwind after submission, while the worker is gated. Its caller guard
+  must release immediately under the fence; the missing handoff then revokes
+  the session cleanly and disposal joins both threads.
+- `callback_transport_death_is_a_sticky_worker_error_and_disposal_joins_both_threads`
+  injects invocation/release send/receive failures, checks the active call and
+  later non-function operations return Worker, and joins both threads.
+- `an_idle_callback_thread_death_revokes_calls_that_do_not_invoke_functions`
+  stops the callback thread independently of mailbox error handling; its exit
+  guard must revoke even version/snapshot/write/reference operations.
+
+The lifecycle children have a deadlock watchdog only; no result depends on
+elapsed time. Fault hooks and thread counters are compiled only in unit tests.
+No parser path changes in #67. Regenerate reference goldens into separate scratch
+destinations with `scripts/regen-golden.sh --into target/<fresh-name>` to keep
+`conformance/` unchanged, then compare with the checked-in goldens.
+ Swift callback tests make no thread-identity
 assertion and need no source change.
 
 ## Allocation caps

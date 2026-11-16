@@ -225,13 +225,33 @@ throwing implementation. Both bindings pin the action's continuing writes;
 native tests additionally cover panic containment.
 
 Native callbacks execute synchronously on one ordinary-stack callback thread
-per session, created lazily on its first processed registration. There is no
+per session, created lazily only after its first accepted registration. There is no
 timeout and no thread spawned per invocation. The worker sends JSON and waits;
-the callback thread owns accepted implementations and also releases replaced,
-refused and disposed registrations. The core may grow the worker's stack, so
+the callback thread owns accepted implementations and releases replaced and
+disposed registrations. The registering caller retains an implementation until
+the callback thread takes ownership. A caller-side guard also reclaims it if
+Rust submission unwinds before handoff; a missing handoff revokes the session. Name/limit refusals, failed spawn/send
+handoffs and queued registrations discarded by a failed worker release on that
+caller, with the same reentry fence and panic containment. Caller-side release
+completes before registration returns; refused names/limits create no callback
+thread. If acknowledgement is lost after ownership transfers, the callback
+thread releases that implementation during teardown; disposal/final drop waits
+for teardown to finish. The core may grow the worker's stack, so
 entering foreign runtimes directly there would be unsafe (Android ART aborts).
 Disposal and final drop join the callback thread after worker teardown; sessions
 without functions need no callback thread.
+
+Callback transport loss or unexpected callback-thread exit revokes the session:
+an operation whose callback handoff fails and later calls return the same typed
+Worker error, including
+calls that invoke no function and calls after disposal. Core registration
+admission precedes thread creation, so setup failure also revokes the session
+rather than leaving a usable partially installed registration. Normal disposal
+still yields Disposed. Host throws and caught host/destructor panics do not kill
+the callback thread or revoke the session. Infrastructure fault-injection tests
+cover these terminal paths; ordinary host code cannot terminate that thread.
+Disposal and final drop join both threads even after failure. This promises no
+rollback of earlier runtime or external effects.
 
 A correct implementation gives the same result however long it takes. Any
 same-session call on the worker or callback thread, including from a replacement

@@ -35,12 +35,27 @@ class RuntimeFunctionTest {
         val library = ComponentLibrary("""{"${'$'}defs":{"Box":{"properties":{"value":{}}}},"functions":{"Echo":{"params":{}}}}""")
         val evaluation = ParseLimits(null, 8_388_608uL, null, null, null, 20_000uL, null)
         val session = RuntimeSession.withLimits(library, null, RuntimeLimits(evaluation, evaluation, 8_388_608uL, 64uL))
-        // Generated UniFFI registry size proves native release without GC timing.
-        val baseline = FfiConverterTypeLibraryFunction.handleMap.size
+        // Count registry entries by object identity, only for this test's
+        // implementations. Other test classes may still own live sessions.
+        val owned = mutableListOf<LibraryFunction>()
+        fun ownedHandleCount(): Int {
+            val handles = FfiConverterTypeLibraryFunction.handleMap
+            val field = handles.javaClass.getDeclaredField("map")
+            field.isAccessible = true
+            val entries = field.get(handles) as Map<*, *>
+            return entries.values.count { entry -> owned.any { it === entry } }
+        }
+        // Keep an unrelated registration alive across every count. Using the
+        // process-wide size again must fail even when the other classes are idle.
+        val unrelated = RuntimeSession(library, null)
         val calls = java.util.concurrent.atomic.AtomicInteger()
         val thread = java.util.concurrent.atomic.AtomicInteger()
         try {
-            session.registerFunction("Echo", object : LibraryFunction {
+            unrelated.registerFunction("Echo", object : LibraryFunction {
+                override fun call(argumentsJson: String): String? = "99"
+            })
+            assertEquals(0, ownedHandleCount())
+            val original = object : LibraryFunction {
                 override fun call(argumentsJson: String): String? {
                     val current = android.os.Process.myTid()
                     thread.compareAndSet(0, current)
@@ -48,8 +63,10 @@ class RuntimeFunctionTest {
                     calls.incrementAndGet()
                     return "7"
                 }
-            })
-            assertEquals(baseline + 1, FfiConverterTypeLibraryFunction.handleMap.size)
+            }
+            owned.add(original)
+            session.registerFunction("Echo", original)
+            assertEquals(1, ownedHandleCount())
             for (depth in listOf(0, 12_000)) {
                 val source = "root=Box(" + "[".repeat(depth) + "@Echo()" + "]".repeat(depth) + ")"
                 val parsed = parseWithLimits(source, library, null, evaluation)
@@ -62,15 +79,17 @@ class RuntimeFunctionTest {
                 assertTrue(tree.json.endsWith("\"errors\":[]}"))
             }
             assertEquals(2, calls.get())
-            session.registerFunction("Echo", object : LibraryFunction {
+            val replacement = object : LibraryFunction {
                 override fun call(argumentsJson: String): String? = "8"
-            })
-            assertEquals(baseline + 1, FfiConverterTypeLibraryFunction.handleMap.size)
+            }
+            owned.add(replacement)
+            session.registerFunction("Echo", replacement)
+            assertEquals(1, ownedHandleCount())
             session.setProgram(parse("root=Box(@Echo())", library, null).program)
             assertTrue(session.evaluate().json.contains("\"value\":8"))
             session.dispose()
-            assertEquals(baseline, FfiConverterTypeLibraryFunction.handleMap.size)
-        } finally { session.dispose() }
+            assertEquals(0, ownedHandleCount())
+        } finally { session.dispose(); unrelated.dispose() }
     }
     @Test fun otherThreadsQueueDuringCallbacksAndDisposeAfterTheyReturn() {
         val library = ComponentLibrary("""{"${'$'}defs":{"Box":{"properties":{"value":{}}}},"functions":{"Echo":{"params":{}}}}""")
