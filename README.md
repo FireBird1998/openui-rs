@@ -77,6 +77,12 @@ scripts/hunt.sh --minutes 60             # fuzzing with a fresh seed and an upst
 
 When a test fails, it prints the case, the streaming step and a diff against the reference (fetched live when Bun is there). Two switches rewrite generated files: `UPDATE_PENDING=1 cargo test -p openui-lang` rewrites the pending lists in `conformance/pending/` to the cases that fail now, and `UPDATE_REPORT=1 cargo test --test report` refreshes the counts in CONFORMANCE.md. Coverage-guided fuzz targets live in `fuzz/` and need nightly Rust and `cargo-fuzz`. `scripts/coverage.sh` measures line coverage over the offline suite and fails if a line no test runs isn't explained in [UNREACHED.md](crates/openui-lang/UNREACHED.md); it needs `cargo-llvm-cov`.
 
+Runtime differential fuzzing (`scripts/fuzz.sh --runtime`) generates programs,
+state and interactions, independently saves/reloads Rust state, and checks
+small-limit cuts with upstream controls. Children run under a process-tree
+memory/deadline supervisor with parent-death cleanup. See
+[TESTING.md](TESTING.md#runtime-differential-fuzzing) for replay and flag rules.
+
 The Rust runtime uses one run-wide work allowance across action resumptions.
 The core measures supplied program/action/reference input; resupply can raise
 only the largest combined input floor. Prepared inputs cache setup work; `PreparedReferenceInput` and `SuppliedInput`

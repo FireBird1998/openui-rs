@@ -320,25 +320,60 @@ The reference command is `bun --no-install runtime.ts fuzz`, run from
 runtime goldens, including the attributed renderer transcription, upstream
 store, field resolver, query manager, evaluator and private action identities.
 
-The runtime grammar generates JSON state (all six JSON kinds, nested arrays and
-objects, escaped and Unicode strings), deferred arithmetic/conditional/container
-expressions, and two retained action plans. Random interactions precede a
+Version 2 of the runtime grammar generates programs as well as JSON state
+(all six JSON kinds, nested arrays and objects, escaped and Unicode strings).
+Six shapes cover forms and form fields, binding markers, tabs, tables, nested
+`@Each`, and ordinary component trees, with generated nesting, table rows and
+multi-step action bodies. Components use a bounded case-local `fuzzSchema`;
+these are runtime component/prop evaluations, not mounted renderer UI tests.
+Deferred arithmetic/conditional/container expressions and two retained action
+plans remain in every ordinary case. Random interactions precede a
 sequence that always exercises settled field defaults, form and binding writes,
 an action with two mutation suspensions, host-written state between steps,
 true and generated true/false resumes, a repeated-token refusal, replacement
 program defaults, query events, reset/open-URL/custom events, a plan retained in
 state, and disposal/revoked-plan use. Both default and generated persistence
-scenarios run. Initial and subsequent observations compare complete serialized
+scenarios run. Rust independently derives the deterministic saved-state recipe
+from its own parsed declarations, writes it through `Store::snapshot_json`,
+reloads those bytes with `parse_json`, and initializes the persisted scenario
+from that result. Version 2 compares the saved map and its raw JSON bytes with
+the upstream Store's snapshot too; Rust never receives upstream's saved map.
+Initial and subsequent observations compare complete serialized
 object order, tree JSON, errors, snapshots, pristine names, ordered events,
 save/failure/suspension flags, and parser/tree/action limit flags.
 Tree, snapshot and event JSON are also retained as raw strings before parsing;
 an independent ordered comparer checks those strings byte for byte, including
 number spelling and escape spelling. Only controller numbers use JS double
-semantics. Since the reference has no limits, its expected limit flags are false; an unexpected cut
-is a finding, never silently accepted. Generated values and reference data are
-JSON; library-function callbacks, asynchronous tools, React effect timing,
-streaming prefixes, hostile schema generation, arbitrary descriptor syntax and
-raised/fixed limit exploration are outside this mode. Dedicated conformance,
+semantics. Unexpected cuts in ordinary observations are findings. Reference
+flags, if supplied, are retained; missing resource flags on default-limit
+observations are expected false under the documented no-cut rule.
+
+Each version-2 case also generates nine bounded probes: parse, tree and action
+operations under size, depth and work limits of one or two. Their short programs
+have 8–16 nested arrays and real computed defaults or deferred state reads.
+Each probe must change the result, set the designated cut flag, and agree with
+upstream again at default limits. The controls compare raw parse/tree JSON or
+action events, snapshot bytes and failure. No upstream resource limit exists,
+so limited output bytes have no differential oracle; cut flags instead follow
+the documented rules, independently of the actual flags:
+
+| Rust observable | Oracle |
+|---|---|
+| `parseSize` | Result room or default-evaluation work exhausted → true (ADR 0001); default-limit control → false |
+| `parseDepth` | Expression nesting exhausted → true (ADR 0001); control → false |
+| `treeSize` | Shared result room or evaluation work exhausted → true (ADR 0003); control → false |
+| `treeDepth` | Tree/expression nesting exhausted → true (ADR 0003); control → false |
+| `actionSize` | Result room or run-wide work exhausted → true (ADR 0003); control → false |
+| `actionDepth` | Action/input/expression nesting exhausted → true (ADR 0003); control → false |
+| Action `failed` | Direct comparison with the renderer runner's rejected-operation observable on ordinary steps and controls; a limited action must stop with a failure under the Rust rule |
+| Tree errors | Direct comparison with upstream's structured prop errors; upstream has no separate tree-wide failed bit |
+
+Size and work share Rust's size flag; upstream has no equivalent to any of the
+six resource flags. Probe expectations are explicitly documented-rule checks,
+not claimed upstream flags. Generated values and reference data are JSON;
+library-function callbacks, asynchronous tools, React effect timing, streaming
+prefixes, hostile schema generation, arbitrary descriptor syntax and general
+limit-boundary exploration remain outside this mode. Dedicated conformance,
 allowance and streaming tests cover those paths. The existing parser mode
 continues to cover generated/mangled syntax and random streaming chunkings.
 
@@ -353,19 +388,29 @@ Each generated input value has at most 40 nodes, depth three, container width th
 strings of at most 24 UTF-8 bytes. A case has at most 64 explicit interactions,
 4 KiB per program (including replacements), and 64 KiB of request JSON.
 `scripts/fuzz-child.py` supervises each Rust and Bun child separately: a two-second
-kill deadline, 256 MiB physical footprint on macOS (RSS on Linux), 4 MiB stdout,
-and 64 KiB stderr. Input is nonblocking too. A limit kills the owned process
-group and reaps the child; unavailable memory measurement refuses the run.
-Memory is sampled every 10 ms and can overshoot before the kill; this is not
-an OS-enforced allocation ceiling.
+kill deadline, 256 MiB summed process-tree physical footprint on macOS
+(RSS + swap on Linux), 4 MiB stdout, and 64 KiB stderr. The owned group includes
+the guard, worker and descendants, even after the worker exits; recursive child
+enumeration also includes descendants that start a new session while their
+ancestry is visible. Input is nonblocking too. A limit kills the owned group
+and discovered descendants and reaps the guard; unavailable measurement refuses
+the run. Sampling is every 1 ms and triggers at seven eighths of the requested
+memory budget (224 MiB for 256 MiB), reserving room for allocation and shutdown.
+This reduces sampled overshoot; it is not an OS-enforced allocation ceiling.
+A separate group-leader guard watches a pipe held only by the supervisor:
+SIGKILL of the supervisor closes it and kills the group. The guard stays after
+worker exit while descendants remain. The supervisor also checks loss of its
+own parent, so killing the runtime hunt triggers cleanup.
 These are harness limits, with no change to library defaults or parser costs.
 Per-case children also discard all reference caches and suspended runs. Only one
 case is resident at a time; bounded findings are written to disk.
 
 ```bash
 scripts/fuzz.sh --runtime --seed 40 --only 17 --no-save
+cargo run --offline -p openui-lang --example fuzz -- --runtime-case --seed 69 --only 3
 scripts/fuzz.sh --runtime --replay target/runtime-hunt/runtime-HASH.json --only 0 --no-save
 cargo test -p openui-lang --example fuzz runtime::tests
+python3 scripts/pin-runtime-fuzz.py --check  # six v2 pins, supervised Rust/Bun
 python3 scripts/test-fuzz-child.py
 ```
 
@@ -398,8 +443,27 @@ pair. `generated_runtime_interactions_match_pinned_reference_bytes` checks them;
 `runtime_case_bounds_refuse_oversized_source_and_sequences` and
 `runtime_observation_comparison_preserves_object_order_and_flags` and
 `runtime_serialized_observations_preserve_number_and_escape_bytes` enforce
-replay, bounds, ordered comparison and flag sensitivity. The supervisor's ten
-checks exercise real children, with no elapsed-time assertions.
+replay, bounds, ordered comparison and flag sensitivity.
+
+Six additional version-2 cases and upstream observations are pinned in
+`examples/fuzz/runtime/pins.json`. The tests
+`runtime_generated_program_shapes_and_independent_persistence_match_reference_bytes`,
+`runtime_real_cuts_match_documented_flags_and_reference_controls`,
+`runtime_saves_its_own_state_and_reloads_the_saved_bytes`,
+`runtime_normalization_keeps_observable_reference_flags_and_failures`, and
+`runtime_limit_probe_bounds_and_versions_refuse_invalid_replays` enforce the
+new grammar, 54 real cut probes, persistence, flag/failure sensitivity and bounds.
+The old three goldens remain unchanged and replay without a version field;
+new generated cases declare `fuzzVersion:2`. Seed/index generation now means
+version 2; a saved case's serialized program/operations remain authoritative.
+`--runtime-case` prints a bounded generated replay without executing it.
+`python3 scripts/pin-runtime-fuzz.py` regenerates only these six pins, building
+offline and supervising each Rust/Bun child; `--check` refuses any change.
+The supervisor's 20 tests exercise actual children without elapsed-time
+assertions. Every allocator fixture has at most 512 MiB of deliberate payload
+across its descendants, leaving headroom within the 1 GiB safety bound, and
+each hog exits independently within 15 seconds (forks rearm the alarm). The SIGKILL fixtures report a sentinel
+if they reach their own exit; EOF passes only when cleanup killed them.
 
 ## Invariants
 

@@ -12,6 +12,9 @@
 //! With `--runtime`, generated state and interactions use the public runtime
 //! and `bun --no-install runtime.ts fuzz`, in supervised children (runtime.rs).
 //! `--replay FILE --only 0` replays a saved runtime case without generating it.
+//! `--runtime-case --seed N --only K` prints a version-2 case for inspection.
+//! Runtime cases generate program shapes, save/reload their own state, and
+//! check small-limit cut rules alongside uncut upstream byte comparisons.
 //! With `--edits`, merge and serialization are fuzzed instead (see `edits.rs`),
 //! and with `--invariants`, the rules in `invariants.rs` are checked on both
 //! parsers.
@@ -666,6 +669,13 @@ fn main() {
     };
     let flag = |name: &str| value(name).and_then(|v| v.parse::<u64>().ok());
     let seed = flag("--seed").unwrap_or(1);
+    if args.iter().any(|a| a == "--runtime-case") {
+        if let Err(error) = runtime::print_case(seed, flag("--only").unwrap_or(0), &repo_root()) {
+            eprintln!("runtime case: {error}");
+            std::process::exit(1);
+        }
+        return;
+    }
     let save_cases = !args.iter().any(|a| a == "--no-save");
     findings::init(
         flag("--seconds"),

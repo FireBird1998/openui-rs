@@ -27,7 +27,7 @@ const manifests = ['manifest','imported','fuzz','synthetic','recorded','runtime'
 const cases = manifests.flatMap(m => m.cases), schemas = Object.assign({}, ...manifests.map(m => m.schemas));
 const chunkings = manifests[0].chunkings, libraries = new Map(), rawSchemas = new Map(), runtimeLibraries=new Map();
 const library = c => {
-  if (!libraries.has(c.schema)) libraries.set(c.schema, compileSchema(JSON.parse(readFileSync(join(C, schemas[c.schema]),'utf8'))));
+  if (!libraries.has(c.schema)) libraries.set(c.schema, compileSchema(c.fuzzSchema??JSON.parse(readFileSync(join(C, schemas[c.schema]),'utf8'))));
   return libraries.get(c.schema);
 };
 const bindingSpecs=JSON.parse(readFileSync(join(C,'bindings.json'),'utf8'));
@@ -107,7 +107,7 @@ function observe(c,result,store,saved,coverage,interaction) {
   if(c.queryComplete===false)result={...result,queryStatements:result.queryStatements.map(q=>({...q,complete:false}))};
   if(!interaction?.skipInitialize)store.initialize(result.stateDeclarations??{},{...saved,...(c.stateValues??{})});
   const errors=[];
-  if(!rawSchemas.has(c.schema)) rawSchemas.set(c.schema,JSON.parse(readFileSync(join(C,schemas[c.schema]),'utf8')));
+  if(!rawSchemas.has(c.schema)) rawSchemas.set(c.schema,c.fuzzSchema??JSON.parse(readFileSync(join(C,schemas[c.schema]),'utf8')));
   // No provider or refresh interval: register/read using the pinned manager,
   // without fetching or starting timers. Defaults use the caller's declaration
   // resolver while registering, just as toQueryNode accepts a caller context.
@@ -213,6 +213,32 @@ function countActions(c,actions,counts){
 }
 function write(name,value){const p=join(G,name);mkdirSync(dirname(p),{recursive:true});writeFileSync(p,JSON.stringify(value)+'\n');}
 const [cmd,...args]=process.argv.slice(2);
+// Only fuzz v2 uses these probes. Upstream has no resource limits: the
+// control is observed upstream; cut/failure expectations are ADR 0001/0003
+// rules, deliberately separate from the upstream observation.
+async function fuzzProbes(c) {
+  const probes=c.limitProbes??[];
+  if(!Array.isArray(probes)||probes.length>9)throw Error('runtime fuzz probe bounds');
+  const observations=[];
+  for(const p of probes) {
+    if(!['parse','tree','action'].includes(p.stage)||!['size','depth','work'].includes(p.resource)||!Number.isInteger(p.limit)||p.limit<1||p.limit>8||typeof p.program!=='string'||Buffer.byteLength(p.program)>4096)throw Error('invalid runtime fuzz probe');
+    const pc={...c,name:c.name+':probe',fuzzInput:p.program,limitProbes:[],stateValues:{},referenceValues:{},actionSequenceOnly:true,manualMutationOutcomes:true,actionInteractions:[{kind:'run',handle:0,message:'probe'}]};
+    const full=parse(p.program,library(pc),pc.root);
+    let control;
+    if(p.stage==='parse')control=JSON.stringify(full);
+    else if(p.stage==='tree') {
+      const o=JSON.parse(observe(pc,full,createStore(),{}));
+      control=JSON.stringify({root:o.root,errors:o.errors});
+    } else {
+      const a=await actionScenarios(pc,{}, {observe,parse,library,input,generator,fp,rawSchemas,runtimeLibrary,createStore,createQueryManager,evaluate,evaluateRoot,resolveStateField,runtimeFunctions,rendererState,unwrapFieldValue,persistDefaultValue});
+      const o=a.defaults.steps[0].observation;
+      const expand=v=>v&&typeof v==='object'&&Object.hasOwn(v,'$value')?a.values[v.$value]:v;
+      control={events:JSON.stringify(expand(o.events)),snapshot:JSON.stringify(expand(o.snapshot)),failed:o.failed};
+    }
+    observations.push({stage:p.stage,resource:p.resource,limit:p.limit,cut:{size:p.resource!=='depth',depth:p.resource==='depth'},controlFlags:{size:false,depth:false},changed:true,failed:p.stage==='action'?true:null,control});
+  }
+  return observations;
+}
 async function fuzzCase(c) {
   if(Buffer.byteLength(JSON.stringify(c))>65536||Buffer.byteLength(c.fuzzInput)>4096||(c.actionInteractions?.length??0)>64||(c.actionInteractions??[]).some(op=>typeof op.program==='string'&&Buffer.byteLength(op.program)>4096))throw Error('runtime fuzz case bounds');
   const full=parse(input(c),library(c),c.root),saved=persisted(c,full);
@@ -225,6 +251,12 @@ async function fuzzCase(c) {
   for(const scenario of ['defaults','persisted'])for(const step of actions?.[scenario]?.steps??[]) {
     const expanded=Object.fromEntries(Object.entries(step.observation).map(([k,v])=>[k,v&&typeof v==='object'&&Object.hasOwn(v,'$value')?actions.values[v.$value]:v]));
     step.observation.serialized=serialized(expanded);
+  }
+  if(c.fuzzVersion===2) {
+    // Exercise the reference Store's own save path as well. Rust computes
+    // its recipe independently and reloads its snapshot, never this map.
+    const store=createStore();for(const [k,v]of Object.entries(saved))store.set(k,v);
+    return {initial,saved,actions,savedBytes:JSON.stringify(store.getSnapshot()),limitProbes:await fuzzProbes(c)};
   }
   return {initial,saved,actions};
 }

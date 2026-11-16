@@ -463,6 +463,18 @@ No runtime behavior or parser cost changes for #40. Coverage and exclusions of
 the generated grammar, child bounds, replay and triage are in
 [TESTING.md](TESTING.md#runtime-differential-fuzzing).
 
+For #69, runtime fuzz version 2 adds six program shapes, independently saved
+and reloaded Rust persistence, and nine generated small-limit probes per case.
+Six case/reference pairs in `examples/fuzz/runtime/pins.json` pin the shapes
+and 54 cuts. Size/work and depth flags have no upstream equivalent: their
+expectations enforce ADR 0001/0003; default-limit controls compare upstream's
+exact parse/tree bytes and action events/snapshots/failure. Ordinary action
+failure, save and suspension observables remain differential. The flag mapping,
+supervisor process-tree measurement, SIGKILL guard and finite safety fixtures
+are documented and tested in TESTING.md. This changes only the fuzz harness:
+no library behavior, parser cost, parser/edit/invariant mode, existing corpus
+case or golden changes.
+
 ## What conformance testing found
 
 In the core, fixed, each pinned by a case:

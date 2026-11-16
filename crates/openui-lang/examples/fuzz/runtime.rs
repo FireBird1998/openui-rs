@@ -1,5 +1,8 @@
 //! Runtime mode of the differential fuzzer: SplitMix64 cases, public runtime
 //! calls, the existing reference golden adapter, bounded children and shrinking.
+mod limits;
+mod persistence;
+
 use crate::{MAX_SAVES, findings, fingerprint, rng::Rng};
 use openui_lang::{Library, ParseResult, parse};
 use openui_runtime::{
@@ -101,8 +104,31 @@ fn generated(seed: u64, index: u64, root: &Path) -> Result<Value> {
     }
     let expr = expression(&mut rng);
     let initial = state(&mut rng, 2);
+    // Version two varies the program as well as the state/operations. The
+    // serialized case remains the replay authority; old cases need no rewrite.
+    let prefix = format!(
+        "$n=0\n$draft=\"initial\"\n$data={initial}\n$seen=null\nq=Query(\"q\",{{}},{{count:1}})\nm=Mutation(\"m\",{{draft:$draft,n:$n}})"
+    );
+    let rows = (0..2 + rng.below(4))
+        .map(|i| format!("{{name:\"row-{i}\",value:{}}}", rng.below(50)))
+        .collect::<Vec<_>>()
+        .join(",");
+    let mut layout = match index % 6 {
+        0 => "Box($n,$data,$seen,$draft)".to_owned(),
+        1 => "Form(\"contact\",[Input(\"name\",$draft),Field($draft=$value,$draft)])".into(),
+        2 => "Tabs($n,[Box($draft),Box($data),Box($seen)])".into(),
+        3 => format!("Table([\"name\",\"value\"],[{rows}])"),
+        4 => format!("Box(@Each([{rows}],row,Box(@Each([1,2,3],cell,Box(row.name,cell,$draft)))))"),
+        _ => "Box(Field($draft=$value,$draft),Form(\"contact\",[Input(\"email\",$data)]))".into(),
+    };
+    for _ in 0..rng.below(4) {
+        layout = format!("Box({layout},$n)");
+    }
+    let extra = (0..1 + rng.below(4))
+        .map(|_| format!("@Set($seen,{}),", expression(&mut rng)))
+        .collect::<String>();
     let source = format!(
-        "$n=0\n$draft=\"initial\"\n$data={initial}\n$seen=null\nq=Query(\"q\",{{}},{{count:1}})\nm=Mutation(\"m\",{{draft:$draft,n:$n}})\nroot=Box(Box($n,$data,$seen,$draft),Field($draft=$value,$draft),Action([@Set($seen,{expr}),@Run(m),@Set($seen,$draft),@Run(m),@Set($seen,$data),@Run(q),@ToAssistant(\"sent\",$seen)]),Action([@Set($n,$n+1),@Reset($data),@OpenUrl(\"https://example.test/\"),Go(\"go\")]))"
+        "{prefix}\nroot=Box(Action([{extra}@Set($seen,{expr}),@Run(m),@Set($seen,$draft),@Run(m),@Set($seen,$data),@Run(q),@ToAssistant(\"sent\",$seen)]),Action([@Set($n,$n+1),@Reset($data),@OpenUrl(\"https://example.test/\"),Go(\"go\")]),{layout},Field($draft=$value,$draft))"
     );
     let mut ops = vec![json!({"kind":"redraw"})];
     for _ in 0..4 + rng.below(9) {
@@ -138,11 +164,34 @@ fn generated(seed: u64, index: u64, root: &Path) -> Result<Value> {
         json!({"kind":"dispose"}),
         json!({"kind":"run","handle":1,"message":"revoked"}),
     ]);
+    let mut fuzz_schema = schema(root, "runtime-runner")?;
+    let defs = fuzz_schema
+        .get_mut("$defs")
+        .and_then(Value::as_object_mut)
+        .ok_or("component definitions")?;
+    for (name, props) in [
+        ("Form", json!({"name":{},"children":{}})),
+        ("Input", json!({"name":{},"value":{}})),
+        ("Tabs", json!({"value":{},"items":{}})),
+        ("Table", json!({"columns":{},"rows":{}})),
+    ] {
+        defs.insert(name.into(), json!({"properties":props}));
+    }
     Ok(
-        json!({"name":format!("runtime/fuzz-{seed}-{index}"),"schema":"runtime-runner","fuzzInput":source,"stateValues":{"$data":state(&mut rng,3),"$draft":state(&mut rng,3)},"actionSequenceOnly":true,"manualMutationOutcomes":true,"actionInteractions":ops}),
+        json!({"fuzzVersion":2,"name":format!("runtime/fuzz-{seed}-{index}"),"schema":"runtime-runner","fuzzSchema":fuzz_schema,"fuzzInput":source,"stateValues":{"$data":state(&mut rng,3),"$draft":state(&mut rng,3)},"actionSequenceOnly":true,"manualMutationOutcomes":true,"actionInteractions":ops,"limitProbes":limits::generated(&mut rng)}),
     )
 }
+pub fn print_case(seed: u64, index: u64, root: &Path) -> Result<()> {
+    let case = generated(seed, index, root)?;
+    validate(&case)?;
+    println!("{}", serde_json::to_string_pretty(&case)?);
+    Ok(())
+}
 fn validate(c: &Value) -> Result<()> {
+    limits::validate(c)?;
+    if c.get("fuzzVersion").is_some_and(|v| v != &json!(2)) {
+        return Err("unsupported runtime fuzz version".into());
+    }
     if c.to_string().len() > MAX_INPUT
         || text(get(c, "fuzzInput")).len() > MAX_SOURCE
         || array(get(c, "actionInteractions")).len() > MAX_OPS
@@ -264,11 +313,17 @@ fn snapshot(store: &Store) -> RuntimeValue {
     }
     RuntimeValue::Obj(Arc::new(object))
 }
-fn replay(c: &Value, saved: &Value, root: &Path) -> Result<Value> {
+fn replay(c: &Value, root: &Path) -> Result<Value> {
     validate(c)?;
-    let schema = schema(root, text(get(c, "schema")))?;
+    let schema = c
+        .get("fuzzSchema")
+        .cloned()
+        .map(Ok)
+        .unwrap_or_else(|| schema(root, text(get(c, "schema"))))?;
     let library = Library::from_json_schema(&schema);
     let bindings = bindings(root, text(get(c, "schema")))?;
+    let full = parse(text(get(c, "fuzzInput")), &library, None);
+    let (saved, saved_bytes) = persistence::saved(c, &full)?;
     let mut initial = serde_json::Map::new();
     let mut actions = serde_json::Map::new();
     for scenario in ["defaults", "persisted"] {
@@ -519,7 +574,16 @@ fn replay(c: &Value, saved: &Value, root: &Path) -> Result<Value> {
             json!({"handles":handles.iter().map(|(h,_)|h).collect::<Vec<_>>(),"steps":steps}),
         );
     }
-    Ok(json!({"initial":initial,"actions":actions}))
+    let mut output = json!({"initial":initial,"actions":actions,"saved":saved});
+    if get(c, "fuzzVersion") == &json!(2) {
+        let map = output.as_object_mut().ok_or("worker output")?;
+        map.insert("savedBytes".into(), json!(saved_bytes));
+        map.insert(
+            "limitProbes".into(),
+            limits::replay(c, &library, &bindings, &schema)?,
+        );
+    }
+    Ok(output)
 }
 fn flags() -> Value {
     json!({"parseSize":false,"parseDepth":false,"treeSize":false,"treeDepth":false,"actionSize":false,"actionDepth":false})
@@ -564,7 +628,7 @@ fn expand_actions(actions: &Value, source: Serialization) -> Result<Value> {
                 }
                 Serialization::Original => {}
             }
-            observation.insert("flags".into(), flags());
+            observation.entry("flags").or_insert_with(flags);
             steps.push(json!({"op":get(step,"op"),"observation":observation}));
         }
         out.insert(
@@ -582,11 +646,19 @@ fn normalize(reference: &Value) -> Result<Value> {
         }
         v.as_object_mut()
             .ok_or("initial observation")?
-            .insert("flags".into(), flags());
+            .entry("flags")
+            .or_insert_with(flags);
     }
-    Ok(
-        json!({"initial":initial,"actions":expand_actions(get(reference,"actions"),Serialization::Original)?}),
-    )
+    let mut output = json!({"initial":initial,"actions":expand_actions(get(reference,"actions"),Serialization::Original)?,"saved":get(reference,"saved")});
+    for key in ["savedBytes", "limitProbes"] {
+        if let Some(value) = reference.get(key) {
+            output
+                .as_object_mut()
+                .ok_or("normalized output")?
+                .insert(key.into(), value.clone());
+        }
+    }
+    Ok(output)
 }
 fn same(a: &Value, b: &Value) -> bool {
     // Do not use the serializer under test to compare its own output. Raw
@@ -621,6 +693,9 @@ fn explained(c: &Value, reference: &Value, actual: &Value, root: &Path) -> Resul
         name.replace("runtime/", "runtime-")
     )))?;
     Ok(same(get(reference, "initial"), get(actual, "initial"))
+        && ["saved", "savedBytes", "limitProbes"]
+            .iter()
+            .all(|key| same(get(reference, key), get(actual, key)))
         && same(
             get(reference, "actions"),
             &expand_actions(get(&pin, "reference"), Serialization::Pinned)?,
@@ -683,7 +758,7 @@ fn compare(c: &Value, root: &Path) -> Result<Comparison> {
             std::env::current_exe()?.to_string_lossy().into_owned(),
             "--runtime-worker".into(),
         ],
-        &json!({"case":c,"saved":get(&reference,"saved")}),
+        &json!({"case":c}),
     )?;
     let reference = normalize(&reference)?;
     let kind = if actual.get("workerError").is_some() {
@@ -710,14 +785,7 @@ pub fn worker() -> Result<()> {
         return Err("worker input too large".into());
     }
     let request: Value = serde_json::from_str(&input)?;
-    println!(
-        "{}",
-        replay(
-            get(&request, "case"),
-            get(&request, "saved"),
-            &crate::repo_root()
-        )?
-    );
+    println!("{}", replay(get(&request, "case"), &crate::repo_root())?);
     Ok(())
 }
 /// Remove interactions first, then source lines and state entries. Keep the
@@ -851,10 +919,112 @@ pub fn run(
 #[cfg(test)]
 mod tests {
     use super::*;
+    fn pins() -> Value {
+        serde_json::from_str(include_str!("runtime/pins.json")).unwrap()
+    }
+    #[test]
+    fn runtime_generated_program_shapes_and_independent_persistence_match_reference_bytes() {
+        let root = crate::repo_root();
+        let pins = pins();
+        assert_eq!(array(&pins).len(), 6);
+        for (index, pin) in array(&pins).iter().enumerate() {
+            let case = get(pin, "case");
+            assert!(same(case, &generated(69, index as u64, &root).unwrap()));
+            let actual = replay(case, &root).unwrap();
+            let expected = normalize(get(pin, "reference")).unwrap();
+            assert!(
+                same(&actual, &expected),
+                "shape {index}: actual {actual} expected {expected}"
+            );
+        }
+    }
+    #[test]
+    fn runtime_real_cuts_match_documented_flags_and_reference_controls() {
+        let root = crate::repo_root();
+        for pin in array(&pins()) {
+            let c = get(pin, "case");
+            let schema = get(c, "fuzzSchema");
+            let library = Library::from_json_schema(schema);
+            let actual = limits::replay(
+                c,
+                &library,
+                &bindings(&root, "runtime-runner").unwrap(),
+                schema,
+            )
+            .unwrap();
+            let reference = get(get(pin, "reference"), "limitProbes");
+            assert_eq!(array(&actual).len(), 9);
+            assert!(
+                same(&actual, reference),
+                "actual {actual} expected {reference}"
+            );
+        }
+    }
+    #[test]
+    fn runtime_saves_its_own_state_and_reloads_the_saved_bytes() {
+        let root = crate::repo_root();
+        for pin in array(&pins()) {
+            let c = get(pin, "case");
+            let library = Library::from_json_schema(get(c, "fuzzSchema"));
+            let parsed = parse(text(get(c, "fuzzInput")), &library, None);
+            let (saved, bytes) = persistence::saved(c, &parsed).unwrap();
+            assert!(same(&saved, get(get(pin, "reference"), "saved")));
+            assert_eq!(bytes, text(get(get(pin, "reference"), "savedBytes")));
+            assert!(same(&saved, &openui_lang::parse_json(&bytes).unwrap()));
+            let actual = replay(c, &root).unwrap();
+            assert_eq!(
+                actual["initial"]["persisted"]["snapshot"]["$n"],
+                saved["$n"]
+            );
+            assert_ne!(saved["$n"], json!(0));
+        }
+    }
+    #[test]
+    fn runtime_normalization_keeps_observable_reference_flags_and_failures() {
+        let pins = pins();
+        let reference = &pins[0]["reference"];
+        let mut changed = reference.clone();
+        changed["initial"]["defaults"]["flags"] = flags();
+        changed["initial"]["defaults"]["flags"]["treeSize"] = json!(true);
+        assert!(!same(
+            &normalize(reference).unwrap(),
+            &normalize(&changed).unwrap()
+        ));
+        changed = reference.clone();
+        changed["actions"]["defaults"]["steps"][0]["observation"]["failed"] = json!(true);
+        assert!(!same(
+            &normalize(reference).unwrap(),
+            &normalize(&changed).unwrap()
+        ));
+    }
+    #[test]
+    fn runtime_limit_probe_bounds_and_versions_refuse_invalid_replays() {
+        let pins = pins();
+        let base = pins[0]["case"].clone();
+        for invalid in [json!({}), json!(vec![base["limitProbes"][0].clone(); 10])] {
+            let mut c = base.clone();
+            c["limitProbes"] = invalid;
+            assert!(validate(&c).is_err());
+        }
+        for (key, value) in [
+            ("stage", json!("unknown")),
+            ("resource", json!("unknown")),
+            ("limit", json!(0)),
+            ("limit", json!(9)),
+            ("program", json!("x".repeat(MAX_SOURCE + 1))),
+        ] {
+            let mut c = base.clone();
+            c["limitProbes"][0][key] = value;
+            assert!(validate(&c).is_err());
+        }
+        let mut c = base;
+        c["fuzzVersion"] = json!(3);
+        assert!(validate(&c).is_err());
+    }
     #[test]
     fn runtime_replay_refuses_missing_handles_instead_of_running_a_default_action() {
         let case = json!({"schema":"runtime-runner", "fuzzInput":"", "actionInteractions":[{"kind":"run","handle":0}]});
-        let refusal = replay(&case, &json!({}), &crate::repo_root()).unwrap_err();
+        let refusal = replay(&case, &crate::repo_root()).unwrap_err();
         assert_eq!(refusal.to_string(), "run handle not discovered");
     }
     #[test]
@@ -866,17 +1036,17 @@ mod tests {
         assert_eq!(cases.len(), 3);
         assert_eq!(cases.len(), array(&golden).len());
         for (index, (case, expected)) in cases.iter().zip(array(&golden)).enumerate() {
-            if index < 2 {
-                assert!(same(case, &generated(40, index as u64, &root).unwrap()));
-            }
             let reference = normalize(expected).unwrap();
-            let actual = replay(case, get(expected, "saved"), &root).unwrap();
+            let actual = replay(case, &root).unwrap();
             if index < 2 {
                 assert!(same(&reference, &actual), "{}", get(case, "name"));
             } else {
                 assert!(explained(case, &reference, &actual, &root).unwrap());
                 let mut changed = actual.clone();
                 changed["actions"]["defaults"]["steps"][0]["observation"]["failed"] = json!(false);
+                assert!(!explained(case, &reference, &changed, &root).unwrap());
+                changed = actual.clone();
+                changed["saved"]["$changed"] = json!(1);
                 assert!(!explained(case, &reference, &changed, &root).unwrap());
             }
         }
@@ -944,9 +1114,18 @@ mod tests {
     fn runtime_observation_comparison_preserves_object_order_and_flags() {
         assert!(!same(&json!({"a":1,"b":2}), &json!({"b":2,"a":1})));
         let a = json!({"flags":flags()});
-        let mut b = a.clone();
-        b["flags"]["treeSize"] = json!(true);
-        assert!(!same(&a, &b));
+        for flag in [
+            "parseSize",
+            "parseDepth",
+            "treeSize",
+            "treeDepth",
+            "actionSize",
+            "actionDepth",
+        ] {
+            let mut b = a.clone();
+            b["flags"][flag] = json!(true);
+            assert!(!same(&a, &b), "ignored {flag}");
+        }
         // JSON.stringify writes integral numbers without a fractional suffix.
         assert!(same(&json!({"value": 121}), &json!({"value": 121.0})));
     }
