@@ -409,6 +409,7 @@ version = "0.2.0"
 dependencies = [
  "indexmap",
  "libc",
+ "openui-runtime",
  "proptest",
  "ryu-js",
  "serde_json",

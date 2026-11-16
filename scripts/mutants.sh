@@ -4,7 +4,7 @@
 # to find code the suite wouldn't notice breaking. Run it on AC power: a mutant
 # costs a rebuild plus the suite.
 #
-#   scripts/mutants.sh parsing|rest [--jobs N] [cargo-mutants options...]
+#   scripts/mutants.sh parsing|rest|runtime [--jobs N] [cargo-mutants options...]
 #
 #   parsing  the lexer, statements, expressions and the AST, the preprocessor,
 #            the stall guard,
@@ -14,6 +14,8 @@
 #   rest     merging, converting back to source, prompts, error hints, JSON,
 #            the library, builtins, the crate's front page, the CLI, and the
 #            binding crate (testing ticket 05)
+#   runtime  all openui-runtime source modules, including nested tree modules
+#            (#40); the maintainer starts the full run
 #
 # Results go to target/mutants/<group>/mutants.out/ (missed.txt, caught.txt,
 # timeout.txt, outcomes.json). Mutants that change nothing are listed, with
@@ -36,15 +38,26 @@ case "$group" in
   rest)
     files=(merge serialize prompt enrich js library builtins lib bin/openui-lang)
     packages=(-p openui-lang -p openui-ffi) ;;
-  *) echo "usage: scripts/mutants.sh parsing|rest [--jobs N] [cargo-mutants options...]" >&2; exit 2 ;;
+  runtime)
+    files=()
+    packages=(-p openui-runtime) ;;
+  *) echo "usage: scripts/mutants.sh parsing|rest|runtime [--jobs N] [cargo-mutants options...]" >&2; exit 2 ;;
 esac
 args=()
-for f in "${files[@]}"; do args+=(--file "crates/openui-lang/src/$f.rs"); done
+if [[ "$group" == runtime ]]; then
+  args=(--file "crates/openui-runtime/src/**/*.rs" --file "crates/openui-runtime/src/*.rs")
+else
+  for f in "${files[@]}"; do args+=(--file "crates/openui-lang/src/$f.rs"); done
+fi
 [[ "$group" != rest ]] || args+=(--file "crates/openui-ffi/src/*.rs")
 mkdir -p "target/mutants/$group"
 
-"$ROOT/scripts/mutants-watchdog.sh" $$ &
-watchdog_pid=$!
-trap 'kill "$watchdog_pid" 2>/dev/null || true' EXIT
+case " $* " in
+  *' --list '*|*' --list-files '*) ;; # No test processes to watch.
+  *)
+    "$ROOT/scripts/mutants-watchdog.sh" $$ &
+    watchdog_pid=$!
+    trap 'kill "$watchdog_pid" 2>/dev/null || true' EXIT ;;
+esac
 
-OPENUI_NO_LIVE_DIFFS=1 cargo mutants "${packages[@]}" "${args[@]}" --output "target/mutants/$group" "$@"
+OPENUI_NO_LIVE_DIFFS=1 CARGO_NET_OFFLINE=true cargo mutants "${packages[@]}" "${args[@]}" --output "target/mutants/$group" "$@"

@@ -9,6 +9,9 @@
 //! chunking with the stream's end. Program K of seed S is the same on every machine (`--only K`
 //! replays it). Mismatches are shrunk to a minimal program and saved as corpus
 //! cases in `conformance/fuzz.json`; run `scripts/regen-golden.sh` afterwards.
+//! With `--runtime`, generated state and interactions use the public runtime
+//! and `bun --no-install runtime.ts fuzz`, in supervised children (runtime.rs).
+//! `--replay FILE --only 0` replays a saved runtime case without generating it.
 //! With `--edits`, merge and serialization are fuzzed instead (see `edits.rs`),
 //! and with `--invariants`, the rules in `invariants.rs` are checked on both
 //! parsers.
@@ -28,6 +31,7 @@ mod invariants;
 mod reference;
 mod rng;
 mod rules;
+mod runtime;
 
 use std::collections::{BTreeMap, HashMap};
 use std::panic::{AssertUnwindSafe, catch_unwind};
@@ -648,6 +652,13 @@ fn save(found: &[(Program, String)], dir: &Path) -> Vec<String> {
 
 fn main() {
     let args: Vec<String> = std::env::args().skip(1).collect();
+    if args.iter().any(|a| a == "--runtime-worker") {
+        if let Err(error) = runtime::worker() {
+            eprintln!("runtime worker: {error}");
+            std::process::exit(1);
+        }
+        return;
+    }
     let value = |name: &str| {
         args.iter()
             .position(|a| a == name)
@@ -669,6 +680,14 @@ fn main() {
     );
 
     let root = repo_root();
+    if args.iter().any(|a| a == "--runtime") {
+        if let Err(error) = runtime::run(seed, batches, &root, value("--replay").map(PathBuf::from))
+        {
+            eprintln!("runtime fuzz: {error}");
+            std::process::exit(1);
+        }
+        return;
+    }
     let conformance = root.join("conformance");
     let corpus = load_corpus(&conformance);
     let mut reference = Reference::start(&root.join("reference"));

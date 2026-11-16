@@ -1,0 +1,470 @@
+{
+  "cases": [
+    {
+      "name": "runtime/fuzz-40-0",
+      "schema": "runtime-runner",
+      "fuzzInput": "$n=0\n$draft=\"initial\"\n$data={\"value\":{\"value\":-32},\"nested\":\"saved\"}\n$seen=null\nq=Query(\"q\",{},{count:1})\nm=Mutation(\"m\",{draft:$draft,n:$n})\nroot=Box(Box($n,$data,$seen,$draft),Field($draft=$value,$draft),Action([@Set($seen,{n:$n, data:$data}),@Run(m),@Set($seen,$draft),@Run(m),@Set($seen,$data),@Run(q),@ToAssistant(\"sent\",$seen)]),Action([@Set($n,$n+1),@Reset($data),@OpenUrl(\"https://example.test/\"),Go(\"go\")]))",
+      "stateValues": {
+        "$data": "saved",
+        "$draft": {
+          "value": -3,
+          "nested": {
+            "value": "line\nend",
+            "nested": 199.5,
+            "active": "saved"
+          }
+        }
+      },
+      "actionSequenceOnly": true,
+      "manualMutationOutcomes": true,
+      "actionInteractions": [
+        {
+          "kind": "redraw"
+        },
+        {
+          "kind": "references",
+          "values": {
+            "q": null
+          }
+        },
+        {
+          "kind": "field",
+          "name": "email",
+          "componentType": "Input",
+          "value": {
+            "value": {},
+            "nested": "saved"
+          },
+          "formName": "",
+          "save": true
+        },
+        {
+          "kind": "run",
+          "handle": 1,
+          "message": "generated",
+          "formName": ""
+        },
+        {
+          "kind": "set",
+          "name": "$n",
+          "value": {
+            "value": "0"
+          }
+        },
+        {
+          "kind": "binding",
+          "marker": {
+            "__reactive": "assign",
+            "target": "$draft",
+            "expr": {
+              "k": "StateRef",
+              "n": "$value"
+            }
+          },
+          "value": {
+            "value": {},
+            "nested": null,
+            "active": "λ😀"
+          }
+        },
+        {
+          "kind": "run",
+          "handle": 1,
+          "message": "generated",
+          "formName": "contact"
+        },
+        {
+          "kind": "references",
+          "values": {
+            "q": null
+          }
+        },
+        {
+          "kind": "set",
+          "name": "$n",
+          "value": false
+        },
+        {
+          "kind": "binding",
+          "marker": {
+            "__reactive": "assign",
+            "target": "$draft",
+            "expr": {
+              "k": "StateRef",
+              "n": "$value"
+            }
+          },
+          "value": 121.0
+        },
+        {
+          "kind": "run",
+          "handle": 1,
+          "message": "generated",
+          "formName": "contact"
+        },
+        {
+          "kind": "references",
+          "values": {
+            "q": false
+          }
+        },
+        {
+          "kind": "run",
+          "handle": 1,
+          "message": "generated",
+          "formName": "contact"
+        },
+        {
+          "kind": "default",
+          "name": "settled",
+          "value": null,
+          "streaming": false
+        },
+        {
+          "kind": "field",
+          "name": "name",
+          "componentType": "Input",
+          "value": false,
+          "formName": "contact",
+          "save": true
+        },
+        {
+          "kind": "binding",
+          "marker": {
+            "__reactive": "assign",
+            "target": "$draft",
+            "expr": {
+              "k": "StateRef",
+              "n": "$value"
+            }
+          },
+          "value": {
+            "value": false,
+            "nested": 82.75,
+            "active": [
+              null,
+              null,
+              ""
+            ]
+          }
+        },
+        {
+          "kind": "run",
+          "handle": 0,
+          "message": "suspend",
+          "formName": "contact"
+        },
+        {
+          "kind": "set",
+          "name": "$draft",
+          "value": false
+        },
+        {
+          "kind": "field",
+          "name": "between",
+          "value": {
+            "value": false
+          },
+          "formName": "contact",
+          "save": false
+        },
+        {
+          "kind": "resume",
+          "success": true
+        },
+        {
+          "kind": "set",
+          "name": "$data",
+          "value": 47
+        },
+        {
+          "kind": "program",
+          "program": "$n=0\n$draft=\"initial\"\n$data={\"value\":{\"value\":-32},\"nested\":\"saved\"}\n$seen=null\nq=Query(\"q\",{},{count:1})\nm=Mutation(\"m\",{draft:$draft,n:$n})\nroot=Box(Box($n,$data,$seen,$draft),Field($draft=$value,$draft),Action([@Set($seen,{n:$n, data:$data}),@Run(m),@Set($seen,$draft),@Run(m),@Set($seen,$data),@Run(q),@ToAssistant(\"sent\",$seen)]),Action([@Set($n,$n+1),@Reset($data),@OpenUrl(\"https://example.test/\"),Go(\"go\")]))\n$data=46\n$n=18"
+        },
+        {
+          "kind": "resume",
+          "success": true
+        },
+        {
+          "kind": "resume",
+          "success": true
+        },
+        {
+          "kind": "run",
+          "handle": 1,
+          "message": "reset"
+        },
+        {
+          "kind": "retain",
+          "handle": 1
+        },
+        {
+          "kind": "runState",
+          "message": "retained"
+        },
+        {
+          "kind": "dispose"
+        },
+        {
+          "kind": "run",
+          "handle": 1,
+          "message": "revoked"
+        }
+      ]
+    },
+    {
+      "name": "runtime/fuzz-40-1",
+      "schema": "runtime-runner",
+      "fuzzInput": "$n=0\n$draft=\"initial\"\n$data=[]\n$seen=null\nq=Query(\"q\",{},{count:1})\nm=Mutation(\"m\",{draft:$draft,n:$n})\nroot=Box(Box($n,$data,$seen,$draft),Field($draft=$value,$draft),Action([@Set($seen,$n + 1),@Run(m),@Set($seen,$draft),@Run(m),@Set($seen,$data),@Run(q),@ToAssistant(\"sent\",$seen)]),Action([@Set($n,$n+1),@Reset($data),@OpenUrl(\"https://example.test/\"),Go(\"go\")]))",
+      "stateValues": {
+        "$data": {},
+        "$draft": [
+          false,
+          29
+        ]
+      },
+      "actionSequenceOnly": true,
+      "manualMutationOutcomes": true,
+      "actionInteractions": [
+        {
+          "kind": "redraw"
+        },
+        {
+          "kind": "run",
+          "handle": 1,
+          "message": "generated",
+          "formName": ""
+        },
+        {
+          "kind": "references",
+          "values": {
+            "q": true
+          }
+        },
+        {
+          "kind": "binding",
+          "marker": {
+            "__reactive": "assign",
+            "target": "$draft",
+            "expr": {
+              "k": "StateRef",
+              "n": "$value"
+            }
+          },
+          "value": {
+            "value": 233.25,
+            "nested": 41,
+            "active": [
+              13,
+              true,
+              -2
+            ]
+          }
+        },
+        {
+          "kind": "binding",
+          "marker": {
+            "__reactive": "assign",
+            "target": "$draft",
+            "expr": {
+              "k": "StateRef",
+              "n": "$value"
+            }
+          },
+          "value": "a\"b"
+        },
+        {
+          "kind": "field",
+          "name": "name",
+          "componentType": "Input",
+          "value": {
+            "value": false,
+            "nested": null
+          },
+          "formName": "contact",
+          "save": false
+        },
+        {
+          "kind": "default",
+          "name": "email",
+          "componentType": "Input",
+          "value": [],
+          "formName": "contact",
+          "streaming": true
+        },
+        {
+          "kind": "references",
+          "values": {
+            "q": {
+              "value": null,
+              "nested": "a\"b"
+            }
+          }
+        },
+        {
+          "kind": "default",
+          "name": "settled",
+          "value": {
+            "value": 12.25,
+            "nested": "saved",
+            "active": -19
+          },
+          "streaming": false
+        },
+        {
+          "kind": "field",
+          "name": "name",
+          "componentType": "Input",
+          "value": 85.0,
+          "formName": "contact",
+          "save": true
+        },
+        {
+          "kind": "binding",
+          "marker": {
+            "__reactive": "assign",
+            "target": "$draft",
+            "expr": {
+              "k": "StateRef",
+              "n": "$value"
+            }
+          },
+          "value": -9
+        },
+        {
+          "kind": "run",
+          "handle": 0,
+          "message": "suspend",
+          "formName": "contact"
+        },
+        {
+          "kind": "set",
+          "name": "$draft",
+          "value": -28
+        },
+        {
+          "kind": "field",
+          "name": "between",
+          "value": {
+            "value": null,
+            "nested": {},
+            "active": null
+          },
+          "formName": "contact",
+          "save": false
+        },
+        {
+          "kind": "resume",
+          "success": true
+        },
+        {
+          "kind": "set",
+          "name": "$data",
+          "value": null
+        },
+        {
+          "kind": "program",
+          "program": "$n=0\n$draft=\"initial\"\n$data=[]\n$seen=null\nq=Query(\"q\",{},{count:1})\nm=Mutation(\"m\",{draft:$draft,n:$n})\nroot=Box(Box($n,$data,$seen,$draft),Field($draft=$value,$draft),Action([@Set($seen,$n + 1),@Run(m),@Set($seen,$draft),@Run(m),@Set($seen,$data),@Run(q),@ToAssistant(\"sent\",$seen)]),Action([@Set($n,$n+1),@Reset($data),@OpenUrl(\"https://example.test/\"),Go(\"go\")]))\n$data={\"value\":[],\"nested\":{},\"active\":27}\n$n=7"
+        },
+        {
+          "kind": "resume",
+          "success": true
+        },
+        {
+          "kind": "resume",
+          "success": true
+        },
+        {
+          "kind": "run",
+          "handle": 1,
+          "message": "reset"
+        },
+        {
+          "kind": "retain",
+          "handle": 1
+        },
+        {
+          "kind": "runState",
+          "message": "retained"
+        },
+        {
+          "kind": "dispose"
+        },
+        {
+          "kind": "run",
+          "handle": 1,
+          "message": "revoked"
+        }
+      ]
+    },
+    {
+      "name": "runtime/action-target-state-boolean",
+      "schema": "runtime-actions",
+      "file": "cases/runtime/action-target-state-boolean.oui",
+      "source": "synthetic",
+      "chunkings": [
+        "1",
+        "random-1"
+      ],
+      "stateValues": {
+        "$rows": [
+          {
+            "type": "element",
+            "typeName": "Box",
+            "props": {
+              "a": {
+                "k": "Comp",
+                "name": "Action",
+                "args": [
+                  {
+                    "k": "Arr",
+                    "els": [
+                      {
+                        "k": "Comp",
+                        "name": "Set",
+                        "args": [
+                          {
+                            "k": "StateRef",
+                            "n": false
+                          },
+                          {
+                            "k": "Num",
+                            "v": 3
+                          }
+                        ]
+                      },
+                      {
+                        "k": "Comp",
+                        "name": "OpenUrl",
+                        "args": [
+                          {
+                            "k": "Str",
+                            "v": "after"
+                          }
+                        ]
+                      }
+                    ]
+                  }
+                ]
+              }
+            },
+            "partial": false,
+            "hasDynamicProps": true
+          }
+        ]
+      },
+      "actionSequenceOnly": true,
+      "actionInteractions": [
+        {
+          "kind": "run",
+          "handle": 0,
+          "message": "target"
+        },
+        {
+          "kind": "dispose"
+        }
+      ],
+      "fuzzInput": "root=Box($rows)\n"
+    }
+  ]
+}

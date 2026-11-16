@@ -449,6 +449,20 @@ clears; at version exhaustion the version stays at its maximum.
 
 "Explained" mismatches are three of the divergences below: the `__proto__` one, and a root that's an object literal shaped like an element or like an AST node. The last also explains the reference throwing. The fuzzer recognizes and skips them.
 
+Runtime differential mode (`scripts/fuzz.sh --runtime`) compares initial and
+per-interaction tree/error JSON, store snapshots, pristine names, ordered events
+and flags against `reference/runtime.ts fuzz`, the same adapter used for runtime
+goldens. Raw tree, snapshot and event JSON are additionally retained as strings
+and compared byte for byte, without reserializing them through the serializer
+under test. Three offline controls in `conformance/runtime-fuzz.json` pin two
+generated sequences and one already-recorded divergence; the fuzzer's
+`generated_runtime_interactions_match_pinned_reference_bytes` test replays them
+through public runtime interfaces. Known generated non-string-target differences
+are accepted only when both full outputs match their existing divergence pins.
+No runtime behavior or parser cost changes for #40. Coverage and exclusions of
+the generated grammar, child bounds, replay and triage are in
+[TESTING.md](TESTING.md#runtime-differential-fuzzing).
+
 ## What conformance testing found
 
 In the core, fixed, each pinned by a case:

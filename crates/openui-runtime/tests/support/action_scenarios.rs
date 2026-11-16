@@ -268,6 +268,11 @@ fn corpus_action_scenarios_match_the_renderer() {
                 let mut save_requested = false;
                 let mut field_value = None;
                 match kind {
+                    "set" => {
+                        failed = store
+                            .set(text(get(op, "name")), Some(get(op, "value").clone()))
+                            .is_err();
+                    }
                     "run" | "runState" | "legacy" | "none" => {
                         let state_plan = store.get("$retained");
                         let action = match kind {

@@ -14,7 +14,7 @@ on:
       group:
         description: Which modules (scripts/mutants.sh)
         type: choice
-        options: [parsing, rest, both]
+        options: [parsing, rest, runtime, both, all]
         default: parsing
       shards:
         description: Jobs to split each group's mutants across
@@ -44,7 +44,13 @@ jobs:
           GROUP: ${{ inputs.group }}
           SHARDS: ${{ inputs.shards }}
         run: |
-          if [[ "$GROUP" == both ]]; then groups='["parsing","rest"]'; else groups="[\"$GROUP\"]"; fi
+          if [[ "$GROUP" == all ]]; then
+            groups='["parsing","rest","runtime"]'
+          elif [[ "$GROUP" == both ]]; then
+            groups='["parsing","rest"]'
+          else
+            groups="[\"$GROUP\"]"
+          fi
           echo "groups=$groups" >> "$GITHUB_OUTPUT"
           echo "shards=$(seq 0 $((SHARDS - 1)) | jq -sc .)" >> "$GITHUB_OUTPUT"
 
@@ -90,7 +96,7 @@ jobs:
           path: shards
       - name: Put the shards together
         run: |
-          for group in parsing rest; do
+          for group in parsing rest runtime; do
             compgen -G "shards/mutants-$group-*" > /dev/null || continue
             mkdir -p "mutants/$group"
             {

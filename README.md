@@ -188,3 +188,11 @@ exports wrote null), and an undeclared undefined name disappears. See
 Typed and data `@Each` templates share one substitution traversal and retain
 existing work and room prices. Same-session core `with_scope` re-entry shares
 the suspended owner's work and cut flags; `reentry_accounting` pins its charges.
+
+Runtime differential fuzzing is part of the existing fuzzer:
+`scripts/fuzz.sh --runtime --seconds 60 --seed 40 --findings target/runtime-hunt --no-save`.
+It compares generated state and interaction sequences with the pinned reference
+runtime, in children bounded for time, memory and output. Cached Bun dependencies
+are required; nothing is installed. See [TESTING.md](TESTING.md#runtime-differential-fuzzing)
+for replay, triage and coverage, and the maintainer-started
+`scripts/mutants.sh runtime --jobs 2` mutation run.

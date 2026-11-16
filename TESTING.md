@@ -192,10 +192,11 @@ Not in the check, because they need Bun, time or a screen:
 | `scripts/hunt.sh --minutes N` | A hunt: differential fuzzing with a fresh seed and the upstream check, for a set time, leaving a report (see [Hunts](#hunts)) |
 | `scripts/upstream-check.sh <folder>` | The upstream check on its own |
 | `scripts/fuzz.sh --seed N --count N` | Differential fuzzing: generated and mangled programs through the core and a live reference, comparing every step. It saves shrunk mismatches as corpus cases. A result a limit cut can't match the reference, which has none: where the answers differ and the core's was cut for size or work, it's parsed again with those limits raised, and counts as "cut by a limit" when it matches then, a mismatch when it doesn't. |
+| `scripts/fuzz.sh --runtime --seconds 60 --seed 40 --findings target/runtime-hunt` | Generated state and interaction sequences through the public runtime and the existing reference runtime golden adapter, with supervised children (see [Runtime differential fuzzing](#runtime-differential-fuzzing)). |
 | `scripts/fuzz.sh --edits …` | The same, for merging and converting back to source |
 | `scripts/fuzz.sh --invariants …` | The invariants, on the core and the reference alike (see [Invariants](#invariants)) |
 | `scripts/fuzz-coverage.sh …` | Coverage-guided fuzzing of the targets in `fuzz/` (see [Coverage-guided fuzzing](#coverage-guided-fuzzing)) |
-| `scripts/mutants.sh parsing\|rest` | Mutation testing (see [Mutation testing](#mutation-testing)) |
+| `scripts/mutants.sh parsing\|rest\|runtime` | Mutation testing (see [Mutation testing](#mutation-testing)) |
 | `scripts/import-recordings.sh` | Recorded streams into the corpus (see [Recorded streams](#recorded-streams)) |
 | `scripts/android-test.sh` | The suite on a running Android emulator or phone (see [Android](#android)) |
 | `scripts/bench.sh` | Streaming speed against the reference |
@@ -267,7 +268,7 @@ A hunt searches for findings for a set time, then leaves a report and the shrunk
 - **Coverage-guided fuzzing, alongside** for the whole hunt, when cargo-fuzz is installed: each target on a core of its own (see [Coverage-guided fuzzing](#coverage-guided-fuzzing)). Its crashes, timeouts and memory blow-ups are findings.
 - **The upstream check, alongside:** are there lang-core commits on upstream's main since the pin? If so, it computes our corpus's goldens with the newest in a scratch copy, and lists which cases' outputs change. Moving the pin is its own decision. `scripts/upstream-check.sh <folder>` runs the check alone.
 
-A hunt never commits and never changes tracked files. It compares them before and after, and exits with status 1 if they changed. Fuzzing needs Bun; without it, the hunt runs only the upstream check, which then lists commits only. Without network, the upstream check uses the copy of upstream's history from the last time it reached GitHub (cached in `target/upstream.git`), and says so. `--seed S` repeats a hunt's fuzzing, and `--no-upstream` skips the upstream check.
+A hunt never commits and never changes tracked files. It compares them before and after, and exits with status 1 if they changed. Differential fuzzing needs Bun and cached `reference/node_modules`; without either it is skipped, and no packages are installed. The other available hunt checks still run. Without network, the upstream check uses the copy of upstream's history from the last time it reached GitHub (cached in `target/upstream.git`), and says so. `--seed S` repeats a hunt's fuzzing, and `--no-upstream` skips the upstream check.
 
 ### Every night
 
@@ -299,6 +300,106 @@ The hunt saves each finding in the corpus's own formats, so it moves over as it 
 - **Merging or converting back to source:** copy its line from the folder's `merge-fuzz.json` or `serialize-fuzz.json` into the file of the same name in `conformance/`.
 
 Then run `scripts/regen-golden.sh`. The tests now show the failure, with the step and a diff. A `quirk?` isn't saved as a case, because the reference has no output for it to compare with; it's written up in CONFORMANCE.md or QUIRKS.md instead. A replay command regenerates its input from the corpus, so it reproduces the finding only while the corpus is unchanged.
+
+## Runtime differential fuzzing
+
+One short run, offline, with Bun and cached `reference/node_modules` already present:
+
+```bash
+scripts/fuzz.sh --runtime --seconds 60 --seed 40 --findings target/runtime-hunt --no-save
+```
+
+This is a mode of the existing differential fuzzer in `examples/fuzz/`, using
+its SplitMix64 per-case seed/index, batch budget, progress files, findings JSONL,
+and maximum of 25 saved findings. `--count`, `--from`, and `--only` have the
+same meaning as in parsing mode. The first release build precedes the search
+budget; the current comparison and final shrink verification can add at most
+eight seconds after it. No dependency installation occurs, in any fuzzer mode.
+The reference command is `bun --no-install runtime.ts fuzz`, run from
+`reference/`. It uses the same `observe` and `actionScenarios` functions as
+runtime goldens, including the attributed renderer transcription, upstream
+store, field resolver, query manager, evaluator and private action identities.
+
+The runtime grammar generates JSON state (all six JSON kinds, nested arrays and
+objects, escaped and Unicode strings), deferred arithmetic/conditional/container
+expressions, and two retained action plans. Random interactions precede a
+sequence that always exercises settled field defaults, form and binding writes,
+an action with two mutation suspensions, host-written state between steps,
+true and generated true/false resumes, a repeated-token refusal, replacement
+program defaults, query events, reset/open-URL/custom events, a plan retained in
+state, and disposal/revoked-plan use. Both default and generated persistence
+scenarios run. Initial and subsequent observations compare complete serialized
+object order, tree JSON, errors, snapshots, pristine names, ordered events,
+save/failure/suspension flags, and parser/tree/action limit flags.
+Tree, snapshot and event JSON are also retained as raw strings before parsing;
+an independent ordered comparer checks those strings byte for byte, including
+number spelling and escape spelling. Only controller numbers use JS double
+semantics. Since the reference has no limits, its expected limit flags are false; an unexpected cut
+is a finding, never silently accepted. Generated values and reference data are
+JSON; library-function callbacks, asynchronous tools, React effect timing,
+streaming prefixes, hostile schema generation, arbitrary descriptor syntax and
+raised/fixed limit exploration are outside this mode. Dedicated conformance,
+allowance and streaming tests cover those paths. The existing parser mode
+continues to cover generated/mangled syntax and random streaming chunkings.
+
+Every 32nd case replays one of the seven already-recorded non-string-action-target
+cases. An explanation requires the *entire pair* of action observations to
+match the committed reference and Rust divergence pins, and identical initial
+observations. A new step or changed observation is reported. Other documented
+divergence shapes are outside the generated grammar; there is no blanket skip
+based on text containing a suspicious name.
+
+Each generated input value has at most 40 nodes, depth three, container width three, and
+strings of at most 24 UTF-8 bytes. A case has at most 64 explicit interactions,
+4 KiB per program (including replacements), and 64 KiB of request JSON.
+`scripts/fuzz-child.py` supervises each Rust and Bun child separately: a two-second
+kill deadline, 256 MiB physical footprint on macOS (RSS on Linux), 4 MiB stdout,
+and 64 KiB stderr. Input is nonblocking too. A limit kills the owned process
+group and reaps the child; unavailable memory measurement refuses the run.
+Memory is sampled every 10 ms and can overshoot before the kill; this is not
+an OS-enforced allocation ceiling.
+These are harness limits, with no change to library defaults or parser costs.
+Per-case children also discard all reference caches and suspended runs. Only one
+case is resident at a time; bounded findings are written to disk.
+
+```bash
+scripts/fuzz.sh --runtime --seed 40 --only 17 --no-save
+scripts/fuzz.sh --runtime --replay target/runtime-hunt/runtime-HASH.json --only 0 --no-save
+cargo test -p openui-lang --example fuzz runtime::tests
+python3 scripts/test-fuzz-child.py
+```
+
+Mismatches shrink by deleting interactions, source lines and state entries,
+under the same deadline and at most 80 attempts. Missing retained handles refuse
+replay, so deleting a plan cannot become a false default-action difference.
+Crashes, timeouts and reference
+errors keep the original request. `runtime-HASH.json` is a directly replayable
+case; its `.finding.json` holds the original request, both complete observations, the seed/index,
+replay commands and whether shrinking finished. `progress-runtime` identifies
+the active seed/index even if the parent is interrupted; `summary-runtime.json`
+contains the tallies. Runtime mode always saves to `--findings` or
+`target/runtime-findings`, including with `--no-save`; it never automatically
+promotes an unreviewed difference into conformance.
+
+Triage every finding: make a small safe runtime fix and add a case to
+`conformance/runtime.json` (program plus `stateValues` and `actionInteractions`,
+with `actionSequenceOnly`/`manualMutationOutcomes` for explicit resumes), or
+record an intentional unsafe-to-match divergence with both pinned outputs and
+its reason in CONFORMANCE.md. A reference quirk needing a decision stays in the
+maintainer report; do not edit QUIRKS.md or file upstream. The adapters now
+support `{kind:"set", name, value}` for direct host writes. Regenerate twice
+with `scripts/regen-golden.sh` and run the public conformance tests. Three
+additional offline replay controls live in `conformance/runtime-fuzz.json` and
+`golden/runtime-fuzz.json`: two generated sequences and an exact known-divergence
+pair. `generated_runtime_interactions_match_pinned_reference_bytes` checks them;
+`runtime_replay_refuses_missing_handles_instead_of_running_a_default_action`,
+`runtime_generation_replays_and_stays_within_bounds`,
+`generated_state_covers_json_kinds_with_bounded_shapes`,
+`runtime_case_bounds_refuse_oversized_source_and_sequences` and
+`runtime_observation_comparison_preserves_object_order_and_flags` and
+`runtime_serialized_observations_preserve_number_and_escape_bytes` enforce
+replay, bounds, ordered comparison and flag sensitivity. The supervisor's ten
+checks exercise real children, with no elapsed-time assertions.
 
 ## Invariants
 
@@ -395,9 +496,46 @@ The tree names only statements that are components, so those are the ones the ru
 ```bash
 scripts/mutants.sh parsing --jobs 3   # testing ticket 04: about 1,800 mutants, the 1.1 evaluator's included
 scripts/mutants.sh rest --jobs 3      # testing ticket 05: about 650, the binding's included
+scripts/mutants.sh runtime --list --json > target/runtime-mutants.json  # no mutations
+scripts/mutants.sh runtime --jobs 2   # #40: maintainer starts this long run
 ```
 
 [cargo-mutants](https://mutants.rs) plants one bug at a time in the source (a `>` turned into `>=`, a function that returns a default, a deleted `!`) and runs the offline suite against each, with live diffs off. A mutant the suite doesn't catch is code a real bug could break unnoticed. Each one is either caught by a new case, or listed in `.cargo/mutants.toml` with the reason it changes nothing a caller can observe, so reruns skip it. A mutant costs a rebuild plus the suite, so a whole group takes hours: run it on AC power, or on GitHub (see [On GitHub](#on-github)). Results go to `target/mutants/<group>/mutants.out/` (`missed.txt`, `caught.txt`, `timeout.txt`).
+
+The runtime group includes every module under `crates/openui-runtime/src/`,
+including nested tree modules, and runs the runtime crate's offline public
+suite. At #40 list mode enumerated 1,086 candidates in 12 files; that count
+changes with source and cargo-mutants versions. There are no runtime exclusions
+without evidence: every survivor must receive a public-interface test that
+fails with that mutant, or a narrow entry in `.cargo/mutants.toml` explaining
+why no caller can observe the change. Limits, accounting, errors and refusal
+atomicity are observable; a slow test is no reason to exclude one. Never use
+`--in-place` for this workflow. `CARGO_NET_OFFLINE=true` and
+`OPENUI_NO_LIVE_DIFFS=1` are set by the script.
+
+Budget many hours to multiple days for the full runtime group, depending on
+parallelism and survivor rate. Its unmutated suite alone exceeded a three-minute
+sample timeout on the worker, so do not apply that sample timeout to the full
+run. Start the command above on the worker with working process discovery and
+memory monitoring; inspect `target/mutants/runtime/mutants.out/{missed,caught,timeout,unviable}.txt`.
+The manually dispatched GitHub workflow accepts `group=runtime` and
+`group=all` (parsing, rest and runtime), and aggregates all three reports.
+`group=both` preserves its existing parsing/rest selection.
+A deliberately narrow proof run (not a replacement for the full suite) is:
+
+```bash
+scripts/mutants.sh runtime --jobs 1 --re 'Store::version -> u64 with 0$' \
+  --exclude progress.rs --exclude stack.rs \
+  --cargo-test-arg=--test=mutation_contracts --timeout 120 --build-timeout 120
+```
+
+cargo-mutants 27.1.0 also enumerates three struct-field deletions despite its
+name filters. The sample therefore tests four mutants: the version getter and
+fields retaining the exported value and binding/function configuration limits.
+`mutation_contracts` checks each through public interfaces, including refusal
+flags and the surviving function implementation. The file filters are sample
+controls, not permanent exclusions. The maintainer must triage the full run's
+survivors before claiming complete mutation coverage.
 
 A mutant that stops the parser advancing makes a test, or the CLI a test starts, allocate without bound, faster than cargo-mutants' timeout ends it, and macOS has no per-process memory limit: such processes once took a Mac down with a kernel panic, and later froze it. So the script runs `scripts/mutants-watchdog.sh` beside cargo-mutants. It kills any process run from a mutant's build, test or CLI, whose memory passes `MUTANTS_MEMORY_LIMIT_MB` (default 2048; the suite peaks near 600 MB), and on macOS, when free memory falls under 20%, the largest one over 1 GB. On macOS memory is the physical footprint, compressed memory included, since under pressure the compressor keeps a runaway's RSS small. The test fails, the mutant counts as caught, and each kill is logged (`mutants-watchdog: killed a process holding …`).
 
@@ -500,7 +638,7 @@ There's no script for iOS yet. The suite was run by hand in an iPhone 16 simulat
 Every push to `main`, and every pull request, runs the check on Linux with Bun installed, so the conformance tests diff against the reference too, and the viewer's check on macOS 27 (`.github/workflows/ci.yml`). Both use the maintainer's stable Rust, 1.97.1, so clippy's lints there are the ones the check passed locally. The long runs don't run on their own: each is a workflow started by hand, from the repository's Actions tab or with `gh`:
 
 ```bash
-gh workflow run mutants.yml -f group=parsing -f shards=16       # or group=rest, or both
+gh workflow run mutants.yml -f group=parsing -f shards=16       # or rest, runtime, both, all
 gh workflow run fuzz-coverage.yml -f seconds=20400              # every target; -f targets="merge json" for some
 gh workflow run invariants.yml -f seed=82 -f count=1000000      # all eight rules; -f rule=chunking for one
 gh workflow run android.yml

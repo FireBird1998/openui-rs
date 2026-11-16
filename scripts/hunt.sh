@@ -99,8 +99,8 @@ if ! command -v bun >/dev/null; then
   skip="Bun isn't installed"
 elif ! cargo build -q --locked --release -p openui-lang --example fuzz > "$hunt/build.log" 2>&1; then
   skip="the fuzzer didn't build (see build.log)"
-elif ! (cd reference && bun install --frozen-lockfile --silent) >> "$hunt/build.log" 2>&1; then
-  skip="the reference's packages didn't install (see build.log)"
+elif [[ ! -d reference/node_modules ]]; then
+  skip="the reference's cached packages are missing (nothing installed)"
 fi
 if [[ -n "$skip" ]]; then
   echo "skipped: $skip" > "$hunt/status-parse"

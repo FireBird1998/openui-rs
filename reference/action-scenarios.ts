@@ -100,6 +100,8 @@ export async function actionScenarios(c,saved,h) {
       await drain(record);failed=record.failed;suspended=!!record.token;
       if(record.token)tokens.set(op.into??op.slot??'current',record.token);
      }
+    } else if(op.kind==='set') {
+     store.set(op.name,op.value);
     } else if(op.kind==='field') {
      local.api.setFieldValue(op.formName,op.componentType,op.name,op.value,op.save);
      fieldValue=local.api.getFieldValue(op.formName,op.name);

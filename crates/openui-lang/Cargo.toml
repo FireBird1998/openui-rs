@@ -16,6 +16,7 @@ serde_json = { version = "1", features = ["preserve_order", "float_roundtrip"] }
 stacker = "0.1"
 
 [dev-dependencies]
+openui-runtime = { path = "../openui-runtime" }
 test-alloc = { path = "../test-alloc" }
 proptest = "1"
 # Test/benchmark platform support; already in the tree via proptest.

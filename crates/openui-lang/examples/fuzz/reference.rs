@@ -37,6 +37,7 @@ pub struct Reference {
 impl Reference {
     pub fn start(reference_dir: &Path) -> Reference {
         let mut child = Command::new("bun")
+            .arg("--no-install")
             .arg("serve.ts")
             .current_dir(reference_dir)
             .env("OPENUI_TELEMETRY_DISABLED", "1")

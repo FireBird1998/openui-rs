@@ -76,7 +76,7 @@ const runtimeLibrary=c=>{
   }
   return runtimeLibraries.get(c.schema);
 };
-const input = c => readFileSync(join(C,c.file),'utf8');
+const input = c => c.fuzzInput ?? readFileSync(join(C,c.file),'utf8');
 const fp = s => { let h = 0x811c9dc5; for (const b of new TextEncoder().encode(s)) h = Math.imul(h ^ b, 0x01000193) >>> 0; return h.toString(16).padStart(8,'0'); };
 // Canonical run-length encoding: a singleton hash, or [hash, count >= 2].
 function runs(hashes) {
@@ -213,7 +213,37 @@ function countActions(c,actions,counts){
 }
 function write(name,value){const p=join(G,name);mkdirSync(dirname(p),{recursive:true});writeFileSync(p,JSON.stringify(value)+'\n');}
 const [cmd,...args]=process.argv.slice(2);
-if(cmd==='golden') {
+async function fuzzCase(c) {
+  if(Buffer.byteLength(JSON.stringify(c))>65536||Buffer.byteLength(c.fuzzInput)>4096||(c.actionInteractions?.length??0)>64||(c.actionInteractions??[]).some(op=>typeof op.program==='string'&&Buffer.byteLength(op.program)>4096))throw Error('runtime fuzz case bounds');
+  const full=parse(input(c),library(c),c.root),saved=persisted(c,full);
+  const initial={defaults:JSON.parse(observe(c,full,createStore(),{})),persisted:JSON.parse(observe(c,full,createStore(),saved))};
+  const actions=await actionScenarios(c,saved,{observe,parse,library,input,generator,fp,rawSchemas,runtimeLibrary,createStore,createQueryManager,evaluate,evaluateRoot,resolveStateField,runtimeFunctions,rendererState,unwrapFieldValue,persistDefaultValue});
+  // Keep the oracle's exact serialized bytes inside strings. The outer
+  // protocol may normalize controller numbers, but cannot rewrite these.
+  const serialized=o=>({tree:JSON.stringify({root:o.root,errors:o.errors}),snapshot:JSON.stringify(o.snapshot),events:JSON.stringify(o.events??[])});
+  for(const observation of Object.values(initial))observation.serialized=serialized(observation);
+  for(const scenario of ['defaults','persisted'])for(const step of actions?.[scenario]?.steps??[]) {
+    const expanded=Object.fromEntries(Object.entries(step.observation).map(([k,v])=>[k,v&&typeof v==='object'&&Object.hasOwn(v,'$value')?actions.values[v.$value]:v]));
+    step.observation.serialized=serialized(expanded);
+  }
+  return {initial,saved,actions};
+}
+if(cmd==='fuzz') {
+  // The existing golden adapter remains the oracle, including real retained
+  // step identities and async mutation suspension. No packages are installed.
+  const {createInterface}=await import('node:readline');
+  for await(const line of createInterface({input:process.stdin})) {
+    try {
+      if(Buffer.byteLength(line)>65536)throw Error('runtime fuzz input exceeds 64 KiB');
+      process.stdout.write(JSON.stringify(await fuzzCase(JSON.parse(line)))+'\n');
+    } catch(e) {process.stdout.write(JSON.stringify({workerError:String(e)})+'\n');}
+  }
+} else if(cmd==='fuzz-golden') {
+  const pinned=JSON.parse(readFileSync(join(C,'runtime-fuzz.json'),'utf8')).cases;
+  const output=[];
+  for(const c of pinned)output.push({name:c.name,...await fuzzCase(c)});
+  writeFileSync(join(C,'golden/runtime-fuzz.json'),JSON.stringify(output)+'\n');
+} else if(cmd==='golden') {
   const actionStats=actionCounts();
   const stats={total:cases.length,dynamic:0,state:0,references:0,errors:0,recorded:0,recordedState:0,steps:0,scenarioDifferences:0,treeDifferences:0,features:{},original:{dynamic:0,state:0,references:0,errors:0}};
   const evidence={};
