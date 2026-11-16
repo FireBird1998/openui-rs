@@ -38,6 +38,11 @@
 //! keep renderer form fields in the Store, and [`initialize_field_default`]
 //! applies settled defaults without overwriting user values.
 //!
+//! Explicit [`BindingProps`] limits charge JSON-escaped names; removing a pair
+//! refunds its prop and, on the last prop, its component name in full. Repeated
+//! insert/remove cycles retain no charge for removed names. Refused insertions
+//! preserve the configuration. Default binding configuration has no name quota.
+//!
 //! Runtime admission and entry points:
 //!
 //! | Entry points | Configuration and bounds | Cut/refusal |

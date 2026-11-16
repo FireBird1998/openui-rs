@@ -186,7 +186,10 @@ exports wrote null), and an undeclared undefined name disappears. See
 [CONFORMANCE.md](CONFORMANCE.md) for the pinned compatibility changes.
 
 Typed and data `@Each` templates share one substitution traversal and retain
-existing work and room prices. Same-session core `with_scope` re-entry shares
+existing work and room prices. Object keys matching the loop variable stay
+literal in both forms. Explicit `BindingProps` limits recover the full escaped
+name charge when a pair is removed; repeated insert/remove cycles retain no
+charge for removed names. Same-session core `with_scope` re-entry shares
 the suspended owner's work and cut flags; `reentry_accounting` pins its charges.
 
 Runtime differential fuzzing is part of the existing fuzzer:

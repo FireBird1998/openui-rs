@@ -1461,7 +1461,9 @@ whole-value coercion cuts, and same-session re-entry through both callback paths
 Its re-entry case exhausts work or room inside the nested call and checks the
 owning session's flags. The undefined snapshot round trip restores declared
 defaults and drops undeclared undefined names. `review_peaks` (512 MiB) uses the
-reviewer's exact two sources with upper bounds of 268,851,144 and 3,732,632 bytes.
+reviewer's repeated-reference sources with independent bounds of 198,900,368
+(read) and 198,900,304 (unread) bytes, plus the unique-leaf cut bound of
+3,732,632 bytes.
 The bound covers these shapes only.
 
 `accounting_followups` (256 MiB) pins five-byte false projections, scalar
@@ -1568,7 +1570,9 @@ not an intended discount. These are current main's charges, with no new limit.
 
 `review_peaks::runtime_container_capacity_keeps_both_review_peaks_below_main`
 now caps read and unread repeated-reference witnesses independently at
-268,851,088 and 268,851,144 bytes. It also caps the one-row, one-level unique-leaf
+198,900,368 and 198,900,304 bytes (each 1 KiB above its measured peak of
+198,899,344 and 198,899,280 bytes respectively). These are test shape caps,
+not new runtime limits. It also caps the one-row, one-level unique-leaf
 witness at 9,536 bytes, with its complete 1,225-byte result, and keeps the
 three-row/eight-level cut's 3,732,632-byte bound and 163,573-byte result.
 
@@ -1622,3 +1626,41 @@ No mutation or fuzz configuration was changed.
 `CHANGELOG.md` records the removed `PreparedInput` export and the distinct
 meanings of `PreparedReferenceInput` and `SuppliedInput`. The crate's
 compile-fail import enforces that the old export remains absent.
+
+
+## Substitution and binding refund regressions (#66, #68)
+
+`substitution_cost` uses a 64 MiB allocator cap and public expression sessions.
+`substitution_leaves_object_keys_named_like_the_loop_variable_untouched` checks
+`@Each([2,4],i,{i:i,other:i+1})` in typed and descriptor forms against the pinned
+upstream evaluator's `[{"i":2,"other":3},{"i":4,"other":5}]`.
+`unchanged_typed_lists_allocate_independently_of_their_width` compares allocation
+traffic for unchanged width-4 and width-2,048 lists under a substituted call.
+`unchanged_descriptor_lists_keep_their_eager_scratch_allocation` separately
+requires width-scaled scratch traffic in descriptor lists, preserving their
+existing eager `.map` cost rather than applying typed-list laziness to data.
+`assignment_bodies_escape_mapped_sharing_without_changing_allocation_or_peak`
+compares allocation traffic and additional peak heap with mapped sharing opted
+in/out, for both representations under an assignment.
+`positional_arguments_precede_mapped_props_at_every_work_cut` pins 162 main
+observations: typed/data forms at work limits 0–80, with allocation bytes and
+complete public results in `support/substitution-argument-order.tsv`. The fixture
+was measured with main 767d4c4's unchanged core, outside parser setup.
+
+Scratch mutants that make descriptor lists lazy, eagerly copy typed lists, retain the sharing policy through
+assignments, or visit mapped props first fail those respective counted tests.
+Disabling typed or descriptor mapped-body sharing independently fails the existing
+`nested_loop_memory::one_item_loops_keep_unique_leaf_memory_instead_of_doubling_it`
+128,000-byte peak assertion. Substituting object keys fails the new key test in
+each representation. These are finite shape/count checks, without timing claims.
+
+The `bindings` tests
+`removing_bindings_restores_exact_escaped_name_room_across_repeated_cycles` and
+`removing_undecided_and_resolved_bindings_refunds_each_retained_component_once`
+exercise exact escaped-name refunds, duplicate insertions, absent removals,
+shared component names, undecided annotations, and refused insert atomicity.
+The first runs 1,024 cycles of the original ten-byte example and 128 cycles
+for each of 32 name/component-sharing combinations;
+the second fills all 512 bytes again after clearing an extracted configuration.
+Restoring the old refund, omitting component JSON escapes, or mutating before
+an insertion refusal fails these tests. No default quota is introduced.

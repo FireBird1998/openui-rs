@@ -43,7 +43,7 @@ fn runtime_container_capacity_keeps_both_review_peaks_below_main() {
         let before = test_alloc::peak();
         let r = evaluate_tree_with_limits(TreeInput::new(&p), &s, Limits::DEFAULT);
         let peak = test_alloc::peak().saturating_sub(before);
-        let cap = if unread { 268_851_144 } else { 268_851_088 };
+        let cap = if unread { 198_900_304 } else { 198_900_368 };
         assert!(
             peak <= cap,
             "repeated-reference unread={unread} peak {peak} > {cap}"

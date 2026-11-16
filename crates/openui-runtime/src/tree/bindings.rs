@@ -87,20 +87,27 @@ impl BindingProps {
         Ok(())
     }
     /// Resolve a pair as not a binding, clearing its mark and diagnostic.
-    /// Returns whether either entry existed. This never adds retained names.
+    /// Returns whether either entry existed. Refunds the full escaped-name
+    /// charge under explicit limits. This never adds retained names.
     pub fn remove(&mut self, component: &str, prop: &str) -> bool {
         let mut removed = false;
         for entries in [&mut self.marked, &mut self.undecided] {
             if let Some(props) = entries.get_mut(component) {
                 if props.remove(prop) {
                     removed = true;
-                    self.name_bytes = self.name_bytes.saturating_sub(prop.len().saturating_add(1));
+                    if self.limits.is_some() {
+                        self.name_bytes = self
+                            .name_bytes
+                            .saturating_sub(openui_lang::json_string_len(prop).saturating_add(3));
+                    }
                 }
                 if props.is_empty() {
                     entries.remove(component);
-                    self.name_bytes = self
-                        .name_bytes
-                        .saturating_sub(component.len().saturating_add(1));
+                    if self.limits.is_some() {
+                        self.name_bytes = self.name_bytes.saturating_sub(
+                            openui_lang::json_string_len(component).saturating_add(3),
+                        );
+                    }
                 }
             }
         }

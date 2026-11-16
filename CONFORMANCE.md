@@ -621,10 +621,11 @@ three collections (array elements, object entries and call args). The adjacent `
 cases pin an own `map: null` beside `map: 3`: upstream names null, Rust names
 undefined. Both complete outputs are committed; no other case or pending
 feature receives that allowance.
-The typed and descriptor substitution walkers remain separate: consolidating
-traversal requires refactoring the typed walker used by parsing, which this
-round leaves unchanged. Operators, iteration and literal construction remain
-shared; traversal consolidation is left for the review follow-up.
+Typed and descriptor templates use one substitution traversal with separate
+construction adapters (ADR 0008). `substitution_compatibility` pins their values,
+failures, flags, work and room, including unchanged assignment parser allocation
+counts. `substitution_cost` adds the literal-key and counted cost regressions
+described below. Operators, iteration and literal construction remain shared.
 
 Per-item inline replacements retain their room reservation while buffered.
 The owning expression releases that footprint immediately before its public
@@ -1219,3 +1220,24 @@ No nested-rebuild room refund is introduced. The existing one-row work/room
 thresholds and unique-leaf cut result/peak remain binding (ADR 0008).
 The removed `PreparedInput` export is documented in [CHANGELOG.md](CHANGELOG.md);
 its replacements have different meanings, so it has no alias.
+
+
+### Substitution cost pins and binding-name refunds (#66, #68)
+
+`substitution_cost` pins object keys named like the iterator variable in typed
+and descriptor templates. `@Each([2,4],i,{i:i,other:i+1})` gives
+`[{"i":2,"other":3},{"i":4,"other":5}]`, matching the pinned upstream evaluator.
+Its counted tests enforce unchanged typed-list copying, assignment sharing-policy
+escape, and positional-before-mapped traversal at work cuts. Existing
+`nested_loop_memory` peak tests enforce mapped-body sharing in both forms.
+These tests change no substitution values, flags, work or result-room charges.
+
+With explicit `BindingProps` limits, `remove` now refunds the complete quoted
+JSON name charge plus its existing separator byte, including escapes. A component
+name is refunded when its last prop is removed from that retained map; props
+retained in both marked/undecided maps are accounted separately. Removing and
+re-inserting names no longer leaks room. The `bindings` repeated-cycle and
+undecided/resolved tests pin exact refunds and unchanged refused insertions.
+This deliberately increases room after removal compared with main's under-refund;
+default configuration still has no implicit quota. There is no upstream bounded
+configuration/refund interface to match.

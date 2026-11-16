@@ -27,7 +27,8 @@
 //! ```
 //!
 //! `@Each` shares one substitution traversal for typed syntax and descriptor
-//! data, preserving their respective copy rules and work/room charges.
+//! data, preserving their respective copy rules and work/room charges. Object
+//! keys remain literal, including keys named like the iterator variable.
 //!
 //! # Parsing
 //!

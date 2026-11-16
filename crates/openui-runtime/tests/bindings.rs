@@ -853,3 +853,102 @@ fn ambiguous_signature_only_names_are_reported_and_can_be_excluded() {
     assert!(!bindings.undecided().any(|p| p == ("C", "b")));
     assert!(!bindings.remove("C", "b"));
 }
+
+#[test]
+fn removing_bindings_restores_exact_escaped_name_room_across_repeated_cycles() {
+    let mut ten_bytes = BindingProps::with_limits(Limits::DEFAULT.with_result_size(10));
+    for prop in ["a", "b"].into_iter().cycle().take(1024) {
+        ten_bytes.insert("Box", prop).unwrap();
+        assert!(ten_bytes.remove("Box", prop));
+    }
+    // Independent charge oracle: quoted JSON plus the existing separator byte.
+    let charge = |s: &str| openui_lang::JsonValue::String(s.into()).to_string().len() + 1;
+    let names = ["", "Box", "quote\"slash\\\n\r\t\u{8}\u{c}\u{1}", "é😀"];
+    for component in names {
+        for prop in names {
+            for shared_component in [false, true] {
+                let anchor_component = if shared_component {
+                    component
+                } else {
+                    "anchor"
+                };
+                let anchor_prop = "kept";
+                let starting = charge(anchor_component) + charge(anchor_prop);
+                let added = charge(prop)
+                    + if shared_component {
+                        0
+                    } else {
+                        charge(component)
+                    };
+                let mut bindings =
+                    BindingProps::with_limits(Limits::DEFAULT.with_result_size(starting + added));
+                bindings.insert(anchor_component, anchor_prop).unwrap();
+                let before = format!("{bindings:?}");
+                for cycle in 0..128 {
+                    // Alternate names, and also repeat the exact pair.
+                    let name = if cycle % 3 == 0 { "x" } else { prop };
+                    // Empty props are smaller than x: use the exact fitting pair
+                    // for that row, rather than accidentally exceeding its cap.
+                    let name = if charge(name) > charge(prop) {
+                        prop
+                    } else {
+                        name
+                    };
+                    bindings.insert(component, name).unwrap();
+                    bindings.insert(component, name).unwrap();
+                    assert!(bindings.contains(component, name));
+                    let full = format!("{bindings:?}");
+                    let refusal = bindings
+                        .insert("too large", "a name that cannot fit")
+                        .unwrap_err();
+                    assert!(refusal.flags.size_limited && !refusal.flags.depth_limited);
+                    assert_eq!(
+                        format!("{bindings:?}"),
+                        full,
+                        "refused insert changed state"
+                    );
+                    assert!(!bindings.remove(component, "absent"));
+                    assert!(bindings.remove(component, name));
+                    assert!(!bindings.remove(component, name));
+                    assert!(!bindings.contains(component, name));
+                    assert!(bindings.contains(anchor_component, anchor_prop));
+                    assert_eq!(format!("{bindings:?}"), before, "cycle {cycle}");
+                }
+                // Exact fit after every cycle; one more name cannot fit.
+                bindings.insert(component, prop).unwrap();
+                assert!(bindings.insert(component, "extra").is_err());
+                assert!(bindings.remove(component, prop));
+                assert!(bindings.remove(anchor_component, anchor_prop));
+                let empty =
+                    BindingProps::with_limits(Limits::DEFAULT.with_result_size(starting + added));
+                assert_eq!(format!("{bindings:?}"), format!("{empty:?}"));
+            }
+        }
+    }
+}
+
+#[test]
+fn removing_undecided_and_resolved_bindings_refunds_each_retained_component_once() {
+    let spec = value(
+        r#"{"components":{"q\"\\\n":{}},"schema":{"$defs":{"q\"\\\n":{"properties":{"p\"\\\t":{},"other":{}}}}}}"#,
+    );
+    let limits = Limits::DEFAULT.with_result_size(512);
+    for resolve in [false, true] {
+        let mut bindings = BindingProps::from_prompt_spec_with_limits(&spec, limits).unwrap();
+        assert_eq!(bindings.undecided().count(), 2);
+        if resolve {
+            bindings.insert("q\"\\\n", "p\"\\\t").unwrap();
+            assert_eq!(bindings.undecided().count(), 1);
+        }
+        assert!(bindings.remove("q\"\\\n", "p\"\\\t"));
+        assert!(bindings.remove("q\"\\\n", "other"));
+        assert_eq!(bindings.undecided().count(), 0);
+        assert_eq!(
+            format!("{bindings:?}"),
+            format!("{:?}", BindingProps::with_limits(limits))
+        );
+        // All 512 bytes can be used again, through the public insert interface.
+        bindings.insert("C", "p".repeat(505)).unwrap();
+        assert!(bindings.insert("C", "x").is_err());
+    }
+}
