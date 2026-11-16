@@ -99,8 +99,11 @@ public struct BindingMarker: Sendable, Equatable {
 /// shows them. Run it with `LiveProgram.run(_:of:message:form:)`, which
 /// checks the element is still what the tree holds there. These steps are
 /// only a picture of the plan: what runs is what the session holds at that
-/// place in its current evaluation, and a custom action can't be forged
-/// (ADR 0004).
+/// place in its current evaluation. Data shaped like an element can carry a
+/// plan too, as upstream allows: clicking it runs built-in steps (state
+/// writes, a message for the assistant, a URL to open, a declared query or
+/// mutation). Finished custom-step JSON grants nothing; a custom action only
+/// comes from evaluating a declared call (ADR 0004).
 public struct ActionPlan: Sendable, Equatable {
     public var steps: [JSONValue]
 }
