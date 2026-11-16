@@ -1,0 +1,68 @@
+[
+  {
+    "type": "TextArea",
+    "name": "x",
+    "value": "hello\nworld"
+  },
+  {
+    "type": "RadioGroup",
+    "name": "x",
+    "value": "a"
+  },
+  {
+    "type": "CheckBoxGroup",
+    "name": "x",
+    "value": {
+      "a": true
+    }
+  },
+  {
+    "type": "CheckBoxGroup",
+    "scenario": "duplicateNames",
+    "name": "x",
+    "value": {
+      "a": false
+    }
+  },
+  {
+    "type": "Slider",
+    "name": "x",
+    "value": [
+      7
+    ]
+  },
+  {
+    "type": "DatePicker",
+    "name": "x",
+    "value": "2026-11-17T00:00:00.000Z"
+  },
+  {
+    "type": "DatePicker",
+    "scenario": "localMidnight",
+    "name": "x",
+    "value": "2026-11-16T18:30:00.000Z"
+  },
+  {
+    "type": "DatePicker",
+    "mode": "range",
+    "name": "x",
+    "value": {
+      "from": "2026-11-17T00:00:00.000Z",
+      "to": "2026-11-20T00:00:00.000Z"
+    }
+  },
+  {
+    "type": "Chips",
+    "name": "x",
+    "value": [
+      "a"
+    ],
+    "componentType": "Chips"
+  },
+  {
+    "type": "OptionCards",
+    "name": "x",
+    "value": "a",
+    "componentType": "OptionCards"
+  }
+]

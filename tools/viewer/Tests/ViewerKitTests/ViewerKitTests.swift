@@ -354,9 +354,16 @@ func pending(_ list: String, in corpus: Corpus) -> Set<String> {
         #expect(step.result.meta.errors.isEmpty)
         #expect(step.result.meta.unresolved.isEmpty)
         let root = try #require(step.result.root)
-        let childParts: Set = ["Col", "SelectItem", "Series", "Slice", "TabItem"]
+        let childParts: Set = ["Col", "SelectItem", "Series", "Slice", "TabItem", "RadioItem", "CheckBoxItem"]
         let rows = TreeRow.rows(of: root)
-        #expect(Set(rows.map(\.typeName)).isSuperset(of: NativeComponents.names))
+        // Bench predates Chips/OptionCards. The gallery covers every native
+        // component in its library; Issue71 covers the newer react-ui fields.
+        let schema = try JSONValue.parse(Corpus.load().schema(of: try #require(Corpus.load().cases.first { $0.schemaName == "bench" })))
+        let available = Set(schema["$defs"].map { value -> [String] in
+            if case let .object(entries) = value { return entries.map(\.key) }
+            return []
+        } ?? [])
+        #expect(Set(rows.map(\.typeName)).isSuperset(of: NativeComponents.names.intersection(available)))
         for row in rows where !childParts.contains(row.typeName) {
             #expect(NativeComponents.names.contains(row.typeName), "\(row.typeName) at \(row.id)")
         }

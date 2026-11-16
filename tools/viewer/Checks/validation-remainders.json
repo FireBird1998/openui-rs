@@ -1,0 +1,34 @@
+[
+  {
+    "rules": {
+      "pattern": "^.$"
+    },
+    "value": "😀",
+    "blocks": true,
+    "nativeBlocks": false
+  },
+  {
+    "rules": {
+      "pattern": "^a\\z"
+    },
+    "value": "a",
+    "blocks": true,
+    "nativeBlocks": false
+  },
+  {
+    "rules": {
+      "url": true
+    },
+    "value": "http://a%C2%A0b.com",
+    "blocks": true,
+    "nativeBlocks": false
+  },
+  {
+    "rules": {
+      "pattern": "(?i:^\\w+$)"
+    },
+    "value": "K",
+    "blocks": true,
+    "nativeBlocks": false
+  }
+]

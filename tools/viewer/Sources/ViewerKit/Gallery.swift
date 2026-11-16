@@ -1,15 +1,15 @@
 import Foundation
 import OpenUINative
 
-/// A program that uses every component the viewer draws natively, against
-/// upstream's example library (the corpus's `bench` schema). It parses with
-/// no errors; File > Open Component Gallery opens it.
+/// A program using the native components available in upstream's example
+/// library (the corpus's `bench` schema). Chips and OptionCards use react-ui
+/// instead. It parses without errors; File > Open Component Gallery opens it.
 public enum Gallery {
     static let library = "bench"
 
     static let program = #"""
-root = Stack([header, kpis, charts, stories, tip, tabs, notes], "column", "l")
-header = CardHeader("Component gallery", "Every component the viewer draws natively, from upstream's example library")
+root = Stack([header, kpis, charts, stories, tip, tabs, notes, fields], "column", "l")
+header = CardHeader("Component gallery", "Native components from upstream's example library")
 kpis = Stack([readers, published, corrections], "row", "m")
 readers = Card([TextContent("Readers today", "small"), TextContent("12,480", "large-heavy"), Tag("+8% on yesterday", null, "sm", "success")])
 published = Card([TextContent("Stories published", "small"), TextContent("342", "large-heavy")], "sunk")
@@ -21,6 +21,7 @@ sources = Card([CardHeader("Where readers come from"), PieChart([Slice("Search",
 stories = Card([CardHeader("Latest stories", "A table with a number column and an action column"), Table([Col("Headline"), Col("Reads", "number"), Col("Open", "action")], [["Rates hold steady", 5120, "Open"], ["New chip unveiled", 3870, "Open"], ["Derby ends in a draw", 2210, "Open"]])])
 tip = Card([CardHeader("Send a tip"), Form("tip", [FormControl("Your email", Input("email", "you@example.com", "email")), FormControl("Desk", Select("desk", [SelectItem("world", "World"), SelectItem("tech", "Tech"), SelectItem("sport", "Sport")], "Pick a desk"), "Where your tip should go")], Buttons([Button("Send", "send", "primary"), Button("Save draft", "save", "secondary"), Button("Discard", "discard", "tertiary", "destructive")]))])
 tabs = Card([Tabs([TabItem("summary", "Summary", [TextContent("Tabs show one item's content at a time; the viewer lets you switch.")]), TabItem("tags", "Tags", [Stack([Tag("Neutral"), Tag("Info", null, "md", "info"), Tag("Success", null, "md", "success"), Tag("Warning", null, "md", "warning"), Tag("Danger", null, "md", "danger")], "row", "s", "start", "start", true)])])])
+fields = Card([CardHeader("More form fields"), Form("fields", [FormControl("Notes", TextArea("notes", "Write a note", 3)), FormControl("Priority", RadioGroup("priority", [RadioItem("Normal", "", "normal"), RadioItem("High", "", "high")])), FormControl("Topics", CheckBoxGroup("topics", [CheckBoxItem("World", "", "world"), CheckBoxItem("Tech", "", "tech")])), FormControl("Amount", Slider("amount", "discrete", 0, 10, 1, 4)), FormControl("Date", DatePicker("date", "single"))], Buttons([Button("Send", @ToAssistant("Sent"))]))])
 notes = Stack([Callout("info", "Heads up", "Callouts come in five variants."), Callout("success", "Saved", "Your changes are live."), Callout("warning", "Slow feed", "One source is lagging."), Callout("error", "Failed", "Couldn't reach the server."), TextCallout("neutral", "A text callout", "Drawn the same way.")], "column", "s")
 """#
 

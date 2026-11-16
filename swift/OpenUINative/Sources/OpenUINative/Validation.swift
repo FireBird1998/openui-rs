@@ -3,8 +3,9 @@ import Observation
 import SwiftUI
 
 /// Structured rules follow react-ui 0.18.1 and lang-core 1.1.0. Regexes use
-/// ICU with explicit ASCII digit and absolute end-anchor translations; URL
-/// checks cover special-scheme authorities but are not a full WHATWG parser.
+/// ICU with explicit translations for the named flagless JavaScript gaps; URL
+/// checks cover special-scheme authorities, including numeric hosts, but are
+/// not a full WHATWG parser.
 struct ValidationRule: Equatable {
     var type: String
     var arg: JSONValue?
@@ -100,26 +101,72 @@ enum Validation {
 
     /// Whether `pattern` finds a match in `text`; nil when it doesn't compile.
     private static func matches(_ pattern: String, _ text: String) -> Bool? {
+        // ECMAScript WhiteSpace + LineTerminator includes BOM but excludes
+        // ICU's NEL (U+0085); it is Unicode even in a flagless JS pattern.
+        let jsSpaces = #"\x{0009}-\x{000D}\x{0020}\x{00A0}\x{1680}\x{2000}-\x{200A}\x{2028}\x{2029}\x{202F}\x{205F}\x{3000}\x{FEFF}"#
+        let chars = Array(pattern.unicodeScalars)
         var translated = ""
-        var escaped = false
         var inClass = false
-        for c in pattern {
-            if escaped {
-                switch c {
+        var i = 0
+        while i < chars.count {
+            let c = chars[i]
+            i += 1
+            if c == "\\", i < chars.count {
+                let escaped = chars[i]
+                i += 1
+                switch escaped {
                 case "d": translated += "[0-9]"
                 case "D": translated += "[^0-9]"
-                default: translated += "\\" + String(c)
+                case "s": translated += "[" + jsSpaces + "]"
+                case "S": translated += "[^" + jsSpaces + "]"
+                case "b" where !inClass, "B" where !inClass:
+                    let word = "[A-Za-z0-9_]"
+                    translated += escaped == "b"
+                        ? "(?:(?<=\(word))(?!\(word))|(?<!\(word))(?=\(word)))"
+                        : "(?:(?<=\(word))(?=\(word))|(?<!\(word))(?!\(word)))"
+                case "b": translated += "\\x{08}"
+                case "B" where inClass: translated += "B"
+                case "w": translated += "[A-Za-z0-9_]"
+                case "W": translated += "[^A-Za-z0-9_]"
+                // With no u/v flag JavaScript treats property escapes as
+                // identity escapes: \p{L} matches the literal p{L}.
+                case "p", "P":
+                    translated += String(escaped)
+                    if i < chars.count, chars[i] == "{",
+                       let end = chars[i...].firstIndex(of: "}") {
+                        translated += NSRegularExpression.escapedPattern(for: String(String.UnicodeScalarView(chars[i...end])))
+                        i = end + 1
+                    }
+                default: translated += "\\" + String(escaped)
                 }
-                escaped = false
-            } else if c == "\\" {
-                escaped = true
+            } else if c == "[" {
+                if inClass { translated += "\\["; continue }
+                // ICU permits nested sets and literal initial ]; JavaScript's
+                // flagless classes close at the first unescaped ].
+                if i < chars.count, chars[i] == "]" {
+                    translated += "(?!)"
+                    i += 1
+                } else if i + 1 < chars.count, chars[i] == "^", chars[i + 1] == "]" {
+                    translated += "[\\s\\S]"
+                    i += 2
+                } else { translated += "["; inClass = true }
+            } else if c == "]" {
+                translated += inClass ? "]" : "\\]"
+                inClass = false
             } else {
-                if c == "[" { inClass = true }
-                if c == "]" { inClass = false }
+                // Bare inline modifiers are invalid in JavaScript RegExp.
+                // Upstream ignores patterns that do not compile.
+                if !inClass, c == "(", i + 1 < chars.count, chars[i] == "?",
+                   "imswx-".unicodeScalars.contains(chars[i + 1]) {
+                    var end = i + 1
+                    while end < chars.count, "imswx-".unicodeScalars.contains(chars[end]) { end += 1 }
+                    // Bare modifiers such as (?i) are invalid in JS. Scoped
+                    // modifiers such as (?i:a) remain with the platform engine.
+                    if end < chars.count, chars[end] == ")" { return nil }
+                }
                 translated += c == "$" && !inClass ? "\\z" : String(c)
             }
         }
-        if escaped { translated += "\\" }
         guard let regex = try? NSRegularExpression(pattern: translated) else { return nil }
         return regex.firstMatch(in: text, range: NSRange(text.startIndex..., in: text)) != nil
     }
@@ -156,7 +203,51 @@ enum Validation {
         if let port, !port.isEmpty {
             guard port.allSatisfy({ $0.isASCII && $0.isNumber }), let n = UInt32(port), n <= 65535 else { return false }
         }
-        return URLComponents(string: "\(scheme)://\(hostPort)")?.host != nil
+        if host.hasPrefix("[") {
+            return URLComponents(string: "\(scheme)://\(host)")?.host != nil
+        }
+        // Special hosts are percent-decoded before forbidden-code-point and
+        // IPv4 checks. Foundation rejects legal quotes/backticks/braces and
+        // accepts malformed numeric hosts, so it cannot decide these cases.
+        guard let decoded = String(host).removingPercentEncoding, !decoded.isEmpty,
+              !decoded.unicodeScalars.contains(where: {
+                  $0.value <= 0x20 || $0.value == 0x7f || "#%/:<>?@[\\]^|".unicodeScalars.contains($0)
+              }) else { return false }
+        var parts = decoded.split(separator: ".", omittingEmptySubsequences: false)
+        if parts.last == "" { parts.removeLast() }
+        guard let last = parts.last else { return false }
+        let hexNumber = last.lowercased().hasPrefix("0x") && last.dropFirst(2).allSatisfy { $0.isASCII && $0.isHexDigit }
+        let endsInNumber = hexNumber || ipv4Number(last) != nil || (!last.isEmpty && last.allSatisfy { $0.isASCII && $0.isNumber })
+        if endsInNumber {
+            guard parts.count <= 4 else { return false }
+            let numbers = parts.compactMap(ipv4Number)
+            guard numbers.count == parts.count, numbers.dropLast().allSatisfy({ $0 <= 255 }),
+                  let final = numbers.last else { return false }
+            return final < (UInt64(1) << (8 * (5 - numbers.count)))
+        }
+        // Foundation performs IDNA validation for ACE labels. Restrict this
+        // check to punycode: it rejects legal quote/backtick/brace hosts.
+        for part in parts where part.lowercased().hasPrefix("xn--") {
+            guard URLComponents(string: "\(scheme)://\(part)")?.host != nil else { return false }
+        }
+        return true
+    }
+
+    /// WHATWG IPv4 numbers: decimal, leading-zero octal or 0x hex. Overflow
+    /// refuses the URL instead of wrapping, including arbitrarily long input.
+    private static func ipv4Number(_ text: Substring) -> UInt64? {
+        guard !text.isEmpty else { return nil }
+        var digits = text
+        var radix = 10
+        if digits.lowercased().hasPrefix("0x") { digits = digits.dropFirst(2); radix = 16 }
+        else if digits.count >= 2, digits.first == "0" { digits = digits.dropFirst(); radix = 8 }
+        if digits.isEmpty { return 0 }
+        guard digits.utf8.allSatisfy({ byte in
+            if byte >= 48 && byte <= 57 { return Int(byte - 48) < radix }
+            if radix == 16 { return (65...70).contains(byte) || (97...102).contains(byte) }
+            return false
+        }) else { return nil }
+        return UInt64(digits, radix: radix)
     }
 
 }
@@ -294,7 +385,7 @@ final class FormValidation {
             if let reader = live.validationComponents[element.typeName] {
                 value = reader(element, live, formName)
             } else if element.typeName == "Chips" || element.typeName == "OptionCards" {
-                value = Self.selectionValue(element, live: live, form: formName, name: name)
+                value = SelectionField.validationValue(PropReader(element: element), live: live, form: formName, name: name)
             } else {
                 // Input and Select must use the same default reader as their
                 // native views: list/record props leave those controls empty.
@@ -305,25 +396,6 @@ final class FormValidation {
         }
         errors = found
         return found.isEmpty
-    }
-
-    private static func selectionValue(_ element: Element, live: LiveProgram, form: String?, name: String) -> JSONValue? {
-        let props = PropReader(element: element)
-        let single = props.keyword("type", element.typeName == "Chips" ? "multiple" : "single") == "single"
-        let defaultValue = props.value("defaultValue")?.json
-        let normalized: JSONValue?
-        if single {
-            let text = defaultValue?.string ?? defaultValue?.array?.first?.string
-            normalized = text.flatMap { $0.isEmpty ? nil : .string($0) }
-        } else if let array = defaultValue?.array {
-            normalized = .array(array.filter { $0.string != nil })
-        } else if let text = defaultValue?.string {
-            normalized = .array(text.isEmpty ? [] : [.string(text)])
-        } else { normalized = nil }
-        let stored = live.field(form: form, name: name)
-        let value = stored == .null ? normalized : stored ?? normalized
-        if single { return value?.string.flatMap { $0.isEmpty ? nil : .string($0) } }
-        return value?.array.flatMap { $0.isEmpty ? nil : .array($0) }
     }
 
     /// Checks one field, as upstream does when an input loses focus or a

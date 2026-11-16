@@ -187,9 +187,10 @@ final class BatchRecorder {
             }
             let reservation = prepared.request.budgetReservation
             guard budget.permits(reservation) else {
-                stopped = "budget cap would be exceeded (request reserve \(Budget.format(reservation)))"
+                let reason = "budget cap would be exceeded (request reserve \(Budget.format(reservation)))"
+                stopped = reason
                 summary.skipped += 1
-                line(item, "skipped", stopped!)
+                line(item, "skipped", reason)
                 continue
             }
             let status = LiveStatus(model: draft.model)
@@ -210,7 +211,8 @@ final class BatchRecorder {
 
             let complete: Bool
             switch status.phase {
-            case .finished("end_turn"), .finished("max_tokens"): complete = !status.received.isEmpty
+            case .finished("end_turn"), .finished("max_tokens"):
+                complete = !status.received.isEmpty && model.playback?.failedToShowStep != true
             default: complete = false
             }
             // Keep even partial streams for investigation, but only completed

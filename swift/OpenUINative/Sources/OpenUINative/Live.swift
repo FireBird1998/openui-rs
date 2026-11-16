@@ -4,8 +4,8 @@ import OpenUIFFI
 
 /// A program kept live by a runtime session: its parse result evaluated
 /// against a store of state, redrawn whenever the store changes. Draw it with
-/// `ElementView(live:)`; built-in buttons run their actions, built-in inputs
-/// and selects read and write through binding markers or form fields, and
+/// `ElementView(live:)`; built-in buttons run their actions, native form
+/// controls read and write through binding markers or form fields, and
 /// every host event goes to `onHostEvent`.
 ///
 /// Every call reaches the session's own worker thread and waits for it (ADR
@@ -21,30 +21,68 @@ import OpenUIFFI
 public final class LiveProgram {
     /// The evaluated tree's root; nil before a program is shown, or when the
     /// program has no root.
-    public private(set) var root: Element?
+    public var root: Element? { display.root }
     /// What failed while evaluating the tree, in the runtime's order.
-    public private(set) var errors: [RuntimeIssue] = []
+    public var errors: [RuntimeIssue] { display.errors }
     /// The store's snapshot: every state variable and form field that has a
     /// value, by name, in the store's order.
-    public private(set) var state: JSONValue = .object([])
-    /// The store's version: it rises on every real change.
-    public private(set) var version: UInt64 = 0
+    public var state: JSONValue { display.state }
+    /// The displayed session's store version. Discarding a preview restores
+    /// the complete session's version along with its state.
+    public var version: UInt64 { display.version }
     /// The last evaluation was cut at the runtime's size or work limit.
-    public private(set) var sizeLimited = false
+    public var sizeLimited: Bool { display.sizeLimited }
     /// The last evaluation was cut at the runtime's depth limit.
-    public private(set) var depthLimited = false
-    /// Why the last interaction from a built-in view did nothing or stopped
-    /// part way, such as a write the store refused; nil once one succeeds.
+    public var depthLimited: Bool { display.depthLimited }
+    /// Why a built-in interaction stopped, or why a disposable preview could
+    /// not project an admitted app write. A projection warning does not undo
+    /// the complete write. Built-in attempts clear the preceding failure.
     public private(set) var failure: String?
     /// How long the last evaluation took, decoding included.
-    public private(set) var evaluation: Duration?
+    public var evaluation: Duration? { display.evaluation }
     /// A response is still streaming into the program. The app sets it while
     /// the program's text is arriving and clears it once the response is
     /// complete. Meanwhile built-in buttons, inputs and selects are disabled,
     /// a click that still arrives is ignored, and `run` refuses, as upstream's
-    /// renderer does until its response is complete. Writes, `set` and
-    /// `resume` still work.
-    public var isStreaming = false
+    /// renderer does until its response is complete. A stream push remains
+    /// gated until a finish result is shown, even if this flag is cleared.
+    /// `write` refuses too; app state writes with `set` and `resume` still work.
+    public var isStreaming: Bool {
+        get { requestedStreaming || stepIsStreaming || !interactionSuspensions.isEmpty }
+        set { requestedStreaming = newValue }
+    }
+    /// Built-in controls can interact only with a complete, usable runtime.
+    /// A failed complete replacement is refused until a later complete show
+    /// succeeds; the binding cannot roll that replacement back yet.
+    public var acceptsInteractions: Bool { !isStreaming && !completeInvalid }
+    private var completeInvalid = false
+    /// The app-owned request, separate from an immutable preview step's phase.
+    /// Temporary hosts use suspendInteractions(), so they never overwrite
+    /// an app request made while their asynchronous work is suspended.
+    public var isStreamingRequested: Bool { requestedStreaming }
+    private var requestedStreaming = false
+    private var stepIsStreaming: Bool { display.streaming }
+    private var interactionSuspensions: Set<UUID> = []
+
+    /// Temporarily gates clicks without writing the app-owned streaming
+    /// request. The owner must release its suspension when its work ends.
+    public func suspendInteractions() -> InteractionSuspension {
+        let id = UUID()
+        interactionSuspensions.insert(id)
+        return InteractionSuspension(self, id: id)
+    }
+
+    @MainActor public final class InteractionSuspension {
+        private weak var program: LiveProgram?
+        private let id: UUID
+        fileprivate init(_ program: LiveProgram, id: UUID) { self.program = program; self.id = id }
+        /// Releases only this owner's gate. Repeated releases have no effect.
+        public func release() {
+            program?.interactionSuspensions.remove(id)
+            program = nil
+        }
+    }
+
     /// Receives every host event, in order: what the program asks the app to
     /// do (send a message to the assistant, open a URL, a custom action, a
     /// query or mutation to run). It's called after the store has changed and
@@ -54,16 +92,40 @@ public final class LiveProgram {
     /// Internal so tests can reach it: the viewer's count its pending
     /// mutations, and the package's dispose it under a redraw.
     @ObservationIgnored let session: RuntimeSession
+    @ObservationIgnored private let library: Library
+    @ObservationIgnored private let promptSpec: String?
+    @ObservationIgnored private let bindings: [(component: String, prop: String)]
+    @ObservationIgnored private var previewSession: RuntimeSession?
+    @ObservationIgnored private var completeDisplay: Display?
+    @ObservationIgnored private var completeStep: Step?
     /// The pristine state variables at a store version, read once.
     @ObservationIgnored private var pristineCache: (version: UInt64, names: Set<String>)?
-    @ObservationIgnored private var handle: EvaluationHandle?
+    private var handle: EvaluationHandle? { display.handle }
     @ObservationIgnored private var hasProgram = false
     /// The last evaluated tree's root as the runtime gave it.
-    @ObservationIgnored private(set) var rootJSON: JSONValue?
+    var rootJSON: JSONValue? { display.rootJSON }
     /// This live program's identity, carried by its tree's elements and markers.
-    @ObservationIgnored private var id = UUID()
+    private var id: UUID { display.id }
     /// Which evaluation `root` is; it rises with each one.
-    @ObservationIgnored private var generation: UInt64 = 0
+    private var generation: UInt64 { display.generation }
+
+    /// One observable publication: no observer sees a new root with an old
+    /// store snapshot, handle, identity, limit flags or interaction gate.
+    private struct Display {
+        var root: Element?
+        var errors: [RuntimeIssue] = []
+        var state: JSONValue = .object([])
+        var version: UInt64 = 0
+        var sizeLimited = false
+        var depthLimited = false
+        var evaluation: Duration?
+        var rootJSON: JSONValue?
+        var handle: EvaluationHandle?
+        var id = UUID()
+        var generation: UInt64 = 0
+        var streaming = false
+    }
+    private var display = Display()
 
     /// A session for programs in `library`. The props that are bindings come
     /// from `promptSpec` (its signatures' `$binding<…>` props; the library
@@ -75,6 +137,9 @@ public final class LiveProgram {
         bindings: [(component: String, prop: String)] = [],
         onHostEvent: @escaping @MainActor (HostEvent) -> Void = { _ in }
     ) throws {
+        self.library = library
+        self.promptSpec = promptSpec
+        self.bindings = bindings
         session = try RuntimeSession(library: library.inner, promptSpec: promptSpec)
         for binding in bindings {
             try session.markBinding(component: binding.component, prop: binding.prop)
@@ -85,17 +150,136 @@ public final class LiveProgram {
     /// Shows a parse result: the store takes its state declarations (a value
     /// set before survives; a declared starting value fills in or replaces
     /// one still pristine), `persisted` values win over both, and the tree is
-    /// evaluated. Every accepted show revokes older elements and markers, even
-    /// for identical programs. Call it with each new step of a stream.
+    /// evaluated. Every accepted complete show revokes older elements and
+    /// markers, even for identical programs. A stream push uses a separate,
+    /// noninteractive preview session; `discardPreview()` restores the complete
+    /// session after a parser failure. Call with each step of a stream. Invalid
+    /// persisted input is checked before the program is replaced. The binding
+    /// has no transaction across setProgram/initialize/evaluate: an error after
+    /// replacement can still invalidate the preceding runtime handles.
     public func show(_ step: Step, persisted: JSONValue? = nil) throws {
+        // Admission happens before any phase, display or runtime mutation,
+        // including when replacing an existing preview.
+        try preflight(persisted)
+        let oldDisplay = display
+        let oldCompleteDisplay = completeDisplay
+        let oldCompleteStep = completeStep
+        let oldPreview = previewSession
+        let oldCache = pristineCache
+        let oldFailure = failure
+        do { try apply(step, persisted: persisted) }
+        catch {
+            if completeInvalid {
+                // Known Rust transaction follow-up: an accepted complete
+                // replacement cannot restore the underlying store/handles.
+                discardPreview()
+            } else {
+                if previewSession !== oldPreview { previewSession?.dispose() }
+                previewSession = oldPreview
+                completeDisplay = oldCompleteDisplay
+                completeStep = oldCompleteStep
+                display = oldDisplay
+                pristineCache = oldCache
+                failure = oldFailure
+            }
+            throw error
+        }
+    }
+
+    private func preflight(_ persisted: JSONValue?) throws {
+        // Check every caller-supplied persisted value before replacing the
+        // runtime program. initialize's JSON admission can throw after setProgram.
+        // Use the binding's own reader/limits, not a second Swift approximation.
+        if let persisted {
+            let preflight = try RuntimeSession(library: library.inner, promptSpec: nil)
+            defer { preflight.dispose() }
+            _ = try preflight.initialize(persisted: persisted.compact)
+        }
+    }
+
+    private func apply(_ step: Step, persisted: JSONValue?) throws {
+        if step.isStreaming {
+            try showPreview(step, persisted: persisted)
+            return
+        }
+        guard generation < UInt64.max else { throw LiveError(description: "evaluation generation exhausted") }
+        let wasInvalid = completeInvalid
+        completeInvalid = true
+        do { try session.setProgram(program: step.parsed) }
+        catch { completeInvalid = wasInvalid; throw error }
         pristineCache = nil
-        try session.setProgram(program: step.parsed)
-        id = UUID() // Accepted show revokes even byte-identical old drawings.
-        hasProgram = true
         let initialized = try session.initialize(persisted: persisted?.compact)
-        try evaluate()
+        let next = try evaluated(session, from: completeDisplay ?? display, programID: UUID(), streaming: false)
+        previewSession?.dispose()
+        previewSession = nil
+        completeDisplay = nil
+        completeStep = step
+        display = next
+        completeInvalid = false
+        hasProgram = true
         failure = initialized.refused.isEmpty ? nil
             : initialized.refused.map { "\($0.name): \(Self.describe($0.error))" }.joined(separator: "\n")
+    }
+
+    /// Discards streamed previews after a parser failure or cancellation.
+    /// The complete session was never replaced: its store, pristine values,
+    /// pending mutations, elements and custom-action authority remain intact.
+    /// Retained preview controls remain stale after the complete drawing returns.
+    /// The app-owned isStreaming request is preserved; its owner clears it.
+    public func discardPreview() {
+        previewSession?.dispose()
+        previewSession = nil
+        pristineCache = nil
+        if let completeDisplay { display = completeDisplay }
+        completeDisplay = nil
+    }
+
+    private func showPreview(_ step: Step, persisted: JSONValue?) throws {
+        guard !completeInvalid else { throw Self.stale }
+        do {
+            if previewSession == nil {
+                let preview = try RuntimeSession(library: library.inner, promptSpec: promptSpec)
+                for binding in bindings { try preview.markBinding(component: binding.component, prop: binding.prop) }
+                // Keep the actual complete session. Only the noninteractive
+                // drawing uses a JSON projection; copied plans gain no authority.
+                completeDisplay = display
+                previewSession = preview
+                if let completeStep {
+                    try preview.setProgram(program: completeStep.parsed)
+                    _ = try preview.initialize(persisted: nil)
+                }
+            }
+            guard let previewSession else { throw LiveError(description: "no preview session") }
+            try previewSession.setProgram(program: step.parsed)
+            let projectionWarning = try copyEditedState(to: previewSession, from: completeDisplay ?? display)
+            let initialized = try previewSession.initialize(persisted: persisted?.compact)
+            let next = try evaluated(previewSession, from: display, programID: UUID(), streaming: true)
+            pristineCache = nil
+            display = next
+            let initializationWarning = initialized.refused.isEmpty ? nil : initialized.refused.map {
+                "\($0.name): \(Self.describe($0.error))"
+            }.joined(separator: "\n")
+            let warnings = [projectionWarning, initializationWarning].compactMap { $0 }
+            failure = warnings.isEmpty ? nil : warnings.joined(separator: "\n")
+        }
+    }
+
+    private func copyEditedState(to preview: RuntimeSession, from complete: Display) throws -> String? {
+        guard case let .object(entries) = complete.state else { return nil }
+        let dirty = try entries.filter { try !session.isPristine(name: $0.key) }
+        let initialized = try preview.initialize(persisted: JSONValue.object(dirty).compact)
+        guard !initialized.refused.isEmpty else { return nil }
+        return "preview projection: " + initialized.refused.map {
+            "\($0.name): \(Self.describe($0.error))"
+        }.joined(separator: "\n")
+    }
+
+    /// A preview is disposable. Its budget must not turn an already admitted
+    /// canonical app write into a throwing, partially applied refusal.
+    private func mirror(_ write: (RuntimeSession) throws -> Void) -> String? {
+        guard let previewSession else { return nil }
+        do { try write(previewSession); return nil }
+        catch { return "preview projection: " + Self.describe(error) }
     }
 
     // MARK: State
@@ -112,16 +296,21 @@ public final class LiveProgram {
     public var pristineNames: Set<String> {
         if let cached = pristineCache, cached.version == version { return cached.names }
         guard case let .object(entries) = state else { return [] }
-        let names = Set(entries.map(\.key).filter { (try? session.isPristine(name: $0)) ?? false })
+        let currentSession = previewSession ?? session
+        let names = Set(entries.map(\.key).filter { (try? currentSession.isPristine(name: $0)) ?? false })
         pristineCache = (version, names)
         return names
     }
 
     /// Sets a state variable (nil makes it undefined) and redraws if that
-    /// changed anything. Throws if the store refuses the value.
+    /// changed anything. Throws if the complete store refuses the value.
+    /// A preview projection refusal is reported in failure; the admitted
+    /// complete write survives and is visible after discarding/finishing it.
     public func set(_ name: String, to value: JSONValue?) throws {
         _ = try session.set(name: name, json: value?.compact)
-        try refresh()
+        let warning = mirror { _ = try $0.set(name: name, json: value?.compact) }
+        let redrawWarning = try refresh()
+        if let warning = warning ?? redrawWarning { failure = warning }
     }
 
     /// Writes a value through a binding marker from the tree: the marker's
@@ -131,6 +320,8 @@ public final class LiveProgram {
     /// marker is at its place in the tree now; otherwise it throws and
     /// changes nothing.
     public func write(_ marker: BindingMarker, _ value: JSONValue) throws {
+        guard !isStreaming else { throw Self.streaming }
+        guard !completeInvalid else { throw Self.stale }
         guard let origin = marker.origin, origin.program == id else { throw Self.stale }
         if origin.generation != generation {
             guard case let .binding(now)? = locate(origin.steps)?.value, now.json == marker.json else { throw Self.stale }
@@ -154,25 +345,32 @@ public final class LiveProgram {
         }
         guard case let .object(entries)? = raw else { return raw }
         if let value = entries.first(where: { $0.key == "value" }) { return value.value }
-        guard let json = try? session.getField(form: form, name: name) else { return nil }
+        guard let json = try? (previewSession ?? session).getField(form: form, name: name) else { return nil }
         return try? JSONValue.parse(json)
     }
 
     /// Writes an unbound form field and redraws if that changed anything.
     /// `componentType` is kept beside the value and travels in events' form
     /// state; upstream's own Input and Select give none, while a component
-    /// that writes its field itself (such as Chips) gives its name.
+    /// that writes its field itself (such as Chips) gives its name. Complete
+    /// admission determines success; preview refusals are reported in failure.
     public func setField(form: String?, componentType: String? = nil, name: String, to value: JSONValue?) throws {
         _ = try session.setField(form: form, componentType: componentType, name: name, json: value?.compact, save: true)
-        try refresh()
+        let warning = mirror {
+            _ = try $0.setField(form: form, componentType: componentType, name: name, json: value?.compact, save: true)
+        }
+        let redrawWarning = try refresh()
+        if let warning = warning ?? redrawWarning { failure = warning }
     }
 
-    /// Writes what a person typed or picked in a built-in input or select
+    /// Writes what a person typed or picked in a built-in form control
     /// drawn from `element`: through its binding marker, or else into its
     /// form field. Refused, changing nothing, when what was drawn is gone
     /// (see `current(_:form:)`), or while streaming. Entering the value already
     /// held is a no-op, including when the binding transforms new values.
-    public func enter(_ value: JSONValue, into element: Element, form: String? = nil) throws {
+    /// Chips/OptionCards include their component type and accept nil when a
+    /// single selection is cleared; a binding refuses undefined with LiveError.
+    public func enter(_ value: JSONValue?, into element: Element, form: String? = nil) throws {
         guard !isStreaming else { throw Self.streaming }
         guard let element = current(element, form: form) else { throw Self.stale }
         let props = PropReader(element: element)
@@ -180,12 +378,23 @@ public final class LiveProgram {
         let field = FieldValue(props, name: name)
         guard value != field.value(in: self, form: form, includingCompositeDefaults: true) else { return }
         if case let .binding(marker)? = props.value("value") {
+            guard let value else { throw LiveError(description: "a binding cannot be set to undefined") }
             try write(marker, value)
         } else {
-            // Upstream's Input and Select write their field with no component
-            // type (react-lang's useStateField passes undefined); so do these.
-            try setField(form: form, name: try props.text("name").plain, to: value)
+            let type = SelectionField.isSelection(element) ? element.typeName : nil
+            try setField(form: form, componentType: type, name: name, to: value)
         }
+    }
+
+    /// Hydrates only a missing selection default, never while streaming or
+    /// from an obsolete view. The runtime owns the undefined/default guard.
+    func initializeSelection(_ element: Element, form: String?) throws {
+        guard !isStreaming, let element = current(element, form: form) else { return }
+        let props = PropReader(element: element)
+        guard let value = SelectionField.defaultValue(props) else { return }
+        _ = try session.initializeField(form: form, componentType: element.typeName,
+            name: try props.text("name").plain, json: value.compact, streaming: false)
+        try refresh()
     }
 
     // MARK: Actions
@@ -193,7 +402,7 @@ public final class LiveProgram {
     /// Whether `element` is from this program's current evaluation: what's
     /// drawn from it is what the tree holds now.
     public func isCurrent(_ element: Element) -> Bool {
-        guard let origin = element.origin else { return false }
+        guard !completeInvalid, let origin = element.origin else { return false }
         return origin.program == id && origin.generation == generation
     }
 
@@ -204,7 +413,7 @@ public final class LiveProgram {
     /// drawn (the same component, props, actions and markers) inside a form
     /// of the same name. Otherwise nil: what was drawn there is gone.
     func current(_ element: Element, form: String?) -> Element? {
-        guard let origin = element.origin, origin.program == id else { return nil }
+        guard !completeInvalid, let origin = element.origin, origin.program == id else { return nil }
         if origin.generation == generation { return element }
         guard let found = locate(origin.steps), case let .element(now)? = found.value,
               found.form == form, now.json == element.json else { return nil }
@@ -299,11 +508,12 @@ public final class LiveProgram {
     /// Internal so the package's tests can make the redraw fail.
     func finish(_ output: ActionOutput) throws {
         var redrawError: (any Error)?
-        do { try refresh() } catch { redrawError = error }
+        var projectionWarning: String?
+        do { projectionWarning = try refresh() } catch { redrawError = error }
         let stepFailure = output.failure.map { failure in
             (failure.step.map { "Step \($0): " } ?? "") + Self.describe(failure.error)
         }
-        failure = [stepFailure, redrawError.map(Self.describe)].compactMap { $0 }.joined(separator: "\n")
+        failure = [stepFailure, projectionWarning, redrawError.map(Self.describe)].compactMap { $0 }.joined(separator: "\n")
         if failure == "" { failure = nil }
         var events = output.events.map { json in
             HostEvent(json: (try? JSONValue.parse(json)) ?? .object([("type", .string("")), ("unreadable", .string(json))]))
@@ -328,37 +538,68 @@ public final class LiveProgram {
     // MARK: Evaluating
 
     /// Evaluates the tree again if the store has changed since it last was.
-    private func refresh() throws {
+    @discardableResult private func refresh() throws -> String? {
         pristineCache = nil
-        if try session.version() != version {
-            if hasProgram { try evaluate() } else { try readStore() }
+        let base = completeDisplay ?? display
+        guard try session.version() != base.version else {
+            if let previewSession {
+                do {
+                    if try previewSession.version() != version {
+                        display = try evaluated(previewSession, from: display, streaming: true)
+                    }
+                } catch { return "preview projection: " + Self.describe(error) }
+            }
+            return nil
         }
+        let next: Display
+        if hasProgram {
+            next = try evaluated(session, from: base)
+        } else {
+            var store = base
+            store.version = try session.version()
+            store.state = try JSONValue.parse(session.snapshot())
+            next = store
+        }
+        if let previewSession {
+            completeDisplay = next
+            do {
+                // Remove values explicitly made undefined in the complete store.
+                if case let .object(old) = base.state {
+                    for (name, _) in old where next.state[name] == nil {
+                        _ = try previewSession.set(name: name, json: nil)
+                    }
+                }
+                let warning = try copyEditedState(to: previewSession, from: next)
+                display = try evaluated(previewSession, from: display, streaming: true)
+                return warning
+            } catch {
+                // Keep the existing gated preview drawing and the new actual
+                // complete snapshot. A later discard/finish exposes that store.
+                return "preview projection: " + Self.describe(error)
+            }
+        } else { display = next }
+        return nil
     }
 
-    private func evaluate() throws {
+    private func evaluated(_ runtime: RuntimeSession, from base: Display,
+                           programID: UUID? = nil, streaming: Bool? = nil) throws -> Display {
         let started = ContinuousClock.now
-        let output = try session.evaluate()
+        let output = try runtime.evaluate()
         let json = try JSONValue.parse(output.json)
-        guard generation < UInt64.max else { throw LiveError(description: "evaluation generation exhausted") }
-        generation += 1
-        let origin = Origin(program: id, generation: generation, steps: [])
-        rootJSON = json["root"]
-        root = try json["root"].flatMap { $0 == .null ? nil : try Element(json: $0, at: origin) }
-        errors = (json["errors"]?.array ?? []).map(RuntimeIssue.init(json:))
-        handle = output.evaluation
-        sizeLimited = output.sizeLimited
-        depthLimited = output.depthLimited
-        try readStore()
-        evaluation = ContinuousClock.now - started
-    }
-
-    /// Reads the store's version and snapshot. The version is kept only once
-    /// the snapshot has been read, so a failed read is retried on the next
-    /// refresh rather than taken as up to date.
-    private func readStore() throws {
-        let version = try session.version()
-        state = try JSONValue.parse(session.snapshot())
-        self.version = version
+        guard base.generation < UInt64.max else { throw LiveError(description: "evaluation generation exhausted") }
+        let nextGeneration = base.generation + 1
+        let nextID = programID ?? base.id
+        let origin = Origin(program: nextID, generation: nextGeneration, steps: [])
+        let nextRootJSON = json["root"]
+        let nextRoot = try nextRootJSON.flatMap { $0 == .null ? nil : try Element(json: $0, at: origin) }
+        let nextErrors = (json["errors"]?.array ?? []).map(RuntimeIssue.init(json:))
+        let nextVersion = try runtime.version()
+        let nextState = try JSONValue.parse(runtime.snapshot())
+        // Publish only after every fallible Swift conversion/read succeeded.
+        return Display(root: nextRoot, errors: nextErrors, state: nextState, version: nextVersion,
+            sizeLimited: output.sizeLimited, depthLimited: output.depthLimited,
+            evaluation: ContinuousClock.now - started, rootJSON: nextRootJSON, handle: output.evaluation,
+            id: nextID, generation: nextGeneration, streaming: streaming ?? base.streaming)
     }
 
     private struct Located {

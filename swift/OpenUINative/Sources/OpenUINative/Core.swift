@@ -75,11 +75,11 @@ public final class Core: Sendable {
 
     /// Merges the patch so far into `base` and parses the result one-shot: one
     /// step of an edit-mode stream, as a renderer shows it.
-    public func mergeAndParse(base: String, patch: String, library: Library, root: String?, chunks: Int) async throws -> Step {
+    public func mergeAndParse(base: String, patch: String, library: Library, root: String?, chunks: Int, streaming: Bool = false) async throws -> Step {
         try await run {
             Core.assertOnCoreThread()
             let merged = OpenUIFFI.mergeStatements(existing: base, patch: patch, rootId: nil)
-            var step = try Step.measure(chunks: chunks) {
+            var step = try Step.measure(chunks: chunks, streaming: streaming) {
                 OpenUIFFI.parse(program: merged, library: library.inner, rootName: root)
             }
             step.program = merged
@@ -123,7 +123,7 @@ public final class Session: Sendable {
     /// the current result.
     public func push(_ chunks: [String]) async throws -> Step {
         try await core.run { [inner] in
-            try Step.measure(chunks: chunks.count) {
+            try Step.measure(chunks: chunks.count, streaming: true) {
                 Core.assertOnCoreThread()
                 return chunks.count == 1 ? inner.push(chunk: chunks[0]) : inner.pushAll(chunks: chunks)
             }
@@ -144,7 +144,7 @@ public final class Session: Sendable {
     /// Gives the whole text so far.
     public func set(_ text: String) async throws -> Step {
         try await core.run { [inner] in
-            try Step.measure(chunks: 1) {
+            try Step.measure(chunks: 1, streaming: true) {
                 Core.assertOnCoreThread()
                 return inner.set(text: text)
             }
@@ -154,6 +154,9 @@ public final class Session: Sendable {
 
 /// A parse result and what producing it cost.
 public struct Step: Sendable {
+    /// A push/set result is a preview until finish succeeds. Clearing an app
+    /// streaming flag cannot grant a preview interaction authority.
+    public let isStreaming: Bool
     public var result: ParseResult
     /// The JSON as it crossed, for comparing results exactly.
     public var json: String
@@ -163,8 +166,14 @@ public struct Step: Sendable {
     /// The parse result itself, for a runtime session to evaluate.
     let parsed: ParsedProgram
 
+    /// Marks a whole-parser adapter's intermediate result as a streamed
+    /// preview without reparsing or granting it interaction authority.
+    public func asStreamingPreview() -> Step {
+        Step(isStreaming: true, result: result, json: json, timings: timings, program: program, parsed: parsed)
+    }
+
     /// Calls the core, then decodes, timing each part. Core thread only.
-    static func measure(chunks: Int, _ call: () -> ParseOutput) throws -> Step {
+    static func measure(chunks: Int, streaming: Bool = false, _ call: () -> ParseOutput) throws -> Step {
         let started = ContinuousClock.now
         let output = call()
         let called = ContinuousClock.now
@@ -177,7 +186,7 @@ public struct Step: Sendable {
             crossing: (called - started) - parse,
             decode: decoded - called
         )
-        return Step(result: result, json: output.json, timings: timings, program: nil, parsed: output.program)
+        return Step(isStreaming: streaming, result: result, json: output.json, timings: timings, program: nil, parsed: output.program)
     }
 }
 

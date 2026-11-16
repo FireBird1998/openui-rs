@@ -1,0 +1,401 @@
+[
+  {
+    "rules": {
+      "url": true
+    },
+    "value": "http://a.+4",
+    "blocks": false
+  },
+  {
+    "rules": {
+      "url": true
+    },
+    "value": "http://xn--a.com",
+    "blocks": true
+  },
+  {
+    "rules": {
+      "url": true
+    },
+    "value": "http://xn--bcher-kva.com",
+    "blocks": false
+  },
+  {
+    "rules": {
+      "url": true
+    },
+    "value": "http://xn--bcher-kva.a\"b",
+    "blocks": false
+  },
+  {
+    "rules": {
+      "pattern": "^\\d+$"
+    },
+    "value": "١٢",
+    "blocks": true
+  },
+  {
+    "rules": {
+      "pattern": "^\\d+$"
+    },
+    "value": "12",
+    "blocks": false
+  },
+  {
+    "rules": {
+      "pattern": "^[\\d]+$"
+    },
+    "value": "١٢",
+    "blocks": true
+  },
+  {
+    "rules": {
+      "pattern": "^a$"
+    },
+    "value": "a\n",
+    "blocks": true
+  },
+  {
+    "rules": {
+      "email": true
+    },
+    "value": "a@b.co\n",
+    "blocks": true
+  },
+  {
+    "rules": {
+      "url": true
+    },
+    "value": "http://user@",
+    "blocks": true
+  },
+  {
+    "rules": {
+      "url": true
+    },
+    "value": "http://host:99999",
+    "blocks": true
+  },
+  {
+    "rules": {
+      "url": true
+    },
+    "value": " http://host",
+    "blocks": true
+  },
+  {
+    "rules": {
+      "url": true
+    },
+    "value": " http://user@host:65535 ",
+    "blocks": false
+  },
+  {
+    "rules": [
+      "required"
+    ],
+    "value": "",
+    "blocks": false
+  },
+  {
+    "rules": {
+      "url": true
+    },
+    "value": "http:\r\n//host",
+    "blocks": false
+  },
+  {
+    "rules": {
+      "url": true
+    },
+    "value": "http://host:65536",
+    "blocks": true
+  },
+  {
+    "rules": {
+      "pattern": "^\\w+$"
+    },
+    "value": "é",
+    "blocks": true
+  },
+  {
+    "rules": {
+      "pattern": "^\\w+$"
+    },
+    "value": "a_Z9",
+    "blocks": false
+  },
+  {
+    "rules": {
+      "pattern": "^\\W+$"
+    },
+    "value": "é",
+    "blocks": false
+  },
+  {
+    "rules": {
+      "pattern": "\\p{L}"
+    },
+    "value": "é",
+    "blocks": true
+  },
+  {
+    "rules": {
+      "pattern": "\\p{L}"
+    },
+    "value": "p{L}",
+    "blocks": false
+  },
+  {
+    "rules": {
+      "pattern": "[]a]"
+    },
+    "value": "a]",
+    "blocks": true
+  },
+  {
+    "rules": {
+      "pattern": "[[a]]"
+    },
+    "value": "a",
+    "blocks": true
+  },
+  {
+    "rules": {
+      "pattern": "[[a]]"
+    },
+    "value": "a]",
+    "blocks": false
+  },
+  {
+    "rules": {
+      "pattern": "[[a]]"
+    },
+    "value": "[]",
+    "blocks": false
+  },
+  {
+    "rules": {
+      "pattern": "(?i)a"
+    },
+    "value": "b",
+    "blocks": false
+  },
+  {
+    "rules": {
+      "url": true
+    },
+    "value": "http://a\"b",
+    "blocks": false
+  },
+  {
+    "rules": {
+      "url": true
+    },
+    "value": "http://a`b",
+    "blocks": false
+  },
+  {
+    "rules": {
+      "url": true
+    },
+    "value": "http://a{b}",
+    "blocks": false
+  },
+  {
+    "rules": {
+      "url": true
+    },
+    "value": "http://999.999.999.999",
+    "blocks": true
+  },
+  {
+    "rules": {
+      "url": true
+    },
+    "value": "http://1.2.3.4.5",
+    "blocks": true
+  },
+  {
+    "rules": {
+      "url": true
+    },
+    "value": "http://a%20b.com",
+    "blocks": true
+  },
+  {
+    "rules": {
+      "url": true
+    },
+    "value": "http://127.1",
+    "blocks": false
+  },
+  {
+    "rules": {
+      "url": true
+    },
+    "value": "http://0x7f.1",
+    "blocks": false
+  },
+  {
+    "rules": {
+      "url": true
+    },
+    "value": "http://256.1",
+    "blocks": true
+  },
+  {
+    "rules": {
+      "pattern": "^\\d+$"
+    },
+    "value": "١",
+    "blocks": true
+  },
+  {
+    "rules": {
+      "pattern": "^\\D+$"
+    },
+    "value": "١",
+    "blocks": false
+  },
+  {
+    "rules": {
+      "pattern": "^\\s$"
+    },
+    "value": "﻿",
+    "blocks": false
+  },
+  {
+    "rules": {
+      "pattern": "^\\s$"
+    },
+    "value": "",
+    "blocks": true
+  },
+  {
+    "rules": {
+      "pattern": "^\\s$"
+    },
+    "value": " ",
+    "blocks": false
+  },
+  {
+    "rules": {
+      "pattern": "^\\S$"
+    },
+    "value": "",
+    "blocks": false
+  },
+  {
+    "rules": {
+      "pattern": "\\bé\\b"
+    },
+    "value": "é",
+    "blocks": true
+  },
+  {
+    "rules": {
+      "pattern": "\\ba\\b"
+    },
+    "value": "éaé",
+    "blocks": false
+  },
+  {
+    "rules": {
+      "pattern": "\\Bé\\B"
+    },
+    "value": "é",
+    "blocks": false
+  },
+  {
+    "rules": {
+      "pattern": "^[\\w]+$"
+    },
+    "value": "é",
+    "blocks": true
+  },
+  {
+    "rules": {
+      "pattern": "^[\\s]+$"
+    },
+    "value": "﻿",
+    "blocks": false
+  },
+  {
+    "rules": {
+      "pattern": "[\\b]"
+    },
+    "value": "\b",
+    "blocks": false
+  },
+  {
+    "rules": {
+      "url": true
+    },
+    "value": "http://0xffffffffffffffffffffffff",
+    "blocks": true
+  },
+  {
+    "rules": {
+      "url": true
+    },
+    "value": "http://0x100000000",
+    "blocks": true
+  },
+  {
+    "rules": {
+      "url": true
+    },
+    "value": "http://0377.0.0.1",
+    "blocks": false
+  },
+  {
+    "rules": {
+      "url": true
+    },
+    "value": "http://08",
+    "blocks": true
+  },
+  {
+    "rules": {
+      "pattern": "^\\p{L}$"
+    },
+    "value": "p{L}",
+    "blocks": false
+  },
+  {
+    "rules": {
+      "email": true
+    },
+    "value": "a﻿@b.co",
+    "blocks": true
+  },
+  {
+    "rules": {
+      "email": true
+    },
+    "value": "a@b.co",
+    "blocks": false
+  },
+  {
+    "rules": {
+      "pattern": "^[́\\w]+$"
+    },
+    "value": "é",
+    "blocks": true
+  },
+  {
+    "rules": {
+      "pattern": "(?i:a)"
+    },
+    "value": "A",
+    "blocks": false
+  },
+  {
+    "rules": {
+      "pattern": "(?i:a)"
+    },
+    "value": "b",
+    "blocks": true
+  }
+]

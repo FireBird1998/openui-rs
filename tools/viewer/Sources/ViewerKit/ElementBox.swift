@@ -16,7 +16,7 @@ public struct ElementBox: View {
     }
 
     public var body: some View {
-        VStack(alignment: .leading, spacing: 6) {
+        CollectionStack(count: element.props.count, spacing: 6) {
             HStack(spacing: 6) {
                 Text(element.typeName).font(.headline.monospaced())
                 if let id = element.statementId {
@@ -31,6 +31,7 @@ public struct ElementBox: View {
             }
             ForEach(Array(element.props.enumerated()), id: \.offset) { _, prop in
                 PropRow(prop: prop, path: ElementPath.child(of: path, prop.name))
+                    .id(ElementPath.child(of: path, prop.name))
             }
         }
         .padding(8)
@@ -102,19 +103,21 @@ struct PropValueView: View {
         case let .element(element):
             ElementView(element: element, path: path)
         case let .list(items):
-            VStack(alignment: .leading, spacing: 6) {
+            CollectionStack(count: items.count, spacing: 6) {
                 ForEach(Array(items.enumerated()), id: \.offset) { i, item in
                     if item.holdsElements {
                         PropValueView(value: item, path: ElementPath.child(of: path, String(i)))
                     } else {
                         Text(item.summary).font(.body.monospaced())
+                            .id(ElementPath.child(of: path, String(i)))
                     }
                 }
             }
         case let .record(fields):
-            VStack(alignment: .leading, spacing: 4) {
+            CollectionStack(count: fields.count, spacing: 4) {
                 ForEach(Array(fields.enumerated()), id: \.offset) { _, field in
                     PropRow(prop: field, path: ElementPath.child(of: path, field.name))
+                        .id(ElementPath.child(of: path, field.name))
                 }
             }
         case .expression, .binding, .plan, .scalar:
@@ -153,4 +156,20 @@ extension ElementDrawing {
         chrome: { view, element, path in AnyView(view.modifier(NativeChrome(partial: element.partial, path: path))) },
         fallback: { element, path in AnyView(ElementBox(element: element, path: path)) }
     )
+}
+
+/// Preserve the compact layout for ordinary boxes; realize long collections
+/// lazily in the viewer's scroll view. Both branches contain every entry.
+private struct CollectionStack<Content: View>: View {
+    let count: Int
+    let spacing: CGFloat
+    @ViewBuilder let content: () -> Content
+
+    var body: some View {
+        if count > 256 {
+            LazyVStack(alignment: .leading, spacing: spacing, content: content)
+        } else {
+            VStack(alignment: .leading, spacing: spacing, content: content)
+        }
+    }
 }

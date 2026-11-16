@@ -52,7 +52,10 @@ public struct ClaudeRequest: Sendable {
     /// The HTTP request for `POST /v1/messages`, streaming. The key goes only
     /// into the `x-api-key` header, never into anything logged or saved.
     func urlRequest(apiKey: String) throws -> URLRequest {
-        var request = URLRequest(url: URL(string: "https://api.anthropic.com/v1/messages")!)
+        guard let url = URL(string: "https://api.anthropic.com/v1/messages") else {
+            throw ClaudeError(description: "Invalid Messages API URL")
+        }
+        var request = URLRequest(url: url)
         request.httpMethod = "POST"
         request.setValue("application/json", forHTTPHeaderField: "content-type")
         request.setValue("2023-06-01", forHTTPHeaderField: "anthropic-version")

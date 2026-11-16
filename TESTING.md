@@ -1931,8 +1931,8 @@ An outer sandbox may require `--disable-sandbox` and writable
 `CLANG_MODULE_CACHE_PATH` / `SWIFTPM_MODULECACHE_OVERRIDE` directories. Append
 `--disable-sandbox` to the build, guarded-test and check-script commands when
 needed; the check script still enables warnings as errors.
-No dependencies need to be installed. The offline validation observations run as
-`bun --no-install tools/viewer/Checks/validation-reference.ts`.
+No dependencies need to be installed. The offline validation observations run from
+`reference/` as `bun --no-install ../tools/viewer/Checks/validation-reference.ts`.
 
 The public-interface regressions include:
 
@@ -1966,8 +1966,9 @@ The public-interface regressions include:
   `selectingTheAlreadySelectedValueDoesNotApplyItsTransform`: public entry and
   actual menu selection leave state/version/pristine status unchanged, while
   a different selection applies the transform.
-- Viewer `aFailedFinalParseStillClearsTheStreamingGate` uses a public
-  PlaybackSession adapter whose finish throws; the mounted
+- The old viewer `aFailedFinalParseStillClearsTheStreamingGate` checked flag
+  clearing only; #71 replaces it with complete-program restoration tests below.
+  The mounted
   `aMountedStoreDraftKeepsEditsAndCommitsTheCurrentValue` edits a real text field,
   changes its store underneath, presses Return and checks a subsequent update.
 
@@ -2008,22 +2009,214 @@ for run in {1..10}; do
 done
 ```
 
-Known gaps, recorded here without changing their behavior in Round 2:
+The remaining #71 work and its tests are described below.
 
-- A field type with validation but no native view can block Send with no control
-  on screen for the user to fill. An app must provide its view/value handling.
-- After a failed final parse, clearing the streaming flag makes the previous
-  partial step clickable (`aFailedFinalParseStillClearsTheStreamingGate` checks
-  flag clearing, not whether that older step should remain interactive).
-- If `show()` throws after setting the runtime program, the old tree stays drawn
-  but its controls cannot be clicked. There is no regression test for replacing
-  that stale drawing with an error view; this remains a known gap.
+## Swift issue #71 compatibility, controls and failure recovery
 
-The regex adapter covers the named gaps, not all ICU/ECMAScript differences.
-Unicode word/space classes and syntax accepted by only one engine remain outside
-that compatibility claim. The URL adapter likewise does not claim complete
-WHATWG normalization or numeric-host parsing. The named checks are pinned by
-`eachRule` and compared to the vendored lang-core validators by the offline probe.
+The commands above still apply; rebuild `scripts/swift-binding.sh` first, then
+build both Swift packages. The two offline probes are documented in
+[tools/viewer/Checks/README.md](tools/viewer/Checks/README.md). Their committed JSON
+observations are read by the Swift public-interface tests. The field probe runs
+the pinned react-ui genui callbacks with inert React hooks/visuals and the
+vendored state-field resolver, rather than installing React or starting a browser.
+
+`upstreamValidationObservationsMatchNativeSendChecks` mounts forms and checks
+Send against every upstream observation: all six URLs, digit/word/space classes,
+word boundaries, flagless property escapes, the two named character classes,
+valid scoped modifiers and ignored invalid bare inline modifiers. `eachRule` also changes its old Unicode
+word expectation to JavaScript's ASCII answer. Pattern flags cannot be expressed
+by upstream's string-only rule. Remaining regex and URL differences are listed
+with the probes; this is not full ECMAScript or WHATWG conformance.
+
+Native `Issue71` uses the imported react-ui schema and prompt spec:
+
+- `everyNewControlWritesItsFormShapeAndUnblocksSend` covers all seven new types,
+  refuses a required empty Send without a store change, writes through the
+  public entry method, checks the event's exact value and component metadata,
+  and checks streaming refusal. Its expected values are the callback fixture.
+- `newStateFieldsWriteTheirBindingAndRefuseStaleElements` covers all five
+  upstream `value` bindings and rejects stale entry without a state/version change.
+- `aNewControlsDrawingChangesWithItsCurrentValue` compares a mounted control's
+  pixels before/after a stored-value update. It uses no machine-specific golden.
+  `anAppCanReplaceEveryNewControl` checks the public replacement hook for all seven.
+- `clickingAChoiceWritesItsNativeControl`, `typingInTheTextEditorWritesItsBinding`,
+  `movingTheSystemSliderWritesANumberArray`, `editingTheSystemDatePickerWritesAnISODate`,
+  and `dateRangesKeepFromAndToAsISOStrings` exercise the actual mounted system
+  controls, using mouse/text events or their standard AppKit target/action.
+- `selectionDefaultsHydrateMetadataAndSingleChoicesCanBeCleared`,
+  `aRequiredRadioDefaultCanBeChosenOnScreen`, and
+  `disabledSelectionItemsRefuseClicksWithoutChangingState` cover defaults,
+  undefined single selections, an already-selected sole radio option and
+  disabled options.
+  `visualDefaultsMatchTheirExplicitStoredValues` compares visual defaults with
+  explicit stored values for RadioGroup and both react-ui array / bench scalar
+  Slider defaults, then verifies a different value changes the pixels.
+  `invalidSliderBoundsRefuseBeforeConstructingASystemControl` covers reversed/equal
+  bounds, discrete zero/negative step, nonfinite
+  bounds/step/span. Large finite step-position counts now draw tickless rather
+  than being refused; Round 2 hosting tests cover these paths.
+  `duplicateCheckboxNamesShareTheLastDefaultAndOneStoredBoolean` checks the
+  source callback fixture for duplicate names; range editing checks key order
+  after changing an already-populated start date.
+
+`Session.push` and `Session.set` return preview steps; `finish` returns a complete
+step. Merge playback explicitly marks its intermediate steps as previews too.
+A `LiveProgram` keeps one extra preview session while streaming and retains its
+actual complete session. Only the disabled preview drawing uses projected JSON;
+that projection never replaces the complete store or its custom-action identity.
+Whole-program parser adapters are marked with `asStreamingPreview()` before
+presentation; `wholeProgramParserAdaptersCannotMakeIntermediateStepsClickable`
+checks their failure recovery. A complete result discards the preview; a parser
+failure calls `discardPreview`.
+The public version describes the displayed session and restores the complete
+version when a preview is discarded.
+
+- `documentedValidationRemaindersStayExplicit` pins four concrete remaining
+  engine/IDNA differences separately from the named compatibility cases.
+- `tabsCannotChangeTheCompleteFormsValidationWhileAPreviewIsDrawn` ensures a
+  preview's tab click cannot change which complete form fields are validated
+  after recovery.
+- `aStreamPushNeverBecomesClickableWhenTheAppClearsItsFlag` refuses clicks,
+  entry and marker writes from a preview, then accepts the finished result.
+- `discardingPreviewsRestoresCompleteFieldsPristineStateAndPendingMutations`
+  clicks before/during/after, checks exact state/version/pristine/form restoration,
+  refuses the retained preview and resumes an existing mutation afterward.
+- `discardingAPreviewPreservesStateHeldCustomActionAuthority` stores and sends
+  an actual custom action before and after discarding a preview.
+- `appEditsDuringPreviewSurviveCompletionEvenWhenEqualToTheOldDefault` checks
+  explicit app edits across subsequent chunks and completion.
+- `aPreviewShowThatThrowsRestoresTheCompleteProgram` throws from initialization
+  after setting the preview program, preserves complete state/version, and clicks
+  the original element afterward.
+- `refusedPersistedValuesLeaveThePreviousProgramClickableAndStateUnchanged`
+  preflights non-object and oversized persisted values without replacing the
+  complete runtime program. The old button continues to work after each refusal.
+
+Viewer `ViewerIssue71` uses an actor-controlled final parse suspension, not a
+wall-clock delay or nested run loop. `aFailedFinalParseRestoresTheCompleteProgramAndRefusesRetainedPreviews`
+clicks before, during and after failure; `aFailedReloadRestoresThePreviousSourceRuntimeAndClickableButton`
+checks source, position, runtime identity and store restoration across reloads.
+`aRejectedReplacementRestoresAnotherPlaybacksCompleteRuntime` exercises the public
+recovery method used when the viewer replaces the entire playback/library; the
+viewer restores the old program/inspector context and keeps a failed live
+request's status/draft available for recording. `automaticPlaybackStopsAfterAFailedFinalStep` awaits the parser's suspension and
+an observation of playback stopping. `aSourceFailureRemainsReportedAfterSuccessfulFinalEvaluation`
+preserves main's source-error reporting. The bench gallery now includes its five
+additional field types; Chips/OptionCards are exercised with the react-ui library.
+
+**Still incomplete: a complete `show()` that fails after runtime replacement.**
+Swift publishes one decoded display record only after all its reads succeed, and
+caller-supplied persisted JSON is preflighted. The binding still mutates program,
+store and retained evaluation in separate calls. An error after replacing a
+complete program cannot roll back those Rust values or handles from Swift.
+The necessary follow-up is a binding transaction spanning program replacement,
+initialization, evaluation, Swift decoding/acceptance and commit, retaining the
+old program/store/root/capabilities until commit. No Rust crate was changed here;
+no test or documentation claims that full guarantee is implemented.
+
+The new tests run headlessly using the existing async helpers. The same four
+Select menu tests listed above still require an available macOS display and fail
+explicitly without it. The completeness gate remains mandatory; the historical
+window-server-event investigation is unchanged.
+
+
+## Swift issue #71, Round 2 allocation and request ownership
+
+`BoundedNativeControls` is a separate suite because removing a bound can abort
+inside SwiftUI before an assertion; the discovery/completion gate must report
+an incomplete run. `enormousSliderGridsDrawWithoutChangingStateAndStillWriteArrays`
+hosts both variants with range 1e15, step 1e-9 and fractional grids, asserts no
+drawing write, then clicks and checks the array/grid shape.
+`aThousandSliderValuesStayReadOnlyUntilReplacedWithABoundedValue` checks both
+large defaults and large stored arrays (including malformed entries) without truncation, then repairs the
+value through the app and clicks the resulting bounded control.
+`sixteenSliderValuesDrawAndAnEditKeepsAllThumbs` checks the interactive boundary;
+`continuousSlidersWithoutAProgramStepKeepFractionalPicks` checks absent-step input.
+`longOptionListsDrawLazilyAndFirstChoiceWritesItsShape` supplies 100,000 and 100,001
+distinct keys through the public native-view hook (independent of Rust parser
+byte limits), hosts all four option families, checks unchanged drawing state,
+and clicks the first option. Checkbox output contains one boolean per supplied key.
+`invalidSliderArithmeticDrawsFallbackWithoutChangingStoredValues` hosts reversed
+bounds, unsafe tiny spans, NaN/infinite/negative/zero steps and nonfinite defaults, then checks interaction after repair.
+`extremeTextRowsKeepTheirValueAndCanBeEdited` covers huge/negative/nonfinite rows.
+`LargeDataDrawing` checks that lists above the former Round 2 thresholds remain
+native and reachable (details below). `LongViewerDrawing` hosts 1,001/5,000
+fallback props/lists/records and scrolls to their final entry. The playback scrubber also has no SwiftUI step;
+its existing setter rounds to integer chunk positions.
+
+The range-driven bounds are at most 1,000 discrete SwiftUI positions and
+16 drawn slider thumbs. Fixed scalar controls and date ranges create one/two
+controls. TextArea rows affect only a 1...20-row viewport, never a loop.
+List-driven controls are bounded by the runtime’s limits on the data, not by
+a view-level cap. All supplied children, fields, buttons, tabs, options, rows,
+columns, cells and chart points remain admitted. Option lists use lazy viewports
+(240 points vertically or a 44-point horizontal row). Long viewer fallback
+collections are lazy; ordinary boxes retain their existing layout.
+
+`aRefusedEntryPreservesEveryObservableAndItsClickGate` snapshots every readable
+public LiveProgram observable, field/value/pristine readers and retained-root
+authority before refusing show (preview and complete), set, setField, write,
+enter, run and resume. It checks callback and custom-validation registrations
+through a mounted click, both with/without an app streaming request, and exposes
+any hidden store change on the subsequent redraw.
+`admittedAppWritesAreNotRefusedByAnOversizedPreview` fills a preview with 7 MiB,
+then writes 2 MiB to the complete store through both state/form routes. The call
+succeeds, reports a preview projection warning, and the admitted value and
+clickable complete program survive discarding the preview. A disposable mirror
+must not throw after its authoritative write already committed.
+`refusedShowsPreserveAnExistingPreviewAndTheAppsOwnRequest` starts from a preview,
+checks both refusals, then discards it and checks the app's request survives.
+`temporarySuspensionsReleaseOnlyTheirOwnGate` checks independent release scopes.
+Viewer `finalParsingRestoresOnlyTheViewersGate` covers success/failure with both
+app requests; `changingTheAppsRequestWhileFinalParsingIsSuspendedSurvivesItsFailure`
+changes that request during an actor-controlled suspension. No nested run loop
+or machine-speed assertion is used.
+
+`pickingADayStoresLocalMidnightInANonUTCTimeZone` edits a real NSDatePicker with a
+hidden afternoon time under Asia/Kolkata, then compares its stored ISO UTC value
+with the saved upstream local-midnight observation. Earlier UTC date/range tests
+now explicitly set a UTC environment rather than assuming the machine's zone.
+The validation fixture adds upstream answers for `http://a.+4` and
+`http://xn--a.com`; the existing public Send observation test consumes both.
+
+This round does not implement the deferred complete-show Rust transaction.
+Accepted actions whose redraw fails retain main's existing event-delivery/error
+semantics (`stillDeliversTheActionsHostEvents`); they are not pre-admission
+refusals. Round 2's report describes the observable failed-replacement boundary.
+
+
+## Swift issue #71, Round 3 list compatibility
+
+`LargeDataDrawing.everyChildOfALargeContainerRemainsNativeAndReachable` hosts
+Stack and Card with 1,001 and 5,000 distinct children, scrolls to every unrealized
+child, and requires every path to be realized and the last child to be visible.
+`tablesKeepEveryCellNativeAndTheirLastRowReachable` checks every cell path in
+200x6 and 2,000x3 tables and scrolls to the last cell. Both check unchanged state
+and version. There is no assertion about machine speed or a nested run loop.
+`allTwelveHundredChartPointsReachTheChartDomain` asks the public Charts proxy
+for every supplied label's position; `aFifteenHundredOptionSelectStillDrawsNatively`
+hosts the large picker without changing state. The real menu test
+`everyOptionOfALongSelectIsInItsMenuAndTheLastCanBePicked` requires all 1,500
+choices in order and checks the last choice writes its binding. Like the other
+Select menu tests, it requires an available macOS display.
+
+`LongViewerDrawing.everyFallbackCollectionKeepsItsLastEntryReachable` checks
+both 1,001 and 5,000 props, list elements and record fields by scrolling to the
+last entry. The four lazy field-option families are also hosted with 100,000
+and 100,001 distinct choices; a click writes the full upstream value shape.
+The 256-entry switch in fallback stacks chooses an eager or lazy layout, never
+refuses, omits or truncates entries. No list-derived allocation limits remain,
+except the explicitly retained 16-thumb read-only slider presentation.
+
+Run the offline main/current text and native-acceptance differential with
+`python3 tools/viewer/Checks/compare-native-rendering.py`. It enumerates every
+program in the viewer's five corpus manifests and the timing samples, plus both
+galleries, in parsed and evaluated form. Its method, acceptance exceptions and
+saved outputs are documented in [Checks/README.md](tools/viewer/Checks/README.md).
+`RenderingCompatibility.everyCorpusAndBenchmarkProgramPreservesMainDrawing`
+also runs it in the viewer suite (about 45 seconds here, without a speed
+assertion). Process completion uses an async termination handler, no nested
+run loop. It needs the local main ref and already-built binding, never downloads.
 
 
 ## Opt-in evaluation-memory allowance (#55)

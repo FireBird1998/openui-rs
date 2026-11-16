@@ -99,7 +99,7 @@ public enum NativeComponents {
     public static let names: Set<String> = [
         "TextContent", "Stack", "Card", "CardHeader", "Button", "Buttons", "Table", "Form",
         "FormControl", "Input", "Select", "LineChart", "BarChart", "PieChart", "Tabs", "Tag",
-        "Callout", "TextCallout",
+        "Callout", "TextCallout", "TextArea", "RadioGroup", "CheckBoxGroup", "Slider", "DatePicker", "Chips", "OptionCards",
     ]
 
     /// The native view for `element`, or nil to draw it as a labeled box.
@@ -118,6 +118,8 @@ public enum NativeComponents {
             case "FormControl": return AnyView(try FormControlView(props, path: path))
             case "Input": return AnyView(try InputView(props))
             case "Select": return AnyView(try SelectView(props))
+            case "TextArea", "RadioGroup", "CheckBoxGroup", "Slider", "DatePicker", "Chips", "OptionCards":
+                return AnyView(try SystemFieldView(props))
             case "LineChart": return AnyView(try SeriesChart(props, kind: .line))
             case "BarChart": return AnyView(try SeriesChart(props, kind: .bar))
             case "PieChart": return AnyView(try PieChartView(props))
@@ -438,7 +440,7 @@ struct ButtonView: View {
 
     var body: some View {
         let button = Button(role: destructive ? .destructive : nil) {
-            guard let live, !live.isStreaming else { return }
+            guard let live, live.acceptsInteractions else { return }
             live.attempt {
                 guard let element = live.current(element, form: formName) else { throw LiveProgram.stale }
                 if let form, primary, Self.validates(PropReader(element: element).value("action")),
@@ -451,7 +453,7 @@ struct ButtonView: View {
             PieceText(piece: label)
         }
         .controlSize(controlSize)
-        .disabled(live?.isStreaming ?? false)
+        .disabled(!(live?.acceptsInteractions ?? true))
         switch variant {
         case "secondary": button.buttonStyle(.bordered)
         case "tertiary": button.buttonStyle(.borderless)
@@ -614,7 +616,7 @@ struct TableView: View {
             Text("")
         case let .scalar(.string(s))? where type == "action":
             Button(s) {
-                guard let live, !live.isStreaming else { return }
+                guard let live, live.acceptsInteractions else { return }
                 live.attempt {
                     guard let current = live.current(element, form: formName) else { throw LiveProgram.stale }
                     if let form, !form.validation.validate(enclosing: current, in: live, formName: formName) { return }
@@ -622,7 +624,7 @@ struct TableView: View {
                 }
             }
             .controlSize(.small)
-            .disabled(live?.isStreaming ?? false)
+            .disabled(!(live?.acceptsInteractions ?? true))
         case let .element(element)?:
             ElementView(element: element, path: ElementPath.child(of: ElementPath.child(of: rowsPath, String(row)), String(column)))
         case let .scalar(.number(n))?:
@@ -797,7 +799,7 @@ struct InputView: View {
             }
         }
         .focused($focused)
-        .disabled(live?.isStreaming ?? false)
+        .disabled(!(live?.acceptsInteractions ?? true))
         .onChange(of: focused) {
             guard let form else { return }
             if focused {
@@ -847,7 +849,7 @@ struct SelectView: View {
         }
         .labelsHidden()
         .fixedSize()
-        .disabled(live?.isStreaming ?? false)
+        .disabled(!(live?.acceptsInteractions ?? true))
     }
 }
 
@@ -958,6 +960,7 @@ struct TabsView: View {
     let tabs: [Tab]
     let path: String
     @State private var selected = 0
+    @Environment(\.liveProgram) private var live
     @Environment(\.formContext) private var form
 
     init(_ props: PropReader, path: String) throws {
@@ -981,6 +984,7 @@ struct TabsView: View {
             .onAppear { form?.validation.selectedTabs[path] = selected }
             .onDisappear { form?.validation.selectedTabs[path] = nil }
             .pickerStyle(.segmented)
+            .disabled(!(live?.acceptsInteractions ?? true))
             .labelsHidden()
             .fixedSize()
             if tabs.indices.contains(selected) {

@@ -127,7 +127,7 @@ extension NativeUITests {
         Case(rules: #"{pattern: "^\\$$"}"#, value: #""$""#, blocks: false),
         Case(rules: #"{pattern: "^[$]$"}"#, value: #""$""#, blocks: false),
         Case(rules: #"{pattern: "["}"#, value: #""abc""#, blocks: false),
-        Case(rules: #"{pattern: "^\\w+$"}"#, value: #""é""#, blocks: false), // Documented ICU remainder.
+        Case(rules: #"{pattern: "^\\w+$"}"#, value: #""é""#, blocks: true), // JavaScript uses ASCII word characters.
         Case(rules: "{url: true}", value: #""http:\r\n//host""#, blocks: false),
         Case(rules: "{url: true}", value: #""http://host:65536""#, blocks: true),
         Case(rules: "{unknown: true}", value: #""""#, blocks: false),

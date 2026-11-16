@@ -89,8 +89,9 @@ public struct PlaybackView: View {
                         get: { Double(playback.position) },
                         set: { playback.seek(to: Int($0.rounded())) }
                     ),
-                    in: 0...Double(max(playback.chunks.count, 1)),
-                    step: 1
+                    // Tickless: chunk count must not allocate a SwiftUI tick
+                    // per chunk. The setter still snaps to an integer step.
+                    in: 0...Double(max(playback.chunks.count, 1))
                 )
                 .disabled(playback.chunks.isEmpty)
                 Text("\(playback.position) / \(playback.chunks.count)")

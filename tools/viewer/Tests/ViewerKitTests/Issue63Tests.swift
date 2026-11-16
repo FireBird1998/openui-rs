@@ -5,29 +5,6 @@ import Testing
 import ViewerKit
 
 @Suite(.serialized) @MainActor struct ViewerIssue63 {
-    struct FinalParseFailure: Error {}
-    struct FailingFinish: PlaybackSession {
-        let session: Session
-        func push(_ chunks: [String]) async throws -> Step { try await session.push(chunks) }
-        func finish() async throws -> Step { throw FinalParseFailure() }
-    }
-
-    @Test func aFailedFinalParseStillClearsTheStreamingGate() async throws {
-        let core = Core()
-        let library = try await core.library(schema: #"{"$defs":{"TextContent":{"properties":{"text":{}}}}}"#)
-        let playback = Playback(core: core, library: library, root: nil, sessionFactory: {
-            FailingFinish(session: try await core.session(library: library))
-        })
-        await playback.load(ReplaySource(program: "root = TextContent(\"ok\")", chunkSize: 8))
-        let live = try #require(playback.live)
-        await playback.move(to: 1)
-        #expect(live.isStreaming)
-        await playback.move(to: playback.chunks.count)
-        #expect(playback.error != nil)
-        #expect(!playback.isStreaming)
-        #expect(!live.isStreaming)
-    }
-
     @Test func aMountedStoreDraftKeepsEditsAndCommitsTheCurrentValue() async throws {
         let core = Core()
         let library = try await core.library(schema: #"{"$defs":{"TextContent":{"properties":{"text":{}}}}}"#)

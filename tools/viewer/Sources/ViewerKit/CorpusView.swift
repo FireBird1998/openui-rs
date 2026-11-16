@@ -397,6 +397,14 @@ final class CorpusModel {
                       source: (any ChunkSource)? = nil, live: LiveStatus? = nil, chunking initial: Chunking? = nil,
                       base: String? = nil) async {
         failure = nil
+        let previousPlayback = playback
+        let previousProgram = current
+        let previousChunking = chunking
+        let previousLoadedChunking = loadedChunking
+        let previousStatus = liveStatus
+        let previousSavedRecording = savedRecording
+        previousPlayback?.pause()
+        previousPlayback?.stop()
         selection.clear()
         if let initial {
             chunking = initial
@@ -414,6 +422,24 @@ final class CorpusModel {
             await playback.load(source)
         } else {
             await playback.load(chunking.source(for: program.text))
+        }
+        // A new program has a new playback/library. If its final step fails,
+        // restore the previous object, rather than drawing its source with
+        // the rejected program's library, inspector or runtime session.
+        if self.playback === playback, playback.failedToShowStep,
+           let previousPlayback, let message = playback.error,
+           previousPlayback.restoreComplete(reporting: message) {
+            self.playback = previousPlayback
+            current = previousProgram
+            chunking = previousChunking
+            loadedChunking = previousLoadedChunking
+            if live == nil {
+                liveStatus = previousStatus
+                savedRecording = previousSavedRecording
+            }
+            // A failed live request keeps its status/draft for saving the raw
+            // recording; its drawing and follow-up program are the last good one.
+            return
         }
         // Shown last: the whole program, or for a patch the merged result.
         if self.playback === playback {

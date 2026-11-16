@@ -45,6 +45,9 @@ public final class Playback {
     public private(set) var fromCache = false
     public private(set) var isPlaying = false
     public private(set) var error: String?
+    /// A parser/evaluation step was refused, as distinct from a source error
+    /// followed by a successfully evaluated final step.
+    public private(set) var failedToShowStep = false
     /// Chunks per second while playing.
     public var speed: Double = 30
     /// Bumped whenever a step is handed to the UI; the UI reports back when it's drawn.
@@ -89,6 +92,25 @@ public final class Playback {
     private var loading: Task<Void, Never>?
     private var handedAt = ContinuousClock.now
 
+    /// One complete presentation, including its source and actual runtime.
+    /// Preview sessions never replace that runtime's store or capabilities.
+    private struct Complete {
+        var live: LiveProgram?
+        var step: Step
+        var position: Int
+        var chunks: [String]
+        var text: String
+        var textOffsets: [Int]
+        var scalarOffsets: [Int]
+        var timings: Timings?
+        var hostEvents: [HostEvent]
+        var droppedHostEvents: Int
+        var evaluationError: String?
+    }
+    private var complete: Complete?
+    private var navigationFailed = false
+    private var sourceError: String?
+
     /// `cacheBudget` bounds the memory the steps kept for stepping back hold,
     /// in bytes, as `cost(of:)` estimates it. With a `base`, the chunks are an
     /// edit-mode patch to it. `sessionFactory` overrides streaming sessions only;
@@ -125,15 +147,24 @@ public final class Playback {
             textOffsets = [0]
             scalarOffsets = [0]
             position = 0
+            step = nil
+            timings = nil
+            fromCache = false
             cache = [:]
             keptBytes = 0
             session = nil
             sessionPosition = 0
             error = nil
+            sourceError = nil
+            navigationFailed = false
+            failedToShowStep = false
+            complete?.live?.discardPreview()
+            acquireGate(complete?.live)
             startLive()
             isStreaming = true
             do {
                 for try await batch in source.chunks() {
+                    try Task.checkCancellation()
                     let following = (requested ?? position) == chunks.count
                     append(batch)
                     if following && resumeAt == nil { enqueue(chunks.count) }
@@ -141,8 +172,10 @@ public final class Playback {
             } catch is CancellationError {
                 // Stopped: keep what arrived.
             } catch {
-                self.error = String(describing: error)
+                sourceError = String(describing: error)
+                self.error = sourceError
             }
+            guard !navigationFailed else { return }
             isStreaming = false
             // The last step was the newest push; now it's the stream's end.
             keptBytes -= cache.removeValue(forKey: chunks.count).map(Self.cost) ?? 0
@@ -254,12 +287,27 @@ public final class Playback {
         }
     }
 
-    private func show(_ target: Int) async {
-        // A failed final parse must still end the interaction's streaming gate.
-        defer { live?.isStreaming = isStreaming || target < chunks.count }
+    @ObservationIgnored private var interactionGates: [(live: LiveProgram, suspension: LiveProgram.InteractionSuspension)] = []
 
+    private func acquireGate(_ program: LiveProgram?) {
+        guard let program else { return }
+        if !interactionGates.contains(where: { $0.live === program }) {
+            interactionGates.append((program, program.suspendInteractions()))
+        }
+    }
+
+    private func releaseGates(for program: LiveProgram? = nil) {
+        for gate in interactionGates where program == nil || gate.live === program { gate.suspension.release() }
+        interactionGates.removeAll { program == nil || $0.live === program }
+    }
+
+    private func show(_ target: Int) async {
+        // Gate before the first suspension: a click delivered while navigation
+        // is awaiting the parser must not act on the step being replaced.
+        acquireGate(live)
         if let kept = cache[target] {
-            hand(kept, at: target, fromCache: true)
+            do { try hand(kept, at: target, fromCache: true) }
+            catch { failed(error) }
             return
         }
         if let base {
@@ -268,12 +316,12 @@ public final class Playback {
             do {
                 let made = try await core.mergeAndParse(
                     base: base, patch: chunks[..<target].joined(), library: library, root: root,
-                    chunks: abs(target - position)
+                    chunks: abs(target - position), streaming: isStreaming || target < chunks.count
                 )
+                try hand(made, at: target, fromCache: false)
                 keep(made, at: target)
-                hand(made, at: target, fromCache: false)
             } catch {
-                self.error = String(describing: error)
+                failed(error)
             }
             return
         }
@@ -285,14 +333,68 @@ public final class Playback {
             guard let session else { return }
             var made = try await session.push(Array(chunks[sessionPosition..<target]))
             sessionPosition = target
-            if !isStreaming, target > 0, target == chunks.count {
+            if !isStreaming, target == chunks.count {
                 made = try await session.finish()
             }
+            try hand(made, at: target, fromCache: false)
             keep(made, at: target)
-            hand(made, at: target, fromCache: false)
         } catch {
-            self.error = String(describing: error)
+            failed(error)
         }
+    }
+
+    private func failed(_ error: any Error) {
+        self.error = String(describing: error)
+        navigationFailed = true
+        failedToShowStep = true
+        loading?.cancel()
+        requested = nil
+        releaseGates()
+        live?.discardPreview()
+        if let complete {
+            complete.live?.discardPreview()
+            if live !== complete.live {
+                hostEvents = complete.hostEvents
+                droppedHostEvents = complete.droppedHostEvents
+            }
+            live = complete.live
+            evaluationError = complete.evaluationError
+            chunks = complete.chunks
+            text = complete.text
+            textOffsets = complete.textOffsets
+            scalarOffsets = complete.scalarOffsets
+            position = complete.position
+            step = complete.step
+            timings = complete.timings
+            fromCache = true
+            cache = [complete.position: complete.step]
+            keptBytes = Self.cost(of: complete.step)
+        } else {
+            position = 0
+            step = nil
+            timings = nil
+            fromCache = false
+            cache = [:]
+            keptBytes = 0
+        }
+        isStreaming = false
+        stamp += 1
+        handedAt = .now
+        // A failed adapter may have consumed input. Retry in a fresh parser,
+        // and stop automatic playback instead of retrying the same step forever.
+        session = nil
+        sessionPosition = 0
+        pause()
+    }
+
+    /// Restores this playback's complete source and actual runtime, reporting
+    /// a failed replacement made by another playback (possibly another library).
+    /// Returns false when this playback never accepted a complete program.
+    @discardableResult
+    public func restoreComplete(reporting message: String) -> Bool {
+        guard complete != nil else { return false }
+        failed(DecodeError(description: message))
+        return true
     }
 
     /// A new runtime session, with nothing in its store.
@@ -318,6 +420,10 @@ public final class Playback {
             hostEvents.removeFirst(over)
             droppedHostEvents += over
         }
+        if complete?.live === live {
+            complete?.hostEvents = hostEvents
+            complete?.droppedHostEvents = droppedHostEvents
+        }
     }
 
     /// Whether the drawing is the shown step evaluated; otherwise it's the
@@ -329,20 +435,32 @@ public final class Playback {
     /// evaluated.
     public var drawnRoot: Element? { isDrawingEvaluated ? live?.root : step?.result.root }
 
-    private func hand(_ step: Step, at target: Int, fromCache: Bool) {
+    private func hand(_ step: Step, at target: Int, fromCache: Bool) throws {
+        // The playback phase also gates adapters that parse their whole text
+        // on every push and return otherwise-complete one-shot Step values.
+        let step = isStreaming || target < chunks.count ? step.asStreamingPreview() : step
+        if let live {
+            try live.show(step)
+            evaluationError = nil
+        }
+        if step.isStreaming {
+            // Keep a previous source's complete runtime gated until the
+            // replacement finishes, even after its first preview is drawn.
+            if let live { releaseGates(for: live) }
+        } else { releaseGates() }
+        // Position, parse result, timing and gate describe one accepted step.
         position = target
         self.step = step
         self.fromCache = fromCache
         timings = step.timings
-        if let live {
-            live.isStreaming = isStreaming || target < chunks.count
-            do {
-                try live.show(step)
-                timings?.evaluate = live.evaluation
-                evaluationError = nil
-            } catch {
-                evaluationError = "Couldn't evaluate this step: \(error)"
-            }
+        timings?.evaluate = live?.evaluation
+        error = sourceError
+        navigationFailed = false
+        failedToShowStep = false
+        if !isStreaming, target == chunks.count, !step.isStreaming {
+            complete = Complete(live: live, step: step, position: target, chunks: chunks, text: text,
+                textOffsets: textOffsets, scalarOffsets: scalarOffsets, timings: timings,
+                hostEvents: hostEvents, droppedHostEvents: droppedHostEvents, evaluationError: evaluationError)
         }
         stamp += 1
         handedAt = .now
