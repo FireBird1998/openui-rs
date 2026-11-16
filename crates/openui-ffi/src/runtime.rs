@@ -1937,3 +1937,7 @@ mod tests {
         assert!(matches!(session.version(), Err(OpenUiError::Disposed)));
     }
 }
+
+#[cfg(test)]
+#[path = "runtime_retained_root_test.rs"]
+mod retained_root_test;

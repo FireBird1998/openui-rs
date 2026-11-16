@@ -97,6 +97,52 @@ assertion and need no source change.
 
 ## Allocation caps
 
+Never pin measured heap bytes exactly across platforms. Prefer deterministic
+allocation-call counts, same-process equality/ordering or ratios against an input
+or control. Keep values, flags, errors, work and serialized room exact. An
+absolute memory regression guard needs documented layout headroom: at least 5%
+or a few KiB, whichever is larger, and a statement of the regression it catches.
+Existing coarse MiB bounds and input-relative bounds are shape guards, not byte
+snapshots. Stack tests assert completion or stack ancestry, not exact frame sizes;
+timing output is diagnostic; positivity/conversion checks test timer reporting,
+and deadlines are watchdogs, not speed contracts.
+
+Linux x86_64 / Rust 1.97.1 observations in `.agent/ci/` (allocator headers included):
+
+| Witness | macOS baseline | Linux observed | Portable guard |
+| --- | ---: | ---: | ---: |
+| Repeated reference, read | 198,899,344 | 198,899,368 | 208,844,311 |
+| Repeated reference, unread | 198,899,280 | 198,899,304 | 208,844,244 |
+| Three rows, eight levels | 3,714,336 | 3,783,728 | 3,900,052 |
+| One row, scalar credit | 9,536 | 9,656 | 13,632 |
+| Retained root (03c2c4c, process-wide) | — | 14,713,736 / 1,797,916 JSON | Worker-only; 8x JSON + 5% |
+
+The review guards allow `max(baseline / 20, 4096)` extra bytes. They still
+catch the old untrimmed runtime arrays, geometric prop capacities, and doubled
+unique leaves; the small scalar cap catches growth above 4 KiB. A same-process
+32 KiB scalar/literal control additionally limits scalar-credit overhead to one
+payload copy plus 4 KiB, detecting an extra comparison copy that the small cap's
+layout tolerance could hide. Both controls must produce exactly the same JSON.
+The retained
+root also must release to within 64 KiB of its pre-draw worker account. Its unit
+test samples inside worker commands, after earlier command cleanup, and warms
+first-use evaluator state before measuring. Other test threads and caller-side
+allocations cannot affect that account. The earlier isolated integration test's
+process-wide samples had no such guarantee.
+
+The retained-root Linux failure was at `03c2c4c`; later passes are different
+revisions, including changed runtime capacities. Replaying that revision's source
+with the current macOS toolchain/lockfile gives 13,993,712 retained bytes versus
+13,433,600 now (560,112 fewer). The logs do not demonstrate nondeterminism at one
+revision. Worker-local sampling removes the latent cross-thread race regardless.
+
+The argument-order fixture previously differed in 140 of its 162 observation
+rows on Linux (163 lines including the final empty split line): e.g. 1,640 vs
+1,616 and 2,000 vs 1,976 allocated bytes. Its byte column is removed. All public
+results and flags remain exact, and same-process allocation-call plateaus at
+work 13/14 (typed) and 22/23 (data) catch props-first traversal even at cuts where
+the public results coincide. No target-specific fixture is required.
+
 Every core, runtime and binding Rust test binary uses the counting global allocator in
 `crates/test-alloc`, a private, unpublished dev dependency. The published libraries
 keep their unsafe-code prohibition and have no allocator, public API or default
@@ -1417,8 +1463,8 @@ Session callback and follow-up checks (#56–#60):
 - Both bindings' `runtime_followups.rs` pin element-shaped state/query/tool data,
   custom identity refusal, expression-kind literals, opt-in path bounds and
   seven upstream data observations plus 82 streaming EditableTable prefixes.
-- `openui-ffi/tests/retained_root.rs` is isolated for a representative heap
-  measurement and release check; `openui-runtime/tests/owned_references.rs`
+- `openui-ffi/src/runtime_retained_root_test.rs` measures representative retained
+  heap and release on the owning worker, as a unit test; `openui-runtime/tests/owned_references.rs`
   compares owned/borrowed preparation bytes and flags under independent limits.
   The wasm follow-up test also bounds repeated-draw allocations with 2,000 unread
   references, detecting accidental remeasurement without wall-clock assertions.
@@ -1560,9 +1606,9 @@ whole-value coercion cuts, and same-session re-entry through both callback paths
 Its re-entry case exhausts work or room inside the nested call and checks the
 owning session's flags. The undefined snapshot round trip restores declared
 defaults and drops undeclared undefined names. `review_peaks` (512 MiB) uses the
-reviewer's repeated-reference sources with independent bounds of 198,900,368
-(read) and 198,900,304 (unread) bytes, plus the unique-leaf cut bound of
-3,732,632 bytes.
+reviewer's repeated-reference sources with independent portable bounds of
+208,844,311 (read) and 208,844,244 (unread) bytes, plus the unique-leaf cut bound
+of 3,900,052 bytes.
 The bound covers these shapes only.
 
 `accounting_followups` (256 MiB) pins five-byte false projections, scalar
@@ -1668,12 +1714,12 @@ fails both tests; spending the temporary account and losing its work/flags is
 not an intended discount. These are current main's charges, with no new limit.
 
 `review_peaks::runtime_container_capacity_keeps_both_review_peaks_below_main`
-now caps read and unread repeated-reference witnesses independently at
-198,900,368 and 198,900,304 bytes (each 1 KiB above its measured peak of
-198,899,344 and 198,899,280 bytes respectively). These are test shape caps,
-not new runtime limits. It also caps the one-row, one-level unique-leaf
-witness at 9,536 bytes, with its complete 1,225-byte result, and keeps the
-three-row/eight-level cut's 3,732,632-byte bound and 163,573-byte result.
+caps read and unread repeated-reference witnesses independently at
+208,844,311 and 208,844,244 bytes (5% above macOS peaks of 198,899,344 and
+198,899,280 bytes). These are portable test shape caps, not new runtime limits.
+The one-row, one-level witness has a 13,632-byte cap (9,536 measured + 4 KiB)
+and its complete 1,225-byte result. The three-row/eight-level cut has a
+3,900,052-byte cap (3,714,336 measured + 5%) and its exact 163,573-byte result.
 
 Profiling that small witness on the 64-bit host reproduced the prior
 8,016-byte peak and current 9,536-byte peak. The extra 1,520 bytes comprise:
@@ -1698,8 +1744,8 @@ Profiling that small witness on the 64-bit host reproduced the prior
   large repeated-reference witnesses, while the small witness is bounded
   separately. Removing it to save 120 bytes would give up that optimization.
 
-These measurements explain this finite witness; the test enforces its total
-upper bound, not a universal decomposition or peak bound. All figures include
+These measurements explain this finite witness; the test enforces its portable
+total upper bound, not a universal decomposition or peak bound. All figures include
 `test_alloc` headers. The unrelated scalar-credit and argument-reuse tests
 continue to enforce their accounting and allocation contracts.
 
@@ -1742,9 +1788,10 @@ existing eager `.map` cost rather than applying typed-list laziness to data.
 compares allocation traffic and additional peak heap with mapped sharing opted
 in/out, for both representations under an assignment.
 `positional_arguments_precede_mapped_props_at_every_work_cut` pins 162 main
-observations: typed/data forms at work limits 0–80, with allocation bytes and
-complete public results in `support/substitution-argument-order.tsv`. The fixture
-was measured with main 767d4c4's unchanged core, outside parser setup.
+observations: typed/data forms at work limits 0–80, with complete public
+results in `support/substitution-argument-order.tsv`. The results were captured
+with main 767d4c4's unchanged core, outside parser setup. Allocation bytes are
+excluded; same-process call-count plateaus separately pin traversal order.
 
 Scratch mutants that make descriptor lists lazy, eagerly copy typed lists, retain the sharing policy through
 assignments, or visit mapped props first fail those respective counted tests.

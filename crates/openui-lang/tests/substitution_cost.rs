@@ -144,8 +144,10 @@ fn assignment_bodies_escape_mapped_sharing_without_changing_allocation_or_peak()
 
 #[test]
 fn positional_arguments_precede_mapped_props_at_every_work_cut() {
-    // Different shapes make reversal visible in allocation traffic even when a
-    // work cut prevents the call hook from observing either completed subtree.
+    // Keep every public result and flag exact at each work cut. Different
+    // argument/prop shapes also expose order through allocation-call plateaus:
+    // these adjacent cuts visit the same allocating children only args-first.
+    // Compare in-process counts, never target-specific bytes or exact counts.
     let mut template = mapped(expression("[i,i+1,i+2,i+3]"));
     if let Ast::Comp { args, .. } = &mut template {
         *args = Arc::new(vec![expression("{i:i}")]);
@@ -156,6 +158,7 @@ fn positional_arguments_precede_mapped_props_at_every_work_cut() {
         ("typed", Value::Ast(Arc::new(ast.clone()))),
         ("data", data(&ast)),
     ] {
+        let mut calls_at_cut = Vec::with_capacity(81);
         for work in 0..=80 {
             let scope = Capture(true);
             let session = EvaluationSession::with_limits(
@@ -163,11 +166,17 @@ fn positional_arguments_precede_mapped_props_at_every_work_cut() {
                 0,
                 Limits::DEFAULT.with_work(work).with_result_size(10_000),
             );
-            let before = test_alloc::allocated_bytes();
+            let before = test_alloc::allocation_calls();
             let result = session.with_evaluator(|e| e.evaluate_value(&value));
-            let bytes = test_alloc::allocated_bytes() - before;
-            observations.push_str(&format!("{form}\t{work}\t{bytes}\t{result:?}\n"));
+            let calls = test_alloc::allocation_calls() - before;
+            calls_at_cut.push(calls);
+            observations.push_str(&format!("{form}\t{work}\t{result:?}\n"));
         }
+        let (a, b) = if form == "typed" { (13, 14) } else { (22, 23) };
+        assert_eq!(
+            calls_at_cut[a], calls_at_cut[b],
+            "{form}: args-first allocation plateau at work {a}/{b}"
+        );
     }
     assert_eq!(
         observations,

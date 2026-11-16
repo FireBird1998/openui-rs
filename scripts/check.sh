@@ -18,7 +18,7 @@ for f in crates/*/tests/*.rs; do
 done
 cargo clippy --all-targets --all-features -- -D warnings
 RUSTDOCFLAGS="-D warnings" cargo doc --no-deps -q -p openui-lang -p openui-runtime -p openui-session -p openui-ffi -p openui-wasm
-cargo test --all
+cargo test --all --no-fail-fast
 
 # The workspace's rust-version. The toolchain is named exactly and rustup's
 # auto-install is off: `cargo +1.88` once made rustup install a second copy.

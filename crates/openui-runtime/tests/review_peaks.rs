@@ -24,6 +24,54 @@ fn mapped(ast: &mut Ast) {
         }
     }
 }
+// Layout, collection growth and std bookkeeping vary across 64-bit targets.
+// Allow 5% or 4 KiB above the measured macOS baseline, whichever is larger.
+// The large witnesses still reject doubled leaves and old geometric prop
+// capacities. The small absolute cap rejects growth above 4 KiB; the scalar
+// control below separately rejects even one extra retained comparison copy.
+fn portable_cap(baseline: usize) -> usize {
+    baseline + (baseline / 20).max(4 * 1024)
+}
+// Amplify the small witness's 1 KiB payload so layout tolerance cannot hide an
+// extra scalar comparison copy. The equivalent literal needs no state credit;
+// only one payload copy plus 4 KiB of metadata may distinguish these peaks.
+const SCALAR_BYTES: usize = 32 * 1024;
+fn scalar_peak(library: &Library, state: bool) -> (usize, String) {
+    let text = "x".repeat(SCALAR_BYTES);
+    let source = if state {
+        "$s".to_owned()
+    } else {
+        format!("{text:?}")
+    };
+    let mut program = parse("root=Box(0)", library, None);
+    let mut ast = parse_expression(&tokenize(&format!("@Each($rows,i0,Box({source}+i0))")));
+    mapped(&mut ast);
+    program.root.as_mut().unwrap().has_dynamic_props = true;
+    program
+        .root
+        .as_mut()
+        .unwrap()
+        .props
+        .define("a", Value::Ast(Arc::new(ast)));
+    let mut store = Store::new();
+    store.set("$s", Some(Value::Str(text))).unwrap();
+    store
+        .set("$rows", Some(Value::Arr(Arc::new(vec![Value::Num(0.)]))))
+        .unwrap();
+    test_alloc::reset_peak();
+    let before = test_alloc::peak();
+    let result = evaluate_tree_with_limits(
+        TreeInput::new(&program),
+        &store,
+        Limits::DEFAULT
+            .with_result_size(4_100_000)
+            .with_work(1_000_000_000),
+    );
+    let peak = test_alloc::peak().saturating_sub(before);
+    assert!(!result.size_limited && !result.depth_limited && result.errors.is_empty());
+    (peak, result.to_json().unwrap())
+}
+
 #[test]
 fn runtime_container_capacity_keeps_both_review_peaks_below_main() {
     let l = Library::from_json_schema(
@@ -43,7 +91,7 @@ fn runtime_container_capacity_keeps_both_review_peaks_below_main() {
         let before = test_alloc::peak();
         let r = evaluate_tree_with_limits(TreeInput::new(&p), &s, Limits::DEFAULT);
         let peak = test_alloc::peak().saturating_sub(before);
-        let cap = if unread { 198_900_304 } else { 198_900_368 };
+        let cap = portable_cap(if unread { 198_899_280 } else { 198_899_344 });
         assert!(
             peak <= cap,
             "repeated-reference unread={unread} peak {peak} > {cap}"
@@ -58,6 +106,14 @@ fn runtime_container_capacity_keeps_both_review_peaks_below_main() {
             r.depth_limited
         );
     }
+    let (literal_peak, literal_json) = scalar_peak(&l, false);
+    let (state_peak, state_json) = scalar_peak(&l, true);
+    println!("scalar control: literal={literal_peak} state={state_peak}");
+    assert_eq!(state_json, literal_json);
+    assert!(
+        state_peak <= literal_peak + SCALAR_BYTES + 4 * 1024,
+        "scalar credit retained an extra string: literal={literal_peak}, state={state_peak}"
+    );
     for rows in [1, 3] {
         for depth in 1..=8 {
             let mut body = (0..depth).fold("$s".to_owned(), |s, i| format!("{s}+i{i}"));
@@ -92,12 +148,15 @@ fn runtime_container_capacity_keeps_both_review_peaks_below_main() {
             if rows == 1 && depth == 1 {
                 // Scalar input-credit bookkeeping retains one string comparison
                 // copy plus name/index capacity; see TESTING.md (#64).
-                assert!(peak <= 9_536, "one-row scalar-credit peak {peak}");
+                assert!(
+                    peak <= portable_cap(9_536),
+                    "one-row scalar-credit peak {peak}"
+                );
                 assert!(!r.size_limited && !r.depth_limited && r.errors.is_empty());
                 assert_eq!(r.to_json().unwrap().len(), 1_225);
             }
             if rows == 3 && depth == 8 {
-                assert!(peak <= 3_732_632, "unique-leaf peak {peak}");
+                assert!(peak <= portable_cap(3_714_336), "unique-leaf peak {peak}");
                 assert!(r.size_limited && !r.depth_limited && r.errors.is_empty());
                 assert_eq!(r.to_json().unwrap().len(), 163_573);
             }

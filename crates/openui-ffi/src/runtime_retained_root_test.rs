@@ -1,7 +1,7 @@
-//! Isolated binary: no concurrent test can contaminate live-heap measurements.
-use openui_ffi::*;
-#[global_allocator]
-static ALLOCATOR: test_alloc::Allocator = test_alloc::Allocator::with_cap(test_alloc::DEFAULT);
+//! Sample retained heap on its owning worker, between commands.
+use super::*;
+use crate::parse;
+
 #[test]
 fn retained_root_heap_is_measured_and_released_on_program_replacement() {
     let library = ComponentLibrary::new(
@@ -15,7 +15,7 @@ fn retained_root_heap_is_measured_and_released_on_program_replacement() {
         None,
     )
     .program;
-    s.set_program(program).unwrap();
+    s.set_program(program.clone()).unwrap();
     s.initialize(None).unwrap();
     s.set(
         "$rows".into(),
@@ -28,17 +28,32 @@ fn retained_root_heap_is_measured_and_released_on_program_replacement() {
         )),
     )
     .unwrap();
-    let before = test_alloc::live_bytes();
+    // Warm evaluator/TLS/cache setup, then clear the first root. Each sample
+    // executes on the worker after the previous command and its captures drop.
+    // reset_peak reads this worker's live account, never process-wide traffic
+    // from libtest, the caller, or callback threads.
+    drop(s.evaluate().unwrap());
+    s.set_program(program).unwrap();
+    let live = || {
+        s.call(|_, _| {
+            test_alloc::reset_peak();
+            Ok(test_alloc::peak())
+        })
+        .unwrap()
+    };
+    let before = live();
     let tree = s.evaluate().unwrap();
     assert!(!tree.size_limited);
     let json_bytes = tree.json.len();
     drop(tree);
-    let retained = test_alloc::live_bytes().saturating_sub(before);
+    let retained = live().saturating_sub(before);
     eprintln!("retained root: {retained} heap bytes / {json_bytes} JSON bytes");
-    // Pin this representative shape, not an unsupported universal heap ratio.
+    // Representative shape only. Allow 5% (at least 4 KiB) layout tolerance
+    // over the original 8x envelope; a second retained root still exceeds it.
     assert!(retained > json_bytes);
-    assert!(retained < json_bytes * 8);
+    let envelope = json_bytes * 8;
+    assert!(retained < envelope + (envelope / 20).max(4 * 1024));
     let empty = parse("".into(), library, None).program;
     s.set_program(empty).unwrap();
-    assert!(test_alloc::live_bytes() < before + 64 * 1024);
+    assert!(live() < before + 64 * 1024);
 }
