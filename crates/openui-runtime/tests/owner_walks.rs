@@ -104,7 +104,7 @@ fn snapshot_event_pending_plan_and_prepared_token_each_drop_the_last_deep_owner(
             store.dispose();
             drop(suspended);
             let value = deep(10_000);
-            let prepared = PreparedReferenceValue::with_limits(&value, 0, limits);
+            let prepared = PreparedReferenceValue::with_limits(&value, limits);
             drop(value);
             drop(prepared);
             drop(store);

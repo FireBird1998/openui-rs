@@ -46,7 +46,7 @@ fn nested(mut value: String, n: usize) -> String {
     value
 }
 #[test]
-fn earlier_state_and_query_reads_do_not_prime_a_deeper_use() {
+fn nested_count_reads_do_not_walk_their_deep_receiver() {
     for query in [false, true] {
         for data in [false, true] {
             for first in [false, true] {
@@ -70,7 +70,7 @@ fn earlier_state_and_query_reads_do_not_prime_a_deeper_use() {
                     store.set("$d", Some(deep(748))).unwrap();
                     let r = evaluate_tree_with_limits(TreeInput::new(&p), &store, Limits::DEFAULT);
                     assert!(
-                        r.depth_limited,
+                        !r.depth_limited,
                         "query={query} data={data} shallow_first={first} prime={prime}"
                     );
                     assert!(!r.size_limited);
@@ -113,7 +113,7 @@ fn deep_function_arguments_binding_values_and_action_params_recheck_depth() {
                     "call={call} data={data} shallow_first={first}"
                 );
             }
-            let deeper = nested("@Count($value)".into(), 24);
+            let deeper = nested("\"\"+$value".into(), 24);
             let expr = if first {
                 format!("[$value,{deeper}]")
             } else {
@@ -203,7 +203,11 @@ fn aliased_input_names_and_prepared_query_uses_keep_their_position_depth() {
                     TreeInput::new(&p)
                 };
                 let r = evaluate_tree_with_limits(input, &store, Limits::DEFAULT);
-                assert!(r.depth_limited, "{name}: data={data} shallow_first={first}");
+                assert_eq!(
+                    r.depth_limited, supplied,
+                    "{name}: data={data} shallow_first={first}"
+                );
+                assert!(!r.size_limited);
             }
         }
     }

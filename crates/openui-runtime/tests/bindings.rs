@@ -593,8 +593,8 @@ fn stripped_markers_fit_the_previous_room_and_work_allowance() {
     assert!(!run(292, 338).size_limited);
     assert!(!run(165, 10000).size_limited);
     assert!(run(164, 10000).size_limited);
-    assert!(!run(10000, 179).size_limited);
-    assert!(run(10000, 178).size_limited);
+    assert!(!run(10000, 178).size_limited);
+    assert!(run(10000, 177).size_limited);
 }
 
 #[test]
@@ -680,8 +680,8 @@ fn repeated_data_markers_fit_the_previous_allowance() {
     assert!(!run(3030, 5946).size_limited);
     assert!(!run(214, 100000).size_limited);
     assert!(run(213, 100000).size_limited);
-    assert!(!run(100000, 655).size_limited);
-    assert!(run(100000, 654).size_limited);
+    assert!(!run(100000, 578).size_limited);
+    assert!(run(100000, 577).size_limited);
 }
 
 #[test]
@@ -797,4 +797,59 @@ fn undecided_binding_pairs_are_reported_and_can_be_resolved() {
     assert!(bindings.contains("E10", "e10"));
     assert!(!bindings.undecided().any(|p| p == ("E10", "e10")));
     assert!(bindings.undecided().any(|p| p == ("E11", "e11")));
+}
+
+#[test]
+fn marker_string_predicates_keep_the_pre_binding_work_prices() {
+    let l = Library::from_json_schema(
+        &parse_json(r#"{"$defs":{"Field":{"properties":{"value":{},"display":{}}}}}"#).unwrap(),
+    );
+    for (object, expected) in [
+        (
+            format!(r#"{{"__reactive":"{}"}}"#, "x".repeat(10_000)),
+            20_167,
+        ),
+        (r#"{"__reactive":"no"}"#.to_owned(), 171),
+        (
+            format!(
+                r#"{{"__reactive":"assign","type":"element","typeName":"{}","props":{{}},"partial":false}}"#,
+                "x".repeat(10_000)
+            ),
+            40_377,
+        ),
+    ] {
+        let p = parse("root=Field(null,$o)", &l, None);
+        let mut s = Store::new();
+        s.set("$o", Some(value(&object))).unwrap();
+        let run = |work| {
+            evaluate_tree_with_limits(
+                TreeInput::new(&p).with_library(&l),
+                &s,
+                Limits::DEFAULT.with_work(work),
+            )
+        };
+        let (mut lo, mut hi) = (0, 100_000);
+        while hi - lo > 1 {
+            let m = (hi + lo) / 2;
+            if run(m).size_limited { lo = m } else { hi = m }
+        }
+        assert_eq!(hi, expected);
+        assert!(!run(expected).size_limited);
+        assert!(run(expected - 1).size_limited);
+    }
+}
+
+#[test]
+fn ambiguous_signature_only_names_are_reported_and_can_be_excluded() {
+    let spec = value(
+        r#"{"components":{"C":{"signature":"C(a, b: $binding<string>, b: string, later: $binding<number>)"}}}"#,
+    );
+    let mut bindings = BindingProps::from_prompt_spec(&spec).unwrap();
+    assert!(!bindings.contains("C", "b"));
+    assert!(bindings.undecided().any(|p| p == ("C", "a, b")));
+    assert!(bindings.undecided().any(|p| p == ("C", "b")));
+    assert!(bindings.remove("C", "b"));
+    assert!(!bindings.contains("C", "b"));
+    assert!(!bindings.undecided().any(|p| p == ("C", "b")));
+    assert!(!bindings.remove("C", "b"));
 }

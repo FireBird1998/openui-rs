@@ -49,11 +49,11 @@ fn supplied_input_earns_credit_but_cannot_raise_the_hard_ceiling() {
     let data = Value::Str("s".repeat(70_000));
     let b = EvaluationSession::new(&(), 0);
     assert!(b.with_scope(&(), |s| {
-        s.with_evaluator(|e| e.register_input(&data) && e.check_result_value(&data))
+        s.with_evaluator(|e| e.read_state_value("$test", &data) && e.check_result_value(&data))
     }));
     let b = EvaluationSession::with_limits(&(), 0, Limits::DEFAULT.with_result_ceiling(69_999));
     assert!(!b.with_scope(&(), |s| {
-        s.with_evaluator(|e| e.register_input(&data) && e.check_result_value(&data))
+        s.with_evaluator(|e| e.read_state_value("$test", &data) && e.check_result_value(&data))
     }));
     assert!(b.flags().size_limited);
 }
@@ -63,9 +63,9 @@ fn borrowed_text_is_priced_like_a_supplied_string_without_an_initial_copy() {
     let text = "x".repeat(70_000);
     let b = EvaluationSession::new(&(), 0);
     assert!(b.with_scope(&(), |s| s.with_evaluator(
-        |e| e.register_input_text(&text) && e.reserve_result(text.len() + 2)
+        |e| e.read_state_key(&text) && e.reserve_result(text.len() + 2)
     )));
     let b = EvaluationSession::with_limits(&(), 0, Limits::DEFAULT.with_work(5));
-    assert!(!b.with_scope(&(), |s| s.with_evaluator(|e| e.register_input_text(&text))));
-    assert!(!b.with_scope(&(), |s| s.with_evaluator(|e| e.register_input_text(""))));
+    assert!(!b.with_scope(&(), |s| s.with_evaluator(|e| e.read_state_key(&text))));
+    assert!(!b.with_scope(&(), |s| s.with_evaluator(|e| e.read_state_key(""))));
 }

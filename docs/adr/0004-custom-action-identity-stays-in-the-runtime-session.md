@@ -78,10 +78,10 @@ sendable accounting implementation possible without changing this interface.
 
 
 A retained `Arc<ParseResult>` can be supplied with `TreeInput::from_shared_result`.
-The runner holds the current Arc while suspended and caches its measurement and
-statement indexes by identity. Thus `Arc::make_mut` by the embedder clones the
-program; the old allocation remains immutable. Only the current cached program
-is retained. Overriding the public `result` field invalidates the cache. Borrowed
+The runner caches measurement and statement indexes with a Weak identity
+(ADR 0010). `Arc::make_mut` can move a uniquely held program, invalidating that
+identity without cloning the program; other strong owners retain immutable old
+allocations. Only the current indexes and measurement are retained. Overriding the public `result` field invalidates the cache. Borrowed
 programs, fresh equal Arcs and alternating Arcs are remeasured as necessary,
 entirely outside evaluation work. Raw reference input is prepared once per call;
 prepared reference input takes precedence without walking unused raw input.

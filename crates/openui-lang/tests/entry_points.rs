@@ -4,8 +4,6 @@
 //! and flagged where the entry point has flags, refused with its error where
 //! it has an error, and a raised limit lets it through.
 
-use std::time::{Duration, Instant};
-
 use openui_lang::{
     Library, Limits, free_json, generate_prompt, json_to_openui, json_to_openui_with_limits,
     merge_statements, merge_statements_with_limits, parse_expression, parse_expression_with_limits,
@@ -28,26 +26,21 @@ fn grouped_spec(n: usize) -> serde_json::Value {
     serde_json::json!({"components": components, "componentGroups": groups})
 }
 
-/// The fastest of three runs.
-fn fastest(f: impl Fn()) -> Duration {
-    (0..3)
-        .map(|_| {
-            let started = Instant::now();
-            f();
-            started.elapsed()
-        })
-        .min()
-        .unwrap()
-}
-
 #[test]
-fn a_prompt_costs_time_linear_in_its_component_groups() {
+fn a_prompt_allocates_linearly_in_its_component_groups() {
     let small = grouped_spec(4_000);
     let large = grouped_spec(16_000);
-    let ratio = fastest(|| drop(generate_prompt(&large))).as_secs_f64()
-        / fastest(|| drop(generate_prompt(&small))).as_secs_f64();
-    // Four times the components: about 4 when linear, 16 when quadratic.
-    assert!(ratio < 8.0, "16,000 components cost {ratio:.1} times 4,000");
+    let cost = |spec| {
+        let before = test_alloc::allocation_calls();
+        drop(generate_prompt(spec));
+        test_alloc::allocation_calls() - before
+    };
+    let small = cost(&small);
+    let large = cost(&large);
+    assert!(
+        large < small * 8,
+        "16,000 groups: {large} allocations; 4,000: {small}"
+    );
 }
 
 fn library() -> Library {

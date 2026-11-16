@@ -25,6 +25,7 @@ struct Account {
     peak: AtomicUsize,
     measured_peak: AtomicUsize,
     allocation_calls: AtomicUsize,
+    allocated_bytes: AtomicUsize,
 }
 
 struct ThreadAccount {
@@ -103,6 +104,21 @@ pub fn allocation_calls() -> usize {
     })
 }
 
+/// Cumulative bytes reserved by allocation/reallocation requests on this thread.
+/// Shrinking/frees do not subtract. Reallocation counts positive growth, so
+/// this is allocation traffic rather than a sum of every requested capacity.
+pub fn allocated_bytes() -> usize {
+    CURRENT.with(|c| {
+        let p = c.owner.get();
+        if p.is_null() {
+            0
+        } else {
+            // SAFETY: owner records survive until process exit.
+            unsafe { (*p).allocated_bytes.load(Relaxed) }
+        }
+    })
+}
+
 /// Deterministically reuse one freed byte allocation of `size` on this thread.
 /// The allocator keeps the cached block charged until reused or this guard drops.
 /// This is test-only allocator machinery for checking address-based caches.
@@ -154,6 +170,15 @@ fn reserve(owner: *const Account, bytes: usize) {
         Relaxed,
     ) {
         previous = actual;
+    }
+    let mut total = a.allocated_bytes.load(Relaxed);
+    while let Err(actual) = a.allocated_bytes.compare_exchange_weak(
+        total,
+        total.saturating_add(bytes),
+        Relaxed,
+        Relaxed,
+    ) {
+        total = actual;
     }
     LIVE_BYTES.fetch_add(bytes, Relaxed);
     let live = a.live.fetch_add(bytes, Relaxed) + bytes;
@@ -208,6 +233,7 @@ impl Allocator {
                             peak: AtomicUsize::new(layout.size()),
                             measured_peak: AtomicUsize::new(layout.size()),
                             allocation_calls: AtomicUsize::new(0),
+                            allocated_bytes: AtomicUsize::new(0),
                         });
                         owner = allocated;
                     }

@@ -37,13 +37,16 @@ alone never sets `depth_limited`. This is a core bug, never
 bad input. Finished-tree walks (serialization, equality, schema/prompt
 rendering and freeing) remain uncapped, even inside a scoped entry.
 
-A debug build also panics once **1,024 segments past the ceiling** are nested
-(1,024 outside any entry), whichever walk grew them. A bug that makes every
-fresh segment look low nests them without end in an uncapped walk, and under
-mutation testing one such bug took about 7 GB a second and froze the worker
-Mac before the watchdog's next look (2026-11-11). At the stack a level was
-measured to take, 1,024 segments carry a walk some 260,000 levels deep, so a
-real tree doesn't reach it. Release builds are unchanged.
+A debug build also guards repeated segment growth without usable-stack
+progress: 1,024 segments beyond the active ceiling or the last healthy
+uncapped observation (64 in the unit suite). A bug that makes every fresh
+segment look low still stops; a legitimate finished walk can exceed 1,024
+segments. Healthy observations are recorded only for uncapped debug/test
+walks, leaving release parsing's path unchanged. The prior absolute guard
+panicked on legitimate multi-million-level finished trees. The public
+`runaway_finished_walk` test walks, serializes and drops 4,100,000 levels on a
+64 KiB thread, including at opt-level 0; restoring the absolute guard fails
+that unoptimized test. Callback suspension still establishes its own base.
 
 Measured at opt-level 0 on 512 KiB threads, `tests/depth.rs` needed at most
 2 nested segments; `tests/drop.rs`'s raised-depth case needed 30. The

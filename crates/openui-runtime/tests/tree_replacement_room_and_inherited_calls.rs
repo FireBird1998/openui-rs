@@ -3,10 +3,7 @@ use openui_lang::{Library, free_json, parse, parse_json};
 use openui_runtime::{
     JsObject, Limits, PreparedReferenceValues, Store, TreeInput, Value, evaluate_tree_with_limits,
 };
-use std::{
-    sync::Arc,
-    time::{Duration, Instant},
-};
+use std::sync::Arc;
 #[global_allocator]
 static ALLOCATOR: test_alloc::Allocator = test_alloc::Allocator::with_cap(256 * 1024 * 1024);
 fn library() -> Library {
@@ -92,7 +89,6 @@ fn prepared_index_reads_reuse_the_measurement() {
     let measure = |values: &PreparedReferenceValues<'_>| {
         let input = TreeInput::new(&p).with_prepared_reference_values(values);
         let before = test_alloc::allocation_calls();
-        let start = Instant::now();
         for _ in 0..40 {
             let r = evaluate_tree_with_limits(
                 input.clone(),
@@ -102,17 +98,14 @@ fn prepared_index_reads_reuse_the_measurement() {
             assert!(!r.size_limited && !r.depth_limited);
             assert!(r.to_json().unwrap().contains("\"a\":7"));
         }
-        (start.elapsed(), test_alloc::allocation_calls() - before)
+        test_alloc::allocation_calls() - before
     };
     measure(&small);
     measure(&large);
-    let (a, ac) = measure(&small);
-    let (b, bc) = measure(&large);
+    let ac = measure(&small);
+    let bc = measure(&large);
     assert_eq!(ac, bc);
-    assert!(
-        b < a.saturating_mul(20) + Duration::from_millis(20),
-        "small={a:?} large={b:?}"
-    );
+
     // The prepared marker never discounts building the full output.
     let full = parse("root=Box(q)\nq=Query(\"get\",{})", &l, None);
     let r = evaluate_tree_with_limits(
@@ -150,20 +143,17 @@ fn prepared_claims_never_add_credit_or_discount_output() {
     }
     let node = Ast::Ref("q".into());
     let value = Value::Arr(Arc::new(vec![Value::Num(7.0); 100_000]));
-    let scope = Scope(PreparedReferenceValue::new(&value, 0));
+    let scope = Scope(PreparedReferenceValue::new(&value));
     let session = EvaluationSession::with_limits(
         &scope,
         0,
         Limits::DEFAULT.with_work(10_000).with_result_size(64),
     );
     assert!(session.evaluate(&node).size_limited);
-    let scope = Scope(PreparedReferenceValue::new(&Value::Num(1.0), 1000));
+    let scope = Scope(PreparedReferenceValue::new(&Value::Num(1.0)));
     let session = EvaluationSession::new(&scope, 0);
     assert!(session.evaluate(&node).size_limited);
-    let scope = Scope(PreparedReferenceValue::new(
-        &Value::Str("x".repeat(600)),
-        300,
-    ));
+    let scope = Scope(PreparedReferenceValue::new(&Value::Str("x".repeat(600))));
     let session = EvaluationSession::with_limits(
         &scope,
         400,

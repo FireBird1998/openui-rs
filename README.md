@@ -76,6 +76,13 @@ scripts/hunt.sh --minutes 60             # fuzzing with a fresh seed and an upst
 
 When a test fails, it prints the case, the streaming step and a diff against the reference (fetched live when Bun is there). Two switches rewrite generated files: `UPDATE_PENDING=1 cargo test -p openui-lang` rewrites the pending lists in `conformance/pending/` to the cases that fail now, and `UPDATE_REPORT=1 cargo test --test report` refreshes the counts in CONFORMANCE.md. Coverage-guided fuzz targets live in `fuzz/` and need nightly Rust and `cargo-fuzz`. `scripts/coverage.sh` measures line coverage over the offline suite and fails if a line no test runs isn't explained in [UNREACHED.md](crates/openui-lang/UNREACHED.md); it needs `cargo-llvm-cov`.
 
+The Rust runtime uses one run-wide work allowance across action resumptions.
+The core measures supplied program/action/reference input; resupply can raise
+only the largest combined input floor. Prepared inputs cache setup work, and
+shared programs retain only a weak cache identity. Snapshot JSON omits undefined
+state entries like the bindings. Serialized room is not a general peak-memory
+bound; see [CONFORMANCE.md](CONFORMANCE.md) and [ADR 0008](docs/adr/0008-share-runtime-substitution-bodies.md).
+
 ## OpenUINative, the Swift package
 
 `swift/OpenUINative/` is for Mac apps that want to draw OpenUI Lang: the crate's Swift binding (through `crates/openui-ffi`, a UniFFI binding that Kotlin will use too), the parse result as Swift values, and `ElementView`, which draws an element tree as SwiftUI. It draws the most used components of upstream's example library itself. An app adds its own components, wraps what's drawn and chooses what an undrawable element looks like through `ElementDrawing`, set in the environment.
@@ -166,3 +173,12 @@ Reference data is prepared once and reused in both bindings. An optional
 `maxActionPathBytes` limit permits smaller retained handle paths without changing
 default behavior. Element-shaped data can run built-in state writes; finished
 custom-step JSON never grants custom authority (ADR 0004).
+
+Runtime state and raw/prepared query receivers check depth only for the parts
+consumed; shallow member and length reads do not walk a deep sibling. Whole-value
+output still checks depth. Changed state values earn their own action-run input
+credit across mutation resumes; unchanged consecutive scalar reads earn it once.
+`Store::snapshot_json` omits undefined entries, matching the bindings. On persisted
+re-initialization an omitted declared name takes its default (previous Rust
+exports wrote null), and an undeclared undefined name disappears. See
+[CONFORMANCE.md](CONFORMANCE.md) for the pinned compatibility changes.

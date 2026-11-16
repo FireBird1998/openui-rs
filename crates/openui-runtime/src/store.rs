@@ -71,7 +71,9 @@ pub struct InitializationResult {
 /// Version maps upstream listener notifications: one per changed set or
 /// initialize batch. This runtime deliberately also advances it on disposal of
 /// nonempty state; upstream clears its listeners without notifying them.
-/// Pristine-only changes and empty disposal do not advance it.
+/// Pristine-only changes and empty disposal do not advance it. Completed
+/// container defaults reused by Rust's streaming parser suppress notifications
+/// that upstream's rebuilt defaults cause; CONFORMANCE.md pins that divergence.
 ///
 /// Writes consume values. Reads and retained-snapshot copies clone `Value`:
 /// container bodies stay shared; scalar strings and copied keys allocate.
@@ -152,8 +154,11 @@ impl Store {
     }
     /// Serialize the already-admitted snapshot without a second allowance.
     /// Empty state still exports as `{}` even when its admission cap is zero.
-    /// Undefined entries serialize as null; pristine-only names are not snapshot
-    /// members. State was already admitted, so the shallow view is bounded.
+    /// Undefined entries are omitted, matching JSON.stringify and the bindings;
+    /// pristine-only names are not snapshot members. Re-initializing this JSON
+    /// restores declared defaults for omitted undefined entries; older Rust
+    /// exports wrote null instead. State was already admitted, so the shallow
+    /// view is bounded.
     pub fn snapshot_json(&self) -> Result<String, crate::LimitError> {
         crate::value_to_json(&self.snapshot_value())
     }
@@ -164,11 +169,13 @@ impl Store {
     fn snapshot_value(&self) -> Value {
         let mut values = JsObject::new();
         for (key, value) in self.snapshot.iter() {
-            values.define(key, value.clone().unwrap_or(Value::Null));
+            if let Some(value) = value {
+                values.define(key, value.clone());
+            }
         }
         Value::Obj(Arc::new(values))
     }
-    /// Upstream notification count, plus nonempty disposals (see `Store`).
+    /// Notification version, including nonempty disposals (see `Store`).
     pub fn version(&self) -> u64 {
         self.version
     }

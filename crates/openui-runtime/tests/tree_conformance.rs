@@ -466,14 +466,21 @@ fn corpus_trees_snapshots_and_json_match_the_reference() {
                     &Value::Num(5.0)
                 );
             }
-            "substitution-map-target" => {
-                assert_eq!(name, "runtime/substitution-map-target");
+            "substitution-map-target" | "substitution-map-null" => {
+                assert_eq!(name, format!("runtime/{divergence}"));
                 let root = parsed_full.root.as_ref().unwrap();
                 for (key, field) in [("a", "els"), ("b", "entries"), ("c", "args")] {
                     let raw = root.props.get(key).unwrap();
                     assert_eq!(text(get(raw, "name")), "Each");
                     let template = arr(get(raw, "args")).get(2).unwrap();
-                    assert_eq!(get(get(template, field), "map"), &Value::Num(3.0));
+                    assert_eq!(
+                        get(get(template, field), "map"),
+                        &if divergence.ends_with("-null") {
+                            Value::Null
+                        } else {
+                            Value::Num(3.0)
+                        }
+                    );
                 }
             }
             "non-string-binding-target" => {
@@ -488,11 +495,18 @@ fn corpus_trees_snapshots_and_json_match_the_reference() {
                 assert_eq!(name, "runtime/function-inherited");
                 assert!(input.contains(r#"__proto__:{k:"Str",v:null}"#));
             }
-            "descriptor-map-target" => {
-                assert_eq!(name, "runtime/descriptor-map-target");
+            "descriptor-map-target" | "descriptor-map-null" => {
+                assert_eq!(name, format!("runtime/{divergence}"));
                 let raw = parsed_full.root.as_ref().unwrap().props.get("a").unwrap();
                 assert_eq!(text(get(raw, "k")), "Arr");
-                assert_eq!(get(get(raw, "els"), "map"), &Value::Num(3.0));
+                assert_eq!(
+                    get(get(raw, "els"), "map"),
+                    &if divergence.ends_with("-null") {
+                        Value::Null
+                    } else {
+                        Value::Num(3.0)
+                    }
+                );
             }
             _ => panic!("{name}: unknown divergence {divergence}"),
         }
@@ -539,7 +553,7 @@ fn corpus_trees_snapshots_and_json_match_the_reference() {
                     actual,
                     "{name}/{scenario}: pinned Rust divergence output"
                 );
-                if divergence == "descriptor-map-target" {
+                if matches!(divergence, "descriptor-map-target" | "descriptor-map-null") {
                     compare_map_target_wording(
                         name,
                         divergence,
@@ -1328,7 +1342,9 @@ fn compare_pending_props(
                     .strip_prefix("Check the expression used for prop \"")
                     .and_then(|s| s.strip_suffix('"'))
                 else {
-                    return false;
+                    // Root/global diagnostics have no prop identity. Compare
+                    // them in full rather than silently dropping them.
+                    return true;
                 };
                 let statement = match get(error, "statementId") {
                     Value::Str(id) => Some(id.clone()),
@@ -1338,7 +1354,7 @@ fn compare_pending_props(
                     text(get(error, "component")).to_owned(),
                     statement,
                     prop.to_owned(),
-                )) == Some(&true)
+                )) != Some(&false)
             })
             .map(json)
             .collect::<Vec<_>>()
@@ -1354,15 +1370,24 @@ fn compare_pending_props(
 // This is deliberately a named, structural exception, never a general error
 // normalizer. Both complete outputs are committed; exactly one message differs.
 fn compare_map_target_wording(case: &str, reason: &str, expected: &Value, actual: &Value) {
-    assert_eq!(
+    assert!(matches!(
         (case, reason),
         ("runtime/descriptor-map-target", "descriptor-map-target")
-    );
+            | ("runtime/descriptor-map-null", "descriptor-map-null")
+    ));
+    let target = if reason.ends_with("-null") {
+        "null"
+    } else {
+        "3"
+    };
     let expected_errors = arr(get(expected, "errors"));
     let actual_errors = arr(get(actual, "errors"));
     assert_eq!(expected_errors.len(), 1);
     assert_eq!(actual_errors.len(), 1);
-    assert!(text(get(&expected_errors[0], "message")).ends_with("'node.els.map' is 3)"));
+    assert!(
+        text(get(&expected_errors[0], "message"))
+            .ends_with(&format!("'node.els.map' is {target})"))
+    );
     assert!(text(get(&actual_errors[0], "message")).ends_with("'node.els.map' is undefined)"));
     let Value::Obj(root) = actual else {
         panic!("observation")
@@ -1447,4 +1472,37 @@ fn compare_function_state_value(expected: &Value, actual: &Value) {
         json(&Value::Obj(Arc::new(observation))),
         "only function-state truthiness may differ"
     );
+}
+
+#[test]
+#[should_panic(expected = "pending in-scope errors")]
+fn pending_comparison_checks_errors_without_a_prop_hint() {
+    pending_error_witness(r#"{"type":"no-root","message":"missing root"}"#);
+}
+
+#[test]
+#[should_panic(expected = "pending in-scope errors")]
+fn pending_comparison_checks_errors_with_an_unknown_owner() {
+    pending_error_witness(
+        r#"{"component":"Wrong","statementId":"missing","hint":"Check the expression used for prop \"value\"","message":"misattributed"}"#,
+    );
+}
+fn pending_error_witness(error: &str) {
+    let library = Library::from_json_schema(&openui_lang::parse_json(r#"{"$defs":{}}"#).unwrap());
+    let expected =
+        Value::from_json(&openui_lang::parse_json(r#"{"snapshot":{},"errors":[]}"#).unwrap());
+    let actual = Value::from_json(
+        &openui_lang::parse_json(&format!(r#"{{"snapshot":{{}},"errors":[{error}]}}"#)).unwrap(),
+    );
+    compare_pending_props(
+        &raw_program(&library),
+        &library,
+        &expected,
+        &actual,
+        "witness",
+        "defaults",
+    );
+}
+fn raw_program(library: &Library) -> ParseResult {
+    openui_lang::parse("", library, None)
 }

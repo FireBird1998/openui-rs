@@ -1,12 +1,15 @@
 //! Supplied inputs enlarge an allowance without refreshing work already spent.
-use openui_lang::{EvaluationSession, Limits, ParseResult, PreparedInput, Value};
+use openui_lang::{EvaluationSession, Limits, ParseResult, PreparedProgram, Value};
 #[global_allocator]
 static ALLOCATOR: test_alloc::Allocator = test_alloc::Allocator::with_cap(256 * 1024 * 1024);
-fn program(bytes: usize) -> PreparedInput {
+fn program(bytes: usize) -> PreparedProgram {
+    PreparedProgram::new(&program_value(bytes), Limits::DEFAULT)
+}
+fn program_value(bytes: usize) -> ParseResult {
     let mut p = ParseResult::default();
     p.state_declarations
         .define("$text", Value::Str("x".repeat(bytes)));
-    PreparedInput::from_parse_result(&p, Limits::DEFAULT)
+    p
 }
 #[test]
 fn a_replacement_program_earns_only_the_increase_in_supplied_input() {
@@ -14,15 +17,15 @@ fn a_replacement_program_earns_only_the_increase_in_supplied_input() {
     let large = program(3000);
     let session = EvaluationSession::new(&(), 0);
     session.with_evaluator(|e| {
-        assert!(e.register_input_floor(&small));
+        assert!(supply(e, &small));
         assert!(e.charge_work(100_000));
-        assert!(e.register_input_floor(&large));
+        assert!(supply(e, &large));
         assert!(e.charge_work(2_500_000));
     });
     let session = EvaluationSession::new(&(), 0);
     session.with_evaluator(|e| {
-        assert!(e.register_input_floor(&small));
-        assert!(e.register_input_floor(&large));
+        assert!(supply(e, &small));
+        assert!(supply(e, &large));
         assert!(
             !e.charge_work(4_000_000),
             "replacement inputs must not add their sizes together"
@@ -35,16 +38,18 @@ fn repeated_prepared_input_cannot_replenish_spent_work() {
     let session = EvaluationSession::new(&(), 0);
     session.with_evaluator(|e| {
         for _ in 0..100 {
-            assert!(e.register_input_floor(&p.clone()));
+            assert!(supply(e, &p));
         }
         assert!(!e.charge_work(3_000_000));
     });
-    let session = EvaluationSession::with_limits(&(), 0, Limits::DEFAULT.with_work(40_000));
+    let limits = Limits::DEFAULT.with_work(40_000);
+    let p = PreparedProgram::new(&program_value(2000), limits);
+    let session = EvaluationSession::with_limits(&(), 0, limits);
     session.with_evaluator(|e| {
-        assert!(e.register_input_floor(&p));
+        assert!(supply(e, &p));
         assert!(e.charge_work(30_000));
         for _ in 0..10 {
-            assert!(e.register_input_floor(&p));
+            assert!(supply(e, &p));
         }
         assert!(!e.charge_work(15_000), "fixed work limits must not refresh");
     });
@@ -61,30 +66,36 @@ fn individual_utf16_units_round_trip_including_lone_surrogates() {
 
 #[test]
 fn supplying_large_input_never_spends_evaluation_work() {
-    let p = program(100_000);
-    let session = EvaluationSession::with_limits(&(), 0, Limits::DEFAULT.with_work(7));
+    let limits = Limits::DEFAULT.with_work(7);
+    let p = PreparedProgram::new(&program_value(100_000), limits);
+    let session = EvaluationSession::with_limits(&(), 0, limits);
     session.with_evaluator(|e| {
         for _ in 0..1000 {
-            assert!(e.register_input_floor(&p));
+            assert!(supply(e, &p));
         }
         assert!(e.charge_work(7));
         assert!(!e.charge_work(1));
     });
 }
 
+fn supply(e: &openui_lang::ExpressionEvaluator<'_>, p: &PreparedProgram) -> bool {
+    e.supply_input(openui_lang::SuppliedInput {
+        program: openui_lang::SuppliedProgram::Prepared(p),
+        start: openui_lang::SuppliedStart::Raw {
+            action: None,
+            message: "",
+            form: None,
+        },
+        references: None,
+    })
+    .is_ok()
+}
 #[test]
-fn a_combined_supply_raises_one_floor_without_retaining_its_values() {
-    use std::sync::Arc;
-    let values = Arc::new(vec![Value::Str("x".repeat(2000))]);
-    let input = PreparedInput::from_value(&Value::Arr(values.clone()), Limits::DEFAULT);
-    assert_eq!(Arc::strong_count(&values), 1);
-    let combined = input.combined(PreparedInput::from_text("message", Limits::DEFAULT));
-    let session = EvaluationSession::new(&(), 0);
-    session.with_evaluator(|e| {
-        assert!(e.register_input_floor(&combined));
-        assert_eq!(Arc::strong_count(&values), 1);
-        assert!(e.charge_work(1_500_000));
-        assert!(e.register_input_floor(&input));
-        assert!(!e.charge_work(1_000_000));
+fn receipts_from_different_limits_are_refused_without_changing_credit() {
+    let p = program(3000);
+    let s = EvaluationSession::with_limits(&(), 0, Limits::DEFAULT.with_work(7));
+    s.with_evaluator(|e| {
+        assert!(!supply(e, &p));
+        assert!(e.charge_work(7));
     });
 }

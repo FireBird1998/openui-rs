@@ -105,7 +105,7 @@ struct RunState {
     budget: EvaluationSession<'static>,
     defaults: Option<HashMap<String, QueryDefault>>,
     program: Option<CachedProgram>,
-    started_with: openui_lang::PreparedInput,
+    started_with: Option<openui_lang::PreparedStart>,
 }
 /// Run a retained plan, legacy object or no action. The embedder must ignore
 /// clicks while its bundled response is blocked (`bundleBlocked` in React).
@@ -147,15 +147,6 @@ pub fn run_action_with_limits(
         input
     };
     let prepare = || -> Result<RunState, BindingWriteError> {
-        let mut started_with = openui_lang::PreparedInput::from_text(user_message, limits);
-        if let Some(name) = form_name {
-            started_with =
-                started_with.combined(openui_lang::PreparedInput::from_text(name, limits));
-        }
-        if let Some(action) = action {
-            started_with =
-                started_with.combined(openui_lang::PreparedInput::from_value(action, limits));
-        }
         let mut run = RunState {
             plan: Value::Null,
             next: 0,
@@ -165,7 +156,7 @@ pub fn run_action_with_limits(
             budget: EvaluationSession::with_limits(&(), 0, limits),
             defaults: None,
             program: None,
-            started_with,
+            started_with: None,
         };
         RunContext::new(
             input.clone(),
@@ -173,9 +164,35 @@ pub fn run_action_with_limits(
             false,
             input.prepared_reference_values,
         )?;
+        let receipt = run.budget.with_evaluator(|e| {
+            e.supply_input(openui_lang::SuppliedInput {
+                program: openui_lang::SuppliedProgram::Prepared(
+                    &run.program
+                        .as_ref()
+                        .ok_or_else(|| invalid("missing program receipt"))?
+                        .input,
+                ),
+                start: openui_lang::SuppliedStart::Raw {
+                    action,
+                    message: user_message,
+                    form: form_name,
+                },
+                references: input.prepared_reference_values.map(|r| &r.input),
+            })
+            .map_err(|_| BindingWriteError::Cut(e.flags()))
+        })?;
+        run.started_with = Some(receipt.start);
         let (message, form) = run.scope(|e| {
             Ok((
-                capture_text(e, user_message, limits)?,
+                if user_message.len() > limits.result_size()
+                    && matches!(action, Some(Value::Obj(o)) if matches!(o.get("steps"), Some(Value::Arr(_))))
+                {
+                    // A step plan never uses the legacy/default message. Avoid
+                    // retaining oversized unused text across a suspension.
+                    String::new()
+                } else {
+                    capture_text(e, user_message, limits)?
+                },
                 form_name.map(|s| capture_text(e, s, limits)).transpose()?,
             ))
         })?;
@@ -229,8 +246,8 @@ fn checked_flags(session: &EvaluationSession<'_>) -> Result<(), BindingWriteErro
     }
 }
 struct CachedProgram {
-    owner: Option<Arc<ParseResult>>,
-    input: openui_lang::PreparedInput,
+    owner: Option<Weak<ParseResult>>,
+    input: openui_lang::PreparedProgram,
     references: ReferenceLocations,
     mutations: Rc<HashMap<String, usize>>,
 }
@@ -251,13 +268,14 @@ impl<'a> RunContext<'a> {
             .filter(|p| std::ptr::eq(p.as_ref(), input.result));
         let reused = initial && run.program.is_some()
             || match (&shared, &run.program) {
-                (Some(p), Some(cache)) => {
-                    cache.owner.as_ref().is_some_and(|old| Arc::ptr_eq(p, old))
-                }
+                (Some(p), Some(cache)) => cache
+                    .owner
+                    .as_ref()
+                    .is_some_and(|old| old.strong_count() != 0 && old.ptr_eq(&Arc::downgrade(p))),
                 _ => false,
             };
         if !reused {
-            let prepared = openui_lang::PreparedInput::from_parse_result(input.result, run.limits);
+            let prepared = openui_lang::PreparedProgram::new(input.result, run.limits);
             let mut references = HashMap::new();
             let mut mutations = HashMap::new();
             for (i, q) in input.result.query_statements.iter().enumerate() {
@@ -272,7 +290,7 @@ impl<'a> RunContext<'a> {
                 mutations.entry(m.statement_id.clone()).or_insert(i);
             }
             run.program = Some(CachedProgram {
-                owner: shared.cloned(),
+                owner: shared.map(Arc::downgrade),
                 input: prepared,
                 references: Rc::new(references),
                 mutations: Rc::new(mutations),
@@ -281,13 +299,16 @@ impl<'a> RunContext<'a> {
         let Some(cache) = &run.program else {
             return Err(invalid("program input was not admitted"));
         };
-        let mut supplied_input = cache.input.combined(run.started_with);
-        if let Some(values) = supplied {
-            supplied_input = supplied_input.combined(values.input);
+        if let Some(start) = &run.started_with {
+            run.budget.with_evaluator(|e| {
+                e.supply_input(openui_lang::SuppliedInput {
+                    program: openui_lang::SuppliedProgram::Prepared(&cache.input),
+                    start: openui_lang::SuppliedStart::Prepared(start),
+                    references: supplied.map(|r| &r.input),
+                })
+                .map_err(|_| BindingWriteError::Cut(e.flags()))
+            })?;
         }
-        run.budget.with_evaluator(|e| {
-            e.register_input_floor(&supplied_input);
-        });
         Ok(Self {
             references: ReferenceIndex {
                 program: input.result,

@@ -38,9 +38,8 @@ one walk, one shared identity set, one work budget, identical ceilings and
 per-entry results. Successful entries earn exactly drawing's total input credit;
 refused entries earn none and raise their recorded cut only if read. Unread
 large/deep entries cannot refuse an unrelated action. No entry gets a separate
-preparation budget or a lazy re-measurement. Prepared input tokens retain only
-bytes; the reference token reuses the existing prepaid-size contract of
-`PreparedReferenceValue`, without accepting another size claim or re-walking data.
+preparation budget or a lazy re-measurement. Prepared receipts retain only measurements; the reference receipt is produced
+by that same preparation walk, without accepting a size claim or re-walking data.
 Computed values from scope callbacks must never be admitted as supplied input.
 
 For each supply, combine the current program and reference measurements with
@@ -63,16 +62,15 @@ supplies have the same limits as a fresh run with the largest combined supply,
 short of evaluation work already spent. Borrowed/raw and shared/prepared forms
 have identical effects and cut points. Caching changes only caller setup cost.
 
-The runtime's tree-evaluation program measure remains separate from this core
-measure. Action starts and resumes consistently use the core program measure;
-references reuse drawing's preparation directly, including cached read
-representations. All prepared types and Store remain Send + Sync. Parser AST
-measurement memoizes shared allocations rather than every borrowed node.
-An over-depth or over-work program/action measurement contributes zero bytes,
-rather than inflating the floor to a ceiling; it does not refuse setup. An
-over-deep kept value still depth-cuts when evaluated, keeping earlier effects.
-Successful program/action measures retain the earlier byte counts and size
-saturation. The program measurement is independent of reference preparation.
+ADR 0010 consolidates the program byte measure in the core for drawing and
+runs, while retaining drawing's existing setup-refusal classification through
+a bounded check. Partial program/action measurements retain independently
+measured input rather than erasing an entire supplied item. An over-deep kept
+value still cuts when evaluated, preserving earlier effects. References reuse
+drawing's preparation, including cached read representations. Prepared types
+and Store remain Send + Sync. Parser AST measurement memoizes shared
+allocations rather than every borrowed node. Program measurement remains
+independent of reference preparation.
 
 ## Considered options
 

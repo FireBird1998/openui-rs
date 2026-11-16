@@ -12,7 +12,9 @@ when a shorter program is drawn or an action resumes with new program input.
 
 Total state is the exact JSON object size of the union of snapshot names and
 pristine-only names, including escaped keys, colons, commas and braces. Undefined
-and pristine-only values count as null. Empty state costs zero, allowing empty
+and pristine-only values count as null. This is the admission representation;
+exported snapshot JSON omits undefined entries like JSON.stringify and the
+bindings, while the raw snapshot retains those names. Empty state costs zero, allowing empty
 stores even with a zero-byte cap. Aliases count at each occurrence, including
 aliases within a value, as serialization does. Metadata retained solely for
 undefined form wrappers preserves its existing identity semantics on disposal;

@@ -1,0 +1,2 @@
+root = Box({k:"Arr",els:{map:null}},$n)
+$n=1

@@ -175,7 +175,7 @@ fn setup(n: usize, rows: usize, trigger: usize) -> (usize, f64) {
     let mut refs = JsObject::new();
     match trigger {
         1 => {
-            refs.define("unread", deep(1000));
+            refs.define("unread", deep(40_000));
         }
         2 => {
             refs.define("unread", Value::Str("x".repeat(9 * 1024 * 1024)));

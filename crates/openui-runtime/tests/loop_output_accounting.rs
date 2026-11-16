@@ -138,9 +138,9 @@ fn dynamic_element_work_stays_linear_under_the_default_ceiling() {
             .unwrap();
             let p = parse("root=Box(@Each($list,x,x))", &l, None);
             let expected = if data {
-                410usize.saturating_mul(n).saturating_add(199)
+                411usize.saturating_mul(n).saturating_add(199)
             } else {
-                358usize.saturating_mul(n).saturating_add(148)
+                359usize.saturating_mul(n).saturating_add(148)
             };
             let work = if n < 1000 {
                 minimum(&p, &s, true)
@@ -391,7 +391,7 @@ fn arithmetic_element_work_fits_below_the_pre_replacement_cost() {
             let b = minimum(&p, &build(200), true);
             let per = (b - a) / 100;
             let fixed = a - per * 100;
-            assert_eq!((per, fixed), if data { (415, 234) } else { (362, 165) });
+            assert_eq!((per, fixed), if data { (416, 234) } else { (363, 165) });
             let work = per * 100_000 + fixed;
             println!(
                 "dynamic={dynamic} data={data} work100={a} work200={b} per_item={per} fixed={fixed} work100000={work}"

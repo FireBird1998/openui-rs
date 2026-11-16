@@ -86,6 +86,26 @@ impl BindingProps {
         }
         Ok(())
     }
+    /// Resolve a pair as not a binding, clearing its mark and diagnostic.
+    /// Returns whether either entry existed. This never adds retained names.
+    pub fn remove(&mut self, component: &str, prop: &str) -> bool {
+        let mut removed = false;
+        for entries in [&mut self.marked, &mut self.undecided] {
+            if let Some(props) = entries.get_mut(component) {
+                if props.remove(prop) {
+                    removed = true;
+                    self.name_bytes = self.name_bytes.saturating_sub(prop.len().saturating_add(1));
+                }
+                if props.is_empty() {
+                    entries.remove(component);
+                    self.name_bytes = self
+                        .name_bytes
+                        .saturating_sub(component.len().saturating_add(1));
+                }
+            }
+        }
+        removed
+    }
     /// Whether this exact component and prop pair is marked.
     pub fn contains(&self, component: &str, prop: &str) -> bool {
         self.marked.get(component).is_some_and(|p| p.contains(prop))
@@ -224,6 +244,7 @@ impl BindingProps {
             }
             let mut props = BTreeSet::new();
             let mut undecided = BTreeSet::new();
+            let mut parameters = Vec::new();
             let mut closed = false;
             let mut depth = 0usize;
             let mut quote = None;
@@ -244,24 +265,50 @@ impl BindingProps {
                     '\'' | '"' | '`' => quote = Some(c),
                     '(' | '[' | '{' | '<' => depth = depth.saturating_add(1),
                     ')' if depth == 0 => {
-                        Self::parameter(&mut props, &mut undecided, &args[start..i]);
+                        parameters.push(&args[start..i]);
                         closed = true;
                         break;
                     }
                     ')' | ']' | '}' | '>' => depth = depth.saturating_sub(1),
                     ',' if depth == 0 => {
-                        Self::parameter(&mut props, &mut undecided, &args[start..i]);
+                        parameters.push(&args[start..i]);
                         start = i + 1;
                     }
                     _ => {}
                 }
             }
             if !closed {
-                Self::parameter(
-                    &mut props,
-                    &mut undecided,
-                    args[start..].trim_end_matches(')'),
-                );
+                parameters.push(args[start..].trim_end_matches(')'));
+            }
+            let mut names = BTreeSet::new();
+            let mut additional_names = BTreeSet::new();
+            let mut ambiguous = !closed;
+            let mut prefix = String::new();
+            for parameter in &parameters {
+                if parameter.trim().is_empty() {
+                    continue;
+                }
+                if let Some((prop, _)) = parameter.split_once(':') {
+                    let prop = prop.trim().trim_end_matches('?');
+                    ambiguous |= !names.insert(prop);
+                    if !prefix.is_empty() {
+                        additional_names.insert(format!("{prefix}, {prop}"));
+                        prefix.clear();
+                    }
+                } else {
+                    ambiguous = true;
+                    if !prefix.is_empty() {
+                        prefix.push_str(", ");
+                    }
+                    prefix.push_str(parameter.trim());
+                    names.insert(parameter.trim());
+                }
+                Self::parameter(&mut props, &mut undecided, parameter);
+            }
+            if ambiguous {
+                undecided.extend(names.into_iter().map(str::to_owned));
+                undecided.extend(additional_names);
+                undecided.append(&mut props);
             }
             if !props.is_empty() {
                 result.marked.insert(name.clone(), props);
@@ -438,11 +485,11 @@ pub(super) fn project_marker<'v>(
             _ => return None,
         }
     }
-    if !value.is_object() || value.property("__reactive").as_str() != Some("assign") {
+    if !value.is_object() || value.string_property("__reactive") != Some("assign") {
         return None;
     }
-    if value.property("type").as_str() == Some("element")
-        && value.property("typeName").as_str().is_some()
+    if value.string_property("type") == Some("element")
+        && value.string_property("typeName").is_some()
         && value.property("props").is_object()
         && value.property("partial").as_bool().is_some()
     {

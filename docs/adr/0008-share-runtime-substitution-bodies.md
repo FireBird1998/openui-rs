@@ -27,7 +27,9 @@ policy state from its monomorphization. No runtime concept enters its evaluator.
 The allocator regression covers a unique 1,000-byte string leaf, depths 1–8,
 one/three rows, typed AST and shared descriptor data. Independently archived
 8ffe3b0 results pin output hashes, cut flags and the exact work/room thresholds
-for the one-row cases. The one-row additional heap peak is below 128,000 bytes
+for the one-row cases. The #55 follow-up keeps the completed outputs and work
+pins, with separate current fixtures for intermediate-room refunds and newly
+admitted results. The one-row additional heap peak is below 128,000 bytes
 at every tested level. This is a finite shape bound, not a universal flat peak:
 active rewritten templates and traversal metadata still grow with depth.
 

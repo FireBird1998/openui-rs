@@ -15,7 +15,7 @@
 //! is also compared with a one-shot parse, which streams' ends match apart
 //! from quirk 4's count of a redefinition.
 //!
-//! Cost checks use thread CPU time, fastest of several runs, against generous
+//! Cost checks use allocation counts, fastest of several runs, against generous
 //! ratios. Work pricing is checked through public work limits.
 
 use std::sync::Arc;
@@ -491,30 +491,12 @@ fn equal_looking_elements_with_different_owners_do_not_reuse() {
 
 // ─── Costs ──────────────────────────────────────────────────────────────────
 
-/// Seconds of CPU time this thread has used.
-#[cfg(unix)]
-fn now() -> f64 {
-    let mut t = libc::timespec {
-        tv_sec: 0,
-        tv_nsec: 0,
-    };
-    // SAFETY: `t` is a valid timespec for the call to fill in.
-    let ok = unsafe { libc::clock_gettime(libc::CLOCK_THREAD_CPUTIME_ID, &mut t) };
-    assert_eq!(ok, 0, "clock_gettime(CLOCK_THREAD_CPUTIME_ID)");
-    t.tv_sec as f64 + t.tv_nsec as f64 * 1e-9
+/// Allocation requests by this thread; scheduling does not affect the count.
+fn count() -> f64 {
+    test_alloc::allocation_calls() as f64
 }
 
-/// Seconds since the first call: wall time, where thread CPU time isn't at hand.
-#[cfg(not(unix))]
-fn now() -> f64 {
-    static START: std::sync::OnceLock<std::time::Instant> = std::sync::OnceLock::new();
-    START
-        .get_or_init(std::time::Instant::now)
-        .elapsed()
-        .as_secs_f64()
-}
-
-/// The fastest of `runs` timings of `f`.
+/// The fastest of `runs` counts of `f`.
 fn fastest(runs: usize, mut f: impl FnMut() -> f64) -> f64 {
     (0..runs).map(|_| f()).fold(f64::INFINITY, f64::min)
 }
@@ -529,83 +511,75 @@ fn an_unchanged_default_isnt_evaluated_again_on_later_pushes() {
     let library = library();
 
     let evaluating = fastest(3, || {
-        let started = now();
+        let started = count();
         std::hint::black_box(parse_with_limits(&head, &library, None, limits));
-        now() - started
+        count() - started
     });
     let per_push = fastest(3, || {
         let mut stream = StreamParser::with_limits(library.clone(), None, limits);
         stream.push(&head);
         let pushes = chunks(&tail, 5);
-        let started = now();
+        let started = count();
         for chunk in &pushes {
             std::hint::black_box(stream.push(chunk));
         }
-        (now() - started) / pushes.len() as f64
+        (count() - started) / pushes.len() as f64
     });
     // Evaluated again on every push, a push would cost about as much as
     // evaluating it; reused, a small fraction of that.
     assert!(
         per_push < evaluating / 10.0,
-        "a push costs {:.3} ms, evaluating the default {:.3} ms",
-        per_push * 1e3,
-        evaluating * 1e3
+        "a push costs {:.3} allocations, evaluating the default {:.3} allocations",
+        per_push,
+        evaluating
     );
 }
 
 #[test]
 fn an_empty_push_at_a_completed_boundary_reuses_the_table() {
-    let program = format!("root = Stack([])\n{}", padding(40_000));
-    let library = library();
-    let parse_cost = fastest(5, || {
-        let start = now();
-        std::hint::black_box(parse_with_limits(
-            &program,
-            &library,
-            None,
-            Limits::default(),
-        ));
-        now() - start
-    });
-    let push_cost = fastest(5, || {
-        let mut stream = StreamParser::new(library.clone(), None);
-        stream.push(&program);
-        let start = now();
-        for _ in 0..20 {
-            std::hint::black_box(stream.push(""));
-        }
-        (now() - start) / 20.0
-    });
-    assert!(
-        push_cost < parse_cost / 5.0,
-        "empty push {push_cost:.6}s, parsing {parse_cost:.6}s"
-    );
-}
-
-#[test]
-fn changing_an_obsolete_reference_keeps_the_new_tree_cached() {
     let children = (0..600)
         .map(|i| format!("Text(\"value {i}\")"))
         .collect::<Vec<_>>()
         .join(",");
-    let head = format!("a = 0\nx = a\nroot = Stack([x])\nx = Stack([{children}])\n");
-    let library = library();
-    let cost = |name: &str| {
-        fastest(5, || {
-            let mut stream = StreamParser::new(library.clone(), None);
-            stream.push(&head);
-            let start = now();
-            for i in 0..30 {
-                std::hint::black_box(stream.push(&format!("{name} = {i}\n")));
-            }
-            (now() - start) / 30.0
-        })
+    // Exercise both completed materialization and default evaluation, so clearing
+    // either reuse cache has observable allocation cost on an empty push.
+    let program = format!(
+        "$wide = [{children}]\n$computed = @Each({}, i, i+1)\nroot = Stack($wide)\n",
+        list(128)
+    );
+    let mut stream = StreamParser::new(library(), None);
+    stream.push(&program);
+    let before = test_alloc::allocation_calls();
+    for _ in 0..20 {
+        std::hint::black_box(stream.push(""));
+    }
+    let push_cost = (test_alloc::allocation_calls() - before) / 20;
+    assert!(push_cost < 100, "empty push allocated {push_cost} times");
+}
+
+#[test]
+fn changing_an_obsolete_reference_keeps_the_new_tree_cached() {
+    let cost = |width| {
+        let children = (0..width)
+            .map(|i| format!("Text(\"value {i}\")"))
+            .collect::<Vec<_>>()
+            .join(",");
+        let head = format!("a = 0\nx = a\nroot = Stack([x])\nx = Stack([{children}])\n");
+        let mut stream = StreamParser::new(library(), None);
+        stream.push(&head);
+        // Complete and cache the replacement before measuring later changes.
+        stream.push("a = -1\n");
+        let before = test_alloc::allocation_calls();
+        for i in 0..30 {
+            std::hint::black_box(stream.push(&format!("a = {i}\n")));
+        }
+        test_alloc::allocation_calls() - before
     };
-    let unrelated = cost("unused");
-    let obsolete = cost("a");
+    let narrow = cost(1);
+    let wide = cost(600);
     assert!(
-        obsolete < unrelated * 3.0,
-        "obsolete reference {obsolete:.6}s, unrelated {unrelated:.6}s"
+        wide < narrow + 500,
+        "obsolete reference: narrow {narrow}, wide {wide} allocations"
     );
 }
 
@@ -623,10 +597,10 @@ fn changing_partial_flags_shares_unchanged_reach_trees() {
         fastest(5, || {
             let mut stream = StreamParser::new(library.clone(), None);
             stream.push(&head);
-            // Warm both partial variants before timing.
+            // Warm both partial variants before counting.
             stream.push("pending = Text(");
             stream.push("\"done\")\n");
-            let start = now();
+            let start = count();
             for _ in 0..40 {
                 if toggle {
                     std::hint::black_box(stream.push("pending = Text("));
@@ -636,7 +610,7 @@ fn changing_partial_flags_shares_unchanged_reach_trees() {
                     std::hint::black_box(stream.push(""));
                 }
             }
-            (now() - start) / 80.0
+            (count() - start) / 80.0
         })
     };
     let unchanged = cost(false);
@@ -677,18 +651,18 @@ fn structurally_unchanged_reparsed_defaults_keep_expensive_followers() {
         assert!(!whole.size_limited, "{seed}");
         streams_as_without_reuse(&format!("{program}    "), &library, limits, 29);
         let evaluating = fastest(3, || {
-            let start = now();
+            let start = count();
             std::hint::black_box(parse_with_limits(&program, &library, None, limits));
-            now() - start
+            count() - start
         });
         let pushing = fastest(3, || {
             let mut stream = StreamParser::with_limits(library.clone(), None, limits);
             stream.push(&program);
-            let start = now();
+            let start = count();
             for _ in 0..20 {
                 std::hint::black_box(stream.push(" "));
             }
-            (now() - start) / 20.0
+            (count() - start) / 20.0
         });
         assert!(
             pushing < evaluating / 8.0,
@@ -718,11 +692,11 @@ fn scalar_runs_move_to_the_now_cached_expression() {
                 stream.push(&format!("{head}\n"));
             }
             stream.push("");
-            let start = now();
+            let start = count();
             for _ in 0..40 {
                 std::hint::black_box(stream.push(""));
             }
-            (now() - start) / 40.0
+            (count() - start) / 40.0
         })
     };
     let already_cached = cost(false);
@@ -759,9 +733,9 @@ fn streaming_completed_defaults_costs_time_linear_in_its_length() {
         let mut stream = StreamParser::new(library.clone(), None);
         let (mut early, mut late) = (0.0, 0.0);
         for (i, chunk) in pushes.iter().enumerate() {
-            let started = now();
+            let started = count();
             std::hint::black_box(stream.push(chunk));
-            let spent = now() - started;
+            let spent = count() - started;
             if i < quarter {
                 early += spent;
             } else if i >= pushes.len() - quarter {
@@ -793,25 +767,25 @@ fn a_default_that_keeps_running_out_costs_about_one_evaluation_in_all() {
     let limits = Limits::default();
     assert!(parse_with_limits(&program, &library, None, limits).size_limited);
     let once = fastest(3, || {
-        let started = now();
+        let started = count();
         std::hint::black_box(parse_with_limits(&program, &library, None, limits));
-        now() - started
+        count() - started
     });
     let pushes = chunks(&program, 10);
     let streamed = fastest(3, || {
         let mut stream = StreamParser::with_limits(library.clone(), None, limits);
-        let started = now();
+        let started = count();
         for chunk in &pushes {
             std::hint::black_box(stream.push(chunk));
         }
-        now() - started
+        count() - started
     });
     assert!(
         streamed < once * 10.0,
-        "streamed in {} pushes: {:.0} ms; parsed once: {:.1} ms",
+        "streamed in {} pushes: {:.0} allocations; parsed once: {:.1} allocations",
         pushes.len(),
-        streamed * 1e3,
-        once * 1e3
+        streamed,
+        once
     );
 }
 
@@ -902,7 +876,7 @@ fn state_defaults_share_materialized_owners_between_streaming_modes() {
             stream.push(&head);
             stream.push("pending = Text(");
             stream.push("\"done\")\n");
-            let start = now();
+            let start = count();
             for _ in 0..40 {
                 if toggle {
                     std::hint::black_box(stream.push("pending = Text("));
@@ -912,7 +886,7 @@ fn state_defaults_share_materialized_owners_between_streaming_modes() {
                     std::hint::black_box(stream.push(""));
                 }
             }
-            (now() - start) / 80.0
+            (count() - start) / 80.0
         })
     };
     let unchanged = cost(false);
@@ -1042,7 +1016,7 @@ fn closing_one_fence_and_opening_another_keeps_completed_statements() {
         fastest(5, || {
             let mut stream = StreamParser::new(lib.clone(), None);
             stream.push(&head);
-            let start = now();
+            let start = count();
             for _ in 0..60 {
                 std::hint::black_box(stream.push(if advance {
                     "`\n```openui\nnext = 0\n``"
@@ -1050,7 +1024,7 @@ fn closing_one_fence_and_opening_another_keeps_completed_statements() {
                     ""
                 }));
             }
-            now() - start
+            count() - start
         })
     };
     let unchanged = cost(false);
@@ -1109,7 +1083,7 @@ fn mode_changes_share_a_deep_reach_tree_used_many_times() {
             assert!(!result.depth_limited && !result.size_limited);
             stream.push("pending = Text(");
             stream.push("\"done\")\n");
-            let start = now();
+            let start = count();
             for _ in 0..40 {
                 if toggle {
                     std::hint::black_box(stream.push("pending = Text("));
@@ -1119,7 +1093,7 @@ fn mode_changes_share_a_deep_reach_tree_used_many_times() {
                     std::hint::black_box(stream.push(""));
                 }
             }
-            now() - start
+            count() - start
         })
     };
     let unchanged = cost(false);

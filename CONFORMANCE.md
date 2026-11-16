@@ -39,19 +39,21 @@ These recordings cover almost no state: the museum stream declares only
 a non-null pristine default. Three synthetic
 ASCII programs run one byte at a time under all three assumptions, exercising
 truncated strings, arrays and objects, expression defaults, user edits, and
-declarations disappearing and returning. Pristine containers finish these
-programs; reuse while subsequent declarations stream is outside these cases.
+declarations disappearing and returning. A separate byte-stream fixture, `streaming-defaults.json`, includes declarations
+following completed arrays, objects and expression defaults, with user sets
+before and after completion. Its identity and notification histories are pinned
+by `streaming_default_notifications`; values and exported snapshots agree.
 Snapshot/read container identities are
 mapped bijectively across the runtimes; default inputs are checked for content
 and aliases within each parse result. Persistence timing remains an explicit
 assumption; the renderer is not vendored.
 
 <!-- runtime-counts -->
-Runtime trees: 1184 total, 1175 matching, 0 pending, 9 divergences.
+Runtime trees: 1186 total, 1175 matching, 0 pending, 11 divergences.
 
 Runtime pending: #34=0, #35=0, #36=0, #38=0.
 
-Runtime coverage: 547 dynamic, 183 reading state, 581 referencing statements, 78 with runtime errors; 1500687 streaming steps per scenario, 156638 differing observations, 14539 differing trees.
+Runtime coverage: 549 dynamic, 184 reading state, 581 referencing statements, 80 with runtime errors; 1501085 streaming steps per scenario, 156648 differing observations, 14544 differing trees.
 
 Original runtime coverage: 972 cases, 356 dynamic, 70 reading state, 506 referencing statements, 16 with runtime errors; recorded: 152 cases, 2 declaring state.
 
@@ -89,7 +91,9 @@ still resolve. The live `binding-undecided-spec.json` fixture pins E10's quoted
 literal, E11's backslash literal, the delimiter collision and an unambiguous
 delimiter name. Every upstream mark there is either recovered or explicitly
 reported as undecided, and no recovered mark is wrong. `insert` resolves a
-reported pair as a binding. Without structural properties only well-formed,
+reported pair as a binding; `remove` resolves it as not a binding. Ambiguous
+signature-only delimiters or repeated names report the recognized candidates
+as undecided and never mark them. Without structural properties only well-formed,
 ordinary-name signatures are reliable, and diagnostics cannot enumerate names
 hidden by malformed signature-only text. Structural names with missing or
 malformed signatures are reported as undecided. The tree harness refuses
@@ -313,12 +317,13 @@ evaluation work stays spent and state reads retain normal credit.
 Borrowed/raw and shared/prepared inputs have identical events, state and failure
 points, including runs ending in a cut. Shared programs cache measurement and
 statement indexes for the current immutable allocation. A suspended run holds
-that Arc, so `Arc::make_mut` by the embedder clones the program. Borrowed programs,
+only a Weak identity: `Arc::make_mut` on a uniquely held program moves it and
+invalidates the old measurement without cloning the program. Borrowed programs,
 fresh equal programs and alternating Arcs pay bounded measurement per supply,
 outside evaluation work. Raw references are prepared once; prepared references
 take precedence without preparing unused raw values. Preparation retains the
 existing tree lookup representation and caches its measured input token without
-walking reference bodies again. PreparedReferenceValues, PreparedInput and Store
+walking reference bodies again. PreparedReferenceValues, PreparedProgram, PreparedStart, receipt types and Store
 remain Send + Sync.
 The reference supplies and prior measurement owners are never retained in the
 suspended run. Lazy computed defaults and the current shared-program cache are
@@ -537,8 +542,8 @@ The `non-string-binding-target` pin retains complete write records on both
 sides, including Rust's explicit refusal and unchanged store. No key is
 converted to a string to make that replay run.
 A named structural comparison permits just the resulting `display` truthiness
-difference, with both snapshots omitting the non-JSON value. For the map
-target only, a normalizer additionally checks equality after changing just the
+difference, with both snapshots omitting the non-JSON value. For the two named descriptor map
+target cases only, a normalizer additionally checks equality after changing just the
 single pinned error message. It asserts its exact case name and reason and
 cannot apply to general comparisons or other divergence entries.
 It avoids adding engine-specific invalid-member inspection to the core failure
@@ -564,8 +569,11 @@ scripts/fuzz.sh --edits --seed 1 --count 10000
 ```
 
 
-Pending one-shot comparison also checks the ordered errors belonging to
-independent props. An error identifies its component, optional statement and
+Pending comparison checks ordered errors belonging to independent props,
+global errors without prop hints, and errors attributed to an unknown owner.
+Only an error with a known raw owner shared with an out-of-scope prop is
+excluded; ambiguous owner identities require every corresponding prop to be
+in scope. An error identifies its component, optional statement and
 prop, but has no tree path. If multiple elements share that identity, errors
 are compared only when every corresponding raw prop is in scope; an identity
 shared with an out-of-scope prop cannot be separated reliably. Snapshots and
@@ -594,9 +602,11 @@ supplied query data, including argument failures before the failed builtin
 call. `runtime/substitution-errors` pins malformed loop templates against the
 reference, including map callbacks naming `substituteRef` and missing children
 reporting `node.k`. The separate `runtime/substitution-map-target` case pins the remaining
-call-target wording difference for a non-callable own `map:3` on each of the
-three collections (array elements, object entries and call args). Both complete
-outputs are committed; no other case or pending feature receives that allowance.
+call-target wording difference for a non-callable own `map` value on each of the
+three collections (array elements, object entries and call args). The adjacent `runtime/substitution-map-null` and `runtime/descriptor-map-null`
+cases pin an own `map: null` beside `map: 3`: upstream names null, Rust names
+undefined. Both complete outputs are committed; no other case or pending
+feature receives that allowance.
 The typed and descriptor substitution walkers remain separate: consolidating
 traversal requires refactoring the typed walker used by parsing, which this
 round leaves unchanged. Operators, iteration and literal construction remain
@@ -732,7 +742,11 @@ for its produced bytes; cloning an owned String to return it still copies it.
 The argument cache retains one current projection. A miss drops that projection
 before allocating its replacement; unchanged validation entries hold weak
 identities, with at most one transformed validation result retained separately.
-A distinct combination can rebuild its owned record and copy scalar text again.
+A distinct combination rebuilds its owned record; released unchanged text
+projections are moved into the next record rather than copied. A borrowed
+index avoids scanning previous fields for each new field. `rebuild_cost` pins
+allocation traffic for wide misses and retained rows; these counts do not time
+allocation-free scans or prove a CPU bound for weak-entry cleanup.
 A 1,000-call, 500 KB changing-combination allocation test caps this at 2.1 MB.
 The argument cache is released before an action run suspends. None of these
 caches earns input allowance; ADR 0003's state/extra-only rule is unchanged.
@@ -744,11 +758,12 @@ An unset default reads as null (`getResult` for an unregistered query); the
 read carries its recorded cut, so normal tree cut recovery retains the raw
 reference, and an action read refuses that write. `query_default_limits`
 pins unread and read cases, cycles, and lazy defaults during action runs.
-For that exact no-space program, default shared work first runs out at
-m=2653 (12,199 source bytes); m=2652 (12,194 bytes) remains unflagged.
-Both parser results are uncut. Raising only work to 128M clears this boundary;
-the discarded default's result-room cut stays local. These two sides are
-asserted by `unread_defaults_stop_flagging_only_at_actual_shared_work_exhaustion`.
+The canonical program measure now gives drawing the same AST-JSON credit as
+action runs (#49): the old main boundary m=2653 (12,199 source bytes) is
+unflagged, as are m=2652 and the tested m=4000. Parser results are unchanged.
+Fixed work of 1M still flags m=2652/2653; 128M clears it, and the discarded
+default's result-room cut stays local. These cases are asserted by
+`unread_defaults_stop_flagging_only_at_actual_shared_work_exhaustion`.
 
 The literal retained `@Each($rows,r,@Id($big))`, with 1,000 rows and a
 million-item list, needs about 2 GB even when every number is one digit, so
@@ -874,16 +889,18 @@ parked. These checks do not establish general intermediate-heap bounds.
 [ADR 0008](docs/adr/0008-share-runtime-substitution-bodies.md) records an eager temporary/opaque callback family that prevents a universal
 room-plus-input peak bound while preserving every currently uncut program.
 `temporary_array_semantics` pins the counterexample. Matching component
-substitutions now share bodies: `nested_loop_memory` pins unchanged archived
-outputs/flags and one-row prices, and a 128,000-byte additional-heap ceiling
+substitutions now share bodies: `nested_loop_memory` pins unchanged completed main outputs and one-row work,
+plus the revised room/cut thresholds, and a 128,000-byte additional-heap ceiling
 at levels 1–8 in typed and shared-descriptor forms. This removes the observed
 per-level doubling; it does not assert a depth-independent peak.
 
 Runtime configuration and serialization retain their fallible signatures, with
 explicit opt-in limits. Default binding/function configuration adds no quota;
 explicit constructors bound input and retained names. Default tree/event/value
-and snapshot serializers preserve main's bytes without a second size, work or
-depth admission. Evaluation and Store admission already constrain their results;
+serializers preserve admitted bytes without a second size, work or depth
+admission. Snapshot JSON omits undefined entries, matching both bindings and
+JSON.stringify; the raw Store snapshot retains those names. Admission still
+counts undefined/pristine-only entries as null (ADR 0005). Evaluation and Store admission already constrain their results;
 raw props in cut trees, errors and JSON envelopes need not fit root room.
 Caller-created or edited data can use the `_with_limits` serializers for bounded
 export. Core `Ast::to_json`, `Ast::walk`, `Value::from_json` and
@@ -891,13 +908,13 @@ export. Core `Ast::to_json`, `Ast::walk`, `Value::from_json` and
 `owner_walks` additionally pins deep Debug/equality and last-owner releases on
 64 KiB. `deep_callback_walk` exercises a real 34,000-level callback chain and
 an uncapped 100,000-node walk at its bottom; the old absolute bound panics at
-1,174 segments. Individual prepared reference tokens keep the legacy unmeasured default
-constructor. Explicit preparation enforces work and depth; its measuring ceiling
-is the larger of result room and the maximum input-work allowance, not an 8 MiB
-value-admission cap. In particular 9 MiB strings and five-million-item arrays
-can be prepared. An explicitly refused token flags only when read. The legacy
-prepaid-byte contract is retained; this does not change the open credit surface.
-Runtime reference sets continue to use core-verified receipts. Bulk
+1,174 segments. Individual prepared reference tokens measure their own bytes and logical height;
+callers cannot state a size. Default preparation uses a 32,768-level bound,
+with explicit preparation available. The ceiling remains the larger of result
+room and the maximum setup-work allowance, rather than an 8 MiB value cap.
+Whole prepared reads enforce evaluation depth, including shallow uses such as
+`q.length`, `q == q` and `@Count(q)`, just like raw scope reads. Preparation
+caches setup work; output still pays in full. Bulk
 preparation records an exhausted tail once and flags a declared reference only
 when read. Name enumeration remains caller setup, linear in supplied key data
 plus JavaScript key ordering; it does not spend run evaluation work.
@@ -952,6 +969,14 @@ implementation, pinned by
 `json_function_results_cannot_restore_custom_authority_even_from_real_arguments`.
 Ordinary JSON-facing implementations compare directly; arbitrary Rust identity-
 preserving implementations are not equivalent across a JSON boundary.
+
+Owned and borrowed query/tool supplies use the same core-measured reference
+receipt and earn the same input credit. Library-function returns remain computed
+results, as on main: the core measures their bodies and reuses those measurements
+for validation/projection, while output spends the existing allowance. Crossing
+the host JSON boundary does not mint a fresh allowance. This preserves main's
+successful callback calls and its existing cuts; ADR 0003's computed-output rule
+and ADR 0010's supplied-input accounting apply together.
 
 ## Parser materialisation rules (#46, #51, #52, #28)
 
@@ -1029,3 +1054,124 @@ These are representation changes: reference charges, cut points and
 ordered errors/unresolved/orphaned names keep their existing rules. The counted
 and allocator regressions are described in TESTING.md; their finite bounds do
 not establish a universal runtime heap bound (ADR 0008).
+
+### Runtime accounting follow-ups (#44, #47, #49, #50, #54, #55, #62)
+
+`ExpressionEvaluator::supply_input` accepts one program, one starting-input
+receipt and one core-prepared reference receipt. Generic size claims and receipt
+addition are removed. Program and starting receipts are tied to evaluation
+limits; a mismatched receipt is a typed, state-preserving refusal. Measurement
+is caller setup and does not spend evaluation work. The largest combined supply
+raises one floor; resumed runs retain no supplied reference owners. Drawing
+and action runs use `PreparedProgram`'s canonical byte measure. Drawing retains
+its prior setup-refusal classification through a separate bounded core check;
+that check supplies no second credit value. Measurement of an over-deep branch
+retains independently measured input, including bounded structural prefixes;
+order does not erase a fitting sibling's credit. Scalar payload state/key reads
+earn credit for each changed scalar actually read; consecutive equal scalars earn it once. The latest scalar per name is compared exactly (number bits and string contents), so changing back earns credit again. A container or undefined state read ends that scalar comparison streak. Keys earn credit once per run; output copies still spend work and room.
+
+Typed and data plans earn the same credit for the 301-character concatenation
+in `accounting_followups`. Their expression room prices remain different:
+604 bytes for typed syntax, 45,753 for descriptor data. The typed evaluator
+flattens concatenations; the data evaluator retains its prefix reservations.
+Both exact boundaries and the cuts one byte below are pinned. Unifying those
+evaluation costs needs a separate representation/traversal change; no prefix
+charges are silently removed here. An oversized message unused by a valid
+step-array plan is measured but never copied or retained. A default/legacy
+message that would be emitted still refuses past its configured ceiling.
+Query defaults remain lazy and frozen per action run across resumes, as above.
+AST JSON, rather than unavailable original source text, remains supplied input:
+compact plans can reach the scaled work ceiling early; the ceiling is never
+refreshed by resupply.
+
+Deferred ASTs read from state earn their own measuring work incrementally.
+Shared nodes earn credit once, including DAGs with more than 4 GiB of virtual
+JSON; every serialized output occurrence is still charged. Fixed work and hard
+ceilings remain fixed. Computed `false` projections cost five JSON bytes;
+unchanged supplied containers already had that price. The corresponding work
+charge also rises by one per affected projection. State, raw query and prepared query
+lookups leave depth checks to consumption. A member, length, Count, truthiness or
+equality read need not visit unrelated subtrees; coercion and whole-value output
+retain their existing depth checks. Input measurement has its own bounded
+depth, separate from the expression position. Views remain bound to the
+owning evaluation thread because their operations can resume its local account.
+Fixed-key marker string predicates borrow their fields without length charges.
+
+Completed streaming defaults have an explicit notification divergence (#45).
+Upstream rebuilds some completed containers while later statements arrive;
+Rust's parser reuses them. `Store::initialize` preserves Object.is-style identity
+for direct callers and cannot infer a parser generation from an identical
+container. Synthesizing a notification for every identical pristine container
+would break those direct calls; reproducing the full upstream history requires
+new parser provenance or different parser reuse/cost. Parsing is kept unchanged.
+`streaming_default_notifications` pins both histories for arrays, objects and
+expression defaults, including user edits; all values and JSON still agree.
+The evaluated-tree streaming harness continues comparing values/errors/JSON,
+with notification counts covered by this separate divergence fixture.
+
+Nested element rebuilding keeps main's room accounting. The proposed #55
+refund conflicts with the review peak requirement: at rows=3, depth=8 and
+room=4,100,000 it raised unique-leaf peak heap from 3,732,632 to 7,472,776
+bytes while both evaluations cut. It also admitted rows=3, depth=7, which main
+cuts. The refund is deferred; `nested_element_rebuilds_keep_the_existing_room_boundary`
+pins the 3,921-byte three-row Box witness at room 10,735, with the adjacent cut.
+`review_peaks` pins both review shapes below main's measured peaks. Runtime
+arrays release unused growth capacity and rebuilt element props reserve their
+known field count. These change allocation capacity, never parser cost, work,
+room, output bytes or flags. No general live-memory bound is claimed.
+
+Undefined snapshot members are omitted by `Store::snapshot_json`, matching
+upstream persisted JSON and both bindings. This intentionally changes the public
+Rust export and its round trip: after `$x=5`, setting `$x` undefined now exports
+`{}` instead of `{"$x":null}`. Initializing a new Store from that JSON restores
+the declared default 5 rather than null; an undeclared undefined name disappears.
+The raw snapshot still retains undefined names. The public-interface test
+`undefined_snapshot_round_trip_restores_defaults_and_omits_undeclared_names` pins
+both declared and undeclared names.
+
+The one-shot accounting corpus has eight net room increases from five-byte
+`false` projections (minimum room on main → current):
+
+| Case | Minimum room |
+| --- | ---: |
+| `hand/20-operator-precedence` | 514 → 515 |
+| `hand/66-lexer-operators` | 535 → 536 |
+| `spec/evaluation/005-op-coerce-values` | 546 → 547 |
+| `runtime/descriptor-fields-types` | 7,458 → 7,461 |
+| `runtime/each-state-kinds` | 1,009 → 1,010 |
+| `runtime/query-supplied-false` | 114 → 115 |
+| `runtime/binding-non-string-target` | 2,199 → 2,200 |
+| `runtime/action-steps` | 668 → 669 |
+
+`false_output_needs_five_bytes_and_true_needs_four` pins the primitive edge;
+`loop_output_accounting` pins repeated computed booleans in native and descriptor
+forms; `false_projection_moves_only_the_documented_corpus_room_edges` checks
+the eight current corpus thresholds and their adjacent cuts. Persisted initialization
+adds these moves (work and room deltas from main):
+
+| Case | Work | Room |
+| --- | ---: | ---: |
+| `hand/107-operands-that-need-parentheses` | +1 | +1 |
+| `runtime/binding-function-value` | +1 | +1 |
+| `hand/20-operator-precedence` | +2 | +2 |
+
+Parser projection prices and already supplied JSON containers are unchanged.
+
+Drawing retains its historical setup saturation guard separately from input
+credit. `drawing_keeps_the_existing_saturated_setup_bound_before_unread_deep_declarations`
+pins a caller-built program with a 44 MB U+100000 string and an unread
+2,000-level array. In main's visitation order the six-unit high-codepoint
+estimate saturates the guard before the deep array, so the program completes;
+reversing declarations reaches the depth cut. Using actual JSON string bytes
+for this guard would cut the formerly completed ordering. That estimate remains
+only in `program_setup`'s refusal check; it never grants input credit. Program
+credit itself uses one core measure shared by drawing and action runs. Removing
+or modernizing the historical guard is deferred because it conflicts with
+main's completed results.
+
+Same-session re-entry from a name callback uses the suspended callback's account
+location. Callback frames register that location before calling host code and
+remove it on return or unwind. Constructor callbacks run before an account is
+moved into a temporary saved slot. The old debug assertion was reachable and is
+removed; `own_session_with_scope_reentry_uses_its_suspended_account_and_limits`
+pins both returned values and work/room charged to the owning session.

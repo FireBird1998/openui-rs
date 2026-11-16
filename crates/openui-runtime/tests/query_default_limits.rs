@@ -25,7 +25,7 @@ fn unread_default_room_and_depth_cuts_are_local_but_work_cuts_are_shared() {
             r.depth_limited
         );
         assert!(!r.depth_limited);
-        assert_eq!(r.size_limited, m >= 2653);
+        assert!(!r.size_limited);
     }
     for (source, read) in [("root=Box(1)", false), ("root=Box(q)", true)] {
         let p = parse(
@@ -64,7 +64,7 @@ fn default_cycles_cut_reads_and_do_not_flag_unread_trees() {
 #[test]
 fn unread_defaults_stop_flagging_only_at_actual_shared_work_exhaustion() {
     let l = library();
-    for (m, cut, bytes) in [(2652, false, 12194), (2653, true, 12199)] {
+    for (m, cut, bytes) in [(2652, false, 12194), (2653, false, 12199)] {
         let list = (0..m).map(|i| i.to_string()).collect::<Vec<_>>().join(",");
         let source = format!("L=[{list}]\nq=Query(\"t\",{{}},@Each(L,i,L))\nroot=Box(1)");
         assert_eq!(source.len(), bytes);
@@ -73,6 +73,15 @@ fn unread_defaults_stop_flagging_only_at_actual_shared_work_exhaustion() {
         let r = evaluate_tree((&p).into(), &Store::new());
         assert_eq!(r.size_limited, cut, "m={m}");
         assert!(!r.depth_limited);
+        let fixed = evaluate_tree_with_limits(
+            (&p).into(),
+            &Store::new(),
+            Limits::DEFAULT.with_work(1_000_000),
+        );
+        assert!(
+            fixed.size_limited && !fixed.depth_limited,
+            "one allowance remains shared"
+        );
         let r = evaluate_tree_with_limits(
             (&p).into(),
             &Store::new(),

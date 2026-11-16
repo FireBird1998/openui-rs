@@ -1,7 +1,7 @@
 //! Public value/evaluator layout sizes for independent baseline comparisons.
 use openui_lang::{
     Ast, Element, EvaluationFlags, EvaluationResult, EvaluationSession, ExpressionEvaluator,
-    ExpressionOutput, ExpressionValue, JsObject, Limits, PreparedInput, PreparedReferenceValue,
+    ExpressionOutput, ExpressionValue, JsObject, Limits, PreparedProgram, PreparedReferenceValue,
     Value,
 };
 #[global_allocator]
@@ -18,7 +18,7 @@ fn main() {
     size!(JsObject<Value>);
     size!(Limits);
     size!(PreparedReferenceValue);
-    size!(PreparedInput);
+    size!(PreparedProgram);
     size!(EvaluationFlags);
     size!(EvaluationResult);
     size!(EvaluationSession<'static>);

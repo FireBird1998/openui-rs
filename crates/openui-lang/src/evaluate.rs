@@ -30,7 +30,9 @@ use expression::expression_bytes;
 pub use expression::{
     EvaluationFailure, EvaluationFlags, EvaluationResult, EvaluationScope, EvaluationSession,
     ExpressionEvaluator, ExpressionOperation, ExpressionOutput, ExpressionType, ExpressionValue,
-    PreparedInput, PreparedReferenceValue, evaluate_expression, evaluate_expression_with_limits,
+    InputSupplyError, PreparedProgram, PreparedReferenceInput, PreparedReferenceValue,
+    PreparedStart, SuppliedInput, SuppliedInputReceipt, SuppliedProgram, SuppliedStart,
+    evaluate_expression, evaluate_expression_with_limits,
 };
 
 pub(crate) use expression::{
@@ -1533,10 +1535,15 @@ fn to_value_mode<const PRESERVE: bool, const CHARGE: bool>(
     let Some(_level) = BorrowedLevel::enter(limits) else {
         return Some(Value::Null);
     };
-    if !(if CHARGE {
-        spend_in(limits, json_cost(js))
+    let cost = if PRESERVE && matches!(js, Js::Bool(false) | Js::Proto(Kind::Boolean)) {
+        5
     } else {
-        step(json_cost(js))
+        json_cost(js)
+    };
+    if !(if CHARGE {
+        spend_in(limits, cost)
+    } else {
+        step(cost)
     }) {
         return Some(Value::Null);
     }
@@ -1547,7 +1554,11 @@ fn to_value_mode<const PRESERVE: bool, const CHARGE: bool>(
         Js::Null => Value::Null,
         Js::Bool(b) => Value::Bool(*b),
         Js::Num(n) => Value::Num(*n),
-        Js::Str(s) => Value::Str(s.to_string()),
+        Js::Str(s) => Value::Str(if PRESERVE {
+            expression::take_argument_string(s).unwrap_or_else(|| s.to_string())
+        } else {
+            s.to_string()
+        }),
         Js::Arr(items) if PRESERVE && CHARGE && expression::buffered_projection() => {
             return expression::project_buffered_array(items, limits);
         }
@@ -1731,14 +1742,22 @@ fn evaluate_in<S: Names>(node: &Ast, scope: &Scope<S>, limits: &EvalLimits) -> J
         Ast::Null | Ast::Ph(_) => Js::Null,
         Ast::StateRef(name) => scope.state(name),
         Ast::Ref(name) | Ast::RuntimeRef { n: name, .. } => scope.reference(name),
-        Ast::Arr(els) => Js::Arr(Arc::new(
-            els.iter()
+        Ast::Arr(els) => Js::Arr(Arc::new({
+            let mut out: Vec<_> = els
+                .iter()
                 .take_while(|_| {
                     limits.cut.get().is_none() && (!S::RUNTIME || !expression::failed())
                 })
                 .map(|e| evaluate_in(e, scope, limits))
-                .collect(),
-        )),
+                .collect();
+            // Runtime arrays can be retained by every iteration of an outer
+            // loop. Return unused growth capacity after constructing each one;
+            // no reservation or evaluator work changes. Parsing erases this.
+            if S::RUNTIME {
+                out.shrink_to_fit();
+            }
+            out
+        })),
         Ast::Obj(entries) => {
             let mut out = JsObject::new();
             for (key, v) in entries.iter() {
@@ -2291,8 +2310,9 @@ fn substitute_in<P: SubstitutionPolicy>(
                 && let (Some((key, old)), Some(arg), Some(replacement)) =
                     (props.iter().next(), args.first(), new_args.first())
                 && same_ast_body(arg, old)
+                && let Some(target) = Arc::make_mut(new_props).get_mut(key)
             {
-                Arc::make_mut(new_props).define(key, replacement.clone());
+                *target = replacement.clone();
             }
             if new_args.is_none() && new_props.is_none() {
                 return None;

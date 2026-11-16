@@ -25,14 +25,14 @@ fn first_same_deeper_and_shallower_uses_preserve_their_exact_boundary() {
     .unwrap();
     let l = Library::from_json_schema(&j);
     let f = reuse::functions(&j);
-    // Recorded by examples/depth_boundaries.rs against git archive db80c86.
-    // Each oracle row contains only ONE value use; main's old priming bug
-    // therefore cannot hide a deeper use in the expected result.
-    let rows = include_str!("support/depth-first-use.tsv")
+    // Recorded by examples/depth_boundaries.rs after separating lookup from
+    // consumption depth. Each row has ONE value use; a previous read cannot
+    // hide a deeper use. The archived depth-first-use files retain main's rules.
+    let rows = include_str!("support/depth-current-use.tsv")
         .lines()
         .map(|line| line.split('\t').collect::<Vec<_>>())
         .collect::<Vec<_>>();
-    let rows_bare = include_str!("support/depth-first-use-bare.tsv")
+    let rows_bare = include_str!("support/depth-current-use-bare.tsv")
         .lines()
         .map(|line| line.split('\t').collect::<Vec<_>>())
         .collect::<Vec<_>>();

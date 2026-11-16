@@ -236,8 +236,7 @@ fn measure(
                         Value::Str(s) => todo.push(Item::S(s)),
                         Value::Element(e) => todo.push(Item::E(e, d)),
                         Value::Ast(a) => {
-                            peak = usize::MAX;
-                            todo.push(Item::A(a, d));
+                            todo.push(Item::A(a, d.saturating_add(1)));
                         }
                         Value::Arr(a) => {
                             if !first(
@@ -282,6 +281,7 @@ fn measure(
                     }
                 }
                 Item::A(a, d) => {
+                    peak = peak.max(d);
                     if d >= limits.depth() {
                         return Err(true);
                     }
@@ -300,15 +300,15 @@ fn measure(
                     add =
                         match a {
                             Ast::Str(_) => r#"{"k":"Str","v":}"#.len(),
-                            Ast::Num(n) => crate::json_number_len(*n),
+                            Ast::Num(n) => r#"{"k":"Num","v":}"#
+                                .len()
+                                .saturating_add(crate::json_number_len(*n)),
                             Ast::Bool(b) => {
-                                if *b {
-                                    4
-                                } else {
-                                    5
-                                }
+                                r#"{"k":"Bool","v":}"#
+                                    .len()
+                                    .saturating_add(if *b { 4 } else { 5 })
                             }
-                            Ast::Null => 4,
+                            Ast::Null => r#"{"k":"Null"}"#.len(),
                             Ast::Ref(_) => r#"{"k":"Ref","n":}"#.len(),
                             Ast::Ph(_) => r#"{"k":"Ph","n":}"#.len(),
                             Ast::StateRef(_) => r#"{"k":"StateRef","n":}"#.len(),

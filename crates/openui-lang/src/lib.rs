@@ -8,6 +8,16 @@
 //! output byte for byte, after every streamed chunk. The repository's
 //! `CONFORMANCE.md` says how that's checked.
 //!
+//! Public expression evaluation uses [`EvaluationSession`].
+//! [`ExpressionEvaluator::supply_input`] measures one current supply and raises
+//! its largest input floor without replenishing spent work. [`PreparedProgram`]
+//! and starting receipts are bound to that session's limits. Reference tokens
+//! measure their own JSON bytes and logical height; callers cannot claim a size.
+//! Supplied deferred syntax earns measuring credit once per shared node. Computed
+//! callback output earns no input credit. Limits still end in flags or typed
+//! refusal. State and raw/prepared query receivers do not impose expression
+//! depth on unvisited parts; whole-value consumption still enforces depth.
+//!
 //! # Parsing
 //!
 //! A [`Library`] comes from the JSON Schema that `library.toJSONSchema()`
@@ -369,7 +379,9 @@ pub use enrich::{EnrichedError, enrich_errors, enriched_errors_to_json};
 pub use evaluate::{
     EvaluationFailure, EvaluationFlags, EvaluationResult, EvaluationScope, EvaluationSession,
     ExpressionEvaluator, ExpressionOperation, ExpressionOutput, ExpressionType, ExpressionValue,
-    PreparedInput, PreparedReferenceValue, evaluate_expression, evaluate_expression_with_limits,
+    InputSupplyError, PreparedProgram, PreparedReferenceInput, PreparedReferenceValue,
+    PreparedStart, SuppliedInput, SuppliedInputReceipt, SuppliedProgram, SuppliedStart,
+    evaluate_expression, evaluate_expression_with_limits,
 };
 pub use expr::{parse_expression, parse_expression_with_limits};
 pub use free::free_json;

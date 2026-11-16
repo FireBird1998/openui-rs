@@ -6,7 +6,6 @@ pub(super) struct InputSize {
     depth: usize,
     work: usize,
     done: bool,
-    refused: bool,
     seen: HashMap<(u8, usize), usize>,
 }
 impl InputSize {
@@ -19,7 +18,6 @@ impl InputSize {
                 .work_for(usize::MAX)
                 .max(limits.work_for(usize::MAX)),
             done: false,
-            refused: false,
             seen: HashMap::new(),
         }
     }
@@ -37,8 +35,10 @@ impl InputSize {
         if self.done {
             return false;
         }
-        if d >= self.depth || self.work == 0 {
-            self.refused = true;
+        if d >= self.depth {
+            return false;
+        }
+        if self.work == 0 {
             self.done = true;
             return false;
         }
@@ -49,20 +49,18 @@ impl InputSize {
         if self.done {
             return;
         }
-        if s.len() > self.work {
-            self.refused = true;
-            self.done = true;
-            return;
-        }
         if s.len() > self.ceiling.saturating_sub(self.bytes) {
             self.clamp();
+            return;
+        }
+        if s.len() > self.work {
             return;
         }
         self.work -= s.len();
         self.add(crate::json_string_len(s).saturating_add(2));
     }
     pub(super) fn measured_bytes(&self) -> usize {
-        if self.refused { 0 } else { self.bytes }
+        self.bytes
     }
     fn first<T>(&mut self, kind: u8, a: &Arc<T>) -> bool {
         Arc::strong_count(a) == 1

@@ -2,10 +2,14 @@
 
 mod input_identity;
 mod input_size;
+mod program_setup;
 use input_identity::InputIndex;
 mod inputs;
 mod reference_input;
-pub use inputs::PreparedInput;
+pub use inputs::{
+    InputSupplyError, PreparedProgram, PreparedReferenceInput, PreparedStart, SuppliedInput,
+    SuppliedInputReceipt, SuppliedProgram, SuppliedStart,
+};
 
 use super::*;
 use crate::{Limits, PreparedValidationSchema};
@@ -169,7 +173,6 @@ pub trait EvaluationScope {
     /// The evaluator restricts this to canonical elements with bounded simple
     /// props, in per-item context and away from the depth boundary. The default
     /// retains the fully literalized public projection for custom scopes.
-    #[doc(hidden)]
     fn allow_direct_each_reference(&self) -> bool {
         false
     }
@@ -178,7 +181,6 @@ pub trait EvaluationScope {
     /// its discarded contents alive. If it takes or changes it, it must return
     /// a replacement; returning None must leave the projection unchanged.
     /// Every replacement is still measured and charged by the evaluator.
-    #[doc(hidden)]
     fn each_item_owned(
         &self,
         value: &mut Option<Value>,
@@ -196,8 +198,8 @@ impl EvaluationScope for () {}
 
 /// An external reference's cached representation and prepaid input size.
 ///
-/// The size must come from a prior bounded measurement and be included in
-/// [`EvaluationSession::new`]'s initial input bytes. This grants no credit on
+/// The core measures the size itself; include [`Self::input_bytes`] in
+/// [`EvaluationSession::new`]'s initial input bytes or use a supply receipt. This grants no credit on
 /// read and never discounts output construction. Containers remain shared;
 /// scalar strings are copied into shared storage once, when prepared.
 pub struct PreparedReferenceValue {
@@ -214,25 +216,29 @@ struct LargeReference {
     depth: usize,
 }
 impl PreparedReferenceValue {
-    /// Cache opaque supplied input without a new measuring/depth allowance.
-    /// The prepaid-byte contract is unchanged; reads earn no new credit.
-    /// Use `with_limits` to request a bounded measuring walk explicitly.
-    pub fn new(value: &Value, input_bytes: usize) -> Self {
-        Self::measured(value, input_bytes, 0)
+    /// Measure supplied input with default preparation bounds. Containers stay
+    /// shared; scalar strings are copied only after a successful measurement.
+    ///
+    /// ```compile_fail
+    /// // A caller cannot claim a reference's size.
+    /// openui_lang::PreparedReferenceValue::new(&openui_lang::Value::Null, 1_000_000);
+    /// ```
+    pub fn new(value: &Value) -> Self {
+        Self::with_limits(value, Limits::DEFAULT.with_depth(32_768))
     }
-    /// Set independent preparation limits, without spending evaluation work.
-    /// Measurement finishes before copying a scalar string into the token.
-    /// This bounds setup work/depth, not stored value size at result_size:
-    /// the measurement ceiling is max(result_size, work ceiling).
-    pub fn with_limits(value: &Value, input_bytes: usize, limits: Limits) -> Self {
+    /// Measure with explicit setup limits, without spending evaluation work.
+    /// Whole reads enforce the evaluation depth even if preparation allowed more.
+    pub fn with_limits(value: &Value, limits: Limits) -> Self {
         match reference_input::one(value, limits) {
-            // Preserve the opaque constructor's legacy prepaid/height contract.
-            // The bounded setup check does not add a new evaluation height claim.
-            Ok(_) => Self::measured(value, input_bytes, 0),
+            Ok((bytes, height)) => Self::measured(value, bytes, height),
             Err(flags) => Self {
                 measured: ReferenceMeasurement::Refused(flags),
             },
         }
+    }
+    /// Core-measured contribution to include in the initial supplied input.
+    pub fn input_bytes(&self) -> usize {
+        self.bytes()
     }
     fn measured(value: &Value, input_bytes: usize, depth: usize) -> Self {
         let value = match value {
@@ -278,37 +284,20 @@ impl PreparedReferenceValue {
             ReferenceMeasurement::Large(v) => v.depth,
         }
     }
-    /// Prepare named external values with one shared bounded value measurement.
-    /// Successful entries carry core-verified bytes/heights; failed entries earn
-    /// no input. This compatibility form reports every refused name, including
-    /// after work exhaustion. Enumeration/diagnostic metadata is caller setup.
-    #[doc(hidden)]
-    pub fn measure_all(
-        values: &JsObject<Value>,
-        limits: Limits,
-    ) -> (BTreeMap<&str, Result<Self, EvaluationFlags>>, usize) {
-        let (mut entries, bytes, tail) = Self::measure_all_with_tail(values, limits);
-        if tail.size_limited || tail.depth_limited {
-            for (name, _) in values.iter() {
-                entries.entry(name.as_str()).or_insert(Err(tail));
-            }
-        }
-        (entries, bytes)
-    }
     /// Prepare a bounded prefix and record an exhausted tail once. Returns the
     /// visited entries, combined byte contribution, and the tail's refusal.
     /// Missing keys in a truncated set must be refused with that flag if read.
     /// Preparation does not spend evaluation work or earn evaluation credit.
-    #[doc(hidden)]
     pub fn measure_all_with_tail(
         values: &JsObject<Value>,
         limits: Limits,
     ) -> (
         BTreeMap<&str, Result<Self, EvaluationFlags>>,
-        usize,
+        PreparedReferenceInput,
         EvaluationFlags,
     ) {
-        reference_input::prepare(values, limits)
+        let (entries, bytes, tail) = reference_input::prepare(values, limits);
+        (entries, PreparedReferenceInput { bytes }, tail)
     }
 }
 
@@ -316,7 +305,18 @@ type ScopedOperation<'a> = dyn Fn(&mut dyn FnMut()) + 'a;
 
 /// A scoped read-only view of an internal JS value. Inspection does not
 /// normalize undefined entries or allocate a public container projection.
-/// Views stay on the owning thread; hook views also retain their owner's allowance.
+/// Views are neither Send nor Sync: inspection can resume thread-local evaluation
+/// accounting, so they remain bound to the evaluating thread. Hook views also
+/// retain their owner's allowance.
+///
+/// ```compile_fail
+/// fn send<T: Send>() {}
+/// send::<openui_lang::ExpressionValue<'static>>();
+/// ```
+/// ```compile_fail
+/// fn sync<T: Sync>() {}
+/// sync::<openui_lang::ExpressionValue<'static>>();
+/// ```
 pub struct ExpressionValue<'a> {
     value: std::borrow::Cow<'a, Js>,
     operate: Option<&'a ScopedOperation<'a>>,
@@ -334,6 +334,25 @@ impl<'a> ExpressionValue<'a> {
         ExpressionValue {
             value: std::borrow::Cow::Owned(value),
             operate: self.operate,
+        }
+    }
+    /// Borrow a string-valued own field without copying or charging its text.
+    /// Fixed-key marker/type predicates can inspect data without evaluating it.
+    /// Computed properties and inherited methods are not string own fields.
+    pub fn string_property(&self, name: &str) -> Option<&str> {
+        match self.value.as_ref() {
+            Js::Obj(o) => match o.get(name) {
+                Some(Js::Str(s)) => Some(s),
+                _ => None,
+            },
+            Js::Data(v) => match v.as_ref() {
+                Value::Obj(o) => match o.get(name) {
+                    Some(Value::Str(s)) => Some(s),
+                    _ => None,
+                },
+                _ => None,
+            },
+            _ => None,
         }
     }
     /// Whether the value is an array, without property reads or coercion.
@@ -696,7 +715,6 @@ impl ExpressionEvaluator<'_> {
     /// The evaluator derives the room from the actual container. Reading and
     /// producing item bodies must be charged separately. This does not produce
     /// punctuation again, so it consumes no additional serialization work.
-    #[doc(hidden)]
     pub fn reserve_array_header(&self, value: &Value) -> bool {
         let mut ok = false;
         (self.operate)(&mut || {
@@ -717,7 +735,6 @@ impl ExpressionEvaluator<'_> {
     /// Sizes come from this evaluator's projection/admission records, not the
     /// caller. The projection receipt is consumed once; missing proof returns
     /// None so callers can use ordinary admission. No spent work is refunded.
-    #[doc(hidden)]
     pub fn reserve_array_remainder(
         &self,
         value: &Value,
@@ -783,48 +800,68 @@ impl ExpressionEvaluator<'_> {
         });
         depth
     }
-    /// Read supplied input using the same bounded measurement and credit rules
-    /// as state reads. Shared container bodies earn credit once per allowance.
-    /// Never call this for computed values from inside scope callbacks.
-    /// Computed intermediate results must not be registered as supplied input.
-    pub fn register_input(&self, value: &Value) -> bool {
+    /// Read an actual state entry for a host payload. Scalar entries earn input
+    /// credit when their value changes; consecutive equal reads earn it once.
+    /// A newly read scalar payload that cannot fit is cut before copying its
+    /// comparison metadata. Shared bodies follow the usual
+    /// identity rule. Never register computed callback output as state.
+    pub fn read_state_value(&self, name: &str, value: &Value) -> bool {
         let mut ok = false;
         (self.operate)(&mut || {
-            inputs::register_value(value);
+            if data_identity(value).is_some() {
+                forget_scalar_state(name);
+                let _depth = InputReadDepth::enter();
+                let _stack = crate::stack::expression_limit(
+                    LIMITS.with(|l| l.max_depth.get()),
+                    crate::stack::segments(),
+                );
+                inputs::register_value(value);
+            } else {
+                register_state_input(name, value, true);
+            }
             ok = LIMITS.with(|l| l.cut.get().is_none());
         });
         ok
     }
-    /// Raise the session's supplied-input floor to a core-measured byte count.
-    /// Measurement is caller setup, not evaluation work. Only an increase raises
-    /// the scaled allowance; already-spent work stays spent. This retains no
-    /// input, owner or token. Computed values from scope callbacks must never be
-    /// admitted as supplied input.
-    pub fn register_input_floor(&self, input: &PreparedInput) -> bool {
-        let mut ok = false;
+    /// Measure supplied parts and raise the largest single-supply input floor.
+    /// Setup never spends evaluation work. Cached program/start receipts must
+    /// use this allowance's limits; refused calls change no accounting state.
+    /// No reference or program owner is retained by this operation.
+    pub fn supply_input(
+        &self,
+        parts: SuppliedInput<'_>,
+    ) -> Result<SuppliedInputReceipt, InputSupplyError> {
+        let mut parts = Some(parts);
+        let mut out = Err(InputSupplyError::Cut);
         (self.operate)(&mut || {
             if LIMITS.with(|l| l.cut.get().is_some()) {
                 return;
             }
-            ACCOUNT.with(|a| {
-                let mut a = a.borrow_mut();
-                let extra = input.bytes.saturating_sub(a.supplied_floor);
-                a.supplied_floor = a.supplied_floor.max(input.bytes);
-                a.credit(extra);
-            });
-            ok = true;
+            if let Some(parts) = parts.take() {
+                let limits = ACCOUNT.with(|a| a.borrow().limits);
+                out = inputs::supply(parts, limits);
+            }
         });
-        ok
+        out
     }
-    /// Read borrowed supplied text with the same work and input credit as a
-    /// supplied string value, before allocating a copy (for example a key).
-    pub fn register_input_text(&self, text: &str) -> bool {
+    /// Credit a state key once per name, before a payload copies it.
+    pub fn read_state_key(&self, text: &str) -> bool {
         let mut ok = false;
         (self.operate)(&mut || {
             if LIMITS.with(|l| l.cut.get().is_none()) {
-                data_text(text, true);
+                let fresh = ACCOUNT.with(|a| {
+                    let mut a = a.borrow_mut();
+                    if a.state_keys.contains(text) {
+                        false
+                    } else {
+                        a.state_keys.insert(text.to_owned())
+                    }
+                });
+                if fresh {
+                    data_text(text, true);
+                }
+                ok = LIMITS.with(|l| l.cut.get().is_none());
             }
-            ok = LIMITS.with(|l| l.cut.get().is_none());
         });
         ok
     }
@@ -947,7 +984,6 @@ impl ExpressionEvaluator<'_> {
     /// Evaluate named descriptors as one object. Supplied identities may reuse
     /// their public argument object; undefined fields are omitted. Reuse still
     /// checks depth at this position and never grants input credit.
-    #[doc(hidden)]
     pub fn evaluate_fields(&self, fields: &JsObject<Value>) -> EvaluationResult {
         (self.fields)(fields)
     }
@@ -1405,8 +1441,9 @@ impl PartialEq for EvaluationResult {
 /// configured floors and ceilings. Fixed limits stay fixed. Thus output is
 /// bounded by the amplification of the initial input plus state and extra
 /// values read, not by the number of evaluations. Measuring input costs work
-/// and depth. A deferred AST must fit its sizing walk within the work remaining
-/// before it earns credit; raise `Limits::with_work` for larger deferred ASTs.
+/// and depth. Deferred ASTs and plain data earn measurement credit incrementally
+/// before their work is charged; shared nodes earn input credit once. Fixed
+/// work allowances and hard ceilings still apply.
 /// Already parsed inputs are not subject to the program-text size limit.
 ///
 /// Each evaluation reports its cuts; [`Self::flags`] reports the whole session.
@@ -1455,6 +1492,9 @@ impl<'a> EvaluationSession<'a> {
     }
     /// Start an allowance with supplied limits and the parsed input's byte size.
     pub fn with_limits(scope: &'a dyn EvaluationScope, input_bytes: usize, limits: Limits) -> Self {
+        // Scope inspection may itself re-enter an existing session. Do it
+        // before moving that session's account into a stack-local saved frame.
+        let extra_object = scope.extra_is_object();
         let mut saved = Saved::enter();
         LIMITS.with(|l| {
             l.room.set(limits.result_size_for(input_bytes));
@@ -1466,7 +1506,6 @@ impl<'a> EvaluationSession<'a> {
             l.depth_limited.set(false);
             l.cut.set(None);
         });
-        let extra_object = scope.extra_is_object();
         ACCOUNT.with(|a| {
             let mut account = Account::new(limits, input_bytes);
             account.extra_object = extra_object;
@@ -1861,6 +1900,60 @@ struct FieldCache {
     key: Vec<(String, FieldIdentity)>,
     value: Value,
 }
+// Move unchanged strings out of the previous unique argument object on a miss.
+// Hosts retaining that object keep it immutable; work charges never depend on
+// whether this reuse succeeds. Nested projections/unwind restore their pool.
+struct ArgumentStringReuse(HashMap<usize, String>);
+impl ArgumentStringReuse {
+    fn enter(next: Option<&[(String, FieldIdentity)]>) -> Self {
+        let mut recycled = HashMap::new();
+        let old = ACCOUNT.with(|a| a.borrow_mut().field_cache.take());
+        if let (Some(mut old), Some(next)) = (old, next)
+            && let Value::Obj(fields) = &mut old.value
+            && Arc::strong_count(fields) == 1
+        {
+            // make_mut detaches weak receipts without cloning a uniquely
+            // owned object's strings; get_mut would reject those receipts.
+            let fields = Arc::make_mut(fields);
+            let previous = old
+                .key
+                .iter()
+                .filter_map(|(name, id)| {
+                    matches!(id, FieldIdentity::Shared(4, _)).then_some((name.as_str(), id))
+                })
+                .collect::<HashMap<_, _>>();
+            for (name, identity) in next {
+                if let FieldIdentity::Shared(4, address) = identity
+                    && previous
+                        .get(name.as_str())
+                        .is_some_and(|old_id| *old_id == identity)
+                    && let Some(Value::Str(text)) = fields.get_mut(name)
+                {
+                    recycled.insert(*address, std::mem::take(text));
+                }
+            }
+        }
+        Self(
+            ACCOUNT.with(|a| {
+                std::mem::replace(&mut a.borrow_mut().recycled_argument_strings, recycled)
+            }),
+        )
+    }
+}
+impl Drop for ArgumentStringReuse {
+    fn drop(&mut self) {
+        ACCOUNT
+            .with(|a| std::mem::swap(&mut a.borrow_mut().recycled_argument_strings, &mut self.0));
+    }
+}
+pub(super) fn take_argument_string(text: &Arc<str>) -> Option<String> {
+    ACCOUNT.with(|a| {
+        a.borrow_mut()
+            .recycled_argument_strings
+            .remove(&(text.as_ptr() as usize))
+    })
+}
+
 fn evaluate_fields(
     fields: &JsObject<Value>,
     bindings: &[(String, Js)],
@@ -1940,7 +2033,7 @@ fn evaluate_fields(
     }
     // Discard the old projection before allocating a replacement. Keep only
     // the current combination: a cache miss must not retain copies of text.
-    ACCOUNT.with(|a| a.borrow_mut().field_cache = None);
+    let _reuse = ArgumentStringReuse::enter(key.as_deref());
     let value = if failed() {
         None
     } else if !ACCOUNT.with(|a| a.borrow().temporary_room.last().is_some_and(|v| v.1)) {
@@ -2173,6 +2266,7 @@ impl Supplied<'_> {
             flags,
         });
         self.callbacks.borrow_mut().push(frame.clone());
+        let location = SuspendedSlot::enter(&frame.saved);
         let guard = CallbackGuard(&self.callbacks);
         DepthContext::suspend(&frame.saved.borrow());
         let value = self.evaluator(&frame, callback);
@@ -2180,6 +2274,7 @@ impl Supplied<'_> {
             frame.saved.borrow().limits.cut_by(Cut::Depth);
         }
         drop(guard);
+        drop(location);
         drop(frame);
         ACCOUNT.with(|a| a.borrow_mut().collect_bridges());
         value
@@ -2255,7 +2350,7 @@ impl Supplied<'_> {
         in_scope(node, &frame.bindings, &Scope::Root(self), project, &operate)
     }
     fn remember_read(&self, key: ReadKey, value: Js) {
-        self.remember_read_height(key, value, 0);
+        self.remember_read_height(key, value, 1);
     }
     fn remember_read_height(&self, key: ReadKey, value: Js, height: usize) {
         if let Js::Str(text) = &value
@@ -2285,9 +2380,6 @@ impl Supplied<'_> {
             .map(|v| (v.value.clone(), v.depth, v.height))?;
         let depth = LIMITS.with(|l| l.max_depth.get().saturating_sub(l.depth.get()));
         let required = if prepared_height != 0 {
-            // A prepared read admits no body here. Its first read is lazy too;
-            // member/index receivers may consume only a shallow child. Full
-            // projections and argument admission check their actual values.
             None
         } else if let Js::Data(v) = &value {
             data_identity(v).and_then(|key| {
@@ -2434,6 +2526,7 @@ impl Supplied<'_> {
                 });
             }
             if cached {
+                let _position = ReadPosition::enter(receiver);
                 self.remember_read_height(key, js.clone(), prepared.depth().max(1));
             }
             return js;
@@ -2469,10 +2562,17 @@ impl Supplied<'_> {
         if let Some(value) = &value {
             let _position = ReadPosition::enter(receiver);
             if reference {
+                let _depth = InputReadDepth::enter();
+                let _stack = crate::stack::expression_limit(
+                    LIMITS.with(|l| l.max_depth.get()),
+                    crate::stack::segments(),
+                );
                 measure_boundary(value);
             } else {
-                register_input(value);
+                register_state_input(name, value, false);
             }
+        } else if !reference {
+            forget_scalar_state(name);
         }
         let js = value.as_ref().map(data_value).unwrap_or(Js::Undefined);
         if cached {
@@ -3196,6 +3296,7 @@ impl std::ops::DerefMut for SuppliedOwners {
 struct Metadata {
     receipts: Vec<(usize, usize, usize)>,
     field_cache: Option<FieldCache>,
+    recycled_argument_strings: HashMap<usize, String>,
     supplied_strings: HashSet<usize>,
     validated: HashMap<ValidationIdentity, (WeakValue, usize)>,
     argument_collect_at: usize,
@@ -3203,6 +3304,8 @@ struct Metadata {
     bridges: HashMap<(u8, usize), Bridge>,
     collect_at: usize,
     schemas: std::collections::BTreeMap<usize, Arc<u8>>,
+    state_scalars: HashMap<String, ScalarState>,
+    state_keys: HashSet<String>,
     buffers: Buffers,
 }
 impl Metadata {
@@ -3210,6 +3313,7 @@ impl Metadata {
         Self {
             receipts: Vec::new(),
             field_cache: None,
+            recycled_argument_strings: HashMap::new(),
             supplied_strings: HashSet::new(),
             validated: HashMap::new(),
             argument_collect_at: 8,
@@ -3217,6 +3321,8 @@ impl Metadata {
             bridges: HashMap::new(),
             collect_at: 128,
             schemas: std::collections::BTreeMap::new(),
+            state_scalars: HashMap::new(),
+            state_keys: HashSet::new(),
             buffers: Buffers::default(),
         }
     }
@@ -3343,9 +3449,108 @@ thread_local! {
     static DEPTH: RefCell<DepthContext> = RefCell::new(DepthContext::default());
 }
 
-fn register_input(value: &Value) {
+// Keep only the latest scalar read for each name. Consecutive equal values
+// earn input once; a host change, including changing back, earns its own credit.
+#[derive(PartialEq, Eq)]
+enum ScalarState {
+    Null,
+    Bool(bool),
+    Num(u64),
+    Str(String),
+}
+impl ScalarState {
+    fn matches(&self, value: &Value) -> bool {
+        match (self, value) {
+            (Self::Null, Value::Null) => true,
+            (Self::Bool(a), Value::Bool(b)) => a == b,
+            (Self::Num(a), Value::Num(b)) => *a == b.to_bits(),
+            (Self::Str(a), Value::Str(b)) => a == b,
+            _ => false,
+        }
+    }
+    fn new(value: &Value) -> Option<Self> {
+        match value {
+            Value::Null => Some(Self::Null),
+            Value::Bool(v) => Some(Self::Bool(*v)),
+            Value::Num(v) => Some(Self::Num(v.to_bits())),
+            Value::Str(v) => Some(Self::Str(v.clone())),
+            _ => None,
+        }
+    }
+}
+fn forget_scalar_state(name: &str) {
+    ACCOUNT.with(|a| {
+        if let Some(metadata) = a.borrow_mut().metadata.as_deref_mut() {
+            metadata.state_scalars.remove(name);
+        }
+    });
+}
+fn register_state_input(name: &str, value: &Value, payload: bool) {
     if LIMITS.with(|l| l.cut.get().is_some()) {
         return;
+    }
+    if data_identity(value).is_some() {
+        forget_scalar_state(name);
+        register_input(value);
+    } else if !ACCOUNT.with(|a| {
+        a.borrow()
+            .state_scalars
+            .get(name)
+            .is_some_and(|old| old.matches(value))
+    }) {
+        let bytes = register_input(value);
+        // A payload necessarily writes the whole scalar. Refuse a doomed
+        // payload before retaining its comparison copy, after earning input.
+        if payload && LIMITS.with(|l| bytes > l.room.get()) {
+            LIMITS.with(|l| l.cut_by(Cut::Room));
+        }
+        if LIMITS.with(|l| l.cut.get().is_none())
+            && let Some(value) = ScalarState::new(value)
+        {
+            ACCOUNT.with(|a| {
+                let mut a = a.borrow_mut();
+                if let Some(prior) = a.state_scalars.get_mut(name) {
+                    *prior = value;
+                } else {
+                    a.state_scalars.insert(name.to_owned(), value);
+                }
+            });
+        }
+    }
+}
+
+// Input measurement is not expression consumption. A deep unvisited sibling
+// must not impose expression depth on a shallow read. Keep a separate bounded
+// measuring depth, never stricter than a caller's raised evaluation depth.
+struct InputReadDepth {
+    depth: usize,
+    maximum: usize,
+}
+impl InputReadDepth {
+    fn enter() -> Self {
+        LIMITS.with(|l| {
+            let old = Self {
+                depth: l.depth.get(),
+                maximum: l.max_depth.get(),
+            };
+            l.depth.set(0);
+            l.max_depth.set(old.maximum.max(32_768));
+            old
+        })
+    }
+}
+impl Drop for InputReadDepth {
+    fn drop(&mut self) {
+        LIMITS.with(|l| {
+            l.depth.set(self.depth);
+            l.max_depth.set(self.maximum);
+        });
+    }
+}
+
+fn register_input(value: &Value) -> usize {
+    if LIMITS.with(|l| l.cut.get().is_some()) {
+        return 0;
     }
     if let Some(key) = data_identity(value) {
         let skip = ACCOUNT.with(|a| {
@@ -3358,8 +3563,7 @@ fn register_input(value: &Value) {
             }
         });
         if skip {
-            check_input_depth(value);
-            return;
+            return 0;
         }
     }
     let old = ACCOUNT.with(|a| {
@@ -3369,34 +3573,17 @@ fn register_input(value: &Value) {
         )
     });
     let _owner = InputOwner(old);
-    measure_data(value, true);
+    let _depth = InputReadDepth::enter();
+    let _stack = crate::stack::expression_limit(
+        LIMITS.with(|l| l.max_depth.get()),
+        crate::stack::segments(),
+    );
+    measure_data(value, true)
 }
 struct InputOwner(bool);
 impl Drop for InputOwner {
     fn drop(&mut self) {
         ACCOUNT.with(|a| a.borrow_mut().input_owner = self.0);
-    }
-}
-pub(super) fn check_input_depth(value: &Value) {
-    let required = data_identity(value).and_then(|key| {
-        ACCOUNT.with(|a| {
-            let a = a.borrow();
-            if let Some((_, height)) = a.inputs.measurement(&key) {
-                return Some(height.saturating_add(1));
-            }
-            a.argument_bodies
-                .get(&key)
-                .filter(|v| v.owner.alive() && v.exact)
-                .map(|v| (v.depth as usize).saturating_add(1))
-        })
-    });
-    if let Some(required) = required {
-        if LIMITS.with(|l| l.max_depth.get().saturating_sub(l.depth.get()) < required) {
-            LIMITS.with(|l| l.cut_by(Cut::Depth));
-        }
-    } else {
-        let _mode = DepthOnly::enter();
-        measure_data(value, false);
     }
 }
 // Only values crossing the public callback boundary need an identity bridge.
@@ -3881,12 +4068,10 @@ fn measure_data_with_memo<const MEMO: bool>(value: &Value, input: bool) -> usize
             n
         }
         Value::Ast(node) => {
-            // Unlike ordinary data, deferred ASTs must be walked before their
-            // byte size is known. Never lend this walk the configured ceiling.
-            let bytes = expression_bytes(node);
-            if input {
-                data_bytes(bytes, true);
-            }
+            // Supplied syntax earns its measurement work incrementally, just
+            // like data. Shared nodes earn credit once; JSON occurrences still
+            // count in the returned serialized size.
+            let bytes = measure_ast(node, input);
             if MEMO {
                 remember_measurement(value, bytes, &measured_depth);
             }
@@ -3961,18 +4146,10 @@ fn remember_measurement(value: &Value, bytes: usize, measured_depth: &MeasuredDe
             return;
         }
         let weak = match value {
-            Value::Ast(v) if argument_measurement() || Arc::strong_count(v) > 1 => {
-                Some(WeakValue::Ast(Arc::downgrade(v)))
-            }
+            Value::Ast(v) => Some(WeakValue::Ast(Arc::downgrade(v))),
             Value::Element(v) => Some(WeakValue::Element(Arc::downgrade(v))),
-            Value::Arr(v) if argument_measurement() || Arc::strong_count(v) > 1 => {
-                Some(WeakValue::Arr(Arc::downgrade(v)))
-            }
-            Value::Obj(v)
-                if argument_measurement() || Arc::strong_count(v) > 1 || projected_element(v) =>
-            {
-                Some(WeakValue::Obj(Arc::downgrade(v)))
-            }
+            Value::Arr(v) => Some(WeakValue::Arr(Arc::downgrade(v))),
+            Value::Obj(v) => Some(WeakValue::Obj(Arc::downgrade(v))),
             _ => None,
         };
         if let (Some(key), Some(weak)) = (data_identity(value), weak) {
@@ -4331,92 +4508,124 @@ pub(super) fn data_index(value: &Value, index: &Js) -> Js {
 // Price deferred expressions without allocating their JSON or cloning their
 // tree. Early exits also bound DAGs whose serialized size grows exponentially.
 pub(super) fn expression_bytes(node: &Ast) -> usize {
-    measure_ast(node)
+    measure_ast(node, false)
 }
-fn measure_ast(node: &Ast) -> usize {
-    crate::stack::grow_stack!(measure_ast(node), budget else 0);
+fn measure_ast(node: &Ast, input: bool) -> usize {
+    crate::stack::grow_stack!(measure_ast(node, input), budget else 0);
     let Some(_level) = Level::enter() else {
         return 0;
     };
-    let _measured_depth = MeasuredDepth::enter();
+    let measured_depth = MeasuredDepth::enter();
+    let identity = (9, std::ptr::from_ref(node) as usize);
+    if let Some((Some(bytes), height)) = ACCOUNT.with(|a| a.borrow().inputs.measurement(&identity))
+    {
+        measured_depth.include(height, true);
+        if LIMITS.with(|l| l.max_depth.get().saturating_sub(l.depth.get()) < height) {
+            LIMITS.with(|l| l.cut_by(Cut::Depth));
+            return 0;
+        }
+        return bytes;
+    }
+    if input {
+        ACCOUNT.with(|a| a.borrow_mut().inputs.insert(identity));
+        data_bytes(2, true);
+    }
     if !step(1) {
         return 0;
     }
     let mut bytes = 2usize;
     for (i, (key, field)) in fields(node).into_iter().enumerate() {
+        let header = key.len() + 3 + usize::from(i != 0);
+        data_bytes(header, input);
         if !step(1) {
             break;
         }
-        bytes = bytes.saturating_add(key.len() + 3 + usize::from(i != 0));
+        bytes = bytes.saturating_add(header);
         let size = match field {
-            Field::Text(s) => text_bytes(s),
+            Field::Text(s) => ast_text(s, input),
             Field::Num(n) => {
-                if n.is_finite() {
-                    number_to_string(n).len()
-                } else {
-                    4
-                }
+                let n = crate::js::json_number_len(n);
+                data_bytes(n, input);
+                n
             }
             Field::Bool(b) => {
-                if b {
-                    4
-                } else {
-                    5
-                }
+                let n = if b { 4 } else { 5 };
+                data_bytes(n, input);
+                n
             }
-            Field::Node(n) => measure_ast(n),
+            Field::Node(n) => measure_ast(n, input),
             Field::Nodes(nodes) => {
                 let mut size = 2usize;
+                data_bytes(2, input);
                 for (i, n) in nodes.iter().enumerate() {
+                    data_bytes(usize::from(i != 0), input);
                     if !step(1) {
                         break;
                     }
                     size = size
-                        .saturating_add(measure_ast(n))
+                        .saturating_add(measure_ast(n, input))
                         .saturating_add(usize::from(i != 0));
                 }
                 size
             }
             Field::Entries(entries) => {
                 let mut size = 2usize;
+                data_bytes(2, input);
                 for (i, (key, n)) in entries.iter().enumerate() {
+                    data_bytes(usize::from(i != 0), input);
                     if !step(1) {
                         break;
                     }
                     size = size
-                        .saturating_add(text_bytes(key))
-                        .saturating_add(measure_ast(n))
+                        .saturating_add(ast_text(key, input))
+                        .saturating_add(measure_ast(n, input))
                         .saturating_add(3 + usize::from(i != 0));
+                    data_bytes(3, input);
                 }
                 size
             }
             Field::Props(props) => {
                 let mut size = 2usize;
+                data_bytes(2, input);
                 for (i, (key, n)) in props.iter().enumerate() {
+                    data_bytes(usize::from(i != 0), input);
                     if !step(1) {
                         break;
                     }
                     size = size
-                        .saturating_add(text_bytes(key))
-                        .saturating_add(measure_ast(n))
+                        .saturating_add(ast_text(key, input))
+                        .saturating_add(measure_ast(n, input))
                         .saturating_add(1 + usize::from(i != 0));
+                    data_bytes(1, input);
                 }
                 size
             }
         };
         bytes = bytes.saturating_add(size);
     }
+    if input && LIMITS.with(|l| l.cut.get().is_none()) {
+        let height = measured_depth.height();
+        let exact = measured_depth.exact();
+        ACCOUNT.with(|a| {
+            a.borrow_mut()
+                .inputs
+                .record(identity, Some(bytes), height, exact)
+        });
+    }
     bytes
 }
 
-fn text_bytes(s: &str) -> usize {
+fn ast_text(s: &str, input: bool) -> usize {
     if ACCOUNT.with(|a| a.borrow().depth_only) {
         return 0;
     }
+    data_bytes(s.len(), input);
     if !step(s.len()) {
         return 0;
     }
-    js::json_string_len(s).saturating_add(2)
+    let bytes = js::json_string_len(s).saturating_add(2);
+    data_bytes(bytes.saturating_sub(s.len()), input);
+    bytes
 }
 
 #[derive(Clone)]
@@ -4554,6 +4763,20 @@ impl Drop for Saved {
 // account even when their usual saved slot currently holds an outer context.
 thread_local! {
     static SUSPENDED: RefCell<Vec<std::rc::Weak<RefCell<Saved>>>> = const { RefCell::new(Vec::new()) };
+}
+struct SuspendedSlot;
+impl SuspendedSlot {
+    fn enter(saved: &Rc<RefCell<Saved>>) -> Self {
+        SUSPENDED.with(|slots| slots.borrow_mut().push(Rc::downgrade(saved)));
+        Self
+    }
+}
+impl Drop for SuspendedSlot {
+    fn drop(&mut self) {
+        SUSPENDED.with(|slots| {
+            slots.borrow_mut().pop();
+        });
+    }
 }
 struct Resume(Rc<RefCell<Saved>>);
 impl Resume {

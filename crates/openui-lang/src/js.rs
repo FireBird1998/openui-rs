@@ -317,6 +317,15 @@ impl<V> JsObject<V> {
         Self::default()
     }
 
+    /// An empty object with space for the given number of own properties.
+    pub fn with_capacity(capacity: usize) -> Self {
+        Self {
+            entries: indexmap::IndexMap::with_capacity(capacity),
+            null_prototype: false,
+            unrepresented_prototype: false,
+        }
+    }
+
     /// `obj[key] = value`. Assigning `__proto__` changes the prototype instead
     /// of adding a property, so it's dropped here, unless the prototype is
     /// already null.

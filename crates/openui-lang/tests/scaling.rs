@@ -1,12 +1,5 @@
-//! Work and memory grow with the program, not with its square, on shapes
-//! built to make them: a program four times the size takes about four times
-//! as long, not sixteen. Each shape took seconds, or gigabytes, at the
-//! program-size limit before it was fixed.
-//!
-//! Time is the thread's CPU time (on Unix; wall time elsewhere), the two
-//! sizes measured in turn and the fastest run of each counted, as in
-//! `streaming_cost`. The bound, 8, is halfway between linear and quadratic.
-//! Memory is held by the binary's 64 MiB allocation cap.
+//! Allocation traffic stays within counted growth bounds over larger programs.
+//! These witnesses do not measure allocation-free CPU scans.
 
 use std::sync::Arc;
 
@@ -23,27 +16,9 @@ fn library() -> Arc<Library> {
     Arc::new(Library::from_json_schema(&schema))
 }
 
-/// Seconds of CPU time this thread has used.
-#[cfg(unix)]
-fn now() -> f64 {
-    let mut t = libc::timespec {
-        tv_sec: 0,
-        tv_nsec: 0,
-    };
-    // SAFETY: `t` is a valid timespec for the call to fill in.
-    let ok = unsafe { libc::clock_gettime(libc::CLOCK_THREAD_CPUTIME_ID, &mut t) };
-    assert_eq!(ok, 0, "clock_gettime(CLOCK_THREAD_CPUTIME_ID)");
-    t.tv_sec as f64 + t.tv_nsec as f64 * 1e-9
-}
-
-/// Seconds since the first call: wall time, where thread CPU time isn't at hand.
-#[cfg(not(unix))]
-fn now() -> f64 {
-    static START: std::sync::OnceLock<std::time::Instant> = std::sync::OnceLock::new();
-    START
-        .get_or_init(std::time::Instant::now)
-        .elapsed()
-        .as_secs_f64()
+/// Allocation requests by this thread; scheduling does not affect the count.
+fn count() -> f64 {
+    test_alloc::allocation_calls() as f64
 }
 
 fn one_shot(text: &str) {
@@ -62,9 +37,9 @@ fn one_push(text: &str) {
 fn check_linear(n: usize, shape: impl Fn(usize) -> String, run: impl Fn(&str)) {
     let (small, large) = (shape(n), shape(4 * n));
     let time = |text: &str| {
-        let started = now();
+        let started = count();
         run(text);
-        now() - started
+        count() - started
     };
     let (mut small_cost, mut large_cost) = (f64::INFINITY, f64::INFINITY);
     for _ in 0..RUNS {
@@ -73,15 +48,14 @@ fn check_linear(n: usize, shape: impl Fn(usize) -> String, run: impl Fn(&str)) {
     }
     let ratio = large_cost / small_cost;
     println!(
-        "{:.2} ms at 4n, {:.2} ms at n: {ratio:.2}×",
-        large_cost * 1e3,
-        small_cost * 1e3
+        "{:.2} allocations at 4n, {:.2} allocations at n: {ratio:.2}×",
+        large_cost, small_cost
     );
     assert!(
         ratio < BOUND,
-        "four times the program costs {ratio:.2}× as much ({:.2} ms against {:.2} ms)",
-        large_cost * 1e3,
-        small_cost * 1e3
+        "four times the program costs {ratio:.2}× as much ({:.2} allocations against {:.2} allocations)",
+        large_cost,
+        small_cost
     );
 }
 

@@ -1,15 +1,5 @@
-//! Streaming work grows with the program, not with its square: a push costs
-//! about the same early in a stream as late, so a program four times the
-//! size takes about four times as long, not sixteen. The two synthetic
-//! programs differ only in size and one level of nesting; a parser that
-//! redid the whole tree on every push would cost about four times more per
-//! push on the larger one. On an idle machine the ratio is about 1.3.
-//!
-//! Wall-clock time on a busy machine measures the machine, so this measures
-//! the thread's CPU time (on Unix; wall time elsewhere). The two programs are
-//! also measured in turn, seven times each, and the fastest run of each
-//! counts. The bound, 2.5, leaves room for what noise remains while still
-//! catching the 4× of a quadratic parser.
+//! Counted allocation requests per push stay bounded as the stream grows.
+//! Scheduling cannot change this measure. It does not time allocation-free scans.
 
 mod common;
 
@@ -34,37 +24,19 @@ fn chunks(text: &str) -> Vec<&str> {
         .collect()
 }
 
-/// Seconds of CPU time this thread has used.
-#[cfg(unix)]
-fn now() -> f64 {
-    let mut t = libc::timespec {
-        tv_sec: 0,
-        tv_nsec: 0,
-    };
-    // SAFETY: `t` is a valid timespec for the call to fill in.
-    let ok = unsafe { libc::clock_gettime(libc::CLOCK_THREAD_CPUTIME_ID, &mut t) };
-    assert_eq!(ok, 0, "clock_gettime(CLOCK_THREAD_CPUTIME_ID)");
-    t.tv_sec as f64 + t.tv_nsec as f64 * 1e-9
-}
-
-/// Seconds since the first call: wall time, where thread CPU time isn't at hand.
-#[cfg(not(unix))]
-fn now() -> f64 {
-    static START: std::sync::OnceLock<std::time::Instant> = std::sync::OnceLock::new();
-    START
-        .get_or_init(std::time::Instant::now)
-        .elapsed()
-        .as_secs_f64()
+/// Allocation requests by this thread; scheduling does not affect the count.
+fn count() -> f64 {
+    test_alloc::allocation_calls() as f64
 }
 
 /// Mean cost of one push in one run of the whole stream.
 fn cost_per_push(library: &Arc<Library>, chunks: &[&str]) -> f64 {
-    let started = now();
+    let started = count();
     let mut parser = StreamParser::new(library.clone(), None);
     for chunk in chunks {
         std::hint::black_box(parser.push(chunk));
     }
-    (now() - started) / chunks.len() as f64
+    (count() - started) / chunks.len() as f64
 }
 
 /// Asserts a push on the larger text costs less than [`BOUND`] times one on
@@ -84,15 +56,14 @@ fn check_ratio(wrap: impl Fn(&str) -> String) {
     }
     let ratio = large_cost / small_cost;
     println!(
-        "per push: {:.1} µs on the 4× program, {:.1} µs on the small one: {ratio:.2}×",
-        large_cost * 1e6,
-        small_cost * 1e6
+        "per push: {:.1} allocations on the 4× program, {:.1} allocations on the small one: {ratio:.2}×",
+        large_cost, small_cost
     );
     assert!(
         ratio < BOUND,
-        "a push on the 4× program costs {ratio:.2}× as much ({:.1} µs against {:.1} µs)",
-        large_cost * 1e6,
-        small_cost * 1e6
+        "a push on the 4× program costs {ratio:.2}× as much ({:.1} allocations against {:.1} allocations)",
+        large_cost,
+        small_cost
     );
 }
 

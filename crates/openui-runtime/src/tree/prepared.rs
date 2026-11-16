@@ -15,7 +15,7 @@ pub struct PreparedReferenceValues<'a> {
     measurements: BTreeMap<Cow<'a, str>, Result<PreparedReferenceValue, EvaluationFlags>>,
     pub(super) bytes: usize,
     tail: EvaluationFlags,
-    pub(super) input: openui_lang::PreparedInput,
+    pub(super) input: openui_lang::PreparedReferenceInput,
 }
 impl<'a> PreparedReferenceValues<'a> {
     /// Prepare with a 32,768-level iterative measurement bound and the default
@@ -25,16 +25,9 @@ impl<'a> PreparedReferenceValues<'a> {
     }
     /// Set preparation bounds; these do not spend an evaluation's allowance.
     pub fn with_limits(values: &'a JsObject<Value>, limits: Limits) -> Self {
-        let (measurements, bytes, tail) =
+        let (measurements, input, tail) =
             PreparedReferenceValue::measure_all_with_tail(values, limits);
-        let input = openui_lang::PreparedInput::from_prepared_references_with_limits(
-            measurements
-                .iter()
-                .filter_map(|(name, entry)| entry.as_ref().ok().map(|v| (*name, v))),
-            // Keys were measured by the core above. Combining their receipt
-            // may revisit those bytes, but never refreshes evaluation work.
-            limits.with_work(limits.work_for(usize::MAX).max(bytes)),
-        );
+        let bytes = input.input_bytes();
         Self {
             values: Cow::Borrowed(values),
             measurements: measurements

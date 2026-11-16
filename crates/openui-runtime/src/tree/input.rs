@@ -12,53 +12,13 @@ enum Item<'a> {
 // caller-built DAG. Once both scaled ceilings are saturated its precise size
 // cannot affect an allowance. This walk itself has a work and depth bound.
 pub(super) fn input_size(input: &TreeInput<'_>, limits: Limits) -> Result<usize, bool> {
-    let result = input.result;
-    let available = limits.work_for(usize::MAX);
-    if result.state_declarations.len() > available {
-        return Err(false);
+    let measured = openui_lang::PreparedProgram::new(input.result, limits);
+    let flags = measured.flags();
+    if flags.depth_limited || flags.size_limited {
+        Err(flags.depth_limited)
+    } else {
+        Ok(measured.input_bytes())
     }
-    let mut todo = Vec::new();
-    if let Some(root) = &result.root {
-        todo.push(Item::E(root, 0));
-    }
-    if let Some(expression) = &result.root_expression {
-        todo.push(Item::A(expression, 0));
-    }
-    if result
-        .query_statements
-        .len()
-        .saturating_add(result.mutation_statements.len())
-        > available
-    {
-        return Err(false);
-    }
-    for q in &result.query_statements {
-        todo.push(Item::S(&q.statement_id));
-        if let Some(default) = &q.defaults {
-            todo.push(Item::A(default, 0));
-        }
-    }
-    for m in &result.mutation_statements {
-        todo.push(Item::S(&m.statement_id));
-    }
-
-    for (k, v) in result.state_declarations.iter() {
-        todo.push(Item::S(k));
-        todo.push(Item::V(v, 0));
-    }
-    let bytes = r#"{"root":,"stateDeclarations":{}}"#
-        .len()
-        .saturating_add(if result.root.is_none() { 4 } else { 0 })
-        .saturating_add(result.state_declarations.len().saturating_mul(2).saturating_sub(1));
-
-    measure(
-        todo,
-        bytes,
-        limits,
-        &mut std::collections::HashSet::new(),
-        &mut limits.work_for(usize::MAX),
-        false,
-    )
 }
 
 pub(super) fn value_size(

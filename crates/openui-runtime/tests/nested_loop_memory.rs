@@ -131,12 +131,25 @@ fn one_item_loops_keep_unique_leaf_memory_instead_of_doubling_it() {
                     .unwrap();
                 test_alloc::reset_peak();
                 let baseline = test_alloc::peak();
+                let before_calls = test_alloc::allocation_calls();
                 let result = evaluate_tree_with_limits(
                     TreeInput::new(&program),
                     &store,
                     Limits::DEFAULT
                         .with_result_size(4_100_000)
                         .with_work(1_000_000_000),
+                );
+                let calls = test_alloc::allocation_calls() - before_calls;
+                let key = format!("{data}\t{rows}\t{depth}\t");
+                let call_limit = include_str!("support/nested-loop-allocation-calls.tsv")
+                    .lines()
+                    .find_map(|line| line.strip_prefix(&key))
+                    .unwrap()
+                    .parse::<usize>()
+                    .unwrap();
+                assert!(
+                    calls <= call_limit + 16,
+                    "substitution allocation calls: {data} {rows} {depth}: {calls} > {call_limit}+16"
                 );
                 let peak = test_alloc::peak().saturating_sub(baseline);
                 println!(

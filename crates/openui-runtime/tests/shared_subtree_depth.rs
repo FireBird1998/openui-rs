@@ -6,37 +6,19 @@ use subtree::cut;
 static ALLOCATOR: test_alloc::Allocator = test_alloc::Allocator::with_cap(512 * 1024 * 1024);
 #[test]
 fn measuring_a_parent_does_not_raise_its_shared_childs_use_depth() {
-    for data in [false, true] {
-        for prepared in [false, true] {
-            for object in [false, true] {
-                for (source, first_cut) in [
-                    ("[[q2],[q2[0]]]", 755),
-                    ("[[q2],[@Id(q2[0])]]", 754),
-                    ("[[q3],[q3.a]]", 755),
-                    ("[[$e],[$e[0]]]", 754),
-                    ("[[q2],null]", 755),
-                    ("[null,[q2[0]]]", 756),
-                    ("[null,[@Id(q2[0])]]", 754),
-                    ("[[q3],null]", 755),
-                    ("[null,[q3.a]]", 756),
-                    ("[[$e],null]", 754),
-                    // Main admits a fresh state receiver one frame deeper
-                    // than a primed one. Check the selected use consistently.
-                    ("[null,[$e[0]]]", 754),
-                    ("[[q2[0]],[q2]]", 755),
-                    ("[[@Id(q2[0])],[q2]]", 754),
-                    ("[[q3.a],[q3]]", 755),
-                    ("[[$e[0]],[$e]]", 754),
-                ] {
-                    for k in [first_cut - 1, first_cut, first_cut + 1] {
-                        assert_eq!(
-                            cut(source, k, data, prepared, object),
-                            k >= first_cut,
-                            "source={source} k={k} data={data} prepared={prepared} object={object}"
-                        );
-                    }
-                }
-            }
+    for row in include_str!("support/subtree-read-depth.tsv").lines() {
+        let parts = row.split('\t').collect::<Vec<_>>();
+        let source = parts[0];
+        let data = parts[1] == "true";
+        let prepared = parts[2] == "true";
+        let object = parts[3] == "true";
+        let first_cut = parts[4].parse::<usize>().unwrap();
+        for k in [first_cut - 1, first_cut, first_cut + 1] {
+            assert_eq!(
+                cut(source, k, data, prepared, object),
+                k >= first_cut,
+                "source={source} k={k} data={data} prepared={prepared} object={object}"
+            );
         }
     }
 }

@@ -210,7 +210,7 @@ pub(super) fn form_payload(
         if let Some(Some(raw @ (Value::Obj(_) | Value::Element(_) | Value::Ast(_)))) =
             snapshot.get(form)
         {
-            if !eval.register_input(raw) || !eval.reserve_value(raw) {
+            if !eval.read_state_value(form, raw) || !eval.reserve_value(raw) {
                 return Err(BindingWriteError::Cut(eval.flags()));
             }
             let mut out = JsObject::new();
@@ -235,7 +235,7 @@ pub(super) fn form_payload(
             let Some(value) = value else {
                 continue;
             };
-            if !eval.register_input_text(key) {
+            if !eval.read_state_key(key) {
                 return false;
             }
             if !eval.reserve_result(2) {
@@ -247,7 +247,7 @@ pub(super) fn form_payload(
             let Some(key) = eval.copy_text(key) else {
                 return false;
             };
-            if !eval.register_input(value) || !eval.reserve_value(value) {
+            if !eval.read_state_value(&key, value) || !eval.reserve_value(value) {
                 return false;
             }
             out.define(key, value.clone());

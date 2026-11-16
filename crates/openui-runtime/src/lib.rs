@@ -50,10 +50,10 @@
 //! | `get_field_value` | One admitted Store value, shallow field projection | Undefined as `None` |
 //! | `run_action`, `run_action_with_limits`, `resume_action` | Default/explicit one run-wide work allowance retained on resume; per-operation room, then Store admission | Flags and typed failure; earlier effects/events retained; cut ends the run |
 //! | `PreparedReferenceValues::new`, `with_limits`, `owned_with_limits` | Default/explicit bounded supply measurement; no evaluation work spent | Refused entries flag only when read |
-//! | `PreparedReferenceValue::new`, `with_limits` | Default opaque clone without measurement; explicit work/depth preparation | Explicit refusal flags only when read |
-//! | `PreparedInput::from_prepared_references`, its `_with_limits` variant | Default combines all prepaid contributions; explicit iterator allowance | Incomplete explicit combination earns no input |
+//! | `PreparedReferenceValue::new`, `with_limits` | Core-measured bytes and whole-read height; default or explicit preparation bounds | Refusal flags only when read |
+//! | `ExpressionEvaluator::supply_input` | Core-measured program/start/reference receipts; one largest combined floor; setup spends no evaluation work | Typed refusal for different receipt limits or an already-cut allowance |
 //! | `TreeInput` constructors and builders | Borrowed configuration and retained Arc, constant work | No evaluation |
-//! | `BindingProps::{new,with_limits,insert,from_prompt_spec,from_prompt_spec_with_limits}` | No implicit quota; explicit spec admission and incremental retained-name cap | Typed `LimitError`; refused insertion unchanged |
+//! | `BindingProps::{new,with_limits,insert,remove,from_prompt_spec,from_prompt_spec_with_limits}` | No implicit quota; explicit spec admission and incremental retained-name cap | Typed `LimitError`; refused insertion unchanged |
 //! | `LibraryFunctions::{new,with_limits,register}` | Borrow schemas without walking; explicit opt-in name cap; used schemas checked during evaluation | Typed `LimitError`; implementation unchanged on refusal |
 //! | `TreeResult::to_json`, `HostEvent::to_json`, their `_with_limits` variants, `value_to_json`, `value_to_json_with_limits` | Default preserves admitted results; explicit variants admit work/depth/output before serialization | `Result<String, LimitError>` |
 //! | `Store::snapshot_json`, `snapshot_json_with_limits` | Default exports admitted state; explicit serialization limits | `Result<String, LimitError>` |
@@ -68,6 +68,19 @@
 //! duplicate names use their last input value. Reset batches preflight their
 //! combined final size atomically. A smaller replacement fits the total cap
 //! provided it passes its own work/depth/value admission. See ADR 0005.
+//!
+//! Completed streaming defaults retain parser identities; their reduced Store
+//! notification count is a pinned divergence (CONFORMANCE.md). Values agree.
+//! Snapshot JSON omits undefined entries; the raw snapshot and admission count
+//! retain their names. Persisted re-initialization therefore restores a declared
+//! default for an omitted undefined entry, rather than the null exported by
+//! earlier Rust versions. Undeclared undefined names disappear on that round trip. Query defaults are lazy and frozen per action run.
+//! State, raw and prepared query lookups check depth only where consumed;
+//! shallow receivers do not traverse deep siblings. Whole-value projection and
+//! coercion retain their depth checks. Supplied
+//! deferred ASTs earn their own measurement work; shared nodes earn credit once.
+//! Program and starting receipts contain no supplied data. A suspended program
+//! cache holds a Weak identity so a unique Arc can move on make_mut.
 //!
 //! Serialized result room is not a universal live-memory allowance. Eager
 //! temporaries can retain many individually admitted callback results before

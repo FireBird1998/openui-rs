@@ -14,7 +14,7 @@ fn freed_text_reallocated_at_the_same_address_pays_for_its_new_bytes() {
         let text = "x".repeat(4096);
         let address = text.as_ptr();
         let original = Value::Str(text);
-        eval.register_input(&original);
+        eval.read_state_value("$test", &original);
         drop(original);
         let fresh = "y".repeat(4096);
         assert_eq!(fresh.as_ptr(), address);
@@ -37,7 +37,7 @@ fn registered_container_owners_outlive_every_operation_in_their_session() {
     let weak = Arc::downgrade(&owner);
     let value = Value::Obj(owner);
     session.with_evaluator(|eval| {
-        assert!(eval.register_input(&value));
+        assert!(eval.read_state_value("$test", &value));
     });
     drop(value);
     assert!(weak.upgrade().is_some());

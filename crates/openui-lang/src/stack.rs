@@ -16,7 +16,8 @@
 //! walks then stop, including their sibling loops. Finished-tree walks use
 //! the one-argument form and may grow past the ceiling, even inside a parse;
 //! none calls back into an input-building walk to bypass its checks. A debug
-//! build panics 1,024 segments past the ceiling, whichever walk grew them.
+//! build guards against repeated growth without observing usable stack.
+//! Healthy finished walks can grow past 1,024 segments without a panic.
 //! Public expression evaluation treats reaching its ceiling as a depth cut in
 //! every build, and saves this policy with its suspended context (ADR 0003).
 
@@ -52,7 +53,11 @@ const SEGMENT: usize = 2 * 1024 * 1024;
 /// place.
 #[inline]
 pub(crate) fn low() -> bool {
-    low_given(stacker::remaining_stack(), ON_SEGMENT.get())
+    let low = low_given(stacker::remaining_stack(), ON_SEGMENT.get());
+    if cfg!(any(debug_assertions, test)) && !low && CEILING.get() == usize::MAX {
+        HEALTHY_BASE.set(SEGMENTS.get());
+    }
+    low
 }
 
 /// [`low`], given what `stacker` measures and whether the thread is on a
@@ -67,6 +72,9 @@ fn low_given(remaining: Option<usize>, on_segment: bool) -> bool {
 
 thread_local! {
     /// Whether we are running on a segment we grew.
+    // A real walk observes usable stack between segment growths. The runaway
+    // guard catches repeated growth without such progress, not legitimate depth.
+    static HEALTHY_BASE: Cell<usize> = const { Cell::new(0) };
     static ON_SEGMENT: Cell<bool> = const { Cell::new(false) };
     static SEGMENTS: Cell<usize> = const { Cell::new(0) };
     static CEILING: Cell<usize> = const { Cell::new(usize::MAX) };
@@ -82,15 +90,16 @@ thread_local! {
 #[inline(never)]
 pub(crate) fn on_new_segment<R>(f: impl FnOnce() -> R) -> R {
     /// Puts back whether the thread was on a segment, unwinding or not.
-    struct Restore(bool);
+    struct Restore(bool, usize);
     impl Drop for Restore {
         fn drop(&mut self) {
             ON_SEGMENT.set(self.0);
+            HEALTHY_BASE.set(self.1);
             SEGMENTS.set(SEGMENTS.get() - 1);
         }
     }
     stacker::grow(SEGMENT, || {
-        let _restore = Restore(ON_SEGMENT.replace(true));
+        let _restore = Restore(ON_SEGMENT.replace(true), HEALTHY_BASE.get());
         SEGMENTS.set(SEGMENTS.get() + 1);
         // The unit suite exercises this guard in release too. Production
         // keeps its debug-only policy, with this cfg branch folded away.
@@ -111,23 +120,24 @@ pub(crate) fn on_new_segment<R>(f: impl FnOnce() -> R) -> R {
     })
 }
 
-/// Nested segments a debug build grows past the ceiling before it panics.
+/// Consecutive segment growths without progress before a debug panic.
 ///
 /// A finished-tree walk has no ceiling, and a bug that makes every fresh
 /// segment look low nests segments without end: gigabytes a second, which
-/// froze a Mac before any outside watchdog could act (2026-11-11). The whole
-/// suite nests 30 at most, and at the stack a level was measured to take,
-/// 1,024 segments carry a walk some 260,000 levels deep. The unit tests nest
-/// two, and the ones that say the stack is low hold more on each segment, so
-/// they stop sooner.
+/// froze a Mac before any outside watchdog could act (2026-11-11). A real
+/// uncapped walk observes usable stack on its new segments and resets the
+/// progress base. The deliberately runaway unit test never observes it.
 const RUNAWAY: usize = if cfg!(test) { 64 } else { 1024 };
 
-/// Where a debug build stops nesting segments: [`RUNAWAY`] past the ceiling
-/// in force, or [`RUNAWAY`] alone outside any entry.
+/// Where a debug build stops growth without progress: [`RUNAWAY`] past the
+/// configured ceiling or the latest healthy uncapped stack observation.
 fn runaway_bound() -> usize {
     match CEILING.get() {
-        usize::MAX => UNCAP_BASE.get().saturating_add(RUNAWAY),
-        ceiling => RUNAWAY.saturating_add(ceiling),
+        usize::MAX => UNCAP_BASE
+            .get()
+            .max(HEALTHY_BASE.get())
+            .saturating_add(RUNAWAY),
+        ceiling => RUNAWAY.saturating_add(ceiling.max(HEALTHY_BASE.get())),
     }
 }
 

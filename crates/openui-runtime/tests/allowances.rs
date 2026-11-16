@@ -336,7 +336,7 @@ fn function_results_are_read_under_the_shared_work_and_depth_limits() {
 }
 
 #[test]
-fn deferred_ast_sizing_cannot_borrow_work_from_the_ceiling() {
+fn deferred_ast_measurement_earns_credit_even_after_earlier_work() {
     let scope = Supplied(Value::Ast(Arc::new(Ast::Str("x".repeat(10_000)))));
     let session =
         EvaluationSession::with_limits(&scope, 0, Limits::DEFAULT.with_result_size(usize::MAX));
@@ -344,14 +344,14 @@ fn deferred_ast_sizing_cannot_borrow_work_from_the_ceiling() {
         assert!(!session.evaluate(&Ast::Num(1.0)).size_limited);
     }
     let result = session.evaluate(&Ast::StateRef("$ast".into()));
-    assert!(result.size_limited && !result.depth_limited);
-    assert!(session.flags().size_limited);
+    assert!(!result.size_limited && !result.depth_limited);
+    assert!(!session.flags().size_limited);
     let fresh = EvaluationSession::new(&scope, 0).evaluate(&Ast::StateRef("$ast".into()));
     assert!(!fresh.size_limited && !fresh.depth_limited);
 }
 
 #[test]
-fn a_shared_deferred_ast_dag_is_sized_only_with_remaining_work() {
+fn a_shared_deferred_ast_earns_credit_once_but_its_output_still_cuts() {
     let mut node = Arc::new(Ast::Num(1.0));
     for _ in 0..40 {
         node = Arc::new(Ast::BinOp {
@@ -361,22 +361,41 @@ fn a_shared_deferred_ast_dag_is_sized_only_with_remaining_work() {
         });
     }
     let scope = Supplied(Value::Ast(node));
-    let session =
-        EvaluationSession::with_limits(&scope, 0, Limits::DEFAULT.with_result_size(usize::MAX));
-    for _ in 0..499_950 {
-        assert!(!session.evaluate(&Ast::Num(1.0)).size_limited);
-    }
+    let session = EvaluationSession::new(&scope, 0);
     let cut = session.evaluate(&Ast::StateRef("$ast".into()));
     assert!(cut.size_limited && !cut.depth_limited);
 }
 
 #[test]
-fn a_large_deferred_ast_needs_work_available_before_it_earns_credit() {
+fn a_large_deferred_ast_earns_its_own_measurement_work() {
     let scope = Supplied(Value::Ast(Arc::new(Ast::Str("x".repeat(1_100_000)))));
-    let cut = EvaluationSession::new(&scope, 0).evaluate(&Ast::StateRef("$ast".into()));
-    assert!(cut.size_limited && !cut.depth_limited);
-    let whole = EvaluationSession::with_limits(&scope, 0, Limits::DEFAULT.with_work(4_000_000))
-        .evaluate(&Ast::StateRef("$ast".into()));
+    let whole = EvaluationSession::new(&scope, 0).evaluate(&Ast::StateRef("$ast".into()));
     assert!(!whole.size_limited && !whole.depth_limited);
     assert_eq!(whole.value, Some(scope.0.clone()));
+}
+
+#[test]
+fn deferred_ast_bodies_larger_than_four_gibibytes_still_earn_credit_once() {
+    let mut node = Arc::new(Ast::Num(1.));
+    for _ in 0..40 {
+        node = Arc::new(Ast::BinOp {
+            op: "+",
+            left: node.clone(),
+            right: node,
+        });
+    }
+    let scope = Supplied(Value::Ast(node));
+    let limits = Limits::DEFAULT
+        .with_work(usize::MAX)
+        .with_result_floor(0)
+        .with_amplification(1)
+        .with_result_ceiling(usize::MAX);
+    let s = EvaluationSession::with_limits(&scope, 0, limits);
+    let result = s.evaluate(&ast("$ast.k"));
+    assert!(!result.size_limited && !result.depth_limited);
+    assert_eq!(result.value, Some(Value::Str("BinOp".into())));
+    assert!(
+        !s.with_evaluator(|e| e.reserve_result(4096)),
+        "virtual JSON occurrences must not earn input credit"
+    );
 }

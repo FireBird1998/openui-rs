@@ -106,7 +106,7 @@ fn prompt_spec_extraction_has_a_default_and_explicit_limits() {
 }
 
 #[test]
-fn individual_prepared_inputs_refuse_before_copying_and_combination_stops_its_iterator() {
+fn individual_prepared_inputs_refuse_before_copying() {
     use openui_runtime::{Ast, EvaluationScope, PreparedReferenceValue, evaluate_expression};
     struct Scope(PreparedReferenceValue);
     impl EvaluationScope for Scope {
@@ -119,19 +119,10 @@ fn individual_prepared_inputs_refuse_before_copying_and_combination_stops_its_it
     let baseline = test_alloc::peak();
     let token = PreparedReferenceValue::with_limits(
         &source,
-        0,
         Limits::DEFAULT.with_work(16).with_result_size(16),
     );
     assert!(test_alloc::peak().saturating_sub(baseline) < 16_384);
     assert!(evaluate_expression(&Ast::Ref("q".into()), &Scope(token)).size_limited);
-    let token = PreparedReferenceValue::with_limits(&Value::Num(1.), 1, Limits::DEFAULT);
-    let count = std::cell::Cell::new(0usize);
-    let references = std::iter::repeat(("q", &token)).inspect(|_| count.set(count.get() + 1));
-    let _ = openui_lang::PreparedInput::from_prepared_references_with_limits(
-        references,
-        Limits::DEFAULT.with_work(10),
-    );
-    assert!(count.get() <= 11);
 }
 
 #[test]
@@ -259,7 +250,6 @@ fn prepared_tokens_preserve_an_already_paid_contribution_without_new_read_credit
     }
     let scope = Scope(PreparedReferenceValue::with_limits(
         &Value::Num(1.),
-        1000,
         Limits::DEFAULT,
     ));
     let supplied = EvaluationSession::new(&scope, 1000);
@@ -271,7 +261,7 @@ fn prepared_tokens_preserve_an_already_paid_contribution_without_new_read_credit
 }
 
 #[test]
-fn bounded_opaque_preparation_does_not_add_a_height_claim_to_shallow_reads() {
+fn prepared_shallow_reads_ignore_unused_depth_while_whole_reads_enforce_it() {
     use openui_runtime::{Ast, EvaluationScope, EvaluationSession, PreparedReferenceValue};
     use std::sync::Arc;
     struct Scope(PreparedReferenceValue);
@@ -281,35 +271,33 @@ fn bounded_opaque_preparation_does_not_add_a_height_claim_to_shallow_reads() {
         }
     }
     let value = (0..10_000).fold(Value::Null, |v, _| Value::Arr(Arc::new(vec![v])));
-    let scope = Scope(PreparedReferenceValue::new(&value, 0));
-    let session = EvaluationSession::with_limits(&scope, 0, Limits::DEFAULT.with_depth(1));
+    let scope = Scope(PreparedReferenceValue::new(&value));
+    let session = EvaluationSession::with_limits(
+        &scope,
+        scope.0.input_bytes(),
+        Limits::DEFAULT.with_depth(1),
+    );
     let node = Ast::Member {
         obj: Arc::new(Ast::Ref("q".into())),
         field: "length".into(),
     };
-    for _ in 0..2 {
-        let result = session.evaluate(&node);
-        assert_eq!(result.value, Some(Value::Num(1.)));
-        assert!(!result.size_limited && !result.depth_limited);
-    }
+    let result = session.evaluate(&node);
+    assert!(!result.depth_limited && !result.size_limited);
+    assert_eq!(result.value, Some(Value::Num(1.)));
+    let whole = session.evaluate(&Ast::Ref("q".into()));
+    assert!(whole.depth_limited && !whole.size_limited);
 }
 
 #[test]
-fn compact_preparation_preserves_the_complete_legacy_measurement_api() {
+fn compact_reference_preparation_bounds_the_refused_tail() {
     use openui_runtime::{JsObject, PreparedReferenceValue};
     let mut values = JsObject::new();
     for i in 0..20 {
         values.define(format!("r{i}"), Value::Null);
     }
     let limits = Limits::DEFAULT.with_work(8);
-    let (full, bytes) = PreparedReferenceValue::measure_all(&values, limits);
-    let (prefix, prefix_bytes, tail) =
-        PreparedReferenceValue::measure_all_with_tail(&values, limits);
-    assert_eq!(full.len(), values.len());
-    assert!(prefix.len() < full.len());
+    let (prefix, receipt, tail) = PreparedReferenceValue::measure_all_with_tail(&values, limits);
+    assert!(prefix.len() < values.len());
     assert!(tail.size_limited);
-    assert_eq!(bytes, prefix_bytes);
-    for (name, entry) in full {
-        assert_eq!(entry.is_ok(), prefix.get(name).is_some_and(Result::is_ok));
-    }
+    assert!(receipt.input_bytes() > 0);
 }

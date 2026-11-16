@@ -1,105 +1,158 @@
 //! Core-measured supplied input, separate from evaluation work and ownership.
 use super::*;
 
-/// A bounded input measurement, containing only bytes and no retained owners.
+/// A core-measured program. Contains no program owner or supplied data.
 #[derive(Clone, Copy)]
-pub struct PreparedInput {
+pub struct PreparedProgram {
     pub(super) bytes: usize,
+    limits: Limits,
+    flags: EvaluationFlags,
 }
-impl PreparedInput {
+impl PreparedProgram {
     /// Measure parser output without evaluation, cloning it or allocating JSON.
-    /// Measurement has its own hard work/size bounds and the supplied depth.
-    pub fn from_parse_result(result: &crate::ParseResult, limits: Limits) -> Self {
-        Self::measure(limits, |walk| walk.program(result))
-    }
-    /// Measure a supplied value without retaining it or spending evaluation work.
-    /// A part exceeding the measurement depth/work bound earns no credit.
-    pub fn from_value(value: &Value, limits: Limits) -> Self {
-        Self::measure(limits, |walk| walk.value(value, 0))
-    }
-    /// Combine cached reference contributions from one prior bounded preparation.
-    /// Refused entries must be omitted. Each value's size has the same prepaid
-    /// measurement contract as [`PreparedReferenceValue::new`]. Keys and object
-    /// punctuation are included; no value is measured again or retained.
-    /// Default combination adds no new quota; request the explicit-limit variant
-    /// to bound an iterator supplied by the embedder.
-    pub fn from_prepared_references<'a>(
-        references: impl IntoIterator<Item = (&'a str, &'a PreparedReferenceValue)>,
-    ) -> Self {
-        let mut bytes = 2usize;
-        for (name, value) in references {
-            // Match supplied-object sizing, including literal encoded surrogates.
-            let key = name.chars().fold(2usize, |n, c| {
-                n.saturating_add(match c {
-                    '"' | '\\' | '\n' | '\r' | '\t' | '\u{8}' | '\u{c}' => 2,
-                    c if c < '\u{20}' => 6,
-                    c => c.len_utf8(),
-                })
-            });
-            bytes = bytes
-                .saturating_add(key)
-                .saturating_add(value.bytes())
-                .saturating_add(2);
-        }
-        Self { bytes }
-    }
-    /// Combine a bounded number of references under explicit setup limits.
-    /// An incomplete combination earns no input credit. Refused tokens cannot
-    /// contribute bytes. The iterator itself is embedder code.
-    pub fn from_prepared_references_with_limits<'a>(
-        references: impl IntoIterator<Item = (&'a str, &'a PreparedReferenceValue)>,
-        limits: Limits,
-    ) -> Self {
-        let mut bytes = 2usize;
-        let mut work = limits.work_for(usize::MAX);
-        for (name, value) in references {
-            let Some(left) = work.checked_sub(name.len().saturating_add(1)) else {
-                return Self { bytes: 0 };
-            };
-            work = left;
-            if matches!(value.measured, ReferenceMeasurement::Refused(_)) {
-                continue;
-            }
-            // Match supplied-object sizing, including literal encoded surrogates.
-            let key = name.chars().fold(2usize, |n, c| {
-                n.saturating_add(match c {
-                    '"' | '\\' | '\n' | '\r' | '\t' | '\u{8}' | '\u{c}' => 2,
-                    c if c < '\u{20}' => 6,
-                    c => c.len_utf8(),
-                })
-            });
-            bytes = bytes
-                .saturating_add(key)
-                .saturating_add(value.bytes())
-                .saturating_add(2);
-            if bytes >= limits.result_size().max(limits.work_for(usize::MAX)) {
-                return Self {
-                    bytes: limits.result_size().max(limits.work_for(usize::MAX)),
-                };
-            }
-        }
-        Self { bytes }
-    }
-    /// Measure supplied text including its JSON quotes and escapes.
-    pub fn from_text(text: &str, limits: Limits) -> Self {
-        Self::measure(limits, |walk| walk.text(text))
-    }
-    /// Add independently measured contributions to one supply, saturating only
-    /// on integer overflow. No input or ownership is retained. Registering this
-    /// combined token raises one floor; successive supplies are never summed.
-    #[must_use]
-    pub fn combined(self, other: Self) -> Self {
-        Self {
-            bytes: self.bytes.saturating_add(other.bytes),
-        }
-    }
-    fn measure(limits: Limits, f: impl FnOnce(&mut super::input_size::InputSize)) -> Self {
+    pub fn new(result: &crate::ParseResult, limits: Limits) -> Self {
         let mut walk = super::input_size::InputSize::new(limits);
-        f(&mut walk);
+        walk.program(result);
+        // Preserve drawing's existing setup refusals independently of the
+        // shared byte measure. Actions keep the successfully measured parts
+        // and raise a refused entry's flag only when that entry is evaluated.
+        let flags = match super::program_setup::check(result, limits) {
+            Ok(()) => EvaluationFlags::default(),
+            Err(depth) => EvaluationFlags {
+                depth_limited: depth,
+                size_limited: !depth,
+            },
+        };
         Self {
             bytes: walk.measured_bytes(),
+            limits,
+            flags,
         }
     }
+    /// Measurement depth/work flags. Action setup keeps partial credit; drawing
+    /// can propagate these flags before evaluating an unusable program.
+    pub fn flags(&self) -> EvaluationFlags {
+        self.flags
+    }
+    /// Bytes contributing to scaled evaluation allowances.
+    pub fn input_bytes(&self) -> usize {
+        self.bytes
+    }
+}
+/// Starting action, message and form-name measurement. No data is retained.
+#[derive(Clone, Copy)]
+pub struct PreparedStart {
+    bytes: usize,
+    limits: Limits,
+}
+/// Current program, either measured now or cached under the same limits.
+pub enum SuppliedProgram<'a> {
+    /// A borrowed program measured as caller setup.
+    Raw(&'a crate::ParseResult),
+    /// A core receipt; reuse under different limits is refused.
+    Prepared(&'a PreparedProgram),
+}
+/// Starting input, either measured now or retained as a receipt across resumes.
+pub enum SuppliedStart<'a> {
+    /// Measure each supplied part independently, retaining successful prefixes.
+    Raw {
+        /// Deferred action retained for this run.
+        action: Option<&'a Value>,
+        /// Original user message.
+        message: &'a str,
+        /// Optional named form.
+        form: Option<&'a str>,
+    },
+    /// The original run's starting receipt, with no retained supplied data.
+    Prepared(&'a PreparedStart),
+}
+/// One supply. Each named category occurs once, so receipts cannot be summed
+/// with themselves. Computed callback results must never be supplied as input.
+pub struct SuppliedInput<'a> {
+    /// Current program.
+    pub program: SuppliedProgram<'a>,
+    /// Retained starting input.
+    pub start: SuppliedStart<'a>,
+    /// Current reference preparation, using drawing's own measurement.
+    pub references: Option<&'a PreparedReferenceInput>,
+}
+/// Verified bytes from one complete reference preparation, including shared
+/// bodies once and successful keys. Only the core can construct this receipt.
+pub struct PreparedReferenceInput {
+    pub(super) bytes: usize,
+}
+impl PreparedReferenceInput {
+    /// Bytes earned by the successfully prepared entries.
+    pub fn input_bytes(&self) -> usize {
+        self.bytes
+    }
+}
+/// Cached setup receipts returned after raising the one run-wide input floor.
+pub struct SuppliedInputReceipt {
+    /// Cache for the current immutable program.
+    pub program: PreparedProgram,
+    /// Cache for the original action/message/form inputs.
+    pub start: PreparedStart,
+}
+/// A supplied receipt was measured under different evaluation limits, or the
+/// owning evaluation had already cut. Refusal changes no accounting state.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum InputSupplyError {
+    /// Prepare raw input again under the current evaluation's limits.
+    DifferentLimits,
+    /// This allowance has already cut; no input can revive it.
+    Cut,
+}
+impl std::fmt::Display for InputSupplyError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{self:?}")
+    }
+}
+impl std::error::Error for InputSupplyError {}
+
+pub(super) fn supply(
+    parts: SuppliedInput<'_>,
+    limits: Limits,
+) -> Result<SuppliedInputReceipt, InputSupplyError> {
+    let program = match parts.program {
+        SuppliedProgram::Raw(p) => PreparedProgram::new(p, limits),
+        SuppliedProgram::Prepared(p) if p.limits == limits => *p,
+        _ => return Err(InputSupplyError::DifferentLimits),
+    };
+    let start = match parts.start {
+        SuppliedStart::Prepared(s) if s.limits == limits => *s,
+        SuppliedStart::Prepared(_) => return Err(InputSupplyError::DifferentLimits),
+        SuppliedStart::Raw {
+            action,
+            message,
+            form,
+        } => {
+            let measure = |f: &dyn Fn(&mut super::input_size::InputSize)| {
+                let mut walk = super::input_size::InputSize::new(limits);
+                f(&mut walk);
+                walk.measured_bytes()
+            };
+            let mut bytes = measure(&|w| w.text(message));
+            if let Some(form) = form {
+                bytes = bytes.saturating_add(measure(&|w| w.text(form)));
+            }
+            if let Some(action) = action {
+                bytes = bytes.saturating_add(measure(&|w| w.value(action, 0)));
+            }
+            PreparedStart { bytes, limits }
+        }
+    };
+    let bytes = program
+        .bytes
+        .saturating_add(start.bytes)
+        .saturating_add(parts.references.map_or(0, |r| r.bytes));
+    ACCOUNT.with(|a| {
+        let mut a = a.borrow_mut();
+        let extra = bytes.saturating_sub(a.supplied_floor);
+        a.supplied_floor = a.supplied_floor.max(bytes);
+        a.credit(extra);
+    });
+    Ok(SuppliedInputReceipt { program, start })
 }
 struct InputWalk;
 impl InputWalk {
@@ -266,7 +319,6 @@ pub(super) fn register_value(value: &Value) {
             }
         });
         if seen {
-            super::check_input_depth(value);
             return;
         }
     }

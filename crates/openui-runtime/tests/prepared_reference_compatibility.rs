@@ -1,81 +1,114 @@
-//! Opaque default preparation preserves shallow reads of supplied data.
+//! Prepared and raw references use the same whole-read depth rule.
 use openui_lang::{
-    Ast, EvaluationScope, Limits, PreparedReferenceValue, Value, evaluate_expression,
+    Ast, EvaluationScope, EvaluationSession, Limits, PreparedReferenceValue, Value,
     parse_expression, tokenize,
 };
 use std::sync::Arc;
 #[global_allocator]
 static ALLOCATOR: test_alloc::Allocator = test_alloc::Allocator::with_cap(512 * 1024 * 1024);
-struct Scope(PreparedReferenceValue);
+struct Scope {
+    value: Value,
+    prepared: Option<PreparedReferenceValue>,
+}
 impl EvaluationScope for Scope {
     fn prepared_reference(&self, _: &str) -> Option<&PreparedReferenceValue> {
-        Some(&self.0)
+        self.prepared.as_ref()
     }
-}
-fn shallow(scope: &Scope, length: usize) {
-    let out = evaluate_expression(&parse_expression(&tokenize("q != null")), scope);
-    assert_eq!(out.value, Some(Value::Bool(true)));
-    assert!(!out.size_limited && !out.depth_limited);
-    let out = evaluate_expression(&parse_expression(&tokenize("@Count(q)")), scope);
-    assert_eq!(out.value, Some(Value::Num(length as f64)));
-    assert!(!out.size_limited && !out.depth_limited);
-}
-#[test]
-fn default_opaque_tokens_keep_shallow_reads_beyond_the_preparation_depth() {
-    std::thread::Builder::new()
-        .stack_size(64 * 1024)
-        .spawn(|| {
-            let value = (0..40_000).fold(Value::Null, |v, _| Value::Arr(Arc::new(vec![v])));
-            shallow(&Scope(PreparedReferenceValue::new(&value, 0)), 1);
-            let explicit = Scope(PreparedReferenceValue::with_limits(
-                &value,
-                0,
-                Limits::DEFAULT.with_depth(32_768),
-            ));
-            assert!(evaluate_expression(&Ast::Ref("q".into()), &explicit).depth_limited);
-        })
-        .unwrap()
-        .join()
-        .unwrap();
-}
-#[test]
-fn opaque_preparation_is_not_an_eight_mebibyte_value_admission() {
-    let string = Value::Str("x".repeat(9 * 1024 * 1024));
-    for token in [
-        PreparedReferenceValue::new(&string, 0),
-        PreparedReferenceValue::with_limits(&string, 0, Limits::DEFAULT),
-    ] {
-        shallow(&Scope(token), 0);
-    }
-    let array = Value::Arr(Arc::new(vec![Value::Null; 5 * 1024 * 1024]));
-    for token in [
-        PreparedReferenceValue::new(&array, 0),
-        PreparedReferenceValue::with_limits(&array, 0, Limits::DEFAULT),
-    ] {
-        shallow(&Scope(token), 5 * 1024 * 1024);
+    fn reference(&self, _: &str, _: &openui_lang::ExpressionEvaluator<'_>) -> Option<Value> {
+        Some(self.value.clone())
     }
 }
 #[test]
-fn default_reference_combination_preserves_large_prepaid_contributions() {
-    use openui_lang::{EvaluationSession, PreparedInput};
-    let token = PreparedReferenceValue::new(&Value::Null, 100_000_000);
-    let visited = std::cell::Cell::new(0);
-    let input = PreparedInput::from_prepared_references(
-        std::iter::repeat_n(("q", &token), 3).inspect(|_| visited.set(visited.get() + 1)),
-    );
-    assert_eq!(visited.get(), 3);
-    let session = EvaluationSession::with_limits(
-        &(),
-        0,
-        Limits::DEFAULT
-            .with_result_floor(0)
-            .with_amplification(1)
-            .with_result_ceiling(usize::MAX)
-            .with_work(usize::MAX),
+fn prepared_and_raw_whole_reads_cut_at_the_same_depth() {
+    for levels in [0, 1, 4, 20, 800] {
+        let value = (0..levels).fold(Value::Null, |v, _| Value::Arr(Arc::new(vec![v])));
+        for depth in [1, 2, 4, 16, 256] {
+            for source in ["q == q", "q.length", "@Count(q)", "\"\" + q"] {
+                let expression = parse_expression(&tokenize(source));
+                let read = |prepared: bool| {
+                    let scope = Scope {
+                        value: value.clone(),
+                        prepared: prepared.then(|| PreparedReferenceValue::new(&value)),
+                    };
+                    EvaluationSession::with_limits(
+                        &scope,
+                        100_000,
+                        Limits::DEFAULT.with_depth(depth),
+                    )
+                    .evaluate(&expression)
+                };
+                let raw = read(false);
+                let cached = read(true);
+                assert_eq!(
+                    (raw.size_limited, raw.depth_limited),
+                    (cached.size_limited, cached.depth_limited),
+                    "{source}, levels={levels}, depth={depth}"
+                );
+                assert_eq!(raw.value, cached.value);
+            }
+        }
+    }
+}
+#[test]
+fn reference_sizes_are_core_measured_and_cannot_be_claimed() {
+    let value = Value::Str("x".repeat(600));
+    let prepared = PreparedReferenceValue::new(&value);
+    assert_eq!(prepared.input_bytes(), 602);
+    let scope = Scope {
+        value,
+        prepared: Some(prepared),
+    };
+    assert!(
+        EvaluationSession::new(&scope, 601)
+            .evaluate(&Ast::Ref("q".into()))
+            .size_limited
     );
     assert!(
-        session.with_evaluator(|e| {
-            e.register_input_floor(&input) && e.reserve_result(300_000_017)
-        })
+        !EvaluationSession::new(&scope, 602)
+            .evaluate(&Ast::Ref("q".into()))
+            .size_limited
     );
+}
+
+#[test]
+fn prepared_typed_scalar_nodes_count_their_complete_ast_json() {
+    for node in [Ast::Num(1.), Ast::Bool(false), Ast::Bool(true), Ast::Null] {
+        let expected = node.to_json().len();
+        assert_eq!(
+            PreparedReferenceValue::new(&Value::Ast(Arc::new(node))).input_bytes(),
+            expected
+        );
+    }
+}
+#[test]
+fn prepared_and_raw_deferred_nodes_have_the_same_whole_read_depth() {
+    let mut node = Ast::Num(1.);
+    for _ in 0..20 {
+        node = Ast::UnaryOp {
+            op: "!",
+            operand: Arc::new(node),
+        };
+    }
+    let value = Value::Ast(Arc::new(node));
+    for depth in 1..15 {
+        for source in ["q == q", "q.length", "@Count(q)", "\"\" + q"] {
+            let expression = parse_expression(&tokenize(source));
+            let read = |prepared: bool| {
+                let scope = Scope {
+                    value: value.clone(),
+                    prepared: prepared.then(|| PreparedReferenceValue::new(&value)),
+                };
+                EvaluationSession::with_limits(&scope, 100_000, Limits::DEFAULT.with_depth(depth))
+                    .evaluate(&expression)
+            };
+            let raw = read(false);
+            let cached = read(true);
+            assert_eq!(
+                (raw.size_limited, raw.depth_limited),
+                (cached.size_limited, cached.depth_limited),
+                "{source},depth={depth}"
+            );
+            assert_eq!(raw.value, cached.value);
+        }
+    }
 }

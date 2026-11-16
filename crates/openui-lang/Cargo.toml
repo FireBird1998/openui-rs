@@ -18,7 +18,7 @@ stacker = "0.1"
 [dev-dependencies]
 test-alloc = { path = "../test-alloc" }
 proptest = "1"
-# Thread CPU time for tests/streaming_cost.rs; already in the tree via proptest.
+# Test/benchmark platform support; already in the tree via proptest.
 libc = "0.2"
 similar = "2"
 

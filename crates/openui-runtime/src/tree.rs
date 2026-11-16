@@ -74,8 +74,9 @@ impl<'a> TreeInput<'a> {
     }
     /// Retain an immutable shared program identity for action continuations.
     /// The runner caches its bounded measurement and indexes once per run.
-    /// A suspended run holds the Arc, so Arc::make_mut by the embedder clones
-    /// the program. Only the current cached program is retained. Ordinary
+    /// A suspended run holds only a Weak identity. Arc::make_mut can move a
+    /// uniquely held program and invalidates that identity without cloning it.
+    /// Only the current program's measurement and indexes are retained. Ordinary
     /// borrowed results are remeasured on each supply, outside evaluation work;
     /// both forms have identical credit, effects and cut points.
     pub fn from_shared_result(result: &'a Arc<ParseResult>) -> Self {
@@ -431,6 +432,7 @@ struct TreeScope<'a> {
     // Stable per-item results can bypass upstream's otherwise redundant second
     // pass. Keep owners to prevent address reuse; this is session-local.
     stable_elements: RefCell<std::collections::HashMap<usize, (ElementOwner, usize)>>,
+    stable_collect_at: Cell<usize>,
     references: ReferenceIndex<'a>,
     run_defaults: Option<&'a std::collections::HashMap<String, QueryDefault>>,
     reference_values: Option<&'a PreparedReferenceValues<'a>>,
@@ -485,6 +487,7 @@ impl<'a> TreeScope<'a> {
             report_bytes: Cell::new(None),
             paid_markers: RefCell::new(std::collections::HashMap::new()),
             stable_elements: RefCell::new(std::collections::HashMap::new()),
+            stable_collect_at: Cell::new(128),
             references,
             run_defaults: None,
             reference_values: supplied,
@@ -816,65 +819,68 @@ impl TreeScope<'_> {
         } else {
             None
         };
-        let mut props = JsObject::new();
-        for (key, value) in mapped {
-            if cut(eval) {
-                break;
-            }
-            let state_ref = match &value {
-                CallProp::Typed(a) => matches!(a, Ast::StateRef(_)),
-                CallProp::Data(Value::Ast(a)) => matches!(a.as_ref(), Ast::StateRef(_)),
-                CallProp::Data(Value::Obj(o)) => {
-                    matches!(o.get("k"),Some(Value::Str(k)) if k=="StateRef")
+        let props = eval.with_temporary_results(|| {
+            let mut props = JsObject::new();
+            for (key, value) in mapped {
+                if cut(eval) {
+                    break;
                 }
-                _ => false,
-            };
-            if contextual && state_ref && bindings.is_some_and(|b| b.contains(&key)) {
-                let marker = match &value {
-                    CallProp::Typed(a) => bindings::state_marker_ast(a),
-                    CallProp::Data(v) => bindings::state_marker(v),
-                };
-                if let Some(marker) = marker {
-                    // The enclosing expression projection charges this once.
-                    self.remember_marker(&marker, eval);
-                    props.set(key, marker);
-                }
-            } else if !contextual && state_ref {
-                props.set(
-                    key,
-                    match value {
-                        CallProp::Typed(a) => Value::Ast(Arc::new(a.clone())),
-                        CallProp::Data(v) => v.clone(),
-                    },
-                );
-            } else {
-                let result = match value {
-                    CallProp::Typed(a) => eval.evaluate_result(a),
-                    CallProp::Data(v) => eval.evaluate_call_prop(v),
-                };
-                let fresh = !result.reuses_data();
-                if let Some(value) = result.value {
-                    if fresh && !element_value(&value) && bindings::is_marker(&value) {
-                        self.remember_marker(&value, eval);
+                let state_ref = match &value {
+                    CallProp::Typed(a) => matches!(a, Ast::StateRef(_)),
+                    CallProp::Data(Value::Ast(a)) => matches!(a.as_ref(), Ast::StateRef(_)),
+                    CallProp::Data(Value::Obj(o)) => {
+                        matches!(o.get("k"),Some(Value::Str(k)) if k=="StateRef")
                     }
-                    props.set(key, value);
+                    _ => false,
+                };
+                if contextual && state_ref && bindings.is_some_and(|b| b.contains(&key)) {
+                    let marker = match &value {
+                        CallProp::Typed(a) => bindings::state_marker_ast(a),
+                        CallProp::Data(v) => bindings::state_marker(v),
+                    };
+                    if let Some(marker) = marker {
+                        // The enclosing expression projection charges this once.
+                        self.remember_marker(&marker, eval);
+                        props.set(key, marker);
+                    }
+                } else if !contextual && state_ref {
+                    props.set(
+                        key,
+                        match value {
+                            CallProp::Typed(a) => Value::Ast(Arc::new(a.clone())),
+                            CallProp::Data(v) => v.clone(),
+                        },
+                    );
+                } else {
+                    let result = match value {
+                        CallProp::Typed(a) => eval.evaluate_result(a),
+                        CallProp::Data(v) => eval.evaluate_call_prop(v),
+                    };
+                    let fresh = !result.reuses_data();
+                    if let Some(value) = result.value {
+                        if fresh && !element_value(&value) && bindings::is_marker(&value) {
+                            self.remember_marker(&value, eval);
+                        }
+                        props.set(key, value);
+                    }
                 }
             }
-        }
-        if contextual
-            && props
-                .values()
-                .any(|v| element_value(v) || matches!(v, Value::Arr(_)))
-        {
-            let _inline = Inline::enter(&self.inline);
-            for (key, value) in props.clone().iter() {
-                if (element_value(value) || matches!(value, Value::Arr(_)))
-                    && let Some(value) = self.expression_result(Some(value.clone()), eval)
-                {
-                    props.set(key.clone(), value);
+            if contextual
+                && props
+                    .values()
+                    .any(|v| element_value(v) || matches!(v, Value::Arr(_)))
+            {
+                let _inline = Inline::enter(&self.inline);
+                for (key, value) in props.clone().iter() {
+                    if (element_value(value) || matches!(value, Value::Arr(_)))
+                        && let Some(value) = self.expression_result(Some(value.clone()), eval)
+                    {
+                        props.set(key.clone(), value);
+                    }
                 }
             }
-        }
+            props
+        })?;
         if let Some(Value::Str(name)) = &name {
             return Some(Value::Element(Arc::new(Element {
                 type_name: name.clone(),
@@ -1347,7 +1353,7 @@ impl TreeScope<'_> {
             let owner=PropOwner{component:&e.type_name,statement:e.statement_id.as_deref(),bindings:self.binding_props.and_then(|b|b.component(&e.type_name))};
             let mut raw=std::mem::take(&mut e.props);
             let keys=raw.iter().map(|(k,_)|k.clone()).collect::<Vec<_>>();
-            let mut props=JsObject::new();
+            let mut props=JsObject::with_capacity(raw.len());
             for key in keys {
                 if let Some(v)=raw.remove(&key) && let Some(v)=self.prop_on_owned(owner,&key,v,eval){props.set(key,v);}
             }
@@ -1384,7 +1390,7 @@ impl TreeScope<'_> {
                 bindings: self.binding_props.and_then(|b|b.component(&e.type_name)),
                 statement: e.statement_id.as_deref(),
             };
-            let mut props = JsObject::new();
+            let mut props = JsObject::with_capacity(e.props.len());
             for (k, v) in e.props.iter() {
                 if let Some(v) = self.prop_on(owner, k, v, eval) {
                     props.set(k.clone(), v);
@@ -1489,8 +1495,10 @@ impl TreeScope<'_> {
                 _ => return,
             };
             let mut entries = self.stable_elements.borrow_mut();
-            if entries.len() >= 128 {
+            if entries.len() >= self.stable_collect_at.get() {
                 entries.retain(|_, (v, _)| v.alive());
+                self.stable_collect_at
+                    .set(entries.len().saturating_mul(2).max(128));
             }
             entries.insert(key, (owner, eval.remaining_depth()));
         }

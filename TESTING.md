@@ -125,12 +125,12 @@ a stream staying cut until `set`. Finished-tree walks remain uncapped.
 | `size` | Programs that double with every line stop at the result-size limit with `size_limited` (by default about 64 KiB for these short programs, up to 8 MiB with the limit fixed there), state defaults evaluated from the ones above them too | Runaway memory |
 | `work` | The work limit on evaluating state defaults: its default scaling with the program; running out cuts the default (and every later expression default) and flags the result, and raising it lets it finish; the cost in steps, found by bisecting the work limit, of `@Each` reading an expression per item (items times template), of a component read many times (its size once), and of sorting (`n log n`) and filtering (`n`); the slow fuzz input, shrunk | Evaluating that takes seconds on a small program, or a step that isn't counted |
 | `limits` | The `Limits` value: its documented defaults; raising and lowering depth and result size, one-shot and streaming; the result-size limit scaling with the program (floor, amplification, ceiling, or fixed), a small program amplified past it cut, a stream cut early and whole once its text has grown, and the `stream` fuzz target's slow input from the 1.1 long runs, shrunk to 86 bytes with a 98 KB result; past the program-size limit, a flagged result equal to parsing the text up to it (never splitting a character), and a stream that ignores pushes until `set`; no default cuts a corpus case | A limit that doesn't reach a stage, or a default that cuts real programs |
-| `entry_points` | `Limits` on the other entry points: merging reads each input to the program-size limit and expressions to the depth limit, flagged; one expression stops at the depth limit; reading JSON, converting back to source nest three JSON levels per depth level and 32 more (800 by default), refused past it and let through when raised; a 30,000-level JSON value frees on a 64 KB stack; a prompt's time grows linearly with its component groups (best of 3) | An entry point a hostile input can run unbounded, or a limit that doesn't reach it |
+| `entry_points` | `Limits` on the other entry points: merging reads each input to the program-size limit and expressions to the depth limit, flagged; one expression stops at the depth limit; reading JSON, converting back to source nest three JSON levels per depth level and 32 more (800 by default), refused past it and let through when raised; a 30,000-level JSON value frees on a 64 KB stack; a prompt's allocation calls grow linearly with its component groups | An entry point a hostile input can run unbounded, or a limit that doesn't reach it |
 | `prompt_depth` | A 900-level tool input schema is refused at the default JSON depth limit and renders when the depth limit is raised; a lowered limit refuses a shallower schema | A prompt entry point that ignores the depth limit |
 | `drop` | Deep results, at the default depth limit and at 20,000 levels, parse, stream and drop on a 64 KB thread stack: arrays, elements, a runtime expression, evaluated defaults and a 10,000-statement reference chain. Run it unoptimized too (`CARGO_PROFILE_TEST_OPT_LEVEL=0`), where frames are largest | A tree that frees itself by recursion |
-| `streaming_cost` | A push costs about the same on a program four times the size, bare and in a fence with prose around it (thread CPU time, best of 7) | Streaming that grows with the square of the program |
-| `scaling` | Shapes built to cost the square of their size cost about four times as much at four times the size (thread CPU time, best of 5): blank lines before a `?` line, one-shot and streamed; blank space between statements in a stream; a chain of references completed in one push; a chain of queries searched for loops, its loops and their order pinned. Unresolved names under an 80-statement chain fit the 64 MiB allocation cap, in order through reached statements; a push changing several statements gives what a fresh stream does | A scan, a cache walk or a list that is redone or copied once per line, statement or level |
-| `streaming_reuse` | A stream takes the state defaults it evaluated at earlier pushes as they were (#8): every push equals a fresh stream given the text so far in one push, for defaults reading defaults, components read twice (one object), a runtime expression's properties read across defaults (one object), a redefinition, a late reference, a default cut by work or by room early and whole once the program grows, and the shrunk slow fuzz input; and by cost, a push after an expensive default costs a fraction of evaluating it, and sixty defaults streamed a character at a time cost about as much a push late as early (thread CPU time) | Reuse that changes a result, or streaming defaults that grows with the square of the program |
+| `streaming_cost` | Allocation requests per push have a ratio below 2.5 on a program four times the size, bare and in a fence with prose around it | Streaming that grows with the square of the program |
+| `scaling` | Allocation requests grow by less than 8x at four times the input size over these shapes: blank lines before a `?` line, one-shot and streamed; blank space between statements in a stream; a chain of references completed in one push; a chain of queries searched for loops, its loops and their order pinned. Unresolved names under an 80-statement chain fit the 64 MiB allocation cap, in order through reached statements; a push changing several statements gives what a fresh stream does | A scan, a cache walk or a list that is redone or copied once per line, statement or level |
+| `streaming_reuse` | A stream takes the state defaults it evaluated at earlier pushes as they were (#8): every push equals a fresh stream given the text so far in one push, for defaults reading defaults, components read twice (one object), a runtime expression's properties read across defaults (one object), a redefinition, a late reference, a default cut by work or by room early and whole once the program grows, and the shrunk slow fuzz input; and by cost, a push after an expensive default costs a fraction of evaluating it, and sixty defaults streamed a character at a time cost about as much a push late as early (allocation requests) | Reuse that changes a result, or streaming defaults that grows with the square of the program |
 | `report` | The counts in CONFORMANCE.md are what the corpus holds | A stale write-up |
 | `cli` | The command-line tool's commands print what the library gives, including reading stdin, the default chunk size, and `--limit name=value` (and its error naming the limits) for every command: `tokens` reads to the program-size limit, `prompt` refuses a spec past the depth limit | A broken CLI |
 | `api` | The public JSON reader and writer, `JsObject`, and walking an expression | Public helpers that parsing alone doesn't reach |
@@ -512,8 +512,10 @@ and RuntimeRefs inlined by parsing. `parse_policy.rs` compares nested parsing,
 JSON and expression reading, and streaming against top-level results during a
 16,000-statement evaluation. Earlier segments must not spend these entries'
 stack allowances. Mixed session, callback and fresh hops count the same depth.
-Deferred-AST tests bound sizing by remaining work, including a shared DAG with
-2^40 virtual leaves. Larger deferred ASTs can require an explicit work limit.
+Deferred-AST tests credit supplied nodes before their measurement work,
+including a shared DAG with 2^40 virtual leaves and more than 4 GiB of virtual
+JSON. A 200,000-node AST and its plain-JSON form fit default limits. Fixed work
+still cuts and output occurrences still pay their serialized room.
 `supplied_values.rs` checks undefined, typed values and identity.
 
 `supplied_memory.rs` runs under a 256 MiB allocation cap. Bounds include the
@@ -645,9 +647,9 @@ Public APIs exercise the state-only lookup and one-read rule. `reuses_data`
 exposes read-only provenance, with a compile-fail
 doctest rejecting mutation and existing result-equality tests unchanged.
 Assignment stripping pins main's 292 room/338 work with bindings, and
-165/179 after stripping without bindings. Eleven repeated data markers fit
+165/178 after stripping without bindings. Eleven repeated data markers fit
 main's 3030/5946 baseline
-and now pin 214/655 exactly. Each boundary cuts one unit below.
+and now pin 214/578 exactly. Each boundary cuts one unit below.
 
 The corpus also replays seeded `.writes.json` sequences through public marker
 writes; missing sequences fail, and pending cases keep partial comparisons.
@@ -788,11 +790,11 @@ fallback, large legacy params/type coercion, all handoff kinds and the hard
 ceiling. It pins that a 2 MiB snapshot emits before an oversized set fails,
 that large property names earn credit before copying, and that undefined
 snapshot properties consume no output room.
-`action_run_budget` uses actual parsed 5,000/20,000-step set and reset plans.
-Thread CPU ratios (below 6×), allocation counts (below 20 per step plus 2,048)
-and release CPU time (below 2 seconds) reject repeated whole-program walks.
+`action_run_budget` uses actual parsed 4,000/16,000-step set/reset comparisons and
+a separate 20,000-step default-budget case.
+Allocation counts stay below 20 per step plus 2,048, with a linear scaling bound.
 Its expensive-loop plan pins shared work and preservation of earlier writes.
-A second CPU ratio crosses 5,000/20,000 program steps with 8/32 events over
+A second allocation ratio crosses 5,000/20,000 program steps with 8/32 events over
 80 KiB of state, catching program remeasurement or repeated admission per event.
 `mutation_suspension` uses only public APIs for success/failure, live fields,
 current-program resets/args, repeated and last mutations, shared work across
@@ -808,9 +810,9 @@ and supplementary-scalar behavior. No parsing-path function changed.
 
 Action cost regressions use real parsed plans, including 20,000 sets/resets and
 5,000 distinct mutation handoffs. The 4,000/16,000 comparisons assert on counting
-allocator calls, with minima of three CPU samples and a loose 10× CPU backstop.
-They cover shared immutable program input across resumes and O(events × state)
-payload copying; small CPU samples alone do not decide the linearity assertion.
+allocator calls, independent of scheduling. They cover shared immutable program
+input across resumes and O(events × state) payload copying. Allocation-free CPU
+scans are outside this measure.
 `action_resume_inputs` and `supplied_input_accounting` enforce replacement input
 credit, immutable identity checks and work that stays spent. Reset refusal tests
 check values, pristine status and version, not just the final event list.
@@ -1056,7 +1058,8 @@ The comparison page's README lists browser/typecheck/parser-comparison commands.
 data. Each one-item case must stay below 128,000 bytes. The support files
 `nested-loop-oracle.tsv` and `nested-loop-prices.tsv` were generated independently
 against archived 8ffe3b0: 32 output-hash/cut observations and 16 exact work/room
-threshold pairs. Changed results or prices fail, including cut cases. The test
+threshold pairs. Main outputs, cuts and exact work/room remain pinned. The
+proposed #55 room refund is deferred because of the review peak conflict. The test
 does not assert a universal flat memory bound; active templates still cost space
 with depth. Existing `evaluation_reuse` retains its 384-configuration leaf grid
 and its 5/20-times-room shape bounds.
@@ -1071,7 +1074,7 @@ to a universal peak/room formula (ADR 0008), not an amplification safety test.
 
 `admission_helpers` (64 MiB) pins adjacent serialization bytes, bounded refusal
 before copying caller-edited results, incremental/atomic configuration caps,
-prepared-token cuts and finite reference-combination iteration. Bulk preparation
+prepared-token cuts and compact refused-reference tails. Bulk preparation
 uses input-linear key-ordering scratch; a refused tail does not allocate an error
 for every remaining key. `read_bounds` checks allocation-free impossible-name
 lookups and input-linear shallow form reads. `owner_walks` (128 MiB) exercises
@@ -1096,13 +1099,11 @@ computation, retained provenance history or unprojected eager temporaries.
 uncut draw envelope, 8,392,146-byte raw cut draw, a raised-depth draw, empty
 snapshot at room 0/1, ordinary large prompt libraries and control-character
 binding/function names. Explicit admission remains covered by `admission_helpers`.
-`prepared_reference_compatibility` (512 MiB) pins unmeasured opaque preparation:
-40,000-deep tokens have uncut shallow reads on 64 KiB; explicit preparation still
-refuses depth. Nine-MiB strings and five-million-item arrays are not value-size
-admission failures. Neither default nor explicit preparation promises an 8 MiB
-per-token value cap. Default reference combination also retains all prepaid
-contributions when evaluation limits are raised; explicit limited iteration
-remains bounded.
+`prepared_reference_compatibility` (512 MiB) compares raw and prepared whole
+reads at lowered and default depth limits, including deferred AST values. It
+pins complete scalar AST JSON sizes and refusal of unpaid core-measured input.
+Preparation remains separate from value admission; the public constructors no
+longer accept byte claims or combine caller-sized reference iterators.
 
 Both bindings' `runtime_session` suites exercise these public-surface rules:
 `tree_exports_over_the_host_input_cap_replace_draws_without_consuming_pending_runs`
@@ -1255,3 +1256,88 @@ Earlier prefixes can still differ from main under the intended #52 ordinary
 inherited-validation fix. These intentional divergences use explicit expected
 results, not a pending list. `discarded_prototype_assignments_keep_value_equality_and_debug`
 additionally protects public equality, Debug output and the non-dynamic flag.
+
+## Counted runtime and streaming follow-ups
+
+The two #61 reuse tests count thread-local allocation requests. Empty pushes
+exercise a wide completed tree and an evaluated default, with an absolute
+per-push bound. Obsolete-reference updates compare narrow and wide replacement
+trees after warming the replacement. In a scratch copy the first test fails
+when either evaluator reuse or the completed cache is removed; the second fails
+when the completed cache or all streaming reuse is removed. The state-key credit
+pin also requires zero allocation requests on unchanged repeated reads.
+All performance assertions count allocations or work, including `rebuild_cost`,
+`scaling`, `streaming_cost`, `action_run_budget` and `action_mutation_cost`.
+There are no elapsed or CPU-time assertions. Counts constrain allocation traffic;
+they do not measure allocation-free scans. Timing remains only for benchmark
+reporting and child-process watchdogs.
+
+`runtime_review_regressions` (512 MiB) pins changed scalar credit after each
+mutation resume (growth, unchanged values, changing back and many names), exact
+scalar/key credit across container transitions, credit after an undefined scope
+read, and zero repeat-copy allocations, shallow state/raw/prepared
+reads past deep unvisited siblings, 760/761/762/800/1,100-level query receivers,
+whole-value coercion cuts, and same-session re-entry through both callback paths.
+Its re-entry case exhausts work or room inside the nested call and checks the
+owning session's flags. The undefined snapshot round trip restores declared
+defaults and drops undeclared undefined names. `review_peaks` (512 MiB) uses the
+reviewer's exact two sources with upper bounds of 268,851,144 and 3,732,632 bytes.
+The bound covers these shapes only.
+
+`accounting_followups` (256 MiB) pins five-byte false projections, scalar
+payload credit once per consecutive scalar value/name, retained-result-independent work over 128 generated
+forms, unchanged argument-text projection traffic across 32 cache misses, weak
+shared-program ownership and mutation argument invalidation, omitted undefined
+snapshot entries, oversized unused messages, order-independent partial input
+credit, and the typed/data concatenation credit and room prices documented in
+CONFORMANCE.md. Its 200,000-node AST/plain-JSON test owns more than 64 MiB of
+input and therefore lives outside the 64 MiB `allowances` binary. Argument
+projection reuse does not remove validation's own copies or change work charges.
+
+`streaming_default_notifications` replays a live-reference-generated byte stream
+under seven scenarios: no edit, plus edits before and after completion for
+arrays, objects and expression defaults individually. Both
+parsers' default identities and every Store notification position are pinned;
+values and exported snapshots match at every step. Regenerate from `reference/`
+with `bun --no-install stream-default-identities.ts >
+../crates/openui-runtime/tests/streaming-defaults.json`.
+
+`runaway_finished_walk` (1 GiB) walks, serializes and drops 4,100,000 AST levels
+on a 64 KiB thread. Run additionally with
+`CARGO_PROFILE_TEST_OPT_LEVEL=0 cargo test -p openui-lang --test runaway_finished_walk`:
+that build reproduces the old debug runaway panic; the normal optimized test
+profile has smaller frames. Healthy stack observations reset only the runaway
+progress guard; configured evaluator depth/stack cuts remain unchanged.
+
+`nested-loop-allocation-calls.tsv` bounds the native/data substitution grid's
+allocation calls with 16 calls of platform headroom. Restoring the replaced-key
+String allocation fails the multi-row cases. Original output hashes and one-row prices remain independent checks, including
+main's cut results and room boundaries. The proposed nested-rebuild refund is
+deferred because it fails the review's peak requirement; its extra fixtures and
+public scope method are removed. `rebuild_cost` checks linear allocation-request
+traffic for retained row results and wide argument-cache misses over 1,000/6,000
+fields; unchanged string-copy traffic is separately pinned in
+`accounting_followups`. The borrowed name index avoids repeated field scans,
+but allocation counts do not establish a CPU bound for allocation-free scans.
+State, raw query and prepared query lookups use main's permissive receiver rule:
+only consumed parts impose expression depth. Whole-value output and coercion
+still enforce depth at their actual use. The depth fixtures pin those use
+boundaries, both orders and representations, plus the generated union of
+isolated uses. This is not a one-level adjustment.
+The changed fourth columns of mixed/reuse work fixtures record approved false
+projection and ownership-cache prices; archived main columns are retained.
+
+The two general peak-memory goals in #55 remain deferred under ADR 0008.
+Finite shape checks and caller-input measurement are not a universal peak bound.
+
+Drawing retains its historical setup saturation guard separately from input
+credit. `drawing_keeps_the_existing_saturated_setup_bound_before_unread_deep_declarations`
+pins a caller-built program with a 44 MB U+100000 string and an unread
+2,000-level array. In main's visitation order the six-unit high-codepoint
+estimate saturates the guard before the deep array, so the program completes;
+reversing declarations reaches the depth cut. Using actual JSON string bytes
+for this guard would cut the formerly completed ordering. That estimate remains
+only in `program_setup`'s refusal check; it never grants input credit. Program
+credit itself uses one core measure shared by drawing and action runs. Removing
+or modernizing the historical guard is deferred because it conflicts with
+main's completed results.

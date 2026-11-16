@@ -128,7 +128,7 @@ fn repeated_reference_uses_have_the_same_depth_boundary_as_the_first() {
         for object in [false, true] {
             for prepared in [false, true] {
                 let mut refs = JsObject::new();
-                refs.define("qd", deep(745, object));
+                refs.define("qd", deep(744, object));
                 let cached = PreparedReferenceValues::new(&refs);
                 let w = nested("[qd]".into(), 12, 1, false);
                 for first in ["null".to_string(), w.clone()] {
