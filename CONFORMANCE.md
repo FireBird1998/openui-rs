@@ -475,6 +475,18 @@ are documented and tested in TESTING.md. This changes only the fuzz harness:
 no library behavior, parser cost, parser/edit/invariant mode, existing corpus
 case or golden changes.
 
+
+For #70, version 2 optionally adds 24 public evaluator probes just below, at and
+above small depth/result-room boundaries. They start after default-limit parsing
+and compare fitting outputs with the upstream evaluator byte for byte; separate
+pins preserve all original v1/v2 goldens. Both recording formats have one-byte
+pin perturbation controls. The supervisor reports inherited pipes held after
+worker exit (including a new-session double-fork), and retries a reference
+deadline once before recording a finding, retaining attempt outcomes. Detached
+processes that close all worker pipes remain outside its portable coverage.
+Only harness behavior and one portable stack-policy unit test change; library
+policy, parsing cost, existing fuzz modes and goldens remain unchanged.
+
 ## What conformance testing found
 
 In the core, fixed, each pinned by a case:

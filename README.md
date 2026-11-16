@@ -79,8 +79,9 @@ When a test fails, it prints the case, the streaming step and a diff against the
 
 Runtime differential fuzzing (`scripts/fuzz.sh --runtime`) generates programs,
 state and interactions, independently saves/reloads Rust state, and checks
-small-limit cuts with upstream controls. Children run under a process-tree
-memory/deadline supervisor with parent-death cleanup. See
+small-limit cuts and evaluator boundaries with upstream byte controls. Children
+run under a process-tree memory/deadline supervisor with parent-death cleanup,
+detached pipe-holder failure detection, and one reference deadline retry. See
 [TESTING.md](TESTING.md#runtime-differential-fuzzing) for replay and flag rules.
 
 The Rust runtime uses one run-wide work allowance across action resumptions.

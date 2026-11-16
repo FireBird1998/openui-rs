@@ -5,6 +5,8 @@
 #       [--findings DIR] [--no-save] [--edits | --invariants | --runtime]
 #   scripts/fuzz.sh --runtime --replay FILE --only 0
 #   scripts/fuzz.sh --runtime-case --seed N --only K  # print a v2 replay
+# Runtime mode checks admission cuts and evaluator boundaries. Only reference
+# deadlines retry once; inherited pipes after worker exit are a failure.
 # Runtime mode always saves reviewable findings, never changes the corpus.
 #
 # Shrunk mismatches are saved to conformance/fuzz.json as corpus cases (with

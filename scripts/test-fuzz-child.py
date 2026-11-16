@@ -15,7 +15,8 @@ spec = importlib.util.spec_from_file_location("fuzz_child", Path(__file__).with_
 guard = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(guard)
 # Every fixture exits independently, even if every supervisor check is broken.
-# Every allocator below has a finite total <= 512 MiB, including descendants.
+# Every allocator below has <=384 MiB deliberate payload across descendants,
+# leaving interpreter/process overhead below the 512 MiB fixture ceiling.
 PREFIX = 'import os, signal, time; signal.alarm(15); end=time.monotonic()+12\n'
 WAIT = '\nwhile time.monotonic()<end: time.sleep(.001)\n'
 
@@ -50,6 +51,10 @@ class SupervisorTests(unittest.TestCase):
 
     def test_success_preserves_worker_json(self):
         self.assertEqual(child('import sys; print(sys.stdin.read())', b'{"ok":true}'), {"ok": True})
+
+    def test_buffered_output_is_drained_after_worker_exit(self):
+        value = {"text": "x" * 100000}
+        self.assertEqual(child('print(' + repr(json.dumps(value)) + ')'), value)
 
     def test_invalid_json_is_a_finding(self):
         self.assertEqual(child('print("oops")')["workerError"], "invalid worker JSON")
@@ -104,13 +109,66 @@ class SupervisorTests(unittest.TestCase):
         self.assertEqual(child(code, memory_mb=64)["workerError"], "memory limit")
 
     def test_reserve_reduces_finite_allocator_overshoot(self):
-        # At most 512 MiB total, in touched 1 MiB blocks. This checks sampled
+        # At most 384 MiB payload, in touched 1 MiB blocks, leaving room for
+        # interpreter overhead within 512 MiB. This checks sampled
         # footprint, not a promise of a hard OS allocation ceiling.
-        code = 'a=[]\nfor _ in range(512): a.append(bytearray(1024*1024))\n' + WAIT
+        code = 'a=[]\nfor _ in range(384): a.append(bytearray(1024*1024))\n' + WAIT
         result = child(code)
         self.assertEqual(result["workerError"], "memory limit")
         self.assertLess(result["triggerBytes"], 256*1024*1024)
-        self.assertLess(result["peakBytes"], 256*1024*1024)
+        self.assertGreater(result["peakBytes"], result["triggerBytes"])
+
+    def test_double_forked_new_session_pipe_holder_is_a_failure(self):
+        # Only the orphan retains stdout/stderr. It is self-limited even when
+        # reparenting makes it invisible to ancestry/group enumeration.
+        code = ('pid=os.fork(); signal.alarm(15)\n'
+                'if pid: print("{}",flush=True); os._exit(0)\n'
+                'os.setsid()\npid=os.fork(); signal.alarm(15)\n'
+                'if pid: os._exit(0)\n'
+                'a=bytearray(32*1024*1024)\n' + WAIT)
+        # Let the fixture's own exit precede the outer watchdog: without pipe
+        # detection, valid worker JSON would otherwise be accepted silently.
+        result = child(code, seconds=18)
+        self.assertEqual(result.get("workerError"), "worker exited with inherited pipes open")
+
+    def test_reference_deadline_retries_once_and_preserves_success(self):
+        supervise = guard.supervise
+        replies = [{"workerError": "deadline"}, {"ok": True}]
+        calls = []
+        try:
+            def run(*args):
+                calls.append(args)
+                return replies.pop(0)
+            guard.supervise = run
+            result = guard.supervise_reference(["fixture"], b"same request", 2, 256)
+            self.assertTrue(result["ok"])
+            self.assertEqual(calls, [(["fixture"], b"same request", 2, 256)] * 2)
+            self.assertEqual(result["referenceSupervision"]["attempts"],
+                             [{"workerError": "deadline"}, {"workerError": None}])
+        finally:
+            guard.supervise = supervise
+
+    def test_reference_other_errors_and_success_are_not_retried(self):
+        supervise = guard.supervise
+        try:
+            for reply in [{"ok": True}, {"workerError": "memory limit"}, {"workerError": "exit 7"}]:
+                replies = [reply]
+                guard.supervise = lambda *args: replies.pop(0)
+                self.assertEqual(guard.supervise_reference(["fixture"], b"", 2, 256), reply)
+                self.assertEqual(replies, [])
+        finally:
+            guard.supervise = supervise
+
+    def test_real_reference_hang_remains_a_recorded_failure_after_retry(self):
+        run = subprocess.run([sys.executable, str(Path(guard.__file__)),
+                              "--retry-deadline", "--seconds", ".1", "--",
+                              sys.executable, "-c", PREFIX + WAIT],
+                             input=b"", stdout=subprocess.PIPE, check=True)
+        result = json.loads(run.stdout)
+        self.assertEqual(result["workerError"], "deadline")
+        self.assertEqual(result["referenceSupervision"]["deadlineSeconds"], .1)
+        self.assertEqual([a["workerError"] for a in result["referenceSupervision"]["attempts"]],
+                         ["deadline", "deadline"])
 
     def test_sigkilled_supervisor_leaves_no_pipe_holding_descendants(self):
         self.check_supervisor_death(False)

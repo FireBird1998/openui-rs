@@ -200,6 +200,12 @@ def supervise(command, request, seconds, memory_mb):
                 target.extend(block)
             if reason:
                 break
+            # The guard has reaped the worker and exhausted visible ancestry.
+            # Drain buffered output/EOF first. A quiet, still-open pipe now
+            # belongs to an escaped holder (e.g. setsid plus double-fork).
+            if child.poll() is not None and selector.get_map() and not selector.select(0):
+                reason = "worker exited with inherited pipes open"
+                break
     finally:
         # EOF also arms cleanup if this process dies during finalization.
         os.close(alive_fd)
@@ -219,6 +225,20 @@ def supervise(command, request, seconds, memory_mb):
         return {"workerError": "invalid worker JSON", "stderr": errors.decode("utf-8", errors="replace")[-4096:]}
 
 
+def supervise_reference(command, request, seconds, memory_mb):
+    """Retry only a deadline, once, in a fresh independently bounded child."""
+    first = supervise(command, request, seconds, memory_mb)
+    if first.get("workerError") != "deadline":
+        return first
+    second = supervise(command, request, seconds, memory_mb)
+    second["referenceSupervision"] = {
+        "deadlineSeconds": seconds,
+        "retryPolicy": "retry one deadline once in a fresh child",
+        "attempts": [first, {"workerError": second.get("workerError")}],
+    }
+    return second
+
+
 def main():
     def interrupted(signum, _frame):
         raise SystemExit(128 + signum)
@@ -227,13 +247,15 @@ def main():
     parser.add_argument("--seconds", type=float, default=2)
     parser.add_argument("--memory-mb", type=int, default=256)
     parser.add_argument("--guard", type=int)
+    parser.add_argument("--retry-deadline", action="store_true")
     parser.add_argument("command", nargs=argparse.REMAINDER)
     args = parser.parse_args()
     command = args.command[1:] if args.command[:1] == ["--"] else args.command
     if args.guard is not None:
         raise SystemExit(watch_parent(args.guard, command))
     try:
-        result = supervise(command, sys.stdin.buffer.read(INPUT_BYTES + 1), args.seconds, args.memory_mb)
+        runner = supervise_reference if args.retry_deadline else supervise
+        result = runner(command, sys.stdin.buffer.read(INPUT_BYTES + 1), args.seconds, args.memory_mb)
     except OSError as error:
         result = {"workerError": str(error)}
     print(json.dumps(result, ensure_ascii=False, separators=(",", ":")))

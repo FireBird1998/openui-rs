@@ -239,6 +239,18 @@ async function fuzzProbes(c) {
   }
   return observations;
 }
+// Default-limit evaluation is upstream; limited expectations are the Rust
+// depth and serialized-room contract, independent of Rust's observed flags.
+function evaluationProbes(c) {
+  const probes=c.evaluationProbes;
+  if(!Array.isArray(probes)||probes.length>24)throw Error('evaluation probe bounds');
+  return probes.map(p=>{
+    if(!['depth','size'].includes(p.resource)||!['under','at','over'].includes(p.edge)||!Number.isInteger(p.limit)||p.limit<1||p.limit>16||typeof p.source!=='string'||Buffer.byteLength(p.source)>128)throw Error('invalid evaluation probe');
+    const control=JSON.stringify(evaluate(parseExpression(tokenize(p.source)),{getState:()=>true,resolveRef:()=>undefined}));
+    const cut=p.edge==='over';
+    return {probe:p,admitted:true,cut:{size:cut&&p.resource==='size',depth:cut&&p.resource==='depth'},failed:false,control,controlFlags:{size:false,depth:false},matchesControl:!cut};
+  });
+}
 async function fuzzCase(c) {
   if(Buffer.byteLength(JSON.stringify(c))>65536||Buffer.byteLength(c.fuzzInput)>4096||(c.actionInteractions?.length??0)>64||(c.actionInteractions??[]).some(op=>typeof op.program==='string'&&Buffer.byteLength(op.program)>4096))throw Error('runtime fuzz case bounds');
   const full=parse(input(c),library(c),c.root),saved=persisted(c,full);
@@ -256,7 +268,7 @@ async function fuzzCase(c) {
     // Exercise the reference Store's own save path as well. Rust computes
     // its recipe independently and reloads its snapshot, never this map.
     const store=createStore();for(const [k,v]of Object.entries(saved))store.set(k,v);
-    return {initial,saved,actions,savedBytes:JSON.stringify(store.getSnapshot()),limitProbes:await fuzzProbes(c)};
+    return {initial,saved,actions,savedBytes:JSON.stringify(store.getSnapshot()),limitProbes:await fuzzProbes(c),...(c.evaluationProbes!==undefined?{evaluationProbes:evaluationProbes(c)}:{})};
   }
   return {initial,saved,actions};
 }

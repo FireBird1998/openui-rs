@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Regenerate only the six #69 fuzz pins, offline, under the worker supervisor."""
+"""Regenerate runtime fuzz pins, offline, under the worker supervisor."""
 import argparse
 import importlib.util
 import json
@@ -28,22 +28,34 @@ def main():
         if "workerError" in case:
             raise RuntimeError(case)
         os.chdir(ROOT / "reference")
-        reference = guard.supervise(["bun", "--no-install", "runtime.ts", "fuzz"],
+        reference = guard.supervise_reference(["bun", "--no-install", "runtime.ts", "fuzz"],
                                     json.dumps(case, ensure_ascii=False).encode(), 2, 256)
         if "workerError" in reference:
             raise RuntimeError(reference)
+        # Preserve the six #69 pins byte for byte; #70 adds an optional v2
+        # field with its own upstream pin, independent of the legacy probes.
+        reference.pop("referenceSupervision", None)
+        probes = case.pop("evaluationProbes", None)
+        observations = reference.pop("evaluationProbes", None)
+        if index == 0:
+            boundary = {"probes": probes, "reference": observations}
         pins.append({"case": case, "reference": reference})
     path = ROOT / "crates/openui-lang/examples/fuzz/runtime/pins.json"
+    write_pin(path, pins, args.check)
+    write_pin(path.with_name("boundary-pins.json"), boundary, args.check)
+
+
+def write_pin(path, pins, check):
     encoded = json.dumps(pins, ensure_ascii=False, separators=(",", ":")) + "\n"
-    if args.check:
+    if check:
         if path.read_text() != encoded:
             raise SystemExit("runtime fuzz pins differ; run scripts/pin-runtime-fuzz.py and review")
-        print("runtime fuzz: six pins unchanged")
+        print(f"runtime fuzz: {path.name} unchanged")
     else:
         temporary = path.with_suffix(".json.tmp")
         temporary.write_text(encoded)
         temporary.replace(path)
-        print("runtime fuzz: six pins regenerated")
+        print(f"runtime fuzz: {path.name} regenerated")
 
 
 if __name__ == "__main__":

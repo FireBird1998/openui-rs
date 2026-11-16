@@ -1,5 +1,7 @@
 //! Runtime mode of the differential fuzzer: SplitMix64 cases, public runtime
-//! calls, the existing reference golden adapter, bounded children and shrinking.
+//! calls, the existing reference golden adapter, evaluator boundary controls,
+//! deadline retry, bounded children and shrinking.
+mod boundaries;
 mod limits;
 mod persistence;
 
@@ -178,7 +180,7 @@ fn generated(seed: u64, index: u64, root: &Path) -> Result<Value> {
         defs.insert(name.into(), json!({"properties":props}));
     }
     Ok(
-        json!({"fuzzVersion":2,"name":format!("runtime/fuzz-{seed}-{index}"),"schema":"runtime-runner","fuzzSchema":fuzz_schema,"fuzzInput":source,"stateValues":{"$data":state(&mut rng,3),"$draft":state(&mut rng,3)},"actionSequenceOnly":true,"manualMutationOutcomes":true,"actionInteractions":ops,"limitProbes":limits::generated(&mut rng)}),
+        json!({"fuzzVersion":2,"name":format!("runtime/fuzz-{seed}-{index}"),"schema":"runtime-runner","fuzzSchema":fuzz_schema,"fuzzInput":source,"stateValues":{"$data":state(&mut rng,3),"$draft":state(&mut rng,3)},"actionSequenceOnly":true,"manualMutationOutcomes":true,"actionInteractions":ops,"limitProbes":limits::generated(&mut rng),"evaluationProbes":boundaries::generated()}),
     )
 }
 pub fn print_case(seed: u64, index: u64, root: &Path) -> Result<()> {
@@ -189,6 +191,7 @@ pub fn print_case(seed: u64, index: u64, root: &Path) -> Result<()> {
 }
 fn validate(c: &Value) -> Result<()> {
     limits::validate(c)?;
+    boundaries::validate(c)?;
     if c.get("fuzzVersion").is_some_and(|v| v != &json!(2)) {
         return Err("unsupported runtime fuzz version".into());
     }
@@ -582,6 +585,9 @@ fn replay(c: &Value, root: &Path) -> Result<Value> {
             "limitProbes".into(),
             limits::replay(c, &library, &bindings, &schema)?,
         );
+        if c.get("evaluationProbes").is_some() {
+            map.insert("evaluationProbes".into(), boundaries::replay(c)?);
+        }
     }
     Ok(output)
 }
@@ -650,7 +656,7 @@ fn normalize(reference: &Value) -> Result<Value> {
             .or_insert_with(flags);
     }
     let mut output = json!({"initial":initial,"actions":expand_actions(get(reference,"actions"),Serialization::Original)?,"saved":get(reference,"saved")});
-    for key in ["savedBytes", "limitProbes"] {
+    for key in ["savedBytes", "limitProbes", "evaluationProbes"] {
         if let Some(value) = reference.get(key) {
             output
                 .as_object_mut()
@@ -693,7 +699,7 @@ fn explained(c: &Value, reference: &Value, actual: &Value, root: &Path) -> Resul
         name.replace("runtime/", "runtime-")
     )))?;
     Ok(same(get(reference, "initial"), get(actual, "initial"))
-        && ["saved", "savedBytes", "limitProbes"]
+        && ["saved", "savedBytes", "limitProbes", "evaluationProbes"]
             .iter()
             .all(|key| same(get(reference, key), get(actual, key)))
         && same(
@@ -705,9 +711,13 @@ fn explained(c: &Value, reference: &Value, actual: &Value, root: &Path) -> Resul
             &expand_actions(get(&pin, "rust"), Serialization::Pinned)?,
         ))
 }
-fn child(root: &Path, command: &[String], request: &Value) -> Result<Value> {
-    let mut child = Command::new("python3")
-        .arg(root.join("scripts/fuzz-child.py"))
+fn child(root: &Path, command: &[String], request: &Value, reference: bool) -> Result<Value> {
+    let mut supervisor = Command::new("python3");
+    supervisor.arg(root.join("scripts/fuzz-child.py"));
+    if reference {
+        supervisor.arg("--retry-deadline");
+    }
+    let mut child = supervisor
         .args(["--seconds", "2", "--memory-mb", "256", "--"])
         .args(command)
         .current_dir(root.join("reference"))
@@ -732,6 +742,7 @@ struct Comparison {
     reference: Value,
     actual: Value,
     kind: &'static str,
+    reference_supervision: Value,
 }
 fn compare(c: &Value, root: &Path) -> Result<Comparison> {
     validate(c)?;
@@ -744,12 +755,15 @@ fn compare(c: &Value, root: &Path) -> Result<Comparison> {
             "fuzz".into(),
         ],
         c,
+        true,
     )?;
+    let reference_supervision = get(&reference, "referenceSupervision").clone();
     if reference.get("workerError").is_some() {
         return Ok(Comparison {
             reference,
             actual: Value::Null,
             kind: "reference-error",
+            reference_supervision,
         });
     }
     let actual = child(
@@ -759,6 +773,7 @@ fn compare(c: &Value, root: &Path) -> Result<Comparison> {
             "--runtime-worker".into(),
         ],
         &json!({"case":c}),
+        false,
     )?;
     let reference = normalize(&reference)?;
     let kind = if actual.get("workerError").is_some() {
@@ -774,6 +789,7 @@ fn compare(c: &Value, root: &Path) -> Result<Comparison> {
         reference,
         actual,
         kind,
+        reference_supervision,
     })
 }
 pub fn worker() -> Result<()> {
@@ -887,7 +903,7 @@ pub fn run(
                     &path,
                     format!("{}\n", serde_json::to_string_pretty(&small)?),
                 )?;
-                let finding = json!({"check":"runtime","kind":compared.kind,"seed":seed,"index":index,"shrunk":complete,"case":path,"replay":format!("scripts/fuzz.sh --runtime --replay {} --only 0 --no-save",path.display()),"generatedReplay":command,"originalInput":c,"input":small,"reference":shrunk.reference,"rust":shrunk.actual});
+                let finding = json!({"check":"runtime","kind":compared.kind,"seed":seed,"index":index,"shrunk":complete,"case":path,"replay":format!("scripts/fuzz.sh --runtime --replay {} --only 0 --no-save",path.display()),"generatedReplay":command,"originalInput":c,"input":small,"reference":shrunk.reference,"rust":shrunk.actual,"referenceSupervision":compared.reference_supervision,"replayReferenceSupervision":shrunk.reference_supervision});
                 std::fs::write(
                     dir.join(format!("{name}.finding.json")),
                     format!("{}\n", serde_json::to_string_pretty(&finding)?),
@@ -929,7 +945,15 @@ mod tests {
         assert_eq!(array(&pins).len(), 6);
         for (index, pin) in array(&pins).iter().enumerate() {
             let case = get(pin, "case");
-            assert!(same(case, &generated(69, index as u64, &root).unwrap()));
+            let mut generated = generated(69, index as u64, &root).unwrap();
+            assert_eq!(
+                generated
+                    .as_object_mut()
+                    .unwrap()
+                    .shift_remove("evaluationProbes"),
+                Some(boundaries::generated())
+            );
+            assert!(same(case, &generated));
             let actual = replay(case, &root).unwrap();
             let expected = normalize(get(pin, "reference")).unwrap();
             assert!(
@@ -938,6 +962,90 @@ mod tests {
             );
         }
     }
+    #[test]
+    fn runtime_evaluator_boundaries_admit_then_cut_or_match_exact_reference_bytes() {
+        let pin: Value = serde_json::from_str(include_str!("runtime/boundary-pins.json")).unwrap();
+        assert_eq!(boundaries::generated(), pin["probes"]);
+        let root = crate::repo_root();
+        let c = generated(69, 0, &root).unwrap();
+        assert_eq!(c["evaluationProbes"], pin["probes"]);
+        validate(&c).unwrap();
+        let full_actual = replay(&c, &root).unwrap();
+        let mut reference = pins()[0]["reference"].clone();
+        reference
+            .as_object_mut()
+            .unwrap()
+            .insert("evaluationProbes".into(), pin["reference"].clone());
+        assert!(
+            same(&full_actual, &normalize(&reference).unwrap()),
+            "full replay differs, including protocol field order"
+        );
+        let actual = full_actual["evaluationProbes"].clone();
+        assert!(
+            same(&actual, &pin["reference"]),
+            "actual {actual} expected {}",
+            pin["reference"]
+        );
+        assert_eq!(array(&actual).len(), 24);
+        for observation in array(&actual) {
+            assert_eq!(observation["admitted"], true);
+            if observation["probe"]["edge"] != "over" {
+                assert_eq!(observation["cut"], json!({"size":false,"depth":false}));
+                assert_eq!(observation["matchesControl"], true);
+            }
+        }
+    }
+
+    #[test]
+    fn runtime_recorded_v1_replays_and_one_byte_changes_to_v1_and_v2_pins_fail() {
+        let root = crate::repo_root();
+        let cases = load(&conformance(&root).join("runtime-fuzz.json")).unwrap();
+        let goldens = load(&conformance(&root).join("golden/runtime-fuzz.json")).unwrap();
+        let v2 = pins();
+        for (case, pin) in [
+            (&cases["cases"][0], &goldens[0]),
+            (&v2[0]["case"], &v2[0]["reference"]),
+        ] {
+            let actual = replay(case, &root).unwrap();
+            let expected = normalize(pin).unwrap();
+            assert!(same(&actual, &expected));
+            let mut perturbed = pin.clone();
+            let bytes = perturbed["initial"]["defaults"]["serialized"]["tree"]
+                .as_str()
+                .unwrap();
+            let mut bytes = bytes.as_bytes().to_vec();
+            assert_eq!(bytes.pop(), Some(b'}'));
+            bytes.push(b' ');
+            perturbed["initial"]["defaults"]["serialized"]["tree"] =
+                json!(String::from_utf8(bytes).unwrap());
+            assert!(
+                !same(&actual, &normalize(&perturbed).unwrap()),
+                "one byte of a pin was ignored"
+            );
+        }
+        assert!(
+            cases["cases"][0].get("fuzzVersion").is_none(),
+            "v1 is the unversioned recording format"
+        );
+        assert_eq!(v2[0]["case"]["fuzzVersion"], 2);
+    }
+
+    #[test]
+    fn runtime_evaluator_probe_bounds_refuse_invalid_replays() {
+        for probes in [
+            json!({}),
+            json!(vec![json!({}); 25]),
+            json!([{"resource":"work","limit":1,"edge":"at","source":"1"}]),
+            json!([{"resource":"depth","limit":0,"edge":"at","source":"1"}]),
+            json!([{"resource":"depth","limit":17,"edge":"at","source":"1"}]),
+            json!([{"resource":"depth","limit":1,"edge":"bad","source":"1"}]),
+            json!([{"resource":"depth","limit":1,"edge":"at","source":"x".repeat(129)}]),
+            json!([{"resource":"depth","limit":1,"edge":"at"}]),
+        ] {
+            assert!(validate(&json!({"evaluationProbes":probes})).is_err());
+        }
+    }
+
     #[test]
     fn runtime_real_cuts_match_documented_flags_and_reference_controls() {
         let root = crate::repo_root();

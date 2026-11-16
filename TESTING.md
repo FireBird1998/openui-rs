@@ -10,7 +10,7 @@ This guide covers what each test catches, how to run it, how to add a case, and 
 scripts/check.sh
 ```
 
-The check runs formatting, clippy, the docs and every Rust test, including the doc examples and this repository's README example. It then builds the workspace on Rust 1.88.0, the oldest version the crates claim. That build is skipped, with a note, when the toolchain isn't installed; the check never installs one. It takes a minute or two.
+The check runs formatting, the Python worker-supervisor tests, clippy, the docs and every Rust test, including the doc examples and this repository's README example. It then builds the workspace on Rust 1.88.0, the oldest version the crates claim. That build is skipped, with a note, when the toolchain isn't installed; the check never installs one. It takes a minute or two.
 
 ```bash
 scripts/check-viewer.sh                                   # OpenUINative's and the viewer's Swift tests (needs Xcode)
@@ -415,7 +415,7 @@ its SplitMix64 per-case seed/index, batch budget, progress files, findings JSONL
 and maximum of 25 saved findings. `--count`, `--from`, and `--only` have the
 same meaning as in parsing mode. The first release build precedes the search
 budget; the current comparison and final shrink verification can add at most
-eight seconds after it. No dependency installation occurs, in any fuzzer mode.
+twelve seconds after it. No dependency installation occurs, in any fuzzer mode.
 The reference command is `bun --no-install runtime.ts fuzz`, run from
 `reference/`. It uses the same `observe` and `actionScenarios` functions as
 runtime goldens, including the attributed renderer transcription, upstream
@@ -452,7 +452,7 @@ observations are expected false under the documented no-cut rule.
 Each version-2 case also generates nine bounded probes: parse, tree and action
 operations under size, depth and work limits of one or two. Their short programs
 have 8–16 nested arrays and real computed defaults or deferred state reads.
-Each probe must change the result, set the designated cut flag, and agree with
+These admission-cut probes must change the result, set the designated cut flag, and agree with
 upstream again at default limits. The controls compare raw parse/tree JSON or
 action events, snapshot bytes and failure. No upstream resource limit exists,
 so limited output bytes have no differential oracle; cut flags instead follow
@@ -469,13 +469,29 @@ the documented rules, independently of the actual flags:
 | Action `failed` | Direct comparison with the renderer runner's rejected-operation observable on ordinary steps and controls; a limited action must stop with a failure under the Rust rule |
 | Tree errors | Direct comparison with upstream's structured prop errors; upstream has no separate tree-wide failed bit |
 
+An optional version-2 `evaluationProbes` field adds 24 evaluator boundaries,
+without changing the original six pins. Depth limits 1–4 and serialized result
+room 3, 4, 8 and 16 each have an under, exact-boundary and over case. Parsing
+uses default limits, then `EvaluationSession` starts a public allowance directly:
+no limited input-admission walk can mask evaluation. Depth uses unary chains
+ending in a live `$probe` read; the existing evaluator permits three internal
+walk levels per configured level, including the root visit. Size uses string
+literals whose JSON is exactly one byte below, at, or above the room. These are
+serialized bytes, independent of allocator or stack layout. Under/at cases must
+have no flags and exactly the upstream evaluator's bytes; over cases must change
+the value and set only the named flag. Default-limit controls also match upstream.
+`runtime_evaluator_boundaries_admit_then_cut_or_match_exact_reference_bytes`
+checks `examples/fuzz/runtime/boundary-pins.json`. Scratch controls dropping the
+evaluator result's depth flag or cutting one internal walk level early must fail
+this test. The grammar explores these specific boundaries, not arbitrary limits.
+
 Size and work share Rust's size flag; upstream has no equivalent to any of the
 six resource flags. Probe expectations are explicitly documented-rule checks,
 not claimed upstream flags. Generated values and reference data are JSON;
 library-function callbacks, asynchronous tools, React effect timing, streaming
 prefixes, hostile schema generation, arbitrary descriptor syntax and general
-limit-boundary exploration remain outside this mode. Dedicated conformance,
-allowance and streaming tests cover those paths. The existing parser mode
+limit-boundary exploration beyond these scalar/unary probes remain outside this
+mode. Dedicated conformance, allowance and streaming tests cover those paths. The existing parser mode
 continues to cover generated/mangled syntax and random streaming chunkings.
 
 Every 32nd case replays one of the seven already-recorded non-string-action-target
@@ -493,7 +509,12 @@ kill deadline, 256 MiB summed process-tree physical footprint on macOS
 (RSS + swap on Linux), 4 MiB stdout, and 64 KiB stderr. The owned group includes
 the guard, worker and descendants, even after the worker exits; recursive child
 enumeration also includes descendants that start a new session while their
-ancestry is visible. Input is nonblocking too. A limit kills the owned group
+ancestry is visible. After the guard exits, buffered output and EOF are drained;
+a still-open quiet worker pipe is a failure (`worker exited with inherited pipes
+open`). This detects a new-session double-fork even after reparenting hides its
+ancestry, but does not promise to kill that detached process. Descendants that
+both detach and close every worker pipe are outside this portable supervisor's
+coverage. Input is nonblocking too. A limit kills the owned group
 and discovered descendants and reaps the guard; unavailable measurement refuses
 the run. Sampling is every 1 ms and triggers at seven eighths of the requested
 memory budget (224 MiB for 256 MiB), reserving room for allocation and shutdown.
@@ -502,6 +523,14 @@ A separate group-leader guard watches a pipe held only by the supervisor:
 SIGKILL of the supervisor closes it and kills the group. The guard stays after
 worker exit while descendants remain. The supervisor also checks loss of its
 own parent, so killing the runtime hunt triggers cleanup.
+Only the reference command retries a deadline once, in a fresh child under the
+same two-second and memory bounds. Other errors are never retried; two deadlines
+remain a finding. A retried finding records `referenceSupervision` (original
+comparison) and `replayReferenceSupervision` (final verification), including the
+policy, deadline and both attempt outcomes, even when retry succeeds and the
+finding is a later mismatch. The current comparison and final verification can
+therefore use at most twelve seconds beyond the search budget. Retry logic is
+checked with deterministic outcomes and a real self-limited hang.
 These are harness limits, with no change to library defaults or parser costs.
 Per-case children also discard all reference caches and suspended runs. Only one
 case is resident at a time; bounded findings are written to disk.
@@ -511,7 +540,7 @@ scripts/fuzz.sh --runtime --seed 40 --only 17 --no-save
 cargo run --offline -p openui-lang --example fuzz -- --runtime-case --seed 69 --only 3
 scripts/fuzz.sh --runtime --replay target/runtime-hunt/runtime-HASH.json --only 0 --no-save
 cargo test -p openui-lang --example fuzz runtime::tests
-python3 scripts/pin-runtime-fuzz.py --check  # six v2 pins, supervised Rust/Bun
+python3 scripts/pin-runtime-fuzz.py --check  # six v2 pins + evaluator boundaries
 python3 scripts/test-fuzz-child.py
 ```
 
@@ -558,13 +587,31 @@ The old three goldens remain unchanged and replay without a version field;
 new generated cases declare `fuzzVersion:2`. Seed/index generation now means
 version 2; a saved case's serialized program/operations remain authoritative.
 `--runtime-case` prints a bounded generated replay without executing it.
-`python3 scripts/pin-runtime-fuzz.py` regenerates only these six pins, building
-offline and supervising each Rust/Bun child; `--check` refuses any change.
-The supervisor's 20 tests exercise actual children without elapsed-time
-assertions. Every allocator fixture has at most 512 MiB of deliberate payload
-across its descendants, leaving headroom within the 1 GiB safety bound, and
-each hog exits independently within 15 seconds (forks rearm the alarm). The SIGKILL fixtures report a sentinel
+`python3 scripts/pin-runtime-fuzz.py` regenerates the six pins and the separate
+boundary pin, building offline and supervising each Rust/Bun child; `--check`
+refuses any change.
+`runtime_recorded_v1_replays_and_one_byte_changes_to_v1_and_v2_pins_fail`
+replays an original unversioned (v1) recording and a v2 pin, then changes one byte
+of each pin's original tree JSON and requires comparison failure. New evaluator
+probe bounds have their own refusal test. The pin script preserves the six old
+pins and regenerates the separate boundary pin from the vendored evaluator.
+The supervisor's 25 tests use bounded children and deterministic retry outcomes,
+without elapsed-time assertions. Every allocator fixture has at most 384 MiB of
+deliberate payload across its descendants, leaving interpreter overhead within
+the 512 MiB fixture ceiling. Each hog exits independently within 15 seconds
+(forks rearm the alarm). The SIGKILL fixtures report a sentinel
 if they reach their own exit; EOF passes only when cleanup killed them.
+The detached double-fork fixture has only a 32 MiB payload and reports a failure
+through inherited pipes; it independently exits even if enumeration misses it.
+The reserve check requires the measured footprint to cross its trigger, not to
+stay below a hard ceiling that sampling cannot enforce.
+
+`stack::tests::finished_walks_ignore_an_installed_ceiling` installs zero and
+recurses with a live frame until the finished walk itself needs growth. It
+requires growth and restoration without depending on the OS accepting a tiny
+thread stack. Other workspace `stack_size` tests check deep completion, explicit
+limit cuts or injected stalls; none requires the first call to grow solely
+because of a requested thread stack size.
 
 ## Invariants
 

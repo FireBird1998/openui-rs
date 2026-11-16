@@ -838,19 +838,23 @@ mod tests {
 
     #[test]
     fn finished_walks_ignore_an_installed_ceiling() {
+        #[inline(never)]
         fn finished() -> usize {
             grow_stack!(finished());
-            SEGMENTS.get()
+            // Keep a frame alive across recursion even in optimized builds.
+            // Recurse until the walk itself needs growth on any caller stack.
+            let frame = [0_u8; 4096];
+            let segments = if SEGMENTS.get() == 0 {
+                finished()
+            } else {
+                SEGMENTS.get()
+            };
+            std::hint::black_box(&frame);
+            segments
         }
-        std::thread::Builder::new()
-            .stack_size(64 * 1024)
-            .spawn(|| {
-                let _restore = Ceiling(CEILING.replace(0));
-                assert!(finished() >= 1);
-            })
-            .unwrap()
-            .join()
-            .unwrap();
+        let _restore = Ceiling(CEILING.replace(0));
+        assert!(finished() >= 1);
+        assert_eq!(SEGMENTS.get(), 0);
     }
     #[test]
     fn the_public_expression_entry_starts_a_clean_watch() {
