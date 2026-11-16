@@ -188,16 +188,26 @@ def supervise(command, request, seconds, memory_mb):
                         selector.unregister(stream)
                         stream.close()
                     continue
-                block = os.read(stream.fileno(), 8192)
-                if not block:
-                    selector.unregister(stream)
-                    stream.close()
-                    continue
                 target, limit = (output, OUTPUT_BYTES) if label == "out" else (errors, STDERR_BYTES)
-                if len(target) + len(block) > limit:
-                    reason = "output limit" if label == "out" else "stderr limit"
+                # Drain everything already buffered: one block per memory
+                # sample let a slow machine reach the deadline before a
+                # flooding worker reached its output limit. The limit bounds
+                # this inner loop.
+                while True:
+                    try:
+                        block = os.read(stream.fileno(), 65536)
+                    except BlockingIOError:
+                        break
+                    if not block:
+                        selector.unregister(stream)
+                        stream.close()
+                        break
+                    if len(target) + len(block) > limit:
+                        reason = "output limit" if label == "out" else "stderr limit"
+                        break
+                    target.extend(block)
+                if reason:
                     break
-                target.extend(block)
             if reason:
                 break
             # The guard has reaped the worker and exhausted visible ancestry.
