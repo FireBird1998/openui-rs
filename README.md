@@ -190,9 +190,10 @@ JavaScript function in the guarded wasm package. Arguments/results cross as
 bounded JSON text; the Rust runtime owns validation, defaults and diagnostics.
 Same-session callback reentry refuses without effects. Native callbacks run on
 one ordinary-stack callback thread per session without a timeout; other threads
-queue. The thread starts only after registration is accepted. Refused or failed
-handoffs release implementations on the fenced registering caller. Callback
-transport failure revokes the session with a sticky typed `Worker` error;
+queue. The first registration is preflighted before starting the thread; a failed
+start returns `Worker` without changing the session and registration may retry.
+Refused or failed handoffs release implementations on the fenced registering
+caller. Callback transport failure revokes the session with a sticky typed `Worker` error;
 disposal and final drop join both native threads. Hosts must return
 without waiting for a thread that needs the same session. JavaScript callbacks
 are synchronous too. See the [callback contract](docs/runtime-binding.md#host-library-functions)

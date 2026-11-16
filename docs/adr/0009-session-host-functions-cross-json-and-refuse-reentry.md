@@ -8,9 +8,9 @@ schema validation, argument caching, defaults, diagnostics and execution order.
 Registration is per session and bounded; replacement is atomic. Both bindings
 use the same core adapter, and source/generated-interface checks cover it.
 
-Native sessions lazily create one long-lived callback thread on the first
-registration accepted by the shared core, and join it after worker teardown at
-disposal or final drop. Sessions without registrations create no callback thread.
+Native sessions lazily create one long-lived callback thread after the first
+registration passes shared-core admission preflight, and join it after worker
+teardown at disposal or final drop. Sessions without registrations create no callback thread.
 The worker sends each invocation and waits synchronously, without a timeout or
 per-invocation thread. A correct synchronous implementation must give the Rust
 runtime's result independently of elapsed time. Timeouts that substitute null
@@ -30,8 +30,12 @@ Name/limit refusals create no callback thread; their implementations, failed
 spawn/send handoffs and unexecuted queued registrations are released on the
 registering caller under its reentry fence. Only the callback thread may take
 the slot, so a failed worker cannot release foreign code while discarding jobs.
-Core admission happens once, before thread creation; subsequent setup failure
-revokes the session rather than exposing a partially installed replacement.
+As corrected in #72, first-registration preflight uses a temporary empty core
+with the same library and limits. Thread creation precedes live admission, so a
+failed start returns Worker without changing the session and can be retried.
+An admitted failed handoff still revokes the session rather than exposing a
+partially installed replacement. A reclaimed handoff receives an explicit error;
+the callback loop keeps serving jobs.
 Callback transport loss or unexpected callback-thread exit records a sticky
 Worker error, including for later operations that use no functions. An operation that detects callback
 transport failure returns Worker too; host throws and caught host/destructor panics

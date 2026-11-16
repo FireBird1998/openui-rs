@@ -225,12 +225,16 @@ throwing implementation. Both bindings pin the action's continuing writes;
 native tests additionally cover panic containment.
 
 Native callbacks execute synchronously on one ordinary-stack callback thread
-per session, created lazily only after its first accepted registration. There is no
+per session, created lazily after its first registration passes admission preflight
+and before admission to the live session. There is no
 timeout and no thread spawned per invocation. The worker sends JSON and waits;
 the callback thread owns accepted implementations and releases replaced and
 disposed registrations. The registering caller retains an implementation until
 the callback thread takes ownership. A caller-side guard also reclaims it if
-Rust submission unwinds before handoff; a missing handoff revokes the session. Name/limit refusals, failed spawn/send
+Rust submission unwinds before handoff; an already admitted missing handoff
+revokes the session with Worker("host function released before registration").
+The callback loop replies with that error and keeps serving other jobs.
+Name/limit refusals, failed spawn/send
 handoffs and queued registrations discarded by a failed worker release on that
 caller, with the same reentry fence and panic containment. Caller-side release
 completes before registration returns; refused names/limits create no callback
@@ -244,9 +248,11 @@ without functions need no callback thread.
 Callback transport loss or unexpected callback-thread exit revokes the session:
 an operation whose callback handoff fails and later calls return the same typed
 Worker error, including
-calls that invoke no function and calls after disposal. Core registration
-admission precedes thread creation, so setup failure also revokes the session
-rather than leaving a usable partially installed registration. Normal disposal
+calls that invoke no function and calls after disposal. First-registration
+preflight uses an empty shared core with the same library and limits, so refused
+names/limits create no thread without duplicating admission rules. A failed thread
+start returns Worker without live admission, preserving state, evaluated handles
+and registration room; a later registration can succeed. Normal disposal
 still yields Disposed. Host throws and caught host/destructor panics do not kill
 the callback thread or revoke the session. Infrastructure fault-injection tests
 cover these terminal paths; ordinary host code cannot terminate that thread.

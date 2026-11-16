@@ -977,16 +977,21 @@ No identity is reconstructed from JSON, including function callback results.
 
 Registered functions reuse the runtime's JSON serializer, validation, defaults
 and argument caching. Native callbacks run on one ordinary-stack callback thread
-per session without a timeout or per-call thread. It starts only after shared-core
-registration admission. Accepted implementation release uses that same stack;
+per session without a timeout or per-call thread. Its first registration is
+preflighted through an empty shared core with the same library and limits;
+thread creation precedes admission to the live core. Accepted implementation
+release uses that same stack;
 refused registrations and failed/unexecuted handoffs release on the fenced
 registering caller, never on the evaluator worker or a grown stack segment.
 Same-session reentry on the worker, callback thread or in a host destructor
 refuses with Worker; other threads queue, preserving the no-function transport
 contract. Callback infrastructure failure revokes the session with a sticky typed
 Worker error for the failing callback operation and later calls, including after
-disposal. Startup
-failure is terminal too, because core admission already succeeded. Ordinary host
+disposal. A failed first thread start instead returns Worker without changing
+live state, generation or registration room, and a later registration may retry
+(#72). A reclaimed handoff receives an explicit error without ending the callback
+loop; an already admitted failed handoff still revokes its session, with reason
+`host function released before registration`. Ordinary host
 throws and contained panics retain function-failure behavior. Normal disposal
 remains Disposed; disposal/final drop join both native threads. Public-operation
 regressions with infrastructure injection pin caller release, refusal laziness,

@@ -273,7 +273,11 @@ struct CallbackCommand {
     origin_on_stack: Option<bool>,
 }
 enum CallbackOperation {
-    Register(Arc<()>, PendingCallback, mpsc::SyncSender<()>),
+    Register(
+        Arc<()>,
+        PendingCallback,
+        mpsc::SyncSender<Result<(), OpenUiError>>,
+    ),
     Invoke(
         Arc<()>,
         String,
@@ -343,89 +347,102 @@ impl CallbackThread {
         receiver: mpsc::Receiver<CallbackCommand>,
     ) -> Result<Self, OpenUiError> {
         #[cfg(test)]
-        if mailbox.control.take(tests::Fault::Spawn) {
-            return Err(record_failure(
-                &mailbox.failure,
-                "injected callback spawn failure",
-            ));
-        }
+        let fail_spawn = mailbox.control.take(tests::Fault::Spawn);
         let closing = Arc::new(AtomicBool::new(false));
         let callback_closing = closing.clone();
         let callback_failure = mailbox.failure.clone();
         #[cfg(test)]
         let control = mailbox.control.clone();
-        let thread = std::thread::Builder::new()
-            .name("openui-callback".into())
-            .spawn(move || {
-                let _exit = CallbackExit {
-                    closing: callback_closing,
-                    failure: callback_failure,
-                };
-                #[cfg(test)]
-                let _observed_exit = tests::observe_callback_thread(control.clone());
-                #[cfg(test)]
-                tests::record_stack();
-                // Declared before the registry so an unexpected unwind also releases
-                // implementations under the active command's ancestry.
-                let mut scope = None;
-                let mut functions: Vec<(Arc<()>, CallbackHolder)> = Vec::new();
-                while let Ok(command) = receiver.recv() {
-                    drop(scope.take());
-                    scope = Some(HostScope::enter(command.scopes));
+        let spawn = || {
+            std::thread::Builder::new()
+                .name("openui-callback".into())
+                .spawn(move || {
+                    let _exit = CallbackExit {
+                        closing: callback_closing,
+                        failure: callback_failure,
+                    };
                     #[cfg(test)]
-                    tests::ORIGIN_ON_STACK.set(command.origin_on_stack);
-                    match command.operation {
-                        CallbackOperation::Register(key, pending, reply) => {
-                            #[cfg(test)]
-                            if control.take(tests::Fault::RegisterReply) {
-                                return;
-                            }
-                            let callback = pending.lock().unwrap_or_else(|p| p.into_inner()).take();
-                            let Some(callback) = callback else {
-                                // A caller that unwound before handoff reclaimed it.
-                                return;
-                            };
-                            functions.push((key, callback));
-                            #[cfg(test)]
-                            if control.take(tests::Fault::RegisterAccepted) {
-                                return;
-                            }
-                            let _ = reply.send(());
-                        }
-                        CallbackOperation::Invoke(key, json, reply) => {
-                            #[cfg(test)]
-                            if control.take(tests::Fault::InvokeReply) {
-                                return;
-                            }
-                            let result = match functions.iter().find(|(k, _)| Arc::ptr_eq(k, &key))
-                            {
-                                Some((_, callback)) => {
-                                    catch_unwind(AssertUnwindSafe(|| callback.call(json)))
-                                        .map_err(|_| "host function panicked".to_owned())
-                                        .and_then(|result| result.map_err(|e| e.to_string()))
-                                }
-                                None => Err("host function released".into()),
-                            };
-                            let _ = reply.send(result);
-                        }
-                        CallbackOperation::Release(key, reply) => {
-                            if let Some(index) =
-                                functions.iter().position(|(k, _)| Arc::ptr_eq(k, &key))
-                            {
-                                drop(functions.swap_remove(index));
-                            }
-                            #[cfg(test)]
-                            if control.take(tests::Fault::ReleaseReply) {
-                                return;
-                            }
-                            let _ = reply.send(());
-                        }
+                    let _observed_exit = tests::observe_callback_thread(control.clone());
+                    #[cfg(test)]
+                    tests::record_stack();
+                    // Declared before the registry so an unexpected unwind also releases
+                    // implementations under the active command's ancestry.
+                    let mut scope = None;
+                    let mut functions: Vec<(Arc<()>, CallbackHolder)> = Vec::new();
+                    while let Ok(command) = receiver.recv() {
+                        drop(scope.take());
+                        scope = Some(HostScope::enter(command.scopes));
                         #[cfg(test)]
-                        CallbackOperation::Stop => return,
+                        tests::ORIGIN_ON_STACK.set(command.origin_on_stack);
+                        match command.operation {
+                            CallbackOperation::Register(key, pending, reply) => {
+                                #[cfg(test)]
+                                if control.take(tests::Fault::RegisterReply) {
+                                    return;
+                                }
+                                let callback =
+                                    pending.lock().unwrap_or_else(|p| p.into_inner()).take();
+                                let Some(callback) = callback else {
+                                    // A caller that unwound before handoff reclaimed it.
+                                    // This job failed, but the callback thread is healthy.
+                                    let _ = reply.send(Err(worker_error(
+                                        "host function released before registration",
+                                    )));
+                                    continue;
+                                };
+                                functions.push((key, callback));
+                                #[cfg(test)]
+                                if control.take(tests::Fault::RegisterAccepted) {
+                                    return;
+                                }
+                                let _ = reply.send(Ok(()));
+                            }
+                            CallbackOperation::Invoke(key, json, reply) => {
+                                #[cfg(test)]
+                                if control.take(tests::Fault::InvokeReply) {
+                                    return;
+                                }
+                                let result = match functions
+                                    .iter()
+                                    .find(|(k, _)| Arc::ptr_eq(k, &key))
+                                {
+                                    Some((_, callback)) => {
+                                        catch_unwind(AssertUnwindSafe(|| callback.call(json)))
+                                            .map_err(|_| "host function panicked".to_owned())
+                                            .and_then(|result| result.map_err(|e| e.to_string()))
+                                    }
+                                    None => Err("host function released".into()),
+                                };
+                                let _ = reply.send(result);
+                            }
+                            CallbackOperation::Release(key, reply) => {
+                                if let Some(index) =
+                                    functions.iter().position(|(k, _)| Arc::ptr_eq(k, &key))
+                                {
+                                    drop(functions.swap_remove(index));
+                                }
+                                #[cfg(test)]
+                                if control.take(tests::Fault::ReleaseReply) {
+                                    return;
+                                }
+                                let _ = reply.send(());
+                            }
+                            #[cfg(test)]
+                            CallbackOperation::Stop => return,
+                        }
                     }
-                }
-            })
-            .map_err(|e| record_failure(&mailbox.failure, &e.to_string()))?;
+                })
+        };
+        #[cfg(test)]
+        let thread = if fail_spawn {
+            Err(std::io::Error::other("injected callback spawn failure"))
+        } else {
+            spawn()
+        };
+        #[cfg(not(test))]
+        let thread = spawn();
+        // Fault injection and OS spawn failures use the same refusal path.
+        let thread = thread.map_err(|e| worker_error(&e.to_string()))?;
         Ok(Self {
             mailbox,
             thread,
@@ -436,13 +453,23 @@ impl CallbackThread {
         let (reply, received) = mpsc::sync_channel(1);
         self.mailbox
             .send(CallbackOperation::Register(key, callback, reply))?;
-        received.recv().map_err(|_| self.mailbox.stopped())
+        received
+            .recv()
+            .map_err(|_| self.mailbox.stopped())?
+            // The live core already admitted this proxy. A failed handoff must
+            // revoke it, even when the callback thread itself remains healthy.
+            .map_err(|error| record_failure(&self.mailbox.failure, &error.to_string()))
     }
     fn join(self) {
         // The worker and all its proxies have gone before the final sender.
         self.closing.store(true, Ordering::Release);
+        #[cfg(test)]
+        let control = self.mailbox.control.clone();
         drop(self.mailbox);
-        let _ = self.thread.join();
+        if self.thread.join().is_ok() {
+            #[cfg(test)]
+            control.joined.fetch_add(1, Ordering::SeqCst);
+        }
     }
 }
 struct CallbackProxy {
@@ -478,10 +505,8 @@ impl Drop for CallbackProxy {
     }
 }
 
-type Job = Box<
-    dyn FnOnce(&mut Worker, &PreparedReferenceValues<'_>, &mut Option<CallbackThread>) -> bool
-        + Send,
->;
+type Job =
+    Box<dyn FnOnce(&mut Worker, &PreparedReferenceValues<'_>, &mut CallbackState) -> bool + Send>;
 enum Command {
     Call(Job),
     References(String, mpsc::SyncSender<Result<(), OpenUiError>>),
@@ -512,6 +537,25 @@ struct TransportSlot {
 struct Transport {
     mailbox: Arc<Mailbox>,
     worker: JoinHandle<()>,
+}
+
+// Before the first registration the live core has no registered functions.
+// Use that same empty-core admission policy without touching its live state.
+// Keep this configuration shared rather than copying name/limit rules here.
+struct CallbackState {
+    thread: Option<CallbackThread>,
+    admission: FirstFunctionAdmission,
+}
+struct FirstFunctionAdmission {
+    library: Arc<openui_session::ComponentLibrary>,
+    limits: openui_session::RuntimeLimits,
+}
+impl FirstFunctionAdmission {
+    fn check(&self, name: &str) -> Result<(), OpenUiError> {
+        let mut admission = Worker::new(self.library.clone(), None, self.limits.clone())?;
+        admission.register_function(name.to_owned(), Arc::new(|_| Ok(None)))?;
+        Ok(())
+    }
 }
 
 /// A live runtime confined to its own worker thread. Calls from any thread
@@ -577,7 +621,7 @@ impl RuntimeSession {
         operation: impl FnOnce(
             &mut Worker,
             &PreparedReferenceValues<'_>,
-            &mut Option<CallbackThread>,
+            &mut CallbackState,
         ) -> Result<T, OpenUiError>
         + Send
         + 'static,
@@ -683,16 +727,26 @@ impl RuntimeSession {
                 tests::record_stack();
                 let mut callbacks = None;
                 let result = catch_unwind(AssertUnwindSafe(|| {
-                    let state = Worker::new(
-                        Arc::new(openui_session::ComponentLibrary {
+                    // Keep admission configuration and schema cloning/destruction
+                    // on the worker; native callers may have small stacks.
+                    let admission = FirstFunctionAdmission {
+                        library: Arc::new(openui_session::ComponentLibrary {
                             inner: library.inner.clone(),
                             schema: library.schema.clone(),
                         }),
+                        limits: limits.into(),
+                    };
+                    let state = Worker::new(
+                        admission.library.clone(),
                         prompt_spec,
-                        limits.into(),
+                        admission.limits.clone(),
                     );
                     match state {
                         Ok(mut state) => {
+                            let callbacks = callbacks.insert(CallbackState {
+                                thread: None,
+                                admission,
+                            });
                             state.set_release_notifier(openui_session::ReleaseNotifier(Arc::new(
                                 move || {
                                     if let Some(mailbox) = worker_mailbox.upgrade() {
@@ -703,7 +757,7 @@ impl RuntimeSession {
                                 },
                             )));
                             let _ = ready.send(Ok(()));
-                            worker_loop(state, receiver, &worker_failure, &mut callbacks);
+                            worker_loop(state, receiver, &worker_failure, callbacks);
                         }
                         Err(error) => {
                             let _ = ready.send(Err(error));
@@ -713,8 +767,12 @@ impl RuntimeSession {
                 if result.is_err() {
                     let _ = record_failure(&worker_failure, "runtime worker panicked");
                 }
-                if let Some(callbacks) = callbacks {
-                    callbacks.join();
+                if let Some(CallbackState {
+                    thread: Some(thread),
+                    ..
+                }) = callbacks
+                {
+                    thread.join();
                 }
             })
             .map_err(|e| worker_error(&e.to_string()))?;
@@ -751,8 +809,9 @@ impl RuntimeSession {
     /// not wait for another thread to call this same session: that call queues
     /// behind the callback, so the host would deadlock itself.
     /// Name/limit refusals create no callback thread and release on this caller.
-    /// Setup or callback transport failure revokes the session with Worker;
-    /// disposal and final drop still join both threads.
+    /// A failed first thread start returns Worker without changing the session;
+    /// a later registration may retry. Once admitted, callback handoff/transport
+    /// failure revokes the session. Disposal and final drop join both threads.
     pub fn register_function(
         &self,
         name: String,
@@ -769,7 +828,7 @@ impl RuntimeSession {
         #[cfg(test)]
         let control = self.callback_control.clone();
         self.call_with_callbacks(move |s, _, callbacks| {
-            let (mailbox, receiver) = match callbacks {
+            let (mailbox, receiver) = match &callbacks.thread {
                 Some(thread) => (thread.mailbox.clone(), None),
                 None => {
                     let (sender, receiver) = mpsc::channel();
@@ -790,13 +849,15 @@ impl RuntimeSession {
                 installed: AtomicBool::new(false),
             });
             let implementation = proxy.clone();
-            // Use the shared core's admission exactly once, before spawning.
+            if let Some(receiver) = receiver {
+                // Name/limit refusals must not start a thread. Preflight through
+                // the shared core, then start before changing the live core.
+                callbacks.admission.check(&name)?;
+                callbacks.thread = Some(CallbackThread::start(mailbox, receiver)?);
+            }
             // An uninstalled proxy owns no foreign code and sends no releases.
             s.register_function(name, Arc::new(move |json| implementation.call(json)))?;
-            if let Some(receiver) = receiver {
-                *callbacks = Some(CallbackThread::start(mailbox, receiver)?);
-            }
-            if let Some(thread) = callbacks {
+            if let Some(thread) = &callbacks.thread {
                 thread.register(proxy.key.clone(), pending)?;
                 proxy.installed.store(true, Ordering::Release);
             }
@@ -999,7 +1060,7 @@ fn worker_loop(
     state: Worker,
     receiver: mpsc::Receiver<ScopedCommand>,
     failure: &Mutex<Option<String>>,
-    callbacks: &mut Option<CallbackThread>,
+    callbacks: &mut CallbackState,
 ) {
     // State drops before its last command's ancestry, including on unwind.
     let mut scope = None;
@@ -1225,6 +1286,7 @@ mod tests {
         fault: AtomicUsize,
         started: AtomicUsize,
         exited: AtomicUsize,
+        pub(super) joined: AtomicUsize,
         worker_exited: AtomicUsize,
     }
     impl CallbackControl {
@@ -1422,6 +1484,7 @@ mod tests {
         let control = &session.callback_control;
         assert_eq!(control.started.load(Ordering::SeqCst), callbacks);
         assert_eq!(control.exited.load(Ordering::SeqCst), callbacks);
+        assert_eq!(control.joined.load(Ordering::SeqCst), callbacks);
         assert_eq!(control.worker_exited.load(Ordering::SeqCst), 1);
     }
     fn assert_sticky_failure(session: &RuntimeSession, reason: &str) {
@@ -1468,7 +1531,7 @@ mod tests {
                 assert_releases(&releases, &[Some(std::thread::current().id())]);
                 release.send(()).unwrap();
                 blocker.join().unwrap().unwrap();
-                assert_sticky_failure(&session, "callback thread stopped unexpectedly");
+                assert_sticky_failure(&session, "host function released before registration");
                 assert_joined(&session, 1);
                 assert_releases(&releases, &[Some(std::thread::current().id())]);
             },
@@ -1542,11 +1605,224 @@ mod tests {
         );
     }
     #[test]
+    fn a_failed_first_callback_thread_start_preserves_the_session_and_registration_room() {
+        watched(
+            "a_failed_first_callback_thread_start_preserves_the_session_and_registration_room",
+            || {
+                record_stack();
+                let schema = r#"{"$defs":{"Box":{"properties":{"value":{},"action":{}}}},"functions":{"Echo":{"params":{}},"Other":{"params":{}}}}"#;
+                let library = ComponentLibrary::new(schema.into()).unwrap();
+                let session = RuntimeSession::with_limits(
+                    library.clone(),
+                    None,
+                    RuntimeLimits {
+                        max_json_bytes: 2048,
+                        ..Default::default()
+                    },
+                )
+                .unwrap();
+                session
+                    .set_program(
+                        crate::parse(
+                            "$n=1\nroot=Box($n,Action([@Set($n,2)]))".into(),
+                            library.clone(),
+                            None,
+                        )
+                        .program,
+                    )
+                    .unwrap();
+                session.initialize(None).unwrap();
+                let before = session.evaluate().unwrap();
+                let action = session
+                    .action_at(
+                        before.evaluation.clone(),
+                        vec!["props".into(), "action".into()],
+                    )
+                    .unwrap();
+                let snapshot = session.snapshot().unwrap();
+                let version = session.version().unwrap();
+                let pristine = session.is_pristine("$n".into()).unwrap();
+                let releases = Releases::default();
+                // Repeated failures must retain neither a registration nor byte room.
+                for _ in 0..2 {
+                    session
+                        .callback_control
+                        .fault
+                        .store(Fault::Spawn as usize, Ordering::SeqCst);
+                    let error = session
+                        .register_function("Echo".into(), probe(&session, &releases, true))
+                        .unwrap_err();
+                    assert!(matches!(error, OpenUiError::Worker { ref reason }
+                        if reason == "injected callback spawn failure"));
+                    assert_eq!(session.snapshot().unwrap(), snapshot);
+                    assert_eq!(session.version().unwrap(), version);
+                    assert_eq!(session.is_pristine("$n".into()).unwrap(), pristine);
+                    assert_eq!(session.pending_continuations().unwrap(), 0);
+                    // Lookup through the original generation still works before another draw.
+                    session
+                        .action_at(
+                            before.evaluation.clone(),
+                            vec!["props".into(), "action".into()],
+                        )
+                        .unwrap();
+                }
+                assert_releases(&releases, &[Some(std::thread::current().id()); 2]);
+                assert_eq!(session.callback_control.started.load(Ordering::SeqCst), 0);
+                let after = session.evaluate().unwrap();
+                assert_eq!(
+                    (&before.json, before.size_limited, before.depth_limited),
+                    (&after.json, after.size_limited, after.depth_limited)
+                );
+                session
+                    .register_function("Echo".into(), probe(&session, &releases, false))
+                    .unwrap();
+                session
+                    .set_program(crate::parse("root=Box(@Echo())".into(), library, None).program)
+                    .unwrap();
+                assert!(session.evaluate().unwrap().json.contains("\"value\":7"));
+                // The pre-failure plan was retained through refusal (lookup above);
+                // successful draws/program replacement stale it as usual.
+                assert!(matches!(
+                    session.run(Some(action), String::new(), None),
+                    Err(OpenUiError::StaleHandle)
+                ));
+                assert_joined(&session, 1);
+                assert_releases(
+                    &releases,
+                    &[
+                        Some(std::thread::current().id()),
+                        Some(std::thread::current().id()),
+                        None,
+                    ],
+                );
+                assert!(matches!(session.version(), Err(OpenUiError::Disposed)));
+
+                // With room for one registration only, a different name must fit
+                // after a failed start; replacing Echo alone would hide spent room.
+                let library = ComponentLibrary::new(schema.into()).unwrap();
+                let session = RuntimeSession::with_limits(
+                    library,
+                    None,
+                    RuntimeLimits {
+                        max_json_bytes: 72,
+                        ..Default::default()
+                    },
+                )
+                .unwrap();
+                let releases = Releases::default();
+                session
+                    .callback_control
+                    .fault
+                    .store(Fault::Spawn as usize, Ordering::SeqCst);
+                assert!(matches!(
+                    session.register_function("Echo".into(), probe(&session, &releases, true)),
+                    Err(OpenUiError::Worker { .. })
+                ));
+                session
+                    .register_function("Other".into(), probe(&session, &releases, false))
+                    .unwrap();
+                assert!(matches!(
+                    session.register_function("Echo".into(), probe(&session, &releases, true)),
+                    Err(OpenUiError::LimitExceeded { .. })
+                ));
+                assert_joined(&session, 1);
+                assert_releases(
+                    &releases,
+                    &[
+                        Some(std::thread::current().id()),
+                        Some(std::thread::current().id()),
+                        None,
+                    ],
+                );
+            },
+        );
+    }
+
+    #[test]
+    fn a_reclaimed_handoff_replies_with_an_error_and_keeps_serving_callbacks() {
+        watched(
+            "a_reclaimed_handoff_replies_with_an_error_and_keeps_serving_callbacks",
+            || {
+                let library = ComponentLibrary::new(FUNCTION_SCHEMA.into()).unwrap();
+                let session = RuntimeSession::new(library.clone(), None).unwrap();
+                session
+                    .set_program(crate::parse("root=Box(@Echo())".into(), library, None).program)
+                    .unwrap();
+                let releases = Releases::default();
+                session
+                    .register_function("Echo".into(), probe(&session, &releases, false))
+                    .unwrap();
+                let before = session.evaluate().unwrap();
+                // Inject only the stale infrastructure job, as if its caller's
+                // guard had already emptied the handoff. Public operations below
+                // must continue using the same thread and implementation.
+                let error = session
+                    .call_with_callbacks(|_, _, callbacks| {
+                        let thread = callbacks.thread.as_ref().unwrap();
+                        let (reply, received) = mpsc::sync_channel(1);
+                        thread.mailbox.send(CallbackOperation::Register(
+                            Arc::new(()),
+                            Arc::new(Mutex::new(None)),
+                            reply,
+                        ))?;
+                        received.recv().unwrap()
+                    })
+                    .unwrap_err();
+                assert!(matches!(error, OpenUiError::Worker { ref reason }
+                    if reason == "host function released before registration"));
+                assert!(session.version().is_ok());
+                let after = session.evaluate().unwrap();
+                assert_eq!(
+                    (before.json, before.size_limited, before.depth_limited),
+                    (after.json, after.size_limited, after.depth_limited)
+                );
+                session
+                    .register_function("Echo".into(), probe(&session, &releases, false))
+                    .unwrap();
+                assert_releases(&releases, &[None]);
+                assert_joined(&session, 1);
+                assert_releases(&releases, &[None, None]);
+            },
+        );
+    }
+
+    #[test]
+    fn disposal_and_final_drop_complete_callback_thread_joins() {
+        watched(
+            "disposal_and_final_drop_complete_callback_thread_joins",
+            || {
+                for dispose in [false, true] {
+                    let library = ComponentLibrary::new(FUNCTION_SCHEMA.into()).unwrap();
+                    let session = RuntimeSession::new(library, None).unwrap();
+                    let drops = Arc::new(AtomicUsize::new(0));
+                    session
+                        .register_function("Echo".into(), Box::new(StackDropProbe(drops.clone())))
+                        .unwrap();
+                    let control = session.callback_control.clone();
+                    if dispose {
+                        session.dispose();
+                        session.dispose();
+                        assert_eq!(control.joined.load(Ordering::SeqCst), 1);
+                    }
+                    drop(session);
+                    assert_eq!(drops.load(Ordering::SeqCst), 1);
+                    assert_eq!(control.started.load(Ordering::SeqCst), 1);
+                    assert_eq!(control.exited.load(Ordering::SeqCst), 1);
+                    // Count successful JoinHandle::join completions, not thread exit
+                    // scheduling. Dropping a handle can never increment this witness.
+                    assert_eq!(control.joined.load(Ordering::SeqCst), 1);
+                    assert_eq!(control.worker_exited.load(Ordering::SeqCst), 1);
+                }
+            },
+        );
+    }
+
+    #[test]
     fn callback_start_and_registration_failures_release_once_on_the_fenced_caller() {
         watched(
             "callback_start_and_registration_failures_release_once_on_the_fenced_caller",
             || {
-                for fault in [Fault::Spawn, Fault::RegisterSend, Fault::RegisterReply] {
+                for fault in [Fault::RegisterSend, Fault::RegisterReply] {
                     record_stack();
                     let library = ComponentLibrary::new(FUNCTION_SCHEMA.into()).unwrap();
                     let session = RuntimeSession::new(library, None).unwrap();
@@ -1561,14 +1837,7 @@ mod tests {
                     let OpenUiError::Worker { reason } = error else {
                         panic!("untyped failure: {error:?}")
                     };
-                    assert_eq!(
-                        reason,
-                        if matches!(fault, Fault::Spawn) {
-                            "injected callback spawn failure"
-                        } else {
-                            "callback thread stopped unexpectedly"
-                        }
-                    );
+                    assert_eq!(reason, "callback thread stopped unexpectedly");
                     assert_releases(&releases, &[Some(std::thread::current().id())]);
                     assert_sticky_failure(&session, &reason);
                     // Later rejected registrations must release on their own caller too.
@@ -1576,7 +1845,7 @@ mod tests {
                         session.register_function("Echo".into(), probe(&session, &releases, false)),
                         Err(OpenUiError::Worker { .. })
                     ));
-                    assert_joined(&session, usize::from(!matches!(fault, Fault::Spawn)));
+                    assert_joined(&session, 1);
                     assert_sticky_failure(&session, &reason);
                     assert_releases(&releases, &[Some(std::thread::current().id()); 2]);
                 }
@@ -1724,9 +1993,11 @@ mod tests {
                 // Infrastructure-only injection: kill and join the callback thread,
                 // without asking the mailbox to record a send/receive failure.
                 let _: Result<(), OpenUiError> = session.call_with_callbacks(|_, _, callbacks| {
-                    let thread = callbacks.take().unwrap();
+                    let thread = callbacks.thread.take().unwrap();
                     thread.mailbox.send(CallbackOperation::Stop).unwrap();
+                    let control = thread.mailbox.control.clone();
                     thread.thread.join().unwrap();
+                    control.joined.fetch_add(1, Ordering::SeqCst);
                     Ok(())
                 });
                 // Only the exported calls below determine the observed failure.

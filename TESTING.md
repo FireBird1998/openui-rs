@@ -55,15 +55,18 @@ and submitting sessions.
 check nested calls and destruction. `many_sessions_join_callback_threads_on_disposal_and_final_drop`
 uses callback-thread TLS exit counters for 48 simultaneously registered sessions,
 including sessions never evaluated; disposal/final drop must have joined each
-thread before returning. TLS teardown performs 4,096 fixed yields before recording
-exit, exercising cleanup after registry destruction without a wall-clock assertion.
-Omitting the join is caught by this counter check. Existing all-operation reentry and exact Rust result,
+thread before returning. The #72 unit test
+`disposal_and_final_drop_complete_callback_thread_joins` also observes successful
+`JoinHandle::join` completions through a test-only counter. Dropping a handle
+cannot increment this counter, so its mutation failure is deterministic even if
+the callback thread exits before its disposer returns. Existing all-operation
+reentry and exact Rust result,
 call-count, throw and continuing-action comparisons remain in force.
 The Kotlin `deepFunctionsReuseOneThreadAndReplacementReleasesTheOldImplementation`
 test counts generated registry entries by identity for only its own implementations,
 while an unrelated registered session stays alive. It checks release without GC
 or elapsed-time assertions; a process-wide size count would fail its initial zero.
-The #67 unit regressions use exported registration/evaluation/disposal operations
+The #67/#72 unit regressions use exported registration/evaluation/disposal operations
 with session-local infrastructure fault injection, release observations outside
 caught destructors, ordinary-stack measurements and thread-exit counters:
 
@@ -71,15 +74,23 @@ caught destructors, ordinary-stack measurements and thread-exit counters:
   checks unknown names, name-byte and registration-byte bounds, unchanged state,
   existing implementation output/flags, caller release and zero spawned threads.
 - `callback_start_and_registration_failures_release_once_on_the_fenced_caller`
-  injects spawn, registration-send and pre-transfer receive failures; release
+  injects registration-send and pre-transfer receive failures; release
   must complete once on the caller, and sticky Worker errors survive disposal.
+- `a_failed_first_callback_thread_start_preserves_the_session_and_registration_room`
+  injects repeated spawn failures and checks typed Worker errors, exactly-once
+  fenced caller release, unchanged snapshot/version/pristine flags, evaluated
+  handles, output bytes/flags, registration room and successful later registration.
+- `a_reclaimed_handoff_replies_with_an_error_and_keeps_serving_callbacks`
+  injects an empty handoff, checks the explicit Worker reply, then evaluates and
+  replaces the original implementation on the same callback thread.
 - `lost_registration_acknowledgements_release_each_owner_once_and_final_drop_joins`
   covers first/replacement handoffs, failure before/after ownership transfer,
   exact release counts and final-drop joining after callback death.
 - `a_caller_unwind_reclaims_its_queued_implementation_before_handoff` injects
   a caller unwind after submission, while the worker is gated. Its caller guard
-  must release immediately under the fence; the missing handoff then revokes
-  the session cleanly and disposal joins both threads.
+  must release immediately under the fence; the already admitted missing handoff
+  then revokes the session with `host function released before registration`
+  and disposal joins both threads.
 - `callback_transport_death_is_a_sticky_worker_error_and_disposal_joins_both_threads`
   injects invocation/release send/receive failures, checks the active call and
   later non-function operations return Worker, and joins both threads.
@@ -89,7 +100,16 @@ caught destructors, ordinary-stack measurements and thread-exit counters:
 
 The lifecycle children have a deadlock watchdog only; no result depends on
 elapsed time. Fault hooks and thread counters are compiled only in unit tests.
-No parser path changes in #67. Regenerate reference goldens into separate scratch
+Scratch mutations for #72 were caught as follows: worker-side release and
+thread creation before admission by
+`refused_registrations_release_on_the_caller_without_starting_a_callback_thread`;
+non-sticky actual callback death by
+`an_idle_callback_thread_death_revokes_calls_that_do_not_invoke_functions`;
+dropping the thread without joining by
+`disposal_and_final_drop_complete_callback_thread_joins`. Reintroducing sticky
+spawn failure and exiting on an empty handoff are caught by the two new tests
+above. No parser path changes in #67/#72. Regenerate reference goldens into
+separate scratch
 destinations with `scripts/regen-golden.sh --into target/<fresh-name>` to keep
 `conformance/` unchanged, then compare with the checked-in goldens.
  Swift callback tests make no thread-identity
