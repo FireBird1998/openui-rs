@@ -75,7 +75,8 @@ total = TextContent("Total: " + $total)
     private(set) var texts: [String: String] = [:]
 
     init(_ live: LiveProgram, component: (@MainActor (Element, String) -> AnyView?)? = nil,
-         key: @escaping @MainActor (Element, String) -> String = { _, path in path }) {
+         key: @escaping @MainActor (Element, String) -> String = { _, path in path }) async {
+        _ = NSApplication.shared
         host = NSHostingView(rootView: AnyView(EmptyView()))
         window = NSWindow(contentRect: NSRect(x: -20000, y: -20000, width: 500, height: 400),
                           styleMask: [.borderless], backing: .buffered, defer: false)
@@ -91,16 +92,17 @@ total = TextContent("Total: " + $total)
         window.isReleasedWhenClosed = false
         window.contentView = host
         window.orderFrontRegardless()
-        settle()
+        await settle()
     }
 
     func close() {
         window.close()
     }
 
-    /// Lets SwiftUI apply what changed.
-    func settle() {
-        RunLoop.main.run(until: Date().addingTimeInterval(0.05))
+    /// Yield to the runner's outer main loop instead of starting a nested
+    /// RunLoop inside a main-actor test.
+    func settle() async {
+        try? await Task.sleep(for: .milliseconds(50))
         host.layoutSubtreeIfNeeded()
     }
 
@@ -123,51 +125,63 @@ total = TextContent("Total: " + $total)
 
     /// Clicks the middle of what's drawn at `key` (or where `at` says), then
     /// lets it redraw.
-    func click(_ key: String, at: (CGRect) -> CGPoint = { CGPoint(x: $0.midX, y: $0.midY) }) throws {
+    func click(_ key: String, at: (CGRect) -> CGPoint = { CGPoint(x: $0.midX, y: $0.midY) }) async throws {
         for event in try clickEvents(key, at: at) { window.sendEvent(event) }
-        settle()
+        await settle()
     }
 
     /// Clicks the pop-up drawn at `key`, as a person does, and from the menu
     /// that opens picks the item titled `title` (or, with nil, picks nothing).
     /// Returns the menu's items as it showed them, with whether each was
     /// checked as the current choice.
+    ///
+    /// The menu is the real one SwiftUI builds and AppKit opens for the click;
+    /// the item is chosen by firing its action, as choosing it does, the
+    /// moment the menu begins tracking, and tracking is then cancelled so
+    /// AppKit's menu event loop never has to sleep waiting for an event. Once
+    /// the main thread has slept in AppKit's event wait, HIToolbox wakes it for
+    /// each later window-server event with a CFRunLoopStop block; NSApp.run
+    /// shrugs that off, but it ends the test runner's single CFRunLoopRun and
+    /// Swift's async main then exits with status 0 and no summary. After a
+    /// cancelled menu a second click in the same window opens nothing, so pick
+    /// again in a fresh `Window`.
     @discardableResult
-    func pick(_ title: String?, at key: String) throws -> [(title: String, checked: Bool)] {
+    func pick(_ title: String?, at key: String) async throws -> [(title: String, checked: Bool)] {
+        // A popup needs a display; fail explicitly before AppKit's uncaught
+        // "Nil screen" exception can terminate the runner without its summary.
+        _ = try #require(NSScreen.screens.first, "Select menu tests require an available macOS display")
         var shown: [(title: String, checked: Bool)] = []
         let token = NotificationCenter.default.addObserver(forName: NSMenu.didBeginTrackingNotification, object: nil, queue: nil) { note in
             nonisolated(unsafe) let object = note.object
             MainActor.assumeIsolated {
                 guard let menu = object as? NSMenu else { return }
                 shown = menu.items.map { ($0.title, $0.state == .on) }
-                nonisolated(unsafe) let tracked = menu
-                // The menu tracks the mouse in a loop of its own; choose from inside it.
-                let choose = Timer(timeInterval: 0.02, repeats: false) { _ in
-                    MainActor.assumeIsolated {
-                        if let title, let i = tracked.items.firstIndex(where: { $0.title == title }) {
-                            tracked.performActionForItem(at: i)
-                        }
-                        tracked.cancelTracking()
-                    }
+                if let title, let i = menu.items.firstIndex(where: { $0.title == title }) {
+                    menu.performActionForItem(at: i)
                 }
-                RunLoop.main.add(choose, forMode: .common)
+                // Without animation: an animated dismissal finishes from a
+                // timer on the runner's own run loop and stops it.
+                menu.cancelTrackingWithoutAnimation()
             }
         }
         defer { NotificationCenter.default.removeObserver(token) }
-        try click(key)
-        settle()
+        for event in try clickEvents(key) { window.sendEvent(event) }
+        // SwiftUI opens the menu from the run loop after the click, not
+        // during it.
+        for _ in 0..<20 where shown.isEmpty { await settle() }
+        await settle()
         try #require(!shown.isEmpty, "no menu opened at \(key)")
         return shown
     }
 
     /// Types each of `texts` into the first text field, one after another
     /// with no pass of the run loop between them, then lets it redraw.
-    func typeAtOnce(_ texts: [String]) throws {
+    func typeAtOnce(_ texts: [String]) async throws {
         let found = try #require(fields.first, "no text field")
         #expect(window.makeFirstResponder(found))
         let editor = try #require(found.currentEditor())
         for text in texts { editor.insertText(text) }
-        settle()
+        await settle()
     }
 
     var fields: [NSTextField] {
@@ -178,14 +192,15 @@ total = TextContent("Total: " + $total)
     }
 
     /// Types `text` into the first text field, through its field editor.
-    func type(_ text: String) throws {
+    func type(_ text: String) async throws {
         let found = try #require(fields.first, "no text field")
         #expect(window.makeFirstResponder(found))
         try #require(found.currentEditor()).insertText(text)
-        settle()
+        await settle()
     }
 }
 
+extension NativeUITests {
 @Suite @MainActor struct ALiveProgram {
     @Test func drawsExpressionsAsTheirValues() async throws {
         let live = try await live(liveProgram)
@@ -212,9 +227,9 @@ total = TextContent("Total: " + $total)
     @Test func aClickChangesStateAndDeliversAHostEvent() async throws {
         var events: [HostEvent] = []
         let live = try await live(liveProgram) { events.append($0) }
-        let window = Window(live)
+        let window = await Window(live)
         defer { window.close() }
-        try window.click("/children/1")
+        try await window.click("/children/1")
         #expect(live.value(of: "$hp") == .number(4))
         #expect(texts(drawing: live)["/children/0"] == "HP: 4")
         #expect(events.map(\.type) == ["continue_conversation"])
@@ -223,9 +238,9 @@ total = TextContent("Total: " + $total)
 
     @Test func typingInABoundInputWritesThroughItsTransform() async throws {
         let live = try await live(liveProgram)
-        let window = Window(live)
+        let window = await Window(live)
         defer { window.close() }
-        try window.type("21")
+        try await window.type("21")
         #expect(live.value(of: "$total") == .number(42))
         #expect(texts(drawing: live)["/children/3"] == "Total: 42")
     }
@@ -270,11 +285,11 @@ total = TextContent("Total: " + $total)
         let live = try await live("""
         root = Form("signup", [FormControl("Name", Input("name"))], Buttons([Button("Send", @ToAssistant("Sent"))]))
         """) { events.append($0) }
-        let window = Window(live)
+        let window = await Window(live)
         defer { window.close() }
-        try window.type("Ann")
+        try await window.type("Ann")
         #expect(live.field(form: "signup", name: "name") == .string("Ann"))
-        try window.click("/buttons/buttons/0")
+        try await window.click("/buttons/buttons/0")
         let event = try #require(events.first)
         #expect(event.formName == "signup")
         // Upstream's Input writes its field with no component type.
@@ -284,9 +299,9 @@ total = TextContent("Total: " + $total)
     @Test func aButtonWithNoActionAsksToContinueWithItsLabel() async throws {
         var events: [HostEvent] = []
         let live = try await live(#"root = Stack([TextContent("x"), Button("Tell me more")])"#) { events.append($0) }
-        let window = Window(live)
+        let window = await Window(live)
         defer { window.close() }
-        try window.click("/children/1")
+        try await window.click("/children/1")
         #expect(events.map(\.type) == ["continue_conversation"])
         #expect(events.first?.humanFriendlyMessage == "Tell me more")
     }
@@ -296,9 +311,9 @@ total = TextContent("Total: " + $total)
         let live = try await live(#"root = Stack([TextContent("x"), Button("Docs", {type: "open_url", url: "https://example.com"})])"#) {
             events.append($0)
         }
-        let window = Window(live)
+        let window = await Window(live)
         defer { window.close() }
-        try window.click("/children/1")
+        try await window.click("/children/1")
         #expect(events.map(\.type) == ["open_url"])
         #expect(events.first?.params["url"] == .string("https://example.com"))
     }
@@ -350,4 +365,6 @@ total = TextContent("Total: " + $total)
         try live.run("onTap", of: gauge, message: "")
         #expect(live.value(of: "$hp") == .number(0))
     }
+}
+
 }

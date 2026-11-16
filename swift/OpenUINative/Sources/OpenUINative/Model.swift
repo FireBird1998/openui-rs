@@ -1,3 +1,5 @@
+import Foundation
+
 /// The viewer's copy of a parse result, decoded from the JSON the core
 /// produces (the reference's shape, byte for byte).
 public struct ParseResult: Sendable {
@@ -49,7 +51,7 @@ public struct Element: Sendable {
 /// Where an element or marker of an evaluated tree came from.
 struct Origin: Sendable, Equatable {
     /// The live program's identity.
-    var program: UInt64
+    var program: UUID
     /// Which of its evaluations.
     var generation: UInt64
     /// The prop names, list indices and record keys leading to it from the

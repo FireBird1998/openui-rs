@@ -2,6 +2,15 @@ import Foundation
 import Observation
 import OpenUINative
 
+/// Streaming parser used by playback. A factory must return a fresh session
+/// each time playback rewinds. Hosts may adapt another parser or report failures.
+public protocol PlaybackSession: Sendable {
+    func push(_ chunks: [String]) async throws -> Step
+    func finish() async throws -> Step
+}
+
+extension Session: PlaybackSession {}
+
 /// Plays a program's chunks through a streaming parse: forward, back, to any
 /// step, or at a speed. Step `k` is the result after the first `k` chunks;
 /// once every chunk has arrived, the last step is the stream's end.
@@ -64,7 +73,8 @@ public final class Playback {
     /// In edit mode, the program the chunks patch: each step shows it merged
     /// with the patch so far.
     public let base: String?
-    private var session: Session?
+    private var session: (any PlaybackSession)?
+    private let sessionFactory: @Sendable () async throws -> any PlaybackSession
     /// How many chunks `session` has seen.
     private var sessionPosition = 0
     private var cache: [Int: Step] = [:]
@@ -81,9 +91,12 @@ public final class Playback {
 
     /// `cacheBudget` bounds the memory the steps kept for stepping back hold,
     /// in bytes, as `cost(of:)` estimates it. With a `base`, the chunks are an
-    /// edit-mode patch to it.
+    /// edit-mode patch to it. `sessionFactory` overrides streaming sessions only;
+    /// edit mode continues to merge and parse with `core`.
     public init(core: Core, library: Library, root: String?, base: String? = nil, promptSpec: String? = nil,
-                cacheBudget: Int = 128 << 20, hostEventLimit: Int = 200) {
+                cacheBudget: Int = 128 << 20, hostEventLimit: Int = 200,
+                sessionFactory: (@Sendable () async throws -> any PlaybackSession)? = nil) {
+        self.sessionFactory = sessionFactory ?? { try await core.session(library: library, root: root) }
         self.core = core
         self.library = library
         self.promptSpec = promptSpec
@@ -148,8 +161,8 @@ public final class Playback {
         chunks += batch
         for chunk in batch {
             text += chunk
-            textOffsets.append(textOffsets.last! + chunk.utf16.count)
-            scalarOffsets.append(scalarOffsets.last! + chunk.unicodeScalars.count)
+            textOffsets.append((textOffsets.last ?? 0) + chunk.utf16.count)
+            scalarOffsets.append((scalarOffsets.last ?? 0) + chunk.unicodeScalars.count)
         }
     }
 
@@ -242,6 +255,9 @@ public final class Playback {
     }
 
     private func show(_ target: Int) async {
+        // A failed final parse must still end the interaction's streaming gate.
+        defer { live?.isStreaming = isStreaming || target < chunks.count }
+
         if let kept = cache[target] {
             hand(kept, at: target, fromCache: true)
             return
@@ -263,7 +279,7 @@ public final class Playback {
         }
         do {
             if session == nil || target < sessionPosition {
-                session = try await core.session(library: library, root: root)
+                session = try await sessionFactory()
                 sessionPosition = 0
             }
             guard let session else { return }

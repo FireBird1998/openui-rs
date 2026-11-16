@@ -7,8 +7,14 @@
 set -euo pipefail
 cd "$(dirname "$0")/.."
 python3 tools/viewer/Requests/sync-recorded-streams.py --check
+python3 scripts/test-check-swift-tests.py
 scripts/viewer.sh rust
+status=0
 for package in swift/OpenUINative tools/viewer; do
-  swift build --package-path "$package" --build-tests -Xswiftc -warnings-as-errors "$@"
-  swift test --package-path "$package" -Xswiftc -warnings-as-errors "$@"
+  if ! swift build --package-path "$package" --build-tests -Xswiftc -warnings-as-errors "$@"; then
+    status=1
+    continue
+  fi
+  python3 scripts/check-swift-tests.py "$package" -Xswiftc -warnings-as-errors "$@" || status=1
 done
+exit "$status"

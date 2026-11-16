@@ -87,11 +87,12 @@ public struct JSONError: Error, CustomStringConvertible {
 
 extension JSONValue {
     /// Parses JSON text. Escaped lone surrogates, which JavaScript strings may
-    /// hold but Swift strings can't, become U+FFFD.
+    /// hold but Swift strings can't, become U+FFFD. Parsing is iterative; values
+    /// at depth 512 are refused with JSONError (root is depth zero).
     public static func parse(_ text: String) throws(JSONError) -> JSONValue {
         var reader = Reader(bytes: Array(text.utf8))
         reader.skipSpace()
-        let value = try reader.value(depth: 0)
+        let value = try reader.value()
         reader.skipSpace()
         guard reader.at == reader.bytes.count else { throw reader.fail("trailing text") }
         return value
@@ -99,8 +100,8 @@ extension JSONValue {
 }
 
 private struct Reader {
-    /// Far deeper than any parse result; stops runaway input before the stack does.
-    static let maxDepth = 4000
+    /// Bounds retained nesting, including ARC destruction, on a 512 KB stack.
+    static let maxDepth = 512
 
     let bytes: [UInt8]
     var at = 0
@@ -118,57 +119,72 @@ private struct Reader {
         }
     }
 
-    mutating func value(depth: Int) throws(JSONError) -> JSONValue {
-        guard depth < Reader.maxDepth else { throw fail("nested too deeply") }
-        guard at < bytes.count else { throw fail("unexpected end") }
-        switch bytes[at] {
-        case UInt8(ascii: "{"):
-            at += 1
-            var entries: [(key: String, value: JSONValue)] = []
-            skipSpace()
-            if at < bytes.count, bytes[at] == UInt8(ascii: "}") { at += 1; return .object(entries) }
-            while true {
+    private struct Frame {
+        var items: [JSONValue] = []
+        var entries: [(key: String, value: JSONValue)] = []
+        var key: String?
+        var object: Bool
+    }
+
+    /// Containers are assembled on an explicit stack; no input depth adds a
+    /// Swift call frame. The cap also bounds destruction of partially read data.
+    mutating func value() throws(JSONError) -> JSONValue {
+        var stack: [Frame] = []
+        var ready: JSONValue?
+        while true {
+            if ready == nil {
                 skipSpace()
-                guard at < bytes.count, bytes[at] == UInt8(ascii: "\"") else { throw fail("expected a key") }
-                let key = try string()
-                skipSpace()
-                try expect(":")
-                skipSpace()
-                entries.append((key, try value(depth: depth + 1)))
-                skipSpace()
+                guard stack.count < Self.maxDepth else { throw fail("nested too deeply") }
                 guard at < bytes.count else { throw fail("unexpected end") }
-                if bytes[at] == UInt8(ascii: ",") { at += 1; continue }
-                if bytes[at] == UInt8(ascii: "}") { at += 1; return .object(entries) }
-                throw fail("expected , or }")
+                switch bytes[at] {
+                case UInt8(ascii: "{"), UInt8(ascii: "["):
+                    let object = bytes[at] == UInt8(ascii: "{")
+                    at += 1
+                    skipSpace()
+                    let end = object ? UInt8(ascii: "}") : UInt8(ascii: "]")
+                    if at < bytes.count, bytes[at] == end {
+                        at += 1
+                        ready = object ? .object([]) : .array([])
+                    } else {
+                        var frame = Frame(object: object)
+                        if object { frame.key = try key() }
+                        stack.append(frame)
+                        continue
+                    }
+                case UInt8(ascii: "\""): ready = .string(try string())
+                case UInt8(ascii: "t"): try expect("true"); ready = .bool(true)
+                case UInt8(ascii: "f"): try expect("false"); ready = .bool(false)
+                case UInt8(ascii: "n"): try expect("null"); ready = .null
+                default: ready = .number(try number())
+                }
             }
-        case UInt8(ascii: "["):
-            at += 1
-            var items: [JSONValue] = []
+            guard let value = ready else { throw fail("expected a value") }
+            guard var frame = stack.popLast() else { return value }
+            if frame.object {
+                guard let key = frame.key else { throw fail("expected a key") }
+                frame.entries.append((key, value))
+            } else { frame.items.append(value) }
+            ready = nil
             skipSpace()
-            if at < bytes.count, bytes[at] == UInt8(ascii: "]") { at += 1; return .array(items) }
-            while true {
-                skipSpace()
-                items.append(try value(depth: depth + 1))
-                skipSpace()
-                guard at < bytes.count else { throw fail("unexpected end") }
-                if bytes[at] == UInt8(ascii: ",") { at += 1; continue }
-                if bytes[at] == UInt8(ascii: "]") { at += 1; return .array(items) }
-                throw fail("expected , or ]")
-            }
-        case UInt8(ascii: "\""):
-            return .string(try string())
-        case UInt8(ascii: "t"):
-            try expect("true")
-            return .bool(true)
-        case UInt8(ascii: "f"):
-            try expect("false")
-            return .bool(false)
-        case UInt8(ascii: "n"):
-            try expect("null")
-            return .null
-        default:
-            return .number(try number())
+            guard at < bytes.count else { throw fail("unexpected end") }
+            if bytes[at] == UInt8(ascii: ",") {
+                at += 1
+                if frame.object { frame.key = try key() }
+                stack.append(frame)
+            } else if bytes[at] == (frame.object ? UInt8(ascii: "}") : UInt8(ascii: "]")) {
+                at += 1
+                ready = frame.object ? .object(frame.entries) : .array(frame.items)
+            } else { throw fail(frame.object ? "expected , or }" : "expected , or ]") }
         }
+    }
+
+    mutating func key() throws(JSONError) -> String {
+        skipSpace()
+        guard at < bytes.count, bytes[at] == UInt8(ascii: "\"") else { throw fail("expected a key") }
+        let key = try string()
+        skipSpace()
+        try expect(":")
+        return key
     }
 
     mutating func number() throws(JSONError) -> Double {
@@ -218,7 +234,7 @@ private struct Reader {
                     at += 2
                     let low = try hex4()
                     if (0xDC00..<0xE000).contains(low) {
-                        append(Unicode.Scalar(0x10000 + ((unit - 0xD800) << 10) + (low - 0xDC00))!)
+                        append(Unicode.Scalar(0x10000 + ((unit - 0xD800) << 10) + (low - 0xDC00)) ?? "\u{FFFD}")
                         continue
                     }
                     at = save

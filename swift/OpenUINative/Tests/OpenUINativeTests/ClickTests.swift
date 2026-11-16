@@ -20,6 +20,7 @@ import Testing
     return nil
 }
 
+extension NativeUITests {
 @Suite @MainActor struct AClickRunsWhatWasDrawn {
     /// An app's component draws its child with `ElementView(element:)` and
     /// no path: the child's own path is used.
@@ -29,12 +30,12 @@ import Testing
         $deleted = false
         root = Stack([TextContent("x"), Panel(Button("Delete", @Set($deleted, true)))])
         """) { events.append($0) }
-        let window = Window(live, component: { element, _ in
+        let window = await Window(live, component: { element, _ in
             guard element.typeName == "Panel", case let .element(child)? = element.props.first?.value else { return nil }
             return AnyView(ElementView(element: child))
         }, key: { element, path in element.typeName == "Button" ? "button" : path })
         defer { window.close() }
-        try window.click("button")
+        try await window.click("button")
         #expect(live.value(of: "$deleted") == .bool(true))
         #expect(events.isEmpty)
         #expect(live.failure == nil)
@@ -48,14 +49,14 @@ import Testing
         $two = 0
         root = Stack($first ? [Button("One", @Set($first, false)), Button("Two", @Set($two, 1))] : [Button("Two", @Set($two, 1)), Button("Three", @Set($two, 3))])
         """)
-        let window = Window(live)
+        let window = await Window(live)
         defer { window.close() }
         for event in try window.clickEvents("/children/0", clicks: 2) { window.window.sendEvent(event) }
-        window.settle()
+        await window.settle()
         #expect(live.value(of: "$first") == .bool(false))
         #expect(live.value(of: "$two") == .number(0))
         #expect(live.failure?.contains("changed since this was drawn") == true)
-        try window.click("/children/0")
+        try await window.click("/children/0")
         #expect(live.value(of: "$two") == .number(1))
         #expect(live.failure == nil)
     }
@@ -67,10 +68,10 @@ import Testing
         $n = 0
         root = Stack([TextContent("n: " + $n), Button("Add", @Set($n, $n + 1))])
         """)
-        let window = Window(live)
+        let window = await Window(live)
         defer { window.close() }
         for event in try window.clickEvents("/children/1", clicks: 2) { window.window.sendEvent(event) }
-        window.settle()
+        await window.settle()
         #expect(live.value(of: "$n") == .number(2))
         #expect(live.failure == nil)
         #expect(window.texts["/children/0"] == "n: 2")
@@ -82,9 +83,9 @@ import Testing
         $q = ""
         root = Stack([TextContent("q: " + $q), Input("q", $q)])
         """)
-        let window = Window(live)
+        let window = await Window(live)
         defer { window.close() }
-        try window.typeAtOnce(["a", "b"])
+        try await window.typeAtOnce(["a", "b"])
         #expect(live.value(of: "$q") == .string("ab"))
         #expect(live.failure == nil)
         #expect(window.texts["/children/0"] == "q: ab")
@@ -114,7 +115,7 @@ import Testing
         $name = "first"
         root = Form("f", [FormControl("Name", Input($name))])
         """)
-        let window = Window(live)
+        let window = await Window(live)
         defer { window.close() }
         try live.set("$name", to: .string("second"))
         let field = try #require(window.fields.first)
@@ -131,11 +132,11 @@ import Testing
         $picked = ""
         root = Stack(@Each($items, "x", Button(x, @Set($picked, x))))
         """)
-        let window = Window(live)
+        let window = await Window(live)
         defer { window.close() }
-        try window.click("/children/2")
+        try await window.click("/children/2")
         #expect(live.value(of: "$picked") == .string("c"))
-        try window.click("/children/0")
+        try await window.click("/children/0")
         #expect(live.value(of: "$picked") == .string("a"))
     }
 
@@ -144,9 +145,9 @@ import Testing
         $a = 0
         root = Stack([TextContent("t"), Stack([TextContent("u"), Button("in", @Set($a, 1))])])
         """)
-        let window = Window(live)
+        let window = await Window(live)
         defer { window.close() }
-        try window.click("/children/1/children/1")
+        try await window.click("/children/1/children/1")
         #expect(live.value(of: "$a") == .number(1))
     }
 
@@ -155,12 +156,12 @@ import Testing
         $q = ""
         root = Stack([TextContent("q: " + $q), Panel(Input("q", $q))])
         """)
-        let window = Window(live, component: { element, _ in
+        let window = await Window(live, component: { element, _ in
             guard element.typeName == "Panel", case let .element(child)? = element.props.first?.value else { return nil }
             return AnyView(ElementView(element: child))
         })
         defer { window.close() }
-        try window.type("hi")
+        try await window.type("hi")
         #expect(live.value(of: "$q") == .string("hi"))
         #expect(window.texts["/children/0"] == "q: hi")
     }
@@ -276,12 +277,12 @@ import Testing
         $x = 0
         root = Stack([Button("a", {steps: [1, {type: "set"}], type: "open_url", url: "u"}), Button("b", {steps: [{type: "custom_action", name: "Ping", params: {}}]})])
         """) { events.append($0) }
-        let window = Window(live)
+        let window = await Window(live)
         defer { window.close() }
         let before = live.version
-        try window.click("/children/0")
+        try await window.click("/children/0")
         #expect(live.failure != nil)
-        try window.click("/children/1")
+        try await window.click("/children/1")
         #expect(events.isEmpty)
         #expect(live.version == before)
     }
@@ -342,13 +343,13 @@ import Testing
         $n = 0
         root = Stack([TextContent("n: " + $n), Button("Grow", Action([@Set($n, $n + 1), @Set($s, $s + $s), @Set($n, $n + 100)]))])
         """)
-        let window = Window(live)
+        let window = await Window(live)
         defer { window.close() }
         var refused = false
         for _ in 0..<30 {
             let n = try #require(live.value(of: "$n")?.number)
             let s = live.value(of: "$s")
-            try window.click("/children/1")
+            try await window.click("/children/1")
             if live.failure != nil {
                 refused = true
                 #expect(live.value(of: "$n") == .number(n + 1))
@@ -378,12 +379,12 @@ import Testing
     @Test func clicksAreIgnoredAndInputsDisabled() async throws {
         var events: [HostEvent] = []
         let live = try await live(liveProgram) { events.append($0) }
-        let window = Window(live)
+        let window = await Window(live)
         defer { window.close() }
         live.isStreaming = true
         for event in try window.clickEvents("/children/1") { window.window.sendEvent(event) }
-        window.settle()
-        try window.click("/children/1")
+        await window.settle()
+        try await window.click("/children/1")
         #expect(live.value(of: "$hp") == .number(5))
         #expect(events.isEmpty)
         #expect(live.failure == nil)
@@ -392,11 +393,11 @@ import Testing
         #expect(live.value(of: "$hp") == .number(5))
 
         live.isStreaming = false
-        window.settle()
-        try window.click("/children/1")
+        await window.settle()
+        try await window.click("/children/1")
         #expect(live.value(of: "$hp") == .number(4))
         #expect(events.count == 1)
-        try window.type("3")
+        try await window.type("3")
         #expect(live.value(of: "$total") == .number(6))
     }
 }
@@ -413,9 +414,9 @@ import Testing
     @Test func anActionCellAsksToContinueWithItsText() async throws {
         var events: [HostEvent] = []
         let live = try await live(Self.program) { events.append($0) }
-        let window = Window(live)
+        let window = await Window(live)
         defer { window.close() }
-        try window.click("/children/0", at: Self.firstCellOfLastRow)
+        try await window.click("/children/0", at: Self.firstCellOfLastRow)
         #expect(events.map(\.type) == ["continue_conversation"])
         #expect(events.first?.humanFriendlyMessage == "Open")
         #expect(live.failure == nil)
@@ -426,14 +427,14 @@ import Testing
     @Test func anActionCellRunsOnlyWhileItsTableIsWhatWasDrawn() async throws {
         var events: [HostEvent] = []
         let live = try await live(Self.program) { events.append($0) }
-        let window = Window(live)
+        let window = await Window(live)
         defer { window.close() }
         try live.set("$label", to: .string("Close"))
         for event in try window.clickEvents("/children/0", at: Self.firstCellOfLastRow) { window.window.sendEvent(event) }
-        window.settle()
+        await window.settle()
         #expect(events.isEmpty)
         #expect(live.failure?.contains("changed since this was drawn") == true)
-        try window.click("/children/0", at: Self.firstCellOfLastRow)
+        try await window.click("/children/0", at: Self.firstCellOfLastRow)
         #expect(events.map(\.humanFriendlyMessage) == ["Close"])
     }
 
@@ -442,9 +443,9 @@ import Testing
         $n = 0
         root = Stack([Table([Col("Do")], [[Button("Bump", @Set($n, $n + 1))]]), TextContent("t")])
         """)
-        let window = Window(live)
+        let window = await Window(live)
         defer { window.close() }
-        try window.click("/children/0/rows/0/0")
+        try await window.click("/children/0/rows/0/0")
         #expect(live.value(of: "$n") == .number(1))
     }
 }
@@ -457,14 +458,16 @@ import Testing
         $v = "a"
         root = Stack([Select("s", [SelectItem("a", "A"), SelectItem("b", "B")], $v), TextContent("v: " + $v)])
         """, bindings: [("Select", "value")])
-        let window = Window(live)
+        let window = await Window(live)
         defer { window.close() }
-        let first = try window.pick("B", at: "/children/0")
+        let first = try await window.pick("B", at: "/children/0")
         #expect(first.map(\.title) == ["s", "A", "B"])
         #expect(first.filter(\.checked).map(\.title) == ["A"])
         #expect(live.value(of: "$v") == .string("b"))
         #expect(window.texts["/children/1"] == "v: b")
-        let second = try window.pick(nil, at: "/children/0")
+        let reopened = await Window(live)
+        defer { reopened.close() }
+        let second = try await reopened.pick(nil, at: "/children/0")
         #expect(second.filter(\.checked).map(\.title) == ["B"])
         #expect(live.value(of: "$v") == .string("b"))
     }
@@ -476,11 +479,11 @@ import Testing
         let live = try await live("""
         root = Form("f", [FormControl("U", Select("u", [SelectItem("a", "A"), SelectItem("b", "B")]))], Buttons([Button("Send", @ToAssistant("sent"))]))
         """) { events.append($0) }
-        let window = Window(live)
+        let window = await Window(live)
         defer { window.close() }
-        try window.pick("B", at: "/fields/0/input")
+        try await window.pick("B", at: "/fields/0/input")
         #expect(live.field(form: "f", name: "u") == .string("b"))
-        try window.click("/buttons/buttons/0")
+        try await window.click("/buttons/buttons/0")
         #expect(events.first?.formState == .object([("f", .object([("u", .object([("value", .string("b"))]))]))]))
     }
 }
@@ -491,16 +494,18 @@ import Testing
         $hp = 5
         root = Stack([TextContent("HP: " + $hp), Button("Hit", @Set($hp, $hp - 1))])
         """)
-        let window = Window(live)
+        let window = await Window(live)
         defer { window.close() }
         #expect(window.texts["/children/0"] == "HP: 5")
         try live.set("$hp", to: .number(9))
-        window.settle()
+        await window.settle()
         #expect(window.texts["/children/0"] == "HP: 9")
-        try window.click("/children/1")
+        try await window.click("/children/1")
         #expect(window.texts["/children/0"] == "HP: 8")
         let version = live.version
-        for _ in 0..<5 { window.settle() }
+        for _ in 0..<5 { await window.settle() }
         #expect(live.version == version)
     }
+}
+
 }

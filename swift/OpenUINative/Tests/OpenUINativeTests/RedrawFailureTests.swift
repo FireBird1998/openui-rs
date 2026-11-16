@@ -7,6 +7,7 @@ import OpenUIFFI
 @testable import OpenUINative
 import Testing
 
+extension NativeUITests {
 @Suite @MainActor struct ARedrawThatFails {
     @Test func stillDeliversTheActionsHostEvents() async throws {
         var events: [HostEvent] = []
@@ -25,4 +26,6 @@ import Testing
         #expect(live.failure != nil)
         #expect(throws: (any Error).self) { try live.run("action", of: button, message: "Go") }
     }
+}
+
 }

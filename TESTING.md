@@ -1728,3 +1728,123 @@ for each of 32 name/component-sharing combinations;
 the second fills all 512 bytes again after clearing an extracted configuration.
 Restoring the old refund, omitting component JSON escapes, or mutating before
 an insertion refusal fails these tests. No default quota is introduced.
+
+## Swift issue #63 regressions
+
+From the repository root, run:
+
+```sh
+swift build --package-path swift/OpenUINative
+python3 scripts/check-swift-tests.py swift/OpenUINative
+python3 scripts/check-swift-tests.py tools/viewer
+scripts/check-viewer.sh
+```
+
+The Python command is the guarded `swift test` command for each package: it
+runs `swift test list` to discover the expected tests, then `swift test`, and
+requires every declared test to start, exactly one final summary with the
+matching count, a passing summary and exit status zero. A bare `swift test`
+exit status alone is insufficient: an early runner exit can be zero. Counts
+are discovered each run, including top-level and parameterized tests (cases
+are not separate declared tests). The whole-package guard rejects filters.
+`scripts/check-viewer.sh` applies it to both packages and checks the viewer
+even if the native tests fail. `python3 scripts/test-check-swift-tests.py`
+exercises the guard through its CLI with incomplete, failing and passing runners.
+
+An outer sandbox may require `--disable-sandbox` and writable
+`CLANG_MODULE_CACHE_PATH` / `SWIFTPM_MODULECACHE_OVERRIDE` directories. Append
+`--disable-sandbox` to the build, guarded-test and check-script commands when
+needed; the check script still enables warnings as errors.
+No dependencies need to be installed. The offline validation observations run as
+`bun --no-install tools/viewer/Checks/validation-reference.ts`.
+
+The public-interface regressions include:
+
+- `aSecondClickChecksTheCurrentFormBeforeAnyRedraw`: require a field, then send
+  without a UI redraw; no event is delivered.
+- `everyUpstreamFieldParticipatesInValidation` (seven component types),
+  `selectionDefaultsAndStoredShapesFollowUpstream`,
+  `aggregateValuePropsAreValidatedWithoutDiscardingTheirData`, and
+  `aCustomComponentsRegisteredValueIsValidated`: required fields, structured
+  values, selection defaults and an app's registered component.
+- `onlyTheVisibleTabIsValidatedIncludingAfterSwitching` and
+  `anAppsTabsValidateEveryContentWhenNoNativeSelectionIsRecorded`: native initial
+  selection and switching, and app-drawn Tabs with both contents visible.
+- `emptyNativeFieldsCannotUseInvisibleCompositeDefaults`: list and record defaults
+  in built-in Input and Select block Send without changing the store; a subsequent
+  scalar field value permits Send (four parameter cases).
+- `eachRule`: ignored list-form rules, ASCII digits, absolute end anchors, email
+  newlines, empty URL hosts, large ports and no-break-space prefixes.
+- `tableActionCellsValidateTheirCurrentForm`: the repository's action cells
+  refuse invalid forms without changing the store and send once valid.
+- `snapshotFieldReadsKeepObjectsWithoutAValueKey`,
+  `undefinedFieldWritesAndLookalikeDataMatchTheRuntimeGetter`, and
+  `identicalButtonsAndMarkersFromAnEarlierShowAreRefused`: data objects and
+  cross-show authority, including unchanged store version on refusal.
+- `parsingAndReleasingDeepJSONOnA512KBStackIsBounded`: arrays and objects at
+  depths 0, 250, 386 and 511 parse and release on a 512 KB thread; depths 512,
+  4,000 and 100,000 throw JSONError. This is a debug-build stack check, not a
+  wall-clock assertion. The old 4,000-level recursive allowance is replaced
+  by iterative parsing and a 512-level refusal boundary.
+- `enteringASelectsCurrentValueDoesNotApplyItsTransform` and
+  `selectingTheAlreadySelectedValueDoesNotApplyItsTransform`: public entry and
+  actual menu selection leave state/version/pristine status unchanged, while
+  a different selection applies the transform.
+- Viewer `aFailedFinalParseStillClearsTheStreamingGate` uses a public
+  PlaybackSession adapter whose finish throws; the mounted
+  `aMountedStoreDraftKeepsEditsAndCommitsTheCurrentValue` edits a real text field,
+  changes its store underneath, presses Return and checks a subsequent update.
+
+Native UI suites share a serialized parent to keep their windows and focus from
+overlapping. Their redraw helpers, and the viewer's two mounted-view tests,
+suspend asynchronously instead of calling `RunLoop.main.run(until:)` from a test
+already running on the main executor.
+
+The package's runner used to exit with status 0 and no summary after the select
+tests on a Mac with a display. Swift's async `main` drains the main actor with
+a single `CFRunLoopRun()` and calls `exit(0)` when it returns. Traced in lldb,
+the old helper's menu (a Timer choosing the item and cancelling tracking with
+animation, inside a nested `RunLoop.main.run(until:)`) left HIToolbox's event
+thread queuing a `CFRunLoopStop` block on the main run loop for later
+window-server events (`PushToCGEventQueue`); one such block ran in that outer
+loop during a later test, and `swift_task_asyncMainDrainQueue` exited. The
+helper now chooses the item and cancels tracking without animation as soon as
+the menu begins tracking, and picks again in a fresh `Window`; traced again,
+every queued stop block is consumed inside the menu's own event wait. The
+completeness guard catches a recurrence.
+
+The select-menu helper requires an available NSScreen before opening the popup.
+Without a display AppKit can throw an uncaught `Nil screen` exception during
+popup positioning; the helper reports a test failure instead. Exactly four tests
+require a display: `pickingFromItsMenuWritesItsBinding`,
+`pickingInAFormWritesItsField`, `aSelectsRulesAreChecked`, and
+`selectingTheAlreadySelectedValueDoesNotApplyItsTransform`. A headless run must
+still start every declared test and print its final summary; these four failures
+make the gate fail and are never treated as passes.
+
+On a Mac with an available display, run the commands above, then repeat both
+complete suites ten times (from the repository root):
+
+```sh
+for run in {1..10}; do
+  python3 scripts/check-swift-tests.py swift/OpenUINative || exit 1
+  python3 scripts/check-swift-tests.py tools/viewer || exit 1
+done
+```
+
+Known gaps, recorded here without changing their behavior in Round 2:
+
+- A field type with validation but no native view can block Send with no control
+  on screen for the user to fill. An app must provide its view/value handling.
+- After a failed final parse, clearing the streaming flag makes the previous
+  partial step clickable (`aFailedFinalParseStillClearsTheStreamingGate` checks
+  flag clearing, not whether that older step should remain interactive).
+- If `show()` throws after setting the runtime program, the old tree stays drawn
+  but its controls cannot be clicked. There is no regression test for replacing
+  that stale drawing with an error view; this remains a known gap.
+
+The regex adapter covers the named gaps, not all ICU/ECMAScript differences.
+Unicode word/space classes and syntax accepted by only one engine remain outside
+that compatibility claim. The URL adapter likewise does not claim complete
+WHATWG normalization or numeric-host parsing. The named checks are pinned by
+`eachRule` and compared to the vendored lang-core validators by the offline probe.

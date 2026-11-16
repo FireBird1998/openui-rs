@@ -6,6 +6,7 @@ import OpenUINative
 import SwiftUI
 import Testing
 
+extension NativeUITests {
 @Suite @MainActor struct CheckingAForm {
     static let program = """
     $sent = false
@@ -17,18 +18,18 @@ import Testing
     @Test func aPrimaryButtonRunsNothingWhileAFieldBreaksItsRules() async throws {
         var events: [HostEvent] = []
         let live = try await live(Self.program) { events.append($0) }
-        let window = Window(live)
+        let window = await Window(live)
         defer { window.close() }
-        try window.click("/buttons/buttons/0")
+        try await window.click("/buttons/buttons/0")
         #expect(events.isEmpty)
         #expect(live.value(of: "$sent") == .bool(false))
         #expect(live.failure == nil)
-        try window.click("/buttons/buttons/3")
+        try await window.click("/buttons/buttons/3")
         #expect(events.isEmpty)
 
         try live.set("$email", to: .string("ann@example.com"))
-        window.settle()
-        try window.click("/buttons/buttons/0")
+        await window.settle()
+        try await window.click("/buttons/buttons/0")
         #expect(events.map(\.humanFriendlyMessage) == ["Sent"])
         #expect(live.value(of: "$sent") == .bool(true))
     }
@@ -37,22 +38,22 @@ import Testing
     @Test func anUnboundFieldIsCheckedByWhatWasTypedInIt() async throws {
         var events: [HostEvent] = []
         let live = try await live(Self.program) { events.append($0) }
-        let window = Window(live)
+        let window = await Window(live)
         defer { window.close() }
         try live.set("$email", to: .string("ann@example.com"))
-        window.settle()
+        await window.settle()
         let name = try #require(window.fields.last)
         #expect(window.window.makeFirstResponder(name))
         try #require(name.currentEditor()).insertText("A")
-        window.settle()
-        try window.click("/buttons/buttons/0")
+        await window.settle()
+        try await window.click("/buttons/buttons/0")
         #expect(events.isEmpty)
         // Focusing the field again selects what's in it; typing replaces it.
         #expect(window.window.makeFirstResponder(name))
         try #require(name.currentEditor()).insertText("Ann")
-        window.settle()
+        await window.settle()
         #expect(live.field(form: "signup", name: "name") == .string("Ann"))
-        try window.click("/buttons/buttons/0")
+        try await window.click("/buttons/buttons/0")
         #expect(events.count == 1)
     }
 
@@ -60,13 +61,13 @@ import Testing
     /// away (a message, a custom action, a mutation), or that has no plan.
     @Test func aSecondaryButtonOrAPlanThatOnlySetsStateIsNotChecked() async throws {
         let live = try await live(Self.program)
-        let window = Window(live)
+        let window = await Window(live)
         defer { window.close() }
-        try window.click("/buttons/buttons/1")
+        try await window.click("/buttons/buttons/1")
         #expect(live.value(of: "$sent") == .bool(true))
         try live.set("$sent", to: .bool(false))
-        window.settle()
-        try window.click("/buttons/buttons/2")
+        await window.settle()
+        try await window.click("/buttons/buttons/2")
         #expect(live.value(of: "$sent") == .bool(true))
     }
 
@@ -75,9 +76,9 @@ import Testing
         let live = try await live("""
         root = Stack([Input("email", null, {required: true}), Button("Send", @ToAssistant("Sent"))])
         """) { events.append($0) }
-        let window = Window(live)
+        let window = await Window(live)
         defer { window.close() }
-        try window.click("/children/1")
+        try await window.click("/children/1")
         #expect(events.count == 1)
     }
 
@@ -108,8 +109,27 @@ import Testing
         Case(rules: "{maxLength: 3}", value: #""abc""#, blocks: false),
         Case(rules: #"{pattern: "^[a-z]+$"}"#, value: #""abc1""#, blocks: true),
         Case(rules: #"{pattern: "^[a-z]+$"}"#, value: #""abc""#, blocks: false),
-        Case(rules: #"["required", "minLength:3"]"#, value: #""ab""#, blocks: true),
+        Case(rules: #"["required", "minLength:3"]"#, value: #""ab""#, blocks: false),
         Case(rules: #"["required", "minLength:3"]"#, value: #""abc""#, blocks: false),
+        Case(rules: #"{pattern: "^\\d+$"}"#, value: #""١٢""#, blocks: true),
+        Case(rules: #"{pattern: "^\\d+$"}"#, value: #""12""#, blocks: false),
+        Case(rules: #"{pattern: "^[\\d]+$"}"#, value: #""١٢""#, blocks: true),
+        Case(rules: #"{pattern: "^a$"}"#, value: #""a\n""#, blocks: true),
+        Case(rules: "{email: true}", value: #""a@b.co\n""#, blocks: true),
+        Case(rules: "{url: true}", value: #""http://user@""#, blocks: true),
+        Case(rules: "{url: true}", value: #""http://host:99999""#, blocks: true),
+        Case(rules: "{url: true}", value: #""\u00a0http://host""#, blocks: true),
+        Case(rules: "{url: true}", value: #"" http://user@host:65535 ""#, blocks: false),
+        Case(rules: #"["required"]"#, value: #""""#, blocks: false),
+        Case(rules: #"{pattern: "^\\D+$"}"#, value: #""١٢""#, blocks: false),
+        Case(rules: #"{pattern: "^\\D+$"}"#, value: #""12""#, blocks: true),
+        Case(rules: #"{pattern: "^[\\D]+$"}"#, value: #""١٢""#, blocks: false),
+        Case(rules: #"{pattern: "^\\$$"}"#, value: #""$""#, blocks: false),
+        Case(rules: #"{pattern: "^[$]$"}"#, value: #""$""#, blocks: false),
+        Case(rules: #"{pattern: "["}"#, value: #""abc""#, blocks: false),
+        Case(rules: #"{pattern: "^\\w+$"}"#, value: #""é""#, blocks: false), // Documented ICU remainder.
+        Case(rules: "{url: true}", value: #""http:\r\n//host""#, blocks: false),
+        Case(rules: "{url: true}", value: #""http://host:65536""#, blocks: true),
         Case(rules: "{unknown: true}", value: #""""#, blocks: false),
     ])
     func eachRule(_ c: Case) async throws {
@@ -118,9 +138,9 @@ import Testing
         $v = \(c.value)
         root = Form("f", [FormControl("V", Input("v", $v, \(c.rules)))], Buttons([Button("Go", @ToAssistant("go"))]))
         """) { events.append($0) }
-        let window = Window(live)
+        let window = await Window(live)
         defer { window.close() }
-        try window.click("/buttons/buttons/0")
+        try await window.click("/buttons/buttons/0")
         #expect(events.count == (c.blocks ? 0 : 1))
     }
 
@@ -130,12 +150,14 @@ import Testing
         let live = try await live("""
         root = Form("f", [FormControl("U", Select("u", [SelectItem("a", "A")], null, {required: true}))], Buttons([Button("Go", @ToAssistant("go"))]))
         """) { events.append($0) }
-        let window = Window(live)
+        let window = await Window(live)
         defer { window.close() }
-        try window.click("/buttons/buttons/0")
+        try await window.click("/buttons/buttons/0")
         #expect(events.isEmpty)
-        try window.pick("A", at: "/fields/0/input")
-        try window.click("/buttons/buttons/0")
+        try await window.pick("A", at: "/fields/0/input")
+        try await window.click("/buttons/buttons/0")
         #expect(events.count == 1)
     }
+}
+
 }

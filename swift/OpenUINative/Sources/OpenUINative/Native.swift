@@ -442,7 +442,7 @@ struct ButtonView: View {
             live.attempt {
                 guard let element = live.current(element, form: formName) else { throw LiveProgram.stale }
                 if let form, primary, Self.validates(PropReader(element: element).value("action")),
-                   !form.validation.validate(form.element, in: live, formName: formName) {
+                   !form.validation.validate(enclosing: element, in: live, formName: formName) {
                     return
                 }
                 try live.run("action", of: element, message: label.plain, form: formName)
@@ -571,6 +571,7 @@ struct TableView: View {
     let element: Element
     @Environment(\.liveProgram) private var live
     @Environment(\.formName) private var formName
+    @Environment(\.formContext) private var form
 
     init(_ props: PropReader, path: String) throws {
         columns = try props.elements("columns", of: "Col").map { _, col in
@@ -614,7 +615,11 @@ struct TableView: View {
         case let .scalar(.string(s))? where type == "action":
             Button(s) {
                 guard let live, !live.isStreaming else { return }
-                live.attempt { try live.runActionCell(row: row, column: column, of: element, form: formName) }
+                live.attempt {
+                    guard let current = live.current(element, form: formName) else { throw LiveProgram.stale }
+                    if let form, !form.validation.validate(enclosing: current, in: live, formName: formName) { return }
+                    try live.runActionCell(row: row, column: column, of: current, form: formName)
+                }
             }
             .controlSize(.small)
             .disabled(live?.isStreaming ?? false)
@@ -635,7 +640,6 @@ struct FormView: View {
     let fields: [PropValue]
     let buttons: Element?
     let path: String
-    let element: Element
     /// The fields' errors from the last check, kept while the form is drawn.
     @State private var validation = FormValidation()
 
@@ -644,7 +648,6 @@ struct FormView: View {
         fields = try props.list("fields")
         buttons = try props.optionalElement("buttons")
         self.path = path
-        element = props.element
     }
 
     var body: some View {
@@ -655,7 +658,7 @@ struct FormView: View {
             }
         }
         .environment(\.formName, name)
-        .environment(\.formContext, FormContext(element: element, validation: validation))
+        .environment(\.formContext, FormContext(validation: validation))
     }
 }
 
@@ -727,12 +730,13 @@ struct FormControlView: View {
         element = props.element
     }
 
-    /// What the field holds, read from the store's snapshot: the bound
-    /// state variable, or the form field (until it has a value, the value prop).
-    func value(in live: LiveProgram?, form: String?) -> JSONValue? {
+    /// What the field holds: the bound state variable, or the form field
+    /// (until it has a value, the value prop).
+    func value(in live: LiveProgram?, form: String?, includingCompositeDefaults: Bool = false) -> JSONValue? {
         switch value {
         case let .binding(marker)?: live?.value(of: marker.target)
         case let .scalar(json)?: live?.field(form: form, name: name) ?? json
+        case let value? where includingCompositeDefaults: live?.field(form: form, name: name) ?? value.json
         default: live?.field(form: form, name: name)
         }
     }
@@ -954,6 +958,7 @@ struct TabsView: View {
     let tabs: [Tab]
     let path: String
     @State private var selected = 0
+    @Environment(\.formContext) private var form
 
     init(_ props: PropReader, path: String) throws {
         tabs = try props.elements("items", of: "TabItem").map { index, item in
@@ -965,11 +970,16 @@ struct TabsView: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
-            Picker("", selection: $selected) {
+            Picker("", selection: Binding(get: { selected }, set: {
+                selected = $0
+                form?.validation.selectedTabs[path] = $0
+            })) {
                 ForEach(Array(tabs.enumerated()), id: \.offset) { i, tab in
                     Text(tab.trigger.plain).tag(i)
                 }
             }
+            .onAppear { form?.validation.selectedTabs[path] = selected }
+            .onDisappear { form?.validation.selectedTabs[path] = nil }
             .pickerStyle(.segmented)
             .labelsHidden()
             .fixedSize()

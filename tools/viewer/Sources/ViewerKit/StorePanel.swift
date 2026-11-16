@@ -4,10 +4,12 @@ import SwiftUI
 /// Beside the drawing: the store of the program on screen, each value
 /// editable as JSON, then the runtime errors and the host events it has sent.
 /// Editing a value sets it in the store, and the drawing redraws.
-struct StorePanel: View {
+public struct StorePanel: View {
     let playback: Playback
 
-    var body: some View {
+    public init(playback: Playback) { self.playback = playback }
+
+    public var body: some View {
         if let live = playback.live {
             let rows = StoreRow.rows(of: live)
             List {

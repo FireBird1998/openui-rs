@@ -2,31 +2,16 @@ import Foundation
 import Observation
 import SwiftUI
 
-/// Form validation as upstream's renderer does it (react-lang 1.1.0's
-/// `useCreateFormValidation`, react-ui's Input, Select, FormControl and
-/// Button, lang-core's `utils/validation.ts`): a Form keeps one error per
-/// field; a primary button in it checks every field's rules before its
-/// action and runs nothing while one fails; FormControl shows a field's error
-/// in place of its hint.
-///
-/// What a person can't see the same way natively: upstream's patterns are
-/// JavaScript regular expressions and these are ICU's (`NSRegularExpression`),
-/// which agree on the common syntax but not every corner; `url` stands in
-/// for the WHATWG URL parser with a scheme-and-host check. The fields checked
-/// are the Inputs and Selects found in the form's evaluated tree, drawn or not
-/// (upstream checks the fields that are mounted, which leaves out a field in
-/// a tab that isn't showing); this package draws no TextArea, Slider,
-/// DatePicker or option groups, so their rules aren't checked.
+/// Structured rules follow react-ui 0.18.1 and lang-core 1.1.0. Regexes use
+/// ICU with explicit ASCII digit and absolute end-anchor translations; URL
+/// checks cover special-scheme authorities but are not a full WHATWG parser.
 struct ValidationRule: Equatable {
     var type: String
     var arg: JSONValue?
 }
 
 enum Validation {
-    /// A field's rules: upstream's structured object (`{required: true,
-    /// minLength: 3}`, react-ui's `rules` prop; false and null skip a rule),
-    /// or lang-core's list of rule strings (`["required", "min:3"]`, the
-    /// older libraries' form). Anything else has no rules.
+    /// react-ui registers structured objects only; list-form rules are ignored.
     static func rules(_ value: PropValue?) -> [ValidationRule] {
         switch value {
         case let .record(fields)?:
@@ -36,17 +21,6 @@ enum Validation {
                 case .scalar(.bool(true)): return ValidationRule(type: field.name)
                 default: return ValidationRule(type: field.name, arg: field.value.json)
                 }
-            }
-        case let .list(items)?:
-            return items.compactMap { item in
-                guard case let .scalar(.string(rule)) = item else { return nil }
-                guard let colon = rule.firstIndex(of: ":") else { return ValidationRule(type: rule) }
-                let type = String(rule[..<colon])
-                let raw = String(rule[rule.index(after: colon)...])
-                if ["min", "max", "minLength", "maxLength"].contains(type), let n = JS.number(raw), !n.isNaN {
-                    return ValidationRule(type: type, arg: .number(n))
-                }
-                return ValidationRule(type: type, arg: .string(raw))
             }
         default:
             return []
@@ -126,13 +100,34 @@ enum Validation {
 
     /// Whether `pattern` finds a match in `text`; nil when it doesn't compile.
     private static func matches(_ pattern: String, _ text: String) -> Bool? {
-        guard let regex = try? NSRegularExpression(pattern: pattern) else { return nil }
+        var translated = ""
+        var escaped = false
+        var inClass = false
+        for c in pattern {
+            if escaped {
+                switch c {
+                case "d": translated += "[0-9]"
+                case "D": translated += "[^0-9]"
+                default: translated += "\\" + String(c)
+                }
+                escaped = false
+            } else if c == "\\" {
+                escaped = true
+            } else {
+                if c == "[" { inClass = true }
+                if c == "]" { inClass = false }
+                translated += c == "$" && !inClass ? "\\z" : String(c)
+            }
+        }
+        if escaped { translated += "\\" }
+        guard let regex = try? NSRegularExpression(pattern: translated) else { return nil }
         return regex.firstMatch(in: text, range: NSRange(text.startIndex..., in: text)) != nil
     }
 
-    /// `new URL(s)` succeeds: a scheme, then, for the schemes that need one, a host.
     private static func isURL(_ s: String) -> Bool {
-        let trimmed = s.trimmingCharacters(in: .whitespacesAndNewlines.union(.controlCharacters))
+        // WHATWG strips ASCII tab/LF/CR throughout, and only C0/space at ends.
+        let text = String(String.UnicodeScalarView(s.unicodeScalars.filter { $0 != "\t" && $0 != "\n" && $0 != "\r" }))
+        let trimmed = text.trimmingCharacters(in: CharacterSet(charactersIn: "\u{0}"..." "))
         guard let colon = trimmed.firstIndex(of: ":"),
               trimmed[..<colon].first?.isLetter == true,
               trimmed[..<colon].allSatisfy({ $0.isASCII && ($0.isLetter || $0.isNumber || "+-.".contains($0)) })
@@ -140,9 +135,30 @@ enum Validation {
         let scheme = trimmed[..<colon].lowercased()
         guard ["http", "https", "ws", "wss", "ftp"].contains(scheme) else { return true }
         let rest = trimmed[trimmed.index(after: colon)...].drop { $0 == "/" || $0 == "\\" }
-        let host = rest.prefix { !"/\\?#".contains($0) }.split(separator: "@").last ?? ""
-        return !host.isEmpty && !host.hasPrefix(":") && !host.contains(" ")
+        let authority = rest.prefix { !"/\\?#".contains($0) }
+        let hostPort = authority.split(separator: "@", omittingEmptySubsequences: false).last ?? ""
+        guard !hostPort.isEmpty else { return false }
+        var host = hostPort
+        var port: Substring?
+        if hostPort.hasPrefix("[") {
+            guard let end = hostPort.firstIndex(of: "]") else { return false }
+            host = hostPort[...end]
+            let tail = hostPort[hostPort.index(after: end)...]
+            if !tail.isEmpty {
+                guard tail.first == ":" else { return false }
+                port = tail.dropFirst()
+            }
+        } else if let colon = hostPort.lastIndex(of: ":") {
+            host = hostPort[..<colon]
+            port = hostPort[hostPort.index(after: colon)...]
+        }
+        guard !host.isEmpty, !host.contains(where: { $0.isWhitespace || $0 == "\u{0}" }) else { return false }
+        if let port, !port.isEmpty {
+            guard port.allSatisfy({ $0.isASCII && $0.isNumber }), let n = UInt32(port), n <= 65535 else { return false }
+        }
+        return URLComponents(string: "\(scheme)://\(hostPort)")?.host != nil
     }
+
 }
 
 /// The bits of JavaScript's conversions the rules lean on.
@@ -232,45 +248,82 @@ enum JS {
 final class FormValidation {
     private(set) var errors: [String: String] = [:]
 
-    /// The fields upstream would check in `form`: every Input and Select
-    /// with rules under it, not those of a form nested in it. A later field
-    /// with the same name replaces an earlier one, as upstream's registry does.
-    static func fields(of form: Element) -> [(name: String, field: FieldValue, rules: [ValidationRule])] {
-        var found: [(name: String, field: FieldValue, rules: [ValidationRule])] = []
+    /// Selection belongs to the mounted native Tabs view, keyed by its items
+    /// path. Without a recorded selection, an app's Tabs validates all content.
+    var selectedTabs: [String: Int] = [:]
+
+    private static let fieldTypes: Set<String> = [
+        "Input", "Select", "TextArea", "RadioGroup", "CheckBoxGroup", "Slider",
+        "DatePicker", "Chips", "OptionCards",
+    ]
+
+    /// Read the current enclosing form for a current, already checked click.
+    func validate(enclosing element: Element, in live: LiveProgram, formName: String?) -> Bool {
+        guard let form = live.enclosingForm(of: element) else { return true }
+        var fields: [(String, Element, [ValidationRule])] = []
         func walk(_ value: PropValue) {
             switch value {
             case let .element(element):
                 if element.typeName == "Form" { return }
-                visit(element)
+                let props = PropReader(element: element)
+                if element.typeName == "Tabs",
+                   let selected = selectedTabs[ElementPath.child(of: element.path ?? "/", "items")] {
+                    let items = (try? props.elements("items", of: "TabItem")) ?? []
+                    if items.indices.contains(selected), let content = PropReader(element: items[selected].1).value("content") {
+                        walk(content)
+                    }
+                    return
+                }
+                if Self.fieldTypes.contains(element.typeName) || live.validationComponents[element.typeName] != nil {
+                    let rules = Validation.rules(props.value("rules"))
+                    if !rules.isEmpty, let name = try? props.text("name").plain {
+                        fields.removeAll { $0.0 == name }
+                        fields.append((name, element, rules))
+                    }
+                }
+                element.props.forEach { walk($0.value) }
             case let .list(items): items.forEach(walk)
             case let .record(fields): fields.forEach { walk($0.value) }
-            case .expression, .binding, .plan, .scalar: break
+            default: break
             }
-        }
-        func visit(_ element: Element) {
-            if element.typeName == "Input" || element.typeName == "Select" {
-                let props = PropReader(element: element)
-                let rules = Validation.rules(props.value("rules"))
-                if !rules.isEmpty, let name = try? props.text("name").plain {
-                    found.removeAll { $0.name == name }
-                    found.append((name, FieldValue(props, name: name), rules))
-                }
-            }
-            element.props.forEach { walk($0.value) }
         }
         form.props.forEach { walk($0.value) }
-        return found
-    }
-
-    /// Checks every field of `form` against its rules, replacing every error;
-    /// true when none fails.
-    func validate(_ form: Element, in live: LiveProgram, formName: String?) -> Bool {
         var found: [String: String] = [:]
-        for (name, field, rules) in Self.fields(of: form) {
-            if let error = Validation.check(field.value(in: live, form: formName), rules) { found[name] = error }
+        for (name, element, rules) in fields {
+            let value: JSONValue?
+            if let reader = live.validationComponents[element.typeName] {
+                value = reader(element, live, formName)
+            } else if element.typeName == "Chips" || element.typeName == "OptionCards" {
+                value = Self.selectionValue(element, live: live, form: formName, name: name)
+            } else {
+                // Input and Select must use the same default reader as their
+                // native views: list/record props leave those controls empty.
+                let compositeDefaults = element.typeName != "Input" && element.typeName != "Select"
+                value = FieldValue(PropReader(element: element), name: name).value(in: live, form: formName, includingCompositeDefaults: compositeDefaults)
+            }
+            if let error = Validation.check(value, rules) { found[name] = error }
         }
         errors = found
         return found.isEmpty
+    }
+
+    private static func selectionValue(_ element: Element, live: LiveProgram, form: String?, name: String) -> JSONValue? {
+        let props = PropReader(element: element)
+        let single = props.keyword("type", element.typeName == "Chips" ? "multiple" : "single") == "single"
+        let defaultValue = props.value("defaultValue")?.json
+        let normalized: JSONValue?
+        if single {
+            let text = defaultValue?.string ?? defaultValue?.array?.first?.string
+            normalized = text.flatMap { $0.isEmpty ? nil : .string($0) }
+        } else if let array = defaultValue?.array {
+            normalized = .array(array.filter { $0.string != nil })
+        } else if let text = defaultValue?.string {
+            normalized = .array(text.isEmpty ? [] : [.string(text)])
+        } else { normalized = nil }
+        let stored = live.field(form: form, name: name)
+        let value = stored == .null ? normalized : stored ?? normalized
+        if single { return value?.string.flatMap { $0.isEmpty ? nil : .string($0) } }
+        return value?.array.flatMap { $0.isEmpty ? nil : .array($0) }
     }
 
     /// Checks one field, as upstream does when an input loses focus or a
@@ -285,10 +338,8 @@ final class FormValidation {
     }
 }
 
-/// The form a view sits in: its element, for the fields a primary button
-/// checks, and its errors.
+/// The mounted form's errors and tab selections.
 struct FormContext {
-    let element: Element
     let validation: FormValidation
 }
 

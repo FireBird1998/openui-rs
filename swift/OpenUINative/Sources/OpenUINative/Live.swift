@@ -61,10 +61,9 @@ public final class LiveProgram {
     /// The last evaluated tree's root as the runtime gave it.
     @ObservationIgnored private(set) var rootJSON: JSONValue?
     /// This live program's identity, carried by its tree's elements and markers.
-    @ObservationIgnored private let id: UInt64
+    @ObservationIgnored private var id = UUID()
     /// Which evaluation `root` is; it rises with each one.
     @ObservationIgnored private var generation: UInt64 = 0
-    private static var nextID: UInt64 = 0
 
     /// A session for programs in `library`. The props that are bindings come
     /// from `promptSpec` (its signatures' `$binding<…>` props; the library
@@ -76,8 +75,6 @@ public final class LiveProgram {
         bindings: [(component: String, prop: String)] = [],
         onHostEvent: @escaping @MainActor (HostEvent) -> Void = { _ in }
     ) throws {
-        Self.nextID += 1
-        id = Self.nextID
         session = try RuntimeSession(library: library.inner, promptSpec: promptSpec)
         for binding in bindings {
             try session.markBinding(component: binding.component, prop: binding.prop)
@@ -88,10 +85,12 @@ public final class LiveProgram {
     /// Shows a parse result: the store takes its state declarations (a value
     /// set before survives; a declared starting value fills in or replaces
     /// one still pristine), `persisted` values win over both, and the tree is
-    /// evaluated. Call it with each new step of a stream.
+    /// evaluated. Every accepted show revokes older elements and markers, even
+    /// for identical programs. Call it with each new step of a stream.
     public func show(_ step: Step, persisted: JSONValue? = nil) throws {
         pristineCache = nil
         try session.setProgram(program: step.parsed)
+        id = UUID() // Accepted show revokes even byte-identical old drawings.
         hasProgram = true
         let initialized = try session.initialize(persisted: persisted?.compact)
         try evaluate()
@@ -141,10 +140,10 @@ public final class LiveProgram {
     }
 
     /// An unbound form field's value: in `form`'s fields, or a top-level
-    /// field when `form` is nil; nil when it has none. It's read from `state`,
-    /// with no call to the session, by the runtime's rules: a field's
-    /// `{value, componentType}` unwraps to its value, and one written as
-    /// undefined, which keeps only its component type, has none.
+    /// field when `form` is nil; nil when it has none. Scalar and wrapped values
+    /// come from `state`. An object without a `value` key needs the runtime's
+    /// getter: JSON omits undefined properties, so the snapshot alone cannot
+    /// distinguish an undefined field from lookalike object data.
     public func field(form: String?, name: String) -> JSONValue? {
         let raw: JSONValue?
         if let form, !form.isEmpty {
@@ -155,8 +154,8 @@ public final class LiveProgram {
         }
         guard case let .object(entries)? = raw else { return raw }
         if let value = entries.first(where: { $0.key == "value" }) { return value.value }
-        if entries.allSatisfy({ $0.key == "componentType" && $0.value.string != nil }) { return nil }
-        return raw
+        guard let json = try? session.getField(form: form, name: name) else { return nil }
+        return try? JSONValue.parse(json)
     }
 
     /// Writes an unbound form field and redraws if that changed anything.
@@ -171,10 +170,15 @@ public final class LiveProgram {
     /// Writes what a person typed or picked in a built-in input or select
     /// drawn from `element`: through its binding marker, or else into its
     /// form field. Refused, changing nothing, when what was drawn is gone
-    /// (see `current(_:form:)`).
-    func enter(_ value: JSONValue, into element: Element, form: String?) throws {
+    /// (see `current(_:form:)`), or while streaming. Entering the value already
+    /// held is a no-op, including when the binding transforms new values.
+    public func enter(_ value: JSONValue, into element: Element, form: String? = nil) throws {
+        guard !isStreaming else { throw Self.streaming }
         guard let element = current(element, form: form) else { throw Self.stale }
         let props = PropReader(element: element)
+        let name = try props.text("name").plain
+        let field = FieldValue(props, name: name)
+        guard value != field.value(in: self, form: form, includingCompositeDefaults: true) else { return }
         if case let .binding(marker)? = props.value("value") {
             try write(marker, value)
         } else {
@@ -205,6 +209,31 @@ public final class LiveProgram {
         guard let found = locate(origin.steps), case let .element(now)? = found.value,
               found.form == form, now.json == element.json else { return nil }
         return now
+    }
+
+    /// Registers an app component's validation value reader. Its `name` and
+    /// structured `rules` props use the same conventions as Input. The reader
+    /// receives the current element, live store and enclosing form name; it
+    /// must only read state. Register before drawing; registering again replaces
+    /// the reader. Pass nil to unregister. Hidden tabs and nested forms are
+    /// handled by the same traversal as built-in fields.
+    public func registerValidationComponent(
+        _ component: String,
+        value: (@MainActor (Element, LiveProgram, String?) -> JSONValue?)?
+    ) {
+        validationComponents[component] = value
+    }
+
+    @ObservationIgnored var validationComponents: [String: @MainActor (Element, LiveProgram, String?) -> JSONValue?] = [:]
+
+    /// Resolve the enclosing form from today's tree, not a retained view value.
+    func enclosingForm(of element: Element) -> Element? {
+        guard let origin = element.origin, origin.program == id else { return nil }
+        for end in origin.steps.indices.reversed() {
+            if case let .element(form)? = locate(Array(origin.steps.prefix(end)))?.value,
+               form.typeName == "Form" { return form }
+        }
+        return nil
     }
 
     static let stale = LiveError(description: "the program changed since this was drawn, so nothing was done")
@@ -310,6 +339,7 @@ public final class LiveProgram {
         let started = ContinuousClock.now
         let output = try session.evaluate()
         let json = try JSONValue.parse(output.json)
+        guard generation < UInt64.max else { throw LiveError(description: "evaluation generation exhausted") }
         generation += 1
         let origin = Origin(program: id, generation: generation, steps: [])
         rootJSON = json["root"]

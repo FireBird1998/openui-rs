@@ -31,6 +31,7 @@ let schema = #"""
     return renderer.nsImage != nil
 }
 
+extension NativeUITests {
 @Suite @MainActor struct AnAppDrawing {
     @Test func drawsAProgramWithNothingSetUp() async throws {
         let stack = try await root(of: #"root = Stack(["hello"])"#)
@@ -76,4 +77,6 @@ let schema = #"""
         #expect(draw(stack, with: drawing))
         #expect(Set(asked.chromed) == ["Stack at /", "Stack at /children/1"])
     }
+}
+
 }

@@ -1107,8 +1107,12 @@ extension StreamingFromClaude {
         defer { window.close() }
         window.contentView = host
         window.orderFrontRegardless()
-        func settle() { RunLoop.main.run(until: Date().addingTimeInterval(0.05)); host.layoutSubtreeIfNeeded() }
-        settle()
+        func settle() async {
+            // Let async main own the run loop; do not start a nested one here.
+            try? await Task.sleep(for: .milliseconds(50))
+            host.layoutSubtreeIfNeeded()
+        }
+        await settle()
 
         let button = try #require(frames.byPath["/children/0"])
         let point = host.convert(CGPoint(x: button.midX, y: button.midY), to: nil)
@@ -1117,7 +1121,7 @@ extension StreamingFromClaude {
                 with: type, location: point, modifierFlags: [], timestamp: ProcessInfo.processInfo.systemUptime,
                 windowNumber: window.windowNumber, context: nil, eventNumber: 0, clickCount: 1, pressure: 1)))
         }
-        settle()
+        await settle()
         #expect(live.value(of: "$n") == .number(2))
 
         func field(in view: NSView) -> NSTextField? {
@@ -1127,7 +1131,7 @@ extension StreamingFromClaude {
         let input = try #require(field(in: host))
         #expect(window.makeFirstResponder(input))
         try #require(input.currentEditor()).insertText("hello")
-        settle()
+        await settle()
         #expect(live.value(of: "$q") == .string("hello"))
     }
 }
