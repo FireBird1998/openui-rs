@@ -1,5 +1,5 @@
 // The built package's shape: every generated public member is guarded, and
-// the core imports no JavaScript it could call while holding an object.
+// host callbacks execute under the same guard as every public entry point.
 import { test, expect } from 'bun:test';
 import { readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
@@ -35,20 +35,15 @@ test('a generated member the guard does not describe stops the package loading',
   for (const [mutation, message] of mutations) expect(() => loadWith(mutation)).toThrow(message);
 });
 
-test('the core calls no JavaScript but the guarded string cast while it holds an object', () => {
+test('the package imports the guarded callback call and error conversions', () => {
   const bytes = readFileSync(join(dirname(packagePath), 'openui_wasm_bg.wasm'));
-  const imports = WebAssembly.Module.imports(new WebAssembly.Module(bytes)).map(i => i.name).sort();
-  // __wbindgen_throw reports wasm-bindgen's own null/borrow checks before Rust
-  // holds anything; the externref table init runs once at load.
-  expect(imports.length).toBe(3);
-  expect(imports[0]).toMatch(/^__wbg___wbindgen_throw_[0-9a-f]+$/);
-  expect(imports[1]).toMatch(/^__wbindgen_generic_[0-9]+$/);
-  expect(imports[2]).toBe('__wbindgen_init_externref_table');
-  // The one generic import is the string cast errors are thrown with; the
-  // guard rebuilds the helper it calls on intrinsics captured at load.
+  const imports = WebAssembly.Module.imports(new WebAssembly.Module(bytes)).map(i => i.name);
+  expect(imports.some(name => /^__wbg_call_/.test(name))).toBe(true);
+  expect(imports.some(name => /^__wbg___wbindgen_throw_/.test(name))).toBe(true);
   const { glue, guard } = packageSource();
-  expect(glue).toContain('Cast intrinsic for `Ref(String) -> Externref`');
+  expect(glue).toContain('handleError'); // the callback import catches throws
   expect(guard).toContain('getStringFromWasm0 = function');
+  expect(guard).toContain('registerFunction: openuiSpec([openuiStr, openuiFunction])');
 });
 
 test('pointer fields and private helpers cannot free or forge objects', () => {

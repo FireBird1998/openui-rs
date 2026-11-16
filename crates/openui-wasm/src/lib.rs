@@ -4,6 +4,9 @@
 //!
 //! The JavaScript wrapper beside the built package (`openui.js`) gives this
 //! lang-core's own interface, `createParser` and `createStreamingParser`.
+//! Runtime sessions reuse owned reference preparation and accept JSON-only host
+//! function callbacks under the package reentry guard. Synchronous JavaScript
+//! callbacks must return for progress; they cannot be preempted if they block.
 
 use std::sync::Arc;
 
@@ -131,3 +134,5 @@ impl ComponentLibrary {
         self.0.clone()
     }
 }
+
+mod callbacks;

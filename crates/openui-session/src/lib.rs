@@ -1,7 +1,9 @@
 //! Single-threaded session policy shared by native and WebAssembly bindings.
 #![forbid(unsafe_code)]
 use openui_lang::{JsObject, Limits, ParseResult, Value};
-use openui_runtime::{ActionContinuation, BindingProps, PreparedReferenceValues, Store, TreeInput};
+use openui_runtime::{
+    ActionContinuation, BindingProps, LibraryFunctions, PreparedReferenceValues, Store, TreeInput,
+};
 use std::collections::{BTreeMap, HashSet};
 use std::fmt;
 use std::sync::atomic::{AtomicBool, Ordering};
@@ -160,6 +162,8 @@ pub struct RuntimeLimits {
     /// Maximum simultaneous suspended runs (default 64, minimum 1). A new
     /// suspension evicts the oldest pending run when full.
     pub max_continuations: u64,
+    /// Optional smaller retained action-path bound. Absent preserves max_json_bytes.
+    pub max_action_path_bytes: Option<u64>,
 }
 impl Default for RuntimeLimits {
     fn default() -> Self {
@@ -171,6 +175,7 @@ impl Default for RuntimeLimits {
             },
             max_json_bytes: 8 * 1024 * 1024,
             max_continuations: 64,
+            max_action_path_bytes: None,
         }
     }
 }
@@ -291,9 +296,17 @@ pub struct ActionFailureOutput {
     pub error: OpenUiError,
 }
 
+/// A synchronous JSON-only implementation. None represents undefined; an error
+/// is the thrown message, formatted by the runtime as `@Name threw: ...`.
+/// Host work is outside evaluator accounting. Bindings contain foreign throws
+/// and refuse reentry; synchronous host callbacks must return for progress.
+pub type HostFunction = dyn Fn(String) -> Result<Option<String>, String> + Send + Sync;
+
 pub struct SessionCore {
     library: Arc<ComponentLibrary>,
     program: Arc<ParseResult>,
+    functions: BTreeMap<String, Arc<HostFunction>>,
+    function_bytes: u64,
     bindings: BindingProps,
     explicit_bindings: HashSet<(String, String)>,
     binding_bytes: u64,
@@ -325,6 +338,8 @@ impl SessionCore {
         let mut s = Self {
             library,
             program: Arc::new(ParseResult::default()),
+            functions: BTreeMap::new(),
+            function_bytes: 0,
             bindings: BindingProps::new(),
             explicit_bindings: HashSet::new(),
             binding_bytes: 0,
@@ -362,9 +377,83 @@ impl SessionCore {
         }
         Ok(s)
     }
-    // Deliberately borrow only the input fields: mutations borrow Store separately.
-    fn input<'a>(&'a self, refs: &'a PreparedReferenceValues<'a>) -> TreeInput<'a> {
-        tree_input(&self.program, &self.library, &self.bindings, refs)
+    /// Register or replace a declared function. At most 256 names, additionally
+    /// bounded by max_json_bytes (name bytes plus 64 bytes per entry). Refusal
+    /// preserves the previous callback. Registrations survive program changes.
+    pub fn register_function(
+        &mut self,
+        name: String,
+        callback: Arc<HostFunction>,
+    ) -> Result<(), OpenUiError> {
+        self.text(&name)?;
+        if self
+            .library
+            .schema
+            .get("functions")
+            .and_then(|f| f.as_object())
+            .and_then(|f| f.get(&name))
+            .is_none()
+        {
+            return Err(OpenUiError::InvalidJson {
+                reason: "expected a declared library function name".into(),
+            });
+        }
+        let replacing = self.functions.contains_key(&name);
+        let bytes = (name.len() as u64).saturating_add(64);
+        let total = self
+            .function_bytes
+            .saturating_add(if replacing { 0 } else { bytes });
+        if total > self.limits.max_json_bytes || (!replacing && self.functions.len() >= 256) {
+            return Err(limit("function registration limit"));
+        }
+        self.functions.insert(name, callback);
+        self.function_bytes = total;
+        Ok(())
+    }
+    // Borrow only definitions. Each operation uses the runtime's own function
+    // validation and argument cache, without replaying or pre-evaluating calls.
+    fn functions<'a>(
+        library: &'a ComponentLibrary,
+        registered: &BTreeMap<String, Arc<HostFunction>>,
+        limits: Limits,
+        max_bytes: u64,
+    ) -> Result<Option<LibraryFunctions<'a>>, OpenUiError> {
+        if registered.is_empty() {
+            return Ok(None);
+        }
+        let definitions = library
+            .schema
+            .get("functions")
+            .unwrap_or(&serde_json::Value::Null);
+        let mut functions = LibraryFunctions::new(definitions);
+        for (name, callback) in registered {
+            let callback = callback.clone();
+            functions
+                .register(name, move |arguments| {
+                    let json = openui_runtime::value_to_json_with_limits(&arguments, limits)
+                        .map_err(|e| e.to_string())?;
+                    if json.len() as u64 > max_bytes {
+                        return Err("host function argument byte limit".into());
+                    }
+                    let result =
+                        std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| callback(json)))
+                            .map_err(|_| "host function panicked".to_owned())??;
+                    result
+                        .map(|json| {
+                            if json.len() as u64 > max_bytes {
+                                return Err("host function result byte limit".into());
+                            }
+                            let json = Json(
+                                openui_lang::parse_json_with_limits(&json, limits)
+                                    .map_err(|e| e.to_string())?,
+                            );
+                            Ok(Value::from_json(&json.0))
+                        })
+                        .transpose()
+                })
+                .map_err(|e| limit(&e.to_string()))?;
+        }
+        Ok(Some(functions))
     }
     fn text(&self, text: &str) -> Result<(), OpenUiError> {
         if u64::try_from(text.len()).unwrap_or(u64::MAX) > self.limits.max_json_bytes {
@@ -447,7 +536,19 @@ impl SessionCore {
         self.field_text(form, None, message)?;
         // Reserve the possibility of a handoff before running any effects.
         self.continuation_room()?;
-        let input = tree_input(&self.program, &self.library, &self.bindings, refs);
+        let functions = Self::functions(
+            &self.library,
+            &self.functions,
+            self.core_limits,
+            self.limits.max_json_bytes,
+        )?;
+        let input = tree_input(
+            &self.program,
+            &self.library,
+            &self.bindings,
+            refs,
+            functions.as_ref(),
+        );
         let run = openui_runtime::run_action_with_limits(
             input,
             &mut self.store,
@@ -456,6 +557,7 @@ impl SessionCore {
             form,
             self.core_limits,
         );
+        drop(functions);
         self.output(run)
     }
     fn output(&mut self, mut run: openui_runtime::ActionRun) -> Result<ActionOutput, OpenUiError> {
@@ -519,11 +621,16 @@ fn tree_input<'a>(
     library: &'a ComponentLibrary,
     bindings: &'a BindingProps,
     refs: &'a PreparedReferenceValues<'a>,
+    functions: Option<&'a LibraryFunctions<'a>>,
 ) -> TreeInput<'a> {
     let input = TreeInput::from_shared_result(program)
         .with_library(&library.inner)
         .with_binding_props(bindings)
         .with_prepared_reference_values(refs);
+    let input = match functions {
+        Some(functions) => input.with_functions(functions),
+        None => input,
+    };
     match library.schema.get("actions") {
         Some(actions) => input.with_actions(actions),
         None => input,
@@ -656,11 +763,27 @@ impl SessionCore {
         refs: &PreparedReferenceValues<'_>,
     ) -> Result<EvaluationOutput, OpenUiError> {
         self.call(refs, |s, refs| {
-            let tree =
-                openui_runtime::evaluate_tree_with_limits(s.input(refs), &s.store, s.core_limits);
+            let functions = Self::functions(
+                &s.library,
+                &s.functions,
+                s.core_limits,
+                s.limits.max_json_bytes,
+            )?;
+            let tree = openui_runtime::evaluate_tree_with_limits(
+                tree_input(
+                    &s.program,
+                    &s.library,
+                    &s.bindings,
+                    refs,
+                    functions.as_ref(),
+                ),
+                &s.store,
+                s.core_limits,
+            );
             let json = tree.to_json().map_err(|e| {
                 runtime_error(RuntimeFailure::Limit(e), s.core_limits.result_size())
             })?;
+            drop(functions);
             s.release_evaluation()?;
             s.root = tree.root;
             Ok(EvaluationOutput {
@@ -690,7 +813,11 @@ impl SessionCore {
             let mut bytes = 0u64;
             for key in &path {
                 bytes = bytes.saturating_add(key.len() as u64).saturating_add(1);
-                if bytes > s.limits.max_json_bytes {
+                if bytes
+                    > s.limits
+                        .max_json_bytes
+                        .min(s.limits.max_action_path_bytes.unwrap_or(u64::MAX))
+                {
                     return Err(limit("action path byte limit"));
                 }
             }
@@ -777,8 +904,20 @@ impl SessionCore {
         self.call(refs, move |s, refs| {
             let marker = s.json(&marker)?;
             let value = s.json(&json)?;
+            let functions = Self::functions(
+                &s.library,
+                &s.functions,
+                s.core_limits,
+                s.limits.max_json_bytes,
+            )?;
             openui_runtime::write_binding_with_limits(
-                tree_input(&s.program, &s.library, &s.bindings, refs),
+                tree_input(
+                    &s.program,
+                    &s.library,
+                    &s.bindings,
+                    refs,
+                    functions.as_ref(),
+                ),
                 &mut s.store,
                 &marker,
                 value,
@@ -919,13 +1058,26 @@ impl SessionCore {
                 .continuations
                 .remove(&continuation.generation)
                 .ok_or(OpenUiError::ConsumedHandle)?;
+            let functions = Self::functions(
+                &s.library,
+                &s.functions,
+                s.core_limits,
+                s.limits.max_json_bytes,
+            )?;
             let run = openui_runtime::resume_action(
-                tree_input(&s.program, &s.library, &s.bindings, refs),
+                tree_input(
+                    &s.program,
+                    &s.library,
+                    &s.bindings,
+                    refs,
+                    functions.as_ref(),
+                ),
                 &mut s.store,
                 &entry.continuation,
                 succeeded,
             )
             .map_err(|e| runtime_error(RuntimeFailure::Resume(e), s.core_limits.result_size()))?;
+            drop(functions);
             s.output(run)
         })
     }

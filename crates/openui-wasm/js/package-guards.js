@@ -11,7 +11,8 @@
 //    any pointer, and only then calls it. With primitive arguments the
 //    generated conversions run no application code.
 // 3. A freed object used in any way throws Disposed.
-// The core calls no JavaScript while it holds an exported object: errors and
+// Apart from registered host functions, the core calls no JavaScript while
+// holding an exported object: errors and
 // records come back as text and are built here after Rust has returned, with
 // intrinsics captured at load. Generated private `__*` helpers work only
 // inside a guarded call, and pointer fields cannot be overwritten.
@@ -29,6 +30,7 @@ const openuiIsArray = Array.isArray;
 const openuiParseJson = JSON.parse;
 const openuiStringify = JSON.stringify;
 const openuiError = Error;
+const openuiToString = String;
 const openuiProxy = Proxy;
 const openuiSetHas = WeakSet.prototype.has;
 const openuiSetAdd = WeakSet.prototype.add;
@@ -107,6 +109,20 @@ takeFromExternrefTable0 = function (idx) {
 // Argument conversions. None runs application code, except reading an
 // action path's elements (an Array getter or Proxy), which happens while the
 // guard is active, so it can neither reenter nor free anything.
+// Host functions are the application-code call made from evaluation. Keep the
+// guard active, including while extracting upstream's thrown-message text.
+function openuiFunction(callback) {
+  if (typeof callback !== 'function') throw openuiFailure('InvalidJson', 'expected a function callback');
+  return function (json) {
+    try { return openuiApply(callback, undefined, [json]); }
+    catch (error) {
+      // Match callFunction in the pinned runtime/evaluator.ts:398-400. Error
+      // message accessors and object conversion are host code too; reentry
+      // from either is refused by the still-active package guard.
+      throw `${error instanceof openuiError ? error.message : openuiToString(error)}`;
+    }
+  };
+}
 const openuiString = value => {
   if (typeof value === 'string') return value;
   throw openuiFailure('InvalidJson', 'expected a string argument');
@@ -198,6 +214,7 @@ const openuiSurface = new Map([
       isPristine: openuiSpec([openuiStr]),
       markBinding: openuiSpec([openuiStr, openuiStr]),
       pendingContinuations: openuiNone,
+      registerFunction: openuiSpec([openuiStr, openuiFunction]),
       resume: openuiSpec([openuiCapabilityOf(ContinuationHandle), openuiBool]),
       run: openuiSpec([openuiOptionalAction, openuiStr, openuiOptStr], { retainFirst: true }),
       runLegacy: openuiSpec([openuiStr, openuiStr, openuiOptStr]),
@@ -229,7 +246,7 @@ const openuiSurface = new Map([
     construct: openuiNone,
     methods: { free: openuiFree },
     accessors: { evaluation: openuiParseLimitsField, referencePreparation: openuiParseLimitsField,
-      maxJsonBytes: openuiLimitField, maxContinuations: openuiLimitField },
+      maxJsonBytes: openuiLimitField, maxActionPathBytes: openuiOptionalLimitField, maxContinuations: openuiLimitField },
   }],
   [ParseLimits, {
     construct: openuiNone,

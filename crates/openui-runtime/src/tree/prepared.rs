@@ -1,8 +1,9 @@
 //! Bounded reference-data preparation, independent of evaluation depth.
 use super::*;
 use crate::{EvaluationFlags, PreparedReferenceValue};
+use std::borrow::Cow;
 
-/// Borrowed reference values measured once for repeated tree evaluations.
+/// Borrowed or owned reference values measured once for repeated tree evaluations.
 ///
 /// Preparation uses its own bounds. A refused entry earns no input credit and
 /// raises its cut flag only if a declared reference actually reads it. Preparing
@@ -10,8 +11,8 @@ use crate::{EvaluationFlags, PreparedReferenceValue};
 /// are cached too: containers remain shared and scalar strings are converted
 /// once. Reads grant no extra allowance; output still pays its full cost.
 pub struct PreparedReferenceValues<'a> {
-    values: &'a JsObject<Value>,
-    measurements: BTreeMap<&'a str, Result<PreparedReferenceValue, EvaluationFlags>>,
+    values: Cow<'a, JsObject<Value>>,
+    measurements: BTreeMap<Cow<'a, str>, Result<PreparedReferenceValue, EvaluationFlags>>,
     pub(super) bytes: usize,
     tail: EvaluationFlags,
     pub(super) input: openui_lang::PreparedInput,
@@ -35,7 +36,34 @@ impl<'a> PreparedReferenceValues<'a> {
             limits.with_work(limits.work_for(usize::MAX).max(bytes)),
         );
         Self {
-            values,
+            values: Cow::Borrowed(values),
+            measurements: measurements
+                .into_iter()
+                .map(|(k, v)| (Cow::Borrowed(k), v))
+                .collect(),
+            bytes,
+            tail,
+            input,
+        }
+    }
+    /// Own and prepare a supply once for reuse without a self-referential owner.
+    /// Measurement, cut flags and input credit are identical to `with_limits`;
+    /// callers cannot construct or modify the measurement receipts.
+    pub fn owned_with_limits(
+        values: JsObject<Value>,
+        limits: Limits,
+    ) -> PreparedReferenceValues<'static> {
+        let prepared = PreparedReferenceValues::with_limits(&values, limits);
+        let measurements = prepared
+            .measurements
+            .into_iter()
+            .map(|(name, entry)| (Cow::Owned(name.into_owned()), entry))
+            .collect();
+        let bytes = prepared.bytes;
+        let tail = prepared.tail;
+        let input = prepared.input;
+        PreparedReferenceValues {
+            values: Cow::Owned(values),
             measurements,
             bytes,
             tail,

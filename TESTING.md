@@ -1121,3 +1121,43 @@ seeds the counter at exhaustion: run/resume refuse before writes or table remova
 and abandoning an existing outcome remains possible. Neither binding introduces
 another policy or exported interface. Existing fitting JSON oracles, including
 wasm's checked-in `js/scenarios.json`, remain unchanged.
+
+Session callback and follow-up checks (#56–#60):
+
+- `openui-ffi/tests/runtime_functions.rs` compares callback JSON to direct Rust,
+  pins thrown-message text, same-thread callback reentry, panic containment,
+  guarded foreign destruction, defaults cached across mutation resumes, and
+  function failures producing null while the action continues like direct Rust.
+- `runtime_callback_concurrency.rs` uses gated schedules for registration and
+  disposal during callbacks, long callbacks with direct Rust output comparison,
+  worker reuse and destructor reentry. Its seeded stress runs 8 seeds, 4 callers
+  and 40 operations per caller, mixing slow callbacks/destructors, replacement,
+  disposal and calls. A child-process watchdog detects stalls; tests assert
+  results and bounded progress, never execution speed. Other-thread calls queue.
+- Both bindings' `runtime_followups.rs` pin element-shaped state/query/tool data,
+  custom identity refusal, expression-kind literals, opt-in path bounds and
+  seven upstream data observations plus 82 streaming EditableTable prefixes.
+- `openui-ffi/tests/retained_root.rs` is isolated for a representative heap
+  measurement and release check; `openui-runtime/tests/owned_references.rs`
+  compares owned/borrowed preparation bytes and flags under independent limits.
+  The wasm follow-up test also bounds repeated-draw allocations with 2,000 unread
+  references, detecting accidental remeasurement without wall-clock assertions.
+- Generate native bindings into a temporary directory, then run
+  `python3 scripts/check-runtime-binding-api.py SWIFT_FILE KOTLIN_FILE`.
+  Swift `RuntimeFunctionTests.swift` and Android `RuntimeFunctionTest.kt` cover
+  callbacks and data-backed actions; `RuntimeSessionTest.kt` covers UTF-16 recovery.
+- With the wasm target and matching wasm-bindgen CLI installed, run
+  `scripts/wasm.sh` (both package load checks), then
+  `bun --no-install test crates/openui-wasm/js`. `functions.test.ts` pins JSON,
+  throws, all-method reentry, query default call counts, data plans and path caps.
+- Regenerate the added observations from `reference/` with
+  `bun --no-install session-data.ts`, or use `scripts/regen-golden.sh`.
+
+Synchronous callbacks require the host to return for progress. The native long-
+callback test deliberately exceeds the removed timeout and asserts only output.
+The JavaScript suite additionally pins throw-text coercion failures and action
+continuation after function faults. A blocked JS thread cannot run a watchdog
+in that same realm; no preemption or timeout is claimed.
+
+`node --test examples/next-compare/scripts/copy-wasm.test.mjs` checks copying an
+existing built package and the clear missing-build error without invoking Rust.

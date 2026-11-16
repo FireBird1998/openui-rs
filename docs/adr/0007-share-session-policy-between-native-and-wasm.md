@@ -43,8 +43,8 @@ package-guards.js) around every public entry point. Its rules:
 
 This closes the interval before Rust's try_borrow_mut guard is acquired; a
 mutable exported Rust receiver alone would let wasm-bindgen's recursive-use
-exception poison its borrow state. The core also calls no JavaScript while it
-holds an exported object: errors leave Rust as `openui:<Kind>\n<message>`
+exception poison its borrow state. Apart from registered host-function callbacks (ADR 0009), the core calls no
+JavaScript while it holds an exported object: errors leave Rust as `openui:<Kind>\n<message>`
 strings, records and event lists as JSON text, and action paths enter as JSON
 text. The guard builds the Error (defining `kind`, never assigning it) and
 parses records after Rust returns, with intrinsics captured at load, and
@@ -69,17 +69,12 @@ the package loads, can forge or free objects and crash the instance. Such
 code could equally call the module's raw exports. A page that runs untrusted
 JavaScript must isolate it from this package (a separate realm or worker).
 
-PreparedReferenceValues borrows its source. Native preserves its lexical-loop
-preparation/reuse. Wasm safely prepares the retained source in each operation
-whose core implementation reads it (evaluate, writeBinding, run, runLegacy,
-resume); the others pass an empty preparation. No unsafe lifetime extension,
-leaked input or runtime change is introduced.
-An owned prepared-reference API in the runtime would permit wasm reuse. That
-hook is absent today; its addition is a separate runtime API decision. Outputs
-and independent preparation limits remain identical, but large reference
-supplies cost more per drawing or action call in wasm.
+PreparedReferenceValues::owned_with_limits owns its source and opaque core
+measurement receipts. Wasm prepares once on setReferenceValues and reuses the
+same preparation for all operations. Native retains its lexical-loop reuse.
+No unsafe lifetime extension, leaked input or caller-asserted measurements are
+needed; owned and borrowed preparations have identical credit and cut flags.
 
-Library functions remain unimplemented and return null (#56). There are no
-host callbacks while Rust state is borrowed. Generated wasm packages require
-the guard appended by scripts/wasm.sh; hand-running wasm-bindgen alone does not
-produce the supported application package.
+Library functions now cross a JSON-only callback bridge (ADR 0009). Generated
+wasm packages require the guard appended by scripts/wasm.sh; hand-running
+wasm-bindgen alone does not produce the supported application package.

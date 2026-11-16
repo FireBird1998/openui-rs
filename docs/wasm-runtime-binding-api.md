@@ -4,7 +4,7 @@ Build with `scripts/wasm.sh`; import from `target/wasm-pkg/web/openui_wasm.js`
 (browser/bundler, await its default initializer) or require
 `target/wasm-pkg/node/openui_wasm.js` (Bun/Node, already initialized).
 The build appends the required lifetime/reentry guard, checks the generated
-TypeScript declarations and loads the package once (the guard refuses to load
+TypeScript declarations and loads both generated packages (the guard refuses to load
 if a generated public member is not covered). Generated private `__*` methods
 and pointer fields are outside this interface: the helpers throw InvalidHandle
 outside a guarded call and pointer fields refuse a new value, which stops
@@ -35,6 +35,7 @@ session.initialize(persisted?: string): InitializationOutput
 session.initializeField(form: string | undefined, componentType: string | undefined, name: string, json: string | undefined, streaming: boolean): FieldWriteOutput | null
 session.isPristine(name: string): boolean
 session.markBinding(component: string, prop: string): void
+session.registerFunction(name: string, callback: (argumentsJson: string) => string | undefined): void
 session.pendingContinuations(): bigint
 session.resume(continuation: ContinuationHandle, succeeded: boolean): ActionOutput
 session.run(action: ActionHandle | undefined, message: string, form?: string): ActionOutput
@@ -53,7 +54,8 @@ session.free(): void
 `new ParseLimits()` has optional bigint properties programSize, resultSize,
 resultFloor, amplification, resultCeiling, depth, work; defaults are undefined.
 `new RuntimeLimits()` has evaluation and referencePreparation (ParseLimits),
-maxJsonBytes (8388608n), maxContinuations (64n). referencePreparation.depth is
+maxJsonBytes (8388608n), maxContinuations (64n), optional maxActionPathBytes
+(undefined). Set e.g. 4096n for a smaller opt-in retained-path cap. referencePreparation.depth is
 32768n; all other ParseLimits fields default to undefined. Limit getters return
 copies: edit one, assign it back, then free the copy. Limits are fixed when a
 session is constructed. `ActionHandle.retain()` returns another opaque token;
@@ -115,9 +117,8 @@ Failures inside actions and initialization appear in the records above, with
 that same kind/message shape. Reentry uses Worker("session already in use")
 without effects; it does not revoke an otherwise usable session. The package
 guard includes JavaScript argument conversion, so an action-path Array getter
-cannot reenter or free an object while a call is lowering, and the core calls
-no JavaScript while it holds an object. The Rust inner type
-also uses try_borrow_mut. No synchronous library callbacks are exposed.
+cannot reenter or free an object while a call is lowering, and registered callbacks execute under that same guard. The Rust inner type
+also uses try_borrow_mut. Registered library callbacks are synchronous.
 Native panic-containment can be tested on the inner type; unexpected wasm
 panics cannot unwind under wasm's abort strategy, so this is not a recovery
 mechanism for arbitrary implementation bugs.
@@ -133,5 +134,25 @@ streaming/pristine rules, host events, bundleBlocked responsibilities and state
 admission. Evaluation JSON and each event JSON are the runtime serializer's
 bytes; no JavaScript reserialization changes them. All execution happens on one
 thread. Native worker failures remain Worker; wasm has no worker/transport
-creation failure. The borrowed prepared-reference limitation and crate location
-are recorded in [ADR 0007](adr/0007-share-session-policy-between-native-and-wasm.md).
+creation failure. Reference values are prepared once on setReferenceValues using
+PreparedReferenceValues::owned_with_limits and reused by evaluate, writeBinding,
+run, runLegacy and resume, with the same receipts and cut flags as native.
+
+
+registerFunction accepts only declared names and a function callback. Arguments
+and results are JSON text within session JSON limits; undefined is distinct from
+"null". A thrown Error's message, or String(thrownValue), becomes the runtime's
+exact `@Name threw: ...` diagnostic. If extracting that text itself throws
+(for example a throwing toString, a Symbol-valued Error.message, or a Proxy
+trap), the exact fallback is `host function threw`. Finished custom-step JSON returned by a callback never restores identity;
+subsequent evaluation of declared calls follows ADR 0004. Invalid result JSON also produces a runtime-error diagnostic and null.
+Every public method, including free/dispose, refuses reentry during a callback
+with Worker("session already in use") and no effects. The guard is active for
+all registered callbacks; try_borrow_mut additionally protects the Rust adapter.
+A synchronous JS callback that blocks cannot be interrupted; its host must
+return for the session to progress. See [the complete callback contract](runtime-binding.md#host-library-functions).
+
+The build now loads and initializes both Node and web packages and exercises a
+guarded session from each. [check-wasm-load.mjs](../scripts/check-wasm-load.mjs)
+also pins the Disposed error message; built-package tests pin runtime throw,
+reentry and path-refusal messages exactly.

@@ -913,3 +913,42 @@ and does not inherit evaluation depth or an estimated extraction-work allowance.
 Binding annotations retain main's raw-name budget, without JSON-escaping charges.
 Serialization precedes publishing the generation; explicit refusals preserve
 visible state and handles. Both exported binding interfaces remain unchanged.
+
+Session follow-ups (#56, #57, #58, #60) preserve the runtime's evaluator. Both
+bindings compare element-shaped state/query/tool data and every prefix of a
+streaming EditableTable against `reference/session-data.ts`, generated from the
+pinned upstream evaluator. The fixture has seven data observations and 82 table
+prefixes. The upstream renderer's unconditional row conversion throws at 15 of
+those prefixes because `row.values` is missing/null. Both comparison panes use
+that renderer; neither filters partial rows. Their evaluated JSON agrees at every
+prefix, so the binding does not add a renderer workaround.
+
+Upstream's `hasDynamicProps:false` shortcut additionally bypasses `ownSteps`:
+its click runner emits a finished custom step read from element-shaped data.
+The fixture records that event in three observations. The session deliberately
+refuses that custom authority, per ADR 0004, while retaining built-in state writes.
+`element_shaped_state_query_and_tool_data_runs_builtins_but_cannot_forge_custom_steps`
+pins this security divergence in both bindings; tree JSON itself still matches.
+No identity is reconstructed from JSON, including function callback results.
+
+Registered functions reuse the runtime's JSON serializer, validation, defaults
+and argument caching. Native callbacks run on the session worker without a
+timeout or per-call thread. Same-session reentry on that worker or in a host
+destructor refuses with Worker; other threads queue, preserving the no-function
+transport contract. Function faults retain Rust's null and continuing-action
+semantics, pinned by
+`failed_function_results_become_null_and_run_continues_exactly_as_rust`.
+`long_callback_matches_rust_and_replacement_destructor_never_queues_to_itself`
+pins long-callback output and worker reuse. Host code must return without waiting
+on another thread that calls this session. JavaScript callbacks are synchronous;
+exotic throw-text coercion failures use the pinned `host function threw` fallback.
+
+A JSON-only host-function result cannot retain the identity of an argument it
+returns. Direct Rust `@Echo(@Go())` may return the original marked Go plan;
+the JSON callback returning its `value` reconstructs an unmarked plan and loses
+the custom step. Restoring that mark from matching JSON would forge authority,
+so this is a deliberate security divergence from a direct Rust identity
+implementation, pinned by
+`json_function_results_cannot_restore_custom_authority_even_from_real_arguments`.
+Ordinary JSON-facing implementations compare directly; arbitrary Rust identity-
+preserving implementations are not equivalent across a JSON boundary.

@@ -58,6 +58,7 @@ done
   bun --no-install action-definitions.ts
   bun --no-install function-definitions.ts
   bun --no-install function-results.ts
+  bun --no-install session-data.ts
 )
 if [[ -n "$into" ]]; then
   mkdir -p "$(dirname "$into")"

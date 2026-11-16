@@ -2,13 +2,15 @@
 status: accepted
 ---
 
-# ADR 0006: Native runtime sessions own a worker and opaque capabilities
+# Native runtime sessions own a worker and opaque capabilities
 
 UniFFI objects must be Send + Sync. Action runs, their work accounting and
 mutation continuations are thread-affine. Each RuntimeSession owns one worker
 thread. Its Store, prepared references, plans and continuations are constructed,
-used and destroyed there. A mutex serializes dispatch and waits for replies;
-concurrent callers wait, including disposal. No host callbacks run here. A caught
+used and destroyed there. A mutex serializes command submission; callers wait for replies after releasing
+it. Commands execute in order. Calls from the worker or within a host destructor refuse before queueing;
+infallible reentrant disposal is a no-op (ADR 0009). Other threads queue normally,
+including during callbacks. A caught
 operation panic returns Worker and ends the worker rather than allowing reuse
 of possibly partial state. Disposal and final drop join it from any caller
 thread. Neither panic containment nor an action failure promises rollback of
@@ -72,10 +74,10 @@ their JSON. Actual updates keep actual parser identities, even for equal JSON,
 because default container identity affects Store initialization. There is no
 history cache and no JSON-derived authority or identity substitution.
 
-Library function callbacks are deferred as the parent spec permits. Declared
-but unimplemented functions evaluate to null. Synchronous foreign callbacks
-need bounded results, exception/panic conversion and re-entrant dispatch rules
-before this binding can expose them safely.
+Library function callbacks execute synchronously on the worker, with JSON-only
+arguments/results and runtime validation/caching. See ADR 0009 for containment,
+reentry and the host's responsibility to return without awaiting another thread
+that needs the same session.
 
 Moving the runtime between arbitrary callers under a mutex cannot preserve
 thread-local accounting or drop Rc-backed continuations on their owner.

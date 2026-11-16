@@ -25,7 +25,8 @@ fn kind(e: &core::OpenUiError) -> &'static str {
     }
 }
 /// A thrown value the package guard turns into a typed `Error`. The core
-/// calls no JavaScript while it holds an exported object: errors and records
+/// calls no JavaScript except registered host functions while holding a
+/// session: errors and records
 /// leave Rust as text, and the guard builds the objects after the call returns,
 /// with intrinsics captured when the package loads. A throwing or re-entering
 /// `Object.prototype.kind` setter or a patched `JSON.parse` therefore cannot
@@ -187,6 +188,15 @@ impl RuntimeSession {
             inner: Session::with_limits(library.0.clone(), prompt_spec, limits.inner.clone())
                 .map_err(error)?,
         })
+    }
+    #[wasm_bindgen(js_name = registerFunction)]
+    pub fn register_function(
+        &self,
+        name: String,
+        callback: crate::callbacks::FunctionCallback,
+    ) -> Result<(), JsValue> {
+        let callback = crate::callbacks::bridge(callback);
+        self.inner.register_function(name, callback).map_err(error)
     }
     #[wasm_bindgen(js_name = setProgram)]
     pub fn set_program(&self, program: &ParsedProgram) -> Result<(), JsValue> {
@@ -395,6 +405,14 @@ impl RuntimeLimits {
     #[wasm_bindgen(setter, js_name = maxJsonBytes)]
     pub fn set_max_json_bytes(&mut self, value: u64) {
         self.inner.max_json_bytes = value;
+    }
+    #[wasm_bindgen(getter, js_name = maxActionPathBytes)]
+    pub fn max_action_path_bytes(&self) -> Option<u64> {
+        self.inner.max_action_path_bytes
+    }
+    #[wasm_bindgen(setter, js_name = maxActionPathBytes)]
+    pub fn set_max_action_path_bytes(&mut self, value: Option<u64>) {
+        self.inner.max_action_path_bytes = value;
     }
     #[wasm_bindgen(getter, js_name = maxContinuations)]
     pub fn max_continuations(&self) -> u64 {

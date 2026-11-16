@@ -11,16 +11,19 @@ import uniffi.openui_ffi.StreamSession
 class Utf16StreamBuffer(private val stream: StreamSession) {
     private var trailing = ""
 
-    fun push(chunk: String): ParseOutput? {
+    fun push(chunk: String): ParseOutput {
         val joined = trailing + chunk
         val held = if (joined.lastOrNull()?.isHighSurrogate() == true) 1 else 0
         val ready = joined.dropLast(held)
-        val output = if (ready.isEmpty()) null else stream.push(ready)
+        val output = if (ready.isEmpty()) stream.result() else stream.push(ready)
         // Update only after successful lowering, leaving the buffer unchanged
         // if an internal lone surrogate is rejected by the generated encoder.
         trailing = joined.takeLast(held)
         return output
     }
+
+    /** Discard only the held high surrogate after an end-of-stream refusal. */
+    fun discardPending() { trailing = "" }
 
     fun finish(): ParseOutput {
         if (trailing.isNotEmpty()) throw MalformedInputException(1)

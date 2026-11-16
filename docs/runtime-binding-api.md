@@ -20,6 +20,7 @@ func initialize(persisted: String?) throws -> InitializationOutput
 func initializeField(form: String?, componentType: String?, name: String, json: String?, streaming: Bool) throws -> FieldWriteOutput?
 func isPristine(name: String) throws -> Bool
 func markBinding(component: String, prop: String) throws
+func registerFunction(name: String, callback: LibraryFunction) throws
 func pendingContinuations() throws -> UInt64
 func resume(continuation: ContinuationHandle, succeeded: Bool) throws -> ActionOutput
 func run(action: ActionHandle?, message: String, form: String?) throws -> ActionOutput
@@ -50,6 +51,7 @@ fun initialize(persisted: kotlin.String?): InitializationOutput
 fun initializeField(form: kotlin.String?, componentType: kotlin.String?, name: kotlin.String, json: kotlin.String?, streaming: kotlin.Boolean): FieldWriteOutput?
 fun isPristine(name: kotlin.String): kotlin.Boolean
 fun markBinding(component: kotlin.String, prop: kotlin.String)
+fun registerFunction(name: kotlin.String, callback: LibraryFunction)
 fun pendingContinuations(): kotlin.ULong
 fun resume(continuation: ContinuationHandle, succeeded: kotlin.Boolean): ActionOutput
 fun run(action: ActionHandle?, message: kotlin.String, form: kotlin.String?): ActionOutput
@@ -73,6 +75,7 @@ struct RuntimeLimits {
     public var referencePreparation: ParseLimits
     public var maxJsonBytes: UInt64
     public var maxContinuations: UInt64
+    public var maxActionPathBytes: UInt64?
 }
 struct BindingPair {
     public var component: String
@@ -125,7 +128,7 @@ String. ActionOutput.failure.error and StateRefusal.error use the same typed err
 ParseLimits retains seven optional UInt64/ULong fields: programSize, resultSize,
 resultFloor, amplification, resultCeiling, depth, work; all default to absent.
 RuntimeSession's default constructor uses RuntimeLimits defaults; withLimits
-takes a record containing all four fields.
+takes a record containing the four existing fields and optional maxActionPathBytes.
 
 State admission uses the existing `RuntimeLimits.evaluation` result-size ceiling
 (`resultCeiling`, or `resultSize` which sets both floor and ceiling); default
@@ -136,3 +139,22 @@ reports each refused persisted/default entry in InitializationOutput.refused and
 can accept other entries in the same batch. See [state admission](runtime-binding.md)
 and [ADR 0005](adr/0005-admit-total-state-incrementally.md); native session
 ownership remains [ADR 0006](adr/0006-native-runtime-sessions-own-a-worker-and-opaque-capabilities.md).
+
+
+Swift `public protocol LibraryFunction: AnyObject, Sendable` declares
+`func call(argumentsJson: String) throws -> String?`. Kotlin `LibraryFunction`
+declares `fun call(argumentsJson: String): String?`. Throw Swift
+`FunctionError.Thrown(reason: String)` / Kotlin `FunctionException.Thrown(reason)`
+for the runtime's exact thrown-message diagnostic. registerFunction itself
+throws OpenUiError / OpenUiException on registration refusal. Names must be
+declared; at most 256 names and maxJsonBytes of names plus 64 bytes per entry
+are retained. Native calls run on the session worker without a timeout. Same-session calls
+on that worker or inside a host destructor refuse; reentrant dispose is an
+infallible no-op. Other threads queue normally, and their dispose waits for the
+callback to return. Host code must not wait for another thread to call this same
+session. See the
+[callback contract and limitations](runtime-binding.md#host-library-functions).
+`maxActionPathBytes` defaults to nil/null; set 4096 for a smaller opt-in path cap.
+
+The new maxActionPathBytes constructor parameter is last and defaults to nil/null
+in generated Swift/Kotlin; existing four-argument initializers keep working.

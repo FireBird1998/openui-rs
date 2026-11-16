@@ -13,6 +13,7 @@
     "start": "next start",
     "precompare": "npm run wasm && npm run inputs",
     "compare": "node scripts/compare.ts",
+    "pretypecheck": "node scripts/copy-wasm.mjs && npm run inputs",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {

@@ -49,7 +49,7 @@
 //! | `write_binding`, `set_field_value`, `initialize_field_default`, and their `_with_limits` variants | Default/explicit operation limits, then Store admission | `BindingWriteError`; no refused write effect |
 //! | `get_field_value` | One admitted Store value, shallow field projection | Undefined as `None` |
 //! | `run_action`, `run_action_with_limits`, `resume_action` | Default/explicit one run-wide work allowance retained on resume; per-operation room, then Store admission | Flags and typed failure; earlier effects/events retained; cut ends the run |
-//! | `PreparedReferenceValues::new`, `with_limits` | Default/explicit bounded supply measurement; no evaluation work spent | Refused entries flag only when read |
+//! | `PreparedReferenceValues::new`, `with_limits`, `owned_with_limits` | Default/explicit bounded supply measurement; no evaluation work spent | Refused entries flag only when read |
 //! | `PreparedReferenceValue::new`, `with_limits` | Default opaque clone without measurement; explicit work/depth preparation | Explicit refusal flags only when read |
 //! | `PreparedInput::from_prepared_references`, its `_with_limits` variant | Default combines all prepaid contributions; explicit iterator allowance | Incomplete explicit combination earns no input |
 //! | `TreeInput` constructors and builders | Borrowed configuration and retained Arc, constant work | No evaluation |

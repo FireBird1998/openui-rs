@@ -24,13 +24,17 @@ for target in web nodejs; do
   python3 scripts/check-runtime-binding-api.py --wasm "$out/openui_wasm.d.ts"
   cat crates/openui-wasm/js/package-guards.js >> "$out/openui_wasm.js"
 done
-# Load the Node package once: the guard refuses to load when a generated
-# public member (string- or symbol-keyed) is not covered by its surface table.
+# Mark the web package as ESM for Node's load check and downstream imports.
+cat > target/wasm-pkg/web/package.json <<'JSON'
+{"type":"module"}
+JSON
+# Loading either target fails if a generated public member is not guarded.
 if command -v node > /dev/null; then
-  node -e 'require(process.argv[1])' "$ROOT/target/wasm-pkg/node/openui_wasm.js"
+  node scripts/check-wasm-load.mjs
 elif command -v bun > /dev/null; then
-  bun --no-install -e 'require(process.argv[1])' "$ROOT/target/wasm-pkg/node/openui_wasm.js"
+  bun --no-install scripts/check-wasm-load.mjs
 else
-  echo "wasm.sh: neither node nor bun found; the package guard's load check was skipped" >&2
+  echo "wasm.sh: neither node nor bun found; cannot check generated packages" >&2
+  exit 1
 fi
 echo "Built target/wasm-pkg/web and target/wasm-pkg/node ($(wc -c < target/wasm-pkg/web/openui_wasm_bg.wasm | tr -d ' ') bytes of WebAssembly)"

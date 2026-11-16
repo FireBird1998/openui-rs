@@ -8,7 +8,7 @@ root = pathlib.Path(__file__).resolve().parent.parent
 methods = [
     "actionAt", "dispose", "evaluate", "get", "getField", "initialize",
     "initializeField", "isPristine", "markBinding", "pendingContinuations",
-    "resume", "run", "runLegacy", "set", "setField", "setProgram",
+    "registerFunction", "resume", "run", "runLegacy", "set", "setField", "setProgram",
     "setReferenceValues", "snapshot", "undecidedBindings", "version", "writeBinding",
 ]
 def camel(name):
@@ -37,7 +37,11 @@ def wasm_accessors(record_name):
             setters.add(js_name or camel(function.removeprefix("set_")))
     return getters, setters
 for record_name, source in [("RuntimeLimits", native), ("ParseLimits", ffi_lib)]:
-    native_fields = set(re.findall(r"pub (\w+):", source.split("pub struct " + record_name + " {", 1)[1].split("\n}", 1)[0]))
+    native_field_order = re.findall(r"pub (\w+):", source.split("pub struct " + record_name + " {", 1)[1].split("\n}", 1)[0])
+    if record_name == "RuntimeLimits":
+        assert native_field_order == ["evaluation", "reference_preparation", "max_json_bytes", "max_continuations", "max_action_path_bytes"], "native limit constructor order drift"
+        assert "#[uniffi(default = None)]" in source, "new native limit must default to absent"
+    native_fields = set(native_field_order)
     core_fields = set(re.findall(r"pub (\w+):", core.split("pub struct " + record_name + " {", 1)[1].split("\n}", 1)[0]))
     assert native_fields == core_fields, record_name + " core/native drift"
     getters, setters = wasm_accessors("ParseLimits" if record_name == "ParseLimits" else "RuntimeLimits")
@@ -53,6 +57,17 @@ assert "program: &ParsedProgram" in wasm_session
 for name in ["ForeignHandle", "StaleHandle", "ConsumedHandle", "EvictedHandle", "InvalidHandle", "InvalidJson", "InvalidMarker", "RefusedWrite", "Disposed", "Evaluation", "LimitExceeded", "Worker"]:
     assert name in core and name in wasm and name in (root / "crates/openui-ffi/src/lib.rs").read_text(), name
 assert "package-guards.js" in (root / "scripts/wasm.sh").read_text()
+assert "#[uniffi::export(callback_interface)]" in native
+assert "pub trait LibraryFunction: Send + Sync" in native
+assert "arguments_json: String" in native and "Result<Option<String>, FunctionError>" in native
+assert "callback: crate::callbacks::FunctionCallback" in wasm
+callbacks = (root / "crates/openui-wasm/src/callbacks.rs").read_text()
+callback_type = "(argumentsJson: string) => string | undefined"
+assert callback_type in callbacks, "wasm callback JSON contract drift"
+assert "dyn Fn(String) -> Result<Option<String>, String> + Send + Sync" in core, "core callback JSON contract drift"
+assert "registerFunction: openuiSpec([openuiStr, openuiFunction])" in (root / "crates/openui-wasm/js/package-guards.js").read_text()
+for doc in ["docs/runtime-binding-api.md", "docs/wasm-runtime-binding-api.md"]:
+    assert "registerFunction" in (root / doc).read_text(), doc
 print(f"Source: {len(methods)} native/wasm session methods, opaque capabilities, errors and limits checked")
 if len(sys.argv) == 1:
     sys.exit(0)
@@ -62,10 +77,13 @@ if len(sys.argv) == 3 and sys.argv[1] == "--wasm":
     assert session, "missing wasm RuntimeSession"
     for method in methods + ["withLimits"]:
         assert re.search(r"\b" + method + r"\(", session[1]), method
+    assert callback_type in declarations, "wasm callback declaration drift"
+    assert re.search(r"registerFunction\(name:\s*string,\s*callback:", session[1]), "wasm callback parameters drift"
+    assert re.search(r"registerFunction\([^\n]*\): void;", session[1]), "wasm callback return drift"
     for name in ["ParsedProgram", "EvaluationHandle", "ActionHandle", "ContinuationHandle", "RuntimeLimits", "ParseLimits", "EvaluationOutput", "ActionOutput"]:
         assert "export class " + name in declarations, name
     # Each limit field is both readable and writable under its native name.
-    for record_name, fields in [("RuntimeLimits", ["evaluation", "referencePreparation", "maxJsonBytes", "maxContinuations"]),
+    for record_name, fields in [("RuntimeLimits", ["evaluation", "referencePreparation", "maxJsonBytes", "maxActionPathBytes", "maxContinuations"]),
                                 ("ParseLimits", ["programSize", "resultSize", "resultFloor", "amplification", "resultCeiling", "depth", "work"])]:
         body = re.search(r"export class " + record_name + r"\s*\{(.*?)\n\}", declarations, re.S)[1]
         for field in fields:
@@ -81,7 +99,7 @@ assert api, "missing Swift RuntimeSession protocol"
 methods = [
     "actionAt", "dispose", "evaluate", "get", "getField", "initialize",
     "initializeField", "isPristine", "markBinding", "pendingContinuations",
-    "resume", "run", "runLegacy", "set", "setField", "setProgram",
+    "registerFunction", "resume", "run", "runLegacy", "set", "setField", "setProgram",
     "setReferenceValues", "snapshot", "undecidedBindings", "version", "writeBinding",
 ]
 for method in methods:
@@ -92,6 +110,10 @@ for name, kind in [("action", "ActionHandle?"), ("continuation", "ContinuationHa
                    ("evaluation", "EvaluationHandle"), ("program", "ParsedProgram")]:
     assert f"{name}: {kind}" in api[1]
 assert "public var referencePreparation: ParseLimits" in swift
+assert "maxActionPathBytes: UInt64? = nil" in swift, "new Swift limit must stay opt-in"
+assert re.search(r"public\s+protocol LibraryFunction", swift)
+assert re.search(r"func\s+call\(argumentsJson: String\)\s*throws\s*->\s*String\?", swift), "Swift callback signature drift"
+assert "case Thrown(reason: String" in swift
 assert "public var maxPlans:" not in swift
 assert "compile_fail" not in swift, "rustdoc-only snippet leaked to Swift"
 for error in ["ForeignHandle", "ConsumedHandle", "EvictedHandle", "Evaluation"]:
@@ -105,8 +127,12 @@ if len(sys.argv) == 3:
     for name, kind in [("action", "ActionHandle?"), ("continuation", "ContinuationHandle"),
                        ("evaluation", "EvaluationHandle"), ("program", "ParsedProgram")]:
         assert f"`{name}`: {kind}" in api[1]
+    assert "interface LibraryFunction" in kotlin
+    assert "fun `call`(`argumentsJson`: kotlin.String): kotlin.String?" in kotlin, "Kotlin callback signature drift"
+    assert "sealed class FunctionException" in kotlin
     assert "@Throws(OpenUiException::class)" in kotlin
     assert "`referencePreparation`: ParseLimits" in kotlin
+    assert "`maxActionPathBytes`: kotlin.ULong? = null" in kotlin, "new Kotlin limit must stay opt-in"
     assert "`maxPlans`:" not in kotlin
     assert "onMalformedInput(CodingErrorAction.REPORT)" in kotlin
     assert "encode(CharBuffer.wrap(value))" in kotlin

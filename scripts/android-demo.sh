@@ -53,7 +53,7 @@ cp conformance/imported/schemas/bench.json "$main/assets/"
 echo "Building the app"
 gradle="${GRADLE:-$(ls "$HOME"/.gradle/wrapper/dists/gradle-9.*-bin/*/gradle-9.*/bin/gradle 2>/dev/null | sort -V | tail -1)}"
 [[ -x "$gradle" ]] || { echo "android-demo.sh: no Gradle 9 (set GRADLE)" >&2; exit 1; }
-(cd android-demo && "$gradle" -q assembleDebug)
+(cd android-demo && "$gradle" --no-daemon -q assembleDebug)
 apk=android-demo/app/build/outputs/apk/debug/app-debug.apk
 echo "Built $apk ($(du -h "$apk" | cut -f1))"
 

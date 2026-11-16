@@ -5,9 +5,11 @@ use crate::{ComponentLibrary, OpenUiError, ParseLimits, ParsedProgram};
 use openui_lang::JsObject;
 use openui_runtime::PreparedReferenceValues;
 use openui_session::SessionCore as Worker;
+use std::cell::RefCell;
+use std::mem::ManuallyDrop;
 use std::panic::{AssertUnwindSafe, catch_unwind};
-use std::sync::{Arc, Mutex, mpsc};
-use std::thread::JoinHandle;
+use std::sync::{Arc, Condvar, Mutex, mpsc};
+use std::thread::{JoinHandle, ThreadId};
 
 /// Limits retained by a session; every operation uses these same bounds.
 /// Runtime evaluation uses the core's limits. JSON admission and retained
@@ -28,6 +30,9 @@ pub struct RuntimeLimits {
     /// Maximum simultaneous suspended runs (default 64, minimum 1). A new
     /// suspension evicts the oldest pending run when full.
     pub max_continuations: u64,
+    /// Optional smaller retained action-path bound; absent preserves max_json_bytes.
+    #[uniffi(default = None)]
+    pub max_action_path_bytes: Option<u64>,
 }
 impl Default for RuntimeLimits {
     fn default() -> Self {
@@ -39,6 +44,7 @@ impl Default for RuntimeLimits {
             },
             max_json_bytes: 8 * 1024 * 1024,
             max_continuations: 64,
+            max_action_path_bytes: None,
         }
     }
 }
@@ -139,6 +145,109 @@ pub struct ActionFailureOutput {
     pub error: OpenUiError,
 }
 
+/// A thrown host-function message, without a binding-specific prefix.
+#[derive(Debug, uniffi::Error)]
+pub enum FunctionError {
+    /// The runtime emits `@Name threw: reason` and null, just as in Rust.
+    Thrown { reason: String },
+}
+impl std::fmt::Display for FunctionError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::Thrown { reason } => f.write_str(reason),
+        }
+    }
+}
+impl std::error::Error for FunctionError {}
+impl From<uniffi::UnexpectedUniFFICallbackError> for FunctionError {
+    fn from(error: uniffi::UnexpectedUniFFICallbackError) -> Self {
+        Self::Thrown {
+            reason: error.reason,
+        }
+    }
+}
+/// Implement on the host. JSON null is Some("null"); None is undefined.
+/// Called synchronously on the session worker, without a time bound. Calls back
+/// into this session on that thread refuse; other threads queue normally.
+#[uniffi::export(callback_interface)]
+pub trait LibraryFunction: Send + Sync {
+    fn call(&self, arguments_json: String) -> Result<Option<String>, FunctionError>;
+}
+// A worker must never queue a request to itself. Foreign destructors can also
+// run on callers whose registrations are refused; fence only their own thread.
+// No shared flag is saved/restored across independent callback lifetimes.
+// A no-Drop TLS key stays usable in other TLS destructors as well. Its Vec is
+// emptied and freed explicitly when the last scope leaves; nothing is leaked.
+thread_local! {
+    static HOST_SCOPES: RefCell<ManuallyDrop<Vec<Arc<()>>>> =
+        const { RefCell::new(ManuallyDrop::new(Vec::new())) };
+}
+struct ReentryFence {
+    owner: Arc<()>,
+    worker: ThreadId,
+}
+impl ReentryFence {
+    fn is_reentrant(&self) -> bool {
+        std::thread::current().id() == self.worker
+            || HOST_SCOPES.with(|scopes| {
+                scopes
+                    .borrow()
+                    .iter()
+                    .any(|owner| Arc::ptr_eq(owner, &self.owner))
+            })
+    }
+    fn enter(&self) -> HostScope {
+        let active = std::thread::current().id() != self.worker;
+        if active {
+            HOST_SCOPES.with(|scopes| scopes.borrow_mut().push(self.owner.clone()));
+        }
+        HostScope {
+            active,
+            _thread: std::marker::PhantomData,
+        }
+    }
+}
+struct HostScope {
+    active: bool,
+    _thread: std::marker::PhantomData<std::rc::Rc<()>>,
+}
+impl Drop for HostScope {
+    fn drop(&mut self) {
+        if self.active {
+            HOST_SCOPES.with(|scopes| {
+                let mut scopes = scopes.borrow_mut();
+                scopes.pop();
+                if scopes.is_empty() {
+                    // ManuallyDrop makes the TLS key immortal, not its heap.
+                    drop(std::mem::take(&mut **scopes));
+                }
+            });
+        }
+    }
+}
+// Destroy host implementations outside transport locks, even on refused calls.
+struct CallbackHolder {
+    callback: Option<Box<dyn LibraryFunction>>,
+    fence: Arc<ReentryFence>,
+}
+impl CallbackHolder {
+    fn call(&self, json: String) -> Result<Option<String>, FunctionError> {
+        let _scope = self.fence.enter();
+        match &self.callback {
+            Some(callback) => callback.call(json),
+            None => Err(FunctionError::Thrown {
+                reason: "host function released".into(),
+            }),
+        }
+    }
+}
+impl Drop for CallbackHolder {
+    fn drop(&mut self) {
+        let _scope = self.fence.enter();
+        let _ = catch_unwind(AssertUnwindSafe(|| drop(self.callback.take())));
+    }
+}
+
 type Job = Box<dyn FnOnce(&mut Worker, &PreparedReferenceValues<'_>) -> bool + Send>;
 enum Command {
     Call(Job),
@@ -150,14 +259,21 @@ enum Command {
 struct Mailbox {
     sender: mpsc::Sender<Command>,
 }
+#[derive(Default)]
+struct TransportSlot {
+    running: Option<Transport>,
+    closing: bool,
+}
 struct Transport {
     mailbox: Arc<Mailbox>,
     worker: JoinHandle<()>,
 }
 
 /// A live runtime confined to its own worker thread. Calls from any thread
-/// serialize and wait; disposal waits for an in-flight call, then drops all
-/// plans, continuations and state on that worker. No host callbacks run here.
+/// serialize on the worker; disposal waits for an in-flight call, then drops all
+/// plans, continuations and state on that worker. Calls during host callbacks
+/// refuse before queueing on the worker or inside a host destructor. Other
+/// threads queue normally, including during callbacks.
 ///
 /// A marker is a capability to write an expression of state, statements and
 /// query data into a state variable. It runs no host action; writes are bounded.
@@ -167,8 +283,10 @@ struct Transport {
 /// a bundled response is blocked is the embedder's responsibility.
 #[derive(uniffi::Object)]
 pub struct RuntimeSession {
-    transport: Mutex<Option<Transport>>,
+    transport: Mutex<TransportSlot>,
+    closed: Condvar,
     failure: Arc<Mutex<Option<String>>>,
+    fence: Arc<ReentryFence>,
 }
 
 impl RuntimeSession {
@@ -176,6 +294,11 @@ impl RuntimeSession {
         &self,
         command: impl FnOnce(mpsc::SyncSender<Result<T, OpenUiError>>) -> Command,
     ) -> Result<T, OpenUiError> {
+        if self.fence.is_reentrant() {
+            return Err(worker_error("session already in use"));
+        }
+        let (sender, receiver) = mpsc::sync_channel(1);
+        let command = command(sender);
         let transport = self
             .transport
             .lock()
@@ -183,13 +306,11 @@ impl RuntimeSession {
         if let Some(reason) = failure_reason(&self.failure) {
             return Err(worker_error(&reason));
         }
-        let transport = transport.as_ref().ok_or(OpenUiError::Disposed)?;
-        let (sender, receiver) = mpsc::sync_channel(1);
-        transport
-            .mailbox
-            .sender
-            .send(command(sender))
-            .map_err(|_| record_failure(&self.failure, "runtime worker stopped unexpectedly"))?;
+        let transport_ref = transport.running.as_ref().ok_or(OpenUiError::Disposed)?;
+        let sent = transport_ref.mailbox.sender.send(command);
+        drop(transport);
+        // A rejected job can own a foreign callback; destroy it outside the lock.
+        sent.map_err(|_| record_failure(&self.failure, "runtime worker stopped unexpectedly"))?;
         receiver
             .recv()
             .map_err(|_| record_failure(&self.failure, "runtime worker stopped unexpectedly"))?
@@ -222,13 +343,27 @@ impl RuntimeSession {
         })
     }
     fn close(&self) {
+        // Disposal on the worker/in a destructor cannot wait on itself. Other
+        // threads enqueue Stop and wait for callbacks and destruction to finish.
+        if self.fence.is_reentrant() {
+            return;
+        }
         let mut guard = match self.transport.lock() {
             Ok(guard) => guard,
             Err(poisoned) => poisoned.into_inner(),
         };
-        if let Some(transport) = guard.take() {
+        while guard.closing {
+            guard = self.closed.wait(guard).unwrap_or_else(|p| p.into_inner());
+        }
+        let transport = guard.running.take();
+        guard.closing = transport.is_some();
+        drop(guard);
+        if let Some(transport) = transport {
             let _ = transport.mailbox.sender.send(Command::Stop);
             let _ = transport.worker.join();
+            let mut guard = self.transport.lock().unwrap_or_else(|p| p.into_inner());
+            guard.closing = false;
+            self.closed.notify_all();
         }
     }
 }
@@ -302,10 +437,21 @@ impl RuntimeSession {
             })
             .map_err(|e| worker_error(&e.to_string()))?;
         match initialized.recv() {
-            Ok(Ok(())) => Ok(Arc::new(Self {
-                transport: Mutex::new(Some(Transport { mailbox, worker })),
-                failure,
-            })),
+            Ok(Ok(())) => {
+                let fence = Arc::new(ReentryFence {
+                    owner: Arc::new(()),
+                    worker: worker.thread().id(),
+                });
+                Ok(Arc::new(Self {
+                    transport: Mutex::new(TransportSlot {
+                        running: Some(Transport { mailbox, worker }),
+                        closing: false,
+                    }),
+                    closed: Condvar::new(),
+                    failure,
+                    fence,
+                }))
+            }
             result => {
                 let _ = worker.join();
                 Err(match result {
@@ -314,6 +460,32 @@ impl RuntimeSession {
                 })
             }
         }
+    }
+
+    /// Register or replace a declared synchronous JSON implementation. Calls
+    /// execute on the session worker without a time bound. A host callback must
+    /// not wait for another thread to call this same session: that call queues
+    /// behind the callback, so the host would deadlock itself.
+    pub fn register_function(
+        &self,
+        name: String,
+        callback: Box<dyn LibraryFunction>,
+    ) -> Result<(), OpenUiError> {
+        let callback = CallbackHolder {
+            callback: Some(callback),
+            fence: self.fence.clone(),
+        };
+        self.call(move |s, _| {
+            s.register_function(
+                name,
+                Arc::new(move |json| {
+                    catch_unwind(AssertUnwindSafe(|| callback.call(json)))
+                        .map_err(|_| "host function panicked".to_owned())
+                        .and_then(|result| result.map_err(|e| e.to_string()))
+                }),
+            )
+            .map_err(Into::into)
+        })
     }
 
     /// Replace the current program by sharing its Arc. No JSON is parsed or
@@ -662,6 +834,7 @@ impl From<RuntimeLimits> for openui_session::RuntimeLimits {
             evaluation: v.evaluation.into(),
             reference_preparation: v.reference_preparation.into(),
             max_json_bytes: v.max_json_bytes,
+            max_action_path_bytes: v.max_action_path_bytes,
             max_continuations: v.max_continuations,
         }
     }

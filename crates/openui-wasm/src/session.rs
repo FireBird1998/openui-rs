@@ -10,7 +10,7 @@ use std::{
 
 struct State {
     core: SessionCore,
-    references: JsObject<openui_lang::Value>,
+    references: PreparedReferenceValues<'static>,
 }
 pub struct Session {
     state: Rc<RefCell<Option<State>>>,
@@ -48,8 +48,11 @@ impl Session {
         Ok(Self {
             failed: Cell::new(false),
             state: Rc::new(RefCell::new(Some(State {
-                core: SessionCore::new(library, prompt_spec, limits)?,
-                references: JsObject::new(),
+                core: SessionCore::new(library, prompt_spec, limits.clone())?,
+                references: PreparedReferenceValues::owned_with_limits(
+                    JsObject::new(),
+                    limits.reference_preparation.to_core(),
+                ),
             }))),
         })
     }
@@ -76,36 +79,25 @@ impl Session {
         }
     }
 
-    /// For the operations whose core implementation reads reference values
-    /// (evaluate, write_binding, run, run_legacy, resume): prepare the retained
-    /// source for this call. PreparedReferenceValues borrows its source, so it
-    /// cannot be kept between calls without a runtime API change (ADR 0007).
+    /// Reuse the opaque preparation, including its cut flags and input credit.
     fn call<T>(
         &self,
         operation: impl FnOnce(&mut SessionCore, &PreparedReferenceValues<'_>) -> Result<T, OpenUiError>,
     ) -> Result<T, OpenUiError> {
-        self.access(|s| {
-            let prepared =
-                PreparedReferenceValues::with_limits(&s.references, s.core.reference_limits);
-            operation(&mut s.core, &prepared)
-        })
+        self.access(|s| operation(&mut s.core, &s.references))
     }
-    /// For every other operation: the core ignores the prepared values there,
-    /// so pass an empty preparation instead of measuring a large supply.
-    fn call_without_references<T>(
+    pub fn register_function(
         &self,
-        operation: impl FnOnce(&mut SessionCore, &PreparedReferenceValues<'_>) -> Result<T, OpenUiError>,
-    ) -> Result<T, OpenUiError> {
-        self.access(|s| {
-            let empty: JsObject<openui_lang::Value> = JsObject::new();
-            let prepared = PreparedReferenceValues::with_limits(&empty, s.core.reference_limits);
-            operation(&mut s.core, &prepared)
-        })
+        name: String,
+        callback: Arc<HostFunction>,
+    ) -> Result<(), OpenUiError> {
+        self.access(|s| s.core.register_function(name, callback))
     }
     pub fn set_reference_values(&self, json: String) -> Result<(), OpenUiError> {
         self.access(|s| {
             let values = s.core.object(&json)?;
-            s.references = values;
+            s.references =
+                PreparedReferenceValues::owned_with_limits(values, s.core.reference_limits);
             Ok(())
         })
     }
@@ -117,17 +109,17 @@ impl Session {
     /// program cloned. Old action handles become stale; continuations survive
     /// and resume against the new program, as the runtime specifies.
     pub fn set_program(&self, program: Arc<ParsedProgram>) -> Result<(), OpenUiError> {
-        self.call_without_references(|s, refs| s.set_program(refs, program))
+        self.call(|s, refs| s.set_program(refs, program))
     }
 
     /// Report prompt annotations needing an explicit choice by the embedder.
     pub fn undecided_bindings(&self) -> Result<Vec<BindingPair>, OpenUiError> {
-        self.call_without_references(|s, refs| s.undecided_bindings(refs))
+        self.call(|s, refs| s.undecided_bindings(refs))
     }
 
     /// Resolve a binding annotation explicitly; affects the next evaluation.
     pub fn mark_binding(&self, component: String, prop: String) -> Result<(), OpenUiError> {
-        self.call_without_references(|s, refs| s.mark_binding(refs, component, prop))
+        self.call(|s, refs| s.mark_binding(refs, component, prop))
     }
 
     /// Apply current declarations and optional persisted object. Omitted JSON
@@ -136,7 +128,7 @@ impl Session {
         &self,
         persisted: Option<String>,
     ) -> Result<InitializationOutput, OpenUiError> {
-        self.call_without_references(|s, refs| s.initialize(refs, persisted))
+        self.call(|s, refs| s.initialize(refs, persisted))
     }
 
     /// Draw explicitly. Keep the runtime's evaluated root without indexing it;
@@ -155,33 +147,33 @@ impl Session {
         evaluation: Arc<EvaluationHandle>,
         path: Vec<String>,
     ) -> Result<Arc<ActionHandle>, OpenUiError> {
-        self.call_without_references(|s, refs| s.action_at(refs, evaluation, path))
+        self.call(|s, refs| s.action_at(refs, evaluation, path))
     }
 
     /// Undefined is None; JSON null is Some("null"). State names include `$`.
     pub fn get(&self, name: String) -> Result<Option<String>, OpenUiError> {
-        self.call_without_references(|s, refs| s.get(refs, name))
+        self.call(|s, refs| s.get(refs, name))
     }
     /// Host JSON never grants custom-step identity. None writes undefined.
     pub fn set(&self, name: String, json: Option<String>) -> Result<bool, OpenUiError> {
-        self.call_without_references(|s, refs| s.set(refs, name, json))
+        self.call(|s, refs| s.set(refs, name, json))
     }
     /// JSON.stringify-compatible snapshot: undefined entries are omitted.
     pub fn snapshot(&self) -> Result<String, OpenUiError> {
-        self.call_without_references(|s, refs| s.snapshot(refs))
+        self.call(|s, refs| s.snapshot(refs))
     }
     /// Number of mutation outcomes currently retained by this session.
     pub fn pending_continuations(&self) -> Result<u64, OpenUiError> {
-        self.call_without_references(|s, refs| s.pending_continuations(refs))
+        self.call(|s, refs| s.pending_continuations(refs))
     }
 
     /// Store notification count.
     pub fn version(&self) -> Result<u64, OpenUiError> {
-        self.call_without_references(|s, refs| s.version(refs))
+        self.call(|s, refs| s.version(refs))
     }
     /// Whether a later declared default may still replace this name.
     pub fn is_pristine(&self, name: String) -> Result<bool, OpenUiError> {
-        self.call_without_references(|s, refs| s.is_pristine(refs, name))
+        self.call(|s, refs| s.is_pristine(refs, name))
     }
     /// A marker can write any state target and call declared custom actions,
     /// minting real steps for a later draw/click. Accept only marker JSON from
@@ -196,7 +188,7 @@ impl Session {
         form: Option<String>,
         name: String,
     ) -> Result<Option<String>, OpenUiError> {
-        self.call_without_references(|s, refs| s.get_field(refs, form, name))
+        self.call(|s, refs| s.get_field(refs, form, name))
     }
     /// Write a renderer field; report the runtime's save request separately.
     pub fn set_field(
@@ -207,9 +199,7 @@ impl Session {
         json: Option<String>,
         save: bool,
     ) -> Result<FieldWriteOutput, OpenUiError> {
-        self.call_without_references(|s, refs| {
-            s.set_field(refs, form, component_type, name, json, save)
-        })
+        self.call(|s, refs| s.set_field(refs, form, component_type, name, json, save))
     }
     /// Persist a settled default only when the field is undefined.
     pub fn initialize_field(
@@ -220,9 +210,7 @@ impl Session {
         json: Option<String>,
         streaming: bool,
     ) -> Result<Option<FieldWriteOutput>, OpenUiError> {
-        self.call_without_references(|s, refs| {
-            s.initialize_field(refs, form, component_type, name, json, streaming)
-        })
+        self.call(|s, refs| s.initialize_field(refs, form, component_type, name, json, streaming))
     }
     /// Run a retained plan. None invokes the runtime's no-action message event.
     /// Ignore clicks while a bundled response is blocked in the embedder.

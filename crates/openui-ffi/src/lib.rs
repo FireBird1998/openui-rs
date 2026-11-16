@@ -11,6 +11,9 @@
 //! confines state, action plans and mutation continuations to one worker thread.
 //! Evaluation and event JSON come directly from `openui-runtime`. See
 //! `docs/runtime-binding.md` and ADR 0006 for capability lifetime and threading.
+//! [`RuntimeSession::register_function`] supplies JSON-only [`LibraryFunction`]
+//! callbacks on the worker; same-session reentry refuses, other threads queue. See the binding docs
+//! for synchronous host responsibilities and action failure semantics.
 //! A marker is a bounded expression-write capability, never a host action.
 //! Embedders suppress clicks while a response bundle is blocked. The runtime
 //! Store enforces the evaluation result-size ceiling on values and total state

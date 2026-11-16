@@ -58,7 +58,7 @@ class RuntimeSessionTest {
         val stream = StreamSession(library, null)
         val buffered = Utf16StreamBuffer(stream)
         buffered.push("root=Box(\"\uD83D")
-        buffered.push("")
+        assertNotNull(buffered.push(""))
         buffered.push("\uDE00\")")
         val expected = parse("root=Box(\"\uD83D\uDE00\")", library, null)
         assertEquals(expected.json, buffered.finish().json)
@@ -70,4 +70,20 @@ class RuntimeSessionTest {
             fail("Expected java.nio.charset.MalformedInputException at end of stream")
         } catch (_: MalformedInputException) { }
     }
+    @Test fun loneLowSurrogateRefusesWithoutChangingBufferAndPendingHighCanBeDiscarded() {
+        val library = ComponentLibrary("""{"${'$'}defs":{"Box":{"properties":{"value":{}}}}}""")
+        val stream = StreamSession(library, null)
+        val buffered = Utf16StreamBuffer(stream)
+        val before = stream.result().json
+        try { buffered.push("\uDE00"); fail("lone low surrogate accepted") }
+        catch (_: MalformedInputException) { }
+        assertEquals(before, stream.result().json)
+        assertNotNull(buffered.push("root=Box(\"\uD83D"))
+        try { buffered.finish(); fail("pending high surrogate accepted") }
+        catch (_: MalformedInputException) { }
+        buffered.discardPending()
+        buffered.push("ok\")")
+        assertEquals(parse("root=Box(\"ok\")", library, null).json, buffered.finish().json)
+    }
+
 }

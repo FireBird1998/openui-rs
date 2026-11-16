@@ -4,8 +4,8 @@ The [generated application signatures](runtime-binding-api.md) list constructors
 methods, records and typed errors. Create RuntimeSession for a ComponentLibrary;
 its original schema supplies action definitions. Supply the prompt spec's library
 object or full wrapper for BindingProps. undecidedBindings reports ambiguous
-pairs; markBinding resolves them. Declared library functions have no host
-implementations here and return null. Synchronous callbacks remain a follow-up.
+pairs; markBinding resolves them. registerFunction supplies declared library
+functions; unregistered functions still return null. See the callback contract below.
 
 **Kotlin streaming must preserve UTF-16 pairs.** Generated UniFFI
 FfiConverterString.toUtf8 uses Charsets.UTF_8.newEncoder(),
@@ -23,12 +23,14 @@ small [Utf16StreamBuffer caller adapter](../android-demo/app/src/main/java/dev/o
 
 ```kotlin
 val buffered = Utf16StreamBuffer(StreamSession(library, null))
-buffered.push(chunk) // ParseOutput?, null when holding the entire chunk
+buffered.push(chunk) // ParseOutput; current result when holding the entire chunk
 buffered.finish()    // throws MalformedInputException for an unmatched final unit
+buffered.discardPending() // explicitly discard a held unit after that refusal
 ```
 
 Its Android test checks direct push rejection, a split emoji pair, an empty
-intervening chunk, end-of-stream rejection and unchanged state after failed
+intervening chunk, a leading lone low surrogate, end-of-stream rejection, explicit
+pending-unit recovery and unchanged state after failed
 lowering. The demo's chunksOf already divides complete source by code points.
 For intentionally preserved lone units, send ASCII JSON escapes, for example
 `session.set("\$text", "\"\\ud800\"")`; the core's JSON reader preserves them.
@@ -113,10 +115,10 @@ given, and never directly from model output or tool data.** Do not offer a gener
 untrusted-marker endpoint. A finished custom step merely restored from JSON has
 no authority; the runtime alone mints/checks identity for evaluated action calls.
 
-Concurrent calls serialize on one worker. Dispose waits for an in-flight call
-and joins it; final drop does the same from any thread. There are no synchronous
-host callbacks. After normal disposal, methods throw Disposed. After a worker
-panic, the original Worker failure stays sticky for later calls, including
+Concurrent calls execute serially on one worker. Dispose waits for accepted calls
+and joins the worker. Same-session reentry refuses as described in
+[Host library functions](#host-library-functions). After normal disposal, methods
+throw Disposed. After a worker panic, the original Worker failure stays sticky for later calls, including
 reference updates; it is never disguised as normal disposal. Containment does
 not roll back earlier effects. Store admission errors map to RefusedWrite;
 expression/action-evaluation failures have the separate Evaluation variant.
@@ -124,7 +126,10 @@ Invalid marker shape is InvalidMarker, malformed/wrong-shaped/deep JSON is
 InvalidJson, and byte/cut refusals are LimitExceeded.
 
 RuntimeLimits has evaluation, referencePreparation, maxJsonBytes (8 MiB), and
-maxContinuations (64). Limits are fixed for the lifetime. maxJsonBytes bounds
+maxContinuations (64), plus optional maxActionPathBytes. The effective path
+bound is min(maxJsonBytes, maxActionPathBytes); absence preserves the previous
+maxJsonBytes bound. Choose e.g. 4096 for applications with short paths. Limits
+are fixed for the lifetime. maxJsonBytes bounds
 host strings/JSON, accepted program JSON, action path text and explicit binding
 annotations. Draws use only runtime limits. JSON reading uses the
 core's iterative parser and stack-safe freeing and its evaluation.depth nesting
@@ -186,7 +191,94 @@ maps to LimitExceeded in openui-session's single runtime error translator.
 Binding configuration retains the existing host JSON/input-size admission and
 raw-byte annotation bookkeeping. It does not add evaluation-depth, escaped-name,
 or estimated extraction-work quotas. A refused mark changes neither its binding
-map nor its annotation bookkeeping. Library function callbacks remain
-unregistered, so these bindings have no function-registration call to adapt.
+map nor its annotation bookkeeping. Function registration admits declared names
+only, at most 256 names and maxJsonBytes total (UTF-8 name bytes plus 64 per
+entry). Replacing a name spends no additional room; refusal preserves it.
 Explicit-limit Rust runtime configuration and export APIs remain available to
 callers who request an additional quota.
+
+
+## Host library functions
+
+Native registerFunction(name, callback) takes a LibraryFunction interface whose
+call(argumentsJson) returns optional JSON text or throws FunctionError.Thrown.
+Wasm registerFunction(name, callback) takes a JavaScript function from JSON text
+to JSON text or undefined. Arguments are named, validated by the runtime, and
+serialized with its serializer. Results use the session's JSON byte, depth and
+work limits before conversion to Value. Undefined differs from JSON null.
+No JSON result restores custom-step identity, even when a callback returns a
+real custom plan received as an argument. Direct Rust identity implementations
+can keep that allocation; the JSON boundary deliberately loses it (ADR 0004).
+Normal throws use the runtime's exact `@Name threw: message` diagnostic, including its prop context. These are
+runtime-error entries in EvaluationOutput.json, not thrown binding errors.
+Neither binding replays calls or pre-evaluates query defaults; the runtime owns
+validation, argument caching and lazy defaults across an action run.
+
+A failing host function follows the Rust runtime's ordinary function behavior:
+a throw, non-JSON result, panic or over-limit result produces `@Name threw: …`
+and null; the run continues. This is a function diagnostic, not a refused session
+operation or whole-action rollback. For
+`Action([@Set($a,1), @Set($b,@Echo(1)), @Set($c,2)])`, a failing Echo leaves
+`{"$a":1,"$b":null,"$c":2}`. Evaluation diagnostics include the prop context;
+action execution keeps the same writes, events and flags as a direct Rust
+throwing implementation. Both bindings pin the action's continuing writes;
+native tests additionally cover panic containment.
+
+Native callbacks execute synchronously on the session's existing worker, with
+no timeout and no thread spawned per invocation. A correct implementation gives
+the same result however long it takes. Any session call on that worker, including
+from a replacement/disposal destructor, refuses with
+Worker("session already in use"). Foreign destruction on a caller thread uses a
+scoped, thread-local refusal guard for that session. Native dispose is infallible
+and cleanly does nothing only on such reentry. Refused reentrant operations
+change no session state. Host panics, including destructor panics, are caught
+before they leave the binding.
+
+Calls from other threads queue in submission order while a callback runs.
+Disposal from another thread closes submission, queues shutdown after accepted
+calls, and waits for the callback and worker destruction to finish. Concurrent
+disposers wait for the same join. Transport locks are released before waits,
+joins and foreign destruction. A callback or destructor must not wait for another
+thread to call this same session: that call queues behind the callback/destructor,
+so the host would deadlock itself. The same holds across sessions: if one session's
+callback calls a second session whose own callback calls back into the first, both
+workers wait on each other. A host function that never returns keeps its caller
+waiting, and with it every other thread's call to that session and any disposal
+or final drop from another thread; the binding does not cancel host code or undo
+external effects.
+
+JavaScript callbacks execute synchronously under the package guard. Reentry and
+free/dispose refuse with Worker("session already in use") before entering Rust,
+leaving the session usable. As with any synchronous JavaScript call, a callback
+that blocks the JS thread cannot be preempted; the host must return for progress.
+This synchronous contract requires no asynchronous replay or timing-dependent
+result. #60's same-realm private-helper hardening remains separate and open.
+
+## Data-backed elements and retention
+
+As upstream does, element-shaped state, query results and tool output can draw
+live elements. Their built-in plans can run through actionAt: JSON is a
+capability to request bounded state writes. Host events are only returned for
+the embedder to decide whether to perform; the session does no external I/O.
+Finished custom-step JSON never grants custom authority (ADR 0004). Data can
+also invoke declared custom action calls during evaluation, which earns real
+identity under that ADR. An object literal whose k is an expression kind is
+interpreted as that expression: `{k:"Str",v:"y",z:2}` yields "y". It does not
+render its extra nested data as children.
+
+The retained tree is a Rust Value graph, not its JSON text. The isolated
+retained_root test measures a 10,000-element Each result and pins retained heap
+below eight times that sample's serialized size, then checks program replacement
+releases it. This is a sample bound, not a universal JSON-to-heap multiplier.
+The session keeps one root; old and new roots coexist while the new evaluation
+is built. Root retention uses runtime input/result/depth/work bounds (including
+raw props retained by cuts); it has no independent heap-byte limit. Keeping its
+shared allocations preserves custom identities. Shrinking by rebuilding from
+JSON would destroy those identities and duplicate work. Applications needing
+less retained memory can lower evaluation limits or replace the program.
+
+Oldest-first continuation eviction is deliberately retained: refusal after
+running earlier steps would change state despite refusing the call. Refusing
+all runs before execution when full would also stop runs that never suspend.
+The existing eviction test pins that non-suspending runs keep working. No second
+eviction policy is exposed.
