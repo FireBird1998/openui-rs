@@ -41,12 +41,15 @@ import ViewerKit
         window.contentView = host
         window.orderFrontRegardless()
         defer { window.close() }
-        try await Task.sleep(for: .milliseconds(50))
-        host.layoutSubtreeIfNeeded()
-        try #require(observed.proxy).scrollTo(last, anchor: .bottom)
-        try await Task.sleep(for: .milliseconds(50))
-        host.layoutSubtreeIfNeeded()
-        // A notice, omitted final entry or clipped list cannot scroll here.
+        // The view appears and scrolls on later run-loop turns, and how many it
+        // takes depends on the machine: ask again until it has scrolled, up to a
+        // bound. A notice, omitted final entry or clipped list never scrolls here.
+        for _ in 0..<200 where observed.offset <= CGFloat(count) {
+            try await Task.sleep(for: .milliseconds(50))
+            host.layoutSubtreeIfNeeded()
+            observed.proxy?.scrollTo(last, anchor: .bottom)
+        }
+        try #require(observed.proxy != nil)
         #expect(observed.offset > CGFloat(count))
     }
 }
