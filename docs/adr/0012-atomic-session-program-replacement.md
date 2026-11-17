@@ -39,3 +39,16 @@ No candidate or mark crosses JSON. Failed operations retain neither staging
 state nor a transaction handle. The cost is a shallow Store snapshot owner plus
 copies of bounded name/size/pristine/provenance tables; candidate and old state
 coexist until commit/drop. This is not a new peak-heap guarantee.
+
+
+## Staging allowance decision (#77)
+
+Keep replacement staging outside the opt-in evaluation-memory account, as
+ADR 0011 already excludes Store admission/copy-on-write and authority tables.
+Staging shares value bodies; it copies names, size/pristine tables and provenance,
+so both versions coexist briefly. Charging native heap estimates here would make
+an evaluation allowance depend on allocator layout and cut formerly completed
+calls. A separate opt-in Store/staging allowance would require a new contract;
+no new default limit is introduced. Existing state and JSON admission bounds
+still apply. Replacement tests pin unchanged successful outputs and refusals,
+including a pending mutation across a post-evaluation native-view refusal.

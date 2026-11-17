@@ -46,9 +46,15 @@ fn refused_replacement_preserves_program_store_bindings_handles_and_registration
     session
         .mark_binding(&refs, "Box".into(), "value".into())
         .unwrap();
-    let old = program(&library, "$n=1\nroot=Box($n,@Go())");
+    let old = program(&library, "$n=1\n$keep=2\n$edited=0\nroot=Box($n,@Go())");
     let before = session
-        .replace_program(&refs, old.clone(), None, None, true)
+        .replace_program(
+            &refs,
+            old.clone(),
+            Some("{\"$edited\":5}".into()),
+            None,
+            true,
+        )
         .unwrap();
     let action = session
         .action_at(&refs, before.evaluation.evaluation.clone(), path())
@@ -85,7 +91,13 @@ root=true ? $shape : Box()"#,
         );
         assert_eq!(session.snapshot(&refs).unwrap(), before.snapshot);
         assert_eq!(session.version(&refs).unwrap(), before.version);
-        assert!(session.is_pristine(&refs, "$n".into()).unwrap());
+        for name in ["$n", "$keep", "$edited", "$new", "$extra"] {
+            assert_eq!(
+                session.is_pristine(&refs, name.into()).unwrap(),
+                matches!(name, "$n" | "$keep")
+            );
+        }
+        assert_eq!(session.pending_continuations(&refs).unwrap(), 0);
         let result = session
             .run(&refs, Some(action.clone()), "go".into(), None)
             .unwrap();
@@ -148,6 +160,16 @@ fn replacement_matches_separate_operations_including_batch_refusals_and_cuts() {
         );
         assert_eq!(a.snapshot, separate.snapshot(&refs).unwrap());
         assert_eq!(a.version, separate.version(&refs).unwrap());
+        for name in ["$n", "edited", "$absent"] {
+            assert_eq!(
+                atomic.is_pristine(&refs, name.into()).unwrap(),
+                separate.is_pristine(&refs, name.into()).unwrap()
+            );
+        }
+        assert_eq!(
+            atomic.pending_continuations(&refs).unwrap(),
+            separate.pending_continuations(&refs).unwrap()
+        );
         assert_eq!(a.initialization.changed, initialized.changed);
         assert_eq!(a.projection.changed, projection.changed);
         assert_eq!(
@@ -226,13 +248,40 @@ fn refused_replacement_preserves_suspended_work_room_and_results() {
 $shape={type:"element",typeName:"Box",props:{},partial:false,hasDynamicProps:false,extra:1}
 root=true ? $shape : Box()"#,
         );
-        // Even a cut is a successful draw. Force a JSON admission refusal at
-        // every allowance; the separate test covers post-evaluation refusal.
+        // Even a cut is a successful draw. Keep the early JSON refusal at
+        // every allowance, then exercise post-evaluation refusal across the
+        // work settings that retain a mutation continuation.
         assert!(
             subject
-                .replace_program(&refs, invalid, Some("[]".into()), None, true)
+                .replace_program(&refs, invalid.clone(), Some("[]".into()), None, true)
                 .is_err()
         );
+        if work >= 2000 {
+            assert!(pending[1].continuation.is_some());
+            assert!(
+                subject
+                    .replace_program(&refs, invalid, None, None, true)
+                    .is_err()
+            );
+            assert_eq!(
+                subject.snapshot(&refs).unwrap(),
+                control.snapshot(&refs).unwrap()
+            );
+            assert_eq!(
+                subject.version(&refs).unwrap(),
+                control.version(&refs).unwrap()
+            );
+            for name in ["$n", "$shape"] {
+                assert_eq!(
+                    subject.is_pristine(&refs, name.into()).unwrap(),
+                    control.is_pristine(&refs, name.into()).unwrap()
+                );
+            }
+            assert_eq!(
+                subject.pending_continuations(&refs).unwrap(),
+                control.pending_continuations(&refs).unwrap()
+            );
+        }
         for (session, out) in [
             (&mut control, pending.remove(0)),
             (&mut subject, pending.remove(0)),
@@ -416,4 +465,141 @@ fn persisted_admission_keeps_swift_shows_error_precedence() {
     ));
     assert_eq!(session.snapshot(&refs).unwrap(), old.snapshot);
     assert_eq!(session.version(&refs).unwrap(), old.version);
+}
+
+#[test]
+fn post_evaluation_refusal_preserves_pending_mutation_and_all_store_marks() {
+    let library = library();
+    let values = JsObject::new();
+    let refs = PreparedReferenceValues::new(&values);
+    let mut control = SessionCore::new(library.clone(), None, RuntimeLimits::default()).unwrap();
+    let mut subject = SessionCore::new(library.clone(), None, RuntimeLimits::default()).unwrap();
+    let old = program(
+        &library,
+        "$n=1\n$pristine=2\nm=Mutation(\"m\",{})\nroot=Box($n,Action([@Run(m),@Set($n,$n+1),@OpenUrl(\"done\")]))",
+    );
+    let mut tokens = Vec::new();
+    for session in [&mut control, &mut subject] {
+        let shown = session
+            .replace_program(&refs, old.clone(), None, None, true)
+            .unwrap();
+        session.set(&refs, "$n".into(), Some("5".into())).unwrap();
+        session
+            .set_field(
+                &refs,
+                Some("f".into()),
+                None,
+                "x".into(),
+                Some("7".into()),
+                false,
+            )
+            .unwrap();
+        let action = session
+            .action_at(
+                &refs,
+                shown.evaluation.evaluation,
+                vec!["props".into(), "action".into()],
+            )
+            .unwrap();
+        let run = session.run(&refs, Some(action), "go".into(), None).unwrap();
+        assert!(!run.size_limited && !run.depth_limited && run.failure.is_none());
+        assert_eq!(run.events.len(), 1);
+        tokens.push(run.continuation.unwrap());
+        assert_eq!(session.pending_continuations(&refs).unwrap(), 1);
+    }
+    let candidate = program(
+        &library,
+        r#"$n=99
+$pristine=88
+$new=3
+$shape={type:"element",typeName:"Box",props:{},partial:false,hasDynamicProps:false,extra:1}
+root=true ? $shape : Box()"#,
+    );
+    assert!(
+        subject
+            .replace_program(
+                &refs,
+                candidate,
+                Some("{\"$n\":99,\"$extra\":8}".into()),
+                Some("{\"$pristine\":77}".into()),
+                true
+            )
+            .is_err()
+    );
+    assert_eq!(
+        subject.snapshot(&refs).unwrap(),
+        control.snapshot(&refs).unwrap()
+    );
+    assert_eq!(
+        subject.version(&refs).unwrap(),
+        control.version(&refs).unwrap()
+    );
+    for name in ["$n", "$pristine", "$new", "$extra", "$shape", "f"] {
+        assert_eq!(
+            subject.is_pristine(&refs, name.into()).unwrap(),
+            control.is_pristine(&refs, name.into()).unwrap(),
+            "{name}"
+        );
+    }
+    assert!(!subject.is_pristine(&refs, "$n".into()).unwrap());
+    assert!(subject.is_pristine(&refs, "$pristine".into()).unwrap());
+    assert_eq!(subject.pending_continuations(&refs).unwrap(), 1);
+    assert_eq!(control.pending_continuations(&refs).unwrap(), 1);
+    assert_eq!(
+        subject
+            .get_field(&refs, Some("f".into()), "x".into())
+            .unwrap(),
+        Some("7".into())
+    );
+    assert_eq!(
+        subject
+            .get_field(&refs, Some("f".into()), "x".into())
+            .unwrap(),
+        control
+            .get_field(&refs, Some("f".into()), "x".into())
+            .unwrap()
+    );
+    let a = subject.evaluate(&refs).unwrap();
+    let b = control.evaluate(&refs).unwrap();
+    assert_eq!(a.json, b.json);
+    assert_eq!(
+        (a.size_limited, a.depth_limited),
+        (b.size_limited, b.depth_limited)
+    );
+    let mut resumed = Vec::new();
+    for (session, token) in [&mut control, &mut subject].into_iter().zip(tokens) {
+        let result = session.resume(&refs, token, true).unwrap();
+        assert_eq!(session.pending_continuations(&refs).unwrap(), 0);
+        resumed.push((
+            result.events,
+            result.size_limited,
+            result.depth_limited,
+            format!("{:?}", result.failure),
+            result.continuation.is_some(),
+        ));
+    }
+    assert_eq!(resumed[0], resumed[1]);
+    assert_eq!(
+        subject.snapshot(&refs).unwrap(),
+        control.snapshot(&refs).unwrap()
+    );
+    assert_eq!(
+        subject.version(&refs).unwrap(),
+        control.version(&refs).unwrap()
+    );
+    for session in [&mut control, &mut subject] {
+        session.set(&refs, "$n".into(), Some("9".into())).unwrap();
+    }
+    assert_eq!(
+        subject.snapshot(&refs).unwrap(),
+        control.snapshot(&refs).unwrap()
+    );
+    assert_eq!(
+        subject.version(&refs).unwrap(),
+        control.version(&refs).unwrap()
+    );
+    assert_eq!(
+        subject.evaluate(&refs).unwrap().json,
+        control.evaluate(&refs).unwrap().json
+    );
 }

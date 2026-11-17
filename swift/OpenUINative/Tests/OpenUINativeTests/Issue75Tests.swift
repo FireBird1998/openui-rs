@@ -153,5 +153,49 @@ root=true ? $shape : Stack([])
         try await window.click("/buttons/buttons/0")
         #expect(events.count == (preview ? 1 : 0))
     }
+    @Test(arguments: [false, true])
+    func endingAPreviewRestoresTheCompleteTabsSelectionAndValidation(_ finish: Bool) async throws {
+        let core = Core()
+        let library = try await core.library(schema: Issue63.extendedSchema)
+        var events: [HostEvent] = []
+        let live = try LiveProgram(library: library) { events.append($0) }
+        let source = #"root = Form("f", [Tabs([TabItem("First", [Input("a", "ok", {required: true})]), TabItem("Second", [Input("b", null, {required: true})])])], Buttons([Button("Send")]))"#
+        let complete = try await core.parseOneShot(source, library: library)
+        try live.show(complete)
+        let window = await Window(live)
+        defer { window.close() }
+        func segments(_ view: NSView) -> [NSSegmentedControl] {
+            (view as? NSSegmentedControl).map { [$0] } ?? view.subviews.flatMap(segments)
+        }
+        let initialPicker = try #require(segments(window.host).first)
+        #expect(initialPicker.selectedSegment == 0)
+        let before = live.state, version = live.version
+        // Keep exactly the same tree; the preview's end must invalidate the
+        // mounted TabsView even though its props have not changed.
+        try live.show(complete.asStreamingPreview())
+        await window.settle()
+        let previewState = live.state, previewVersion = live.version
+        let previewPicker = try #require(segments(window.host).first)
+        previewPicker.selectedSegment = 1
+        #expect(previewPicker.sendAction(previewPicker.action, to: previewPicker.target))
+        await window.settle()
+        #expect(previewPicker.selectedSegment == 1)
+        #expect(live.state == previewState && live.version == previewVersion && events.isEmpty)
+        if finish { try live.show(complete) } else { live.discardPreview() }
+        await window.settle()
+        #expect(!live.isStreaming)
+        let restoredPicker = try #require(segments(window.host).first)
+        #expect(restoredPicker.selectedSegment == 0)
+        #expect(live.state == before && live.version == version && events.isEmpty)
+        try await window.click("/buttons/buttons/0")
+        #expect(events.count == 1) // The complete First tab is valid.
+        let completePicker = try #require(segments(window.host).first)
+        completePicker.selectedSegment = 1
+        #expect(completePicker.sendAction(completePicker.action, to: completePicker.target))
+        await window.settle()
+        try await window.click("/buttons/buttons/0")
+        #expect(events.count == 1) // The complete Second tab is invalid.
+    }
+
 }
 }

@@ -630,7 +630,6 @@ impl<'a> Property<'a> {
     }
     fn same(self, other: Self) -> bool {
         match (self.scalar(), other.scalar()) {
-            (Self::Undefined, Self::Undefined) => true,
             (Self::Data(a), Self::Data(b)) => same(Some(a), Some(b)),
             (Self::Text(a), Self::Text(b)) => a == b,
             (Self::Bool(a), Self::Bool(b)) => a == b,
@@ -815,6 +814,42 @@ mod lookup_work {
     }
     #[test]
     fn impossible_names_never_reach_store_hash_lookups() {
+        // Library tests run before integration binaries. Probe construction in
+        // a CPU-bounded child here too, so an optimized recursive constructor
+        // cannot hang this first test before the public integration probe runs.
+        #[cfg(unix)]
+        {
+            if std::env::var_os("OPENUI_STORE_CONSTRUCTOR_UNIT_CHILD").is_some() {
+                let mut store = Store::with_limits(Limits::DEFAULT.with_result_size(0));
+                assert!(matches!(
+                    store.set("a", Some(Value::Num(1.))),
+                    Err(StoreError::ValueTooLarge)
+                ));
+                assert!(store.snapshot().is_empty());
+                assert_eq!(store.version(), 0);
+                assert!(!store.is_pristine("a"));
+                return;
+            }
+            let status = std::process::Command::new("sh")
+                .args([
+                    "-c",
+                    "ulimit -c 0; ulimit -t 1; exec \"$@\"",
+                    "store-constructor",
+                ])
+                .arg(std::env::current_exe().unwrap())
+                .args([
+                    "--exact",
+                    "store::lookup_work::impossible_names_never_reach_store_hash_lookups",
+                    "--test-threads=1",
+                ])
+                .env("OPENUI_STORE_CONSTRUCTOR_UNIT_CHILD", "1")
+                .status()
+                .unwrap();
+            assert!(
+                status.success(),
+                "constructor child did not complete successfully: {status}"
+            );
+        }
         let mut store = Store::new();
         store.set("$n", Some(Value::Num(1.))).unwrap();
         let name = "n".repeat(1_000_000);

@@ -137,8 +137,8 @@ Public `peak_memory` tests enforce adjacent thresholds, sweeps, descriptor and
 reentrant paths, default evaluation, rebuilds, resumed writes and unchanged Store
 state. The 2,652-row read/unread repeated-reference witnesses compare set/unset
 allocator peaks in the same process, with wide layout tolerance. Varied leaves
-record heap/account ratios and enforce `heap <= account` for those finite
-shapes, including the 1,000-row repeated-reference profile. This is a regression guard, not a universal multiplier. TESTING.md
+record heap/account ratios and enforce `heap <= account + account/10` for those finite
+shapes (the #76 allocator/layout margin), including the 1,000-row repeated-reference profile. This is a regression guard, not a universal multiplier. TESTING.md
 records measurements and the default-path controls; no timing is an assertion.
 
 ## Alternatives

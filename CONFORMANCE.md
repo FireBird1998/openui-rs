@@ -1354,3 +1354,13 @@ Regex validation still has no execution-time bound or pattern/subject length
 cap. ICU compatibility remainders and invalid-pattern behavior are unchanged;
 see the README and TESTING. A length-only cap would not bound backtracking time
 and would change valid upstream patterns without solving that problem.
+
+The first runtime missed-mutant batch (#40) adds public-interface checks for
+Store and export refusal text, descriptor binding authority, undeclared prepared
+supplies, array-like Action arguments, deferred positional/mapped syntax and
+unchanged tree bytes/cut boundaries. The directed descriptor truthiness and
+array-like action expectations match the vendored 1.1.0 evaluator. No divergence
+is added. Replacement tests in the session/native/wasm adapters also pin a
+post-evaluation refusal while a Mutation is pending (#77); continuation results,
+state and later writes agree with an untouched control. The allocator/layout
+margin in the finite memory profiles (#76) changes no portable accounting rule.

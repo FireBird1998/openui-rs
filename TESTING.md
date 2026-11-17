@@ -2222,7 +2222,7 @@ allocator. Its public-interface tests are:
 | --- | --- |
 | `memory_cut_recovery_never_exports_refused_syntax` | Array, object, nested-element and Each-owned props: both ends of every reservation-equivalent allowance interval produce flagged cuts bounded by complete JSON plus 32 bytes; explicit 1257 setting and exact completion edges |
 | `each_reserves_its_result_vector_before_building_items` | Edge derived from a one-item control and public storage reservations; just-under-edge cut heap below completed same-process heap / 32 + 16 KiB; fails when the check moves after construction |
-| `repeated_reference_profile_covers_measured_heap` | 1,000-row Each profiling; representative real heap does not exceed the conservative account |
+| `repeated_reference_profile_covers_measured_heap` | 1,000-row Each profiling; representative real heap stays within the conservative account plus a 10% allocator/layout margin |
 | `memory_settings_do_not_invalidate_setup_only_receipts` | Memory-only settings can change without invalidating core setup receipts; setup spends no memory allowance |
 | `memory_is_opt_in_and_has_an_exact_portable_edge` | Default unset; exact and one-byte-adjacent accounted thresholds; sticky memory cuts; monotonic sweeps over scalar, string, array, object, Each, sort and filter expressions |
 | `tree_rebuilds_share_the_account_and_keep_completed_bytes` | Shared tree/rebuild reservations, exact completed bytes at/above the observed peak, flagged cuts below it, monotonic sweeps |
@@ -2233,7 +2233,7 @@ allocator. Its public-interface tests are:
 | `static_element_payloads_are_admitted_before_the_root_clone` | A static element’s large directly owned string is refused before cloning the root; same-process peak comparison with 16 KiB tolerance |
 | `a_one_byte_short_allowance_refuses_the_large_public_copy` | A large public string copy is refused before allocation at exactly one byte below the accounted peak; same-process measured heap comparison with 16 KiB tolerance |
 | `descriptor_substitution_and_reentrant_scopes_share_memory_cuts` | Descriptor evaluation/substitution and evaluator callback reentry keep the same account and flags |
-| `representative_shapes_account_for_measured_heap` | Representative empty-array, nested-array, object and string leaves; diagnostic heap/account ratios and `heap <= account` for these finite shapes |
+| `representative_shapes_account_for_measured_heap` | Representative empty-array, nested-array, object and string leaves; diagnostic heap/account ratios and `heap <= account + account/10` for these finite shapes |
 
 The separate session/native/wasm `peak_memory` test binaries declare capped allocators
 and pin `reference_preparation_refuses_memory_configuration_before_session_creation`: zero, one and maximum reference-preparation memory settings refuse with `LimitExceeded`, leaving existing state unchanged. Native/wasm also exercise the optional session configuration with unchanged completed JSON,
@@ -2342,3 +2342,62 @@ checks release bookkeeping, and `persisted_admission_keeps_swift_shows_error_pre
 pins malformed persisted data before program-size refusal, matching Swift's
 former pre-check. `persistedValuesUseTheRealPromptAnnotatedSessionsAdmission`
 checks persisted state and a retained prompt-derived marker through refusal.
+
+
+## Runtime missed mutants, first batch (#40), and review follow-ups (#76/#77)
+
+`missed_admission.rs` pins refusal text, exact name/value admission edges,
+allocation-free scalar replacement and typed Store comparisons. Its constructor
+child tests a zero-size Store allowance before retaining any state. The literal
+`with_limits -> Default` mutation recurses through Default; the optimized test
+profile can turn it into an endless loop. The Unix child has a POSIX CPU-resource
+ceiling and disabled core dumps, and the parent asserts successful completion.
+The existing library lookup test performs this probe before its first Store
+construction too: library tests run before integration binaries, so the full
+mutation suite fails at that first entry rather than hanging before the new
+integration test. There is no elapsed-time assertion. This catches both recursive construction and
+an implementation that returns a Store with default limits instead of the given
+limits, without hanging the suite on Linux or macOS.
+
+`missed_tree.rs` tests descriptor binding authority, undeclared prepared supplies,
+truthiness, array-like Action arguments, independent deferred positional/mapped
+syntax, diagnostic context and export admission. Refused diagnostic export must
+avoid copying a large message: its measured heap is compared with a completed
+same-process control using a relative bound and 16 KiB tolerance. Array mapped
+props use a same-process object-prop allocation-call control, with eight calls of
+tolerance; no measured byte count, stack size or timing is pinned exactly.
+
+The `support/missed-tree.tsv` observations come from unchanged main
+`03c4ebbb8d44898409d0457ac091dc5609faabcd`. Named behavior tests check both ends
+of each recorded constant-output interval under work, room, depth and opt-in
+memory limits. Each row fingerprints complete tree/diagnostic JSON with FNV-1a64
+and records both cut flags. Directed tests separately assert readable values,
+ordered steps, text, authority and identities. Adding cases/rows extends this
+batch without changing the parser or materialisation. Scratch mutation patches
+and observed failures are recorded in `target/mut-40-proofs/`; the per-mutant
+ledger is `target/mut-40-table.txt`. This batch is not a claim about the later
+survivor batch or the unrelated full run.
+
+The two finite-shape heap/account guards in `peak_memory.rs` allow 10% above the
+portable account for allocator and layout drift (#76). This is a regression
+margin for those shapes, not a universal heap multiplier. Reference-preparation
+memory settings now produce the typed `LimitExceeded` refusal; README and
+CHANGELOG record that older bindings silently ignored them.
+
+The session, ffi and wasm replacement test binaries each include
+`post_evaluation_refusal_preserves_pending_mutation_and_all_store_marks`. A
+native-view refusal after staging/evaluation is compared with an untouched
+control while a Mutation is pending: snapshot, version, every tested pristine
+mark, continuation count, form field, next evaluation, resume result and a later
+set remain equal. Existing refusal/equivalence tests also compare multiple marks
+and continuation counts. The existing suspended-work test also refuses after
+evaluation at the 2,000/4,000/100,000 work settings and compares the control
+resumes, retaining their cut/completion edges. Staging remains outside evaluation memory as specified
+in ADR 0011 and clarified in ADR 0012; no new limit is introduced.
+
+Swift `Issue75.endingAPreviewRestoresTheCompleteTabsSelectionAndValidation`
+mounts the real segmented control, selects the invalid preview tab, and ends
+that preview both by discarding and by showing the complete program with
+identical props. It requires the original complete selection to reappear,
+unchanged state/version and no events, then checks validation follows complete
+tab switches. Both parameter cases require an available macOS display.

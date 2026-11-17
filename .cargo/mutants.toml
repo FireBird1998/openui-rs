@@ -3,9 +3,9 @@
 # Mutants the suite can't catch because they change nothing a caller can
 # observe, each with the reason. Reruns skip them. A mutant goes here only
 # once it's been shown to change nothing; anything else gets a test.
-# The runtime group currently has no exclusions: list mode does not establish
-# equivalence. The maintainer triages every survivor from the full run, giving
-# it a public-interface regression or a narrowly scoped, reasoned entry here.
+# Runtime #40 first-batch exclusions below were audited through public paths;
+# list mode alone never establishes equivalence. Later survivor batches still
+# need their own regressions or equivalence arguments.
 exclude_re = [
     # Both comparisons choose the same sign for n, which is already infinite.
     'js\.rs:.*: replace > with >= in number_to_string$',
@@ -71,4 +71,58 @@ exclude_re = [
     # Whole/TooDeep and recomputes zero-allowance followers on RanOut. Values,
     # priced work, and a reliable generous timing ratio are unchanged.
     'evaluate\.rs:.*replace == with != in followers_are_forced_null$',
+
+    # Runtime #40, first batch. This allocator exists only in the cfg(test)
+    # unit-test harness; changing its ceiling has no production/public effect.
+    'crates/openui-runtime/src/lib\.rs:\d+:78: replace \* with \+$',
+    # A quoted name exceeds its raw length. Every text caller subsequently
+    # charges the quoted name plus a separator against the same total ceiling;
+    # prompt extraction first admits the whole spec. These early size edges
+    # cannot admit/refuse a different registry or alter its typed size flags.
+    # The work comparison (column 19) remains observable and is NOT excluded.
+    'crates/openui-runtime/src/admission\.rs:\d+:63: replace > with >= in text$',
+    'crates/openui-runtime/src/admission\.rs:\d+:14: replace > with == in text$',
+    'crates/openui-runtime/src/admission\.rs:\d+:14: replace > with >= in text$',
+    # The fallback's own_fields borrows an Obj and feeds identical fields to
+    # component, with identical output/limits. Retain the fast arm to avoid an
+    # empty JsObject initialization (and its unpriced hasher setup); A.3's
+    # stricter allocation-count preservation is not claimed for this rewrite.
+    "crates/openui-runtime/src/tree\\.rs:.*: delete match arm Value::Obj\\(fields\\) in <impl EvaluationScope for TreeScope<'_>>::call_value_named$",
+    # The core calls each_item_owned only after wants_each_item accepted a
+    # dynamic element in call context, so both guard operands are false. AND
+    # skips an unpriced evaluator-context query/bridge-collection opportunity.
+    # Retain this context touch rather than change its bridge-collection
+    # opportunities; its housekeeping cost is not priced evaluation work.
+    "crates/openui-runtime/src/tree\\.rs:.*: replace \\|\\| with && in <impl EvaluationScope for TreeScope<'_>>::each_item_owned$",
+    # Only fresh projections change this conjunct. The core has already priced
+    # and measured their marker bodies; rechecking them uses those measurements
+    # inside the item's temporary room, dominated by its complete projection.
+    # Dual-tag fresh objects take element projection first. Dropping this memo
+    # repeats admission/weak-map bookkeeping, without changing bytes, flags or
+    # priced work/room. Borrowed aliases ARE observable (the two OR mutants).
+    "crates/openui-runtime/src/tree\\.rs:\\d+:37: delete ! in TreeScope<'_>::component$",
+    # At equal remaining depth the already-admitted marker still fits. An
+    # additional DepthOnly check consumes neither work, output room nor memory.
+    "crates/openui-runtime/src/tree\\.rs:.*: replace < with <= in TreeScope<'_>::reserve_marker$",
+    # A completed intermediate array enters the unpaid walk with runtime_value's
+    # live, one-use root projection receipt. It is consumed exactly once; its
+    # element sizes are part of that same projection. The missing-receipt
+    # punctuation fallback cannot run on these public tree paths.
+    "crates/openui-runtime/src/tree\\.rs:\\d+:28: delete ! in TreeScope<'_>::unpaid_expression_result$",
+    # A retained Weak keeps its allocation's address unavailable for reuse.
+    # A live value therefore cannot match a dead entry. Accepting dead owners
+    # changes only collection/weak-table cost, outside ADR 0011's account.
+    'crates/openui-runtime/src/tree\.rs:.*: replace ElementOwner::alive -> bool with true$',
+    # Sweep frequency and retaining dead Weak slots are unpriced authority-table
+    # bookkeeping (ADR 0011), with no asserted slot count or timing contract.
+    # owns still upgrades the Weak and checks the exact live Arc, so neither
+    # mutation grants/revokes authority or changes bytes/work/room/cut flags.
+    'crates/openui-runtime/src/tree/actions\.rs:.*: replace >= with < in Provenance::mark$',
+    'crates/openui-runtime/src/tree/actions\.rs:.*: replace > with >= in Provenance::mark$',
+    # field reads Element only to distinguish custom_action steps in own_plan:
+    # both "element" and absent are non-custom. Its n/refType callers first
+    # require kind(StateRef/RuntimeRef), which rejects Element. These guards
+    # change only a tiny temporary text allocation, never the retained plan.
+    'crates/openui-runtime/src/tree/actions\.rs:.*: replace match guard key == "type" with false in field$',
+    'crates/openui-runtime/src/tree/actions\.rs:.*: replace == with != in field$',
 ]

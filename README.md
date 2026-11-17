@@ -55,7 +55,9 @@ including every resumed segment, from an uncut profile. The account is conservat
 it is **not a heap multiplier**. Binding result records expose cut flags rather
 than the account: profile through Rust, or bisect the smallest uncut allowance
 for a fixed input. Reference preparation does not evaluate; setting
-`referencePreparation.peakMemory` refuses session creation with `LimitExceeded`.
+`referencePreparation.peakMemory` now refuses session creation with the typed
+`LimitExceeded` error (since #74); earlier bindings silently ignored this setting.
+Remove it from reference preparation and set it on evaluation instead.
 
 | Limit | Default | Configuration |
 | --- | --- | --- |

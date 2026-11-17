@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- Binding session construction now refuses an explicitly configured
+  `referencePreparation.peakMemory` with the typed `LimitExceeded` error (#74).
+  It was previously silently ignored. Configure evaluation memory on
+  `evaluation.peakMemory` instead; leave reference preparation unset (#76).
+
 - Breaking Rust API change from #49's supplied-input accounting work:
   `openui_lang::PreparedInput` is no longer exported. This is not a rename.
   `PreparedReferenceInput` is the core-issued reference-preparation receipt;

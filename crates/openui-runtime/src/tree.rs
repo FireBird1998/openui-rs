@@ -784,12 +784,9 @@ impl EvaluationScope for TreeScope<'_> {
         if let Some(plan) = self.declared_call(o, name, eval) {
             return Some(plan);
         }
-        let Some(mapped) = o.get("mappedProps").filter(|v| match v {
-            Value::Null | Value::Bool(false) => false,
-            Value::Num(n) => *n != 0.0 && !n.is_nan(),
-            Value::Str(s) => !s.is_empty(),
-            _ => true,
-        }) else {
+        // The core already checked truthiness before ordinary dispatch.
+        // Opted-in unmapped actions/functions returned from declared_call above.
+        let Some(mapped) = o.get("mappedProps") else {
             return Some(Value::Null);
         };
         eval.with_temporary_results(|| match mapped {
