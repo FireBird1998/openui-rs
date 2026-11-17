@@ -484,14 +484,8 @@ pub(super) fn project_marker<'v>(
     value: ExpressionValue<'v>,
     state: &dyn Fn(&str) -> ExpressionValue<'v>,
 ) -> Option<ExpressionValue<'v>> {
-    // Caller-owned records can answer this fixed-key predicate directly;
-    // no expression, projection or property coercion is involved.
-    if let Some(data) = value.data() {
-        match data {
-            Value::Obj(o) if matches!(o.get("__reactive"),Some(Value::Str(s)) if s=="assign") => {}
-            _ => return None,
-        }
-    }
+    // These fixed-key predicates also inspect caller-owned records directly,
+    // without projection, coercion, allocation or charged evaluation work.
     if !value.is_object() || value.string_property("__reactive") != Some("assign") {
         return None;
     }
@@ -689,27 +683,10 @@ fn evaluate_kept(
         fn extra(&self, name: &str, _: &ExpressionEvaluator<'_>) -> Option<Value> {
             (name == "$value").then(|| self.value.clone())
         }
-        fn call(&self, call: &Ast, eval: &ExpressionEvaluator<'_>) -> Option<Value> {
-            self.tree.call(call, eval)
-        }
-        fn call_value_named(
-            &self,
-            call: &Value,
-            name: &str,
-            eval: &ExpressionEvaluator<'_>,
-        ) -> Option<Value> {
-            self.tree.call_value_named(call, name, eval)
-        }
-        fn wants_each_item(&self, value: &ExpressionValue<'_>, context: bool) -> bool {
-            self.tree.wants_each_item(value, context)
-        }
-        fn each_item(
-            &self,
-            value: Option<&Value>,
-            eval: &ExpressionEvaluator<'_>,
-        ) -> Option<Value> {
-            self.tree.each_item(value, eval)
-        }
+        // The output hooks above dispatch on TreeScope, so this wrapper needs
+        // no ordinary call hooks. Query defaults and binding transforms both
+        // run outside prop call context: Each keeps its values unchanged and
+        // uses the trait's default no-substitution hooks.
     }
     let evaluated = {
         let scope = Scope {

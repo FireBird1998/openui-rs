@@ -1,0 +1,6 @@
+{"root":{"type":"element","typeName":"Box","props":{"a":{"steps":[{"type":"open_url","url":"url"}]}},"partial":false,"hasDynamicProps":true},"errors":[]}
+{"root":{"type":"element","typeName":"Box","props":{"a":{"k":"Comp","name":["Action"],"args":null}},"partial":false,"hasDynamicProps":true},"errors":[{"source":"runtime","code":"runtime-error","component":"Box","message":"Evaluating prop \"a\" on Box failed: null is not an object (evaluating 'args.length')","hint":"Check the expression used for prop \"a\""}]}
+{"root":{"type":"element","typeName":"Box","props":{"a":{"k":"Comp","name":["Go"],"args":null}},"partial":false,"hasDynamicProps":true},"errors":[{"source":"runtime","code":"runtime-error","component":"Box","message":"Evaluating prop \"a\" on Box failed: null is not an object (evaluating 'args.length')","hint":"Check the expression used for prop \"a\""}]}
+{"root":{"type":"element","typeName":"Box","props":{"a":{"steps":[]}},"partial":false,"hasDynamicProps":true},"errors":[]}
+{"root":{"type":"element","typeName":"Box","props":{"a":{"steps":[]}},"partial":false,"hasDynamicProps":true},"errors":[]}
+{"root":{"type":"element","typeName":"Box","props":{"a":{"steps":[{"type":"open_url","url":""}]}},"partial":false,"hasDynamicProps":true},"errors":[]}

@@ -1,0 +1,2 @@
+0 {"root":{"type":"element","typeName":"Box","props":{"a":{"k":"Comp","name":"ToAssistant","args":"a"}},"partial":false,"hasDynamicProps":true},"errors":[]} true false
+216 {"root":{"type":"element","typeName":"Box","props":{"a":{"steps":[{"type":"continue_conversation","message":""}]}},"partial":false,"hasDynamicProps":true},"errors":[]} false false

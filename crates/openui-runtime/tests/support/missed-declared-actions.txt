@@ -1,0 +1,140 @@
+0 Go 0 {"root":{"type":"element","typeName":"Box","props":{"a":{"k":"Comp","name":"Go","args":null}},"partial":false,"hasDynamicProps":true},"errors":[{"source":"runtime","code":"runtime-error","component":"Box","message":"Evaluating prop \"a\" on Box failed: null is not an object (evaluating 'args.length')","hint":"Check the expression used for prop \"a\""}]}
+0 Go 1 {"root":{"type":"element","typeName":"Box","props":{"a":{"steps":[{"type":"custom_action","name":"Go","params":{}}]}},"partial":false,"hasDynamicProps":true},"errors":[]}
+0 Go 2 {"root":{"type":"element","typeName":"Box","props":{"a":{"steps":[{"type":"custom_action","name":"Go","params":{}}]}},"partial":false,"hasDynamicProps":true},"errors":[]}
+0 Go 3 {"root":{"type":"element","typeName":"Box","props":{"a":{"steps":[{"type":"custom_action","name":"Go","params":{}}]}},"partial":false,"hasDynamicProps":true},"errors":[]}
+0 Go 4 {"root":{"type":"element","typeName":"Box","props":{"a":{"steps":[{"type":"custom_action","name":"Go","params":{"a":7}}]}},"partial":false,"hasDynamicProps":true},"errors":[]}
+0 Go 5 {"root":{"type":"element","typeName":"Box","props":{"a":{"steps":[{"type":"custom_action","name":"Go","params":{}}]}},"partial":false,"hasDynamicProps":true},"errors":[]}
+0 Go 6 {"root":{"type":"element","typeName":"Box","props":{"a":{"steps":[{"type":"custom_action","name":"Go","params":{"a":"url"}}]}},"partial":false,"hasDynamicProps":true},"errors":[]}
+0 Set 0 {"root":{"type":"element","typeName":"Box","props":{"a":{"k":"Comp","name":"Set","args":null}},"partial":false,"hasDynamicProps":true},"errors":[{"source":"runtime","code":"runtime-error","component":"Box","message":"Evaluating prop \"a\" on Box failed: null is not an object (evaluating 'args.length')","hint":"Check the expression used for prop \"a\""}]}
+0 Set 1 {"root":{"type":"element","typeName":"Box","props":{"a":{"steps":[]}},"partial":false,"hasDynamicProps":true},"errors":[]}
+0 Set 2 {"root":{"type":"element","typeName":"Box","props":{"a":{"steps":[]}},"partial":false,"hasDynamicProps":true},"errors":[]}
+0 Set 3 {"root":{"type":"element","typeName":"Box","props":{"a":{"steps":[]}},"partial":false,"hasDynamicProps":true},"errors":[]}
+0 Set 4 {"root":{"type":"element","typeName":"Box","props":{"a":{"steps":[]}},"partial":false,"hasDynamicProps":true},"errors":[]}
+0 Set 5 {"root":{"type":"element","typeName":"Box","props":{"a":{"steps":[]}},"partial":false,"hasDynamicProps":true},"errors":[]}
+0 Set 6 {"root":{"type":"element","typeName":"Box","props":{"a":{"steps":[]}},"partial":false,"hasDynamicProps":true},"errors":[]}
+0 OpenUrl 0 {"root":{"type":"element","typeName":"Box","props":{"a":{"k":"Comp","name":"OpenUrl","args":null}},"partial":false,"hasDynamicProps":true},"errors":[{"source":"runtime","code":"runtime-error","component":"Box","message":"Evaluating prop \"a\" on Box failed: null is not an object (evaluating 'args.length')","hint":"Check the expression used for prop \"a\""}]}
+0 OpenUrl 1 {"root":{"type":"element","typeName":"Box","props":{"a":{"steps":[{"type":"open_url","url":""}]}},"partial":false,"hasDynamicProps":true},"errors":[]}
+0 OpenUrl 2 {"root":{"type":"element","typeName":"Box","props":{"a":{"steps":[{"type":"open_url","url":""}]}},"partial":false,"hasDynamicProps":true},"errors":[]}
+0 OpenUrl 3 {"root":{"type":"element","typeName":"Box","props":{"a":{"steps":[{"type":"open_url","url":""}]}},"partial":false,"hasDynamicProps":true},"errors":[]}
+0 OpenUrl 4 {"root":{"type":"element","typeName":"Box","props":{"a":{"steps":[{"type":"open_url","url":"7"}]}},"partial":false,"hasDynamicProps":true},"errors":[]}
+0 OpenUrl 5 {"root":{"type":"element","typeName":"Box","props":{"a":{"steps":[{"type":"open_url","url":""}]}},"partial":false,"hasDynamicProps":true},"errors":[]}
+0 OpenUrl 6 {"root":{"type":"element","typeName":"Box","props":{"a":{"steps":[{"type":"open_url","url":"url"}]}},"partial":false,"hasDynamicProps":true},"errors":[]}
+0 ToAssistant 0 {"root":{"type":"element","typeName":"Box","props":{"a":{"k":"Comp","name":"ToAssistant","args":null}},"partial":false,"hasDynamicProps":true},"errors":[{"source":"runtime","code":"runtime-error","component":"Box","message":"Evaluating prop \"a\" on Box failed: null is not an object (evaluating 'args.length')","hint":"Check the expression used for prop \"a\""}]}
+0 ToAssistant 1 {"root":{"type":"element","typeName":"Box","props":{"a":{"steps":[{"type":"continue_conversation","message":""}]}},"partial":false,"hasDynamicProps":true},"errors":[]}
+0 ToAssistant 2 {"root":{"type":"element","typeName":"Box","props":{"a":{"steps":[{"type":"continue_conversation","message":""}]}},"partial":false,"hasDynamicProps":true},"errors":[]}
+0 ToAssistant 3 {"root":{"type":"element","typeName":"Box","props":{"a":{"steps":[{"type":"continue_conversation","message":""}]}},"partial":false,"hasDynamicProps":true},"errors":[]}
+0 ToAssistant 4 {"root":{"type":"element","typeName":"Box","props":{"a":{"steps":[{"type":"continue_conversation","message":"7"}]}},"partial":false,"hasDynamicProps":true},"errors":[]}
+0 ToAssistant 5 {"root":{"type":"element","typeName":"Box","props":{"a":{"steps":[{"type":"continue_conversation","message":""}]}},"partial":false,"hasDynamicProps":true},"errors":[]}
+0 ToAssistant 6 {"root":{"type":"element","typeName":"Box","props":{"a":{"steps":[{"type":"continue_conversation","message":"url"}]}},"partial":false,"hasDynamicProps":true},"errors":[]}
+0 Run 0 {"root":{"type":"element","typeName":"Box","props":{"a":{"k":"Comp","name":"Run","args":null}},"partial":false,"hasDynamicProps":true},"errors":[{"source":"runtime","code":"runtime-error","component":"Box","message":"Evaluating prop \"a\" on Box failed: null is not an object (evaluating 'args[0]')","hint":"Check the expression used for prop \"a\""}]}
+0 Run 1 {"root":{"type":"element","typeName":"Box","props":{"a":{"steps":[]}},"partial":false,"hasDynamicProps":true},"errors":[]}
+0 Run 2 {"root":{"type":"element","typeName":"Box","props":{"a":{"steps":[]}},"partial":false,"hasDynamicProps":true},"errors":[]}
+0 Run 3 {"root":{"type":"element","typeName":"Box","props":{"a":{"steps":[]}},"partial":false,"hasDynamicProps":true},"errors":[]}
+0 Run 4 {"root":{"type":"element","typeName":"Box","props":{"a":{"steps":[]}},"partial":false,"hasDynamicProps":true},"errors":[]}
+0 Run 5 {"root":{"type":"element","typeName":"Box","props":{"a":{"steps":[]}},"partial":false,"hasDynamicProps":true},"errors":[]}
+0 Run 6 {"root":{"type":"element","typeName":"Box","props":{"a":{"steps":[]}},"partial":false,"hasDynamicProps":true},"errors":[]}
+1 Go 0 {"root":{"type":"element","typeName":"Box","props":{"a":{"k":"Comp","name":"Go","args":null}},"partial":false,"hasDynamicProps":true},"errors":[{"source":"runtime","code":"runtime-error","component":"Box","message":"Evaluating prop \"a\" on Box failed: null is not an object (evaluating 'args.length')","hint":"Check the expression used for prop \"a\""}]}
+1 Go 1 {"root":{"type":"element","typeName":"Box","props":{"a":{"steps":[{"type":"custom_action","name":"Go","params":{}}]}},"partial":false,"hasDynamicProps":true},"errors":[]}
+1 Go 2 {"root":{"type":"element","typeName":"Box","props":{"a":{"steps":[{"type":"custom_action","name":"Go","params":{}}]}},"partial":false,"hasDynamicProps":true},"errors":[]}
+1 Go 3 {"root":{"type":"element","typeName":"Box","props":{"a":{"steps":[{"type":"custom_action","name":"Go","params":{}}]}},"partial":false,"hasDynamicProps":true},"errors":[]}
+1 Go 4 {"root":{"type":"element","typeName":"Box","props":{"a":{"steps":[{"type":"custom_action","name":"Go","params":{"0":7}}]}},"partial":false,"hasDynamicProps":true},"errors":[]}
+1 Go 5 {"root":{"type":"element","typeName":"Box","props":{"a":{"steps":[{"type":"custom_action","name":"Go","params":{}}]}},"partial":false,"hasDynamicProps":true},"errors":[]}
+1 Go 6 {"root":{"type":"element","typeName":"Box","props":{"a":{"steps":[{"type":"custom_action","name":"Go","params":{"0":"url"}}]}},"partial":false,"hasDynamicProps":true},"errors":[]}
+1 Set 0 {"root":{"type":"element","typeName":"Box","props":{"a":{"k":"Comp","name":"Set","args":null}},"partial":false,"hasDynamicProps":true},"errors":[{"source":"runtime","code":"runtime-error","component":"Box","message":"Evaluating prop \"a\" on Box failed: null is not an object (evaluating 'args.length')","hint":"Check the expression used for prop \"a\""}]}
+1 Set 1 {"root":{"type":"element","typeName":"Box","props":{"a":{"steps":[]}},"partial":false,"hasDynamicProps":true},"errors":[]}
+1 Set 2 {"root":{"type":"element","typeName":"Box","props":{"a":{"steps":[]}},"partial":false,"hasDynamicProps":true},"errors":[]}
+1 Set 3 {"root":{"type":"element","typeName":"Box","props":{"a":{"steps":[]}},"partial":false,"hasDynamicProps":true},"errors":[]}
+1 Set 4 {"root":{"type":"element","typeName":"Box","props":{"a":{"steps":[]}},"partial":false,"hasDynamicProps":true},"errors":[]}
+1 Set 5 {"root":{"type":"element","typeName":"Box","props":{"a":{"steps":[]}},"partial":false,"hasDynamicProps":true},"errors":[]}
+1 Set 6 {"root":{"type":"element","typeName":"Box","props":{"a":{"steps":[]}},"partial":false,"hasDynamicProps":true},"errors":[]}
+1 OpenUrl 0 {"root":{"type":"element","typeName":"Box","props":{"a":{"k":"Comp","name":"OpenUrl","args":null}},"partial":false,"hasDynamicProps":true},"errors":[{"source":"runtime","code":"runtime-error","component":"Box","message":"Evaluating prop \"a\" on Box failed: null is not an object (evaluating 'args.length')","hint":"Check the expression used for prop \"a\""}]}
+1 OpenUrl 1 {"root":{"type":"element","typeName":"Box","props":{"a":{"steps":[{"type":"open_url","url":""}]}},"partial":false,"hasDynamicProps":true},"errors":[]}
+1 OpenUrl 2 {"root":{"type":"element","typeName":"Box","props":{"a":{"steps":[{"type":"open_url","url":""}]}},"partial":false,"hasDynamicProps":true},"errors":[]}
+1 OpenUrl 3 {"root":{"type":"element","typeName":"Box","props":{"a":{"steps":[{"type":"open_url","url":""}]}},"partial":false,"hasDynamicProps":true},"errors":[]}
+1 OpenUrl 4 {"root":{"type":"element","typeName":"Box","props":{"a":{"steps":[{"type":"open_url","url":"7"}]}},"partial":false,"hasDynamicProps":true},"errors":[]}
+1 OpenUrl 5 {"root":{"type":"element","typeName":"Box","props":{"a":{"steps":[{"type":"open_url","url":""}]}},"partial":false,"hasDynamicProps":true},"errors":[]}
+1 OpenUrl 6 {"root":{"type":"element","typeName":"Box","props":{"a":{"steps":[{"type":"open_url","url":"url"}]}},"partial":false,"hasDynamicProps":true},"errors":[]}
+1 ToAssistant 0 {"root":{"type":"element","typeName":"Box","props":{"a":{"k":"Comp","name":"ToAssistant","args":null}},"partial":false,"hasDynamicProps":true},"errors":[{"source":"runtime","code":"runtime-error","component":"Box","message":"Evaluating prop \"a\" on Box failed: null is not an object (evaluating 'args.length')","hint":"Check the expression used for prop \"a\""}]}
+1 ToAssistant 1 {"root":{"type":"element","typeName":"Box","props":{"a":{"steps":[{"type":"continue_conversation","message":""}]}},"partial":false,"hasDynamicProps":true},"errors":[]}
+1 ToAssistant 2 {"root":{"type":"element","typeName":"Box","props":{"a":{"steps":[{"type":"continue_conversation","message":""}]}},"partial":false,"hasDynamicProps":true},"errors":[]}
+1 ToAssistant 3 {"root":{"type":"element","typeName":"Box","props":{"a":{"steps":[{"type":"continue_conversation","message":""}]}},"partial":false,"hasDynamicProps":true},"errors":[]}
+1 ToAssistant 4 {"root":{"type":"element","typeName":"Box","props":{"a":{"steps":[{"type":"continue_conversation","message":"7"}]}},"partial":false,"hasDynamicProps":true},"errors":[]}
+1 ToAssistant 5 {"root":{"type":"element","typeName":"Box","props":{"a":{"steps":[{"type":"continue_conversation","message":""}]}},"partial":false,"hasDynamicProps":true},"errors":[]}
+1 ToAssistant 6 {"root":{"type":"element","typeName":"Box","props":{"a":{"steps":[{"type":"continue_conversation","message":"url"}]}},"partial":false,"hasDynamicProps":true},"errors":[]}
+1 Run 0 {"root":{"type":"element","typeName":"Box","props":{"a":{"k":"Comp","name":"Run","args":null}},"partial":false,"hasDynamicProps":true},"errors":[{"source":"runtime","code":"runtime-error","component":"Box","message":"Evaluating prop \"a\" on Box failed: null is not an object (evaluating 'args[0]')","hint":"Check the expression used for prop \"a\""}]}
+1 Run 1 {"root":{"type":"element","typeName":"Box","props":{"a":{"steps":[]}},"partial":false,"hasDynamicProps":true},"errors":[]}
+1 Run 2 {"root":{"type":"element","typeName":"Box","props":{"a":{"steps":[]}},"partial":false,"hasDynamicProps":true},"errors":[]}
+1 Run 3 {"root":{"type":"element","typeName":"Box","props":{"a":{"steps":[]}},"partial":false,"hasDynamicProps":true},"errors":[]}
+1 Run 4 {"root":{"type":"element","typeName":"Box","props":{"a":{"steps":[]}},"partial":false,"hasDynamicProps":true},"errors":[]}
+1 Run 5 {"root":{"type":"element","typeName":"Box","props":{"a":{"steps":[]}},"partial":false,"hasDynamicProps":true},"errors":[]}
+1 Run 6 {"root":{"type":"element","typeName":"Box","props":{"a":{"steps":[]}},"partial":false,"hasDynamicProps":true},"errors":[]}
+2 Go 0 {"root":{"type":"element","typeName":"Box","props":{"a":{"k":"Comp","name":"Go","args":null}},"partial":false,"hasDynamicProps":true},"errors":[{"source":"runtime","code":"runtime-error","component":"Box","message":"Evaluating prop \"a\" on Box failed: null is not an object (evaluating 'args.length')","hint":"Check the expression used for prop \"a\""}]}
+2 Go 1 {"root":{"type":"element","typeName":"Box","props":{"a":{"steps":[{"type":"custom_action","name":"Go","params":{}}]}},"partial":false,"hasDynamicProps":true},"errors":[]}
+2 Go 2 {"root":{"type":"element","typeName":"Box","props":{"a":{"steps":[{"type":"custom_action","name":"Go","params":{}}]}},"partial":false,"hasDynamicProps":true},"errors":[]}
+2 Go 3 {"root":{"type":"element","typeName":"Box","props":{"a":{"steps":[{"type":"custom_action","name":"Go","params":{}}]}},"partial":false,"hasDynamicProps":true},"errors":[]}
+2 Go 4 {"root":{"type":"element","typeName":"Box","props":{"a":{"steps":[{"type":"custom_action","name":"Go","params":{"0":7}}]}},"partial":false,"hasDynamicProps":true},"errors":[]}
+2 Go 5 {"root":{"type":"element","typeName":"Box","props":{"a":{"steps":[{"type":"custom_action","name":"Go","params":{}}]}},"partial":false,"hasDynamicProps":true},"errors":[]}
+2 Go 6 {"root":{"type":"element","typeName":"Box","props":{"a":{"steps":[{"type":"custom_action","name":"Go","params":{"0":"url"}}]}},"partial":false,"hasDynamicProps":true},"errors":[]}
+2 Set 0 {"root":{"type":"element","typeName":"Box","props":{"a":{"k":"Comp","name":"Set","args":null}},"partial":false,"hasDynamicProps":true},"errors":[{"source":"runtime","code":"runtime-error","component":"Box","message":"Evaluating prop \"a\" on Box failed: null is not an object (evaluating 'args.length')","hint":"Check the expression used for prop \"a\""}]}
+2 Set 1 {"root":{"type":"element","typeName":"Box","props":{"a":{"steps":[]}},"partial":false,"hasDynamicProps":true},"errors":[]}
+2 Set 2 {"root":{"type":"element","typeName":"Box","props":{"a":{"steps":[]}},"partial":false,"hasDynamicProps":true},"errors":[]}
+2 Set 3 {"root":{"type":"element","typeName":"Box","props":{"a":{"steps":[]}},"partial":false,"hasDynamicProps":true},"errors":[]}
+2 Set 4 {"root":{"type":"element","typeName":"Box","props":{"a":{"steps":[]}},"partial":false,"hasDynamicProps":true},"errors":[]}
+2 Set 5 {"root":{"type":"element","typeName":"Box","props":{"a":{"steps":[]}},"partial":false,"hasDynamicProps":true},"errors":[]}
+2 Set 6 {"root":{"type":"element","typeName":"Box","props":{"a":{"steps":[]}},"partial":false,"hasDynamicProps":true},"errors":[]}
+2 OpenUrl 0 {"root":{"type":"element","typeName":"Box","props":{"a":{"k":"Comp","name":"OpenUrl","args":null}},"partial":false,"hasDynamicProps":true},"errors":[{"source":"runtime","code":"runtime-error","component":"Box","message":"Evaluating prop \"a\" on Box failed: null is not an object (evaluating 'args.length')","hint":"Check the expression used for prop \"a\""}]}
+2 OpenUrl 1 {"root":{"type":"element","typeName":"Box","props":{"a":{"steps":[{"type":"open_url","url":""}]}},"partial":false,"hasDynamicProps":true},"errors":[]}
+2 OpenUrl 2 {"root":{"type":"element","typeName":"Box","props":{"a":{"steps":[{"type":"open_url","url":""}]}},"partial":false,"hasDynamicProps":true},"errors":[]}
+2 OpenUrl 3 {"root":{"type":"element","typeName":"Box","props":{"a":{"steps":[{"type":"open_url","url":""}]}},"partial":false,"hasDynamicProps":true},"errors":[]}
+2 OpenUrl 4 {"root":{"type":"element","typeName":"Box","props":{"a":{"steps":[{"type":"open_url","url":"7"}]}},"partial":false,"hasDynamicProps":true},"errors":[]}
+2 OpenUrl 5 {"root":{"type":"element","typeName":"Box","props":{"a":{"steps":[{"type":"open_url","url":""}]}},"partial":false,"hasDynamicProps":true},"errors":[]}
+2 OpenUrl 6 {"root":{"type":"element","typeName":"Box","props":{"a":{"steps":[{"type":"open_url","url":"url"}]}},"partial":false,"hasDynamicProps":true},"errors":[]}
+2 ToAssistant 0 {"root":{"type":"element","typeName":"Box","props":{"a":{"k":"Comp","name":"ToAssistant","args":null}},"partial":false,"hasDynamicProps":true},"errors":[{"source":"runtime","code":"runtime-error","component":"Box","message":"Evaluating prop \"a\" on Box failed: null is not an object (evaluating 'args.length')","hint":"Check the expression used for prop \"a\""}]}
+2 ToAssistant 1 {"root":{"type":"element","typeName":"Box","props":{"a":{"steps":[{"type":"continue_conversation","message":""}]}},"partial":false,"hasDynamicProps":true},"errors":[]}
+2 ToAssistant 2 {"root":{"type":"element","typeName":"Box","props":{"a":{"steps":[{"type":"continue_conversation","message":""}]}},"partial":false,"hasDynamicProps":true},"errors":[]}
+2 ToAssistant 3 {"root":{"type":"element","typeName":"Box","props":{"a":{"steps":[{"type":"continue_conversation","message":""}]}},"partial":false,"hasDynamicProps":true},"errors":[]}
+2 ToAssistant 4 {"root":{"type":"element","typeName":"Box","props":{"a":{"steps":[{"type":"continue_conversation","message":"7"}]}},"partial":false,"hasDynamicProps":true},"errors":[]}
+2 ToAssistant 5 {"root":{"type":"element","typeName":"Box","props":{"a":{"steps":[{"type":"continue_conversation","message":""}]}},"partial":false,"hasDynamicProps":true},"errors":[]}
+2 ToAssistant 6 {"root":{"type":"element","typeName":"Box","props":{"a":{"steps":[{"type":"continue_conversation","message":"url"}]}},"partial":false,"hasDynamicProps":true},"errors":[]}
+2 Run 0 {"root":{"type":"element","typeName":"Box","props":{"a":{"k":"Comp","name":"Run","args":null}},"partial":false,"hasDynamicProps":true},"errors":[{"source":"runtime","code":"runtime-error","component":"Box","message":"Evaluating prop \"a\" on Box failed: null is not an object (evaluating 'args[0]')","hint":"Check the expression used for prop \"a\""}]}
+2 Run 1 {"root":{"type":"element","typeName":"Box","props":{"a":{"steps":[]}},"partial":false,"hasDynamicProps":true},"errors":[]}
+2 Run 2 {"root":{"type":"element","typeName":"Box","props":{"a":{"steps":[]}},"partial":false,"hasDynamicProps":true},"errors":[]}
+2 Run 3 {"root":{"type":"element","typeName":"Box","props":{"a":{"steps":[]}},"partial":false,"hasDynamicProps":true},"errors":[]}
+2 Run 4 {"root":{"type":"element","typeName":"Box","props":{"a":{"steps":[]}},"partial":false,"hasDynamicProps":true},"errors":[]}
+2 Run 5 {"root":{"type":"element","typeName":"Box","props":{"a":{"steps":[]}},"partial":false,"hasDynamicProps":true},"errors":[]}
+2 Run 6 {"root":{"type":"element","typeName":"Box","props":{"a":{"steps":[]}},"partial":false,"hasDynamicProps":true},"errors":[]}
+3 Go 0 {"root":{"type":"element","typeName":"Box","props":{"a":{"k":"Comp","name":"Go","args":null}},"partial":false,"hasDynamicProps":true},"errors":[{"source":"runtime","code":"runtime-error","component":"Box","message":"Evaluating prop \"a\" on Box failed: null is not an object (evaluating 'args.length')","hint":"Check the expression used for prop \"a\""}]}
+3 Go 1 {"root":{"type":"element","typeName":"Box","props":{"a":{"steps":[{"type":"custom_action","name":"Go","params":{"a":null}}]}},"partial":false,"hasDynamicProps":true},"errors":[]}
+3 Go 2 {"root":{"type":"element","typeName":"Box","props":{"a":{"steps":[{"type":"custom_action","name":"Go","params":{"a":null}}]}},"partial":false,"hasDynamicProps":true},"errors":[]}
+3 Go 3 {"root":{"type":"element","typeName":"Box","props":{"a":{"steps":[{"type":"custom_action","name":"Go","params":{"a":null}}]}},"partial":false,"hasDynamicProps":true},"errors":[]}
+3 Go 4 {"root":{"type":"element","typeName":"Box","props":{"a":{"steps":[{"type":"custom_action","name":"Go","params":{"a":7}}]}},"partial":false,"hasDynamicProps":true},"errors":[]}
+3 Go 5 {"root":{"type":"element","typeName":"Box","props":{"a":{"steps":[{"type":"custom_action","name":"Go","params":{"a":null}}]}},"partial":false,"hasDynamicProps":true},"errors":[]}
+3 Go 6 {"root":{"type":"element","typeName":"Box","props":{"a":{"steps":[{"type":"custom_action","name":"Go","params":{"a":"url"}}]}},"partial":false,"hasDynamicProps":true},"errors":[]}
+3 Set 0 {"root":{"type":"element","typeName":"Box","props":{"a":{"k":"Comp","name":"Set","args":null}},"partial":false,"hasDynamicProps":true},"errors":[{"source":"runtime","code":"runtime-error","component":"Box","message":"Evaluating prop \"a\" on Box failed: null is not an object (evaluating 'args.length')","hint":"Check the expression used for prop \"a\""}]}
+3 Set 1 {"root":{"type":"element","typeName":"Box","props":{"a":{"steps":[]}},"partial":false,"hasDynamicProps":true},"errors":[]}
+3 Set 2 {"root":{"type":"element","typeName":"Box","props":{"a":{"steps":[]}},"partial":false,"hasDynamicProps":true},"errors":[]}
+3 Set 3 {"root":{"type":"element","typeName":"Box","props":{"a":{"steps":[]}},"partial":false,"hasDynamicProps":true},"errors":[]}
+3 Set 4 {"root":{"type":"element","typeName":"Box","props":{"a":{"steps":[]}},"partial":false,"hasDynamicProps":true},"errors":[]}
+3 Set 5 {"root":{"type":"element","typeName":"Box","props":{"a":{"steps":[]}},"partial":false,"hasDynamicProps":true},"errors":[]}
+3 Set 6 {"root":{"type":"element","typeName":"Box","props":{"a":{"steps":[]}},"partial":false,"hasDynamicProps":true},"errors":[]}
+3 OpenUrl 0 {"root":{"type":"element","typeName":"Box","props":{"a":{"k":"Comp","name":"OpenUrl","args":null}},"partial":false,"hasDynamicProps":true},"errors":[{"source":"runtime","code":"runtime-error","component":"Box","message":"Evaluating prop \"a\" on Box failed: null is not an object (evaluating 'args.length')","hint":"Check the expression used for prop \"a\""}]}
+3 OpenUrl 1 {"root":{"type":"element","typeName":"Box","props":{"a":{"steps":[{"type":"open_url","url":""}]}},"partial":false,"hasDynamicProps":true},"errors":[]}
+3 OpenUrl 2 {"root":{"type":"element","typeName":"Box","props":{"a":{"steps":[{"type":"open_url","url":""}]}},"partial":false,"hasDynamicProps":true},"errors":[]}
+3 OpenUrl 3 {"root":{"type":"element","typeName":"Box","props":{"a":{"steps":[{"type":"open_url","url":""}]}},"partial":false,"hasDynamicProps":true},"errors":[]}
+3 OpenUrl 4 {"root":{"type":"element","typeName":"Box","props":{"a":{"steps":[{"type":"open_url","url":"7"}]}},"partial":false,"hasDynamicProps":true},"errors":[]}
+3 OpenUrl 5 {"root":{"type":"element","typeName":"Box","props":{"a":{"steps":[{"type":"open_url","url":""}]}},"partial":false,"hasDynamicProps":true},"errors":[]}
+3 OpenUrl 6 {"root":{"type":"element","typeName":"Box","props":{"a":{"steps":[{"type":"open_url","url":"url"}]}},"partial":false,"hasDynamicProps":true},"errors":[]}
+3 ToAssistant 0 {"root":{"type":"element","typeName":"Box","props":{"a":{"k":"Comp","name":"ToAssistant","args":null}},"partial":false,"hasDynamicProps":true},"errors":[{"source":"runtime","code":"runtime-error","component":"Box","message":"Evaluating prop \"a\" on Box failed: null is not an object (evaluating 'args.length')","hint":"Check the expression used for prop \"a\""}]}
+3 ToAssistant 1 {"root":{"type":"element","typeName":"Box","props":{"a":{"steps":[{"type":"continue_conversation","message":""}]}},"partial":false,"hasDynamicProps":true},"errors":[]}
+3 ToAssistant 2 {"root":{"type":"element","typeName":"Box","props":{"a":{"steps":[{"type":"continue_conversation","message":""}]}},"partial":false,"hasDynamicProps":true},"errors":[]}
+3 ToAssistant 3 {"root":{"type":"element","typeName":"Box","props":{"a":{"steps":[{"type":"continue_conversation","message":""}]}},"partial":false,"hasDynamicProps":true},"errors":[]}
+3 ToAssistant 4 {"root":{"type":"element","typeName":"Box","props":{"a":{"steps":[{"type":"continue_conversation","message":"7"}]}},"partial":false,"hasDynamicProps":true},"errors":[]}
+3 ToAssistant 5 {"root":{"type":"element","typeName":"Box","props":{"a":{"steps":[{"type":"continue_conversation","message":""}]}},"partial":false,"hasDynamicProps":true},"errors":[]}
+3 ToAssistant 6 {"root":{"type":"element","typeName":"Box","props":{"a":{"steps":[{"type":"continue_conversation","message":"url"}]}},"partial":false,"hasDynamicProps":true},"errors":[]}
+3 Run 0 {"root":{"type":"element","typeName":"Box","props":{"a":{"k":"Comp","name":"Run","args":null}},"partial":false,"hasDynamicProps":true},"errors":[{"source":"runtime","code":"runtime-error","component":"Box","message":"Evaluating prop \"a\" on Box failed: null is not an object (evaluating 'args[0]')","hint":"Check the expression used for prop \"a\""}]}
+3 Run 1 {"root":{"type":"element","typeName":"Box","props":{"a":{"steps":[]}},"partial":false,"hasDynamicProps":true},"errors":[]}
+3 Run 2 {"root":{"type":"element","typeName":"Box","props":{"a":{"steps":[]}},"partial":false,"hasDynamicProps":true},"errors":[]}
+3 Run 3 {"root":{"type":"element","typeName":"Box","props":{"a":{"steps":[]}},"partial":false,"hasDynamicProps":true},"errors":[]}
+3 Run 4 {"root":{"type":"element","typeName":"Box","props":{"a":{"steps":[]}},"partial":false,"hasDynamicProps":true},"errors":[]}
+3 Run 5 {"root":{"type":"element","typeName":"Box","props":{"a":{"steps":[]}},"partial":false,"hasDynamicProps":true},"errors":[]}
+3 Run 6 {"root":{"type":"element","typeName":"Box","props":{"a":{"steps":[]}},"partial":false,"hasDynamicProps":true},"errors":[]}

@@ -425,6 +425,16 @@ fn array_like_action_arguments_keep_their_first_expression_and_ordered_steps() {
     assert!(run.failure.is_none() && !run.size_limited && !run.depth_limited);
     assert_eq!(run.events.len(), 2);
     assert_eq!(
+        run.events
+            .iter()
+            .map(|event| event.to_json().unwrap())
+            .collect::<Vec<_>>(),
+        [
+            r#"{"type":"open_url","params":{"url":"first"},"humanFriendlyMessage":"","formState":{}}"#,
+            r#"{"type":"open_url","params":{"url":"second"},"humanFriendlyMessage":"","formState":{}}"#,
+        ]
+    );
+    assert_eq!(
         value_to_json(root.props.get("a").unwrap()).unwrap(),
         r#"{"steps":[{"type":"open_url","url":"first"},{"type":"open_url","url":"second"}]}"#
     );
@@ -657,4 +667,42 @@ fn diagnostic_export_keeps_depth_refusal_when_text_fills_the_size_ceiling() {
     assert!(error.flags.depth_limited);
     assert!(!error.flags.size_limited);
     assert_eq!(error.to_string(), "depth limit exceeded");
+}
+
+/// Re-record the existing probe coordinates, splitting a row if its endpoints
+/// now differ. This deliberately preserves coverage coordinates across cost changes.
+#[test]
+#[ignore = "rewrites the checked-in observation fixture"]
+fn regenerate_missed_tree_observations() {
+    let mut output = String::from(
+        "# case\tdata\tallowance\tfirst\tlast\tJSON FNV-1a64 size_limited depth_limited\n",
+    );
+    for line in include_str!("support/missed-tree.tsv")
+        .lines()
+        .filter(|l| !l.starts_with('#'))
+    {
+        let f: Vec<_> = line.split('\t').collect();
+        let first: usize = f[3].parse().unwrap();
+        let last: usize = f[4].parse().unwrap();
+        let a = observation(f[0].parse().unwrap(), f[1].parse().unwrap(), f[2], first);
+        let b = observation(f[0].parse().unwrap(), f[1].parse().unwrap(), f[2], last);
+        if a == b {
+            output.push_str(&format!(
+                "{}\t{}\t{}\t{first}\t{last}\t{a}\n",
+                f[0], f[1], f[2]
+            ));
+        } else {
+            for (at, value) in [(first, a), (last, b)] {
+                output.push_str(&format!(
+                    "{}\t{}\t{}\t{at}\t{at}\t{value}\n",
+                    f[0], f[1], f[2]
+                ));
+            }
+        }
+    }
+    std::fs::write(
+        concat!(env!("CARGO_MANIFEST_DIR"), "/tests/support/missed-tree.tsv"),
+        output,
+    )
+    .unwrap();
 }

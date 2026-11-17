@@ -1,0 +1,27 @@
+0 work 0 {"root":{"type":"element","typeName":"Box","props":{"a":{"k":"Comp","name":"Echo","args":[]}},"partial":false,"hasDynamicProps":true},"errors":[]} true false
+0 work 114 {"root":{"type":"element","typeName":"Box","props":{},"partial":false,"hasDynamicProps":true},"errors":[]} false false
+0 room 0 {"root":{"type":"element","typeName":"Box","props":{"a":{"k":"Comp","name":"Echo","args":[]}},"partial":false,"hasDynamicProps":true},"errors":[]} true false
+0 room 89 {"root":{"type":"element","typeName":"Box","props":{},"partial":false,"hasDynamicProps":true},"errors":[]} false false
+0 depth 0 {"root":{"type":"element","typeName":"Box","props":{"a":{"k":"Comp","name":"Echo","args":[]}},"partial":false,"hasDynamicProps":true},"errors":[]} false true
+0 depth 3 {"root":{"type":"element","typeName":"Box","props":{},"partial":false,"hasDynamicProps":true},"errors":[]} false false
+1 work 0 {"root":{"type":"element","typeName":"Box","props":{"a":{"k":"Comp","name":"Echo","args":[]}},"partial":false,"hasDynamicProps":true},"errors":[]} true false
+1 work 133 {"root":{"type":"element","typeName":"Box","props":{"a":null},"partial":false,"hasDynamicProps":true},"errors":[]} false false
+1 room 0 {"root":{"type":"element","typeName":"Box","props":{"a":{"k":"Comp","name":"Echo","args":[]}},"partial":false,"hasDynamicProps":true},"errors":[]} true false
+1 room 93 {"root":{"type":"element","typeName":"Box","props":{"a":null},"partial":false,"hasDynamicProps":true},"errors":[]} false false
+1 depth 0 {"root":{"type":"element","typeName":"Box","props":{"a":{"k":"Comp","name":"Echo","args":[]}},"partial":false,"hasDynamicProps":true},"errors":[]} false true
+1 depth 3 {"root":{"type":"element","typeName":"Box","props":{"a":null},"partial":false,"hasDynamicProps":true},"errors":[]} false false
+"" work 0 {"root":{"type":"element","typeName":"Box","props":{"a":{"k":"Comp","name":"Echo","args":[]}},"partial":false,"hasDynamicProps":true},"errors":[]} true false
+"" work 114 {"root":{"type":"element","typeName":"Box","props":{},"partial":false,"hasDynamicProps":true},"errors":[]} false false
+"" room 0 {"root":{"type":"element","typeName":"Box","props":{"a":{"k":"Comp","name":"Echo","args":[]}},"partial":false,"hasDynamicProps":true},"errors":[]} true false
+"" room 89 {"root":{"type":"element","typeName":"Box","props":{},"partial":false,"hasDynamicProps":true},"errors":[]} false false
+"" depth 0 {"root":{"type":"element","typeName":"Box","props":{"a":{"k":"Comp","name":"Echo","args":[]}},"partial":false,"hasDynamicProps":true},"errors":[]} false true
+"" depth 3 {"root":{"type":"element","typeName":"Box","props":{},"partial":false,"hasDynamicProps":true},"errors":[]} false false
+"x" work 0 {"root":{"type":"element","typeName":"Box","props":{"a":{"k":"Comp","name":"Echo","args":[]}},"partial":false,"hasDynamicProps":true},"errors":[]} true false
+"x" work 134 {"root":{"type":"element","typeName":"Box","props":{"a":null},"partial":false,"hasDynamicProps":true},"errors":[]} false false
+"x" room 0 {"root":{"type":"element","typeName":"Box","props":{"a":{"k":"Comp","name":"Echo","args":[]}},"partial":false,"hasDynamicProps":true},"errors":[]} true false
+"x" room 93 {"root":{"type":"element","typeName":"Box","props":{"a":null},"partial":false,"hasDynamicProps":true},"errors":[]} false false
+"x" depth 0 {"root":{"type":"element","typeName":"Box","props":{"a":{"k":"Comp","name":"Echo","args":[]}},"partial":false,"hasDynamicProps":true},"errors":[]} false true
+"x" depth 3 {"root":{"type":"element","typeName":"Box","props":{"a":null},"partial":false,"hasDynamicProps":true},"errors":[]} false false
+{"root":{"type":"element","typeName":"Box","props":{"a":{"a":{"x":1}},"b":{"a":{"x":2}}},"partial":false,"hasDynamicProps":true,"statementId":"root"},"errors":[]}
+{"root":{"type":"element","typeName":"Box","props":{"a":{"a":{"x":1}},"b":{}},"partial":false,"hasDynamicProps":true,"statementId":"root"},"errors":[{"source":"runtime","code":"runtime-error","component":"Box","statementId":"root","message":"Evaluating prop \"b\" on Box failed: @Other: field \"/a\" expects string but got object","hint":"Check the expression used for prop \"b\""}]}
+{"root":{"type":"element","typeName":"Box","props":{"a":{"a":{"x":1}},"b":{"type":"element","typeName":"Box","props":{"a":{"a":{"x":1}}},"partial":false,"hasDynamicProps":true}},"partial":false,"hasDynamicProps":true,"statementId":"root"},"errors":[]}

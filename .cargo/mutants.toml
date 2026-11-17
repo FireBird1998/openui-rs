@@ -125,4 +125,49 @@ exclude_re = [
     # change only a tiny temporary text allocation, never the retained plan.
     'crates/openui-runtime/src/tree/actions\.rs:.*: replace match guard key == "type" with false in field$',
     'crates/openui-runtime/src/tree/actions\.rs:.*: replace == with != in field$',
+
+    # Runtime #40, second batch. Public paths and scratch controls are documented
+    # in TESTING.md; list-mode set differences check every exclusion below.
+    # Changing the second OR leaves the failure check intact. A size/depth cut is sticky;
+    # the immediately following copy_text fails before copying any argument name. The later
+    # schema/output admission observes the same cut. Only construction of an empty temporary
+    # record before returning the empty plan can differ; this unpriced bookkeeping has no
+    # allocation-count contract.
+    "crates/openui-runtime/src/tree/actions\\.rs:\\d+:68: replace \\|\\| with && in TreeScope<'a>::declared_call$",
+    # Changing the second OR leaves the failure check intact. A size/depth cut is sticky;
+    # the immediately following copy_text fails before copying any argument name. The later
+    # schema/output admission observes the same cut. Only construction of an empty temporary
+    # record before returning the empty plan can differ; this unpriced bookkeeping has no
+    # allocation-count contract.
+    "crates/openui-runtime/src/tree/actions\\.rs:\\d+:72: replace \\|\\| with && in TreeScope<'a>::declared_call$",
+    # cacheable_arguments can be true only with share_arguments. With a unique evaluated
+    # argument object, retaining a weak cache source cannot produce a future hit: it has no
+    # surviving external owner, and Weak prevents address reuse. At most one transformed
+    # validation result lives until replacement/end of this operation. Only this unpriced
+    # cache retention changes; output, flags and the cumulative evaluation account are
+    # unchanged.
+    "crates/openui-runtime/src/tree/actions\\.rs:\\d+:48: replace && with \\|\\| in TreeScope<'a>::declared_call$",
+    # possible_name rejects a name longer than all retained entry bytes combined, which
+    # cannot name a retained field/form. __proto__ is explicitly exempted; other inherited
+    # functions still project to None. Removing one early rejection only hashes/walks an
+    # impossible name; there is no timing contract for this lookup.
+    "crates/openui-runtime/src/tree/form\\.rs:\\d+:9: replace \\|\\| with && in get_field_value$",
+    # copy_text charges raw text length plus one. At raw length equal to the whole work
+    # allowance it must refuse too; above that allowance it also refuses before copying.
+    # This preflight only avoids scanning JSON escapes, outside the priced evaluation work.
+    "crates/openui-runtime/src/tree/input\\.rs:\\d+:19: replace > with == in text_size$",
+    # copy_text charges raw text length plus one. At raw length equal to the whole work
+    # allowance it must refuse too. This preflight only avoids scanning JSON escapes,
+    # outside the priced evaluation work.
+    "crates/openui-runtime/src/tree/input\\.rs:\\d+:19: replace > with >= in text_size$",
+    # Every caller reserves the quoted bytes as both work and room, then copies text for
+    # additional work. At bytes == max(room, work), reservation exhausts or exceeds work;
+    # above it reservation also refuses. Changing this preflight preserves size flags and
+    # prevents no successful copy.
+    "crates/openui-runtime/src/tree/input\\.rs:\\d+:14: replace > with == in text_size$",
+    # Every caller reserves the quoted bytes as both work and room, then copies text for
+    # additional work. At bytes == max(room, work), reservation exhausts or exceeds work;
+    # above it reservation also refuses. Changing this preflight preserves size flags and
+    # prevents no successful copy.
+    "crates/openui-runtime/src/tree/input\\.rs:\\d+:14: replace > with >= in text_size$",
 ]

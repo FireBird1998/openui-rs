@@ -2401,3 +2401,85 @@ that preview both by discarding and by showing the complete program with
 identical props. It requires the original complete selection to reappear,
 unchanged state/version and no events, then checks validation follows complete
 tab switches. Both parameter cases require an available macOS display.
+
+
+## Runtime missed mutants, final batch (#40)
+
+The full runtime run at `c3b6b8b` contained **1,106 mutants**. Its two survivor
+batches are now accounted for individually:
+
+| Survivor batch | Covered by tests | Reasoned exclusions | Removed code | Bugs |
+| --- | ---: | ---: | ---: | ---: |
+| First batch | 57 | 14 | 8 | 0 |
+| Final batch | 83 | 9 | 6 | 0 |
+| Total | 140 | 23 | 14 | 0 |
+
+These are mutant counts, not numbers of test functions. Every one of the 177
+listed survivors has a regression, a reasoned exclusion, or a removed redundant
+path. This is **not a new full mutation run**. The final batch used individually
+applied scratch mutations and focused integration binaries; every TEST entry
+was observed failing, then its source was restored. The 98-entry ledger is
+`target/mut-40b-table.txt`; patches, failure logs and exclusion-set comparisons
+are in `target/mut-40b/`. The full crate mutation command was not run.
+
+`missed_runtime.rs` adds 27 fast public-interface tests. The grouped matrices
+pin complete output/error observations or complete-JSON fingerprints, refusal
+variants, flags and work/room/depth edges. They cover supplied typed syntax,
+ignored marker metadata, escaped text, malformed and coerced action arguments,
+query registration, prepared references, function return truthiness, argument
+cache identity, binding annotation ambiguity and retained-name refunds.
+Combined work/depth limits distinguish guards that otherwise appear equivalent:
+a premature size refusal cannot replace an observable depth refusal. Formatting
+checks pin every ActionResumeError message and opaque continuation Debug text.
+The existing array-like Action test also pins both emitted event payloads.
+
+The mapped-argument allocation test compares the borrowed path with an otherwise
+identical same-process path requiring a temporary name map, at widths 16 and 64.
+Both paths are warmed before measurement to exclude one-time evaluator setup.
+It compares allocation calls, with width-relative slack, not measured byte counts
+or elapsed time. No new test has a timing assertion. No parser or materialisation
+code changed, no new limit was introduced, and public results, errors, flags,
+reported work/room and allocations remain unchanged against main
+`c37b46c1dc9e4839dff25b01a0c88443245fa149`.
+
+The production deletion is confined to redundant binding hooks and the duplicate
+marker predicate. The wrapper's output hooks dispatch directly on TreeScope, so
+its ordinary call hooks were unreachable. Each runs outside prop call context
+for query defaults and binding transforms; its no-substitution defaults suffice.
+The removed each_item forwarding hook itself called the trait's default None.
+The marker's remaining object/string predicates already inspect caller-owned
+records without projection, allocation or charged work. Four scratch public-path
+allocation probes matched before/after, alongside unchanged observation fixtures.
+
+Nine exclusions retain protective fast paths whose mutations change only unpriced
+bookkeeping or checks dominated by later admission. Their reasons are beside
+the patterns in `.cargo/mutants.toml`. Per-file `cargo mutants --list --json`
+set comparisons removed exactly four action mutants, one form mutant and four
+text-sizing mutants. Every pattern is anchored to its column. The advancing
+string-cursor comparison is covered by the one-character argument work test,
+not an exclusion: skipping an indexed character changes charged argument work.
+Failures, cut-flag precedence and Display text are not excluded.
+
+The session, native and wasm `post_evaluation_refusal_*` tests now require
+`OpenUiError::Evaluation` with `native view root is not an element`, in addition
+to the existing pending-continuation and state comparisons. A pre-evaluation
+JSON or limit refusal no longer satisfies these tests.
+
+### Deliberate regeneration of missed-mutant observations
+
+The final-batch fixtures were recorded from unchanged main before any production
+deletion. To approve an intentional cost change, inspect its effects and regenerate:
+
+```sh
+CARGO_NET_OFFLINE=true UPDATE_MISSED_RUNTIME=1 cargo test -p openui-runtime --test missed_runtime
+CARGO_NET_OFFLINE=true cargo test -p openui-runtime --test missed_tree regenerate_missed_tree_observations -- --ignored
+```
+
+The first command writes `support/missed-*.txt` from the complete small probe
+grids. The ignored writer updates `support/missed-tree.tsv` at its existing
+endpoint coordinates. Equal endpoint observations remain paired; endpoints that
+now differ become separate singleton rows. It preserves all existing probes and
+does not claim to discover new transition coordinates. Run either writer twice
+and require identical output, review the fixture diff, then run both binaries
+without regeneration enabled. Neither writer is part of the normal mutation
+suite; neither invokes Bun or updates conformance goldens.

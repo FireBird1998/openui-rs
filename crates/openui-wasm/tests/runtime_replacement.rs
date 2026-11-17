@@ -108,16 +108,16 @@ $new=3
 $shape={type:"element",typeName:"Box",props:{},partial:false,hasDynamicProps:false,extra:1}
 root=true ? $shape : Box()"#,
     );
-    assert!(
+    assert!(matches!(
         subject
             .replace_program(
                 candidate,
                 Some("{\"$n\":99,\"$extra\":8}".into()),
                 Some("{\"$pristine\":77}".into()),
-                true
-            )
-            .is_err()
-    );
+                true,
+            ),
+        Err(OpenUiError::Evaluation { reason }) if reason == "native view root is not an element"
+    ));
     assert_eq!(subject.snapshot().unwrap(), control.snapshot().unwrap());
     assert_eq!(subject.version().unwrap(), control.version().unwrap());
     for name in ["$n", "$pristine", "$new", "$extra", "$shape", "f"] {
