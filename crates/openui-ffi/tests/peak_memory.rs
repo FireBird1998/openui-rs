@@ -69,3 +69,34 @@ fn optional_memory_field_reaches_parse_time_evaluated_defaults() {
         }
     }
 }
+
+#[test]
+fn reference_preparation_refuses_memory_configuration_before_session_creation() {
+    let library = ComponentLibrary::new(SCHEMA.into()).unwrap();
+    let existing = RuntimeSession::new(library.clone(), None).unwrap();
+    existing.set("$n".into(), Some("7".into())).unwrap();
+    let before = existing.snapshot().unwrap();
+    let version = existing.version().unwrap();
+    for allowance in [0, 1, u64::MAX] {
+        let result = RuntimeSession::with_limits(
+            library.clone(),
+            None,
+            RuntimeLimits {
+                reference_preparation: ParseLimits {
+                    peak_memory: Some(allowance),
+                    ..Default::default()
+                },
+                ..Default::default()
+            },
+        );
+        assert!(
+            matches!(result, Err(OpenUiError::LimitExceeded { reason }) if reason.contains("referencePreparation.peakMemory"))
+        );
+        assert_eq!(existing.snapshot().unwrap(), before);
+        assert_eq!(existing.version().unwrap(), version);
+    }
+    let fresh = RuntimeSession::new(library, None).unwrap();
+    assert_eq!(fresh.snapshot().unwrap(), "{}");
+    fresh.dispose();
+    existing.dispose();
+}

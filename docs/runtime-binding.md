@@ -323,3 +323,14 @@ running earlier steps would change state despite refusing the call. Refusing
 all runs before execution when full would also stop runs that never suspend.
 The existing eviction test pins that non-suspending runs keep working. No second
 eviction policy is exposed.
+
+For evaluation-memory sizing, profile identical inputs/callbacks in Rust with
+`Limits::with_peak_memory(usize::MAX)` and read `EvaluationMemory.accounted_peak`
+from `evaluate_tree_with_memory`, `EvaluationSession::memory` or
+`ActionRun::memory`. Include all resumed segments and use at least the peak of an uncut profile.
+The conservative cumulative account is not a heap multiplier. Binding result
+records report flags, not accounted bytes; a binding-only host can bisect the
+smallest uncut allowance for a fixed input. `referencePreparation.peakMemory`
+is rejected by session construction with the existing `LimitExceeded` error,
+including zero and the maximum value; no session or Store state is changed.
+Calls that omit it retain their existing behavior.

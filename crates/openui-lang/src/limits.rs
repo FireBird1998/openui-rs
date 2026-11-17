@@ -123,6 +123,9 @@ impl Limits {
     /// including action resumes. A refusal sets the existing `size_limited` flag.
     /// Parser syntax, materialisation, host callbacks, bookkeeping and stacks are
     /// excluded. This bounds admitted evaluation storage, not process heap.
+    /// Profile identical inputs with `with_peak_memory(usize::MAX)` and read
+    /// `EvaluationMemory::accounted_peak` through the session/tree/action diagnostic.
+    /// Use at least that peak; the cumulative account is not a heap multiplier.
     pub const fn peak_memory(&self) -> Option<usize> {
         self.peak_memory
     }

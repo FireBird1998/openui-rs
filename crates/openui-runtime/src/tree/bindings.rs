@@ -713,7 +713,7 @@ fn evaluate_kept(
     }
     let evaluated = {
         let scope = Scope {
-            tree: TreeScope::new(&input, store, supplied),
+            tree: TreeScope::new(&input, store, supplied, limits),
             value,
         };
         let session = EvaluationSession::with_limits(&scope, bytes, limits);

@@ -160,6 +160,7 @@ pub struct RuntimeLimits {
     /// Independent supplied-reference preparation bounds. Default depth is
     /// 32,768 with the core's default work/size ceilings, exactly as Rust's
     /// PreparedReferenceValues::new; this never spends evaluation work.
+    /// Setting peak_memory here refuses session construction with LimitExceeded.
     pub reference_preparation: ParseLimits,
     /// Byte bound for host text/JSON, program JSON, action paths and explicit
     /// binding annotations (default 8 MiB). Draws use only runtime limits.
@@ -334,6 +335,11 @@ impl SessionCore {
         prompt_spec: Option<String>,
         limits: RuntimeLimits,
     ) -> Result<Self, OpenUiError> {
+        if limits.reference_preparation.peak_memory.is_some() {
+            return Err(limit(
+                "referencePreparation.peakMemory is unsupported; set evaluation.peakMemory",
+            ));
+        }
         if limits.max_continuations == 0 {
             return Err(limit("maxContinuations must be at least one"));
         }

@@ -24,7 +24,9 @@ a separate, unchanged limit; it supplies no memory-accounting credit.
 
 Setup receipts (ADR 0010) continue to require equal measuring limits. The new
 peak-memory setting is excluded from that comparison: preparation neither
-measures nor spends evaluation storage. Changing this setting cannot invalidate
+measures nor spends evaluation storage. Bindings reject this setting on reference preparation with their existing
+`LimitExceeded` configuration error; no evaluation occurs there. Changing the
+evaluation setting cannot invalidate
 otherwise identical program/start receipts or give additional input credit.
 `memory_settings_do_not_invalidate_setup_only_receipts` pins reuse between unset,
 profiling and adjacent memory settings, with zero setup memory reservations.
@@ -83,7 +85,7 @@ limited }` diagnostic through `EvaluationSession::memory`, callback evaluators,
 `evaluate_tree_with_memory` and `ActionRun::memory`. Disabled accounting reports
 `None`; action setup refusal before execution also reports `None`.
 
-A memory-cut tree may replace rejected raw recovery props/root with null: recovery
+A memory-cut tree replaces rejected raw recovery props/root with null: recovery
 must not copy a payload whose reservation was refused. Ordinary work/room/depth
 recovery is unchanged. A cut binding/form/action write never reaches Store
 mutation. Earlier completed steps and host events remain, as in ADR 0003. This is
@@ -135,8 +137,8 @@ Public `peak_memory` tests enforce adjacent thresholds, sweeps, descriptor and
 reentrant paths, default evaluation, rebuilds, resumed writes and unchanged Store
 state. The 2,652-row read/unread repeated-reference witnesses compare set/unset
 allocator peaks in the same process, with wide layout tolerance. Varied leaves
-record heap/account ratios and enforce only `heap <= 32*account + 64 KiB` for those
-finite shapes. This is a regression guard, not a universal multiplier. TESTING.md
+record heap/account ratios and enforce `heap <= account` for those finite
+shapes, including the 1,000-row repeated-reference profile. This is a regression guard, not a universal multiplier. TESTING.md
 records measurements and the default-path controls; no timing is an assertion.
 
 ## Alternatives
@@ -148,3 +150,32 @@ ledger would depend on native ownership/reclamation and need to cover every valu
 representation and suspended root; it also adds tracking allocations. Keeping
 reservations until allowance end provides an explicit, auditable first contract
 without changing default allocation counts or reported work/room.
+
+## Review follow-up (#74)
+
+Recovery admissions apply at element envelopes, owned Each rebuilds and later
+projection/rebuild boundaries too. A refused envelope returns null before
+copying its raw props; completed children remain where already admitted. The
+recovery sweep visits both ends of every reservation-equivalent allowance
+interval for array, object and nested-element props, with completed JSON plus
+32 bytes as the finite-shape bound. An Each test derives a refusal edge from a
+one-item control and compares heap with the completed same-process control;
+delaying the result-vector admission until after construction fails that bound.
+
+The weights remain unchanged. On the review machine, the 1,000-row
+`Each(L,i,L)` profile accounted about 900.7 MB for 48.8 MB of measured heap
+(18.46 times). The Each result-vector event itself is only 128,064 reservation
+bytes, under 0.02% of the total. Discounting that event cannot resolve the gap;
+most charges are repeated reads/projections retained by the arena contract.
+Changing their lifetime or globally discounting scalar visits would need a
+separate accounting design and broader evidence than these finite shapes.
+The measured values are observations, never platform-specific test pins.
+
+Scratch discounts confirmed why no global slot change accompanies #74. Halving
+128 to 64 reduced the repeated-reference account to about 452.4 MB but failed
+`memory_is_opt_in_and_has_an_exact_portable_edge` (the established portable
+overflow edge); the object profile had only 9,960 accounted versus 9,016 heap
+bytes. Reducing to 32 failed `representative_shapes_account_for_measured_heap`
+with 7,496 accounted versus 9,016 heap bytes. These changes affect every scalar
+and container, beyond the Each vector event. Neither candidate satisfies the
+requirement to preserve all existing tests and conservative shape coverage.

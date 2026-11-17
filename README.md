@@ -47,7 +47,15 @@ default**: `Limits::DEFAULT.with_peak_memory(bytes)` enables it; session/native
 setting. These are conservative reservation bytes, retained for the whole
 allowance, rather than process heap bytes. A cut sets `size_limited` and a cut
 write changes no state. See [ADR 0011](docs/adr/0011-opt-in-portable-evaluation-memory.md)
-for the weights, excluded paths and profiling rule.
+for the weights and excluded paths. To size an allowance, profile the same
+inputs and callbacks with `with_peak_memory(usize::MAX)` and read the reported
+`EvaluationMemory.accounted_peak` from `evaluate_tree_with_memory`,
+`EvaluationSession::memory`, or `ActionRun::memory`. Use at least that value,
+including every resumed segment, from an uncut profile. The account is conservative and cumulative;
+it is **not a heap multiplier**. Binding result records expose cut flags rather
+than the account: profile through Rust, or bisect the smallest uncut allowance
+for a fixed input. Reference preparation does not evaluate; setting
+`referencePreparation.peakMemory` refuses session creation with `LimitExceeded`.
 
 | Limit | Default | Configuration |
 | --- | --- | --- |

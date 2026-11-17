@@ -1299,7 +1299,8 @@ There is no new divergence at defaults. `Limits::peak_memory()` defaults to
 counts remain those of main. Explicitly setting it enables the portable arena
 reservation measure in [ADR 0011](docs/adr/0011-opt-in-portable-evaluation-memory.md).
 The reference has no corresponding allowance. A refused reservation cuts with
-`size_limited`; rejected raw recovery values may become null. A refused write
+`size_limited`; rejected raw recovery values become null, including rejected element envelopes
+and owned/revisited rebuilds (#74). A refused write
 preserves Store value, pristine status and version. Completed earlier action
 steps retain their effects. One memory allowance spans mutation resumes.
 
@@ -1310,3 +1311,19 @@ field. Default CLI differential and same-binary controls are described in
 TESTING.md. This resolves #55's two goals for **accounted evaluation storage**;
 it does not turn serialized room or portable reservations into a universal heap
 bound. The ADR explicitly lists the uncounted paths.
+
+The #74 recovery sweep bounds array-, object- and nested-element-prop cut JSON
+by complete JSON plus 32 bytes across all reservation boundaries, for those
+tested shapes only. In general a refused array leaves one `null` per admitted
+item, so a cut result is bounded by the lengths of the containers already
+admitted and never by the raw syntax of what was refused; it can exceed the
+complete JSON by more than 32 bytes (a 1,000-item list nested in an object
+measured 4,219 bytes against 4,154 complete). The Each
+preflight test rejects delaying its vector reservation until after construction
+using a same-process heap control. Representative shapes and the 1,000-item
+repeated-reference profile enforce heap no greater than the conservative
+account for those shapes only. Weights are unchanged. Binding constructors
+refuse `referencePreparation.peakMemory` with `LimitExceeded` before creating
+session state; omitted settings keep existing behavior. The unused terminal
+state-defaults memory-account clear was removed: every evaluation entry that
+uses the account initializes its own account before reservations.

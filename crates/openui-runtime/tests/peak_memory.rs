@@ -14,6 +14,156 @@ static ALLOCATOR: test_alloc::Allocator = test_alloc::Allocator::with_cap(512 * 
 fn library() -> Library {
     Library::from_json_schema(&parse_json(r#"{"$defs":{"Box":{"properties":{"a":{}}}}}"#).unwrap())
 }
+
+#[test]
+fn memory_cut_recovery_never_exports_refused_syntax() {
+    let library = library();
+    let store = Store::new();
+    let list = (0..1000)
+        .map(|i| i.to_string())
+        .collect::<Vec<_>>()
+        .join(",");
+    for prop in [
+        "[@Sum(L),@Sum(L),@Sum(L),@Sum(L),@Count(L)]",
+        "{first:@Sum(L),second:@Sum(L),last:@Count(L)}",
+        "[Box(@Sum(L)),Box({a:@Sum(L),b:@Count(L)})]",
+        "@Each([1,2,3],i,Box({a:@Sum(L),b:i}))",
+    ] {
+        let p = parse_with_limits(
+            &format!("L=[{list}]\nroot=Box({prop})"),
+            &library,
+            None,
+            limits(),
+        );
+        assert!(!p.size_limited && !p.depth_limited);
+        let (whole, usage) = evaluate_tree_with_memory(
+            TreeInput::new(&p),
+            &store,
+            limits().with_peak_memory(usize::MAX),
+        );
+        assert!(!whole.size_limited && whole.errors.is_empty());
+        let complete = whole.to_json().unwrap();
+        let unset = evaluate_tree_with_limits(TreeInput::new(&p), &store, limits());
+        assert_eq!(unset.to_json().unwrap(), complete);
+        assert!(!unset.size_limited && !unset.depth_limited && unset.errors.is_empty());
+        let peak = usage.unwrap().accounted_peak;
+        println!(
+            "recovery {prop}: complete={}, account={peak}",
+            complete.len()
+        );
+        // All reservation-equivalent allowance intervals, descending. If a
+        // refusal leaves p successful bytes, [p, allowance] has the same
+        // successful prefix and refuses the same next reservation. Check both
+        // ends, then visit the preceding interval. This covers every allowance
+        // without reevaluating thousands of identical integer settings.
+        let mut allowance = peak - 1;
+        loop {
+            let (cut, usage) = evaluate_tree_with_memory(
+                TreeInput::new(&p),
+                &store,
+                limits().with_peak_memory(allowance),
+            );
+            let json = cut.to_json().unwrap();
+            assert!(
+                json.len() <= complete.len() + 32,
+                "{prop}, allowance={allowance}: {} vs {}",
+                json.len(),
+                complete.len()
+            );
+            assert!(cut.size_limited && usage.unwrap().limited);
+            let prefix = usage.unwrap().accounted_peak;
+            assert!(prefix <= allowance);
+            let (edge, edge_usage) = evaluate_tree_with_memory(
+                TreeInput::new(&p),
+                &store,
+                limits().with_peak_memory(prefix),
+            );
+            assert_eq!(edge.to_json().unwrap(), json);
+            assert!(edge.size_limited);
+            assert_eq!(edge_usage, usage);
+            if prefix == 0 {
+                break;
+            }
+            allowance = prefix - 1;
+        }
+        for allowance in [500, 1257, 5029, peak, peak + 1, usize::MAX] {
+            let (result, usage) = evaluate_tree_with_memory(
+                TreeInput::new(&p),
+                &store,
+                limits().with_peak_memory(allowance),
+            );
+            assert!(result.to_json().unwrap().len() <= complete.len() + 32);
+            assert_eq!(result.size_limited, allowance < peak);
+            assert_eq!(usage.unwrap().limited, allowance < peak);
+            if allowance >= peak {
+                assert_eq!(result.to_json().unwrap(), complete);
+            }
+        }
+    }
+}
+
+#[test]
+fn each_reserves_its_result_vector_before_building_items() {
+    use openui_runtime::{EvaluationScope, ExpressionEvaluator};
+    use std::cell::Cell;
+    struct Items {
+        data: Value,
+        first: Cell<Option<usize>>,
+    }
+    impl EvaluationScope for Items {
+        fn call(&self, call: &Ast, eval: &ExpressionEvaluator<'_>) -> Option<Value> {
+            if matches!(call, Ast::Comp { name, .. } if name == "Items") {
+                Some(self.data.clone())
+            } else {
+                if self.first.get().is_none() {
+                    self.first.set(Some(eval.memory().unwrap().accounted_peak));
+                }
+                Some(Value::Num(1.))
+            }
+        }
+    }
+    let scope = Items {
+        data: Value::Arr(Arc::new(vec![Value::Num(0.); 8192])),
+        first: Cell::new(None),
+    };
+    let expression = ast("@Each(@Items(),i,@Tick())");
+    let session = EvaluationSession::with_limits(&scope, 0, limits().with_peak_memory(usize::MAX));
+    test_alloc::reset_peak();
+    let start = test_alloc::peak();
+    let whole = session.evaluate(&expression);
+    let full_heap = test_alloc::peak().saturating_sub(start);
+    assert!(!whole.size_limited);
+    drop(whole);
+    drop(session);
+    // Derive the edge from a one-item control, so delaying the production
+    // check cannot also move the test's edge. The callback return and Each
+    // destination each admit one length-dependent container (ADR 0011).
+    let small = Items {
+        data: Value::Arr(Arc::new(vec![Value::Num(0.)])),
+        first: Cell::new(None),
+    };
+    let control = EvaluationSession::with_limits(&small, 0, limits().with_peak_memory(usize::MAX));
+    assert!(!control.evaluate(&expression).size_limited);
+    let storage = |n| {
+        let s = EvaluationSession::with_limits(&(), 0, limits().with_peak_memory(usize::MAX));
+        assert!(s.with_evaluator(|e| e.reserve_container_storage(n)));
+        s.memory().unwrap().accounted_peak
+    };
+    let threshold = small.first.get().unwrap() + 2 * (storage(8192) - storage(1));
+    scope.first.set(None);
+    let session =
+        EvaluationSession::with_limits(&scope, 0, limits().with_peak_memory(threshold - 1));
+    test_alloc::reset_peak();
+    let start = test_alloc::peak();
+    let cut = session.evaluate(&expression);
+    let cut_heap = test_alloc::peak().saturating_sub(start);
+    assert!(cut.size_limited && session.memory().unwrap().limited);
+    println!("Each preflight: threshold={threshold}, cut={cut_heap}, full={full_heap}");
+    assert!(
+        cut_heap < full_heap / 32 + 16 * 1024,
+        "cut={cut_heap}, full={full_heap}"
+    );
+}
 fn ast(s: &str) -> Ast {
     parse_expression(&tokenize(s))
 }
@@ -293,7 +443,7 @@ fn action_resumes_keep_one_memory_allowance_and_cut_writes_change_no_state() {
 }
 
 #[test]
-fn representative_shapes_report_portable_bytes_and_loose_heap_ratios() {
+fn representative_shapes_account_for_measured_heap() {
     let library = library();
     let store = Store::new();
     for leaf in [
@@ -317,13 +467,42 @@ fn representative_shapes_report_portable_bytes_and_loose_heap_ratios() {
         let heap = test_alloc::peak().saturating_sub(start);
         let account = usage.unwrap().accounted_peak;
         assert!(!result.size_limited && !result.depth_limited);
-        assert!(heap <= account.saturating_mul(32).saturating_add(64 * 1024));
+        assert!(heap <= account, "heap={heap}, account={account}");
         println!(
             "leaf={} account={account} heap={heap} heap/account={:.3}",
             leaf.len(),
             heap as f64 / account as f64
         );
     }
+}
+
+#[test]
+fn repeated_reference_profile_covers_measured_heap() {
+    let list = (0..1000)
+        .map(|i| i.to_string())
+        .collect::<Vec<_>>()
+        .join(",");
+    let p = parse(
+        &format!("L=[{list}]\nroot=Box(@Each(L,i,L))"),
+        &library(),
+        None,
+    );
+    let store = Store::new();
+    test_alloc::reset_peak();
+    let start = test_alloc::peak();
+    let (result, memory) = evaluate_tree_with_memory(
+        TreeInput::new(&p),
+        &store,
+        limits().with_peak_memory(usize::MAX),
+    );
+    let heap = test_alloc::peak().saturating_sub(start);
+    let account = memory.unwrap().accounted_peak;
+    assert!(!result.size_limited && !result.depth_limited);
+    assert!(heap <= account, "heap={heap}, account={account}");
+    println!(
+        "1000-row Each: heap={heap}, account={account}, account/heap={:.2}",
+        account as f64 / heap as f64
+    );
 }
 
 #[test]

@@ -24,6 +24,7 @@ pub struct RuntimeLimits {
     /// Independent supplied-reference preparation bounds. Default depth is
     /// 32,768 with the core's default work/size ceilings, exactly as Rust's
     /// PreparedReferenceValues::new; this never spends evaluation work.
+    /// A peak_memory setting here refuses session construction with LimitExceeded.
     pub reference_preparation: ParseLimits,
     /// Byte bound for host text/JSON, program JSON, action paths and explicit
     /// binding annotations (default 8 MiB). Draws use only runtime limits.

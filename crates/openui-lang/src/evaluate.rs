@@ -660,7 +660,6 @@ pub(crate) fn state_defaults(
     LIMITS.with(|l| {
         l.room.set(usize::MAX);
         l.work.set(usize::MAX);
-        l.memory.set(None);
     });
     READ.with(|r| r.borrow_mut().clear());
     READ_LOG.with(|l| l.borrow_mut().clear());

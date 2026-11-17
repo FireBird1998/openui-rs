@@ -154,3 +154,26 @@ test('argument getter reentry and free are typed and do not poison the instance'
   expect(s.get('$n')).toBe('0'); expect(s.version()).toBe(1n);
   a.free(); e.free(); out.free(); s.free(); library.free();
 });
+
+test('reference preparation refuses evaluation memory configuration without effects', () => {
+  const {s, library} = setup();
+  const limits = new RuntimeLimits(), preparation = limits.referencePreparation;
+  try {
+    s.set('$n', '7');
+    const before = s.snapshot(), version = s.version();
+    for (const allowance of [0n, 1n, (1n << 64n) - 1n]) {
+      preparation.peakMemory = allowance;
+      limits.referencePreparation = preparation;
+      kind(() => {
+        const unexpected = RuntimeSession.withLimits(library, undefined, limits);
+        unexpected.free();
+      }, 'LimitExceeded');
+      expect(s.snapshot()).toBe(before);
+      expect(s.version()).toBe(version);
+    }
+    preparation.peakMemory = undefined;
+    limits.referencePreparation = preparation;
+    const fresh = RuntimeSession.withLimits(library, undefined, limits);
+    try { expect(fresh.snapshot()).toBe('{}'); } finally { fresh.free(); }
+  } finally { preparation.free(); limits.free(); s.free(); library.free(); }
+});

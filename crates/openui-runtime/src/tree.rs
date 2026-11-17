@@ -170,7 +170,7 @@ pub struct TreeResult {
     /// retain an existing root and fitted props; an opt-in memory refusal may
     /// replace unadmitted recovery values with null.
     pub root: Option<Value>,
-    /// Failed props retain their original value.
+    /// Failed props retain their original value; memory-refused recovery is null.
     pub errors: Vec<RuntimeError>,
     /// Work or result room ran out.
     pub size_limited: bool,
@@ -291,6 +291,8 @@ pub(crate) fn value_json(value: &Value) -> String {
 /// A completed nested subtree keeps its fitted props by the same rule. Raw
 /// input retained on a cut does not spend generated-result room. Retained props
 /// still use JavaScript property-assignment semantics, like failed props.
+/// With the opt-in memory allowance, rejected recovery props/envelopes become
+/// null instead; recovery never retains syntax whose admission was refused.
 /// Raw props retained on a cut may display forged custom-step objects. Their
 /// position in the tree grants no authority: execution must check the store's
 /// private registry, including for retained or cut values. Evaluating an AST
@@ -344,7 +346,7 @@ pub fn evaluate_tree_with_memory(
     };
     let supplied = input.prepared_reference_values.or(measured.as_ref());
     let bytes = bytes.saturating_add(supplied.map_or(0, |v| v.bytes));
-    let scope = TreeScope::new(&input, store, supplied);
+    let scope = TreeScope::new(&input, store, supplied, limits);
     let session = EvaluationSession::with_limits(&scope, bytes, limits);
     let root = session.with_evaluator(|eval| {
         scope.initialize_queries(input.result, eval);
@@ -436,6 +438,7 @@ impl<'a> ReferenceIndex<'a> {
 type QueryDefault = Result<Option<Value>, crate::EvaluationFlags>;
 type PaidMarker = (std::sync::Weak<JsObject<Value>>, usize);
 struct TreeScope<'a> {
+    memory_enabled: bool,
     registering: Cell<bool>,
     defaults: RefCell<BTreeMap<&'a str, QueryDefault>>,
     store: &'a Store,
@@ -468,6 +471,7 @@ impl<'a> TreeScope<'a> {
         input: &TreeInput<'a>,
         store: &'a Store,
         supplied: Option<&'a PreparedReferenceValues<'a>>,
+        limits: Limits,
     ) -> Self {
         let mut entries = std::collections::HashMap::new();
         for (i, q) in input.result.query_statements.iter().enumerate() {
@@ -484,6 +488,7 @@ impl<'a> TreeScope<'a> {
             input,
             store,
             supplied,
+            limits,
             ReferenceIndex {
                 program: input.result,
                 entries: std::rc::Rc::new(entries),
@@ -494,9 +499,11 @@ impl<'a> TreeScope<'a> {
         input: &TreeInput<'a>,
         store: &'a Store,
         supplied: Option<&'a PreparedReferenceValues<'a>>,
+        limits: Limits,
         references: ReferenceIndex<'a>,
     ) -> Self {
         Self {
+            memory_enabled: limits.peak_memory().is_some(),
             registering: Cell::new(true),
             defaults: RefCell::new(BTreeMap::new()),
             store,
@@ -1224,7 +1231,11 @@ impl TreeScope<'_> {
                     .as_ref()
                     .is_some_and(|v| eval.reserve_value_storage(v))
                 {
-                    return result;
+                    return if self.memory_enabled {
+                        result.map(|v| recover_value(&v, eval))
+                    } else {
+                        result
+                    };
                 }
                 let mut out = Vec::new();
                 for item in a.iter() {
@@ -1258,7 +1269,11 @@ impl TreeScope<'_> {
                     .as_ref()
                     .is_some_and(|v| eval.reserve_value_storage(v))
                 {
-                    return value;
+                    return if self.memory_enabled {
+                        value.map(|v| recover_value(&v, eval))
+                    } else {
+                        value
+                    };
                 }
                 // Reading these bodies was paid by the discarded projection.
                 // Restore unchanged room from its one-use receipt; recursive
@@ -1270,7 +1285,11 @@ impl TreeScope<'_> {
                     || (prepaid.is_none()
                         && !value.as_ref().is_some_and(|v| eval.reserve_array_header(v)))
                 {
-                    return value;
+                    return if self.memory_enabled {
+                        value.map(|v| recover_value(&v, eval))
+                    } else {
+                        value
+                    };
                 }
                 let mut out = Vec::new();
                 for item in items.iter() {
@@ -1283,7 +1302,11 @@ impl TreeScope<'_> {
                         if prepaid.is_none() {
                             eval.reserve_value(item);
                         }
-                        out.push(item.clone());
+                        out.push(if self.memory_enabled {
+                            recover_value(item, eval)
+                        } else {
+                            item.clone()
+                        });
                     }
                 }
                 Some(Value::Arr(Arc::new(out)))
@@ -1293,7 +1316,11 @@ impl TreeScope<'_> {
             }
             Some(ref item) => {
                 eval.reserve_value(item);
-                value
+                if self.memory_enabled && eval.memory().is_some_and(|m| m.limited) {
+                    Some(Value::Null)
+                } else {
+                    value
+                }
             }
             None => None,
         }
@@ -1371,14 +1398,24 @@ impl TreeScope<'_> {
             if !cut(eval) && eval.reserve_result(text_bytes(key).saturating_add(1)) {
                 eval.with_level(|| eval.reserve_value(&raw));
             }
-            Some(raw)
+            Some(
+                if self.memory_enabled && eval.memory().is_some_and(|m| m.limited) {
+                    Value::Null
+                } else {
+                    raw
+                },
+            )
         } else {
             self.prop_on(owner, key, &raw, eval)
         }
     }
     fn owned_element(&self, mut value: Value, eval: &ExpressionEvaluator<'_>) -> Value {
         if cut(eval) || !eval.reserve_value_storage(&value) {
-            return value;
+            return if self.memory_enabled {
+                recover_value(&value, eval)
+            } else {
+                value
+            };
         }
         eval.with_level(||{
             let Value::Element(arc)=&mut value else{return};
@@ -1387,7 +1424,10 @@ impl TreeScope<'_> {
                 .saturating_sub(usize::from(e.partial)).saturating_sub(usize::from(e.has_dynamic_props))
                 .saturating_add(text_bytes(&e.type_name)).saturating_add(e.props.len().saturating_sub(1))
                 .saturating_add(e.statement_id.as_ref().map_or(0,|s|text_bytes(s).saturating_add(15)));
-            if !eval.reserve_result(bytes){return;}
+            if !eval.reserve_result(bytes){
+                if self.memory_enabled && eval.memory().is_some_and(|m|m.limited){value=Value::Null;}
+                return;
+            }
             let owner=PropOwner{component:&e.type_name,statement:e.statement_id.as_deref(),bindings:self.binding_props.and_then(|b|b.component(&e.type_name))};
             let mut raw=std::mem::take(&mut e.props);
             let keys=raw.iter().map(|(k,_)|k.clone()).collect::<Vec<_>>();
@@ -1413,7 +1453,7 @@ impl TreeScope<'_> {
             if !e.has_dynamic_props {
                 let v = Value::Element(Arc::new(e.clone()));
                 eval.reserve_value(&v);
-                return v;
+                return if self.memory_enabled && eval.memory().is_some_and(|m| m.limited) { Value::Null } else { v };
             }
             let bytes = r#"{"type":"element","typeName":,"props":{},"partial":false,"hasDynamicProps":false}"#.len().saturating_sub(usize::from(e.partial)).saturating_sub(usize::from(e.has_dynamic_props))
                 .saturating_add(text_bytes(&e.type_name))
@@ -1424,7 +1464,7 @@ impl TreeScope<'_> {
                         .map_or(0, |s| text_bytes(s).saturating_add(15)),
                 );
             if !eval.reserve_result(bytes) {
-                return Value::Element(Arc::new(e.clone()));
+                return recover_element(e, eval, self.memory_enabled);
             }
             let owner = PropOwner {
                 component: &e.type_name,
@@ -1446,7 +1486,7 @@ impl TreeScope<'_> {
             self.remember_stable(&value, stable, eval);
             value
         })
-        .unwrap_or_else(|| Value::Element(Arc::new(e.clone())))
+        .unwrap_or_else(|| recover_element(e, eval, self.memory_enabled))
     }
     fn shaped(&self, raw: &Value, o: &JsObject<Value>, eval: &ExpressionEvaluator<'_>) -> Value {
         if cut(eval) || !eval.reserve_value_storage(raw) {
@@ -1673,5 +1713,13 @@ fn recover_value(raw: &Value, eval: &ExpressionEvaluator<'_>) -> Value {
         Value::Null
     } else {
         raw.clone()
+    }
+}
+
+fn recover_element(raw: &Element, eval: &ExpressionEvaluator<'_>, memory_enabled: bool) -> Value {
+    if memory_enabled && eval.memory().is_some_and(|m| m.limited) {
+        Value::Null
+    } else {
+        Value::Element(Arc::new(raw.clone()))
     }
 }

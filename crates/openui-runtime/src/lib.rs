@@ -92,7 +92,11 @@
 //! an opaque later callback selects one. Host computation and allocation have
 //! no runtime quota. The opt-in `Limits::with_peak_memory` bounds portable
 //! evaluation reservations (ADR 0011), with explicit exclusions; it is disabled
-//! by default and is not a process-heap limit. Finite allocator shape bounds, and the unresolved general
+//! by default and is not a process-heap limit. Profile identical inputs with
+//! `Limits::with_peak_memory(usize::MAX)` and read `EvaluationMemory::accounted_peak`
+//! through `evaluate_tree_with_memory`, `EvaluationSession::memory` or
+//! `ActionRun::memory`; use at least that peak, including all resumes. The
+//! cumulative account is not a heap multiplier. Finite allocator shape bounds, and the unresolved general
 //! amplification bound, are documented in ADR 0001/0008 and `TESTING.md`.
 //! Disposal is linear in retained state and private identity records for custom
 //! plans; keeping plans alive can grow those records independently of Store JSON.

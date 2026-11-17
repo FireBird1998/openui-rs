@@ -2219,13 +2219,16 @@ assertion). Process completion uses an async termination handler, no nested
 run loop. It needs the local main ref and already-built binding, never downloads.
 
 
-## Opt-in evaluation-memory allowance (#55)
+## Opt-in evaluation-memory allowance (#55, #74)
 
 `crates/openui-runtime/tests/peak_memory.rs` declares a 512 MiB `test_alloc`
 allocator. Its public-interface tests are:
 
 | Test | Enforced behavior |
 | --- | --- |
+| `memory_cut_recovery_never_exports_refused_syntax` | Array, object, nested-element and Each-owned props: both ends of every reservation-equivalent allowance interval produce flagged cuts bounded by complete JSON plus 32 bytes; explicit 1257 setting and exact completion edges |
+| `each_reserves_its_result_vector_before_building_items` | Edge derived from a one-item control and public storage reservations; just-under-edge cut heap below completed same-process heap / 32 + 16 KiB; fails when the check moves after construction |
+| `repeated_reference_profile_covers_measured_heap` | 1,000-row Each profiling; representative real heap does not exceed the conservative account |
 | `memory_settings_do_not_invalidate_setup_only_receipts` | Memory-only settings can change without invalidating core setup receipts; setup spends no memory allowance |
 | `memory_is_opt_in_and_has_an_exact_portable_edge` | Default unset; exact and one-byte-adjacent accounted thresholds; sticky memory cuts; monotonic sweeps over scalar, string, array, object, Each, sort and filter expressions |
 | `tree_rebuilds_share_the_account_and_keep_completed_bytes` | Shared tree/rebuild reservations, exact completed bytes at/above the observed peak, flagged cuts below it, monotonic sweeps |
@@ -2236,17 +2239,20 @@ allocator. Its public-interface tests are:
 | `static_element_payloads_are_admitted_before_the_root_clone` | A static element’s large directly owned string is refused before cloning the root; same-process peak comparison with 16 KiB tolerance |
 | `a_one_byte_short_allowance_refuses_the_large_public_copy` | A large public string copy is refused before allocation at exactly one byte below the accounted peak; same-process measured heap comparison with 16 KiB tolerance |
 | `descriptor_substitution_and_reentrant_scopes_share_memory_cuts` | Descriptor evaluation/substitution and evaluator callback reentry keep the same account and flags |
-| `representative_shapes_report_portable_bytes_and_loose_heap_ratios` | Representative empty-array, nested-array, object and string leaves; diagnostic heap/account ratios and only a loose `32*account + 64 KiB` finite-shape guard |
+| `representative_shapes_account_for_measured_heap` | Representative empty-array, nested-array, object and string leaves; diagnostic heap/account ratios and `heap <= account` for these finite shapes |
 
-The separate native/wasm `peak_memory` test binaries declare capped allocators
-and exercise the optional session configuration with unchanged completed JSON,
+The separate session/native/wasm `peak_memory` test binaries declare capped allocators
+and pin `reference_preparation_refuses_memory_configuration_before_session_creation`: zero, one and maximum reference-preparation memory settings refuse with `LimitExceeded`, leaving existing state unchanged. Native/wasm also exercise the optional session configuration with unchanged completed JSON,
 cut flags and unchanged state. Native also checks parse-time defaults; wasm
 checks the generated-facing optional accessor. Existing pinned allocation/work/
 room tests are unchanged. No measured bytes or elapsed times are exact pins.
 
 On the development machine the 2,652-row witnesses measured about 199 MB unset
 and 230 KiB with the 2 MiB accounted allowance, for both read and unread defaults.
-The four representative leaf shapes measured heap/account ratios approximately
+The 1,000-row repeated-reference profile measured 900,663,496 accounted bytes
+and 48,787,296 measured heap bytes (18.46 times); the Each vector reservation
+is only 128,064 accounted bytes, under 0.02% of the total, so its weight remains
+unchanged. These are observations, not byte pins. The four representative leaf shapes measured heap/account ratios approximately
 0.403, 0.223, 0.606 and 0.333. These observations include allocator instrumentation,
 are not Linux baselines, and are not universal multipliers. Reservations are
 retained until the allowance ends, so account/heap can grow without a finite
@@ -2261,13 +2267,38 @@ stream allocation-call counts over all cases and 17,359 chunk-31 pushes, plus
 10 expression work/room thresholds. The controls asserted equality; balanced
 same-binary timing batches were diagnostic only. Recreate the baseline using
 `git archive main` into a scratch directory, never a checkout that can disturb
-another agent's files. The report under `target/peak-limit-report.txt` records
+another agent's files. The historical report under `target/peak-limit-report.txt` records
 the exact commands, logs and final counts. Goldens are regenerated twice into
 fresh `target/` destinations and compared without changing `conformance/`.
 
 Scratch mutations are kept outside the worktree sources: drop the memory check;
 delay it until after Each has constructed its output; reset the retained allowance
 on mutation resume. The first is caught by the exact-edge test, the second by the
-repeated-reference allocator comparison, and the third by the action-resume test.
+new `each_reserves_its_result_vector_before_building_items` heap comparison (#74), and the third by the action-resume test.
 The report records actual mutation runs. Allocation and work assertions never
 use a wall-clock threshold, so none of these checks depend on machine speed.
+
+For #74, `target/peak-74-report.txt` records the fresh archived-main CLI and
+same-binary controls, debug/release workspace counts, and scratch mutation
+runs. Restoring main's element recovery fails the recovery sweep; moving Each
+admission after construction fails its heap assertion; removing the constructor
+refusal fails each binding's reference-preparation configuration test. The
+state-defaults terminal memory clear was dead: subsequent state-defaults runs
+initialize the account; expression sessions initialize and swap their own
+account before use. Removing the terminal clear preserves the public suites
+and the same-binary default parse/allocation/benchmark controls. No test asserts
+timing or a platform's exact measured heap size.
+
+The #74 weight experiments are recorded in `weights-64-suite.log` (13 passed,
+1 failed: the existing portable overflow-edge test) and `weights-32-shapes.log`
+(object heap 9,016 > account 7,496, rejected by the representative-shape guard).
+At 64, the 1,000-item account fell to about 452.4 MB and the object account to
+9,960 bytes; production retains 128. These figures are diagnostic observations,
+not fixed byte assertions, and the scratch changes never entered production.
+
+The built wasm package also has `reference preparation refuses evaluation
+memory configuration without effects` in `crates/openui-wasm/js/session.test.ts`:
+exported bigint settings 0/1/max refuse with `LimitExceeded`, existing snapshot/
+version stay unchanged, and removing the setting permits construction. Run it
+on the wasm32 machine with `scripts/wasm.sh` followed by
+`bun --no-install test crates/openui-wasm/js`.

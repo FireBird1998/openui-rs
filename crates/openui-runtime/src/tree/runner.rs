@@ -338,8 +338,13 @@ impl<'a> RunContext<'a> {
         supplied: Option<&PreparedReferenceValues<'_>>,
     ) -> Result<crate::StateValue, BindingWriteError> {
         if run.defaults.is_none() {
-            let scope =
-                TreeScope::with_references(&self.input, store, supplied, self.references.clone());
+            let scope = TreeScope::with_references(
+                &self.input,
+                store,
+                supplied,
+                run.limits,
+                self.references.clone(),
+            );
             run.budget.with_scope(&scope, |s| {
                 s.with_evaluator(|e| scope.initialize_queries(self.input.result, e))
             });
@@ -353,8 +358,13 @@ impl<'a> RunContext<'a> {
                     .collect(),
             );
         }
-        let mut scope =
-            TreeScope::with_references(&self.input, store, supplied, self.references.clone());
+        let mut scope = TreeScope::with_references(
+            &self.input,
+            store,
+            supplied,
+            run.limits,
+            self.references.clone(),
+        );
         scope.run_defaults = run.defaults.as_ref();
         scope.registering.set(false);
         let result = run.budget.with_scope(&scope, |s| {
