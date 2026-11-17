@@ -252,6 +252,16 @@ pub struct InitializationOutput {
     pub refused: Vec<StateRefusal>,
 }
 
+/// One committed replacement, including all data needed to publish a drawing.
+#[derive(Debug)]
+pub struct ReplacementOutput {
+    pub initialization: InitializationOutput,
+    pub projection: InitializationOutput,
+    pub evaluation: EvaluationOutput,
+    pub snapshot: String,
+    pub version: u64,
+}
+
 /// A refused entry in initialization; other entries can still apply.
 #[derive(Debug)]
 pub struct StateRefusal {
@@ -636,6 +646,97 @@ impl SessionCore {
     }
 }
 
+fn initialization_output(
+    result: openui_runtime::InitializationResult,
+    limits: Limits,
+) -> InitializationOutput {
+    InitializationOutput {
+        changed: result.changed,
+        refused: result
+            .refused
+            .into_iter()
+            .map(|r| StateRefusal {
+                name: r.name,
+                error: runtime_error(RuntimeFailure::Store(r.error), limits.result_size()),
+            })
+            .collect(),
+    }
+}
+fn snapshot_json(store: &Store) -> Result<String, openui_runtime::LimitError> {
+    let mut object = JsObject::new();
+    for (name, value) in store.snapshot().iter() {
+        if let Some(value) = value {
+            object.define(name, value.clone());
+        }
+    }
+    openui_runtime::value_to_json(&Value::Obj(Arc::new(object)))
+}
+fn check_native_view(root: Option<&Value>, json: &str, snapshot: &str) -> Result<(), OpenUiError> {
+    let element = match root {
+        None | Some(Value::Null) | Some(Value::Element(_)) => true,
+        Some(Value::Obj(o)) => {
+            let keys: Vec<_> = o.iter().map(|(k, _)| k).collect();
+            (keys == ["type", "typeName", "props", "partial", "hasDynamicProps"]
+                || keys
+                    == [
+                        "type",
+                        "typeName",
+                        "props",
+                        "partial",
+                        "hasDynamicProps",
+                        "statementId",
+                    ])
+                && matches!(o.get("type"), Some(Value::Str(s)) if s == "element")
+                && matches!(o.get("typeName"), Some(Value::Str(_)))
+                && matches!(o.get("props"), Some(Value::Obj(_)))
+                && matches!(o.get("partial"), Some(Value::Bool(_)))
+                && matches!(o.get("hasDynamicProps"), Some(Value::Bool(_)))
+                && o.get("statementId")
+                    .is_none_or(|v| matches!(v, Value::Str(_)))
+        }
+        _ => false,
+    };
+    if !element {
+        return Err(OpenUiError::Evaluation {
+            reason: "native view root is not an element".into(),
+        });
+    }
+    // Both strings are produced by runtime serializers. Scan their nesting
+    // without reparsing, charging work again, or imposing a new byte limit.
+    for text in [json, snapshot] {
+        let mut depth = 0usize;
+        let mut quoted = false;
+        let mut escaped = false;
+        for byte in text.bytes() {
+            if quoted {
+                if escaped {
+                    escaped = false;
+                } else if byte == b'\\' {
+                    escaped = true;
+                } else if byte == b'"' {
+                    quoted = false;
+                }
+                continue;
+            }
+            match byte {
+                b'}' | b']' => depth = depth.saturating_sub(1),
+                b',' | b':' | b' ' | b'\n' | b'\r' | b'\t' => {}
+                _ => {
+                    if depth >= 512 {
+                        return Err(limit("native view JSON nested too deeply"));
+                    }
+                    match byte {
+                        b'{' | b'[' => depth += 1,
+                        b'"' => quoted = true,
+                        _ => {}
+                    }
+                }
+            }
+        }
+    }
+    Ok(())
+}
+
 fn tree_input<'a>(
     program: &'a Arc<ParseResult>,
     library: &'a ComponentLibrary,
@@ -691,6 +792,92 @@ impl SessionCore {
             s.release_evaluation()?;
             s.program = program.inner.clone();
             Ok(())
+        })
+    }
+
+    /// Atomically replace, project edited state, initialize and evaluate.
+    /// Per-entry initialization refusals remain successful batch results.
+    /// `native_view` requires an element/null root and JSON readable by the
+    /// existing Swift decoder (depth below 512), before committing anything.
+    /// Diagnostics and cut flags are successful evaluations, as with evaluate.
+    /// External effects of synchronous host functions cannot be rolled back.
+    pub fn replace_program(
+        &mut self,
+        refs: &PreparedReferenceValues<'_>,
+        program: Arc<ParsedProgram>,
+        persisted: Option<String>,
+        projected: Option<String>,
+        native_view: bool,
+    ) -> Result<ReplacementOutput, OpenUiError> {
+        // Match Swift show's persisted preflight error precedence, using the
+        // actual session's reader. Deliberately do not drain releases on refusal.
+        let persisted = persisted
+            .map(|json| self.object(&json))
+            .transpose()?
+            .unwrap_or_default();
+        if program.json_bytes > self.limits.max_json_bytes {
+            return Err(limit("program JSON byte limit"));
+        }
+        let generation = self
+            .generation
+            .checked_add(2)
+            .ok_or_else(|| limit("evaluation generations exhausted"))?;
+        let projected = projected.map(|json| self.object(&json)).transpose()?;
+        let functions = Self::functions(
+            &self.library,
+            &self.functions,
+            self.core_limits,
+            self.limits.max_json_bytes,
+        )?;
+        let (projection, initialization, (tree, json, snapshot, version)) =
+            self.store.initialize_transaction(
+                &program.inner.state_declarations,
+                &persisted,
+                projected.as_ref(),
+                |store| {
+                    let tree = openui_runtime::evaluate_tree_with_limits(
+                        tree_input(
+                            &program.inner,
+                            &self.library,
+                            &self.bindings,
+                            refs,
+                            functions.as_ref(),
+                        ),
+                        store,
+                        self.core_limits,
+                    );
+                    let json = tree.to_json().map_err(|e| {
+                        runtime_error(RuntimeFailure::Limit(e), self.core_limits.result_size())
+                    })?;
+                    let snapshot = snapshot_json(store).map_err(|e| {
+                        runtime_error(RuntimeFailure::Limit(e), self.core_limits.result_size())
+                    })?;
+                    if native_view {
+                        check_native_view(tree.root.as_ref(), &json, &snapshot)?;
+                    }
+                    let version = store.version();
+                    Ok((tree, json, snapshot, version))
+                },
+            )?;
+        drop(functions);
+        self.program = program.inner.clone();
+        self.generation = generation;
+        self.root = tree.root;
+        self.drain_releases();
+        Ok(ReplacementOutput {
+            projection: initialization_output(projection, self.core_limits),
+            initialization: initialization_output(initialization, self.core_limits),
+            evaluation: EvaluationOutput {
+                json,
+                size_limited: tree.size_limited,
+                depth_limited: tree.depth_limited,
+                evaluation: Arc::new(EvaluationHandle {
+                    owner: self.owner.clone(),
+                    generation,
+                }),
+            },
+            snapshot,
+            version,
         })
     }
 

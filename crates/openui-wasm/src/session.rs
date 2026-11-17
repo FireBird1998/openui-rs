@@ -112,6 +112,17 @@ impl Session {
         self.call(|s, refs| s.set_program(refs, program))
     }
 
+    /// Replace the program, initialize and evaluate as one call: either all
+    /// of it is committed or the session is left exactly as it was.
+    pub fn replace_program(
+        &self,
+        program: Arc<ParsedProgram>,
+        persisted: Option<String>,
+        projected: Option<String>,
+        native_view: bool,
+    ) -> Result<ReplacementOutput, OpenUiError> {
+        self.call(|s, refs| s.replace_program(refs, program, persisted, projected, native_view))
+    }
     /// Report prompt annotations needing an explicit choice by the embedder.
     pub fn undecided_bindings(&self) -> Result<Vec<BindingPair>, OpenUiError> {
         self.call(|s, refs| s.undecided_bindings(refs))

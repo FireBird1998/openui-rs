@@ -105,6 +105,45 @@ impl EvaluationOutput {
     }
 }
 #[wasm_bindgen]
+pub struct ReplacementOutput {
+    inner: core::ReplacementOutput,
+}
+#[wasm_bindgen]
+impl ReplacementOutput {
+    #[wasm_bindgen(getter, unchecked_return_type = "any")]
+    pub fn initialization(&self) -> String {
+        initialization_record(&self.inner.initialization)
+    }
+    #[wasm_bindgen(getter, unchecked_return_type = "any")]
+    pub fn projection(&self) -> String {
+        initialization_record(&self.inner.projection)
+    }
+    #[wasm_bindgen(getter)]
+    pub fn evaluation(&self) -> EvaluationOutput {
+        let v = &self.inner.evaluation;
+        EvaluationOutput {
+            json: v.json.clone(),
+            size_limited: v.size_limited,
+            depth_limited: v.depth_limited,
+            evaluation: v.evaluation.clone(),
+        }
+    }
+    #[wasm_bindgen(getter)]
+    pub fn snapshot(&self) -> String {
+        self.inner.snapshot.clone()
+    }
+    #[wasm_bindgen(getter)]
+    pub fn version(&self) -> u64 {
+        self.inner.version
+    }
+}
+fn initialization_record(v: &core::InitializationOutput) -> String {
+    record(
+        serde_json::json!({"changed":v.changed,"refused":v.refused.iter().map(|v|
+        serde_json::json!({"name":v.name,"error":{"kind":kind(&v.error),"message":v.error.to_string()}})).collect::<Vec<_>>()}),
+    )
+}
+#[wasm_bindgen]
 pub struct ActionOutput {
     /// JSON array of the runtime's event strings, unchanged inside.
     events: String,
@@ -201,6 +240,19 @@ impl RuntimeSession {
     #[wasm_bindgen(js_name = setProgram)]
     pub fn set_program(&self, program: &ParsedProgram) -> Result<(), JsValue> {
         self.inner.set_program(program.0.clone()).map_err(error)
+    }
+    #[wasm_bindgen(js_name = replaceProgram)]
+    pub fn replace_program(
+        &self,
+        program: &ParsedProgram,
+        persisted: Option<String>,
+        projected: Option<String>,
+        native_view: bool,
+    ) -> Result<ReplacementOutput, JsValue> {
+        self.inner
+            .replace_program(program.0.clone(), persisted, projected, native_view)
+            .map(|inner| ReplacementOutput { inner })
+            .map_err(error)
     }
     #[wasm_bindgen(js_name = undecidedBindings, unchecked_return_type = "any")]
     pub fn undecided_bindings(&self) -> Result<String, JsValue> {

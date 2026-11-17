@@ -1327,3 +1327,30 @@ refuse `referencePreparation.peakMemory` with `LimitExceeded` before creating
 session state; omitted settings keep existing behavior. The unused terminal
 state-defaults memory-account clear was removed: every evaluation entry that
 uses the account initializes its own account before reservations.
+
+## Swift issue #75
+
+Native program replacement is atomic (ADR 0012). Successful shows retain the
+same initialization order, per-entry refusals, evaluated bytes and cut flags;
+a thrown show preserves both sessions and their preceding drawings/authority.
+Malformed element-shaped roots now refuse with the binding's typed Evaluation
+error; JSON beyond Swift's existing decoder depth refuses with LimitExceeded,
+before commit, rather than a post-replacement Swift decode error. Existing
+setProgram/initialize/evaluate are unchanged. The replacement's `nativeView`
+restriction is opt-in and adds no evaluation limit to other callers.
+
+Tabs can switch during streaming as local view state. Preview tab selections
+are separate from the complete form's selection and cannot run actions or write
+state. Unset native dates use an empty system formatter-backed field until a
+valid date is entered, then the normal date picker. Writes still normalize to
+local midnight and follow the existing binding/form path. Sliders now refuse a
+positive step when `(max-min)/step` is nonfinite, including `5e-324` over 0...1;
+these use the existing unusable-props fallback instead of snapping to max.
+This intentional native refusal prevents an infinite snapping quotient from
+turning a midpoint pick into max. Finite large grids keep their tickless native
+path; the corpus/galleries gain no fallback.
+
+Regex validation still has no execution-time bound or pattern/subject length
+cap. ICU compatibility remainders and invalid-pattern behavior are unchanged;
+see the README and TESTING. A length-only cap would not bound backtracking time
+and would change valid upstream patterns without solving that problem.

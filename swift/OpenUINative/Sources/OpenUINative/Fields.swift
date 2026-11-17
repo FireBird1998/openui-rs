@@ -67,7 +67,7 @@ struct SystemFieldView: View {
                   span.isFinite, (1 / span).isFinite
             else { throw PropReader.Unusable() }
             if let effectiveStep {
-                guard effectiveStep.isFinite, effectiveStep > 0 else { throw PropReader.Unusable() }
+                guard effectiveStep.isFinite, effectiveStep > 0, (span / effectiveStep).isFinite else { throw PropReader.Unusable() }
             }
         }
         step = effectiveStep
@@ -261,18 +261,32 @@ struct SystemFieldView: View {
         }
     }
 
-    private func datePicker(_ label: String, key: String?) -> some View {
+    @ViewBuilder private func datePicker(_ label: String, key: String?) -> some View {
         let current = key.flatMap { value?[$0] } ?? (key == nil ? value : nil)
-        return DatePicker(label, selection: Binding(get: { Self.date(current) ?? Date(timeIntervalSince1970: 0) }, set: { date in
-            let stored = JSONValue.string(Self.dateText(dayCalendar.startOfDay(for: date)))
+        let date = Self.date(current)
+        let selection = Binding<Date?>(get: { date }, set: { picked in
+            let stored = picked.map { JSONValue.string(Self.dateText(dayCalendar.startOfDay(for: $0))) }
             if let key {
                 let entries: [(String, JSONValue)] = ["from", "to"].compactMap { k in
-                    k == key ? (k, stored) : value?[k].map { (k, $0) }
+                    k == key ? stored.map { (k, $0) } : value?[k].map { (k, $0) }
                 }
                 write(.object(entries))
             } else { write(stored) }
-        }), displayedComponents: .date)
-        .datePickerStyle(.field)
+        })
+        if let date {
+            DatePicker(label, selection: Binding(get: { date }, set: { selection.wrappedValue = $0 }), displayedComponents: .date)
+                .datePickerStyle(.field)
+        } else {
+            // AppKit's ordinary formatter-backed field supports an unset date;
+            // SwiftUI DatePicker requires a nonoptional selection.
+            let formatter = DateFormatter()
+            let _ = formatter.calendar = dayCalendar
+            let _ = formatter.timeZone = timeZone
+            let _ = formatter.dateStyle = .short
+            let _ = formatter.timeStyle = .none
+            UnsetDateField(label: label, formatter: formatter) { selection.wrappedValue = $0 }
+                .frame(height: 24)
+        }
     }
 
     private static func date(_ value: JSONValue?) -> Date? {
@@ -308,6 +322,39 @@ struct SystemFieldView: View {
         guard SelectionField.isSelection(element), let live, !live.isStreaming else { return }
         do { try live.initializeSelection(element, form: formName) }
         catch { live.attempt { throw error } }
+    }
+}
+
+/// A plain system field is empty until a valid date is committed. The
+/// coordinator never writes an invented date when editing starts or fails.
+private struct UnsetDateField: NSViewRepresentable {
+    let label: String
+    let formatter: DateFormatter
+    let picked: (Date) -> Void
+    @Environment(\.isEnabled) private var isEnabled
+
+    func makeCoordinator() -> Coordinator { Coordinator(self) }
+    func makeNSView(context: Context) -> NSTextField {
+        let field = NSTextField(string: "")
+        field.placeholderString = label
+        field.formatter = formatter
+        field.delegate = context.coordinator
+        return field
+    }
+    func updateNSView(_ field: NSTextField, context: Context) {
+        context.coordinator.parent = self
+        field.isEnabled = isEnabled
+        field.placeholderString = label
+        field.formatter = formatter
+    }
+    final class Coordinator: NSObject, NSTextFieldDelegate {
+        var parent: UnsetDateField
+        init(_ parent: UnsetDateField) { self.parent = parent }
+        func controlTextDidEndEditing(_ notification: Notification) {
+            guard parent.isEnabled, let field = notification.object as? NSTextField,
+                  let date = parent.formatter.date(from: field.stringValue) else { return }
+            parent.picked(date)
+        }
     }
 }
 

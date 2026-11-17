@@ -21,6 +21,7 @@ func initializeField(form: String?, componentType: String?, name: String, json: 
 func isPristine(name: String) throws -> Bool
 func markBinding(component: String, prop: String) throws
 func registerFunction(name: String, callback: LibraryFunction) throws
+func replaceProgram(program: ParsedProgram, persisted: String?, projected: String?, nativeView: Bool) throws -> ReplacementOutput
 func pendingContinuations() throws -> UInt64
 func resume(continuation: ContinuationHandle, succeeded: Bool) throws -> ActionOutput
 func run(action: ActionHandle?, message: String, form: String?) throws -> ActionOutput
@@ -52,6 +53,7 @@ fun initializeField(form: kotlin.String?, componentType: kotlin.String?, name: k
 fun isPristine(name: kotlin.String): kotlin.Boolean
 fun markBinding(component: kotlin.String, prop: kotlin.String)
 fun registerFunction(name: kotlin.String, callback: LibraryFunction)
+fun replaceProgram(program: ParsedProgram, persisted: kotlin.String?, projected: kotlin.String?, nativeView: kotlin.Boolean): ReplacementOutput
 fun pendingContinuations(): kotlin.ULong
 fun resume(continuation: ContinuationHandle, succeeded: kotlin.Boolean): ActionOutput
 fun run(action: ActionHandle?, message: kotlin.String, form: kotlin.String?): ActionOutput
@@ -86,6 +88,13 @@ struct EvaluationOutput {
     public var sizeLimited: Bool
     public var depthLimited: Bool
     public var evaluation: EvaluationHandle
+}
+struct ReplacementOutput {
+    public var initialization: InitializationOutput
+    public var projection: InitializationOutput
+    public var evaluation: EvaluationOutput
+    public var snapshot: String
+    public var version: UInt64
 }
 struct InitializationOutput {
     public var changed: Bool

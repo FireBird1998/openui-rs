@@ -334,3 +334,36 @@ smallest uncut allowance for a fixed input. `referencePreparation.peakMemory`
 is rejected by session construction with the existing `LimitExceeded` error,
 including zero and the maximum value; no session or Store state is changed.
 Calls that omit it retain their existing behavior.
+
+## Atomic program replacement
+
+`replaceProgram(program, persisted, projected, nativeView)` is one synchronous
+operation shared by native and wasm. It stages the Store, including private
+custom-action and undefined-field marks, while sharing admitted Values and the
+session identity. It projects optional edited-state JSON with the candidate's
+defaults, then initializes persisted JSON/defaults, evaluates and serializes the
+tree and snapshot. Only success publishes the Store, program, root and generation.
+It returns `ReplacementOutput` with initialization/projection results, evaluation,
+snapshot and version, so the host needs no fallible reads after commit. There is
+no pending transaction to abandon; [ADR 0012](adr/0012-atomic-session-program-replacement.md)
+records the choice. Existing setProgram/initialize/evaluate retain their behavior.
+
+Refusal preserves state values/order/version/pristine status, program, handles,
+bindings, registrations, continuation accounting and callback-thread identity.
+No evaluation work or room is refreshed on existing continuations. Successful
+replacement advances evaluation generation twice, exactly as setProgram followed
+by evaluate. Continuations remain usable with the new program. Initialization's
+per-entry refusals do not throw or roll back the accepted batch; diagnostics and
+cut flags remain successful evaluations. Release notifications are drained after
+success, never by the new operation's refusal path. Callback delivery stays on
+the existing callback thread (ADR 0009); host effects cannot be rolled back.
+
+`nativeView: true` opts into OpenUINative's existing decoder admission before
+commit: a null/absent or exactly shaped element root and JSON values below depth
+512, including tree/snapshot envelopes. Wrong root shape throws Evaluation;
+excessive depth throws LimitExceeded. False admits general runtime output and
+adds no display restriction. This is not a new default evaluation limit. Swift
+show uses true and checks its generation before calling. The same encoded bytes
+are decoded after commit; there are no additional session calls or host-selected
+limits on that path. The old throwaway persisted pre-check is removed: JSON is
+admitted once using the actual session's prompt bindings and immutable limits.

@@ -7,10 +7,15 @@ use std::{
 
 #[derive(Default, Debug)]
 pub(crate) struct Provenance(Mutex<Marks>);
-#[derive(Default, Debug)]
+#[derive(Clone, Default, Debug)]
 struct Marks {
     steps: HashMap<usize, Weak<JsObject<Value>>>,
     sweep_at: usize,
+}
+impl Clone for Provenance {
+    fn clone(&self) -> Self {
+        Self(Mutex::new(self.with(|marks| marks.clone())))
+    }
 }
 impl Provenance {
     fn with<T>(&self, f: impl FnOnce(&mut Marks) -> T) -> T {

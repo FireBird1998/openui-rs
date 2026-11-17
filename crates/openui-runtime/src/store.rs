@@ -123,6 +123,55 @@ impl Store {
             entry_bytes: 0,
         }
     }
+    /// Stage initialization and private action marks, committing only on success.
+    /// Returns projection initialization, persisted initialization, and output.
+    /// Both batches apply declarations, matching the separate initialize calls.
+    /// The reader receives only a shared borrow: it cannot move out the staged
+    /// Store and create an independent store with the same session authority.
+    /// Existing custom identities/continuations survive commit. A refused read
+    /// cannot mint authority in the live store. Host effects are not rolled back.
+    ///
+    /// ```compile_fail
+    /// use openui_runtime::{JsObject, Store, Value};
+    /// let mut store = Store::new();
+    /// let empty = JsObject::<Value>::new();
+    /// let _: Result<_, ()> = store.initialize_transaction(&empty, &empty, None,
+    ///     |candidate| Ok(std::mem::take(candidate)));
+    /// ```
+    pub fn initialize_transaction<T, E>(
+        &mut self,
+        defaults: &JsObject<Value>,
+        persisted: &JsObject<Value>,
+        projected: Option<&JsObject<Value>>,
+        read: impl FnOnce(&Store) -> Result<T, E>,
+    ) -> Result<(InitializationResult, InitializationResult, T), E> {
+        let mut candidate = Self {
+            action_session: self.action_session.clone(),
+            actions: self.actions.clone(),
+            undefined_fields: self.undefined_fields.clone(),
+            snapshot: self.snapshot.clone(),
+            pristine: self.pristine.clone(),
+            version: self.version,
+            limits: self.limits,
+            sizes: self.sizes.clone(),
+            entry_bytes: self.entry_bytes,
+        };
+        let projection = projected
+            .map(|values| {
+                candidate.initialize(
+                    defaults.iter().map(|(k, v)| (k.as_str(), Some(v))),
+                    values.iter().map(|(k, v)| (k.as_str(), Some(v))),
+                )
+            })
+            .unwrap_or_default();
+        let initialization = candidate.initialize(
+            defaults.iter().map(|(k, v)| (k.as_str(), Some(v))),
+            persisted.iter().map(|(k, v)| (k.as_str(), Some(v))),
+        );
+        let output = read(&candidate)?;
+        *self = candidate;
+        Ok((projection, initialization, output))
+    }
     /// Read a value. Absent and explicitly undefined both return `None`;
     /// snapshot membership distinguishes their presence.
     pub fn get(&self, name: &str) -> StateValue {

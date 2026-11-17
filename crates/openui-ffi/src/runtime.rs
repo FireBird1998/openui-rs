@@ -97,6 +97,27 @@ pub struct InitializationOutput {
     pub refused: Vec<StateRefusal>,
 }
 
+/// A committed program replacement and its complete display data.
+#[derive(Debug, uniffi::Record)]
+pub struct ReplacementOutput {
+    pub initialization: InitializationOutput,
+    pub projection: InitializationOutput,
+    pub evaluation: EvaluationOutput,
+    pub snapshot: String,
+    pub version: u64,
+}
+impl From<openui_session::ReplacementOutput> for ReplacementOutput {
+    fn from(v: openui_session::ReplacementOutput) -> Self {
+        Self {
+            initialization: v.initialization.into(),
+            projection: v.projection.into(),
+            evaluation: v.evaluation.into(),
+            snapshot: v.snapshot,
+            version: v.version,
+        }
+    }
+}
+
 /// A refused entry in initialization; other entries can still apply.
 #[derive(Debug, uniffi::Record)]
 pub struct StateRefusal {
@@ -607,11 +628,26 @@ impl RuntimeSession {
         + Send
         + 'static,
     ) -> Result<T, OpenUiError> {
+        self.dispatch_call(true, operation)
+    }
+    fn dispatch_call<T: Send + 'static>(
+        &self,
+        drain_before: bool,
+        operation: impl FnOnce(
+            &mut Worker,
+            &PreparedReferenceValues<'_>,
+            &mut CallbackState,
+        ) -> Result<T, OpenUiError>
+        + Send
+        + 'static,
+    ) -> Result<T, OpenUiError> {
         let failure = self.failure.clone();
         self.dispatch(move |sender| {
             Command::Call(Box::new(move |state, refs, callbacks| {
                 let result = catch_unwind(AssertUnwindSafe(|| {
-                    state.drain_releases();
+                    if drain_before {
+                        state.drain_releases();
+                    }
                     operation(state, refs, callbacks)
                 }));
                 match result {
@@ -850,6 +886,32 @@ impl RuntimeSession {
                     json_bytes: program.json_bytes,
                 }),
             )
+            .map_err(Into::into)
+        })
+    }
+
+    /// Replace, project, initialize and draw as one transaction. Refusal keeps
+    /// the existing session and capabilities. native_view checks Swift's
+    /// existing element-root/JSON-depth requirements before commit.
+    pub fn replace_program(
+        &self,
+        program: Arc<ParsedProgram>,
+        persisted: Option<String>,
+        projected: Option<String>,
+        native_view: bool,
+    ) -> Result<ReplacementOutput, OpenUiError> {
+        self.dispatch_call(false, move |s, refs, _| {
+            s.replace_program(
+                refs,
+                Arc::new(openui_session::ParsedProgram {
+                    inner: program.inner.clone(),
+                    json_bytes: program.json_bytes,
+                }),
+                persisted,
+                projected,
+                native_view,
+            )
+            .map(Into::into)
             .map_err(Into::into)
         })
     }

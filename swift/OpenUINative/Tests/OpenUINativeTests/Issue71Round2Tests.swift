@@ -114,13 +114,16 @@ extension NativeUITests {
         let original = try await core.parseOneShot(#"root = Slider("x", "discrete", 0, 10, 1, [2])"#.replacingOccurrences(of: "discrete", with: variant), library: library)
         try live.show(original)
         try live.setField(form: nil, name: "x", to: .array([.number(2)]))
-        for (key, value) in [("max", -1.0), ("max", 1e-320), ("step", Double.nan), ("step", Double.infinity), ("step", -1.0), ("step", 0.0), ("defaultValue", Double.nan), ("defaultValue", Double.infinity)] {
+        for (key, value) in [("max", -1.0), ("max", 1e-320), ("step", Double.nan), ("step", Double.infinity), ("step", -1.0), ("step", 0.0), ("step", Double.leastNonzeroMagnitude), ("defaultValue", Double.nan), ("defaultValue", Double.infinity)] {
             let state = live.state
             let version = live.version
             let window = await Window(live, component: { element, path in
                 var invalid = element
                 for i in invalid.props.indices {
                     if invalid.props[i].name == key { invalid.props[i].value = .scalar(.number(value)) }
+                    if key == "step", value == Double.leastNonzeroMagnitude, invalid.props[i].name == "max" {
+                        invalid.props[i].value = .scalar(.number(1))
+                    }
                     if key == "defaultValue", invalid.props[i].name == "name" { invalid.props[i].value = .scalar(.string("invalid-value")) }
                 }
                 let isNative = NativeComponents.view(for: invalid, path: path) != nil
@@ -204,6 +207,7 @@ extension NativeUITests {
         let (core, library, spec) = try await fieldLibrary()
         let live = try LiveProgram(library: library, promptSpec: spec)
         try live.show(try await core.parseOneShot(#"root = DatePicker("x", "single")"#, library: library))
+        try live.setField(form: nil, name: "x", to: .string("2026-11-16T00:00:00.000Z"))
         let zone = try #require(TimeZone(identifier: "Asia/Kolkata"))
         var calendar = Calendar(identifier: .gregorian)
         calendar.timeZone = zone

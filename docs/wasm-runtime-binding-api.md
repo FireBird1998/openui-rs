@@ -36,6 +36,7 @@ session.initializeField(form: string | undefined, componentType: string | undefi
 session.isPristine(name: string): boolean
 session.markBinding(component: string, prop: string): void
 session.registerFunction(name: string, callback: (argumentsJson: string) => string | undefined): void
+session.replaceProgram(program: ParsedProgram, persisted: string | undefined, projected: string | undefined, nativeView: boolean): ReplacementOutput
 session.pendingContinuations(): bigint
 session.resume(continuation: ContinuationHandle, succeeded: boolean): ActionOutput
 session.run(action: ActionHandle | undefined, message: string, form?: string): ActionOutput
@@ -69,6 +70,11 @@ object (wasm-bindgen cannot lower Option<&ActionHandle>).
 interface EvaluationOutput {
   readonly json: string; readonly sizeLimited: boolean; readonly depthLimited: boolean;
   readonly evaluation: EvaluationHandle;
+  free(): void;
+}
+interface ReplacementOutput {
+  readonly initialization: InitializationOutput; readonly projection: InitializationOutput;
+  readonly evaluation: EvaluationOutput; readonly snapshot: string; readonly version: bigint;
   free(): void;
 }
 interface ActionOutput {
@@ -170,3 +176,9 @@ smallest uncut allowance for a fixed input. `referencePreparation.peakMemory`
 is rejected by session construction with the existing `LimitExceeded` error,
 including zero and the maximum value; no session or Store state is changed.
 Calls that omit it retain their existing behavior.
+
+Replacement uses the shared [atomic replacement contract](runtime-binding.md#atomic-program-replacement).
+Read `replacement.evaluation` once, then free its evaluation handle, evaluation
+output and replacement output separately. Initialization/projection getters are
+plain JSON records; snapshot remains JSON text. `nativeView` is an explicit
+boolean, not an optional coercion or a JSON authority field.

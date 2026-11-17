@@ -2104,15 +2104,9 @@ an observation of playback stopping. `aSourceFailureRemainsReportedAfterSuccessf
 preserves main's source-error reporting. The bench gallery now includes its five
 additional field types; Chips/OptionCards are exercised with the react-ui library.
 
-**Still incomplete: a complete `show()` that fails after runtime replacement.**
-Swift publishes one decoded display record only after all its reads succeed, and
-caller-supplied persisted JSON is preflighted. The binding still mutates program,
-store and retained evaluation in separate calls. An error after replacing a
-complete program cannot roll back those Rust values or handles from Swift.
-The necessary follow-up is a binding transaction spanning program replacement,
-initialization, evaluation, Swift decoding/acceptance and commit, retaining the
-old program/store/root/capabilities until commit. No Rust crate was changed here;
-no test or documentation claims that full guarantee is implemented.
+Issue #75 completes this transaction (below): the shared session core stages
+program/store/evaluation and checks native decoding admission before commit.
+The historical #71 tests above remain in force.
 
 The new tests run headlessly using the existing async helpers. The same four
 Select menu tests listed above still require an available macOS display and fail
@@ -2179,7 +2173,7 @@ now explicitly set a UTC environment rather than assuming the machine's zone.
 The validation fixture adds upstream answers for `http://a.+4` and
 `http://xn--a.com`; the existing public Send observation test consumes both.
 
-This round does not implement the deferred complete-show Rust transaction.
+Issue #75 implements the deferred complete-show Rust transaction (below).
 Accepted actions whose redraw fails retain main's existing event-delivery/error
 semantics (`stillDeliversTheActionsHostEvents`); they are not pre-admission
 refusals. Round 2's report describes the observable failed-replacement boundary.
@@ -2302,3 +2296,49 @@ exported bigint settings 0/1/max refuse with `LimitExceeded`, existing snapshot/
 version stay unchanged, and removing the setting permits construction. Run it
 on the wasm32 machine with `scripts/wasm.sh` followed by
 `bun --no-install test crates/openui-wasm/js`.
+
+## Swift issue #75: atomic replacement and local controls
+
+`openui-session/tests/replacement.rs` exercises program/JSON admission,
+post-initialization evaluation refusal, native depth admission, old action
+handles, prompt/explicit bindings and callback registrations. It compares one
+replacement with the existing separate calls across work limits, including
+per-entry initialization refusals and cuts. Suspended runs are compared with an
+untouched control after refusal, including events, flags, failures and state.
+`runtime_replacement` tests in ffi/wasm exercise their public adapters; native
+also checks callback thread identity and subsequent app state/form writes.
+
+Swift `refusedShowsKeepBothSessionsAndLaterAppWritesOnTheOldProgram` fails
+initialization and post-evaluation display admission in complete and existing
+preview sessions; subsequent set/setField must still draw OLD. Existing
+`aRefusedEntryPreservesEveryObservableAndItsClickGate` and
+`refusedShowsPreserveAnExistingPreviewAndTheAppsOwnRequest` cover observable
+snapshots and app request ownership. `unsetDatesDrawAnEmptySystemFieldAndWriteThroughTheBinding`
+checks the empty native date field and real editing for bound/unbound values.
+`tabSwitchesDuringStreamingAreLocalAndNeverWriteOrRun` switches actual segmented
+controls during app streaming and previews, checks unchanged store/version and
+no host event, and checks complete validation after preview recovery. The older
+`tabsCannotChangeTheCompleteFormsValidationWhileAPreviewIsDrawn` remains in force.
+`invalidSliderArithmeticDrawsFallbackWithoutChangingStoredValues` now includes
+Double.leastNonzeroMagnitude for both slider variants. Existing step-rounding,
+local-midnight and native rendering differentials still apply.
+
+Regex validation has no execution-time bound. No worker, timer or length cap
+was added; a pathological ICU pattern/subject can block main-actor validation.
+Existing upstream-observation tests pin compatibility, without time assertions.
+The persisted-value throwaway session is gone: replacement admits it in the
+real session under its actual prompt bindings and limits.
+
+On a wasm32 machine run `CARGO_NET_OFFLINE=true CARGO_BUILD_JOBS=4 scripts/wasm.sh`,
+then `bun --no-install test crates/openui-wasm/js`. Native wasm adapter tests
+and the source API checker run here; generated JS guard/declaration behavior
+still requires that wasm32 run. Android tooling is not needed for these checks.
+
+The Store initializer's compile-fail rustdoc example prevents moving the staged
+Store out of its shared borrow; no independently owned store alias can escape
+with the same session authority. `a_refused_candidate_cannot_mint_custom_authority_in_the_live_store`
+checks refused versus committed custom marks. `a_refused_replacement_does_not_drain_abandoned_continuations`
+checks release bookkeeping, and `persisted_admission_keeps_swift_shows_error_precedence`
+pins malformed persisted data before program-size refusal, matching Swift's
+former pre-check. `persistedValuesUseTheRealPromptAnnotatedSessionsAdmission`
+checks persisted state and a retained prompt-derived marker through refusal.

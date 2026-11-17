@@ -173,6 +173,7 @@ extension NativeUITests {
 
     @Test func editingTheSystemDatePickerWritesAnISODate() async throws {
         let live = try await program(try #require(Self.fields.first { $0.type == "DatePicker" }), bound: true)
+        try live.set("$v", to: .string("2026-11-16T00:00:00.000Z"))
         let zone = try #require(TimeZone(secondsFromGMT: 0))
         let window = await Window(live, component: { element, path in
             guard element.typeName == "DatePicker" else { return nil }
@@ -303,7 +304,7 @@ extension NativeUITests {
         let (library, spec) = try await reactLibrary(core)
         let live = try LiveProgram(library: library, promptSpec: spec)
         try live.show(try await core.parseOneShot(#"""
-        $range = null
+        $range = {from: "2026-11-16T00:00:00.000Z", to: "2026-11-19T00:00:00.000Z"}
         root = DatePicker("x", "range", null, $range)
         """#, library: library))
         let zone = try #require(TimeZone(secondsFromGMT: 0))

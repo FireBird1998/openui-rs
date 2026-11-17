@@ -220,6 +220,7 @@ const openuiSurface = new Map([
       runLegacy: openuiSpec([openuiStr, openuiStr, openuiOptStr]),
       set: openuiSpec([openuiStr, openuiOptStr]),
       setField: openuiSpec([openuiOptStr, openuiOptStr, openuiStr, openuiOptStr, openuiBool], { json: true }),
+      replaceProgram: openuiSpec([openuiCapabilityOf(ParsedProgram), openuiOptStr, openuiOptStr, openuiBool]),
       setProgram: openuiSpec([openuiCapabilityOf(ParsedProgram)]),
       setReferenceValues: openuiSpec([openuiStr]),
       snapshot: openuiNone,
@@ -236,6 +237,11 @@ const openuiSurface = new Map([
     methods: { free: openuiFree },
     accessors: { evaluation: { get: openuiNone }, json: { get: openuiNone },
       sizeLimited: { get: openuiNone }, depthLimited: { get: openuiNone } },
+  }],
+  [ReplacementOutput, {
+    methods: { free: openuiFree },
+    accessors: { initialization: { get: openuiJson }, projection: { get: openuiJson },
+      evaluation: { get: openuiNone }, snapshot: { get: openuiNone }, version: { get: openuiNone } },
   }],
   [ActionOutput, {
     methods: { free: openuiFree },
@@ -425,6 +431,7 @@ ContinuationHandle = openuiGuarded.get(ContinuationHandle);
 ParsedProgram = openuiGuarded.get(ParsedProgram);
 EvaluationOutput = openuiGuarded.get(EvaluationOutput);
 ActionOutput = openuiGuarded.get(ActionOutput);
+ReplacementOutput = openuiGuarded.get(ReplacementOutput);
 RuntimeLimits = openuiGuarded.get(RuntimeLimits);
 ParseLimits = openuiGuarded.get(ParseLimits);
 ComponentLibrary = openuiGuarded.get(ComponentLibrary);
@@ -443,7 +450,7 @@ parseProgram = function (...args) {
 // bindings. Refuse to load if the package exports anything not guarded here.
 if (typeof exports !== 'undefined') {
   const openuiExports = { RuntimeSession, EvaluationHandle, ActionHandle, ContinuationHandle,
-    ParsedProgram, EvaluationOutput, ActionOutput, RuntimeLimits, ParseLimits, ComponentLibrary,
+    ParsedProgram, EvaluationOutput, ActionOutput, ReplacementOutput, RuntimeLimits, ParseLimits, ComponentLibrary,
     StreamSession, parse, parseProgram };
   for (const key of openuiOwnKeys(exports)) {
     if (key !== '__esModule' && !openuiHasOwn(openuiExports, key)) throw openuiUncovered('exports', key);

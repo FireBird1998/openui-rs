@@ -6,7 +6,7 @@ import { dirname, join } from 'node:path';
 import { wasm, kind, setup, loadWith, packagePath, packageSource } from './support';
 
 const CLASSES = ['ActionHandle', 'ActionOutput', 'ComponentLibrary', 'ContinuationHandle',
-  'EvaluationHandle', 'EvaluationOutput', 'ParseLimits', 'ParsedProgram', 'RuntimeLimits',
+  'EvaluationHandle', 'EvaluationOutput', 'ParseLimits', 'ParsedProgram', 'ReplacementOutput', 'RuntimeLimits',
   'RuntimeSession', 'StreamSession'];
 
 test('the package exports only guarded classes and functions', () => {
@@ -67,7 +67,7 @@ test('pointer fields and private helpers cannot free or forge objects', () => {
 
 test('opaque classes have no constructor and plain objects are not capabilities', () => {
   const { s, library, action } = setup();
-  for (const name of ['ActionHandle', 'ContinuationHandle', 'EvaluationHandle', 'ParsedProgram', 'EvaluationOutput', 'ActionOutput']) {
+  for (const name of ['ActionHandle', 'ContinuationHandle', 'EvaluationHandle', 'ParsedProgram', 'EvaluationOutput', 'ActionOutput', 'ReplacementOutput']) {
     kind(() => new wasm[name](), 'InvalidHandle');
   }
   kind(() => s.run({ steps: [] }, ''), 'InvalidHandle');

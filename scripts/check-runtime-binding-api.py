@@ -8,7 +8,7 @@ root = pathlib.Path(__file__).resolve().parent.parent
 methods = [
     "actionAt", "dispose", "evaluate", "get", "getField", "initialize",
     "initializeField", "isPristine", "markBinding", "pendingContinuations",
-    "registerFunction", "resume", "run", "runLegacy", "set", "setField", "setProgram",
+    "registerFunction", "replaceProgram", "resume", "run", "runLegacy", "set", "setField", "setProgram",
     "setReferenceValues", "snapshot", "undecidedBindings", "version", "writeBinding",
 ]
 def camel(name):
@@ -82,7 +82,7 @@ if len(sys.argv) == 3 and sys.argv[1] == "--wasm":
     assert callback_type in declarations, "wasm callback declaration drift"
     assert re.search(r"registerFunction\(name:\s*string,\s*callback:", session[1]), "wasm callback parameters drift"
     assert re.search(r"registerFunction\([^\n]*\): void;", session[1]), "wasm callback return drift"
-    for name in ["ParsedProgram", "EvaluationHandle", "ActionHandle", "ContinuationHandle", "RuntimeLimits", "ParseLimits", "EvaluationOutput", "ActionOutput"]:
+    for name in ["ParsedProgram", "EvaluationHandle", "ActionHandle", "ContinuationHandle", "RuntimeLimits", "ParseLimits", "EvaluationOutput", "ActionOutput", "ReplacementOutput"]:
         assert "export class " + name in declarations, name
     # Each limit field is both readable and writable under its native name.
     for record_name, fields in [("RuntimeLimits", ["evaluation", "referencePreparation", "maxJsonBytes", "maxActionPathBytes", "maxContinuations"]),
@@ -101,7 +101,7 @@ assert api, "missing Swift RuntimeSession protocol"
 methods = [
     "actionAt", "dispose", "evaluate", "get", "getField", "initialize",
     "initializeField", "isPristine", "markBinding", "pendingContinuations",
-    "registerFunction", "resume", "run", "runLegacy", "set", "setField", "setProgram",
+    "registerFunction", "replaceProgram", "resume", "run", "runLegacy", "set", "setField", "setProgram",
     "setReferenceValues", "snapshot", "undecidedBindings", "version", "writeBinding",
 ]
 for method in methods:

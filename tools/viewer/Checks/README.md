@@ -74,7 +74,7 @@ including endpoints. Larger grids use a tickless track and constant-space
 min-relative snapping on write. Platform position allocation is bounded by the fixed cap, regardless of
 the numeric range. At most 16 thumbs are drawn; larger arrays remain unchanged
 and show a read-only notice. Invalid/reversed/equal/nonfinite bounds, a nonfinite
-span, a nonfinite reciprocal span and nonpositive/nonfinite supplied steps use the unusable-props fallback.
+span, a nonfinite reciprocal span, nonpositive/nonfinite supplied steps and a nonfinite span/step quotient use the unusable-props fallback.
 List-driven controls have no view-level count limit: children, fields, buttons,
 tabs, options, rows, columns, padded cells and chart points retain every entry.
 Their data is bounded by the runtime’s program/result/work/depth limits. Option
@@ -85,8 +85,7 @@ An empty number array still draws one slider so it can be filled. The older
 bench gallery schema uses scalar Slider defaults; those also draw one slider.
 Duplicate checkbox names share one aggregate and the last item's default,
 as upstream's record construction does. Date range writes keep `from,to` order,
-including when an existing start date is edited. Dates use the system calendar control; absent values display the epoch until
-edited and remain missing for validation. A picked day is normalized to local
+including when an existing start date is edited. Dates use an empty system date-formatted text field while unset, then the system date picker; they remain missing for validation until a valid date is entered. A picked day is normalized to local
 midnight in the active calendar/time zone before ISO UTC serialization; the
 non-UTC callback observation pins Asia/Kolkata midnight. Option icons/images, card decoration,
 and react-ui's extra Slider text inputs/menus are deliberately omitted.

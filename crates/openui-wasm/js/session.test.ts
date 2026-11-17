@@ -177,3 +177,48 @@ test('reference preparation refuses evaluation memory configuration without effe
     try { expect(fresh.snapshot()).toBe('{}'); } finally { fresh.free(); }
   } finally { preparation.free(); limits.free(); s.free(); library.free(); }
 });
+
+test('atomic replacement refuses without changing old capabilities and exposes complete display data', () => {
+  const {s, library} = setup();
+  const out = s.evaluate(), evaluation = out.evaluation;
+  const retained = s.actionAt(evaluation, ['props', 'a']);
+  const before = [s.snapshot(), s.version(), s.isPristine('$n')];
+  const bad = parseProgram(`$n=99
+$new=3
+$shape={type:"element",typeName:"Box",props:{},partial:false,hasDynamicProps:false,extra:1}
+root=true ? $shape : Box()`, library);
+  try {
+    kind(() => s.replaceProgram(bad, '[]', undefined, true), 'InvalidJson');
+    kind(() => s.replaceProgram(bad, undefined, undefined, true), 'Evaluation');
+    kind(() => s.replaceProgram(bad, undefined, undefined, undefined), 'InvalidJson');
+    expect([s.snapshot(), s.version(), s.isPristine('$n')]).toEqual(before);
+    const run = s.run(retained, 'old');
+    try { expect(run.failure).toBeNull(); } finally { run.free(); }
+    // Ordinary callers opt out of the native root restriction.
+    const replacement = s.replaceProgram(bad, undefined, undefined, false);
+    let next: any;
+    try {
+      expect(replacement.initialization.refused).toEqual([]);
+      expect(replacement.projection).toEqual({changed:false,refused:[]});
+      expect(replacement.snapshot).toBe(s.snapshot());
+      expect(replacement.version).toBe(s.version());
+      next = replacement.evaluation;
+      expect(JSON.parse(next.json).root.extra).toBe(1);
+      const token = next.evaluation; token.free();
+      kind(() => s.run(retained, 'stale'), 'StaleHandle');
+    } finally { next?.free(); replacement.free(); }
+  } finally { bad.free(); retained.free(); evaluation.free(); out.free(); s.free(); library.free(); }
+});
+
+test('replacement getters are guarded and do not expose a writable candidate', () => {
+  const {s, library} = setup();
+  const p = parseProgram('root=Box(1)', library);
+  const r = s.replaceProgram(p, undefined, undefined, true);
+  try {
+    kind(() => new wasm.ReplacementOutput(), 'InvalidHandle');
+    expect(() => { r.version = 9n; }).toThrow();
+    expect(r.version).toBe(s.version());
+    r.free();
+    kind(() => r.snapshot, 'Disposed');
+  } finally { r.free(); p.free(); s.free(); library.free(); }
+});

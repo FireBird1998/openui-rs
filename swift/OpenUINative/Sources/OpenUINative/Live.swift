@@ -51,17 +51,15 @@ public final class LiveProgram {
         get { requestedStreaming || stepIsStreaming || !interactionSuspensions.isEmpty }
         set { requestedStreaming = newValue }
     }
-    /// Built-in controls can interact only with a complete, usable runtime.
-    /// A failed complete replacement is refused until a later complete show
-    /// succeeds; the binding cannot roll that replacement back yet.
-    public var acceptsInteractions: Bool { !isStreaming && !completeInvalid }
-    private var completeInvalid = false
+    /// Built-in controls can interact only with a complete runtime.
+    public var acceptsInteractions: Bool { !isStreaming }
     /// The app-owned request, separate from an immutable preview step's phase.
     /// Temporary hosts use suspendInteractions(), so they never overwrite
     /// an app request made while their asynchronous work is suspended.
     public var isStreamingRequested: Bool { requestedStreaming }
     private var requestedStreaming = false
     private var stepIsStreaming: Bool { display.streaming }
+    var showingPreview: Bool { previewSession != nil }
     private var interactionSuspensions: Set<UUID> = []
 
     /// Temporarily gates clicks without writing the app-owned streaming
@@ -153,14 +151,10 @@ public final class LiveProgram {
     /// evaluated. Every accepted complete show revokes older elements and
     /// markers, even for identical programs. A stream push uses a separate,
     /// noninteractive preview session; `discardPreview()` restores the complete
-    /// session after a parser failure. Call with each step of a stream. Invalid
-    /// persisted input is checked before the program is replaced. The binding
-    /// has no transaction across setProgram/initialize/evaluate: an error after
-    /// replacement can still invalidate the preceding runtime handles.
+    /// session after a parser failure. Call with each step of a stream. Program
+    /// replacement is atomic, including initialization, evaluation and native
+    /// display admission. A refused show preserves both sessions and drawings.
     public func show(_ step: Step, persisted: JSONValue? = nil) throws {
-        // Admission happens before any phase, display or runtime mutation,
-        // including when replacing an existing preview.
-        try preflight(persisted)
         let oldDisplay = display
         let oldCompleteDisplay = completeDisplay
         let oldCompleteStep = completeStep
@@ -169,31 +163,14 @@ public final class LiveProgram {
         let oldFailure = failure
         do { try apply(step, persisted: persisted) }
         catch {
-            if completeInvalid {
-                // Known Rust transaction follow-up: an accepted complete
-                // replacement cannot restore the underlying store/handles.
-                discardPreview()
-            } else {
-                if previewSession !== oldPreview { previewSession?.dispose() }
-                previewSession = oldPreview
-                completeDisplay = oldCompleteDisplay
-                completeStep = oldCompleteStep
-                display = oldDisplay
-                pristineCache = oldCache
-                failure = oldFailure
-            }
+            if previewSession !== oldPreview { previewSession?.dispose() }
+            previewSession = oldPreview
+            completeDisplay = oldCompleteDisplay
+            completeStep = oldCompleteStep
+            display = oldDisplay
+            pristineCache = oldCache
+            failure = oldFailure
             throw error
-        }
-    }
-
-    private func preflight(_ persisted: JSONValue?) throws {
-        // Check every caller-supplied persisted value before replacing the
-        // runtime program. initialize's JSON admission can throw after setProgram.
-        // Use the binding's own reader/limits, not a second Swift approximation.
-        if let persisted {
-            let preflight = try RuntimeSession(library: library.inner, promptSpec: nil)
-            defer { preflight.dispose() }
-            _ = try preflight.initialize(persisted: persisted.compact)
         }
     }
 
@@ -203,19 +180,19 @@ public final class LiveProgram {
             return
         }
         guard generation < UInt64.max else { throw LiveError(description: "evaluation generation exhausted") }
-        let wasInvalid = completeInvalid
-        completeInvalid = true
-        do { try session.setProgram(program: step.parsed) }
-        catch { completeInvalid = wasInvalid; throw error }
+        let base = completeDisplay ?? display
+        guard base.generation < UInt64.max else { throw LiveError(description: "evaluation generation exhausted") }
+        let started = ContinuousClock.now
+        let replaced = try session.replaceProgram(program: step.parsed, persisted: persisted?.compact, projected: nil, nativeView: true)
+        let initialized = replaced.initialization
+        let next = try decoded(replaced.evaluation, snapshot: replaced.snapshot, version: replaced.version,
+            from: base, programID: UUID(), streaming: false, started: started)
         pristineCache = nil
-        let initialized = try session.initialize(persisted: persisted?.compact)
-        let next = try evaluated(session, from: completeDisplay ?? display, programID: UUID(), streaming: false)
         previewSession?.dispose()
         previewSession = nil
         completeDisplay = nil
         completeStep = step
         display = next
-        completeInvalid = false
         hasProgram = true
         failure = initialized.refused.isEmpty ? nil
             : initialized.refused.map { "\($0.name): \(Self.describe($0.error))" }.joined(separator: "\n")
@@ -235,7 +212,6 @@ public final class LiveProgram {
     }
 
     private func showPreview(_ step: Step, persisted: JSONValue?) throws {
-        guard !completeInvalid else { throw Self.stale }
         do {
             if previewSession == nil {
                 let preview = try RuntimeSession(library: library.inner, promptSpec: promptSpec)
@@ -250,10 +226,15 @@ public final class LiveProgram {
                 }
             }
             guard let previewSession else { throw LiveError(description: "no preview session") }
-            try previewSession.setProgram(program: step.parsed)
-            let projectionWarning = try copyEditedState(to: previewSession, from: completeDisplay ?? display)
-            let initialized = try previewSession.initialize(persisted: persisted?.compact)
-            let next = try evaluated(previewSession, from: display, programID: UUID(), streaming: true)
+            guard display.generation < UInt64.max else { throw LiveError(description: "evaluation generation exhausted") }
+            let projected = try editedState(from: completeDisplay ?? display)
+            let started = ContinuousClock.now
+            let replaced = try previewSession.replaceProgram(program: step.parsed, persisted: persisted?.compact,
+                projected: projected?.compact, nativeView: true)
+            let initialized = replaced.initialization
+            let projectionWarning = projectionWarning(replaced.projection)
+            let next = try decoded(replaced.evaluation, snapshot: replaced.snapshot, version: replaced.version,
+                from: display, programID: UUID(), streaming: true, started: started)
             pristineCache = nil
             display = next
             let initializationWarning = initialized.refused.isEmpty ? nil : initialized.refused.map {
@@ -265,9 +246,16 @@ public final class LiveProgram {
     }
 
     private func copyEditedState(to preview: RuntimeSession, from complete: Display) throws -> String? {
+        let initialized = try preview.initialize(persisted: editedState(from: complete)?.compact)
+        return projectionWarning(initialized)
+    }
+
+    private func editedState(from complete: Display) throws -> JSONValue? {
         guard case let .object(entries) = complete.state else { return nil }
-        let dirty = try entries.filter { try !session.isPristine(name: $0.key) }
-        let initialized = try preview.initialize(persisted: JSONValue.object(dirty).compact)
+        return .object(try entries.filter { try !session.isPristine(name: $0.key) })
+    }
+
+    private func projectionWarning(_ initialized: InitializationOutput) -> String? {
         guard !initialized.refused.isEmpty else { return nil }
         return "preview projection: " + initialized.refused.map {
             "\($0.name): \(Self.describe($0.error))"
@@ -321,7 +309,6 @@ public final class LiveProgram {
     /// changes nothing.
     public func write(_ marker: BindingMarker, _ value: JSONValue) throws {
         guard !isStreaming else { throw Self.streaming }
-        guard !completeInvalid else { throw Self.stale }
         guard let origin = marker.origin, origin.program == id else { throw Self.stale }
         if origin.generation != generation {
             guard case let .binding(now)? = locate(origin.steps)?.value, now.json == marker.json else { throw Self.stale }
@@ -402,7 +389,7 @@ public final class LiveProgram {
     /// Whether `element` is from this program's current evaluation: what's
     /// drawn from it is what the tree holds now.
     public func isCurrent(_ element: Element) -> Bool {
-        guard !completeInvalid, let origin = element.origin else { return false }
+        guard let origin = element.origin else { return false }
         return origin.program == id && origin.generation == generation
     }
 
@@ -413,7 +400,7 @@ public final class LiveProgram {
     /// drawn (the same component, props, actions and markers) inside a form
     /// of the same name. Otherwise nil: what was drawn there is gone.
     func current(_ element: Element, form: String?) -> Element? {
-        guard !completeInvalid, let origin = element.origin, origin.program == id else { return nil }
+        guard let origin = element.origin, origin.program == id else { return nil }
         if origin.generation == generation { return element }
         guard let found = locate(origin.steps), case let .element(now)? = found.value,
               found.form == form, now.json == element.json else { return nil }
@@ -585,6 +572,14 @@ public final class LiveProgram {
                            programID: UUID? = nil, streaming: Bool? = nil) throws -> Display {
         let started = ContinuousClock.now
         let output = try runtime.evaluate()
+        return try decoded(output, snapshot: runtime.snapshot(), version: runtime.version(),
+            from: base, programID: programID, streaming: streaming, started: started)
+    }
+
+    /// Replacement supplies serialized display data and enforces this decoder's
+    /// root shape and depth before committing. No session reads follow commit.
+    private func decoded(_ output: EvaluationOutput, snapshot: String, version: UInt64,
+                         from base: Display, programID: UUID?, streaming: Bool?, started: ContinuousClock.Instant) throws -> Display {
         let json = try JSONValue.parse(output.json)
         guard base.generation < UInt64.max else { throw LiveError(description: "evaluation generation exhausted") }
         let nextGeneration = base.generation + 1
@@ -593,8 +588,8 @@ public final class LiveProgram {
         let nextRootJSON = json["root"]
         let nextRoot = try nextRootJSON.flatMap { $0 == .null ? nil : try Element(json: $0, at: origin) }
         let nextErrors = (json["errors"]?.array ?? []).map(RuntimeIssue.init(json:))
-        let nextVersion = try runtime.version()
-        let nextState = try JSONValue.parse(runtime.snapshot())
+        let nextVersion = version
+        let nextState = try JSONValue.parse(snapshot)
         // Publish only after every fallible Swift conversion/read succeeded.
         return Display(root: nextRoot, errors: nextErrors, state: nextState, version: nextVersion,
             sizeLimited: output.sizeLimited, depthLimited: output.depthLimited,

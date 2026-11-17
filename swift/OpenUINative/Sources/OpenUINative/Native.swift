@@ -960,7 +960,10 @@ struct TabsView: View {
     let tabs: [Tab]
     let path: String
     @State private var selected = 0
+    @State private var previewSelected = 0
     @Environment(\.liveProgram) private var live
+    private var isPreview: Bool { live?.showingPreview ?? false }
+    private var displayedSelection: Int { isPreview ? previewSelected : selected }
     @Environment(\.formContext) private var form
 
     init(_ props: PropReader, path: String) throws {
@@ -973,9 +976,12 @@ struct TabsView: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
-            Picker("", selection: Binding(get: { selected }, set: {
-                selected = $0
-                form?.validation.selectedTabs[path] = $0
+            Picker("", selection: Binding(get: { displayedSelection }, set: {
+                if isPreview { previewSelected = $0 }
+                else {
+                    selected = $0
+                    form?.validation.selectedTabs[path] = $0
+                }
             })) {
                 ForEach(Array(tabs.enumerated()), id: \.offset) { i, tab in
                     Text(tab.trigger.plain).tag(i)
@@ -983,12 +989,15 @@ struct TabsView: View {
             }
             .onAppear { form?.validation.selectedTabs[path] = selected }
             .onDisappear { form?.validation.selectedTabs[path] = nil }
+            .onChange(of: isPreview) {
+                if !isPreview { previewSelected = 0 }
+                form?.validation.selectedTabs[path] = selected
+            }
             .pickerStyle(.segmented)
-            .disabled(!(live?.acceptsInteractions ?? true))
             .labelsHidden()
             .fixedSize()
-            if tabs.indices.contains(selected) {
-                let tab = tabs[selected]
+            if tabs.indices.contains(displayedSelection) {
+                let tab = tabs[displayedSelection]
                 VStack(alignment: .leading, spacing: 12) {
                     Items(
                         items: tab.content,
