@@ -11,6 +11,7 @@
 use std::sync::Arc;
 
 use openui_lang::{Library, StreamParser};
+mod message;
 mod runtime;
 pub mod session;
 pub use runtime::*;

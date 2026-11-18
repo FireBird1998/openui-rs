@@ -40,6 +40,7 @@ const openuiSlice = String.prototype.slice;
 const openuiIndexOf = String.prototype.indexOf;
 const openuiCharCodeAt = String.prototype.charCodeAt;
 const openuiFromCharCode = String.fromCharCode;
+const openuiIsWellFormed = String.prototype.isWellFormed;
 const openuiToWellFormed = String.prototype.toWellFormed;
 const openuiDecode = TextDecoder.prototype.decode;
 const openuiDecoder = new TextDecoder('utf-8', { ignoreBOM: true });
@@ -162,6 +163,25 @@ function openuiWellFormed(text) {
     out += unit >= 0xd800 && unit <= 0xdfff ? '�' : openuiFromCharCode(unit);
   }
   return out;
+}
+// Message text can end in the middle of a surrogate pair. Carry lone units
+// through wasm-bindgen's UTF-8 string transport using the core's stand-ins.
+function openuiMessageText(value) {
+  const text = openuiString(value);
+  if (typeof openuiIsWellFormed === 'function' && openuiApply(openuiIsWellFormed, text, [])) return text;
+  let out = '', start = 0;
+  for (let i = 0; i < text.length; i++) {
+    const unit = openuiApply(openuiCharCodeAt, text, [i]);
+    if (unit < 0xd800 || unit > 0xdfff) continue;
+    if (unit <= 0xdbff && i + 1 < text.length) {
+      const next = openuiApply(openuiCharCodeAt, text, [i + 1]);
+      if (next >= 0xdc00 && next <= 0xdfff) { i++; continue; }
+    }
+    const offset = unit - 0xd800;
+    out += openuiApply(openuiSlice, text, [start, i]) + openuiFromCharCode(0xdbfe + (offset >> 10), 0xdc00 + (offset & 0x3ff));
+    start = i + 1;
+  }
+  return start === 0 ? text : out + openuiApply(openuiSlice, text, [start]);
 }
 // A copy of the caller's path as JSON text, so Rust reads no JavaScript
 // values while it holds the session.
@@ -449,12 +469,22 @@ parseProgram = function (...args) {
   return openuiCall(openuiParseSpec, undefined, undefined, args, converted => openuiApply(openuiParseProgram, undefined, converted));
 };
 
+const openuiParseMessage = parseMessage, openuiBuildMessage = buildMessage;
+const openuiParseMessageSpec = openuiSpec([openuiMessageText, openuiBool]);
+const openuiBuildMessageSpec = openuiSpec([openuiMessageText], { json: true });
+parseMessage = function (...args) {
+  return openuiCall(openuiParseMessageSpec, undefined, undefined, args, converted => openuiApply(openuiParseMessage, undefined, converted));
+};
+buildMessage = function (...args) {
+  return openuiCall(openuiBuildMessageSpec, undefined, undefined, args, converted => openuiApply(openuiBuildMessage, undefined, converted));
+};
+
 // CommonJS exports captured the unguarded values; web exports are live
 // bindings. Refuse to load if the package exports anything not guarded here.
 if (typeof exports !== 'undefined') {
   const openuiExports = { RuntimeSession, EvaluationHandle, ActionHandle, ContinuationHandle,
     ParsedProgram, EvaluationOutput, ActionOutput, ReplacementOutput, RuntimeLimits, ParseLimits, ComponentLibrary,
-    StreamSession, parse, parseProgram };
+    StreamSession, parse, parseProgram, parseMessage, buildMessage };
   for (const key of openuiOwnKeys(exports)) {
     if (key !== '__esModule' && !openuiHasOwn(openuiExports, key)) throw openuiUncovered('exports', key);
   }

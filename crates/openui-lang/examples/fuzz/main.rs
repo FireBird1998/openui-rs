@@ -17,7 +17,8 @@
 //! check small-limit cut rules alongside uncut upstream byte comparisons.
 //! With `--edits`, merge and serialization are fuzzed instead (see `edits.rs`),
 //! and with `--invariants`, the rules in `invariants.rs` are checked on both
-//! parsers.
+//! parsers. With `--messages`, message reads and writes are fuzzed, including
+//! every UTF-16 streaming cut.
 //! The core taking longer than `--slow-ms` (default 1000) on an input is a
 //! blow-up. Hunts add `--seconds` and `--findings` (see `findings.rs`).
 //! Needs Bun.
@@ -31,6 +32,7 @@ mod engine;
 mod findings;
 mod generate;
 mod invariants;
+mod messages;
 mod reference;
 mod rng;
 mod rules;
@@ -699,8 +701,14 @@ fn main() {
         return;
     }
     let conformance = root.join("conformance");
-    let corpus = load_corpus(&conformance);
     let mut reference = Reference::start(&root.join("reference"));
+    if args.iter().any(|a| a == "--messages") {
+        if !messages::run(seed, batches, &mut reference) && findings::run().dir.is_none() {
+            std::process::exit(1);
+        }
+        return;
+    }
+    let corpus = load_corpus(&conformance);
 
     if args.iter().any(|a| a == "--invariants") {
         invariants::run_all(

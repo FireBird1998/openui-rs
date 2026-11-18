@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # A hunt: searches for findings for a set time, then leaves a report and the
 # shrunk cases in findings/<date>-seed<seed>/, which git ignores. It runs
-# differential fuzzing with a fresh seed, for parsing and then for edits, then
+# differential fuzzing with a fresh seed, for parsing, edits, messages and then
 # the invariants on both parsers, with coverage-guided fuzzing
 # (scripts/fuzz-coverage.sh, when cargo-fuzz is installed) and the upstream
 # check (scripts/upstream-check.sh) alongside. A hunt never commits
@@ -105,21 +105,24 @@ fi
 if [[ -n "$skip" ]]; then
   echo "skipped: $skip" > "$hunt/status-parse"
   echo "skipped: $skip" > "$hunt/status-edits"
+  echo "skipped: $skip" > "$hunt/status-messages"
   echo "skipped: $skip" > "$hunt/status-invariants"
   echo "Fuzzing skipped: $skip"
 else
-  # Parsing gets the first 40% of the time left, edits the next 35% and the
-  # invariants the rest. Each fuzzer stops itself before its share ends; one
+  # Parsing gets the first 40% of the time left, edits the next 30%, messages
+  # the next 10%, and invariants the rest. Each fuzzer stops itself before its share ends; one
   # still running at the end is stopped, and its last batch reported as a
   # probable hang.
   now="$(date +%s)"
   parse_until=$((now + (deadline - now) * 2 / 5))
-  edits_until=$((now + (deadline - now) * 3 / 4))
-  for check in parse edits invariants; do
+  edits_until=$((now + (deadline - now) * 7 / 10))
+  messages_until=$((now + (deadline - now) * 4 / 5))
+  for check in parse edits messages invariants; do
     now="$(date +%s)"
     case "$check" in
       parse) until=$parse_until ;;
       edits) until=$edits_until ;;
+      messages) until=$messages_until ;;
       *) until=$deadline ;;
     esac
     share=$((until - now))

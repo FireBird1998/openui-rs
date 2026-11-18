@@ -23,6 +23,11 @@ for source, label in [(native, "native"), (inner, "wasm inner"), (core, "session
 native_session = native.split("#[uniffi::export]", 1)[1].split("fn worker_loop", 1)[0]
 assert {camel(n) for n in re.findall(r"pub fn (\w+)\(", native_session)} == set(methods) | {"new", "withLimits"}, "native session drift"
 ffi_lib = (root / "crates/openui-ffi/src/lib.rs").read_text()
+message_functions = {"parseMessage", "buildMessage"}
+ffi_messages = (root / "crates/openui-ffi/src/message.rs").read_text()
+wasm_messages = (root / "crates/openui-wasm/src/message.rs").read_text()
+assert {camel(n) for n in re.findall(r"#\[uniffi::export\]\s*pub fn (\w+)\(", ffi_messages)} == message_functions
+assert set(re.findall(r"js_name = (\w+)", wasm_messages)) == message_functions
 def wasm_accessors(record_name):
     """JavaScript getter and setter names of a wasm record, from each method's
     own attribute: js_name if given, else the Rust name (setters drop `set_`)."""
@@ -75,6 +80,8 @@ if len(sys.argv) == 1:
     sys.exit(0)
 if len(sys.argv) == 3 and sys.argv[1] == "--wasm":
     declarations = pathlib.Path(sys.argv[2]).read_text()
+    for function in message_functions:
+        assert re.search(r"^export function " + function + r"\([^\n]*\): string;", declarations, re.M), function
     session = re.search(r"export class RuntimeSession\s*\{(.*?)\n\}", declarations, re.S)
     assert session, "missing wasm RuntimeSession"
     for method in methods + ["withLimits"]:
@@ -97,6 +104,8 @@ if len(sys.argv) == 3 and sys.argv[1] == "--wasm":
 if len(sys.argv) not in (2, 3):
     sys.exit("usage: check-runtime-binding-api.py SWIFT_FILE [KOTLIN_FILE]")
 swift = pathlib.Path(sys.argv[1]).read_text()
+for function in message_functions:
+    assert re.search(r"^public func " + function + r"\([^\n]*\)\s*throws\s*->\s*String", swift, re.M), function
 api = re.search(r"public protocol RuntimeSessionProtocol[^\{]*\{(.*?)\n\}", swift, re.S)
 assert api, "missing Swift RuntimeSession protocol"
 methods = [
@@ -125,6 +134,8 @@ for error in ["ForeignHandle", "ConsumedHandle", "EvictedHandle", "Evaluation"]:
     assert f"case {error}" in swift
 if len(sys.argv) == 3:
     kotlin = pathlib.Path(sys.argv[2]).read_text()
+    for function in message_functions:
+        assert re.search(r"fun `" + function + r"`\([^\n]*\): kotlin.String", kotlin), function
     api = re.search(r"public interface RuntimeSessionInterface\s*\{(.*?)\n\}", kotlin, re.S)
     assert api, "missing Kotlin RuntimeSession interface"
     for method in methods:

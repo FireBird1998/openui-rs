@@ -1,0 +1,260 @@
+[
+  {
+    "name": "upstream-round-trip",
+    "build": {
+      "content": "root = Card([title])\ntitle = TextContent(\"a ]]>openui:end\")",
+      "context": [
+        {
+          "note": "rush"
+        }
+      ],
+      "attributes": {
+        "library": "@acme/support@1.2.0",
+        "note": "a b!"
+      },
+      "end": true
+    },
+    "roundTrip": true
+  },
+  {
+    "name": "upstream-plain-text",
+    "raw": "Hi\r\n```openui-lang\nroot = A()\n```\n"
+  },
+  {
+    "name": "upstream-last-content",
+    "raw": "]]>openui:content\nold\n]]>openui:context\n{}\n]]>openui:content?v=2\nnew\r\n]]>openui:context\n{\"a\":"
+  },
+  {
+    "name": "upstream-streaming-marker",
+    "raw": "]]>openui:content\nroot = A()\n]]>open"
+  },
+  {
+    "name": "upstream-mid-line-retry",
+    "raw": "]]>openui:content?v=2\nroot = A(\"Broken]]>openui:content?v=2\nroot = B()\n]]>openui:end"
+  },
+  {
+    "name": "upstream-streaming-retry",
+    "raw": "]]>openui:content\nroot = A(\"Broken]]>openui:content?v=2\nroot = B()"
+  },
+  {
+    "name": "upstream-abandoned-context-and-end",
+    "raw": "]]>openui:context\n{\"$x\":1}\n]]>openui:end\n]]>openui:content\nroot = A()"
+  },
+  {
+    "name": "trailing-newline-after-end",
+    "raw": "]]>openui:content\nbody\n]]>openui:end\n"
+  },
+  {
+    "name": "crlf",
+    "raw": "]]>openui:content?name=hello+world\r\nfirst\r\nsecond\r\n]]>openui:context\r\n[1,\r\n2]\r\n]]>openui:end\r\n"
+  },
+  {
+    "name": "crlf-held-fast-path",
+    "raw": "abc\r\n]"
+  },
+  {
+    "name": "marker-like-text",
+    "raw": "inline ]]>openui:end\n ]]>openui:context\n]]>openui:Content\n]]>openui:content2\n]]>openui:content\r\r\n]]>other:content\n]]>openui:foo.bar\n]]>\n"
+  },
+  {
+    "name": "non-lf-terminators",
+    "raw": "a\rx]]>openui:content?bad=a\rb\n]]>openui:content?bad=a\u2028b\n]]>openui:content?bad=a\u2029b\n]]>openui:content\u2028\n]]>openui:content\u2029\n]]>openui:end\r"
+  },
+  {
+    "name": "unknown-markers-and-repeated-context",
+    "raw": "prefix\r\n]]>openui:unknown?k=v\nignored\n]]>openui:context\nold\n]]>openui:end?also=yes\n]]>openui:context\nnew\n]]>openui:other\ntail"
+  },
+  {
+    "name": "end-continues-the-current-body",
+    "raw": "before\r\n]]>openui:end\r\nafter\r\n]]>openui:end\n\n"
+  },
+  {
+    "name": "empty-and-duplicate-attributes",
+    "raw": "]]>openui:content?&=skip&a&2=z&1=y&a=last=rest&__proto__=ignored&%5F_proto__=ignored&constructor=own&toString=v&01=first&4294967295=x&4294967294=y\nX"
+  },
+  {
+    "name": "decode-uri-components",
+    "raw": "]]>openui:content?%E9%9B%AA=%F0%9F%98%80&k=\u00e9+%26%3D%00&bad+=a+%GG&%+x=ok&x=%ED%A0%80&y=%C0%AF&z=%F4%90%80%80&short=%E2%82&split=%C3\u00e9%A9&pair=%2b+%2B&sur=\ud800+%20&hybrid=\ud800%ED%B0%80\n\u96ea\ud83d\ude00"
+  },
+  {
+    "name": "astral-and-lone-surrogates",
+    "raw": "h\u00e9\ud83d\ude00\ud800\nx\ud83d\ude00]]>openui:content?\ud83c\udf88=\udc00\n\u96ea\ud83d\ude00\n]]>openui:context\n\"\ud83d\ude00\ud800\"\n]]>openui:end"
+  },
+  {
+    "name": "json-own-order-and-duplicates",
+    "raw": "]]>openui:context\n{\"b\":1,\"2\":2,\"1\":1,\"__proto__\":{\"x\":true},\"b\":3,\"constructor\":null,\"nullable\":null}"
+  },
+  {
+    "name": "json-number-rounding",
+    "raw": "]]>openui:context\n[-0,-0.0,-1e-9999,1e9999,-1e9999,9007199254740993,1e+21,1e-7,5e-324,1.0E+02]"
+  },
+  {
+    "name": "json-negative-zero",
+    "raw": "]]>openui:context\n-0"
+  },
+  {
+    "name": "json-infinity",
+    "raw": "]]>openui:context\n1e400"
+  },
+  {
+    "name": "json-escaped-surrogates",
+    "raw": "]]>openui:context\n{\"\\ud800\": \"\\uD83D\\uDE00\", \"mixed\": \"\\uD83D\ude00\", \"mixed2\":\"\ud83d\\uDE00\", \"lone\":\"\\uDC00\"}"
+  },
+  {
+    "name": "json-string",
+    "raw": "]]>openui:context\n  \"01\" \t"
+  },
+  {
+    "name": "json-null",
+    "raw": "]]>openui:context\nnull"
+  },
+  {
+    "name": "json-boolean",
+    "raw": "]]>openui:context\ntrue"
+  },
+  {
+    "name": "json-empty",
+    "raw": "]]>openui:context\n"
+  },
+  {
+    "name": "json-bom",
+    "raw": "]]>openui:context\n\ufeff{}"
+  },
+  {
+    "name": "json-leading-zero",
+    "raw": "]]>openui:context\n01"
+  },
+  {
+    "name": "json-trailing-comma",
+    "raw": "]]>openui:context\n[1,]"
+  },
+  {
+    "name": "json-invalid-string",
+    "raw": "]]>openui:context\n\"a\u0001b\""
+  },
+  {
+    "name": "midline-content-suffix",
+    "raw": "abc]]>openui:contentx\nabc]]>openui:content  \nabc]]>openui:content\r\nnew]]>context"
+  },
+  {
+    "name": "empty",
+    "raw": ""
+  },
+  {
+    "name": "attribute-encoding",
+    "build": {
+      "content": "\u96ea\ud83d\ude00",
+      "context": [
+        1,
+        {},
+        false
+      ],
+      "attributes": {
+        "z": " !'()*~_-.+%&=\n\t\u0000",
+        "2": "\ud83c\udf31",
+        "1": "\u96ea",
+        "01": "a+b",
+        "4294967295": "z",
+        "4294967294": "y"
+      },
+      "end": true
+    },
+    "roundTrip": true
+  },
+  {
+    "name": "verbatim-context",
+    "build": {
+      "content": "hi",
+      "context": "raw context\r\nmore",
+      "attributes": {},
+      "end": true
+    },
+    "roundTrip": true
+  },
+  {
+    "name": "json-looking-string-context",
+    "build": {
+      "content": "hi",
+      "context": "{\"k\":1}",
+      "attributes": {},
+      "end": true
+    }
+  },
+  {
+    "name": "writer-own-prototype-attribute",
+    "build": {
+      "content": "",
+      "context": null,
+      "attributes": {
+        "__proto__": "a",
+        "": "ignored",
+        "constructor": "n"
+      }
+    }
+  },
+  {
+    "name": "writer-null-context",
+    "build": {
+      "content": ""
+    }
+  },
+  {
+    "name": "writer-lone-surrogate-value",
+    "build": {
+      "content": "body",
+      "attributes": {
+        "a": "\ud800"
+      }
+    }
+  },
+  {
+    "name": "writer-lone-surrogate-key",
+    "build": {
+      "content": "body",
+      "attributes": {
+        "\udfff": "a"
+      }
+    }
+  },
+  {
+    "name": "writer-lone-surrogate-body",
+    "build": {
+      "content": "\ud800",
+      "context": "\udc00",
+      "end": true
+    },
+    "roundTrip": true
+  },
+  {
+    "name": "writer-content-markers",
+    "build": {
+      "content": "first\n]]>openui:content\nsecond\r",
+      "context": "raw\n]]>openui:context\nreplacement",
+      "end": true
+    }
+  },
+  {
+    "name": "writer-json-prototype-and-number",
+    "build": {
+      "content": "program",
+      "context": {
+        "z": 1.0,
+        "2": 1e+21,
+        "1": 1e-07,
+        "__proto__": {
+          "own": 1
+        },
+        "n": 9007199254740993,
+        "big": 1e+300
+      }
+    }
+  },
+  {
+    "name": "end-before-held-marker",
+    "raw": "before\r\r\n]]>openui:end\r\n\n]]>openui:context\nafter\r\n]]>openui:end\n\n"
+  },
+  {
+    "name": "astral-units-can-be-adjacent-stand-ins",
+    "raw": "]]>openui:content?name=\ud800\udffe\n]]>op\ud800\udffenui:content\nroot = A()\n]]>\ropen"
+  }
+]

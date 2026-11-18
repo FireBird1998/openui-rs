@@ -13,7 +13,10 @@
 //   → {"steps": ["<JSON>", ...], "end": "<JSON>"}   or   {"threw": "<error>"}
 //   ("steps": false leaves the pushes' results out, for rules that need only the end)
 //
-// The last two give full results, for the invariants (see the fuzzer's
+//   {"op": "parseMessage", "raw": "..."} → complete and every UTF-16 streaming cut
+//   {"op": "buildMessage", "build": {...}} → the written text and its reads, or a URIError
+//
+// The parser's parse and stream operations give full results, for the invariants (see the fuzzer's
 // engine.rs); the first gives fingerprints, which differential fuzzing needs.
 //
 // fp is the FNV-1a fingerprint the goldens use, end the stream's result once it
@@ -22,6 +25,7 @@
 import { existsSync, readFileSync } from "fs";
 import { join } from "path";
 import { createInterface } from "readline";
+import { answerMessage } from "./messages";
 
 process.env.OPENUI_TELEMETRY_DISABLED = "1";
 process.env.DO_NOT_TRACK = "1";
@@ -116,5 +120,8 @@ function answerEdit(req: EditRequest) {
 for await (const line of createInterface({ input: process.stdin })) {
   if (!line.trim()) continue;
   const req = JSON.parse(line);
-  process.stdout.write(JSON.stringify(req.op ? answerEdit(req) : answer(req)) + "\n");
+  const result = req.op === "parseMessage" || req.op === "buildMessage"
+    ? answerMessage(req)
+    : req.op ? answerEdit(req) : answer(req);
+  process.stdout.write(JSON.stringify(result) + "\n");
 }

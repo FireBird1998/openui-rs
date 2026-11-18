@@ -320,6 +320,7 @@ Not in the check, because they need Bun, time or a screen:
 | `scripts/fuzz.sh --seed N --count N` | Differential fuzzing: generated and mangled programs through the core and a live reference, comparing every step. It saves shrunk mismatches as corpus cases. A result a limit cut can't match the reference, which has none: where the answers differ and the core's was cut for size or work, it's parsed again with those limits raised, and counts as "cut by a limit" when it matches then, a mismatch when it doesn't. |
 | `scripts/fuzz.sh --runtime --seconds 60 --seed 40 --findings target/runtime-hunt` | Generated state and interaction sequences through the public runtime and the existing reference runtime golden adapter, with supervised children (see [Runtime differential fuzzing](#runtime-differential-fuzzing)). |
 | `scripts/fuzz.sh --edits …` | The same, for merging and converting back to source |
+| `scripts/fuzz.sh --messages --seed 97 --count 4000` | Differential message reads at every UTF-16 cut and writes, seeded from `conformance/messages.json`. Use `--only` to replay an input and `--findings` to retain the request and outputs. |
 | `scripts/fuzz.sh --invariants …` | The invariants, on the core and the reference alike (see [Invariants](#invariants)) |
 | `scripts/fuzz-coverage.sh …` | Coverage-guided fuzzing of the targets in `fuzz/` (see [Coverage-guided fuzzing](#coverage-guided-fuzzing)) |
 | `scripts/mutants.sh parsing\|rest\|runtime` | Mutation testing (see [Mutation testing](#mutation-testing)) |

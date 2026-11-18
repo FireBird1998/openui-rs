@@ -49,6 +49,7 @@ done
   export OPENUI_TELEMETRY_DISABLED=1 DO_NOT_TRACK=1
   unset OPENUI_RUNTIME_TELEMETRY_ENABLED
   bun --no-install run.ts golden
+  bun --no-install messages.ts
   bun --no-install prompts.ts golden
   bun --no-install edits.ts golden
   bun --no-install runtime.ts golden

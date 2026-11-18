@@ -441,9 +441,37 @@ clears; at version exhaustion the version stays at its maximum.
 - **Invariants:** rules a result should keep, checked on the core and the reference alike over a million generated programs; a rule both parsers break is a candidate quirk (TESTING.md, "Invariants").
 - **Rust-only checks:** no input panics, and the deepest shapes run on a 64 KB stack (fixed-seed property tests and `tests/depth.rs`); a streamed program ends where its one-shot parse does, except where the reference itself doesn't (quirks 4, 5, 11 and 19); streaming cost stays linear (`tests/streaming_cost.rs`); results that double at every level are cut at the result-size limit (`tests/size.rs`).
 
+## Message format
+
+`reference/messages.ts` calls the vendored `parseMessage` and `buildMessage`
+for [the message cases](conformance/messages.json). The first seven come
+from the vendored tests. The others cover CRLF, repeated and unknown marker
+lines, markers in ordinary text, URI escapes, JavaScript JSON values and
+property order, and lone surrogates. The regeneration script runs the adapter
+with `bun --no-install` to write [the goldens](conformance/golden/messages.json).
+
+The Rust test compares written text and complete read results byte for byte.
+For each raw or successfully built message it also compares the JSON of every
+streaming prefix, including the empty and full prefixes. The adapter uses
+JavaScript's UTF-16 slice boundaries. Rust keeps an astral scalar intact when
+both units are present and uses the core's reserved U+10F800–U+10FFFF scalars
+to carry lone units. Literal input in that reserved range shares the core's
+existing representation limitation. Cuts do not split other UTF-8 scalars.
+
+The invariant checks the parts of reversible corpus cases and generated
+inputs. Upstream treats a string context as verbatim on write, so a string
+that spells valid JSON can read back as a different value. A marker line
+inside a body can also start a new section. The golden comparisons cover those
+behaviors. The public limit tests cover whole-message admission, nesting in
+the winning context, and bounded writing.
+
 ## Differential fuzzing
 
 `scripts/fuzz.sh` runs generated and mangled programs through the core and a long-lived reference process and compares fingerprints of the one-shot result, the tokens and every push of a random chunking. `scripts/fuzz.sh --edits` does the same for merges (programs with patches made from them) and serialization (real parse results, sometimes with fields deleted, retyped or renamed), comparing full outputs. Shrunk mismatches are saved as corpus cases.
+
+`scripts/fuzz.sh --messages` replays and mutates the message cases through the same
+reference worker, comparing complete reads, UTF-16 cuts, written bytes and URI
+errors. The hunt records reproducible message findings with their request and outputs.
 
 | When | What | Inputs | Unexplained mismatches |
 |---|---|---:|---:|

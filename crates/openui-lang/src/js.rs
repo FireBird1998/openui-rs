@@ -64,6 +64,24 @@ pub fn normalize_js_string(text: String) -> String {
         .collect()
 }
 
+/// Canonicalize pairs when independently supplied UTF-16 units meet.
+pub(crate) fn normalize_surrogate_pairs(text: &str) -> std::borrow::Cow<'_, str> {
+    let mut high = false;
+    let has_pair = text.chars().map(lone_surrogate_unit).any(|unit| {
+        let pair = high && matches!(unit, Some(0xDC00..=0xDFFF));
+        high = matches!(unit, Some(0xD800..=0xDBFF));
+        pair
+    });
+    if !has_pair {
+        return std::borrow::Cow::Borrowed(text);
+    }
+    std::borrow::Cow::Owned(
+        char::decode_utf16(utf16_units(text))
+            .map(|unit| unit.unwrap_or_else(|e| lone_surrogate(e.unpaired_surrogate())))
+            .collect(),
+    )
+}
+
 /// The characters `String.prototype.trim` removes (WhiteSpace + LineTerminator).
 /// Differs from `char::is_whitespace`: includes U+FEFF, excludes U+0085.
 pub(crate) fn is_js_whitespace(c: char) -> bool {
@@ -194,13 +212,16 @@ pub(crate) fn write_json_string(out: &mut String, s: &str) {
 /// UTF-8 bytes in JSON.stringify's escaped string body, without quotes.
 /// A control character or lone surrogate can require six bytes.
 pub fn json_string_len(s: &str) -> usize {
-    s.chars()
-        .map(|c| match c {
-            '"' | '\\' | '\u{08}' | '\u{0C}' | '\n' | '\r' | '\t' => 2,
-            c if c < '\u{20}' || c as u32 >= LONE_SURROGATE_BASE => 6,
-            c => c.len_utf8(),
-        })
-        .sum()
+    s.chars().map(json_char_len).sum()
+}
+
+#[inline]
+pub(crate) fn json_char_len(c: char) -> usize {
+    match c {
+        '"' | '\\' | '\u{08}' | '\u{0C}' | '\n' | '\r' | '\t' => 2,
+        c if c < '\u{20}' || c as u32 >= LONE_SURROGATE_BASE => 6,
+        c => c.len_utf8(),
+    }
 }
 
 /// `JSON.stringify(s)` for a string.
@@ -631,6 +652,14 @@ pub fn parse_json_with_limits(
 /// double values, including negative zero and overflow to infinity.
 pub fn parse_json_value(text: &str, max_depth: usize) -> Result<crate::Value, JsonError> {
     JsonReader::new(text).read(max_depth)
+}
+
+/// Message context uses the core's JavaScript numbers and stack-safe values.
+pub(crate) fn read_message_json(
+    text: &str,
+    limits: crate::Limits,
+) -> Result<crate::Value, JsonError> {
+    parse_json_value(text, limits.json_depth())
 }
 
 struct JsonReader<'a> {

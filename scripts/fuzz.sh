@@ -2,9 +2,10 @@
 # Differential fuzzing against the reference parser. Needs Bun.
 #
 #   scripts/fuzz.sh [--seed N] [--count N] [--from K] [--only K] [--seconds S]
-#       [--findings DIR] [--no-save] [--edits | --invariants | --runtime]
+#       [--findings DIR] [--no-save] [--edits | --invariants | --runtime | --messages]
 #   scripts/fuzz.sh --runtime --replay FILE --only 0
 #   scripts/fuzz.sh --runtime-case --seed N --only K  # print a v2 replay
+# Message mode compares reads (complete and every UTF-16 cut) and writes.
 # Runtime mode checks admission cuts and evaluator boundaries. Only reference
 # deadlines retry once; inherited pipes after worker exit are a failure.
 # Runtime mode always saves reviewable findings, never changes the corpus.
