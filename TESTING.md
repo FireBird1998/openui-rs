@@ -362,7 +362,11 @@ row in the CONFORMANCE table and verifies the row counts. The change-flag-only
 row takes precedence when both the snapshot and wanted calls have converged.
 
 Every replay step checks that the cache contains at most twice as many entries
-as registered queries. The random test also compares the exact entry count to
+as registered queries. For each registration the replay checks that its current
+entry contains a result, has failed with an error visible in the snapshot, or
+owns an outstanding call actually returned to the driver. The host ledger adds
+newly wanted identities and removes each one on completion. Defaults and
+previous results cannot satisfy this check. The random test also compares the exact entry count to
 the distinct current and previous keys in the model. In `query_commands`,
 2,000 cycles of three edits and three successful 10 KB completions check the
 exact cache size after each command. That suite also checks the shared work

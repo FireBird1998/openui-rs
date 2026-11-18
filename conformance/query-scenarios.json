@@ -179,9 +179,9 @@
       {"kind":"evaluate"},
       {"kind":"replace","program":"q = Query(\"lookup\", {page: 0}, \"waiting\")"},
       {"kind":"evaluate"},
-      {"kind":"complete","call":3,"outcome":{"kind":"result","value":"recovered"}},
-      {"kind":"complete","call":1,"outcome":{"kind":"result","value":"stale"}},
-      {"kind":"complete","call":2,"outcome":{"kind":"tool-error","message":"stale error"}}
+      {"kind":"complete","dispatch":{"step":9,"toolName":"lookup","args":{"page":0}},"outcome":{"kind":"result","value":"recovered"}},
+      {"kind":"complete","dispatch":{"step":3,"toolName":"lookup","args":{"page":1}},"outcome":{"kind":"result","value":"stale"}},
+      {"kind":"complete","dispatch":{"step":5,"toolName":"lookup","args":{"page":2}},"outcome":{"kind":"tool-error","message":"stale error"}}
     ]
   },
   {
@@ -508,6 +508,51 @@
       {"kind":"replace","program":"a = Query(\"t\", {v:3}, \"adef\")\nc = Query(\"t\", {v:2}, \"cdef\")\nb = Query(\"t\", {v:0}, \"bdef\")"},
       {"kind":"evaluate"},
       {"kind":"complete","call":0,"outcome":{"kind":"result","value":"delivered"}}
+    ]
+  },
+  {
+    "name": "superseded-search-results-stay-hidden-on-return",
+    "program": "$term = \"a\"\nq = Query(\"search\", {term:$term}, [])",
+    "steps": [
+      {"kind":"evaluate"},
+      {"kind":"set","name":"$term","value":"ab"},
+      {"kind":"evaluate"},
+      {"kind":"complete","call":0,"outcome":{"kind":"result","value":["a"]}},
+      {"kind":"set","name":"$term","value":"a"},
+      {"kind":"evaluate"},
+      {"kind":"complete","call":1,"outcome":{"kind":"mcp-error","message":"late"}},
+      {"kind":"complete","call":2,"outcome":{"kind":"result","value":["fresh"]}}
+    ]
+  },
+  {
+    "name": "new-reader-of-a-retained-failure",
+    "program": "a = Query(\"search\", {term:\"a\"}, [])",
+    "steps": [
+      {"kind":"evaluate"},
+      {"kind":"complete","call":0,"outcome":{"kind":"mcp-error","message":"offline"}},
+      {"kind":"replace","program":"a = Query(\"search\", {term:\"ab\"}, [])\nb = Query(\"search\", {term:\"a\"}, [\"b\"])"},
+      {"kind":"evaluate"},
+      {"kind":"evaluate"},
+      {"kind":"complete","dispatch":{"step":3,"toolName":"search","args":{"term":"a"}},"outcome":{"kind":"result","value":["available"]}},
+      {"kind":"replace","program":"a = Query(\"search\", {term:\"ab\"}, [])\nb = Query(\"search\", {term:\"abc\"}, [\"b\"])"},
+      {"kind":"evaluate"},
+      {"kind":"complete","call":1,"outcome":{"kind":"result","value":["ab"]}}
+    ]
+  },
+  {
+    "name": "superseded-failure-leaves-the-key-reusable-with-an-existing-error",
+    "program": "q = Query(\"search\", {term:\"original\"}, [])",
+    "steps": [
+      {"kind":"evaluate"},
+      {"kind":"complete","call":0,"outcome":{"kind":"mcp-error","message":"original"}},
+      {"kind":"replace","program":"q = Query(\"search\", {term:\"a\"}, [])"},
+      {"kind":"evaluate"},
+      {"kind":"replace","program":"q = Query(\"search\", {term:\"ab\"}, [])"},
+      {"kind":"evaluate"},
+      {"kind":"complete","call":1,"outcome":{"kind":"tool-error","message":"superseded"}},
+      {"kind":"replace","program":"q = Query(\"search\", {term:\"a\"}, [])"},
+      {"kind":"evaluate"},
+      {"kind":"complete","dispatch":{"step":8,"toolName":"search","args":{"term":"a"}},"outcome":{"kind":"result","value":["fresh"]}}
     ]
   }
 ]

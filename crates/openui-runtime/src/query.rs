@@ -181,6 +181,28 @@ impl QueryManager {
         self.cache.len()
     }
 
+    /// Checks a current entry against the error and outstanding calls observed by
+    /// a conformance driver. Defaults and previous data cannot serve this entry.
+    #[doc(hidden)]
+    pub fn current_entry_is_served<'a>(
+        &self,
+        id: &str,
+        visible_error: bool,
+        mut outstanding: impl Iterator<Item = &'a ToolCallId>,
+    ) -> bool {
+        self.queries
+            .get(id)
+            .and_then(|q| self.cache.get(&q.key))
+            .is_some_and(|entry| {
+                entry.data.is_some()
+                    || (entry.failed && visible_error)
+                    || entry.pending.as_ref().is_some_and(|pending| {
+                        let target = Arc::downgrade(pending);
+                        outstanding.any(|id| id.0.target.ptr_eq(&target))
+                    })
+            })
+    }
+
     /// The most recent observable snapshot, including the three status lists.
     pub fn snapshot(&self) -> &JsObject<Value> {
         &self.snapshot
@@ -296,7 +318,12 @@ impl QueryManager {
             if acquire {
                 entry.references = entry.references.saturating_add(1);
             }
-            if entry.data.is_none() && !entry.failed && entry.pending.is_none() {
+            // A failed entry suppresses another call while this query can see an
+            // error. A new reader otherwise has neither data nor an explanation.
+            if entry.data.is_none()
+                && (!entry.failed || query.error.is_none())
+                && entry.pending.is_none()
+            {
                 let pending = Arc::new(PendingCall {
                     key,
                     tool_name: node.tool_name.clone(),
@@ -343,6 +370,18 @@ impl QueryManager {
             id.0.consumed.store(true, Ordering::Relaxed);
             return Ok(false);
         };
+        // A previous key keeps existing data alive. Only current readers can
+        // accept new data or a failure. Leave an unsettled entry reusable.
+        let mut readers = self
+            .queries
+            .iter_mut()
+            .filter(|(_, query)| query.key == pending.key)
+            .peekable();
+        if readers.peek().is_none() {
+            entry.pending = None;
+            id.0.consumed.store(true, Ordering::Relaxed);
+            return Ok(false);
+        }
         if let ToolOutcome::Result(value) = &outcome {
             entry.data = Some(match value {
                 Some(value) => admit_result(value, self.limits)?,
@@ -354,10 +393,7 @@ impl QueryManager {
         }
         id.0.consumed.store(true, Ordering::Relaxed);
         entry.pending = None;
-        for (statement_id, query) in &mut self.queries {
-            if query.key != pending.key {
-                continue;
-            }
+        for (statement_id, query) in readers {
             if matches!(outcome, ToolOutcome::Result(_)) {
                 query.error = None;
                 query.ever_fetched = true;

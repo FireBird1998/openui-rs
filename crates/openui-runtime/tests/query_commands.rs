@@ -141,7 +141,14 @@ fn consecutive_key_changes_release_the_displaced_result() {
 
     for cycle in 0..2_000 {
         let mut counts = Vec::new();
-        let mut calls = Vec::new();
+        let mut calls = std::collections::VecDeque::new();
+        let mut observe = |manager: &QueryManager, calls: &std::collections::VecDeque<_>| {
+            counts.push(manager.cache_entry_count());
+            assert!(
+                manager.current_entry_is_served("q", false, calls.iter()),
+                "cycle {cycle}"
+            );
+        };
         for offset in 0..3 {
             store
                 .set(
@@ -150,27 +157,27 @@ fn consecutive_key_changes_release_the_displaced_result() {
                 )
                 .unwrap();
             let update = manager.apply(evaluate(&program, &store)).unwrap();
-            counts.push(manager.cache_entry_count());
             assert_eq!(update.calls.len(), 1);
             calls.extend(update.calls.into_iter().map(|call| call.id));
+            observe(&manager, &calls);
             if offset == 0 {
                 manager
                     .apply(QueryCommand::Complete {
-                        id: &calls[0],
+                        id: &calls.pop_front().unwrap(),
                         outcome: ToolOutcome::Result(Some(&result)),
                     })
                     .unwrap();
-                counts.push(manager.cache_entry_count());
+                observe(&manager, &calls);
             }
         }
-        for id in &calls[1..] {
+        while let Some(id) = calls.pop_front() {
             manager
                 .apply(QueryCommand::Complete {
-                    id,
+                    id: &id,
                     outcome: ToolOutcome::Result(Some(&result)),
                 })
                 .unwrap();
-            counts.push(manager.cache_entry_count());
+            observe(&manager, &calls);
         }
         assert_eq!(
             counts,
@@ -178,4 +185,46 @@ fn consecutive_key_changes_release_the_displaced_result() {
             "cycle {cycle}"
         );
     }
+}
+
+#[test]
+fn superseded_result_is_discarded_before_json_admission() {
+    let store = Store::default();
+    let mut manager = QueryManager::with_limits(Limits::DEFAULT.with_depth(16));
+    let start = manager
+        .apply(evaluate(&program("q = Query(\"first\")"), &store))
+        .unwrap();
+    let next = manager
+        .apply(evaluate(&program("q = Query(\"next\")"), &store))
+        .unwrap();
+    let before = manager.snapshot_json().to_owned();
+    let mut deep = JsonValue::Null;
+    for _ in 0..64 {
+        deep = JsonValue::Array(vec![deep]);
+    }
+    let id = &start.calls[0].id;
+    let update = manager.apply(QueryCommand::Complete {
+        id,
+        outcome: ToolOutcome::Result(Some(&deep)),
+    });
+    free_json(deep);
+    let update = update.unwrap();
+    assert!(!update.changed && update.calls.is_empty());
+    assert_eq!(manager.snapshot_json(), before);
+    assert!(matches!(
+        manager.apply(QueryCommand::Complete {
+            id,
+            outcome: ToolOutcome::Result(None)
+        }),
+        Err(QueryCommandError::InvalidCall)
+    ));
+    assert!(
+        manager
+            .apply(QueryCommand::Complete {
+                id: &next.calls[0].id,
+                outcome: ToolOutcome::Result(None)
+            })
+            .unwrap()
+            .changed
+    );
 }

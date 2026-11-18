@@ -6,8 +6,6 @@ import type { Dispatch, Outcome, Scenario, Step } from './query-scenarios';
 const corrections = [
   'removed-call-success-on-a-recreated-key',
   'removed-call-failure-on-a-recreated-key',
-  'success-while-only-the-previous-key-is-held',
-  'failure-while-only-the-previous-key-is-held',
   'pending-key-changes-its-only-reader',
   'idle-query-takes-over-a-pending-call',
   'rapid-edits-revisit-a-cached-result',
@@ -19,6 +17,7 @@ const corrections = [
   'return-to-finished-key',
   'return-to-failed-key',
   'return-to-an-outstanding-key-after-failure',
+  'new-reader-of-a-retained-failure',
 ] as const;
 type Situation = typeof corrections[number];
 type Keys = Record<string, string>;
@@ -101,7 +100,8 @@ function simulate(scenario: Scenario, keys: Keys[], enabled: Set<Situation>) {
         else if (q.fetched) q.hidden = 'return-to-a-displaced-call-after-success';
         else throw new Error(`unclassified hidden loading at ${scenario.name} step ${step}`);
       }
-      if (entry.data === undefined && !entry.failed && !entry.pending) {
+      const needsCall = !entry.failed || (!q.error && enabled.has('new-reader-of-a-retained-failure'));
+      if (entry.data === undefined && needsCall && !entry.pending) {
         entry.pending = true;
         entry.starter = id;
         q.loading = true;
@@ -123,15 +123,7 @@ function simulate(scenario: Scenario, keys: Keys[], enabled: Set<Situation>) {
         ? 'removed-call-success-on-a-recreated-key' : 'removed-call-failure-on-a-recreated-key';
     }
     const readers = Array.from(queries).filter(([, q]) => q.key === key);
-    if (readers.length === 0) {
-      if (referenced(key) && cache.get(key) === entry) {
-        if (outcome.kind === 'result' && enabled.has('success-while-only-the-previous-key-is-held')) {
-          entry.data = outcome.value ?? null;
-          entry.failed = false;
-        } else if (!success && enabled.has('failure-while-only-the-previous-key-is-held')) entry.failed = true;
-      }
-      return;
-    }
+    if (readers.length === 0) return;
     if (outcome.kind === 'result') {
       if (!own && !enabled.has('pending-key-changes-its-only-reader')) return;
       entry.data = outcome.value ?? null;

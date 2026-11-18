@@ -48,6 +48,7 @@ fn replay(scenario: &JsonValue, mut observe: impl FnMut(usize, String, usize)) {
     let mut manager = QueryManager::default();
     let mut calls: Vec<ToolCallId> = Vec::new();
     let mut dispatches = Vec::new();
+    let mut outstanding = BTreeMap::new();
     let steps = scenario["steps"].as_array().unwrap();
     let mut registered = HashSet::new();
     for (index, step) in steps.iter().enumerate() {
@@ -79,9 +80,12 @@ fn replay(scenario: &JsonValue, mut observe: impl FnMut(usize, String, usize)) {
                 } else {
                     Some(usize::try_from(step["call"].as_u64().unwrap()).unwrap())
                 };
-                call.map(|call| QueryCommand::Complete {
-                    id: &calls[call],
-                    outcome: outcome(&step["outcome"]),
+                call.map(|call| {
+                    assert!(outstanding.remove(&call).is_some());
+                    QueryCommand::Complete {
+                        id: &calls[call],
+                        outcome: outcome(&step["outcome"]),
+                    }
                 })
             }
             "set" => {
@@ -139,6 +143,7 @@ fn replay(scenario: &JsonValue, mut observe: impl FnMut(usize, String, usize)) {
                 write!(actual, ",\"args\":{}", value_to_json(&args).unwrap()).unwrap();
             }
             actual.push('}');
+            outstanding.insert(calls.len(), call.id.clone());
             calls.push(call.id);
         }
         actual.push_str(if changed {
@@ -146,6 +151,17 @@ fn replay(scenario: &JsonValue, mut observe: impl FnMut(usize, String, usize)) {
         } else {
             "],\"changed\":false}"
         });
+        let snapshot = parse_json(manager.snapshot_json()).unwrap();
+        let errors = snapshot["__openui_errors"].as_array().unwrap();
+        for id in &registered {
+            let visible_error = errors
+                .iter()
+                .any(|error| error["statementId"].as_str() == Some(id));
+            assert!(
+                manager.current_entry_is_served(id, visible_error, outstanding.values()),
+                "{name}, step {index}: {id} has no current result, error or outstanding call"
+            );
+        }
         observe(index, actual, manager.cache_entry_count());
     }
 }
@@ -285,10 +301,26 @@ fn documented_situations() -> BTreeMap<String, (usize, usize)> {
     let mut counts = BTreeMap::new();
     for row in section
         .lines()
-        .skip_while(|line| !line.starts_with("| `"))
-        .take_while(|line| line.starts_with("| `"))
+        .skip_while(|line| !line.starts_with("| Force |"))
+        .skip(2)
+        .take_while(|line| line.starts_with('|'))
     {
-        let name = row.split('`').nth(1).unwrap();
+        let mut fields = row.split('|').skip(1).map(str::trim);
+        let force = fields.next().unwrap();
+        assert!(
+            force.split(", ").all(|reason| matches!(
+                reason.to_ascii_lowercase().as_str(),
+                "bound" | "loading" | "delivery"
+            )),
+            "unknown force in {row}"
+        );
+        let name = fields
+            .next()
+            .unwrap()
+            .strip_prefix('`')
+            .unwrap()
+            .strip_suffix('`')
+            .unwrap();
         let count = row
             .trim_end_matches('|')
             .rsplit('|')
