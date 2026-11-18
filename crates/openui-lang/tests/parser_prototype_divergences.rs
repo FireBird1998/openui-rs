@@ -21,6 +21,10 @@ fn object_prototype_assignments_keep_main_bytes_and_pin_the_reference_difference
     assert_eq!(cases.len(), 12);
     for case in cases {
         let name = case["name"].as_str().unwrap();
+        assert_eq!(
+            reference[name], main[name]["reference"],
+            "{name}: complete reference one-shot and streams"
+        );
         let text = case["program"].as_str().unwrap();
         let lib = Arc::new(Library::from_json_schema(&case["schema"]));
         let result = parse(text, &lib, None);

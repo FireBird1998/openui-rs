@@ -1,6 +1,6 @@
 // Run from reference/: bun --no-install query-default-cycles.ts
 // Same observation shape and eager registration order as runtime.ts.
-import {readFileSync, writeFileSync} from 'fs';
+import {writeFileSync} from 'fs';
 process.env.OPENUI_TELEMETRY_DISABLED='1';process.env.DO_NOT_TRACK='1';
 const {compileSchema,parse}=await import('./lang-core/src/parser/parser');
 const {evaluate}=await import('./lang-core/src/runtime/evaluator');
@@ -8,6 +8,7 @@ const {evaluateRoot}=await import('./lang-core/src/runtime/evaluate-tree');
 const {createQueryManager}=await import('./lang-core/src/runtime/queryManager');
 const {createStore}=await import('./lang-core/src/runtime/store');
 const library=compileSchema({$defs:{Box:{properties:{a:{}}}}});
+const results={};
 for (const [reason,decl,read] of [
  ['self','q=Query("t",{},q)',true],
  ['pair','q=Query("t",{},r)\nr=Query("t",{},q)',true],
@@ -34,8 +35,6 @@ for (const [reason,decl,read] of [
   } catch(e) {thrown={name:e.name,message:e.message};} finally {manager.dispose();}
   return {root,errors,snapshot:store.getSnapshot(),...(thrown?{throw:thrown}:{})};
  };
- const path=`../conformance/divergences/runtime-query-default-cycle-${reason}.json`;
- const old=JSON.parse(readFileSync(path,'utf8'));
- writeFileSync(path,JSON.stringify({...old,program,reference:{defaults:observe(),persisted:observe()}})+'\n');
- console.log(reason,observe().throw);
+ results[reason]={program,reference:{defaults:observe(),persisted:observe()}};
 }
+writeFileSync('../conformance/golden/query-default-cycles.json',JSON.stringify(results)+'\n');

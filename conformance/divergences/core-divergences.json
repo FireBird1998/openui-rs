@@ -1,0 +1,400 @@
+{
+  "required-number": {
+    "reference": {
+      "throw": {
+        "name": "TypeError",
+        "message": "required.includes is not a function. (In 'required.includes(key)', 'required.includes' is undefined)"
+      }
+    },
+    "rust": {
+      "output": "{\"root\":{\"type\":\"element\",\"typeName\":\"Box\",\"props\":{},\"partial\":false,\"hasDynamicProps\":false,\"statementId\":\"root\"},\"meta\":{\"incomplete\":false,\"unresolved\":[],\"orphaned\":[],\"statementCount\":1,\"errors\":[]},\"stateDeclarations\":{},\"queryStatements\":[],\"mutationStatements\":[]}",
+      "depth_limited": false,
+      "size_limited": false
+    },
+    "same_output": false
+  },
+  "element-shaped-root": {
+    "reference": {
+      "output": "{\"root\":{\"type\":\"element\",\"typeName\":\"Box\",\"props\":{\"value\":5},\"partial\":false,\"statementId\":\"root\"},\"meta\":{\"incomplete\":false,\"unresolved\":[],\"orphaned\":[],\"statementCount\":1,\"errors\":[]},\"stateDeclarations\":{},\"queryStatements\":[],\"mutationStatements\":[]}"
+    },
+    "rust": {
+      "output": "{\"root\":null,\"meta\":{\"incomplete\":false,\"unresolved\":[],\"orphaned\":[],\"statementCount\":1,\"errors\":[]},\"stateDeclarations\":{},\"queryStatements\":[],\"mutationStatements\":[]}",
+      "depth_limited": false,
+      "size_limited": false
+    },
+    "same_output": false
+  },
+  "component-ast-root": {
+    "reference": {
+      "output": "{\"root\":null,\"rootExpression\":{\"k\":\"Comp\",\"name\":\"Card\",\"args\":[]},\"meta\":{\"incomplete\":false,\"unresolved\":[],\"orphaned\":[],\"statementCount\":1,\"errors\":[]},\"stateDeclarations\":{},\"queryStatements\":[],\"mutationStatements\":[]}"
+    },
+    "rust": {
+      "output": "{\"root\":null,\"meta\":{\"incomplete\":false,\"unresolved\":[],\"orphaned\":[],\"statementCount\":1,\"errors\":[{\"code\":\"no-root\",\"component\":\"\",\"path\":\"\",\"message\":\"root does not evaluate to a component\",\"statementId\":\"root\"}]},\"stateDeclarations\":{},\"queryStatements\":[],\"mutationStatements\":[]}",
+      "depth_limited": false,
+      "size_limited": false
+    },
+    "same_output": false
+  },
+  "missing-children-ast-root": {
+    "reference": {
+      "throw": {
+        "name": "TypeError",
+        "message": "undefined is not an object (evaluating 'current.args.forEach')"
+      }
+    },
+    "rust": {
+      "output": "{\"root\":null,\"meta\":{\"incomplete\":false,\"unresolved\":[],\"orphaned\":[],\"statementCount\":1,\"errors\":[{\"code\":\"no-root\",\"component\":\"\",\"path\":\"\",\"message\":\"root does not evaluate to a component\",\"statementId\":\"root\"}]},\"stateDeclarations\":{},\"queryStatements\":[],\"mutationStatements\":[]}",
+      "depth_limited": false,
+      "size_limited": false
+    },
+    "same_output": false
+  },
+  "ast-state-default": {
+    "reference": {
+      "output": "{\"root\":{\"type\":\"element\",\"typeName\":\"Box\",\"props\":{\"value\":{\"k\":\"StateRef\",\"n\":\"$s\"}},\"partial\":false,\"hasDynamicProps\":true,\"statementId\":\"root\"},\"meta\":{\"incomplete\":false,\"unresolved\":[],\"orphaned\":[],\"statementCount\":2,\"errors\":[]},\"stateDeclarations\":{\"$s\":1},\"queryStatements\":[],\"mutationStatements\":[]}"
+    },
+    "rust": {
+      "output": "{\"root\":{\"type\":\"element\",\"typeName\":\"Box\",\"props\":{\"value\":{\"k\":\"StateRef\",\"n\":\"$s\"}},\"partial\":false,\"hasDynamicProps\":true,\"statementId\":\"root\"},\"meta\":{\"incomplete\":false,\"unresolved\":[],\"orphaned\":[],\"statementCount\":2,\"errors\":[]},\"stateDeclarations\":{\"$s\":{\"k\":\"Num\",\"v\":1}},\"queryStatements\":[],\"mutationStatements\":[]}",
+      "depth_limited": false,
+      "size_limited": false
+    },
+    "same_output": false
+  },
+  "string-method-length": {
+    "reference": {
+      "output": "{\"root\":{\"type\":\"element\",\"typeName\":\"Box\",\"props\":{\"value\":{\"k\":\"StateRef\",\"n\":\"$s\"}},\"partial\":false,\"hasDynamicProps\":true,\"statementId\":\"root\"},\"meta\":{\"incomplete\":false,\"unresolved\":[],\"orphaned\":[],\"statementCount\":3,\"errors\":[]},\"stateDeclarations\":{\"$o\":{},\"$s\":2},\"queryStatements\":[],\"mutationStatements\":[]}"
+    },
+    "rust": {
+      "output": "{\"root\":{\"type\":\"element\",\"typeName\":\"Box\",\"props\":{\"value\":{\"k\":\"StateRef\",\"n\":\"$s\"}},\"partial\":false,\"hasDynamicProps\":true,\"statementId\":\"root\"},\"meta\":{\"incomplete\":false,\"unresolved\":[],\"orphaned\":[],\"statementCount\":3,\"errors\":[]},\"stateDeclarations\":{\"$o\":{}},\"queryStatements\":[],\"mutationStatements\":[]}",
+      "depth_limited": false,
+      "size_limited": false
+    },
+    "same_output": false
+  },
+  "object-method-name": {
+    "reference": {
+      "output": "{\"root\":{\"type\":\"element\",\"typeName\":\"Box\",\"props\":{\"value\":{\"k\":\"StateRef\",\"n\":\"$s\"}},\"partial\":false,\"hasDynamicProps\":true,\"statementId\":\"root\"},\"meta\":{\"incomplete\":false,\"unresolved\":[],\"orphaned\":[],\"statementCount\":3,\"errors\":[]},\"stateDeclarations\":{\"$o\":{},\"$s\":\"toString\"},\"queryStatements\":[],\"mutationStatements\":[]}"
+    },
+    "rust": {
+      "output": "{\"root\":{\"type\":\"element\",\"typeName\":\"Box\",\"props\":{\"value\":{\"k\":\"StateRef\",\"n\":\"$s\"}},\"partial\":false,\"hasDynamicProps\":true,\"statementId\":\"root\"},\"meta\":{\"incomplete\":false,\"unresolved\":[],\"orphaned\":[],\"statementCount\":3,\"errors\":[]},\"stateDeclarations\":{\"$o\":{}},\"queryStatements\":[],\"mutationStatements\":[]}",
+      "depth_limited": false,
+      "size_limited": false
+    },
+    "same_output": false
+  },
+  "prototype-method-length": {
+    "reference": {
+      "output": "{\"root\":{\"type\":\"element\",\"typeName\":\"Box\",\"props\":{\"value\":{\"k\":\"StateRef\",\"n\":\"$s\"}},\"partial\":false,\"hasDynamicProps\":true,\"statementId\":\"root\"},\"meta\":{\"incomplete\":false,\"unresolved\":[],\"orphaned\":[],\"statementCount\":3,\"errors\":[]},\"stateDeclarations\":{\"$o\":{},\"$s\":[0]},\"queryStatements\":[],\"mutationStatements\":[]}"
+    },
+    "rust": {
+      "output": "{\"root\":{\"type\":\"element\",\"typeName\":\"Box\",\"props\":{\"value\":{\"k\":\"StateRef\",\"n\":\"$s\"}},\"partial\":false,\"hasDynamicProps\":true,\"statementId\":\"root\"},\"meta\":{\"incomplete\":false,\"unresolved\":[],\"orphaned\":[],\"statementCount\":3,\"errors\":[]},\"stateDeclarations\":{\"$o\":{},\"$s\":[null]},\"queryStatements\":[],\"mutationStatements\":[]}",
+      "depth_limited": false,
+      "size_limited": false
+    },
+    "same_output": false
+  },
+  "prototype-constructor-text": {
+    "reference": {
+      "output": "{\"root\":{\"type\":\"element\",\"typeName\":\"Box\",\"props\":{\"value\":{\"k\":\"StateRef\",\"n\":\"$s\"}},\"partial\":false,\"hasDynamicProps\":true,\"statementId\":\"root\"},\"meta\":{\"incomplete\":false,\"unresolved\":[],\"orphaned\":[],\"statementCount\":3,\"errors\":[]},\"stateDeclarations\":{\"$o\":{},\"$s\":\"function Object() { [native code] }\"},\"queryStatements\":[],\"mutationStatements\":[]}"
+    },
+    "rust": {
+      "output": "{\"root\":{\"type\":\"element\",\"typeName\":\"Box\",\"props\":{\"value\":{\"k\":\"StateRef\",\"n\":\"$s\"}},\"partial\":false,\"hasDynamicProps\":true,\"statementId\":\"root\"},\"meta\":{\"incomplete\":false,\"unresolved\":[],\"orphaned\":[],\"statementCount\":3,\"errors\":[]},\"stateDeclarations\":{\"$o\":{},\"$s\":\"\"},\"queryStatements\":[],\"mutationStatements\":[]}",
+      "depth_limited": false,
+      "size_limited": false
+    },
+    "same_output": false
+  },
+  "array-map-length-control": {
+    "reference": {
+      "output": "{\"root\":{\"type\":\"element\",\"typeName\":\"Box\",\"props\":{\"value\":{\"k\":\"StateRef\",\"n\":\"$s\"}},\"partial\":false,\"hasDynamicProps\":true,\"statementId\":\"root\"},\"meta\":{\"incomplete\":false,\"unresolved\":[],\"orphaned\":[],\"statementCount\":3,\"errors\":[]},\"stateDeclarations\":{\"$o\":{},\"$s\":0},\"queryStatements\":[],\"mutationStatements\":[]}"
+    },
+    "rust": {
+      "output": "{\"root\":{\"type\":\"element\",\"typeName\":\"Box\",\"props\":{\"value\":{\"k\":\"StateRef\",\"n\":\"$s\"}},\"partial\":false,\"hasDynamicProps\":true,\"statementId\":\"root\"},\"meta\":{\"incomplete\":false,\"unresolved\":[],\"orphaned\":[],\"statementCount\":3,\"errors\":[]},\"stateDeclarations\":{\"$o\":{},\"$s\":0},\"queryStatements\":[],\"mutationStatements\":[]}",
+      "depth_limited": false,
+      "size_limited": false
+    },
+    "same_output": true
+  },
+  "prototype-missing-control": {
+    "reference": {
+      "output": "{\"root\":{\"type\":\"element\",\"typeName\":\"Box\",\"props\":{\"value\":{\"k\":\"StateRef\",\"n\":\"$s\"}},\"partial\":false,\"hasDynamicProps\":true,\"statementId\":\"root\"},\"meta\":{\"incomplete\":false,\"unresolved\":[],\"orphaned\":[],\"statementCount\":3,\"errors\":[]},\"stateDeclarations\":{\"$o\":{}},\"queryStatements\":[],\"mutationStatements\":[]}"
+    },
+    "rust": {
+      "output": "{\"root\":{\"type\":\"element\",\"typeName\":\"Box\",\"props\":{\"value\":{\"k\":\"StateRef\",\"n\":\"$s\"}},\"partial\":false,\"hasDynamicProps\":true,\"statementId\":\"root\"},\"meta\":{\"incomplete\":false,\"unresolved\":[],\"orphaned\":[],\"statementCount\":3,\"errors\":[]},\"stateDeclarations\":{\"$o\":{}},\"queryStatements\":[],\"mutationStatements\":[]}",
+      "depth_limited": false,
+      "size_limited": false
+    },
+    "same_output": true
+  },
+  "own-tostring-add": {
+    "reference": {
+      "throw": {
+        "name": "TypeError",
+        "message": "No default value"
+      }
+    },
+    "rust": {
+      "output": "{\"root\":{\"type\":\"element\",\"typeName\":\"Box\",\"props\":{\"value\":{\"k\":\"StateRef\",\"n\":\"$s\"}},\"partial\":false,\"hasDynamicProps\":true,\"statementId\":\"root\"},\"meta\":{\"incomplete\":false,\"unresolved\":[],\"orphaned\":[],\"statementCount\":3,\"errors\":[]},\"stateDeclarations\":{\"$o\":{\"toString\":1},\"$s\":\"[object Object]\"},\"queryStatements\":[],\"mutationStatements\":[]}",
+      "depth_limited": false,
+      "size_limited": false
+    },
+    "same_output": false
+  },
+  "own-tostring-equality": {
+    "reference": {
+      "throw": {
+        "name": "TypeError",
+        "message": "No default value"
+      }
+    },
+    "rust": {
+      "output": "{\"root\":{\"type\":\"element\",\"typeName\":\"Box\",\"props\":{\"value\":{\"k\":\"StateRef\",\"n\":\"$s\"}},\"partial\":false,\"hasDynamicProps\":true,\"statementId\":\"root\"},\"meta\":{\"incomplete\":false,\"unresolved\":[],\"orphaned\":[],\"statementCount\":3,\"errors\":[]},\"stateDeclarations\":{\"$o\":{\"toString\":1},\"$s\":true},\"queryStatements\":[],\"mutationStatements\":[]}",
+      "depth_limited": false,
+      "size_limited": false
+    },
+    "same_output": false
+  },
+  "own-tostring-sort": {
+    "reference": {
+      "throw": {
+        "name": "TypeError",
+        "message": "No default value"
+      }
+    },
+    "rust": {
+      "output": "{\"root\":{\"type\":\"element\",\"typeName\":\"Box\",\"props\":{\"value\":{\"k\":\"StateRef\",\"n\":\"$s\"}},\"partial\":false,\"hasDynamicProps\":true,\"statementId\":\"root\"},\"meta\":{\"incomplete\":false,\"unresolved\":[],\"orphaned\":[],\"statementCount\":3,\"errors\":[]},\"stateDeclarations\":{\"$o\":{\"toString\":1},\"$s\":[{\"toString\":1},{}]},\"queryStatements\":[],\"mutationStatements\":[]}",
+      "depth_limited": false,
+      "size_limited": false
+    },
+    "same_output": false
+  },
+  "own-tostring-contains": {
+    "reference": {
+      "throw": {
+        "name": "TypeError",
+        "message": "No default value"
+      }
+    },
+    "rust": {
+      "output": "{\"root\":{\"type\":\"element\",\"typeName\":\"Box\",\"props\":{\"value\":{\"k\":\"StateRef\",\"n\":\"$s\"}},\"partial\":false,\"hasDynamicProps\":true,\"statementId\":\"root\"},\"meta\":{\"incomplete\":false,\"unresolved\":[],\"orphaned\":[],\"statementCount\":3,\"errors\":[]},\"stateDeclarations\":{\"$o\":{\"toString\":1},\"$s\":[{\"toString\":1}]},\"queryStatements\":[],\"mutationStatements\":[]}",
+      "depth_limited": false,
+      "size_limited": false
+    },
+    "same_output": false
+  },
+  "own-valueof-control": {
+    "reference": {
+      "output": "{\"root\":{\"type\":\"element\",\"typeName\":\"Box\",\"props\":{\"value\":{\"k\":\"StateRef\",\"n\":\"$s\"}},\"partial\":false,\"hasDynamicProps\":true,\"statementId\":\"root\"},\"meta\":{\"incomplete\":false,\"unresolved\":[],\"orphaned\":[],\"statementCount\":3,\"errors\":[]},\"stateDeclarations\":{\"$o\":{\"valueOf\":1},\"$s\":\"[object Object]\"},\"queryStatements\":[],\"mutationStatements\":[]}"
+    },
+    "rust": {
+      "output": "{\"root\":{\"type\":\"element\",\"typeName\":\"Box\",\"props\":{\"value\":{\"k\":\"StateRef\",\"n\":\"$s\"}},\"partial\":false,\"hasDynamicProps\":true,\"statementId\":\"root\"},\"meta\":{\"incomplete\":false,\"unresolved\":[],\"orphaned\":[],\"statementCount\":3,\"errors\":[]},\"stateDeclarations\":{\"$o\":{\"valueOf\":1},\"$s\":\"[object Object]\"},\"queryStatements\":[],\"mutationStatements\":[]}",
+      "depth_limited": false,
+      "size_limited": false
+    },
+    "same_output": true
+  },
+  "own-both-coercion": {
+    "reference": {
+      "throw": {
+        "name": "TypeError",
+        "message": "No default value"
+      }
+    },
+    "rust": {
+      "output": "{\"root\":{\"type\":\"element\",\"typeName\":\"Box\",\"props\":{\"value\":{\"k\":\"StateRef\",\"n\":\"$s\"}},\"partial\":false,\"hasDynamicProps\":true,\"statementId\":\"root\"},\"meta\":{\"incomplete\":false,\"unresolved\":[],\"orphaned\":[],\"statementCount\":3,\"errors\":[]},\"stateDeclarations\":{\"$o\":{\"toString\":1,\"valueOf\":1},\"$s\":\"[object Object]\"},\"queryStatements\":[],\"mutationStatements\":[]}",
+      "depth_limited": false,
+      "size_limited": false
+    },
+    "same_output": false
+  },
+  "evaluated-prototype-state": {
+    "reference": {
+      "output": "{\"root\":{\"type\":\"element\",\"typeName\":\"Box\",\"props\":{\"value\":{\"k\":\"StateRef\",\"n\":\"$z\"}},\"partial\":false,\"hasDynamicProps\":true,\"statementId\":\"root\"},\"meta\":{\"incomplete\":false,\"unresolved\":[],\"orphaned\":[],\"statementCount\":3,\"errors\":[]},\"stateDeclarations\":{\"$x\":7,\"$z\":7},\"queryStatements\":[],\"mutationStatements\":[]}"
+    },
+    "rust": {
+      "output": "{\"root\":{\"type\":\"element\",\"typeName\":\"Box\",\"props\":{\"value\":{\"k\":\"StateRef\",\"n\":\"$z\"}},\"partial\":false,\"hasDynamicProps\":true,\"statementId\":\"root\"},\"meta\":{\"incomplete\":false,\"unresolved\":[],\"orphaned\":[],\"statementCount\":3,\"errors\":[]},\"stateDeclarations\":{\"$x\":7,\"$z\":{\"a\":5}},\"queryStatements\":[],\"mutationStatements\":[]}",
+      "depth_limited": false,
+      "size_limited": false
+    },
+    "same_output": false
+  },
+  "evaluated-null-state-prototype": {
+    "reference": {
+      "output": "{\"root\":{\"type\":\"element\",\"typeName\":\"Box\",\"props\":{\"value\":{\"k\":\"StateRef\",\"n\":\"$z\"}},\"partial\":false,\"hasDynamicProps\":true,\"statementId\":\"root\"},\"meta\":{\"incomplete\":false,\"unresolved\":[],\"orphaned\":[],\"statementCount\":3,\"errors\":[]},\"stateDeclarations\":{\"$x\":null,\"$z\":null},\"queryStatements\":[],\"mutationStatements\":[]}"
+    },
+    "rust": {
+      "output": "{\"root\":{\"type\":\"element\",\"typeName\":\"Box\",\"props\":{\"value\":{\"k\":\"StateRef\",\"n\":\"$z\"}},\"partial\":false,\"hasDynamicProps\":true,\"statementId\":\"root\"},\"meta\":{\"incomplete\":false,\"unresolved\":[],\"orphaned\":[],\"statementCount\":3,\"errors\":[]},\"stateDeclarations\":{\"$x\":null,\"$z\":{\"a\":5}},\"queryStatements\":[],\"mutationStatements\":[]}",
+      "depth_limited": false,
+      "size_limited": false
+    },
+    "same_output": false
+  },
+  "constructor-text": {
+    "reference": {
+      "output": "{\"root\":{\"type\":\"element\",\"typeName\":\"Box\",\"props\":{\"value\":{\"k\":\"StateRef\",\"n\":\"$s\"}},\"partial\":false,\"hasDynamicProps\":true,\"statementId\":\"root\"},\"meta\":{\"incomplete\":false,\"unresolved\":[],\"orphaned\":[],\"statementCount\":2,\"errors\":[]},\"stateDeclarations\":{\"$s\":[\"function Number() {\\n    [native code]\\n}\",\"function String() {\\n    [native code]\\n}\",\"function Boolean() {\\n    [native code]\\n}\",\"function Object() { [native code] }\",\"\"]},\"queryStatements\":[],\"mutationStatements\":[]}"
+    },
+    "rust": {
+      "output": "{\"root\":{\"type\":\"element\",\"typeName\":\"Box\",\"props\":{\"value\":{\"k\":\"StateRef\",\"n\":\"$s\"}},\"partial\":false,\"hasDynamicProps\":true,\"statementId\":\"root\"},\"meta\":{\"incomplete\":false,\"unresolved\":[],\"orphaned\":[],\"statementCount\":2,\"errors\":[]},\"stateDeclarations\":{\"$s\":[\"function Number() { [native code] }\",\"function String() { [native code] }\",\"function Boolean() { [native code] }\",\"function Object() { [native code] }\",\"\"]},\"queryStatements\":[],\"mutationStatements\":[]}",
+      "depth_limited": false,
+      "size_limited": false
+    },
+    "same_output": false
+  },
+  "non-ascii-sort": {
+    "reference": {
+      "output": "{\"root\":{\"type\":\"element\",\"typeName\":\"Box\",\"props\":{\"value\":{\"k\":\"StateRef\",\"n\":\"$s\"}},\"partial\":false,\"hasDynamicProps\":true,\"statementId\":\"root\"},\"meta\":{\"incomplete\":false,\"unresolved\":[],\"orphaned\":[],\"statementCount\":2,\"errors\":[]},\"stateDeclarations\":{\"$s\":[\"a\",\"ä\",\"é\",\"z\",\"中\"]},\"queryStatements\":[],\"mutationStatements\":[]}"
+    },
+    "rust": {
+      "output": "{\"root\":{\"type\":\"element\",\"typeName\":\"Box\",\"props\":{\"value\":{\"k\":\"StateRef\",\"n\":\"$s\"}},\"partial\":false,\"hasDynamicProps\":true,\"statementId\":\"root\"},\"meta\":{\"incomplete\":false,\"unresolved\":[],\"orphaned\":[],\"statementCount\":2,\"errors\":[]},\"stateDeclarations\":{\"$s\":[\"a\",\"z\",\"ä\",\"é\",\"中\"]},\"queryStatements\":[],\"mutationStatements\":[]}",
+      "depth_limited": false,
+      "size_limited": false
+    },
+    "same_output": false
+  },
+  "looping-sort": {
+    "reference": {
+      "output": "{\"root\":{\"type\":\"element\",\"typeName\":\"Box\",\"props\":{\"value\":{\"k\":\"StateRef\",\"n\":\"$s\"}},\"partial\":false,\"hasDynamicProps\":true,\"statementId\":\"root\"},\"meta\":{\"incomplete\":false,\"unresolved\":[],\"orphaned\":[],\"statementCount\":2,\"errors\":[]},\"stateDeclarations\":{\"$s\":[1,\"01\",2,\"10\",\"1a\",9,\"9a\",\"x\"]},\"queryStatements\":[],\"mutationStatements\":[]}"
+    },
+    "rust": {
+      "output": "{\"root\":{\"type\":\"element\",\"typeName\":\"Box\",\"props\":{\"value\":{\"k\":\"StateRef\",\"n\":\"$s\"}},\"partial\":false,\"hasDynamicProps\":true,\"statementId\":\"root\"},\"meta\":{\"incomplete\":false,\"unresolved\":[],\"orphaned\":[],\"statementCount\":2,\"errors\":[]},\"stateDeclarations\":{\"$s\":[1,\"01\",2,\"10\",\"1a\",9,\"9a\",\"x\"]},\"queryStatements\":[],\"mutationStatements\":[]}",
+      "depth_limited": false,
+      "size_limited": false
+    },
+    "same_output": true
+  },
+  "blank-looping-sort": {
+    "reference": {
+      "output": "{\"root\":{\"type\":\"element\",\"typeName\":\"Box\",\"props\":{\"value\":{\"k\":\"StateRef\",\"n\":\"$s\"}},\"partial\":false,\"hasDynamicProps\":true,\"statementId\":\"root\"},\"meta\":{\"incomplete\":false,\"unresolved\":[],\"orphaned\":[],\"statementCount\":2,\"errors\":[]},\"stateDeclarations\":{\"$s\":[0,\" \",\" \",\",\",\",\",0]},\"queryStatements\":[],\"mutationStatements\":[]}"
+    },
+    "rust": {
+      "output": "{\"root\":{\"type\":\"element\",\"typeName\":\"Box\",\"props\":{\"value\":{\"k\":\"StateRef\",\"n\":\"$s\"}},\"partial\":false,\"hasDynamicProps\":true,\"statementId\":\"root\"},\"meta\":{\"incomplete\":false,\"unresolved\":[],\"orphaned\":[],\"statementCount\":2,\"errors\":[]},\"stateDeclarations\":{\"$s\":[0,\" \",\" \",\",\",\",\",0]},\"queryStatements\":[],\"mutationStatements\":[]}",
+      "depth_limited": false,
+      "size_limited": false
+    },
+    "same_output": true
+  },
+  "descending-65-looping-sort": {
+    "reference": {
+      "output": "{\"root\":{\"type\":\"element\",\"typeName\":\"Box\",\"props\":{\"value\":{\"k\":\"StateRef\",\"n\":\"$s\"}},\"partial\":false,\"hasDynamicProps\":true,\"statementId\":\"root\"},\"meta\":{\"incomplete\":false,\"unresolved\":[],\"orphaned\":[],\"statementCount\":2,\"errors\":[]},\"stateDeclarations\":{\"$s\":[\"x\",\"x\",\"x\",\"x\",\"x\",\"b\",\"b\",\"b\",\"b\",\"b\",\"A\",\"A\",\"A\",\"A\",\"A\",\"10\",\"10\",\"10\",\"10\",\"10\",\"9\",\"9\",\"9\",\"9\",\"9\",\"9\",\"8\",\"8\",\"8\",\"8\",\"8\",\"8\",\"7\",\"7\",\"7\",\"7\",\"7\",\"7\",3,\"03\",3,\"03\",3,\"03\",3,\"03\",3,\"03\",2,\"2\",2,\"2\",2,\"2\",2,\"2\",2,\"2\",\"1a\",\"1a\",\"1a\",\"1a\",\"1a\",\"1a\",\"10\"]},\"queryStatements\":[],\"mutationStatements\":[]}"
+    },
+    "rust": {
+      "output": "{\"root\":{\"type\":\"element\",\"typeName\":\"Box\",\"props\":{\"value\":{\"k\":\"StateRef\",\"n\":\"$s\"}},\"partial\":false,\"hasDynamicProps\":true,\"statementId\":\"root\"},\"meta\":{\"incomplete\":false,\"unresolved\":[],\"orphaned\":[],\"statementCount\":2,\"errors\":[]},\"stateDeclarations\":{\"$s\":[\"x\",\"x\",\"x\",\"x\",\"x\",\"b\",\"b\",\"b\",\"b\",\"b\",\"A\",\"A\",\"A\",\"A\",\"A\",\"10\",\"10\",\"10\",\"10\",\"10\",\"10\",\"9\",\"9\",\"9\",\"9\",\"9\",\"9\",\"8\",\"8\",\"8\",\"8\",\"8\",\"8\",\"7\",\"7\",\"7\",\"7\",\"7\",\"7\",3,\"03\",3,\"03\",3,\"03\",3,\"03\",3,\"03\",2,\"2\",2,\"2\",2,\"2\",2,\"2\",2,\"2\",\"1a\",\"1a\",\"1a\",\"1a\",\"1a\",\"1a\"]},\"queryStatements\":[],\"mutationStatements\":[]}",
+      "depth_limited": false,
+      "size_limited": false
+    },
+    "same_output": false
+  },
+  "functions-missing-params": {
+    "reference": {
+      "throw": {
+        "name": "TypeError",
+        "message": "undefined is not an object (evaluating 'def.properties')"
+      }
+    },
+    "rust": {
+      "output": "{\"root\":{\"type\":\"element\",\"typeName\":\"Box\",\"props\":{\"value\":{\"k\":\"Comp\",\"name\":\"Bare\",\"args\":[],\"fn\":true,\"mappedProps\":{}}},\"partial\":false,\"hasDynamicProps\":true,\"statementId\":\"root\"},\"meta\":{\"incomplete\":false,\"unresolved\":[],\"orphaned\":[],\"statementCount\":1,\"errors\":[]},\"stateDeclarations\":{},\"queryStatements\":[],\"mutationStatements\":[]}",
+      "depth_limited": false,
+      "size_limited": false
+    },
+    "same_output": false
+  },
+  "functions-non-object": {
+    "reference": {
+      "throw": {
+        "name": "TypeError",
+        "message": "undefined is not an object (evaluating 'def.properties')"
+      }
+    },
+    "rust": {
+      "output": "{\"root\":{\"type\":\"element\",\"typeName\":\"Box\",\"props\":{\"value\":{\"k\":\"Comp\",\"name\":\"Bare\",\"args\":[],\"fn\":true,\"mappedProps\":{}}},\"partial\":false,\"hasDynamicProps\":true,\"statementId\":\"root\"},\"meta\":{\"incomplete\":false,\"unresolved\":[],\"orphaned\":[],\"statementCount\":1,\"errors\":[]},\"stateDeclarations\":{},\"queryStatements\":[],\"mutationStatements\":[]}",
+      "depth_limited": false,
+      "size_limited": false
+    },
+    "same_output": false
+  },
+  "actions-missing-params": {
+    "reference": {
+      "throw": {
+        "name": "TypeError",
+        "message": "undefined is not an object (evaluating 'def.properties')"
+      }
+    },
+    "rust": {
+      "output": "{\"root\":{\"type\":\"element\",\"typeName\":\"Box\",\"props\":{\"value\":{\"k\":\"Comp\",\"name\":\"Bare\",\"args\":[],\"fn\":true,\"mappedProps\":{}}},\"partial\":false,\"hasDynamicProps\":true,\"statementId\":\"root\"},\"meta\":{\"incomplete\":false,\"unresolved\":[],\"orphaned\":[],\"statementCount\":1,\"errors\":[]},\"stateDeclarations\":{},\"queryStatements\":[],\"mutationStatements\":[]}",
+      "depth_limited": false,
+      "size_limited": false
+    },
+    "same_output": false
+  },
+  "actions-non-object": {
+    "reference": {
+      "throw": {
+        "name": "TypeError",
+        "message": "undefined is not an object (evaluating 'def.properties')"
+      }
+    },
+    "rust": {
+      "output": "{\"root\":{\"type\":\"element\",\"typeName\":\"Box\",\"props\":{\"value\":{\"k\":\"Comp\",\"name\":\"Bare\",\"args\":[],\"fn\":true,\"mappedProps\":{}}},\"partial\":false,\"hasDynamicProps\":true,\"statementId\":\"root\"},\"meta\":{\"incomplete\":false,\"unresolved\":[],\"orphaned\":[],\"statementCount\":1,\"errors\":[]},\"stateDeclarations\":{},\"queryStatements\":[],\"mutationStatements\":[]}",
+      "depth_limited": false,
+      "size_limited": false
+    },
+    "same_output": false
+  },
+  "anyof-null": {
+    "reference": {
+      "throw": {
+        "name": "TypeError",
+        "message": "null is not an object (evaluating 's.$ref')"
+      }
+    },
+    "rust": {
+      "output": "{\"root\":{\"type\":\"element\",\"typeName\":\"Box\",\"props\":{\"value\":\"data\"},\"partial\":false,\"hasDynamicProps\":false,\"statementId\":\"root\"},\"meta\":{\"incomplete\":false,\"unresolved\":[],\"orphaned\":[],\"statementCount\":1,\"errors\":[]},\"stateDeclarations\":{},\"queryStatements\":[],\"mutationStatements\":[]}",
+      "depth_limited": false,
+      "size_limited": false
+    },
+    "same_output": false
+  },
+  "oneof-string": {
+    "reference": {
+      "throw": {
+        "name": "TypeError",
+        "message": "(s.anyOf ?? s.oneOf ?? [s]).map is not a function. (In '(s.anyOf ?? s.oneOf ?? [s]).map(refName)', '(s.anyOf ?? s.oneOf ?? [s]).map' is undefined)"
+      }
+    },
+    "rust": {
+      "output": "{\"root\":{\"type\":\"element\",\"typeName\":\"Box\",\"props\":{\"value\":\"data\"},\"partial\":false,\"hasDynamicProps\":false,\"statementId\":\"root\"},\"meta\":{\"incomplete\":false,\"unresolved\":[],\"orphaned\":[],\"statementCount\":1,\"errors\":[]},\"stateDeclarations\":{},\"queryStatements\":[],\"mutationStatements\":[]}",
+      "depth_limited": false,
+      "size_limited": false
+    },
+    "same_output": false
+  },
+  "json-infinity": {
+    "reference": {
+      "output": "Infinity"
+    },
+    "rust": {
+      "error": "number out of range at byte 5"
+    },
+    "same_output": false
+  },
+  "json-801-levels": {
+    "reference": {
+      "output": "[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[1]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]"
+    },
+    "rust": {
+      "error": "JSON nests deeper than 800 levels at byte 800"
+    },
+    "same_output": false
+  },
+  "evaluated-literal-null-prototype-control": {
+    "reference": {
+      "output": "{\"root\":{\"type\":\"element\",\"typeName\":\"Box\",\"props\":{\"value\":{\"k\":\"StateRef\",\"n\":\"$z\"}},\"partial\":false,\"hasDynamicProps\":true,\"statementId\":\"root\"},\"meta\":{\"incomplete\":false,\"unresolved\":[],\"orphaned\":[],\"statementCount\":3,\"errors\":[]},\"stateDeclarations\":{\"$x\":7,\"$z\":{\"a\":7}},\"queryStatements\":[],\"mutationStatements\":[]}"
+    },
+    "rust": {
+      "output": "{\"root\":{\"type\":\"element\",\"typeName\":\"Box\",\"props\":{\"value\":{\"k\":\"StateRef\",\"n\":\"$z\"}},\"partial\":false,\"hasDynamicProps\":true,\"statementId\":\"root\"},\"meta\":{\"incomplete\":false,\"unresolved\":[],\"orphaned\":[],\"statementCount\":3,\"errors\":[]},\"stateDeclarations\":{\"$x\":7,\"$z\":{\"a\":7}},\"queryStatements\":[],\"mutationStatements\":[]}",
+      "depth_limited": false,
+      "size_limited": false
+    },
+    "same_output": true
+  }
+}

@@ -61,6 +61,10 @@ done
   bun --no-install function-results.ts
   bun --no-install session-data.ts
   bun --no-install parser-prototype-assignments.ts
+  bun --no-install core-divergences.ts
+  bun --no-install query-default-cycles.ts
+  bun --no-install function-undefined-arguments.ts
+  bun --no-install renderer-reset-native-defaults.ts
 )
 if [[ -n "$into" ]]; then
   mkdir -p "$(dirname "$into")"

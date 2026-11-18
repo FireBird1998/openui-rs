@@ -487,7 +487,7 @@ fn corpus_action_scenarios_match_the_renderer() {
                     case_diverged = true;
                     divergent_steps += 1;
                 }
-                let pinned = pin.as_ref().filter(|_| index == 0).map(|pin| {
+                let pinned = pin.as_ref().map(|pin| {
                     let rust = get(pin, "rust");
                     let step = &arr(get(get(rust, scenario), "steps"))[index];
                     assert_eq!(json(get(step, "op")), json(op));

@@ -1,0 +1,551 @@
+{
+  "cases": [
+    {
+      "name": "required-number",
+      "operation": "parse",
+      "schema": {
+        "$defs": {
+          "Box": {
+            "properties": {
+              "value": {}
+            },
+            "required": 3
+          }
+        }
+      },
+      "program": "root = Box()"
+    },
+    {
+      "name": "element-shaped-root",
+      "operation": "parse",
+      "schema": {
+        "$defs": {
+          "Box": {
+            "properties": {
+              "value": {}
+            }
+          },
+          "Card": {
+            "properties": {}
+          }
+        }
+      },
+      "program": "root = {type: \"element\", typeName: \"Box\", props: {value: 5}, partial: false}"
+    },
+    {
+      "name": "component-ast-root",
+      "operation": "parse",
+      "schema": {
+        "$defs": {
+          "Box": {
+            "properties": {
+              "value": {}
+            }
+          },
+          "Card": {
+            "properties": {}
+          }
+        }
+      },
+      "program": "root = {k: \"Comp\", name: \"Card\", args: []}"
+    },
+    {
+      "name": "missing-children-ast-root",
+      "operation": "parse",
+      "schema": {
+        "$defs": {
+          "Box": {
+            "properties": {
+              "value": {}
+            }
+          },
+          "Card": {
+            "properties": {}
+          }
+        }
+      },
+      "program": "root = {k: \"Comp\"}"
+    },
+    {
+      "name": "ast-state-default",
+      "operation": "parse",
+      "schema": {
+        "$defs": {
+          "Box": {
+            "properties": {
+              "value": {}
+            }
+          },
+          "Card": {
+            "properties": {}
+          }
+        }
+      },
+      "program": "$s = {k: \"Num\", v: 1}\nroot = Box($s)"
+    },
+    {
+      "name": "string-method-length",
+      "operation": "parse",
+      "schema": {
+        "$defs": {
+          "Box": {
+            "properties": {
+              "value": {}
+            }
+          },
+          "Card": {
+            "properties": {}
+          }
+        }
+      },
+      "program": "$o = {}\n$s = \"abc\".slice.length\nroot = Box($s)"
+    },
+    {
+      "name": "object-method-name",
+      "operation": "parse",
+      "schema": {
+        "$defs": {
+          "Box": {
+            "properties": {
+              "value": {}
+            }
+          },
+          "Card": {
+            "properties": {}
+          }
+        }
+      },
+      "program": "$o = {}\n$s = $o.toString.name\nroot = Box($s)"
+    },
+    {
+      "name": "prototype-method-length",
+      "operation": "parse",
+      "schema": {
+        "$defs": {
+          "Box": {
+            "properties": {
+              "value": {}
+            }
+          },
+          "Card": {
+            "properties": {}
+          }
+        }
+      },
+      "program": "$o = {}\n$s = [$o.__proto__.toString.length]\nroot = Box($s)"
+    },
+    {
+      "name": "prototype-constructor-text",
+      "operation": "parse",
+      "schema": {
+        "$defs": {
+          "Box": {
+            "properties": {
+              "value": {}
+            }
+          },
+          "Card": {
+            "properties": {}
+          }
+        }
+      },
+      "program": "$o = {}\n$s = $o.__proto__.constructor + \"\"\nroot = Box($s)"
+    },
+    {
+      "name": "array-map-length-control",
+      "operation": "parse",
+      "schema": {
+        "$defs": {
+          "Box": {
+            "properties": {
+              "value": {}
+            }
+          },
+          "Card": {
+            "properties": {}
+          }
+        }
+      },
+      "program": "$o = {}\n$s = [].map.length\nroot = Box($s)"
+    },
+    {
+      "name": "prototype-missing-control",
+      "operation": "parse",
+      "schema": {
+        "$defs": {
+          "Box": {
+            "properties": {
+              "value": {}
+            }
+          },
+          "Card": {
+            "properties": {}
+          }
+        }
+      },
+      "program": "$o = {}\n$s = $o.__proto__.x\nroot = Box($s)"
+    },
+    {
+      "name": "own-tostring-add",
+      "operation": "parse",
+      "schema": {
+        "$defs": {
+          "Box": {
+            "properties": {
+              "value": {}
+            }
+          },
+          "Card": {
+            "properties": {}
+          }
+        }
+      },
+      "program": "$o = {toString: 1}\n$s = $o + \"\"\nroot = Box($s)"
+    },
+    {
+      "name": "own-tostring-equality",
+      "operation": "parse",
+      "schema": {
+        "$defs": {
+          "Box": {
+            "properties": {
+              "value": {}
+            }
+          },
+          "Card": {
+            "properties": {}
+          }
+        }
+      },
+      "program": "$o = {toString: 1}\n$s = $o == \"[object Object]\"\nroot = Box($s)"
+    },
+    {
+      "name": "own-tostring-sort",
+      "operation": "parse",
+      "schema": {
+        "$defs": {
+          "Box": {
+            "properties": {
+              "value": {}
+            }
+          },
+          "Card": {
+            "properties": {}
+          }
+        }
+      },
+      "program": "$o = {toString: 1}\n$s = @Sort([$o, {}], \"\")\nroot = Box($s)"
+    },
+    {
+      "name": "own-tostring-contains",
+      "operation": "parse",
+      "schema": {
+        "$defs": {
+          "Box": {
+            "properties": {
+              "value": {}
+            }
+          },
+          "Card": {
+            "properties": {}
+          }
+        }
+      },
+      "program": "$o = {toString: 1}\n$s = @Filter([$o], \"\", \"contains\", \"Object\")\nroot = Box($s)"
+    },
+    {
+      "name": "own-valueof-control",
+      "operation": "parse",
+      "schema": {
+        "$defs": {
+          "Box": {
+            "properties": {
+              "value": {}
+            }
+          },
+          "Card": {
+            "properties": {}
+          }
+        }
+      },
+      "program": "$o = {valueOf: 1}\n$s = $o + \"\"\nroot = Box($s)"
+    },
+    {
+      "name": "own-both-coercion",
+      "operation": "parse",
+      "schema": {
+        "$defs": {
+          "Box": {
+            "properties": {
+              "value": {}
+            }
+          },
+          "Card": {
+            "properties": {}
+          }
+        }
+      },
+      "program": "$o = {toString: 1, valueOf: 1}\n$s = $o + \"\"\nroot = Box($s)"
+    },
+    {
+      "name": "evaluated-prototype-state",
+      "operation": "parse",
+      "schema": {
+        "$defs": {
+          "Box": {
+            "properties": {
+              "value": {}
+            }
+          },
+          "Card": {
+            "properties": {}
+          }
+        }
+      },
+      "program": "$x = 7\n$z = {__proto__: $x, a: 5}\nroot = Box($z)"
+    },
+    {
+      "name": "evaluated-null-state-prototype",
+      "operation": "parse",
+      "schema": {
+        "$defs": {
+          "Box": {
+            "properties": {
+              "value": {}
+            }
+          },
+          "Card": {
+            "properties": {}
+          }
+        }
+      },
+      "program": "$x = null\n$z = {__proto__: $x, a: 5}\nroot = Box($z)"
+    },
+    {
+      "name": "constructor-text",
+      "operation": "parse",
+      "schema": {
+        "$defs": {
+          "Box": {
+            "properties": {
+              "value": {}
+            }
+          },
+          "Card": {
+            "properties": {}
+          }
+        }
+      },
+      "program": "$s = [(1).constructor + \"\", \"\".constructor + \"\", true.constructor + \"\", {}.constructor + \"\", [].constructor + \"\"]\nroot = Box($s)"
+    },
+    {
+      "name": "non-ascii-sort",
+      "operation": "parse",
+      "schema": {
+        "$defs": {
+          "Box": {
+            "properties": {
+              "value": {}
+            }
+          },
+          "Card": {
+            "properties": {}
+          }
+        }
+      },
+      "program": "$s = @Sort([\"z\", \"é\", \"a\", \"ä\", \"中\"], \"\")\nroot = Box($s)"
+    },
+    {
+      "name": "looping-sort",
+      "operation": "parse",
+      "schema": {
+        "$defs": {
+          "Box": {
+            "properties": {
+              "value": {}
+            }
+          },
+          "Card": {
+            "properties": {}
+          }
+        }
+      },
+      "program": "$s = @Sort([2, \"10\", \"1a\", 9, \"9a\", \"x\", 1, \"01\"], \"\")\nroot = Box($s)"
+    },
+    {
+      "name": "blank-looping-sort",
+      "operation": "parse",
+      "schema": {
+        "$defs": {
+          "Box": {
+            "properties": {
+              "value": {}
+            }
+          },
+          "Card": {
+            "properties": {}
+          }
+        }
+      },
+      "program": "$s = @Sort([0, \" \", \",\", 0, \",\", \" \"], \"\")\nroot = Box($s)"
+    },
+    {
+      "name": "descending-65-looping-sort",
+      "operation": "parse",
+      "schema": {
+        "$defs": {
+          "Box": {
+            "properties": {
+              "value": {}
+            }
+          },
+          "Card": {
+            "properties": {}
+          }
+        }
+      },
+      "program": "$s = @Sort([\"9\", \"8\", \"1a\", \"7\", \"10\", 2, \"x\", \"2\", \"b\", \"A\", 3, \"03\", \"9\", \"8\", \"1a\", \"7\", \"10\", 2, \"x\", \"2\", \"b\", \"A\", 3, \"03\", \"9\", \"8\", \"1a\", \"7\", \"10\", 2, \"x\", \"2\", \"b\", \"A\", 3, \"03\", \"9\", \"8\", \"1a\", \"7\", \"10\", 2, \"x\", \"2\", \"b\", \"A\", 3, \"03\", \"9\", \"8\", \"1a\", \"7\", \"10\", 2, \"x\", \"2\", \"b\", \"A\", 3, \"03\", \"9\", \"8\", \"1a\", \"7\", \"10\"], \"\", \"desc\")\nroot = Box($s)"
+    },
+    {
+      "name": "functions-missing-params",
+      "operation": "parse",
+      "schema": {
+        "$defs": {
+          "Box": {
+            "properties": {
+              "value": {}
+            }
+          },
+          "Card": {
+            "properties": {}
+          }
+        },
+        "functions": {
+          "Bare": {}
+        }
+      },
+      "program": "root = Box(@Bare())"
+    },
+    {
+      "name": "functions-non-object",
+      "operation": "parse",
+      "schema": {
+        "$defs": {
+          "Box": {
+            "properties": {
+              "value": {}
+            }
+          },
+          "Card": {
+            "properties": {}
+          }
+        },
+        "functions": {
+          "Bare": "not an object"
+        }
+      },
+      "program": "root = Box(@Bare())"
+    },
+    {
+      "name": "actions-missing-params",
+      "operation": "parse",
+      "schema": {
+        "$defs": {
+          "Box": {
+            "properties": {
+              "value": {}
+            }
+          },
+          "Card": {
+            "properties": {}
+          }
+        },
+        "actions": {
+          "Bare": {}
+        }
+      },
+      "program": "root = Box(@Bare())"
+    },
+    {
+      "name": "actions-non-object",
+      "operation": "parse",
+      "schema": {
+        "$defs": {
+          "Box": {
+            "properties": {
+              "value": {}
+            }
+          },
+          "Card": {
+            "properties": {}
+          }
+        },
+        "actions": {
+          "Bare": "not an object"
+        }
+      },
+      "program": "root = Box(@Bare())"
+    },
+    {
+      "name": "anyof-null",
+      "operation": "parse",
+      "schema": {
+        "$defs": {
+          "Box": {
+            "properties": {
+              "value": {
+                "anyOf": [
+                  null
+                ]
+              }
+            }
+          }
+        }
+      },
+      "program": "root = Box(\"data\")"
+    },
+    {
+      "name": "oneof-string",
+      "operation": "parse",
+      "schema": {
+        "$defs": {
+          "Box": {
+            "properties": {
+              "value": {
+                "oneOf": "x"
+              }
+            }
+          }
+        }
+      },
+      "program": "root = Box(\"data\")"
+    },
+    {
+      "name": "json-infinity",
+      "operation": "json",
+      "input": "1e400"
+    },
+    {
+      "name": "json-801-levels",
+      "operation": "json",
+      "input": "[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[1]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]"
+    },
+    {
+      "name": "evaluated-literal-null-prototype-control",
+      "operation": "parse",
+      "schema": {
+        "$defs": {
+          "Box": {
+            "properties": {
+              "value": {}
+            }
+          },
+          "Card": {
+            "properties": {}
+          }
+        }
+      },
+      "program": "$x = 7\n$z = {__proto__: null, a: $x}\nroot = Box($z)"
+    }
+  ]
+}

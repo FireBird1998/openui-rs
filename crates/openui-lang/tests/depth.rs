@@ -1,6 +1,7 @@
 //! Absurdly deep input can't crash the process. The core stops at
 //! `MAX_DEPTH` levels and says so in `depth_limited`. (The reference copes
-//! up to roughly 8,000 levels and then throws a RangeError.) Each runs on a
+//! until its engine-dependent recursion limit; regeneration does not probe
+//! that limit.) Each runs on a
 //! thread with a 64 KB stack, because a stack overflow aborts the process
 //! rather than panicking. Kept in their own test binary so an overflow can't
 //! hide other results.

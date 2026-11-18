@@ -8,8 +8,10 @@
 //! copied, so memory stays proportional to the program, not the result. State
 //! defaults, evaluated, can double too (a list of the one above twice, a
 //! string added to itself): evaluating stops at what's left of the result-size limit.
-//! (The reference shares only the `mappedProps` case; the others take it
-//! exponential time and memory.)
+//! The 1.1 reference also shares inlined statements and evaluated containers.
+//! Serializing their expanded JSON can still grow exponentially; the level
+//! reaching a given size depends on the program shape. String growth can
+//! exhaust engine memory and is not probed against the reference here.
 
 mod common;
 

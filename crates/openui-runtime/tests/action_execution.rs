@@ -939,6 +939,14 @@ fn native_function_reset_defaults_pin_the_existing_value_representation_boundary
     );
     let actual = Value::Obj(Arc::new(actual));
     let reference = Value::from_json(&pin["reference"]);
+    let golden = parse_json(include_str!(
+        "../../../conformance/golden/runtime-reset-native-defaults.json"
+    ))
+    .unwrap();
+    assert_eq!(
+        pin["reference"], golden,
+        "complete reference reset observation"
+    );
     let expected = Value::from_json(&pin["rust"]);
     assert_eq!(run_json(&actual), run_json(&expected));
     assert_ne!(run_json(&reference), run_json(&expected));

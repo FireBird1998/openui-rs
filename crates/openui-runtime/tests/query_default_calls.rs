@@ -85,7 +85,25 @@ fn undefined_argument_keys_are_a_pinned_representation_divergence() {
         "../../../conformance/divergences/function-argument-undefined.json"
     ))
     .unwrap();
-    for c in cases.as_array().unwrap() {
+    let reference = parse_json(include_str!(
+        "../../../conformance/golden/function-argument-undefined.json"
+    ))
+    .unwrap();
+    assert_eq!(
+        reference.as_array().unwrap().len(),
+        cases.as_array().unwrap().len()
+    );
+    for (c, observed) in cases
+        .as_array()
+        .unwrap()
+        .iter()
+        .zip(reference.as_array().unwrap())
+    {
+        assert_eq!(c["name"], observed["name"]);
+        assert_eq!(
+            c["reference"], observed["reference"],
+            "complete reference arguments"
+        );
         let mut j = schema();
         j["functions"] = parse_json("{}").unwrap();
         j["functions"]["K2"] = c["definition"].clone();

@@ -1674,6 +1674,28 @@ inherited-validation fix. These intentional divergences use explicit expected
 results, not a pending list. `discarded_prototype_assignments_keep_value_equality_and_debug`
 additionally protects public equality, Debug output and the non-dynamic flag.
 
+## Documented divergence pins
+
+`core_divergences` reads 33 cases from `conformance/core-divergences.json`.
+`reference/core-divergences.ts` writes the independent reference golden during
+`scripts/regen-golden.sh`; the test compares it exactly with the reference
+expectations in `divergences/core-divergences.json`, then checks each complete
+public Rust result and cut flags (or JSON-reader error). No Bun is needed by
+Rust tests. The pin records whether outputs agree, including the 65-value
+inconsistent-comparison sort and the controls for corrected table examples.
+Bun/JavaScriptCore error messages and native function text are engine-specific.
+Unsafe OOM and recursion-limit probes are excluded explicitly in CONFORMANCE.md.
+
+The runtime tree harness checks both sides of every divergence stream, including
+step counts and chunkings. The existing function-prototype pin retains full
+observations; other pins store reference fingerprints and either `"reference"`
+for matching Rust steps or a distinct Rust fingerprint. Action-target pins check
+both run and disposal. The cycle, native reset and undefined argument drivers
+write independent goldens; their tests compare every reference field against
+the divergence pins. Parser prototype tests compare complete reference streams.
+No test offers an automatic divergence-pin update mode: capture changes in a
+scratch edit, inspect them, and restore the assertions before running checks.
+
 ## Counted runtime and streaming follow-ups
 
 The two #61 reuse tests count thread-local allocation requests. Empty pushes

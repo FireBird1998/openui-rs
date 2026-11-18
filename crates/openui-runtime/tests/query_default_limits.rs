@@ -95,11 +95,20 @@ fn unread_defaults_stop_flagging_only_at_actual_shared_work_exhaustion() {
 }
 #[test]
 fn cycle_divergences_pin_reference_throws_rust_output_and_flags() {
+    let reference = parse_json(include_str!(
+        "../../../conformance/golden/query-default-cycles.json"
+    ))
+    .unwrap();
     for reason in ["self", "pair", "long", "unread"] {
         let path = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join(format!(
             "../../conformance/divergences/runtime-query-default-cycle-{reason}.json"
         ));
         let pin = parse_json(&std::fs::read_to_string(path).unwrap()).unwrap();
+        assert_eq!(reference[reason]["program"], pin["program"]);
+        assert_eq!(
+            reference[reason]["reference"], pin["reference"],
+            "{reason}: complete reference observations"
+        );
         let p = parse(pin["program"].as_str().unwrap(), &library(), None);
         for scenario in ["defaults", "persisted"] {
             let r = evaluate_tree((&p).into(), &Store::new());

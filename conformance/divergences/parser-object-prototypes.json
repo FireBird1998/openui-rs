@@ -136,6 +136,97 @@
           "1237d330"
         ]
       }
+    },
+    "reference": {
+      "oneshot": {
+        "root": {
+          "type": "element",
+          "typeName": "Box",
+          "props": {
+            "a": {}
+          },
+          "partial": false,
+          "hasDynamicProps": true,
+          "statementId": "root"
+        },
+        "meta": {
+          "incomplete": false,
+          "unresolved": [],
+          "orphaned": [],
+          "statementCount": 1,
+          "errors": []
+        },
+        "stateDeclarations": {
+          "$v": null
+        },
+        "queryStatements": [],
+        "mutationStatements": []
+      },
+      "streams": {
+        "1": [
+          "c8bfd3a0",
+          "c8bfd3a0",
+          "c8bfd3a0",
+          "c8bfd3a0",
+          "c8bfd3a0",
+          "b0139e2d",
+          "d22f7e72",
+          "f79d7098",
+          "e9bacedc",
+          "b20d7743",
+          "0b6e8348",
+          "3338493f",
+          "9b0210f6",
+          "8041f8d2",
+          "8bd11b68",
+          "8603e50f",
+          "d4864a55",
+          "5103dd1c",
+          "cc9d0bb3",
+          "677b7a99",
+          "677b7a99",
+          "677b7a99",
+          "677b7a99",
+          "677b7a99",
+          "c9781872",
+          "0cc53d1b",
+          "7b107b9b",
+          "7b107b9b",
+          "7b107b9b"
+        ],
+        "3": [
+          "c8bfd3a0",
+          "b0139e2d",
+          "e9bacedc",
+          "3338493f",
+          "8bd11b68",
+          "5103dd1c",
+          "677b7a99",
+          "677b7a99",
+          "7b107b9b",
+          "7b107b9b",
+          "7b107b9b"
+        ],
+        "4": [
+          "c8bfd3a0",
+          "f79d7098",
+          "3338493f",
+          "8603e50f",
+          "677b7a99",
+          "677b7a99",
+          "7b107b9b",
+          "7b107b9b"
+        ],
+        "5": [
+          "c8bfd3a0",
+          "b20d7743",
+          "8bd11b68",
+          "677b7a99",
+          "c9781872",
+          "7b107b9b",
+          "7b107b9b"
+        ]
+      }
     }
   },
   "object": {
@@ -273,6 +364,97 @@
           "b20d7743",
           "1237d330",
           "1237d330"
+        ]
+      }
+    },
+    "reference": {
+      "oneshot": {
+        "root": {
+          "type": "element",
+          "typeName": "Box",
+          "props": {
+            "a": {}
+          },
+          "partial": false,
+          "hasDynamicProps": true,
+          "statementId": "root"
+        },
+        "meta": {
+          "incomplete": false,
+          "unresolved": [],
+          "orphaned": [],
+          "statementCount": 1,
+          "errors": []
+        },
+        "stateDeclarations": {
+          "$v": null
+        },
+        "queryStatements": [],
+        "mutationStatements": []
+      },
+      "streams": {
+        "1": [
+          "c8bfd3a0",
+          "c8bfd3a0",
+          "c8bfd3a0",
+          "c8bfd3a0",
+          "c8bfd3a0",
+          "b0139e2d",
+          "d22f7e72",
+          "f79d7098",
+          "e9bacedc",
+          "b20d7743",
+          "0b6e8348",
+          "3338493f",
+          "9b0210f6",
+          "8041f8d2",
+          "8bd11b68",
+          "8603e50f",
+          "d4864a55",
+          "5103dd1c",
+          "cc9d0bb3",
+          "677b7a99",
+          "677b7a99",
+          "677b7a99",
+          "677b7a99",
+          "677b7a99",
+          "c9781872",
+          "0cc53d1b",
+          "7b107b9b",
+          "7b107b9b",
+          "7b107b9b"
+        ],
+        "3": [
+          "c8bfd3a0",
+          "b0139e2d",
+          "e9bacedc",
+          "3338493f",
+          "8bd11b68",
+          "5103dd1c",
+          "677b7a99",
+          "677b7a99",
+          "7b107b9b",
+          "7b107b9b",
+          "7b107b9b"
+        ],
+        "4": [
+          "c8bfd3a0",
+          "f79d7098",
+          "3338493f",
+          "8603e50f",
+          "677b7a99",
+          "677b7a99",
+          "7b107b9b",
+          "7b107b9b"
+        ],
+        "5": [
+          "c8bfd3a0",
+          "b20d7743",
+          "8bd11b68",
+          "677b7a99",
+          "c9781872",
+          "7b107b9b",
+          "7b107b9b"
         ]
       }
     }
@@ -414,6 +596,97 @@
           "35e628c6"
         ]
       }
+    },
+    "reference": {
+      "oneshot": {
+        "root": {
+          "type": "element",
+          "typeName": "Box",
+          "props": {
+            "a": {}
+          },
+          "partial": false,
+          "hasDynamicProps": true,
+          "statementId": "root"
+        },
+        "meta": {
+          "incomplete": false,
+          "unresolved": [],
+          "orphaned": [],
+          "statementCount": 1,
+          "errors": []
+        },
+        "stateDeclarations": {
+          "$v": null
+        },
+        "queryStatements": [],
+        "mutationStatements": []
+      },
+      "streams": {
+        "1": [
+          "c8bfd3a0",
+          "c8bfd3a0",
+          "c8bfd3a0",
+          "c8bfd3a0",
+          "c8bfd3a0",
+          "b0139e2d",
+          "d22f7e72",
+          "f79d7098",
+          "e9bacedc",
+          "3b675e65",
+          "3b675e65",
+          "3b675e65",
+          "3b675e65",
+          "3b675e65",
+          "3b675e65",
+          "3b675e65",
+          "3b675e65",
+          "3b675e65",
+          "3b675e65",
+          "3b675e65",
+          "3b675e65",
+          "3b675e65",
+          "3b675e65",
+          "3b675e65",
+          "c9781872",
+          "0cc53d1b",
+          "7b107b9b",
+          "7b107b9b",
+          "7b107b9b"
+        ],
+        "3": [
+          "c8bfd3a0",
+          "b0139e2d",
+          "e9bacedc",
+          "3b675e65",
+          "3b675e65",
+          "3b675e65",
+          "3b675e65",
+          "3b675e65",
+          "7b107b9b",
+          "7b107b9b",
+          "7b107b9b"
+        ],
+        "4": [
+          "c8bfd3a0",
+          "f79d7098",
+          "3b675e65",
+          "3b675e65",
+          "3b675e65",
+          "3b675e65",
+          "7b107b9b",
+          "7b107b9b"
+        ],
+        "5": [
+          "c8bfd3a0",
+          "3b675e65",
+          "3b675e65",
+          "3b675e65",
+          "c9781872",
+          "7b107b9b",
+          "7b107b9b"
+        ]
+      }
     }
   },
   "number": {
@@ -551,6 +824,97 @@
           "97495f01",
           "541c0192",
           "541c0192"
+        ]
+      }
+    },
+    "reference": {
+      "oneshot": {
+        "root": {
+          "type": "element",
+          "typeName": "Box",
+          "props": {
+            "a": {}
+          },
+          "partial": false,
+          "hasDynamicProps": true,
+          "statementId": "root"
+        },
+        "meta": {
+          "incomplete": false,
+          "unresolved": [],
+          "orphaned": [],
+          "statementCount": 1,
+          "errors": []
+        },
+        "stateDeclarations": {
+          "$v": null
+        },
+        "queryStatements": [],
+        "mutationStatements": []
+      },
+      "streams": {
+        "1": [
+          "c8bfd3a0",
+          "c8bfd3a0",
+          "c8bfd3a0",
+          "c8bfd3a0",
+          "c8bfd3a0",
+          "b0139e2d",
+          "d22f7e72",
+          "f79d7098",
+          "e9bacedc",
+          "97495f01",
+          "97495f01",
+          "97495f01",
+          "97495f01",
+          "97495f01",
+          "97495f01",
+          "97495f01",
+          "97495f01",
+          "97495f01",
+          "97495f01",
+          "97495f01",
+          "97495f01",
+          "97495f01",
+          "97495f01",
+          "97495f01",
+          "c9781872",
+          "0cc53d1b",
+          "7b107b9b",
+          "7b107b9b",
+          "7b107b9b"
+        ],
+        "3": [
+          "c8bfd3a0",
+          "b0139e2d",
+          "e9bacedc",
+          "97495f01",
+          "97495f01",
+          "97495f01",
+          "97495f01",
+          "97495f01",
+          "7b107b9b",
+          "7b107b9b",
+          "7b107b9b"
+        ],
+        "4": [
+          "c8bfd3a0",
+          "f79d7098",
+          "97495f01",
+          "97495f01",
+          "97495f01",
+          "97495f01",
+          "7b107b9b",
+          "7b107b9b"
+        ],
+        "5": [
+          "c8bfd3a0",
+          "97495f01",
+          "97495f01",
+          "97495f01",
+          "c9781872",
+          "7b107b9b",
+          "7b107b9b"
         ]
       }
     }
@@ -692,6 +1056,97 @@
           "fbc07498"
         ]
       }
+    },
+    "reference": {
+      "oneshot": {
+        "root": {
+          "type": "element",
+          "typeName": "Box",
+          "props": {
+            "a": {}
+          },
+          "partial": false,
+          "hasDynamicProps": true,
+          "statementId": "root"
+        },
+        "meta": {
+          "incomplete": false,
+          "unresolved": [],
+          "orphaned": [],
+          "statementCount": 1,
+          "errors": []
+        },
+        "stateDeclarations": {
+          "$v": null
+        },
+        "queryStatements": [],
+        "mutationStatements": []
+      },
+      "streams": {
+        "1": [
+          "c8bfd3a0",
+          "c8bfd3a0",
+          "c8bfd3a0",
+          "c8bfd3a0",
+          "c8bfd3a0",
+          "b0139e2d",
+          "d22f7e72",
+          "f79d7098",
+          "e9bacedc",
+          "bab3995f",
+          "bab3995f",
+          "bab3995f",
+          "bab3995f",
+          "bab3995f",
+          "bab3995f",
+          "bab3995f",
+          "bab3995f",
+          "bab3995f",
+          "bab3995f",
+          "bab3995f",
+          "bab3995f",
+          "bab3995f",
+          "bab3995f",
+          "bab3995f",
+          "c9781872",
+          "0cc53d1b",
+          "7b107b9b",
+          "7b107b9b",
+          "7b107b9b"
+        ],
+        "3": [
+          "c8bfd3a0",
+          "b0139e2d",
+          "e9bacedc",
+          "bab3995f",
+          "bab3995f",
+          "bab3995f",
+          "bab3995f",
+          "bab3995f",
+          "7b107b9b",
+          "7b107b9b",
+          "7b107b9b"
+        ],
+        "4": [
+          "c8bfd3a0",
+          "f79d7098",
+          "bab3995f",
+          "bab3995f",
+          "bab3995f",
+          "bab3995f",
+          "7b107b9b",
+          "7b107b9b"
+        ],
+        "5": [
+          "c8bfd3a0",
+          "bab3995f",
+          "bab3995f",
+          "bab3995f",
+          "c9781872",
+          "7b107b9b",
+          "7b107b9b"
+        ]
+      }
     }
   },
   "boolean": {
@@ -829,6 +1284,97 @@
           "9524e8c8",
           "5c260d05",
           "5c260d05"
+        ]
+      }
+    },
+    "reference": {
+      "oneshot": {
+        "root": {
+          "type": "element",
+          "typeName": "Box",
+          "props": {
+            "a": {}
+          },
+          "partial": false,
+          "hasDynamicProps": true,
+          "statementId": "root"
+        },
+        "meta": {
+          "incomplete": false,
+          "unresolved": [],
+          "orphaned": [],
+          "statementCount": 1,
+          "errors": []
+        },
+        "stateDeclarations": {
+          "$v": null
+        },
+        "queryStatements": [],
+        "mutationStatements": []
+      },
+      "streams": {
+        "1": [
+          "c8bfd3a0",
+          "c8bfd3a0",
+          "c8bfd3a0",
+          "c8bfd3a0",
+          "c8bfd3a0",
+          "b0139e2d",
+          "d22f7e72",
+          "f79d7098",
+          "e9bacedc",
+          "9524e8c8",
+          "9524e8c8",
+          "9524e8c8",
+          "9524e8c8",
+          "9524e8c8",
+          "9524e8c8",
+          "9524e8c8",
+          "9524e8c8",
+          "9524e8c8",
+          "9524e8c8",
+          "9524e8c8",
+          "9524e8c8",
+          "9524e8c8",
+          "9524e8c8",
+          "9524e8c8",
+          "c9781872",
+          "0cc53d1b",
+          "7b107b9b",
+          "7b107b9b",
+          "7b107b9b"
+        ],
+        "3": [
+          "c8bfd3a0",
+          "b0139e2d",
+          "e9bacedc",
+          "9524e8c8",
+          "9524e8c8",
+          "9524e8c8",
+          "9524e8c8",
+          "9524e8c8",
+          "7b107b9b",
+          "7b107b9b",
+          "7b107b9b"
+        ],
+        "4": [
+          "c8bfd3a0",
+          "f79d7098",
+          "9524e8c8",
+          "9524e8c8",
+          "9524e8c8",
+          "9524e8c8",
+          "7b107b9b",
+          "7b107b9b"
+        ],
+        "5": [
+          "c8bfd3a0",
+          "9524e8c8",
+          "9524e8c8",
+          "9524e8c8",
+          "c9781872",
+          "7b107b9b",
+          "7b107b9b"
         ]
       }
     }
@@ -970,6 +1516,97 @@
           "1237d330"
         ]
       }
+    },
+    "reference": {
+      "oneshot": {
+        "root": {
+          "type": "element",
+          "typeName": "Box",
+          "props": {
+            "a": {}
+          },
+          "partial": false,
+          "hasDynamicProps": true,
+          "statementId": "root"
+        },
+        "meta": {
+          "incomplete": false,
+          "unresolved": [],
+          "orphaned": [],
+          "statementCount": 1,
+          "errors": []
+        },
+        "stateDeclarations": {
+          "$v": null
+        },
+        "queryStatements": [],
+        "mutationStatements": []
+      },
+      "streams": {
+        "1": [
+          "c8bfd3a0",
+          "c8bfd3a0",
+          "c8bfd3a0",
+          "c8bfd3a0",
+          "c8bfd3a0",
+          "b0139e2d",
+          "d22f7e72",
+          "f79d7098",
+          "e9bacedc",
+          "b20d7743",
+          "0b6e8348",
+          "3338493f",
+          "9b0210f6",
+          "8041f8d2",
+          "8bd11b68",
+          "8603e50f",
+          "d4864a55",
+          "5103dd1c",
+          "cc9d0bb3",
+          "677b7a99",
+          "677b7a99",
+          "677b7a99",
+          "677b7a99",
+          "677b7a99",
+          "c9781872",
+          "0cc53d1b",
+          "7b107b9b",
+          "7b107b9b",
+          "7b107b9b"
+        ],
+        "3": [
+          "c8bfd3a0",
+          "b0139e2d",
+          "e9bacedc",
+          "3338493f",
+          "8bd11b68",
+          "5103dd1c",
+          "677b7a99",
+          "677b7a99",
+          "7b107b9b",
+          "7b107b9b",
+          "7b107b9b"
+        ],
+        "4": [
+          "c8bfd3a0",
+          "f79d7098",
+          "3338493f",
+          "8603e50f",
+          "677b7a99",
+          "677b7a99",
+          "7b107b9b",
+          "7b107b9b"
+        ],
+        "5": [
+          "c8bfd3a0",
+          "b20d7743",
+          "8bd11b68",
+          "677b7a99",
+          "c9781872",
+          "7b107b9b",
+          "7b107b9b"
+        ]
+      }
     }
   },
   "untyped-proto": {
@@ -1107,6 +1744,97 @@
           "b20d7743",
           "1237d330",
           "1237d330"
+        ]
+      }
+    },
+    "reference": {
+      "oneshot": {
+        "root": {
+          "type": "element",
+          "typeName": "Box",
+          "props": {
+            "a": {}
+          },
+          "partial": false,
+          "hasDynamicProps": true,
+          "statementId": "root"
+        },
+        "meta": {
+          "incomplete": false,
+          "unresolved": [],
+          "orphaned": [],
+          "statementCount": 1,
+          "errors": []
+        },
+        "stateDeclarations": {
+          "$v": null
+        },
+        "queryStatements": [],
+        "mutationStatements": []
+      },
+      "streams": {
+        "1": [
+          "c8bfd3a0",
+          "c8bfd3a0",
+          "c8bfd3a0",
+          "c8bfd3a0",
+          "c8bfd3a0",
+          "b0139e2d",
+          "d22f7e72",
+          "f79d7098",
+          "e9bacedc",
+          "b20d7743",
+          "0b6e8348",
+          "3338493f",
+          "9b0210f6",
+          "8041f8d2",
+          "8bd11b68",
+          "8603e50f",
+          "d4864a55",
+          "5103dd1c",
+          "cc9d0bb3",
+          "677b7a99",
+          "677b7a99",
+          "677b7a99",
+          "677b7a99",
+          "677b7a99",
+          "c9781872",
+          "0cc53d1b",
+          "7b107b9b",
+          "7b107b9b",
+          "7b107b9b"
+        ],
+        "3": [
+          "c8bfd3a0",
+          "b0139e2d",
+          "e9bacedc",
+          "3338493f",
+          "8bd11b68",
+          "5103dd1c",
+          "677b7a99",
+          "677b7a99",
+          "7b107b9b",
+          "7b107b9b",
+          "7b107b9b"
+        ],
+        "4": [
+          "c8bfd3a0",
+          "f79d7098",
+          "3338493f",
+          "8603e50f",
+          "677b7a99",
+          "677b7a99",
+          "7b107b9b",
+          "7b107b9b"
+        ],
+        "5": [
+          "c8bfd3a0",
+          "b20d7743",
+          "8bd11b68",
+          "677b7a99",
+          "c9781872",
+          "7b107b9b",
+          "7b107b9b"
         ]
       }
     }
@@ -1248,6 +1976,97 @@
           "1237d330"
         ]
       }
+    },
+    "reference": {
+      "oneshot": {
+        "root": {
+          "type": "element",
+          "typeName": "Box",
+          "props": {
+            "a": {}
+          },
+          "partial": false,
+          "hasDynamicProps": true,
+          "statementId": "root"
+        },
+        "meta": {
+          "incomplete": false,
+          "unresolved": [],
+          "orphaned": [],
+          "statementCount": 1,
+          "errors": []
+        },
+        "stateDeclarations": {
+          "$v": null
+        },
+        "queryStatements": [],
+        "mutationStatements": []
+      },
+      "streams": {
+        "1": [
+          "c8bfd3a0",
+          "c8bfd3a0",
+          "c8bfd3a0",
+          "c8bfd3a0",
+          "c8bfd3a0",
+          "b0139e2d",
+          "d22f7e72",
+          "f79d7098",
+          "e9bacedc",
+          "0ba0ec6c",
+          "7862a70f",
+          "505364c8",
+          "2c100d21",
+          "7b8cf17d",
+          "0935252f",
+          "01f9d158",
+          "6bb84c02",
+          "107b0d63",
+          "a72d3f5c",
+          "677b7a99",
+          "677b7a99",
+          "677b7a99",
+          "677b7a99",
+          "677b7a99",
+          "c9781872",
+          "0cc53d1b",
+          "7b107b9b",
+          "7b107b9b",
+          "7b107b9b"
+        ],
+        "3": [
+          "c8bfd3a0",
+          "b0139e2d",
+          "e9bacedc",
+          "505364c8",
+          "0935252f",
+          "107b0d63",
+          "677b7a99",
+          "677b7a99",
+          "7b107b9b",
+          "7b107b9b",
+          "7b107b9b"
+        ],
+        "4": [
+          "c8bfd3a0",
+          "f79d7098",
+          "505364c8",
+          "01f9d158",
+          "677b7a99",
+          "677b7a99",
+          "7b107b9b",
+          "7b107b9b"
+        ],
+        "5": [
+          "c8bfd3a0",
+          "0ba0ec6c",
+          "0935252f",
+          "677b7a99",
+          "c9781872",
+          "7b107b9b",
+          "7b107b9b"
+        ]
+      }
     }
   },
   "proto-string-required": {
@@ -1385,6 +2204,97 @@
           "b20d7743",
           "1237d330",
           "1237d330"
+        ]
+      }
+    },
+    "reference": {
+      "oneshot": {
+        "root": {
+          "type": "element",
+          "typeName": "Box",
+          "props": {
+            "a": {}
+          },
+          "partial": false,
+          "hasDynamicProps": true,
+          "statementId": "root"
+        },
+        "meta": {
+          "incomplete": false,
+          "unresolved": [],
+          "orphaned": [],
+          "statementCount": 1,
+          "errors": []
+        },
+        "stateDeclarations": {
+          "$v": null
+        },
+        "queryStatements": [],
+        "mutationStatements": []
+      },
+      "streams": {
+        "1": [
+          "c8bfd3a0",
+          "c8bfd3a0",
+          "c8bfd3a0",
+          "c8bfd3a0",
+          "c8bfd3a0",
+          "b0139e2d",
+          "d22f7e72",
+          "f79d7098",
+          "e9bacedc",
+          "44421e23",
+          "44421e23",
+          "44421e23",
+          "44421e23",
+          "44421e23",
+          "44421e23",
+          "44421e23",
+          "44421e23",
+          "44421e23",
+          "44421e23",
+          "677b7a99",
+          "677b7a99",
+          "677b7a99",
+          "677b7a99",
+          "677b7a99",
+          "c9781872",
+          "0cc53d1b",
+          "7b107b9b",
+          "7b107b9b",
+          "7b107b9b"
+        ],
+        "3": [
+          "c8bfd3a0",
+          "b0139e2d",
+          "e9bacedc",
+          "44421e23",
+          "44421e23",
+          "44421e23",
+          "677b7a99",
+          "677b7a99",
+          "7b107b9b",
+          "7b107b9b",
+          "7b107b9b"
+        ],
+        "4": [
+          "c8bfd3a0",
+          "f79d7098",
+          "44421e23",
+          "44421e23",
+          "677b7a99",
+          "677b7a99",
+          "7b107b9b",
+          "7b107b9b"
+        ],
+        "5": [
+          "c8bfd3a0",
+          "44421e23",
+          "44421e23",
+          "677b7a99",
+          "c9781872",
+          "7b107b9b",
+          "7b107b9b"
         ]
       }
     }
@@ -1526,6 +2436,97 @@
           "1237d330"
         ]
       }
+    },
+    "reference": {
+      "oneshot": {
+        "root": {
+          "type": "element",
+          "typeName": "Box",
+          "props": {
+            "a": {}
+          },
+          "partial": false,
+          "hasDynamicProps": true,
+          "statementId": "root"
+        },
+        "meta": {
+          "incomplete": false,
+          "unresolved": [],
+          "orphaned": [],
+          "statementCount": 1,
+          "errors": []
+        },
+        "stateDeclarations": {
+          "$v": null
+        },
+        "queryStatements": [],
+        "mutationStatements": []
+      },
+      "streams": {
+        "1": [
+          "c8bfd3a0",
+          "c8bfd3a0",
+          "c8bfd3a0",
+          "c8bfd3a0",
+          "c8bfd3a0",
+          "b0139e2d",
+          "d22f7e72",
+          "f79d7098",
+          "e9bacedc",
+          "4f2b299c",
+          "b4efa4f7",
+          "087f73b0",
+          "dc17f1f5",
+          "54c01519",
+          "794e9f17",
+          "e4a6b260",
+          "a53e3776",
+          "794f8c93",
+          "190f25ec",
+          "677b7a99",
+          "677b7a99",
+          "677b7a99",
+          "677b7a99",
+          "677b7a99",
+          "c9781872",
+          "0cc53d1b",
+          "7b107b9b",
+          "7b107b9b",
+          "7b107b9b"
+        ],
+        "3": [
+          "c8bfd3a0",
+          "b0139e2d",
+          "e9bacedc",
+          "087f73b0",
+          "794e9f17",
+          "794f8c93",
+          "677b7a99",
+          "677b7a99",
+          "7b107b9b",
+          "7b107b9b",
+          "7b107b9b"
+        ],
+        "4": [
+          "c8bfd3a0",
+          "f79d7098",
+          "087f73b0",
+          "e4a6b260",
+          "677b7a99",
+          "677b7a99",
+          "7b107b9b",
+          "7b107b9b"
+        ],
+        "5": [
+          "c8bfd3a0",
+          "4f2b299c",
+          "794e9f17",
+          "677b7a99",
+          "c9781872",
+          "7b107b9b",
+          "7b107b9b"
+        ]
+      }
     }
   },
   "proto-number-required": {
@@ -1663,6 +2664,97 @@
           "b20d7743",
           "1237d330",
           "1237d330"
+        ]
+      }
+    },
+    "reference": {
+      "oneshot": {
+        "root": {
+          "type": "element",
+          "typeName": "Box",
+          "props": {
+            "a": {}
+          },
+          "partial": false,
+          "hasDynamicProps": true,
+          "statementId": "root"
+        },
+        "meta": {
+          "incomplete": false,
+          "unresolved": [],
+          "orphaned": [],
+          "statementCount": 1,
+          "errors": []
+        },
+        "stateDeclarations": {
+          "$v": null
+        },
+        "queryStatements": [],
+        "mutationStatements": []
+      },
+      "streams": {
+        "1": [
+          "c8bfd3a0",
+          "c8bfd3a0",
+          "c8bfd3a0",
+          "c8bfd3a0",
+          "c8bfd3a0",
+          "b0139e2d",
+          "d22f7e72",
+          "f79d7098",
+          "e9bacedc",
+          "7d81e653",
+          "7d81e653",
+          "7d81e653",
+          "7d81e653",
+          "7d81e653",
+          "7d81e653",
+          "7d81e653",
+          "7d81e653",
+          "7d81e653",
+          "7d81e653",
+          "677b7a99",
+          "677b7a99",
+          "677b7a99",
+          "677b7a99",
+          "677b7a99",
+          "c9781872",
+          "0cc53d1b",
+          "7b107b9b",
+          "7b107b9b",
+          "7b107b9b"
+        ],
+        "3": [
+          "c8bfd3a0",
+          "b0139e2d",
+          "e9bacedc",
+          "7d81e653",
+          "7d81e653",
+          "7d81e653",
+          "677b7a99",
+          "677b7a99",
+          "7b107b9b",
+          "7b107b9b",
+          "7b107b9b"
+        ],
+        "4": [
+          "c8bfd3a0",
+          "f79d7098",
+          "7d81e653",
+          "7d81e653",
+          "677b7a99",
+          "677b7a99",
+          "7b107b9b",
+          "7b107b9b"
+        ],
+        "5": [
+          "c8bfd3a0",
+          "7d81e653",
+          "7d81e653",
+          "677b7a99",
+          "c9781872",
+          "7b107b9b",
+          "7b107b9b"
         ]
       }
     }

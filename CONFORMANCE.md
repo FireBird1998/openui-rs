@@ -530,21 +530,22 @@ Also reported, though not a quirk because the core doesn't reproduce it: a few l
 
 ## Divergences
 
-Documented, not emulated. The parser divergences do not occur in the corpus. The runtime divergence below is pinned separately by a store test.
+Documented, not emulated. The parser divergences do not occur in the corpus. Runtime divergences are pinned by tree, action and store tests.
 
 | Input | Reference | Core/runtime |
 |---|---|---|
 | Nested undefined in runtime state (`$f = {}`, then set `{a: $m.b}` with `$m = {}`) | retains an undefined-valued own field; setting the one-key object over `{}` notifies | the evaluator omits undefined object fields and writes null array items; the store sees that normalized value. This set is ignored. Stored JSON agrees; a call can count as one version step more or fewer |
-| Nesting 257 to about 8,000 levels | parses (throws `RangeError` past that) | stops at 256, sets `depth_limited` |
-| A result past the result-size limit: by default the larger of 64 KiB and 64 times the program's size, never above 8 MiB (statements inlined until it doubles per level, a root expression written out as a large AST, a validation error for each item of a long list) | parses quickly, since 1.1 builds each statement once and shares it, but its JSON doubles per level: about 1 GB at 22 levels, and at 24 `JSON.stringify` runs out of memory | cuts it, errors and unresolved names included, sets `size_limited`. A stream's limit is that of the text so far, so an early push can be cut where the reference's isn't, and a later one whole |
-| A state default building past what the result-size limit leaves, or nesting past 768 levels, from the ones above it (`$b = [$a, $a]` line after line, a string added to itself, nested lists around the one above) | evaluates it, sharing lists and objects, so lists are quick but their JSON doubles per line; a string grown that way makes `parse` throw a `RangeError` (`Out of memory`) | that default is null, stopping there, and so is every expression default after the result size or work runs out (even one whose value would be `undefined`); sets `size_limited` or `depth_limited` |
-| An object assigned to `__proto__`, or `null` in an evaluated state-default object literal | replaces the prototype; later reads and `in` checks see through it. An AST-valued prototype also makes the object pass inherited AST-kind checks | ignores that assignment. For a discarded object-valued parser assignment, does not validate an invented Object.prototype in its place. Thus `root=Box({"__proto__": $v})` keeps main's non-dynamic object and main's validation results; upstream recognizes inherited AST fields, skips validation and marks it dynamic. Parser null-prototype literals and null params are reproduced with inert metadata; arbitrary object prototypes and evaluated state-default null assignments remain unsupported |
+| Streaming completed container state defaults (`store-stream-default-identities.json`) | rebuilds identities and can notify again while later declarations arrive | reuses completed defaults and suppresses those extra notifications; `completed_defaults_keep_values_but_reused_containers_suppress_notifications` pins both histories and checks matching snapshots |
+| Nesting beyond the core limit | the recursion limit depends on the engine; it is not probed during regeneration | stops at 256, sets `depth_limited` |
+| A result past the result-size limit: by default the larger of 64 KiB and 64 times the program's size, never above 8 MiB (statements inlined until it doubles per level, a root expression written out as a large AST, a validation error for each item of a long list) | parses quickly, since 1.1 builds each statement once and shares it, but its JSON doubles per level: the size depends on program shape (about 1 GB at 22 levels for the doubling example). Gigabyte serialization and out-of-memory failures are not run during regeneration | cuts it, errors and unresolved names included, sets `size_limited`. A stream's limit is that of the text so far, so an early push can be cut where the reference's isn't, and a later one whole |
+| A state default building past what the result-size limit leaves, or nesting past 768 levels, from the ones above it (`$b = [$a, $a]` line after line, a string added to itself, nested lists around the one above) | evaluates it, sharing lists and objects, so lists are quick but their JSON doubles per line; string growth can exhaust engine memory; the out-of-memory case and deep default chains are not run against the reference during regeneration | that default is null, stopping there, and so is every expression default after the result size or work runs out (even one whose value would be `undefined`); sets `size_limited` or `depth_limited` |
+| An object assigned to `__proto__`, including a StateRef AST in an evaluated state-default object literal (`$x = 7; $z = {__proto__: $x, a: 5}` on separate lines) | replaces the prototype; inherited AST-kind checks make `$z` evaluate to 7 (or null when `$x = null`). A literal null prototype in an evaluated object with `a: $x` shows no difference | ignores that assignment. For a discarded object-valued parser assignment, does not validate an invented Object.prototype in its place. Thus `root=Box({"__proto__": $v})` keeps main's non-dynamic object and main's validation results; upstream recognizes inherited AST fields, skips validation and marks it dynamic. Parser null-prototype literals and null params are reproduced with inert metadata; arbitrary object prototypes remain unsupported; the evaluated literal-null control agrees |
 | An object literal shaped like an element used as the root | returns that object as `root` | `root` is `None` (it still counts as a root, so no `no-root`) |
 | An object literal shaped like an AST node used as the root (`root = {k: "Comp", name: "Card", args: []}`) | returns that object as `rootExpression` when it holds a component call, and throws a `TypeError` when a node in it lacks the children its kind has (`root = {k: "Comp"}`) | no `rootExpression`, and `no-root` |
 | A state default or runtime prop sorting text outside ASCII with `@Sort` (accents, other scripts) | orders it with ICU's root collation (`localeCompare`) | orders ASCII exactly as ICU does, other characters by code point after it |
-| A state default sorting values whose comparison loops: numbers and numeric text compare as numbers, other text as text, so `2 < "10"`, `"10" < "1a"` and `"1a" < 2` (`$s = @Sort([2, "10", "1a", 9, "9a", "x", 1, "01"], "")`); and since blank text reads as 0, `0 == " "`, `" " < ","` and `"," < 0`. Engine-dependent: ECMAScript leaves the order of an inconsistent comparison to the engine | the order JavaScriptCore's sort gives | follows JavaScriptCore's algorithm (binary insertion under 66 values after a first run of at least 8, a stable merge sort past 65). It agrees for most lists but not every one, such as 65 values whose first run descends (pinned in the evaluator's unit tests), and never panics |
-| A state default turning a built-in constructor into text (`$s = (1).constructor + ""`). Engine-dependent: a built-in function's text is the engine's | JavaScriptCore's text: `Object` and `Array`'s constructors on one line, `Number`, `String` and `Boolean`'s across three (`function Number() {\n    [native code]\n}`) | every constructor on one line, `function Number() { [native code] }` (pinned in the evaluator's unit tests) |
-| A state default reading a property of a built-in method or prototype (`$a = [].map.length`, `$b = $o.__proto__.x`) | that property | `undefined` (the method itself, `[].map`, is reproduced) |
+| A state default sorting values whose comparison loops: numbers and numeric text compare as numbers, other text as text, so `2 < "10"`, `"10" < "1a"` and `"1a" < 2` (`$s = @Sort([2, "10", "1a", 9, "9a", "x", 1, "01"], "")`); and since blank text reads as 0, `0 == " "`, `" " < ","` and `"," < 0`. Engine-dependent: ECMAScript leaves the order of an inconsistent comparison to the engine | the order JavaScriptCore's sort gives | follows JavaScriptCore's algorithm (binary insertion under 66 values after a first run of at least 8, a stable merge sort past 65). It agrees for most lists but not every one, such as the 65-value descending-first-run case in `core-divergences.json`: Bun leaves one `"10"` last, while the core groups all six together (both complete orders are pinned), and never panics |
+| A state default turning a built-in constructor into text (`$s = (1).constructor + ""`). Engine-dependent: a built-in function's text is the engine's | JavaScriptCore's text: `Object`'s constructor on one line, `Number`, `String` and `Boolean`'s across three (`function Number() {\n    [native code]\n}`) | these constructor values on one line, `function Number() { [native code] }` (pinned through the public parser in `core_divergences`) |
+| A state default reading a property of a built-in method or prototype (`$o = {}`) | `"abc".slice.length` is 2; `$o.toString.name` is `"toString"`; `[$o.__proto__.toString.length]` is `[0]`; `$o.__proto__.constructor + ""` is Object's function text | the first two are undefined; the chained prototype-method read serializes as `[null]`, and prototype constructor coercion gives `""`. `[].map.length` and `$o.__proto__.x` agree and are pinned as controls |
 | An object literal shaped like an AST node in a state default (`$x = {k: "Num", v: 1}`) | evaluates it as that node | keeps it as the object |
 | Cycles in query defaults, including an unread cycle | Node throws `RangeError`; Bun loops forever without the probe’s extra frame; four framed observations are pinned separately | records a depth-cut unset default; flags reads of it, and renders unread cycles without a flag |
 | A tree root expression that throws (`root=$c ? Box(1) : ""+$bad`, `$c=false`, `$bad={toString:null}`) | `evaluateRoot` throws a `TypeError` with `No default value` | returns no root and a `runtime-error` attributed to `root`, preserving the cause; both outputs are pinned by `runtime/root-expression-throw` |
@@ -552,13 +553,31 @@ Documented, not emulated. The parser divergences do not occur in the corpus. The
 | One invalid array descriptor call target: `{k:"Arr",els:{map:3}}` in `runtime/descriptor-map-target` | the error identifies the invalid `node.els.map` value as `3` | the typed failure identifies the field and invalid receiver, but the runtime diagnostic identifies the map target as undefined. This named case pins only that wording difference; both complete outputs are committed |
 | Writing a JavaScript function through a marker (`runtime/binding-function-value`) | stores `Object` from `{}.constructor`; a later `!$n` is false | the public core `Value` projects functions to undefined; the store receives undefined and `!$n` is true. Both initial scenarios and every scripted write are pinned; function-valued state needs a broader core representation change |
 | Writing a marker with a non-string or absent target (`runtime/binding-non-string-target`) | stores numeric, null, undefined, boolean and object keys in its Map; snapshots stringify keys and primitive-key reads can find the values | refuses with `BindingWriteError::InvalidMarker` because Store keys are strings. Both initial outputs and every full write step (marker, value, refusal, tree and snapshot) are pinned under `non-string-binding-target` |
-| A state default turning an object with its own `toString` or `valueOf` into text (`$a = {toString: 1}` then `$b = $a + ""`, or in `@Sort`, `@Filter`'s `contains`, `==`) | `parse` throws a `TypeError`: the object can't become text | `"[object Object]"` |
-| JSON nested deeper than 800 levels (three per level of the depth limit and 32 more, under raised `Limits`), for `json_to_openui`, `parse_json` or a prompt spec for `generate_system_prompt` | handled, up to the engine's recursion limit | refused with an error |
+| A state default turning an object with a non-callable own `toString` (alone or with a non-callable `valueOf`) into text (`$a = {toString: 1}` then `$b = $a + ""`, or in `@Sort`, `@Filter`'s `contains`, `==`) | `parse` throws a `TypeError`: the object can't become text. A non-callable `valueOf` alone falls back to `toString` without throwing; that control agrees | `"[object Object]"` (or the corresponding successful comparison, sort or filter result) |
+| JSON nested deeper than 800 levels (three per level of the depth limit and 32 more, under raised `Limits`), for `json_to_openui`, `parse_json` or a prompt spec for `generate_system_prompt` | `JSON.parse` accepts the pinned 801-level array; probing the engine's recursion limit is not part of regeneration | refused with an error; the deeper conversion and prompt paths keep their existing Rust depth tests |
 | `1e400` in JSON read back | `Infinity` | refused: a `serde_json::Value` can't hold it |
 | A component with `properties` whose `required` is neither an array nor a string (a number, say) | throws a `TypeError` building the library (`required.includes is not a function`) | treats `required` as empty |
 | A library function or action without `params`, or one that isn't an object | throws a `TypeError` building the library | has no params |
 | A slot schema whose `anyOf` or `oneOf` isn't an array of objects (`anyOf: [null]`, `oneOf: "x"`) | throws a `TypeError` validating a value in it | treats the slot as one that takes data |
-| An action shape in `$defs` that refers to itself, such as `ActionExpression: {anyOf: [{$ref: "#/$defs/ActionExpression"}]}` | recurses until the engine's stack overflows (`RangeError`) building the library | leaves that `$ref` in place |
+| An action shape in `$defs` that refers to itself, such as `ActionExpression: {anyOf: [{$ref: "#/$defs/ActionExpression"}]}` | recursive schema expansion is not run during regeneration because it deliberately exhausts the engine stack | leaves that `$ref` in place, pinned by `a_library_survives_schemas_the_reference_throws_on` |
+
+`core_divergences::documented_core_divergences_pin_both_complete_outputs`
+checks 33 small cases from `conformance/core-divergences.json`: complete public
+parser results (including Rust cut flags) or JSON-reader errors, plus exact
+reference results or exception names and messages. The independent expectations
+are in `conformance/divergences/core-divergences.json`; regeneration writes only
+`golden/core-divergences.json`. Agreement controls and both looping-sort outcomes
+are explicit. Engine-owned messages and function text are intentionally pinned
+under Bun/JavaScriptCore, not claimed portable across JavaScript engines.
+The gigabyte-output, string-OOM, engine-stack-limit and self-referencing schema
+reference probes are excluded; existing Rust size, depth and library pins remain.
+The small 801-level JSON array is a JSON-reader boundary probe, not a recursive
+parser/evaluator stress test.
+
+The cycle, reset-native-default and undefined-function-argument reference drivers
+also regenerate independent goldens. Tests compare their complete reference
+observations with the committed divergence expectations. Parser prototype pins
+likewise compare the entire reference one-shot result and every stream hash.
 
 The tree harness visibly classifies `runtime/nested-undefined` under the
 nested-undefined divergence: an undefined own `toString` field disappears in
@@ -571,9 +590,13 @@ fields, absent/null call arguments, array-like argument objects, invalid
 collections and entries, and lazy malformed branches have reference cases.
 `runtime/malformed-data-ast` now matches, including `number is not iterable`.
 The one named remaining diagnostic difference is `runtime/descriptor-map-target`.
-All runtime divergences commit both reference and Rust outputs for both
+All runtime tree divergences commit both reference and Rust outputs for both
 state scenarios in `conformance/divergences/runtime-<reason>.json`. The test
-checks each complete output, so neither side may widen silently. The
+checks each complete one-shot output and every streaming step, so neither side
+may widen silently. The query-default-cycle and native-reset pins have no
+streams: their programs are not streamed. Streams pin reference fingerprints and compare Rust with
+the reference at matching steps, or with a separate Rust fingerprint at
+differing steps. The
 `function-state-value` pin also records every field write. Its initial trees
 and streaming observations match; only writes expose the lost function value.
 The `non-string-binding-target` pin retains complete write records on both
@@ -593,7 +616,7 @@ parsing and bindings cannot represent nested undefined. Parity would require
 changing the evaluator and value model together under a separate ADR, rather
 than adding a runtime-only variant to the parser's public enum.
 
-Core entry-point errors where the reference throws compare only that it throws. The runtime `root-expression-throw` divergence also pins the exception's name and message. For system prompts, the reference's own error messages are compared exactly. Where it crashes inside the JavaScript engine instead (a `TypeError`, for a spec that's a JSON array, say), the core only has to return an error too.
+Outside the explicit divergence pins above, core entry-point errors where the reference throws compare only that it throws. The runtime `root-expression-throw` divergence also pins the exception's name and message. For system prompts, the reference's own error messages are compared exactly. Where it crashes inside the JavaScript engine instead (a `TypeError`, for a spec that's a JSON array, say), the core only has to return an error too.
 
 ## Reproducing
 

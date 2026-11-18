@@ -510,6 +510,27 @@ fn corpus_trees_snapshots_and_json_match_the_reference() {
             }
             _ => panic!("{name}: unknown divergence {divergence}"),
         }
+        let stream_pin = (!divergence.is_empty())
+            .then(|| load(&dir.join(format!("divergences/runtime-{divergence}.json"))));
+        if let Some(pin) = &stream_pin {
+            assert_eq!(
+                entries(get(pin, "streams"))
+                    .iter()
+                    .map(|(k, _)| k.as_str())
+                    .collect::<BTreeSet<_>>(),
+                names,
+                "{name}: pinned stream chunkings"
+            );
+            for (_, trace) in entries(get(pin, "streams")) {
+                assert_eq!(
+                    entries(trace)
+                        .iter()
+                        .map(|(k, _)| k.as_str())
+                        .collect::<BTreeSet<_>>(),
+                    BTreeSet::from(["defaults", "persisted"])
+                );
+            }
+        }
         let non_string_pin = (divergence == "non-string-binding-target")
             .then(|| load(&dir.join("divergences/runtime-non-string-binding-target.json")));
         let write_override = if matches!(get(c, "queryComplete"), Value::Bool(false)) {
@@ -863,6 +884,26 @@ fn corpus_trees_snapshots_and_json_match_the_reference() {
                     },
                     "{name}/{k}: plan step count"
                 );
+                let trace = stream_pin
+                    .as_ref()
+                    .map(|pin| get(get(get(pin, "streams"), k), scenario));
+                if let Some(trace) = trace {
+                    if divergence == "function-prototype" {
+                        assert_eq!(
+                            arr(trace).len(),
+                            expected.len(),
+                            "{name}/{scenario}/{k}: complete trace"
+                        );
+                    } else {
+                        for side in ["reference", "rust"] {
+                            assert_eq!(
+                                arr(get(trace, side)).len(),
+                                expected.len(),
+                                "{name}/{scenario}/{k}: complete {side} trace"
+                            );
+                        }
+                    }
+                }
                 let mut reported = false;
                 for (step, want) in expected.iter().enumerate() {
                     let parsed = if !ops.is_empty() {
@@ -907,16 +948,34 @@ fn corpus_trees_snapshots_and_json_match_the_reference() {
                         &bindings,
                         &schema,
                     );
-                    if divergence == "function-prototype" {
-                        let pin = load(&dir.join("divergences/runtime-function-prototype.json"));
-                        let trace = get(get(get(&pin, "streams"), k), scenario);
-                        let observation = arr(trace).get(step).expect("complete divergence trace");
-                        assert_eq!(
-                            fp(&json(get(observation, "reference"))),
-                            *want,
-                            "reference stream pin"
-                        );
-                        assert_eq!(json(get(observation, "rust")), actual, "Rust stream pin");
+                    if let Some(trace) = trace {
+                        if divergence == "function-prototype" {
+                            let observation = &arr(trace)[step];
+                            assert_eq!(
+                                fp(&json(get(observation, "reference"))),
+                                *want,
+                                "reference stream pin"
+                            );
+                            assert_eq!(json(get(observation, "rust")), actual, "Rust stream pin");
+                        } else {
+                            assert_eq!(
+                                text(&arr(get(trace, "reference"))[step]),
+                                *want,
+                                "{name}/{scenario}/{k}/{step}: reference stream pin"
+                            );
+                            let rust = text(&arr(get(trace, "rust"))[step]);
+                            let required = if rust == "reference" {
+                                *want
+                            } else {
+                                assert_ne!(rust, *want, "matching steps must use the reference");
+                                rust
+                            };
+                            assert_eq!(
+                                fp(&actual),
+                                required,
+                                "{name}/{scenario}/{k}/{step}: Rust stream pin"
+                            );
+                        }
                     }
                     if fp(&actual) != *want && !reported {
                         reported = true;
