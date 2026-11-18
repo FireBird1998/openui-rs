@@ -546,6 +546,26 @@
         }
       },
       "program": "$x = 7\n$z = {__proto__: null, a: $x}\nroot = Box($z)"
+    },
+    {
+      "name": "message-attribute-reserved-scalar",
+      "operation": "message",
+      "input": "]]>openui:content?a=%F4%8F%A0%80\nx"
+    },
+    {
+      "name": "message-context-literal-reserved-scalar",
+      "operation": "message",
+      "input": "]]>openui:context\n\"\udbfe\udc00\""
+    },
+    {
+      "name": "message-context-escaped-reserved-scalar",
+      "operation": "message",
+      "input": "]]>openui:context\n\"\\uDBFE\\uDC00\""
+    },
+    {
+      "name": "message-context-reserved-scalar-forms-pair",
+      "operation": "message",
+      "input": "]]>openui:context\n\"\\uD83D\\uDBFE\\uDC00\\uDE00\""
     }
   ]
 }

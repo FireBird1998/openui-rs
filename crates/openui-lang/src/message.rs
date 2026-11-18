@@ -76,7 +76,7 @@ pub enum MessageError {
     ProgramSize,
     /// JSON exceeds the nesting limit described by [Limits::depth].
     ContextDepth,
-    /// An attribute name or value cannot be URI-encoded because it has a lone surrogate.
+    /// An attribute name or value contains a lone surrogate or its reserved code point.
     InvalidAttribute,
     /// The parts are malformed, or their context contains a non-JSON core value.
     InvalidInput,
@@ -87,7 +87,9 @@ impl fmt::Display for MessageError {
         f.write_str(match self {
             Self::ProgramSize => "message exceeds the program-size limit",
             Self::ContextDepth => "message JSON exceeds the depth limit",
-            Self::InvalidAttribute => "message attribute has a lone surrogate",
+            Self::InvalidAttribute => {
+                "cannot URI-encode message attribute containing a lone surrogate or reserved scalar"
+            }
             Self::InvalidInput => "invalid message parts",
         })
     }

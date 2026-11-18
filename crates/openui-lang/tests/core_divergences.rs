@@ -1,7 +1,7 @@
 //! Small documented divergences pin complete outputs independently on both sides.
 mod common;
 
-use openui_lang::{Library, parse, parse_json, stringify_json};
+use openui_lang::{Library, Limits, parse, parse_json, parse_message, stringify_json};
 use serde_json::{Value, json};
 
 #[global_allocator]
@@ -19,7 +19,7 @@ fn documented_core_divergences_pin_both_complete_outputs() {
     let cases = corpus["cases"].as_array().unwrap();
     assert_eq!(
         cases.len(),
-        33,
+        37,
         "documented divergences and agreement controls"
     );
     assert_eq!(reference.as_object().unwrap().len(), cases.len());
@@ -43,6 +43,11 @@ fn documented_core_divergences_pin_both_complete_outputs() {
                 Ok(value) => json!({"output": stringify_json(&value)}),
                 Err(error) => json!({"error": error.to_string()}),
             },
+            "message" => {
+                let message =
+                    parse_message(case["input"].as_str().unwrap(), false, Limits::DEFAULT).unwrap();
+                json!({"output": message.to_json()})
+            }
             operation => panic!("unknown operation {operation}"),
         };
         assert_eq!(

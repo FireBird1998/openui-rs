@@ -20,3 +20,8 @@ test('message text and parts cross the guarded package without losing UTF-16 uni
   kind(() => wasm.buildMessage('{"content":"body","attributes":{"x":"\\ud800"}}'), 'InvalidJson');
   kind(() => wasm.parseMessage({ toString() { throw new Error('unexpected call'); } }, false), 'InvalidJson');
 });
+
+test('the package identifies a message attribute URI encoding failure', () => {
+  const error = kind(() => wasm.buildMessage('{"content":"body","attributes":{"x":"\\ud800"}}'), 'InvalidJson');
+  expect(error.message).toBe('cannot URI-encode message attribute containing a lone surrogate or reserved scalar');
+});

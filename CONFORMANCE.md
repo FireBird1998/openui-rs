@@ -455,15 +455,30 @@ For each raw or successfully built message it also compares the JSON of every
 streaming prefix, including the empty and full prefixes. The adapter uses
 JavaScript's UTF-16 slice boundaries. Rust keeps an astral scalar intact when
 both units are present and uses the core's reserved U+10F800–U+10FFFF scalars
-to carry lone units. Literal input in that reserved range shares the core's
-existing representation limitation. Cuts do not split other UTF-8 scalars.
+to carry lone units. Cuts do not split other UTF-8 scalars.
+
+Text that is, or decodes to, a character in U+10F800–U+10FFFF collides with
+the core's lone-surrogate representation. This includes percent-decoded
+message attributes, literal or escaped scalars in context JSON, and program
+string escapes such as `\uDBFE\uDC00`. The four message cases in
+[the divergence corpus](conformance/core-divergences.json) pin both sides.
+The message fuzzer counts a divergence when replacing those literal scalars
+in the reference's serialized reads with the corresponding lone-surrogate
+escapes makes the full answer byte-identical. In context JSON those units
+can also join adjacent surrogate halves, so the comparison reserializes
+the projected context. Other differences still count as findings.
 
 The invariant checks the parts of reversible corpus cases and generated
 inputs. Upstream treats a string context as verbatim on write, so a string
 that spells valid JSON can read back as a different value. A marker line
 inside a body can also start a new section. The golden comparisons cover those
 behaviors. The public limit tests cover whole-message admission, nesting in
-the winning context, and bounded writing.
+the winning context, and bounded writing. At the default JSON depth limit
+of 800, malformed context still falls back to the original text if the
+reader encounters the syntax error within the limit. Entering an 801st
+nested container first gives `MessageError::ContextDepth`, even if a later token
+makes the context invalid JSON. For example, 801 opening brackets followed
+by `oops` are refused here and returned as text upstream.
 
 ## Differential fuzzing
 
@@ -567,6 +582,9 @@ Also reported, though not a quirk because the core doesn't reproduce it: a few l
 
 Documented, not emulated. The parser divergences do not occur in the corpus. Runtime divergences are pinned by tree, action and store tests.
 
+The reserved-scalar and message context depth differences are described under
+[Message format](#message-format).
+
 | Input | Reference | Core/runtime |
 |---|---|---|
 | Nested undefined in runtime state (`$f = {}`, then set `{a: $m.b}` with `$m = {}`) | retains an undefined-valued own field; setting the one-key object over `{}` notifies | the evaluator omits undefined object fields and writes null array items; the store sees that normalized value. This set is ignored. Stored JSON agrees; a call can count as one version step more or fewer |
@@ -597,10 +615,11 @@ Documented, not emulated. The parser divergences do not occur in the corpus. Run
 | An action shape in `$defs` that refers to itself, such as `ActionExpression: {anyOf: [{$ref: "#/$defs/ActionExpression"}]}` | recursive schema expansion is not run during regeneration because it deliberately exhausts the engine stack | leaves that `$ref` in place, pinned by `a_library_survives_schemas_the_reference_throws_on` |
 
 `core_divergences::documented_core_divergences_pin_both_complete_outputs`
-checks 33 small cases from `conformance/core-divergences.json`: complete public
-parser results (including Rust cut flags) or JSON-reader errors, plus exact
-reference results or exception names and messages. The independent expectations
-are in `conformance/divergences/core-divergences.json`; regeneration writes only
+checks 37 small cases from `conformance/core-divergences.json`. They pin public
+parser results (including Rust cut flags), message reads, and JSON-reader
+results or errors alongside the exact reference results or exceptions. The
+independent expectations are in `conformance/divergences/core-divergences.json`.
+Regeneration writes only
 `golden/core-divergences.json`. Agreement controls and both looping-sort outcomes
 are explicit. Engine-owned messages and function text are intentionally pinned
 under Bun/JavaScriptCore, not claimed portable across JavaScript engines.

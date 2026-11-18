@@ -3,6 +3,7 @@
 // always uses Bun (JavaScriptCore). No recursion-limit or allocation-limit probes.
 import {readFileSync, writeFileSync} from 'fs';
 import {join} from 'path';
+import {parseMessage} from './lang-core/src/message';
 process.env.OPENUI_TELEMETRY_DISABLED = '1';
 process.env.DO_NOT_TRACK = '1';
 const {compileSchema, parse} = await import('./lang-core/src/parser/parser');
@@ -15,6 +16,8 @@ for (const c of cases) {
   try {
     if (c.operation === 'parse') {
       results[c.name] = {output: JSON.stringify(parse(c.program, compileSchema(c.schema)))};
+    } else if (c.operation === 'message') {
+      results[c.name] = {output: JSON.stringify(parseMessage(c.input))};
     } else if (c.operation === 'json') {
       const value = JSON.parse(c.input);
       results[c.name] = {output: Number.isFinite(value) || typeof value !== 'number'

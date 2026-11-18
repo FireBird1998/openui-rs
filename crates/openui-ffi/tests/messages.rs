@@ -26,3 +26,14 @@ fn message_text_and_parts_cross_the_native_binding() {
         Err(OpenUiError::InvalidJson { .. })
     ));
 }
+
+#[test]
+fn message_attribute_encoding_error_identifies_the_uri_failure() {
+    let error =
+        build_message(r#"{"content":"body","attributes":{"x":"\ud800"}}"#.into()).unwrap_err();
+    assert!(matches!(
+        error,
+        OpenUiError::InvalidJson { reason }
+            if reason == "cannot URI-encode message attribute containing a lone surrogate or reserved scalar"
+    ));
+}

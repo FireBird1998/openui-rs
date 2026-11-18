@@ -405,10 +405,9 @@ pub use lexer::{Token, tokenize, tokens_to_json};
 pub use library::{Call, CallKind, Component, Library, Param};
 pub use limits::Limits;
 pub use merge::{Merged, merge_statements, merge_statements_with_limits};
-pub use message::{
-    BuildMessageInput, MessageError, ParsedMessage, build_message, build_message_json,
-    parse_message,
-};
+#[doc(hidden)]
+pub use message::build_message_json;
+pub use message::{BuildMessageInput, MessageError, ParsedMessage, build_message, parse_message};
 pub use parser::{parse, parse_with_limits};
 pub use preprocess::{preprocess, strip_fences};
 pub use prompt::{

@@ -300,3 +300,35 @@ fn writer_bounds_emitted_bytes_including_attribute_expansion() {
         Err(MessageError::ProgramSize)
     );
 }
+
+#[test]
+fn default_context_depth_applies_even_to_never_valid_json() {
+    let limits = Limits::DEFAULT;
+    for streaming in [false, true] {
+        for valid in [false, true] {
+            let body = |depth| {
+                if valid {
+                    format!("{}0{}", "[".repeat(depth), "]".repeat(depth))
+                } else {
+                    format!("{}oops", "[".repeat(depth))
+                }
+            };
+            let at_limit = body(800);
+            let raw = format!("]]>openui:context\n{at_limit}");
+            let context = parse_message(&raw, streaming, limits).unwrap().context;
+            if valid {
+                assert!(matches!(context, Value::Arr(_)), "streaming={streaming}");
+            } else {
+                assert_eq!(context, Value::Str(at_limit), "streaming={streaming}");
+            }
+            let raw = format!("]]>openui:context\n{}", body(801));
+            assert!(
+                matches!(
+                    parse_message(&raw, streaming, limits),
+                    Err(MessageError::ContextDepth)
+                ),
+                "streaming={streaming}, valid={valid}"
+            );
+        }
+    }
+}

@@ -15,6 +15,7 @@ use crate::reference::Reference;
 use crate::rng::Rng;
 
 const CASES: &str = include_str!("../../../../conformance/messages.json");
+const DIVERGENCES: &str = include_str!("../../../../conformance/core-divergences.json");
 const FRAGMENTS: &[&str] = &[
     "]]>openui:content",
     "]]>openui:content?a+%z=q",
@@ -29,6 +30,8 @@ const FRAGMENTS: &[&str] = &[
     "?&a==b&",
     "%ED%A0%80",
     "%C3%A9",
+    "%F4%8F%A0%80",
+    r#"\uDBFE\uDC00"#,
     "%A0",
     "é😀",
     "\u{10F800}",
@@ -129,11 +132,46 @@ fn rust(request: &Value) -> Result<Value, MessageError> {
     }
 }
 
+#[derive(Debug, PartialEq, Eq)]
+enum Comparison {
+    Match,
+    ReservedScalarCollision,
+    Mismatch,
+}
+
+fn compare(actual: &str, reply: &Value) -> Comparison {
+    if reply["answer"].as_str() == Some(actual) {
+        Comparison::Match
+    } else if reply["reservedScalarCollision"].as_str() == Some(actual) {
+        Comparison::ReservedScalarCollision
+    } else {
+        Comparison::Mismatch
+    }
+}
+
 pub fn run(seed: u64, batches: impl Iterator<Item = Vec<u64>>, reference: &mut Reference) -> bool {
     let corpus = parse_json(CASES).expect("read the message cases");
-    let seeds = corpus.as_array().expect("message cases must be an array");
+    let mut seeds = corpus
+        .as_array()
+        .expect("message cases must be an array")
+        .clone();
+    let divergences: Value = serde_json::from_str(DIVERGENCES).expect("read divergence cases");
+    if let Some(cases) = divergences["cases"].as_array() {
+        // ASCII cases reach the collision by decoding. The wire format uses
+        // the core's reserved scalars for actual lone units in generated text.
+        seeds.extend(
+            cases
+                .iter()
+                .filter(|case| case["operation"] == "message")
+                .filter_map(|case| {
+                    let raw = case["input"].as_str().filter(|raw| raw.is_ascii())?;
+                    Some(json!({"raw":raw}))
+                }),
+        );
+    }
     let mut count = 0;
     let mut matches = 0;
+    let mut explained = 0;
     let mut failures = HashMap::new();
     for batch in batches {
         let Some(&first) = batch.first() else {
@@ -148,7 +186,7 @@ pub fn run(seed: u64, batches: impl Iterator<Item = Vec<u64>>, reference: &mut R
         );
         let tests: Vec<_> = batch
             .iter()
-            .map(|&index| request(seed, index, seeds))
+            .map(|&index| request(seed, index, &seeds))
             .collect();
         // Bun's readline also treats JS paragraph and line separators as
         // request boundaries. Escape them on the wire and keep the input units.
@@ -168,15 +206,25 @@ pub fn run(seed: u64, batches: impl Iterator<Item = Vec<u64>>, reference: &mut R
                 rust(test).map(|answer| stringify_json(&answer))
             }));
             let core_ms = start.elapsed().as_secs_f64() * 1000.0;
+            let reply: Value = serde_json::from_str(&upstream).unwrap_or(Value::Null);
+            let expected = reply["answer"]
+                .as_str()
+                .unwrap_or_else(|| upstream.trim_end());
             let (outcome, actual) = match rust {
                 Ok(result) if start.elapsed() > hunt().slow => {
                     (Outcome::BlowUp, format!("{result:?}"))
                 }
-                Ok(Ok(actual)) if actual == upstream.trim_end() => {
-                    matches += 1;
-                    continue;
-                }
-                Ok(Ok(actual)) => (Outcome::Mismatch, actual),
+                Ok(Ok(actual)) => match compare(&actual, &reply) {
+                    Comparison::Match => {
+                        matches += 1;
+                        continue;
+                    }
+                    Comparison::ReservedScalarCollision => {
+                        explained += 1;
+                        continue;
+                    }
+                    Comparison::Mismatch => (Outcome::Mismatch, actual),
+                },
                 Ok(Err(err)) => (Outcome::Mismatch, err.to_string()),
                 Err(_) => (Outcome::CorePanicked, String::new()),
             };
@@ -184,26 +232,62 @@ pub fn run(seed: u64, batches: impl Iterator<Item = Vec<u64>>, reference: &mut R
             let replay = format!("scripts/fuzz.sh --messages --seed {seed} --only {index}");
             eprintln!("message {outcome:?}, {replay}");
             eprintln!("request: {}", stringify_json(test));
-            eprintln!("lang-core: {}\nRust: {actual}", upstream.trim_end());
+            eprintln!("lang-core: {expected}\nRust: {actual}");
             hunt().record(&json!({
                 "kind": outcome.kind(), "check": "messages", "seed": seed, "index": index,
                 "replay": replay, "core_ms": core_ms, "request": stringify_json(test),
-                "reference": upstream.trim_end(), "rust": actual,
+                "reference": expected, "rust": actual,
             }));
         }
     }
     let total_failures: usize = failures.values().sum();
     println!(
-        "message fuzz seed {seed}: {count} inputs, {matches} match, {total_failures} findings"
+        "message fuzz seed {seed}: {count} inputs, {matches} match, {explained} reserved-scalar divergences, {total_failures} findings"
     );
     hunt().summary(
         "messages",
         &json!({
-            "inputs": count, "match": matches,
-            "mismatch": failures.get(&Outcome::Mismatch).copied().unwrap_or(0),
+            "inputs": count, "match": matches, "explained": explained,
+            "mismatch": failures.get(&Outcome::Mismatch).copied().unwrap_or(0) + explained,
             "crash": failures.get(&Outcome::CorePanicked).copied().unwrap_or(0),
             "blow-up": failures.get(&Outcome::BlowUp).copied().unwrap_or(0),
         }),
     );
     failures.is_empty()
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn reserved_scalar_collision_does_not_hide_a_neighbouring_mismatch() {
+        let corpus: Value = serde_json::from_str(DIVERGENCES).unwrap();
+        let case = corpus["cases"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .find(|case| case["name"] == "message-attribute-reserved-scalar")
+            .unwrap();
+        let observed = read(case["input"].as_str().unwrap()).unwrap();
+        let projected = stringify_json(&observed);
+        let mut reference_result = observed;
+        let pinned: Value = serde_json::from_str(include_str!(
+            "../../../../conformance/golden/core-divergences.json"
+        ))
+        .unwrap();
+        reference_result["complete"] =
+            pinned["message-attribute-reserved-scalar"]["output"].clone();
+        let reference = serde_json::to_string(&reference_result).unwrap();
+        let reply = json!({"answer":reference,"reservedScalarCollision":projected});
+
+        assert_eq!(
+            compare(&projected, &reply),
+            Comparison::ReservedScalarCollision
+        );
+        assert_eq!(compare(&reference, &reply), Comparison::Match);
+        let nearby = projected.replacen(r#"\"end\":false"#, r#"\"end\":true"#, 1);
+        assert_ne!(nearby, projected);
+        assert_eq!(compare(&nearby, &reply), Comparison::Mismatch);
+    }
 }

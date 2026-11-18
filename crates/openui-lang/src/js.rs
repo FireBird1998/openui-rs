@@ -6,8 +6,8 @@
 //! stream stops between the halves of `"\uD83D\uDE00"`. Rust strings can't,
 //! so a lone surrogate travels as one of the last 2048 code points of plane 16
 //! (U+10F800–U+10FFFF) and is written back out as the `\udXXX` escape
-//! `JSON.stringify` uses. Programs that contain those private-use code points
-//! themselves can't conform.
+//! `JSON.stringify` uses. Text that is, or decodes to, a character in that
+//! range collides with this representation, including a program's string escapes.
 
 use std::fmt::Write as _;
 
@@ -32,7 +32,9 @@ pub(crate) fn lone_surrogate_unit(c: char) -> Option<u16> {
 
 /// Iterate JavaScript UTF-16 units without allocating, including lone
 /// surrogates in the core's public string representation. Unlike Rust's
-/// `encode_utf16`, the reserved surrogate scalars each produce one unit.
+/// `encode_utf16`, the reserved U+10F800–U+10FFFF scalars each produce one unit.
+/// Text that is, or decodes to, a character in that range collides with this
+/// representation.
 pub fn utf16_units(text: &str) -> impl Iterator<Item = u16> + '_ {
     text.chars().flat_map(|c| {
         let (units, len) = if let Some(unit) = lone_surrogate_unit(c) {

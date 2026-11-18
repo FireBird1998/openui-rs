@@ -396,5 +396,41 @@
       "size_limited": false
     },
     "same_output": true
+  },
+  "message-attribute-reserved-scalar": {
+    "reference": {
+      "output": "{\"content\":\"x\",\"context\":null,\"attributes\":{\"a\":\"􏠀\"},\"end\":false}"
+    },
+    "rust": {
+      "output": "{\"content\":\"x\",\"context\":null,\"attributes\":{\"a\":\"\\ud800\"},\"end\":false}"
+    },
+    "same_output": false
+  },
+  "message-context-literal-reserved-scalar": {
+    "reference": {
+      "output": "{\"content\":\"\",\"context\":\"􏠀\",\"attributes\":{},\"end\":false}"
+    },
+    "rust": {
+      "output": "{\"content\":\"\",\"context\":\"\\ud800\",\"attributes\":{},\"end\":false}"
+    },
+    "same_output": false
+  },
+  "message-context-escaped-reserved-scalar": {
+    "reference": {
+      "output": "{\"content\":\"\",\"context\":\"􏠀\",\"attributes\":{},\"end\":false}"
+    },
+    "rust": {
+      "output": "{\"content\":\"\",\"context\":\"\\ud800\",\"attributes\":{},\"end\":false}"
+    },
+    "same_output": false
+  },
+  "message-context-reserved-scalar-forms-pair": {
+    "reference": {
+      "output": "{\"content\":\"\",\"context\":\"\\ud83d􏠀\\ude00\",\"attributes\":{},\"end\":false}"
+    },
+    "rust": {
+      "output": "{\"content\":\"\",\"context\":\"\\ud83d𐈀\",\"attributes\":{},\"end\":false}"
+    },
+    "same_output": false
   }
 }
