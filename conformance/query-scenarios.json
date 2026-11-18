@@ -675,5 +675,130 @@
       {"kind":"evaluate"},
       {"kind":"complete","call":0,"outcome":{"kind":"tool-error","message":"failed"}}
     ]
+    },
+  {
+    "name": "extra-key-values-are-per-tool-and-absent-when-empty",
+    "program": "q = Query(\"t\", {v: 1}, \"d\")\nr = Query(\"u\", {v: 1}, \"r\")\nn = Query(1 + 2, {v: 1}, \"n\")",
+    "steps": [
+      {"kind":"evaluate"},
+      {"kind":"complete","call":0,"outcome":{"kind":"result","value":"plain"}},
+      {"kind":"complete","call":1,"outcome":{"kind":"result","value":"u"}},
+      {"kind":"complete","call":2,"outcome":{"kind":"result","value":"three"}},
+      {"kind":"extra","toolName":"t","values":{}},
+      {"kind":"evaluate"},
+      {"kind":"extra","toolName":"t","values":{"__proto__":{"x":1}}},
+      {"kind":"evaluate"},
+      {"kind":"extra","toolName":"t","values":{"account":"A"}},
+      {"kind":"evaluate"},
+      {"kind":"complete","call":3,"outcome":{"kind":"result","value":"A"}},
+      {"kind":"extra","toolName":"3","values":{"account":"A"}},
+      {"kind":"evaluate"},
+      {"kind":"extra","toolName":"t"},
+      {"kind":"evaluate"},
+      {"kind":"complete","call":5,"outcome":{"kind":"result","value":"plain again"}},
+      {"kind":"complete","call":4,"outcome":{"kind":"result","value":"three for A"}}
+    ]
+  },
+  {
+    "name": "extra-key-values-join-and-replace-listed-state-variables",
+    "program": "$f = 1\nq = Query(\"t\", $f ? {all: true} : {all: true}, \"d\")",
+    "steps": [
+      {"kind":"extra","toolName":"t","values":{"$f":1,"account":"A"}},
+      {"kind":"evaluate"},
+      {"kind":"complete","call":0,"outcome":{"kind":"result","value":"one"}},
+      {"kind":"set","name":"$f","value":2},
+      {"kind":"evaluate"},
+      {"kind":"extra","toolName":"t","values":{"account":"A"}},
+      {"kind":"evaluate"},
+      {"kind":"complete","call":1,"outcome":{"kind":"result","value":"two"}},
+      {"kind":"extra","toolName":"t","values":{"account":"A","$f":2}},
+      {"kind":"evaluate"}
+    ]
+  },
+  {
+    "name": "extra-key-values-sort-nested-keys-and-share-markers",
+    "program": "$m = 1\nq = Query(\"t\", $m ? {all: true} : {all: true}, \"d\")",
+    "steps": [
+      {"kind":"extra","toolName":"t","values":{"k":{"b":[1,"x"],"a":{"y":2,"__proto__":{"x":1}}}}},
+      {"kind":"evaluate"},
+      {"kind":"complete","call":0,"outcome":{"kind":"result","value":"nested"}},
+      {"kind":"extra","toolName":"t","values":{"k":{"a":{"y":2},"b":[1,"x"]}}},
+      {"kind":"evaluate"},
+      {"kind":"extra","toolName":"t","values":{"k":{"a":{"y":3},"b":[1,"x"]}}},
+      {"kind":"evaluate"},
+      {"kind":"complete","call":1,"outcome":{"kind":"result","value":"deeper"}},
+      {"kind":"set","name":"$m"},
+      {"kind":"evaluate"},
+      {"kind":"complete","call":2,"outcome":{"kind":"result","value":"undefined"}},
+      {"kind":"extra","toolName":"t","values":{"k":{"a":{"y":3},"b":[1,"x"]},"$m":"__undefined__"}},
+      {"kind":"evaluate"},
+      {"kind":"extra","toolName":"t","values":{"k":{"a":{"y":3},"b":[1,"x"]},"$m":null}},
+      {"kind":"evaluate"},
+      {"kind":"complete","call":3,"outcome":{"kind":"result","value":"null"}}
+    ]
+  },
+  {
+    "name": "extra-key-values-are-data-even-when-shaped-like-syntax",
+    "program": "$m = 1\nq = Query(\"t\", {}, \"d\")",
+    "steps": [
+      {"kind":"extra","toolName":"t","values":{"node":{"k":"StateRef","n":"$m"}}},
+      {"kind":"evaluate"},
+      {"kind":"complete","call":0,"outcome":{"kind":"result","value":"node"}},
+      {"kind":"set","name":"$m","value":2},
+      {"kind":"evaluate"},
+      {"kind":"extra","toolName":"t","values":{"node":{"k":"StateRef","n":"$m"},"element":{"type":"element","typeName":"Box","props":{"a":{"k":"StateRef","n":"$m"}},"partial":false}}},
+      {"kind":"evaluate"},
+      {"kind":"complete","call":1,"outcome":{"kind":"result","value":"element"}},
+      {"kind":"set","name":"$m","value":3},
+      {"kind":"evaluate"}
+    ]
+  },
+  {
+    "name": "cache-keys-collide-across-the-separator",
+    "program": "q = Query(\"t\", {}, \"q\")",
+    "steps": [
+      {"kind":"extra","toolName":"t","values":{"k":1}},
+      {"kind":"evaluate"},
+      {"kind":"complete","call":0,"outcome":{"kind":"result","value":"shared"}},
+      {"kind":"replace","program":"q = Query(\"t\", {}, \"q\")\np = Query(\"t::{}\", {k: 1}, \"p\")"},
+      {"kind":"evaluate"}
+    ]
+  },
+  {
+    "name": "listed-state-variables-keep-equal-arguments-apart",
+    "program": "$status = \"open\"\na = Query(\"list_orders\", {status: $status})\nb = Query(\"list_orders\", {status: \"open\"})",
+    "steps": [
+      {"kind":"evaluate"},
+      {"kind":"set","name":"$status","value":"closed"},
+      {"kind":"evaluate"},
+      {"kind":"complete","call":0,"outcome":{"kind":"result","value":["order 1"]}},
+      {"kind":"evaluate"},
+      {"kind":"complete","call":1,"outcome":{"kind":"tool-error","message":"offline"}},
+      {"kind":"evaluate"}
+    ]
+  },
+  {
+    "name": "a-sharing-query-receives-the-result-after-the-starter-moves",
+    "program": "a = Query(\"list_orders\", {status: \"open\"})\nb = Query(\"list_orders\", {status: \"open\"})",
+    "steps": [
+      {"kind":"evaluate"},
+      {"kind":"replace","program":"a = Query(\"list_orders\", {status: \"closed\"})\nb = Query(\"list_orders\", {status: \"open\"})"},
+      {"kind":"evaluate"},
+      {"kind":"complete","call":0,"outcome":{"kind":"result","value":["order 1"]}},
+      {"kind":"evaluate"},
+      {"kind":"complete","call":1,"outcome":{"kind":"result","value":["order 2"]}}
+    ]
+  },
+  {
+    "name": "a-sharing-query-receives-the-failure-after-the-starter-moves",
+    "program": "a = Query(\"list_orders\", {status: \"open\"})\nb = Query(\"list_orders\", {status: \"open\"})",
+    "steps": [
+      {"kind":"evaluate"},
+      {"kind":"replace","program":"a = Query(\"list_orders\", {status: \"closed\"})\nb = Query(\"list_orders\", {status: \"open\"})"},
+      {"kind":"evaluate"},
+      {"kind":"complete","call":0,"outcome":{"kind":"tool-error","message":"offline"}},
+      {"kind":"evaluate"},
+      {"kind":"complete","call":1,"outcome":{"kind":"result","value":["order 2"]}}
+    ]
   }
 ]

@@ -228,3 +228,127 @@ fn superseded_result_is_discarded_before_json_admission() {
             .changed
     );
 }
+
+fn extra(values: &JsonValue) -> impl Iterator<Item = (&str, &JsonValue)> {
+    values
+        .as_object()
+        .into_iter()
+        .flatten()
+        .map(|(name, value)| (name.as_str(), value))
+}
+
+#[test]
+fn refused_extra_key_values_keep_the_previous_values() {
+    let store = Store::default();
+    let p = program("q = Query(\"read\")");
+    let limits = Limits::DEFAULT.with_depth(16).with_result_size(4096);
+    let mut manager = QueryManager::with_limits(limits);
+    let first = openui_lang::parse_json("{\"account\": \"A\"}").unwrap();
+    manager.set_extra_key_values("read", extra(&first)).unwrap();
+    let started = manager.apply(evaluate(&p, &store)).unwrap();
+    manager
+        .apply(QueryCommand::Complete {
+            id: &started.calls[0].id,
+            outcome: ToolOutcome::Result(None),
+        })
+        .unwrap();
+
+    let mut deep = JsonValue::Bool(true);
+    for _ in 0..64 {
+        deep = JsonValue::Array(vec![deep]);
+    }
+    let mut deep_values = JsonValue::Object(Default::default());
+    deep_values["account"] = deep;
+    let refused = manager.set_extra_key_values("read", extra(&deep_values));
+    free_json(deep_values);
+    assert!(matches!(refused, Err(QueryCommandError::Limit(error)) if error.flags.depth_limited));
+
+    let mut large = JsonValue::Object(Default::default());
+    large["account"] = JsonValue::String("x".repeat(4096));
+    assert!(matches!(
+        manager.set_extra_key_values("read", extra(&large)),
+        Err(QueryCommandError::Limit(error)) if error.flags.size_limited
+    ));
+    // The cap covers every tool name's values together.
+    let mut half = JsonValue::Object(Default::default());
+    half["account"] = JsonValue::String("x".repeat(2500));
+    manager.set_extra_key_values("other", extra(&half)).unwrap();
+    assert!(matches!(
+        manager.set_extra_key_values("read", extra(&half)),
+        Err(QueryCommandError::Limit(error)) if error.flags.size_limited
+    ));
+    // Replacing a tool name's values does not count the old ones.
+    manager.set_extra_key_values("other", extra(&half)).unwrap();
+
+    let update = manager.apply(evaluate(&p, &store)).unwrap();
+    assert!(update.calls.is_empty() && !update.changed);
+    manager
+        .set_extra_key_values("other", std::iter::empty())
+        .unwrap();
+    manager.set_extra_key_values("read", extra(&half)).unwrap();
+    let second = openui_lang::parse_json("{\"account\": \"B\"}").unwrap();
+    manager
+        .set_extra_key_values("read", extra(&second))
+        .unwrap();
+    assert_eq!(manager.apply(evaluate(&p, &store)).unwrap().calls.len(), 1);
+}
+
+#[test]
+fn extra_key_values_are_charged_to_the_evaluation_work() {
+    let store = Store::default();
+    let p = program("q = Query(\"read\")");
+    let minimum = (0..4096)
+        .find(|&work| {
+            QueryManager::with_limits(Limits::DEFAULT.with_work(work))
+                .apply(evaluate(&p, &store))
+                .is_ok()
+        })
+        .expect("the query fits");
+    // Room to admit the values, not to evaluate the query with them.
+    let mut manager = QueryManager::with_limits(Limits::DEFAULT.with_work(minimum + 1000));
+    let mut values = JsonValue::Object(Default::default());
+    values["account"] = JsonValue::String("x".repeat(400));
+    manager
+        .set_extra_key_values("read", extra(&values))
+        .unwrap();
+    assert!(matches!(
+        manager.apply(evaluate(&p, &store)),
+        Err(QueryCommandError::Limit(error)) if error.flags.size_limited
+    ));
+    manager
+        .set_extra_key_values("read", std::iter::empty())
+        .unwrap();
+    assert_eq!(manager.apply(evaluate(&p, &store)).unwrap().calls.len(), 1);
+}
+
+#[test]
+fn a_repeated_extra_key_name_keeps_its_last_value() {
+    let store = Store::default();
+    let p = program("q = Query(\"read\")");
+    let (first, last) = (JsonValue::from("A"), JsonValue::from("B"));
+    let mut manager = QueryManager::default();
+    manager
+        .set_extra_key_values("read", [("account", &last)])
+        .unwrap();
+    let started = manager.apply(evaluate(&p, &store)).unwrap();
+    manager
+        .apply(QueryCommand::Complete {
+            id: &started.calls[0].id,
+            outcome: ToolOutcome::Result(None),
+        })
+        .unwrap();
+    manager
+        .set_extra_key_values("read", [("account", &first), ("account", &last)])
+        .unwrap();
+    assert!(
+        manager
+            .apply(evaluate(&p, &store))
+            .unwrap()
+            .calls
+            .is_empty()
+    );
+    manager
+        .set_extra_key_values("read", [("account", &last), ("account", &first)])
+        .unwrap();
+    assert_eq!(manager.apply(evaluate(&p, &store)).unwrap().calls.len(), 1);
+}

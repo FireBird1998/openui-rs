@@ -116,8 +116,17 @@ pub struct QueryManager {
     queries: HashMap<String, Query>,
     order: Vec<String>,
     cache: HashMap<Arc<str>, CacheEntry>,
+    // The embedder's extra cache-key values by tool name, and their total size.
+    extra_keys: HashMap<String, ExtraKey>,
+    extra_bytes: usize,
     snapshot: JsObject<Value>,
     snapshot_json: String,
+}
+
+struct ExtraKey {
+    // Literal expressions in the embedder's order.
+    fields: Vec<(String, Ast)>,
+    bytes: usize,
 }
 
 struct Query {
@@ -168,6 +177,8 @@ impl QueryManager {
             queries: HashMap::new(),
             order: Vec::new(),
             cache: HashMap::new(),
+            extra_keys: HashMap::new(),
+            extra_bytes: 0,
             snapshot: JsObject::new(),
             snapshot_json: String::new(),
         };
@@ -201,6 +212,54 @@ impl QueryManager {
                         outstanding.any(|id| id.0.target.ptr_eq(&target))
                     })
             })
+    }
+
+    /// Set the values the embedder adds to the cache key of every query whose
+    /// tool name, coerced to a JavaScript string, is `tool_name`. This is
+    /// upstream's `extraDeps`: from the next evaluate the values join the
+    /// state variables the query lists as dependencies, replacing one of the
+    /// same name, so a change refetches. A later value for a repeated name
+    /// wins. A `__proto__` name is skipped, as `Object.assign` skips it. No
+    /// values remove the tool name's entry; a key with no dependencies left
+    /// has none, as upstream omits an empty dependency record.
+    ///
+    /// Each value must pass the depth limit, and all tool names' values
+    /// together the result-size limit. A refused call keeps the previous values.
+    pub fn set_extra_key_values<'a>(
+        &mut self,
+        tool_name: &str,
+        values: impl IntoIterator<Item = (&'a str, &'a JsonValue)>,
+    ) -> Result<(), QueryCommandError> {
+        let others = self.extra_bytes.saturating_sub(
+            self.extra_keys
+                .get(tool_name)
+                .map_or(0, |extra| extra.bytes),
+        );
+        let mut bytes = tool_name.len();
+        let mut fields = Vec::new();
+        for (name, value) in values {
+            if name == "__proto__" {
+                continue;
+            }
+            // Measuring also checks the depth limit.
+            let size = crate::admission::measure(&Value::from_json(value), self.limits)
+                .map_err(QueryCommandError::Limit)?;
+            bytes = bytes.saturating_add(name.len()).saturating_add(size);
+            if others.saturating_add(bytes) > self.limits.result_size() {
+                return Err(QueryCommandError::Limit(crate::admission::size_error()));
+            }
+            // A repeated name is evaluated as a repeated object literal key.
+            fields.push((name.to_owned(), json_ast(value)));
+        }
+        if fields.is_empty() {
+            self.extra_keys.remove(tool_name);
+            self.extra_bytes = others;
+        } else {
+            self.extra_keys
+                .insert(tool_name.to_owned(), ExtraKey { fields, bytes });
+            self.extra_bytes = others.saturating_add(bytes);
+        }
+        Ok(())
     }
 
     /// The most recent observable snapshot, including the three status lists.
@@ -616,7 +675,7 @@ impl QueryScope<'_> {
             }
             None => (String::new(), Some(Value::Str(String::new()))),
         };
-        let deps = self.dependencies(statement, eval)?;
+        let deps = self.dependencies(statement, self.manager.extra_keys.get(&tool_name), eval)?;
         let (args, args_key) = match &statement.args {
             Some(ast) => {
                 let args = self.evaluate(ast, Inspection::Key, eval)?;
@@ -663,11 +722,15 @@ impl QueryScope<'_> {
     fn dependencies(
         &self,
         statement: &QueryStatement,
+        extra: Option<&ExtraKey>,
         eval: &ExpressionEvaluator<'_>,
     ) -> Result<Option<String>, QueryCommandError> {
-        let Some(deps) = statement.deps.as_ref().filter(|deps| !deps.is_empty()) else {
+        let deps = statement.deps.as_deref().unwrap_or_default();
+        let extra = extra.map_or(&[][..], |extra| &extra.fields);
+        // Upstream omits a dependency record with no keys from the cache key.
+        if deps.is_empty() && extra.is_empty() {
             return Ok(None);
-        };
+        }
         // Read the dependency record through the same scope and allowance as
         // the arguments, preserving an absent state's undefined cache marker.
         let mut fields = Vec::new();
@@ -677,6 +740,8 @@ impl QueryScope<'_> {
             }
             check_cuts(eval.flags())?;
         }
+        // Later keys win, as in Object.assign over the listed variables.
+        fields.extend(extra.iter().cloned());
         self.evaluate(&Ast::Obj(Arc::new(fields)), Inspection::Key, eval)?;
         Ok(self.inspected.take())
     }
@@ -714,4 +779,68 @@ fn admit_result(value: &JsonValue, limits: Limits) -> Result<Value, QueryCommand
         path.push(children);
     }
     Ok(Value::from_json(value))
+}
+
+// The embedder's JSON as literal expressions, so the cache key serializes it
+// exactly as it serializes state. Iterative, as admitted JSON can be deep.
+fn json_ast(root: &JsonValue) -> Ast {
+    enum Level<'a> {
+        Array(std::slice::Iter<'a, JsonValue>, Vec<Ast>),
+        Object(
+            Box<dyn Iterator<Item = (&'a String, &'a JsonValue)> + 'a>,
+            Vec<(String, Ast)>,
+            String,
+        ),
+    }
+    let mut levels: Vec<Level<'_>> = Vec::new();
+    let mut next = Some(root);
+    loop {
+        let mut done = match next.take() {
+            Some(JsonValue::Array(items)) => {
+                levels.push(Level::Array(items.iter(), Vec::with_capacity(items.len())));
+                None
+            }
+            Some(JsonValue::Object(fields)) => {
+                levels.push(Level::Object(
+                    Box::new(fields.iter()),
+                    Vec::new(),
+                    String::new(),
+                ));
+                None
+            }
+            Some(JsonValue::Null) | None => Some(Ast::Null),
+            Some(JsonValue::Bool(value)) => Some(Ast::Bool(*value)),
+            Some(JsonValue::Number(number)) => Some(Ast::Num(number.as_f64().unwrap_or(f64::NAN))),
+            Some(JsonValue::String(text)) => Some(Ast::Str(text.clone())),
+        };
+        loop {
+            let Some(level) = levels.last_mut() else {
+                return done.unwrap_or(Ast::Null);
+            };
+            match level {
+                Level::Array(items, out) => {
+                    out.extend(done.take());
+                    if let Some(item) = items.next() {
+                        next = Some(item);
+                        break;
+                    }
+                }
+                Level::Object(fields, out, name) => {
+                    if let Some(ast) = done.take() {
+                        out.push((std::mem::take(name), ast));
+                    }
+                    if let Some((key, value)) = fields.next() {
+                        *name = key.clone();
+                        next = Some(value);
+                        break;
+                    }
+                }
+            }
+            done = match levels.pop() {
+                Some(Level::Array(_, out)) => Some(Ast::Arr(Arc::new(out))),
+                Some(Level::Object(_, out, _)) => Some(Ast::Obj(Arc::new(out))),
+                None => None,
+            };
+        }
+    }
 }

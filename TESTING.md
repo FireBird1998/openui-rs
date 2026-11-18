@@ -344,7 +344,9 @@ Call numbers are zero-based dispatch positions. A completion may instead name
 the dispatch step, tool and arguments. Only the side that issued that unique
 call processes its outcome. This keeps an extra dispatch from shifting later
 completions onto unrelated calls. Store and program edits
-only affect the manager on the next evaluate step. The reference clock stays
+only affect the manager on the next evaluate step, and so does an `extra`
+step, which sets or removes one tool name's extra cache-key values (the
+adapter passes them to `evaluateStatements` as `extraDeps`). The reference clock stays
 fixed during these scenarios.
 
 With the cached Bun reference, run
@@ -372,8 +374,10 @@ previous results cannot satisfy this check. The random test also compares the ex
 the distinct current and previous keys in the model. In `query_commands`,
 2,000 cycles of three edits and three successful 10 KB completions check the
 exact cache size after each command. That suite also checks the shared work
-allowance, expression and host JSON depth refusals, and foreign and repeated
-call identities.
+allowance, expression and host JSON depth refusals, foreign and repeated
+call identities, and extra cache-key values: refused ones keep the previous
+values, they count against the evaluation's work, and a repeated name keeps
+its last value.
 
 ## The corpus
 

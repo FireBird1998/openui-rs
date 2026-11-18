@@ -21,6 +21,7 @@ export type Step =
   | { kind: 'complete'; call: number; outcome: Outcome }
   | { kind: 'complete'; dispatch: Dispatch; outcome: Outcome }
   | { kind: 'set'; name: string; value?: unknown }
+  | { kind: 'extra'; toolName: string; values?: Record<string, unknown> }
   | { kind: 'replace'; program: string };
 export type Scenario = { name: string; program: string; library?: Parameters<typeof compileSchema>[0]; steps: Step[] };
 type Call = Dispatch & { finish(outcome: Outcome): Promise<void> };
@@ -48,6 +49,9 @@ async function replay(scenario: Scenario, script?: Script): Promise<string[]> {
   const store = createStore();
   store.initialize(program.stateDeclarations ?? {}, {});
   const calls: Call[] = [];
+  // The embedder's extra cache-key values, looked up by the tool name as a
+  // property key, as an object of values per tool would be.
+  const extras = new Map<string, Record<string, unknown>>();
   let stepIndex = 0;
   const manager = createQueryManager({
     callTool(name, args) {
@@ -85,9 +89,11 @@ async function replay(scenario: Scenario, script?: Script): Promise<string[]> {
       const before = JSON.stringify(manager.getSnapshot());
       // Evaluate passes the freshly parsed statements and live context.
       // Complete settles a provider promise by zero-based dispatch order.
-      // Set and replace change inputs only; evaluate applies them to the manager.
+      // Set, extra and replace change inputs only; evaluate applies them to the manager.
       switch (step.kind) {
-        case 'evaluate': manager.evaluateStatements(program.queryStatements ?? [], context); break;
+        case 'evaluate':
+          manager.evaluateStatements(program.queryStatements ?? [], context, { extraDeps: name => extras.get(String(name)) });
+          break;
         case 'complete':
           if ('call' in step) await calls[step.call].finish(step.outcome);
           else {
@@ -101,6 +107,10 @@ async function replay(scenario: Scenario, script?: Script): Promise<string[]> {
           }
           break;
         case 'set': store.set(step.name, step.value); break;
+        case 'extra':
+          if (step.values === undefined) extras.delete(step.toolName);
+          else extras.set(step.toolName, step.values);
+          break;
         case 'replace':
           program = parse(step.program, library);
           store.initialize(program.stateDeclarations ?? {}, {});

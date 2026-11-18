@@ -141,6 +141,16 @@ variants, recovery, dependencies, stable keys, and statement order across
 edits. Dispatch uses a JavaScript string for the tool name. Errors retain
 the reference's original evaluated `toolName` value.
 
+The embedder's extra cache-key values are upstream's `extraDeps`. The
+adapter looks them up by the tool name coerced to a string, as a property of
+an object of values per tool would be, and Rust keys them the same way. They
+join the listed state variables and replace one of the same name. A
+dependency record with no keys is left out of the key, and a `__proto__`
+name adds no key. Keys collide as upstream's do: a value that is the marker
+text for undefined shares a key with an undefined state variable, and in
+`cache-keys-collide-across-the-separator` a tool named `t::{}` shares the
+key of tool `t` with dependencies.
+
 A query is loading while its current entry has a call in flight. Delivery of a
 successful result to that entry gives the query a fetch history. In
 `displaying-another-query-result`, displaying a result still held by a
@@ -720,6 +730,21 @@ fresh dispatch when the query returns to an unsettled entry. The search,
 existing-error and dependency-value scenarios compare directly against the
 upstream golden.
 The same-key error recovery scenario also pins a new reader of a retained failure.
+
+The draft upstream report (#82) is pinned in
+`a-sharing-query-receives-the-result-after-the-starter-moves` and
+`a-sharing-query-receives-the-failure-after-the-starter-moves`: two queries
+on one key, then an edit moves the query that started the call. The rows
+`shared-entry-delivers-to-both-current-queries` (both are loading) and
+`pending-key-changes-its-only-reader` (the success reaches the query still on
+the key, with no second call) explain every difference. The draft's first
+program, a state variable in one query's arguments and the same literal in
+the other's, is `listed-state-variables-keep-equal-arguments-apart`: the
+variable joins one key as a dependency, so the queries never share a key,
+and it matches lang-core byte for byte.
+
+Late outcomes after a dispose are not pinned yet. The manager has no dispose
+command until #89.
 
 Reader scheduling has its own temporary pin until #86. In
 `reader-waits-for-its-input`, Rust starts the reader alongside the source and

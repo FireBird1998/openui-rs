@@ -16,6 +16,8 @@
 //! and returns the tool calls an embedder should perform. Report outcomes with
 //! [`QueryCommand::Complete`]. The manager owns its snapshot and cache and
 //! requires no I/O or clock. Hosts can read the snapshot as values or JSON.
+//! [`QueryManager::set_extra_key_values`] adds an embedder's values to the
+//! cache keys of one tool's queries.
 //!
 //! Use [`TreeInput::with_reference_values`] for per-call measurement, or prepare
 //! [`PreparedReferenceValues`] once and pass it on every stream evaluation with

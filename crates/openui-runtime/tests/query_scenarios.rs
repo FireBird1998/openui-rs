@@ -101,6 +101,19 @@ fn replay(scenario: &JsonValue, mut observe: impl FnMut(usize, String, usize)) {
                 current = program(&step["program"], &library, &mut store);
                 None
             }
+            "extra" => {
+                let values = step.get("values").map(|values| values.as_object().unwrap());
+                manager
+                    .set_extra_key_values(
+                        step["toolName"].as_str().unwrap(),
+                        values
+                            .into_iter()
+                            .flatten()
+                            .map(|(name, value)| (name.as_str(), value)),
+                    )
+                    .unwrap_or_else(|error| panic!("{name}, step {index}: {error}"));
+                None
+            }
             kind => panic!("Unknown step {kind}"),
         };
         let update = command.map(|command| {
