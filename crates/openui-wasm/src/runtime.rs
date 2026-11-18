@@ -228,6 +228,16 @@ impl RuntimeSession {
                 .map_err(error)?,
         })
     }
+    /// Extract an MCP tool call outcome as JSON containing `value` or `error`.
+    /// Throws InvalidJson, Evaluation or LimitExceeded on refusal.
+    #[wasm_bindgen(js_name = extractMcpToolResult)]
+    pub fn extract_mcp_tool_result(
+        response_json: &str,
+        limits: &ParseLimits,
+    ) -> Result<String, JsValue> {
+        core::extract_mcp_tool_result(response_json, limits.inner.to_core()).map_err(error)
+    }
+
     #[wasm_bindgen(js_name = registerFunction)]
     pub fn register_function(
         &self,

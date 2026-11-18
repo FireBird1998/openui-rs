@@ -1426,6 +1426,17 @@ caller-side Utf16StreamBuffer and the JSON-escape route; they require Android.
 Native session lifetime follows [ADR 0006](docs/adr/0006-native-runtime-sessions-own-a-worker-and-opaque-capabilities.md);
 the Store admission rules remain [ADR 0005](docs/adr/0005-admit-total-state-incrementally.md).
 
+## MCP tool call outcomes
+
+`openui-runtime/tests/mcp_results.rs` compares every row byte for byte with
+the output of `reference/mcp-results.ts`. The adapter calls the vendored
+extractor and records stable reasons for JavaScript TypeErrors. Separate
+tests exercise typed work, byte and depth refusals, including ignored input,
+expanded text, projected JSON and valid and malformed 12,000-level input on
+a 64 KiB caller stack. The native export and built WebAssembly package replay
+the same table and check error kinds and supplied limits. The package test
+also covers guard conversions and deep projection under a raised limit.
+
 ## Shared sessions and WebAssembly (#42)
 
 `openui-session` owns binding-neutral session policy. Existing ffi scenario assertions and expected JSON bytes

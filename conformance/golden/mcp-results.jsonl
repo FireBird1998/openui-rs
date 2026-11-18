@@ -1,0 +1,72 @@
+{"name":"structured wins","input":"{\"structuredContent\":{\"2\":2,\"10\":10,\"z\":1,\"a\":[true]},\"content\":[{\"type\":\"text\",\"text\":\"\\\"ignored\\\"\"}]}","outcome":{"value":{"2":2,"10":10,"z":1,"a":[true]}}}
+{"name":"structured false","input":"{\"structuredContent\":false,\"content\":false}","outcome":{"value":false}}
+{"name":"structured zero","input":"{\"structuredContent\":0,\"content\":false}","outcome":{"value":0}}
+{"name":"structured empty string","input":"{\"structuredContent\":\"\",\"content\":false}","outcome":{"value":""}}
+{"name":"structured empty array","input":"{\"structuredContent\":[],\"content\":false}","outcome":{"value":[]}}
+{"name":"structured empty object","input":"{\"structuredContent\":{},\"content\":false}","outcome":{"value":{}}}
+{"name":"structured null falls through","input":"{\"structuredContent\":null,\"content\":[{\"type\":\"text\",\"text\":\"42\"}]}","outcome":{"value":42}}
+{"name":"structured null with empty content","input":"{\"structuredContent\":null,\"content\":[]}","outcome":{"value":null}}
+{"name":"structured content bypasses a null part","input":"{\"structuredContent\":7,\"content\":[null]}","outcome":{"value":7}}
+{"name":"JSON object split across mixed parts","input":"{\"content\":[{\"type\":\"text\",\"text\":\" {\\\"x\\\":\"},{\"type\":\"image\",\"text\":\"ignored\"},{\"type\":\"text\",\"text\":\"[1,2]} \"}]}","outcome":{"value":{"x":[1,2]}}}
+{"name":"JSON string","input":"{\"content\":[{\"type\":\"text\",\"text\":\"\\\"hello\\\"\"}]}","outcome":{"value":"hello"}}
+{"name":"JSON boolean","input":"{\"content\":[{\"type\":\"text\",\"text\":\"false\"}]}","outcome":{"value":false}}
+{"name":"JSON null","input":"{\"content\":[{\"type\":\"text\",\"text\":\"null\"}]}","outcome":{"value":null}}
+{"name":"plain text joins without separators","input":"{\"content\":[{\"type\":\"text\",\"text\":\"one\"},{\"type\":\"image\",\"text\":\"ignored\"},{\"type\":\"text\",\"text\":\"two\"}]}","outcome":{"value":"onetwo"}}
+{"name":"invalid JSON is preserved","input":"{\"content\":[{\"type\":\"text\",\"text\":\"  [x  \"}]}","outcome":{"value":"  [x  "}}
+{"name":"invalid JSON with open brackets is preserved","input":"{\"content\":[{\"type\":\"text\",\"text\":\"not [[[[[[[[ JSON\"}]}","outcome":{"value":"not [[[[[[[[ JSON"}}
+{"name":"empty content","input":"{\"content\":[]}","outcome":{"value":null}}
+{"name":"empty text part","input":"{\"content\":[{\"type\":\"text\",\"text\":\"\"}]}","outcome":{"value":""}}
+{"name":"missing text part","input":"{\"content\":[{\"type\":\"text\"}]}","outcome":{"value":""}}
+{"name":"null text part","input":"{\"content\":[{\"type\":\"text\",\"text\":null}]}","outcome":{"value":""}}
+{"name":"no text parts","input":"{\"content\":[{\"type\":\"image\",\"text\":\"ignored\"},{\"type\":\"TEXT\",\"text\":\"ignored\"}]}","outcome":{"value":null}}
+{"name":"primitive parts and arrays are ignored","input":"{\"content\":[4,false,\"text\",[],{\"type\":\"text\",\"text\":\"kept\"}]}","outcome":{"value":"kept"}}
+{"name":"missing content","input":"{}","outcome":{"value":null}}
+{"name":"null content","input":"{\"content\":null}","outcome":{"value":null}}
+{"name":"null part fails during filter","input":"{\"content\":[{\"type\":\"text\",\"text\":\"first\"},null]}","outcome":{"thrown":"TypeError","reason":"cannot read a text part's type from null"}}
+{"name":"content object with a filter property","input":"{\"content\":{\"filter\":[]}}","outcome":{"thrown":"TypeError","reason":"content.filter is not a function"}}
+{"name":"content string","input":"{\"content\":\"text\"}","outcome":{"thrown":"TypeError","reason":"content.filter is not a function"}}
+{"name":"content boolean","input":"{\"content\":false}","outcome":{"thrown":"TypeError","reason":"content.filter is not a function"}}
+{"name":"content number on error","input":"{\"isError\":true,\"content\":1}","outcome":{"thrown":"TypeError","reason":"content.filter is not a function"}}
+{"name":"null part on error","input":"{\"isError\":true,\"content\":[null]}","outcome":{"thrown":"TypeError","reason":"cannot read a text part's type from null"}}
+{"name":"filter completes before text coercion","input":"{\"content\":[{\"type\":\"text\",\"text\":{\"toString\":1}},null]}","outcome":{"thrown":"TypeError","reason":"cannot read a text part's type from null"}}
+{"name":"null response","input":"null","outcome":{"thrown":"TypeError","reason":"cannot read isError from null"}}
+{"name":"primitive response","input":"false","outcome":{"value":null}}
+{"name":"array response","input":"[]","outcome":{"value":null}}
+{"name":"non-string text is coerced","input":"{\"content\":[{\"type\":\"text\",\"text\":12},{\"type\":\"text\",\"text\":false},{\"type\":\"text\",\"text\":{}},{\"type\":\"text\",\"text\":[1,null,[2,3],{}]}]}","outcome":{"value":"12false[object Object]1,,2,3,[object Object]"}}
+{"name":"coercion can produce JSON","input":"{\"content\":[{\"type\":\"text\",\"text\":true}]}","outcome":{"value":true}}
+{"name":"array coercion can produce empty text","input":"{\"content\":[{\"type\":\"text\",\"text\":[[]]}]}","outcome":{"value":""}}
+{"name":"coercion uses JavaScript number formatting","input":"{\"content\":[{\"type\":\"text\",\"text\":[1e+21,1e-7,0]}]}","outcome":{"value":"1e+21,1e-7,0"}}
+{"name":"non-callable toString throws","input":"{\"content\":[{\"type\":\"text\",\"text\":{\"toString\":1,\"valueOf\":7}}]}","outcome":{"thrown":"TypeError","reason":"cannot convert a text part to a primitive"}}
+{"name":"non-callable toString in nested array throws","input":"{\"isError\":true,\"content\":[{\"type\":\"text\",\"text\":[[{\"toString\":null}]]}]}","outcome":{"thrown":"TypeError","reason":"cannot convert a text part to a primitive"}}
+{"name":"tool error wins over structured content","input":"{\"structuredContent\":42,\"isError\":true,\"content\":[{\"type\":\"text\",\"text\":\"first\"},{\"type\":\"image\",\"text\":\"ignored\"},{\"type\":\"text\",\"text\":\"second\"}]}","outcome":{"error":"first\nsecond"}}
+{"name":"tool error keeps blank lines","input":"{\"isError\":true,\"content\":[{\"type\":\"text\",\"text\":\"first\"},{\"type\":\"text\"},{\"type\":\"text\",\"text\":null},{\"type\":\"text\",\"text\":\"last\"}]}","outcome":{"error":"first\n\n\nlast"}}
+{"name":"two empty error parts produce a newline","input":"{\"isError\":true,\"content\":[{\"type\":\"text\",\"text\":\"\"},{\"type\":\"text\",\"text\":null}]}","outcome":{"error":"\n"}}
+{"name":"empty error text falls back","input":"{\"isError\":true,\"content\":[{\"type\":\"text\",\"text\":\"\"}]}","outcome":{"error":"Unknown error"}}
+{"name":"missing error text falls back","input":"{\"isError\":true,\"content\":[{\"type\":\"image\",\"text\":\"ignored\"}]}","outcome":{"error":"Unknown error"}}
+{"name":"error without content falls back","input":"{\"isError\":true}","outcome":{"error":"Unknown error"}}
+{"name":"error keeps whitespace","input":"{\"isError\":true,\"content\":[{\"type\":\"text\",\"text\":\"  \"}]}","outcome":{"error":"  "}}
+{"name":"error with null content falls back","input":"{\"isError\":true,\"content\":null}","outcome":{"error":"Unknown error"}}
+{"name":"non-string error text is coerced","input":"{\"isError\":true,\"content\":[{\"type\":\"text\",\"text\":false},{\"type\":\"text\",\"text\":0},{\"type\":\"text\",\"text\":[null,{}]}]}","outcome":{"error":"false\n0\n,[object Object]"}}
+{"name":"isError truthy string","input":"{\"isError\":\"false\",\"content\":[{\"type\":\"text\",\"text\":\"5\"}]}","outcome":{"error":"5"}}
+{"name":"isError truthy number","input":"{\"isError\":-1,\"content\":[{\"type\":\"text\",\"text\":\"5\"}]}","outcome":{"error":"5"}}
+{"name":"isError truthy array","input":"{\"isError\":[],\"content\":[{\"type\":\"text\",\"text\":\"5\"}]}","outcome":{"error":"5"}}
+{"name":"isError truthy object","input":"{\"isError\":{},\"content\":[{\"type\":\"text\",\"text\":\"5\"}]}","outcome":{"error":"5"}}
+{"name":"isError falsy string","input":"{\"isError\":\"\",\"content\":[{\"type\":\"text\",\"text\":\"5\"}]}","outcome":{"value":5}}
+{"name":"isError falsy number","input":"{\"isError\":0,\"content\":[{\"type\":\"text\",\"text\":\"5\"}]}","outcome":{"value":5}}
+{"name":"isError falsy null","input":"{\"isError\":null,\"content\":[{\"type\":\"text\",\"text\":\"5\"}]}","outcome":{"value":5}}
+{"name":"JSON text retains JS key order and duplicate semantics","input":"{\"content\":[{\"type\":\"text\",\"text\":\"{\\\"z\\\":0,\\\"9\\\":9,\\\"2\\\":2,\\\"z\\\":3,\\\"__proto__\\\":5}\"}]}","outcome":{"value":{"2":2,"9":9,"z":3,"__proto__":5}}}
+{"name":"lone surrogate in text","input":"{\"content\":[{\"type\":\"text\",\"text\":\"\\ud800\"}]}","outcome":{"value":"\ud800"}}
+{"name":"lone surrogate in error","input":"{\"isError\":true,\"content\":[{\"type\":\"text\",\"text\":\"\\udfff\"}]}","outcome":{"error":"\udfff"}}
+{"name":"surrogate pair joined into plain text","input":"{\"content\":[{\"type\":\"text\",\"text\":\"\\ud83d\"},{\"type\":\"text\",\"text\":\"\\ude00\"}]}","outcome":{"value":"😀"}}
+{"name":"surrogate pair joined inside JSON text","input":"{\"content\":[{\"type\":\"text\",\"text\":\"\\\"\\ud83d\"},{\"type\":\"text\",\"text\":\"\\ude00\\\"\"}]}","outcome":{"value":"😀"}}
+{"name":"escaped and raw surrogate halves form a JSON text value","input":"{\"content\":[{\"type\":\"text\",\"text\":\"\\\"\\\\ud83d\"},{\"type\":\"text\",\"text\":\"\\ude00\\\"\"}]}","outcome":{"value":"😀"}}
+{"name":"raw and escaped surrogate halves form a JSON text key","input":"{\"content\":[{\"type\":\"text\",\"text\":\"{\\\"\\ud83d\"},{\"type\":\"text\",\"text\":\"\\\\ude00\\\":1}\"}]}","outcome":{"value":{"😀":1}}}
+{"name":"prototype-shaped values do not expose inherited MCP members","input":"{\"__proto__\":{\"isError\":true,\"structuredContent\":5}}","outcome":{"value":null}}
+{"name":"JSON text with a leading BOM remains plain text","input":"{\"content\":[{\"type\":\"text\",\"text\":\"﻿42\"}]}","outcome":{"value":"﻿42"}}
+{"name":"negative zero is preserved in JSON text","input":"{\"content\":[{\"type\":\"text\",\"text\":\"-0\"}]}","outcome":{"value":0},"numberKind":"-0"}
+{"name":"structured negative zero is preserved","input":"{\"structuredContent\":-0}","outcome":{"value":0},"numberKind":"-0"}
+{"name":"overflow in JSON text is a number","input":"{\"content\":[{\"type\":\"text\",\"text\":\"1e400\"}]}","outcome":{"value":null},"numberKind":"Infinity"}
+{"name":"nested overflow in JSON text is a number","input":"{\"content\":[{\"type\":\"text\",\"text\":\"{\\\"big\\\":-1e400,\\\"small\\\":5e-324}\"}]}","outcome":{"value":{"big":null,"small":5e-324}}}
+{"name":"overflowing number coerces to Infinity","input":"{\"content\":[{\"type\":\"text\",\"text\":1e400}]}","outcome":{"value":"Infinity"}}
+{"name":"overflowing isError is truthy","input":"{\"isError\":1e400}","outcome":{"error":"Unknown error"}}
+{"name":"structured overflow is a number","input":"{\"structuredContent\":1e400}","outcome":{"value":null},"numberKind":"Infinity"}

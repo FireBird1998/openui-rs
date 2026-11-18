@@ -51,7 +51,7 @@ for record_name, source in [("RuntimeLimits", native), ("ParseLimits", ffi_lib)]
     assert getters == expected, f"{record_name} wasm getters {sorted(getters ^ expected)} drift"
     assert setters == expected, f"{record_name} wasm setters {sorted(setters ^ expected)} drift"
 wasm_session = wasm.split("impl RuntimeSession {", 1)[1].split("pub struct RuntimeLimits", 1)[0]
-assert set(re.findall(r"js_name = (\w+)", wasm_session)) == set(methods) | {"withLimits"}, "wasm session drift"
+assert set(re.findall(r"js_name = (\w+)", wasm_session)) == set(methods) | {"withLimits", "extractMcpToolResult"}, "wasm session drift"
 assert "action: Option<ActionHandle>" in wasm_session
 assert "evaluation: &EvaluationHandle" in wasm_session
 assert "continuation: &ContinuationHandle" in wasm_session
@@ -79,6 +79,7 @@ if len(sys.argv) == 3 and sys.argv[1] == "--wasm":
     assert session, "missing wasm RuntimeSession"
     for method in methods + ["withLimits"]:
         assert re.search(r"\b" + method + r"\(", session[1]), method
+    assert re.search(r"static extractMcpToolResult\(response_json: string, limits: ParseLimits\): string;", session[1]), "wasm MCP helper signature drift"
     assert callback_type in declarations, "wasm callback declaration drift"
     assert re.search(r"registerFunction\(name:\s*string,\s*callback:", session[1]), "wasm callback parameters drift"
     assert re.search(r"registerFunction\([^\n]*\): void;", session[1]), "wasm callback return drift"
@@ -117,6 +118,7 @@ assert "peakMemory: UInt64? = nil" in swift, "memory limit must stay optional in
 assert re.search(r"public\s+protocol LibraryFunction", swift)
 assert re.search(r"func\s+call\(argumentsJson: String\)\s*throws\s*->\s*String\?", swift), "Swift callback signature drift"
 assert "case Thrown(reason: String" in swift
+assert re.search(r"public func extractMcpToolResult\(responseJson: String, limits: ParseLimits\)\s*throws\s*->\s*String", swift), "Swift MCP helper signature drift"
 assert "public var maxPlans:" not in swift
 assert "compile_fail" not in swift, "rustdoc-only snippet leaked to Swift"
 for error in ["ForeignHandle", "ConsumedHandle", "EvictedHandle", "Evaluation"]:
@@ -137,6 +139,7 @@ if len(sys.argv) == 3:
     assert "`referencePreparation`: ParseLimits" in kotlin
     assert "`maxActionPathBytes`: kotlin.ULong? = null" in kotlin, "new Kotlin limit must stay opt-in"
     assert "`peakMemory`: kotlin.ULong? = null" in kotlin, "memory limit must stay optional in Kotlin"
+    assert re.search(r"fun `extractMcpToolResult`\(`responseJson`: kotlin.String, `limits`: ParseLimits\): kotlin.String", kotlin), "Kotlin MCP helper signature drift"
     assert "`maxPlans`:" not in kotlin
     assert "onMalformedInput(CodingErrorAction.REPORT)" in kotlin
     assert "encode(CharBuffer.wrap(value))" in kotlin

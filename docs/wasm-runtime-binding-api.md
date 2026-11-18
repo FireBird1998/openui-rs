@@ -26,6 +26,7 @@ stream.program(complete: boolean): ParsedProgram
 
 new RuntimeSession(library: ComponentLibrary, promptSpec?: string)
 RuntimeSession.withLimits(library: ComponentLibrary, promptSpec: string | undefined, limits: RuntimeLimits): RuntimeSession
+RuntimeSession.extractMcpToolResult(responseJson: string, limits: ParseLimits): string
 session.actionAt(evaluation: EvaluationHandle, path: string[]): ActionHandle
 session.dispose(): void
 session.evaluate(): EvaluationOutput
@@ -51,6 +52,12 @@ session.version(): bigint
 session.writeBinding(marker: string, json: string): boolean
 session.free(): void
 ```
+
+The static MCP helper returns either `{"value": …}` or `{"error": "…"}` as
+JSON text. It can be called before creating a session. Malformed JSON,
+JavaScript TypeErrors, and limit refusals throw `InvalidJson`, `Evaluation`,
+and `LimitExceeded`, respectively. The helper uses the result-size ceiling,
+work and depth from the supplied `ParseLimits`.
 
 `new ParseLimits()` has optional bigint properties programSize, resultSize,
 resultFloor, amplification, resultCeiling, depth, work, peakMemory; defaults are undefined.

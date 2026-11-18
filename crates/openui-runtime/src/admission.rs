@@ -23,6 +23,11 @@ pub(crate) fn size_error() -> LimitError {
     flags.size_limited = true;
     LimitError { flags }
 }
+pub(crate) fn depth_error() -> LimitError {
+    let mut flags = EvaluationFlags::default();
+    flags.depth_limited = true;
+    LimitError { flags }
+}
 pub(crate) fn fixed(limits: Limits) -> Limits {
     limits
         .with_work(limits.work_for(usize::MAX))

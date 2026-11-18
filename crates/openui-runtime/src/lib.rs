@@ -61,6 +61,7 @@
 //! | `BindingProps::{new,with_limits,insert,remove,from_prompt_spec,from_prompt_spec_with_limits}` | No implicit quota; explicit spec admission and incremental retained-name cap | Typed `LimitError`; refused insertion unchanged |
 //! | `LibraryFunctions::{new,with_limits,register}` | Borrow schemas without walking; explicit opt-in name cap; used schemas checked during evaluation | Typed `LimitError`; implementation unchanged on refusal |
 //! | `TreeResult::to_json`, `HostEvent::to_json`, their `_with_limits` variants, `value_to_json`, `value_to_json_with_limits` | Default preserves admitted results; explicit variants admit work/depth/output before serialization | `Result<String, LimitError>` |
+//! | [`extract_mcp_tool_result`] | Explicit host JSON byte, work and depth bounds | Tool call outcome or typed `McpResponseError` |
 //! | `Store::snapshot_json`, `snapshot_json_with_limits` | Default exports admitted state; explicit serialization limits | `Result<String, LimitError>` |
 //! | `BindingProps::{contains,undecided}`, `HostEvent::value`, `ActionRun::is_suspended` | Bounded configuration, borrowed access or constant work | No evaluation |
 //! | Re-exported expression/session/scope/value interfaces | Core defaults or explicit/inherited `Limits`; one evaluator | Core flags and failures |
@@ -119,6 +120,8 @@
 
 mod admission;
 pub use admission::{LimitError, value_to_json, value_to_json_with_limits};
+mod mcp;
+pub use mcp::{McpResponseError, McpToolOutcome, extract_mcp_tool_result};
 mod store;
 mod tree;
 pub use store::{InitializationResult, StateRefusal, StateValue, Store, StoreError, StoreSnapshot};

@@ -13,6 +13,10 @@ use std::fmt::Write as _;
 
 use crate::progress::Progress;
 
+#[path = "host_json.rs"]
+mod host_json;
+pub use host_json::write_host_json;
+
 /// Stands in for the lone surrogate U+D800; U+D801 is the next code point, and so on.
 const LONE_SURROGATE_BASE: u32 = 0x10_F800;
 
@@ -47,6 +51,17 @@ pub fn utf16_unit_string(unit: u16) -> String {
     char::from_u32(u32::from(unit))
         .unwrap_or_else(|| lone_surrogate(unit))
         .to_string()
+}
+
+/// Combine adjacent surrogate halves in a string using the core's UTF-16
+/// representation. Lone surrogates retain their reserved scalar.
+pub fn normalize_js_string(text: String) -> String {
+    if !text.chars().any(|c| lone_surrogate_unit(c).is_some()) {
+        return text;
+    }
+    char::decode_utf16(utf16_units(&text))
+        .map(|unit| unit.unwrap_or_else(|error| lone_surrogate(error.unpaired_surrogate())))
+        .collect()
 }
 
 /// The characters `String.prototype.trim` removes (WhiteSpace + LineTerminator).
@@ -215,9 +230,8 @@ pub fn json_number_len(n: f64) -> usize {
     }
 }
 
-/// `String(n)` in JavaScript: like [`write_json_number`] for finite numbers,
-/// and `NaN`, `Infinity` or `-Infinity` otherwise.
-pub(crate) fn number_to_string(n: f64) -> String {
+/// JavaScript’s string representation of a double, including non-finite numbers.
+pub fn number_to_string(n: f64) -> String {
     if n.is_nan() {
         "NaN".to_owned()
     } else if n.is_infinite() {
@@ -560,11 +574,21 @@ pub fn stringify_json(value: &serde_json::Value) -> String {
 
 /// Why [`parse_json`] couldn't read its input.
 #[derive(Debug)]
-pub struct JsonError(String);
+pub struct JsonError {
+    message: String,
+    depth_limited: bool,
+}
+
+impl JsonError {
+    /// Whether reading JSON stopped at the configured nesting limit.
+    pub fn depth_limited(&self) -> bool {
+        self.depth_limited
+    }
+}
 
 impl std::fmt::Display for JsonError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.write_str(&self.0)
+        f.write_str(&self.message)
     }
 }
 
@@ -596,16 +620,17 @@ pub fn parse_json_with_limits(
     limits: crate::Limits,
 ) -> Result<serde_json::Value, JsonError> {
     let _ceiling = crate::stack::limit(limits.depth());
-    read_json(text, limits.json_depth())
+    JsonReader::new(text).read(limits.json_depth())
 }
 
-fn read_json(text: &str, limit: usize) -> Result<serde_json::Value, JsonError> {
-    JsonReader {
-        s: text.as_bytes(),
-        text,
-        pos: 0,
-    }
-    .read(limit)
+/// Read host JSON directly as an OpenUI [Value](crate::Value).
+///
+/// Each open array or object counts toward the depth limit. The reader and the
+/// returned value's destruction use bounded stack space, including on a
+/// syntax error or replacement of a duplicate key. Numbers retain JavaScript's
+/// double values, including negative zero and overflow to infinity.
+pub fn parse_json_value(text: &str, max_depth: usize) -> Result<crate::Value, JsonError> {
+    JsonReader::new(text).read(max_depth)
 }
 
 struct JsonReader<'a> {
@@ -614,14 +639,99 @@ struct JsonReader<'a> {
     pos: usize,
 }
 
-enum Open {
-    Array(Vec<serde_json::Value>),
-    Object(serde_json::Map<String, serde_json::Value>, String),
+enum Open<V: JsonTarget> {
+    Array(Vec<V>),
+    Object(V::Fields, String),
 }
 
-impl JsonReader<'_> {
+// The legacy serde_json entry point and the host-value entry point use the
+// same grammar. Only the latter can store all of JavaScript's double values.
+trait JsonTarget: Sized {
+    type Fields: Default;
+
+    fn null() -> Self;
+    fn boolean(value: bool) -> Self;
+    fn string(text: String) -> Self;
+    fn number(text: &str, integer: bool) -> Option<Self>;
+    fn array(items: Vec<Self>) -> Self;
+    fn object(fields: Self::Fields) -> Self;
+    fn define(fields: &mut Self::Fields, key: String, value: Self);
+}
+
+impl JsonTarget for serde_json::Value {
+    type Fields = serde_json::Map<String, Self>;
+
+    fn null() -> Self {
+        Self::Null
+    }
+    fn boolean(value: bool) -> Self {
+        Self::Bool(value)
+    }
+    fn string(text: String) -> Self {
+        Self::String(text)
+    }
+    fn number(text: &str, integer: bool) -> Option<Self> {
+        if integer {
+            if let Ok(n) = text.parse::<u64>() {
+                return Some(n.into());
+            }
+            if let Ok(n) = text.parse::<i64>() {
+                return Some(n.into());
+            }
+        }
+        serde_json::Number::from_f64(text.parse().ok()?).map(Self::Number)
+    }
+    fn array(items: Vec<Self>) -> Self {
+        Self::Array(items)
+    }
+    fn object(fields: Self::Fields) -> Self {
+        Self::Object(fields)
+    }
+    fn define(fields: &mut Self::Fields, key: String, value: Self) {
+        fields.insert(key, value);
+    }
+}
+
+impl JsonTarget for crate::Value {
+    type Fields = JsObject<Self>;
+
+    fn null() -> Self {
+        Self::Null
+    }
+    fn boolean(value: bool) -> Self {
+        Self::Bool(value)
+    }
+    fn string(text: String) -> Self {
+        Self::Str(normalize_js_string(text))
+    }
+    fn number(text: &str, _: bool) -> Option<Self> {
+        text.parse().ok().map(Self::Num)
+    }
+    fn array(items: Vec<Self>) -> Self {
+        Self::Arr(std::sync::Arc::new(items))
+    }
+    fn object(fields: Self::Fields) -> Self {
+        Self::Obj(std::sync::Arc::new(fields))
+    }
+    fn define(fields: &mut Self::Fields, key: String, value: Self) {
+        fields.define(normalize_js_string(key), value);
+    }
+}
+
+impl<'a> JsonReader<'a> {
+    fn new(text: &'a str) -> Self {
+        Self {
+            s: text.as_bytes(),
+            text,
+            pos: 0,
+        }
+    }
+
     fn error(&self, what: &str) -> JsonError {
-        JsonError(format!("{what} at byte {}", self.pos))
+        JsonError {
+            message: format!("{what} at byte {}", self.pos),
+            depth_limited: false,
+        }
     }
 
     fn skip_ws(&mut self) {
@@ -640,9 +750,8 @@ impl JsonReader<'_> {
         }
     }
 
-    fn read(mut self, limit: usize) -> Result<serde_json::Value, JsonError> {
-        use serde_json::Value as Json;
-        let mut open: Vec<Open> = Vec::new();
+    fn read<V: JsonTarget>(mut self, limit: usize) -> Result<V, JsonError> {
+        let mut open: Vec<Open<V>> = Vec::new();
         let mut progress = Progress::new("the JSON reader");
         loop {
             if progress.stalled(self.pos) {
@@ -651,13 +760,16 @@ impl JsonReader<'_> {
             // A value starts here.
             self.skip_ws();
             let mut value = match self.s.get(self.pos) {
-                Some(b'[') | Some(b'{') if open.len() + 1 > limit => {
-                    return Err(self.error(&format!("JSON nests deeper than {limit} levels")));
+                Some(b'[') | Some(b'{') if open.len() >= limit => {
+                    return Err(JsonError {
+                        depth_limited: true,
+                        ..self.error(&format!("JSON nests deeper than {limit} levels"))
+                    });
                 }
                 Some(b'[') => {
                     self.pos += 1;
                     if self.eat(b']') {
-                        Json::Array(Vec::new())
+                        V::array(Vec::new())
                     } else {
                         open.push(Open::Array(Vec::new()));
                         continue;
@@ -666,18 +778,18 @@ impl JsonReader<'_> {
                 Some(b'{') => {
                     self.pos += 1;
                     if self.eat(b'}') {
-                        Json::Object(serde_json::Map::new())
+                        V::object(V::Fields::default())
                     } else {
                         let key = self.key()?;
-                        open.push(Open::Object(serde_json::Map::new(), key));
+                        open.push(Open::Object(V::Fields::default(), key));
                         continue;
                     }
                 }
-                Some(b'"') => Json::String(self.string()?),
-                Some(b'-' | b'0'..=b'9') => self.number()?,
-                Some(_) if self.literal("true") => Json::Bool(true),
-                Some(_) if self.literal("false") => Json::Bool(false),
-                Some(_) if self.literal("null") => Json::Null,
+                Some(b'"') => V::string(self.string()?),
+                Some(b'-' | b'0'..=b'9') => self.number::<V>()?,
+                Some(_) if self.literal("true") => V::boolean(true),
+                Some(_) if self.literal("false") => V::boolean(false),
+                Some(_) if self.literal("null") => V::null(),
                 Some(_) => return Err(self.error("unexpected character")),
                 None => return Err(self.error("unexpected end of JSON")),
             };
@@ -700,13 +812,13 @@ impl JsonReader<'_> {
                             return Err(self.error("expected , or ]"));
                         }
                         let Some(Open::Array(items)) = open.pop() else {
-                            unreachable!()
+                            return Err(self.error("expected an open array"));
                         };
-                        value = Json::Array(items);
+                        value = V::array(items);
                     }
                     Some(Open::Object(map, key)) => {
                         // A repeated key keeps its first position and its last value.
-                        map.insert(std::mem::take(key), value);
+                        V::define(map, std::mem::take(key), value);
                         if self.eat(b',') {
                             *key = self.key()?;
                             break;
@@ -715,9 +827,9 @@ impl JsonReader<'_> {
                             return Err(self.error("expected , or }"));
                         }
                         let Some(Open::Object(map, _)) = open.pop() else {
-                            unreachable!()
+                            return Err(self.error("expected an open object"));
                         };
-                        value = Json::Object(map);
+                        value = V::object(map);
                     }
                 }
             }
@@ -753,21 +865,28 @@ impl JsonReader<'_> {
             }
         }
         self.pos = i + 1;
-        json_parse_string(&self.text[start..self.pos])
-            .ok_or_else(|| JsonError(format!("bad string at byte {start}")))
+        self.text
+            .get(start..self.pos)
+            .and_then(json_parse_string)
+            .ok_or_else(|| JsonError {
+                message: format!("bad string at byte {start}"),
+                depth_limited: false,
+            })
     }
 
     fn literal(&mut self, word: &str) -> bool {
-        let found = self.s[self.pos..].starts_with(word.as_bytes());
+        let found = self
+            .s
+            .get(self.pos..)
+            .is_some_and(|rest| rest.starts_with(word.as_bytes()));
         if found {
             self.pos += word.len();
         }
         found
     }
 
-    /// `-?(0|[1-9][0-9]*)(\.[0-9]+)?([eE][+-]?[0-9]+)?`, as serde_json stores it:
-    /// an integer that fits as an integer, anything else as a double.
-    fn number(&mut self) -> Result<serde_json::Value, JsonError> {
+    // Scan the JSON number before converting it to the target representation.
+    fn number<V: JsonTarget>(&mut self) -> Result<V, JsonError> {
         let start = self.pos;
         let digits = |r: &mut Self| {
             let from = r.pos;
@@ -799,18 +918,9 @@ impl JsonReader<'_> {
                 return Err(self.error("bad number"));
             }
         }
-        let text = &self.text[start..self.pos];
-        if integer {
-            if let Ok(n) = text.parse::<u64>() {
-                return Ok(n.into());
-            }
-            if let Ok(n) = text.parse::<i64>() {
-                return Ok(n.into());
-            }
-        }
-        let n: f64 = text.parse().map_err(|_| self.error("bad number"))?;
-        serde_json::Number::from_f64(n)
-            .map(serde_json::Value::Number)
+        self.text
+            .get(start..self.pos)
+            .and_then(|text| V::number(text, integer))
             .ok_or_else(|| self.error("number out of range"))
     }
 }

@@ -8,6 +8,10 @@ use std::collections::{BTreeMap, HashSet};
 use std::fmt;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Weak, mpsc};
+
+mod mcp;
+pub use mcp::extract_mcp_tool_result;
+
 #[derive(Debug)]
 pub enum OpenUiError {
     /// The runtime session was normally disposed.

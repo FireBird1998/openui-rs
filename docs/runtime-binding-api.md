@@ -6,6 +6,15 @@ are objects: ParsedProgram, EvaluationHandle, ActionHandle and ContinuationHandl
 They have no application constructor or numeric slot. See [session semantics
 and limits](runtime-binding.md).
 
+Apps with an MCP client can call the standalone
+`extractMcpToolResult(responseJson: String, limits: ParseLimits)` function in
+Swift or Kotlin. It returns JSON text with a `value` field or an `error` field
+containing the tool's raw error message. Malformed JSON, a response that
+would throw a JavaScript TypeError, and a limit refusal raise `InvalidJson`,
+`Evaluation`, and `LimitExceeded`, respectively. The helper applies
+`resultSize` (fixed result ceiling), `work`, and `depth` before producing
+the outcome. See the Rust runtime's `extract_mcp_tool_result` for details.
+
 Swift (`import OpenUIFFI`); fallible calls throw OpenUiError:
 
 ```swift

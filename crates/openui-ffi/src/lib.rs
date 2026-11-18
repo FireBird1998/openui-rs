@@ -39,6 +39,17 @@ pub use runtime::*;
 
 uniffi::setup_scaffolding!();
 
+/// Extract an MCP tool call outcome as JSON containing `value` or `error`.
+/// Malformed input, JavaScript response errors and limit refusals throw the
+/// binding's InvalidJson, Evaluation or LimitExceeded error respectively.
+#[uniffi::export]
+pub fn extract_mcp_tool_result(
+    response_json: String,
+    limits: ParseLimits,
+) -> Result<String, OpenUiError> {
+    openui_session::extract_mcp_tool_result(&response_json, limits.to_core()).map_err(Into::into)
+}
+
 /// Something the core couldn't accept. The field is `reason`, not `message`,
 /// which Kotlin's exceptions already have.
 #[derive(Debug, uniffi::Error)]

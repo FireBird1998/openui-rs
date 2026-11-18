@@ -48,6 +48,13 @@ mapped bijectively across the runtimes; default inputs are checked for content
 and aliases within each parse result. Persistence timing remains an explicit
 assumption; the renderer is not vendored.
 
+The MCP result helper is compared against lang-core's `extractToolResult` in
+72 cases from `conformance/golden/mcp-results.jsonl`. The comparison includes
+result JSON, raw `McpToolError.toolErrorText` and the class and failing
+operation of JavaScript `TypeError`s from malformed response shapes.
+The Rust test also observes top-level negative zero and infinity before JSON
+projection.
+
 <!-- runtime-counts -->
 Runtime trees: 1186 total, 1175 matching, 0 pending, 11 divergences.
 

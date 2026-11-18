@@ -201,7 +201,10 @@ const openuiLibrary = openuiCapabilityOf(ComponentLibrary);
 const openuiSurface = new Map([
   [RuntimeSession, {
     construct: openuiSpec([openuiLibrary, openuiOptStr]),
-    statics: { withLimits: openuiSpec([openuiLibrary, openuiOptStr, openuiCapabilityOf(RuntimeLimits)]) },
+    statics: {
+      withLimits: openuiSpec([openuiLibrary, openuiOptStr, openuiCapabilityOf(RuntimeLimits)]),
+      extractMcpToolResult: openuiSpec([openuiStr, openuiCapabilityOf(ParseLimits)]),
+    },
     methods: {
       free: openuiFree,
       actionAt: openuiSpec([openuiCapabilityOf(EvaluationHandle), openuiPath]),

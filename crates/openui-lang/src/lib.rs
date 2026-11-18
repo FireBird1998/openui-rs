@@ -397,7 +397,9 @@ pub use evaluate::{
 };
 pub use expr::{parse_expression, parse_expression_with_limits};
 pub use free::free_json;
-pub use js::{JsObject, JsonError, parse_json, parse_json_with_limits, stringify_json};
+pub use js::{
+    JsObject, JsonError, parse_json, parse_json_value, parse_json_with_limits, stringify_json,
+};
 pub use lexer::{Token, tokenize, tokens_to_json};
 pub use library::{Call, CallKind, Component, Library, Param};
 pub use limits::Limits;
@@ -431,7 +433,10 @@ const _: () = {
 static TEST_ALLOCATOR: test_alloc::Allocator = test_alloc::Allocator::with_cap(test_alloc::DEFAULT);
 
 /// Allocation-free JSON number sizing for embedders preparing input allowances.
-pub use js::{json_number_len, json_string_len, utf16_unit_string, utf16_units};
+pub use js::{
+    json_number_len, json_string_len, normalize_js_string, number_to_string, utf16_unit_string,
+    utf16_units, write_host_json,
+};
 
 /// JSON values used for runtime schema configuration, without a second dependency.
 pub use serde_json::Value as JsonValue;
