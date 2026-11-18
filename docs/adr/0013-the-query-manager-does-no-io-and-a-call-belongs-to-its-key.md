@@ -33,24 +33,52 @@ session is disposed; an app that wants a timeout applies it in its provider.
 
 ## A call belongs to its key
 
-Upstream ties a call to the query that started it. When two queries share a
-key (the same tool, arguments and dependencies), the second is not shown as
-loading; if the first changes its key mid-call, a success is thrown away
-although the second still wants it, while a failure is delivered; a run
-requested through the second is lost; and after a dispose a late failure is
-recorded while a late success is ignored.
+Upstream ties a call to the query that started it, tracks loading as a flag on
+that query, and releases cache entries at points that follow from its
+implementation. Three defects follow. A query can stay loading forever, or
+hide a call that is in flight. A result can be thrown away although another
+query wants it, or settle a query it was never fetched for. And the cache
+grows without bound: one query cycling through keys keeps every entry it ever
+left.
 
-We do not copy this. A call belongs to its key:
+We do not copy this. A query's key is its evaluated tool, arguments and
+dependencies; a cache entry holds one key's data and at most one call in
+flight. Four rules decide everything:
 
-- its success or failure goes to every query that currently wants the key, and
-  is dropped if none does;
-- every query whose key has a call in flight is loading;
-- a run requested while the call is in flight is remembered for the key;
-- while disposed, a late success and a late failure are both ignored.
+1. After each command, a cache entry exists exactly while a registered query
+   holds its key as its current key or its previous key (the one whose data
+   it shows while loading). So there are at most two entries per query.
+2. A query is loading exactly while its current entry has a call in flight.
+3. A call belongs to the entry it was started for. Its success or failure is
+   delivered to every query whose current key is that entry, whichever query
+   started it. If no query's current key is that entry, or the entry is gone,
+   the call just ends: no data, no error and no fetch history change, even if
+   the same key has since been recreated with a call of its own.
+4. A current entry with neither data nor a call requests one, unless it has
+   failed and the query already shows an error. No query is left with
+   nothing to show and nothing on its way.
 
-Where no two queries share a key and nothing is disposed mid-call, output is
-byte-identical to upstream. This is a divergence on inputs a real program can
-produce, which is why the glossary's definition of a divergence was widened.
-It is pinned with both sides' outputs, and a draft upstream report is kept for
-the maintainer to file. If upstream fixes it differently, we follow upstream
-and retire the divergence.
+A delivered success stores the result, clears each current reader's error,
+records that the reader has fetched and releases its previous entry. A
+delivered failure records an error for each current reader. A query can show
+another query's cached data without having fetched it. A run requested while
+a call is in flight is remembered for the key, and while disposed a late
+success and a late failure are both ignored.
+
+Everything else is upstream's behaviour, byte for byte. In particular a
+result that arrives after its query has moved to another key is discarded, as
+upstream does on purpose: a search-as-you-type query never shows a stale
+intermediate result. Scripts in which a query's key only moves forward match
+upstream on every observation.
+
+The cost is on the other side of rule 1. A query that returns to a key it
+left two or more changes ago fetches again, where upstream reuses the result
+from the entry it leaked. That is one extra tool call, never a wrong result.
+
+This is a divergence on inputs a real program can produce, which is why the
+glossary's definition of a divergence was widened. CONFORMANCE.md lists every
+situation in which output differs, with the rule that forces it; each is
+pinned with both sides' outputs, a randomised replay against upstream fails
+on any difference the list does not explain, and a draft upstream report is
+kept for the maintainer to file. If upstream fixes these differently, we
+follow upstream and retire the divergence.
