@@ -1,0 +1,615 @@
+{
+  "cases": [
+    {
+      "name": "null",
+      "raw": null
+    },
+    {
+      "name": "empty",
+      "raw": ""
+    },
+    {
+      "name": "whitespace",
+      "raw": "  \n"
+    },
+    {
+      "name": "bare-program",
+      "raw": "root = Text(\"Hello\")"
+    },
+    {
+      "name": "fenced-program",
+      "raw": "```openui-lang\nroot = Text(\"Hello\")\n```\n"
+    },
+    {
+      "name": "decoded-name",
+      "raw": " \n]]>openui:content?v=2&name=Sales+%26+Growth+%E2%82%AC\n```openui-lang\nroot = Text(\"Hello\")\n```\n]]>openui:end\n"
+    },
+    {
+      "name": "framed-no-scripts",
+      "raw": "]]>openui:content\n```openui-lang\nroot = Text(\"Hello\")\n```\n]]>openui:end"
+    },
+    {
+      "name": "crlf",
+      "raw": "]]>openui:content?name=Sales\r\n```openui-lang\r\nroot = Text(\"Hello\")\r\n```\r\n]]>openui:scripts {\"count\":1}\r\n[{\"name\":\"sales_total\",\"code\":\"async ({ tools }) => tools.get_sales({})\"}]\r\n]]>openui:end\r\n"
+    },
+    {
+      "name": "winning-content",
+      "raw": "]]>openui:content?name=Previous\n```openui-lang\nroot = Text(\"Hello\")\n```\n]]>openui:scripts {\"count\":1}\n[{\"name\":\"sales_total\",\"code\":\"async ({ tools }) => tools.get_sales({})\"}]\n]]>openui:end\n]]>openui:content\nroot = Text(\"Updated\")\n]]>openui:end"
+    },
+    {
+      "name": "two-scripts",
+      "raw": "]]>openui:content\n```openui-lang\nroot = Text(\"Hello\")\n```\n]]>openui:scripts {\"count\":2}\n[{\"name\":\"sales_total\",\"code\":\"async ({ tools }) => tools.get_sales({})\"},{\"name\":\"save_sales\",\"code\":\"async () => null\"}]\n]]>openui:end"
+    },
+    {
+      "name": "zero-scripts",
+      "raw": "]]>openui:content\n```openui-lang\nroot = Text(\"Hello\")\n```\n]]>openui:scripts {\"count\":0}\n[]\n]]>openui:end"
+    },
+    {
+      "name": "legacy-no-end",
+      "raw": "```openui-lang\nroot = Text(\"Hello\")\n```\n]]>openui:scripts {\"count\":1}\n[{\"name\":\"sales_total\",\"code\":\"async ({ tools }) => tools.get_sales({})\"}]\n"
+    },
+    {
+      "name": "legacy-with-end",
+      "raw": "```openui-lang\nroot = Text(\"Hello\")\n```\n]]>openui:scripts {\"count\":1}\n[{\"name\":\"sales_total\",\"code\":\"async ({ tools }) => tools.get_sales({})\"}]\n]]>openui:end"
+    },
+    {
+      "name": "non-array",
+      "raw": "]]>openui:content\n```openui-lang\nroot = Text(\"Hello\")\n```\n]]>openui:scripts {\"count\":1}\n{}\n]]>openui:end"
+    },
+    {
+      "name": "null-payload",
+      "raw": "]]>openui:content\n```openui-lang\nroot = Text(\"Hello\")\n```\n]]>openui:scripts {\"count\":1}\nnull\n]]>openui:end"
+    },
+    {
+      "name": "count-mismatch",
+      "raw": "]]>openui:content\n```openui-lang\nroot = Text(\"Hello\")\n```\n]]>openui:scripts {\"count\":2}\n[{\"name\":\"sales_total\",\"code\":\"async ({ tools }) => tools.get_sales({})\"}]\n]]>openui:end"
+    },
+    {
+      "name": "string-count",
+      "raw": "]]>openui:content\n```openui-lang\nroot = Text(\"Hello\")\n```\n]]>openui:scripts {\"count\":\"1\"}\n[{\"name\":\"sales_total\",\"code\":\"async ({ tools }) => tools.get_sales({})\"}]\n]]>openui:end"
+    },
+    {
+      "name": "fractional-count",
+      "raw": "]]>openui:content\n```openui-lang\nroot = Text(\"Hello\")\n```\n]]>openui:scripts {\"count\":1.5}\n[{\"name\":\"sales_total\",\"code\":\"async ({ tools }) => tools.get_sales({})\"}]\n]]>openui:end"
+    },
+    {
+      "name": "negative-count",
+      "raw": "]]>openui:content\n```openui-lang\nroot = Text(\"Hello\")\n```\n]]>openui:scripts {\"count\":-1}\n[]\n]]>openui:end"
+    },
+    {
+      "name": "null-entry",
+      "raw": "]]>openui:content\n```openui-lang\nroot = Text(\"Hello\")\n```\n]]>openui:scripts {\"count\":1}\n[null]\n]]>openui:end"
+    },
+    {
+      "name": "missing-name",
+      "raw": "]]>openui:content\n```openui-lang\nroot = Text(\"Hello\")\n```\n]]>openui:scripts {\"count\":1}\n[{\"code\":\"async () => null\"}]\n]]>openui:end"
+    },
+    {
+      "name": "empty-name",
+      "raw": "]]>openui:content\n```openui-lang\nroot = Text(\"Hello\")\n```\n]]>openui:scripts {\"count\":1}\n[{\"name\":\"\",\"code\":\"async ({ tools }) => tools.get_sales({})\"}]\n]]>openui:end"
+    },
+    {
+      "name": "non-string-name",
+      "raw": "]]>openui:content\n```openui-lang\nroot = Text(\"Hello\")\n```\n]]>openui:scripts {\"count\":1}\n[{\"name\":42,\"code\":\"async ({ tools }) => tools.get_sales({})\"}]\n]]>openui:end"
+    },
+    {
+      "name": "missing-code",
+      "raw": "]]>openui:content\n```openui-lang\nroot = Text(\"Hello\")\n```\n]]>openui:scripts {\"count\":1}\n[{\"name\":\"sales_total\"}]\n]]>openui:end"
+    },
+    {
+      "name": "non-string-code",
+      "raw": "]]>openui:content\n```openui-lang\nroot = Text(\"Hello\")\n```\n]]>openui:scripts {\"count\":1}\n[{\"name\":\"sales_total\",\"code\":42}]\n]]>openui:end"
+    },
+    {
+      "name": "duplicate-names",
+      "raw": "]]>openui:content\n```openui-lang\nroot = Text(\"Hello\")\n```\n]]>openui:scripts {\"count\":2}\n[{\"name\":\"sales_total\",\"code\":\"async ({ tools }) => tools.get_sales({})\"},{\"name\":\"sales_total\",\"code\":\"async ({ tools }) => tools.get_sales({})\"}]\n]]>openui:end"
+    },
+    {
+      "name": "malformed-header",
+      "raw": "]]>openui:content\n```openui-lang\nroot = Text(\"Hello\")\n```\n]]>openui:scripts {invalid}\n[]\n]]>openui:end"
+    },
+    {
+      "name": "malformed-payload",
+      "raw": "]]>openui:content\n```openui-lang\nroot = Text(\"Hello\")\n```\n]]>openui:scripts {\"count\":1}\n[{\"name\":\n]]>openui:end"
+    },
+    {
+      "name": "streamed-scripts",
+      "raw": "]]>openui:content?name=Sales\n```openui-lang\nroot = Text(\"Hello\")\n```\n]]>openui:scripts {\"count\":1}\n[{\"name\":\"sales_total\",\"code\":\"async ({ tools }) => tools.get_sales({})\"}]\n]]>openui:end"
+    },
+    {
+      "name": "unfinished-marker",
+      "raw": "]]"
+    },
+    {
+      "name": "unfinished-content",
+      "raw": "]]>openui:content?name=Sales"
+    },
+    {
+      "name": "stored-without-end",
+      "raw": "]]>openui:content\n```openui-lang\nroot = Text(\"Hello\")\n```\n"
+    },
+    {
+      "name": "stored-scripts-without-end",
+      "raw": "]]>openui:content\n```openui-lang\nroot = Text(\"Hello\")\n```\n]]>openui:scripts {\"count\":1}\n[{\"name\":\"sales_total\",\"code\":\"async ({ tools }) => tools.get_sales({})\"}]\n"
+    },
+    {
+      "name": "stored-unknown-without-end",
+      "raw": "]]>openui:content\n```openui-lang\nroot = Text(\"Hello\")\n```\n]]>openui:unknown"
+    },
+    {
+      "name": "bare-scripts",
+      "raw": "]]>openui:content\n```openui-lang\nroot = Text(\"Hello\")\n```\n]]>openui:scripts"
+    },
+    {
+      "name": "bare-double-quote",
+      "raw": "root = Text(\"]]>openui:scripts\")\n"
+    },
+    {
+      "name": "framed-double-quote",
+      "raw": "]]>openui:content\nroot = Text(\"]]>openui:scripts\")\n]]>openui:end"
+    },
+    {
+      "name": "bare-single-quote",
+      "raw": "root = Text(']]>openui:end')\n"
+    },
+    {
+      "name": "framed-single-quote",
+      "raw": "]]>openui:content\nroot = Text(']]>openui:end')\n]]>openui:end"
+    },
+    {
+      "name": "bare-escaped-quote",
+      "raw": "root = Text(\"An escaped quote: \\\" and marker: ]]>openui:end\")\n"
+    },
+    {
+      "name": "framed-escaped-quote",
+      "raw": "]]>openui:content\nroot = Text(\"An escaped quote: \\\" and marker: ]]>openui:end\")\n]]>openui:end"
+    },
+    {
+      "name": "bare-escaped-backslash",
+      "raw": "root = Text(\"A trailing backslash: \\\\\")\n"
+    },
+    {
+      "name": "framed-escaped-backslash",
+      "raw": "]]>openui:content\nroot = Text(\"A trailing backslash: \\\\\")\n]]>openui:end"
+    },
+    {
+      "name": "bare-slash-comment",
+      "raw": "// Ignore \"]]>openui:scripts\nroot = Text(\"Hello\")\n"
+    },
+    {
+      "name": "framed-slash-comment",
+      "raw": "]]>openui:content\n// Ignore \"]]>openui:scripts\nroot = Text(\"Hello\")\n]]>openui:end"
+    },
+    {
+      "name": "bare-hash-comment",
+      "raw": "# Ignore ' ]]>openui:end\nroot = Text(\"Hello\")\n"
+    },
+    {
+      "name": "framed-hash-comment",
+      "raw": "]]>openui:content\n# Ignore ' ]]>openui:end\nroot = Text(\"Hello\")\n]]>openui:end"
+    },
+    {
+      "name": "code-with-markers",
+      "raw": "]]>openui:content\n```openui-lang\nroot = Text(\"Hello\")\n```\n]]>openui:scripts {\"count\":1}\n[{\"name\":\"sales_total\",\"code\":\"async () => \\\"Escaped quote: \\\\\\\"; ]]>openui:end; ]]>openui:scripts\\\"\"}]\n]]>openui:end"
+    },
+    {
+      "name": "mid-line-retry",
+      "raw": "]]>openui:content?v=2\nroot = Text(\"Broken]]>openui:content?v=2\n```openui-lang\nroot = Text(\"Hello\")\n```\n]]>openui:scripts {\"count\":1}\n[{\"name\":\"sales_total\",\"code\":\"async ({ tools }) => tools.get_sales({})\"}]\n]]>openui:end"
+    },
+    {
+      "name": "end-only",
+      "raw": "]]>openui:end\n"
+    },
+    {
+      "name": "context-without-bundle",
+      "raw": "text\n]]>openui:context\n{\"a\":1}"
+    },
+    {
+      "name": "only-mid-line-content",
+      "raw": "cut-off]]>openui:content?name=Hidden\nnew"
+    },
+    {
+      "name": "first-content-match-controls-framing",
+      "raw": "]]>openui:content?name=First\r]]>openui:content?name=Second\nnew"
+    },
+    {
+      "name": "unicode-line-terminators",
+      "raw": "before\u2028]]>openui:content?name=Hidden\u2029]]>openui:scripts\rafter"
+    },
+    {
+      "name": "win-after-unknown",
+      "raw": "]]>openui:content\n```openui-lang\nroot = Text(\"Hello\")\n```\n]]>openui:unknown\nlost\n]]>openui:content?name=New\n```openui-lang\nroot = Text(\"Hello\")\n```\n]]>openui:scripts {\"count\":1}\n[{\"name\":\"sales_total\",\"code\":\"async ({ tools }) => tools.get_sales({})\"}]\n]]>openui:end"
+    },
+    {
+      "name": "unknown-prefix-blocks-scripts",
+      "raw": "text ]]>other\n]]>openui:scripts {\"count\":1}\n[{\"name\":\"sales_total\",\"code\":\"async ({ tools }) => tools.get_sales({})\"}]\n]]>openui:end"
+    },
+    {
+      "name": "bare-scripts-query",
+      "raw": "]]>openui:content\n```openui-lang\nroot = Text(\"Hello\")\n```\n]]>openui:scripts?ignored\n[]\n]]>openui:end"
+    },
+    {
+      "name": "masked-marker-in-multiline-string",
+      "raw": "root = Text(\"line\n]]>openui:scripts?x\n\")"
+    },
+    {
+      "name": "message-marker-in-multiline-string",
+      "raw": "root = Text(\"line\n]]>openui:end\nnext\")"
+    },
+    {
+      "name": "tail-after-section",
+      "raw": "root = Text(\"x\")]]>openui:scripts {\"count\":1}\n[{\"name\":\"sales_total\",\"code\":\"async ({ tools }) => tools.get_sales({})\"}]\n  ]]>other rest"
+    },
+    {
+      "name": "empty-program-before-tail",
+      "raw": "]]>openui:scripts {\"count\":1}\n[{\"name\":\"sales_total\",\"code\":\"async ({ tools }) => tools.get_sales({})\"}]\n]]>other"
+    },
+    {
+      "name": "only-one-newline-removed",
+      "raw": "body\r\n\r\n]]>openui:scripts {\"count\":1}\n[{\"name\":\"sales_total\",\"code\":\"async ({ tools }) => tools.get_sales({})\"}]\n"
+    },
+    {
+      "name": "trailing-cr-is-not-removed",
+      "raw": "body\r]]>openui:scripts {\"count\":1}\n[{\"name\":\"sales_total\",\"code\":\"async ({ tools }) => tools.get_sales({})\"}]\n"
+    },
+    {
+      "name": "scripts-prefix-with-suffix",
+      "raw": "body\n]]>openui:scriptsExtra {\"count\":0}\n[]\n"
+    },
+    {
+      "name": "unfinished-section",
+      "raw": "]]>openui:content\n```openui-lang\nroot = Text(\"Hello\")\n```\n]]>openui:scripts {\"count\":1}\n[{\"name\":\"x\""
+    },
+    {
+      "name": "comment-cr-is-not-lf",
+      "raw": "// text\r]]>openui:scripts {\"count\":1}\n[{\"name\":\"sales_total\",\"code\":\"async ({ tools }) => tools.get_sales({})\"}]\n"
+    },
+    {
+      "name": "next-marker-ignores-json-quotes",
+      "raw": "]]>openui:scripts {\"count\":1}\n[{\"name\":\"x]]>weird\",\"code\":\"a\"}]\n]]>rest"
+    },
+    {
+      "name": "name-attribute-last-and-malformed",
+      "raw": "]]>openui:content?name=first&%6Eame=last+%xx\n```openui-lang\nroot = Text(\"Hello\")\n```\n]]>openui:end"
+    },
+    {
+      "name": "empty-optional-name",
+      "raw": "]]>openui:content?name\n```openui-lang\nroot = Text(\"Hello\")\n```\n]]>openui:end"
+    },
+    {
+      "name": "reserved-and-lone-program",
+      "units": [
+        233,
+        55357,
+        56832,
+        55296,
+        56318,
+        56320,
+        64976,
+        57344,
+        56320
+      ]
+    },
+    {
+      "name": "reserved-and-lone-name",
+      "units": [
+        93,
+        93,
+        62,
+        111,
+        112,
+        101,
+        110,
+        117,
+        105,
+        58,
+        99,
+        111,
+        110,
+        116,
+        101,
+        110,
+        116,
+        63,
+        110,
+        97,
+        109,
+        101,
+        61,
+        37,
+        70,
+        52,
+        37,
+        56,
+        70,
+        37,
+        65,
+        48,
+        37,
+        56,
+        48,
+        43,
+        55296,
+        43,
+        37,
+        69,
+        70,
+        37,
+        66,
+        55,
+        37,
+        57,
+        48,
+        57344,
+        10,
+        96,
+        96,
+        96,
+        111,
+        112,
+        101,
+        110,
+        117,
+        105,
+        45,
+        108,
+        97,
+        110,
+        103,
+        10,
+        114,
+        111,
+        111,
+        116,
+        32,
+        61,
+        32,
+        84,
+        101,
+        120,
+        116,
+        40,
+        34,
+        72,
+        101,
+        108,
+        108,
+        111,
+        34,
+        41,
+        10,
+        96,
+        96,
+        96,
+        10,
+        93,
+        93,
+        62,
+        111,
+        112,
+        101,
+        110,
+        117,
+        105,
+        58,
+        101,
+        110,
+        100
+      ]
+    },
+    {
+      "name": "surrogates-in-script-strings",
+      "raw": "]]>openui:scripts {\"count\":3}\n[{\"name\":\"\udbfe\udc00\",\"code\":\"\\ud800\"},{\"name\":\"\\ud800\",\"code\":\"\udbfe\udc00\"},{\"name\":\"\ufdd0\ue000\",\"code\":\"\\\\\\b\\r\\t\"}]\n"
+    },
+    {
+      "name": "json-escape-pairs-with-raw-unit",
+      "units": [
+        93,
+        93,
+        62,
+        111,
+        112,
+        101,
+        110,
+        117,
+        105,
+        58,
+        115,
+        99,
+        114,
+        105,
+        112,
+        116,
+        115,
+        32,
+        123,
+        34,
+        99,
+        111,
+        117,
+        110,
+        116,
+        34,
+        58,
+        49,
+        125,
+        10,
+        91,
+        123,
+        34,
+        110,
+        97,
+        109,
+        101,
+        34,
+        58,
+        34,
+        55357,
+        92,
+        117,
+        100,
+        101,
+        48,
+        48,
+        34,
+        44,
+        34,
+        99,
+        111,
+        100,
+        101,
+        34,
+        58,
+        34,
+        92,
+        117,
+        100,
+        56,
+        51,
+        100,
+        56832,
+        34,
+        125,
+        93
+      ]
+    },
+    {
+      "name": "numeric-count-syntax",
+      "raw": "]]>openui:scripts {\"count\":0,\"count\":1e0}\n[{\"name\":\"sales_total\",\"code\":\"async ({ tools }) => tools.get_sales({})\"}]"
+    },
+    {
+      "name": "negative-zero-count",
+      "raw": "]]>openui:scripts {\"count\":-0}\n[]"
+    },
+    {
+      "name": "unsafe-number-count",
+      "raw": "]]>openui:scripts {\"count\":9007199254740992}\n[]"
+    },
+    {
+      "name": "infinite-number-count",
+      "raw": "]]>openui:scripts {\"count\":1e999}\n[]"
+    },
+    {
+      "name": "empty-code-extra-fields",
+      "raw": "]]>openui:scripts {\"count\":1}\n[{\"name\":\"__proto__\",\"code\":\"\",\"extra\":[1,2]}]\n"
+    },
+    {
+      "name": "revision-extra-fields-ignored",
+      "raw": "]]>openui:scripts {\"count\":1}\n[{\"name\":\"__proto__\",\"code\":\"\"}]\n"
+    },
+    {
+      "name": "duplicates-decoded",
+      "raw": "]]>openui:scripts {\"count\":2}\n[{\"name\":\"a\",\"code\":\"a\"},{\"name\":\"\\u0061\",\"code\":\"b\"}]"
+    },
+    {
+      "name": "duplicate-object-keys",
+      "raw": "]]>openui:scripts {\"count\":1}\n[{\"name\":\"wrong\",\"code\":null,\"name\":\"__proto__\",\"code\":\"\"}]"
+    },
+    {
+      "name": "revision-original-order",
+      "raw": "]]>openui:scripts {\"count\":3}\n[{\"name\":\"\u00e4\",\"code\":\"one\"},{\"name\":\"z\",\"code\":\"two\"},{\"name\":\"A\",\"code\":\"three\"}]\n"
+    },
+    {
+      "name": "revision-reordered",
+      "raw": "]]>openui:content?name=another\nother\n]]>openui:scripts {\"count\":3}\n[{\"name\":\"A\",\"code\":\"three\"},{\"name\":\"z\",\"code\":\"two\"},{\"name\":\"\u00e4\",\"code\":\"one\"}]\n]]>openui:end"
+    },
+    {
+      "name": "revision-changed-code",
+      "raw": "]]>openui:scripts {\"count\":3}\n[{\"name\":\"\u00e4\",\"code\":\"changed\"},{\"name\":\"z\",\"code\":\"two\"},{\"name\":\"A\",\"code\":\"three\"}]\n"
+    },
+    {
+      "name": "revision-changed-name",
+      "raw": "]]>openui:scripts {\"count\":3}\n[{\"name\":\"a\",\"code\":\"one\"},{\"name\":\"z\",\"code\":\"two\"},{\"name\":\"A\",\"code\":\"three\"}]\n"
+    },
+    {
+      "name": "revision-name-code-boundaries",
+      "raw": "]]>openui:scripts {\"count\":1}\n[{\"name\":\"a\",\"code\":\"bc\"}]\n"
+    },
+    {
+      "name": "revision-other-boundaries",
+      "raw": "]]>openui:scripts {\"count\":1}\n[{\"name\":\"ab\",\"code\":\"c\"}]\n"
+    },
+    {
+      "name": "single-quoted-scripts",
+      "raw": "root = Text(']]>openui:scripts')\n]]>openui:scripts {\"count\":1}\n[{\"name\":\"sales_total\",\"code\":\"async ({ tools }) => tools.get_sales({})\"}]\n"
+    },
+    {
+      "name": "escaped-quote-before-scripts",
+      "raw": "root = Text(\"quote \\\" before ]]>openui:scripts\")\n]]>openui:scripts {\"count\":1}\n[{\"name\":\"sales_total\",\"code\":\"async ({ tools }) => tools.get_sales({})\"}]\n"
+    },
+    {
+      "name": "escaped-backslash-before-scripts",
+      "raw": "root = Text(\"backslash \\\\\")\n]]>openui:scripts {\"count\":1}\n[{\"name\":\"sales_total\",\"code\":\"async ({ tools }) => tools.get_sales({})\"}]\n"
+    },
+    {
+      "name": "slash-comment-scripts",
+      "raw": "// ignore ]]>openui:scripts\n]]>openui:scripts {\"count\":1}\n[{\"name\":\"sales_total\",\"code\":\"async ({ tools }) => tools.get_sales({})\"}]\n"
+    },
+    {
+      "name": "hash-comment-scripts",
+      "raw": "# ignore ]]>openui:scripts\n]]>openui:scripts {\"count\":1}\n[{\"name\":\"sales_total\",\"code\":\"async ({ tools }) => tools.get_sales({})\"}]\n"
+    },
+    {
+      "name": "revision-single-a",
+      "raw": "]]>openui:scripts {\"count\":1}\n[{\"name\":\"a\",\"code\":\"same\"}]\n"
+    },
+    {
+      "name": "revision-single-b",
+      "raw": "]]>openui:scripts {\"count\":1}\n[{\"name\":\"b\",\"code\":\"same\"}]\n"
+    },
+    {
+      "name": "revision-locale-tie-original",
+      "raw": "]]>openui:scripts {\"count\":2}\n[{\"name\":\"\u00e9\",\"code\":\"a\"},{\"name\":\"e\u0301\",\"code\":\"b\"}]\n"
+    },
+    {
+      "name": "revision-locale-tie-reversed",
+      "raw": "]]>openui:scripts {\"count\":2}\n[{\"name\":\"e\u0301\",\"code\":\"b\"},{\"name\":\"\u00e9\",\"code\":\"a\"}]\n"
+    }
+  ],
+  "revisionPairs": [
+    {
+      "left": "revision-original-order",
+      "right": "revision-reordered"
+    },
+    {
+      "left": "revision-original-order",
+      "right": "revision-changed-code"
+    },
+    {
+      "left": "revision-original-order",
+      "right": "revision-changed-name"
+    },
+    {
+      "left": "empty-code-extra-fields",
+      "right": "revision-extra-fields-ignored"
+    },
+    {
+      "left": "duplicate-object-keys",
+      "right": "revision-extra-fields-ignored"
+    },
+    {
+      "left": "revision-name-code-boundaries",
+      "right": "revision-other-boundaries"
+    },
+    {
+      "left": "legacy-no-end",
+      "right": "legacy-with-end"
+    },
+    {
+      "left": "legacy-no-end",
+      "right": "bare-scripts"
+    },
+    {
+      "left": "bare-program",
+      "right": "zero-scripts"
+    },
+    {
+      "left": "revision-single-a",
+      "right": "revision-single-b"
+    },
+    {
+      "left": "revision-locale-tie-original",
+      "right": "revision-locale-tie-reversed"
+    }
+  ]
+}

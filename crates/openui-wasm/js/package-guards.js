@@ -45,6 +45,9 @@ const openuiToWellFormed = String.prototype.toWellFormed;
 const openuiDecode = TextDecoder.prototype.decode;
 const openuiDecoder = new TextDecoder('utf-8', { ignoreBOM: true });
 const openuiUint8Array = Uint8Array;
+const openuiUint16Array = Uint16Array;
+const openuiUint16Length = openuiDescriptor(openuiPrototypeOf(openuiUint16Array.prototype), 'length').get;
+const openuiUint16Set = openuiUint16Array.prototype.set;
 const openuiMemoryBuffer = openuiDescriptor(WebAssembly.Memory.prototype, 'buffer').get;
 const openuiTableGet = WebAssembly.Table.prototype.get;
 const openuiDisposeSymbol = typeof Symbol.dispose === 'symbol' ? Symbol.dispose : undefined;
@@ -105,6 +108,20 @@ takeFromExternrefTable0 = function (idx) {
   const value = openuiApply(openuiTableGet, wasm.__wbindgen_externrefs, [idx]);
   wasm.__externref_table_dealloc(idx);
   return value;
+};
+
+// The bundle reader passes a bounded UTF-16 copy to generated glue. Lower
+// it using the captured typed-array intrinsics.
+if (typeof passArray16ToWasm0 !== 'function') {
+  throw new openuiError('openui package guard: generated UTF-16 helper is missing');
+}
+passArray16ToWasm0 = function (units, malloc) {
+  const length = openuiApply(openuiUint16Length, units, []);
+  const ptr = malloc(length * 2, 2) >>> 0;
+  const buffer = openuiApply(openuiMemoryBuffer, wasm.memory, []);
+  openuiApply(openuiUint16Set, new openuiUint16Array(buffer, ptr, length), [units]);
+  WASM_VECTOR_LEN = length;
+  return ptr;
 };
 
 // Argument conversions. None runs application code, except reading an
@@ -182,6 +199,18 @@ function openuiMessageText(value) {
     start = i + 1;
   }
   return start === 0 ? text : out + openuiApply(openuiSlice, text, [start]);
+}
+// Preserve UTF-16 units with no reserved scalars. Bound the temporary copy
+// using the minimum possible number of UTF-8 bytes before allocating it.
+function openuiResponseText(value) {
+  const text = openuiOptionalString(value) ?? '';
+  const length = text.length;
+  if (length > 1024 * 1024) {
+    throw openuiFailure('LimitExceeded', 'response bundle exceeds the program-size limit');
+  }
+  const units = new openuiUint16Array(length);
+  for (let i = 0; i < length; i++) units[i] = openuiApply(openuiCharCodeAt, text, [i]);
+  return units;
 }
 // A copy of the caller's path as JSON text, so Rust reads no JavaScript
 // values while it holds the session.
@@ -479,14 +508,22 @@ buildMessage = function (...args) {
   return openuiCall(openuiBuildMessageSpec, undefined, undefined, args, converted => openuiApply(openuiBuildMessage, undefined, converted));
 };
 
+const openuiParseResponseBundle = parseResponseBundle;
+const openuiResponseBundleSpec = openuiSpec([openuiResponseText, openuiBool]);
+parseResponseBundle = function (...args) {
+  return openuiCall(openuiResponseBundleSpec, undefined, undefined, args, converted => openuiApply(openuiParseResponseBundle, undefined, converted));
+};
+
 // CommonJS exports captured the unguarded values; web exports are live
 // bindings. Refuse to load if the package exports anything not guarded here.
 if (typeof exports !== 'undefined') {
   const openuiExports = { RuntimeSession, EvaluationHandle, ActionHandle, ContinuationHandle,
     ParsedProgram, EvaluationOutput, ActionOutput, ReplacementOutput, RuntimeLimits, ParseLimits, ComponentLibrary,
-    StreamSession, parse, parseProgram, parseMessage, buildMessage };
+    StreamSession, parse, parseProgram, parseMessage, buildMessage, parseResponseBundle };
   for (const key of openuiOwnKeys(exports)) {
     if (key !== '__esModule' && !openuiHasOwn(openuiExports, key)) throw openuiUncovered('exports', key);
   }
   Object.assign(exports, openuiExports);
+  // Keep the existing enumerable CommonJS surface for callers that walk it.
+  openuiDefine(exports, 'parseResponseBundle', { enumerable: false });
 }

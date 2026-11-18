@@ -108,7 +108,16 @@ pub fn parse_message(
 ) -> Result<ParsedMessage, MessageError> {
     admit_text(raw, limits)?;
     let normalized = normalize_surrogate_pairs(raw);
-    let raw = normalized.as_ref();
+    split_message(&normalized, streaming, |content, context, query, end| {
+        finish(content, context, query, end, limits)
+    })
+}
+
+pub(crate) fn split_message<T>(
+    raw: &str,
+    streaming: bool,
+    finish: impl FnOnce(String, Option<String>, &str, bool) -> T,
+) -> T {
     if !raw.contains("]]>") {
         let (before, last) = raw.rsplit_once('\n').unwrap_or(("", raw));
         let content = if streaming && !last.is_empty() && PREFIX.starts_with(last) {
@@ -116,11 +125,15 @@ pub fn parse_message(
         } else {
             raw
         };
-        return finish(content.to_owned(), None, "", false, limits);
+        return finish(content.to_owned(), None, "", false);
     }
 
-    let text = split_retries(raw);
-    let text = if streaming { hold_retry(&text) } else { &text };
+    let retries = split_retries(raw);
+    let text = if streaming {
+        hold_retry(&retries)
+    } else {
+        &retries
+    };
     let (before, last) = text
         .rsplit_once('\n')
         .map_or((None, text), |(before, last)| (Some(before), last));
@@ -185,7 +198,6 @@ pub fn parse_message(
         has_context.then_some(context.text),
         query,
         end,
-        limits,
     )
 }
 

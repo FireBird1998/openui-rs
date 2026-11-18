@@ -408,11 +408,16 @@ pub use merge::{Merged, merge_statements, merge_statements_with_limits};
 #[doc(hidden)]
 pub use message::build_message_json;
 pub use message::{BuildMessageInput, MessageError, ParsedMessage, build_message, parse_message};
+mod response_bundle;
 pub use parser::{parse, parse_with_limits};
 pub use preprocess::{preprocess, strip_fences};
 pub use prompt::{
     PromptError, generate_prompt, generate_prompt_with_limits, generate_system_prompt,
     generate_system_prompt_with_limits,
+};
+pub use response_bundle::{
+    ResponseBundle, ResponseBundleError, ResponseText, ScriptRevision, parse_response_bundle,
+    parse_response_bundle_utf16,
 };
 pub use result::{
     Element, Meta, MutationStatement, ParseResult, QueryStatement, Severity, ValidationError,

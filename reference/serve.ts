@@ -15,6 +15,8 @@
 //
 //   {"op": "parseMessage", "raw": "..."} → complete and every UTF-16 streaming cut
 //   {"op": "buildMessage", "build": {...}} → the written text and its reads, or a URIError
+//   {"op": "parseResponseBundles", "raw": string|null|number[], "other"?: string|null|number[]}
+//   → stored and streaming reads, with revision equality across both inputs
 // Message replies carry the exact wire answer and, when applicable, its
 // reserved-scalar projection as separate strings.
 //
@@ -28,6 +30,7 @@ import { existsSync, readFileSync } from "fs";
 import { join } from "path";
 import { createInterface } from "readline";
 import { answerMessageForFuzz } from "./messages";
+import { answerResponseBundles } from "./response-bundles";
 
 process.env.OPENUI_TELEMETRY_DISABLED = "1";
 process.env.DO_NOT_TRACK = "1";
@@ -124,6 +127,7 @@ for await (const line of createInterface({ input: process.stdin })) {
   const req = JSON.parse(line);
   const result = req.op === "parseMessage" || req.op === "buildMessage"
     ? answerMessageForFuzz(req)
+    : req.op === "parseResponseBundles" ? answerResponseBundles(req.raw, req.other)
     : req.op ? answerEdit(req) : answer(req);
   process.stdout.write(JSON.stringify(result) + "\n");
 }

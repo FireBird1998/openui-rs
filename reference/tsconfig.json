@@ -1,0 +1,7 @@
+{
+  "compilerOptions": {
+    "paths": {
+      "@openuidev/lang-core": ["./lang-core/src/message.ts"]
+    }
+  }
+}

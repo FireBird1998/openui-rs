@@ -480,6 +480,45 @@ nested container first gives `MessageError::ContextDepth`, even if a later token
 makes the context invalid JSON. For example, 801 opening brackets followed
 by `oops` are refused here and returned as text upstream.
 
+## Response bundle reader
+
+The core's `parse_response_bundle` ports the renderer package's
+`parseResponseBundle`. It reads the winning content of a message, removes
+its scripts section, and returns the program, optional bundle name, Cloud
+script names in insertion order, completion and bundle flags, and the
+scripts error once streaming ends. `parse_response_bundle_utf16` accepts UTF-16
+units directly, including a cut between the halves of an astral scalar.
+The native and WebAssembly bindings return JSON with the scripts set as
+an array. The Cloud script code is used for validation and revision equality.
+
+The reference adapter calls the unchanged MIT renderer source using
+the pinned lang-core message reader. The cases start with inputs from the
+renderer's tests. The golden compares serialized fields byte for byte on
+stored reads and every UTF-16 streaming cut, including empty and full
+prefixes. Tests also cover the original response size, the depth of the
+scripts header and payload and of the winning context, and native and
+WebAssembly wiring. [Commit](reference/UPSTREAM)
+[Renderer source](reference/responseBundle.ts)
+[Adapter](reference/response-bundles.ts)
+[Cases](conformance/response-bundles.json)
+[Golden](conformance/golden/response-bundles.json)
+
+The scripts revision is opaque. The comparison assigns an equality class
+to each revision in a read and its cuts, and compares whether revisions
+are equal across selected pairs of responses. The core sorts by plain
+UTF-16 name order for a stable, locale-independent token. Upstream uses
+`localeCompare`. When distinct names compare equal in its locale, upstream's
+stable sort preserves their payload order. The paired case for `é` and
+`é` pins the resulting difference in equality when those names are
+reversed.
+
+## Deliberately not ported from lang-core
+
+- The JavaScript authoring API, including `defineComponent`, `createLibrary`
+  and the zod signature helpers.
+- Install telemetry.
+- The `artifactTool` request helper.
+
 ## Differential fuzzing
 
 `scripts/fuzz.sh` runs generated and mangled programs through the core and a long-lived reference process and compares fingerprints of the one-shot result, the tokens and every push of a random chunking. `scripts/fuzz.sh --edits` does the same for merges (programs with patches made from them) and serialization (real parse results, sometimes with fields deleted, retyped or renamed), comparing full outputs. Shrunk mismatches are saved as corpus cases.
@@ -487,6 +526,10 @@ by `oops` are refused here and returned as text upstream.
 `scripts/fuzz.sh --messages` replays and mutates the message cases through the same
 reference worker, comparing complete reads, UTF-16 cuts, written bytes and URI
 errors. The hunt records reproducible message findings with their request and outputs.
+
+`scripts/fuzz.sh --response-bundles` replays and mutates the response bundle
+cases. The reference worker compares stored reads, every UTF-16 streaming
+cut and revision equality within each request, including paired responses.
 
 | When | What | Inputs | Unexplained mismatches |
 |---|---|---:|---:|
@@ -681,6 +724,7 @@ scripts/import-corpus.sh [<checkout>]   # re-import upstream programs and test c
 scripts/update-reference.sh <commit>    # vendor another upstream commit, then import and regenerate
 scripts/fuzz.sh --seed 1 --count 10000  # parse fuzzing (Bun)
 scripts/fuzz.sh --edits --seed 1 --count 10000
+scripts/fuzz.sh --response-bundles --seed 1 --count 10000
 ```
 
 

@@ -28,7 +28,7 @@ def compare_goldens(old, new, out):
     old, new = Path(old), Path(new)
     old_files, new_files = files(old), files(new)
     read = lambda root, rel: (root / rel).read_bytes() if (root / rel).is_file() else None
-    parse, edits, prompts, messages = {}, {}, [], []
+    parse, edits, prompts, messages, bundles = {}, {}, [], [], []
     totals = {
         "parse": sum(1 for f in old_files if f.endswith(".oneshot.json")),
         "prompts": sum(1 for f in old_files if f.startswith("prompts/")),
@@ -44,6 +44,15 @@ def compare_goldens(old, new, out):
             totals["messages"] = len(a)
             messages = sorted(k for k in a.keys() | b.keys() if a.get(k) != b.get(k))
             changed = bool(messages)
+        elif rel == "response-bundles.json":
+            a = json.loads(before) if before else {}
+            b = json.loads(after) if after else {}
+            left, right = a.get("cases", {}), b.get("cases", {})
+            totals["response-bundles"] = len(left) + int("revisionPairs" in a)
+            bundles = sorted(k for k in left.keys() | right.keys() if left.get(k) != right.get(k))
+            if a.get("revisionPairs") != b.get("revisionPairs"):
+                bundles.append("revision pairs")
+            changed = bool(bundles)
         elif rel.startswith("edits/"):
             a = json.loads(before) if before else {}
             b = json.loads(after) if after else {}
@@ -63,7 +72,7 @@ def compare_goldens(old, new, out):
     for folder in sorted((p for p in new.rglob("*") if p.is_dir()), key=lambda p: -len(p.parts)):
         if not any(folder.iterdir()):
             folder.rmdir()
-    summary = {"totals": totals, "parse": parse, "edits": edits, "prompts": prompts, "messages": messages}
+    summary = {"totals": totals, "parse": parse, "edits": edits, "prompts": prompts, "messages": messages, "response-bundles": bundles}
     Path(out).write_text(json.dumps(summary, indent=1) + "\n")
 
 
@@ -176,6 +185,7 @@ def finding_section(n, f):
     check = {"parse": "parsing", "edits": "edits", "merge": "merging", "serialize": "converting back to source",
              "invariant": f"the {f.get('rule', '')} invariant", "invariants": "invariants",
              "messages": "reading and writing messages",
+             "response-bundles": "reading response bundles",
              "coverage": f"coverage-guided fuzzing, {f.get('target', '')}"}[f["check"]]
     kind = {"mismatch": "Mismatch", "crash": "Crash", "blow-up": "Blow-up", "quirk?": "Quirk?"}[f["kind"]]
     lines = [f"### {n}. {kind}: {check}" + (", streaming" if f.get("streaming") else "")]
@@ -206,7 +216,7 @@ def finding_section(n, f):
         lines.append(f"- **Saved as:** `{f['case']}` in this folder: {where}")
     elif f["kind"] == "quirk?" and f["check"] == "parse":
         lines.append("- **Not saved as a case:** the reference throws, so it has no golden")
-    if f["check"] != "messages" and isinstance(f.get("reference"), str):
+    if f["check"] not in ("messages", "response-bundles") and isinstance(f.get("reference"), str):
         lines.append(f"- **The reference threw:** `{f['reference']}`")
     if f.get("note"):
         lines.append(f"- {f['note']}")
@@ -225,7 +235,7 @@ def finding_section(n, f):
     if f["check"] in ("merge", "serialize") and "input" in f:
         lines += ["", "The reference:", "", fenced(json.dumps(f.get("reference"), ensure_ascii=False))]
         lines += ["", "The core:", "", fenced(json.dumps(f.get("core"), ensure_ascii=False))]
-    if f["check"] == "messages" and "request" in f:
+    if f["check"] in ("messages", "response-bundles") and "request" in f:
         lines += ["Request:", "", fenced(f["request"]), "", "The reference:", "",
                   fenced(f["reference"]), "", "The core:", "", fenced(f["rust"])]
     if f.get("log"):
@@ -327,6 +337,7 @@ def upstream_section(hunt, meta):
         *[(label, len(changed["edits"].get(kind, [])), totals[kind]) for kind, label in EDIT_KINDS.items()],
         ("system prompts", len(changed["prompts"]), totals["prompts"]),
         ("messages", len(changed.get("messages", [])), totals.get("messages", 0)),
+        ("response bundle comparisons", len(changed.get("response-bundles", [])), totals.get("response-bundles", 0)),
     ]
     if not any(n for _, n, _ in counts):
         lines.append(f"With {newest_name}, every output across our corpus stays the same.")
@@ -346,6 +357,7 @@ def upstream_section(hunt, meta):
     named += [f"`{kind}/{name}`" for kind, names in changed["edits"].items() for name in names]
     named += [f"`prompts/{p}`" for p in changed["prompts"]]
     named += [f"`messages/{name}`" for name in changed.get("messages", [])]
+    named += [f"`response-bundles/{name}`" for name in changed.get("response-bundles", [])]
     lines.append("Changed: " + ", ".join(named[:40]) + (f", and {len(named) - 40} more" if len(named) > 40 else "") + ".")
     lines.append("")
     lines.append("`upstream/changed.json` lists them all, `upstream/golden/` holds the new versions of the changed goldens, and `upstream/lang-core/` the new reference. Moving the pin is its own ticket.")
@@ -361,8 +373,9 @@ def report(hunt, ran):
         findings = [json.loads(line) for line in (hunt / "findings.jsonl").read_text().splitlines() if line.strip()]
     findings += process_findings(hunt, "parse", "parsing") + process_findings(hunt, "edits", "edits") + process_findings(hunt, "invariants", "invariants")
     findings += process_findings(hunt, "messages", "messages")
+    findings += process_findings(hunt, "response-bundles", "response bundles")
     findings += coverage_findings(hunt)
-    summaries = {c: json.loads(text(hunt / f"summary-{c}.json")) if (hunt / f"summary-{c}.json").is_file() else None for c in ["parse", "merge", "serialize", "messages", "invariants"]}
+    summaries = {c: json.loads(text(hunt / f"summary-{c}.json")) if (hunt / f"summary-{c}.json").is_file() else None for c in ["parse", "merge", "serialize", "messages", "response-bundles", "invariants"]}
 
     code = f"`{meta['commit'][:7]}`" + (" with uncommitted changes" if meta["dirty"] else "")
     out = [f"# Hunt, {meta['started']}", ""]
@@ -370,7 +383,7 @@ def report(hunt, ran):
     out.append("")
     out += ["## Summary", "", "| Check | Ran | Findings |", "|---|---|---|"]
     by_check = lambda c: [f for f in findings if f["check"] == c]
-    for name, check, unit in [("Differential fuzzing, parsing", "parse", "programs"), ("Differential fuzzing, merging", "merge", "merges"), ("Differential fuzzing, converting back to source", "serialize", "trees"), ("Differential fuzzing, messages", "messages", "inputs")]:
+    for name, check, unit in [("Differential fuzzing, parsing", "parse", "programs"), ("Differential fuzzing, merging", "merge", "merges"), ("Differential fuzzing, converting back to source", "serialize", "trees"), ("Differential fuzzing, messages", "messages", "inputs"), ("Differential fuzzing, response bundles", "response-bundles", "requests")]:
         row = fuzz_row(name, unit, summaries[check], by_check(check))
         if row:
             out.append(row)
@@ -380,7 +393,7 @@ def report(hunt, ran):
         found = [f for f in by_check("invariant") if f.get("rule") == rule]
         row = fuzz_row(f"Invariant: {rule.replace('-', ' ')}", "programs", tallies, found)
         out.append(row.replace(" known divergence", " known exception"))
-    for check, label in [("parse", "parsing"), ("edits", "edits"), ("messages", "messages"), ("invariants", "invariants")]:
+    for check, label in [("parse", "parsing"), ("edits", "edits"), ("messages", "messages"), ("response-bundles", "response bundles"), ("invariants", "invariants")]:
         status = text(hunt / f"status-{check}")
         if status.startswith("skipped"):
             out.append(f"| Differential fuzzing, {label} | not run: {status[len('skipped: '):]} | |")
@@ -420,7 +433,7 @@ def report(hunt, ran):
         "- `report.md`: this report",
         "- `findings.jsonl`: each finding as a line of JSON",
         "- `fuzz.json` with `cases/fuzz/`, `merge-fuzz.json`, `serialize-fuzz.json`: the findings saved as corpus cases, in the corpus's formats",
-        "- `parse.log`, `edits.log`, `messages.log`, `upstream.log`: what each check printed",
+        "- `parse.log`, `edits.log`, `messages.log`, `response-bundles.log`, `upstream.log`: what each check printed",
         "- `upstream/`: the upstream check's working files",
         "",
     ]

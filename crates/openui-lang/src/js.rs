@@ -190,25 +190,35 @@ pub(crate) fn json_parse_string(literal: &str) -> Option<String> {
 pub(crate) fn write_json_string(out: &mut String, s: &str) {
     out.push('"');
     for c in s.chars() {
-        match c {
-            '"' => out.push_str("\\\""),
-            '\\' => out.push_str("\\\\"),
-            '\u{08}' => out.push_str("\\b"),
-            '\u{0C}' => out.push_str("\\f"),
-            '\n' => out.push_str("\\n"),
-            '\r' => out.push_str("\\r"),
-            '\t' => out.push_str("\\t"),
-            c if c < '\u{20}' => {
-                let _ = write!(out, "\\u{:04x}", c as u32);
-            }
-            c if c as u32 >= LONE_SURROGATE_BASE => {
-                let unit = c as u32 - LONE_SURROGATE_BASE + 0xD800;
-                let _ = write!(out, "\\u{unit:04x}");
-            }
-            c => out.push(c),
-        }
+        write_json_char::<false>(out, c);
     }
     out.push('"');
+}
+
+#[inline(always)]
+pub(crate) fn write_json_char<const EXACT_UTF16: bool>(out: &mut String, c: char) {
+    match c {
+        '"' => out.push_str("\\\""),
+        '\\' => out.push_str("\\\\"),
+        '\u{08}' => out.push_str("\\b"),
+        '\u{0C}' => out.push_str("\\f"),
+        '\n' => out.push_str("\\n"),
+        '\r' => out.push_str("\\r"),
+        '\t' => out.push_str("\\t"),
+        c if c < '\u{20}' => {
+            let _ = write!(out, "\\u{:04x}", c as u32);
+        }
+        c if !EXACT_UTF16 && c as u32 >= LONE_SURROGATE_BASE => {
+            let unit = c as u32 - LONE_SURROGATE_BASE + 0xD800;
+            let _ = write!(out, "\\u{unit:04x}");
+        }
+        c => out.push(c),
+    }
+}
+
+#[inline]
+pub(crate) fn write_json_surrogate(out: &mut String, unit: u16) {
+    let _ = write!(out, "\\u{unit:04x}");
 }
 
 /// UTF-8 bytes in JSON.stringify's escaped string body, without quotes.
@@ -643,7 +653,7 @@ pub fn parse_json_with_limits(
     limits: crate::Limits,
 ) -> Result<serde_json::Value, JsonError> {
     let _ceiling = crate::stack::limit(limits.depth());
-    JsonReader::new(text).read(limits.json_depth())
+    JsonReader::new(text).read::<_, false>(limits.json_depth(), json_parse_string)
 }
 
 /// Read host JSON directly as an OpenUI [Value](crate::Value).
@@ -653,7 +663,7 @@ pub fn parse_json_with_limits(
 /// syntax error or replacement of a duplicate key. Numbers retain JavaScript's
 /// double values, including negative zero and overflow to infinity.
 pub fn parse_json_value(text: &str, max_depth: usize) -> Result<crate::Value, JsonError> {
-    JsonReader::new(text).read(max_depth)
+    JsonReader::new(text).read::<_, false>(max_depth, json_parse_string)
 }
 
 /// Message context uses the core's JavaScript numbers and stack-safe values.
@@ -662,6 +672,16 @@ pub(crate) fn read_message_json(
     limits: crate::Limits,
 ) -> Result<crate::Value, JsonError> {
     parse_json_value(text, limits.json_depth())
+}
+
+// The bundle decoder has already canonicalized surrogate pairs in its own
+// lossless string representation.
+pub(crate) fn read_bundle_json(
+    text: &str,
+    limits: crate::Limits,
+    decode_string: impl Copy + Fn(&str) -> Option<String>,
+) -> Result<crate::Value, JsonError> {
+    JsonReader::new(text).read::<_, true>(limits.json_depth(), decode_string)
 }
 
 struct JsonReader<'a> {
@@ -682,11 +702,11 @@ trait JsonTarget: Sized {
 
     fn null() -> Self;
     fn boolean(value: bool) -> Self;
-    fn string(text: String) -> Self;
+    fn string<const EXACT_UTF16: bool>(text: String) -> Self;
     fn number(text: &str, integer: bool) -> Option<Self>;
     fn array(items: Vec<Self>) -> Self;
     fn object(fields: Self::Fields) -> Self;
-    fn define(fields: &mut Self::Fields, key: String, value: Self);
+    fn define<const EXACT_UTF16: bool>(fields: &mut Self::Fields, key: String, value: Self);
 }
 
 impl JsonTarget for serde_json::Value {
@@ -698,7 +718,7 @@ impl JsonTarget for serde_json::Value {
     fn boolean(value: bool) -> Self {
         Self::Bool(value)
     }
-    fn string(text: String) -> Self {
+    fn string<const EXACT_UTF16: bool>(text: String) -> Self {
         Self::String(text)
     }
     fn number(text: &str, integer: bool) -> Option<Self> {
@@ -718,7 +738,7 @@ impl JsonTarget for serde_json::Value {
     fn object(fields: Self::Fields) -> Self {
         Self::Object(fields)
     }
-    fn define(fields: &mut Self::Fields, key: String, value: Self) {
+    fn define<const EXACT_UTF16: bool>(fields: &mut Self::Fields, key: String, value: Self) {
         fields.insert(key, value);
     }
 }
@@ -732,8 +752,12 @@ impl JsonTarget for crate::Value {
     fn boolean(value: bool) -> Self {
         Self::Bool(value)
     }
-    fn string(text: String) -> Self {
-        Self::Str(normalize_js_string(text))
+    fn string<const EXACT_UTF16: bool>(text: String) -> Self {
+        Self::Str(if EXACT_UTF16 {
+            text
+        } else {
+            normalize_js_string(text)
+        })
     }
     fn number(text: &str, _: bool) -> Option<Self> {
         text.parse().ok().map(Self::Num)
@@ -744,8 +768,15 @@ impl JsonTarget for crate::Value {
     fn object(fields: Self::Fields) -> Self {
         Self::Obj(std::sync::Arc::new(fields))
     }
-    fn define(fields: &mut Self::Fields, key: String, value: Self) {
-        fields.define(normalize_js_string(key), value);
+    fn define<const EXACT_UTF16: bool>(fields: &mut Self::Fields, key: String, value: Self) {
+        fields.define(
+            if EXACT_UTF16 {
+                key
+            } else {
+                normalize_js_string(key)
+            },
+            value,
+        );
     }
 }
 
@@ -781,7 +812,11 @@ impl<'a> JsonReader<'a> {
         }
     }
 
-    fn read<V: JsonTarget>(mut self, limit: usize) -> Result<V, JsonError> {
+    fn read<V: JsonTarget, const EXACT_UTF16: bool>(
+        mut self,
+        limit: usize,
+        decode_string: impl Copy + Fn(&str) -> Option<String>,
+    ) -> Result<V, JsonError> {
         let mut open: Vec<Open<V>> = Vec::new();
         let mut progress = Progress::new("the JSON reader");
         loop {
@@ -811,12 +846,12 @@ impl<'a> JsonReader<'a> {
                     if self.eat(b'}') {
                         V::object(V::Fields::default())
                     } else {
-                        let key = self.key()?;
+                        let key = self.key(decode_string)?;
                         open.push(Open::Object(V::Fields::default(), key));
                         continue;
                     }
                 }
-                Some(b'"') => V::string(self.string()?),
+                Some(b'"') => V::string::<EXACT_UTF16>(self.string(decode_string)?),
                 Some(b'-' | b'0'..=b'9') => self.number::<V>()?,
                 Some(_) if self.literal("true") => V::boolean(true),
                 Some(_) if self.literal("false") => V::boolean(false),
@@ -849,9 +884,9 @@ impl<'a> JsonReader<'a> {
                     }
                     Some(Open::Object(map, key)) => {
                         // A repeated key keeps its first position and its last value.
-                        V::define(map, std::mem::take(key), value);
+                        V::define::<EXACT_UTF16>(map, std::mem::take(key), value);
                         if self.eat(b',') {
-                            *key = self.key()?;
+                            *key = self.key(decode_string)?;
                             break;
                         }
                         if !self.eat(b'}') {
@@ -868,19 +903,25 @@ impl<'a> JsonReader<'a> {
     }
 
     /// `"key" :`
-    fn key(&mut self) -> Result<String, JsonError> {
+    fn key(
+        &mut self,
+        decode_string: impl Copy + Fn(&str) -> Option<String>,
+    ) -> Result<String, JsonError> {
         self.skip_ws();
         if self.s.get(self.pos) != Some(&b'"') {
             return Err(self.error("expected a string key"));
         }
-        let key = self.string()?;
+        let key = self.string(decode_string)?;
         if !self.eat(b':') {
             return Err(self.error("expected :"));
         }
         Ok(key)
     }
 
-    fn string(&mut self) -> Result<String, JsonError> {
+    fn string(
+        &mut self,
+        decode_string: impl Copy + Fn(&str) -> Option<String>,
+    ) -> Result<String, JsonError> {
         let start = self.pos;
         let mut i = start + 1;
         let mut progress = Progress::new("the JSON reader");
@@ -898,7 +939,7 @@ impl<'a> JsonReader<'a> {
         self.pos = i + 1;
         self.text
             .get(start..self.pos)
-            .and_then(json_parse_string)
+            .and_then(decode_string)
             .ok_or_else(|| JsonError {
                 message: format!("bad string at byte {start}"),
                 depth_limited: false,

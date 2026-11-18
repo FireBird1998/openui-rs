@@ -3,3 +3,8 @@ commit: 47b9cae0d3b26a8c9d7514d5887a6d6608801ac9
 package: @openuidev/lang-core 1.1.0
 path: packages/lang-core/src
 vendored: 2026-11-06
+
+renderer: @openuidev/react-lang
+renderer path: packages/react-lang/src/responseBundle.ts
+renderer commit: 47b9cae0d3b26a8c9d7514d5887a6d6608801ac9
+renderer license: react-lang-LICENSE

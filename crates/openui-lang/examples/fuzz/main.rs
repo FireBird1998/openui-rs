@@ -34,6 +34,7 @@ mod generate;
 mod invariants;
 mod messages;
 mod reference;
+mod response_bundles;
 mod rng;
 mod rules;
 mod runtime;
@@ -704,6 +705,12 @@ fn main() {
     let mut reference = Reference::start(&root.join("reference"));
     if args.iter().any(|a| a == "--messages") {
         if !messages::run(seed, batches, &mut reference) && findings::run().dir.is_none() {
+            std::process::exit(1);
+        }
+        return;
+    }
+    if args.iter().any(|a| a == "--response-bundles") {
+        if !response_bundles::run(seed, batches, &mut reference) && findings::run().dir.is_none() {
             std::process::exit(1);
         }
         return;

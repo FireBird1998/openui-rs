@@ -35,7 +35,9 @@ use std::time::Instant;
 use openui_lang::{Library, Limits, ParseResult, StreamParser};
 
 mod message;
+mod response_bundle;
 pub use message::{build_message, parse_message};
+pub use response_bundle::parse_response_bundle;
 mod runtime;
 pub use runtime::*;
 

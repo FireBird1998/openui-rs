@@ -37,7 +37,7 @@ mkdir -p "$ROOT/target"
 work="$(mktemp -d "$ROOT/target/golden.XXXXXX")"
 trap 'rm -rf "$work"' EXIT
 mkdir "$work/reference" "$work/conformance"
-cp "$ROOT"/reference/*.ts "$ROOT/reference/package.json" "$work/reference/"
+cp "$ROOT"/reference/*.ts "$ROOT/reference/package.json" "$ROOT/reference/tsconfig.json" "$work/reference/"
 ln -s "$node_modules" "$work/reference/node_modules"
 cp -R "$lang_core" "$work/reference/lang-core"
 for entry in "$ROOT"/conformance/*; do
@@ -50,6 +50,7 @@ done
   unset OPENUI_RUNTIME_TELEMETRY_ENABLED
   bun --no-install run.ts golden
   bun --no-install messages.ts
+  bun --no-install response-bundles.ts
   bun --no-install prompts.ts golden
   bun --no-install edits.ts golden
   bun --no-install runtime.ts golden
