@@ -141,6 +141,24 @@ variants, recovery, dependencies, stable keys, and statement order across
 edits. Dispatch uses a JavaScript string for the tool name. Errors retain
 the reference's original evaluated `toolName` value.
 
+A query is loading while its current key has a call in flight. A successful
+completion while the query wants the key gives it a fetch history. In
+`displaying-another-query-result`, displaying a result still held by a
+different query leaves that history untouched. Only the first query refetches
+until the second receives a successful completion of its own.
+
+The rapid-edit scenarios revisit both a settled result and a still-pending
+call after two key changes. The reference checks the previous key for removal
+on success, and the current and previous keys on statement removal. Displacing
+a previous key between these events can leave a reusable cache entry. A late
+call on a removed and recreated key can update the interested query's error
+and fetch history. Its data and pending status belong to the original entry.
+
+In `reader-waits-for-its-input`, the reader's arguments use the source query.
+Rust dispatches both calls on the first evaluate, with a null input for the
+reader. Lang-core dispatches the source first, then dispatches the reader with
+the source result on completion. Both step observations are pinned for #86.
+
 These are lang-core's observable pre-execution results. The supplied overlay is
 ours: own `referenceValues` entries for declared query/mutation ids win,
 including null, false and empty containers, standing in for loaded data.
@@ -663,6 +681,9 @@ The reserved-scalar and message context depth differences are described under
 
 | Input | Reference | Core/runtime |
 |---|---|---|
+| A query changes keys during a call, then returns to a finished or failed key | can stay loading after the other call finishes, and stay refetching after a prior success. Conversely, returning to an outstanding key after a failure can hide its loading state | derives loading from the current cache entry, including when an older call completes after that key was removed and recreated. Both complete streams are pinned in the query scenarios |
+| An in-flight key passes from `a` to `b`, its only current reader (`pending-key-changes-its-only-reader`) | discards a success because the statement that started the call moved to a different key | delivers the success to `b` under ADR 0013. This can change the result even when the statements never want the key simultaneously |
+| A query with an array default or result has the same id as `__openui_errors`, `__openui_loading` or `__openui_refetching` | reuses the query's array as the status list. Pushes can accumulate across internal snapshot rebuilds and duplicate ids or errors | the statement's value occupies the colliding property. Building a snapshot preserves query defaults and cached tool results. Each of the three names has a separate two-sided pin |
 | Nested undefined in runtime state (`$f = {}`, then set `{a: $m.b}` with `$m = {}`) | retains an undefined-valued own field; setting the one-key object over `{}` notifies | the evaluator omits undefined object fields and writes null array items; the store sees that normalized value. This set is ignored. Stored JSON agrees; a call can count as one version step more or fewer |
 | Streaming completed container state defaults (`store-stream-default-identities.json`) | rebuilds identities and can notify again while later declarations arrive | reuses completed defaults and suppresses those extra notifications; `completed_defaults_keep_values_but_reused_containers_suppress_notifications` pins both histories and checks matching snapshots |
 | Nesting beyond the core limit | the recursion limit depends on the engine; it is not probed during regeneration | stops at 256, sets `depth_limited` |

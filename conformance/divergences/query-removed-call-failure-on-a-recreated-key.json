@@ -1,0 +1,22 @@
+{
+  "case": "removed-call-failure-on-a-recreated-key",
+  "reason": "loading-follows-the-key",
+  "reference": [
+    "{\"snapshot\":{\"__openui_loading\":[\"q\"],\"__openui_refetching\":[],\"__openui_errors\":[],\"q\":\"d\"},\"calls\":[{\"call\":0,\"toolName\":\"t\",\"args\":{\"v\":0}}],\"changed\":true}",
+    "{\"snapshot\":{\"__openui_loading\":[\"q\"],\"__openui_refetching\":[],\"__openui_errors\":[],\"q\":\"d\"},\"calls\":[],\"changed\":false}",
+    "{\"snapshot\":{\"__openui_loading\":[],\"__openui_refetching\":[],\"__openui_errors\":[]},\"calls\":[],\"changed\":true}",
+    "{\"snapshot\":{\"__openui_loading\":[],\"__openui_refetching\":[],\"__openui_errors\":[]},\"calls\":[],\"changed\":false}",
+    "{\"snapshot\":{\"__openui_loading\":[\"q\"],\"__openui_refetching\":[],\"__openui_errors\":[],\"q\":\"d\"},\"calls\":[{\"call\":1,\"toolName\":\"t\",\"args\":{\"v\":0}}],\"changed\":true}",
+    "{\"snapshot\":{\"__openui_loading\":[],\"__openui_refetching\":[],\"__openui_errors\":[{\"source\":\"query\",\"statementId\":\"q\",\"component\":\"Query\",\"toolName\":\"t\",\"code\":\"tool-error\",\"message\":\"Query \\\"t\\\" failed: earlier generation\"}],\"q\":\"d\"},\"calls\":[],\"changed\":true}",
+    "{\"snapshot\":{\"__openui_loading\":[],\"__openui_refetching\":[],\"__openui_errors\":[],\"q\":\"current\"},\"calls\":[],\"changed\":true}"
+  ],
+  "rust": [
+    "{\"snapshot\":{\"__openui_loading\":[\"q\"],\"__openui_refetching\":[],\"__openui_errors\":[],\"q\":\"d\"},\"calls\":[{\"call\":0,\"toolName\":\"t\",\"args\":{\"v\":0}}],\"changed\":true}",
+    "{\"snapshot\":{\"__openui_loading\":[\"q\"],\"__openui_refetching\":[],\"__openui_errors\":[],\"q\":\"d\"},\"calls\":[],\"changed\":false}",
+    "{\"snapshot\":{\"__openui_loading\":[],\"__openui_refetching\":[],\"__openui_errors\":[]},\"calls\":[],\"changed\":true}",
+    "{\"snapshot\":{\"__openui_loading\":[],\"__openui_refetching\":[],\"__openui_errors\":[]},\"calls\":[],\"changed\":false}",
+    "{\"snapshot\":{\"__openui_loading\":[\"q\"],\"__openui_refetching\":[],\"__openui_errors\":[],\"q\":\"d\"},\"calls\":[{\"call\":1,\"toolName\":\"t\",\"args\":{\"v\":0}}],\"changed\":true}",
+    "{\"snapshot\":{\"__openui_loading\":[\"q\"],\"__openui_refetching\":[],\"__openui_errors\":[{\"source\":\"query\",\"statementId\":\"q\",\"component\":\"Query\",\"toolName\":\"t\",\"code\":\"tool-error\",\"message\":\"Query \\\"t\\\" failed: earlier generation\"}],\"q\":\"d\"},\"calls\":[],\"changed\":true}",
+    "{\"snapshot\":{\"__openui_loading\":[],\"__openui_refetching\":[],\"__openui_errors\":[],\"q\":\"current\"},\"calls\":[],\"changed\":true}"
+  ]
+}

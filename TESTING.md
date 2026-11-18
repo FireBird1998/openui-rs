@@ -334,12 +334,27 @@ Not in the check, because they need Bun, time or a screen:
 
 `query_scenarios` replays `conformance/query-scenarios.json` and compares
 each observation byte for byte with `golden/query-scenarios.json`.
+For a named divergence it checks the regenerated upstream bytes and the Rust
+bytes against the separate streams in `divergences/query-*.json`. A pin
+whose two streams converge fails the test.
 From `reference/`, run `bun --no-install query-scenarios.ts` to regenerate
 that file alone. The full regeneration script also runs this adapter.
 Set `OPENUI_QUERY_SCENARIO` to a scenario name to filter the Rust test.
 Call numbers are zero-based dispatch positions. Store and program edits
 only affect the manager on the next evaluate step. The reference clock stays
 fixed during these scenarios.
+
+With the cached Bun reference, run
+`cargo test -p openui-runtime --test query_scenarios -- --ignored --nocapture`
+for 3,000 seeded edit scripts. The statements draw from the same pool of tool arguments.
+Each current key has at most one query. The generator can transfer settled
+keys between statements. Transferring an outstanding call between statements
+has a separate two-sided pin because its result data can also differ. Replacements, removals, state edits and out-of-order completions
+run through the same two adapters as the named scenarios. The comparison
+reconstructs upstream's per-statement loading flag and checks it against the
+observations, then derives loading separately from dispatch and completion
+of the current key. Only those status memberships and their effect on the
+change flag may differ. Query values, diagnostics and calls compare in full.
 
 `query_commands` checks the shared work allowance, expression and host JSON
 depth refusals, and foreign and repeated call identities at the public seam.

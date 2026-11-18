@@ -538,6 +538,7 @@ impl<'a> ExpressionValue<'a> {
     /// for undefined, NaN and infinities. The traversal spends the owning
     /// evaluation's work, result room and depth. A function at the root or
     /// a cut has no serialization.
+    #[doc(hidden)]
     pub fn stable_json(&self) -> Option<String> {
         let mut result = None;
         let mut write = || result = stable_json::stable_json(&self.value);
@@ -551,6 +552,7 @@ impl<'a> ExpressionValue<'a> {
     /// Coerce the original evaluator value with JavaScript's string rules.
     /// This uses the owning evaluation's limits and reports coercion failures
     /// through its usual failure channel.
+    #[doc(hidden)]
     pub fn coerce_string(&self) -> Option<String> {
         let mut result = None;
         let mut coerce = || {

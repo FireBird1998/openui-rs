@@ -24,7 +24,9 @@ impl fmt::Debug for ToolCallId {
 
 struct CallIdentity {
     manager: Weak<()>,
-    key: Weak<str>,
+    key: Arc<str>,
+    tool_name: String,
+    raw_tool_name: Option<Value>,
     consumed: AtomicBool,
 }
 
@@ -124,6 +126,7 @@ struct Query {
     key: Arc<str>,
     previous: Option<Arc<str>>,
     defaults: Option<Value>,
+    // Set only by a success delivered while this query wants the key.
     ever_fetched: bool,
     error: Option<Value>,
 }
@@ -131,14 +134,8 @@ struct Query {
 #[derive(Default)]
 struct CacheEntry {
     data: Option<Value>,
-    pending: Option<PendingCall>,
+    pending: Option<ToolCallId>,
     failed: bool,
-}
-
-struct PendingCall {
-    id: ToolCallId,
-    tool_name: String,
-    raw_tool_name: Option<Value>,
 }
 
 struct Node<'a> {
@@ -250,7 +247,16 @@ impl QueryManager {
             .map(|statement| statement.statement_id.as_str())
             .collect::<HashSet<_>>();
         self.order.retain(|id| active.contains(id.as_str()));
-        self.queries.retain(|id, _| active.contains(id.as_str()));
+        let mut released = Vec::new();
+        self.queries.retain(|id, query| {
+            if active.contains(id.as_str()) {
+                return true;
+            }
+            released.push(query.key.clone());
+            released.extend(query.previous.take());
+            false
+        });
+        self.release_unused(released);
         let mut calls = Vec::new();
         for node in nodes {
             let query = self.queries.entry(node.id.into()).or_insert_with(|| {
@@ -268,22 +274,17 @@ impl QueryManager {
             }
             query.defaults = node.defaults;
             let entry = self.cache.entry(node.key);
-            let key = Arc::downgrade(entry.key());
+            let key = entry.key().clone();
             let entry = entry.or_default();
-            if entry.data.is_some() {
-                query.ever_fetched = true;
-            }
             if entry.data.is_none() && !entry.failed && entry.pending.is_none() {
                 let id = ToolCallId(Arc::new(CallIdentity {
                     manager: Arc::downgrade(&self.owner),
                     key,
-                    consumed: AtomicBool::new(false),
-                }));
-                entry.pending = Some(PendingCall {
-                    id: id.clone(),
                     tool_name: node.tool_name.clone(),
                     raw_tool_name: node.raw_tool_name,
-                });
+                    consumed: AtomicBool::new(false),
+                }));
+                entry.pending = Some(id.clone());
                 calls.push(ToolCall {
                     id,
                     tool_name: node.tool_name,
@@ -291,17 +292,26 @@ impl QueryManager {
                 });
             }
         }
-        self.clean_cache();
         calls
     }
 
-    fn clean_cache(&mut self) {
+    // Upstream checks the current and previous keys on removal, and releases
+    // the previous key on success. A second edit can displace a previous key
+    // before either event; a later visit can still reuse that cache entry.
+    fn release_unused(&mut self, released: Vec<Arc<str>>) {
+        if released.is_empty() {
+            return;
+        }
         let referenced = self
             .queries
             .values()
             .flat_map(|query| std::iter::once(&query.key).chain(query.previous.as_ref()))
             .collect::<HashSet<_>>();
-        self.cache.retain(|key, _| referenced.contains(key));
+        for key in released {
+            if !referenced.contains(&key) {
+                self.cache.remove(&key);
+            }
+        }
     }
 
     fn complete(
@@ -314,47 +324,54 @@ impl QueryManager {
         {
             return Err(QueryCommandError::InvalidCall);
         }
-        let entry = id.0.key.upgrade().and_then(|key| {
-            let wanted = self.queries.values().any(|query| query.key == key);
-            let entry = self.cache.get_mut(&key)?;
-            let pending = entry.pending.as_ref()?;
-            (Arc::ptr_eq(&pending.id.0, &id.0)).then_some((key, entry, wanted))
+        let key = &id.0.key;
+        let wanted = self.queries.values().any(|query| &query.key == key);
+        let entry = self.cache.get_mut(key).filter(|entry| {
+            entry
+                .pending
+                .as_ref()
+                .is_some_and(|pending| Arc::ptr_eq(&pending.0, &id.0))
         });
-        let Some((key, entry, wanted)) = entry else {
-            id.0.consumed.store(true, Ordering::Relaxed);
-            return Ok(false);
-        };
-        let success = match outcome {
-            ToolOutcome::Result(value) if wanted => Some(match value {
-                Some(value) => admit_result(value, self.limits)?,
-                None => Value::Null,
-            }),
-            _ => None,
-        };
+        // The result belongs to the entry in which the call started. A key
+        // can be removed and recreated before the host reports the outcome.
+        // The old call can still notify a query that wants that key, but it
+        // cannot write data into the new entry or settle its pending call.
+        if let Some(entry) = entry {
+            if wanted {
+                if let ToolOutcome::Result(value) = &outcome {
+                    entry.data = Some(match value {
+                        Some(value) => admit_result(value, self.limits)?,
+                        None => Value::Null,
+                    });
+                    entry.failed = false;
+                } else {
+                    entry.failed = true;
+                }
+            }
+            entry.pending = None;
+            // A discarded first outcome leaves no reusable state.
+            if !wanted && entry.data.is_none() && !entry.failed {
+                self.cache.remove(key);
+            }
+        }
         id.0.consumed.store(true, Ordering::Relaxed);
-        let Some(pending) = entry.pending.take() else {
-            return Ok(false);
-        };
         if !wanted {
             return Ok(false);
         }
-        entry.failed = success.is_none();
-        if let Some(data) = success {
-            entry.data = Some(data);
-        }
+        let mut released = Vec::new();
         for (statement_id, query) in &mut self.queries {
-            if query.key != key {
+            if &query.key != key {
                 continue;
             }
-            if entry.failed {
-                query.error = Some(pending.error(statement_id, &outcome));
-            } else {
+            if matches!(outcome, ToolOutcome::Result(_)) {
                 query.error = None;
                 query.ever_fetched = true;
-                query.previous = None;
+                released.extend(query.previous.take());
+            } else {
+                query.error = Some(id.0.error(statement_id, &outcome));
             }
         }
-        self.clean_cache();
+        self.release_unused(released);
         Ok(true)
     }
 
@@ -411,7 +428,7 @@ impl QueryManager {
     }
 }
 
-impl PendingCall {
+impl CallIdentity {
     fn error(&self, id: &str, outcome: &ToolOutcome<'_>) -> Value {
         let tool = &self.tool_name;
         let (code, message, hint) = match outcome {
@@ -508,6 +525,8 @@ impl EvaluationScope for QueryScope<'_> {
         self.calls.call_value_output(call, name, eval)
     }
 
+    // Query evaluation has no renderer prop context. Inspect the original
+    // result for its tool name or key, preserving assign markers and @Each items.
     fn project_result<'v>(
         &self,
         value: ExpressionValue<'v>,

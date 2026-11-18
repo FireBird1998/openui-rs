@@ -183,5 +183,201 @@
       {"kind":"complete","call":1,"outcome":{"kind":"result","value":"stale"}},
       {"kind":"complete","call":2,"outcome":{"kind":"tool-error","message":"stale error"}}
     ]
+  },
+  {
+    "name": "return-to-finished-key",
+    "program": "$f = 1\nq = Query(\"t\", {f: $f}, \"def\")",
+    "steps": [
+      {"kind":"evaluate"},
+      {"kind":"complete","call":0,"outcome":{"kind":"result","value":"one"}},
+      {"kind":"set","name":"$f","value":2},
+      {"kind":"evaluate"},
+      {"kind":"set","name":"$f","value":1},
+      {"kind":"evaluate"},
+      {"kind":"complete","call":1,"outcome":{"kind":"result","value":"two"}},
+      {"kind":"evaluate"}
+    ]
+  },
+  {
+    "name": "return-to-failed-key",
+    "program": "$f = 1\nq = Query(\"t\", {f: $f}, \"def\")",
+    "steps": [
+      {"kind":"evaluate"},
+      {"kind":"complete","call":0,"outcome":{"kind":"tool-error","message":"one"}},
+      {"kind":"set","name":"$f","value":2},
+      {"kind":"evaluate"},
+      {"kind":"set","name":"$f","value":1},
+      {"kind":"evaluate"},
+      {"kind":"complete","call":1,"outcome":{"kind":"result","value":"two"}},
+      {"kind":"evaluate"}
+    ]
+  },
+  {
+    "name": "displaying-another-query-result",
+    "program": "a = Query(\"t\", {v:1})\nb = Query(\"t\", {v:0}, \"bdef\")",
+    "steps": [
+      {"kind":"evaluate"},
+      {"kind":"complete","call":0,"outcome":{"kind":"result","value":"r1"}},
+      {"kind":"complete","call":1,"outcome":{"kind":"tool-error","message":"failed"}},
+      {"kind":"replace","program":"a = Query(\"t\", {v:2})\nb = Query(\"t\", {v:0}, \"bdef\")"},
+      {"kind":"evaluate"},
+      {"kind":"replace","program":"a = Query(\"t\", {v:2})\nb = Query(\"t\", {v:1}, \"bdef\")"},
+      {"kind":"evaluate"},
+      {"kind":"replace","program":"a = Query(\"t\", {v:2})\nb = Query(\"t\", {v:5}, \"bdef\")"},
+      {"kind":"evaluate"},
+      {"kind":"complete","call":3,"outcome":{"kind":"result","value":"b result"}},
+      {"kind":"replace","program":"a = Query(\"t\", {v:2})\nb = Query(\"t\", {v:6}, \"bdef\")"},
+      {"kind":"evaluate"}
+    ]
+  },
+  {
+    "name": "statement-named-errors",
+    "program": "__openui_errors = Query(\"t\", null, [])\nother = Query(\"t\", {v:2})",
+    "steps": [
+      {"kind":"evaluate"},
+      {"kind":"complete","call":1,"outcome":{"kind":"tool-error","message":"other failed"}},
+      {"kind":"complete","call":0,"outcome":{"kind":"result","value":[]}},
+      {"kind":"replace","program":"__openui_errors = Query(\"t\", {v:3}, [])\nother = Query(\"t\", {v:4})"},
+      {"kind":"evaluate"},
+      {"kind":"complete","call":3,"outcome":{"kind":"result","value":"ok"}},
+      {"kind":"complete","call":2,"outcome":{"kind":"result","value":[]}}
+    ]
+  },
+  {
+    "name": "statement-named-loading",
+    "program": "__openui_loading = Query(\"t\", {v:1}, [])\nother = Query(\"t\", {v:2})",
+    "steps": [
+      {"kind":"evaluate"},
+      {"kind":"complete","call":0,"outcome":{"kind":"result","value":[]}},
+      {"kind":"complete","call":1,"outcome":{"kind":"tool-error","message":"other failed"}},
+      {"kind":"replace","program":"__openui_loading = Query(\"t\", {v:3}, [])\nother = Query(\"t\", {v:4})"},
+      {"kind":"evaluate"},
+      {"kind":"complete","call":3,"outcome":{"kind":"result","value":"ok"}},
+      {"kind":"complete","call":2,"outcome":{"kind":"result","value":[]}}
+    ]
+  },
+  {
+    "name": "statement-named-refetching",
+    "program": "__openui_refetching = Query(\"t\", {v:1}, [])\nother = Query(\"t\", {v:2})",
+    "steps": [
+      {"kind":"evaluate"},
+      {"kind":"complete","call":0,"outcome":{"kind":"result","value":[]}},
+      {"kind":"complete","call":1,"outcome":{"kind":"tool-error","message":"other failed"}},
+      {"kind":"replace","program":"__openui_refetching = Query(\"t\", {v:3}, [])\nother = Query(\"t\", {v:4})"},
+      {"kind":"evaluate"},
+      {"kind":"complete","call":3,"outcome":{"kind":"result","value":"ok"}},
+      {"kind":"complete","call":2,"outcome":{"kind":"result","value":[]}}
+    ]
+  },
+  {
+    "name": "reader-waits-for-its-input",
+    "program": "a = Query(\"source\")\nb = Query(\"reader\", {v:a})",
+    "steps": [
+      {"kind":"evaluate"},
+      {"kind":"complete","call":0,"outcome":{"kind":"result","value":"ready"}}
+    ]
+  },
+  {
+    "name": "query-context-preserves-assign-markers-and-each-items",
+    "program": "$n = 7\n$items = [{type:\"element\", typeName:\"Box\", partial:false, hasDynamicProps:true, props:{a:{k:\"StateRef\",n:\"$n\"}}}]\nm = Query(\"marker\", {__reactive:\"assign\", target:\"$n\"}, {__reactive:\"assign\", target:\"$n\"})\ne = Query(\"items\", @Each($items, x, x), @Each($items, x, x))",
+    "steps": [
+      {"kind":"evaluate"}
+    ]
+  },
+  {
+    "name": "rapid-edits-revisit-a-cached-result",
+    "program": "q = Query(\"t\", {v:0}, \"d\")",
+    "steps": [
+      {"kind":"evaluate"},
+      {"kind":"complete","call":0,"outcome":{"kind":"result","value":"original"}},
+      {"kind":"replace","program":"q = Query(\"t\", {v:1}, \"d\")"},
+      {"kind":"evaluate"},
+      {"kind":"replace","program":"q = Query(\"t\", {v:2}, \"d\")"},
+      {"kind":"evaluate"},
+      {"kind":"replace","program":""},
+      {"kind":"evaluate"},
+      {"kind":"replace","program":"q = Query(\"t\", {v:0}, \"d\")"},
+      {"kind":"evaluate"},
+      {"kind":"complete","call":1,"outcome":{"kind":"result","value":"stale"}},
+      {"kind":"complete","call":2,"outcome":{"kind":"tool-error","message":"stale"}}
+    ]
+  },
+  {
+    "name": "rapid-edits-revisit-an-outstanding-call",
+    "program": "q = Query(\"t\", {v:0}, \"d\")",
+    "steps": [
+      {"kind":"evaluate"},
+      {"kind":"replace","program":"q = Query(\"t\", {v:1}, \"d\")"},
+      {"kind":"evaluate"},
+      {"kind":"replace","program":"q = Query(\"t\", {v:2}, \"d\")"},
+      {"kind":"evaluate"},
+      {"kind":"replace","program":"q = Query(\"t\", {v:0}, \"d\")"},
+      {"kind":"evaluate"},
+      {"kind":"complete","call":0,"outcome":{"kind":"result","value":"original"}},
+      {"kind":"complete","call":2,"outcome":{"kind":"tool-error","message":"late"}},
+      {"kind":"complete","call":1,"outcome":{"kind":"result","value":"late"}}
+    ]
+  },
+  {
+    "name": "removed-call-failure-on-a-recreated-key",
+    "program": "q = Query(\"t\", {v:0}, \"d\")",
+    "steps": [
+      {"kind":"evaluate"},
+      {"kind":"replace","program":""},
+      {"kind":"evaluate"},
+      {"kind":"replace","program":"q = Query(\"t\", {v:0}, \"d\")"},
+      {"kind":"evaluate"},
+      {"kind":"complete","call":0,"outcome":{"kind":"tool-error","message":"earlier generation"}},
+      {"kind":"complete","call":1,"outcome":{"kind":"result","value":"current"}}
+    ]
+  },
+  {
+    "name": "removed-call-success-on-a-recreated-key",
+    "program": "q = Query(\"t\", {v:0}, \"d\")",
+    "steps": [
+      {"kind":"evaluate"},
+      {"kind":"replace","program":""},
+      {"kind":"evaluate"},
+      {"kind":"replace","program":"q = Query(\"t\", {v:0}, \"d\")"},
+      {"kind":"evaluate"},
+      {"kind":"complete","call":1,"outcome":{"kind":"tool-error","message":"current"}},
+      {"kind":"complete","call":0,"outcome":{"kind":"result","value":"retired data"}},
+      {"kind":"replace","program":"q = Query(\"t\", {v:1}, \"d\")"},
+      {"kind":"evaluate"}
+    ]
+  },
+  {
+    "name": "return-to-an-outstanding-key-after-failure",
+    "program": "q = Query(\"t\", {v:0}, \"d\")",
+    "steps": [
+      {"kind":"evaluate"},
+      {"kind":"replace","program":"q = Query(\"t\", {v:1}, \"d\")"},
+      {"kind":"evaluate"},
+      {"kind":"complete","call":1,"outcome":{"kind":"tool-error","message":"failed"}},
+      {"kind":"replace","program":"q = Query(\"t\", {v:0}, \"d\")"},
+      {"kind":"evaluate"},
+      {"kind":"complete","call":0,"outcome":{"kind":"result","value":"original"}}
+    ]
+  },
+  {
+    "name": "remove-statement-before-registering-its-replacement",
+    "program": "q = Query(\"t\", {v:0}, \"d\")",
+    "steps": [
+      {"kind":"evaluate"},
+      {"kind":"complete","call":0,"outcome":{"kind":"result","value":"original"}},
+      {"kind":"replace","program":"r = Query(\"t\", {v:0}, \"d\")"},
+      {"kind":"evaluate"},
+      {"kind":"complete","call":1,"outcome":{"kind":"result","value":"replacement"}}
+    ]
+  },
+  {
+    "name": "pending-key-changes-its-only-reader",
+    "program": "a = Query(\"t\", {v:0}, \"adef\")\nb = Query(\"t\", {v:2}, \"bdef\")",
+    "steps": [
+      {"kind":"evaluate"},
+      {"kind":"replace","program":"a = Query(\"t\", {v:1}, \"adef\")\nb = Query(\"t\", {v:0}, \"bdef\")"},
+      {"kind":"evaluate"},
+      {"kind":"complete","call":0,"outcome":{"kind":"result","value":"for zero"}}
+    ]
   }
 ]

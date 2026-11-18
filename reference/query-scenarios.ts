@@ -11,16 +11,16 @@ const { ToolNotFoundError } = await import('./lang-core/src/runtime/toolProvider
 const { McpToolError } = await import('./lang-core/src/runtime/mcp');
 const { unwrapFieldValue } = await import('./renderer-actions');
 
-type Outcome =
+export type Outcome =
   | { kind: 'result'; value?: unknown }
   | { kind: 'tool-not-found'; availableTools: string[] }
   | { kind: 'mcp-error' | 'tool-error'; message: string };
-type Step =
+export type Step =
   | { kind: 'evaluate' }
   | { kind: 'complete'; call: number; outcome: Outcome }
   | { kind: 'set'; name: string; value?: unknown }
   | { kind: 'replace'; program: string };
-type Scenario = { name: string; program: string; library?: Parameters<typeof compileSchema>[0]; steps: Step[] };
+export type Scenario = { name: string; program: string; library?: Parameters<typeof compileSchema>[0]; steps: Step[] };
 type Call = { toolName: string; args: unknown; finish(outcome: Outcome): Promise<void> };
 
 function makeClock() {
@@ -38,7 +38,9 @@ function makeClock() {
   };
 }
 
-async function replay(scenario: Scenario) {
+type Script = (calls: readonly Pick<Call, 'toolName' | 'args'>[]) => Iterable<Step>;
+
+async function replay(scenario: Scenario, script?: Script): Promise<string[]> {
   const library = compileSchema(scenario.library ?? { $defs: {} });
   let program = parse(scenario.program, library);
   const store = createStore();
@@ -72,7 +74,8 @@ async function replay(scenario: Scenario) {
   };
   try {
     const observations = [];
-    for (const step of scenario.steps) {
+    for (const step of script ? script(calls) : scenario.steps) {
+      if (script) scenario.steps.push(step);
       const first = calls.length;
       const before = JSON.stringify(manager.getSnapshot());
       // Evaluate passes the freshly parsed statements and live context.
@@ -94,24 +97,34 @@ async function replay(scenario: Scenario) {
         changed: before !== JSON.stringify(snapshot),
       }));
     }
-    return [scenario.name, observations];
+    return observations;
   } finally {
     manager.dispose();
     store.dispose();
   }
 }
 
-const scenarios: Scenario[] = JSON.parse(readFileSync('../conformance/query-scenarios.json', 'utf8'));
 const clock = makeClock();
 const { setInterval, clearInterval } = globalThis;
 const logError = console.error;
 Object.assign(globalThis, clock);
 console.error = () => {}; // Scripted rejections are observed through the snapshot.
 try {
-  const output = [];
-  for (const scenario of scenarios) output.push(await replay(scenario));
-  mkdirSync('../conformance/golden', { recursive: true });
-  writeFileSync('../conformance/golden/query-scenarios.json', JSON.stringify(Object.fromEntries(output)) + '\n');
+  if (process.argv[2] === '--random') {
+    const { randomScenario, keyLoadingObservations } = await import('./query-random');
+    for (let seed = 1; seed <= 3000; seed++) {
+      const { scenario, script, keys } = randomScenario(seed);
+      const reference = await replay(scenario, script);
+      const overrides = keyLoadingObservations(scenario, reference, keys);
+      console.log(JSON.stringify({ scenario, reference, overrides }));
+    }
+  } else {
+    const scenarios: Scenario[] = JSON.parse(readFileSync('../conformance/query-scenarios.json', 'utf8'));
+    const output = [];
+    for (const scenario of scenarios) output.push([scenario.name, await replay(scenario)]);
+    mkdirSync('../conformance/golden', { recursive: true });
+    writeFileSync('../conformance/golden/query-scenarios.json', JSON.stringify(Object.fromEntries(output)) + '\n');
+  }
 } finally {
   Object.assign(globalThis, { setInterval, clearInterval });
   console.error = logError;
