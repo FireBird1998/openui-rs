@@ -330,6 +330,20 @@ Not in the check, because they need Bun, time or a screen:
 | `scripts/bench.sh` | Streaming speed against the reference |
 | `scripts/viewer-timing.sh` | The viewer's drawing speed |
 
+### Query manager scenarios
+
+`query_scenarios` replays `conformance/query-scenarios.json` and compares
+each observation byte for byte with `golden/query-scenarios.json`.
+From `reference/`, run `bun --no-install query-scenarios.ts` to regenerate
+that file alone. The full regeneration script also runs this adapter.
+Set `OPENUI_QUERY_SCENARIO` to a scenario name to filter the Rust test.
+Call numbers are zero-based dispatch positions. Store and program edits
+only affect the manager on the next evaluate step. The reference clock stays
+fixed during these scenarios.
+
+`query_commands` checks the shared work allowance, expression and host JSON
+depth refusals, and foreign and repeated call identities at the public seam.
+
 ## The corpus
 
 Everything the tests compare is in `conformance/`:

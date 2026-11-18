@@ -260,6 +260,11 @@ Reference data is prepared once and reused in both bindings. An optional
 default behavior. Element-shaped data can run built-in state writes; finished
 custom-step JSON never grants custom authority (ADR 0004).
 
+The Rust runtime exposes a standalone `QueryManager` for settled programs.
+It evaluates query statements against a Store, returns tool calls for the
+embedder to perform, and updates its snapshot when the embedder reports an
+outcome.
+
 Runtime state and raw/prepared query receivers check depth only for the parts
 consumed; shallow member and length reads do not walk a deep sibling. Whole-value
 output still checks depth. Changed state values earn their own action-run input

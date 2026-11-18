@@ -1,0 +1,187 @@
+[
+  {
+    "name": "defaults-and-evaluated-arguments",
+    "program": "$name = \"tea\"\n$caption = \"Waiting for \"\nq = Query(\"find-\" + $name, {n: @Sum([1, 2, 3]), tags: [$name, true]}, {rows: [], caption: $caption + $name}, 5)",
+    "steps": [
+      {"kind":"evaluate"},
+      {"kind":"set","name":"$caption","value":"Searching for "},
+      {"kind":"evaluate"},
+      {"kind":"evaluate"},
+      {"kind":"complete","call":0,"outcome":{"kind":"result","value":{"rows":[{"name":"tea","count":6}],"caption":"Ready"}}},
+      {"kind":"evaluate"}
+    ]
+  },
+  {
+    "name": "null-and-missing-results-settle",
+    "program": "z = Query(\"empty\")\na = Query(\"null\", null, [1])",
+    "steps": [
+      {"kind":"evaluate"},
+      {"kind":"complete","call":1,"outcome":{"kind":"result","value":null}},
+      {"kind":"complete","call":0,"outcome":{"kind":"result"}},
+      {"kind":"evaluate"}
+    ]
+  },
+  {
+    "name": "failures-and-error-order",
+    "program": "z = Query(\"missing\", {}, \"searching\")\na = Query(\"missing-again\")\nm = Query(\"remote\")\nb = Query(\"offline\")",
+    "steps": [
+      {"kind":"evaluate"},
+      {"kind":"complete","call":3,"outcome":{"kind":"tool-error","message":"no route"}},
+      {"kind":"complete","call":2,"outcome":{"kind":"mcp-error","message":"invalid request"}},
+      {"kind":"complete","call":1,"outcome":{"kind":"tool-not-found","availableTools":[]}},
+      {"kind":"complete","call":0,"outcome":{"kind":"tool-not-found","availableTools":["search","read","find"]}},
+      {"kind":"evaluate"}
+    ]
+  },
+  {
+    "name": "success-clears-error-for-the-same-tool-and-arguments",
+    "program": "$filter = 0\nq = Query(\"search\", ($filter >= 0) ? {all: true} : {}, \"searching\")",
+    "steps": [
+      {"kind":"evaluate"},
+      {"kind":"complete","call":0,"outcome":{"kind":"tool-error","message":"try later"}},
+      {"kind":"set","name":"$filter","value":1},
+      {"kind":"evaluate"},
+      {"kind":"complete","call":1,"outcome":{"kind":"result","value":"found"}},
+      {"kind":"set","name":"$filter","value":0},
+      {"kind":"evaluate"},
+      {"kind":"complete","call":2,"outcome":{"kind":"result","value":"found again"}},
+      {"kind":"evaluate"}
+    ]
+  },
+  {
+    "name": "stable-keys-sort-at-every-level",
+    "program": "q = Query(\"lookup\", {z: [{b: 3, a: 2}], a: 1})",
+    "steps": [
+      {"kind":"evaluate"},
+      {"kind":"complete","call":0,"outcome":{"kind":"result","value":"cached"}},
+      {"kind":"replace","program":"q = Query(\"lookup\", {a: 1, z: [{a: 2, b: 3}]})"},
+      {"kind":"evaluate"},
+      {"kind":"replace","program":"q = Query(\"lookup\", {a: 1, z: [{a: 3, b: 2}]})"},
+      {"kind":"evaluate"},
+      {"kind":"complete","call":1,"outcome":{"kind":"result","value":"different"}}
+    ]
+  },
+  {
+    "name": "stable-keys-use-special-value-markers",
+    "program": "q = Query(\"lookup\", {a: [0][2], b: [1e308 * 1e308 - 1e308 * 1e308, 1e308 * 1e308, -1e308 * 1e308]})",
+    "steps": [
+      {"kind":"evaluate"},
+      {"kind":"complete","call":0,"outcome":{"kind":"result","value":"cached"}},
+      {"kind":"replace","program":"q = Query(\"lookup\", {a: \"__undefined__\", b: [\"__NaN__\", \"__Inf__\", \"__-Inf__\"]})"},
+      {"kind":"evaluate"},
+      {"kind":"replace","program":"q = Query(\"lookup\", {b: [null, null, null]})"},
+      {"kind":"evaluate"},
+      {"kind":"complete","call":1,"outcome":{"kind":"result","value":"different"}}
+    ]
+  },
+  {
+    "name": "tool-names-use-javascript-coercion",
+    "program": "a = Query(1 + 2, false)\nb = Query([1, null, true, [2, 3]], 0)\nc = Query({}, \"args\")\nd = Query(null, [])\ne = Query([0][2], [0][2])\nf = Query()",
+    "steps": [
+      {"kind":"evaluate"},
+      {"kind":"complete","call":1,"outcome":{"kind":"tool-not-found","availableTools":[]}},
+      {"kind":"complete","call":2,"outcome":{"kind":"mcp-error","message":""}}
+    ]
+  },
+  {
+    "name": "registered-order-survives-edits",
+    "program": "z = Query(\"z\", null, 1)\na = Query(\"a\", null, 2)",
+    "steps": [
+      {"kind":"evaluate"},
+      {"kind":"complete","call":0,"outcome":{"kind":"result","value":1}},
+      {"kind":"complete","call":1,"outcome":{"kind":"result","value":2}},
+      {"kind":"replace","program":"a = Query(\"a\")\nz = Query(\"z\")\nb = Query(\"b\")"},
+      {"kind":"evaluate"},
+      {"kind":"replace","program":"b = Query(\"b\")\na = Query(\"a\")"},
+      {"kind":"evaluate"},
+      {"kind":"complete","call":2,"outcome":{"kind":"result","value":{"2":"two","1":"one","z":false,"a":0}}}
+    ]
+  },
+  {
+    "name": "undefined-default-is-omitted",
+    "program": "q = Query(\"lookup\", null, [0][2])\nr = Query(\"nested\", null, {a: [0][2], b: [false, [0][2]]})",
+    "steps": [
+      {"kind":"evaluate"},
+      {"kind":"complete","call":0,"outcome":{"kind":"tool-error","message":"unavailable"}},
+      {"kind":"complete","call":1,"outcome":{"kind":"result","value":false}}
+    ]
+  },
+  {
+    "name": "an-outcome-after-removal-cannot-complete-a-new-call",
+    "program": "q = Query(\"lookup\", {v: 1})",
+    "steps": [
+      {"kind":"evaluate"},
+      {"kind":"replace","program":""},
+      {"kind":"evaluate"},
+      {"kind":"complete","call":0,"outcome":{"kind":"result","value":"stale"}},
+      {"kind":"replace","program":"q = Query(\"lookup\", {v: 1})"},
+      {"kind":"evaluate"},
+      {"kind":"complete","call":1,"outcome":{"kind":"result","value":"fresh"}}
+    ]
+  },
+  {
+    "name": "library-components-in-query-defaults",
+    "library": {"$defs":{"Box":{"properties":{"value":{}}}}},
+    "program": "$n = 7\nq = Query(\"lookup\", {n: @Count([1, 2]), label: Box($n)}, {a: Box($n), b: Box($n + 1)})",
+    "steps": [
+      {"kind":"evaluate"},
+      {"kind":"complete","call":0,"outcome":{"kind":"result","value":null}}
+    ]
+  },
+  {
+    "name": "function-arguments-and-undefined-have-different-keys",
+    "program": "q = Query(\"lookup\", ({}).toString, ({}).toString)",
+    "steps": [
+      {"kind":"evaluate"},
+      {"kind":"complete","call":0,"outcome":{"kind":"result","value":"function"}},
+      {"kind":"replace","program":"q = Query(\"lookup\", [0][2])"},
+      {"kind":"evaluate"},
+      {"kind":"complete","call":1,"outcome":{"kind":"result","value":"undefined"}}
+    ]
+  },
+  {
+    "name": "stable-keys-use-the-current-dependency-values",
+    "program": "$data = {left: {a: 1, b: 2}, right: 3}\nq = Query(\"lookup\", $data ? {all: true} : {all: true})",
+    "steps": [
+      {"kind":"evaluate"},
+      {"kind":"complete","call":0,"outcome":{"kind":"result","value":"first"}},
+      {"kind":"set","name":"$data","value":{"right":3,"left":{"b":2,"a":1}}},
+      {"kind":"evaluate"},
+      {"kind":"set","name":"$data","value":{"right":3,"left":{"b":3,"a":1}}},
+      {"kind":"evaluate"},
+      {"kind":"set","name":"$data"},
+      {"kind":"evaluate"},
+      {"kind":"complete","call":1,"outcome":{"kind":"result","value":"stale"}},
+      {"kind":"complete","call":2,"outcome":{"kind":"result","value":"new"}}
+    ]
+  },
+  {
+    "name": "stable-key-drops-prototype-assignment",
+    "program": "q = Query(\"lookup\", {\"__proto__\": null, b: 2})",
+    "steps": [
+      {"kind":"evaluate"},
+      {"kind":"complete","call":0,"outcome":{"kind":"result","value":"cached"}},
+      {"kind":"replace","program":"q = Query(\"lookup\", {b: 2})"},
+      {"kind":"evaluate"}
+    ]
+  },
+  {
+    "name": "a-later-success-on-the-same-key-clears-the-error",
+    "program": "q = Query(\"lookup\", {page: 0}, \"waiting\")",
+    "steps": [
+      {"kind":"evaluate"},
+      {"kind":"complete","call":0,"outcome":{"kind":"tool-error","message":"try again"}},
+      {"kind":"replace","program":"q = Query(\"lookup\", {page: 1}, \"waiting\")\nformer = Query(\"lookup\", {page: 0})"},
+      {"kind":"evaluate"},
+      {"kind":"replace","program":"q = Query(\"lookup\", {page: 2}, \"waiting\")\nformer = Query(\"lookup\", {page: 0})"},
+      {"kind":"evaluate"},
+      {"kind":"replace","program":"q = Query(\"lookup\", {page: 2}, \"waiting\")"},
+      {"kind":"evaluate"},
+      {"kind":"replace","program":"q = Query(\"lookup\", {page: 0}, \"waiting\")"},
+      {"kind":"evaluate"},
+      {"kind":"complete","call":3,"outcome":{"kind":"result","value":"recovered"}},
+      {"kind":"complete","call":1,"outcome":{"kind":"result","value":"stale"}},
+      {"kind":"complete","call":2,"outcome":{"kind":"tool-error","message":"stale error"}}
+    ]
+  }
+]

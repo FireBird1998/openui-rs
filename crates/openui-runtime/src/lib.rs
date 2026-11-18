@@ -12,6 +12,11 @@
 //! false and empty containers. This supplied overlay is our embedder interface
 //! for loaded data; it does not run tools or reproduce query scheduling.
 //!
+//! The standalone [`QueryManager`] evaluates a settled program against a Store
+//! and returns the tool calls an embedder should perform. Report outcomes with
+//! [`QueryCommand::Complete`]. The manager owns its snapshot and cache and
+//! requires no I/O or clock. Hosts can read the snapshot as values or JSON.
+//!
 //! Use [`TreeInput::with_reference_values`] for per-call measurement, or prepare
 //! [`PreparedReferenceValues`] once and pass it on every stream evaluation with
 //! [`TreeInput::with_prepared_reference_values`]. Admitted supplied data, including
@@ -122,6 +127,10 @@ mod admission;
 pub use admission::{LimitError, value_to_json, value_to_json_with_limits};
 mod mcp;
 pub use mcp::{McpResponseError, McpToolOutcome, extract_mcp_tool_result};
+mod query;
+pub use query::{
+    QueryCommand, QueryCommandError, QueryManager, QueryUpdate, ToolCall, ToolCallId, ToolOutcome,
+};
 mod store;
 mod tree;
 pub use store::{InitializationResult, StateRefusal, StateValue, Store, StoreError, StoreSnapshot};

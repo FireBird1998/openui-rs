@@ -66,6 +66,7 @@ done
   bun --no-install parser-prototype-assignments.ts
   bun --no-install core-divergences.ts
   bun --no-install query-default-cycles.ts
+  bun --no-install query-scenarios.ts
   bun --no-install function-undefined-arguments.ts
   bun --no-install renderer-reset-native-defaults.ts
 )

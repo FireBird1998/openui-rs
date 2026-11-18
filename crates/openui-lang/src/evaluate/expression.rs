@@ -6,6 +6,7 @@ mod program_setup;
 use input_identity::InputIndex;
 mod inputs;
 mod reference_input;
+mod stable_json;
 pub use inputs::{
     InputSupplyError, PreparedProgram, PreparedReferenceInput, PreparedStart, SuppliedInput,
     SuppliedInputReceipt, SuppliedProgram, SuppliedStart,
@@ -532,6 +533,38 @@ impl<'a> ExpressionValue<'a> {
             value: std::borrow::Cow::Owned(Js::Null),
             operate: None,
         }
+    }
+    /// Serialize this view with sorted object keys and the cache-key markers
+    /// for undefined, NaN and infinities. The traversal spends the owning
+    /// evaluation's work, result room and depth. A function at the root or
+    /// a cut has no serialization.
+    pub fn stable_json(&self) -> Option<String> {
+        let mut result = None;
+        let mut write = || result = stable_json::stable_json(&self.value);
+        if let Some(operate) = self.operate {
+            operate(&mut write);
+        } else {
+            write();
+        }
+        result
+    }
+    /// Coerce the original evaluator value with JavaScript's string rules.
+    /// This uses the owning evaluation's limits and reports coercion failures
+    /// through its usual failure channel.
+    pub fn coerce_string(&self) -> Option<String> {
+        let mut result = None;
+        let mut coerce = || {
+            let text = to_string_in::<Supplied<'_>>(&self.value);
+            if !failed() && LIMITS.with(|l| l.cut.get().is_none()) {
+                result = Some(text);
+            }
+        };
+        if let Some(operate) = self.operate {
+            operate(&mut coerce);
+        } else {
+            coerce();
+        }
+        result
     }
     /// Whether the value is null or undefined, without coercion.
     pub fn is_nullish(&self) -> bool {

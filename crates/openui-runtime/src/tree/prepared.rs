@@ -63,7 +63,11 @@ impl<'a> PreparedReferenceValues<'a> {
             input,
         }
     }
-    pub(super) fn get(
+    pub(crate) fn input_bytes(&self) -> usize {
+        self.bytes
+    }
+
+    pub(crate) fn get(
         &self,
         name: &str,
     ) -> Result<Option<(&Value, &PreparedReferenceValue)>, EvaluationFlags> {

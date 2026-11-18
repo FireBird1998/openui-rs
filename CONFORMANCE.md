@@ -129,7 +129,17 @@ A renderer retaining one manager can observe that transition while a
 `Mutation("…` statement streams in, before anything has run. This harness
 creates a fresh manager per observation and uses statement ids as inert tool
 names, so that history-dependent transition is not observed or modelled here.
-The runtime does not retain a query manager; an embedder can supply its result.
+Tree and action evaluation still accept embedder-supplied results.
+
+The standalone query manager is compared with lang-core 1.1.0 in
+`conformance/query-scenarios.json`. The reference runs real
+`evaluateStatements` and settles scripted provider promises. The Rust test
+compares serialized snapshots, newly wanted calls in dispatch order, and
+whether the snapshot bytes changed. It covers first load, evaluated
+arguments/defaults, null and missing results, all three failures and hint
+variants, recovery, dependencies, stable keys, and statement order across
+edits. Dispatch uses a JavaScript string for the tool name. Errors retain
+the reference's original evaluated `toolName` value.
 
 These are lang-core's observable pre-execution results. The supplied overlay is
 ours: own `referenceValues` entries for declared query/mutation ids win,

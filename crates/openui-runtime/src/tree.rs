@@ -437,7 +437,7 @@ impl<'a> ReferenceIndex<'a> {
 }
 type QueryDefault = Result<Option<Value>, crate::EvaluationFlags>;
 type PaidMarker = (std::sync::Weak<JsObject<Value>>, usize);
-struct TreeScope<'a> {
+pub(crate) struct TreeScope<'a> {
     memory_enabled: bool,
     registering: Cell<bool>,
     defaults: RefCell<BTreeMap<&'a str, QueryDefault>>,
@@ -467,7 +467,7 @@ struct TreeScope<'a> {
     binding_props: Option<&'a BindingProps>,
 }
 impl<'a> TreeScope<'a> {
-    fn new(
+    pub(crate) fn new(
         input: &TreeInput<'a>,
         store: &'a Store,
         supplied: Option<&'a PreparedReferenceValues<'a>>,
