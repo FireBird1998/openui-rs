@@ -367,7 +367,7 @@
       {"kind":"complete","call":0,"outcome":{"kind":"result","value":"original"}},
       {"kind":"replace","program":"r = Query(\"t\", {v:0}, \"d\")"},
       {"kind":"evaluate"},
-      {"kind":"complete","call":1,"outcome":{"kind":"result","value":"replacement"}}
+      {"kind":"complete","dispatch":{"step":3,"toolName":"t","args":{"v":0}},"outcome":{"kind":"result","value":"replacement"}}
     ]
   },
   {
@@ -553,6 +553,127 @@
       {"kind":"replace","program":"q = Query(\"search\", {term:\"a\"}, [])"},
       {"kind":"evaluate"},
       {"kind":"complete","dispatch":{"step":8,"toolName":"search","args":{"term":"a"}},"outcome":{"kind":"result","value":["fresh"]}}
+    ]
+  },
+  {
+    "name": "previous-result-handoff-a-first",
+    "program": "a = Query(\"t\", {v:1}, \"adef\")",
+    "steps": [
+      {"kind":"evaluate"},
+      {"kind":"complete","call":0,"outcome":{"kind":"result","value":10}},
+      {"kind":"replace","program":"a = Query(\"t\", {v:2}, \"adef\")"},
+      {"kind":"evaluate"},
+      {"kind":"replace","program":"a = Query(\"t\", {v:3}, \"adef\")\nb = Query(\"t\", {v:1}, \"bdef\")"},
+      {"kind":"evaluate"}
+    ]
+  },
+  {
+    "name": "previous-result-handoff-b-first",
+    "program": "a = Query(\"t\", {v:1}, \"adef\")",
+    "steps": [
+      {"kind":"evaluate"},
+      {"kind":"complete","call":0,"outcome":{"kind":"result","value":10}},
+      {"kind":"replace","program":"a = Query(\"t\", {v:2}, \"adef\")"},
+      {"kind":"evaluate"},
+      {"kind":"replace","program":"b = Query(\"t\", {v:1}, \"bdef\")\na = Query(\"t\", {v:3}, \"adef\")"},
+      {"kind":"evaluate"}
+    ]
+  },
+  {
+    "name": "previous-failure-handoff-a-first",
+    "program": "a = Query(\"t\", {v:1}, \"adef\")\nb = Query(\"t\", {v:0}, \"bdef\")",
+    "steps": [
+      {"kind":"evaluate"},
+      {"kind":"complete","call":0,"outcome":{"kind":"tool-error","message":"failed"}},
+      {"kind":"complete","call":1,"outcome":{"kind":"tool-error","message":"failed"}},
+      {"kind":"replace","program":"a = Query(\"t\", {v:2}, \"adef\")\nb = Query(\"t\", {v:0}, \"bdef\")"},
+      {"kind":"evaluate"},
+      {"kind":"replace","program":"a = Query(\"t\", {v:3}, \"adef\")\nb = Query(\"t\", {v:1}, \"bdef\")"},
+      {"kind":"evaluate"}
+    ]
+  },
+  {
+    "name": "previous-failure-handoff-b-first",
+    "program": "a = Query(\"t\", {v:1}, \"adef\")\nb = Query(\"t\", {v:0}, \"bdef\")",
+    "steps": [
+      {"kind":"evaluate"},
+      {"kind":"complete","call":0,"outcome":{"kind":"tool-error","message":"failed"}},
+      {"kind":"complete","call":1,"outcome":{"kind":"tool-error","message":"failed"}},
+      {"kind":"replace","program":"a = Query(\"t\", {v:2}, \"adef\")\nb = Query(\"t\", {v:0}, \"bdef\")"},
+      {"kind":"evaluate"},
+      {"kind":"replace","program":"b = Query(\"t\", {v:1}, \"bdef\")\na = Query(\"t\", {v:3}, \"adef\")"},
+      {"kind":"evaluate"}
+    ]
+  },
+  {
+    "name": "fresh-reader-of-a-failed-handoff-a-first",
+    "program": "a = Query(\"t\", {v:1}, \"adef\")",
+    "steps": [
+      {"kind":"evaluate"},
+      {"kind":"complete","call":0,"outcome":{"kind":"tool-error","message":"failed"}},
+      {"kind":"replace","program":"a = Query(\"t\", {v:2}, \"adef\")"},
+      {"kind":"evaluate"},
+      {"kind":"replace","program":"a = Query(\"t\", {v:3}, \"adef\")\nb = Query(\"t\", {v:1}, \"bdef\")"},
+      {"kind":"evaluate"}
+    ]
+  },
+  {
+    "name": "fresh-reader-of-a-failed-handoff-b-first",
+    "program": "a = Query(\"t\", {v:1}, \"adef\")",
+    "steps": [
+      {"kind":"evaluate"},
+      {"kind":"complete","call":0,"outcome":{"kind":"tool-error","message":"failed"}},
+      {"kind":"replace","program":"a = Query(\"t\", {v:2}, \"adef\")"},
+      {"kind":"evaluate"},
+      {"kind":"replace","program":"b = Query(\"t\", {v:1}, \"bdef\")\na = Query(\"t\", {v:3}, \"adef\")"},
+      {"kind":"evaluate"}
+    ]
+  },
+  {
+    "name": "idle-reader-takes-an-abandoned-call",
+    "program": "a = Query(\"t\", {v:0}, \"adef\")\nc = Query(\"t\", {v:1}, \"cdef\")",
+    "steps": [
+      {"kind":"evaluate"},
+      {"kind":"complete","call":1,"outcome":{"kind":"result","value":10}},
+      {"kind":"replace","program":"a = Query(\"t\", {v:2}, \"adef\")\nc = Query(\"t\", {v:3}, \"cdef\")\nb = Query(\"t\", {v:1}, \"bdef\")"},
+      {"kind":"evaluate"},
+      {"kind":"replace","program":"a = Query(\"t\", {v:4}, \"adef\")\nc = Query(\"t\", {v:3}, \"cdef\")\nb = Query(\"t\", {v:1}, \"bdef\")"},
+      {"kind":"evaluate"},
+      {"kind":"replace","program":"a = Query(\"t\", {v:4}, \"adef\")\nc = Query(\"t\", {v:3}, \"cdef\")\nb = Query(\"t\", {v:0}, \"bdef\")"},
+      {"kind":"evaluate"},
+      {"kind":"complete","call":0,"outcome":{"kind":"result","value":10}},
+      {"kind":"complete","dispatch":{"step":7,"toolName":"t","args":{"v":0}},"outcome":{"kind":"result","value":20}}
+    ]
+  },
+  {
+    "name": "new-statement-keeps-the-removed-statements-call",
+    "program": "a = Query(\"t\", {v:1}, \"adef\")",
+    "steps": [
+      {"kind":"evaluate"},
+      {"kind":"replace","program":"b = Query(\"t\", {v:1}, \"bdef\")"},
+      {"kind":"evaluate"},
+      {"kind":"complete","call":0,"outcome":{"kind":"result","value":10}},
+      {"kind":"complete","dispatch":{"step":2,"toolName":"t","args":{"v":1}},"outcome":{"kind":"tool-error","message":"replacement"}}
+    ]
+  },
+  {
+    "name": "shared-completion-leaves-a-reader-loading",
+    "program": "a = Query(\"t\", {v:0}, \"adef\")\nb = Query(\"t\", {v:1}, \"bdef\")",
+    "steps": [
+      {"kind":"evaluate"},
+      {"kind":"replace","program":"a = Query(\"t\", {v:0}, \"adef\")\nb = Query(\"t\", {v:0}, \"bdef\")"},
+      {"kind":"evaluate"},
+      {"kind":"complete","call":0,"outcome":{"kind":"tool-error","message":"failed"}}
+    ]
+  },
+  {
+    "name": "handoff-failure-leaves-a-reader-loading",
+    "program": "a = Query(\"t\", {v:0}, \"adef\")\nb = Query(\"t\", {v:1}, \"bdef\")",
+    "steps": [
+      {"kind":"evaluate"},
+      {"kind":"replace","program":"a = Query(\"t\", {v:2}, \"adef\")\nb = Query(\"t\", {v:0}, \"bdef\")"},
+      {"kind":"evaluate"},
+      {"kind":"complete","call":0,"outcome":{"kind":"tool-error","message":"failed"}}
     ]
   }
 ]

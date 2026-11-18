@@ -1,0 +1,28 @@
+{
+  "case": "idle-reader-takes-an-abandoned-call",
+  "reason": "command-boundary-entry-lifetime",
+  "reference": [
+    "{\"snapshot\":{\"__openui_loading\":[\"a\",\"c\"],\"__openui_refetching\":[],\"__openui_errors\":[],\"a\":\"adef\",\"c\":\"cdef\"},\"calls\":[{\"call\":0,\"toolName\":\"t\",\"args\":{\"v\":0}},{\"call\":1,\"toolName\":\"t\",\"args\":{\"v\":1}}],\"changed\":true}",
+    "{\"snapshot\":{\"__openui_loading\":[\"a\"],\"__openui_refetching\":[],\"__openui_errors\":[],\"a\":\"adef\",\"c\":10},\"calls\":[],\"changed\":true}",
+    "{\"snapshot\":{\"__openui_loading\":[\"a\"],\"__openui_refetching\":[],\"__openui_errors\":[],\"a\":\"adef\",\"c\":10},\"calls\":[],\"changed\":false}",
+    "{\"snapshot\":{\"__openui_loading\":[\"a\",\"c\"],\"__openui_refetching\":[\"c\"],\"__openui_errors\":[],\"a\":\"adef\",\"c\":10,\"b\":10},\"calls\":[{\"call\":2,\"toolName\":\"t\",\"args\":{\"v\":2}},{\"call\":3,\"toolName\":\"t\",\"args\":{\"v\":3}}],\"changed\":true}",
+    "{\"snapshot\":{\"__openui_loading\":[\"a\",\"c\"],\"__openui_refetching\":[\"c\"],\"__openui_errors\":[],\"a\":\"adef\",\"c\":10,\"b\":10},\"calls\":[],\"changed\":false}",
+    "{\"snapshot\":{\"__openui_loading\":[\"a\",\"c\"],\"__openui_refetching\":[\"c\"],\"__openui_errors\":[],\"a\":\"adef\",\"c\":10,\"b\":10},\"calls\":[{\"call\":4,\"toolName\":\"t\",\"args\":{\"v\":4}}],\"changed\":false}",
+    "{\"snapshot\":{\"__openui_loading\":[\"a\",\"c\"],\"__openui_refetching\":[\"c\"],\"__openui_errors\":[],\"a\":\"adef\",\"c\":10,\"b\":10},\"calls\":[],\"changed\":false}",
+    "{\"snapshot\":{\"__openui_loading\":[\"a\",\"c\"],\"__openui_refetching\":[\"c\"],\"__openui_errors\":[],\"a\":\"adef\",\"c\":10,\"b\":10},\"calls\":[],\"changed\":false}",
+    "{\"snapshot\":{\"__openui_loading\":[\"a\",\"c\"],\"__openui_refetching\":[\"c\"],\"__openui_errors\":[],\"a\":\"adef\",\"c\":10,\"b\":10},\"calls\":[],\"changed\":false}",
+    "{\"snapshot\":{\"__openui_loading\":[\"a\",\"c\"],\"__openui_refetching\":[\"c\"],\"__openui_errors\":[],\"a\":\"adef\",\"c\":10,\"b\":10},\"calls\":[],\"changed\":false}"
+  ],
+  "rust": [
+    "{\"snapshot\":{\"__openui_loading\":[\"a\",\"c\"],\"__openui_refetching\":[],\"__openui_errors\":[],\"a\":\"adef\",\"c\":\"cdef\"},\"calls\":[{\"call\":0,\"toolName\":\"t\",\"args\":{\"v\":0}},{\"call\":1,\"toolName\":\"t\",\"args\":{\"v\":1}}],\"changed\":true}",
+    "{\"snapshot\":{\"__openui_loading\":[\"a\"],\"__openui_refetching\":[],\"__openui_errors\":[],\"a\":\"adef\",\"c\":10},\"calls\":[],\"changed\":true}",
+    "{\"snapshot\":{\"__openui_loading\":[\"a\"],\"__openui_refetching\":[],\"__openui_errors\":[],\"a\":\"adef\",\"c\":10},\"calls\":[],\"changed\":false}",
+    "{\"snapshot\":{\"__openui_loading\":[\"a\",\"c\"],\"__openui_refetching\":[\"c\"],\"__openui_errors\":[],\"a\":\"adef\",\"c\":10,\"b\":10},\"calls\":[{\"call\":2,\"toolName\":\"t\",\"args\":{\"v\":2}},{\"call\":3,\"toolName\":\"t\",\"args\":{\"v\":3}}],\"changed\":true}",
+    "{\"snapshot\":{\"__openui_loading\":[\"a\",\"c\"],\"__openui_refetching\":[\"c\"],\"__openui_errors\":[],\"a\":\"adef\",\"c\":10,\"b\":10},\"calls\":[],\"changed\":false}",
+    "{\"snapshot\":{\"__openui_loading\":[\"a\",\"c\"],\"__openui_refetching\":[\"c\"],\"__openui_errors\":[],\"a\":\"adef\",\"c\":10,\"b\":10},\"calls\":[{\"call\":4,\"toolName\":\"t\",\"args\":{\"v\":4}}],\"changed\":false}",
+    "{\"snapshot\":{\"__openui_loading\":[\"a\",\"c\"],\"__openui_refetching\":[\"c\"],\"__openui_errors\":[],\"a\":\"adef\",\"c\":10,\"b\":10},\"calls\":[],\"changed\":false}",
+    "{\"snapshot\":{\"__openui_loading\":[\"a\",\"c\",\"b\"],\"__openui_refetching\":[\"c\"],\"__openui_errors\":[],\"a\":\"adef\",\"c\":10,\"b\":10},\"calls\":[{\"call\":5,\"toolName\":\"t\",\"args\":{\"v\":0}}],\"changed\":true}",
+    "{\"snapshot\":{\"__openui_loading\":[\"a\",\"c\",\"b\"],\"__openui_refetching\":[\"c\"],\"__openui_errors\":[],\"a\":\"adef\",\"c\":10,\"b\":10},\"calls\":[],\"changed\":false}",
+    "{\"snapshot\":{\"__openui_loading\":[\"a\",\"c\"],\"__openui_refetching\":[\"c\"],\"__openui_errors\":[],\"a\":\"adef\",\"c\":10,\"b\":20},\"calls\":[],\"changed\":true}"
+  ]
+}

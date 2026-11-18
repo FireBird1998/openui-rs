@@ -1,0 +1,20 @@
+{
+  "case": "fresh-reader-of-a-failed-handoff-a-first",
+  "reason": "current-reader-with-no-data-or-error",
+  "reference": [
+    "{\"snapshot\":{\"__openui_loading\":[\"a\"],\"__openui_refetching\":[],\"__openui_errors\":[],\"a\":\"adef\"},\"calls\":[{\"call\":0,\"toolName\":\"t\",\"args\":{\"v\":1}}],\"changed\":true}",
+    "{\"snapshot\":{\"__openui_loading\":[],\"__openui_refetching\":[],\"__openui_errors\":[{\"source\":\"query\",\"statementId\":\"a\",\"component\":\"Query\",\"toolName\":\"t\",\"code\":\"tool-error\",\"message\":\"Query \\\"t\\\" failed: failed\"}],\"a\":\"adef\"},\"calls\":[],\"changed\":true}",
+    "{\"snapshot\":{\"__openui_loading\":[],\"__openui_refetching\":[],\"__openui_errors\":[{\"source\":\"query\",\"statementId\":\"a\",\"component\":\"Query\",\"toolName\":\"t\",\"code\":\"tool-error\",\"message\":\"Query \\\"t\\\" failed: failed\"}],\"a\":\"adef\"},\"calls\":[],\"changed\":false}",
+    "{\"snapshot\":{\"__openui_loading\":[\"a\"],\"__openui_refetching\":[],\"__openui_errors\":[{\"source\":\"query\",\"statementId\":\"a\",\"component\":\"Query\",\"toolName\":\"t\",\"code\":\"tool-error\",\"message\":\"Query \\\"t\\\" failed: failed\"}],\"a\":\"adef\"},\"calls\":[{\"call\":1,\"toolName\":\"t\",\"args\":{\"v\":2}}],\"changed\":true}",
+    "{\"snapshot\":{\"__openui_loading\":[\"a\"],\"__openui_refetching\":[],\"__openui_errors\":[{\"source\":\"query\",\"statementId\":\"a\",\"component\":\"Query\",\"toolName\":\"t\",\"code\":\"tool-error\",\"message\":\"Query \\\"t\\\" failed: failed\"}],\"a\":\"adef\"},\"calls\":[],\"changed\":false}",
+    "{\"snapshot\":{\"__openui_loading\":[\"a\"],\"__openui_refetching\":[],\"__openui_errors\":[{\"source\":\"query\",\"statementId\":\"a\",\"component\":\"Query\",\"toolName\":\"t\",\"code\":\"tool-error\",\"message\":\"Query \\\"t\\\" failed: failed\"}],\"a\":\"adef\",\"b\":\"bdef\"},\"calls\":[{\"call\":2,\"toolName\":\"t\",\"args\":{\"v\":3}}],\"changed\":true}"
+  ],
+  "rust": [
+    "{\"snapshot\":{\"__openui_loading\":[\"a\"],\"__openui_refetching\":[],\"__openui_errors\":[],\"a\":\"adef\"},\"calls\":[{\"call\":0,\"toolName\":\"t\",\"args\":{\"v\":1}}],\"changed\":true}",
+    "{\"snapshot\":{\"__openui_loading\":[],\"__openui_refetching\":[],\"__openui_errors\":[{\"source\":\"query\",\"statementId\":\"a\",\"component\":\"Query\",\"toolName\":\"t\",\"code\":\"tool-error\",\"message\":\"Query \\\"t\\\" failed: failed\"}],\"a\":\"adef\"},\"calls\":[],\"changed\":true}",
+    "{\"snapshot\":{\"__openui_loading\":[],\"__openui_refetching\":[],\"__openui_errors\":[{\"source\":\"query\",\"statementId\":\"a\",\"component\":\"Query\",\"toolName\":\"t\",\"code\":\"tool-error\",\"message\":\"Query \\\"t\\\" failed: failed\"}],\"a\":\"adef\"},\"calls\":[],\"changed\":false}",
+    "{\"snapshot\":{\"__openui_loading\":[\"a\"],\"__openui_refetching\":[],\"__openui_errors\":[{\"source\":\"query\",\"statementId\":\"a\",\"component\":\"Query\",\"toolName\":\"t\",\"code\":\"tool-error\",\"message\":\"Query \\\"t\\\" failed: failed\"}],\"a\":\"adef\"},\"calls\":[{\"call\":1,\"toolName\":\"t\",\"args\":{\"v\":2}}],\"changed\":true}",
+    "{\"snapshot\":{\"__openui_loading\":[\"a\"],\"__openui_refetching\":[],\"__openui_errors\":[{\"source\":\"query\",\"statementId\":\"a\",\"component\":\"Query\",\"toolName\":\"t\",\"code\":\"tool-error\",\"message\":\"Query \\\"t\\\" failed: failed\"}],\"a\":\"adef\"},\"calls\":[],\"changed\":false}",
+    "{\"snapshot\":{\"__openui_loading\":[\"a\",\"b\"],\"__openui_refetching\":[],\"__openui_errors\":[{\"source\":\"query\",\"statementId\":\"a\",\"component\":\"Query\",\"toolName\":\"t\",\"code\":\"tool-error\",\"message\":\"Query \\\"t\\\" failed: failed\"}],\"a\":\"adef\",\"b\":\"bdef\"},\"calls\":[{\"call\":2,\"toolName\":\"t\",\"args\":{\"v\":3}},{\"call\":3,\"toolName\":\"t\",\"args\":{\"v\":1}}],\"changed\":true}"
+  ]
+}

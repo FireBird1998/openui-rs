@@ -1,0 +1,18 @@
+{
+  "case": "new-statement-keeps-the-removed-statements-call",
+  "reason": "command-boundary-entry-lifetime",
+  "reference": [
+    "{\"snapshot\":{\"__openui_loading\":[\"a\"],\"__openui_refetching\":[],\"__openui_errors\":[],\"a\":\"adef\"},\"calls\":[{\"call\":0,\"toolName\":\"t\",\"args\":{\"v\":1}}],\"changed\":true}",
+    "{\"snapshot\":{\"__openui_loading\":[\"a\"],\"__openui_refetching\":[],\"__openui_errors\":[],\"a\":\"adef\"},\"calls\":[],\"changed\":false}",
+    "{\"snapshot\":{\"__openui_loading\":[\"b\"],\"__openui_refetching\":[],\"__openui_errors\":[],\"b\":\"bdef\"},\"calls\":[{\"call\":1,\"toolName\":\"t\",\"args\":{\"v\":1}}],\"changed\":true}",
+    "{\"snapshot\":{\"__openui_loading\":[\"b\"],\"__openui_refetching\":[],\"__openui_errors\":[],\"b\":\"bdef\"},\"calls\":[],\"changed\":false}",
+    "{\"snapshot\":{\"__openui_loading\":[],\"__openui_refetching\":[],\"__openui_errors\":[{\"source\":\"query\",\"statementId\":\"b\",\"component\":\"Query\",\"toolName\":\"t\",\"code\":\"tool-error\",\"message\":\"Query \\\"t\\\" failed: replacement\"}],\"b\":\"bdef\"},\"calls\":[],\"changed\":true}"
+  ],
+  "rust": [
+    "{\"snapshot\":{\"__openui_loading\":[\"a\"],\"__openui_refetching\":[],\"__openui_errors\":[],\"a\":\"adef\"},\"calls\":[{\"call\":0,\"toolName\":\"t\",\"args\":{\"v\":1}}],\"changed\":true}",
+    "{\"snapshot\":{\"__openui_loading\":[\"a\"],\"__openui_refetching\":[],\"__openui_errors\":[],\"a\":\"adef\"},\"calls\":[],\"changed\":false}",
+    "{\"snapshot\":{\"__openui_loading\":[\"b\"],\"__openui_refetching\":[],\"__openui_errors\":[],\"b\":\"bdef\"},\"calls\":[],\"changed\":true}",
+    "{\"snapshot\":{\"__openui_loading\":[],\"__openui_refetching\":[],\"__openui_errors\":[],\"b\":10},\"calls\":[],\"changed\":true}",
+    "{\"snapshot\":{\"__openui_loading\":[],\"__openui_refetching\":[],\"__openui_errors\":[],\"b\":10},\"calls\":[],\"changed\":false}"
+  ]
+}

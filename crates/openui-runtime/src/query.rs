@@ -175,14 +175,14 @@ impl QueryManager {
         manager
     }
 
-    /// Number of live cache entries, for conformance checks.
+    /// Conformance-test hook reporting the number of live entries. Outside the supported interface.
     #[doc(hidden)]
     pub fn cache_entry_count(&self) -> usize {
         self.cache.len()
     }
 
     /// Checks a current entry against the error and outstanding calls observed by
-    /// a conformance driver. Defaults and previous data cannot serve this entry.
+    /// a conformance-test driver. This hook is outside the supported interface.
     #[doc(hidden)]
     pub fn current_entry_is_served<'a>(
         &self,
@@ -230,6 +230,9 @@ impl QueryManager {
                 Vec::new()
             }
         };
+        // Ownership changes atomically with the command. Another registration
+        // can take a temporarily unreferenced entry later in the same evaluate.
+        self.cache.retain(|_, entry| entry.references != 0);
         Ok(QueryUpdate {
             calls,
             changed: self.rebuild_snapshot(),
@@ -285,9 +288,9 @@ impl QueryManager {
             if active.contains(id.as_str()) {
                 return true;
             }
-            release(&mut self.cache, &query.key);
+            drop_reference(&mut self.cache, &query.key);
             if let Some(key) = &query.previous {
-                release(&mut self.cache, key);
+                drop_reference(&mut self.cache, key);
             }
             false
         });
@@ -305,11 +308,12 @@ impl QueryManager {
                     error: None,
                 }
             });
-            let mut displaced = None;
             if query.key != node.key {
                 acquire = true;
                 let previous = std::mem::replace(&mut query.key, node.key.clone());
-                displaced = query.previous.replace(previous);
+                if let Some(displaced) = query.previous.replace(previous) {
+                    drop_reference(&mut self.cache, &displaced);
+                }
             }
             query.defaults = node.defaults;
             let entry = self.cache.entry(node.key);
@@ -340,10 +344,6 @@ impl QueryManager {
                     tool_name: node.tool_name,
                     args: node.args,
                 });
-            }
-            // Acquire first: returning to the previous key keeps its entry.
-            if let Some(key) = displaced {
-                release(&mut self.cache, &key);
             }
         }
         calls
@@ -398,7 +398,7 @@ impl QueryManager {
                 query.error = None;
                 query.ever_fetched = true;
                 if let Some(previous) = query.previous.take() {
-                    release(&mut self.cache, &previous);
+                    drop_reference(&mut self.cache, &previous);
                 }
             } else {
                 query.error = Some(pending.error(statement_id, &outcome));
@@ -459,12 +459,9 @@ impl QueryManager {
     }
 }
 
-fn release(cache: &mut HashMap<Arc<str>, CacheEntry>, key: &Arc<str>) {
+fn drop_reference(cache: &mut HashMap<Arc<str>, CacheEntry>, key: &Arc<str>) {
     if let Some(entry) = cache.get_mut(key) {
         entry.references = entry.references.saturating_sub(1);
-        if entry.references == 0 {
-            cache.remove(key);
-        }
     }
 }
 

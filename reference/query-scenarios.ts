@@ -57,7 +57,9 @@ async function replay(scenario: Scenario, script?: Script): Promise<string[]> {
       const promise = new Promise((resolve, reject) => {
         calls.push({ step: stepIndex, toolName, args, async finish(outcome) {
           switch (outcome.kind) {
-            case 'result': resolve(outcome.value); break;
+            // Upstream can append status ids to a result array. Give the
+            // provider its own value on each replay of the same script.
+            case 'result': resolve(structuredClone(outcome.value)); break;
             case 'tool-not-found': reject(new ToolNotFoundError(toolName, outcome.availableTools)); break;
             case 'mcp-error': reject(new McpToolError(outcome.message)); break;
             case 'tool-error': reject(new Error(outcome.message)); break;
@@ -128,12 +130,25 @@ try {
   if (process.argv[2] === '--random') {
     const { randomScenario } = await import('./query-random');
     const { addressCompletions, compareLifetimes } = await import('./query-lifetimes');
+    let leavingFirst = 0, takingFirst = 0;
     for (let seed = 1; seed <= 6000; seed++) {
       const { scenario, script, keys } = randomScenario(seed);
       let reference = await replay(scenario, script);
+      // Require one-way handoffs in both declaration orders. A symmetric
+      // swap alone cannot distinguish the outgoing and incoming statements.
+      for (let i = 1; i < keys.length; i++) {
+        const previous = keys[i - 1], next = keys[i];
+        const [a, b] = Object.keys(next);
+        if (b === undefined || previous[a] === next[a] || previous[b] === next[b]) continue;
+        const leaves = previous[a] === next[b], takes = previous[b] === next[a];
+        if (leaves && !takes) leavingFirst++;
+        if (takes && !leaves) takingFirst++;
+      }
       if (addressCompletions(scenario, reference, keys, seed)) reference = await replay(scenario);
       console.log(JSON.stringify({ scenario, reference, ...compareLifetimes(scenario, reference, keys) }));
     }
+    if (!leavingFirst || !takingFirst) throw new Error('missing a batch handoff order');
+    console.warn(`One-way batch handoffs: leaving statement first ${leavingFirst}, taking statement first ${takingFirst}`);
   } else {
     const scenarios: Scenario[] = JSON.parse(readFileSync('../conformance/query-scenarios.json', 'utf8'));
     const output = [];

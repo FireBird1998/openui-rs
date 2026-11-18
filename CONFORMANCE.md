@@ -669,43 +669,53 @@ Also reported, though not a quirk because the core doesn't reproduce it: a few l
 
 ### Query cache lifetime differences
 
-1. A cache entry lives exactly while a registered query holds it as current or previous.
+1. After each command an entry exists exactly when a registered query holds its key as current or previous.
 2. A query is loading exactly while its current entry has a call in flight.
 3. A call delivers success or failure to every query currently on its originating live entry, and a completion with no such reader ends the call without changing data, errors or fetch history.
 4. A current entry with neither data nor a call requests one unless the entry has failed and the query already shows an error.
 
-Each situation names its two-sided pin. The last column counts differing step
-observations in 6,000 seeded scripts. Counts include later effects on data,
-calls, dispatch numbering and flags. For overlaps, the differential test
-applies the named corrections one at a time and attributes the observation to
-the correction immediately after the last model that still matched upstream.
+Each situation names its two-sided pin. Counts include later effects on data,
+calls, dispatch numbering and flags in 6,000 seeded scripts. The Rust expectation
+comes from the registrations and their held keys at the command boundary. For
+attribution only, the test enables named corrections one at a time, assigning an
+observation to the transition after the last model that still matched upstream.
 A difference confined to the change flag has its own row. Each status list
-includes a query once while its status applies, including when a statement
-uses the list's name.
+includes a query once while its status applies, including when a statement uses
+the list's name.
 
 | Force | Situation and pin | lang-core 1.1.0 | openui-rs | Deciding sentence | Random steps |
 |---|---|---|---|---|---:|
-| Delivery | `removed-call-success-on-a-recreated-key` | An old success can clear the recreated query's error and mark it fetched while its data goes to the retired entry. | Ignores the old success, preserving the current error, fetch history, data and pending call. | 3 | 1396 |
-| Delivery | `removed-call-failure-on-a-recreated-key` | An old failure can set an error and clear loading on the recreated query. | Ignores the old failure entirely. | 3 | 2201 |
-| Delivery | `pending-key-changes-its-only-reader` | Discards the success after the starter moves. | Delivers to the new current query `b`. Query `a` can now display that result through its previous key even though it never displayed it while that key was current. | 3 | 0 |
-| Loading | `idle-query-takes-over-a-pending-call` | Can leave an idle query off the loading list when it takes over another query’s pending call. | Shows the new reader as loading. Borrowed data alone gives it no fetch history. | 2 | 0 |
-| Bound | `rapid-edits-revisit-a-cached-result` | Reuses data from an entry whose last reference was displaced. | Dispatches a fresh call. | 1 | 4158 |
-| Bound | `return-to-a-displaced-failed-entry` | Reuses the abandoned failure and suppresses dispatch. | Dispatches a fresh call. | 1 | 4139 |
-| Bound, loading | `re-register-on-a-displaced-call` | Attaches the re-registered statement to an abandoned pending entry with loading clear. | Dispatches a fresh call and shows loading. | 1, 2 | 296 |
-| Bound, loading | `return-to-a-displaced-call-after-success` | Reuses an unfinished call with loading clear after an intervening success. | Dispatches a fresh call and shows both loading and refetching. | 1, 2 | 137 |
-| Bound, loading | `return-to-a-displaced-call-after-failure` | Reuses an unfinished call with loading clear after an intervening failure. | Dispatches a fresh call and shows loading. The query keeps its error until a current success. | 1, 2 | 269 |
-| Bound, delivery | `rapid-edits-revisit-an-outstanding-call` | An already-loading query returning to an abandoned pending key reuses its old call. | Dispatches a fresh call. Only the fresh call can settle the recreated entry. | 1, 3 | 708 |
-| Loading | `return-to-finished-key` | Can stay loading and refetching on a retained successful key. | Clears loading and refetching on return. | 2 | 3004 |
-| Loading | `return-to-failed-key` | Can stay loading on a retained failed key. | Clears loading on return. | 2 | 3221 |
-| Loading | `return-to-an-outstanding-key-after-failure` | A failure on the intervening key can hide a retained call's loading state. | Reuses the outstanding call and shows loading on return. | 2 | 377 |
-| Delivery | `new-reader-of-a-retained-failure` | Suppresses dispatch on a retained failure even for a query with no error or result. | Starts a call for the new reader. A reader already showing an error keeps upstream’s failed-entry suppression. | 3, 4 | 3725 |
-| Bound, loading, delivery | `change-flag-after-loading-converges` | Compares with its own previous snapshot. | Also compares with its own previous snapshot. Once the snapshots and wanted calls agree again, the change flags alone can differ. | 1–4, previous snapshot | 528 |
-| Loading, delivery | `shared-entry-delivers-to-both-current-queries` | Shows the initiating query as loading and records the successful fetch on that query. Both can subsequently read the data. | Shows both as loading, records the fetch on both and delivers a subsequent failure to both. | 2, 3 | 0 |
-| Delivery | `statement-named-errors` | Can keep a delivered error in an aliased array after a current success clears it. | Shows the currently delivered errors once, including after recovery. | 3 | 0 |
-| Loading | `statement-named-loading` | Can keep settled ids in an aliased array. | The list contains exactly the queries whose current entries have calls in flight. | 2 | 0 |
-| Loading | `statement-named-refetching` | Can accumulate refetching ids in an aliased array. | The list contains each loading query with fetch history once. | 2 | 0 |
+| Bound | `remove-statement-before-registering-its-replacement` | Removal of the former holder can delete the entry before the replacement is registered in the same evaluate. | Keeps the entry, including its data or outstanding call, if the final registrations hold the key. | 1 | 27101 |
+| Bound, loading | `idle-reader-takes-an-abandoned-call` | An idle reader with borrowed data and no fetch history can attach to an abandoned call with loading clear. | Starts a new call and shows loading. | 1, 2 | 706 |
+| Loading | `shared-completion-leaves-a-reader-loading` | A reader already loading when it joined a shared call can stay loading after the starter’s call finishes. | All readers leave the loading list when that call ends. | 2 | 3366 |
+| Loading | `handoff-failure-leaves-a-reader-loading` | Delivers failure to the new reader but can leave its loading flag set when the starter moved away. | Delivers the failure and clears loading for that entry. | 2 | 2735 |
+| Delivery | `removed-call-success-on-a-recreated-key` | An old success can clear the recreated query's error and mark it fetched while its data goes to the retired entry. | Ignores the old success, preserving the current error, fetch history, data and pending call. | 3 | 999 |
+| Delivery | `removed-call-failure-on-a-recreated-key` | An old failure can set an error and clear loading on the recreated query. | Ignores the old failure entirely. | 3 | 2642 |
+| Delivery | `pending-key-changes-its-only-reader` | Discards the success after the starter moves. | Delivers to the new current query `b`. Query `a` can now display that result through its previous key even though it never displayed it while that key was current. | 3 | 10202 |
+| Loading | `idle-query-takes-over-a-pending-call` | Can leave an idle query off the loading list when it joins an already-pending call. | Shows the new reader as loading. Borrowed data alone gives it no fetch history. | 2 | 11464 |
+| Bound | `rapid-edits-revisit-a-cached-result` | Reuses data from an entry whose last reference was displaced. | Dispatches a fresh call. | 1 | 3788 |
+| Bound | `return-to-a-displaced-failed-entry` | Reuses the abandoned failure and suppresses dispatch. | Dispatches a fresh call. | 1 | 4181 |
+| Bound, loading | `re-register-on-a-displaced-call` | Attaches the re-registered statement to an abandoned pending entry with loading clear. | Dispatches a fresh call and shows loading. | 1, 2 | 1295 |
+| Bound, loading | `return-to-a-displaced-call-after-success` | Reuses an unfinished call with loading clear after an intervening success. | Dispatches a fresh call and shows both loading and refetching. | 1, 2 | 212 |
+| Bound, loading | `return-to-a-displaced-call-after-failure` | Reuses an unfinished call with loading clear after an intervening failure. | Dispatches a fresh call and shows loading. The query keeps its error until a current success. | 1, 2 | 541 |
+| Bound, delivery | `rapid-edits-revisit-an-outstanding-call` | An already-loading query returning to an abandoned pending key reuses its old call. | Dispatches a fresh call. Only the fresh call can settle the recreated entry. | 1, 3 | 2383 |
+| Loading | `return-to-finished-key` | Can stay loading and refetching on a retained successful key. | Clears loading and refetching on return. | 2 | 2260 |
+| Loading | `return-to-failed-key` | Can stay loading on a retained failed key. | Clears loading on return. | 2 | 3134 |
+| Loading | `return-to-an-outstanding-key-after-failure` | A failure on the intervening key can hide a retained call's loading state. | Reuses the outstanding call and shows loading on return. | 2 | 219 |
+| Delivery | `new-reader-of-a-retained-failure` | Suppresses dispatch on a retained failure even for a query with no error or result. | Starts a call for the new reader. A reader already showing an error keeps upstream’s failed-entry suppression. | 3, 4 | 6602 |
+| Bound, loading, delivery | `change-flag-after-loading-converges` | Compares with its own previous snapshot. | Also compares with its own previous snapshot. Once the snapshots and wanted calls agree again, the change flags alone can differ. | 1–4, previous snapshot | 1771 |
+| Loading, delivery | `shared-entry-delivers-to-both-current-queries` | Shows the initiating query as loading and records the successful fetch on that query. Both can subsequently read the data. | Shows both as loading, records the fetch on both and delivers a subsequent failure to both. | 2, 3 | 18804 |
+| Delivery | `statement-named-errors` | Can keep a delivered error in an aliased array after a current success clears it. | Shows the currently delivered errors once, including after recovery. | 3 | 2424 |
+| Loading | `statement-named-loading` | Can keep settled ids in an aliased array. | The list contains exactly the queries whose current entries have calls in flight. | 2 | 4884 |
+| Loading | `statement-named-refetching` | Can accumulate refetching ids in an aliased array. | The list contains each loading query with fetch history once. | 2 | 1254 |
 
-Superseded success and failure now match upstream byte for byte, including a
+Both declaration orders of the displaced-previous-key handoff preserve a
+successful result. Both also preserve a failed entry when the incoming reader
+already shows an error. Those four scenarios match lang-core byte for byte.
+A fresh reader on a failed entry still requests its own call under sentence 4.
+Its two order variants pin that independent difference.
+
+Superseded success and failure match upstream byte for byte, including a
 fresh dispatch when the query returns to an unsettled entry. The search,
 existing-error and dependency-value scenarios compare directly against the
 upstream golden.

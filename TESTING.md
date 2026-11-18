@@ -349,17 +349,19 @@ fixed during these scenarios.
 
 With the cached Bun reference, run
 `cargo test -p openui-runtime --test query_scenarios -- --ignored --nocapture`
-for 6,000 seeded edit scripts. The statements draw from the same pool of tool arguments.
-Each current key has at most one query. The generator can transfer settled
-keys between statements. Transferring an outstanding call between statements
-has a separate two-sided pin because its result data can also differ.
-The adapter additionally settles calls issued only under Rust's lifetime
-rule. Each implementation's complete serialized observations must match its
-own independent model of the random grammar. The model starts with upstream
-semantics and enables individual corrections in the order in
-`reference/query-lifetimes.ts`. The test checks each difference against one
-row in the CONFORMANCE table and verifies the row counts. The change-flag-only
-row takes precedence when both the snapshot and wanted calls have converged.
+for 6,000 seeded edit scripts. Statements can share a key, exchange keys, edit
+both statements or remove one holder and transfer its key in a single evaluate.
+The generator checks that it exercised both declaration orders for a batch
+handoff. It also uses each reserved list name as a statement id with an array
+default. Addressed completions settle calls issued by only one implementation.
+
+`reference/query-rule-model.ts` computes the final registrations, projects
+their current and previous keys, and retains exactly those entries across the
+command. It supplies every expected Rust byte and entry count. Separately,
+`reference/query-lifetimes.ts` models lang-core and enables one documented
+correction at a time to attribute differences. Both ends of that comparison
+are checked. Each differing observation must have one named, pinned row in
+CONFORMANCE.md, and the test requires each row's count to be positive and exact.
 
 Every replay step checks that the cache contains at most twice as many entries
 as registered queries. For each registration the replay checks that its current

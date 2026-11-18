@@ -282,6 +282,10 @@ fn random_query_edits_match_only_documented_entry_lifetime_differences() {
     assert!(affected > 0);
     let mut differences = 0;
     for (case, (documented, observed)) in counts {
+        assert!(
+            observed > 0,
+            "{case} was never exercised by the random scripts"
+        );
         assert_eq!(observed, documented, "{case} random observations");
         differences += observed;
         eprintln!("{case}: {observed}");
