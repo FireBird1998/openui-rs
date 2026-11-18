@@ -46,6 +46,22 @@ _Avoid_: prompt config, prompt options (when meaning the whole input)
 The text generated from a prompt spec that tells the model how to write OpenUI Lang for a given component library.
 _Avoid_: instructions, preamble (that's one part of it)
 
+**Message**:
+A response as stored or streamed, with marker lines around its parts: content, context, attributes and an end.
+_Avoid_: envelope, frame, payload
+
+**Marker line**:
+A line starting `]]>openui:` that begins a part of a message.
+_Avoid_: tag, delimiter, header
+
+**Response bundle**:
+A message whose content carries a scripts section after the program, as OpenUI Cloud writes it.
+_Avoid_: package, Cloud response
+
+**Cloud script**:
+A named piece of code in a response bundle that a query calls like a tool; it runs in OpenUI Cloud.
+_Avoid_: function, server tool, script (alone)
+
 ### Evaluation
 
 **Store**:
@@ -75,6 +91,26 @@ _Avoid_: command, instruction, action (when meaning one step)
 **Host event**:
 A step the runtime returns for the embedder to perform, with its checked parameters and form fields.
 _Avoid_: callback, effect, notification
+
+**Query manager**:
+The part of the runtime that runs a program's queries and mutations and holds their results.
+_Avoid_: fetcher, data layer, scheduler
+
+**Tool provider**:
+What an embedder attaches to a session to perform tool calls.
+_Avoid_: backend, client, handler
+
+**Tool call**:
+One request to a tool, with its name and arguments, and its outcome: a result or a failure.
+_Avoid_: fetch, request, invocation
+
+**Refresh interval**:
+How often a query is fetched again, in seconds.
+_Avoid_: polling rate, timer, TTL
+
+**Settled**:
+A program whose response has finished streaming and, for a response bundle, is complete and valid. Queries and mutations run only for a settled program.
+_Avoid_: unblocked, done, complete (a parse result's own flag)
 
 **Pristine**:
 A state name still holding a declared starting value. A later parse may replace that value; a value set by an app or a user is no longer pristine.
@@ -111,7 +147,7 @@ A reference-parser behaviour that looks wrong but that the core reproduces anywa
 _Avoid_: bug (when the core matches it on purpose), shared bug
 
 **Divergence**:
-A documented place where the core departs from the reference parser on purpose, on inputs no real program produces.
+A documented place where the core or the runtime departs from the reference on purpose: on inputs no real program produces, or where the reference's behaviour is a defect we chose not to copy, recorded with a draft upstream report.
 _Avoid_: deviation, exception
 
 **Mismatch**:
@@ -154,11 +190,11 @@ _Avoid_: bug report, issue
 
 **Core**:
 The `openui-lang` Rust crate: parsing, streaming parsing, validation and prompt generation. It evaluates a state variable's starting value while parsing; it keeps no live state and runs no queries.
-For live state and actions, see **Runtime**.
+For live state, actions and queries, see **Runtime**.
 _Avoid_: engine, SDK
 
 **Runtime**:
-The `openui-runtime` Rust crate over the core's one evaluator: live state, evaluated trees, bindings and action plans. It depends on the core; the core does not depend on it.
+The `openui-runtime` Rust crate over the core's one evaluator: live state, evaluated trees, bindings, action plans and the query manager. It depends on the core; the core does not depend on it.
 _Avoid_: engine, renderer, core (when meaning the runtime)
 
 **Dynamic News**:
