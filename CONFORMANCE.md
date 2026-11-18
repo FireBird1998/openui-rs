@@ -484,33 +484,56 @@ by `oops` are refused here and returned as text upstream.
 
 The core's `parse_response_bundle` ports the renderer package's
 `parseResponseBundle`. It reads the winning content of a message, removes
-its scripts section, and returns the program, optional bundle name, Cloud
-script names in insertion order, completion and bundle flags, and the
-scripts error once streaming ends. `parse_response_bundle_utf16` accepts UTF-16
-units directly, including a cut between the halves of an astral scalar.
-The native and WebAssembly bindings return JSON with the scripts set as
-an array. The Cloud script code is used for validation and revision equality.
+its scripts section, and returns the program, the optional name from the
+winning content marker line, Cloud script names in scripts section order,
+an opaque revision, the renderer's flags and the scripts error once streaming
+ends. Cloud script code is read
+for validation and revision construction.
+
+`is_bundle` (`isBundle` in JSON) includes messages without a scripts
+section. The renderer sets it when it sees a content marker line in the
+original response, recognizes a scripts section, or reads an end marker line
+at or after the winning content. A mid-line retry on its own, with no end
+marker line or scripts section, reads as a bare program while streaming.
+
+The renderer blocks when `streaming || !complete || error`. A legacy scripts
+section can move `complete` from true to false to true while streaming as
+the section becomes visible and then valid. A response is settled only
+once streaming has ended, `complete` is true, and there is no scripts error.
+[Upstream renderer hook](https://github.com/thesysdev/openui/blob/47b9cae0d3b26a8c9d7514d5887a6d6608801ac9/packages/react-lang/src/hooks/useOpenUIState.ts)
+
+The public Rust readers share one string convention. U+10F800–U+10FFFF in
+a Rust string stand for lone UTF-16 units U+D800–U+DFFF. Literal or decoded
+scalars in that reserved range therefore collide with the corresponding lone
+units. Both readers serialize a stand-in as a lone surrogate escape. The
+native binding uses the same convention. The WebAssembly binding takes
+JavaScript's exact UTF-16 units directly to JSON, which preserves real scalars
+in the reserved range as well as lone units. Both bindings encode the
+Cloud script names as a JSON array.
 
 The reference adapter calls the unchanged MIT renderer source using
 the pinned lang-core message reader. The cases start with inputs from the
-renderer's tests. The golden compares serialized fields byte for byte on
-stored reads and every UTF-16 streaming cut, including empty and full
-prefixes. Tests also cover the original response size, the depth of the
-scripts header and payload and of the winning context, and native and
-WebAssembly wiring. [Commit](reference/UPSTREAM)
-[Renderer source](reference/responseBundle.ts)
-[Adapter](reference/response-bundles.ts)
-[Cases](conformance/response-bundles.json)
+renderer's tests. The golden compares the exact UTF-16 path's serialized
+fields byte for byte on stored reads and every streaming cut, including the
+empty and full prefixes. The public Rust reader checks the same golden outside
+the reserved-scalar collisions, which have their own test. Tests also cover
+the original response size, JSON depth on the scripts marker line, in the
+scripts section and in the winning context, and both bindings.
+[Commit](reference/UPSTREAM) [Renderer source](reference/responseBundle.ts)
+[Adapter](reference/response-bundles.ts) [Cases](conformance/response-bundles.json)
 [Golden](conformance/golden/response-bundles.json)
 
-The scripts revision is opaque. The comparison assigns an equality class
-to each revision in a read and its cuts, and compares whether revisions
-are equal across selected pairs of responses. The core sorts by plain
-UTF-16 name order for a stable, locale-independent token. Upstream uses
-`localeCompare`. When distinct names compare equal in its locale, upstream's
-stable sort preserves their payload order. The paired case for `é` and
-`é` pins the resulting difference in equality when those names are
-reversed.
+Compare the opaque scripts revision for equality. Plain UTF-16 name order
+makes it equal for the same set of Cloud script names and code regardless of
+scripts section order. Upstream's stable sort keeps the section order for
+distinct names that its locale comparison ties. This includes canonically
+equivalent sequences and names differing only by characters the collation
+ignores. Which names tie depends on the JavaScript engine's ICU collation.
+The paired cases pin the resulting order dependence for `é` and `e\u0301`
+and for `a` and `a\u200b`. For the tested pairs, every upstream equality is
+also a core equality, and different sets of names and code have different
+core revisions. Individual streaming comparisons use equality classes in
+place of the revision text.
 
 ## Deliberately not ported from lang-core
 

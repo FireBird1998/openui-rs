@@ -564,6 +564,14 @@
     {
       "name": "revision-locale-tie-reversed",
       "raw": "]]>openui:scripts {\"count\":2}\n[{\"name\":\"e\u0301\",\"code\":\"b\"},{\"name\":\"\u00e9\",\"code\":\"a\"}]\n"
+    },
+    {
+      "name": "revision-ignorable-tie-original",
+      "raw": "]]>openui:scripts {\"count\":2}\n[{\"name\":\"a\",\"code\":\"one\"},{\"name\":\"a\\u200b\",\"code\":\"two\"}]\n"
+    },
+    {
+      "name": "revision-ignorable-tie-reversed",
+      "raw": "]]>openui:scripts {\"count\":2}\n[{\"name\":\"a\\u200b\",\"code\":\"two\"},{\"name\":\"a\",\"code\":\"one\"}]\n"
     }
   ],
   "revisionPairs": [
@@ -609,7 +617,13 @@
     },
     {
       "left": "revision-locale-tie-original",
-      "right": "revision-locale-tie-reversed"
+      "right": "revision-locale-tie-reversed",
+      "localeTie": true
+    },
+    {
+      "left": "revision-ignorable-tie-original",
+      "right": "revision-ignorable-tie-reversed",
+      "localeTie": true
     }
   ]
 }

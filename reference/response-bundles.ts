@@ -37,6 +37,17 @@ export function answerResponseBundles(raw: ResponseInput, other?: ResponseInput)
   return other === undefined ? [first] : [first, readBoth(responseText(other), revisions)];
 }
 
+// The upstream revision is serialized JSON. Compare its entries independently
+// of upstream's sorting to check the core's claimed name-and-code set equality.
+function sameScripts(left?: string, right?: string) {
+  if (left === undefined || right === undefined) return left === right;
+  type Script = { name: string; code: string };
+  const entries: Script[] = JSON.parse(left);
+  const other: Script[] = JSON.parse(right);
+  const codeByName = new Map(other.map(({ name, code }) => [name, code]));
+  return entries.length === other.length && entries.every(({ name, code }) => codeByName.get(name) === code);
+}
+
 if (import.meta.main) {
   const base = new URL("../conformance/", import.meta.url);
   const corpus: {
@@ -49,8 +60,9 @@ if (import.meta.main) {
   const byName = new Map(corpus.cases.map(({ name, raw, units }) => [name, responseText(units ?? raw)]));
   const revisionPairs = corpus.revisionPairs.map(({ left, right }) => {
     if (!byName.has(left) || !byName.has(right)) throw new Error("unknown revision pair case");
-    return parseResponseBundle(byName.get(left) ?? null, false).scriptRevision
-      === parseResponseBundle(byName.get(right) ?? null, false).scriptRevision;
+    const a = parseResponseBundle(byName.get(left) ?? null, false).scriptRevision;
+    const b = parseResponseBundle(byName.get(right) ?? null, false).scriptRevision;
+    return { upstreamEqual: a === b, sameScripts: sameScripts(a, b) };
   });
   writeFileSync(new URL("golden/response-bundles.json", base), JSON.stringify({ cases, revisionPairs }, null, 2) + "\n");
   console.log(`${corpus.cases.length} response bundle cases, ${revisionPairs.length} revision pairs`);

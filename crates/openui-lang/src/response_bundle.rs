@@ -4,11 +4,11 @@ mod text;
 
 use std::{borrow::Cow, collections::HashSet, fmt};
 
-use crate::js::{read_bundle_json, write_json_char};
+use crate::js::{normalize_surrogate_pairs, write_json_char};
 use crate::message::split_message;
 use crate::{Limits, Value};
 
-pub use text::ResponseText;
+use text::TextFormat;
 
 const CONTENT: &str = "]]>openui:content";
 const SCRIPTS: &str = "]]>openui:scripts";
@@ -16,51 +16,77 @@ const LINE_TERMINATORS: [char; 4] = ['\n', '\r', '\u{2028}', '\u{2029}'];
 const INVALID_SCRIPTS: &str = "Invalid scripts bundle";
 
 /// A stored or streaming response as read by the renderer.
-#[derive(Debug, PartialEq, Eq)]
+///
+/// Text fields use the core's [UTF-16 string convention](crate::utf16_units),
+/// shared with [`ParsedMessage`](crate::ParsedMessage).
+#[derive(PartialEq, Eq)]
 pub struct ResponseBundle {
     /// The winning program with its scripts section removed.
-    pub program: ResponseText,
+    pub program: String,
     /// The optional name from the winning content marker.
-    pub name: Option<ResponseText>,
-    /// Cloud script names in payload order, each appearing once.
-    pub script_names: Vec<ResponseText>,
-    /// The opaque revision of a nonempty, valid scripts section.
-    pub script_revision: Option<ScriptRevision>,
-    /// Whether the renderer sees a content marker line, scripts section or end.
+    pub name: Option<String>,
+    /// Cloud script names in scripts section order, each appearing once.
+    pub script_names: Vec<String>,
+    /// The renderer's `isBundle` flag. True when it sees a content marker line
+    /// in the original response, recognizes a scripts section, or reads an end
+    /// marker line at or after the winning content. This includes messages
+    /// without a scripts section. A streaming content marker line counts
+    /// once its newline arrives.
     pub is_bundle: bool,
-    /// Whether the renderer considers the response complete.
+    /// Whether the renderer currently considers the response complete.
+    /// While streaming, this can change in either direction. The renderer
+    /// blocks when streaming, incomplete, or reporting a scripts error.
+    /// A response is settled when all three conditions are false.
     pub complete: bool,
     /// The renderer's error for an invalid section after streaming ends.
     pub error: Option<&'static str>,
+    script_revision: Option<String>,
 }
 
-/// An opaque scripts revision. Compare revisions for equality.
-#[derive(Clone, PartialEq, Eq)]
-pub struct ScriptRevision(String);
-
-impl fmt::Debug for ScriptRevision {
+impl fmt::Debug for ResponseBundle {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.write_str("ScriptRevision(..)")
+        f.debug_struct("ResponseBundle")
+            .field("program", &self.program)
+            .field("name", &self.name)
+            .field("script_names", &self.script_names)
+            .field("is_bundle", &self.is_bundle)
+            .field("complete", &self.complete)
+            .field("error", &self.error)
+            .field(
+                "script_revision",
+                &self.script_revision.as_ref().map(|_| ".."),
+            )
+            .finish()
     }
 }
 
 impl ResponseBundle {
+    /// The opaque revision of a nonempty, valid scripts section. Compare it
+    /// for equality. It identifies the set of Cloud script names and code.
+    pub fn script_revision(&self) -> Option<&str> {
+        self.script_revision.as_deref()
+    }
+
     /// Serialize the renderer's result as JSON. The scripts set is represented
     /// as an array in insertion order. The optional revision is opaque.
     pub fn to_json(&self) -> String {
+        self.serialize(TextFormat::Core)
+    }
+
+    fn serialize(&self, format: TextFormat) -> String {
         let mut out = String::from("{\"program\":");
-        self.program.write_json(&mut out);
+        format.write_json(&mut out, &self.program);
         out.push_str(",\"metadata\":{");
         if let Some(name) = &self.name {
             out.push_str("\"name\":");
-            name.write_json(&mut out);
+            format.write_json(&mut out, name);
         }
         out.push_str("},\"scripts\":[");
         for (index, name) in self.script_names.iter().enumerate() {
             if index != 0 {
                 out.push(',');
             }
-            name.write_json(&mut out);
+            format.write_json(&mut out, name);
         }
         out.push_str(if self.complete {
             "],\"complete\":true"
@@ -81,7 +107,7 @@ impl ResponseBundle {
         }
         if let Some(revision) = &self.script_revision {
             out.push_str(",\"scriptRevision\":\"");
-            for ch in revision.0.chars() {
+            for ch in revision.chars() {
                 write_json_char::<true>(&mut out, ch);
             }
             out.push('"');
@@ -98,7 +124,7 @@ pub enum ResponseBundleError {
     ProgramSize,
     /// The winning message context exceeds the JSON depth limit.
     ContextDepth,
-    /// The scripts header or payload exceeds the JSON depth limit.
+    /// JSON on the scripts marker line or in the scripts section exceeds the depth limit.
     ScriptsDepth,
 }
 
@@ -118,6 +144,8 @@ impl std::error::Error for ResponseBundleError {}
 /// The whole original response counts against the program-size limit. The
 /// winning context and scripts section are read under the existing JSON depth
 /// limit. Cloud script code is used only to validate and form the revision.
+/// Input and returned strings use the core's [UTF-16 convention](crate::utf16_units)
+/// shared with [`parse_message`](crate::parse_message).
 pub fn parse_response_bundle(
     response: Option<&str>,
     streaming: bool,
@@ -127,17 +155,22 @@ pub fn parse_response_bundle(
     if raw.len() > limits.program_size() {
         return Err(ResponseBundleError::ProgramSize);
     }
-    read_bundle(&text::encode(raw), streaming, limits)
+    read_bundle(
+        &normalize_surrogate_pairs(raw),
+        streaming,
+        limits,
+        TextFormat::Core,
+    )
 }
 
-/// Read a response from JavaScript UTF-16 units, including any lone surrogates.
+/// Serialize a JavaScript response directly from its exact UTF-16 units.
 /// Size is charged as UTF-8 bytes with three bytes per lone surrogate. An
 /// empty slice has the same meaning as an absent response.
-pub fn parse_response_bundle_utf16(
+pub fn response_bundle_json_utf16(
     response: &[u16],
     streaming: bool,
     limits: Limits,
-) -> Result<ResponseBundle, ResponseBundleError> {
+) -> Result<String, ResponseBundleError> {
     let mut room = limits.program_size();
     if response.len() > room {
         return Err(ResponseBundleError::ProgramSize);
@@ -152,42 +185,49 @@ pub fn parse_response_bundle_utf16(
         &text::encode_utf16(response.iter().copied()),
         streaming,
         limits,
+        TextFormat::ExactUtf16,
     )
+    .map(|bundle| bundle.serialize(TextFormat::ExactUtf16))
 }
 
 fn read_bundle(
     raw: &str,
     streaming: bool,
     limits: Limits,
+    format: TextFormat,
 ) -> Result<ResponseBundle, ResponseBundleError> {
-    let framed = framed(raw, streaming);
+    let content_line = has_content_line(raw, streaming);
     let masked = mask_bare_scripts(raw);
     split_message(&masked, streaming, |program, context, query, end| {
         if let Some(context) = context
-            && let Err(error) = read_bundle_json(&context, limits, text::decode_json_string)
+            && let Err(error) = format.read_json(&context, limits)
             && error.depth_limited()
         {
             return Err(ResponseBundleError::ContextDepth);
         }
-        let (program, section, scripts) = extract_scripts(program, limits)?;
+        let (program, section, scripts) = extract_scripts(program, limits, format)?;
         let valid = !section || scripts.is_some();
         let (script_names, script_revision) = scripts.unwrap_or_default();
         Ok(ResponseBundle {
-            program: ResponseText(program),
-            name: if framed { read_name(query) } else { None },
+            program,
+            name: if content_line {
+                read_name(query, format)
+            } else {
+                None
+            },
             script_names,
             script_revision,
-            is_bundle: framed || section || end,
-            complete: valid && (end || !streaming || !framed),
+            is_bundle: content_line || section || end,
+            complete: valid && (end || !streaming || !content_line),
             error: (!streaming && !valid).then_some(INVALID_SCRIPTS),
         })
     })
 }
 
-// The renderer looks for the first match before the message reader inserts
-// newlines for retries. JavaScript multiline anchors also recognize CR,
+// The renderer looks for the first content marker line before the message
+// reader inserts newlines for retries. JavaScript multiline anchors also recognize CR,
 // U+2028 and U+2029, while the message reader splits only on LF.
-fn framed(raw: &str, streaming: bool) -> bool {
+fn has_content_line(raw: &str, streaming: bool) -> bool {
     for (at, _) in raw.match_indices(CONTENT) {
         if !line_start(raw, at) {
             continue;
@@ -238,11 +278,10 @@ fn mask_bare_scripts(raw: &str) -> Cow<'_, str> {
     Cow::Owned(masked)
 }
 
-fn read_name(query: &str) -> Option<ResponseText> {
+fn read_name(query: &str, format: TextFormat) -> Option<String> {
     query.rsplit('&').find_map(|pair| {
         let (key, value) = pair.split_once('=').unwrap_or((pair, ""));
-        (text::decode_attribute(key) == "name")
-            .then(|| ResponseText(text::decode_attribute(value).into_owned()))
+        (format.attribute(key) == "name").then(|| format.attribute(value).into_owned())
     })
 }
 
@@ -272,11 +311,12 @@ fn marker_index(text: &str) -> Option<usize> {
     None
 }
 
-type Scripts = (Vec<ResponseText>, Option<ScriptRevision>);
+type Scripts = (Vec<String>, Option<String>);
 
 fn extract_scripts(
     mut program: String,
     limits: Limits,
+    format: TextFormat,
 ) -> Result<(String, bool, Option<Scripts>), ResponseBundleError> {
     let Some(at) = marker_index(&program) else {
         return Ok((program, false, None));
@@ -287,10 +327,13 @@ fn extract_scripts(
     let Some(section) = section.strip_prefix(SCRIPTS) else {
         return Ok((program, false, None));
     };
-    let (scripts, after) = if let Some((header, tail)) = section.split_once('\n') {
+    let (scripts, after) = if let Some((count_json, tail)) = section.split_once('\n') {
         let end = marker_index(tail).unwrap_or(tail.len());
-        if let Some((payload, after)) = tail.split_at_checked(end) {
-            (read_scripts(header, payload, limits)?, after)
+        if let Some((scripts_json, after)) = tail.split_at_checked(end) {
+            (
+                read_scripts(count_json, scripts_json, limits, format)?,
+                after,
+            )
         } else {
             (None, "")
         }
@@ -309,8 +352,12 @@ fn extract_scripts(
     Ok((program, true, scripts))
 }
 
-fn script_json(text: &str, limits: Limits) -> Result<Option<Value>, ResponseBundleError> {
-    match read_bundle_json(text, limits, text::decode_json_string) {
+fn script_json(
+    text: &str,
+    limits: Limits,
+    format: TextFormat,
+) -> Result<Option<Value>, ResponseBundleError> {
+    match format.read_json(text, limits) {
         Ok(value) => Ok(Some(value)),
         Err(error) if error.depth_limited() => Err(ResponseBundleError::ScriptsDepth),
         Err(_) => Ok(None),
@@ -318,20 +365,21 @@ fn script_json(text: &str, limits: Limits) -> Result<Option<Value>, ResponseBund
 }
 
 fn read_scripts(
-    header: &str,
-    payload: &str,
+    count_json: &str,
+    scripts_json: &str,
     limits: Limits,
+    format: TextFormat,
 ) -> Result<Option<Scripts>, ResponseBundleError> {
-    let Some(header) = script_json(header, limits)? else {
+    let Some(count) = script_json(count_json, limits, format)? else {
         return Ok(None);
     };
-    if matches!(header, Value::Null) {
+    if matches!(count, Value::Null) {
         return Ok(None);
     }
-    let Some(Value::Arr(ref values)) = script_json(payload, limits)? else {
+    let Some(Value::Arr(ref values)) = script_json(scripts_json, limits, format)? else {
         return Ok(None);
     };
-    let Value::Obj(fields) = &header else {
+    let Value::Obj(fields) = &count else {
         return Ok(None);
     };
     let Some(Value::Num(count)) = fields.get("count") else {
@@ -356,27 +404,24 @@ fn read_scripts(
         }
         scripts.push((name.as_str(), code.as_str()));
     }
-    let names = scripts
-        .iter()
-        .map(|(name, _)| ResponseText((*name).to_owned()))
-        .collect();
-    let revision = (!scripts.is_empty()).then(|| script_revision(&mut scripts));
+    let names = scripts.iter().map(|(name, _)| (*name).to_owned()).collect();
+    let revision = (!scripts.is_empty()).then(|| script_revision(&mut scripts, format));
     Ok(Some((names, revision)))
 }
 
-fn script_revision(scripts: &mut [(&str, &str)]) -> ScriptRevision {
-    scripts.sort_unstable_by(|(a, _), (b, _)| text::units(a).cmp(text::units(b)));
+fn script_revision(scripts: &mut [(&str, &str)], format: TextFormat) -> String {
+    scripts.sort_unstable_by(|(a, _), (b, _)| format.compare(a, b));
     let mut revision = String::from("[");
     for (index, (name, code)) in scripts.iter().enumerate() {
         if index != 0 {
             revision.push(',');
         }
         revision.push_str("{\"name\":");
-        text::write_json(&mut revision, name);
+        format.write_json(&mut revision, name);
         revision.push_str(",\"code\":");
-        text::write_json(&mut revision, code);
+        format.write_json(&mut revision, code);
         revision.push('}');
     }
     revision.push(']');
-    ScriptRevision(revision)
+    revision
 }

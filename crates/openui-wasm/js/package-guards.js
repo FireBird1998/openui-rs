@@ -524,6 +524,4 @@ if (typeof exports !== 'undefined') {
     if (key !== '__esModule' && !openuiHasOwn(openuiExports, key)) throw openuiUncovered('exports', key);
   }
   Object.assign(exports, openuiExports);
-  // Keep the existing enumerable CommonJS surface for callers that walk it.
-  openuiDefine(exports, 'parseResponseBundle', { enumerable: false });
 }

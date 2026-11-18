@@ -318,15 +318,15 @@ fn read_attributes(query: &str) -> JsObject<String> {
     let mut attributes = JsObject::new();
     for pair in query.split('&') {
         let (key, value) = pair.split_once('=').unwrap_or((pair, ""));
-        let key = decode(key);
+        let key = decode_attribute(key);
         if !key.is_empty() {
-            attributes.set(key, decode(value));
+            attributes.set(key, decode_attribute(value));
         }
     }
     attributes
 }
 
-fn decode(text: &str) -> String {
+pub(crate) fn decode_attribute(text: &str) -> String {
     if !text.contains(['%', '+']) {
         return text.to_owned();
     }

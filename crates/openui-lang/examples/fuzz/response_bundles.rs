@@ -51,9 +51,9 @@ fn inputs(corpus: &Value) -> Vec<Batch> {
     let mut seeds: Vec<_> = cases.iter().map(|case| vec![input(case)]).collect();
     if let Some(pairs) = corpus["revisionPairs"].as_array() {
         seeds.extend(pairs.iter().filter_map(|pair| {
-            // This pair has its own two-sided test for the explicitly chosen
-            // plain-order revision. All other pairs compare without exceptions.
-            if pair["left"] == "revision-locale-tie-original" {
+            // The paired golden test checks the direction of locale tie
+            // differences. Both responses still seed the individual reads.
+            if pair["localeTie"] == true {
                 return None;
             }
             let left = cases.iter().find(|case| case["name"] == pair["left"])?;

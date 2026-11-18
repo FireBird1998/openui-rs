@@ -10,7 +10,7 @@ const CLASSES = ['ActionHandle', 'ActionOutput', 'ComponentLibrary', 'Continuati
   'RuntimeSession', 'StreamSession'];
 
 test('the package exports only guarded classes and functions', () => {
-  expect(Object.keys(wasm).sort()).toEqual([...CLASSES, 'parse', 'parseProgram', 'parseMessage', 'buildMessage'].sort());
+  expect(Object.keys(wasm).sort()).toEqual([...CLASSES, 'parse', 'parseProgram', 'parseMessage', 'buildMessage', 'parseResponseBundle'].sort());
 });
 
 test('an unmodified package loads with the guard', () => {

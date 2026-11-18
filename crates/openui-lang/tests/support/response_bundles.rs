@@ -1,7 +1,4 @@
-use openui_lang::{
-    Limits, ResponseBundle, ResponseBundleError, ScriptRevision, parse_response_bundle,
-    parse_response_bundle_utf16,
-};
+use openui_lang::{Limits, ResponseBundleError, response_bundle_json_utf16};
 use serde_json::{Value, json};
 
 pub const CASES: &str = include_str!("../../../../conformance/response-bundles.json");
@@ -18,36 +15,23 @@ pub fn units(value: &Value) -> Option<Vec<u16>> {
     }
 }
 
-pub fn complete(input: Option<&[u16]>) -> Result<ResponseBundle, ResponseBundleError> {
-    let Some(input) = input else {
-        return parse_response_bundle(None, false, Limits::DEFAULT);
-    };
-    match String::from_utf16(input) {
-        Ok(text) => parse_response_bundle(Some(&text), false, Limits::DEFAULT),
-        Err(_) => parse_response_bundle_utf16(input, false, Limits::DEFAULT),
-    }
-}
-
-pub fn observe(bundle: &ResponseBundle, revisions: &mut Vec<ScriptRevision>) -> String {
-    let serialized = bundle.to_json();
+pub fn observe(serialized: String, revisions: &mut Vec<String>) -> String {
     let Some((prefix, wire_revision)) = serialized.rsplit_once(",\"scriptRevision\":") else {
         return serialized;
     };
-    let Some(revision) = &bundle.script_revision else {
+    // The revision field must be a JSON string, but its bytes are opaque.
+    let Some(revision) = wire_revision
+        .strip_suffix('}')
+        .and_then(|text| serde_json::from_str::<String>(text).ok())
+    else {
         return serialized;
     };
-    // The revision field must be a JSON string, but its bytes are opaque.
-    if !wire_revision
-        .strip_suffix('}')
-        .is_some_and(|text| serde_json::from_str::<String>(text).is_ok())
-    {
-        return serialized;
-    }
-    let id = match revisions.iter().position(|known| known == revision) {
+    let id = match revisions.iter().position(|known| known == &revision) {
         Some(id) => id,
         None => {
-            revisions.push(revision.clone());
-            revisions.len() - 1
+            let id = revisions.len();
+            revisions.push(revision);
+            id
         }
     };
     format!("{prefix},\"scriptRevision\":{id}}}")
@@ -55,15 +39,25 @@ pub fn observe(bundle: &ResponseBundle, revisions: &mut Vec<ScriptRevision>) -> 
 
 pub fn read(
     input: Option<&[u16]>,
-    revisions: &mut Vec<ScriptRevision>,
+    revisions: &mut Vec<String>,
 ) -> Result<Value, ResponseBundleError> {
-    let full = observe(&complete(input)?, revisions);
+    read_with(input, revisions, |input, streaming| {
+        response_bundle_json_utf16(input, streaming, Limits::DEFAULT)
+    })
+}
+
+pub fn read_with(
+    input: Option<&[u16]>,
+    revisions: &mut Vec<String>,
+    parse: impl Fn(&[u16], bool) -> Result<String, ResponseBundleError>,
+) -> Result<Value, ResponseBundleError> {
     let input = input.unwrap_or_default();
+    let full = observe(parse(input, false)?, revisions);
     let mut cuts = Vec::with_capacity(input.len() + 1);
     for cut in 0..=input.len() {
         if let Some(prefix) = input.get(..cut) {
-            let bundle = parse_response_bundle_utf16(prefix, true, Limits::DEFAULT)?;
-            cuts.push(observe(&bundle, revisions));
+            let bundle = parse(prefix, true)?;
+            cuts.push(observe(bundle, revisions));
         }
     }
     Ok(json!({"complete": full, "cuts": cuts}))

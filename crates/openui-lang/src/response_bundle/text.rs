@@ -1,42 +1,55 @@
 //! Lossless UTF-16 in UTF-8 storage, so the message splitter can work on
 //! ASCII syntax without conflating lone surrogates with real Unicode scalars.
 
-use std::borrow::Cow;
+use std::{borrow::Cow, cmp::Ordering};
 
-use crate::js::{write_json_char, write_json_surrogate};
+use crate::js::{
+    read_bundle_json, read_message_json, write_json_char, write_json_string, write_json_surrogate,
+};
+use crate::{JsonError, Limits, Value};
 
 const ESCAPE: char = '\u{fdd0}';
 const SURROGATE_BASE: u32 = 0xe000;
 
-/// Text returned by the response bundle reader. Streaming prefixes, bundle
-/// names and Cloud script names can carry JavaScript's lone UTF-16 surrogates.
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub struct ResponseText(pub(super) String);
+// Rust readers share the core's string convention. The WebAssembly boundary
+// instead carries the exact units of JavaScript strings through to JSON.
+#[derive(Clone, Copy)]
+pub(super) enum TextFormat {
+    Core,
+    ExactUtf16,
+}
 
-impl ResponseText {
-    /// Read the exact text as UTF-16 units.
-    pub fn utf16_units(&self) -> impl Iterator<Item = u16> + '_ {
-        units(&self.0)
-    }
-
-    /// Read as Rust text, replacing each lone surrogate with U+FFFD.
-    pub fn to_string_lossy(&self) -> Cow<'_, str> {
-        if !self.0.contains(ESCAPE) {
-            return Cow::Borrowed(&self.0);
+impl TextFormat {
+    pub(super) fn attribute(self, text: &str) -> Cow<'_, str> {
+        match self {
+            Self::Core => Cow::Owned(crate::message::decode_attribute(text)),
+            Self::ExactUtf16 => decode_attribute(text),
         }
-        Cow::Owned(
-            char::decode_utf16(self.utf16_units())
-                .map(|ch| ch.unwrap_or(char::REPLACEMENT_CHARACTER))
-                .collect(),
-        )
     }
 
-    pub(super) fn write_json(&self, out: &mut String) {
-        write_json(out, &self.0);
+    pub(super) fn read_json(self, text: &str, limits: Limits) -> Result<Value, JsonError> {
+        match self {
+            Self::Core => read_message_json(text, limits),
+            Self::ExactUtf16 => read_bundle_json(text, limits, decode_json_string),
+        }
+    }
+
+    pub(super) fn write_json(self, out: &mut String, text: &str) {
+        match self {
+            Self::Core => write_json_string(out, text),
+            Self::ExactUtf16 => write_exact_json(out, text),
+        }
+    }
+
+    pub(super) fn compare(self, left: &str, right: &str) -> Ordering {
+        match self {
+            Self::Core => crate::utf16_units(left).cmp(crate::utf16_units(right)),
+            Self::ExactUtf16 => units(left).cmp(units(right)),
+        }
     }
 }
 
-pub(super) fn write_json(out: &mut String, text: &str) {
+fn write_exact_json(out: &mut String, text: &str) {
     out.push('"');
     for ch in chars(text) {
         match ch {
@@ -47,7 +60,7 @@ pub(super) fn write_json(out: &mut String, text: &str) {
     out.push('"');
 }
 
-pub(super) fn encode(text: &str) -> Cow<'_, str> {
+fn encode(text: &str) -> Cow<'_, str> {
     if !text.contains(ESCAPE) {
         return Cow::Borrowed(text);
     }
@@ -103,7 +116,7 @@ fn chars(text: &str) -> impl Iterator<Item = TextChar> + '_ {
     })
 }
 
-pub(super) fn units(text: &str) -> impl Iterator<Item = u16> + '_ {
+fn units(text: &str) -> impl Iterator<Item = u16> + '_ {
     chars(text).flat_map(|ch| {
         let mut units = [0; 2];
         let len = match ch {
@@ -120,7 +133,7 @@ pub(super) fn units(text: &str) -> impl Iterator<Item = u16> + '_ {
 // The JSON reader handles the containing grammar and depth. At a string
 // token, decode escapes to units before joining pairs that can straddle a
 // literal lone unit and a JSON escape.
-pub(super) fn decode_json_string(literal: &str) -> Option<String> {
+fn decode_json_string(literal: &str) -> Option<String> {
     let body = literal.strip_prefix('"')?.strip_suffix('"')?;
     if !body.contains(['\\', '"']) && !body.bytes().any(|byte| byte < 0x20) {
         return Some(body.to_owned());
@@ -155,7 +168,7 @@ pub(super) fn decode_json_string(literal: &str) -> Option<String> {
 
 // decodeURIComponent decodes percent bytes, leaves literal UTF-16 alone,
 // and falls back to the original text on any malformed percent escape.
-pub(super) fn decode_attribute(text: &str) -> Cow<'_, str> {
+fn decode_attribute(text: &str) -> Cow<'_, str> {
     if !text.contains(['%', '+']) {
         return Cow::Borrowed(text);
     }

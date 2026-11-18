@@ -8,7 +8,6 @@ pub fn parse_response_bundle(
     #[wasm_bindgen(unchecked_param_type = "string | null")] text: &[u16],
     streaming: bool,
 ) -> Result<String, JsValue> {
-    openui_lang::parse_response_bundle_utf16(text, streaming, Limits::DEFAULT)
-        .map(|bundle| bundle.to_json())
+    openui_lang::response_bundle_json_utf16(text, streaming, Limits::DEFAULT)
         .map_err(|error| crate::runtime::thrown("LimitExceeded", &error.to_string()))
 }
