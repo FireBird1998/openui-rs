@@ -15,13 +15,15 @@ export type Outcome =
   | { kind: 'result'; value?: unknown }
   | { kind: 'tool-not-found'; availableTools: string[] }
   | { kind: 'mcp-error' | 'tool-error'; message: string };
+export type Dispatch = { step: number; toolName: string; args: unknown };
 export type Step =
   | { kind: 'evaluate' }
   | { kind: 'complete'; call: number; outcome: Outcome }
+  | { kind: 'complete'; dispatch: Dispatch; outcome: Outcome }
   | { kind: 'set'; name: string; value?: unknown }
   | { kind: 'replace'; program: string };
 export type Scenario = { name: string; program: string; library?: Parameters<typeof compileSchema>[0]; steps: Step[] };
-type Call = { toolName: string; args: unknown; finish(outcome: Outcome): Promise<void> };
+type Call = Dispatch & { finish(outcome: Outcome): Promise<void> };
 
 function makeClock() {
   // Keep intervals behind a fake clock. This slice never advances it.
@@ -46,13 +48,14 @@ async function replay(scenario: Scenario, script?: Script): Promise<string[]> {
   const store = createStore();
   store.initialize(program.stateDeclarations ?? {}, {});
   const calls: Call[] = [];
+  let stepIndex = 0;
   const manager = createQueryManager({
     callTool(name, args) {
       // toQueryNode uses a TypeScript assertion, so the runtime provider can
       // get a non-string name. Observe the JS string used by the Rust seam.
       const toolName = String(name);
       const promise = new Promise((resolve, reject) => {
-        calls.push({ toolName, args, async finish(outcome) {
+        calls.push({ step: stepIndex, toolName, args, async finish(outcome) {
           switch (outcome.kind) {
             case 'result': resolve(outcome.value); break;
             case 'tool-not-found': reject(new ToolNotFoundError(toolName, outcome.availableTools)); break;
@@ -83,7 +86,18 @@ async function replay(scenario: Scenario, script?: Script): Promise<string[]> {
       // Set and replace change inputs only; evaluate applies them to the manager.
       switch (step.kind) {
         case 'evaluate': manager.evaluateStatements(program.queryStatements ?? [], context); break;
-        case 'complete': await calls[step.call].finish(step.outcome); break;
+        case 'complete':
+          if ('call' in step) await calls[step.call].finish(step.outcome);
+          else {
+            // A difference in dispatch must never redirect an outcome to the
+            // next positional call. Only the side that dispatched here settles.
+            const target = step.dispatch;
+            const matches = calls.filter(c => c.step === target.step && c.toolName === target.toolName &&
+              JSON.stringify(c.args) === JSON.stringify(target.args));
+            if (matches.length > 1) throw new Error("ambiguous dispatch address");
+            await matches[0]?.finish(step.outcome);
+          }
+          break;
         case 'set': store.set(step.name, step.value); break;
         case 'replace':
           program = parse(step.program, library);
@@ -96,6 +110,7 @@ async function replay(scenario: Scenario, script?: Script): Promise<string[]> {
         calls: calls.slice(first).map(({ toolName, args }, offset) => ({ call: first + offset, toolName, args })),
         changed: before !== JSON.stringify(snapshot),
       }));
+      stepIndex++;
     }
     return observations;
   } finally {
@@ -111,12 +126,13 @@ Object.assign(globalThis, clock);
 console.error = () => {}; // Scripted rejections are observed through the snapshot.
 try {
   if (process.argv[2] === '--random') {
-    const { randomScenario, keyLoadingObservations } = await import('./query-random');
-    for (let seed = 1; seed <= 3000; seed++) {
+    const { randomScenario } = await import('./query-random');
+    const { addressCompletions, compareLifetimes } = await import('./query-lifetimes');
+    for (let seed = 1; seed <= 6000; seed++) {
       const { scenario, script, keys } = randomScenario(seed);
-      const reference = await replay(scenario, script);
-      const overrides = keyLoadingObservations(scenario, reference, keys);
-      console.log(JSON.stringify({ scenario, reference, overrides }));
+      let reference = await replay(scenario, script);
+      if (addressCompletions(scenario, reference, keys, seed)) reference = await replay(scenario);
+      console.log(JSON.stringify({ scenario, reference, ...compareLifetimes(scenario, reference, keys) }));
     }
   } else {
     const scenarios: Scenario[] = JSON.parse(readFileSync('../conformance/query-scenarios.json', 'utf8'));

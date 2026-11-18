@@ -1,6 +1,6 @@
 {
   "case": "pending-key-changes-its-only-reader",
-  "reason": "call-belongs-to-its-key",
+  "reason": "call-belongs-to-its-entry",
   "reference": [
     "{\"snapshot\":{\"__openui_loading\":[\"a\",\"b\"],\"__openui_refetching\":[],\"__openui_errors\":[],\"a\":\"adef\",\"b\":\"bdef\"},\"calls\":[{\"call\":0,\"toolName\":\"t\",\"args\":{\"v\":0}},{\"call\":1,\"toolName\":\"t\",\"args\":{\"v\":2}}],\"changed\":true}",
     "{\"snapshot\":{\"__openui_loading\":[\"a\",\"b\"],\"__openui_refetching\":[],\"__openui_errors\":[],\"a\":\"adef\",\"b\":\"bdef\"},\"calls\":[],\"changed\":false}",

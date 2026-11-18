@@ -131,3 +131,51 @@ fn call_identities_are_owned_by_one_manager_and_complete_once() {
     ));
     assert_eq!(owner.snapshot_json(), after);
 }
+
+#[test]
+fn consecutive_key_changes_release_the_displaced_result() {
+    let program = program("$x = 0\nq = Query(\"t\", {v:$x}, \"d\")");
+    let mut store = Store::default();
+    let mut manager = QueryManager::default();
+    let result = JsonValue::String("q".repeat(10_000));
+
+    for cycle in 0..2_000 {
+        let mut counts = Vec::new();
+        let mut calls = Vec::new();
+        for offset in 0..3 {
+            store
+                .set(
+                    "$x",
+                    Some(openui_runtime::Value::Num(f64::from(cycle * 3 + offset))),
+                )
+                .unwrap();
+            let update = manager.apply(evaluate(&program, &store)).unwrap();
+            counts.push(manager.cache_entry_count());
+            assert_eq!(update.calls.len(), 1);
+            calls.extend(update.calls.into_iter().map(|call| call.id));
+            if offset == 0 {
+                manager
+                    .apply(QueryCommand::Complete {
+                        id: &calls[0],
+                        outcome: ToolOutcome::Result(Some(&result)),
+                    })
+                    .unwrap();
+                counts.push(manager.cache_entry_count());
+            }
+        }
+        for id in &calls[1..] {
+            manager
+                .apply(QueryCommand::Complete {
+                    id,
+                    outcome: ToolOutcome::Result(Some(&result)),
+                })
+                .unwrap();
+            counts.push(manager.cache_entry_count());
+        }
+        assert_eq!(
+            counts,
+            [if cycle == 0 { 1 } else { 2 }, 1, 2, 2, 2, 1],
+            "cycle {cycle}"
+        );
+    }
+}

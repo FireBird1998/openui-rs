@@ -379,5 +379,135 @@
       {"kind":"evaluate"},
       {"kind":"complete","call":0,"outcome":{"kind":"result","value":"for zero"}}
     ]
+  },
+  {
+    "name": "return-to-a-displaced-call-after-success",
+    "program": "q = Query(\"t\", {v:0}, \"d\")",
+    "steps": [
+      {"kind":"evaluate"},
+      {"kind":"replace","program":"q = Query(\"t\", {v:1}, \"d\")"},
+      {"kind":"evaluate"},
+      {"kind":"replace","program":"q = Query(\"t\", {v:2}, \"d\")"},
+      {"kind":"evaluate"},
+      {"kind":"complete","call":2,"outcome":{"kind":"result","value":"two"}},
+      {"kind":"replace","program":"q = Query(\"t\", {v:0}, \"d\")"},
+      {"kind":"evaluate"},
+      {"kind":"complete","call":0,"outcome":{"kind":"result","value":"first"}},
+      {"kind":"complete","dispatch":{"step":7,"toolName":"t","args":{"v":0}},"outcome":{"kind":"result","value":"fresh"}}
+    ]
+  },
+  {
+    "name": "re-register-on-a-displaced-call",
+    "program": "q = Query(\"t\", {v:0}, \"d\")",
+    "steps": [
+      {"kind":"evaluate"},
+      {"kind":"replace","program":"q = Query(\"t\", {v:1}, \"d\")"},
+      {"kind":"evaluate"},
+      {"kind":"replace","program":"q = Query(\"t\", {v:2}, \"d\")"},
+      {"kind":"evaluate"},
+      {"kind":"replace","program":""},
+      {"kind":"evaluate"},
+      {"kind":"replace","program":"q = Query(\"t\", {v:0}, \"d\")"},
+      {"kind":"evaluate"},
+      {"kind":"complete","call":0,"outcome":{"kind":"result","value":"first"}},
+      {"kind":"complete","dispatch":{"step":8,"toolName":"t","args":{"v":0}},"outcome":{"kind":"result","value":"fresh"}}
+    ]
+  },
+  {
+    "name": "return-to-a-displaced-failed-entry",
+    "program": "q = Query(\"t\", {v:0}, \"d\")",
+    "steps": [
+      {"kind":"evaluate"},
+      {"kind":"complete","call":0,"outcome":{"kind":"tool-error","message":"first"}},
+      {"kind":"replace","program":"q = Query(\"t\", {v:1}, \"d\")"},
+      {"kind":"evaluate"},
+      {"kind":"replace","program":"q = Query(\"t\", {v:2}, \"d\")"},
+      {"kind":"evaluate"},
+      {"kind":"replace","program":"q = Query(\"t\", {v:0}, \"d\")"},
+      {"kind":"evaluate"},
+      {"kind":"complete","dispatch":{"step":7,"toolName":"t","args":{"v":0}},"outcome":{"kind":"result","value":"fresh"}}
+    ]
+  },
+  {
+    "name": "failure-while-only-the-previous-key-is-held",
+    "program": "q = Query(\"t\", {v:0}, \"d\")",
+    "steps": [
+      {"kind":"evaluate"},
+      {"kind":"replace","program":"q = Query(\"t\", {v:1}, \"d\")"},
+      {"kind":"evaluate"},
+      {"kind":"complete","call":0,"outcome":{"kind":"tool-error","message":"previous"}},
+      {"kind":"replace","program":"q = Query(\"t\", {v:0}, \"d\")"},
+      {"kind":"evaluate"},
+      {"kind":"complete","call":1,"outcome":{"kind":"result","value":"one"}}
+    ]
+  },
+  {
+    "name": "success-while-only-the-previous-key-is-held",
+    "program": "q = Query(\"t\", {v:0}, \"d\")",
+    "steps": [
+      {"kind":"evaluate"},
+      {"kind":"replace","program":"q = Query(\"t\", {v:1}, \"d\")"},
+      {"kind":"evaluate"},
+      {"kind":"complete","call":0,"outcome":{"kind":"result","value":"previous"}},
+      {"kind":"complete","call":1,"outcome":{"kind":"result","value":"one"}}
+    ]
+  },
+  {
+    "name": "change-flag-after-loading-converges",
+    "program": "q = Query(\"t\", {v:0}, \"d\")",
+    "steps": [
+      {"kind":"evaluate"},
+      {"kind":"complete","call":0,"outcome":{"kind":"result","value":"zero"}},
+      {"kind":"replace","program":"q = Query(\"t\", {v:1}, \"d\")"},
+      {"kind":"evaluate"},
+      {"kind":"replace","program":"q = Query(\"t\", {v:0}, \"d\")"},
+      {"kind":"evaluate"},
+      {"kind":"replace","program":"q = Query(\"t\", {v:1}, \"d\")"},
+      {"kind":"evaluate"}
+    ]
+  },
+  {
+    "name": "shared-entry-delivers-to-both-current-queries",
+    "program": "a = Query(\"t\", {v:0}, \"a\")\nb = Query(\"t\", {v:0}, \"b\")",
+    "steps": [
+      {"kind":"evaluate"},
+      {"kind":"complete","call":0,"outcome":{"kind":"result","value":"both"}},
+      {"kind":"replace","program":"a = Query(\"t\", {v:1}, \"a\")\nb = Query(\"t\", {v:1}, \"b\")"},
+      {"kind":"evaluate"},
+      {"kind":"complete","call":1,"outcome":{"kind":"mcp-error","message":"offline"}},
+      {"kind":"replace","program":"b = Query(\"t\", {v:1}, \"b\")"},
+      {"kind":"evaluate"},
+      {"kind":"replace","program":""},
+      {"kind":"evaluate"}
+    ]
+  },
+  {
+    "name": "return-to-a-displaced-call-after-failure",
+    "program": "q = Query(\"t\", {v:0}, \"d\")",
+    "steps": [
+      {"kind":"evaluate"},
+      {"kind":"replace","program":"q = Query(\"t\", {v:1}, \"d\")"},
+      {"kind":"evaluate"},
+      {"kind":"replace","program":"q = Query(\"t\", {v:2}, \"d\")"},
+      {"kind":"evaluate"},
+      {"kind":"complete","call":2,"outcome":{"kind":"tool-error","message":"failed"}},
+      {"kind":"replace","program":"q = Query(\"t\", {v:0}, \"d\")"},
+      {"kind":"evaluate"},
+      {"kind":"complete","call":0,"outcome":{"kind":"result","value":"first"}},
+      {"kind":"complete","dispatch":{"step":7,"toolName":"t","args":{"v":0}},"outcome":{"kind":"result","value":"fresh"}}
+    ]
+  },
+  {
+    "name": "idle-query-takes-over-a-pending-call",
+    "program": "a = Query(\"t\", {v:0}, \"adef\")\nc = Query(\"t\", {v:1}, \"cdef\")",
+    "steps": [
+      {"kind":"evaluate"},
+      {"kind":"complete","call":1,"outcome":{"kind":"result","value":"borrowed"}},
+      {"kind":"replace","program":"a = Query(\"t\", {v:0}, \"adef\")\nc = Query(\"t\", {v:2}, \"cdef\")\nb = Query(\"t\", {v:1}, \"bdef\")"},
+      {"kind":"evaluate"},
+      {"kind":"replace","program":"a = Query(\"t\", {v:3}, \"adef\")\nc = Query(\"t\", {v:2}, \"cdef\")\nb = Query(\"t\", {v:0}, \"bdef\")"},
+      {"kind":"evaluate"},
+      {"kind":"complete","call":0,"outcome":{"kind":"result","value":"delivered"}}
+    ]
   }
 ]

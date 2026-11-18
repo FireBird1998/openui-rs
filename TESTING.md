@@ -340,24 +340,34 @@ whose two streams converge fails the test.
 From `reference/`, run `bun --no-install query-scenarios.ts` to regenerate
 that file alone. The full regeneration script also runs this adapter.
 Set `OPENUI_QUERY_SCENARIO` to a scenario name to filter the Rust test.
-Call numbers are zero-based dispatch positions. Store and program edits
+Call numbers are zero-based dispatch positions. A completion may instead name
+the dispatch step, tool and arguments. Only the side that issued that unique
+call processes its outcome. This keeps an extra dispatch from shifting later
+completions onto unrelated calls. Store and program edits
 only affect the manager on the next evaluate step. The reference clock stays
 fixed during these scenarios.
 
 With the cached Bun reference, run
 `cargo test -p openui-runtime --test query_scenarios -- --ignored --nocapture`
-for 3,000 seeded edit scripts. The statements draw from the same pool of tool arguments.
+for 6,000 seeded edit scripts. The statements draw from the same pool of tool arguments.
 Each current key has at most one query. The generator can transfer settled
 keys between statements. Transferring an outstanding call between statements
-has a separate two-sided pin because its result data can also differ. Replacements, removals, state edits and out-of-order completions
-run through the same two adapters as the named scenarios. The comparison
-reconstructs upstream's per-statement loading flag and checks it against the
-observations, then derives loading separately from dispatch and completion
-of the current key. Only those status memberships and their effect on the
-change flag may differ. Query values, diagnostics and calls compare in full.
+has a separate two-sided pin because its result data can also differ.
+The adapter additionally settles calls issued only under Rust's lifetime
+rule. Each implementation's complete serialized observations must match its
+own independent model of the random grammar. The model starts with upstream
+semantics and enables individual corrections in the order in
+`reference/query-lifetimes.ts`. The test checks each difference against one
+row in the CONFORMANCE table and verifies the row counts. The change-flag-only
+row takes precedence when both the snapshot and wanted calls have converged.
 
-`query_commands` checks the shared work allowance, expression and host JSON
-depth refusals, and foreign and repeated call identities at the public seam.
+Every replay step checks that the cache contains at most twice as many entries
+as registered queries. The random test also compares the exact entry count to
+the distinct current and previous keys in the model. In `query_commands`,
+2,000 cycles of three edits and three successful 10 KB completions check the
+exact cache size after each command. That suite also checks the shared work
+allowance, expression and host JSON depth refusals, and foreign and repeated
+call identities.
 
 ## The corpus
 

@@ -1,0 +1,32 @@
+{
+  "case": "rapid-edits-revisit-a-cached-result",
+  "reason": "query-entry-lifetime-and-loading",
+  "reference": [
+    "{\"snapshot\":{\"__openui_loading\":[\"q\"],\"__openui_refetching\":[],\"__openui_errors\":[],\"q\":\"d\"},\"calls\":[{\"call\":0,\"toolName\":\"t\",\"args\":{\"v\":0}}],\"changed\":true}",
+    "{\"snapshot\":{\"__openui_loading\":[],\"__openui_refetching\":[],\"__openui_errors\":[],\"q\":\"original\"},\"calls\":[],\"changed\":true}",
+    "{\"snapshot\":{\"__openui_loading\":[],\"__openui_refetching\":[],\"__openui_errors\":[],\"q\":\"original\"},\"calls\":[],\"changed\":false}",
+    "{\"snapshot\":{\"__openui_loading\":[\"q\"],\"__openui_refetching\":[\"q\"],\"__openui_errors\":[],\"q\":\"original\"},\"calls\":[{\"call\":1,\"toolName\":\"t\",\"args\":{\"v\":1}}],\"changed\":true}",
+    "{\"snapshot\":{\"__openui_loading\":[\"q\"],\"__openui_refetching\":[\"q\"],\"__openui_errors\":[],\"q\":\"original\"},\"calls\":[],\"changed\":false}",
+    "{\"snapshot\":{\"__openui_loading\":[\"q\"],\"__openui_refetching\":[\"q\"],\"__openui_errors\":[],\"q\":\"d\"},\"calls\":[{\"call\":2,\"toolName\":\"t\",\"args\":{\"v\":2}}],\"changed\":true}",
+    "{\"snapshot\":{\"__openui_loading\":[\"q\"],\"__openui_refetching\":[\"q\"],\"__openui_errors\":[],\"q\":\"d\"},\"calls\":[],\"changed\":false}",
+    "{\"snapshot\":{\"__openui_loading\":[],\"__openui_refetching\":[],\"__openui_errors\":[]},\"calls\":[],\"changed\":true}",
+    "{\"snapshot\":{\"__openui_loading\":[],\"__openui_refetching\":[],\"__openui_errors\":[]},\"calls\":[],\"changed\":false}",
+    "{\"snapshot\":{\"__openui_loading\":[],\"__openui_refetching\":[],\"__openui_errors\":[],\"q\":\"original\"},\"calls\":[],\"changed\":true}",
+    "{\"snapshot\":{\"__openui_loading\":[],\"__openui_refetching\":[],\"__openui_errors\":[],\"q\":\"original\"},\"calls\":[],\"changed\":false}",
+    "{\"snapshot\":{\"__openui_loading\":[],\"__openui_refetching\":[],\"__openui_errors\":[],\"q\":\"original\"},\"calls\":[],\"changed\":false}"
+  ],
+  "rust": [
+    "{\"snapshot\":{\"__openui_loading\":[\"q\"],\"__openui_refetching\":[],\"__openui_errors\":[],\"q\":\"d\"},\"calls\":[{\"call\":0,\"toolName\":\"t\",\"args\":{\"v\":0}}],\"changed\":true}",
+    "{\"snapshot\":{\"__openui_loading\":[],\"__openui_refetching\":[],\"__openui_errors\":[],\"q\":\"original\"},\"calls\":[],\"changed\":true}",
+    "{\"snapshot\":{\"__openui_loading\":[],\"__openui_refetching\":[],\"__openui_errors\":[],\"q\":\"original\"},\"calls\":[],\"changed\":false}",
+    "{\"snapshot\":{\"__openui_loading\":[\"q\"],\"__openui_refetching\":[\"q\"],\"__openui_errors\":[],\"q\":\"original\"},\"calls\":[{\"call\":1,\"toolName\":\"t\",\"args\":{\"v\":1}}],\"changed\":true}",
+    "{\"snapshot\":{\"__openui_loading\":[\"q\"],\"__openui_refetching\":[\"q\"],\"__openui_errors\":[],\"q\":\"original\"},\"calls\":[],\"changed\":false}",
+    "{\"snapshot\":{\"__openui_loading\":[\"q\"],\"__openui_refetching\":[\"q\"],\"__openui_errors\":[],\"q\":\"d\"},\"calls\":[{\"call\":2,\"toolName\":\"t\",\"args\":{\"v\":2}}],\"changed\":true}",
+    "{\"snapshot\":{\"__openui_loading\":[\"q\"],\"__openui_refetching\":[\"q\"],\"__openui_errors\":[],\"q\":\"d\"},\"calls\":[],\"changed\":false}",
+    "{\"snapshot\":{\"__openui_loading\":[],\"__openui_refetching\":[],\"__openui_errors\":[]},\"calls\":[],\"changed\":true}",
+    "{\"snapshot\":{\"__openui_loading\":[],\"__openui_refetching\":[],\"__openui_errors\":[]},\"calls\":[],\"changed\":false}",
+    "{\"snapshot\":{\"__openui_loading\":[\"q\"],\"__openui_refetching\":[],\"__openui_errors\":[],\"q\":\"d\"},\"calls\":[{\"call\":3,\"toolName\":\"t\",\"args\":{\"v\":0}}],\"changed\":true}",
+    "{\"snapshot\":{\"__openui_loading\":[\"q\"],\"__openui_refetching\":[],\"__openui_errors\":[],\"q\":\"d\"},\"calls\":[],\"changed\":false}",
+    "{\"snapshot\":{\"__openui_loading\":[\"q\"],\"__openui_refetching\":[],\"__openui_errors\":[],\"q\":\"d\"},\"calls\":[],\"changed\":false}"
+  ]
+}

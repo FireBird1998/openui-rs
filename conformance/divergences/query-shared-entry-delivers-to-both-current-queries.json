@@ -1,0 +1,26 @@
+{
+  "case": "shared-entry-delivers-to-both-current-queries",
+  "reason": "delivery-and-loading-follow-the-entry",
+  "reference": [
+    "{\"snapshot\":{\"__openui_loading\":[\"a\"],\"__openui_refetching\":[],\"__openui_errors\":[],\"a\":\"a\",\"b\":\"b\"},\"calls\":[{\"call\":0,\"toolName\":\"t\",\"args\":{\"v\":0}}],\"changed\":true}",
+    "{\"snapshot\":{\"__openui_loading\":[],\"__openui_refetching\":[],\"__openui_errors\":[],\"a\":\"both\",\"b\":\"both\"},\"calls\":[],\"changed\":true}",
+    "{\"snapshot\":{\"__openui_loading\":[],\"__openui_refetching\":[],\"__openui_errors\":[],\"a\":\"both\",\"b\":\"both\"},\"calls\":[],\"changed\":false}",
+    "{\"snapshot\":{\"__openui_loading\":[\"a\"],\"__openui_refetching\":[\"a\"],\"__openui_errors\":[],\"a\":\"both\",\"b\":\"both\"},\"calls\":[{\"call\":1,\"toolName\":\"t\",\"args\":{\"v\":1}}],\"changed\":true}",
+    "{\"snapshot\":{\"__openui_loading\":[],\"__openui_refetching\":[],\"__openui_errors\":[{\"source\":\"query\",\"statementId\":\"a\",\"component\":\"Query\",\"toolName\":\"t\",\"code\":\"mcp-error\",\"message\":\"Query \\\"t\\\" returned an error: offline\"},{\"source\":\"query\",\"statementId\":\"b\",\"component\":\"Query\",\"toolName\":\"t\",\"code\":\"mcp-error\",\"message\":\"Query \\\"t\\\" returned an error: offline\"}],\"a\":\"both\",\"b\":\"both\"},\"calls\":[],\"changed\":true}",
+    "{\"snapshot\":{\"__openui_loading\":[],\"__openui_refetching\":[],\"__openui_errors\":[{\"source\":\"query\",\"statementId\":\"a\",\"component\":\"Query\",\"toolName\":\"t\",\"code\":\"mcp-error\",\"message\":\"Query \\\"t\\\" returned an error: offline\"},{\"source\":\"query\",\"statementId\":\"b\",\"component\":\"Query\",\"toolName\":\"t\",\"code\":\"mcp-error\",\"message\":\"Query \\\"t\\\" returned an error: offline\"}],\"a\":\"both\",\"b\":\"both\"},\"calls\":[],\"changed\":false}",
+    "{\"snapshot\":{\"__openui_loading\":[],\"__openui_refetching\":[],\"__openui_errors\":[{\"source\":\"query\",\"statementId\":\"b\",\"component\":\"Query\",\"toolName\":\"t\",\"code\":\"mcp-error\",\"message\":\"Query \\\"t\\\" returned an error: offline\"}],\"b\":\"both\"},\"calls\":[],\"changed\":true}",
+    "{\"snapshot\":{\"__openui_loading\":[],\"__openui_refetching\":[],\"__openui_errors\":[{\"source\":\"query\",\"statementId\":\"b\",\"component\":\"Query\",\"toolName\":\"t\",\"code\":\"mcp-error\",\"message\":\"Query \\\"t\\\" returned an error: offline\"}],\"b\":\"both\"},\"calls\":[],\"changed\":false}",
+    "{\"snapshot\":{\"__openui_loading\":[],\"__openui_refetching\":[],\"__openui_errors\":[]},\"calls\":[],\"changed\":true}"
+  ],
+  "rust": [
+    "{\"snapshot\":{\"__openui_loading\":[\"a\",\"b\"],\"__openui_refetching\":[],\"__openui_errors\":[],\"a\":\"a\",\"b\":\"b\"},\"calls\":[{\"call\":0,\"toolName\":\"t\",\"args\":{\"v\":0}}],\"changed\":true}",
+    "{\"snapshot\":{\"__openui_loading\":[],\"__openui_refetching\":[],\"__openui_errors\":[],\"a\":\"both\",\"b\":\"both\"},\"calls\":[],\"changed\":true}",
+    "{\"snapshot\":{\"__openui_loading\":[],\"__openui_refetching\":[],\"__openui_errors\":[],\"a\":\"both\",\"b\":\"both\"},\"calls\":[],\"changed\":false}",
+    "{\"snapshot\":{\"__openui_loading\":[\"a\",\"b\"],\"__openui_refetching\":[\"a\",\"b\"],\"__openui_errors\":[],\"a\":\"both\",\"b\":\"both\"},\"calls\":[{\"call\":1,\"toolName\":\"t\",\"args\":{\"v\":1}}],\"changed\":true}",
+    "{\"snapshot\":{\"__openui_loading\":[],\"__openui_refetching\":[],\"__openui_errors\":[{\"source\":\"query\",\"statementId\":\"a\",\"component\":\"Query\",\"toolName\":\"t\",\"code\":\"mcp-error\",\"message\":\"Query \\\"t\\\" returned an error: offline\"},{\"source\":\"query\",\"statementId\":\"b\",\"component\":\"Query\",\"toolName\":\"t\",\"code\":\"mcp-error\",\"message\":\"Query \\\"t\\\" returned an error: offline\"}],\"a\":\"both\",\"b\":\"both\"},\"calls\":[],\"changed\":true}",
+    "{\"snapshot\":{\"__openui_loading\":[],\"__openui_refetching\":[],\"__openui_errors\":[{\"source\":\"query\",\"statementId\":\"a\",\"component\":\"Query\",\"toolName\":\"t\",\"code\":\"mcp-error\",\"message\":\"Query \\\"t\\\" returned an error: offline\"},{\"source\":\"query\",\"statementId\":\"b\",\"component\":\"Query\",\"toolName\":\"t\",\"code\":\"mcp-error\",\"message\":\"Query \\\"t\\\" returned an error: offline\"}],\"a\":\"both\",\"b\":\"both\"},\"calls\":[],\"changed\":false}",
+    "{\"snapshot\":{\"__openui_loading\":[],\"__openui_refetching\":[],\"__openui_errors\":[{\"source\":\"query\",\"statementId\":\"b\",\"component\":\"Query\",\"toolName\":\"t\",\"code\":\"mcp-error\",\"message\":\"Query \\\"t\\\" returned an error: offline\"}],\"b\":\"both\"},\"calls\":[],\"changed\":true}",
+    "{\"snapshot\":{\"__openui_loading\":[],\"__openui_refetching\":[],\"__openui_errors\":[{\"source\":\"query\",\"statementId\":\"b\",\"component\":\"Query\",\"toolName\":\"t\",\"code\":\"mcp-error\",\"message\":\"Query \\\"t\\\" returned an error: offline\"}],\"b\":\"both\"},\"calls\":[],\"changed\":false}",
+    "{\"snapshot\":{\"__openui_loading\":[],\"__openui_refetching\":[],\"__openui_errors\":[]},\"calls\":[],\"changed\":true}"
+  ]
+}

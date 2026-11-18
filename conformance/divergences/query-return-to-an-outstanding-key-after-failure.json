@@ -1,6 +1,6 @@
 {
   "case": "return-to-an-outstanding-key-after-failure",
-  "reason": "loading-follows-the-key",
+  "reason": "query-entry-lifetime-and-loading",
   "reference": [
     "{\"snapshot\":{\"__openui_loading\":[\"q\"],\"__openui_refetching\":[],\"__openui_errors\":[],\"q\":\"d\"},\"calls\":[{\"call\":0,\"toolName\":\"t\",\"args\":{\"v\":0}}],\"changed\":true}",
     "{\"snapshot\":{\"__openui_loading\":[\"q\"],\"__openui_refetching\":[],\"__openui_errors\":[],\"q\":\"d\"},\"calls\":[],\"changed\":false}",

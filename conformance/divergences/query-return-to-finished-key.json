@@ -1,6 +1,6 @@
 {
   "case": "return-to-finished-key",
-  "reason": "loading-follows-the-key",
+  "reason": "query-entry-lifetime-and-loading",
   "reference": [
     "{\"snapshot\":{\"__openui_loading\":[\"q\"],\"__openui_refetching\":[],\"__openui_errors\":[],\"q\":\"def\"},\"calls\":[{\"call\":0,\"toolName\":\"t\",\"args\":{\"f\":1}}],\"changed\":true}",
     "{\"snapshot\":{\"__openui_loading\":[],\"__openui_refetching\":[],\"__openui_errors\":[],\"q\":\"one\"},\"calls\":[],\"changed\":true}",
