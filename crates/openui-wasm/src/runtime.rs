@@ -1,11 +1,12 @@
 //! wasm-bindgen surface; no mutable receiver is held across JavaScript conversion.
+use crate::queries::{QueryEffects, QueryWriteOutput, WantedToolCall};
 use crate::session::{ReleaseGuard, Session};
 use crate::{ComponentLibrary, ParsedProgram};
 use openui_session as core;
 use std::sync::Arc;
 use wasm_bindgen::prelude::*;
 
-fn kind(e: &core::OpenUiError) -> &'static str {
+pub(crate) fn kind(e: &core::OpenUiError) -> &'static str {
     match e {
         core::OpenUiError::Disposed => "Disposed",
         core::OpenUiError::ForeignHandle => "ForeignHandle",
@@ -13,6 +14,8 @@ fn kind(e: &core::OpenUiError) -> &'static str {
         core::OpenUiError::ConsumedHandle => "ConsumedHandle",
         core::OpenUiError::EvictedHandle => "EvictedHandle",
         core::OpenUiError::InvalidHandle => "InvalidHandle",
+        core::OpenUiError::InvalidToolCall => "InvalidToolCall",
+        core::OpenUiError::ReferenceConflict => "ReferenceConflict",
         core::OpenUiError::InvalidMarker => "InvalidMarker",
         core::OpenUiError::InvalidJson { .. } => "InvalidJson",
         core::OpenUiError::RefusedWrite { .. } => "RefusedWrite",
@@ -87,6 +90,9 @@ impl ContinuationHandle {
 }
 #[wasm_bindgen(getter_with_clone)]
 pub struct EvaluationOutput {
+    queries: Arc<core::QueryEffects>,
+    #[wasm_bindgen(readonly, js_name = querySnapshotJson)]
+    pub query_snapshot_json: Option<String>,
     #[wasm_bindgen(readonly)]
     pub json: String,
     #[wasm_bindgen(readonly, js_name = sizeLimited)]
@@ -98,9 +104,25 @@ pub struct EvaluationOutput {
 #[wasm_bindgen]
 impl EvaluationOutput {
     #[wasm_bindgen(getter)]
+    pub fn queries(&self) -> QueryEffects {
+        QueryEffects(self.queries.clone())
+    }
+    #[wasm_bindgen(getter)]
     pub fn evaluation(&self) -> EvaluationHandle {
         EvaluationHandle {
             inner: self.evaluation.clone(),
+        }
+    }
+}
+impl From<core::EvaluationOutput> for EvaluationOutput {
+    fn from(v: core::EvaluationOutput) -> Self {
+        Self {
+            queries: Arc::new(v.queries),
+            query_snapshot_json: v.query_snapshot_json,
+            json: v.json,
+            size_limited: v.size_limited,
+            depth_limited: v.depth_limited,
+            evaluation: v.evaluation,
         }
     }
 }
@@ -122,6 +144,8 @@ impl ReplacementOutput {
     pub fn evaluation(&self) -> EvaluationOutput {
         let v = &self.inner.evaluation;
         EvaluationOutput {
+            queries: Arc::new(v.queries.clone()),
+            query_snapshot_json: v.query_snapshot_json.clone(),
             json: v.json.clone(),
             size_limited: v.size_limited,
             depth_limited: v.depth_limited,
@@ -264,6 +288,95 @@ impl RuntimeSession {
             .map(|inner| ReplacementOutput { inner })
             .map_err(error)
     }
+    #[wasm_bindgen(js_name = replaceProgramStreaming)]
+    pub fn replace_program_streaming(
+        &self,
+        program: &ParsedProgram,
+        persisted: Option<String>,
+        projected: Option<String>,
+        native_view: bool,
+        streaming: bool,
+    ) -> Result<ReplacementOutput, JsValue> {
+        self.inner
+            .replace_program_streaming(
+                program.0.clone(),
+                persisted,
+                projected,
+                native_view,
+                streaming,
+            )
+            .map(|inner| ReplacementOutput { inner })
+            .map_err(error)
+    }
+    #[wasm_bindgen(js_name = attachToolProvider)]
+    pub fn attach_tool_provider(&self) -> Result<(), JsValue> {
+        self.inner.attach_tool_provider().map_err(error)
+    }
+    #[wasm_bindgen(js_name = detachToolProvider)]
+    pub fn detach_tool_provider(&self) -> Result<(), JsValue> {
+        self.inner.detach_tool_provider().map_err(error)
+    }
+    #[wasm_bindgen(js_name = takeQueryUpdate)]
+    pub fn take_query_update(&self) -> Result<QueryEffects, JsValue> {
+        self.inner
+            .take_query_update()
+            .map(Into::into)
+            .map_err(error)
+    }
+    #[wasm_bindgen(js_name = evaluateStreaming)]
+    pub fn evaluate_streaming(&self, streaming: bool) -> Result<EvaluationOutput, JsValue> {
+        self.inner
+            .evaluate_streaming(streaming)
+            .map(Into::into)
+            .map_err(error)
+    }
+    #[wasm_bindgen(js_name = completeToolCall)]
+    pub fn complete_tool_call(
+        &self,
+        call: &WantedToolCall,
+        outcome_json: String,
+    ) -> Result<QueryEffects, JsValue> {
+        self.inner
+            .complete_tool_call(call.0.clone(), outcome_json)
+            .map(Into::into)
+            .map_err(error)
+    }
+    #[wasm_bindgen(js_name = setWithQueries)]
+    pub fn set_with_queries(
+        &self,
+        name: String,
+        json: Option<String>,
+    ) -> Result<QueryWriteOutput, JsValue> {
+        self.inner
+            .set_with_queries(name, json)
+            .map(Into::into)
+            .map_err(error)
+    }
+    #[wasm_bindgen(js_name = writeBindingWithQueries)]
+    pub fn write_binding_with_queries(
+        &self,
+        marker: String,
+        json: String,
+    ) -> Result<QueryWriteOutput, JsValue> {
+        self.inner
+            .write_binding_with_queries(marker, json)
+            .map(Into::into)
+            .map_err(error)
+    }
+    #[wasm_bindgen(js_name = setFieldWithQueries)]
+    pub fn set_field_with_queries(
+        &self,
+        form: Option<String>,
+        component_type: Option<String>,
+        name: String,
+        json: Option<String>,
+        save: bool,
+    ) -> Result<QueryWriteOutput, JsValue> {
+        self.inner
+            .set_field_with_queries(form, component_type, name, json, save)
+            .map(Into::into)
+            .map_err(error)
+    }
     #[wasm_bindgen(js_name = undecidedBindings, unchecked_return_type = "any")]
     pub fn undecided_bindings(&self) -> Result<String, JsValue> {
         let v = self.inner.undecided_bindings().map_err(error)?;
@@ -291,12 +404,7 @@ impl RuntimeSession {
     #[wasm_bindgen(js_name = evaluate)]
     pub fn evaluate(&self) -> Result<EvaluationOutput, JsValue> {
         let v = self.inner.evaluate().map_err(error)?;
-        Ok(EvaluationOutput {
-            json: v.json,
-            size_limited: v.size_limited,
-            depth_limited: v.depth_limited,
-            evaluation: v.evaluation,
-        })
+        Ok(v.into())
     }
     #[wasm_bindgen(js_name = actionAt)]
     pub fn action_at(

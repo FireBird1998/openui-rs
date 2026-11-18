@@ -1,4 +1,5 @@
 //! The clock-free query manager and its tool provider seam.
+mod session;
 use crate::tree::TreeScope;
 use crate::{
     EvaluationFailure, EvaluationFlags, EvaluationScope, EvaluationSession, ExpressionEvaluator,
@@ -6,6 +7,7 @@ use crate::{
     PreparedReferenceValues, Store, TreeInput, Value,
 };
 use openui_lang::{Ast, JsonValue, ParseResult, PreparedProgram, QueryStatement};
+pub use session::ToolCallOutcome;
 use std::cell::Cell;
 use std::collections::{HashMap, HashSet};
 use std::fmt;
@@ -47,12 +49,14 @@ pub struct ToolCall {
 pub enum ToolOutcome<'a> {
     /// Host JSON, with a missing result treated as JSON null.
     Result(Option<&'a JsonValue>),
+    /// A host result already represented as an evaluator value (including MCP numbers).
+    ResultValue(&'a Value),
     /// The requested tool is missing. Names are in provider order.
     ToolNotFound(Vec<&'a str>),
     /// The tool reported an MCP error with this text.
     McpError(&'a str),
     /// The call failed with this message.
-    ToolError(&'a str),
+    CallFailed(&'a str),
 }
 
 /// One step of the query manager.
@@ -122,6 +126,7 @@ pub struct QueryManager {
     snapshot_json: String,
 }
 
+#[derive(Clone)]
 struct ExtraKey {
     // Literal expressions in the embedder's order.
     fields: Vec<(String, Ast)>,
@@ -129,6 +134,7 @@ struct ExtraKey {
     bytes: usize,
 }
 
+#[derive(Clone)]
 struct Query {
     key: Arc<str>,
     previous: Option<Arc<str>>,
@@ -138,7 +144,7 @@ struct Query {
     error: Option<Value>,
 }
 
-#[derive(Default)]
+#[derive(Default, Clone)]
 struct CacheEntry {
     data: Option<Value>,
     pending: Option<Arc<PendingCall>>,
@@ -288,11 +294,13 @@ impl QueryManager {
     pub fn apply(&mut self, command: QueryCommand<'_>) -> Result<QueryUpdate, QueryCommandError> {
         let calls = match command {
             QueryCommand::Evaluate { program, store } => {
-                let nodes = self.evaluate_nodes(program, store)?;
+                let nodes = self.evaluate_nodes(&TreeInput::new(program), store)?;
                 self.apply_nodes(program, nodes)
             }
             QueryCommand::Complete { id, outcome } => {
-                if !self.complete(id, outcome)? {
+                let changed = self.complete(id, outcome)?;
+                id.0.consumed.store(true, Ordering::Relaxed);
+                if !changed {
                     return Ok(QueryUpdate {
                         calls: Vec::new(),
                         changed: false,
@@ -312,9 +320,10 @@ impl QueryManager {
 
     fn evaluate_nodes<'a>(
         &self,
-        program: &'a ParseResult,
+        input: &TreeInput<'a>,
         store: &Store,
     ) -> Result<Vec<Node<'a>>, QueryCommandError> {
+        let program = input.result;
         let program_input = PreparedProgram::new(program, self.limits);
         check_cuts(program_input.flags())?;
         let mut results = JsObject::new();
@@ -327,7 +336,7 @@ impl QueryManager {
         let scope = QueryScope {
             manager: self,
             prepared: &prepared,
-            calls: TreeScope::new(&TreeInput::new(program), store, None, self.limits),
+            calls: TreeScope::new(input, store, None, self.limits),
             inspection: Cell::new(Inspection::None),
             inspected: Cell::new(None),
         };
@@ -425,11 +434,7 @@ impl QueryManager {
         id: &ToolCallId,
         outcome: ToolOutcome<'_>,
     ) -> Result<bool, QueryCommandError> {
-        if !id.0.manager.ptr_eq(&Arc::downgrade(&self.owner))
-            || id.0.consumed.load(Ordering::Relaxed)
-        {
-            return Err(QueryCommandError::InvalidCall);
-        }
+        self.check_call(id)?;
         // Only the originating entry owns this target. A host holding an old
         // identity cannot retain the key, its data, or a replacement's call.
         let active = id.0.target.upgrade().and_then(|pending| {
@@ -438,7 +443,6 @@ impl QueryManager {
                 .map(|entry| (pending, entry))
         });
         let Some((pending, entry)) = active else {
-            id.0.consumed.store(true, Ordering::Relaxed);
             return Ok(false);
         };
         // A previous key keeps existing data alive. Only current readers can
@@ -450,10 +454,20 @@ impl QueryManager {
             .peekable();
         if readers.peek().is_none() {
             entry.pending = None;
-            id.0.consumed.store(true, Ordering::Relaxed);
             return Ok(false);
         }
-        if let ToolOutcome::Result(value) = &outcome {
+        let success = matches!(
+            outcome,
+            ToolOutcome::Result(_) | ToolOutcome::ResultValue(_)
+        );
+        if let ToolOutcome::ResultValue(value) = &outcome {
+            crate::admission::measure(value, self.limits).map_err(QueryCommandError::Limit)?;
+            if openui_lang::write_host_json(value, self.limits.result_size(), None).is_none() {
+                return Err(QueryCommandError::Limit(crate::admission::size_error()));
+            }
+            entry.data = Some((*value).clone());
+            entry.failed = false;
+        } else if let ToolOutcome::Result(value) = &outcome {
             entry.data = Some(match value {
                 Some(value) => admit_result(value, self.limits)?,
                 None => Value::Null,
@@ -462,10 +476,9 @@ impl QueryManager {
         } else {
             entry.failed = true;
         }
-        id.0.consumed.store(true, Ordering::Relaxed);
         entry.pending = None;
         for (statement_id, query) in readers {
-            if matches!(outcome, ToolOutcome::Result(_)) {
+            if success {
                 query.error = None;
                 query.ever_fetched = true;
                 if let Some(previous) = query.previous.take() {
@@ -551,12 +564,12 @@ impl PendingCall {
                 format!("Query \"{tool}\" returned an error: {text}"),
                 None,
             ),
-            ToolOutcome::ToolError(text) => (
+            ToolOutcome::CallFailed(text) => (
                 "tool-error",
                 format!("Query \"{tool}\" failed: {text}"),
                 None,
             ),
-            ToolOutcome::Result(_) => return Value::Null,
+            ToolOutcome::Result(_) | ToolOutcome::ResultValue(_) => return Value::Null,
         };
         let mut error = JsObject::new();
         error.define("source", Value::Str("query".into()));

@@ -74,7 +74,7 @@ function openuiFailure(kind, message) {
 }
 const openuiKinds = { __proto__: null, Disposed: true, ForeignHandle: true,
   StaleHandle: true, ConsumedHandle: true, EvictedHandle: true, InvalidHandle: true,
-  InvalidMarker: true, InvalidJson: true, RefusedWrite: true, Evaluation: true,
+  InvalidToolCall: true, ReferenceConflict: true, InvalidMarker: true, InvalidJson: true, RefusedWrite: true, Evaluation: true,
   LimitExceeded: true, Worker: true, InvalidSchema: true, InvalidPromptSpec: true, Prompt: true };
 // Rust throws the string `openui:<Kind>\n<message>`. Anything else thrown by
 // generated code is unexpected: report it as Worker without running accessors.
@@ -259,6 +259,15 @@ const openuiSurface = new Map([
       actionAt: openuiSpec([openuiCapabilityOf(EvaluationHandle), openuiPath]),
       dispose: openuiNone,
       evaluate: openuiNone,
+      attachToolProvider: openuiNone,
+      detachToolProvider: openuiNone,
+      takeQueryUpdate: openuiNone,
+      evaluateStreaming: openuiSpec([openuiBool]),
+      replaceProgramStreaming: openuiSpec([openuiCapabilityOf(ParsedProgram), openuiOptStr, openuiOptStr, openuiBool, openuiBool]),
+      completeToolCall: openuiSpec([openuiCapabilityOf(WantedToolCall), openuiStr]),
+      setWithQueries: openuiSpec([openuiStr, openuiOptStr]),
+      writeBindingWithQueries: openuiSpec([openuiStr, openuiStr]),
+      setFieldWithQueries: openuiSpec([openuiOptStr, openuiOptStr, openuiStr, openuiOptStr, openuiBool]),
       get: openuiSpec([openuiStr]),
       getField: openuiSpec([openuiOptStr, openuiStr]),
       initialize: openuiSpec([openuiOptStr], { json: true }),
@@ -281,13 +290,19 @@ const openuiSurface = new Map([
       writeBinding: openuiSpec([openuiStr, openuiStr]),
     },
   }],
+  [WantedToolCall, { methods: { free: openuiFree }, accessors: {
+    toolName: { get: openuiNone }, argumentsJson: { get: openuiNone } } }],
+  [QueryEffects, { methods: { free: openuiFree, callAt: openuiSpec([openuiLimit]) }, accessors: {
+    callCount: { get: openuiNone }, changed: { get: openuiNone }, evaluationError: { get: openuiJson } } }],
+  [QueryWriteOutput, { methods: { free: openuiFree }, accessors: {
+    changed: { get: openuiNone }, saveRequested: { get: openuiNone }, queries: { get: openuiNone } } }],
   [EvaluationHandle, { methods: { free: openuiFree } }],
   [ActionHandle, { methods: { free: openuiFree, retain: openuiNone } }],
   [ContinuationHandle, { methods: { free: openuiFree } }],
   [ParsedProgram, { methods: { free: openuiFree } }],
   [EvaluationOutput, {
     methods: { free: openuiFree },
-    accessors: { evaluation: { get: openuiNone }, json: { get: openuiNone },
+    accessors: { queries: { get: openuiNone }, querySnapshotJson: { get: openuiNone }, evaluation: { get: openuiNone }, json: { get: openuiNone },
       sizeLimited: { get: openuiNone }, depthLimited: { get: openuiNone } },
   }],
   [ReplacementOutput, {

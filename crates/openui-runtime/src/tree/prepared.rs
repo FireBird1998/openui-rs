@@ -11,6 +11,7 @@ use std::borrow::Cow;
 /// are cached too: containers remain shared and scalar strings are converted
 /// once. Reads grant no extra allowance; output still pays its full cost.
 pub struct PreparedReferenceValues<'a> {
+    pub(super) undefined_queries: Option<std::collections::HashSet<String>>,
     values: Cow<'a, JsObject<Value>>,
     measurements: BTreeMap<Cow<'a, str>, Result<PreparedReferenceValue, EvaluationFlags>>,
     pub(super) bytes: usize,
@@ -29,6 +30,7 @@ impl<'a> PreparedReferenceValues<'a> {
             PreparedReferenceValue::measure_all_with_tail(values, limits);
         let bytes = input.input_bytes();
         Self {
+            undefined_queries: None,
             values: Cow::Borrowed(values),
             measurements: measurements
                 .into_iter()
@@ -56,12 +58,27 @@ impl<'a> PreparedReferenceValues<'a> {
         let tail = prepared.tail;
         let input = prepared.input;
         PreparedReferenceValues {
+            undefined_queries: None,
             values: Cow::Owned(values),
             measurements,
             bytes,
             tail,
             input,
         }
+    }
+    pub(crate) fn managed(
+        values: JsObject<Value>,
+        undefined: std::collections::HashSet<String>,
+        limits: Limits,
+    ) -> PreparedReferenceValues<'static> {
+        let mut prepared = Self::owned_with_limits(values, limits);
+        prepared.undefined_queries = Some(undefined);
+        prepared
+    }
+
+    /// Whether the host supply contains any reference names, including refused ones.
+    pub fn is_empty(&self) -> bool {
+        self.values.is_empty()
     }
     pub(crate) fn input_bytes(&self) -> usize {
         self.bytes

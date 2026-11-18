@@ -1,0 +1,28 @@
+{
+  "schema": {"$defs":{"Box":{"properties":{"value":{}}}}},
+  "scenarios": [
+    {"name":"stream, settle, write through three store interfaces, fail and recover", "steps":[
+      {"replace":"$n=1\nq=Query(\"search\",{n:$n},\"loading\")\nroot=Box(q)", "streaming":true},
+      {"evaluate":true,"complete":false},
+      {"evaluate":true,"error":"invalid scripts"},
+      {"evaluate":true},
+      {"finish":0,"value":"first"},
+      {"set":2},
+      {"finish":1,"value":"second"},
+      {"binding":3},
+      {"finish":2,"error":"offline"},
+      {"field":4},
+      {"finish":3,"value":null},
+      {"replace":"root=Box(42)"}
+    ]},
+    {"name":"an in-flight call and fetched data survive a blocked edit", "steps":[
+      {"replace":"q=Query(\"old\",{},\"old default\")\nroot=Box(q)"},
+      {"replace":"q=Query(\"new\",{},\"new default\")\nroot=Box([q,7])","streaming":true},
+      {"finish":0,"value":"arrived during edit"},
+      {"evaluate":true,"streaming":true},
+      {"evaluate":true},
+      {"finish":1,"value":"new result"},
+      {"replace":"q=Query(\"new\",{})\nroot=Box([q,8])"}
+    ]}
+  ]
+}

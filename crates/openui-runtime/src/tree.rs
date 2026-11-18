@@ -528,6 +528,13 @@ impl<'a> TreeScope<'a> {
 }
 impl<'a> TreeScope<'a> {
     fn initialize_queries(&self, result: &'a ParseResult, eval: &ExpressionEvaluator<'_>) {
+        if self
+            .reference_values
+            .is_some_and(|refs| refs.undefined_queries.is_some())
+        {
+            self.registering.set(false);
+            return;
+        }
         for q in &result.query_statements {
             if cut(eval) {
                 break;
@@ -620,6 +627,11 @@ impl EvaluationScope for TreeScope<'_> {
                 Err(flags) => {
                     eval.mark_cut(flags);
                     return Some(Value::Null);
+                }
+                Ok(None) if default.is_some() => {
+                    if let Some(undefined) = &values.undefined_queries {
+                        return (!undefined.contains(name)).then_some(Value::Null);
+                    }
                 }
                 Ok(None) => {}
             }

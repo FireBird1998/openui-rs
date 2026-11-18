@@ -367,3 +367,47 @@ show uses true and checks its generation before calling. The same encoded bytes
 are decoded after commit; there are no additional session calls or host-selected
 limits on that path. The old throwaway persisted pre-check is removed: JSON is
 admitted once using the actual session's prompt bindings and immutable limits.
+
+## Driving queries
+
+Call `attachToolProvider()` and draw with `evaluateStreaming(streaming)` or
+`replaceProgramStreaming(…, nativeView, streaming)`. For a response bundle,
+pass the renderer's blocked condition, `isStreaming || !bundle.complete || !!bundle.error`.
+The session receives a parsed program and this flag. The existing
+`evaluate()` and `replaceProgram(…)` draw a settled program.
+`setProgram` waits for a draw before registering the new program's queries.
+
+A blocked draw keeps registered results and accepts outstanding outcomes.
+Settling applies the current statements, including an empty list. The query
+snapshot JSON includes `__openui_loading`, `__openui_refetching` and
+`__openui_errors` alongside results. The tree's existing JSON shape is
+`{root,errors}`.
+
+Perform each wanted call and return its opaque object to `completeToolCall`
+with an outcome JSON object containing exactly one of these fields.
+
+| Field | Meaning |
+| --- | --- |
+| `value` | Result value, including explicit null |
+| `availableTools` | Missing tool, with available names in provider order |
+| `error` | Tool-reported MCP error text |
+| `failed` | Call failure message |
+| `mcpResponseJson` | Raw MCP response JSON text. Extracts the result inside Rust and preserves JavaScript numbers and lone surrogates through delivery. |
+
+`QueryEffects.changed` reports a change in serialized query snapshot bytes.
+Use it to decide whether to redraw after completion. A repeated or foreign
+call fails with `InvalidToolCall`. Outcome JSON is subject to the host byte bound and the evaluation
+work, size and depth limits. The session admits the combined projected result
+and error bodies before publishing a shared result. A refused outcome leaves
+the call available for correction. Detach drops the cache and revokes its calls. Supplying
+reference values while attached raises `ReferenceConflict`. Clear existing
+reference values with `setReferenceValues("{}")` before attaching.
+
+Use `setWithQueries`, `writeBindingWithQueries` and `setFieldWithQueries` to
+receive wanted calls on the write that caused them. The write's `changed`
+field describes the store. If its new arguments exceed evaluation limits,
+the write succeeds with a typed `queries.evaluationError` and the manager
+keeps its prior registrations. The other state-changing operations also
+re-evaluate on a settled program. Call `takeQueryUpdate()` after operations
+with legacy return types to claim their undelivered effects. A subsequent
+settled draw or completion also hands them back.

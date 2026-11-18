@@ -6,6 +6,8 @@ import sys
 
 root = pathlib.Path(__file__).resolve().parent.parent
 methods = [
+    "attachToolProvider", "detachToolProvider", "evaluateStreaming", "replaceProgramStreaming",
+    "takeQueryUpdate", "completeToolCall", "setWithQueries", "writeBindingWithQueries", "setFieldWithQueries",
     "actionAt", "dispose", "evaluate", "get", "getField", "initialize",
     "initializeField", "isPristine", "markBinding", "pendingContinuations",
     "registerFunction", "replaceProgram", "resume", "run", "runLegacy", "set", "setField", "setProgram",
@@ -17,6 +19,7 @@ native = (root / "crates/openui-ffi/src/runtime.rs").read_text()
 wasm = (root / "crates/openui-wasm/src/runtime.rs").read_text()
 inner = (root / "crates/openui-wasm/src/session.rs").read_text()
 core = (root / "crates/openui-session/src/lib.rs").read_text()
+core += (root / "crates/openui-session/src/queries.rs").read_text()
 for source, label in [(native, "native"), (inner, "wasm inner"), (core, "session core")]:
     exported = {camel(n) for n in re.findall(r"pub fn (\w+)\(", source)}
     assert set(methods) - {"dispose", "setReferenceValues"} <= exported, label
@@ -62,11 +65,13 @@ for record_name, source in [("RuntimeLimits", native), ("ParseLimits", ffi_lib)]
     assert setters == expected, f"{record_name} wasm setters {sorted(setters ^ expected)} drift"
 wasm_session = wasm.split("impl RuntimeSession {", 1)[1].split("pub struct RuntimeLimits", 1)[0]
 assert set(re.findall(r"js_name = (\w+)", wasm_session)) == set(methods) | {"withLimits", "extractMcpToolResult"}, "wasm session drift"
+assert "call: Arc<WantedToolCall>" in native and "outcome_json: String" in native
+assert "call: &WantedToolCall" in wasm_session
 assert "action: Option<ActionHandle>" in wasm_session
 assert "evaluation: &EvaluationHandle" in wasm_session
 assert "continuation: &ContinuationHandle" in wasm_session
 assert "program: &ParsedProgram" in wasm_session
-for name in ["ForeignHandle", "StaleHandle", "ConsumedHandle", "EvictedHandle", "InvalidHandle", "InvalidJson", "InvalidMarker", "RefusedWrite", "Disposed", "Evaluation", "LimitExceeded", "Worker"]:
+for name in ["InvalidToolCall", "ReferenceConflict", "ForeignHandle", "StaleHandle", "ConsumedHandle", "EvictedHandle", "InvalidHandle", "InvalidJson", "InvalidMarker", "RefusedWrite", "Disposed", "Evaluation", "LimitExceeded", "Worker"]:
     assert name in core and name in wasm and name in (root / "crates/openui-ffi/src/lib.rs").read_text(), name
 assert "package-guards.js" in (root / "scripts/wasm.sh").read_text()
 assert "#[uniffi::export(callback_interface)]" in native
@@ -79,7 +84,8 @@ assert callback_type in callbacks, "wasm callback JSON contract drift"
 assert "dyn Fn(String) -> Result<Option<String>, String> + Send + Sync" in core, "core callback JSON contract drift"
 assert "registerFunction: openuiSpec([openuiStr, openuiFunction])" in (root / "crates/openui-wasm/js/package-guards.js").read_text()
 for doc in ["docs/runtime-binding-api.md", "docs/wasm-runtime-binding-api.md"]:
-    assert "registerFunction" in (root / doc).read_text(), doc
+    for name in methods:
+        assert name in (root / doc).read_text(), (doc, name)
 print(f"Source: {len(methods)} native/wasm session methods, opaque capabilities, errors and limits checked")
 if len(sys.argv) == 1:
     sys.exit(0)
@@ -92,6 +98,12 @@ if len(sys.argv) == 3 and sys.argv[1] == "--wasm":
     for method in methods + ["withLimits"]:
         assert re.search(r"\b" + method + r"\(", session[1]), method
     assert re.search(r"static extractMcpToolResult\(response_json: string, limits: ParseLimits\): string;", session[1]), "wasm MCP helper signature drift"
+    assert "completeToolCall(call: WantedToolCall, outcome_json: string): QueryEffects;" in session[1]
+    assert "evaluateStreaming(streaming: boolean): EvaluationOutput;" in session[1]
+    assert "callAt(index: bigint): WantedToolCall | undefined;" in declarations
+    assert "export type { QueryEffects, QueryWriteOutput, WantedToolCall };" in declarations
+    for name in ["QueryEffects", "WantedToolCall", "QueryWriteOutput"]:
+        assert re.search(r"^declare class " + name + r" \{\s*private constructor\(\);", declarations, re.M), name
     assert callback_type in declarations, "wasm callback declaration drift"
     assert re.search(r"registerFunction\(name:\s*string,\s*callback:", session[1]), "wasm callback parameters drift"
     assert re.search(r"registerFunction\([^\n]*\): void;", session[1]), "wasm callback return drift"
@@ -113,12 +125,6 @@ for function in reader_functions:
     assert re.search(r"^public func " + function + r"\([^\n]*\)\s*throws\s*->\s*String", swift, re.M), function
 api = re.search(r"public protocol RuntimeSessionProtocol[^\{]*\{(.*?)\n\}", swift, re.S)
 assert api, "missing Swift RuntimeSession protocol"
-methods = [
-    "actionAt", "dispose", "evaluate", "get", "getField", "initialize",
-    "initializeField", "isPristine", "markBinding", "pendingContinuations",
-    "registerFunction", "replaceProgram", "resume", "run", "runLegacy", "set", "setField", "setProgram",
-    "setReferenceValues", "snapshot", "undecidedBindings", "version", "writeBinding",
-]
 for method in methods:
     assert re.search(r"func\s+" + method + r"\(", api[1]), method
     if method != "dispose":
@@ -126,6 +132,10 @@ for method in methods:
 for name, kind in [("action", "ActionHandle?"), ("continuation", "ContinuationHandle"),
                    ("evaluation", "EvaluationHandle"), ("program", "ParsedProgram")]:
     assert f"{name}: {kind}" in api[1]
+assert re.search(r"func completeToolCall\(call: WantedToolCall, outcomeJson: String\) throws\s*-> QueryEffects", api[1])
+assert "querySnapshotJson: String? = nil, queries: QueryEffects? = nil" in swift
+assert "public var calls: [WantedToolCall]" in swift
+assert "case ReferenceConflict" in swift
 assert "public var referencePreparation: ParseLimits" in swift
 assert "maxActionPathBytes: UInt64? = nil" in swift, "new Swift limit must stay opt-in"
 assert "peakMemory: UInt64? = nil" in swift, "memory limit must stay optional in Swift"
@@ -148,6 +158,9 @@ if len(sys.argv) == 3:
     for name, kind in [("action", "ActionHandle?"), ("continuation", "ContinuationHandle"),
                        ("evaluation", "EvaluationHandle"), ("program", "ParsedProgram")]:
         assert f"`{name}`: {kind}" in api[1]
+    assert "fun `completeToolCall`(`call`: WantedToolCall, `outcomeJson`: kotlin.String): QueryEffects" in api[1]
+    assert "`queries`: QueryEffects? = null" in kotlin and "`querySnapshotJson`: kotlin.String? = null" in kotlin
+    assert "class ReferenceConflict" in kotlin
     assert "interface LibraryFunction" in kotlin
     assert "fun `call`(`argumentsJson`: kotlin.String): kotlin.String?" in kotlin, "Kotlin callback signature drift"
     assert "sealed class FunctionException" in kotlin

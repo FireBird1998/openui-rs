@@ -10,9 +10,12 @@ use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Weak, mpsc};
 
 mod mcp;
+mod queries;
 pub use mcp::extract_mcp_tool_result;
+pub use openui_runtime::{ToolCall as WantedToolCall, ToolCallOutcome};
+pub use queries::{QueryEffects, QueryWriteOutput};
 
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 pub enum OpenUiError {
     /// The runtime session was normally disposed.
     Disposed,
@@ -45,6 +48,10 @@ pub enum OpenUiError {
     /// The core can't make a system prompt from the spec, with the message
     /// the reference throws.
     Prompt { reason: String },
+    /// Supplied reference values and a tool provider are mutually exclusive.
+    ReferenceConflict,
+    /// The tool call expired, belongs to another manager, or was already completed.
+    InvalidToolCall,
 }
 
 impl fmt::Display for OpenUiError {
@@ -55,7 +62,11 @@ impl fmt::Display for OpenUiError {
             Self::StaleHandle => f.write_str("stale action capability"),
             Self::ConsumedHandle => f.write_str("continuation consumed"),
             Self::EvictedHandle => f.write_str("continuation evicted"),
+            Self::InvalidToolCall => f.write_str("invalid tool call identity"),
             Self::InvalidHandle => f.write_str("invalid action path"),
+            Self::ReferenceConflict => {
+                f.write_str("tool provider conflicts with supplied reference values")
+            }
             Self::InvalidMarker => f.write_str("invalid binding marker"),
             Self::InvalidJson { reason }
             | Self::RefusedWrite { reason }
@@ -237,6 +248,8 @@ impl Drop for ContinuationHandle {
 /// The runtime's exact `{root,errors}` JSON and separate limit flags.
 #[derive(Debug)]
 pub struct EvaluationOutput {
+    pub queries: QueryEffects,
+    pub query_snapshot_json: Option<String>,
     /// Byte-identical to `openui_runtime::TreeResult::to_json`.
     pub json: String,
     /// Work or result size cut the evaluation.
@@ -323,6 +336,10 @@ pub struct ActionFailureOutput {
 pub type HostFunction = dyn Fn(String) -> Result<Option<String>, String> + Send + Sync;
 
 pub struct SessionCore {
+    manager: Option<openui_runtime::QueryManager>,
+    query_effects: QueryEffects,
+    streaming: bool,
+    query_inputs_changed: bool,
     library: Arc<ComponentLibrary>,
     program: Arc<ParseResult>,
     functions: BTreeMap<String, Arc<HostFunction>>,
@@ -361,6 +378,10 @@ impl SessionCore {
         let core_limits = limits.evaluation.to_core();
         let reference_limits = limits.reference_preparation.to_core();
         let mut s = Self {
+            manager: None,
+            query_effects: QueryEffects::default(),
+            streaming: true,
+            query_inputs_changed: true,
             library,
             program: Arc::new(ParseResult::default()),
             functions: BTreeMap::new(),
@@ -412,6 +433,7 @@ impl SessionCore {
     ) -> Result<(), OpenUiError> {
         let total = self.function_registration_bytes(&name)?;
         self.functions.insert(name, callback);
+        self.query_inputs_changed = true;
         self.function_bytes = total;
         Ok(())
     }
@@ -576,6 +598,11 @@ impl SessionCore {
             self.core_limits,
             self.limits.max_json_bytes,
         )?;
+        let managed = self
+            .manager
+            .as_ref()
+            .map(|m| m.prepared_results(self.reference_limits));
+        let refs = managed.as_ref().unwrap_or(refs);
         let input = tree_input(
             &self.program,
             &self.library,
@@ -748,10 +775,18 @@ fn tree_input<'a>(
     refs: &'a PreparedReferenceValues<'a>,
     functions: Option<&'a LibraryFunctions<'a>>,
 ) -> TreeInput<'a> {
+    program_input(program, library, bindings, functions).with_prepared_reference_values(refs)
+}
+
+fn program_input<'a>(
+    program: &'a Arc<ParseResult>,
+    library: &'a ComponentLibrary,
+    bindings: &'a BindingProps,
+    functions: Option<&'a LibraryFunctions<'a>>,
+) -> TreeInput<'a> {
     let input = TreeInput::from_shared_result(program)
         .with_library(&library.inner)
-        .with_binding_props(bindings)
-        .with_prepared_reference_values(refs);
+        .with_binding_props(bindings);
     let input = match functions {
         Some(functions) => input.with_functions(functions),
         None => input,
@@ -768,8 +803,16 @@ impl SessionCore {
         refs: &PreparedReferenceValues<'_>,
         operation: impl FnOnce(&mut Self, &PreparedReferenceValues<'_>) -> Result<T, OpenUiError>,
     ) -> Result<T, OpenUiError> {
+        if self.manager.is_some() && !refs.is_empty() {
+            return Err(OpenUiError::ReferenceConflict);
+        }
         self.drain_releases();
-        operation(self, refs)
+        let version = self.store.version();
+        let result = operation(self, refs)?;
+        if self.store.version() != version {
+            self.state_changed();
+        }
+        Ok(result)
     }
     /// Drop queued pending runs and return the number actually released.
     pub fn drain_releases(&mut self) -> usize {
@@ -795,6 +838,7 @@ impl SessionCore {
             }
             s.release_evaluation()?;
             s.program = program.inner.clone();
+            s.streaming = true;
             Ok(())
         })
     }
@@ -813,6 +857,21 @@ impl SessionCore {
         projected: Option<String>,
         native_view: bool,
     ) -> Result<ReplacementOutput, OpenUiError> {
+        self.replace_program_streaming(refs, program, persisted, projected, native_view, false)
+    }
+
+    pub fn replace_program_streaming(
+        &mut self,
+        refs: &PreparedReferenceValues<'_>,
+        program: Arc<ParsedProgram>,
+        persisted: Option<String>,
+        projected: Option<String>,
+        native_view: bool,
+        streaming: bool,
+    ) -> Result<ReplacementOutput, OpenUiError> {
+        if self.manager.is_some() && !refs.is_empty() {
+            return Err(OpenUiError::ReferenceConflict);
+        }
         // Match Swift show's persisted preflight error precedence, using the
         // actual session's reader. Deliberately do not drain releases on refusal.
         let persisted = persisted
@@ -833,34 +892,49 @@ impl SessionCore {
             self.core_limits,
             self.limits.max_json_bytes,
         )?;
-        let (projection, initialization, (tree, json, snapshot, version)) =
+        let (projection, initialization, ((tree, json, snapshot, version), update)) =
             self.store.initialize_transaction(
                 &program.inner.state_declarations,
                 &persisted,
                 projected.as_ref(),
                 |store| {
-                    let tree = openui_runtime::evaluate_tree_with_limits(
-                        tree_input(
+                    queries::draw(
+                        self.manager.as_mut(),
+                        !streaming,
+                        &program_input(
                             &program.inner,
                             &self.library,
                             &self.bindings,
-                            refs,
                             functions.as_ref(),
                         ),
                         store,
-                        self.core_limits,
-                    );
-                    let json = tree.to_json().map_err(|e| {
-                        runtime_error(RuntimeFailure::Limit(e), self.core_limits.result_size())
-                    })?;
-                    let snapshot = snapshot_json(store).map_err(|e| {
-                        runtime_error(RuntimeFailure::Limit(e), self.core_limits.result_size())
-                    })?;
-                    if native_view {
-                        check_native_view(tree.root.as_ref(), &json, &snapshot)?;
-                    }
-                    let version = store.version();
-                    Ok((tree, json, snapshot, version))
+                        refs,
+                        self.reference_limits,
+                        |input| {
+                            let tree = openui_runtime::evaluate_tree_with_limits(
+                                input,
+                                store,
+                                self.core_limits,
+                            );
+                            let json = tree.to_json().map_err(|e| {
+                                runtime_error(
+                                    RuntimeFailure::Limit(e),
+                                    self.core_limits.result_size(),
+                                )
+                            })?;
+                            let snapshot = snapshot_json(store).map_err(|e| {
+                                runtime_error(
+                                    RuntimeFailure::Limit(e),
+                                    self.core_limits.result_size(),
+                                )
+                            })?;
+                            if native_view {
+                                check_native_view(tree.root.as_ref(), &json, &snapshot)?;
+                            }
+                            let version = store.version();
+                            Ok((tree, json, snapshot, version))
+                        },
+                    )
                 },
             )?;
         drop(functions);
@@ -868,10 +942,13 @@ impl SessionCore {
         self.generation = generation;
         self.root = tree.root;
         self.drain_releases();
+        let (query_snapshot_json, queries) = self.finish_draw(streaming, update);
         Ok(ReplacementOutput {
             projection: initialization_output(projection, self.core_limits),
             initialization: initialization_output(initialization, self.core_limits),
             evaluation: EvaluationOutput {
+                query_snapshot_json,
+                queries,
                 json,
                 size_limited: tree.size_limited,
                 depth_limited: tree.depth_limited,
@@ -973,6 +1050,14 @@ impl SessionCore {
         &mut self,
         refs: &PreparedReferenceValues<'_>,
     ) -> Result<EvaluationOutput, OpenUiError> {
+        self.evaluate_streaming(refs, false)
+    }
+
+    pub fn evaluate_streaming(
+        &mut self,
+        refs: &PreparedReferenceValues<'_>,
+        streaming: bool,
+    ) -> Result<EvaluationOutput, OpenUiError> {
         self.call(refs, |s, refs| {
             let functions = Self::functions(
                 &s.library,
@@ -980,24 +1065,33 @@ impl SessionCore {
                 s.core_limits,
                 s.limits.max_json_bytes,
             )?;
-            let tree = openui_runtime::evaluate_tree_with_limits(
-                tree_input(
-                    &s.program,
-                    &s.library,
-                    &s.bindings,
-                    refs,
-                    functions.as_ref(),
-                ),
+            let generation = s
+                .generation
+                .checked_add(1)
+                .ok_or_else(|| limit("evaluation generations exhausted"))?;
+            let ((tree, json), update) = queries::draw(
+                s.manager.as_mut(),
+                !streaming && (s.streaming || s.query_inputs_changed),
+                &program_input(&s.program, &s.library, &s.bindings, functions.as_ref()),
                 &s.store,
-                s.core_limits,
-            );
-            let json = tree.to_json().map_err(|e| {
-                runtime_error(RuntimeFailure::Limit(e), s.core_limits.result_size())
-            })?;
+                refs,
+                s.reference_limits,
+                |input| {
+                    let tree =
+                        openui_runtime::evaluate_tree_with_limits(input, &s.store, s.core_limits);
+                    let json = tree.to_json().map_err(|e| {
+                        runtime_error(RuntimeFailure::Limit(e), s.core_limits.result_size())
+                    })?;
+                    Ok((tree, json))
+                },
+            )?;
             drop(functions);
-            s.release_evaluation()?;
+            let (query_snapshot_json, queries) = s.finish_draw(streaming, update);
+            s.generation = generation;
             s.root = tree.root;
             Ok(EvaluationOutput {
+                query_snapshot_json,
+                queries,
                 json,
                 size_limited: tree.size_limited,
                 depth_limited: tree.depth_limited,
@@ -1121,6 +1215,11 @@ impl SessionCore {
                 s.core_limits,
                 s.limits.max_json_bytes,
             )?;
+            let managed = s
+                .manager
+                .as_ref()
+                .map(|m| m.prepared_results(s.reference_limits));
+            let refs = managed.as_ref().unwrap_or(refs);
             openui_runtime::write_binding_with_limits(
                 tree_input(
                     &s.program,
@@ -1275,6 +1374,11 @@ impl SessionCore {
                 s.core_limits,
                 s.limits.max_json_bytes,
             )?;
+            let managed = s
+                .manager
+                .as_ref()
+                .map(|m| m.prepared_results(s.reference_limits));
+            let refs = managed.as_ref().unwrap_or(refs);
             let run = openui_runtime::resume_action(
                 tree_input(
                     &s.program,

@@ -9,15 +9,7 @@ use openui_runtime::{Limits, McpResponseError, McpToolOutcome, Value};
 /// Invalid response JSON, JavaScript response errors and configured limit
 /// refusals use the binding's existing typed error kinds.
 pub fn extract_mcp_tool_result(response_json: &str, limits: Limits) -> Result<String, OpenUiError> {
-    let outcome =
-        openui_runtime::extract_mcp_tool_result(response_json, limits).map_err(|error| {
-            let reason = error.to_string();
-            match error {
-                McpResponseError::InvalidJson(_) => OpenUiError::InvalidJson { reason },
-                McpResponseError::InvalidResponse { .. } => OpenUiError::Evaluation { reason },
-                McpResponseError::Limit(_) => OpenUiError::LimitExceeded { reason },
-            }
-        })?;
+    let outcome = openui_runtime::extract_mcp_tool_result(response_json, limits).map_err(error)?;
     let (prefix, value) = match outcome {
         McpToolOutcome::Result(value) => (r#"{"value":"#, value),
         McpToolOutcome::ToolError { message } => (r#"{"error":"#, Value::Str(message)),
@@ -30,4 +22,13 @@ pub fn extract_mcp_tool_result(response_json: &str, limits: Limits) -> Result<St
     )?;
     json.push('}');
     Ok(json)
+}
+
+pub(super) fn error(error: McpResponseError) -> OpenUiError {
+    let reason = error.to_string();
+    match error {
+        McpResponseError::InvalidJson(_) => OpenUiError::InvalidJson { reason },
+        McpResponseError::InvalidResponse { .. } => OpenUiError::Evaluation { reason },
+        McpResponseError::Limit(_) => OpenUiError::LimitExceeded { reason },
+    }
 }

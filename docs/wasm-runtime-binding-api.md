@@ -27,6 +27,15 @@ stream.program(complete: boolean): ParsedProgram
 new RuntimeSession(library: ComponentLibrary, promptSpec?: string)
 RuntimeSession.withLimits(library: ComponentLibrary, promptSpec: string | undefined, limits: RuntimeLimits): RuntimeSession
 RuntimeSession.extractMcpToolResult(responseJson: string, limits: ParseLimits): string
+session.attachToolProvider(): void
+session.detachToolProvider(): void
+session.evaluateStreaming(streaming: boolean): EvaluationOutput
+session.replaceProgramStreaming(program: ParsedProgram, persisted: string | undefined, projected: string | undefined, nativeView: boolean, streaming: boolean): ReplacementOutput
+session.completeToolCall(call: WantedToolCall, outcomeJson: string): QueryEffects
+session.takeQueryUpdate(): QueryEffects
+session.setWithQueries(name: string, json?: string): QueryWriteOutput
+session.writeBindingWithQueries(marker: string, json: string): QueryWriteOutput
+session.setFieldWithQueries(form: string | undefined, componentType: string | undefined, name: string, json: string | undefined, save: boolean): QueryWriteOutput
 session.actionAt(evaluation: EvaluationHandle, path: string[]): ActionHandle
 session.dispose(): void
 session.evaluate(): EvaluationOutput
@@ -76,7 +85,24 @@ object (wasm-bindgen cannot lower Option<&ActionHandle>).
 ```typescript
 interface EvaluationOutput {
   readonly json: string; readonly sizeLimited: boolean; readonly depthLimited: boolean;
+  readonly querySnapshotJson: string | undefined;
+  readonly queries: QueryEffects;
   readonly evaluation: EvaluationHandle;
+  free(): void;
+}
+interface WantedToolCall {
+  readonly toolName: string; readonly argumentsJson: string | undefined;
+  free(): void;
+}
+interface QueryEffects {
+  readonly changed: boolean; readonly callCount: bigint;
+  readonly evaluationError: {kind: string; message: string} | null;
+  callAt(index: bigint): WantedToolCall | undefined;
+  free(): void;
+}
+interface QueryWriteOutput {
+  readonly changed: boolean; readonly saveRequested: boolean;
+  readonly queries: QueryEffects;
   free(): void;
 }
 interface ReplacementOutput {
@@ -127,7 +153,7 @@ property; no setter runs) and parses records with intrinsics captured at
 load, so patched globals cannot change a result or strand a session.
 An unexpected failure inside generated glue is reported as Worker.
 Kinds match native: Disposed, ForeignHandle, StaleHandle, ConsumedHandle,
-EvictedHandle, InvalidHandle, InvalidMarker, InvalidJson, RefusedWrite,
+EvictedHandle, InvalidHandle, InvalidMarker, InvalidToolCall, ReferenceConflict, InvalidJson, RefusedWrite,
 Evaluation, LimitExceeded, Worker, InvalidSchema, InvalidPromptSpec, Prompt.
 Failures inside actions and initialization appear in the records above, with
 that same kind/message shape. Reentry uses Worker("session already in use")
@@ -189,3 +215,8 @@ Read `replacement.evaluation` once, then free its evaluation handle, evaluation
 output and replacement output separately. Initialization/projection getters are
 plain JSON records; snapshot remains JSON text. `nativeView` is an explicit
 boolean, not an optional coercion or a JSON authority field.
+
+The package returns query effects, write outputs and tool calls as opaque
+objects. TypeScript exports their names for `import type`. `using` or `free()` releases each independently. Use `callAt` with a
+zero-based bigint to borrow another handle to a call. The shared session owns
+the outcome and streaming contracts. [Driving queries](runtime-binding.md#driving-queries)

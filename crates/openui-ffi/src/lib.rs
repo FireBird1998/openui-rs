@@ -38,6 +38,8 @@ mod message;
 mod response_bundle;
 pub use message::{build_message, parse_message};
 pub use response_bundle::parse_response_bundle;
+mod queries;
+pub use queries::*;
 mod runtime;
 pub use runtime::*;
 
@@ -89,6 +91,10 @@ pub enum OpenUiError {
     /// The core can't make a system prompt from the spec, with the message
     /// the reference throws.
     Prompt { reason: String },
+    /// Supplied reference values and a tool provider are mutually exclusive.
+    ReferenceConflict,
+    /// The tool call expired, belongs to another manager, or was already completed.
+    InvalidToolCall,
 }
 
 impl fmt::Display for OpenUiError {
@@ -99,7 +105,11 @@ impl fmt::Display for OpenUiError {
             Self::StaleHandle => f.write_str("stale action capability"),
             Self::ConsumedHandle => f.write_str("continuation consumed"),
             Self::EvictedHandle => f.write_str("continuation evicted"),
+            Self::InvalidToolCall => f.write_str("invalid tool call identity"),
             Self::InvalidHandle => f.write_str("invalid action path"),
+            Self::ReferenceConflict => {
+                f.write_str("tool provider conflicts with supplied reference values")
+            }
             Self::InvalidMarker => f.write_str("invalid binding marker"),
             Self::InvalidJson { reason }
             | Self::RefusedWrite { reason }

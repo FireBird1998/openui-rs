@@ -21,6 +21,21 @@ for target in web nodejs; do
   out="target/wasm-pkg/${target%js}"
   rm -rf "$out"
   wasm-bindgen --target "$target" --out-dir "$out" "$module"
+  # Result-only types are named in signatures, but have no package-level
+  # constructor. Keep the same module surface in CommonJS and ESM.
+  python3 - "$out" <<'PYTHON'
+import pathlib, sys
+directory = pathlib.Path(sys.argv[1])
+for filename in ["openui_wasm.js", "openui_wasm.d.ts"]:
+    path = directory / filename
+    source = path.read_text()
+    for name in ["QueryEffects", "QueryWriteOutput", "WantedToolCall"]:
+        source = source.replace(f"export class {name} {{", f"{'declare ' if filename.endswith('.ts') else ''}class {name} {{")
+        source = source.replace(f"exports.{name} = {name};", "")
+    if filename.endswith(".ts"):
+        source += "\nexport type { QueryEffects, QueryWriteOutput, WantedToolCall };\n"
+    path.write_text(source)
+PYTHON
   python3 scripts/check-runtime-binding-api.py --wasm "$out/openui_wasm.d.ts"
   cat crates/openui-wasm/js/package-guards.js >> "$out/openui_wasm.js"
 done

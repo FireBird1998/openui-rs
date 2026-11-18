@@ -1,7 +1,10 @@
 //! Runtime adaptation lives here so changes to the runtime's safety API have
 //! one binding seam. No evaluator, action validation or authority rules live here.
 
-use crate::{ComponentLibrary, OpenUiError, ParseLimits, ParsedProgram};
+use crate::{
+    ComponentLibrary, OpenUiError, ParseLimits, ParsedProgram, QueryEffects, QueryWriteOutput,
+    WantedToolCall,
+};
 use openui_lang::JsObject;
 use openui_runtime::PreparedReferenceValues;
 use openui_session::SessionCore as Worker;
@@ -86,6 +89,10 @@ pub struct EvaluationOutput {
     pub depth_limited: bool,
     /// Use with `action_at`; never embedded in the tree JSON.
     pub evaluation: Arc<EvaluationHandle>,
+    #[uniffi(default = None)]
+    pub query_snapshot_json: Option<String>,
+    #[uniffi(default = None)]
+    pub queries: Option<QueryEffects>,
 }
 
 /// Store initialization's batch result, including per-name refusals.
@@ -900,8 +907,19 @@ impl RuntimeSession {
         projected: Option<String>,
         native_view: bool,
     ) -> Result<ReplacementOutput, OpenUiError> {
+        self.replace_program_streaming(program, persisted, projected, native_view, false)
+    }
+
+    pub fn replace_program_streaming(
+        &self,
+        program: Arc<ParsedProgram>,
+        persisted: Option<String>,
+        projected: Option<String>,
+        native_view: bool,
+        streaming: bool,
+    ) -> Result<ReplacementOutput, OpenUiError> {
         self.dispatch_call(false, move |s, refs, _| {
-            s.replace_program(
+            s.replace_program_streaming(
                 refs,
                 Arc::new(openui_session::ParsedProgram {
                     inner: program.inner.clone(),
@@ -910,12 +928,79 @@ impl RuntimeSession {
                 persisted,
                 projected,
                 native_view,
+                streaming,
             )
             .map(Into::into)
             .map_err(Into::into)
         })
     }
 
+    pub fn attach_tool_provider(&self) -> Result<(), OpenUiError> {
+        self.call(move |s, refs| s.attach_tool_provider(refs).map_err(Into::into))
+    }
+    pub fn detach_tool_provider(&self) -> Result<(), OpenUiError> {
+        self.call(move |s, _| {
+            s.detach_tool_provider();
+            Ok(())
+        })
+    }
+    pub fn take_query_update(&self) -> Result<QueryEffects, OpenUiError> {
+        self.call(move |s, _| Ok(s.take_query_update().into()))
+    }
+    pub fn evaluate_streaming(&self, streaming: bool) -> Result<EvaluationOutput, OpenUiError> {
+        self.call(move |s, refs| {
+            s.evaluate_streaming(refs, streaming)
+                .map(Into::into)
+                .map_err(Into::into)
+        })
+    }
+    pub fn complete_tool_call(
+        &self,
+        call: Arc<WantedToolCall>,
+        outcome_json: String,
+    ) -> Result<QueryEffects, OpenUiError> {
+        self.call(move |s, _| {
+            s.complete_tool_call_json(&call.inner.id, &outcome_json)
+                .map(Into::into)
+                .map_err(Into::into)
+        })
+    }
+    pub fn set_with_queries(
+        &self,
+        name: String,
+        json: Option<String>,
+    ) -> Result<QueryWriteOutput, OpenUiError> {
+        self.call(move |s, refs| {
+            s.set_with_queries(refs, name, json)
+                .map(Into::into)
+                .map_err(Into::into)
+        })
+    }
+    pub fn write_binding_with_queries(
+        &self,
+        marker: String,
+        json: String,
+    ) -> Result<QueryWriteOutput, OpenUiError> {
+        self.call(move |s, refs| {
+            s.write_binding_with_queries(refs, marker, json)
+                .map(Into::into)
+                .map_err(Into::into)
+        })
+    }
+    pub fn set_field_with_queries(
+        &self,
+        form: Option<String>,
+        component_type: Option<String>,
+        name: String,
+        json: Option<String>,
+        save: bool,
+    ) -> Result<QueryWriteOutput, OpenUiError> {
+        self.call(move |s, refs| {
+            s.set_field_with_queries(refs, form, component_type, name, json, save)
+                .map(Into::into)
+                .map_err(Into::into)
+        })
+    }
     /// Report prompt annotations needing an explicit choice by the embedder.
     pub fn undecided_bindings(&self) -> Result<Vec<BindingPair>, OpenUiError> {
         self.call(move |s, refs| {
@@ -1142,6 +1227,7 @@ fn worker_loop(
                 }
                 Command::References(json, reply) => {
                     match catch_unwind(AssertUnwindSafe(|| {
+                        state.check_reference_values()?;
                         state.object(&json).map_err(OpenUiError::from)
                     })) {
                         Ok(Ok(values)) => {
@@ -1223,6 +1309,8 @@ impl From<openui_session::FieldWriteOutput> for FieldWriteOutput {
 impl From<openui_session::EvaluationOutput> for EvaluationOutput {
     fn from(v: openui_session::EvaluationOutput) -> Self {
         Self {
+            queries: v.query_snapshot_json.as_ref().map(|_| v.queries.into()),
+            query_snapshot_json: v.query_snapshot_json,
             json: v.json,
             size_limited: v.size_limited,
             depth_limited: v.depth_limited,
@@ -1287,6 +1375,8 @@ impl From<openui_session::OpenUiError> for OpenUiError {
             openui_session::OpenUiError::ConsumedHandle => Self::ConsumedHandle,
             openui_session::OpenUiError::EvictedHandle => Self::EvictedHandle,
             openui_session::OpenUiError::InvalidHandle => Self::InvalidHandle,
+            openui_session::OpenUiError::InvalidToolCall => Self::InvalidToolCall,
+            openui_session::OpenUiError::ReferenceConflict => Self::ReferenceConflict,
             openui_session::OpenUiError::InvalidMarker => Self::InvalidMarker,
             openui_session::OpenUiError::InvalidJson { reason } => Self::InvalidJson { reason },
             openui_session::OpenUiError::RefusedWrite { reason } => Self::RefusedWrite { reason },

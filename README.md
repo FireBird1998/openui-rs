@@ -263,7 +263,9 @@ custom-step JSON never grants custom authority (ADR 0004).
 The Rust runtime exposes a standalone `QueryManager` for settled programs.
 It evaluates query statements against a Store, returns tool calls for the
 embedder to perform, and updates its snapshot when the embedder reports an
-outcome.
+outcome. Native and WebAssembly sessions can attach a tool provider, hand out a
+settled program's calls and draw their live results. The embedder performs the
+I/O. [Driving queries](docs/runtime-binding.md#driving-queries)
 
 Runtime state and raw/prepared query receivers check depth only for the parts
 consumed; shallow member and length reads do not walk a deep sibling. Whole-value

@@ -12,6 +12,7 @@ use std::sync::Arc;
 
 use openui_lang::{Library, StreamParser};
 mod message;
+mod queries;
 mod response_bundle;
 mod runtime;
 pub mod session;
