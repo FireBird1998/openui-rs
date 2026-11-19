@@ -610,6 +610,7 @@ impl SessionCore {
             refs,
             functions.as_ref(),
         );
+        let input = queries::with_query_runs(input, managed.is_some());
         let run = openui_runtime::run_action_with_limits(
             input,
             &mut self.store,
@@ -622,6 +623,9 @@ impl SessionCore {
         self.output(run)
     }
     fn output(&mut self, mut run: openui_runtime::ActionRun) -> Result<ActionOutput, OpenUiError> {
+        // Queries run as their steps did, before any later operation; like
+        // the run's writes, they stand even if serializing an event fails.
+        self.run_queries(&std::mem::take(&mut run.query_runs))?;
         // Events were checked by the runtime against the same result ceiling.
         // No smaller host-input, work or depth allowance may newly refuse them
         // after earlier action effects. Serialize before publishing/evicting a
@@ -1387,12 +1391,15 @@ impl SessionCore {
                 .map(|m| m.prepared_results(s.reference_limits));
             let refs = managed.as_ref().unwrap_or(refs);
             let run = openui_runtime::resume_action(
-                tree_input(
-                    &s.program,
-                    &s.library,
-                    &s.bindings,
-                    refs,
-                    functions.as_ref(),
+                queries::with_query_runs(
+                    tree_input(
+                        &s.program,
+                        &s.library,
+                        &s.bindings,
+                        refs,
+                        functions.as_ref(),
+                    ),
+                    managed.is_some(),
                 ),
                 &mut s.store,
                 &entry.continuation,

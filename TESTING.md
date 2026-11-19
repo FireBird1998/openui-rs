@@ -333,7 +333,10 @@ Not in the check, because they need Bun, time or a screen:
 ### Query manager scenarios
 
 `query_scenarios` replays `conformance/query-scenarios.json` and compares
-each observation byte for byte with `golden/query-scenarios.json`.
+each observation byte for byte with `golden/query-scenarios.json`, and
+`conformance/query-runs.json` with `golden/query-runs.json` the same way.
+An `invalidate` step runs the queries named by `ids`, or every query when
+`ids` is absent or empty.
 For a named divergence it checks the regenerated upstream bytes and the Rust
 bytes against the separate streams in `divergences/query-*.json`. A pin
 whose two streams converge fails the test.
@@ -355,6 +358,8 @@ With the cached Bun reference, run
 `cargo test -p openui-runtime --test query_scenarios -- --ignored --nocapture`
 for 6,000 seeded edit scripts. Statements can share a key, exchange keys, edit
 both statements or remove one holder and transfer its key in a single evaluate.
+A script can also run every query, one or both in either order, one twice or
+an unknown name, including while calls are in flight.
 The generator checks that it exercised both declaration orders for a batch
 handoff. It also uses each reserved list name as a statement id with an array
 default. Addressed completions settle calls issued by only one implementation.
@@ -1262,6 +1267,18 @@ fallback, large legacy params/type coercion, all handoff kinds and the hard
 ceiling. It pins that a 2 MiB snapshot emits before an oversized set fails,
 that large property names earn credit before copying, and that undefined
 snapshot properties consume no output room.
+`query_runs` (runtime) asks for 30,000 runs of a query while its call is in flight
+and checks that exactly one more call follows and the cache keeps one entry;
+checks that a refused completion keeps the call and its remembered run, that
+a remembered run calls with the arguments of the query that asked, that a
+run with no query left on its key is forgotten, and that the action runner
+hands a query's `@Run` over in step order instead of a host event only when
+asked to. `query_runs` (session) compares `conformance/session-runs.json`
+with `golden/session-runs.jsonl` from `reference/session-runs.ts`, and checks
+that a session without a provider still emits the `run` event, that runs and
+Retry do nothing while streaming, and that detaching forgets a remembered
+run. The native and WebAssembly bindings each drive a refresh and a Retry.
+
 `action_run_budget` uses actual parsed 4,000/16,000-step set/reset comparisons and
 a separate 20,000-step default-budget case.
 Allocation counts stay below 20 per step plus 2,048, with a linear scaling bound.

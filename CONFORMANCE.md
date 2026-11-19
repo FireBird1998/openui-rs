@@ -161,6 +161,27 @@ arriving during an edit, initial defaults, state/binding/field writes,
 refetching, failure, recovery, cache reuse, omitted and null arguments,
 writes during streaming and bundle errors, and late completion after removal.
 
+Running a query again is upstream's `invalidate`. `conformance/query-runs.json`
+replays it against the real manager with its own golden file: a run of an idle
+query, runs while its call is in flight (any number of them start one more
+call when it finishes), a repeated name, a run after a failure and a
+remembered run after one, unknown names, an empty list (every query) and a
+run that uses the arguments of the last evaluate rather than current state.
+`conformance/session-runs.json` compares 42 observations of tree bytes, query
+snapshot bytes, dispatches, host events and snapshot changes with
+`reference/session-runs.ts`, which clicks through the transcribed
+`triggerAction` with a real manager and transcribes the renderer's
+`retryQueries`. It covers a refresh button, runs during a call, a set before a
+run (a call for the old key, then one for the new key, as the renderer's
+effect runs after the click), a run between message and URL steps, Retry of
+failed queries, Retry with none failed (every query runs, as upstream passes
+an empty list to `invalidate`) and Retry while streaming. Without a tool
+provider a `@Run` of a query stays the host's `run` event, a decision of the
+spec rather than the renderer's behaviour (its manager has no provider to
+call). Upstream ignores every click while its bundle is blocked; the session
+leaves that to the embedder, as before, and runs no query for a click while
+the response state is streaming.
+
 A query is loading while its current entry has a call in flight. Delivery of a
 successful result to that entry gives the query a fetch history. In
 `displaying-another-query-result`, displaying a result still held by a
@@ -332,7 +353,9 @@ This differs from React, which evaluates query defaults in an effect when its
 snapshot changes. Golden function call counts describe this harness policy,
 not React's effect scheduling or query/mutation result transitions.
 
-Run steps are host handoffs: `{type:"run",params:{statementId,refType},
+Run steps are host handoffs, except a query's run on a session with a tool
+provider, which runs the query instead (see `session-runs.json` above):
+`{type:"run",params:{statementId,refType},
 humanFriendlyMessage:"",formState,formName}`; mutations additionally put their
 actual evaluated `args` in params (undefined args are omitted). `refType` is
 `mutation` only on an exact string match, otherwise `query`. A query invalidation
@@ -693,6 +716,7 @@ Also reported, though not a quirk because the core doesn't reproduce it: a few l
 2. A query is loading exactly while its current entry has a call in flight.
 3. A call delivers success or failure to every query currently on its originating live entry, and a completion with no such reader ends the call without changing data, errors or fetch history.
 4. A current entry with neither data nor a call requests one unless the entry has failed and the query already shows an error.
+5. A run asked for while the current entry has a call in flight is remembered once for the entry, and starts one more call when that call is delivered to a query still on the key.
 
 Each situation names its two-sided pin. Counts include later effects on data,
 calls, dispatch numbering and flags in 6,000 seeded scripts. The Rust expectation
@@ -705,29 +729,30 @@ the list's name.
 
 | Force | Situation and pin | lang-core 1.1.0 | openui-rs | Deciding sentence | Random steps |
 |---|---|---|---|---|---:|
-| Bound | `remove-statement-before-registering-its-replacement` | Removal of the former holder can delete the entry before the replacement is registered in the same evaluate. | Keeps the entry, including its data or outstanding call, if the final registrations hold the key. | 1 | 27101 |
-| Bound, loading | `idle-reader-takes-an-abandoned-call` | An idle reader with borrowed data and no fetch history can attach to an abandoned call with loading clear. | Starts a new call and shows loading. | 1, 2 | 706 |
-| Loading | `shared-completion-leaves-a-reader-loading` | A reader already loading when it joined a shared call can stay loading after the starter’s call finishes. | All readers leave the loading list when that call ends. | 2 | 3366 |
-| Loading | `handoff-failure-leaves-a-reader-loading` | Delivers failure to the new reader but can leave its loading flag set when the starter moved away. | Delivers the failure and clears loading for that entry. | 2 | 2735 |
-| Delivery | `removed-call-success-on-a-recreated-key` | An old success can clear the recreated query's error and mark it fetched while its data goes to the retired entry. | Ignores the old success, preserving the current error, fetch history, data and pending call. | 3 | 999 |
-| Delivery | `removed-call-failure-on-a-recreated-key` | An old failure can set an error and clear loading on the recreated query. | Ignores the old failure entirely. | 3 | 2642 |
-| Delivery | `pending-key-changes-its-only-reader` | Discards the success after the starter moves. | Delivers to the new current query `b`. Query `a` can now display that result through its previous key even though it never displayed it while that key was current. | 3 | 10202 |
-| Loading | `idle-query-takes-over-a-pending-call` | Can leave an idle query off the loading list when it joins an already-pending call. | Shows the new reader as loading. Borrowed data alone gives it no fetch history. | 2 | 11464 |
-| Bound | `rapid-edits-revisit-a-cached-result` | Reuses data from an entry whose last reference was displaced. | Dispatches a fresh call. | 1 | 3788 |
-| Bound | `return-to-a-displaced-failed-entry` | Reuses the abandoned failure and suppresses dispatch. | Dispatches a fresh call. | 1 | 4181 |
-| Bound, loading | `re-register-on-a-displaced-call` | Attaches the re-registered statement to an abandoned pending entry with loading clear. | Dispatches a fresh call and shows loading. | 1, 2 | 1295 |
-| Bound, loading | `return-to-a-displaced-call-after-success` | Reuses an unfinished call with loading clear after an intervening success. | Dispatches a fresh call and shows both loading and refetching. | 1, 2 | 212 |
-| Bound, loading | `return-to-a-displaced-call-after-failure` | Reuses an unfinished call with loading clear after an intervening failure. | Dispatches a fresh call and shows loading. The query keeps its error until a current success. | 1, 2 | 541 |
-| Bound, delivery | `rapid-edits-revisit-an-outstanding-call` | An already-loading query returning to an abandoned pending key reuses its old call. | Dispatches a fresh call. Only the fresh call can settle the recreated entry. | 1, 3 | 2383 |
-| Loading | `return-to-finished-key` | Can stay loading and refetching on a retained successful key. | Clears loading and refetching on return. | 2 | 2260 |
-| Loading | `return-to-failed-key` | Can stay loading on a retained failed key. | Clears loading on return. | 2 | 3134 |
-| Loading | `return-to-an-outstanding-key-after-failure` | A failure on the intervening key can hide a retained call's loading state. | Reuses the outstanding call and shows loading on return. | 2 | 219 |
-| Delivery | `new-reader-of-a-retained-failure` | Suppresses dispatch on a retained failure even for a query with no error or result. | Starts a call for the new reader. A reader already showing an error keeps upstream’s failed-entry suppression. | 3, 4 | 6602 |
-| Bound, loading, delivery | `change-flag-after-loading-converges` | Compares with its own previous snapshot. | Also compares with its own previous snapshot. Once the snapshots and wanted calls agree again, the change flags alone can differ. | 1–4, previous snapshot | 1771 |
-| Loading, delivery | `shared-entry-delivers-to-both-current-queries` | Shows the initiating query as loading and records the successful fetch on that query. Both can subsequently read the data. | Shows both as loading, records the fetch on both and delivers a subsequent failure to both. | 2, 3 | 18804 |
-| Delivery | `statement-named-errors` | Can keep a delivered error in an aliased array after a current success clears it. | Shows the currently delivered errors once, including after recovery. | 3 | 2424 |
-| Loading | `statement-named-loading` | Can keep settled ids in an aliased array. | The list contains exactly the queries whose current entries have calls in flight. | 2 | 4884 |
-| Loading | `statement-named-refetching` | Can accumulate refetching ids in an aliased array. | The list contains each loading query with fetch history once. | 2 | 1254 |
+| Bound | `remove-statement-before-registering-its-replacement` | Removal of the former holder can delete the entry before the replacement is registered in the same evaluate. | Keeps the entry, including its data or outstanding call, if the final registrations hold the key. | 1 | 24667 |
+| Bound, loading | `idle-reader-takes-an-abandoned-call` | An idle reader with borrowed data and no fetch history can attach to an abandoned call with loading clear. | Starts a new call and shows loading. | 1, 2 | 593 |
+| Loading | `shared-completion-leaves-a-reader-loading` | A reader already loading when it joined a shared call can stay loading after the starter’s call finishes. | All readers leave the loading list when that call ends. | 2 | 2352 |
+| Loading | `handoff-failure-leaves-a-reader-loading` | Delivers failure to the new reader but can leave its loading flag set when the starter moved away. | Delivers the failure and clears loading for that entry. | 2 | 2688 |
+| Delivery | `removed-call-success-on-a-recreated-key` | An old success can clear the recreated query's error and mark it fetched while its data goes to the retired entry. | Ignores the old success, preserving the current error, fetch history, data and pending call. | 3 | 1170 |
+| Delivery | `removed-call-failure-on-a-recreated-key` | An old failure can set an error and clear loading on the recreated query. | Ignores the old failure entirely. | 3 | 2559 |
+| Delivery | `pending-key-changes-its-only-reader` | Discards the success after the starter moves. | Delivers to the new current query `b`. Query `a` can now display that result through its previous key even though it never displayed it while that key was current. | 3 | 10658 |
+| Loading | `idle-query-takes-over-a-pending-call` | Can leave an idle query off the loading list when it joins an already-pending call. | Shows the new reader as loading. Borrowed data alone gives it no fetch history. | 2 | 11074 |
+| Bound | `rapid-edits-revisit-a-cached-result` | Reuses data from an entry whose last reference was displaced. | Dispatches a fresh call. | 1 | 2270 |
+| Bound | `return-to-a-displaced-failed-entry` | Reuses the abandoned failure and suppresses dispatch. | Dispatches a fresh call. | 1 | 2067 |
+| Bound, loading | `re-register-on-a-displaced-call` | Attaches the re-registered statement to an abandoned pending entry with loading clear. | Dispatches a fresh call and shows loading. | 1, 2 | 1028 |
+| Bound, loading | `return-to-a-displaced-call-after-success` | Reuses an unfinished call with loading clear after an intervening success. | Dispatches a fresh call and shows both loading and refetching. | 1, 2 | 103 |
+| Bound, loading | `return-to-a-displaced-call-after-failure` | Reuses an unfinished call with loading clear after an intervening failure. | Dispatches a fresh call and shows loading. The query keeps its error until a current success. | 1, 2 | 290 |
+| Bound, delivery | `rapid-edits-revisit-an-outstanding-call` | An already-loading query returning to an abandoned pending key reuses its old call. | Dispatches a fresh call. Only the fresh call can settle the recreated entry. | 1, 3 | 2462 |
+| Loading | `return-to-finished-key` | Can stay loading and refetching on a retained successful key. | Clears loading and refetching on return. | 2 | 1197 |
+| Loading | `return-to-failed-key` | Can stay loading on a retained failed key. | Clears loading on return. | 2 | 1697 |
+| Loading | `return-to-an-outstanding-key-after-failure` | A failure on the intervening key can hide a retained call's loading state. | Reuses the outstanding call and shows loading on return. | 2 | 129 |
+| Delivery | `new-reader-of-a-retained-failure` | Suppresses dispatch on a retained failure even for a query with no error or result. | Starts a call for the new reader. A reader already showing an error keeps upstream’s failed-entry suppression. | 3, 4 | 3724 |
+| Bound, loading, delivery | `change-flag-after-loading-converges` | Compares with its own previous snapshot. | Also compares with its own previous snapshot. Once the snapshots and wanted calls agree again, the change flags alone can differ. | 1–4, previous snapshot | 1559 |
+| Loading, delivery | `shared-entry-delivers-to-both-current-queries` | Shows the initiating query as loading and records the successful fetch on that query. Both can subsequently read the data. | Shows both as loading, records the fetch on both and delivers a subsequent failure to both. | 2, 3 | 19611 |
+| Delivery | `statement-named-errors` | Can keep a delivered error in an aliased array after a current success clears it. | Shows the currently delivered errors once, including after recovery. | 3 | 2723 |
+| Loading | `statement-named-loading` | Can keep settled ids in an aliased array. | The list contains exactly the queries whose current entries have calls in flight. | 2 | 4945 |
+| Loading | `statement-named-refetching` | Can accumulate refetching ids in an aliased array. | The list contains each loading query with fetch history once. | 2 | 1661 |
+| Run | `run-through-a-query-that-did-not-start-the-call` | Remembers a run on the query that asked. A run through a query that did not start the call in flight is lost when that call ends, and fires after the next call that query starts and finishes on its key. A run through the starter is kept back the same way if the starter leaves the key first. | Remembers one run for the key. When that key's call is delivered to a query still on the key, exactly one more call starts, whichever query asked; with no query on the key the run is forgotten. | 5 | 4663 |
 
 Both declaration orders of the displaced-previous-key handoff preserve a
 successful result. Both also preserve a failed entry when the incoming reader
@@ -763,7 +788,23 @@ error and makes no call.
 
 Reader scheduling has its own temporary pin until #86. In
 `reader-waits-for-its-input`, Rust starts the reader alongside the source and
-lang-core starts it after the source supplies data.
+lang-core starts it after the source supplies data. `run-a-waiting-query` is
+the same until #86: lang-core's run of a waiting query does nothing, and Rust,
+whose reader is not waiting, remembers a run behind the reader's call.
+
+A run asked for while a call is in flight is remembered for the key (sentence
+5), and lang-core remembers it on the query that asked. Two scenarios pin
+both sides. In `run-through-a-query-that-did-not-start-the-call`, a run
+through the query that shares the starter's key is lost when the call ends,
+then fires after that query's own next call on another key. In
+`a-run-is-forgotten-when-its-query-leaves-the-key`, the starter asks, moves
+to a new key, and lang-core fetches the new key twice. The random replay also
+runs every query, one or both in either order, one twice and an unknown name,
+and the row `run-through-a-query-that-did-not-start-the-call` explains every
+difference that follows.
+
+A run while the manager is disposed does nothing in lang-core. That line of
+#87 moves to #89, which adds the dispose command.
 
 ### Core, tree, action and store differences
 

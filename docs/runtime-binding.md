@@ -418,6 +418,16 @@ driver loop. Settled state changes evaluate queries before returning.
 error since the previous drain. The drain clears this flag and transfers
 the calls once. Its `evaluationError` gives the current diagnostic.
 
+With a provider, a `@Run` step naming a query runs that query again and
+emits no host event; the other steps' events are returned as before. A run
+while that query's key has a call in flight is remembered once for the key,
+whichever query started the call, and its call appears in the drain that
+follows the outcome. `retryFailedQueries()` runs again every query whose
+error is in the query snapshot, as the upstream renderer's Retry does; with
+no query errors it runs every query, as upstream's does. Both do nothing
+while the response state is streaming. Without a provider, a `@Run` of a
+query is still the host's `run` event.
+
 Skipping a drain leaves still-pending calls parked in dispatch order.
 Later operations discard calls whose entries have been released. The
 manager retains at most a current and previous cache entry per registered

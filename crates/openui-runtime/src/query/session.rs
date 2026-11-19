@@ -193,7 +193,12 @@ impl QueryManager {
         };
         let mut candidate = self.candidate();
         candidate.complete(id, outcome)?;
-        let update = candidate.publish(Vec::new(), &self.snapshot_json)?;
+        let calls = target
+            .as_ref()
+            .and_then(|pending| candidate.run_remembered(&pending.key))
+            .into_iter()
+            .collect();
+        let update = candidate.publish(calls, &self.snapshot_json)?;
         *self = candidate;
         id.0.consumed.store(true, Ordering::Relaxed);
         Ok(update)

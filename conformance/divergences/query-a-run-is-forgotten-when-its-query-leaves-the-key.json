@@ -1,0 +1,22 @@
+{
+  "case": "a-run-is-forgotten-when-its-query-leaves-the-key",
+  "reason": "run-belongs-to-the-key",
+  "reference": [
+    "{\"snapshot\":{\"__openui_loading\":[\"q\"],\"__openui_refetching\":[],\"__openui_errors\":[],\"q\":\"qdef\"},\"calls\":[{\"call\":0,\"toolName\":\"t\",\"args\":{\"f\":0}}],\"changed\":true}",
+    "{\"snapshot\":{\"__openui_loading\":[\"q\"],\"__openui_refetching\":[],\"__openui_errors\":[],\"q\":\"qdef\"},\"calls\":[],\"changed\":false}",
+    "{\"snapshot\":{\"__openui_loading\":[\"q\"],\"__openui_refetching\":[],\"__openui_errors\":[],\"q\":\"qdef\"},\"calls\":[],\"changed\":false}",
+    "{\"snapshot\":{\"__openui_loading\":[\"q\"],\"__openui_refetching\":[],\"__openui_errors\":[],\"q\":\"qdef\"},\"calls\":[{\"call\":1,\"toolName\":\"t\",\"args\":{\"f\":1}}],\"changed\":false}",
+    "{\"snapshot\":{\"__openui_loading\":[\"q\"],\"__openui_refetching\":[],\"__openui_errors\":[],\"q\":\"qdef\"},\"calls\":[],\"changed\":false}",
+    "{\"snapshot\":{\"__openui_loading\":[\"q\"],\"__openui_refetching\":[\"q\"],\"__openui_errors\":[],\"q\":\"fresh\"},\"calls\":[{\"call\":2,\"toolName\":\"t\",\"args\":{\"f\":1}}],\"changed\":true}",
+    "{\"snapshot\":{\"__openui_loading\":[],\"__openui_refetching\":[],\"__openui_errors\":[],\"q\":\"again\"},\"calls\":[],\"changed\":true}"
+  ],
+  "rust": [
+    "{\"snapshot\":{\"__openui_loading\":[\"q\"],\"__openui_refetching\":[],\"__openui_errors\":[],\"q\":\"qdef\"},\"calls\":[{\"call\":0,\"toolName\":\"t\",\"args\":{\"f\":0}}],\"changed\":true}",
+    "{\"snapshot\":{\"__openui_loading\":[\"q\"],\"__openui_refetching\":[],\"__openui_errors\":[],\"q\":\"qdef\"},\"calls\":[],\"changed\":false}",
+    "{\"snapshot\":{\"__openui_loading\":[\"q\"],\"__openui_refetching\":[],\"__openui_errors\":[],\"q\":\"qdef\"},\"calls\":[],\"changed\":false}",
+    "{\"snapshot\":{\"__openui_loading\":[\"q\"],\"__openui_refetching\":[],\"__openui_errors\":[],\"q\":\"qdef\"},\"calls\":[{\"call\":1,\"toolName\":\"t\",\"args\":{\"f\":1}}],\"changed\":false}",
+    "{\"snapshot\":{\"__openui_loading\":[\"q\"],\"__openui_refetching\":[],\"__openui_errors\":[],\"q\":\"qdef\"},\"calls\":[],\"changed\":false}",
+    "{\"snapshot\":{\"__openui_loading\":[],\"__openui_refetching\":[],\"__openui_errors\":[],\"q\":\"fresh\"},\"calls\":[],\"changed\":true}",
+    "{\"snapshot\":{\"__openui_loading\":[],\"__openui_refetching\":[],\"__openui_errors\":[],\"q\":\"fresh\"},\"calls\":[],\"changed\":false}"
+  ]
+}

@@ -1,0 +1,57 @@
+{
+  "schema": {"$defs":{"Box":{"properties":{"value":{}}}}},
+  "scenarios": [
+    {"name":"a refresh button refetches its query, and runs during a call fetch once more", "steps":[
+      {"replace":"$n = 1\nq = Query(\"search\", {n: $n}, \"loading\")\nroot = Box(Action([@Run(q)]))"},
+      {"finish":0,"value":"first"},
+      {"click":"value"},
+      {"finish":1,"value":"second"},
+      {"click":"value"},
+      {"click":"value"},
+      {"click":"value"},
+      {"finish":2,"error":"offline"},
+      {"finish":3,"value":"third"},
+      {"evaluate":true}
+    ]},
+    {"name":"a set before a run fetches the old key, then the new one", "steps":[
+      {"replace":"$n = 1\nq = Query(\"search\", {n: $n}, \"loading\")\nroot = Box(Action([@Set($n, $n + 1), @Run(q)]))"},
+      {"finish":0,"value":"one"},
+      {"click":"value"},
+      {"finish":1,"value":"one again"},
+      {"finish":2,"value":"two"}
+    ]},
+    {"name":"a run between messages keeps the other steps' events", "steps":[
+      {"replace":"$n = 1\nq = Query(\"search\", {}, \"loading\")\nroot = Box(Action([@ToAssistant(\"refreshing\"), @Run(q), @Run(q), @OpenUrl(\"https://example.com\")]))"},
+      {"click":"value"},
+      {"finish":0,"value":"rows"},
+      {"click":"value"},
+      {"finish":1,"value":"rows again"},
+      {"finish":2,"value":"rows thrice"}
+    ]},
+    {"name":"retry runs again every failed query, and every query when none failed", "steps":[
+      {"replace":"a = Query(\"one\", {}, \"a\")\nb = Query(\"two\", {}, \"b\")\nc = Query(\"three\", {}, \"c\")\nroot = Box([a, b, c])"},
+      {"finish":2,"error":"down"},
+      {"finish":0,"error":"offline"},
+      {"retry":true},
+      {"retry":true},
+      {"finish":3,"value":"A"},
+      {"finish":4,"error":"still down"},
+      {"finish":1,"value":"B"},
+      {"finish":5,"value":"A2"},
+      {"finish":6,"value":"C"},
+      {"retry":true},
+      {"finish":7,"value":"A3"},
+      {"finish":8,"value":"B2"},
+      {"finish":9,"value":"C2"}
+    ]},
+    {"name":"retry does nothing while the response streams", "steps":[
+      {"replace":"q = Query(\"search\", {}, \"loading\")\nroot = Box(q)"},
+      {"finish":0,"error":"offline"},
+      {"evaluate":true,"streaming":true},
+      {"retry":true},
+      {"evaluate":true},
+      {"retry":true},
+      {"finish":1,"value":"back"}
+    ]}
+  ]
+}

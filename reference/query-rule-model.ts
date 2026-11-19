@@ -5,7 +5,8 @@ import type { Dispatch, Outcome, Scenario } from './query-scenarios';
 
 export type Keys = Record<string, string>;
 type Query = { key: string; previous?: string; fetched: boolean; error?: object };
-type Entry = { data?: unknown; failed?: boolean; pending?: Dispatch };
+// A run asked for while a call is in flight belongs to the entry.
+type Entry = { data?: unknown; failed?: boolean; pending?: Dispatch; runAgain?: boolean };
 
 export function failure(id: string, outcome: Exclude<Outcome, { kind: 'result' }>) {
   const base = { source: 'query', statementId: id, component: 'Query', toolName: 't', code: outcome.kind };
@@ -91,8 +92,27 @@ export function byRule(scenario: Scenario, keys: Keys[]) {
             q.error = failure(id, step.outcome);
           }
         }
+        // The delivered call starts the remembered run if a query is still
+        // on the key; otherwise the run is forgotten.
+        if (entry.runAgain) {
+          entry.runAgain = false;
+          if (Array.from(queries.values()).some(q => q.key === key)) {
+            entry.pending = { step: i, toolName: 't', args: JSON.parse(key) };
+            calls.push(entry.pending);
+          }
+        }
         const held = heldKeys(queries.values());
         for (const key of entries.keys()) if (!held.has(key)) entries.delete(key);
+      }
+    } else if (step.kind === 'invalidate') {
+      const targets = step.ids?.length ? step.ids.filter(id => queries.has(id)) : Array.from(queries.keys());
+      for (const id of targets) {
+        const entry = entries.get(queries.get(id)!.key)!;
+        if (entry.pending) entry.runAgain = true;
+        else {
+          entry.pending = { step: i, toolName: 't', args: JSON.parse(queries.get(id)!.key) };
+          calls.push(entry.pending);
+        }
       }
     }
     const next = snapshot(), bytes = JSON.stringify(next);

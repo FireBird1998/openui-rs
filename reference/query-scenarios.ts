@@ -22,7 +22,8 @@ export type Step =
   | { kind: 'complete'; dispatch: Dispatch; outcome: Outcome }
   | { kind: 'set'; name: string; value?: unknown }
   | { kind: 'extra'; toolName: string; values?: Record<string, unknown> }
-  | { kind: 'replace'; program: string };
+  | { kind: 'replace'; program: string }
+  | { kind: 'invalidate'; ids?: string[] };
 export type Scenario = { name: string; program: string; library?: Parameters<typeof compileSchema>[0]; steps: Step[] };
 type Call = Dispatch & { finish(outcome: Outcome): Promise<void> };
 
@@ -115,6 +116,9 @@ async function replay(scenario: Scenario, script?: Script): Promise<string[]> {
           program = parse(step.program, library);
           store.initialize(program.stateDeclarations ?? {}, {});
           break;
+        // A run of the named queries, as the renderer's @Run and Retry call
+        // it. Omitted ids pass undefined, which runs every query, as [] does.
+        case 'invalidate': manager.invalidate(step.ids); break;
       }
       const snapshot = manager.getSnapshot();
       observations.push(JSON.stringify({
@@ -160,11 +164,14 @@ try {
     if (!leavingFirst || !takingFirst) throw new Error('missing a batch handoff order');
     console.warn(`One-way batch handoffs: leaving statement first ${leavingFirst}, taking statement first ${takingFirst}`);
   } else {
-    const scenarios: Scenario[] = JSON.parse(readFileSync('../conformance/query-scenarios.json', 'utf8'));
-    const output = [];
-    for (const scenario of scenarios) output.push([scenario.name, await replay(scenario)]);
     mkdirSync('../conformance/golden', { recursive: true });
-    writeFileSync('../conformance/golden/query-scenarios.json', JSON.stringify(Object.fromEntries(output)) + '\n');
+    // Runs (#87) keep their own corpus and golden file.
+    for (const corpus of ['query-scenarios', 'query-runs']) {
+      const scenarios: Scenario[] = JSON.parse(readFileSync(`../conformance/${corpus}.json`, 'utf8'));
+      const output = [];
+      for (const scenario of scenarios) output.push([scenario.name, await replay(scenario)]);
+      writeFileSync(`../conformance/golden/${corpus}.json`, JSON.stringify(Object.fromEntries(output)) + '\n');
+    }
   }
 } finally {
   Object.assign(globalThis, { setInterval, clearInterval });

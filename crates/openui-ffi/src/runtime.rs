@@ -953,6 +953,11 @@ impl RuntimeSession {
     pub fn take_query_update(&self) -> Result<QueryEffects, OpenUiError> {
         self.call(move |s, _| Ok(s.take_query_update().into()))
     }
+    /// Run again every query whose error is in the query snapshot, as
+    /// upstream's renderer Retry does. Claim the calls with `takeQueryUpdate`.
+    pub fn retry_failed_queries(&self) -> Result<(), OpenUiError> {
+        self.call(move |s, _| s.retry_failed_queries().map_err(Into::into))
+    }
     pub fn evaluate_with_response(
         &self,
         response_state: ResponseState,

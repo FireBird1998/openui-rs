@@ -1,4 +1,5 @@
 //! The clock-free query manager and its tool provider seam.
+mod runs;
 mod session;
 use crate::tree::TreeScope;
 use crate::{
@@ -77,6 +78,20 @@ pub enum QueryCommand<'a> {
         /// The tool provider's outcome.
         outcome: ToolOutcome<'a>,
     },
+    /// Run the named queries again, as upstream's `invalidate` does for a
+    /// `@Run` of a query and for its renderer's Retry. For each name that is
+    /// a registered query, in order: a call starts for its current key with
+    /// the tool name and arguments of the query's last evaluate, or, while
+    /// that key has a call in flight, one more call is remembered for the
+    /// key. The remembered call starts when the call in flight is delivered
+    /// to a query still on the key, whichever query started it (ADR 0013),
+    /// and is forgotten if none is. However many runs are asked for
+    /// meanwhile, one call follows. Unknown names are skipped. An empty list
+    /// runs every registered query, as upstream treats an empty list.
+    Invalidate {
+        /// Statement ids, in the order to run them.
+        statement_ids: &'a [&'a str],
+    },
 }
 
 /// The effect of an accepted query command.
@@ -142,6 +157,8 @@ struct Query {
     // Set only by a success delivered while this query wants the key.
     ever_fetched: bool,
     error: Option<Value>,
+    // What the last evaluation would call; a run starts this call.
+    request: runs::Request,
 }
 
 #[derive(Default, Clone)]
@@ -151,6 +168,8 @@ struct CacheEntry {
     // Each current or previous slot holds one reference, including shared keys.
     references: usize,
     failed: bool,
+    // A run asked for while a call is in flight, by the query that asked.
+    run_again: Option<String>,
 }
 
 struct PendingCall {
@@ -298,6 +317,7 @@ impl QueryManager {
                 self.apply_nodes(program, nodes)
             }
             QueryCommand::Complete { id, outcome } => {
+                let key = id.0.target.upgrade().map(|pending| pending.key.clone());
                 let changed = self.complete(id, outcome)?;
                 id.0.consumed.store(true, Ordering::Relaxed);
                 if !changed {
@@ -306,8 +326,11 @@ impl QueryManager {
                         changed: false,
                     });
                 }
-                Vec::new()
+                key.and_then(|key| self.run_remembered(&key))
+                    .into_iter()
+                    .collect()
             }
+            QueryCommand::Invalidate { statement_ids } => self.invalidate(statement_ids),
         };
         // Ownership changes atomically with the command. Another registration
         // can take a temporarily unreferenced entry later in the same evaluate.
@@ -386,6 +409,7 @@ impl QueryManager {
                     defaults: None,
                     ever_fetched: false,
                     error: None,
+                    request: runs::Request::default(),
                 }
             });
             if query.key != node.key {
@@ -396,6 +420,11 @@ impl QueryManager {
                 }
             }
             query.defaults = node.defaults;
+            query.request = runs::Request {
+                tool_name: node.tool_name.clone(),
+                raw_tool_name: node.raw_tool_name.clone(),
+                args: node.args.clone(),
+            };
             let entry = self.cache.entry(node.key);
             let key = entry.key().clone();
             let entry = entry.or_default();
@@ -454,6 +483,8 @@ impl QueryManager {
             .peekable();
         if readers.peek().is_none() {
             entry.pending = None;
+            // A remembered run needs a current reader to deliver to.
+            entry.run_again = None;
             return Ok(false);
         }
         let success = matches!(

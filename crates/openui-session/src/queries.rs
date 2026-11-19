@@ -1,6 +1,6 @@
 //! Session policy around the clock-free query manager.
 use super::*;
-use openui_runtime::{QueryCommandError, QueryManager, QueryUpdate, ToolCallId};
+use openui_runtime::{QueryCommand, QueryCommandError, QueryManager, QueryUpdate, ToolCallId};
 
 /// Effects since the previous handoff. A store operation can succeed even if
 /// evaluating its new query arguments fails. The previous registrations survive.
@@ -81,7 +81,69 @@ pub(super) fn draw<T>(
     }
 }
 
+// With a tool provider, an action's `@Run` of a query runs it through the
+// manager instead of handing the host a `run` event.
+pub(super) fn with_query_runs(input: TreeInput<'_>, managed: bool) -> TreeInput<'_> {
+    if managed {
+        input.with_query_runs()
+    } else {
+        input
+    }
+}
+
 impl SessionCore {
+    /// Upstream's renderer Retry (`retryQueries`): run again every query
+    /// whose error is in the query snapshot, in the snapshot's error order.
+    /// The wanted calls come from the next `take_query_update`. As upstream
+    /// passes the list to `invalidate`, an empty list runs every query. With
+    /// no tool provider, or while the response streams, it does nothing, as
+    /// upstream's renderer has no provider to call or ignores Retry while
+    /// its bundle is blocked.
+    pub fn retry_failed_queries(&mut self) -> Result<(), OpenUiError> {
+        let Some(manager) = self.manager.as_mut().filter(|_| !self.streaming) else {
+            return Ok(());
+        };
+        let failed = match manager.snapshot().get("__openui_errors") {
+            Some(Value::Arr(errors)) => errors
+                .iter()
+                .filter_map(|error| match error {
+                    Value::Obj(error)
+                        if matches!(error.get("source"), Some(Value::Str(s)) if s == "query") =>
+                    {
+                        match error.get("statementId") {
+                            Some(Value::Str(id)) => Some(id.clone()),
+                            _ => None,
+                        }
+                    }
+                    _ => None,
+                })
+                .collect(),
+            _ => Vec::new(),
+        };
+        let ids = failed.iter().map(String::as_str).collect::<Vec<_>>();
+        let update = manager.apply(QueryCommand::Invalidate {
+            statement_ids: &ids,
+        })?;
+        self.query_effects.record(update);
+        Ok(())
+    }
+
+    // Each `@Run` of a query, in step order, as upstream's renderer calls
+    // `invalidate([statementId])` once per step. Nothing runs while the
+    // response streams: upstream's renderer ignores the click then.
+    pub(super) fn run_queries(&mut self, ids: &[String]) -> Result<(), OpenUiError> {
+        let Some(manager) = self.manager.as_mut().filter(|_| !self.streaming) else {
+            return Ok(());
+        };
+        for id in ids {
+            let update = manager.apply(QueryCommand::Invalidate {
+                statement_ids: &[id.as_str()],
+            })?;
+            self.query_effects.record(update);
+        }
+        Ok(())
+    }
+
     pub fn attach_tool_provider(
         &mut self,
         refs: &PreparedReferenceValues<'_>,

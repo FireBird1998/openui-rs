@@ -44,6 +44,11 @@ pub struct ActionRun {
     pub depth_limited: bool,
     /// A mutation is awaiting its host outcome. No later step has run.
     pub continuation: Option<ActionContinuation>,
+    /// With [`TreeInput::with_query_runs`], the statement id of each `@Run`
+    /// step naming a query, in step order, in place of its host event. Pass
+    /// each to the query manager's invalidate command on its own: an empty
+    /// list there means every query.
+    pub query_runs: Vec<String>,
 }
 impl ActionRun {
     /// Portable memory accounting for this run, including previous segments.
@@ -742,6 +747,18 @@ impl RunState {
         out: &mut ActionRun,
     ) -> Result<bool, BindingWriteError> {
         let mutation = matches!(fields.get("refType"),Some(Value::Str(t))if t=="mutation");
+        if !mutation && context.input.query_runs {
+            // Upstream's renderer calls invalidate([step.statementId]): a
+            // missing or non-string id names no query and runs nothing.
+            if let Some(Value::Str(id)) = fields.get("statementId") {
+                let id = self.scope(|e| {
+                    e.copy_text(id)
+                        .ok_or_else(|| BindingWriteError::Cut(e.flags()))
+                })?;
+                out.query_runs.push(id);
+            }
+            return Ok(false);
+        }
         self.scope(|e| {
             if e.reserve_container_storage(3) {
                 Ok(())

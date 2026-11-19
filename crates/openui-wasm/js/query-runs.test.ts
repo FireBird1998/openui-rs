@@ -1,0 +1,30 @@
+import { expect, test } from 'bun:test';
+import { wasm } from './support';
+
+test('a refresh button and Retry reach the driver through the guarded package', () => {
+  using library = new wasm.ComponentLibrary('{"$defs":{"Box":{"properties":{"value":{}}}}}');
+  using s = new wasm.RuntimeSession(library);
+  s.attachToolProvider();
+  using p = wasm.parseProgram('q=Query("read",{},"loading")\nroot=Box(Action([@Run(q)]))', library);
+  using replaced = s.replaceProgram(p, undefined, undefined, false);
+  using draw = replaced.evaluation;
+  using first = s.takeQueryUpdate();
+  using call = first.callAt(0n);
+  s.completeToolCall(call, '{"failed":"offline"}');
+  using failed = s.takeQueryUpdate();
+  expect(failed.changed).toBe(true);
+  expect(s.retryFailedQueries()).toBeUndefined();
+  using retried = s.takeQueryUpdate();
+  expect(retried.callCount).toBe(1n);
+  using again = retried.callAt(0n);
+  expect(again.toolName).toBe('read');
+  using handle = draw.evaluation;
+  using action = s.actionAt(handle, ['props', 'value']);
+  using run = s.run(action, '', undefined);
+  expect(run.events).toEqual([]);
+  using remembered = s.takeQueryUpdate();
+  expect(remembered.callCount).toBe(0n);
+  s.completeToolCall(again, '{"value":"rows"}');
+  using after = s.takeQueryUpdate();
+  expect(after.callCount).toBe(1n);
+});

@@ -31,6 +31,7 @@ session.attachToolProvider(): void
 session.detachToolProvider(): void
 session.completeToolCall(call: WantedToolCall, outcomeJson: string): void
 session.takeQueryUpdate(): QueryEffects
+session.retryFailedQueries(): void
 session.actionAt(evaluation: EvaluationHandle, path: string[]): ActionHandle
 session.dispose(): void
 session.evaluate(responseState?: ResponseState): EvaluationOutput
