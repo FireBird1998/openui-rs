@@ -101,7 +101,8 @@ pub(super) fn with_provider_runs(input: TreeInput<'_>, managed: bool) -> TreeInp
 
 impl SessionCore {
     /// Upstream's renderer Retry (`retryQueries`): run again every query
-    /// whose error is in the query snapshot, in the snapshot's error order.
+    /// represented by an error in the snapshot, including a compact error,
+    /// in registration order.
     /// The wanted calls come from the next `take_query_update`. As upstream
     /// passes the list to `invalidate`, an empty list runs every query. With
     /// no tool provider or while a response bundle is blocked it does nothing.
@@ -112,23 +113,7 @@ impl SessionCore {
         let Some(manager) = self.manager.as_mut() else {
             return Ok(());
         };
-        let failed = match manager.snapshot().get("__openui_errors") {
-            Some(Value::Arr(errors)) => errors
-                .iter()
-                .filter_map(|error| match error {
-                    Value::Obj(error)
-                        if matches!(error.get("source"), Some(Value::Str(s)) if s == "query") =>
-                    {
-                        match error.get("statementId") {
-                            Some(Value::Str(id)) => Some(id.clone()),
-                            _ => None,
-                        }
-                    }
-                    _ => None,
-                })
-                .collect(),
-            _ => Vec::new(),
-        };
+        let failed = manager.failed_query_ids();
         let ids = failed.iter().map(String::as_str).collect::<Vec<_>>();
         let update = manager.apply(QueryCommand::Invalidate {
             statement_ids: &ids,
@@ -389,7 +374,9 @@ impl SessionCore {
             return self.complete_long_outcome(call, json);
         }
         let invalid = || OpenUiError::InvalidJson {
-            reason: "expected one of value, error, failed, availableTools, mcpResponseJson".into(),
+            reason:
+                "expected one of value, undefined, error, failed, availableTools, mcpResponseJson"
+                    .into(),
         };
         // The envelope is one level, so a result may nest to the depth limit.
         let value = match openui_lang::parse_json_value(json, limits.depth().saturating_add(1)) {
@@ -408,6 +395,7 @@ impl SessionCore {
             return Err(invalid());
         }
         let outcome = match fields.iter().next().map(|(k, v)| (k.as_str(), v)) {
+            Some(("undefined", Value::Bool(true))) => ToolCallOutcome::MissingResult,
             Some(("value", value)) => ToolCallOutcome::Result(value.clone()),
             Some(("error", Value::Str(text))) => ToolCallOutcome::McpError(text.clone()),
             Some(("failed", Value::Str(text))) => ToolCallOutcome::CallFailed(text.clone()),

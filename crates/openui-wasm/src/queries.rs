@@ -7,6 +7,13 @@ use wasm_bindgen::prelude::*;
 pub struct WantedToolCall(pub(crate) Arc<core::WantedToolCall>);
 #[wasm_bindgen]
 impl WantedToolCall {
+    /// The manager still owns this call. A driver can release retired receipts
+    /// even if the provider's promise never settles.
+    #[wasm_bindgen(getter, js_name = pending)]
+    pub fn pending(&self) -> bool {
+        self.0.id.is_pending()
+    }
+
     #[wasm_bindgen(getter, js_name = toolName)]
     pub fn tool_name(&self) -> String {
         self.0.tool_name.clone()

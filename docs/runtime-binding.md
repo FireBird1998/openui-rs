@@ -432,6 +432,7 @@ with an outcome JSON object containing exactly one of these fields.
 | Field | Meaning |
 | --- | --- |
 | `value` | Result value, including explicit null |
+| `undefined` | A missing result (pass `true`). Queries cache null and successful mutations omit `data`. |
 | `availableTools` | Missing tool, with available names in provider order |
 | `error` | Tool-reported MCP error text |
 | `failed` | Call failure message |
@@ -489,8 +490,8 @@ emits no host event; the other steps' events are returned as before. A run
 while that query's key has a call in flight is remembered once for the key,
 whichever query started the call, and its call appears in the drain that
 follows the outcome. `retryFailedQueries()` runs again every query whose
-error is in the query snapshot, as the upstream renderer's Retry does; with
-no query errors it runs every query, as upstream's does. Both act on the
+error appears individually or in a compact diagnostic. With
+no query errors it runs every query. Both act on the
 queries registered so far even while the response state is streaming, as
 upstream's do for a bare program. The session ignores both while a response
 bundle is blocked. Without a provider, a `@Run` of a
@@ -517,6 +518,10 @@ See [CONFORMANCE.md](../CONFORMANCE.md#tool-result-limits). Supplied
 references conflict with an attached provider. Clear them with
 `setReferenceValues("{}")` before attaching.
 
+
+WebAssembly applications can delegate this drain and its timer to the package
+driver. The driver uses terminal completion so an oversized provider
+diagnostic also settles the call. [JavaScript tool provider](wasm-runtime-binding-api.md#javascript-tool-provider)
 
 ### Scheduling one refresh timer
 

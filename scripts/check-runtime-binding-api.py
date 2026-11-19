@@ -70,7 +70,7 @@ for record_name, source in [("RuntimeLimits", native), ("ParseLimits", ffi_lib)]
     assert getters == expected, f"{record_name} wasm getters {sorted(getters ^ expected)} drift"
     assert setters == expected, f"{record_name} wasm setters {sorted(setters ^ expected)} drift"
 wasm_session = wasm.split("impl RuntimeSession {", 1)[1].split("pub struct RuntimeLimits", 1)[0]
-assert set(re.findall(r"js_name = (\w+)", wasm_session)) == set(methods) | {"withLimits", "extractMcpToolResult"}, "wasm session drift"
+assert set(re.findall(r"js_name = (\w+)", wasm_session)) == set(methods) | {"withLimits", "extractMcpToolResult", "sampleQueryClock"}, "wasm session drift"
 assert "call: Arc<WantedToolCall>" in native and "outcome_json: String" in native
 assert "call: &WantedToolCall" in wasm_session
 assert "action: Option<ActionHandle>" in wasm_session
@@ -92,7 +92,10 @@ assert "registerFunction: openuiSpec([openuiStr, openuiFunction])" in (root / "c
 for doc in ["docs/runtime-binding-api.md", "docs/wasm-runtime-binding-api.md"]:
     for name in (native_methods if doc == "docs/runtime-binding-api.md" else methods):
         assert name in (root / doc).read_text(), (doc, name)
-print(f"Source: {len(native_methods)} native and {len(methods)} wasm session methods, opaque capabilities, errors and limits checked")
+driver_signature = "setToolProvider(provider?: ToolProvider | null, options?: ToolProviderOptions): void;"
+driver_api = (root / "docs/wasm-runtime-binding-api.md").read_text()
+assert driver_signature in driver_api and "sampleQueryClock(now_ms: bigint): void;" in driver_api
+print(f"Source: {len(native_methods)} native and {len(methods) + 2} wasm session methods, opaque capabilities, errors and limits checked")
 if len(sys.argv) == 1:
     sys.exit(0)
 if len(sys.argv) == 3 and sys.argv[1] == "--wasm":
@@ -104,8 +107,11 @@ if len(sys.argv) == 3 and sys.argv[1] == "--wasm":
     for method in methods + ["withLimits"]:
         assert re.search(r"\b" + method + r"\(", session[1]), method
     assert re.search(r"static extractMcpToolResult\(response_json: string, limits: ParseLimits\): string;", session[1]), "wasm MCP helper signature drift"
+    assert driver_signature in declarations
+    assert "sampleQueryClock(now_ms: bigint): void;" in session[1]
+    assert "readonly pending: boolean;" in declarations
     assert "takeQueryUpdate(): QueryEffects;" in session[1]
-    assert "completeToolCall(call: WantedToolCall, outcome_json: string): void;" in session[1]
+    assert "completeToolCall(call: WantedToolCall, outcome_json: string, terminal?: boolean | null): void;" in session[1]
     assert "evaluate(response_state?: ResponseState): EvaluationOutput;" in session[1]
     assert re.search(r"replaceProgram\([^\n]+response_state\?: ResponseState\): ReplacementOutput;", session[1])
     assert "export interface ResponseState { streaming: boolean; isBundle?: boolean; complete?: boolean; error?: string | null; scripts?: string[]; scriptRevision?: string | null }" in declarations

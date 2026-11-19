@@ -135,6 +135,29 @@ impl SessionCore {
         self.deliver_refused(call, refused)
     }
 
+    /// A driver has the provider's final answer. Unlike a manual embedder it
+    /// cannot correct a refused diagnostic and resubmit the receipt.
+    pub fn finish_tool_call_json(
+        &mut self,
+        call: &ToolCallId,
+        json: &str,
+    ) -> Result<(), OpenUiError> {
+        // Resuming an action can fail after the manager consumes its call.
+        // Only a refusal that left a live receipt needs a terminal delivery.
+        let result = match self.complete_tool_call_json(call, json) {
+            Err(OpenUiError::InvalidJson { reason } | OpenUiError::Evaluation { reason })
+                if call.is_pending() =>
+            {
+                self.complete_tool_call(call, ToolCallOutcome::CallFailed(reason))
+            }
+            result => result,
+        };
+        if matches!(result, Err(OpenUiError::LimitExceeded { .. })) && call.is_pending() {
+            return self.complete_refused(call, ResultLimit::Size(self.outcome_bound().0));
+        }
+        result
+    }
+
     /// The outcome JSON's byte bound.
     pub(super) fn outcome_byte_bound(&self) -> usize {
         self.outcome_bound().1

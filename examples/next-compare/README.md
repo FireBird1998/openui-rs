@@ -180,3 +180,17 @@ The new built-package tests compare complete tree/event JSON strings against
 Rust-generated `crates/openui-wasm/js/scenarios.json`, including streaming,
 transforms, mutation outcomes, forms, query data and program replacement.
 EOF
+
+## Compare tool providers without installing React
+
+After `scripts/wasm.sh`, run the comparison from the repository root.
+
+```sh
+(cd reference && bun --no-install ../examples/next-compare/scripts/compare-tools.mjs)
+```
+
+This headless path runs the vendored query manager with the pinned renderer's
+provider lookup, query effect and Retry. The other side runs the same program
+through the WebAssembly session's JavaScript driver. It compares the tree,
+snapshot and tool calls byte for byte at each observation and prints both
+values, including the result of swapping a function map for an MCP client.

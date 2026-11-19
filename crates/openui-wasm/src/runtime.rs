@@ -305,6 +305,10 @@ impl RuntimeSession {
             .map(|inner| ReplacementOutput { inner })
             .map_err(error)
     }
+    #[wasm_bindgen(js_name = sampleQueryClock)]
+    pub fn sample_query_clock(&self, now_ms: u64) -> Result<(), JsValue> {
+        self.inner.sample_query_clock(now_ms).map_err(error)
+    }
     #[wasm_bindgen(js_name = setQueryExtraValues)]
     pub fn set_query_extra_values(
         &self,
@@ -369,10 +373,14 @@ impl RuntimeSession {
         &self,
         call: &WantedToolCall,
         outcome_json: String,
+        terminal: Option<bool>,
     ) -> Result<(), JsValue> {
-        self.inner
-            .complete_tool_call(call.0.clone(), outcome_json)
-            .map_err(error)
+        if terminal == Some(true) {
+            self.inner.finish_tool_call(call.0.clone(), outcome_json)
+        } else {
+            self.inner.complete_tool_call(call.0.clone(), outcome_json)
+        }
+        .map_err(error)
     }
     #[wasm_bindgen(js_name = undecidedBindings, unchecked_return_type = "any")]
     pub fn undecided_bindings(&self) -> Result<String, JsValue> {

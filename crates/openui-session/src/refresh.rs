@@ -3,6 +3,14 @@ use super::*;
 use openui_runtime::QueryCommand;
 
 impl SessionCore {
+    /// Sample registration time without delivering a refresh callback.
+    pub fn sample_query_clock(&mut self, now_ms: u64) -> Result<(), OpenUiError> {
+        if let Some(manager) = self.manager.as_mut() {
+            manager.sample_clock(now_ms)?;
+        }
+        Ok(())
+    }
+
     /// Advance the attached provider's monotonic clock, including while streaming.
     pub fn advance_query_clock(&mut self, now_ms: u64) -> Result<(), OpenUiError> {
         if let Some(manager) = self.manager.as_mut() {

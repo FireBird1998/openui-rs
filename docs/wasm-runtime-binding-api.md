@@ -30,7 +30,7 @@ RuntimeSession.extractMcpToolResult(responseJson: string, limits: ParseLimits): 
 session.setQueryExtraValues(tool_name: string, values_json: string): void
 session.attachToolProvider(): void
 session.detachToolProvider(): void
-session.completeToolCall(call: WantedToolCall, outcomeJson: string): void
+session.completeToolCall(call: WantedToolCall, outcomeJson: string, terminal?: boolean | null): void
 session.takeQueryUpdate(): QueryEffects
 session.retryFailedQueries(): void
 session.advanceQueryClock(now_ms: bigint): void
@@ -228,3 +228,73 @@ Call `takeQueryUpdate()` to claim wanted calls and the redraw flag. Query
 effects and calls are return-only objects with TypeScript type exports.
 Use `callAt` with a zero-based bigint. Each object supports `using` or
 `free()`. [Driving queries](runtime-binding.md#driving-queries)
+
+### JavaScript tool provider
+
+```typescript
+interface RuntimeSession {
+    setToolProvider(provider?: ToolProvider | null, options?: ToolProviderOptions): void;
+    sampleQueryClock(now_ms: bigint): void;
+}
+```
+
+Pass a map of functions taking the evaluated arguments, or an MCP client with
+a callable `callTool({ name, arguments })`. Return JSON-compatible values
+or promises for them. A function-map handler may also return `undefined`.
+A later `setToolProvider(provider)`
+changes the provider for future calls and keeps the current callbacks.
+Supplying options replaces all three callbacks, including for calls already in flight.
+Pass `null` to detach it. A manual attachment keeps ownership of its
+calls until detach. Installing a driver during that attachment throws
+`RefusedWrite`, including when the caller already holds a wanted call.
+
+The driver drains effects after session operations, including
+`replaceProgram`, `evaluate`, writes and action runs. Pass the application's
+response state to each draw. A bare program needs only `{ streaming }`.
+A blocked bundle suppresses actions and Retry, including Retry for readers
+represented by a compact error. Bare streaming keeps Retry available for
+registered queries. Use the draw's `isQueryLoading` and `parserErrorJson`
+for bundle loading and parser diagnostics. Read `__openui_loading`, `__openui_refetching`
+and `__openui_errors` from the evaluation's `querySnapshotJson`.
+Use `retryFailedQueries()`, `pauseQueries()` and `resumeQueries()` on the
+same session. While the driver is attached, manual attach methods,
+`sampleQueryClock`, `advanceQueryClock`, `resumeQueriesAt`, `takeQueryUpdate`
+and `completeToolCall` throw `RefusedWrite`. The driver coalesces completion
+drains into one host task. Writes during dispatch, from a provider's promise
+reactions, or while reading its result can trigger further calls on the next
+event-loop turn.
+
+The driver accepts these options.
+
+- `minimumMs` sets the session's refresh minimum in whole milliseconds. Changing the minimum requires detaching first.
+- `onChange()` requests a redraw when the drain reports a visible change.
+- `onAction(output)` receives each resumed action output. Read its events
+  or claim its continuation inside the callback. The driver frees the output
+  when the callback returns.
+- `onError(error)` receives query evaluation errors with their binding `kind`
+  and message. Repeated drains of the same error report it once, and a
+  successful registration clears it. It also receives timer and binding failures and errors thrown or
+  rejected by `onAction` or `onChange`. A callback failure leaves the drain
+  running. The driver contains errors when `onError` is absent or itself
+  throws or rejects. After a refused timer wake the next draw re-arms the
+  session's deadline.
+
+The driver passes `true` as the third argument to
+`completeToolCall`. In terminal mode an invalid response or an oversized
+provider diagnostic settles the pending call as a tool failure. The manual
+two-argument form lets the embedder correct a refused outcome. A result
+refused under the session limits appears in the query snapshot. When the
+individual query errors exceed the result limit, the snapshot shows one
+compact diagnostic and Retry can dispatch the call again. Function values
+and non-finite numbers in JSON data, including in MCP `structuredContent`,
+produce a tool error identifying the value. If delivery itself throws, the
+driver reports the binding error and sends a terminal failure for a receipt
+that is still pending. A second refusal that leaves the receipt pending
+detaches the provider.
+
+The driver samples `performance.now()` when installing intervals.
+`sampleQueryClock` sets the clock for new registrations. Existing deadlines
+run when the timer delivers `advanceQueryClock`. A wanted call's
+`pending` getter reports whether the manager still owns the call.
+Pause, detach, dispose and free revoke outstanding deliveries. A provider
+owns its network request and any timeout. Its promise can settle later.

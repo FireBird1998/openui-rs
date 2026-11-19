@@ -62,6 +62,8 @@ done
   bun --no-install function-definitions.ts
   bun --no-install function-results.ts
   bun --no-install session-data.ts
+  bun --no-install tool-provider-mutations.ts
+  bun --no-install tool-provider.ts
   bun --no-install mcp-results.ts
   bun --no-install parser-prototype-assignments.ts
   bun --no-install core-divergences.ts

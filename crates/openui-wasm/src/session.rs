@@ -143,6 +143,9 @@ impl Session {
             )
         })
     }
+    pub fn sample_query_clock(&self, now_ms: u64) -> Result<(), OpenUiError> {
+        self.call(|s, _| s.sample_query_clock(now_ms))
+    }
     pub fn set_query_extra_values(
         &self,
         tool_name: &str,
@@ -195,6 +198,13 @@ impl Session {
         outcome_json: String,
     ) -> Result<(), OpenUiError> {
         self.call(move |s, _| s.complete_tool_call_json(&call.id, &outcome_json))
+    }
+    pub fn finish_tool_call(
+        &self,
+        call: Arc<WantedToolCall>,
+        outcome_json: String,
+    ) -> Result<(), OpenUiError> {
+        self.call(move |s, _| s.finish_tool_call_json(&call.id, &outcome_json))
     }
     /// Report prompt annotations needing an explicit choice by the embedder.
     pub fn undecided_bindings(&self) -> Result<Vec<BindingPair>, OpenUiError> {

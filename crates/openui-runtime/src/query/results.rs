@@ -205,6 +205,17 @@ impl QueryManager {
         }
     }
 
+    /// Failed readers in registration order, including those represented by
+    /// a compact diagnostic. Retry needs their ids even when it cannot list
+    /// their individual error records in the snapshot.
+    pub fn failed_query_ids(&self) -> Vec<String> {
+        self.order
+            .iter()
+            .filter(|id| self.queries.get(*id).is_some_and(|q| q.error.is_some()))
+            .cloned()
+            .collect()
+    }
+
     /// The compact diagnostic shown for queries whose errors are withheld.
     pub(super) fn withheld_diagnostic(&self) -> Option<Value> {
         let count = self.queries.values().filter(|q| q.withheld).count();

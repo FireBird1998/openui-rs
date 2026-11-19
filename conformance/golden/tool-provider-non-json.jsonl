@@ -1,0 +1,10 @@
+{"label":"function","type":"function","value":"result","__openui_loading":[],"__openui_refetching":[],"__openui_errors":[],"bindingErrors":[]}
+{"label":"undefined MCP response","type":"string","value":"waiting","__openui_loading":[],"__openui_refetching":[],"__openui_errors":[{"source":"query","statementId":"q","component":"Query","toolName":"read","code":"tool-error","message":"Query \"read\" failed: undefined is not an object (evaluating 'result.isError')"}],"bindingErrors":[]}
+{"label":"BigInt","type":"bigint","value":"42","__openui_loading":[],"__openui_refetching":[],"__openui_errors":[],"bindingErrors":[]}
+{"label":"nested function","type":"object","value":{"a":{"type":"function","name":"result"}},"__openui_loading":[],"__openui_refetching":[],"__openui_errors":[],"bindingErrors":[]}
+{"label":"NaN","type":"number","value":{"type":"number","value":"NaN"},"__openui_loading":[],"__openui_refetching":[],"__openui_errors":[],"bindingErrors":[]}
+{"label":"nested NaN","type":"object","value":[{"type":"number","value":"NaN"}],"__openui_loading":[],"__openui_refetching":[],"__openui_errors":[],"bindingErrors":[]}
+{"label":"Infinity","type":"number","value":{"type":"number","value":"Infinity"},"__openui_loading":[],"__openui_refetching":[],"__openui_errors":[],"bindingErrors":[]}
+{"label":"negative Infinity","type":"number","value":{"type":"number","value":"-Infinity"},"__openui_loading":[],"__openui_refetching":[],"__openui_errors":[],"bindingErrors":[]}
+{"label":"MCP nested function","type":"object","value":{"a":{"type":"function","name":"result"}},"__openui_loading":[],"__openui_refetching":[],"__openui_errors":[],"bindingErrors":[]}
+{"label":"MCP nested NaN","type":"object","value":[{"type":"number","value":"NaN"}],"__openui_loading":[],"__openui_refetching":[],"__openui_errors":[],"bindingErrors":[]}

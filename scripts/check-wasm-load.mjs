@@ -9,6 +9,13 @@ for (const [name, pkg] of [['node', node], ['web', web]]) {
   const library = new pkg.ComponentLibrary('{"$defs":{}}');
   const session = new pkg.RuntimeSession(library);
   if (session.snapshot() !== '{}') throw new Error(`${name}: unexpected initial state`);
+  session.setToolProvider({ read: () => 42 });
+  const program = pkg.parseProgram('q=Query("read",{})', library);
+  const replaced = session.replaceProgram(program, undefined, undefined, false);
+  await Promise.resolve();
+  const draw = session.evaluate();
+  if (JSON.parse(draw.querySnapshotJson).q !== 42) throw new Error(`${name}: tool result missing`);
+  draw.free(); replaced.free(); program.free();
   session.free(); library.free();
   try { session.version(); throw new Error(`${name}: freed session accepted a call`); }
   catch (error) {

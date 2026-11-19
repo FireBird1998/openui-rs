@@ -16,7 +16,7 @@ if [[ "$have" != "$want" ]]; then
   exit 1
 fi
 cargo build -q -p openui-wasm --release --target wasm32-unknown-unknown
-module=target/wasm32-unknown-unknown/release/openui_wasm.wasm
+module="${CARGO_TARGET_DIR:-target}/wasm32-unknown-unknown/release/openui_wasm.wasm"
 for target in web nodejs; do
   out="target/wasm-pkg/${target%js}"
   rm -rf "$out"
@@ -42,8 +42,9 @@ for filename in ["openui_wasm.js", "openui_wasm.d.ts"]:
         source += "\nexport type { QueryEffects, WantedToolCall };\n"
     path.write_text(source)
 PYTHON
+  cat crates/openui-wasm/js/tool-provider.d.ts >> "$out/openui_wasm.d.ts"
   python3 scripts/check-runtime-binding-api.py --wasm "$out/openui_wasm.d.ts"
-  cat crates/openui-wasm/js/package-guards.js >> "$out/openui_wasm.js"
+  cat crates/openui-wasm/js/tool-provider.js crates/openui-wasm/js/package-guards.js >> "$out/openui_wasm.js"
 done
 # Mark the web package as ESM for Node's load check and downstream imports.
 cat > target/wasm-pkg/web/package.json <<'JSON'

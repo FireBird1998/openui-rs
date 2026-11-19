@@ -143,12 +143,19 @@ impl QueryManager {
         }
     }
 
-    pub(super) fn advance(&mut self, now: u64) -> Result<Vec<ToolCall>, QueryCommandError> {
+    /// Set the origin for intervals installed during a host operation. An
+    /// already-queued timer fires only when the host delivers its callback.
+    pub fn sample_clock(&mut self, now: u64) -> Result<(), QueryCommandError> {
         // Reserve room for a full platform interval beyond every accepted time.
         if now < self.clock.now || now > u64::MAX - i32::MAX as u64 {
             return Err(QueryCommandError::InvalidClock);
         }
         self.clock.now = now;
+        Ok(())
+    }
+
+    pub(super) fn advance(&mut self, now: u64) -> Result<Vec<ToolCall>, QueryCommandError> {
+        self.sample_clock(now)?;
         let mut ticks = Vec::new();
         for timer in &mut self.clock.timers {
             if timer.due <= now {

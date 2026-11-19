@@ -15,7 +15,9 @@ impl<'a> ToolOutcome<'a> {
 #[derive(Debug)]
 #[non_exhaustive]
 pub enum ToolCallOutcome {
-    /// Host data. A missing result is represented by null.
+    /// A JavaScript undefined result. Queries cache null and mutations omit data.
+    MissingResult,
+    /// Host data, including explicit null.
     Result(Value),
     /// Available names in provider order.
     ToolNotFound(Vec<String>),
@@ -217,6 +219,7 @@ impl QueryManager {
         }
         let limit = results::result_limit(self.limits);
         let outcome = match &outcome {
+            ToolCallOutcome::MissingResult => ToolOutcome::Result(None),
             ToolCallOutcome::Result(value) => ToolOutcome::ResultValue(value),
             ToolCallOutcome::ToolNotFound(names) => {
                 let mut bytes = 0usize;

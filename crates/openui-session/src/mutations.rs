@@ -82,7 +82,10 @@ impl SessionCore {
         call: &ToolCallId,
         delivery: Delivery,
     ) -> Result<(), OpenUiError> {
-        let delivers_result = matches!(delivery, Delivery::Outcome(ToolCallOutcome::Result(_)));
+        let delivers_result = matches!(
+            delivery,
+            Delivery::Outcome(ToolCallOutcome::Result(_) | ToolCallOutcome::MissingResult)
+        );
         if delivers_result {
             self.next_continuation_generation()?;
         }

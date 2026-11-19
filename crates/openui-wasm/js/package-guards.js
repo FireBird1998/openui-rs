@@ -293,13 +293,14 @@ const openuiSurface = new Map([
       setQueryExtraValues: openuiSpec([openuiStr, openuiStr]),
       takeQueryUpdate: openuiNone,
       retryFailedQueries: openuiNone,
+      sampleQueryClock: openuiSpec([openuiLimit]),
       advanceQueryClock: openuiSpec([openuiLimit]),
       pauseQueries: openuiNone,
       resumeQueries: openuiNone,
       resumeQueriesAt: openuiSpec([openuiLimit]),
       attachToolProviderAt: openuiSpec([openuiLimit, openuiLimit]),
       attachToolProviderWithMinimum: openuiSpec([openuiLimit]),
-      completeToolCall: openuiSpec([openuiCapabilityOf(WantedToolCall), openuiStr]),
+      completeToolCall: openuiSpec([openuiCapabilityOf(WantedToolCall), openuiStr, value => value == null ? false : openuiBool(value)]),
       get: openuiSpec([openuiStr]),
       getField: openuiSpec([openuiOptStr, openuiStr]),
       initialize: openuiSpec([openuiOptStr], { json: true }),
@@ -323,7 +324,7 @@ const openuiSurface = new Map([
     },
   }],
   [WantedToolCall, { methods: { free: openuiFree }, accessors: {
-    toolName: { get: openuiNone }, argumentsJson: { get: openuiNone } } }],
+    pending: { get: openuiNone }, toolName: { get: openuiNone }, argumentsJson: { get: openuiNone } } }],
   [QueryEffects, { methods: { free: openuiFree, actionAt: openuiSpec([openuiLimit]), callAt: openuiSpec([openuiLimit]) }, accessors: {
     nextRefreshDueMs: { get: openuiNone }, actionCount: { get: openuiNone }, callCount: { get: openuiNone }, changed: { get: openuiNone }, evaluationError: { get: openuiJson } } }],
   [EvaluationHandle, { methods: { free: openuiFree } }],
@@ -467,7 +468,9 @@ function openuiGuardClass(klass, spec) {
     } else if (openuiHasOwn(descriptor, 'value')) {
       const member = openuiHasOwn(methods, key) ? methods[key] : undefined;
       if (member === undefined || typeof descriptor.value !== 'function') throw openuiUncovered(name, key);
-      descriptor.value = openuiMember(member, prototype, descriptor.value);
+      descriptor.value = klass === RuntimeSession
+        ? openuiDriverMember(key, member, prototype, descriptor.value)
+        : openuiMember(member, prototype, descriptor.value);
       if (key === 'free') guardedFree = descriptor.value;
       seen[key] = true;
     } else {
@@ -515,6 +518,7 @@ function openuiGuardClass(klass, spec) {
   for (const key of openuiOwnKeys(statics)) if (!openuiHasOwn(klass, key)) throw openuiUncovered(name, `${key} (missing)`);
   // Nothing can replace a guarded member, or a private helper that the
   // guarded free calls, after this.
+  if (klass === RuntimeSession) openuiInstallDriver(prototype);
   openuiFreeze(prototype);
   openuiFreeze(klass);
   const construct = spec.construct;
