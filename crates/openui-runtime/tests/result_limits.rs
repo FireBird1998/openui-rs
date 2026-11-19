@@ -80,11 +80,14 @@ fn the_limits_name_themselves_in_the_tool_error() {
 #[test]
 fn a_result_fits_at_the_size_limit_and_one_byte_over_is_a_tool_error_on_every_reader() {
     let store = Store::default();
-    let p = program("a = Query(\"t\", {}, \"a\")\nb = Query(\"t\", {}, \"b\")");
+    // One reader shows a result at the limit; the snapshot holds one copy.
+    let one = program("a = Query(\"t\", {}, \"a\")");
+    let two = program("a = Query(\"t\", {}, \"a\")\nb = Query(\"t\", {}, \"b\")");
     for (bytes, fits) in [(SIZE, true), (SIZE + 1, false)] {
         let limits = Limits::DEFAULT.with_result_size(SIZE);
         let mut manager = QueryManager::with_limits(limits).with_cache_limit(usize::MAX);
-        let call = evaluate(&mut manager, &p, &store).remove(0);
+        let p = if fits { &one } else { &two };
+        let call = evaluate(&mut manager, p, &store).remove(0);
         complete(&mut manager, &call.id, &text(bytes));
         assert!(!call.id.is_pending(), "the call ends either way");
         let snapshot = view(&manager);
@@ -327,13 +330,14 @@ impl Lcg {
 fn a_long_random_script_keeps_every_invariant_after_every_command() {
     const STEPS: usize = 20_000;
     let p = program(
-        "$a = 0\n$b = 0\nx = Query(\"t\", {v: $a})\ny = Query(\"t\", {v: $b})\nz = Query(\"u\", {v: $a + $b})\nm = Mutation(\"save\")\nn = Mutation(\"post\")",
+        "$a = 0\n$b = 0\nx = Query(\"t\", {v: $a})\ny = Query(\"t\", {v: $b})\nz = Query(\"u\", {v: $a + $b})\nm = Mutation(\"save\" + $t)\nn = Mutation(\"post\")",
     );
     let limits = Limits::DEFAULT.with_result_size(256).with_depth(4);
     let mut manager = QueryManager::with_limits(limits).with_cache_limit(600);
     let mut store = Store::default();
     store.set("$a", Some(Value::Num(0.0))).unwrap();
     store.set("$b", Some(Value::Num(0.0))).unwrap();
+    store.set("$t", Some(Value::Num(0.0))).unwrap();
     manager
         .register_mutations(&TreeInput::new(&p), &store)
         .unwrap();
@@ -341,11 +345,20 @@ fn a_long_random_script_keeps_every_invariant_after_every_command() {
     let mut outstanding: Vec<ToolCallId> = Vec::new();
     let mut mutation_calls: Vec<ToolCallId> = Vec::new();
     let mut consumed: Vec<ToolCallId> = Vec::new();
-    let (mut refusals, mut deliveries, mut most_calls) = (0, 0, 0);
+    let (mut refusals, mut deliveries) = (0, 0);
     for step in 0..STEPS {
         let before = (manager.snapshot_json().to_owned(), manager.cache_bytes());
         let mut refused_command = false;
-        match rng.below(6) {
+        match rng.below(7) {
+            // Rename `m`: an idle registration whose earlier calls still run.
+            6 => {
+                store
+                    .set("$t", Some(Value::Num(rng.below(3) as f64)))
+                    .unwrap();
+                manager
+                    .register_mutations(&TreeInput::new(&p), &store)
+                    .unwrap();
+            }
             0 | 1 => {
                 let name = if rng.below(2) == 0 { "$a" } else { "$b" };
                 let value = rng.below(4) as f64;
@@ -435,12 +448,16 @@ fn a_long_random_script_keeps_every_invariant_after_every_command() {
         // Each query has at most one call for its current key and one on the
         // key it shows while loading, and each mutation at most one.
         mutation_calls.retain(ToolCallId::is_pending);
-        assert!(mutation_calls.len() <= 2, "step {step}");
+        // A query has at most two live calls: one for its current key and
+        // one finishing on the previous key it shows (ADR 0013 rule 3).
+        assert!(
+            outstanding.len() - mutation_calls.len() <= 2 * 3,
+            "step {step}"
+        );
         assert!(
             outstanding.len() - mutation_calls.len() <= manager.cache_entry_count(),
             "step {step}"
         );
-        most_calls = most_calls.max(outstanding.len());
         let snapshot = view(&manager);
         for id in ["x", "y", "z"] {
             let error = snapshot["__openui_errors"]
@@ -458,7 +475,263 @@ fn a_long_random_script_keeps_every_invariant_after_every_command() {
         refusals > 100 && deliveries > refusals,
         "{refusals} of {deliveries}"
     );
-    assert!(most_calls <= 2 * 3 + 2);
     // At the end the charge equals a fresh measurement of what is held.
     assert_eq!(manager.cache_bytes(), manager.measured_cache_bytes());
+}
+
+// ---- Review round: each test below failed before its fix. ----
+
+fn mutation_program(tool: &str) -> ParseResult {
+    program(&format!("q = Query(\"t\")\nm = Mutation(\"{tool}\")"))
+}
+
+#[test]
+fn a_renamed_mutations_idle_null_is_not_charged_and_the_charge_stays_exact() {
+    let store = Store::default();
+    let limits = Limits::DEFAULT.with_result_size(1024);
+    let mut manager = QueryManager::with_limits(limits).with_cache_limit(20);
+    let old = mutation_program("old");
+    let call = evaluate(&mut manager, &old, &store).remove(0);
+    manager
+        .register_mutations(&TreeInput::new(&old), &store)
+        .unwrap();
+    complete(&mut manager, &call.id, &text(20));
+    check_charge(&manager);
+    manager
+        .register_mutations(&TreeInput::new(&mutation_program("new")), &store)
+        .unwrap();
+    assert_eq!(view(&manager)["m"]["data"], JsonValue::Null);
+    assert_eq!(manager.cache_bytes(), 20);
+    check_charge(&manager);
+}
+
+#[test]
+fn a_refused_outcome_of_an_older_submission_never_erases_a_newer_result() {
+    let store = Store::default();
+    let limits = Limits::DEFAULT.with_result_size(1024);
+    let mut manager = QueryManager::with_limits(limits).with_cache_limit(1024);
+    let old = mutation_program("old");
+    manager
+        .register_mutations(&TreeInput::new(&old), &store)
+        .unwrap();
+    let first = manager.fire_mutation("m", None).unwrap().calls.remove(0);
+    manager
+        .register_mutations(&TreeInput::new(&mutation_program("new")), &store)
+        .unwrap();
+    let second = manager.fire_mutation("m", None).unwrap().calls.remove(0);
+    complete(&mut manager, &second.id, &JsonValue::from("saved"));
+    let (_, refused) = manager
+        .complete_tool_call_admitted(
+            &first.id,
+            ToolCallOutcome::Result(Value::from_json(&text(1025))),
+        )
+        .unwrap();
+    assert_eq!(refused, Some(ResultLimit::Size(1024)));
+    assert!(!first.id.is_pending(), "the old call is consumed");
+    assert_eq!(view(&manager)["m"]["data"], "saved");
+    check_charge(&manager);
+    // A call whose registration was removed settles nothing, as on main.
+    let third = manager.fire_mutation("m", None).unwrap().calls.remove(0);
+    manager
+        .register_mutations(&TreeInput::new(&program("q = Query(\"t\")")), &store)
+        .unwrap();
+    let before = manager.snapshot_json().to_owned();
+    complete(&mut manager, &third.id, &JsonValue::from("late"));
+    assert_eq!(manager.snapshot_json(), before);
+}
+
+#[test]
+fn every_completion_path_admits_through_the_same_limits() {
+    let store = Store::default();
+    // A missing query result is `null`, four bytes: past a three-byte limit.
+    let limits = Limits::DEFAULT.with_result_size(3);
+    let mut manager = QueryManager::with_limits(limits).with_cache_limit(16);
+    let call = evaluate(&mut manager, &program("q = Query(\"t\")"), &store).remove(0);
+    manager
+        .apply(QueryCommand::Complete {
+            id: &call.id,
+            outcome: ToolOutcome::Result(None),
+        })
+        .unwrap();
+    assert_eq!(manager.cache_bytes(), 0);
+    assert!(manager.snapshot_json().contains("of 3 bytes"));
+    // The work limit bounds a result too, on every path.
+    let limits = Limits::DEFAULT.with_work(256).with_result_size(8192);
+    let size = limits.work_for(usize::MAX);
+    assert!(size < 4096);
+    let message = ResultLimit::Size(size).to_string();
+    assert!(!message.is_empty());
+    let big = text(4096);
+    for path in [
+        "borrowed query",
+        "owned query",
+        "borrowed mutation",
+        "owned mutation",
+    ] {
+        let mut manager = QueryManager::with_limits(limits).with_cache_limit(8192);
+        let p = program("q = Query(\"t\")\nm = Mutation(\"t\")");
+        let query = evaluate(&mut manager, &p, &store).remove(0);
+        manager
+            .register_mutations(&TreeInput::new(&p), &store)
+            .unwrap();
+        let id = if path.ends_with("mutation") {
+            manager.fire_mutation("m", None).unwrap().calls.remove(0).id
+        } else {
+            query.id
+        };
+        if path.starts_with("borrowed") {
+            complete(&mut manager, &id, &big);
+        } else {
+            manager
+                .complete_tool_call(&id, ToolCallOutcome::Result(Value::from_json(&big)))
+                .unwrap();
+        }
+        // Named by the tool-error, or by the compact diagnostic when this
+        // small a work limit cannot list the error either.
+        let snapshot = manager.snapshot_json();
+        assert!(
+            snapshot.contains(&message) || snapshot.contains(&format!("limit of {size} bytes")),
+            "{path}: {snapshot}"
+        );
+        assert_eq!(manager.cache_bytes(), 0, "{path}");
+    }
+}
+
+#[test]
+fn refusing_wide_or_long_results_allocates_nothing_in_proportion_to_them() {
+    let store = Store::default();
+    let p = program("q = Query(\"t\")");
+    let limits = Limits::DEFAULT.with_result_size(1024);
+    let object = |keys: usize| {
+        let mut fields = JsObject::new();
+        for key in 0..keys {
+            fields.define(format!("k{key}"), Value::Null);
+        }
+        Value::Obj(Arc::new(fields))
+    };
+    let mut peaks = Vec::new();
+    for width in [1024, 2048, 4096, 1 << 16] {
+        for value in [
+            object(width),
+            Value::Arr(Arc::new(vec![Value::Null; width])),
+            Value::Str("x".repeat(width * 4)),
+        ] {
+            let mut manager = QueryManager::with_limits(limits);
+            let call = evaluate(&mut manager, &p, &store).remove(0);
+            // Keep an owner, so the call's drop of its outcome only releases
+            // it: freeing a uniquely owned tree is the core's stack-safe free,
+            // not admission.
+            let kept = value.clone();
+            test_alloc::reset_peak();
+            let before = test_alloc::peak();
+            let (_, refused) = manager
+                .complete_tool_call_admitted(&call.id, ToolCallOutcome::Result(value))
+                .unwrap();
+            peaks.push(test_alloc::peak().saturating_sub(before));
+            drop(kept);
+            assert_eq!(refused, Some(ResultLimit::Size(1024)));
+        }
+    }
+    assert!(peaks.iter().all(|&peak| peak < 8 * 1024), "{peaks:?}");
+}
+
+#[test]
+fn validity_is_decided_before_size_and_depth_comes_first_only_when_it_is_reached_first() {
+    let store = Store::default();
+    let p = program("q = Query(\"t\")");
+    let limits = Limits::DEFAULT.with_result_size(1024).with_depth(4);
+    let syntax = || Value::Ast(Arc::new(openui_runtime::Ast::Null));
+    let long = || Value::Str("x".repeat(1500));
+    let deep = || (0..6).fold(Value::Null, |value, _| Value::Arr(Arc::new(vec![value])));
+    for (name, items, expected) in [
+        ("long then syntax", vec![long(), syntax()], None),
+        ("syntax then long", vec![syntax(), long()], None),
+        (
+            "deep then syntax",
+            vec![deep(), syntax()],
+            Some(ResultLimit::Depth(4)),
+        ),
+        ("syntax then deep", vec![syntax(), deep()], None),
+    ] {
+        let mut manager = QueryManager::with_limits(limits);
+        let call = evaluate(&mut manager, &p, &store).remove(0);
+        let result = manager.complete_tool_call_admitted(
+            &call.id,
+            ToolCallOutcome::Result(Value::Arr(Arc::new(items))),
+        );
+        match expected {
+            None => {
+                assert!(matches!(result, Err(QueryCommandError::Limit(_))), "{name}");
+                assert!(call.id.is_pending(), "{name}: nothing consumed");
+            }
+            Some(limit) => {
+                assert_eq!(result.unwrap().1, Some(limit), "{name}");
+                assert!(!call.id.is_pending(), "{name}");
+            }
+        }
+    }
+}
+
+#[test]
+fn a_delivery_the_snapshot_cannot_hold_still_ends_the_call_on_both_paths() {
+    let store = Store::default();
+    let limits = Limits::DEFAULT.with_result_size(1024);
+    let two = program("a = Query(\"t\")\nb = Query(\"t\")");
+    let result = text(602);
+    for owned in [false, true] {
+        let mut manager = QueryManager::with_limits(limits);
+        let call = evaluate(&mut manager, &two, &store).remove(0);
+        if owned {
+            let (_, refused) = manager
+                .complete_tool_call_admitted(
+                    &call.id,
+                    ToolCallOutcome::Result(Value::from_json(&result)),
+                )
+                .unwrap();
+            assert_eq!(refused, Some(ResultLimit::Snapshot(1024)));
+        } else {
+            complete(&mut manager, &call.id, &result);
+        }
+        assert!(!call.id.is_pending(), "owned {owned}");
+        let snapshot = view(&manager);
+        assert_eq!(snapshot["__openui_loading"], JsonValue::Array(Vec::new()));
+        let errors = snapshot["__openui_errors"].as_array().unwrap();
+        assert_eq!(errors.len(), 2, "owned {owned}");
+        assert_eq!(
+            errors[0]["message"],
+            query_error("t", ResultLimit::Snapshot(1024)).as_str()
+        );
+        assert_eq!(manager.cache_bytes(), 0);
+    }
+    // Six readers: even their errors do not fit, so one compact diagnostic
+    // stands for all of them, the call ends and nothing is called again.
+    let six = program(
+        &(0..6)
+            .map(|i| format!("q{i} = Query(\"t\")"))
+            .collect::<Vec<_>>()
+            .join("\n"),
+    );
+    let mut manager = QueryManager::with_limits(limits);
+    let call = evaluate(&mut manager, &six, &store).remove(0);
+    complete(&mut manager, &call.id, &text(1025));
+    assert!(!call.id.is_pending());
+    let snapshot = view(&manager);
+    let errors = snapshot["__openui_errors"].as_array().unwrap();
+    assert_eq!(errors.len(), 1);
+    assert_eq!(
+        errors[0]["message"],
+        "6 queries failed with errors that do not fit the result size limit of 1024 bytes"
+    );
+    assert!(manager.current_entry_is_served("q0", false, std::iter::empty()));
+    assert!(evaluate(&mut manager, &six, &store).is_empty());
+    // A run fetches again; a success clears the diagnostic.
+    let again = manager
+        .apply(QueryCommand::Invalidate { statement_ids: &[] })
+        .unwrap()
+        .calls;
+    complete(&mut manager, &again[0].id, &JsonValue::from("ok"));
+    assert_eq!(
+        view(&manager)["__openui_errors"],
+        JsonValue::Array(Vec::new())
+    );
 }

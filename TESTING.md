@@ -410,7 +410,24 @@ mutation calls never exceed one per mutation. `result_limits` (session) pins
 the line between a delivered `tool-error` and a refused outcome for outcome
 JSON, including text past the outcome bound, MCP responses and the peak
 allocation of refusing a 4 MiB result. The native and WebAssembly bindings
-each have a `result_limits` test for `maxCacheBytes`.
+each have a `result_limits` test for `maxCacheBytes`, and
+`crates/openui-wasm/js/queries.test.ts` checks that the exported
+`RuntimeSession.withLimits` carries it. `scripts/check.sh` needs no Bun or
+wasm toolchain, so it does not build the WebAssembly packages: after a
+binding change also run `scripts/wasm.sh` (which loads both packages through
+their guards) and `bun --no-install test crates/openui-wasm/js`.
+
+The review round added tests, each failing before its fix: a rename's idle
+`null` is not charged; a refused result of an older submission never erases
+a newer one; every completion path admits under the same limits, the work
+limit included; refusing wide objects, wide arrays and long strings takes
+the same peak allocation at every width; validity is decided before size
+(both orders pinned, and depth only when reached first); a delivery the
+snapshot cannot hold still ends the call on both paths; long MCP responses
+are checked for validity before size; and a mutation result refused inside
+the runtime ends its plan. The random script renames a mutation and asserts
+after every command that the charge equals a fresh measurement and that
+each query has at most two outstanding calls.
 
 ## The corpus
 

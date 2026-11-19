@@ -456,6 +456,13 @@ impl<V> JsObject<V> {
             .map(|i| self.entries.get_index(i).expect("index in range"))
     }
 
+    /// Entries in insertion order. Unlike [`JsObject::iter`], this computes
+    /// no property order, so it allocates nothing: for measuring, where the
+    /// order does not matter.
+    pub fn iter_unordered(&self) -> impl Iterator<Item = (&String, &V)> {
+        self.entries.iter()
+    }
+
     /// Values in JavaScript property order.
     pub fn values(&self) -> impl Iterator<Item = &V> {
         self.iter().map(|(_, v)| v)

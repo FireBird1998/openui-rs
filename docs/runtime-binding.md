@@ -483,9 +483,11 @@ A result too large or too deep for `RuntimeLimits.evaluation`, or past the
 cache cap, is the tool's: it is delivered as the call's `tool-error`, naming
 the limit, on every query of its key (or as the mutation's error, which ends
 its plan), and the call is consumed. Nothing held is evicted. Malformed or
-wrongly shaped outcome JSON, failure text past the limits, and a delivery
-the query snapshot's room cannot hold are the embedder's: the outcome is
-refused and leaves a valid call available for correction. Outcome text may
+wrongly shaped outcome JSON (at any length, MCP responses included) and
+failure text past the limits are the embedder's: the outcome is refused and
+leaves a valid call available for correction. A delivery the query
+snapshot's room cannot hold still ends the call, as each reader's
+`tool-error` or one compact error. Outcome text may
 be as long as the smallest of maxJsonBytes, the result-size ceiling and the
 work limit, plus the 10 bytes of `{"value":}`; a longer result is refused for
 size without being parsed. A result may nest to `evaluation.depth` levels.

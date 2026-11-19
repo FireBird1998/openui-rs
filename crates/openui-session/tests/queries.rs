@@ -275,7 +275,7 @@ fn mcp_numbers_surrogates_and_reported_errors_reach_the_live_program() {
 }
 
 #[test]
-fn refusing_shared_results_or_long_failure_text_leaves_the_same_receipt_retryable() {
+fn refusing_long_failure_text_leaves_the_same_receipt_retryable() {
     let (lib, _, refs) = base();
     let limits = RuntimeLimits {
         evaluation: ParseLimits {
@@ -298,11 +298,10 @@ fn refusing_shared_results_or_long_failure_text_leaves_the_same_receipt_retryabl
         .unwrap()
         .evaluation;
     let id = s.take_query_update().calls[0].id.clone();
-    // A deep or oversized result is the tool's and is delivered as a
-    // tool-error (tests/result_limits.rs). A result each reader's snapshot
-    // copy cannot hold, and failure text past the limits, refuse the command.
+    // A deep, oversized or unshowable result is the tool's and is delivered
+    // as a tool-error (tests/result_limits.rs). Failure text past the limits
+    // is the embedder's to shorten: it refuses the command.
     for json in [
-        json!({"value":"X".repeat(600)}).to_string(),
         json!({"failed":"X".repeat(600)}).to_string(),
         json!({"availableTools":["X".repeat(600)]}).to_string(),
     ] {

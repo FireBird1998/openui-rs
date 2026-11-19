@@ -138,7 +138,8 @@ fn malformed_or_wrongly_shaped_outcomes_are_refused_and_the_call_stays_completab
     for (outcome, invalid_json) in [
         (r#"{"value":1"#.to_owned(), true),
         (r#"{"value":1,"failed":"x"}"#.to_owned(), true),
-        (format!("{{\"value\":\"{long}\""), false),
+        // Validity first, whatever the length.
+        (format!("{{\"value\":\"{long}\""), true),
         (format!("{{\"value\":\"{long}\",\"failed\":\"x\"}}"), false),
         (json!({"failed": long}).to_string(), false),
         (format!("{{\"failed\":{}}}", nested(40)), false),
@@ -262,4 +263,85 @@ fn delivering_an_oversized_json_result_allocates_nothing_in_proportion_to_it() {
         &mut s,
         &format!("tool result exceeds the result size limit of {SIZE} bytes"),
     );
+}
+
+#[test]
+fn validity_is_decided_before_size_for_long_mcp_responses_in_either_order() {
+    let size = format!("tool result exceeds the result size limit of {SIZE} bytes");
+    let padding = " ".repeat(SIZE as usize);
+    // Malformed MCP text is refused at any length; valid text past the
+    // bound is too large.
+    for (response, malformed) in [
+        ("{".to_owned(), true),
+        (format!("{padding}{{"), true),
+        (format!("{{{padding}"), true),
+        (format!("{padding}{{}}"), false),
+        (format!("{{}}{padding}"), false),
+    ] {
+        let (mut s, call) = session("q = Query(\"t\")\nroot = Box(q)", None);
+        let outcome = json!({ "mcpResponseJson": response }).to_string();
+        let result = s.complete_tool_call_json(&call.id, &outcome);
+        if malformed {
+            assert!(
+                matches!(result, Err(OpenUiError::InvalidJson { .. })),
+                "{response:.8}"
+            );
+            assert!(call.id.is_pending());
+        } else if response.len() > SIZE as usize {
+            result.unwrap();
+            tool_error(&mut s, &size);
+        }
+    }
+}
+
+#[test]
+fn a_mutation_result_refused_by_the_runtime_ends_its_plan() {
+    // Within the outcome bound, so the runtime's own admission refuses it:
+    // each `1e300` is written `1e+300`.
+    let lib = library();
+    let r = refs();
+    let mut s = SessionCore::new(lib.clone(), None, limits(None)).unwrap();
+    s.attach_tool_provider(&r).unwrap();
+    let inner = Arc::new(openui_lang::parse(
+        "m = Mutation(\"save\")\nroot = Box(m, Action([@Run(m), @Set($done, true)]))",
+        &lib.inner,
+        None,
+    ));
+    let program = Arc::new(ParsedProgram {
+        json_bytes: inner.to_json().len() as u64,
+        inner,
+    });
+    let draw = s
+        .replace_program(&r, program, None, None, true)
+        .unwrap()
+        .evaluation;
+    let action = s
+        .action_at(&r, draw.evaluation, vec!["props".into(), "action".into()])
+        .unwrap();
+    s.run(&r, Some(action), String::new(), None).unwrap();
+    let call = s.take_query_update().calls.remove(0);
+    let grows = format!("{{\"value\":[{}]}}", vec!["1e300"; 170].join(","));
+    assert!(grows.len() <= SIZE as usize + 10);
+    s.complete_tool_call_json(&call.id, &grows).unwrap();
+    assert_eq!(s.take_query_update().actions.len(), 1);
+    assert_ne!(
+        s.get(&r, "$done".into()).unwrap().as_deref(),
+        Some("true"),
+        "the tail did not run"
+    );
+    assert_eq!(snapshot(&mut s)["m"]["status"], "error");
+}
+
+#[test]
+fn a_result_two_readers_cannot_both_show_is_their_tool_error() {
+    let (mut s, call) = session(
+        "a = Query(\"t\")\nb = Query(\"t\")\nroot = Box([a, b])",
+        None,
+    );
+    s.complete_tool_call_json(&call.id, &text_outcome(600))
+        .unwrap();
+    assert!(!call.id.is_pending());
+    let snapshot = snapshot(&mut s);
+    assert_eq!(snapshot["__openui_loading"], json!([]));
+    assert_eq!(snapshot["__openui_errors"].as_array().unwrap().len(), 2);
 }

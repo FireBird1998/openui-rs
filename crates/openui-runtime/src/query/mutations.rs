@@ -17,6 +17,8 @@ struct Entry {
     error: Option<Value>,
     // The JSON bytes of the result's data, charged to the cache cap (#90).
     bytes: usize,
+    // How many submissions this registration has dispatched.
+    submissions: u64,
 }
 
 impl Entry {
@@ -32,6 +34,8 @@ pub(super) struct MutationCall {
     statement: String,
     registration: Weak<()>,
     pub(super) dispatched_tool: String,
+    // Which submission of the registration this call is.
+    submission: u64,
 }
 
 fn result(status: &str, data: Option<Value>, error: Option<Value>) -> Value {
@@ -120,6 +124,7 @@ impl QueryManager {
                         result: result("idle", None, None),
                         error: None,
                         bytes: 0,
+                        submissions: 0,
                     },
                 );
             }
@@ -157,6 +162,7 @@ impl QueryManager {
         if let Some(value) = args {
             crate::admission::measure(value, self.limits).map_err(QueryCommandError::Limit)?;
         }
+        entry.submissions = entry.submissions.saturating_add(1);
         let call = ToolCall {
             id: ToolCallId(Arc::new(CallIdentity {
                 manager: Arc::downgrade(&self.owner),
@@ -164,6 +170,7 @@ impl QueryManager {
                     statement: statement.into(),
                     registration: Arc::downgrade(&entry.identity),
                     dispatched_tool: entry.tool.clone(),
+                    submission: entry.submissions,
                 }),
                 consumed: AtomicBool::new(false),
             })),
@@ -241,8 +248,13 @@ impl Mutations {
     pub(super) fn data(&self) -> impl Iterator<Item = &Value> {
         self.entries
             .values()
+            // Only a success holds result data; an idle `data: null` is a marker.
             .filter_map(|entry| match &entry.result {
-                Value::Obj(fields) => fields.get("data"),
+                Value::Obj(fields)
+                    if matches!(fields.get("status"), Some(Value::Str(s)) if s == "success") =>
+                {
+                    fields.get("data")
+                }
                 _ => None,
             })
     }
@@ -286,32 +298,32 @@ impl Mutations {
         if text_bytes > limits.result_size().min(limits.work_for(usize::MAX)) {
             return Err(QueryCommandError::Limit(crate::admission::size_error()));
         }
-        // Data is admitted as a query result is, before it is copied (#90).
+        // Data is admitted as a query result is, by the same function (#90).
         // A missing result has no data and charges nothing.
-        let measured = match &outcome {
-            ToolOutcome::Result(None) => Some(Ok(0)),
-            ToolOutcome::Result(Some(value)) => Some(results::json_result_bytes(value, limits)),
-            ToolOutcome::ResultValue(value) => Some(results::value_result_bytes(value, limits)?),
-            _ => None,
-        };
-        let refused = match measured {
-            Some(Ok(bytes)) if held.saturating_add(others).saturating_add(bytes) > cap => {
-                Some(ResultLimit::Cache(cap))
-            }
-            Some(Ok(bytes)) => {
-                let data = match outcome {
-                    ToolOutcome::Result(value) => value.map(Value::from_json),
-                    ToolOutcome::ResultValue(value) => Some(value.clone()),
-                    _ => None,
-                };
-                entry.result = result("success", data, None);
+        let admitted = results::admit(&outcome, limits, false, cap, |bytes| {
+            held.saturating_add(others).saturating_add(bytes) <= cap
+        })?;
+        let refused = match admitted {
+            Some(Admitted::Data(data, bytes)) => {
+                entry.result = result("success", Some(data), None);
                 entry.bytes = bytes;
                 entry.error = None;
                 return Ok((true, None));
             }
-            Some(Err(limit)) => Some(limit),
+            Some(Admitted::Missing) => {
+                entry.result = result("success", None, None);
+                entry.bytes = 0;
+                entry.error = None;
+                return Ok((true, None));
+            }
+            Some(Admitted::Refused(limit)) => Some(limit),
             None => None,
         };
+        // A refusal for a call older than the registration's latest
+        // submission changes nothing that a newer call stored.
+        if refused.is_some() && call.submission != entry.submissions {
+            return Ok((false, refused));
+        }
         let message = refused.map(|limit| limit.to_string());
         let outcome = match &message {
             Some(message) => ToolOutcome::CallFailed(message),

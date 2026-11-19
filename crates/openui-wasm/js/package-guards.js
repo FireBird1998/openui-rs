@@ -319,7 +319,8 @@ const openuiSurface = new Map([
     construct: openuiNone,
     methods: { free: openuiFree },
     accessors: { evaluation: openuiParseLimitsField, referencePreparation: openuiParseLimitsField,
-      maxJsonBytes: openuiLimitField, maxActionPathBytes: openuiOptionalLimitField, maxContinuations: openuiLimitField },
+      maxJsonBytes: openuiLimitField, maxActionPathBytes: openuiOptionalLimitField, maxContinuations: openuiLimitField,
+      maxCacheBytes: openuiOptionalLimitField },
   }],
   [ParseLimits, {
     construct: openuiNone,

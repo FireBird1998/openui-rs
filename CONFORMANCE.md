@@ -904,16 +904,50 @@ with both sides' outputs (`tests/result_limit_scenarios.rs`).
 | `query-result-one-level-over-the-depth-limit` | Stores and shows the five-level result. | The query shows its default and a `tool-error` naming the depth limit of 4. | #90, ADR 0001: a result nested past the depth limit is refused. |
 | `query-result-one-byte-over-the-cache-cap-with-a-previous-key-held` | Stores the second query's result. | With 40 bytes held for the first query's previous key, a 61-byte result does not fit the cap of 100: the second query shows a `tool-error`; the 40 bytes stay on screen. | #90: the cache has a byte cap; data held for a previous key counts. |
 | `mutation-results-one-over-the-size-depth-and-cache-limits` | Each submission succeeds with its data. | Each is the mutation's `error` status and `tool-error`, naming the size, depth and cache limits in turn. | #90: mutation results are admitted as query results are. |
+| `query-result-two-readers-cannot-both-show` | Stores the 602-byte result; only the query that started the call is loading. | Both readers are loading (row `shared-entry-delivers-to-both-current-queries`); the result's two copies do not fit the 1,024-byte room, so each reader shows a `tool-error` and the call ends. | #90: a call never stays open because its delivery does not fit. |
+| `mutation-refusal-of-an-older-submission` | The older submission's late 1,025-byte result replaces the newer `saved`. | The refused result changes nothing: `saved` stays. | #90: nothing already admitted is changed by a refusal. |
+
+An outcome is decided in one order on every path, borrowed and owned
+completion, the session's JSON entry and its MCP entry: first whether it is
+valid, then the depth limit, then the result-size limit (the smaller of the
+result-size ceiling and the work limit), then the cache cap. Validity is
+decided before any limit wherever memory bounded by the depth limit can decide
+it, which is always for JSON text, an MCP response inside it and an evaluator
+value; only input nested past the depth limit before its validity is known
+counts as too deep without the rest being read.
+
+If a delivery does not fit the snapshot's room (every reader's copy of the
+result, and every error, must fit the result-size limit together), a result
+is delivered as each reader's `tool-error` instead
+(`tool result does not fit the result size limit of N bytes at every query
+that reads it`). If even those errors do not fit, the readers keep them
+unlisted, their failed entry is not called again, and the snapshot lists one
+compact error, `N queries failed with errors that do not fit the result size
+limit of L bytes`, until a run or success replaces them. The call always ends.
+
+A mutation's data is charged while its status is `success`; the idle
+`data: null` a rename shows is upstream's reset marker, not a result. A rename
+makes the registration idle while its earlier call runs on, so it can be
+submitted again, as upstream allows: a stale success or failure replaces the
+newer result as in lang-core 1.1.0, but a refused result of an older
+submission changes nothing. A call whose registration was removed settles
+nothing (#88).
+
+The ticket counts one outstanding call per query or mutation. ADR 0013 lets
+the call of the key a query has just left finish and be dropped, so the
+honest bound is two per query: one for its current key and one on the
+previous key it shows while loading. `tests/result_limits.rs` asserts it after
+every command of a random script.
 
 Outcome JSON from a binding draws the line between the tool and the
 embedder. A result, or MCP response, too large or too deep is the tool's and
 becomes the `tool-error`. Malformed or wrongly shaped outcome JSON, failure
-text past the limits, a value that is not JSON, and a delivery the snapshot's
-room cannot hold are the embedder's: they are refused, change nothing and
-leave the call completable. Outcome text longer than the smallest of
+text past the limits, and a value that is not JSON are the embedder's: they
+are refused, change nothing and leave the call completable. Outcome text longer than the smallest of
 `maxJsonBytes`, the result-size limit and the work limit, plus the 10 bytes of
-`{"value":}`, is never parsed: one pass checks its syntax and shape, and a
-result envelope is refused for size. Text that is valid JSON up to a level past
+`{"value":}`, is never parsed: one pass checks its syntax and shape, decoding
+an MCP response's escapes as it reads, and a valid result envelope is refused
+for size. Text that is valid JSON up to a level past
 the depth limit inside an outcome whose members so far are all `value` is a too-deep
 result even if it is malformed later, as the core's reader reports depth first.
 

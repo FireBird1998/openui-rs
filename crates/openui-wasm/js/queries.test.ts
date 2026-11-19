@@ -95,3 +95,25 @@ test('a query limit reaches the driver and the displayed tree until a successful
   using dispatch = s.takeQueryUpdate();
   expect(dispatch.callCount).toBe(1n);
 });
+
+test('withLimits carries the cache cap: a result past it is the query\'s tool-error (#90)', () => {
+  using limits = new wasm.RuntimeLimits();
+  expect(limits.maxCacheBytes).toBeUndefined();
+  limits.maxCacheBytes = 100n;
+  expect(limits.maxCacheBytes).toBe(100n);
+  using library = new wasm.ComponentLibrary('{"$defs":{"Box":{"properties":{"value":{}}}}}');
+  using s = wasm.RuntimeSession.withLimits(library, undefined, limits);
+  s.attachToolProvider();
+  using p = wasm.parseProgram('a=Query("a")\nb=Query("b")\nroot=Box([a,b])', library);
+  using replaced = s.replaceProgram(p, undefined, undefined, true);
+  using effects = s.takeQueryUpdate();
+  using first = effects.callAt(0n);
+  using second = effects.callAt(1n);
+  s.completeToolCall(first, JSON.stringify({ value: 'x'.repeat(38) }));
+  s.completeToolCall(second, JSON.stringify({ value: 'x'.repeat(59) }));
+  using draw = s.evaluate();
+  const snapshot = JSON.parse(draw.querySnapshotJson);
+  expect(snapshot.a).toBe('x'.repeat(38));
+  expect(snapshot.__openui_errors[0].message).toBe('Query "b" failed: tool result does not fit the cache limit of 100 bytes');
+  kind(() => s.completeToolCall(second, '{"value":1}'), 'InvalidToolCall');
+});

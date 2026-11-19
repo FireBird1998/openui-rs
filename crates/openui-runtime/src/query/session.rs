@@ -143,9 +143,12 @@ impl QueryManager {
         let room = EvaluationSession::with_limits(&(), 0, crate::admission::fixed(self.limits));
         room.with_evaluator(|eval| {
             for q in self.queries.values() {
-                for value in [self.data(q).or(q.defaults.as_ref()), q.error.as_ref()]
-                    .into_iter()
-                    .flatten()
+                for value in [
+                    self.data(q).or(q.defaults.as_ref()),
+                    q.error.as_ref().filter(|_| !q.withheld),
+                ]
+                .into_iter()
+                .flatten()
                 {
                     if !eval.reserve_value(value) {
                         return;
@@ -199,6 +202,36 @@ impl QueryManager {
         outcome: ToolCallOutcome,
     ) -> Result<(QueryUpdate, Option<ResultLimit>), QueryCommandError> {
         self.check_call(id)?;
+        let limit = results::result_limit(self.limits);
+        let outcome = match &outcome {
+            ToolCallOutcome::Result(value) => ToolOutcome::ResultValue(value),
+            ToolCallOutcome::ToolNotFound(names) => {
+                let mut bytes = 0usize;
+                for name in names {
+                    bytes = bytes.saturating_add(name.len()).saturating_add(2);
+                    if bytes > limit {
+                        return Err(QueryCommandError::Limit(crate::admission::size_error()));
+                    }
+                }
+                ToolOutcome::ToolNotFound(names.iter().map(String::as_str).collect())
+            }
+            ToolCallOutcome::McpError(text) => ToolOutcome::McpError(text),
+            ToolCallOutcome::CallFailed(text) => ToolOutcome::CallFailed(text),
+        };
+        self.complete_command(id, outcome)
+    }
+
+    /// The one completion path, for borrowed and owned outcomes alike. It
+    /// never leaves a call that cannot be completed: if the delivery does not
+    /// fit the snapshot's room, a result is delivered as a `tool-error`
+    /// instead; if those errors do not fit either, the queries keep them
+    /// unlisted and the snapshot shows one compact diagnostic (#90).
+    pub(super) fn complete_command(
+        &mut self,
+        id: &ToolCallId,
+        outcome: ToolOutcome<'_>,
+    ) -> Result<(QueryUpdate, Option<ResultLimit>), QueryCommandError> {
+        self.check_call(id)?;
         let (readers, tool_bytes) = match &id.0.target {
             CallTarget::Mutation(call) => (1, call.dispatched_tool.len()),
             CallTarget::Query(target) => target.upgrade().map_or((0, 0), |p| {
@@ -211,59 +244,104 @@ impl QueryManager {
         if readers == 0 {
             // ADR 0013: discard the outcome for a released or previous-only
             // entry. Retire its pending flag and consume the receipt once.
-            return self
-                .apply(QueryCommand::Complete {
-                    id,
-                    outcome: ToolOutcome::Result(None),
-                })
-                .map(|update| (update, None));
+            self.complete(id, ToolOutcome::Result(None))?;
+            id.0.consumed.store(true, Ordering::Relaxed);
+            return Ok((
+                QueryUpdate {
+                    calls: Vec::new(),
+                    changed: false,
+                    hidden_change: false,
+                },
+                None,
+            ));
         }
-        let limit = self
-            .limits
-            .result_size()
-            .min(self.limits.work_for(usize::MAX));
+        let limit = results::result_limit(self.limits);
         // Error records own their formatted messages. Bound the copies before
         // formatting any of them, even if a single failed key has many readers.
-        let check_text = |bytes: usize| {
-            let bytes = bytes.saturating_add(tool_bytes);
-            if bytes.saturating_mul(readers) > limit {
-                Err(QueryCommandError::Limit(crate::admission::size_error()))
-            } else {
-                Ok(())
-            }
+        let text = match &outcome {
+            ToolOutcome::ToolNotFound(names) => names.iter().fold(0usize, |bytes, name| {
+                bytes.saturating_add(name.len()).saturating_add(2)
+            }),
+            ToolOutcome::McpError(text) | ToolOutcome::CallFailed(text) => text.len(),
+            _ => 0,
         };
-        let outcome = match &outcome {
-            ToolCallOutcome::Result(value) => ToolOutcome::ResultValue(value),
-            ToolCallOutcome::ToolNotFound(names) => {
-                let mut bytes = 0usize;
-                for name in names {
-                    bytes = bytes.saturating_add(name.len()).saturating_add(2);
-                    if bytes > limit {
-                        return Err(QueryCommandError::Limit(crate::admission::size_error()));
+        if text.saturating_add(tool_bytes).saturating_mul(readers) > limit && text != 0 {
+            return Err(QueryCommandError::Limit(crate::admission::size_error()));
+        }
+        let success = matches!(
+            outcome,
+            ToolOutcome::Result(_) | ToolOutcome::ResultValue(_)
+        );
+        let (candidate, published, refused) = self.attempt(id, outcome.clone(), false)?;
+        let (candidate, update, refused) = match published {
+            Ok(update) => (candidate, update, refused),
+            Err(QueryCommandError::Limit(_)) => {
+                // The room cannot hold the delivery. A result becomes a
+                // tool-error; a failure keeps its own error.
+                let limit = refused.unwrap_or(ResultLimit::Snapshot(limit));
+                let message = limit.to_string();
+                let fallback = if success {
+                    ToolOutcome::CallFailed(&message)
+                } else {
+                    outcome
+                };
+                let refused = success.then_some(limit);
+                let (candidate, published, _) = self.attempt(id, fallback.clone(), false)?;
+                match published {
+                    Ok(update) => (candidate, update, refused),
+                    Err(QueryCommandError::Limit(_)) if id.query_key().is_some() => {
+                        let (candidate, published, _) = self.attempt(id, fallback, true)?;
+                        (candidate, published?, refused)
                     }
+                    Err(error) => return Err(error),
                 }
-                check_text(bytes)?;
-                ToolOutcome::ToolNotFound(names.iter().map(String::as_str).collect())
             }
-            ToolCallOutcome::McpError(text) => {
-                check_text(text.len())?;
-                ToolOutcome::McpError(text)
-            }
-            ToolCallOutcome::CallFailed(text) => {
-                check_text(text.len())?;
-                ToolOutcome::CallFailed(text)
-            }
+            Err(error) => return Err(error),
         };
+        *self = candidate;
+        id.0.consumed.store(true, Ordering::Relaxed);
+        Ok((update, refused))
+    }
+
+    // Complete on a candidate and publish it, without committing.
+    #[allow(clippy::type_complexity)]
+    fn attempt(
+        &self,
+        id: &ToolCallId,
+        outcome: ToolOutcome<'_>,
+        withhold: bool,
+    ) -> Result<
+        (
+            Self,
+            Result<QueryUpdate, QueryCommandError>,
+            Option<ResultLimit>,
+        ),
+        QueryCommandError,
+    > {
         let key = id.query_key();
         let mut candidate = self.candidate();
         let (_, refused) = candidate.complete(id, outcome)?;
+        if withhold && let Some(key) = &key {
+            candidate.withhold_errors(key);
+        }
         let calls = key
             .and_then(|key| candidate.run_remembered(&key))
             .into_iter()
             .collect();
-        let update = candidate.publish(calls, self)?;
-        *self = candidate;
-        id.0.consumed.store(true, Ordering::Relaxed);
-        Ok((update, refused))
+        // A withheld delivery stores no data and lists no new error: it adds
+        // only the one compact diagnostic, so it is published whatever the
+        // room, and the call can always end.
+        let published = if withhold {
+            candidate.release_unreferenced();
+            candidate.rebuild_snapshot();
+            Ok(QueryUpdate {
+                calls,
+                changed: candidate.snapshot_json != self.snapshot_json,
+                hidden_change: false,
+            })
+        } else {
+            candidate.publish(calls, self)
+        };
+        Ok((candidate, published, refused))
     }
 }
