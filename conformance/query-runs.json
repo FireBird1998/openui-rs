@@ -1,0 +1,187 @@
+[
+  {
+    "name": "run-an-idle-query-refetches-it",
+    "program": "q = Query(\"search\", {term: \"tea\"}, \"searching\")",
+    "steps": [
+      {"kind":"evaluate"},
+      {"kind":"complete","call":0,"outcome":{"kind":"result","value":"first"}},
+      {"kind":"invalidate","ids":["q"]},
+      {"kind":"evaluate"},
+      {"kind":"complete","call":1,"outcome":{"kind":"result","value":"second"}},
+      {"kind":"evaluate"}
+    ]
+  },
+  {
+    "name": "runs-while-in-flight-fetch-once-more",
+    "program": "q = Query(\"search\", {}, \"searching\")",
+    "steps": [
+      {"kind":"evaluate"},
+      {"kind":"invalidate","ids":["q"]},
+      {"kind":"invalidate","ids":["q"]},
+      {"kind":"invalidate","ids":["q","q","q"]},
+      {"kind":"invalidate"},
+      {"kind":"invalidate","ids":[]},
+      {"kind":"complete","call":0,"outcome":{"kind":"result","value":"first"}},
+      {"kind":"evaluate"},
+      {"kind":"complete","call":1,"outcome":{"kind":"result","value":"second"}},
+      {"kind":"evaluate"}
+    ]
+  },
+  {
+    "name": "a-repeated-name-starts-a-call-and-remembers-one-more",
+    "program": "q = Query(\"search\", {}, \"searching\")",
+    "steps": [
+      {"kind":"evaluate"},
+      {"kind":"complete","call":0,"outcome":{"kind":"result","value":"first"}},
+      {"kind":"invalidate","ids":["q","q"]},
+      {"kind":"complete","call":1,"outcome":{"kind":"result","value":"second"}},
+      {"kind":"complete","call":2,"outcome":{"kind":"result","value":"third"}}
+    ]
+  },
+  {
+    "name": "run-after-a-failure-fetches-again",
+    "program": "q = Query(\"search\", {}, \"searching\")",
+    "steps": [
+      {"kind":"evaluate"},
+      {"kind":"complete","call":0,"outcome":{"kind":"tool-error","message":"offline"}},
+      {"kind":"evaluate"},
+      {"kind":"invalidate","ids":["q"]},
+      {"kind":"complete","call":1,"outcome":{"kind":"mcp-error","message":"still down"}},
+      {"kind":"invalidate","ids":["q"]},
+      {"kind":"complete","call":2,"outcome":{"kind":"result","value":"back"}},
+      {"kind":"evaluate"}
+    ]
+  },
+  {
+    "name": "a-remembered-run-follows-a-failure",
+    "program": "q = Query(\"search\", {}, \"searching\")",
+    "steps": [
+      {"kind":"evaluate"},
+      {"kind":"invalidate","ids":["q"]},
+      {"kind":"complete","call":0,"outcome":{"kind":"tool-not-found","availableTools":["find"]}},
+      {"kind":"complete","call":1,"outcome":{"kind":"result","value":"found"}}
+    ]
+  },
+  {
+    "name": "a-run-of-unknown-names-does-nothing",
+    "program": "q = Query(\"search\", {}, \"searching\")",
+    "steps": [
+      {"kind":"invalidate","ids":["q"]},
+      {"kind":"invalidate"},
+      {"kind":"evaluate"},
+      {"kind":"complete","call":0,"outcome":{"kind":"result","value":"first"}},
+      {"kind":"invalidate","ids":["missing"]},
+      {"kind":"invalidate","ids":["__openui_loading","Q",""]},
+      {"kind":"invalidate","ids":["missing","q"]},
+      {"kind":"complete","call":1,"outcome":{"kind":"result","value":"second"}}
+    ]
+  },
+  {
+    "name": "a-run-with-no-names-runs-every-query",
+    "program": "a = Query(\"one\", {}, \"a\")\nb = Query(\"two\", {}, \"b\")\nc = Query(\"three\", {}, \"c\")",
+    "steps": [
+      {"kind":"evaluate"},
+      {"kind":"complete","call":0,"outcome":{"kind":"result","value":"A"}},
+      {"kind":"complete","call":2,"outcome":{"kind":"tool-error","message":"offline"}},
+      {"kind":"invalidate"},
+      {"kind":"complete","call":1,"outcome":{"kind":"result","value":"B"}},
+      {"kind":"complete","call":3,"outcome":{"kind":"result","value":"A2"}},
+      {"kind":"complete","call":4,"outcome":{"kind":"result","value":"C"}},
+      {"kind":"complete","call":5,"outcome":{"kind":"result","value":"B2"}},
+      {"kind":"invalidate","ids":["c","a"]},
+      {"kind":"complete","call":7,"outcome":{"kind":"result","value":"A3"}},
+      {"kind":"complete","call":6,"outcome":{"kind":"result","value":"C2"}}
+    ]
+  },
+  {
+    "name": "a-run-uses-the-arguments-of-the-last-evaluate",
+    "program": "$term = \"tea\"\nq = Query(\"search\", {term: $term}, \"searching\")",
+    "steps": [
+      {"kind":"evaluate"},
+      {"kind":"complete","call":0,"outcome":{"kind":"result","value":"tea rows"}},
+      {"kind":"set","name":"$term","value":"coffee"},
+      {"kind":"invalidate","ids":["q"]},
+      {"kind":"evaluate"},
+      {"kind":"complete","call":1,"outcome":{"kind":"result","value":"tea again"}},
+      {"kind":"complete","call":2,"outcome":{"kind":"result","value":"coffee rows"}}
+    ]
+  },
+  {
+    "name": "run-through-a-query-that-did-not-start-the-call",
+    "program": "a = Query(\"t\", {v: 1}, \"adef\")\nb = Query(\"t\", {v: 1}, \"bdef\")",
+    "steps": [
+      {"kind":"evaluate"},
+      {"kind":"invalidate","ids":["b"]},
+      {"kind":"complete","call":0,"outcome":{"kind":"result","value":"one"}},
+      {"kind":"complete","dispatch":{"step":2,"toolName":"t","args":{"v":1}},"outcome":{"kind":"result","value":"two"}},
+      {"kind":"replace","program":"a = Query(\"t\", {v: 1}, \"adef\")\nb = Query(\"t\", {v: 2}, \"bdef\")"},
+      {"kind":"evaluate"},
+      {"kind":"complete","dispatch":{"step":5,"toolName":"t","args":{"v":2}},"outcome":{"kind":"result","value":"three"}},
+      {"kind":"complete","dispatch":{"step":6,"toolName":"t","args":{"v":2}},"outcome":{"kind":"result","value":"four"}}
+    ]
+  },
+  {
+    "name": "a-run-is-forgotten-when-its-query-leaves-the-key",
+    "program": "$f = 0\nq = Query(\"t\", {f: $f}, \"qdef\")",
+    "steps": [
+      {"kind":"evaluate"},
+      {"kind":"invalidate","ids":["q"]},
+      {"kind":"set","name":"$f","value":1},
+      {"kind":"evaluate"},
+      {"kind":"complete","call":0,"outcome":{"kind":"result","value":"stale"}},
+      {"kind":"complete","call":1,"outcome":{"kind":"result","value":"fresh"}},
+      {"kind":"complete","dispatch":{"step":5,"toolName":"t","args":{"f":1}},"outcome":{"kind":"result","value":"again"}}
+    ]
+  },
+  {
+    "name": "run-a-waiting-query",
+    "program": "a = Query(\"src\", {}, null)\nb = Query(\"sink\", {v: a}, \"bdef\")",
+    "steps": [
+      {"kind":"evaluate"},
+      {"kind":"invalidate","ids":["b"]},
+      {"kind":"complete","dispatch":{"step":0,"toolName":"sink","args":{"v":null}},"outcome":{"kind":"result","value":"early"}},
+      {"kind":"complete","call":0,"outcome":{"kind":"result","value":"ready"}}
+    ]
+  },
+  {
+    "name": "a-run-keeps-the-request-of-a-query-that-has-gone",
+    "program": "$n = 1\na = Query(\"t\", {v: $n}, \"a\")\nb = Query(\"t::{\\\"v\\\":1}\", {\"$n\": 1}, \"b\")",
+    "steps": [
+      {"kind":"evaluate"},
+      {"kind":"invalidate","ids":["b"]},
+      {"kind":"replace","program":"$n = 1\na = Query(\"t\", {v: $n}, \"a\")"},
+      {"kind":"evaluate"},
+      {"kind":"complete","call":0,"outcome":{"kind":"result","value":"first"}},
+      {"kind":"complete","dispatch":{"step":4,"toolName":"t::{\"v\":1}","args":{"$n":1}},"outcome":{"kind":"result","value":"second"}}
+    ]
+  },
+  {
+    "name": "colliding-keys-share-the-first-querys-call-a-first",
+    "program": "$n = 1\na = Query(\"t\", {v: $n}, \"a\")\nb = Query(\"t::{\\\"v\\\":1}\", {\"$n\": 1}, \"b\")",
+    "steps": [
+      {"kind":"evaluate"},
+      {"kind":"complete","call":0,"outcome":{"kind":"tool-error","message":"offline"}}
+    ]
+  },
+  {
+    "name": "colliding-keys-share-the-first-querys-call-b-first",
+    "program": "$n = 1\nb = Query(\"t::{\\\"v\\\":1}\", {\"$n\": 1}, \"b\")\na = Query(\"t\", {v: $n}, \"a\")",
+    "steps": [
+      {"kind":"evaluate"},
+      {"kind":"complete","call":0,"outcome":{"kind":"tool-error","message":"offline"}}
+    ]
+  },
+  {
+    "name": "a-run-survives-a-replacement-on-the-same-key",
+    "program": "a = Query(\"t\", {}, \"d\")",
+    "steps": [
+      {"kind":"evaluate"},
+      {"kind":"invalidate","ids":["a"]},
+      {"kind":"replace","program":"b = Query(\"t\", {}, \"d\")"},
+      {"kind":"evaluate"},
+      {"kind":"complete","call":0,"outcome":{"kind":"result","value":"first"}},
+      {"kind":"complete","dispatch":{"step":3,"toolName":"t","args":{}},"outcome":{"kind":"result","value":"upstream"}},
+      {"kind":"complete","dispatch":{"step":4,"toolName":"t","args":{}},"outcome":{"kind":"result","value":"ours"}}
+    ]
+  }
+]

@@ -268,6 +268,7 @@ const openuiSurface = new Map([
       attachToolProvider: openuiNone,
       detachToolProvider: openuiNone,
       takeQueryUpdate: openuiNone,
+      retryFailedQueries: openuiNone,
       completeToolCall: openuiSpec([openuiCapabilityOf(WantedToolCall), openuiStr]),
       get: openuiSpec([openuiStr]),
       getField: openuiSpec([openuiOptStr, openuiStr]),

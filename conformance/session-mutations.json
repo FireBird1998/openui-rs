@@ -114,6 +114,93 @@
         {"click":true},
         {"finish":0,"failed":"offline"}
       ]
+    },
+    {
+      "name": "mutation then query with success",
+      "steps": [
+        {"replace":"$n=1\nq=Query(\"read\",{n:$n},0)\nm=Mutation(\"save\",{n:$n})\nroot=Box([m,q,$n],Action([@Run(m),@Run(q),@Set($n,m.data),@OpenUrl(\"done\")]))"},
+        {"finish":0,"value":10},
+        {"click":true},
+        {"finish":1,"value":2},
+        {"finish":2,"value":20},
+        {"finish":3,"value":30}
+      ]
+    },
+    {
+      "name": "mutation then query with failure",
+      "steps": [
+        {"replace":"$n=1\nq=Query(\"read\",{n:$n},0)\nm=Mutation(\"save\",{n:$n})\nroot=Box([m,q,$n],Action([@Run(m),@Run(q),@Set($n,m.data),@OpenUrl(\"done\")]))"},
+        {"finish":0,"value":10},
+        {"click":true},
+        {"finish":1,"failed":"offline"}
+      ]
+    },
+    {
+      "name": "query then mutation with success",
+      "steps": [
+        {"replace":"$n=1\nq=Query(\"read\",{n:$n},0)\nm=Mutation(\"save\",{n:$n})\nroot=Box([m,q,$n],Action([@Run(q),@Run(m),@Set($n,m.data),@OpenUrl(\"done\")]))"},
+        {"finish":0,"value":10},
+        {"click":true},
+        {"finish":2,"value":2},
+        {"finish":1,"value":20},
+        {"finish":3,"value":30}
+      ]
+    },
+    {
+      "name": "query then mutation with failure",
+      "steps": [
+        {"replace":"$n=1\nq=Query(\"read\",{n:$n},0)\nm=Mutation(\"save\",{n:$n})\nroot=Box([m,q,$n],Action([@Run(q),@Run(m),@Set($n,m.data),@OpenUrl(\"done\")]))"},
+        {"finish":0,"value":10},
+        {"click":true},
+        {"finish":2,"failed":"offline"},
+        {"finish":1,"value":20}
+      ]
+    },
+    {
+      "name": "write then query then mutation with success",
+      "steps": [
+        {"replace":"$n=1\nq=Query(\"read\",{n:$n},0)\nm=Mutation(\"save\",{n:$n})\nroot=Box([m,q,$n],Action([@Set($n,$n+1),@Run(q),@Run(m),@OpenUrl(\"done\")]))"},
+        {"finish":0,"value":10},
+        {"click":true},
+        {"finish":2,"value":2},
+        {"finish":1,"value":20},
+        {"finish":3,"value":30}
+      ]
+    },
+    {
+      "name": "write then query then mutation with failure",
+      "steps": [
+        {"replace":"$n=1\nq=Query(\"read\",{n:$n},0)\nm=Mutation(\"save\",{n:$n})\nroot=Box([m,q,$n],Action([@Set($n,$n+1),@Run(q),@Run(m),@OpenUrl(\"done\")]))"},
+        {"finish":0,"value":10},
+        {"click":true},
+        {"finish":2,"failed":"offline"},
+        {"finish":1,"value":20},
+        {"finish":3,"value":30}
+      ]
+    },
+    {
+      "name": "a bare streaming click uses the last registered tool and the current arguments",
+      "steps": [
+        {"replace":"m=Mutation(\"original\",{version:1})\nroot=Box(m,@Run(m))"},
+        {"replace":"m=Mutation(\"renamed\",{version:2})\nn=Mutation(\"fresh\")\nroot=Box([m,n],Action([@Run(m),@Run(n),@OpenUrl(\"done\")]))","streaming":true},
+        {"click":true},
+        {"finish":0,"value":"before settle"},
+        {"settle":true},
+        {"click":true},
+        {"finish":1,"value":"after settle"},
+        {"finish":2,"value":"fresh result"}
+      ]
+    },
+    {
+      "name": "a shared statement id reads the mutation and runs the tagged target",
+      "steps": [
+        {"replace":"s=Query(\"read\",{},9)\n$plan={steps:[{type:\"run\",refType:\"query\",statementId:\"s\"},{type:\"run\",refType:\"mutation\",statementId:\"s\"},{type:\"run\",refType:\"query\",statementId:\"s\"},{type:\"open_url\",url:\"done\"}]}\nroot=Box(s,$plan)","alsoRegisterMutations":"s=Mutation(\"save\",{n:42})"},
+        {"finish":0,"value":10},
+        {"click":true},
+        {"finish":2,"value":20},
+        {"finish":1,"value":30},
+        {"finish":3,"value":40}
+      ]
     }
   ]
 }

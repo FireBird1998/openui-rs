@@ -611,11 +611,7 @@ impl SessionCore {
             refs,
             functions.as_ref(),
         );
-        let input = if managed.is_some() {
-            input.with_managed_mutations()
-        } else {
-            input
-        };
+        let input = queries::with_provider_runs(input, managed.is_some());
         let run = openui_runtime::run_action_with_limits(
             input,
             &mut self.store,
@@ -628,6 +624,9 @@ impl SessionCore {
         self.output(run)
     }
     fn output(&mut self, mut run: openui_runtime::ActionRun) -> Result<ActionOutput, OpenUiError> {
+        // Queries run as their steps did, before any later operation; like
+        // the run's writes, they stand even if serializing an event fails.
+        self.run_queries(&std::mem::take(&mut run.query_runs))?;
         // Events were checked by the runtime against the same result ceiling.
         // No smaller host-input, work or depth allowance may newly refuse them
         // after earlier action effects. Serialize before publishing/evicting a
@@ -1396,23 +1395,22 @@ impl SessionCore {
                 .as_ref()
                 .map(|m| m.prepared_results(s.reference_limits));
             let refs = managed.as_ref().unwrap_or(refs);
-            let input = tree_input(
-                &s.program,
-                &s.library,
-                &s.bindings,
-                refs,
-                functions.as_ref(),
-            );
-            let input = if managed.is_some() {
-                input.with_managed_mutations()
-            } else {
-                input
-            };
-            let run =
-                openui_runtime::resume_action(input, &mut s.store, &entry.continuation, succeeded)
-                    .map_err(|e| {
-                        runtime_error(RuntimeFailure::Resume(e), s.core_limits.result_size())
-                    })?;
+            let run = openui_runtime::resume_action(
+                queries::with_provider_runs(
+                    tree_input(
+                        &s.program,
+                        &s.library,
+                        &s.bindings,
+                        refs,
+                        functions.as_ref(),
+                    ),
+                    managed.is_some(),
+                ),
+                &mut s.store,
+                &entry.continuation,
+                succeeded,
+            )
+            .map_err(|e| runtime_error(RuntimeFailure::Resume(e), s.core_limits.result_size()))?;
             drop(functions);
             s.output(run)
         })

@@ -90,8 +90,8 @@ impl SessionCore {
             &self.bindings,
             &refs,
             functions.as_ref(),
-        )
-        .with_managed_mutations();
+        );
+        let input = queries::with_provider_runs(input, true);
         let version = self.store.version();
         let run =
             openui_runtime::resume_action(input, &mut self.store, &pending.continuation, succeeded)

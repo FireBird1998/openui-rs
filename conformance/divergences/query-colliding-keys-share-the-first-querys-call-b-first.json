@@ -1,0 +1,12 @@
+{
+  "case": "colliding-keys-share-the-first-querys-call-b-first",
+  "reason": "delivery-and-loading-follow-the-entry",
+  "reference": [
+    "{\"snapshot\":{\"__openui_loading\":[\"b\"],\"__openui_refetching\":[],\"__openui_errors\":[],\"b\":\"b\",\"a\":\"a\"},\"calls\":[{\"call\":0,\"toolName\":\"t::{\\\"v\\\":1}\",\"args\":{\"$n\":1}}],\"changed\":true}",
+    "{\"snapshot\":{\"__openui_loading\":[],\"__openui_refetching\":[],\"__openui_errors\":[{\"source\":\"query\",\"statementId\":\"b\",\"component\":\"Query\",\"toolName\":\"t::{\\\"v\\\":1}\",\"code\":\"tool-error\",\"message\":\"Query \\\"t::{\\\"v\\\":1}\\\" failed: offline\"},{\"source\":\"query\",\"statementId\":\"a\",\"component\":\"Query\",\"toolName\":\"t::{\\\"v\\\":1}\",\"code\":\"tool-error\",\"message\":\"Query \\\"t::{\\\"v\\\":1}\\\" failed: offline\"}],\"b\":\"b\",\"a\":\"a\"},\"calls\":[],\"changed\":true}"
+  ],
+  "rust": [
+    "{\"snapshot\":{\"__openui_loading\":[\"b\",\"a\"],\"__openui_refetching\":[],\"__openui_errors\":[],\"b\":\"b\",\"a\":\"a\"},\"calls\":[{\"call\":0,\"toolName\":\"t::{\\\"v\\\":1}\",\"args\":{\"$n\":1}}],\"changed\":true}",
+    "{\"snapshot\":{\"__openui_loading\":[],\"__openui_refetching\":[],\"__openui_errors\":[{\"source\":\"query\",\"statementId\":\"b\",\"component\":\"Query\",\"toolName\":\"t::{\\\"v\\\":1}\",\"code\":\"tool-error\",\"message\":\"Query \\\"t::{\\\"v\\\":1}\\\" failed: offline\"},{\"source\":\"query\",\"statementId\":\"a\",\"component\":\"Query\",\"toolName\":\"t::{\\\"v\\\":1}\",\"code\":\"tool-error\",\"message\":\"Query \\\"t::{\\\"v\\\":1}\\\" failed: offline\"}],\"b\":\"b\",\"a\":\"a\"},\"calls\":[],\"changed\":true}"
+  ]
+}

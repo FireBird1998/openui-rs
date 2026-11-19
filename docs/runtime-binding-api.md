@@ -26,6 +26,7 @@ func evaluateWithResponse(responseState: ResponseState) throws -> EvaluationOutp
 func replaceProgramWithResponse(program: ParsedProgram, persisted: String?, projected: String?, nativeView: Bool, responseState: ResponseState) throws -> ReplacementOutput
 func completeToolCall(call: WantedToolCall, outcomeJson: String) throws
 func takeQueryUpdate() throws -> QueryEffects
+func retryFailedQueries() throws
 func actionAt(evaluation: EvaluationHandle, path: [String]) throws -> ActionHandle
 func dispose()
 func evaluate() throws -> EvaluationOutput
@@ -64,6 +65,7 @@ fun evaluateWithResponse(responseState: ResponseState): EvaluationOutput
 fun replaceProgramWithResponse(program: ParsedProgram, persisted: String?, projected: String?, nativeView: Boolean, responseState: ResponseState): ReplacementOutput
 fun completeToolCall(call: WantedToolCall, outcomeJson: String)
 fun takeQueryUpdate(): QueryEffects
+fun retryFailedQueries()
 fun actionAt(evaluation: EvaluationHandle, path: List<kotlin.String>): ActionHandle
 fun dispose()
 fun evaluate(): EvaluationOutput

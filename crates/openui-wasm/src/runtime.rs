@@ -312,6 +312,12 @@ impl RuntimeSession {
             .map(|v| QueryEffects(v, self.inner.release_guard()))
             .map_err(error)
     }
+    /// Run again every query whose error is in the query snapshot, as
+    /// upstream's renderer Retry does. Claim the calls with `takeQueryUpdate`.
+    #[wasm_bindgen(js_name = retryFailedQueries)]
+    pub fn retry_failed_queries(&self) -> Result<(), JsValue> {
+        self.inner.retry_failed_queries().map_err(error)
+    }
     #[wasm_bindgen(js_name = completeToolCall)]
     pub fn complete_tool_call(
         &self,

@@ -56,6 +56,11 @@ pub struct ActionRun {
     pub depth_limited: bool,
     /// A mutation is awaiting its host outcome. No later step has run.
     pub continuation: Option<ActionContinuation>,
+    /// With [`TreeInput::with_query_runs`], the statement id of each `@Run`
+    /// step naming a query, in step order, in place of its host event. Pass
+    /// each to the query manager's invalidate command on its own: an empty
+    /// list there means every query.
+    pub query_runs: Vec<String>,
 }
 impl ActionRun {
     /// Portable memory accounting for this run, including previous segments.
@@ -755,11 +760,11 @@ impl RunState {
         out: &mut ActionRun,
     ) -> Result<bool, BindingWriteError> {
         let mutation = matches!(fields.get("refType"),Some(Value::Str(t))if t=="mutation");
+        let id = match fields.get("statementId") {
+            Some(Value::Str(id)) => Some(id.as_str()),
+            _ => None,
+        };
         if mutation && context.input.managed_mutations {
-            let id = match fields.get("statementId") {
-                Some(Value::Str(id)) => Some(id.as_str()),
-                _ => None,
-            };
             let args = self.mutation_args(context, store, id, supplied)?;
             let id = id
                 .map(|name| self.scope(|e| copy_in(e, name, self.limits)))
@@ -770,6 +775,18 @@ impl RunState {
                 args,
             });
             return Ok(true);
+        }
+        if !mutation && context.input.query_runs {
+            // Upstream's renderer calls invalidate([step.statementId]): a
+            // missing or non-string id names no query and runs nothing.
+            if let Some(id) = id {
+                let id = self.scope(|e| {
+                    e.copy_text(id)
+                        .ok_or_else(|| BindingWriteError::Cut(e.flags()))
+                })?;
+                out.query_runs.push(id);
+            }
+            return Ok(false);
         }
         self.scope(|e| {
             if e.reserve_container_storage(3) {
@@ -784,10 +801,6 @@ impl RunState {
         }
         params.define("refType", text(if mutation { "mutation" } else { "query" }));
         if mutation {
-            let id = match fields.get("statementId") {
-                Some(Value::Str(id)) => Some(id.as_str()),
-                _ => None,
-            };
             let args = self.mutation_args(context, store, id, supplied)?;
             if let Some(args) = args {
                 params.define("args", args);

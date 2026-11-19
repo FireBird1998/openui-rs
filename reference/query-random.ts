@@ -32,6 +32,12 @@ export function randomScenario(seed: number) {
       yield { kind: 'evaluate' };
       for (let call = first; call < calls.length; call++) pending.add(call);
     }
+    // Settle a call, or run queries again; either can dispatch calls.
+    function* dispatching(step: Step): Generator<Step> {
+      const first = calls.length;
+      yield step;
+      for (let call = first; call < calls.length; call++) pending.add(call);
+    }
     function complete(): Step {
       const call = Array.from(pending)[pick(pending.size)];
       pending.delete(call);
@@ -44,9 +50,15 @@ export function randomScenario(seed: number) {
     }
     yield* evaluate();
     for (let turn = 0; turn < 18; turn++) {
-      const action = pick(11);
+      const action = pick(13);
       if (action < 3 && pending.size) {
-        yield complete();
+        yield* dispatching(complete());
+      } else if (action >= 11) {
+        // A run of every query, of one or both in either order, of one
+        // twice, or of an unknown name.
+        const runs = [undefined, [ids[0]], [ids[1]], [ids[1], ids[0]], [ids[0], ids[0]], ['zz']];
+        const run = runs[pick(runs.length)];
+        yield* dispatching(run ? { kind: 'invalidate', ids: run } : { kind: 'invalidate' });
       } else if (action === 3) {
         field = pick(3);
         yield { kind: 'set', name: '$f', value: field };
@@ -70,7 +82,7 @@ export function randomScenario(seed: number) {
         yield* evaluate();
       }
     }
-    while (pending.size) yield complete();
+    while (pending.size) yield* dispatching(complete());
     yield* evaluate();
   }
   return { scenario, script, keys };

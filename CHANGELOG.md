@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+- With a tool provider, an action's `@Run` of a query runs it again through
+  the query manager and emits no host event; without one the `run` event is
+  unchanged. Sessions and both bindings gain `retryFailedQueries`. Rust adds
+  `QueryCommand::Invalidate`, `TreeInput::with_query_runs` and
+  `ActionRun::query_runs` (#87).
+
 - Rust query-manager pattern matches on invocation failures now use
   `ToolOutcome::CallFailed(message)`. The former `ToolOutcome::ToolError(message)`
   spelling remains a construction helper. MCP tool-reported errors keep their

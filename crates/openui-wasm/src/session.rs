@@ -155,6 +155,9 @@ impl Session {
     pub fn take_query_update(&self) -> Result<QueryEffects, OpenUiError> {
         self.call(move |s, _| Ok(s.take_query_update()))
     }
+    pub fn retry_failed_queries(&self) -> Result<(), OpenUiError> {
+        self.call(move |s, _| s.retry_failed_queries())
+    }
     pub fn evaluate_with_response(
         &self,
         response: ResponseState,

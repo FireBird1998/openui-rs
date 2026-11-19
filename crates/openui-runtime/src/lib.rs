@@ -17,7 +17,9 @@
 //! [`QueryCommand::Complete`]. The manager owns its snapshot and cache and
 //! requires no I/O or clock. Hosts can read the snapshot as values or JSON.
 //! [`QueryManager::set_extra_key_values`] adds an embedder's values to the
-//! cache keys of one tool's queries.
+//! cache keys of one tool's queries. [`QueryCommand::Invalidate`] runs
+//! queries again; with [`TreeInput::with_query_runs`], an action's `@Run` of
+//! a query lands in [`ActionRun::query_runs`] for it instead of a host event.
 //!
 //! Use [`TreeInput::with_reference_values`] for per-call measurement, or prepare
 //! [`PreparedReferenceValues`] once and pass it on every stream evaluation with

@@ -53,6 +53,17 @@ fn replay(scenario: &JsonValue, mut observe: impl FnMut(usize, String, usize)) {
     let mut registered = HashSet::new();
     for (index, step) in steps.iter().enumerate() {
         let before = registered.clone();
+        // Absent ids run every query, as an empty list does.
+        let run_ids: Vec<&str> = step
+            .get("ids")
+            .map(|ids| {
+                ids.as_array()
+                    .unwrap()
+                    .iter()
+                    .map(|id| id.as_str().unwrap())
+                    .collect()
+            })
+            .unwrap_or_default();
         if step["kind"] == "evaluate" {
             registered = current
                 .query_statements
@@ -115,6 +126,9 @@ fn replay(scenario: &JsonValue, mut observe: impl FnMut(usize, String, usize)) {
                     .unwrap_or_else(|error| panic!("{name}, step {index}: {error}"));
                 None
             }
+            "invalidate" => Some(QueryCommand::Invalidate {
+                statement_ids: &run_ids,
+            }),
             kind => panic!("Unknown step {kind}"),
         };
         // A refused command is its own observation: a pinned divergence can
@@ -192,11 +206,22 @@ fn replay(scenario: &JsonValue, mut observe: impl FnMut(usize, String, usize)) {
 
 #[test]
 fn query_scenarios_match_upstream_after_every_step() {
-    let scenarios = parse_json(include_str!("../../../conformance/query-scenarios.json")).unwrap();
-    let goldens = parse_json(include_str!(
+    // Runs (#87) keep their own corpus and golden file; pins name either.
+    let mut scenarios =
+        parse_json(include_str!("../../../conformance/query-scenarios.json")).unwrap();
+    let mut goldens = parse_json(include_str!(
         "../../../conformance/golden/query-scenarios.json"
     ))
     .unwrap();
+    let runs = parse_json(include_str!("../../../conformance/query-runs.json")).unwrap();
+    let run_goldens =
+        parse_json(include_str!("../../../conformance/golden/query-runs.json")).unwrap();
+    for (name, golden) in run_goldens.as_object().unwrap() {
+        assert!(goldens.get(name).is_none(), "{name} is in both corpora");
+        goldens[name.as_str()] = golden.clone();
+    }
+    let scenarios_array = scenarios.as_array_mut().unwrap();
+    scenarios_array.extend(runs.as_array().unwrap().iter().cloned());
     let pins = std::fs::read_dir(concat!(
         env!("CARGO_MANIFEST_DIR"),
         "/../../conformance/divergences"
@@ -338,7 +363,7 @@ fn documented_situations() -> BTreeMap<String, (usize, usize)> {
         assert!(
             force.split(", ").all(|reason| matches!(
                 reason.to_ascii_lowercase().as_str(),
-                "bound" | "loading" | "delivery"
+                "bound" | "loading" | "delivery" | "run"
             )),
             "unknown force in {row}"
         );

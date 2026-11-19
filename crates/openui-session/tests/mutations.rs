@@ -16,7 +16,10 @@ fn library() -> Arc<ComponentLibrary> {
     })
 }
 fn program(lib: &ComponentLibrary, text: &str) -> Arc<ParsedProgram> {
-    let inner = Arc::new(parse(text, &lib.inner, None));
+    parsed_program(parse(text, &lib.inner, None))
+}
+fn parsed_program(parsed: openui_lang::ParseResult) -> Arc<ParsedProgram> {
+    let inner = Arc::new(parsed);
     Arc::new(ParsedProgram {
         json_bytes: inner.to_json().len() as u64,
         inner,
@@ -73,10 +76,15 @@ fn settled_registration_clicks_and_resumed_segments_match_the_renderer() {
             }
             let response = ResponseState { streaming };
             let draw = if let Some(source) = step["replace"].as_str() {
+                let mut parsed = parse(source, &lib.inner, None);
+                if let Some(mutations) = step["alsoRegisterMutations"].as_str() {
+                    parsed.mutation_statements =
+                        parse(mutations, &lib.inner, None).mutation_statements;
+                }
                 Some(
                     s.replace_program_with_response(
                         &r,
-                        program(&lib, source),
+                        parsed_program(parsed),
                         None,
                         None,
                         true,

@@ -35,6 +35,13 @@ impl From<crate::McpToolOutcome> for ToolCallOutcome {
 }
 
 impl ToolCallId {
+    pub(super) fn query_key(&self) -> Option<Arc<str>> {
+        match &self.0.target {
+            CallTarget::Query(target) => target.upgrade().map(|call| call.key.clone()),
+            CallTarget::Mutation(_) => None,
+        }
+    }
+
     /// Whether this receipt can still dispatch work for its manager.
     pub fn is_pending(&self) -> bool {
         !matches!(&self.0.target, CallTarget::Query(call) if call.strong_count() == 0)
@@ -226,9 +233,14 @@ impl QueryManager {
                 ToolOutcome::CallFailed(text)
             }
         };
+        let key = id.query_key();
         let mut candidate = self.candidate();
         candidate.complete(id, outcome)?;
-        let update = candidate.publish(Vec::new(), self)?;
+        let calls = key
+            .and_then(|key| candidate.run_remembered(&key))
+            .into_iter()
+            .collect();
+        let update = candidate.publish(calls, self)?;
         *self = candidate;
         id.0.consumed.store(true, Ordering::Relaxed);
         Ok(update)

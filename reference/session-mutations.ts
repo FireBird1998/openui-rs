@@ -46,6 +46,11 @@ for (const scenario of corpus.scenarios) {
       const wasStreaming = streaming;
       if ('replace' in step) {
         resultRef.current = parse(step.replace, schema);
+        // A manager can register both kinds under one id. The surface parser
+        // keeps the last declaration, so supply its two statement lists separately.
+        if (step.alsoRegisterMutations) {
+          resultRef.current.mutationStatements = parse(step.alsoRegisterMutations, schema).mutationStatements;
+        }
         store.initialize(resultRef.current.stateDeclarations ?? {}, {});
       }
       if ('replace' in step || 'settle' in step) streaming = !!step.streaming;

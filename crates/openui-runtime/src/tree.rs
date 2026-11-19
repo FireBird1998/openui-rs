@@ -58,6 +58,7 @@ pub struct TreeInput<'a> {
     pub prepared_reference_values: Option<&'a PreparedReferenceValues<'a>>,
     managed_mutations: bool,
     shared_result: Option<&'a Arc<ParseResult>>,
+    query_runs: bool,
 }
 impl<'a> TreeInput<'a> {
     /// Evaluate this parse result; future options have compatible defaults.
@@ -72,6 +73,7 @@ impl<'a> TreeInput<'a> {
             prepared_reference_values: None,
             managed_mutations: false,
             shared_result: None,
+            query_runs: false,
         }
     }
     /// Route mutation steps to the session's tool provider with typed arguments.
@@ -118,6 +120,14 @@ impl<'a> TreeInput<'a> {
     ) -> Self {
         self.prepared_reference_values = Some(values);
         self.reference_values = None;
+        self
+    }
+    /// A query manager runs this program's queries. An action's `@Run` step
+    /// naming a query then emits no host event; its statement id goes to
+    /// [`ActionRun::query_runs`] for the embedder to pass to the manager's
+    /// invalidate command, as upstream's renderer calls `invalidate`.
+    pub fn with_query_runs(mut self) -> Self {
+        self.query_runs = true;
         self
     }
     /// Supply reference values, measuring them for this call. Undeclared names

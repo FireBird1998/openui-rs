@@ -1,0 +1,16 @@
+{
+  "case": "run-a-waiting-query",
+  "reason": "temporary until #86 implements reader waiting",
+  "reference": [
+    "{\"snapshot\":{\"__openui_loading\":[\"a\",\"b\"],\"__openui_refetching\":[],\"__openui_errors\":[],\"a\":null,\"b\":\"bdef\"},\"calls\":[{\"call\":0,\"toolName\":\"src\",\"args\":{}}],\"changed\":true}",
+    "{\"snapshot\":{\"__openui_loading\":[\"a\",\"b\"],\"__openui_refetching\":[],\"__openui_errors\":[],\"a\":null,\"b\":\"bdef\"},\"calls\":[],\"changed\":false}",
+    "{\"snapshot\":{\"__openui_loading\":[\"a\",\"b\"],\"__openui_refetching\":[],\"__openui_errors\":[],\"a\":null,\"b\":\"bdef\"},\"calls\":[],\"changed\":false}",
+    "{\"snapshot\":{\"__openui_loading\":[\"b\"],\"__openui_refetching\":[],\"__openui_errors\":[],\"a\":\"ready\",\"b\":\"bdef\"},\"calls\":[{\"call\":1,\"toolName\":\"sink\",\"args\":{\"v\":\"ready\"}}],\"changed\":true}"
+  ],
+  "rust": [
+    "{\"snapshot\":{\"__openui_loading\":[\"a\",\"b\"],\"__openui_refetching\":[],\"__openui_errors\":[],\"a\":null,\"b\":\"bdef\"},\"calls\":[{\"call\":0,\"toolName\":\"src\",\"args\":{}},{\"call\":1,\"toolName\":\"sink\",\"args\":{\"v\":null}}],\"changed\":true}",
+    "{\"snapshot\":{\"__openui_loading\":[\"a\",\"b\"],\"__openui_refetching\":[],\"__openui_errors\":[],\"a\":null,\"b\":\"bdef\"},\"calls\":[],\"changed\":false}",
+    "{\"snapshot\":{\"__openui_loading\":[\"a\",\"b\"],\"__openui_refetching\":[\"b\"],\"__openui_errors\":[],\"a\":null,\"b\":\"early\"},\"calls\":[{\"call\":2,\"toolName\":\"sink\",\"args\":{\"v\":null}}],\"changed\":true}",
+    "{\"snapshot\":{\"__openui_loading\":[\"b\"],\"__openui_refetching\":[\"b\"],\"__openui_errors\":[],\"a\":\"ready\",\"b\":\"early\"},\"calls\":[],\"changed\":true}"
+  ]
+}

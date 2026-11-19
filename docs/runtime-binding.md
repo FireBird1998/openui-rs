@@ -421,7 +421,10 @@ the calls once. Its `evaluationError` gives the current diagnostic.
 With a provider, a settled program registers mutation tool names. For both
 queries and mutations the wanted call exposes the JavaScript string form of
 the evaluated tool name. For example, `Mutation(7)` dispatches `"7"` and a
-structured error keeps the number `7` in `toolName`. A mutation Run evaluates its arguments against the current state and suspends the plan.
+structured error keeps the number `7` in `toolName`. While a bare program
+streams, a click uses the last registered mutation tool and evaluates the
+arguments in the current program. An unregistered mutation ends the plan at
+that step. A dispatched mutation suspends the plan.
 A second click while loading ends that second plan at the Run step. Events
 preceding the Run are in the click's ordinary action output.
 
@@ -431,7 +434,10 @@ order. WebAssembly exposes `actionCount` and `actionAt(index)`. A successful
 outcome runs the tail against the current program, state and results. A failed
 outcome ends the plan and yields an empty segment. Read the snapshot for the
 mutation's error. A later action step can itself fail, and its segment includes
-the earlier events and the failed step. A tail can also suspend again or change
+the earlier events and the failed step. A query Run before the mutation
+takes effect immediately. One after the mutation runs only on success. In
+either segment, query runs use their registered arguments before a state
+write triggers query evaluation. A tail can also suspend again or change
 state that requests more calls. The same drain transfers all of these effects
 once. Its redraw flag includes a resumed store write and a mutation reference
 change hidden by a reserved snapshot list.
@@ -451,6 +457,19 @@ If the driver drops a handle without reporting an outcome, detaching the
 provider releases all pending managed plans. Detaching preserves already
 completed segments for the next drain. Without a provider, a mutation Run emits its host event and gives the
 embedder its ordinary continuation.
+
+With a provider, a `@Run` step naming a query runs that query again and
+emits no host event; the other steps' events are returned as before. A run
+while that query's key has a call in flight is remembered once for the key,
+whichever query started the call, and its call appears in the drain that
+follows the outcome. `retryFailedQueries()` runs again every query whose
+error is in the query snapshot, as the upstream renderer's Retry does; with
+no query errors it runs every query, as upstream's does. Both act on the
+queries registered so far even while the response state is streaming, as
+upstream's do for a bare program. Upstream ignores clicks and Retry while a
+bundle is blocked; that stays the embedder's to do until the session knows
+the bundle's state. Without a provider, a `@Run` of a
+query is still the host's `run` event.
 
 Skipping a drain leaves still-pending calls parked in dispatch order.
 Later operations discard calls whose entries have been released. The

@@ -7,7 +7,7 @@ import sys
 root = pathlib.Path(__file__).resolve().parent.parent
 methods = [
     "attachToolProvider", "detachToolProvider",
-    "takeQueryUpdate", "completeToolCall",
+    "takeQueryUpdate", "completeToolCall", "retryFailedQueries",
     "actionAt", "dispose", "evaluate", "get", "getField", "initialize",
     "initializeField", "isPristine", "markBinding", "pendingContinuations",
     "registerFunction", "replaceProgram", "resume", "run", "runLegacy", "set", "setField", "setProgram",

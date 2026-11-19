@@ -25,10 +25,14 @@ const corrections = [
   'return-to-failed-key',
   'return-to-an-outstanding-key-after-failure',
   'new-reader-of-a-retained-failure',
+  // Last, so that it is modelled only with every other correction applied.
+  'run-through-a-query-that-did-not-start-the-call',
 ] as const;
 type Situation = typeof corrections[number];
-type Query = { key: string; previous?: string; loading: boolean; fetched: boolean; hidden?: Situation; stuck?: Situation; defaults?: unknown; error?: object };
-type Entry = { data?: unknown; failed: boolean; pending: boolean; starter?: string; displaced: boolean };
+// Lang-core remembers a run on the query that asked (needsRefetch); the
+// correction remembers it on the entry, naming the query that asked.
+type Query = { key: string; previous?: string; loading: boolean; fetched: boolean; hidden?: Situation; stuck?: Situation; defaults?: unknown; error?: object; needsRefetch?: boolean };
+type Entry = { data?: unknown; failed: boolean; pending: boolean; starter?: string; displaced: boolean; runAgain?: string };
 type Call = { id: string; key: string; entry: Entry; dispatch: Dispatch };
 
 function simulate(scenario: Scenario, keys: Keys[], enabled: Set<Situation>) {
@@ -113,11 +117,54 @@ function simulate(scenario: Scenario, keys: Keys[], enabled: Set<Situation>) {
       }
     }
   }
-  function complete(call: Call, outcome: Outcome) {
+  // executeFetch for a query whose current entry has no call in flight.
+  function start(id: string, q: Query, step: number) {
+    const entry = cache.get(q.key)!;
+    entry.pending = true;
+    entry.starter = id;
+    q.loading = true;
+    calls.push({ id, key: q.key, entry, dispatch: { step, toolName: 't', args: JSON.parse(q.key) } });
+    rebuild();
+  }
+  function invalidate(ids: string[] | undefined, step: number) {
+    const targets = ids?.length ? ids.filter(id => queries.has(id)) : Array.from(queries.keys());
+    for (const id of targets) {
+      const q = queries.get(id)!;
+      const entry = cache.get(q.key)!;
+      if (!entry.pending) start(id, q, step);
+      else if (enabled.has('run-through-a-query-that-did-not-start-the-call')) entry.runAgain ??= id;
+      else q.needsRefetch = true;
+    }
+  }
+  // True when it rebuilt the snapshot after its last change.
+  function complete(call: Call, outcome: Outcome, step: number): boolean {
     const { entry, key, id } = call;
     const success = outcome.kind === 'result';
     if (cache.get(key) !== entry && enabled.has(success
-      ? 'removed-call-success-on-a-recreated-key' : 'removed-call-failure-on-a-recreated-key')) return;
+      ? 'removed-call-success-on-a-recreated-key' : 'removed-call-failure-on-a-recreated-key')) return false;
+    // Lang-core's finally refetches for the query that started the call if
+    // it is still on the key. The correction starts the entry's remembered
+    // run if any query is still on the key.
+    const starterQuery = queries.get(id);
+    let again: string | undefined;
+    if (enabled.has('run-through-a-query-that-did-not-start-the-call')) {
+      const asked = entry.runAgain;
+      entry.runAgain = undefined;
+      const readers = Array.from(queries).filter(([, q]) => q.key === key).map(([reader]) => reader);
+      if (asked !== undefined && readers.length) again = readers.includes(asked) ? asked : readers[0];
+    } else if (starterQuery?.key === key && starterQuery.needsRefetch) {
+      starterQuery.needsRefetch = false;
+      again = id;
+    }
+    deliver(call, outcome);
+    if (again === undefined) return false;
+    rebuild();
+    start(again, queries.get(again)!, step);
+    return true;
+  }
+  function deliver(call: Call, outcome: Outcome) {
+    const { entry, key, id } = call;
+    const success = outcome.kind === 'result';
     entry.pending = false;
     const starter = queries.get(id);
     const own = starter?.key === key;
@@ -195,8 +242,10 @@ function simulate(scenario: Scenario, keys: Keys[], enabled: Set<Situation>) {
       if (!('dispatch' in step)) throw new Error('random completions require a dispatch address');
       const call = calls.find(c => c.dispatch.step === step.dispatch.step &&
         c.key === JSON.stringify(step.dispatch.args));
-      if (call) { complete(call, step.outcome); rebuild(); }
+      if (call && !complete(call, step.outcome, i)) rebuild();
     }
+    // Lang-core's invalidate rebuilds only inside each executeFetch.
+    if (step.kind === 'invalidate') invalidate(step.ids, i);
     for (const [key, entry] of cache) if (!referenced(key)) entry.displaced = true;
     const bytes = JSON.stringify(visible);
     observations.push(JSON.stringify({
