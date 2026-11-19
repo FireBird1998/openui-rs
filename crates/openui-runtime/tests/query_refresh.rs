@@ -162,6 +162,7 @@ fn replay(scenario: &Json, expected: &Json) -> Vec<String> {
         let changed = before != manager.snapshot_json();
         assert_eq!(changed, update.as_ref().is_some_and(|u| u.changed));
         if let Some(update) = &update {
+            manager.audit_output(&update.calls).unwrap();
             let row = parse_json(expected[index].as_str().unwrap()).unwrap();
             assert_eq!(
                 Json::from(update.next_refresh_due_ms),

@@ -373,7 +373,9 @@ CONFORMANCE.md, and the test requires each row's count to be positive and exact.
 The reader graphs vary declaration order, fan-in, completion order, failures,
 refetches and Store edits between evaluate and complete. Their unmodified
 reference trace is compared with counterfactual traces that change the
-origin of the loading flag in upstream’s pending predicate. Fixed cases in
+origin of the loading flag in upstream’s pending predicate, then defer dispatch
+until the current holders are known. Completions address the original request
+by step, tool and arguments on both sides. Fixed cases in
 `conformance/query-readers.json` use the same adapter with `--readers`.
 The renderer replay drains reader calls before the next draw. The same ignored
 integration suite streams 5,000 further two- to six-query graphs, including
@@ -392,6 +394,9 @@ the same completion directly with `query-reader-fixes.json`.
 
 After every command the query, clock and mutation replays compare the exact
 cache keys and holder counts with the current and previous registrations.
+They first check that each newly returned receipt is pending, belongs to
+the manager and is unique in its batch. Each query receipt must match the
+pending identity of an entry with a current holder.
 They derive loading and refetching from receipts in the driver's ledger and
 follow the waiting edges from those receipts. A wait needs a pending or failed
 source, a diagnosed cut, or a chain that reaches another such source or a
@@ -979,7 +984,7 @@ libFuzzer, through cargo-fuzz on the nightly toolchain, mutates inputs toward co
 | `merge` | Merging a program with a patch (a zero byte between them); the merge is never longer than its inputs, give or take 64 bytes of joining newlines | the merge cases |
 | `serialize` | Converting JSON back to source: a parse result's tree with its state, or anything else | the parse goldens |
 | `json` | Reading JSON, and that writing what it read settles after one round | the parse goldens |
-| `query` | A query manager scenario in the conformance format (a JSON program, optional library and steps), replayed through the public query commands under the default and the small limits, at most 64 steps: an accepted command's `changed` is whether the snapshot's bytes changed and its deadline is the manager's; a refused one changes no snapshot, deadline, cache entry or call; a completed call is refused the second time; after every step the cache charge equals a fresh measurement within its cap, and the cache and delivery audits the scenario tests use hold. Each parse result gets the checks below. | every committed scenario in `conformance/query-scenarios.json`, `query-runs.json`, `query-refresh.json`, `query-readers.json`, `query-reader-fixes.json` and `mutation-scenarios.json`, one file each (142), copied in again on every run |
+| `query` | A query manager scenario in the conformance format (a JSON program, optional library and steps), replayed through the public query commands under the default and the small limits, at most 64 steps: an accepted command's `changed` is whether the snapshot's bytes changed and its deadline is the manager's; a refused one changes no snapshot, deadline, cache entry or call; a completed call is refused the second time; after every step the cache charge equals a fresh measurement within its cap, and the cache and delivery audits the scenario tests use hold. Each parse result gets the checks below. | every committed scenario in `conformance/query-scenarios.json`, `query-runs.json`, `query-refresh.json`, `query-readers.json`, `query-reader-fixes.json` and `mutation-scenarios.json`, one file each, copied in again on every run |
 
 The language targets share a library (`fuzz/fuzz_targets/library.rs`) with every schema shape validation handles, plus 1.0's library functions and actions. The dictionary, `fuzz/openui.dict`, holds fragments of the language and of model output. Inputs stay under 8 KB, the size of a long response.
 

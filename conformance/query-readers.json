@@ -233,7 +233,7 @@
       },
       {
         "kind": "complete",
-        "call": 4,
+        "dispatch": {"step": 6, "toolName": "leaf", "args": {"v": null}},
         "outcome": {
           "kind": "result",
           "value": "old"
@@ -248,7 +248,7 @@
       },
       {
         "kind": "complete",
-        "call": 5,
+        "dispatch": {"step": 6, "toolName": "leaf", "args": {"v": "one"}},
         "outcome": {
           "kind": "result",
           "value": "new"

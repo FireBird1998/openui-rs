@@ -140,11 +140,31 @@ impl QueryManager {
             q.error = None;
         }
         self.reader_limit = None;
-        let mut calls = self.apply_nodes(input.result, &nodes);
+        let mut requests = self.apply_nodes(input.result, &nodes);
+        // A bounded parse can keep a waitFor edge but drop its source. No
+        // completion could wake that reader. Refuse this registration atomically
+        // with the parser's actual limit, keeping usable partial programs valid.
+        if (input.result.size_limited || input.result.depth_limited)
+            && nodes
+                .iter()
+                .flat_map(|node| node.reads.iter())
+                .any(|read| !self.queries.contains_key(&read.id))
+        {
+            let mut flags = EvaluationFlags::default();
+            flags.size_limited = input.result.size_limited;
+            flags.depth_limited = input.result.depth_limited;
+            return Err(QueryCommandError::Limit(LimitError { flags }));
+        }
         self.readers = None;
         if nodes.iter().any(|n| !n.reads.is_empty()) {
-            let nodes =
-                self.propagate(input, store, &budget, &measured, nodes.into(), &mut calls)?;
+            let nodes = self.propagate(
+                input,
+                store,
+                &budget,
+                &measured,
+                nodes.into(),
+                &mut requests,
+            )?;
             let program = input.shared_result.cloned().unwrap_or_else(|| {
                 Arc::new(ParseResult {
                     // Only stale readers need their expressions again. Preserve
@@ -185,7 +205,7 @@ impl QueryManager {
                     || input.binding_props.is_some(),
             });
         }
-        Ok(calls)
+        Ok(requests.dispatch(self, None))
     }
 
     // Walk the reverse waiting edges from all outstanding calls at once. This

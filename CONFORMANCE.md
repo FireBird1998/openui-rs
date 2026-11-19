@@ -901,13 +901,17 @@ The 512 additional seeded reader graphs compare 16,111 observations. A
 counterfactual replay changes only the originating loading flag in upstream’s
 pending predicate for waiting queries (284 observations) and for queries back
 on an already-fetched key (three more, covered by `return-to-finished-key`).
+With dispatch deferred, 476 observations differ because of the final holders,
+278 because of waiting status and three because of a return to a finished key.
 
 | Force | Situation and pin | lang-core 1.1.0 | openui-rs | Deciding sentence |
 |---|---|---|---|---|
 | Loading | `reader-of-a-sharing-query-is-pending` | Only the starter is loading. A reader waiting for the other holder is absent from the loading list. | Both holders and the waiting reader are loading. The same completion dispatches the reader on both sides. | 2 and the spec’s transitive pending rule |
 | Loading | `a-waiting-reader-leaves-its-own-pending-key` | A call abandoned by the reader can leave it marked loading even after its last pending input fails. | A waiting reader with an idle current entry leaves the loading list when its inputs stop loading. | 2 |
 | Reader trigger | `a-seeded-self-reader-does-not-follow-its-own-result` | A query edited to read itself can use previously fetched data. A different result can immediately start another call using that result. This can continue across arbitrarily many provider completions. An equal primitive or an already settled key can stop new calls. | Completion displays the returned value and leaves the arguments that produced it registered. If its self-input changed, the manager, session draw and drain report a diagnostic until registration reconciles them. | #79 and #86’s explicit own-result exclusion |
+| Dispatch | `a-reader-only-dispatches-keys-still-current-after-the-cascade` | Cache hits move the leaf through three keys during one Evaluate. The provider receives calls with null, “one” and “two”. | Only the final key requests a call with “two”. An intermediate key still current for another holder can request a call. [Both managers’ observations](conformance/golden/query-reader-fixes.json) | ADR 0013 rules 1 and 3 |
 | Reader trigger | `a-previous-key-releases-a-waiting-self-reader` | With the shared numeric result, the edit to a self-read rebuilds on loss of the old value. The subsequent equal delivery leaves the reader null and idle, even after invalidate. The repeated-id null case dispatches with null. | The wait is recorded after moving the key. A delivery to the previous key releases the reader even when it supplies the same primitive evaluated before the move. Both cases dispatch. [Manager observations](conformance/golden/query-self-wait.json) · [Renderer observations](conformance/golden/session-self-wait.jsonl) | ADR 0013 rule 4 and the spec’s own-result exclusion |
+| Reader admission | `a-parser-limit-removes-a-readers-source` | Registers both sides of the cycle and displays their defaults. | When a parse limit drops the source but retains its reader, Evaluate returns that limit and preserves the previous snapshot and receipts. [Two-sided pin](conformance/divergences/a-parser-limit-removes-a-readers-source.json) | ADR 0001’s parse limits and ADR 0013 rule 4 |
 | Reader admission | `admitted-success-exhausts-the-reader-allowance` | Stores the result and requests the reader with the concatenated input. | With a 1,024-byte result allowance, accepts the source, suspends the reader and reports its limit. | #79’s bounded evaluation and visible limit decisions |
 
 A further 128 seeded graphs complete the previous-key call with the same
@@ -941,6 +945,9 @@ equal to +0, whereas NaN compares unequal even within one delivery. A
 missing provider result is stored as null. The first such success releases a
 reader that had no data; subsequent null and missing successes compare equal.
 
+Across those schedules and the four additional traced fixtures, 1,235 commands
+move the same reader between different keys at least twice.
+
 The default runtime tests also count complete snapshot and reference preparation
 passes on a cached cycle with 2,000 unrelated queries and a NaN completion
 with 4,000. A cascade prepares its reference supply once. Subsequent rounds
@@ -950,32 +957,33 @@ statement-count-plus-one bound. Borrowed and owned completions consume an
 admitted receipt even if the dependent work exhausts its allowance. The
 reader diagnostic identifies the cut.
 
-The additional 5,000 reader-edit graphs compare 131,747 observations. Each
+The additional 5,000 reader-edit graphs compare 131,750 observations. Each
 differing observation has exactly one attribution, using the last transition
 from a policy prefix that still matched the upstream bytes. Counts include
-later effects of that decision. The separate 6,000-script table above and the
-512-graph reader replay retain their counts. The graph driver also settles
-2,494 dispatches observed only on the corrected side. Its commands include
+later effects of that decision. The separate 6,000-script table above retains its counts. The graph driver also settles
+2,484 dispatches observed only on the corrected side and keeps the original
+completion commands for calls now suppressed. Its commands include
 invalidating live readers, remembering runs, and firing and settling mutations
 while a query reads their status.
 
 | Reader graph situation | Differing observations |
 |---|---:|
+| `a-reader-only-dispatches-keys-still-current-after-the-cascade` | 141 |
 | `a-seeded-self-reader-does-not-follow-its-own-result` | 17268 |
 | `a-waiting-reader-leaves-its-own-pending-key` | 1986 |
-| `change-flag-after-loading-converges` | 314 |
+| `change-flag-after-loading-converges` | 311 |
 | `handoff-failure-leaves-a-reader-loading` | 10 |
 | `idle-query-takes-over-a-pending-call` | 899 |
 | `new-reader-of-a-retained-failure` | 207 |
 | `pending-key-changes-its-only-reader` | 1264 |
-| `rapid-edits-revisit-a-cached-result` | 660 |
+| `rapid-edits-revisit-a-cached-result` | 661 |
 | `remove-statement-before-registering-its-replacement` | 9382 |
 | `removed-call-failure-on-a-recreated-key` | 7 |
 | `removed-call-success-on-a-recreated-key` | 31 |
 | `return-to-a-displaced-failed-entry` | 41 |
 | `return-to-an-outstanding-key-after-failure` | 1 |
 | `return-to-failed-key` | 125 |
-| `return-to-finished-key` | 1524 |
+| `return-to-finished-key` | 1526 |
 | `run-through-a-query-that-did-not-start-the-call` | 3241 |
 | `shared-completion-leaves-a-reader-loading` | 43 |
 | `shared-entry-delivers-to-both-current-queries` | 8692 |

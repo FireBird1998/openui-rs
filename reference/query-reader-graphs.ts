@@ -2,7 +2,7 @@
 // completion can only be visited by a later checkpoint, including self-reads.
 import type {createQueryManager} from './lang-core/src/runtime/queryManager';
 import {previousSelfCase} from './query-self-wait';
-import {readerPolicies, rows} from './query-reader-policies';
+import {dispatchRow, readerPolicies, rows} from './query-reader-policies';
 import type {Dispatch, Outcome, Scenario, Step} from './query-scenarios';
 
 type Script = (calls: readonly Dispatch[]) => Iterable<Step>;
@@ -112,20 +112,27 @@ function addresses(observations: string[]): Dispatch[] {
 // genuine reference, as in query-lifetimes. Validate the final bytes in Rust.
 export async function runGraphs(replay: Replay, previousSelf = false) {
   const policies = await readerPolicies();
+  const eager = rows.filter(row => row !== dispatchRow);
   for (let seed = 1; seed <= (previousSelf ? 128 : 5000); seed++) {
     const {scenario, script} = previousSelf ? {scenario: previousSelfCase(seed), script: undefined} : graph(seed);
     let reference = await replay(scenario, script);
     let expected = await replay(scenario, undefined, policies(rows.length));
     const original = new Set(addresses(reference).map(a => JSON.stringify(a)));
     const extra = addresses(expected).filter(a => !original.has(JSON.stringify(a)));
-    if (scenario.steps.length + extra.length > 256) throw Error('reader graph step budget');
+    // Keep the old addressed completions, including those for requests the
+    // cascade now suppresses. The outcome is a no-op on a side with no call.
+    const previous = await replay(scenario, undefined, policies(eager));
+    const checkpoints = addresses(previous).filter(a => !original.has(JSON.stringify(a)));
+    const seen = new Set(checkpoints.map(a => JSON.stringify(a)));
+    checkpoints.push(...extra.filter(a => !seen.has(JSON.stringify(a))));
+    if (scenario.steps.length + checkpoints.length > 256) throw Error('reader graph step budget');
     // One finite pass over previously observed calls, including released receipts.
     // Calls created by this pass belong to a later host checkpoint.
-    for (const [i,dispatch] of extra.entries()) {
+    for (const [i,dispatch] of checkpoints.entries()) {
       const outcome: Outcome = (seed+i)%2 ? {kind:'result',value:{v:seed}} : {kind:'tool-error',message:'late failure'};
       scenario.steps.push({kind:'complete',dispatch,outcome});
     }
-    if (extra.length) {
+    if (checkpoints.length) {
       reference = await replay(scenario);
       expected = await replay(scenario, undefined, policies(rows.length));
     }

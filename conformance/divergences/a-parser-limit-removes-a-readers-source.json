@@ -1,0 +1,19 @@
+{
+  "case": "a-parser-limit-removes-a-readers-source",
+  "reference": "{\"snapshot\":{\"__openui_loading\":[],\"__openui_refetching\":[],\"__openui_errors\":[],\"q0\":\"d\",\"q1\":\"d\"},\"calls\":[],\"changed\":true}",
+  "rust": {
+    "sizeLimited": true,
+    "depthLimited": false,
+    "snapshot": {
+      "__openui_loading": [
+        "keep"
+      ],
+      "__openui_refetching": [],
+      "__openui_errors": [],
+      "keep": null
+    },
+    "pending": [
+      "keep"
+    ]
+  }
+}

@@ -4,6 +4,7 @@ import {readFileSync} from 'node:fs';
 
 import type {createQueryManager} from './lang-core/src/runtime/queryManager';
 
+export const dispatchRow = 'a-reader-only-dispatches-keys-still-current-after-the-cascade';
 export const rows = [
   'a-seeded-self-reader-does-not-follow-its-own-result',
   'remove-statement-before-registering-its-replacement',
@@ -29,6 +30,7 @@ export const rows = [
   'reader-of-a-sharing-query-is-pending',
   'run-through-a-query-that-did-not-start-the-call',
   'a-previous-key-releases-a-waiting-self-reader',
+  dispatchRow,
 ] as const;
 export type RoundTrace = {
   rounds: string[][]; left: string[]
@@ -40,6 +42,26 @@ export async function readerPolicies() {
     if (code.split(from).length !== 2) throw Error('unexpected queryManager.ts: ' + from);
     code = code.replace(from, () => to);
   }
+  // Keep the first request per key, then call the real provider for the final
+  // holders in that order. Earlier commands' in-flight calls stay upstream's.
+  edit('  const queries =', `  const requested = new Map();
+  function scheduleRequest(key, id, asked) {
+    if (!allow('${dispatchRow}')) return executeFetch(key, id, asked);
+    if (!requested.has(key)) requested.set(key, {id, asked});
+  }
+  function dispatchCurrent() {
+    for (const [key, {id, asked}] of requested) {
+      const holder = queries.get(id)?.cacheKey === key ? id :
+        [...queries].find(([,q]) => q.cacheKey === key)?.[0];
+      if (holder !== undefined && !cache.get(key)?.inFlight) executeFetch(key, holder, asked);
+    }
+    requested.clear();
+  }
+  const queries =`);
+  edit('executeFetch(cacheKey, node.statementId);',
+       'scheduleRequest(cacheKey, node.statementId, {toolName:q.toolName,args:q.args});');
+  edit('executeFetch(current.cacheKey, statementId);',
+       'scheduleRequest(current.cacheKey, statementId, {toolName:current.toolName,args:current.args});');
   const stale = 'getData(id) !== seen.get(s.statementId)?.get(id)';
   const staleRead = `(id !== s.statementId || !allow('${rows[0]}') ? ${stale} :
     allow('a-previous-key-releases-a-waiting-self-reader') ?
@@ -58,6 +80,7 @@ export async function readerPolicies() {
       '  }\n\n  function evaluateQueries',
       `    if(trace) trace.left = statements.filter(s=>s.waitFor?.some(id=>
     ${staleRead})).map(s=>s.statementId);
+    dispatchCurrent();
     // Displacement is decided after the whole trigger, including every round.
     for(const [key,e] of cache) {
       e.displaced = ![...queries.values()].some(q=>q.cacheKey===key || q.prevCacheKey===key);
@@ -143,7 +166,7 @@ export async function readerPolicies() {
         const request = entry.again;
         entry.again = undefined;
         const holder = [...queries].find(([,q]) => q.cacheKey === fetchKey);
-        if (holder && cache.get(fetchKey) === entry) executeFetch(fetchKey, holder[0], request);
+        if (holder && cache.get(fetchKey) === entry) scheduleRequest(fetchKey, holder[0], request);
       }
       reevaluateReaders();`);
   code +=

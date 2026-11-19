@@ -36,7 +36,8 @@ fn waiting_chains_refetches_and_cycles_match_the_reference_manager() {
         let name = pin["case"].as_str().unwrap().to_owned();
         assert_eq!(pin["reference"], goldens[&name]);
         assert_ne!(pin["rust"], pin["reference"]);
-        assert!(include_str!("../../../../CONFORMANCE.md").contains(&format!("| `{name}` |")));
+        let situation = pin["situation"].as_str().unwrap_or(&name);
+        assert!(include_str!("../../../../CONFORMANCE.md").contains(&format!("| `{situation}` |")));
         (name, pin)
     })
     .collect();
@@ -68,6 +69,8 @@ fn seeded_reader_graphs_match_upstream_at_each_completion_and_edit() {
         .stdout(Stdio::piped())
         .spawn()
         .unwrap();
+    let mut final_rows = BTreeMap::new();
+    let mut final_cases = 0;
     let mut cases = 0;
     let mut steps = 0;
     let mut differing_cases = 0;
@@ -82,12 +85,13 @@ fn seeded_reader_graphs_match_upstream_at_each_completion_and_edit() {
         let upstream = row["reference"].as_array().unwrap();
         assert_eq!(upstream.len(), expected.len());
         differing_cases += usize::from(upstream != expected);
+        final_cases += usize::from(upstream != row["final"].as_array().unwrap());
         replay(&row["scenario"], |i, actual, _| {
             let reason = &row["reasons"][i.to_string()];
-            if Some(actual.as_str()) == upstream[i].as_str() {
+            if expected[i] == upstream[i] {
                 assert!(reason.is_null());
             } else {
-                let mut corrected = parse_json(&actual).unwrap();
+                let mut corrected = parse_json(expected[i].as_str().unwrap()).unwrap();
                 let original = parse_json(upstream[i].as_str().unwrap()).unwrap();
                 for field in ["__openui_loading", "__openui_refetching"] {
                     let before = original["snapshot"][field].as_array().unwrap();
@@ -105,12 +109,16 @@ fn seeded_reader_graphs_match_upstream_at_each_completion_and_edit() {
                     .or_insert(0usize) += 1;
             }
 
-            assert_eq!(
-                actual,
-                expected[i].as_str().unwrap(),
-                "step {i}: {}",
-                row["scenario"]
-            );
+            let dispatch = row["final"][i].as_str().unwrap();
+            if Some(dispatch) != upstream[i].as_str() {
+                let cause = if Some(dispatch) == expected[i].as_str() {
+                    reason.as_str().unwrap()
+                } else {
+                    "a-reader-only-dispatches-keys-still-current-after-the-cascade"
+                };
+                *final_rows.entry(cause.to_owned()).or_insert(0usize) += 1;
+            }
+            assert_eq!(actual, dispatch, "step {i}: {}", row["scenario"]);
         });
         cases += 1;
         steps += expected.len();
@@ -124,7 +132,19 @@ fn seeded_reader_graphs_match_upstream_at_each_completion_and_edit() {
             ("return-to-finished-key".into(), 3),
         ])
     );
-    eprintln!("{differences:?}");
+    assert_eq!(final_cases, 134);
+    assert_eq!(
+        final_rows,
+        BTreeMap::from([
+            ("a-waiting-reader-leaves-its-own-pending-key".into(), 278),
+            ("return-to-finished-key".into(), 3),
+            (
+                "a-reader-only-dispatches-keys-still-current-after-the-cascade".into(),
+                476
+            ),
+        ])
+    );
+    eprintln!("with final dispatch: {final_rows:?}");
     eprintln!("{cases} reader graphs, {steps} observations");
 }
 
@@ -217,9 +237,13 @@ fn generated_reader_edits_and_cycles_have_only_attributed_differences() {
     );
     assert_eq!(
         (cases, total, affected, extra_calls),
-        (5000, 131747, 2958, 2494)
+        (5000, 131750, 2968, 2484)
     );
     let expected = BTreeMap::from([
+        (
+            "a-reader-only-dispatches-keys-still-current-after-the-cascade".to_owned(),
+            141,
+        ),
         (
             "a-seeded-self-reader-does-not-follow-its-own-result".to_owned(),
             17268,
@@ -228,12 +252,12 @@ fn generated_reader_edits_and_cycles_have_only_attributed_differences() {
             "a-waiting-reader-leaves-its-own-pending-key".to_owned(),
             1986,
         ),
-        ("change-flag-after-loading-converges".to_owned(), 314),
+        ("change-flag-after-loading-converges".to_owned(), 311),
         ("handoff-failure-leaves-a-reader-loading".to_owned(), 10),
         ("idle-query-takes-over-a-pending-call".to_owned(), 899),
         ("new-reader-of-a-retained-failure".to_owned(), 207),
         ("pending-key-changes-its-only-reader".to_owned(), 1264),
-        ("rapid-edits-revisit-a-cached-result".to_owned(), 660),
+        ("rapid-edits-revisit-a-cached-result".to_owned(), 661),
         (
             "remove-statement-before-registering-its-replacement".to_owned(),
             9382,
@@ -243,7 +267,7 @@ fn generated_reader_edits_and_cycles_have_only_attributed_differences() {
         ("return-to-a-displaced-failed-entry".to_owned(), 41),
         ("return-to-an-outstanding-key-after-failure".to_owned(), 1),
         ("return-to-failed-key".to_owned(), 125),
-        ("return-to-finished-key".to_owned(), 1524),
+        ("return-to-finished-key".to_owned(), 1526),
         (
             "run-through-a-query-that-did-not-start-the-call".to_owned(),
             3241,
@@ -360,4 +384,54 @@ fn an_equal_primitive_on_the_previous_key_dispatches_the_waiting_self_reader() {
 #[test]
 fn a_redeclared_self_reader_is_released_by_null_on_its_previous_key() {
     compare_self_wait(2, JsonValue::Null);
+}
+
+#[test]
+fn a_reader_that_moves_twice_only_dispatches_keys_with_a_final_holder() {
+    let cases = parse_json(include_str!(
+        "../../../../conformance/query-reader-fixes.json"
+    ))
+    .unwrap();
+    let case = cases
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|c| c["name"] == "a-reader-only-dispatches-keys-still-current-after-the-cascade")
+        .unwrap();
+    // With and without another current holder for the intermediate key.
+    for shared in [false, true] {
+        let mut scenario = case.clone();
+        let steps = scenario["steps"].as_array_mut().unwrap();
+        if shared {
+            let program = steps[5]["program"].as_str().unwrap();
+            steps[5]["program"] = format!("{program}\nkeep=Query(\"leaf\",{{v:\"one\"}})").into();
+        }
+        // Revisit the intermediate key in a later command. If the cascade hid
+        // its receipt but left it pending, this visit cannot dispatch.
+        steps.push(
+            parse_json(r#"{"kind":"replace","program":"c=Query(\"leaf\",{v:\"one\"})"}"#).unwrap(),
+        );
+        steps.push(parse_json(r#"{"kind":"evaluate"}"#).unwrap());
+        replay(&scenario, |i, actual, _| {
+            if i == 6 || i == 8 {
+                let row = parse_json(&actual).unwrap();
+                let args: Vec<_> = row["calls"]
+                    .as_array()
+                    .unwrap()
+                    .iter()
+                    .map(|c| {
+                        assert_eq!(c["toolName"], "leaf");
+                        c["args"]["v"].as_str().unwrap()
+                    })
+                    .collect();
+                let expected: &[&str] = match (i, shared) {
+                    (6, false) => &["two"],
+                    (6, true) => &["one", "two"],
+                    (8, false) => &["one"],
+                    _ => &[],
+                };
+                assert_eq!(args, expected);
+            }
+        });
+    }
 }

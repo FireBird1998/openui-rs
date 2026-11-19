@@ -13,8 +13,64 @@ impl QueryManager {
                     && matches!(e.get("statementId"), Some(Value::Str(s)) if s == id)))
     }
 
+    /// Audit a command's *new* calls before adding them to the receipt history.
+    /// Historical receipts may legitimately have been retired by a later command.
+    /// Outside the supported interface.
+    #[doc(hidden)]
+    pub fn audit_output(&self, calls: &[ToolCall]) -> Result<(), String> {
+        if calls.is_empty() {
+            return Ok(());
+        }
+        let current: HashSet<_> = self
+            .queries
+            .values()
+            .filter(|q| !q.suspended)
+            .map(|q| q.key.as_ref())
+            .collect();
+        let mut keys = HashSet::new();
+        let mut mutations = HashSet::new();
+        for call in calls {
+            if !call.id.is_pending() || self.check_call(&call.id).is_err() {
+                return Err("returned a retired or foreign receipt".into());
+            }
+            match &call.id.0.target {
+                CallTarget::Query(target) => {
+                    let pending = target
+                        .upgrade()
+                        .ok_or("returned a released query receipt")?;
+                    if !current.contains(pending.key.as_ref())
+                        || self
+                            .cache
+                            .get(&pending.key)
+                            .and_then(|e| e.pending.as_ref())
+                            .is_none_or(|p| !Arc::ptr_eq(p, &pending))
+                    {
+                        return Err(format!(
+                            "returned a receipt without its current entry: {}",
+                            pending.key
+                        ));
+                    }
+                    if !keys.insert(pending.key.clone()) {
+                        return Err(format!("returned two calls for {}", pending.key));
+                    }
+                }
+                CallTarget::Mutation(target) => {
+                    let id = self
+                        .mutations
+                        .pending_registration(target)
+                        .ok_or("returned a receipt without its mutation registration")?;
+                    if !mutations.insert(id) {
+                        return Err(format!("returned two calls for mutation {id}"));
+                    }
+                }
+            }
+        }
+        Ok(())
+    }
+
     /// Check the four cache rules' persistent state against the replay driver's
-    /// call identities. Outside the supported interface.
+    /// call identities. Check each newly returned batch with [`Self::audit_output`]
+    /// before mixing it with historical receipts. Outside the supported interface.
     #[doc(hidden)]
     pub fn audit_cache<'a>(
         &self,
@@ -298,6 +354,49 @@ mod tests {
         let id = update.calls.into_iter().next().unwrap().id;
         manager.audit_cache(std::iter::once(&id), true).unwrap();
         (manager, id)
+    }
+
+    #[test]
+    fn the_output_audit_rejects_retired_duplicate_and_unowned_requests() {
+        let (mut manager, id) = registered();
+        let call = || ToolCall {
+            id: id.clone(),
+            tool_name: "shared".into(),
+            args: None,
+        };
+        manager.audit_output(&[call()]).unwrap();
+        assert!(
+            manager
+                .audit_output(&[call(), call()])
+                .unwrap_err()
+                .contains("two calls")
+        );
+        let live = id.query_key().unwrap();
+        let entry = manager.cache.remove(&live).unwrap();
+        // A transaction candidate can keep the weak target alive even when the
+        // command's own manager has no entry. Liveness alone is insufficient.
+        assert!(id.is_pending());
+        assert!(
+            manager
+                .audit_output(&[call()])
+                .unwrap_err()
+                .contains("current entry")
+        );
+        manager.cache.insert(live.clone(), entry);
+        manager.queries.retain(|_, q| q.key != live);
+        assert!(
+            manager
+                .audit_output(&[call()])
+                .unwrap_err()
+                .contains("current entry")
+        );
+        manager.cache.remove(&live);
+        assert!(
+            manager
+                .audit_output(&[call()])
+                .unwrap_err()
+                .contains("retired")
+        );
     }
 
     #[test]

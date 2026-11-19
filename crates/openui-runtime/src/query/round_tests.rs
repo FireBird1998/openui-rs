@@ -8,8 +8,13 @@ use std::process::{Command, Stdio};
 struct Observation {
     rounds: Vec<Vec<String>>,
     left: Vec<String>,
+    key_moves: HashMap<String, usize>,
 }
 thread_local! { static TRACE: RefCell<Observation> = RefCell::new(Observation::default()); }
+
+pub(super) fn moved(id: &str) {
+    TRACE.with_borrow_mut(|t| *t.key_moves.entry(id.to_owned()).or_default() += 1);
+}
 
 pub(super) fn begin() {
     TRACE.with_borrow_mut(|t| t.rounds.push(Vec::new()));
@@ -51,6 +56,7 @@ fn each_completion_order_rebuilds_the_same_nodes_in_the_same_rounds() {
     let mut child = Reap(child);
     let lib = openui_lang::Library::from_json_schema(&JsonValue::Null);
     let mut cases = 0;
+    let mut moved_twice = 0;
     let mut differences = std::collections::BTreeMap::<String, usize>::new();
     for line in BufReader::new(output).lines() {
         let row = openui_lang::parse_json(&line.unwrap()).unwrap();
@@ -87,7 +93,12 @@ fn each_completion_order_rebuilds_the_same_nodes_in_the_same_rounds() {
                 ),
                 "complete" => {
                     let addr = &step["dispatch"];
-                    calls.iter().find(|(a, _)| a == addr).map(|(_, id)| {
+                    let target = if let Some(i) = step["call"].as_u64() {
+                        calls.get(i as usize)
+                    } else {
+                        calls.iter().find(|(a, _)| a == addr)
+                    };
+                    target.map(|(_, id)| {
                         m.audit_delivery(id, &ToolOutcome::Result(step["outcome"].get("value")))
                             .unwrap();
                         m.apply(QueryCommand::Complete {
@@ -102,6 +113,7 @@ fn each_completion_order_rebuilds_the_same_nodes_in_the_same_rounds() {
             let changed = update.as_ref().is_some_and(|u| u.changed);
             let mut dispatched = Vec::new();
             if let Some(u) = update {
+                m.audit_output(&u.calls).unwrap();
                 for call in u.calls {
                     let args = call.arguments_json().unwrap();
                     dispatched.push(format!(
@@ -131,6 +143,7 @@ fn each_completion_order_rebuilds_the_same_nodes_in_the_same_rounds() {
             let want = &row["byRule"][i];
             let empty = JsonValue::Array(Vec::new());
             TRACE.with_borrow(|t| {
+                moved_twice += usize::from(t.key_moves.values().any(|&moves| moves >= 2));
                 assert_eq!(
                     JsonValue::from(t.rounds.clone()),
                     *want.get("rounds").unwrap_or(&empty),
@@ -154,10 +167,12 @@ fn each_completion_order_rebuilds_the_same_nodes_in_the_same_rounds() {
             assert!(i < 256);
         }
         cases += 1;
-        assert!(cases <= 1235);
+        assert!(cases <= 1236);
     }
     assert!(child.0.wait().unwrap().success());
-    assert_eq!(cases, 1235);
+    assert_eq!(cases, 1236);
+    assert_eq!(moved_twice, 1235);
+    eprintln!("{moved_twice} commands moved the same reader at least twice");
     assert_eq!(
         differences,
         std::collections::BTreeMap::from([

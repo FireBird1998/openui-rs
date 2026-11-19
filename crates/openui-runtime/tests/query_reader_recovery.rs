@@ -431,3 +431,88 @@ fn an_own_delivery_keeps_waiting_for_another_missing_input() {
         Some(r#"{"x":7,"y":9}"#)
     );
 }
+
+#[test]
+fn a_parse_cut_that_drops_a_waited_on_source_preserves_the_previous_calls() {
+    let cases =
+        openui_lang::parse_json(include_str!("../../../conformance/query-reader-fixes.json"))
+            .unwrap();
+    let pin = openui_lang::parse_json(include_str!(
+        "../../../conformance/divergences/a-parser-limit-removes-a-readers-source.json"
+    ))
+    .unwrap();
+    let golden = openui_lang::parse_json(include_str!(
+        "../../../conformance/golden/query-reader-fixes.json"
+    ))
+    .unwrap();
+    let name = pin["case"].as_str().unwrap();
+    let case = cases
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|c| c["name"] == name)
+        .unwrap();
+    assert_eq!(golden[name]["reference"][2], pin["reference"]);
+    let limits = Limits::DEFAULT
+        .with_result_floor(1024)
+        .with_amplification(4)
+        .with_work(100_000)
+        .with_depth(16);
+    let library = Library::from_json_schema(&JsonValue::Null);
+    let store = Store::with_limits(limits);
+    let mut manager = QueryManager::with_limits(limits);
+    let seed = parse(case["program"].as_str().unwrap(), &library, None);
+    let keep = manager
+        .apply(QueryCommand::Evaluate {
+            program: &seed,
+            store: &store,
+        })
+        .unwrap();
+    let partial = openui_lang::parse_with_limits(
+        case["steps"][1]["program"].as_str().unwrap(),
+        &library,
+        None,
+        limits,
+    );
+    assert!(partial.size_limited);
+    assert_eq!(partial.query_statements.len(), 1);
+    let Err(QueryCommandError::Limit(limit)) = manager.apply(QueryCommand::Evaluate {
+        program: &partial,
+        store: &store,
+    }) else {
+        panic!("a reader whose source was cut must refuse registration");
+    };
+    assert_eq!(pin["rust"]["sizeLimited"], limit.flags.size_limited);
+    assert_eq!(pin["rust"]["depthLimited"], limit.flags.depth_limited);
+    assert_eq!(
+        openui_lang::parse_json(manager.snapshot_json()).unwrap(),
+        pin["rust"]["snapshot"]
+    );
+    let pending: Vec<_> = keep
+        .calls
+        .iter()
+        .filter(|c| c.id.is_pending())
+        .map(|c| JsonValue::from(c.tool_name.clone()))
+        .collect();
+    assert_eq!(JsonValue::Array(pending), pin["rust"]["pending"]);
+    manager
+        .audit_cache(keep.calls.iter().map(|c| &c.id), true)
+        .unwrap();
+
+    // A cut elsewhere can still leave a usable query registration.
+    let source = case["steps"][1]["program"]
+        .as_str()
+        .unwrap()
+        .replace("r0:q1", "r0:42");
+    let unrelated = openui_lang::parse_with_limits(&source, &library, None, limits);
+    assert!(unrelated.size_limited);
+    let update = manager
+        .apply(QueryCommand::Evaluate {
+            program: &unrelated,
+            store: &store,
+        })
+        .unwrap();
+    assert_eq!(update.calls.len(), 1);
+    assert_eq!(update.calls[0].tool_name, "t0");
+    manager.audit_output(&update.calls).unwrap();
+}

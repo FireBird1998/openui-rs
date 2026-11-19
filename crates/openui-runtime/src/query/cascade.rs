@@ -75,7 +75,7 @@ impl QueryManager {
         budget: &EvaluationSession<'_>,
         measured: &PreparedProgram,
         mut nodes: Arc<[Arc<Node>]>,
-        calls: &mut Vec<ToolCall>,
+        requests: &mut runs::QueryRequests,
     ) -> Result<Arc<[Arc<Node>]>, QueryCommandError> {
         if !nodes.iter().any(|n| self.stale(n)) {
             return Ok(nodes);
@@ -210,7 +210,7 @@ impl QueryManager {
                             .saturating_add(node.request.tool_name.len());
                         eval.charge_work(bytes);
                         check_cuts(eval.flags())?;
-                        self.apply_node(node, calls);
+                        self.apply_node(node, requests);
                         if !self.waits(&node.id) {
                             timers.set(&node.id, node.interval.as_ref());
                         }

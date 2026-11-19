@@ -133,6 +133,9 @@ fn replay(scenario: &Json) -> Vec<String> {
             }
             other => panic!("unknown command {other}"),
         };
+        if let Some(u) = &update {
+            manager.audit_output(&u.calls).unwrap();
+        }
         let changed = update.as_ref().is_some_and(|u| u.changed);
         assert_eq!(changed, before != manager.snapshot_json());
         let mut dispatch = Vec::new();

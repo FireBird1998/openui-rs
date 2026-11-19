@@ -135,7 +135,8 @@ pub enum QueryCommand<'a> {
 pub struct QueryUpdate {
     /// Earliest absolute millisecond deadline after this command.
     pub next_refresh_due_ms: Option<u64>,
-    /// Newly wanted calls, in dispatch order.
+    /// Newly wanted calls in dispatch order. Each receipt is pending when the
+    /// command returns. A query call belongs to a key still current after reader propagation.
     pub calls: Vec<ToolCall>,
     /// Whether the snapshot's serialized bytes changed.
     pub changed: bool,
@@ -532,7 +533,7 @@ impl QueryManager {
         ))
     }
 
-    fn apply_nodes(&mut self, program: &ParseResult, nodes: &[Arc<Node>]) -> Vec<ToolCall> {
+    fn apply_nodes(&mut self, program: &ParseResult, nodes: &[Arc<Node>]) -> runs::QueryRequests {
         let active = program
             .query_statements
             .iter()
@@ -549,19 +550,19 @@ impl QueryManager {
             }
             false
         });
-        let mut calls = Vec::new();
+        let mut requests = runs::QueryRequests::default();
         let mut intervals = Vec::new();
         for node in nodes {
-            self.apply_node(node, &mut calls);
+            self.apply_node(node, &mut requests);
             if !self.waits(&node.id) {
                 intervals.push((node.id.as_str(), node.interval.clone()));
             }
         }
         self.clock.reconcile(&active, intervals);
-        calls
+        requests
     }
 
-    fn apply_node(&mut self, node: &Node, calls: &mut Vec<ToolCall>) {
+    fn apply_node(&mut self, node: &Node, requests: &mut runs::QueryRequests) {
         #[cfg(test)]
         round_tests::applied();
         if self.queries.get(&node.id).is_some_and(|q| q.suspended) {
@@ -590,6 +591,10 @@ impl QueryManager {
             }
         });
         if query.key != node.key {
+            #[cfg(test)]
+            if !node.reads.is_empty() {
+                round_tests::moved(&node.id);
+            }
             acquire = true;
             let previous = std::mem::replace(&mut query.key, node.key.clone());
             if let Some(displaced) = query.previous.replace(previous) {
@@ -618,13 +623,7 @@ impl QueryManager {
             && (!entry.failed || query.error.is_none())
             && entry.pending.is_none()
         {
-            calls.push(runs::start_call(
-                &self.owner,
-                &self.lifecycle,
-                entry,
-                key,
-                &query.request,
-            ));
+            requests.request(key, &query.request);
         }
     }
 

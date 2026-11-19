@@ -133,6 +133,9 @@ fn replay(scenario: &JsonValue) -> Vec<String> {
                 "a delivered receipt must be consumed"
             );
         }
+        if let Some(u) = &update {
+            manager.audit_output(&u.calls).unwrap();
+        }
         let changed = update.as_ref().is_some_and(|update| update.changed);
         assert_eq!(changed, before != manager.snapshot_json());
         let mut dispatched = Vec::new();

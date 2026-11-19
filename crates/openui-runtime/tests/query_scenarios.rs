@@ -222,6 +222,9 @@ fn replay(scenario: &JsonValue, mut observe: impl FnMut(usize, String, usize)) {
         if let Some(call) = completing {
             assert!(outstanding.remove(&call).is_some());
         }
+        if let Some(u) = &update {
+            manager.audit_output(&u.calls).unwrap();
+        }
         let changed = update.as_ref().is_some_and(|update| update.changed);
         let mut actual = format!("{{\"snapshot\":{},\"calls\":[", manager.snapshot_json());
         for (offset, call) in update

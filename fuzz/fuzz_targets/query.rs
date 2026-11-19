@@ -182,6 +182,7 @@ fn replay(scenario: &JsonValue, limits: Limits) {
         let pending: Vec<_> = calls.iter().map(|(_, call)| call.id.is_pending()).collect();
         match apply_step(&mut manager, step, &program, &store, &calls) {
             Some(Ok(update)) => {
+                manager.audit_output(&update.calls).unwrap();
                 assert_eq!(update.changed, snapshot != manager.snapshot_json());
                 assert_eq!(update.next_refresh_due_ms, manager.next_refresh_due_ms());
                 match step["kind"].as_str() {

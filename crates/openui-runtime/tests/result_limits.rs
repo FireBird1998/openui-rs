@@ -369,6 +369,7 @@ fn a_long_random_script_keeps_every_invariant_after_every_command() {
                         store: &store,
                     })
                     .unwrap();
+                manager.audit_output(&update.calls).unwrap();
                 outstanding.extend(update.calls.into_iter().map(|call| call.id));
             }
             2 | 3 if !outstanding.is_empty() => {
@@ -398,6 +399,7 @@ fn a_long_random_script_keeps_every_invariant_after_every_command() {
                     Ok((update, refused)) => {
                         deliveries += 1;
                         refusals += usize::from(refused.is_some());
+                        manager.audit_output(&update.calls).unwrap();
                         outstanding.extend(update.calls.into_iter().map(|call| call.id));
                         consumed.push(id);
                     }
@@ -414,12 +416,14 @@ fn a_long_random_script_keeps_every_invariant_after_every_command() {
                 let update = manager.fire_mutation(name, None).unwrap();
                 assert!(update.calls.len() <= 1);
                 mutation_calls.extend(update.calls.iter().map(|call| call.id.clone()));
+                manager.audit_output(&update.calls).unwrap();
                 outstanding.extend(update.calls.into_iter().map(|call| call.id));
             }
             _ => {
                 let update = manager
                     .apply(QueryCommand::Invalidate { statement_ids: &[] })
                     .unwrap();
+                manager.audit_output(&update.calls).unwrap();
                 outstanding.extend(update.calls.into_iter().map(|call| call.id));
             }
         }

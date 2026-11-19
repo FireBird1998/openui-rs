@@ -2,9 +2,10 @@
 // arbitrary completion order, refetches and changes between evaluate and finish.
 import { readFileSync, writeFileSync } from 'node:fs';
 import type { createQueryManager } from './lang-core/src/runtime/queryManager';
-import type { Outcome, Scenario, Step } from './query-scenarios';
+import {dispatchRow, readerPolicies, rows as policies} from './query-reader-policies';
+import type { Dispatch, Outcome, Scenario, Step } from './query-scenarios';
 
-type Script = (calls: readonly { toolName: string }[]) => Iterable<Step>;
+type Script = (calls: readonly Dispatch[]) => Iterable<Step>;
 type Replay = (scenario: Scenario, script?: Script, factory?: typeof createQueryManager) => Promise<string[]>;
 
 export async function runReaders(replay: Replay, random: boolean) {
@@ -15,6 +16,8 @@ export async function runReaders(replay: Replay, random: boolean) {
     writeFileSync('../conformance/golden/query-readers.json', JSON.stringify(Object.fromEntries(rows)) + '\n');
     return;
   }
+  const policy = await readerPolicies();
+  const eager = policies.filter(row => row !== dispatchRow);
   const { withEntryLoading } = await import('./query-reader-loading');
   const waiting = await withEntryLoading(false);
   const entryLoading = await withEntryLoading(true);
@@ -34,7 +37,7 @@ export async function runReaders(replay: Replay, random: boolean) {
     }
     if (pick(2)) lines.reverse();
     const scenario: Scenario = {name: 'reader-seed-' + seed, program: ['$n=0', '$f=0', ...lines].join('\n'), steps: []};
-    function* script(calls: readonly {toolName: string}[]): Generator<Step> {
+    function* script(calls: readonly Dispatch[]): Generator<Step> {
       yield {kind: 'evaluate'};
       let first = 0;
       const pending: number[] = [];
@@ -49,7 +52,8 @@ export async function runReaders(replay: Replay, random: boolean) {
           if (!pick(3)) yield {kind: 'set', name: '$f', value: first};
           const outcome: Outcome = !pick(8) ? {kind: 'mcp-error', message: 'failed'} :
             {kind: 'result', value: pick(4) ? [seed, call] : null};
-          yield {kind: 'complete', call, outcome};
+          const {step, toolName, args} = calls[call];
+          yield {kind: 'complete', dispatch:{step, toolName, args}, outcome};
         }
       }
     }
@@ -58,6 +62,9 @@ export async function runReaders(replay: Replay, random: boolean) {
     const byWaiting = reference.some((row, i) => row !== byEntry[i]) ? await replay(scenario, undefined, waiting) : reference;
     const reasons = Object.fromEntries(byEntry.flatMap((row, i) => row === reference[i] ? [] :
       [[i, row === byWaiting[i] ? 'a-waiting-reader-leaves-its-own-pending-key' : 'return-to-finished-key']]));
-    console.log(JSON.stringify({scenario, reference, byEntry, reasons}));
+    const prior = await replay(scenario, undefined, policy(eager));
+    if (prior.some((v,i) => v !== byEntry[i])) throw Error('loading baseline differs ' + scenario.name);
+    const final = await replay(scenario, undefined, policy(policies.length));
+    console.log(JSON.stringify({scenario, reference, byEntry, reasons, final}));
   }
 }

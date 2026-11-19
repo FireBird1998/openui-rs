@@ -12,6 +12,53 @@ pub(super) struct Request {
     pub(super) args: Option<Value>,
 }
 
+// A reader can visit several keys while one command is still evaluating.
+// Preserve the first request and its order, but create receipts only once
+// the current holders are known. A previous key can retain an older call.
+#[derive(Default)]
+pub(super) struct QueryRequests {
+    keys: HashSet<Arc<str>>,
+    ordered: Vec<(Arc<str>, Arc<Request>)>,
+}
+
+impl QueryRequests {
+    pub(super) fn request(&mut self, key: Arc<str>, request: &Arc<Request>) {
+        if self.keys.insert(key.clone()) {
+            self.ordered.push((key, request.clone()));
+        }
+    }
+
+    pub(super) fn dispatch(
+        self,
+        manager: &mut QueryManager,
+        remembered: Option<(Arc<str>, Arc<Request>)>,
+    ) -> Vec<ToolCall> {
+        if self.ordered.is_empty() && remembered.is_none() {
+            return Vec::new();
+        }
+        let current: HashSet<_> = manager
+            .queries
+            .values()
+            .filter(|q| !q.suspended)
+            .map(|q| q.key.as_ref())
+            .collect();
+        remembered
+            .into_iter()
+            .chain(self.ordered)
+            .filter_map(|(key, request)| {
+                if !current.contains(key.as_ref()) {
+                    return None;
+                }
+                let entry = manager.cache.get_mut(&key)?;
+                entry
+                    .pending
+                    .is_none()
+                    .then(|| start_call(&manager.owner, &manager.lifecycle, entry, key, &request))
+            })
+            .collect()
+    }
+}
+
 impl QueryManager {
     /// Whether a run of this query must do nothing because it waits for a
     /// query it reads. The only place the rule is decided.
@@ -67,27 +114,21 @@ impl QueryManager {
         calls
     }
 
-    /// After a call for `key` was delivered, start the run remembered for the
+    /// After a call for `key` was delivered, take the run remembered for the
     /// key, if any, with the request that was asked for, whether or not the
     /// query that asked is still registered. With no query on the key the
     /// run is forgotten.
-    pub(super) fn run_remembered(&mut self, key: &Arc<str>) -> Option<ToolCall> {
+    pub(super) fn take_remembered(&mut self, key: Arc<str>) -> Option<(Arc<str>, Arc<Request>)> {
         let read = self
             .queries
             .values()
-            .any(|query| !query.suspended && query.key == *key);
-        let entry = self.cache.get_mut(key)?;
+            .any(|query| !query.suspended && query.key == key);
+        let entry = self.cache.get_mut(&key)?;
         let asked = entry.run_again.take()?;
         if !read || entry.pending.is_some() {
             return None;
         }
-        Some(start_call(
-            &self.owner,
-            &self.lifecycle,
-            entry,
-            key.clone(),
-            &asked,
-        ))
+        Some((key, asked))
     }
 }
 

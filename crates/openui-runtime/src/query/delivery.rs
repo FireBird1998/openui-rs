@@ -38,13 +38,11 @@ impl ToolDelivery<'_> {
             self.id.0.consumed.store(true, Ordering::Relaxed);
             return Ok(self.manager.idle_update());
         }
-        let mut calls: Vec<_> = self
+        let remembered = self
             .id
             .query_key()
-            .and_then(|key| self.candidate.run_remembered(&key))
-            .into_iter()
-            .collect();
-        let remembered = calls.len();
+            .and_then(|key| self.candidate.take_remembered(key));
+        let mut requests = runs::QueryRequests::default();
         // A refusal cannot change source data. Without its borrowed context,
         // leave a previously bounded cascade stale for the next trigger.
         if self.refused.is_some() && context.is_none() && self.needs_reader_context() {
@@ -85,7 +83,7 @@ impl ToolDelivery<'_> {
                     &budget,
                     &plan.measured,
                     plan.nodes.clone(),
-                    &mut calls,
+                    &mut requests,
                 )
                 .and_then(|nodes| {
                     cascade.admit_snapshot_values()?;
@@ -98,16 +96,17 @@ impl ToolDelivery<'_> {
                     self.candidate = cascade;
                 }
                 Err(QueryCommandError::Limit(limit)) => {
-                    calls.truncate(remembered);
+                    requests = runs::QueryRequests::default();
                     self.candidate.suspend_stale_readers(&plan.nodes, limit);
                 }
                 Err(QueryCommandError::Evaluation(_)) if self.refused.is_some() => {
-                    calls.truncate(remembered);
+                    requests = runs::QueryRequests::default();
                     self.candidate.reader_rounds_limited = true;
                 }
                 Err(e) => return Err(e),
             }
         }
+        let calls = requests.dispatch(&mut self.candidate, remembered);
         let update = self.candidate.publish_admitted(calls, self.manager);
         *self.manager = self.candidate;
         self.id.0.consumed.store(true, Ordering::Relaxed);

@@ -230,6 +230,12 @@ impl Mutations {
         })
     }
 
+    pub(super) fn pending_registration(&self, call: &MutationCall) -> Option<&str> {
+        let (name, entry) = self.entries.get_key_value(&call.statement)?;
+        (call.registration.ptr_eq(&Arc::downgrade(&entry.identity)) && !entry.accepts_submission())
+            .then_some(name.as_str())
+    }
+
     pub(super) fn contains(&self, id: &str) -> bool {
         self.entries.contains_key(id)
     }
