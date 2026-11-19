@@ -103,7 +103,7 @@ the current slot count; after a handle drop on the same caller thread it also
 provides a dispatch barrier for cleanup. Kotlin GC may delay destruction.
 
 maxContinuations defaults to 64 and must be at least 1. At capacity, a **new
-suspension evicts the oldest pending outcome**, releasing its program/run on the
+embedder-managed suspension evicts the oldest pending outcome**, releasing its program/run on the
 worker; the old token reports EvictedHandle. Runs that finish without suspension,
 run(nil/null), and runLegacy remain available and do not evict anything.
 Eviction does not undo earlier writes or cancel external host I/O. Consumed tokens
@@ -417,6 +417,28 @@ driver loop. Settled state changes evaluate queries before returning.
 `changed` accumulates changes to the query snapshot, its presence on attach/detach, or its evaluation
 error since the previous drain. The drain clears this flag and transfers
 the calls once. Its `evaluationError` gives the current diagnostic.
+
+With a provider, a settled program registers mutation tool names. A mutation
+Run evaluates its arguments against the current state and suspends the plan.
+A second click while loading ends that second plan at the Run step. Events
+preceding the Run are in the click's ordinary action output.
+
+Report the mutation's outcome with `completeToolCall`, then take the same
+query update. Its `actions` list holds each resumed action output in completion
+order. WebAssembly exposes `actionCount` and `actionAt(index)`. A successful
+outcome runs the tail against the current program, state and results. A failed
+outcome ends the plan and yields an empty segment. Read the snapshot for the
+mutation's error. A later action step can itself fail, and its segment includes
+the earlier events and the failed step. A tail can also suspend again or change
+state that requests more calls. The same drain transfers all of these effects
+once. Its redraw flag includes a resumed store write and a mutation reference
+change hidden by a reserved snapshot list.
+
+A managed submission uses one `maxContinuations` slot. At capacity its Run
+step reports `LimitExceeded` and a size cut before dispatch. Detaching drops
+pending managed plans and preserves already completed segments for the next
+drain. Without a provider, a mutation Run emits its host event and gives the
+embedder its ordinary continuation.
 
 Skipping a drain leaves still-pending calls parked in dispatch order.
 Later operations discard calls whose entries have been released. The

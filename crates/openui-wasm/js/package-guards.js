@@ -293,8 +293,8 @@ const openuiSurface = new Map([
   }],
   [WantedToolCall, { methods: { free: openuiFree }, accessors: {
     toolName: { get: openuiNone }, argumentsJson: { get: openuiNone } } }],
-  [QueryEffects, { methods: { free: openuiFree, callAt: openuiSpec([openuiLimit]) }, accessors: {
-    callCount: { get: openuiNone }, changed: { get: openuiNone }, evaluationError: { get: openuiJson } } }],
+  [QueryEffects, { methods: { free: openuiFree, actionAt: openuiSpec([openuiLimit]), callAt: openuiSpec([openuiLimit]) }, accessors: {
+    actionCount: { get: openuiNone }, callCount: { get: openuiNone }, changed: { get: openuiNone }, evaluationError: { get: openuiJson } } }],
   [EvaluationHandle, { methods: { free: openuiFree } }],
   [ActionHandle, { methods: { free: openuiFree, retain: openuiNone } }],
   [ContinuationHandle, { methods: { free: openuiFree } }],

@@ -10,6 +10,7 @@ use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Weak, mpsc};
 
 mod mcp;
+mod mutations;
 mod queries;
 pub use mcp::extract_mcp_tool_result;
 pub use openui_runtime::{ToolCall as WantedToolCall, ToolCallOutcome};
@@ -181,7 +182,8 @@ pub struct RuntimeLimits {
     /// binding annotations (default 8 MiB). Draws use only runtime limits.
     pub max_json_bytes: u64,
     /// Maximum simultaneous suspended runs (default 64, minimum 1). A new
-    /// suspension evicts the oldest pending run when full.
+    /// host handoff evicts the oldest pending run when full. A provider-managed
+    /// submission at capacity returns a size cut at its Run step.
     pub max_continuations: u64,
     /// Optional smaller retained action-path bound. Absent preserves max_json_bytes.
     pub max_action_path_bytes: Option<u64>,
@@ -306,7 +308,7 @@ impl From<openui_runtime::FieldWrite> for FieldWriteOutput {
 }
 
 /// One segment of an action run, before or after a mutation handoff.
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 pub struct ActionOutput {
     /// Ordered `HostEvent::to_json` strings. Nothing has been sent to the host.
     pub events: Vec<String>,
@@ -321,7 +323,7 @@ pub struct ActionOutput {
 }
 
 /// First stopped action step, with a typed reason.
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 pub struct ActionFailureOutput {
     /// Zero-based step, absent for legacy/default actions.
     pub step: Option<u64>,
@@ -610,6 +612,11 @@ impl SessionCore {
             refs,
             functions.as_ref(),
         );
+        let input = if managed.is_some() {
+            input.with_managed_mutations()
+        } else {
+            input
+        };
         let run = openui_runtime::run_action_with_limits(
             input,
             &mut self.store,
@@ -632,7 +639,26 @@ impl SessionCore {
             .map(|event| event.to_json())
             .collect::<Result<Vec<_>, _>>()
             .map_err(|e| runtime_error(RuntimeFailure::Limit(e), self.core_limits.result_size()))?;
-        let continuation = if let Some(continuation) = run.continuation.take() {
+        let mut output = ActionOutput {
+            events,
+            failure: run.failure.take().map(|f| ActionFailureOutput {
+                step: f.step.map(|v| v as u64),
+                error: runtime_error(
+                    RuntimeFailure::Binding(f.cause),
+                    self.core_limits.result_size(),
+                ),
+            }),
+            size_limited: run.size_limited,
+            depth_limited: run.depth_limited,
+            continuation: None,
+        };
+        if let (Some(request), Some(continuation)) =
+            (run.mutation.take(), run.continuation.as_ref())
+        {
+            self.dispatch_mutation(request, continuation, &mut output);
+            return Ok(output);
+        }
+        output.continuation = if let Some(continuation) = run.continuation.take() {
             self.next_continuation = self
                 .next_continuation
                 .checked_add(1)
@@ -655,25 +681,14 @@ impl SessionCore {
                 PendingContinuation {
                     continuation,
                     handle: Arc::downgrade(&handle),
+                    call: None,
                 },
             );
             Some(handle)
         } else {
             None
         };
-        Ok(ActionOutput {
-            events,
-            failure: run.failure.map(|f| ActionFailureOutput {
-                step: f.step.map(|v| v as u64),
-                error: runtime_error(
-                    RuntimeFailure::Binding(f.cause),
-                    self.core_limits.result_size(),
-                ),
-            }),
-            size_limited: run.size_limited,
-            depth_limited: run.depth_limited,
-            continuation,
-        })
+        Ok(output)
     }
 }
 
@@ -1386,19 +1401,23 @@ impl SessionCore {
                 .as_ref()
                 .map(|m| m.prepared_results(s.reference_limits));
             let refs = managed.as_ref().unwrap_or(refs);
-            let run = openui_runtime::resume_action(
-                tree_input(
-                    &s.program,
-                    &s.library,
-                    &s.bindings,
-                    refs,
-                    functions.as_ref(),
-                ),
-                &mut s.store,
-                &entry.continuation,
-                succeeded,
-            )
-            .map_err(|e| runtime_error(RuntimeFailure::Resume(e), s.core_limits.result_size()))?;
+            let input = tree_input(
+                &s.program,
+                &s.library,
+                &s.bindings,
+                refs,
+                functions.as_ref(),
+            );
+            let input = if managed.is_some() {
+                input.with_managed_mutations()
+            } else {
+                input
+            };
+            let run =
+                openui_runtime::resume_action(input, &mut s.store, &entry.continuation, succeeded)
+                    .map_err(|e| {
+                        runtime_error(RuntimeFailure::Resume(e), s.core_limits.result_size())
+                    })?;
             drop(functions);
             s.output(run)
         })
@@ -1440,6 +1459,7 @@ fn action_value<'a>(root: Option<&'a Value>, path: &[String]) -> Result<&'a Valu
 struct PendingContinuation {
     continuation: ActionContinuation,
     handle: Weak<ContinuationHandle>,
+    call: Option<openui_runtime::ToolCallId>,
 }
 
 enum RuntimeFailure {

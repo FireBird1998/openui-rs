@@ -1,4 +1,5 @@
 //! The clock-free query manager and its tool provider seam.
+mod mutations;
 mod session;
 use crate::tree::TreeScope;
 use crate::{
@@ -6,6 +7,7 @@ use crate::{
     ExpressionOutput, ExpressionValue, JsObject, LimitError, Limits, PreparedReferenceValue,
     PreparedReferenceValues, Store, TreeInput, Value,
 };
+use mutations::{MutationCall, Mutations};
 use openui_lang::{Ast, JsonValue, ParseResult, PreparedProgram, QueryStatement};
 pub use session::ToolCallOutcome;
 use std::cell::Cell;
@@ -26,8 +28,13 @@ impl fmt::Debug for ToolCallId {
 
 struct CallIdentity {
     manager: Weak<()>,
-    target: Weak<PendingCall>,
+    target: CallTarget,
     consumed: AtomicBool,
+}
+
+enum CallTarget {
+    Query(Weak<PendingCall>),
+    Mutation(MutationCall),
 }
 
 /// A call the embedder should perform with its tool provider.
@@ -38,7 +45,7 @@ pub struct ToolCall {
     pub id: ToolCallId,
     /// The evaluated tool name coerced to a JavaScript string.
     pub tool_name: String,
-    /// Evaluated arguments. Nullish arguments become an empty object.
+    /// Evaluated arguments. Queries normalize nullish arguments to an empty object.
     /// A function at the root has no JSON projection.
     pub args: Option<Value>,
 }
@@ -47,7 +54,7 @@ pub struct ToolCall {
 #[derive(Debug)]
 #[non_exhaustive]
 pub enum ToolOutcome<'a> {
-    /// Host JSON, with a missing result treated as JSON null.
+    /// Host JSON. A missing query result becomes null. A missing mutation result omits data.
     Result(Option<&'a JsonValue>),
     /// A host result already represented as an evaluator value (including MCP numbers).
     ResultValue(&'a Value),
@@ -87,6 +94,8 @@ pub struct QueryUpdate {
     pub calls: Vec<ToolCall>,
     /// Whether the snapshot's serialized bytes changed.
     pub changed: bool,
+    /// A program-visible mutation result changed under a reserved snapshot list.
+    pub(crate) hidden_change: bool,
 }
 
 /// A refused query command. The previous snapshot and pending calls survive.
@@ -99,6 +108,13 @@ pub enum QueryCommandError {
     Limit(LimitError),
     /// Evaluation or tool-name coercion failed.
     Evaluation(EvaluationFailure),
+}
+
+impl QueryUpdate {
+    /// Whether to redraw the tree, including reads of reserved statement names.
+    pub fn needs_redraw(&self) -> bool {
+        self.changed || self.hidden_change
+    }
 }
 
 impl fmt::Display for QueryCommandError {
@@ -117,6 +133,7 @@ impl std::error::Error for QueryCommandError {}
 pub struct QueryManager {
     owner: Arc<()>,
     limits: Limits,
+    mutations: Mutations,
     queries: HashMap<String, Query>,
     order: Vec<String>,
     cache: HashMap<Arc<str>, CacheEntry>,
@@ -180,6 +197,7 @@ impl QueryManager {
         let mut manager = Self {
             owner: Arc::new(()),
             limits,
+            mutations: Mutations::default(),
             queries: HashMap::new(),
             order: Vec::new(),
             cache: HashMap::new(),
@@ -214,7 +232,7 @@ impl QueryManager {
                     || (entry.failed && visible_error)
                     || entry.pending.as_ref().is_some_and(|pending| {
                         let target = Arc::downgrade(pending);
-                        outstanding.any(|id| id.0.target.ptr_eq(&target))
+                        outstanding.any(|id| matches!(&id.0.target, CallTarget::Query(call) if call.ptr_eq(&target)))
                     })
             })
     }
@@ -292,6 +310,7 @@ impl QueryManager {
 
     /// Apply a command. An outcome for a released cache entry is discarded.
     pub fn apply(&mut self, command: QueryCommand<'_>) -> Result<QueryUpdate, QueryCommandError> {
+        let previous = self.mutations.hidden_results();
         let calls = match command {
             QueryCommand::Evaluate { program, store } => {
                 let nodes = self.evaluate_nodes(&TreeInput::new(program), store)?;
@@ -304,6 +323,7 @@ impl QueryManager {
                     return Ok(QueryUpdate {
                         calls: Vec::new(),
                         changed: false,
+                        hidden_change: false,
                     });
                 }
                 Vec::new()
@@ -315,6 +335,7 @@ impl QueryManager {
         Ok(QueryUpdate {
             calls,
             changed: self.rebuild_snapshot(),
+            hidden_change: self.mutations.hidden_changed(&previous),
         })
     }
 
@@ -323,6 +344,25 @@ impl QueryManager {
         input: &TreeInput<'a>,
         store: &Store,
     ) -> Result<Vec<Node<'a>>, QueryCommandError> {
+        self.with_statement_evaluator(input, store, |scope, eval| {
+            let mut nodes = Vec::new();
+            for statement in &input.result.query_statements {
+                eval.charge_work(statement.statement_id.len().saturating_add(1));
+                check_cuts(eval.flags())?;
+                if statement.complete {
+                    nodes.push(scope.node(statement, eval)?);
+                }
+            }
+            Ok(nodes)
+        })
+    }
+
+    fn with_statement_evaluator<T>(
+        &self,
+        input: &TreeInput<'_>,
+        store: &Store,
+        evaluate: impl FnOnce(&QueryScope<'_>, &ExpressionEvaluator<'_>) -> Result<T, QueryCommandError>,
+    ) -> Result<T, QueryCommandError> {
         let program = input.result;
         let program_input = PreparedProgram::new(program, self.limits);
         check_cuts(program_input.flags())?;
@@ -332,6 +372,7 @@ impl QueryManager {
                 results.define(id, data.clone());
             }
         }
+        self.mutations.write_results(&mut results);
         let prepared = PreparedReferenceValues::new(&results);
         let scope = QueryScope {
             manager: self,
@@ -344,17 +385,7 @@ impl QueryManager {
             .input_bytes()
             .saturating_add(prepared.input_bytes());
         let session = EvaluationSession::with_limits(&scope, bytes, self.limits);
-        session.with_evaluator(|eval| {
-            let mut nodes = Vec::new();
-            for statement in &program.query_statements {
-                eval.charge_work(statement.statement_id.len().saturating_add(1));
-                check_cuts(eval.flags())?;
-                if statement.complete {
-                    nodes.push(scope.node(statement, eval)?);
-                }
-            }
-            Ok(nodes)
-        })
+        session.with_evaluator(|eval| evaluate(&scope, eval))
     }
 
     fn apply_nodes(&mut self, program: &ParseResult, nodes: Vec<Node<'_>>) -> Vec<ToolCall> {
@@ -415,7 +446,7 @@ impl QueryManager {
                 });
                 let id = ToolCallId(Arc::new(CallIdentity {
                     manager: Arc::downgrade(&self.owner),
-                    target: Arc::downgrade(&pending),
+                    target: CallTarget::Query(Arc::downgrade(&pending)),
                     consumed: AtomicBool::new(false),
                 }));
                 entry.pending = Some(pending);
@@ -435,9 +466,15 @@ impl QueryManager {
         outcome: ToolOutcome<'_>,
     ) -> Result<bool, QueryCommandError> {
         self.check_call(id)?;
+        let target = match &id.0.target {
+            CallTarget::Mutation(call) => {
+                return self.mutations.complete(call, outcome, self.limits);
+            }
+            CallTarget::Query(target) => target,
+        };
         // Only the originating entry owns this target. A host holding an old
         // identity cannot retain the key, its data, or a replacement's call.
-        let active = id.0.target.upgrade().and_then(|pending| {
+        let active = target.upgrade().and_then(|pending| {
             self.cache
                 .get_mut(&pending.key)
                 .map(|entry| (pending, entry))
@@ -520,6 +557,7 @@ impl QueryManager {
                 errors.push(error.clone());
             }
         }
+        self.mutations.append_errors(&mut errors);
         let mut snapshot = JsObject::new();
         snapshot.define("__openui_loading", Value::Arr(Arc::new(loading)));
         snapshot.define("__openui_refetching", Value::Arr(Arc::new(refetching)));
@@ -532,6 +570,7 @@ impl QueryManager {
                 snapshot.set(id, result.clone());
             }
         }
+        self.mutations.write_snapshot(&mut snapshot);
         let snapshot = Arc::new(snapshot);
         let json = crate::tree::value_json(&Value::Obj(snapshot.clone()));
         if json == self.snapshot_json {

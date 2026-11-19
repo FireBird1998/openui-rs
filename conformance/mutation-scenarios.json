@@ -1,0 +1,111 @@
+[
+  {
+    "name": "submit once, retain failure while retrying, recover",
+    "program": "q=Query(\"query\")\nm=Mutation(\"save\")\nn=Mutation(\"post\")",
+    "steps": [
+      {"kind":"evaluate"},
+      {"kind":"register"},
+      {"kind":"fire","name":"unknown","args":{}},
+      {"kind":"fire","name":"m","args":{}},
+      {"kind":"fire","name":"m","args":{}},
+      {"kind":"complete","call":1,"outcome":{"kind":"tool-not-found","availableTools":["b","a"]}},
+      {"kind":"fire","name":"m","args":{}},
+      {"kind":"complete","call":2,"outcome":{"kind":"mcp-error","message":""}},
+      {"kind":"fire","name":"n","args":{}},
+      {"kind":"complete","call":3,"outcome":{"kind":"tool-error","message":"timeout"}},
+      {"kind":"fire","name":"m","args":{}},
+      {"kind":"complete","call":4,"outcome":{"kind":"mcp-error","message":"denied"}},
+      {"kind":"fire","name":"m","args":{}},
+      {"kind":"complete","call":5,"outcome":{"kind":"result","value":{"x":3}}},
+      {"kind":"complete","call":0,"outcome":{"kind":"result","value":17}},
+      {"kind":"fire","name":"n","args":{}},
+      {"kind":"complete","call":6,"outcome":{"kind":"tool-not-found","availableTools":[]}},
+      {"kind":"register"},
+      {"kind":"replace","program":""},
+      {"kind":"register"},
+      {"kind":"evaluate"}
+    ]
+  },
+  {
+    "name": "rename while in flight, then remove and reuse",
+    "program": "q=Query(\"query\")\nm=Mutation(\"save\")\nn=Mutation(\"post\")",
+    "steps": [
+      {"kind":"register"},
+      {"kind":"fire","name":"m","args":{}},
+      {"kind":"replace","program":"m=Mutation(42)"},
+      {"kind":"register"},
+      {"kind":"fire","name":"m","args":{}},
+      {"kind":"complete","call":0,"outcome":{"kind":"tool-not-found","availableTools":[]}},
+      {"kind":"complete","call":1,"outcome":{"kind":"result","value":null}},
+      {"kind":"fire","name":"m","args":{}},
+      {"kind":"replace","program":""},
+      {"kind":"register"},
+      {"kind":"replace","program":"m=Mutation(\"new\")"},
+      {"kind":"register"},
+      {"kind":"fire","name":"m","args":{}},
+      {"kind":"complete","call":2,"outcome":{"kind":"result","value":"detached"}},
+      {"kind":"complete","call":3,"outcome":{"kind":"result","value":"current"}},
+      {"kind":"fire","name":"m","args":{}},
+      {"kind":"complete","call":4,"outcome":{"kind":"result"}}
+    ]
+  },
+  {
+    "name": "mutation shadows a registered query",
+    "program": "m=Query(\"read\",{},99)",
+    "steps": [
+      {"kind":"evaluate"},
+      {"kind":"replace","program":"m=Mutation(\"write\")"},
+      {"kind":"register"},
+      {"kind":"fire","name":"m","args":{}},
+      {"kind":"complete","call":0,"outcome":{"kind":"result","value":"hidden"}},
+      {"kind":"complete","call":1,"outcome":{"kind":"result","value":"shown"}},
+      {"kind":"replace","program":""},
+      {"kind":"register"},
+      {"kind":"evaluate"}
+    ]
+  },
+  {
+    "name": "evaluated tool names and registration order",
+    "program": "$tool=\"original\"\nm=Mutation($tool)\nn=Mutation(\"n\")",
+    "steps": [
+      {"kind":"register"},
+      {"kind":"set","name":"$tool","value":"new"},
+      {"kind":"fire","name":"m","args":{}},
+      {"kind":"complete","call":0,"outcome":{"kind":"result","value":1}},
+      {"kind":"register"},
+      {"kind":"fire","name":"m","args":{}},
+      {"kind":"replace","program":"n=Mutation(\"n\")\nm=Mutation(\"new\")"},
+      {"kind":"register"},
+      {"kind":"complete","call":1,"outcome":{"kind":"tool-error","message":"bad"}},
+      {"kind":"fire","name":"n","args":{}},
+      {"kind":"complete","call":2,"outcome":{"kind":"mcp-error","message":"second"}}
+    ]
+  },
+  {
+    "name": "tool names retain raw identity and data arguments keep null and undefined",
+    "program": "$tool={x:1}\nm=Mutation($tool)",
+    "steps": [
+      {"kind":"register"},
+      {"kind":"fire","name":"m","args":null},
+      {"kind":"complete","call":0,"outcome":{"kind":"mcp-error","message":"x"}},
+      {"kind":"register"},
+      {"kind":"replace","program":"m=Mutation({x:1})"},
+      {"kind":"register"},
+      {"kind":"fire","name":"m"},
+      {"kind":"complete","call":1,"outcome":{"kind":"result"}},
+      {"kind":"register"}
+    ]
+  },
+  {
+    "name": "mutation-status-list-names",
+    "program": "q=Query(\"read\")\n__openui_loading=Mutation(\"save\")\n__openui_refetching=Mutation(\"again\")\n__openui_errors=Mutation(\"error\")",
+    "steps": [
+      {"kind":"evaluate"},
+      {"kind":"register"},
+      {"kind":"fire","name":"__openui_loading","args":{}},
+      {"kind":"complete","call":1,"outcome":{"kind":"result","value":1}},
+      {"kind":"fire","name":"__openui_errors","args":{}},
+      {"kind":"complete","call":2,"outcome":{"kind":"tool-error","message":"failed"}}
+    ]
+  }
+]

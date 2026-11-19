@@ -1,0 +1,32 @@
+import { expect, test } from 'bun:test';
+import { kind, wasm } from './support';
+
+test('a managed mutation resumes through the guarded drain and cannot cross sessions', () => {
+  using lib = new wasm.ComponentLibrary('{"$defs":{"Box":{"properties":{"action":{}}}}}');
+  using s = new wasm.RuntimeSession(lib);
+  using other = new wasm.RuntimeSession(lib);
+  s.attachToolProvider(); other.attachToolProvider();
+  using p = wasm.parseProgram('m=Mutation("save",{})\nroot=Box(Action([@Run(m),@OpenUrl("done")]))',lib);
+  using shown = s.replaceProgram(p,undefined,undefined,true);
+  using draw = shown.evaluation;
+  using evaluation = draw.evaluation;
+  using button = s.actionAt(evaluation,['props','action']);
+  using run = s.run(button,'click');
+  expect(run.continuation).toBeUndefined();
+  expect(run.events).toEqual([]);
+  using wanted = s.takeQueryUpdate();
+  using call = wanted.callAt(0n);
+  expect(call.toolName).toBe('save');
+  expect(wanted.actionCount).toBe(0n);
+  kind(() => other.completeToolCall(call,'{"value":1}'),'InvalidToolCall');
+  s.completeToolCall(call,'{"value":1}');
+  kind(() => s.completeToolCall(call,'{"value":2}'),'InvalidToolCall');
+  using effects = s.takeQueryUpdate();
+  expect(effects.actionCount).toBe(1n);
+  expect(effects.actionAt(1n)).toBeUndefined();
+  using tail = effects.actionAt(0n);
+  expect(tail.events.map(JSON.parse)[0].params.url).toBe('done');
+  expect(tail.failure).toBeNull();
+  using next = s.takeQueryUpdate();
+  expect(next.actionCount).toBe(0n);
+});

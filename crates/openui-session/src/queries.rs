@@ -7,14 +7,16 @@ use openui_runtime::{QueryCommandError, QueryManager, QueryUpdate, ToolCallId};
 #[derive(Default, Debug, Clone)]
 pub struct QueryEffects {
     pub calls: Vec<Arc<WantedToolCall>>,
+    /// Resumed action segments in completion order. Drained exactly once.
+    pub actions: Vec<ActionOutput>,
     pub changed: bool,
     pub evaluation_error: Option<OpenUiError>,
 }
 
 impl QueryEffects {
-    fn record(&mut self, update: QueryUpdate) {
+    pub(super) fn record(&mut self, update: QueryUpdate) {
         self.calls.retain(|call| call.id.is_pending());
-        self.changed |= update.changed;
+        self.changed |= update.needs_redraw();
         self.calls.extend(update.calls.into_iter().map(Arc::new));
     }
 }
@@ -67,7 +69,7 @@ pub(super) fn draw<T>(
     match manager {
         None => Ok((draw_with(refs)?, None)),
         Some(manager) if !register => Ok((draw_with(&manager.prepared_results(limits))?, None)),
-        Some(manager) => match manager.evaluate_transaction(input, store, |candidate| {
+        Some(manager) => match manager.settled_transaction(input, store, |candidate| {
             draw_with(&candidate.prepared_results(limits)).map_err(DrawError::Screen)
         }) {
             Ok((output, update)) => Ok((output, Some(Ok(update)))),
@@ -99,7 +101,9 @@ impl SessionCore {
 
     pub fn detach_tool_provider(&mut self) {
         if self.manager.take().is_some() {
+            self.continuations.retain(|_, entry| entry.call.is_none());
             self.query_effects = QueryEffects {
+                actions: std::mem::take(&mut self.query_effects.actions),
                 changed: true,
                 ..QueryEffects::default()
             };
@@ -116,6 +120,7 @@ impl SessionCore {
 
     pub fn take_query_update(&mut self) -> QueryEffects {
         QueryEffects {
+            actions: std::mem::take(&mut self.query_effects.actions),
             calls: std::mem::take(&mut self.query_effects.calls),
             changed: std::mem::take(&mut self.query_effects.changed),
             evaluation_error: self.query_effects.evaluation_error.clone(),
@@ -167,9 +172,13 @@ impl SessionCore {
                     &self.bindings,
                     functions.as_ref(),
                 );
-                manager
-                    .evaluate_transaction(&input, &self.store, |_| Ok::<_, OpenUiError>(()))
-                    .map(|(_, update)| update)
+                let read = |_: &QueryManager| Ok::<_, OpenUiError>(());
+                if self.query_inputs_changed {
+                    manager.settled_transaction(&input, &self.store, read)
+                } else {
+                    manager.evaluate_transaction(&input, &self.store, read)
+                }
+                .map(|(_, update)| update)
             });
             self.query_inputs_changed = false;
             self.record_registration(result);
@@ -181,6 +190,13 @@ impl SessionCore {
         call: &ToolCallId,
         outcome: ToolCallOutcome,
     ) -> Result<(), OpenUiError> {
+        if let Some((&generation, _)) = self
+            .continuations
+            .iter()
+            .find(|(_, entry)| entry.call.as_ref() == Some(call))
+        {
+            return self.complete_mutation(generation, call, outcome);
+        }
         let manager = self.manager.as_mut().ok_or(OpenUiError::InvalidToolCall)?;
         let update = manager.complete_tool_call(call, outcome)?;
         self.query_effects.record(update);

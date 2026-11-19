@@ -1,0 +1,76 @@
+// Clock-free mutation commands run against the vendored manager.
+import { readFileSync, writeFileSync } from 'node:fs';
+import { replay, withFakeClock, type Outcome, type Scenario, type Step } from './query-scenarios';
+
+async function randomReplay(seed: number) {
+  const name = seed % 16 === 0 ? '__openui_loading' : 'm';
+  const program = `q=Query("read")\n${name}=Mutation("write")\nn=Mutation("other")`;
+  const scenario: Scenario = { name: 'mutation-seed-' + seed, program, steps: [] };
+  let state = seed;
+  function pick(count: number) {
+    state = (Math.imul(1664525, state) + 1013904223) >>> 0;
+    return (state >>> 8) % count;
+  }
+  function* script(calls: readonly unknown[]): Generator<Step> {
+    const pending = new Set<number>();
+    yield { kind: 'evaluate' };
+    pending.add(0);
+    yield { kind: 'register' };
+    for (let i = 0; i < 32; i++) {
+      const command = pick(6);
+      if (command === 0) {
+        const mutation = pick(3) ? `${name}=Mutation("w${pick(3)}")\n` : '';
+        yield { kind: 'replace', program: `q=Query("read")\n${mutation}n=Mutation("other")` };
+        yield { kind: 'register' };
+      } else if (pending.size && command <= 2) {
+        const call = [...pending][pick(pending.size)];
+        pending.delete(call);
+        const outcomes: Outcome[] = [
+          { kind: 'result', value: i }, { kind: 'mcp-error', message: '' },
+          { kind: 'tool-error', message: 'offline' }, { kind: 'tool-not-found', availableTools: ['x'] },
+        ];
+        yield { kind: 'complete', call, outcome: outcomes[pick(outcomes.length)] };
+      } else {
+        const first = calls.length;
+        yield { kind: 'fire', name: pick(2) ? name : 'n', args: { i } };
+        if (calls.length > first) pending.add(first);
+      }
+    }
+    for (const call of pending) yield { kind: 'complete', call, outcome: { kind: 'result', value: null } };
+  }
+  const reference = await replay(scenario, script);
+  return { scenario, reference };
+}
+
+// Only the upstream side of the manager dispose boundary exists until #89.
+async function disposeRows() {
+  const { createQueryManager } = await import('./lang-core/src/runtime/queryManager');
+  const rows = [];
+  for (const success of [true, false]) {
+    const { promise, resolve, reject } = Promise.withResolvers<unknown>();
+    const manager = createQueryManager({ callTool: () => promise });
+    manager.registerMutations([{ statementId: 'm', toolName: 'save' }]);
+    const plan = manager.fireMutation('m', {});
+    manager.dispose();
+    const before = manager.getSnapshot();
+    if (success) resolve(3);
+    else reject(new Error('late'));
+    rows.push(JSON.stringify({
+      success, before, resumed: await plan, after: manager.getSnapshot(),
+      result: manager.getMutationResult('m'), fireAfterDispose: await manager.fireMutation('m', {}),
+    }));
+  }
+  return rows;
+}
+
+await withFakeClock(async () => {
+  if (process.argv[2] === '--random') {
+    for (let seed = 1; seed <= 512; seed++) console.log(JSON.stringify(await randomReplay(seed)));
+  } else {
+    const scenarios: Scenario[] = JSON.parse(readFileSync('../conformance/mutation-scenarios.json', 'utf8'));
+    const rows = [];
+    for (const scenario of scenarios) rows.push(...await replay(scenario));
+    writeFileSync('../conformance/golden/mutation-scenarios.jsonl', rows.join('\n') + '\n');
+    writeFileSync('../conformance/golden/mutation-dispose.jsonl', (await disposeRows()).join('\n') + '\n');
+  }
+});

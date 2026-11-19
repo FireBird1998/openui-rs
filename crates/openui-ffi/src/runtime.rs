@@ -33,7 +33,8 @@ pub struct RuntimeLimits {
     /// binding annotations (default 8 MiB). Draws use only runtime limits.
     pub max_json_bytes: u64,
     /// Maximum simultaneous suspended runs (default 64, minimum 1). A new
-    /// suspension evicts the oldest pending run when full.
+    /// host handoff evicts the oldest pending run when full. A managed submission
+    /// at capacity returns a size cut at its Run step.
     pub max_continuations: u64,
     /// Optional smaller retained action-path bound; absent preserves max_json_bytes.
     #[uniffi(default = None)]

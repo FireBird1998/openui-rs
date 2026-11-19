@@ -29,10 +29,22 @@ pub struct ActionFailure {
     /// A malformed plan, failed evaluation, refused write, or cut.
     pub cause: BindingWriteError,
 }
+/// A mutation step awaiting dispatch to an attached tool provider.
+#[derive(Debug)]
+pub struct MutationRequest {
+    /// Zero-based plan step.
+    pub step: usize,
+    /// Mutation registration to fire. A non-string target matches no registration.
+    pub statement: Option<String>,
+    /// Arguments evaluated at the Run step. None denotes undefined.
+    pub args: Option<Value>,
+}
 /// Ordered effects and diagnostics from an action run or resumed segment.
 #[derive(Debug, Default)]
 #[non_exhaustive]
 pub struct ActionRun {
+    /// A provider-managed suspension: step index, statement name and evaluated arguments.
+    pub mutation: Option<MutationRequest>,
     memory: Option<crate::EvaluationMemory>,
     /// Handler arguments, in step order. Nothing has been sent to the host.
     pub events: Vec<HostEvent>,
@@ -450,6 +462,7 @@ fn execute(
             out.fail(Some(index), BindingWriteError::Cut(run.budget.flags()));
             break;
         }
+        run.next = index;
         let result = run.step(&context, store, step, supplied, &mut out);
         out.record_memory(&run);
         match result {
@@ -742,6 +755,22 @@ impl RunState {
         out: &mut ActionRun,
     ) -> Result<bool, BindingWriteError> {
         let mutation = matches!(fields.get("refType"),Some(Value::Str(t))if t=="mutation");
+        if mutation && context.input.managed_mutations {
+            let id = match fields.get("statementId") {
+                Some(Value::Str(id)) => Some(id.as_str()),
+                _ => None,
+            };
+            let args = self.mutation_args(context, store, id, supplied)?;
+            let id = id
+                .map(|name| self.scope(|e| copy_in(e, name, self.limits)))
+                .transpose()?;
+            out.mutation = Some(MutationRequest {
+                step: self.next,
+                statement: id,
+                args,
+            });
+            return Ok(true);
+        }
         self.scope(|e| {
             if e.reserve_container_storage(3) {
                 Ok(())
@@ -755,17 +784,11 @@ impl RunState {
         }
         params.define("refType", text(if mutation { "mutation" } else { "query" }));
         if mutation {
-            let args = if let Some(Value::Str(id)) = fields.get("statementId")
-                && let Some(args) = context
-                    .mutations
-                    .get(id.as_str())
-                    .and_then(|i| context.input.result.mutation_statements.get(*i))
-                    .and_then(|m| m.args.as_ref())
-            {
-                context.evaluate(self, store, args.into(), supplied)?
-            } else {
-                Some(object([]))
+            let id = match fields.get("statementId") {
+                Some(Value::Str(id)) => Some(id.as_str()),
+                _ => None,
             };
+            let args = self.mutation_args(context, store, id, supplied)?;
             if let Some(args) = args {
                 params.define("args", args);
             }
@@ -777,6 +800,23 @@ impl RunState {
             Some(text("")),
         )?);
         Ok(mutation)
+    }
+    fn mutation_args(
+        &mut self,
+        context: &RunContext<'_>,
+        store: &Store,
+        id: Option<&str>,
+        supplied: Option<&PreparedReferenceValues<'_>>,
+    ) -> Result<Option<Value>, BindingWriteError> {
+        if let Some(expr) = id
+            .and_then(|id| context.mutations.get(id))
+            .and_then(|index| context.input.result.mutation_statements.get(*index))
+            .and_then(|m| m.args.as_ref())
+        {
+            context.evaluate(self, store, expr.into(), supplied)
+        } else {
+            Ok(Some(object([])))
+        }
     }
 }
 fn text(value: &str) -> Value {

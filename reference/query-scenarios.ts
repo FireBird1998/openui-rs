@@ -17,6 +17,8 @@ export type Outcome =
   | { kind: 'mcp-error' | 'tool-error'; message: string };
 export type Dispatch = { step: number; toolName: string; args: unknown };
 export type Step =
+  | { kind: 'register' }
+  | { kind: 'fire'; name: string; args?: unknown }
   | { kind: 'evaluate' }
   | { kind: 'complete'; call: number; outcome: Outcome }
   | { kind: 'complete'; dispatch: Dispatch; outcome: Outcome }
@@ -43,7 +45,7 @@ function makeClock() {
 
 type Script = (calls: readonly Pick<Call, 'toolName' | 'args'>[]) => Iterable<Step>;
 
-async function replay(scenario: Scenario, script?: Script): Promise<string[]> {
+export async function replay(scenario: Scenario, script?: Script): Promise<string[]> {
   const library = compileSchema(scenario.library ?? { $defs: {} });
   let program = parse(scenario.program, library);
   const store = createStore();
@@ -79,9 +81,11 @@ async function replay(scenario: Scenario, script?: Script): Promise<string[]> {
   });
   const context: EvaluationContext = {
     getState: name => unwrapFieldValue(store.get(name)),
-    resolveRef: name => manager.getResult(name),
+    resolveRef: name => manager.getMutationResult(name) ?? manager.getResult(name),
   };
+  const { registerMutations } = await import('./mutation-registration');
   try {
+    let rejected: string | undefined;
     const observations = [];
     for (const step of script ? script(calls) : scenario.steps) {
       if (script) scenario.steps.push(step);
@@ -91,6 +95,8 @@ async function replay(scenario: Scenario, script?: Script): Promise<string[]> {
       // Complete settles a provider promise by zero-based dispatch order.
       // Set, extra and replace change inputs only; evaluate applies them to the manager.
       switch (step.kind) {
+        case 'register': registerMutations(false, program, context, manager); break;
+        case 'fire': void manager.fireMutation(step.name, step.args).catch(error => { rejected = error.message; }); break;
         case 'evaluate':
           manager.evaluateStatements(program.queryStatements ?? [], context, { extraDeps: name => extras.get(String(name)) });
           break;
@@ -118,10 +124,11 @@ async function replay(scenario: Scenario, script?: Script): Promise<string[]> {
       }
       const snapshot = manager.getSnapshot();
       observations.push(JSON.stringify({
-        snapshot,
+        snapshot, ...(rejected === undefined ? {} : {rejected}),
         calls: calls.slice(first).map(({ toolName, args }, offset) => ({ call: first + offset, toolName, args })),
         changed: before !== JSON.stringify(snapshot),
       }));
+      rejected = undefined;
       stepIndex++;
     }
     return observations;
@@ -131,12 +138,20 @@ async function replay(scenario: Scenario, script?: Script): Promise<string[]> {
   }
 }
 
-const clock = makeClock();
-const { setInterval, clearInterval } = globalThis;
-const logError = console.error;
-Object.assign(globalThis, clock);
-console.error = () => {}; // Scripted rejections are observed through the snapshot.
-try {
+export async function withFakeClock(run: () => Promise<void>) {
+  const { setInterval, clearInterval } = globalThis;
+  const logError = console.error;
+  Object.assign(globalThis, makeClock());
+  console.error = () => {}; // Scripted rejections are observed through the snapshot.
+  try {
+    await run();
+  } finally {
+    Object.assign(globalThis, { setInterval, clearInterval });
+    console.error = logError;
+  }
+}
+
+if (import.meta.main) await withFakeClock(async () => {
   if (process.argv[2] === '--random') {
     const { randomScenario } = await import('./query-random');
     const { addressCompletions, compareLifetimes } = await import('./query-lifetimes');
@@ -166,7 +181,4 @@ try {
     mkdirSync('../conformance/golden', { recursive: true });
     writeFileSync('../conformance/golden/query-scenarios.json', JSON.stringify(Object.fromEntries(output)) + '\n');
   }
-} finally {
-  Object.assign(globalThis, { setInterval, clearInterval });
-  console.error = logError;
-}
+});

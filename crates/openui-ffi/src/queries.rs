@@ -20,11 +20,14 @@ pub struct QueryEffects {
     pub changed: bool,
     pub calls: Vec<Arc<WantedToolCall>>,
     pub evaluation_error: Option<OpenUiError>,
+    #[uniffi(default = [])]
+    pub actions: Vec<crate::ActionOutput>,
 }
 impl From<openui_session::QueryEffects> for QueryEffects {
     fn from(v: openui_session::QueryEffects) -> Self {
         Self {
             changed: v.changed,
+            actions: v.actions.into_iter().map(Into::into).collect(),
             calls: v
                 .calls
                 .into_iter()

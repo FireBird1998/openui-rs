@@ -1,0 +1,111 @@
+{
+  "schema": {
+    "$defs": {
+      "Box": {
+        "properties": {
+          "value": {},
+          "action": {}
+        }
+      }
+    }
+  },
+  "scenarios": [
+    {
+      "name": "settle, click with current state, double submit, retry, resume writes and events",
+      "steps": [
+        {
+          "replace": "$n=1\n$tool=\"save\"\nm=Mutation($tool,{n:$n})\nq=Query(\"read\",{n:$n})\nroot=Box([m,q],Action([@OpenUrl(\"before\"),@Run(m),@Set($n,m.data),@ToAssistant(\"done\")]))",
+          "streaming": true
+        },
+        {
+          "settle": true
+        },
+        {
+          "finish": 0,
+          "value": 1
+        },
+        {
+          "set": "$tool",
+          "value": "new"
+        },
+        {
+          "set": "$n",
+          "value": 3
+        },
+        {
+          "click": true
+        },
+        {
+          "click": true
+        },
+        {
+          "finish": 2,
+          "failed": "offline"
+        },
+        {
+          "click": true
+        },
+        {
+          "finish": 3,
+          "value": 8
+        },
+        {
+          "finish": 4,
+          "value": 8
+        },
+        {
+          "replace": "$n=1\n$tool=\"save\"\nm=Mutation($tool,{n:$n})\nq=Query(\"read\",{n:$n})\nroot=Box([m,q],Action([@OpenUrl(\"before\"),@Run(m),@Set($n,m.data),@ToAssistant(\"done\")]))"
+        }
+      ]
+    },
+    {
+      "name": "chained suspensions, failed tail and registration removal",
+      "steps": [
+        {
+          "replace": "$n=2\nm=Mutation(\"first\", {n:$n})\nn=Mutation(\"second\",m.data)\nroot=Box([m,n],Action([@Set($n,$n+1),@Run(m),@OpenUrl(\"between\"),@Run(n),@OpenUrl(\"last\")]))"
+        },
+        {
+          "click": true
+        },
+        {
+          "finish": 0,
+          "value": {
+            "id": 9
+          }
+        },
+        {
+          "finish": 1,
+          "failed": "offline"
+        },
+        {
+          "click": true
+        },
+        {
+          "replace": "root=Box(\"gone\")"
+        },
+        {
+          "finish": 2,
+          "value": 4
+        }
+      ]
+    },
+    {
+      "name": "bounded-pending-mutation-plans",
+      "maxContinuations": 1,
+      "steps": [
+        {
+          "replace": "m=Mutation(\"old\")\nroot=Box(m,@Run(m))"
+        },
+        {
+          "click": true
+        },
+        {
+          "replace": "m=Mutation(\"new\")\nroot=Box(m,@Run(m))"
+        },
+        {
+          "click": true
+        }
+      ]
+    }
+  ]
+}

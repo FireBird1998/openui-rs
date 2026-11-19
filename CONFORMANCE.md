@@ -753,7 +753,7 @@ the other's, is `listed-state-variables-keep-equal-arguments-apart`: the
 variable joins one key as a dependency, so the queries never share a key,
 and it matches lang-core byte for byte.
 
-Late outcomes after a dispose are not pinned yet. The manager has no dispose
+Late query outcomes after a manager dispose have no two-sided pin yet. The manager has no dispose
 command until #89. Observed in lang-core 1.1.0 with one query whose call is
 in flight at `dispose()`: a late success stores no data, and the next
 snapshot rebuild shows the query no longer loading; after `activate()` an
@@ -764,6 +764,37 @@ error and makes no call.
 Reader scheduling has its own temporary pin until #86. In
 `reader-waits-for-its-input`, Rust starts the reader alongside the source and
 lang-core starts it after the source supplies data.
+
+### Provider-managed mutations
+
+The manager and session transcripts compare every command with lang-core 1.1.0.
+Registration evaluates tool names. The renderer evaluates arguments at the Run
+step, including writes earlier in that click. A fresh registration exposes only
+`status: "idle"`. A rename adds null data and error. A retry exposes loading
+while its previous structured error stays in the error list until success or
+another failure. An in-flight call follows its registration across a rename.
+Removing and declaring a name again creates a different registration. Success
+can still resume the earlier plan after removal.
+
+| Situation and two-sided pin | lang-core 1.1.0 and renderer | openui-rs | Decision |
+|---|---|---|---|
+| [Mutation named for a status list](conformance/divergences/mutation-status-list-names.json) | The result overwrites the list. Reporting an error after overwriting `__openui_errors` rejects the fire promise when upstream tries to append to that object. | Snapshot lists keep their loading, refetching and error contents. Program references still read the mutation, and a change visible through that reference requests a redraw. | ADR 0013 rules 2 and 3, and #79's separate loading, refetching and error lists. |
+| [Resumed write moves a pending query](conformance/divergences/mutation-resumed-write-moves-pending-query.json) | Starts the new call with the query absent from loading and refetching. | Shows the current pending query in both lists. The resumed event and wanted call agree. | ADR 0013 rule 2, applied to a state write in the resumed plan. |
+| [Second managed suspension at capacity](conformance/divergences/bounded-pending-mutation-plans.json) | Dispatches the renamed tool while the previous plan still awaits its outcome. | Returns a size cut and a typed failure at the new Run step. The earlier call keeps its continuation. | #79 reuses the bounded action continuation mechanism. Every admitted managed call must be able to resume its plan. |
+
+The additional 512 seeded mutation scripts compare 20,715 observations,
+including overlapping submissions, replacement and out-of-order outcomes.
+All 981 differing observations follow the status-list row. The replay reconstructs
+the loading list from the query's outstanding call and compares the resulting
+bytes and change flag after every command. Run this replay with
+`cargo test -p openui-runtime --test mutation_scenarios -- --ignored --nocapture`.
+
+The manager dispose acceptance line moves to #89, which introduces its
+dispose/activate commands. On the upstream side both late outcomes resolve the
+suspended fire to false. Its direct mutation lookup is null even though the
+last published snapshot still says loading. The terminal native session and
+provider detach tests cover revocation at the existing session boundaries.
+[Upstream dispose transcript](conformance/golden/mutation-dispose.jsonl)
 
 ### Core, tree, action and store differences
 

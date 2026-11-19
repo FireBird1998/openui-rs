@@ -107,6 +107,8 @@ if len(sys.argv) == 3 and sys.argv[1] == "--wasm":
     assert "export interface ResponseState { streaming: boolean }" in declarations
     for field in ["queryEvaluationError", "evaluationError"]:
         assert f"readonly {field}: {{ kind: string; message: string }} | null;" in declarations, field
+    assert "readonly actionCount: bigint;" in declarations
+    assert "actionAt(index: bigint): ActionOutput | undefined;" in declarations
     assert "callAt(index: bigint): WantedToolCall | undefined;" in declarations
     assert "export type { QueryEffects, WantedToolCall };" in declarations
     for name in ["QueryEffects", "WantedToolCall"]:
@@ -147,6 +149,7 @@ assert "querySnapshotJson: String? = nil, queryEvaluationError: OpenUiError? = n
 assert "public init(streaming: Bool = false)" in swift
 assert re.search(r"func evaluateWithResponse\(responseState: ResponseState\) throws\s*-> EvaluationOutput", api[1])
 assert re.search(r"func replaceProgramWithResponse\([^\n]*responseState: ResponseState\) throws\s*-> ReplacementOutput", api[1])
+assert "actions: [ActionOutput] = []" in swift
 assert "public var calls: [WantedToolCall]" in swift
 assert "case ReferenceConflict" in swift
 assert "public var referencePreparation: ParseLimits" in swift
@@ -179,6 +182,7 @@ if len(sys.argv) == 3:
     assert "`streaming`: kotlin.Boolean = false" in kotlin
     assert "fun `evaluateWithResponse`(`responseState`: ResponseState): EvaluationOutput" in api[1]
     assert "`responseState`: ResponseState): ReplacementOutput" in api[1]
+    assert "`actions`: List<ActionOutput> = listOf()" in kotlin
     assert "class ReferenceConflict" in kotlin
     assert "interface LibraryFunction" in kotlin
     assert "fun `call`(`argumentsJson`: kotlin.String): kotlin.String?" in kotlin, "Kotlin callback signature drift"

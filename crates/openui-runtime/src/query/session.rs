@@ -35,9 +35,11 @@ impl From<crate::McpToolOutcome> for ToolCallOutcome {
 }
 
 impl ToolCallId {
-    /// Whether an undelivered call still has a live cache entry.
+    /// Whether this receipt can still dispatch work for its manager.
     pub fn is_pending(&self) -> bool {
-        self.0.target.strong_count() != 0 && !self.0.consumed.load(Ordering::Relaxed)
+        !matches!(&self.0.target, CallTarget::Query(call) if call.strong_count() == 0)
+            && self.0.manager.strong_count() != 0
+            && !self.0.consumed.load(Ordering::Relaxed)
     }
 }
 
@@ -57,10 +59,33 @@ impl QueryManager {
         store: &Store,
         read: impl FnOnce(&Self) -> Result<T, E>,
     ) -> Result<(T, QueryUpdate), E> {
+        self.registration_transaction(input, store, false, read)
+    }
+
+    /// Stage both renderer effects on a settled program, then draw before committing either.
+    pub fn settled_transaction<T, E: From<QueryCommandError>>(
+        &mut self,
+        input: &TreeInput<'_>,
+        store: &Store,
+        read: impl FnOnce(&Self) -> Result<T, E>,
+    ) -> Result<(T, QueryUpdate), E> {
+        self.registration_transaction(input, store, true, read)
+    }
+
+    fn registration_transaction<T, E: From<QueryCommandError>>(
+        &mut self,
+        input: &TreeInput<'_>,
+        store: &Store,
+        mutations: bool,
+        read: impl FnOnce(&Self) -> Result<T, E>,
+    ) -> Result<(T, QueryUpdate), E> {
         let mut candidate = self.candidate();
         let nodes = candidate.evaluate_nodes(input, store)?;
         let calls = candidate.apply_nodes(input.result, nodes);
-        let update = candidate.publish(calls, &self.snapshot_json)?;
+        if mutations {
+            candidate.register_mutation_statements(input, store)?;
+        }
+        let update = candidate.publish(calls, self)?;
         let output = read(&candidate)?;
         *self = candidate;
         Ok((output, update))
@@ -80,6 +105,7 @@ impl QueryManager {
                 }
             }
         }
+        self.mutations.write_results(&mut values);
         PreparedReferenceValues::managed(values, undefined, limits)
     }
 
@@ -87,6 +113,7 @@ impl QueryManager {
         Self {
             owner: self.owner.clone(),
             limits: self.limits,
+            mutations: self.mutations.clone(),
             queries: self.queries.clone(),
             order: self.order.clone(),
             cache: self.cache.clone(),
@@ -99,7 +126,7 @@ impl QueryManager {
     fn publish(
         &mut self,
         calls: Vec<ToolCall>,
-        previous: &str,
+        previous: &Self,
     ) -> Result<QueryUpdate, QueryCommandError> {
         self.cache.retain(|_, entry| entry.references != 0);
         // The same entry can be projected at many statement ids. Reserve all
@@ -121,7 +148,10 @@ impl QueryManager {
         self.rebuild_snapshot();
         Ok(QueryUpdate {
             calls,
-            changed: self.snapshot_json != previous,
+            changed: self.snapshot_json != previous.snapshot_json,
+            hidden_change: self
+                .mutations
+                .hidden_changed(&previous.mutations.hidden_results()),
         })
     }
 
@@ -143,10 +173,15 @@ impl QueryManager {
         outcome: ToolCallOutcome,
     ) -> Result<QueryUpdate, QueryCommandError> {
         self.check_call(id)?;
-        let target = id.0.target.upgrade();
-        let readers = target.as_ref().map_or(0, |p| {
-            self.queries.values().filter(|q| q.key == p.key).count()
-        });
+        let (readers, tool_bytes) = match &id.0.target {
+            CallTarget::Mutation(call) => (1, call.dispatched_tool.len()),
+            CallTarget::Query(target) => target.upgrade().map_or((0, 0), |p| {
+                (
+                    self.queries.values().filter(|q| q.key == p.key).count(),
+                    p.tool_name.len(),
+                )
+            }),
+        };
         if readers == 0 {
             // ADR 0013: discard the outcome for a released or previous-only
             // entry. Retire its pending flag and consume the receipt once.
@@ -162,7 +197,7 @@ impl QueryManager {
         // Error records own their formatted messages. Bound the copies before
         // formatting any of them, even if a single failed key has many readers.
         let check_text = |bytes: usize| {
-            let bytes = bytes.saturating_add(target.as_ref().map_or(0, |p| p.tool_name.len()));
+            let bytes = bytes.saturating_add(tool_bytes);
             if bytes.saturating_mul(readers) > limit {
                 Err(QueryCommandError::Limit(crate::admission::size_error()))
             } else {
@@ -193,7 +228,7 @@ impl QueryManager {
         };
         let mut candidate = self.candidate();
         candidate.complete(id, outcome)?;
-        let update = candidate.publish(Vec::new(), &self.snapshot_json)?;
+        let update = candidate.publish(Vec::new(), self)?;
         *self = candidate;
         id.0.consumed.store(true, Ordering::Relaxed);
         Ok(update)

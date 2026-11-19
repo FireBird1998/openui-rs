@@ -90,7 +90,8 @@ interface WantedToolCall {
   free(): void;
 }
 interface QueryEffects {
-  readonly changed: boolean; readonly callCount: bigint;
+  readonly changed: boolean; readonly callCount: bigint; readonly actionCount: bigint;
+  actionAt(index: bigint): ActionOutput | undefined;
   readonly evaluationError: {kind: string; message: string} | null;
   callAt(index: bigint): WantedToolCall | undefined;
   free(): void;

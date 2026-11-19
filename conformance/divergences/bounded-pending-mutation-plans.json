@@ -1,0 +1,9 @@
+{
+  "case": "bounded-pending-mutation-plans",
+  "reference": [
+    "{\"tree\":{\"root\":{\"type\":\"element\",\"typeName\":\"Box\",\"props\":{\"value\":{\"status\":\"loading\"},\"action\":{\"steps\":[{\"type\":\"run\",\"statementId\":\"m\",\"refType\":\"mutation\"}]}},\"partial\":false,\"hasDynamicProps\":true,\"statementId\":\"root\"},\"errors\":[]},\"snapshot\":{\"__openui_loading\":[],\"__openui_refetching\":[],\"__openui_errors\":[],\"m\":{\"status\":\"loading\"}},\"events\":[],\"calls\":[{\"toolName\":\"new\",\"args\":{}}],\"failure\":null,\"changed\":true}"
+  ],
+  "rust": [
+    "{\"tree\":{\"root\":{\"type\":\"element\",\"typeName\":\"Box\",\"props\":{\"value\":{\"status\":\"idle\",\"data\":null,\"error\":null},\"action\":{\"steps\":[{\"type\":\"run\",\"statementId\":\"m\",\"refType\":\"mutation\"}]}},\"partial\":false,\"hasDynamicProps\":true,\"statementId\":\"root\"},\"errors\":[]},\"snapshot\":{\"__openui_loading\":[],\"__openui_refetching\":[],\"__openui_errors\":[],\"m\":{\"status\":\"idle\",\"data\":null,\"error\":null}},\"events\":[],\"calls\":[],\"failure\":{\"step\":0,\"error\":\"pending mutation continuation limit\",\"sizeLimited\":true,\"depthLimited\":false},\"changed\":false}"
+  ]
+}

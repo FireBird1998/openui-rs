@@ -264,7 +264,9 @@ The Rust runtime exposes a standalone `QueryManager` for settled programs.
 It evaluates query statements against a Store, returns tool calls for the
 embedder to perform, and updates its snapshot when the embedder reports an
 outcome. Native and WebAssembly sessions can attach a tool provider, hand out a
-settled program's calls and draw their live results. The embedder performs the
+settled program's calls and draw their live results. A mutation Run suspends
+its action plan. The session resumes it on success and hands its host events
+to the embedder through the same query update. The embedder performs the
 I/O. [Driving queries](docs/runtime-binding.md#driving-queries)
 
 Runtime state and raw/prepared query receivers check depth only for the parts

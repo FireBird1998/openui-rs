@@ -577,7 +577,7 @@ impl Store {
 }
 
 // Object.is, not Rust's structural Value equality or JavaScript's ===.
-fn same(a: Option<&Value>, b: Option<&Value>) -> bool {
+pub(crate) fn same(a: Option<&Value>, b: Option<&Value>) -> bool {
     match (a, b) {
         (None, None) | (Some(Value::Null), Some(Value::Null)) => true,
         (Some(Value::Bool(a)), Some(Value::Bool(b))) => a == b,

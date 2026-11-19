@@ -139,7 +139,7 @@ mod tree;
 pub use store::{InitializationResult, StateRefusal, StateValue, Store, StoreError, StoreSnapshot};
 pub use tree::{
     ActionContinuation, ActionFailure, ActionResumeError, ActionRun, BindingProps,
-    BindingWriteError, FieldWrite, FunctionResult, HostEvent, LibraryFunctions,
+    BindingWriteError, FieldWrite, FunctionResult, HostEvent, LibraryFunctions, MutationRequest,
     PreparedReferenceValues, RuntimeError, TreeInput, TreeResult, evaluate_tree,
     evaluate_tree_with_limits, evaluate_tree_with_memory, get_field_value,
     initialize_field_default, initialize_field_default_with_limits, resume_action, run_action,

@@ -206,7 +206,7 @@ impl ActionOutput {
     }
 }
 impl ActionOutput {
-    fn owned(v: core::ActionOutput, release: ReleaseGuard) -> Self {
+    pub(crate) fn owned(v: core::ActionOutput, release: ReleaseGuard) -> Self {
         Self {
             events: record(serde_json::Value::Array(
                 v.events
@@ -309,7 +309,7 @@ impl RuntimeSession {
     pub fn take_query_update(&self) -> Result<QueryEffects, JsValue> {
         self.inner
             .take_query_update()
-            .map(Into::into)
+            .map(|v| QueryEffects(v, self.inner.release_guard()))
             .map_err(error)
     }
     #[wasm_bindgen(js_name = completeToolCall)]

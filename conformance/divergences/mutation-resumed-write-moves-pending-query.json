@@ -1,0 +1,9 @@
+{
+  "case": "mutation-resumed-write-moves-pending-query",
+  "reference": [
+    "{\"tree\":{\"root\":{\"type\":\"element\",\"typeName\":\"Box\",\"props\":{\"value\":[{\"status\":\"success\",\"data\":8},null],\"action\":{\"steps\":[{\"type\":\"open_url\",\"url\":\"before\"},{\"type\":\"run\",\"statementId\":\"m\",\"refType\":\"mutation\"},{\"type\":\"set\",\"target\":\"$n\",\"valueAST\":{\"k\":\"Member\",\"obj\":{\"k\":\"RuntimeRef\",\"n\":\"m\",\"refType\":\"mutation\"},\"field\":\"data\"}},{\"type\":\"continue_conversation\",\"message\":\"done\"}]}},\"partial\":false,\"hasDynamicProps\":true,\"statementId\":\"root\"},\"errors\":[]},\"snapshot\":{\"__openui_loading\":[\"q\"],\"__openui_refetching\":[\"q\"],\"__openui_errors\":[],\"q\":null,\"m\":{\"status\":\"success\",\"data\":8}},\"events\":[{\"type\":\"continue_conversation\",\"params\":{},\"humanFriendlyMessage\":\"done\",\"formState\":{\"$n\":8,\"$tool\":\"new\"}}],\"calls\":[{\"toolName\":\"read\",\"args\":{\"n\":8}}],\"changed\":true}"
+  ],
+  "rust": [
+    "{\"tree\":{\"root\":{\"type\":\"element\",\"typeName\":\"Box\",\"props\":{\"value\":[{\"status\":\"success\",\"data\":8},null],\"action\":{\"steps\":[{\"type\":\"open_url\",\"url\":\"before\"},{\"type\":\"run\",\"statementId\":\"m\",\"refType\":\"mutation\"},{\"type\":\"set\",\"target\":\"$n\",\"valueAST\":{\"k\":\"Member\",\"obj\":{\"k\":\"RuntimeRef\",\"n\":\"m\",\"refType\":\"mutation\"},\"field\":\"data\"}},{\"type\":\"continue_conversation\",\"message\":\"done\"}]}},\"partial\":false,\"hasDynamicProps\":true,\"statementId\":\"root\"},\"errors\":[]},\"snapshot\":{\"__openui_loading\":[\"q\"],\"__openui_refetching\":[\"q\"],\"__openui_errors\":[],\"q\":null,\"m\":{\"status\":\"success\",\"data\":8}},\"events\":[{\"type\":\"continue_conversation\",\"params\":{},\"humanFriendlyMessage\":\"done\",\"formState\":{\"$n\":8,\"$tool\":\"new\"}}],\"calls\":[{\"toolName\":\"read\",\"args\":{\"n\":8}}],\"changed\":true}"
+  ]
+}

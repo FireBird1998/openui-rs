@@ -17,17 +17,27 @@ impl WantedToolCall {
     }
 }
 #[wasm_bindgen]
-pub struct QueryEffects(pub(crate) Arc<core::QueryEffects>);
-impl From<core::QueryEffects> for QueryEffects {
-    fn from(v: core::QueryEffects) -> Self {
-        Self(Arc::new(v))
-    }
-}
+pub struct QueryEffects(
+    pub(crate) core::QueryEffects,
+    pub(crate) crate::session::ReleaseGuard,
+);
 #[wasm_bindgen]
 impl QueryEffects {
     #[wasm_bindgen(getter)]
     pub fn changed(&self) -> bool {
         self.0.changed
+    }
+    #[wasm_bindgen(getter, js_name = actionCount)]
+    pub fn action_count(&self) -> u64 {
+        self.0.actions.len() as u64
+    }
+    #[wasm_bindgen(js_name = actionAt)]
+    pub fn action_at(&self, index: u64) -> Option<crate::runtime::ActionOutput> {
+        self.0
+            .actions
+            .get(usize::try_from(index).ok()?)
+            .cloned()
+            .map(|v| crate::runtime::ActionOutput::owned(v, self.1.clone()))
     }
     #[wasm_bindgen(getter, js_name = callCount)]
     pub fn call_count(&self) -> u64 {

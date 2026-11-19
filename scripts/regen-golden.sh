@@ -68,6 +68,8 @@ done
   bun --no-install query-default-cycles.ts
   bun --no-install query-scenarios.ts
   bun --no-install session-queries.ts
+  bun --no-install mutation-scenarios.ts
+  bun --no-install session-mutations.ts
   bun --no-install function-undefined-arguments.ts
   bun --no-install renderer-reset-native-defaults.ts
 )

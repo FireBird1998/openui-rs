@@ -19,8 +19,8 @@ pub use form::{
     set_field_value, set_field_value_with_limits,
 };
 pub use runner::{
-    ActionContinuation, ActionFailure, ActionResumeError, ActionRun, HostEvent, resume_action,
-    run_action, run_action_with_limits,
+    ActionContinuation, ActionFailure, ActionResumeError, ActionRun, HostEvent, MutationRequest,
+    resume_action, run_action, run_action_with_limits,
 };
 mod functions;
 pub use bindings::{BindingProps, BindingWriteError, write_binding, write_binding_with_limits};
@@ -56,6 +56,7 @@ pub struct TreeInput<'a> {
     pub library: Option<&'a Library>,
     /// A set measured once by the embedder. Takes precedence over `reference_values`.
     pub prepared_reference_values: Option<&'a PreparedReferenceValues<'a>>,
+    managed_mutations: bool,
     shared_result: Option<&'a Arc<ParseResult>>,
 }
 impl<'a> TreeInput<'a> {
@@ -69,8 +70,14 @@ impl<'a> TreeInput<'a> {
             reference_values: None,
             library: None,
             prepared_reference_values: None,
+            managed_mutations: false,
             shared_result: None,
         }
+    }
+    /// Route mutation steps to the session's tool provider with typed arguments.
+    pub fn with_managed_mutations(mut self) -> Self {
+        self.managed_mutations = true;
+        self
     }
     /// Retain an immutable shared program identity for action continuations.
     /// The runner caches its bounded measurement and indexes once per run.
@@ -628,12 +635,11 @@ impl EvaluationScope for TreeScope<'_> {
                     eval.mark_cut(flags);
                     return Some(Value::Null);
                 }
-                Ok(None) if default.is_some() => {
+                Ok(None) => {
                     if let Some(undefined) = &values.undefined_queries {
                         return (!undefined.contains(name)).then_some(Value::Null);
                     }
                 }
-                Ok(None) => {}
             }
         }
         if !self.registering.get() && default.is_some() {

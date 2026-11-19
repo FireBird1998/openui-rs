@@ -115,6 +115,7 @@ struct EvaluationOutput {
 struct QueryEffects {
     public var changed: Bool
     public var calls: [WantedToolCall]
+    public var actions: [ActionOutput] // defaults to []
     public var evaluationError: OpenUiError?
 }
 struct ResponseState {
