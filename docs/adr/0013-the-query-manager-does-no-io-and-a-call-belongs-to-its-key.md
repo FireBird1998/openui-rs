@@ -75,6 +75,20 @@ The cost is on the other side of rule 1. A query that returns to a key it
 left two or more changes ago fetches again, where upstream reuses the result
 from the entry it leaked. That is one extra tool call, never a wrong result.
 
+Rule 4 also decides a case found while reviewing #86 (2026-11-19). A query
+edited to read its own result can move to a key that has no data while the
+entry it was reading still has a call in flight. When that call delivers,
+upstream leaves the query idle on the empty key, showing the old value, and
+invalidating it does nothing. Here the delivery releases the query and its
+call is requested, because rule 4 leaves no query with nothing to show and
+nothing on its way. The first implementation matched upstream by accident:
+it decided the query was waiting before moving its key, so an equal value
+delivered later never woke it, and the replay's rule check reported the wait
+as unexplained. Matching upstream would need an exception to rule 4 for one
+shape of program. The cost is one tool call upstream does not make. Both
+sides are pinned (`a-previous-key-releases-a-waiting-self-reader` in
+CONFORMANCE.md).
+
 This is a divergence on inputs a real program can produce, which is why the
 glossary's definition of a divergence was widened. CONFORMANCE.md lists every
 situation in which output differs, with the rule that forces it; each is
