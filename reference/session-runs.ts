@@ -5,6 +5,10 @@
 // query run); Retry transcribes retryQueries (lines 444–451) and the query
 // effect transcribes lines 207–233, as reference/session-queries.ts does.
 // Effects run synchronously after a changed dependency, then the tree is drawn.
+// Lines 91–95 give two conditions: `blocked` (streaming, or a bundle that is
+// incomplete or has an error) gates the query effect; `bundleBlocked`
+// (`isBundle && blocked`) gates clicks and Retry. A scenario with `bundle`
+// stands for a response bundle; otherwise the program is bare.
 import { readFileSync, writeFileSync } from 'node:fs';
 process.env.OPENUI_TELEMETRY_DISABLED = '1';
 process.env.DO_NOT_TRACK = '1';
@@ -52,12 +56,16 @@ for (const scenario of corpus.scenarios) {
     previous = deps;
   }
   let result, root, blocked = false;
+  const isBundle = !!scenario.bundle;
   try {
     for (const step of scenario.steps) {
       const first = calls.length;
       const before = JSON.stringify(manager.getSnapshot());
       events.length = 0;
-      if ('replace' in step || 'evaluate' in step) blocked = !!step.streaming;
+      if ('replace' in step || 'evaluate' in step) {
+        blocked = !!step.streaming || step.complete === false || !!step.error;
+      }
+      const bundleBlocked = isBundle && blocked;
       if ('replace' in step) {
         result = resultRef.current = parse(step.replace, schema);
         store.initialize(result.stateDeclarations ?? {}, {});
@@ -65,13 +73,13 @@ for (const scenario of corpus.scenarios) {
       if ('finish' in step) await calls[step.finish].finish(step);
       if ('click' in step) {
         const writer = rendererState({ store, evaluationContext: ctx, schema: corpus.schema, resultRef,
-          queryManager: manager, propsRef: { current: { onAction: event => events.push(event) } }, bundleBlocked: blocked });
+          queryManager: manager, propsRef: { current: { onAction: event => events.push(event) } }, bundleBlocked });
         await writer.triggerAction('clicked', undefined, root.props[step.click]);
       }
       if ('retry' in step) {
         // retryQueries, with querySnapshot read from the manager.
         const queryErrors = manager.getSnapshot().__openui_errors.filter(error => error.source === 'query');
-        if (!blocked) manager.invalidate(queryErrors.map(error => error.statementId));
+        if (!bundleBlocked) manager.invalidate(queryErrors.map(error => error.statementId));
       }
       queryEffect(useEffect, blocked, result, manager, ctx, store.getSnapshot());
 

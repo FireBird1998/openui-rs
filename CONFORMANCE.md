@@ -167,7 +167,7 @@ query, runs while its call is in flight (any number of them start one more
 call when it finishes), a repeated name, a run after a failure and a
 remembered run after one, unknown names, an empty list (every query) and a
 run that uses the arguments of the last evaluate rather than current state.
-`conformance/session-runs.json` compares 42 observations of tree bytes, query
+`conformance/session-runs.json` compares 53 observations of tree bytes, query
 snapshot bytes, dispatches, host events and snapshot changes with
 `reference/session-runs.ts`, which clicks through the transcribed
 `triggerAction` with a real manager and transcribes the renderer's
@@ -175,12 +175,18 @@ snapshot bytes, dispatches, host events and snapshot changes with
 run (a call for the old key, then one for the new key, as the renderer's
 effect runs after the click), a run between message and URL steps, Retry of
 failed queries, Retry with none failed (every query runs, as upstream passes
-an empty list to `invalidate`) and Retry while streaming. Without a tool
-provider a `@Run` of a query stays the host's `run` event, a decision of the
-spec rather than the renderer's behaviour (its manager has no provider to
-call). Upstream ignores every click while its bundle is blocked; the session
-leaves that to the embedder, as before, and runs no query for a click while
-the response state is streaming.
+an empty list to `invalidate`), and a click and Retry while streaming. Without
+a tool provider a `@Run` of a query stays the host's `run` event, a decision
+of the spec rather than the renderer's behaviour (its manager has no provider
+to call). The renderer has two conditions: `blocked` (streaming, or a bundle
+that is incomplete or has an error) gates evaluating queries, and
+`bundleBlocked` (a bundle that is blocked) ignores the whole click and Retry.
+The adapter models both. The session applies `blocked` through its streaming
+flag; a run and Retry are not gated by it and act on the queries registered
+so far, as upstream's do for a bare program that streams. Ignoring a blocked
+bundle's click and Retry is the embedder's until #99 gives the session the
+bundle's state; the bundle scenario's Rust driver skips them as an embedder
+would.
 
 A query is loading while its current entry has a call in flight. Delivery of a
 successful result to that entry gives the query a fetch history. In
@@ -752,7 +758,7 @@ the list's name.
 | Delivery | `statement-named-errors` | Can keep a delivered error in an aliased array after a current success clears it. | Shows the currently delivered errors once, including after recovery. | 3 | 2723 |
 | Loading | `statement-named-loading` | Can keep settled ids in an aliased array. | The list contains exactly the queries whose current entries have calls in flight. | 2 | 4945 |
 | Loading | `statement-named-refetching` | Can accumulate refetching ids in an aliased array. | The list contains each loading query with fetch history once. | 2 | 1661 |
-| Run | `run-through-a-query-that-did-not-start-the-call` | Remembers a run on the query that asked. A run through a query that did not start the call in flight is lost when that call ends, and fires after the next call that query starts and finishes on its key. A run through the starter is kept back the same way if the starter leaves the key first. | Remembers one run for the key. When that key's call is delivered to a query still on the key, exactly one more call starts, whichever query asked; with no query on the key the run is forgotten. | 5 | 4663 |
+| Run | `run-through-a-query-that-did-not-start-the-call` | Remembers a run on the query that asked. A run through a query that did not start the call in flight is lost when that call ends, and fires after the next call that query starts and finishes on its key. A run through the starter is kept back the same way if the starter leaves the key first. | Remembers one run for the key, with the tool and arguments of the first query that asked. When that key's call is delivered to a query still on the key, exactly one more call starts, whichever query asked and even if it has gone; with no query on the key the run is forgotten. A run survives a replacement that keeps the entry. Pins also `a-run-keeps-the-request-of-a-query-that-has-gone` and `a-run-survives-a-replacement-on-the-same-key`. | 5 | 4663 |
 
 Both declaration orders of the displaced-previous-key handoff preserve a
 successful result. Both also preserve a failed entry when the incoming reader
@@ -789,8 +795,10 @@ error and makes no call.
 Reader scheduling has its own temporary pin until #86. In
 `reader-waits-for-its-input`, Rust starts the reader alongside the source and
 lang-core starts it after the source supplies data. `run-a-waiting-query` is
-the same until #86: lang-core's run of a waiting query does nothing, and Rust,
-whose reader is not waiting, remembers a run behind the reader's call.
+the same until #86, and shows both effects: Rust's premature reader call,
+and the extra reader call that a run of the reader remembers behind it.
+Lang-core makes no reader call until the source has data, and its run of the
+waiting reader does nothing.
 
 A run asked for while a call is in flight is remembered for the key (sentence
 5), and lang-core remembers it on the query that asked. Two scenarios pin
@@ -802,6 +810,24 @@ to a new key, and lang-core fetches the new key twice. The random replay also
 runs every query, one or both in either order, one twice and an unknown name,
 and the row `run-through-a-query-that-did-not-start-the-call` explains every
 difference that follows.
+
+A remembered run keeps the request (tool name and arguments) of the first
+query that asked, so it calls what was asked for even when that query has
+gone. Keys can collide across queries that call different tools, as
+upstream's do. In `a-run-keeps-the-request-of-a-query-that-has-gone`, `b`
+asks while `a`'s call is in flight and is then removed; Rust then calls `b`'s
+tool and arguments once more, and lang-core forgets the run with `b`. With
+two colliding queries, the one call carries the tool and arguments of the
+first to register, and every reader's error names that tool, in both orders,
+as in lang-core: `colliding-keys-share-the-first-querys-call-a-first` and
+`-b-first` differ only in the loading list (row
+`shared-entry-delivers-to-both-current-queries`).
+
+In `a-run-survives-a-replacement-on-the-same-key`, a run is remembered for
+`a`'s call and `a` is replaced in place by `b` on the same key. Rust keeps the
+entry and its call (row `remove-statement-before-registering-its-replacement`)
+and the run with it, so the call's end starts one more call; lang-core drops
+the entry and calls again at the replacement.
 
 A run while the manager is disposed does nothing in lang-core. That line of
 #87 moves to #89, which adds the dispose command.

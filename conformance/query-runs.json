@@ -135,12 +135,53 @@
   },
   {
     "name": "run-a-waiting-query",
-    "program": "a = Query(\"source\", {}, null)\nb = Query(\"reader\", {v: a}, \"bdef\")",
+    "program": "a = Query(\"src\", {}, null)\nb = Query(\"sink\", {v: a}, \"bdef\")",
     "steps": [
       {"kind":"evaluate"},
       {"kind":"invalidate","ids":["b"]},
-      {"kind":"invalidate"},
+      {"kind":"complete","dispatch":{"step":0,"toolName":"sink","args":{"v":null}},"outcome":{"kind":"result","value":"early"}},
       {"kind":"complete","call":0,"outcome":{"kind":"result","value":"ready"}}
+    ]
+  },
+  {
+    "name": "a-run-keeps-the-request-of-a-query-that-has-gone",
+    "program": "$n = 1\na = Query(\"t\", {v: $n}, \"a\")\nb = Query(\"t::{\\\"v\\\":1}\", {\"$n\": 1}, \"b\")",
+    "steps": [
+      {"kind":"evaluate"},
+      {"kind":"invalidate","ids":["b"]},
+      {"kind":"replace","program":"$n = 1\na = Query(\"t\", {v: $n}, \"a\")"},
+      {"kind":"evaluate"},
+      {"kind":"complete","call":0,"outcome":{"kind":"result","value":"first"}},
+      {"kind":"complete","dispatch":{"step":4,"toolName":"t::{\"v\":1}","args":{"$n":1}},"outcome":{"kind":"result","value":"second"}}
+    ]
+  },
+  {
+    "name": "colliding-keys-share-the-first-querys-call-a-first",
+    "program": "$n = 1\na = Query(\"t\", {v: $n}, \"a\")\nb = Query(\"t::{\\\"v\\\":1}\", {\"$n\": 1}, \"b\")",
+    "steps": [
+      {"kind":"evaluate"},
+      {"kind":"complete","call":0,"outcome":{"kind":"tool-error","message":"offline"}}
+    ]
+  },
+  {
+    "name": "colliding-keys-share-the-first-querys-call-b-first",
+    "program": "$n = 1\nb = Query(\"t::{\\\"v\\\":1}\", {\"$n\": 1}, \"b\")\na = Query(\"t\", {v: $n}, \"a\")",
+    "steps": [
+      {"kind":"evaluate"},
+      {"kind":"complete","call":0,"outcome":{"kind":"tool-error","message":"offline"}}
+    ]
+  },
+  {
+    "name": "a-run-survives-a-replacement-on-the-same-key",
+    "program": "a = Query(\"t\", {}, \"d\")",
+    "steps": [
+      {"kind":"evaluate"},
+      {"kind":"invalidate","ids":["a"]},
+      {"kind":"replace","program":"b = Query(\"t\", {}, \"d\")"},
+      {"kind":"evaluate"},
+      {"kind":"complete","call":0,"outcome":{"kind":"result","value":"first"}},
+      {"kind":"complete","dispatch":{"step":3,"toolName":"t","args":{}},"outcome":{"kind":"result","value":"upstream"}},
+      {"kind":"complete","dispatch":{"step":4,"toolName":"t","args":{}},"outcome":{"kind":"result","value":"ours"}}
     ]
   }
 ]

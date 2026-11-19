@@ -51,7 +51,10 @@ impl QueryManager {
             };
             if entry.pending.is_some() {
                 // One remembered run per key, however many are asked for.
-                entry.run_again.get_or_insert(id);
+                // It keeps the first asker's request: two queries can share
+                // a key while calling different tools (ADR 0013 keys collide
+                // as upstream's do).
+                entry.run_again.get_or_insert_with(|| query.request.clone());
             } else {
                 calls.push(start_call(
                     &self.owner,
@@ -65,26 +68,17 @@ impl QueryManager {
     }
 
     /// After a call for `key` was delivered, start the run remembered for the
-    /// key, if any. It uses the request of the query that asked when that
-    /// query is still on the key, otherwise of the first current reader in
-    /// registration order. With no current reader the run is forgotten.
+    /// key, if any, with the request that was asked for, whether or not the
+    /// query that asked is still registered. With no query on the key the
+    /// run is forgotten.
     pub(super) fn run_remembered(&mut self, key: &Arc<str>) -> Option<ToolCall> {
+        let read = self.queries.values().any(|query| query.key == *key);
         let entry = self.cache.get_mut(key)?;
         let asked = entry.run_again.take()?;
-        if entry.pending.is_some() {
+        if !read || entry.pending.is_some() {
             return None;
         }
-        let reader = self
-            .queries
-            .get(&asked)
-            .filter(|query| query.key == *key)
-            .or_else(|| {
-                self.order
-                    .iter()
-                    .filter_map(|id| self.queries.get(id))
-                    .find(|query| query.key == *key)
-            })?;
-        Some(start_call(&self.owner, entry, key.clone(), &reader.request))
+        Some(start_call(&self.owner, entry, key.clone(), &asked))
     }
 }
 

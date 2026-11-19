@@ -424,8 +424,11 @@ while that query's key has a call in flight is remembered once for the key,
 whichever query started the call, and its call appears in the drain that
 follows the outcome. `retryFailedQueries()` runs again every query whose
 error is in the query snapshot, as the upstream renderer's Retry does; with
-no query errors it runs every query, as upstream's does. Both do nothing
-while the response state is streaming. Without a provider, a `@Run` of a
+no query errors it runs every query, as upstream's does. Both act on the
+queries registered so far even while the response state is streaming, as
+upstream's do for a bare program. Upstream ignores clicks and Retry while a
+bundle is blocked; that stays the embedder's to do until the session knows
+the bundle's state. Without a provider, a `@Run` of a
 query is still the host's `run` event.
 
 Skipping a drain leaves still-pending calls parked in dispatch order.

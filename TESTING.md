@@ -1275,9 +1275,9 @@ run with no query left on its key is forgotten, and that the action runner
 hands a query's `@Run` over in step order instead of a host event only when
 asked to. `query_runs` (session) compares `conformance/session-runs.json`
 with `golden/session-runs.jsonl` from `reference/session-runs.ts`, and checks
-that a session without a provider still emits the `run` event, that runs and
-Retry do nothing while streaming, and that detaching forgets a remembered
-run. The native and WebAssembly bindings each drive a refresh and a Retry.
+that a session without a provider still emits the `run` event, that while
+streaming a run and Retry act on the queries registered so far, and that
+detaching forgets a remembered run. The native and WebAssembly bindings each drive a refresh and a Retry.
 
 `action_run_budget` uses actual parsed 4,000/16,000-step set/reset comparisons and
 a separate 20,000-step default-budget case.

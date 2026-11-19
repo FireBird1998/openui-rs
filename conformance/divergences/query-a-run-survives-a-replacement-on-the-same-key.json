@@ -1,0 +1,22 @@
+{
+  "case": "a-run-survives-a-replacement-on-the-same-key",
+  "reason": "run-belongs-to-the-key",
+  "reference": [
+    "{\"snapshot\":{\"__openui_loading\":[\"a\"],\"__openui_refetching\":[],\"__openui_errors\":[],\"a\":\"d\"},\"calls\":[{\"call\":0,\"toolName\":\"t\",\"args\":{}}],\"changed\":true}",
+    "{\"snapshot\":{\"__openui_loading\":[\"a\"],\"__openui_refetching\":[],\"__openui_errors\":[],\"a\":\"d\"},\"calls\":[],\"changed\":false}",
+    "{\"snapshot\":{\"__openui_loading\":[\"a\"],\"__openui_refetching\":[],\"__openui_errors\":[],\"a\":\"d\"},\"calls\":[],\"changed\":false}",
+    "{\"snapshot\":{\"__openui_loading\":[\"b\"],\"__openui_refetching\":[],\"__openui_errors\":[],\"b\":\"d\"},\"calls\":[{\"call\":1,\"toolName\":\"t\",\"args\":{}}],\"changed\":true}",
+    "{\"snapshot\":{\"__openui_loading\":[\"b\"],\"__openui_refetching\":[],\"__openui_errors\":[],\"b\":\"d\"},\"calls\":[],\"changed\":false}",
+    "{\"snapshot\":{\"__openui_loading\":[],\"__openui_refetching\":[],\"__openui_errors\":[],\"b\":\"upstream\"},\"calls\":[],\"changed\":true}",
+    "{\"snapshot\":{\"__openui_loading\":[],\"__openui_refetching\":[],\"__openui_errors\":[],\"b\":\"upstream\"},\"calls\":[],\"changed\":false}"
+  ],
+  "rust": [
+    "{\"snapshot\":{\"__openui_loading\":[\"a\"],\"__openui_refetching\":[],\"__openui_errors\":[],\"a\":\"d\"},\"calls\":[{\"call\":0,\"toolName\":\"t\",\"args\":{}}],\"changed\":true}",
+    "{\"snapshot\":{\"__openui_loading\":[\"a\"],\"__openui_refetching\":[],\"__openui_errors\":[],\"a\":\"d\"},\"calls\":[],\"changed\":false}",
+    "{\"snapshot\":{\"__openui_loading\":[\"a\"],\"__openui_refetching\":[],\"__openui_errors\":[],\"a\":\"d\"},\"calls\":[],\"changed\":false}",
+    "{\"snapshot\":{\"__openui_loading\":[\"b\"],\"__openui_refetching\":[],\"__openui_errors\":[],\"b\":\"d\"},\"calls\":[],\"changed\":true}",
+    "{\"snapshot\":{\"__openui_loading\":[\"b\"],\"__openui_refetching\":[\"b\"],\"__openui_errors\":[],\"b\":\"first\"},\"calls\":[{\"call\":1,\"toolName\":\"t\",\"args\":{}}],\"changed\":true}",
+    "{\"snapshot\":{\"__openui_loading\":[\"b\"],\"__openui_refetching\":[\"b\"],\"__openui_errors\":[],\"b\":\"first\"},\"calls\":[],\"changed\":false}",
+    "{\"snapshot\":{\"__openui_loading\":[],\"__openui_refetching\":[],\"__openui_errors\":[],\"b\":\"ours\"},\"calls\":[],\"changed\":true}"
+  ]
+}

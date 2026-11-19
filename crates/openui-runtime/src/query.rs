@@ -83,7 +83,8 @@ pub enum QueryCommand<'a> {
     /// a registered query, in order: a call starts for its current key with
     /// the tool name and arguments of the query's last evaluate, or, while
     /// that key has a call in flight, one more call is remembered for the
-    /// key. The remembered call starts when the call in flight is delivered
+    /// key, with the tool name and arguments of the first query that asked.
+    /// The remembered call starts when the call in flight is delivered
     /// to a query still on the key, whichever query started it (ADR 0013),
     /// and is forgotten if none is. However many runs are asked for
     /// meanwhile, one call follows. Unknown names are skipped. An empty list
@@ -168,8 +169,10 @@ struct CacheEntry {
     // Each current or previous slot holds one reference, including shared keys.
     references: usize,
     failed: bool,
-    // A run asked for while a call is in flight, by the query that asked.
-    run_again: Option<String>,
+    // A run asked for while a call is in flight: the request of the query
+    // that asked first, so the call is the one asked for even if that query
+    // has since gone.
+    run_again: Option<runs::Request>,
 }
 
 struct PendingCall {

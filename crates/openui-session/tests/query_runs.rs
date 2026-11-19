@@ -70,12 +70,16 @@ fn query_runs_and_retry_match_the_renderer_bytes() {
         s.take_query_update();
         let mut calls: Vec<Arc<WantedToolCall>> = Vec::new();
         let mut blocked = false;
+        // A blocked bundle's clicks and Retry are the embedder's to ignore.
+        let bundle = scenario["bundle"] == true;
         let mut last: Option<EvaluationOutput> = None;
         for step in scenario["steps"].as_array().unwrap() {
             let mut output = None;
             let mut events = Vec::new();
             if step.get("evaluate").is_some() || step.get("replace").is_some() {
-                blocked = step["streaming"] == true;
+                blocked = step["streaming"] == true
+                    || step["complete"] == false
+                    || step["error"].is_string();
             }
             let response = ResponseState { streaming: blocked };
             if let Some(source) = step["replace"].as_str() {
@@ -100,6 +104,8 @@ fn query_runs_and_retry_match_the_renderer_bytes() {
                 };
                 s.complete_tool_call_json(&calls[index as usize].id, &outcome.to_string())
                     .unwrap();
+            } else if bundle && blocked {
+                assert!(step.get("click").is_some() || step.get("retry").is_some());
             } else if let Some(prop) = step["click"].as_str() {
                 let run = click(&mut s, last.as_ref().unwrap(), prop);
                 assert!(run.failure.is_none() && run.continuation.is_none());
@@ -161,7 +167,7 @@ fn without_a_provider_a_query_run_is_still_the_hosts_event() {
 }
 
 #[test]
-fn a_query_run_while_the_response_streams_runs_nothing_and_emits_nothing() {
+fn while_streaming_a_run_acts_on_the_queries_registered_so_far() {
     let lib = library(json!({"$defs":{"Box":{"properties":{"value":{}}}}}));
     let refs = no_refs();
     let mut s = session(&lib);
@@ -172,20 +178,32 @@ fn a_query_run_while_the_response_streams_runs_nothing_and_emits_nothing() {
     s.complete_tool_call_json(&first.id, r#"{"failed":"offline"}"#)
         .unwrap();
     s.take_query_update();
+    // A streamed edit declares p and runs it, but p is not registered yet.
+    let streamed = "q = Query(\"search\", {}, \"loading\")\np = Query(\"other\", {}, \"p\")\nroot = Box(Action([@Run(p), @Run(q), @ToAssistant(\"after\")]))";
     let draw = s
-        .evaluate_with_response(&refs, ResponseState { streaming: true })
-        .unwrap();
+        .replace_program_with_response(
+            &refs,
+            program(&lib, streamed),
+            None,
+            None,
+            false,
+            ResponseState { streaming: true },
+        )
+        .unwrap()
+        .evaluation;
+    assert!(s.take_query_update().calls.is_empty());
     let run = click(&mut s, &draw, "value");
     assert_eq!(run.events.len(), 1, "only the message step emits");
-    s.retry_failed_queries().unwrap();
-    let update = s.take_query_update();
-    assert!(update.calls.is_empty() && !update.changed);
-    let draw = s.evaluate(&refs).unwrap();
-    assert!(s.take_query_update().calls.is_empty());
-    click(&mut s, &draw, "value");
     let update = s.take_query_update();
     assert_eq!(update.calls.len(), 1);
-    assert!(update.changed);
+    assert_eq!(update.calls[0].tool_name, "search");
+    s.complete_tool_call_json(&update.calls[0].id, r#"{"failed":"again"}"#)
+        .unwrap();
+    s.take_query_update();
+    s.retry_failed_queries().unwrap();
+    let retried = s.take_query_update();
+    assert_eq!(retried.calls.len(), 1);
+    assert_eq!(retried.calls[0].tool_name, "search");
 }
 
 #[test]

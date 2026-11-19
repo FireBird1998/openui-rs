@@ -96,11 +96,12 @@ impl SessionCore {
     /// whose error is in the query snapshot, in the snapshot's error order.
     /// The wanted calls come from the next `take_query_update`. As upstream
     /// passes the list to `invalidate`, an empty list runs every query. With
-    /// no tool provider, or while the response streams, it does nothing, as
-    /// upstream's renderer has no provider to call or ignores Retry while
-    /// its bundle is blocked.
+    /// no tool provider it does nothing. The streaming flag does not gate
+    /// it: as upstream's `invalidate`, it acts on the queries registered so
+    /// far. Upstream also ignores Retry while a bundle is blocked; until the
+    /// session knows the bundle's state (#99), that is the embedder's.
     pub fn retry_failed_queries(&mut self) -> Result<(), OpenUiError> {
-        let Some(manager) = self.manager.as_mut().filter(|_| !self.streaming) else {
+        let Some(manager) = self.manager.as_mut() else {
             return Ok(());
         };
         let failed = match manager.snapshot().get("__openui_errors") {
@@ -129,10 +130,11 @@ impl SessionCore {
     }
 
     // Each `@Run` of a query, in step order, as upstream's renderer calls
-    // `invalidate([statementId])` once per step. Nothing runs while the
-    // response streams: upstream's renderer ignores the click then.
+    // `invalidate([statementId])` once per step, on the queries registered
+    // so far, streaming or not. Ignoring a blocked bundle's click is the
+    // embedder's until #99.
     pub(super) fn run_queries(&mut self, ids: &[String]) -> Result<(), OpenUiError> {
-        let Some(manager) = self.manager.as_mut().filter(|_| !self.streaming) else {
+        let Some(manager) = self.manager.as_mut() else {
             return Ok(());
         };
         for id in ids {
