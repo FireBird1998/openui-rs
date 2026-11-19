@@ -1,6 +1,7 @@
 //! The clock-free query manager and its tool provider seam.
 mod mutations;
 mod refresh;
+mod results;
 mod runs;
 mod scripts;
 mod session;
@@ -12,6 +13,8 @@ use crate::{
 };
 use mutations::{MutationCall, Mutations};
 use openui_lang::{Ast, JsonValue, ParseResult, PreparedProgram, QueryStatement};
+use results::Admitted;
+pub use results::ResultLimit;
 pub use scripts::CloudScripts;
 pub use session::ToolCallOutcome;
 use std::cell::Cell;
@@ -55,7 +58,7 @@ pub struct ToolCall {
 }
 
 /// The outcome reported by the tool provider.
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 #[non_exhaustive]
 pub enum ToolOutcome<'a> {
     /// Host JSON. A missing query result becomes null. A missing mutation result omits data.
@@ -137,7 +140,9 @@ pub enum QueryCommandError {
     InvalidCall,
     /// Invalid refresh floor, backwards clock, or unrepresentable deadline.
     InvalidClock,
-    /// Evaluation or result depth exceeded a configured limit.
+    /// Evaluation exceeded a configured limit, or an outcome's failure text
+    /// or its snapshot did not fit. A result past a limit is not refused: it
+    /// is delivered as the call's `tool-error` ([`ResultLimit`]).
     Limit(LimitError),
     /// Evaluation or tool-name coercion failed.
     Evaluation(EvaluationFailure),
@@ -178,6 +183,9 @@ pub struct QueryManager {
     extra_keys: HashMap<String, ExtraKey>,
     snapshot: JsObject<Value>,
     snapshot_json: String,
+    // The cache cap and the bytes the live entries' data charge to it (#90).
+    cache_limit: usize,
+    cache_bytes: usize,
 }
 
 #[derive(Clone)]
@@ -196,6 +204,8 @@ struct Query {
     // Set only by a success delivered while this query wants the key.
     ever_fetched: bool,
     error: Option<Value>,
+    // The error is not listed: the snapshot shows one compact diagnostic (#90).
+    withheld: bool,
     // What the last evaluation would call; a run starts this call.
     request: runs::Request,
 }
@@ -204,6 +214,8 @@ struct Query {
 struct CacheEntry {
     data: Option<Value>,
     pending: Option<Arc<PendingCall>>,
+    // The data's JSON bytes, charged to the cache cap.
+    bytes: usize,
     // Each current or previous slot holds one reference, including shared keys.
     references: usize,
     failed: bool,
@@ -251,6 +263,8 @@ impl QueryManager {
             extra_keys: HashMap::new(),
             snapshot: JsObject::new(),
             snapshot_json: String::new(),
+            cache_limit: limits.result_size(),
+            cache_bytes: 0,
         };
         manager.rebuild_snapshot();
         manager
@@ -271,12 +285,13 @@ impl QueryManager {
         visible_error: bool,
         mut outstanding: impl Iterator<Item = &'a ToolCallId>,
     ) -> bool {
+        let withheld = self.queries.get(id).is_some_and(|q| q.withheld);
         self.queries
             .get(id)
             .and_then(|q| self.cache.get(&q.key))
             .is_some_and(|entry| {
                 entry.data.is_some()
-                    || (entry.failed && visible_error)
+                    || (entry.failed && (visible_error || withheld))
                     || entry.pending.as_ref().is_some_and(|pending| {
                         let target = Arc::downgrade(pending);
                         outstanding.any(|id| matches!(&id.0.target, CallTarget::Query(call) if call.ptr_eq(&target)))
@@ -381,22 +396,15 @@ impl QueryManager {
                 let nodes = self.evaluate_nodes(&TreeInput::new(program), store)?;
                 self.apply_nodes(program, nodes)
             }
+            // One completion path for borrowed and owned outcomes (#90).
             QueryCommand::Complete { id, outcome } => {
-                let key = id.query_key();
-                let changed = self.complete(id, outcome)?;
-                id.0.consumed.store(true, Ordering::Relaxed);
-                if !changed {
-                    return Ok(self.idle_update());
-                }
-                key.and_then(|key| self.run_remembered(&key))
-                    .into_iter()
-                    .collect()
+                return self.complete_command(id, outcome).map(|(update, _)| update);
             }
             QueryCommand::Invalidate { statement_ids } => self.invalidate(statement_ids),
         };
         // Ownership changes atomically with the command. Another registration
         // can take a temporarily unreferenced entry later in the same evaluate.
-        self.cache.retain(|_, entry| entry.references != 0);
+        self.release_unreferenced();
         Ok(QueryUpdate {
             next_refresh_due_ms: self.next_refresh_due_ms(),
             calls,
@@ -486,6 +494,7 @@ impl QueryManager {
                     defaults: None,
                     ever_fetched: false,
                     error: None,
+                    withheld: false,
                     request: runs::Request::default(),
                 }
             });
@@ -525,66 +534,74 @@ impl QueryManager {
         calls
     }
 
+    // A success is admitted under the limits before it is copied. A refused
+    // one is delivered as the call's failure and reported (#90).
     fn complete(
         &mut self,
         id: &ToolCallId,
         outcome: ToolOutcome<'_>,
-    ) -> Result<bool, QueryCommandError> {
+    ) -> Result<(bool, Option<ResultLimit>), QueryCommandError> {
         self.check_call(id)?;
         if self.disposed {
-            return Ok(false);
+            return Ok((false, None));
         }
         let target = match &id.0.target {
             CallTarget::Mutation(call) => {
-                return self.mutations.complete(call, outcome, self.limits);
+                let room = self.mutation_room();
+                return self.mutations.complete(call, outcome, self.limits, room);
             }
             CallTarget::Query(target) => target,
         };
         // Only the originating entry owns this target. A host holding an old
         // identity cannot retain the key, its data, or a replacement's call.
-        let active = target.upgrade().and_then(|pending| {
-            self.cache
-                .get_mut(&pending.key)
-                .map(|entry| (pending, entry))
-        });
-        let Some((pending, entry)) = active else {
-            return Ok(false);
+        let Some(pending) = target
+            .upgrade()
+            .filter(|pending| self.cache.contains_key(&pending.key))
+        else {
+            return Ok((false, None));
         };
         // A previous key keeps existing data alive. Only current readers can
         // accept new data or a failure. Leave an unsettled entry reusable.
-        let mut readers = self
-            .queries
-            .iter_mut()
-            .filter(|(_, query)| query.key == pending.key)
-            .peekable();
-        if readers.peek().is_none() {
-            entry.pending = None;
-            // A remembered run needs a current reader to deliver to.
-            entry.run_again = None;
-            return Ok(false);
-        }
-        let success = matches!(
-            outcome,
-            ToolOutcome::Result(_) | ToolOutcome::ResultValue(_)
-        );
-        if let ToolOutcome::ResultValue(value) = &outcome {
-            crate::admission::measure(value, self.limits).map_err(QueryCommandError::Limit)?;
-            if openui_lang::write_host_json(value, self.limits.result_size(), None).is_none() {
-                return Err(QueryCommandError::Limit(crate::admission::size_error()));
+        if !self.queries.values().any(|query| query.key == pending.key) {
+            if let Some(entry) = self.cache.get_mut(&pending.key) {
+                entry.pending = None;
+                // A remembered run needs a current reader to deliver to.
+                entry.run_again = None;
             }
-            entry.data = Some((*value).clone());
-            entry.failed = false;
-        } else if let ToolOutcome::Result(value) = &outcome {
-            entry.data = Some(match value {
-                Some(value) => admit_result(value, self.limits)?,
-                None => Value::Null,
-            });
+            return Ok((false, None));
+        }
+        let admission = self.admit_query_result(&pending.key, &outcome)?;
+        let refused = match &admission {
+            Some(Admitted::Refused(limit)) => Some(*limit),
+            _ => None,
+        };
+        let message = refused.map(|limit| limit.to_string());
+        let outcome = match &message {
+            Some(message) => ToolOutcome::CallFailed(message),
+            None => outcome,
+        };
+        let success = matches!(admission, Some(Admitted::Data(..)));
+        let Some(entry) = self.cache.get_mut(&pending.key) else {
+            return Ok((false, None));
+        };
+        if let Some(Admitted::Data(value, bytes)) = admission {
+            self.cache_bytes = self
+                .cache_bytes
+                .saturating_sub(entry.bytes)
+                .saturating_add(bytes);
+            entry.data = Some(value);
+            entry.bytes = bytes;
             entry.failed = false;
         } else {
             entry.failed = true;
         }
         entry.pending = None;
+        let readers = self
+            .queries
+            .iter_mut()
+            .filter(|(_, query)| query.key == pending.key);
         for (statement_id, query) in readers {
+            query.withheld = false;
             if success {
                 query.error = None;
                 query.ever_fetched = true;
@@ -595,7 +612,7 @@ impl QueryManager {
                 query.error = Some(pending.error(statement_id, &outcome));
             }
         }
-        Ok(true)
+        Ok((true, refused))
     }
 
     fn data(&self, query: &Query) -> Option<&Value> {
@@ -623,10 +640,11 @@ impl QueryManager {
                     refetching.push(Value::Str(id.clone()));
                 }
             }
-            if let Some(error) = &query.error {
+            if let Some(error) = query.error.as_ref().filter(|_| !query.withheld) {
                 errors.push(error.clone());
             }
         }
+        errors.extend(self.withheld_diagnostic());
         self.mutations.append_errors(&mut errors);
         let mut snapshot = JsObject::new();
         snapshot.define("__openui_loading", Value::Arr(Arc::new(loading)));
@@ -914,14 +932,6 @@ fn check_cuts(flags: EvaluationFlags) -> Result<(), QueryCommandError> {
     }
 }
 
-fn admit_result(value: &JsonValue, limits: Limits) -> Result<Value, QueryCommandError> {
-    // The host owns its JSON. Check depth without cloning it, including for
-    // caller-built JSON. Keep conversion at this boundary for result/cache
-    // size admission, which will use the same entry point.
-    host_json_bytes(value, limits, usize::MAX)?;
-    Ok(Value::from_json(value))
-}
-
 /// The length of `JSON.stringify` of host JSON, refused past the depth limit
 /// or past `budget` bytes. Walks without copying or recursion, and stops at
 /// the first byte over.
@@ -938,9 +948,13 @@ fn host_json_bytes(
             path.pop();
             continue;
         };
+        let room = budget.saturating_sub(bytes);
         if let Some(name) = name {
-            bytes = bytes.saturating_add(openui_lang::json_string_len(name).saturating_add(3));
+            let written = results::string_bytes(name, room)
+                .ok_or(QueryCommandError::Limit(crate::admission::size_error()))?;
+            bytes = bytes.saturating_add(written.saturating_add(1));
         }
+        let room = budget.saturating_sub(bytes);
         let (own, children): (usize, Option<Level<'_>>) = match value {
             JsonValue::Null | JsonValue::Bool(true) => (4, None),
             JsonValue::Bool(false) => (5, None),
@@ -948,7 +962,11 @@ fn host_json_bytes(
                 openui_lang::json_number_len(number.as_f64().unwrap_or(f64::NAN)),
                 None,
             ),
-            JsonValue::String(text) => (openui_lang::json_string_len(text).saturating_add(2), None),
+            JsonValue::String(text) => (
+                results::string_bytes(text, room)
+                    .ok_or(QueryCommandError::Limit(crate::admission::size_error()))?,
+                None,
+            ),
             JsonValue::Array(items) => (
                 items.len().saturating_add(1).max(2),
                 Some(Box::new(items.iter().map(|item| (None, item)))),

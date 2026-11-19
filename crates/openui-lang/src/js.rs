@@ -224,7 +224,10 @@ pub(crate) fn write_json_surrogate(out: &mut String, unit: u16) {
 /// UTF-8 bytes in JSON.stringify's escaped string body, without quotes.
 /// A control character or lone surrogate can require six bytes.
 pub fn json_string_len(s: &str) -> usize {
-    s.chars().map(json_char_len).sum()
+    // Saturating, so a raised limit on a 32-bit target cannot wrap past it.
+    s.chars()
+        .map(json_char_len)
+        .fold(0usize, usize::saturating_add)
 }
 
 #[inline]
@@ -454,6 +457,13 @@ impl<V> JsObject<V> {
         js_property_order(self.entries.keys().map(String::as_str))
             .into_iter()
             .map(|i| self.entries.get_index(i).expect("index in range"))
+    }
+
+    /// Entries in insertion order. Unlike [`JsObject::iter`], this computes
+    /// no property order, so it allocates nothing: for measuring, where the
+    /// order does not matter.
+    pub fn iter_unordered(&self) -> impl Iterator<Item = (&String, &V)> {
+        self.entries.iter()
     }
 
     /// Values in JavaScript property order.

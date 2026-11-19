@@ -298,3 +298,196 @@ fn refused_diagnostics_and_script_keys_leave_the_previous_calls_usable() -> Resu
 fn changing_only_query_keys_preserves_the_registered_mutation_tool() -> Result<()> {
     replay("query-key-only-edit")
 }
+
+fn parsed(lib: &ComponentLibrary, source: &str) -> Arc<ParsedProgram> {
+    let inner = Arc::new(openui_lang::parse(source, &lib.inner, None));
+    Arc::new(ParsedProgram {
+        json_bytes: inner.to_json().len() as u64,
+        inner,
+    })
+}
+
+fn revision(name: &str) -> ResponseState {
+    ResponseState {
+        is_bundle: true,
+        scripts: vec!["cloud".into()],
+        script_revision: Some(name.into()),
+        ..Default::default()
+    }
+}
+
+#[test]
+fn a_refused_script_revision_is_retried_and_store_writes_use_the_last_admitted_revision()
+-> Result<()> {
+    use std::sync::atomic::{AtomicUsize, Ordering};
+    let lib = library(json!({"$defs":{"Box":{"properties":{"value":{}}}},
+        "functions":{"Tool":{"params":{"type":"object","properties":{}}}}}));
+    let refs = PreparedReferenceValues::owned_with_limits(JsObject::new(), Limits::DEFAULT);
+    let mut limits = RuntimeLimits::default();
+    limits.evaluation.result_size = Some(2048);
+    let mut session = SessionCore::new(lib.clone(), None, limits)?;
+    let attempts = Arc::new(AtomicUsize::new(0));
+    let observed = attempts.clone();
+    session.register_function(
+        "Tool".into(),
+        Arc::new(move |_| {
+            observed.fetch_add(1, Ordering::Relaxed);
+            Ok(Some(r#""cloud""#.into()))
+        }),
+    )?;
+    session.attach_tool_provider(&refs)?;
+    session.replace_program_with_response(
+        &refs,
+        parsed(&lib, "q=Query(@Tool(),{},0)\nroot=Box(q)"),
+        None,
+        None,
+        true,
+        revision("A"),
+    )?;
+    let original = session
+        .take_query_update()
+        .calls
+        .pop()
+        .ok_or("missing call")?;
+    let oversized = revision(&"B".repeat(32_768));
+    for _ in 0..2 {
+        let before = attempts.load(Ordering::Relaxed);
+        let draw = session.evaluate_with_response(&refs, oversized.clone())?;
+        assert!(matches!(
+            draw.query_evaluation_error,
+            Some(OpenUiError::LimitExceeded { .. })
+        ));
+        assert!(
+            attempts.load(Ordering::Relaxed) > before,
+            "same revision must be evaluated again"
+        );
+        assert!(session.take_query_update().calls.is_empty());
+    }
+    session.set(&refs, "$n".into(), Some("1".into()))?;
+    let write = session.take_query_update();
+    assert!(
+        write.evaluation_error.is_none(),
+        "store writes must use the admitted key"
+    );
+    assert!(write.calls.is_empty());
+    session.complete_tool_call_json(&original.id, r#"{"value":42}"#)?;
+    let draw = session.evaluate_with_response(&refs, revision("A"))?;
+    assert!(draw.json.contains(r#""value":42"#));
+    Ok(())
+}
+
+#[test]
+fn a_result_refused_while_the_bundle_is_blocked_ends_its_call_and_waits_for_retry() -> Result<()> {
+    let lib = library(json!({"$defs":{"Box":{"properties":{"value":{}}}}}));
+    let refs = PreparedReferenceValues::owned_with_limits(JsObject::new(), Limits::DEFAULT);
+    let mut limits = RuntimeLimits::default();
+    limits.evaluation.result_size = Some(1024);
+    let mut session = SessionCore::new(lib.clone(), None, limits)?;
+    session.attach_tool_provider(&refs)?;
+    session.replace_program_with_response(
+        &refs,
+        parsed(&lib, "q=Query(\"cloud\",{},0)\nroot=Box(q)"),
+        None,
+        None,
+        true,
+        revision("A"),
+    )?;
+    let call = session
+        .take_query_update()
+        .calls
+        .pop()
+        .ok_or("missing call")?;
+    let blocked = ResponseState {
+        is_bundle: true,
+        complete: false,
+        ..Default::default()
+    };
+    session.evaluate_with_response(&refs, blocked.clone())?;
+    session.complete_tool_call_json(&call.id, &json!({"value":"x".repeat(1024)}).to_string())?;
+    assert!(!call.id.is_pending());
+    let draw = session.evaluate_with_response(&refs, blocked)?;
+    let snap: Json = serde_json::from_str(&draw.query_snapshot_json.ok_or("missing snapshot")?)?;
+    assert_eq!(
+        snap.pointer("/__openui_errors/0/code"),
+        Some(&json!("tool-error"))
+    );
+    assert_eq!(
+        snap.pointer("/__openui_errors/0/message"),
+        Some(&json!(
+            "Query \"cloud\" failed: tool result exceeds the result size limit of 1024 bytes"
+        ))
+    );
+    assert!(!draw.is_query_loading);
+    session.retry_failed_queries()?;
+    assert!(session.take_query_update().calls.is_empty());
+    session.evaluate_with_response(&refs, revision("A"))?;
+    session.retry_failed_queries()?;
+    assert_eq!(session.take_query_update().calls.len(), 1);
+    Ok(())
+}
+
+#[test]
+fn changing_a_script_key_releases_its_previous_cache_charge_on_success() -> Result<()> {
+    let lib = library(json!({"$defs":{"Box":{"properties":{"value":{}}}}}));
+    let refs = PreparedReferenceValues::owned_with_limits(JsObject::new(), Limits::DEFAULT);
+    let mut session = SessionCore::new(
+        lib.clone(),
+        None,
+        RuntimeLimits {
+            max_cache_bytes: Some(10),
+            ..Default::default()
+        },
+    )?;
+    session.attach_tool_provider(&refs)?;
+    session.replace_program_with_response(
+        &refs,
+        parsed(
+            &lib,
+            "q=Query(\"cloud\",{},0)\nr=Query(\"ordinary\",{},0)\nroot=Box([q,r])",
+        ),
+        None,
+        None,
+        true,
+        revision("A"),
+    )?;
+    let calls = session.take_query_update().calls;
+    let cloud = calls
+        .iter()
+        .find(|c| c.tool_name == "cloud")
+        .ok_or("missing Cloud script call")?;
+    let ordinary = calls
+        .iter()
+        .find(|c| c.tool_name == "ordinary")
+        .ok_or("missing ordinary call")?;
+    session.complete_tool_call_json(&cloud.id, r#"{"value":"123456"}"#)?;
+    session.evaluate_with_response(&refs, revision("B"))?;
+    let b = session
+        .take_query_update()
+        .calls
+        .pop()
+        .ok_or("missing revised script call")?;
+    session.complete_tool_call_json(&ordinary.id, r#"{"value":100}"#)?;
+    let draw = session.evaluate_with_response(&refs, revision("B"))?;
+    let snap: Json = serde_json::from_str(&draw.query_snapshot_json.ok_or("missing snapshot")?)?;
+    assert_eq!(snap.get("q"), Some(&json!("123456")));
+    assert_eq!(
+        snap.pointer("/__openui_errors/0/message"),
+        Some(&json!(
+            "Query \"ordinary\" failed: tool result does not fit the cache limit of 10 bytes"
+        ))
+    );
+    session.complete_tool_call_json(&b.id, r#"{"value":"abcdefg"}"#)?;
+    session.retry_failed_queries()?;
+    let retry = session
+        .take_query_update()
+        .calls
+        .pop()
+        .ok_or("missing ordinary retry")?;
+    session.complete_tool_call_json(&retry.id, r#"{"value":1}"#)?;
+    let draw = session.evaluate_with_response(&refs, revision("B"))?;
+    let snap: Json = serde_json::from_str(&draw.query_snapshot_json.ok_or("missing snapshot")?)?;
+    assert_eq!(snap.get("q"), Some(&json!("abcdefg")));
+    assert_eq!(snap.get("r"), Some(&json!(1)));
+    assert_eq!(snap.get("__openui_errors"), Some(&json!([])));
+    Ok(())
+}

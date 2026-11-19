@@ -74,7 +74,8 @@ work and depth from the supplied `ParseLimits`.
 `new ParseLimits()` has optional bigint properties programSize, resultSize,
 resultFloor, amplification, resultCeiling, depth, work, peakMemory; defaults are undefined.
 `new RuntimeLimits()` has evaluation and referencePreparation (ParseLimits),
-maxJsonBytes (8388608n), maxContinuations (64n), optional maxActionPathBytes
+maxJsonBytes (8388608n), maxContinuations (64n), optional maxCacheBytes (the
+query cache's byte cap, absent for the result-size ceiling), optional maxActionPathBytes
 (undefined). Set e.g. 4096n for a smaller opt-in retained-path cap. referencePreparation.depth is
 32768n; all other ParseLimits fields default to undefined. Limit getters return
 copies: edit one, assign it back, then free the copy. `ParseLimits.peakMemory`
@@ -174,7 +175,7 @@ text. To preserve a lone code unit, pass ASCII JSON escapes, for example
 a split surrogate pair in source chunks must be buffered by the caller.
 
 See [session semantics](runtime-binding.md) for authority, marker trust,
-streaming/pristine rules, host events, bundleBlocked responsibilities and state
+streaming/pristine rules, host events, the session’s gate on clicks and Retry, and state
 admission. Evaluation JSON and each event JSON are the runtime serializer's
 bytes; no JavaScript reserialization changes them. All execution happens on one
 thread. Native worker failures remain Worker; wasm has no worker/transport

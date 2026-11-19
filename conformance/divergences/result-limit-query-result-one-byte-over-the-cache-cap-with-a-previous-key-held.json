@@ -1,0 +1,20 @@
+{
+  "case": "query-result-one-byte-over-the-cache-cap-with-a-previous-key-held",
+  "reason": "#90: a tool result that would take the held data past the cache cap is delivered as the query's tool-error; the previous key's data counts and nothing held is evicted",
+  "reference": [
+    "{\"snapshot\":{\"__openui_loading\":[\"a\",\"b\"],\"__openui_refetching\":[],\"__openui_errors\":[],\"a\":null,\"b\":null},\"calls\":[{\"call\":0,\"toolName\":\"a\",\"args\":{\"k\":0}},{\"call\":1,\"toolName\":\"b\",\"args\":{}}],\"changed\":true}",
+    "{\"snapshot\":{\"__openui_loading\":[\"b\"],\"__openui_refetching\":[],\"__openui_errors\":[],\"a\":\"xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\",\"b\":null},\"calls\":[],\"changed\":true}",
+    "{\"snapshot\":{\"__openui_loading\":[\"b\"],\"__openui_refetching\":[],\"__openui_errors\":[],\"a\":\"xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\",\"b\":null},\"calls\":[],\"changed\":false}",
+    "{\"snapshot\":{\"__openui_loading\":[\"a\",\"b\"],\"__openui_refetching\":[\"a\"],\"__openui_errors\":[],\"a\":\"xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\",\"b\":null},\"calls\":[{\"call\":2,\"toolName\":\"a\",\"args\":{\"k\":1}}],\"changed\":true}",
+    "{\"snapshot\":{\"__openui_loading\":[\"a\"],\"__openui_refetching\":[\"a\"],\"__openui_errors\":[],\"a\":\"xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\",\"b\":\"xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\"},\"calls\":[],\"changed\":true}",
+    "{\"snapshot\":{\"__openui_loading\":[],\"__openui_refetching\":[],\"__openui_errors\":[],\"a\":\"xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\",\"b\":\"xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\"},\"calls\":[],\"changed\":true}"
+  ],
+  "rust": [
+    "{\"snapshot\":{\"__openui_loading\":[\"a\",\"b\"],\"__openui_refetching\":[],\"__openui_errors\":[],\"a\":null,\"b\":null},\"calls\":[{\"call\":0,\"toolName\":\"a\",\"args\":{\"k\":0}},{\"call\":1,\"toolName\":\"b\",\"args\":{}}],\"changed\":true}",
+    "{\"snapshot\":{\"__openui_loading\":[\"b\"],\"__openui_refetching\":[],\"__openui_errors\":[],\"a\":\"xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\",\"b\":null},\"calls\":[],\"changed\":true}",
+    "{\"snapshot\":{\"__openui_loading\":[\"b\"],\"__openui_refetching\":[],\"__openui_errors\":[],\"a\":\"xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\",\"b\":null},\"calls\":[],\"changed\":false}",
+    "{\"snapshot\":{\"__openui_loading\":[\"a\",\"b\"],\"__openui_refetching\":[\"a\"],\"__openui_errors\":[],\"a\":\"xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\",\"b\":null},\"calls\":[{\"call\":2,\"toolName\":\"a\",\"args\":{\"k\":1}}],\"changed\":true}",
+    "{\"snapshot\":{\"__openui_loading\":[\"a\"],\"__openui_refetching\":[\"a\"],\"__openui_errors\":[{\"source\":\"query\",\"statementId\":\"b\",\"component\":\"Query\",\"toolName\":\"b\",\"code\":\"tool-error\",\"message\":\"Query \\\"b\\\" failed: tool result does not fit the cache limit of 100 bytes\"}],\"a\":\"xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\",\"b\":null},\"calls\":[],\"changed\":true}",
+    "{\"snapshot\":{\"__openui_loading\":[],\"__openui_refetching\":[],\"__openui_errors\":[{\"source\":\"query\",\"statementId\":\"b\",\"component\":\"Query\",\"toolName\":\"b\",\"code\":\"tool-error\",\"message\":\"Query \\\"b\\\" failed: tool result does not fit the cache limit of 100 bytes\"}],\"a\":\"xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\",\"b\":null},\"calls\":[],\"changed\":true}"
+  ]
+}

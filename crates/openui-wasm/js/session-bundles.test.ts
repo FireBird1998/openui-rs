@@ -60,3 +60,27 @@ test('response conversion bounds the scripts array and refuses reentry before th
   using ignored = session.run(undefined, 'ignored');
   expect(ignored.events).toEqual([]);
 });
+
+test('setProgram keeps clicks and Retry blocked until a successful draw', () => {
+  using lib = new wasm.ComponentLibrary('{"$defs":{"Box":{"properties":{"value":{}}}}}');
+  using s = new wasm.RuntimeSession(lib);
+  using p = wasm.parseProgram('q=Query("cloud",{},0)\nroot=Box(q)', lib);
+  s.attachToolProvider();
+  using initial = s.replaceProgram(p, undefined, undefined, true);
+  using first = s.takeQueryUpdate();
+  using call = first.callAt(0n);
+  s.completeToolCall(call, '{"failed":"offline"}');
+  using blocked = s.evaluate({ streaming: true, isBundle: true, complete: false });
+  s.setProgram(p);
+  kind(() => s.evaluate({ streaming: false, scripts: [1] }), 'InvalidJson');
+  s.retryFailedQueries();
+  using click = s.run(undefined, 'click');
+  using legacy = s.runLegacy('{"type":"custom"}', 'click');
+  using ignored = s.takeQueryUpdate();
+  expect([click.events.length, legacy.events.length, ignored.callCount]).toEqual([0, 0, 0n]);
+  using bare = s.evaluate({ streaming: true });
+  s.retryFailedQueries();
+  using retry = s.takeQueryUpdate();
+  using allowed = s.run(undefined, 'click');
+  expect([allowed.events.length, retry.callCount]).toEqual([1, 1n]);
+});

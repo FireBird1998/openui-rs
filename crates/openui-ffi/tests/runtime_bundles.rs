@@ -60,3 +60,49 @@ fn native_draws_publish_bundle_loading_errors_and_calls_for_the_settled_revision
     session.dispose();
     Ok(())
 }
+
+#[test]
+fn native_set_program_preserves_the_click_and_retry_gate_until_the_next_draw()
+-> Result<(), Box<dyn Error>> {
+    let library = ComponentLibrary::new(r#"{"$defs":{"Box":{"properties":{"value":{}}}}}"#.into())?;
+    let session = RuntimeSession::new(library.clone(), None)?;
+    let program = parse("q=Query(\"cloud\",{},0)\nroot=Box(q)".into(), library, None).program;
+    session.attach_tool_provider()?;
+    session.replace_program(program.clone(), None, None, true)?;
+    let call = session
+        .take_query_update()?
+        .calls
+        .pop()
+        .ok_or("missing call")?;
+    session.complete_tool_call(call, r#"{"failed":"offline"}"#.into())?;
+    session.replace_program_with_response(
+        program.clone(),
+        None,
+        None,
+        true,
+        ResponseState {
+            is_bundle: true,
+            streaming: true,
+            complete: false,
+            ..Default::default()
+        },
+    )?;
+    session.set_program(program)?;
+    session.retry_failed_queries()?;
+    let default = session.run(None, "click".into(), None)?;
+    let legacy = session.run_legacy(r#"{"type":"custom"}"#.into(), "click".into(), None)?;
+    assert_eq!(
+        (
+            default.events.len(),
+            legacy.events.len(),
+            session.take_query_update()?.calls.len()
+        ),
+        (0, 0, 0)
+    );
+    session.evaluate()?;
+    session.retry_failed_queries()?;
+    assert_eq!(session.take_query_update()?.calls.len(), 1);
+    assert_eq!(session.run(None, "click".into(), None)?.events.len(), 1);
+    session.dispose();
+    Ok(())
+}

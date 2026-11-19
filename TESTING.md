@@ -388,6 +388,53 @@ past the result-size limit as escaped JSON, a refusal copies nothing (its
 peak allocation is checked), they count against the evaluation's work, and
 a repeated name keeps its last value.
 
+### Tool result limits
+
+`result_limit_scenarios` replays `conformance/result-limits.json`, whose
+scenarios carry their own `limits` (`resultSize`, `depth`, `cacheBytes`) that
+the reference ignores. `reference/result-limits.ts` writes
+`golden/result-limits.json` through lang-core's own manager. A scenario at a
+limit must match its golden byte for byte. One a byte or level over must
+match its pin in `divergences/result-limit-*.json`, and each pin must be a
+row of CONFORMANCE.md's tool result limits table. After every step the
+manager's charged cache bytes equal a fresh measurement of what it holds.
+
+`result_limits` (runtime) pins the size, depth and cache-cap thresholds for
+queries and mutations through both completion paths, the `tool-error` on
+every query of the key, the peak allocation of a refusal, and a seeded
+20,000-command script in which, after every command, the cache holds at most
+two entries per query, no query is starved, the charge equals a fresh
+measurement and stays within the cap, a repeated completion is refused and
+changes nothing, and outstanding query calls never exceed two per query (one
+on the current key, one finishing on the previous key). A mutation can have
+several outstanding calls after renames, as upstream allows; a session caps
+pending managed calls globally at `maxContinuations` (default 64). `result_limits` (session) pins
+the line between a delivered `tool-error` and a refused outcome for outcome
+JSON, including text past the outcome bound, MCP responses and the peak
+allocation of refusing a 4 MiB result. The native and WebAssembly bindings
+each have a `result_limits` test for `maxCacheBytes`, and
+`crates/openui-wasm/js/queries.test.ts` checks that the exported
+`RuntimeSession.withLimits` carries it. `scripts/check.sh` needs no Bun or
+wasm toolchain, so it does not build the WebAssembly packages: after a
+binding change also run `scripts/wasm.sh` (which loads both packages through
+their guards) and `bun --no-install test crates/openui-wasm/js`.
+
+The review round added tests, each failing before its fix: a rename's idle
+`null` is not charged; a refused result of an older submission is that
+call's failure; a completion for a removed query is discarded on both paths
+whatever it holds; an over-limit result ends the call for 24 readers through
+the runtime and through session JSON; an object's member order never decides
+invalid versus too deep; a padded or bare `null` MCP response is refused; a refused refresh result
+ends its call while the refresh schedule continues; every completion path admits under the same limits, the work
+limit included; refusing wide objects, wide arrays and long strings takes
+the same peak allocation at every width; validity is decided before size
+(both orders pinned, and depth only when reached first); a delivery the
+snapshot cannot hold still ends the call on both paths; long MCP responses
+are checked for validity before size; and a mutation result refused inside
+the runtime ends its plan. The random script renames a mutation and asserts
+after every command that the charge equals a fresh measurement and that
+each query has at most two outstanding calls.
+
 ## The corpus
 
 Everything the tests compare is in `conformance/`:

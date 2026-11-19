@@ -1,0 +1,14 @@
+{
+  "case": "query-result-one-level-over-the-depth-limit",
+  "reason": "#90: a tool result past the depth limit is refused before it enters the cache and delivered as the query's tool-error",
+  "reference": [
+    "{\"snapshot\":{\"__openui_loading\":[\"q\"],\"__openui_refetching\":[],\"__openui_errors\":[],\"q\":\"default\"},\"calls\":[{\"call\":0,\"toolName\":\"t\",\"args\":{}}],\"changed\":true}",
+    "{\"snapshot\":{\"__openui_loading\":[],\"__openui_refetching\":[],\"__openui_errors\":[],\"q\":[[[[[1]]]]]},\"calls\":[],\"changed\":true}",
+    "{\"snapshot\":{\"__openui_loading\":[],\"__openui_refetching\":[],\"__openui_errors\":[],\"q\":[[[[[1]]]]]},\"calls\":[],\"changed\":false}"
+  ],
+  "rust": [
+    "{\"snapshot\":{\"__openui_loading\":[\"q\"],\"__openui_refetching\":[],\"__openui_errors\":[],\"q\":\"default\"},\"calls\":[{\"call\":0,\"toolName\":\"t\",\"args\":{}}],\"changed\":true}",
+    "{\"snapshot\":{\"__openui_loading\":[],\"__openui_refetching\":[],\"__openui_errors\":[{\"source\":\"query\",\"statementId\":\"q\",\"component\":\"Query\",\"toolName\":\"t\",\"code\":\"tool-error\",\"message\":\"Query \\\"t\\\" failed: tool result nests deeper than the depth limit of 4 levels\"}],\"q\":\"default\"},\"calls\":[],\"changed\":true}",
+    "{\"snapshot\":{\"__openui_loading\":[],\"__openui_refetching\":[],\"__openui_errors\":[{\"source\":\"query\",\"statementId\":\"q\",\"component\":\"Query\",\"toolName\":\"t\",\"code\":\"tool-error\",\"message\":\"Query \\\"t\\\" failed: tool result nests deeper than the depth limit of 4 levels\"}],\"q\":\"default\"},\"calls\":[],\"changed\":false}"
+  ]
+}

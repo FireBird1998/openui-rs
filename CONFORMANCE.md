@@ -190,9 +190,17 @@ streaming parser, store, query manager, action loop and mutation registration.
 calls, host events, loading and parser diagnostics across 57 observations.
 A change confined to query cache keys preserves the registered mutation tool.
 The last settled Cloud script names and revision stay in force during an edit.
-The query manager merges the declared dependencies, the app's extra values and
-the matching Cloud script’s `__openuiScriptRevision`, in that order. An ordinary
-tool keeps its cached result across a scripts edit. A streaming response bundle
+Two choices in these scenarios belong to the reference adapter. In
+`script-cache-keys`, it merges the app's extra values over declared dependencies
+and the matching Cloud script's `__openuiScriptRevision` over both. The renderer
+supplies only the script dependency at the lang-core hook. It does not specify
+precedence between an app and the renderer. Across all four scenarios, the
+adapter schedules query evaluation on eligible response, app-value and store
+steps, and mutation registration on a reparse or a change to the blocked flag.
+These observations test that schedule without running React’s effect lifecycle.
+[Renderer hook and React dependencies](https://github.com/thesysdev/openui/blob/47b9cae0d3b26a8c9d7514d5887a6d6608801ac9/packages/react-lang/src/hooks/useOpenUIState.ts#L208-L245)
+
+An ordinary tool keeps its cached result across a scripts edit. A streaming response bundle
 with queries reports loading before dispatch. An invalid scripts section draws
 the program and supplies a separate `parser` / `parse-failed` diagnostic.
 
@@ -912,6 +920,92 @@ Both late mutation outcomes leave the suspended plan abandoned. The session
 test compares the published snapshot, result, resume and subsequent fire with
 the dispose transcript. Only the snapshot publication differs as documented
 in the refresh table. [Upstream dispose transcript](conformance/golden/mutation-dispose.jsonl)
+
+### Tool result limits
+
+A tool result is supplied input (ADR 0003). Before it enters the cache the
+manager measures its JSON (as `JSON.stringify` writes it, with every array
+and object counted toward the depth) under the result-size limit, the depth
+limit and the cache cap (#90). The cache cap bounds the result data the
+manager holds at once: every live cache entry, including the previous key a
+query shows while its new key loads, and every mutation's data. It defaults to
+the result-size limit and is `RuntimeLimits.maxCacheBytes` in the bindings. A
+result is counted against the cap as held after its completion takes effect,
+so a query's own previous entry, released by its success, does not count.
+A refused result is delivered as the call's failure: a `tool-error` whose
+message names the limit, on every query of the key, or the mutation's error.
+The call is consumed. Nothing already held is evicted or changed.
+
+lang-core 1.1.0 has no limits, so every refusal is a divergence. Each pair of
+scenarios in `conformance/result-limits.json` runs through lang-core's own
+`createQueryManager` (`reference/result-limits.ts`): the one at the limit
+matches upstream byte for byte, and the one a byte or level over is pinned
+with both sides' outputs (`tests/result_limit_scenarios.rs`).
+
+| Situation and pin | lang-core 1.1.0 | openui-rs | Decision |
+|---|---|---|---|
+| `query-result-one-byte-over-the-size-limit` | Stores the 1,025-byte result and shows it; a later run is refetching. | The query shows its default and a `tool-error`, `tool result exceeds the result size limit of 1024 bytes`; a run fetches again with no fetch history. | #90, ADR 0001: a result past the result-size limit is refused. |
+| `query-result-one-level-over-the-depth-limit` | Stores and shows the five-level result. | The query shows its default and a `tool-error` naming the depth limit of 4. | #90, ADR 0001: a result nested past the depth limit is refused. |
+| `query-result-one-byte-over-the-cache-cap-with-a-previous-key-held` | Stores the second query's result. | With 40 bytes held for the first query's previous key, a 61-byte result does not fit the cap of 100: the second query shows a `tool-error`; the 40 bytes stay on screen. | #90: the cache has a byte cap; data held for a previous key counts. |
+| `mutation-results-one-over-the-size-depth-and-cache-limits` | Each submission succeeds with its data. | Each is the mutation's `error` status and `tool-error`, naming the size, depth and cache limits in turn. | #90: mutation results are admitted as query results are. |
+| `query-result-two-readers-cannot-both-show` | Stores the 602-byte result; only the query that started the call is loading. | Both readers are loading (row `shared-entry-delivers-to-both-current-queries`); the result's two copies do not fit the 1,024-byte room, so each reader shows a `tool-error` and the call ends. | #90: a call never stays open because its delivery does not fit. |
+| `mutation-refusal-of-an-older-submission` | The older submission's late 1,025-byte result replaces the newer `saved` with `success`. | The refused result is that call's failure and replaces `saved` with `error`, as lang-core's stale failure would. | #90: a refused result behaves as a failed call, including when stale. |
+
+An outcome is decided in one order on every path, borrowed and owned
+completion, the session's JSON entry and its MCP entry: first whether it is
+valid, then the depth limit, then the result-size limit (the smaller of the
+result-size ceiling and the work limit), then the cache cap. Validity is
+decided before any limit wherever memory bounded by the depth limit can decide
+it. An evaluator value holding an element or syntax anywhere within the depth
+limit is invalid whatever the order of its members; one nested past the depth
+limit is too deep, and what lies past it is not read. JSON text, an escaped
+MCP response included, is read in document order: past an array or object
+nested beyond the depth limit its brackets cannot be matched in bounded
+memory, so text valid up to that point is too deep. An MCP response longer
+than the bound is checked for JSON validity and for being `null` (the
+reader's own error, from its first token); the rest of its MCP shape is not
+read, and it is too large, as the extraction helper refuses a response longer
+than the limit.
+
+If a delivery does not fit the snapshot's room (every reader's copy of the
+result, and every error, must fit the result-size limit together), a result
+is delivered as each reader's `tool-error` instead
+(`tool result does not fit the result size limit of N bytes at every query
+that reads it`). If even those errors do not fit, the readers keep them
+unlisted, their failed entry is not called again, and the snapshot lists one
+compact error, `N queries failed with errors that do not fit the result size
+limit of L bytes`, until a run or success replaces them. The call always ends.
+
+A mutation's data is charged while its status is `success`; the idle
+`data: null` a rename shows is upstream's reset marker, not a result. A rename
+makes the registration idle while its earlier call runs on, so it can be
+submitted again, as upstream allows. A stale success or failure replaces the
+newer result, as in lang-core 1.1.0, and a refused result behaves as a failed
+call, including when stale: its `tool-error` replaces the newer result. A call
+whose registration was removed settles nothing (#88). A result too large for
+any number of readers ends the call, as each reader's error or the compact
+error, whether the manager refused it or the session refused it before
+reading. A refresh's call is admitted the same way: a refused refresh result
+is that call's failure, so the failed entry keeps its data and the next tick
+refetches it, as after any failed call.
+
+The ticket counts one outstanding call per query or mutation. ADR 0013 lets
+the call of the key a query has just left finish and be dropped, so the
+honest bound is two per query: one for its current key and one on the
+previous key it shows while loading. `tests/result_limits.rs` asserts it after
+every command of a random script.
+
+Outcome JSON from a binding draws the line between the tool and the
+embedder. A result, or MCP response, too large or too deep is the tool's and
+becomes the `tool-error`. Malformed or wrongly shaped outcome JSON, failure
+text past the limits, and a value that is not JSON are the embedder's: they
+are refused, change nothing and leave the call completable. Outcome text longer than the smallest of
+`maxJsonBytes`, the result-size limit and the work limit, plus the 10 bytes of
+`{"value":}`, is never parsed: one pass checks its syntax and shape, decoding
+an MCP response's escapes as it reads, and a valid result envelope is refused
+for size. Text that is valid JSON up to a level past
+the depth limit inside an outcome whose members so far are all `value` is a too-deep
+result even if it is malformed later, as the core's reader reports depth first.
 
 ### Core, tree, action and store differences
 

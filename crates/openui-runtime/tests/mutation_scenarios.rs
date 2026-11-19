@@ -268,7 +268,7 @@ fn random_mutation_interleavings_match_upstream_after_every_command() {
 }
 
 #[test]
-fn refused_deep_result_preserves_loading_and_the_same_receipt_can_succeed() {
+fn deep_arguments_are_refused_and_a_deep_result_is_a_tool_error_that_ends_the_call() {
     let lib = Library::from_json_schema(&parse_json(r#"{"$defs":{}}"#).unwrap());
     let program = parse("m=Mutation(\"x\")", &lib, None);
     let mut manager = QueryManager::with_limits(Limits::DEFAULT.with_depth(12));
@@ -286,26 +286,34 @@ fn refused_deep_result_preserves_loading_and_the_same_receipt_can_succeed() {
     ));
     assert_eq!(manager.snapshot_json(), before);
     let id = manager.fire_mutation("m", None).unwrap().calls.remove(0).id;
-    let loading = manager.snapshot_json().to_owned();
-    assert!(matches!(
-        manager.apply(QueryCommand::Complete {
-            id: &id,
-            outcome: ToolOutcome::Result(Some(&deep))
-        }),
-        Err(QueryCommandError::Limit(_))
-    ));
-    assert_eq!(manager.snapshot_json(), loading);
-    assert!(id.is_pending());
+    // A result is the tool's: refused under the depth limit, it is the
+    // mutation's tool-error and the call is consumed (#90).
     assert!(
         manager
             .apply(QueryCommand::Complete {
                 id: &id,
-                outcome: ToolOutcome::Result(None)
+                outcome: ToolOutcome::Result(Some(&deep))
             })
             .unwrap()
             .changed
     );
+    let snapshot = parse_json(manager.snapshot_json()).unwrap();
+    let message = "tool result nests deeper than the depth limit of 12 levels";
+    assert_eq!(snapshot["m"]["status"], "error");
+    assert_eq!(snapshot["m"]["error"], message);
+    assert_eq!(snapshot["__openui_errors"][0]["code"], "tool-error");
+    assert_eq!(
+        snapshot["__openui_errors"][0]["message"],
+        format!("Mutation \"x\" failed: {message}").as_str()
+    );
     assert!(!id.is_pending());
+    assert!(matches!(
+        manager.apply(QueryCommand::Complete {
+            id: &id,
+            outcome: ToolOutcome::Result(None)
+        }),
+        Err(QueryCommandError::InvalidCall)
+    ));
 }
 
 #[test]

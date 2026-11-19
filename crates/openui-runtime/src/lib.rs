@@ -133,8 +133,8 @@ mod mcp;
 pub use mcp::{McpResponseError, McpToolOutcome, extract_mcp_tool_result};
 mod query;
 pub use query::{
-    CloudScripts, QueryCommand, QueryCommandError, QueryManager, QueryUpdate, ToolCall, ToolCallId,
-    ToolCallOutcome, ToolOutcome,
+    CloudScripts, QueryCommand, QueryCommandError, QueryManager, QueryUpdate, ResultLimit,
+    ToolCall, ToolCallId, ToolCallOutcome, ToolOutcome,
 };
 mod store;
 mod tree;

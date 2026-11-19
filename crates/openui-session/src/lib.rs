@@ -14,6 +14,7 @@ mod mutations;
 mod queries;
 mod refresh;
 mod response;
+mod tool_results;
 pub use mcp::extract_mcp_tool_result;
 pub use openui_runtime::{ToolCall as WantedToolCall, ToolCallOutcome};
 pub use queries::QueryEffects;
@@ -191,6 +192,12 @@ pub struct RuntimeLimits {
     pub max_continuations: u64,
     /// Optional smaller retained action-path bound. Absent preserves max_json_bytes.
     pub max_action_path_bytes: Option<u64>,
+    /// The query cache's byte cap: the most bytes of tool result data, as
+    /// JSON, the session holds at once, across live cache entries (a
+    /// previous key's included) and mutation results. Absent uses the
+    /// evaluation result-size ceiling. A result that would exceed it is
+    /// delivered as a `tool-error`; nothing held is evicted.
+    pub max_cache_bytes: Option<u64>,
 }
 impl Default for RuntimeLimits {
     fn default() -> Self {
@@ -203,6 +210,7 @@ impl Default for RuntimeLimits {
             max_json_bytes: 8 * 1024 * 1024,
             max_continuations: 64,
             max_action_path_bytes: None,
+            max_cache_bytes: None,
         }
     }
 }
@@ -856,10 +864,9 @@ impl SessionCore {
             }
             s.release_evaluation()?;
             s.program = program.inner.clone();
-            s.response = DrawResponse {
-                scripts: s.response.scripts.clone(),
-                ..DrawResponse::pending()
-            };
+            // Wait for a draw to register this program. Only a draw with
+            // response metadata can change the gate on clicks and Retry.
+            s.response.blocked = true;
             s.query_inputs_changed = true;
             Ok(())
         })
@@ -974,7 +981,8 @@ impl SessionCore {
         self.generation = generation;
         self.root = tree.root;
         self.drain_releases();
-        let (query_snapshot_json, query_evaluation_error) = self.finish_draw(response, update);
+        let (query_snapshot_json, query_evaluation_error) =
+            self.finish_draw(response, update, true);
         Ok(ReplacementOutput {
             projection: initialization_output(projection, self.core_limits),
             initialization: initialization_output(initialization, self.core_limits),
@@ -1108,10 +1116,11 @@ impl SessionCore {
             let response = s
                 .response
                 .prepare(response, s.limits.max_json_bytes, s.core_limits)?;
+            let register_statements = s.response.blocked || s.query_inputs_changed;
             let ((tree, json), update) = queries::draw(
                 s.manager.as_mut(),
                 response.effects(
-                    s.response.blocked || s.query_inputs_changed,
+                    register_statements,
                     s.extra_values_changed || s.response.scripts != response.scripts,
                 ),
                 &response.input(program_input(
@@ -1133,7 +1142,8 @@ impl SessionCore {
                 },
             )?;
             drop(functions);
-            let (query_snapshot_json, query_evaluation_error) = s.finish_draw(response, update);
+            let (query_snapshot_json, query_evaluation_error) =
+                s.finish_draw(response, update, register_statements);
             s.generation = generation;
             s.root = tree.root;
             Ok(EvaluationOutput {

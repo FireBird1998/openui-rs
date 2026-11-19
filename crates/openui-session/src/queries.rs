@@ -204,10 +204,17 @@ impl SessionCore {
             }
             return Ok(());
         }
-        let mut manager = match minimum_ms {
+        let cache = self
+            .limits
+            .max_cache_bytes
+            .map_or(self.core_limits.result_size(), |bytes| {
+                usize::try_from(bytes).unwrap_or(usize::MAX)
+            });
+        let manager = match minimum_ms {
             Some(minimum) => QueryManager::with_refresh_minimum(self.core_limits, minimum)?,
             None => QueryManager::with_limits(self.core_limits),
         };
+        let mut manager = manager.with_cache_limit(cache);
         if let Some(now_ms) = now_ms {
             manager.apply(QueryCommand::AdvanceClock { now_ms })?;
         }
@@ -249,7 +256,11 @@ impl SessionCore {
         }
     }
 
-    fn record_registration(&mut self, result: Registration) {
+    fn record_registration(&mut self, result: Registration, register_statements: bool) {
+        // Repeat the refused effect on the next eligible draw. A key-only
+        // change must not register mutations.
+        self.query_inputs_changed = result.is_err() && register_statements;
+        self.extra_values_changed = result.is_err();
         let error = match result {
             Ok(update) => {
                 self.query_effects.record(update);
@@ -263,15 +274,18 @@ impl SessionCore {
 
     pub(super) fn finish_draw(
         &mut self,
-        response: DrawResponse,
+        mut response: DrawResponse,
         registration: Option<Registration>,
+        register_statements: bool,
     ) -> (Option<String>, Option<OpenUiError>) {
-        self.response = response;
-        self.query_inputs_changed = false;
-        self.extra_values_changed = false;
         if let Some(result) = registration {
-            self.record_registration(result);
+            if result.is_err() {
+                // The screen was drawn with the previous registrations.
+                response.scripts = self.response.scripts.take();
+            }
+            self.record_registration(result, register_statements);
         }
+        self.response = response;
         (
             self.manager.as_ref().map(|m| m.snapshot_json().to_owned()),
             self.query_effects.evaluation_error.clone(),
@@ -303,9 +317,7 @@ impl SessionCore {
                 }
                 .map(|(_, update)| update)
             });
-            self.query_inputs_changed = false;
-            self.extra_values_changed = false;
-            self.record_registration(result);
+            self.record_registration(result, self.query_inputs_changed);
         }
     }
 
@@ -327,9 +339,37 @@ impl SessionCore {
         Ok(())
     }
 
+    /// Deliver a result refused under `limit` before it was read as the
+    /// call's `tool-error`. It always ends the call (#90).
+    pub(super) fn complete_refused(
+        &mut self,
+        call: &ToolCallId,
+        limit: openui_runtime::ResultLimit,
+    ) -> Result<(), OpenUiError> {
+        if let Some((&generation, _)) = self
+            .continuations
+            .iter()
+            .find(|(_, entry)| entry.call.as_ref() == Some(call))
+        {
+            return self.complete_mutation_delivery(
+                generation,
+                call,
+                mutations::Delivery::Refused(limit),
+            );
+        }
+        let manager = self.manager.as_mut().ok_or(OpenUiError::InvalidToolCall)?;
+        let update = manager.complete_tool_call_refused(call, limit)?;
+        self.query_effects.record(update);
+        Ok(())
+    }
+
     /// A single tagged JSON outcome for both bindings. Parse the result with
     /// JavaScript number and string semantics. MCP responses enter the same
     /// completion path directly, without a stringify/parse of extracted data.
+    ///
+    /// A result (or MCP response) too large or too deep for the limits is
+    /// delivered as the call's `tool-error`. Malformed or wrongly shaped
+    /// outcome JSON is refused and consumes nothing (#90).
     pub fn complete_tool_call_json(
         &mut self,
         call: &ToolCallId,
@@ -344,24 +384,23 @@ impl SessionCore {
             })?;
             return Ok(());
         }
-        self.text(json)?;
         let limits = self.core_limits;
-        let bound = limits.result_size().min(limits.work_for(usize::MAX));
-        if json.len() > bound {
-            return Err(limit("tool outcome byte limit"));
+        if json.len() > self.outcome_byte_bound() {
+            return self.complete_long_outcome(call, json);
         }
         let invalid = || OpenUiError::InvalidJson {
             reason: "expected one of value, error, failed, availableTools, mcpResponseJson".into(),
         };
-        let value = openui_lang::parse_json_value(json, limits.depth()).map_err(|e| {
-            if e.depth_limited() {
-                limit("tool outcome depth limit")
-            } else {
-                OpenUiError::InvalidJson {
+        // The envelope is one level, so a result may nest to the depth limit.
+        let value = match openui_lang::parse_json_value(json, limits.depth().saturating_add(1)) {
+            Ok(value) => value,
+            Err(e) if e.depth_limited() => return self.complete_deep_outcome(call, json),
+            Err(e) => {
+                return Err(OpenUiError::InvalidJson {
                     reason: e.to_string(),
-                }
+                });
             }
-        })?;
+        };
         let Value::Obj(fields) = &value else {
             return Err(invalid());
         };
@@ -385,9 +424,13 @@ impl SessionCore {
                     .collect::<Result<_, _>>()?,
             ),
             Some(("mcpResponseJson", Value::Str(response))) => {
-                openui_runtime::extract_mcp_tool_result(response, limits)
-                    .map_err(mcp::error)?
-                    .into()
+                match openui_runtime::extract_mcp_tool_result(response, limits) {
+                    Ok(outcome) => outcome.into(),
+                    Err(openui_runtime::McpResponseError::Limit(error)) => {
+                        return self.complete_refused_mcp(call, &error);
+                    }
+                    Err(error) => return Err(mcp::error(error)),
+                }
             }
             _ => return Err(invalid()),
         };

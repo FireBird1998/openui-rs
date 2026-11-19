@@ -39,6 +39,11 @@ pub struct RuntimeLimits {
     /// Optional smaller retained action-path bound; absent preserves max_json_bytes.
     #[uniffi(default = None)]
     pub max_action_path_bytes: Option<u64>,
+    /// Optional query cache byte cap over held tool result data, as JSON;
+    /// absent uses the evaluation result-size ceiling. A result that would
+    /// exceed it is delivered as a `tool-error`; nothing held is evicted.
+    #[uniffi(default = None)]
+    pub max_cache_bytes: Option<u64>,
 }
 impl Default for RuntimeLimits {
     fn default() -> Self {
@@ -51,6 +56,7 @@ impl Default for RuntimeLimits {
             max_json_bytes: 8 * 1024 * 1024,
             max_continuations: 64,
             max_action_path_bytes: None,
+            max_cache_bytes: None,
         }
     }
 }
@@ -1366,6 +1372,7 @@ impl From<RuntimeLimits> for openui_session::RuntimeLimits {
             max_json_bytes: v.max_json_bytes,
             max_action_path_bytes: v.max_action_path_bytes,
             max_continuations: v.max_continuations,
+            max_cache_bytes: v.max_cache_bytes,
         }
     }
 }

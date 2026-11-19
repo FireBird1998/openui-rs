@@ -74,33 +74,43 @@ fn deep_query_expression_preserves_the_current_snapshot_and_pending_call() {
 }
 
 #[test]
-fn deep_host_json_is_refused_before_consuming_the_call() {
+fn deep_host_json_is_a_tool_error_that_consumes_the_call() {
     let store = Store::default();
+    let p = program("q = Query(\"read\")");
     let mut manager = QueryManager::with_limits(Limits::DEFAULT.with_depth(16));
-    let started = manager
-        .apply(evaluate(&program("q = Query(\"read\")"), &store))
-        .unwrap();
+    let started = manager.apply(evaluate(&p, &store)).unwrap();
     let id = &started.calls.first().unwrap().id;
-    let snapshot = manager.snapshot_json().to_owned();
     let mut result = JsonValue::Bool(true);
     for _ in 0..2048 {
         result = JsonValue::Array(vec![result]);
     }
-    let refused = manager.apply(QueryCommand::Complete {
+    let delivered = manager.apply(QueryCommand::Complete {
         id,
         outcome: ToolOutcome::Result(Some(&result)),
     });
     free_json(result);
-    assert!(matches!(refused, Err(QueryCommandError::Limit(error)) if error.flags.depth_limited));
-    assert_eq!(manager.snapshot_json(), snapshot);
+    assert!(delivered.unwrap().changed);
+    let snapshot = openui_lang::parse_json(manager.snapshot_json()).unwrap();
+    assert_eq!(snapshot["q"], JsonValue::Null);
+    assert_eq!(snapshot["__openui_errors"][0]["code"], "tool-error");
+    assert_eq!(
+        snapshot["__openui_errors"][0]["message"],
+        "Query \"read\" failed: tool result nests deeper than the depth limit of 16 levels"
+    );
+    assert!(matches!(
+        manager.apply(QueryCommand::Complete {
+            id,
+            outcome: ToolOutcome::Result(Some(&JsonValue::Bool(true))),
+        }),
+        Err(QueryCommandError::InvalidCall)
+    ));
+    // The failed entry is not called again until it is run again.
     assert!(
         manager
-            .apply(QueryCommand::Complete {
-                id,
-                outcome: ToolOutcome::Result(Some(&JsonValue::Bool(true))),
-            })
+            .apply(evaluate(&p, &store))
             .unwrap()
-            .changed
+            .calls
+            .is_empty()
     );
 }
 
@@ -371,12 +381,16 @@ fn extra_key_values_are_refused_at_the_depth_a_tool_result_is() {
         let mut manager = QueryManager::with_limits(limits);
         let extra = manager.set_extra_key_values("read", [("x", &value)]);
         let started = manager.apply(evaluate(&p, &store)).unwrap();
-        let result = manager.apply(QueryCommand::Complete {
-            id: &started.calls[0].id,
-            outcome: ToolOutcome::Result(Some(&value)),
-        });
+        manager
+            .apply(QueryCommand::Complete {
+                id: &started.calls[0].id,
+                outcome: ToolOutcome::Result(Some(&value)),
+            })
+            .unwrap();
+        // A refused tool result is delivered as the query's tool-error (#90).
+        let refused = manager.snapshot_json().contains("\"tool-error\"");
         assert_eq!(extra.is_ok(), admitted, "{levels} levels as an extra value");
-        assert_eq!(result.is_ok(), admitted, "{levels} levels as a tool result");
+        assert_eq!(!refused, admitted, "{levels} levels as a tool result");
         if let Err(error) = extra {
             assert!(matches!(error, QueryCommandError::Limit(e) if e.flags.depth_limited));
         }
