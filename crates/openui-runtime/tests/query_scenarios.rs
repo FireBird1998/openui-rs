@@ -52,6 +52,7 @@ fn replay(scenario: &JsonValue, mut observe: impl FnMut(usize, String, usize)) {
     let steps = scenario["steps"].as_array().unwrap();
     let mut registered = HashSet::new();
     for (index, step) in steps.iter().enumerate() {
+        let before = registered.clone();
         if step["kind"] == "evaluate" {
             registered = current
                 .query_statements
@@ -116,11 +117,21 @@ fn replay(scenario: &JsonValue, mut observe: impl FnMut(usize, String, usize)) {
             }
             kind => panic!("Unknown step {kind}"),
         };
-        let update = command.map(|command| {
-            manager
-                .apply(command)
-                .unwrap_or_else(|error| panic!("{name}, step {index}: {error}"))
-        });
+        // A refused command is its own observation: a pinned divergence can
+        // refuse what upstream runs. Nothing changes, registrations included.
+        let update = match command.map(|command| manager.apply(command)) {
+            Some(Err(error)) => {
+                registered = before;
+                let refused = value_to_json(&Value::Str(error.to_string())).unwrap();
+                observe(
+                    index,
+                    format!("{{\"refused\":{refused}}}"),
+                    manager.cache_entry_count(),
+                );
+                continue;
+            }
+            update => update.map(Result::unwrap),
+        };
         assert!(
             manager.cache_entry_count() <= 2 * registered.len(),
             "{name}, step {index}: {} entries for {} queries",

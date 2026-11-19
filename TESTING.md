@@ -340,6 +340,8 @@ whose two streams converge fails the test.
 From `reference/`, run `bun --no-install query-scenarios.ts` to regenerate
 that file alone. The full regeneration script also runs this adapter.
 Set `OPENUI_QUERY_SCENARIO` to a scenario name to filter the Rust test.
+A refused command is observed as `{"refused": <message>}` and changes nothing;
+only a pinned divergence may expect one.
 Call numbers are zero-based dispatch positions. A completion may instead name
 the dispatch step, tool and arguments. Only the side that issued that unique
 call processes its outcome. This keeps an extra dispatch from shifting later
@@ -376,8 +378,10 @@ the distinct current and previous keys in the model. In `query_commands`,
 exact cache size after each command. That suite also checks the shared work
 allowance, expression and host JSON depth refusals, foreign and repeated
 call identities, and extra cache-key values: refused ones keep the previous
-values, they count against the evaluation's work, and a repeated name keeps
-its last value.
+values, they are refused at exactly the depth a tool result is and one byte
+past the result-size limit as escaped JSON, a refusal copies nothing (its
+peak allocation is checked), they count against the evaluation's work, and
+a repeated name keeps its last value.
 
 ## The corpus
 

@@ -352,3 +352,77 @@ fn a_repeated_extra_key_name_keeps_its_last_value() {
         .unwrap();
     assert_eq!(manager.apply(evaluate(&p, &store)).unwrap().calls.len(), 1);
 }
+
+fn nested(levels: usize) -> JsonValue {
+    let mut value = JsonValue::Null;
+    for _ in 0..levels {
+        value = JsonValue::Array(vec![value]);
+    }
+    value
+}
+
+#[test]
+fn extra_key_values_are_refused_at_the_depth_a_tool_result_is() {
+    let store = Store::default();
+    let p = program("q = Query(\"read\")");
+    let limits = Limits::DEFAULT.with_depth(16);
+    for (levels, admitted) in [(16, true), (17, false)] {
+        let value = nested(levels);
+        let mut manager = QueryManager::with_limits(limits);
+        let extra = manager.set_extra_key_values("read", [("x", &value)]);
+        let started = manager.apply(evaluate(&p, &store)).unwrap();
+        let result = manager.apply(QueryCommand::Complete {
+            id: &started.calls[0].id,
+            outcome: ToolOutcome::Result(Some(&value)),
+        });
+        assert_eq!(extra.is_ok(), admitted, "{levels} levels as an extra value");
+        assert_eq!(result.is_ok(), admitted, "{levels} levels as a tool result");
+        if let Err(error) = extra {
+            assert!(matches!(error, QueryCommandError::Limit(e) if e.flags.depth_limited));
+        }
+    }
+}
+
+#[test]
+fn extra_key_values_are_charged_as_one_json_object_of_records() {
+    // {"t":{"a":"…"}} is the text plus 14 bytes.
+    let limits = Limits::DEFAULT.with_result_size(128);
+    let fits = JsonValue::String("x".repeat(114));
+    let over = JsonValue::String("x".repeat(115));
+    let mut manager = QueryManager::with_limits(limits);
+    manager.set_extra_key_values("t", [("a", &fits)]).unwrap();
+    assert!(matches!(
+        manager.set_extra_key_values("t", [("a", &over)]),
+        Err(QueryCommandError::Limit(error)) if error.flags.size_limited
+    ));
+    // Escapes count as written: each "\0" is six bytes, so 60 of them do not fit.
+    let one = JsonValue::from(1);
+    let escaped = "\0".repeat(60);
+    let mut manager = QueryManager::with_limits(limits);
+    assert!(
+        manager
+            .set_extra_key_values("a", [(escaped.as_str(), &one)])
+            .is_err()
+    );
+    // Another tool's member and the comma between them count too:
+    // {"a":{"k":"…"},"b":{"k":1}} is the text plus 26 bytes.
+    let mut manager = QueryManager::with_limits(limits);
+    manager.set_extra_key_values("b", [("k", &one)]).unwrap();
+    let shared = JsonValue::String("x".repeat(102));
+    manager.set_extra_key_values("a", [("k", &shared)]).unwrap();
+    let shared = JsonValue::String("x".repeat(103));
+    assert!(manager.set_extra_key_values("a", [("k", &shared)]).is_err());
+}
+
+#[test]
+fn refusing_large_extra_key_values_copies_nothing() {
+    let limits = Limits::DEFAULT.with_result_size(4096);
+    let nulls = JsonValue::Array(vec![JsonValue::Null; 8192]);
+    let mut manager = QueryManager::with_limits(limits);
+    test_alloc::reset_peak();
+    let before = test_alloc::peak();
+    let refused = manager.set_extra_key_values("t", [("k", &nulls)]);
+    let extra = test_alloc::peak().saturating_sub(before);
+    assert!(matches!(refused, Err(QueryCommandError::Limit(error)) if error.flags.size_limited));
+    assert!(extra < 1024, "{extra} bytes allocated to refuse");
+}

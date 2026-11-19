@@ -800,5 +800,59 @@
       {"kind":"evaluate"},
       {"kind":"complete","call":1,"outcome":{"kind":"result","value":["order 2"]}}
     ]
+  },
+  {
+    "name": "tool-name-with-a-function-valued-value-of",
+    "program": "q = Query({valueOf: {}.hasOwnProperty}, {}, \"d\")",
+    "steps": [
+      {"kind":"evaluate"},
+      {"kind":"complete","call":0,"outcome":{"kind":"result","value":"first"}},
+      {"kind":"replace","program":"q = Query(\"[object Object]\", {}, \"d\")"},
+      {"kind":"evaluate"}
+    ]
+  },
+  {
+    "name": "tool-name-with-a-function-valued-to-string",
+    "program": "q = Query({toString: {}.hasOwnProperty}, {}, \"d\")",
+    "steps": [
+      {"kind":"evaluate"},
+      {"kind":"replace","program":"q = Query(\"false\", {}, \"d\")"},
+      {"kind":"evaluate"}
+    ]
+  },
+  {
+    "name": "arguments-with-a-function-valued-to-json",
+    "program": "q = Query(\"t\", {k: {toJSON: {}.hasOwnProperty}}, \"d\")",
+    "steps": [
+      {"kind":"evaluate"},
+      {"kind":"complete","call":0,"outcome":{"kind":"result","value":"first"}},
+      {"kind":"replace","program":"q = Query(\"t\", {k: {}}, \"d\")"},
+      {"kind":"evaluate"}
+    ]
+  },
+  {
+    "name": "arguments-with-a-non-callable-to-json",
+    "program": "q = Query(\"t\", {k: {toJSON: 1}}, \"d\")",
+    "steps": [
+      {"kind":"evaluate"},
+      {"kind":"complete","call":0,"outcome":{"kind":"result","value":"first"}},
+      {"kind":"replace","program":"q = Query(\"t\", {k: {toJSON: 1}}, \"d\")"},
+      {"kind":"evaluate"},
+      {"kind":"replace","program":"q = Query(\"t\", {k: 1}, \"d\")"},
+      {"kind":"evaluate"}
+    ]
+  },
+  {
+    "name": "arguments-with-lone-surrogates",
+    "program": "q = Query(\"t\", {s: \"\\ud800\"}, \"d\")",
+    "steps": [
+      {"kind":"evaluate"},
+      {"kind":"complete","call":0,"outcome":{"kind":"result","value":"first"}},
+      {"kind":"replace","program":"q = Query(\"t\", {s: \"\\udc00\"}, \"d\")"},
+      {"kind":"evaluate"},
+      {"kind":"complete","call":1,"outcome":{"kind":"result","value":"second"}},
+      {"kind":"replace","program":"q = Query(\"t\", {s: \"\\ufffd\"}, \"d\")"},
+      {"kind":"evaluate"}
+    ]
   }
 ]

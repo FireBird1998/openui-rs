@@ -744,7 +744,12 @@ variable joins one key as a dependency, so the queries never share a key,
 and it matches lang-core byte for byte.
 
 Late outcomes after a dispose are not pinned yet. The manager has no dispose
-command until #89.
+command until #89. Observed in lang-core 1.1.0 with one query whose call is
+in flight at `dispose()`: a late success stores no data, and the next
+snapshot rebuild shows the query no longer loading; after `activate()` an
+evaluation calls the tool again. A late failure records the query's error
+and marks the entry failed; after `activate()` an evaluation shows that
+error and makes no call.
 
 Reader scheduling has its own temporary pin until #86. In
 `reader-waits-for-its-input`, Rust starts the reader alongside the source and
@@ -759,6 +764,9 @@ The reserved-scalar and message context depth differences are described under
 
 | Input | Reference | Core/runtime |
 |---|---|---|
+| A query tool name that is an object with a function-valued own `valueOf`, reachable only through prototype member access (`Query({valueOf: {}.hasOwnProperty}, {})`); pinned by `query-tool-name-with-a-function-valued-value-of` | builds the cache key from the default-hint conversion, which calls `valueOf` (`false`), while dispatch uses the string `[object Object]`; a later tool `"[object Object]"` is a new key | the evaluator calls no function-valued own conversion method: the key uses the dispatched string, so the later tool reuses the result |
+| A query tool name that is an object with a function-valued own `toString` (`Query({toString: {}.hasOwnProperty}, {})`); pinned by `query-tool-name-with-a-function-valued-to-string` | calls it: the key and the dispatched name are `false` | refuses the evaluate command (`CannotConvertToPrimitive`), as the core refuses converting that object to text; nothing changes |
+| Query arguments holding an object with a function-valued `toJSON` (`Query("t", {k: {toJSON: {}.hasOwnProperty}})`); pinned by `query-arguments-with-a-function-valued-to-json` | `JSON.stringify` calls it, so `k` is `false` in the key (and in JSON the provider would send) | omits the function, so `k` is `{}`: arguments `{k: {}}` reuse the result. A non-callable `toJSON` is plain data on both sides (`arguments-with-a-non-callable-to-json`) |
 | Nested undefined in runtime state (`$f = {}`, then set `{a: $m.b}` with `$m = {}`) | retains an undefined-valued own field; setting the one-key object over `{}` notifies | the evaluator omits undefined object fields and writes null array items; the store sees that normalized value. This set is ignored. Stored JSON agrees; a call can count as one version step more or fewer |
 | Streaming completed container state defaults (`store-stream-default-identities.json`) | rebuilds identities and can notify again while later declarations arrive | reuses completed defaults and suppresses those extra notifications; `completed_defaults_keep_values_but_reused_containers_suppress_notifications` pins both histories and checks matching snapshots |
 | Nesting beyond the core limit | the recursion limit depends on the engine; it is not probed during regeneration | stops at 256, sets `depth_limited` |

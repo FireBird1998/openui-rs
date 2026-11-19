@@ -116,9 +116,8 @@ pub struct QueryManager {
     queries: HashMap<String, Query>,
     order: Vec<String>,
     cache: HashMap<Arc<str>, CacheEntry>,
-    // The embedder's extra cache-key values by tool name, and their total size.
+    // The embedder's extra cache-key values by tool name.
     extra_keys: HashMap<String, ExtraKey>,
-    extra_bytes: usize,
     snapshot: JsObject<Value>,
     snapshot_json: String,
 }
@@ -126,6 +125,7 @@ pub struct QueryManager {
 struct ExtraKey {
     // Literal expressions in the embedder's order.
     fields: Vec<(String, Ast)>,
+    // This tool's `"name":{...}` member of all the values as one JSON object.
     bytes: usize,
 }
 
@@ -178,7 +178,6 @@ impl QueryManager {
             order: Vec::new(),
             cache: HashMap::new(),
             extra_keys: HashMap::new(),
-            extra_bytes: 0,
             snapshot: JsObject::new(),
             snapshot_json: String::new(),
         };
@@ -223,42 +222,55 @@ impl QueryManager {
     /// values remove the tool name's entry; a key with no dependencies left
     /// has none, as upstream omits an empty dependency record.
     ///
-    /// Each value must pass the depth limit, and all tool names' values
-    /// together the result-size limit. A refused call keeps the previous values.
+    /// Each value must pass the depth limit as a tool result does. All tool
+    /// names' values, written as one JSON object of objects keyed by tool
+    /// name, must fit the result-size limit. Both are checked before anything
+    /// is copied, and a refused call keeps the previous values.
     pub fn set_extra_key_values<'a>(
         &mut self,
         tool_name: &str,
         values: impl IntoIterator<Item = (&'a str, &'a JsonValue)>,
     ) -> Result<(), QueryCommandError> {
-        let others = self.extra_bytes.saturating_sub(
-            self.extra_keys
-                .get(tool_name)
-                .map_or(0, |extra| extra.bytes),
-        );
-        let mut bytes = tool_name.len();
-        let mut fields = Vec::new();
+        let limit = self.limits.result_size();
+        // The other members, their separating commas and the outer braces.
+        let (mut used, others) = self
+            .extra_keys
+            .iter()
+            .filter(|(name, _)| name.as_str() != tool_name)
+            .fold((2usize, 0usize), |(bytes, count), (_, extra)| {
+                (bytes.saturating_add(extra.bytes), count + 1)
+            });
+        used = used.saturating_add(others);
+        // This member: `"tool":{` and `}`.
+        let mut bytes = openui_lang::json_string_len(tool_name).saturating_add(5);
+        let mut admitted = Vec::new();
         for (name, value) in values {
             if name == "__proto__" {
                 continue;
             }
-            // Measuring also checks the depth limit.
-            let size = crate::admission::measure(&Value::from_json(value), self.limits)
-                .map_err(QueryCommandError::Limit)?;
-            bytes = bytes.saturating_add(name.len()).saturating_add(size);
-            if others.saturating_add(bytes) > self.limits.result_size() {
+            // A separating comma, then `"name":`.
+            let field = openui_lang::json_string_len(name)
+                .saturating_add(3)
+                .saturating_add(usize::from(!admitted.is_empty()));
+            bytes = bytes.saturating_add(field);
+            let room = limit.saturating_sub(used.saturating_add(bytes));
+            if used.saturating_add(bytes) > limit {
                 return Err(QueryCommandError::Limit(crate::admission::size_error()));
             }
-            // A repeated name is evaluated as a repeated object literal key.
-            fields.push((name.to_owned(), json_ast(value)));
+            bytes = bytes.saturating_add(host_json_bytes(value, self.limits, room)?);
+            admitted.push((name, value));
         }
-        if fields.is_empty() {
+        if admitted.is_empty() {
             self.extra_keys.remove(tool_name);
-            self.extra_bytes = others;
-        } else {
-            self.extra_keys
-                .insert(tool_name.to_owned(), ExtraKey { fields, bytes });
-            self.extra_bytes = others.saturating_add(bytes);
+            return Ok(());
         }
+        // A repeated name is evaluated as a repeated object literal key.
+        let fields = admitted
+            .into_iter()
+            .map(|(name, value)| (name.to_owned(), json_ast(value)))
+            .collect();
+        self.extra_keys
+            .insert(tool_name.to_owned(), ExtraKey { fields, bytes });
         Ok(())
     }
 
@@ -759,26 +771,60 @@ fn admit_result(value: &JsonValue, limits: Limits) -> Result<Value, QueryCommand
     // The host owns its JSON. Check depth without cloning it, including for
     // caller-built JSON. Keep conversion at this boundary for result/cache
     // size admission, which will use the same entry point.
-    let mut path: Vec<Box<dyn Iterator<Item = &JsonValue>>> =
-        vec![Box::new(std::iter::once(value))];
+    host_json_bytes(value, limits, usize::MAX)?;
+    Ok(Value::from_json(value))
+}
+
+/// The length of `JSON.stringify` of host JSON, refused past the depth limit
+/// or past `budget` bytes. Walks without copying or recursion, and stops at
+/// the first byte over.
+fn host_json_bytes(
+    value: &JsonValue,
+    limits: Limits,
+    budget: usize,
+) -> Result<usize, QueryCommandError> {
+    type Level<'a> = Box<dyn Iterator<Item = (Option<&'a String>, &'a JsonValue)> + 'a>;
+    let mut bytes = 0usize;
+    let mut path: Vec<Level<'_>> = vec![Box::new(std::iter::once((None, value)))];
     while let Some(level) = path.last_mut() {
-        let Some(value) = level.next() else {
+        let Some((name, value)) = level.next() else {
             path.pop();
             continue;
         };
-        let children: Box<dyn Iterator<Item = &JsonValue>> = match value {
-            JsonValue::Array(items) => Box::new(items.iter()),
-            JsonValue::Object(fields) => Box::new(fields.values()),
-            _ => continue,
-        };
-        if path.len() > limits.depth() {
-            let mut flags = EvaluationFlags::default();
-            flags.depth_limited = true;
-            return Err(QueryCommandError::Limit(LimitError { flags }));
+        if let Some(name) = name {
+            bytes = bytes.saturating_add(openui_lang::json_string_len(name).saturating_add(3));
         }
-        path.push(children);
+        let (own, children): (usize, Option<Level<'_>>) = match value {
+            JsonValue::Null | JsonValue::Bool(true) => (4, None),
+            JsonValue::Bool(false) => (5, None),
+            JsonValue::Number(number) => (
+                openui_lang::json_number_len(number.as_f64().unwrap_or(f64::NAN)),
+                None,
+            ),
+            JsonValue::String(text) => (openui_lang::json_string_len(text).saturating_add(2), None),
+            JsonValue::Array(items) => (
+                items.len().saturating_add(1).max(2),
+                Some(Box::new(items.iter().map(|item| (None, item)))),
+            ),
+            JsonValue::Object(fields) => (
+                fields.len().saturating_add(1).max(2),
+                Some(Box::new(
+                    fields.iter().map(|(name, item)| (Some(name), item)),
+                )),
+            ),
+        };
+        bytes = bytes.saturating_add(own);
+        if bytes > budget {
+            return Err(QueryCommandError::Limit(crate::admission::size_error()));
+        }
+        if let Some(children) = children {
+            if path.len() > limits.depth() {
+                return Err(QueryCommandError::Limit(crate::admission::depth_error()));
+            }
+            path.push(children);
+        }
     }
-    Ok(Value::from_json(value))
+    Ok(bytes)
 }
 
 // The embedder's JSON as literal expressions, so the cache key serializes it
