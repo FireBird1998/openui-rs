@@ -1,5 +1,6 @@
 //! The clock-free query manager and its tool provider seam.
 mod mutations;
+mod refresh;
 mod runs;
 mod session;
 use crate::tree::TreeScope;
@@ -78,6 +79,16 @@ pub enum QueryCommand<'a> {
         /// The current state.
         store: &'a Store,
     },
+    /// Advance the monotonic millisecond clock (initially zero). Leave room
+    /// for one full platform interval: at most `u64::MAX - i32::MAX as u64`.
+    AdvanceClock {
+        /// Absolute time in milliseconds.
+        now_ms: u64,
+    },
+    /// Suspend queries, release calls and mutations, and retain cached data.
+    Dispose,
+    /// Allow registration again. The next evaluate reinstalls timers.
+    Activate,
     /// Complete one wanted call.
     Complete {
         /// Identity returned when the call started.
@@ -106,6 +117,8 @@ pub enum QueryCommand<'a> {
 #[derive(Debug)]
 #[non_exhaustive]
 pub struct QueryUpdate {
+    /// Earliest absolute millisecond deadline after this command.
+    pub next_refresh_due_ms: Option<u64>,
     /// Newly wanted calls, in dispatch order.
     pub calls: Vec<ToolCall>,
     /// Whether the snapshot's serialized bytes changed.
@@ -120,6 +133,8 @@ pub struct QueryUpdate {
 pub enum QueryCommandError {
     /// The identity belongs to another manager or was already completed.
     InvalidCall,
+    /// Invalid refresh floor, backwards clock, or unrepresentable deadline.
+    InvalidClock,
     /// Evaluation or result depth exceeded a configured limit.
     Limit(LimitError),
     /// Evaluation or tool-name coercion failed.
@@ -136,6 +151,7 @@ impl QueryUpdate {
 impl fmt::Display for QueryCommandError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
+            Self::InvalidClock => f.write_str("invalid refresh minimum or clock time"),
             Self::InvalidCall => f.write_str("invalid tool call identity"),
             Self::Limit(error) => error.fmt(f),
             Self::Evaluation(error) => write!(f, "query evaluation failed: {error:?}"),
@@ -149,6 +165,9 @@ impl std::error::Error for QueryCommandError {}
 pub struct QueryManager {
     owner: Arc<()>,
     limits: Limits,
+    lifecycle: Arc<()>,
+    clock: refresh::Clock,
+    disposed: bool,
     mutations: Mutations,
     queries: HashMap<String, Query>,
     order: Vec<String>,
@@ -199,6 +218,7 @@ struct PendingCall {
 }
 
 struct Node<'a> {
+    interval: Option<refresh::Interval>,
     id: &'a str,
     key: Arc<str>,
     defaults: Option<Value>,
@@ -219,6 +239,9 @@ impl QueryManager {
         let mut manager = Self {
             owner: Arc::new(()),
             limits,
+            lifecycle: Arc::new(()),
+            clock: refresh::Clock::default(),
+            disposed: false,
             mutations: Mutations::default(),
             queries: HashMap::new(),
             order: Vec::new(),
@@ -334,6 +357,24 @@ impl QueryManager {
     pub fn apply(&mut self, command: QueryCommand<'_>) -> Result<QueryUpdate, QueryCommandError> {
         let previous = self.mutations.hidden_results();
         let calls = match command {
+            QueryCommand::Dispose => {
+                self.stop();
+                Vec::new()
+            }
+            QueryCommand::Activate => {
+                self.disposed = false;
+                Vec::new()
+            }
+            QueryCommand::AdvanceClock { now_ms } => {
+                let calls = self.advance(now_ms)?;
+                if calls.is_empty() {
+                    return Ok(self.idle_update());
+                }
+                calls
+            }
+            QueryCommand::Evaluate { .. } | QueryCommand::Invalidate { .. } if self.disposed => {
+                Vec::new()
+            }
             QueryCommand::Evaluate { program, store } => {
                 let nodes = self.evaluate_nodes(&TreeInput::new(program), store)?;
                 self.apply_nodes(program, nodes)
@@ -343,11 +384,7 @@ impl QueryManager {
                 let changed = self.complete(id, outcome)?;
                 id.0.consumed.store(true, Ordering::Relaxed);
                 if !changed {
-                    return Ok(QueryUpdate {
-                        calls: Vec::new(),
-                        changed: false,
-                        hidden_change: false,
-                    });
+                    return Ok(self.idle_update());
                 }
                 key.and_then(|key| self.run_remembered(&key))
                     .into_iter()
@@ -359,6 +396,7 @@ impl QueryManager {
         // can take a temporarily unreferenced entry later in the same evaluate.
         self.cache.retain(|_, entry| entry.references != 0);
         Ok(QueryUpdate {
+            next_refresh_due_ms: self.next_refresh_due_ms(),
             calls,
             changed: self.rebuild_snapshot(),
             hidden_change: self.mutations.hidden_changed(&previous),
@@ -406,6 +444,7 @@ impl QueryManager {
             calls: TreeScope::new(input, store, None, self.limits),
             inspection: Cell::new(Inspection::None),
             inspected: Cell::new(None),
+            seconds: Cell::new(0.0),
         };
         let bytes = program_input
             .input_bytes()
@@ -432,6 +471,7 @@ impl QueryManager {
             false
         });
         let mut calls = Vec::new();
+        let mut intervals = Vec::new();
         for node in nodes {
             let mut acquire = false;
             let query = self.queries.entry(node.id.into()).or_insert_with(|| {
@@ -473,7 +513,12 @@ impl QueryManager {
             {
                 calls.push(runs::start_call(&self.owner, entry, key, &query.request));
             }
+            // Keep the existing timer while a reader waits, as applyNodes does.
+            if !self.waits(node.id) {
+                intervals.push((node.id, node.interval));
+            }
         }
+        self.clock.reconcile(&active, intervals);
         calls
     }
 
@@ -483,6 +528,9 @@ impl QueryManager {
         outcome: ToolOutcome<'_>,
     ) -> Result<bool, QueryCommandError> {
         self.check_call(id)?;
+        if self.disposed {
+            return Ok(false);
+        }
         let target = match &id.0.target {
             CallTarget::Mutation(call) => {
                 return self.mutations.complete(call, outcome, self.limits);
@@ -649,6 +697,7 @@ enum Inspection {
     None,
     Tool,
     Key,
+    Interval,
 }
 
 struct QueryScope<'a> {
@@ -657,6 +706,7 @@ struct QueryScope<'a> {
     calls: TreeScope<'a>,
     inspection: Cell<Inspection>,
     inspected: Cell<Option<String>>,
+    seconds: Cell<f64>,
 }
 
 impl EvaluationScope for QueryScope<'_> {
@@ -714,6 +764,10 @@ impl EvaluationScope for QueryScope<'_> {
         self.inspected
             .set(match self.inspection.replace(Inspection::None) {
                 Inspection::None => None,
+                Inspection::Interval => {
+                    self.seconds.set(value.coerce_number());
+                    None
+                }
                 Inspection::Tool => value.coerce_string(),
                 Inspection::Key => value.stable_json(),
             });
@@ -792,7 +846,14 @@ impl QueryScope<'_> {
             key.push_str("::");
             key.push_str(&deps);
         }
+        let interval = if let Some(ast) = &statement.refresh {
+            let raw = self.evaluate(ast, Inspection::Interval, eval)?;
+            refresh::Interval::new(raw, self.seconds.get(), self.manager.clock.minimum_ms)
+        } else {
+            None
+        };
         Ok(Node {
+            interval,
             id: &statement.statement_id,
             key: key.into(),
             defaults,

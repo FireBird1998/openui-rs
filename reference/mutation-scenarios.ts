@@ -42,7 +42,7 @@ async function randomReplay(seed: number) {
   return { scenario, reference };
 }
 
-// Only the upstream side of the manager dispose boundary exists until #89.
+// The session pause test pins both outcomes against these manager observations.
 async function disposeRows() {
   const { createQueryManager } = await import('./lang-core/src/runtime/queryManager');
   const rows = [];

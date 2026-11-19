@@ -8,6 +8,7 @@ root = pathlib.Path(__file__).resolve().parent.parent
 methods = [
     "attachToolProvider", "detachToolProvider",
     "takeQueryUpdate", "completeToolCall", "retryFailedQueries",
+    "advanceQueryClock", "pauseQueries", "resumeQueries", "attachToolProviderWithMinimum",
     "actionAt", "dispose", "evaluate", "get", "getField", "initialize",
     "initializeField", "isPristine", "markBinding", "pendingContinuations",
     "registerFunction", "replaceProgram", "resume", "run", "runLegacy", "set", "setField", "setProgram",
@@ -22,6 +23,7 @@ wasm = (root / "crates/openui-wasm/src/runtime.rs").read_text()
 inner = (root / "crates/openui-wasm/src/session.rs").read_text()
 core = (root / "crates/openui-session/src/lib.rs").read_text()
 core += (root / "crates/openui-session/src/queries.rs").read_text()
+core += (root / "crates/openui-session/src/refresh.rs").read_text()
 for source, label in [(native, "native"), (inner, "wasm inner"), (core, "session core")]:
     exported = {camel(n) for n in re.findall(r"pub fn (\w+)\(", source)}
     assert set(native_methods) - {"dispose", "setReferenceValues"} <= exported, label
@@ -107,6 +109,9 @@ if len(sys.argv) == 3 and sys.argv[1] == "--wasm":
     assert "export interface ResponseState { streaming: boolean }" in declarations
     for field in ["queryEvaluationError", "evaluationError"]:
         assert f"readonly {field}: {{ kind: string; message: string }} | null;" in declarations, field
+    assert "readonly nextRefreshDueMs: bigint | undefined;" in declarations
+    assert "advanceQueryClock(now_ms: bigint): void;" in session[1]
+    assert "attachToolProviderWithMinimum(minimum_ms: bigint): void;" in session[1]
     assert "readonly actionCount: bigint;" in declarations
     assert "actionAt(index: bigint): ActionOutput | undefined;" in declarations
     assert "callAt(index: bigint): WantedToolCall | undefined;" in declarations
@@ -149,6 +154,9 @@ assert "querySnapshotJson: String? = nil, queryEvaluationError: OpenUiError? = n
 assert "public init(streaming: Bool = false)" in swift
 assert re.search(r"func evaluateWithResponse\(responseState: ResponseState\) throws\s*-> EvaluationOutput", api[1])
 assert re.search(r"func replaceProgramWithResponse\([^\n]*responseState: ResponseState\) throws\s*-> ReplacementOutput", api[1])
+assert "nextRefreshDueMs: UInt64? = nil" in swift
+assert "func advanceQueryClock(nowMs: UInt64) throws" in api[1]
+assert "func attachToolProviderWithMinimum(minimumMs: UInt64) throws" in api[1]
 assert "actions: [ActionOutput] = []" in swift
 assert "public var calls: [WantedToolCall]" in swift
 assert "case ReferenceConflict" in swift
@@ -182,6 +190,9 @@ if len(sys.argv) == 3:
     assert "`streaming`: kotlin.Boolean = false" in kotlin
     assert "fun `evaluateWithResponse`(`responseState`: ResponseState): EvaluationOutput" in api[1]
     assert "`responseState`: ResponseState): ReplacementOutput" in api[1]
+    assert "`nextRefreshDueMs`: kotlin.ULong? = null" in kotlin
+    assert "fun `advanceQueryClock`(`nowMs`: kotlin.ULong)" in api[1]
+    assert "fun `attachToolProviderWithMinimum`(`minimumMs`: kotlin.ULong)" in api[1]
     assert "`actions`: List<ActionOutput> = listOf()" in kotlin
     assert "class ReferenceConflict" in kotlin
     assert "interface LibraryFunction" in kotlin

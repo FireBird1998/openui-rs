@@ -12,6 +12,7 @@ use std::sync::{Arc, Weak, mpsc};
 mod mcp;
 mod mutations;
 mod queries;
+mod refresh;
 pub use mcp::extract_mcp_tool_result;
 pub use openui_runtime::{ToolCall as WantedToolCall, ToolCallOutcome};
 pub use queries::{QueryEffects, ResponseState};

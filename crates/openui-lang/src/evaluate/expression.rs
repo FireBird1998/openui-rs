@@ -568,6 +568,25 @@ impl<'a> ExpressionValue<'a> {
         }
         result
     }
+    /// JavaScript numeric coercion of the original value under this evaluation's
+    /// allowance. Coercion failures travel through its usual failure channel.
+    #[doc(hidden)]
+    pub fn coerce_number(&self) -> f64 {
+        let mut result = f64::NAN;
+        let mut coerce = || {
+            result = match &to_primitive_in::<Supplied<'_>>(&self.value) {
+                Js::Str(text) => js_number(text),
+                Js::Undefined => f64::NAN,
+                primitive => to_number(primitive),
+            };
+        };
+        if let Some(operate) = self.operate {
+            operate(&mut coerce);
+        } else {
+            coerce();
+        }
+        result
+    }
     /// Whether the value is null or undefined, without coercion.
     pub fn is_nullish(&self) -> bool {
         is_nullish(&self.value)

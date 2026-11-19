@@ -942,6 +942,21 @@ impl RuntimeSession {
         })
     }
 
+    pub fn advance_query_clock(&self, now_ms: u64) -> Result<(), OpenUiError> {
+        self.call(move |s, _| s.advance_query_clock(now_ms).map_err(Into::into))
+    }
+    pub fn pause_queries(&self) -> Result<(), OpenUiError> {
+        self.call(move |s, _| s.pause_queries().map_err(Into::into))
+    }
+    pub fn resume_queries(&self) -> Result<(), OpenUiError> {
+        self.call(move |s, _| s.resume_queries().map_err(Into::into))
+    }
+    pub fn attach_tool_provider_with_minimum(&self, minimum_ms: u64) -> Result<(), OpenUiError> {
+        self.call(move |s, refs| {
+            s.attach_tool_provider_with_minimum(refs, minimum_ms)
+                .map_err(Into::into)
+        })
+    }
     pub fn attach_tool_provider(&self) -> Result<(), OpenUiError> {
         self.call(move |s, refs| s.attach_tool_provider(refs).map_err(Into::into))
     }

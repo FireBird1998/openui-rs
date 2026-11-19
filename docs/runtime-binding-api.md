@@ -21,6 +21,10 @@ Swift (`import OpenUIFFI`); fallible calls throw OpenUiError:
 convenience init(library: ComponentLibrary, promptSpec: String?) throws
 static func withLimits(library: ComponentLibrary, promptSpec: String?, limits: RuntimeLimits) throws -> RuntimeSession
 func attachToolProvider() throws
+func advanceQueryClock(nowMs: UInt64) throws
+func pauseQueries() throws
+func resumeQueries() throws
+func attachToolProviderWithMinimum(minimumMs: UInt64) throws
 func detachToolProvider() throws
 func evaluateWithResponse(responseState: ResponseState) throws -> EvaluationOutput
 func replaceProgramWithResponse(program: ParsedProgram, persisted: String?, projected: String?, nativeView: Bool, responseState: ResponseState) throws -> ReplacementOutput
@@ -60,6 +64,10 @@ constructor(library: ComponentLibrary, promptSpec: String?)
 // companion object:
 fun withLimits(library: ComponentLibrary, promptSpec: String?, limits: RuntimeLimits): RuntimeSession
 fun attachToolProvider()
+fun advanceQueryClock(nowMs: ULong)
+fun pauseQueries()
+fun resumeQueries()
+fun attachToolProviderWithMinimum(minimumMs: ULong)
 fun detachToolProvider()
 fun evaluateWithResponse(responseState: ResponseState): EvaluationOutput
 fun replaceProgramWithResponse(program: ParsedProgram, persisted: String?, projected: String?, nativeView: Boolean, responseState: ResponseState): ReplacementOutput
@@ -115,6 +123,7 @@ struct EvaluationOutput {
     public var queryEvaluationError: OpenUiError? // defaults to nil
 }
 struct QueryEffects {
+    public var nextRefreshDueMs: UInt64? // defaults to nil
     public var changed: Bool
     public var calls: [WantedToolCall]
     public var actions: [ActionOutput] // defaults to []

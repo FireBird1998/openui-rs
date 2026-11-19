@@ -297,6 +297,24 @@ impl RuntimeSession {
             .map(|inner| ReplacementOutput { inner })
             .map_err(error)
     }
+    #[wasm_bindgen(js_name = advanceQueryClock)]
+    pub fn advance_query_clock(&self, now_ms: u64) -> Result<(), JsValue> {
+        self.inner.advance_query_clock(now_ms).map_err(error)
+    }
+    #[wasm_bindgen(js_name = pauseQueries)]
+    pub fn pause_queries(&self) -> Result<(), JsValue> {
+        self.inner.pause_queries().map_err(error)
+    }
+    #[wasm_bindgen(js_name = resumeQueries)]
+    pub fn resume_queries(&self) -> Result<(), JsValue> {
+        self.inner.resume_queries().map_err(error)
+    }
+    #[wasm_bindgen(js_name = attachToolProviderWithMinimum)]
+    pub fn attach_tool_provider_with_minimum(&self, minimum_ms: u64) -> Result<(), JsValue> {
+        self.inner
+            .attach_tool_provider_with_minimum(minimum_ms)
+            .map_err(error)
+    }
     #[wasm_bindgen(js_name = attachToolProvider)]
     pub fn attach_tool_provider(&self) -> Result<(), JsValue> {
         self.inner.attach_tool_provider().map_err(error)

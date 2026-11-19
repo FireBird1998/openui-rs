@@ -6,6 +6,8 @@ use openui_runtime::{QueryCommand, QueryCommandError, QueryManager, QueryUpdate,
 /// evaluating its new query arguments fails. The previous registrations survive.
 #[derive(Default, Debug, Clone)]
 pub struct QueryEffects {
+    /// Current absolute refresh deadline, repeated even on an empty drain.
+    pub next_refresh_due_ms: Option<u64>,
     pub calls: Vec<Arc<WantedToolCall>>,
     /// Resumed action segments in completion order. Drained exactly once.
     pub actions: Vec<ActionOutput>,
@@ -46,7 +48,9 @@ impl From<QueryCommandError> for OpenUiError {
         let reason = error.to_string();
         match error {
             QueryCommandError::InvalidCall => Self::InvalidToolCall,
-            QueryCommandError::Limit(_) => Self::LimitExceeded { reason },
+            QueryCommandError::InvalidClock | QueryCommandError::Limit(_) => {
+                Self::LimitExceeded { reason }
+            }
             _ => Self::Evaluation { reason },
         }
     }
@@ -68,7 +72,9 @@ pub(super) fn draw<T>(
     };
     match manager {
         None => Ok((draw_with(refs)?, None)),
-        Some(manager) if !register => Ok((draw_with(&manager.prepared_results(limits))?, None)),
+        Some(manager) if !register || manager.is_disposed() => {
+            Ok((draw_with(&manager.prepared_results(limits))?, None))
+        }
         Some(manager) => match manager.settled_transaction(input, store, |candidate| {
             draw_with(&candidate.prepared_results(limits)).map_err(DrawError::Screen)
         }) {
@@ -151,11 +157,23 @@ impl SessionCore {
         &mut self,
         refs: &PreparedReferenceValues<'_>,
     ) -> Result<(), OpenUiError> {
+        self.attach_tool_provider_with_minimum(refs, 1000)
+    }
+
+    /// Set the polling floor when attaching a new provider.
+    pub fn attach_tool_provider_with_minimum(
+        &mut self,
+        refs: &PreparedReferenceValues<'_>,
+        minimum_ms: u64,
+    ) -> Result<(), OpenUiError> {
         if !refs.is_empty() {
             return Err(OpenUiError::ReferenceConflict);
         }
         if self.manager.is_none() {
-            self.manager = Some(QueryManager::with_limits(self.core_limits));
+            self.manager = Some(QueryManager::with_refresh_minimum(
+                self.core_limits,
+                minimum_ms,
+            )?);
             self.query_inputs_changed = true;
             self.query_effects.changed = true;
         }
@@ -183,6 +201,10 @@ impl SessionCore {
 
     pub fn take_query_update(&mut self) -> QueryEffects {
         QueryEffects {
+            next_refresh_due_ms: self
+                .manager
+                .as_ref()
+                .and_then(QueryManager::next_refresh_due_ms),
             actions: std::mem::take(&mut self.query_effects.actions),
             calls: std::mem::take(&mut self.query_effects.calls),
             changed: std::mem::take(&mut self.query_effects.changed),
@@ -220,7 +242,7 @@ impl SessionCore {
 
     pub(super) fn state_changed(&mut self) {
         if !self.streaming
-            && let Some(manager) = &mut self.manager
+            && let Some(manager) = self.manager.as_mut().filter(|m| !m.is_disposed())
         {
             let result = Self::functions(
                 &self.library,
@@ -274,10 +296,15 @@ impl SessionCore {
         call: &ToolCallId,
         json: &str,
     ) -> Result<(), OpenUiError> {
-        self.manager
-            .as_ref()
-            .ok_or(OpenUiError::InvalidToolCall)?
-            .check_call(call)?;
+        let manager = self.manager.as_mut().ok_or(OpenUiError::InvalidToolCall)?;
+        manager.check_call(call)?;
+        if manager.is_disposed() {
+            manager.apply(QueryCommand::Complete {
+                id: call,
+                outcome: openui_runtime::ToolOutcome::Result(None),
+            })?;
+            return Ok(());
+        }
         self.text(json)?;
         let limits = self.core_limits;
         let bound = limits.result_size().min(limits.work_for(usize::MAX));

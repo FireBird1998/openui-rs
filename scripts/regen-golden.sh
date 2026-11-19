@@ -67,6 +67,7 @@ done
   bun --no-install core-divergences.ts
   bun --no-install query-default-cycles.ts
   bun --no-install query-scenarios.ts
+  bun --no-install query-refresh.ts
   bun --no-install session-queries.ts
   bun --no-install mutation-scenarios.ts
   bun --no-install session-mutations.ts

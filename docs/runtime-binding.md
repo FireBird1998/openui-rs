@@ -443,7 +443,7 @@ once. Its redraw flag includes a resumed store write and a mutation reference
 change hidden by a reserved snapshot list.
 
 Each managed submission occupies one `maxContinuations` slot (default 64)
-until the session accepts its outcome or the provider detaches. Draining or
+until the session accepts its outcome, queries pause, or the provider detaches. Draining or
 dropping the wanted call keeps its slot occupied. At capacity, a Run that
 would dispatch a new call reports `LimitExceeded` and a size cut. Existing
 plans remain pending.
@@ -479,3 +479,32 @@ and revokes calls. A repeated or foreign completion raises `InvalidToolCall`.
 A refused outcome leaves a valid call available for correction. Supplied
 references conflict with an attached provider. Clear them with
 `setReferenceValues("{}")` before attaching.
+
+
+### Scheduling one refresh timer
+
+The attached manager starts at millisecond zero. Supply a monotonic integer
+millisecond timestamp with `advanceQueryClock(nowMs)` before the first settled
+draw and when driving the session. The unit is `UInt64` in Swift, `ULong` in
+Kotlin and `bigint` in JavaScript. Read `nextRefreshDueMs` from every
+`takeQueryUpdate()`, even when `changed` is false. It gives an absolute
+deadline on that same clock. Arm one platform timer for the remaining delay,
+or cancel it when the deadline is absent. On wake, advance to the actual time
+and drain again. A repeated drain keeps reporting the current deadline.
+
+The default polling floor is 1,000 ms. Use
+`attachToolProviderWithMinimum(minimumMs)` when attaching a fresh provider to
+choose a floor from 1 through 2,147,483,647 ms. Repeated attachment keeps the
+existing manager and its settings. The floor applies only to interval ticks.
+Advancing to a time earlier than the previous advance, or above
+`UInt64.max - 2,147,483,647`, raises `LimitExceeded`. The upper bound leaves
+room for one more full platform interval. A delayed wake skips elapsed periods
+once a call is in flight and preserves the original cadence.
+
+Use `pauseQueries()` to stop the timers and release outstanding queries and
+managed mutation plans. Each original call identity can still acknowledge one
+late outcome. Use `advanceQueryClock(nowMs)` before `resumeQueries()` to start
+the new intervals from the wake time. Resume re-evaluates a settled program
+using its retained cache. A streaming program waits for its settled draw.
+During ordinary streaming, previously registered timers continue with their
+last evaluated arguments for both bare and bundled responses.

@@ -143,6 +143,18 @@ impl Session {
             )
         })
     }
+    pub fn advance_query_clock(&self, now_ms: u64) -> Result<(), OpenUiError> {
+        self.call(move |s, _| s.advance_query_clock(now_ms))
+    }
+    pub fn pause_queries(&self) -> Result<(), OpenUiError> {
+        self.call(move |s, _| s.pause_queries())
+    }
+    pub fn resume_queries(&self) -> Result<(), OpenUiError> {
+        self.call(move |s, _| s.resume_queries())
+    }
+    pub fn attach_tool_provider_with_minimum(&self, minimum_ms: u64) -> Result<(), OpenUiError> {
+        self.call(move |s, refs| s.attach_tool_provider_with_minimum(refs, minimum_ms))
+    }
     pub fn attach_tool_provider(&self) -> Result<(), OpenUiError> {
         self.call(move |s, refs| s.attach_tool_provider(refs))
     }

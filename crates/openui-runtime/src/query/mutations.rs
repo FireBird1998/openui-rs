@@ -27,6 +27,7 @@ impl Entry {
 }
 
 pub(super) struct MutationCall {
+    pub(super) lifecycle: Weak<()>,
     statement: String,
     registration: Weak<()>,
     pub(super) dispatched_tool: String,
@@ -55,6 +56,7 @@ impl QueryManager {
         let previous = self.mutations.hidden_results();
         self.register_mutation_statements(input, store)?;
         Ok(QueryUpdate {
+            next_refresh_due_ms: self.next_refresh_due_ms(),
             calls: Vec::new(),
             changed: self.rebuild_snapshot(),
             hidden_change: self.mutations.hidden_changed(&previous),
@@ -125,10 +127,12 @@ impl QueryManager {
 
     /// Whether the registration exists and accepts a submission now.
     pub fn can_fire_mutation(&self, statement: &str) -> bool {
-        self.mutations
-            .entries
-            .get(statement)
-            .is_some_and(Entry::accepts_submission)
+        !self.disposed
+            && self
+                .mutations
+                .entries
+                .get(statement)
+                .is_some_and(Entry::accepts_submission)
     }
 
     /// Start a mutation with click-time arguments. Unknown or loading statements
@@ -138,6 +142,9 @@ impl QueryManager {
         statement: &str,
         args: Option<&Value>,
     ) -> Result<QueryUpdate, QueryCommandError> {
+        if self.disposed {
+            return Ok(self.idle_update());
+        }
         let Some(entry) = self
             .mutations
             .entries
@@ -145,6 +152,7 @@ impl QueryManager {
             .filter(|entry| entry.accepts_submission())
         else {
             return Ok(QueryUpdate {
+                next_refresh_due_ms: self.next_refresh_due_ms(),
                 calls: Vec::new(),
                 changed: false,
                 hidden_change: false,
@@ -157,6 +165,7 @@ impl QueryManager {
             id: ToolCallId(Arc::new(CallIdentity {
                 manager: Arc::downgrade(&self.owner),
                 target: CallTarget::Mutation(MutationCall {
+                    lifecycle: Arc::downgrade(&self.lifecycle),
                     statement: statement.into(),
                     registration: Arc::downgrade(&entry.identity),
                     dispatched_tool: entry.tool.clone(),
@@ -169,6 +178,7 @@ impl QueryManager {
         let hidden_change = HIDDEN_NAMES.contains(&statement);
         entry.result = result("loading", None, None);
         Ok(QueryUpdate {
+            next_refresh_due_ms: self.next_refresh_due_ms(),
             calls: vec![call],
             hidden_change,
             changed: self.rebuild_snapshot(),

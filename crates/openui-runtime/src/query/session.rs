@@ -45,6 +45,7 @@ impl ToolCallId {
     /// Whether this receipt can still dispatch work for its manager.
     pub fn is_pending(&self) -> bool {
         !matches!(&self.0.target, CallTarget::Query(call) if call.strong_count() == 0)
+            && !matches!(&self.0.target, CallTarget::Mutation(call) if call.lifecycle.strong_count() == 0)
             && self.0.manager.strong_count() != 0
             && !self.0.consumed.load(Ordering::Relaxed)
     }
@@ -86,6 +87,9 @@ impl QueryManager {
         mutations: bool,
         read: impl FnOnce(&Self) -> Result<T, E>,
     ) -> Result<(T, QueryUpdate), E> {
+        if self.disposed {
+            return Ok((read(self)?, self.idle_update()));
+        }
         let mut candidate = self.candidate();
         let nodes = candidate.evaluate_nodes(input, store)?;
         let calls = candidate.apply_nodes(input.result, nodes);
@@ -120,6 +124,9 @@ impl QueryManager {
         Self {
             owner: self.owner.clone(),
             limits: self.limits,
+            lifecycle: self.lifecycle.clone(),
+            clock: self.clock.clone(),
+            disposed: self.disposed,
             mutations: self.mutations.clone(),
             queries: self.queries.clone(),
             order: self.order.clone(),
@@ -154,6 +161,7 @@ impl QueryManager {
         check_cuts(room.flags())?;
         self.rebuild_snapshot();
         Ok(QueryUpdate {
+            next_refresh_due_ms: self.next_refresh_due_ms(),
             calls,
             changed: self.snapshot_json != previous.snapshot_json,
             hidden_change: self
@@ -189,7 +197,7 @@ impl QueryManager {
                 )
             }),
         };
-        if readers == 0 {
+        if self.disposed || readers == 0 {
             // ADR 0013: discard the outcome for a released or previous-only
             // entry. Retire its pending flag and consume the receipt once.
             return self.apply(QueryCommand::Complete {

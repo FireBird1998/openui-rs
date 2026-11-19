@@ -785,14 +785,6 @@ the other's, is `listed-state-variables-keep-equal-arguments-apart`: the
 variable joins one key as a dependency, so the queries never share a key,
 and it matches lang-core byte for byte.
 
-Late query outcomes after a manager dispose have no two-sided pin yet. The manager has no dispose
-command until #89. Observed in lang-core 1.1.0 with one query whose call is
-in flight at `dispose()`: a late success stores no data, and the next
-snapshot rebuild shows the query no longer loading; after `activate()` an
-evaluation calls the tool again. A late failure records the query's error
-and marks the entry failed; after `activate()` an evaluation shows that
-error and makes no call.
-
 Reader scheduling has its own temporary pin until #86. In
 `reader-waits-for-its-input`, Rust starts the reader alongside the source and
 lang-core starts it after the source supplies data. `run-a-waiting-query` is
@@ -830,8 +822,31 @@ entry and its call (row `remove-statement-before-registering-its-replacement`)
 and the run with it, so the call's end starts one more call; lang-core drops
 the entry and calls again at the replacement.
 
-A run while the manager is disposed does nothing in lang-core. That line of
-#87 moves to #89, which adds the dispose command.
+### Refresh intervals and disposal
+
+The three lang-core refresh tests appear in the timed scenarios as a steady
+mount, a Strict Mode re-attach and removal of an interval. The adapter runs
+lang-core's own interval callbacks in deadline and installation order. Its
+observable deadline is the earliest due time among the installed timers.
+A run while disposed produces no call. A tick during streaming uses the
+last settled registration. In the renderer, `blocked` gates evaluation and
+`isBundle && blocked` gates clicks. Neither gate cancels an installed timer.
+[Scenarios](conformance/query-refresh.json) · [Reference bytes](conformance/golden/query-refresh.json) · [Renderer effect](https://github.com/thesysdev/openui/blob/47b9cae0d3b26a8c9d7514d5887a6d6608801ac9/packages/react-lang/src/hooks/useOpenUIState.ts#L215-L232)
+
+| Situation | lang-core 1.1.0 | openui-rs | Decision and two-sided pin |
+|---|---|---|---|
+| Positive timer delay below the minimum, including platform delay overflow | Uses the platform delay. A finite delay above the platform's signed 32-bit range becomes 1 ms on Bun. | Raises the platform delay to the configured floor. First fetch and Run dispatch immediately. | #79 polling floor. [Default, configured and overflow pins](conformance/divergences/refresh-lifecycle.json) |
+| Infinite interval | Installs a timer with a platform delay of 1 ms. | Leaves the timer absent. | #79 infinite interval. [Infinity pin](conformance/divergences/refresh-lifecycle.json) |
+| Dispose while a query call or mutation is loading | Clears internal query loading and drops mutations, but keeps the last published snapshot until a rebuild. A late query success stores no data. A late mutation of either outcome returns false. | Publishes the cleared loading lists and removed mutation immediately. Both late outcomes leave the paused snapshot unchanged. | ADR 0013 rule 2 and #79 dispose. [Query pins](conformance/divergences/refresh-lifecycle.json) · [Mutation pins](conformance/divergences/refresh-mutation-dispose.json) |
+| Query failure delivered while disposed | Sets the error and failed flag. Evaluation after activation suppresses the first call. | Consumes the receipt without recording the error. The next evaluation requests missing data. | ADR 0013 late-outcome rule and rule 4. [Failure pin](conformance/divergences/refresh-lifecycle.json) |
+| Activate and evaluate before an old query call returns | The cache still has its in-flight flag. The old success can settle the reactivated query. | Releases the old call at dispose. A fresh call owns the entry on evaluation. | ADR 0013 rules 2–4. [Reactivation pin](conformance/divergences/refresh-lifecycle.json) |
+
+The additional seeded replay compares all steps of 512 mixed clock scripts
+directly with upstream. Another 128 scripts replay the same manager twice,
+applying only the specified floor or Infinity rule to the platform timer in
+the second replay. Rust must match every byte of that replay. Across the
+640 scripts, 1,209 observations differ at the floor and 1,216 at Infinity.
+Run with `cargo test -p openui-runtime --test query_refresh -- --ignored --nocapture`.
 
 ### Provider-managed mutations
 
@@ -870,12 +885,12 @@ the loading list from the query's outstanding call and compares the resulting
 bytes and change flag after every command. Run this replay with
 `cargo test -p openui-runtime --test mutation_scenarios -- --ignored --nocapture`.
 
-The manager dispose acceptance line moves to #89, which introduces its
-dispose/activate commands. On the upstream side both late outcomes resolve the
-suspended fire to false. Its direct mutation lookup is null even though the
-last published snapshot still says loading. The terminal native session and
-provider detach tests cover revocation at the existing session boundaries.
-[Upstream dispose transcript](conformance/golden/mutation-dispose.jsonl)
+An explicit manager registration during dispose installs the mutation. Fire
+waits for activation. A paused session defers its registration effect.
+Both late mutation outcomes leave the suspended plan abandoned. The session
+test compares the published snapshot, result, resume and subsequent fire with
+the dispose transcript. Only the snapshot publication differs as documented
+in the refresh table. [Upstream dispose transcript](conformance/golden/mutation-dispose.jsonl)
 
 ### Core, tree, action and store differences
 
