@@ -42,6 +42,8 @@ app() {
   mkdir -p "$app/Contents/MacOS"
   cp tools/viewer/App/Info.plist "$app/Contents/"
   cp "$bin" "$app/Contents/MacOS/Viewer"
+  mkdir -p "$app/Contents/Resources"
+  cp -R "$(dirname "$bin")/Viewer_ViewerKit.bundle" "$app/Contents/Resources/"
   codesign --force --sign - "$app" 2>/dev/null
   echo "$app"
 }

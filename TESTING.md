@@ -2635,3 +2635,7 @@ does not claim to discover new transition coordinates. Run either writer twice
 and require identical output, review the fixture diff, then run both binaries
 without regeneration enabled. Neither writer is part of the normal mutation
 suite; neither invokes Bun or updates conformance goldens.
+
+## Scripted tool outcomes in the Viewer
+
+`ScriptedToolOutcomes` in `tools/viewer/Tests/ViewerKitTests/ToolScriptTests.swift` runs with the same controllable clock for the Swift driver and the tool provider. Its tests check script validation, overlapping calls, the repeated final outcome, ordered missing-tool hints, first registration after a preview, and fresh outcomes on reload. A failed mutation leaves its action tail unrun. A mutation that finishes during a reload keeps its host event with the original runtime, including after rollback. The bundled News Desk files run through the Viewer's normal open and playback path. The tests inspect the query snapshot, store rows and evaluated buttons, run Retry, advance the refresh interval, and use SwiftUI's image renderer to observe the resulting native text drawing without opening a window.

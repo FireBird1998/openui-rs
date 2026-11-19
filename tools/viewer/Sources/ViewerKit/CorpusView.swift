@@ -272,7 +272,7 @@ final class CorpusModel {
         }
     }
 
-    func open(_ request: ProgramRequest) async {
+    func open(_ request: ProgramRequest, clock: some Clock<Duration> = ContinuousClock()) async {
         selected = nil
         do {
             let library: Library
@@ -289,7 +289,9 @@ final class CorpusModel {
             }
             await show(OpenProgram(title: "\(request.title) · \(request.library.label)", text: request.text, golden: nil,
                                    libraryName: libraryName),
-                       library: library, root: request.root)
+                       library: library, root: request.root, attachTools: request.toolScript.map { script in
+                           { try $0.attachToolProvider(clock: clock, script.provider(clock: clock)) }
+                       })
         } catch {
             failure = String(describing: error)
         }
@@ -395,7 +397,7 @@ final class CorpusModel {
 
     private func show(_ program: OpenProgram, library: Library, root: String?,
                       source: (any ChunkSource)? = nil, live: LiveStatus? = nil, chunking initial: Chunking? = nil,
-                      base: String? = nil) async {
+                      base: String? = nil, attachTools: ((LiveProgram) throws -> Void)? = nil) async {
         failure = nil
         let previousPlayback = playback
         let previousProgram = current
@@ -416,6 +418,7 @@ final class CorpusModel {
         savedRecording = nil
         let spec = program.libraryName.flatMap { corpus?.bindingSpec(forSchema: $0) }
         let playback = Playback(core: core, library: library, root: root, base: base, promptSpec: spec)
+        playback.attachTools = attachTools
         self.playback = playback
         loadedChunking = chunking
         if let source {

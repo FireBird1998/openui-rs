@@ -9,6 +9,15 @@ struct ProgramRequest {
     var text: String
     var library: LibraryChoice
     var root: String?
+    var toolScript: ToolScript?
+
+    static func newsDesk() throws -> Self {
+        guard let program = Bundle.module.url(forResource: "news-desk", withExtension: "oui", subdirectory: "Samples"),
+              let script = Bundle.module.url(forResource: "news-desk.tools", withExtension: "json", subdirectory: "Samples")
+        else { throw DecodeError(description: "Missing News Desk sample files") }
+        return try ProgramRequest(title: "News desk", text: String(contentsOf: program, encoding: .utf8),
+                                  library: .corpus("bench"), root: nil, toolScript: ToolScript(contentsOf: script))
+    }
 }
 
 enum LibraryChoice: Hashable {
@@ -34,12 +43,13 @@ struct NewProgramSheet: View {
     @State private var library: LibraryChoice
     @State private var schemaFiles: [URL] = []
     @State private var root = ""
-    @State private var importing: Importing?
+    @State private var importing = Importing.program
+    @State private var showImporter = false
+    @State private var scriptFile: (name: String, script: ToolScript)?
     @State private var failure: String?
 
-    enum Importing: Identifiable {
-        case program, schema
-        var id: Self { self }
+    enum Importing {
+        case program, schema, script
     }
 
     init(schemaNames: [String], open: @escaping (ProgramRequest) -> Void) {
@@ -53,7 +63,7 @@ struct NewProgramSheet: View {
             Text("Open a program").font(.title2.bold())
             HStack {
                 Text("Paste OpenUI Lang below, or")
-                Button("Choose a File…") { importing = .program }
+                Button("Choose a File…") { choose(.program) }
             }
             TextEditor(text: $text)
                 .font(.body.monospaced())
@@ -68,18 +78,35 @@ struct NewProgramSheet: View {
                         Text(url.lastPathComponent).tag(LibraryChoice.file(url))
                     }
                 }
-                Button("Choose a JSON Schema File…") { importing = .schema }
+                Button("Choose a JSON Schema File…") { choose(.schema) }
+                HStack {
+                    Button("Choose a Tool Script…") { choose(.script) }
+                    if let scriptFile {
+                        Text(scriptFile.name)
+                        Button("Remove") { self.scriptFile = nil }
+                    }
+                }
                 TextField("Root name (optional)", text: $root)
             }
             if let failure {
                 Text(failure).foregroundStyle(.red).font(.callout)
             }
             HStack {
+                Button("Open News Desk Sample") {
+                    do {
+                        open(try .newsDesk())
+                        dismiss()
+                    } catch {
+                        failure = String(describing: error)
+                    }
+                }
+                .disabled(!schemaNames.contains("bench"))
                 Spacer()
                 Button("Cancel", role: .cancel) { dismiss() }
                     .keyboardShortcut(.cancelAction)
                 Button("Open") {
-                    open(ProgramRequest(title: title, text: text, library: library, root: root.isEmpty ? nil : root))
+                    open(ProgramRequest(title: title, text: text, library: library, root: root.isEmpty ? nil : root,
+                                        toolScript: scriptFile?.script))
                     dismiss()
                 }
                 .keyboardShortcut(.defaultAction)
@@ -89,28 +116,31 @@ struct NewProgramSheet: View {
         .padding(20)
         .frame(width: 640)
         .fileImporter(
-            isPresented: Binding(get: { importing != nil }, set: { if !$0 { importing = nil } }),
-            allowedContentTypes: importing == .schema ? [.json] : [.plainText, .data]
+            isPresented: $showImporter,
+            allowedContentTypes: importing == .program ? [.plainText, .data] : [.json]
         ) { result in
-            let kind = importing
-            importing = nil
             do {
                 let url = try result.get()
-                switch kind {
+                switch importing {
                 case .program:
                     text = try read(url)
                     title = url.lastPathComponent
                 case .schema:
                     if !schemaFiles.contains(url) { schemaFiles.append(url) }
                     library = .file(url)
-                case nil:
-                    break
+                case .script:
+                    scriptFile = (url.lastPathComponent, try ToolScript(contentsOf: url))
                 }
                 failure = nil
             } catch {
                 failure = String(describing: error)
             }
         }
+    }
+
+    private func choose(_ kind: Importing) {
+        importing = kind
+        showImporter = true
     }
 
     private func read(_ url: URL) throws -> String {

@@ -15,7 +15,8 @@ let package = Package(
     ],
     targets: [
         // Everything but the app's entry point, so tests can reach it.
-        .target(name: "ViewerKit", dependencies: [.product(name: "OpenUINative", package: "OpenUINative")]),
+        .target(name: "ViewerKit", dependencies: [.product(name: "OpenUINative", package: "OpenUINative")],
+                resources: [.copy("Samples")]),
         .executableTarget(name: "Viewer", dependencies: ["ViewerKit"]),
         .testTarget(name: "ViewerKitTests", dependencies: ["ViewerKit"]),
     ]

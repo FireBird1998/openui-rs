@@ -28,6 +28,8 @@ public enum ToolProviderError: Error, Sendable, Equatable {
 /// What a live program's queries are doing, from its last evaluation with a
 /// tool provider attached. Empty without one.
 public struct QueryStatus: Sendable, Equatable {
+    /// Statement values from the query snapshot, including defaults and mutation status.
+    public var values: JSONValue = .object([])
     /// Statement ids of the queries waiting for a result, in upstream's order.
     public var loading: [String] = []
     /// Of those, the ones that have shown a fetched result before.
@@ -42,7 +44,10 @@ public struct QueryStatus: Sendable, Equatable {
 
     init(snapshot: String?, evaluationError: OpenUiError?) {
         self.evaluationError = evaluationError.map(LiveProgram.describe)
-        guard let snapshot, let json = try? JSONValue.parse(snapshot) else { return }
+        guard let snapshot, let json = try? JSONValue.parse(snapshot),
+              case let .object(fields) = json else { return }
+        let metadata = ["__openui_loading", "__openui_refetching", "__openui_errors"]
+        values = .object(fields.filter { !metadata.contains($0.key) })
         loading = (json["__openui_loading"]?.array ?? []).compactMap(\.string)
         refetching = (json["__openui_refetching"]?.array ?? []).compactMap(\.string)
         errors = (json["__openui_errors"]?.array ?? []).map(QueryIssue.init(json:))

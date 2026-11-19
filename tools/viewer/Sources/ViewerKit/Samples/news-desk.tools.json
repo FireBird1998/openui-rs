@@ -1,0 +1,14 @@
+{
+  "headline": [
+    {"delayMs": 900, "value": "Morning edition"},
+    {"delayMs": 900, "value": "Updated edition"},
+    {"delayMs": 900, "value": "Latest edition"}
+  ],
+  "desk": [
+    {"delayMs": 600, "failed": "Desk is offline"},
+    {"delayMs": 600, "value": "Desk connected"}
+  ],
+  "publish": [
+    {"delayMs": 700, "value": {"published": true}}
+  ]
+}

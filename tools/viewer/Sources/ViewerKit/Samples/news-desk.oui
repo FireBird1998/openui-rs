@@ -1,0 +1,7 @@
+root = Stack([CardHeader("News desk"), TextContent(headline), TextContent(desk), refresh, publish], "column", "m")
+headline = Query("headline", {}, "Loading the headline…", 8)
+desk = Query("desk", {}, "Connecting to the desk…")
+save = Mutation("publish")
+$published = 0
+refresh = Button("Refresh headline", @Run(headline))
+publish = Button("Publish edition", Action([@Run(save), @Set($published, $published + 1), @Run(headline)]))

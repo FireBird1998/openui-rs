@@ -11,6 +11,22 @@ public protocol PlaybackSession: Sendable {
 
 extension Session: PlaybackSession {}
 
+/// A retained runtime can finish a mutation while another runtime is on
+/// screen. Keep its bounded event history with it, including on rollback.
+@MainActor @Observable private final class EventHistory {
+    var events: [HostEvent] = []
+    var dropped = 0
+
+    func append(_ event: HostEvent, limit: Int) {
+        events.append(event)
+        let over = events.count - limit
+        if over > 0 {
+            events.removeFirst(over)
+            dropped += over
+        }
+    }
+}
+
 /// Plays a program's chunks through a streaming parse: forward, back, to any
 /// step, or at a speed. Step `k` is the result after the first `k` chunks;
 /// once every chunk has arrived, the last step is the stream's end.
@@ -58,16 +74,18 @@ public final class Playback {
     public private(set) var live: LiveProgram?
     /// The newest host events the program has sent since it was loaded,
     /// oldest first, at most `hostEventLimit` of them.
-    public private(set) var hostEvents: [HostEvent] = []
+    public var hostEvents: [HostEvent] { eventHistory.events }
     /// How many older host events were let go to keep within the limit. A
     /// mutation's continuation goes with its event, which ends that run.
-    public private(set) var droppedHostEvents = 0
+    public var droppedHostEvents: Int { eventHistory.dropped }
     /// How many host events are kept.
     public let hostEventLimit: Int
     /// Why the shown step couldn't be evaluated (or why there's no runtime
     /// session); the drawing then shows its parse result instead.
     public private(set) var evaluationError: String?
 
+    /// Installed on each fresh runtime, including a reload with different chunking.
+    var attachTools: ((LiveProgram) throws -> Void)?
     private let core: Core
     private let library: Library
     /// Which props are bindings: a prompt spec for the library, if it has one.
@@ -92,6 +110,8 @@ public final class Playback {
     private var loading: Task<Void, Never>?
     private var handedAt = ContinuousClock.now
 
+    private var eventHistory = EventHistory()
+
     /// One complete presentation, including its source and actual runtime.
     /// Preview sessions never replace that runtime's store or capabilities.
     private struct Complete {
@@ -103,8 +123,7 @@ public final class Playback {
         var textOffsets: [Int]
         var scalarOffsets: [Int]
         var timings: Timings?
-        var hostEvents: [HostEvent]
-        var droppedHostEvents: Int
+        var eventHistory: EventHistory
         var evaluationError: String?
     }
     private var complete: Complete?
@@ -353,10 +372,7 @@ public final class Playback {
         live?.discardPreview()
         if let complete {
             complete.live?.discardPreview()
-            if live !== complete.live {
-                hostEvents = complete.hostEvents
-                droppedHostEvents = complete.droppedHostEvents
-            }
+            eventHistory = complete.eventHistory
             live = complete.live
             evaluationError = complete.evaluationError
             chunks = complete.chunks
@@ -399,30 +415,17 @@ public final class Playback {
 
     /// A new runtime session, with nothing in its store.
     private func startLive() {
-        hostEvents = []
-        droppedHostEvents = 0
+        eventHistory = EventHistory()
         evaluationError = nil
         do {
-            live = try LiveProgram(library: library, promptSpec: promptSpec) { [weak self] event in
-                self?.received(event)
+            let program = try LiveProgram(library: library, promptSpec: promptSpec) { [eventHistory, hostEventLimit] event in
+                eventHistory.append(event, limit: hostEventLimit)
             }
+            try attachTools?(program)
+            live = program
         } catch {
             live = nil
             evaluationError = "No runtime session: \(error)"
-        }
-    }
-
-    /// Keeps the newest events; the ones let go take their continuations with them.
-    private func received(_ event: HostEvent) {
-        hostEvents.append(event)
-        let over = hostEvents.count - hostEventLimit
-        if over > 0 {
-            hostEvents.removeFirst(over)
-            droppedHostEvents += over
-        }
-        if complete?.live === live {
-            complete?.hostEvents = hostEvents
-            complete?.droppedHostEvents = droppedHostEvents
         }
     }
 
@@ -460,7 +463,7 @@ public final class Playback {
         if !isStreaming, target == chunks.count, !step.isStreaming {
             complete = Complete(live: live, step: step, position: target, chunks: chunks, text: text,
                 textOffsets: textOffsets, scalarOffsets: scalarOffsets, timings: timings,
-                hostEvents: hostEvents, droppedHostEvents: droppedHostEvents, evaluationError: evaluationError)
+                eventHistory: eventHistory, evaluationError: evaluationError)
         }
         stamp += 1
         handedAt = .now

@@ -41,7 +41,17 @@ public struct PlaybackView: View {
                 // that (TESTING.md, "The viewer's layout loop").
                 HSplitView {
                     drawing.frame(minWidth: 200, minHeight: 120)
-                    StorePanel(playback: playback).frame(minWidth: 180, idealWidth: 260, maxWidth: 480)
+                    Group {
+                        if let live = playback.live, live.hasToolProvider {
+                            VSplitView {
+                                StorePanel(playback: playback).frame(minHeight: 80)
+                                QueriesPanel(live: live).id(ObjectIdentifier(live)).frame(minHeight: 80)
+                            }
+                        } else {
+                            StorePanel(playback: playback)
+                        }
+                    }
+                    .frame(minWidth: 180, idealWidth: 260, maxWidth: 480)
                 }
                 programText.frame(minHeight: 60, idealHeight: 140)
             }
@@ -146,23 +156,15 @@ public struct PlaybackView: View {
         GeometryReader { pane in
             ScrollViewReader { proxy in
                 ScrollView(.vertical) {
-                    Group {
-                        if playback.isDrawingEvaluated, let live = playback.live, live.root != nil {
-                            ElementView(live: live).environment(\.elementDrawing, .inspecting)
-                        } else if !playback.isDrawingEvaluated, let root = playback.step?.result.root {
-                            // Not evaluated: the parse result, as it was before there was a runtime.
-                            ElementView(element: root).environment(\.elementDrawing, .inspecting)
-                        } else if playback.step != nil {
-                            Text("No root element yet").foregroundStyle(.secondary)
-                        }
-                    }
-                    .padding()
-                    .frame(
-                        width: drawingWidth > 0 ? drawingWidth : max(pane.size.width - Self.scrollBarRoom, 120),
-                        alignment: .topLeading
-                    )
-                    .background(RedrawProbe(stamp: playback.stamp) { playback.drawn($0) })
-                    .frame(width: max(pane.size.width - Self.scrollBarRoom, 120), alignment: drawingWidth > 0 ? .top : .topLeading)
+                    PlaybackDrawing(playback: playback)
+                        .environment(\.elementDrawing, .inspecting)
+                        .padding()
+                        .frame(
+                            width: drawingWidth > 0 ? drawingWidth : max(pane.size.width - Self.scrollBarRoom, 120),
+                            alignment: .topLeading
+                        )
+                        .background(RedrawProbe(stamp: playback.stamp) { playback.drawn($0) })
+                        .frame(width: max(pane.size.width - Self.scrollBarRoom, 120), alignment: drawingWidth > 0 ? .top : .topLeading)
                 }
                 .onChange(of: selection?.revealInDrawing) {
                     guard let path = selection?.path else { return }
@@ -180,6 +182,27 @@ public struct PlaybackView: View {
             }
         }
     }
+}
+
+/// Keep the live view mounted even if a scripted result temporarily leaves it
+/// without a root. Its appearance and disappearance drive query visibility.
+struct PlaybackDrawing: View {
+    let playback: Playback
+
+    var body: some View {
+        if playback.isDrawingEvaluated, let live = playback.live {
+            ZStack {
+                ElementView(live: live)
+                if live.root == nil, playback.step != nil { emptyRoot }
+            }
+        } else if let root = playback.step?.result.root {
+            ElementView(element: root)
+        } else if playback.step != nil {
+            emptyRoot
+        }
+    }
+
+    private var emptyRoot: some View { Text("No root element yet").foregroundStyle(.secondary) }
 }
 
 /// "parse 0.12 ms · crossing 0.03 ms · decode 0.20 ms · evaluate 0.31 ms · redraw 4.1 ms"

@@ -561,8 +561,9 @@ last evaluated arguments for both bare and bundled responses.
 Pass one async closure to `LiveProgram.attachToolProvider`. It receives the tool
 name and optional `JSONValue` arguments and returns a `JSONValue`. Wanted calls
 run concurrently. Each completion updates the evaluated tree and the loading,
-refetching and error lists in `live.queries`. Resumed host events go to the
-same `onHostEvent` handler as a click.
+refetching and error lists in `live.queries`. Its `values` object maps statement
+IDs to their current values, including query defaults and mutation status.
+Resumed host events go to the same `onHostEvent` handler as a click.
 
 | Provider outcome | Session outcome |
 | --- | --- |
