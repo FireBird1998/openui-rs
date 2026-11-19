@@ -32,6 +32,12 @@ session.detachToolProvider(): void
 session.completeToolCall(call: WantedToolCall, outcomeJson: string): void
 session.takeQueryUpdate(): QueryEffects
 session.retryFailedQueries(): void
+session.advanceQueryClock(now_ms: bigint): void
+session.pauseQueries(): void
+session.resumeQueries(): void
+session.resumeQueriesAt(now_ms: bigint): void
+session.attachToolProviderAt(now_ms: bigint, minimum_ms: bigint): void
+session.attachToolProviderWithMinimum(minimum_ms: bigint): void
 session.actionAt(evaluation: EvaluationHandle, path: string[]): ActionHandle
 session.dispose(): void
 session.evaluate(responseState?: ResponseState): EvaluationOutput
@@ -92,6 +98,7 @@ interface WantedToolCall {
   free(): void;
 }
 interface QueryEffects {
+  readonly nextRefreshDueMs: bigint | undefined;
   readonly changed: boolean; readonly callCount: bigint; readonly actionCount: bigint;
   actionAt(index: bigint): ActionOutput | undefined;
   readonly evaluationError: {kind: string; message: string} | null;

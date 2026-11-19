@@ -1,5 +1,6 @@
 // Run from reference/: bun --no-install query-scenarios.ts
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { RefreshClock } from './refresh-clock';
 import type { EvaluationContext } from './lang-core/src/runtime/evaluator';
 
 process.env.OPENUI_TELEMETRY_DISABLED = '1';
@@ -19,7 +20,9 @@ export type Dispatch = { step: number; toolName: string; args: unknown };
 export type Step =
   | { kind: 'register' }
   | { kind: 'fire'; name: string; args?: unknown }
-  | { kind: 'evaluate' }
+  | { kind: 'advance'; now: number }
+  | { kind: 'dispose' | 'activate' }
+  | { kind: 'evaluate'; blocked?: boolean }
   | { kind: 'complete'; call: number; outcome: Outcome }
   | { kind: 'complete'; dispatch: Dispatch; outcome: Outcome }
   | { kind: 'set'; name: string; value?: unknown }
@@ -29,24 +32,9 @@ export type Step =
 export type Scenario = { name: string; program: string; library?: Parameters<typeof compileSchema>[0]; steps: Step[] };
 type Call = Dispatch & { finish(outcome: Outcome): Promise<void> };
 
-function makeClock() {
-  // Keep intervals behind a fake clock. This slice never advances it.
-  const timers = new Map<number, { tick: () => void; interval: number; due: number }>();
-  let next = 0;
-  const now = 0;
-  return {
-    setInterval(tick: () => void, interval: number) {
-      const id = ++next;
-      timers.set(id, { tick, interval, due: now + interval });
-      return id;
-    },
-    clearInterval(id: number) { timers.delete(id); },
-  };
-}
-
 type Script = (calls: readonly Pick<Call, 'toolName' | 'args'>[]) => Iterable<Step>;
 
-export async function replay(scenario: Scenario, script?: Script): Promise<string[]> {
+export async function replay(scenario: Scenario, script?: Script, clock?: RefreshClock): Promise<string[]> {
   const library = compileSchema(scenario.library ?? { $defs: {} });
   let program = parse(scenario.program, library);
   const store = createStore();
@@ -98,7 +86,15 @@ export async function replay(scenario: Scenario, script?: Script): Promise<strin
       switch (step.kind) {
         case 'register': registerMutations(false, program, context, manager); break;
         case 'fire': void manager.fireMutation(step.name, step.args).catch(error => { rejected = error.message; }); break;
+        case 'advance':
+          if (!clock) throw Error('missing scripted clock');
+          clock.advance(step.now);
+          break;
+        case 'dispose': manager.dispose(); break;
+        case 'activate': manager.activate(); break;
         case 'evaluate':
+          // useOpenUIState.ts:218. The renderer skips evaluation while blocked.
+          if (step.blocked) break;
           manager.evaluateStatements(program.queryStatements ?? [], context, { extraDeps: name => extras.get(String(name)) });
           break;
         case 'complete':
@@ -131,6 +127,7 @@ export async function replay(scenario: Scenario, script?: Script): Promise<strin
         snapshot, ...(rejected === undefined ? {} : {rejected}),
         calls: calls.slice(first).map(({ toolName, args }, offset) => ({ call: first + offset, toolName, args })),
         changed: before !== JSON.stringify(snapshot),
+        ...(clock ? {nextDue: clock.nextDue} : {}),
       }));
       rejected = undefined;
       stepIndex++;
@@ -142,13 +139,14 @@ export async function replay(scenario: Scenario, script?: Script): Promise<strin
   }
 }
 
-export async function withFakeClock(run: () => Promise<void>) {
+export async function withFakeClock(run: (clock: RefreshClock) => Promise<void>) {
   const { setInterval, clearInterval } = globalThis;
   const logError = console.error;
-  Object.assign(globalThis, makeClock());
+  const clock = new RefreshClock();
+  Object.assign(globalThis, { setInterval: clock.setInterval, clearInterval: clock.clearInterval });
   console.error = () => {}; // Scripted rejections are observed through the snapshot.
   try {
-    await run();
+    await run(clock);
   } finally {
     Object.assign(globalThis, { setInterval, clearInterval });
     console.error = logError;

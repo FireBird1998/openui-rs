@@ -424,7 +424,8 @@ The review round added tests, each failing before its fix: a rename's idle
 call's failure; a completion for a removed query is discarded on both paths
 whatever it holds; an over-limit result ends the call for 24 readers through
 the runtime and through session JSON; an object's member order never decides
-invalid versus too deep; a padded or bare `null` MCP response is refused; every completion path admits under the same limits, the work
+invalid versus too deep; a padded or bare `null` MCP response is refused; a refused refresh result
+ends its call while the refresh schedule continues; every completion path admits under the same limits, the work
 limit included; refusing wide objects, wide arrays and long strings takes
 the same peak allocation at every width; validity is decided before size
 (both orders pinned, and depth only when reached first); a delivery the

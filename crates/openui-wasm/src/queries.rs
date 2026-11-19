@@ -23,6 +23,10 @@ pub struct QueryEffects(
 );
 #[wasm_bindgen]
 impl QueryEffects {
+    #[wasm_bindgen(getter, js_name = nextRefreshDueMs)]
+    pub fn next_refresh_due_ms(&self) -> Option<u64> {
+        self.0.next_refresh_due_ms
+    }
     #[wasm_bindgen(getter)]
     pub fn changed(&self) -> bool {
         self.0.changed

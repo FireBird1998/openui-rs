@@ -446,7 +446,7 @@ once. Its redraw flag includes a resumed store write and a mutation reference
 change hidden by a reserved snapshot list.
 
 Each managed submission occupies one `maxContinuations` slot (default 64)
-until the session accepts its outcome or the provider detaches. Draining or
+until the session accepts its outcome, queries pause, or the provider detaches. Draining or
 dropping the wanted call keeps its slot occupied. At capacity, a Run that
 would dispatch a new call reports `LimitExceeded` and a size cut. Existing
 plans remain pending.
@@ -494,3 +494,37 @@ size without being parsed. A result may nest to `evaluation.depth` levels.
 See [CONFORMANCE.md](../CONFORMANCE.md#tool-result-limits). Supplied
 references conflict with an attached provider. Clear them with
 `setReferenceValues("{}")` before attaching.
+
+
+### Scheduling one refresh timer
+
+Attach or reattach with `attachToolProviderAt(nowMs, minimumMs)` to set the
+monotonic integer millisecond clock before the first registration. Use
+`resumeQueriesAt(nowMs)` on returning from the background. The unit is `UInt64`
+in Swift, `ULong` in Kotlin and `bigint` in JavaScript. Read `nextRefreshDueMs` from every
+`takeQueryUpdate()`, even when `changed` is false. It gives an absolute
+deadline on that same clock. Arm one platform timer for the remaining delay,
+or cancel it when the deadline is absent. On wake, call `advanceQueryClock(nowMs)` with the actual
+time and drain again. A repeated drain keeps reporting the current deadline.
+
+The default polling floor is 1,000 ms. Choose a floor from 1 through
+2,147,483,647 ms. A repeat attachment with an explicit minimum must match
+the attached manager or it raises `RefusedWrite` before changing the clock
+or calls. Detach to choose a new minimum. Plain `attachToolProvider()`
+keeps any existing floor. When attaching a fresh provider without a timestamp,
+`attachToolProvider()` and `attachToolProviderWithMinimum(minimumMs)` start
+at zero. Advance before the first draw if using a host clock with those methods.
+The floor applies only to interval ticks.
+Advancing to a time earlier than the previous advance, or above
+`UInt64.max - 2,147,483,647`, raises `LimitExceeded`. The upper bound leaves
+room for one more full platform interval. A delayed wake runs each due timer
+once, in deadline order with ties in installation order. Each timer waits a full period from that wake,
+including when a call in flight made it skip fetching.
+
+Use `pauseQueries()` to stop the timers and release outstanding queries and
+managed mutation plans. Each original call identity can still acknowledge one
+late outcome. The timestamped attach and resume methods also advance an already
+active manager. The zero-argument `resumeQueries()` uses the last supplied time.
+Resume re-evaluates a settled program using its retained cache. A streaming program waits for its settled draw.
+During ordinary streaming, previously registered timers continue with their
+last evaluated arguments for both bare and bundled responses.

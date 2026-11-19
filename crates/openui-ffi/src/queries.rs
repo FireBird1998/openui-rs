@@ -22,10 +22,13 @@ pub struct QueryEffects {
     pub evaluation_error: Option<OpenUiError>,
     #[uniffi(default = [])]
     pub actions: Vec<crate::ActionOutput>,
+    #[uniffi(default = None)]
+    pub next_refresh_due_ms: Option<u64>,
 }
 impl From<openui_session::QueryEffects> for QueryEffects {
     fn from(v: openui_session::QueryEffects) -> Self {
         Self {
+            next_refresh_due_ms: v.next_refresh_due_ms,
             changed: v.changed,
             actions: v.actions.into_iter().map(Into::into).collect(),
             calls: v

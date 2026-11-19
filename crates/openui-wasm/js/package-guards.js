@@ -269,6 +269,12 @@ const openuiSurface = new Map([
       detachToolProvider: openuiNone,
       takeQueryUpdate: openuiNone,
       retryFailedQueries: openuiNone,
+      advanceQueryClock: openuiSpec([openuiLimit]),
+      pauseQueries: openuiNone,
+      resumeQueries: openuiNone,
+      resumeQueriesAt: openuiSpec([openuiLimit]),
+      attachToolProviderAt: openuiSpec([openuiLimit, openuiLimit]),
+      attachToolProviderWithMinimum: openuiSpec([openuiLimit]),
       completeToolCall: openuiSpec([openuiCapabilityOf(WantedToolCall), openuiStr]),
       get: openuiSpec([openuiStr]),
       getField: openuiSpec([openuiOptStr, openuiStr]),
@@ -295,7 +301,7 @@ const openuiSurface = new Map([
   [WantedToolCall, { methods: { free: openuiFree }, accessors: {
     toolName: { get: openuiNone }, argumentsJson: { get: openuiNone } } }],
   [QueryEffects, { methods: { free: openuiFree, actionAt: openuiSpec([openuiLimit]), callAt: openuiSpec([openuiLimit]) }, accessors: {
-    actionCount: { get: openuiNone }, callCount: { get: openuiNone }, changed: { get: openuiNone }, evaluationError: { get: openuiJson } } }],
+    nextRefreshDueMs: { get: openuiNone }, actionCount: { get: openuiNone }, callCount: { get: openuiNone }, changed: { get: openuiNone }, evaluationError: { get: openuiJson } } }],
   [EvaluationHandle, { methods: { free: openuiFree } }],
   [ActionHandle, { methods: { free: openuiFree, retain: openuiNone } }],
   [ContinuationHandle, { methods: { free: openuiFree } }],

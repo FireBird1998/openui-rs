@@ -1,0 +1,46 @@
+import { expect, test } from 'bun:test';
+import { kind, wasm } from './support';
+
+test('the driver can rearm one guarded deadline and consume a paused call once', () => {
+  using library = new wasm.ComponentLibrary('{"$defs":{}}');
+  using s = new wasm.RuntimeSession(library);
+  kind(() => s.attachToolProviderWithMinimum(0n), 'LimitExceeded');
+  s.attachToolProviderWithMinimum(40n);
+  using p = wasm.parseProgram('q=Query("read",{},null,0.01)', library);
+  using out = s.replaceProgram(p, undefined, undefined, false);
+  using first = s.takeQueryUpdate();
+  expect(first.nextRefreshDueMs).toBe(40n);
+  using call = first.callAt(0n);
+  s.completeToolCall(call, '{"value":3}');
+  s.advanceQueryClock(40n);
+  using tick = s.takeQueryUpdate();
+  expect(tick.callCount).toBe(1n);
+  expect(tick.nextRefreshDueMs).toBe(80n);
+  kind(() => s.advanceQueryClock(39n), 'LimitExceeded');
+  s.pauseQueries();
+  using paused = s.takeQueryUpdate();
+  expect(paused.nextRefreshDueMs).toBeUndefined();
+  using late = tick.callAt(0n);
+  s.completeToolCall(late, '{"failed":"offline"}');
+  kind(() => s.completeToolCall(late, '{"value":3}'), 'InvalidToolCall');
+  s.advanceQueryClock(400n);
+  s.resumeQueries();
+  using resumed = s.takeQueryUpdate();
+  expect(resumed.callCount).toBe(0n);
+  expect(resumed.nextRefreshDueMs).toBe(440n);
+});
+
+test('attaching and resuming at host time schedule a full period through the package', () => {
+  using library = new wasm.ComponentLibrary('{"$defs":{}}');
+  using s = new wasm.RuntimeSession(library);
+  s.attachToolProviderAt(8000n, 125n);
+  using p = wasm.parseProgram('q=Query("read",{},null,0.01)', library);
+  using out = s.replaceProgram(p, undefined, undefined, false);
+  kind(() => s.attachToolProviderWithMinimum(0n), 'RefusedWrite');
+  using first = s.takeQueryUpdate();
+  expect(first.nextRefreshDueMs).toBe(8125n);
+  s.pauseQueries();
+  s.resumeQueriesAt(16000n);
+  using resumed = s.takeQueryUpdate();
+  expect(resumed.nextRefreshDueMs).toBe(16125n);
+});

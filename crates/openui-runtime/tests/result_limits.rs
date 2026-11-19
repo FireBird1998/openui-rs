@@ -873,3 +873,56 @@ fn a_delivery_the_snapshot_cannot_hold_still_ends_the_call_on_both_paths() {
         JsonValue::Array(Vec::new())
     );
 }
+
+#[test]
+fn a_refused_refresh_result_ends_its_call_and_the_refresh_schedule_continues() {
+    let store = Store::default();
+    let limits = Limits::DEFAULT.with_result_size(1024);
+    let p = program("q = Query(\"t\", {}, null, 5)");
+    for owned in [false, true] {
+        let mut manager = QueryManager::with_limits(limits);
+        let first = evaluate(&mut manager, &p, &store).remove(0);
+        complete(&mut manager, &first.id, &JsonValue::from("fresh"));
+        assert_eq!(manager.next_refresh_due_ms(), Some(5000));
+        let tick = manager
+            .apply(QueryCommand::AdvanceClock { now_ms: 5000 })
+            .unwrap()
+            .calls
+            .remove(0);
+        // The refreshed result is admitted as any result is.
+        let update = if owned {
+            manager
+                .complete_tool_call(
+                    &tick.id,
+                    ToolCallOutcome::Result(Value::from_json(&text(1025))),
+                )
+                .unwrap()
+        } else {
+            manager
+                .apply(QueryCommand::Complete {
+                    id: &tick.id,
+                    outcome: ToolOutcome::Result(Some(&text(1025))),
+                })
+                .unwrap()
+        };
+        assert!(!tick.id.is_pending(), "owned {owned}");
+        let snapshot = view(&manager);
+        assert_eq!(snapshot["q"], "fresh", "nothing held is changed");
+        assert_eq!(
+            snapshot["__openui_errors"][0]["message"],
+            query_error("t", ResultLimit::Size(1024)).as_str()
+        );
+        // As after a failed call, the next tick refetches the failed entry.
+        assert_eq!(update.next_refresh_due_ms, Some(10_000), "owned {owned}");
+        let again = manager
+            .apply(QueryCommand::AdvanceClock { now_ms: 10_000 })
+            .unwrap()
+            .calls;
+        assert_eq!(again.len(), 1, "owned {owned}");
+        complete(&mut manager, &again[0].id, &JsonValue::from("again"));
+        let snapshot = view(&manager);
+        assert_eq!(snapshot["q"], "again");
+        assert_eq!(snapshot["__openui_errors"], JsonValue::Array(Vec::new()));
+        check_charge(&manager);
+    }
+}

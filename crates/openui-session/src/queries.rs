@@ -6,6 +6,8 @@ use openui_runtime::{QueryCommand, QueryCommandError, QueryManager, QueryUpdate,
 /// evaluating its new query arguments fails. The previous registrations survive.
 #[derive(Default, Debug, Clone)]
 pub struct QueryEffects {
+    /// Current absolute refresh deadline, repeated even on an empty drain.
+    pub next_refresh_due_ms: Option<u64>,
     pub calls: Vec<Arc<WantedToolCall>>,
     /// Resumed action segments in completion order. Drained exactly once.
     pub actions: Vec<ActionOutput>,
@@ -46,7 +48,9 @@ impl From<QueryCommandError> for OpenUiError {
         let reason = error.to_string();
         match error {
             QueryCommandError::InvalidCall => Self::InvalidToolCall,
-            QueryCommandError::Limit(_) => Self::LimitExceeded { reason },
+            QueryCommandError::InvalidClock | QueryCommandError::Limit(_) => {
+                Self::LimitExceeded { reason }
+            }
             _ => Self::Evaluation { reason },
         }
     }
@@ -68,7 +72,9 @@ pub(super) fn draw<T>(
     };
     match manager {
         None => Ok((draw_with(refs)?, None)),
-        Some(manager) if !register => Ok((draw_with(&manager.prepared_results(limits))?, None)),
+        Some(manager) if !register || manager.is_disposed() => {
+            Ok((draw_with(&manager.prepared_results(limits))?, None))
+        }
         Some(manager) => match manager.settled_transaction(input, store, |candidate| {
             draw_with(&candidate.prepared_results(limits)).map_err(DrawError::Screen)
         }) {
@@ -151,21 +157,70 @@ impl SessionCore {
         &mut self,
         refs: &PreparedReferenceValues<'_>,
     ) -> Result<(), OpenUiError> {
+        self.attach_provider(refs, None, None)
+    }
+
+    /// Choose the polling floor. Repeated attachments must agree with the existing floor.
+    pub fn attach_tool_provider_with_minimum(
+        &mut self,
+        refs: &PreparedReferenceValues<'_>,
+        minimum_ms: u64,
+    ) -> Result<(), OpenUiError> {
+        self.attach_provider(refs, Some(minimum_ms), None)
+    }
+
+    /// Attach on the host's clock, or advance the existing provider with the same floor.
+    pub fn attach_tool_provider_at(
+        &mut self,
+        refs: &PreparedReferenceValues<'_>,
+        now_ms: u64,
+        minimum_ms: u64,
+    ) -> Result<(), OpenUiError> {
+        self.attach_provider(refs, Some(minimum_ms), Some(now_ms))
+    }
+
+    fn attach_provider(
+        &mut self,
+        refs: &PreparedReferenceValues<'_>,
+        minimum_ms: Option<u64>,
+        now_ms: Option<u64>,
+    ) -> Result<(), OpenUiError> {
         if !refs.is_empty() {
             return Err(OpenUiError::ReferenceConflict);
         }
-        if self.manager.is_none() {
-            let cache = self
-                .limits
-                .max_cache_bytes
-                .map_or(self.core_limits.result_size(), |bytes| {
-                    usize::try_from(bytes).unwrap_or(usize::MAX)
+        if let Some(manager) = &self.manager {
+            if let Some(requested) = minimum_ms
+                && requested != manager.refresh_minimum_ms()
+            {
+                return Err(OpenUiError::RefusedWrite {
+                    reason: format!(
+                        "attached provider has a {} ms refresh minimum, requested {requested} ms",
+                        manager.refresh_minimum_ms()
+                    ),
                 });
-            self.manager =
-                Some(QueryManager::with_limits(self.core_limits).with_cache_limit(cache));
-            self.query_inputs_changed = true;
-            self.query_effects.changed = true;
+            }
+            if let Some(now) = now_ms {
+                self.advance_query_clock(now)?;
+            }
+            return Ok(());
         }
+        let cache = self
+            .limits
+            .max_cache_bytes
+            .map_or(self.core_limits.result_size(), |bytes| {
+                usize::try_from(bytes).unwrap_or(usize::MAX)
+            });
+        let manager = match minimum_ms {
+            Some(minimum) => QueryManager::with_refresh_minimum(self.core_limits, minimum)?,
+            None => QueryManager::with_limits(self.core_limits),
+        };
+        let mut manager = manager.with_cache_limit(cache);
+        if let Some(now_ms) = now_ms {
+            manager.apply(QueryCommand::AdvanceClock { now_ms })?;
+        }
+        self.manager = Some(manager);
+        self.query_inputs_changed = true;
+        self.query_effects.changed = true;
         Ok(())
     }
 
@@ -190,6 +245,10 @@ impl SessionCore {
 
     pub fn take_query_update(&mut self) -> QueryEffects {
         QueryEffects {
+            next_refresh_due_ms: self
+                .manager
+                .as_ref()
+                .and_then(QueryManager::next_refresh_due_ms),
             actions: std::mem::take(&mut self.query_effects.actions),
             calls: std::mem::take(&mut self.query_effects.calls),
             changed: std::mem::take(&mut self.query_effects.changed),
@@ -227,7 +286,7 @@ impl SessionCore {
 
     pub(super) fn state_changed(&mut self) {
         if !self.streaming
-            && let Some(manager) = &mut self.manager
+            && let Some(manager) = self.manager.as_mut().filter(|m| !m.is_disposed())
         {
             let result = Self::functions(
                 &self.library,
@@ -309,10 +368,15 @@ impl SessionCore {
         call: &ToolCallId,
         json: &str,
     ) -> Result<(), OpenUiError> {
-        self.manager
-            .as_ref()
-            .ok_or(OpenUiError::InvalidToolCall)?
-            .check_call(call)?;
+        let manager = self.manager.as_mut().ok_or(OpenUiError::InvalidToolCall)?;
+        manager.check_call(call)?;
+        if manager.is_disposed() {
+            manager.apply(QueryCommand::Complete {
+                id: call,
+                outcome: openui_runtime::ToolOutcome::Result(None),
+            })?;
+            return Ok(());
+        }
         let limits = self.core_limits;
         if json.len() > self.outcome_byte_bound() {
             return self.complete_long_outcome(call, json);
