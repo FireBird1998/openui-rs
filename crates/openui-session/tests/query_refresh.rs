@@ -55,7 +55,7 @@ fn a_streaming_edit_keeps_ticking_the_last_registration_and_resume_waits_for_set
         None,
         None,
         true,
-        ResponseState { streaming: true },
+        ResponseState::from(true),
     )
     .unwrap();
     s.advance_query_clock(2000).unwrap();

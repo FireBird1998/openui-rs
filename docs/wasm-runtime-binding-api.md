@@ -27,6 +27,7 @@ stream.program(complete: boolean): ParsedProgram
 new RuntimeSession(library: ComponentLibrary, promptSpec?: string)
 RuntimeSession.withLimits(library: ComponentLibrary, promptSpec: string | undefined, limits: RuntimeLimits): RuntimeSession
 RuntimeSession.extractMcpToolResult(responseJson: string, limits: ParseLimits): string
+session.setQueryExtraValues(tool_name: string, values_json: string): void
 session.attachToolProvider(): void
 session.detachToolProvider(): void
 session.completeToolCall(call: WantedToolCall, outcomeJson: string): void
@@ -87,6 +88,7 @@ object (wasm-bindgen cannot lower Option<&ActionHandle>).
 ```typescript
 interface EvaluationOutput {
   readonly json: string; readonly sizeLimited: boolean; readonly depthLimited: boolean;
+  readonly isQueryLoading: boolean; readonly parserErrorJson: string | undefined;
   readonly querySnapshotJson: string | undefined;
   readonly queryEvaluationError: {kind: string; message: string} | null;
   readonly evaluation: EvaluationHandle;
@@ -104,7 +106,7 @@ interface QueryEffects {
   callAt(index: bigint): WantedToolCall | undefined;
   free(): void;
 }
-interface ResponseState { streaming: boolean }
+interface ResponseState { streaming: boolean; isBundle?: boolean; complete?: boolean; error?: string | null; scripts?: string[]; scriptRevision?: string | null }
 interface ReplacementOutput {
   readonly initialization: InitializationOutput; readonly projection: InitializationOutput;
   readonly evaluation: EvaluationOutput; readonly snapshot: string; readonly version: bigint;

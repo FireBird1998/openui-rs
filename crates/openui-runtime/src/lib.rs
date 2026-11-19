@@ -42,8 +42,8 @@
 //! retained plan by reference and returns ordered [`HostEvent`] values; it does
 //! not invoke a handler or redraw. Mutations return an opaque continuation;
 //! [`resume_action`] consumes the host outcome against current state/program
-//! inputs with the original work allowance. Embedders suppress clicks while
-//! their response bundle is blocked. [`get_field_value`] and [`set_field_value`]
+//! inputs with the original work allowance. The session suppresses new clicks
+//! while its response bundle is blocked. [`get_field_value`] and [`set_field_value`]
 //! keep renderer form fields in the Store, and [`initialize_field_default`]
 //! applies settled defaults without overwriting user values.
 //!
@@ -133,7 +133,7 @@ mod mcp;
 pub use mcp::{McpResponseError, McpToolOutcome, extract_mcp_tool_result};
 mod query;
 pub use query::{
-    QueryCommand, QueryCommandError, QueryManager, QueryUpdate, ToolCall, ToolCallId,
+    CloudScripts, QueryCommand, QueryCommandError, QueryManager, QueryUpdate, ToolCall, ToolCallId,
     ToolCallOutcome, ToolOutcome,
 };
 mod store;

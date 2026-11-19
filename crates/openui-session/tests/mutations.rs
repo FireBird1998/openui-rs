@@ -74,7 +74,7 @@ fn settled_registration_clicks_and_resumed_segments_match_the_renderer() {
             if step.get("replace").is_some() || step.get("settle").is_some() {
                 streaming = step["streaming"] == true;
             }
-            let response = ResponseState { streaming };
+            let response = ResponseState::from(streaming);
             let draw = if let Some(source) = step["replace"].as_str() {
                 let mut parsed = parse(source, &lib.inner, None);
                 if let Some(mutations) = step["alsoRegisterMutations"].as_str() {
@@ -88,13 +88,13 @@ fn settled_registration_clicks_and_resumed_segments_match_the_renderer() {
                         None,
                         None,
                         true,
-                        response,
+                        response.clone(),
                     )
                     .unwrap()
                     .evaluation,
                 )
             } else if step["settle"] == true {
-                Some(s.evaluate_with_response(&r, response).unwrap())
+                Some(s.evaluate_with_response(&r, response.clone()).unwrap())
             } else {
                 if let Some(n) = step["set"].as_str() {
                     s.set(&r, n.into(), Some(step["value"].to_string()))

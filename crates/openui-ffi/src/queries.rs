@@ -41,15 +41,51 @@ impl From<openui_session::QueryEffects> for QueryEffects {
     }
 }
 /// The response gate for a draw. The default is settled.
-#[derive(Debug, Default, uniffi::Record)]
+#[derive(Debug, uniffi::Record)]
 pub struct ResponseState {
     #[uniffi(default = false)]
     pub streaming: bool,
+    #[uniffi(default = false)]
+    pub is_bundle: bool,
+    #[uniffi(default = true)]
+    pub complete: bool,
+    #[uniffi(default = None)]
+    pub error: Option<String>,
+    #[uniffi(default = [])]
+    pub scripts: Vec<String>,
+    #[uniffi(default = None)]
+    pub script_revision: Option<String>,
+}
+impl From<bool> for ResponseState {
+    fn from(streaming: bool) -> Self {
+        Self {
+            streaming,
+            ..Self::default()
+        }
+    }
+}
+
+impl Default for ResponseState {
+    fn default() -> Self {
+        Self {
+            streaming: false,
+            is_bundle: false,
+            complete: true,
+            error: None,
+            scripts: Vec::new(),
+            script_revision: None,
+        }
+    }
 }
 impl From<ResponseState> for openui_session::ResponseState {
     fn from(value: ResponseState) -> Self {
         Self {
             streaming: value.streaming,
+            is_bundle: value.is_bundle,
+            complete: value.complete,
+            error: value.error,
+            scripts: value.scripts,
+            script_revision: value.script_revision,
         }
     }
 }

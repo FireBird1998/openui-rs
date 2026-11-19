@@ -69,19 +69,20 @@ fn query_runs_and_retry_match_the_renderer_bytes() {
         s.attach_tool_provider(&refs).unwrap();
         s.take_query_update();
         let mut calls: Vec<Arc<WantedToolCall>> = Vec::new();
-        let mut blocked = false;
-        // A blocked bundle's clicks and Retry are the embedder's to ignore.
-        let bundle = scenario["bundle"] == true;
+        let mut response = ResponseState::default();
         let mut last: Option<EvaluationOutput> = None;
         for step in scenario["steps"].as_array().unwrap() {
             let mut output = None;
             let mut events = Vec::new();
             if step.get("evaluate").is_some() || step.get("replace").is_some() {
-                blocked = step["streaming"] == true
-                    || step["complete"] == false
-                    || step["error"].is_string();
+                response = ResponseState {
+                    streaming: step["streaming"] == true,
+                    is_bundle: scenario["bundle"] == true,
+                    complete: step["complete"] != false,
+                    error: step["error"].as_str().map(str::to_owned),
+                    ..Default::default()
+                };
             }
-            let response = ResponseState { streaming: blocked };
             if let Some(source) = step["replace"].as_str() {
                 let replaced = s
                     .replace_program_with_response(
@@ -90,12 +91,12 @@ fn query_runs_and_retry_match_the_renderer_bytes() {
                         None,
                         None,
                         false,
-                        response,
+                        response.clone(),
                     )
                     .unwrap();
                 output = Some(replaced.evaluation);
             } else if step["evaluate"] == true {
-                output = Some(s.evaluate_with_response(&refs, response).unwrap());
+                output = Some(s.evaluate_with_response(&refs, response.clone()).unwrap());
             } else if let Some(index) = step["finish"].as_u64() {
                 let outcome = if step.get("error").is_some() {
                     json!({"failed":step["error"]})
@@ -104,8 +105,6 @@ fn query_runs_and_retry_match_the_renderer_bytes() {
                 };
                 s.complete_tool_call_json(&calls[index as usize].id, &outcome.to_string())
                     .unwrap();
-            } else if bundle && blocked {
-                assert!(step.get("click").is_some() || step.get("retry").is_some());
             } else if let Some(prop) = step["click"].as_str() {
                 let run = click(&mut s, last.as_ref().unwrap(), prop);
                 assert!(run.failure.is_none() && run.continuation.is_none());
@@ -117,7 +116,7 @@ fn query_runs_and_retry_match_the_renderer_bytes() {
             let effects = s.take_query_update();
             assert!(effects.evaluation_error.is_none());
             let draw = output.unwrap_or_else(|| {
-                let draw = s.evaluate_with_response(&refs, response).unwrap();
+                let draw = s.evaluate_with_response(&refs, response.clone()).unwrap();
                 let update = s.take_query_update();
                 assert!(update.calls.is_empty() && !update.changed);
                 draw
@@ -187,7 +186,7 @@ fn while_streaming_a_run_acts_on_the_queries_registered_so_far() {
             None,
             None,
             false,
-            ResponseState { streaming: true },
+            ResponseState::from(true),
         )
         .unwrap()
         .evaluation;

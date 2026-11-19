@@ -151,10 +151,33 @@ const openuiBoolean = value => {
   throw openuiFailure('InvalidJson', 'expected a boolean argument');
 };
 // Read the response value under the package guard, before borrowing the session.
-function openuiResponseState(value) {
+const openuiResponseLimits = new WeakMap();
+const openuiMaxJsonBytes = openuiDescriptor(RuntimeLimits.prototype, 'maxJsonBytes').get;
+const openuiIsSafeInteger = Number.isSafeInteger;
+function openuiResponseState(value, receiver) {
   if (value === undefined) return undefined;
   if (value === null || typeof value !== 'object') throw openuiFailure('InvalidJson', 'expected a response state');
-  return { __proto__: null, streaming: openuiBoolean(value.streaming) };
+  const streaming = openuiBoolean(value.streaming);
+  const bundle = value.isBundle, complete = value.complete;
+  const error = openuiOptionalString(value.error), revision = openuiOptionalString(value.scriptRevision);
+  const names = value.scripts;
+  if (names !== undefined && !openuiIsArray(names)) throw openuiFailure('InvalidJson', 'expected a scripts array');
+  const count = names === undefined ? 0 : names.length;
+  if (!openuiIsSafeInteger(count) || count < 0) throw openuiFailure('InvalidJson', 'expected a scripts array length');
+  // UTF-16 units give a lower bound before copying. Rust checks actual bytes.
+  const limit = openuiGet(openuiResponseLimits, receiver) ?? 8388608n;
+  let used = count + (error?.length ?? 0) + (revision?.length ?? 0);
+  if (used > limit) throw openuiFailure('LimitExceeded', 'response state byte limit');
+  let scripts = '[';
+  for (let i = 0; i < count; i++) {
+    const name = openuiString(names[i]);
+    used += name.length;
+    if (used > limit) throw openuiFailure('LimitExceeded', 'response state byte limit');
+    scripts += (i ? ',' : '') + openuiStringify(openuiMessageText(name));
+  }
+  return { __proto__: null, streaming, isBundle: bundle === undefined ? false : openuiBoolean(bundle),
+    complete: complete === undefined ? true : openuiBoolean(complete), scriptsJson: scripts + ']',
+    error, scriptRevision: revision === undefined ? undefined : openuiMessageText(revision) };
 }
 const openuiLimit = value => {
   if (typeof value === 'bigint' && value >= 0n && value <= 18446744073709551615n) return value;
@@ -267,6 +290,7 @@ const openuiSurface = new Map([
       evaluate: openuiSpec([openuiResponseState]),
       attachToolProvider: openuiNone,
       detachToolProvider: openuiNone,
+      setQueryExtraValues: openuiSpec([openuiStr, openuiStr]),
       takeQueryUpdate: openuiNone,
       retryFailedQueries: openuiNone,
       advanceQueryClock: openuiSpec([openuiLimit]),
@@ -308,7 +332,7 @@ const openuiSurface = new Map([
   [ParsedProgram, { methods: { free: openuiFree } }],
   [EvaluationOutput, {
     methods: { free: openuiFree },
-    accessors: { queryEvaluationError: { get: openuiJson }, querySnapshotJson: { get: openuiNone }, evaluation: { get: openuiNone }, json: { get: openuiNone },
+    accessors: { isQueryLoading: { get: openuiNone }, parserErrorJson: { get: openuiNone }, queryEvaluationError: { get: openuiJson }, querySnapshotJson: { get: openuiNone }, evaluation: { get: openuiNone }, json: { get: openuiNone },
       sizeLimited: { get: openuiNone }, depthLimited: { get: openuiNone } },
   }],
   [ReplacementOutput, {
@@ -370,10 +394,10 @@ function openuiRemember(value) {
   return value;
 }
 
-function openuiConvert(conversions, args) {
+function openuiConvert(conversions, args, receiver) {
   const converted = [];
   for (let i = 0; i < conversions.length; i++) {
-    const value = conversions[i](i < args.length ? args[i] : undefined);
+    const value = conversions[i](i < args.length ? args[i] : undefined, receiver);
     openuiDefine(converted, i, { value, writable: true, enumerable: true, configurable: true });
   }
   return converted;
@@ -394,7 +418,7 @@ function openuiCall(spec, receiver, prototype, args, call) {
   }
   openuiActive = true;
   try {
-    const converted = openuiConvert(spec.args, args);
+    const converted = openuiConvert(spec.args, args, receiver);
     // Conversion cannot free anything (every free refuses while active), so
     // this still holds when the generated code reads the pointers.
     if (prototype !== undefined && openuiHas(openuiFreed, receiver)) throw openuiFailure('Disposed', 'object freed');
@@ -476,7 +500,13 @@ function openuiGuardClass(klass, spec) {
       if (member === undefined || typeof descriptor.value !== 'function') throw openuiUncovered(name, key);
       const original = descriptor.value;
       descriptor.value = function (...args) {
-        return openuiCall(member, undefined, undefined, args, converted => openuiApply(original, klass, converted));
+        return openuiCall(member, undefined, undefined, args, converted => {
+          const result = openuiApply(original, klass, converted);
+          if (key === 'withLimits' && name === 'RuntimeSession') {
+            openuiPut(openuiResponseLimits, result, openuiApply(openuiMaxJsonBytes, converted[2], []));
+          }
+          return result;
+        });
       };
     }
     openuiDefine(klass, key, descriptor);

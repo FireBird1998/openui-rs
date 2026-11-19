@@ -13,9 +13,12 @@ mod mcp;
 mod mutations;
 mod queries;
 mod refresh;
+mod response;
 pub use mcp::extract_mcp_tool_result;
 pub use openui_runtime::{ToolCall as WantedToolCall, ToolCallOutcome};
-pub use queries::{QueryEffects, ResponseState};
+pub use queries::QueryEffects;
+pub use response::ResponseState;
+use response::{DrawResponse, RegistrationEffects};
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub enum OpenUiError {
@@ -251,6 +254,9 @@ impl Drop for ContinuationHandle {
 /// The runtime's exact `{root,errors}` JSON and separate limit flags.
 #[derive(Debug)]
 pub struct EvaluationOutput {
+    pub is_query_loading: bool,
+    /// The renderer's separate parse exception, in OpenUIError JSON form.
+    pub parser_error_json: Option<String>,
     pub query_evaluation_error: Option<OpenUiError>,
     pub query_snapshot_json: Option<String>,
     /// Byte-identical to `openui_runtime::TreeResult::to_json`.
@@ -309,7 +315,7 @@ impl From<openui_runtime::FieldWrite> for FieldWriteOutput {
 }
 
 /// One segment of an action run, before or after a mutation handoff.
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Default)]
 pub struct ActionOutput {
     /// Ordered `HostEvent::to_json` strings. Nothing has been sent to the host.
     pub events: Vec<String>,
@@ -341,8 +347,9 @@ pub type HostFunction = dyn Fn(String) -> Result<Option<String>, String> + Send 
 pub struct SessionCore {
     manager: Option<openui_runtime::QueryManager>,
     query_effects: QueryEffects,
-    streaming: bool,
+    response: DrawResponse,
     query_inputs_changed: bool,
+    extra_values_changed: bool,
     library: Arc<ComponentLibrary>,
     program: Arc<ParseResult>,
     functions: BTreeMap<String, Arc<HostFunction>>,
@@ -383,8 +390,9 @@ impl SessionCore {
         let mut s = Self {
             manager: None,
             query_effects: QueryEffects::default(),
-            streaming: true,
+            response: DrawResponse::pending(),
             query_inputs_changed: true,
+            extra_values_changed: false,
             library,
             program: Arc::new(ParseResult::default()),
             functions: BTreeMap::new(),
@@ -848,7 +856,11 @@ impl SessionCore {
             }
             s.release_evaluation()?;
             s.program = program.inner.clone();
-            s.streaming = true;
+            s.response = DrawResponse {
+                scripts: s.response.scripts.clone(),
+                ..DrawResponse::pending()
+            };
+            s.query_inputs_changed = true;
             Ok(())
         })
     }
@@ -902,6 +914,9 @@ impl SessionCore {
             .generation
             .checked_add(2)
             .ok_or_else(|| limit("evaluation generations exhausted"))?;
+        let response =
+            self.response
+                .prepare(response, self.limits.max_json_bytes, self.core_limits)?;
         let projected = projected.map(|json| self.object(&json)).transpose()?;
         let functions = Self::functions(
             &self.library,
@@ -917,13 +932,13 @@ impl SessionCore {
                 |store| {
                     queries::draw(
                         self.manager.as_mut(),
-                        !response.streaming,
-                        &program_input(
+                        response.effects(true, false),
+                        &response.input(program_input(
                             &program.inner,
                             &self.library,
                             &self.bindings,
                             functions.as_ref(),
-                        ),
+                        )),
                         store,
                         refs,
                         self.reference_limits,
@@ -964,6 +979,10 @@ impl SessionCore {
             projection: initialization_output(projection, self.core_limits),
             initialization: initialization_output(initialization, self.core_limits),
             evaluation: EvaluationOutput {
+                is_query_loading: self
+                    .response
+                    .is_query_loading(&self.program, self.manager.as_ref()),
+                parser_error_json: self.response.parser_error_json.clone(),
                 query_snapshot_json,
                 query_evaluation_error,
                 json,
@@ -1086,10 +1105,21 @@ impl SessionCore {
                 .generation
                 .checked_add(1)
                 .ok_or_else(|| limit("evaluation generations exhausted"))?;
+            let response = s
+                .response
+                .prepare(response, s.limits.max_json_bytes, s.core_limits)?;
             let ((tree, json), update) = queries::draw(
                 s.manager.as_mut(),
-                !response.streaming && (s.streaming || s.query_inputs_changed),
-                &program_input(&s.program, &s.library, &s.bindings, functions.as_ref()),
+                response.effects(
+                    s.response.blocked || s.query_inputs_changed,
+                    s.extra_values_changed || s.response.scripts != response.scripts,
+                ),
+                &response.input(program_input(
+                    &s.program,
+                    &s.library,
+                    &s.bindings,
+                    functions.as_ref(),
+                )),
                 &s.store,
                 refs,
                 s.reference_limits,
@@ -1107,6 +1137,8 @@ impl SessionCore {
             s.generation = generation;
             s.root = tree.root;
             Ok(EvaluationOutput {
+                is_query_loading: s.response.is_query_loading(&s.program, s.manager.as_ref()),
+                parser_error_json: s.response.parser_error_json.clone(),
                 query_snapshot_json,
                 query_evaluation_error,
                 json,
@@ -1321,7 +1353,7 @@ impl SessionCore {
         })
     }
     /// Run a retained plan. None invokes the runtime's no-action message event.
-    /// Ignore clicks while a bundled response is blocked in the embedder.
+    /// A blocked response bundle ignores the whole click.
     pub fn run(
         &mut self,
         refs: &PreparedReferenceValues<'_>,
@@ -1330,6 +1362,9 @@ impl SessionCore {
         form: Option<String>,
     ) -> Result<ActionOutput, OpenUiError> {
         self.call(refs, move |s, refs| {
+            if s.response.bundle_blocked {
+                return Ok(ActionOutput::default());
+            }
             let value = if let Some(action) = action {
                 s.check_evaluation(&action.evaluation)?;
                 Some(s.action_value(&action.path)?.clone())
@@ -1349,6 +1384,9 @@ impl SessionCore {
         form: Option<String>,
     ) -> Result<ActionOutput, OpenUiError> {
         self.call(refs, move |s, refs| {
+            if s.response.bundle_blocked {
+                return Ok(ActionOutput::default());
+            }
             let value = s.json(&json)?;
             if !matches!(&value, Value::Obj(o) if !o.has_own("steps")) {
                 return Err(OpenUiError::InvalidJson {

@@ -94,6 +94,10 @@ pub struct EvaluationOutput {
     pub query_snapshot_json: Option<String>,
     #[uniffi(default = None)]
     pub query_evaluation_error: Option<OpenUiError>,
+    #[uniffi(default = false)]
+    pub is_query_loading: bool,
+    #[uniffi(default = None)]
+    pub parser_error_json: Option<String>,
 }
 
 /// Store initialization's batch result, including per-name refusals.
@@ -578,8 +582,7 @@ struct CallbackState {
 /// query data into a state variable. It runs no host action; writes are bounded.
 /// Marker expressions can mint declared custom steps in state. Accept marker
 /// JSON only from the evaluated tree, never directly from model/tool data.
-/// Suppressing clicks while
-/// a bundled response is blocked is the embedder's responsibility.
+/// The session suppresses clicks while a response bundle is blocked.
 #[derive(uniffi::Object)]
 pub struct RuntimeSession {
     transport: Mutex<TransportSlot>,
@@ -942,6 +945,16 @@ impl RuntimeSession {
         })
     }
 
+    pub fn set_query_extra_values(
+        &self,
+        tool_name: String,
+        values_json: String,
+    ) -> Result<(), OpenUiError> {
+        self.call(move |s, _| {
+            s.set_query_extra_values(&tool_name, &values_json)
+                .map_err(Into::into)
+        })
+    }
     pub fn advance_query_clock(&self, now_ms: u64) -> Result<(), OpenUiError> {
         self.call(move |s, _| s.advance_query_clock(now_ms).map_err(Into::into))
     }
@@ -1131,7 +1144,7 @@ impl RuntimeSession {
         })
     }
     /// Run a retained plan. None invokes the runtime's no-action message event.
-    /// Ignore clicks while a bundled response is blocked in the embedder.
+    /// A blocked response bundle ignores the whole click.
     pub fn run(
         &self,
         action: Option<Arc<ActionHandle>>,
@@ -1313,6 +1326,8 @@ impl From<openui_session::EvaluationOutput> for EvaluationOutput {
         Self {
             query_evaluation_error: v.query_evaluation_error.map(Into::into),
             query_snapshot_json: v.query_snapshot_json,
+            is_query_loading: v.is_query_loading,
+            parser_error_json: v.parser_error_json,
             json: v.json,
             size_limited: v.size_limited,
             depth_limited: v.depth_limited,

@@ -22,7 +22,7 @@
 //! threads queue. See the binding docs for synchronous host responsibilities
 //! and action failure semantics.
 //! A marker is a bounded expression-write capability, never a host action.
-//! Embedders suppress clicks while a response bundle is blocked. The runtime
+//! Sessions suppress clicks while a response bundle is blocked. The runtime
 //! Store enforces the evaluation result-size ceiling on values and total state
 //! (ADR 0005); the binding does not duplicate its admission rules.
 

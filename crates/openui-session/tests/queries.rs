@@ -58,7 +58,7 @@ fn settled_draws_writes_and_blocked_edits_match_the_renderer_bytes() {
                     || step["complete"] == false
                     || step["error"].is_string();
             }
-            let response = ResponseState { streaming: blocked };
+            let response = ResponseState::from(blocked);
             if let Some(source) = step["replace"].as_str() {
                 output = Some(
                     s.replace_program_with_response(
@@ -67,13 +67,13 @@ fn settled_draws_writes_and_blocked_edits_match_the_renderer_bytes() {
                         None,
                         None,
                         false,
-                        response,
+                        response.clone(),
                     )
                     .unwrap()
                     .evaluation,
                 );
             } else if step["evaluate"] == true {
-                output = Some(s.evaluate_with_response(&refs, response).unwrap());
+                output = Some(s.evaluate_with_response(&refs, response.clone()).unwrap());
             } else if let Some(index) = step["finish"].as_u64() {
                 let outcome = if step.get("error").is_some() {
                     json!({"failed":step["error"]})
@@ -216,15 +216,8 @@ fn refused_native_view_preserves_the_pending_call_state_and_streaming_gate() {
     let output = s.evaluate(&refs).unwrap();
     assert!(output.json.contains("\"value\":7") && s.take_query_update().calls.is_empty());
     assert!(
-        s.replace_program_with_response(
-            &refs,
-            bad,
-            None,
-            None,
-            true,
-            ResponseState { streaming: true }
-        )
-        .is_err()
+        s.replace_program_with_response(&refs, bad, None, None, true, ResponseState::from(true))
+            .is_err()
     );
     // A refused blocked edit must not close the old program's settled gate.
     assert!(s.set(&refs, "$n".into(), Some("2".into())).unwrap());
@@ -343,7 +336,7 @@ fn legacy_writes_dispatch_before_returning_and_a_refusal_preserves_unclaimed_cal
         s.set(&refs, "$n".into(), Some("broken".into())),
         Err(OpenUiError::InvalidJson { .. })
     ));
-    s.evaluate_with_response(&refs, ResponseState { streaming: true })
+    s.evaluate_with_response(&refs, ResponseState::from(true))
         .unwrap();
     let calls = s.take_query_update().calls;
     assert_eq!(calls.len(), 1);
@@ -428,7 +421,7 @@ fn a_query_cut_after_an_accepted_write_preserves_registration_and_reports_the_li
         Some(r#"{"term":"bb"}"#)
     );
     // Block a second oversized write, then hit the limit on the settling draw itself.
-    s.evaluate_with_response(&refs, ResponseState { streaming: true })
+    s.evaluate_with_response(&refs, ResponseState::from(true))
         .unwrap();
     s.set(&refs, "$n".into(), Some(value)).unwrap();
     let settled = s.evaluate(&refs).unwrap();
@@ -497,9 +490,9 @@ fn an_undrained_driver_keeps_only_live_calls_across_writes_draws_and_completions
 fn a_blocked_first_draw_uses_declared_defaults_only_without_a_provider() {
     let (lib, mut s, refs) = base();
     let p = program(&lib, "q=Query(\"read\",{},\"waiting\")\nroot=Box(q)");
-    let response = ResponseState { streaming: true };
+    let response = ResponseState::from(true);
     let plain = s
-        .replace_program_with_response(&refs, p, None, None, false, response)
+        .replace_program_with_response(&refs, p, None, None, false, response.clone())
         .unwrap();
     assert!(plain.evaluation.json.contains(r#""value":"waiting""#));
     s.attach_tool_provider(&refs).unwrap();

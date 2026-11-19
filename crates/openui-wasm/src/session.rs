@@ -143,6 +143,13 @@ impl Session {
             )
         })
     }
+    pub fn set_query_extra_values(
+        &self,
+        tool_name: &str,
+        values_json: &str,
+    ) -> Result<(), OpenUiError> {
+        self.call(|s, _| s.set_query_extra_values(tool_name, values_json))
+    }
     pub fn advance_query_clock(&self, now_ms: u64) -> Result<(), OpenUiError> {
         self.call(move |s, _| s.advance_query_clock(now_ms))
     }
@@ -290,7 +297,7 @@ impl Session {
         self.call(|s, refs| s.initialize_field(refs, form, component_type, name, json, streaming))
     }
     /// Run a retained plan. None invokes the runtime's no-action message event.
-    /// Ignore clicks while a bundled response is blocked in the embedder.
+    /// A blocked response bundle ignores the whole click.
     pub fn run(
         &self,
         action: Option<Arc<ActionHandle>>,

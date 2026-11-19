@@ -42,7 +42,7 @@ fn native_worker_dispatches_live_arguments_and_refuses_reentrant_or_invalid_comp
     )
     .program;
     session
-        .replace_program_with_response(program, None, None, true, ResponseState { streaming: true })
+        .replace_program_with_response(program, None, None, true, ResponseState::from(true))
         .unwrap();
     assert!(session.take_query_update().unwrap().calls.is_empty());
     session

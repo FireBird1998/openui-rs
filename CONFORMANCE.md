@@ -181,12 +181,20 @@ of the spec rather than the renderer's behaviour (its manager has no provider
 to call). The renderer has two conditions: `blocked` (streaming, or a bundle
 that is incomplete or has an error) gates evaluating queries, and
 `bundleBlocked` (a bundle that is blocked) ignores the whole click and Retry.
-The adapter models both. The session applies `blocked` through its streaming
-flag; a run and Retry are not gated by it and act on the queries registered
-so far, as upstream's do for a bare program that streams. Ignoring a blocked
-bundle's click and Retry is the embedder's until #99 gives the session the
-bundle's state; the bundle scenario's Rust driver skips them as an embedder
-would.
+The adapter and the session apply both gates. The Rust replay sends every
+click and Retry to the session, including on a streaming bare program.
+
+`reference/session-bundles.ts` drives the pinned renderer's bundle reader,
+streaming parser, store, query manager, action loop and mutation registration.
+`conformance/session-bundles.json` compares evaluated tree and snapshot bytes,
+calls, host events, loading and parser diagnostics across 57 observations.
+A change confined to query cache keys preserves the registered mutation tool.
+The last settled Cloud script names and revision stay in force during an edit.
+The query manager merges the declared dependencies, the app's extra values and
+the matching Cloud script’s `__openuiScriptRevision`, in that order. An ordinary
+tool keeps its cached result across a scripts edit. A streaming response bundle
+with queries reports loading before dispatch. An invalid scripts section draws
+the program and supplies a separate `parser` / `parse-failed` diagnostic.
 
 A query is loading while its current entry has a call in flight. Delivery of a
 successful result to that entry gives the query a fetch history. In
@@ -435,8 +443,8 @@ Cuts and refused writes stop later steps and retain completed effects. Missing/f
 valueAST, unknown and unowned custom steps skip. Expression scopes refresh
 lookups after writes without replenishing work; captured expressions retain
 the input credit supplied by their plan. Mutation argument ASTs stay borrowed
-until evaluation. The embedder ignores clicks while a bundled response is
-blocked (`bundleBlocked`); the runtime has no bundle lifecycle or implicit redraw.
+until evaluation. The session checks `bundleBlocked` before starting an action.
+A mutation already in flight can finish its action while an edit streams.
 
 Forms share the Store. No/empty form name stores a top-level wrapped field;
 named forms contain fields as `{value,componentType}`. Reads unwrap `value`;

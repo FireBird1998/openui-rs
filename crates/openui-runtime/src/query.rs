@@ -2,6 +2,7 @@
 mod mutations;
 mod refresh;
 mod runs;
+mod scripts;
 mod session;
 use crate::tree::TreeScope;
 use crate::{
@@ -11,6 +12,7 @@ use crate::{
 };
 use mutations::{MutationCall, Mutations};
 use openui_lang::{Ast, JsonValue, ParseResult, PreparedProgram, QueryStatement};
+pub use scripts::CloudScripts;
 pub use session::ToolCallOutcome;
 use std::cell::Cell;
 use std::collections::{HashMap, HashSet};
@@ -440,6 +442,7 @@ impl QueryManager {
         let prepared = PreparedReferenceValues::new(&results);
         let scope = QueryScope {
             manager: self,
+            cloud_scripts: input.cloud_scripts,
             prepared: &prepared,
             calls: TreeScope::new(input, store, None, self.limits),
             inspection: Cell::new(Inspection::None),
@@ -701,6 +704,7 @@ enum Inspection {
 }
 
 struct QueryScope<'a> {
+    cloud_scripts: Option<&'a CloudScripts>,
     manager: &'a QueryManager,
     prepared: &'a PreparedReferenceValues<'a>,
     calls: TreeScope<'a>,
@@ -812,7 +816,16 @@ impl QueryScope<'_> {
             }
             None => (String::new(), Some(Value::Str(String::new()))),
         };
-        let deps = self.dependencies(statement, self.manager.extra_keys.get(&tool_name), eval)?;
+        let revision = match self.cloud_scripts {
+            Some(scripts) => scripts.dependency(raw_tool_name.as_ref(), eval)?,
+            None => None,
+        };
+        let deps = self.dependencies(
+            statement,
+            self.manager.extra_keys.get(&tool_name),
+            revision,
+            eval,
+        )?;
         let (args, args_key) = match &statement.args {
             Some(ast) => {
                 let args = self.evaluate(ast, Inspection::Key, eval)?;
@@ -867,12 +880,13 @@ impl QueryScope<'_> {
         &self,
         statement: &QueryStatement,
         extra: Option<&ExtraKey>,
+        revision: Option<(String, Ast)>,
         eval: &ExpressionEvaluator<'_>,
     ) -> Result<Option<String>, QueryCommandError> {
         let deps = statement.deps.as_deref().unwrap_or_default();
         let extra = extra.map_or(&[][..], |extra| &extra.fields);
         // Upstream omits a dependency record with no keys from the cache key.
-        if deps.is_empty() && extra.is_empty() {
+        if deps.is_empty() && extra.is_empty() && revision.is_none() {
             return Ok(None);
         }
         // Read the dependency record through the same scope and allowance as
@@ -886,6 +900,7 @@ impl QueryScope<'_> {
         }
         // Later keys win, as in Object.assign over the listed variables.
         fields.extend(extra.iter().cloned());
+        fields.extend(revision);
         self.evaluate(&Ast::Obj(Arc::new(fields)), Inspection::Key, eval)?;
         Ok(self.inspected.take())
     }
