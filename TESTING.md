@@ -388,6 +388,30 @@ past the result-size limit as escaped JSON, a refusal copies nothing (its
 peak allocation is checked), they count against the evaluation's work, and
 a repeated name keeps its last value.
 
+### Tool result limits
+
+`result_limit_scenarios` replays `conformance/result-limits.json`, whose
+scenarios carry their own `limits` (`resultSize`, `depth`, `cacheBytes`) that
+the reference ignores. `reference/result-limits.ts` writes
+`golden/result-limits.json` through lang-core's own manager. A scenario at a
+limit must match its golden byte for byte. One a byte or level over must
+match its pin in `divergences/result-limit-*.json`, and each pin must be a
+row of CONFORMANCE.md's tool result limits table. After every step the
+manager's charged cache bytes equal a fresh measurement of what it holds.
+
+`result_limits` (runtime) pins the size, depth and cache-cap thresholds for
+queries and mutations through both completion paths, the `tool-error` on
+every query of the key, the peak allocation of a refusal, and a seeded
+20,000-command script in which, after every command, the cache holds at most
+two entries per query, no query is starved, the charge equals a fresh
+measurement and stays within the cap, a repeated completion is refused and
+changes nothing, outstanding query calls never exceed live entries and
+mutation calls never exceed one per mutation. `result_limits` (session) pins
+the line between a delivered `tool-error` and a refused outcome for outcome
+JSON, including text past the outcome bound, MCP responses and the peak
+allocation of refusing a 4 MiB result. The native and WebAssembly bindings
+each have a `result_limits` test for `maxCacheBytes`.
+
 ## The corpus
 
 Everything the tests compare is in `conformance/`:

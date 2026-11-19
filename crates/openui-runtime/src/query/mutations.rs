@@ -15,6 +15,8 @@ struct Entry {
     raw_tool: Option<Value>,
     result: Value,
     error: Option<Value>,
+    // The JSON bytes of the result's data, charged to the cache cap (#90).
+    bytes: usize,
 }
 
 impl Entry {
@@ -105,6 +107,7 @@ impl QueryManager {
                     entry.raw_tool = raw;
                     entry.result = result("idle", Some(Value::Null), Some(Value::Null));
                     entry.error = None;
+                    entry.bytes = 0;
                 }
             } else {
                 self.mutations.order.push(id.into());
@@ -116,6 +119,7 @@ impl QueryManager {
                         raw_tool: raw,
                         result: result("idle", None, None),
                         error: None,
+                        bytes: 0,
                     },
                 );
             }
@@ -168,6 +172,7 @@ impl QueryManager {
         };
         let hidden_change = HIDDEN_NAMES.contains(&statement);
         entry.result = result("loading", None, None);
+        entry.bytes = 0;
         Ok(QueryUpdate {
             calls: vec![call],
             hidden_change,
@@ -227,6 +232,20 @@ impl Mutations {
             }
         }
     }
+    /// The data the registrations hold, charged to the cache cap.
+    pub(super) fn data_bytes(&self) -> usize {
+        self.entries
+            .values()
+            .fold(0usize, |sum, entry| sum.saturating_add(entry.bytes))
+    }
+    pub(super) fn data(&self) -> impl Iterator<Item = &Value> {
+        self.entries
+            .values()
+            .filter_map(|entry| match &entry.result {
+                Value::Obj(fields) => fields.get("data"),
+                _ => None,
+            })
+    }
     pub(super) fn append_errors(&self, errors: &mut Vec<Value>) {
         errors.extend(self.ordered().filter_map(|(_, entry)| entry.error.clone()));
     }
@@ -236,13 +255,20 @@ impl Mutations {
         call: &MutationCall,
         outcome: ToolOutcome<'_>,
         limits: Limits,
-    ) -> Result<bool, QueryCommandError> {
+        (cap, held): (usize, usize),
+    ) -> Result<(bool, Option<ResultLimit>), QueryCommandError> {
+        // The other registrations' data stays; this one's is replaced.
+        let others = self
+            .entries
+            .iter()
+            .filter(|(id, _)| **id != call.statement)
+            .fold(0usize, |sum, (_, entry)| sum.saturating_add(entry.bytes));
         let Some(entry) = self
             .entries
             .get_mut(&call.statement)
             .filter(|entry| call.registration.ptr_eq(&Arc::downgrade(&entry.identity)))
         else {
-            return Ok(false);
+            return Ok((false, None));
         };
         let tool = &entry.tool;
         // Format host error text only after bounding its expansion. Result data
@@ -260,22 +286,39 @@ impl Mutations {
         if text_bytes > limits.result_size().min(limits.work_for(usize::MAX)) {
             return Err(QueryCommandError::Limit(crate::admission::size_error()));
         }
+        // Data is admitted as a query result is, before it is copied (#90).
+        // A missing result has no data and charges nothing.
+        let measured = match &outcome {
+            ToolOutcome::Result(None) => Some(Ok(0)),
+            ToolOutcome::Result(Some(value)) => Some(results::json_result_bytes(value, limits)),
+            ToolOutcome::ResultValue(value) => Some(results::value_result_bytes(value, limits)?),
+            _ => None,
+        };
+        let refused = match measured {
+            Some(Ok(bytes)) if held.saturating_add(others).saturating_add(bytes) > cap => {
+                Some(ResultLimit::Cache(cap))
+            }
+            Some(Ok(bytes)) => {
+                let data = match outcome {
+                    ToolOutcome::Result(value) => value.map(Value::from_json),
+                    ToolOutcome::ResultValue(value) => Some(value.clone()),
+                    _ => None,
+                };
+                entry.result = result("success", data, None);
+                entry.bytes = bytes;
+                entry.error = None;
+                return Ok((true, None));
+            }
+            Some(Err(limit)) => Some(limit),
+            None => None,
+        };
+        let message = refused.map(|limit| limit.to_string());
+        let outcome = match &message {
+            Some(message) => ToolOutcome::CallFailed(message),
+            None => outcome,
+        };
         let (code, detail, message, hint) = match outcome {
-            ToolOutcome::Result(value) => {
-                entry.result = result(
-                    "success",
-                    value.map(|v| admit_result(v, limits)).transpose()?,
-                    None,
-                );
-                entry.error = None;
-                return Ok(true);
-            }
-            ToolOutcome::ResultValue(value) => {
-                crate::admission::measure(value, limits).map_err(QueryCommandError::Limit)?;
-                entry.result = result("success", Some(value.clone()), None);
-                entry.error = None;
-                return Ok(true);
-            }
+            ToolOutcome::Result(_) | ToolOutcome::ResultValue(_) => return Ok((false, None)),
             ToolOutcome::ToolNotFound(names) => {
                 let available = names.join(", ");
                 let detail = format!(
@@ -332,6 +375,7 @@ impl Mutations {
         }
         entry.error = Some(Value::Obj(Arc::new(error)));
         entry.result = result("error", None, Some(Value::Str(detail)));
-        Ok(true)
+        entry.bytes = 0;
+        Ok((true, refused))
     }
 }

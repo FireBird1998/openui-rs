@@ -551,6 +551,14 @@ impl RuntimeLimits {
     pub fn set_max_continuations(&mut self, value: u64) {
         self.inner.max_continuations = value;
     }
+    #[wasm_bindgen(getter, js_name = maxCacheBytes)]
+    pub fn max_cache_bytes(&self) -> Option<u64> {
+        self.inner.max_cache_bytes
+    }
+    #[wasm_bindgen(setter, js_name = maxCacheBytes)]
+    pub fn set_max_cache_bytes(&mut self, value: Option<u64>) {
+        self.inner.max_cache_bytes = value;
+    }
 }
 impl Default for RuntimeLimits {
     fn default() -> Self {

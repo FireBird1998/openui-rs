@@ -155,7 +155,14 @@ impl SessionCore {
             return Err(OpenUiError::ReferenceConflict);
         }
         if self.manager.is_none() {
-            self.manager = Some(QueryManager::with_limits(self.core_limits));
+            let cache = self
+                .limits
+                .max_cache_bytes
+                .map_or(self.core_limits.result_size(), |bytes| {
+                    usize::try_from(bytes).unwrap_or(usize::MAX)
+                });
+            self.manager =
+                Some(QueryManager::with_limits(self.core_limits).with_cache_limit(cache));
             self.query_inputs_changed = true;
             self.query_effects.changed = true;
         }
@@ -269,6 +276,10 @@ impl SessionCore {
     /// A single tagged JSON outcome for both bindings. Parse the result with
     /// JavaScript number and string semantics. MCP responses enter the same
     /// completion path directly, without a stringify/parse of extracted data.
+    ///
+    /// A result (or MCP response) too large or too deep for the limits is
+    /// delivered as the call's `tool-error`. Malformed or wrongly shaped
+    /// outcome JSON is refused and consumes nothing (#90).
     pub fn complete_tool_call_json(
         &mut self,
         call: &ToolCallId,
@@ -278,24 +289,23 @@ impl SessionCore {
             .as_ref()
             .ok_or(OpenUiError::InvalidToolCall)?
             .check_call(call)?;
-        self.text(json)?;
         let limits = self.core_limits;
-        let bound = limits.result_size().min(limits.work_for(usize::MAX));
-        if json.len() > bound {
-            return Err(limit("tool outcome byte limit"));
+        if json.len() > self.outcome_byte_bound() {
+            return self.complete_long_outcome(call, json);
         }
         let invalid = || OpenUiError::InvalidJson {
             reason: "expected one of value, error, failed, availableTools, mcpResponseJson".into(),
         };
-        let value = openui_lang::parse_json_value(json, limits.depth()).map_err(|e| {
-            if e.depth_limited() {
-                limit("tool outcome depth limit")
-            } else {
-                OpenUiError::InvalidJson {
+        // The envelope is one level, so a result may nest to the depth limit.
+        let value = match openui_lang::parse_json_value(json, limits.depth().saturating_add(1)) {
+            Ok(value) => value,
+            Err(e) if e.depth_limited() => return self.complete_deep_outcome(call, json),
+            Err(e) => {
+                return Err(OpenUiError::InvalidJson {
                     reason: e.to_string(),
-                }
+                });
             }
-        })?;
+        };
         let Value::Obj(fields) = &value else {
             return Err(invalid());
         };
@@ -319,9 +329,13 @@ impl SessionCore {
                     .collect::<Result<_, _>>()?,
             ),
             Some(("mcpResponseJson", Value::Str(response))) => {
-                openui_runtime::extract_mcp_tool_result(response, limits)
-                    .map_err(mcp::error)?
-                    .into()
+                match openui_runtime::extract_mcp_tool_result(response, limits) {
+                    Ok(outcome) => outcome.into(),
+                    Err(openui_runtime::McpResponseError::Limit(error)) => {
+                        return self.complete_refused_mcp(call, &error);
+                    }
+                    Err(error) => return Err(mcp::error(error)),
+                }
             }
             _ => return Err(invalid()),
         };

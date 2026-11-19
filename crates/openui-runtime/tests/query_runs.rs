@@ -2,8 +2,8 @@
 //! action runner handing a query's `@Run` to the embedder instead of a host event.
 use openui_lang::{JsonValue, Library, ParseResult, parse, parse_json};
 use openui_runtime::{
-    Limits, QueryCommand, QueryCommandError, QueryManager, Store, ToolCall, ToolOutcome, TreeInput,
-    Value, evaluate_tree, run_action,
+    Limits, QueryCommand, QueryCommandError, QueryManager, Store, ToolCall, ToolCallOutcome,
+    ToolOutcome, TreeInput, Value, evaluate_tree, run_action,
 };
 
 #[global_allocator]
@@ -61,24 +61,42 @@ fn many_runs_during_one_call_start_exactly_one_more_call() {
 }
 
 #[test]
-fn a_refused_completion_keeps_the_call_and_its_remembered_run() {
+fn a_refused_completion_keeps_the_call_and_a_refused_result_still_starts_the_remembered_run() {
     let store = Store::default();
     let source = program("q = Query(\"search\", {}, \"loading\")");
-    let mut manager = QueryManager::with_limits(Limits::DEFAULT.with_depth(8));
+    let limits = Limits::DEFAULT.with_depth(8).with_result_size(4096);
+    let mut manager = QueryManager::with_limits(limits);
     let first = evaluate(&mut manager, &source, &store).remove(0);
     run(&mut manager, &["q"]);
     let snapshot = manager.snapshot_json().to_owned();
-    let deep = parse_json(&format!("{}1{}", "[".repeat(20), "]".repeat(20))).unwrap();
+    // Failure text past the limits is the embedder's to shorten: refused,
+    // nothing changes and the call stays completable.
+    let long = "x".repeat(5000);
     assert!(matches!(
-        manager.apply(QueryCommand::Complete {
-            id: &first.id,
-            outcome: ToolOutcome::Result(Some(&deep)),
-        }),
-        Err(QueryCommandError::Limit(error)) if error.flags.depth_limited
+        manager.complete_tool_call(&first.id, ToolCallOutcome::CallFailed(long)),
+        Err(QueryCommandError::Limit(error)) if error.flags.size_limited
     ));
     assert_eq!(manager.snapshot_json(), snapshot);
     assert!(first.id.is_pending());
-    assert_eq!(finish(&mut manager, &first, "fits").len(), 1);
+    // A result past the depth limit is the tool's: delivered as the query's
+    // tool-error, which ends the call and starts the remembered run (#90).
+    let deep = parse_json(&format!("{}1{}", "[".repeat(20), "]".repeat(20))).unwrap();
+    let again = manager
+        .apply(QueryCommand::Complete {
+            id: &first.id,
+            outcome: ToolOutcome::Result(Some(&deep)),
+        })
+        .unwrap()
+        .calls;
+    assert_eq!(again.len(), 1);
+    assert!(!first.id.is_pending());
+    assert!(
+        manager
+            .snapshot_json()
+            .contains("tool result nests deeper than the depth limit of 8 levels")
+    );
+    finish(&mut manager, &again[0], "fits");
+    assert!(manager.snapshot_json().contains(r#""__openui_errors":[]"#));
 }
 
 #[test]

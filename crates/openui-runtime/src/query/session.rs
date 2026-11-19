@@ -127,6 +127,8 @@ impl QueryManager {
             extra_keys: self.extra_keys.clone(),
             snapshot: JsObject::new(),
             snapshot_json: String::new(),
+            cache_limit: self.cache_limit,
+            cache_bytes: self.cache_bytes,
         }
     }
 
@@ -135,7 +137,7 @@ impl QueryManager {
         calls: Vec<ToolCall>,
         previous: &Self,
     ) -> Result<QueryUpdate, QueryCommandError> {
-        self.cache.retain(|_, entry| entry.references != 0);
+        self.release_unreferenced();
         // The same entry can be projected at many statement ids. Reserve all
         // result and error bodies together before copying/serializing them.
         let room = EvaluationSession::with_limits(&(), 0, crate::admission::fixed(self.limits));
@@ -174,11 +176,28 @@ impl QueryManager {
 
     /// Complete a session call atomically, including admission of shared
     /// results/error messages at every position in the new snapshot.
+    ///
+    /// A result is admitted under the result-size and depth limits and the
+    /// cache cap before it is copied. A refused result is delivered as the
+    /// call's `tool-error`, naming the limit, to every query on its key (or
+    /// to the mutation), and the call is consumed. Nothing held is evicted.
+    /// A refusal of the command itself (an invalid identity, a value that is
+    /// not JSON, failure text past the limits, or a snapshot that cannot hold
+    /// the delivery) changes nothing and leaves the call completable.
     pub fn complete_tool_call(
         &mut self,
         id: &ToolCallId,
         outcome: ToolCallOutcome,
     ) -> Result<QueryUpdate, QueryCommandError> {
+        self.complete_tool_call_reporting(id, outcome)
+            .map(|(update, _)| update)
+    }
+
+    pub(super) fn complete_tool_call_reporting(
+        &mut self,
+        id: &ToolCallId,
+        outcome: ToolCallOutcome,
+    ) -> Result<(QueryUpdate, Option<ResultLimit>), QueryCommandError> {
         self.check_call(id)?;
         let (readers, tool_bytes) = match &id.0.target {
             CallTarget::Mutation(call) => (1, call.dispatched_tool.len()),
@@ -192,10 +211,12 @@ impl QueryManager {
         if readers == 0 {
             // ADR 0013: discard the outcome for a released or previous-only
             // entry. Retire its pending flag and consume the receipt once.
-            return self.apply(QueryCommand::Complete {
-                id,
-                outcome: ToolOutcome::Result(None),
-            });
+            return self
+                .apply(QueryCommand::Complete {
+                    id,
+                    outcome: ToolOutcome::Result(None),
+                })
+                .map(|update| (update, None));
         }
         let limit = self
             .limits
@@ -235,7 +256,7 @@ impl QueryManager {
         };
         let key = id.query_key();
         let mut candidate = self.candidate();
-        candidate.complete(id, outcome)?;
+        let (_, refused) = candidate.complete(id, outcome)?;
         let calls = key
             .and_then(|key| candidate.run_remembered(&key))
             .into_iter()
@@ -243,6 +264,6 @@ impl QueryManager {
         let update = candidate.publish(calls, self)?;
         *self = candidate;
         id.0.consumed.store(true, Ordering::Relaxed);
-        Ok(update)
+        Ok((update, refused))
     }
 }

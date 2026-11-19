@@ -133,7 +133,7 @@ mod mcp;
 pub use mcp::{McpResponseError, McpToolOutcome, extract_mcp_tool_result};
 mod query;
 pub use query::{
-    QueryCommand, QueryCommandError, QueryManager, QueryUpdate, ToolCall, ToolCallId,
+    QueryCommand, QueryCommandError, QueryManager, QueryUpdate, ResultLimit, ToolCall, ToolCallId,
     ToolCallOutcome, ToolOutcome,
 };
 mod store;

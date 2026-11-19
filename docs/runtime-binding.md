@@ -133,7 +133,10 @@ Invalid marker shape is InvalidMarker, malformed/wrong-shaped/deep JSON is
 InvalidJson, and byte/cut refusals are LimitExceeded.
 
 RuntimeLimits has evaluation, referencePreparation, maxJsonBytes (8 MiB), and
-maxContinuations (64), plus optional maxActionPathBytes. The effective path
+maxContinuations (64), plus optional maxActionPathBytes and maxCacheBytes.
+maxCacheBytes caps the tool result data, as JSON, a provider's query cache
+holds at once: live cache entries, a previous key's included, and mutation
+results. Absent, it is the evaluation result-size ceiling. The effective path
 bound is min(maxJsonBytes, maxActionPathBytes); absence preserves the previous
 maxJsonBytes bound. Choose e.g. 4096 for applications with short paths. Limits
 are fixed for the lifetime. maxJsonBytes bounds
@@ -476,6 +479,16 @@ Later operations discard calls whose entries have been released. The
 manager retains at most a current and previous cache entry per registered
 query, each with at most one pending call. Detaching discards the cache
 and revokes calls. A repeated or foreign completion raises `InvalidToolCall`.
-A refused outcome leaves a valid call available for correction. Supplied
+A result too large or too deep for `RuntimeLimits.evaluation`, or past the
+cache cap, is the tool's: it is delivered as the call's `tool-error`, naming
+the limit, on every query of its key (or as the mutation's error, which ends
+its plan), and the call is consumed. Nothing held is evicted. Malformed or
+wrongly shaped outcome JSON, failure text past the limits, and a delivery
+the query snapshot's room cannot hold are the embedder's: the outcome is
+refused and leaves a valid call available for correction. Outcome text may
+be as long as the smallest of maxJsonBytes, the result-size ceiling and the
+work limit, plus the 10 bytes of `{"value":}`; a longer result is refused for
+size without being parsed. A result may nest to `evaluation.depth` levels.
+See [CONFORMANCE.md](../CONFORMANCE.md#tool-result-limits). Supplied
 references conflict with an attached provider. Clear them with
 `setReferenceValues("{}")` before attaching.

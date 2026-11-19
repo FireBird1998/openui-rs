@@ -101,6 +101,7 @@ struct RuntimeLimits {
     public var maxJsonBytes: UInt64
     public var maxContinuations: UInt64
     public var maxActionPathBytes: UInt64?
+    public var maxCacheBytes: UInt64?
 }
 struct BindingPair {
     public var component: String
@@ -172,7 +173,9 @@ ParseLimits has eight optional UInt64/ULong fields: programSize, resultSize,
 resultFloor, amplification, resultCeiling, depth, work, peakMemory; all default to absent.
 peakMemory counts portable evaluation reservations (ADR 0011), not process heap.
 RuntimeSession's default constructor uses RuntimeLimits defaults; withLimits
-takes a record containing the four existing fields and optional maxActionPathBytes.
+takes a record containing the four existing fields and optional maxActionPathBytes
+and maxCacheBytes (the query cache's byte cap; absent uses the evaluation
+result-size ceiling).
 
 State admission uses the existing `RuntimeLimits.evaluation` result-size ceiling
 (`resultCeiling`, or `resultSize` which sets both floor and ceiling); default

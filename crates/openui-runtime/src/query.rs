@@ -1,5 +1,6 @@
 //! The clock-free query manager and its tool provider seam.
 mod mutations;
+mod results;
 mod runs;
 mod session;
 use crate::tree::TreeScope;
@@ -10,6 +11,8 @@ use crate::{
 };
 use mutations::{MutationCall, Mutations};
 use openui_lang::{Ast, JsonValue, ParseResult, PreparedProgram, QueryStatement};
+use results::Admission;
+pub use results::ResultLimit;
 pub use session::ToolCallOutcome;
 use std::cell::Cell;
 use std::collections::{HashMap, HashSet};
@@ -120,7 +123,9 @@ pub struct QueryUpdate {
 pub enum QueryCommandError {
     /// The identity belongs to another manager or was already completed.
     InvalidCall,
-    /// Evaluation or result depth exceeded a configured limit.
+    /// Evaluation exceeded a configured limit, or an outcome's failure text
+    /// or its snapshot did not fit. A result past a limit is not refused: it
+    /// is delivered as the call's `tool-error` ([`ResultLimit`]).
     Limit(LimitError),
     /// Evaluation or tool-name coercion failed.
     Evaluation(EvaluationFailure),
@@ -157,6 +162,9 @@ pub struct QueryManager {
     extra_keys: HashMap<String, ExtraKey>,
     snapshot: JsObject<Value>,
     snapshot_json: String,
+    // The cache cap and the bytes the live entries' data charge to it (#90).
+    cache_limit: usize,
+    cache_bytes: usize,
 }
 
 #[derive(Clone)]
@@ -183,6 +191,8 @@ struct Query {
 struct CacheEntry {
     data: Option<Value>,
     pending: Option<Arc<PendingCall>>,
+    // The data's JSON bytes, charged to the cache cap.
+    bytes: usize,
     // Each current or previous slot holds one reference, including shared keys.
     references: usize,
     failed: bool,
@@ -226,6 +236,8 @@ impl QueryManager {
             extra_keys: HashMap::new(),
             snapshot: JsObject::new(),
             snapshot_json: String::new(),
+            cache_limit: limits.result_size(),
+            cache_bytes: 0,
         };
         manager.rebuild_snapshot();
         manager
@@ -340,7 +352,7 @@ impl QueryManager {
             }
             QueryCommand::Complete { id, outcome } => {
                 let key = id.query_key();
-                let changed = self.complete(id, outcome)?;
+                let (changed, _) = self.complete(id, outcome)?;
                 id.0.consumed.store(true, Ordering::Relaxed);
                 if !changed {
                     return Ok(QueryUpdate {
@@ -357,7 +369,7 @@ impl QueryManager {
         };
         // Ownership changes atomically with the command. Another registration
         // can take a temporarily unreferenced entry later in the same evaluate.
-        self.cache.retain(|_, entry| entry.references != 0);
+        self.release_unreferenced();
         Ok(QueryUpdate {
             calls,
             changed: self.rebuild_snapshot(),
@@ -477,62 +489,69 @@ impl QueryManager {
         calls
     }
 
+    // A success is admitted under the limits before it is copied. A refused
+    // one is delivered as the call's failure and reported (#90).
     fn complete(
         &mut self,
         id: &ToolCallId,
         outcome: ToolOutcome<'_>,
-    ) -> Result<bool, QueryCommandError> {
+    ) -> Result<(bool, Option<ResultLimit>), QueryCommandError> {
         self.check_call(id)?;
         let target = match &id.0.target {
             CallTarget::Mutation(call) => {
-                return self.mutations.complete(call, outcome, self.limits);
+                let room = self.mutation_room();
+                return self.mutations.complete(call, outcome, self.limits, room);
             }
             CallTarget::Query(target) => target,
         };
         // Only the originating entry owns this target. A host holding an old
         // identity cannot retain the key, its data, or a replacement's call.
-        let active = target.upgrade().and_then(|pending| {
-            self.cache
-                .get_mut(&pending.key)
-                .map(|entry| (pending, entry))
-        });
-        let Some((pending, entry)) = active else {
-            return Ok(false);
+        let Some(pending) = target
+            .upgrade()
+            .filter(|pending| self.cache.contains_key(&pending.key))
+        else {
+            return Ok((false, None));
         };
         // A previous key keeps existing data alive. Only current readers can
         // accept new data or a failure. Leave an unsettled entry reusable.
-        let mut readers = self
-            .queries
-            .iter_mut()
-            .filter(|(_, query)| query.key == pending.key)
-            .peekable();
-        if readers.peek().is_none() {
-            entry.pending = None;
-            // A remembered run needs a current reader to deliver to.
-            entry.run_again = None;
-            return Ok(false);
-        }
-        let success = matches!(
-            outcome,
-            ToolOutcome::Result(_) | ToolOutcome::ResultValue(_)
-        );
-        if let ToolOutcome::ResultValue(value) = &outcome {
-            crate::admission::measure(value, self.limits).map_err(QueryCommandError::Limit)?;
-            if openui_lang::write_host_json(value, self.limits.result_size(), None).is_none() {
-                return Err(QueryCommandError::Limit(crate::admission::size_error()));
+        if !self.queries.values().any(|query| query.key == pending.key) {
+            if let Some(entry) = self.cache.get_mut(&pending.key) {
+                entry.pending = None;
+                // A remembered run needs a current reader to deliver to.
+                entry.run_again = None;
             }
-            entry.data = Some((*value).clone());
-            entry.failed = false;
-        } else if let ToolOutcome::Result(value) = &outcome {
-            entry.data = Some(match value {
-                Some(value) => admit_result(value, self.limits)?,
-                None => Value::Null,
-            });
+            return Ok((false, None));
+        }
+        let admission = self.admit_query_result(&pending.key, &outcome)?;
+        let refused = match &admission {
+            Some(Admission::Refused(limit)) => Some(*limit),
+            _ => None,
+        };
+        let message = refused.map(|limit| limit.to_string());
+        let outcome = match &message {
+            Some(message) => ToolOutcome::CallFailed(message),
+            None => outcome,
+        };
+        let success = matches!(admission, Some(Admission::Admitted(..)));
+        let Some(entry) = self.cache.get_mut(&pending.key) else {
+            return Ok((false, None));
+        };
+        if let Some(Admission::Admitted(value, bytes)) = admission {
+            self.cache_bytes = self
+                .cache_bytes
+                .saturating_sub(entry.bytes)
+                .saturating_add(bytes);
+            entry.data = Some(value);
+            entry.bytes = bytes;
             entry.failed = false;
         } else {
             entry.failed = true;
         }
         entry.pending = None;
+        let readers = self
+            .queries
+            .iter_mut()
+            .filter(|(_, query)| query.key == pending.key);
         for (statement_id, query) in readers {
             if success {
                 query.error = None;
@@ -544,7 +563,7 @@ impl QueryManager {
                 query.error = Some(pending.error(statement_id, &outcome));
             }
         }
-        Ok(true)
+        Ok((true, refused))
     }
 
     fn data(&self, query: &Query) -> Option<&Value> {
@@ -836,14 +855,6 @@ fn check_cuts(flags: EvaluationFlags) -> Result<(), QueryCommandError> {
     } else {
         Ok(())
     }
-}
-
-fn admit_result(value: &JsonValue, limits: Limits) -> Result<Value, QueryCommandError> {
-    // The host owns its JSON. Check depth without cloning it, including for
-    // caller-built JSON. Keep conversion at this boundary for result/cache
-    // size admission, which will use the same entry point.
-    host_json_bytes(value, limits, usize::MAX)?;
-    Ok(Value::from_json(value))
 }
 
 /// The length of `JSON.stringify` of host JSON, refused past the depth limit

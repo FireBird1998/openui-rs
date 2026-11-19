@@ -12,6 +12,7 @@ use std::sync::{Arc, Weak, mpsc};
 mod mcp;
 mod mutations;
 mod queries;
+mod tool_results;
 pub use mcp::extract_mcp_tool_result;
 pub use openui_runtime::{ToolCall as WantedToolCall, ToolCallOutcome};
 pub use queries::{QueryEffects, ResponseState};
@@ -187,6 +188,12 @@ pub struct RuntimeLimits {
     pub max_continuations: u64,
     /// Optional smaller retained action-path bound. Absent preserves max_json_bytes.
     pub max_action_path_bytes: Option<u64>,
+    /// The query cache's byte cap: the most bytes of tool result data, as
+    /// JSON, the session holds at once, across live cache entries (a
+    /// previous key's included) and mutation results. Absent uses the
+    /// evaluation result-size ceiling. A result that would exceed it is
+    /// delivered as a `tool-error`; nothing held is evicted.
+    pub max_cache_bytes: Option<u64>,
 }
 impl Default for RuntimeLimits {
     fn default() -> Self {
@@ -199,6 +206,7 @@ impl Default for RuntimeLimits {
             max_json_bytes: 8 * 1024 * 1024,
             max_continuations: 64,
             max_action_path_bytes: None,
+            max_cache_bytes: None,
         }
     }
 }

@@ -877,6 +877,46 @@ last published snapshot still says loading. The terminal native session and
 provider detach tests cover revocation at the existing session boundaries.
 [Upstream dispose transcript](conformance/golden/mutation-dispose.jsonl)
 
+### Tool result limits
+
+A tool result is supplied input (ADR 0003). Before it enters the cache the
+manager measures its JSON (as `JSON.stringify` writes it, with every array
+and object counted toward the depth) under the result-size limit, the depth
+limit and the cache cap (#90). The cache cap bounds the result data the
+manager holds at once: every live cache entry, including the previous key a
+query shows while its new key loads, and every mutation's data. It defaults to
+the result-size limit and is `RuntimeLimits.maxCacheBytes` in the bindings. A
+result is counted against the cap as held after its completion takes effect,
+so a query's own previous entry, released by its success, does not count.
+A refused result is delivered as the call's failure: a `tool-error` whose
+message names the limit, on every query of the key, or the mutation's error.
+The call is consumed. Nothing already held is evicted or changed.
+
+lang-core 1.1.0 has no limits, so every refusal is a divergence. Each pair of
+scenarios in `conformance/result-limits.json` runs through lang-core's own
+`createQueryManager` (`reference/result-limits.ts`): the one at the limit
+matches upstream byte for byte, and the one a byte or level over is pinned
+with both sides' outputs (`tests/result_limit_scenarios.rs`).
+
+| Situation and pin | lang-core 1.1.0 | openui-rs | Decision |
+|---|---|---|---|
+| `query-result-one-byte-over-the-size-limit` | Stores the 1,025-byte result and shows it; a later run is refetching. | The query shows its default and a `tool-error`, `tool result exceeds the result size limit of 1024 bytes`; a run fetches again with no fetch history. | #90, ADR 0001: a result past the result-size limit is refused. |
+| `query-result-one-level-over-the-depth-limit` | Stores and shows the five-level result. | The query shows its default and a `tool-error` naming the depth limit of 4. | #90, ADR 0001: a result nested past the depth limit is refused. |
+| `query-result-one-byte-over-the-cache-cap-with-a-previous-key-held` | Stores the second query's result. | With 40 bytes held for the first query's previous key, a 61-byte result does not fit the cap of 100: the second query shows a `tool-error`; the 40 bytes stay on screen. | #90: the cache has a byte cap; data held for a previous key counts. |
+| `mutation-results-one-over-the-size-depth-and-cache-limits` | Each submission succeeds with its data. | Each is the mutation's `error` status and `tool-error`, naming the size, depth and cache limits in turn. | #90: mutation results are admitted as query results are. |
+
+Outcome JSON from a binding draws the line between the tool and the
+embedder. A result, or MCP response, too large or too deep is the tool's and
+becomes the `tool-error`. Malformed or wrongly shaped outcome JSON, failure
+text past the limits, a value that is not JSON, and a delivery the snapshot's
+room cannot hold are the embedder's: they are refused, change nothing and
+leave the call completable. Outcome text longer than the smallest of
+`maxJsonBytes`, the result-size limit and the work limit, plus the 10 bytes of
+`{"value":}`, is never parsed: one pass checks its syntax and shape, and a
+result envelope is refused for size. Text that is valid JSON up to a level past
+the depth limit inside an outcome whose members so far are all `value` is a too-deep
+result even if it is malformed later, as the core's reader reports depth first.
+
 ### Core, tree, action and store differences
 
 Documented, not emulated. The parser divergences do not occur in the corpus. Runtime divergences are pinned by tree, action and store tests.

@@ -66,8 +66,8 @@ impl SessionCore {
         call: &ToolCallId,
         outcome: ToolCallOutcome,
     ) -> Result<(), OpenUiError> {
-        let succeeded = matches!(outcome, ToolCallOutcome::Result(_));
-        if succeeded {
+        let delivers_result = matches!(outcome, ToolCallOutcome::Result(_));
+        if delivers_result {
             self.next_continuation_generation()?;
         }
         let functions = Self::functions(
@@ -77,7 +77,9 @@ impl SessionCore {
             self.limits.max_json_bytes,
         )?;
         let manager = self.manager.as_mut().ok_or(OpenUiError::InvalidToolCall)?;
-        let update = manager.complete_tool_call(call, outcome)?;
+        // A result refused under the limits is delivered as a failure (#90).
+        let (update, refused) = manager.complete_tool_call_admitted(call, outcome)?;
+        let succeeded = delivers_result && refused.is_none();
         self.query_effects.record(update);
         let pending = self
             .continuations
