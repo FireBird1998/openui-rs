@@ -23,6 +23,48 @@
       {"evaluate":true},
       {"finish":1,"value":"new result"},
       {"replace":"q=Query(\"new\",{})\nroot=Box([q,8])"}
+    ]},
+    {"name":"writes during streaming become one call at settlement", "steps":[
+      {"replace":"$n=1\nq=Query(\"x\",{n:$n},\"wait\")\nroot=Box(q)","streaming":true},
+      {"set":2},
+      {"binding":3},
+      {"field":4},
+      {"evaluate":true},
+      {"finish":0,"value":"four"}
+    ]},
+    {"name":"a streamed edit adds state and waits for the complete bundle", "steps":[
+      {"replace":"root=Box(0)"},
+      {"replace":"$n=1\nq=Query(\"x\",{n:$n},\"wait\")\nroot=Box(q)","streaming":true},
+      {"set":5},
+      {"evaluate":true,"complete":false},
+      {"evaluate":true},
+      {"finish":0,"value":5}
+    ]},
+    {"name":"omitted and null arguments, failure, null data and re-settling", "steps":[
+      {"replace":"a=Query(\"bare\")\nb=Query(\"nullable\",null)\nroot=Box([a,b])"},
+      {"finish":0,"error":"offline"},
+      {"finish":1,"value":null},
+      {"evaluate":true,"streaming":true},
+      {"evaluate":true},
+      {"evaluate":true}
+    ]},
+    {"name":"a call completes after its removal settles", "steps":[
+      {"replace":"$n=1\nq=Query(\"x\",{n:$n},\"wait\")\nroot=Box(q)"},
+      {"replace":"root=Box(\"gone\")","streaming":true},
+      {"evaluate":true,"complete":false},
+      {"evaluate":true},
+      {"finish":0,"value":"late"},
+      {"evaluate":true}
+    ]},
+    {"name":"a bundle error blocks writes from dispatching until cleared", "steps":[
+      {"replace":"$n=1\nq=Query(\"x\",{n:$n},\"wait\")\nroot=Box(q)"},
+      {"finish":0,"value":"one"},
+      {"evaluate":true,"error":"invalid scripts"},
+      {"set":2},
+      {"evaluate":true,"error":"invalid scripts"},
+      {"field":3},
+      {"evaluate":true},
+      {"finish":1,"value":"three"}
     ]}
   ]
 }

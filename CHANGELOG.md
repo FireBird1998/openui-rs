@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- Rust query-manager pattern matches on invocation failures now use
+  `ToolOutcome::CallFailed(message)`. The former `ToolOutcome::ToolError(message)`
+  spelling remains a construction helper. MCP tool-reported errors keep their
+  distinct meaning (#84).
+
 - Binding session construction now refuses an explicitly configured
   `referencePreparation.peakMemory` with the typed `LimitExceeded` error (#74).
   It was previously silently ignored. Configure evaluation memory on

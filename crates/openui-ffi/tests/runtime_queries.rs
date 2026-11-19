@@ -41,23 +41,20 @@ fn native_worker_dispatches_live_arguments_and_refuses_reentrant_or_invalid_comp
         None,
     )
     .program;
-    let draw = session
-        .replace_program_streaming(program, None, None, true, true)
-        .unwrap()
-        .evaluation;
-    assert!(draw.queries.unwrap().calls.is_empty());
-    let call = session
-        .evaluate_streaming(false)
-        .unwrap()
-        .queries
-        .unwrap()
-        .calls
-        .remove(0);
+    session
+        .replace_program_with_response(program, None, None, true, ResponseState { streaming: true })
+        .unwrap();
+    assert!(session.take_query_update().unwrap().calls.is_empty());
+    session
+        .evaluate_with_response(ResponseState::default())
+        .unwrap();
+    let call = session.take_query_update().unwrap().calls.remove(0);
     assert_eq!(call.tool_name(), "read");
     assert_eq!(call.arguments_json().as_deref(), Some(r#"{"n":1,"x":42}"#));
-    let update = session
+    session
         .complete_tool_call(call.clone(), r#"{"value":"live"}"#.into())
         .unwrap();
+    let update = session.take_query_update().unwrap();
     assert!(update.changed && update.calls.is_empty());
     assert!(matches!(
         session.complete_tool_call(call, r#"{"value":0}"#.into()),
@@ -65,29 +62,29 @@ fn native_worker_dispatches_live_arguments_and_refuses_reentrant_or_invalid_comp
     ));
     assert!(
         session
-            .evaluate_streaming(false)
+            .evaluate()
             .unwrap()
             .json
             .contains(r#""value":"live""#)
     );
-    let write = session
-        .set_with_queries("$n".into(), Some("2".into()))
-        .unwrap();
-    assert!(write.changed && !write.save_requested);
+    let write = session.set("$n".into(), Some("2".into())).unwrap();
+    assert!(write);
     assert_eq!(
-        write.queries.calls[0].arguments_json().as_deref(),
+        session.take_query_update().unwrap().calls[0]
+            .arguments_json()
+            .as_deref(),
         Some(r#"{"n":2,"x":42}"#)
     );
     let marker = r#"{"__reactive":"assign","target":"$n","expr":{"k":"StateRef","n":"$value"}}"#;
-    let write = session
-        .write_binding_with_queries(marker.into(), "3".into())
-        .unwrap();
+    assert!(session.write_binding(marker.into(), "3".into()).unwrap());
     assert_eq!(
-        write.queries.calls[0].arguments_json().as_deref(),
+        session.take_query_update().unwrap().calls[0]
+            .arguments_json()
+            .as_deref(),
         Some(r#"{"n":3,"x":42}"#)
     );
     let field = session
-        .set_field_with_queries(
+        .set_field(
             None,
             Some("Field".into()),
             "$n".into(),
@@ -97,7 +94,9 @@ fn native_worker_dispatches_live_arguments_and_refuses_reentrant_or_invalid_comp
         .unwrap();
     assert!(field.save_requested);
     assert_eq!(
-        field.queries.calls[0].arguments_json().as_deref(),
+        session.take_query_update().unwrap().calls[0]
+            .arguments_json()
+            .as_deref(),
         Some(r#"{"n":4,"x":42}"#)
     );
     assert!(session.take_query_update().unwrap().calls.is_empty());

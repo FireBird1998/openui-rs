@@ -29,11 +29,17 @@ directory = pathlib.Path(sys.argv[1])
 for filename in ["openui_wasm.js", "openui_wasm.d.ts"]:
     path = directory / filename
     source = path.read_text()
-    for name in ["QueryEffects", "QueryWriteOutput", "WantedToolCall"]:
-        source = source.replace(f"export class {name} {{", f"{'declare ' if filename.endswith('.ts') else ''}class {name} {{")
-        source = source.replace(f"exports.{name} = {name};", "")
+    for name in ["QueryEffects", "WantedToolCall"]:
+        if filename.endswith(".ts") or directory.name == "web":
+            before = f"export class {name} {{"
+            after = f"{'declare ' if filename.endswith('.ts') else ''}class {name} {{"
+        else:
+            before, after = f"exports.{name} = {name};", ""
+        if source.count(before) != 1:
+            sys.exit(f"{path}: expected exactly one {before!r} from wasm-bindgen")
+        source = source.replace(before, after)
     if filename.endswith(".ts"):
-        source += "\nexport type { QueryEffects, QueryWriteOutput, WantedToolCall };\n"
+        source += "\nexport type { QueryEffects, WantedToolCall };\n"
     path.write_text(source)
 PYTHON
   python3 scripts/check-runtime-binding-api.py --wasm "$out/openui_wasm.d.ts"

@@ -29,16 +29,11 @@ RuntimeSession.withLimits(library: ComponentLibrary, promptSpec: string | undefi
 RuntimeSession.extractMcpToolResult(responseJson: string, limits: ParseLimits): string
 session.attachToolProvider(): void
 session.detachToolProvider(): void
-session.evaluateStreaming(streaming: boolean): EvaluationOutput
-session.replaceProgramStreaming(program: ParsedProgram, persisted: string | undefined, projected: string | undefined, nativeView: boolean, streaming: boolean): ReplacementOutput
-session.completeToolCall(call: WantedToolCall, outcomeJson: string): QueryEffects
+session.completeToolCall(call: WantedToolCall, outcomeJson: string): void
 session.takeQueryUpdate(): QueryEffects
-session.setWithQueries(name: string, json?: string): QueryWriteOutput
-session.writeBindingWithQueries(marker: string, json: string): QueryWriteOutput
-session.setFieldWithQueries(form: string | undefined, componentType: string | undefined, name: string, json: string | undefined, save: boolean): QueryWriteOutput
 session.actionAt(evaluation: EvaluationHandle, path: string[]): ActionHandle
 session.dispose(): void
-session.evaluate(): EvaluationOutput
+session.evaluate(responseState?: ResponseState): EvaluationOutput
 session.get(name: string): string | undefined
 session.getField(form: string | undefined, name: string): string | undefined
 session.initialize(persisted?: string): InitializationOutput
@@ -46,7 +41,7 @@ session.initializeField(form: string | undefined, componentType: string | undefi
 session.isPristine(name: string): boolean
 session.markBinding(component: string, prop: string): void
 session.registerFunction(name: string, callback: (argumentsJson: string) => string | undefined): void
-session.replaceProgram(program: ParsedProgram, persisted: string | undefined, projected: string | undefined, nativeView: boolean): ReplacementOutput
+session.replaceProgram(program: ParsedProgram, persisted: string | undefined, projected: string | undefined, nativeView: boolean, responseState?: ResponseState): ReplacementOutput
 session.pendingContinuations(): bigint
 session.resume(continuation: ContinuationHandle, succeeded: boolean): ActionOutput
 session.run(action: ActionHandle | undefined, message: string, form?: string): ActionOutput
@@ -86,7 +81,7 @@ object (wasm-bindgen cannot lower Option<&ActionHandle>).
 interface EvaluationOutput {
   readonly json: string; readonly sizeLimited: boolean; readonly depthLimited: boolean;
   readonly querySnapshotJson: string | undefined;
-  readonly queries: QueryEffects;
+  readonly queryEvaluationError: {kind: string; message: string} | null;
   readonly evaluation: EvaluationHandle;
   free(): void;
 }
@@ -100,11 +95,7 @@ interface QueryEffects {
   callAt(index: bigint): WantedToolCall | undefined;
   free(): void;
 }
-interface QueryWriteOutput {
-  readonly changed: boolean; readonly saveRequested: boolean;
-  readonly queries: QueryEffects;
-  free(): void;
-}
+interface ResponseState { streaming: boolean }
 interface ReplacementOutput {
   readonly initialization: InitializationOutput; readonly projection: InitializationOutput;
   readonly evaluation: EvaluationOutput; readonly snapshot: string; readonly version: bigint;
@@ -216,7 +207,12 @@ output and replacement output separately. Initialization/projection getters are
 plain JSON records; snapshot remains JSON text. `nativeView` is an explicit
 boolean, not an optional coercion or a JSON authority field.
 
-The package returns query effects, write outputs and tool calls as opaque
-objects. TypeScript exports their names for `import type`. `using` or `free()` releases each independently. Use `callAt` with a
-zero-based bigint to borrow another handle to a call. The shared session owns
-the outcome and streaming contracts. [Driving queries](runtime-binding.md#driving-queries)
+Omit the response state to draw a settled program. A refused draw preserves
+the previous root and evaluation handle. On a blocked first draw, a query
+with a provider reads as null. Without a provider it reads its declared
+default, as in the upstream renderer.
+
+Call `takeQueryUpdate()` to claim wanted calls and the redraw flag. Query
+effects and calls are return-only objects with TypeScript type exports.
+Use `callAt` with a zero-based bigint. Each object supports `using` or
+`free()`. [Driving queries](runtime-binding.md#driving-queries)

@@ -6,13 +6,15 @@ import sys
 
 root = pathlib.Path(__file__).resolve().parent.parent
 methods = [
-    "attachToolProvider", "detachToolProvider", "evaluateStreaming", "replaceProgramStreaming",
-    "takeQueryUpdate", "completeToolCall", "setWithQueries", "writeBindingWithQueries", "setFieldWithQueries",
+    "attachToolProvider", "detachToolProvider",
+    "takeQueryUpdate", "completeToolCall",
     "actionAt", "dispose", "evaluate", "get", "getField", "initialize",
     "initializeField", "isPristine", "markBinding", "pendingContinuations",
     "registerFunction", "replaceProgram", "resume", "run", "runLegacy", "set", "setField", "setProgram",
     "setReferenceValues", "snapshot", "undecidedBindings", "version", "writeBinding",
 ]
+native_methods = methods + ["evaluateWithResponse", "replaceProgramWithResponse"]
+
 def camel(name):
     return re.sub(r"_([a-z])", lambda m: m[1].upper(), name)
 native = (root / "crates/openui-ffi/src/runtime.rs").read_text()
@@ -22,9 +24,9 @@ core = (root / "crates/openui-session/src/lib.rs").read_text()
 core += (root / "crates/openui-session/src/queries.rs").read_text()
 for source, label in [(native, "native"), (inner, "wasm inner"), (core, "session core")]:
     exported = {camel(n) for n in re.findall(r"pub fn (\w+)\(", source)}
-    assert set(methods) - {"dispose", "setReferenceValues"} <= exported, label
+    assert set(native_methods) - {"dispose", "setReferenceValues"} <= exported, label
 native_session = native.split("#[uniffi::export]", 1)[1].split("fn worker_loop", 1)[0]
-assert {camel(n) for n in re.findall(r"pub fn (\w+)\(", native_session)} == set(methods) | {"new", "withLimits"}, "native session drift"
+assert {camel(n) for n in re.findall(r"pub fn (\w+)\(", native_session)} == set(native_methods) | {"new", "withLimits"}, "native session drift"
 ffi_lib = (root / "crates/openui-ffi/src/lib.rs").read_text()
 message_functions = {"parseMessage", "buildMessage"}
 ffi_messages = (root / "crates/openui-ffi/src/message.rs").read_text()
@@ -84,9 +86,9 @@ assert callback_type in callbacks, "wasm callback JSON contract drift"
 assert "dyn Fn(String) -> Result<Option<String>, String> + Send + Sync" in core, "core callback JSON contract drift"
 assert "registerFunction: openuiSpec([openuiStr, openuiFunction])" in (root / "crates/openui-wasm/js/package-guards.js").read_text()
 for doc in ["docs/runtime-binding-api.md", "docs/wasm-runtime-binding-api.md"]:
-    for name in methods:
+    for name in (native_methods if doc == "docs/runtime-binding-api.md" else methods):
         assert name in (root / doc).read_text(), (doc, name)
-print(f"Source: {len(methods)} native/wasm session methods, opaque capabilities, errors and limits checked")
+print(f"Source: {len(native_methods)} native and {len(methods)} wasm session methods, opaque capabilities, errors and limits checked")
 if len(sys.argv) == 1:
     sys.exit(0)
 if len(sys.argv) == 3 and sys.argv[1] == "--wasm":
@@ -98,11 +100,16 @@ if len(sys.argv) == 3 and sys.argv[1] == "--wasm":
     for method in methods + ["withLimits"]:
         assert re.search(r"\b" + method + r"\(", session[1]), method
     assert re.search(r"static extractMcpToolResult\(response_json: string, limits: ParseLimits\): string;", session[1]), "wasm MCP helper signature drift"
-    assert "completeToolCall(call: WantedToolCall, outcome_json: string): QueryEffects;" in session[1]
-    assert "evaluateStreaming(streaming: boolean): EvaluationOutput;" in session[1]
+    assert "takeQueryUpdate(): QueryEffects;" in session[1]
+    assert "completeToolCall(call: WantedToolCall, outcome_json: string): void;" in session[1]
+    assert "evaluate(response_state?: ResponseState): EvaluationOutput;" in session[1]
+    assert re.search(r"replaceProgram\([^\n]+response_state\?: ResponseState\): ReplacementOutput;", session[1])
+    assert "export interface ResponseState { streaming: boolean }" in declarations
+    for field in ["queryEvaluationError", "evaluationError"]:
+        assert f"readonly {field}: {{ kind: string; message: string }} | null;" in declarations, field
     assert "callAt(index: bigint): WantedToolCall | undefined;" in declarations
-    assert "export type { QueryEffects, QueryWriteOutput, WantedToolCall };" in declarations
-    for name in ["QueryEffects", "WantedToolCall", "QueryWriteOutput"]:
+    assert "export type { QueryEffects, WantedToolCall };" in declarations
+    for name in ["QueryEffects", "WantedToolCall"]:
         assert re.search(r"^declare class " + name + r" \{\s*private constructor\(\);", declarations, re.M), name
     assert callback_type in declarations, "wasm callback declaration drift"
     assert re.search(r"registerFunction\(name:\s*string,\s*callback:", session[1]), "wasm callback parameters drift"
@@ -125,15 +132,21 @@ for function in reader_functions:
     assert re.search(r"^public func " + function + r"\([^\n]*\)\s*throws\s*->\s*String", swift, re.M), function
 api = re.search(r"public protocol RuntimeSessionProtocol[^\{]*\{(.*?)\n\}", swift, re.S)
 assert api, "missing Swift RuntimeSession protocol"
-for method in methods:
+for method in native_methods:
     assert re.search(r"func\s+" + method + r"\(", api[1]), method
     if method != "dispose":
         assert re.search(r"func\s+" + method + r"\([^\n]*\)\s*throws", api[1]), method
 for name, kind in [("action", "ActionHandle?"), ("continuation", "ContinuationHandle"),
                    ("evaluation", "EvaluationHandle"), ("program", "ParsedProgram")]:
     assert f"{name}: {kind}" in api[1]
-assert re.search(r"func completeToolCall\(call: WantedToolCall, outcomeJson: String\) throws\s*-> QueryEffects", api[1])
-assert "querySnapshotJson: String? = nil, queries: QueryEffects? = nil" in swift
+assert re.search(r"func evaluate\(\) throws\s*-> EvaluationOutput", api[1])
+assert re.search(r"func replaceProgram\(program: ParsedProgram, persisted: String\?, projected: String\?, nativeView: Bool\) throws\s*-> ReplacementOutput", api[1])
+assert re.search(r"func takeQueryUpdate\(\) throws\s*-> QueryEffects", api[1])
+assert re.search(r"func completeToolCall\(call: WantedToolCall, outcomeJson: String\) throws[ \t]*$", api[1], re.M)
+assert "querySnapshotJson: String? = nil, queryEvaluationError: OpenUiError? = nil" in swift
+assert "public init(streaming: Bool = false)" in swift
+assert re.search(r"func evaluateWithResponse\(responseState: ResponseState\) throws\s*-> EvaluationOutput", api[1])
+assert re.search(r"func replaceProgramWithResponse\([^\n]*responseState: ResponseState\) throws\s*-> ReplacementOutput", api[1])
 assert "public var calls: [WantedToolCall]" in swift
 assert "case ReferenceConflict" in swift
 assert "public var referencePreparation: ParseLimits" in swift
@@ -153,13 +166,19 @@ if len(sys.argv) == 3:
         assert re.search(r"fun `" + function + r"`\([^\n]*\): kotlin.String", kotlin), function
     api = re.search(r"public interface RuntimeSessionInterface\s*\{(.*?)\n\}", kotlin, re.S)
     assert api, "missing Kotlin RuntimeSession interface"
-    for method in methods:
+    for method in native_methods:
         assert f"`{method}`(" in api[1], method
     for name, kind in [("action", "ActionHandle?"), ("continuation", "ContinuationHandle"),
                        ("evaluation", "EvaluationHandle"), ("program", "ParsedProgram")]:
         assert f"`{name}`: {kind}" in api[1]
-    assert "fun `completeToolCall`(`call`: WantedToolCall, `outcomeJson`: kotlin.String): QueryEffects" in api[1]
-    assert "`queries`: QueryEffects? = null" in kotlin and "`querySnapshotJson`: kotlin.String? = null" in kotlin
+    assert "fun `evaluate`(): EvaluationOutput" in api[1]
+    assert "fun `replaceProgram`(`program`: ParsedProgram, `persisted`: kotlin.String?, `projected`: kotlin.String?, `nativeView`: kotlin.Boolean): ReplacementOutput" in api[1]
+    assert "fun `takeQueryUpdate`(): QueryEffects" in api[1]
+    assert re.search(r"fun `completeToolCall`\(`call`: WantedToolCall, `outcomeJson`: kotlin.String\)[ \t]*$", api[1], re.M)
+    assert "`queryEvaluationError`: OpenUiException? = null" in kotlin and "`querySnapshotJson`: kotlin.String? = null" in kotlin
+    assert "`streaming`: kotlin.Boolean = false" in kotlin
+    assert "fun `evaluateWithResponse`(`responseState`: ResponseState): EvaluationOutput" in api[1]
+    assert "`responseState`: ResponseState): ReplacementOutput" in api[1]
     assert "class ReferenceConflict" in kotlin
     assert "interface LibraryFunction" in kotlin
     assert "fun `call`(`argumentsJson`: kotlin.String): kotlin.String?" in kotlin, "Kotlin callback signature drift"
@@ -175,4 +194,4 @@ if len(sys.argv) == 3:
     assert "compile_fail" not in kotlin
     for error in ["ForeignHandle", "ConsumedHandle", "EvictedHandle", "Evaluation"]:
         assert f"class {error}" in kotlin
-print(f"{'Swift/Kotlin' if len(sys.argv) == 3 else 'Swift'}: {len(methods)} session methods, opaque objects, typed errors and current limits checked")
+print(f"{'Swift/Kotlin' if len(sys.argv) == 3 else 'Swift'}: {len(native_methods)} session methods, opaque objects, typed errors and current limits checked")

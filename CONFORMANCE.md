@@ -151,14 +151,15 @@ text for undefined shares a key with an undefined state variable, and in
 `cache-keys-collide-across-the-separator` a tool named `t::{}` shares the
 key of tool `t` with dependencies.
 
-The session replay in `conformance/session-queries.json` compares 19
+The session replay in `conformance/session-queries.json` compares 51
 observations of tree bytes, query snapshot bytes, dispatches and snapshot
 changes with `reference/session-queries.ts`. The adapter transcribes the
 pinned renderer's blocked condition, effect dependencies and call to
 `evaluateStatements`. It drives a real store and query manager and draws
 with `evaluateRoot`. It covers streaming over a pending call, a result
 arriving during an edit, initial defaults, state/binding/field writes,
-refetching, failure, recovery, cache reuse and removal.
+refetching, failure, recovery, cache reuse, omitted and null arguments,
+writes during streaming and bundle errors, and late completion after removal.
 
 A query is loading while its current entry has a call in flight. Delivery of a
 successful result to that entry gives the query a fetch history. In

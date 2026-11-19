@@ -150,6 +150,12 @@ const openuiBoolean = value => {
   if (typeof value === 'boolean') return value;
   throw openuiFailure('InvalidJson', 'expected a boolean argument');
 };
+// Read the response value under the package guard, before borrowing the session.
+function openuiResponseState(value) {
+  if (value === undefined) return undefined;
+  if (value === null || typeof value !== 'object') throw openuiFailure('InvalidJson', 'expected a response state');
+  return { __proto__: null, streaming: openuiBoolean(value.streaming) };
+}
 const openuiLimit = value => {
   if (typeof value === 'bigint' && value >= 0n && value <= 18446744073709551615n) return value;
   throw openuiFailure('LimitExceeded', 'expected an unsigned 64-bit bigint limit');
@@ -258,16 +264,11 @@ const openuiSurface = new Map([
       free: openuiFree,
       actionAt: openuiSpec([openuiCapabilityOf(EvaluationHandle), openuiPath]),
       dispose: openuiNone,
-      evaluate: openuiNone,
+      evaluate: openuiSpec([openuiResponseState]),
       attachToolProvider: openuiNone,
       detachToolProvider: openuiNone,
       takeQueryUpdate: openuiNone,
-      evaluateStreaming: openuiSpec([openuiBool]),
-      replaceProgramStreaming: openuiSpec([openuiCapabilityOf(ParsedProgram), openuiOptStr, openuiOptStr, openuiBool, openuiBool]),
       completeToolCall: openuiSpec([openuiCapabilityOf(WantedToolCall), openuiStr]),
-      setWithQueries: openuiSpec([openuiStr, openuiOptStr]),
-      writeBindingWithQueries: openuiSpec([openuiStr, openuiStr]),
-      setFieldWithQueries: openuiSpec([openuiOptStr, openuiOptStr, openuiStr, openuiOptStr, openuiBool]),
       get: openuiSpec([openuiStr]),
       getField: openuiSpec([openuiOptStr, openuiStr]),
       initialize: openuiSpec([openuiOptStr], { json: true }),
@@ -281,7 +282,7 @@ const openuiSurface = new Map([
       runLegacy: openuiSpec([openuiStr, openuiStr, openuiOptStr]),
       set: openuiSpec([openuiStr, openuiOptStr]),
       setField: openuiSpec([openuiOptStr, openuiOptStr, openuiStr, openuiOptStr, openuiBool], { json: true }),
-      replaceProgram: openuiSpec([openuiCapabilityOf(ParsedProgram), openuiOptStr, openuiOptStr, openuiBool]),
+      replaceProgram: openuiSpec([openuiCapabilityOf(ParsedProgram), openuiOptStr, openuiOptStr, openuiBool, openuiResponseState]),
       setProgram: openuiSpec([openuiCapabilityOf(ParsedProgram)]),
       setReferenceValues: openuiSpec([openuiStr]),
       snapshot: openuiNone,
@@ -294,15 +295,13 @@ const openuiSurface = new Map([
     toolName: { get: openuiNone }, argumentsJson: { get: openuiNone } } }],
   [QueryEffects, { methods: { free: openuiFree, callAt: openuiSpec([openuiLimit]) }, accessors: {
     callCount: { get: openuiNone }, changed: { get: openuiNone }, evaluationError: { get: openuiJson } } }],
-  [QueryWriteOutput, { methods: { free: openuiFree }, accessors: {
-    changed: { get: openuiNone }, saveRequested: { get: openuiNone }, queries: { get: openuiNone } } }],
   [EvaluationHandle, { methods: { free: openuiFree } }],
   [ActionHandle, { methods: { free: openuiFree, retain: openuiNone } }],
   [ContinuationHandle, { methods: { free: openuiFree } }],
   [ParsedProgram, { methods: { free: openuiFree } }],
   [EvaluationOutput, {
     methods: { free: openuiFree },
-    accessors: { queries: { get: openuiNone }, querySnapshotJson: { get: openuiNone }, evaluation: { get: openuiNone }, json: { get: openuiNone },
+    accessors: { queryEvaluationError: { get: openuiJson }, querySnapshotJson: { get: openuiNone }, evaluation: { get: openuiNone }, json: { get: openuiNone },
       sizeLimited: { get: openuiNone }, depthLimited: { get: openuiNone } },
   }],
   [ReplacementOutput, {

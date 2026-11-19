@@ -2,7 +2,7 @@
 //! one binding seam. No evaluator, action validation or authority rules live here.
 
 use crate::{
-    ComponentLibrary, OpenUiError, ParseLimits, ParsedProgram, QueryEffects, QueryWriteOutput,
+    ComponentLibrary, OpenUiError, ParseLimits, ParsedProgram, QueryEffects, ResponseState,
     WantedToolCall,
 };
 use openui_lang::JsObject;
@@ -92,7 +92,7 @@ pub struct EvaluationOutput {
     #[uniffi(default = None)]
     pub query_snapshot_json: Option<String>,
     #[uniffi(default = None)]
-    pub queries: Option<QueryEffects>,
+    pub query_evaluation_error: Option<OpenUiError>,
 }
 
 /// Store initialization's batch result, including per-name refusals.
@@ -907,19 +907,25 @@ impl RuntimeSession {
         projected: Option<String>,
         native_view: bool,
     ) -> Result<ReplacementOutput, OpenUiError> {
-        self.replace_program_streaming(program, persisted, projected, native_view, false)
+        self.replace_program_with_response(
+            program,
+            persisted,
+            projected,
+            native_view,
+            ResponseState::default(),
+        )
     }
 
-    pub fn replace_program_streaming(
+    pub fn replace_program_with_response(
         &self,
         program: Arc<ParsedProgram>,
         persisted: Option<String>,
         projected: Option<String>,
         native_view: bool,
-        streaming: bool,
+        response_state: ResponseState,
     ) -> Result<ReplacementOutput, OpenUiError> {
         self.dispatch_call(false, move |s, refs, _| {
-            s.replace_program_streaming(
+            s.replace_program_with_response(
                 refs,
                 Arc::new(openui_session::ParsedProgram {
                     inner: program.inner.clone(),
@@ -928,7 +934,7 @@ impl RuntimeSession {
                 persisted,
                 projected,
                 native_view,
-                streaming,
+                response_state.into(),
             )
             .map(Into::into)
             .map_err(Into::into)
@@ -947,9 +953,12 @@ impl RuntimeSession {
     pub fn take_query_update(&self) -> Result<QueryEffects, OpenUiError> {
         self.call(move |s, _| Ok(s.take_query_update().into()))
     }
-    pub fn evaluate_streaming(&self, streaming: bool) -> Result<EvaluationOutput, OpenUiError> {
+    pub fn evaluate_with_response(
+        &self,
+        response_state: ResponseState,
+    ) -> Result<EvaluationOutput, OpenUiError> {
         self.call(move |s, refs| {
-            s.evaluate_streaming(refs, streaming)
+            s.evaluate_with_response(refs, response_state.into())
                 .map(Into::into)
                 .map_err(Into::into)
         })
@@ -958,46 +967,9 @@ impl RuntimeSession {
         &self,
         call: Arc<WantedToolCall>,
         outcome_json: String,
-    ) -> Result<QueryEffects, OpenUiError> {
+    ) -> Result<(), OpenUiError> {
         self.call(move |s, _| {
             s.complete_tool_call_json(&call.inner.id, &outcome_json)
-                .map(Into::into)
-                .map_err(Into::into)
-        })
-    }
-    pub fn set_with_queries(
-        &self,
-        name: String,
-        json: Option<String>,
-    ) -> Result<QueryWriteOutput, OpenUiError> {
-        self.call(move |s, refs| {
-            s.set_with_queries(refs, name, json)
-                .map(Into::into)
-                .map_err(Into::into)
-        })
-    }
-    pub fn write_binding_with_queries(
-        &self,
-        marker: String,
-        json: String,
-    ) -> Result<QueryWriteOutput, OpenUiError> {
-        self.call(move |s, refs| {
-            s.write_binding_with_queries(refs, marker, json)
-                .map(Into::into)
-                .map_err(Into::into)
-        })
-    }
-    pub fn set_field_with_queries(
-        &self,
-        form: Option<String>,
-        component_type: Option<String>,
-        name: String,
-        json: Option<String>,
-        save: bool,
-    ) -> Result<QueryWriteOutput, OpenUiError> {
-        self.call(move |s, refs| {
-            s.set_field_with_queries(refs, form, component_type, name, json, save)
-                .map(Into::into)
                 .map_err(Into::into)
         })
     }
@@ -1309,7 +1281,7 @@ impl From<openui_session::FieldWriteOutput> for FieldWriteOutput {
 impl From<openui_session::EvaluationOutput> for EvaluationOutput {
     fn from(v: openui_session::EvaluationOutput) -> Self {
         Self {
-            queries: v.query_snapshot_json.as_ref().map(|_| v.queries.into()),
+            query_evaluation_error: v.query_evaluation_error.map(Into::into),
             query_snapshot_json: v.query_snapshot_json,
             json: v.json,
             size_limited: v.size_limited,

@@ -124,16 +124,23 @@ impl Session {
     ) -> Result<ReplacementOutput, OpenUiError> {
         self.call(|s, refs| s.replace_program(refs, program, persisted, projected, native_view))
     }
-    pub fn replace_program_streaming(
+    pub fn replace_program_with_response(
         &self,
         program: Arc<ParsedProgram>,
         persisted: Option<String>,
         projected: Option<String>,
         native_view: bool,
-        streaming: bool,
+        response: ResponseState,
     ) -> Result<ReplacementOutput, OpenUiError> {
         self.call(|s, refs| {
-            s.replace_program_streaming(refs, program, persisted, projected, native_view, streaming)
+            s.replace_program_with_response(
+                refs,
+                program,
+                persisted,
+                projected,
+                native_view,
+                response,
+            )
         })
     }
     pub fn attach_tool_provider(&self) -> Result<(), OpenUiError> {
@@ -148,41 +155,18 @@ impl Session {
     pub fn take_query_update(&self) -> Result<QueryEffects, OpenUiError> {
         self.call(move |s, _| Ok(s.take_query_update()))
     }
-    pub fn evaluate_streaming(&self, streaming: bool) -> Result<EvaluationOutput, OpenUiError> {
-        self.call(move |s, refs| s.evaluate_streaming(refs, streaming))
+    pub fn evaluate_with_response(
+        &self,
+        response: ResponseState,
+    ) -> Result<EvaluationOutput, OpenUiError> {
+        self.call(move |s, refs| s.evaluate_with_response(refs, response))
     }
     pub fn complete_tool_call(
         &self,
         call: Arc<WantedToolCall>,
         outcome_json: String,
-    ) -> Result<QueryEffects, OpenUiError> {
+    ) -> Result<(), OpenUiError> {
         self.call(move |s, _| s.complete_tool_call_json(&call.id, &outcome_json))
-    }
-    pub fn set_with_queries(
-        &self,
-        name: String,
-        json: Option<String>,
-    ) -> Result<QueryWriteOutput, OpenUiError> {
-        self.call(move |s, refs| s.set_with_queries(refs, name, json))
-    }
-    pub fn write_binding_with_queries(
-        &self,
-        marker: String,
-        json: String,
-    ) -> Result<QueryWriteOutput, OpenUiError> {
-        self.call(move |s, refs| s.write_binding_with_queries(refs, marker, json))
-    }
-    pub fn set_field_with_queries(
-        &self,
-        form: Option<String>,
-        component_type: Option<String>,
-        name: String,
-        json: Option<String>,
-        save: bool,
-    ) -> Result<QueryWriteOutput, OpenUiError> {
-        self.call(move |s, refs| {
-            s.set_field_with_queries(refs, form, component_type, name, json, save)
-        })
     }
     /// Report prompt annotations needing an explicit choice by the embedder.
     pub fn undecided_bindings(&self) -> Result<Vec<BindingPair>, OpenUiError> {

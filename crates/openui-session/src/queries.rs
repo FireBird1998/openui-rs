@@ -19,11 +19,24 @@ impl QueryEffects {
     }
 }
 
-#[derive(Debug)]
-pub struct QueryWriteOutput {
-    pub changed: bool,
-    pub save_requested: bool,
-    pub queries: QueryEffects,
+/// The host's current response gate. The default is a settled response.
+#[derive(Clone, Copy, Debug, Default)]
+pub struct ResponseState {
+    /// For a bundled response, pass the renderer's combined blocked condition.
+    pub streaming: bool,
+}
+
+type Registration = Result<QueryUpdate, OpenUiError>;
+
+enum DrawError {
+    Registration(QueryCommandError),
+    Screen(OpenUiError),
+}
+
+impl From<QueryCommandError> for DrawError {
+    fn from(error: QueryCommandError) -> Self {
+        Self::Registration(error)
+    }
 }
 
 impl From<QueryCommandError> for OpenUiError {
@@ -46,19 +59,25 @@ pub(super) fn draw<T>(
     store: &Store,
     refs: &PreparedReferenceValues<'_>,
     limits: Limits,
-    read: impl FnOnce(TreeInput<'_>) -> Result<T, OpenUiError>,
-) -> Result<(T, Option<QueryUpdate>), OpenUiError> {
+    read: impl Fn(TreeInput<'_>) -> Result<T, OpenUiError>,
+) -> Result<(T, Option<Registration>), OpenUiError> {
     let draw_with = |supply: &PreparedReferenceValues<'_>| {
         read(input.clone().with_prepared_reference_values(supply))
     };
     match manager {
         None => Ok((draw_with(refs)?, None)),
         Some(manager) if !register => Ok((draw_with(&manager.prepared_results(limits))?, None)),
-        Some(manager) => manager
-            .evaluate_transaction(input, store, |candidate| {
-                draw_with(&candidate.prepared_results(limits))
-            })
-            .map(|(output, update)| (output, Some(update))),
+        Some(manager) => match manager.evaluate_transaction(input, store, |candidate| {
+            draw_with(&candidate.prepared_results(limits)).map_err(DrawError::Screen)
+        }) {
+            Ok((output, update)) => Ok((output, Some(Ok(update)))),
+            Err(DrawError::Registration(error @ QueryCommandError::Limit(_))) => Ok((
+                draw_with(&manager.prepared_results(limits))?,
+                Some(Err(error.into())),
+            )),
+            Err(DrawError::Registration(error)) => Err(error.into()),
+            Err(DrawError::Screen(error)) => Err(error),
+        },
     }
 }
 
@@ -73,13 +92,18 @@ impl SessionCore {
         if self.manager.is_none() {
             self.manager = Some(QueryManager::with_limits(self.core_limits));
             self.query_inputs_changed = true;
+            self.query_effects.changed = true;
         }
         Ok(())
     }
 
     pub fn detach_tool_provider(&mut self) {
-        self.manager = None;
-        self.query_effects = QueryEffects::default();
+        if self.manager.take().is_some() {
+            self.query_effects = QueryEffects {
+                changed: true,
+                ..QueryEffects::default()
+            };
+        }
     }
 
     pub fn check_reference_values(&self) -> Result<(), OpenUiError> {
@@ -91,29 +115,39 @@ impl SessionCore {
     }
 
     pub fn take_query_update(&mut self) -> QueryEffects {
-        std::mem::take(&mut self.query_effects)
+        QueryEffects {
+            calls: std::mem::take(&mut self.query_effects.calls),
+            changed: std::mem::take(&mut self.query_effects.changed),
+            evaluation_error: self.query_effects.evaluation_error.clone(),
+        }
+    }
+
+    fn record_registration(&mut self, result: Registration) {
+        let error = match result {
+            Ok(update) => {
+                self.query_effects.record(update);
+                None
+            }
+            Err(error) => Some(error),
+        };
+        self.query_effects.changed |= self.query_effects.evaluation_error != error;
+        self.query_effects.evaluation_error = error;
     }
 
     pub(super) fn finish_draw(
         &mut self,
-        streaming: bool,
-        update: Option<QueryUpdate>,
-    ) -> (Option<String>, QueryEffects) {
-        self.streaming = streaming;
-        self.query_inputs_changed = streaming;
-        if let Some(update) = update {
-            self.query_effects.evaluation_error = None;
-            self.query_effects.record(update);
+        response: ResponseState,
+        registration: Option<Registration>,
+    ) -> (Option<String>, Option<OpenUiError>) {
+        self.streaming = response.streaming;
+        self.query_inputs_changed = false;
+        if let Some(result) = registration {
+            self.record_registration(result);
         }
-        let snapshot = self.manager.as_ref().map(|m| m.snapshot_json().to_owned());
-        // A blocked draw starts no calls. Any unclaimed dispatch from an
-        // earlier store operation remains available to its driver.
-        let effects = if streaming {
-            QueryEffects::default()
-        } else {
-            self.take_query_update()
-        };
-        (snapshot, effects)
+        (
+            self.manager.as_ref().map(|m| m.snapshot_json().to_owned()),
+            self.query_effects.evaluation_error.clone(),
+        )
     }
 
     pub(super) fn state_changed(&mut self) {
@@ -137,14 +171,8 @@ impl SessionCore {
                     .evaluate_transaction(&input, &self.store, |_| Ok::<_, OpenUiError>(()))
                     .map(|(_, update)| update)
             });
-            self.query_inputs_changed = result.is_err();
-            match result {
-                Ok(update) => {
-                    self.query_effects.evaluation_error = None;
-                    self.query_effects.record(update);
-                }
-                Err(error) => self.query_effects.evaluation_error = Some(error),
-            }
+            self.query_inputs_changed = false;
+            self.record_registration(result);
         }
     }
 
@@ -152,11 +180,11 @@ impl SessionCore {
         &mut self,
         call: &ToolCallId,
         outcome: ToolCallOutcome,
-    ) -> Result<QueryEffects, OpenUiError> {
+    ) -> Result<(), OpenUiError> {
         let manager = self.manager.as_mut().ok_or(OpenUiError::InvalidToolCall)?;
         let update = manager.complete_tool_call(call, outcome)?;
         self.query_effects.record(update);
-        Ok(self.take_query_update())
+        Ok(())
     }
 
     /// A single tagged JSON outcome for both bindings. Parse the result with
@@ -166,7 +194,7 @@ impl SessionCore {
         &mut self,
         call: &ToolCallId,
         json: &str,
-    ) -> Result<QueryEffects, OpenUiError> {
+    ) -> Result<(), OpenUiError> {
         self.manager
             .as_ref()
             .ok_or(OpenUiError::InvalidToolCall)?
@@ -219,48 +247,5 @@ impl SessionCore {
             _ => return Err(invalid()),
         };
         self.complete_tool_call(call, outcome)
-    }
-
-    pub fn set_with_queries(
-        &mut self,
-        refs: &PreparedReferenceValues<'_>,
-        name: String,
-        json: Option<String>,
-    ) -> Result<QueryWriteOutput, OpenUiError> {
-        let changed = self.set(refs, name, json)?;
-        Ok(QueryWriteOutput {
-            changed,
-            save_requested: false,
-            queries: self.take_query_update(),
-        })
-    }
-    pub fn write_binding_with_queries(
-        &mut self,
-        refs: &PreparedReferenceValues<'_>,
-        marker: String,
-        json: String,
-    ) -> Result<QueryWriteOutput, OpenUiError> {
-        let changed = self.write_binding(refs, marker, json)?;
-        Ok(QueryWriteOutput {
-            changed,
-            save_requested: false,
-            queries: self.take_query_update(),
-        })
-    }
-    pub fn set_field_with_queries(
-        &mut self,
-        refs: &PreparedReferenceValues<'_>,
-        form: Option<String>,
-        component_type: Option<String>,
-        name: String,
-        json: Option<String>,
-        save: bool,
-    ) -> Result<QueryWriteOutput, OpenUiError> {
-        let field = self.set_field(refs, form, component_type, name, json, save)?;
-        Ok(QueryWriteOutput {
-            changed: field.changed,
-            save_requested: field.save_requested,
-            queries: self.take_query_update(),
-        })
     }
 }

@@ -1,5 +1,5 @@
 //! wasm-bindgen surface; no mutable receiver is held across JavaScript conversion.
-use crate::queries::{QueryEffects, QueryWriteOutput, WantedToolCall};
+use crate::queries::{QueryEffects, ResponseState, WantedToolCall, error_json};
 use crate::session::{ReleaseGuard, Session};
 use crate::{ComponentLibrary, ParsedProgram};
 use openui_session as core;
@@ -90,7 +90,7 @@ impl ContinuationHandle {
 }
 #[wasm_bindgen(getter_with_clone)]
 pub struct EvaluationOutput {
-    queries: Arc<core::QueryEffects>,
+    query_evaluation_error: Option<core::OpenUiError>,
     #[wasm_bindgen(readonly, js_name = querySnapshotJson)]
     pub query_snapshot_json: Option<String>,
     #[wasm_bindgen(readonly)]
@@ -103,9 +103,9 @@ pub struct EvaluationOutput {
 }
 #[wasm_bindgen]
 impl EvaluationOutput {
-    #[wasm_bindgen(getter)]
-    pub fn queries(&self) -> QueryEffects {
-        QueryEffects(self.queries.clone())
+    #[wasm_bindgen(getter, js_name = queryEvaluationError, unchecked_return_type = "{ kind: string; message: string } | null")]
+    pub fn query_evaluation_error(&self) -> String {
+        error_json(self.query_evaluation_error.as_ref())
     }
     #[wasm_bindgen(getter)]
     pub fn evaluation(&self) -> EvaluationHandle {
@@ -117,7 +117,7 @@ impl EvaluationOutput {
 impl From<core::EvaluationOutput> for EvaluationOutput {
     fn from(v: core::EvaluationOutput) -> Self {
         Self {
-            queries: Arc::new(v.queries),
+            query_evaluation_error: v.query_evaluation_error,
             query_snapshot_json: v.query_snapshot_json,
             json: v.json,
             size_limited: v.size_limited,
@@ -144,7 +144,7 @@ impl ReplacementOutput {
     pub fn evaluation(&self) -> EvaluationOutput {
         let v = &self.inner.evaluation;
         EvaluationOutput {
-            queries: Arc::new(v.queries.clone()),
+            query_evaluation_error: v.query_evaluation_error.clone(),
             query_snapshot_json: v.query_snapshot_json.clone(),
             json: v.json.clone(),
             size_limited: v.size_limited,
@@ -282,28 +282,17 @@ impl RuntimeSession {
         persisted: Option<String>,
         projected: Option<String>,
         native_view: bool,
+        #[wasm_bindgen(unchecked_optional_param_type = "ResponseState")] response_state: Option<
+            ResponseState,
+        >,
     ) -> Result<ReplacementOutput, JsValue> {
         self.inner
-            .replace_program(program.0.clone(), persisted, projected, native_view)
-            .map(|inner| ReplacementOutput { inner })
-            .map_err(error)
-    }
-    #[wasm_bindgen(js_name = replaceProgramStreaming)]
-    pub fn replace_program_streaming(
-        &self,
-        program: &ParsedProgram,
-        persisted: Option<String>,
-        projected: Option<String>,
-        native_view: bool,
-        streaming: bool,
-    ) -> Result<ReplacementOutput, JsValue> {
-        self.inner
-            .replace_program_streaming(
+            .replace_program_with_response(
                 program.0.clone(),
                 persisted,
                 projected,
                 native_view,
-                streaming,
+                ResponseState::read(response_state),
             )
             .map(|inner| ReplacementOutput { inner })
             .map_err(error)
@@ -323,58 +312,14 @@ impl RuntimeSession {
             .map(Into::into)
             .map_err(error)
     }
-    #[wasm_bindgen(js_name = evaluateStreaming)]
-    pub fn evaluate_streaming(&self, streaming: bool) -> Result<EvaluationOutput, JsValue> {
-        self.inner
-            .evaluate_streaming(streaming)
-            .map(Into::into)
-            .map_err(error)
-    }
     #[wasm_bindgen(js_name = completeToolCall)]
     pub fn complete_tool_call(
         &self,
         call: &WantedToolCall,
         outcome_json: String,
-    ) -> Result<QueryEffects, JsValue> {
+    ) -> Result<(), JsValue> {
         self.inner
             .complete_tool_call(call.0.clone(), outcome_json)
-            .map(Into::into)
-            .map_err(error)
-    }
-    #[wasm_bindgen(js_name = setWithQueries)]
-    pub fn set_with_queries(
-        &self,
-        name: String,
-        json: Option<String>,
-    ) -> Result<QueryWriteOutput, JsValue> {
-        self.inner
-            .set_with_queries(name, json)
-            .map(Into::into)
-            .map_err(error)
-    }
-    #[wasm_bindgen(js_name = writeBindingWithQueries)]
-    pub fn write_binding_with_queries(
-        &self,
-        marker: String,
-        json: String,
-    ) -> Result<QueryWriteOutput, JsValue> {
-        self.inner
-            .write_binding_with_queries(marker, json)
-            .map(Into::into)
-            .map_err(error)
-    }
-    #[wasm_bindgen(js_name = setFieldWithQueries)]
-    pub fn set_field_with_queries(
-        &self,
-        form: Option<String>,
-        component_type: Option<String>,
-        name: String,
-        json: Option<String>,
-        save: bool,
-    ) -> Result<QueryWriteOutput, JsValue> {
-        self.inner
-            .set_field_with_queries(form, component_type, name, json, save)
-            .map(Into::into)
             .map_err(error)
     }
     #[wasm_bindgen(js_name = undecidedBindings, unchecked_return_type = "any")]
@@ -402,8 +347,16 @@ impl RuntimeSession {
         self.inner.set_reference_values(json).map_err(error)
     }
     #[wasm_bindgen(js_name = evaluate)]
-    pub fn evaluate(&self) -> Result<EvaluationOutput, JsValue> {
-        let v = self.inner.evaluate().map_err(error)?;
+    pub fn evaluate(
+        &self,
+        #[wasm_bindgen(unchecked_optional_param_type = "ResponseState")] response_state: Option<
+            ResponseState,
+        >,
+    ) -> Result<EvaluationOutput, JsValue> {
+        let v = self
+            .inner
+            .evaluate_with_response(ResponseState::read(response_state))
+            .map_err(error)?;
         Ok(v.into())
     }
     #[wasm_bindgen(js_name = actionAt)]

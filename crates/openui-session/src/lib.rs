@@ -13,9 +13,9 @@ mod mcp;
 mod queries;
 pub use mcp::extract_mcp_tool_result;
 pub use openui_runtime::{ToolCall as WantedToolCall, ToolCallOutcome};
-pub use queries::{QueryEffects, QueryWriteOutput};
+pub use queries::{QueryEffects, ResponseState};
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Eq, PartialEq)]
 pub enum OpenUiError {
     /// The runtime session was normally disposed.
     Disposed,
@@ -248,7 +248,7 @@ impl Drop for ContinuationHandle {
 /// The runtime's exact `{root,errors}` JSON and separate limit flags.
 #[derive(Debug)]
 pub struct EvaluationOutput {
-    pub queries: QueryEffects,
+    pub query_evaluation_error: Option<OpenUiError>,
     pub query_snapshot_json: Option<String>,
     /// Byte-identical to `openui_runtime::TreeResult::to_json`.
     pub json: String,
@@ -857,17 +857,24 @@ impl SessionCore {
         projected: Option<String>,
         native_view: bool,
     ) -> Result<ReplacementOutput, OpenUiError> {
-        self.replace_program_streaming(refs, program, persisted, projected, native_view, false)
+        self.replace_program_with_response(
+            refs,
+            program,
+            persisted,
+            projected,
+            native_view,
+            ResponseState::default(),
+        )
     }
 
-    pub fn replace_program_streaming(
+    pub fn replace_program_with_response(
         &mut self,
         refs: &PreparedReferenceValues<'_>,
         program: Arc<ParsedProgram>,
         persisted: Option<String>,
         projected: Option<String>,
         native_view: bool,
-        streaming: bool,
+        response: ResponseState,
     ) -> Result<ReplacementOutput, OpenUiError> {
         if self.manager.is_some() && !refs.is_empty() {
             return Err(OpenUiError::ReferenceConflict);
@@ -900,7 +907,7 @@ impl SessionCore {
                 |store| {
                     queries::draw(
                         self.manager.as_mut(),
-                        !streaming,
+                        !response.streaming,
                         &program_input(
                             &program.inner,
                             &self.library,
@@ -942,13 +949,13 @@ impl SessionCore {
         self.generation = generation;
         self.root = tree.root;
         self.drain_releases();
-        let (query_snapshot_json, queries) = self.finish_draw(streaming, update);
+        let (query_snapshot_json, query_evaluation_error) = self.finish_draw(response, update);
         Ok(ReplacementOutput {
             projection: initialization_output(projection, self.core_limits),
             initialization: initialization_output(initialization, self.core_limits),
             evaluation: EvaluationOutput {
                 query_snapshot_json,
-                queries,
+                query_evaluation_error,
                 json,
                 size_limited: tree.size_limited,
                 depth_limited: tree.depth_limited,
@@ -1050,13 +1057,13 @@ impl SessionCore {
         &mut self,
         refs: &PreparedReferenceValues<'_>,
     ) -> Result<EvaluationOutput, OpenUiError> {
-        self.evaluate_streaming(refs, false)
+        self.evaluate_with_response(refs, ResponseState::default())
     }
 
-    pub fn evaluate_streaming(
+    pub fn evaluate_with_response(
         &mut self,
         refs: &PreparedReferenceValues<'_>,
-        streaming: bool,
+        response: ResponseState,
     ) -> Result<EvaluationOutput, OpenUiError> {
         self.call(refs, |s, refs| {
             let functions = Self::functions(
@@ -1071,7 +1078,7 @@ impl SessionCore {
                 .ok_or_else(|| limit("evaluation generations exhausted"))?;
             let ((tree, json), update) = queries::draw(
                 s.manager.as_mut(),
-                !streaming && (s.streaming || s.query_inputs_changed),
+                !response.streaming && (s.streaming || s.query_inputs_changed),
                 &program_input(&s.program, &s.library, &s.bindings, functions.as_ref()),
                 &s.store,
                 refs,
@@ -1086,12 +1093,12 @@ impl SessionCore {
                 },
             )?;
             drop(functions);
-            let (query_snapshot_json, queries) = s.finish_draw(streaming, update);
+            let (query_snapshot_json, query_evaluation_error) = s.finish_draw(response, update);
             s.generation = generation;
             s.root = tree.root;
             Ok(EvaluationOutput {
                 query_snapshot_json,
-                queries,
+                query_evaluation_error,
                 json,
                 size_limited: tree.size_limited,
                 depth_limited: tree.depth_limited,
@@ -1558,6 +1565,43 @@ mod tests {
             session.resume(&refs, pending, true),
             Err(OpenUiError::ConsumedHandle)
         ));
+    }
+
+    #[test]
+    fn an_exhausted_provider_free_draw_keeps_the_last_root_and_handle() {
+        let schema = serde_json::json!({"$defs":{"Box":{"properties":{"action":{}}}}});
+        let library = Arc::new(ComponentLibrary {
+            inner: Arc::new(openui_lang::Library::from_json_schema(&schema)),
+            schema: Arc::new(schema),
+        });
+        let program = Arc::new(ParsedProgram {
+            inner: Arc::new(openui_lang::parse(
+                "root=Box(@Set($n,1))",
+                &library.inner,
+                None,
+            )),
+            json_bytes: 0,
+        });
+        let mut session = SessionCore::new(library, None, RuntimeLimits::default()).unwrap();
+        let values = JsObject::new();
+        let refs = PreparedReferenceValues::new(&values);
+        session.set_program(&refs, program).unwrap();
+        session.generation = u64::MAX - 1;
+        let last = session.evaluate(&refs).unwrap().evaluation;
+        assert!(matches!(
+            session.evaluate(&refs),
+            Err(OpenUiError::LimitExceeded { .. })
+        ));
+        let action = session
+            .action_at(&refs, last, vec!["props".into(), "action".into()])
+            .unwrap();
+        session
+            .run(&refs, Some(action), String::new(), None)
+            .unwrap();
+        assert_eq!(
+            session.get(&refs, "$n".into()).unwrap().as_deref(),
+            Some("1")
+        );
     }
 
     #[test]

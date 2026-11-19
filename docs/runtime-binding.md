@@ -370,18 +370,35 @@ admitted once using the actual session's prompt bindings and immutable limits.
 
 ## Driving queries
 
-Call `attachToolProvider()` and draw with `evaluateStreaming(streaming)` or
-`replaceProgramStreaming(…, nativeView, streaming)`. For a response bundle,
-pass the renderer's blocked condition, `isStreaming || !bundle.complete || !!bundle.error`.
-The session receives a parsed program and this flag. The existing
-`evaluate()` and `replaceProgram(…)` draw a settled program.
-`setProgram` waits for a draw before registering the new program's queries.
+Attach the capability with `attachToolProvider()`. In Swift and Kotlin use
+`evaluateWithResponse(responseState)` or
+`replaceProgramWithResponse(…, responseState)` for a response in progress.
+The original settled signatures remain callable through the generated Swift
+protocol and Kotlin interface. Swift protocol requirements cannot declare
+default arguments. JavaScript accepts an optional response state on its
+existing `evaluate()` and `replaceProgram(…)` methods.
 
-A blocked draw keeps registered results and accepts outstanding outcomes.
-Settling applies the current statements, including an empty list. The query
-snapshot JSON includes `__openui_loading`, `__openui_refetching` and
-`__openui_errors` alongside results. The tree's existing JSON shape is
-`{root,errors}`.
+The response state currently carries one boolean, `streaming`. For a
+bundle, pass the upstream renderer's combined gate in that field,
+`isStreaming || !bundle.complete || !!bundle.error`. The caller still
+owns the bundle. A blocked first draw reads a provider query as null even
+if the query declares a default. Without a provider the draw uses the
+declared default. These are the renderer's respective behaviors. An edit
+keeps live registrations and accepts outstanding outcomes while blocked.
+Settling registers the current statements, including an empty list.
+`setProgram` waits for a draw before registering queries.
+
+The tree JSON keeps its `{root,errors}` shape. The separate query snapshot
+includes results, `__openui_loading`, `__openui_refetching` and
+`__openui_errors`. A successful draw publishes a new generation. A refused
+draw preserves the previous root and its evaluation and action handles.
+Even a provider-free session refuses a draw with `LimitExceeded` if its
+64-bit evaluation generation is exhausted. Ordinary tree work and depth
+cuts return a successful draw with the corresponding flags.
+Query registration hitting a limit is a successful draw with the previous
+registrations and a typed `queryEvaluationError`. State edits can recover
+the registration and clear the error. Draining effects does not clear the
+diagnostic on screen.
 
 Perform each wanted call and return its opaque object to `completeToolCall`
 with an outcome JSON object containing exactly one of these fields.
@@ -394,20 +411,18 @@ with an outcome JSON object containing exactly one of these fields.
 | `failed` | Call failure message |
 | `mcpResponseJson` | Raw MCP response JSON text. Extracts the result inside Rust and preserves JavaScript numbers and lone surrogates through delivery. |
 
-`QueryEffects.changed` reports a change in serialized query snapshot bytes.
-Use it to decide whether to redraw after completion. A repeated or foreign
-call fails with `InvalidToolCall`. Outcome JSON is subject to the host byte bound and the evaluation
-work, size and depth limits. The session admits the combined projected result
-and error bodies before publishing a shared result. A refused outcome leaves
-the call available for correction. Detach drops the cache and revokes its calls. Supplying
-reference values while attached raises `ReferenceConflict`. Clear existing
-reference values with `setReferenceValues("{}")` before attaching.
+After any operation, call `takeQueryUpdate()` to receive the wanted calls
+and redraw flag. Writes, action runs, and completions can all use the same
+driver loop. Settled state changes evaluate queries before returning.
+`changed` accumulates changes to the query snapshot, its presence on attach/detach, or its evaluation
+error since the previous drain. The drain clears this flag and transfers
+the calls once. Its `evaluationError` gives the current diagnostic.
 
-Use `setWithQueries`, `writeBindingWithQueries` and `setFieldWithQueries` to
-receive wanted calls on the write that caused them. The write's `changed`
-field describes the store. If its new arguments exceed evaluation limits,
-the write succeeds with a typed `queries.evaluationError` and the manager
-keeps its prior registrations. The other state-changing operations also
-re-evaluate on a settled program. Call `takeQueryUpdate()` after operations
-with legacy return types to claim their undelivered effects. A subsequent
-settled draw or completion also hands them back.
+Skipping a drain leaves still-pending calls parked in dispatch order.
+Later operations discard calls whose entries have been released. The
+manager retains at most a current and previous cache entry per registered
+query, each with at most one pending call. Detaching discards the cache
+and revokes calls. A repeated or foreign completion raises `InvalidToolCall`.
+A refused outcome leaves a valid call available for correction. Supplied
+references conflict with an attached provider. Clear them with
+`setReferenceValues("{}")` before attaching.

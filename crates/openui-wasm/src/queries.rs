@@ -41,47 +41,38 @@ impl QueryEffects {
             .cloned()
             .map(WantedToolCall)
     }
-    #[wasm_bindgen(getter, js_name = evaluationError, unchecked_return_type = "any")]
+    #[wasm_bindgen(getter, js_name = evaluationError, unchecked_return_type = "{ kind: string; message: string } | null")]
     pub fn evaluation_error(&self) -> String {
-        self.0
-            .evaluation_error
-            .as_ref()
-            .map(|e| {
-                serde_json::json!({
-                    "kind": crate::runtime::kind(e), "message": e.to_string()
-                })
+        error_json(self.0.evaluation_error.as_ref())
+    }
+}
+
+pub(crate) fn error_json(error: Option<&core::OpenUiError>) -> String {
+    error
+        .map(|e| {
+            serde_json::json!({ "kind": crate::runtime::kind(e), "message": e.to_string() })
                 .to_string()
-            })
-            .unwrap_or_else(|| "null".into())
-    }
+        })
+        .unwrap_or_else(|| "null".into())
 }
+
+#[wasm_bindgen(typescript_custom_section)]
+const RESPONSE_STATE: &'static str = "export interface ResponseState { streaming: boolean }";
+
+// The package guard passes a plain copy of the response state. All host
+// getters run before borrowing the session.
 #[wasm_bindgen]
-pub struct QueryWriteOutput {
-    changed: bool,
-    save_requested: bool,
-    queries: Arc<core::QueryEffects>,
+extern "C" {
+    #[wasm_bindgen(typescript_type = "ResponseState")]
+    pub type ResponseState;
+    #[wasm_bindgen(method, getter)]
+    fn streaming(this: &ResponseState) -> bool;
 }
-impl From<core::QueryWriteOutput> for QueryWriteOutput {
-    fn from(v: core::QueryWriteOutput) -> Self {
-        Self {
-            changed: v.changed,
-            save_requested: v.save_requested,
-            queries: Arc::new(v.queries),
+
+impl ResponseState {
+    pub(crate) fn read(state: Option<Self>) -> core::ResponseState {
+        core::ResponseState {
+            streaming: state.is_some_and(|s| s.streaming()),
         }
-    }
-}
-#[wasm_bindgen]
-impl QueryWriteOutput {
-    #[wasm_bindgen(getter)]
-    pub fn changed(&self) -> bool {
-        self.changed
-    }
-    #[wasm_bindgen(getter, js_name = saveRequested)]
-    pub fn save_requested(&self) -> bool {
-        self.save_requested
-    }
-    #[wasm_bindgen(getter)]
-    pub fn queries(&self) -> QueryEffects {
-        QueryEffects(self.queries.clone())
     }
 }

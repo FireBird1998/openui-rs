@@ -34,18 +34,16 @@ impl From<openui_session::QueryEffects> for QueryEffects {
         }
     }
 }
-#[derive(Debug, uniffi::Record)]
-pub struct QueryWriteOutput {
-    pub changed: bool,
-    pub save_requested: bool,
-    pub queries: QueryEffects,
+/// The response gate for a draw. The default is settled.
+#[derive(Debug, Default, uniffi::Record)]
+pub struct ResponseState {
+    #[uniffi(default = false)]
+    pub streaming: bool,
 }
-impl From<openui_session::QueryWriteOutput> for QueryWriteOutput {
-    fn from(v: openui_session::QueryWriteOutput) -> Self {
+impl From<ResponseState> for openui_session::ResponseState {
+    fn from(value: ResponseState) -> Self {
         Self {
-            changed: v.changed,
-            save_requested: v.save_requested,
-            queries: v.queries.into(),
+            streaming: value.streaming,
         }
     }
 }

@@ -22,13 +22,10 @@ convenience init(library: ComponentLibrary, promptSpec: String?) throws
 static func withLimits(library: ComponentLibrary, promptSpec: String?, limits: RuntimeLimits) throws -> RuntimeSession
 func attachToolProvider() throws
 func detachToolProvider() throws
-func evaluateStreaming(streaming: Bool) throws -> EvaluationOutput
-func replaceProgramStreaming(program: ParsedProgram, persisted: String?, projected: String?, nativeView: Bool, streaming: Bool) throws -> ReplacementOutput
-func completeToolCall(call: WantedToolCall, outcomeJson: String) throws -> QueryEffects
+func evaluateWithResponse(responseState: ResponseState) throws -> EvaluationOutput
+func replaceProgramWithResponse(program: ParsedProgram, persisted: String?, projected: String?, nativeView: Bool, responseState: ResponseState) throws -> ReplacementOutput
+func completeToolCall(call: WantedToolCall, outcomeJson: String) throws
 func takeQueryUpdate() throws -> QueryEffects
-func setWithQueries(name: String, json: String?) throws -> QueryWriteOutput
-func writeBindingWithQueries(marker: String, json: String) throws -> QueryWriteOutput
-func setFieldWithQueries(form: String?, componentType: String?, name: String, json: String?, save: Bool) throws -> QueryWriteOutput
 func actionAt(evaluation: EvaluationHandle, path: [String]) throws -> ActionHandle
 func dispose()
 func evaluate() throws -> EvaluationOutput
@@ -63,13 +60,10 @@ constructor(library: ComponentLibrary, promptSpec: String?)
 fun withLimits(library: ComponentLibrary, promptSpec: String?, limits: RuntimeLimits): RuntimeSession
 fun attachToolProvider()
 fun detachToolProvider()
-fun evaluateStreaming(streaming: Boolean): EvaluationOutput
-fun replaceProgramStreaming(program: ParsedProgram, persisted: String?, projected: String?, nativeView: Boolean, streaming: Boolean): ReplacementOutput
-fun completeToolCall(call: WantedToolCall, outcomeJson: String): QueryEffects
+fun evaluateWithResponse(responseState: ResponseState): EvaluationOutput
+fun replaceProgramWithResponse(program: ParsedProgram, persisted: String?, projected: String?, nativeView: Boolean, responseState: ResponseState): ReplacementOutput
+fun completeToolCall(call: WantedToolCall, outcomeJson: String)
 fun takeQueryUpdate(): QueryEffects
-fun setWithQueries(name: String, json: String?): QueryWriteOutput
-fun writeBindingWithQueries(marker: String, json: String): QueryWriteOutput
-fun setFieldWithQueries(form: String?, componentType: String?, name: String, json: String?, save: Boolean): QueryWriteOutput
 fun actionAt(evaluation: EvaluationHandle, path: List<kotlin.String>): ActionHandle
 fun dispose()
 fun evaluate(): EvaluationOutput
@@ -116,17 +110,15 @@ struct EvaluationOutput {
     public var depthLimited: Bool
     public var evaluation: EvaluationHandle
     public var querySnapshotJson: String? // defaults to nil
-    public var queries: QueryEffects? // defaults to nil
+    public var queryEvaluationError: OpenUiError? // defaults to nil
 }
 struct QueryEffects {
     public var changed: Bool
     public var calls: [WantedToolCall]
     public var evaluationError: OpenUiError?
 }
-struct QueryWriteOutput {
-    public var changed: Bool
-    public var saveRequested: Bool
-    public var queries: QueryEffects
+struct ResponseState {
+    public var streaming: Bool // defaults to false
 }
 struct ReplacementOutput {
     public var initialization: InitializationOutput
@@ -219,7 +211,9 @@ is rejected by session construction with the existing `LimitExceeded` error,
 including zero and the maximum value; no session or Store state is changed.
 Calls that omit it retain their existing behavior.
 
-With a tool provider, a draw carries its query effects and serialized query
-snapshot. Read each opaque call's `toolName()` and optional `argumentsJson()`.
-Pass that same object to `completeToolCall`. The session contract defines the
-outcome JSON and the streaming flag. [Driving queries](runtime-binding.md#driving-queries)
+Call `takeQueryUpdate()` after session operations to claim wanted calls and the
+redraw flag. Read each call's `toolName()` and optional `argumentsJson()` and
+pass the object back to `completeToolCall`. A refused draw preserves the
+previous root and evaluation handle. On a blocked first draw, a query with
+a provider reads as null. Without a provider it reads its declared default,
+as in the upstream renderer. [Driving queries](runtime-binding.md#driving-queries)

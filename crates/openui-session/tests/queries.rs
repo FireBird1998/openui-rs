@@ -48,6 +48,7 @@ fn settled_draws_writes_and_blocked_edits_match_the_renderer_bytes() {
     for scenario in corpus["scenarios"].as_array().unwrap() {
         let mut s = SessionCore::new(lib.clone(), None, RuntimeLimits::default()).unwrap();
         s.attach_tool_provider(&refs).unwrap();
+        assert!(s.take_query_update().changed); // The provider makes the query snapshot visible.
         let mut calls: Vec<Arc<WantedToolCall>> = Vec::new();
         let mut blocked = true;
         for step in scenario["steps"].as_array().unwrap() {
@@ -57,26 +58,22 @@ fn settled_draws_writes_and_blocked_edits_match_the_renderer_bytes() {
                     || step["complete"] == false
                     || step["error"].is_string();
             }
-            let effects = if let Some(source) = step["replace"].as_str() {
-                let mut draw = s
-                    .replace_program_streaming(
+            let response = ResponseState { streaming: blocked };
+            if let Some(source) = step["replace"].as_str() {
+                output = Some(
+                    s.replace_program_with_response(
                         &refs,
                         program(&lib, source),
                         None,
                         None,
                         false,
-                        blocked,
+                        response,
                     )
                     .unwrap()
-                    .evaluation;
-                let effects = std::mem::take(&mut draw.queries);
-                output = Some(draw);
-                effects
+                    .evaluation,
+                );
             } else if step["evaluate"] == true {
-                let mut draw = s.evaluate_streaming(&refs, blocked).unwrap();
-                let effects = std::mem::take(&mut draw.queries);
-                output = Some(draw);
-                effects
+                output = Some(s.evaluate_with_response(&refs, response).unwrap());
             } else if let Some(index) = step["finish"].as_u64() {
                 let outcome = if step.get("error").is_some() {
                     json!({"failed":step["error"]})
@@ -84,10 +81,10 @@ fn settled_draws_writes_and_blocked_edits_match_the_renderer_bytes() {
                     json!({"value":step["value"]})
                 };
                 s.complete_tool_call_json(&calls[index as usize].id, &outcome.to_string())
-                    .unwrap()
+                    .unwrap();
             } else if let Some(value) = step.get("field") {
                 let out = s
-                    .set_field_with_queries(
+                    .set_field(
                         &refs,
                         None,
                         Some("Input".into()),
@@ -97,35 +94,36 @@ fn settled_draws_writes_and_blocked_edits_match_the_renderer_bytes() {
                     )
                     .unwrap();
                 assert!(out.changed && out.save_requested);
-                out.queries
             } else if let Some(value) = step.get("binding") {
-                let out = s
-                    .write_binding_with_queries(&refs, MARKER.into(), value.to_string())
-                    .unwrap();
-                assert!(out.changed);
-                out.queries
+                assert!(
+                    s.write_binding(&refs, MARKER.into(), value.to_string())
+                        .unwrap()
+                );
             } else {
-                let out = s
-                    .set_with_queries(&refs, "$n".into(), Some(step["set"].to_string()))
-                    .unwrap();
-                assert!(out.changed);
-                out.queries
-            };
+                assert!(
+                    s.set(&refs, "$n".into(), Some(step["set"].to_string()))
+                        .unwrap()
+                );
+            }
+            let effects = s.take_query_update();
             assert!(effects.evaluation_error.is_none());
             let draw = output.unwrap_or_else(|| {
-                let draw = s.evaluate_streaming(&refs, blocked).unwrap();
-                assert!(draw.queries.calls.is_empty() && !draw.queries.changed);
+                let draw = s.evaluate_with_response(&refs, response).unwrap();
+                let update = s.take_query_update();
+                assert!(update.calls.is_empty() && !update.changed);
                 draw
             });
             let dispatch = effects
                 .calls
                 .iter()
                 .map(|call| {
-                    format!(
-                        r#"{{"toolName":{},"args":{}}}"#,
-                        json!(call.tool_name),
-                        call.arguments_json().as_ref().unwrap()
-                    )
+                    let mut fields = format!(r#"{{"toolName":{}"#, json!(call.tool_name));
+                    if let Some(args) = call.arguments_json() {
+                        fields.push_str(r#","args":"#);
+                        fields.push_str(&args);
+                    }
+                    fields.push('}');
+                    fields
                 })
                 .collect::<Vec<_>>()
                 .join(",");
@@ -162,13 +160,8 @@ fn provider_exclusion_detach_and_single_use_are_enforced_without_effects() {
         Err(OpenUiError::ReferenceConflict)
     ));
     let p = program(&lib, "q=Query(\"old\")\nroot=Box(q)");
-    let old = s
-        .replace_program(&refs, p, None, None, true)
-        .unwrap()
-        .evaluation
-        .queries
-        .calls
-        .remove(0);
+    s.replace_program(&refs, p, None, None, true).unwrap();
+    let old = s.take_query_update().calls.remove(0);
     let (_, mut other, _) = base();
     other.attach_tool_provider(&refs).unwrap();
     assert!(matches!(
@@ -179,21 +172,24 @@ fn provider_exclusion_detach_and_single_use_are_enforced_without_effects() {
         s.complete_tool_call_json(&old.id, "{}"),
         Err(OpenUiError::InvalidJson { .. })
     ));
-    assert!(
-        s.complete_tool_call_json(&old.id, r#"{"value":3}"#)
-            .unwrap()
-            .changed
-    );
+    s.complete_tool_call_json(&old.id, r#"{"value":3}"#)
+        .unwrap();
+    assert!(s.take_query_update().changed);
     assert!(matches!(
         s.complete_tool_call_json(&old.id, r#"{"value":2}"#),
         Err(OpenUiError::InvalidToolCall)
     ));
     assert!(s.evaluate(&refs).unwrap().json.contains("\"value\":3"));
     s.detach_tool_provider();
+    s.detach_tool_provider();
+    assert!(s.take_query_update().changed);
+    s.detach_tool_provider();
+    assert!(!s.take_query_update().changed);
     assert!(s.check_reference_values().is_ok());
     assert!(s.evaluate(&refs).unwrap().query_snapshot_json.is_none());
     s.attach_tool_provider(&refs).unwrap();
-    assert_eq!(s.evaluate(&refs).unwrap().queries.calls.len(), 1);
+    s.evaluate(&refs).unwrap();
+    assert_eq!(s.take_query_update().calls.len(), 1);
 }
 
 #[test]
@@ -201,13 +197,8 @@ fn refused_native_view_preserves_the_pending_call_state_and_streaming_gate() {
     let (lib, mut s, refs) = base();
     s.attach_tool_provider(&refs).unwrap();
     let p = program(&lib, "$n=1\nq=Query(\"old\",{n:$n})\nroot=Box(q)");
-    let old = s
-        .replace_program(&refs, p, None, None, true)
-        .unwrap()
-        .evaluation
-        .queries
-        .calls
-        .remove(0);
+    s.replace_program(&refs, p, None, None, true).unwrap();
+    let old = s.take_query_update().calls.remove(0);
     let bad = program(
         &lib,
         "$n=99\nq=Query(\"bad\")\n$shape={type:\"element\",typeName:\"Box\",props:{},partial:false,hasDynamicProps:false,extra:1}\nroot=true ? $shape : Box()",
@@ -219,26 +210,25 @@ fn refused_native_view_preserves_the_pending_call_state_and_streaming_gate() {
     );
     assert_eq!(s.version(&refs).unwrap(), before);
     assert!(s.take_query_update().calls.is_empty());
-    assert!(
-        s.complete_tool_call(&old.id, ToolCallOutcome::Result(Value::Num(7.)))
-            .unwrap()
-            .changed
-    );
+    s.complete_tool_call(&old.id, ToolCallOutcome::Result(Value::Num(7.)))
+        .unwrap();
+    assert!(s.take_query_update().changed);
     let output = s.evaluate(&refs).unwrap();
-    assert!(output.json.contains("\"value\":7") && output.queries.calls.is_empty());
+    assert!(output.json.contains("\"value\":7") && s.take_query_update().calls.is_empty());
     assert!(
-        s.replace_program_streaming(&refs, bad, None, None, true, true)
-            .is_err()
+        s.replace_program_with_response(
+            &refs,
+            bad,
+            None,
+            None,
+            true,
+            ResponseState { streaming: true }
+        )
+        .is_err()
     );
     // A refused blocked edit must not close the old program's settled gate.
-    assert_eq!(
-        s.set_with_queries(&refs, "$n".into(), Some("2".into()))
-            .unwrap()
-            .queries
-            .calls[0]
-            .tool_name,
-        "old"
-    );
+    assert!(s.set(&refs, "$n".into(), Some("2".into())).unwrap());
+    assert_eq!(s.take_query_update().calls[0].tool_name, "old");
 }
 
 #[test]
@@ -249,12 +239,8 @@ fn mcp_numbers_surrogates_and_reported_errors_reach_the_live_program() {
         &lib,
         "a=Query(\"a\")\nb=Query(\"b\")\nc=Query(\"c\")\nd=Query(\"d\")\nroot=Box([\"\"+a,b,c])",
     );
-    let calls = s
-        .replace_program(&refs, p, None, None, true)
-        .unwrap()
-        .evaluation
-        .queries
-        .calls;
+    s.replace_program(&refs, p, None, None, true).unwrap();
+    let calls = s.take_query_update().calls;
     for (call, response) in calls.iter().zip([
         r#"{"structuredContent":1e400}"#,
         r#"{"structuredContent":-0}"#,
@@ -311,7 +297,7 @@ fn refusing_deep_large_or_shared_outcomes_leaves_the_same_receipt_retryable() {
         )
         .unwrap()
         .evaluation;
-    let id = draw.queries.calls[0].id.clone();
+    let id = s.take_query_update().calls[0].id.clone();
     for json in [
         format!(r#"{{"value":{}0{}}}"#, "[".repeat(40), "]".repeat(40)),
         json!({"value":"X".repeat(2000)}).to_string(),
@@ -325,12 +311,11 @@ fn refusing_deep_large_or_shared_outcomes_leaves_the_same_receipt_retryable() {
         ));
         let again = s.evaluate(&refs).unwrap();
         assert_eq!(again.query_snapshot_json, draw.query_snapshot_json);
-        assert!(again.queries.calls.is_empty());
+        assert!(s.take_query_update().calls.is_empty());
     }
-    let effect = s
-        .complete_tool_call_json(&id, r#"{"availableTools":["read","write"]}"#)
+    s.complete_tool_call_json(&id, r#"{"availableTools":["read","write"]}"#)
         .unwrap();
-    assert!(effect.changed);
+    assert!(s.take_query_update().changed);
     let draw = s.evaluate(&refs).unwrap();
     let snapshot: Json = serde_json::from_str(&draw.query_snapshot_json.unwrap()).unwrap();
     assert_eq!(
@@ -349,6 +334,7 @@ fn legacy_writes_dispatch_before_returning_and_a_refusal_preserves_unclaimed_cal
         .replace_program(&refs, p.clone(), None, None, true)
         .unwrap()
         .evaluation;
+    assert_eq!(s.take_query_update().calls.len(), 1);
     let action = s
         .action_at(&refs, draw.evaluation, vec!["props".into(), "value".into()])
         .unwrap();
@@ -357,37 +343,32 @@ fn legacy_writes_dispatch_before_returning_and_a_refusal_preserves_unclaimed_cal
         s.set(&refs, "$n".into(), Some("broken".into())),
         Err(OpenUiError::InvalidJson { .. })
     ));
-    let blocked = s.evaluate_streaming(&refs, true).unwrap();
-    assert!(blocked.queries.calls.is_empty());
+    s.evaluate_with_response(&refs, ResponseState { streaming: true })
+        .unwrap();
     let calls = s.take_query_update().calls;
     assert_eq!(calls.len(), 1);
     assert_eq!(calls[0].arguments_json().as_deref(), Some(r#"{"n":2}"#));
     s.set_program(&refs, p.clone()).unwrap();
     s.set(&refs, "$n".into(), Some("3".into())).unwrap();
     assert!(s.take_query_update().calls.is_empty());
-    let draw = s.evaluate_streaming(&refs, false).unwrap();
+    s.evaluate(&refs).unwrap();
+    let parked = s.take_query_update();
     assert_eq!(
-        draw.queries.calls[0].arguments_json().as_deref(),
+        parked.calls[0].arguments_json().as_deref(),
         Some(r#"{"n":3}"#)
     );
     s.detach_tool_provider();
     s.attach_tool_provider(&refs).unwrap();
-    let fresh = s
-        .evaluate_streaming(&refs, false)
-        .unwrap()
-        .queries
-        .calls
-        .remove(0);
+    s.evaluate(&refs).unwrap();
+    let fresh = s.take_query_update().calls.remove(0);
     assert!(matches!(
-        s.complete_tool_call_json(&draw.queries.calls[0].id, r#"{"value":3}"#),
+        s.complete_tool_call_json(&parked.calls[0].id, r#"{"value":3}"#),
         Err(OpenUiError::InvalidToolCall)
     ));
     s.attach_tool_provider(&refs).unwrap();
-    assert!(
-        s.complete_tool_call_json(&fresh.id, r#"{"value":3}"#)
-            .unwrap()
-            .changed
-    );
+    s.complete_tool_call_json(&fresh.id, r#"{"value":3}"#)
+        .unwrap();
+    assert!(s.take_query_update().changed);
 }
 
 #[test]
@@ -415,35 +396,125 @@ fn a_query_cut_after_an_accepted_write_preserves_registration_and_reports_the_li
         )
         .unwrap()
         .evaluation;
-    let id = draw.queries.calls[0].id.clone();
+    let id = s.take_query_update().calls[0].id.clone();
     let value = json!("x".repeat(1500)).to_string();
-    let write = s
-        .set_with_queries(&refs, "$n".into(), Some(value.clone()))
-        .unwrap();
-    assert!(write.changed && write.queries.calls.is_empty());
+    let changed = s.set(&refs, "$n".into(), Some(value.clone())).unwrap();
+    let write = s.take_query_update();
+    assert!(changed && write.changed && write.calls.is_empty());
     assert!(matches!(
-        write.queries.evaluation_error,
+        write.evaluation_error,
         Some(OpenUiError::LimitExceeded { .. })
     ));
     assert_eq!(
         s.get(&refs, "$n".into()).unwrap().as_deref(),
         Some(value.as_str())
     );
+    let fallback = s.evaluate(&refs).unwrap();
+    assert_eq!(fallback.json, draw.json);
+    assert_eq!(fallback.query_snapshot_json, draw.query_snapshot_json);
     assert!(matches!(
-        s.evaluate(&refs),
-        Err(OpenUiError::LimitExceeded { .. })
+        fallback.query_evaluation_error,
+        Some(OpenUiError::LimitExceeded { .. })
     ));
-    assert!(
-        s.complete_tool_call_json(&id, r#"{"value":1}"#)
-            .unwrap()
-            .changed
-    );
-    let recovery = s
-        .set_with_queries(&refs, "$n".into(), Some(r#""b""#.into()))
-        .unwrap();
-    assert!(recovery.queries.evaluation_error.is_none());
+    assert!(!s.take_query_update().changed);
+    s.complete_tool_call_json(&id, r#"{"value":1}"#).unwrap();
+    assert!(s.take_query_update().changed);
+    s.set(&refs, "$n".into(), Some(r#""b""#.into())).unwrap();
+    let recovery = s.take_query_update();
+    assert!(recovery.changed && recovery.evaluation_error.is_none());
+    assert!(s.evaluate(&refs).unwrap().query_evaluation_error.is_none());
     assert_eq!(
-        recovery.queries.calls[0].arguments_json().as_deref(),
+        recovery.calls[0].arguments_json().as_deref(),
         Some(r#"{"term":"bb"}"#)
     );
+    // Block a second oversized write, then hit the limit on the settling draw itself.
+    s.evaluate_with_response(&refs, ResponseState { streaming: true })
+        .unwrap();
+    s.set(&refs, "$n".into(), Some(value)).unwrap();
+    let settled = s.evaluate(&refs).unwrap();
+    assert!(settled.json.contains(r#""value":1"#));
+    assert!(matches!(
+        settled.query_evaluation_error,
+        Some(OpenUiError::LimitExceeded { .. })
+    ));
+    let cut = s.take_query_update();
+    assert!(cut.changed && cut.calls.is_empty());
+    assert_eq!(cut.evaluation_error, settled.query_evaluation_error);
+    let proposed = program(&lib, "q=Query(\"new\",{term:$n+$n})\nroot=Box([q,42])");
+    let replaced = s
+        .replace_program(&refs, proposed, None, None, true)
+        .unwrap()
+        .evaluation;
+    assert!(replaced.json.contains("[1,42]"));
+    assert_eq!(
+        replaced.query_evaluation_error,
+        settled.query_evaluation_error
+    );
+    assert!(s.take_query_update().calls.is_empty());
+}
+
+#[test]
+fn an_undrained_driver_keeps_only_live_calls_across_writes_draws_and_completions() {
+    let (lib, mut s, refs) = base();
+    s.attach_tool_provider(&refs).unwrap();
+    let p = program(
+        &lib,
+        "$n=0\na=Query(\"keep\")\nb=Query(\"vary\",{n:$n})\nroot=Box([a,b])",
+    );
+    s.replace_program(&refs, p, None, None, false).unwrap();
+    for n in 1..100 {
+        s.set(&refs, "$n".into(), Some(n.to_string())).unwrap();
+        s.evaluate(&refs).unwrap();
+    }
+    let update = s.take_query_update();
+    assert!(update.changed);
+    assert_eq!(update.calls.len(), 3);
+    // The varying query retains both its current and previous entries (ADR 0013).
+    assert_eq!(
+        update.calls[1].arguments_json().as_deref(),
+        Some(r#"{"n":98}"#)
+    );
+    assert_eq!(update.calls[0].tool_name, "keep");
+    assert_eq!(
+        update.calls[2].arguments_json().as_deref(),
+        Some(r#"{"n":99}"#)
+    );
+    s.set(&refs, "$n".into(), Some("100".into())).unwrap();
+    s.complete_tool_call_json(&update.calls[0].id, r#"{"value":"finished"}"#)
+        .unwrap();
+    let next = s.take_query_update();
+    assert!(next.changed);
+    assert_eq!(next.calls.len(), 1);
+    assert_eq!(
+        next.calls[0].arguments_json().as_deref(),
+        Some(r#"{"n":100}"#)
+    );
+    let empty = s.take_query_update();
+    assert!(empty.calls.is_empty() && !empty.changed);
+}
+
+#[test]
+fn a_blocked_first_draw_uses_declared_defaults_only_without_a_provider() {
+    let (lib, mut s, refs) = base();
+    let p = program(&lib, "q=Query(\"read\",{},\"waiting\")\nroot=Box(q)");
+    let response = ResponseState { streaming: true };
+    let plain = s
+        .replace_program_with_response(&refs, p, None, None, false, response)
+        .unwrap();
+    assert!(plain.evaluation.json.contains(r#""value":"waiting""#));
+    s.attach_tool_provider(&refs).unwrap();
+    assert!(
+        s.evaluate_with_response(&refs, response)
+            .unwrap()
+            .json
+            .contains(r#""value":null"#)
+    );
+    assert!(s.take_query_update().calls.is_empty());
+    assert!(
+        s.evaluate(&refs)
+            .unwrap()
+            .json
+            .contains(r#""value":"waiting""#)
+    );
+    assert_eq!(s.take_query_update().calls.len(), 1);
 }
