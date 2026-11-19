@@ -1,0 +1,10 @@
+{
+  "case": "numeric-mutation-tool-name",
+  "step": 1,
+  "reference": [
+    "{\"tree\":{\"root\":{\"type\":\"element\",\"typeName\":\"Box\",\"props\":{\"value\":{\"status\":\"loading\"},\"action\":{\"steps\":[{\"type\":\"run\",\"statementId\":\"m\",\"refType\":\"mutation\"}]}},\"partial\":false,\"hasDynamicProps\":true,\"statementId\":\"root\"},\"errors\":[]},\"snapshot\":{\"__openui_loading\":[],\"__openui_refetching\":[],\"__openui_errors\":[],\"m\":{\"status\":\"loading\"}},\"events\":[],\"calls\":[{\"toolName\":7,\"args\":{}}],\"changed\":true}"
+  ],
+  "rust": [
+    "{\"tree\":{\"root\":{\"type\":\"element\",\"typeName\":\"Box\",\"props\":{\"value\":{\"status\":\"loading\"},\"action\":{\"steps\":[{\"type\":\"run\",\"statementId\":\"m\",\"refType\":\"mutation\"}]}},\"partial\":false,\"hasDynamicProps\":true,\"statementId\":\"root\"},\"errors\":[]},\"snapshot\":{\"__openui_loading\":[],\"__openui_refetching\":[],\"__openui_errors\":[],\"m\":{\"status\":\"loading\"}},\"events\":[],\"calls\":[{\"toolName\":\"7\",\"args\":{}}],\"changed\":true}"
+  ]
+}

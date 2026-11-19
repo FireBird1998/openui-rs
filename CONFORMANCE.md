@@ -768,7 +768,9 @@ lang-core starts it after the source supplies data.
 ### Provider-managed mutations
 
 The manager and session transcripts compare every command with lang-core 1.1.0.
-Registration evaluates tool names. The renderer evaluates arguments at the Run
+Registration keeps the evaluated tool name for mutation identity and diagnostics.
+As for queries, a wanted call exposes the name in JavaScript string form.
+The renderer evaluates arguments at the Run
 step, including writes earlier in that click. A fresh registration exposes only
 `status: "idle"`. A rename adds null data and error. A retry exposes loading
 while its previous structured error stays in the error list until success or
@@ -779,7 +781,7 @@ can still resume the earlier plan after removal.
 | Situation and two-sided pin | lang-core 1.1.0 and renderer | openui-rs | Decision |
 |---|---|---|---|
 | [Mutation named for a status list](conformance/divergences/mutation-status-list-names.json) | The result overwrites the list. Reporting an error after overwriting `__openui_errors` rejects the fire promise when upstream tries to append to that object. | Snapshot lists keep their loading, refetching and error contents. Program references still read the mutation, and a change visible through that reference requests a redraw. | ADR 0013 rules 2 and 3, and #79's separate loading, refetching and error lists. |
-| [Resumed write moves a pending query](conformance/divergences/mutation-resumed-write-moves-pending-query.json) | Starts the new call with the query absent from loading and refetching. | Shows the current pending query in both lists. The resumed event and wanted call agree. | ADR 0013 rule 2, applied to a state write in the resumed plan. |
+| [Non-string mutation tool name](conformance/divergences/numeric-mutation-tool-name.json) | For `Mutation(7)`, a custom provider receives the number `7` in `callTool`. | The wanted call exposes the string `"7"`. Both sides keep the number `7` in the structured error's `toolName`. | The binding's tool names are strings, as for queries and JavaScript function-map lookup. A custom provider can observe the argument type. |
 | [Second managed suspension at capacity](conformance/divergences/bounded-pending-mutation-plans.json) | Dispatches the renamed tool while the previous plan still awaits its outcome. | Returns a size cut and a typed failure at the new Run step. The earlier call keeps its continuation. | #79 reuses the bounded action continuation mechanism. Every admitted managed call must be able to resume its plan. |
 
 The additional 512 seeded mutation scripts compare 20,715 observations,

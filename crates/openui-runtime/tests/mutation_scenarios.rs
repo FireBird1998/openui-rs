@@ -164,9 +164,21 @@ fn registration_submission_and_outcomes_match_the_upstream_manager() {
         "../../../conformance/divergences/mutation-status-list-names.json"
     ))
     .unwrap();
+    let mut used_pin = false;
     for scenario in scenarios.as_array().unwrap() {
         let reserved = scenario["name"] == pin["case"];
         let actual = replay(scenario);
+        if reserved {
+            assert!(!used_pin);
+            used_pin = true;
+            assert_eq!(pin["reference"].as_array().unwrap().len(), actual.len());
+            assert_eq!(pin["rust"].as_array().unwrap().len(), actual.len());
+            assert_ne!(
+                pin["reference"], pin["rust"],
+                "{} has converged",
+                pin["case"]
+            );
+        }
         for (index, row) in actual.iter().enumerate() {
             let reference = upstream.next().unwrap();
             let expected = if reserved {
@@ -178,6 +190,7 @@ fn registration_submission_and_outcomes_match_the_upstream_manager() {
             assert_eq!(row, expected, "{}, step {index}", scenario["name"]);
         }
     }
+    assert!(used_pin);
     assert!(upstream.next().is_none());
 }
 
@@ -346,4 +359,24 @@ fn prototype_named_mutation_redraws_after_registration_and_completion() {
         .unwrap();
     assert!(u.needs_redraw() && !u.changed);
     assert_eq!(manager.snapshot_json(), initial);
+}
+
+#[test]
+fn upstream_dispose_ends_both_late_outcomes_and_keeps_its_last_published_snapshot() {
+    let rows = include_str!("../../../conformance/golden/mutation-dispose.jsonl")
+        .lines()
+        .map(|line| parse_json(line).unwrap())
+        .collect::<Vec<_>>();
+    let snapshot = parse_json(
+        r#"{"__openui_loading":[],"__openui_refetching":[],"__openui_errors":[],"m":{"status":"loading"}}"#,
+    ).unwrap();
+    assert_eq!(rows.len(), 2);
+    for (row, success) in rows.iter().zip([true, false]) {
+        assert_eq!(row["success"], success);
+        assert_eq!(row["before"], snapshot);
+        assert_eq!(row["after"], snapshot);
+        assert_eq!(row["resumed"], false);
+        assert_eq!(row.get("result"), Some(&Json::Null));
+        assert_eq!(row["fireAfterDispose"], false);
+    }
 }

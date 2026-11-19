@@ -106,6 +106,14 @@
           "click": true
         }
       ]
+    },
+    {
+      "name": "numeric-mutation-tool-name",
+      "steps": [
+        {"replace":"m=Mutation(7)\nroot=Box(m,@Run(m))"},
+        {"click":true},
+        {"finish":0,"failed":"offline"}
+      ]
     }
   ]
 }

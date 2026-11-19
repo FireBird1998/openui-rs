@@ -546,10 +546,9 @@ impl SessionCore {
         openui_runtime::value_to_json(value)
             .map_err(|e| runtime_error(RuntimeFailure::Limit(e), self.core_limits.result_size()))
     }
-    fn continuation_room(&self) -> Result<(), OpenUiError> {
+    fn next_continuation_generation(&self) -> Result<u64, OpenUiError> {
         self.next_continuation
             .checked_add(1)
-            .map(|_| ())
             .ok_or_else(|| limit("continuation generations exhausted"))
     }
     fn field_text(
@@ -592,8 +591,8 @@ impl SessionCore {
         form: Option<&str>,
     ) -> Result<ActionOutput, OpenUiError> {
         self.field_text(form, None, message)?;
-        // Reserve the possibility of a handoff before running any effects.
-        self.continuation_room()?;
+        // Check generation space before any effects. Only a handoff claims it.
+        self.next_continuation_generation()?;
         let functions = Self::functions(
             &self.library,
             &self.functions,
@@ -652,17 +651,13 @@ impl SessionCore {
             depth_limited: run.depth_limited,
             continuation: None,
         };
-        if let (Some(request), Some(continuation)) =
-            (run.mutation.take(), run.continuation.as_ref())
-        {
-            self.dispatch_mutation(request, continuation, &mut output);
-            return Ok(output);
-        }
         output.continuation = if let Some(continuation) = run.continuation.take() {
-            self.next_continuation = self
-                .next_continuation
-                .checked_add(1)
-                .ok_or_else(|| limit("continuation generations exhausted"))?;
+            let generation = self.next_continuation_generation()?;
+            if let Some(request) = run.mutation.take() {
+                self.dispatch_mutation(request, continuation, generation, &mut output);
+                return Ok(output);
+            }
+            self.next_continuation = generation;
             if self.continuations.len() as u64 >= self.limits.max_continuations
                 && let Some((_, oldest)) = self.continuations.pop_first()
                 && let Some(handle) = oldest.handle.upgrade()
@@ -1384,7 +1379,7 @@ impl SessionCore {
                 return Err(OpenUiError::ConsumedHandle);
             }
             if succeeded {
-                s.continuation_room()?;
+                s.next_continuation_generation()?;
             }
             let entry = s
                 .continuations

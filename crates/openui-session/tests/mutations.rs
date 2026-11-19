@@ -45,18 +45,15 @@ fn settled_registration_clicks_and_resumed_segments_match_the_renderer() {
     let corpus: Json =
         serde_json::from_str(include_str!("../../../conformance/session-mutations.json")).unwrap();
     let mut reference = include_str!("../../../conformance/golden/session-mutations.jsonl").lines();
-    let pin: Json = serde_json::from_str(include_str!(
-        "../../../conformance/divergences/mutation-resumed-write-moves-pending-query.json"
-    ))
-    .unwrap();
-    let capacity: Json = serde_json::from_str(include_str!(
-        "../../../conformance/divergences/bounded-pending-mutation-plans.json"
-    ))
-    .unwrap();
+    let mut pins = [
+        include_str!("../../../conformance/divergences/bounded-pending-mutation-plans.json"),
+        include_str!("../../../conformance/divergences/numeric-mutation-tool-name.json"),
+    ]
+    .map(|text| serde_json::from_str::<Json>(text).unwrap())
+    .to_vec();
     let lib = library();
     assert_eq!(*lib.schema, corpus["schema"]);
     let r = refs();
-    let mut pins = 0;
     for scenario in corpus["scenarios"].as_array().unwrap() {
         let mut limits = RuntimeLimits::default();
         let capacity_case = scenario["maxContinuations"].as_u64();
@@ -160,20 +157,20 @@ fn settled_registration_clicks_and_resumed_segments_match_the_renderer() {
                 update.changed
             );
             let upstream = reference.next().unwrap();
-            let expected = if let Some(pin) = [&pin, &capacity]
-                .into_iter()
-                .find(|p| p["reference"][0] == upstream)
-            {
-                pins += 1;
-                pin["rust"][0].as_str().unwrap()
+            if let Some(position) = pins.iter().position(|pin| {
+                pin["case"] == scenario["name"] && pin["step"].as_u64() == Some(index as u64)
+            }) {
+                let pin = pins.remove(position);
+                assert_eq!(pin["reference"], json!([upstream]));
+                assert_eq!(pin["rust"], json!([actual]));
+                assert_ne!(actual, upstream, "{} has converged", scenario["name"]);
             } else {
-                upstream
-            };
-            assert_eq!(actual, expected, "{}, step {index}", scenario["name"]);
+                assert_eq!(actual, upstream, "{}, step {index}", scenario["name"]);
+            }
             drawing = Some(draw);
         }
     }
-    assert_eq!(pins, 2);
+    assert!(pins.is_empty(), "unused mutation pins: {pins:?}");
     assert!(reference.next().is_none());
 }
 
@@ -320,4 +317,72 @@ root=Box(m,$plan)"#;
     let run = click(&mut s, &r, &draw);
     assert!(run.events.is_empty() && run.continuation.is_none() && run.failure.is_none());
     assert!(s.take_query_update().calls.is_empty());
+}
+
+#[test]
+fn reporting_one_cancelled_call_as_failed_frees_one_of_64_pending_slots() {
+    let lib = library();
+    let r = refs();
+    let mut s = SessionCore::new(lib.clone(), None, RuntimeLimits::default()).unwrap();
+    s.attach_tool_provider(&r).unwrap();
+    let mut source = String::new();
+    let mut buttons = Vec::new();
+    for i in 0..=64 {
+        source.push_str(&format!("m{i}=Mutation(\"save\")\n"));
+        buttons.push(format!("Action([@Run(m{i}),@OpenUrl(\"done\")])"));
+    }
+    source.push_str(&format!("root=Box(null,[{}])", buttons.join(",")));
+    let tree = s
+        .replace_program(&r, program(&lib, &source), None, None, true)
+        .unwrap()
+        .evaluation;
+    let submit = |s: &mut SessionCore, i: usize| {
+        let action = s
+            .action_at(
+                &r,
+                tree.evaluation.clone(),
+                vec!["props".into(), "action".into(), i.to_string()],
+            )
+            .unwrap();
+        s.run(&r, Some(action), "click".into(), None).unwrap()
+    };
+    for i in 0..64 {
+        assert!(submit(&mut s, i).failure.is_none());
+    }
+    let mut wanted = s.take_query_update();
+    assert_eq!(wanted.calls.len(), 64);
+    let cancelled = wanted.calls.pop().unwrap();
+    drop(wanted);
+    let refused = submit(&mut s, 64);
+    assert!(refused.size_limited);
+    assert!(matches!(
+        refused.failure.unwrap().error,
+        OpenUiError::LimitExceeded { .. }
+    ));
+    assert!(s.take_query_update().calls.is_empty());
+
+    s.complete_tool_call_json(&cancelled.id, r#"{"failed":"cancelled by provider"}"#)
+        .unwrap();
+    let update = s.take_query_update();
+    assert!(update.changed && update.calls.is_empty());
+    assert_eq!(update.actions.len(), 1);
+    assert!(update.actions[0].events.is_empty() && update.actions[0].failure.is_none());
+    assert_eq!(s.pending_continuations(&r).unwrap(), 63);
+    assert!(matches!(
+        s.complete_tool_call_json(&cancelled.id, r#"{"value":1}"#),
+        Err(OpenUiError::InvalidToolCall)
+    ));
+    assert!(submit(&mut s, 64).failure.is_none());
+    assert_eq!(s.take_query_update().calls.len(), 1);
+    let snapshot: Json =
+        serde_json::from_str(&s.evaluate(&r).unwrap().query_snapshot_json.unwrap()).unwrap();
+    assert_eq!(
+        snapshot["m63"],
+        json!({"status":"error","error":"cancelled by provider"})
+    );
+    assert_eq!(snapshot["__openui_errors"][0]["code"], "tool-error");
+    assert_eq!(snapshot["m64"]["status"], "loading");
+    assert_eq!(s.pending_continuations(&r).unwrap(), 64);
+    s.detach_tool_provider();
+    assert_eq!(s.pending_continuations(&r).unwrap(), 0);
 }

@@ -7,7 +7,8 @@ impl SessionCore {
     pub(super) fn dispatch_mutation(
         &mut self,
         request: openui_runtime::MutationRequest,
-        continuation: &ActionContinuation,
+        continuation: ActionContinuation,
+        generation: u64,
         output: &mut ActionOutput,
     ) {
         let Some(manager) = self.manager.as_mut() else {
@@ -38,12 +39,11 @@ impl SessionCore {
         match started {
             Ok(update) => {
                 if let Some(call) = update.calls.first() {
-                    // Every entry point reserves a generation before running any steps.
-                    self.next_continuation = self.next_continuation.saturating_add(1);
+                    self.next_continuation = generation;
                     self.continuations.insert(
-                        self.next_continuation,
+                        generation,
                         PendingContinuation {
-                            continuation: continuation.clone(),
+                            continuation,
                             handle: Weak::new(),
                             call: Some(call.id.clone()),
                         },
@@ -68,7 +68,7 @@ impl SessionCore {
     ) -> Result<(), OpenUiError> {
         let succeeded = matches!(outcome, ToolCallOutcome::Result(_));
         if succeeded {
-            self.continuation_room()?;
+            self.next_continuation_generation()?;
         }
         let functions = Self::functions(
             &self.library,
@@ -106,5 +106,58 @@ impl SessionCore {
             self.state_changed();
         }
         Ok(())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn the_last_mutation_generation_can_fail_after_a_successful_resume_is_refused() {
+        let schema = serde_json::json!({"$defs":{"Box":{"properties":{"action":{}}}}});
+        let library = Arc::new(ComponentLibrary {
+            inner: Arc::new(openui_lang::Library::from_json_schema(&schema)),
+            schema: Arc::new(schema),
+        });
+        let inner = Arc::new(openui_lang::parse(
+            "m=Mutation(\"save\")\nroot=Box(Action([@Run(m),@Set($done,true),@Run(m)]))",
+            &library.inner,
+            None,
+        ));
+        let program = Arc::new(ParsedProgram {
+            json_bytes: inner.to_json().len() as u64,
+            inner,
+        });
+        let mut s = SessionCore::new(library, None, RuntimeLimits::default()).unwrap();
+        let values = JsObject::new();
+        let refs = PreparedReferenceValues::new(&values);
+        s.attach_tool_provider(&refs).unwrap();
+        let draw = s
+            .replace_program(&refs, program, None, None, true)
+            .unwrap()
+            .evaluation;
+        let action = s
+            .action_at(
+                &refs,
+                draw.evaluation,
+                vec!["props".into(), "action".into()],
+            )
+            .unwrap();
+        s.next_continuation = u64::MAX - 1;
+        s.run(&refs, Some(action), String::new(), None).unwrap();
+        let call = s.take_query_update().calls.pop().unwrap();
+        assert!(s.continuations.contains_key(&u64::MAX));
+        let version = s.store.version();
+        assert!(matches!(
+            s.complete_tool_call_json(&call.id, r#"{"value":1}"#),
+            Err(OpenUiError::LimitExceeded { .. })
+        ));
+        assert!(s.take_query_update().actions.is_empty());
+        assert_eq!(s.store.version(), version);
+        s.complete_tool_call_json(&call.id, r#"{"failed":"cancelled"}"#)
+            .unwrap();
+        assert!(s.continuations.is_empty());
+        assert_eq!(s.take_query_update().actions.len(), 1);
     }
 }

@@ -418,8 +418,10 @@ driver loop. Settled state changes evaluate queries before returning.
 error since the previous drain. The drain clears this flag and transfers
 the calls once. Its `evaluationError` gives the current diagnostic.
 
-With a provider, a settled program registers mutation tool names. A mutation
-Run evaluates its arguments against the current state and suspends the plan.
+With a provider, a settled program registers mutation tool names. For both
+queries and mutations the wanted call exposes the JavaScript string form of
+the evaluated tool name. For example, `Mutation(7)` dispatches `"7"` and a
+structured error keeps the number `7` in `toolName`. A mutation Run evaluates its arguments against the current state and suspends the plan.
 A second click while loading ends that second plan at the Run step. Events
 preceding the Run are in the click's ordinary action output.
 
@@ -434,10 +436,20 @@ state that requests more calls. The same drain transfers all of these effects
 once. Its redraw flag includes a resumed store write and a mutation reference
 change hidden by a reserved snapshot list.
 
-A managed submission uses one `maxContinuations` slot. At capacity its Run
-step reports `LimitExceeded` and a size cut before dispatch. Detaching drops
-pending managed plans and preserves already completed segments for the next
-drain. Without a provider, a mutation Run emits its host event and gives the
+Each managed submission occupies one `maxContinuations` slot (default 64)
+until the session accepts its outcome or the provider detaches. Draining or
+dropping the wanted call keeps its slot occupied. At capacity, a Run that
+would dispatch a new call reports `LimitExceeded` and a size cut. Existing
+plans remain pending.
+
+A driver that cancels a call while the provider stays attached can report
+`{"failed":"cancelled by provider"}` to `completeToolCall` with the original
+call handle. This ends its plan and frees one slot. If its registration
+is still live, the mutation records a `tool-error`. A later outcome for
+that handle is refused.
+If the driver drops a handle without reporting an outcome, detaching the
+provider releases all pending managed plans. Detaching preserves already
+completed segments for the next drain. Without a provider, a mutation Run emits its host event and gives the
 embedder its ordinary continuation.
 
 Skipping a drain leaves still-pending calls parked in dispatch order.
