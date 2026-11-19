@@ -202,6 +202,11 @@ impl QueryManager {
         outcome: ToolCallOutcome,
     ) -> Result<(QueryUpdate, Option<ResultLimit>), QueryCommandError> {
         self.check_call(id)?;
+        // A completion for a released entry is discarded whatever it holds,
+        // on the borrowed and owned paths alike.
+        if self.readers(id).0 == 0 {
+            return self.complete_command(id, ToolOutcome::Result(None));
+        }
         let limit = results::result_limit(self.limits);
         let outcome = match &outcome {
             ToolCallOutcome::Result(value) => ToolOutcome::ResultValue(value),
@@ -231,8 +236,25 @@ impl QueryManager {
         id: &ToolCallId,
         outcome: ToolOutcome<'_>,
     ) -> Result<(QueryUpdate, Option<ResultLimit>), QueryCommandError> {
-        self.check_call(id)?;
-        let (readers, tool_bytes) = match &id.0.target {
+        self.complete_delivery(id, outcome, None)
+    }
+
+    /// Deliver a result the caller refused under `limit` before reading it
+    /// (a session's outcome JSON too long or too deep to parse) as the
+    /// call's `tool-error`, exactly as a result the manager refuses: it
+    /// always ends the call, whatever the number of readers.
+    pub fn complete_tool_call_refused(
+        &mut self,
+        id: &ToolCallId,
+        limit: ResultLimit,
+    ) -> Result<QueryUpdate, QueryCommandError> {
+        let message = limit.to_string();
+        self.complete_delivery(id, ToolOutcome::CallFailed(&message), Some(limit))
+            .map(|(update, _)| update)
+    }
+
+    fn readers(&self, id: &ToolCallId) -> (usize, usize) {
+        match &id.0.target {
             CallTarget::Mutation(call) => (1, call.dispatched_tool.len()),
             CallTarget::Query(target) => target.upgrade().map_or((0, 0), |p| {
                 (
@@ -240,7 +262,17 @@ impl QueryManager {
                     p.tool_name.len(),
                 )
             }),
-        };
+        }
+    }
+
+    fn complete_delivery(
+        &mut self,
+        id: &ToolCallId,
+        outcome: ToolOutcome<'_>,
+        refusal: Option<ResultLimit>,
+    ) -> Result<(QueryUpdate, Option<ResultLimit>), QueryCommandError> {
+        self.check_call(id)?;
+        let (readers, tool_bytes) = self.readers(id);
         if readers == 0 {
             // ADR 0013: discard the outcome for a released or previous-only
             // entry. Retire its pending flag and consume the receipt once.
@@ -265,14 +297,21 @@ impl QueryManager {
             ToolOutcome::McpError(text) | ToolOutcome::CallFailed(text) => text.len(),
             _ => 0,
         };
-        if text.saturating_add(tool_bytes).saturating_mul(readers) > limit && text != 0 {
+        // A refused result's message is the manager's own: the fallback below
+        // bounds it, so it never refuses the command.
+        if refusal.is_none()
+            && text.saturating_add(tool_bytes).saturating_mul(readers) > limit
+            && text != 0
+        {
             return Err(QueryCommandError::Limit(crate::admission::size_error()));
         }
-        let success = matches!(
-            outcome,
-            ToolOutcome::Result(_) | ToolOutcome::ResultValue(_)
-        );
+        let success = refusal.is_some()
+            || matches!(
+                outcome,
+                ToolOutcome::Result(_) | ToolOutcome::ResultValue(_)
+            );
         let (candidate, published, refused) = self.attempt(id, outcome.clone(), false)?;
+        let refused = refused.or(refusal);
         let (candidate, update, refused) = match published {
             Ok(update) => (candidate, update, refused),
             Err(QueryCommandError::Limit(_)) => {

@@ -905,16 +905,23 @@ with both sides' outputs (`tests/result_limit_scenarios.rs`).
 | `query-result-one-byte-over-the-cache-cap-with-a-previous-key-held` | Stores the second query's result. | With 40 bytes held for the first query's previous key, a 61-byte result does not fit the cap of 100: the second query shows a `tool-error`; the 40 bytes stay on screen. | #90: the cache has a byte cap; data held for a previous key counts. |
 | `mutation-results-one-over-the-size-depth-and-cache-limits` | Each submission succeeds with its data. | Each is the mutation's `error` status and `tool-error`, naming the size, depth and cache limits in turn. | #90: mutation results are admitted as query results are. |
 | `query-result-two-readers-cannot-both-show` | Stores the 602-byte result; only the query that started the call is loading. | Both readers are loading (row `shared-entry-delivers-to-both-current-queries`); the result's two copies do not fit the 1,024-byte room, so each reader shows a `tool-error` and the call ends. | #90: a call never stays open because its delivery does not fit. |
-| `mutation-refusal-of-an-older-submission` | The older submission's late 1,025-byte result replaces the newer `saved`. | The refused result changes nothing: `saved` stays. | #90: nothing already admitted is changed by a refusal. |
+| `mutation-refusal-of-an-older-submission` | The older submission's late 1,025-byte result replaces the newer `saved` with `success`. | The refused result is that call's failure and replaces `saved` with `error`, as lang-core's stale failure would. | #90: a refused result behaves as a failed call, including when stale. |
 
 An outcome is decided in one order on every path, borrowed and owned
 completion, the session's JSON entry and its MCP entry: first whether it is
 valid, then the depth limit, then the result-size limit (the smaller of the
 result-size ceiling and the work limit), then the cache cap. Validity is
 decided before any limit wherever memory bounded by the depth limit can decide
-it, which is always for JSON text, an MCP response inside it and an evaluator
-value; only input nested past the depth limit before its validity is known
-counts as too deep without the rest being read.
+it. An evaluator value holding an element or syntax anywhere within the depth
+limit is invalid whatever the order of its members; one nested past the depth
+limit is too deep, and what lies past it is not read. JSON text, an escaped
+MCP response included, is read in document order: past an array or object
+nested beyond the depth limit its brackets cannot be matched in bounded
+memory, so text valid up to that point is too deep. An MCP response longer
+than the bound is checked for JSON validity and for being `null` (the
+reader's own error, from its first token); the rest of its MCP shape is not
+read, and it is too large, as the extraction helper refuses a response longer
+than the limit.
 
 If a delivery does not fit the snapshot's room (every reader's copy of the
 result, and every error, must fit the result-size limit together), a result
@@ -928,10 +935,13 @@ limit of L bytes`, until a run or success replaces them. The call always ends.
 A mutation's data is charged while its status is `success`; the idle
 `data: null` a rename shows is upstream's reset marker, not a result. A rename
 makes the registration idle while its earlier call runs on, so it can be
-submitted again, as upstream allows: a stale success or failure replaces the
-newer result as in lang-core 1.1.0, but a refused result of an older
-submission changes nothing. A call whose registration was removed settles
-nothing (#88).
+submitted again, as upstream allows. A stale success or failure replaces the
+newer result, as in lang-core 1.1.0, and a refused result behaves as a failed
+call, including when stale: its `tool-error` replaces the newer result. A call
+whose registration was removed settles nothing (#88). A result too large for
+any number of readers ends the call, as each reader's error or the compact
+error, whether the manager refused it or the session refused it before
+reading.
 
 The ticket counts one outstanding call per query or mutation. ADR 0013 lets
 the call of the key a query has just left finish and be dropped, so the

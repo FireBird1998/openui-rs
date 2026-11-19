@@ -17,8 +17,6 @@ struct Entry {
     error: Option<Value>,
     // The JSON bytes of the result's data, charged to the cache cap (#90).
     bytes: usize,
-    // How many submissions this registration has dispatched.
-    submissions: u64,
 }
 
 impl Entry {
@@ -34,8 +32,6 @@ pub(super) struct MutationCall {
     statement: String,
     registration: Weak<()>,
     pub(super) dispatched_tool: String,
-    // Which submission of the registration this call is.
-    submission: u64,
 }
 
 fn result(status: &str, data: Option<Value>, error: Option<Value>) -> Value {
@@ -124,7 +120,6 @@ impl QueryManager {
                         result: result("idle", None, None),
                         error: None,
                         bytes: 0,
-                        submissions: 0,
                     },
                 );
             }
@@ -162,7 +157,6 @@ impl QueryManager {
         if let Some(value) = args {
             crate::admission::measure(value, self.limits).map_err(QueryCommandError::Limit)?;
         }
-        entry.submissions = entry.submissions.saturating_add(1);
         let call = ToolCall {
             id: ToolCallId(Arc::new(CallIdentity {
                 manager: Arc::downgrade(&self.owner),
@@ -170,7 +164,6 @@ impl QueryManager {
                     statement: statement.into(),
                     registration: Arc::downgrade(&entry.identity),
                     dispatched_tool: entry.tool.clone(),
-                    submission: entry.submissions,
                 }),
                 consumed: AtomicBool::new(false),
             })),
@@ -319,11 +312,9 @@ impl Mutations {
             Some(Admitted::Refused(limit)) => Some(limit),
             None => None,
         };
-        // A refusal for a call older than the registration's latest
-        // submission changes nothing that a newer call stored.
-        if refused.is_some() && call.submission != entry.submissions {
-            return Ok((false, refused));
-        }
+        // A refused result is delivered as a failed call, including for an
+        // older submission: lang-core 1.1.0 lets a stale outcome replace a
+        // newer one, and a refusal behaves as that call's failure.
         let message = refused.map(|limit| limit.to_string());
         let outcome = match &message {
             Some(message) => ToolOutcome::CallFailed(message),

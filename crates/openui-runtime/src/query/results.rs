@@ -269,14 +269,16 @@ fn json_depth_fits(value: &JsonValue, depth: usize) -> bool {
     true
 }
 
-// A value in document order: refused as not JSON at the first element or
-// syntax, or as too deep at the first array or object past `depth`, whichever
-// comes first; then its size, stopping at the first byte over.
+// A value: refused as not JSON if it holds an element or syntax anywhere
+// within `depth` levels, whatever the order of its members; otherwise as too
+// deep if any array or object nests past `depth` (what lies past it is not
+// read); then its size, stopping at the first byte over.
 fn value_measure(
     value: &Value,
     size: usize,
     depth: usize,
 ) -> Result<Result<usize, ResultLimit>, QueryCommandError> {
+    let mut too_deep = false;
     let mut path: Vec<Box<dyn Iterator<Item = &Value> + '_>> =
         vec![Box::new(std::iter::once(value))];
     while let Some(level) = path.last_mut() {
@@ -293,9 +295,13 @@ fn value_measure(
             _ => continue,
         };
         if path.len() > depth {
-            return Ok(Err(ResultLimit::Depth(depth)));
+            too_deep = true;
+            continue;
         }
         path.push(children);
+    }
+    if too_deep {
+        return Ok(Err(ResultLimit::Depth(depth)));
     }
     Ok(value_bytes(value, size).ok_or(ResultLimit::Size(size)))
 }

@@ -506,7 +506,7 @@ fn a_renamed_mutations_idle_null_is_not_charged_and_the_charge_stays_exact() {
 }
 
 #[test]
-fn a_refused_outcome_of_an_older_submission_never_erases_a_newer_result() {
+fn a_refused_result_of_an_older_submission_behaves_as_that_calls_failure() {
     let store = Store::default();
     let limits = Limits::DEFAULT.with_result_size(1024);
     let mut manager = QueryManager::with_limits(limits).with_cache_limit(1024);
@@ -520,6 +520,8 @@ fn a_refused_outcome_of_an_older_submission_never_erases_a_newer_result() {
         .unwrap();
     let second = manager.fire_mutation("m", None).unwrap().calls.remove(0);
     complete(&mut manager, &second.id, &JsonValue::from("saved"));
+    // As in lang-core 1.1.0 a stale outcome replaces the newer one, and a
+    // refused result is that call's failure.
     let (_, refused) = manager
         .complete_tool_call_admitted(
             &first.id,
@@ -528,7 +530,12 @@ fn a_refused_outcome_of_an_older_submission_never_erases_a_newer_result() {
         .unwrap();
     assert_eq!(refused, Some(ResultLimit::Size(1024)));
     assert!(!first.id.is_pending(), "the old call is consumed");
-    assert_eq!(view(&manager)["m"]["data"], "saved");
+    let snapshot = view(&manager);
+    assert_eq!(snapshot["m"]["status"], "error");
+    assert_eq!(
+        snapshot["m"]["error"],
+        ResultLimit::Size(1024).to_string().as_str()
+    );
     check_charge(&manager);
     // A call whose registration was removed settles nothing, as on main.
     let third = manager.fire_mutation("m", None).unwrap().calls.remove(0);
@@ -540,6 +547,141 @@ fn a_refused_outcome_of_an_older_submission_never_erases_a_newer_result() {
     assert_eq!(manager.snapshot_json(), before);
 }
 
+#[test]
+fn a_completion_for_a_removed_query_is_discarded_on_both_paths_whatever_it_holds() {
+    let store = Store::default();
+    let limits = Limits::DEFAULT.with_result_size(1024).with_depth(4);
+    let long = "x".repeat(1024);
+    let (large, deep) = (text(2048), nested(9));
+    let syntax = Value::Ast(Arc::new(openui_runtime::Ast::Null));
+    for kind in [
+        "tool-not-found",
+        "mcp-error",
+        "failed",
+        "large",
+        "deep",
+        "syntax",
+    ] {
+        for owned in [false, true] {
+            let mut manager = QueryManager::with_limits(limits);
+            let call = evaluate(&mut manager, &program("q = Query(\"t\")"), &store).remove(0);
+            evaluate(&mut manager, &program("r = Query(\"u\")"), &store);
+            let before = manager.snapshot_json().to_owned();
+            let result = if owned {
+                let outcome = match kind {
+                    "tool-not-found" => ToolCallOutcome::ToolNotFound(vec![long.clone()]),
+                    "mcp-error" => ToolCallOutcome::McpError(long.clone()),
+                    "failed" => ToolCallOutcome::CallFailed(long.clone()),
+                    "large" => ToolCallOutcome::Result(Value::from_json(&large)),
+                    "deep" => ToolCallOutcome::Result(Value::from_json(&deep)),
+                    _ => ToolCallOutcome::Result(syntax.clone()),
+                };
+                manager.complete_tool_call(&call.id, outcome).map(|_| ())
+            } else {
+                let outcome = match kind {
+                    "tool-not-found" => ToolOutcome::ToolNotFound(vec![long.as_str()]),
+                    "mcp-error" => ToolOutcome::McpError(&long),
+                    "failed" => ToolOutcome::CallFailed(&long),
+                    "large" => ToolOutcome::Result(Some(&large)),
+                    "deep" => ToolOutcome::Result(Some(&deep)),
+                    _ => ToolOutcome::ResultValue(&syntax),
+                };
+                manager
+                    .apply(QueryCommand::Complete {
+                        id: &call.id,
+                        outcome,
+                    })
+                    .map(|_| ())
+            };
+            assert!(result.is_ok(), "{kind}, owned {owned}: {result:?}");
+            assert!(!call.id.is_pending(), "{kind}, owned {owned}");
+            assert_eq!(manager.snapshot_json(), before, "{kind}, owned {owned}");
+        }
+    }
+}
+
+#[test]
+fn an_over_limit_result_ends_the_call_for_any_number_of_readers() {
+    let store = Store::default();
+    let limits = Limits::DEFAULT.with_result_size(1024);
+    let readers = program(
+        &(0..24)
+            .map(|i| format!("q{i} = Query(\"t\")"))
+            .collect::<Vec<_>>()
+            .join("\n"),
+    );
+    for path in ["owned", "borrowed", "refused before reading"] {
+        let mut manager = QueryManager::with_limits(limits);
+        let call = evaluate(&mut manager, &readers, &store).remove(0);
+        match path {
+            "owned" => {
+                let value = Value::from_json(&text(1025));
+                manager
+                    .complete_tool_call(&call.id, ToolCallOutcome::Result(value))
+                    .unwrap();
+            }
+            "borrowed" => complete(&mut manager, &call.id, &text(1025)),
+            _ => {
+                manager
+                    .complete_tool_call_refused(&call.id, ResultLimit::Size(1024))
+                    .unwrap();
+            }
+        }
+        assert!(!call.id.is_pending(), "{path}");
+        let snapshot = view(&manager);
+        assert_eq!(
+            snapshot["__openui_loading"],
+            JsonValue::Array(Vec::new()),
+            "{path}"
+        );
+        assert_eq!(
+            snapshot["__openui_errors"][0]["message"],
+            "24 queries failed with errors that do not fit the result size limit of 1024 bytes",
+            "{path}"
+        );
+    }
+}
+
+#[test]
+fn an_objects_member_order_never_decides_invalid_versus_too_deep() {
+    let store = Store::default();
+    let p = program("q = Query(\"t\")");
+    let limits = Limits::DEFAULT.with_result_size(1024).with_depth(4);
+    let deep = || (0..6).fold(Value::Null, |value, _| Value::Arr(Arc::new(vec![value])));
+    let syntax = || Value::Ast(Arc::new(openui_runtime::Ast::Null));
+    // Integer keys come first in JavaScript's order, last in insertion order.
+    for (first, second) in [("b", "1"), ("1", "b")] {
+        for syntax_first in [true, false] {
+            let mut fields = JsObject::new();
+            let (a, b) = if syntax_first {
+                (syntax(), deep())
+            } else {
+                (deep(), syntax())
+            };
+            fields.define(first, a);
+            fields.define(second, b);
+            let mut manager = QueryManager::with_limits(limits);
+            let call = evaluate(&mut manager, &p, &store).remove(0);
+            let result = manager.complete_tool_call(
+                &call.id,
+                ToolCallOutcome::Result(Value::Obj(Arc::new(fields))),
+            );
+            assert!(
+                matches!(result, Err(QueryCommandError::Limit(_))),
+                "{first} then {second}, syntax first {syntax_first}"
+            );
+            assert!(call.id.is_pending());
+        }
+    }
+    // Past the depth limit nothing is read: a syntax value there is too deep.
+    let hidden = (0..6).fold(syntax(), |value, _| Value::Arr(Arc::new(vec![value])));
+    let mut manager = QueryManager::with_limits(limits);
+    let call = evaluate(&mut manager, &p, &store).remove(0);
+    let (_, refused) = manager
+        .complete_tool_call_admitted(&call.id, ToolCallOutcome::Result(hidden))
+        .unwrap();
+    assert_eq!(refused, Some(ResultLimit::Depth(4)));
+}
 #[test]
 fn every_completion_path_admits_through_the_same_limits() {
     let store = Store::default();
@@ -636,7 +778,7 @@ fn refusing_wide_or_long_results_allocates_nothing_in_proportion_to_them() {
 }
 
 #[test]
-fn validity_is_decided_before_size_and_depth_comes_first_only_when_it_is_reached_first() {
+fn validity_within_the_depth_limit_is_decided_before_depth_and_size_in_either_order() {
     let store = Store::default();
     let p = program("q = Query(\"t\")");
     let limits = Limits::DEFAULT.with_result_size(1024).with_depth(4);
@@ -646,11 +788,7 @@ fn validity_is_decided_before_size_and_depth_comes_first_only_when_it_is_reached
     for (name, items, expected) in [
         ("long then syntax", vec![long(), syntax()], None),
         ("syntax then long", vec![syntax(), long()], None),
-        (
-            "deep then syntax",
-            vec![deep(), syntax()],
-            Some(ResultLimit::Depth(4)),
-        ),
+        ("deep then syntax", vec![deep(), syntax()], None),
         ("syntax then deep", vec![syntax(), deep()], None),
     ] {
         let mut manager = QueryManager::with_limits(limits);

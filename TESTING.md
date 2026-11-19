@@ -405,8 +405,10 @@ every query of the key, the peak allocation of a refusal, and a seeded
 20,000-command script in which, after every command, the cache holds at most
 two entries per query, no query is starved, the charge equals a fresh
 measurement and stays within the cap, a repeated completion is refused and
-changes nothing, outstanding query calls never exceed live entries and
-mutation calls never exceed one per mutation. `result_limits` (session) pins
+changes nothing, and outstanding query calls never exceed two per query (one
+on the current key, one finishing on the previous key). A mutation can have
+several outstanding calls after renames, as upstream allows; a session caps
+pending managed calls globally at `maxContinuations` (default 64). `result_limits` (session) pins
 the line between a delivered `tool-error` and a refused outcome for outcome
 JSON, including text past the outcome bound, MCP responses and the peak
 allocation of refusing a 4 MiB result. The native and WebAssembly bindings
@@ -418,8 +420,11 @@ binding change also run `scripts/wasm.sh` (which loads both packages through
 their guards) and `bun --no-install test crates/openui-wasm/js`.
 
 The review round added tests, each failing before its fix: a rename's idle
-`null` is not charged; a refused result of an older submission never erases
-a newer one; every completion path admits under the same limits, the work
+`null` is not charged; a refused result of an older submission is that
+call's failure; a completion for a removed query is discarded on both paths
+whatever it holds; an over-limit result ends the call for 24 readers through
+the runtime and through session JSON; an object's member order never decides
+invalid versus too deep; a padded or bare `null` MCP response is refused; every completion path admits under the same limits, the work
 limit included; refusing wide objects, wide arrays and long strings takes
 the same peak allocation at every width; validity is decided before size
 (both orders pinned, and depth only when reached first); a delivery the

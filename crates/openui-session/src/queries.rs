@@ -273,6 +273,30 @@ impl SessionCore {
         Ok(())
     }
 
+    /// Deliver a result refused under `limit` before it was read as the
+    /// call's `tool-error`. It always ends the call (#90).
+    pub(super) fn complete_refused(
+        &mut self,
+        call: &ToolCallId,
+        limit: openui_runtime::ResultLimit,
+    ) -> Result<(), OpenUiError> {
+        if let Some((&generation, _)) = self
+            .continuations
+            .iter()
+            .find(|(_, entry)| entry.call.as_ref() == Some(call))
+        {
+            return self.complete_mutation_delivery(
+                generation,
+                call,
+                mutations::Delivery::Refused(limit),
+            );
+        }
+        let manager = self.manager.as_mut().ok_or(OpenUiError::InvalidToolCall)?;
+        let update = manager.complete_tool_call_refused(call, limit)?;
+        self.query_effects.record(update);
+        Ok(())
+    }
+
     /// A single tagged JSON outcome for both bindings. Parse the result with
     /// JavaScript number and string semantics. MCP responses enter the same
     /// completion path directly, without a stringify/parse of extracted data.

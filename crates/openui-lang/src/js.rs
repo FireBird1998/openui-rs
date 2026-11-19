@@ -224,7 +224,10 @@ pub(crate) fn write_json_surrogate(out: &mut String, unit: u16) {
 /// UTF-8 bytes in JSON.stringify's escaped string body, without quotes.
 /// A control character or lone surrogate can require six bytes.
 pub fn json_string_len(s: &str) -> usize {
-    s.chars().map(json_char_len).sum()
+    // Saturating, so a raised limit on a 32-bit target cannot wrap past it.
+    s.chars()
+        .map(json_char_len)
+        .fold(0usize, usize::saturating_add)
 }
 
 #[inline]

@@ -1,7 +1,14 @@
 //! Managed mutations retain their action continuation in the session. The
 //! embedder needs only the tool call identity to complete the segment.
 use super::*;
-use openui_runtime::ToolCallId;
+use openui_runtime::{ResultLimit, ToolCallId};
+
+/// What completes a call: the provider's outcome, or a result the session
+/// refused under a limit before reading it (#90).
+pub(super) enum Delivery {
+    Outcome(ToolCallOutcome),
+    Refused(ResultLimit),
+}
 
 impl SessionCore {
     pub(super) fn dispatch_mutation(
@@ -66,7 +73,16 @@ impl SessionCore {
         call: &ToolCallId,
         outcome: ToolCallOutcome,
     ) -> Result<(), OpenUiError> {
-        let delivers_result = matches!(outcome, ToolCallOutcome::Result(_));
+        self.complete_mutation_delivery(generation, call, Delivery::Outcome(outcome))
+    }
+
+    pub(super) fn complete_mutation_delivery(
+        &mut self,
+        generation: u64,
+        call: &ToolCallId,
+        delivery: Delivery,
+    ) -> Result<(), OpenUiError> {
+        let delivers_result = matches!(delivery, Delivery::Outcome(ToolCallOutcome::Result(_)));
         if delivers_result {
             self.next_continuation_generation()?;
         }
@@ -78,7 +94,13 @@ impl SessionCore {
         )?;
         let manager = self.manager.as_mut().ok_or(OpenUiError::InvalidToolCall)?;
         // A result refused under the limits is delivered as a failure (#90).
-        let (update, refused) = manager.complete_tool_call_admitted(call, outcome)?;
+        let (update, refused) = match delivery {
+            Delivery::Outcome(outcome) => manager.complete_tool_call_admitted(call, outcome)?,
+            Delivery::Refused(limit) => (
+                manager.complete_tool_call_refused(call, limit)?,
+                Some(limit),
+            ),
+        };
         let succeeded = delivers_result && refused.is_none();
         self.query_effects.record(update);
         let pending = self

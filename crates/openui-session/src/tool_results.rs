@@ -35,6 +35,8 @@ enum Shape {
     /// An object whose members are all named `mcpResponseJson`, the last a
     /// string starting at this offset: an MCP response.
     McpResponse(usize),
+    /// `null` alone.
+    Null,
     Other,
 }
 
@@ -58,7 +60,7 @@ impl SessionCore {
         call: &ToolCallId,
         limit: ResultLimit,
     ) -> Result<(), OpenUiError> {
-        self.complete_tool_call(call, ToolCallOutcome::CallFailed(limit.to_string()))
+        self.complete_refused(call, limit)
     }
 
     /// Outcome JSON longer than the bound: malformed text is refused as
@@ -87,6 +89,14 @@ impl SessionCore {
                         reason: "malformed MCP response JSON".into(),
                     }),
                     Scan::TooDeep { .. } => self.deliver_refused(call, ResultLimit::Depth(depth)),
+                    // A null response is invalid at any length: the reader's
+                    // own error, read from its first token.
+                    Scan::Complete(Shape::Null) => {
+                        match openui_runtime::extract_mcp_tool_result("null", self.core_limits) {
+                            Err(error) => Err(mcp::error(error)),
+                            Ok(_) => self.deliver_refused(call, ResultLimit::Size(size)),
+                        }
+                    }
                     Scan::Complete(_) => self.deliver_refused(call, ResultLimit::Size(size)),
                 }
             }
@@ -267,7 +277,7 @@ fn scan(mut src: impl Source, max_depth: usize) -> Scan {
     let mut open: Vec<bool> = Vec::new();
     let mut members = 0usize;
     let (mut all_value, mut all_mcp) = (true, true);
-    let (mut top_object, mut last_string_at) = (false, None);
+    let (mut top_object, mut last_string_at, mut top_null) = (false, None, false);
     loop {
         skip_ws(&mut src);
         if open.len() == 1 && top_object {
@@ -320,7 +330,8 @@ fn scan(mut src: impl Source, max_depth: usize) -> Scan {
                     return Scan::Malformed;
                 }
             }
-            Some(_) => {
+            Some(byte) => {
+                top_null = open.is_empty() && byte == b'n';
                 if !literal(&mut src) {
                     return Scan::Malformed;
                 }
@@ -335,6 +346,7 @@ fn scan(mut src: impl Source, max_depth: usize) -> Scan {
                     return Scan::Malformed;
                 }
                 let shape = match last_string_at {
+                    _ if top_null => Shape::Null,
                     _ if !top_object || members == 0 => Shape::Other,
                     _ if all_value => Shape::Value,
                     Some(at) if all_mcp => Shape::McpResponse(at),

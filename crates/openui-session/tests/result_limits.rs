@@ -345,3 +345,93 @@ fn a_result_two_readers_cannot_both_show_is_their_tool_error() {
     assert_eq!(snapshot["__openui_loading"], json!([]));
     assert_eq!(snapshot["__openui_errors"].as_array().unwrap().len(), 2);
 }
+
+#[test]
+fn an_over_limit_json_result_ends_the_call_for_twenty_four_readers() {
+    let source = (0..24)
+        .map(|i| format!("q{i} = Query(\"t\")"))
+        .collect::<Vec<_>>()
+        .join("\n");
+    for outcome in [
+        // Past the outcome bound: refused before it is read.
+        text_outcome(SIZE as usize + 1),
+        // Within it, each `1e300` is written `1e+300`: refused after reading.
+        format!("{{\"value\":[{}]}}", vec!["1e300"; 170].join(",")),
+    ] {
+        let (mut s, call) = session(&format!("{source}\nroot = Box(q0)"), None);
+        s.complete_tool_call_json(&call.id, &outcome).unwrap();
+        assert!(!call.id.is_pending());
+        let snapshot = snapshot(&mut s);
+        assert_eq!(snapshot["__openui_loading"], json!([]));
+        assert_eq!(
+            snapshot["__openui_errors"][0]["message"],
+            format!(
+                "24 queries failed with errors that do not fit the result size limit of {SIZE} bytes"
+            )
+        );
+    }
+}
+
+#[test]
+fn a_null_mcp_response_is_refused_at_any_length() {
+    for response in [
+        "null".to_owned(),
+        format!("{}null", " ".repeat(SIZE as usize)),
+    ] {
+        let (mut s, call) = session("q = Query(\"t\")\nroot = Box(q)", None);
+        let outcome = json!({ "mcpResponseJson": response }).to_string();
+        assert!(
+            matches!(
+                s.complete_tool_call_json(&call.id, &outcome),
+                Err(OpenUiError::Evaluation { .. })
+            ),
+            "{} bytes",
+            response.len()
+        );
+        assert!(call.id.is_pending());
+    }
+}
+
+#[test]
+fn a_refused_json_result_of_an_older_submission_is_that_calls_failure() {
+    let lib = library();
+    let r = refs();
+    let mut s = SessionCore::new(lib.clone(), None, limits(None)).unwrap();
+    s.attach_tool_provider(&r).unwrap();
+    let parsed = |source: &str| {
+        let inner = Arc::new(openui_lang::parse(source, &lib.inner, None));
+        Arc::new(ParsedProgram {
+            json_bytes: inner.to_json().len() as u64,
+            inner,
+        })
+    };
+    let action = |s: &mut SessionCore, source: &str| {
+        let draw = s
+            .replace_program(&r, parsed(source), None, None, true)
+            .unwrap()
+            .evaluation;
+        let action = s
+            .action_at(&r, draw.evaluation, vec!["props".into(), "action".into()])
+            .unwrap();
+        s.run(&r, Some(action), String::new(), None).unwrap();
+        s.take_query_update().calls.remove(0)
+    };
+    let first = action(
+        &mut s,
+        "m = Mutation(\"old\")\nroot = Box(m, Action([@Run(m)]))",
+    );
+    let second = action(
+        &mut s,
+        "m = Mutation(\"new\")\nroot = Box(m, Action([@Run(m)]))",
+    );
+    s.complete_tool_call_json(&second.id, r#"{"value":"saved"}"#)
+        .unwrap();
+    s.complete_tool_call_json(&first.id, &text_outcome(SIZE as usize + 1))
+        .unwrap();
+    let snapshot = snapshot(&mut s);
+    assert_eq!(snapshot["m"]["status"], "error");
+    assert_eq!(
+        snapshot["m"]["error"],
+        format!("tool result exceeds the result size limit of {SIZE} bytes")
+    );
+}
