@@ -359,6 +359,7 @@ pub struct SessionCore {
     query_inputs_changed: bool,
     extra_values_changed: bool,
     library: Arc<ComponentLibrary>,
+    root_name: Option<String>,
     program: Arc<ParseResult>,
     functions: BTreeMap<String, Arc<HostFunction>>,
     function_bytes: u64,
@@ -402,6 +403,7 @@ impl SessionCore {
             query_inputs_changed: true,
             extra_values_changed: false,
             library,
+            root_name: None,
             program: Arc::new(ParseResult::default()),
             functions: BTreeMap::new(),
             function_bytes: 0,
@@ -431,10 +433,13 @@ impl SessionCore {
                     });
                 }
             };
-            if !matches!(library, Value::Obj(_)) {
+            let Value::Obj(fields) = library else {
                 return Err(OpenUiError::InvalidJson {
                     reason: "expected a prompt library object".into(),
                 });
+            };
+            if let Some(Value::Str(root)) = fields.get("root") {
+                s.root_name = Some(root.clone());
             }
             s.bindings = BindingProps::from_prompt_spec(library).map_err(|e| {
                 runtime_error(RuntimeFailure::Limit(e), s.core_limits.result_size())
@@ -442,6 +447,16 @@ impl SessionCore {
         }
         Ok(s)
     }
+    /// Create a streaming parser using this session's library and the root
+    /// component declared in its optional prompt spec.
+    pub fn stream_parser(&self, limits: Limits) -> openui_lang::StreamParser {
+        openui_lang::StreamParser::with_limits(
+            self.library.inner.clone(),
+            self.root_name.as_deref(),
+            limits,
+        )
+    }
+
     /// Register or replace a declared function. At most 256 names, additionally
     /// bounded by max_json_bytes (name bytes plus 64 bytes per entry). Refusal
     /// preserves the previous callback. Registrations survive program changes.
@@ -905,6 +920,26 @@ impl SessionCore {
         native_view: bool,
         response: ResponseState,
     ) -> Result<ReplacementOutput, OpenUiError> {
+        self.replace_program_at(
+            refs,
+            program,
+            persisted,
+            projected,
+            native_view,
+            (response, None),
+        )
+    }
+
+    fn replace_program_at(
+        &mut self,
+        refs: &PreparedReferenceValues<'_>,
+        program: Arc<ParsedProgram>,
+        persisted: Option<String>,
+        projected: Option<String>,
+        native_view: bool,
+        draw: (ResponseState, Option<u64>),
+    ) -> Result<ReplacementOutput, OpenUiError> {
+        let (response, now_ms) = draw;
         if self.manager.is_some() && !refs.is_empty() {
             return Err(OpenUiError::ReferenceConflict);
         }
@@ -939,7 +974,7 @@ impl SessionCore {
                 |store| {
                     queries::draw(
                         self.manager.as_mut(),
-                        response.effects(true, false),
+                        (response.effects(true, false), now_ms),
                         &response.input(program_input(
                             &program.inner,
                             &self.library,
@@ -1102,6 +1137,32 @@ impl SessionCore {
         refs: &PreparedReferenceValues<'_>,
         response: ResponseState,
     ) -> Result<EvaluationOutput, OpenUiError> {
+        self.evaluate_response_at(refs, response, None)
+    }
+
+    /// A driver's draw. A changed parse replaces and initializes the program.
+    /// The optional clock sample belongs to the staged query registrations.
+    pub fn draw_response_at(
+        &mut self,
+        refs: &PreparedReferenceValues<'_>,
+        program: Option<Arc<ParsedProgram>>,
+        response: ResponseState,
+        now_ms: Option<u64>,
+    ) -> Result<EvaluationOutput, OpenUiError> {
+        match program {
+            Some(program) => self
+                .replace_program_at(refs, program, None, None, false, (response, now_ms))
+                .map(|output| output.evaluation),
+            None => self.evaluate_response_at(refs, response, now_ms),
+        }
+    }
+
+    fn evaluate_response_at(
+        &mut self,
+        refs: &PreparedReferenceValues<'_>,
+        response: ResponseState,
+        now_ms: Option<u64>,
+    ) -> Result<EvaluationOutput, OpenUiError> {
         self.call(refs, |s, refs| {
             let functions = Self::functions(
                 &s.library,
@@ -1119,9 +1180,12 @@ impl SessionCore {
             let register_statements = s.response.blocked || s.query_inputs_changed;
             let ((tree, json), update) = queries::draw(
                 s.manager.as_mut(),
-                response.effects(
-                    register_statements,
-                    s.extra_values_changed || s.response.scripts != response.scripts,
+                (
+                    response.effects(
+                        register_statements,
+                        s.extra_values_changed || s.response.scripts != response.scripts,
+                    ),
+                    now_ms,
                 ),
                 &response.input(program_input(
                     &s.program,

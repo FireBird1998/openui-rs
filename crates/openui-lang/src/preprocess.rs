@@ -268,6 +268,7 @@ fn strip_comments(input: &str) -> String {
 /// depend on it: which of the two the program is. [`Preprocessor::push`]
 /// reports how much of the previous cleaned text survived, so a caller that
 /// cached work on it knows what to throw away.
+#[derive(Clone)]
 pub(crate) struct Preprocessor {
     /// Past the raw text's leading whitespace.
     started: bool,
@@ -292,7 +293,7 @@ enum Stream {
 }
 
 /// The fence rules' state after the final lines.
-#[derive(Default)]
+#[derive(Clone, Default)]
 struct Fences {
     scan: CodeScan,
     /// The open block, if one is.
@@ -308,7 +309,7 @@ struct Fences {
 }
 
 /// An open block.
-#[derive(Default)]
+#[derive(Clone, Default)]
 struct Block {
     lines: usize,
     nonblank: bool,
@@ -576,7 +577,7 @@ fn common_prefix(a: &str, b: &str) -> usize {
 
 /// Comment stripping and trimming of a text that grows line by line, its last
 /// line still changing.
-#[derive(Default)]
+#[derive(Clone, Default)]
 struct Comments {
     /// Comment-stripped output of the finished lines, each ending in `\n`.
     stable: String,
@@ -598,7 +599,7 @@ struct Comments {
 }
 
 /// Comment stripping of one line, resumable: `pos` is how far it has scanned.
-#[derive(Default)]
+#[derive(Clone, Default)]
 struct Scan {
     pos: usize,
     /// The quote of the string that is open, carried over from the line before.

@@ -415,9 +415,9 @@ pub use prompt::{
     PromptError, generate_prompt, generate_prompt_with_limits, generate_system_prompt,
     generate_system_prompt_with_limits,
 };
-#[doc(hidden)]
-pub use response_bundle::response_bundle_json_utf16;
 pub use response_bundle::{ResponseBundle, ResponseBundleError, parse_response_bundle};
+#[doc(hidden)]
+pub use response_bundle::{response_bundle_json_utf16, response_draw_json_utf16};
 pub use result::{
     Element, Meta, MutationStatement, ParseResult, QueryStatement, Severity, ValidationError,
     ValidationErrorCode, Value,

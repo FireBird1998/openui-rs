@@ -69,7 +69,7 @@ impl QueryManager {
         store: &Store,
         read: impl FnOnce(&Self) -> Result<T, E>,
     ) -> Result<(T, QueryUpdate), E> {
-        self.registration_transaction(input, store, false, read)
+        self.registration_transaction(input, store, false, None, read)
     }
 
     /// Stage both renderer effects on a settled program, then draw before committing either.
@@ -79,20 +79,25 @@ impl QueryManager {
         store: &Store,
         read: impl FnOnce(&Self) -> Result<T, E>,
     ) -> Result<(T, QueryUpdate), E> {
-        self.registration_transaction(input, store, true, read)
+        self.registration_transaction(input, store, true, None, read)
     }
 
-    fn registration_transaction<T, E: From<QueryCommandError>>(
+    /// Install new intervals at the host sample only if the draw commits.
+    pub fn registration_transaction<T, E: From<QueryCommandError>>(
         &mut self,
         input: &TreeInput<'_>,
         store: &Store,
         mutations: bool,
+        now_ms: Option<u64>,
         read: impl FnOnce(&Self) -> Result<T, E>,
     ) -> Result<(T, QueryUpdate), E> {
         if self.disposed {
             return Ok((read(self)?, self.idle_update()));
         }
         let mut candidate = self.candidate();
+        if let Some(now) = now_ms {
+            candidate.sample_clock(now)?;
+        }
         let nodes = candidate.evaluate_nodes(input, store)?;
         let calls = candidate.apply_nodes(input.result, nodes);
         if mutations {

@@ -1235,3 +1235,27 @@ fn a_taken_default_shares_property_reads_with_later_defaults() {
         Some(&openui_lang::Value::Bool(true))
     );
 }
+
+#[test]
+fn refused_stream_edits_preserve_shared_references_and_orphan_counts_on_later_draws() {
+    let mut staged = StreamParser::new(library(), None);
+    let mut control = StreamParser::new(library(), None);
+    let mut text = String::from("a=Text(1)\nb=Stack([a,a])\nc=Stack([b,b])\nroot=Stack([a,b,c])\n");
+    // Change which statements reach a shared tail, discard a different
+    // candidate, then read both the partial and the final parse.
+    for root in ["b", "a", "c", "b", "c"] {
+        let expected = control.set(&text);
+        assert_eq!(
+            staged.try_set(&text, false, Ok::<_, ()>).unwrap().to_json(),
+            expected.to_json()
+        );
+        let rejected = format!("{text}root=Stack([{root},{root}])\n");
+        assert!(
+            staged
+                .try_set(&rejected, true, |_| Err::<(), _>(()))
+                .is_err()
+        );
+        assert_eq!(staged.finish().to_json(), control.finish().to_json());
+        text.push_str(&format!("root=Stack([{root}])\n"));
+    }
+}

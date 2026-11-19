@@ -305,6 +305,31 @@ impl RuntimeSession {
             .map(|inner| ReplacementOutput { inner })
             .map_err(error)
     }
+    // Internal stages of the package's guarded setResponse operation.
+    #[wasm_bindgen(js_name = __readResponseBundle, skip_typescript)]
+    pub fn read_response_bundle(&self, text: &[u16], streaming: bool) -> Result<String, JsValue> {
+        self.inner
+            .read_response_bundle(text, streaming)
+            .map_err(error)
+    }
+
+    #[wasm_bindgen(js_name = __drawResponse, skip_typescript)]
+    pub fn draw_response(
+        &self,
+        text: Option<String>,
+        response: ResponseState,
+        now_ms: Option<u64>,
+    ) -> Result<EvaluationOutput, JsValue> {
+        self.inner
+            .draw_response(
+                text.as_deref(),
+                ResponseState::read(Some(response)).map_err(error)?,
+                now_ms,
+            )
+            .map(Into::into)
+            .map_err(error)
+    }
+
     #[wasm_bindgen(js_name = sampleQueryClock)]
     pub fn sample_query_clock(&self, now_ms: u64) -> Result<(), JsValue> {
         self.inner.sample_query_clock(now_ms).map_err(error)

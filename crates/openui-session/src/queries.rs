@@ -53,13 +53,14 @@ impl From<QueryCommandError> for OpenUiError {
 // proposed registrations, cache ownership changes or calls.
 pub(super) fn draw<T>(
     manager: Option<&mut QueryManager>,
-    effects: RegistrationEffects,
+    registration: (RegistrationEffects, Option<u64>),
     input: &TreeInput<'_>,
     store: &Store,
     refs: &PreparedReferenceValues<'_>,
     limits: Limits,
     read: impl Fn(TreeInput<'_>) -> Result<T, OpenUiError>,
 ) -> Result<(T, Option<Registration>), OpenUiError> {
+    let (effects, now_ms) = registration;
     let draw_with = |supply: &PreparedReferenceValues<'_>| {
         read(input.clone().with_prepared_reference_values(supply))
     };
@@ -72,11 +73,13 @@ pub(super) fn draw<T>(
             let read = |candidate: &QueryManager| {
                 draw_with(&candidate.prepared_results(limits)).map_err(DrawError::Screen)
             };
-            let result = if effects == RegistrationEffects::QueriesAndMutations {
-                manager.settled_transaction(input, store, read)
-            } else {
-                manager.evaluate_transaction(input, store, read)
-            };
+            let result = manager.registration_transaction(
+                input,
+                store,
+                effects == RegistrationEffects::QueriesAndMutations,
+                now_ms,
+                read,
+            );
             match result {
                 Ok((output, update)) => Ok((output, Some(Ok(update)))),
                 Err(DrawError::Registration(error @ QueryCommandError::Limit(_))) => Ok((

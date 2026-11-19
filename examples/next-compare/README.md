@@ -194,3 +194,12 @@ provider lookup, query effect and Retry. The other side runs the same program
 through the WebAssembly session's JavaScript driver. It compares the tree,
 snapshot and tool calls byte for byte at each observation and prints both
 values, including the result of swapping a function map for an MCP client.
+
+The same command also compares 19 raw-response draws. Each side receives the
+whole text so far and the streaming flag. The printed rows show when a click
+is accepted, when the Cloud script runs, and which value is displayed after
+its code changes. [Shared inputs](../../reference/tool-provider-scenarios.ts)
+
+Open `/response` in the example app to compare the mounted React Renderer
+with `RuntimeSession.setResponse` on the availability bundle.
+[Page](app/response/page.tsx) · [Response and provider](lib/response-example.ts)

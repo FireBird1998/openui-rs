@@ -196,3 +196,24 @@ test('unexpected delivery failures retry only a pending receipt and detach if re
     }
   }
 });
+
+test('a late Cloud script delivery leaves the settled edit visible and loading ends', async () => {
+  using lib = new wasm.ComponentLibrary('{"$defs":{"Box":{"properties":{"value":{}}}}}');
+  using s = new wasm.RuntimeSession(lib);
+  const firstCall = Promise.withResolvers<string>();
+  let calls = 0;
+  s.setToolProvider({cloud: () => ++calls === 1 ? firstCall.promise : 'edited'});
+  const raw = 'q=Query("cloud",{},0)\nroot=Box(q)\n]]>openui:scripts {"count":1}\n[{"name":"cloud","code":"A"}]';
+  try {
+    using first = s.setResponse(raw, false).evaluation;
+    using partial = s.setResponse(raw.replace('"A"', '"B"'), true).evaluation;
+    expect(calls).toBe(1);
+    using edit = s.setResponse(raw.replace('"A"', '"B"'), false).evaluation;
+    await nextToolTurn();
+    expect(calls).toBe(2);
+    firstCall.resolve('old');
+    await nextToolTurn();
+    using result = s.evaluate();
+    expect([JSON.parse(result.json).root.props.value, result.isQueryLoading]).toEqual(['edited', false]);
+  } finally { firstCall.resolve('old'); }
+});

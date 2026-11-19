@@ -1,5 +1,5 @@
 //! Rust-callable, one-thread adapter. Exported methods forward here one-to-one.
-use openui_lang::JsObject;
+use openui_lang::{JsObject, Limits, StreamParser};
 use openui_runtime::PreparedReferenceValues;
 use openui_session::*;
 use std::{
@@ -10,6 +10,8 @@ use std::{
 
 struct State {
     core: SessionCore,
+    response_limits: Limits,
+    parser: Option<StreamParser>,
     references: PreparedReferenceValues<'static>,
 }
 pub struct Session {
@@ -45,9 +47,19 @@ impl Session {
         prompt_spec: Option<String>,
         limits: RuntimeLimits,
     ) -> Result<Self, OpenUiError> {
+        let evaluation = limits.evaluation.to_core();
+        let response_limits = evaluation
+            .with_program_size(
+                evaluation
+                    .program_size()
+                    .min(Limits::DEFAULT.program_size()),
+            )
+            .with_depth(evaluation.depth().min(Limits::DEFAULT.depth()));
         Ok(Self {
             failed: Cell::new(false),
             state: Rc::new(RefCell::new(Some(State {
+                response_limits,
+                parser: None,
                 core: SessionCore::new(library, prompt_spec, limits.clone())?,
                 references: PreparedReferenceValues::owned_with_limits(
                     JsObject::new(),
@@ -143,6 +155,46 @@ impl Session {
             )
         })
     }
+    pub(crate) fn read_response_bundle(
+        &self,
+        text: &[u16],
+        streaming: bool,
+    ) -> Result<String, OpenUiError> {
+        self.access(|s| {
+            openui_lang::response_draw_json_utf16(text, streaming, s.response_limits).map_err(
+                |error| OpenUiError::LimitExceeded {
+                    reason: error.to_string(),
+                },
+            )
+        })
+    }
+
+    pub(crate) fn draw_response(
+        &self,
+        text: Option<&str>,
+        response: ResponseState,
+        now_ms: Option<u64>,
+    ) -> Result<EvaluationOutput, OpenUiError> {
+        self.access(|s| {
+            let Some(text) = text else {
+                return s
+                    .core
+                    .draw_response_at(&s.references, None, response, now_ms);
+            };
+            let parser = s
+                .parser
+                .get_or_insert_with(|| s.core.stream_parser(s.response_limits));
+            parser.try_set(text, !response.streaming, |parsed| {
+                s.core.draw_response_at(
+                    &s.references,
+                    Some(crate::program(parsed).0),
+                    response,
+                    now_ms,
+                )
+            })
+        })
+    }
+
     pub fn sample_query_clock(&self, now_ms: u64) -> Result<(), OpenUiError> {
         self.call(|s, _| s.sample_query_clock(now_ms))
     }

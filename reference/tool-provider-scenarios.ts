@@ -141,3 +141,55 @@ export async function diagnosticTranscript(createHost) {
   }
   return rows.join('\n') + '\n';
 }
+
+// Observe the renderer before and after the newline that admits each marker.
+export async function rawTranscript(host) {
+  const calls: string[] = [];
+  let deliveries = 0;
+  host.provider({cloud: () => { calls.push('cloud'); return 'cloud ' + ++deliveries; },
+    other: () => { calls.push('other'); return 'local'; }});
+  const rows = [];
+  const query = 'q=Query("cloud",{},"wait")\nr=Query("other",{},"other")\nroot=Box([q,r])';
+  const frame = ']]>openui:content?name=New+report&library=ui&library=two\n';
+  const section = '\n]]>openui:scripts {"count":1}\n';
+  const scripts = '[{"name":"cloud","code":"A"}]';
+  const tail = '\n]]>openui:context\n{"page":2}\n]]>openui:end';
+  const full = frame + query + section + scripts + tail;
+  for (const [label, text, streaming] of [
+    ['empty', null, true],
+    ['bare', 'root=Box("first")', false],
+    ['opening marker', 'root=Box("first")\n]]>openui:con', true],
+    ['mid-line retry', 'root=Box("first")]]>openui:con', true],
+    ['legacy scripts header held', query + section.trimEnd(), true],
+    ['legacy scripts payload', query + section + '[', true],
+    ['legacy scripts valid', query + section + scripts, true],
+    ['open frame', frame + query, true],
+    ['scripts marker', frame + query + '\n]]>openui:scri', true],
+    ['scripts header', frame + query + section.trimEnd(), true],
+    ['scripts payload', frame + query + section + '[{"name":', true],
+    ['end without newline', full, true],
+    ['end with newline', full + '\n', true],
+    ['settled', full, false],
+    ['delivered', full, false],
+    ['invalid', frame + 'root=Box("visible")' + section + 'root=Box("leaked")', false],
+    ['edited code streaming', full.replace('"A"', '"B"'), true],
+    ['edited code settled', full.replace('"A"', '"B"'), false],
+    ['refetched', full.replace('"A"', '"B"'), false],
+  ] as const) {
+    const result = host.raw(text, streaming);
+    const clicked = await host.click();
+    rows.push(JSON.stringify({label, ...result, clicked, calls: calls.splice(0)}));
+    await nextToolTurn();
+  }
+  return rows.join('\n') + '\n';
+}
+
+// Keep the reference side of the package's input-limit and string-boundary differences.
+export const rawBoundaryCases = [
+  {label: 'marker bytes', text: ']]>openui:content?name=' + 'é'.repeat(64) + '\nroot=Box("small")', streaming: false},
+  {label: 'scripts bytes', text: 'root=Box("small")\n]]>openui:scripts {"count":1}\n' +
+    JSON.stringify([{name:'cloud',code:'é'.repeat(64)}]), streaming: false},
+  {label: 'context depth', text: 'root=Box("small")\n]]>openui:context\n' + '['.repeat(36) + '0' + ']'.repeat(36), streaming: false},
+  {label: 'split surrogate', text: 'root=Box("a\ud83d', streaming: true},
+  {label: 'paired surrogate', text: 'root=Box("a😀")', streaming: false},
+];

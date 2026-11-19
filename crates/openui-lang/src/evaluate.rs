@@ -834,7 +834,7 @@ fn evaluate_default(
 /// what it ran out of last time (no more than any push of this stream can
 /// give): a default a stream keeps finding out as its limits grow costs about
 /// as much in all as evaluating it once at the end.
-#[derive(Default)]
+#[derive(Clone, Default)]
 pub(crate) struct Reuse {
     records: Vec<Record>,
     /// The evaluator's depth limit they were found under.
@@ -859,12 +859,14 @@ impl Reuse {
 }
 
 /// One default as the last push found it.
+#[derive(Clone)]
 struct Record {
     id: String,
     value: Value,
     outcome: Outcome,
 }
 
+#[derive(Clone)]
 enum Outcome {
     /// Nothing to evaluate.
     Plain,
@@ -883,6 +885,7 @@ enum Outcome {
 }
 
 /// What a whole default gave.
+#[derive(Clone)]
 struct Gave {
     js: Js,
     value: Option<Value>,
@@ -1015,7 +1018,7 @@ impl Record {
 /// The shared reads a default made first: elements it converted, properties
 /// of runtime expressions it read, and plain defaults it read. The defaults
 /// after it read the same objects.
-#[derive(Default)]
+#[derive(Clone, Default)]
 struct FirstReads {
     /// Each element read: the element, and the object it gave.
     /// Replayed, as the properties are, under the element's address as this

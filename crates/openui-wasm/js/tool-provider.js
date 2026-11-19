@@ -2,6 +2,15 @@
 // These originals are called only inside openuiCall, after argument admission.
 const openuiSample = RuntimeSession.prototype.sampleQueryClock;
 const openuiResumeAt = RuntimeSession.prototype.resumeQueriesAt;
+const openuiRawDraws = new WeakMap();
+const openuiReadBundle = RuntimeSession.prototype.__readResponseBundle;
+const openuiDrawResponse = RuntimeSession.prototype.__drawResponse;
+if (typeof openuiReadBundle !== 'function' || typeof openuiDrawResponse !== 'function') {
+  throw new Error('openui package guard: raw response helpers are missing');
+}
+// Only the captured functions participate in the compound operation.
+delete RuntimeSession.prototype.__readResponseBundle;
+delete RuntimeSession.prototype.__drawResponse;
 const openuiDrivers = new WeakMap();
 const openuiManualProviders = new WeakSet();
 const openuiDriverWrites = new Set(['initialize', 'initializeField', 'setProgram', 'replaceProgram',
@@ -275,6 +284,33 @@ function openuiDriverOptions(input) {
 }
 
 function openuiInstallDriver(prototype) {
+  const responseSpec = openuiSpec([value => value === null ? '' : openuiString(value), openuiBoolean]);
+  openuiDefine(prototype, 'setResponse', { value: function (...args) {
+    const driver = openuiGet(openuiDrivers, this);
+    const draw = openuiCall(responseSpec, this, prototype, args, converted => {
+      const text = converted[0], streaming = converted[1];
+      const parts = openuiParseJson(openuiApply(openuiReadBundle, this, [openuiResponseText(text, this), streaming]));
+      const bundle = parts.bundle;
+      const name = openuiHasOwn(bundle.metadata, 'name') ? bundle.metadata.name : undefined;
+      const error = openuiHasOwn(bundle, 'error') ? bundle.error : undefined;
+      const revision = openuiHasOwn(bundle, 'scriptRevision') ? bundle.scriptRevision : undefined;
+      const state = openuiResponseState({ __proto__: null, streaming, error, scriptRevision: revision,
+        isBundle: bundle.isBundle, complete: bundle.complete, scripts: bundle.scripts }, this);
+      let context = parts.context;
+      if (context !== null) {
+        try { context = openuiParseJson(context); } catch { /* A message can carry plain text. */ }
+      }
+      const last = openuiGet(openuiRawDraws, this);
+      const program = bundle.program;
+      const sameParse = last && last.program === program && last.state.streaming === streaming && last.state.error === error;
+      const output = openuiApply(openuiDrawResponse, this, [sameParse ? undefined : program, state,
+        driver ? openuiNow() : undefined]);
+      openuiPut(openuiRawDraws, this, {program, state});
+      return {evaluation: openuiRemember(output), name, context, attributes: parts.attributes, error};
+    });
+    if (driver) driver.drain();
+    return draw;
+  } });
   const spec = openuiSpec([value => {
     if (value == null) return null;
     if (typeof value === 'object' || typeof value === 'function') return value;
@@ -304,6 +340,17 @@ function openuiInstallDriver(prototype) {
 }
 
 function openuiDriverMember(key, spec, prototype, original) {
+  // A successful low-level handoff takes ownership back from setResponse.
+  const generated = original;
+  if (['setProgram', 'replaceProgram', 'evaluate', 'free', 'dispose'].includes(key)) {
+    original = function (...args) {
+      const result = openuiApply(generated, this, args);
+      if (key !== 'evaluate' || args[0] !== openuiGet(openuiRawDraws, this)?.state) {
+        openuiPut(openuiRawDraws, this, undefined);
+      }
+      return result;
+    };
+  }
   const guarded = openuiMember(spec, prototype, original);
   if (openuiOwned.has(key)) {
     const attaches = key.startsWith('attachToolProvider');

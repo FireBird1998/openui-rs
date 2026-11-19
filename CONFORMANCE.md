@@ -622,6 +622,29 @@ also a core equality, and different sets of names and code have different
 core revisions. Individual streaming comparisons use equality classes in
 place of the revision text.
 
+### JavaScript raw response driver
+
+The headless comparison passes the same raw response and streaming flag to the
+pinned renderer's bundle reader and effects and to `RuntimeSession.setResponse`.
+The 19 observations compare trees, snapshots, query loading, parser errors,
+message metadata, clicks and provider calls. With an unframed program, the
+streaming reader holds the scripts header until its newline. The click before
+the newline succeeds. Once the section is visible, clicks are blocked and
+the query shows as loading. Even a valid section and end marker line wait for
+streaming to stop before dispatch. The invalid payload in the fixture contains
+a second root declaration. Both render the original root and report
+`Invalid scripts bundle`. [Comparison inputs](reference/tool-provider-scenarios.ts)
+[Renderer observations](conformance/golden/tool-provider-response.jsonl)
+
+| Raw response | Pinned renderer | WebAssembly driver |
+| --- | --- | --- |
+| A marker line or scripts section takes the response past a 128-byte program limit, or the winning context exceeds the configured JSON depth | Draws `small` and returns the metadata | Throws `LimitExceeded` before installing the response |
+| Streaming program string cut after the high surrogate of 😀 | The value ends in U+D83D | The value ends in U+FFFD, following the bare WebAssembly parser's string conversion. Both draw 😀 once the pair arrives |
+
+The boundary fixtures record the renderer's values and the built-package tests
+check both outcomes. [Renderer values](conformance/golden/tool-provider-response-boundaries.json)
+[Driver tests](crates/openui-wasm/js/session-bundles.test.ts)
+
 ## Deliberately not ported from lang-core
 
 - The JavaScript authoring API, including `defineComponent`, `createLibrary`

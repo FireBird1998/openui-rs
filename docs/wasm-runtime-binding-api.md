@@ -249,7 +249,7 @@ calls until detach. Installing a driver during that attachment throws
 `RefusedWrite`, including when the caller already holds a wanted call.
 
 The driver drains effects after session operations, including
-`replaceProgram`, `evaluate`, writes and action runs. Pass the application's
+`replaceProgram`, `evaluate`, writes and action runs. For a manually parsed program, pass the application's
 response state to each draw. A bare program needs only `{ streaming }`.
 A blocked bundle suppresses actions and Retry, including Retry for readers
 represented by a compact error. Bare streaming keeps Retry available for
@@ -298,3 +298,42 @@ run when the timer delivers `advanceQueryClock`. A wanted call's
 `pending` getter reports whether the manager still owns the call.
 Pause, detach, dispose and free revoke outstanding deliveries. A provider
 owns its network request and any timeout. Its promise can settle later.
+
+### Drawing a raw response
+
+```typescript
+interface RuntimeSession {
+    setResponse(text: string | null, streaming: boolean): ResponseDraw;
+}
+```
+
+Pass the whole response so far on the first draw and on edits. When the
+session's prompt spec supplies a root component, the streaming parser uses it
+to select the entry in programs that omit the `root` statement. Read the
+returned `evaluation` as an ordinary `EvaluationOutput` and free it after
+use. The same result record carries `name`, `attributes`, `context` and
+`error`. A null response draws an empty program. A redraw with `evaluate()`
+keeps the last raw response state. A successful `setProgram`, `replaceProgram`
+or draw with an explicit response state returns control to the caller.
+
+```js
+const {evaluation, name, context, attributes, error} = session.setResponse(text, streaming);
+try {
+    render(JSON.parse(evaluation.json), {name, context, attributes, error});
+} finally {
+    evaluation.free();
+}
+```
+
+The bundle reader strips the scripts section and supplies the session's gates
+and Cloud script revision. The message's winning content marker supplies its
+attributes. Context contains parsed JSON or the text received so far. An
+invalid response after streaming returns the bundle error in `error` and the parser
+diagnostic in `evaluation.parserErrorJson`. The program still draws.
+
+The entire raw response counts against the program-size limit, including
+marker lines and Cloud script code. The reader uses the smaller of its
+default size and depth ceilings and the session's configured ceilings.
+Session limits also apply to the script names, revision and parsed program.
+A refused edit preserves the displayed evaluation, its actions and pending
+calls. [Built-package tests](../crates/openui-wasm/js/session-bundles.test.ts)

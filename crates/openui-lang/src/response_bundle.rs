@@ -171,6 +171,12 @@ pub fn response_bundle_json_utf16(
     streaming: bool,
     limits: Limits,
 ) -> Result<String, ResponseBundleError> {
+    let raw = admitted_utf16(response, limits)?;
+    read_bundle(&raw, streaming, limits, TextFormat::ExactUtf16)
+        .map(|bundle| bundle.serialize(TextFormat::ExactUtf16))
+}
+
+fn admitted_utf16(response: &[u16], limits: Limits) -> Result<String, ResponseBundleError> {
     let mut room = limits.program_size();
     if response.len() > room {
         return Err(ResponseBundleError::ProgramSize);
@@ -181,13 +187,54 @@ pub fn response_bundle_json_utf16(
             .checked_sub(bytes)
             .ok_or(ResponseBundleError::ProgramSize)?;
     }
-    read_bundle(
-        &text::encode_utf16(response.iter().copied()),
-        streaming,
-        limits,
-        TextFormat::ExactUtf16,
-    )
-    .map(|bundle| bundle.serialize(TextFormat::ExactUtf16))
+    Ok(text::encode_utf16(response.iter().copied()))
+}
+
+/// Wasm driver transport. Keep the public reader's wire format stable and
+/// read message metadata from the original, before the renderer masks bare
+/// scripts marker lines. Context travels as text so JS can materialize its
+/// own JSON numbers and exact UTF-16 strings without recursive serialization.
+pub fn response_draw_json_utf16(
+    response: &[u16],
+    streaming: bool,
+    limits: Limits,
+) -> Result<String, ResponseBundleError> {
+    let raw = admitted_utf16(response, limits)?;
+    let format = TextFormat::ExactUtf16;
+    let bundle = read_bundle(&raw, streaming, limits, format)?;
+    let mut out = String::from("{\"bundle\":");
+    out.push_str(&bundle.serialize(format));
+    split_message(&raw, streaming, |_, context, query, _| {
+        out.push_str(",\"context\":");
+        if let Some(context) = context {
+            if let Err(error) = format.read_json(&context, limits)
+                && error.depth_limited()
+            {
+                return Err(ResponseBundleError::ContextDepth);
+            }
+            format.write_json(&mut out, &context);
+        } else {
+            out.push_str("null");
+        }
+        out.push_str(",\"attributes\":{");
+        let mut first = true;
+        for pair in query.split('&') {
+            let (key, value) = pair.split_once('=').unwrap_or((pair, ""));
+            let key = format.attribute(key);
+            if key.is_empty() || key == "__proto__" {
+                continue;
+            }
+            if !first {
+                out.push(',');
+            }
+            first = false;
+            format.write_json(&mut out, &key);
+            out.push(':');
+            format.write_json(&mut out, &format.attribute(value));
+        }
+        out.push_str("}}");
+        Ok(out)
+    })
 }
 
 fn read_bundle(

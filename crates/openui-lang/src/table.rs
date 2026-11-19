@@ -24,7 +24,7 @@ use crate::result::Value;
 /// A name's number: dense from 0, fixed for the life of the table.
 pub(crate) type Slot = u32;
 
-#[derive(Default)]
+#[derive(Clone, Default)]
 pub(crate) struct Table {
     slots: HashMap<String, Slot>,
     names: Vec<String>,
@@ -43,6 +43,9 @@ pub(crate) struct Table {
     reached: Vec<u32>,
     /// The last result's reached tree, to diff the next one against.
     root_reach: Option<Arc<Reach>>,
+    // A staged parser shares immutable reach graphs with its predecessor. Keep
+    // changed incoming counts private until the enclosing draw commits.
+    staged_counts: Option<HashMap<usize, (Arc<Reach>, usize)>>,
     /// The entry statement the orphan count is relative to.
     entry: Option<Slot>,
     /// Value statements (other than the entry) reached by nothing.
@@ -294,11 +297,42 @@ impl Table {
         }
     }
 
+    pub(crate) fn stage_counts(&mut self) {
+        self.staged_counts = Some(HashMap::new());
+    }
+
+    pub(crate) fn commit_counts(&mut self) {
+        if let Some(counts) = self.staged_counts.take() {
+            for (_, (reach, count)) in counts {
+                reach.active.store(count, Relaxed);
+            }
+        }
+    }
+
+    fn change_count(&mut self, reach: &Arc<Reach>, add: bool) -> usize {
+        if let Some(counts) = &mut self.staged_counts {
+            let (_, count) = counts
+                .entry(Arc::as_ptr(reach) as usize)
+                .or_insert_with(|| (reach.clone(), reach.active.load(Relaxed)));
+            let before = *count;
+            if add {
+                *count += 1;
+            } else {
+                *count -= 1;
+            }
+            before
+        } else if add {
+            reach.active.fetch_add(1, Relaxed)
+        } else {
+            reach.active.fetch_sub(1, Relaxed)
+        }
+    }
+
     fn reach_add(&mut self, reach: &Arc<Reach>) {
         crate::stack::grow_stack!(self.reach_add(reach));
         #[cfg(test)]
         crate::materialize::cost_tests::visit();
-        if reach.active.fetch_add(1, Relaxed) != 0 {
+        if self.change_count(reach, true) != 0 {
             return;
         }
         for &slot in &reach.direct {
@@ -313,7 +347,7 @@ impl Table {
         crate::stack::grow_stack!(self.reach_remove(reach));
         #[cfg(test)]
         crate::materialize::cost_tests::visit();
-        if reach.active.fetch_sub(1, Relaxed) != 1 {
+        if self.change_count(reach, false) != 1 {
             return;
         }
         for &slot in &reach.direct {
@@ -367,6 +401,7 @@ impl Table {
 
 /// What a statement materialized to, with everything its materialization did
 /// on the side, so a later result can take it as is.
+#[derive(Clone)]
 pub(crate) struct Entry {
     pub output: Output,
     pub reach: Arc<Reach>,
@@ -386,6 +421,7 @@ pub(crate) struct Entry {
     pub depth_cut: Option<(usize, usize)>,
 }
 
+#[derive(Clone)]
 pub(crate) enum Output {
     Value(Value),
     Ast(Ast),
@@ -396,7 +432,7 @@ pub(crate) enum Output {
 ///
 /// An entry is valid for as long as it's here: a change to a statement drops
 /// the entries of every statement that references it, directly or not.
-#[derive(Default)]
+#[derive(Clone, Default)]
 pub(crate) struct Cache {
     entries: Vec<[Option<Box<Entry>>; 4]>,
     /// One bit per slot, for set operations on slot lists; clear between uses.

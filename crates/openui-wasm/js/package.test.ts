@@ -88,3 +88,18 @@ test('the web package loads with the same guard', async () => {
   kind(() => { action.__wbg_ptr = 1; }, 'InvalidHandle');
   action.free(); library.free();
 });
+
+test('both packages expose the guarded raw draw and keep its individual wasm stages private', async () => {
+  const dir = join(dirname(packagePath), '../web');
+  const web = await import(join(dir, 'openui_wasm.js'));
+  web.initSync({module: readFileSync(join(dir, 'openui_wasm_bg.wasm'))});
+  for (const pkg of [wasm, web]) {
+    using lib = new pkg.ComponentLibrary('{"$defs":{"Box":{"properties":{"a":{}}}}}');
+    using s = new pkg.RuntimeSession(lib);
+    expect(s.__readResponseBundle).toBeUndefined();
+    expect(s.__drawResponse).toBeUndefined();
+    kind(() => s.setResponse('', 0), 'InvalidJson');
+    using drawn = s.setResponse(']]>openui:content\nroot=Box(7)', false).evaluation;
+    expect(JSON.parse(drawn.json).root.props.a).toBe(7);
+  }
+});

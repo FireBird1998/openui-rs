@@ -46,7 +46,7 @@ pub struct StreamParser {
 }
 
 /// The statements that have fully arrived.
-#[derive(Default)]
+#[derive(Clone, Default)]
 struct Completed {
     /// How far into the cleaned text they reach.
     end: usize,
@@ -137,6 +137,46 @@ impl StreamParser {
             parser.absorb(&full_text[parser.buf.len()..]);
             parser.current_result(false)
         })
+    }
+
+    /// Parse a replacement and publish its caches only if the consumer accepts
+    /// the result. In particular a refused edit cannot change the identity of
+    /// a completed container default on the next push.
+    pub fn try_set<T, E>(
+        &mut self,
+        text: &str,
+        complete: bool,
+        accept: impl FnOnce(ParseResult) -> Result<T, E>,
+    ) -> Result<T, E> {
+        let mut next = if !self.buf.is_empty()
+            && !self.past_program_size
+            && self.stalled.is_none()
+            && text.starts_with(&self.buf)
+        {
+            let mut completed = self.completed.clone();
+            completed.table.stage_counts();
+            Self {
+                library: self.library.clone(),
+                root_name: self.root_name.clone(),
+                limits: self.limits,
+                buf: self.buf.clone(),
+                pre: self.pre.clone(),
+                completed,
+                reuse: self.reuse.clone(),
+                stalled: None,
+                past_program_size: false,
+            }
+        } else {
+            Self::with_limits(self.library.clone(), self.root_name.as_deref(), self.limits)
+        };
+        let result = next.watched(|parser| {
+            parser.absorb(&text[parser.buf.len()..]);
+            parser.current_result(complete)
+        });
+        let output = accept(result)?;
+        next.completed.table.commit_counts();
+        *self = next;
+        Ok(output)
     }
 
     /// The latest parse result, without new text.

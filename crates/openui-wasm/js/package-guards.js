@@ -152,6 +152,9 @@ const openuiBoolean = value => {
 };
 // Read the response value under the package guard, before borrowing the session.
 const openuiResponseLimits = new WeakMap();
+const openuiEvaluationLimits = openuiDescriptor(RuntimeLimits.prototype, 'evaluation').get;
+const openuiProgramSize = openuiDescriptor(ParseLimits.prototype, 'programSize').get;
+const openuiFreeLimits = ParseLimits.prototype.free;
 const openuiMaxJsonBytes = openuiDescriptor(RuntimeLimits.prototype, 'maxJsonBytes').get;
 const openuiIsSafeInteger = Number.isSafeInteger;
 function openuiResponseState(value, receiver) {
@@ -165,7 +168,7 @@ function openuiResponseState(value, receiver) {
   const count = names === undefined ? 0 : names.length;
   if (!openuiIsSafeInteger(count) || count < 0) throw openuiFailure('InvalidJson', 'expected a scripts array length');
   // UTF-16 units give a lower bound before copying. Rust checks actual bytes.
-  const limit = openuiGet(openuiResponseLimits, receiver) ?? 8388608n;
+  const limit = openuiGet(openuiResponseLimits, receiver)?.maxJsonBytes ?? 8388608n;
   let used = count + (error?.length ?? 0) + (revision?.length ?? 0);
   if (used > limit) throw openuiFailure('LimitExceeded', 'response state byte limit');
   let scripts = '[';
@@ -231,10 +234,10 @@ function openuiMessageText(value) {
 }
 // Preserve UTF-16 units with no reserved scalars. Bound the temporary copy
 // using the minimum possible number of UTF-8 bytes before allocating it.
-function openuiResponseText(value) {
+function openuiResponseText(value, receiver) {
   const text = openuiOptionalString(value) ?? '';
   const length = text.length;
-  if (length > 1024 * 1024) {
+  if (length > 1024 * 1024 || length > (openuiGet(openuiResponseLimits, receiver)?.programSize ?? 1024 * 1024)) {
     throw openuiFailure('LimitExceeded', 'response bundle exceeds the program-size limit');
   }
   const units = new openuiUint16Array(length);
@@ -287,7 +290,8 @@ const openuiSurface = new Map([
       free: openuiFree,
       actionAt: openuiSpec([openuiCapabilityOf(EvaluationHandle), openuiPath]),
       dispose: openuiNone,
-      evaluate: openuiSpec([openuiResponseState]),
+      evaluate: openuiSpec([(value, session) => value === undefined
+        ? openuiGet(openuiRawDraws, session)?.state : openuiResponseState(value, session)]),
       attachToolProvider: openuiNone,
       detachToolProvider: openuiNone,
       setQueryExtraValues: openuiSpec([openuiStr, openuiStr]),
@@ -507,7 +511,12 @@ function openuiGuardClass(klass, spec) {
         return openuiCall(member, undefined, undefined, args, converted => {
           const result = openuiApply(original, klass, converted);
           if (key === 'withLimits' && name === 'RuntimeSession') {
-            openuiPut(openuiResponseLimits, result, openuiApply(openuiMaxJsonBytes, converted[2], []));
+            const evaluation = openuiApply(openuiEvaluationLimits, converted[2], []);
+            try {
+              openuiPut(openuiResponseLimits, result, {__proto__: null,
+                maxJsonBytes: openuiApply(openuiMaxJsonBytes, converted[2], []),
+                programSize: openuiApply(openuiProgramSize, evaluation, [])});
+            } finally { openuiApply(openuiFreeLimits, evaluation, []); }
           }
           return result;
         });
