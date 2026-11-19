@@ -151,7 +151,7 @@ text for undefined shares a key with an undefined state variable, and in
 `cache-keys-collide-across-the-separator` a tool named `t::{}` shares the
 key of tool `t` with dependencies.
 
-The session replay in `conformance/session-queries.json` compares 51
+The session replay in `conformance/session-queries.json` compares 62
 observations of tree bytes, query snapshot bytes, dispatches and snapshot
 changes with `reference/session-queries.ts`. The adapter transcribes the
 pinned renderer's blocked condition, effect dependencies and call to
@@ -167,7 +167,7 @@ query, runs while its call is in flight (any number of them start one more
 call when it finishes), a repeated name, a run after a failure and a
 remembered run after one, unknown names, an empty list (every query) and a
 run that uses the arguments of the last evaluate rather than current state.
-`conformance/session-runs.json` compares 53 observations of tree bytes, query
+`conformance/session-runs.json` compares 63 observations of tree bytes, query
 snapshot bytes, dispatches, host events and snapshot changes with
 `reference/session-runs.ts`, which clicks through the transcribed
 `triggerAction` with a real manager and transcribes the renderer's
@@ -204,16 +204,33 @@ An ordinary tool keeps its cached result across a scripts edit. A streaming resp
 with queries reports loading before dispatch. An invalid scripts section draws
 the program and supplies a separate `parser` / `parse-failed` diagnostic.
 
-A query is loading while its current entry has a call in flight. Delivery of a
-successful result to that entry gives the query a fetch history. In
+A query is loading while its current entry has a call in flight, or while it
+waits on a pending input. Delivering a successful result to the current
+entry gives the query a fetch history. In
 `displaying-another-query-result`, displaying a result still held by a
 different query leaves that history untouched. Only the first query refetches
 until the second receives a successful completion of its own.
 
 In `reader-waits-for-its-input`, the reader's arguments use the source query.
-Rust dispatches both calls on the first evaluate, with a null input for the
-reader. Lang-core dispatches the source first, then dispatches the reader with
-the source result on completion. This divergence is temporary until #86.
+Both managers dispatch the reader when the source supplies data, including a
+null result. Defaults do not release a reader. The reader scenarios in
+`conformance/query-readers.json` compare chains, fan-in, failed inputs, cached
+key switches and a parser-reported cycle. The session replay observes the call
+in the completion drain, before a redraw, including during a blocked edit.
+
+The manager records the result version of the current or previous entry that
+supplied each input. Lang-core compares results using JavaScript strict
+equality. For JSON containers, a new delivery gives lang-core a new object
+and Rust a new counter value. Snapshots and tool calls expose only the data.
+For primitive results, Rust also checks equality when the counter changes.
+In `equal-primitive-preserves-a-readers-last-state`, the Store changes before
+an equal result arrives. Both managers dispatch with the new field only on the
+next explicit evaluate. In `equal-object-deliveries-rebuild-a-reader-with-live-state`,
+two deliveries contain the same JSON object members. Both managers dispatch
+with the new field immediately on the second delivery.
+The raw manager case `a-host-nan-result-keeps-its-reader-stale` supplies
+JavaScript NaN directly. It compares unequal even to the same delivery, so
+an unrelated completion can rebuild the reader with the latest Store state.
 
 These are lang-core's observable pre-execution results. The supplied overlay is
 ours: own `referenceValues` entries for declared query/mutation ids win,
@@ -761,7 +778,7 @@ Also reported, though not a quirk because the core doesn't reproduce it: a few l
 1. After each command an entry exists exactly when a registered query holds its key as current or previous.
 2. A query is loading exactly while its current entry has a call in flight.
 3. A call delivers success or failure to every query currently on its originating live entry, and a completion with no such reader ends the call without changing data, errors or fetch history.
-4. A current entry with neither data nor a call requests one unless the entry has failed and the query already shows an error.
+4. A ready query whose current entry has neither data nor a call requests one unless the entry has failed and the query already shows an error.
 5. A run asked for while the current entry has a call in flight is remembered once for the entry, and starts one more call when that call is delivered to a query still on the key.
 
 Each situation names its two-sided pin. Counts include later effects on data,
@@ -824,13 +841,94 @@ the other's, is `listed-state-variables-keep-equal-arguments-apart`: the
 variable joins one key as a dependency, so the queries never share a key,
 and it matches lang-core byte for byte.
 
-Reader scheduling has its own temporary pin until #86. In
-`reader-waits-for-its-input`, Rust starts the reader alongside the source and
-lang-core starts it after the source supplies data. `run-a-waiting-query` is
-the same until #86, and shows both effects: Rust's premature reader call,
-and the extra reader call that a run of the reader remembers behind it.
-Lang-core makes no reader call until the source has data, and its run of the
-waiting reader does nothing.
+A run of a waiting reader starts no call and remembers none. The source
+completion first starts any run remembered on its key, then rebuilds its stale
+readers. A reader with fetched input can run while its source refetches. The
+combined manager and session run scenarios pin that dispatch order.
+
+A waiting query inherits pending status through its inputs. The `readers-*` pins compare each observation with the reader golden.
+The 512 additional seeded reader graphs compare 16,111 observations. A
+counterfactual replay changes only the originating loading flag in upstream’s
+pending predicate for waiting queries (284 observations) and for queries back
+on an already-fetched key (three more, covered by `return-to-finished-key`).
+
+| Force | Situation and pin | lang-core 1.1.0 | openui-rs | Deciding sentence |
+|---|---|---|---|---|
+| Loading | `reader-of-a-sharing-query-is-pending` | Only the starter is loading. A reader waiting for the other holder is absent from the loading list. | Both holders and the waiting reader are loading. The same completion dispatches the reader on both sides. | 2 and the spec’s transitive pending rule |
+| Loading | `a-waiting-reader-leaves-its-own-pending-key` | A call abandoned by the reader can leave it marked loading even after its last pending input fails. | A waiting reader with an idle current entry leaves the loading list when its inputs stop loading. | 2 |
+| Reader trigger | `a-seeded-self-reader-does-not-follow-its-own-result` | A query edited to read itself can use previously fetched data. A different result can immediately start another call using that result. This can continue across arbitrarily many provider completions. An equal primitive or an already settled key can stop new calls. | Completion displays the returned value and leaves the arguments that produced it registered. If its self-input changed, the manager, session draw and drain report a diagnostic until registration reconciles them. | #79 and #86’s explicit own-result exclusion |
+| Reader trigger | `a-previous-key-releases-a-waiting-self-reader` | With the shared numeric result, the edit to a self-read rebuilds on loss of the old value. The subsequent equal delivery leaves the reader null and idle, even after invalidate. The repeated-id null case dispatches with null. | The wait is recorded after moving the key. A delivery to the previous key releases the reader even when it supplies the same primitive evaluated before the move. Both cases dispatch. [Manager observations](conformance/golden/query-self-wait.json) · [Renderer observations](conformance/golden/session-self-wait.jsonl) | ADR 0013 rule 4 and the spec’s own-result exclusion |
+| Reader admission | `admitted-success-exhausts-the-reader-allowance` | Stores the result and requests the reader with the concatenated input. | With a 1,024-byte result allowance, accepts the source, suspends the reader and reports its limit. | #79’s bounded evaluation and visible limit decisions |
+
+A further 128 seeded graphs complete the previous-key call with the same
+primitive the reader saw before moving. All 128 deliveries wake the reader.
+The replay audits 1,251 commands, including repeated statement ids and
+completion of calls made only by Rust. When loading already differs, it
+attributes a new dispatch to the previous-key rule only if disabling that
+rule restores upstream’s dispatch for that command.
+
+The two cycle witnesses in `conformance/query-reader-fixes.json` pin the
+`rapid-edits-revisit-a-cached-result` row, including both managers’ rounds
+and the readers left stale. In the nine-statement witness, a completion
+rebuilds q0 and q1 alternately ten times and leaves q0 stale on both sides.
+A late receipt for a removed query starts a new round counter. Lang-core
+reuses the displaced t0(null) result, completes ten more rounds and shows
+q1 as "d". Rule 1 released that entry at the command boundary. Rust requests
+t0({r0:null}), finishes after rebuilding q0 once, and shows q1 as null.
+Enabling only the displaced-result correction in the reference reproduces
+the Rust observations. The second witness uses a different tool for each of
+its two queries and reaches the same cache rule in the preceding trigger.
+
+The two-, three- and four-query round-order corpus permutes both completion
+batches, with 1,232 schedules. Its golden hashes the genuine upstream calls,
+snapshots, ordered readers in every round and readers left stale. It includes
+parser-reported cycles through arguments and unreported cycles through
+defaults, which the parser excludes from waitFor. A separate four-query
+case rebuilds q2, q1 and q3 in declaration order in one round, then q0 in
+the next. The raw completion helper
+also distinguishes numeric -0 from the fixture syntax: upstream compares it
+equal to +0, whereas NaN compares unequal even within one delivery. A
+missing provider result is stored as null. The first such success releases a
+reader that had no data; subsequent null and missing successes compare equal.
+
+The default runtime tests also count complete snapshot and reference preparation
+passes on a cached cycle with 2,000 unrelated queries and a NaN completion
+with 4,000. A cascade prepares its reference supply once. Subsequent rounds
+compare readers reached through changed registrations in declaration order
+and spend the same evaluation allowance. Both fixtures assert the exact
+statement-count-plus-one bound. Borrowed and owned completions consume an
+admitted receipt even if the dependent work exhausts its allowance. The
+reader diagnostic identifies the cut.
+
+The additional 5,000 reader-edit graphs compare 131,747 observations. Each
+differing observation has exactly one attribution, using the last transition
+from a policy prefix that still matched the upstream bytes. Counts include
+later effects of that decision. The separate 6,000-script table above and the
+512-graph reader replay retain their counts. The graph driver also settles
+2,494 dispatches observed only on the corrected side. Its commands include
+invalidating live readers, remembering runs, and firing and settling mutations
+while a query reads their status.
+
+| Reader graph situation | Differing observations |
+|---|---:|
+| `a-seeded-self-reader-does-not-follow-its-own-result` | 17268 |
+| `a-waiting-reader-leaves-its-own-pending-key` | 1986 |
+| `change-flag-after-loading-converges` | 314 |
+| `handoff-failure-leaves-a-reader-loading` | 10 |
+| `idle-query-takes-over-a-pending-call` | 899 |
+| `new-reader-of-a-retained-failure` | 207 |
+| `pending-key-changes-its-only-reader` | 1264 |
+| `rapid-edits-revisit-a-cached-result` | 660 |
+| `remove-statement-before-registering-its-replacement` | 9382 |
+| `removed-call-failure-on-a-recreated-key` | 7 |
+| `removed-call-success-on-a-recreated-key` | 31 |
+| `return-to-a-displaced-failed-entry` | 41 |
+| `return-to-an-outstanding-key-after-failure` | 1 |
+| `return-to-failed-key` | 125 |
+| `return-to-finished-key` | 1524 |
+| `run-through-a-query-that-did-not-start-the-call` | 3241 |
+| `shared-completion-leaves-a-reader-loading` | 43 |
+| `shared-entry-delivers-to-both-current-queries` | 8692 |
 
 A run asked for while a call is in flight is remembered for the key (sentence
 5), and lang-core remembers it on the query that asked. Two scenarios pin
@@ -901,6 +999,15 @@ last settled registration. In the renderer, `blocked` gates evaluation and
 `isBundle && blocked` gates clicks. Neither gate cancels an installed timer.
 [Scenarios](conformance/query-refresh.json) · [Reference bytes](conformance/golden/query-refresh.json) · [Renderer effect](https://github.com/thesysdev/openui/blob/47b9cae0d3b26a8c9d7514d5887a6d6608801ac9/packages/react-lang/src/hooks/useOpenUIState.ts#L215-L232)
 
+A source refresh with an equal primitive leaves its readers alone. A changed
+result can dispatch a reader in that completion. A reader getting its first input
+installs its timer on the current host clock. An already installed timer skips
+dispatch while its reader waits. Once the input arrives, an interval expression
+can install a new deadline. A reader with fetched input can poll while its source
+refetches. A clock advance processes due timers without continuing a bounded
+reader cascade. The timed NaN case compares the readers left stale by the upstream
+loop with the Rust round-cut flag. [Timed scenarios](conformance/query-refresh.json)
+
 | Situation | lang-core 1.1.0 | openui-rs | Decision and two-sided pin |
 |---|---|---|---|
 | Positive timer delay below the minimum, including platform delay overflow | Passes the delay to the host. Bun and Node warn and use 1 ms above 2,147,483,647 ms. Browsers take a Web IDL signed 32-bit integer, so 2³² + 5,000 ms becomes 5,000 ms. | Uses 1 ms for finite overflow on every host, then raises any delay below the configured minimum to that minimum. This keeps the driver delay representable and bounds the polling rate across hosts. First fetch and Run dispatch immediately. | #79 polling floor. [Default, configured and overflow pins](conformance/divergences/refresh-lifecycle.json) · [Node timers](https://nodejs.org/api/timers.html#setintervalcallback-delay-args) · [HTML timers](https://html.spec.whatwg.org/multipage/timers-and-user-prompts.html#timers) · [Web IDL integer conversion](https://webidl.spec.whatwg.org/#es-long) |
@@ -908,6 +1015,7 @@ last settled registration. In the renderer, `blocked` gates evaluation and
 | Dispose while a query call or mutation is loading | Clears internal query loading and drops mutations, but keeps the last published snapshot until a rebuild. A late query success stores no data. A late mutation of either outcome returns false. | Publishes the cleared loading lists and removed mutation immediately. Both late outcomes leave the paused snapshot unchanged. | ADR 0013 rule 2 and #79 dispose. [Query pins](conformance/divergences/refresh-lifecycle.json) · [Mutation pins](conformance/divergences/refresh-mutation-dispose.json) |
 | Query failure delivered while disposed | Sets the error and failed flag. Evaluation after activation suppresses the first call. | Consumes the receipt without recording the error. The next evaluation requests missing data. | ADR 0013 late-outcome rule and rule 4. [Failure pin](conformance/divergences/refresh-lifecycle.json) |
 | Activate and evaluate before an old query call returns | The cache still has its in-flight flag. The old success can settle the reactivated query. | Releases the old call at dispose. A fresh call owns the entry on evaluation. | ADR 0013 rules 2–4. [Reactivation pin](conformance/divergences/refresh-lifecycle.json) |
+| Retired query completion after activation with stale readers | Its completion loop can rebuild current readers, dispatch with new arguments and reach the round bound, even when the old query has been removed. | Consumes the retired receipt once. Reader inputs, calls and deadlines keep their current values. | #79 dispose and ADR 0013 late-outcome rule. The pause and reactivation pins also cover the immediate loading-list publication for a waiting reader. [Timed lifecycle pins](conformance/divergences/refresh-lifecycle.json) |
 
 The seeded replay checks each step of 512 scripts with clock advances,
 coercion fixtures, interval edits and disposal with calls in flight.
@@ -935,6 +1043,15 @@ another failure. An in-flight call follows its registration across a rename.
 Removing and declaring a name again creates a different registration. Success
 can still resume the earlier plan after removal.
 
+Only query references enter the parser’s `waitFor`. Query arguments can read a
+mutation while it is idle or loading. Mutation completion publishes its result
+without starting a reader round. A later query registration or a changed query
+input samples the new mutation value. In the resumed-write scenario the
+mutation succeeds, the action writes state and runs the reader with its
+registered arguments, then the store effect registers the reader with the new
+state and mutation status. Both calls and the resumed segment are available on
+the same drain.
+
 Both session adapters use the same `triggerAction` transcription in
 `reference/renderer-actions.ts`. The mixed plans in `session-mutations.json`
 exercise query runs on either side of the mutation, writes before and after
@@ -942,8 +1059,11 @@ suspension, and both outcomes. A bare streaming click dispatches the last
 registered tool with the current declaration's arguments. A newly declared
 mutation can first dispatch when the program settles. When the manager holds
 both kinds under one id, reads prefer the mutation. A Run step uses its
-`refType`: the mutation tag fires the mutation and the query tag invalidates the
-query. The shared-id scenario supplies the two statement lists independently,
+`refType`: the mutation tag fires the mutation and the query tag invalidates
+the query. In the shared-id reader case, the query tag makes the reader wait
+for the query’s first result. Mutation success alone leaves it waiting. When
+the query succeeds, the reader evaluates its arguments against the successful
+mutation. The shared-id scenarios supply the two statement lists independently,
 since the surface parser keeps only the last declaration of a name.
 
 | Situation and two-sided pin | lang-core 1.1.0 and renderer | openui-rs | Decision |
@@ -952,12 +1072,14 @@ since the surface parser keeps only the last declaration of a name.
 | [Non-string mutation tool name](conformance/divergences/numeric-mutation-tool-name.json) | For `Mutation(7)`, a custom provider receives the number `7` in `callTool`. | The wanted call exposes the string `"7"`. Both sides keep the number `7` in the structured error's `toolName`. | The binding's tool names are strings, as for queries and JavaScript function-map lookup. A custom provider can observe the argument type. |
 | [Second managed suspension at capacity](conformance/divergences/bounded-pending-mutation-plans.json) | Dispatches the renamed tool while the previous plan still awaits its outcome. | Returns a size cut and a typed failure at the new Run step. The earlier call keeps its continuation. | #79 reuses the bounded action continuation mechanism. Every admitted managed call must be able to resume its plan. |
 
-The additional 512 seeded mutation scripts compare 20,715 observations,
-including overlapping submissions, replacement and out-of-order outcomes.
-All 981 differing observations follow the status-list row. The replay reconstructs
-the loading list from the query's outstanding call and compares the resulting
-bytes and change flag after every command. Run this replay with
-`cargo test -p openui-runtime --test mutation_scenarios -- --ignored --nocapture`.
+The 512 seeded mutation scripts compare 22,415 observations, including
+overlapping submissions, replacement, out-of-order outcomes and a remembered
+run whose reader samples mutation status.
+All 987 differing observations follow the status-list row. The replay
+reconstructs the loading list from the query's
+outstanding call and compares the resulting bytes and change flag after every
+command. Run this replay with `cargo test -p openui-runtime --test
+mutation_scenarios -- --ignored --nocapture`.
 
 An explicit manager registration during dispose installs the mutation. Fire
 waits for activation. A paused session defers its registration effect.
@@ -995,6 +1117,17 @@ with both sides' outputs (`tests/result_limit_scenarios.rs`).
 | `mutation-results-one-over-the-size-depth-and-cache-limits` | Each submission succeeds with its data. | Each is the mutation's `error` status and `tool-error`, naming the size, depth and cache limits in turn. | #90: mutation results are admitted as query results are. |
 | `query-result-two-readers-cannot-both-show` | Stores the 602-byte result; only the query that started the call is loading. | Both readers are loading (row `shared-entry-delivers-to-both-current-queries`); the result's two copies do not fit the 1,024-byte room, so each reader shows a `tool-error` and the call ends. | #90: a call never stays open because its delivery does not fit. |
 | `mutation-refusal-of-an-older-submission` | The older submission's late 1,025-byte result replaces the newer `saved` with `success`. | The refused result is that call's failure and replaces `saved` with `error`, as lang-core's stale failure would. | #90: a refused result behaves as a failed call, including when stale. |
+| `refused-source-keeps-its-reader-waiting` | The source succeeds and the reader calls its tool with the result. | The source fails. Its default stays visible and its reader waits without dispatching. | #90: the cache cap turns the result into a failed delivery. |
+| `refused-reader-keeps-its-dependent-waiting` | The reader succeeds and releases the leaf query. | The reader fails. The leaf waits for its first successful input. | #90: the cache cap turns the result into a failed delivery. |
+| `refused-source-refetch-keeps-its-readers-data` | The refreshed value changes the reader’s input and starts a new call. | The source keeps its admitted value. The reader keeps its data and issues no call. | #90: the cache cap turns the result into a failed delivery. |
+| `refusal-settles-while-reader-rounds-are-limited` | The other query succeeds. Its completion triggers another bounded round sequence for the NaN input. | The other query fails and ends its call. The stale reader observes the Store edit and reaches the round bound again. | #90: the cache cap turns the result into a failed delivery. |
+| `compact-refusal-keeps-a-dependent-waiting` | The shared result releases the dependent. Only the initiating query starts out loading. | Six holders share one compact error. The dependent waits. A successful retry clears the error and releases the dependent. | #90 and ADR 0013 rule 3: one compact error covers a shared failure when the errors at each holder exceed the snapshot allowance. |
+| `refusal-settles-when-a-stale-reader-exceeds-the-allowance` | Stores the result and calls the reader with its enlarged arguments. | The refused call ends with a tool error. Rebuilding the unrelated stale reader exceeds the allowance, suspends it and reports a reader limit. | #90 and #79’s bounded reader evaluation. |
+
+For the first refusal of a source or reader, a refused refetch, and a refusal
+during bounded reader rounds, the adapter also replays the same script with
+the upstream provider rejecting the call. The Rust calls and snapshots match
+those four failure controls at every step.
 
 An outcome is decided in one order on every path, borrowed and owned
 completion, the session's JSON entry and its MCP entry: first whether it is
@@ -1020,6 +1153,8 @@ that reads it`). If even those errors do not fit, the readers keep them
 unlisted, their failed entry is not called again, and the snapshot lists one
 compact error, `N queries failed with errors that do not fit the result size
 limit of L bytes`, until a run or success replaces them. The call always ends.
+The fixed null placeholder on an unfetched query needs no result room. A
+fetched null goes through result admission at its JSON size of four bytes.
 
 A mutation's data is charged while its status is `success`; the idle
 `data: null` a rename shows is upstream's reset marker, not a result. A rename

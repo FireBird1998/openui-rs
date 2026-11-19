@@ -1,7 +1,14 @@
 //! The clock-free query manager and its tool provider seam.
+mod audit;
+mod cascade;
+mod delivery;
+pub use delivery::{ReaderDiagnostic, ToolDelivery};
 mod mutations;
+mod readers;
 mod refresh;
 mod results;
+#[cfg(test)]
+mod round_tests;
 mod runs;
 mod scripts;
 mod session;
@@ -13,6 +20,7 @@ use crate::{
 };
 use mutations::{MutationCall, Mutations};
 use openui_lang::{Ast, JsonValue, ParseResult, PreparedProgram, QueryStatement};
+use readers::{Read, ReaderPlan};
 use results::Admitted;
 pub use results::ResultLimit;
 pub use scripts::CloudScripts;
@@ -34,6 +42,7 @@ impl fmt::Debug for ToolCallId {
 }
 
 struct CallIdentity {
+    lifecycle: Weak<()>,
     manager: Weak<()>,
     target: CallTarget,
     consumed: AtomicBool,
@@ -94,7 +103,9 @@ pub enum QueryCommand<'a> {
     Dispose,
     /// Allow registration again. The next evaluate reinstalls timers.
     Activate,
-    /// Complete one wanted call.
+    /// Complete one wanted call atomically. Readers use live Store writes, or
+    /// the last committed state if the Store was dropped. A result over a limit
+    /// ends the call as a tool-error. A refused command preserves its receipt.
     Complete {
         /// Identity returned when the call started.
         id: &'a ToolCallId,
@@ -119,7 +130,7 @@ pub enum QueryCommand<'a> {
 }
 
 /// The effect of an accepted query command.
-#[derive(Debug)]
+#[derive(Debug, Default)]
 #[non_exhaustive]
 pub struct QueryUpdate {
     /// Earliest absolute millisecond deadline after this command.
@@ -128,6 +139,10 @@ pub struct QueryUpdate {
     pub calls: Vec<ToolCall>,
     /// Whether the snapshot's serialized bytes changed.
     pub changed: bool,
+    /// Whether the diagnostic beside the snapshot changed.
+    pub reader_diagnostic_changed: bool,
+    /// More reader inputs differed after the bounded propagation rounds.
+    pub reader_rounds_limited: bool,
     /// A program-visible mutation result changed under a reserved snapshot list.
     pub(crate) hidden_change: bool,
 }
@@ -151,7 +166,7 @@ pub enum QueryCommandError {
 impl QueryUpdate {
     /// Whether to redraw the tree, including reads of reserved statement names.
     pub fn needs_redraw(&self) -> bool {
-        self.changed || self.hidden_change
+        self.changed || self.hidden_change || self.reader_diagnostic_changed
     }
 }
 
@@ -161,6 +176,10 @@ impl fmt::Display for QueryCommandError {
             Self::InvalidClock => f.write_str("invalid refresh minimum or clock time"),
             Self::InvalidCall => f.write_str("invalid tool call identity"),
             Self::Limit(error) => error.fmt(f),
+            Self::Evaluation(EvaluationFailure::MissingContext { recovery }) => write!(
+                f,
+                "query readers need their registered context; use {recovery}"
+            ),
             Self::Evaluation(error) => write!(f, "query evaluation failed: {error:?}"),
         }
     }
@@ -170,6 +189,10 @@ impl std::error::Error for QueryCommandError {}
 /// Evaluates query statements and tracks their tool calls, results and errors.
 /// The embedder owns the Store, performs wanted calls and reports outcomes.
 pub struct QueryManager {
+    reader_limit: Option<LimitError>,
+    readers: Option<ReaderPlan>,
+    last_result: u64,
+    reader_rounds_limited: bool,
     owner: Arc<()>,
     limits: Limits,
     lifecycle: Arc<()>,
@@ -198,6 +221,10 @@ struct ExtraKey {
 
 #[derive(Clone)]
 struct Query {
+    suspended: bool,
+    waiting_for_other: bool,
+    waiting_for_self: bool,
+    reads: Arc<[Read]>,
     key: Arc<str>,
     previous: Option<Arc<str>>,
     defaults: Option<Value>,
@@ -207,12 +234,20 @@ struct Query {
     // The error is not listed: the snapshot shows one compact diagnostic (#90).
     withheld: bool,
     // What the last evaluation would call; a run starts this call.
-    request: runs::Request,
+    request: Arc<runs::Request>,
+}
+
+impl Query {
+    fn waiting(&self) -> bool {
+        self.waiting_for_self || self.waiting_for_other
+    }
 }
 
 #[derive(Default, Clone)]
 struct CacheEntry {
-    data: Option<Value>,
+    // Sequence number of the last success delivered to this entry.
+    result_version: u64,
+    data: Option<Arc<Value>>,
     pending: Option<Arc<PendingCall>>,
     // The data's JSON bytes, charged to the cache cap.
     bytes: usize,
@@ -222,7 +257,7 @@ struct CacheEntry {
     // A run asked for while a call is in flight: the request of the query
     // that asked first, so the call is the one asked for even if that query
     // has since gone.
-    run_again: Option<runs::Request>,
+    run_again: Option<Arc<runs::Request>>,
 }
 
 struct PendingCall {
@@ -231,14 +266,13 @@ struct PendingCall {
     raw_tool_name: Option<Value>,
 }
 
-struct Node<'a> {
+struct Node {
+    id: String,
+    reads: Arc<[Read]>,
     interval: Option<refresh::Interval>,
-    id: &'a str,
     key: Arc<str>,
     defaults: Option<Value>,
-    tool_name: String,
-    raw_tool_name: Option<Value>,
-    args: Option<Value>,
+    request: Arc<runs::Request>,
 }
 
 impl Default for QueryManager {
@@ -251,6 +285,10 @@ impl QueryManager {
     /// Create an empty manager using the given evaluation limits.
     pub fn with_limits(limits: Limits) -> Self {
         let mut manager = Self {
+            reader_limit: None,
+            readers: None,
+            last_result: 0,
+            reader_rounds_limited: false,
             owner: Arc::new(()),
             limits,
             lifecycle: Arc::new(()),
@@ -285,6 +323,14 @@ impl QueryManager {
         visible_error: bool,
         mut outstanding: impl Iterator<Item = &'a ToolCallId>,
     ) -> bool {
+        if let Some(q) = self.queries.get(id) {
+            if q.suspended {
+                return self.explains_suspension(id, q);
+            }
+            if q.waiting() {
+                return self.audit_cache(outstanding, true).is_ok();
+            }
+        }
         let withheld = self.queries.get(id).is_some_and(|q| q.withheld);
         self.queries
             .get(id)
@@ -371,61 +417,59 @@ impl QueryManager {
     }
 
     /// Apply a command. An outcome for a released cache entry is discarded.
+    /// Completing an admitted result consumes its receipt even when evaluating
+    /// dependent readers hits a limit. Inspect [`Self::reader_diagnostic`]
+    /// for that cut, as with [`Self::complete_tool_call`].
     pub fn apply(&mut self, command: QueryCommand<'_>) -> Result<QueryUpdate, QueryCommandError> {
-        let previous = self.mutations.hidden_results();
         let calls = match command {
+            QueryCommand::Evaluate { program, store } => {
+                return self
+                    .evaluate_transaction(&TreeInput::new(program), store, |_| Ok(()))
+                    .map(|(_, update)| update);
+            }
+            QueryCommand::Complete { id, outcome } => {
+                return self.stage_borrowed(id, outcome)?.finish(None);
+            }
             QueryCommand::Dispose => {
+                let previous = self.mutations.hidden_results();
                 self.stop();
-                Vec::new()
+                return Ok(QueryUpdate {
+                    changed: self.rebuild_snapshot(),
+                    hidden_change: self.mutations.hidden_changed(&previous),
+                    ..self.idle_update()
+                });
             }
             QueryCommand::Activate => {
                 self.disposed = false;
-                Vec::new()
+                return Ok(self.idle_update());
             }
-            QueryCommand::AdvanceClock { now_ms } => {
-                let calls = self.advance(now_ms)?;
-                if calls.is_empty() {
-                    return Ok(self.idle_update());
-                }
-                calls
-            }
-            QueryCommand::Evaluate { .. } | QueryCommand::Invalidate { .. } if self.disposed => {
-                Vec::new()
-            }
-            QueryCommand::Evaluate { program, store } => {
-                let nodes = self.evaluate_nodes(&TreeInput::new(program), store)?;
-                self.apply_nodes(program, nodes)
-            }
-            // One completion path for borrowed and owned outcomes (#90).
-            QueryCommand::Complete { id, outcome } => {
-                return self.complete_command(id, outcome).map(|(update, _)| update);
-            }
+            QueryCommand::AdvanceClock { now_ms } => self.advance(now_ms)?,
+            QueryCommand::Invalidate { .. } if self.disposed => return Ok(self.idle_update()),
             QueryCommand::Invalidate { statement_ids } => self.invalidate(statement_ids),
         };
-        // Ownership changes atomically with the command. Another registration
-        // can take a temporarily unreferenced entry later in the same evaluate.
-        self.release_unreferenced();
+        if calls.is_empty() {
+            return Ok(self.idle_update());
+        }
         Ok(QueryUpdate {
-            next_refresh_due_ms: self.next_refresh_due_ms(),
             calls,
             changed: self.rebuild_snapshot(),
-            hidden_change: self.mutations.hidden_changed(&previous),
+            ..self.idle_update()
         })
     }
 
-    fn evaluate_nodes<'a>(
+    fn evaluate_nodes(
         &self,
-        input: &TreeInput<'a>,
+        input: &TreeInput<'_>,
         store: &Store,
-    ) -> Result<Vec<Node<'a>>, QueryCommandError> {
-        self.with_statement_evaluator(input, store, |scope, eval| {
+        budget: &EvaluationSession<'_>,
+        measured: &PreparedProgram,
+    ) -> Result<Vec<Arc<Node>>, QueryCommandError> {
+        self.with_statement_evaluator(input, store, budget, measured, |scope, eval| {
             let mut nodes = Vec::new();
-            for statement in &input.result.query_statements {
+            for statement in input.result.query_statements.iter().filter(|s| s.complete) {
                 eval.charge_work(statement.statement_id.len().saturating_add(1));
                 check_cuts(eval.flags())?;
-                if statement.complete {
-                    nodes.push(scope.node(statement, eval)?);
-                }
+                nodes.push(Arc::new(scope.node(statement, eval)?));
             }
             Ok(nodes)
         })
@@ -435,11 +479,44 @@ impl QueryManager {
         &self,
         input: &TreeInput<'_>,
         store: &Store,
-        evaluate: impl FnOnce(&QueryScope<'_>, &ExpressionEvaluator<'_>) -> Result<T, QueryCommandError>,
+        budget: &EvaluationSession<'_>,
+        measured: &PreparedProgram,
+        evaluate: impl FnOnce(
+            &QueryScope<'_, '_>,
+            &ExpressionEvaluator<'_>,
+        ) -> Result<T, QueryCommandError>,
     ) -> Result<T, QueryCommandError> {
-        let program = input.result;
-        let program_input = PreparedProgram::new(program, self.limits);
-        check_cuts(program_input.flags())?;
+        let prepared = self.statement_results()?;
+        let calls = TreeScope::new(input, store, None, self.limits);
+        let scope = QueryScope {
+            manager: self,
+            cloud_scripts: input.cloud_scripts,
+            prepared: &prepared,
+            calls: &calls,
+            cascade: None,
+            inspection: Cell::new(Inspection::None),
+            inspected: Cell::new(None),
+            seconds: Cell::new(0.0),
+        };
+        budget.with_scope(&scope, |session| {
+            session.with_evaluator(|eval| {
+                eval.supply_input(openui_lang::SuppliedInput {
+                    program: openui_lang::SuppliedProgram::Prepared(measured),
+                    start: openui_lang::SuppliedStart::Raw {
+                        action: None,
+                        message: "",
+                        form: None,
+                    },
+                    references: Some(&prepared.input),
+                })
+                .map_err(|_| QueryCommandError::Limit(crate::admission::size_error()))?;
+                evaluate(&scope, eval)
+            })
+        })
+    }
+
+    fn statement_results(&self) -> Result<PreparedReferenceValues<'static>, QueryCommandError> {
+        self.admit_snapshot_values()?;
         let mut results = JsObject::new();
         for id in &self.order {
             if let Some(data) = self.queries.get(id).and_then(|query| self.data(query)) {
@@ -447,24 +524,15 @@ impl QueryManager {
             }
         }
         self.mutations.write_results(&mut results);
-        let prepared = PreparedReferenceValues::new(&results);
-        let scope = QueryScope {
-            manager: self,
-            cloud_scripts: input.cloud_scripts,
-            prepared: &prepared,
-            calls: TreeScope::new(input, store, None, self.limits),
-            inspection: Cell::new(Inspection::None),
-            inspected: Cell::new(None),
-            seconds: Cell::new(0.0),
-        };
-        let bytes = program_input
-            .input_bytes()
-            .saturating_add(prepared.input_bytes());
-        let session = EvaluationSession::with_limits(&scope, bytes, self.limits);
-        session.with_evaluator(|eval| evaluate(&scope, eval))
+        #[cfg(test)]
+        round_tests::reference_pass();
+        Ok(PreparedReferenceValues::owned_with_limits(
+            results,
+            Limits::DEFAULT.with_depth(32_768),
+        ))
     }
 
-    fn apply_nodes(&mut self, program: &ParseResult, nodes: Vec<Node<'_>>) -> Vec<ToolCall> {
+    fn apply_nodes(&mut self, program: &ParseResult, nodes: &[Arc<Node>]) -> Vec<ToolCall> {
         let active = program
             .query_statements
             .iter()
@@ -484,54 +552,80 @@ impl QueryManager {
         let mut calls = Vec::new();
         let mut intervals = Vec::new();
         for node in nodes {
-            let mut acquire = false;
-            let query = self.queries.entry(node.id.into()).or_insert_with(|| {
-                acquire = true;
-                self.order.push(node.id.into());
-                Query {
-                    key: node.key.clone(),
-                    previous: None,
-                    defaults: None,
-                    ever_fetched: false,
-                    error: None,
-                    withheld: false,
-                    request: runs::Request::default(),
-                }
-            });
-            if query.key != node.key {
-                acquire = true;
-                let previous = std::mem::replace(&mut query.key, node.key.clone());
-                if let Some(displaced) = query.previous.replace(previous) {
-                    drop_reference(&mut self.cache, &displaced);
-                }
-            }
-            query.defaults = node.defaults;
-            query.request = runs::Request {
-                tool_name: node.tool_name,
-                raw_tool_name: node.raw_tool_name,
-                args: node.args,
-            };
-            let entry = self.cache.entry(node.key);
-            let key = entry.key().clone();
-            let entry = entry.or_default();
-            if acquire {
-                entry.references = entry.references.saturating_add(1);
-            }
-            // A failed entry suppresses another call while this query can see an
-            // error. A new reader otherwise has neither data nor an explanation.
-            if entry.data.is_none()
-                && (!entry.failed || query.error.is_none())
-                && entry.pending.is_none()
-            {
-                calls.push(runs::start_call(&self.owner, entry, key, &query.request));
-            }
-            // Keep the existing timer while a reader waits, as applyNodes does.
-            if !self.waits(node.id) {
-                intervals.push((node.id, node.interval));
+            self.apply_node(node, &mut calls);
+            if !self.waits(&node.id) {
+                intervals.push((node.id.as_str(), node.interval.clone()));
             }
         }
         self.clock.reconcile(&active, intervals);
         calls
+    }
+
+    fn apply_node(&mut self, node: &Node, calls: &mut Vec<ToolCall>) {
+        #[cfg(test)]
+        round_tests::applied();
+        if self.queries.get(&node.id).is_some_and(|q| q.suspended) {
+            return;
+        }
+        let missing_input = node
+            .reads
+            .iter()
+            .any(|read| read.id != node.id && self.version(&read.id).is_none());
+        let mut acquire = false;
+        let query = self.queries.entry(node.id.clone()).or_insert_with(|| {
+            acquire = true;
+            self.order.push(node.id.clone());
+            Query {
+                suspended: false,
+                waiting_for_other: false,
+                waiting_for_self: false,
+                reads: node.reads.clone(),
+                key: node.key.clone(),
+                previous: None,
+                defaults: None,
+                ever_fetched: false,
+                error: None,
+                withheld: false,
+                request: node.request.clone(),
+            }
+        });
+        if query.key != node.key {
+            acquire = true;
+            let previous = std::mem::replace(&mut query.key, node.key.clone());
+            if let Some(displaced) = query.previous.replace(previous) {
+                drop_reference(&mut self.cache, &displaced);
+            }
+        }
+        // Upstream tests self-reads against the newly installed key.
+        query.waiting_for_other = missing_input;
+        query.waiting_for_self = node.reads.iter().any(|read| read.id == node.id)
+            && std::iter::once(&query.key)
+                .chain(query.previous.as_ref())
+                .all(|key| self.cache.get(key).is_none_or(|e| e.data.is_none()));
+        query.reads = node.reads.clone();
+        query.defaults = node.defaults.clone();
+        query.request = node.request.clone();
+        let entry = self.cache.entry(node.key.clone());
+        let key = entry.key().clone();
+        let entry = entry.or_default();
+        if acquire {
+            entry.references = entry.references.saturating_add(1);
+        }
+        // A failed entry suppresses another call while this query can see an
+        // error. A new reader otherwise has neither data nor an explanation.
+        if !query.waiting()
+            && entry.data.is_none()
+            && (!entry.failed || query.error.is_none())
+            && entry.pending.is_none()
+        {
+            calls.push(runs::start_call(
+                &self.owner,
+                &self.lifecycle,
+                entry,
+                key,
+                &query.request,
+            ));
+        }
     }
 
     // A success is admitted under the limits before it is copied. A refused
@@ -562,7 +656,11 @@ impl QueryManager {
         };
         // A previous key keeps existing data alive. Only current readers can
         // accept new data or a failure. Leave an unsettled entry reusable.
-        if !self.queries.values().any(|query| query.key == pending.key) {
+        if !self
+            .queries
+            .values()
+            .any(|query| !query.suspended && query.key == pending.key)
+        {
             if let Some(entry) = self.cache.get_mut(&pending.key) {
                 entry.pending = None;
                 // A remembered run needs a current reader to deliver to.
@@ -589,22 +687,30 @@ impl QueryManager {
                 .cache_bytes
                 .saturating_sub(entry.bytes)
                 .saturating_add(bytes);
-            entry.data = Some(value);
+            entry.data = Some(Arc::new(value));
             entry.bytes = bytes;
             entry.failed = false;
         } else {
             entry.failed = true;
         }
+        if success {
+            self.last_result = self
+                .last_result
+                .checked_add(1)
+                .ok_or_else(|| QueryCommandError::Limit(crate::admission::size_error()))?;
+            entry.result_version = self.last_result;
+        }
         entry.pending = None;
         let readers = self
             .queries
             .iter_mut()
-            .filter(|(_, query)| query.key == pending.key);
+            .filter(|(_, query)| !query.suspended && query.key == pending.key);
         for (statement_id, query) in readers {
             query.withheld = false;
             if success {
                 query.error = None;
                 query.ever_fetched = true;
+                query.waiting_for_self = false;
                 if let Some(previous) = query.previous.take() {
                     drop_reference(&mut self.cache, &previous);
                 }
@@ -616,13 +722,11 @@ impl QueryManager {
     }
 
     fn data(&self, query: &Query) -> Option<&Value> {
-        self.cache
-            .get(&query.key)
-            .and_then(|entry| entry.data.as_ref())
-            .or_else(|| self.cache.get(query.previous.as_ref()?)?.data.as_ref())
+        self.data_entry(query)?.data.as_deref()
     }
 
     fn rebuild_snapshot(&mut self) -> bool {
+        let pending = self.pending_queries();
         let mut loading = Vec::new();
         let mut refetching = Vec::new();
         let mut errors = Vec::new();
@@ -630,11 +734,7 @@ impl QueryManager {
             let Some(query) = self.queries.get(id) else {
                 continue;
             };
-            if self
-                .cache
-                .get(&query.key)
-                .is_some_and(|entry| entry.pending.is_some())
-            {
+            if pending.contains(id.as_str()) {
                 loading.push(Value::Str(id.clone()));
                 if query.ever_fetched {
                     refetching.push(Value::Str(id.clone()));
@@ -673,6 +773,36 @@ impl QueryManager {
 fn drop_reference(cache: &mut HashMap<Arc<str>, CacheEntry>, key: &Arc<str>) {
     if let Some(entry) = cache.get_mut(key) {
         entry.references = entry.references.saturating_sub(1);
+    }
+}
+
+impl ToolOutcome<'_> {
+    // Bound formatted error strings before duplicating them at shared ids.
+    fn admit_failure(
+        &self,
+        tool_bytes: usize,
+        readers: usize,
+        limits: Limits,
+    ) -> Result<(), QueryCommandError> {
+        let limit = limits.result_size().min(limits.work_for(usize::MAX));
+        let text = match self {
+            ToolOutcome::ToolNotFound(names) => {
+                let mut bytes = 0usize;
+                for name in names {
+                    bytes = bytes.saturating_add(name.len()).saturating_add(2);
+                    if bytes > limit {
+                        return Err(QueryCommandError::Limit(crate::admission::size_error()));
+                    }
+                }
+                bytes
+            }
+            ToolOutcome::McpError(text) | ToolOutcome::CallFailed(text) => text.len(),
+            _ => return Ok(()),
+        };
+        if text != 0 && text.saturating_add(tool_bytes).saturating_mul(readers) > limit {
+            return Err(QueryCommandError::Limit(crate::admission::size_error()));
+        }
+        Ok(())
     }
 }
 
@@ -721,31 +851,28 @@ enum Inspection {
     Interval,
 }
 
-struct QueryScope<'a> {
+struct QueryScope<'a, 'tree> {
     cloud_scripts: Option<&'a CloudScripts>,
     manager: &'a QueryManager,
     prepared: &'a PreparedReferenceValues<'a>,
-    calls: TreeScope<'a>,
+    calls: &'a TreeScope<'tree>,
+    cascade: Option<&'a cascade::RoundResults>,
     inspection: Cell<Inspection>,
     inspected: Cell<Option<String>>,
     seconds: Cell<f64>,
 }
 
-impl EvaluationScope for QueryScope<'_> {
+impl EvaluationScope for QueryScope<'_, '_> {
     fn state(&self, name: &str, eval: &ExpressionEvaluator<'_>) -> Option<Value> {
         self.calls.state(name, eval)
     }
 
     fn prepared_reference(&self, name: &str) -> Option<&PreparedReferenceValue> {
-        self.prepared
-            .get(name)
-            .ok()
-            .flatten()
-            .map(|(_, prepared)| prepared)
+        self.read_reference(name).ok().flatten()
     }
 
     fn reference(&self, name: &str, eval: &ExpressionEvaluator<'_>) -> Option<Value> {
-        if let Err(flags) = self.prepared.get(name) {
+        if let Err(flags) = self.read_reference(name) {
             eval.mark_cut(flags);
             return None;
         }
@@ -797,7 +924,7 @@ impl EvaluationScope for QueryScope<'_> {
     }
 }
 
-impl QueryScope<'_> {
+impl QueryScope<'_, '_> {
     fn evaluate(
         &self,
         ast: &Ast,
@@ -822,11 +949,11 @@ impl QueryScope<'_> {
         }
     }
 
-    fn node<'a>(
+    fn node(
         &self,
-        statement: &'a QueryStatement,
+        statement: &QueryStatement,
         eval: &ExpressionEvaluator<'_>,
-    ) -> Result<Node<'a>, QueryCommandError> {
+    ) -> Result<Node, QueryCommandError> {
         let (tool_name, raw_tool_name) = match &statement.tool {
             Some(ast) => {
                 let raw = self.evaluate(ast, Inspection::Tool, eval)?;
@@ -885,12 +1012,15 @@ impl QueryScope<'_> {
         };
         Ok(Node {
             interval,
-            id: &statement.statement_id,
+            id: statement.statement_id.clone(),
+            reads: self.manager.read_results(statement, eval)?,
             key: key.into(),
             defaults,
-            tool_name,
-            raw_tool_name,
-            args,
+            request: Arc::new(runs::Request {
+                tool_name,
+                raw_tool_name,
+                args,
+            }),
         })
     }
 

@@ -249,14 +249,28 @@ impl Session {
         call: Arc<WantedToolCall>,
         outcome_json: String,
     ) -> Result<(), OpenUiError> {
-        self.call(move |s, _| s.complete_tool_call_json(&call.id, &outcome_json))
+        self.deliver(&call.id, outcome_json, false)
     }
     pub fn finish_tool_call(
         &self,
         call: Arc<WantedToolCall>,
         outcome_json: String,
     ) -> Result<(), OpenUiError> {
-        self.call(move |s, _| s.finish_tool_call_json(&call.id, &outcome_json))
+        self.deliver(&call.id, outcome_json, true)
+    }
+    pub(crate) fn deliver(
+        &self,
+        id: &openui_runtime::ToolCallId,
+        json: String,
+        terminal: bool,
+    ) -> Result<(), OpenUiError> {
+        self.call(|s, _| {
+            if terminal {
+                s.finish_tool_call_json(id, &json)
+            } else {
+                s.complete_tool_call_json(id, &json)
+            }
+        })
     }
     /// Report prompt annotations needing an explicit choice by the embedder.
     pub fn undecided_bindings(&self) -> Result<Vec<BindingPair>, OpenUiError> {

@@ -23,6 +23,8 @@ function queryEffect(useEffect, isStreaming, bundle, result, queryManager, evalu
 }
 
 const corpus = JSON.parse(readFileSync('../conformance/session-queries.json', 'utf8'));
+const selfWait = process.argv[2] === '--self-wait';
+if (selfWait) corpus.scenarios = (await import('./query-self-wait')).rendererSelfCases();
 const schema = compileSchema(corpus.schema);
 const rows: string[] = [];
 for (const scenario of corpus.scenarios) {
@@ -64,6 +66,7 @@ for (const scenario of corpus.scenarios) {
       if ('set' in step || 'binding' in step) store.set('$n', step.set ?? step.binding);
       if ('field' in step) writer.setFieldValue(undefined, 'Input', '$n', step.field, true);
       if ('finish' in step) await calls[step.finish].finish(step);
+      if ('invalidate' in step) manager.invalidate(step.invalidate);
       queryEffect(useEffect, streaming, bundle, result, manager, ctx, store.getSnapshot());
 
       const errors = [];
@@ -78,4 +81,4 @@ for (const scenario of corpus.scenarios) {
     store.dispose();
   }
 }
-writeFileSync('../conformance/golden/session-queries.jsonl', rows.join('\n') + '\n');
+writeFileSync(selfWait ? '../conformance/golden/session-self-wait.jsonl' : '../conformance/golden/session-queries.jsonl', rows.join('\n') + '\n');

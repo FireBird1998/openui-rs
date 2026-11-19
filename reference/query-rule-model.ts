@@ -4,7 +4,8 @@
 import type { Dispatch, Outcome, Scenario } from './query-scenarios';
 
 export type Keys = Record<string, string>;
-type Query = { key: string; previous?: string; fetched: boolean; error?: object };
+export type WaitFor = Record<string, string[]>;
+type Query = { waiting?: boolean; key: string; previous?: string; fetched: boolean; error?: object };
 // A run asked for while a call is in flight belongs to the entry.
 type Entry = { data?: unknown; failed?: boolean; pending?: Dispatch; runAgain?: boolean };
 
@@ -28,7 +29,7 @@ function heldKeys(queries: Iterable<Query>) {
   return held;
 }
 
-export function byRule(scenario: Scenario, keys: Keys[]) {
+export function byRule(scenario: Scenario, keys: Keys[], waitFor: WaitFor) {
   const queries = new Map<string, Query>();
   let entries = new Map<string, Entry>();
   const calls: Dispatch[] = [], observations: string[] = [], entryCounts: number[] = [];
@@ -69,7 +70,13 @@ export function byRule(scenario: Scenario, keys: Keys[]) {
       entries = new Map(Array.from(heldKeys(queries.values()), k => [k, entries.get(k) ?? {}]));
       for (const [id, key] of Object.entries(active)) {
         const entry = entries.get(key)!;
-        if (entry.data !== undefined || entry.pending || (entry.failed && queries.get(id)!.error)) continue;
+        const q = queries.get(id)!;
+        q.waiting = waitFor[id]?.some(dep => {
+          const source = queries.get(dep);
+          return entries.get(source?.key ?? '')?.data === undefined &&
+            entries.get(source?.previous ?? '')?.data === undefined;
+        });
+        if (q.waiting || entry.data !== undefined || entry.pending || (entry.failed && queries.get(id)!.error)) continue;
         entry.pending = { step: i, toolName: 't', args: JSON.parse(key) };
         calls.push(entry.pending);
       }
@@ -107,6 +114,7 @@ export function byRule(scenario: Scenario, keys: Keys[]) {
     } else if (step.kind === 'invalidate') {
       const targets = step.ids?.length ? step.ids.filter(id => queries.has(id)) : Array.from(queries.keys());
       for (const id of targets) {
+        if (queries.get(id)!.waiting) continue;
         const entry = entries.get(queries.get(id)!.key)!;
         if (entry.pending) entry.runAgain = true;
         else {

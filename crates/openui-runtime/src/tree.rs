@@ -57,7 +57,7 @@ pub struct TreeInput<'a> {
     /// A set measured once by the embedder. Takes precedence over `reference_values`.
     pub prepared_reference_values: Option<&'a PreparedReferenceValues<'a>>,
     managed_mutations: bool,
-    shared_result: Option<&'a Arc<ParseResult>>,
+    pub(crate) shared_result: Option<&'a Arc<ParseResult>>,
     query_runs: bool,
     /// Settled Cloud scripts whose revision participates in query cache keys.
     pub cloud_scripts: Option<&'a crate::CloudScripts>,

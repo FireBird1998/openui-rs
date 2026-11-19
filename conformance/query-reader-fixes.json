@@ -1,0 +1,665 @@
+[
+  {
+    "name": "negative-zero-equals-positive-zero",
+    "program": "$n=0\n$f=0\na=Query(\"a\",{n:$n})\nb=Query(\"b\",{a:a,f:$f})",
+    "steps": [
+      {
+        "kind": "evaluate"
+      },
+      {
+        "kind": "complete",
+        "call": 0,
+        "outcome": {
+          "kind": "result",
+          "hostNumber": "-0"
+        }
+      },
+      {
+        "kind": "complete",
+        "call": 1,
+        "outcome": {
+          "kind": "result",
+          "value": "first"
+        }
+      },
+      {
+        "kind": "set",
+        "name": "$n",
+        "value": 1
+      },
+      {
+        "kind": "evaluate"
+      },
+      {
+        "kind": "set",
+        "name": "$f",
+        "value": 9
+      },
+      {
+        "kind": "complete",
+        "call": 2,
+        "outcome": {
+          "kind": "result",
+          "value": 0
+        }
+      },
+      {
+        "kind": "evaluate"
+      },
+      {
+        "kind": "complete",
+        "call": 3,
+        "outcome": {
+          "kind": "result",
+          "value": "latest"
+        }
+      }
+    ]
+  },
+  {
+    "name": "missing-releases-a-reader-and-equals-a-later-null",
+    "program": "$n=0\n$f=0\na=Query(\"a\",{n:$n})\nb=Query(\"b\",{a:a,f:$f})",
+    "steps": [
+      {
+        "kind": "evaluate"
+      },
+      {
+        "kind": "complete",
+        "call": 0,
+        "outcome": {
+          "kind": "result"
+        }
+      },
+      {
+        "kind": "complete",
+        "call": 1,
+        "outcome": {
+          "kind": "result",
+          "value": "first"
+        }
+      },
+      {
+        "kind": "set",
+        "name": "$n",
+        "value": 1
+      },
+      {
+        "kind": "evaluate"
+      },
+      {
+        "kind": "set",
+        "name": "$f",
+        "value": 9
+      },
+      {
+        "kind": "complete",
+        "call": 2,
+        "outcome": {
+          "kind": "result",
+          "value": null
+        }
+      },
+      {
+        "kind": "evaluate"
+      },
+      {
+        "kind": "complete",
+        "call": 3,
+        "outcome": {
+          "kind": "result",
+          "value": "latest"
+        }
+      }
+    ]
+  },
+  {
+    "name": "null-equals-a-later-missing-result",
+    "program": "$n=0\n$f=0\na=Query(\"a\",{n:$n})\nb=Query(\"b\",{a:a,f:$f})",
+    "steps": [
+      {
+        "kind": "evaluate"
+      },
+      {
+        "kind": "complete",
+        "call": 0,
+        "outcome": {
+          "kind": "result",
+          "value": null
+        }
+      },
+      {
+        "kind": "complete",
+        "call": 1,
+        "outcome": {
+          "kind": "result",
+          "value": "first"
+        }
+      },
+      {
+        "kind": "set",
+        "name": "$n",
+        "value": 1
+      },
+      {
+        "kind": "evaluate"
+      },
+      {
+        "kind": "set",
+        "name": "$f",
+        "value": 9
+      },
+      {
+        "kind": "complete",
+        "call": 2,
+        "outcome": {
+          "kind": "result"
+        }
+      },
+      {
+        "kind": "evaluate"
+      },
+      {
+        "kind": "complete",
+        "call": 3,
+        "outcome": {
+          "kind": "result",
+          "value": "latest"
+        }
+      }
+    ]
+  },
+  {
+    "name": "delivery-releases-its-previous-key-before-rebuilding-readers",
+    "program": "a=Query(\"t\",{v:0})\nb=Query(\"t\",{v:a})",
+    "steps": [
+      {
+        "kind": "evaluate"
+      },
+      {
+        "kind": "complete",
+        "call": 0,
+        "outcome": {
+          "kind": "result",
+          "value": 1
+        }
+      },
+      {
+        "kind": "complete",
+        "call": 1,
+        "outcome": {
+          "kind": "result",
+          "value": 0
+        }
+      },
+      {
+        "kind": "replace",
+        "program": "a=Query(\"t\",{v:2})\nb=Query(\"t\",{v:a})"
+      },
+      {
+        "kind": "evaluate"
+      },
+      {
+        "kind": "complete",
+        "call": 2,
+        "outcome": {
+          "kind": "result",
+          "value": 0
+        }
+      },
+      {
+        "kind": "complete",
+        "call": 3,
+        "outcome": {
+          "kind": "result",
+          "value": "new"
+        }
+      }
+    ]
+  },
+  {
+    "name": "changing-self-results-continue-until-a-value-repeats",
+    "situation": "a-seeded-self-reader-does-not-follow-its-own-result",
+    "program": "a=Query(\"t\",{})",
+    "steps": [
+      {
+        "kind": "evaluate"
+      },
+      {
+        "kind": "complete",
+        "call": 0,
+        "outcome": {
+          "kind": "result",
+          "value": 0
+        }
+      },
+      {
+        "kind": "replace",
+        "program": "a=Query(\"t\",{v:a})"
+      },
+      {
+        "kind": "evaluate"
+      },
+      {
+        "kind": "complete",
+        "dispatch": {
+          "step": 3,
+          "toolName": "t",
+          "args": {
+            "v": 0
+          }
+        },
+        "outcome": {
+          "kind": "result",
+          "value": 1
+        }
+      },
+      {
+        "kind": "complete",
+        "dispatch": {
+          "step": 4,
+          "toolName": "t",
+          "args": {
+            "v": 1
+          }
+        },
+        "outcome": {
+          "kind": "result",
+          "value": 2
+        }
+      },
+      {
+        "kind": "complete",
+        "dispatch": {
+          "step": 5,
+          "toolName": "t",
+          "args": {
+            "v": 2
+          }
+        },
+        "outcome": {
+          "kind": "result",
+          "value": 3
+        }
+      },
+      {
+        "kind": "complete",
+        "dispatch": {
+          "step": 6,
+          "toolName": "t",
+          "args": {
+            "v": 3
+          }
+        },
+        "outcome": {
+          "kind": "result",
+          "value": 4
+        }
+      },
+      {
+        "kind": "complete",
+        "dispatch": {
+          "step": 7,
+          "toolName": "t",
+          "args": {
+            "v": 4
+          }
+        },
+        "outcome": {
+          "kind": "result",
+          "value": 5
+        }
+      },
+      {
+        "kind": "complete",
+        "dispatch": {
+          "step": 8,
+          "toolName": "t",
+          "args": {
+            "v": 5
+          }
+        },
+        "outcome": {
+          "kind": "result",
+          "value": 5
+        }
+      }
+    ]
+  },
+  {
+    "name": "displaced-input-changes-the-phase-of-a-bounded-cycle",
+    "program": "q0=Query(\"t0\",{r0:null},\"d\")\nq1=Query(\"t1\",{r0:\"d\"},\"d\")",
+    "steps": [
+      {
+        "kind": "evaluate"
+      },
+      {
+        "kind": "complete",
+        "dispatch": {
+          "step": 0,
+          "toolName": "t1",
+          "args": {
+            "r0": "d"
+          }
+        },
+        "outcome": {
+          "kind": "result",
+          "value": "d"
+        }
+      },
+      {
+        "kind": "complete",
+        "dispatch": {
+          "step": 0,
+          "toolName": "t0",
+          "args": {
+            "r0": null
+          }
+        },
+        "outcome": {
+          "kind": "result",
+          "value": "d"
+        }
+      },
+      {
+        "kind": "replace",
+        "program": "q0=Query(\"t0\",{r0:\"d\"},\"d\")\nq1=Query(\"t1\",{r0:null},\"d\")"
+      },
+      {
+        "kind": "evaluate"
+      },
+      {
+        "kind": "replace",
+        "program": "q0=Query(\"t0\",{r0:0},\"d\")\nq1=Query(\"t1\",{r0:0},\"d\")"
+      },
+      {
+        "kind": "evaluate"
+      },
+      {
+        "kind": "complete",
+        "dispatch": {
+          "step": 4,
+          "toolName": "t1",
+          "args": {
+            "r0": null
+          }
+        },
+        "outcome": {
+          "kind": "result",
+          "value": "d"
+        }
+      },
+      {
+        "kind": "complete",
+        "dispatch": {
+          "step": 4,
+          "toolName": "t0",
+          "args": {
+            "r0": "d"
+          }
+        },
+        "outcome": {
+          "kind": "result",
+          "value": "d"
+        }
+      },
+      {
+        "kind": "replace",
+        "program": "q0=Query(\"t0\",{r0:\"d\"},\"d\")\nq1=Query(\"t1\",{r0:0},\"d\")"
+      },
+      {
+        "kind": "evaluate"
+      },
+      {
+        "kind": "complete",
+        "dispatch": {
+          "step": 10,
+          "toolName": "t0",
+          "args": {
+            "r0": "d"
+          }
+        },
+        "outcome": {
+          "kind": "result",
+          "value": null
+        }
+      },
+      {
+        "kind": "complete",
+        "dispatch": {
+          "step": 6,
+          "toolName": "t0",
+          "args": {
+            "r0": 0
+          }
+        },
+        "outcome": {
+          "kind": "result",
+          "value": null
+        }
+      },
+      {
+        "kind": "replace",
+        "program": "q0=Query(\"t0\",{r0:q1},\"d\")\nq1=Query(\"t1\",{r0:q0},\"d\")"
+      },
+      {
+        "kind": "evaluate"
+      },
+      {
+        "kind": "complete",
+        "dispatch": {
+          "step": 14,
+          "toolName": "t1",
+          "args": {
+            "r0": null
+          }
+        },
+        "outcome": {
+          "kind": "result",
+          "value": null
+        }
+      },
+      {
+        "kind": "complete",
+        "dispatch": {
+          "step": 6,
+          "toolName": "t1",
+          "args": {
+            "r0": 0
+          }
+        },
+        "outcome": {
+          "kind": "result",
+          "value": "d"
+        }
+      }
+    ],
+    "situation": "rapid-edits-revisit-a-cached-result",
+    "traceRounds": true
+  },
+  {
+    "name": "stale-completion-resumes-a-cycle-after-its-input-was-displaced",
+    "program": "q0=Query(\"t0\",{r0:null},\"d\")\nq1=Query(\"t1\",{r0:null},\"d\")\nh01=Query(\"t0\",{r0:\"d\"},\"d\")\nh02=Query(\"t0\",{r0:0},\"d\")\nh11=Query(\"t1\",{r0:\"d\"},\"d\")\nh12=Query(\"t1\",{r0:0},\"d\")\nold=Query(\"old\")",
+    "steps": [
+      {
+        "kind": "evaluate"
+      },
+      {
+        "kind": "complete",
+        "dispatch": {
+          "step": 0,
+          "toolName": "t0",
+          "args": {
+            "r0": null
+          }
+        },
+        "outcome": {
+          "kind": "result",
+          "value": null
+        }
+      },
+      {
+        "kind": "complete",
+        "dispatch": {
+          "step": 0,
+          "toolName": "t0",
+          "args": {
+            "r0": "d"
+          }
+        },
+        "outcome": {
+          "kind": "result",
+          "value": 0
+        }
+      },
+      {
+        "kind": "complete",
+        "dispatch": {
+          "step": 0,
+          "toolName": "t0",
+          "args": {
+            "r0": 0
+          }
+        },
+        "outcome": {
+          "kind": "result",
+          "value": "d"
+        }
+      },
+      {
+        "kind": "complete",
+        "dispatch": {
+          "step": 0,
+          "toolName": "t1",
+          "args": {
+            "r0": "d"
+          }
+        },
+        "outcome": {
+          "kind": "result",
+          "value": "d"
+        }
+      },
+      {
+        "kind": "complete",
+        "dispatch": {
+          "step": 0,
+          "toolName": "t1",
+          "args": {
+            "r0": 0
+          }
+        },
+        "outcome": {
+          "kind": "result",
+          "value": null
+        }
+      },
+      {
+        "kind": "replace",
+        "program": "q0=Query(\"t0\",{r0:q1},\"d\")\nq1=Query(\"t1\",{r0:q0},\"d\")\nh01=Query(\"t0\",{r0:\"d\"},\"d\")\nh02=Query(\"t0\",{r0:0},\"d\")\nh11=Query(\"t1\",{r0:\"d\"},\"d\")\nh12=Query(\"t1\",{r0:0},\"d\")\ns0=Query(\"s0\")\ns1=Query(\"s1\")\ns2=Query(\"s2\")"
+      },
+      {
+        "kind": "evaluate"
+      },
+      {
+        "kind": "complete",
+        "dispatch": {
+          "step": 0,
+          "toolName": "t1",
+          "args": {
+            "r0": null
+          }
+        },
+        "outcome": {
+          "kind": "result",
+          "value": 0
+        }
+      },
+      {
+        "kind": "complete",
+        "dispatch": {
+          "step": 0,
+          "toolName": "old",
+          "args": {}
+        },
+        "outcome": {
+          "kind": "result",
+          "value": "late"
+        }
+      }
+    ],
+    "situation": "rapid-edits-revisit-a-cached-result",
+    "traceRounds": true
+  },
+  {
+    "name": "admitted-success-exhausts-the-reader-allowance",
+    "program": "a=Query(\"a\")\nb=Query(\"b\",{v:a+a})",
+    "steps": [
+      {
+        "kind": "evaluate"
+      },
+      {
+        "kind": "complete",
+        "call": 0,
+        "outcome": {
+          "kind": "result",
+          "value": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+        }
+      }
+    ]
+  },
+  {
+    "name": "a-cycle-rebuilds-three-stale-readers-in-declaration-order",
+    "traceRounds": true,
+    "program": "q0=Query(\"t0\",{},\"d\")\nq1=Query(\"t1\",{},\"d\")",
+    "steps": [
+      {
+        "kind": "evaluate"
+      },
+      {
+        "kind": "complete",
+        "dispatch": {
+          "step": 0,
+          "toolName": "t0",
+          "args": {}
+        },
+        "outcome": {
+          "kind": "result",
+          "value": "seed0"
+        }
+      },
+      {
+        "kind": "complete",
+        "dispatch": {
+          "step": 0,
+          "toolName": "t1",
+          "args": {}
+        },
+        "outcome": {
+          "kind": "result",
+          "value": "seed1"
+        }
+      },
+      {
+        "kind": "replace",
+        "program": "q2=Query(\"t2\",{r:q0})\nq1=Query(\"t1\",{r:q0})\nq3=Query(\"t3\",{r:q0})\nq0=Query(\"t0\",{r:q1})"
+      },
+      {
+        "kind": "evaluate"
+      },
+      {
+        "kind": "complete",
+        "dispatch": {
+          "step": 4,
+          "toolName": "t0",
+          "args": {
+            "r": "seed1"
+          }
+        },
+        "outcome": {
+          "kind": "result",
+          "value": "next"
+        }
+      }
+    ]
+  }
+]

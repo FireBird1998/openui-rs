@@ -1,0 +1,13 @@
+{
+  "case": "reader-of-a-sharing-query-is-pending",
+  "reference": [
+    "{\"snapshot\":{\"__openui_loading\":[\"a\"],\"__openui_refetching\":[],\"__openui_errors\":[],\"a\":null,\"b\":null,\"c\":null},\"calls\":[{\"call\":0,\"toolName\":\"shared\",\"args\":{}}],\"changed\":true}",
+    "{\"snapshot\":{\"__openui_loading\":[\"c\"],\"__openui_refetching\":[],\"__openui_errors\":[],\"a\":\"v\",\"b\":\"v\",\"c\":null},\"calls\":[{\"call\":1,\"toolName\":\"c\",\"args\":{\"b\":\"v\"}}],\"changed\":true}",
+    "{\"snapshot\":{\"__openui_loading\":[],\"__openui_refetching\":[],\"__openui_errors\":[],\"a\":\"v\",\"b\":\"v\",\"c\":\"done\"},\"calls\":[],\"changed\":true}"
+  ],
+  "rust": [
+    "{\"snapshot\":{\"__openui_loading\":[\"a\",\"b\",\"c\"],\"__openui_refetching\":[],\"__openui_errors\":[],\"a\":null,\"b\":null,\"c\":null},\"calls\":[{\"call\":0,\"toolName\":\"shared\",\"args\":{}}],\"changed\":true}",
+    "{\"snapshot\":{\"__openui_loading\":[\"c\"],\"__openui_refetching\":[],\"__openui_errors\":[],\"a\":\"v\",\"b\":\"v\",\"c\":null},\"calls\":[{\"call\":1,\"toolName\":\"c\",\"args\":{\"b\":\"v\"}}],\"changed\":true}",
+    "{\"snapshot\":{\"__openui_loading\":[],\"__openui_refetching\":[],\"__openui_errors\":[],\"a\":\"v\",\"b\":\"v\",\"c\":\"done\"},\"calls\":[],\"changed\":true}"
+  ]
+}

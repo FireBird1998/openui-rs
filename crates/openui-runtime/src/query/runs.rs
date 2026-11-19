@@ -15,11 +15,10 @@ pub(super) struct Request {
 impl QueryManager {
     /// Whether a run of this query must do nothing because it waits for a
     /// query it reads. The only place the rule is decided.
-    ///
-    /// The manager does not make readers wait yet (#86), so no query waits.
-    /// #86 answers here from the waiting state it keeps.
-    pub(super) fn waits(&self, _statement_id: &str) -> bool {
-        false
+    pub(super) fn waits(&self, statement_id: &str) -> bool {
+        self.queries
+            .get(statement_id)
+            .is_some_and(|q| q.waiting() || q.suspended)
     }
 
     /// Upstream's `invalidate`. For each named query that is registered and
@@ -58,6 +57,7 @@ impl QueryManager {
             } else {
                 calls.push(start_call(
                     &self.owner,
+                    &self.lifecycle,
                     entry,
                     query.key.clone(),
                     &query.request,
@@ -72,13 +72,22 @@ impl QueryManager {
     /// query that asked is still registered. With no query on the key the
     /// run is forgotten.
     pub(super) fn run_remembered(&mut self, key: &Arc<str>) -> Option<ToolCall> {
-        let read = self.queries.values().any(|query| query.key == *key);
+        let read = self
+            .queries
+            .values()
+            .any(|query| !query.suspended && query.key == *key);
         let entry = self.cache.get_mut(key)?;
         let asked = entry.run_again.take()?;
         if !read || entry.pending.is_some() {
             return None;
         }
-        Some(start_call(&self.owner, entry, key.clone(), &asked))
+        Some(start_call(
+            &self.owner,
+            &self.lifecycle,
+            entry,
+            key.clone(),
+            &asked,
+        ))
     }
 }
 
@@ -86,6 +95,7 @@ impl QueryManager {
 /// entry, not to the query whose request it uses.
 pub(super) fn start_call(
     owner: &Arc<()>,
+    lifecycle: &Arc<()>,
     entry: &mut CacheEntry,
     key: Arc<str>,
     request: &Request,
@@ -97,6 +107,7 @@ pub(super) fn start_call(
     });
     let id = ToolCallId(Arc::new(CallIdentity {
         manager: Arc::downgrade(owner),
+        lifecycle: Arc::downgrade(lifecycle),
         target: CallTarget::Query(Arc::downgrade(&pending)),
         consumed: AtomicBool::new(false),
     }));

@@ -201,6 +201,61 @@
         {"finish":1,"value":30},
         {"finish":3,"value":40}
       ]
+    },
+    {
+      "name": "a resumed write changes reader arguments after its query run uses the registered arguments",
+      "steps": [
+        {
+          "replace": "$n=0\nm=Mutation(\"save\")\na=Query(\"read\",{source:true})\nb=Query(\"read\",{v:a,n:$n,s:m.status})\nroot=Box([a,b,m],Action([@Run(m),@Set($n,m.data),@Run(b),@ToAssistant(\"done\")]))"
+        },
+        {
+          "finish": 0,
+          "value": "input"
+        },
+        {
+          "finish": 1,
+          "value": "first"
+        },
+        {
+          "click": true
+        },
+        {
+          "finish": 2,
+          "value": 7
+        },
+        {
+          "finish": 3,
+          "value": "previous"
+        },
+        {
+          "finish": 4,
+          "value": "current"
+        }
+      ]
+    },
+    {
+      "name": "a query-tagged read waits for query data and evaluates the mutation of the same name",
+      "steps": [
+        {
+          "replace": "s=Query(\"read\",{})\nb=Query(\"read\",{phase:s.status,data:s.data})\n$plan={steps:[{type:\"run\",refType:\"mutation\",statementId:\"s\"}]}\nroot=Box([s,b],$plan)",
+          "alsoRegisterMutations": "s=Mutation(\"save\")"
+        },
+        {
+          "click": true
+        },
+        {
+          "finish": 1,
+          "value": "mutation"
+        },
+        {
+          "finish": 0,
+          "value": "query"
+        },
+        {
+          "finish": 2,
+          "value": "seen"
+        }
+      ]
     }
   ]
 }

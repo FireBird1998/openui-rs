@@ -269,3 +269,56 @@ fn resume_and_fresh_attachment_install_timers_on_the_supplied_clock() {
     assert!(active.calls.is_empty());
     assert_eq!(active.next_refresh_due_ms, Some(60000));
 }
+
+#[test]
+fn pausing_a_waiting_reader_and_resuming_on_the_host_clock_rearms_its_timer_on_delivery() {
+    let (mut session, lib, refs) = setup();
+    session.attach_tool_provider_at(&refs, 100, 1000).unwrap();
+    session
+        .replace_program(
+            &refs,
+            program(
+                &lib,
+                "a=Query(\"source\",{},null,2)\nb=Query(\"reader\",{x:a},null,1)\nroot=Box(b)",
+            ),
+            None,
+            None,
+            true,
+        )
+        .unwrap();
+    let first = session.take_query_update();
+    assert_eq!(first.next_refresh_due_ms, Some(2100));
+    let [old] = first.calls.as_slice() else {
+        panic!("expected just the source")
+    };
+    session.pause_queries().unwrap();
+    assert_eq!(session.take_query_update().next_refresh_due_ms, None);
+    session.advance_query_clock(5000).unwrap();
+    session
+        .complete_tool_call_json(&old.id, r#"{"value":"retired"}"#)
+        .unwrap();
+    assert!(session.take_query_update().calls.is_empty());
+    session.resume_queries_at(5000).unwrap();
+    let resumed = session.take_query_update();
+    assert_eq!(resumed.next_refresh_due_ms, Some(7000));
+    let [source] = resumed.calls.as_slice() else {
+        panic!("expected a fresh source call")
+    };
+    session
+        .complete_tool_call(
+            &source.id,
+            openui_runtime::ToolCallOutcome::Result(openui_runtime::Value::Num(f64::NAN)),
+        )
+        .unwrap();
+    session.advance_query_clock(6000).unwrap();
+    let update = session.take_query_update();
+    assert!(update.reader_rounds_limited);
+    assert_eq!(update.next_refresh_due_ms, Some(7000));
+    let [reader] = update.calls.as_slice() else {
+        panic!("expected one reader call")
+    };
+    assert_eq!(reader.tool_name, "reader");
+    let drained = session.take_query_update();
+    assert!(!drained.reader_rounds_limited && drained.calls.is_empty());
+    assert_eq!(drained.next_refresh_due_ms, Some(7000));
+}

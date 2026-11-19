@@ -14,7 +14,9 @@
 //!
 //! The standalone [`QueryManager`] evaluates a settled program against a Store
 //! and returns the tool calls an embedder should perform. Report outcomes with
-//! [`QueryCommand::Complete`]. The manager owns its snapshot and cache and
+//! [`QueryCommand::Complete`]. Its update includes reader calls released by that
+//! completion. A reader waits for fetched data and uses the live Store on re-evaluation.
+//! The manager owns its snapshot and cache and
 //! requires no I/O or clock. Hosts can read the snapshot as values or JSON.
 //! [`QueryManager::set_extra_key_values`] adds an embedder's values to the
 //! cache keys of one tool's queries. [`QueryCommand::Invalidate`] runs
@@ -133,8 +135,8 @@ mod mcp;
 pub use mcp::{McpResponseError, McpToolOutcome, extract_mcp_tool_result};
 mod query;
 pub use query::{
-    CloudScripts, QueryCommand, QueryCommandError, QueryManager, QueryUpdate, ResultLimit,
-    ToolCall, ToolCallId, ToolCallOutcome, ToolOutcome,
+    CloudScripts, QueryCommand, QueryCommandError, QueryManager, QueryUpdate, ReaderDiagnostic,
+    ResultLimit, ToolCall, ToolCallId, ToolCallOutcome, ToolDelivery, ToolOutcome,
 };
 mod store;
 mod tree;

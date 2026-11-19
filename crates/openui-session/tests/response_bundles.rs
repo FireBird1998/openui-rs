@@ -491,3 +491,13 @@ fn changing_a_script_key_releases_its_previous_cache_charge_on_success() -> Resu
     assert_eq!(snap.get("__openui_errors"), Some(&json!([])));
     Ok(())
 }
+
+#[test]
+fn source_revision_with_a_reader() -> Result<()> {
+    replay("source-revision-with-a-reader")
+}
+
+#[test]
+fn settled_reader_completes_during_a_blocked_edit() -> Result<()> {
+    replay("settled-reader-completes-during-a-blocked-edit")
+}

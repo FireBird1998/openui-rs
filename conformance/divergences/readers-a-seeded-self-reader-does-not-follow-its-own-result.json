@@ -1,0 +1,17 @@
+{
+  "case": "a-seeded-self-reader-does-not-follow-its-own-result",
+  "reference": [
+    "{\"snapshot\":{\"__openui_loading\":[\"a\"],\"__openui_refetching\":[],\"__openui_errors\":[],\"a\":null},\"calls\":[{\"call\":0,\"toolName\":\"a\",\"args\":{}}],\"changed\":true}",
+    "{\"snapshot\":{\"__openui_loading\":[],\"__openui_refetching\":[],\"__openui_errors\":[],\"a\":\"initial\"},\"calls\":[],\"changed\":true}",
+    "{\"snapshot\":{\"__openui_loading\":[],\"__openui_refetching\":[],\"__openui_errors\":[],\"a\":\"initial\"},\"calls\":[],\"changed\":false}",
+    "{\"snapshot\":{\"__openui_loading\":[\"a\"],\"__openui_refetching\":[\"a\"],\"__openui_errors\":[],\"a\":\"initial\"},\"calls\":[{\"call\":1,\"toolName\":\"a\",\"args\":{\"a\":\"initial\"}}],\"changed\":true}",
+    "{\"snapshot\":{\"__openui_loading\":[\"a\"],\"__openui_refetching\":[\"a\"],\"__openui_errors\":[],\"a\":\"next\"},\"calls\":[{\"call\":2,\"toolName\":\"a\",\"args\":{\"a\":\"next\"}}],\"changed\":true}"
+  ],
+  "rust": [
+    "{\"snapshot\":{\"__openui_loading\":[\"a\"],\"__openui_refetching\":[],\"__openui_errors\":[],\"a\":null},\"calls\":[{\"call\":0,\"toolName\":\"a\",\"args\":{}}],\"changed\":true}",
+    "{\"snapshot\":{\"__openui_loading\":[],\"__openui_refetching\":[],\"__openui_errors\":[],\"a\":\"initial\"},\"calls\":[],\"changed\":true}",
+    "{\"snapshot\":{\"__openui_loading\":[],\"__openui_refetching\":[],\"__openui_errors\":[],\"a\":\"initial\"},\"calls\":[],\"changed\":false}",
+    "{\"snapshot\":{\"__openui_loading\":[\"a\"],\"__openui_refetching\":[\"a\"],\"__openui_errors\":[],\"a\":\"initial\"},\"calls\":[{\"call\":1,\"toolName\":\"a\",\"args\":{\"a\":\"initial\"}}],\"changed\":true}",
+    "{\"snapshot\":{\"__openui_loading\":[],\"__openui_refetching\":[],\"__openui_errors\":[],\"a\":\"next\"},\"calls\":[],\"changed\":true}"
+  ]
+}

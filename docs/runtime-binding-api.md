@@ -132,11 +132,12 @@ struct EvaluationOutput {
     public var parserErrorJson: String? // defaults to nil
 }
 struct QueryEffects {
-    public var nextRefreshDueMs: UInt64? // defaults to nil
     public var changed: Bool
     public var calls: [WantedToolCall]
-    public var actions: [ActionOutput] // defaults to []
     public var evaluationError: OpenUiError?
+    public var actions: [ActionOutput] // defaults to []
+    public var nextRefreshDueMs: UInt64? // defaults to nil
+    public var readerRoundsLimited: Bool // defaults to false
 }
 struct ResponseState {
     public var streaming: Bool // defaults to false

@@ -197,6 +197,93 @@ test('unexpected delivery failures retry only a pending receipt and detach if re
   }
 });
 
+test('terminal delivery keeps the admitted source when evaluation of its reader is cut', async () => {
+  const pkg = loadWith(`
+    const nameOf = Object.getOwnPropertyDescriptor(WantedToolCall.prototype, 'toolName').get;
+    const pending = Object.getOwnPropertyDescriptor(WantedToolCall.prototype, 'pending').get;
+    const complete = RuntimeSession.prototype.completeToolCall;
+    RuntimeSession.prototype.completeToolCall = function(call, json, terminal) {
+      const name = nameOf.call(call);
+      const value = complete.call(this, call, json, terminal);
+      this.deliveries.push([name, terminal, pending.call(call)]);
+      return value;
+    };`);
+  using limits = new pkg.RuntimeLimits();
+  using evaluation = limits.evaluation;
+  evaluation.resultSize = 4096n;
+  limits.evaluation = evaluation;
+  using lib = new pkg.ComponentLibrary('{"$defs":{}}');
+  using s = pkg.RuntimeSession.withLimits(lib, undefined, limits);
+  using program = pkg.parseProgram('$n=0\ns=Query("source",{n:$n})\nr=Query("reader",{x:s,y:s+s})', lib);
+  s.deliveries = [];
+  const inputs = [], errors = [], large = 'x'.repeat(3000);
+  s.setToolProvider({
+    source: ({n}) => n ? large : undefined,
+    reader: ({x}) => { inputs.push(x); return 'ready'; },
+  }, {onError: e => errors.push([e.kind, e.message])});
+  using initial = s.replaceProgram(program, undefined, undefined, false);
+  expect(inputs).toEqual([]);
+  await nextToolTurn();
+  await nextToolTurn();
+  expect(inputs).toEqual([null]);
+  s.set('$n', '1');
+  await nextToolTurn();
+  using drew = s.evaluate();
+  const snapshot = JSON.parse(drew.querySnapshotJson);
+  expect(snapshot.s).toBe(large);
+  expect(snapshot.r).toBeNull();
+  expect(snapshot.__openui_loading).toEqual([]);
+  expect(snapshot.__openui_errors).toMatchObject([{code: 'reader-limit', statementId: 'r'}]);
+  expect(errors).toEqual([['LimitExceeded', drew.queryEvaluationError.message]]);
+  expect(inputs).toEqual([null]);
+  expect(s.deliveries).toEqual([['source', true, false], ['reader', true, false], ['source', true, false]]);
+});
+
+test('registration and a released completion each report a bounded reader cycle once', async () => {
+  const pkg = loadWith(`
+    const args = Object.getOwnPropertyDescriptor(WantedToolCall.prototype, 'argumentsJson').get;
+    const pending = Object.getOwnPropertyDescriptor(WantedToolCall.prototype, 'pending').get;
+    const complete = RuntimeSession.prototype.completeToolCall;
+    RuntimeSession.prototype.completeToolCall = function(call, json, terminal) {
+      if (!pending.call(call)) this.releasedArgs.push(args.call(call));
+      return complete.call(this, call, json, terminal);
+    };`);
+  using lib = new pkg.ComponentLibrary('{"$defs":{}}');
+  using s = new pkg.RuntimeSession(lib);
+  s.releasedArgs = [];
+  const anchors = '\na1=Query("A",{v:1})\nb0=Query("B",{v:0})';
+  using seed = pkg.parseProgram('a=Query("A",{v:0})\nb=Query("B",{v:1})' + anchors + '\ngone=Query("gone")\nold=Query("old")', lib);
+  using cycle = pkg.parseProgram('a=Query("A",{v:b})\nb=Query("B",{v:a})' + anchors +
+    '\nholdA=Query("A",{v:0})\nholdB=Query("B",{v:1})', lib);
+  const errors = [];
+  const late = Promise.withResolvers<object>();
+  const revoked = Promise.withResolvers<object>();
+  s.setToolProvider({A: ({v}) => 1-v, B: ({v}) => v, gone: () => late.promise, old: () => revoked.promise},
+    {onError: e => errors.push([e.kind, e.message])});
+  using init = s.replaceProgram(seed, undefined, undefined, false);
+  await nextToolTurn();
+  expect(errors).toEqual([]);
+  using edit = s.replaceProgram(cycle, undefined, undefined, false);
+  using redraw = s.evaluate();
+  await nextToolTurn();
+  const cut = ['LimitExceeded', 'Query readers were still changing at the reader round limit.'];
+  expect(errors).toEqual([cut]);
+  let reads = 0;
+  late.resolve({get value() { reads++; return 42; }});
+  await nextToolTurn();
+  expect(reads).toBe(0);
+  expect(errors).toEqual([cut, cut]);
+  expect(s.releasedArgs).toStrictEqual([undefined]);
+  s.pauseQueries();
+  s.resumeQueries();
+  await nextToolTurn();
+  const before = errors.length;
+  revoked.reject(Error('old provider failure'));
+  await nextToolTurn();
+  expect(errors).toHaveLength(before);
+  expect(s.releasedArgs).toStrictEqual([undefined]);
+});
+
 test('a late Cloud script delivery leaves the settled edit visible and loading ends', async () => {
   using lib = new wasm.ComponentLibrary('{"$defs":{"Box":{"properties":{"value":{}}}}}');
   using s = new wasm.RuntimeSession(lib);

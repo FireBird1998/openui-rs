@@ -508,6 +508,8 @@ impl SessionCore {
         limits: Limits,
         max_bytes: u64,
     ) -> Result<Option<LibraryFunctions<'a>>, OpenUiError> {
+        #[cfg(test)]
+        queries::TABLE_BUILDS.with(|n| n.set(n.get() + 1));
         if registered.is_empty() {
             return Ok(None);
         }

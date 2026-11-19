@@ -4,23 +4,36 @@ use std::sync::Arc;
 use wasm_bindgen::prelude::*;
 
 #[wasm_bindgen]
-pub struct WantedToolCall(pub(crate) Arc<core::WantedToolCall>);
+pub struct WantedToolCall {
+    pub(crate) id: openui_runtime::ToolCallId,
+    request: Option<Arc<core::WantedToolCall>>,
+}
 #[wasm_bindgen]
 impl WantedToolCall {
-    /// The manager still owns this call. A driver can release retired receipts
-    /// even if the provider's promise never settles.
+    /// Whether the manager still owns this call. Completing a released query
+    /// can still advance readers left stale at the round limit.
     #[wasm_bindgen(getter, js_name = pending)]
     pub fn pending(&self) -> bool {
-        self.0.id.is_pending()
+        self.id.is_pending()
+    }
+
+    // Private to the automatic driver. A released promise only needs the
+    // identity for the completion that may advance a bounded reader cycle.
+    #[wasm_bindgen(js_name = __releaseRequest, skip_typescript)]
+    pub fn release_request(&mut self) {
+        self.request = None;
     }
 
     #[wasm_bindgen(getter, js_name = toolName)]
     pub fn tool_name(&self) -> String {
-        self.0.tool_name.clone()
+        self.request
+            .as_ref()
+            .map(|r| r.tool_name.clone())
+            .unwrap_or_default()
     }
     #[wasm_bindgen(getter, js_name = argumentsJson)]
     pub fn arguments_json(&self) -> Option<String> {
-        self.0.arguments_json()
+        self.request.as_ref().and_then(|r| r.arguments_json())
     }
 }
 #[wasm_bindgen]
@@ -37,6 +50,10 @@ impl QueryEffects {
     #[wasm_bindgen(getter)]
     pub fn changed(&self) -> bool {
         self.0.changed
+    }
+    #[wasm_bindgen(getter, js_name = readerRoundsLimited)]
+    pub fn reader_rounds_limited(&self) -> bool {
+        self.0.reader_rounds_limited
     }
     #[wasm_bindgen(getter, js_name = actionCount)]
     pub fn action_count(&self) -> u64 {
@@ -60,7 +77,10 @@ impl QueryEffects {
             .calls
             .get(usize::try_from(index).ok()?)
             .cloned()
-            .map(WantedToolCall)
+            .map(|request| WantedToolCall {
+                id: request.id.clone(),
+                request: Some(request),
+            })
     }
     #[wasm_bindgen(getter, js_name = evaluationError, unchecked_return_type = "{ kind: string; message: string } | null")]
     pub fn evaluation_error(&self) -> String {

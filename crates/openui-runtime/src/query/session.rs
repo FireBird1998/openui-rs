@@ -44,10 +44,11 @@ impl ToolCallId {
         }
     }
 
-    /// Whether this receipt can still dispatch work for its manager.
+    /// Whether the manager still owns the outstanding call. A released query
+    /// receipt can still trigger stale readers when its provider finishes.
     pub fn is_pending(&self) -> bool {
         !matches!(&self.0.target, CallTarget::Query(call) if call.strong_count() == 0)
-            && !matches!(&self.0.target, CallTarget::Mutation(call) if call.lifecycle.strong_count() == 0)
+            && self.0.lifecycle.strong_count() != 0
             && self.0.manager.strong_count() != 0
             && !self.0.consumed.load(Ordering::Relaxed)
     }
@@ -63,6 +64,8 @@ impl ToolCall {
 impl QueryManager {
     /// Stage query registration and its drawing together. Only the read-only
     /// result view escapes to the callback. A refusal preserves pending identities.
+    /// When registering with library context, supply it again with
+    /// [`Self::complete_tool_call_with_context`] so readers can call borrowed functions.
     pub fn evaluate_transaction<T, E: From<QueryCommandError>>(
         &mut self,
         input: &TreeInput<'_>,
@@ -98,8 +101,7 @@ impl QueryManager {
         if let Some(now) = now_ms {
             candidate.sample_clock(now)?;
         }
-        let nodes = candidate.evaluate_nodes(input, store)?;
-        let calls = candidate.apply_nodes(input.result, nodes);
+        let calls = candidate.register_readers(input, store)?;
         if mutations {
             candidate.register_mutation_statements(input, store)?;
         }
@@ -127,8 +129,12 @@ impl QueryManager {
         PreparedReferenceValues::managed(values, undefined, limits)
     }
 
-    fn candidate(&self) -> Self {
+    pub(super) fn candidate(&self) -> Self {
         Self {
+            reader_limit: self.reader_limit,
+            readers: self.readers.clone(),
+            last_result: self.last_result,
+            reader_rounds_limited: false,
             owner: self.owner.clone(),
             limits: self.limits,
             lifecycle: self.lifecycle.clone(),
@@ -146,19 +152,49 @@ impl QueryManager {
         }
     }
 
-    fn publish(
+    pub(super) fn publish(
         &mut self,
         calls: Vec<ToolCall>,
         previous: &Self,
     ) -> Result<QueryUpdate, QueryCommandError> {
+        self.admit_snapshot_values()?;
+        Ok(self.publish_admitted(calls, previous))
+    }
+
+    // Delivery has already reserved the source snapshot, and any reader cascade
+    // has reserved its replacement. Removing unheld entries changes neither.
+    pub(super) fn publish_admitted(
+        &mut self,
+        calls: Vec<ToolCall>,
+        previous: &Self,
+    ) -> QueryUpdate {
         self.release_unreferenced();
+        self.rebuild_snapshot();
+        QueryUpdate {
+            next_refresh_due_ms: self.next_refresh_due_ms(),
+            calls,
+            hidden_change: self
+                .mutations
+                .hidden_changed(&previous.mutations.hidden_results()),
+            changed: self.snapshot_json != previous.snapshot_json,
+            reader_diagnostic_changed: self.reader_diagnostic() != previous.reader_diagnostic(),
+            reader_rounds_limited: self.reader_rounds_limited,
+        }
+    }
+
+    pub(super) fn admit_snapshot_values(&self) -> Result<(), QueryCommandError> {
+        #[cfg(test)]
+        round_tests::snapshot_pass();
         // The same entry can be projected at many statement ids. Reserve all
         // result and error bodies together before copying/serializing them.
         let room = EvaluationSession::with_limits(&(), 0, crate::admission::fixed(self.limits));
         room.with_evaluator(|eval| {
             for q in self.queries.values() {
+                // The fixed null placeholder is visible even before a call.
+                // A fetched null, like every delivered result, is charged.
+                let default = q.defaults.as_ref().filter(|v| !matches!(v, Value::Null));
                 for value in [
-                    self.data(q).or(q.defaults.as_ref()),
+                    self.data(q).or(default),
                     q.error.as_ref().filter(|_| !q.withheld),
                 ]
                 .into_iter()
@@ -170,16 +206,7 @@ impl QueryManager {
                 }
             }
         });
-        check_cuts(room.flags())?;
-        self.rebuild_snapshot();
-        Ok(QueryUpdate {
-            next_refresh_due_ms: self.next_refresh_due_ms(),
-            calls,
-            changed: self.snapshot_json != previous.snapshot_json,
-            hidden_change: self
-                .mutations
-                .hidden_changed(&previous.mutations.hidden_results()),
-        })
+        check_cuts(room.flags())
     }
 
     /// Validate a capability before reading or copying a host outcome.
@@ -192,205 +219,99 @@ impl QueryManager {
         Ok(())
     }
 
-    /// Complete a session call atomically, including admission of shared
-    /// results/error messages at every position in the new snapshot.
-    ///
-    /// A result is admitted under the result-size and depth limits and the
-    /// cache cap before it is copied. A refused result is delivered as the
-    /// call's `tool-error`, naming the limit, to every query on its key (or
-    /// to the mutation), and the call is consumed. Nothing held is evicted.
-    /// A refusal of the command itself (an invalid identity, a value that is
-    /// not JSON, failure text past the limits, or a snapshot that cannot hold
-    /// the delivery) changes nothing and leaves the call completable.
-    pub fn complete_tool_call(
-        &mut self,
-        id: &ToolCallId,
-        outcome: ToolCallOutcome,
-    ) -> Result<QueryUpdate, QueryCommandError> {
-        self.complete_tool_call_reporting(id, outcome)
-            .map(|(update, _)| update)
-    }
-
-    pub(super) fn complete_tool_call_reporting(
-        &mut self,
-        id: &ToolCallId,
-        outcome: ToolCallOutcome,
-    ) -> Result<(QueryUpdate, Option<ResultLimit>), QueryCommandError> {
+    /// Whether the payload can be discarded before parsing or admission.
+    /// A receipt still needs completion to retire it and process stale readers.
+    pub fn discards_tool_outcome(&self, id: &ToolCallId) -> Result<bool, QueryCommandError> {
         self.check_call(id)?;
-        // A completion for a released entry is discarded whatever it holds,
-        // on the borrowed and owned paths alike.
-        if self.disposed || self.readers(id).0 == 0 {
-            return self.complete_command(id, ToolOutcome::Result(None));
-        }
-        let limit = results::result_limit(self.limits);
-        let outcome = match &outcome {
-            ToolCallOutcome::MissingResult => ToolOutcome::Result(None),
-            ToolCallOutcome::Result(value) => ToolOutcome::ResultValue(value),
-            ToolCallOutcome::ToolNotFound(names) => {
-                let mut bytes = 0usize;
-                for name in names {
-                    bytes = bytes.saturating_add(name.len()).saturating_add(2);
-                    if bytes > limit {
-                        return Err(QueryCommandError::Limit(crate::admission::size_error()));
-                    }
-                }
-                ToolOutcome::ToolNotFound(names.iter().map(String::as_str).collect())
-            }
-            ToolCallOutcome::McpError(text) => ToolOutcome::McpError(text),
-            ToolCallOutcome::CallFailed(text) => ToolOutcome::CallFailed(text),
-        };
-        self.complete_command(id, outcome)
+        Ok(id.0.lifecycle.strong_count() == 0 || self.disposed || self.delivery_holders(id).0 == 0)
     }
 
-    /// The one completion path, for borrowed and owned outcomes alike. It
-    /// never leaves a call that cannot be completed: if the delivery does not
-    /// fit the snapshot's room, a result is delivered as a `tool-error`
-    /// instead; if those errors do not fit either, the queries keep them
-    /// unlisted and the snapshot shows one compact diagnostic (#90).
-    pub(super) fn complete_command(
-        &mut self,
-        id: &ToolCallId,
-        outcome: ToolOutcome<'_>,
-    ) -> Result<(QueryUpdate, Option<ResultLimit>), QueryCommandError> {
-        self.complete_delivery(id, outcome, None)
-    }
-
-    /// Deliver a result the caller refused under `limit` before reading it
-    /// (a session's outcome JSON too long or too deep to parse) as the
-    /// call's `tool-error`, exactly as a result the manager refuses: it
-    /// always ends the call, whatever the number of readers.
-    pub fn complete_tool_call_refused(
-        &mut self,
-        id: &ToolCallId,
-        limit: ResultLimit,
-    ) -> Result<QueryUpdate, QueryCommandError> {
-        let message = limit.to_string();
-        self.complete_delivery(id, ToolOutcome::CallFailed(&message), Some(limit))
-            .map(|(update, _)| update)
-    }
-
-    fn readers(&self, id: &ToolCallId) -> (usize, usize) {
+    pub(super) fn delivery_holders(&self, id: &ToolCallId) -> (usize, usize) {
         match &id.0.target {
             CallTarget::Mutation(call) => (1, call.dispatched_tool.len()),
             CallTarget::Query(target) => target.upgrade().map_or((0, 0), |p| {
                 (
-                    self.queries.values().filter(|q| q.key == p.key).count(),
+                    self.queries
+                        .values()
+                        .filter(|q| !q.suspended && q.key == p.key)
+                        .count(),
                     p.tool_name.len(),
                 )
             }),
         }
     }
 
-    fn complete_delivery(
+    /// Deliver a result refused before reading it as the call's tool-error.
+    pub fn complete_tool_call_refused(
         &mut self,
         id: &ToolCallId,
-        outcome: ToolOutcome<'_>,
-        refusal: Option<ResultLimit>,
-    ) -> Result<(QueryUpdate, Option<ResultLimit>), QueryCommandError> {
-        self.check_call(id)?;
-        let (readers, tool_bytes) = self.readers(id);
-        if self.disposed || readers == 0 {
-            // ADR 0013: discard the outcome for a released or previous-only
-            // entry. Retire its pending flag and consume the receipt once.
-            self.complete(id, ToolOutcome::Result(None))?;
-            id.0.consumed.store(true, Ordering::Relaxed);
-            return Ok((self.idle_update(), None));
-        }
-        let limit = results::result_limit(self.limits);
-        // Error records own their formatted messages. Bound the copies before
-        // formatting any of them, even if a single failed key has many readers.
-        let text = match &outcome {
-            ToolOutcome::ToolNotFound(names) => names.iter().fold(0usize, |bytes, name| {
-                bytes.saturating_add(name.len()).saturating_add(2)
-            }),
-            ToolOutcome::McpError(text) | ToolOutcome::CallFailed(text) => text.len(),
-            _ => 0,
-        };
-        // A refused result's message is the manager's own: the fallback below
-        // bounds it, so it never refuses the command.
-        if refusal.is_none()
-            && text.saturating_add(tool_bytes).saturating_mul(readers) > limit
-            && text != 0
-        {
-            return Err(QueryCommandError::Limit(crate::admission::size_error()));
-        }
-        let success = refusal.is_some()
-            || matches!(
-                outcome,
-                ToolOutcome::Result(_) | ToolOutcome::ResultValue(_)
-            );
-        let (candidate, published, refused) = self.attempt(id, outcome.clone(), false)?;
-        let refused = refused.or(refusal);
-        let (candidate, update, refused) = match published {
-            Ok(update) => (candidate, update, refused),
-            Err(QueryCommandError::Limit(_)) => {
-                // The room cannot hold the delivery. A result becomes a
-                // tool-error; a failure keeps its own error.
-                let limit = refused.unwrap_or(ResultLimit::Snapshot(limit));
-                let message = limit.to_string();
-                let fallback = if success {
-                    ToolOutcome::CallFailed(&message)
-                } else {
-                    outcome
-                };
-                let refused = success.then_some(limit);
-                let (candidate, published, _) = self.attempt(id, fallback.clone(), false)?;
-                match published {
-                    Ok(update) => (candidate, update, refused),
-                    Err(QueryCommandError::Limit(_)) if id.query_key().is_some() => {
-                        let (candidate, published, _) = self.attempt(id, fallback, true)?;
-                        (candidate, published?, refused)
-                    }
-                    Err(error) => return Err(error),
-                }
-            }
-            Err(error) => return Err(error),
-        };
-        *self = candidate;
-        id.0.consumed.store(true, Ordering::Relaxed);
-        Ok((update, refused))
+        limit: ResultLimit,
+    ) -> Result<QueryUpdate, QueryCommandError> {
+        self.stage_tool_call_refused(id, limit)?.finish(None)
     }
 
-    // Complete on a candidate and publish it, without committing.
-    #[allow(clippy::type_complexity)]
-    fn attempt(
-        &self,
+    /// Stage a refusal so a session can supply context to any stale readers.
+    pub fn stage_tool_call_refused<'a>(
+        &'a mut self,
+        id: &'a ToolCallId,
+        limit: ResultLimit,
+    ) -> Result<ToolDelivery<'a>, QueryCommandError> {
+        self.stage_delivery(id, ToolOutcome::CallFailed(&limit.to_string()), Some(limit))
+    }
+
+    /// Deliver a provider outcome. A result over a limit ends the call as a tool-error.
+    /// Admission counts shared results and errors
+    /// at every position in the snapshot. A downstream reader limit consumes
+    /// the admitted receipt and is available through [`Self::reader_diagnostic`].
+    /// Readers see committed Store writes until it is dropped, then its last
+    /// committed state. If a stale reader requires the registration's borrowed
+    /// context, retry the receipt with [`Self::complete_tool_call_with_context`].
+    /// A result refusal always settles. If readers left stale at the round
+    /// bound cannot run with this context, the update keeps the cut flag.
+    pub fn complete_tool_call(
+        &mut self,
         id: &ToolCallId,
-        outcome: ToolOutcome<'_>,
-        withhold: bool,
-    ) -> Result<
-        (
-            Self,
-            Result<QueryUpdate, QueryCommandError>,
-            Option<ResultLimit>,
-        ),
-        QueryCommandError,
-    > {
-        let key = id.query_key();
-        let mut candidate = self.candidate();
-        let (_, refused) = candidate.complete(id, outcome)?;
-        if withhold && let Some(key) = &key {
-            candidate.withhold_errors(key);
+        outcome: ToolCallOutcome,
+    ) -> Result<QueryUpdate, QueryCommandError> {
+        self.stage_tool_call(id, outcome)?.finish(None)
+    }
+
+    /// Complete a call using the live Store and library context. Reader expressions
+    /// come from the last successful registration, including during a streaming edit.
+    pub fn complete_tool_call_with_context(
+        &mut self,
+        id: &ToolCallId,
+        outcome: ToolCallOutcome,
+        input: &TreeInput<'_>,
+        store: &Store,
+    ) -> Result<QueryUpdate, QueryCommandError> {
+        self.stage_tool_call(id, outcome)?
+            .finish(Some((input, store)))
+    }
+
+    /// Admit a provider outcome before constructing borrowed reader context.
+    pub fn stage_tool_call<'a>(
+        &'a mut self,
+        id: &'a ToolCallId,
+        outcome: ToolCallOutcome,
+    ) -> Result<ToolDelivery<'a>, QueryCommandError> {
+        if self.discards_tool_outcome(id)? {
+            return self.stage_borrowed(id, ToolOutcome::Result(None));
         }
-        let calls = key
-            .and_then(|key| candidate.run_remembered(&key))
-            .into_iter()
-            .collect();
-        // A withheld delivery stores no data and lists no new error: it adds
-        // only the one compact diagnostic, so it is published whatever the
-        // room, and the call can always end.
-        let published = if withhold {
-            candidate.release_unreferenced();
-            candidate.rebuild_snapshot();
-            Ok(QueryUpdate {
-                next_refresh_due_ms: candidate.next_refresh_due_ms(),
-                calls,
-                changed: candidate.snapshot_json != self.snapshot_json,
-                hidden_change: false,
-            })
-        } else {
-            candidate.publish(calls, self)
+        let limit = results::result_limit(self.limits);
+        let outcome = match &outcome {
+            ToolCallOutcome::MissingResult => ToolOutcome::Result(None),
+            ToolCallOutcome::Result(value) => ToolOutcome::ResultValue(value),
+            ToolCallOutcome::ToolNotFound(names) => {
+                // Bound the temporary list of borrowed names before conversion.
+                if names.len() > limit / 2 {
+                    return Err(QueryCommandError::Limit(crate::admission::size_error()));
+                }
+                ToolOutcome::ToolNotFound(names.iter().map(String::as_str).collect())
+            }
+            ToolCallOutcome::McpError(text) => ToolOutcome::McpError(text),
+            ToolCallOutcome::CallFailed(text) => ToolOutcome::CallFailed(text),
         };
-        Ok((candidate, published, refused))
+        self.stage_borrowed(id, outcome)
     }
 }

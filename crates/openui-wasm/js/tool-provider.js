@@ -2,6 +2,10 @@
 // These originals are called only inside openuiCall, after argument admission.
 const openuiSample = RuntimeSession.prototype.sampleQueryClock;
 const openuiResumeAt = RuntimeSession.prototype.resumeQueriesAt;
+// Keep request compaction private to receipts claimed by the automatic driver.
+const openuiReleaseRequest = WantedToolCall.prototype.__releaseRequest;
+if (typeof openuiReleaseRequest !== 'function') throw new Error('missing tool receipt helper');
+delete WantedToolCall.prototype.__releaseRequest;
 const openuiRawDraws = new WeakMap();
 const openuiReadBundle = RuntimeSession.prototype.__readResponseBundle;
 const openuiDrawResponse = RuntimeSession.prototype.__drawResponse;
@@ -81,6 +85,19 @@ function openuiAwaitTool(promise, ticket, mcp) {
   );
 }
 
+// A provider can keep its promise after the request leaves the cache. Its
+// callback has no strong path to the driver, the receipt or the arguments.
+function openuiReleasedDelivery(owner, ticket) {
+  return () => {
+    const driver = owner.deref();
+    const call = driver && openuiGet(driver.released, ticket);
+    if (!call) return;
+    driver.released.delete(ticket);
+    ticket.call = call;
+    driver.complete(ticket, driver.generation, 'value', undefined);
+  };
+}
+
 function openuiStartTool(driver, call) {
   const generation = driver.generation;
   const ticket = { call, deliver: (tag, value) => driver.complete(ticket, generation, tag, value) };
@@ -125,6 +142,8 @@ class OpenuiToolDriver {
     this.options = options;
     this.minimumMs = options.minimumMs ?? 1000n;
     this.pending = new Set();
+    this.released = new WeakMap();
+    this.owner = new WeakRef(this);
     this.generation = {};
   }
 
@@ -132,16 +151,18 @@ class OpenuiToolDriver {
     this.pending.delete(ticket);
     ticket.deliver = null;
     try {
-      if (!ticket.call.pending) return;
+      if (this.generation !== generation) return;
       // Serializing a result and reporting a binding error can also run app
       // code. Reserve the next turn before either can cause another dispatch.
       this.deferDrain();
-      const outcome = openuiToolOutcome(tag, value);
+      // Even a released query receipt triggers the manager's stale-reader
+      // pass. Its payload has no current owner and must never run a getter.
+      const outcome = ticket.call.pending ? openuiToolOutcome(tag, value) : '{"undefined":true}';
       // Reading the provider's value can run arbitrary application code.
-      if (this.generation !== generation || !ticket.call.pending) return;
+      if (this.generation !== generation) return;
       try { openuiOwned.get('sampleQueryClock').call(this.session, openuiNow()); }
       catch (error) { this.report(error); }
-      if (this.generation === generation && ticket.call.pending) {
+      if (this.generation === generation) {
         openuiOwned.get('completeToolCall').call(this.session, ticket.call, outcome, true);
       }
     } catch (error) {
@@ -182,6 +203,7 @@ class OpenuiToolDriver {
 
   cancel(paused) {
     this.generation = {};
+    this.released = new WeakMap();
     this.arm(undefined);
     clearTimeout(this.deferred);
     this.deferred = undefined;
@@ -238,8 +260,11 @@ class OpenuiToolDriver {
       if (count || update.changed) {
         for (const ticket of this.pending) {
           if (ticket.call.pending) continue;
-          ticket.deliver = null;
-          ticket.call.free();
+          const call = ticket.call;
+          openuiCall(openuiNone, call, WantedToolCall.prototype, [], () => openuiApply(openuiReleaseRequest, call, []));
+          openuiPut(this.released, ticket, call);
+          ticket.call = null;
+          ticket.deliver = openuiReleasedDelivery(this.owner, ticket);
           this.pending.delete(ticket);
         }
       }
@@ -254,6 +279,10 @@ class OpenuiToolDriver {
       if (error && this.generation === generation &&
           (error.kind !== previous?.kind || error.message !== previous?.message)) {
         this.report(openuiFailure(error.kind, error.message));
+      }
+      // Unlike evaluationError this flag is consumed by the drain.
+      if (update.readerRoundsLimited && this.generation === generation) {
+        this.report(openuiFailure('LimitExceeded', 'Query readers were still changing at the reader round limit.'));
       }
       const actions = update.actionCount;
       for (let i = 0n; i < actions && this.generation === generation; i++) {

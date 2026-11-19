@@ -330,7 +330,7 @@ const openuiSurface = new Map([
   [WantedToolCall, { methods: { free: openuiFree }, accessors: {
     pending: { get: openuiNone }, toolName: { get: openuiNone }, argumentsJson: { get: openuiNone } } }],
   [QueryEffects, { methods: { free: openuiFree, actionAt: openuiSpec([openuiLimit]), callAt: openuiSpec([openuiLimit]) }, accessors: {
-    nextRefreshDueMs: { get: openuiNone }, actionCount: { get: openuiNone }, callCount: { get: openuiNone }, changed: { get: openuiNone }, evaluationError: { get: openuiJson } } }],
+    nextRefreshDueMs: { get: openuiNone }, readerRoundsLimited: { get: openuiNone }, actionCount: { get: openuiNone }, callCount: { get: openuiNone }, changed: { get: openuiNone }, evaluationError: { get: openuiJson } } }],
   [EvaluationHandle, { methods: { free: openuiFree } }],
   [ActionHandle, { methods: { free: openuiFree, retain: openuiNone } }],
   [ContinuationHandle, { methods: { free: openuiFree } }],

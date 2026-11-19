@@ -422,5 +422,305 @@
     }
    }
   ]
+ },
+ {
+  "name": "refused-source-keeps-its-reader-waiting",
+  "program": "a = Query(\"source\", {}, \"default\")\nb = Query(\"reader\", {x:a}, \"waiting\")",
+  "limits": {
+   "cacheBytes": 3
+  },
+  "steps": [
+   {
+    "kind": "evaluate"
+   },
+   {
+    "kind": "complete",
+    "call": 0,
+    "outcome": {
+     "kind": "result",
+     "value": "large"
+    }
+   },
+   {
+    "kind": "invalidate",
+    "ids": [
+     "b"
+    ]
+   },
+   {
+    "kind": "evaluate"
+   }
+  ],
+  "failureControl": {
+   "step": 1,
+   "message": "tool result does not fit the cache limit of 3 bytes"
+  }
+ },
+ {
+  "name": "refused-reader-keeps-its-dependent-waiting",
+  "program": "a = Query(\"source\", {}, \"default\")\nb = Query(\"reader\", {x:a}, \"waiting\")\nc = Query(\"leaf\", {x:b})",
+  "limits": {
+   "cacheBytes": 4
+  },
+  "steps": [
+   {
+    "kind": "evaluate"
+   },
+   {
+    "kind": "complete",
+    "call": 0,
+    "outcome": {
+     "kind": "result",
+     "value": 1
+    }
+   },
+   {
+    "kind": "complete",
+    "call": 1,
+    "outcome": {
+     "kind": "result",
+     "value": "large"
+    }
+   },
+   {
+    "kind": "invalidate",
+    "ids": [
+     "c"
+    ]
+   },
+   {
+    "kind": "evaluate"
+   }
+  ],
+  "failureControl": {
+   "step": 2,
+   "message": "tool result does not fit the cache limit of 4 bytes"
+  }
+ },
+ {
+  "name": "refused-source-refetch-keeps-its-readers-data",
+  "program": "a = Query(\"source\", {}, \"default\")\nb = Query(\"reader\", {x:a}, \"waiting\")",
+  "limits": {
+   "cacheBytes": 3
+  },
+  "steps": [
+   {
+    "kind": "evaluate"
+   },
+   {
+    "kind": "complete",
+    "call": 0,
+    "outcome": {
+     "kind": "result",
+     "value": 1
+    }
+   },
+   {
+    "kind": "complete",
+    "call": 1,
+    "outcome": {
+     "kind": "result",
+     "value": 2
+    }
+   },
+   {
+    "kind": "invalidate",
+    "ids": [
+     "a"
+    ]
+   },
+   {
+    "kind": "complete",
+    "call": 2,
+    "outcome": {
+     "kind": "result",
+     "value": "large"
+    }
+   },
+   {
+    "kind": "evaluate"
+   }
+  ],
+  "failureControl": {
+   "step": 4,
+   "message": "tool result does not fit the cache limit of 3 bytes"
+  }
+ },
+ {
+  "name": "refusal-settles-while-reader-rounds-are-limited",
+  "program": "$n = 0\na = Query(\"source\")\nb = Query(\"reader\", {x:a,n:$n})\nc = Query(\"other\")",
+  "limits": {
+   "cacheBytes": 6
+  },
+  "steps": [
+   {
+    "kind": "evaluate"
+   },
+   {
+    "kind": "complete",
+    "call": 0,
+    "outcome": {
+     "kind": "result",
+     "hostNumber": "NaN"
+    }
+   },
+   {
+    "kind": "set",
+    "name": "$n",
+    "value": 1
+   },
+   {
+    "kind": "complete",
+    "call": 1,
+    "outcome": {
+     "kind": "result",
+     "value": "large"
+    }
+   }
+  ],
+  "roundCuts": [
+   1,
+   3
+  ],
+  "failureControl": {
+   "step": 3,
+   "message": "tool result does not fit the cache limit of 6 bytes"
+  }
+ },
+ {
+  "name": "compact-refusal-keeps-a-dependent-waiting",
+  "program": "q0 = Query(\"shared\")\nq1 = Query(\"shared\")\nq2 = Query(\"shared\")\nq3 = Query(\"shared\")\nq4 = Query(\"shared\")\nq5 = Query(\"shared\")\nb = Query(\"reader\", {x:q0})",
+  "limits": {
+   "cacheBytes": 4,
+   "resultSize": 1024
+  },
+  "steps": [
+   {
+    "kind": "evaluate"
+   },
+   {
+    "kind": "complete",
+    "call": 0,
+    "outcome": {
+     "kind": "result",
+     "value": "large"
+    }
+   },
+   {
+    "kind": "invalidate",
+    "ids": [
+     "b"
+    ]
+   },
+   {
+    "kind": "evaluate"
+   },
+   {
+    "kind": "invalidate",
+    "ids": [
+     "q0"
+    ]
+   },
+   {
+    "kind": "complete",
+    "dispatch": {"step": 4, "toolName": "shared", "args": {}},
+    "outcome": {"kind": "result", "value": 1}
+   }
+  ]
+ },
+ {
+  "name": "reader-key-changes-release-the-previous-byte-charge",
+  "program": "a = Query(\"source\", {}, \"default\")\nb = Query(\"reader\", {x:a}, \"waiting\")",
+  "limits": {
+   "cacheBytes": 6
+  },
+  "steps": [
+   {
+    "kind": "evaluate"
+   },
+   {
+    "kind": "complete",
+    "call": 0,
+    "outcome": {
+     "kind": "result",
+     "value": 1
+    }
+   },
+   {
+    "kind": "complete",
+    "call": 1,
+    "outcome": {
+     "kind": "result",
+     "value": "old"
+    }
+   },
+   {
+    "kind": "invalidate",
+    "ids": [
+     "a"
+    ]
+   },
+   {
+    "kind": "complete",
+    "call": 2,
+    "outcome": {
+     "kind": "result",
+     "value": 2
+    }
+   },
+   {
+    "kind": "complete",
+    "call": 3,
+    "outcome": {
+     "kind": "result",
+     "value": "new"
+    }
+   },
+   {
+    "kind": "replace",
+    "program": "a = Query(\"source\")"
+   },
+   {
+    "kind": "evaluate"
+   }
+  ]
+ },
+ {
+  "name": "refusal-settles-when-a-stale-reader-exceeds-the-allowance",
+  "program": "$n = 0\na = Query(\"source\")\nb = Query(\"reader\", {x:a,n:$n+$n})\nc = Query(\"other\")",
+  "limits": {
+   "cacheBytes": 6,
+   "resultSize": 1024
+  },
+  "steps": [
+   {
+    "kind": "evaluate"
+   },
+   {
+    "kind": "complete",
+    "call": 0,
+    "outcome": {
+     "kind": "result",
+     "hostNumber": "NaN"
+    }
+   },
+   {
+    "kind": "set",
+    "name": "$n",
+    "value": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+   },
+   {
+    "kind": "complete",
+    "call": 1,
+    "outcome": {
+     "kind": "result",
+     "value": "large"
+    }
+   }
+  ],
+  "roundCuts": [
+   1
+  ],
+  "propagationCut": 3
  }
 ]

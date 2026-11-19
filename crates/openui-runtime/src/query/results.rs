@@ -137,7 +137,7 @@ impl QueryManager {
     pub fn measured_cache_bytes(&self) -> usize {
         self.cache
             .values()
-            .filter_map(|entry| entry.data.as_ref())
+            .filter_map(|entry| entry.data.as_deref())
             .chain(self.mutations.data())
             .map(|data| value_bytes(data, usize::MAX).unwrap_or(usize::MAX))
             .fold(0usize, usize::saturating_add)
@@ -176,7 +176,11 @@ impl QueryManager {
     // entry released if no other query holds it (ADR 0013).
     fn cache_after_success(&self, key: &Arc<str>, bytes: usize) -> usize {
         let mut drops: HashMap<&Arc<str>, usize> = HashMap::new();
-        for query in self.queries.values().filter(|query| query.key == *key) {
+        for query in self
+            .queries
+            .values()
+            .filter(|query| !query.suspended && query.key == *key)
+        {
             if let Some(previous) = query.previous.as_ref().filter(|p| *p != key) {
                 let count = drops.entry(previous).or_default();
                 *count = count.saturating_add(1);
@@ -200,7 +204,11 @@ impl QueryManager {
     /// They keep it, so their failed entry is not called again, and the
     /// snapshot shows one compact diagnostic for all such queries instead.
     pub(super) fn withhold_errors(&mut self, key: &Arc<str>) {
-        for query in self.queries.values_mut().filter(|q| q.key == *key) {
+        for query in self
+            .queries
+            .values_mut()
+            .filter(|q| !q.suspended && q.key == *key)
+        {
             query.withheld = true;
         }
     }
@@ -244,7 +252,9 @@ impl QueryManager {
         id: &ToolCallId,
         outcome: ToolCallOutcome,
     ) -> Result<(QueryUpdate, Option<ResultLimit>), QueryCommandError> {
-        self.complete_tool_call_reporting(id, outcome)
+        let delivery = self.stage_tool_call(id, outcome)?;
+        let refused = delivery.result_refusal();
+        Ok((delivery.finish(None)?, refused))
     }
 }
 

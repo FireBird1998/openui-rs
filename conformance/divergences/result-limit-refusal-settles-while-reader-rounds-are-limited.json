@@ -1,0 +1,16 @@
+{
+  "case": "refusal-settles-while-reader-rounds-are-limited",
+  "reason": "#90: the cache cap turns the result into a failed delivery.",
+  "reference": [
+    "{\"snapshot\":{\"__openui_loading\":[\"a\",\"b\",\"c\"],\"__openui_refetching\":[],\"__openui_errors\":[],\"a\":null,\"b\":null,\"c\":null},\"calls\":[{\"call\":0,\"toolName\":\"source\",\"args\":{}},{\"call\":1,\"toolName\":\"other\",\"args\":{}}],\"changed\":true}",
+    "{\"snapshot\":{\"__openui_loading\":[\"b\",\"c\"],\"__openui_refetching\":[],\"__openui_errors\":[],\"a\":null,\"b\":null,\"c\":null},\"calls\":[{\"call\":2,\"toolName\":\"reader\",\"args\":{\"x\":null,\"n\":0}}],\"changed\":true}",
+    "{\"snapshot\":{\"__openui_loading\":[\"b\",\"c\"],\"__openui_refetching\":[],\"__openui_errors\":[],\"a\":null,\"b\":null,\"c\":null},\"calls\":[],\"changed\":false}",
+    "{\"snapshot\":{\"__openui_loading\":[\"b\"],\"__openui_refetching\":[],\"__openui_errors\":[],\"a\":null,\"b\":null,\"c\":\"large\"},\"calls\":[{\"call\":3,\"toolName\":\"reader\",\"args\":{\"x\":null,\"n\":1}}],\"changed\":true}"
+  ],
+  "rust": [
+    "{\"snapshot\":{\"__openui_loading\":[\"a\",\"b\",\"c\"],\"__openui_refetching\":[],\"__openui_errors\":[],\"a\":null,\"b\":null,\"c\":null},\"calls\":[{\"call\":0,\"toolName\":\"source\",\"args\":{}},{\"call\":1,\"toolName\":\"other\",\"args\":{}}],\"changed\":true}",
+    "{\"snapshot\":{\"__openui_loading\":[\"b\",\"c\"],\"__openui_refetching\":[],\"__openui_errors\":[],\"a\":null,\"b\":null,\"c\":null},\"calls\":[{\"call\":2,\"toolName\":\"reader\",\"args\":{\"x\":null,\"n\":0}}],\"changed\":true}",
+    "{\"snapshot\":{\"__openui_loading\":[\"b\",\"c\"],\"__openui_refetching\":[],\"__openui_errors\":[],\"a\":null,\"b\":null,\"c\":null},\"calls\":[],\"changed\":false}",
+    "{\"snapshot\":{\"__openui_loading\":[\"b\"],\"__openui_refetching\":[],\"__openui_errors\":[{\"source\":\"query\",\"statementId\":\"c\",\"component\":\"Query\",\"toolName\":\"other\",\"code\":\"tool-error\",\"message\":\"Query \\\"other\\\" failed: tool result does not fit the cache limit of 6 bytes\"}],\"a\":null,\"b\":null,\"c\":null},\"calls\":[{\"call\":3,\"toolName\":\"reader\",\"args\":{\"x\":null,\"n\":1}}],\"changed\":true}"
+  ]
+}

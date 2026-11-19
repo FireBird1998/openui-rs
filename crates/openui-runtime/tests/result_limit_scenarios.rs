@@ -49,13 +49,26 @@ fn replay(scenario: &JsonValue) -> Vec<String> {
     let mut manager = manager(scenario.get("limits"));
     let mut calls: Vec<ToolCallId> = Vec::new();
     let mut rows = Vec::new();
-    for step in scenario["steps"].as_array().unwrap() {
+    let mut dispatches = Vec::new();
+    for (index, step) in scenario["steps"].as_array().unwrap().iter().enumerate() {
         let before = manager.snapshot_json().to_owned();
         let ids: Vec<&str> = step
             .get("ids")
             .and_then(JsonValue::as_array)
             .map(|ids| ids.iter().map(|id| id.as_str().unwrap()).collect())
             .unwrap_or_default();
+        let completed = step
+            .get("call")
+            .map(|n| n.as_u64().unwrap() as usize)
+            .or_else(|| {
+                let target = step.get("dispatch")?;
+                Some(
+                    dispatches
+                        .iter()
+                        .position(|address| address == target)
+                        .expect("expected dispatch"),
+                )
+            });
         let update = match step["kind"].as_str().unwrap() {
             "evaluate" => Some(manager.apply(QueryCommand::Evaluate {
                 program: &current,
@@ -67,12 +80,17 @@ fn replay(scenario: &JsonValue) -> Vec<String> {
                 step.get("args").map(Value::from_json).as_ref(),
             )),
             "complete" => {
-                let id = &calls[usize::try_from(step["call"].as_u64().unwrap()).unwrap()];
+                let id = &calls[completed.unwrap()];
                 let outcome = &step["outcome"];
+                let nan = Value::Num(f64::NAN);
                 assert_eq!(outcome["kind"], "result");
                 Some(manager.apply(QueryCommand::Complete {
                     id,
-                    outcome: ToolOutcome::Result(outcome.get("value")),
+                    outcome: if outcome["hostNumber"] == "NaN" {
+                        ToolOutcome::ResultValue(&nan)
+                    } else {
+                        ToolOutcome::Result(outcome.get("value"))
+                    },
                 }))
             }
             "set" => {
@@ -91,6 +109,30 @@ fn replay(scenario: &JsonValue) -> Vec<String> {
         };
         // Every limit here ends in a delivered tool-error, never a refusal.
         let update = update.transpose().unwrap();
+        let cut = scenario["roundCuts"]
+            .as_array()
+            .is_some_and(|steps| steps.iter().any(|n| n.as_u64() == Some(index as u64)));
+        assert_eq!(
+            update.as_ref().is_some_and(|u| u.reader_rounds_limited),
+            cut,
+            "{}, step {index}",
+            scenario["name"]
+        );
+        assert_eq!(
+            matches!(
+                manager.reader_diagnostic(),
+                Some(openui_runtime::ReaderDiagnostic::PropagationLimit(_))
+            ),
+            scenario["propagationCut"].as_u64() == Some(index as u64),
+            "{}, step {index}: propagation diagnostic",
+            scenario["name"]
+        );
+        if let Some(completed) = completed {
+            assert!(
+                manager.check_call(&calls[completed]).is_err(),
+                "a delivered receipt must be consumed"
+            );
+        }
         let changed = update.as_ref().is_some_and(|update| update.changed);
         assert_eq!(changed, before != manager.snapshot_json());
         let mut dispatched = Vec::new();
@@ -102,8 +144,15 @@ fn replay(scenario: &JsonValue) -> Vec<String> {
             dispatched.push(format!(
                 "{{\"call\":{},\"toolName\":{}{args}}}",
                 calls.len(),
-                JsonValue::String(call.tool_name)
+                JsonValue::from(call.tool_name.as_str())
             ));
+            dispatches.push(
+                parse_json(&format!(
+                    "{{\"step\":{index},\"toolName\":{}{args}}}",
+                    JsonValue::from(call.tool_name)
+                ))
+                .unwrap(),
+            );
             calls.push(call.id);
         }
         assert_eq!(manager.cache_bytes(), manager.measured_cache_bytes());
@@ -154,6 +203,13 @@ fn result_limits_match_upstream_at_each_limit_and_pin_each_refusal() {
         if print {
             println!("{name}\t{}", JsonValue::from(actual.clone()));
             continue;
+        }
+        if scenario.get("failureControl").is_some() {
+            assert_eq!(
+                JsonValue::from(actual.clone()),
+                goldens[format!("{name}-provider-failure")],
+                "{name}: readers after an upstream provider failure"
+            );
         }
         let expected = match pins.get(name) {
             Some(pin) => {

@@ -49,6 +49,21 @@ fn replay(scenario: &Json) -> Vec<String> {
                         .unwrap(),
                 )
             }
+            "invalidate" => {
+                let ids: Vec<_> = step["ids"]
+                    .as_array()
+                    .unwrap()
+                    .iter()
+                    .map(|id| id.as_str().unwrap())
+                    .collect();
+                Some(
+                    manager
+                        .apply(QueryCommand::Invalidate {
+                            statement_ids: &ids,
+                        })
+                        .unwrap(),
+                )
+            }
             "register" => Some(
                 manager
                     .register_mutations(&TreeInput::new(&parsed), &store)
@@ -101,6 +116,7 @@ fn replay(scenario: &Json) -> Vec<String> {
                     Err(QueryCommandError::InvalidCall)
                 ));
                 assert_eq!(foreign.snapshot_json(), other_before);
+                manager.audit_delivery(id, &outcome).unwrap();
                 let applied = manager
                     .apply(QueryCommand::Complete { id, outcome })
                     .unwrap();
@@ -132,6 +148,7 @@ fn replay(scenario: &Json) -> Vec<String> {
             ));
             calls.push(call.id);
         }
+        manager.audit_cache(calls.iter(), true).unwrap();
         assert!(manager.cache_entry_count() <= 2 * queries.len());
         let snapshot = parse_json(manager.snapshot_json()).unwrap();
         for query in &queries {

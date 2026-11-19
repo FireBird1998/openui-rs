@@ -378,6 +378,9 @@ fn a_long_random_script_keeps_every_invariant_after_every_command() {
                     0 => nested(3 + rng.below(3)),
                     _ => text(2 + rng.below(320)),
                 };
+                manager
+                    .audit_delivery(&id, &ToolOutcome::Result(Some(&value)))
+                    .unwrap();
                 let result = if rng.below(2) == 0 {
                     manager
                         .apply(QueryCommand::Complete {
@@ -442,6 +445,7 @@ fn a_long_random_script_keeps_every_invariant_after_every_command() {
                 "step {step}: a refused command changed something"
             );
         }
+        manager.audit_cache(outstanding.iter(), true).unwrap();
         outstanding.retain(ToolCallId::is_pending);
         check_charge(&manager);
         assert!(manager.cache_entry_count() <= 2 * 3, "step {step}");

@@ -1,14 +1,30 @@
 // From reference/: bun --no-install query-refresh.ts [--random]
 import { readFileSync, writeFileSync } from 'node:fs';
 import { replay, withFakeClock, type Scenario, type Step } from './query-scenarios';
+import { readerPolicies, type RoundTrace } from './query-reader-policies';
 import { compileSchema, parse } from './lang-core/src/parser/parser';
 import { evaluate } from './lang-core/src/runtime/evaluator';
 
-const scenarios: Scenario[] = JSON.parse(readFileSync('../conformance/query-refresh.json', 'utf8'));
+type TimedScenario = Scenario & { traceReaderCut?: boolean };
+const scenarios: TimedScenario[] = JSON.parse(readFileSync('../conformance/query-refresh.json', 'utf8'));
 
-async function observe(scenario: Scenario, script?: Parameters<typeof replay>[1]) {
+async function observe(scenario: TimedScenario, script?: Parameters<typeof replay>[1]) {
   let observations: string[] = [];
-  await withFakeClock(async clock => { observations = await replay(scenario, script, clock); });
+  await withFakeClock(async clock => { observations = await replay(scenario, script, undefined, undefined, clock); });
+  if (scenario.traceReaderCut) {
+    // Observe the readers left stale by the upstream loop. Verify the observer
+    // against a fresh run of the unmodified manager with the same clock.
+    const trace: RoundTrace[] = [];
+    let step = 0;
+    const factory = (await readerPolicies())(0, () => trace[step] = {rounds: [], left: []});
+    await withFakeClock(async clock => {
+      const bytes = await replay(scenario, undefined, factory, i => { step = i; }, clock);
+      if (bytes.length !== observations.length || bytes.some((v, i) => v !== observations[i]))
+        throw Error('round tracing changed the timed observations');
+    });
+    return observations.map((bytes, i) => JSON.stringify({...JSON.parse(bytes),
+      readerRoundsLimited: Boolean(trace[i]?.left.length)}));
+  }
   return observations;
 }
 

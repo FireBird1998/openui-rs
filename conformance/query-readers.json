@@ -1,0 +1,558 @@
+[
+  {
+    "name": "three-queries-release-one-link-per-result",
+    "program": "c=Query(\"third\",{second:b},\"c\")\nb=Query(\"second\",{first:a},\"b\")\na=Query(\"first\",{},\"a\")",
+    "steps": [
+      {
+        "kind": "evaluate"
+      },
+      {
+        "kind": "complete",
+        "call": 0,
+        "outcome": {
+          "kind": "result",
+          "value": null
+        }
+      },
+      {
+        "kind": "complete",
+        "call": 1,
+        "outcome": {
+          "kind": "result",
+          "value": {
+            "rows": []
+          }
+        }
+      },
+      {
+        "kind": "complete",
+        "call": 2,
+        "outcome": {
+          "kind": "result",
+          "value": "done"
+        }
+      },
+      {
+        "kind": "evaluate"
+      }
+    ]
+  },
+  {
+    "name": "reader-waits-for-all-inputs-and-follows-failure",
+    "program": "a=Query(\"a\",{})\nb=Query(\"b\",{})\nc=Query(\"c\",{a:a,b:b},\"c\")\nd=Query(\"d\",{c:c},\"d\")",
+    "steps": [
+      {
+        "kind": "evaluate"
+      },
+      {
+        "kind": "complete",
+        "call": 0,
+        "outcome": {
+          "kind": "tool-error",
+          "message": "offline"
+        }
+      },
+      {
+        "kind": "complete",
+        "call": 1,
+        "outcome": {
+          "kind": "result",
+          "value": "ok"
+        }
+      },
+      {
+        "kind": "evaluate"
+      }
+    ]
+  },
+  {
+    "name": "refetched-input-rekeys-its-reader",
+    "program": "$n=1\na=Query(\"a\",{n:$n},\"a\")\nb=Query(\"b\",{a:a},\"b\")",
+    "steps": [
+      {
+        "kind": "evaluate"
+      },
+      {
+        "kind": "complete",
+        "call": 0,
+        "outcome": {
+          "kind": "result",
+          "value": "one"
+        }
+      },
+      {
+        "kind": "complete",
+        "call": 1,
+        "outcome": {
+          "kind": "result",
+          "value": "first"
+        }
+      },
+      {
+        "kind": "set",
+        "name": "$n",
+        "value": 2
+      },
+      {
+        "kind": "evaluate"
+      },
+      {
+        "kind": "complete",
+        "call": 2,
+        "outcome": {
+          "kind": "result",
+          "value": "two"
+        }
+      },
+      {
+        "kind": "complete",
+        "call": 3,
+        "outcome": {
+          "kind": "result",
+          "value": "second"
+        }
+      },
+      {
+        "kind": "set",
+        "name": "$n",
+        "value": 3
+      },
+      {
+        "kind": "evaluate"
+      },
+      {
+        "kind": "complete",
+        "call": 4,
+        "outcome": {
+          "kind": "result",
+          "value": "two"
+        }
+      },
+      {
+        "kind": "evaluate"
+      }
+    ]
+  },
+  {
+    "name": "parser-reported-cycle-has-no-pending-source",
+    "program": "a=Query(\"a\",{b:b},\"a\")\nb=Query(\"b\",{a:a},\"b\")",
+    "steps": [
+      {
+        "kind": "evaluate"
+      },
+      {
+        "kind": "evaluate"
+      }
+    ]
+  },
+  {
+    "name": "reader-uses-live-state-and-extra-keys-at-completion",
+    "program": "$f=0\na=Query(\"a\")\nb=Query(a,{f:$f})",
+    "steps": [
+      {
+        "kind": "evaluate"
+      },
+      {
+        "kind": "set",
+        "name": "$f",
+        "value": 3
+      },
+      {
+        "kind": "extra",
+        "toolName": "late",
+        "values": {
+          "rev": 4
+        }
+      },
+      {
+        "kind": "complete",
+        "call": 0,
+        "outcome": {
+          "kind": "result",
+          "value": "late"
+        }
+      },
+      {
+        "kind": "complete",
+        "call": 1,
+        "outcome": {
+          "kind": "result",
+          "value": "ready"
+        }
+      },
+      {
+        "kind": "evaluate"
+      }
+    ]
+  },
+  {
+    "name": "cached-results-propagate-through-two-rounds",
+    "program": "a=Query(\"up\",{k:1})\nother=Query(\"up\",{k:2})\nm=Query(\"middle\",{v:1})\nn=Query(\"middle\",{v:2})\n",
+    "steps": [
+      {
+        "kind": "evaluate"
+      },
+      {
+        "kind": "complete",
+        "call": 0,
+        "outcome": {
+          "kind": "result",
+          "value": 1
+        }
+      },
+      {
+        "kind": "complete",
+        "call": 1,
+        "outcome": {
+          "kind": "result",
+          "value": 2
+        }
+      },
+      {
+        "kind": "complete",
+        "call": 2,
+        "outcome": {
+          "kind": "result",
+          "value": "one"
+        }
+      },
+      {
+        "kind": "complete",
+        "call": 3,
+        "outcome": {
+          "kind": "result",
+          "value": "two"
+        }
+      },
+      {
+        "kind": "replace",
+        "program": "a=Query(\"up\",{k:1})\nother=Query(\"up\",{k:2})\nm=Query(\"middle\",{v:1})\nn=Query(\"middle\",{v:2})\nb=Query(\"middle\",{v:a})\nc=Query(\"leaf\",{v:b})"
+      },
+      {
+        "kind": "evaluate"
+      },
+      {
+        "kind": "complete",
+        "call": 4,
+        "outcome": {
+          "kind": "result",
+          "value": "old"
+        }
+      },
+      {
+        "kind": "replace",
+        "program": "a=Query(\"up\",{k:2})\nother=Query(\"up\",{k:2})\nm=Query(\"middle\",{v:1})\nn=Query(\"middle\",{v:2})\nb=Query(\"middle\",{v:a})\nc=Query(\"leaf\",{v:b})"
+      },
+      {
+        "kind": "evaluate"
+      },
+      {
+        "kind": "complete",
+        "call": 5,
+        "outcome": {
+          "kind": "result",
+          "value": "new"
+        }
+      }
+    ]
+  },
+  {
+    "name": "reader-of-a-sharing-query-is-pending",
+    "program": "a=Query(\"shared\",{})\nb=Query(\"shared\",{})\nc=Query(\"c\",{b:b})",
+    "steps": [
+      {
+        "kind": "evaluate"
+      },
+      {
+        "kind": "complete",
+        "call": 0,
+        "outcome": {
+          "kind": "result",
+          "value": "v"
+        }
+      },
+      {
+        "kind": "complete",
+        "call": 1,
+        "outcome": {
+          "kind": "result",
+          "value": "done"
+        }
+      }
+    ]
+  },
+  {
+    "name": "equal-primitive-preserves-a-readers-last-state",
+    "program": "$n=0\n$f=0\na=Query(\"a\",{n:$n})\nb=Query(\"b\",{a:a,f:$f})",
+    "steps": [
+      {
+        "kind": "evaluate"
+      },
+      {
+        "kind": "complete",
+        "call": 0,
+        "outcome": {
+          "kind": "result",
+          "value": "same"
+        }
+      },
+      {
+        "kind": "complete",
+        "call": 1,
+        "outcome": {
+          "kind": "result",
+          "value": "first"
+        }
+      },
+      {
+        "kind": "set",
+        "name": "$n",
+        "value": 1
+      },
+      {
+        "kind": "evaluate"
+      },
+      {
+        "kind": "set",
+        "name": "$f",
+        "value": 9
+      },
+      {
+        "kind": "complete",
+        "call": 2,
+        "outcome": {
+          "kind": "result",
+          "value": "same"
+        }
+      },
+      {
+        "kind": "evaluate"
+      },
+      {
+        "kind": "complete",
+        "call": 3,
+        "outcome": {
+          "kind": "result",
+          "value": "explicit"
+        }
+      }
+    ]
+  },
+  {
+    "name": "a-waiting-reader-leaves-its-own-pending-key",
+    "program": "$n=0\na=Query(\"a\",{n:$n})\nb=Query(\"b\",{a:a,n:$n})",
+    "steps": [
+      {
+        "kind": "evaluate"
+      },
+      {
+        "kind": "complete",
+        "call": 0,
+        "outcome": {
+          "kind": "result",
+          "value": "first"
+        }
+      },
+      {
+        "kind": "set",
+        "name": "$n",
+        "value": 1
+      },
+      {
+        "kind": "evaluate"
+      },
+      {
+        "kind": "set",
+        "name": "$n",
+        "value": 2
+      },
+      {
+        "kind": "evaluate"
+      },
+      {
+        "kind": "complete",
+        "call": 4,
+        "outcome": {
+          "kind": "tool-error",
+          "message": "offline"
+        }
+      },
+      {
+        "kind": "complete",
+        "call": 3,
+        "outcome": {
+          "kind": "result",
+          "value": "late"
+        }
+      }
+    ]
+  },
+  {
+    "name": "a-seeded-self-reader-does-not-follow-its-own-result",
+    "program": "a=Query(\"a\",{})",
+    "steps": [
+      {
+        "kind": "evaluate"
+      },
+      {
+        "kind": "complete",
+        "call": 0,
+        "outcome": {
+          "kind": "result",
+          "value": "initial"
+        }
+      },
+      {
+        "kind": "replace",
+        "program": "a=Query(\"a\",{a:a})"
+      },
+      {
+        "kind": "evaluate"
+      },
+      {
+        "kind": "complete",
+        "call": 1,
+        "outcome": {
+          "kind": "result",
+          "value": "next"
+        }
+      }
+    ]
+  },
+  {
+    "name": "cached-cycle-stops-at-the-statement-round-bound",
+    "program": "a=Query(\"A\",{v:0})\nb=Query(\"B\",{v:1})\na1=Query(\"A\",{v:1})\nb0=Query(\"B\",{v:0})",
+    "steps": [
+      {
+        "kind": "evaluate"
+      },
+      {
+        "kind": "complete",
+        "call": 0,
+        "outcome": {
+          "kind": "result",
+          "value": 1
+        }
+      },
+      {
+        "kind": "complete",
+        "call": 1,
+        "outcome": {
+          "kind": "result",
+          "value": 1
+        }
+      },
+      {
+        "kind": "complete",
+        "call": 2,
+        "outcome": {
+          "kind": "result",
+          "value": 0
+        }
+      },
+      {
+        "kind": "complete",
+        "call": 3,
+        "outcome": {
+          "kind": "result",
+          "value": 0
+        }
+      },
+      {
+        "kind": "replace",
+        "program": "a=Query(\"A\",{v:b})\nb=Query(\"B\",{v:a})\na1=Query(\"A\",{v:1})\nb0=Query(\"B\",{v:0})\nholdA=Query(\"A\",{v:0})\nholdB=Query(\"B\",{v:1})"
+      },
+      {
+        "kind": "evaluate"
+      }
+    ]
+  },
+  {
+    "name": "equal-object-deliveries-rebuild-a-reader-with-live-state",
+    "program": "$n=0\n$f=0\na=Query(\"a\",{n:$n})\nb=Query(\"b\",{a:a,f:$f})",
+    "steps": [
+      {
+        "kind": "evaluate"
+      },
+      {
+        "kind": "complete",
+        "call": 0,
+        "outcome": {
+          "kind": "result",
+          "value": {
+            "v": 1
+          }
+        }
+      },
+      {
+        "kind": "complete",
+        "call": 1,
+        "outcome": {
+          "kind": "result",
+          "value": "first"
+        }
+      },
+      {
+        "kind": "set",
+        "name": "$n",
+        "value": 1
+      },
+      {
+        "kind": "evaluate"
+      },
+      {
+        "kind": "set",
+        "name": "$f",
+        "value": 9
+      },
+      {
+        "kind": "complete",
+        "call": 2,
+        "outcome": {
+          "kind": "result",
+          "value": {
+            "v": 1
+          }
+        }
+      },
+      {
+        "kind": "complete",
+        "call": 3,
+        "outcome": {
+          "kind": "result",
+          "value": "updated"
+        }
+      }
+    ]
+  },
+  {
+    "name": "a-host-nan-result-keeps-its-reader-stale",
+    "program": "$f=0\na=Query(\"a\")\nb=Query(\"b\",{a:a,f:$f})\nc=Query(\"c\")",
+    "steps": [
+      {
+        "kind": "evaluate"
+      },
+      {
+        "kind": "complete",
+        "call": 0,
+        "outcome": {
+          "kind": "result",
+          "hostNumber": "NaN"
+        }
+      },
+      {
+        "kind": "set",
+        "name": "$f",
+        "value": 9
+      },
+      {
+        "kind": "complete",
+        "call": 1,
+        "outcome": {
+          "kind": "result",
+          "value": "unrelated"
+        }
+      }
+    ]
+  }
+]

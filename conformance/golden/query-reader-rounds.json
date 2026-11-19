@@ -1,0 +1,50 @@
+[
+  {
+    "n": 2,
+    "reported": true,
+    "cases": 4,
+    "caps": 4,
+    "completionCaps": 4,
+    "sha256": "59f53eb91c8bd8326f6dc20e1e0028088d006d465bda3c06a9a95a96a17fdbca"
+  },
+  {
+    "n": 2,
+    "reported": false,
+    "cases": 4,
+    "caps": 0,
+    "completionCaps": 0,
+    "sha256": "571e5b67af3bb7311e77b4956d95ddeb3c36e90db9c009c1ee9af57d269ade70"
+  },
+  {
+    "n": 3,
+    "reported": true,
+    "cases": 36,
+    "caps": 12,
+    "completionCaps": 12,
+    "sha256": "1e933011c3330a205b210b623f15969f6dfc040ec2cc6f7e6f49d536a87497b8"
+  },
+  {
+    "n": 3,
+    "reported": false,
+    "cases": 36,
+    "caps": 0,
+    "completionCaps": 0,
+    "sha256": "d87bb0ce071080637c88e6db54bc825e02018f7e804275cc5b1c607989f3ebe9"
+  },
+  {
+    "n": 4,
+    "reported": true,
+    "cases": 576,
+    "caps": 48,
+    "completionCaps": 48,
+    "sha256": "21fcb9552f96c2c45ebbf08a36cbfde1e2ed6e61cc09f79bc7af922296c6ed97"
+  },
+  {
+    "n": 4,
+    "reported": false,
+    "cases": 576,
+    "caps": 0,
+    "completionCaps": 0,
+    "sha256": "d7188b59ef48574cfeebf45f2aa91d2d3e783c84a7a1cfa2f23d2e2de8e123df"
+  }
+]

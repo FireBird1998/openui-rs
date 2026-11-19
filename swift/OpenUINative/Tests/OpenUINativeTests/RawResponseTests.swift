@@ -15,6 +15,30 @@ import Testing
         for task in Array(live.queryDriver?.calls.values ?? [:].values) { await task.value }
     }
 
+    @Test func aSettledRawResponseReportsTheReaderRoundLimitInQueryStatus() async throws {
+        let library = try await Core().library(schema: schema)
+        let live = try LiveProgram(library: library)
+        let calls = Mutex(0)
+        try live.attachToolProvider(clock: ManualClock()) { name, args in
+            calls.withLock { $0 += 1 }
+            let one = args?["v"] == .number(1)
+            return .number((name == "A" ? !one : one) ? 1 : 0)
+        }
+        let anchors = "\na1=Query(\"A\",{v:1})\nb0=Query(\"B\",{v:0})"
+        let seed = "a=Query(\"A\",{v:0})\nb=Query(\"B\",{v:1})" + anchors
+        try await live.show(response: seed + "\nroot=Text(a)", streaming: false)
+        await delivered(live)
+        #expect(calls.withLock { $0 } == 4)
+        let cycle = "a=Query(\"A\",{v:b})\nb=Query(\"B\",{v:a})" + anchors
+            + "\nholdA=Query(\"A\",{v:0})\nholdB=Query(\"B\",{v:1})\nroot=Text(a)"
+        try await live.show(response: cycle, streaming: false)
+        #expect(live.queries.evaluationError == "Query readers were still changing at the reader round limit.")
+        #expect(live.queries.loading.isEmpty)
+        #expect(calls.withLock { $0 } == 4)
+        try await live.show(response: "root=Text(\"done\")", streaming: false)
+        #expect(live.queries.evaluationError == nil)
+    }
+
     @Test func bareResponseMatchesStreamSetAndFinishAndDrawsTheToolOutcome() async throws {
         let core = Core()
         let library = try await core.library(schema: schema)

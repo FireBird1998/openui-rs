@@ -435,3 +435,24 @@ fn a_refused_json_result_of_an_older_submission_is_that_calls_failure() {
         format!("tool result exceeds the result size limit of {SIZE} bytes")
     );
 }
+
+#[test]
+fn a_removed_query_discards_even_malformed_outcome_json_once() {
+    let (mut s, call) = session("a=Query(\"a\")\nb=Query(\"b\",{x:a})\nroot=Box(b)", None);
+    let lib = library();
+    let inner = Arc::new(openui_lang::parse("root=Box(1)", &lib.inner, None));
+    let replacement = Arc::new(ParsedProgram {
+        json_bytes: inner.to_json().len() as u64,
+        inner,
+    });
+    s.replace_program(&refs(), replacement, None, None, true)
+        .unwrap();
+    s.take_query_update();
+    s.complete_tool_call_json(&call.id, "{").unwrap();
+    let update = s.take_query_update();
+    assert!(!update.changed && update.calls.is_empty());
+    assert!(matches!(
+        s.complete_tool_call_json(&call.id, "{"),
+        Err(OpenUiError::InvalidToolCall)
+    ));
+}

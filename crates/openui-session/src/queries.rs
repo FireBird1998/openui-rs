@@ -12,6 +12,8 @@ pub struct QueryEffects {
     /// Resumed action segments in completion order. Drained exactly once.
     pub actions: Vec<ActionOutput>,
     pub changed: bool,
+    /// A command reached the reader round bound with inputs still changing.
+    pub reader_rounds_limited: bool,
     pub evaluation_error: Option<OpenUiError>,
 }
 
@@ -19,6 +21,7 @@ impl QueryEffects {
     pub(super) fn record(&mut self, update: QueryUpdate) {
         self.calls.retain(|call| call.id.is_pending());
         self.changed |= update.needs_redraw();
+        self.reader_rounds_limited |= update.reader_rounds_limited;
         self.calls.extend(update.calls.into_iter().map(Arc::new));
     }
 }
@@ -231,6 +234,26 @@ impl SessionCore {
         }
     }
 
+    fn query_error(&self) -> Option<OpenUiError> {
+        self.query_effects.evaluation_error.clone().or_else(|| {
+            match self.manager.as_ref()?.reader_diagnostic()? {
+                openui_runtime::ReaderDiagnostic::SelfInputChanged(id) => {
+                    Some(OpenUiError::Evaluation {
+                        reason: format!(
+                            "query {id} now displays a result fetched using its previous self-input"
+                        ),
+                    })
+                }
+                openui_runtime::ReaderDiagnostic::PropagationLimit(e) => {
+                    Some(OpenUiError::LimitExceeded {
+                        reason: e.to_string(),
+                    })
+                }
+                _ => None,
+            }
+        })
+    }
+
     pub fn take_query_update(&mut self) -> QueryEffects {
         QueryEffects {
             next_refresh_due_ms: self
@@ -240,7 +263,8 @@ impl SessionCore {
             actions: std::mem::take(&mut self.query_effects.actions),
             calls: std::mem::take(&mut self.query_effects.calls),
             changed: std::mem::take(&mut self.query_effects.changed),
-            evaluation_error: self.query_effects.evaluation_error.clone(),
+            reader_rounds_limited: std::mem::take(&mut self.query_effects.reader_rounds_limited),
+            evaluation_error: self.query_error(),
         }
     }
 
@@ -276,7 +300,7 @@ impl SessionCore {
         self.response = response;
         (
             self.manager.as_ref().map(|m| m.snapshot_json().to_owned()),
-            self.query_effects.evaluation_error.clone(),
+            self.query_error(),
         )
     }
 
@@ -314,15 +338,47 @@ impl SessionCore {
         call: &ToolCallId,
         outcome: ToolCallOutcome,
     ) -> Result<(), OpenUiError> {
+        self.complete_delivery(call, mutations::Delivery::Outcome(outcome))
+    }
+
+    fn complete_delivery(
+        &mut self,
+        call: &ToolCallId,
+        outcome: mutations::Delivery,
+    ) -> Result<(), OpenUiError> {
         if let Some((&generation, _)) = self
             .continuations
             .iter()
             .find(|(_, entry)| entry.call.as_ref() == Some(call))
         {
-            return self.complete_mutation(generation, call, outcome);
+            return self.complete_mutation_delivery(generation, call, outcome);
         }
         let manager = self.manager.as_mut().ok_or(OpenUiError::InvalidToolCall)?;
-        let update = manager.complete_tool_call(call, outcome)?;
+        let delivery = outcome.stage(manager, call)?;
+        let update = if delivery.needs_reader_context() {
+            let functions = match Self::functions(
+                &self.library,
+                &self.functions,
+                self.core_limits,
+                self.limits.max_json_bytes,
+            ) {
+                Ok(functions) => functions,
+                Err(_) if delivery.result_refusal().is_some() => {
+                    self.query_effects.record(delivery.finish(None)?);
+                    return Ok(());
+                }
+                Err(error) => return Err(error),
+            };
+            let input = program_input(
+                &self.program,
+                &self.library,
+                &self.bindings,
+                functions.as_ref(),
+            );
+            delivery.finish(Some((&self.response.input(input), &self.store)))?
+        } else {
+            delivery.finish(None)?
+        };
         self.query_effects.record(update);
         Ok(())
     }
@@ -334,21 +390,7 @@ impl SessionCore {
         call: &ToolCallId,
         limit: openui_runtime::ResultLimit,
     ) -> Result<(), OpenUiError> {
-        if let Some((&generation, _)) = self
-            .continuations
-            .iter()
-            .find(|(_, entry)| entry.call.as_ref() == Some(call))
-        {
-            return self.complete_mutation_delivery(
-                generation,
-                call,
-                mutations::Delivery::Refused(limit),
-            );
-        }
-        let manager = self.manager.as_mut().ok_or(OpenUiError::InvalidToolCall)?;
-        let update = manager.complete_tool_call_refused(call, limit)?;
-        self.query_effects.record(update);
-        Ok(())
+        self.complete_delivery(call, mutations::Delivery::Refused(limit))
     }
 
     /// A single tagged JSON outcome for both bindings. Parse the result with
@@ -364,13 +406,8 @@ impl SessionCore {
         json: &str,
     ) -> Result<(), OpenUiError> {
         let manager = self.manager.as_mut().ok_or(OpenUiError::InvalidToolCall)?;
-        manager.check_call(call)?;
-        if manager.is_disposed() {
-            manager.apply(QueryCommand::Complete {
-                id: call,
-                outcome: openui_runtime::ToolOutcome::Result(None),
-            })?;
-            return Ok(());
+        if manager.discards_tool_outcome(call)? {
+            return self.complete_tool_call(call, ToolCallOutcome::Result(Value::Null));
         }
         let limits = self.core_limits;
         if json.len() > self.outcome_byte_bound() {
@@ -426,5 +463,45 @@ impl SessionCore {
             _ => return Err(invalid()),
         };
         self.complete_tool_call(call, outcome)
+    }
+}
+
+#[cfg(test)]
+thread_local! { pub(super) static TABLE_BUILDS: std::cell::Cell<usize> = const {std::cell::Cell::new(0)}; }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    #[test]
+    fn an_unrelated_completion_skips_the_function_table_even_with_a_registered_reader() {
+        let schema = serde_json::json!({"$defs":{}});
+        let lib = Arc::new(ComponentLibrary {
+            inner: Arc::new(openui_lang::Library::from_json_schema(&schema)),
+            schema: Arc::new(schema),
+        });
+        let mut s = SessionCore::new(lib.clone(), None, Default::default()).unwrap();
+        let inner = Arc::new(openui_lang::parse(
+            "a=Query(\"a\")\nb=Query(\"b\",{v:a})\nc=Query(\"c\")",
+            &lib.inner,
+            None,
+        ));
+        let p = Arc::new(ParsedProgram {
+            json_bytes: inner.to_json().len() as u64,
+            inner,
+        });
+        let refs = PreparedReferenceValues::owned_with_limits(
+            openui_lang::JsObject::new(),
+            Limits::DEFAULT,
+        );
+        s.attach_tool_provider(&refs).unwrap();
+        s.replace_program(&refs, p, None, None, true).unwrap();
+        let calls = s.take_query_update().calls;
+        TABLE_BUILDS.set(0);
+        s.complete_tool_call(&calls[1].id, ToolCallOutcome::Result(Value::Null))
+            .unwrap();
+        assert_eq!(TABLE_BUILDS.get(), 0);
+        s.complete_tool_call(&calls[0].id, ToolCallOutcome::Result(Value::Null))
+            .unwrap();
+        assert_eq!(TABLE_BUILDS.get(), 1);
     }
 }

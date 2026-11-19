@@ -24,12 +24,15 @@ pub struct QueryEffects {
     pub actions: Vec<crate::ActionOutput>,
     #[uniffi(default = None)]
     pub next_refresh_due_ms: Option<u64>,
+    #[uniffi(default = false)]
+    pub reader_rounds_limited: bool,
 }
 impl From<openui_session::QueryEffects> for QueryEffects {
     fn from(v: openui_session::QueryEffects) -> Self {
         Self {
             next_refresh_due_ms: v.next_refresh_due_ms,
             changed: v.changed,
+            reader_rounds_limited: v.reader_rounds_limited,
             actions: v.actions.into_iter().map(Into::into).collect(),
             calls: v
                 .calls

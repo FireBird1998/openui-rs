@@ -1,5 +1,8 @@
 //! The pinned store's state transitions, without embedder callbacks.
 
+pub(crate) mod query_state;
+use query_state::QueryWatch;
+
 use crate::{Ast, JsObject, Limits, Value};
 use std::{
     collections::{HashMap, HashSet},
@@ -89,7 +92,8 @@ pub struct InitializationResult {
 pub struct Store {
     pub(crate) action_session: Arc<()>,
     pub(crate) actions: crate::tree::actions::Provenance,
-    pub(crate) undefined_fields: crate::tree::actions::Provenance,
+    pub(crate) undefined_fields: Arc<crate::tree::actions::Provenance>,
+    query_watch: QueryWatch,
     snapshot: StoreSnapshot,
     pristine: HashSet<String>,
     version: u64,
@@ -115,6 +119,7 @@ impl Store {
             action_session: Arc::new(()),
             actions: Default::default(),
             undefined_fields: Default::default(),
+            query_watch: QueryWatch::default(),
             snapshot: Arc::new(JsObject::new()),
             pristine: HashSet::new(),
             version: 0,
@@ -148,7 +153,8 @@ impl Store {
         let mut candidate = Self {
             action_session: self.action_session.clone(),
             actions: self.actions.clone(),
-            undefined_fields: self.undefined_fields.clone(),
+            undefined_fields: Arc::new((*self.undefined_fields).clone()),
+            query_watch: self.query_watch.staged(),
             snapshot: self.snapshot.clone(),
             pristine: self.pristine.clone(),
             version: self.version,
@@ -169,6 +175,12 @@ impl Store {
             persisted.iter().map(|(k, v)| (k.as_str(), Some(v))),
         );
         let output = read(&candidate)?;
+        candidate.query_watch.commit();
+        candidate.query_watch.publish(
+            &candidate.snapshot,
+            candidate.entry_bytes,
+            &candidate.undefined_fields,
+        );
         *self = candidate;
         Ok((projection, initialization, output))
     }
@@ -297,11 +309,20 @@ impl Store {
         }
     }
     fn put(&mut self, name: &str, value: StateValue) {
+        let observed = self.query_watch.writing();
+        let watch = observed.as_ref().map(|state| {
+            let mut view = state.lock().unwrap_or_else(|e| e.into_inner());
+            view.begin_write();
+            view
+        });
         let state = Arc::make_mut(&mut self.snapshot);
         if let Some(existing) = state.get_mut(name) {
             *existing = value;
         } else {
             state.define(name, value);
+        }
+        if let Some(mut view) = watch {
+            view.publish(&self.snapshot, self.entry_bytes, &self.undefined_fields);
         }
     }
     fn write(&mut self, name: &str, value: StateValue, pristine: bool) -> Result<bool, StoreError> {
@@ -564,6 +585,8 @@ impl Store {
             self.version = self.version.saturating_add(1);
         }
         self.snapshot = Arc::new(JsObject::new());
+        self.query_watch
+            .publish(&self.snapshot, 0, &self.undefined_fields);
         self.pristine.clear();
         self.sizes.clear();
         self.entry_bytes = 0;

@@ -16,9 +16,14 @@ export function randomScenario(seed: number) {
   const reserved = seed % 8 === 0 ? statusLists[(seed / 8) % statusLists.length] : undefined;
   const ids = [reserved ?? 'a', 'b'];
   let slots = new Map([[ids[0], 0], [ids[1], 1]]);
+  // This self-reader can never acquire a first input. Its argument stays
+  // constant across registrations, so its cache key is known to the independent lifetime model.
+  const waitFor: Record<string, string[]> = seed % 5 === 0 ? {parked: ['parked']} : {};
   function source() {
-    return ['$f = 0', ...Array.from(slots, ([id, slot]) =>
-      `${id} = Query("t", ${slot === 3 ? '{f:$f}' : `{v:${slot}}`}, ${id === reserved ? '[]' : JSON.stringify(id + 'def')})`)].join('\n');
+    const queries = Array.from(slots, ([id, slot]) =>
+      `${id} = Query("t", ${slot === 3 ? '{f:$f}' : `{v:${slot}}`}, ${id === reserved ? '[]' : JSON.stringify(id + 'def')})`);
+    if (waitFor.parked) queries.push('parked=Query("t",{parked:@Count([parked])},"parkeddef")');
+    return ['$f = 0', ...queries].join('\n');
   }
   const scenario: Scenario = { name: `seed-${seed}`, program: source(), steps: [] };
   const keys: Record<string, string>[] = [];
@@ -26,8 +31,10 @@ export function randomScenario(seed: number) {
   function* script(calls: readonly { args: unknown }[]): Generator<Step> {
     const pending = new Set<number>();
     function* evaluate(): Generator<Step> {
-      keys.push(Object.fromEntries(Array.from(slots, ([id, slot]) =>
-        [id, JSON.stringify(slot === 3 ? { f: field } : { v: slot })])));
+      const registered = Object.fromEntries(Array.from(slots, ([id, slot]) =>
+        [id, JSON.stringify(slot === 3 ? { f: field } : { v: slot })]));
+      if (waitFor.parked) registered.parked = '{"parked":1}';
+      keys.push(registered);
       const first = calls.length;
       yield { kind: 'evaluate' };
       for (let call = first; call < calls.length; call++) pending.add(call);
@@ -82,8 +89,10 @@ export function randomScenario(seed: number) {
         yield* evaluate();
       }
     }
-    while (pending.size) yield* dispatching(complete());
+    // Each completion can start one remembered run. No further run is asked for here.
+    for (let i = 0; pending.size && i < 128; i++) yield* dispatching(complete());
+    if (pending.size) throw Error('random query drain exceeded its command bound');
     yield* evaluate();
   }
-  return { scenario, script, keys };
+  return { scenario, script, keys, waitFor };
 }

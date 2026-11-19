@@ -394,3 +394,47 @@ fn reporting_one_cancelled_call_as_failed_frees_one_of_64_pending_slots() {
     s.detach_tool_provider();
     assert_eq!(s.pending_continuations(&r).unwrap(), 0);
 }
+
+#[test]
+fn a_drain_keeps_the_reader_round_cut_and_the_resumed_mutation_segment() {
+    let lib = library();
+    let r = refs();
+    let mut s = SessionCore::new(lib.clone(), None, RuntimeLimits::default()).unwrap();
+    s.attach_tool_provider(&r).unwrap();
+    let p = program(
+        &lib,
+        "a=Query(\"read\",{})\nb=Query(\"reader\",{v:a})\nm=Mutation(\"save\")\nroot=Box(b,Action([@Run(m),@ToAssistant(\"done\")]))",
+    );
+    let draw = s
+        .replace_program(&r, p, None, None, true)
+        .unwrap()
+        .evaluation;
+    let source = s.take_query_update().calls.pop().unwrap();
+    click(&mut s, &r, &draw);
+    let mutation = s.take_query_update().calls.pop().unwrap();
+    s.complete_tool_call(
+        &source.id,
+        openui_runtime::ToolCallOutcome::Result(openui_runtime::Value::Num(f64::NAN)),
+    )
+    .unwrap();
+    s.complete_tool_call_json(&mutation.id, r#"{"value":1}"#)
+        .unwrap();
+    let update = s.take_query_update();
+    assert!(update.reader_rounds_limited && update.changed);
+    assert_eq!(update.calls.len(), 1);
+    assert_eq!(update.calls[0].tool_name, "reader");
+    assert_eq!(update.actions.len(), 1);
+    assert_eq!(update.actions[0].events.len(), 1);
+    let empty = s.take_query_update();
+    assert!(!empty.reader_rounds_limited && !empty.changed);
+    assert!(empty.calls.is_empty() && empty.actions.is_empty());
+
+    let draw = s.evaluate(&r).unwrap();
+    click(&mut s, &r, &draw);
+    let mutation = s.take_query_update().calls.pop().unwrap();
+    s.complete_tool_call_json(&mutation.id, r#"{"value":2}"#)
+        .unwrap();
+    let alone = s.take_query_update();
+    assert!(!alone.reader_rounds_limited && alone.calls.is_empty());
+    assert_eq!(alone.actions.len(), 1);
+}

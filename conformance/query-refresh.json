@@ -337,5 +337,115 @@
       {"kind":"advance","now":5499},
       {"kind":"advance","now":5500}
     ]
+  },
+  {
+    "name": "source-refresh-rebuilds-readers-only-for-changed-input",
+    "program": "$n=0\na=Query(\"source\",{},null,2)\nb=Query(\"reader\",{x:a,n:$n})",
+    "steps": [
+      {"kind":"evaluate"},
+      {"kind":"complete","call":0,"outcome":{"kind":"result","value":"one"}},
+      {"kind":"complete","call":1,"outcome":{"kind":"result","value":"old"}},
+      {"kind":"advance","now":2000},
+      {"kind":"set","name":"$n","value":9},
+      {"kind":"complete","call":2,"outcome":{"kind":"result","value":"one"}},
+      {"kind":"advance","now":4000},
+      {"kind":"complete","call":3,"outcome":{"kind":"result","value":"two"}},
+      {"kind":"complete","call":4,"outcome":{"kind":"result","value":"new"}}
+    ]
+  },
+  {
+    "name": "reader-timer-starts-on-first-input-and-can-fire-during-source-refetch",
+    "program": "a=Query(\"source\",{},null,2)\nb=Query(\"reader\",{x:a},null,1)",
+    "steps": [
+      {"kind":"evaluate"},
+      {"kind":"advance","now":1000},
+      {"kind":"complete","call":0,"outcome":{"kind":"result","value":"known"}},
+      {"kind":"complete","call":1,"outcome":{"kind":"result","value":"seen"}},
+      {"kind":"advance","now":2000},
+      {"kind":"complete","call":3,"outcome":{"kind":"result","value":"polled"}},
+      {"kind":"advance","now":3000},
+      {"kind":"complete","call":4,"outcome":{"kind":"result","value":"again"}},
+      {"kind":"complete","call":2,"outcome":{"kind":"result","value":"known"}}
+    ]
+  },
+  {
+    "name": "installed-reader-timer-skips-while-waiting-then-takes-the-live-interval",
+    "program": "a=Query(\"source\",{})\nb=Query(\"reader\",{x:a},null,a)",
+    "steps": [
+      {"kind":"evaluate"},
+      {"kind":"complete","call":0,"outcome":{"kind":"result","value":1}},
+      {"kind":"complete","call":1,"outcome":{"kind":"result","value":"seen"}},
+      {"kind":"replace","program":"c=Query(\"other\",{})\nb=Query(\"reader\",{x:c},null,c)"},
+      {"kind":"evaluate"},
+      {"kind":"advance","now":1000},
+      {"kind":"advance","now":2000},
+      {"kind":"complete","call":2,"outcome":{"kind":"result","value":3}},
+      {"kind":"complete","call":3,"outcome":{"kind":"result","value":"updated"}},
+      {"kind":"advance","now":3000},
+      {"kind":"advance","now":5000}
+    ]
+  },
+  {
+    "name": "pause-and-reactivate-while-a-reader-waits",
+    "program": "a=Query(\"source\",{},null,2)\nb=Query(\"reader\",{x:a},null,1)",
+    "steps": [
+      {"kind":"evaluate"},
+      {"kind":"dispose"},
+      {"kind":"advance","now":5000},
+      {"kind":"evaluate"},
+      {"kind":"complete","call":0,"outcome":{"kind":"result","value":"retired"}},
+      {"kind":"activate"},
+      {"kind":"evaluate"},
+      {"kind":"complete","call":1,"outcome":{"kind":"result","value":"current"}},
+      {"kind":"complete","call":2,"outcome":{"kind":"result","value":"drawn"}},
+      {"kind":"advance","now":6000}
+    ]
+  },
+  {
+    "name": "clock-wake-after-a-reader-round-cut",
+    "program": "$n=0\na=Query(\"source\",{},null,2)\nb=Query(\"reader\",{x:a,n:$n},null,1)",
+    "traceReaderCut": true,
+    "steps": [
+      {"kind":"evaluate"},
+      {"kind":"complete","call":0,"outcome":{"kind":"result","hostNumber":"NaN"}},
+      {"kind":"set","name":"$n","value":9},
+      {"kind":"advance","now":1000},
+      {"kind":"advance","now":2000},
+      {"kind":"complete","call":2,"outcome":{"kind":"result","value":4}},
+      {"kind":"complete","call":3,"outcome":{"kind":"result","value":"fresh"}}
+    ]
+  },
+  {
+    "name": "a-pre-pause-receipt-cannot-restart-cut-readers-after-activation",
+    "program": "z=Query(\"retired\",{})",
+    "traceReaderCut": true,
+    "steps": [
+      {"kind":"evaluate"},
+      {"kind":"dispose"},
+      {"kind":"advance","now":5000},
+      {"kind":"activate"},
+      {"kind":"replace","program":"$n=0\na=Query(\"source\",{},null,2)\nb=Query(\"reader\",{x:a,n:$n},null,1)"},
+      {"kind":"evaluate"},
+      {"kind":"complete","call":1,"outcome":{"kind":"result","hostNumber":"NaN"}},
+      {"kind":"set","name":"$n","value":9},
+      {"kind":"complete","call":0,"outcome":{"kind":"result","value":"retired"}},
+      {"kind":"advance","now":6000}
+    ]
+  },
+  {
+    "name": "a-timed-reader-whose-source-is-itself-waiting",
+    "program": "a=Query(\"base\",{},null,4)\nb=Query(\"middle\",{v:a},null,2)\nc=Query(\"leaf\",{v:b},null,1)",
+    "steps": [
+      {"kind":"evaluate"},
+      {"kind":"advance","now":1000},
+      {"kind":"complete","call":0,"outcome":{"kind":"tool-error","message":"offline"}},
+      {"kind":"advance","now":3999},
+      {"kind":"advance","now":4000},
+      {"kind":"complete","call":1,"outcome":{"kind":"result","value":"base"}},
+      {"kind":"advance","now":5000},
+      {"kind":"complete","call":2,"outcome":{"kind":"result","value":"middle"}},
+      {"kind":"complete","call":3,"outcome":{"kind":"result","value":"leaf"}},
+      {"kind":"advance","now":6000}
+    ]
   }
 ]

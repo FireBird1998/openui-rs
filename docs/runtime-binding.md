@@ -440,10 +440,37 @@ with an outcome JSON object containing exactly one of these fields.
 
 After any operation, call `takeQueryUpdate()` to receive the wanted calls
 and redraw flag. Writes, action runs, and completions can all use the same
-driver loop. Settled state changes evaluate queries before returning.
+driver loop. A query completion dispatches its remembered run first, then
+any calls from readers whose inputs changed. A run of a waiting reader does
+nothing. A reader with a fetched input can run while its source refetches.
+A fetched null releases a reader. A default does not. During a blocked edit, readers
+from the last settled registration still read the live Store and use its Cloud
+script revisions. Completing an outstanding source call can dispatch such a
+reader before the edited bundle settles.
+Settled state changes evaluate queries before returning.
 `changed` accumulates changes to the query snapshot, its presence on attach/detach, or its evaluation
 error since the previous drain. The drain clears this flag and transfers
-the calls once. Its `evaluationError` gives the current diagnostic.
+the calls once. `readerRoundsLimited` reports reader inputs left changing
+at the statement-count-plus-one round bound. A result refusal still ends
+its call if the previously bounded readers cannot run with the available
+context. In that case the update carries their cut flag forward.
+The drain clears this flag. Its `evaluationError` gives the current diagnostic.
+If a provider success fits but evaluating dependent arguments exceeds the work
+or size allowance, completion consumes the receipt and keeps the admitted result.
+The source is visible when its own inputs are still current.
+Affected readers and their dependents display null and a `reader-limit` query
+error. If listing all the errors would itself exceed the allowance, the snapshot
+omits the suspended results and errors. The draw and drain report `LimitExceeded`.
+A successful settled registration retries those expressions and clears the diagnostic.
+A result that exceeds admission ends its call as a tool error. A dependent
+query waits for its source's first admitted result. If the source already
+has data, a refused refetch leaves the dependent on its current arguments.
+
+A query can be edited to read its own previously fetched result. When its
+new result differs from the self-input used to call the tool, the draw and
+drain report an evaluation diagnostic naming the query. The displayed value
+was fetched with the previous self-input. An explicit settled registration
+evaluates the arguments again.
 
 With a provider, a settled program registers mutation tool names. For both
 queries and mutations the wanted call exposes the JavaScript string form of
@@ -460,7 +487,10 @@ query update. Its `actions` list holds each resumed action output in completion
 order. WebAssembly exposes `actionCount` and `actionAt(index)`. A successful
 outcome runs the tail against the current program, state and results. A failed
 outcome ends the plan and yields an empty segment. Read the snapshot for the
-mutation's error. A later action step can itself fail, and its segment includes
+mutation's error. Query arguments can read an idle or loading mutation.
+Mutation completion alone does not re-evaluate those arguments. A resumed
+state write can trigger registration with the new mutation result.
+A later action step can itself fail, and its segment includes
 the earlier events and the failed step. A query Run before the mutation
 takes effect immediately. One after the mutation runs only on success. In
 either segment, query runs use their registered arguments before a state

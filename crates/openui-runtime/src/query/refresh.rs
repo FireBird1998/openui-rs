@@ -52,45 +52,71 @@ impl Default for Clock {
     }
 }
 
+// Keep timer installation order across the entire registration or cascade.
+pub(super) struct TimerEdits {
+    now: u64,
+    next: usize,
+    by_id: HashMap<String, (usize, Timer)>,
+}
+
+impl TimerEdits {
+    pub(super) fn set(&mut self, id: &str, interval: Option<&Interval>) {
+        if let Some(interval) = interval {
+            if self.by_id.get(id).is_some_and(|(_, old)| {
+                crate::store::same(Some(&old.interval.raw), Some(&interval.raw))
+            }) {
+                return;
+            }
+            self.by_id.insert(
+                id.to_owned(),
+                (
+                    self.next,
+                    Timer {
+                        id: id.to_owned(),
+                        due: self.now + interval.millis,
+                        interval: interval.clone(),
+                    },
+                ),
+            );
+            self.next = self.next.saturating_add(1);
+        } else {
+            self.by_id.remove(id);
+        }
+    }
+}
+
 impl Clock {
+    pub(super) fn edit(&mut self) -> TimerEdits {
+        TimerEdits {
+            now: self.now,
+            next: self.timers.len(),
+            by_id: self
+                .timers
+                .drain(..)
+                .enumerate()
+                .map(|(i, t)| (t.id.clone(), (i, t)))
+                .collect(),
+        }
+    }
+    pub(super) fn install(&mut self, edits: TimerEdits) {
+        let mut timers: Vec<_> = edits.by_id.into_values().collect();
+        timers.sort_unstable_by_key(|(i, _)| *i);
+        self.timers.extend(timers.into_iter().map(|(_, t)| t));
+    }
     pub(super) fn reconcile(
         &mut self,
         active: &HashSet<&str>,
         intervals: Vec<(&str, Option<Interval>)>,
     ) {
-        if self.timers.is_empty() && intervals.iter().all(|(_, interval)| interval.is_none()) {
+        if self.timers.is_empty() && intervals.iter().all(|(_, t)| t.is_none()) {
             return;
         }
-        // Keep the old installation order, then append new timers in node
-        // order. A public ParseResult can contain several nodes for one id.
-        // Vacating the old slot on each change also handles that case.
-        let mut positions = HashMap::new();
-        let mut timers = Vec::new();
-        for timer in self.timers.drain(..) {
-            if let Some(&id) = active.get(timer.id.as_str()) {
-                positions.insert(id, timers.len());
-                timers.push(Some(timer));
-            }
-        }
+        self.timers.retain(|t| active.contains(t.id.as_str()));
+        let mut edits = self.edit();
         for (id, interval) in intervals {
-            if let Some(slot) = positions.get(id).and_then(|&i| timers.get_mut(i)) {
-                if let (Some(old), Some(new)) = (slot.as_ref(), interval.as_ref())
-                    && crate::store::same(Some(&old.interval.raw), Some(&new.raw))
-                {
-                    continue;
-                }
-                *slot = None;
-            }
-            if let Some(interval) = interval {
-                positions.insert(id, timers.len());
-                timers.push(Some(Timer {
-                    id: id.to_owned(),
-                    due: self.now + interval.millis,
-                    interval,
-                }));
-            }
+            edits.set(id, interval.as_ref());
         }
-        self.timers.extend(timers.into_iter().flatten());
+        self.install(edits);
     }
 }
 
@@ -99,8 +125,8 @@ impl QueryManager {
         QueryUpdate {
             calls: Vec::new(),
             changed: false,
-            hidden_change: false,
             next_refresh_due_ms: self.next_refresh_due_ms(),
+            ..QueryUpdate::default()
         }
     }
 
@@ -177,6 +203,7 @@ impl QueryManager {
             {
                 calls.push(runs::start_call(
                     &self.owner,
+                    &self.lifecycle,
                     entry,
                     query.key.clone(),
                     &query.request,
@@ -201,14 +228,22 @@ mod tests {
         );
         assert_eq!(program.query_statements.len(), 2);
         let manager = QueryManager::default();
+        let measured = PreparedProgram::new(&program, manager.limits);
+        let budget = EvaluationSession::with_limits(&(), measured.input_bytes(), manager.limits);
         manager
-            .with_statement_evaluator(&TreeInput::new(&program), &Store::new(), |scope, eval| {
-                for statement in &program.query_statements {
-                    scope.node(statement, eval)?;
-                    assert_eq!(scope.seconds.get(), 0.0);
-                }
-                Ok(())
-            })
+            .with_statement_evaluator(
+                &TreeInput::new(&program),
+                &Store::new(),
+                &budget,
+                &measured,
+                |scope, eval| {
+                    for statement in &program.query_statements {
+                        scope.node(statement, eval)?;
+                        assert_eq!(scope.seconds.get(), 0.0);
+                    }
+                    Ok(())
+                },
+            )
             .unwrap();
     }
 }

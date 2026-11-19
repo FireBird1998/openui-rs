@@ -107,5 +107,36 @@
       {"kind":"fire","name":"__openui_errors","args":{}},
       {"kind":"complete","call":2,"outcome":{"kind":"tool-error","message":"failed"}}
     ]
+  },
+  {
+    "name": "registering queries samples mutation status but settling a mutation does not wake a reader",
+    "program": "m=Mutation(\"save\")\nq=Query(\"read\",{s:m.status,v:m.data})",
+    "steps": [
+      {
+        "kind": "register"
+      },
+      {
+        "kind": "evaluate"
+      },
+      {
+        "kind": "fire",
+        "name": "m",
+        "args": {}
+      },
+      {
+        "kind": "evaluate"
+      },
+      {
+        "kind": "complete",
+        "call": 1,
+        "outcome": {
+          "kind": "result",
+          "value": "saved"
+        }
+      },
+      {
+        "kind": "evaluate"
+      }
+    ]
   }
 ]

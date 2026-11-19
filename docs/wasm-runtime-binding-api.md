@@ -100,6 +100,7 @@ interface WantedToolCall {
   free(): void;
 }
 interface QueryEffects {
+  readonly readerRoundsLimited: boolean;
   readonly nextRefreshDueMs: bigint | undefined;
   readonly changed: boolean; readonly callCount: bigint; readonly actionCount: bigint;
   actionAt(index: bigint): ActionOutput | undefined;
@@ -273,9 +274,10 @@ The driver accepts these options.
   when the callback returns.
 - `onError(error)` receives query evaluation errors with their binding `kind`
   and message. Repeated drains of the same error report it once, and a
-  successful registration clears it. It also receives timer and binding failures and errors thrown or
-  rejected by `onAction` or `onChange`. A callback failure leaves the drain
-  running. The driver contains errors when `onError` is absent or itself
+  successful registration clears it. A drain that reaches the reader round limit
+  reports a `LimitExceeded` error through the same callback. Timer and binding
+  failures and errors thrown or rejected by `onAction` or `onChange` also reach
+  it. A callback failure leaves the drain running. The driver contains errors when `onError` is absent or itself
   throws or rejects. After a refused timer wake the next draw re-arms the
   session's deadline.
 
@@ -289,13 +291,16 @@ compact diagnostic and Retry can dispatch the call again. Function values
 and non-finite numbers in JSON data, including in MCP `structuredContent`,
 produce a tool error identifying the value. If delivery itself throws, the
 driver reports the binding error and sends a terminal failure for a receipt
-that is still pending. A second refusal that leaves the receipt pending
+that is still pending. An admitted result survives a cut in dependent reader
+evaluation. A second refusal that leaves the receipt pending
 detaches the provider.
 
 The driver samples `performance.now()` when installing intervals.
 `sampleQueryClock` sets the clock for new registrations. Existing deadlines
 run when the timer delivers `advanceQueryClock`. A wanted call's
 `pending` getter reports whether the manager still owns the call.
+When the manager releases a query call, a late completion can still advance
+readers left at the round limit. The driver discards the payload without reading it.
 Pause, detach, dispose and free revoke outstanding deliveries. A provider
 owns its network request and any timeout. Its promise can settle later.
 

@@ -65,6 +65,21 @@
       {"field":3},
       {"evaluate":true},
       {"finish":1,"value":"three"}
+    ]},
+    {"name":"completion dispatches the reader before either redraw", "steps":[
+      {"replace":"a=Query(\"a\",{},\"d\")\nb=Query(\"b\",{x:a},\"e\")\nroot=Box([a,b])"},
+      {"finish":0,"value":"v"},
+      {"evaluate":true},
+      {"evaluate":true},
+      {"finish":1,"value":"reader result"}
+    ]},
+    {"name":"readers of the settled program read live state during a blocked edit", "steps":[
+      {"replace":"$n=1\na=Query(\"a\",{})\nb=Query(\"old\",{x:a,n:$n})\nroot=Box(b)"},
+      {"replace":"root=Box(\"draft\")","streaming":true},
+      {"set":2},
+      {"finish":0,"value":"v"},
+      {"finish":1,"value":"read"},
+      {"evaluate":true}
     ]}
   ]
 }

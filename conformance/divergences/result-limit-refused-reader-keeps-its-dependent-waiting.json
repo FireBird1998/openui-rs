@@ -1,0 +1,18 @@
+{
+  "case": "refused-reader-keeps-its-dependent-waiting",
+  "reason": "#90: the cache cap turns the result into a failed delivery.",
+  "reference": [
+    "{\"snapshot\":{\"__openui_loading\":[\"a\",\"b\",\"c\"],\"__openui_refetching\":[],\"__openui_errors\":[],\"a\":\"default\",\"b\":\"waiting\",\"c\":null},\"calls\":[{\"call\":0,\"toolName\":\"source\",\"args\":{}}],\"changed\":true}",
+    "{\"snapshot\":{\"__openui_loading\":[\"b\",\"c\"],\"__openui_refetching\":[],\"__openui_errors\":[],\"a\":1,\"b\":\"waiting\",\"c\":null},\"calls\":[{\"call\":1,\"toolName\":\"reader\",\"args\":{\"x\":1}}],\"changed\":true}",
+    "{\"snapshot\":{\"__openui_loading\":[\"c\"],\"__openui_refetching\":[],\"__openui_errors\":[],\"a\":1,\"b\":\"large\",\"c\":null},\"calls\":[{\"call\":2,\"toolName\":\"leaf\",\"args\":{\"x\":\"large\"}}],\"changed\":true}",
+    "{\"snapshot\":{\"__openui_loading\":[\"c\"],\"__openui_refetching\":[],\"__openui_errors\":[],\"a\":1,\"b\":\"large\",\"c\":null},\"calls\":[],\"changed\":false}",
+    "{\"snapshot\":{\"__openui_loading\":[\"c\"],\"__openui_refetching\":[],\"__openui_errors\":[],\"a\":1,\"b\":\"large\",\"c\":null},\"calls\":[],\"changed\":false}"
+  ],
+  "rust": [
+    "{\"snapshot\":{\"__openui_loading\":[\"a\",\"b\",\"c\"],\"__openui_refetching\":[],\"__openui_errors\":[],\"a\":\"default\",\"b\":\"waiting\",\"c\":null},\"calls\":[{\"call\":0,\"toolName\":\"source\",\"args\":{}}],\"changed\":true}",
+    "{\"snapshot\":{\"__openui_loading\":[\"b\",\"c\"],\"__openui_refetching\":[],\"__openui_errors\":[],\"a\":1,\"b\":\"waiting\",\"c\":null},\"calls\":[{\"call\":1,\"toolName\":\"reader\",\"args\":{\"x\":1}}],\"changed\":true}",
+    "{\"snapshot\":{\"__openui_loading\":[],\"__openui_refetching\":[],\"__openui_errors\":[{\"source\":\"query\",\"statementId\":\"b\",\"component\":\"Query\",\"toolName\":\"reader\",\"code\":\"tool-error\",\"message\":\"Query \\\"reader\\\" failed: tool result does not fit the cache limit of 4 bytes\"}],\"a\":1,\"b\":\"waiting\",\"c\":null},\"calls\":[],\"changed\":true}",
+    "{\"snapshot\":{\"__openui_loading\":[],\"__openui_refetching\":[],\"__openui_errors\":[{\"source\":\"query\",\"statementId\":\"b\",\"component\":\"Query\",\"toolName\":\"reader\",\"code\":\"tool-error\",\"message\":\"Query \\\"reader\\\" failed: tool result does not fit the cache limit of 4 bytes\"}],\"a\":1,\"b\":\"waiting\",\"c\":null},\"calls\":[],\"changed\":false}",
+    "{\"snapshot\":{\"__openui_loading\":[],\"__openui_refetching\":[],\"__openui_errors\":[{\"source\":\"query\",\"statementId\":\"b\",\"component\":\"Query\",\"toolName\":\"reader\",\"code\":\"tool-error\",\"message\":\"Query \\\"reader\\\" failed: tool result does not fit the cache limit of 4 bytes\"}],\"a\":1,\"b\":\"waiting\",\"c\":null},\"calls\":[],\"changed\":false}"
+  ]
+}

@@ -400,12 +400,9 @@ impl RuntimeSession {
         outcome_json: String,
         terminal: Option<bool>,
     ) -> Result<(), JsValue> {
-        if terminal == Some(true) {
-            self.inner.finish_tool_call(call.0.clone(), outcome_json)
-        } else {
-            self.inner.complete_tool_call(call.0.clone(), outcome_json)
-        }
-        .map_err(error)
+        self.inner
+            .deliver(&call.id, outcome_json, terminal == Some(true))
+            .map_err(error)
     }
     #[wasm_bindgen(js_name = undecidedBindings, unchecked_return_type = "any")]
     pub fn undecided_bindings(&self) -> Result<String, JsValue> {

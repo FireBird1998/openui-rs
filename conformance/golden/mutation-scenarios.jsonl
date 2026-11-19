@@ -71,3 +71,9 @@
 {"snapshot":{"__openui_loading":{"status":"success","data":1},"__openui_refetching":{"status":"idle"},"__openui_errors":{"status":"idle"},"q":null},"calls":[],"changed":true}
 {"snapshot":{"__openui_loading":{"status":"success","data":1},"__openui_refetching":{"status":"idle"},"__openui_errors":{"status":"loading"},"q":null},"calls":[{"call":2,"toolName":"error","args":{}}],"changed":true}
 {"snapshot":{"__openui_loading":{"status":"success","data":1},"__openui_refetching":{"status":"idle"},"__openui_errors":{"status":"loading"},"q":null},"rejected":"out.__openui_errors.push is not a function. (In 'out.__openui_errors.push(m.error)', 'out.__openui_errors.push' is undefined)","calls":[],"changed":false}
+{"snapshot":{"__openui_loading":[],"__openui_refetching":[],"__openui_errors":[],"m":{"status":"idle"}},"calls":[],"changed":true}
+{"snapshot":{"__openui_loading":["q"],"__openui_refetching":[],"__openui_errors":[],"q":null,"m":{"status":"idle"}},"calls":[{"call":0,"toolName":"read","args":{"s":"idle"}}],"changed":true}
+{"snapshot":{"__openui_loading":["q"],"__openui_refetching":[],"__openui_errors":[],"q":null,"m":{"status":"loading"}},"calls":[{"call":1,"toolName":"save","args":{}}],"changed":true}
+{"snapshot":{"__openui_loading":["q"],"__openui_refetching":[],"__openui_errors":[],"q":null,"m":{"status":"loading"}},"calls":[{"call":2,"toolName":"read","args":{"s":"loading"}}],"changed":false}
+{"snapshot":{"__openui_loading":["q"],"__openui_refetching":[],"__openui_errors":[],"q":null,"m":{"status":"success","data":"saved"}},"calls":[],"changed":true}
+{"snapshot":{"__openui_loading":["q"],"__openui_refetching":[],"__openui_errors":[],"q":null,"m":{"status":"success","data":"saved"}},"calls":[{"call":3,"toolName":"read","args":{"s":"success","v":"saved"}}],"changed":false}

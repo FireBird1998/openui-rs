@@ -1,0 +1,20 @@
+{
+  "case": "compact-refusal-keeps-a-dependent-waiting",
+  "reason": "#90 and ADR 0013 rule 3: one compact error covers a shared failure when the errors at each holder exceed the snapshot allowance.",
+  "reference": [
+    "{\"snapshot\":{\"__openui_loading\":[\"q0\",\"b\"],\"__openui_refetching\":[],\"__openui_errors\":[],\"q0\":null,\"q1\":null,\"q2\":null,\"q3\":null,\"q4\":null,\"q5\":null,\"b\":null},\"calls\":[{\"call\":0,\"toolName\":\"shared\",\"args\":{}}],\"changed\":true}",
+    "{\"snapshot\":{\"__openui_loading\":[\"b\"],\"__openui_refetching\":[],\"__openui_errors\":[],\"q0\":\"large\",\"q1\":\"large\",\"q2\":\"large\",\"q3\":\"large\",\"q4\":\"large\",\"q5\":\"large\",\"b\":null},\"calls\":[{\"call\":1,\"toolName\":\"reader\",\"args\":{\"x\":\"large\"}}],\"changed\":true}",
+    "{\"snapshot\":{\"__openui_loading\":[\"b\"],\"__openui_refetching\":[],\"__openui_errors\":[],\"q0\":\"large\",\"q1\":\"large\",\"q2\":\"large\",\"q3\":\"large\",\"q4\":\"large\",\"q5\":\"large\",\"b\":null},\"calls\":[],\"changed\":false}",
+    "{\"snapshot\":{\"__openui_loading\":[\"b\"],\"__openui_refetching\":[],\"__openui_errors\":[],\"q0\":\"large\",\"q1\":\"large\",\"q2\":\"large\",\"q3\":\"large\",\"q4\":\"large\",\"q5\":\"large\",\"b\":null},\"calls\":[],\"changed\":false}",
+    "{\"snapshot\":{\"__openui_loading\":[\"q0\",\"b\"],\"__openui_refetching\":[\"q0\"],\"__openui_errors\":[],\"q0\":\"large\",\"q1\":\"large\",\"q2\":\"large\",\"q3\":\"large\",\"q4\":\"large\",\"q5\":\"large\",\"b\":null},\"calls\":[{\"call\":2,\"toolName\":\"shared\",\"args\":{}}],\"changed\":true}",
+    "{\"snapshot\":{\"__openui_loading\":[\"b\"],\"__openui_refetching\":[],\"__openui_errors\":[],\"q0\":1,\"q1\":1,\"q2\":1,\"q3\":1,\"q4\":1,\"q5\":1,\"b\":null},\"calls\":[{\"call\":3,\"toolName\":\"reader\",\"args\":{\"x\":1}}],\"changed\":true}"
+  ],
+  "rust": [
+    "{\"snapshot\":{\"__openui_loading\":[\"q0\",\"q1\",\"q2\",\"q3\",\"q4\",\"q5\",\"b\"],\"__openui_refetching\":[],\"__openui_errors\":[],\"q0\":null,\"q1\":null,\"q2\":null,\"q3\":null,\"q4\":null,\"q5\":null,\"b\":null},\"calls\":[{\"call\":0,\"toolName\":\"shared\",\"args\":{}}],\"changed\":true}",
+    "{\"snapshot\":{\"__openui_loading\":[],\"__openui_refetching\":[],\"__openui_errors\":[{\"source\":\"query\",\"component\":\"Query\",\"code\":\"tool-error\",\"message\":\"6 queries failed with errors that do not fit the result size limit of 1024 bytes\"}],\"q0\":null,\"q1\":null,\"q2\":null,\"q3\":null,\"q4\":null,\"q5\":null,\"b\":null},\"calls\":[],\"changed\":true}",
+    "{\"snapshot\":{\"__openui_loading\":[],\"__openui_refetching\":[],\"__openui_errors\":[{\"source\":\"query\",\"component\":\"Query\",\"code\":\"tool-error\",\"message\":\"6 queries failed with errors that do not fit the result size limit of 1024 bytes\"}],\"q0\":null,\"q1\":null,\"q2\":null,\"q3\":null,\"q4\":null,\"q5\":null,\"b\":null},\"calls\":[],\"changed\":false}",
+    "{\"snapshot\":{\"__openui_loading\":[],\"__openui_refetching\":[],\"__openui_errors\":[{\"source\":\"query\",\"component\":\"Query\",\"code\":\"tool-error\",\"message\":\"6 queries failed with errors that do not fit the result size limit of 1024 bytes\"}],\"q0\":null,\"q1\":null,\"q2\":null,\"q3\":null,\"q4\":null,\"q5\":null,\"b\":null},\"calls\":[],\"changed\":false}",
+    "{\"snapshot\":{\"__openui_loading\":[\"q0\",\"q1\",\"q2\",\"q3\",\"q4\",\"q5\",\"b\"],\"__openui_refetching\":[],\"__openui_errors\":[{\"source\":\"query\",\"component\":\"Query\",\"code\":\"tool-error\",\"message\":\"6 queries failed with errors that do not fit the result size limit of 1024 bytes\"}],\"q0\":null,\"q1\":null,\"q2\":null,\"q3\":null,\"q4\":null,\"q5\":null,\"b\":null},\"calls\":[{\"call\":1,\"toolName\":\"shared\",\"args\":{}}],\"changed\":true}",
+    "{\"snapshot\":{\"__openui_loading\":[\"b\"],\"__openui_refetching\":[],\"__openui_errors\":[],\"q0\":1,\"q1\":1,\"q2\":1,\"q3\":1,\"q4\":1,\"q5\":1,\"b\":null},\"calls\":[{\"call\":2,\"toolName\":\"reader\",\"args\":{\"x\":1}}],\"changed\":true}"
+  ]
+}

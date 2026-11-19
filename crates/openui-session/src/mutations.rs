@@ -1,13 +1,26 @@
 //! Managed mutations retain their action continuation in the session. The
 //! embedder needs only the tool call identity to complete the segment.
 use super::*;
-use openui_runtime::{ResultLimit, ToolCallId};
+use openui_runtime::{QueryManager, ResultLimit, ToolCallId};
 
 /// What completes a call: the provider's outcome, or a result the session
 /// refused under a limit before reading it (#90).
 pub(super) enum Delivery {
     Outcome(ToolCallOutcome),
     Refused(ResultLimit),
+}
+
+impl Delivery {
+    pub(super) fn stage<'a>(
+        self,
+        manager: &'a mut QueryManager,
+        call: &'a ToolCallId,
+    ) -> Result<openui_runtime::ToolDelivery<'a>, openui_runtime::QueryCommandError> {
+        match self {
+            Self::Outcome(outcome) => manager.stage_tool_call(call, outcome),
+            Self::Refused(limit) => manager.stage_tool_call_refused(call, limit),
+        }
+    }
 }
 
 impl SessionCore {
@@ -67,15 +80,6 @@ impl SessionCore {
         }
     }
 
-    pub(super) fn complete_mutation(
-        &mut self,
-        generation: u64,
-        call: &ToolCallId,
-        outcome: ToolCallOutcome,
-    ) -> Result<(), OpenUiError> {
-        self.complete_mutation_delivery(generation, call, Delivery::Outcome(outcome))
-    }
-
     pub(super) fn complete_mutation_delivery(
         &mut self,
         generation: u64,
@@ -86,25 +90,23 @@ impl SessionCore {
             delivery,
             Delivery::Outcome(ToolCallOutcome::Result(_) | ToolCallOutcome::MissingResult)
         );
-        if delivers_result {
-            self.next_continuation_generation()?;
-        }
-        let functions = Self::functions(
-            &self.library,
-            &self.functions,
-            self.core_limits,
-            self.limits.max_json_bytes,
-        )?;
+        let generation_room = self.next_continuation_generation();
         let manager = self.manager.as_mut().ok_or(OpenUiError::InvalidToolCall)?;
-        // A result refused under the limits is delivered as a failure (#90).
-        let (update, refused) = match delivery {
-            Delivery::Outcome(outcome) => manager.complete_tool_call_admitted(call, outcome)?,
-            Delivery::Refused(limit) => (
-                manager.complete_tool_call_refused(call, limit)?,
-                Some(limit),
-            ),
+        let staged = delivery.stage(manager, call)?;
+        let succeeded = delivers_result && staged.result_refusal().is_none();
+        let functions = if succeeded {
+            generation_room?;
+            Self::functions(
+                &self.library,
+                &self.functions,
+                self.core_limits,
+                self.limits.max_json_bytes,
+            )?
+        } else {
+            // Failure ends the plan without evaluating its tail or any readers.
+            None
         };
-        let succeeded = delivers_result && refused.is_none();
+        let update = staged.finish(None)?;
         self.query_effects.record(update);
         let pending = self
             .continuations
@@ -140,8 +142,11 @@ impl SessionCore {
 mod tests {
     use super::*;
 
-    #[test]
-    fn the_last_mutation_generation_can_fail_after_a_successful_resume_is_refused() {
+    fn submission() -> (
+        SessionCore,
+        PreparedReferenceValues<'static>,
+        Arc<ActionHandle>,
+    ) {
         let schema = serde_json::json!({"$defs":{"Box":{"properties":{"action":{}}}}});
         let library = Arc::new(ComponentLibrary {
             inner: Arc::new(openui_lang::Library::from_json_schema(&schema)),
@@ -157,8 +162,7 @@ mod tests {
             inner,
         });
         let mut s = SessionCore::new(library, None, RuntimeLimits::default()).unwrap();
-        let values = JsObject::new();
-        let refs = PreparedReferenceValues::new(&values);
+        let refs = PreparedReferenceValues::owned_with_limits(JsObject::new(), Limits::DEFAULT);
         s.attach_tool_provider(&refs).unwrap();
         let draw = s
             .replace_program(&refs, program, None, None, true)
@@ -171,6 +175,44 @@ mod tests {
                 vec!["props".into(), "action".into()],
             )
             .unwrap();
+        (s, refs, action)
+    }
+
+    #[test]
+    fn a_failed_submission_ends_the_plan_without_building_the_function_table() {
+        let (mut s, refs, action) = submission();
+        s.run(&refs, Some(action), String::new(), None).unwrap();
+        let call = s.take_query_update().calls.pop().unwrap();
+        queries::TABLE_BUILDS.set(0);
+        s.complete_tool_call_json(&call.id, r#"{"failed":"cancelled"}"#)
+            .unwrap();
+        assert_eq!(queries::TABLE_BUILDS.get(), 0);
+        let update = s.take_query_update();
+        assert_eq!(update.actions.len(), 1);
+        assert!(update.calls.is_empty());
+    }
+
+    #[test]
+    fn a_cache_refusal_ends_the_last_mutation_generation_without_evaluating_its_tail() {
+        let (mut s, refs, action) = submission();
+        s.next_continuation = u64::MAX - 1;
+        s.manager = s.manager.take().map(|manager| manager.with_cache_limit(0));
+        s.run(&refs, Some(action), String::new(), None).unwrap();
+        let call = s.take_query_update().calls.pop().unwrap();
+        queries::TABLE_BUILDS.set(0);
+        s.complete_tool_call_json(&call.id, r#"{"value":1}"#)
+            .unwrap();
+        assert_eq!(queries::TABLE_BUILDS.get(), 0);
+        assert!(s.continuations.is_empty());
+        let update = s.take_query_update();
+        assert!(update.calls.is_empty());
+        assert_eq!(update.actions.len(), 1);
+        assert!(!call.id.is_pending());
+    }
+
+    #[test]
+    fn the_last_mutation_generation_can_fail_after_a_successful_resume_is_refused() {
+        let (mut s, refs, action) = submission();
         s.next_continuation = u64::MAX - 1;
         s.run(&refs, Some(action), String::new(), None).unwrap();
         let call = s.take_query_update().calls.pop().unwrap();

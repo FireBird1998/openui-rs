@@ -16,7 +16,7 @@ pub struct PreparedReferenceValues<'a> {
     measurements: BTreeMap<Cow<'a, str>, Result<PreparedReferenceValue, EvaluationFlags>>,
     pub(super) bytes: usize,
     tail: EvaluationFlags,
-    pub(super) input: openui_lang::PreparedReferenceInput,
+    pub(crate) input: openui_lang::PreparedReferenceInput,
 }
 impl<'a> PreparedReferenceValues<'a> {
     /// Prepare with a 32,768-level iterative measurement bound and the default
@@ -79,9 +79,6 @@ impl<'a> PreparedReferenceValues<'a> {
     /// Whether the host supply contains any reference names, including refused ones.
     pub fn is_empty(&self) -> bool {
         self.values.is_empty()
-    }
-    pub(crate) fn input_bytes(&self) -> usize {
-        self.bytes
     }
 
     pub(crate) fn get(

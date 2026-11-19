@@ -650,8 +650,16 @@ public final class LiveProgram {
                 let more = try session.takeQueryUpdate()
                 effects.calls += more.calls
                 effects.actions += more.actions
+                effects.readerRoundsLimited = effects.readerRoundsLimited || more.readerRoundsLimited
+                effects.evaluationError = more.evaluationError
                 effects.nextRefreshDueMs = more.nextRefreshDueMs
             } catch { redrawWarning = Self.describe(error) }
+        }
+        if effects.readerRoundsLimited {
+            let message = [effects.evaluationError.map(Self.describe),
+                           "Query readers were still changing at the reader round limit."].compactMap { $0 }.joined(separator: "\n")
+            display.queries.evaluationError = message
+            completeDisplay?.queries.evaluationError = message
         }
         // Calls taken are dispatched even when redrawing failed: the session
         // hands each out once.

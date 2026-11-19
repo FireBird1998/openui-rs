@@ -65,6 +65,28 @@
       {"click":"mutation"},
       {"finish":4,"value":"ok"},
       {"finish":3,"value":"B1"}
+    ]},
+    {"name": "source-revision-with-a-reader", "steps": [
+      {"response":"]]>openui:content\n$n=0\ns=Query(\"source\")\nr=Query(\"reader\",{v:s,n:$n})\nroot=Box([s,r],@Run(r))\n]]>openui:scripts {\"count\":1}\n[{\"name\": \"source\", \"code\": \"A\"}]\n]]>openui:end","streaming":true},
+      {"retry":true},
+      {"response":"]]>openui:content\n$n=0\ns=Query(\"source\")\nr=Query(\"reader\",{v:s,n:$n})\nroot=Box([s,r],@Run(r))\n]]>openui:scripts {\"count\":1}\n[{\"name\": \"source\", \"code\": \"A\"}]\n]]>openui:end","streaming":false},
+      {"finish":0,"value":"a"},
+      {"finish":1,"value":1},
+      {"response":"]]>openui:content\n$n=0\ns=Query(\"source\")\nr=Query(\"reader\",{v:s,n:$n})\nroot=Box([s,r],@Run(r))\n]]>openui:scripts {\"count\":1}\n[{\"name\": \"source\", \"code\": \"B\"}]\n]]>openui:end","streaming":true},
+      {"set":"$n","value":2},
+      {"click":"action"},
+      {"retry":true},
+      {"response":"]]>openui:content\n$n=0\ns=Query(\"source\")\nr=Query(\"reader\",{v:s,n:$n})\nroot=Box([s,r],@Run(r))\n]]>openui:scripts {\"count\":1}\n[{\"name\": \"source\", \"code\": \"B\"}]\n]]>openui:end","streaming":false},
+      {"finish":2,"value":"b"}
+    ]},
+    {"name": "settled-reader-completes-during-a-blocked-edit", "steps": [
+      {"response":"]]>openui:content\n$n=0\ns=Query(\"source\")\nr=Query(\"reader\",{v:s,n:$n})\nroot=Box([s,r],@Run(r))\n]]>openui:scripts {\"count\":1}\n[{\"name\": \"reader\", \"code\": \"A\"}]\n]]>openui:end","streaming":false},
+      {"response":"]]>openui:content\n$n=0\ns=Query(\"source\")\nr=Query(\"reader\",{v:s,n:$n})\nroot=Box([s,r],@Run(r))\n]]>openui:scripts {\"count\":1}\n[{\"name\": \"reader\", \"code\": \"B\"}]\n]]>openui:end","streaming":true},
+      {"finish":0,"value":"ready"},
+      {"finish":1,"value":"old"},
+      {"response":"]]>openui:content\n$n=0\ns=Query(\"source\")\nr=Query(\"reader\",{v:s,n:$n})\nroot=Box([s,r],@Run(r))\n]]>openui:scripts {\"count\":1}\n[{\"name\": \"reader\", \"code\": \"A\"}]\n]]>openui:end","streaming":false},
+      {"response":"]]>openui:content\n$n=0\ns=Query(\"source\")\nr=Query(\"reader\",{v:s,n:$n})\nroot=Box([s,r],@Run(r))\n]]>openui:scripts {\"count\":1}\n[{\"name\": \"reader\", \"code\": \"B\"}]\n]]>openui:end","streaming":false},
+      {"finish":2,"value":"new"}
     ]}
   ]
 }

@@ -23,7 +23,11 @@ fn program(source: &JsonValue, library: &Library, store: &mut Store) -> ParseRes
 }
 
 fn outcome(value: &JsonValue) -> ToolOutcome<'_> {
+    static NEGATIVE_ZERO: Value = Value::Num(-0.0);
+    static HOST_NAN: Value = Value::Num(f64::NAN);
     match value["kind"].as_str().unwrap() {
+        "result" if value["hostNumber"] == "-0" => ToolOutcome::ResultValue(&NEGATIVE_ZERO),
+        "result" if value["hostNumber"] == "NaN" => ToolOutcome::ResultValue(&HOST_NAN),
         "result" => ToolOutcome::Result(value.get("value")),
         "tool-not-found" => ToolOutcome::ToolNotFound(
             value["availableTools"]
@@ -46,6 +50,7 @@ fn replay(scenario: &JsonValue, mut observe: impl FnMut(usize, String, usize)) {
     let mut store = Store::new();
     let mut current = program(&scenario["program"], &library, &mut store);
     let mut manager = QueryManager::default();
+    let foreign = QueryManager::default();
     let mut calls: Vec<ToolCallId> = Vec::new();
     let mut dispatches = Vec::new();
     let mut outstanding = BTreeMap::new();
@@ -53,6 +58,11 @@ fn replay(scenario: &JsonValue, mut observe: impl FnMut(usize, String, usize)) {
     let mut registered = HashSet::new();
     for (index, step) in steps.iter().enumerate() {
         let before = registered.clone();
+        let snapshot_before = manager.snapshot_json().to_owned();
+        let bytes_before = manager.cache_bytes();
+        let entries_before = manager.cache_entry_count();
+        let pending_before: Vec<_> = calls.iter().map(ToolCallId::is_pending).collect();
+        let mut completing = None;
         // Absent ids run every query, as an empty list does.
         let run_ids: Vec<&str> = step
             .get("ids")
@@ -79,13 +89,21 @@ fn replay(scenario: &JsonValue, mut observe: impl FnMut(usize, String, usize)) {
             }),
             "complete" => {
                 let call = if let Some(dispatch) = step.get("dispatch") {
+                    let mut address = dispatch.clone();
+                    let occurrence = address.as_object_mut().unwrap().remove("occurrence");
                     let mut matches = dispatches
                         .iter()
                         .enumerate()
-                        .filter(|(_, address)| *address == dispatch);
-                    let first = matches.next().map(|(number, _)| number);
+                        .filter(|(_, candidate)| **candidate == address);
+                    let first = matches
+                        .nth(
+                            occurrence
+                                .as_ref()
+                                .map_or(0, |n| n.as_u64().unwrap() as usize),
+                        )
+                        .map(|(number, _)| number);
                     assert!(
-                        matches.next().is_none(),
+                        occurrence.is_some() || matches.next().is_none(),
                         "ambiguous dispatch address {dispatch}"
                     );
                     first
@@ -93,7 +111,8 @@ fn replay(scenario: &JsonValue, mut observe: impl FnMut(usize, String, usize)) {
                     Some(usize::try_from(step["call"].as_u64().unwrap()).unwrap())
                 };
                 call.map(|call| {
-                    assert!(outstanding.remove(&call).is_some());
+                    assert!(outstanding.contains_key(&call));
+                    completing = Some(call);
                     QueryCommand::Complete {
                         id: &calls[call],
                         outcome: outcome(&step["outcome"]),
@@ -111,6 +130,15 @@ fn replay(scenario: &JsonValue, mut observe: impl FnMut(usize, String, usize)) {
             }
             "replace" => {
                 current = program(&step["program"], &library, &mut store);
+                if step["repeatLastReader"] == true {
+                    let last = current.query_statements.last().unwrap().clone();
+                    assert!(
+                        last.wait_for
+                            .as_ref()
+                            .is_some_and(|reads| !reads.is_empty())
+                    );
+                    current.query_statements.push(last);
+                }
                 None
             }
             "extra" => {
@@ -126,6 +154,7 @@ fn replay(scenario: &JsonValue, mut observe: impl FnMut(usize, String, usize)) {
                     .unwrap_or_else(|error| panic!("{name}, step {index}: {error}"));
                 None
             }
+            "register" | "fire" => None,
             "invalidate" => Some(QueryCommand::Invalidate {
                 statement_ids: &run_ids,
             }),
@@ -133,9 +162,47 @@ fn replay(scenario: &JsonValue, mut observe: impl FnMut(usize, String, usize)) {
         };
         // A refused command is its own observation: a pinned divergence can
         // refuse what upstream runs. Nothing changes, registrations included.
-        let update = match command.map(|command| manager.apply(command)) {
+        if let Some(QueryCommand::Complete { id, outcome }) = command.as_ref() {
+            manager
+                .audit_delivery(id, outcome)
+                .unwrap_or_else(|e| panic!("{name} step {index}: {e}"));
+        }
+        let applied = match step["kind"].as_str() {
+            Some("register") => {
+                Some(manager.register_mutations(&openui_runtime::TreeInput::new(&current), &store))
+            }
+            Some("fire") => Some(manager.fire_mutation(
+                step["name"].as_str().unwrap(),
+                step.get("args").map(Value::from_json).as_ref(),
+            )),
+            _ => command.map(|command| manager.apply(command)),
+        };
+        assert_eq!(
+            manager.cache_bytes(),
+            manager.measured_cache_bytes(),
+            "{name}, step {index}: cache bytes"
+        );
+        assert!(
+            manager.cache_bytes() <= manager.cache_limit(),
+            "{name}, step {index}: cache cap"
+        );
+        let update = match applied {
             Some(Err(error)) => {
                 registered = before;
+                manager.audit_cache(outstanding.values(), true).unwrap();
+                assert_eq!(manager.cache_bytes(), bytes_before);
+                assert_eq!(
+                    manager.snapshot_json(),
+                    snapshot_before,
+                    "{name}, step {index}: refused snapshot"
+                );
+                assert_eq!(
+                    manager.cache_entry_count(),
+                    entries_before,
+                    "{name}, step {index}: refused cache"
+                );
+                assert!(calls.iter().map(ToolCallId::is_pending).eq(pending_before));
+                query_readers::check_identities(&manager, &foreign, &calls, &outstanding);
                 let refused = value_to_json(&Value::Str(error.to_string())).unwrap();
                 observe(
                     index,
@@ -152,6 +219,9 @@ fn replay(scenario: &JsonValue, mut observe: impl FnMut(usize, String, usize)) {
             manager.cache_entry_count(),
             registered.len()
         );
+        if let Some(call) = completing {
+            assert!(outstanding.remove(&call).is_some());
+        }
         let changed = update.as_ref().is_some_and(|update| update.changed);
         let mut actual = format!("{{\"snapshot\":{},\"calls\":[", manager.snapshot_json());
         for (offset, call) in update
@@ -189,6 +259,9 @@ fn replay(scenario: &JsonValue, mut observe: impl FnMut(usize, String, usize)) {
         } else {
             "],\"changed\":false}"
         });
+        manager
+            .audit_cache(outstanding.values(), true)
+            .unwrap_or_else(|e| panic!("{name} step {index}: {e}"));
         let snapshot = parse_json(manager.snapshot_json()).unwrap();
         let errors = snapshot["__openui_errors"].as_array().unwrap();
         for id in &registered {
@@ -200,6 +273,7 @@ fn replay(scenario: &JsonValue, mut observe: impl FnMut(usize, String, usize)) {
                 "{name}, step {index}: {id} has no current result, error or outstanding call"
             );
         }
+        query_readers::check_identities(&manager, &foreign, &calls, &outstanding);
         observe(index, actual, manager.cache_entry_count());
     }
 }
@@ -397,3 +471,6 @@ fn documented_situations() -> BTreeMap<String, (usize, usize)> {
     assert!(!counts.is_empty());
     counts
 }
+
+#[path = "support/query_readers.rs"]
+mod query_readers;

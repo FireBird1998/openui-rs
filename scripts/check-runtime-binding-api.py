@@ -90,6 +90,7 @@ assert callback_type in callbacks, "wasm callback JSON contract drift"
 assert "dyn Fn(String) -> Result<Option<String>, String> + Send + Sync" in core, "core callback JSON contract drift"
 assert "registerFunction: openuiSpec([openuiStr, openuiFunction])" in (root / "crates/openui-wasm/js/package-guards.js").read_text()
 for doc in ["docs/runtime-binding-api.md", "docs/wasm-runtime-binding-api.md"]:
+    assert "readerRoundsLimited" in (root / doc).read_text(), doc
     for name in (native_methods if doc == "docs/runtime-binding-api.md" else methods):
         assert name in (root / doc).read_text(), (doc, name)
 driver_signature = "setToolProvider(provider?: ToolProvider | null, options?: ToolProviderOptions): void;"
@@ -125,6 +126,7 @@ if len(sys.argv) == 3 and sys.argv[1] == "--wasm":
     assert re.search(r"run\(action: ActionHandle \| (?:null \| )?undefined, message: string, form\?: string(?: \| null)?\): ActionOutput;", session[1])
     for field in ["queryEvaluationError", "evaluationError"]:
         assert f"readonly {field}: {{ kind: string; message: string }} | null;" in declarations, field
+    assert "readonly readerRoundsLimited: boolean;" in declarations
     assert "readonly nextRefreshDueMs: bigint | undefined;" in declarations
     assert "resumeQueriesAt(now_ms: bigint): void;" in session[1]
     assert "attachToolProviderAt(now_ms: bigint, minimum_ms: bigint): void;" in session[1]
@@ -183,6 +185,7 @@ assert "func advanceQueryClock(nowMs: UInt64) throws" in api[1]
 assert "func attachToolProviderWithMinimum(minimumMs: UInt64) throws" in api[1]
 assert "actions: [ActionOutput] = []" in swift
 assert "public var calls: [WantedToolCall]" in swift
+assert "evaluationError: OpenUiError?, actions: [ActionOutput] = [], nextRefreshDueMs: UInt64? = nil, readerRoundsLimited: Bool = false)" in swift
 assert "case ReferenceConflict" in swift
 assert "public var referencePreparation: ParseLimits" in swift
 assert "maxActionPathBytes: UInt64? = nil" in swift, "new Swift limit must stay opt-in"
@@ -222,12 +225,15 @@ if len(sys.argv) == 3:
     assert "fun `run`(`action`: ActionHandle?, `message`: kotlin.String, `form`: kotlin.String?): ActionOutput" in api[1]
     assert "fun `evaluateWithResponse`(`responseState`: ResponseState): EvaluationOutput" in api[1]
     assert "`responseState`: ResponseState): ReplacementOutput" in api[1]
+    assert "`readerRoundsLimited`: kotlin.Boolean = false" in kotlin
     assert "`nextRefreshDueMs`: kotlin.ULong? = null" in kotlin
     assert "fun `resumeQueriesAt`(`nowMs`: kotlin.ULong)" in api[1]
     assert "fun `attachToolProviderAt`(`nowMs`: kotlin.ULong, `minimumMs`: kotlin.ULong)" in api[1]
     assert "fun `advanceQueryClock`(`nowMs`: kotlin.ULong)" in api[1]
     assert "fun `attachToolProviderWithMinimum`(`minimumMs`: kotlin.ULong)" in api[1]
     assert "`actions`: List<ActionOutput> = listOf()" in kotlin
+    effects = kotlin.split("data class QueryEffects (", 1)[1].split("):", 1)[0]
+    assert re.findall(r"var `(\w+)`:", effects) == ["changed", "calls", "evaluationError", "actions", "nextRefreshDueMs", "readerRoundsLimited"], "QueryEffects positional constructor drift"
     assert "class ReferenceConflict" in kotlin
     assert "interface LibraryFunction" in kotlin
     assert "fun `call`(`argumentsJson`: kotlin.String): kotlin.String?" in kotlin, "Kotlin callback signature drift"

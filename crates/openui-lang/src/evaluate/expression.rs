@@ -1426,6 +1426,11 @@ pub struct EvaluationFlags {
 #[derive(Clone, Debug, PartialEq, Eq)]
 #[non_exhaustive]
 pub enum EvaluationFailure {
+    /// An expression needs a borrowed evaluation context to resume.
+    MissingContext {
+        /// Operation that supplies the missing context.
+        recovery: &'static str,
+    },
     /// A caller callback's failure, using its host-facing wording.
     Callback(String),
     /// An object could not produce a primitive for JavaScript coercion.

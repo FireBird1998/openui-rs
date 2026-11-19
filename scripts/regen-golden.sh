@@ -69,9 +69,14 @@ done
   bun --no-install core-divergences.ts
   bun --no-install query-default-cycles.ts
   bun --no-install query-scenarios.ts
+  bun --no-install query-scenarios.ts --readers
+  bun --no-install query-scenarios.ts --reader-rounds-golden
+  bun --no-install query-scenarios.ts --reader-fixes
   bun --no-install query-refresh.ts
   bun --no-install result-limits.ts
   bun --no-install session-queries.ts
+  bun --no-install session-queries.ts --self-wait
+  bun --no-install query-scenarios.ts --self-wait
   bun --no-install mutation-scenarios.ts
   bun --no-install session-mutations.ts
   bun --no-install session-runs.ts

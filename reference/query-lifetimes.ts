@@ -2,7 +2,7 @@
 // with no corrections and the independent rule model with all corrections.
 // They cannot supply the Rust expectations or its cache-entry counts.
 import type { Dispatch, Outcome, Scenario, Step } from './query-scenarios';
-import { byRule, failure, type Keys } from './query-rule-model';
+import { byRule, failure, type Keys, type WaitFor } from './query-rule-model';
 
 const corrections = [
   'statement-named-errors', 'statement-named-loading', 'statement-named-refetching',
@@ -31,11 +31,11 @@ const corrections = [
 type Situation = typeof corrections[number];
 // Lang-core remembers a run on the query that asked (needsRefetch); the
 // correction remembers it on the entry, naming the query that asked.
-type Query = { key: string; previous?: string; loading: boolean; fetched: boolean; hidden?: Situation; stuck?: Situation; defaults?: unknown; error?: object; needsRefetch?: boolean };
+type Query = { waiting?: boolean; key: string; previous?: string; loading: boolean; fetched: boolean; hidden?: Situation; stuck?: Situation; defaults?: unknown; error?: object; needsRefetch?: boolean };
 type Entry = { data?: unknown; failed: boolean; pending: boolean; starter?: string; displaced: boolean; runAgain?: string };
 type Call = { id: string; key: string; entry: Entry; dispatch: Dispatch };
 
-function simulate(scenario: Scenario, keys: Keys[], enabled: Set<Situation>) {
+function simulate(scenario: Scenario, keys: Keys[], enabled: Set<Situation>, waitFor: WaitFor) {
   const queries = new Map<string, Query>();
   const cache = new Map<string, Entry>();
   const calls: Call[] = [];
@@ -105,6 +105,12 @@ function simulate(scenario: Scenario, keys: Keys[], enabled: Set<Situation>) {
         if (entry.data !== undefined) q.stuck = 'return-to-finished-key';
         else if (entry.failed) q.stuck = 'return-to-failed-key';
       }
+      q.waiting = waitFor[id]?.some(dep => {
+        const source = queries.get(dep);
+        return cache.get(source?.key ?? '')?.data === undefined &&
+          cache.get(source?.previous ?? '')?.data === undefined;
+      });
+      if (q.waiting) continue;
       const needsCall = !entry.failed || (!q.error && enabled.has('new-reader-of-a-retained-failure'));
       if (entry.data === undefined && needsCall && !entry.pending) {
         entry.pending = true;
@@ -131,6 +137,7 @@ function simulate(scenario: Scenario, keys: Keys[], enabled: Set<Situation>) {
     for (const id of targets) {
       const q = queries.get(id)!;
       const entry = cache.get(q.key)!;
+      if (q.waiting) continue;
       if (!entry.pending) start(id, q, step);
       else if (enabled.has('run-through-a-query-that-did-not-start-the-call')) entry.runAgain ??= id;
       else q.needsRefetch = true;
@@ -182,7 +189,7 @@ function simulate(scenario: Scenario, keys: Keys[], enabled: Set<Situation>) {
     }
     if (outcome.kind === 'result') {
       if (!own && !enabled.has('pending-key-changes-its-only-reader')) return;
-      entry.data = structuredClone(outcome.value ?? null);
+      entry.data = outcome.hostNumber === 'NaN' ? NaN : structuredClone(outcome.value ?? null);
       entry.failed = false;
       for (const [reader, q] of readers) {
         q.error = undefined;
@@ -267,7 +274,7 @@ function listSituation(id: string): Situation | undefined {
 
 // Address calls by where and with which arguments they were dispatched. A
 // restarted call and a released call may share a key and have distinct outcomes.
-export function addressCompletions(scenario: Scenario, reference: string[], keys: Keys[], seed: number) {
+export function addressCompletions(scenario: Scenario, reference: string[], keys: Keys[], seed: number, waitFor: WaitFor) {
   const addresses: Dispatch[] = [];
   for (const [i, bytes] of reference.entries()) {
     const step = scenario.steps[i];
@@ -277,7 +284,7 @@ export function addressCompletions(scenario: Scenario, reference: string[], keys
     for (const { toolName, args } of JSON.parse(bytes).calls) addresses.push({ step: i, toolName, args });
   }
   const extra: Step[] = [];
-  for (const dispatch of byRule(scenario, keys).calls) {
+  for (const dispatch of byRule(scenario, keys, waitFor).calls) {
     if (addresses.some(a => a.step === dispatch.step && JSON.stringify(a.args) === JSON.stringify(dispatch.args))) continue;
     const outcome: Outcome = (seed + dispatch.step) % 2 === 0
       ? { kind: 'result', value: [seed, dispatch.step] } : { kind: 'tool-error', message: 'offline' };
@@ -287,10 +294,10 @@ export function addressCompletions(scenario: Scenario, reference: string[], keys
   return extra.length;
 }
 
-export function compareLifetimes(scenario: Scenario, reference: string[], keys: Keys[]) {
-  const { observations: expected, entryCounts } = byRule(scenario, keys);
-  const baseline = simulate(scenario, keys, new Set());
-  const corrected = simulate(scenario, keys, new Set(corrections));
+export function compareLifetimes(scenario: Scenario, reference: string[], keys: Keys[], waitFor: WaitFor) {
+  const { observations: expected, entryCounts } = byRule(scenario, keys, waitFor);
+  const baseline = simulate(scenario, keys, new Set(), waitFor);
+  const corrected = simulate(scenario, keys, new Set(corrections), waitFor);
   const overrides: Record<number, string> = {};
   const reasons: Record<number, string> = {};
   for (const [i, bytes] of reference.entries()) {
@@ -304,7 +311,7 @@ export function compareLifetimes(scenario: Scenario, reference: string[], keys: 
     let previous = baseline;
     for (const reason of corrections) {
       enabled.add(reason);
-      const next = enabled.size === corrections.length ? corrected : simulate(scenario, keys, enabled);
+      const next = enabled.size === corrections.length ? corrected : simulate(scenario, keys, enabled, waitFor);
       for (const i of differences) {
         // Multiple causes can overlap. Attribute a step to the transition out
         // of the last policy prefix that still matched the genuine reference.

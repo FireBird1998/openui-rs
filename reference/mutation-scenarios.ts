@@ -37,6 +37,23 @@ async function randomReplay(seed: number) {
       }
     }
     for (const call of pending) yield { kind: 'complete', call, outcome: { kind: 'result', value: null } };
+    if (seed % 3 === 0) {
+      // Finish the original batch first. The new source has one remembered
+      // run and the reader samples the live mutation when the source changes.
+      const program = 'm=Mutation("save")\nsrc=Query("source")\nview=Query("view",{src:src,s:m.status})';
+      yield {kind: 'replace', program};
+      yield {kind: 'register'};
+      const first = calls.length;
+      yield {kind: 'evaluate'};
+      yield {kind: 'invalidate', ids: ['view', 'src']};
+      yield {kind: 'fire', name: 'm', args: {seed}};
+      yield {kind: 'complete', call: first, outcome: {kind: 'result', value: seed}};
+      yield {kind: 'complete', call: first + 1, outcome: {kind: 'result', value: seed}};
+      yield {kind: 'complete', call: first + 2, outcome: {kind: 'result', value: seed + 1}};
+      const end = calls.length;
+      for (let call = first + 3; call < end; call++)
+        yield {kind: 'complete', call, outcome: {kind: 'result', value: null}};
+    }
   }
   const reference = await replay(scenario, script);
   return { scenario, reference };

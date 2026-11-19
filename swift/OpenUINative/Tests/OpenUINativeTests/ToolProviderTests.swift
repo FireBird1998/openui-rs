@@ -179,6 +179,43 @@ private struct TimedOut: Error {}
 }
 
 @Suite @MainActor struct AToolProviderDriver {
+    @Test func aSourceCompletionWakesTheSettledReaderDuringARawBundlePreview() async throws {
+        let core = Core()
+        let library = try await core.library(schema: liveSchema)
+        let live = try LiveProgram(library: library)
+        let tools = FakeTools()
+        try live.attachToolProvider(clock: ManualClock(), tools.provider)
+        let raw = """
+        ]]>openui:content
+        s=Query("source")
+        r=Query("reader",{v:s},"waiting")
+        root=TextContent(r)
+        ]]>openui:scripts {"count":1}
+        [{"name":"reader","code":"v1"}]
+        ]]>openui:end
+        """
+        try await live.show(response: raw, streaming: false)
+        try await eventually("the source") { tools.waiting.count == 1 }
+        let source = try #require(tools.waiting.first)
+        #expect(source.name == "source")
+        let edit = raw.replacingOccurrences(of: "v1", with: "v2")
+        try await live.show(response: edit, streaming: true)
+        tools.answer(source.id, .string("input"))
+        try await eventually("the settled reader") { tools.waiting.first?.name == "reader" }
+        let reader = try #require(tools.waiting.first)
+        #expect(reader.arguments?["v"] == .string("input"))
+        tools.answer(reader.id, .string("first result"))
+        try await eventually("the reader result projected into the preview") { drawnText(live) == "first result" }
+        #expect(live.queries.loading.isEmpty)
+        try await live.show(response: edit, streaming: false)
+        try await eventually("the reader with the new script revision") { tools.waiting.first?.name == "reader" }
+        let revised = try #require(tools.waiting.first)
+        #expect(revised.arguments == reader.arguments)
+        tools.answer(revised.id, .string("second result"))
+        try await eventually("the settled drawing") { drawnText(live) == "second result" }
+        #expect(tools.made.map(\.name) == ["source", "reader", "reader"])
+    }
+
     @Test func performsWantedCallsAndRedrawsWithTheirResults() async throws {
         let live = try await live("""
         $n = 1

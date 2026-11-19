@@ -348,15 +348,13 @@ only a pinned divergence may expect one.
 Call numbers are zero-based dispatch positions. A completion may instead name
 the dispatch step, tool and arguments. Only the side that issued that unique
 call processes its outcome. This keeps an extra dispatch from shifting later
-completions onto unrelated calls. Store and program edits
-only affect the manager on the next evaluate step, and so does an `extra`
-step, which sets or removes one tool name's extra cache-key values (the
-adapter passes them to `evaluateStatements` as `extraDeps`). The reference clock stays
-fixed during these scenarios.
+completions onto unrelated calls. Evaluate registers the current program.
+Readers also read the live Store and per-tool extra key values when an input
+result changes. The reference clock stays fixed during these scenarios.
 
 With the cached Bun reference, run
 `cargo test -p openui-runtime --test query_scenarios -- --ignored --nocapture`
-for 6,000 seeded edit scripts. Statements can share a key, exchange keys, edit
+for 6,000 seeded edit scripts and 512 reader graphs. In the edit scripts, statements can share a key, exchange keys, edit
 both statements or remove one holder and transfer its key in a single evaluate.
 A script can also run every query, one or both in either order, one twice or
 an unknown name, including while calls are in flight.
@@ -372,13 +370,37 @@ correction at a time to attribute differences. Both ends of that comparison
 are checked. Each differing observation must have one named, pinned row in
 CONFORMANCE.md, and the test requires each row's count to be positive and exact.
 
-Every replay step checks that the cache contains at most twice as many entries
-as registered queries. For each registration the replay checks that its current
-entry contains a result, has failed with an error visible in the snapshot, or
-owns an outstanding call actually returned to the driver. The host ledger adds
-newly wanted identities and removes each one on completion. Defaults and
-previous results cannot satisfy this check. The random test also compares the exact entry count to
-the distinct current and previous keys in the model. In `query_commands`,
+The reader graphs vary declaration order, fan-in, completion order, failures,
+refetches and Store edits between evaluate and complete. Their unmodified
+reference trace is compared with counterfactual traces that change the
+origin of the loading flag in upstream’s pending predicate. Fixed cases in
+`conformance/query-readers.json` use the same adapter with `--readers`.
+The renderer replay drains reader calls before the next draw. The same ignored
+integration suite streams 5,000 further two- to six-query graphs, including
+cycles, alias and default reads, per-tool extra keys, removals, renames, and
+missing or non-reflexive results. These scripts also run registered queries, remember runs, and read mutation status across submissions. The loop snapshots the pending call list at
+each checkpoint. Every trace has a step and dispatch ceiling. Duplicate JSON
+dispatch addresses carry an occurrence within the dispatch step.
+
+Run `cargo test -p openui-runtime --lib each_completion_order -- --ignored`
+for the ordered round traces. Two initial batches are each settled in every
+permutation for n=2, 3, 4. Rust records each expression actually rebuilt,
+in order, and the remaining stale set at a cut. Upstream's trace and bytes
+are hashed in `query-reader-rounds.json`. The replay also compares both
+phase witnesses and a four-query cycle with three readers made stale by
+the same completion directly with `query-reader-fixes.json`.
+
+After every command the query, clock and mutation replays compare the exact
+cache keys and holder counts with the current and previous registrations.
+They derive loading and refetching from receipts in the driver's ledger and
+follow the waiting edges from those receipts. A wait needs a pending or failed
+source, a diagnosed cut, or a chain that reaches another such source or a
+cycle. The checker recognizes the self-delivery diagnostic and unfinished
+rounds at the round bound. On completion it also checks the staged delivery,
+before readers can change keys, against all current holders of the original
+receipt. Unrelated holders keep their data, errors and fetch history.
+The 6,000-script replay independently compares the exact entry count with the
+reference rule model. In `query_commands`,
 2,000 cycles of three edits and three successful 10 KB completions check the
 exact cache size after each command. That suite also checks the shared work
 allowance, expression and host JSON depth refusals, foreign and repeated

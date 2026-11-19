@@ -65,6 +65,48 @@
       {"evaluate":true},
       {"click":"value"},
       {"finish":1,"value":"back"}
-    ]}
+    ]},
+    {
+      "name": "a run remembers the source before it wakes the reader, then runs the reader during the refetch",
+      "steps": [
+        {
+          "replace": "a=Query(\"a\",{})\nb=Query(\"b\",{v:a})\nroot=Box(Action([@Run(a),@Run(b)]))"
+        },
+        {
+          "click": "value"
+        },
+        {
+          "finish": 0,
+          "value": "first"
+        },
+        {
+          "finish": 2,
+          "value": "seen"
+        },
+        {
+          "click": "value"
+        },
+        {
+          "finish": 1,
+          "value": "second"
+        },
+        {
+          "finish": 3,
+          "value": "old"
+        },
+        {
+          "finish": 4,
+          "value": "third"
+        },
+        {
+          "finish": 5,
+          "value": "second result"
+        },
+        {
+          "finish": 6,
+          "value": "fresh"
+        }
+      ]
+    }
   ]
 }

@@ -183,5 +183,67 @@
       {"kind":"complete","dispatch":{"step":3,"toolName":"t","args":{}},"outcome":{"kind":"result","value":"upstream"}},
       {"kind":"complete","dispatch":{"step":4,"toolName":"t","args":{}},"outcome":{"kind":"result","value":"ours"}}
     ]
+  },
+  {
+    "name": "remembered-source-dispatch-precedes-reader-and-reader-runs-during-refetch",
+    "program": "a=Query(\"a\",{})\nb=Query(\"b\",{v:a})",
+    "steps": [
+      {
+        "kind": "evaluate"
+      },
+      {
+        "kind": "invalidate",
+        "ids": [
+          "b",
+          "a"
+        ]
+      },
+      {
+        "kind": "complete",
+        "call": 0,
+        "outcome": {
+          "kind": "result",
+          "value": "first"
+        }
+      },
+      {
+        "kind": "complete",
+        "call": 2,
+        "outcome": {
+          "kind": "result",
+          "value": "seen"
+        }
+      },
+      {
+        "kind": "invalidate",
+        "ids": [
+          "b"
+        ]
+      },
+      {
+        "kind": "complete",
+        "call": 1,
+        "outcome": {
+          "kind": "result",
+          "value": "second"
+        }
+      },
+      {
+        "kind": "complete",
+        "call": 3,
+        "outcome": {
+          "kind": "result",
+          "value": "old"
+        }
+      },
+      {
+        "kind": "complete",
+        "call": 4,
+        "outcome": {
+          "kind": "result",
+          "value": "fresh"
+        }
+      }
+    ]
   }
 ]

@@ -1,0 +1,224 @@
+//! Registered reader expressions, their last inputs, and bounded propagation.
+use super::*;
+
+pub(super) struct Read {
+    pub(super) id: String,
+    pub(super) version: Option<u64>,
+    pub(super) primitive: Option<Arc<Value>>,
+}
+
+#[derive(Clone)]
+pub(super) struct ReaderPlan {
+    pub(super) program: Arc<ParseResult>,
+    pub(super) measured: PreparedProgram,
+    pub(super) needs_context: bool,
+    // The round cut belongs to this plan even after an unrelated clock or run command.
+    pub(super) rounds_limited: bool,
+    pub(super) store: crate::store::query_state::QueryStateReader,
+    pub(super) nodes: Arc<[Arc<Node>]>,
+}
+
+impl QueryManager {
+    // Use the version of the entry supplying getData, including previous-key
+    // fallback. Distinct entries can each be on their first successful fetch.
+    pub(super) fn version(&self, id: &str) -> Option<u64> {
+        let q = self.queries.get(id)?;
+        let entry = self.data_entry(q)?;
+        Some(entry.result_version)
+    }
+
+    pub(super) fn data_entry(&self, q: &Query) -> Option<&CacheEntry> {
+        if q.suspended {
+            return None;
+        }
+        std::iter::once(&q.key)
+            .chain(q.previous.as_ref())
+            .find_map(|key| self.cache.get(key).filter(|entry| entry.data.is_some()))
+    }
+
+    pub(super) fn read_results(
+        &self,
+        statement: &QueryStatement,
+        eval: &ExpressionEvaluator<'_>,
+    ) -> Result<Arc<[Read]>, QueryCommandError> {
+        let mut reads = Vec::new();
+        for id in statement.wait_for.iter().flatten() {
+            eval.charge_work(id.len().saturating_add(1));
+            check_cuts(eval.flags())?;
+            let entry = self.queries.get(id).and_then(|q| self.data_entry(q));
+            reads.push(Read {
+                id: id.clone(),
+                version: entry.map(|e| e.result_version),
+                primitive: entry
+                    .and_then(|e| e.data.as_ref())
+                    .filter(|v| {
+                        matches!(
+                            v.as_ref(),
+                            Value::Null | Value::Bool(_) | Value::Num(_) | Value::Str(_)
+                        )
+                    })
+                    .cloned(),
+            });
+        }
+        Ok(reads.into())
+    }
+
+    pub(super) fn stale(&self, node: &Node) -> bool {
+        #[cfg(test)]
+        round_tests::compared();
+        if self.queries.get(&node.id).is_some_and(|q| q.suspended) {
+            return false;
+        }
+        node.reads.iter().any(|read| {
+            if read.id == node.id {
+                // Waits are decided after installing the key. The expression
+                // may already have seen this same value through a displaced key.
+                // Only another holder can deliver to our previous entry.
+                return self
+                    .queries
+                    .get(&node.id)
+                    .is_some_and(|q| q.waiting_for_self && self.data_entry(q).is_some());
+            }
+            self.read_changed(read)
+        })
+    }
+
+    pub(super) fn read_changed(&self, read: &Read) -> bool {
+        let entry = self.queries.get(&read.id).and_then(|q| self.data_entry(q));
+        if read.version == entry.map(|e| e.result_version) {
+            // A native tool can supply NaN. JavaScript's strict equality
+            // considers it changed even within the same result version.
+            return matches!(read.primitive.as_deref(), Some(Value::Num(n)) if n.is_nan());
+        }
+        // A new entry/version can carry the same JS primitive. Running a
+        // reader again here can observe a subsequent Store edit or callback.
+        match (
+            read.primitive.as_deref(),
+            entry.and_then(|e| e.data.as_deref()),
+        ) {
+            (Some(Value::Null), Some(Value::Null)) => false,
+            (Some(Value::Bool(a)), Some(Value::Bool(b))) => a != b,
+            (Some(Value::Num(a)), Some(Value::Num(b))) => a != b,
+            (Some(Value::Str(a)), Some(Value::Str(b))) => a != b,
+            _ => true,
+        }
+    }
+
+    pub(super) fn register_readers(
+        &mut self,
+        input: &TreeInput<'_>,
+        store: &Store,
+    ) -> Result<Vec<ToolCall>, QueryCommandError> {
+        // TreeScope indexes statement ids before it evaluates an expression.
+        // Bound those copies even for caller-constructed, incomplete statements.
+        let ids = input
+            .result
+            .query_statements
+            .iter()
+            .map(|q| &q.statement_id)
+            .chain(
+                input
+                    .result
+                    .mutation_statements
+                    .iter()
+                    .map(|m| &m.statement_id),
+            );
+        let limit = self.limits.work_for(usize::MAX);
+        let mut bytes = 0usize;
+        for id in ids {
+            bytes = bytes.saturating_add(id.len()).saturating_add(1);
+            if bytes > limit {
+                return Err(QueryCommandError::Limit(crate::admission::size_error()));
+            }
+        }
+        let measured = PreparedProgram::new(input.result, self.limits);
+        check_cuts(measured.flags())?;
+        let budget = EvaluationSession::with_limits(&(), measured.input_bytes(), self.limits);
+        let nodes = self.evaluate_nodes(input, store, &budget, &measured)?;
+        for q in self.queries.values_mut().filter(|q| q.suspended) {
+            q.suspended = false;
+            q.error = None;
+        }
+        self.reader_limit = None;
+        let mut calls = self.apply_nodes(input.result, &nodes);
+        self.readers = None;
+        if nodes.iter().any(|n| !n.reads.is_empty()) {
+            let nodes =
+                self.propagate(input, store, &budget, &measured, nodes.into(), &mut calls)?;
+            let program = input.shared_result.cloned().unwrap_or_else(|| {
+                Arc::new(ParseResult {
+                    // Only stale readers need their expressions again. Preserve
+                    // positions and completeness without retaining unrelated ASTs.
+                    query_statements: input
+                        .result
+                        .query_statements
+                        .iter()
+                        .map(|s| {
+                            let reader = (s.complete
+                                && s.wait_for.as_ref().is_some_and(|reads| !reads.is_empty()))
+                            .then_some(s);
+                            QueryStatement {
+                                statement_id: s.statement_id.clone(),
+                                complete: s.complete,
+                                tool: reader.and_then(|s| s.tool.clone()),
+                                args: reader.and_then(|s| s.args.clone()),
+                                defaults: reader.and_then(|s| s.defaults.clone()),
+                                deps: reader.and_then(|s| s.deps.clone()),
+                                wait_for: reader.and_then(|s| s.wait_for.clone()),
+                                refresh: reader.and_then(|s| s.refresh.clone()),
+                            }
+                        })
+                        .collect(),
+                    ..ParseResult::default()
+                })
+            });
+            self.readers = Some(ReaderPlan {
+                program,
+                measured,
+                rounds_limited: self.reader_rounds_limited,
+                nodes,
+                store: store.query_state(),
+                needs_context: input.cloud_scripts.is_some()
+                    || input.library.is_some()
+                    || input.actions.is_some()
+                    || input.functions.is_some()
+                    || input.binding_props.is_some(),
+            });
+        }
+        Ok(calls)
+    }
+
+    // Walk the reverse waiting edges from all outstanding calls at once. This
+    // computes upstream's isPending for the entire snapshot without recursion.
+    pub(super) fn pending_queries(&self) -> HashSet<&str> {
+        let mut readers: HashMap<&str, Vec<&str>> = HashMap::new();
+        let mut pending = HashSet::new();
+        let mut work = Vec::new();
+        for (id, q) in &self.queries {
+            if q.suspended {
+                continue;
+            }
+            if self
+                .cache
+                .get(&q.key)
+                .is_some_and(|entry| entry.pending.is_some())
+            {
+                pending.insert(id.as_str());
+                work.push(id.as_str());
+            }
+            if q.waiting() {
+                for read in q.reads.iter() {
+                    readers.entry(&read.id).or_default().push(id);
+                }
+            }
+        }
+        while let Some(source) = work.pop() {
+            for &reader in readers.get(source).into_iter().flatten() {
+                if pending.insert(reader) {
+                    work.push(reader);
+                }
+            }
+        }
+        pending
+    }
+}

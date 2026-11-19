@@ -36,8 +36,7 @@ public struct QueryStatus: Sendable, Equatable {
     public var refetching: [String] = []
     /// The queries' and mutations' errors, in upstream's order.
     public var errors: [QueryIssue] = []
-    /// Why evaluating the query statements failed, if it did; the previous
-    /// registrations stay in force.
+    /// The evaluation diagnostic, including readers still changing at the round limit.
     public var evaluationError: String?
 
     public init() {}

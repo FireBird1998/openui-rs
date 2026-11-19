@@ -69,6 +69,7 @@ fn replay(scenario: &Json, expected: &Json) -> Vec<String> {
             .flatten()
             .map(|s| s.as_str().unwrap())
             .collect();
+        let nan = openui_runtime::Value::Num(f64::NAN);
         let command = match step["kind"].as_str().unwrap() {
             "set" => {
                 store
@@ -118,6 +119,9 @@ fn replay(scenario: &Json, expected: &Json) -> Vec<String> {
                 Some(QueryCommand::Complete {
                     id,
                     outcome: match outcome["kind"].as_str().unwrap() {
+                        "result" if outcome["hostNumber"] == "NaN" => {
+                            ToolOutcome::ResultValue(&nan)
+                        }
                         "result" => ToolOutcome::Result(outcome.get("value")),
                         "tool-error" => {
                             ToolOutcome::CallFailed(outcome["message"].as_str().unwrap())
@@ -128,6 +132,9 @@ fn replay(scenario: &Json, expected: &Json) -> Vec<String> {
             }
             other => panic!("unknown command {other}"),
         };
+        if let Some(QueryCommand::Complete { id, outcome }) = command.as_ref() {
+            manager.audit_delivery(id, outcome).unwrap();
+        }
         let available = (step["kind"] == "fire")
             .then(|| manager.can_fire_mutation(step["name"].as_str().unwrap()));
         let update = match step["kind"].as_str() {
@@ -169,6 +176,14 @@ fn replay(scenario: &Json, expected: &Json) -> Vec<String> {
                 &calls[step["call"].as_u64().unwrap() as usize],
             );
         }
+        let cut = if scenario["traceReaderCut"] == true {
+            format!(
+                ",\"readerRoundsLimited\":{}",
+                update.as_ref().is_some_and(|u| u.reader_rounds_limited)
+            )
+        } else {
+            String::new()
+        };
         let mut dispatch = Vec::new();
         for call in update.into_iter().flat_map(|u| u.calls) {
             let args = call
@@ -183,6 +198,8 @@ fn replay(scenario: &Json, expected: &Json) -> Vec<String> {
             assert!(call.id.is_pending());
             calls.push(call.id);
         }
+        manager.audit_cache(calls.iter(), evaluated).unwrap();
+        assert_eq!(manager.cache_bytes(), manager.measured_cache_bytes());
         assert!(manager.cache_entry_count() <= 2 * registered.len());
         if !evaluated {
             assert!(manager.next_refresh_due_ms().is_none());
@@ -209,7 +226,7 @@ fn replay(scenario: &Json, expected: &Json) -> Vec<String> {
         }
         let due = Json::from(manager.next_refresh_due_ms());
         rows.push(format!(
-            "{{\"snapshot\":{},\"calls\":[{}],\"changed\":{changed},\"nextDue\":{due}}}",
+            "{{\"snapshot\":{},\"calls\":[{}],\"changed\":{changed},\"nextDue\":{due}{cut}}}",
             manager.snapshot_json(),
             dispatch.join(",")
         ));
