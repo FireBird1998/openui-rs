@@ -266,7 +266,7 @@ final class CorpusModel {
             let library = try await library(named: c.schemaName, in: corpus)
             await show(OpenProgram(title: c.name, text: try corpus.program(of: c), golden: corpus.golden(for: c),
                                    libraryName: c.schemaName),
-                       library: library, root: c.root)
+                       library: library, root: c.root, corpusProgram: true)
         } catch {
             failure = String(describing: error)
         }
@@ -397,7 +397,7 @@ final class CorpusModel {
 
     private func show(_ program: OpenProgram, library: Library, root: String?,
                       source: (any ChunkSource)? = nil, live: LiveStatus? = nil, chunking initial: Chunking? = nil,
-                      base: String? = nil, attachTools: ((LiveProgram) throws -> Void)? = nil) async {
+                      base: String? = nil, corpusProgram: Bool = false, attachTools: ((LiveProgram) throws -> Void)? = nil) async {
         failure = nil
         let previousPlayback = playback
         let previousProgram = current
@@ -417,7 +417,10 @@ final class CorpusModel {
         liveStatus = live
         savedRecording = nil
         let spec = program.libraryName.flatMap { corpus?.bindingSpec(forSchema: $0) }
-        let playback = Playback(core: core, library: library, root: root, base: base, promptSpec: spec)
+        // Corpus fingerprints measure the incremental chunk parser directly.
+        var factory: (@Sendable () async throws -> any PlaybackSession)?
+        if corpusProgram { factory = { [core] in try await core.session(library: library, root: root) } }
+        let playback = Playback(core: core, library: library, root: root, base: base, promptSpec: spec, sessionFactory: factory)
         playback.attachTools = attachTools
         self.playback = playback
         loadedChunking = chunking

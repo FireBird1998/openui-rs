@@ -137,7 +137,9 @@ public final class Playback {
     public init(core: Core, library: Library, root: String?, base: String? = nil, promptSpec: String? = nil,
                 cacheBudget: Int = 128 << 20, hostEventLimit: Int = 200,
                 sessionFactory: (@Sendable () async throws -> any PlaybackSession)? = nil) {
-        self.sessionFactory = sessionFactory ?? { try await core.session(library: library, root: root) }
+        self.sessionFactory = sessionFactory ?? {
+            try await ResponsePlaybackSession(parser: core.session(library: library, root: root))
+        }
         self.core = core
         self.library = library
         self.promptSpec = promptSpec
@@ -494,7 +496,7 @@ public final class Playback {
     /// `synthetic/dashboard-x8` in a release build. The binding reports no
     /// size for a parse result, so this is an estimate.
     static func cost(of step: Step) -> Int {
-        step.json.utf8.count * 11
+        step.json.utf8.count * 11 + (step.response?.sourceByteCount ?? 0)
     }
 }
 

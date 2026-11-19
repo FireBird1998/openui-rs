@@ -1,0 +1,6 @@
+]]>openui:content?library=bench&name=Evening+edition
+edition = Query("edition", {}, "Fetching edition")
+root = TextContent(edition)
+]]>openui:scripts {"count":1}
+[{"name":"edition","code":"async () => 'Evening edition'"}]
+]]>openui:end

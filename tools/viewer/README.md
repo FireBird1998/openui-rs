@@ -2,6 +2,8 @@
 
 In **Open a Program**, paste or choose the program, select its component library, then use **Choose a Tool Script…** to select a UTF-8 JSON file. Choose **Open**. To try the bundled program and script together, choose **Open News Desk Sample** in the same sheet with the `bench` library available.
 
+**Response Samples** includes **Message** and **Response Bundle**. The message draws “Morning edition”. The bundle calls the sample’s `edition` tool and draws “Evening edition”. The source pane keeps the raw response as you step through it.
+
 A script maps each tool name to a nonempty array of outcomes. For example, this desk fails on its first call and returns an object on retry.
 
 ```json

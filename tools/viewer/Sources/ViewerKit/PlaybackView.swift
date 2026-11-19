@@ -138,6 +138,9 @@ public struct PlaybackView: View {
             if let error = playback.error {
                 Text(error).foregroundStyle(.red).font(.callout)
             }
+            if let error = playback.live?.parserError?["message"]?.string {
+                Text(error).foregroundStyle(.red).font(.callout)
+            }
             if let error = playback.evaluationError {
                 Text(error + " The drawing shows the parse result, not evaluated.").foregroundStyle(.orange).font(.callout)
             }

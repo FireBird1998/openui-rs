@@ -44,7 +44,7 @@ public final class Core: Sendable {
 
     /// Loads a component library from its JSON Schema.
     public func library(schema: String) async throws -> Library {
-        try await run { try Library(schema: schema) }
+        try await run { try Library(core: self, schema: schema) }
     }
 
     /// Parses a whole program one-shot.
@@ -95,10 +95,12 @@ public final class Core: Sendable {
 
 /// A component library loaded into the core, shared by every parse against it.
 public struct Library: Sendable {
+    let core: Core
     let inner: ComponentLibrary
 
     /// Loads the library; throws if the schema isn't JSON. Core thread only.
-    init(schema: String) throws {
+    init(core: Core, schema: String) throws {
+        self.core = core
         Core.assertOnCoreThread()
         inner = try ComponentLibrary(schema: schema)
     }
@@ -161,15 +163,17 @@ public struct Step: Sendable {
     /// The JSON as it crossed, for comparing results exactly.
     public var json: String
     public var timings: Timings
-    /// In edit mode, the merged program this step parsed.
+    /// The merged program for a patch, or the extracted program for a framed response.
     public var program: String?
+    /// The reader metadata for a step parsed from a raw response.
+    public internal(set) var response: ResponseMetadata?
     /// The parse result itself, for a runtime session to evaluate.
     let parsed: ParsedProgram
 
     /// Marks a whole-parser adapter's intermediate result as a streamed
     /// preview without reparsing or granting it interaction authority.
     public func asStreamingPreview() -> Step {
-        Step(isStreaming: true, result: result, json: json, timings: timings, program: program, parsed: parsed)
+        Step(isStreaming: true, result: result, json: json, timings: timings, program: program, response: response, parsed: parsed)
     }
 
     /// Calls the core, then decodes, timing each part. Core thread only.

@@ -92,13 +92,11 @@ struct NewProgramSheet: View {
                 Text(failure).foregroundStyle(.red).font(.callout)
             }
             HStack {
-                Button("Open News Desk Sample") {
-                    do {
-                        open(try .newsDesk())
-                        dismiss()
-                    } catch {
-                        failure = String(describing: error)
-                    }
+                Button("Open News Desk Sample") { openSample { try .newsDesk() } }
+                    .disabled(!schemaNames.contains("bench"))
+                Menu("Response Samples") {
+                    Button("Message") { openSample { try .responseSample(bundle: false) } }
+                    Button("Response Bundle") { openSample { try .responseSample(bundle: true) } }
                 }
                 .disabled(!schemaNames.contains("bench"))
                 Spacer()
@@ -136,6 +134,13 @@ struct NewProgramSheet: View {
                 failure = String(describing: error)
             }
         }
+    }
+
+    private func openSample(_ load: () throws -> ProgramRequest) {
+        do {
+            open(try load())
+            dismiss()
+        } catch { failure = String(describing: error) }
     }
 
     private func choose(_ kind: Importing) {

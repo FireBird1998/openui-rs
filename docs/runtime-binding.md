@@ -558,6 +558,8 @@ last evaluated arguments for both bare and bundled responses.
 
 ### The Swift driver
 
+Give `LiveProgram.show(response:streaming:)` the entire raw response so far. A potential marker line is held back while streaming. The last content section wins, and the scripts section is removed before parsing. The Swift preview keeps its existing interaction gate, including for a bare program. `live.isQueryLoading` includes a streaming response bundle that declares queries. Once streaming ends, an invalid scripts section still draws its program and exposes the session diagnostic in `live.parserError`. The next accepted step replaces the displayed response metadata.
+
 Pass one async closure to `LiveProgram.attachToolProvider`. It receives the tool
 name and optional `JSONValue` arguments and returns a `JSONValue`. Wanted calls
 run concurrently. Each completion updates the evaluated tree and the loading,

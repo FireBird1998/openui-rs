@@ -1,0 +1,5 @@
+]]>openui:content?library=bench&name=Morning+edition
+root = TextContent("Morning edition")
+]]>openui:context
+{"desk":"City"}
+]]>openui:end

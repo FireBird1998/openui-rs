@@ -84,7 +84,7 @@ struct SystemFieldView: View {
         control
             .disabled(!(live?.acceptsInteractions ?? true))
             .onAppear { hydrate() }
-            .onChange(of: live?.isStreaming) { hydrate() }
+            .onChange(of: live?.acceptsInteractions) { hydrate() }
     }
 
     @ViewBuilder private var control: some View {
@@ -319,7 +319,7 @@ struct SystemFieldView: View {
     }
 
     private func hydrate() {
-        guard SelectionField.isSelection(element), let live, !live.isStreaming else { return }
+        guard SelectionField.isSelection(element), let live, live.acceptsInteractions else { return }
         do { try live.initializeSelection(element, form: formName) }
         catch { live.attempt { throw error } }
     }

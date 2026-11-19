@@ -43,11 +43,17 @@ public final class LiveProgram {
     /// What the queries are doing: loading, refetching and their errors.
     /// Empty without a tool provider (see `attachToolProvider`).
     public var queries: QueryStatus { display.queries }
+    /// Message metadata and the response bundle error for the drawing on screen.
+    public var response: ResponseMetadata? { display.step?.response }
+    /// The session's parser diagnostic for an invalid response bundle.
+    public var parserError: JSONValue? { display.parserError }
+    /// The session's loading indicator, including a query waiting for a streaming bundle.
+    public var isQueryLoading: Bool { display.queryLoading }
     /// A response is still streaming into the program. The app sets it while
     /// the program's text is arriving and clears it once the response is
     /// complete. Meanwhile built-in buttons, inputs and selects are disabled,
-    /// a click that still arrives is ignored, and `run` refuses, as upstream's
-    /// renderer does until its response is complete. A stream push remains
+    /// and a click that still arrives is ignored. An explicit `run` on a
+    /// bare streaming program refuses. A stream push remains
     /// gated until a finish result is shown, even if this flag is cleared.
     /// `write` refuses too; app state writes with `set` and `resume` still work.
     /// The request and the preview phase gate new query registrations.
@@ -61,7 +67,11 @@ public final class LiveProgram {
         }
     }
     /// Built-in controls can interact only with a complete runtime.
-    public var acceptsInteractions: Bool { !isStreaming }
+    public var acceptsInteractions: Bool { !isStreaming && !bundleBlocksActions }
+    private var bundleBlocksActions: Bool {
+        guard let state = response?.state, state.isBundle else { return false }
+        return stepIsStreaming || requestedStreaming || !state.complete || state.error != nil
+    }
     /// The app-owned request, separate from an immutable preview step's phase.
     /// Temporary hosts use suspendInteractions(), so they never overwrite
     /// an app request made while their asynchronous work is suspended.
@@ -104,7 +114,11 @@ public final class LiveProgram {
     @ObservationIgnored private let bindings: [(component: String, prop: String)]
     @ObservationIgnored private var previewSession: RuntimeSession?
     @ObservationIgnored private var completeDisplay: Display?
-    @ObservationIgnored private var completeStep: Step?
+    @ObservationIgnored private let rootName: String?
+    @ObservationIgnored private lazy var responseParser = Task {
+        try await library.core.session(library: library, root: rootName)
+    }
+    @ObservationIgnored private var pendingResponse: UUID?
     /// The pristine state variables at a store version, read once.
     @ObservationIgnored private var pristineCache: (version: UInt64, names: Set<String>)?
     private var handle: EvaluationHandle? { display.handle }
@@ -138,6 +152,9 @@ public final class LiveProgram {
         var handle: EvaluationHandle?
         var id = UUID()
         var generation: UInt64 = 0
+        var step: Step?
+        var parserError: JSONValue?
+        var queryLoading = false
         var streaming = false
         var queries = QueryStatus()
     }
@@ -149,10 +166,12 @@ public final class LiveProgram {
     /// doesn't describe.
     public init(
         library: Library,
+        root: String? = nil,
         promptSpec: String? = nil,
         bindings: [(component: String, prop: String)] = [],
         onHostEvent: @escaping @MainActor (HostEvent) -> Void = { _ in }
     ) throws {
+        self.rootName = root
         self.library = library
         self.promptSpec = promptSpec
         self.bindings = bindings
@@ -161,6 +180,20 @@ public final class LiveProgram {
             try session.markBinding(component: binding.component, prop: binding.prop)
         }
         self.onHostEvent = onHostEvent
+    }
+
+    /// Reads and shows the whole raw response so far, including edits.
+    /// A newer show or discard supersedes a read that is still in progress.
+    @discardableResult
+    public func show(response text: String, streaming: Bool) async throws -> Step {
+        let request = UUID()
+        pendingResponse = request
+        let parser = try await responseParser.value
+        let step = try await parser.response(text, streaming: streaming)
+        try Task.checkCancellation()
+        guard request == pendingResponse else { throw CancellationError() }
+        try show(step)
+        return step
     }
 
     /// Shows a parse result: the store takes its state declarations (a value
@@ -175,23 +208,29 @@ public final class LiveProgram {
     public func show(_ step: Step, persisted: JSONValue? = nil) throws {
         let oldDisplay = display
         let oldCompleteDisplay = completeDisplay
-        let oldCompleteStep = completeStep
+        pendingResponse = nil
         let oldPreview = previewSession
         let oldCache = pristineCache
         let oldFailure = failure
         do {
             try queryDriver?.advanceClock()
             try apply(step, persisted: persisted)
-            if step.isStreaming && oldPreview == nil && !requestedStreaming {
+            let bundleChanged = (oldDisplay.step?.response?.state.isBundle == true) != (step.response?.state.isBundle == true)
+            if step.isStreaming && ((oldPreview == nil && !requestedStreaming) || bundleChanged) {
                 queryStreamingChanged()
             } else {
                 syncQueries(alreadyDrawn: !step.isStreaming)
             }
         } catch {
             if previewSession !== oldPreview { previewSession?.dispose() }
+            if let oldPreview, previewSession === oldPreview, hasToolProvider,
+               step.response?.state.isBundle == true || oldDisplay.step?.response?.state.isBundle == true {
+                // A refused replacement can follow a successful projection.
+                // Restore the references used by the still-displayed preview.
+                try? projectQueryValues(to: oldPreview, for: oldDisplay.step, from: oldCompleteDisplay ?? oldDisplay)
+            }
             previewSession = oldPreview
             completeDisplay = oldCompleteDisplay
-            completeStep = oldCompleteStep
             display = oldDisplay
             pristineCache = oldCache
             failure = oldFailure
@@ -210,15 +249,14 @@ public final class LiveProgram {
         guard base.generation < UInt64.max else { throw LiveError(description: "evaluation generation exhausted") }
         let started = ContinuousClock.now
         let replaced = try session.replaceProgramWithResponse(program: step.parsed, persisted: persisted?.compact,
-            projected: nil, nativeView: true, responseState: ResponseState(streaming: requestedStreaming))
+            projected: nil, nativeView: true, responseState: state(for: step, streaming: requestedStreaming))
         let initialized = replaced.initialization
         let next = try decoded(replaced.evaluation, snapshot: replaced.snapshot, version: replaced.version,
-            from: base, programID: UUID(), streaming: false, started: started)
+            from: base, step: step, programID: UUID(), streaming: false, started: started)
         pristineCache = nil
         previewSession?.dispose()
         previewSession = nil
         completeDisplay = nil
-        completeStep = step
         display = next
         hasProgram = true
         failure = initialized.refused.isEmpty ? nil
@@ -231,13 +269,15 @@ public final class LiveProgram {
     /// Retained preview controls remain stale after the complete drawing returns.
     /// The app-owned isStreaming request is preserved; its owner clears it.
     public func discardPreview() {
+        pendingResponse = nil
         guard showingPreview else { return }
+        let wasBundle = response?.state.isBundle == true
         previewSession?.dispose()
         previewSession = nil
         pristineCache = nil
         if let completeDisplay { display = completeDisplay }
         completeDisplay = nil
-        if !requestedStreaming { queryStreamingChanged() }
+        if !requestedStreaming || wasBundle != (response?.state.isBundle == true) { queryStreamingChanged() }
     }
 
     private func showPreview(_ step: Step, persisted: JSONValue?) throws {
@@ -249,7 +289,7 @@ public final class LiveProgram {
                 // drawing uses a JSON projection; copied plans gain no authority.
                 completeDisplay = display
                 previewSession = preview
-                if let completeStep {
+                if let completeStep = display.step {
                     try preview.setProgram(program: completeStep.parsed)
                     _ = try preview.initialize(persisted: nil)
                 }
@@ -258,12 +298,15 @@ public final class LiveProgram {
             guard display.generation < UInt64.max else { throw LiveError(description: "evaluation generation exhausted") }
             let projected = try editedState(from: completeDisplay ?? display)
             let started = ContinuousClock.now
-            let replaced = try previewSession.replaceProgram(program: step.parsed, persisted: persisted?.compact,
-                projected: projected?.compact, nativeView: true)
+            if step.response?.state.isBundle == true || response?.state.isBundle == true {
+                try projectQueryValues(to: previewSession, for: step, from: completeDisplay ?? display)
+            }
+            let replaced = try previewSession.replaceProgramWithResponse(program: step.parsed, persisted: persisted?.compact,
+                projected: projected?.compact, nativeView: true, responseState: state(for: step, streaming: true))
             let initialized = replaced.initialization
             let projectionWarning = projectionWarning(replaced.projection)
             let next = try decoded(replaced.evaluation, snapshot: replaced.snapshot, version: replaced.version,
-                from: display, programID: UUID(), streaming: true, started: started)
+                from: display, step: step, programID: UUID(), streaming: true, started: started)
             pristineCache = nil
             display = next
             let initializationWarning = initialized.refused.isEmpty ? nil : initialized.refused.map {
@@ -272,6 +315,29 @@ public final class LiveProgram {
             let warnings = [projectionWarning, initializationWarning].compactMap { $0 }
             failure = warnings.isEmpty ? nil : warnings.joined(separator: "\n")
         }
+    }
+
+    private func state(for step: Step?, streaming: Bool) -> ResponseState {
+        var state = step?.response?.state ?? ResponseState()
+        state.streaming = streaming
+        return state
+    }
+
+    /// A preview owns no calls. Resolve its bundle's statements against the
+    /// attached provider's last snapshot. Newly declared ids read as null.
+    private func projectQueryValues(to preview: RuntimeSession, for step: Step?, from complete: Display) throws {
+        guard hasToolProvider, let step, step.response?.state.isBundle == true else {
+            try preview.setReferenceValues(json: "{}")
+            return
+        }
+        let statements = (step.result.json["queryStatements"]?.array ?? []) + (step.result.json["mutationStatements"]?.array ?? [])
+        guard case let .object(values) = complete.queries.values else { return }
+        let snapshot = Dictionary(values, uniquingKeysWith: { _, last in last })
+        let entries = statements.compactMap { statement -> (String, JSONValue)? in
+            guard let id = statement["statementId"]?.string else { return nil }
+            return (id, snapshot[id] ?? .null)
+        }
+        try preview.setReferenceValues(json: JSONValue.object(entries).compact)
     }
 
     private func copyEditedState(to preview: RuntimeSession, from complete: Display) throws -> String? {
@@ -337,7 +403,7 @@ public final class LiveProgram {
     /// marker is at its place in the tree now; otherwise it throws and
     /// changes nothing.
     public func write(_ marker: BindingMarker, _ value: JSONValue) throws {
-        guard !isStreaming else { throw Self.streaming }
+        guard acceptsInteractions else { throw interactionError }
         guard let origin = marker.origin, origin.program == id else { throw Self.stale }
         if origin.generation != generation {
             guard case let .binding(now)? = locate(origin.steps)?.value, now.json == marker.json else { throw Self.stale }
@@ -387,7 +453,7 @@ public final class LiveProgram {
     /// Chips/OptionCards include their component type and accept nil when a
     /// single selection is cleared; a binding refuses undefined with LiveError.
     public func enter(_ value: JSONValue?, into element: Element, form: String? = nil) throws {
-        guard !isStreaming else { throw Self.streaming }
+        guard acceptsInteractions else { throw interactionError }
         guard let element = current(element, form: form) else { throw Self.stale }
         let props = PropReader(element: element)
         let name = try props.text("name").plain
@@ -405,7 +471,7 @@ public final class LiveProgram {
     /// Hydrates only a missing selection default, never while streaming or
     /// from an obsolete view. The runtime owns the undefined/default guard.
     func initializeSelection(_ element: Element, form: String?) throws {
-        guard !isStreaming, let element = current(element, form: form) else { return }
+        guard acceptsInteractions, let element = current(element, form: form) else { return }
         let props = PropReader(element: element)
         guard let value = SelectionField.defaultValue(props) else { return }
         try onQueryClock {
@@ -464,6 +530,10 @@ public final class LiveProgram {
     }
 
     static let stale = LiveError(description: "the program changed since this was drawn, so nothing was done")
+    private var interactionError: LiveError {
+        response?.error.map { LiveError(description: $0) } ?? Self.streaming
+    }
+
     static let streaming = LiveError(description: "a response is streaming, so nothing was done")
 
     /// Runs the action in `element`'s prop `prop`, as a click on it does: a
@@ -477,8 +547,10 @@ public final class LiveProgram {
     /// one from an earlier evaluation that is exactly the element now at its
     /// place, in a form of the same name (see `current(_:form:)`). Otherwise
     /// it throws and nothing happens, so a click runs exactly the action that
-    /// was on screen, or none. While `isStreaming`, it throws too.
+    /// was on screen. A blocked response bundle ignores the action. A bare
+    /// streaming preview retains its existing refusal.
     public func run(_ prop: String, of element: Element, message: String, form: String? = nil) throws {
+        guard !bundleBlocksActions else { return }
         guard !isStreaming else { throw Self.streaming }
         guard let element = current(element, form: form), let origin = element.origin else { throw Self.stale }
         guard let found = locate(origin.steps + [prop]) else {
@@ -505,6 +577,7 @@ public final class LiveProgram {
     /// no action, it asks to continue the conversation with the cell's text.
     /// The same checks as `run`: the table must still be what was drawn.
     func runActionCell(row: Int, column: Int, of table: Element, form: String?) throws {
+        guard !bundleBlocksActions else { return }
         guard !isStreaming else { throw Self.streaming }
         guard let table = current(table, form: form), let origin = table.origin,
               case let .scalar(.string(label))? = locate(origin.steps + ["rows", String(row), String(column)])?.value
@@ -598,7 +671,8 @@ public final class LiveProgram {
     }
 
     private func queryStreamingChanged() {
-        guard queryDriver != nil, hasProgram else { return }
+        // A provider-free response bundle also has a session action gate.
+        guard hasProgram, hasToolProvider || (!showingPreview && response?.state.isBundle == true) else { return }
         do {
             try queryDriver?.advanceClock()
             if let warning = try refresh(force: true) { failure = warning }
@@ -647,7 +721,7 @@ public final class LiveProgram {
         queryDriver = driver
         do {
             if queriesPaused { try driver.pause() }
-            if hasProgram { try refreshStore(force: true) }
+            if hasProgram || showingPreview { try refreshStore(force: true) }
         } catch {
             queryDriver = nil
             driver.stop()
@@ -775,6 +849,7 @@ public final class LiveProgram {
                         _ = try previewSession.set(name: name, json: nil)
                     }
                 }
+                if response?.state.isBundle == true { try projectQueryValues(to: previewSession, for: display.step, from: next) }
                 let warning = try copyEditedState(to: previewSession, from: next)
                 display = try evaluated(previewSession, from: display, streaming: true)
                 return warning
@@ -790,12 +865,16 @@ public final class LiveProgram {
     private func evaluated(_ runtime: RuntimeSession, from base: Display,
                            programID: UUID? = nil, streaming: Bool? = nil) throws -> Display {
         let started = ContinuousClock.now
-        let output: EvaluationOutput
-        if runtime === session {
-            output = try runtime.evaluateWithResponse(responseState: ResponseState(streaming: requestedStreaming || showingPreview))
-        } else {
-            output = try runtime.evaluate()
+        // With no provider the hidden complete session has no query work to
+        // gate. Keep its actions and loading flag ready for discardPreview.
+        let gateForPreview = showingPreview && (runtime !== session || hasToolProvider)
+        var responseState = state(for: base.step, streaming: requestedStreaming || gateForPreview)
+        if runtime === session && gateForPreview {
+            // Retry belongs to the visible response. The retained complete
+            // drawing keeps its own diagnostic and its last settled scripts.
+            responseState.isBundle = response?.state.isBundle ?? false
         }
+        let output = try runtime.evaluateWithResponse(responseState: responseState)
         return try decoded(output, snapshot: runtime.snapshot(), version: runtime.version(),
             from: base, programID: programID, streaming: streaming, started: started)
     }
@@ -803,7 +882,7 @@ public final class LiveProgram {
     /// Replacement supplies serialized display data and enforces this decoder's
     /// root shape and depth before committing. No session reads follow commit.
     private func decoded(_ output: EvaluationOutput, snapshot: String, version: UInt64,
-                         from base: Display, programID: UUID?, streaming: Bool?, started: ContinuousClock.Instant) throws -> Display {
+                         from base: Display, step: Step? = nil, programID: UUID?, streaming: Bool?, started: ContinuousClock.Instant) throws -> Display {
         let json = try JSONValue.parse(output.json)
         guard base.generation < UInt64.max else { throw LiveError(description: "evaluation generation exhausted") }
         let nextGeneration = base.generation + 1
@@ -822,7 +901,10 @@ public final class LiveProgram {
         return Display(root: nextRoot, errors: nextErrors, state: nextState, version: nextVersion,
             sizeLimited: output.sizeLimited, depthLimited: output.depthLimited,
             evaluation: ContinuousClock.now - started, rootJSON: nextRootJSON, handle: output.evaluation,
-            id: nextID, generation: nextGeneration, streaming: streaming ?? base.streaming, queries: queries)
+            id: nextID, generation: nextGeneration, step: step ?? base.step,
+            parserError: try output.parserErrorJson.map(JSONValue.parse),
+            queryLoading: output.isQueryLoading || (streaming == true && !queries.loading.isEmpty),
+            streaming: streaming ?? base.streaming, queries: queries)
     }
 
     private struct Located {
