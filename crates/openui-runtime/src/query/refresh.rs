@@ -117,6 +117,11 @@ impl QueryManager {
         Ok(manager)
     }
 
+    /// The polling floor selected when this manager was constructed.
+    pub fn refresh_minimum_ms(&self) -> u64 {
+        self.clock.minimum_ms
+    }
+
     /// Earliest absolute deadline, in milliseconds on the supplied clock.
     pub fn next_refresh_due_ms(&self) -> Option<u64> {
         self.clock.timers.iter().map(|t| t.due).min()
@@ -148,12 +153,11 @@ impl QueryManager {
         for timer in &mut self.clock.timers {
             if timer.due <= now {
                 ticks.push((timer.due, timer.id.clone()));
-                let period = timer.interval.millis;
-                timer.due = now + (period - (now - timer.due) % period);
+                timer.due = now + timer.interval.millis;
             }
         }
-        // Each timer can start at most one call in this synchronous command.
-        // No outcome can arrive between missed ticks. Skip whole periods in O(1).
+        // A late host runs each overdue callback once, earliest deadline first.
+        // Re-arming precedes the fetch checks so a skipped tick also waits a full period.
         ticks.sort_by_key(|(due, _)| *due);
         let mut calls = Vec::new();
         for (_, id) in ticks {
@@ -173,5 +177,31 @@ impl QueryManager {
             }
         }
         Ok(calls)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn evaluating_an_interval_leaves_no_seconds_for_the_next_statement() {
+        let library = openui_lang::Library::from_json_schema(&JsonValue::Null);
+        let program = openui_lang::parse(
+            "a=Query(\"a\",{},null,2)\nb=Query(\"b\",{},null,false)",
+            &library,
+            None,
+        );
+        assert_eq!(program.query_statements.len(), 2);
+        let manager = QueryManager::default();
+        manager
+            .with_statement_evaluator(&TreeInput::new(&program), &Store::new(), |scope, eval| {
+                for statement in &program.query_statements {
+                    scope.node(statement, eval)?;
+                    assert_eq!(scope.seconds.get(), 0.0);
+                }
+                Ok(())
+            })
+            .unwrap();
     }
 }

@@ -8,6 +8,7 @@ root = pathlib.Path(__file__).resolve().parent.parent
 methods = [
     "attachToolProvider", "detachToolProvider",
     "takeQueryUpdate", "completeToolCall", "retryFailedQueries",
+    "attachToolProviderAt", "resumeQueriesAt",
     "advanceQueryClock", "pauseQueries", "resumeQueries", "attachToolProviderWithMinimum",
     "actionAt", "dispose", "evaluate", "get", "getField", "initialize",
     "initializeField", "isPristine", "markBinding", "pendingContinuations",
@@ -110,6 +111,8 @@ if len(sys.argv) == 3 and sys.argv[1] == "--wasm":
     for field in ["queryEvaluationError", "evaluationError"]:
         assert f"readonly {field}: {{ kind: string; message: string }} | null;" in declarations, field
     assert "readonly nextRefreshDueMs: bigint | undefined;" in declarations
+    assert "resumeQueriesAt(now_ms: bigint): void;" in session[1]
+    assert "attachToolProviderAt(now_ms: bigint, minimum_ms: bigint): void;" in session[1]
     assert "advanceQueryClock(now_ms: bigint): void;" in session[1]
     assert "attachToolProviderWithMinimum(minimum_ms: bigint): void;" in session[1]
     assert "readonly actionCount: bigint;" in declarations
@@ -155,6 +158,8 @@ assert "public init(streaming: Bool = false)" in swift
 assert re.search(r"func evaluateWithResponse\(responseState: ResponseState\) throws\s*-> EvaluationOutput", api[1])
 assert re.search(r"func replaceProgramWithResponse\([^\n]*responseState: ResponseState\) throws\s*-> ReplacementOutput", api[1])
 assert "nextRefreshDueMs: UInt64? = nil" in swift
+assert "func resumeQueriesAt(nowMs: UInt64) throws" in api[1]
+assert "func attachToolProviderAt(nowMs: UInt64, minimumMs: UInt64) throws" in api[1]
 assert "func advanceQueryClock(nowMs: UInt64) throws" in api[1]
 assert "func attachToolProviderWithMinimum(minimumMs: UInt64) throws" in api[1]
 assert "actions: [ActionOutput] = []" in swift
@@ -191,6 +196,8 @@ if len(sys.argv) == 3:
     assert "fun `evaluateWithResponse`(`responseState`: ResponseState): EvaluationOutput" in api[1]
     assert "`responseState`: ResponseState): ReplacementOutput" in api[1]
     assert "`nextRefreshDueMs`: kotlin.ULong? = null" in kotlin
+    assert "fun `resumeQueriesAt`(`nowMs`: kotlin.ULong)" in api[1]
+    assert "fun `attachToolProviderAt`(`nowMs`: kotlin.ULong, `minimumMs`: kotlin.ULong)" in api[1]
     assert "fun `advanceQueryClock`(`nowMs`: kotlin.ULong)" in api[1]
     assert "fun `attachToolProviderWithMinimum`(`minimumMs`: kotlin.ULong)" in api[1]
     assert "`actions`: List<ActionOutput> = listOf()" in kotlin

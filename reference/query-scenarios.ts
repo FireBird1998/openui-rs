@@ -139,10 +139,10 @@ export async function replay(scenario: Scenario, script?: Script, clock?: Refres
   }
 }
 
-export async function withFakeClock(run: (clock: RefreshClock) => Promise<void>, minimumMs?: number) {
+export async function withFakeClock(run: (clock: RefreshClock) => Promise<void>) {
   const { setInterval, clearInterval } = globalThis;
   const logError = console.error;
-  const clock = new RefreshClock(minimumMs);
+  const clock = new RefreshClock();
   Object.assign(globalThis, { setInterval: clock.setInterval, clearInterval: clock.clearInterval });
   console.error = () => {}; // Scripted rejections are observed through the snapshot.
   try {

@@ -23,6 +23,12 @@ impl SessionCore {
         Ok(())
     }
 
+    /// Advance before restarting registrations. An active provider simply processes the wake.
+    pub fn resume_queries_at(&mut self, now_ms: u64) -> Result<(), OpenUiError> {
+        self.advance_query_clock(now_ms)?;
+        self.resume_queries()
+    }
+
     /// Re-register a settled program. A streaming program waits for its settled draw.
     pub fn resume_queries(&mut self) -> Result<(), OpenUiError> {
         if let Some(manager) = self.manager.as_mut().filter(|m| m.is_disposed()) {

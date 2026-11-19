@@ -828,6 +828,13 @@ The three lang-core refresh tests appear in the timed scenarios as a steady
 mount, a Strict Mode re-attach and removal of an interval. The adapter runs
 lang-core's own interval callbacks in deadline and installation order. Its
 observable deadline is the earliest due time among the installed timers.
+One advance models a host waking its event loop. Each overdue callback runs
+once, then waits a full interval from that wake, including when its call is
+already in flight. For example, a 60 s timer waking at 119,900 ms next fires
+at 179,900 ms. A bounded probe compares the adapter with three real Bun
+callbacks on time and after a 350 ms block of a 100 ms interval. Run
+`bun --no-install check-refresh-clock.ts` from `reference/`. [Timer probe](reference/check-refresh-clock.ts)
+
 A run while disposed produces no call. A tick during streaming uses the
 last settled registration. In the renderer, `blocked` gates evaluation and
 `isBundle && blocked` gates clicks. Neither gate cancels an installed timer.
@@ -835,17 +842,23 @@ last settled registration. In the renderer, `blocked` gates evaluation and
 
 | Situation | lang-core 1.1.0 | openui-rs | Decision and two-sided pin |
 |---|---|---|---|
-| Positive timer delay below the minimum, including platform delay overflow | Uses the platform delay. A finite delay above the platform's signed 32-bit range becomes 1 ms on Bun. | Raises the platform delay to the configured floor. First fetch and Run dispatch immediately. | #79 polling floor. [Default, configured and overflow pins](conformance/divergences/refresh-lifecycle.json) |
-| Infinite interval | Installs a timer with a platform delay of 1 ms. | Leaves the timer absent. | #79 infinite interval. [Infinity pin](conformance/divergences/refresh-lifecycle.json) |
+| Positive timer delay below the minimum, including platform delay overflow | Passes the delay to the host. Bun and Node warn and use 1 ms above 2,147,483,647 ms. Browsers take a Web IDL signed 32-bit integer, so 2³² + 5,000 ms becomes 5,000 ms. | Uses 1 ms for finite overflow on every host, then raises any delay below the configured minimum to that minimum. This keeps the driver delay representable and bounds the polling rate across hosts. First fetch and Run dispatch immediately. | #79 polling floor. [Default, configured and overflow pins](conformance/divergences/refresh-lifecycle.json) · [Node timers](https://nodejs.org/api/timers.html#setintervalcallback-delay-args) · [HTML timers](https://html.spec.whatwg.org/multipage/timers-and-user-prompts.html#timers) · [Web IDL integer conversion](https://webidl.spec.whatwg.org/#es-long) |
+| Infinite interval | Passes Infinity to the host. The Bun reference timer uses 1 ms. | Leaves the timer absent. | #79 infinite interval. [Infinity pin](conformance/divergences/refresh-lifecycle.json) |
 | Dispose while a query call or mutation is loading | Clears internal query loading and drops mutations, but keeps the last published snapshot until a rebuild. A late query success stores no data. A late mutation of either outcome returns false. | Publishes the cleared loading lists and removed mutation immediately. Both late outcomes leave the paused snapshot unchanged. | ADR 0013 rule 2 and #79 dispose. [Query pins](conformance/divergences/refresh-lifecycle.json) · [Mutation pins](conformance/divergences/refresh-mutation-dispose.json) |
 | Query failure delivered while disposed | Sets the error and failed flag. Evaluation after activation suppresses the first call. | Consumes the receipt without recording the error. The next evaluation requests missing data. | ADR 0013 late-outcome rule and rule 4. [Failure pin](conformance/divergences/refresh-lifecycle.json) |
 | Activate and evaluate before an old query call returns | The cache still has its in-flight flag. The old success can settle the reactivated query. | Releases the old call at dispose. A fresh call owns the entry on evaluation. | ADR 0013 rules 2–4. [Reactivation pin](conformance/divergences/refresh-lifecycle.json) |
 
-The additional seeded replay compares all steps of 512 mixed clock scripts
-directly with upstream. Another 128 scripts replay the same manager twice,
-applying only the specified floor or Infinity rule to the platform timer in
-the second replay. Rust must match every byte of that replay. Across the
-640 scripts, 1,209 observations differ at the floor and 1,216 at Infinity.
+The seeded replay checks each step of 512 scripts with clock advances,
+coercion fixtures, interval edits and disposal with calls in flight.
+On 6,894 observations the immediate publication of cleared loading lists changes
+the snapshot or its change flag. All remaining fields match upstream byte for byte.
+
+The floor and Infinity rows pin the Rust policy chosen in #79. Upstream
+conformance comparisons exclude those two decisions. Another 128 scripts run the raw
+input on upstream, then run an upstream program that explicitly requests the
+chosen interval or omits it. The latter checks scheduling after applying our
+decision. The adapter clock implements only host timers. Of 38,941 observations
+across both groups, 1,214 differ from raw upstream at the floor and 1,216 at Infinity.
 Run with `cargo test -p openui-runtime --test query_refresh -- --ignored --nocapture`.
 
 ### Provider-managed mutations

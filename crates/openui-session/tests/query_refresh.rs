@@ -202,3 +202,70 @@ fn pause_discards_undrained_calls_and_a_second_resume_preserves_the_deadline() {
     drop(s);
     assert!(!fresh.calls[0].id.is_pending());
 }
+
+#[test]
+fn repeated_attachment_checks_the_requested_floor_before_touching_calls_or_time() {
+    let (mut s, lib, r) = setup();
+    assert!(s.attach_tool_provider_at(&r, u64::MAX, 250).is_err());
+    assert!(s.check_reference_values().is_ok());
+    s.attach_tool_provider_at(&r, 8000, 250).unwrap();
+    s.replace_program(
+        &r,
+        program(&lib, "q=Query(\"q\",{},null,0.01)"),
+        None,
+        None,
+        false,
+    )
+    .unwrap();
+    for invalid in [0, 1000, u64::MAX] {
+        assert!(matches!(
+            s.attach_tool_provider_with_minimum(&r, invalid),
+            Err(OpenUiError::RefusedWrite { .. })
+        ));
+        assert!(matches!(
+            s.attach_tool_provider_at(&r, 16000, invalid),
+            Err(OpenUiError::RefusedWrite { .. })
+        ));
+    }
+    s.attach_tool_provider(&r).unwrap();
+    s.attach_tool_provider_with_minimum(&r, 250).unwrap();
+    let first = s.take_query_update();
+    assert_eq!(first.next_refresh_due_ms, Some(8250));
+    assert_eq!(first.calls.len(), 1);
+    s.complete_tool_call_json(&first.calls[0].id, r#"{"value":42}"#)
+        .unwrap();
+    s.attach_tool_provider_at(&r, 9999, 250).unwrap();
+    let tick = s.take_query_update();
+    assert_eq!(tick.next_refresh_due_ms, Some(10249));
+    assert_eq!(tick.calls.len(), 1);
+}
+
+#[test]
+fn resume_and_fresh_attachment_install_timers_on_the_supplied_clock() {
+    let (mut s, lib, r) = setup();
+    s.attach_tool_provider_at(&r, 8000, 1000).unwrap();
+    s.replace_program(
+        &r,
+        program(&lib, "q=Query(\"q\",{},null,2)"),
+        None,
+        None,
+        false,
+    )
+    .unwrap();
+    s.pause_queries().unwrap();
+    assert!(matches!(
+        s.resume_queries_at(7999),
+        Err(OpenUiError::LimitExceeded { .. })
+    ));
+    assert_eq!(s.take_query_update().next_refresh_due_ms, None);
+    s.resume_queries_at(18000).unwrap();
+    assert_eq!(s.take_query_update().next_refresh_due_ms, Some(20000));
+    s.detach_tool_provider();
+    s.attach_tool_provider_at(&r, 55000, 1000).unwrap();
+    s.evaluate(&r).unwrap();
+    assert_eq!(s.take_query_update().next_refresh_due_ms, Some(57000));
+    s.resume_queries_at(58000).unwrap();
+    let active = s.take_query_update();
+    assert!(active.calls.is_empty());
+    assert_eq!(active.next_refresh_due_ms, Some(60000));
+}

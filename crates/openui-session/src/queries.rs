@@ -157,26 +157,63 @@ impl SessionCore {
         &mut self,
         refs: &PreparedReferenceValues<'_>,
     ) -> Result<(), OpenUiError> {
-        self.attach_tool_provider_with_minimum(refs, 1000)
+        self.attach_provider(refs, None, None)
     }
 
-    /// Set the polling floor when attaching a new provider.
+    /// Choose the polling floor. Repeated attachments must agree with the existing floor.
     pub fn attach_tool_provider_with_minimum(
         &mut self,
         refs: &PreparedReferenceValues<'_>,
         minimum_ms: u64,
     ) -> Result<(), OpenUiError> {
+        self.attach_provider(refs, Some(minimum_ms), None)
+    }
+
+    /// Attach on the host's clock, or advance the existing provider with the same floor.
+    pub fn attach_tool_provider_at(
+        &mut self,
+        refs: &PreparedReferenceValues<'_>,
+        now_ms: u64,
+        minimum_ms: u64,
+    ) -> Result<(), OpenUiError> {
+        self.attach_provider(refs, Some(minimum_ms), Some(now_ms))
+    }
+
+    fn attach_provider(
+        &mut self,
+        refs: &PreparedReferenceValues<'_>,
+        minimum_ms: Option<u64>,
+        now_ms: Option<u64>,
+    ) -> Result<(), OpenUiError> {
         if !refs.is_empty() {
             return Err(OpenUiError::ReferenceConflict);
         }
-        if self.manager.is_none() {
-            self.manager = Some(QueryManager::with_refresh_minimum(
-                self.core_limits,
-                minimum_ms,
-            )?);
-            self.query_inputs_changed = true;
-            self.query_effects.changed = true;
+        if let Some(manager) = &self.manager {
+            if let Some(requested) = minimum_ms
+                && requested != manager.refresh_minimum_ms()
+            {
+                return Err(OpenUiError::RefusedWrite {
+                    reason: format!(
+                        "attached provider has a {} ms refresh minimum, requested {requested} ms",
+                        manager.refresh_minimum_ms()
+                    ),
+                });
+            }
+            if let Some(now) = now_ms {
+                self.advance_query_clock(now)?;
+            }
+            return Ok(());
         }
+        let mut manager = match minimum_ms {
+            Some(minimum) => QueryManager::with_refresh_minimum(self.core_limits, minimum)?,
+            None => QueryManager::with_limits(self.core_limits),
+        };
+        if let Some(now_ms) = now_ms {
+            manager.apply(QueryCommand::AdvanceClock { now_ms })?;
+        }
+        self.manager = Some(manager);
+        self.query_inputs_changed = true;
+        self.query_effects.changed = true;
         Ok(())
     }
 

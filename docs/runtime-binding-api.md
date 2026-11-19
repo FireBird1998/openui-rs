@@ -24,6 +24,8 @@ func attachToolProvider() throws
 func advanceQueryClock(nowMs: UInt64) throws
 func pauseQueries() throws
 func resumeQueries() throws
+func resumeQueriesAt(nowMs: UInt64) throws
+func attachToolProviderAt(nowMs: UInt64, minimumMs: UInt64) throws
 func attachToolProviderWithMinimum(minimumMs: UInt64) throws
 func detachToolProvider() throws
 func evaluateWithResponse(responseState: ResponseState) throws -> EvaluationOutput
@@ -67,6 +69,8 @@ fun attachToolProvider()
 fun advanceQueryClock(nowMs: ULong)
 fun pauseQueries()
 fun resumeQueries()
+fun resumeQueriesAt(nowMs: ULong)
+fun attachToolProviderAt(nowMs: ULong, minimumMs: ULong)
 fun attachToolProviderWithMinimum(minimumMs: ULong)
 fun detachToolProvider()
 fun evaluateWithResponse(responseState: ResponseState): EvaluationOutput

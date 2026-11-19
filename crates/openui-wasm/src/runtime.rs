@@ -309,6 +309,16 @@ impl RuntimeSession {
     pub fn resume_queries(&self) -> Result<(), JsValue> {
         self.inner.resume_queries().map_err(error)
     }
+    #[wasm_bindgen(js_name = resumeQueriesAt)]
+    pub fn resume_queries_at(&self, now_ms: u64) -> Result<(), JsValue> {
+        self.inner.resume_queries_at(now_ms).map_err(error)
+    }
+    #[wasm_bindgen(js_name = attachToolProviderAt)]
+    pub fn attach_tool_provider_at(&self, now_ms: u64, minimum_ms: u64) -> Result<(), JsValue> {
+        self.inner
+            .attach_tool_provider_at(now_ms, minimum_ms)
+            .map_err(error)
+    }
     #[wasm_bindgen(js_name = attachToolProviderWithMinimum)]
     pub fn attach_tool_provider_with_minimum(&self, minimum_ms: u64) -> Result<(), JsValue> {
         self.inner

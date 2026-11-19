@@ -29,3 +29,18 @@ test('the driver can rearm one guarded deadline and consume a paused call once',
   expect(resumed.callCount).toBe(0n);
   expect(resumed.nextRefreshDueMs).toBe(440n);
 });
+
+test('attaching and resuming at host time schedule a full period through the package', () => {
+  using library = new wasm.ComponentLibrary('{"$defs":{}}');
+  using s = new wasm.RuntimeSession(library);
+  s.attachToolProviderAt(8000n, 125n);
+  using p = wasm.parseProgram('q=Query("read",{},null,0.01)', library);
+  using out = s.replaceProgram(p, undefined, undefined, false);
+  kind(() => s.attachToolProviderWithMinimum(0n), 'RefusedWrite');
+  using first = s.takeQueryUpdate();
+  expect(first.nextRefreshDueMs).toBe(8125n);
+  s.pauseQueries();
+  s.resumeQueriesAt(16000n);
+  using resumed = s.takeQueryUpdate();
+  expect(resumed.nextRefreshDueMs).toBe(16125n);
+});

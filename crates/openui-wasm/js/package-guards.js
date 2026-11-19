@@ -272,6 +272,8 @@ const openuiSurface = new Map([
       advanceQueryClock: openuiSpec([openuiLimit]),
       pauseQueries: openuiNone,
       resumeQueries: openuiNone,
+      resumeQueriesAt: openuiSpec([openuiLimit]),
+      attachToolProviderAt: openuiSpec([openuiLimit, openuiLimit]),
       attachToolProviderWithMinimum: openuiSpec([openuiLimit]),
       completeToolCall: openuiSpec([openuiCapabilityOf(WantedToolCall), openuiStr]),
       get: openuiSpec([openuiStr]),

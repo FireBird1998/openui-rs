@@ -284,5 +284,58 @@
       {"kind":"fire","name":"m","args":{}},
       {"kind":"complete","call":0,"outcome":{"kind":"result","value":"done"}}
     ]
+  },
+  {
+    "name": "late-wake-waits-a-full-period-before-the-next-fetch",
+    "program": "q=Query(\"q\",{},null,60)",
+    "steps": [
+      {"kind":"evaluate"},
+      {"kind":"complete","call":0,"outcome":{"kind":"result","value":"ok"}},
+      {"kind":"advance","now":119900},
+      {"kind":"complete","call":1,"outcome":{"kind":"result","value":"ok"}},
+      {"kind":"advance","now":120000},
+      {"kind":"advance","now":179899},
+      {"kind":"advance","now":179900}
+    ]
+  },
+  {
+    "name": "a-jump-of-many-periods-fetches-each-query-once",
+    "program": "a=Query(\"a\",{},null,1)\nb=Query(\"b\",{},null,1)",
+    "steps": [
+      {"kind":"evaluate"},
+      {"kind":"complete","call":0,"outcome":{"kind":"result","value":"ok"}},
+      {"kind":"complete","call":1,"outcome":{"kind":"result","value":"ok"}},
+      {"kind":"advance","now":123456789},
+      {"kind":"complete","call":2,"outcome":{"kind":"result","value":"ok"}},
+      {"kind":"complete","call":3,"outcome":{"kind":"result","value":"ok"}},
+      {"kind":"advance","now":123457788},
+      {"kind":"advance","now":123457789}
+    ]
+  },
+  {
+    "name": "overdue-queries-dispatch-in-deadline-order",
+    "program": "slow=Query(\"slow\",{},null,5)\nfast=Query(\"fast\",{},null,2)",
+    "steps": [
+      {"kind":"evaluate"},
+      {"kind":"complete","call":0,"outcome":{"kind":"result","value":"ok"}},
+      {"kind":"complete","call":1,"outcome":{"kind":"result","value":"ok"}},
+      {"kind":"advance","now":13900},
+      {"kind":"complete","call":2,"outcome":{"kind":"result","value":"ok"}},
+      {"kind":"complete","call":3,"outcome":{"kind":"result","value":"ok"}},
+      {"kind":"advance","now":15900},
+      {"kind":"advance","now":18900}
+    ]
+  },
+  {
+    "name": "skipping-a-late-in-flight-tick-rearms-from-the-wake",
+    "program": "q=Query(\"q\",{},null,2)",
+    "steps": [
+      {"kind":"evaluate"},
+      {"kind":"advance","now":3500},
+      {"kind":"complete","call":0,"outcome":{"kind":"result","value":"ok"}},
+      {"kind":"advance","now":4000},
+      {"kind":"advance","now":5499},
+      {"kind":"advance","now":5500}
+    ]
   }
 ]

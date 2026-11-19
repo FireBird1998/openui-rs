@@ -848,7 +848,7 @@ impl QueryScope<'_> {
         }
         let interval = if let Some(ast) = &statement.refresh {
             let raw = self.evaluate(ast, Inspection::Interval, eval)?;
-            refresh::Interval::new(raw, self.seconds.get(), self.manager.clock.minimum_ms)
+            refresh::Interval::new(raw, self.seconds.take(), self.manager.clock.minimum_ms)
         } else {
             None
         };

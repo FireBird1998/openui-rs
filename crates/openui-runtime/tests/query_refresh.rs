@@ -3,8 +3,7 @@ use openui_lang::{JsonValue as Json, Library, Limits, parse, parse_json};
 use openui_runtime::{
     QueryCommand, QueryCommandError, QueryManager, Store, ToolCallId, ToolOutcome,
 };
-use std::io::{BufRead, BufReader};
-use std::process::{Command, Stdio};
+use std::process::Command;
 
 #[global_allocator]
 static ALLOCATOR: test_alloc::Allocator = test_alloc::Allocator::with_cap(test_alloc::LIMITS);
@@ -32,7 +31,7 @@ fn receipt_is_refused(manager: &mut QueryManager, id: &ToolCallId) {
     );
 }
 
-fn replay(scenario: &Json) -> Vec<String> {
+fn replay(scenario: &Json, expected: &Json) -> Vec<String> {
     let library = Library::from_json_schema(&Json::Null);
     let program = |text: &Json, store: &mut Store| {
         let parsed = parse(text.as_str().unwrap(), &library, None);
@@ -62,7 +61,7 @@ fn replay(scenario: &Json) -> Vec<String> {
     let mut registered = Vec::new();
     let mut evaluated = false;
     let mut rows = Vec::new();
-    for step in scenario["steps"].as_array().unwrap() {
+    for (index, step) in scenario["steps"].as_array().unwrap().iter().enumerate() {
         let before = manager.snapshot_json().to_owned();
         let ids: Vec<_> = step["ids"]
             .as_array()
@@ -156,7 +155,13 @@ fn replay(scenario: &Json) -> Vec<String> {
         let changed = before != manager.snapshot_json();
         assert_eq!(changed, update.as_ref().is_some_and(|u| u.changed));
         if let Some(update) = &update {
-            assert_eq!(update.next_refresh_due_ms, manager.next_refresh_due_ms());
+            let row = parse_json(expected[index].as_str().unwrap()).unwrap();
+            assert_eq!(
+                Json::from(update.next_refresh_due_ms),
+                row["nextDue"],
+                "{} step {index}",
+                scenario["name"]
+            );
         }
         if step["kind"] == "complete" {
             receipt_is_refused(
@@ -225,7 +230,8 @@ fn refresh_deadlines_dispatch_and_lifecycle_match_the_scripted_manager() {
     .unwrap();
     for scenario in scenarios.as_array().unwrap() {
         let name = scenario["name"].as_str().unwrap();
-        let actual = Json::from(replay(scenario));
+        let expected = pins.get(name).map_or(&gold[name], |pin| &pin["rust"]);
+        let actual = Json::from(replay(scenario, expected));
         if let Some(pin) = pins.get(name) {
             assert_eq!(pin["reference"], gold[name], "{name} reference");
             assert_ne!(pin["reference"], pin["rust"], "{name} has converged");
@@ -239,37 +245,54 @@ fn refresh_deadlines_dispatch_and_lifecycle_match_the_scripted_manager() {
 #[test]
 #[ignore = "seeded timed scripts against Bun"]
 fn seeded_clock_edits_skipped_ticks_and_reattach_match_upstream() {
-    let mut child = Command::new("bun")
+    let output = Command::new("bun")
         .current_dir(concat!(env!("CARGO_MANIFEST_DIR"), "/../../reference"))
         .args(["--no-install", "query-refresh.ts", "--random"])
-        .stdout(Stdio::piped())
-        .spawn()
+        .output()
         .unwrap();
+    assert!(
+        output.status.success(),
+        "{}",
+        String::from_utf8_lossy(&output.stderr)
+    );
     let mut count = 0;
     let mut steps = 0;
     let mut differences = std::collections::BTreeMap::<String, usize>::new();
-    for line in BufReader::new(child.stdout.take().unwrap()).lines() {
-        let row = parse_json(&line.unwrap()).unwrap();
-        let actual = replay(&row["scenario"]);
+    for line in std::str::from_utf8(&output.stdout).unwrap().lines() {
+        let row = parse_json(line).unwrap();
+        let mut expected = row.get("policy").unwrap_or(&row["reference"]).clone();
+        if let Some(overrides) = row["overrides"].as_object() {
+            for (index, bytes) in overrides {
+                expected[index.parse::<usize>().unwrap()] = bytes.clone();
+            }
+        }
+        let actual = replay(&row["scenario"], &expected);
         steps += actual.len();
-        let expected = row.get("policy").unwrap_or(&row["reference"]);
-        assert_eq!(Json::from(actual.clone()), *expected, "{}", row["scenario"]);
-        for (i, observation) in actual.iter().enumerate() {
-            if row["reference"][i].as_str() != Some(observation) {
+        assert_eq!(actual.len(), expected.as_array().unwrap().len());
+        for (i, bytes) in actual.iter().enumerate() {
+            assert_eq!(
+                Some(bytes.as_str()),
+                expected[i].as_str(),
+                "{} step {i}",
+                row["scenario"]["name"]
+            );
+            if row["reference"][i].as_str() != Some(bytes) {
                 let reason = row["reason"].as_str().unwrap();
                 assert!(matches!(
                     reason,
-                    "infinite-refresh-is-disabled" | "configured-refresh-floor"
+                    "infinite-refresh-is-disabled"
+                        | "configured-refresh-floor"
+                        | "dispose-publishes-loading"
                 ));
                 *differences.entry(reason.to_owned()).or_default() += 1;
             }
         }
         count += 1;
     }
-    assert!(child.wait().unwrap().success());
     assert_eq!(count, 640);
-    assert_eq!(steps, 39_094);
-    assert_eq!(differences.get("configured-refresh-floor"), Some(&1209));
+    assert_eq!(steps, 38_941);
+    assert_eq!(differences.get("configured-refresh-floor"), Some(&1214));
+    assert_eq!(differences.get("dispose-publishes-loading"), Some(&6894));
     assert_eq!(differences.get("infinite-refresh-is-disabled"), Some(&1216));
     eprintln!("{count} scripts, {steps} observations, {differences:?}");
 }

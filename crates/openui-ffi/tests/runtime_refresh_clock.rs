@@ -36,3 +36,24 @@ fn native_driver_pauses_and_rearms_one_deadline_on_resume() {
         Err(OpenUiError::Disposed)
     ));
 }
+
+#[test]
+fn native_attachment_and_resume_forward_the_full_host_timestamp() {
+    let library = ComponentLibrary::new(r#"{"$defs":{}}"#.into()).unwrap();
+    let s = RuntimeSession::new(library.clone(), None).unwrap();
+    let now = (1 << 53) + 1;
+    s.attach_tool_provider_at(now, 125).unwrap();
+    let p = parse("q=Query(\"read\",{},null,true)".into(), library, None).program;
+    s.replace_program(p, None, None, false).unwrap();
+    assert_eq!(
+        s.take_query_update().unwrap().next_refresh_due_ms,
+        Some(now + 1000)
+    );
+    s.pause_queries().unwrap();
+    s.resume_queries_at(now + 2400).unwrap();
+    assert_eq!(
+        s.take_query_update().unwrap().next_refresh_due_ms,
+        Some(now + 3400)
+    );
+    s.dispose();
+}

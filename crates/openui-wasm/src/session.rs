@@ -152,6 +152,12 @@ impl Session {
     pub fn resume_queries(&self) -> Result<(), OpenUiError> {
         self.call(move |s, _| s.resume_queries())
     }
+    pub fn resume_queries_at(&self, now_ms: u64) -> Result<(), OpenUiError> {
+        self.call(move |s, _| s.resume_queries_at(now_ms))
+    }
+    pub fn attach_tool_provider_at(&self, now_ms: u64, minimum_ms: u64) -> Result<(), OpenUiError> {
+        self.call(move |s, refs| s.attach_tool_provider_at(refs, now_ms, minimum_ms))
+    }
     pub fn attach_tool_provider_with_minimum(&self, minimum_ms: u64) -> Result<(), OpenUiError> {
         self.call(move |s, refs| s.attach_tool_provider_with_minimum(refs, minimum_ms))
     }
