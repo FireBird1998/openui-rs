@@ -73,6 +73,7 @@ done
   bun --no-install mutation-scenarios.ts
   bun --no-install session-mutations.ts
   bun --no-install session-runs.ts
+  bun --no-install session-bundles.ts
   bun --no-install function-undefined-arguments.ts
   bun --no-install renderer-reset-native-defaults.ts
 )

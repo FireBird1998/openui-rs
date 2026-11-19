@@ -54,7 +54,7 @@
       {"finish":2,"value":"back"},
       {"evaluate":true}
     ]},
-    {"name": "a blocked bundle ignores the click and Retry, which is the embedder's to do", "bundle": true, "steps":[
+    {"name": "a blocked bundle ignores the click and Retry", "bundle": true, "steps":[
       {"replace":"$n = 1\nq = Query(\"search\", {}, \"loading\")\nroot = Box(Action([@Run(q), @Set($n, 2), @ToAssistant(\"after\")]))"},
       {"finish":0,"error":"offline"},
       {"evaluate":true,"complete":false},

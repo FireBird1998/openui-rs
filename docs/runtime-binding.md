@@ -83,8 +83,7 @@ Run takes an opaque ActionHandle or nil/null for the default conversation event.
 RunLegacy accepts only objects without steps; plan JSON is InvalidJson before
 effects. Legacy custom names still pass the runtime's shadowing checks. Ordered
 event JSON strings come directly from HostEvent::to_json, with failure/cut flags.
-The host performs effects. **Ignoring clicks while a response is bundleBlocked
-is the embedder's job.**
+The host performs the returned effects. The session ignores the entire click while a response bundle is blocked, including default and legacy actions.
 
 `RuntimeLimits.evaluation.peakMemory` optionally bounds portable evaluation
 reservations (ADR 0011). It defaults to nil/null; existing calls and result
@@ -381,15 +380,39 @@ protocol and Kotlin interface. Swift protocol requirements cannot declare
 default arguments. JavaScript accepts an optional response state on its
 existing `evaluate()` and `replaceProgram(…)` methods.
 
-The response state currently carries one boolean, `streaming`. For a
-bundle, pass the upstream renderer's combined gate in that field,
-`isStreaming || !bundle.complete || !!bundle.error`. The caller still
-owns the bundle. A blocked first draw reads a provider query as null even
-if the query declares a default. Without a provider the draw uses the
+Pass `streaming` and the bundle reader’s `isBundle`, `complete`, `error`,
+`scripts` and `scriptRevision`. In JavaScript the object can be built as
+`{ ...JSON.parse(parseResponseBundle(raw, streaming)), streaming }`.
+Parse the returned `program`. A bare program needs only `streaming`.
+The session defers query evaluation and mutation registration while streaming,
+incomplete, or reporting a bundle error. A blocked first draw reads a
+provider query as null even if the query declares a default. Without a provider the draw uses the
 declared default. These are the renderer's respective behaviors. An edit
 keeps live registrations and accepts outstanding outcomes while blocked.
 Settling registers the current statements, including an empty list.
-`setProgram` waits for a draw before registering queries.
+`setProgram` waits for a draw before registering queries. Between the program
+change and the next successful draw, clicks and Retry obey the last draw's
+bundle gate.
+
+The session retains the last settled Cloud script names and opaque revision
+during an edit. A query calling one of those names includes
+`__openuiScriptRevision` in its cache key. To supply application values on
+the attached provider, call `setQueryExtraValues(toolName, valuesJson)` with
+a JSON object. Upstream’s renderer supplies the script dependency through
+lang-core’s single `extraDeps` callback. The session combines both inputs
+at the same point. On the next eligible evaluation the query manager merges
+declared dependencies, application values, then the script revision. A later
+value wins on a repeated key. An empty object clears the app values
+for that tool. Changing only query keys preserves registered mutation tool names.
+
+Read `evaluation.isQueryLoading` for the renderer’s loading indicator. It
+also becomes true before dispatch for a streaming response bundle that
+declares queries. An invalid scripts section still draws its program.
+`evaluation.parserErrorJson` holds the separate parser diagnostic with code
+`parse-failed` and the message from the reader. Response metadata must fit
+`maxJsonBytes`. A parser diagnostic that exceeds the evaluation limits
+refuses the draw. A revision that exceeds query-key limits reports
+`queryEvaluationError` and preserves the previous registrations.
 
 The tree JSON keeps its `{root,errors}` shape. The separate query snapshot
 includes results, `__openui_loading`, `__openui_refetching` and
@@ -469,9 +492,8 @@ follows the outcome. `retryFailedQueries()` runs again every query whose
 error is in the query snapshot, as the upstream renderer's Retry does; with
 no query errors it runs every query, as upstream's does. Both act on the
 queries registered so far even while the response state is streaming, as
-upstream's do for a bare program. Upstream ignores clicks and Retry while a
-bundle is blocked; that stays the embedder's to do until the session knows
-the bundle's state. Without a provider, a `@Run` of a
+upstream's do for a bare program. The session ignores both while a response
+bundle is blocked. Without a provider, a `@Run` of a
 query is still the host's `run` event.
 
 Skipping a drain leaves still-pending calls parked in dispatch order.

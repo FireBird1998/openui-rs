@@ -59,6 +59,8 @@ pub struct TreeInput<'a> {
     managed_mutations: bool,
     shared_result: Option<&'a Arc<ParseResult>>,
     query_runs: bool,
+    /// Settled Cloud scripts whose revision participates in query cache keys.
+    pub cloud_scripts: Option<&'a crate::CloudScripts>,
 }
 impl<'a> TreeInput<'a> {
     /// Evaluate this parse result; future options have compatible defaults.
@@ -74,6 +76,7 @@ impl<'a> TreeInput<'a> {
             managed_mutations: false,
             shared_result: None,
             query_runs: false,
+            cloud_scripts: None,
         }
     }
     /// Route mutation steps to the session's tool provider with typed arguments.

@@ -93,6 +93,10 @@ pub struct EvaluationOutput {
     query_evaluation_error: Option<core::OpenUiError>,
     #[wasm_bindgen(readonly, js_name = querySnapshotJson)]
     pub query_snapshot_json: Option<String>,
+    #[wasm_bindgen(readonly, js_name = isQueryLoading)]
+    pub is_query_loading: bool,
+    #[wasm_bindgen(readonly, js_name = parserErrorJson)]
+    pub parser_error_json: Option<String>,
     #[wasm_bindgen(readonly)]
     pub json: String,
     #[wasm_bindgen(readonly, js_name = sizeLimited)]
@@ -118,6 +122,8 @@ impl From<core::EvaluationOutput> for EvaluationOutput {
     fn from(v: core::EvaluationOutput) -> Self {
         Self {
             query_evaluation_error: v.query_evaluation_error,
+            is_query_loading: v.is_query_loading,
+            parser_error_json: v.parser_error_json,
             query_snapshot_json: v.query_snapshot_json,
             json: v.json,
             size_limited: v.size_limited,
@@ -145,6 +151,8 @@ impl ReplacementOutput {
         let v = &self.inner.evaluation;
         EvaluationOutput {
             query_evaluation_error: v.query_evaluation_error.clone(),
+            is_query_loading: v.is_query_loading,
+            parser_error_json: v.parser_error_json.clone(),
             query_snapshot_json: v.query_snapshot_json.clone(),
             json: v.json.clone(),
             size_limited: v.size_limited,
@@ -292,9 +300,19 @@ impl RuntimeSession {
                 persisted,
                 projected,
                 native_view,
-                ResponseState::read(response_state),
+                ResponseState::read(response_state).map_err(error)?,
             )
             .map(|inner| ReplacementOutput { inner })
+            .map_err(error)
+    }
+    #[wasm_bindgen(js_name = setQueryExtraValues)]
+    pub fn set_query_extra_values(
+        &self,
+        tool_name: &str,
+        values_json: &str,
+    ) -> Result<(), JsValue> {
+        self.inner
+            .set_query_extra_values(tool_name, values_json)
             .map_err(error)
     }
     #[wasm_bindgen(js_name = advanceQueryClock)]
@@ -389,7 +407,7 @@ impl RuntimeSession {
     ) -> Result<EvaluationOutput, JsValue> {
         let v = self
             .inner
-            .evaluate_with_response(ResponseState::read(response_state))
+            .evaluate_with_response(ResponseState::read(response_state).map_err(error)?)
             .map_err(error)?;
         Ok(v.into())
     }

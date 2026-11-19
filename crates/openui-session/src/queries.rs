@@ -23,13 +23,6 @@ impl QueryEffects {
     }
 }
 
-/// The host's current response gate. The default is a settled response.
-#[derive(Clone, Copy, Debug, Default)]
-pub struct ResponseState {
-    /// For a bundled response, pass the renderer's combined blocked condition.
-    pub streaming: bool,
-}
-
 type Registration = Result<QueryUpdate, OpenUiError>;
 
 enum DrawError {
@@ -60,7 +53,7 @@ impl From<QueryCommandError> for OpenUiError {
 // proposed registrations, cache ownership changes or calls.
 pub(super) fn draw<T>(
     manager: Option<&mut QueryManager>,
-    register: bool,
+    effects: RegistrationEffects,
     input: &TreeInput<'_>,
     store: &Store,
     refs: &PreparedReferenceValues<'_>,
@@ -72,20 +65,28 @@ pub(super) fn draw<T>(
     };
     match manager {
         None => Ok((draw_with(refs)?, None)),
-        Some(manager) if !register || manager.is_disposed() => {
+        Some(manager) if effects == RegistrationEffects::None || manager.is_disposed() => {
             Ok((draw_with(&manager.prepared_results(limits))?, None))
         }
-        Some(manager) => match manager.settled_transaction(input, store, |candidate| {
-            draw_with(&candidate.prepared_results(limits)).map_err(DrawError::Screen)
-        }) {
-            Ok((output, update)) => Ok((output, Some(Ok(update)))),
-            Err(DrawError::Registration(error @ QueryCommandError::Limit(_))) => Ok((
-                draw_with(&manager.prepared_results(limits))?,
-                Some(Err(error.into())),
-            )),
-            Err(DrawError::Registration(error)) => Err(error.into()),
-            Err(DrawError::Screen(error)) => Err(error),
-        },
+        Some(manager) => {
+            let read = |candidate: &QueryManager| {
+                draw_with(&candidate.prepared_results(limits)).map_err(DrawError::Screen)
+            };
+            let result = if effects == RegistrationEffects::QueriesAndMutations {
+                manager.settled_transaction(input, store, read)
+            } else {
+                manager.evaluate_transaction(input, store, read)
+            };
+            match result {
+                Ok((output, update)) => Ok((output, Some(Ok(update)))),
+                Err(DrawError::Registration(error @ QueryCommandError::Limit(_))) => Ok((
+                    draw_with(&manager.prepared_results(limits))?,
+                    Some(Err(error.into())),
+                )),
+                Err(DrawError::Registration(error)) => Err(error.into()),
+                Err(DrawError::Screen(error)) => Err(error),
+            }
+        }
     }
 }
 
@@ -103,11 +104,11 @@ impl SessionCore {
     /// whose error is in the query snapshot, in the snapshot's error order.
     /// The wanted calls come from the next `take_query_update`. As upstream
     /// passes the list to `invalidate`, an empty list runs every query. With
-    /// no tool provider it does nothing. The streaming flag does not gate
-    /// it: as upstream's `invalidate`, it acts on the queries registered so
-    /// far. Upstream also ignores Retry while a bundle is blocked; until the
-    /// session knows the bundle's state (#99), that is the embedder's.
+    /// no tool provider or while a response bundle is blocked it does nothing.
     pub fn retry_failed_queries(&mut self) -> Result<(), OpenUiError> {
+        if self.response.bundle_blocked {
+            return Ok(());
+        }
         let Some(manager) = self.manager.as_mut() else {
             return Ok(());
         };
@@ -138,8 +139,7 @@ impl SessionCore {
 
     // Each `@Run` of a query, in step order, as upstream's renderer calls
     // `invalidate([statementId])` once per step, on the queries registered
-    // so far, streaming or not. Ignoring a blocked bundle's click is the
-    // embedder's until #99.
+    // so far. The click gate applies once, before the first step.
     pub(super) fn run_queries(&mut self, ids: &[String]) -> Result<(), OpenUiError> {
         let Some(manager) = self.manager.as_mut() else {
             return Ok(());
@@ -256,7 +256,11 @@ impl SessionCore {
         }
     }
 
-    fn record_registration(&mut self, result: Registration) {
+    fn record_registration(&mut self, result: Registration, register_statements: bool) {
+        // Repeat the refused effect on the next eligible draw. A key-only
+        // change must not register mutations.
+        self.query_inputs_changed = result.is_err() && register_statements;
+        self.extra_values_changed = result.is_err();
         let error = match result {
             Ok(update) => {
                 self.query_effects.record(update);
@@ -270,14 +274,18 @@ impl SessionCore {
 
     pub(super) fn finish_draw(
         &mut self,
-        response: ResponseState,
+        mut response: DrawResponse,
         registration: Option<Registration>,
+        register_statements: bool,
     ) -> (Option<String>, Option<OpenUiError>) {
-        self.streaming = response.streaming;
-        self.query_inputs_changed = false;
         if let Some(result) = registration {
-            self.record_registration(result);
+            if result.is_err() {
+                // The screen was drawn with the previous registrations.
+                response.scripts = self.response.scripts.take();
+            }
+            self.record_registration(result, register_statements);
         }
+        self.response = response;
         (
             self.manager.as_ref().map(|m| m.snapshot_json().to_owned()),
             self.query_effects.evaluation_error.clone(),
@@ -285,7 +293,7 @@ impl SessionCore {
     }
 
     pub(super) fn state_changed(&mut self) {
-        if !self.streaming
+        if !self.response.blocked
             && let Some(manager) = self.manager.as_mut().filter(|m| !m.is_disposed())
         {
             let result = Self::functions(
@@ -295,12 +303,12 @@ impl SessionCore {
                 self.limits.max_json_bytes,
             )
             .and_then(|functions| {
-                let input = program_input(
+                let input = self.response.input(program_input(
                     &self.program,
                     &self.library,
                     &self.bindings,
                     functions.as_ref(),
-                );
+                ));
                 let read = |_: &QueryManager| Ok::<_, OpenUiError>(());
                 if self.query_inputs_changed {
                     manager.settled_transaction(&input, &self.store, read)
@@ -309,8 +317,7 @@ impl SessionCore {
                 }
                 .map(|(_, update)| update)
             });
-            self.query_inputs_changed = false;
-            self.record_registration(result);
+            self.record_registration(result, self.query_inputs_changed);
         }
     }
 

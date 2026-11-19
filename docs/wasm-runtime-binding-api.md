@@ -27,6 +27,7 @@ stream.program(complete: boolean): ParsedProgram
 new RuntimeSession(library: ComponentLibrary, promptSpec?: string)
 RuntimeSession.withLimits(library: ComponentLibrary, promptSpec: string | undefined, limits: RuntimeLimits): RuntimeSession
 RuntimeSession.extractMcpToolResult(responseJson: string, limits: ParseLimits): string
+session.setQueryExtraValues(tool_name: string, values_json: string): void
 session.attachToolProvider(): void
 session.detachToolProvider(): void
 session.completeToolCall(call: WantedToolCall, outcomeJson: string): void
@@ -88,6 +89,7 @@ object (wasm-bindgen cannot lower Option<&ActionHandle>).
 ```typescript
 interface EvaluationOutput {
   readonly json: string; readonly sizeLimited: boolean; readonly depthLimited: boolean;
+  readonly isQueryLoading: boolean; readonly parserErrorJson: string | undefined;
   readonly querySnapshotJson: string | undefined;
   readonly queryEvaluationError: {kind: string; message: string} | null;
   readonly evaluation: EvaluationHandle;
@@ -105,7 +107,7 @@ interface QueryEffects {
   callAt(index: bigint): WantedToolCall | undefined;
   free(): void;
 }
-interface ResponseState { streaming: boolean }
+interface ResponseState { streaming: boolean; isBundle?: boolean; complete?: boolean; error?: string | null; scripts?: string[]; scriptRevision?: string | null }
 interface ReplacementOutput {
   readonly initialization: InitializationOutput; readonly projection: InitializationOutput;
   readonly evaluation: EvaluationOutput; readonly snapshot: string; readonly version: bigint;
@@ -173,7 +175,7 @@ text. To preserve a lone code unit, pass ASCII JSON escapes, for example
 a split surrogate pair in source chunks must be buffered by the caller.
 
 See [session semantics](runtime-binding.md) for authority, marker trust,
-streaming/pristine rules, host events, bundleBlocked responsibilities and state
+streaming/pristine rules, host events, the session’s gate on clicks and Retry, and state
 admission. Evaluation JSON and each event JSON are the runtime serializer's
 bytes; no JavaScript reserialization changes them. All execution happens on one
 thread. Native worker failures remain Worker; wasm has no worker/transport

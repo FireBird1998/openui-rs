@@ -20,6 +20,7 @@ Swift (`import OpenUIFFI`); fallible calls throw OpenUiError:
 ```swift
 convenience init(library: ComponentLibrary, promptSpec: String?) throws
 static func withLimits(library: ComponentLibrary, promptSpec: String?, limits: RuntimeLimits) throws -> RuntimeSession
+func setQueryExtraValues(toolName: String, valuesJson: String) throws
 func attachToolProvider() throws
 func advanceQueryClock(nowMs: UInt64) throws
 func pauseQueries() throws
@@ -65,6 +66,7 @@ carry @Throws(OpenUiException::class), while dispose is infallible:
 constructor(library: ComponentLibrary, promptSpec: String?)
 // companion object:
 fun withLimits(library: ComponentLibrary, promptSpec: String?, limits: RuntimeLimits): RuntimeSession
+fun setQueryExtraValues(toolName: String, valuesJson: String)
 fun attachToolProvider()
 fun advanceQueryClock(nowMs: ULong)
 fun pauseQueries()
@@ -126,6 +128,8 @@ struct EvaluationOutput {
     public var evaluation: EvaluationHandle
     public var querySnapshotJson: String? // defaults to nil
     public var queryEvaluationError: OpenUiError? // defaults to nil
+    public var isQueryLoading: Bool // defaults to false
+    public var parserErrorJson: String? // defaults to nil
 }
 struct QueryEffects {
     public var nextRefreshDueMs: UInt64? // defaults to nil
@@ -136,6 +140,11 @@ struct QueryEffects {
 }
 struct ResponseState {
     public var streaming: Bool // defaults to false
+    public var isBundle: Bool // defaults to false
+    public var complete: Bool // defaults to true
+    public var error: String? // defaults to nil
+    public var scripts: [String] // defaults to []
+    public var scriptRevision: String? // defaults to nil
 }
 struct ReplacementOutput {
     public var initialization: InitializationOutput

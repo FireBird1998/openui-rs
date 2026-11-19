@@ -1,0 +1,70 @@
+{
+  "schema": {"$defs":{"Box":{"properties":{"value":{},"action":{},"mutation":{}}}}},
+  "scenarios": [
+    {"name": "bundle-lifecycle", "steps": [
+      {"response":"]]>openui:content\nroot=Box(\"empty\")\n]]>openui:end\n","streaming":true},
+      {"response":"]]>openui:content\n$n=1\nq=Query(\"cloud\",{n:$n},\"waiting\")\nm=Mutation(\"save\")\nroot=Box([q,$n],Action([@Run(q),@Set($n,2),@ToAssistant(\"sent\")]),Action([@Run(m),@ToAssistant(\"saved\")]))\n]]>openui:scripts {\"count\":1}\n[{\"name\": \"cloud\", \"code\": \"A\"}]\n]]>openui:end\n","streaming":true},
+      {"click":"action"},
+      {"click":"mutation"},
+      {"click":"legacy"},
+      {"click":"default"},
+      {"retry":true},
+      {"response":"]]>openui:content\n$n=1\nq=Query(\"cloud\",{n:$n},\"waiting\")\nm=Mutation(\"save\")\nroot=Box([q,$n],Action([@Run(q),@Set($n,2),@ToAssistant(\"sent\")]),Action([@Run(m),@ToAssistant(\"saved\")]))\n]]>openui:scripts {\"count\":1}\n[{\"name\": \"cloud\", \"code\": \"A\"}]\n]]>openui:end","evaluate":true},
+      {"finish":0,"error":"down"},
+      {"response":"$n=1\nq=Query(\"cloud\",{n:$n},\"waiting\")\nm=Mutation(\"save\")\nroot=Box([q,$n],Action([@Run(q),@Set($n,2),@ToAssistant(\"sent\")]),Action([@Run(m),@ToAssistant(\"saved\")]))\n]]>openui:scripts {\"count\":1}\n[","streaming":true},
+      {"click":"action"},
+      {"retry":true},
+      {"response":"$n=1\nq=Query(\"cloud\",{n:$n},\"waiting\")\nm=Mutation(\"save\")\nroot=Box([\"invalid\",q,$n],Action([@Run(q),@Set($n,2),@ToAssistant(\"sent\")]),Action([@Run(m),@ToAssistant(\"saved\")]))\n]]>openui:scripts {\"count\":1}\n["},
+      {"click":"mutation"},
+      {"retry":true},
+      {"set":"$n","value":3},
+      {"response":"]]>openui:content\n$n=1\nq=Query(\"cloud\",{n:$n},\"waiting\")\nm=Mutation(\"save\")\nroot=Box([q,$n],Action([@Run(q),@Set($n,2),@ToAssistant(\"sent\")]),Action([@Run(m),@ToAssistant(\"saved\")]))\n]]>openui:scripts {\"count\":1}\n[{\"name\": \"cloud\", \"code\": \"A\"}]\n]]>openui:end"},
+      {"finish":1,"value":"visible"},
+      {"click":"mutation"},
+      {"response":"]]>openui:content\n$n=1\nq=Query(\"cloud\",{n:$n},\"waiting\")\nm=Mutation(\"save\")\nroot=Box([q,$n],Action([@Run(q),@Set($n,2),@ToAssistant(\"sent\")]),Action([@Run(m),@ToAssistant(\"saved\")]))\n]]>openui:scripts {\"count\":1}\n[{\"name\": \"cloud\", \"code\": \"B\"}]\n]]>openui:end\n","streaming":true},
+      {"finish":2,"value":"OK"}
+    ]},
+    {"name": "script-cache-keys", "steps": [
+      {"response":"]]>openui:content\nq=Query(\"cloud\",{},\"old\")\nr=Query(\"ordinary\",{},\"other\")\nroot=Box([q,r])\n]]>openui:scripts {\"count\":1}\n[{\"name\": \"cloud\", \"code\": \"A\"}]\n]]>openui:end"},
+      {"finish":0,"value":"A"},
+      {"finish":1,"value":"ordinary"},
+      {"response":"]]>openui:content\nq=Query(\"cloud\",{},\"old\")\nr=Query(\"ordinary\",{},\"other\")\nroot=Box([q,r])\n]]>openui:scripts {\"count\":1}\n[{\"name\": \"cloud\", \"code\": \"B\"}]\n]]>openui:end","streaming":true,"evaluate":true},
+      {"response":"]]>openui:content\nq=Query(\"cloud\",{},\"old\")\nr=Query(\"ordinary\",{},\"other\")\nroot=Box([q,r])\n]]>openui:scripts {\"count\":1}\n[{\"name\": \"cloud\", \"code\": \"B\"}]\n]]>openui:end","evaluate":true},
+      {"finish":2,"value":"B"},
+      {"extra":"cloud","values":{"tenant":1,"__openuiScriptRevision":"app"}},
+      {"finish":3,"value":"B1"},
+      {"extra":"cloud","values":{"tenant":1,"__openuiScriptRevision":"shadowed"}},
+      {"response":"]]>openui:content\nq=Query(\"cloud\",{},\"old\")\nr=Query(\"ordinary\",{},\"other\")\nroot=Box([q,r])\n]]>openui:scripts {\"count\":1}\n[{\"name\": \"cloud\", \"code\": \"C\"}]\n]]>openui:end","evaluate":true},
+      {"finish":4,"value":"C1"},
+      {"extra":"cloud","values":{"tenant":2}},
+      {"finish":5,"value":"C2"},
+      {"response":"q=Query(\"cloud\",{},\"old\")\nr=Query(\"ordinary\",{},\"other\")\nroot=Box([q,r])","evaluate":true},
+      {"finish":6,"value":"local"}
+    ]},
+    {"name": "bare-streaming-edit", "steps": [
+      {"response":"]]>openui:content\nq=Query(\"cloud\",{},\"old\")\nm=Mutation(\"save\")\nroot=Box(q,Action([@Run(q),@ToAssistant(\"sent\")]),Action([@Run(m)]))\n]]>openui:scripts {\"count\":1}\n[{\"name\": \"cloud\", \"code\": \"A\"}]\n]]>openui:end"},
+      {"finish":0,"error":"down"},
+      {"response":"]]>openui:content\nq=Query(\"cloud\",{},\"old\")\nm=Mutation(\"new\")\nroot=Box(q,Action([@Run(q),@ToAssistant(\"sent\")]),Action([@Run(m)]))\n]]>openui:scripts {\"count\":1}\n[{\"name\": \"cloud\", \"code\": \"B\"}]\n]]>openui:end","streaming":true},
+      {"response":"q=Query(\"cloud\",{},\"old\")\nm=Mutation(\"new\")\nroot=Box(q,Action([@Run(q),@ToAssistant(\"sent\")]),Action([@Run(m)]))","streaming":true},
+      {"click":"action"},
+      {"finish":1,"error":"again"},
+      {"retry":true},
+      {"finish":2,"value":"ok"},
+      {"click":"mutation"},
+      {"finish":3,"value":"saved"}
+    ]},
+    {"name": "query-key-only-edit", "steps": [
+      {"response":"$tool=\"original\"\nq=Query(\"cloud\",{},0)\nm=Mutation($tool)\nroot=Box(q,null,Action([@Run(m)]))\n]]>openui:scripts {\"count\":1}\n[{\"name\":\"cloud\",\"code\":\"A\"}]"},
+      {"finish":0,"value":"A"},
+      {"set":"$tool","value":"edited"},
+      {"extra":"cloud","values":{"tenant":1}},
+      {"click":"mutation"},
+      {"finish":2,"value":"ok"},
+      {"finish":1,"value":"A1"},
+      {"response":"$tool=\"original\"\nq=Query(\"cloud\",{},0)\nm=Mutation($tool)\nroot=Box(q,null,Action([@Run(m)]))\n]]>openui:scripts {\"count\":1}\n[{\"name\":\"cloud\",\"code\":\"B\"}]","evaluate":true},
+      {"click":"mutation"},
+      {"finish":4,"value":"ok"},
+      {"finish":3,"value":"B1"}
+    ]}
+  ]
+}

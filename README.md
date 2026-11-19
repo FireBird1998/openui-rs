@@ -269,7 +269,11 @@ outcome. Native and WebAssembly sessions can attach a tool provider, hand out a
 settled program's calls and draw their live results. A mutation Run suspends
 its action plan. The session resumes it on success and hands its host events
 to the embedder through the same query update. The embedder performs the
-I/O. [Driving queries](docs/runtime-binding.md#driving-queries)
+I/O. Give the session the bundle reader's flags, Cloud script names and revision
+alongside `streaming`. Queries and mutations register when the response settles.
+A blocked response bundle ignores clicks and Retry. A streaming bare program
+still accepts both. Draws expose `isQueryLoading` and the separate
+`parserErrorJson` diagnostic for an invalid scripts section. [Driving queries](docs/runtime-binding.md#driving-queries)
 
 Runtime state and raw/prepared query receivers check depth only for the parts
 consumed; shallow member and length reads do not walk a deep sibling. Whole-value

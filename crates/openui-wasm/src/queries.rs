@@ -71,7 +71,7 @@ pub(crate) fn error_json(error: Option<&core::OpenUiError>) -> String {
 }
 
 #[wasm_bindgen(typescript_custom_section)]
-const RESPONSE_STATE: &'static str = "export interface ResponseState { streaming: boolean }";
+const RESPONSE_STATE: &'static str = "export interface ResponseState { streaming: boolean; isBundle?: boolean; complete?: boolean; error?: string | null; scripts?: string[]; scriptRevision?: string | null }";
 
 // The package guard passes a plain copy of the response state. All host
 // getters run before borrowing the session.
@@ -81,12 +81,34 @@ extern "C" {
     pub type ResponseState;
     #[wasm_bindgen(method, getter)]
     fn streaming(this: &ResponseState) -> bool;
+    #[wasm_bindgen(method, getter, js_name = isBundle)]
+    fn is_bundle(this: &ResponseState) -> bool;
+    #[wasm_bindgen(method, getter)]
+    fn complete(this: &ResponseState) -> bool;
+    #[wasm_bindgen(method, getter)]
+    fn error(this: &ResponseState) -> Option<String>;
+    #[wasm_bindgen(method, getter, js_name = scriptsJson)]
+    fn scripts_json(this: &ResponseState) -> String;
+    #[wasm_bindgen(method, getter, js_name = scriptRevision)]
+    fn script_revision(this: &ResponseState) -> Option<String>;
 }
 
 impl ResponseState {
-    pub(crate) fn read(state: Option<Self>) -> core::ResponseState {
-        core::ResponseState {
-            streaming: state.is_some_and(|s| s.streaming()),
-        }
+    pub(crate) fn read(state: Option<Self>) -> Result<core::ResponseState, core::OpenUiError> {
+        let Some(state) = state else {
+            return Ok(core::ResponseState::default());
+        };
+        Ok(core::ResponseState {
+            streaming: state.streaming(),
+            is_bundle: state.is_bundle(),
+            complete: state.complete(),
+            error: state.error(),
+            scripts: serde_json::from_str(&state.scripts_json()).map_err(|e| {
+                core::OpenUiError::InvalidJson {
+                    reason: e.to_string(),
+                }
+            })?,
+            script_revision: state.script_revision(),
+        })
     }
 }

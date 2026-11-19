@@ -6,7 +6,7 @@ import sys
 
 root = pathlib.Path(__file__).resolve().parent.parent
 methods = [
-    "attachToolProvider", "detachToolProvider",
+    "setQueryExtraValues", "attachToolProvider", "detachToolProvider",
     "takeQueryUpdate", "completeToolCall", "retryFailedQueries",
     "attachToolProviderAt", "resumeQueriesAt",
     "advanceQueryClock", "pauseQueries", "resumeQueries", "attachToolProviderWithMinimum",
@@ -25,6 +25,7 @@ inner = (root / "crates/openui-wasm/src/session.rs").read_text()
 core = (root / "crates/openui-session/src/lib.rs").read_text()
 core += (root / "crates/openui-session/src/queries.rs").read_text()
 core += (root / "crates/openui-session/src/refresh.rs").read_text()
+core += (root / "crates/openui-session/src/response.rs").read_text()
 for source, label in [(native, "native"), (inner, "wasm inner"), (core, "session core")]:
     exported = {camel(n) for n in re.findall(r"pub fn (\w+)\(", source)}
     assert set(native_methods) - {"dispose", "setReferenceValues"} <= exported, label
@@ -107,7 +108,12 @@ if len(sys.argv) == 3 and sys.argv[1] == "--wasm":
     assert "completeToolCall(call: WantedToolCall, outcome_json: string): void;" in session[1]
     assert "evaluate(response_state?: ResponseState): EvaluationOutput;" in session[1]
     assert re.search(r"replaceProgram\([^\n]+response_state\?: ResponseState\): ReplacementOutput;", session[1])
-    assert "export interface ResponseState { streaming: boolean }" in declarations
+    assert "export interface ResponseState { streaming: boolean; isBundle?: boolean; complete?: boolean; error?: string | null; scripts?: string[]; scriptRevision?: string | null }" in declarations
+    assert "setQueryExtraValues(tool_name: string, values_json: string): void;" in session[1]
+    assert re.search(r"runLegacy\(json: string, message: string, form\?: string(?: \| null)?\): ActionOutput;", session[1])
+    assert "readonly isQueryLoading: boolean;" in declarations
+    assert "readonly parserErrorJson: string | undefined;" in declarations
+    assert re.search(r"run\(action: ActionHandle \| (?:null \| )?undefined, message: string, form\?: string(?: \| null)?\): ActionOutput;", session[1])
     for field in ["queryEvaluationError", "evaluationError"]:
         assert f"readonly {field}: {{ kind: string; message: string }} | null;" in declarations, field
     assert "readonly nextRefreshDueMs: bigint | undefined;" in declarations
@@ -154,9 +160,13 @@ assert re.search(r"func replaceProgram\(program: ParsedProgram, persisted: Strin
 assert re.search(r"func takeQueryUpdate\(\) throws\s*-> QueryEffects", api[1])
 assert re.search(r"func completeToolCall\(call: WantedToolCall, outcomeJson: String\) throws[ \t]*$", api[1], re.M)
 assert "querySnapshotJson: String? = nil, queryEvaluationError: OpenUiError? = nil" in swift
-assert "public init(streaming: Bool = false)" in swift
+assert "public init(streaming: Bool = false, isBundle: Bool = false, complete: Bool = true, error: String? = nil, scripts: [String] = [], scriptRevision: String? = nil)" in swift
 assert re.search(r"func evaluateWithResponse\(responseState: ResponseState\) throws\s*-> EvaluationOutput", api[1])
 assert re.search(r"func replaceProgramWithResponse\([^\n]*responseState: ResponseState\) throws\s*-> ReplacementOutput", api[1])
+assert re.search(r"func run\(action: ActionHandle\?, message: String, form: String\?\) throws\s*-> ActionOutput", api[1])
+assert re.search(r"func runLegacy\(json: String, message: String, form: String\?\) throws\s*-> ActionOutput", api[1])
+assert "func setQueryExtraValues(toolName: String, valuesJson: String) throws" in api[1]
+assert "isQueryLoading: Bool = false, parserErrorJson: String? = nil" in swift
 assert "nextRefreshDueMs: UInt64? = nil" in swift
 assert "func resumeQueriesAt(nowMs: UInt64) throws" in api[1]
 assert "func attachToolProviderAt(nowMs: UInt64, minimumMs: UInt64) throws" in api[1]
@@ -193,7 +203,14 @@ if len(sys.argv) == 3:
     assert "fun `takeQueryUpdate`(): QueryEffects" in api[1]
     assert re.search(r"fun `completeToolCall`\(`call`: WantedToolCall, `outcomeJson`: kotlin.String\)[ \t]*$", api[1], re.M)
     assert "`queryEvaluationError`: OpenUiException? = null" in kotlin and "`querySnapshotJson`: kotlin.String? = null" in kotlin
-    assert "`streaming`: kotlin.Boolean = false" in kotlin
+    for declaration in ["`streaming`: kotlin.Boolean = false", "`complete`: kotlin.Boolean = true",
+                        "`isBundle`: kotlin.Boolean = false", "`scripts`: List<kotlin.String> = listOf()",
+                        "`scriptRevision`: kotlin.String? = null", "`error`: kotlin.String? = null",
+                        "`isQueryLoading`: kotlin.Boolean = false", "`parserErrorJson`: kotlin.String? = null"]:
+        assert declaration in kotlin, declaration
+    assert "fun `setQueryExtraValues`(`toolName`: kotlin.String, `valuesJson`: kotlin.String)" in api[1]
+    assert "fun `runLegacy`(`json`: kotlin.String, `message`: kotlin.String, `form`: kotlin.String?): ActionOutput" in api[1]
+    assert "fun `run`(`action`: ActionHandle?, `message`: kotlin.String, `form`: kotlin.String?): ActionOutput" in api[1]
     assert "fun `evaluateWithResponse`(`responseState`: ResponseState): EvaluationOutput" in api[1]
     assert "`responseState`: ResponseState): ReplacementOutput" in api[1]
     assert "`nextRefreshDueMs`: kotlin.ULong? = null" in kotlin
