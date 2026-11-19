@@ -14,7 +14,7 @@ on:
       group:
         description: Which modules (scripts/mutants.sh)
         type: choice
-        options: [parsing, rest, runtime, both, all]
+        options: [parsing, rest, runtime, query, both, all]
         default: parsing
       shards:
         description: Jobs to split each group's mutants across
@@ -96,7 +96,7 @@ jobs:
           path: shards
       - name: Put the shards together
         run: |
-          for group in parsing rest runtime; do
+          for group in parsing rest runtime query; do
             compgen -G "shards/mutants-$group-*" > /dev/null || continue
             mkdir -p "mutants/$group"
             {

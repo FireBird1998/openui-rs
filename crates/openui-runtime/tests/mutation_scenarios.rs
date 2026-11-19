@@ -405,3 +405,66 @@ fn upstream_dispose_ends_both_late_outcomes_and_keeps_its_last_published_snapsho
         assert_eq!(row["fireAfterDispose"], false);
     }
 }
+
+// #95's mutation sample: a numeric tool name compares by value, as upstream's
+// strict equality does, and a reserved-name mutation asks for a redraw only
+// when its program-visible result changes.
+#[test]
+fn reregistration_keeps_numeric_tools_and_redraws_reserved_names_only_on_change() {
+    let lib = Library::from_json_schema(&Json::Null);
+    let store = Store::new();
+    let mut manager = QueryManager::default();
+
+    let numeric = parse("m=Mutation(7)", &lib, None);
+    manager
+        .register_mutations(&TreeInput::new(&numeric), &store)
+        .unwrap();
+    let call = manager.fire_mutation("m", None).unwrap().calls.remove(0);
+    let data = parse_json("1").unwrap();
+    manager
+        .apply(QueryCommand::Complete {
+            id: &call.id,
+            outcome: ToolOutcome::Result(Some(&data)),
+        })
+        .unwrap();
+    let settled = manager.snapshot_json().to_owned();
+    assert!(
+        settled.contains(r#""m":{"status":"success","data":1"#),
+        "{settled}"
+    );
+    let again = manager
+        .register_mutations(&TreeInput::new(&numeric), &store)
+        .unwrap();
+    assert!(!again.needs_redraw());
+    assert_eq!(manager.snapshot_json(), settled);
+
+    let reserved = |tool: &str| parse(&format!("__openui_errors=Mutation({tool:?})"), &lib, None);
+    let first = reserved("a");
+    assert!(
+        manager
+            .register_mutations(&TreeInput::new(&first), &store)
+            .unwrap()
+            .needs_redraw()
+    );
+    // Unchanged: the same registration again.
+    assert!(
+        !manager
+            .register_mutations(&TreeInput::new(&first), &store)
+            .unwrap()
+            .needs_redraw()
+    );
+    // A rename resets the result to idle with null data and error.
+    assert!(
+        manager
+            .register_mutations(&TreeInput::new(&reserved("b")), &store)
+            .unwrap()
+            .needs_redraw()
+    );
+    // A second rename builds a new idle result with the same JSON.
+    assert!(
+        !manager
+            .register_mutations(&TreeInput::new(&reserved("c")), &store)
+            .unwrap()
+            .needs_redraw()
+    );
+}

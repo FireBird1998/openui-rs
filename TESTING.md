@@ -324,7 +324,7 @@ Not in the check, because they need Bun, time or a screen:
 | `cd reference && bun --no-install test messages.test.ts` | Checks the message fuzzer's reserved-scalar projection against both sides of the pinned divergences and checks the neighbouring scalar. |
 | `scripts/fuzz.sh --invariants …` | The invariants, on the core and the reference alike (see [Invariants](#invariants)) |
 | `scripts/fuzz-coverage.sh …` | Coverage-guided fuzzing of the targets in `fuzz/` (see [Coverage-guided fuzzing](#coverage-guided-fuzzing)) |
-| `scripts/mutants.sh parsing\|rest\|runtime` | Mutation testing (see [Mutation testing](#mutation-testing)) |
+| `scripts/mutants.sh parsing\|rest\|runtime\|query` | Mutation testing (see [Mutation testing](#mutation-testing)) |
 | `scripts/import-recordings.sh` | Recorded streams into the corpus (see [Recorded streams](#recorded-streams)) |
 | `scripts/android-test.sh` | The suite on a running Android emulator or phone (see [Android](#android)) |
 | `scripts/bench.sh` | Streaming speed against the reference |
@@ -456,6 +456,33 @@ are checked for validity before size; and a mutation result refused inside
 the runtime ends its plan. The random script renames a mutation and asserts
 after every command that the charge equals a fresh measurement and that
 each query has at most two outstanding calls.
+
+### Query manager suites
+
+The other suites of the query manager and the session that drives it. Each
+replay compares its observations byte for byte with a golden written by a
+reference adapter in `reference/`, except where a two-sided pin in
+`conformance/divergences/` names the difference (see
+[CONFORMANCE.md](CONFORMANCE.md#divergences)).
+
+| Test | Checks |
+|---|---|
+| `query_refresh` (runtime) | `conformance/query-refresh.json` against `golden/query-refresh.json` from `reference/query-refresh.ts`, which runs lang-core's manager on a fake clock; each observation also has the next refresh deadline, and the differences are pinned in `divergences/refresh-lifecycle.json`. Also refused clock commands, large advances, the refresh floor a manager reports, a repeated clock sample, and that mutation registration and submission keep the active deadline and ask for a redraw when a mutation takes a reserved snapshot list's name. With `--ignored`, seeded timed scripts against Bun. |
+| `mutation_scenarios` (runtime) | `conformance/mutation-scenarios.json` against `golden/mutation-scenarios.jsonl` from `reference/mutation-scenarios.ts`; deep arguments and results, a mutation read before a query of the same name, a `__proto__` mutation, late outcomes after dispose (`golden/mutation-dispose.jsonl`), and that registering again keeps a numeric tool name's result and asks for a redraw for a reserved-name mutation only when its result's JSON changes. |
+| `query_reader_commands`, `query_reader_recovery` (runtime) | Readers: a reader cut by a limit, Store snapshots taken at registration, long waiting chains, a shared reader allowance, and `conformance/query-reader-fixes.json` against its golden. |
+| `queries` (session) | `conformance/session-queries.json` against `golden/session-queries.jsonl` from `reference/session-queries.ts`; provider attach and detach, a provider refused beside supplied reference values, single-use call identities, and a refused draw or outcome that keeps its call. |
+| `query_runs` (runtime and session) | Runs of a query and Retry, described under [Expression evaluation](#expression-evaluation). |
+| `mutations` (session) | `conformance/session-mutations.json` against `golden/session-mutations.jsonl` from `reference/session-mutations.ts`: action plans that suspend at a mutation and resume, the pending-plan limit, and detaching with a plan pending. |
+| `query_refresh` (session) | Pause and resume, refresh during a streaming edit, a mutation outcome while paused, and a refused replacement that keeps its timer. |
+| `query_reader_diagnostics` (session) | A reader's limit or changed self-input reported beside the drawn tree, and its recovery. |
+| `response_bundles` (session) | `conformance/session-bundles.json` against `golden/session-bundles.jsonl` from `reference/session-bundles.ts`: the bundle gate, Cloud script revisions in cache keys, and app values. |
+| `runtime_queries`, `runtime_mutations`, `runtime_refresh_clock`, `runtime_query_runs`, `query_readers` (`openui-ffi`) | The same operations through the native binding's worker thread. |
+| `crates/openui-wasm/js/{queries,mutations,query-clock,query-runs,query-readers,tool-provider}.test.ts` | The JavaScript driver through the built package (`bun --no-install test crates/openui-wasm/js` after `scripts/wasm.sh`; not in the check). |
+
+The coverage-guided `query` target replays the same scenario format (see
+[Coverage-guided fuzzing](#coverage-guided-fuzzing)), and `scripts/mutants.sh
+query` runs the mutation group for the query manager (see
+[Mutation testing](#mutation-testing)).
 
 ## The corpus
 
@@ -864,6 +891,8 @@ scripts/mutants.sh parsing --jobs 3   # testing ticket 04: about 1,800 mutants, 
 scripts/mutants.sh rest --jobs 3      # testing ticket 05: about 650, the binding's included
 scripts/mutants.sh runtime --list --json > target/runtime-mutants.json  # no mutations
 scripts/mutants.sh runtime --jobs 2   # #40: maintainer starts this long run
+scripts/mutants.sh query --list       # #95: the query manager alone, 569 with cargo-mutants 27.1.0
+scripts/mutants.sh query --jobs 2     # maintainer starts this long run too
 ```
 
 [cargo-mutants](https://mutants.rs) plants one bug at a time in the source (a `>` turned into `>=`, a function that returns a default, a deleted `!`) and runs the offline suite against each, with live diffs off. A mutant the suite doesn't catch is code a real bug could break unnoticed. Each one is either caught by a new case, or listed in `.cargo/mutants.toml` with the reason it changes nothing a caller can observe, so reruns skip it. A mutant costs a rebuild plus the suite, so a whole group takes hours: run it on AC power, or on GitHub (see [On GitHub](#on-github)). Results go to `target/mutants/<group>/mutants.out/` (`missed.txt`, `caught.txt`, `timeout.txt`).
@@ -903,6 +932,20 @@ flags and the surviving function implementation. The file filters are sample
 controls, not permanent exclusions. The maintainer must triage the full run's
 survivors before claiming complete mutation coverage.
 
+The query group (#95) mutates `crates/openui-runtime/src/query.rs` and
+`crates/openui-runtime/src/query/`, which the runtime group also covers. It
+runs the runtime's suite and the session crate's (`--test-package`), since
+the session's replays of the renderer's query and mutation effects test the
+manager through its only production caller. Results go to
+`target/mutants/query/`. The runtime suite takes about 12 minutes per mutant
+on the maintainer's Mac in a debug build, the session's a few seconds, so at
+`--jobs 2` the whole group is days of work: start it on the worker. Five of
+its mutants are equivalent and cannot be excluded: cargo-mutants 27.1.0 lists
+"delete field" mutants whatever `exclude_re` says. Each deletes a
+`QueryUpdate` field written with the value `..QueryUpdate::default()` already
+supplies, so they are expected in `missed.txt`; `.cargo/mutants.toml` lists
+them. Removing the explicit fields from the source removes the mutants.
+
 A mutant that stops the parser advancing makes a test, or the CLI a test starts, allocate without bound, faster than cargo-mutants' timeout ends it, and macOS has no per-process memory limit: such processes once took a Mac down with a kernel panic, and later froze it. So the script runs `scripts/mutants-watchdog.sh` beside cargo-mutants. It kills any process run from a mutant's build, test or CLI, whose memory passes `MUTANTS_MEMORY_LIMIT_MB` (default 2048; the suite peaks near 600 MB), and on macOS, when free memory falls under 20%, the largest one over 1 GB. On macOS memory is the physical footprint, compressed memory included, since under pressure the compressor keeps a runaway's RSS small. The test fails, the mutant counts as caught, and each kill is logged (`mutants-watchdog: killed a process holding …`).
 
 The watchdog's kill line includes a UTC timestamp, the mutant build directory,
@@ -936,12 +979,13 @@ libFuzzer, through cargo-fuzz on the nightly toolchain, mutates inputs toward co
 | `merge` | Merging a program with a patch (a zero byte between them); the merge is never longer than its inputs, give or take 64 bytes of joining newlines | the merge cases |
 | `serialize` | Converting JSON back to source: a parse result's tree with its state, or anything else | the parse goldens |
 | `json` | Reading JSON, and that writing what it read settles after one round | the parse goldens |
+| `query` | A query manager scenario in the conformance format (a JSON program, optional library and steps), replayed through the public query commands under the default and the small limits, at most 64 steps: an accepted command's `changed` is whether the snapshot's bytes changed and its deadline is the manager's; a refused one changes no snapshot, deadline, cache entry or call; a completed call is refused the second time; after every step the cache charge equals a fresh measurement within its cap, and the cache and delivery audits the scenario tests use hold. Each parse result gets the checks below. | every committed scenario in `conformance/query-scenarios.json`, `query-runs.json`, `query-refresh.json`, `query-readers.json`, `query-reader-fixes.json` and `mutation-scenarios.json`, one file each (142), copied in again on every run |
 
-They share a library (`fuzz/fuzz_targets/library.rs`) with every schema shape validation handles, plus 1.0's library functions and actions. The dictionary, `fuzz/openui.dict`, holds fragments of the language and of model output. Inputs stay under 8 KB, the size of a long response.
+The language targets share a library (`fuzz/fuzz_targets/library.rs`) with every schema shape validation handles, plus 1.0's library functions and actions. The dictionary, `fuzz/openui.dict`, holds fragments of the language and of model output. Inputs stay under 8 KB, the size of a long response.
 
 **The caps** (#10) make slowness and memory findings, not passes: an input over **2 s**, a single allocation over **512 MB**, or the process over **1 GB** stops the target and leaves the input. Every limit the core has (ADR 0001) bounds an input well under them, even in the fuzz build with its debug assertions. The long runs' slow inputs (18.5 s and 12.5 s against lang-core 1.1) replay in milliseconds now, and so do the 180,000 inputs the long runs' corpora had grown to. `scripts/fuzz-coverage.sh` sets the caps, so GitHub's runs and hunts have them too. The stream target caps its pushes because a statement that never closes is read again in full on every push, and a state default in it evaluated again up to the work limit (#22): the work limit for the whole text times the pushes stays within 16 million steps (about 0.2 s in the fuzz build, a tenth of the timeout), with at most 128 pushes. With the cap, a timeout still means a push costing more than it should. The hardening run (#19) found three looser caps too loose: 256 pushes (a 6 KB input whose stray quotes left a statement open took 0.8 s idle), then 128 (an 884-byte default left open and evaluated to the 1-million-step limit on each push took 0.9 s idle), then 64 million steps (a 1.2 KB default left open on each of 53 pushes took 0.85 s on the worker at load 6 and passed 2 s when it was busier).
 
-**The checks** (`fuzz/fuzz_targets/checks.rs`), on every result of `parse` and `stream`:
+**The checks** (`fuzz/fuzz_targets/checks.rs`), on every result of `parse` and `stream`, and on each program `query` parses:
 - **Past the result-size limit, flagged.** An unflagged result's JSON stays within the limit plus half again plus 4 KiB. The limit is priced as the result is built, not by writing it, so it's approximate: over the 23,754 inputs of the parse corpus under six sets of limits, the most an unflagged result ran past was 16%.
 - **A cut result stays bounded.** It keeps what fit, plus a placeholder for each node left (a dozen bytes for a node of a few bytes of program), so it may run past by 16 bytes a byte of program more, never with the amplification.
 - **Past the depth limit, flagged.** An unflagged result nests no deeper than three JSON levels a level of the depth limit, plus 32.
@@ -1004,7 +1048,7 @@ There's no script for iOS yet. The suite was run by hand in an iPhone 16 simulat
 Every push to `main`, and every pull request, runs the check on Linux with Bun installed, so the conformance tests diff against the reference too, and the viewer's check on macOS 27 (`.github/workflows/ci.yml`). Both use the maintainer's stable Rust, 1.97.1, so clippy's lints there are the ones the check passed locally. The long runs don't run on their own: each is a workflow started by hand, from the repository's Actions tab or with `gh`:
 
 ```bash
-gh workflow run mutants.yml -f group=parsing -f shards=16       # or rest, runtime, both, all
+gh workflow run mutants.yml -f group=parsing -f shards=16       # or rest, runtime, query, both, all
 gh workflow run fuzz-coverage.yml -f seconds=20400              # every target; -f targets="merge json" for some
 gh workflow run invariants.yml -f seed=82 -f count=1000000      # all eight rules; -f rule=chunking for one
 gh workflow run android.yml

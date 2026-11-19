@@ -4,7 +4,7 @@
 # to find code the suite wouldn't notice breaking. Run it on AC power: a mutant
 # costs a rebuild plus the suite.
 #
-#   scripts/mutants.sh parsing|rest|runtime [--jobs N] [cargo-mutants options...]
+#   scripts/mutants.sh parsing|rest|runtime|query [--jobs N] [cargo-mutants options...]
 #
 #   parsing  the lexer, statements, expressions and the AST, the preprocessor,
 #            the stall guard,
@@ -15,7 +15,10 @@
 #            the library, builtins, the crate's front page, the CLI, and the
 #            binding crate (testing ticket 05)
 #   runtime  all openui-runtime source modules, including nested tree modules
-#            (#40); the maintainer starts the full run
+#            (#40) and the query manager; the maintainer starts the full run
+#   query    the query manager alone (src/query.rs and src/query/, #95), tested
+#            by the runtime's suite and the session's, which replays the
+#            renderer's query and mutation effects against upstream
 #
 # Results go to target/mutants/<group>/mutants.out/ (missed.txt, caught.txt,
 # timeout.txt, outcomes.json). Mutants that change nothing are listed, with
@@ -41,11 +44,16 @@ case "$group" in
   runtime)
     files=()
     packages=(-p openui-runtime) ;;
-  *) echo "usage: scripts/mutants.sh parsing|rest|runtime [--jobs N] [cargo-mutants options...]" >&2; exit 2 ;;
+  query)
+    files=()
+    packages=(-p openui-runtime --test-package openui-runtime --test-package openui-session) ;;
+  *) echo "usage: scripts/mutants.sh parsing|rest|runtime|query [--jobs N] [cargo-mutants options...]" >&2; exit 2 ;;
 esac
 args=()
 if [[ "$group" == runtime ]]; then
   args=(--file "crates/openui-runtime/src/**/*.rs" --file "crates/openui-runtime/src/*.rs")
+elif [[ "$group" == query ]]; then
+  args=(--file "crates/openui-runtime/src/query.rs" --file "crates/openui-runtime/src/query/*.rs")
 else
   for f in "${files[@]}"; do args+=(--file "crates/openui-lang/src/$f.rs"); done
 fi

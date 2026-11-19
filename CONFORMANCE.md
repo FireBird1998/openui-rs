@@ -131,15 +131,40 @@ creates a fresh manager per observation and uses statement ids as inert tool
 names, so that history-dependent transition is not observed or modelled here.
 Tree and action evaluation still accept embedder-supplied results.
 
-The standalone query manager is compared with lang-core 1.1.0 in
-`conformance/query-scenarios.json`. The reference runs real
-`evaluateStatements` and settles scripted provider promises. The Rust test
-compares serialized snapshots, newly wanted calls in dispatch order, and
-whether the snapshot bytes changed. It covers first load, evaluated
+### Query manager and tool provider
+
+The runtime ports lang-core 1.1.0's query manager. The standalone
+reference adapter parses each program with the vendored parser, initializes
+lang-core's Store, and runs its real `createQueryManager`. The scripted tool
+provider records each dispatch and holds its promise until the scenario
+reports an outcome. The adapter waits for the promise's completion handlers
+before recording the observation. For refresh scenarios it replaces the
+platform interval functions with a fake clock and runs the manager's own
+timer callbacks. The Rust replays compare serialized snapshots, newly wanted
+calls in dispatch order, and whether the snapshot bytes changed. Timed
+replays also compare the next refresh deadline. [Reference adapter](reference/query-scenarios.ts) · [Rust replay](crates/openui-runtime/tests/query_scenarios.rs) · [Timed replay](crates/openui-runtime/tests/query_refresh.rs)
+
+Each standalone scenario is a JSON object with `name`, initial `program`,
+optional `library` schema, and ordered `steps`. A timed case can also set
+the Rust refresh floor with `minimumMs`. `set`, `extra` and `replace`
+change the inputs for `evaluate`. `invalidate` runs the named queries or all queries if the
+list is absent or empty. `register` and `fire` exercise mutation
+registration and submission. `advance`, `dispose` and `activate`
+exercise the host clock and the manager's lifecycle. A `complete` step
+selects a zero-based call number or a dispatch address with step, tool name,
+arguments and an optional zero-based occurrence. An address schedules
+delivery only on the side that issued that call. The outcome supplies a
+result (where missing and null are distinct inputs) or one of
+`tool-not-found`, `mcp-error` and `tool-error`.
+
+The fixed scenarios cover first load, evaluated
 arguments/defaults, null and missing results, all three failures and hint
 variants, recovery, dependencies, stable keys, and statement order across
 edits. Dispatch uses a JavaScript string for the tool name. Errors retain
-the reference's original evaluated `toolName` value.
+the reference's original evaluated `toolName` value. The two-sided pins
+for cache lifetime, readers, runs, refresh, disposal, mutations, and result
+admission are indexed in [Divergences](#divergences).
+[Scenarios](conformance/query-scenarios.json) · [Reference bytes](conformance/golden/query-scenarios.json)
 
 The embedder's extra cache-key values are upstream's `extraDeps`. The
 adapter looks them up by the tool name coerced to a string, as a property of
@@ -156,7 +181,13 @@ observations of tree bytes, query snapshot bytes, dispatches and snapshot
 changes with `reference/session-queries.ts`. The adapter transcribes the
 pinned renderer's blocked condition, effect dependencies and call to
 `evaluateStatements`. It drives a real store and query manager and draws
-with `evaluateRoot`. It covers streaming over a pending call, a result
+with `evaluateRoot`. The renderer's other effects are transcribed the same
+way: mutation registration with its blocked gate in
+`reference/mutation-registration.ts`, the click handler in
+`reference/renderer-actions.ts` and Retry's `retryQueries` in
+`reference/session-runs.ts`. Each adapter runs an effect synchronously when
+one of its dependencies changes, then draws; React's scheduling is outside
+these comparisons. It covers streaming over a pending call, a result
 arriving during an edit, initial defaults, state/binding/field writes,
 refetching, failure, recovery, cache reuse, omitted and null arguments,
 writes during streaming and bundle errors, and late completion after removal.
@@ -232,8 +263,9 @@ The raw manager case `a-host-nan-result-keeps-its-reader-stale` supplies
 JavaScript NaN directly. It compares unequal even to the same delivery, so
 an unrelated completion can rebuild the reader with the latest Store state.
 
-These are lang-core's observable pre-execution results. The supplied overlay is
-ours: own `referenceValues` entries for declared query/mutation ids win,
+In sessions without a tool provider, references start from lang-core's
+observable pre-execution results. An embedder can supply loaded data
+through the overlay. Own `referenceValues` entries for declared query/mutation ids win,
 including null, false and empty containers, standing in for loaded data.
 Declaration lookup is independent of textual order and loop scope. Undeclared
 names do not resolve, but admitted supplied entries still contribute input size.
@@ -773,11 +805,20 @@ Also reported, though not a quirk because the core doesn't reproduce it: a few l
 
 ## Divergences
 
+The query manager tables below identify the decision and both expectations.
+For the cache lifetime table, each situation names
+`conformance/divergences/query-<situation>.json`; reader-specific pins use
+`readers-<situation>.json` in the same directory, with
+[`admitted-success-exhausts-the-reader-allowance.json`](conformance/divergences/admitted-success-exhausts-the-reader-allowance.json)
+for the work-limit case. The replays also check the upstream side against the regenerated goldens.
+The tool-name and argument conversion pins are in
+[Core, tree, action and store differences](#core-tree-action-and-store-differences).
+
 ### Query cache lifetime differences
 
 1. After each command an entry exists exactly when a registered query holds its key as current or previous.
-2. A query is loading exactly while its current entry has a call in flight.
-3. A call delivers success or failure to every query currently on its originating live entry, and a completion with no such reader ends the call without changing data, errors or fetch history.
+2. A query is loading while its current entry has a call in flight, or while it waits on a loading input query. The pending state follows waiting inputs transitively.
+3. A call delivers success or failure to every query currently on its originating live entry. With no current holder, it ends without delivering data, an error or fetch history to that entry's queries. A still-active receipt can also trigger re-evaluation of stale readers.
 4. A ready query whose current entry has neither data nor a call requests one unless the entry has failed and the query already shows an error.
 5. A run asked for while the current entry has a call in flight is remembered once for the entry, and starts one more call when that call is delivered to a query still on the key.
 
@@ -821,13 +862,22 @@ Both declaration orders of the displaced-previous-key handoff preserve a
 successful result. Both also preserve a failed entry when the incoming reader
 already shows an error. Those four scenarios match lang-core byte for byte.
 A fresh reader on a failed entry still requests its own call under sentence 4.
-Its two order variants pin that independent difference.
+Its two order variants, `fresh-reader-of-a-failed-handoff-a-first` and
+`-b-first`, pin that independent difference.
 
 Superseded success and failure match upstream byte for byte, including a
 fresh dispatch when the query returns to an unsettled entry. The search,
 existing-error and dependency-value scenarios compare directly against the
 upstream golden.
-The same-key error recovery scenario also pins a new reader of a retained failure.
+The same-key error recovery scenario,
+`a-later-success-on-the-same-key-clears-the-error`, also pins a new reader of
+a retained failure (row `new-reader-of-a-retained-failure`).
+In `new-statement-keeps-the-removed-statements-call`, one evaluate removes `a`
+while its call is in flight and declares `b` on the same key. Rust keeps the
+entry and its call (row `remove-statement-before-registering-its-replacement`),
+so `b` shows that call's result and dispatches nothing. Lang-core deletes the
+entry, dispatches again for `b`, drops the first call's result and shows the
+second call's failure.
 
 The draft upstream report (#82) is pinned in
 `a-sharing-query-receives-the-result-after-the-starter-moves` and

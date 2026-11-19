@@ -353,3 +353,80 @@ fn invalid_clock_commands_preserve_phase_and_large_advances_skip_whole_periods()
         assert!(first.id.is_pending());
     }
 }
+
+#[test]
+fn reported_refresh_floor_and_repeated_clock_sample_preserve_the_deadline() {
+    assert_eq!(QueryManager::default().refresh_minimum_ms(), 1_000);
+    let mut manager = QueryManager::with_refresh_minimum(Limits::DEFAULT, 275).unwrap();
+    assert_eq!(manager.refresh_minimum_ms(), 275);
+
+    manager.sample_clock(40).unwrap();
+    manager
+        .sample_clock(40)
+        .expect("the same clock sample is valid");
+    let program = parse(
+        "q=Query(\"read\",{},null,0.001)",
+        &Library::from_json_schema(&Json::Null),
+        None,
+    );
+    let update = manager
+        .apply(QueryCommand::Evaluate {
+            program: &program,
+            store: &Store::new(),
+        })
+        .unwrap();
+    assert_eq!(update.calls.len(), 1);
+    assert_eq!(update.next_refresh_due_ms, Some(315));
+    assert_eq!(
+        manager
+            .apply(QueryCommand::AdvanceClock { now_ms: 40 })
+            .unwrap()
+            .next_refresh_due_ms,
+        Some(315)
+    );
+}
+
+#[test]
+fn hidden_mutation_updates_keep_active_deadlines_and_request_redraws() {
+    let library = Library::from_json_schema(&Json::Null);
+    let program = parse(
+        "q=Query(\"read\",{},null,2)\n__openui_errors=Mutation(\"save\")",
+        &library,
+        None,
+    );
+    let mut manager = QueryManager::default();
+    let store = Store::new();
+    let first = manager
+        .apply(QueryCommand::Evaluate {
+            program: &program,
+            store: &store,
+        })
+        .unwrap()
+        .calls
+        .remove(0);
+    manager
+        .apply(QueryCommand::Complete {
+            id: &first.id,
+            outcome: ToolOutcome::Result(None),
+        })
+        .unwrap();
+
+    let registered = manager
+        .register_mutations(&openui_runtime::TreeInput::new(&program), &store)
+        .unwrap();
+    assert_eq!(registered.next_refresh_due_ms, Some(2_000));
+    assert!(!registered.changed && registered.needs_redraw());
+
+    let fired = manager.fire_mutation("__openui_errors", None).unwrap();
+    assert_eq!(fired.next_refresh_due_ms, Some(2_000));
+    assert!(!fired.changed && fired.needs_redraw());
+    assert_eq!(fired.calls.len(), 1);
+
+    let duplicate = manager.fire_mutation("__openui_errors", None).unwrap();
+    assert_eq!(duplicate.next_refresh_due_ms, Some(2_000));
+    assert!(duplicate.calls.is_empty() && !duplicate.needs_redraw());
+
+    let disposed = manager.apply(QueryCommand::Dispose).unwrap();
+    assert_eq!(disposed.next_refresh_due_ms, None);
+    assert!(!disposed.changed && disposed.needs_redraw());
+}

@@ -79,6 +79,7 @@ else
 fi
 
 before="$(ls -d findings/*-seed* 2> /dev/null | sort | tail -1)"
+# hunt.sh runs the default coverage-guided targets, including query scenarios.
 scripts/hunt.sh --minutes "$minutes"
 status=$?
 latest="$(ls -d findings/*-seed* 2> /dev/null | sort | tail -1)"

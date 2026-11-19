@@ -20,7 +20,7 @@ on:
       targets:
         description: Targets, space-separated
         type: string
-        default: parse stream merge serialize json
+        default: parse stream merge serialize json query
 
 permissions:
   contents: read

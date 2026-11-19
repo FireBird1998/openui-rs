@@ -41,13 +41,14 @@ while [[ $# -gt 0 ]]; do
     *) targets+=("$1"); shift ;;
   esac
 done
-[[ ${#targets[@]} -gt 0 ]] || targets=(parse stream merge serialize json)
+[[ ${#targets[@]} -gt 0 ]] || targets=(parse stream merge serialize json query)
 
 cargo +nightly fuzz build -s none > /dev/null 2>&1 || { cargo +nightly fuzz build -s none; exit 1; }
 
 # Seeds: corpus programs for parsing and streaming (a stream's first byte is
-# its chunk plan), program-and-patch pairs for merging, and parse results for
-# converting back to source and for JSON.
+# its chunk plan), program-and-patch pairs for merging, parse results for
+# converting back to source and for JSON, and the committed query manager
+# scenarios, one file each, for the query target.
 seed() {
   local target="$1" dir="fuzz/corpus/$1" fresh=""
   mkdir -p "$dir"
@@ -60,6 +61,22 @@ seed() {
       for f in crates/openui-lang/tests/slow/*.oui; do
         { printf '\000'; cat "$f"; } > "$dir/slow-$(basename "$f")"
       done ;;
+    query)
+      # Copied in on every run, like the slow inputs, so a grown corpus keeps them.
+      python3 -I - "$dir" conformance/{query-scenarios,query-runs,query-refresh,query-readers,query-reader-fixes,mutation-scenarios}.json <<'PY'
+import hashlib, json, sys
+from pathlib import Path
+
+out = Path(sys.argv[1])
+for source in map(Path, sys.argv[2:]):
+    for scenario in json.loads(source.read_text(encoding="utf-8")):
+        data = json.dumps(scenario, separators=(",", ":"), ensure_ascii=True).encode("ascii")
+        if len(data) > 8192 or len(scenario["steps"]) > 64:
+            raise ValueError(f"{source}: {scenario['name']} exceeds the query fuzz bounds")
+        name = hashlib.sha256(scenario["name"].encode("utf-8")).hexdigest()[:16]
+        (out / f"{source.stem}-{name}.json").write_bytes(data)
+PY
+      return $? ;;
   esac
   [[ -n "$fresh" ]] || return 0
   case "$target" in
@@ -85,7 +102,7 @@ PY
 
 pids=()
 for target in "${targets[@]}"; do
-  seed "$target"
+  seed "$target" || exit 1
   out="${findings:-fuzz/artifacts/$target}"
   mkdir -p "$out"
   prefix="$out/"

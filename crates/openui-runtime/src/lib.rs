@@ -4,24 +4,39 @@
 //! [`Store`]. Evaluate parsed trees with [`evaluate_tree`]. Write input bindings with [`write_binding`]. Parsing remains in `openui-lang`, which
 //! does not depend on this crate.
 //!
-//! References follow lang-core 1.1.0's query manager before any tool runs:
+//! In sessions without a tool provider, references follow lang-core 1.1.0's
+//! query manager before any tool runs:
 //! complete queries read their evaluated defaults (or null), incomplete queries
 //! read null, and unrun mutations read `{status:"idle"}`. Declaration order does
 //! not matter. Defaults resolve against root scope, never a loop's bindings.
 //! An own supplied entry for a declared query/mutation wins, including null,
-//! false and empty containers. This supplied overlay is our embedder interface
-//! for loaded data; it does not run tools or reproduce query scheduling.
+//! false and empty containers. The embedder can use this overlay to supply
+//! loaded data in a provider-free session.
 //!
-//! The standalone [`QueryManager`] evaluates a settled program against a Store
-//! and returns the tool calls an embedder should perform. Report outcomes with
+//! The standalone [`QueryManager`] evaluates a settled program against the Store
+//! and returns the tool calls the embedder's tool provider should perform. Report outcomes with
 //! [`QueryCommand::Complete`]. Its update includes reader calls released by that
 //! completion. A reader waits for fetched data and uses the live Store on re-evaluation.
-//! The manager owns its snapshot and cache and
-//! requires no I/O or clock. Hosts can read the snapshot as values or JSON.
+//! The manager owns its snapshot and cache. Hosts can read the snapshot as
+//! values or JSON. They supply the clock through [`QueryCommand::AdvanceClock`]
+//! and schedule refreshes from [`QueryUpdate::next_refresh_due_ms`].
+//! [`QueryManager::with_refresh_minimum`] sets the shortest refresh interval
+//! (one second by default).
 //! [`QueryManager::set_extra_key_values`] adds an embedder's values to the
 //! cache keys of one tool's queries. [`QueryCommand::Invalidate`] runs
 //! queries again; with [`TreeInput::with_query_runs`], an action's `@Run` of
 //! a query lands in [`ActionRun::query_runs`] for it instead of a host event.
+//! [`QueryManager::register_mutations`] and [`QueryManager::fire_mutation`]
+//! expose mutation registration and submission. [`extract_mcp_tool_result`]
+//! turns an MCP `callTool` response into a result or a tool-reported error, as
+//! lang-core's `extractToolResult` does.
+//!
+//! The shared session drives the manager for the native and WebAssembly
+//! bindings. The session attaches or detaches the provider, registers a
+//! settled program, drains wanted calls, accepts outcomes, retries queries,
+//! and pauses or resumes refreshes. It suspends an action plan at a managed
+//! mutation and returns the remaining segment's host events on success.
+//! The embedder performs the I/O and supplies time.
 //!
 //! Use [`TreeInput::with_reference_values`] for per-call measurement, or prepare
 //! [`PreparedReferenceValues`] once and pass it on every stream evaluation with
@@ -119,9 +134,10 @@
 //! their walks or charges; deferred syntax and arbitrary scopes keep their
 //! independent representations.
 //!
-//! The reference harness registers and reads lang-core's own query manager with
-//! no provider, refresh or tool execution. See `CONFORMANCE.md` for its source
-//! locations and the pinned supplied overlay. Both parsers currently mark an
+//! The reference tree harness reads lang-core's query manager before tool
+//! execution. Separate query scenarios exercise lang-core's real manager
+//! with scripted outcomes and a fake clock. See `CONFORMANCE.md` for the
+//! comparisons and pins. Both parsers currently mark an
 //! auto-closed query `complete: true` while streaming. We honor explicit false
 //! metadata, but cannot identify an unfinished query from per-statement parser
 //! metadata until the parsers expose it. Global `meta.incomplete` is insufficient.

@@ -79,6 +79,32 @@ cargo run -p openui-lang -- prompt conformance/prompts/library-tools-specs.json
 cargo run --release -p openui-lang -- bench conformance/imported/schemas/bench.json conformance/imported/cases/bench/*.oui
 ```
 
+## Live queries and mutations
+
+The runtime's query manager evaluates a settled program against the Store,
+caches query results, and runs readers when their query inputs arrive. In a
+native or WebAssembly session, attach a tool provider to use these live results
+in the evaluated tree. Supply `streaming` and any response bundle metadata on
+draws so the session knows when to register new statements. During an edit,
+the last settled registrations can continue to receive outcomes and refresh.
+Without a provider, the evaluated tree uses the program's defaults and the
+embedder's supplied reference values.
+
+A session driver drains wanted calls with `takeQueryUpdate()`, performs them
+with its tool provider, and reports their outcomes with `completeToolCall`.
+The driver schedules the next refresh from the update's deadline and supplies
+the clock with `advanceQueryClock`. Sessions can retry failed queries, pause
+and resume queries, and detach the provider. A query `@Run` runs the query
+again. A mutation `@Run` suspends its action plan, and the session returns the
+successful continuation's host events in the next update. OpenUINative and
+the JavaScript package provide drivers for these operations.
+[Session operations and driver APIs](docs/runtime-binding.md#driving-queries)
+
+When passing a response bundle, include its flags, Cloud script names, and
+revision. A blocked bundle ignores clicks and Retry. A streaming bare program
+still accepts both. Draws expose `isQueryLoading` and a separate
+`parserErrorJson` diagnostic for an invalid scripts section.
+
 ## Checking it
 
 ```bash
@@ -265,19 +291,6 @@ Reference data is prepared once and reused in both bindings. An optional
 `maxActionPathBytes` limit permits smaller retained handle paths without changing
 default behavior. Element-shaped data can run built-in state writes; finished
 custom-step JSON never grants custom authority (ADR 0004).
-
-The Rust runtime exposes a standalone `QueryManager` for settled programs.
-It evaluates query statements against a Store, returns tool calls for the
-embedder to perform, and updates its snapshot when the embedder reports an
-outcome. Native and WebAssembly sessions can attach a tool provider, hand out a
-settled program's calls and draw their live results. A mutation Run suspends
-its action plan. The session resumes it on success and hands its host events
-to the embedder through the same query update. The embedder performs the
-I/O. Give the session the bundle reader's flags, Cloud script names and revision
-alongside `streaming`. Queries and mutations register when the response settles.
-A blocked response bundle ignores clicks and Retry. A streaming bare program
-still accepts both. Draws expose `isQueryLoading` and the separate
-`parserErrorJson` diagnostic for an invalid scripts section. [Driving queries](docs/runtime-binding.md#driving-queries)
 
 Runtime state and raw/prepared query receivers check depth only for the parts
 consumed; shallow member and length reads do not walk a deep sibling. Whole-value

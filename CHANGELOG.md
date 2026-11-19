@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+- CONFORMANCE.md, the README, TESTING.md and the runtime crate's overview
+  describe the ported query manager, the tool provider and the session
+  operations. A `query` coverage-guided fuzz target replays the query manager
+  scenario format, seeded from the committed scenarios; the nightly hunt and
+  the GitHub fuzz workflow run it. `scripts/mutants.sh query` runs the
+  mutation group for the query manager (#95).
+
 - OpenUINative's `LiveProgram` accepts an async tool provider through
   `attachToolProvider`. Apps can read query status, retry failures, pause or
   resume queries, and detach the provider. The last `ElementView(live:)`

@@ -171,3 +171,14 @@ exclude_re = [
     # prevents no successful copy.
     "crates/openui-runtime/src/tree/input\\.rs:\\d+:14: replace > with >= in text_size$",
 ]
+
+# Query manager (#95): five equivalent mutants that exclude_re cannot skip.
+# cargo-mutants 27.1.0 lists "delete field" mutants whatever exclude_re says
+# (scripts/mutants.sh query --list --exclude-re 'delete field' still lists
+# them), so these are recorded here and expected in missed.txt. Each deletes
+# a field whose written value equals what `..QueryUpdate::default()` supplies
+# (an empty calls vector, a false changed flag), so no update changes.
+# Removing the explicit field from the source removes the mutant.
+#   query/refresh.rs     idle_update: calls, changed
+#   query/mutations.rs   register_mutations: calls
+#   query/mutations.rs   fire_mutation, the unknown-or-loading branch: calls, changed
