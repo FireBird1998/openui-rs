@@ -528,3 +528,38 @@ active manager. The zero-argument `resumeQueries()` uses the last supplied time.
 Resume re-evaluates a settled program using its retained cache. A streaming program waits for its settled draw.
 During ordinary streaming, previously registered timers continue with their
 last evaluated arguments for both bare and bundled responses.
+
+### The Swift driver
+
+Pass one async closure to `LiveProgram.attachToolProvider`. It receives the tool
+name and optional `JSONValue` arguments and returns a `JSONValue`. Wanted calls
+run concurrently. Each completion updates the evaluated tree and the loading,
+refetching and error lists in `live.queries`. Resumed host events go to the
+same `onHostEvent` handler as a click.
+
+| Provider outcome | Session outcome |
+| --- | --- |
+| Returned value | `value` |
+| `ToolProviderError.toolNotFound(availableTools:)` | `availableTools` in the given order |
+| `ToolProviderError.toolReported(_:)` | `error` |
+| `ToolProviderError.failed(_:)` or another thrown error | `failed` with the message |
+| Provider cancellation | `failed` with `cancelled by provider` |
+
+A refused oversized value is reported with the session's limit error.
+`retryFailedQueries()` delegates Retry to the session. The app's streaming
+request and stream previews defer new registrations. Outstanding calls and
+registered refresh intervals can continue while streaming. The live program
+registers settled arguments when it finishes or discards a preview and the
+app's streaming request is clear.
+
+The default clock is `ContinuousClock`. Pass a clock and an optional
+`minimumRefreshInterval` to `attachToolProvider(clock:minimumRefreshInterval:_:)`
+to drive time explicitly. The driver arms one timer at the session's deadline
+and reports the actual time when it wakes. The session chooses the next
+deadline. The driver applies no timeout.
+
+The last `ElementView(live:)` disappearing pauses queries. The first one
+returning resumes them unless the app called `pauseQueries()`. The app releases
+its pause with `resumeQueries()`. Pausing, detaching and releasing the live
+program cancel outstanding work. A provider that returns after cancellation
+cannot deliver a result or a resumed host event to that program.

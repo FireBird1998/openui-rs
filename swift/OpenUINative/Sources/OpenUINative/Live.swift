@@ -40,6 +40,9 @@ public final class LiveProgram {
     public private(set) var failure: String?
     /// How long the last evaluation took, decoding included.
     public var evaluation: Duration? { display.evaluation }
+    /// What the queries are doing: loading, refetching and their errors.
+    /// Empty without a tool provider (see `attachToolProvider`).
+    public var queries: QueryStatus { display.queries }
     /// A response is still streaming into the program. The app sets it while
     /// the program's text is arriving and clears it once the response is
     /// complete. Meanwhile built-in buttons, inputs and selects are disabled,
@@ -47,9 +50,15 @@ public final class LiveProgram {
     /// renderer does until its response is complete. A stream push remains
     /// gated until a finish result is shown, even if this flag is cleared.
     /// `write` refuses too; app state writes with `set` and `resume` still work.
+    /// The request and the preview phase gate new query registrations.
+    /// Previously registered calls and refresh intervals stay live.
     public var isStreaming: Bool {
         get { requestedStreaming || stepIsStreaming || !interactionSuspensions.isEmpty }
-        set { requestedStreaming = newValue }
+        set {
+            guard newValue != requestedStreaming else { return }
+            requestedStreaming = newValue
+            if !showingPreview { queryStreamingChanged() }
+        }
     }
     /// Built-in controls can interact only with a complete runtime.
     public var acceptsInteractions: Bool { !isStreaming }
@@ -100,6 +109,14 @@ public final class LiveProgram {
     @ObservationIgnored private var pristineCache: (version: UInt64, names: Set<String>)?
     private var handle: EvaluationHandle? { display.handle }
     @ObservationIgnored private var hasProgram = false
+    /// Performs the session's tool calls while a tool provider is attached.
+    private(set) var queryDriver: QueryDriver?
+    private var completeGeneration: UInt64 { (completeDisplay ?? display).generation }
+    /// Queries are paused by the app, or because every view drawing this
+    /// program has disappeared.
+    @ObservationIgnored private var queriesPausedByApp = false
+    @ObservationIgnored private var visibleViews = 0
+    @ObservationIgnored private var hiddenByViews = false
     /// The last evaluated tree's root as the runtime gave it.
     var rootJSON: JSONValue? { display.rootJSON }
     /// This live program's identity, carried by its tree's elements and markers.
@@ -122,6 +139,7 @@ public final class LiveProgram {
         var id = UUID()
         var generation: UInt64 = 0
         var streaming = false
+        var queries = QueryStatus()
     }
     private var display = Display()
 
@@ -161,8 +179,15 @@ public final class LiveProgram {
         let oldPreview = previewSession
         let oldCache = pristineCache
         let oldFailure = failure
-        do { try apply(step, persisted: persisted) }
-        catch {
+        do {
+            try queryDriver?.advanceClock()
+            try apply(step, persisted: persisted)
+            if step.isStreaming && oldPreview == nil && !requestedStreaming {
+                queryStreamingChanged()
+            } else {
+                syncQueries(alreadyDrawn: !step.isStreaming)
+            }
+        } catch {
             if previewSession !== oldPreview { previewSession?.dispose() }
             previewSession = oldPreview
             completeDisplay = oldCompleteDisplay
@@ -170,6 +195,7 @@ public final class LiveProgram {
             display = oldDisplay
             pristineCache = oldCache
             failure = oldFailure
+            syncQueries()
             throw error
         }
     }
@@ -183,7 +209,8 @@ public final class LiveProgram {
         let base = completeDisplay ?? display
         guard base.generation < UInt64.max else { throw LiveError(description: "evaluation generation exhausted") }
         let started = ContinuousClock.now
-        let replaced = try session.replaceProgram(program: step.parsed, persisted: persisted?.compact, projected: nil, nativeView: true)
+        let replaced = try session.replaceProgramWithResponse(program: step.parsed, persisted: persisted?.compact,
+            projected: nil, nativeView: true, responseState: ResponseState(streaming: requestedStreaming))
         let initialized = replaced.initialization
         let next = try decoded(replaced.evaluation, snapshot: replaced.snapshot, version: replaced.version,
             from: base, programID: UUID(), streaming: false, started: started)
@@ -204,11 +231,13 @@ public final class LiveProgram {
     /// Retained preview controls remain stale after the complete drawing returns.
     /// The app-owned isStreaming request is preserved; its owner clears it.
     public func discardPreview() {
+        guard showingPreview else { return }
         previewSession?.dispose()
         previewSession = nil
         pristineCache = nil
         if let completeDisplay { display = completeDisplay }
         completeDisplay = nil
+        if !requestedStreaming { queryStreamingChanged() }
     }
 
     private func showPreview(_ step: Step, persisted: JSONValue?) throws {
@@ -295,7 +324,7 @@ public final class LiveProgram {
     /// A preview projection refusal is reported in failure; the admitted
     /// complete write survives and is visible after discarding/finishing it.
     public func set(_ name: String, to value: JSONValue?) throws {
-        _ = try session.set(name: name, json: value?.compact)
+        _ = try onQueryClock { try $0.set(name: name, json: value?.compact) }
         let warning = mirror { _ = try $0.set(name: name, json: value?.compact) }
         let redrawWarning = try refresh()
         if let warning = warning ?? redrawWarning { failure = warning }
@@ -313,7 +342,7 @@ public final class LiveProgram {
         if origin.generation != generation {
             guard case let .binding(now)? = locate(origin.steps)?.value, now.json == marker.json else { throw Self.stale }
         }
-        _ = try session.writeBinding(marker: marker.json.compact, json: value.compact)
+        _ = try onQueryClock { try $0.writeBinding(marker: marker.json.compact, json: value.compact) }
         try refresh()
     }
 
@@ -342,7 +371,7 @@ public final class LiveProgram {
     /// that writes its field itself (such as Chips) gives its name. Complete
     /// admission determines success; preview refusals are reported in failure.
     public func setField(form: String?, componentType: String? = nil, name: String, to value: JSONValue?) throws {
-        _ = try session.setField(form: form, componentType: componentType, name: name, json: value?.compact, save: true)
+        _ = try onQueryClock { try $0.setField(form: form, componentType: componentType, name: name, json: value?.compact, save: true) }
         let warning = mirror {
             _ = try $0.setField(form: form, componentType: componentType, name: name, json: value?.compact, save: true)
         }
@@ -379,8 +408,10 @@ public final class LiveProgram {
         guard !isStreaming, let element = current(element, form: form) else { return }
         let props = PropReader(element: element)
         guard let value = SelectionField.defaultValue(props) else { return }
-        _ = try session.initializeField(form: form, componentType: element.typeName,
-            name: try props.text("name").plain, json: value.compact, streaming: false)
+        try onQueryClock {
+            try $0.initializeField(form: form, componentType: element.typeName,
+                name: try props.text("name").plain, json: value.compact, streaming: false)
+        }
         try refresh()
     }
 
@@ -457,13 +488,13 @@ public final class LiveProgram {
         let output: ActionOutput
         switch found.value {
         case nil, .scalar(.null)?:
-            output = try session.run(action: nil, message: message, form: form)
+            output = try onQueryClock { try $0.run(action: nil, message: message, form: form) }
         case .plan?:
             guard let handle else { throw LiveError(description: "no evaluated tree") }
             let action = try session.actionAt(evaluation: handle, path: jsonPath)
-            output = try session.run(action: action, message: message, form: form)
+            output = try onQueryClock { try $0.run(action: action, message: message, form: form) }
         case let .record(fields)?:
-            output = try session.runLegacy(json: PropValue.record(fields).json.compact, message: message, form: form)
+            output = try onQueryClock { try $0.runLegacy(json: PropValue.record(fields).json.compact, message: message, form: form) }
         case let other?:
             throw LiveError(description: "\(prop) holds \(other.summary), not an action")
         }
@@ -478,7 +509,7 @@ public final class LiveProgram {
         guard let table = current(table, form: form), let origin = table.origin,
               case let .scalar(.string(label))? = locate(origin.steps + ["rows", String(row), String(column)])?.value
         else { throw Self.stale }
-        try finish(try session.run(action: nil, message: label, form: form))
+        try finish(try onQueryClock { try $0.run(action: nil, message: label, form: form) })
     }
 
     /// Ends the mutation a host event asked for: with `succeeded`, the plan
@@ -486,7 +517,7 @@ public final class LiveProgram {
     /// that don't wait on a mutation are ignored.
     public func resume(_ event: HostEvent, succeeded: Bool) throws {
         guard let continuation = event.continuation else { return }
-        try finish(try session.resume(continuation: continuation, succeeded: succeeded))
+        try finish(try onQueryClock { try $0.resume(continuation: continuation, succeeded: succeeded) })
     }
 
     /// Redraws, then hands over the events. The store may have changed even
@@ -502,14 +533,192 @@ public final class LiveProgram {
         }
         failure = [stepFailure, projectionWarning, redrawError.map(Self.describe)].compactMap { $0 }.joined(separator: "\n")
         if failure == "" { failure = nil }
+        for event in Self.hostEvents(output) { onHostEvent(event) }
+        if let redrawError { throw redrawError }
+    }
+
+    static func hostEvents(_ output: ActionOutput) -> [HostEvent] {
         var events = output.events.map { json in
             HostEvent(json: (try? JSONValue.parse(json)) ?? .object([("type", .string("")), ("unreadable", .string(json))]))
         }
         if let continuation = output.continuation, !events.isEmpty {
             events[events.count - 1].continuation = continuation
         }
-        for event in events { onHostEvent(event) }
-        if let redrawError { throw redrawError }
+        return events
+    }
+
+    // MARK: Queries
+
+    /// Sample the clock before commands that can register a new interval.
+    /// Even a refused command can follow a tick that needs to be dispatched.
+    @discardableResult private func onQueryClock<T>(_ command: (RuntimeSession) throws -> T) throws -> T {
+        try queryDriver?.advanceClock()
+        do { return try command(session) }
+        catch {
+            syncQueries()
+            throw error
+        }
+    }
+
+    /// Takes the session's query update: redraws if the queries changed and
+    /// the tree doesn't show it yet, hands the wanted calls and the refresh
+    /// deadline to the driver, then delivers the host events of the action
+    /// plans that resumed after a mutation, as a click's are delivered.
+    func syncQueries(alreadyDrawn: Bool = false) {
+        guard let driver = queryDriver else { return }
+        var effects: QueryEffects
+        do { effects = try session.takeQueryUpdate() } catch { queryFailure(error); return }
+        var redrawWarning: String?
+        // A draw evaluates the queries before drawing, so a change taken
+        // after one is already on screen.
+        if effects.changed && !alreadyDrawn && hasProgram {
+            do {
+                redrawWarning = try refreshStore(force: true)
+                let more = try session.takeQueryUpdate()
+                effects.calls += more.calls
+                effects.actions += more.actions
+                effects.nextRefreshDueMs = more.nextRefreshDueMs
+            } catch { redrawWarning = Self.describe(error) }
+        }
+        // Calls taken are dispatched even when redrawing failed: the session
+        // hands each out once.
+        driver.dispatch(effects.calls, deadline: effects.nextRefreshDueMs)
+        let failures = effects.actions.compactMap { output in
+            output.failure.map { ($0.step.map { "Step \($0): " } ?? "") + Self.describe($0.error) }
+        } + [redrawWarning].compactMap { $0 }
+        if !failures.isEmpty { failure = failures.joined(separator: "\n") }
+        for output in effects.actions {
+            for event in Self.hostEvents(output) { onHostEvent(event) }
+        }
+    }
+
+    /// An error with no caller to throw to: a tool call's outcome or a timer.
+    func queryFailure(_ error: any Error) {
+        failure = Self.describe(error)
+    }
+
+    private func queryStreamingChanged() {
+        guard queryDriver != nil, hasProgram else { return }
+        do {
+            try queryDriver?.advanceClock()
+            if let warning = try refresh(force: true) { failure = warning }
+        } catch { queryFailure(error) }
+    }
+
+    /// Lets the queries run: called after attaching, and by the view lifecycle.
+    private func applyQueryPause() throws {
+        let paused = queriesPausedByApp || hiddenByViews
+        guard let driver = queryDriver, driver.paused != paused else {
+            queriesPaused = paused
+            return
+        }
+        if paused { try driver.pause() } else { try driver.resume() }
+        queriesPaused = paused
+        syncQueries()
+    }
+
+    /// A tool provider performs the program's queries and mutations: the
+    /// session decides when to call which tool, and this live program calls
+    /// `provider`, reports each outcome and redraws. A settled program
+    /// registers its queries. Existing calls and refresh intervals can carry
+    /// on during a later stream. `queries` says what is loading and what
+    /// failed. A mutation's
+    /// `@Run` waits for its call and the plan carries on after it, delivering
+    /// its host events to `onHostEvent`. A query's refresh interval is kept by
+    /// a timer on `clock`, a monotonic clock that tests can replace. The
+    /// session raises any shorter interval to `minimumRefreshInterval`, a whole
+    /// number of milliseconds from 1 ms to about 24 days.
+    ///
+    /// Nothing times a call out. Calls in flight are cancelled, and their
+    /// outcomes ignored, when the live program goes away, when queries pause
+    /// and on `detachToolProvider()`.
+    public func attachToolProvider<C: Clock>(
+        clock: C,
+        minimumRefreshInterval: Duration = .seconds(1),
+        _ provider: @escaping ToolProvider
+    ) throws where C.Duration == Duration {
+        guard queryDriver == nil else { throw LiveError(description: "a tool provider is already attached") }
+        let minimum = QueryDriver.milliseconds(minimumRefreshInterval)
+        guard minimumRefreshInterval == .milliseconds(minimum) else {
+            throw LiveError(description: "the minimum refresh interval must be a whole number of milliseconds")
+        }
+        let driver = QueryDriver(program: self, session: session, clock: clock, provider: provider)
+        try session.attachToolProviderAt(nowMs: driver.now(), minimumMs: minimum)
+        queryDriver = driver
+        do {
+            if queriesPaused { try driver.pause() }
+            if hasProgram { try refreshStore(force: true) }
+        } catch {
+            queryDriver = nil
+            driver.stop()
+            try? session.detachToolProvider()
+            _ = try? refreshStore(force: true)
+            throw error
+        }
+        syncQueries(alreadyDrawn: true)
+    }
+
+    /// `attachToolProvider(clock:minimumRefreshInterval:_:)` on the
+    /// continuous clock, which keeps counting while the Mac sleeps.
+    public func attachToolProvider(minimumRefreshInterval: Duration = .seconds(1), _ provider: @escaping ToolProvider) throws {
+        try attachToolProvider(clock: ContinuousClock(), minimumRefreshInterval: minimumRefreshInterval, provider)
+    }
+
+    /// Cancels the calls in flight, ignoring their outcomes, and detaches
+    /// the provider: the session forgets the queries' results and the program
+    /// redraws as it would without one.
+    public func detachToolProvider() throws {
+        guard let driver = queryDriver else { return }
+        try session.detachToolProvider()
+        driver.stop()
+        queryDriver = nil
+        try refreshStore(force: true)
+    }
+
+    /// Whether a tool provider is attached.
+    public var hasToolProvider: Bool { queryDriver != nil }
+
+    /// Runs again every query that has an error, as upstream's Retry button
+    /// does (with no errors, every query).
+    public func retryFailedQueries() throws {
+        guard queryDriver != nil else { return }
+        try onQueryClock { try $0.retryFailedQueries() }
+        syncQueries()
+    }
+
+    /// Whether queries are paused, by `pauseQueries()` or because every view
+    /// drawing this program has disappeared. While paused no refresh fires,
+    /// calls in flight are cancelled and results already loaded stay.
+    public private(set) var queriesPaused = false
+
+    /// Pauses the queries until `resumeQueries()`, as when the app goes to
+    /// the background. A view appearing does not resume them.
+    public func pauseQueries() throws {
+        queriesPausedByApp = true
+        try applyQueryPause()
+    }
+
+    /// Undoes `pauseQueries()`. Queries resume unless every view drawing this
+    /// program has disappeared; they fetch what they still need and refresh.
+    public func resumeQueries() throws {
+        queriesPausedByApp = false
+        try applyQueryPause()
+    }
+
+    /// The view lifecycle: queries pause when the last `ElementView(live:)`
+    /// drawing this program disappears, and resume when one appears.
+    func viewAppeared() {
+        visibleViews += 1
+        guard hiddenByViews else { return }
+        hiddenByViews = false
+        do { try applyQueryPause() } catch { queryFailure(error) }
+    }
+
+    func viewDisappeared() {
+        visibleViews = max(0, visibleViews - 1)
+        guard visibleViews == 0, !hiddenByViews else { return }
+        hiddenByViews = true
+        do { try applyQueryPause() } catch { queryFailure(error) }
     }
 
     /// For built-in views: does `body`, keeping why it failed.
@@ -524,11 +733,20 @@ public final class LiveProgram {
 
     // MARK: Evaluating
 
-    /// Evaluates the tree again if the store has changed since it last was.
-    @discardableResult private func refresh() throws -> String? {
+    /// Evaluates the tree again if the store has changed since it last was,
+    /// then takes the session's query update.
+    @discardableResult private func refresh(force: Bool = false) throws -> String? {
+        let before = completeGeneration
+        defer { syncQueries(alreadyDrawn: completeGeneration != before) }
+        return try refreshStore(force: force)
+    }
+
+    /// Evaluates the tree again if the store has changed since it last was,
+    /// or always with `force` (the queries' results changed).
+    @discardableResult private func refreshStore(force: Bool = false) throws -> String? {
         pristineCache = nil
         let base = completeDisplay ?? display
-        guard try session.version() != base.version else {
+        guard try force || session.version() != base.version else {
             if let previewSession {
                 do {
                     if try previewSession.version() != version {
@@ -549,6 +767,7 @@ public final class LiveProgram {
         }
         if let previewSession {
             completeDisplay = next
+            display.queries = next.queries
             do {
                 // Remove values explicitly made undefined in the complete store.
                 if case let .object(old) = base.state {
@@ -571,7 +790,12 @@ public final class LiveProgram {
     private func evaluated(_ runtime: RuntimeSession, from base: Display,
                            programID: UUID? = nil, streaming: Bool? = nil) throws -> Display {
         let started = ContinuousClock.now
-        let output = try runtime.evaluate()
+        let output: EvaluationOutput
+        if runtime === session {
+            output = try runtime.evaluateWithResponse(responseState: ResponseState(streaming: requestedStreaming || showingPreview))
+        } else {
+            output = try runtime.evaluate()
+        }
         return try decoded(output, snapshot: runtime.snapshot(), version: runtime.version(),
             from: base, programID: programID, streaming: streaming, started: started)
     }
@@ -590,11 +814,15 @@ public final class LiveProgram {
         let nextErrors = (json["errors"]?.array ?? []).map(RuntimeIssue.init(json:))
         let nextVersion = version
         let nextState = try JSONValue.parse(snapshot)
+        // A preview session has no tool provider: it keeps showing the
+        // complete session's query status.
+        let queries = streaming == true ? base.queries
+            : QueryStatus(snapshot: output.querySnapshotJson, evaluationError: output.queryEvaluationError)
         // Publish only after every fallible Swift conversion/read succeeded.
         return Display(root: nextRoot, errors: nextErrors, state: nextState, version: nextVersion,
             sizeLimited: output.sizeLimited, depthLimited: output.depthLimited,
             evaluation: ContinuousClock.now - started, rootJSON: nextRootJSON, handle: output.evaluation,
-            id: nextID, generation: nextGeneration, streaming: streaming ?? base.streaming)
+            id: nextID, generation: nextGeneration, streaming: streaming ?? base.streaming, queries: queries)
     }
 
     private struct Located {
@@ -637,7 +865,7 @@ public final class LiveProgram {
         return Located(value: current, jsonPath: jsonPath, form: form)
     }
 
-    static func describe(_ error: any Error) -> String {
+    nonisolated static func describe(_ error: any Error) -> String {
         guard let error = error as? OpenUiError else { return String(describing: error) }
         switch error {
         case let .RefusedWrite(reason), let .Evaluation(reason), let .LimitExceeded(reason),

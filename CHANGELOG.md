@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+- OpenUINative's `LiveProgram` accepts an async tool provider through
+  `attachToolProvider`. Apps can read query status, retry failures, pause or
+  resume queries, and detach the provider. The last `ElementView(live:)`
+  disappearing pauses queries. Stream previews and the app's streaming
+  request defer new query registrations (#92).
+
 - With a tool provider, an action's `@Run` of a query runs it again through
   the query manager and emits no host event; without one the `run` event is
   unchanged. Sessions and both bindings gain `retryFailedQueries`. Rust adds

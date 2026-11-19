@@ -40,10 +40,25 @@ public struct ElementView: View {
                 drawing.fallback(element, path)
             }
         case let .live(live):
+            LiveRoot(live: live).id(ObjectIdentifier(live))
+        }
+    }
+}
+
+/// A live program's tree, and the view lifecycle its queries follow: they
+/// pause when the last view drawing the program disappears and resume when
+/// one appears.
+private struct LiveRoot: View {
+    let live: LiveProgram
+
+    var body: some View {
+        ZStack {
             if let root = live.root {
                 ElementView(element: root).environment(\.liveProgram, live)
             }
         }
+        .onAppear { live.viewAppeared() }
+        .onDisappear { live.viewDisappeared() }
     }
 }
 
