@@ -101,7 +101,8 @@ entry after the command (rule 1), so it has no call (rule 3). The first
 implementation issued a call at each move and then retired it within the
 same command, which handed drivers calls nobody wanted. The cost is none to
 the app: it makes fewer requests and sees the same final result. Both sides
-are pinned (`readers-cached-results-propagate-through-two-rounds`).
+are pinned (`a-reader-only-dispatches-keys-still-current-after-the-cascade`
+in CONFORMANCE.md).
 
 This is a divergence on inputs a real program can produce, which is why the
 glossary's definition of a divergence was widened. CONFORMANCE.md lists every
