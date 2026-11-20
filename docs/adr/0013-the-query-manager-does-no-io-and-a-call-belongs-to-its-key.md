@@ -89,6 +89,20 @@ shape of program. The cost is one tool call upstream does not make. Both
 sides are pinned (`a-previous-key-releases-a-waiting-self-reader` in
 CONFORMANCE.md).
 
+Rules 1 and 3 decide a second case, found by the query fuzz target after
+#86 merged and confirmed by the maintainer on 2026-11-20. When one command
+moves a reader through several keys (`c` reads `b`, `b` reads `a`, every
+source a cache hit), upstream calls the tool for each key the reader passes
+through: three calls in the pinned scenario, of which only the last result
+is used. Here requests are collected while readers are re-evaluated and a
+call is issued once the command's cascade has finished, for each key that is
+still some query's current key. A key a reader only passed through has no
+entry after the command (rule 1), so it has no call (rule 3). The first
+implementation issued a call at each move and then retired it within the
+same command, which handed drivers calls nobody wanted. The cost is none to
+the app: it makes fewer requests and sees the same final result. Both sides
+are pinned (`readers-cached-results-propagate-through-two-rounds`).
+
 This is a divergence on inputs a real program can produce, which is why the
 glossary's definition of a divergence was widened. CONFORMANCE.md lists every
 situation in which output differs, with the rule that forces it; each is
