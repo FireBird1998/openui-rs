@@ -90,6 +90,29 @@ export async function failureTranscript(host) {
   return JSON.stringify({failed, retried: host.snapshot(), calls, bindingErrors}) + '\n';
 }
 
+// Describe a native JS result as JSON without letting JSON.stringify convert
+// it first: dates, boxed numbers, collections, holes and symbol keys keep
+// their kind. Plain JSON values describe as themselves.
+function describe(value) {
+  if (typeof value === 'function') return {type: 'function', name: value.name};
+  if (typeof value === 'number' && !Number.isFinite(value)) return {type: 'number', value: String(value)};
+  if (value === undefined) return {type: 'undefined'};
+  if (typeof value === 'symbol') return {type: 'symbol', description: value.description};
+  if (value === null || typeof value !== 'object') return value;
+  if (value instanceof Date) return {type: 'Date', value: Number.isNaN(value.getTime()) ? 'Invalid Date' : value.toISOString()};
+  if (value instanceof Number) return {type: 'Number', value: String(value.valueOf())};
+  if (value instanceof Map) return {type: 'Map', entries: [...value].map(entry => entry.map(describe))};
+  if (value instanceof Set) return {type: 'Set', values: [...value].map(describe)};
+  if (ArrayBuffer.isView(value)) return {type: value.constructor.name, values: [...value as any]};
+  if (Array.isArray(value)) return Array.from(value, (_, i) => i in value ? describe(value[i]) : {type: 'hole'});
+  const out = {};
+  for (const key of Object.keys(value)) out[key] = describe(value[key]);
+  for (const key of Object.getOwnPropertySymbols(value)) out['@@' + key.description] = describe(value[key]);
+  return out;
+}
+
+const date = new Date(Date.UTC(2026, 10, 19, 12, 30));
+
 // Observe each native JS result before projecting the observation to JSON.
 export async function nonJsonTranscript(createHost) {
   const rows = [];
@@ -104,6 +127,29 @@ export async function nonJsonTranscript(createHost) {
     ['negative Infinity', { read: () => -Infinity }],
     ['MCP nested function', { callTool: () => ({structuredContent: {a: function result() {}}}) }],
     ['MCP nested NaN', { callTool: () => ({structuredContent: [NaN]}) }],
+    // JSON would lose these or change their kind (ADR 0014).
+    ['Map', { read: () => new Map([['k', 1]]) }],
+    ['MCP nested Map', { callTool: () => ({structuredContent: {a: new Map([['k', 1]])}}) }],
+    ['nested Set', { read: () => ({a: new Set([1])}) }],
+    ['MCP Set', { callTool: () => ({structuredContent: new Set([1])}) }],
+    ['nested symbol', { read: () => ({a: Symbol('s')}) }],
+    ['symbol array item', { read: () => [Symbol('s')] }],
+    ['MCP nested symbol', { callTool: () => ({structuredContent: {a: Symbol('s')}}) }],
+    ['boxed NaN', { read: () => ({a: new Number(NaN)}) }],
+    ['MCP boxed Infinity', { callTool: () => ({structuredContent: [new Number(Infinity)]}) }],
+    ['invalid Date', { read: () => ({at: new Date(NaN)}) }],
+    ['MCP invalid Date', { callTool: () => ({structuredContent: {at: new Date(NaN)}}) }],
+    ['typed array', { read: () => new Uint8Array([1, 2]) }],
+    ['MCP nested typed array', { callTool: () => ({structuredContent: {bytes: new Float64Array([0.5])}}) }],
+    // JSON.stringify's conversions that the driver keeps (ADR 0014).
+    ['undefined property', { read: () => ({a: 1, b: undefined}) }],
+    ['valid Date', { read: () => ({at: date}) }],
+    ['undefined array item', { read: () => [1, undefined, 3] }],
+    // eslint-disable-next-line no-sparse-arrays
+    ['sparse array hole', { read: () => [1, , 3] }],
+    ['symbol key', { read: () => ({a: 1, [Symbol('k')]: 2}) }],
+    ['MCP accepted conversions', { callTool: () => ({structuredContent:
+      {a: 1, b: undefined, at: date, list: [undefined, , 3], [Symbol('k')]: 2}}) }],
   ]) {
     const host = createHost();
     const bindingErrors = [];
@@ -112,12 +158,8 @@ export async function nonJsonTranscript(createHost) {
       host.draw(false);
       await nextToolTurn();
       const {q, ...status} = host.snapshot();
-      const value = typeof q === 'function' ? q.name : typeof q === 'bigint' ? String(q) : q;
-      rows.push(JSON.stringify({label, type: typeof q, value, ...status, bindingErrors}, (_key, item) => {
-        if (typeof item === 'function') return {type: 'function', name: item.name};
-        if (typeof item === 'number' && !Number.isFinite(item)) return {type: 'number', value: String(item)};
-        return item;
-      }));
+      const value = typeof q === 'function' ? q.name : typeof q === 'bigint' ? String(q) : describe(q);
+      rows.push(JSON.stringify({label, type: typeof q, value, ...status, bindingErrors}));
     } finally { host.dispose(); }
   }
   return rows.join('\n') + '\n';

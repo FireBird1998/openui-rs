@@ -428,6 +428,12 @@ diagnostic on screen.
 
 Perform each wanted call and return its opaque object to `completeToolCall`
 with an outcome JSON object containing exactly one of these fields.
+`completeToolCall` refuses an outcome over the limits and keeps the receipt,
+so the embedder can send a corrected one. `finishToolCall` takes the same
+outcome as final: a refused outcome, including invalid JSON or a failure
+message too large to admit, settles the call as a tool error naming the
+reason. The JavaScript driver's terminal mode (`completeToolCall`'s third
+argument) is the same operation.
 
 | Field | Meaning |
 | --- | --- |

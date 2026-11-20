@@ -167,19 +167,15 @@ public struct QueryIssue: Sendable, Equatable {
 
     private func complete(_ call: WantedToolCall, _ outcome: String) {
         guard let program else { return }
+        // The clock moves first, as before, but its failure must not skip
+        // the delivery: a receipt that is never finished stays live.
+        do { try advanceClock() } catch { program.queryFailure(error) }
         do {
-            try advanceClock()
-            do { try session.completeToolCall(call: call, outcomeJson: outcome) }
-            catch let refusal as OpenUiError {
-                // The session refuses an outcome over its limits and keeps the
-                // call open. Report the refusal as the call's failure instead,
-                // so the query shows an error rather than loading for ever.
-                switch refusal {
-                case .LimitExceeded, .InvalidJson:
-                    try session.completeToolCall(call: call, outcomeJson: Self.failed(LiveProgram.describe(refusal)))
-                default: throw refusal
-                }
-            }
+            // This is the provider's final answer. The session settles an
+            // outcome it refuses (over its limits or invalid JSON, an
+            // oversized failure message included) as the call's tool error,
+            // so the query shows an error rather than loading for ever.
+            try session.finishToolCall(call: call, outcomeJson: outcome)
         } catch {
             program.queryFailure(error)
         }

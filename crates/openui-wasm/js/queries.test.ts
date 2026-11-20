@@ -141,6 +141,9 @@ test('retired calls, paused calls and disposed sessions ignore late fulfillment 
     expect(changes).toBe(before);
     session.pauseQueries();
     session.resumeQueries();
+    // Cancelling a pending call defers the next dispatch by one task (ADR 0014).
+    expect(calls.length).toBe(3);
+    await nextToolTurn();
     expect(calls.length).toBe(4);
     calls[2].reject('paused');
     if (stop === 'detach') session.setToolProvider(null);

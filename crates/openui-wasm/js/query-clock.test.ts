@@ -1,5 +1,9 @@
 import { expect, test } from 'bun:test';
-import { kind, wasm } from './support';
+import { kind, loadWith, wasm } from './support';
+
+// These tests own every timer. A host without setImmediate or MessageChannel
+// also takes the driver's turn between rounds from setTimeout.
+const timerHost = 'var setImmediate, MessageChannel;';
 
 test('the driver can rearm one guarded deadline and consume a paused call once', () => {
   using library = new wasm.ComponentLibrary('{"$defs":{}}');
@@ -61,9 +65,10 @@ test('one refresh timer follows absolute deadlines across delayed registration, 
     timers.clear(); // platform one-shot timer
     callback();
   };
-  using library = new wasm.ComponentLibrary('{"$defs":{}}');
-  using session = new wasm.RuntimeSession(library);
-  using p = wasm.parseProgram('q=Query("read",{},null,0.01)', library);
+  const pkg = loadWith(timerHost);
+  using library = new pkg.ComponentLibrary('{"$defs":{}}');
+  using session = new pkg.RuntimeSession(library);
+  using p = pkg.parseProgram('q=Query("read",{},null,0.01)', library);
   const hanging = Promise.withResolvers<number>();
   session.setToolProvider({ read() { return ++calls === 1 ? hanging.promise : calls; } }, {minimumMs:50n});
   now = 450;
@@ -121,9 +126,8 @@ test('a late real Bun wake waits a full period before the next driven refresh', 
 });
 
 test('a refused timer wake reports its error and the next draw re-arms the session deadline', async () => {
-  const { loadWith } = await import('./support');
   const { spyOn } = await import('bun:test');
-  const pkg = loadWith(`
+  const pkg = loadWith(timerHost + `
     const advance = RuntimeSession.prototype.advanceQueryClock;
     RuntimeSession.prototype.advanceQueryClock = function(now) {
       if (!this.refused) { this.refused = true; throw Error('timer wake'); }

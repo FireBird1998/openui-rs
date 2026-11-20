@@ -32,6 +32,7 @@ func detachToolProvider() throws
 func evaluateWithResponse(responseState: ResponseState) throws -> EvaluationOutput
 func replaceProgramWithResponse(program: ParsedProgram, persisted: String?, projected: String?, nativeView: Bool, responseState: ResponseState) throws -> ReplacementOutput
 func completeToolCall(call: WantedToolCall, outcomeJson: String) throws
+func finishToolCall(call: WantedToolCall, outcomeJson: String) throws
 func takeQueryUpdate() throws -> QueryEffects
 func retryFailedQueries() throws
 func actionAt(evaluation: EvaluationHandle, path: [String]) throws -> ActionHandle
@@ -78,6 +79,7 @@ fun detachToolProvider()
 fun evaluateWithResponse(responseState: ResponseState): EvaluationOutput
 fun replaceProgramWithResponse(program: ParsedProgram, persisted: String?, projected: String?, nativeView: Boolean, responseState: ResponseState): ReplacementOutput
 fun completeToolCall(call: WantedToolCall, outcomeJson: String)
+fun finishToolCall(call: WantedToolCall, outcomeJson: String)
 fun takeQueryUpdate(): QueryEffects
 fun retryFailedQueries()
 fun actionAt(evaluation: EvaluationHandle, path: List<kotlin.String>): ActionHandle
@@ -242,7 +244,11 @@ Calls that omit it retain their existing behavior.
 
 Call `takeQueryUpdate()` after session operations to claim wanted calls and the
 redraw flag. Read each call's `toolName()` and optional `argumentsJson()` and
-pass the object back to `completeToolCall`. A refused draw preserves the
+pass the object back to `completeToolCall`. A driver with the provider's
+final answer passes it to `finishToolCall` instead, so that an outcome
+refused under the limits or as invalid JSON, an oversized diagnostic
+included, settles the call as a tool error rather than leaving the receipt
+live. A refused draw preserves the
 previous root and evaluation handle. On a blocked first draw, a query with
 a provider reads as null. Without a provider it reads its declared default,
 as in the upstream renderer. [Driving queries](runtime-binding.md#driving-queries)

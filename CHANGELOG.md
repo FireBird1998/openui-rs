@@ -2,6 +2,18 @@
 
 ## Unreleased
 
+- The WebAssembly tool provider driver yields between dispatch rounds through
+  `setImmediate` or a `MessageChannel` instead of a zero-delay timer: 200
+  dependent calls take about 7 ms in Bun instead of about 270 ms, and a few
+  milliseconds instead of about 0.9 s in Chromium. A tool result holding a
+  `Map`, `Set`, nested or boxed symbol, boxed non-finite number, invalid
+  `Date`, typed array, `ArrayBuffer` or `DataView` now ends the call with a
+  readable `tool-error` instead of passing through `JSON.stringify` silently.
+  The native binding gains `finishToolCall`, a terminal completion that
+  settles a refused outcome as the call's tool error; OpenUINative's driver
+  uses it, so an oversized failure message no longer leaves a query loading
+  (#109).
+
 - CONFORMANCE.md, the README, TESTING.md and the runtime crate's overview
   describe the ported query manager, the tool provider and the session
   operations. A `query` coverage-guided fuzz target replays the query manager

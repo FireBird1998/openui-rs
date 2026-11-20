@@ -8,3 +8,22 @@
 {"label":"negative Infinity","type":"number","value":{"type":"number","value":"-Infinity"},"__openui_loading":[],"__openui_refetching":[],"__openui_errors":[],"bindingErrors":[]}
 {"label":"MCP nested function","type":"object","value":{"a":{"type":"function","name":"result"}},"__openui_loading":[],"__openui_refetching":[],"__openui_errors":[],"bindingErrors":[]}
 {"label":"MCP nested NaN","type":"object","value":[{"type":"number","value":"NaN"}],"__openui_loading":[],"__openui_refetching":[],"__openui_errors":[],"bindingErrors":[]}
+{"label":"Map","type":"object","value":{"type":"Map","entries":[["k",1]]},"__openui_loading":[],"__openui_refetching":[],"__openui_errors":[],"bindingErrors":[]}
+{"label":"MCP nested Map","type":"object","value":{"a":{"type":"Map","entries":[["k",1]]}},"__openui_loading":[],"__openui_refetching":[],"__openui_errors":[],"bindingErrors":[]}
+{"label":"nested Set","type":"object","value":{"a":{"type":"Set","values":[1]}},"__openui_loading":[],"__openui_refetching":[],"__openui_errors":[],"bindingErrors":[]}
+{"label":"MCP Set","type":"object","value":{"type":"Set","values":[1]},"__openui_loading":[],"__openui_refetching":[],"__openui_errors":[],"bindingErrors":[]}
+{"label":"nested symbol","type":"object","value":{"a":{"type":"symbol","description":"s"}},"__openui_loading":[],"__openui_refetching":[],"__openui_errors":[],"bindingErrors":[]}
+{"label":"symbol array item","type":"object","value":[{"type":"symbol","description":"s"}],"__openui_loading":[],"__openui_refetching":[],"__openui_errors":[],"bindingErrors":[]}
+{"label":"MCP nested symbol","type":"object","value":{"a":{"type":"symbol","description":"s"}},"__openui_loading":[],"__openui_refetching":[],"__openui_errors":[],"bindingErrors":[]}
+{"label":"boxed NaN","type":"object","value":{"a":{"type":"Number","value":"NaN"}},"__openui_loading":[],"__openui_refetching":[],"__openui_errors":[],"bindingErrors":[]}
+{"label":"MCP boxed Infinity","type":"object","value":[{"type":"Number","value":"Infinity"}],"__openui_loading":[],"__openui_refetching":[],"__openui_errors":[],"bindingErrors":[]}
+{"label":"invalid Date","type":"object","value":{"at":{"type":"Date","value":"Invalid Date"}},"__openui_loading":[],"__openui_refetching":[],"__openui_errors":[],"bindingErrors":[]}
+{"label":"MCP invalid Date","type":"object","value":{"at":{"type":"Date","value":"Invalid Date"}},"__openui_loading":[],"__openui_refetching":[],"__openui_errors":[],"bindingErrors":[]}
+{"label":"typed array","type":"object","value":{"type":"Uint8Array","values":[1,2]},"__openui_loading":[],"__openui_refetching":[],"__openui_errors":[],"bindingErrors":[]}
+{"label":"MCP nested typed array","type":"object","value":{"bytes":{"type":"Float64Array","values":[0.5]}},"__openui_loading":[],"__openui_refetching":[],"__openui_errors":[],"bindingErrors":[]}
+{"label":"undefined property","type":"object","value":{"a":1,"b":{"type":"undefined"}},"__openui_loading":[],"__openui_refetching":[],"__openui_errors":[],"bindingErrors":[]}
+{"label":"valid Date","type":"object","value":{"at":{"type":"Date","value":"2026-11-19T12:30:00.000Z"}},"__openui_loading":[],"__openui_refetching":[],"__openui_errors":[],"bindingErrors":[]}
+{"label":"undefined array item","type":"object","value":[1,{"type":"undefined"},3],"__openui_loading":[],"__openui_refetching":[],"__openui_errors":[],"bindingErrors":[]}
+{"label":"sparse array hole","type":"object","value":[1,{"type":"hole"},3],"__openui_loading":[],"__openui_refetching":[],"__openui_errors":[],"bindingErrors":[]}
+{"label":"symbol key","type":"object","value":{"a":1,"@@k":2},"__openui_loading":[],"__openui_refetching":[],"__openui_errors":[],"bindingErrors":[]}
+{"label":"MCP accepted conversions","type":"object","value":{"a":1,"b":{"type":"undefined"},"at":{"type":"Date","value":"2026-11-19T12:30:00.000Z"},"list":[{"type":"undefined"},{"type":"hole"},3],"@@k":2},"__openui_loading":[],"__openui_refetching":[],"__openui_errors":[],"bindingErrors":[]}

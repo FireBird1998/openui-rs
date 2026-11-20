@@ -47,3 +47,59 @@ fn native_limits_set_the_cache_cap_and_refused_results_become_tool_errors() {
         Err(OpenUiError::InvalidToolCall)
     ));
 }
+
+/// A native driver has the provider's final answer (#109). Like the
+/// JavaScript driver's terminal mode, `finish_tool_call` settles a refused
+/// outcome as the call's failure instead of leaving the receipt live.
+#[test]
+fn finishing_a_call_settles_an_oversized_diagnostic_and_invalid_json_as_tool_errors() {
+    let library =
+        ComponentLibrary::new(r#"{"$defs":{"Box":{"properties":{"value":{}}}}}"#.into()).unwrap();
+    let limits = RuntimeLimits {
+        evaluation: ParseLimits {
+            result_size: Some(256),
+            ..ParseLimits::default()
+        },
+        ..RuntimeLimits::default()
+    };
+    let session = RuntimeSession::with_limits(library.clone(), None, limits).unwrap();
+    session.attach_tool_provider().unwrap();
+    let program = parse(
+        "a = Query(\"a\")\nb = Query(\"b\")\nroot = Box([a, b])".into(),
+        library,
+        None,
+    )
+    .program;
+    session.replace_program(program, None, None, true).unwrap();
+    let calls = session.take_query_update().unwrap().calls;
+    let oversized = format!(r#"{{"failed":"{}"}}"#, "x".repeat(1024));
+    // The two-argument form refuses and keeps the receipt for a correction.
+    assert!(matches!(
+        session.complete_tool_call(calls[0].clone(), oversized.clone()),
+        Err(OpenUiError::LimitExceeded { .. })
+    ));
+    session
+        .finish_tool_call(calls[0].clone(), oversized)
+        .unwrap();
+    session
+        .finish_tool_call(calls[1].clone(), "not json".into())
+        .unwrap();
+    for call in &calls {
+        assert!(matches!(
+            session.finish_tool_call(call.clone(), r#"{"value":1}"#.into()),
+            Err(OpenUiError::InvalidToolCall)
+        ));
+    }
+    let snapshot = snapshot(&session);
+    assert_eq!(snapshot["__openui_loading"], serde_json::json!([]));
+    let errors = snapshot["__openui_errors"].as_array().unwrap();
+    assert_eq!(errors.len(), 2, "{snapshot}");
+    assert!(
+        errors.iter().all(|e| e["code"] == "tool-error"),
+        "{snapshot}"
+    );
+    assert!(
+        errors[0]["message"].as_str().unwrap().contains("limit"),
+        "{snapshot}"
+    );
+}

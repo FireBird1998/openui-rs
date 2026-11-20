@@ -263,7 +263,17 @@ same session. While the driver is attached, manual attach methods,
 and `completeToolCall` throw `RefusedWrite`. The driver coalesces completion
 drains into one host task. Writes during dispatch, from a provider's promise
 reactions, or while reading its result can trigger further calls on the next
-event-loop turn.
+event-loop turn. A write made while a call is pending, or while a
+completion's turn is queued, therefore dispatches one task later instead of
+at once, and so does the next dispatch after pausing or detaching while a
+call is pending, or a session operation made from provider code or a driver
+callback. That task comes from `setImmediate` where it exists (Bun, Node),
+else from a `MessageChannel` (browsers), else from a zero-delay timer; it is
+never a microtask, so timers and input run between rounds (ADR 0014). A
+source that throws falls back to a timer; if that also throws, `onError`
+hears it once and the next session operation drains. On Bun and Node, test
+fakes that replace only `setTimeout` do not govern the turn: fake
+`setImmediate` as well.
 
 The driver accepts these options.
 
@@ -287,9 +297,15 @@ provider diagnostic settles the pending call as a tool failure. The manual
 two-argument form lets the embedder correct a refused outcome. A result
 refused under the session limits appears in the query snapshot. When the
 individual query errors exceed the result limit, the snapshot shows one
-compact diagnostic and Retry can dispatch the call again. Function values
-and non-finite numbers in JSON data, including in MCP `structuredContent`,
-produce a tool error identifying the value. If delivery itself throws, the
+compact diagnostic and Retry can dispatch the call again. A result value
+that JSON would lose or change in kind produces a tool error identifying the
+value, in a function-map result and in MCP `structuredContent`: a function, a
+non-finite number (boxed or not), a BigInt, a symbol as a value, a `Map` or
+`Set`, an invalid `Date`, a typed array, an `ArrayBuffer` or a `DataView`.
+Otherwise `JSON.stringify` is followed: an `undefined` property and a
+symbol-keyed property are dropped, a valid `Date` becomes its ISO string, an
+`undefined` array item or a hole becomes `null`, and an object's own `toJSON`
+is used (ADR 0014). If delivery itself throws, the
 driver reports the binding error and sends a terminal failure for a receipt
 that is still pending. An admitted result survives a cut in dependent reader
 evaluation. A second refusal that leaves the receipt pending

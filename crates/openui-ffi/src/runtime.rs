@@ -1022,6 +1022,19 @@ impl RuntimeSession {
                 .map_err(Into::into)
         })
     }
+    /// Report a driver's final outcome. An outcome refused under the limits
+    /// or as invalid JSON settles the call as a tool failure, so the receipt
+    /// never stays live waiting for a correction no driver will send.
+    pub fn finish_tool_call(
+        &self,
+        call: Arc<WantedToolCall>,
+        outcome_json: String,
+    ) -> Result<(), OpenUiError> {
+        self.call(move |s, _| {
+            s.finish_tool_call_json(&call.inner.id, &outcome_json)
+                .map_err(Into::into)
+        })
+    }
     /// Report prompt annotations needing an explicit choice by the embedder.
     pub fn undecided_bindings(&self) -> Result<Vec<BindingPair>, OpenUiError> {
         self.call(move |s, refs| {

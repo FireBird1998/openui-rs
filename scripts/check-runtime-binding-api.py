@@ -15,7 +15,8 @@ methods = [
     "registerFunction", "replaceProgram", "resume", "run", "runLegacy", "set", "setField", "setProgram",
     "setReferenceValues", "snapshot", "undecidedBindings", "version", "writeBinding",
 ]
-native_methods = methods + ["evaluateWithResponse", "replaceProgramWithResponse"]
+# The native terminal completion; JavaScript passes completeToolCall's third argument.
+native_methods = methods + ["evaluateWithResponse", "replaceProgramWithResponse", "finishToolCall"]
 
 def camel(name):
     return re.sub(r"_([a-z])", lambda m: m[1].upper(), name)
@@ -28,7 +29,11 @@ core += (root / "crates/openui-session/src/refresh.rs").read_text()
 core += (root / "crates/openui-session/src/response.rs").read_text()
 for source, label in [(native, "native"), (inner, "wasm inner"), (core, "session core")]:
     exported = {camel(n) for n in re.findall(r"pub fn (\w+)\(", source)}
-    assert set(native_methods) - {"dispose", "setReferenceValues"} <= exported, label
+    shared = set(native_methods) - {"dispose", "setReferenceValues"}
+    if label == "session core":
+        shared -= {"finishToolCall"}
+        assert "pub fn finish_tool_call_json(" in (root / "crates/openui-session/src/tool_results.rs").read_text(), label
+    assert shared <= exported, label
 native_session = native.split("#[uniffi::export]", 1)[1].split("fn worker_loop", 1)[0]
 assert {camel(n) for n in re.findall(r"pub fn (\w+)\(", native_session)} == set(native_methods) | {"new", "withLimits"}, "native session drift"
 ffi_lib = (root / "crates/openui-ffi/src/lib.rs").read_text()
@@ -170,6 +175,7 @@ assert re.search(r"func evaluate\(\) throws\s*-> EvaluationOutput", api[1])
 assert re.search(r"func replaceProgram\(program: ParsedProgram, persisted: String\?, projected: String\?, nativeView: Bool\) throws\s*-> ReplacementOutput", api[1])
 assert re.search(r"func takeQueryUpdate\(\) throws\s*-> QueryEffects", api[1])
 assert re.search(r"func completeToolCall\(call: WantedToolCall, outcomeJson: String\) throws[ \t]*$", api[1], re.M)
+assert re.search(r"func finishToolCall\(call: WantedToolCall, outcomeJson: String\) throws[ \t]*$", api[1], re.M)
 assert "querySnapshotJson: String? = nil, queryEvaluationError: OpenUiError? = nil" in swift
 assert "public init(streaming: Bool = false, isBundle: Bool = false, complete: Bool = true, error: String? = nil, scripts: [String] = [], scriptRevision: String? = nil)" in swift
 assert re.search(r"func evaluateWithResponse\(responseState: ResponseState\) throws\s*-> EvaluationOutput", api[1])
@@ -214,6 +220,7 @@ if len(sys.argv) == 3:
     assert "fun `replaceProgram`(`program`: ParsedProgram, `persisted`: kotlin.String?, `projected`: kotlin.String?, `nativeView`: kotlin.Boolean): ReplacementOutput" in api[1]
     assert "fun `takeQueryUpdate`(): QueryEffects" in api[1]
     assert re.search(r"fun `completeToolCall`\(`call`: WantedToolCall, `outcomeJson`: kotlin.String\)[ \t]*$", api[1], re.M)
+    assert re.search(r"fun `finishToolCall`\(`call`: WantedToolCall, `outcomeJson`: kotlin.String\)[ \t]*$", api[1], re.M)
     assert "`queryEvaluationError`: OpenUiException? = null" in kotlin and "`querySnapshotJson`: kotlin.String? = null" in kotlin
     for declaration in ["`streaming`: kotlin.Boolean = false", "`complete`: kotlin.Boolean = true",
                         "`isBundle`: kotlin.Boolean = false", "`scripts`: List<kotlin.String> = listOf()",

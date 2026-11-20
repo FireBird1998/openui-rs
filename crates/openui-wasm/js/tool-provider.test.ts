@@ -50,24 +50,95 @@ test('manual and driven attachments require a detach before ownership changes', 
   }
 });
 
-test.each(['await', 'then', 'getter'])('%s writes yield to a real timer scheduled before dispatch', async mode => {
-  using lib = new wasm.ComponentLibrary('{"$defs":{}}');
-  using program = wasm.parseProgram('$n=0\nq=Query("read",{n:$n})', lib);
-  using s = new wasm.RuntimeSession(lib);
-  let calls = 0;
-  const write = n => {
-    if (++calls < 64) s.set('$n', String(n + 1));
-    return n;
-  };
-  const providers = {
-    await: async ({n}) => { await null; return write(n); },
-    then: ({n}) => Promise.resolve(n).then(write),
-    getter: ({n}) => ({get value() { return write(n); }}),
-  };
-  s.setToolProvider({read: providers[mode]});
-  const timer = new Promise<number>(resolve => setTimeout(() => resolve(calls), 0));
-  using out = s.replaceProgram(program, undefined, undefined, false);
-  expect(await timer).toBe(1);
+// Every provider shape that can write to its own session from a call. Each
+// write makes the session want one more call.
+const writingShapes = {
+  await: write => ({read: async ({n}) => { await null; return write(n); }}),
+  then: write => ({read: ({n}) => Promise.resolve(n).then(write)}),
+  sync: write => ({read: ({n}) => write(n)}),
+  getter: write => ({read: ({n}) => ({get value() { return write(n); }})}),
+  toJSON: write => ({read: ({n}) => ({toJSON() { return write(n); }})}),
+  thenable: write => ({read: ({n}) => ({then(resolve) { resolve(write(n)); }})}),
+  mcp: write => ({callTool: async ({arguments: {n}}) => ({structuredContent: write(n)})}),
+};
+// The yield's task source per host: setImmediate (Bun, Node), else a
+// MessageChannel (browsers), else a zero-delay timer.
+const yieldHosts = {
+  setImmediate: '',
+  MessageChannel: 'var setImmediate;',
+  setTimeout: 'var setImmediate, MessageChannel;',
+};
+const spin = (ms: number) => { const end = performance.now() + ms; while (performance.now() < end); };
+
+function chain(pkg, shape, write) {
+  const lib = new pkg.ComponentLibrary('{"$defs":{}}');
+  const program = pkg.parseProgram('$n=0\nq=Query("read",{n:$n})', lib);
+  const s = new pkg.RuntimeSession(lib);
+  s.setToolProvider(writingShapes[shape](n => write(s, n)));
+  return {s, start() { s.replaceProgram(program, undefined, undefined, false).free(); },
+    [Symbol.dispose]() { s.free(); program.free(); lib.free(); }};
+}
+
+test.each(Object.keys(writingShapes))('a timer due before each %s round runs before the next call', async shape => {
+  for (const host of ['setImmediate', 'setTimeout']) {
+    const pkg = loadWith(yieldHosts[host]);
+    const rounds = 12, seen = [], done = Promise.withResolvers<void>();
+    let calls = 0;
+    using c = chain(pkg, shape, (s, n) => {
+      if (++calls < rounds) {
+        setTimeout(() => seen.push(calls), 0);
+        spin(2); // the timer is due before the driver's next task
+        s.set('$n', String(n + 1));
+      } else done.resolve();
+      return n;
+    });
+    setTimeout(() => seen.push(calls), 0);
+    spin(2);
+    c.start();
+    await done.promise;
+    await nextToolTurn();
+    expect([host, seen]).toEqual([host, Array.from({length: rounds}, (_, i) => Math.max(i, 1))]);
+  }
+});
+
+test.each(Object.keys(yieldHosts))('the %s yield is a task: a microtask chain never sees the next call', async host => {
+  const pkg = loadWith(yieldHosts[host]);
+  for (const shape of Object.keys(writingShapes)) {
+    let calls = 0, seen;
+    const done = Promise.withResolvers<void>();
+    using c = chain(pkg, shape, (s, n) => {
+      if (++calls === 1) {
+        let p = Promise.resolve();
+        for (let i = 0; i < 2000; i++) p = p.then(() => {});
+        p.then(() => { seen = calls; });
+      }
+      if (calls < 3) s.set('$n', String(n + 1));
+      else done.resolve();
+      return n;
+    });
+    c.start();
+    await done.promise;
+    expect([shape, seen]).toEqual([shape, 1]);
+  }
+});
+
+test.each(Object.keys(yieldHosts))('200 dependent calls through the %s yield finish well under 100 ms', async host => {
+  const pkg = loadWith(yieldHosts[host]);
+  for (const shape of Object.keys(writingShapes)) {
+    const done = Promise.withResolvers<void>();
+    let calls = 0;
+    using c = chain(pkg, shape, (s, n) => {
+      if (++calls < 200) s.set('$n', String(n + 1));
+      else done.resolve();
+      return n;
+    });
+    const started = performance.now();
+    c.start();
+    await done.promise;
+    const elapsed = performance.now() - started;
+    if (host !== 'setTimeout') expect([shape, elapsed < 100]).toEqual([shape, true]);
+    else expect(elapsed).toBeGreaterThan(100); // the fallback still waits a timer turn per round
+  }
 });
 
 test('a rerun requested during a pending call waits for a host task after completion', async () => {
@@ -81,6 +152,7 @@ test('a rerun requested during a pending call waits for a host task after comple
   s.retryFailedQueries();
   await nextToolTurn();
   const atWake = new Promise<number>(resolve => setTimeout(() => resolve(calls), 0));
+  spin(2); // the timer is due before the completion posts its turn
   first.resolve(1);
   expect(await atWake).toBe(1);
   await nextToolTurn();
@@ -303,4 +375,341 @@ test('a late Cloud script delivery leaves the settled edit visible and loading e
     using result = s.evaluate();
     expect([JSON.parse(result.json).root.props.value, result.isQueryLoading]).toEqual(['edited', false]);
   } finally { firstCall.resolve('old'); }
+});
+
+// The value a query publishes for one function-map result, or its error.
+async function published(result: () => unknown) {
+  using lib = new wasm.ComponentLibrary('{"$defs":{}}');
+  using s = new wasm.RuntimeSession(lib);
+  using program = wasm.parseProgram('q=Query("read",{})', lib);
+  s.setToolProvider({read: result});
+  using out = s.replaceProgram(program, undefined, undefined, false);
+  await nextToolTurn();
+  using draw = s.evaluate();
+  const snapshot = JSON.parse(draw.querySnapshotJson);
+  return snapshot.__openui_errors.length ? snapshot.__openui_errors[0].message : snapshot.q;
+}
+const cannot = what => `Query "read" failed: Tool result contains ${what}, which JSON cannot represent`;
+
+test('results JSON would lose or change in kind fail, in every disguise the driver can see', async () => {
+  class Bag extends Map {}
+  const invalid = new Date(NaN);
+  for (const [result, what] of [
+    [() => new Bag([[1, 2]]), 'a Map'],
+    [() => ({a: [new Set()]}), 'a Set'],
+    [() => ({a: Object(Symbol('s'))}), 'a symbol'],
+    [() => [Object(1n)], 'a BigInt'],
+    [() => ({a: new Number(-Infinity)}), '-Infinity'],
+    [() => [invalid], 'an invalid Date'],
+    [() => invalid, 'an invalid Date'],
+    [() => ({held: {get at() { return 1; }, at2: invalid}}), 'an invalid Date'],
+    [() => new Int8Array(1), 'an Int8Array'],
+    [() => ({b: new ArrayBuffer(2)}), 'an ArrayBuffer'],
+    [() => ({v: new DataView(new ArrayBuffer(2))}), 'a DataView'],
+    [() => { const b = new ArrayBuffer(2), v = new DataView(b); b.transfer(); return [v]; }, 'a DataView'],
+    [() => ({at: Object.assign(new Date(0), {toJSON: undefined})}), 'a Date'],
+    [() => ({at: Object.assign(new Date(0), {valueOf: () => NaN})}), 'an invalid Date'],
+  ] as const) {
+    expect(await published(result)).toBe(cannot(what));
+  }
+});
+
+test('a result keeps JSON.stringify where an author chose a conversion or JSON keeps the value', async () => {
+  class Point { x = 1; y = 2; }
+  const named = Object.assign(new Map([[1, 2]]), {toJSON: () => 'map'});
+  const invalid = Object.assign(new Date(NaN), {toJSON: () => 'unknown'});
+  const bare = Object.assign(Object.create(null), {a: 1});
+  const fake = Object.assign(Object.create(Map.prototype), {a: 1});
+  expect(await published(() => ({named, invalid, point: new Point(), bare, fake,
+    boxed: [new Number(3), new String('s'), new Boolean(false)], gone: undefined, [Symbol('k')]: 1})))
+    .toEqual({named: 'map', invalid: 'unknown', point: {x: 1, y: 2}, bare: {a: 1}, fake: {a: 1},
+      boxed: [3, 's', false]});
+});
+
+test('text that JSON.stringify writes is charged to the transport budget each time it appears', async () => {
+  const text = 'x'.repeat(1 << 20);
+  const disguised = Object.setPrototypeOf(new String('a'), {toString() { return text; }});
+  for (const chunk of [new String(text), JSON.rawJSON(JSON.stringify(text))]) {
+    expect(await published(() => Array(16).fill(chunk))).toBe('Query "read" failed: tool outcome size limit');
+  }
+  // A disguised boxed string publishes its own value, never its toString.
+  expect(await published(() => Array(16).fill(disguised))).toEqual(Array(16).fill('a'));
+});
+
+// A session whose provider writes $n + 1 until $n reaches `until`.
+function chained(pkg, until, options = {}, provider = (s, calls) => ({read: ({n}) => {
+  calls.push(n);
+  if (n < until) s.set('$n', String(n + 1));
+  return n;
+}})) {
+  const lib = new pkg.ComponentLibrary('{"$defs":{}}');
+  const s = new pkg.RuntimeSession(lib);
+  const program = pkg.parseProgram('$n=0\nq=Query("read",{n:$n})', lib);
+  const calls = [], errors = [];
+  s.setToolProvider(provider(s, calls), {onError: e => errors.push(e.message), ...options(s)});
+  return {s, calls, errors, start() { s.replaceProgram(program, undefined, undefined, false).free(); },
+    [Symbol.dispose]() { s.free(); program.free(); lib.free(); }};
+}
+const turns = async (count: number) => { for (let i = 0; i < count; i++) await nextToolTurn(); };
+
+test('a refused first or second setImmediate hop falls back to a timer and the chain goes on', async () => {
+  for (const refused of [1, 2]) {
+    const pkg = loadWith(`var hops = 0, setImmediate = callback => {
+      if (++hops === ${refused}) throw Error('task queue refused');
+      return globalThis.setImmediate(callback);
+    };`);
+    using c = chained(pkg, 3, () => ({}));
+    c.start();
+    await turns(6);
+    expect([refused, c.calls, c.errors]).toEqual([refused, [0, 1, 2, 3], []]);
+    c.s.set('$n', '10');
+    await turns(2);
+    expect(c.calls).toEqual([0, 1, 2, 3, 10]);
+  }
+});
+
+test('a runaway provider on a host whose setImmediate always refuses still lets a timer in', async () => {
+  const pkg = loadWith(`var setImmediate = () => { throw Error('task queue refused'); };`);
+  using c = chained(pkg, Infinity, () => ({}));
+  const atTimer = new Promise<number>(resolve => setTimeout(() => resolve(c.calls.length), 0));
+  spin(2);
+  c.start();
+  expect(await atTimer).toBe(1);
+  c.s.setToolProvider(null);
+  expect(c.errors).toEqual([]);
+});
+
+// No task source left: every refusal used to release the turn, and an onError
+// that writes drained at once, so the next completion was a microtask again.
+test.each([1, 2])('when every task source refuses hop %i, the driver reports once and holds no loop', async hop => {
+  const pkg = loadWith(`var hops = 0, MessageChannel, setImmediate = callback => {
+    if (++hops >= ${hop}) throw Error('setImmediate refused');
+    return globalThis.setImmediate(callback);
+  }, setTimeout = () => { throw Error('setTimeout refused'); };`);
+  let n = 0;
+  const reported = [];
+  using c = chained(pkg, Infinity, s => ({onError: e => { reported.push(e.message); s.set('$n', String(++n)); }}),
+    (s, calls) => ({read: async ({n}) => { calls.push(n); await null; return n; }}));
+  const atTimer = new Promise<number>(resolve => setTimeout(() => resolve(c.calls.length), 0));
+  spin(2);
+  c.start();
+  expect(await atTimer).toBeLessThanOrEqual(2);
+  await turns(3);
+  expect(reported).toEqual(['setTimeout refused']);
+  // The write made inside onError waits for the next session operation,
+  // which drains once and dispatches the wanted call.
+  const before = c.calls.length;
+  using draw = c.s.evaluate();
+  await turns(3);
+  expect(c.calls.length).toBe(before + 1);
+  expect(reported).toEqual(['setTimeout refused']);
+});
+
+
+// Session operations that cancel or replace the driver, run from provider
+// code while a result is read or settles, or from a driver callback. Each
+// used to be able to dispatch at once from inside that code, so calls ran
+// back to back in microtasks while the event loop waited.
+test.each(['pause and resume', 'detach and reattach', 'replace the provider'])(
+  'a timer due before dispatch still runs when provider code or a callback calls %s', async disturbance => {
+  const seen = {};
+  for (const place of ['toJSON', 'getter', 'then', 'onChange']) {
+    using lib = new wasm.ComponentLibrary('{"$defs":{}}');
+    using program = wasm.parseProgram('q=Query("read",{})', lib);
+    using s = new wasm.RuntimeSession(lib);
+    let calls = 0;
+    const disturb = () => {
+      if (calls >= 300) return;
+      if (disturbance === 'pause and resume') { s.pauseQueries(); s.resumeQueries(); }
+      else if (disturbance === 'detach and reattach') { s.setToolProvider(null); s.setToolProvider(provider, options); }
+      else s.setToolProvider(provider, options);
+    };
+    const results = {
+      toJSON: () => ({toJSON() { disturb(); return 1; }}),
+      getter: () => ({get value() { disturb(); return 1; }}),
+      then: () => ({then(resolve) { disturb(); resolve(1); }}),
+      onChange: () => 1,
+    };
+    const provider = {read: () => { calls++; return results[place](); }};
+    const options = place === 'onChange' ? {onChange: disturb} : {};
+    s.setToolProvider(provider, options);
+    const atTimer = new Promise<number>(resolve => setTimeout(() => resolve(calls), 0));
+    spin(2);
+    using out = s.replaceProgram(program, undefined, undefined, false);
+    seen[place] = await atTimer;
+    s.setToolProvider(null);
+  }
+  for (const place in seen) expect([place, seen[place] <= 3]).toEqual([place, true]);
+});
+
+// A boxed string can sit on any prototype. Whatever its prototype's
+// conversions return, the output is the string's own value or a tool error,
+// and text that reaches the output is charged before Rust sees it.
+test('a boxed string over any prototype publishes its own value or a tool error, never uncharged text', async () => {
+  const text = 'x'.repeat(2 << 20);
+  const typed = [Int8Array, Uint8Array, Uint8ClampedArray, Int16Array, Uint16Array, Int32Array, Uint32Array,
+    Float32Array, Float64Array, BigInt64Array, BigUint64Array, ...(typeof Float16Array === 'function' ? [Float16Array] : [])];
+  const bases = [Map, Set, Date, ArrayBuffer, DataView, Number, Boolean, Symbol, BigInt, RegExp, Error, Promise,
+    Array, Function, String, Object, ...typed].map(type => [type.name, type.prototype]);
+  bases.push(['TypedArray', Object.getPrototypeOf(Uint8Array.prototype)], ['null', null]);
+  // The string's own value, or a tool error from the driver. Rust's own
+  // size refusal means uncharged text crossed the boundary.
+  const allowed = out => JSON.stringify(out) === JSON.stringify(Array(8).fill('a')) ||
+    (typeof out === 'string' && out.startsWith('Query "read" failed: ') && !out.includes('result size limit'));
+  const outcomes = new Set();
+  const before = process.memoryUsage().rss;
+  for (const [name, base] of bases) {
+    for (const viaProxy of [false, true]) {
+      for (const withToJSON of [false, true]) {
+        const proto = Object.create(base);
+        for (const key of ['toString', 'valueOf', Symbol.toPrimitive, ...(withToJSON ? ['toJSON'] : [])]) {
+          Object.defineProperty(proto, key, {value: () => text});
+        }
+        const boxed = Object.setPrototypeOf(new String('a'), viaProxy ? new Proxy(proto, {}) : proto);
+        const out = await published(() => Array(8).fill(boxed));
+        const label = `${name}${viaProxy ? ' via Proxy' : ''}${withToJSON ? ' with toJSON' : ''}`;
+        if (!allowed(out)) outcomes.add(label + ': ' + String(JSON.stringify(out)).slice(0, 80));
+        // A date's toISOString is a conversion too.
+        const date = Object.assign(new Date(0), {toISOString: () => boxed});
+        const dated = await published(() => Array(8).fill(date));
+        if (!allowed(dated)) {
+          outcomes.add(label + ' from toISOString: ' + String(JSON.stringify(dated)).slice(0, 80));
+        }
+      }
+    }
+  }
+  expect([...outcomes]).toEqual([]);
+  Bun.gc(true);
+  expect(process.memoryUsage().rss - before).toBeLessThan(256 << 20);
+}, 30_000);
+
+test('a host whose setTimeout throws reports the refresh timer and keeps the session usable', async () => {
+  const pkg = loadWith(`var timersRefused = true, setTimeout = (callback, delay) => {
+    if (timersRefused) throw Error('timers refused');
+    return globalThis.setTimeout(callback, delay);
+  };`);
+  using lib = new pkg.ComponentLibrary('{"$defs":{}}');
+  using s = new pkg.RuntimeSession(lib);
+  using program = pkg.parseProgram('$x=0\nq=Query("read",{},null,0.05)', lib);
+  const errors = [];
+  let calls = 0;
+  s.setToolProvider({read: () => ++calls}, {minimumMs: 10n, onError: e => errors.push(e.message)});
+  using out = s.replaceProgram(program, undefined, undefined, false);
+  expect(s.set('$x', '1')).toBe(true);
+  await nextToolTurn();
+  expect(errors.length).toBeGreaterThan(0);
+  expect(new Set(errors)).toEqual(new Set(['timers refused']));
+  // No deadline is kept without a timer, so each later drain tries again
+  // and reports again instead of throwing out of the write.
+  const reported = errors.length;
+  expect(s.set('$x', '2')).toBe(true);
+  await nextToolTurn();
+  expect(errors.length).toBeGreaterThan(reported);
+  using draw = s.evaluate();
+  expect(JSON.parse(draw.querySnapshotJson).q).toBe(calls);
+});
+
+// Each disturbance cancels or replaces the driver from provider code or a
+// callback, and is then followed by an operation that makes the session want
+// a call. A due timer must run within a few calls, and the chain must still
+// finish once real time passes: no fix may trade the loop for a stuck driver.
+const disturbances = {
+  'pause, resume': s => { s.pauseQueries(); s.resumeQueries(); },
+  'detach, reattach': (s, p, o) => { s.setToolProvider(null); s.setToolProvider(p, o); },
+  'pause, detach, reattach': (s, p, o) => { s.pauseQueries(); s.setToolProvider(null); s.setToolProvider(p, o); },
+};
+const followUps = {
+  evaluate: s => { s.evaluate().free(); },
+  write: (s, n) => { s.set('$n', String(n)); },
+};
+const disturbedPlaces = ['toJSON', 'getter', 'then', 'onChange', 'after await', 'deep microtask after return'];
+const cases = Object.keys(disturbances).flatMap(d => Object.keys(followUps).map(f => [d, f]));
+
+test.each(cases)('%s then %s from provider code holds no loop and finishes', async (disturbance, followUp) => {
+  const cap = 50, seen = {};
+  for (const place of disturbedPlaces) {
+    using lib = new wasm.ComponentLibrary('{"$defs":{}}');
+    using program = wasm.parseProgram('$n=0\nq=Query("read",{n:$n})', lib);
+    using s = new wasm.RuntimeSession(lib);
+    let calls = 0;
+    const disturb = () => {
+      if (calls >= cap) return;
+      disturbances[disturbance](s, provider, options);
+      followUps[followUp](s, calls);
+    };
+    const results = {
+      toJSON: () => ({toJSON() { disturb(); return 1; }}),
+      getter: () => ({get value() { disturb(); return 1; }}),
+      then: () => ({then(resolve) { disturb(); resolve(1); }}),
+      onChange: () => 1,
+      'after await': async () => { await null; disturb(); return 1; },
+      'deep microtask after return': () => { Promise.resolve().then().then().then().then(disturb); return 1; },
+    };
+    const provider = {read: () => { calls++; return results[place](); }};
+    const options = place === 'onChange' ? {onChange: disturb} : {};
+    s.setToolProvider(provider, options);
+    const atTimer = new Promise<number>(resolve => setTimeout(() => resolve(calls), 0));
+    spin(2);
+    using out = s.replaceProgram(program, undefined, undefined, false);
+    const first = await atTimer;
+    for (const end = performance.now() + 500; calls < cap && performance.now() < end;) await nextToolTurn();
+    // Pausing and resuming after a delivery leaves nothing to fetch, so that
+    // chain ends early; the driver must then be idle, not stuck.
+    let alive = calls >= cap;
+    if (!alive) {
+      using draw = s.evaluate();
+      const idle = JSON.parse(draw.querySnapshotJson).__openui_loading.length === 0;
+      const before = calls;
+      s.set('$n', '999');
+      await turns(2);
+      alive = idle && calls === before + 1;
+    }
+    seen[place] = [first <= 3, alive];
+    s.setToolProvider(null);
+  }
+  expect(seen).toEqual(Object.fromEntries(disturbedPlaces.map(place => [place, [true, true]])));
+}, 15_000);
+
+test('pause and resume from provider code on a host that refuses every task holds no loop, and recovers', async () => {
+  const pkg = loadWith(`var setImmediate, MessageChannel, setTimeout = (callback, delay) => {
+    if (globalThis.__openuiRefuseTimers) throw Error('timers refused');
+    return globalThis.setTimeout(callback, delay);
+  };`);
+  globalThis.__openuiRefuseTimers = true;
+  try {
+    using lib = new pkg.ComponentLibrary('{"$defs":{}}');
+    using program = pkg.parseProgram('q=Query("read",{})', lib);
+    using s = new pkg.RuntimeSession(lib);
+    let calls = 0;
+    const errors = [];
+    s.setToolProvider({read: async () => { calls++; await null; if (calls < 50) { s.pauseQueries(); s.resumeQueries(); } return 1; }},
+      {onError: e => errors.push(e.message)});
+    const atTimer = new Promise<number>(resolve => setTimeout(() => resolve(calls), 0));
+    spin(2);
+    using out = s.replaceProgram(program, undefined, undefined, false);
+    expect(await atTimer).toBeLessThanOrEqual(3);
+    expect(errors).toEqual(['timers refused']);
+    // Once a task source works again, the next operation recovers the chain.
+    globalThis.__openuiRefuseTimers = false;
+    s.evaluate().free();
+    for (const end = performance.now() + 500; calls < 50 && performance.now() < end;) await nextToolTurn();
+    expect(calls).toBe(50);
+  } finally { delete globalThis.__openuiRefuseTimers; }
+});
+
+test('a host whose clearTimeout throws reports it and the write still returns', async () => {
+  const pkg = loadWith(`var clearTimeout = () => { throw Error('clear refused'); };`);
+  using lib = new pkg.ComponentLibrary('{"$defs":{}}');
+  using s = new pkg.RuntimeSession(lib);
+  using program = pkg.parseProgram('$x=0\nq=Query("read",{x:$x},null,0.05)', lib);
+  const errors = [];
+  let calls = 0;
+  s.setToolProvider({read: () => ++calls}, {minimumMs: 10n, onError: e => errors.push(e.message)});
+  using out = s.replaceProgram(program, undefined, undefined, false);
+  expect(s.set('$x', '1')).toBe(true);
+  await turns(2);
+  expect(errors.length).toBeGreaterThan(0);
+  expect(new Set(errors)).toEqual(new Set(['clear refused']));
+  using draw = s.evaluate();
+  expect(JSON.parse(draw.querySnapshotJson).q).toBe(calls);
 });
