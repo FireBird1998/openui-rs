@@ -3,14 +3,16 @@
 # glue: target/wasm-pkg/web for a browser or a bundler, target/wasm-pkg/node
 # for Node and Bun. Needs the wasm32-unknown-unknown Rust target and the
 # wasm-bindgen tool at the version Cargo.lock names
-# (cargo install wasm-bindgen-cli --version <that> --locked).
+# (cargo install wasm-bindgen-cli --version <that> --locked;
+# scripts/wasm-bindgen-version.sh prints it). scripts/check.sh runs this.
 #
 #   scripts/wasm.sh
 set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$ROOT"
-want="$(awk '/^name = "wasm-bindgen"$/ { getline; gsub(/[^0-9.]/, ""); print; exit }' Cargo.lock)"
-have="$(wasm-bindgen --version 2> /dev/null | awk '{ print $2 }')"
+want="$(scripts/wasm-bindgen-version.sh)"
+# `|| true`: under pipefail a missing tool would end the script here, silently.
+have="$(wasm-bindgen --version 2> /dev/null | awk '{ print $2 }' || true)"
 if [[ "$have" != "$want" ]]; then
   echo "wasm.sh: wasm-bindgen $want is needed (found ${have:-none}): cargo install wasm-bindgen-cli --version $want --locked" >&2
   exit 1

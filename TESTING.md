@@ -10,7 +10,7 @@ This guide covers what each test catches, how to run it, how to add a case, and 
 scripts/check.sh
 ```
 
-The check runs formatting, the Python worker-supervisor tests, clippy, the docs and every Rust test, including the doc examples and this repository's README example. It then builds the workspace on Rust 1.88.0, the oldest version the crates claim. That build is skipped, with a note, when the toolchain isn't installed; the check never installs one. It takes a minute or two.
+The check runs formatting, the Python worker-supervisor tests, clippy, the docs and every Rust test, including the doc examples and this repository's README example. It then builds both WebAssembly packages and loads them through their guard (`scripts/wasm.sh`), and runs the package tests (`bun --no-install test crates/openui-wasm/js`). Last, it builds the workspace on Rust 1.88.0, the oldest version the crates claim. The WebAssembly step needs the `wasm32-unknown-unknown` target, the wasm-bindgen CLI at the version `Cargo.lock` names (`scripts/wasm-bindgen-version.sh` prints it) and Bun; the old-Rust build needs that toolchain. Each is skipped, with one line saying what is missing, when its tools aren't installed; the check never installs one. With `OPENUI_REQUIRE_WASM=1`, as CI sets it, a missing WebAssembly tool fails the check instead. It takes a few minutes.
 
 ```bash
 scripts/check-viewer.sh                                   # OpenUINative's and the viewer's Swift tests (needs Xcode)
@@ -309,6 +309,7 @@ a stream staying cut until `set`. Finished-tree walks remain uncapped.
 | `openui-ffi`'s `stack` | The deepest programs parse, stream and merge through the binding on a 64 KB thread stack, at the default depth limit and at 20,000 levels, and their results and sessions drop there too | A deep drop or walk on the caller's stack |
 | OpenUINative's Swift tests | The package through its public interface: drawing with an app's own components, an evaluated element drawn at its own path, and live programs drawn in an off-screen window, clicked and typed in the way AppKit delivers a person's (state redraws in the mounted view, host events, bound inputs and their transforms, form fields written with no component type, an app's component given evaluated props, markers and plans; a click or write whose element or marker has changed, or comes from another program, doing nothing, while two clicks or keystrokes before a redraw on something unchanged both act; a button in a renamed form and a field drawn for another name refusing; forged plans running nothing, only the exact marker shape being a marker; mutations resumed, refused steps; events delivered when the redraw after an action fails, with the session disposed underneath; upstream's form validation, rule by rule; buttons ignored and inputs disabled while a response streams; table action cells and elements in cells; a select picked from the menu its pop-up opens); the generated binding directly | Package bugs (`scripts/check-viewer.sh`) |
 | the viewer's Swift tests | Decoding (lossless for every corpus parse result and evaluated tree, and for odd objects), playback with every step evaluated or, without a runtime session, its parse result, the store panel (its draft text when the value changes underneath), the inspector's tree being the drawn one under `@Each` and a ternary, the program streaming until the shown step has every chunk, host events kept to the newest with their continuations let go, the step cache counting more than JSON, goldens through the viewer, native drawing of every corpus case evaluated, live streaming against a stub server, recordings, edit mode | Viewer bugs (`scripts/check-viewer.sh`) |
+| the WebAssembly packages | `scripts/wasm.sh` builds the web and Node packages and loads each through the package guard ([ADR 0007](docs/adr/0007-share-session-policy-between-native-and-wasm.md)); `bun --no-install test crates/openui-wasm/js` drives the built package. Skipped, with a note, without the wasm tools or Bun. | A generated member the guard doesn't cover (the package then fails to load), a declaration that drifts from the API, a JavaScript driver bug |
 | compile time | The streaming parser, parse results and libraries can be shared between threads (`src/lib.rs`) | A change that stops embedders parsing off the UI thread |
 
 Not in the check, because they need Bun, time or a screen:
@@ -441,10 +442,11 @@ JSON, including text past the outcome bound, MCP responses and the peak
 allocation of refusing a 4 MiB result. The native and WebAssembly bindings
 each have a `result_limits` test for `maxCacheBytes`, and
 `crates/openui-wasm/js/queries.test.ts` checks that the exported
-`RuntimeSession.withLimits` carries it. `scripts/check.sh` needs no Bun or
-wasm toolchain, so it does not build the WebAssembly packages: after a
-binding change also run `scripts/wasm.sh` (which loads both packages through
-their guards) and `bun --no-install test crates/openui-wasm/js`.
+`RuntimeSession.withLimits` carries it. `scripts/check.sh` builds both
+WebAssembly packages, loads them through their guards and runs these package
+tests when the wasm tools and Bun are installed (see
+[Running the tests](#running-the-tests)); if it says it skipped them, the
+binding change is unchecked there.
 
 The review round added tests, each failing before its fix: a rename's idle
 `null` is not charged; a refused result of an older submission is that
@@ -482,7 +484,7 @@ reference adapter in `reference/`, except where a two-sided pin in
 | `query_reader_diagnostics` (session) | A reader's limit or changed self-input reported beside the drawn tree, and its recovery. |
 | `response_bundles` (session) | `conformance/session-bundles.json` against `golden/session-bundles.jsonl` from `reference/session-bundles.ts`: the bundle gate, Cloud script revisions in cache keys, and app values. |
 | `runtime_queries`, `runtime_mutations`, `runtime_refresh_clock`, `runtime_query_runs`, `query_readers` (`openui-ffi`) | The same operations through the native binding's worker thread. |
-| `crates/openui-wasm/js/{queries,mutations,query-clock,query-runs,query-readers,tool-provider}.test.ts` | The JavaScript driver through the built package (`bun --no-install test crates/openui-wasm/js` after `scripts/wasm.sh`; not in the check). |
+| `crates/openui-wasm/js/{queries,mutations,query-clock,query-runs,query-readers,tool-provider}.test.ts` | The JavaScript driver through the built package (`bun --no-install test crates/openui-wasm/js` after `scripts/wasm.sh`; both run by the check when their tools are installed). |
 
 The coverage-guided `query` target replays the same scenario format (see
 [Coverage-guided fuzzing](#coverage-guided-fuzzing)), and `scripts/mutants.sh
@@ -1050,7 +1052,7 @@ There's no script for iOS yet. The suite was run by hand in an iPhone 16 simulat
 
 ## On GitHub
 
-Every push to `main`, and every pull request, runs the check on Linux with Bun installed, so the conformance tests diff against the reference too, and the viewer's check on macOS 27 (`.github/workflows/ci.yml`). Both use the maintainer's stable Rust, 1.97.1, so clippy's lints there are the ones the check passed locally. The long runs don't run on their own: each is a workflow started by hand, from the repository's Actions tab or with `gh`:
+Every push to `main`, and every pull request, runs the check on Linux with Bun installed, so the conformance tests diff against the reference too, and the viewer's check on macOS 27 (`.github/workflows/ci.yml`). The Linux job also installs the `wasm32-unknown-unknown` target and the wasm-bindgen CLI at the version `Cargo.lock` names (built once per version and kept in the Actions cache), and sets `OPENUI_REQUIRE_WASM=1`, so the WebAssembly packages are always built, loaded and tested there and a missing tool fails the job. Both use the maintainer's stable Rust, 1.97.1, so clippy's lints there are the ones the check passed locally. The long runs don't run on their own: each is a workflow started by hand, from the repository's Actions tab or with `gh`:
 
 ```bash
 gh workflow run mutants.yml -f group=parsing -f shards=16       # or rest, runtime, query, both, all
@@ -1077,6 +1079,7 @@ The 64-bit ARM run stays on the Mac's emulator or a phone.
 |---|---|
 | `OPENUI_CONFORMANCE_DIR=<path>` | Read the corpus and goldens from that folder instead of the repository's `conformance/`, for a copy or a phone. The `report` test also reads `CONFORMANCE.md` and `reference/UPSTREAM` from the source tree. |
 | `OPENUI_NO_LIVE_DIFFS=1` | A failure shows the core's side and the command to see the reference's, and never starts Bun. Use it for mutation testing, where every caught mutant would start Bun, and on phones. |
+| `OPENUI_REQUIRE_WASM=1` | `scripts/check.sh` fails, instead of skipping with a note, when it can't build and test the WebAssembly packages (wasm-bindgen at the locked version, the `wasm32-unknown-unknown` target or Bun missing). CI sets it. |
 | `UPDATE_PENDING=1` | Rewrite each test's list in `conformance/pending/` to the cases failing now. Run the whole suite with it (`cargo test -p openui-lang --no-fail-fast`) to rewrite them all. |
 | `UPDATE_REPORT=1` | Rewrite the counts in CONFORMANCE.md |
 | `DEPTH_STACK_KB=<n>` | The thread stack the depth tests run on, in KB (default 64) |
@@ -1646,7 +1649,7 @@ guarded in generated package glue (`js/package-guards.js`), including argument
 conversion, free and `[Symbol.dispose]`; the guard is tested only on the built
 package.
 
-After `scripts/wasm.sh`, run `bun --no-install test crates/openui-wasm/js`.
+`scripts/check.sh` runs `scripts/wasm.sh`, then `bun --no-install test crates/openui-wasm/js`.
 `session.test.ts` drives nine scripts and attack/cap/reentry cases.
 `lifetime.test.ts` checks that every free goes through the guard and that no
 argument conversion runs application code (hostile `valueOf`/`length`/getters,
@@ -1765,8 +1768,8 @@ Session callback and follow-up checks (#56–#60):
   `python3 scripts/check-runtime-binding-api.py SWIFT_FILE KOTLIN_FILE`.
   Swift `RuntimeFunctionTests.swift` and Android `RuntimeFunctionTest.kt` cover
   callbacks and data-backed actions; `RuntimeSessionTest.kt` covers UTF-16 recovery.
-- With the wasm target and matching wasm-bindgen CLI installed, run
-  `scripts/wasm.sh` (both package load checks), then
+- With the wasm target and matching wasm-bindgen CLI installed, `scripts/check.sh`
+  runs `scripts/wasm.sh` (both package load checks), then
   `bun --no-install test crates/openui-wasm/js`. `functions.test.ts` pins JSON,
   throws, all-method reentry, query default call counts, data plans and path caps.
 - Regenerate the added observations from `reference/` with
@@ -2516,9 +2519,9 @@ not fixed byte assertions, and the scratch changes never entered production.
 The built wasm package also has `reference preparation refuses evaluation
 memory configuration without effects` in `crates/openui-wasm/js/session.test.ts`:
 exported bigint settings 0/1/max refuse with `LimitExceeded`, existing snapshot/
-version stay unchanged, and removing the setting permits construction. Run it
-on the wasm32 machine with `scripts/wasm.sh` followed by
-`bun --no-install test crates/openui-wasm/js`.
+version stay unchanged, and removing the setting permits construction.
+`scripts/check.sh` runs it (`scripts/wasm.sh` followed by
+`bun --no-install test crates/openui-wasm/js`) where the wasm tools are installed.
 
 ## Swift issue #75: atomic replacement and local controls
 
@@ -2552,10 +2555,11 @@ Existing upstream-observation tests pin compatibility, without time assertions.
 The persisted-value throwaway session is gone: replacement admits it in the
 real session under its actual prompt bindings and limits.
 
-On a wasm32 machine run `CARGO_NET_OFFLINE=true CARGO_BUILD_JOBS=4 scripts/wasm.sh`,
-then `bun --no-install test crates/openui-wasm/js`. Native wasm adapter tests
-and the source API checker run here; generated JS guard/declaration behavior
-still requires that wasm32 run. Android tooling is not needed for these checks.
+`scripts/check.sh` runs `scripts/wasm.sh`, then
+`bun --no-install test crates/openui-wasm/js`, where the wasm tools are
+installed, and CI always does. Native wasm adapter tests and the source API
+checker run without them; generated JS guard/declaration behavior needs the
+WebAssembly step. Android tooling is not needed for these checks.
 
 The Store initializer's compile-fail rustdoc example prevents moving the staged
 Store out of its shared borrow; no independently owned store alias can escape

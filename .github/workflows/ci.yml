@@ -1,5 +1,7 @@
 # Everyday CI: scripts/check.sh as the maintainer runs it (Bun installed, so
-# the conformance tests diff against the reference too), and the viewer's
+# the conformance tests diff against the reference too; the wasm target and
+# wasm-bindgen CLI installed, so the WebAssembly packages are built, loaded
+# and tested, and must be), and the viewer's
 # check on macOS 27 with Xcode 27.1. The long runs have their own workflows,
 # started by hand (TESTING.md, "On GitHub").
 name: CI
@@ -29,11 +31,15 @@ env:
 jobs:
   check:
     runs-on: ubuntu-24.04
+    env:
+      # The WebAssembly packages are built, loaded and tested here: a missing
+      # tool fails the check instead of skipping that step.
+      OPENUI_REQUIRE_WASM: "1"
     steps:
       - uses: actions/checkout@v7
       - name: Rust
         run: |
-          rustup toolchain install "$RUST" --profile minimal -c rustfmt -c clippy
+          rustup toolchain install "$RUST" --profile minimal -c rustfmt -c clippy -t wasm32-unknown-unknown
           rustup default "$RUST"
           rustup toolchain install 1.88.0 --profile minimal
       - uses: oven-sh/setup-bun@v2
@@ -42,6 +48,29 @@ jobs:
       - name: The reference's dependencies
         working-directory: reference
         run: bun install --frozen-lockfile
+      # The wasm-bindgen CLI at the version Cargo.lock names, built once per
+      # version and kept in its own folder (not ~/.cargo/bin, which rust-cache
+      # manages).
+      - name: The wasm-bindgen version
+        id: wasm-bindgen
+        run: echo "version=$(scripts/wasm-bindgen-version.sh)" >> "$GITHUB_OUTPUT"
+      - name: The wasm-bindgen CLI from the cache
+        id: wasm-bindgen-cache
+        uses: actions/cache/restore@v6
+        with:
+          path: ~/.wasm-bindgen-cli
+          key: wasm-bindgen-cli-${{ steps.wasm-bindgen.outputs.version }}-${{ runner.os }}
+      - name: The wasm-bindgen CLI
+        if: steps.wasm-bindgen-cache.outputs.cache-hit != 'true'
+        run: cargo install wasm-bindgen-cli --version "${{ steps.wasm-bindgen.outputs.version }}" --locked --root ~/.wasm-bindgen-cli
+      # Saved straight away, so a failing check still keeps the slow install.
+      - name: The wasm-bindgen CLI into the cache
+        if: steps.wasm-bindgen-cache.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v6
+        with:
+          path: ~/.wasm-bindgen-cli
+          key: ${{ steps.wasm-bindgen-cache.outputs.cache-primary-key }}
+      - run: echo "$HOME/.wasm-bindgen-cli/bin" >> "$GITHUB_PATH"
       - uses: Swatinem/rust-cache@v2
       - run: scripts/check.sh
 
