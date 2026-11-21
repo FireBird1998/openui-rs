@@ -142,6 +142,23 @@ impl std::error::Error for OpenUiError {}
 pub struct ComponentLibrary {
     inner: Arc<Library>,
     schema: Arc<serde_json::Value>,
+    /// The JSON Schema and prompt spec text of a library made from a
+    /// definition; none for one loaded from a JSON Schema.
+    defined: Option<DefinedTexts>,
+}
+
+struct DefinedTexts {
+    json_schema: String,
+    prompt_spec: String,
+}
+
+impl Drop for ComponentLibrary {
+    /// The schema can nest as deep as a definition's types: whichever holder
+    /// drops it last (this or a session's copy) frees it with a loop.
+    fn drop(&mut self) {
+        let schema = std::mem::replace(&mut self.schema, Arc::new(serde_json::Value::Null));
+        openui_session::free_shared_json(schema);
+    }
 }
 
 #[uniffi::export]
@@ -156,12 +173,62 @@ impl ComponentLibrary {
         Ok(Arc::new(ComponentLibrary {
             inner: Arc::new(Library::from_json_schema(&json)),
             schema: Arc::new(json),
+            defined: None,
+        }))
+    }
+
+    /// Makes the library from a library definition in plain-data form, as
+    /// JSON text (`docs/library-definition.md`), as upstream's
+    /// `createLibrary` makes one from its declarations, within the default
+    /// [`RuntimeLimits`]. See [`ComponentLibrary::from_definition_with_limits`].
+    #[uniffi::constructor]
+    pub fn from_definition(definition: String) -> Result<Arc<Self>, OpenUiError> {
+        Self::from_definition_with_limits(definition, RuntimeLimits::default())
+    }
+
+    /// [`ComponentLibrary::from_definition`] within a session's limits. The
+    /// text is host input: one longer than `max_json_bytes` (8 MiB by
+    /// default), counted in UTF-8 bytes, is refused with `LimitExceeded`
+    /// before it is read. It is read as JSON under `evaluation`, whose depth
+    /// also bounds how deep types nest. Malformed JSON, a definition not in
+    /// the plain-data form, an unsupported kind, a root that is not a
+    /// component and a colliding function or action name are refused with
+    /// `InvalidJson`, with the core's message (upstream's for the root and
+    /// the collisions).
+    #[uniffi::constructor]
+    pub fn from_definition_with_limits(
+        definition: String,
+        limits: RuntimeLimits,
+    ) -> Result<Arc<Self>, OpenUiError> {
+        let defined = openui_session::define_library(&definition, &limits.into())?;
+        Ok(Arc::new(ComponentLibrary {
+            inner: defined.library.inner.clone(),
+            schema: defined.library.schema.clone(),
+            defined: Some(DefinedTexts {
+                json_schema: defined.json_schema,
+                prompt_spec: defined.prompt_spec,
+            }),
         }))
     }
 
     /// The components' names, in the schema's order.
     pub fn component_names(&self) -> Vec<String> {
         self.inner.component_names().map(str::to_owned).collect()
+    }
+
+    /// A library made from a definition: its JSON Schema as JSON text, byte
+    /// for byte as upstream's `JSON.stringify(library.toJSONSchema())`.
+    /// None for a library loaded from a JSON Schema.
+    pub fn json_schema(&self) -> Option<String> {
+        self.defined.as_ref().map(|d| d.json_schema.clone())
+    }
+
+    /// A library made from a definition: its prompt spec as JSON text, byte
+    /// for byte as upstream's `JSON.stringify(library.toSpec())`, the
+    /// `library` of the spec `generate_system_prompt` takes. None for a
+    /// library loaded from a JSON Schema.
+    pub fn prompt_spec(&self) -> Option<String> {
+        self.defined.as_ref().map(|d| d.prompt_spec.clone())
     }
 }
 

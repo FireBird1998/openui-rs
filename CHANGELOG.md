@@ -2,6 +2,35 @@
 
 ## Unreleased
 
+- Library definitions through both bindings (#137, spec #123). A host hands
+  a library definition in plain-data form, as JSON text, to
+  `ComponentLibrary.fromDefinition` (native: Swift and Kotlin through the
+  generated binding; WebAssembly: a static of `ComponentLibrary`) or
+  `fromDefinitionWithLimits`, and gets a component library usable everywhere
+  one supplied as JSON Schema is: parsing, streaming, runtime sessions and
+  prompts, with identical results. Its `jsonSchema()` and `promptSpec()` give
+  the JSON Schema and prompt spec as JSON text, byte for byte as upstream's
+  `JSON.stringify(library.toJSONSchema())` and `toSpec()` write them (names
+  that look like array indices first); both are absent for a library loaded
+  from a JSON Schema. The definition is host input: it is held to the
+  session's `maxJsonBytes` (8 MiB by default), counted in UTF-8 bytes before
+  it is read, and refused over it with `LimitExceeded` ("host input byte
+  limit"); its types nest at most `evaluation.depth` levels. Malformed JSON,
+  a definition not in the form, an unsupported kind, a root that is not a
+  component and a colliding function or action name are refused with
+  `InvalidJson` and the core's message (upstream's for the root and the
+  collisions). One shared policy, `openui_session::define_library`, serves
+  both bindings. The package guard describes the new members, both packages
+  load a defined library, and the binding API check covers the entry points
+  in both bindings and in the generated Swift and Kotlin declarations. New
+  page `docs/library-definition.md` documents the plain-data form, every
+  kind with an example, what is refused or can't be written, and what the
+  byte limit does not bound: the parser's library copies each action's shape
+  into every param that refers to it, as upstream does, so a chain of 2,000
+  actions (194 KB) takes 4.7 GB, a doubling chain of 18 (2.6 KB) 2 GB, and
+  freeing such a library overflows a 64 KiB thread past about 150 chained
+  actions (#140).
+
 - OpenUINative: typed errors and a typed cloud prompt (#148, spec #129).
   Every public call that can fail now throws only `OpenUIError`
   (`throws(OpenUIError)`), a `kind` a caller can switch on and a

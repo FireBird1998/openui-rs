@@ -136,7 +136,40 @@ response_signature = "setResponse(text: string | null, streaming: boolean): Resp
 driver_api = (root / "docs/wasm-runtime-binding-api.md").read_text()
 assert response_signature in driver_api
 assert driver_signature in driver_api and "sampleQueryClock(now_ms: bigint): void;" in driver_api
-print(f"Source: {len(native_methods)} native and {len(methods) + 3} wasm session methods, opaque capabilities, errors and limits checked")
+# A library definition (#137): one shared policy in the session crate, the
+# same entry points and text accessors in both bindings, guarded and
+# documented, and refusals of existing kinds only.
+session_definition = (root / "crates/openui-session/src/library_definition.rs").read_text()
+assert re.search(r"pub fn define_library\(\s*definition: &str,\s*limits: &RuntimeLimits,", session_definition), "shared library definition entry point drift"
+assert "admit_text(definition, limits.max_json_bytes)?;" in session_definition, "a definition must pass the host input limit before it is read"
+assert session_definition.index("admit_text(") < session_definition.index("parse_json_with_limits("), "the limit must come before reading"
+for accessor in ["json_schema = stringify_json(&schema)", "prompt_spec = stringify_json(&spec)"]:
+    assert accessor in session_definition, ("definition text must be stringify_json's", accessor)
+native_library = ffi_lib.split("impl ComponentLibrary {", 1)[1].split("\n}\n", 1)[0]
+assert {camel(n) for n in re.findall(r"pub fn (\w+)\(", native_library)} == {"new", "fromDefinition", "fromDefinitionWithLimits", "componentNames", "jsonSchema", "promptSpec"}, "native ComponentLibrary drift"
+assert re.search(r"#\[uniffi::constructor\]\s*pub fn from_definition\(definition: String\) -> Result<Arc<Self>, OpenUiError>", native_library)
+assert re.search(r"#\[uniffi::constructor\]\s*pub fn from_definition_with_limits\(\s*definition: String,\s*limits: RuntimeLimits,\s*\) -> Result<Arc<Self>, OpenUiError>", native_library)
+for accessor in ["json_schema", "prompt_spec"]:
+    assert f"pub fn {accessor}(&self) -> Option<String>" in native_library, accessor
+wasm_lib = (root / "crates/openui-wasm/src/lib.rs").read_text()
+wasm_library = wasm_lib.split("impl ComponentLibrary {", 1)[1].split("\n}\n", 1)[0]
+assert set(re.findall(r"js_name = (\w+)", wasm_library)) == {"fromDefinition", "fromDefinitionWithLimits", "jsonSchema", "promptSpec"}, "wasm ComponentLibrary drift"
+assert "limits: &runtime::RuntimeLimits" in wasm_library
+for label, source in [("native", ffi_lib), ("wasm", wasm_lib)]:
+    assert "openui_session::define_library(" in source, ("bindings share the definition policy", label)
+library_guard = (root / "crates/openui-wasm/js/package-guards.js").read_text()
+assert "fromDefinition: openuiSpec([openuiStr])," in library_guard
+assert "fromDefinitionWithLimits: openuiSpec([openuiStr, openuiCapabilityOf(RuntimeLimits)])," in library_guard
+assert "methods: { free: openuiFree, jsonSchema: openuiNone, promptSpec: openuiNone }" in library_guard
+for doc, names in [("docs/runtime-binding-api.md", ["fromDefinition", "fromDefinitionWithLimits", "jsonSchema", "promptSpec"]),
+                   ("docs/wasm-runtime-binding-api.md", ["fromDefinition", "fromDefinitionWithLimits", "jsonSchema", "promptSpec"]),
+                   ("docs/library-definition.md", ["host input byte limit", "LimitExceeded", "InvalidJson", "jsonSchema", "promptSpec"])]:
+    text = (root / doc).read_text()
+    for name in names:
+        # The whole name: fromDefinitionWithLimits must not stand in for
+        # fromDefinition.
+        assert re.search(r"(?<!\w)" + re.escape(name) + r"(?!\w)", text), (doc, name)
+print(f"Source: {len(native_methods)} native and {len(methods) + 3} wasm session methods, library definitions, opaque capabilities, errors and limits checked")
 if len(sys.argv) == 1:
     sys.exit(0)
 if len(sys.argv) == 3 and sys.argv[1] == "--wasm":
@@ -176,6 +209,12 @@ if len(sys.argv) == 3 and sys.argv[1] == "--wasm":
     assert "actionAt(index: bigint): ActionOutput | undefined;" in declarations
     assert "callAt(index: bigint): WantedToolCall | undefined;" in declarations
     assert "export type { QueryEffects, WantedToolCall };" in declarations
+    library = re.search(r"export class ComponentLibrary\s*\{(.*?)\n\}", declarations, re.S)
+    assert library, "missing wasm ComponentLibrary"
+    for declaration in ["static fromDefinition(definition: string): ComponentLibrary;",
+                        "static fromDefinitionWithLimits(definition: string, limits: RuntimeLimits): ComponentLibrary;",
+                        "jsonSchema(): string | undefined;", "promptSpec(): string | undefined;", "constructor(schema: string);"]:
+        assert declaration in library[1], declaration
     for name in ["QueryEffects", "WantedToolCall"]:
         assert re.search(r"^declare class " + name + r" \{\s*private constructor\(\);", declarations, re.M), name
     assert callback_type in declarations, "wasm callback declaration drift"
@@ -241,6 +280,12 @@ assert "public var maxPlans:" not in swift
 assert "compile_fail" not in swift, "rustdoc-only snippet leaked to Swift"
 for error in ["ForeignHandle", "ConsumedHandle", "EvictedHandle", "Evaluation", "QueriesPaused", "InvalidAttribute"]:
     assert f"case {error}" in swift
+library = re.search(r"public protocol ComponentLibraryProtocol[^\{]*\{(.*?)\n\}", swift, re.S)
+assert library, "missing Swift ComponentLibrary protocol"
+for method in [r"componentNames\(\)\s*->\s*\[String\]", r"jsonSchema\(\)\s*->\s*String\?", r"promptSpec\(\)\s*->\s*String\?"]:
+    assert re.search(r"func\s+" + method, library[1]), method
+assert re.search(r"public static func fromDefinition\(definition: String\)\s*throws\s*-> ComponentLibrary", swift), "Swift fromDefinition drift"
+assert re.search(r"public static func fromDefinitionWithLimits\(definition: String, limits: RuntimeLimits\)\s*throws\s*-> ComponentLibrary", swift), "Swift fromDefinitionWithLimits drift"
 if len(sys.argv) == 3:
     kotlin = pathlib.Path(sys.argv[2]).read_text()
     for function in reader_functions:
@@ -294,4 +339,10 @@ if len(sys.argv) == 3:
     assert "compile_fail" not in kotlin
     for error in ["ForeignHandle", "ConsumedHandle", "EvictedHandle", "Evaluation", "QueriesPaused", "InvalidAttribute"]:
         assert f"class {error}" in kotlin
+    library = re.search(r"public interface ComponentLibraryInterface\s*\{(.*?)\n\}", kotlin, re.S)
+    assert library, "missing Kotlin ComponentLibrary interface"
+    for method in ["fun `componentNames`(): List<kotlin.String>", "fun `jsonSchema`(): kotlin.String?", "fun `promptSpec`(): kotlin.String?"]:
+        assert method in library[1], method
+    assert "@Throws(OpenUiException::class) fun `fromDefinition`(`definition`: kotlin.String): ComponentLibrary" in kotlin, "Kotlin fromDefinition drift"
+    assert "@Throws(OpenUiException::class) fun `fromDefinitionWithLimits`(`definition`: kotlin.String, `limits`: RuntimeLimits): ComponentLibrary" in kotlin, "Kotlin fromDefinitionWithLimits drift"
 print(f"{'Swift/Kotlin' if len(sys.argv) == 3 else 'Swift'}: {len(native_methods)} session methods, opaque objects, typed errors and current limits checked")

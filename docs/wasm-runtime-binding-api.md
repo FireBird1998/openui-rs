@@ -18,6 +18,11 @@ versions and pending counts are bigint. failure.step is an ordinary JSON number
 
 ```typescript
 new ComponentLibrary(schema: string)
+// A library definition in plain-data form (docs/library-definition.md):
+ComponentLibrary.fromDefinition(definition: string): ComponentLibrary
+ComponentLibrary.fromDefinitionWithLimits(definition: string, limits: RuntimeLimits): ComponentLibrary
+library.jsonSchema(): string | undefined
+library.promptSpec(): string | undefined
 parse(program: string, library: ComponentLibrary, rootName?: string): string
 parseProgram(program: string, library: ComponentLibrary, rootName?: string): ParsedProgram
 extractMcpToolResult(responseJson: string, limits: ParseLimits): string
@@ -64,6 +69,24 @@ session.version(): bigint
 session.writeBinding(marker: string, json: string): boolean
 session.free(): void
 ```
+
+A library definition's text is held to `maxJsonBytes` (8 MiB by default),
+counted in the UTF-8 bytes it crosses as, before it is read; over it,
+`fromDefinition` throws `LimitExceeded` ("host input byte limit"). Every
+other refusal, a refused definition as well as malformed JSON, throws
+`InvalidJson` with the core's message (upstream's text where upstream has
+one; a dedicated kind is tracked on #146). Of the `RuntimeLimits`, only
+`maxJsonBytes` and `evaluation.depth` apply; the others are accepted and
+ignored. After a `Worker` error "unreachable" (memory ran out making a
+library) the instance is unusable and the host must load a new one; after
+"Maximum call stack size exceeded" it keeps working, but the interrupted
+library is leaked and the `RuntimeLimits` passed to the failed call can no
+longer be used. `jsonSchema()`
+and `promptSpec()` are a defined library's texts, byte for byte as
+upstream's `JSON.stringify` writes them, and undefined for a library made
+from a JSON Schema; pass `promptSpec()` as a session's prompt spec so it
+knows the library's bindings. See [library definitions](library-definition.md),
+including what the byte limit does not bound.
 
 The MCP helper is a free function, as in the native binding and like the
 other stateless readers; it needs no session. It returns either
@@ -165,7 +188,9 @@ EvictedHandle, InvalidHandle, InvalidMarker, InvalidToolCall, ReferenceConflict,
 Evaluation, LimitExceeded, Worker, InvalidSchema, InvalidPromptSpec, Prompt,
 QueriesPaused, InvalidAttribute. `buildMessage` throws InvalidAttribute for a
 message attribute name or value it cannot URI-encode (a lone surrogate, where
-upstream throws a `URIError`); malformed parts stay InvalidJson. Failures inside actions and initialization appear in the records above, with
+upstream throws a `URIError`); malformed parts stay InvalidJson. A library
+definition that is refused, not only one that is malformed, throws
+InvalidJson with the core's message (#146 tracks a dedicated kind). Failures inside actions and initialization appear in the records above, with
 that same kind/message shape. `QueriesPaused` is only ever an action's
 failure: its mutation was dropped because queries are paused (below). Reentry uses Worker("session already in use")
 without effects; it does not revoke an otherwise usable session. The package

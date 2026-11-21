@@ -402,7 +402,16 @@ const openuiSurface = new Map([
       resultCeiling: openuiOptionalLimitField, depth: openuiOptionalLimitField,
       work: openuiOptionalLimitField, peakMemory: openuiOptionalLimitField },
   }],
-  [ComponentLibrary, { construct: openuiSpec([openuiStr]), methods: { free: openuiFree } }],
+  // A library definition is host input, held to maxJsonBytes in bytes by
+  // Rust before it is read; its JSON Schema and prompt spec come back as text.
+  [ComponentLibrary, {
+    construct: openuiSpec([openuiStr]),
+    statics: {
+      fromDefinition: openuiSpec([openuiStr]),
+      fromDefinitionWithLimits: openuiSpec([openuiStr, openuiCapabilityOf(RuntimeLimits)]),
+    },
+    methods: { free: openuiFree, jsonSchema: openuiNone, promptSpec: openuiNone },
+  }],
   [StreamSession, {
     construct: openuiSpec([openuiLibrary, openuiOptStr]),
     methods: { free: openuiFree, feed: openuiSpec([openuiStr]), finish: openuiNone,

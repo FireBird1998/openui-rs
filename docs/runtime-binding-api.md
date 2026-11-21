@@ -18,6 +18,37 @@ would throw a JavaScript TypeError, and a limit refusal raise `InvalidJson`,
 `resultSize` (fixed result ceiling), `work`, and `depth` before producing
 the outcome. See the Rust runtime's `extract_mcp_tool_result` for details.
 
+A component library comes from the JSON Schema upstream's
+`library.toJSONSchema()` prints, or from a library definition in plain-data
+form ([library definitions](library-definition.md)). A definition is held to
+`RuntimeLimits.maxJsonBytes` in bytes (`LimitExceeded`, "host input byte
+limit") before it is read; every other refusal, a refused definition as well
+as malformed JSON, is `InvalidJson` with the core's message (upstream's text
+where upstream has one; a dedicated kind is tracked on #146). Of the
+`RuntimeLimits`, only `maxJsonBytes` and `evaluation.depth` apply to a
+definition; the other fields are accepted and ignored. A defined library's JSON Schema and prompt spec are read as
+JSON text, byte for byte as upstream writes them; both are nil for a library
+loaded from a JSON Schema.
+
+```swift
+convenience init(schema: String) throws
+static func fromDefinition(definition: String) throws -> ComponentLibrary
+static func fromDefinitionWithLimits(definition: String, limits: RuntimeLimits) throws -> ComponentLibrary
+func componentNames() -> [String]
+func jsonSchema() -> String?
+func promptSpec() -> String?
+```
+
+```kotlin
+constructor(schema: String)
+// companion object:
+fun fromDefinition(definition: String): ComponentLibrary
+fun fromDefinitionWithLimits(definition: String, limits: RuntimeLimits): ComponentLibrary
+fun componentNames(): List<kotlin.String>
+fun jsonSchema(): kotlin.String?
+fun promptSpec(): kotlin.String?
+```
+
 Swift (`import OpenUIFFI`); fallible calls throw OpenUiError:
 
 ```swift
@@ -200,7 +231,9 @@ InvalidSchema(reason), InvalidPromptSpec(reason), Prompt(reason), and
 QueriesPaused(reason), which only an action's failure carries (#117), and
 InvalidAttribute(reason), which `buildMessage` raises for a message attribute
 name or value it cannot URI-encode (a lone surrogate, where upstream throws a
-`URIError`; malformed parts stay InvalidJson). Reasons are
+`URIError`; malformed parts stay InvalidJson). A library definition that
+is refused, not only one that is malformed, is InvalidJson with the core's
+message (#146 tracks a dedicated kind). Reasons are
 String. ActionOutput.failure.error and StateRefusal.error use the same typed error.
 ParseLimits has eight optional UInt64/ULong fields: programSize, resultSize,
 resultFloor, amplification, resultCeiling, depth, work, peakMemory; all default to absent.

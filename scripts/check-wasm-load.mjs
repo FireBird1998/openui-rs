@@ -21,5 +21,11 @@ for (const [name, pkg] of [['node', node], ['web', web]]) {
   catch (error) {
     if (error.kind !== 'Disposed' || error.message !== 'object freed') throw error;
   }
+  // A library made from a library definition, through the guarded statics.
+  const defined = pkg.ComponentLibrary.fromDefinition(
+    '{"components":[{"name":"Box","description":"","props":[{"name":"a","type":{"kind":"any"}}]}]}');
+  if (!defined.jsonSchema().startsWith('{"$schema":')) throw new Error(`${name}: defined library schema missing`);
+  if (JSON.parse(pkg.parse('root=Box(1)', defined)).root?.typeName !== 'Box') throw new Error(`${name}: defined library did not parse`);
+  defined.free();
   console.log(`${name}: package loaded and guarded session checked`);
 }

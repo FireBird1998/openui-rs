@@ -9,12 +9,14 @@ use std::fmt;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Weak, mpsc};
 
+mod library_definition;
 mod mcp;
 mod mutations;
 mod queries;
 mod refresh;
 mod response;
 mod tool_results;
+pub use library_definition::{DefinedLibraryOutput, define_library};
 pub use mcp::extract_mcp_tool_result;
 pub use openui_runtime::{ToolCall as WantedToolCall, ToolCallOutcome};
 pub use queries::QueryEffects;
@@ -173,6 +175,23 @@ impl ParseLimits {
 pub struct ComponentLibrary {
     pub inner: Arc<openui_lang::Library>,
     pub schema: Arc<serde_json::Value>,
+}
+impl Drop for ComponentLibrary {
+    /// The schema of a library made from a definition nests as deep as its
+    /// types, which the host's depth limit allows; serde_json frees a value
+    /// by recursing. The last holder frees it with a loop instead.
+    fn drop(&mut self) {
+        let schema = std::mem::replace(&mut self.schema, Arc::new(serde_json::Value::Null));
+        free_shared_json(schema);
+    }
+}
+/// Frees a shared JSON value without recursion when this is its last
+/// holder; otherwise only lets go of it. Two holders dropping at once on
+/// different threads free it exactly once.
+pub fn free_shared_json(json: Arc<serde_json::Value>) {
+    if let Some(json) = Arc::into_inner(json) {
+        openui_lang::free_json(json);
+    }
 }
 /// Shared parser output; JSON carries no authority.
 #[derive(Debug)]
@@ -577,11 +596,7 @@ impl SessionCore {
         Ok(Some(functions))
     }
     fn text(&self, text: &str) -> Result<(), OpenUiError> {
-        if u64::try_from(text.len()).unwrap_or(u64::MAX) > self.limits.max_json_bytes {
-            Err(limit("host input byte limit"))
-        } else {
-            Ok(())
-        }
+        admit_text(text, self.limits.max_json_bytes)
     }
     fn json(&self, text: &str) -> Result<Value, OpenUiError> {
         self.text(text)?;
@@ -1623,6 +1638,15 @@ fn runtime_error(error: RuntimeFailure, state_cap: usize) -> OpenUiError {
         RuntimeFailure::Resume(R::ForeignSession) => OpenUiError::ForeignHandle,
         RuntimeFailure::Resume(R::Consumed) => OpenUiError::ConsumedHandle,
         RuntimeFailure::Resume(e) => worker_error(&e.to_string()),
+    }
+}
+/// Host text within `max_bytes`, counted in UTF-8 bytes; longer text is
+/// refused with the host input limit error, before anything reads it.
+fn admit_text(text: &str, max_bytes: u64) -> Result<(), OpenUiError> {
+    if u64::try_from(text.len()).unwrap_or(u64::MAX) > max_bytes {
+        Err(limit("host input byte limit"))
+    } else {
+        Ok(())
     }
 }
 fn limit(reason: &str) -> OpenUiError {

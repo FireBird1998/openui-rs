@@ -20,9 +20,18 @@ pub use runtime::*;
 use wasm_bindgen::prelude::*;
 
 /// A component library, from the JSON Schema lang-core's
-/// `library.toJSONSchema()` gives.
+/// `library.toJSONSchema()` gives, or from a library definition. The second
+/// field holds a defined library's JSON Schema and prompt spec text.
 #[wasm_bindgen]
-pub struct ComponentLibrary(Arc<openui_session::ComponentLibrary>);
+pub struct ComponentLibrary(
+    Arc<openui_session::ComponentLibrary>,
+    Option<Arc<DefinedTexts>>,
+);
+
+struct DefinedTexts {
+    json_schema: String,
+    prompt_spec: String,
+}
 
 #[wasm_bindgen]
 impl ComponentLibrary {
@@ -31,12 +40,67 @@ impl ComponentLibrary {
     pub fn new(schema: &str) -> Result<ComponentLibrary, JsValue> {
         let schema: serde_json::Value = serde_json::from_str(schema)
             .map_err(|e| runtime::thrown("InvalidSchema", &e.to_string()))?;
-        Ok(ComponentLibrary(Arc::new(
-            openui_session::ComponentLibrary {
+        Ok(ComponentLibrary(
+            Arc::new(openui_session::ComponentLibrary {
                 inner: Arc::new(Library::from_json_schema(&schema)),
                 schema: Arc::new(schema),
-            },
-        )))
+            }),
+            None,
+        ))
+    }
+
+    /// The library a library definition in plain-data form, as JSON text,
+    /// makes (`docs/library-definition.md`), within the default
+    /// RuntimeLimits; see `fromDefinitionWithLimits`.
+    #[wasm_bindgen(js_name = fromDefinition)]
+    pub fn from_definition(definition: &str) -> Result<ComponentLibrary, JsValue> {
+        Self::defined(definition, &openui_session::RuntimeLimits::default())
+    }
+
+    /// `fromDefinition` within a session's limits. The text is host input:
+    /// one longer than `maxJsonBytes` (8 MiB by default), counted in UTF-8
+    /// bytes, throws LimitExceeded before it is read. Malformed JSON, a
+    /// definition not in the plain-data form, an unsupported kind, a root
+    /// that is not a component and a colliding function or action name throw
+    /// InvalidJson with the core's message.
+    #[wasm_bindgen(js_name = fromDefinitionWithLimits)]
+    pub fn from_definition_with_limits(
+        definition: &str,
+        limits: &runtime::RuntimeLimits,
+    ) -> Result<ComponentLibrary, JsValue> {
+        Self::defined(definition, limits.core())
+    }
+
+    /// A defined library's JSON Schema as JSON text, byte for byte as
+    /// upstream's `JSON.stringify(library.toJSONSchema())`; undefined for a
+    /// library made from a JSON Schema.
+    #[wasm_bindgen(js_name = jsonSchema)]
+    pub fn json_schema(&self) -> Option<String> {
+        self.1.as_ref().map(|d| d.json_schema.clone())
+    }
+
+    /// A defined library's prompt spec as JSON text, byte for byte as
+    /// upstream's `JSON.stringify(library.toSpec())`; undefined for a
+    /// library made from a JSON Schema.
+    #[wasm_bindgen(js_name = promptSpec)]
+    pub fn prompt_spec(&self) -> Option<String> {
+        self.1.as_ref().map(|d| d.prompt_spec.clone())
+    }
+}
+
+impl ComponentLibrary {
+    fn defined(
+        definition: &str,
+        limits: &openui_session::RuntimeLimits,
+    ) -> Result<ComponentLibrary, JsValue> {
+        let defined = openui_session::define_library(definition, limits).map_err(runtime::error)?;
+        Ok(ComponentLibrary(
+            Arc::new(defined.library),
+            Some(Arc::new(DefinedTexts {
+                json_schema: defined.json_schema,
+                prompt_spec: defined.prompt_spec,
+            })),
+        ))
     }
 }
 

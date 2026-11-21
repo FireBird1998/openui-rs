@@ -3,7 +3,9 @@
 The [generated application signatures](runtime-binding-api.md) list constructors,
 methods, records and typed errors. Create RuntimeSession for a ComponentLibrary;
 its original schema supplies action definitions. Supply the prompt spec's library
-object or full wrapper for BindingProps. undecidedBindings reports ambiguous
+object or full wrapper for BindingProps. A library made from a
+[library definition](library-definition.md) gives that library object as
+`promptSpec()`. undecidedBindings reports ambiguous
 pairs; markBinding resolves them. registerFunction supplies declared library
 functions; unregistered functions still return null. See the callback contract below.
 

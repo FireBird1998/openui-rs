@@ -36,7 +36,7 @@ pub(crate) fn kind(e: &core::OpenUiError) -> &'static str {
 /// with intrinsics captured when the package loads. A throwing or re-entering
 /// `Object.prototype.kind` setter or a patched `JSON.parse` therefore cannot
 /// unwind through a borrowed Rust frame and strand wasm-bindgen's borrow flag.
-fn error(e: core::OpenUiError) -> JsValue {
+pub(crate) fn error(e: core::OpenUiError) -> JsValue {
     thrown(kind(&e), &e.to_string())
 }
 /// `openui:<Kind>\n<message>`, the shape the guard recognises.
@@ -645,6 +645,12 @@ impl RuntimeLimits {
 impl Default for RuntimeLimits {
     fn default() -> Self {
         Self::new()
+    }
+}
+impl RuntimeLimits {
+    /// The shared session policy's limits, for a library definition.
+    pub(crate) fn core(&self) -> &core::RuntimeLimits {
+        &self.inner
     }
 }
 #[wasm_bindgen]
