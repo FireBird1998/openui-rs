@@ -1,5 +1,6 @@
 // Goldens for library definitions: sample libraries declared with upstream's
-// own defineComponent and createLibrary over zod, each converted to the core's
+// own defineComponent, defineFunction, defineAction and createLibrary over
+// zod, each converted to the core's
 // plain-data form (library-definition.ts) and run through upstream for its
 // toJSONSchema() and toSpec(), or the message createLibrary throws.
 //
@@ -17,7 +18,7 @@ import { z } from "zod/v4";
 
 process.env.OPENUI_TELEMETRY_DISABLED = "1";
 process.env.DO_NOT_TRACK = "1";
-const { createLibrary, defineComponent, defineAction } = await import("./lang-core/src/library");
+const { createLibrary, defineComponent, defineAction, defineFunction } = await import("./lang-core/src/library");
 const { toLibraryDefinition } = await import("./library-definition");
 const { action, steps } = await import("./lang-core/src/parser/builtins");
 const { markReactive } = await import("./lang-core/src/reactive");
@@ -74,6 +75,26 @@ const named = <T extends object>(schema: T, name: string): T => {
   tagSchemaId(schema, name);
   return schema;
 };
+// defineFunction and defineAction over a params shape; `fn` is the
+// implementation, which never enters the core.
+const fn = (name: string, description: string, params: Record<string, z.ZodType>, returns?: z.ZodType) =>
+  defineFunction({ name, description, params: z.object(params), ...(returns !== undefined ? { returns } : {}), fn: () => null });
+const act = (name: string, description: string, params: Record<string, z.ZodType>) =>
+  defineAction({ name, description, params: z.object(params) });
+// A library of one component, with these functions and actions.
+const calls = (functions: ReturnType<typeof fn>[], actions: ReturnType<typeof act>[] = []): Input => ({
+  components: [component("A", "a", {})],
+  ...(functions.length ? { functions } : {}),
+  ...(actions.length ? { actions } : {}),
+});
+// A collision: createLibrary refuses the second of two names.
+const collision = (kind: "function" | "action", name: string, extra: Partial<Input> = {}): Input => ({
+  components: [component("Item", "i", {})],
+  ...extra,
+  ...(kind === "function"
+    ? { functions: [...(extra.functions ?? []), fn(name, "", {})] }
+    : { actions: [...(extra.actions ?? []), act(name, "", {})] }),
+});
 
 const samples: [string, () => Input][] = [
   ["scalars", () => scalars],
@@ -536,6 +557,266 @@ const samples: [string, () => Input][] = [
       ],
     }),
   ],
+  // Functions and actions (#134). A function's signature is its params' as
+  // a component's, with " → T" when it declares a return type; its JSON
+  // Schema entry is {description, params, returns?}, after $defs.
+  [
+    "function-with-params-and-return",
+    () => calls([fn("Percent", "Percent of a total.", { part: z.number(), total: z.number() }, z.number())]),
+  ],
+  [
+    "function-returning-array-of-objects",
+    () => calls([
+      fn("Rows", "Rows matching a query.", { query: z.string(), limit: z.number().optional() }, z.array(z.object({ id: z.string(), score: z.number().nullable(), tags: z.array(z.string()).optional() }))),
+    ]),
+  ],
+  ["function-without-return-type", () => calls([fn("Log", "Logs a value.", { value: z.any(), label: z.string().optional() })])],
+  // The signature unwraps a nullable return type; the schema keeps the null.
+  [
+    "function-with-nullable-return",
+    () => calls([
+      fn("Find", "Finds a name.", { id: z.string() }, z.string().nullable()),
+      fn("Shape", "", {}, z.object({ a: z.string() }).nullable()),
+      fn("Either", "", {}, z.union([z.string(), z.number()]).nullable()),
+    ]),
+  ],
+  // Params as an object's fields: optional, nullable, both, named, with no
+  // annotation, in JavaScript key order; none at all.
+  [
+    "function-params",
+    () => calls([
+      fn("Zero", "No params.", {}, z.boolean()),
+      fn("Kinds", "Every kind of param.", {
+        text: z.string(),
+        maybe: z.number().optional(),
+        nullable: z.string().nullable(),
+        both: z.boolean().nullish(),
+        color: named(z.string(), "Color"),
+        words: z.enum(["a", "b"]),
+        mixed: z.array(z.union([z.string(), z.number()])),
+        map: z.record(z.string(), z.any()),
+        shape: z.object({ x: z.number(), y: z.number().optional() }),
+        none: z.array(z.enum([] as any)),
+        nothing: z.enum([] as any).optional(),
+      }),
+      fn("Order", "", { b: z.string(), "10": z.number(), "2": z.boolean() }, z.string()),
+    ]),
+  ],
+  // Every kind as a return type; an empty enum names none, so no arrow.
+  [
+    "function-return-kinds",
+    () => calls([
+      fn("Union", "", {}, z.union([z.string(), z.number()])),
+      fn("Unions", "", {}, z.array(z.union([z.string(), z.number()]))),
+      fn("Map", "", {}, z.record(z.string(), z.number())),
+      fn("Any", "", {}, z.any()),
+      fn("Words", "", {}, z.enum(["x", "y"])),
+      fn("Never", "", {}, z.enum([] as any)),
+      fn("Nevers", "", {}, z.array(z.enum([] as any))),
+      fn("Named", "", {}, named(z.number(), "Length")),
+      fn("Grid", "", {}, z.array(z.array(z.boolean()))),
+    ]),
+  ],
+  // Functions are keyed by name: array-index names first; the empty name
+  // and ActionExpression (no function is registered) are names like any other.
+  [
+    "function-names",
+    () => calls(["b", "10", "2", "", "ActionExpression"].map((name) => fn(name, name, { v: z.string() }))),
+  ],
+  // A call's params and return type refer to the library's components and
+  // actions with $refs, as a component's props do, but its $defs are left
+  // out: a $ref to a schema no component refers to has no $defs entry.
+  [
+    "function-references",
+    () => {
+      const item = component("Item", "An item.", { text: z.string() });
+      const unused = component("Unused", "", {});
+      const copy = act("Copy", "Copies text.", { text: z.string() });
+      return {
+        components: [component("List", "A list.", { items: z.array(item.ref) }), item, unused],
+        functions: [
+          fn("Pick", "Picks an item.", { items: z.array(item.ref), other: unused.ref.optional() }, item.ref),
+          fn("Act", "", { a: action(), go: steps.OpenUrl.ref, copy: copy.ref }, z.array(copy.ref)),
+        ],
+        actions: [copy],
+        root: "List",
+      };
+    },
+  ],
+  // A component of the action slot's name wins its id: the slot is written
+  // inline in a call's params too.
+  [
+    "function-action-slot-shadowed-by-component",
+    () => ({
+      components: [component("ActionExpression", "x", {}), component("A", "a", {})],
+      functions: [fn("F", "", { a: action(), maybe: action().optional() }, action())],
+    }),
+  ],
+  // A library a program can call functions in, for the runtime's tests
+  // (crates/openui-runtime/tests/library_functions.rs): a holder of any
+  // values, and functions with checked params and results.
+  [
+    "functions-in-a-program",
+    () => ({
+      components: [component("Box", "Holds values.", { a: z.any(), b: z.any().optional(), c: z.any().optional() })],
+      functions: [
+        fn("Percent", "Percent of a total.", { part: z.number(), total: z.number() }, z.number()),
+        fn("Label", "A label for a value.", { text: z.string(), suffix: z.string().optional() }, z.string()),
+        fn("Unimplemented", "Has no implementation.", { v: z.any() }),
+      ],
+      root: "Box",
+    }),
+  ],
+  ["functions-without-components", () => ({ components: [], functions: [fn("F", "f", { x: z.number() }, z.number())] })],
+  // A custom action: its signature, its params in the schema's actions, and
+  // a $defs entry {type: const name, params} when a component's slot refers
+  // to it, printed @Name.
+  [
+    "custom-action",
+    () => {
+      const copy = act("Copy", "Copies text to the clipboard.", { text: z.string(), label: z.string().optional() });
+      return {
+        components: [
+          component("Button", "A button.", { label: z.string(), action: z.union([copy.ref, steps.OpenUrl.ref]).optional() }),
+          component("Share", "", { copy: copy.ref }),
+        ],
+        actions: [copy],
+      };
+    },
+  ],
+  // Not referred to by any component: no $defs entry.
+  [
+    "custom-action-unreferenced",
+    () => calls([], [act("Copy", "Copies text.", { text: z.string() }), act("Ping", "", {})]),
+  ],
+  // In an array (not a union, so no parentheses), beside the action slot,
+  // nullable, through an escaped $ref; names in JavaScript key order.
+  [
+    "custom-action-kinds",
+    () => {
+      const slash = act("a/b~c", "escaped", {});
+      const copy = act("Copy", "", { text: z.string() });
+      const nine = act("9", "nine", { n: z.number().nullable() });
+      return {
+        components: [
+          component("A", "a", {
+            list: z.array(copy.ref),
+            either: z.union([copy.ref, action()]),
+            maybe: copy.ref.nullable(),
+            escaped: slash.ref,
+            many: z.array(z.union([slash.ref, nine.ref])).optional(),
+          }),
+        ],
+        actions: [copy, slash, nine],
+      };
+    },
+  ],
+  // An action's params refer to components and other actions: their $defs
+  // come where zod first meets them, inside the action's entry.
+  [
+    "custom-action-references",
+    () => {
+      const item = component("Item", "i", { t: z.string() });
+      const other = component("Other", "o", {});
+      const b = act("B", "b", { o: other.ref, act: action().optional() });
+      const c = act("C", "c", { item: item.ref, b: b.ref, list: z.array(b.ref).optional() });
+      return { components: [component("Root", "r", { c: c.ref, item: item.ref }), item, other], actions: [c, b], root: "Root" };
+    },
+  ],
+  // Spec keys: root, components, componentGroups, functions, actions,
+  // schema, id.
+  [
+    "functions-and-actions-with-groups",
+    () => ({
+      components: [component("A", "a", {})],
+      componentGroups: [{ name: "G", components: ["A"], notes: ["n"] }],
+      functions: [fn("F", "f", {}), fn("G", "g", { x: z.string() }, z.string())],
+      actions: [act("Z", "z", { y: z.boolean() })],
+      root: "A",
+      id: "calls",
+    }),
+  ],
+  // Object identity (#134 review): a schema shared by identity that zod
+  // writes inline, as the core does, still converts: two actions sharing a
+  // params object with no path back to it, a function whose params or return
+  // type is an action's params object (the root of a call's conversion is
+  // written in place), and an inline object referring to the component that
+  // meets it first, then shared by a later one.
+  [
+    "actions-sharing-params",
+    () => {
+      const params = z.object({ t: z.string() });
+      const copy = defineAction({ name: "Copy", description: "", params });
+      const h = defineAction({ name: "H", description: "", params });
+      return { components: [component("A", "a", { h: h.ref, c: copy.ref })], actions: [h, copy] };
+    },
+  ],
+  [
+    "function-params-are-action-params",
+    () => {
+      const params: any = z.object({
+        get next() {
+          return copy.ref;
+        },
+      });
+      const copy = defineAction({ name: "Copy", description: "", params });
+      return {
+        components: [component("A", "a", { c: copy.ref })],
+        functions: [defineFunction({ name: "F", description: "", params, fn: () => null })],
+        actions: [copy],
+      };
+    },
+  ],
+  [
+    "function-returns-action-params",
+    () => {
+      const params: any = z.object({
+        get next() {
+          return copy.ref;
+        },
+      });
+      const copy = defineAction({ name: "Copy", description: "", params });
+      return {
+        components: [component("A", "a", {})],
+        functions: [defineFunction({ name: "F", description: "", params: z.object({}), returns: params, fn: () => null })],
+        actions: [copy],
+      };
+    },
+  ],
+  [
+    "inline-object-shared-after-its-cycle",
+    () => {
+      const q: any = z.object({
+        get c() {
+          return c.ref;
+        },
+      });
+      const c: any = component("C", "c", { x: q });
+      return { components: [c, component("D", "d", { y: q })] };
+    },
+  ],
+  // Name collisions: upstream's message, for the first name that collides.
+  ["function-collides-with-builtin-function", () => collision("function", "Count")],
+  ["function-collides-with-builtin-step", () => collision("function", "OpenUrl")],
+  ["function-collides-with-action-builtin", () => collision("function", "Action")],
+  ["function-collides-with-reserved-query", () => collision("function", "Query")],
+  ["function-collides-with-reserved-mutation", () => collision("function", "Mutation")],
+  // `name in RESERVED_CALLS` sees the names every object inherits.
+  ["function-collides-with-inherited-name", () => collision("function", "toString")],
+  ["function-collides-with-proto", () => collision("function", "__proto__")],
+  ["function-collides-with-component", () => collision("function", "Item")],
+  ["function-collides-with-function", () => collision("function", "F", { functions: [fn("F", "", {})] })],
+  ["action-collides-with-builtin-function", () => collision("action", "Sum")],
+  ["action-collides-with-builtin-step", () => collision("action", "ToAssistant")],
+  ["action-collides-with-reserved-call", () => collision("action", "Mutation")],
+  ["action-collides-with-inherited-name", () => collision("action", "constructor")],
+  ["action-collides-with-component", () => collision("action", "Item")],
+  ["action-collides-with-function", () => collision("action", "F", { functions: [fn("F", "", {})] })],
+  ["action-collides-with-action", () => collision("action", "F", { actions: [act("F", "", {})] })],
+  // A __proto__ component is not in the record, so its name is not taken
+  // (the name is a reserved call anyway); the root is checked first.
+  ["function-beside-proto-component", () => ({ components: [component("__proto__", "p", {}), component("A", "a", {})], functions: [fn("Proto", "", {})] })],
+  ["root-checked-before-collisions", () => collision("function", "Item", { root: "Nope" })],
   ["root-missing", () => ({ components: [component("A", "a", {}), component("B", "b", {})], root: "C" })],
   ["root-missing-no-components", () => ({ components: [], root: "Page" })],
   ["root-missing-proto-component", () => ({ components: [component("__proto__", "p", {})], root: "Nope" })],
@@ -661,11 +942,62 @@ const refusals: [string, () => unknown, string, string?][] = [
     },
     "shadowed",
   ],
-  // A custom action's ref holds a z.literal; custom actions are #134's.
+  // An action outside the library is no reference: its ref holds a
+  // z.literal, which upstream prints and writes inline.
   [
-    "custom-action-ref",
+    "custom-action-outside-library",
     () => one({ a: defineAction({ name: "Copy", description: "c", params: z.object({ text: z.string() }) }).ref as any }),
     'kind "literal"',
+  ],
+  // Functions and actions (#134): what the plain data can't say.
+  [
+    "action-named-action-expression",
+    () => {
+      const ae = act("ActionExpression", "", { x: z.string() });
+      return { components: [component("A", "a", { mine: ae.ref, slot: action() })], actions: [ae] };
+    },
+    "named ActionExpression",
+    'Duplicate schema id "ActionExpression"',
+  ],
+  [
+    "reference-to-empty-named-action",
+    () => {
+      const empty = act("", "", {});
+      return { components: [component("A", "a", { e: empty.ref })], actions: [empty] };
+    },
+    "empty name",
+  ],
+  ["reactive-function-param", () => calls([fn("F", "", { v: bound(z.string()) })]), "reactive"],
+  ["reactive-action-param", () => calls([], [act("G", "", { v: bound(z.string().optional()) })]), "reactive"],
+  ["reactive-return", () => calls([fn("F", "", {}, bound(z.string()))]), "reactive"],
+  ["optional-return", () => calls([fn("F", "", {}, z.string().optional())]), "optional inside"],
+  ["return-with-check", () => calls([fn("F", "", {}, z.string().min(1))]), "checks"],
+  ["function-param-int", () => calls([fn("F", "", { n: z.int() })]), '"check"'],
+  [
+    "function-params-shared-with-component",
+    () => {
+      const a = component("A", "a", { v: z.string() });
+      return { components: [a], functions: [defineFunction({ name: "F", description: "", params: a.props, fn: () => null })] };
+    },
+    "shared with a component",
+  ],
+  [
+    "action-params-shared-with-component",
+    () => {
+      const a = component("A", "a", { v: z.string() });
+      return { components: [a], actions: [defineAction({ name: "G", description: "", params: a.props })] };
+    },
+    "shared with a component",
+  ],
+  ["function-extra-field", () => ({ ...one({}), functions: [{ ...fn("F", "", {}), lazy: true }] }), 'field "lazy"'],
+  ["action-extra-field", () => ({ ...one({}), actions: [{ ...act("G", "", {}), returns: z.string() }] }), 'field "returns"'],
+  [
+    "action-ref-shared",
+    () => {
+      const g = act("G", "", {});
+      return { ...one({}), actions: [g, { ...act("H", "", {}), ref: g.ref }] };
+    },
+    "shared with another action",
   ],
   // Object.entries skips symbol keys; upstream throws on them, at the props
   // object and inside it (checked below).
@@ -710,7 +1042,7 @@ const refusals: [string, () => unknown, string, string?][] = [
     () => ({ components: [{ ...component("A", "a", {}), extra: 1 }] }),
     'field "extra"',
   ],
-  ["library-extra-field", () => ({ ...one({}), functions: [] }), 'field "functions"'],
+  ["library-extra-field", () => ({ ...one({}), tools: [] }), 'field "tools"'],
   [
     "group-key-order",
     () => ({ ...one({}), componentGroups: [{ components: ["A"], name: "G" }] }),
@@ -727,6 +1059,106 @@ const refusals: [string, () => unknown, string, string?][] = [
     "in that order",
   ],
 ];
+// Declarations where zod writes a schema as a "__schemaN" $defs entry (or a
+// call's $ref to one): a schema met again inside itself through a reference,
+// of each kind. The plain data has no object identity, so the converter
+// refuses them; the run checks that upstream's output still has the entry.
+// `shared(t)` is a type met first under D and again under C, which D's
+// type refers to: zod meets it again while still writing it.
+const cyclic = (make: (back: () => z.ZodType) => z.ZodType) => () => {
+  const c: any = component("C", "c", {
+    get x() {
+      return shared;
+    },
+  });
+  const shared: any = make(() => c.ref);
+  return { components: [component("D", "d", { y: shared }), c] };
+};
+const loop = (back: () => z.ZodType) =>
+  z.object({
+    get c() {
+      return back();
+    },
+  });
+const extractedRefusals: [string, () => unknown][] = [
+  // V1: two actions share a params object that refers to one of them.
+  [
+    "two-actions-share-params-on-a-cycle",
+    () => {
+      const params: any = z.object({
+        get next() {
+          return copy.ref;
+        },
+      });
+      const copy = defineAction({ name: "Copy", description: "", params });
+      const h = defineAction({ name: "H", description: "", params });
+      return { components: [component("A", "a", { h: h.ref })], actions: [h, copy] };
+    },
+  ],
+  // V2: an action's params object, referring to the action, as a prop's type.
+  [
+    "action-params-as-prop-type-on-a-cycle",
+    () => {
+      const params: any = z.object({
+        get next() {
+          return copy.ref;
+        },
+      });
+      const copy = defineAction({ name: "Copy", description: "", params });
+      return { components: [component("A", "a", { p: params })], actions: [copy] };
+    },
+  ],
+  // V5: an inline object referring to a component, met first under another.
+  ["inline-object-on-a-cycle", cyclic(loop)],
+  // The same for each kind that holds another type.
+  ["array-on-a-cycle", cyclic((back) => z.array(loop(back)))],
+  ["union-on-a-cycle", cyclic((back) => z.union([z.string(), loop(back)]))],
+  ["record-on-a-cycle", cyclic((back) => z.record(z.string(), loop(back)))],
+  ["nullable-on-a-cycle", cyclic((back) => loop(back).nullable())],
+  ["optional-on-a-cycle", cyclic((back) => loop(back).optional())],
+  // V6: a call's param type met again inside itself through an action: the
+  // call's $ref to its entry is kept though the entry is dropped.
+  [
+    "function-param-on-a-cycle",
+    () => {
+      const q: any = z.object({
+        get a() {
+          return copy.ref;
+        },
+      });
+      const copy = defineAction({ name: "Copy", description: "", params: z.object({ q }) });
+      return {
+        components: [component("A", "a", { c: copy.ref })],
+        functions: [defineFunction({ name: "F", description: "", params: z.object({ q }), fn: () => null })],
+        actions: [copy],
+      };
+    },
+  ],
+  [
+    "action-param-on-a-cycle",
+    () => {
+      const q: any = z.object({
+        get a() {
+          return copy.ref;
+        },
+      });
+      const copy = defineAction({ name: "Copy", description: "", params: z.object({ q }) });
+      return { components: [component("A", "a", {})], actions: [copy, defineAction({ name: "G", description: "", params: z.object({ q }) })] };
+    },
+  ],
+];
+for (const [name, make] of extractedRefusals) {
+  let message: string | undefined;
+  try {
+    toLibraryDefinition(make() as any);
+  } catch (e) {
+    message = (e as Error).message;
+  }
+  if (!message?.includes("__schemaN")) throw new Error(`refusal ${name}: not refused as __schemaN: ${message}`);
+  const output = JSON.stringify(createLibrary(make() as Input).toSpec());
+  if (!output.includes("__schema")) throw new Error(`refusal ${name}: upstream no longer writes a __schemaN entry`);
+}
+
 for (const [name, make, reason, upstreamThrows] of refusals) {
   let message: string | undefined;
   try {
@@ -766,4 +1198,4 @@ writeFileSync(
   join(CONFORMANCE, "schemas", "library-definition.json"),
   JSON.stringify(out[0].schema, null, 2) + "\n",
 );
-console.log(`${out.length} library-definition observations, ${refusals.length} converter refusals`);
+console.log(`${out.length} library-definition observations, ${refusals.length + extractedRefusals.length} converter refusals`);

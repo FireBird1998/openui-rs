@@ -33,18 +33,26 @@
 //! with a loop and a stack of its own, so a reference chain as long as the
 //! library or a cycle costs nothing more; writing a component's schema stops
 //! at each reference.
+//!
+//! Functions and actions follow upstream's `createLibrary` too: their names
+//! are claimed in order, functions first, each against the built-ins, the
+//! reserved calls, the record's components and the names claimed before it;
+//! a library action's ref is registered under its name, so it is written as
+//! a `$ref` with a `$defs` entry when a component refers to it; and a call's
+//! params and return type are written with the same registry, their own
+//! `$defs` left out (`toCallJSONSchema`).
 
 use std::collections::{HashMap, HashSet};
 
 use serde_json::{Map, Value as Json, json};
 
-use crate::Library;
 use crate::js::{JsObject, OBJECT_PROTOTYPE_KEYS};
 use crate::library_definition::{
-    ComponentDefinition, LibraryDefinition, LibraryDefinitionError, PropDefinition,
-    TypeDescription, check_references, in_property_order,
+    ActionDefinition, ComponentDefinition, FieldDefinition, FunctionDefinition, LibraryDefinition,
+    LibraryDefinitionError, PropDefinition, TypeDescription, check_references, in_property_order,
 };
-use crate::signature::{enum_words, signature};
+use crate::signature::{Entry, call_signature, enum_words};
+use crate::{CallKind, Library, is_builtin, is_reserved_call};
 
 /// The `$schema` zod 4 writes.
 const DRAFT_2020_12: &str = "https://json-schema.org/draft/2020-12/schema";
@@ -66,16 +74,23 @@ pub struct DefinedLibrary {
     components: Vec<usize>,
 }
 
-/// Upstream's `createLibrary`: checks the root and makes the library.
+/// Upstream's `createLibrary`: checks the root and the names of the
+/// functions and actions, and makes the library.
 ///
 /// Refuses a root that names no component with
 /// [`LibraryDefinitionError::RootNotFound`], whose message is upstream's.
 /// An empty root isn't checked, as upstream doesn't check it. Then refuses a
+/// function or action name that is a built-in, a reserved call, a
+/// component's or an earlier function's or action's with
+/// [`LibraryDefinitionError::NameCollision`], whose message is upstream's,
+/// checking the functions first, each in order. Then refuses a
 /// component reference to a name no component has with
 /// [`LibraryDefinitionError::UnknownComponent`], an action slot naming an
 /// action a slot can't name with [`LibraryDefinitionError::UnknownAction`],
 /// and, as invalid, a reference to the component with the empty name and a
-/// named type whose type is a reference, a slot or another named type.
+/// named type whose type is a reference, a slot or another named type, a
+/// reference to the library action with the empty name, and a library
+/// action named `ActionExpression`.
 pub fn create_library(
     definition: LibraryDefinition,
 ) -> Result<DefinedLibrary, LibraryDefinitionError> {
@@ -102,6 +117,20 @@ pub fn create_library(
             return Err(LibraryDefinitionError::RootNotFound {
                 root: root.to_owned(),
                 available: record.iter().map(|(name, _)| name.clone()).collect(),
+            });
+        }
+    }
+    // `claim`: the record's component names, then each function's and
+    // action's in turn.
+    let mut names: HashSet<&str> = record.iter().map(|(name, _)| name.as_str()).collect();
+    let calls = (definition.functions.iter())
+        .map(|f| (CallKind::Function, f.name.as_str()))
+        .chain((definition.actions.iter()).map(|a| (CallKind::Action, a.name.as_str())));
+    for (kind, name) in calls {
+        if is_builtin(name) || is_reserved_call(name) || !names.insert(name) {
+            return Err(LibraryDefinitionError::NameCollision {
+                kind,
+                name: name.to_owned(),
             });
         }
     }
@@ -170,6 +199,11 @@ impl DefinedLibrary {
                 Node::Action(action) => {
                     defs.insert(action.name().to_owned(), action.schema());
                 }
+                Node::CustomAction(i) => {
+                    if let Some(action) = self.definition.actions.get(i) {
+                        defs.insert(action.name.clone(), custom_action_schema(action, &registry));
+                    }
+                }
             }
         }
         let mut schema = Map::new();
@@ -183,7 +217,58 @@ impl DefinedLibrary {
         if !defs.is_empty() {
             schema.insert("$defs".to_owned(), Json::Object(defs));
         }
+        // `callSchemas`: each call's description, params and return type,
+        // keyed by name; left out when there are none.
+        let functions = self
+            .functions()
+            .map(|function| {
+                let mut entry = Map::new();
+                entry.insert(
+                    "description".to_owned(),
+                    function.description.as_str().into(),
+                );
+                entry.insert(
+                    "params".to_owned(),
+                    Json::Object(params_schema(&function.params, &registry)),
+                );
+                if let Some(returns) = &function.returns {
+                    entry.insert("returns".to_owned(), type_schema(returns, &registry));
+                }
+                (function.name.clone(), Json::Object(entry))
+            })
+            .collect::<Map<_, _>>();
+        if !functions.is_empty() {
+            schema.insert("functions".to_owned(), Json::Object(functions));
+        }
+        let actions = self
+            .actions()
+            .map(|action| {
+                let entry = object([
+                    ("description", action.description.as_str().into()),
+                    (
+                        "params",
+                        Json::Object(params_schema(&action.params, &registry)),
+                    ),
+                ]);
+                (action.name.clone(), entry)
+            })
+            .collect::<Map<_, _>>();
+        if !actions.is_empty() {
+            schema.insert("actions".to_owned(), Json::Object(actions));
+        }
         Json::Object(schema)
+    }
+
+    /// The functions, keyed by name: in JavaScript property order. Names
+    /// are unique, as `create_library` checked.
+    fn functions(&self) -> impl Iterator<Item = &FunctionDefinition> {
+        in_property_order(&self.definition.functions, |f| &f.name).into_iter()
+    }
+
+    /// The library's own actions, keyed by name: in JavaScript property
+    /// order.
+    fn actions(&self) -> impl Iterator<Item = &ActionDefinition> {
+        in_property_order(&self.definition.actions, |a| &a.name).into_iter()
     }
 
     /// Upstream's `toSpec()`: the prompt spec, with each component's
@@ -196,11 +281,16 @@ impl DefinedLibrary {
         let components = self
             .components()
             .map(|component| {
+                let entries = ordered_props(&component.props).into_iter().map(|p| Entry {
+                    name: &p.name,
+                    ty: &p.ty,
+                    optional: p.optional,
+                    binding: p.binding,
+                });
                 let entry = object([
                     (
                         "signature",
-                        signature(&component.name, ordered_props(&component.props).into_iter())
-                            .into(),
+                        call_signature(&component.name, entries, None).into(),
                     ),
                     ("description", component.description.as_str().into()),
                 ]);
@@ -222,6 +312,38 @@ impl DefinedLibrary {
                 })
                 .collect();
             spec.insert("componentGroups".to_owned(), Json::Array(groups));
+        }
+        // `buildCallSpecs`, left out when there are none.
+        let call_spec = |name: &str, description: &str, params, returns| {
+            object([
+                (
+                    "signature",
+                    call_signature(name, param_entries(params), returns).into(),
+                ),
+                ("description", description.into()),
+            ])
+        };
+        let functions: Map<String, Json> = self
+            .functions()
+            .map(|f| {
+                let entry = call_spec(&f.name, &f.description, &f.params, f.returns.as_ref());
+                (f.name.clone(), entry)
+            })
+            .collect();
+        if !functions.is_empty() {
+            spec.insert("functions".to_owned(), Json::Object(functions));
+        }
+        let actions: Map<String, Json> = self
+            .actions()
+            .map(|a| {
+                (
+                    a.name.clone(),
+                    call_spec(&a.name, &a.description, &a.params, None),
+                )
+            })
+            .collect();
+        if !actions.is_empty() {
+            spec.insert("actions".to_owned(), Json::Object(actions));
         }
         spec.insert("schema".to_owned(), self.to_json_schema());
         if let Some(id) = &self.definition.id {
@@ -254,6 +376,9 @@ impl DefinedLibrary {
         Registry {
             last,
             record: self.components().map(|c| c.name.as_str()).collect(),
+            actions: (self.definition.actions.iter().enumerate())
+                .map(|(i, a)| (a.name.as_str(), i))
+                .collect(),
         }
     }
 
@@ -266,12 +391,14 @@ impl DefinedLibrary {
         let count = self.definition.components.len();
         let mut seen_components = vec![false; count];
         let mut seen_actions = [false; 3];
+        let mut seen_custom = vec![false; self.definition.actions.len()];
         let mut order = Vec::new();
         let mut stack: Vec<(Vec<Node>, usize)> = Vec::new();
         let mut visit = |node: Node, order: &mut Vec<Node>| -> Option<Vec<Node>> {
             let seen = match node {
                 Node::Component(i) => seen_components.get_mut(i)?,
                 Node::Action(action) => seen_actions.get_mut(action as usize)?,
+                Node::CustomAction(i) => seen_custom.get_mut(i)?,
             };
             if *seen {
                 return None;
@@ -279,12 +406,23 @@ impl DefinedLibrary {
             *seen = true;
             order.push(node);
             let mut edges = Vec::new();
-            if let Node::Component(i) = node
-                && let Some(component) = self.definition.components.get(i)
-            {
-                for prop in ordered_props(&component.props) {
-                    references(&prop.ty, registry, &mut edges);
+            match node {
+                Node::Component(i) => {
+                    if let Some(component) = self.definition.components.get(i) {
+                        for prop in ordered_props(&component.props) {
+                            references(&prop.ty, registry, &mut edges);
+                        }
+                    }
                 }
+                // The action's data: `type` (a literal), then its params.
+                Node::CustomAction(i) => {
+                    if let Some(action) = self.definition.actions.get(i) {
+                        for param in in_property_order(&action.params, |p| &p.name) {
+                            references(&param.ty, registry, &mut edges);
+                        }
+                    }
+                }
+                Node::Action(_) => {}
             }
             Some(edges)
         };
@@ -309,9 +447,18 @@ impl DefinedLibrary {
     /// How deep the deepest prop's type nests, a prop's own type being one
     /// level, measured with a loop.
     fn type_depth(&self) -> usize {
+        // A call's params sit a level deeper in the schema than a prop
+        // (under `functions`), and a library action's two more in its
+        // `$defs` entry (under its data's `params`).
         let mut open: Vec<(&TypeDescription, usize)> = self
             .components()
             .flat_map(|c| c.props.iter().map(|p| (&p.ty, 1)))
+            .chain(self.definition.functions.iter().flat_map(|f| {
+                (f.params.iter().map(|p| (&p.ty, 2))).chain(f.returns.iter().map(|t| (t, 2)))
+            }))
+            .chain(
+                (self.definition.actions.iter()).flat_map(|a| a.params.iter().map(|p| (&p.ty, 3))),
+            )
             .collect();
         let mut deepest = 0;
         while let Some((ty, depth)) = open.pop() {
@@ -362,6 +509,8 @@ struct Registry<'a> {
     last: HashMap<&'a str, usize>,
     /// The names the component record has (all but `__proto__`).
     record: HashSet<&'a str>,
+    /// The library's own actions by name, each registered under its name.
+    actions: HashMap<&'a str, usize>,
 }
 
 impl Registry<'_> {
@@ -372,12 +521,15 @@ impl Registry<'_> {
     }
 }
 
-/// A registered schema: a component's props, or an action shape.
+/// A registered schema: a component's props, a built-in action shape, or a
+/// library action's data.
 #[derive(Clone, Copy)]
 enum Node {
     /// An index into the definition's components.
     Component(usize),
     Action(ActionShape),
+    /// An index into the definition's actions.
+    CustomAction(usize),
 }
 
 /// The built-in action shapes, upstream's `ACTION_DEFS`.
@@ -472,13 +624,18 @@ fn references(ty: &TypeDescription, registry: &Registry<'_>, out: &mut Vec<Node>
                 out.push(Node::Component(i));
             }
         }
-        TypeDescription::Action(name) => {
-            if let Some(action) = ActionShape::of(name.as_deref())
-                && registry.registers(action)
-            {
-                out.push(Node::Action(action));
+        TypeDescription::Action(name) => match ActionShape::of(name.as_deref()) {
+            Some(action) => {
+                if registry.registers(action) {
+                    out.push(Node::Action(action));
+                }
             }
-        }
+            None => {
+                if let Some(&i) = name.as_deref().and_then(|n| registry.actions.get(n)) {
+                    out.push(Node::CustomAction(i));
+                }
+            }
+        },
         TypeDescription::Array(t)
         | TypeDescription::Record(t)
         | TypeDescription::Nullable(t)
@@ -505,6 +662,55 @@ fn references(ty: &TypeDescription, registry: &Registry<'_>, out: &mut Vec<Node>
 fn reference(name: &str) -> Json {
     let target = format!("#/$defs/{}", json_pointer_token(name));
     object([("$ref", target.into())])
+}
+
+/// What `defineAction` registers under a library action's name: `z.object({
+/// type: z.literal(name), params })`.
+fn custom_action_schema(action: &ActionDefinition, registry: &Registry<'_>) -> Json {
+    object([
+        ("type", "object".into()),
+        (
+            "properties",
+            object([
+                (
+                    "type",
+                    object([
+                        ("type", "string".into()),
+                        ("const", action.name.as_str().into()),
+                    ]),
+                ),
+                (
+                    "params",
+                    Json::Object(params_schema(&action.params, registry)),
+                ),
+            ]),
+        ),
+        ("required", json!(["type", "params"])),
+        ("additionalProperties", false.into()),
+    ])
+}
+
+/// A call's params as zod writes its object schema, in property order.
+fn params_schema(params: &[FieldDefinition], registry: &Registry<'_>) -> Map<String, Json> {
+    object_schema(
+        in_property_order(params, |p| &p.name)
+            .into_iter()
+            .map(|p| (p.name.as_str(), &p.ty, p.optional)),
+        registry,
+    )
+}
+
+/// A call's params as signature entries, in property order; a param is no
+/// binding.
+fn param_entries(params: &[FieldDefinition]) -> impl Iterator<Item = Entry<'_>> {
+    in_property_order(params, |p| &p.name)
+        .into_iter()
+        .map(|p| Entry {
+            name: &p.name,
+            ty: &p.ty,
+            optional: p.optional,
+            binding: false,
+        })
 }
 
 /// A component's props as zod writes its object schema.
@@ -589,8 +795,9 @@ fn type_schema(ty: &TypeDescription, registry: &Registry<'_>) -> Json {
         TypeDescription::Action(name) => match ActionShape::of(name.as_deref()) {
             Some(action) if registry.registers(action) => reference(action.name()),
             Some(action) => action.schema(),
-            // create_library refused any other name.
-            None => Json::Object(Map::new()),
+            // A library action, registered under its name; create_library
+            // refused any other name and the empty one.
+            None => reference(name.as_deref().unwrap_or_default()),
         },
     }
 }

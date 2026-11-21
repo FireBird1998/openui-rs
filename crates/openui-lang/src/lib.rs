@@ -85,10 +85,12 @@
 //!
 //! # Library definitions
 //!
-//! A host without upstream's JavaScript tooling describes its library as a
-//! [`LibraryDefinition`], plain data, and [`create_library`] gives its JSON
-//! Schema and prompt spec as upstream's `createLibrary` would (ADR 0017).
-//! The parser still reads only the JSON Schema.
+//! A host without upstream's JavaScript tooling describes its library (its
+//! components, functions and actions) as a [`LibraryDefinition`], plain
+//! data, and [`create_library`] gives its JSON Schema and prompt spec as
+//! upstream's `createLibrary` would (ADR 0017). The parser still reads only
+//! the JSON Schema. A function's implementation never enters the core: the
+//! host registers it under the same name on the runtime's host-function path.
 //!
 //! ```
 //! # #[global_allocator]
@@ -101,12 +103,20 @@
 //!         "description": "A paragraph.",
 //!         "props": [{"name": "value", "type": {"kind": "string"}}]
 //!     }],
+//!     "functions": [{
+//!         "name": "Shout",
+//!         "description": "Upper-cases a text.",
+//!         "params": [{"name": "text", "type": {"kind": "string"}}],
+//!         "returns": {"kind": "string"}
+//!     }],
 //!     "root": "Text"
 //! })).unwrap();
 //! let defined = create_library(definition).unwrap();
-//! assert_eq!(defined.to_spec()["components"]["Text"]["signature"], "Text(value: string)");
+//! let spec = defined.to_spec();
+//! assert_eq!(spec["components"]["Text"]["signature"], "Text(value: string)");
+//! assert_eq!(spec["functions"]["Shout"]["signature"], "Shout(text: string) \u{2192} string");
 //!
-//! let result = parse("root = Text(\"Hello\")", &defined.library(), None);
+//! let result = parse("root = Text(@Shout(\"Hello\"))", &defined.library(), None);
 //! assert!(result.meta.errors.is_empty());
 //! ```
 //!
@@ -435,8 +445,8 @@ pub use js::{
 pub use lexer::{Token, tokenize, tokens_to_json};
 pub use library::{Call, CallKind, Component, Library, Param};
 pub use library_definition::{
-    ComponentDefinition, ComponentGroup, FieldDefinition, LibraryDefinition,
-    LibraryDefinitionError, PropDefinition, TypeDescription,
+    ActionDefinition, ComponentDefinition, ComponentGroup, FieldDefinition, FunctionDefinition,
+    LibraryDefinition, LibraryDefinitionError, PropDefinition, TypeDescription,
 };
 pub use limits::Limits;
 pub use merge::{Merged, merge_statements, merge_statements_with_limits};

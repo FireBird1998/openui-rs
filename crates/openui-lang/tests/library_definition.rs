@@ -15,8 +15,8 @@ mod common;
 
 use common::{conformance_dir, golden_dir, load_corpus, read};
 use openui_lang::{
-    Library, LibraryDefinition, LibraryDefinitionError, Limits, StreamParser, TypeDescription,
-    create_library, free_json, parse, parse_json, stringify_json,
+    CallKind, Library, LibraryDefinition, LibraryDefinitionError, Limits, StreamParser,
+    TypeDescription, create_library, free_json, parse, parse_json, stringify_json,
 };
 use serde_json::{Value, json};
 use std::sync::Arc;
@@ -432,7 +432,7 @@ fn a_reference_to_a_name_that_is_not_a_component_is_refused() {
         assert_eq!(
             err.to_string(),
             format!(
-                "library definition: components[1].props[1].type: \"{name}\" is not an action a slot can name (the built-in ones are OpenUrl and ToAssistant)"
+                "library definition: components[1].props[1].type: \"{name}\" is not an action a slot can name (the built-in ones are OpenUrl and ToAssistant, and the library's own actions)"
             )
         );
     }
@@ -698,6 +698,25 @@ fn deep_action(depth: usize) -> Value {
     definition
 }
 
+/// A function returning a type `depth` levels deep (arrays around a
+/// string), and a library action whose one param is as deep, referred to by
+/// a component so that its `$defs` entry, which nests further than a
+/// component's, is written.
+fn deep_calls(depth: usize) -> Value {
+    let mut deep = nested(depth, in_array);
+    let ty = deep["components"][0]["props"][0]["type"].take();
+    let mut definition = json!({
+        "components": [{"name": "Deep", "description": "", "props": [
+            {"name": "go", "type": {"kind": "action", "name": "Go"}}
+        ]}],
+        "functions": [{"name": "F", "description": "", "params": []}],
+        "actions": [{"name": "Go", "description": "", "params": [{"name": "p"}]}]
+    });
+    definition["functions"][0]["returns"] = ty.clone();
+    definition["actions"][0]["params"][0]["type"] = ty;
+    definition
+}
+
 fn depth_of(ty: &TypeDescription) -> usize {
     let mut depth = 1;
     let mut ty = ty;
@@ -764,6 +783,19 @@ fn types_nest_to_the_depth_limit_and_no_further() {
                     other => panic!("expected DepthLimited, got {other:?}"),
                 }
             }
+            // A call's types at the limit, and a library action's entry,
+            // fit the prompt's depth, and one level more is refused.
+            let library = define(&deep_calls(limit)).unwrap();
+            let spec = library.to_spec();
+            assert!(spec["schema"]["$defs"]["Go"].is_object());
+            openui_lang::generate_prompt_with_limits(&spec, Limits::default())
+                .expect("the spec is within the prompt's depth");
+            let _ = library.library();
+            free_json(spec);
+            assert!(matches!(
+                define(&deep_calls(limit + 1)),
+                Err(LibraryDefinitionError::DepthLimited { .. })
+            ));
             // The action slot written inline at the limit fits the prompt's
             // depth too.
             let library = define(&deep_action(limit)).unwrap();
@@ -807,7 +839,7 @@ const SMALL_STACK: usize = 64 * 1024;
 #[test]
 fn a_definition_at_the_limit_builds_and_drops_on_a_64_kib_stack() {
     let limit = Limits::default().depth();
-    let wraps: [fn(usize) -> Value; 7] = [
+    let wraps: [fn(usize) -> Value; 8] = [
         |depth| nested(depth, in_array),
         |depth| nested(depth, in_object),
         |depth| nested(depth, in_union),
@@ -815,6 +847,7 @@ fn a_definition_at_the_limit_builds_and_drops_on_a_64_kib_stack() {
         |depth| nested(depth, in_nullable),
         |depth| nested(depth, in_named),
         deep_action,
+        deep_calls,
     ];
     for make in wraps {
         let input = make(limit);
@@ -962,6 +995,388 @@ fn the_built_in_table_keeps_its_20_names() {
             .collect();
         assert_eq!(builtins.len(), 20, "{builtins:?}");
     }
+}
+
+/// The message upstream's `createLibrary` throws for a name collision.
+fn collision_message(kind: &str, name: &str) -> String {
+    format!(
+        "[createLibrary] {kind} \"{name}\" collides with a built-in, component, function, or action of the same name. Rename it."
+    )
+}
+
+/// A library of one component, `Item`, with functions and actions of these
+/// names (each with no params), in order.
+fn named_calls(functions: &[&str], actions: &[&str]) -> Value {
+    let call = |name: &&str| json!({"name": name, "description": "", "params": []});
+    json!({
+        "components": [{"name": "Item", "description": "i", "props": []}],
+        "functions": functions.iter().map(call).collect::<Vec<_>>(),
+        "actions": actions.iter().map(call).collect::<Vec<_>>(),
+    })
+}
+
+/// The collision refused for this library, checking its kind and name.
+fn assert_collision(definition: &Value, kind: CallKind, name: &str) {
+    let err = define(definition).err().unwrap();
+    assert_eq!(
+        err,
+        LibraryDefinitionError::NameCollision {
+            kind,
+            name: name.to_owned()
+        }
+    );
+    let kind = match kind {
+        CallKind::Function => "Function",
+        CallKind::Action => "Action",
+    };
+    assert_eq!(err.to_string(), collision_message(kind, name));
+}
+
+/// Each collision sample of the golden is upstream's own refusal, and the
+/// core gives the same message for its definition.
+#[test]
+fn every_collision_sample_is_upstreams_message() {
+    let collisions: Vec<Value> = golden()
+        .into_iter()
+        .filter(|c| c["name"].as_str().unwrap().contains("-collides-with-"))
+        .collect();
+    assert_eq!(collisions.len(), 16);
+    for case in collisions {
+        let error = case["error"].as_str().unwrap();
+        assert!(error.contains("collides with a built-in"), "{error}");
+        assert_eq!(
+            define(&case["definition"]).err().unwrap().to_string(),
+            error
+        );
+    }
+}
+
+/// A function named as one of the 20 built-ins (functions, steps and
+/// `Action`) is refused, as is an action.
+#[test]
+fn a_call_named_as_a_built_in_is_refused() {
+    for name in [
+        "Count",
+        "Each",
+        "Run",
+        "OpenUrl",
+        "ToAssistant",
+        "Set",
+        "Action",
+    ] {
+        assert_collision(&named_calls(&[name], &[]), CallKind::Function, name);
+        assert_collision(&named_calls(&[], &[name]), CallKind::Action, name);
+    }
+}
+
+/// `Query` and `Mutation` are reserved, and so, as upstream checks `name in
+/// RESERVED_CALLS`, is every name a JavaScript object inherits.
+#[test]
+fn a_call_named_as_a_reserved_call_is_refused() {
+    for name in [
+        "Query",
+        "Mutation",
+        "toString",
+        "constructor",
+        "__proto__",
+        "valueOf",
+    ] {
+        assert_collision(&named_calls(&[name], &[]), CallKind::Function, name);
+        assert_collision(&named_calls(&[], &[name]), CallKind::Action, name);
+    }
+    // Close to a reserved name is not one.
+    assert!(define(&named_calls(&["query", "Queries"], &["mutation"])).is_ok());
+}
+
+/// A component's name is taken: a function or action of that name is
+/// refused. A `__proto__` component is not in the record, so it takes no
+/// name (its name is a reserved call anyway).
+#[test]
+fn a_call_named_as_a_component_is_refused() {
+    assert_collision(&named_calls(&["Item"], &[]), CallKind::Function, "Item");
+    assert_collision(&named_calls(&[], &["Item"]), CallKind::Action, "Item");
+    let mut definition = named_calls(&["Proto"], &[]);
+    definition["components"]
+        .as_array_mut()
+        .unwrap()
+        .push(json!({"name": "__proto__", "description": "", "props": []}));
+    assert!(define(&definition).is_ok());
+}
+
+/// A function's or action's name is taken by an earlier function or action:
+/// the later one is refused, functions checked before actions.
+#[test]
+fn a_call_named_as_another_function_or_action_is_refused() {
+    assert_collision(&named_calls(&["F", "F"], &[]), CallKind::Function, "F");
+    assert_collision(&named_calls(&["F"], &["F"]), CallKind::Action, "F");
+    assert_collision(&named_calls(&[], &["F", "F"]), CallKind::Action, "F");
+    // The first collision is the one reported, functions first.
+    assert_collision(
+        &named_calls(&["G", "Count"], &["Item"]),
+        CallKind::Function,
+        "Count",
+    );
+    // The root is checked before any name.
+    let mut definition = named_calls(&["Item"], &[]);
+    definition["root"] = json!("Nope");
+    assert!(matches!(
+        define(&definition),
+        Err(LibraryDefinitionError::RootNotFound { .. })
+    ));
+}
+
+/// Upstream registers a library action named `ActionExpression` under the
+/// built-in action slot's id, and zod throws when a library refers to both;
+/// the core refuses the name. A function may have it (no function is
+/// registered), and a reference to the library action with the empty name is
+/// refused (upstream writes that one inline).
+#[test]
+fn an_action_named_as_the_action_slot_or_a_reference_to_the_empty_named_action_is_refused() {
+    match define(&named_calls(&[], &["ActionExpression"]))
+        .err()
+        .unwrap()
+    {
+        LibraryDefinitionError::Invalid { path, problem } => {
+            assert_eq!(path, "actions[0].name");
+            assert!(problem.contains("ActionExpression"), "{problem}");
+        }
+        other => panic!("expected Invalid, got {other:?}"),
+    }
+    assert!(define(&named_calls(&["ActionExpression"], &[])).is_ok());
+
+    let mut definition = named_calls(&[], &[""]);
+    definition["components"][0]["props"] =
+        json!([{"name": "a", "type": {"kind": "action", "name": ""}}]);
+    match define(&definition).err().unwrap() {
+        LibraryDefinitionError::Invalid { path, problem } => {
+            assert_eq!(path, "components[0].props[0].type");
+            assert_eq!(
+                problem,
+                "a reference to the action with the empty name is not supported"
+            );
+        }
+        other => panic!("expected Invalid, got {other:?}"),
+    }
+    // Unreferenced, the empty name is a name like any other.
+    assert!(define(&named_calls(&[""], &[""])).is_err());
+    assert!(define(&named_calls(&[], &[""])).is_ok());
+}
+
+/// A reference in a call's params or return type, or in an action's params,
+/// is checked as a component's: wherever it sits, the path says where.
+#[test]
+fn references_in_calls_are_checked() {
+    let mut definition = named_calls(&["F"], &["Copy"]);
+    definition["functions"][0]["returns"] = json!({"kind": "component", "name": "Missing"});
+    assert!(matches!(
+        define(&definition).err().unwrap(),
+        LibraryDefinitionError::UnknownComponent { path, .. } if path == "functions[0].returns"
+    ));
+    let mut definition = named_calls(&["F"], &["Copy"]);
+    definition["functions"][0]["params"] = json!([{"name": "a", "type": {"kind": "array", "items": {"kind": "action", "name": "Paste"}}}]);
+    assert!(matches!(
+        define(&definition).err().unwrap(),
+        LibraryDefinitionError::UnknownAction { path, name }
+            if path == "functions[0].params[0].type.items" && name == "Paste"
+    ));
+    let mut definition = named_calls(&[], &["Copy"]);
+    definition["actions"][0]["params"] =
+        json!([{"name": "i", "type": {"kind": "component", "name": "Nope"}}]);
+    assert!(matches!(
+        define(&definition).err().unwrap(),
+        LibraryDefinitionError::UnknownComponent { path, .. } if path == "actions[0].params[0].type"
+    ));
+    // A slot may name a library action wherever it sits.
+    definition["actions"][0]["params"] =
+        json!([{"name": "next", "type": {"kind": "action", "name": "Copy"}, "optional": true}]);
+    assert!(define(&definition).is_ok());
+}
+
+/// A call's params are an object's fields: no `binding`, each name once; a
+/// function's `returns` is optional; anything else is refused with where.
+#[test]
+fn malformed_calls_are_refused_with_where_and_why() {
+    let cases = [
+        (
+            json!({"name": "F", "description": "", "params": [], "fn": 1}),
+            "functions[0].fn",
+            "unknown field",
+        ),
+        (
+            json!({"name": "F", "params": []}),
+            "functions[0].description",
+            "missing",
+        ),
+        (
+            json!({"name": "F", "description": ""}),
+            "functions[0].params",
+            "missing",
+        ),
+        (
+            json!({"name": "F", "description": "", "params": [
+                {"name": "v", "type": {"kind": "string"}, "binding": true}
+            ]}),
+            "functions[0].params[0].binding",
+            "unknown field",
+        ),
+        (
+            json!({"name": "F", "description": "", "params": [
+                {"name": "v", "type": {"kind": "string"}},
+                {"name": "v", "type": {"kind": "number"}}
+            ]}),
+            "functions[0].params[1].name",
+            "duplicate param \"v\"",
+        ),
+        (
+            json!({"name": "F", "description": "", "params": [], "returns": "string"}),
+            "functions[0].returns",
+            "expected an object",
+        ),
+    ];
+    for (function, want_path, want_problem) in cases {
+        let mut definition = json!({"components": []});
+        definition["functions"] = json!([function]);
+        match LibraryDefinition::from_json(&definition).err().unwrap() {
+            LibraryDefinitionError::Invalid { path, problem } => {
+                assert_eq!(path, want_path);
+                assert_eq!(problem, want_problem);
+            }
+            other => panic!("expected Invalid, got {other:?}"),
+        }
+    }
+    let action = json!({"components": [], "actions": [
+        {"name": "G", "description": "", "params": [], "returns": {"kind": "string"}}
+    ]});
+    assert!(matches!(
+        LibraryDefinition::from_json(&action).err().unwrap(),
+        LibraryDefinitionError::Invalid { path, .. } if path == "actions[0].returns"
+    ));
+    let unsupported = json!({"components": [], "functions": [
+        {"name": "F", "description": "", "params": [], "returns": {"kind": "date"}}
+    ]});
+    assert!(matches!(
+        LibraryDefinition::from_json(&unsupported).err().unwrap(),
+        LibraryDefinitionError::UnsupportedKind { path, .. } if path == "functions[0].returns"
+    ));
+}
+
+/// A call's params and return type nest as deep as a prop's type, and no
+/// deeper.
+#[test]
+fn call_types_nest_to_the_depth_limit_and_no_further() {
+    let limits = Limits::default().with_depth(10);
+    let deep = |depth: usize| {
+        let component = nested(depth, in_array);
+        component["components"][0]["props"][0]["type"].clone()
+    };
+    for depth in [10, 11] {
+        let mut returns = json!({"components": [], "functions": [
+            {"name": "F", "description": "", "params": []}
+        ]});
+        returns["functions"][0]["returns"] = deep(depth);
+        let mut params = json!({"components": [], "actions": [
+            {"name": "G", "description": "", "params": [{"name": "p"}]}
+        ]});
+        params["actions"][0]["params"][0]["type"] = deep(depth);
+        for definition in [returns, params] {
+            let read = LibraryDefinition::from_json_with_limits(&definition, limits);
+            if depth == 10 {
+                let library = create_library(read.unwrap()).unwrap();
+                let _ = library.library();
+            } else {
+                assert!(matches!(
+                    read,
+                    Err(LibraryDefinitionError::DepthLimited { limit: 10, .. })
+                ));
+            }
+        }
+    }
+}
+
+/// A program calling a defined function parses and validates its arguments
+/// exactly as with the same library supplied as upstream's JSON, and an `@`
+/// name that is no function is reported as unknown in both. Each sample with
+/// functions or actions is checked against programs that call each one
+/// right, with an argument missing, with one too many and with a wrong type,
+/// and an unknown one.
+#[test]
+fn a_program_calling_a_defined_function_parses_as_with_the_json() {
+    let mut checked = 0;
+    for case in golden().iter().filter(|c| {
+        c.get("schema")
+            .is_some_and(|s| s.get("functions").is_some() || s.get("actions").is_some())
+    }) {
+        let name = case["name"].as_str().unwrap();
+        let defined = define(&case["definition"]).unwrap();
+        let schema = &case["schema"];
+        let defined = defined.library();
+        let from_json = Library::from_json_schema(schema);
+        assert_eq!(defined, from_json, "{name}");
+        // The calls at the root, where the parser validates them: each with
+        // its params' count of strings and of numbers, one fewer and one
+        // more.
+        let mut programs = vec!["root = @NoSuchFunction(1)".to_owned()];
+        for key in ["functions", "actions"] {
+            let Some(calls) = schema.get(key).and_then(Value::as_object) else {
+                continue;
+            };
+            for (call, def) in calls {
+                let arity = def["params"]["properties"]
+                    .as_object()
+                    .map_or(0, |p| p.len());
+                for n in [arity, arity.saturating_sub(1), arity + 1] {
+                    for arg in ["\"x\"", "1", "null"] {
+                        let args = vec![arg; n].join(", ");
+                        programs.push(format!("root = @{call}({args})"));
+                    }
+                }
+            }
+        }
+        for program in &programs {
+            let a = parse(program, &defined, None).to_json();
+            let b = parse(program, &from_json, None).to_json();
+            assert_eq!(a, b, "{name}: {program}");
+            if program.contains("@NoSuchFunction") {
+                assert!(a.contains("unknown-function"), "{name}: {a}");
+            }
+            checked += 1;
+        }
+    }
+    assert!(checked > 100, "{checked}");
+    // A defined function is known; an undefined one is not.
+    let percent = define(&case("function-with-params-and-return")["definition"])
+        .unwrap()
+        .library();
+    let known = parse("root = @Percent(1, 2)", &percent, None).to_json();
+    assert!(!known.contains("unknown-function"), "{known}");
+    let missing = parse("root = @Percent(1)", &percent, None).to_json();
+    assert!(missing.contains("missing-required"), "{missing}");
+    let unknown = parse("root = @Percnt(1, 2)", &percent, None).to_json();
+    assert!(unknown.contains("unknown-function"), "{unknown}");
+}
+
+/// A function's or action's implementation never enters the core: a
+/// library's calls are declarations, which compile to calls the parser
+/// knows, after the 20 built-ins, functions before actions.
+#[test]
+fn defined_calls_follow_the_built_ins() {
+    let library = define(&case("functions-and-actions-with-groups")["definition"])
+        .unwrap()
+        .library();
+    let calls: Vec<(&str, bool, CallKind)> = library
+        .calls()
+        .map(|(name, call)| (name, call.builtin, call.kind))
+        .collect();
+    assert_eq!(calls.len(), 23);
+    assert!(calls[..20].iter().all(|&(_, builtin, _)| builtin));
+    assert_eq!(
+        &calls[20..],
+        [
+            ("F", false, CallKind::Function),
+            ("G", false, CallKind::Function),
+            ("Z", false, CallKind::Action),
+        ]
+    );
 }
 
 #[global_allocator]

@@ -10889,6 +10889,6544 @@
   }
  },
  {
+  "name": "function-with-params-and-return",
+  "definition": {
+   "components": [
+    {
+     "name": "A",
+     "description": "a",
+     "props": []
+    }
+   ],
+   "functions": [
+    {
+     "name": "Percent",
+     "description": "Percent of a total.",
+     "params": [
+      {
+       "name": "part",
+       "type": {
+        "kind": "number"
+       }
+      },
+      {
+       "name": "total",
+       "type": {
+        "kind": "number"
+       }
+      }
+     ],
+     "returns": {
+      "kind": "number"
+     }
+    }
+   ]
+  },
+  "schema": {
+   "$schema": "https://json-schema.org/draft/2020-12/schema",
+   "type": "object",
+   "properties": {
+    "A": {
+     "$ref": "#/$defs/A"
+    }
+   },
+   "required": [
+    "A"
+   ],
+   "additionalProperties": false,
+   "$defs": {
+    "A": {
+     "type": "object",
+     "properties": {},
+     "additionalProperties": false,
+     "description": "a"
+    }
+   },
+   "functions": {
+    "Percent": {
+     "description": "Percent of a total.",
+     "params": {
+      "type": "object",
+      "properties": {
+       "part": {
+        "type": "number"
+       },
+       "total": {
+        "type": "number"
+       }
+      },
+      "required": [
+       "part",
+       "total"
+      ],
+      "additionalProperties": false
+     },
+     "returns": {
+      "type": "number"
+     }
+    }
+   }
+  },
+  "spec": {
+   "components": {
+    "A": {
+     "signature": "A()",
+     "description": "a"
+    }
+   },
+   "functions": {
+    "Percent": {
+     "signature": "Percent(part: number, total: number) → number",
+     "description": "Percent of a total."
+    }
+   },
+   "schema": {
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "type": "object",
+    "properties": {
+     "A": {
+      "$ref": "#/$defs/A"
+     }
+    },
+    "required": [
+     "A"
+    ],
+    "additionalProperties": false,
+    "$defs": {
+     "A": {
+      "type": "object",
+      "properties": {},
+      "additionalProperties": false,
+      "description": "a"
+     }
+    },
+    "functions": {
+     "Percent": {
+      "description": "Percent of a total.",
+      "params": {
+       "type": "object",
+       "properties": {
+        "part": {
+         "type": "number"
+        },
+        "total": {
+         "type": "number"
+        }
+       },
+       "required": [
+        "part",
+        "total"
+       ],
+       "additionalProperties": false
+      },
+      "returns": {
+       "type": "number"
+      }
+     }
+    }
+   }
+  }
+ },
+ {
+  "name": "function-returning-array-of-objects",
+  "definition": {
+   "components": [
+    {
+     "name": "A",
+     "description": "a",
+     "props": []
+    }
+   ],
+   "functions": [
+    {
+     "name": "Rows",
+     "description": "Rows matching a query.",
+     "params": [
+      {
+       "name": "query",
+       "type": {
+        "kind": "string"
+       }
+      },
+      {
+       "name": "limit",
+       "type": {
+        "kind": "number"
+       },
+       "optional": true
+      }
+     ],
+     "returns": {
+      "kind": "array",
+      "items": {
+       "kind": "object",
+       "fields": [
+        {
+         "name": "id",
+         "type": {
+          "kind": "string"
+         }
+        },
+        {
+         "name": "score",
+         "type": {
+          "kind": "nullable",
+          "type": {
+           "kind": "number"
+          }
+         }
+        },
+        {
+         "name": "tags",
+         "type": {
+          "kind": "array",
+          "items": {
+           "kind": "string"
+          }
+         },
+         "optional": true
+        }
+       ]
+      }
+     }
+    }
+   ]
+  },
+  "schema": {
+   "$schema": "https://json-schema.org/draft/2020-12/schema",
+   "type": "object",
+   "properties": {
+    "A": {
+     "$ref": "#/$defs/A"
+    }
+   },
+   "required": [
+    "A"
+   ],
+   "additionalProperties": false,
+   "$defs": {
+    "A": {
+     "type": "object",
+     "properties": {},
+     "additionalProperties": false,
+     "description": "a"
+    }
+   },
+   "functions": {
+    "Rows": {
+     "description": "Rows matching a query.",
+     "params": {
+      "type": "object",
+      "properties": {
+       "query": {
+        "type": "string"
+       },
+       "limit": {
+        "type": "number"
+       }
+      },
+      "required": [
+       "query"
+      ],
+      "additionalProperties": false
+     },
+     "returns": {
+      "type": "array",
+      "items": {
+       "type": "object",
+       "properties": {
+        "id": {
+         "type": "string"
+        },
+        "score": {
+         "type": [
+          "number",
+          "null"
+         ]
+        },
+        "tags": {
+         "type": "array",
+         "items": {
+          "type": "string"
+         }
+        }
+       },
+       "required": [
+        "id",
+        "score"
+       ],
+       "additionalProperties": false
+      }
+     }
+    }
+   }
+  },
+  "spec": {
+   "components": {
+    "A": {
+     "signature": "A()",
+     "description": "a"
+    }
+   },
+   "functions": {
+    "Rows": {
+     "signature": "Rows(query: string, limit?: number) → {id: string, score?: number, tags?: string[]}[]",
+     "description": "Rows matching a query."
+    }
+   },
+   "schema": {
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "type": "object",
+    "properties": {
+     "A": {
+      "$ref": "#/$defs/A"
+     }
+    },
+    "required": [
+     "A"
+    ],
+    "additionalProperties": false,
+    "$defs": {
+     "A": {
+      "type": "object",
+      "properties": {},
+      "additionalProperties": false,
+      "description": "a"
+     }
+    },
+    "functions": {
+     "Rows": {
+      "description": "Rows matching a query.",
+      "params": {
+       "type": "object",
+       "properties": {
+        "query": {
+         "type": "string"
+        },
+        "limit": {
+         "type": "number"
+        }
+       },
+       "required": [
+        "query"
+       ],
+       "additionalProperties": false
+      },
+      "returns": {
+       "type": "array",
+       "items": {
+        "type": "object",
+        "properties": {
+         "id": {
+          "type": "string"
+         },
+         "score": {
+          "type": [
+           "number",
+           "null"
+          ]
+         },
+         "tags": {
+          "type": "array",
+          "items": {
+           "type": "string"
+          }
+         }
+        },
+        "required": [
+         "id",
+         "score"
+        ],
+        "additionalProperties": false
+       }
+      }
+     }
+    }
+   }
+  }
+ },
+ {
+  "name": "function-without-return-type",
+  "definition": {
+   "components": [
+    {
+     "name": "A",
+     "description": "a",
+     "props": []
+    }
+   ],
+   "functions": [
+    {
+     "name": "Log",
+     "description": "Logs a value.",
+     "params": [
+      {
+       "name": "value",
+       "type": {
+        "kind": "any"
+       }
+      },
+      {
+       "name": "label",
+       "type": {
+        "kind": "string"
+       },
+       "optional": true
+      }
+     ]
+    }
+   ]
+  },
+  "schema": {
+   "$schema": "https://json-schema.org/draft/2020-12/schema",
+   "type": "object",
+   "properties": {
+    "A": {
+     "$ref": "#/$defs/A"
+    }
+   },
+   "required": [
+    "A"
+   ],
+   "additionalProperties": false,
+   "$defs": {
+    "A": {
+     "type": "object",
+     "properties": {},
+     "additionalProperties": false,
+     "description": "a"
+    }
+   },
+   "functions": {
+    "Log": {
+     "description": "Logs a value.",
+     "params": {
+      "type": "object",
+      "properties": {
+       "value": {},
+       "label": {
+        "type": "string"
+       }
+      },
+      "required": [
+       "value"
+      ],
+      "additionalProperties": false
+     }
+    }
+   }
+  },
+  "spec": {
+   "components": {
+    "A": {
+     "signature": "A()",
+     "description": "a"
+    }
+   },
+   "functions": {
+    "Log": {
+     "signature": "Log(value: any, label?: string)",
+     "description": "Logs a value."
+    }
+   },
+   "schema": {
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "type": "object",
+    "properties": {
+     "A": {
+      "$ref": "#/$defs/A"
+     }
+    },
+    "required": [
+     "A"
+    ],
+    "additionalProperties": false,
+    "$defs": {
+     "A": {
+      "type": "object",
+      "properties": {},
+      "additionalProperties": false,
+      "description": "a"
+     }
+    },
+    "functions": {
+     "Log": {
+      "description": "Logs a value.",
+      "params": {
+       "type": "object",
+       "properties": {
+        "value": {},
+        "label": {
+         "type": "string"
+        }
+       },
+       "required": [
+        "value"
+       ],
+       "additionalProperties": false
+      }
+     }
+    }
+   }
+  }
+ },
+ {
+  "name": "function-with-nullable-return",
+  "definition": {
+   "components": [
+    {
+     "name": "A",
+     "description": "a",
+     "props": []
+    }
+   ],
+   "functions": [
+    {
+     "name": "Find",
+     "description": "Finds a name.",
+     "params": [
+      {
+       "name": "id",
+       "type": {
+        "kind": "string"
+       }
+      }
+     ],
+     "returns": {
+      "kind": "nullable",
+      "type": {
+       "kind": "string"
+      }
+     }
+    },
+    {
+     "name": "Shape",
+     "description": "",
+     "params": [],
+     "returns": {
+      "kind": "nullable",
+      "type": {
+       "kind": "object",
+       "fields": [
+        {
+         "name": "a",
+         "type": {
+          "kind": "string"
+         }
+        }
+       ]
+      }
+     }
+    },
+    {
+     "name": "Either",
+     "description": "",
+     "params": [],
+     "returns": {
+      "kind": "nullable",
+      "type": {
+       "kind": "union",
+       "options": [
+        {
+         "kind": "string"
+        },
+        {
+         "kind": "number"
+        }
+       ]
+      }
+     }
+    }
+   ]
+  },
+  "schema": {
+   "$schema": "https://json-schema.org/draft/2020-12/schema",
+   "type": "object",
+   "properties": {
+    "A": {
+     "$ref": "#/$defs/A"
+    }
+   },
+   "required": [
+    "A"
+   ],
+   "additionalProperties": false,
+   "$defs": {
+    "A": {
+     "type": "object",
+     "properties": {},
+     "additionalProperties": false,
+     "description": "a"
+    }
+   },
+   "functions": {
+    "Find": {
+     "description": "Finds a name.",
+     "params": {
+      "type": "object",
+      "properties": {
+       "id": {
+        "type": "string"
+       }
+      },
+      "required": [
+       "id"
+      ],
+      "additionalProperties": false
+     },
+     "returns": {
+      "type": [
+       "string",
+       "null"
+      ]
+     }
+    },
+    "Shape": {
+     "description": "",
+     "params": {
+      "type": "object",
+      "properties": {},
+      "additionalProperties": false
+     },
+     "returns": {
+      "anyOf": [
+       {
+        "type": "object",
+        "properties": {
+         "a": {
+          "type": "string"
+         }
+        },
+        "required": [
+         "a"
+        ],
+        "additionalProperties": false
+       },
+       {
+        "type": "null"
+       }
+      ]
+     }
+    },
+    "Either": {
+     "description": "",
+     "params": {
+      "type": "object",
+      "properties": {},
+      "additionalProperties": false
+     },
+     "returns": {
+      "type": [
+       "string",
+       "number",
+       "null"
+      ]
+     }
+    }
+   }
+  },
+  "spec": {
+   "components": {
+    "A": {
+     "signature": "A()",
+     "description": "a"
+    }
+   },
+   "functions": {
+    "Find": {
+     "signature": "Find(id: string) → string",
+     "description": "Finds a name."
+    },
+    "Shape": {
+     "signature": "Shape() → {a: string}",
+     "description": ""
+    },
+    "Either": {
+     "signature": "Either() → string | number",
+     "description": ""
+    }
+   },
+   "schema": {
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "type": "object",
+    "properties": {
+     "A": {
+      "$ref": "#/$defs/A"
+     }
+    },
+    "required": [
+     "A"
+    ],
+    "additionalProperties": false,
+    "$defs": {
+     "A": {
+      "type": "object",
+      "properties": {},
+      "additionalProperties": false,
+      "description": "a"
+     }
+    },
+    "functions": {
+     "Find": {
+      "description": "Finds a name.",
+      "params": {
+       "type": "object",
+       "properties": {
+        "id": {
+         "type": "string"
+        }
+       },
+       "required": [
+        "id"
+       ],
+       "additionalProperties": false
+      },
+      "returns": {
+       "type": [
+        "string",
+        "null"
+       ]
+      }
+     },
+     "Shape": {
+      "description": "",
+      "params": {
+       "type": "object",
+       "properties": {},
+       "additionalProperties": false
+      },
+      "returns": {
+       "anyOf": [
+        {
+         "type": "object",
+         "properties": {
+          "a": {
+           "type": "string"
+          }
+         },
+         "required": [
+          "a"
+         ],
+         "additionalProperties": false
+        },
+        {
+         "type": "null"
+        }
+       ]
+      }
+     },
+     "Either": {
+      "description": "",
+      "params": {
+       "type": "object",
+       "properties": {},
+       "additionalProperties": false
+      },
+      "returns": {
+       "type": [
+        "string",
+        "number",
+        "null"
+       ]
+      }
+     }
+    }
+   }
+  }
+ },
+ {
+  "name": "function-params",
+  "definition": {
+   "components": [
+    {
+     "name": "A",
+     "description": "a",
+     "props": []
+    }
+   ],
+   "functions": [
+    {
+     "name": "Zero",
+     "description": "No params.",
+     "params": [],
+     "returns": {
+      "kind": "boolean"
+     }
+    },
+    {
+     "name": "Kinds",
+     "description": "Every kind of param.",
+     "params": [
+      {
+       "name": "text",
+       "type": {
+        "kind": "string"
+       }
+      },
+      {
+       "name": "maybe",
+       "type": {
+        "kind": "number"
+       },
+       "optional": true
+      },
+      {
+       "name": "nullable",
+       "type": {
+        "kind": "nullable",
+        "type": {
+         "kind": "string"
+        }
+       }
+      },
+      {
+       "name": "both",
+       "type": {
+        "kind": "nullable",
+        "type": {
+         "kind": "boolean"
+        }
+       },
+       "optional": true
+      },
+      {
+       "name": "color",
+       "type": {
+        "kind": "named",
+        "name": "Color",
+        "type": {
+         "kind": "string"
+        }
+       }
+      },
+      {
+       "name": "words",
+       "type": {
+        "kind": "enum",
+        "values": [
+         "a",
+         "b"
+        ]
+       }
+      },
+      {
+       "name": "mixed",
+       "type": {
+        "kind": "array",
+        "items": {
+         "kind": "union",
+         "options": [
+          {
+           "kind": "string"
+          },
+          {
+           "kind": "number"
+          }
+         ]
+        }
+       }
+      },
+      {
+       "name": "map",
+       "type": {
+        "kind": "record",
+        "values": {
+         "kind": "any"
+        }
+       }
+      },
+      {
+       "name": "shape",
+       "type": {
+        "kind": "object",
+        "fields": [
+         {
+          "name": "x",
+          "type": {
+           "kind": "number"
+          }
+         },
+         {
+          "name": "y",
+          "type": {
+           "kind": "number"
+          },
+          "optional": true
+         }
+        ]
+       }
+      },
+      {
+       "name": "none",
+       "type": {
+        "kind": "array",
+        "items": {
+         "kind": "enum",
+         "values": []
+        }
+       }
+      },
+      {
+       "name": "nothing",
+       "type": {
+        "kind": "enum",
+        "values": []
+       },
+       "optional": true
+      }
+     ]
+    },
+    {
+     "name": "Order",
+     "description": "",
+     "params": [
+      {
+       "name": "2",
+       "type": {
+        "kind": "boolean"
+       }
+      },
+      {
+       "name": "10",
+       "type": {
+        "kind": "number"
+       }
+      },
+      {
+       "name": "b",
+       "type": {
+        "kind": "string"
+       }
+      }
+     ],
+     "returns": {
+      "kind": "string"
+     }
+    }
+   ]
+  },
+  "schema": {
+   "$schema": "https://json-schema.org/draft/2020-12/schema",
+   "type": "object",
+   "properties": {
+    "A": {
+     "$ref": "#/$defs/A"
+    }
+   },
+   "required": [
+    "A"
+   ],
+   "additionalProperties": false,
+   "$defs": {
+    "A": {
+     "type": "object",
+     "properties": {},
+     "additionalProperties": false,
+     "description": "a"
+    }
+   },
+   "functions": {
+    "Zero": {
+     "description": "No params.",
+     "params": {
+      "type": "object",
+      "properties": {},
+      "additionalProperties": false
+     },
+     "returns": {
+      "type": "boolean"
+     }
+    },
+    "Kinds": {
+     "description": "Every kind of param.",
+     "params": {
+      "type": "object",
+      "properties": {
+       "text": {
+        "type": "string"
+       },
+       "maybe": {
+        "type": "number"
+       },
+       "nullable": {
+        "type": [
+         "string",
+         "null"
+        ]
+       },
+       "both": {
+        "type": [
+         "boolean",
+         "null"
+        ]
+       },
+       "color": {
+        "type": "string"
+       },
+       "words": {
+        "type": "string",
+        "enum": [
+         "a",
+         "b"
+        ]
+       },
+       "mixed": {
+        "type": "array",
+        "items": {
+         "type": [
+          "string",
+          "number"
+         ]
+        }
+       },
+       "map": {
+        "type": "object",
+        "propertyNames": {
+         "type": "string"
+        },
+        "additionalProperties": {}
+       },
+       "shape": {
+        "type": "object",
+        "properties": {
+         "x": {
+          "type": "number"
+         },
+         "y": {
+          "type": "number"
+         }
+        },
+        "required": [
+         "x"
+        ],
+        "additionalProperties": false
+       },
+       "none": {
+        "type": "array",
+        "items": {
+         "not": {}
+        }
+       },
+       "nothing": {
+        "not": {}
+       }
+      },
+      "required": [
+       "text",
+       "nullable",
+       "color",
+       "words",
+       "mixed",
+       "map",
+       "shape",
+       "none"
+      ],
+      "additionalProperties": false
+     }
+    },
+    "Order": {
+     "description": "",
+     "params": {
+      "type": "object",
+      "properties": {
+       "2": {
+        "type": "boolean"
+       },
+       "10": {
+        "type": "number"
+       },
+       "b": {
+        "type": "string"
+       }
+      },
+      "required": [
+       "2",
+       "10",
+       "b"
+      ],
+      "additionalProperties": false
+     },
+     "returns": {
+      "type": "string"
+     }
+    }
+   }
+  },
+  "spec": {
+   "components": {
+    "A": {
+     "signature": "A()",
+     "description": "a"
+    }
+   },
+   "functions": {
+    "Zero": {
+     "signature": "Zero() → boolean",
+     "description": "No params."
+    },
+    "Kinds": {
+     "signature": "Kinds(text: string, maybe?: number, nullable?: string, both?: boolean, color: Color, words: \"a\" | \"b\", mixed: (string | number)[], map: Record<string, any>, shape: {x: number, y?: number}, [none], nothing?)",
+     "description": "Every kind of param."
+    },
+    "Order": {
+     "signature": "Order(2: boolean, 10: number, b: string) → string",
+     "description": ""
+    }
+   },
+   "schema": {
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "type": "object",
+    "properties": {
+     "A": {
+      "$ref": "#/$defs/A"
+     }
+    },
+    "required": [
+     "A"
+    ],
+    "additionalProperties": false,
+    "$defs": {
+     "A": {
+      "type": "object",
+      "properties": {},
+      "additionalProperties": false,
+      "description": "a"
+     }
+    },
+    "functions": {
+     "Zero": {
+      "description": "No params.",
+      "params": {
+       "type": "object",
+       "properties": {},
+       "additionalProperties": false
+      },
+      "returns": {
+       "type": "boolean"
+      }
+     },
+     "Kinds": {
+      "description": "Every kind of param.",
+      "params": {
+       "type": "object",
+       "properties": {
+        "text": {
+         "type": "string"
+        },
+        "maybe": {
+         "type": "number"
+        },
+        "nullable": {
+         "type": [
+          "string",
+          "null"
+         ]
+        },
+        "both": {
+         "type": [
+          "boolean",
+          "null"
+         ]
+        },
+        "color": {
+         "type": "string"
+        },
+        "words": {
+         "type": "string",
+         "enum": [
+          "a",
+          "b"
+         ]
+        },
+        "mixed": {
+         "type": "array",
+         "items": {
+          "type": [
+           "string",
+           "number"
+          ]
+         }
+        },
+        "map": {
+         "type": "object",
+         "propertyNames": {
+          "type": "string"
+         },
+         "additionalProperties": {}
+        },
+        "shape": {
+         "type": "object",
+         "properties": {
+          "x": {
+           "type": "number"
+          },
+          "y": {
+           "type": "number"
+          }
+         },
+         "required": [
+          "x"
+         ],
+         "additionalProperties": false
+        },
+        "none": {
+         "type": "array",
+         "items": {
+          "not": {}
+         }
+        },
+        "nothing": {
+         "not": {}
+        }
+       },
+       "required": [
+        "text",
+        "nullable",
+        "color",
+        "words",
+        "mixed",
+        "map",
+        "shape",
+        "none"
+       ],
+       "additionalProperties": false
+      }
+     },
+     "Order": {
+      "description": "",
+      "params": {
+       "type": "object",
+       "properties": {
+        "2": {
+         "type": "boolean"
+        },
+        "10": {
+         "type": "number"
+        },
+        "b": {
+         "type": "string"
+        }
+       },
+       "required": [
+        "2",
+        "10",
+        "b"
+       ],
+       "additionalProperties": false
+      },
+      "returns": {
+       "type": "string"
+      }
+     }
+    }
+   }
+  }
+ },
+ {
+  "name": "function-return-kinds",
+  "definition": {
+   "components": [
+    {
+     "name": "A",
+     "description": "a",
+     "props": []
+    }
+   ],
+   "functions": [
+    {
+     "name": "Union",
+     "description": "",
+     "params": [],
+     "returns": {
+      "kind": "union",
+      "options": [
+       {
+        "kind": "string"
+       },
+       {
+        "kind": "number"
+       }
+      ]
+     }
+    },
+    {
+     "name": "Unions",
+     "description": "",
+     "params": [],
+     "returns": {
+      "kind": "array",
+      "items": {
+       "kind": "union",
+       "options": [
+        {
+         "kind": "string"
+        },
+        {
+         "kind": "number"
+        }
+       ]
+      }
+     }
+    },
+    {
+     "name": "Map",
+     "description": "",
+     "params": [],
+     "returns": {
+      "kind": "record",
+      "values": {
+       "kind": "number"
+      }
+     }
+    },
+    {
+     "name": "Any",
+     "description": "",
+     "params": [],
+     "returns": {
+      "kind": "any"
+     }
+    },
+    {
+     "name": "Words",
+     "description": "",
+     "params": [],
+     "returns": {
+      "kind": "enum",
+      "values": [
+       "x",
+       "y"
+      ]
+     }
+    },
+    {
+     "name": "Never",
+     "description": "",
+     "params": [],
+     "returns": {
+      "kind": "enum",
+      "values": []
+     }
+    },
+    {
+     "name": "Nevers",
+     "description": "",
+     "params": [],
+     "returns": {
+      "kind": "array",
+      "items": {
+       "kind": "enum",
+       "values": []
+      }
+     }
+    },
+    {
+     "name": "Named",
+     "description": "",
+     "params": [],
+     "returns": {
+      "kind": "named",
+      "name": "Length",
+      "type": {
+       "kind": "number"
+      }
+     }
+    },
+    {
+     "name": "Grid",
+     "description": "",
+     "params": [],
+     "returns": {
+      "kind": "array",
+      "items": {
+       "kind": "array",
+       "items": {
+        "kind": "boolean"
+       }
+      }
+     }
+    }
+   ]
+  },
+  "schema": {
+   "$schema": "https://json-schema.org/draft/2020-12/schema",
+   "type": "object",
+   "properties": {
+    "A": {
+     "$ref": "#/$defs/A"
+    }
+   },
+   "required": [
+    "A"
+   ],
+   "additionalProperties": false,
+   "$defs": {
+    "A": {
+     "type": "object",
+     "properties": {},
+     "additionalProperties": false,
+     "description": "a"
+    }
+   },
+   "functions": {
+    "Union": {
+     "description": "",
+     "params": {
+      "type": "object",
+      "properties": {},
+      "additionalProperties": false
+     },
+     "returns": {
+      "type": [
+       "string",
+       "number"
+      ]
+     }
+    },
+    "Unions": {
+     "description": "",
+     "params": {
+      "type": "object",
+      "properties": {},
+      "additionalProperties": false
+     },
+     "returns": {
+      "type": "array",
+      "items": {
+       "type": [
+        "string",
+        "number"
+       ]
+      }
+     }
+    },
+    "Map": {
+     "description": "",
+     "params": {
+      "type": "object",
+      "properties": {},
+      "additionalProperties": false
+     },
+     "returns": {
+      "type": "object",
+      "propertyNames": {
+       "type": "string"
+      },
+      "additionalProperties": {
+       "type": "number"
+      }
+     }
+    },
+    "Any": {
+     "description": "",
+     "params": {
+      "type": "object",
+      "properties": {},
+      "additionalProperties": false
+     },
+     "returns": {}
+    },
+    "Words": {
+     "description": "",
+     "params": {
+      "type": "object",
+      "properties": {},
+      "additionalProperties": false
+     },
+     "returns": {
+      "type": "string",
+      "enum": [
+       "x",
+       "y"
+      ]
+     }
+    },
+    "Never": {
+     "description": "",
+     "params": {
+      "type": "object",
+      "properties": {},
+      "additionalProperties": false
+     },
+     "returns": {
+      "not": {}
+     }
+    },
+    "Nevers": {
+     "description": "",
+     "params": {
+      "type": "object",
+      "properties": {},
+      "additionalProperties": false
+     },
+     "returns": {
+      "type": "array",
+      "items": {
+       "not": {}
+      }
+     }
+    },
+    "Named": {
+     "description": "",
+     "params": {
+      "type": "object",
+      "properties": {},
+      "additionalProperties": false
+     },
+     "returns": {
+      "type": "number"
+     }
+    },
+    "Grid": {
+     "description": "",
+     "params": {
+      "type": "object",
+      "properties": {},
+      "additionalProperties": false
+     },
+     "returns": {
+      "type": "array",
+      "items": {
+       "type": "array",
+       "items": {
+        "type": "boolean"
+       }
+      }
+     }
+    }
+   }
+  },
+  "spec": {
+   "components": {
+    "A": {
+     "signature": "A()",
+     "description": "a"
+    }
+   },
+   "functions": {
+    "Union": {
+     "signature": "Union() → string | number",
+     "description": ""
+    },
+    "Unions": {
+     "signature": "Unions() → (string | number)[]",
+     "description": ""
+    },
+    "Map": {
+     "signature": "Map() → Record<string, number>",
+     "description": ""
+    },
+    "Any": {
+     "signature": "Any() → any",
+     "description": ""
+    },
+    "Words": {
+     "signature": "Words() → \"x\" | \"y\"",
+     "description": ""
+    },
+    "Never": {
+     "signature": "Never()",
+     "description": ""
+    },
+    "Nevers": {
+     "signature": "Nevers()",
+     "description": ""
+    },
+    "Named": {
+     "signature": "Named() → Length",
+     "description": ""
+    },
+    "Grid": {
+     "signature": "Grid() → boolean[][]",
+     "description": ""
+    }
+   },
+   "schema": {
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "type": "object",
+    "properties": {
+     "A": {
+      "$ref": "#/$defs/A"
+     }
+    },
+    "required": [
+     "A"
+    ],
+    "additionalProperties": false,
+    "$defs": {
+     "A": {
+      "type": "object",
+      "properties": {},
+      "additionalProperties": false,
+      "description": "a"
+     }
+    },
+    "functions": {
+     "Union": {
+      "description": "",
+      "params": {
+       "type": "object",
+       "properties": {},
+       "additionalProperties": false
+      },
+      "returns": {
+       "type": [
+        "string",
+        "number"
+       ]
+      }
+     },
+     "Unions": {
+      "description": "",
+      "params": {
+       "type": "object",
+       "properties": {},
+       "additionalProperties": false
+      },
+      "returns": {
+       "type": "array",
+       "items": {
+        "type": [
+         "string",
+         "number"
+        ]
+       }
+      }
+     },
+     "Map": {
+      "description": "",
+      "params": {
+       "type": "object",
+       "properties": {},
+       "additionalProperties": false
+      },
+      "returns": {
+       "type": "object",
+       "propertyNames": {
+        "type": "string"
+       },
+       "additionalProperties": {
+        "type": "number"
+       }
+      }
+     },
+     "Any": {
+      "description": "",
+      "params": {
+       "type": "object",
+       "properties": {},
+       "additionalProperties": false
+      },
+      "returns": {}
+     },
+     "Words": {
+      "description": "",
+      "params": {
+       "type": "object",
+       "properties": {},
+       "additionalProperties": false
+      },
+      "returns": {
+       "type": "string",
+       "enum": [
+        "x",
+        "y"
+       ]
+      }
+     },
+     "Never": {
+      "description": "",
+      "params": {
+       "type": "object",
+       "properties": {},
+       "additionalProperties": false
+      },
+      "returns": {
+       "not": {}
+      }
+     },
+     "Nevers": {
+      "description": "",
+      "params": {
+       "type": "object",
+       "properties": {},
+       "additionalProperties": false
+      },
+      "returns": {
+       "type": "array",
+       "items": {
+        "not": {}
+       }
+      }
+     },
+     "Named": {
+      "description": "",
+      "params": {
+       "type": "object",
+       "properties": {},
+       "additionalProperties": false
+      },
+      "returns": {
+       "type": "number"
+      }
+     },
+     "Grid": {
+      "description": "",
+      "params": {
+       "type": "object",
+       "properties": {},
+       "additionalProperties": false
+      },
+      "returns": {
+       "type": "array",
+       "items": {
+        "type": "array",
+        "items": {
+         "type": "boolean"
+        }
+       }
+      }
+     }
+    }
+   }
+  }
+ },
+ {
+  "name": "function-names",
+  "definition": {
+   "components": [
+    {
+     "name": "A",
+     "description": "a",
+     "props": []
+    }
+   ],
+   "functions": [
+    {
+     "name": "b",
+     "description": "b",
+     "params": [
+      {
+       "name": "v",
+       "type": {
+        "kind": "string"
+       }
+      }
+     ]
+    },
+    {
+     "name": "10",
+     "description": "10",
+     "params": [
+      {
+       "name": "v",
+       "type": {
+        "kind": "string"
+       }
+      }
+     ]
+    },
+    {
+     "name": "2",
+     "description": "2",
+     "params": [
+      {
+       "name": "v",
+       "type": {
+        "kind": "string"
+       }
+      }
+     ]
+    },
+    {
+     "name": "",
+     "description": "",
+     "params": [
+      {
+       "name": "v",
+       "type": {
+        "kind": "string"
+       }
+      }
+     ]
+    },
+    {
+     "name": "ActionExpression",
+     "description": "ActionExpression",
+     "params": [
+      {
+       "name": "v",
+       "type": {
+        "kind": "string"
+       }
+      }
+     ]
+    }
+   ]
+  },
+  "schema": {
+   "$schema": "https://json-schema.org/draft/2020-12/schema",
+   "type": "object",
+   "properties": {
+    "A": {
+     "$ref": "#/$defs/A"
+    }
+   },
+   "required": [
+    "A"
+   ],
+   "additionalProperties": false,
+   "$defs": {
+    "A": {
+     "type": "object",
+     "properties": {},
+     "additionalProperties": false,
+     "description": "a"
+    }
+   },
+   "functions": {
+    "2": {
+     "description": "2",
+     "params": {
+      "type": "object",
+      "properties": {
+       "v": {
+        "type": "string"
+       }
+      },
+      "required": [
+       "v"
+      ],
+      "additionalProperties": false
+     }
+    },
+    "10": {
+     "description": "10",
+     "params": {
+      "type": "object",
+      "properties": {
+       "v": {
+        "type": "string"
+       }
+      },
+      "required": [
+       "v"
+      ],
+      "additionalProperties": false
+     }
+    },
+    "b": {
+     "description": "b",
+     "params": {
+      "type": "object",
+      "properties": {
+       "v": {
+        "type": "string"
+       }
+      },
+      "required": [
+       "v"
+      ],
+      "additionalProperties": false
+     }
+    },
+    "": {
+     "description": "",
+     "params": {
+      "type": "object",
+      "properties": {
+       "v": {
+        "type": "string"
+       }
+      },
+      "required": [
+       "v"
+      ],
+      "additionalProperties": false
+     }
+    },
+    "ActionExpression": {
+     "description": "ActionExpression",
+     "params": {
+      "type": "object",
+      "properties": {
+       "v": {
+        "type": "string"
+       }
+      },
+      "required": [
+       "v"
+      ],
+      "additionalProperties": false
+     }
+    }
+   }
+  },
+  "spec": {
+   "components": {
+    "A": {
+     "signature": "A()",
+     "description": "a"
+    }
+   },
+   "functions": {
+    "2": {
+     "signature": "2(v: string)",
+     "description": "2"
+    },
+    "10": {
+     "signature": "10(v: string)",
+     "description": "10"
+    },
+    "b": {
+     "signature": "b(v: string)",
+     "description": "b"
+    },
+    "": {
+     "signature": "(v: string)",
+     "description": ""
+    },
+    "ActionExpression": {
+     "signature": "ActionExpression(v: string)",
+     "description": "ActionExpression"
+    }
+   },
+   "schema": {
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "type": "object",
+    "properties": {
+     "A": {
+      "$ref": "#/$defs/A"
+     }
+    },
+    "required": [
+     "A"
+    ],
+    "additionalProperties": false,
+    "$defs": {
+     "A": {
+      "type": "object",
+      "properties": {},
+      "additionalProperties": false,
+      "description": "a"
+     }
+    },
+    "functions": {
+     "2": {
+      "description": "2",
+      "params": {
+       "type": "object",
+       "properties": {
+        "v": {
+         "type": "string"
+        }
+       },
+       "required": [
+        "v"
+       ],
+       "additionalProperties": false
+      }
+     },
+     "10": {
+      "description": "10",
+      "params": {
+       "type": "object",
+       "properties": {
+        "v": {
+         "type": "string"
+        }
+       },
+       "required": [
+        "v"
+       ],
+       "additionalProperties": false
+      }
+     },
+     "b": {
+      "description": "b",
+      "params": {
+       "type": "object",
+       "properties": {
+        "v": {
+         "type": "string"
+        }
+       },
+       "required": [
+        "v"
+       ],
+       "additionalProperties": false
+      }
+     },
+     "": {
+      "description": "",
+      "params": {
+       "type": "object",
+       "properties": {
+        "v": {
+         "type": "string"
+        }
+       },
+       "required": [
+        "v"
+       ],
+       "additionalProperties": false
+      }
+     },
+     "ActionExpression": {
+      "description": "ActionExpression",
+      "params": {
+       "type": "object",
+       "properties": {
+        "v": {
+         "type": "string"
+        }
+       },
+       "required": [
+        "v"
+       ],
+       "additionalProperties": false
+      }
+     }
+    }
+   }
+  }
+ },
+ {
+  "name": "function-references",
+  "definition": {
+   "components": [
+    {
+     "name": "List",
+     "description": "A list.",
+     "props": [
+      {
+       "name": "items",
+       "type": {
+        "kind": "array",
+        "items": {
+         "kind": "component",
+         "name": "Item"
+        }
+       }
+      }
+     ]
+    },
+    {
+     "name": "Item",
+     "description": "An item.",
+     "props": [
+      {
+       "name": "text",
+       "type": {
+        "kind": "string"
+       }
+      }
+     ]
+    },
+    {
+     "name": "Unused",
+     "description": "",
+     "props": []
+    }
+   ],
+   "functions": [
+    {
+     "name": "Pick",
+     "description": "Picks an item.",
+     "params": [
+      {
+       "name": "items",
+       "type": {
+        "kind": "array",
+        "items": {
+         "kind": "component",
+         "name": "Item"
+        }
+       }
+      },
+      {
+       "name": "other",
+       "type": {
+        "kind": "component",
+        "name": "Unused"
+       },
+       "optional": true
+      }
+     ],
+     "returns": {
+      "kind": "component",
+      "name": "Item"
+     }
+    },
+    {
+     "name": "Act",
+     "description": "",
+     "params": [
+      {
+       "name": "a",
+       "type": {
+        "kind": "action"
+       }
+      },
+      {
+       "name": "go",
+       "type": {
+        "kind": "action",
+        "name": "OpenUrl"
+       }
+      },
+      {
+       "name": "copy",
+       "type": {
+        "kind": "action",
+        "name": "Copy"
+       }
+      }
+     ],
+     "returns": {
+      "kind": "array",
+      "items": {
+       "kind": "action",
+       "name": "Copy"
+      }
+     }
+    }
+   ],
+   "actions": [
+    {
+     "name": "Copy",
+     "description": "Copies text.",
+     "params": [
+      {
+       "name": "text",
+       "type": {
+        "kind": "string"
+       }
+      }
+     ]
+    }
+   ],
+   "root": "List"
+  },
+  "schema": {
+   "$schema": "https://json-schema.org/draft/2020-12/schema",
+   "type": "object",
+   "properties": {
+    "List": {
+     "$ref": "#/$defs/List"
+    },
+    "Item": {
+     "$ref": "#/$defs/Item"
+    },
+    "Unused": {
+     "$ref": "#/$defs/Unused"
+    }
+   },
+   "required": [
+    "List",
+    "Item",
+    "Unused"
+   ],
+   "additionalProperties": false,
+   "$defs": {
+    "List": {
+     "type": "object",
+     "properties": {
+      "items": {
+       "type": "array",
+       "items": {
+        "$ref": "#/$defs/Item"
+       }
+      }
+     },
+     "required": [
+      "items"
+     ],
+     "additionalProperties": false,
+     "description": "A list."
+    },
+    "Item": {
+     "type": "object",
+     "properties": {
+      "text": {
+       "type": "string"
+      }
+     },
+     "required": [
+      "text"
+     ],
+     "additionalProperties": false,
+     "description": "An item."
+    },
+    "Unused": {
+     "type": "object",
+     "properties": {},
+     "additionalProperties": false
+    }
+   },
+   "functions": {
+    "Pick": {
+     "description": "Picks an item.",
+     "params": {
+      "type": "object",
+      "properties": {
+       "items": {
+        "type": "array",
+        "items": {
+         "$ref": "#/$defs/Item"
+        }
+       },
+       "other": {
+        "$ref": "#/$defs/Unused"
+       }
+      },
+      "required": [
+       "items"
+      ],
+      "additionalProperties": false
+     },
+     "returns": {
+      "$ref": "#/$defs/Item"
+     }
+    },
+    "Act": {
+     "description": "",
+     "params": {
+      "type": "object",
+      "properties": {
+       "a": {
+        "$ref": "#/$defs/ActionExpression"
+       },
+       "go": {
+        "$ref": "#/$defs/OpenUrl"
+       },
+       "copy": {
+        "$ref": "#/$defs/Copy"
+       }
+      },
+      "required": [
+       "a",
+       "go",
+       "copy"
+      ],
+      "additionalProperties": false
+     },
+     "returns": {
+      "type": "array",
+      "items": {
+       "$ref": "#/$defs/Copy"
+      }
+     }
+    }
+   },
+   "actions": {
+    "Copy": {
+     "description": "Copies text.",
+     "params": {
+      "type": "object",
+      "properties": {
+       "text": {
+        "type": "string"
+       }
+      },
+      "required": [
+       "text"
+      ],
+      "additionalProperties": false
+     }
+    }
+   }
+  },
+  "spec": {
+   "root": "List",
+   "components": {
+    "List": {
+     "signature": "List(items: Item[])",
+     "description": "A list."
+    },
+    "Item": {
+     "signature": "Item(text: string)",
+     "description": "An item."
+    },
+    "Unused": {
+     "signature": "Unused()",
+     "description": ""
+    }
+   },
+   "functions": {
+    "Pick": {
+     "signature": "Pick(items: Item[], other?: Unused) → Item",
+     "description": "Picks an item."
+    },
+    "Act": {
+     "signature": "Act(a: ActionExpression, go: @OpenUrl, copy: @Copy) → @Copy[]",
+     "description": ""
+    }
+   },
+   "actions": {
+    "Copy": {
+     "signature": "Copy(text: string)",
+     "description": "Copies text."
+    }
+   },
+   "schema": {
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "type": "object",
+    "properties": {
+     "List": {
+      "$ref": "#/$defs/List"
+     },
+     "Item": {
+      "$ref": "#/$defs/Item"
+     },
+     "Unused": {
+      "$ref": "#/$defs/Unused"
+     }
+    },
+    "required": [
+     "List",
+     "Item",
+     "Unused"
+    ],
+    "additionalProperties": false,
+    "$defs": {
+     "List": {
+      "type": "object",
+      "properties": {
+       "items": {
+        "type": "array",
+        "items": {
+         "$ref": "#/$defs/Item"
+        }
+       }
+      },
+      "required": [
+       "items"
+      ],
+      "additionalProperties": false,
+      "description": "A list."
+     },
+     "Item": {
+      "type": "object",
+      "properties": {
+       "text": {
+        "type": "string"
+       }
+      },
+      "required": [
+       "text"
+      ],
+      "additionalProperties": false,
+      "description": "An item."
+     },
+     "Unused": {
+      "type": "object",
+      "properties": {},
+      "additionalProperties": false
+     }
+    },
+    "functions": {
+     "Pick": {
+      "description": "Picks an item.",
+      "params": {
+       "type": "object",
+       "properties": {
+        "items": {
+         "type": "array",
+         "items": {
+          "$ref": "#/$defs/Item"
+         }
+        },
+        "other": {
+         "$ref": "#/$defs/Unused"
+        }
+       },
+       "required": [
+        "items"
+       ],
+       "additionalProperties": false
+      },
+      "returns": {
+       "$ref": "#/$defs/Item"
+      }
+     },
+     "Act": {
+      "description": "",
+      "params": {
+       "type": "object",
+       "properties": {
+        "a": {
+         "$ref": "#/$defs/ActionExpression"
+        },
+        "go": {
+         "$ref": "#/$defs/OpenUrl"
+        },
+        "copy": {
+         "$ref": "#/$defs/Copy"
+        }
+       },
+       "required": [
+        "a",
+        "go",
+        "copy"
+       ],
+       "additionalProperties": false
+      },
+      "returns": {
+       "type": "array",
+       "items": {
+        "$ref": "#/$defs/Copy"
+       }
+      }
+     }
+    },
+    "actions": {
+     "Copy": {
+      "description": "Copies text.",
+      "params": {
+       "type": "object",
+       "properties": {
+        "text": {
+         "type": "string"
+        }
+       },
+       "required": [
+        "text"
+       ],
+       "additionalProperties": false
+      }
+     }
+    }
+   }
+  }
+ },
+ {
+  "name": "function-action-slot-shadowed-by-component",
+  "definition": {
+   "components": [
+    {
+     "name": "ActionExpression",
+     "description": "x",
+     "props": []
+    },
+    {
+     "name": "A",
+     "description": "a",
+     "props": []
+    }
+   ],
+   "functions": [
+    {
+     "name": "F",
+     "description": "",
+     "params": [
+      {
+       "name": "a",
+       "type": {
+        "kind": "action"
+       }
+      },
+      {
+       "name": "maybe",
+       "type": {
+        "kind": "action"
+       },
+       "optional": true
+      }
+     ],
+     "returns": {
+      "kind": "action"
+     }
+    }
+   ]
+  },
+  "schema": {
+   "$schema": "https://json-schema.org/draft/2020-12/schema",
+   "type": "object",
+   "properties": {
+    "ActionExpression": {
+     "$ref": "#/$defs/ActionExpression"
+    },
+    "A": {
+     "$ref": "#/$defs/A"
+    }
+   },
+   "required": [
+    "ActionExpression",
+    "A"
+   ],
+   "additionalProperties": false,
+   "$defs": {
+    "ActionExpression": {
+     "type": "object",
+     "properties": {},
+     "additionalProperties": false,
+     "description": "x"
+    },
+    "A": {
+     "type": "object",
+     "properties": {},
+     "additionalProperties": false,
+     "description": "a"
+    }
+   },
+   "functions": {
+    "F": {
+     "description": "",
+     "params": {
+      "type": "object",
+      "properties": {
+       "a": {
+        "anyOf": [
+         {
+          "type": "object",
+          "properties": {
+           "type": {
+            "type": "string",
+            "const": "open_url"
+           },
+           "url": {
+            "type": "string"
+           }
+          },
+          "required": [
+           "type",
+           "url"
+          ],
+          "additionalProperties": false
+         },
+         {
+          "type": "object",
+          "properties": {
+           "type": {
+            "type": "string",
+            "const": "continue_conversation"
+           },
+           "context": {
+            "type": "string"
+           }
+          },
+          "required": [
+           "type"
+          ],
+          "additionalProperties": false
+         },
+         {
+          "type": "object",
+          "properties": {
+           "type": {
+            "type": "string"
+           },
+           "params": {
+            "type": "object",
+            "propertyNames": {
+             "type": "string"
+            },
+            "additionalProperties": {}
+           }
+          },
+          "required": [
+           "type"
+          ],
+          "additionalProperties": false
+         }
+        ]
+       },
+       "maybe": {
+        "anyOf": [
+         {
+          "type": "object",
+          "properties": {
+           "type": {
+            "type": "string",
+            "const": "open_url"
+           },
+           "url": {
+            "type": "string"
+           }
+          },
+          "required": [
+           "type",
+           "url"
+          ],
+          "additionalProperties": false
+         },
+         {
+          "type": "object",
+          "properties": {
+           "type": {
+            "type": "string",
+            "const": "continue_conversation"
+           },
+           "context": {
+            "type": "string"
+           }
+          },
+          "required": [
+           "type"
+          ],
+          "additionalProperties": false
+         },
+         {
+          "type": "object",
+          "properties": {
+           "type": {
+            "type": "string"
+           },
+           "params": {
+            "type": "object",
+            "propertyNames": {
+             "type": "string"
+            },
+            "additionalProperties": {}
+           }
+          },
+          "required": [
+           "type"
+          ],
+          "additionalProperties": false
+         }
+        ]
+       }
+      },
+      "required": [
+       "a"
+      ],
+      "additionalProperties": false
+     },
+     "returns": {
+      "anyOf": [
+       {
+        "type": "object",
+        "properties": {
+         "type": {
+          "type": "string",
+          "const": "open_url"
+         },
+         "url": {
+          "type": "string"
+         }
+        },
+        "required": [
+         "type",
+         "url"
+        ],
+        "additionalProperties": false
+       },
+       {
+        "type": "object",
+        "properties": {
+         "type": {
+          "type": "string",
+          "const": "continue_conversation"
+         },
+         "context": {
+          "type": "string"
+         }
+        },
+        "required": [
+         "type"
+        ],
+        "additionalProperties": false
+       },
+       {
+        "type": "object",
+        "properties": {
+         "type": {
+          "type": "string"
+         },
+         "params": {
+          "type": "object",
+          "propertyNames": {
+           "type": "string"
+          },
+          "additionalProperties": {}
+         }
+        },
+        "required": [
+         "type"
+        ],
+        "additionalProperties": false
+       }
+      ]
+     }
+    }
+   }
+  },
+  "spec": {
+   "components": {
+    "ActionExpression": {
+     "signature": "ActionExpression()",
+     "description": "x"
+    },
+    "A": {
+     "signature": "A()",
+     "description": "a"
+    }
+   },
+   "functions": {
+    "F": {
+     "signature": "F(a: ActionExpression, maybe?: ActionExpression) → ActionExpression",
+     "description": ""
+    }
+   },
+   "schema": {
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "type": "object",
+    "properties": {
+     "ActionExpression": {
+      "$ref": "#/$defs/ActionExpression"
+     },
+     "A": {
+      "$ref": "#/$defs/A"
+     }
+    },
+    "required": [
+     "ActionExpression",
+     "A"
+    ],
+    "additionalProperties": false,
+    "$defs": {
+     "ActionExpression": {
+      "type": "object",
+      "properties": {},
+      "additionalProperties": false,
+      "description": "x"
+     },
+     "A": {
+      "type": "object",
+      "properties": {},
+      "additionalProperties": false,
+      "description": "a"
+     }
+    },
+    "functions": {
+     "F": {
+      "description": "",
+      "params": {
+       "type": "object",
+       "properties": {
+        "a": {
+         "anyOf": [
+          {
+           "type": "object",
+           "properties": {
+            "type": {
+             "type": "string",
+             "const": "open_url"
+            },
+            "url": {
+             "type": "string"
+            }
+           },
+           "required": [
+            "type",
+            "url"
+           ],
+           "additionalProperties": false
+          },
+          {
+           "type": "object",
+           "properties": {
+            "type": {
+             "type": "string",
+             "const": "continue_conversation"
+            },
+            "context": {
+             "type": "string"
+            }
+           },
+           "required": [
+            "type"
+           ],
+           "additionalProperties": false
+          },
+          {
+           "type": "object",
+           "properties": {
+            "type": {
+             "type": "string"
+            },
+            "params": {
+             "type": "object",
+             "propertyNames": {
+              "type": "string"
+             },
+             "additionalProperties": {}
+            }
+           },
+           "required": [
+            "type"
+           ],
+           "additionalProperties": false
+          }
+         ]
+        },
+        "maybe": {
+         "anyOf": [
+          {
+           "type": "object",
+           "properties": {
+            "type": {
+             "type": "string",
+             "const": "open_url"
+            },
+            "url": {
+             "type": "string"
+            }
+           },
+           "required": [
+            "type",
+            "url"
+           ],
+           "additionalProperties": false
+          },
+          {
+           "type": "object",
+           "properties": {
+            "type": {
+             "type": "string",
+             "const": "continue_conversation"
+            },
+            "context": {
+             "type": "string"
+            }
+           },
+           "required": [
+            "type"
+           ],
+           "additionalProperties": false
+          },
+          {
+           "type": "object",
+           "properties": {
+            "type": {
+             "type": "string"
+            },
+            "params": {
+             "type": "object",
+             "propertyNames": {
+              "type": "string"
+             },
+             "additionalProperties": {}
+            }
+           },
+           "required": [
+            "type"
+           ],
+           "additionalProperties": false
+          }
+         ]
+        }
+       },
+       "required": [
+        "a"
+       ],
+       "additionalProperties": false
+      },
+      "returns": {
+       "anyOf": [
+        {
+         "type": "object",
+         "properties": {
+          "type": {
+           "type": "string",
+           "const": "open_url"
+          },
+          "url": {
+           "type": "string"
+          }
+         },
+         "required": [
+          "type",
+          "url"
+         ],
+         "additionalProperties": false
+        },
+        {
+         "type": "object",
+         "properties": {
+          "type": {
+           "type": "string",
+           "const": "continue_conversation"
+          },
+          "context": {
+           "type": "string"
+          }
+         },
+         "required": [
+          "type"
+         ],
+         "additionalProperties": false
+        },
+        {
+         "type": "object",
+         "properties": {
+          "type": {
+           "type": "string"
+          },
+          "params": {
+           "type": "object",
+           "propertyNames": {
+            "type": "string"
+           },
+           "additionalProperties": {}
+          }
+         },
+         "required": [
+          "type"
+         ],
+         "additionalProperties": false
+        }
+       ]
+      }
+     }
+    }
+   }
+  }
+ },
+ {
+  "name": "functions-in-a-program",
+  "definition": {
+   "components": [
+    {
+     "name": "Box",
+     "description": "Holds values.",
+     "props": [
+      {
+       "name": "a",
+       "type": {
+        "kind": "any"
+       }
+      },
+      {
+       "name": "b",
+       "type": {
+        "kind": "any"
+       },
+       "optional": true
+      },
+      {
+       "name": "c",
+       "type": {
+        "kind": "any"
+       },
+       "optional": true
+      }
+     ]
+    }
+   ],
+   "functions": [
+    {
+     "name": "Percent",
+     "description": "Percent of a total.",
+     "params": [
+      {
+       "name": "part",
+       "type": {
+        "kind": "number"
+       }
+      },
+      {
+       "name": "total",
+       "type": {
+        "kind": "number"
+       }
+      }
+     ],
+     "returns": {
+      "kind": "number"
+     }
+    },
+    {
+     "name": "Label",
+     "description": "A label for a value.",
+     "params": [
+      {
+       "name": "text",
+       "type": {
+        "kind": "string"
+       }
+      },
+      {
+       "name": "suffix",
+       "type": {
+        "kind": "string"
+       },
+       "optional": true
+      }
+     ],
+     "returns": {
+      "kind": "string"
+     }
+    },
+    {
+     "name": "Unimplemented",
+     "description": "Has no implementation.",
+     "params": [
+      {
+       "name": "v",
+       "type": {
+        "kind": "any"
+       }
+      }
+     ]
+    }
+   ],
+   "root": "Box"
+  },
+  "schema": {
+   "$schema": "https://json-schema.org/draft/2020-12/schema",
+   "type": "object",
+   "properties": {
+    "Box": {
+     "$ref": "#/$defs/Box"
+    }
+   },
+   "required": [
+    "Box"
+   ],
+   "additionalProperties": false,
+   "$defs": {
+    "Box": {
+     "type": "object",
+     "properties": {
+      "a": {},
+      "b": {},
+      "c": {}
+     },
+     "required": [
+      "a"
+     ],
+     "additionalProperties": false,
+     "description": "Holds values."
+    }
+   },
+   "functions": {
+    "Percent": {
+     "description": "Percent of a total.",
+     "params": {
+      "type": "object",
+      "properties": {
+       "part": {
+        "type": "number"
+       },
+       "total": {
+        "type": "number"
+       }
+      },
+      "required": [
+       "part",
+       "total"
+      ],
+      "additionalProperties": false
+     },
+     "returns": {
+      "type": "number"
+     }
+    },
+    "Label": {
+     "description": "A label for a value.",
+     "params": {
+      "type": "object",
+      "properties": {
+       "text": {
+        "type": "string"
+       },
+       "suffix": {
+        "type": "string"
+       }
+      },
+      "required": [
+       "text"
+      ],
+      "additionalProperties": false
+     },
+     "returns": {
+      "type": "string"
+     }
+    },
+    "Unimplemented": {
+     "description": "Has no implementation.",
+     "params": {
+      "type": "object",
+      "properties": {
+       "v": {}
+      },
+      "required": [
+       "v"
+      ],
+      "additionalProperties": false
+     }
+    }
+   }
+  },
+  "spec": {
+   "root": "Box",
+   "components": {
+    "Box": {
+     "signature": "Box(a: any, b?: any, c?: any)",
+     "description": "Holds values."
+    }
+   },
+   "functions": {
+    "Percent": {
+     "signature": "Percent(part: number, total: number) → number",
+     "description": "Percent of a total."
+    },
+    "Label": {
+     "signature": "Label(text: string, suffix?: string) → string",
+     "description": "A label for a value."
+    },
+    "Unimplemented": {
+     "signature": "Unimplemented(v: any)",
+     "description": "Has no implementation."
+    }
+   },
+   "schema": {
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "type": "object",
+    "properties": {
+     "Box": {
+      "$ref": "#/$defs/Box"
+     }
+    },
+    "required": [
+     "Box"
+    ],
+    "additionalProperties": false,
+    "$defs": {
+     "Box": {
+      "type": "object",
+      "properties": {
+       "a": {},
+       "b": {},
+       "c": {}
+      },
+      "required": [
+       "a"
+      ],
+      "additionalProperties": false,
+      "description": "Holds values."
+     }
+    },
+    "functions": {
+     "Percent": {
+      "description": "Percent of a total.",
+      "params": {
+       "type": "object",
+       "properties": {
+        "part": {
+         "type": "number"
+        },
+        "total": {
+         "type": "number"
+        }
+       },
+       "required": [
+        "part",
+        "total"
+       ],
+       "additionalProperties": false
+      },
+      "returns": {
+       "type": "number"
+      }
+     },
+     "Label": {
+      "description": "A label for a value.",
+      "params": {
+       "type": "object",
+       "properties": {
+        "text": {
+         "type": "string"
+        },
+        "suffix": {
+         "type": "string"
+        }
+       },
+       "required": [
+        "text"
+       ],
+       "additionalProperties": false
+      },
+      "returns": {
+       "type": "string"
+      }
+     },
+     "Unimplemented": {
+      "description": "Has no implementation.",
+      "params": {
+       "type": "object",
+       "properties": {
+        "v": {}
+       },
+       "required": [
+        "v"
+       ],
+       "additionalProperties": false
+      }
+     }
+    }
+   }
+  }
+ },
+ {
+  "name": "functions-without-components",
+  "definition": {
+   "components": [],
+   "functions": [
+    {
+     "name": "F",
+     "description": "f",
+     "params": [
+      {
+       "name": "x",
+       "type": {
+        "kind": "number"
+       }
+      }
+     ],
+     "returns": {
+      "kind": "number"
+     }
+    }
+   ]
+  },
+  "schema": {
+   "$schema": "https://json-schema.org/draft/2020-12/schema",
+   "type": "object",
+   "properties": {},
+   "additionalProperties": false,
+   "functions": {
+    "F": {
+     "description": "f",
+     "params": {
+      "type": "object",
+      "properties": {
+       "x": {
+        "type": "number"
+       }
+      },
+      "required": [
+       "x"
+      ],
+      "additionalProperties": false
+     },
+     "returns": {
+      "type": "number"
+     }
+    }
+   }
+  },
+  "spec": {
+   "components": {},
+   "functions": {
+    "F": {
+     "signature": "F(x: number) → number",
+     "description": "f"
+    }
+   },
+   "schema": {
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "type": "object",
+    "properties": {},
+    "additionalProperties": false,
+    "functions": {
+     "F": {
+      "description": "f",
+      "params": {
+       "type": "object",
+       "properties": {
+        "x": {
+         "type": "number"
+        }
+       },
+       "required": [
+        "x"
+       ],
+       "additionalProperties": false
+      },
+      "returns": {
+       "type": "number"
+      }
+     }
+    }
+   }
+  }
+ },
+ {
+  "name": "custom-action",
+  "definition": {
+   "components": [
+    {
+     "name": "Button",
+     "description": "A button.",
+     "props": [
+      {
+       "name": "label",
+       "type": {
+        "kind": "string"
+       }
+      },
+      {
+       "name": "action",
+       "type": {
+        "kind": "union",
+        "options": [
+         {
+          "kind": "action",
+          "name": "Copy"
+         },
+         {
+          "kind": "action",
+          "name": "OpenUrl"
+         }
+        ]
+       },
+       "optional": true
+      }
+     ]
+    },
+    {
+     "name": "Share",
+     "description": "",
+     "props": [
+      {
+       "name": "copy",
+       "type": {
+        "kind": "action",
+        "name": "Copy"
+       }
+      }
+     ]
+    }
+   ],
+   "actions": [
+    {
+     "name": "Copy",
+     "description": "Copies text to the clipboard.",
+     "params": [
+      {
+       "name": "text",
+       "type": {
+        "kind": "string"
+       }
+      },
+      {
+       "name": "label",
+       "type": {
+        "kind": "string"
+       },
+       "optional": true
+      }
+     ]
+    }
+   ]
+  },
+  "schema": {
+   "$schema": "https://json-schema.org/draft/2020-12/schema",
+   "type": "object",
+   "properties": {
+    "Button": {
+     "$ref": "#/$defs/Button"
+    },
+    "Share": {
+     "$ref": "#/$defs/Share"
+    }
+   },
+   "required": [
+    "Button",
+    "Share"
+   ],
+   "additionalProperties": false,
+   "$defs": {
+    "Button": {
+     "type": "object",
+     "properties": {
+      "label": {
+       "type": "string"
+      },
+      "action": {
+       "anyOf": [
+        {
+         "$ref": "#/$defs/Copy"
+        },
+        {
+         "$ref": "#/$defs/OpenUrl"
+        }
+       ]
+      }
+     },
+     "required": [
+      "label"
+     ],
+     "additionalProperties": false,
+     "description": "A button."
+    },
+    "Copy": {
+     "type": "object",
+     "properties": {
+      "type": {
+       "type": "string",
+       "const": "Copy"
+      },
+      "params": {
+       "type": "object",
+       "properties": {
+        "text": {
+         "type": "string"
+        },
+        "label": {
+         "type": "string"
+        }
+       },
+       "required": [
+        "text"
+       ],
+       "additionalProperties": false
+      }
+     },
+     "required": [
+      "type",
+      "params"
+     ],
+     "additionalProperties": false
+    },
+    "OpenUrl": {
+     "type": "object",
+     "properties": {
+      "type": {
+       "type": "string",
+       "const": "open_url"
+      },
+      "url": {
+       "type": "string"
+      }
+     },
+     "required": [
+      "type",
+      "url"
+     ],
+     "additionalProperties": false
+    },
+    "Share": {
+     "type": "object",
+     "properties": {
+      "copy": {
+       "$ref": "#/$defs/Copy"
+      }
+     },
+     "required": [
+      "copy"
+     ],
+     "additionalProperties": false
+    }
+   },
+   "actions": {
+    "Copy": {
+     "description": "Copies text to the clipboard.",
+     "params": {
+      "type": "object",
+      "properties": {
+       "text": {
+        "type": "string"
+       },
+       "label": {
+        "type": "string"
+       }
+      },
+      "required": [
+       "text"
+      ],
+      "additionalProperties": false
+     }
+    }
+   }
+  },
+  "spec": {
+   "components": {
+    "Button": {
+     "signature": "Button(label: string, action?: @Copy | @OpenUrl)",
+     "description": "A button."
+    },
+    "Share": {
+     "signature": "Share(copy: @Copy)",
+     "description": ""
+    }
+   },
+   "actions": {
+    "Copy": {
+     "signature": "Copy(text: string, label?: string)",
+     "description": "Copies text to the clipboard."
+    }
+   },
+   "schema": {
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "type": "object",
+    "properties": {
+     "Button": {
+      "$ref": "#/$defs/Button"
+     },
+     "Share": {
+      "$ref": "#/$defs/Share"
+     }
+    },
+    "required": [
+     "Button",
+     "Share"
+    ],
+    "additionalProperties": false,
+    "$defs": {
+     "Button": {
+      "type": "object",
+      "properties": {
+       "label": {
+        "type": "string"
+       },
+       "action": {
+        "anyOf": [
+         {
+          "$ref": "#/$defs/Copy"
+         },
+         {
+          "$ref": "#/$defs/OpenUrl"
+         }
+        ]
+       }
+      },
+      "required": [
+       "label"
+      ],
+      "additionalProperties": false,
+      "description": "A button."
+     },
+     "Copy": {
+      "type": "object",
+      "properties": {
+       "type": {
+        "type": "string",
+        "const": "Copy"
+       },
+       "params": {
+        "type": "object",
+        "properties": {
+         "text": {
+          "type": "string"
+         },
+         "label": {
+          "type": "string"
+         }
+        },
+        "required": [
+         "text"
+        ],
+        "additionalProperties": false
+       }
+      },
+      "required": [
+       "type",
+       "params"
+      ],
+      "additionalProperties": false
+     },
+     "OpenUrl": {
+      "type": "object",
+      "properties": {
+       "type": {
+        "type": "string",
+        "const": "open_url"
+       },
+       "url": {
+        "type": "string"
+       }
+      },
+      "required": [
+       "type",
+       "url"
+      ],
+      "additionalProperties": false
+     },
+     "Share": {
+      "type": "object",
+      "properties": {
+       "copy": {
+        "$ref": "#/$defs/Copy"
+       }
+      },
+      "required": [
+       "copy"
+      ],
+      "additionalProperties": false
+     }
+    },
+    "actions": {
+     "Copy": {
+      "description": "Copies text to the clipboard.",
+      "params": {
+       "type": "object",
+       "properties": {
+        "text": {
+         "type": "string"
+        },
+        "label": {
+         "type": "string"
+        }
+       },
+       "required": [
+        "text"
+       ],
+       "additionalProperties": false
+      }
+     }
+    }
+   }
+  }
+ },
+ {
+  "name": "custom-action-unreferenced",
+  "definition": {
+   "components": [
+    {
+     "name": "A",
+     "description": "a",
+     "props": []
+    }
+   ],
+   "actions": [
+    {
+     "name": "Copy",
+     "description": "Copies text.",
+     "params": [
+      {
+       "name": "text",
+       "type": {
+        "kind": "string"
+       }
+      }
+     ]
+    },
+    {
+     "name": "Ping",
+     "description": "",
+     "params": []
+    }
+   ]
+  },
+  "schema": {
+   "$schema": "https://json-schema.org/draft/2020-12/schema",
+   "type": "object",
+   "properties": {
+    "A": {
+     "$ref": "#/$defs/A"
+    }
+   },
+   "required": [
+    "A"
+   ],
+   "additionalProperties": false,
+   "$defs": {
+    "A": {
+     "type": "object",
+     "properties": {},
+     "additionalProperties": false,
+     "description": "a"
+    }
+   },
+   "actions": {
+    "Copy": {
+     "description": "Copies text.",
+     "params": {
+      "type": "object",
+      "properties": {
+       "text": {
+        "type": "string"
+       }
+      },
+      "required": [
+       "text"
+      ],
+      "additionalProperties": false
+     }
+    },
+    "Ping": {
+     "description": "",
+     "params": {
+      "type": "object",
+      "properties": {},
+      "additionalProperties": false
+     }
+    }
+   }
+  },
+  "spec": {
+   "components": {
+    "A": {
+     "signature": "A()",
+     "description": "a"
+    }
+   },
+   "actions": {
+    "Copy": {
+     "signature": "Copy(text: string)",
+     "description": "Copies text."
+    },
+    "Ping": {
+     "signature": "Ping()",
+     "description": ""
+    }
+   },
+   "schema": {
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "type": "object",
+    "properties": {
+     "A": {
+      "$ref": "#/$defs/A"
+     }
+    },
+    "required": [
+     "A"
+    ],
+    "additionalProperties": false,
+    "$defs": {
+     "A": {
+      "type": "object",
+      "properties": {},
+      "additionalProperties": false,
+      "description": "a"
+     }
+    },
+    "actions": {
+     "Copy": {
+      "description": "Copies text.",
+      "params": {
+       "type": "object",
+       "properties": {
+        "text": {
+         "type": "string"
+        }
+       },
+       "required": [
+        "text"
+       ],
+       "additionalProperties": false
+      }
+     },
+     "Ping": {
+      "description": "",
+      "params": {
+       "type": "object",
+       "properties": {},
+       "additionalProperties": false
+      }
+     }
+    }
+   }
+  }
+ },
+ {
+  "name": "custom-action-kinds",
+  "definition": {
+   "components": [
+    {
+     "name": "A",
+     "description": "a",
+     "props": [
+      {
+       "name": "list",
+       "type": {
+        "kind": "array",
+        "items": {
+         "kind": "action",
+         "name": "Copy"
+        }
+       }
+      },
+      {
+       "name": "either",
+       "type": {
+        "kind": "union",
+        "options": [
+         {
+          "kind": "action",
+          "name": "Copy"
+         },
+         {
+          "kind": "action"
+         }
+        ]
+       }
+      },
+      {
+       "name": "maybe",
+       "type": {
+        "kind": "nullable",
+        "type": {
+         "kind": "action",
+         "name": "Copy"
+        }
+       }
+      },
+      {
+       "name": "escaped",
+       "type": {
+        "kind": "action",
+        "name": "a/b~c"
+       }
+      },
+      {
+       "name": "many",
+       "type": {
+        "kind": "array",
+        "items": {
+         "kind": "union",
+         "options": [
+          {
+           "kind": "action",
+           "name": "a/b~c"
+          },
+          {
+           "kind": "action",
+           "name": "9"
+          }
+         ]
+        }
+       },
+       "optional": true
+      }
+     ]
+    }
+   ],
+   "actions": [
+    {
+     "name": "Copy",
+     "description": "",
+     "params": [
+      {
+       "name": "text",
+       "type": {
+        "kind": "string"
+       }
+      }
+     ]
+    },
+    {
+     "name": "a/b~c",
+     "description": "escaped",
+     "params": []
+    },
+    {
+     "name": "9",
+     "description": "nine",
+     "params": [
+      {
+       "name": "n",
+       "type": {
+        "kind": "nullable",
+        "type": {
+         "kind": "number"
+        }
+       }
+      }
+     ]
+    }
+   ]
+  },
+  "schema": {
+   "$schema": "https://json-schema.org/draft/2020-12/schema",
+   "type": "object",
+   "properties": {
+    "A": {
+     "$ref": "#/$defs/A"
+    }
+   },
+   "required": [
+    "A"
+   ],
+   "additionalProperties": false,
+   "$defs": {
+    "9": {
+     "type": "object",
+     "properties": {
+      "type": {
+       "type": "string",
+       "const": "9"
+      },
+      "params": {
+       "type": "object",
+       "properties": {
+        "n": {
+         "type": [
+          "number",
+          "null"
+         ]
+        }
+       },
+       "required": [
+        "n"
+       ],
+       "additionalProperties": false
+      }
+     },
+     "required": [
+      "type",
+      "params"
+     ],
+     "additionalProperties": false
+    },
+    "A": {
+     "type": "object",
+     "properties": {
+      "list": {
+       "type": "array",
+       "items": {
+        "$ref": "#/$defs/Copy"
+       }
+      },
+      "either": {
+       "anyOf": [
+        {
+         "$ref": "#/$defs/Copy"
+        },
+        {
+         "$ref": "#/$defs/ActionExpression"
+        }
+       ]
+      },
+      "maybe": {
+       "anyOf": [
+        {
+         "$ref": "#/$defs/Copy"
+        },
+        {
+         "type": "null"
+        }
+       ]
+      },
+      "escaped": {
+       "$ref": "#/$defs/a~1b~0c"
+      },
+      "many": {
+       "type": "array",
+       "items": {
+        "anyOf": [
+         {
+          "$ref": "#/$defs/a~1b~0c"
+         },
+         {
+          "$ref": "#/$defs/9"
+         }
+        ]
+       }
+      }
+     },
+     "required": [
+      "list",
+      "either",
+      "maybe",
+      "escaped"
+     ],
+     "additionalProperties": false,
+     "description": "a"
+    },
+    "Copy": {
+     "type": "object",
+     "properties": {
+      "type": {
+       "type": "string",
+       "const": "Copy"
+      },
+      "params": {
+       "type": "object",
+       "properties": {
+        "text": {
+         "type": "string"
+        }
+       },
+       "required": [
+        "text"
+       ],
+       "additionalProperties": false
+      }
+     },
+     "required": [
+      "type",
+      "params"
+     ],
+     "additionalProperties": false
+    },
+    "ActionExpression": {
+     "anyOf": [
+      {
+       "type": "object",
+       "properties": {
+        "type": {
+         "type": "string",
+         "const": "open_url"
+        },
+        "url": {
+         "type": "string"
+        }
+       },
+       "required": [
+        "type",
+        "url"
+       ],
+       "additionalProperties": false
+      },
+      {
+       "type": "object",
+       "properties": {
+        "type": {
+         "type": "string",
+         "const": "continue_conversation"
+        },
+        "context": {
+         "type": "string"
+        }
+       },
+       "required": [
+        "type"
+       ],
+       "additionalProperties": false
+      },
+      {
+       "type": "object",
+       "properties": {
+        "type": {
+         "type": "string"
+        },
+        "params": {
+         "type": "object",
+         "propertyNames": {
+          "type": "string"
+         },
+         "additionalProperties": {}
+        }
+       },
+       "required": [
+        "type"
+       ],
+       "additionalProperties": false
+      }
+     ]
+    },
+    "a/b~c": {
+     "type": "object",
+     "properties": {
+      "type": {
+       "type": "string",
+       "const": "a/b~c"
+      },
+      "params": {
+       "type": "object",
+       "properties": {},
+       "additionalProperties": false
+      }
+     },
+     "required": [
+      "type",
+      "params"
+     ],
+     "additionalProperties": false
+    }
+   },
+   "actions": {
+    "9": {
+     "description": "nine",
+     "params": {
+      "type": "object",
+      "properties": {
+       "n": {
+        "type": [
+         "number",
+         "null"
+        ]
+       }
+      },
+      "required": [
+       "n"
+      ],
+      "additionalProperties": false
+     }
+    },
+    "Copy": {
+     "description": "",
+     "params": {
+      "type": "object",
+      "properties": {
+       "text": {
+        "type": "string"
+       }
+      },
+      "required": [
+       "text"
+      ],
+      "additionalProperties": false
+     }
+    },
+    "a/b~c": {
+     "description": "escaped",
+     "params": {
+      "type": "object",
+      "properties": {},
+      "additionalProperties": false
+     }
+    }
+   }
+  },
+  "spec": {
+   "components": {
+    "A": {
+     "signature": "A(list: @Copy[], either: @Copy | ActionExpression, maybe?: @Copy, escaped: @a/b~c, many?: (@a/b~c | @9)[])",
+     "description": "a"
+    }
+   },
+   "actions": {
+    "9": {
+     "signature": "9(n?: number)",
+     "description": "nine"
+    },
+    "Copy": {
+     "signature": "Copy(text: string)",
+     "description": ""
+    },
+    "a/b~c": {
+     "signature": "a/b~c()",
+     "description": "escaped"
+    }
+   },
+   "schema": {
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "type": "object",
+    "properties": {
+     "A": {
+      "$ref": "#/$defs/A"
+     }
+    },
+    "required": [
+     "A"
+    ],
+    "additionalProperties": false,
+    "$defs": {
+     "9": {
+      "type": "object",
+      "properties": {
+       "type": {
+        "type": "string",
+        "const": "9"
+       },
+       "params": {
+        "type": "object",
+        "properties": {
+         "n": {
+          "type": [
+           "number",
+           "null"
+          ]
+         }
+        },
+        "required": [
+         "n"
+        ],
+        "additionalProperties": false
+       }
+      },
+      "required": [
+       "type",
+       "params"
+      ],
+      "additionalProperties": false
+     },
+     "A": {
+      "type": "object",
+      "properties": {
+       "list": {
+        "type": "array",
+        "items": {
+         "$ref": "#/$defs/Copy"
+        }
+       },
+       "either": {
+        "anyOf": [
+         {
+          "$ref": "#/$defs/Copy"
+         },
+         {
+          "$ref": "#/$defs/ActionExpression"
+         }
+        ]
+       },
+       "maybe": {
+        "anyOf": [
+         {
+          "$ref": "#/$defs/Copy"
+         },
+         {
+          "type": "null"
+         }
+        ]
+       },
+       "escaped": {
+        "$ref": "#/$defs/a~1b~0c"
+       },
+       "many": {
+        "type": "array",
+        "items": {
+         "anyOf": [
+          {
+           "$ref": "#/$defs/a~1b~0c"
+          },
+          {
+           "$ref": "#/$defs/9"
+          }
+         ]
+        }
+       }
+      },
+      "required": [
+       "list",
+       "either",
+       "maybe",
+       "escaped"
+      ],
+      "additionalProperties": false,
+      "description": "a"
+     },
+     "Copy": {
+      "type": "object",
+      "properties": {
+       "type": {
+        "type": "string",
+        "const": "Copy"
+       },
+       "params": {
+        "type": "object",
+        "properties": {
+         "text": {
+          "type": "string"
+         }
+        },
+        "required": [
+         "text"
+        ],
+        "additionalProperties": false
+       }
+      },
+      "required": [
+       "type",
+       "params"
+      ],
+      "additionalProperties": false
+     },
+     "ActionExpression": {
+      "anyOf": [
+       {
+        "type": "object",
+        "properties": {
+         "type": {
+          "type": "string",
+          "const": "open_url"
+         },
+         "url": {
+          "type": "string"
+         }
+        },
+        "required": [
+         "type",
+         "url"
+        ],
+        "additionalProperties": false
+       },
+       {
+        "type": "object",
+        "properties": {
+         "type": {
+          "type": "string",
+          "const": "continue_conversation"
+         },
+         "context": {
+          "type": "string"
+         }
+        },
+        "required": [
+         "type"
+        ],
+        "additionalProperties": false
+       },
+       {
+        "type": "object",
+        "properties": {
+         "type": {
+          "type": "string"
+         },
+         "params": {
+          "type": "object",
+          "propertyNames": {
+           "type": "string"
+          },
+          "additionalProperties": {}
+         }
+        },
+        "required": [
+         "type"
+        ],
+        "additionalProperties": false
+       }
+      ]
+     },
+     "a/b~c": {
+      "type": "object",
+      "properties": {
+       "type": {
+        "type": "string",
+        "const": "a/b~c"
+       },
+       "params": {
+        "type": "object",
+        "properties": {},
+        "additionalProperties": false
+       }
+      },
+      "required": [
+       "type",
+       "params"
+      ],
+      "additionalProperties": false
+     }
+    },
+    "actions": {
+     "9": {
+      "description": "nine",
+      "params": {
+       "type": "object",
+       "properties": {
+        "n": {
+         "type": [
+          "number",
+          "null"
+         ]
+        }
+       },
+       "required": [
+        "n"
+       ],
+       "additionalProperties": false
+      }
+     },
+     "Copy": {
+      "description": "",
+      "params": {
+       "type": "object",
+       "properties": {
+        "text": {
+         "type": "string"
+        }
+       },
+       "required": [
+        "text"
+       ],
+       "additionalProperties": false
+      }
+     },
+     "a/b~c": {
+      "description": "escaped",
+      "params": {
+       "type": "object",
+       "properties": {},
+       "additionalProperties": false
+      }
+     }
+    }
+   }
+  }
+ },
+ {
+  "name": "custom-action-references",
+  "definition": {
+   "components": [
+    {
+     "name": "Root",
+     "description": "r",
+     "props": [
+      {
+       "name": "c",
+       "type": {
+        "kind": "action",
+        "name": "C"
+       }
+      },
+      {
+       "name": "item",
+       "type": {
+        "kind": "component",
+        "name": "Item"
+       }
+      }
+     ]
+    },
+    {
+     "name": "Item",
+     "description": "i",
+     "props": [
+      {
+       "name": "t",
+       "type": {
+        "kind": "string"
+       }
+      }
+     ]
+    },
+    {
+     "name": "Other",
+     "description": "o",
+     "props": []
+    }
+   ],
+   "actions": [
+    {
+     "name": "C",
+     "description": "c",
+     "params": [
+      {
+       "name": "item",
+       "type": {
+        "kind": "component",
+        "name": "Item"
+       }
+      },
+      {
+       "name": "b",
+       "type": {
+        "kind": "action",
+        "name": "B"
+       }
+      },
+      {
+       "name": "list",
+       "type": {
+        "kind": "array",
+        "items": {
+         "kind": "action",
+         "name": "B"
+        }
+       },
+       "optional": true
+      }
+     ]
+    },
+    {
+     "name": "B",
+     "description": "b",
+     "params": [
+      {
+       "name": "o",
+       "type": {
+        "kind": "component",
+        "name": "Other"
+       }
+      },
+      {
+       "name": "act",
+       "type": {
+        "kind": "action"
+       },
+       "optional": true
+      }
+     ]
+    }
+   ],
+   "root": "Root"
+  },
+  "schema": {
+   "$schema": "https://json-schema.org/draft/2020-12/schema",
+   "type": "object",
+   "properties": {
+    "Root": {
+     "$ref": "#/$defs/Root"
+    },
+    "Item": {
+     "$ref": "#/$defs/Item"
+    },
+    "Other": {
+     "$ref": "#/$defs/Other"
+    }
+   },
+   "required": [
+    "Root",
+    "Item",
+    "Other"
+   ],
+   "additionalProperties": false,
+   "$defs": {
+    "Root": {
+     "type": "object",
+     "properties": {
+      "c": {
+       "$ref": "#/$defs/C"
+      },
+      "item": {
+       "$ref": "#/$defs/Item"
+      }
+     },
+     "required": [
+      "c",
+      "item"
+     ],
+     "additionalProperties": false,
+     "description": "r"
+    },
+    "C": {
+     "type": "object",
+     "properties": {
+      "type": {
+       "type": "string",
+       "const": "C"
+      },
+      "params": {
+       "type": "object",
+       "properties": {
+        "item": {
+         "$ref": "#/$defs/Item"
+        },
+        "b": {
+         "$ref": "#/$defs/B"
+        },
+        "list": {
+         "type": "array",
+         "items": {
+          "$ref": "#/$defs/B"
+         }
+        }
+       },
+       "required": [
+        "item",
+        "b"
+       ],
+       "additionalProperties": false
+      }
+     },
+     "required": [
+      "type",
+      "params"
+     ],
+     "additionalProperties": false
+    },
+    "Item": {
+     "type": "object",
+     "properties": {
+      "t": {
+       "type": "string"
+      }
+     },
+     "required": [
+      "t"
+     ],
+     "additionalProperties": false,
+     "description": "i"
+    },
+    "B": {
+     "type": "object",
+     "properties": {
+      "type": {
+       "type": "string",
+       "const": "B"
+      },
+      "params": {
+       "type": "object",
+       "properties": {
+        "o": {
+         "$ref": "#/$defs/Other"
+        },
+        "act": {
+         "$ref": "#/$defs/ActionExpression"
+        }
+       },
+       "required": [
+        "o"
+       ],
+       "additionalProperties": false
+      }
+     },
+     "required": [
+      "type",
+      "params"
+     ],
+     "additionalProperties": false
+    },
+    "Other": {
+     "type": "object",
+     "properties": {},
+     "additionalProperties": false,
+     "description": "o"
+    },
+    "ActionExpression": {
+     "anyOf": [
+      {
+       "type": "object",
+       "properties": {
+        "type": {
+         "type": "string",
+         "const": "open_url"
+        },
+        "url": {
+         "type": "string"
+        }
+       },
+       "required": [
+        "type",
+        "url"
+       ],
+       "additionalProperties": false
+      },
+      {
+       "type": "object",
+       "properties": {
+        "type": {
+         "type": "string",
+         "const": "continue_conversation"
+        },
+        "context": {
+         "type": "string"
+        }
+       },
+       "required": [
+        "type"
+       ],
+       "additionalProperties": false
+      },
+      {
+       "type": "object",
+       "properties": {
+        "type": {
+         "type": "string"
+        },
+        "params": {
+         "type": "object",
+         "propertyNames": {
+          "type": "string"
+         },
+         "additionalProperties": {}
+        }
+       },
+       "required": [
+        "type"
+       ],
+       "additionalProperties": false
+      }
+     ]
+    }
+   },
+   "actions": {
+    "C": {
+     "description": "c",
+     "params": {
+      "type": "object",
+      "properties": {
+       "item": {
+        "$ref": "#/$defs/Item"
+       },
+       "b": {
+        "$ref": "#/$defs/B"
+       },
+       "list": {
+        "type": "array",
+        "items": {
+         "$ref": "#/$defs/B"
+        }
+       }
+      },
+      "required": [
+       "item",
+       "b"
+      ],
+      "additionalProperties": false
+     }
+    },
+    "B": {
+     "description": "b",
+     "params": {
+      "type": "object",
+      "properties": {
+       "o": {
+        "$ref": "#/$defs/Other"
+       },
+       "act": {
+        "$ref": "#/$defs/ActionExpression"
+       }
+      },
+      "required": [
+       "o"
+      ],
+      "additionalProperties": false
+     }
+    }
+   }
+  },
+  "spec": {
+   "root": "Root",
+   "components": {
+    "Root": {
+     "signature": "Root(c: @C, item: Item)",
+     "description": "r"
+    },
+    "Item": {
+     "signature": "Item(t: string)",
+     "description": "i"
+    },
+    "Other": {
+     "signature": "Other()",
+     "description": "o"
+    }
+   },
+   "actions": {
+    "C": {
+     "signature": "C(item: Item, b: @B, list?: @B[])",
+     "description": "c"
+    },
+    "B": {
+     "signature": "B(o: Other, act?: ActionExpression)",
+     "description": "b"
+    }
+   },
+   "schema": {
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "type": "object",
+    "properties": {
+     "Root": {
+      "$ref": "#/$defs/Root"
+     },
+     "Item": {
+      "$ref": "#/$defs/Item"
+     },
+     "Other": {
+      "$ref": "#/$defs/Other"
+     }
+    },
+    "required": [
+     "Root",
+     "Item",
+     "Other"
+    ],
+    "additionalProperties": false,
+    "$defs": {
+     "Root": {
+      "type": "object",
+      "properties": {
+       "c": {
+        "$ref": "#/$defs/C"
+       },
+       "item": {
+        "$ref": "#/$defs/Item"
+       }
+      },
+      "required": [
+       "c",
+       "item"
+      ],
+      "additionalProperties": false,
+      "description": "r"
+     },
+     "C": {
+      "type": "object",
+      "properties": {
+       "type": {
+        "type": "string",
+        "const": "C"
+       },
+       "params": {
+        "type": "object",
+        "properties": {
+         "item": {
+          "$ref": "#/$defs/Item"
+         },
+         "b": {
+          "$ref": "#/$defs/B"
+         },
+         "list": {
+          "type": "array",
+          "items": {
+           "$ref": "#/$defs/B"
+          }
+         }
+        },
+        "required": [
+         "item",
+         "b"
+        ],
+        "additionalProperties": false
+       }
+      },
+      "required": [
+       "type",
+       "params"
+      ],
+      "additionalProperties": false
+     },
+     "Item": {
+      "type": "object",
+      "properties": {
+       "t": {
+        "type": "string"
+       }
+      },
+      "required": [
+       "t"
+      ],
+      "additionalProperties": false,
+      "description": "i"
+     },
+     "B": {
+      "type": "object",
+      "properties": {
+       "type": {
+        "type": "string",
+        "const": "B"
+       },
+       "params": {
+        "type": "object",
+        "properties": {
+         "o": {
+          "$ref": "#/$defs/Other"
+         },
+         "act": {
+          "$ref": "#/$defs/ActionExpression"
+         }
+        },
+        "required": [
+         "o"
+        ],
+        "additionalProperties": false
+       }
+      },
+      "required": [
+       "type",
+       "params"
+      ],
+      "additionalProperties": false
+     },
+     "Other": {
+      "type": "object",
+      "properties": {},
+      "additionalProperties": false,
+      "description": "o"
+     },
+     "ActionExpression": {
+      "anyOf": [
+       {
+        "type": "object",
+        "properties": {
+         "type": {
+          "type": "string",
+          "const": "open_url"
+         },
+         "url": {
+          "type": "string"
+         }
+        },
+        "required": [
+         "type",
+         "url"
+        ],
+        "additionalProperties": false
+       },
+       {
+        "type": "object",
+        "properties": {
+         "type": {
+          "type": "string",
+          "const": "continue_conversation"
+         },
+         "context": {
+          "type": "string"
+         }
+        },
+        "required": [
+         "type"
+        ],
+        "additionalProperties": false
+       },
+       {
+        "type": "object",
+        "properties": {
+         "type": {
+          "type": "string"
+         },
+         "params": {
+          "type": "object",
+          "propertyNames": {
+           "type": "string"
+          },
+          "additionalProperties": {}
+         }
+        },
+        "required": [
+         "type"
+        ],
+        "additionalProperties": false
+       }
+      ]
+     }
+    },
+    "actions": {
+     "C": {
+      "description": "c",
+      "params": {
+       "type": "object",
+       "properties": {
+        "item": {
+         "$ref": "#/$defs/Item"
+        },
+        "b": {
+         "$ref": "#/$defs/B"
+        },
+        "list": {
+         "type": "array",
+         "items": {
+          "$ref": "#/$defs/B"
+         }
+        }
+       },
+       "required": [
+        "item",
+        "b"
+       ],
+       "additionalProperties": false
+      }
+     },
+     "B": {
+      "description": "b",
+      "params": {
+       "type": "object",
+       "properties": {
+        "o": {
+         "$ref": "#/$defs/Other"
+        },
+        "act": {
+         "$ref": "#/$defs/ActionExpression"
+        }
+       },
+       "required": [
+        "o"
+       ],
+       "additionalProperties": false
+      }
+     }
+    }
+   }
+  }
+ },
+ {
+  "name": "functions-and-actions-with-groups",
+  "definition": {
+   "components": [
+    {
+     "name": "A",
+     "description": "a",
+     "props": []
+    }
+   ],
+   "componentGroups": [
+    {
+     "name": "G",
+     "components": [
+      "A"
+     ],
+     "notes": [
+      "n"
+     ]
+    }
+   ],
+   "functions": [
+    {
+     "name": "F",
+     "description": "f",
+     "params": []
+    },
+    {
+     "name": "G",
+     "description": "g",
+     "params": [
+      {
+       "name": "x",
+       "type": {
+        "kind": "string"
+       }
+      }
+     ],
+     "returns": {
+      "kind": "string"
+     }
+    }
+   ],
+   "actions": [
+    {
+     "name": "Z",
+     "description": "z",
+     "params": [
+      {
+       "name": "y",
+       "type": {
+        "kind": "boolean"
+       }
+      }
+     ]
+    }
+   ],
+   "root": "A",
+   "id": "calls"
+  },
+  "schema": {
+   "$schema": "https://json-schema.org/draft/2020-12/schema",
+   "type": "object",
+   "properties": {
+    "A": {
+     "$ref": "#/$defs/A"
+    }
+   },
+   "required": [
+    "A"
+   ],
+   "additionalProperties": false,
+   "$defs": {
+    "A": {
+     "type": "object",
+     "properties": {},
+     "additionalProperties": false,
+     "description": "a"
+    }
+   },
+   "functions": {
+    "F": {
+     "description": "f",
+     "params": {
+      "type": "object",
+      "properties": {},
+      "additionalProperties": false
+     }
+    },
+    "G": {
+     "description": "g",
+     "params": {
+      "type": "object",
+      "properties": {
+       "x": {
+        "type": "string"
+       }
+      },
+      "required": [
+       "x"
+      ],
+      "additionalProperties": false
+     },
+     "returns": {
+      "type": "string"
+     }
+    }
+   },
+   "actions": {
+    "Z": {
+     "description": "z",
+     "params": {
+      "type": "object",
+      "properties": {
+       "y": {
+        "type": "boolean"
+       }
+      },
+      "required": [
+       "y"
+      ],
+      "additionalProperties": false
+     }
+    }
+   }
+  },
+  "spec": {
+   "root": "A",
+   "components": {
+    "A": {
+     "signature": "A()",
+     "description": "a"
+    }
+   },
+   "componentGroups": [
+    {
+     "name": "G",
+     "components": [
+      "A"
+     ],
+     "notes": [
+      "n"
+     ]
+    }
+   ],
+   "functions": {
+    "F": {
+     "signature": "F()",
+     "description": "f"
+    },
+    "G": {
+     "signature": "G(x: string) → string",
+     "description": "g"
+    }
+   },
+   "actions": {
+    "Z": {
+     "signature": "Z(y: boolean)",
+     "description": "z"
+    }
+   },
+   "schema": {
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "type": "object",
+    "properties": {
+     "A": {
+      "$ref": "#/$defs/A"
+     }
+    },
+    "required": [
+     "A"
+    ],
+    "additionalProperties": false,
+    "$defs": {
+     "A": {
+      "type": "object",
+      "properties": {},
+      "additionalProperties": false,
+      "description": "a"
+     }
+    },
+    "functions": {
+     "F": {
+      "description": "f",
+      "params": {
+       "type": "object",
+       "properties": {},
+       "additionalProperties": false
+      }
+     },
+     "G": {
+      "description": "g",
+      "params": {
+       "type": "object",
+       "properties": {
+        "x": {
+         "type": "string"
+        }
+       },
+       "required": [
+        "x"
+       ],
+       "additionalProperties": false
+      },
+      "returns": {
+       "type": "string"
+      }
+     }
+    },
+    "actions": {
+     "Z": {
+      "description": "z",
+      "params": {
+       "type": "object",
+       "properties": {
+        "y": {
+         "type": "boolean"
+        }
+       },
+       "required": [
+        "y"
+       ],
+       "additionalProperties": false
+      }
+     }
+    }
+   },
+   "id": "calls"
+  }
+ },
+ {
+  "name": "actions-sharing-params",
+  "definition": {
+   "components": [
+    {
+     "name": "A",
+     "description": "a",
+     "props": [
+      {
+       "name": "h",
+       "type": {
+        "kind": "action",
+        "name": "H"
+       }
+      },
+      {
+       "name": "c",
+       "type": {
+        "kind": "action",
+        "name": "Copy"
+       }
+      }
+     ]
+    }
+   ],
+   "actions": [
+    {
+     "name": "H",
+     "description": "",
+     "params": [
+      {
+       "name": "t",
+       "type": {
+        "kind": "string"
+       }
+      }
+     ]
+    },
+    {
+     "name": "Copy",
+     "description": "",
+     "params": [
+      {
+       "name": "t",
+       "type": {
+        "kind": "string"
+       }
+      }
+     ]
+    }
+   ]
+  },
+  "schema": {
+   "$schema": "https://json-schema.org/draft/2020-12/schema",
+   "type": "object",
+   "properties": {
+    "A": {
+     "$ref": "#/$defs/A"
+    }
+   },
+   "required": [
+    "A"
+   ],
+   "additionalProperties": false,
+   "$defs": {
+    "A": {
+     "type": "object",
+     "properties": {
+      "h": {
+       "$ref": "#/$defs/H"
+      },
+      "c": {
+       "$ref": "#/$defs/Copy"
+      }
+     },
+     "required": [
+      "h",
+      "c"
+     ],
+     "additionalProperties": false,
+     "description": "a"
+    },
+    "H": {
+     "type": "object",
+     "properties": {
+      "type": {
+       "type": "string",
+       "const": "H"
+      },
+      "params": {
+       "type": "object",
+       "properties": {
+        "t": {
+         "type": "string"
+        }
+       },
+       "required": [
+        "t"
+       ],
+       "additionalProperties": false
+      }
+     },
+     "required": [
+      "type",
+      "params"
+     ],
+     "additionalProperties": false
+    },
+    "Copy": {
+     "type": "object",
+     "properties": {
+      "type": {
+       "type": "string",
+       "const": "Copy"
+      },
+      "params": {
+       "type": "object",
+       "properties": {
+        "t": {
+         "type": "string"
+        }
+       },
+       "required": [
+        "t"
+       ],
+       "additionalProperties": false
+      }
+     },
+     "required": [
+      "type",
+      "params"
+     ],
+     "additionalProperties": false
+    }
+   },
+   "actions": {
+    "H": {
+     "description": "",
+     "params": {
+      "type": "object",
+      "properties": {
+       "t": {
+        "type": "string"
+       }
+      },
+      "required": [
+       "t"
+      ],
+      "additionalProperties": false
+     }
+    },
+    "Copy": {
+     "description": "",
+     "params": {
+      "type": "object",
+      "properties": {
+       "t": {
+        "type": "string"
+       }
+      },
+      "required": [
+       "t"
+      ],
+      "additionalProperties": false
+     }
+    }
+   }
+  },
+  "spec": {
+   "components": {
+    "A": {
+     "signature": "A(h: @H, c: @Copy)",
+     "description": "a"
+    }
+   },
+   "actions": {
+    "H": {
+     "signature": "H(t: string)",
+     "description": ""
+    },
+    "Copy": {
+     "signature": "Copy(t: string)",
+     "description": ""
+    }
+   },
+   "schema": {
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "type": "object",
+    "properties": {
+     "A": {
+      "$ref": "#/$defs/A"
+     }
+    },
+    "required": [
+     "A"
+    ],
+    "additionalProperties": false,
+    "$defs": {
+     "A": {
+      "type": "object",
+      "properties": {
+       "h": {
+        "$ref": "#/$defs/H"
+       },
+       "c": {
+        "$ref": "#/$defs/Copy"
+       }
+      },
+      "required": [
+       "h",
+       "c"
+      ],
+      "additionalProperties": false,
+      "description": "a"
+     },
+     "H": {
+      "type": "object",
+      "properties": {
+       "type": {
+        "type": "string",
+        "const": "H"
+       },
+       "params": {
+        "type": "object",
+        "properties": {
+         "t": {
+          "type": "string"
+         }
+        },
+        "required": [
+         "t"
+        ],
+        "additionalProperties": false
+       }
+      },
+      "required": [
+       "type",
+       "params"
+      ],
+      "additionalProperties": false
+     },
+     "Copy": {
+      "type": "object",
+      "properties": {
+       "type": {
+        "type": "string",
+        "const": "Copy"
+       },
+       "params": {
+        "type": "object",
+        "properties": {
+         "t": {
+          "type": "string"
+         }
+        },
+        "required": [
+         "t"
+        ],
+        "additionalProperties": false
+       }
+      },
+      "required": [
+       "type",
+       "params"
+      ],
+      "additionalProperties": false
+     }
+    },
+    "actions": {
+     "H": {
+      "description": "",
+      "params": {
+       "type": "object",
+       "properties": {
+        "t": {
+         "type": "string"
+        }
+       },
+       "required": [
+        "t"
+       ],
+       "additionalProperties": false
+      }
+     },
+     "Copy": {
+      "description": "",
+      "params": {
+       "type": "object",
+       "properties": {
+        "t": {
+         "type": "string"
+        }
+       },
+       "required": [
+        "t"
+       ],
+       "additionalProperties": false
+      }
+     }
+    }
+   }
+  }
+ },
+ {
+  "name": "function-params-are-action-params",
+  "definition": {
+   "components": [
+    {
+     "name": "A",
+     "description": "a",
+     "props": [
+      {
+       "name": "c",
+       "type": {
+        "kind": "action",
+        "name": "Copy"
+       }
+      }
+     ]
+    }
+   ],
+   "functions": [
+    {
+     "name": "F",
+     "description": "",
+     "params": [
+      {
+       "name": "next",
+       "type": {
+        "kind": "action",
+        "name": "Copy"
+       }
+      }
+     ]
+    }
+   ],
+   "actions": [
+    {
+     "name": "Copy",
+     "description": "",
+     "params": [
+      {
+       "name": "next",
+       "type": {
+        "kind": "action",
+        "name": "Copy"
+       }
+      }
+     ]
+    }
+   ]
+  },
+  "schema": {
+   "$schema": "https://json-schema.org/draft/2020-12/schema",
+   "type": "object",
+   "properties": {
+    "A": {
+     "$ref": "#/$defs/A"
+    }
+   },
+   "required": [
+    "A"
+   ],
+   "additionalProperties": false,
+   "$defs": {
+    "A": {
+     "type": "object",
+     "properties": {
+      "c": {
+       "$ref": "#/$defs/Copy"
+      }
+     },
+     "required": [
+      "c"
+     ],
+     "additionalProperties": false,
+     "description": "a"
+    },
+    "Copy": {
+     "type": "object",
+     "properties": {
+      "type": {
+       "type": "string",
+       "const": "Copy"
+      },
+      "params": {
+       "type": "object",
+       "properties": {
+        "next": {
+         "$ref": "#/$defs/Copy"
+        }
+       },
+       "required": [
+        "next"
+       ],
+       "additionalProperties": false
+      }
+     },
+     "required": [
+      "type",
+      "params"
+     ],
+     "additionalProperties": false
+    }
+   },
+   "functions": {
+    "F": {
+     "description": "",
+     "params": {
+      "type": "object",
+      "properties": {
+       "next": {
+        "$ref": "#/$defs/Copy"
+       }
+      },
+      "required": [
+       "next"
+      ],
+      "additionalProperties": false
+     }
+    }
+   },
+   "actions": {
+    "Copy": {
+     "description": "",
+     "params": {
+      "type": "object",
+      "properties": {
+       "next": {
+        "$ref": "#/$defs/Copy"
+       }
+      },
+      "required": [
+       "next"
+      ],
+      "additionalProperties": false
+     }
+    }
+   }
+  },
+  "spec": {
+   "components": {
+    "A": {
+     "signature": "A(c: @Copy)",
+     "description": "a"
+    }
+   },
+   "functions": {
+    "F": {
+     "signature": "F(next: @Copy)",
+     "description": ""
+    }
+   },
+   "actions": {
+    "Copy": {
+     "signature": "Copy(next: @Copy)",
+     "description": ""
+    }
+   },
+   "schema": {
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "type": "object",
+    "properties": {
+     "A": {
+      "$ref": "#/$defs/A"
+     }
+    },
+    "required": [
+     "A"
+    ],
+    "additionalProperties": false,
+    "$defs": {
+     "A": {
+      "type": "object",
+      "properties": {
+       "c": {
+        "$ref": "#/$defs/Copy"
+       }
+      },
+      "required": [
+       "c"
+      ],
+      "additionalProperties": false,
+      "description": "a"
+     },
+     "Copy": {
+      "type": "object",
+      "properties": {
+       "type": {
+        "type": "string",
+        "const": "Copy"
+       },
+       "params": {
+        "type": "object",
+        "properties": {
+         "next": {
+          "$ref": "#/$defs/Copy"
+         }
+        },
+        "required": [
+         "next"
+        ],
+        "additionalProperties": false
+       }
+      },
+      "required": [
+       "type",
+       "params"
+      ],
+      "additionalProperties": false
+     }
+    },
+    "functions": {
+     "F": {
+      "description": "",
+      "params": {
+       "type": "object",
+       "properties": {
+        "next": {
+         "$ref": "#/$defs/Copy"
+        }
+       },
+       "required": [
+        "next"
+       ],
+       "additionalProperties": false
+      }
+     }
+    },
+    "actions": {
+     "Copy": {
+      "description": "",
+      "params": {
+       "type": "object",
+       "properties": {
+        "next": {
+         "$ref": "#/$defs/Copy"
+        }
+       },
+       "required": [
+        "next"
+       ],
+       "additionalProperties": false
+      }
+     }
+    }
+   }
+  }
+ },
+ {
+  "name": "function-returns-action-params",
+  "definition": {
+   "components": [
+    {
+     "name": "A",
+     "description": "a",
+     "props": []
+    }
+   ],
+   "functions": [
+    {
+     "name": "F",
+     "description": "",
+     "params": [],
+     "returns": {
+      "kind": "object",
+      "fields": [
+       {
+        "name": "next",
+        "type": {
+         "kind": "action",
+         "name": "Copy"
+        }
+       }
+      ]
+     }
+    }
+   ],
+   "actions": [
+    {
+     "name": "Copy",
+     "description": "",
+     "params": [
+      {
+       "name": "next",
+       "type": {
+        "kind": "action",
+        "name": "Copy"
+       }
+      }
+     ]
+    }
+   ]
+  },
+  "schema": {
+   "$schema": "https://json-schema.org/draft/2020-12/schema",
+   "type": "object",
+   "properties": {
+    "A": {
+     "$ref": "#/$defs/A"
+    }
+   },
+   "required": [
+    "A"
+   ],
+   "additionalProperties": false,
+   "$defs": {
+    "A": {
+     "type": "object",
+     "properties": {},
+     "additionalProperties": false,
+     "description": "a"
+    }
+   },
+   "functions": {
+    "F": {
+     "description": "",
+     "params": {
+      "type": "object",
+      "properties": {},
+      "additionalProperties": false
+     },
+     "returns": {
+      "type": "object",
+      "properties": {
+       "next": {
+        "$ref": "#/$defs/Copy"
+       }
+      },
+      "required": [
+       "next"
+      ],
+      "additionalProperties": false
+     }
+    }
+   },
+   "actions": {
+    "Copy": {
+     "description": "",
+     "params": {
+      "type": "object",
+      "properties": {
+       "next": {
+        "$ref": "#/$defs/Copy"
+       }
+      },
+      "required": [
+       "next"
+      ],
+      "additionalProperties": false
+     }
+    }
+   }
+  },
+  "spec": {
+   "components": {
+    "A": {
+     "signature": "A()",
+     "description": "a"
+    }
+   },
+   "functions": {
+    "F": {
+     "signature": "F() → {next: @Copy}",
+     "description": ""
+    }
+   },
+   "actions": {
+    "Copy": {
+     "signature": "Copy(next: @Copy)",
+     "description": ""
+    }
+   },
+   "schema": {
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "type": "object",
+    "properties": {
+     "A": {
+      "$ref": "#/$defs/A"
+     }
+    },
+    "required": [
+     "A"
+    ],
+    "additionalProperties": false,
+    "$defs": {
+     "A": {
+      "type": "object",
+      "properties": {},
+      "additionalProperties": false,
+      "description": "a"
+     }
+    },
+    "functions": {
+     "F": {
+      "description": "",
+      "params": {
+       "type": "object",
+       "properties": {},
+       "additionalProperties": false
+      },
+      "returns": {
+       "type": "object",
+       "properties": {
+        "next": {
+         "$ref": "#/$defs/Copy"
+        }
+       },
+       "required": [
+        "next"
+       ],
+       "additionalProperties": false
+      }
+     }
+    },
+    "actions": {
+     "Copy": {
+      "description": "",
+      "params": {
+       "type": "object",
+       "properties": {
+        "next": {
+         "$ref": "#/$defs/Copy"
+        }
+       },
+       "required": [
+        "next"
+       ],
+       "additionalProperties": false
+      }
+     }
+    }
+   }
+  }
+ },
+ {
+  "name": "inline-object-shared-after-its-cycle",
+  "definition": {
+   "components": [
+    {
+     "name": "C",
+     "description": "c",
+     "props": [
+      {
+       "name": "x",
+       "type": {
+        "kind": "object",
+        "fields": [
+         {
+          "name": "c",
+          "type": {
+           "kind": "component",
+           "name": "C"
+          }
+         }
+        ]
+       }
+      }
+     ]
+    },
+    {
+     "name": "D",
+     "description": "d",
+     "props": [
+      {
+       "name": "y",
+       "type": {
+        "kind": "object",
+        "fields": [
+         {
+          "name": "c",
+          "type": {
+           "kind": "component",
+           "name": "C"
+          }
+         }
+        ]
+       }
+      }
+     ]
+    }
+   ]
+  },
+  "schema": {
+   "$schema": "https://json-schema.org/draft/2020-12/schema",
+   "type": "object",
+   "properties": {
+    "C": {
+     "$ref": "#/$defs/C"
+    },
+    "D": {
+     "$ref": "#/$defs/D"
+    }
+   },
+   "required": [
+    "C",
+    "D"
+   ],
+   "additionalProperties": false,
+   "$defs": {
+    "C": {
+     "type": "object",
+     "properties": {
+      "x": {
+       "type": "object",
+       "properties": {
+        "c": {
+         "$ref": "#/$defs/C"
+        }
+       },
+       "required": [
+        "c"
+       ],
+       "additionalProperties": false
+      }
+     },
+     "required": [
+      "x"
+     ],
+     "additionalProperties": false,
+     "description": "c"
+    },
+    "D": {
+     "type": "object",
+     "properties": {
+      "y": {
+       "type": "object",
+       "properties": {
+        "c": {
+         "$ref": "#/$defs/C"
+        }
+       },
+       "required": [
+        "c"
+       ],
+       "additionalProperties": false
+      }
+     },
+     "required": [
+      "y"
+     ],
+     "additionalProperties": false,
+     "description": "d"
+    }
+   }
+  },
+  "spec": {
+   "components": {
+    "C": {
+     "signature": "C(x: {c: C})",
+     "description": "c"
+    },
+    "D": {
+     "signature": "D(y: {c: C})",
+     "description": "d"
+    }
+   },
+   "schema": {
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "type": "object",
+    "properties": {
+     "C": {
+      "$ref": "#/$defs/C"
+     },
+     "D": {
+      "$ref": "#/$defs/D"
+     }
+    },
+    "required": [
+     "C",
+     "D"
+    ],
+    "additionalProperties": false,
+    "$defs": {
+     "C": {
+      "type": "object",
+      "properties": {
+       "x": {
+        "type": "object",
+        "properties": {
+         "c": {
+          "$ref": "#/$defs/C"
+         }
+        },
+        "required": [
+         "c"
+        ],
+        "additionalProperties": false
+       }
+      },
+      "required": [
+       "x"
+      ],
+      "additionalProperties": false,
+      "description": "c"
+     },
+     "D": {
+      "type": "object",
+      "properties": {
+       "y": {
+        "type": "object",
+        "properties": {
+         "c": {
+          "$ref": "#/$defs/C"
+         }
+        },
+        "required": [
+         "c"
+        ],
+        "additionalProperties": false
+       }
+      },
+      "required": [
+       "y"
+      ],
+      "additionalProperties": false,
+      "description": "d"
+     }
+    }
+   }
+  }
+ },
+ {
+  "name": "function-collides-with-builtin-function",
+  "definition": {
+   "components": [
+    {
+     "name": "Item",
+     "description": "i",
+     "props": []
+    }
+   ],
+   "functions": [
+    {
+     "name": "Count",
+     "description": "",
+     "params": []
+    }
+   ]
+  },
+  "error": "[createLibrary] Function \"Count\" collides with a built-in, component, function, or action of the same name. Rename it."
+ },
+ {
+  "name": "function-collides-with-builtin-step",
+  "definition": {
+   "components": [
+    {
+     "name": "Item",
+     "description": "i",
+     "props": []
+    }
+   ],
+   "functions": [
+    {
+     "name": "OpenUrl",
+     "description": "",
+     "params": []
+    }
+   ]
+  },
+  "error": "[createLibrary] Function \"OpenUrl\" collides with a built-in, component, function, or action of the same name. Rename it."
+ },
+ {
+  "name": "function-collides-with-action-builtin",
+  "definition": {
+   "components": [
+    {
+     "name": "Item",
+     "description": "i",
+     "props": []
+    }
+   ],
+   "functions": [
+    {
+     "name": "Action",
+     "description": "",
+     "params": []
+    }
+   ]
+  },
+  "error": "[createLibrary] Function \"Action\" collides with a built-in, component, function, or action of the same name. Rename it."
+ },
+ {
+  "name": "function-collides-with-reserved-query",
+  "definition": {
+   "components": [
+    {
+     "name": "Item",
+     "description": "i",
+     "props": []
+    }
+   ],
+   "functions": [
+    {
+     "name": "Query",
+     "description": "",
+     "params": []
+    }
+   ]
+  },
+  "error": "[createLibrary] Function \"Query\" collides with a built-in, component, function, or action of the same name. Rename it."
+ },
+ {
+  "name": "function-collides-with-reserved-mutation",
+  "definition": {
+   "components": [
+    {
+     "name": "Item",
+     "description": "i",
+     "props": []
+    }
+   ],
+   "functions": [
+    {
+     "name": "Mutation",
+     "description": "",
+     "params": []
+    }
+   ]
+  },
+  "error": "[createLibrary] Function \"Mutation\" collides with a built-in, component, function, or action of the same name. Rename it."
+ },
+ {
+  "name": "function-collides-with-inherited-name",
+  "definition": {
+   "components": [
+    {
+     "name": "Item",
+     "description": "i",
+     "props": []
+    }
+   ],
+   "functions": [
+    {
+     "name": "toString",
+     "description": "",
+     "params": []
+    }
+   ]
+  },
+  "error": "[createLibrary] Function \"toString\" collides with a built-in, component, function, or action of the same name. Rename it."
+ },
+ {
+  "name": "function-collides-with-proto",
+  "definition": {
+   "components": [
+    {
+     "name": "Item",
+     "description": "i",
+     "props": []
+    }
+   ],
+   "functions": [
+    {
+     "name": "__proto__",
+     "description": "",
+     "params": []
+    }
+   ]
+  },
+  "error": "[createLibrary] Function \"__proto__\" collides with a built-in, component, function, or action of the same name. Rename it."
+ },
+ {
+  "name": "function-collides-with-component",
+  "definition": {
+   "components": [
+    {
+     "name": "Item",
+     "description": "i",
+     "props": []
+    }
+   ],
+   "functions": [
+    {
+     "name": "Item",
+     "description": "",
+     "params": []
+    }
+   ]
+  },
+  "error": "[createLibrary] Function \"Item\" collides with a built-in, component, function, or action of the same name. Rename it."
+ },
+ {
+  "name": "function-collides-with-function",
+  "definition": {
+   "components": [
+    {
+     "name": "Item",
+     "description": "i",
+     "props": []
+    }
+   ],
+   "functions": [
+    {
+     "name": "F",
+     "description": "",
+     "params": []
+    },
+    {
+     "name": "F",
+     "description": "",
+     "params": []
+    }
+   ]
+  },
+  "error": "[createLibrary] Function \"F\" collides with a built-in, component, function, or action of the same name. Rename it."
+ },
+ {
+  "name": "action-collides-with-builtin-function",
+  "definition": {
+   "components": [
+    {
+     "name": "Item",
+     "description": "i",
+     "props": []
+    }
+   ],
+   "actions": [
+    {
+     "name": "Sum",
+     "description": "",
+     "params": []
+    }
+   ]
+  },
+  "error": "[createLibrary] Action \"Sum\" collides with a built-in, component, function, or action of the same name. Rename it."
+ },
+ {
+  "name": "action-collides-with-builtin-step",
+  "definition": {
+   "components": [
+    {
+     "name": "Item",
+     "description": "i",
+     "props": []
+    }
+   ],
+   "actions": [
+    {
+     "name": "ToAssistant",
+     "description": "",
+     "params": []
+    }
+   ]
+  },
+  "error": "[createLibrary] Action \"ToAssistant\" collides with a built-in, component, function, or action of the same name. Rename it."
+ },
+ {
+  "name": "action-collides-with-reserved-call",
+  "definition": {
+   "components": [
+    {
+     "name": "Item",
+     "description": "i",
+     "props": []
+    }
+   ],
+   "actions": [
+    {
+     "name": "Mutation",
+     "description": "",
+     "params": []
+    }
+   ]
+  },
+  "error": "[createLibrary] Action \"Mutation\" collides with a built-in, component, function, or action of the same name. Rename it."
+ },
+ {
+  "name": "action-collides-with-inherited-name",
+  "definition": {
+   "components": [
+    {
+     "name": "Item",
+     "description": "i",
+     "props": []
+    }
+   ],
+   "actions": [
+    {
+     "name": "constructor",
+     "description": "",
+     "params": []
+    }
+   ]
+  },
+  "error": "[createLibrary] Action \"constructor\" collides with a built-in, component, function, or action of the same name. Rename it."
+ },
+ {
+  "name": "action-collides-with-component",
+  "definition": {
+   "components": [
+    {
+     "name": "Item",
+     "description": "i",
+     "props": []
+    }
+   ],
+   "actions": [
+    {
+     "name": "Item",
+     "description": "",
+     "params": []
+    }
+   ]
+  },
+  "error": "[createLibrary] Action \"Item\" collides with a built-in, component, function, or action of the same name. Rename it."
+ },
+ {
+  "name": "action-collides-with-function",
+  "definition": {
+   "components": [
+    {
+     "name": "Item",
+     "description": "i",
+     "props": []
+    }
+   ],
+   "functions": [
+    {
+     "name": "F",
+     "description": "",
+     "params": []
+    }
+   ],
+   "actions": [
+    {
+     "name": "F",
+     "description": "",
+     "params": []
+    }
+   ]
+  },
+  "error": "[createLibrary] Action \"F\" collides with a built-in, component, function, or action of the same name. Rename it."
+ },
+ {
+  "name": "action-collides-with-action",
+  "definition": {
+   "components": [
+    {
+     "name": "Item",
+     "description": "i",
+     "props": []
+    }
+   ],
+   "actions": [
+    {
+     "name": "F",
+     "description": "",
+     "params": []
+    },
+    {
+     "name": "F",
+     "description": "",
+     "params": []
+    }
+   ]
+  },
+  "error": "[createLibrary] Action \"F\" collides with a built-in, component, function, or action of the same name. Rename it."
+ },
+ {
+  "name": "function-beside-proto-component",
+  "definition": {
+   "components": [
+    {
+     "name": "__proto__",
+     "description": "p",
+     "props": []
+    },
+    {
+     "name": "A",
+     "description": "a",
+     "props": []
+    }
+   ],
+   "functions": [
+    {
+     "name": "Proto",
+     "description": "",
+     "params": []
+    }
+   ]
+  },
+  "schema": {
+   "$schema": "https://json-schema.org/draft/2020-12/schema",
+   "type": "object",
+   "properties": {
+    "A": {
+     "$ref": "#/$defs/A"
+    }
+   },
+   "required": [
+    "A"
+   ],
+   "additionalProperties": false,
+   "$defs": {
+    "A": {
+     "type": "object",
+     "properties": {},
+     "additionalProperties": false,
+     "description": "a"
+    }
+   },
+   "functions": {
+    "Proto": {
+     "description": "",
+     "params": {
+      "type": "object",
+      "properties": {},
+      "additionalProperties": false
+     }
+    }
+   }
+  },
+  "spec": {
+   "components": {
+    "A": {
+     "signature": "A()",
+     "description": "a"
+    }
+   },
+   "functions": {
+    "Proto": {
+     "signature": "Proto()",
+     "description": ""
+    }
+   },
+   "schema": {
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "type": "object",
+    "properties": {
+     "A": {
+      "$ref": "#/$defs/A"
+     }
+    },
+    "required": [
+     "A"
+    ],
+    "additionalProperties": false,
+    "$defs": {
+     "A": {
+      "type": "object",
+      "properties": {},
+      "additionalProperties": false,
+      "description": "a"
+     }
+    },
+    "functions": {
+     "Proto": {
+      "description": "",
+      "params": {
+       "type": "object",
+       "properties": {},
+       "additionalProperties": false
+      }
+     }
+    }
+   }
+  }
+ },
+ {
+  "name": "root-checked-before-collisions",
+  "definition": {
+   "components": [
+    {
+     "name": "Item",
+     "description": "i",
+     "props": []
+    }
+   ],
+   "functions": [
+    {
+     "name": "Item",
+     "description": "",
+     "params": []
+    }
+   ],
+   "root": "Nope"
+  },
+  "error": "[createLibrary] Root component \"Nope\" was not found in components. Available components: Item"
+ },
+ {
   "name": "root-missing",
   "definition": {
    "components": [

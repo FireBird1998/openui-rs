@@ -22,8 +22,21 @@
 //! what kind a schema is (array, union, nullable) sees the type under the
 //! name. An empty name is none. A prop's binding prints `$binding<T>`, as
 //! `resolveTypeAnnotation` does for a reactive schema.
+//!
+//! A function's and an action's signatures are built the same way from
+//! their params (`schemaSignature`), a function's followed by ` → T` when it
+//! declares a return type with an annotation.
 
-use crate::library_definition::{PropDefinition, TypeDescription, in_property_order};
+use crate::library_definition::{TypeDescription, in_property_order};
+
+/// One entry of a signature: a prop's or a param's name, type, and whether
+/// it is optional and a binding.
+pub(crate) struct Entry<'a> {
+    pub(crate) name: &'a str,
+    pub(crate) ty: &'a TypeDescription,
+    pub(crate) optional: bool,
+    pub(crate) binding: bool,
+}
 
 /// The type a named type names, under its names: the kind of schema it is.
 fn structure(mut ty: &TypeDescription) -> &TypeDescription {
@@ -144,10 +157,25 @@ fn is_optional(optional: bool, ty: &TypeDescription) -> bool {
     optional || matches!(structure(ty), TypeDescription::Nullable(_))
 }
 
-/// `schemaSignature` for a component: `Name(field, ...)`, with the props in
-/// the order given (the caller's JavaScript property order), as upstream's
-/// `buildSignature` writes them.
-pub(crate) fn signature<'a>(name: &str, props: impl Iterator<Item = &'a PropDefinition>) -> String {
+/// `schemaSignature`: `Name(field, ...)`, with the entries in the order
+/// given (the caller's JavaScript property order), as upstream's
+/// `buildSignature` writes them, then ` → T` for a declared return type
+/// with an annotation.
+pub(crate) fn call_signature<'a>(
+    name: &str,
+    entries: impl Iterator<Item = Entry<'a>>,
+    returns: Option<&TypeDescription>,
+) -> String {
+    let mut out = signature(name, entries);
+    if let Some(ty) = returns.and_then(type_annotation) {
+        out.push_str(" \u{2192} ");
+        out.push_str(&ty);
+    }
+    out
+}
+
+/// `buildSignature`: `Name(field, ...)`, with the entries in the order given.
+fn signature<'a>(name: &str, props: impl Iterator<Item = Entry<'a>>) -> String {
     let mut out = String::with_capacity(name.len() + 2);
     out.push_str(name);
     out.push('(');
@@ -155,10 +183,10 @@ pub(crate) fn signature<'a>(name: &str, props: impl Iterator<Item = &'a PropDefi
         if i > 0 {
             out.push_str(", ");
         }
-        let optional = is_optional(prop.optional, &prop.ty);
-        match type_annotation(&prop.ty) {
+        let optional = is_optional(prop.optional, prop.ty);
+        match type_annotation(prop.ty) {
             Some(ty) => {
-                out.push_str(&prop.name);
+                out.push_str(prop.name);
                 out.push_str(if optional { "?: " } else { ": " });
                 if prop.binding {
                     out.push_str("$binding<");
@@ -168,13 +196,13 @@ pub(crate) fn signature<'a>(name: &str, props: impl Iterator<Item = &'a PropDefi
                     out.push_str(&ty);
                 }
             }
-            None if matches!(structure(unwrap(&prop.ty)), TypeDescription::Array(_)) => {
+            None if matches!(structure(unwrap(prop.ty)), TypeDescription::Array(_)) => {
                 out.push('[');
-                out.push_str(&prop.name);
+                out.push_str(prop.name);
                 out.push_str(if optional { "]?" } else { "]" });
             }
             None => {
-                out.push_str(&prop.name);
+                out.push_str(prop.name);
                 if optional {
                     out.push('?');
                 }

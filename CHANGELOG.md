@@ -2,6 +2,45 @@
 
 ## Unreleased
 
+- Library definitions: functions and actions (#134, spec #123). A library
+  definition can declare `functions` (a name, a description, ordered
+  `params` and an optional `returns` type) and `actions` (a name, a
+  description and `params`), as upstream's `defineFunction` and
+  `defineAction` do; a function's implementation never enters the core and
+  still reaches the runtime through the host-function path. Their
+  signatures are built by the core (` → T` after a function's when it
+  declares a return type with an annotation) and written into the prompt
+  spec's `functions` and `actions`, and the JSON Schema's after `$defs`,
+  byte for byte as upstream's lang-core with zod 4.6.7 writes them, quirks
+  included: a call's `$ref`s refer to the library's `$defs`, which have an
+  entry only when a component refers to it too. A component's action slot
+  can name a library action (`{"kind": "action", "name": "Copy"}`), printed
+  `@Copy`, whose `$defs` entry `{type: const name, params}` appears only when
+  a component refers to it. `create_library` refuses a function or action
+  name that is a built-in, a reserved call (including the names every
+  JavaScript object inherits, as upstream's `in` check sees them), a
+  component's, or an earlier function's or action's with the new
+  `LibraryDefinitionError::NameCollision`, whose message is upstream's.
+  Refused as invalid because the output can't be copied: a library action
+  named `ActionExpression` (upstream registers it under the action slot's
+  id, and zod throws when a library refers to both) and a reference to the
+  library action with the empty name (upstream writes it inline). A param
+  has no `binding`. New public `FunctionDefinition` and `ActionDefinition`;
+  `LibraryDefinition` gains `functions` and `actions` (a breaking change for
+  code that builds it literally, #146); the `UnknownAction` message now
+  mentions the library's own actions. The reference converter carries
+  functions and actions, finds a library action's ref by identity, and
+  refuses by name what the plain data can't say (a binding on a param or a
+  return type, an optional return type, a params object shared with a
+  component, an action outside the library, the two cases above), and a
+  declaration in which zod writes a shared schema as a `__schemaN` `$defs`
+  entry: the plain data has no object identity. The converter replays zod's
+  walk for each conversion upstream makes and refuses exactly those whose
+  output has such an entry or a call's `$ref` to one (no over- or
+  under-refusal in 18,000 random libraries with shared params objects). 38
+  new samples (93 in all) match upstream byte for byte, and 95 converter
+  refusals are checked, the `__schemaN` ones against upstream's output.
+
 - Admitting a tool result given as a value no longer takes time exponential
   in its depth (#141). A value that shared its child twice at every level
   used to be read at every position it fills to decide whether it is JSON

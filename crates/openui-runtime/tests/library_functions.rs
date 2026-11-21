@@ -1,5 +1,8 @@
 //! Library implementations, returned data, limits, and unwind recovery.
-use openui_lang::{Element, JsonValue, Library, ParseResult, free_json, parse, parse_json};
+use openui_lang::{
+    Element, JsonValue, Library, LibraryDefinition, ParseResult, create_library, free_json, parse,
+    parse_json, stringify_json,
+};
 use openui_runtime::{
     LibraryFunctions, Limits, Store, TreeInput, Value, evaluate_tree, evaluate_tree_with_limits,
 };
@@ -294,4 +297,119 @@ fn callbacks_can_read_and_evaluate_the_same_store_and_recover_from_nested_panic(
     assert!(Arc::ptr_eq(&before, &store.snapshot()));
     drop(functions);
     assert!(store.set("$after", Some(Value::Num(1.))).unwrap());
+}
+
+/// A library's functions declared in a library definition reach the runtime
+/// as when the same library is supplied as upstream's JSON: through the
+/// definition's JSON Schema `functions` and the host-function path. A call
+/// with good arguments returns its implementation's result, one with bad
+/// arguments or a bad result is reported and null, an unimplemented one is
+/// null, and an unknown one is reported, identically for both.
+#[test]
+fn a_defined_librarys_functions_evaluate_as_its_json_does() {
+    let golden = parse_json(include_str!(
+        "../../../conformance/golden/library-definitions.json"
+    ))
+    .unwrap();
+    let case = golden
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|c| c["name"] == "functions-in-a-program")
+        .unwrap();
+    let defined =
+        create_library(LibraryDefinition::from_json(&case["definition"]).unwrap()).unwrap();
+    let defined_schema = defined.to_json_schema();
+    let upstream_schema = &case["schema"];
+    assert_eq!(
+        stringify_json(&defined_schema),
+        stringify_json(upstream_schema)
+    );
+    let register = |definitions| {
+        let mut funcs = LibraryFunctions::new(definitions);
+        funcs
+            .register("Percent", |args| {
+                let Value::Obj(o) = &args else {
+                    return Ok(None);
+                };
+                let (Some(Value::Num(part)), Some(Value::Num(total))) =
+                    (o.get("part"), o.get("total"))
+                else {
+                    return Ok(None);
+                };
+                Ok(Some(Value::Num(part / total * 100.0)))
+            })
+            .unwrap();
+        // A wrong result for a string, a right one for "ok".
+        funcs
+            .register("Label", |args| {
+                let Value::Obj(o) = &args else {
+                    return Ok(None);
+                };
+                match o.get("text") {
+                    Some(Value::Str(t)) if t.as_str() == "ok" => {
+                        Ok(Some(Value::Str("label".into())))
+                    }
+                    _ => Ok(Some(Value::Num(5.0))),
+                }
+            })
+            .unwrap();
+        funcs
+    };
+    let defined_library = defined.library();
+    let upstream_library = Library::from_json_schema(upstream_schema);
+    assert_eq!(defined_library, upstream_library);
+    let defined_funcs = register(&defined_schema["functions"]);
+    let upstream_funcs = register(&upstream_schema["functions"]);
+    let mut seen = Vec::new();
+    for source in [
+        "root = Box(@Percent(1, 4), @Label(\"ok\"), @Unimplemented(1))",
+        "root = Box(@Percent(\"a\", 4), @Percent(1), @Percent(1, 2, 3))",
+        "root = Box(@Label(\"x\"), @Label(2), @Label(null, \"s\"))",
+        "root = Box(@Nope(1), @Percnt(1, 2))",
+    ] {
+        let mut outputs = Vec::new();
+        for (library, funcs) in [
+            (&defined_library, &defined_funcs),
+            (&upstream_library, &upstream_funcs),
+        ] {
+            let p = parse(source, library, None);
+            let r = evaluate_tree(
+                TreeInput::new(&p)
+                    .with_library(library)
+                    .with_functions(funcs),
+                &Store::new(),
+            );
+            let errors: Vec<String> = r.errors.iter().map(|e| e.message.clone()).collect();
+            outputs.push((p.to_json(), r.to_json().unwrap(), errors));
+        }
+        assert_eq!(outputs[0], outputs[1], "{source}");
+        seen.push(outputs.remove(0));
+    }
+    // What the calls did: a result, null for an unimplemented call, and
+    // reports for bad arguments, a bad result and unknown names.
+    assert!(
+        seen[0].1.contains(r#""a":25,"b":"label","c":null"#),
+        "{:?}",
+        seen[0]
+    );
+    assert!(seen[0].2.is_empty(), "{:?}", seen[0]);
+    // A wrong type or a missing argument is dropped by the parser's
+    // validation, and an extra one is ignored.
+    assert!(
+        seen[1].1.contains(r#""a":null,"b":null,"c":50"#),
+        "{:?}",
+        seen[1]
+    );
+    assert!(seen[1].0.contains("\"errors\":[{"), "{:?}", seen[1]);
+    assert_eq!(
+        seen[2].2,
+        [
+            "Evaluating prop \"a\" on Box failed: @Label: field \"/returns\" expects string but got number"
+        ]
+    );
+    assert!(seen[3].0.contains("unknown-function"), "{:?}", seen[3]);
+    drop((defined_funcs, upstream_funcs));
+    free_json(defined_schema);
+    free_json(golden);
 }

@@ -1,5 +1,6 @@
 //! A library definition in plain-data form: the declarations of a component
-//! library's components, which [`create_library`](crate::create_library)
+//! library's components, functions and actions, which
+//! [`create_library`](crate::create_library)
 //! turns into the library's JSON Schema and prompt spec, as upstream's
 //! `createLibrary` does from zod declarations (ADR 0017).
 //!
@@ -26,6 +27,24 @@
 //!   ],
 //!   "componentGroups": [
 //!     {"name": "Content", "components": ["Metric"], "notes": ["Use for numbers."]}
+//!   ],
+//!   "functions": [
+//!     {
+//!       "name": "Percent",
+//!       "description": "Percent of a total.",
+//!       "params": [
+//!         {"name": "part", "type": {"kind": "number"}},
+//!         {"name": "total", "type": {"kind": "number"}}
+//!       ],
+//!       "returns": {"kind": "number"}
+//!     }
+//!   ],
+//!   "actions": [
+//!     {
+//!       "name": "Copy",
+//!       "description": "Copies text.",
+//!       "params": [{"name": "text", "type": {"kind": "string"}}]
+//!     }
 //!   ],
 //!   "root": "Metric",
 //!   "id": "my-library"
@@ -59,6 +78,7 @@
 //!   | `{"kind": "component", "name": "Item"}` | `Item.ref` | `{"$ref": "#/$defs/Item"}` | `Item` |
 //!   | `{"kind": "action"}` | `action()` | `{"$ref": "#/$defs/ActionExpression"}` | `ActionExpression`, `(ActionExpression)[]` in an array |
 //!   | `{"kind": "action", "name": "OpenUrl"}` | `steps.OpenUrl.ref` | `{"$ref": "#/$defs/OpenUrl"}` | `@OpenUrl` |
+//!   | `{"kind": "action", "name": "Copy"}` | `copy.ref` (a library action) | `{"$ref": "#/$defs/Copy"}` | `@Copy` |
 //!   | `{"kind": "named", "name": "Color", "type": T}` | `tagSchemaId(T, "Color")` | `T` | `Color` |
 //!
 //!   As zod 4.6.7 does, an `anyOf` whose members are all bare types
@@ -84,11 +104,17 @@
 //!     that one's schema inline, or never finishes when it refers to
 //!     itself).
 //!   - An **action slot** takes any action; with a `name` it takes that one
-//!     action, `OpenUrl` or `ToAssistant` (another name is refused with
-//!     [`LibraryDefinitionError::UnknownAction`]), and a slot restricted to
-//!     several is a union of them. An action's `$defs` entry is written only
-//!     when a component refers to it, and not at all when a component has
-//!     its name: the action is then written inline wherever it is used.
+//!     action, `OpenUrl`, `ToAssistant` or one of the library's own actions
+//!     (another name is refused with
+//!     [`LibraryDefinitionError::UnknownAction`], and a reference to the
+//!     library action with the empty name as invalid: upstream writes that
+//!     one inline), and a slot restricted to several is a union of them. An
+//!     action's `$defs` entry is written only when a component refers to it,
+//!     and a built-in one's not at all when a component has its name: the
+//!     action is then written inline wherever it is used. A library action's
+//!     entry is `{"type": "object", "properties": {"type": {"type": "string",
+//!     "const": name}, "params": ...}, "required": ["type", "params"],
+//!     "additionalProperties": false}`, as upstream's `defineAction` makes it.
 //!   - A **named type** prints its name in the signature and is written as
 //!     its `type` in the schema. Its `type` may not be a component
 //!     reference, an action slot or another named type. As in upstream, the
@@ -118,11 +144,45 @@
 //!   the JSON gives them in; upstream writes a group's fields as its author
 //!   gave them, so the reference harness's converter refuses a declaration
 //!   whose groups have other fields or another order.
+//! - `functions` (optional): upstream's `defineFunction` without its
+//!   implementation, which never enters the core. A function has a `name`, a
+//!   `description` (may be empty), `params`, an ordered array of fields like
+//!   an inline object's (`name`, `type`, `optional`; no `binding`: nothing
+//!   binds a call's argument), and an optional `returns`, a type. Its
+//!   signature is `Name(params) → T`, without the arrow when there is no
+//!   return type or it has no annotation (an empty enum). The JSON Schema
+//!   gets `functions`, after `$defs`: each function's `description`, its
+//!   `params` as an object schema and its `returns` schema. As upstream's
+//!   `toCallJSONSchema` drops the `$defs` zod writes for a call, a `$ref` in
+//!   a call refers to the library's `$defs`, which have an entry only when a
+//!   component refers to it too.
+//! - `actions` (optional): upstream's `defineAction`, a `name`, a
+//!   `description` and `params` as a function's. The JSON Schema gets
+//!   `actions` after `functions`, each with its `description` and `params`.
+//!   Upstream registers an action named `ActionExpression` under the built-in
+//!   action slot's id, and zod throws when a library refers to both, so that
+//!   name is refused as invalid.
+//!
+//!   Functions and actions are keyed by name, in JavaScript property order
+//!   (array indices first), in the JSON Schema and in the prompt spec, where
+//!   they follow `componentGroups`. A function or action name that is a
+//!   built-in, a reserved call (`Query`, `Mutation`, or a name every
+//!   JavaScript object inherits, as upstream checks `name in
+//!   RESERVED_CALLS`), a component's, or an earlier function's or action's
+//!   is refused with [`LibraryDefinitionError::NameCollision`], whose message
+//!   is upstream's; functions are checked before actions, each in order,
+//!   after the root.
 //! - `root` (optional): must name a component, as upstream checks it.
 //! - `id` (optional): copied into the prompt spec.
 //!
 //! A field the form doesn't have is refused, so a misspelt `"optinal"` or a
 //! field from a later version is never silently ignored.
+//!
+//! The form has no object identity: a type used in two places is two equal
+//! types. So a zod declaration in which upstream writes one shared schema as
+//! a `__schemaN` `$defs` entry (a schema met again inside itself through a
+//! component or action reference) is not expressible here; the reference
+//! harness's converter refuses it.
 //!
 //! # How later kinds extend it
 //!
@@ -133,7 +193,8 @@
 //!
 //! # Limits
 //!
-//! Types nest, so reading counts how deep: a prop's type is one level, and
+//! Types nest, so reading counts how deep: a prop's type is one level (a
+//! call's param and return type too), and
 //! each type inside another one more (a named type's `type` too). A type
 //! deeper than
 //! [`Limits::depth`](crate::Limits::depth) (256 by default) is refused with
@@ -169,8 +230,8 @@ use std::fmt;
 
 use serde_json::{Map, Value as Json};
 
-use crate::Limits;
 use crate::js::JsObject;
+use crate::{CallKind, Limits};
 
 /// A component library's declarations, in plain-data form. Read one from its
 /// JSON with [`LibraryDefinition::from_json`] (the module docs give the
@@ -181,6 +242,10 @@ pub struct LibraryDefinition {
     pub components: Vec<ComponentDefinition>,
     /// The prompt's component groups, if any.
     pub component_groups: Option<Vec<ComponentGroup>>,
+    /// The functions, in order.
+    pub functions: Vec<FunctionDefinition>,
+    /// The library's own actions, in order.
+    pub actions: Vec<ActionDefinition>,
     /// The root component's name, if any.
     pub root: Option<String>,
     /// The library's public id, if any.
@@ -196,6 +261,30 @@ pub struct ComponentDefinition {
     pub description: String,
     /// Its props, in positional order.
     pub props: Vec<PropDefinition>,
+}
+
+/// One function: upstream's `defineFunction` without its implementation.
+#[derive(Clone, Debug, PartialEq)]
+pub struct FunctionDefinition {
+    /// The name programs call it by, with `@`.
+    pub name: String,
+    /// Its description for the prompt; may be empty.
+    pub description: String,
+    /// Its params, in positional order.
+    pub params: Vec<FieldDefinition>,
+    /// What it returns, if declared.
+    pub returns: Option<TypeDescription>,
+}
+
+/// One action of the library's own: upstream's `defineAction`.
+#[derive(Clone, Debug, PartialEq)]
+pub struct ActionDefinition {
+    /// The name action steps call it by, with `@`.
+    pub name: String,
+    /// Its description for the prompt; may be empty.
+    pub description: String,
+    /// Its params, in positional order.
+    pub params: Vec<FieldDefinition>,
 }
 
 /// One prop of a component.
@@ -250,8 +339,8 @@ pub enum TypeDescription {
     Nullable(Box<TypeDescription>),
     /// `Item.ref`: the library's component of this name.
     Component(String),
-    /// `action()`: any action, or with a name (`steps.OpenUrl.ref`) that one
-    /// built-in action.
+    /// `action()`: any action, or with a name that one action: a built-in
+    /// one (`steps.OpenUrl.ref`) or one of the library's (`copy.ref`).
     Action(Option<String>),
     /// `tagSchemaId(T, name)`: `T`, shown by this name in the signature.
     Named(String, Box<TypeDescription>),
@@ -302,6 +391,15 @@ pub enum LibraryDefinitionError {
         /// The name given.
         name: String,
     },
+    /// A function's or action's name is a built-in's, a reserved call's, a
+    /// component's, or an earlier function's or action's; the message is
+    /// upstream's `createLibrary`'s.
+    NameCollision {
+        /// Whether a function or an action has the name.
+        kind: CallKind,
+        /// The name.
+        name: String,
+    },
     /// An action slot names an action a slot can't name.
     UnknownAction {
         /// Where, as `components[0].props[1].type`.
@@ -345,11 +443,21 @@ impl fmt::Display for LibraryDefinitionError {
                     "library definition: {path}: {name} is not a component of the library"
                 )
             }
+            LibraryDefinitionError::NameCollision { kind, name } => {
+                let kind = match kind {
+                    CallKind::Function => "Function",
+                    CallKind::Action => "Action",
+                };
+                write!(
+                    f,
+                    "[createLibrary] {kind} \"{name}\" collides with a built-in, component, function, or action of the same name. Rename it."
+                )
+            }
             LibraryDefinitionError::UnknownAction { path, name } => {
                 let name = crate::stringify_json(&Json::String(name.clone()));
                 write!(
                     f,
-                    "library definition: {path}: {name} is not an action a slot can name (the built-in ones are {})",
+                    "library definition: {path}: {name} is not an action a slot can name (the built-in ones are {}, and the library's own actions)",
                     SLOT_ACTIONS.join(" and ")
                 )
             }
@@ -584,7 +692,18 @@ impl LibraryDefinition {
         limits: Limits,
     ) -> Result<LibraryDefinition, LibraryDefinitionError> {
         let at = Path::Root;
-        let map = object(value, at, &["components", "componentGroups", "root", "id"])?;
+        let map = object(
+            value,
+            at,
+            &[
+                "components",
+                "componentGroups",
+                "functions",
+                "actions",
+                "root",
+                "id",
+            ],
+        )?;
         let components_at = Path::Field(&at, "components");
         let components = array(required(map, at, "components")?, components_at)?
             .iter()
@@ -598,9 +717,27 @@ impl LibraryDefinition {
                 .map(|(i, g)| ComponentGroup::from_json(g, Path::Index(&at, i)))
                 .collect()
         })?;
+        let functions = optional(map, at, "functions", |value, at| {
+            array(value, at)?
+                .iter()
+                .enumerate()
+                .map(|(i, f)| FunctionDefinition::from_json(f, Path::Index(&at, i), limits))
+                .collect()
+        })?
+        .unwrap_or_default();
+        let actions = optional(map, at, "actions", |value, at| {
+            array(value, at)?
+                .iter()
+                .enumerate()
+                .map(|(i, a)| ActionDefinition::from_json(a, Path::Index(&at, i), limits))
+                .collect()
+        })?
+        .unwrap_or_default();
         Ok(LibraryDefinition {
             components,
             component_groups,
+            functions,
+            actions,
             root: optional(map, at, "root", string)?,
             id: optional(map, at, "id", string)?,
         })
@@ -635,6 +772,69 @@ impl ComponentDefinition {
             name,
             description,
             props,
+        })
+    }
+}
+
+/// A call's params: an ordered list of fields, as an inline object's.
+fn params(value: &Json, at: Path<'_>, limits: Limits) -> Read<Vec<FieldDefinition>> {
+    named_list(
+        value,
+        at,
+        "param",
+        |value, at| {
+            let (name, ty, optional, _) = named_type(value, at, Depth::top(limits), &FIELD_FIELDS)?;
+            Ok(FieldDefinition { name, ty, optional })
+        },
+        |field| &field.name,
+    )
+}
+
+/// A call's `name` and `description`.
+fn call_header(map: &Map<String, Json>, at: Path<'_>) -> Read<(String, String)> {
+    Ok((
+        string(required(map, at, "name")?, Path::Field(&at, "name"))?,
+        string(
+            required(map, at, "description")?,
+            Path::Field(&at, "description"),
+        )?,
+    ))
+}
+
+impl FunctionDefinition {
+    fn from_json(value: &Json, at: Path<'_>, limits: Limits) -> Read<FunctionDefinition> {
+        let map = object(value, at, &["name", "description", "params", "returns"])?;
+        let (name, description) = call_header(map, at)?;
+        let params = params(
+            required(map, at, "params")?,
+            Path::Field(&at, "params"),
+            limits,
+        )?;
+        let returns = optional(map, at, "returns", |value, at| {
+            TypeDescription::from_json(value, at, Depth::top(limits))
+        })?;
+        Ok(FunctionDefinition {
+            name,
+            description,
+            params,
+            returns,
+        })
+    }
+}
+
+impl ActionDefinition {
+    fn from_json(value: &Json, at: Path<'_>, limits: Limits) -> Read<ActionDefinition> {
+        let map = object(value, at, &["name", "description", "params"])?;
+        let (name, description) = call_header(map, at)?;
+        let params = params(
+            required(map, at, "params")?,
+            Path::Field(&at, "params"),
+            limits,
+        )?;
+        Ok(ActionDefinition {
+            name,
+            description,
+            params,
         })
     }
 }
@@ -737,18 +937,35 @@ impl TypeDescription {
     }
 }
 
+/// The names a reference can name: the definition's components and its
+/// own actions.
+struct Names<'a> {
+    components: std::collections::HashSet<&'a str>,
+    actions: std::collections::HashSet<&'a str>,
+}
+
+/// The upstream action name the core refuses for a library action: upstream
+/// registers it under the built-in action slot's id.
+pub(crate) const ACTION_SLOT_ID: &str = "ActionExpression";
+
 /// Checks the kinds that link a library together, as
 /// [`create_library`](crate::create_library) does: each component reference
 /// names a component of the definition (any of them; the last of a name is
 /// the one meant) other than the empty name, each action slot's name is one
-/// a slot can name, and a named type names a data type. Walks every type
-/// once, as deep as it nests, growing the stack on demand.
+/// a slot can name (a built-in one, or one of the library's own other than
+/// the empty name), and a named type names a data type; and no library
+/// action is named `ActionExpression`. Walks every type of every component,
+/// function and action once, as deep as it nests, growing the stack on
+/// demand.
 pub(crate) fn check_references(definition: &LibraryDefinition) -> Read<()> {
-    let names: std::collections::HashSet<&str> = definition
-        .components
-        .iter()
-        .map(|c| c.name.as_str())
-        .collect();
+    let names = Names {
+        components: definition
+            .components
+            .iter()
+            .map(|c| c.name.as_str())
+            .collect(),
+        actions: definition.actions.iter().map(|a| a.name.as_str()).collect(),
+    };
     let at = Path::Root;
     let components_at = Path::Field(&at, "components");
     for (i, component) in definition.components.iter().enumerate() {
@@ -759,26 +976,51 @@ pub(crate) fn check_references(definition: &LibraryDefinition) -> Read<()> {
             check_type(&prop.ty, Path::Field(&prop_at, "type"), &names)?;
         }
     }
+    let check_params = |params: &[FieldDefinition], params_at: Path<'_>| -> Read<()> {
+        for (j, param) in params.iter().enumerate() {
+            let param_at = Path::Index(&params_at, j);
+            check_type(&param.ty, Path::Field(&param_at, "type"), &names)?;
+        }
+        Ok(())
+    };
+    let functions_at = Path::Field(&at, "functions");
+    for (i, function) in definition.functions.iter().enumerate() {
+        let function_at = Path::Index(&functions_at, i);
+        check_params(&function.params, Path::Field(&function_at, "params"))?;
+        if let Some(returns) = &function.returns {
+            check_type(returns, Path::Field(&function_at, "returns"), &names)?;
+        }
+    }
+    let actions_at = Path::Field(&at, "actions");
+    for (i, action) in definition.actions.iter().enumerate() {
+        let action_at = Path::Index(&actions_at, i);
+        if action.name == ACTION_SLOT_ID {
+            return Err(Path::Field(&action_at, "name").invalid(
+                "an action named \"ActionExpression\" is not supported (upstream registers it under the action slot's id)",
+            ));
+        }
+        check_params(&action.params, Path::Field(&action_at, "params"))?;
+    }
     Ok(())
 }
 
-fn check_type(
-    ty: &TypeDescription,
-    at: Path<'_>,
-    names: &std::collections::HashSet<&str>,
-) -> Read<()> {
+fn check_type(ty: &TypeDescription, at: Path<'_>, names: &Names<'_>) -> Read<()> {
     crate::stack::grow_stack!(check_type(ty, at, names));
     match ty {
         TypeDescription::Component(name) if name.is_empty() => {
             Err(at.invalid("a reference to the component with the empty name is not supported"))
         }
-        TypeDescription::Component(name) if !names.contains(name.as_str()) => {
+        TypeDescription::Component(name) if !names.components.contains(name.as_str()) => {
             Err(LibraryDefinitionError::UnknownComponent {
                 path: at.text(),
                 name: name.clone(),
             })
         }
-        TypeDescription::Action(Some(name)) if !SLOT_ACTIONS.contains(&name.as_str()) => {
+        TypeDescription::Action(Some(name)) if SLOT_ACTIONS.contains(&name.as_str()) => Ok(()),
+        TypeDescription::Action(Some(name)) if name.is_empty() && names.actions.contains("") => {
+            Err(at.invalid("a reference to the action with the empty name is not supported"))
+        }
+        TypeDescription::Action(Some(name)) if !names.actions.contains(name.as_str()) => {
             Err(LibraryDefinitionError::UnknownAction {
                 path: at.text(),
                 name: name.clone(),
