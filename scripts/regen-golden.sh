@@ -60,6 +60,7 @@ done
   bun --no-install tree-interface.ts > ../conformance/golden/runtime-interface.json
   bun --no-install action-definitions.ts
   bun --no-install function-definitions.ts
+  bun --no-install library-definitions.ts
   bun --no-install function-results.ts
   bun --no-install session-data.ts
   bun --no-install tool-provider-mutations.ts

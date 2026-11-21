@@ -1,0 +1,2059 @@
+[
+ {
+  "name": "scalars",
+  "definition": {
+   "components": [
+    {
+     "name": "Page",
+     "description": "A page with a title and any children.",
+     "props": [
+      {
+       "name": "title",
+       "type": {
+        "kind": "string"
+       }
+      },
+      {
+       "name": "children",
+       "type": {
+        "kind": "any"
+       }
+      },
+      {
+       "name": "subtitle",
+       "type": {
+        "kind": "string"
+       },
+       "optional": true
+      },
+      {
+       "name": "dense",
+       "type": {
+        "kind": "boolean"
+       },
+       "optional": true
+      }
+     ]
+    },
+    {
+     "name": "Heading",
+     "description": "A heading of a given level.",
+     "props": [
+      {
+       "name": "text",
+       "type": {
+        "kind": "string"
+       }
+      },
+      {
+       "name": "level",
+       "type": {
+        "kind": "number"
+       },
+       "optional": true
+      }
+     ]
+    },
+    {
+     "name": "Text",
+     "description": "A paragraph.",
+     "props": [
+      {
+       "name": "value",
+       "type": {
+        "kind": "string"
+       }
+      },
+      {
+       "name": "muted",
+       "type": {
+        "kind": "boolean"
+       },
+       "optional": true
+      }
+     ]
+    },
+    {
+     "name": "Metric",
+     "description": "A labelled number with an optional change and raw data.",
+     "props": [
+      {
+       "name": "label",
+       "type": {
+        "kind": "string"
+       }
+      },
+      {
+       "name": "value",
+       "type": {
+        "kind": "number"
+       }
+      },
+      {
+       "name": "delta",
+       "type": {
+        "kind": "number"
+       },
+       "optional": true
+      },
+      {
+       "name": "data",
+       "type": {
+        "kind": "any"
+       },
+       "optional": true
+      }
+     ]
+    },
+    {
+     "name": "Toggle",
+     "description": "An on/off switch.",
+     "props": [
+      {
+       "name": "label",
+       "type": {
+        "kind": "string"
+       }
+      },
+      {
+       "name": "on",
+       "type": {
+        "kind": "boolean"
+       }
+      }
+     ]
+    },
+    {
+     "name": "Divider",
+     "description": "",
+     "props": []
+    }
+   ],
+   "componentGroups": [
+    {
+     "name": "Layout",
+     "components": [
+      "Page",
+      "Divider"
+     ],
+     "notes": [
+      "Page is the root.",
+      "Divider takes nothing."
+     ]
+    },
+    {
+     "name": "Content",
+     "components": [
+      "Heading",
+      "Text",
+      "Metric",
+      "Toggle"
+     ]
+    }
+   ],
+   "root": "Page"
+  },
+  "schema": {
+   "$schema": "https://json-schema.org/draft/2020-12/schema",
+   "type": "object",
+   "properties": {
+    "Page": {
+     "$ref": "#/$defs/Page"
+    },
+    "Heading": {
+     "$ref": "#/$defs/Heading"
+    },
+    "Text": {
+     "$ref": "#/$defs/Text"
+    },
+    "Metric": {
+     "$ref": "#/$defs/Metric"
+    },
+    "Toggle": {
+     "$ref": "#/$defs/Toggle"
+    },
+    "Divider": {
+     "$ref": "#/$defs/Divider"
+    }
+   },
+   "required": [
+    "Page",
+    "Heading",
+    "Text",
+    "Metric",
+    "Toggle",
+    "Divider"
+   ],
+   "additionalProperties": false,
+   "$defs": {
+    "Page": {
+     "type": "object",
+     "properties": {
+      "title": {
+       "type": "string"
+      },
+      "children": {},
+      "subtitle": {
+       "type": "string"
+      },
+      "dense": {
+       "type": "boolean"
+      }
+     },
+     "required": [
+      "title",
+      "children"
+     ],
+     "additionalProperties": false,
+     "description": "A page with a title and any children."
+    },
+    "Heading": {
+     "type": "object",
+     "properties": {
+      "text": {
+       "type": "string"
+      },
+      "level": {
+       "type": "number"
+      }
+     },
+     "required": [
+      "text"
+     ],
+     "additionalProperties": false,
+     "description": "A heading of a given level."
+    },
+    "Text": {
+     "type": "object",
+     "properties": {
+      "value": {
+       "type": "string"
+      },
+      "muted": {
+       "type": "boolean"
+      }
+     },
+     "required": [
+      "value"
+     ],
+     "additionalProperties": false,
+     "description": "A paragraph."
+    },
+    "Metric": {
+     "type": "object",
+     "properties": {
+      "label": {
+       "type": "string"
+      },
+      "value": {
+       "type": "number"
+      },
+      "delta": {
+       "type": "number"
+      },
+      "data": {}
+     },
+     "required": [
+      "label",
+      "value"
+     ],
+     "additionalProperties": false,
+     "description": "A labelled number with an optional change and raw data."
+    },
+    "Toggle": {
+     "type": "object",
+     "properties": {
+      "label": {
+       "type": "string"
+      },
+      "on": {
+       "type": "boolean"
+      }
+     },
+     "required": [
+      "label",
+      "on"
+     ],
+     "additionalProperties": false,
+     "description": "An on/off switch."
+    },
+    "Divider": {
+     "type": "object",
+     "properties": {},
+     "additionalProperties": false
+    }
+   }
+  },
+  "spec": {
+   "root": "Page",
+   "components": {
+    "Page": {
+     "signature": "Page(title: string, children: any, subtitle?: string, dense?: boolean)",
+     "description": "A page with a title and any children."
+    },
+    "Heading": {
+     "signature": "Heading(text: string, level?: number)",
+     "description": "A heading of a given level."
+    },
+    "Text": {
+     "signature": "Text(value: string, muted?: boolean)",
+     "description": "A paragraph."
+    },
+    "Metric": {
+     "signature": "Metric(label: string, value: number, delta?: number, data?: any)",
+     "description": "A labelled number with an optional change and raw data."
+    },
+    "Toggle": {
+     "signature": "Toggle(label: string, on: boolean)",
+     "description": "An on/off switch."
+    },
+    "Divider": {
+     "signature": "Divider()",
+     "description": ""
+    }
+   },
+   "componentGroups": [
+    {
+     "name": "Layout",
+     "components": [
+      "Page",
+      "Divider"
+     ],
+     "notes": [
+      "Page is the root.",
+      "Divider takes nothing."
+     ]
+    },
+    {
+     "name": "Content",
+     "components": [
+      "Heading",
+      "Text",
+      "Metric",
+      "Toggle"
+     ]
+    }
+   ],
+   "schema": {
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "type": "object",
+    "properties": {
+     "Page": {
+      "$ref": "#/$defs/Page"
+     },
+     "Heading": {
+      "$ref": "#/$defs/Heading"
+     },
+     "Text": {
+      "$ref": "#/$defs/Text"
+     },
+     "Metric": {
+      "$ref": "#/$defs/Metric"
+     },
+     "Toggle": {
+      "$ref": "#/$defs/Toggle"
+     },
+     "Divider": {
+      "$ref": "#/$defs/Divider"
+     }
+    },
+    "required": [
+     "Page",
+     "Heading",
+     "Text",
+     "Metric",
+     "Toggle",
+     "Divider"
+    ],
+    "additionalProperties": false,
+    "$defs": {
+     "Page": {
+      "type": "object",
+      "properties": {
+       "title": {
+        "type": "string"
+       },
+       "children": {},
+       "subtitle": {
+        "type": "string"
+       },
+       "dense": {
+        "type": "boolean"
+       }
+      },
+      "required": [
+       "title",
+       "children"
+      ],
+      "additionalProperties": false,
+      "description": "A page with a title and any children."
+     },
+     "Heading": {
+      "type": "object",
+      "properties": {
+       "text": {
+        "type": "string"
+       },
+       "level": {
+        "type": "number"
+       }
+      },
+      "required": [
+       "text"
+      ],
+      "additionalProperties": false,
+      "description": "A heading of a given level."
+     },
+     "Text": {
+      "type": "object",
+      "properties": {
+       "value": {
+        "type": "string"
+       },
+       "muted": {
+        "type": "boolean"
+       }
+      },
+      "required": [
+       "value"
+      ],
+      "additionalProperties": false,
+      "description": "A paragraph."
+     },
+     "Metric": {
+      "type": "object",
+      "properties": {
+       "label": {
+        "type": "string"
+       },
+       "value": {
+        "type": "number"
+       },
+       "delta": {
+        "type": "number"
+       },
+       "data": {}
+      },
+      "required": [
+       "label",
+       "value"
+      ],
+      "additionalProperties": false,
+      "description": "A labelled number with an optional change and raw data."
+     },
+     "Toggle": {
+      "type": "object",
+      "properties": {
+       "label": {
+        "type": "string"
+       },
+       "on": {
+        "type": "boolean"
+       }
+      },
+      "required": [
+       "label",
+       "on"
+      ],
+      "additionalProperties": false,
+      "description": "An on/off switch."
+     },
+     "Divider": {
+      "type": "object",
+      "properties": {},
+      "additionalProperties": false
+     }
+    }
+   }
+  }
+ },
+ {
+  "name": "key-order",
+  "definition": {
+   "components": [
+    {
+     "name": "Zeta",
+     "description": "z",
+     "props": [
+      {
+       "name": "2",
+       "type": {
+        "kind": "boolean"
+       }
+      },
+      {
+       "name": "10",
+       "type": {
+        "kind": "number"
+       }
+      },
+      {
+       "name": "b",
+       "type": {
+        "kind": "string"
+       }
+      },
+      {
+       "name": "02",
+       "type": {
+        "kind": "any"
+       }
+      },
+      {
+       "name": "__proto__",
+       "type": {
+        "kind": "string"
+       },
+       "optional": true
+      }
+     ]
+    },
+    {
+     "name": "7",
+     "description": "seven",
+     "props": [
+      {
+       "name": "x",
+       "type": {
+        "kind": "string"
+       },
+       "optional": true
+      }
+     ]
+    },
+    {
+     "name": "Alpha",
+     "description": "a",
+     "props": [
+      {
+       "name": "-1",
+       "type": {
+        "kind": "number"
+       }
+      }
+     ]
+    }
+   ],
+   "root": "7",
+   "id": "key-order-library"
+  },
+  "schema": {
+   "$schema": "https://json-schema.org/draft/2020-12/schema",
+   "type": "object",
+   "properties": {
+    "7": {
+     "$ref": "#/$defs/7"
+    },
+    "Zeta": {
+     "$ref": "#/$defs/Zeta"
+    },
+    "Alpha": {
+     "$ref": "#/$defs/Alpha"
+    }
+   },
+   "required": [
+    "7",
+    "Zeta",
+    "Alpha"
+   ],
+   "additionalProperties": false,
+   "$defs": {
+    "7": {
+     "type": "object",
+     "properties": {
+      "x": {
+       "type": "string"
+      }
+     },
+     "additionalProperties": false,
+     "description": "seven"
+    },
+    "Zeta": {
+     "type": "object",
+     "properties": {
+      "2": {
+       "type": "boolean"
+      },
+      "10": {
+       "type": "number"
+      },
+      "b": {
+       "type": "string"
+      },
+      "02": {},
+      "__proto__": {
+       "type": "string"
+      }
+     },
+     "required": [
+      "2",
+      "10",
+      "b",
+      "02"
+     ],
+     "additionalProperties": false,
+     "description": "z"
+    },
+    "Alpha": {
+     "type": "object",
+     "properties": {
+      "-1": {
+       "type": "number"
+      }
+     },
+     "required": [
+      "-1"
+     ],
+     "additionalProperties": false,
+     "description": "a"
+    }
+   }
+  },
+  "spec": {
+   "root": "7",
+   "components": {
+    "7": {
+     "signature": "7(x?: string)",
+     "description": "seven"
+    },
+    "Zeta": {
+     "signature": "Zeta(2: boolean, 10: number, b: string, 02: any, __proto__?: string)",
+     "description": "z"
+    },
+    "Alpha": {
+     "signature": "Alpha(-1: number)",
+     "description": "a"
+    }
+   },
+   "schema": {
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "type": "object",
+    "properties": {
+     "7": {
+      "$ref": "#/$defs/7"
+     },
+     "Zeta": {
+      "$ref": "#/$defs/Zeta"
+     },
+     "Alpha": {
+      "$ref": "#/$defs/Alpha"
+     }
+    },
+    "required": [
+     "7",
+     "Zeta",
+     "Alpha"
+    ],
+    "additionalProperties": false,
+    "$defs": {
+     "7": {
+      "type": "object",
+      "properties": {
+       "x": {
+        "type": "string"
+       }
+      },
+      "additionalProperties": false,
+      "description": "seven"
+     },
+     "Zeta": {
+      "type": "object",
+      "properties": {
+       "2": {
+        "type": "boolean"
+       },
+       "10": {
+        "type": "number"
+       },
+       "b": {
+        "type": "string"
+       },
+       "02": {},
+       "__proto__": {
+        "type": "string"
+       }
+      },
+      "required": [
+       "2",
+       "10",
+       "b",
+       "02"
+      ],
+      "additionalProperties": false,
+      "description": "z"
+     },
+     "Alpha": {
+      "type": "object",
+      "properties": {
+       "-1": {
+        "type": "number"
+       }
+      },
+      "required": [
+       "-1"
+      ],
+      "additionalProperties": false,
+      "description": "a"
+     }
+    }
+   },
+   "id": "key-order-library"
+  }
+ },
+ {
+  "name": "duplicate-components",
+  "definition": {
+   "components": [
+    {
+     "name": "Card",
+     "description": "first",
+     "props": [
+      {
+       "name": "a",
+       "type": {
+        "kind": "string"
+       }
+      }
+     ]
+    },
+    {
+     "name": "Other",
+     "description": "other",
+     "props": []
+    },
+    {
+     "name": "Card",
+     "description": "second",
+     "props": [
+      {
+       "name": "b",
+       "type": {
+        "kind": "number"
+       },
+       "optional": true
+      }
+     ]
+    }
+   ],
+   "root": "Card"
+  },
+  "schema": {
+   "$schema": "https://json-schema.org/draft/2020-12/schema",
+   "type": "object",
+   "properties": {
+    "Card": {
+     "$ref": "#/$defs/Card"
+    },
+    "Other": {
+     "$ref": "#/$defs/Other"
+    }
+   },
+   "required": [
+    "Card",
+    "Other"
+   ],
+   "additionalProperties": false,
+   "$defs": {
+    "Card": {
+     "type": "object",
+     "properties": {
+      "b": {
+       "type": "number"
+      }
+     },
+     "additionalProperties": false,
+     "description": "second"
+    },
+    "Other": {
+     "type": "object",
+     "properties": {},
+     "additionalProperties": false,
+     "description": "other"
+    }
+   }
+  },
+  "spec": {
+   "root": "Card",
+   "components": {
+    "Card": {
+     "signature": "Card(b?: number)",
+     "description": "second"
+    },
+    "Other": {
+     "signature": "Other()",
+     "description": "other"
+    }
+   },
+   "schema": {
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "type": "object",
+    "properties": {
+     "Card": {
+      "$ref": "#/$defs/Card"
+     },
+     "Other": {
+      "$ref": "#/$defs/Other"
+     }
+    },
+    "required": [
+     "Card",
+     "Other"
+    ],
+    "additionalProperties": false,
+    "$defs": {
+     "Card": {
+      "type": "object",
+      "properties": {
+       "b": {
+        "type": "number"
+       }
+      },
+      "additionalProperties": false,
+      "description": "second"
+     },
+     "Other": {
+      "type": "object",
+      "properties": {},
+      "additionalProperties": false,
+      "description": "other"
+     }
+    }
+   }
+  }
+ },
+ {
+  "name": "ref-escaping",
+  "definition": {
+   "components": [
+    {
+     "name": "a/b",
+     "description": "slash",
+     "props": [
+      {
+       "name": "x/y",
+       "type": {
+        "kind": "string"
+       }
+      }
+     ]
+    },
+    {
+     "name": "a~b",
+     "description": "tilde",
+     "props": []
+    },
+    {
+     "name": "a b#%\"",
+     "description": "others",
+     "props": []
+    },
+    {
+     "name": "",
+     "description": "empty name",
+     "props": [
+      {
+       "name": "",
+       "type": {
+        "kind": "number"
+       },
+       "optional": true
+      },
+      {
+       "name": "v",
+       "type": {
+        "kind": "string"
+       }
+      }
+     ]
+    }
+   ]
+  },
+  "schema": {
+   "$schema": "https://json-schema.org/draft/2020-12/schema",
+   "type": "object",
+   "properties": {
+    "a/b": {
+     "$ref": "#/$defs/a~1b"
+    },
+    "a~b": {
+     "$ref": "#/$defs/a~0b"
+    },
+    "a b#%\"": {
+     "$ref": "#/$defs/a b#%\""
+    },
+    "": {
+     "type": "object",
+     "properties": {
+      "": {
+       "type": "number"
+      },
+      "v": {
+       "type": "string"
+      }
+     },
+     "required": [
+      "v"
+     ],
+     "additionalProperties": false,
+     "id": ""
+    }
+   },
+   "required": [
+    "a/b",
+    "a~b",
+    "a b#%\"",
+    ""
+   ],
+   "additionalProperties": false,
+   "$defs": {
+    "a/b": {
+     "type": "object",
+     "properties": {
+      "x/y": {
+       "type": "string"
+      }
+     },
+     "required": [
+      "x/y"
+     ],
+     "additionalProperties": false,
+     "description": "slash"
+    },
+    "a~b": {
+     "type": "object",
+     "properties": {},
+     "additionalProperties": false,
+     "description": "tilde"
+    },
+    "a b#%\"": {
+     "type": "object",
+     "properties": {},
+     "additionalProperties": false,
+     "description": "others"
+    }
+   }
+  },
+  "spec": {
+   "components": {
+    "a/b": {
+     "signature": "a/b(x/y: string)",
+     "description": "slash"
+    },
+    "a~b": {
+     "signature": "a~b()",
+     "description": "tilde"
+    },
+    "a b#%\"": {
+     "signature": "a b#%\"()",
+     "description": "others"
+    },
+    "": {
+     "signature": "(?: number, v: string)",
+     "description": "empty name"
+    }
+   },
+   "schema": {
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "type": "object",
+    "properties": {
+     "a/b": {
+      "$ref": "#/$defs/a~1b"
+     },
+     "a~b": {
+      "$ref": "#/$defs/a~0b"
+     },
+     "a b#%\"": {
+      "$ref": "#/$defs/a b#%\""
+     },
+     "": {
+      "type": "object",
+      "properties": {
+       "": {
+        "type": "number"
+       },
+       "v": {
+        "type": "string"
+       }
+      },
+      "required": [
+       "v"
+      ],
+      "additionalProperties": false,
+      "id": ""
+     }
+    },
+    "required": [
+     "a/b",
+     "a~b",
+     "a b#%\"",
+     ""
+    ],
+    "additionalProperties": false,
+    "$defs": {
+     "a/b": {
+      "type": "object",
+      "properties": {
+       "x/y": {
+        "type": "string"
+       }
+      },
+      "required": [
+       "x/y"
+      ],
+      "additionalProperties": false,
+      "description": "slash"
+     },
+     "a~b": {
+      "type": "object",
+      "properties": {},
+      "additionalProperties": false,
+      "description": "tilde"
+     },
+     "a b#%\"": {
+      "type": "object",
+      "properties": {},
+      "additionalProperties": false,
+      "description": "others"
+     }
+    }
+   }
+  }
+ },
+ {
+  "name": "action-shape-names",
+  "definition": {
+   "components": [
+    {
+     "name": "ToAssistant",
+     "description": "t",
+     "props": [
+      {
+       "name": "message",
+       "type": {
+        "kind": "string"
+       }
+      }
+     ]
+    },
+    {
+     "name": "OpenUrl",
+     "description": "",
+     "props": []
+    }
+   ],
+   "root": "OpenUrl"
+  },
+  "schema": {
+   "$schema": "https://json-schema.org/draft/2020-12/schema",
+   "type": "object",
+   "properties": {
+    "ToAssistant": {
+     "$ref": "#/$defs/ToAssistant"
+    },
+    "OpenUrl": {
+     "$ref": "#/$defs/OpenUrl"
+    }
+   },
+   "required": [
+    "ToAssistant",
+    "OpenUrl"
+   ],
+   "additionalProperties": false,
+   "$defs": {
+    "ToAssistant": {
+     "type": "object",
+     "properties": {
+      "message": {
+       "type": "string"
+      }
+     },
+     "required": [
+      "message"
+     ],
+     "additionalProperties": false,
+     "description": "t"
+    },
+    "OpenUrl": {
+     "type": "object",
+     "properties": {},
+     "additionalProperties": false
+    }
+   }
+  },
+  "spec": {
+   "root": "OpenUrl",
+   "components": {
+    "ToAssistant": {
+     "signature": "ToAssistant(message: string)",
+     "description": "t"
+    },
+    "OpenUrl": {
+     "signature": "OpenUrl()",
+     "description": ""
+    }
+   },
+   "schema": {
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "type": "object",
+    "properties": {
+     "ToAssistant": {
+      "$ref": "#/$defs/ToAssistant"
+     },
+     "OpenUrl": {
+      "$ref": "#/$defs/OpenUrl"
+     }
+    },
+    "required": [
+     "ToAssistant",
+     "OpenUrl"
+    ],
+    "additionalProperties": false,
+    "$defs": {
+     "ToAssistant": {
+      "type": "object",
+      "properties": {
+       "message": {
+        "type": "string"
+       }
+      },
+      "required": [
+       "message"
+      ],
+      "additionalProperties": false,
+      "description": "t"
+     },
+     "OpenUrl": {
+      "type": "object",
+      "properties": {},
+      "additionalProperties": false
+     }
+    }
+   }
+  }
+ },
+ {
+  "name": "no-components",
+  "definition": {
+   "components": []
+  },
+  "schema": {
+   "$schema": "https://json-schema.org/draft/2020-12/schema",
+   "type": "object",
+   "properties": {},
+   "additionalProperties": false
+  },
+  "spec": {
+   "components": {},
+   "schema": {
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "type": "object",
+    "properties": {},
+    "additionalProperties": false
+   }
+  }
+ },
+ {
+  "name": "empty-groups",
+  "definition": {
+   "components": [
+    {
+     "name": "A",
+     "description": "a",
+     "props": []
+    }
+   ],
+   "componentGroups": [],
+   "id": ""
+  },
+  "schema": {
+   "$schema": "https://json-schema.org/draft/2020-12/schema",
+   "type": "object",
+   "properties": {
+    "A": {
+     "$ref": "#/$defs/A"
+    }
+   },
+   "required": [
+    "A"
+   ],
+   "additionalProperties": false,
+   "$defs": {
+    "A": {
+     "type": "object",
+     "properties": {},
+     "additionalProperties": false,
+     "description": "a"
+    }
+   }
+  },
+  "spec": {
+   "components": {
+    "A": {
+     "signature": "A()",
+     "description": "a"
+    }
+   },
+   "componentGroups": [],
+   "schema": {
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "type": "object",
+    "properties": {
+     "A": {
+      "$ref": "#/$defs/A"
+     }
+    },
+    "required": [
+     "A"
+    ],
+    "additionalProperties": false,
+    "$defs": {
+     "A": {
+      "type": "object",
+      "properties": {},
+      "additionalProperties": false,
+      "description": "a"
+     }
+    }
+   },
+   "id": ""
+  }
+ },
+ {
+  "name": "root-inherited",
+  "definition": {
+   "components": [
+    {
+     "name": "A",
+     "description": "a",
+     "props": [
+      {
+       "name": "v",
+       "type": {
+        "kind": "string"
+       }
+      }
+     ]
+    }
+   ],
+   "root": "toString"
+  },
+  "schema": {
+   "$schema": "https://json-schema.org/draft/2020-12/schema",
+   "type": "object",
+   "properties": {
+    "A": {
+     "$ref": "#/$defs/A"
+    }
+   },
+   "required": [
+    "A"
+   ],
+   "additionalProperties": false,
+   "$defs": {
+    "A": {
+     "type": "object",
+     "properties": {
+      "v": {
+       "type": "string"
+      }
+     },
+     "required": [
+      "v"
+     ],
+     "additionalProperties": false,
+     "description": "a"
+    }
+   }
+  },
+  "spec": {
+   "root": "toString",
+   "components": {
+    "A": {
+     "signature": "A(v: string)",
+     "description": "a"
+    }
+   },
+   "schema": {
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "type": "object",
+    "properties": {
+     "A": {
+      "$ref": "#/$defs/A"
+     }
+    },
+    "required": [
+     "A"
+    ],
+    "additionalProperties": false,
+    "$defs": {
+     "A": {
+      "type": "object",
+      "properties": {
+       "v": {
+        "type": "string"
+       }
+      },
+      "required": [
+       "v"
+      ],
+      "additionalProperties": false,
+      "description": "a"
+     }
+    }
+   }
+  }
+ },
+ {
+  "name": "root-empty",
+  "definition": {
+   "components": [
+    {
+     "name": "A",
+     "description": "a",
+     "props": []
+    }
+   ],
+   "root": ""
+  },
+  "schema": {
+   "$schema": "https://json-schema.org/draft/2020-12/schema",
+   "type": "object",
+   "properties": {
+    "A": {
+     "$ref": "#/$defs/A"
+    }
+   },
+   "required": [
+    "A"
+   ],
+   "additionalProperties": false,
+   "$defs": {
+    "A": {
+     "type": "object",
+     "properties": {},
+     "additionalProperties": false,
+     "description": "a"
+    }
+   }
+  },
+  "spec": {
+   "root": "",
+   "components": {
+    "A": {
+     "signature": "A()",
+     "description": "a"
+    }
+   },
+   "schema": {
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "type": "object",
+    "properties": {
+     "A": {
+      "$ref": "#/$defs/A"
+     }
+    },
+    "required": [
+     "A"
+    ],
+    "additionalProperties": false,
+    "$defs": {
+     "A": {
+      "type": "object",
+      "properties": {},
+      "additionalProperties": false,
+      "description": "a"
+     }
+    }
+   }
+  }
+ },
+ {
+  "name": "proto-component",
+  "definition": {
+   "components": [
+    {
+     "name": "__proto__",
+     "description": "p",
+     "props": [
+      {
+       "name": "v",
+       "type": {
+        "kind": "string"
+       }
+      }
+     ]
+    },
+    {
+     "name": "A",
+     "description": "a",
+     "props": []
+    }
+   ],
+   "root": "props"
+  },
+  "schema": {
+   "$schema": "https://json-schema.org/draft/2020-12/schema",
+   "type": "object",
+   "properties": {
+    "A": {
+     "$ref": "#/$defs/A"
+    }
+   },
+   "required": [
+    "A"
+   ],
+   "additionalProperties": false,
+   "$defs": {
+    "A": {
+     "type": "object",
+     "properties": {},
+     "additionalProperties": false,
+     "description": "a"
+    }
+   }
+  },
+  "spec": {
+   "root": "props",
+   "components": {
+    "A": {
+     "signature": "A()",
+     "description": "a"
+    }
+   },
+   "schema": {
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "type": "object",
+    "properties": {
+     "A": {
+      "$ref": "#/$defs/A"
+     }
+    },
+    "required": [
+     "A"
+    ],
+    "additionalProperties": false,
+    "$defs": {
+     "A": {
+      "type": "object",
+      "properties": {},
+      "additionalProperties": false,
+      "description": "a"
+     }
+    }
+   }
+  }
+ },
+ {
+  "name": "proto-component-root-name",
+  "definition": {
+   "components": [
+    {
+     "name": "__proto__",
+     "description": "p",
+     "props": []
+    },
+    {
+     "name": "A",
+     "description": "a",
+     "props": []
+    }
+   ],
+   "root": "name"
+  },
+  "schema": {
+   "$schema": "https://json-schema.org/draft/2020-12/schema",
+   "type": "object",
+   "properties": {
+    "A": {
+     "$ref": "#/$defs/A"
+    }
+   },
+   "required": [
+    "A"
+   ],
+   "additionalProperties": false,
+   "$defs": {
+    "A": {
+     "type": "object",
+     "properties": {},
+     "additionalProperties": false,
+     "description": "a"
+    }
+   }
+  },
+  "spec": {
+   "root": "name",
+   "components": {
+    "A": {
+     "signature": "A()",
+     "description": "a"
+    }
+   },
+   "schema": {
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "type": "object",
+    "properties": {
+     "A": {
+      "$ref": "#/$defs/A"
+     }
+    },
+    "required": [
+     "A"
+    ],
+    "additionalProperties": false,
+    "$defs": {
+     "A": {
+      "type": "object",
+      "properties": {},
+      "additionalProperties": false,
+      "description": "a"
+     }
+    }
+   }
+  }
+ },
+ {
+  "name": "proto-component-root-component",
+  "definition": {
+   "components": [
+    {
+     "name": "__proto__",
+     "description": "p",
+     "props": []
+    },
+    {
+     "name": "A",
+     "description": "a",
+     "props": []
+    }
+   ],
+   "root": "component"
+  },
+  "schema": {
+   "$schema": "https://json-schema.org/draft/2020-12/schema",
+   "type": "object",
+   "properties": {
+    "A": {
+     "$ref": "#/$defs/A"
+    }
+   },
+   "required": [
+    "A"
+   ],
+   "additionalProperties": false,
+   "$defs": {
+    "A": {
+     "type": "object",
+     "properties": {},
+     "additionalProperties": false,
+     "description": "a"
+    }
+   }
+  },
+  "spec": {
+   "root": "component",
+   "components": {
+    "A": {
+     "signature": "A()",
+     "description": "a"
+    }
+   },
+   "schema": {
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "type": "object",
+    "properties": {
+     "A": {
+      "$ref": "#/$defs/A"
+     }
+    },
+    "required": [
+     "A"
+    ],
+    "additionalProperties": false,
+    "$defs": {
+     "A": {
+      "type": "object",
+      "properties": {},
+      "additionalProperties": false,
+      "description": "a"
+     }
+    }
+   }
+  }
+ },
+ {
+  "name": "proto-component-root-ref",
+  "definition": {
+   "components": [
+    {
+     "name": "__proto__",
+     "description": "p",
+     "props": []
+    },
+    {
+     "name": "A",
+     "description": "a",
+     "props": []
+    }
+   ],
+   "root": "ref"
+  },
+  "schema": {
+   "$schema": "https://json-schema.org/draft/2020-12/schema",
+   "type": "object",
+   "properties": {
+    "A": {
+     "$ref": "#/$defs/A"
+    }
+   },
+   "required": [
+    "A"
+   ],
+   "additionalProperties": false,
+   "$defs": {
+    "A": {
+     "type": "object",
+     "properties": {},
+     "additionalProperties": false,
+     "description": "a"
+    }
+   }
+  },
+  "spec": {
+   "root": "ref",
+   "components": {
+    "A": {
+     "signature": "A()",
+     "description": "a"
+    }
+   },
+   "schema": {
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "type": "object",
+    "properties": {
+     "A": {
+      "$ref": "#/$defs/A"
+     }
+    },
+    "required": [
+     "A"
+    ],
+    "additionalProperties": false,
+    "$defs": {
+     "A": {
+      "type": "object",
+      "properties": {},
+      "additionalProperties": false,
+      "description": "a"
+     }
+    }
+   }
+  }
+ },
+ {
+  "name": "proto-component-root-description",
+  "definition": {
+   "components": [
+    {
+     "name": "__proto__",
+     "description": "p",
+     "props": []
+    },
+    {
+     "name": "A",
+     "description": "a",
+     "props": []
+    }
+   ],
+   "root": "description"
+  },
+  "schema": {
+   "$schema": "https://json-schema.org/draft/2020-12/schema",
+   "type": "object",
+   "properties": {
+    "A": {
+     "$ref": "#/$defs/A"
+    }
+   },
+   "required": [
+    "A"
+   ],
+   "additionalProperties": false,
+   "$defs": {
+    "A": {
+     "type": "object",
+     "properties": {},
+     "additionalProperties": false,
+     "description": "a"
+    }
+   }
+  },
+  "spec": {
+   "root": "description",
+   "components": {
+    "A": {
+     "signature": "A()",
+     "description": "a"
+    }
+   },
+   "schema": {
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "type": "object",
+    "properties": {
+     "A": {
+      "$ref": "#/$defs/A"
+     }
+    },
+    "required": [
+     "A"
+    ],
+    "additionalProperties": false,
+    "$defs": {
+     "A": {
+      "type": "object",
+      "properties": {},
+      "additionalProperties": false,
+      "description": "a"
+     }
+    }
+   }
+  }
+ },
+ {
+  "name": "proto-component-empty-description-root-description",
+  "definition": {
+   "components": [
+    {
+     "name": "__proto__",
+     "description": "",
+     "props": []
+    },
+    {
+     "name": "A",
+     "description": "a",
+     "props": []
+    }
+   ],
+   "root": "description"
+  },
+  "error": "[createLibrary] Root component \"description\" was not found in components. Available components: A"
+ },
+ {
+  "name": "proto-component-empty-description-root-props",
+  "definition": {
+   "components": [
+    {
+     "name": "__proto__",
+     "description": "",
+     "props": []
+    },
+    {
+     "name": "A",
+     "description": "a",
+     "props": []
+    }
+   ],
+   "root": "props"
+  },
+  "schema": {
+   "$schema": "https://json-schema.org/draft/2020-12/schema",
+   "type": "object",
+   "properties": {
+    "A": {
+     "$ref": "#/$defs/A"
+    }
+   },
+   "required": [
+    "A"
+   ],
+   "additionalProperties": false,
+   "$defs": {
+    "A": {
+     "type": "object",
+     "properties": {},
+     "additionalProperties": false,
+     "description": "a"
+    }
+   }
+  },
+  "spec": {
+   "root": "props",
+   "components": {
+    "A": {
+     "signature": "A()",
+     "description": "a"
+    }
+   },
+   "schema": {
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "type": "object",
+    "properties": {
+     "A": {
+      "$ref": "#/$defs/A"
+     }
+    },
+    "required": [
+     "A"
+    ],
+    "additionalProperties": false,
+    "$defs": {
+     "A": {
+      "type": "object",
+      "properties": {},
+      "additionalProperties": false,
+      "description": "a"
+     }
+    }
+   }
+  }
+ },
+ {
+  "name": "two-proto-components-last-empty-description",
+  "definition": {
+   "components": [
+    {
+     "name": "__proto__",
+     "description": "p",
+     "props": []
+    },
+    {
+     "name": "__proto__",
+     "description": "",
+     "props": []
+    },
+    {
+     "name": "A",
+     "description": "a",
+     "props": []
+    }
+   ],
+   "root": "description"
+  },
+  "error": "[createLibrary] Root component \"description\" was not found in components. Available components: A"
+ },
+ {
+  "name": "two-proto-components-first-empty-description",
+  "definition": {
+   "components": [
+    {
+     "name": "__proto__",
+     "description": "",
+     "props": []
+    },
+    {
+     "name": "__proto__",
+     "description": "p",
+     "props": []
+    },
+    {
+     "name": "A",
+     "description": "a",
+     "props": []
+    }
+   ],
+   "root": "description"
+  },
+  "schema": {
+   "$schema": "https://json-schema.org/draft/2020-12/schema",
+   "type": "object",
+   "properties": {
+    "A": {
+     "$ref": "#/$defs/A"
+    }
+   },
+   "required": [
+    "A"
+   ],
+   "additionalProperties": false,
+   "$defs": {
+    "A": {
+     "type": "object",
+     "properties": {},
+     "additionalProperties": false,
+     "description": "a"
+    }
+   }
+  },
+  "spec": {
+   "root": "description",
+   "components": {
+    "A": {
+     "signature": "A()",
+     "description": "a"
+    }
+   },
+   "schema": {
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "type": "object",
+    "properties": {
+     "A": {
+      "$ref": "#/$defs/A"
+     }
+    },
+    "required": [
+     "A"
+    ],
+    "additionalProperties": false,
+    "$defs": {
+     "A": {
+      "type": "object",
+      "properties": {},
+      "additionalProperties": false,
+      "description": "a"
+     }
+    }
+   }
+  }
+ },
+ {
+  "name": "root-description-no-proto-component",
+  "definition": {
+   "components": [
+    {
+     "name": "A",
+     "description": "a",
+     "props": []
+    }
+   ],
+   "root": "description"
+  },
+  "error": "[createLibrary] Root component \"description\" was not found in components. Available components: A"
+ },
+ {
+  "name": "strict-object",
+  "definition": {
+   "components": [
+    {
+     "name": "A",
+     "description": "a",
+     "props": [
+      {
+       "name": "v",
+       "type": {
+        "kind": "string"
+       }
+      },
+      {
+       "name": "w",
+       "type": {
+        "kind": "number"
+       },
+       "optional": true
+      }
+     ]
+    }
+   ]
+  },
+  "schema": {
+   "$schema": "https://json-schema.org/draft/2020-12/schema",
+   "type": "object",
+   "properties": {
+    "A": {
+     "$ref": "#/$defs/A"
+    }
+   },
+   "required": [
+    "A"
+   ],
+   "additionalProperties": false,
+   "$defs": {
+    "A": {
+     "type": "object",
+     "properties": {
+      "v": {
+       "type": "string"
+      },
+      "w": {
+       "type": "number"
+      }
+     },
+     "required": [
+      "v"
+     ],
+     "additionalProperties": false,
+     "description": "a"
+    }
+   }
+  },
+  "spec": {
+   "components": {
+    "A": {
+     "signature": "A(v: string, w?: number)",
+     "description": "a"
+    }
+   },
+   "schema": {
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "type": "object",
+    "properties": {
+     "A": {
+      "$ref": "#/$defs/A"
+     }
+    },
+    "required": [
+     "A"
+    ],
+    "additionalProperties": false,
+    "$defs": {
+     "A": {
+      "type": "object",
+      "properties": {
+       "v": {
+        "type": "string"
+       },
+       "w": {
+        "type": "number"
+       }
+      },
+      "required": [
+       "v"
+      ],
+      "additionalProperties": false,
+      "description": "a"
+     }
+    }
+   }
+  }
+ },
+ {
+  "name": "root-missing",
+  "definition": {
+   "components": [
+    {
+     "name": "A",
+     "description": "a",
+     "props": []
+    },
+    {
+     "name": "B",
+     "description": "b",
+     "props": []
+    }
+   ],
+   "root": "C"
+  },
+  "error": "[createLibrary] Root component \"C\" was not found in components. Available components: A, B"
+ },
+ {
+  "name": "root-missing-no-components",
+  "definition": {
+   "components": [],
+   "root": "Page"
+  },
+  "error": "[createLibrary] Root component \"Page\" was not found in components. Available components: "
+ },
+ {
+  "name": "root-missing-proto-component",
+  "definition": {
+   "components": [
+    {
+     "name": "__proto__",
+     "description": "p",
+     "props": []
+    }
+   ],
+   "root": "Nope"
+  },
+  "error": "[createLibrary] Root component \"Nope\" was not found in components. Available components: "
+ }
+]

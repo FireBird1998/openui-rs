@@ -27,7 +27,8 @@
   "shadow-actions": "schemas/shadow-actions.json",
   "shadow-components": "schemas/shadow-components.json",
   "shadow-precedence": "schemas/shadow-precedence.json",
-  "inherited-properties": "schemas/inherited-properties.json"
+  "inherited-properties": "schemas/inherited-properties.json",
+  "library-definition": "schemas/library-definition.json"
  },
  "cases": [
   {
@@ -2001,6 +2002,25 @@
    "schema": "inherited-properties",
    "file": "cases/parser/inherited-valueOf.oui",
    "source": "hand-written"
+  },
+  {
+   "name": "library-definition/01-every-component",
+   "schema": "library-definition",
+   "file": "cases/library-definition/01-every-component.oui",
+   "source": "hand-written"
+  },
+  {
+   "name": "library-definition/02-wrong-types",
+   "schema": "library-definition",
+   "file": "cases/library-definition/02-wrong-types.oui",
+   "source": "hand-written"
+  },
+  {
+   "name": "library-definition/03-root-by-name",
+   "schema": "library-definition",
+   "file": "cases/library-definition/03-root-by-name.oui",
+   "source": "hand-written",
+   "root": "Page"
   }
  ]
 }

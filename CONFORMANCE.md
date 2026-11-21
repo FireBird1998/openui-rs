@@ -16,12 +16,12 @@ Reference: `@openuidev/lang-core 1.1.0` at commit `47b9cae0d3b26a8c9d7514d5887a6
 
 | Compared with the reference | Cases | Checks | Cases by source |
 |---|---:|---:|---|
-| Parse results: one-shot, and after every push and at the end of 8 chunkings, 2 resync sequences and any recorded chunks | 972 | 1,482,782 results | 7 benchmark, 107 docs, 46 examples, 14 fuzz, 326 hand-written, 152 recorded, 259 reference-test, 58 spec-fixture, 3 synthetic |
-| Stages on every prefix: preprocessing, tokens, statements and expression trees | 970 | 478,746 prefixes | the parse corpus, less its largest synthetic programs |
+| Parse results: one-shot, and after every push and at the end of 8 chunkings, 2 resync sequences and any recorded chunks | 975 | 1,484,640 results | 7 benchmark, 107 docs, 46 examples, 14 fuzz, 329 hand-written, 152 recorded, 259 reference-test, 58 spec-fixture, 3 synthetic |
+| Stages on every prefix: preprocessing, tokens, statements and expression trees | 973 | 479,335 prefixes | the parse corpus, less its largest synthetic programs |
 | System prompts | 65 | 65 | |
 | Edit-mode merges | 3,269 | 3,269 | 3,179 generated, 53 hand-written, 31 recorded, 1 reference-test, 5 spec-fixture |
-| Element trees back to source | 939 | 939 | 1 fuzz, 71 hand-written, 836 parse corpus root, 31 reference-test |
-| Enriched errors | 510 | 510 | every parse corpus case with errors |
+| Element trees back to source | 940 | 940 | 1 fuzz, 71 hand-written, 837 parse corpus root, 31 reference-test |
+| Enriched errors | 512 | 512 | every parse corpus case with errors |
 
 Quirks recorded: 31.
 Not matched yet, listed in `conformance/pending/`: none.
@@ -56,13 +56,13 @@ The Rust test also observes top-level negative zero and infinity before JSON
 projection.
 
 <!-- runtime-counts -->
-Runtime trees: 1186 total, 1175 matching, 0 pending, 11 divergences.
+Runtime trees: 1189 total, 1178 matching, 0 pending, 11 divergences.
 
 Runtime pending: #34=0, #35=0, #36=0, #38=0.
 
-Runtime coverage: 549 dynamic, 184 reading state, 581 referencing statements, 80 with runtime errors; 1501085 streaming steps per scenario, 156648 differing observations, 14544 differing trees.
+Runtime coverage: 550 dynamic, 184 reading state, 583 referencing statements, 80 with runtime errors; 1502940 streaming steps per scenario, 156648 differing observations, 14544 differing trees.
 
-Original runtime coverage: 972 cases, 356 dynamic, 70 reading state, 506 referencing statements, 16 with runtime errors; recorded: 152 cases, 2 declaring state.
+Original runtime coverage: 975 cases, 357 dynamic, 70 reading state, 508 referencing statements, 16 with runtime errors; recorded: 152 cases, 2 declaring state.
 
 Runtime pending partial comparison: 0 one-shot observations, 0 props.
 
@@ -313,8 +313,8 @@ failed prop alongside an action. The #34 additions cover loops, components,
 root expressions and references, with caller context pinned by quirk 25. Coverage is the union of both
 scenarios and all prefixes; state reads count actual runtime `getState` calls,
 and statement references are measured on the preprocessed source AST with
-`Each` locals excluded. The parser corpus has 972 cases, with 356 cases containing dynamic
-props, 70 reading state, 506 referencing statements and 16 with runtime errors.
+`Each` locals excluded. The parser corpus has 975 cases, with 357 cases containing dynamic
+props, 70 reading state, 508 referencing statements and 16 with runtime errors.
 Only 2 of the 152 recorded cases declare state. That measurement is why the
 runtime additions are needed.
 

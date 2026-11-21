@@ -1,0 +1,131 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "properties": {
+    "Page": {
+      "$ref": "#/$defs/Page"
+    },
+    "Heading": {
+      "$ref": "#/$defs/Heading"
+    },
+    "Text": {
+      "$ref": "#/$defs/Text"
+    },
+    "Metric": {
+      "$ref": "#/$defs/Metric"
+    },
+    "Toggle": {
+      "$ref": "#/$defs/Toggle"
+    },
+    "Divider": {
+      "$ref": "#/$defs/Divider"
+    }
+  },
+  "required": [
+    "Page",
+    "Heading",
+    "Text",
+    "Metric",
+    "Toggle",
+    "Divider"
+  ],
+  "additionalProperties": false,
+  "$defs": {
+    "Page": {
+      "type": "object",
+      "properties": {
+        "title": {
+          "type": "string"
+        },
+        "children": {},
+        "subtitle": {
+          "type": "string"
+        },
+        "dense": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "title",
+        "children"
+      ],
+      "additionalProperties": false,
+      "description": "A page with a title and any children."
+    },
+    "Heading": {
+      "type": "object",
+      "properties": {
+        "text": {
+          "type": "string"
+        },
+        "level": {
+          "type": "number"
+        }
+      },
+      "required": [
+        "text"
+      ],
+      "additionalProperties": false,
+      "description": "A heading of a given level."
+    },
+    "Text": {
+      "type": "object",
+      "properties": {
+        "value": {
+          "type": "string"
+        },
+        "muted": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "value"
+      ],
+      "additionalProperties": false,
+      "description": "A paragraph."
+    },
+    "Metric": {
+      "type": "object",
+      "properties": {
+        "label": {
+          "type": "string"
+        },
+        "value": {
+          "type": "number"
+        },
+        "delta": {
+          "type": "number"
+        },
+        "data": {}
+      },
+      "required": [
+        "label",
+        "value"
+      ],
+      "additionalProperties": false,
+      "description": "A labelled number with an optional change and raw data."
+    },
+    "Toggle": {
+      "type": "object",
+      "properties": {
+        "label": {
+          "type": "string"
+        },
+        "on": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "label",
+        "on"
+      ],
+      "additionalProperties": false,
+      "description": "An on/off switch."
+    },
+    "Divider": {
+      "type": "object",
+      "properties": {},
+      "additionalProperties": false
+    }
+  }
+}

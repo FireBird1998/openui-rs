@@ -83,6 +83,33 @@
 //! Object-valued prototype assignments remain unsupported: parser validation
 //! does not replace the discarded prototype with an invented ordinary one.
 //!
+//! # Library definitions
+//!
+//! A host without upstream's JavaScript tooling describes its library as a
+//! [`LibraryDefinition`], plain data, and [`create_library`] gives its JSON
+//! Schema and prompt spec as upstream's `createLibrary` would (ADR 0017).
+//! The parser still reads only the JSON Schema.
+//!
+//! ```
+//! # #[global_allocator]
+//! # static ALLOCATOR: test_alloc::Allocator = test_alloc::Allocator::with_cap(test_alloc::DEFAULT);
+//! use openui_lang::{LibraryDefinition, create_library, parse};
+//!
+//! let definition = LibraryDefinition::from_json(&serde_json::json!({
+//!     "components": [{
+//!         "name": "Text",
+//!         "description": "A paragraph.",
+//!         "props": [{"name": "value", "type": {"kind": "string"}}]
+//!     }],
+//!     "root": "Text"
+//! })).unwrap();
+//! let defined = create_library(definition).unwrap();
+//! assert_eq!(defined.to_spec()["components"]["Text"]["signature"], "Text(value: string)");
+//!
+//! let result = parse("root = Text(\"Hello\")", &defined.library(), None);
+//! assert!(result.meta.errors.is_empty());
+//! ```
+//!
 //! # Streaming
 //!
 //! A [`StreamParser`] takes the model's output chunk by chunk and returns a
@@ -352,6 +379,7 @@ pub const MAX_PROGRAM_SIZE: usize = 1024 * 1024;
 
 mod ast;
 mod builtins;
+mod defined_library;
 mod enrich;
 mod evaluate;
 mod expr;
@@ -359,6 +387,7 @@ mod free;
 mod js;
 mod lexer;
 mod library;
+mod library_definition;
 mod limits;
 mod materialize;
 mod merge;
@@ -369,6 +398,7 @@ mod progress;
 mod prompt;
 mod result;
 mod serialize;
+mod signature;
 mod stack;
 mod statements;
 mod stream;
@@ -388,6 +418,7 @@ fn conformance_dir() -> std::path::PathBuf {
 
 pub use ast::{Ast, RefType};
 pub use builtins::{is_builtin, is_reserved_call};
+pub use defined_library::{DefinedLibrary, create_library};
 pub use enrich::{EnrichedError, enrich_errors, enriched_errors_to_json};
 pub use evaluate::{
     EvaluationFailure, EvaluationFlags, EvaluationMemory, EvaluationResult, EvaluationScope,
@@ -403,6 +434,10 @@ pub use js::{
 };
 pub use lexer::{Token, tokenize, tokens_to_json};
 pub use library::{Call, CallKind, Component, Library, Param};
+pub use library_definition::{
+    ComponentDefinition, ComponentGroup, LibraryDefinition, LibraryDefinitionError, PropDefinition,
+    TypeDescription,
+};
 pub use limits::Limits;
 pub use merge::{Merged, merge_statements, merge_statements_with_limits};
 #[doc(hidden)]

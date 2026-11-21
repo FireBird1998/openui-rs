@@ -2,6 +2,26 @@
 
 ## Unreleased
 
+- Library definitions in the core (#131, the first ticket of spec #123,
+  ADR 0017): a host describes a component library as plain data, components
+  with a name, a description and ordered props whose types are string,
+  number, boolean or any, optional or not, plus component groups, a root and
+  an id. `LibraryDefinition::from_json` reads it, `create_library` makes a
+  `DefinedLibrary`, and its `to_json_schema()` and `to_spec()` give what
+  upstream's `toJSONSchema()` and `toSpec()` give for the equivalent zod
+  declaration (zod 4.6.7), byte for byte, signatures included. A root that
+  is not a component is refused with upstream's message; a type kind the core
+  doesn't support yet is refused naming the kind. `DefinedLibrary::library()`
+  compiles the JSON Schema, so the parser is unchanged and a defined library
+  parses as its JSON does. The reference harness gains a converter from zod
+  declarations to the plain-data form (`reference/library-definition.ts`),
+  which refuses by name whatever the plain data can't carry (a zod format,
+  check or catch-all, metadata, a props object shared by two components, a
+  component group with other fields or another field order), and sample
+  libraries whose upstream output is generated
+  (`reference/library-definitions.ts`); the corpus gains three programs for
+  the sample library. The binding entry points come with #137.
+
 - Breaking binding and Rust API changes, accepted because nothing has been
   released; the old names are not kept as aliases (#120):
   - The MCP result helper's outcome for an error the tool reported is

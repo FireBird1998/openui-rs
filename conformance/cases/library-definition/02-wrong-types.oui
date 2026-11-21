@@ -1,0 +1,7 @@
+root = Page(42, [a, b, c, d, e, f])
+a = Heading("Title", "two")
+b = Text(7, "yes")
+c = Metric("Users", "many", null, null)
+d = Toggle("Dark mode")
+e = Divider("extra", 1)
+f = Chart("unknown")

@@ -1,0 +1,6 @@
+root = Page("Quarterly report", [heading, intro, revenue, churn, sync, Divider()], "Q3", true)
+heading = Heading("Revenue", 2)
+intro = Text("Revenue grew this quarter.")
+revenue = Metric("Revenue", 1250000, 0.12, {series: [1, 2, 3], unit: "USD"})
+churn = Metric("Churn", 0.031)
+sync = Toggle("Sync", false)
