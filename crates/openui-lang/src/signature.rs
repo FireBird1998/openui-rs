@@ -11,15 +11,44 @@
 //! then prints as its bare name, or `[name]` when it is an array; a field as
 //! its bare name; a record's values as `any`; and a union leaves it out,
 //! printing `any` when it names none of its options.
+//!
+//! The kinds that link a library together print by name and never follow a
+//! reference: a component reference as the component's name (upstream's
+//! registry id), the action slot as `ActionExpression` and a named action as
+//! `@Name`. A named type is upstream's `tagSchemaId`, a name on the schema
+//! object of its type: `getSchemaId` reads it before anything else, so it
+//! prints instead of the type's structure, but `unwrap` steps past a named
+//! nullable to its inner type and drops the name, and everything that asks
+//! what kind a schema is (array, union, nullable) sees the type under the
+//! name. An empty name is none. A prop's binding prints `$binding<T>`, as
+//! `resolveTypeAnnotation` does for a reactive schema.
 
 use crate::library_definition::{PropDefinition, TypeDescription, in_property_order};
 
-/// `unwrap`: the type inside any nullables.
-fn unwrap(mut ty: &TypeDescription) -> &TypeDescription {
-    while let TypeDescription::Nullable(inner) = ty {
+/// The type a named type names, under its names: the kind of schema it is.
+fn structure(mut ty: &TypeDescription) -> &TypeDescription {
+    while let TypeDescription::Named(_, inner) = ty {
         ty = inner;
     }
     ty
+}
+
+/// `unwrap`: the type inside any nullables, a named nullable's name lost
+/// with it.
+fn unwrap(mut ty: &TypeDescription) -> &TypeDescription {
+    while let TypeDescription::Nullable(inner) = structure(ty) {
+        ty = inner;
+    }
+    ty
+}
+
+/// Whether the schema is a union: upstream's `getUnionOptions`. The action
+/// slot's schema is one.
+fn is_union(ty: &TypeDescription) -> bool {
+    matches!(
+        structure(ty),
+        TypeDescription::Union(_) | TypeDescription::Action(None)
+    )
 }
 
 /// An enum's words as zod keeps them: in JavaScript property order (array
@@ -42,6 +71,15 @@ pub(crate) fn type_annotation(ty: &TypeDescription) -> Option<String> {
 
 /// `resolveBaseType`, for a type already unwrapped.
 fn base_type(ty: &TypeDescription) -> Option<String> {
+    // The action ref's tag, then the registry id or the schema's tag.
+    let ty = match ty {
+        TypeDescription::Action(Some(name)) => return Some(format!("@{name}")),
+        TypeDescription::Action(None) => return Some("ActionExpression".to_owned()),
+        TypeDescription::Component(name) => return Some(name.clone()),
+        TypeDescription::Named(name, _) if !name.is_empty() => return Some(name.clone()),
+        TypeDescription::Named(_, inner) => structure(inner),
+        other => other,
+    };
     Some(match ty {
         TypeDescription::Union(options) => {
             let names: Vec<String> = options.iter().filter_map(type_annotation).collect();
@@ -55,7 +93,7 @@ fn base_type(ty: &TypeDescription) -> Option<String> {
         }
         TypeDescription::Array(items) => {
             let inner = type_annotation(items)?;
-            if matches!(unwrap(items), TypeDescription::Union(_)) {
+            if is_union(unwrap(items)) {
                 format!("({inner})[]")
             } else {
                 format!("{inner}[]")
@@ -93,12 +131,17 @@ fn base_type(ty: &TypeDescription) -> Option<String> {
             format!("{{{}}}", fields.join(", "))
         }
         TypeDescription::Nullable(inner) => return base_type(unwrap(inner)),
+        // `structure` never gives a named type, and the others answered
+        // above.
+        TypeDescription::Component(_) | TypeDescription::Action(_) | TypeDescription::Named(..) => {
+            return base_type(structure(ty));
+        }
     })
 }
 
-/// `isOptionalType`: optional, or a nullable type.
+/// `isOptionalType`: optional, or a nullable type (named or not).
 fn is_optional(optional: bool, ty: &TypeDescription) -> bool {
-    optional || matches!(ty, TypeDescription::Nullable(_))
+    optional || matches!(structure(ty), TypeDescription::Nullable(_))
 }
 
 /// `schemaSignature` for a component: `Name(field, ...)`, with the props in
@@ -117,9 +160,15 @@ pub(crate) fn signature<'a>(name: &str, props: impl Iterator<Item = &'a PropDefi
             Some(ty) => {
                 out.push_str(&prop.name);
                 out.push_str(if optional { "?: " } else { ": " });
-                out.push_str(&ty);
+                if prop.binding {
+                    out.push_str("$binding<");
+                    out.push_str(&ty);
+                    out.push('>');
+                } else {
+                    out.push_str(&ty);
+                }
             }
-            None if matches!(unwrap(&prop.ty), TypeDescription::Array(_)) => {
+            None if matches!(structure(unwrap(&prop.ty)), TypeDescription::Array(_)) => {
                 out.push('[');
                 out.push_str(&prop.name);
                 out.push_str(if optional { "]?" } else { "]" });

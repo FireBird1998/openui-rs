@@ -2,6 +2,43 @@
 
 ## Unreleased
 
+- Library definitions: the kinds that link a library together (#133, spec
+  #123). A prop's type can refer to another component of the library
+  (`{"kind": "component", "name": "Item"}`), be an action slot
+  (`{"kind": "action"}`, or `{"kind": "action", "name": "OpenUrl"}` for one
+  built-in action, so a slot restricted to several is a union of them), or
+  be a named type (`{"kind": "named", "name": "Color", "type": T}`); a prop
+  can be marked a binding (`"binding": true`, on the prop, so it marks only
+  the outermost type). Each is written as upstream's lang-core with zod
+  4.6.7 writes it: a reference as a `$ref` and the component's name, an
+  action slot as a `$ref` to `ActionExpression`, `OpenUrl` or `ToAssistant`
+  (printed `ActionExpression` or `@OpenUrl`), whose `$defs` entry appears
+  only when a component refers to it and not at all when a component has
+  its name (the action is then written inline), a binding as
+  `$binding<T>` with the unmarked type's schema, and a named type as its
+  name in the signature and its structure in the schema, with upstream's
+  quirks (a named nullable prints its inner type, an empty name is none, an
+  array of the action slot or of a named union is parenthesised). `$defs`
+  come in upstream's order, verified by running upstream on libraries whose
+  components refer to each other forwards, backwards, cyclically and to
+  themselves: the order zod first meets each schema walking the components
+  depth first. The walk visits each component once with its own stack, so a
+  cycle or a reference chain as long as the library costs nothing more
+  (2,000 components in a cycle on a 64 KiB thread). A reference to a name
+  that is no component's is refused with the new
+  `LibraryDefinitionError::UnknownComponent`, an action name a slot can't
+  name with `UnknownAction`, and a reference to the component with the
+  empty name, or a named type over a reference, a slot or another named
+  type, as invalid. `TypeDescription` gains `Component`, `Action` and
+  `Named`; `PropDefinition` gains `binding` (a breaking change for code that
+  builds it literally, #146). The reference converter now carries component
+  references (found by identity), action slots, named types (a component
+  outside the library is one) and bindings on a prop's outermost type, and
+  refuses by name a binding anywhere else (upstream prints it but never
+  binds it), a prompt name on `.optional()`, a reference to the empty name
+  or to a component a later one of the same name shadows, and a custom
+  action's ref (#134); 16 new samples pin each case.
+
 - Library definitions: the remaining data kinds (#132, spec #123). A
   prop's type can also be a list of allowed words (`enum`), an `array`, a
   `union`, an inline `object` with ordered fields, a `record` or `nullable`,

@@ -13,9 +13,22 @@
 // partial or loose record, or anything zod adds later is refused by the
 // field's name, and a kind not listed (z.literal, z.tuple, z.intersection,
 // z.map, z.lazy, ...) by its name. Beyond the def it refuses, on every type at
-// every depth, metadata (.describe(), .meta()), a binding, and a schema with a
-// prompt name (a component's props used as a type, an action slot, a tagged
-// type): those are #133's. It refuses symbol keys in an object's shape
+// every depth, metadata (.describe(), .meta()).
+//
+// The kinds that link a library together (#133) are found by identity: a
+// component's props object used as a type is a reference to that component
+// (refused when the name is empty, or when a later component of the same name
+// shadows it: upstream then throws or registers another schema under that
+// name, and the plain data refers by name); action() is the action slot and
+// steps.OpenUrl.ref and steps.ToAssistant.ref the named built-in actions (a
+// custom action's ref holds a z.literal, refused by that name until #134);
+// any other schema with a prompt name (tagSchemaId, or the props of a
+// component outside the library) is a named type. A binding (reactive()) is
+// carried on a prop's outermost schema, the .optional() wrapper included,
+// and refused anywhere else: upstream prints $binding<...> inside a type too,
+// but its runtime binds only a prop's outermost schema, so the plain data
+// has nowhere to say it. A prompt name on an .optional() wrapper is refused
+// too (upstream never reads it). It refuses symbol keys in an object's shape
 // (upstream throws on them), a type nested deeper than the core's default
 // depth limit (which also stops a recursive getter schema by name), and
 // .optional() anywhere but directly on a
@@ -27,7 +40,7 @@
 // other, and the plain data has no identity to carry that), a component
 // without a renderer, and a field the plain-data form doesn't have on the
 // library, a component or a component group.
-import { ACTION_DEFS } from "./lang-core/src/parser/builtins";
+import { action, steps } from "./lang-core/src/parser/builtins";
 import { isReactiveSchema } from "./lang-core/src/reactive";
 import { schemaIdTags } from "./lang-core/src/signature";
 import * as z from "zod/v4/core";
@@ -42,9 +55,12 @@ export type TypeDescription =
   | { kind: "union"; options: TypeDescription[] }
   | { kind: "object"; fields: FieldDefinition[] }
   | { kind: "record"; values: TypeDescription }
-  | { kind: "nullable"; type: TypeDescription };
+  | { kind: "nullable"; type: TypeDescription }
+  | { kind: "component"; name: string }
+  | { kind: "action"; name?: string }
+  | { kind: "named"; name: string; type: TypeDescription };
 export type FieldDefinition = { name: string; type: TypeDescription; optional?: true };
-export type PropDefinition = FieldDefinition;
+export type PropDefinition = FieldDefinition & { binding?: true };
 export type ComponentDefinition = { name: string; description: string; props: PropDefinition[] };
 export type ComponentGroup = { name: string; components: string[]; notes?: string[] };
 export type LibraryDefinition = {
@@ -100,8 +116,9 @@ function refuseUnknownFields(value: object, allowed: string[], where: string) {
 }
 
 // The def holds only the allowed fields, no checks, and nothing outside the
-// def changes what zod writes.
-function refuseDetails(schema: z.$ZodType, allowed: string[], where: string) {
+// def changes what zod writes. A binding is refused unless `binding` says the
+// schema is a prop's outermost one.
+function refuseDetails(schema: z.$ZodType, allowed: string[], where: string, binding = false) {
   const d = def(schema);
   if (d === undefined || d === null || typeof d !== "object") throw new Error(`${where}: not a zod schema`);
   for (const key of Object.keys(d)) {
@@ -111,10 +128,27 @@ function refuseDetails(schema: z.$ZodType, allowed: string[], where: string) {
     throw new Error(`${where}: checks (${d.type} with .min() and the like) aren't supported yet`);
   }
   if (z.globalRegistry.get(schema) !== undefined) throw new Error(`${where}: metadata (.describe(), .meta()) isn't supported yet`);
-  if (isReactiveSchema(schema)) throw new Error(`${where}: reactive (binding) isn't supported yet`);
+  refuseBinding(schema, where, binding);
 }
 
-const ACTION_SCHEMAS = new Set<unknown>(Object.values(ACTION_DEFS));
+function refuseBinding(schema: unknown, where: string, binding: boolean) {
+  if (!binding && isReactiveSchema(schema)) {
+    throw new Error(`${where}: reactive (binding) anywhere but on a prop's outermost type isn't supported`);
+  }
+}
+
+// The action slot and the built-in actions a restricted slot names, by
+// identity, as upstream's ACTION_DEFS registers them.
+const ACTION_SCHEMAS = new Map<unknown, TypeDescription>([
+  [action(), { kind: "action" }],
+  [steps.OpenUrl.ref, { kind: "action", name: "OpenUrl" }],
+  [steps.ToAssistant.ref, { kind: "action", name: "ToAssistant" }],
+]);
+
+// A library component's props object, by identity: its name, and whether it
+// is the last component of that name (the one a reference by name means).
+type Owner = { name: string; last: boolean };
+let owners = new Map<unknown, Owner>();
 
 // A type, at any depth: a scalar, or one of the kinds that hold other types.
 // How deep a type may nest, a prop's own type being level 1: the core's
@@ -122,21 +156,50 @@ const ACTION_SCHEMAS = new Set<unknown>(Object.values(ACTION_DEFS));
 // getter returning its own object) by name instead of by the stack.
 export const MAX_TYPE_DEPTH = 256;
 
-function typeOf(schema: z.$ZodType, where: string, depth: number): TypeDescription {
+function refuseDepth(where: string, depth: number) {
   if (depth > MAX_TYPE_DEPTH) {
     throw new Error(`${where}: types nest deeper than ${MAX_TYPE_DEPTH} levels (a recursive schema?), which the core refuses`);
   }
+}
+
+// `binding`: the schema is a prop's outermost one, where a binding is carried.
+function typeOf(schema: z.$ZodType, where: string, depth: number, binding = false): TypeDescription {
+  refuseDepth(where, depth);
+  const owner = owners.get(schema);
+  if (owner !== undefined) {
+    if (owner.name === "") throw new Error(`${where}: a reference to the component with the empty name isn't supported`);
+    if (!owner.last) throw new Error(`${where}: a reference to a component shadowed by a later one of the same name isn't supported`);
+    // Its props were checked as that component's; a binding is only ever
+    // the prop's (a reactive props object is refused there).
+    refuseBinding(schema, where, binding);
+    return { kind: "component", name: owner.name };
+  }
+  const slot = ACTION_SCHEMAS.get(schema);
+  if (slot !== undefined) {
+    if (z.globalRegistry.get(schema as z.$ZodType) !== undefined) throw new Error(`${where}: metadata (.describe(), .meta()) isn't supported yet`);
+    if (slot.kind === "action" && slot.name === undefined && schemaIdTags.get(schema as object) !== "ActionExpression") {
+      throw new Error(`${where}: an action slot whose prompt name was changed isn't supported`);
+    }
+    refuseBinding(schema, where, binding);
+    return { ...slot };
+  }
+  if (typeof schema === "object" && schema !== null && schemaIdTags.has(schema)) {
+    const name = schemaIdTags.get(schema) as string;
+    // The tag names the schema object; its structure is one level in.
+    return { kind: "named", name, type: structureOf(schema, where, depth + 1, binding) };
+  }
+  return structureOf(schema, where, depth, binding);
+}
+
+function structureOf(schema: z.$ZodType, where: string, depth: number, binding: boolean): TypeDescription {
+  refuseDepth(where, depth);
   const d = def(schema);
   const kind = d?.type;
-  if (ACTION_SCHEMAS.has(schema)) throw new Error(`${where}: an action slot isn't supported yet`);
-  if (typeof schema === "object" && schema !== null && schemaIdTags.has(schema)) {
-    throw new Error(`${where}: a named schema (a component reference, action slot or tagged type) isn't supported yet`);
-  }
   switch (kind) {
     case "optional":
       throw new Error(`${where}: optional inside a type (anywhere but on a prop or an object field) isn't supported`);
     case "enum": {
-      refuseDetails(schema, ENUM_DEF, where);
+      refuseDetails(schema, ENUM_DEF, where, binding);
       const entries = Object.entries(d.entries as Record<string, unknown>);
       if (!entries.every(([key, value]) => typeof value === "string" && key === value)) {
         throw new Error(`${where}: an enum whose keys aren't its string values (an object map or native enum) isn't supported`);
@@ -145,47 +208,53 @@ function typeOf(schema: z.$ZodType, where: string, depth: number): TypeDescripti
       return { kind, values: entries.map(([key]) => key) };
     }
     case "array":
-      refuseDetails(schema, ARRAY_DEF, where);
+      refuseDetails(schema, ARRAY_DEF, where, binding);
       return { kind, items: typeOf(d.element, `${where}[]`, depth + 1) };
     case "union":
-      refuseDetails(schema, UNION_DEF, where);
+      refuseDetails(schema, UNION_DEF, where, binding);
       return { kind, options: (d.options as z.$ZodType[]).map((o, i) => typeOf(o, `${where}|${i}`, depth + 1)) };
     case "object":
-      return { kind, fields: fieldsOf(schema as z.$ZodObject, where, depth + 1) };
+      return { kind, fields: fieldsOf(schema as z.$ZodObject, where, depth + 1, binding) };
     case "record": {
-      refuseDetails(schema, RECORD_DEF, where);
+      refuseDetails(schema, RECORD_DEF, where, binding);
       const key = d.keyType;
       if (def(key)?.type !== "string") throw new Error(`${where}: a record key other than z.string() isn't supported`);
       refuseDetails(key, SCALAR_DEFS.string, `${where} record key`);
       return { kind, values: typeOf(d.valueType, `${where}{}`, depth + 1) };
     }
     case "nullable":
-      refuseDetails(schema, NULLABLE_DEF, where);
+      refuseDetails(schema, NULLABLE_DEF, where, binding);
       return { kind, type: typeOf(d.innerType, `${where}?`, depth + 1) };
   }
   const allowed = SCALAR_DEFS[kind];
   if (!Object.hasOwn(SCALAR_DEFS, kind) || allowed === undefined) throw new Error(`${where}: zod kind "${kind}" isn't supported yet`);
-  refuseDetails(schema, allowed, where);
+  refuseDetails(schema, allowed, where, binding);
   return { kind } as TypeDescription;
 }
 
-// A prop or an object field: .optional() is allowed here and only here.
-function fieldOf(name: string, schema: z.$ZodType, where: string, depth: number): FieldDefinition {
+// A prop or an object field: .optional() is allowed here and only here. A
+// prop (`prop`) carries a binding on its outermost schema: the .optional()
+// wrapper when there is one, as upstream reads it.
+function fieldOf(name: string, schema: z.$ZodType, where: string, depth: number, prop = false): PropDefinition {
+  const binding = prop && isReactiveSchema(schema);
+  const marks = binding ? { binding: true as const } : {};
   if (def(schema)?.type === "optional") {
-    refuseDetails(schema, OPTIONAL_DEF, where);
-    return { name, type: typeOf(def(schema).innerType, where, depth), optional: true };
+    refuseDetails(schema, OPTIONAL_DEF, where, prop);
+    if (schemaIdTags.has(schema)) throw new Error(`${where}: a prompt name on .optional() (which upstream never reads) isn't supported`);
+    return { name, type: typeOf(def(schema).innerType, where, depth), optional: true, ...marks };
   }
-  return { name, type: typeOf(schema, where, depth) };
+  return { name, type: typeOf(schema, where, depth, prop), ...marks };
 }
 
-// The fields of a z.object (a component's props or an inline object), in
-// Object.entries order; `depth` is its fields' types' level. Object.entries
-// skips symbol keys, which upstream refuses ("Symbol keys cannot be
-// represented in JSON Schema"), so a shape with one is refused here.
-function fieldsOf(object: z.$ZodObject, where: string, depth: number): FieldDefinition[] {
+// The fields of a z.object (a component's props, `props`, or an inline
+// object), in Object.entries order; `depth` is its fields' types' level.
+// Object.entries skips symbol keys, which upstream refuses ("Symbol keys
+// cannot be represented in JSON Schema"), so a shape with one is refused
+// here. `binding`: an inline object that is a prop's outermost type.
+function fieldsOf(object: z.$ZodObject, where: string, depth: number, binding = false, props = false): PropDefinition[] {
   const d = def(object);
   if (d?.type !== "object" || !d.shape) throw new Error(`${where}: props must be z.object(...)`);
-  refuseDetails(object, OBJECT_DEF, where);
+  refuseDetails(object, OBJECT_DEF, where, binding);
   if (d.catchall !== undefined) {
     if (def(d.catchall)?.type !== "never") throw new Error(`${where}: an object with a catch-all (z.looseObject, .catchall()) isn't supported`);
     refuseDetails(d.catchall, NEVER_DEF, `${where} catch-all`);
@@ -193,7 +262,7 @@ function fieldsOf(object: z.$ZodObject, where: string, depth: number): FieldDefi
   if (Object.getOwnPropertySymbols(d.shape).length > 0) {
     throw new Error(`${where}: an object with symbol keys isn't supported (upstream can't write it as JSON Schema)`);
   }
-  return Object.entries(d.shape).map(([name, s]) => fieldOf(name, s as z.$ZodType, `${where}.${name}`, depth));
+  return Object.entries(d.shape).map(([name, s]) => fieldOf(name, s as z.$ZodType, `${where}.${name}`, depth, props));
 }
 
 function isStrings(value: unknown): value is string[] {
@@ -221,6 +290,14 @@ function groupOf(g: ComponentGroup, where: string): ComponentGroup {
 export function toLibraryDefinition(input: Declared): LibraryDefinition {
   refuseUnknownFields(input, LIBRARY_FIELDS, "library");
   const seen = new Set<unknown>();
+  // Every component's props object, for references; the last of each name
+  // is the one a reference by name means.
+  const lastOfName = new Map<unknown, number>();
+  input.components.forEach((c, i) => lastOfName.set(c.name, i));
+  owners = new Map();
+  input.components.forEach((c, i) => {
+    if (typeof c.name === "string" && !owners.has(c.props)) owners.set(c.props, { name: c.name, last: lastOfName.get(c.name) === i });
+  });
   const components = input.components.map((c, i) => {
     const where = typeof c.name === "string" ? c.name : `components[${i}]`;
     refuseUnknownFields(c, COMPONENT_FIELDS, where);
@@ -233,7 +310,7 @@ export function toLibraryDefinition(input: Declared): LibraryDefinition {
     if (!c.component) throw new Error(`${where}: a component without a renderer isn't supported`);
     if (seen.has(c.props)) throw new Error(`${where}: a props object shared with another component isn't supported`);
     seen.add(c.props);
-    return { name: c.name, description: c.description, props: fieldsOf(c.props, where, 1) };
+    return { name: c.name, description: c.description, props: fieldsOf(c.props, where, 1, false, true) };
   });
   if (input.root !== undefined && typeof input.root !== "string") throw new Error("library: root is a string");
   if (input.id !== undefined && typeof input.id !== "string") throw new Error("library: id is a string");

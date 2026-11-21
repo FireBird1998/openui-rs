@@ -17,9 +17,9 @@ import { z } from "zod/v4";
 
 process.env.OPENUI_TELEMETRY_DISABLED = "1";
 process.env.DO_NOT_TRACK = "1";
-const { createLibrary, defineComponent } = await import("./lang-core/src/library");
+const { createLibrary, defineComponent, defineAction } = await import("./lang-core/src/library");
 const { toLibraryDefinition } = await import("./library-definition");
-const { action } = await import("./lang-core/src/parser/builtins");
+const { action, steps } = await import("./lang-core/src/parser/builtins");
 const { markReactive } = await import("./lang-core/src/reactive");
 const { tagSchemaId } = await import("./lang-core/src/signature");
 
@@ -65,6 +65,15 @@ const scalars: Input = {
 };
 
 const one = (props: Record<string, z.ZodType> | z.ZodObject): Input => ({ components: [component("A", "a", props)] });
+// reactive(), as react-lang's marks a schema a binding, and tagSchemaId.
+const bound = <T extends object>(schema: T): T => {
+  markReactive(schema);
+  return schema;
+};
+const named = <T extends object>(schema: T, name: string): T => {
+  tagSchemaId(schema, name);
+  return schema;
+};
 
 const samples: [string, () => Input][] = [
   ["scalars", () => scalars],
@@ -315,6 +324,218 @@ const samples: [string, () => Input][] = [
       root: "Table",
     }),
   ],
+  // The kinds that link a library together (#133). A component reference is
+  // a $ref to the component's $defs entry and its name in the signature,
+  // inside any kind.
+  [
+    "component-reference",
+    () => {
+      const item = component("Item", "An item.", { text: z.string() });
+      const other = component("Other", "", {});
+      return {
+        components: [
+          component("List", "A list.", {
+            items: z.array(item.ref),
+            either: z.union([item.ref, other.ref]),
+            maybe: item.ref.nullable(),
+            optional: item.ref.optional(),
+            field: z.object({ item: item.ref, more: other.ref.optional() }),
+            byKey: z.record(z.string(), item.ref),
+            mixed: z.array(z.union([item.ref, other.ref])),
+            withText: z.union([item.ref, z.string()]),
+          }),
+          item,
+          other,
+        ],
+        root: "List",
+      };
+    },
+  ],
+  // $defs come in the order zod first meets each schema walking the
+  // components in order, depth first: a component referred to before its own
+  // turn comes at the reference, with what it refers to after it.
+  [
+    "reference-order-forwards",
+    () => {
+      const d = component("D", "d", {});
+      const c = component("C", "c", { d: d.ref });
+      const b = component("B", "b", {});
+      return { components: [component("A", "a", { c: c.ref, b: b.ref }), b, c, d] };
+    },
+  ],
+  [
+    "reference-order-backwards",
+    () => {
+      const b = component("B", "b", { v: z.string() });
+      return { components: [b, component("A", "a", { b: b.ref, again: z.array(b.ref) })] };
+    },
+  ],
+  [
+    "reference-cycle",
+    () => {
+      const a: any = component("A", "a", {
+        get b() {
+          return b.ref;
+        },
+        n: z.number().optional(),
+      });
+      const b: any = component("B", "b", { a: a.ref.nullable(), list: z.array(a.ref) });
+      return { components: [component("Root", "r", { b: b.ref }), a, b], root: "Root" };
+    },
+  ],
+  [
+    "reference-self",
+    () => {
+      const node: any = component("Node", "A tree node.", {
+        label: z.string(),
+        get children() {
+          return z.array(node.ref).optional();
+        },
+      });
+      return { components: [node], root: "Node" };
+    },
+  ],
+  // Refers to a component through a $ref escaped as a JSON Pointer, and
+  // into a component named __proto__ (registered, so it gets a $defs entry,
+  // but not in the record, so no description and no property).
+  [
+    "reference-escaping-and-proto",
+    () => {
+      const slash = component("a/b", "slash", {});
+      const tilde = component("a~b", "tilde", {});
+      const proto = component("__proto__", "p", { v: z.string() });
+      return { components: [component("A", "a", { s: slash.ref, t: z.array(tilde.ref), p: proto.ref }), slash, tilde, proto] };
+    },
+  ],
+  // Of two components of one name the later wins, and a reference means it.
+  [
+    "reference-to-the-later-duplicate",
+    () => {
+      const first = component("K", "first", { v: z.string() });
+      const later = component("K", "later", { w: z.number() });
+      return { components: [first, component("A", "a", { k: later.ref }), later] };
+    },
+  ],
+  // A component outside the library is no reference: upstream prints its
+  // name and writes its props inline, a named type.
+  [
+    "component-outside-library",
+    () => one({ out: component("Out", "o", { v: z.string() }).ref, list: z.array(component("Out2", "", {}).ref) }),
+  ],
+  // The action slot: $defs.ActionExpression, printed ActionExpression (in
+  // parentheses as an array's items: its schema is a union).
+  [
+    "action-slot",
+    () => ({
+      components: [
+        component("Button", "b", { label: z.string(), action: action().optional() }),
+        component("Menu", "m", { actions: z.array(action()), maybe: action().nullable() }),
+      ],
+    }),
+  ],
+  // A slot restricted to named actions: a union of their refs, printed @Name.
+  [
+    "action-restricted",
+    () => one({
+      both: z.union([steps.OpenUrl.ref, steps.ToAssistant.ref]).optional(),
+      one: steps.ToAssistant.ref,
+      single: z.union([steps.OpenUrl.ref]),
+      maybe: steps.OpenUrl.ref.nullable(),
+      list: z.array(z.union([steps.ToAssistant.ref, steps.OpenUrl.ref])),
+    }),
+  ],
+  // Action $defs come where they are first met, among the components'.
+  [
+    "action-definition-order",
+    () => {
+      const later = component("Later", "l", { go: steps.OpenUrl.ref });
+      return {
+        components: [component("First", "f", { tell: steps.ToAssistant.ref, later: later.ref, act: action() }), later],
+      };
+    },
+  ],
+  // A component of an action's name wins its $defs entry; the action is then
+  // written inline wherever it is used, and prints as before.
+  [
+    "action-shadowed-by-component",
+    () => ({
+      components: [
+        component("A", "a", { act: action(), maybe: action().optional(), go: steps.OpenUrl.ref, tell: steps.ToAssistant.ref }),
+        component("ActionExpression", "x", { v: z.string() }),
+        component("OpenUrl", "", {}),
+      ],
+    }),
+  ],
+  // A binding on a prop's outermost type (the .optional() wrapper included)
+  // prints $binding<...>; the schema is the unmarked type's.
+  [
+    "binding",
+    () => {
+      const item = component("Item", "", {});
+      return {
+        components: [
+          component("Input", "i", {
+            value: bound(z.string()),
+            maybe: bound(z.string().optional()),
+            nullable: bound(z.string().nullable()),
+            list: bound(z.array(z.string())),
+            words: bound(z.enum(["a", "b"])),
+            none: bound(z.enum([] as any)),
+            noneList: bound(z.array(z.enum([] as any)).optional()),
+            map: bound(z.record(z.string(), z.number())),
+            anything: bound(z.any()),
+            either: bound(z.union([z.string(), z.number()]).nullable().optional()),
+            shape: bound(z.object({ x: z.string() })),
+            item: bound(item.ref.optional()),
+            act: bound(action().optional()),
+            go: bound(steps.OpenUrl.ref.nullable()),
+            plain: z.string(),
+          }),
+          item,
+        ],
+      };
+    },
+  ],
+  // A named type prints its name and writes its structure. The name sits on
+  // the schema it tags: lost under .nullable() (upstream unwraps it first),
+  // empty means none, and an array of a named union keeps the parentheses.
+  [
+    "named-type",
+    () => one({
+      color: named(z.string(), "Color"),
+      optional: named(z.string(), "Color").optional(),
+      nullable: named(z.string(), "Color").nullable(),
+      tagNullable: named(z.string().nullable(), "Color"),
+      shape: named(z.object({ r: z.number() }), "Rgb"),
+      list: named(z.array(z.string()), "List"),
+      nothing: named(z.enum([] as any), "Nothing"),
+      empty: named(z.string(), ""),
+      emptyList: named(z.array(z.enum([] as any)), ""),
+      noUnion: named(z.union([] as any), "U"),
+      boundLength: bound(named(z.number(), "Length")),
+    }),
+  ],
+  [
+    "named-type-in-containers",
+    () => one({
+      colors: z.array(named(z.string(), "Color")),
+      either: z.union([named(z.string(), "Color"), z.number()]),
+      lengths: z.array(named(z.union([z.string(), z.number()]), "Length")),
+      byKey: z.record(z.string(), named(z.number(), "Length")),
+      nullableItems: z.array(named(z.string().nullable(), "Color")),
+      field: z.object({ c: named(z.string(), "Color").optional(), n: named(z.string().nullable(), "Color") }),
+    }),
+  ],
+  // One name over two structures, and a name that is also a component's.
+  [
+    "named-type-collisions",
+    () => ({
+      components: [
+        component("A", "a", { text: named(z.string(), "Color"), rgb: named(z.object({ r: z.number() }), "Color"), b: named(z.boolean(), "B") }),
+        component("B", "b", {}),
+      ],
+    }),
+  ],
   ["root-missing", () => ({ components: [component("A", "a", {}), component("B", "b", {})], root: "C" })],
   ["root-missing-no-components", () => ({ components: [], root: "Page" })],
   ["root-missing-proto-component", () => ({ components: [component("__proto__", "p", {})], root: "Nope" })],
@@ -335,11 +556,6 @@ const deepArray = (levels: number): z.ZodType => {
   let type: z.ZodType = z.string();
   for (let i = 0; i < levels; i++) type = z.array(type);
   return type;
-};
-const tagged = () => {
-  const schema = z.string();
-  tagSchemaId(schema, "Color");
-  return schema;
 };
 const refusals: [string, () => unknown, string, string?][] = [
   ["int", () => one({ n: z.int() }), '"check"'],
@@ -398,18 +614,59 @@ const refusals: [string, () => unknown, string, string?][] = [
   ["inner-catchall", () => one({ o: z.object({ a: z.string() }).catchall(z.string()) }), "catch-all"],
   ["describe-nested", () => one({ a: z.array(z.string().describe("d")) }), "metadata"],
   ["meta-object", () => one({ o: z.object({}).meta({ title: "t" }) }), "metadata"],
+  // A binding anywhere but on a prop's outermost type (#133): upstream
+  // prints $binding<...> there but never binds it.
+  ["reactive-nested", () => one({ a: z.array(bound(z.string())) }), "reactive"],
+  ["reactive-in-union", () => one({ u: z.union([bound(z.string()), z.number()]) }), "reactive"],
+  ["reactive-in-field", () => one({ o: z.object({ x: bound(z.string()) }) }), "reactive"],
+  ["reactive-in-record", () => one({ r: bound(z.record(z.string(), bound(z.number()))) }), "reactive"],
+  // Under .optional() or .nullable() upstream ignores it altogether.
+  ["reactive-inside-optional", () => one({ o: bound(z.string()).optional() }), "reactive"],
+  ["reactive-inside-nullable", () => one({ n: bound(z.string()).nullable() }), "reactive"],
+  ["reactive-field", () => one({ o: z.object({ x: bound(z.string().optional()) }) }), "reactive"],
+  // Marking a component's props object marks every reference to it.
   [
-    "reactive-nested",
+    "reactive-component-props",
     () => {
-      const inner = z.string();
-      markReactive(inner);
-      return one({ a: z.array(inner) });
+      const item = component("Item", "", {});
+      return { components: [component("A", "a", { i: bound(item.ref) }), item] };
     },
     "reactive",
   ],
-  ["component-reference", () => one({ items: z.array(component("Item", "i", {}).ref as any) }), "named schema"],
-  ["action-slot", () => one({ action: action().optional() }), "action slot"],
-  ["named-type", () => one({ c: tagged() }), "named schema"],
+  // Upstream never reads a prompt name on .optional().
+  ["tag-on-optional", () => one({ o: named(z.string().optional(), "Opt") }), "prompt name on .optional()"],
+  // A reference the plain data's names can't say.
+  [
+    "reference-to-empty-name",
+    () => {
+      const empty = component("", "e", {});
+      return { components: [component("A", "a", { e: empty.ref }), empty] };
+    },
+    "empty name",
+  ],
+  [
+    "reference-to-shadowed-duplicate",
+    () => {
+      const first = component("K", "first", {});
+      return { components: [first, component("A", "a", { k: first.ref }), component("K", "later", {})] };
+    },
+    "shadowed",
+    'Duplicate schema id "K"',
+  ],
+  [
+    "reference-to-first-of-two-proto",
+    () => {
+      const first = component("__proto__", "p", { v: z.string() });
+      return { components: [first, component("__proto__", "q", {}), component("A", "a", { p: first.ref })] };
+    },
+    "shadowed",
+  ],
+  // A custom action's ref holds a z.literal; custom actions are #134's.
+  [
+    "custom-action-ref",
+    () => one({ a: defineAction({ name: "Copy", description: "c", params: z.object({ text: z.string() }) }).ref as any }),
+    'kind "literal"',
+  ],
   // Object.entries skips symbol keys; upstream throws on them, at the props
   // object and inside it (checked below).
   ["symbol-key-props", () => one(withSymbol({ a: z.string() })), "symbol keys", "Symbol keys cannot be represented in JSON Schema"],

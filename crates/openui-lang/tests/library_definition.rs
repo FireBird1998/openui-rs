@@ -159,7 +159,7 @@ fn a_proto_component_answers_the_root_check_with_its_own_fields() {
 
 #[test]
 fn a_kind_the_core_does_not_support_is_refused_naming_the_kind() {
-    for kind in ["component", "action", "named", "date", "literal", ""] {
+    for kind in ["date", "literal", "tuple", "Component", ""] {
         let definition = json!({"components": [{
             "name": "Card", "description": "",
             "props": [{"name": "ok", "type": {"kind": "string"}}, {"name": "tone", "type": {"kind": kind}}]
@@ -286,6 +286,51 @@ fn malformed_definitions_are_refused_with_where_and_why() {
             "unknown field",
         ),
         (
+            json!({"components": [{"name": "A", "description": "", "props": [
+                {"name": "x", "type": {"kind": "component"}}
+            ]}]}),
+            "components[0].props[0].type.name",
+            "missing",
+        ),
+        (
+            json!({"components": [{"name": "A", "description": "", "props": [
+                {"name": "x", "type": {"kind": "action", "name": 1}}
+            ]}]}),
+            "components[0].props[0].type.name",
+            "expected a string",
+        ),
+        (
+            json!({"components": [{"name": "A", "description": "", "props": [
+                {"name": "x", "type": {"kind": "action", "only": ["OpenUrl"]}}
+            ]}]}),
+            "components[0].props[0].type.only",
+            "unknown field",
+        ),
+        (
+            json!({"components": [{"name": "A", "description": "", "props": [
+                {"name": "x", "type": {"kind": "named", "name": "Color"}}
+            ]}]}),
+            "components[0].props[0].type.type",
+            "missing",
+        ),
+        (
+            json!({"components": [{"name": "A", "description": "", "props": [
+                {"name": "x", "type": {"kind": "string"}, "binding": "yes"}
+            ]}]}),
+            "components[0].props[0].binding",
+            "expected a boolean",
+        ),
+        // A binding marks a prop's outermost type only: a field has none.
+        (
+            json!({"components": [{"name": "A", "description": "", "props": [
+                {"name": "x", "type": {"kind": "object", "fields": [
+                    {"name": "f", "type": {"kind": "string"}, "binding": true}
+                ]}}
+            ]}]}),
+            "components[0].props[0].type.fields[0].binding",
+            "unknown field",
+        ),
+        (
             json!({"components": [], "root": null}),
             "root",
             "expected a string",
@@ -315,6 +360,202 @@ fn malformed_definitions_are_refused_with_where_and_why() {
             other => panic!("{definition}: expected Invalid, got {other:?}"),
         }
     }
+}
+
+/// A reference to a name that is no component of the library, or an action
+/// slot naming an action a slot can't name, is refused with where and what,
+/// wherever the reference sits.
+#[test]
+fn a_reference_to_a_name_that_is_not_a_component_is_refused() {
+    let with_type = |ty: Value| {
+        let mut prop = json!({"name": "x"});
+        prop["type"] = ty;
+        json!({"components": [
+            {"name": "Item", "description": "", "props": []},
+            {"name": "List", "description": "", "props": [
+                {"name": "ok", "type": {"kind": "component", "name": "Item"}},
+                prop
+            ]}
+        ]})
+    };
+    let cases = [
+        (
+            json!({"kind": "component", "name": "Missing"}),
+            "components[1].props[1].type",
+        ),
+        (
+            json!({"kind": "array", "items": {"kind": "union", "options": [
+                {"kind": "string"},
+                {"kind": "nullable", "type": {"kind": "component", "name": "item"}}
+            ]}}),
+            "components[1].props[1].type.items.options[1].type",
+        ),
+        (
+            json!({"kind": "object", "fields": [{"name": "f", "type": {"kind": "record", "values":
+                {"kind": "named", "name": "N", "type": {"kind": "array", "items": {"kind": "component", "name": "toString"}}}
+            }}]}),
+            "components[1].props[1].type.fields[0].type.values.type.items",
+        ),
+    ];
+    for (ty, want_path) in cases {
+        let err = define(&with_type(ty)).err().unwrap();
+        match &err {
+            LibraryDefinitionError::UnknownComponent { path, name } => {
+                assert_eq!(path, want_path);
+                assert!(
+                    err.to_string().ends_with(&format!(
+                        "{path}: \"{name}\" is not a component of the library"
+                    )),
+                    "{err}"
+                );
+            }
+            other => panic!("expected UnknownComponent, got {other:?}"),
+        }
+    }
+    assert_eq!(
+        define(&with_type(json!({"kind": "component", "name": "Missing"})))
+            .err()
+            .unwrap()
+            .to_string(),
+        r#"library definition: components[1].props[1].type: "Missing" is not a component of the library"#
+    );
+
+    for name in ["ActionExpression", "Run", "Set", "openUrl", ""] {
+        let err = define(&with_type(json!({"kind": "action", "name": name})))
+            .err()
+            .unwrap();
+        assert!(
+            matches!(&err, LibraryDefinitionError::UnknownAction { path, name: named }
+                if path == "components[1].props[1].type" && named == name),
+            "{err:?}"
+        );
+        assert_eq!(
+            err.to_string(),
+            format!(
+                "library definition: components[1].props[1].type: \"{name}\" is not an action a slot can name (the built-in ones are OpenUrl and ToAssistant)"
+            )
+        );
+    }
+
+    // The component with the empty name exists, but a reference to it is not
+    // supported: upstream writes its schema inline at each reference, or
+    // never finishes when it refers to itself.
+    let mut definition = with_type(json!({"kind": "component", "name": ""}));
+    definition["components"][0]["name"] = json!("");
+    definition["components"][1]["props"][0]["type"]["name"] = json!("List");
+    match define(&definition).err().unwrap() {
+        LibraryDefinitionError::Invalid { path, problem } => {
+            assert_eq!(path, "components[1].props[1].type");
+            assert_eq!(
+                problem,
+                "a reference to the component with the empty name is not supported"
+            );
+        }
+        other => panic!("expected Invalid, got {other:?}"),
+    }
+
+    // A named type names a data type.
+    for inner in [
+        json!({"kind": "component", "name": "Item"}),
+        json!({"kind": "action"}),
+        json!({"kind": "named", "name": "M", "type": {"kind": "string"}}),
+    ] {
+        let mut ty = json!({"kind": "named", "name": "N"});
+        ty["type"] = inner;
+        match define(&with_type(ty)).err().unwrap() {
+            LibraryDefinitionError::Invalid { path, problem } => {
+                assert_eq!(path, "components[1].props[1].type.type");
+                assert!(
+                    problem.starts_with("a named type names a data type"),
+                    "{problem}"
+                );
+            }
+            other => panic!("expected Invalid, got {other:?}"),
+        }
+    }
+}
+
+/// A binding changes the signature only: the schema, and so the parser's
+/// library, are the unmarked type's.
+#[test]
+fn a_binding_changes_the_signature_and_not_the_schema() {
+    let marked = case("binding")["definition"].clone();
+    let mut unmarked = marked.clone();
+    for prop in unmarked["components"][0]["props"].as_array_mut().unwrap() {
+        prop.as_object_mut().unwrap().remove("binding");
+    }
+    assert_ne!(marked, unmarked);
+    let (marked, unmarked) = (define(&marked).unwrap(), define(&unmarked).unwrap());
+    assert_eq!(marked.to_json_schema(), unmarked.to_json_schema());
+    assert_eq!(marked.library(), unmarked.library());
+    let signature = |library: &openui_lang::DefinedLibrary| {
+        library.to_spec()["components"]["Input"]["signature"]
+            .as_str()
+            .unwrap()
+            .to_owned()
+    };
+    assert!(
+        signature(&marked).starts_with("Input(value: $binding<string>, maybe?: $binding<string>,")
+    );
+    assert!(signature(&unmarked).starts_with("Input(value: string, maybe?: string,"));
+}
+
+/// A library whose components refer to each other is a graph: a chain as
+/// long as the library, closed into a cycle, is written visiting each
+/// component once, with no recursion through the references, on a 64 KiB
+/// stack. Its `$defs` come in the depth-first order, so a chain declared
+/// backwards comes out forwards.
+#[test]
+fn a_long_reference_chain_with_a_cycle_is_written_in_one_pass() {
+    const COMPONENTS: usize = 2_000;
+    std::thread::Builder::new()
+        .stack_size(SMALL_STACK)
+        .spawn(|| {
+            // C0 refers to C1, ..., the last back to C0; declared last first.
+            let components: Vec<Value> = (0..COMPONENTS)
+                .rev()
+                .map(|i| {
+                    let next = format!("C{}", (i + 1) % COMPONENTS);
+                    json!({"name": format!("C{i}"), "description": "", "props": [
+                        {"name": "next", "type": {"kind": "component", "name": next}},
+                        {"name": "self", "type": {"kind": "array", "items": {"kind": "component", "name": format!("C{i}")}}, "optional": true}
+                    ]})
+                })
+                .collect();
+            let mut definition = json!({});
+            definition["components"] = Value::Array(components);
+            let library = define(&definition).unwrap();
+            let schema = library.to_json_schema();
+            let defs: Vec<&str> = schema["$defs"]
+                .as_object()
+                .unwrap()
+                .keys()
+                .map(String::as_str)
+                .collect();
+            assert_eq!(defs.len(), COMPONENTS);
+            // The walk starts at the first declared, C19999, whose `next` is
+            // C0, and goes on from there.
+            assert_eq!(defs[0], format!("C{}", COMPONENTS - 1));
+            for (i, name) in defs.iter().skip(1).enumerate() {
+                assert_eq!(*name, format!("C{i}"));
+            }
+            assert_eq!(
+                stringify_json(&schema["$defs"]["C5"]["properties"]),
+                r##"{"next":{"$ref":"#/$defs/C6"},"self":{"type":"array","items":{"$ref":"#/$defs/C5"}}}"##
+            );
+            let spec = library.to_spec();
+            assert_eq!(
+                spec["components"]["C5"]["signature"],
+                "C5(next: C6, self?: C5[])"
+            );
+            let _ = library.library();
+            free_json(schema);
+            free_json(spec);
+            free_json(definition);
+        })
+        .unwrap()
+        .join()
+        .unwrap();
 }
 
 /// `z.enum` makes its words an object's keys, so they come in JavaScript
@@ -429,6 +670,34 @@ fn in_nullable(ty: Value) -> Value {
     holding("nullable", "type", ty)
 }
 
+/// A named type, or a nullable around one: a named type names no named type.
+fn in_named(ty: Value) -> Value {
+    if ty["kind"] == "named" {
+        return in_nullable(ty);
+    }
+    let mut named = holding("named", "type", ty);
+    named["name"] = json!("N");
+    named
+}
+
+/// The action slot at the deepest level, under `depth - 1` arrays, with a
+/// component that refers to the one holding it: its inline shape (a
+/// component has the slot's name) nests further than a string would.
+fn deep_action(depth: usize) -> Value {
+    let mut definition = nested(depth, in_array);
+    let mut ty = &mut definition["components"][0]["props"][0]["type"];
+    while ty["kind"] == "array" {
+        ty = &mut ty["items"];
+    }
+    *ty = json!({"kind": "action"});
+    definition["components"].as_array_mut().unwrap().push(
+        json!({"name": "ActionExpression", "description": "", "props": [
+            {"name": "deep", "type": {"kind": "component", "name": "Deep"}}
+        ]}),
+    );
+    definition
+}
+
 fn depth_of(ty: &TypeDescription) -> usize {
     let mut depth = 1;
     let mut ty = ty;
@@ -453,7 +722,14 @@ fn types_nest_to_the_depth_limit_and_no_further() {
         .spawn(|| {
             let limit = Limits::default().depth();
             assert_eq!(limit, 256);
-            for wrap in [in_array, in_object, in_union, in_record, in_nullable] {
+            for wrap in [
+                in_array,
+                in_object,
+                in_union,
+                in_record,
+                in_nullable,
+                in_named,
+            ] {
                 let at_limit = nested(limit, wrap);
                 // The deepest form still reads back from its text.
                 let text = stringify_json(&at_limit);
@@ -488,6 +764,14 @@ fn types_nest_to_the_depth_limit_and_no_further() {
                     other => panic!("expected DepthLimited, got {other:?}"),
                 }
             }
+            // The action slot written inline at the limit fits the prompt's
+            // depth too.
+            let library = define(&deep_action(limit)).unwrap();
+            let spec = library.to_spec();
+            openui_lang::generate_prompt_with_limits(&spec, Limits::default())
+                .expect("the spec is within the prompt's depth");
+            let _ = library.library();
+            free_json(spec);
             let at_limit = LibraryDefinition::from_json(&nested(limit, in_array)).unwrap();
             assert_eq!(depth_of(&at_limit.components[0].props[0].ty), limit);
             let err = LibraryDefinition::from_json(&nested(limit + 1, in_array))
@@ -523,8 +807,17 @@ const SMALL_STACK: usize = 64 * 1024;
 #[test]
 fn a_definition_at_the_limit_builds_and_drops_on_a_64_kib_stack() {
     let limit = Limits::default().depth();
-    for wrap in [in_array, in_object, in_union, in_record, in_nullable] {
-        let input = nested(limit, wrap);
+    let wraps: [fn(usize) -> Value; 7] = [
+        |depth| nested(depth, in_array),
+        |depth| nested(depth, in_object),
+        |depth| nested(depth, in_union),
+        |depth| nested(depth, in_record),
+        |depth| nested(depth, in_nullable),
+        |depth| nested(depth, in_named),
+        deep_action,
+    ];
+    for make in wraps {
+        let input = make(limit);
         std::thread::Builder::new()
             .stack_size(SMALL_STACK)
             .spawn(move || {

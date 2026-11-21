@@ -22,14 +22,27 @@
 //! gives its samples a function renderer so they compare like with like).
 //! Names that are array indices come first, ascending, for components and
 //! props alike.
+//!
+//! The kinds that link a library together follow upstream's registry: every
+//! component's props are registered under its name, and the action shapes
+//! (`ActionExpression`, `OpenUrl`, `ToAssistant`) under theirs unless the
+//! record has a component of that name. zod writes a registered schema as a
+//! `$ref` wherever it is used and gives it a `$defs` entry when it is met,
+//! so the `$defs` come in the order a depth-first walk from the record's
+//! components first meets each one. That walk visits each component once,
+//! with a loop and a stack of its own, so a reference chain as long as the
+//! library or a cycle costs nothing more; writing a component's schema stops
+//! at each reference.
 
-use serde_json::{Map, Value as Json};
+use std::collections::{HashMap, HashSet};
+
+use serde_json::{Map, Value as Json, json};
 
 use crate::Library;
 use crate::js::{JsObject, OBJECT_PROTOTYPE_KEYS};
 use crate::library_definition::{
     ComponentDefinition, LibraryDefinition, LibraryDefinitionError, PropDefinition,
-    TypeDescription, in_property_order,
+    TypeDescription, check_references, in_property_order,
 };
 use crate::signature::{enum_words, signature};
 
@@ -57,7 +70,12 @@ pub struct DefinedLibrary {
 ///
 /// Refuses a root that names no component with
 /// [`LibraryDefinitionError::RootNotFound`], whose message is upstream's.
-/// An empty root isn't checked, as upstream doesn't check it.
+/// An empty root isn't checked, as upstream doesn't check it. Then refuses a
+/// component reference to a name no component has with
+/// [`LibraryDefinitionError::UnknownComponent`], an action slot naming an
+/// action a slot can't name with [`LibraryDefinitionError::UnknownAction`],
+/// and, as invalid, a reference to the component with the empty name and a
+/// named type whose type is a reference, a slot or another named type.
 pub fn create_library(
     definition: LibraryDefinition,
 ) -> Result<DefinedLibrary, LibraryDefinitionError> {
@@ -87,6 +105,7 @@ pub fn create_library(
             });
         }
     }
+    check_references(&definition)?;
     let components = record.values().copied().collect();
     Ok(DefinedLibrary {
         definition,
@@ -109,34 +128,49 @@ impl DefinedLibrary {
     /// Upstream's `toJSONSchema()`: the library's JSON Schema, keys in the
     /// order zod writes them.
     pub fn to_json_schema(&self) -> Json {
+        let registry = self.registry();
         let mut properties = Map::new();
         let mut required = Vec::new();
-        let mut defs = Map::new();
         for component in self.components() {
-            let mut body = object_schema(
-                ordered_props(&component.props)
-                    .into_iter()
-                    .map(|p| (p.name.as_str(), &p.ty, p.optional)),
-            );
             required.push(Json::String(component.name.clone()));
             if component.name.is_empty() {
                 // zod skips an empty id: the schema is written in place with
                 // its `id`, it gets no `$defs` entry, and so upstream finds no
                 // entry to merge the description into.
+                let mut body = props_schema(component, &registry);
                 body.insert("id".to_owned(), "".into());
                 properties.insert(String::new(), Json::Object(body));
                 continue;
             }
-            // Upstream merges a non-empty description in after zod's keys.
-            if !component.description.is_empty() {
-                body.insert(
-                    "description".to_owned(),
-                    component.description.as_str().into(),
-                );
+            properties.insert(component.name.clone(), reference(&component.name));
+        }
+        let mut defs = Map::new();
+        for node in self.definition_order(&registry) {
+            match node {
+                Node::Component(i) => {
+                    let Some(component) = self.definition.components.get(i) else {
+                        continue;
+                    };
+                    if component.name.is_empty() {
+                        continue;
+                    }
+                    let mut body = props_schema(component, &registry);
+                    // Upstream merges a non-empty description in after zod's
+                    // keys, for the components of its record.
+                    if !component.description.is_empty()
+                        && registry.record.contains(component.name.as_str())
+                    {
+                        body.insert(
+                            "description".to_owned(),
+                            component.description.as_str().into(),
+                        );
+                    }
+                    defs.insert(component.name.clone(), Json::Object(body));
+                }
+                Node::Action(action) => {
+                    defs.insert(action.name().to_owned(), action.schema());
+                }
             }
-            let reference = format!("#/$defs/{}", json_pointer_token(&component.name));
-            properties.insert(component.name.clone(), object([("$ref", reference.into())]));
-            defs.insert(component.name.clone(), Json::Object(body));
         }
         let mut schema = Map::new();
         schema.insert("$schema".to_owned(), DRAFT_2020_12.into());
@@ -210,6 +244,68 @@ impl DefinedLibrary {
         stacker::grow(size, || Library::from_json_schema(&self.to_json_schema()))
     }
 
+    /// Upstream's registry, for this library: which component each name
+    /// refers to, and which names the record has.
+    fn registry(&self) -> Registry<'_> {
+        let mut last = HashMap::with_capacity(self.definition.components.len());
+        for (i, component) in self.definition.components.iter().enumerate() {
+            last.insert(component.name.as_str(), i);
+        }
+        Registry {
+            last,
+            record: self.components().map(|c| c.name.as_str()).collect(),
+        }
+    }
+
+    /// The registered schemas in the order zod first meets them: depth first
+    /// from the record's components in order, each one's references in the
+    /// order its props hold them. Each node's references are listed once,
+    /// when it is first met, and the walk keeps its own stack, so this is
+    /// linear in the library's size whatever its references' shape.
+    fn definition_order(&self, registry: &Registry<'_>) -> Vec<Node> {
+        let count = self.definition.components.len();
+        let mut seen_components = vec![false; count];
+        let mut seen_actions = [false; 3];
+        let mut order = Vec::new();
+        let mut stack: Vec<(Vec<Node>, usize)> = Vec::new();
+        let mut visit = |node: Node, order: &mut Vec<Node>| -> Option<Vec<Node>> {
+            let seen = match node {
+                Node::Component(i) => seen_components.get_mut(i)?,
+                Node::Action(action) => seen_actions.get_mut(action as usize)?,
+            };
+            if *seen {
+                return None;
+            }
+            *seen = true;
+            order.push(node);
+            let mut edges = Vec::new();
+            if let Node::Component(i) = node
+                && let Some(component) = self.definition.components.get(i)
+            {
+                for prop in ordered_props(&component.props) {
+                    references(&prop.ty, registry, &mut edges);
+                }
+            }
+            Some(edges)
+        };
+        for &root in &self.components {
+            if let Some(edges) = visit(Node::Component(root), &mut order) {
+                stack.push((edges, 0));
+            }
+            while let Some((edges, next)) = stack.last_mut() {
+                let Some(&node) = edges.get(*next) else {
+                    stack.pop();
+                    continue;
+                };
+                *next += 1;
+                if let Some(edges) = visit(node, &mut order) {
+                    stack.push((edges, 0));
+                }
+            }
+        }
+        order
+    }
+
     /// How deep the deepest prop's type nests, a prop's own type being one
     /// level, measured with a loop.
     fn type_depth(&self) -> usize {
@@ -224,7 +320,10 @@ impl DefinedLibrary {
             match ty {
                 TypeDescription::Array(t)
                 | TypeDescription::Record(t)
-                | TypeDescription::Nullable(t) => open.push((t, inner)),
+                | TypeDescription::Nullable(t)
+                | TypeDescription::Named(_, t) => open.push((t, inner)),
+                // An action written inline nests a few levels of its own.
+                TypeDescription::Action(_) => deepest = deepest.max(depth.saturating_add(3)),
                 TypeDescription::Union(options) => open.extend(options.iter().map(|t| (t, inner))),
                 TypeDescription::Object(fields) => {
                     open.extend(fields.iter().map(|f| (&f.ty, inner)));
@@ -233,7 +332,8 @@ impl DefinedLibrary {
                 | TypeDescription::Number
                 | TypeDescription::Boolean
                 | TypeDescription::Any
-                | TypeDescription::Enum(_) => {}
+                | TypeDescription::Enum(_)
+                | TypeDescription::Component(_) => {}
             }
         }
         deepest
@@ -256,16 +356,178 @@ fn schema_depth(type_depth: usize) -> usize {
     type_depth.saturating_mul(2).saturating_add(8)
 }
 
+/// What a name refers to, as upstream's registry and component record say.
+struct Registry<'a> {
+    /// Each component name's last component, the one a reference means.
+    last: HashMap<&'a str, usize>,
+    /// The names the component record has (all but `__proto__`).
+    record: HashSet<&'a str>,
+}
+
+impl Registry<'_> {
+    /// Whether an action's shape is registered: unless the record has a
+    /// component of its name (`if (!componentsRecord[id]) reg.add(...)`).
+    fn registers(&self, action: ActionShape) -> bool {
+        !self.record.contains(action.name())
+    }
+}
+
+/// A registered schema: a component's props, or an action shape.
+#[derive(Clone, Copy)]
+enum Node {
+    /// An index into the definition's components.
+    Component(usize),
+    Action(ActionShape),
+}
+
+/// The built-in action shapes, upstream's `ACTION_DEFS`.
+#[derive(Clone, Copy)]
+enum ActionShape {
+    Expression = 0,
+    OpenUrl = 1,
+    ToAssistant = 2,
+}
+
+impl ActionShape {
+    fn of(name: Option<&str>) -> Option<ActionShape> {
+        match name {
+            None => Some(ActionShape::Expression),
+            Some("OpenUrl") => Some(ActionShape::OpenUrl),
+            Some("ToAssistant") => Some(ActionShape::ToAssistant),
+            Some(_) => None,
+        }
+    }
+
+    fn name(self) -> &'static str {
+        match self {
+            ActionShape::Expression => "ActionExpression",
+            ActionShape::OpenUrl => "OpenUrl",
+            ActionShape::ToAssistant => "ToAssistant",
+        }
+    }
+
+    /// What zod writes for the shape, from lang-core's built-ins:
+    /// `actionSchema` is a union of the open-url data, the to-assistant data
+    /// and a generic `{type, params?}`; a named step's is its data.
+    fn schema(self) -> Json {
+        match self {
+            ActionShape::Expression => json!({"anyOf": [
+                open_url_data(),
+                to_assistant_data(),
+                {
+                    "type": "object",
+                    "properties": {
+                        "type": {"type": "string"},
+                        "params": {
+                            "type": "object",
+                            "propertyNames": {"type": "string"},
+                            "additionalProperties": {}
+                        }
+                    },
+                    "required": ["type"],
+                    "additionalProperties": false
+                }
+            ]}),
+            ActionShape::OpenUrl => open_url_data(),
+            ActionShape::ToAssistant => to_assistant_data(),
+        }
+    }
+}
+
+/// `z.object({ type: z.literal("open_url"), url: z.string() })`.
+fn open_url_data() -> Json {
+    json!({
+        "type": "object",
+        "properties": {
+            "type": {"type": "string", "const": "open_url"},
+            "url": {"type": "string"}
+        },
+        "required": ["type", "url"],
+        "additionalProperties": false
+    })
+}
+
+/// `z.object({ type: z.literal("continue_conversation"), context:
+/// z.string().optional() })`.
+fn to_assistant_data() -> Json {
+    json!({
+        "type": "object",
+        "properties": {
+            "type": {"type": "string", "const": "continue_conversation"},
+            "context": {"type": "string"}
+        },
+        "required": ["type"],
+        "additionalProperties": false
+    })
+}
+
+/// The registered schemas a type uses, in the order zod meets them. The
+/// walk goes as deep as the type and no further: a reference is a node to
+/// visit later, not followed here.
+fn references(ty: &TypeDescription, registry: &Registry<'_>, out: &mut Vec<Node>) {
+    crate::stack::grow_stack!(references(ty, registry, out));
+    match ty {
+        TypeDescription::Component(name) => {
+            if let Some(&i) = registry.last.get(name.as_str()) {
+                out.push(Node::Component(i));
+            }
+        }
+        TypeDescription::Action(name) => {
+            if let Some(action) = ActionShape::of(name.as_deref())
+                && registry.registers(action)
+            {
+                out.push(Node::Action(action));
+            }
+        }
+        TypeDescription::Array(t)
+        | TypeDescription::Record(t)
+        | TypeDescription::Nullable(t)
+        | TypeDescription::Named(_, t) => references(t, registry, out),
+        TypeDescription::Union(options) => {
+            for option in options {
+                references(option, registry, out);
+            }
+        }
+        TypeDescription::Object(fields) => {
+            for field in in_property_order(fields, |f| &f.name) {
+                references(&field.ty, registry, out);
+            }
+        }
+        TypeDescription::String
+        | TypeDescription::Number
+        | TypeDescription::Boolean
+        | TypeDescription::Any
+        | TypeDescription::Enum(_) => {}
+    }
+}
+
+/// `{"$ref": "#/$defs/<name>"}`, the name escaped as a JSON Pointer token.
+fn reference(name: &str) -> Json {
+    let target = format!("#/$defs/{}", json_pointer_token(name));
+    object([("$ref", target.into())])
+}
+
+/// A component's props as zod writes its object schema.
+fn props_schema(component: &ComponentDefinition, registry: &Registry<'_>) -> Map<String, Json> {
+    object_schema(
+        ordered_props(&component.props)
+            .into_iter()
+            .map(|p| (p.name.as_str(), &p.ty, p.optional)),
+        registry,
+    )
+}
+
 /// An object's entries (a component's props, or an inline object's fields,
 /// already in property order) as zod writes its object schema: a nullable
 /// entry stays in `required`, an optional one is left out.
 fn object_schema<'a>(
     entries: impl Iterator<Item = (&'a str, &'a TypeDescription, bool)>,
+    registry: &Registry<'_>,
 ) -> Map<String, Json> {
     let mut properties = Map::new();
     let mut required = Vec::new();
     for (name, ty, optional) in entries {
-        properties.insert(name.to_owned(), type_schema(ty));
+        properties.insert(name.to_owned(), type_schema(ty, registry));
         if !optional {
             required.push(Json::String(name.to_owned()));
         }
@@ -282,9 +544,10 @@ fn object_schema<'a>(
 
 /// What zod writes for a type. The walk goes as deep as the type, which
 /// reading bounded (see the `library_definition` module docs), growing the
-/// stack on demand.
-fn type_schema(ty: &TypeDescription) -> Json {
-    crate::stack::grow_stack!(type_schema(ty));
+/// stack on demand; a reference is written as a `$ref`, not followed.
+fn type_schema(ty: &TypeDescription, registry: &Registry<'_>) -> Json {
+    crate::stack::grow_stack!(type_schema(ty, registry));
+    let schema = |ty| type_schema(ty, registry);
     match ty {
         TypeDescription::String => object([("type", "string".into())]),
         TypeDescription::Number => object([("type", "number".into())]),
@@ -303,22 +566,32 @@ fn type_schema(ty: &TypeDescription) -> Json {
             ])
         }
         TypeDescription::Array(items) => {
-            object([("type", "array".into()), ("items", type_schema(items))])
+            object([("type", "array".into()), ("items", schema(items))])
         }
-        TypeDescription::Union(options) => any_of(options.iter().map(type_schema).collect()),
+        TypeDescription::Union(options) => any_of(options.iter().map(schema).collect()),
         TypeDescription::Object(fields) => Json::Object(object_schema(
             in_property_order(fields, |f| &f.name)
                 .into_iter()
                 .map(|f| (f.name.as_str(), &f.ty, f.optional)),
+            registry,
         )),
         TypeDescription::Record(values) => object([
             ("type", "object".into()),
             ("propertyNames", object([("type", "string".into())])),
-            ("additionalProperties", type_schema(values)),
+            ("additionalProperties", schema(values)),
         ]),
         TypeDescription::Nullable(inner) => {
-            any_of(vec![type_schema(inner), object([("type", "null".into())])])
+            any_of(vec![schema(inner), object([("type", "null".into())])])
         }
+        // A name is for the prompt only.
+        TypeDescription::Named(_, inner) => schema(inner),
+        TypeDescription::Component(name) => reference(name),
+        TypeDescription::Action(name) => match ActionShape::of(name.as_deref()) {
+            Some(action) if registry.registers(action) => reference(action.name()),
+            Some(action) => action.schema(),
+            // create_library refused any other name.
+            None => Json::Object(Map::new()),
+        },
     }
 }
 

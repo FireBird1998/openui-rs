@@ -37,8 +37,9 @@
 //!   map: the order is the positional order of the component's arguments. As
 //!   in a JavaScript object, prop names that are array indices ("0", "12")
 //!   come first, ascending, whatever their place in the list.
-//! - A prop has a `name`, a `type` and `optional` (default `false`). A
-//!   prop's name may appear once per component.
+//! - A prop has a `name`, a `type`, `optional` (default `false`) and
+//!   `binding` (default `false`). A prop's name may appear once per
+//!   component.
 //! - A type is an object with a `kind`, and the fields that kind has, no
 //!   others. Any other kind is refused with
 //!   [`LibraryDefinitionError::UnsupportedKind`], naming it. The kinds:
@@ -55,6 +56,10 @@
 //!   | `{"kind": "object", "fields": [F]}` | `z.object({...})` | as a component's props | `{a: T, b?: U}` |
 //!   | `{"kind": "record", "values": T}` | `z.record(z.string(), T)` | `{"type": "object", "propertyNames": {"type": "string"}, "additionalProperties": T}` | `Record<string, T>` |
 //!   | `{"kind": "nullable", "type": T}` | `T.nullable()` | `{"anyOf": [T, {"type": "null"}]}` | `T`, and the prop or field gets `?` |
+//!   | `{"kind": "component", "name": "Item"}` | `Item.ref` | `{"$ref": "#/$defs/Item"}` | `Item` |
+//!   | `{"kind": "action"}` | `action()` | `{"$ref": "#/$defs/ActionExpression"}` | `ActionExpression`, `(ActionExpression)[]` in an array |
+//!   | `{"kind": "action", "name": "OpenUrl"}` | `steps.OpenUrl.ref` | `{"$ref": "#/$defs/OpenUrl"}` | `@OpenUrl` |
+//!   | `{"kind": "named", "name": "Color", "type": T}` | `tagSchemaId(T, "Color")` | `T` | `Color` |
 //!
 //!   As zod 4.6.7 does, an `anyOf` whose members are all bare types
 //!   (`{"type": ...}` and nothing else) is written as one `type` list, each
@@ -69,6 +74,40 @@
 //!   unescaped in the signature; an empty enum is `{"not": {}}` and has no
 //!   signature type (the prop prints as its bare name, or `[name]` when it is
 //!   an array of one); an empty union is `{"anyOf": []}` and prints `any`.
+//! - The kinds that link a library together:
+//!   - A **component reference** names a component of the library: the
+//!     last one of that name, as upstream's record keeps the last, or the
+//!     last one named `__proto__`, whose `$defs` entry upstream writes
+//!     without a description. A name that is no component's is refused
+//!     with [`LibraryDefinitionError::UnknownComponent`], and a reference
+//!     to the component with the empty name as invalid (upstream writes
+//!     that one's schema inline, or never finishes when it refers to
+//!     itself).
+//!   - An **action slot** takes any action; with a `name` it takes that one
+//!     action, `OpenUrl` or `ToAssistant` (another name is refused with
+//!     [`LibraryDefinitionError::UnknownAction`]), and a slot restricted to
+//!     several is a union of them. An action's `$defs` entry is written only
+//!     when a component refers to it, and not at all when a component has
+//!     its name: the action is then written inline wherever it is used.
+//!   - A **named type** prints its name in the signature and is written as
+//!     its `type` in the schema. Its `type` may not be a component
+//!     reference, an action slot or another named type. As in upstream, the
+//!     name belongs to the type it tags: a named nullable prints its inner
+//!     type's annotation (upstream unwraps the nullable first), an empty name
+//!     prints the type's own annotation, and a named union as an array's
+//!     items is parenthesised.
+//!   - A prop's **`binding`** marks its outermost type, the `optional`
+//!     included, as upstream's `reactive()`: the signature prints
+//!     `$binding<T>` (or the bare name when the type has no annotation) and
+//!     the schema is the unmarked type's. A binding marks only a prop's
+//!     outermost type, so a field or a type inside another has none
+//!     (upstream prints `$binding<...>` there too, but its runtime binds only
+//!     a prop's outermost schema).
+//!
+//!   `$defs` come in the order zod first meets each schema: walking the
+//!   components in record order, and each one's props depth first, a
+//!   component or action referred to gets its entry at its first reference,
+//!   followed by the entries of what it refers to in turn.
 //! - An object's `fields` are an ordered array like a component's props: a
 //!   field has a `name`, a `type` and `optional` (default `false`), a name
 //!   may appear once per object, and array-index names come first.
@@ -90,21 +129,13 @@
 //! Each new kind is a new `kind` value with its own fields, read by one new
 //! arm in [`TypeDescription`]'s reader, and a new variant of the
 //! `#[non_exhaustive]` enum; facts about a prop rather than its type become
-//! new optional prop fields. Planned (spec #123), each an addition:
-//!
-//! ```json
-//! {"kind": "component", "name": "ListItem"}
-//! {"kind": "action"}
-//! {"kind": "named", "name": "Color", "type": T}
-//! ```
-//!
-//! and on a prop, `"binding": true` (a binding marks the outermost type only,
-//! so it belongs to the prop).
+//! new optional prop fields, as `binding` is.
 //!
 //! # Limits
 //!
 //! Types nest, so reading counts how deep: a prop's type is one level, and
-//! each type inside another one more. A type deeper than
+//! each type inside another one more (a named type's `type` too). A type
+//! deeper than
 //! [`Limits::depth`](crate::Limits::depth) (256 by default) is refused with
 //! [`LibraryDefinitionError::DepthLimited`] before it is read, so reading
 //! recurses at most that deep, growing the stack on demand as the parser's
@@ -115,7 +146,10 @@
 //! and [`DefinedLibrary::library`](crate::DefinedLibrary::library) compiles
 //! the schema on a stack segment sized for the definition's depth. Otherwise
 //! a definition's time and memory grow with its size, nothing more; it is
-//! already in the caller's memory. The binding entry points, which arrive
+//! already in the caller's memory. References make the library a graph, which
+//! may have cycles; nothing follows one: a reference is written as a `$ref`
+//! and printed as a name, and the `$defs` order is found visiting each
+//! component once, with a loop. The binding entry points, which arrive
 //! with #137, are to cap its size as they cap other host input (ADR 0001).
 //!
 //! What is handed back is freed by the caller, and some of it recursively:
@@ -173,6 +207,9 @@ pub struct PropDefinition {
     pub ty: TypeDescription,
     /// Whether a program may leave it out (zod's `.optional()`).
     pub optional: bool,
+    /// Whether it is a binding (react-lang's `reactive()` on the prop's
+    /// outermost schema, the `.optional()` included).
+    pub binding: bool,
 }
 
 /// One field of an inline object type.
@@ -211,6 +248,13 @@ pub enum TypeDescription {
     Record(Box<TypeDescription>),
     /// `T.nullable()`: this type or null.
     Nullable(Box<TypeDescription>),
+    /// `Item.ref`: the library's component of this name.
+    Component(String),
+    /// `action()`: any action, or with a name (`steps.OpenUrl.ref`) that one
+    /// built-in action.
+    Action(Option<String>),
+    /// `tagSchemaId(T, name)`: `T`, shown by this name in the signature.
+    Named(String, Box<TypeDescription>),
 }
 
 /// A group of components for the prompt, as upstream's `ComponentGroup`.
@@ -251,6 +295,20 @@ pub enum LibraryDefinitionError {
         /// The limit, in levels of type.
         limit: usize,
     },
+    /// A component reference names no component of the library.
+    UnknownComponent {
+        /// Where, as `components[0].props[1].type`.
+        path: String,
+        /// The name given.
+        name: String,
+    },
+    /// An action slot names an action a slot can't name.
+    UnknownAction {
+        /// Where, as `components[0].props[1].type`.
+        path: String,
+        /// The name given.
+        name: String,
+    },
     /// The definition isn't in the plain-data form.
     Invalid {
         /// Where, as `components[0].props[1].name` (empty for the whole
@@ -280,6 +338,21 @@ impl fmt::Display for LibraryDefinitionError {
                 f,
                 "library definition: {path}: types nest deeper than {limit} levels"
             ),
+            LibraryDefinitionError::UnknownComponent { path, name } => {
+                let name = crate::stringify_json(&Json::String(name.clone()));
+                write!(
+                    f,
+                    "library definition: {path}: {name} is not a component of the library"
+                )
+            }
+            LibraryDefinitionError::UnknownAction { path, name } => {
+                let name = crate::stringify_json(&Json::String(name.clone()));
+                write!(
+                    f,
+                    "library definition: {path}: {name} is not an action a slot can name (the built-in ones are {})",
+                    SLOT_ACTIONS.join(" and ")
+                )
+            }
             LibraryDefinitionError::Invalid { path, problem } if path.is_empty() => {
                 write!(f, "library definition: {problem}")
             }
@@ -442,20 +515,42 @@ fn named_list<T>(
     Ok(list)
 }
 
-/// A prop's or a field's `name`, `type` and `optional`.
-fn named_type(value: &Json, at: Path<'_>, depth: Depth) -> Read<(String, TypeDescription, bool)> {
-    let map = object(value, at, &["name", "type", "optional"])?;
-    let name = string(required(map, at, "name")?, Path::Field(&at, "name"))?;
-    let ty =
-        TypeDescription::from_json(required(map, at, "type")?, Path::Field(&at, "type"), depth)?;
-    let optional = optional(map, at, "optional", |value, at| {
+/// A boolean field, `false` when missing.
+fn flag(map: &Map<String, Json>, at: Path<'_>, field: &str) -> Read<bool> {
+    Ok(optional(map, at, field, |value, at| {
         value
             .as_bool()
             .ok_or_else(|| at.invalid("expected a boolean"))
     })?
-    .unwrap_or(false);
-    Ok((name, ty, optional))
+    .unwrap_or(false))
 }
+
+/// A prop's or a field's `name`, `type` and `optional`, and a prop's
+/// `binding` (`fields` names the fields it may have).
+fn named_type(
+    value: &Json,
+    at: Path<'_>,
+    depth: Depth,
+    fields: &[&str],
+) -> Read<(String, TypeDescription, bool, bool)> {
+    let map = object(value, at, fields)?;
+    let name = string(required(map, at, "name")?, Path::Field(&at, "name"))?;
+    let ty =
+        TypeDescription::from_json(required(map, at, "type")?, Path::Field(&at, "type"), depth)?;
+    Ok((
+        name,
+        ty,
+        flag(map, at, "optional")?,
+        flag(map, at, "binding")?,
+    ))
+}
+
+const PROP_FIELDS: [&str; 4] = ["name", "type", "optional", "binding"];
+const FIELD_FIELDS: [&str; 3] = ["name", "type", "optional"];
+
+/// The built-in actions a slot can name: upstream's `steps`, the ones with
+/// an action shape of their own.
+pub(crate) const SLOT_ACTIONS: [&str; 2] = ["OpenUrl", "ToAssistant"];
 
 /// Entries in JavaScript property order, as a zod shape or an enum's entries
 /// iterate them: names that are array indices first, ascending, and a name
@@ -525,8 +620,14 @@ impl ComponentDefinition {
             Path::Field(&at, "props"),
             "prop",
             |value, at| {
-                let (name, ty, optional) = named_type(value, at, Depth::top(limits))?;
-                Ok(PropDefinition { name, ty, optional })
+                let (name, ty, optional, binding) =
+                    named_type(value, at, Depth::top(limits), &PROP_FIELDS)?;
+                Ok(PropDefinition {
+                    name,
+                    ty,
+                    optional,
+                    binding,
+                })
             },
             |prop| &prop.name,
         )?;
@@ -562,6 +663,8 @@ impl TypeDescription {
             "union" => &["kind", "options"],
             "object" => &["kind", "fields"],
             "nullable" => &["kind", "type"],
+            "component" | "action" => &["kind", "name"],
+            "named" => &["kind", "name", "type"],
             _ => {
                 return Err(LibraryDefinitionError::UnsupportedKind {
                     path: at.text(),
@@ -587,6 +690,16 @@ impl TypeDescription {
             "array" => TypeDescription::Array(inner("items")?),
             "record" => TypeDescription::Record(inner("values")?),
             "nullable" => TypeDescription::Nullable(inner("type")?),
+            "component" => {
+                let (value, name) = field("name")?;
+                TypeDescription::Component(string(value, Path::Field(&at, name))?)
+            }
+            "action" => TypeDescription::Action(optional(map, at, "name", string)?),
+            "named" => {
+                let (value, name) = field("name")?;
+                let name = string(value, Path::Field(&at, name))?;
+                TypeDescription::Named(name, inner("type")?)
+            }
             "union" => {
                 let (value, name) = field("options")?;
                 let options_at = Path::Field(&at, name);
@@ -610,7 +723,8 @@ impl TypeDescription {
                     Path::Field(&at, name),
                     "field",
                     |value, at| {
-                        let (name, ty, optional) = named_type(value, at, depth.inner())?;
+                        let (name, ty, optional, _) =
+                            named_type(value, at, depth.inner(), &FIELD_FIELDS)?;
                         Ok(FieldDefinition { name, ty, optional })
                     },
                     |field| &field.name,
@@ -620,6 +734,94 @@ impl TypeDescription {
             // "any": every other kind was refused above.
             _ => TypeDescription::Any,
         })
+    }
+}
+
+/// Checks the kinds that link a library together, as
+/// [`create_library`](crate::create_library) does: each component reference
+/// names a component of the definition (any of them; the last of a name is
+/// the one meant) other than the empty name, each action slot's name is one
+/// a slot can name, and a named type names a data type. Walks every type
+/// once, as deep as it nests, growing the stack on demand.
+pub(crate) fn check_references(definition: &LibraryDefinition) -> Read<()> {
+    let names: std::collections::HashSet<&str> = definition
+        .components
+        .iter()
+        .map(|c| c.name.as_str())
+        .collect();
+    let at = Path::Root;
+    let components_at = Path::Field(&at, "components");
+    for (i, component) in definition.components.iter().enumerate() {
+        let component_at = Path::Index(&components_at, i);
+        let props_at = Path::Field(&component_at, "props");
+        for (j, prop) in component.props.iter().enumerate() {
+            let prop_at = Path::Index(&props_at, j);
+            check_type(&prop.ty, Path::Field(&prop_at, "type"), &names)?;
+        }
+    }
+    Ok(())
+}
+
+fn check_type(
+    ty: &TypeDescription,
+    at: Path<'_>,
+    names: &std::collections::HashSet<&str>,
+) -> Read<()> {
+    crate::stack::grow_stack!(check_type(ty, at, names));
+    match ty {
+        TypeDescription::Component(name) if name.is_empty() => {
+            Err(at.invalid("a reference to the component with the empty name is not supported"))
+        }
+        TypeDescription::Component(name) if !names.contains(name.as_str()) => {
+            Err(LibraryDefinitionError::UnknownComponent {
+                path: at.text(),
+                name: name.clone(),
+            })
+        }
+        TypeDescription::Action(Some(name)) if !SLOT_ACTIONS.contains(&name.as_str()) => {
+            Err(LibraryDefinitionError::UnknownAction {
+                path: at.text(),
+                name: name.clone(),
+            })
+        }
+        TypeDescription::Component(_)
+        | TypeDescription::Action(_)
+        | TypeDescription::String
+        | TypeDescription::Number
+        | TypeDescription::Boolean
+        | TypeDescription::Any
+        | TypeDescription::Enum(_) => Ok(()),
+        TypeDescription::Named(_, inner) => {
+            let inner_at = Path::Field(&at, "type");
+            if matches!(
+                **inner,
+                TypeDescription::Component(_)
+                    | TypeDescription::Action(_)
+                    | TypeDescription::Named(..)
+            ) {
+                return Err(inner_at.invalid(
+                    "a named type names a data type, not a component reference, an action slot or another named type",
+                ));
+            }
+            check_type(inner, inner_at, names)
+        }
+        TypeDescription::Array(inner) => check_type(inner, Path::Field(&at, "items"), names),
+        TypeDescription::Record(inner) => check_type(inner, Path::Field(&at, "values"), names),
+        TypeDescription::Nullable(inner) => check_type(inner, Path::Field(&at, "type"), names),
+        TypeDescription::Union(options) => {
+            let options_at = Path::Field(&at, "options");
+            options
+                .iter()
+                .enumerate()
+                .try_for_each(|(i, option)| check_type(option, Path::Index(&options_at, i), names))
+        }
+        TypeDescription::Object(fields) => {
+            let fields_at = Path::Field(&at, "fields");
+            fields.iter().enumerate().try_for_each(|(i, field)| {
+                let field_at = Path::Index(&fields_at, i);
+                check_type(&field.ty, Path::Field(&field_at, "type"), names)
+            })
+        }
     }
 }
 
