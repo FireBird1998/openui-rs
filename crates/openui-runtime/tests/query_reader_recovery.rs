@@ -476,12 +476,19 @@ fn a_parse_cut_that_drops_a_waited_on_source_preserves_the_previous_calls() {
     );
     assert!(partial.size_limited);
     assert_eq!(partial.query_statements.len(), 1);
-    let Err(QueryCommandError::Limit(limit)) = manager.apply(QueryCommand::Evaluate {
+    let refused = manager.apply(QueryCommand::Evaluate {
         program: &partial,
         store: &store,
-    }) else {
+    });
+    let Err(error @ QueryCommandError::SourceCut { limit, .. }) = refused else {
         panic!("a reader whose source was cut must refuse registration");
     };
+    // The refusal names the reader and the source the parser dropped (#119).
+    assert_eq!(
+        error.to_string(),
+        "query q0 reads q1, which the parser dropped (work or size limit exceeded); \
+         the program's queries were not registered"
+    );
     assert_eq!(pin["rust"]["sizeLimited"], limit.flags.size_limited);
     assert_eq!(pin["rust"]["depthLimited"], limit.flags.depth_limited);
     assert_eq!(

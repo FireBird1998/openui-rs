@@ -1,6 +1,7 @@
 //! Session policy around the clock-free query manager.
 use super::*;
 use openui_runtime::{QueryCommand, QueryCommandError, QueryManager, QueryUpdate, ToolCallId};
+use std::sync::Weak;
 
 /// Effects since the previous handoff. A store operation can succeed even if
 /// evaluating its new query arguments fails. The previous registrations survive.
@@ -44,33 +45,98 @@ impl From<QueryCommandError> for OpenUiError {
         let reason = error.to_string();
         match error {
             QueryCommandError::InvalidCall => Self::InvalidToolCall,
-            QueryCommandError::InvalidClock | QueryCommandError::Limit(_) => {
-                Self::LimitExceeded { reason }
-            }
+            QueryCommandError::InvalidClock
+            | QueryCommandError::Limit(_)
+            | QueryCommandError::SourceCut { .. } => Self::LimitExceeded { reason },
             _ => Self::Evaluation { reason },
         }
     }
 }
 
+/// Which program the manager's registrations come from (#119).
+#[derive(Default)]
+pub(super) struct Registered {
+    /// The parse result of the last successful registration. A weak pointer
+    /// keeps its allocation, so the identity cannot be reused.
+    program: Option<Weak<ParseResult>>,
+    /// The last attempt to register a program the registrations do not
+    /// belong to was refused.
+    refused: bool,
+}
+
+impl Registered {
+    pub(super) fn belongs(&self, program: &Arc<ParseResult>) -> bool {
+        self.program
+            .as_ref()
+            .is_some_and(|registered| std::ptr::eq(registered.as_ptr(), Arc::as_ptr(program)))
+    }
+
+    /// The draw's view of these registrations for `program`.
+    pub(super) fn drawn(&self, program: &Arc<ParseResult>) -> Drawn {
+        Drawn {
+            belongs: self.belongs(program),
+            refused: self.refused,
+        }
+    }
+}
+
+/// The registrations as a draw of one program sees them.
+#[derive(Clone, Copy)]
+pub(super) struct Drawn {
+    pub(super) belongs: bool,
+    pub(super) refused: bool,
+}
+
+/// The one rule (#119): a program is unregistered while the registrations
+/// belong to another program and registering it was refused. Nothing of the
+/// other program is then drawn, read by an action, called or refreshed.
+pub(super) fn unregistered(belongs: bool, refused: bool) -> bool {
+    refused && !belongs
+}
+
+/// The query and mutation results a draw or an action reads. Unregistered,
+/// none: each query reads its own default and each mutation is idle.
+pub(super) fn supply(
+    manager: &QueryManager,
+    unregistered: bool,
+    limits: Limits,
+) -> PreparedReferenceValues<'static> {
+    if unregistered {
+        PreparedReferenceValues::owned_with_limits(JsObject::new(), limits)
+    } else {
+        manager.prepared_results(limits)
+    }
+}
+
+/// The query snapshot of an unregistered program: nothing loading, fetched
+/// or failed. The refusal is the registration's error beside it.
+const UNREGISTERED_SNAPSHOT: &str =
+    r#"{"__openui_loading":[],"__openui_refetching":[],"__openui_errors":[]}"#;
+
 // Do the query effect before drawing. A rejected drawing must not commit the
-// proposed registrations, cache ownership changes or calls.
+// proposed registrations, cache ownership changes or calls. A program whose
+// registration is refused draws its queries' defaults, never results held for
+// another program's statements (#119).
 pub(super) fn draw<T>(
     manager: Option<&mut QueryManager>,
-    registration: (RegistrationEffects, Option<u64>),
+    registration: (RegistrationEffects, Option<u64>, Drawn),
     input: &TreeInput<'_>,
     store: &Store,
     refs: &PreparedReferenceValues<'_>,
     limits: Limits,
     read: impl Fn(TreeInput<'_>) -> Result<T, OpenUiError>,
 ) -> Result<(T, Option<Registration>), OpenUiError> {
-    let (effects, now_ms) = registration;
+    let (effects, now_ms, registered) = registration;
     let draw_with = |supply: &PreparedReferenceValues<'_>| {
         read(input.clone().with_prepared_reference_values(supply))
+    };
+    let held = |manager: &QueryManager, refused: bool| {
+        supply(manager, unregistered(registered.belongs, refused), limits)
     };
     match manager {
         None => Ok((draw_with(refs)?, None)),
         Some(manager) if effects == RegistrationEffects::None || manager.is_disposed() => {
-            Ok((draw_with(&manager.prepared_results(limits))?, None))
+            Ok((draw_with(&held(manager, registered.refused))?, None))
         }
         Some(manager) => {
             let read = |candidate: &QueryManager| {
@@ -85,10 +151,9 @@ pub(super) fn draw<T>(
             );
             match result {
                 Ok((output, update)) => Ok((output, Some(Ok(update)))),
-                Err(DrawError::Registration(error @ QueryCommandError::Limit(_))) => Ok((
-                    draw_with(&manager.prepared_results(limits))?,
-                    Some(Err(error.into())),
-                )),
+                Err(DrawError::Registration(
+                    error @ (QueryCommandError::Limit(_) | QueryCommandError::SourceCut { .. }),
+                )) => Ok((draw_with(&held(manager, true))?, Some(Err(error.into())))),
                 Err(DrawError::Registration(error)) => Err(error.into()),
                 Err(DrawError::Screen(error)) => Err(error),
             }
@@ -113,7 +178,8 @@ impl SessionCore {
     /// passes the list to `invalidate`, an empty list runs every query. With
     /// no tool provider or while a response bundle is blocked it does nothing.
     pub fn retry_failed_queries(&mut self) -> Result<(), OpenUiError> {
-        if self.response.bundle_blocked {
+        // Unregistered, the failed queries are another program's (#119).
+        if self.response.bundle_blocked || self.is_unregistered() {
             return Ok(());
         }
         let Some(manager) = self.manager.as_mut() else {
@@ -132,6 +198,10 @@ impl SessionCore {
     // `invalidate([statementId])` once per step, on the queries registered
     // so far. The click gate applies once, before the first step.
     pub(super) fn run_queries(&mut self, ids: &[String]) -> Result<(), OpenUiError> {
+        // Unregistered, the registered queries are another program's (#119).
+        if self.is_unregistered() {
+            return Ok(());
+        }
         let Some(manager) = self.manager.as_mut() else {
             return Ok(());
         };
@@ -211,6 +281,7 @@ impl SessionCore {
         }
         self.manager = Some(manager);
         self.query_inputs_changed = true;
+        self.registered = Registered::default();
         self.query_effects.changed = true;
         Ok(())
     }
@@ -254,14 +325,88 @@ impl SessionCore {
         })
     }
 
+    /// Conformance-test hook: check the manager's cache rules against the
+    /// receipts the driver holds and those the session has not handed out.
+    /// Outside the supported interface.
+    #[doc(hidden)]
+    pub fn audit_query_cache<'a>(
+        &'a self,
+        driver: impl Iterator<Item = &'a ToolCallId>,
+    ) -> Result<(), String> {
+        let Some(manager) = self.manager.as_ref() else {
+            return Ok(());
+        };
+        let held = self.query_effects.calls.iter().map(|call| &call.id);
+        manager.audit_cache(driver.chain(held), true)
+    }
+
+    /// Whether the drawn program is unregistered (see [`unregistered`]).
+    pub(super) fn is_unregistered(&self) -> bool {
+        self.manager.is_some()
+            && unregistered(
+                self.registered.belongs(&self.program),
+                self.registered.refused,
+            )
+    }
+
+    /// The results an action or a resumed plan reads for the drawn program.
+    pub(super) fn query_supply(&self) -> Option<PreparedReferenceValues<'static>> {
+        let unregistered = self.is_unregistered();
+        self.manager
+            .as_ref()
+            .map(|manager| supply(manager, unregistered, self.reference_limits))
+    }
+
+    /// The query snapshot beside a draw. Unregistered, it describes the
+    /// drawn program, which has nothing loading, fetched or failed.
+    pub(super) fn query_snapshot_json(&self) -> Option<String> {
+        let manager = self.manager.as_ref()?;
+        Some(if self.is_unregistered() {
+            UNREGISTERED_SNAPSHOT.to_owned()
+        } else {
+            manager.snapshot_json().to_owned()
+        })
+    }
+
+    /// A program the registrations did not belong to has registered. Query
+    /// calls still undrained were wanted by the other program's
+    /// registrations. The new registration requested none of them (an entry
+    /// with a call in flight requests no other), so one whose key is current
+    /// for a new query is that query's call and goes out once; one whose key
+    /// only a previous slot holds is ended by the manager without delivery
+    /// (#119). Mutation calls go out as they are.
+    fn abandon_held_query_calls(&mut self) {
+        let Some(manager) = self.manager.as_mut() else {
+            return;
+        };
+        self.query_effects
+            .calls
+            .retain(|call| !manager.abandon_unperformed_call(&call.id));
+    }
+
+    /// The manager whose snapshot speaks for the drawn program, if any.
+    pub(super) fn drawn_manager(&self) -> Option<&QueryManager> {
+        self.manager.as_ref().filter(|_| !self.is_unregistered())
+    }
+
     pub fn take_query_update(&mut self) -> QueryEffects {
+        // Unregistered, calls the registrations want stay with the session:
+        // none is for the drawn program. A registration hands over those
+        // still pending; a new program's releases the rest (#119).
+        self.query_effects.calls.retain(|call| call.id.is_pending());
+        let unregistered = self.is_unregistered();
         QueryEffects {
             next_refresh_due_ms: self
                 .manager
                 .as_ref()
+                .filter(|_| !unregistered)
                 .and_then(QueryManager::next_refresh_due_ms),
             actions: std::mem::take(&mut self.query_effects.actions),
-            calls: std::mem::take(&mut self.query_effects.calls),
+            calls: if unregistered {
+                Vec::new()
+            } else {
+                std::mem::take(&mut self.query_effects.calls)
+            },
             changed: std::mem::take(&mut self.query_effects.changed),
             reader_rounds_limited: std::mem::take(&mut self.query_effects.reader_rounds_limited),
             evaluation_error: self.query_error(),
@@ -273,6 +418,18 @@ impl SessionCore {
         // change must not register mutations.
         self.query_inputs_changed = result.is_err() && register_statements;
         self.extra_values_changed = result.is_err();
+        // Every registration evaluates the current program (a replacement
+        // records its own after installing the program). Only a refused
+        // program the registrations do not belong to is unregistered; a
+        // refused re-registration keeps its own program's results.
+        let belongs = self.registered.belongs(&self.program);
+        self.registered.refused = result.is_err() && !belongs;
+        if result.is_ok() {
+            self.registered.program = Some(Arc::downgrade(&self.program));
+            if !belongs {
+                self.abandon_held_query_calls();
+            }
+        }
         let error = match result {
             Ok(update) => {
                 self.query_effects.record(update);
@@ -298,10 +455,7 @@ impl SessionCore {
             self.record_registration(result, register_statements);
         }
         self.response = response;
-        (
-            self.manager.as_ref().map(|m| m.snapshot_json().to_owned()),
-            self.query_error(),
-        )
+        (self.query_snapshot_json(), self.query_error())
     }
 
     pub(super) fn state_changed(&mut self) {

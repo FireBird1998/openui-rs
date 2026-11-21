@@ -70,6 +70,7 @@ for (const scenario of corpus.scenarios) {
         result = resultRef.current = parse(step.replace, schema);
         store.initialize(result.stateDeclarations ?? {}, {});
       }
+      if ('set' in step) store.set(step.set, step.value);
       if ('finish' in step) await calls[step.finish].finish(step);
       if ('click' in step) {
         const writer = rendererState({ store, evaluationContext: ctx, schema: corpus.schema, resultRef,

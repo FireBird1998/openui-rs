@@ -120,9 +120,12 @@ pub enum QueryCommand<'a> {
     /// key, with the tool name and arguments of the first query that asked.
     /// The remembered call starts when the call in flight is delivered
     /// to a query still on the key, whichever query started it (ADR 0013),
-    /// and is forgotten if none is. However many runs are asked for
-    /// meanwhile, one call follows. Unknown names are skipped. An empty list
-    /// runs every registered query, as upstream treats an empty list.
+    /// and is forgotten if none is. If that delivery's readers move every
+    /// query off the key, the run is owed to the key instead: the entry is
+    /// stale, and a query that makes it current again refetches it. However
+    /// many runs are asked for meanwhile, one call follows. Unknown names are
+    /// skipped. An empty list runs every registered query, as upstream treats
+    /// an empty list.
     Invalidate {
         /// Statement ids, in the order to run them.
         statement_ids: &'a [&'a str],
@@ -162,6 +165,17 @@ pub enum QueryCommandError {
     Limit(LimitError),
     /// Evaluation or tool-name coercion failed.
     Evaluation(EvaluationFailure),
+    /// A parse limit dropped `source` but kept `reader`, a query that reads
+    /// it, so nothing could ever deliver `reader`'s input. The registration
+    /// is refused, as for any limit, with the parser's cut flags.
+    SourceCut {
+        /// The first query, in declaration order, that reads a dropped query.
+        reader: String,
+        /// The first query it reads that the parser dropped.
+        source: String,
+        /// The parser's cut.
+        limit: LimitError,
+    },
 }
 
 impl QueryUpdate {
@@ -182,6 +196,15 @@ impl fmt::Display for QueryCommandError {
                 "query readers need their registered context; use {recovery}"
             ),
             Self::Evaluation(error) => write!(f, "query evaluation failed: {error:?}"),
+            Self::SourceCut {
+                reader,
+                source,
+                limit,
+            } => write!(
+                f,
+                "query {reader} reads {source}, which the parser dropped ({limit}); \
+                 the program's queries were not registered"
+            ),
         }
     }
 }
@@ -259,6 +282,10 @@ struct CacheEntry {
     // that asked first, so the call is the one asked for even if that query
     // has since gone.
     run_again: Option<Arc<runs::Request>>,
+    // A remembered run was owed to this entry when its delivery's cascade
+    // moved every current holder away (#119). A ready query that makes it
+    // current again requests a call, which clears the mark.
+    stale: bool,
 }
 
 struct PendingCall {
@@ -618,10 +645,10 @@ impl QueryManager {
         }
         // A failed entry suppresses another call while this query can see an
         // error. A new reader otherwise has neither data nor an explanation.
+        // A stale entry owes the run that was remembered for it (#119).
         if !query.waiting()
-            && entry.data.is_none()
-            && (!entry.failed || query.error.is_none())
             && entry.pending.is_none()
+            && (entry.stale || (entry.data.is_none() && (!entry.failed || query.error.is_none())))
         {
             requests.request(key, &query.request);
         }

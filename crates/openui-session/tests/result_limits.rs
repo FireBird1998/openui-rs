@@ -456,3 +456,80 @@ fn a_removed_query_discards_even_malformed_outcome_json_once() {
         Err(OpenUiError::InvalidToolCall)
     ));
 }
+
+#[test]
+fn retry_runs_the_queries_behind_a_compact_error_under_the_same_limits() {
+    // #106, decided in #119: Retry covers every failed query, including the
+    // 24 whose errors are held only in the one compact error, and each
+    // retried result passes the same limits again.
+    let source = (0..24)
+        .map(|i| format!("q{i} = Query(\"t\")"))
+        .chain(["s = Query(\"s\")".into(), "h = Query(\"h\")".into()])
+        .collect::<Vec<_>>()
+        .join("\n");
+    let (mut s, calls) = session_calls(&format!("{source}\nroot = Box(q0)"), None);
+    let call = |name: &str, calls: &[Arc<WantedToolCall>]| {
+        calls
+            .iter()
+            .find(|c| c.tool_name == name)
+            .unwrap_or_else(|| panic!("no call for {name}"))
+            .clone()
+    };
+    let too_large = text_outcome(SIZE as usize + 1);
+    s.complete_tool_call_json(&call("t", &calls).id, &too_large)
+        .unwrap();
+    s.complete_tool_call_json(&call("s", &calls).id, r#"{"failed":"offline"}"#)
+        .unwrap();
+    s.complete_tool_call_json(&call("h", &calls).id, r#"{"value":"ok"}"#)
+        .unwrap();
+    let compact = format!(
+        "24 queries failed with errors that do not fit the result size limit of {SIZE} bytes"
+    );
+    let before = snapshot(&mut s);
+    let listed = before["__openui_errors"].as_array().unwrap();
+    assert_eq!(listed.len(), 2, "the error of s and the compact error");
+    assert_eq!(listed[0]["statementId"], "s");
+    assert_eq!(listed[1]["message"], compact);
+    s.take_query_update();
+
+    s.retry_failed_queries().unwrap();
+    let retry = s.take_query_update().calls;
+    let mut tools: Vec<_> = retry.iter().map(|c| c.tool_name.as_str()).collect();
+    tools.sort_unstable();
+    assert_eq!(
+        tools,
+        ["s", "t"],
+        "the compact error's key is retried; h is not"
+    );
+    assert_eq!(
+        snapshot(&mut s)["__openui_loading"]
+            .as_array()
+            .unwrap()
+            .len(),
+        25
+    );
+    // Still too large: refused again, the compact error comes back and
+    // nothing past the limit is shown. The other 23 asked while the call
+    // was in flight, so the key remembers one more run.
+    s.complete_tool_call_json(&call("t", &retry).id, &too_large)
+        .unwrap();
+    let refused = snapshot(&mut s);
+    assert_eq!(refused["q0"], Json::Null);
+    assert!(
+        refused["__openui_errors"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .any(|e| e["message"] == compact)
+    );
+    let again = s.take_query_update().calls;
+    s.complete_tool_call_json(&call("t", &again).id, r#"{"value":1}"#)
+        .unwrap();
+    s.complete_tool_call_json(&call("s", &retry).id, r#"{"value":2}"#)
+        .unwrap();
+    let recovered = snapshot(&mut s);
+    assert_eq!(recovered["__openui_errors"], json!([]));
+    assert_eq!(recovered["q23"], 1);
+    assert_eq!(recovered["s"], 2);
+    assert_eq!(recovered["h"], "ok");
+}

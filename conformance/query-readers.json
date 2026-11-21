@@ -233,7 +233,13 @@
       },
       {
         "kind": "complete",
-        "dispatch": {"step": 6, "toolName": "leaf", "args": {"v": null}},
+        "dispatch": {
+          "step": 6,
+          "toolName": "leaf",
+          "args": {
+            "v": null
+          }
+        },
         "outcome": {
           "kind": "result",
           "value": "old"
@@ -248,7 +254,13 @@
       },
       {
         "kind": "complete",
-        "dispatch": {"step": 6, "toolName": "leaf", "args": {"v": "one"}},
+        "dispatch": {
+          "step": 6,
+          "toolName": "leaf",
+          "args": {
+            "v": "one"
+          }
+        },
         "outcome": {
           "kind": "result",
           "value": "new"
@@ -551,6 +563,198 @@
         "outcome": {
           "kind": "result",
           "value": "unrelated"
+        }
+      }
+    ]
+  },
+  {
+    "name": "a-remembered-run-marks-its-key-stale",
+    "program": "a=Query(\"u\",{})\nf=Query(\"t\",{k0:a})\ng=Query(\"t\",{k0:3})",
+    "steps": [
+      {
+        "kind": "evaluate"
+      },
+      {
+        "kind": "complete",
+        "dispatch": {
+          "step": 0,
+          "toolName": "u",
+          "args": {}
+        },
+        "outcome": {
+          "kind": "result",
+          "value": 1
+        }
+      },
+      {
+        "kind": "complete",
+        "dispatch": {
+          "step": 1,
+          "toolName": "t",
+          "args": {
+            "k0": 1
+          }
+        },
+        "outcome": {
+          "kind": "result",
+          "value": 2
+        }
+      },
+      {
+        "kind": "complete",
+        "dispatch": {
+          "step": 0,
+          "toolName": "t",
+          "args": {
+            "k0": 3
+          }
+        },
+        "outcome": {
+          "kind": "result",
+          "value": 7
+        }
+      },
+      {
+        "kind": "replace",
+        "program": "a=Query(\"v\",{k0:f})\nf=Query(\"t\",{k0:a})\ng=Query(\"t\",{k0:3})"
+      },
+      {
+        "kind": "evaluate"
+      },
+      {
+        "kind": "invalidate"
+      },
+      {
+        "kind": "complete",
+        "dispatch": {
+          "step": 5,
+          "toolName": "v",
+          "args": {
+            "k0": 2
+          }
+        },
+        "outcome": {
+          "kind": "result",
+          "value": 3
+        }
+      },
+      {
+        "kind": "replace",
+        "program": "a=Query(\"v\",{k0:2})\nf=Query(\"t\",{k0:a})\ng=Query(\"t\",{k0:3})"
+      },
+      {
+        "kind": "evaluate"
+      },
+      {
+        "kind": "complete",
+        "dispatch": {
+          "step": 9,
+          "toolName": "v",
+          "args": {
+            "k0": 2
+          }
+        },
+        "outcome": {
+          "kind": "result",
+          "value": 4
+        }
+      },
+      {
+        "kind": "evaluate"
+      }
+    ]
+  },
+  {
+    "name": "a-colliding-key-keeps-the-first-request-across-a-cascade",
+    "program": "s=Query(\"s\")\nx=Query(\"x\",{v:s})\ny=Query(\"x\",{v:2})\na=Query(\"t\",{v:x==\"k1\"?(s==2?[0][2]:\"a0\"):\"a2\"})\nb=Query(\"t\",{v:x==\"k2\"?\"__undefined__\":\"b1\"})",
+    "steps": [
+      {
+        "kind": "evaluate"
+      },
+      {
+        "kind": "complete",
+        "dispatch": {
+          "step": 0,
+          "toolName": "x",
+          "args": {
+            "v": 2
+          }
+        },
+        "outcome": {
+          "kind": "result",
+          "value": "k2"
+        }
+      },
+      {
+        "kind": "complete",
+        "dispatch": {
+          "step": 0,
+          "toolName": "s",
+          "args": {}
+        },
+        "outcome": {
+          "kind": "result",
+          "value": 1
+        }
+      },
+      {
+        "kind": "complete",
+        "dispatch": {
+          "step": 2,
+          "toolName": "x",
+          "args": {
+            "v": 1
+          }
+        },
+        "outcome": {
+          "kind": "result",
+          "value": "k1"
+        }
+      },
+      {
+        "kind": "complete",
+        "dispatch": {
+          "step": 3,
+          "toolName": "t",
+          "args": {
+            "v": "a0"
+          }
+        },
+        "outcome": {
+          "kind": "result",
+          "value": "A0"
+        }
+      },
+      {
+        "kind": "complete",
+        "dispatch": {
+          "step": 3,
+          "toolName": "t",
+          "args": {
+            "v": "b1"
+          }
+        },
+        "outcome": {
+          "kind": "result",
+          "value": "B1"
+        }
+      },
+      {
+        "kind": "invalidate",
+        "ids": [
+          "s"
+        ]
+      },
+      {
+        "kind": "complete",
+        "dispatch": {
+          "step": 6,
+          "toolName": "s",
+          "args": {}
+        },
+        "outcome": {
+          "kind": "result",
+          "value": 2
         }
       }
     ]

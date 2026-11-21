@@ -235,15 +235,32 @@ fn generated_reader_edits_and_cycles_have_only_attributed_differences() {
     eprintln!(
         "{cases} graphs; {total} observations; {affected} differing graphs; {extra_calls} extra calls: {counts:?}"
     );
+    // #119 (a remembered run marks its key stale): the refetches on return
+    // to a stale key are 11 more calls seen only on the corrected side, and
+    // the driver settles each call seen only on a corrected side, so ten
+    // graphs gain 12 completion steps (131,750 and 2,484 before).
     assert_eq!(
         (cases, total, affected, extra_calls),
-        (5000, 131750, 2968, 2484)
+        (5000, 131762, 2968, 2495)
     );
+    // Changes for #119, each confined to the ten graphs above:
+    // - a-remembered-run-marks-its-key-stale, new: 24 observations in six
+    //   graphs refetch a stale key on return and show loading.
+    // - return-to-finished-key, 1,526 to 1,516: in four of those graphs the
+    //   query returning to its finished key now refetches it, so the
+    //   attribution walk assigns those 10 observations to the later row.
+    // - run-through-a-query-that-did-not-start-the-call (3,241 to 3,244),
+    //   remove-statement-before-registering-its-replacement (9,382 to
+    //   9,385), rapid-edits-revisit-a-cached-result (661 to 662) and
+    //   change-flag-after-loading-converges (311 to 312): observations of
+    //   the completion steps the driver now appends for the new calls,
+    //   which differ for those existing reasons.
     let expected = BTreeMap::from([
         (
             "a-reader-only-dispatches-keys-still-current-after-the-cascade".to_owned(),
             141,
         ),
+        ("a-remembered-run-marks-its-key-stale".to_owned(), 24),
         (
             "a-seeded-self-reader-does-not-follow-its-own-result".to_owned(),
             17268,
@@ -252,25 +269,25 @@ fn generated_reader_edits_and_cycles_have_only_attributed_differences() {
             "a-waiting-reader-leaves-its-own-pending-key".to_owned(),
             1986,
         ),
-        ("change-flag-after-loading-converges".to_owned(), 311),
+        ("change-flag-after-loading-converges".to_owned(), 312),
         ("handoff-failure-leaves-a-reader-loading".to_owned(), 10),
         ("idle-query-takes-over-a-pending-call".to_owned(), 899),
         ("new-reader-of-a-retained-failure".to_owned(), 207),
         ("pending-key-changes-its-only-reader".to_owned(), 1264),
-        ("rapid-edits-revisit-a-cached-result".to_owned(), 661),
+        ("rapid-edits-revisit-a-cached-result".to_owned(), 662),
         (
             "remove-statement-before-registering-its-replacement".to_owned(),
-            9382,
+            9385,
         ),
         ("removed-call-failure-on-a-recreated-key".to_owned(), 7),
         ("removed-call-success-on-a-recreated-key".to_owned(), 31),
         ("return-to-a-displaced-failed-entry".to_owned(), 41),
         ("return-to-an-outstanding-key-after-failure".to_owned(), 1),
         ("return-to-failed-key".to_owned(), 125),
-        ("return-to-finished-key".to_owned(), 1526),
+        ("return-to-finished-key".to_owned(), 1516),
         (
             "run-through-a-query-that-did-not-start-the-call".to_owned(),
-            3241,
+            3244,
         ),
         ("shared-completion-leaves-a-reader-loading".to_owned(), 43),
         (

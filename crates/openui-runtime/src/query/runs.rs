@@ -42,6 +42,18 @@ impl QueryRequests {
             .filter(|q| !q.suspended)
             .map(|q| q.key.as_ref())
             .collect();
+        let remembered = remembered.and_then(|(key, request)| {
+            if current.contains(key.as_ref()) {
+                return Some((key, request));
+            }
+            // The delivery's cascade moved every current holder away. The
+            // run is owed to the key, not forgotten: a query that returns to
+            // it refetches (#119). An entry no query holds is released.
+            if let Some(entry) = manager.cache.get_mut(&key) {
+                entry.stale = true;
+            }
+            None
+        });
         remembered
             .into_iter()
             .chain(self.ordered)
@@ -132,6 +144,46 @@ impl QueryManager {
     }
 }
 
+impl QueryManager {
+    /// End a query call that was never handed to a tool provider, if no
+    /// query holds its key as current: the outcome rule 3 gives that call if
+    /// delivered (ADR 0013), now, so no receipt is outstanding for a key only
+    /// a previous slot holds. No data, error, fetch history or loading state
+    /// changes, the entry keeps its data, a run remembered for it is
+    /// forgotten, and a later completion of the identity is refused as
+    /// already completed. False, and nothing changes, for a mutation call,
+    /// another manager's or a completed identity, or a key still current.
+    pub fn abandon_unperformed_call(&mut self, id: &ToolCallId) -> bool {
+        if self.check_call(id).is_err() {
+            return false;
+        }
+        let CallTarget::Query(target) = &id.0.target else {
+            return false;
+        };
+        let Some(pending) = target.upgrade() else {
+            return false;
+        };
+        if self
+            .queries
+            .values()
+            .any(|query| !query.suspended && query.key == pending.key)
+        {
+            return false;
+        }
+        if let Some(entry) = self.cache.get_mut(&pending.key)
+            && entry
+                .pending
+                .as_ref()
+                .is_some_and(|call| Arc::ptr_eq(call, &pending))
+        {
+            entry.pending = None;
+            entry.run_again = None;
+        }
+        id.0.consumed.store(true, Ordering::Relaxed);
+        true
+    }
+}
+
 /// Start a call for an entry with none in flight. The call belongs to the
 /// entry, not to the query whose request it uses.
 pub(super) fn start_call(
@@ -153,6 +205,8 @@ pub(super) fn start_call(
         consumed: AtomicBool::new(false),
     }));
     entry.pending = Some(pending);
+    // The call is the run a stale entry owed.
+    entry.stale = false;
     ToolCall {
         id,
         tool_name: request.tool_name.clone(),

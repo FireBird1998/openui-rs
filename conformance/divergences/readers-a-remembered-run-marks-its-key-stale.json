@@ -1,0 +1,31 @@
+{
+  "case": "a-remembered-run-marks-its-key-stale",
+  "reference": [
+    "{\"snapshot\":{\"__openui_loading\":[\"a\",\"f\",\"g\"],\"__openui_refetching\":[],\"__openui_errors\":[],\"a\":null,\"f\":null,\"g\":null},\"calls\":[{\"call\":0,\"toolName\":\"u\",\"args\":{}},{\"call\":1,\"toolName\":\"t\",\"args\":{\"k0\":3}}],\"changed\":true}",
+    "{\"snapshot\":{\"__openui_loading\":[\"f\",\"g\"],\"__openui_refetching\":[],\"__openui_errors\":[],\"a\":1,\"f\":null,\"g\":null},\"calls\":[{\"call\":2,\"toolName\":\"t\",\"args\":{\"k0\":1}}],\"changed\":true}",
+    "{\"snapshot\":{\"__openui_loading\":[\"g\"],\"__openui_refetching\":[],\"__openui_errors\":[],\"a\":1,\"f\":2,\"g\":null},\"calls\":[],\"changed\":true}",
+    "{\"snapshot\":{\"__openui_loading\":[],\"__openui_refetching\":[],\"__openui_errors\":[],\"a\":1,\"f\":2,\"g\":7},\"calls\":[],\"changed\":true}",
+    "{\"snapshot\":{\"__openui_loading\":[],\"__openui_refetching\":[],\"__openui_errors\":[],\"a\":1,\"f\":2,\"g\":7},\"calls\":[],\"changed\":false}",
+    "{\"snapshot\":{\"__openui_loading\":[\"a\"],\"__openui_refetching\":[\"a\"],\"__openui_errors\":[],\"a\":1,\"f\":2,\"g\":7},\"calls\":[{\"call\":3,\"toolName\":\"v\",\"args\":{\"k0\":2}}],\"changed\":true}",
+    "{\"snapshot\":{\"__openui_loading\":[\"a\",\"f\",\"g\"],\"__openui_refetching\":[\"a\",\"f\",\"g\"],\"__openui_errors\":[],\"a\":1,\"f\":2,\"g\":7},\"calls\":[{\"call\":4,\"toolName\":\"t\",\"args\":{\"k0\":1}},{\"call\":5,\"toolName\":\"t\",\"args\":{\"k0\":3}}],\"changed\":true}",
+    "{\"snapshot\":{\"__openui_loading\":[\"a\",\"f\",\"g\"],\"__openui_refetching\":[\"a\",\"f\",\"g\"],\"__openui_errors\":[],\"a\":3,\"f\":7,\"g\":7},\"calls\":[{\"call\":6,\"toolName\":\"v\",\"args\":{\"k0\":2}},{\"call\":7,\"toolName\":\"v\",\"args\":{\"k0\":7}}],\"changed\":true}",
+    "{\"snapshot\":{\"__openui_loading\":[\"a\",\"f\",\"g\"],\"__openui_refetching\":[\"a\",\"f\",\"g\"],\"__openui_errors\":[],\"a\":3,\"f\":7,\"g\":7},\"calls\":[],\"changed\":false}",
+    "{\"snapshot\":{\"__openui_loading\":[\"a\",\"f\",\"g\"],\"__openui_refetching\":[\"a\",\"f\",\"g\"],\"__openui_errors\":[],\"a\":3,\"f\":7,\"g\":7},\"calls\":[],\"changed\":false}",
+    "{\"snapshot\":{\"__openui_loading\":[\"a\",\"f\",\"g\"],\"__openui_refetching\":[\"a\",\"f\",\"g\"],\"__openui_errors\":[],\"a\":3,\"f\":7,\"g\":7},\"calls\":[],\"changed\":false}",
+    "{\"snapshot\":{\"__openui_loading\":[\"a\",\"f\",\"g\"],\"__openui_refetching\":[\"a\",\"f\",\"g\"],\"__openui_errors\":[],\"a\":3,\"f\":7,\"g\":7},\"calls\":[],\"changed\":false}"
+  ],
+  "rust": [
+    "{\"snapshot\":{\"__openui_loading\":[\"a\",\"f\",\"g\"],\"__openui_refetching\":[],\"__openui_errors\":[],\"a\":null,\"f\":null,\"g\":null},\"calls\":[{\"call\":0,\"toolName\":\"u\",\"args\":{}},{\"call\":1,\"toolName\":\"t\",\"args\":{\"k0\":3}}],\"changed\":true}",
+    "{\"snapshot\":{\"__openui_loading\":[\"f\",\"g\"],\"__openui_refetching\":[],\"__openui_errors\":[],\"a\":1,\"f\":null,\"g\":null},\"calls\":[{\"call\":2,\"toolName\":\"t\",\"args\":{\"k0\":1}}],\"changed\":true}",
+    "{\"snapshot\":{\"__openui_loading\":[\"g\"],\"__openui_refetching\":[],\"__openui_errors\":[],\"a\":1,\"f\":2,\"g\":null},\"calls\":[],\"changed\":true}",
+    "{\"snapshot\":{\"__openui_loading\":[],\"__openui_refetching\":[],\"__openui_errors\":[],\"a\":1,\"f\":2,\"g\":7},\"calls\":[],\"changed\":true}",
+    "{\"snapshot\":{\"__openui_loading\":[],\"__openui_refetching\":[],\"__openui_errors\":[],\"a\":1,\"f\":2,\"g\":7},\"calls\":[],\"changed\":false}",
+    "{\"snapshot\":{\"__openui_loading\":[\"a\"],\"__openui_refetching\":[\"a\"],\"__openui_errors\":[],\"a\":1,\"f\":2,\"g\":7},\"calls\":[{\"call\":3,\"toolName\":\"v\",\"args\":{\"k0\":2}}],\"changed\":true}",
+    "{\"snapshot\":{\"__openui_loading\":[\"a\",\"f\",\"g\"],\"__openui_refetching\":[\"a\",\"f\",\"g\"],\"__openui_errors\":[],\"a\":1,\"f\":2,\"g\":7},\"calls\":[{\"call\":4,\"toolName\":\"t\",\"args\":{\"k0\":1}},{\"call\":5,\"toolName\":\"t\",\"args\":{\"k0\":3}}],\"changed\":true}",
+    "{\"snapshot\":{\"__openui_loading\":[\"a\",\"f\",\"g\"],\"__openui_refetching\":[\"a\",\"f\",\"g\"],\"__openui_errors\":[],\"a\":3,\"f\":7,\"g\":7},\"calls\":[{\"call\":6,\"toolName\":\"v\",\"args\":{\"k0\":7}}],\"changed\":true}",
+    "{\"snapshot\":{\"__openui_loading\":[\"a\",\"f\",\"g\"],\"__openui_refetching\":[\"a\",\"f\",\"g\"],\"__openui_errors\":[],\"a\":3,\"f\":7,\"g\":7},\"calls\":[],\"changed\":false}",
+    "{\"snapshot\":{\"__openui_loading\":[\"a\",\"f\",\"g\"],\"__openui_refetching\":[\"a\",\"f\",\"g\"],\"__openui_errors\":[],\"a\":3,\"f\":7,\"g\":7},\"calls\":[{\"call\":7,\"toolName\":\"v\",\"args\":{\"k0\":2}}],\"changed\":false}",
+    "{\"snapshot\":{\"__openui_loading\":[\"f\",\"g\"],\"__openui_refetching\":[\"f\",\"g\"],\"__openui_errors\":[],\"a\":4,\"f\":7,\"g\":7},\"calls\":[{\"call\":8,\"toolName\":\"t\",\"args\":{\"k0\":4}}],\"changed\":true}",
+    "{\"snapshot\":{\"__openui_loading\":[\"f\",\"g\"],\"__openui_refetching\":[\"f\",\"g\"],\"__openui_errors\":[],\"a\":4,\"f\":7,\"g\":7},\"calls\":[],\"changed\":false}"
+  ]
+}

@@ -5,6 +5,8 @@ import {readFileSync} from 'node:fs';
 import type {createQueryManager} from './lang-core/src/runtime/queryManager';
 
 export const dispatchRow = 'a-reader-only-dispatches-keys-still-current-after-the-cascade';
+// #119: needs the dispatch row, as only a deferred request can lose its holder.
+export const staleRow = 'a-remembered-run-marks-its-key-stale';
 export const rows = [
   'a-seeded-self-reader-does-not-follow-its-own-result',
   'remove-statement-before-registering-its-replacement',
@@ -31,6 +33,7 @@ export const rows = [
   'run-through-a-query-that-did-not-start-the-call',
   'a-previous-key-releases-a-waiting-self-reader',
   dispatchRow,
+  staleRow,
 ] as const;
 export type RoundTrace = {
   rounds: string[][]; left: string[]
@@ -45,15 +48,17 @@ export async function readerPolicies() {
   // Keep the first request per key, then call the real provider for the final
   // holders in that order. Earlier commands' in-flight calls stay upstream's.
   edit('  const queries =', `  const requested = new Map();
-  function scheduleRequest(key, id, asked) {
+  function scheduleRequest(key, id, asked, remembered = false) {
     if (!allow('${dispatchRow}')) return executeFetch(key, id, asked);
-    if (!requested.has(key)) requested.set(key, {id, asked});
+    if (!requested.has(key)) requested.set(key, {id, asked, remembered});
   }
   function dispatchCurrent() {
-    for (const [key, {id, asked}] of requested) {
+    for (const [key, {id, asked, remembered}] of requested) {
       const holder = queries.get(id)?.cacheKey === key ? id :
         [...queries].find(([,q]) => q.cacheKey === key)?.[0];
       if (holder !== undefined && !cache.get(key)?.inFlight) executeFetch(key, holder, asked);
+      // A remembered run whose holder the cascade moved away is owed to the entry.
+      else if (holder === undefined && remembered && allow('${staleRow}') && cache.has(key)) cache.get(key).stale = true;
     }
     requested.clear();
   }
@@ -117,7 +122,10 @@ export async function readerPolicies() {
   edit('entry.failed);', `(entry.failed && (q.error || !allow('new-reader-of-a-retained-failure'))));`);
   edit(
       'q.loading = true;',
-      'q.loading = true; entry.starter = statementId; q.hidden=undefined; q.stuck=undefined;');
+      'q.loading = true; entry.starter = statementId; entry.stale = false; q.hidden=undefined; q.stuck=undefined;');
+  // A query that makes a stale entry current again starts the owed run.
+  edit('if (toolProvider && !settled && !entry?.inFlight) {',
+       `if (toolProvider && (!settled || (entry.stale && allow('${staleRow}'))) && !entry?.inFlight) {`);
   edit(
       'if (!current || current.cacheKey !== fetchKey) {',
       `if(cache.get(fetchKey)!==entry && allow('removed-call-success-on-a-recreated-key')) return;
@@ -166,7 +174,7 @@ export async function readerPolicies() {
         const request = entry.again;
         entry.again = undefined;
         const holder = [...queries].find(([,q]) => q.cacheKey === fetchKey);
-        if (holder && cache.get(fetchKey) === entry) scheduleRequest(fetchKey, holder[0], request);
+        if (holder && cache.get(fetchKey) === entry) scheduleRequest(fetchKey, holder[0], request, true);
       }
       reevaluateReaders();`);
   code +=

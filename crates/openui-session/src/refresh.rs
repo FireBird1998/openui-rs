@@ -13,6 +13,12 @@ impl SessionCore {
 
     /// Advance the attached provider's monotonic clock, including while streaming.
     pub fn advance_query_clock(&mut self, now_ms: u64) -> Result<(), OpenUiError> {
+        // Unregistered, the timers are another program's: keep the clock and
+        // fire none (#119). Overdue timers fire on the first advance after a
+        // registration keeps them.
+        if self.is_unregistered() {
+            return self.sample_query_clock(now_ms);
+        }
         if let Some(manager) = self.manager.as_mut() {
             self.query_effects
                 .record(manager.apply(QueryCommand::AdvanceClock { now_ms })?);

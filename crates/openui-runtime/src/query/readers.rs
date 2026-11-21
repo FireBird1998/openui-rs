@@ -143,17 +143,30 @@ impl QueryManager {
         let mut requests = self.apply_nodes(input.result, &nodes);
         // A bounded parse can keep a waitFor edge but drop its source. No
         // completion could wake that reader. Refuse this registration atomically
-        // with the parser's actual limit, keeping usable partial programs valid.
-        if (input.result.size_limited || input.result.depth_limited)
-            && nodes
-                .iter()
-                .flat_map(|node| node.reads.iter())
-                .any(|read| !self.queries.contains_key(&read.id))
-        {
-            let mut flags = EvaluationFlags::default();
-            flags.size_limited = input.result.size_limited;
-            flags.depth_limited = input.result.depth_limited;
-            return Err(QueryCommandError::Limit(LimitError { flags }));
+        // with the parser's actual limit, keeping usable partial programs
+        // valid, and name the first such reader and source (#119).
+        if input.result.size_limited || input.result.depth_limited {
+            let cut = nodes.iter().find_map(|node| {
+                let read = node
+                    .reads
+                    .iter()
+                    .find(|read| !self.queries.contains_key(&read.id))?;
+                Some((node.id.clone(), read.id.clone()))
+            });
+            if let Some((reader, source)) = cut {
+                // The ids reach the error's text; keep both within the
+                // result-size limit, as any text the session reports is.
+                let room = results::result_limit(self.limits) / 4;
+                let (reader, source) = (bounded_id(reader, room), bounded_id(source, room));
+                let mut flags = EvaluationFlags::default();
+                flags.size_limited = input.result.size_limited;
+                flags.depth_limited = input.result.depth_limited;
+                return Err(QueryCommandError::SourceCut {
+                    reader,
+                    source,
+                    limit: LimitError { flags },
+                });
+            }
         }
         self.readers = None;
         if nodes.iter().any(|n| !n.reads.is_empty()) {
@@ -240,5 +253,32 @@ impl QueryManager {
             }
         }
         pending
+    }
+}
+
+/// `id`, or its first bytes within `room` (at a character boundary) and an
+/// ellipsis, for a message.
+fn bounded_id(mut id: String, room: usize) -> String {
+    if id.len() <= room {
+        return id;
+    }
+    let mut end = room.saturating_sub(3);
+    while !id.is_char_boundary(end) {
+        end -= 1;
+    }
+    id.truncate(end);
+    id.push('…');
+    id
+}
+
+#[cfg(test)]
+mod tests {
+    #[test]
+    fn a_long_id_is_cut_at_a_character_boundary_within_its_room() {
+        assert_eq!(super::bounded_id("q0".into(), 8), "q0");
+        let cut = super::bounded_id("ééééé".into(), 6);
+        assert_eq!(cut, "é…");
+        assert!(cut.len() <= 6);
+        assert_eq!(super::bounded_id("abcdefghij".into(), 8), "abcde…");
     }
 }

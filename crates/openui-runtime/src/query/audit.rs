@@ -113,6 +113,10 @@ impl QueryManager {
             if e.pending.is_some() != live.contains(key) {
                 return Err(format!("rule 2: missing receipt for {key}"));
             }
+            // A stale entry owes one run (#119): starting it clears the mark.
+            if e.stale && e.pending.is_some() {
+                return Err(format!("rule 5: stale entry {key} has a call in flight"));
+            }
         }
         // A wait propagates loading transitively. Follow edges from real
         // receipts, so an unexplained waiting flag cannot establish loading.
@@ -172,6 +176,13 @@ impl QueryManager {
             {
                 return Err(format!(
                     "rule 4: idle query {id} has no result, error or receipt"
+                ));
+            } else if registered && !self.disposed && entry.stale {
+                // A stale entry is current for no ready query: one that makes
+                // it current again requests the run it owes, whatever its
+                // data or error (#119).
+                return Err(format!(
+                    "rule 5: query {id} shows a stale entry without refetching"
                 ));
             }
         }
@@ -290,7 +301,9 @@ impl ToolDelivery<'_> {
                 }
             } else if q.ever_fetched != old.ever_fetched
                 || q.previous != old.previous
-                || q.error != old.error
+                // By identity: an error's raw tool name can hold NaN, which
+                // never equals itself (fuzz crash 5ca76c7b, #119).
+                || !crate::store::same(q.error.as_ref(), old.error.as_ref())
                 || q.withheld != old.withheld
             {
                 return Err(format!("rule 3: delivery changed unrelated query {id}"));
@@ -481,6 +494,37 @@ mod tests {
                 .audit_cache(std::iter::empty(), true)
                 .unwrap_err()
                 .contains("rule 4: idle query b")
+        );
+    }
+
+    #[test]
+    fn a_stale_entry_has_no_call_and_no_ready_current_holder() {
+        let (mut m, id) = registered();
+        let value = JsonValue::from(1);
+        let update = m
+            .apply(QueryCommand::Complete {
+                id: &id,
+                outcome: ToolOutcome::Result(Some(&value)),
+            })
+            .unwrap();
+        let reader = &update.calls[0].id;
+        m.audit_cache(std::iter::once(reader), true).unwrap();
+        // Current for ready queries that are not refetching: the owed run is lost.
+        let shared = m.queries["a"].key.clone();
+        m.cache.get_mut(&shared).unwrap().stale = true;
+        assert!(
+            m.audit_cache(std::iter::once(reader), true)
+                .unwrap_err()
+                .contains("shows a stale entry without refetching")
+        );
+        // A stale entry with a call in flight was not cleared by the call.
+        m.cache.get_mut(&shared).unwrap().stale = false;
+        let key = m.queries["r"].key.clone();
+        m.cache.get_mut(&key).unwrap().stale = true;
+        assert!(
+            m.audit_cache(std::iter::once(reader), true)
+                .unwrap_err()
+                .contains("rule 5: stale entry")
         );
     }
 

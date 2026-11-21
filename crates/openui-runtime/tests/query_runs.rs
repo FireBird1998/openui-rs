@@ -202,3 +202,107 @@ fn with_query_runs_a_query_run_is_handed_over_in_step_order_instead_of_an_event(
     assert!(plain.query_runs.is_empty());
     assert_eq!(plain.events.len(), 2);
 }
+
+fn call_for<'a>(calls: &'a [ToolCall], tool: &str, args: &str) -> &'a ToolCall {
+    calls
+        .iter()
+        .find(|c| c.tool_name == tool && c.arguments_json().as_deref() == Some(args))
+        .unwrap_or_else(|| panic!("no call {tool}|{args}"))
+}
+
+fn finish_number(manager: &mut QueryManager, call: &ToolCall, value: f64) -> Vec<ToolCall> {
+    let value = JsonValue::from(value);
+    manager
+        .apply(QueryCommand::Complete {
+            id: &call.id,
+            outcome: ToolOutcome::Result(Some(&value)),
+        })
+        .unwrap()
+        .calls
+}
+
+#[test]
+fn a_remembered_run_marks_its_key_stale_when_the_delivery_moves_its_only_holder() {
+    // #113, decided in #119: the delivery's own cascade moves `a`, the only
+    // holder, to another key. The run asked for while the call was in flight
+    // is not forgotten: the entry is stale, so returning to it refetches.
+    let store = Store::default();
+    let mut manager = QueryManager::default();
+    let first = program("a=Query(\"u\",{})\nf=Query(\"t\",{k0:a})\ng=Query(\"t\",{k0:3})");
+    let calls = evaluate(&mut manager, &first, &store);
+    let f = finish_number(&mut manager, call_for(&calls, "u", "{}"), 1.0);
+    finish_number(&mut manager, call_for(&f, "t", r#"{"k0":1}"#), 2.0);
+    finish_number(&mut manager, call_for(&calls, "t", r#"{"k0":3}"#), 7.0);
+    let cycle = program("a=Query(\"v\",{k0:f})\nf=Query(\"t\",{k0:a})\ng=Query(\"t\",{k0:3})");
+    let v2 = evaluate(&mut manager, &cycle, &store);
+    let v2 = call_for(&v2, "v", r#"{"k0":2}"#);
+    let runs = run(&mut manager, &[]);
+    let moved = finish_number(&mut manager, v2, 3.0);
+    call_for(&moved, "v", r#"{"k0":7}"#);
+    assert!(
+        moved
+            .iter()
+            .all(|c| c.arguments_json().as_deref() != Some(r#"{"k0":2}"#)),
+        "the key has no current holder, so its run is not started now"
+    );
+    manager
+        .audit_cache(runs.iter().chain(&moved).map(|c| &c.id), true)
+        .unwrap();
+    let back = program("a=Query(\"v\",{k0:2})\nf=Query(\"t\",{k0:a})\ng=Query(\"t\",{k0:3})");
+    let refetch = evaluate(&mut manager, &back, &store);
+    let again = call_for(&refetch, "v", r#"{"k0":2}"#);
+    let snapshot: JsonValue = parse_json(manager.snapshot_json()).unwrap();
+    assert_eq!(
+        snapshot["a"],
+        parse_json("3").unwrap(),
+        "the earlier data stays on screen"
+    );
+    assert_eq!(snapshot["__openui_loading"][0], "a");
+    assert_eq!(snapshot["__openui_refetching"][0], "a");
+    manager
+        .audit_cache(
+            runs.iter().chain(&moved).chain(&refetch).map(|c| &c.id),
+            true,
+        )
+        .unwrap();
+    // The refetch settles the key like any call, and the entry is fresh again.
+    finish_number(&mut manager, again, 4.0);
+    assert!(evaluate(&mut manager, &back, &store).is_empty());
+}
+
+#[test]
+fn an_unperformed_call_for_a_previous_key_is_abandoned_without_delivery() {
+    // #119: a call the embedder never performed, whose key only a previous
+    // slot holds, ends as rule 3 ends it on delivery, with no receipt left.
+    let mut store = Store::default();
+    store.set("$f", Some(Value::Num(0.0))).unwrap();
+    let source = program("$f = 0\nq = Query(\"t\", {f: $f}, \"q\")");
+    let mut manager = QueryManager::default();
+    let first = evaluate(&mut manager, &source, &store).remove(0);
+    finish(&mut manager, &first, "zero");
+    let again = run(&mut manager, &["q"]).remove(0);
+    // A current key's call is not abandoned.
+    assert!(!manager.abandon_unperformed_call(&again.id));
+    store.set("$f", Some(Value::Num(1.0))).unwrap();
+    let moved = evaluate(&mut manager, &source, &store).remove(0);
+    let before = manager.snapshot_json().to_owned();
+    assert!(manager.abandon_unperformed_call(&again.id));
+    assert!(!again.id.is_pending());
+    assert_eq!(
+        manager.snapshot_json(),
+        before,
+        "nothing delivered or shown"
+    );
+    assert!(manager.snapshot_json().contains(r#""q":"zero""#));
+    manager.audit_cache([&moved.id].into_iter(), true).unwrap();
+    assert!(matches!(
+        manager.apply(QueryCommand::Complete {
+            id: &again.id,
+            outcome: ToolOutcome::Result(None),
+        }),
+        Err(QueryCommandError::InvalidCall)
+    ));
+    assert!(!manager.abandon_unperformed_call(&again.id));
+    finish(&mut manager, &moved, "one");
+    assert!(manager.snapshot_json().contains(r#""q":"one""#));
+}

@@ -1,0 +1,24 @@
+{
+  "case": "a-colliding-key-keeps-the-first-request-across-a-cascade",
+  "situation": "idle-query-takes-over-a-pending-call",
+  "reference": [
+    "{\"snapshot\":{\"__openui_loading\":[\"s\",\"x\",\"y\",\"a\",\"b\"],\"__openui_refetching\":[],\"__openui_errors\":[],\"s\":null,\"x\":null,\"y\":null,\"a\":null,\"b\":null},\"calls\":[{\"call\":0,\"toolName\":\"s\",\"args\":{}},{\"call\":1,\"toolName\":\"x\",\"args\":{\"v\":2}}],\"changed\":true}",
+    "{\"snapshot\":{\"__openui_loading\":[\"s\",\"x\",\"a\",\"b\"],\"__openui_refetching\":[],\"__openui_errors\":[],\"s\":null,\"x\":null,\"y\":\"k2\",\"a\":null,\"b\":null},\"calls\":[],\"changed\":true}",
+    "{\"snapshot\":{\"__openui_loading\":[\"x\",\"a\",\"b\"],\"__openui_refetching\":[],\"__openui_errors\":[],\"s\":1,\"x\":null,\"y\":\"k2\",\"a\":null,\"b\":null},\"calls\":[{\"call\":2,\"toolName\":\"x\",\"args\":{\"v\":1}}],\"changed\":true}",
+    "{\"snapshot\":{\"__openui_loading\":[\"a\",\"b\"],\"__openui_refetching\":[],\"__openui_errors\":[],\"s\":1,\"x\":\"k1\",\"y\":\"k2\",\"a\":null,\"b\":null},\"calls\":[{\"call\":3,\"toolName\":\"t\",\"args\":{\"v\":\"a0\"}},{\"call\":4,\"toolName\":\"t\",\"args\":{\"v\":\"b1\"}}],\"changed\":true}",
+    "{\"snapshot\":{\"__openui_loading\":[\"b\"],\"__openui_refetching\":[],\"__openui_errors\":[],\"s\":1,\"x\":\"k1\",\"y\":\"k2\",\"a\":\"A0\",\"b\":null},\"calls\":[],\"changed\":true}",
+    "{\"snapshot\":{\"__openui_loading\":[],\"__openui_refetching\":[],\"__openui_errors\":[],\"s\":1,\"x\":\"k1\",\"y\":\"k2\",\"a\":\"A0\",\"b\":\"B1\"},\"calls\":[],\"changed\":true}",
+    "{\"snapshot\":{\"__openui_loading\":[\"s\"],\"__openui_refetching\":[\"s\"],\"__openui_errors\":[],\"s\":1,\"x\":\"k1\",\"y\":\"k2\",\"a\":\"A0\",\"b\":\"B1\"},\"calls\":[{\"call\":5,\"toolName\":\"s\",\"args\":{}}],\"changed\":true}",
+    "{\"snapshot\":{\"__openui_loading\":[\"a\"],\"__openui_refetching\":[\"a\"],\"__openui_errors\":[],\"s\":2,\"x\":\"k2\",\"y\":\"k2\",\"a\":null,\"b\":\"B1\"},\"calls\":[{\"call\":6,\"toolName\":\"t\",\"args\":{}},{\"call\":7,\"toolName\":\"t\",\"args\":{\"v\":\"a2\"}}],\"changed\":true}"
+  ],
+  "rust": [
+    "{\"snapshot\":{\"__openui_loading\":[\"s\",\"x\",\"y\",\"a\",\"b\"],\"__openui_refetching\":[],\"__openui_errors\":[],\"s\":null,\"x\":null,\"y\":null,\"a\":null,\"b\":null},\"calls\":[{\"call\":0,\"toolName\":\"s\",\"args\":{}},{\"call\":1,\"toolName\":\"x\",\"args\":{\"v\":2}}],\"changed\":true}",
+    "{\"snapshot\":{\"__openui_loading\":[\"s\",\"x\",\"a\",\"b\"],\"__openui_refetching\":[],\"__openui_errors\":[],\"s\":null,\"x\":null,\"y\":\"k2\",\"a\":null,\"b\":null},\"calls\":[],\"changed\":true}",
+    "{\"snapshot\":{\"__openui_loading\":[\"x\",\"a\",\"b\"],\"__openui_refetching\":[],\"__openui_errors\":[],\"s\":1,\"x\":null,\"y\":\"k2\",\"a\":null,\"b\":null},\"calls\":[{\"call\":2,\"toolName\":\"x\",\"args\":{\"v\":1}}],\"changed\":true}",
+    "{\"snapshot\":{\"__openui_loading\":[\"a\",\"b\"],\"__openui_refetching\":[],\"__openui_errors\":[],\"s\":1,\"x\":\"k1\",\"y\":\"k2\",\"a\":null,\"b\":null},\"calls\":[{\"call\":3,\"toolName\":\"t\",\"args\":{\"v\":\"a0\"}},{\"call\":4,\"toolName\":\"t\",\"args\":{\"v\":\"b1\"}}],\"changed\":true}",
+    "{\"snapshot\":{\"__openui_loading\":[\"b\"],\"__openui_refetching\":[],\"__openui_errors\":[],\"s\":1,\"x\":\"k1\",\"y\":\"k2\",\"a\":\"A0\",\"b\":null},\"calls\":[],\"changed\":true}",
+    "{\"snapshot\":{\"__openui_loading\":[],\"__openui_refetching\":[],\"__openui_errors\":[],\"s\":1,\"x\":\"k1\",\"y\":\"k2\",\"a\":\"A0\",\"b\":\"B1\"},\"calls\":[],\"changed\":true}",
+    "{\"snapshot\":{\"__openui_loading\":[\"s\"],\"__openui_refetching\":[\"s\"],\"__openui_errors\":[],\"s\":1,\"x\":\"k1\",\"y\":\"k2\",\"a\":\"A0\",\"b\":\"B1\"},\"calls\":[{\"call\":5,\"toolName\":\"s\",\"args\":{}}],\"changed\":true}",
+    "{\"snapshot\":{\"__openui_loading\":[\"a\",\"b\"],\"__openui_refetching\":[\"a\",\"b\"],\"__openui_errors\":[],\"s\":2,\"x\":\"k2\",\"y\":\"k2\",\"a\":null,\"b\":\"B1\"},\"calls\":[{\"call\":6,\"toolName\":\"t\",\"args\":{}},{\"call\":7,\"toolName\":\"t\",\"args\":{\"v\":\"a2\"}}],\"changed\":true}"
+  ]
+}

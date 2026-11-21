@@ -284,3 +284,301 @@ fn a_later_declaration_still_owns_a_repeated_id_after_a_reader_round() {
     assert_eq!(run.calls.len(), 1);
     assert_eq!(run.calls.first().unwrap().tool_name, "fixed");
 }
+
+fn reader_calls(
+    manager: &mut QueryManager,
+    command: QueryCommand<'_>,
+) -> Vec<openui_runtime::ToolCall> {
+    let update = manager.apply(command).unwrap();
+    manager.audit_output(&update.calls).unwrap();
+    update.calls
+}
+
+fn named<'a>(
+    calls: &'a [openui_runtime::ToolCall],
+    tool: &str,
+    args: &str,
+) -> &'a openui_runtime::ToolCall {
+    calls
+        .iter()
+        .find(|c| c.tool_name == tool && c.arguments_json().as_deref() == Some(args))
+        .unwrap_or_else(|| panic!("no call {tool}|{args}"))
+}
+
+#[test]
+fn a_remembered_run_and_a_reader_moving_onto_its_failed_key_start_one_call() {
+    // The `entry.pending.is_none()` guard in dispatch (#113, #119). `a`'s
+    // call fails while a run is remembered for its key. The NaN that `r`
+    // reads keeps `r` stale, so the delivery rebuilds it with the live
+    // `$tool`, and it moves onto `a`'s failed key with no error of its own
+    // and requests a call there. The remembered run starts first; the
+    // request must not start a second call and orphan the first receipt.
+    let library = Library::from_json_schema(&JsonValue::Null);
+    let program = parse(
+        "$tool=\"u\"\nn=Query(\"n\")\na=Query(\"t\",{})\nr=Query([$tool,n][0],{})",
+        &library,
+        None,
+    );
+    let mut store = Store::default();
+    let _ = store.initialize(
+        program
+            .state_declarations
+            .iter()
+            .map(|(name, value)| (name.as_str(), Some(value))),
+        [],
+    );
+    let mut manager = QueryManager::default();
+    let evaluate = QueryCommand::Evaluate {
+        program: &program,
+        store: &store,
+    };
+    let calls = reader_calls(&mut manager, evaluate);
+    let nan = Value::Num(f64::NAN);
+    let after_nan = reader_calls(
+        &mut manager,
+        QueryCommand::Complete {
+            id: &named(&calls, "n", "{}").id,
+            outcome: ToolOutcome::ResultValue(&nan),
+        },
+    );
+    let u = named(&after_nan, "u", "{}");
+    assert!(
+        reader_calls(
+            &mut manager,
+            QueryCommand::Invalidate {
+                statement_ids: &["a"]
+            }
+        )
+        .is_empty()
+    );
+    store.set("$tool", Some(Value::Str("t".into()))).unwrap();
+    let delivered = reader_calls(
+        &mut manager,
+        QueryCommand::Complete {
+            id: &named(&calls, "t", "{}").id,
+            outcome: ToolOutcome::CallFailed("offline"),
+        },
+    );
+    assert_eq!(delivered.len(), 1, "one call for the shared failed key");
+    assert_eq!(delivered[0].tool_name, "t");
+    manager
+        .audit_cache([&u.id, &delivered[0].id].into_iter(), true)
+        .unwrap();
+}
+
+#[test]
+fn a_cascade_refused_by_the_snapshot_limit_starts_none_of_its_requests() {
+    // The reset of collected requests on the delivery's limit path (#113,
+    // #119). `s`'s result is admitted, and its readers' cascade moves `m`
+    // onto `q`'s failed key, where `m` (with no error) requests a call. The
+    // rebuilt default then makes the snapshot too large, so the cascade is
+    // discarded and `m` suspended. Its request must go with it: `q` still
+    // shows its error and no call starts for the failed key.
+    let library = Library::from_json_schema(&JsonValue::Null);
+    let program = parse(
+        "s=Query(\"s\")\nq=Query(\"t\",{v:1})\nm=Query(\"t\",{v:s.v},s.pad)",
+        &library,
+        None,
+    );
+    let store = Store::default();
+    let mut manager = QueryManager::with_limits(Limits::DEFAULT.with_result_size(1024));
+    let calls = reader_calls(
+        &mut manager,
+        QueryCommand::Evaluate {
+            program: &program,
+            store: &store,
+        },
+    );
+    let failed = reader_calls(
+        &mut manager,
+        QueryCommand::Complete {
+            id: &named(&calls, "t", r#"{"v":1}"#).id,
+            outcome: ToolOutcome::CallFailed("offline"),
+        },
+    );
+    assert!(failed.is_empty());
+    let mut source = JsObject::new();
+    source.define("v", Value::Num(1.0));
+    source.define("pad", Value::Str("x".repeat(600)));
+    let source = Value::Obj(std::sync::Arc::new(source));
+    let delivered = reader_calls(
+        &mut manager,
+        QueryCommand::Complete {
+            id: &named(&calls, "s", "{}").id,
+            outcome: ToolOutcome::ResultValue(&source),
+        },
+    );
+    assert!(
+        matches!(
+            manager.reader_diagnostic(),
+            Some(openui_runtime::ReaderDiagnostic::PropagationLimit(_))
+        ),
+        "the cascade was cut"
+    );
+    assert!(delivered.is_empty(), "no call from the discarded cascade");
+    let snapshot: JsonValue = openui_lang::parse_json(manager.snapshot_json()).unwrap();
+    assert_eq!(snapshot["__openui_errors"][0]["statementId"], "q");
+    assert_eq!(snapshot["__openui_loading"], JsonValue::Array(Vec::new()));
+    manager.audit_cache(std::iter::empty(), true).unwrap();
+}
+
+#[test]
+fn a_recreated_colliding_key_calls_with_the_first_request_as_upstream_does() {
+    // #113's question, answered for #119: yes. In one cascade `a` requests
+    // the key {"v":"__undefined__"} with arguments `{}` and then leaves it,
+    // and `b` arrives on the same key with `{"v":"__undefined__"}`. The one
+    // call carries `a`'s arguments, the first request, though only `b` holds
+    // the key. Lang-core sends the same call (it fetches at `a`'s request);
+    // keys collide as upstream's do (CONFORMANCE.md, pin
+    // `readers-a-colliding-key-keeps-the-first-request-across-a-cascade`).
+    let library = Library::from_json_schema(&JsonValue::Null);
+    let program = parse(
+        "s=Query(\"s\")\nx=Query(\"x\",{v:s})\ny=Query(\"x\",{v:2})\n\
+         a=Query(\"t\",{v:x==\"k1\"?(s==2?[0][2]:\"a0\"):\"a2\"})\n\
+         b=Query(\"t\",{v:x==\"k2\"?\"__undefined__\":\"b1\"})",
+        &library,
+        None,
+    );
+    let store = Store::default();
+    let mut manager = QueryManager::default();
+    let first = reader_calls(
+        &mut manager,
+        QueryCommand::Evaluate {
+            program: &program,
+            store: &store,
+        },
+    );
+    let text = |s: &str| JsonValue::String(s.into());
+    let (k1, k2, a0, b1) = (text("k1"), text("k2"), text("A0"), text("B1"));
+    let (one, two) = (JsonValue::from(1), JsonValue::from(2));
+    let finish = |manager: &mut QueryManager, call: &openui_runtime::ToolCall, value| {
+        reader_calls(
+            manager,
+            QueryCommand::Complete {
+                id: &call.id,
+                outcome: ToolOutcome::Result(Some(value)),
+            },
+        )
+    };
+    finish(&mut manager, named(&first, "x", r#"{"v":2}"#), &k2);
+    let x1 = finish(&mut manager, named(&first, "s", "{}"), &one);
+    let readers = finish(&mut manager, named(&x1, "x", r#"{"v":1}"#), &k1);
+    finish(&mut manager, named(&readers, "t", r#"{"v":"a0"}"#), &a0);
+    finish(&mut manager, named(&readers, "t", r#"{"v":"b1"}"#), &b1);
+    let rerun = reader_calls(
+        &mut manager,
+        QueryCommand::Invalidate {
+            statement_ids: &["s"],
+        },
+    );
+    let cascade = finish(&mut manager, named(&rerun, "s", "{}"), &two);
+    assert_eq!(cascade.len(), 2);
+    let shared = named(&cascade, "t", "{}");
+    named(&cascade, "t", r#"{"v":"a2"}"#);
+    let snapshot: JsonValue = openui_lang::parse_json(manager.snapshot_json()).unwrap();
+    assert_eq!(
+        snapshot["__openui_loading"],
+        openui_lang::parse_json(r#"["a","b"]"#).unwrap(),
+        "b, the key's only holder, is loading on the call made with a's request"
+    );
+    let result = text("K");
+    finish(&mut manager, shared, &result);
+    let snapshot: JsonValue = openui_lang::parse_json(manager.snapshot_json()).unwrap();
+    assert_eq!(snapshot["b"], "K");
+}
+
+#[test]
+fn an_error_naming_a_nan_tool_is_unchanged_by_another_querys_delivery() {
+    // The query fuzz target's crash 5ca76c7b (#119): `b`'s tool name
+    // evaluates to an array holding NaN, and its error keeps that raw name.
+    // The delivery audit compared errors by value, and NaN never equals
+    // itself, so `c`'s failure looked like a change to `b`. The audit now
+    // compares by identity; a delivery that replaces an error makes a new one.
+    let source = "a = Query(1 + 2, falsu)\nb = Query([1, null, 6666666666666666666666666666666666eu2t r,[, 3]], 0)\nc = Query({}, \"args\")\nd = Query(null, [])\ne = Query([0][2], W0][2])\nf = Query()";
+    for limits in [
+        Limits::DEFAULT,
+        Limits::DEFAULT
+            .with_result_floor(1024)
+            .with_amplification(4)
+            .with_work(100_000)
+            .with_depth(16),
+    ] {
+        let library = Library::from_json_schema(&JsonValue::Null);
+        let program = openui_lang::parse_with_limits(source, &library, None, limits);
+        let store = Store::with_limits(limits);
+        let mut manager = QueryManager::with_limits(limits);
+        let calls = reader_calls(
+            &mut manager,
+            QueryCommand::Evaluate {
+                program: &program,
+                store: &store,
+            },
+        );
+        let missing = ToolOutcome::ToolNotFound(Vec::new());
+        manager.audit_delivery(&calls[1].id, &missing).unwrap();
+        reader_calls(
+            &mut manager,
+            QueryCommand::Complete {
+                id: &calls[1].id,
+                outcome: missing,
+            },
+        );
+        assert!(
+            manager
+                .snapshot_json()
+                .contains(r#""toolName":[1,null,null"#)
+        );
+        let failed = ToolOutcome::McpError("");
+        manager.audit_delivery(&calls[2].id, &failed).unwrap();
+        reader_calls(
+            &mut manager,
+            QueryCommand::Complete {
+                id: &calls[2].id,
+                outcome: failed,
+            },
+        );
+        manager
+            .audit_cache(calls.iter().map(|c| &c.id), true)
+            .unwrap();
+    }
+}
+
+#[test]
+fn a_reader_of_a_statement_that_is_not_a_query_waits_as_upstream_does() {
+    // The query fuzz target's crash 2e7f2d70, found during #119 and open:
+    // the parser (as lang-core's does) lists `f` in `a`'s waitFor although
+    // `f` is not a query statement and the parse is not cut. `a` waits for
+    // a source that cannot arrive and shows its default with no call, byte
+    // for byte as lang-core's manager does. ADR 0013 rule 4 promises every
+    // wait a source, so `audit_cache` reports this wait; whether to refuse
+    // the registration or not wait is for the maintainer to decide.
+    let source = "a = Query(2 + 2, f-----------------: 2], [0][2])\nf =@toString( Query$)";
+    let library = Library::from_json_schema(&JsonValue::Null);
+    let program = parse(source, &library, None);
+    assert!(!program.size_limited && !program.depth_limited);
+    assert_eq!(program.query_statements.len(), 1);
+    assert_eq!(
+        program.query_statements[0].wait_for.as_deref(),
+        Some(&["f".to_owned()][..])
+    );
+    let store = Store::default();
+    let mut manager = QueryManager::default();
+    let update = manager
+        .apply(QueryCommand::Evaluate {
+            program: &program,
+            store: &store,
+        })
+        .unwrap();
+    assert!(update.calls.is_empty());
+    assert_eq!(
+        manager.snapshot_json(),
+        r#"{"__openui_loading":[],"__openui_refetching":[],"__openui_errors":[],"a":2}"#,
+        "lang-core 1.1.0's snapshot for the same program"
+    );
+    assert!(
+        manager
+            .audit_cache(std::iter::empty(), true)
+            .unwrap_err()
+            .contains("rule 4: wait at a")
+    );
+}

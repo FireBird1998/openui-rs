@@ -109,6 +109,9 @@ fn query_runs_and_retry_match_the_renderer_bytes() {
                 let run = click(&mut s, last.as_ref().unwrap(), prop);
                 assert!(run.failure.is_none() && run.continuation.is_none());
                 events = run.events;
+            } else if let Some(name) = step["set"].as_str() {
+                s.set(&refs, name.into(), Some(step["value"].to_string()))
+                    .unwrap();
             } else {
                 assert_eq!(step["retry"], true);
                 s.retry_failed_queries().unwrap();

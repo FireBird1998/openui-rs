@@ -31,12 +31,25 @@ impl SessionCore {
         generation: u64,
         output: &mut ActionOutput,
     ) {
+        let unregistered = self.is_unregistered();
+        let refusal = self.query_effects.evaluation_error.clone();
         let Some(manager) = self.manager.as_mut() else {
             return;
         };
         let Some(name) = request.statement else {
             return;
         };
+        // Unregistered, the registered mutation is another program's and may
+        // call another tool (#119). The step fails for the registration's
+        // limit as for a continuation limit: no call, and the plan ends.
+        if unregistered {
+            output.size_limited = true;
+            output.failure = Some(ActionFailureOutput {
+                step: Some(request.step as u64),
+                error: refusal.unwrap_or_else(|| limit("query registration refused by a limit")),
+            });
+            return;
+        }
         if !manager.can_fire_mutation(&name) {
             return;
         }
@@ -112,7 +125,7 @@ impl SessionCore {
             .continuations
             .remove(&generation)
             .ok_or(OpenUiError::ConsumedHandle)?;
-        let refs = manager.prepared_results(self.reference_limits);
+        let refs = self.query_supply().ok_or(OpenUiError::InvalidToolCall)?;
         let input = tree_input(
             &self.program,
             &self.library,

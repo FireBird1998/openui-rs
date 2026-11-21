@@ -104,6 +104,76 @@ the app: it makes fewer requests and sees the same final result. Both sides
 are pinned (`a-reader-only-dispatches-keys-still-current-after-the-cascade`
 in CONFORMANCE.md).
 
+Rule 3 and the final-key dispatch meet in a third case, found while
+reviewing the dispatch fix (#113) and decided by the maintainer on
+2026-11-20 (#119). A run asked for while a call is in flight is remembered
+for the key. When that call is delivered, its readers can move the key's
+only holder to another key within the same command, so at the end of the
+cascade the key has no current holder and the run is not started. The
+first implementation then forgot it, which is what the documentation of
+Invalidate said ("forgotten if none is"), and a query that later returned
+to the key showed the delivered data as settled, although a run had been
+asked for after the call that fetched it. Now the entry is marked stale
+instead: it is still held as the query's previous key (rule 1), and a
+query that makes it current again starts the run it owes, showing the
+delivered data while loading. The mark is cleared by any call the entry
+starts, and the entry is released like any other once no query holds it.
+Rule 4 grows one clause with it: a ready query on a stale current entry
+requests a call, whatever its data or error. The cache audit checks that a
+stale entry has no call in flight and, after a registration, is the current
+entry of no query that is ready (neither waiting nor suspended). A run remembered while the holder moved away
+before the delivery (by an edit) is still forgotten with the undelivered
+call, as rule 3 says; only a delivered call owes its run. Lang-core starts
+the run at the delivery, while the query is still on the key, and leaves it
+in flight on a key nobody shows. Both sides are pinned
+(`a-remembered-run-marks-its-key-stale` in CONFORMANCE.md).
+
+The same review asked whether keeping the first request for a key can call
+a key a reader passed through with another query's tool name or arguments.
+It can, when two queries' keys collide and their raw values differ, and
+lang-core does the same: it fetches at the first request. The call belongs
+to the key, and colliding keys share a call as upstream's do, so this is
+kept (`a-colliding-key-keeps-the-first-request-across-a-cascade`).
+
+Two decisions of #119 sit beside the manager. Retry runs every failed
+query, including those whose errors the snapshot holds only in the compact
+error (#90); each retried result passes the same limits, so a result that
+was refused is refused again. And a program can be unregistered: the
+manager's registrations belong to another program (the session compares the
+identity of the parse result last registered), and registering this one
+was refused by a limit. A refused command leaves the manager unchanged, so
+everything it holds is another program's, even where a statement id is the
+same. While a program is unregistered nothing of the other program is
+drawn, read by an action or a resumed plan, called or refreshed. Each query
+draws and reads its own default and each mutation is idle. The query
+snapshot beside a draw lists nothing loading, fetched or failed, and the
+registration's limit is the draw's query error. `@Run` of a query and Retry
+start no call; the other program's refresh timers do not fire, and no
+refresh deadline is reported. A mutation step fails for the registration's
+limit before any call, as a step does at the pending-plan limit: the
+action's failure names the step, `sizeLimited` is set and the rest of the
+plan does not run. Calls the registrations start meanwhile, such as a late
+result's readers, stay with the session. A registration of the program they
+belong to hands over those still pending. A registration of another program
+hands over a held query call only if its key is current for one of the new
+program's queries (whose registration requested no second call for it); a
+held query call whose key only a previous slot holds is ended by the manager
+without delivery, as rule 3 ends it on delivery, so no receipt is
+outstanding for a key that is not current and nothing the old program's
+readers wanted reaches the driver (found by the second review: a refetch's
+late result woke an old reader whose call went out under the new program).
+Held mutation calls are handed over in either case: a user clicked them
+while their program was drawn, and the same call goes out today when a
+driver drains late without any refusal, so that question belongs to its
+own follow-up. Going back to the program the registrations belong to draws
+its own data again.
+The review of the first version found each of these reading or calling the
+old program: an action copied its result into state, a resumed plan read
+it, `@Run`, Retry and timers called its tools, and the new program's button
+fired the old program's mutation tool, a wrong side effect in the host.
+Lang-core has no limits and registers every program; the differences are
+pinned in CONFORMANCE.md.
+
 This is a divergence on inputs a real program can produce, which is why the
 glossary's definition of a divergence was widened. CONFORMANCE.md lists every
 situation in which output differs, with the rule that forces it; each is

@@ -357,6 +357,8 @@ pub struct SessionCore {
     query_effects: QueryEffects,
     response: DrawResponse,
     query_inputs_changed: bool,
+    // Whether the manager's registrations belong to `program` (#119).
+    registered: queries::Registered,
     extra_values_changed: bool,
     library: Arc<ComponentLibrary>,
     root_name: Option<String>,
@@ -401,6 +403,7 @@ impl SessionCore {
             query_effects: QueryEffects::default(),
             response: DrawResponse::pending(),
             query_inputs_changed: true,
+            registered: queries::Registered::default(),
             extra_values_changed: false,
             library,
             root_name: None,
@@ -633,10 +636,7 @@ impl SessionCore {
             self.core_limits,
             self.limits.max_json_bytes,
         )?;
-        let managed = self
-            .manager
-            .as_ref()
-            .map(|m| m.prepared_results(self.reference_limits));
+        let managed = self.query_supply();
         let refs = managed.as_ref().unwrap_or(refs);
         let input = tree_input(
             &self.program,
@@ -968,6 +968,7 @@ impl SessionCore {
             self.core_limits,
             self.limits.max_json_bytes,
         )?;
+        let registered = self.registered.drawn(&program.inner);
         let (projection, initialization, ((tree, json, snapshot, version), update)) =
             self.store.initialize_transaction(
                 &program.inner.state_declarations,
@@ -976,7 +977,7 @@ impl SessionCore {
                 |store| {
                     queries::draw(
                         self.manager.as_mut(),
-                        (response.effects(true, false), now_ms),
+                        (response.effects(true, false), now_ms, registered),
                         &response.input(program_input(
                             &program.inner,
                             &self.library,
@@ -1026,7 +1027,7 @@ impl SessionCore {
             evaluation: EvaluationOutput {
                 is_query_loading: self
                     .response
-                    .is_query_loading(&self.program, self.manager.as_ref()),
+                    .is_query_loading(&self.program, self.drawn_manager()),
                 parser_error_json: self.response.parser_error_json.clone(),
                 query_snapshot_json,
                 query_evaluation_error,
@@ -1188,6 +1189,7 @@ impl SessionCore {
                         s.extra_values_changed || s.response.scripts != response.scripts,
                     ),
                     now_ms,
+                    s.registered.drawn(&s.program),
                 ),
                 &response.input(program_input(
                     &s.program,
@@ -1213,7 +1215,7 @@ impl SessionCore {
             s.generation = generation;
             s.root = tree.root;
             Ok(EvaluationOutput {
-                is_query_loading: s.response.is_query_loading(&s.program, s.manager.as_ref()),
+                is_query_loading: s.response.is_query_loading(&s.program, s.drawn_manager()),
                 parser_error_json: s.response.parser_error_json.clone(),
                 query_snapshot_json,
                 query_evaluation_error,
@@ -1340,10 +1342,7 @@ impl SessionCore {
                 s.core_limits,
                 s.limits.max_json_bytes,
             )?;
-            let managed = s
-                .manager
-                .as_ref()
-                .map(|m| m.prepared_results(s.reference_limits));
+            let managed = s.query_supply();
             let refs = managed.as_ref().unwrap_or(refs);
             openui_runtime::write_binding_with_limits(
                 tree_input(
@@ -1505,10 +1504,7 @@ impl SessionCore {
                 s.core_limits,
                 s.limits.max_json_bytes,
             )?;
-            let managed = s
-                .manager
-                .as_ref()
-                .map(|m| m.prepared_results(s.reference_limits));
+            let managed = s.query_supply();
             let refs = managed.as_ref().unwrap_or(refs);
             let run = openui_runtime::resume_action(
                 queries::with_provider_runs(

@@ -37,16 +37,19 @@ fn base() -> (
 const MARKER: &str =
     r#"{"__reactive":"assign","target":"$n","expr":{"k":"StateRef","n":"$value"}}"#;
 
-#[test]
-fn settled_draws_writes_and_blocked_edits_match_the_renderer_bytes() {
-    let corpus: Json =
-        serde_json::from_str(include_str!("../../../conformance/session-queries.json")).unwrap();
-    let lib = library(corpus["schema"].clone());
+/// One observation per step of a `conformance/session-queries.json` scenario.
+/// Under smaller limits a step may report a registration refused by a limit.
+fn replay_session(
+    lib: &Arc<ComponentLibrary>,
+    scenario: &Json,
+    limits: RuntimeLimits,
+) -> Vec<String> {
     let values = JsObject::new();
     let refs = PreparedReferenceValues::new(&values);
-    let mut actual = String::new();
-    for scenario in corpus["scenarios"].as_array().unwrap() {
-        let mut s = SessionCore::new(lib.clone(), None, RuntimeLimits::default()).unwrap();
+    let default_limits = limits.evaluation.result_size.is_none();
+    let mut actual = Vec::new();
+    {
+        let mut s = SessionCore::new(lib.clone(), None, limits).unwrap();
         s.attach_tool_provider(&refs).unwrap();
         assert!(s.take_query_update().changed); // The provider makes the query snapshot visible.
         let mut calls: Vec<Arc<WantedToolCall>> = Vec::new();
@@ -63,7 +66,7 @@ fn settled_draws_writes_and_blocked_edits_match_the_renderer_bytes() {
                 output = Some(
                     s.replace_program_with_response(
                         &refs,
-                        program(&lib, source),
+                        program(lib, source),
                         None,
                         None,
                         false,
@@ -106,7 +109,7 @@ fn settled_draws_writes_and_blocked_edits_match_the_renderer_bytes() {
                 );
             }
             let effects = s.take_query_update();
-            assert!(effects.evaluation_error.is_none());
+            assert!(!default_limits || effects.evaluation_error.is_none());
             let draw = output.unwrap_or_else(|| {
                 let draw = s.evaluate_with_response(&refs, response).unwrap();
                 let update = s.take_query_update();
@@ -127,8 +130,8 @@ fn settled_draws_writes_and_blocked_edits_match_the_renderer_bytes() {
                 })
                 .collect::<Vec<_>>()
                 .join(",");
-            actual.push_str(&format!(
-                "{{\"tree\":{},\"snapshot\":{},\"calls\":[{}],\"changed\":{}}}\n",
+            actual.push(format!(
+                "{{\"tree\":{},\"snapshot\":{},\"calls\":[{}],\"changed\":{}}}",
                 draw.json,
                 draw.query_snapshot_json.unwrap(),
                 dispatch,
@@ -137,10 +140,72 @@ fn settled_draws_writes_and_blocked_edits_match_the_renderer_bytes() {
             calls.extend(effects.calls);
         }
     }
+    actual
+}
+
+#[test]
+fn settled_draws_writes_and_blocked_edits_match_the_renderer_bytes() {
+    let corpus: Json =
+        serde_json::from_str(include_str!("../../../conformance/session-queries.json")).unwrap();
+    let lib = library(corpus["schema"].clone());
+    let mut actual = String::new();
+    for scenario in corpus["scenarios"].as_array().unwrap() {
+        for line in replay_session(&lib, scenario, RuntimeLimits::default()) {
+            actual.push_str(&line);
+            actual.push('\n');
+        }
+    }
     assert_eq!(
         actual,
         include_str!("../../../conformance/golden/session-queries.jsonl")
     );
+}
+
+#[test]
+fn a_refused_replacement_draws_defaults_where_upstream_registers_it() {
+    // Both sides of `a-refused-replacement-draws-the-new-queries-defaults`
+    // (CONFORMANCE.md, #119). Upstream has no limits: it registers each
+    // program. With a 2,048-byte result limit, the write and the replacement
+    // are refused and the replacement draws the new queries' defaults.
+    let corpus: Json =
+        serde_json::from_str(include_str!("../../../conformance/session-queries.json")).unwrap();
+    let pin: Json = serde_json::from_str(include_str!(
+        "../../../conformance/divergences/session-a-refused-replacement-draws-the-new-queries-defaults.json"
+    ))
+    .unwrap();
+    let lib = library(corpus["schema"].clone());
+    let scenarios = corpus["scenarios"].as_array().unwrap();
+    let index = scenarios
+        .iter()
+        .position(|s| s["name"] == pin["case"])
+        .unwrap();
+    let offset: usize = scenarios[..index]
+        .iter()
+        .map(|s| s["steps"].as_array().unwrap().len())
+        .sum();
+    let steps = scenarios[index]["steps"].as_array().unwrap().len();
+    let golden: Vec<_> = include_str!("../../../conformance/golden/session-queries.jsonl")
+        .lines()
+        .skip(offset)
+        .take(steps)
+        .map(Json::from)
+        .collect();
+    assert_eq!(pin["reference"], Json::Array(golden), "upstream side");
+    let situation = pin["situation"].as_str().unwrap();
+    assert!(include_str!("../../../CONFORMANCE.md").contains(&format!("| `{situation}` |")));
+    let limits = RuntimeLimits {
+        evaluation: ParseLimits {
+            result_size: Some(2048),
+            ..Default::default()
+        },
+        ..Default::default()
+    };
+    let rust: Vec<_> = replay_session(&lib, &scenarios[index], limits)
+        .into_iter()
+        .map(Json::from)
+        .collect();
+    assert_eq!(pin["rust"], Json::Array(rust), "Rust side");
+    assert_ne!(pin["rust"], pin["reference"]);
 }
 
 #[test]
@@ -438,7 +503,9 @@ fn a_query_cut_after_an_accepted_write_preserves_registration_and_reports_the_li
         .replace_program(&refs, proposed, None, None, true)
         .unwrap()
         .evaluation;
-    assert!(replaced.json.contains("[1,42]"));
+    // A replacement refused by a limit draws the new query's default, not
+    // the old program's result under its statement id (#119).
+    assert!(replaced.json.contains("[null,42]"));
     assert_eq!(
         replaced.query_evaluation_error,
         settled.query_evaluation_error
@@ -510,4 +577,132 @@ fn a_blocked_first_draw_uses_declared_defaults_only_without_a_provider() {
             .contains(r#""value":"waiting""#)
     );
     assert_eq!(s.take_query_update().calls.len(), 1);
+}
+
+#[test]
+fn a_replaced_program_whose_queries_are_refused_by_a_limit_draws_their_defaults() {
+    // #104, decided in #119: the old program's query data must not be drawn
+    // under the new program's statement ids while its registration is refused.
+    let (lib, _, refs) = base();
+    let limits = RuntimeLimits {
+        evaluation: ParseLimits {
+            result_size: Some(2048),
+            ..Default::default()
+        },
+        ..Default::default()
+    };
+    let mut s = SessionCore::new(lib.clone(), None, limits).unwrap();
+    s.attach_tool_provider(&refs).unwrap();
+    let old = program(&lib, "$n=\"a\"\nq=Query(\"search\",{term:$n})\nroot=Box(q)");
+    s.replace_program(&refs, old.clone(), None, None, true)
+        .unwrap();
+    let call = s.take_query_update().calls.remove(0);
+    s.complete_tool_call_json(&call.id, r#"{"value":"old data"}"#)
+        .unwrap();
+    s.take_query_update();
+    let big = json!("x".repeat(1500)).to_string();
+    s.set(&refs, "$n".into(), Some(big)).unwrap();
+    // The same program keeps its registration and draws its data.
+    let kept = s.evaluate(&refs).unwrap();
+    assert!(kept.json.contains("old data"));
+    assert!(matches!(
+        kept.query_evaluation_error,
+        Some(OpenUiError::LimitExceeded { .. })
+    ));
+    let snapshot = kept.query_snapshot_json.clone();
+    s.take_query_update();
+
+    let new = program(
+        &lib,
+        "q=Query(\"new\",{term:$n+$n},\"fresh\")\nr=Query(\"other\",{},[1])\nroot=Box([q,r,42])",
+    );
+    let replaced = s
+        .replace_program(&refs, new, None, None, true)
+        .unwrap()
+        .evaluation;
+    assert!(
+        replaced.json.contains(r#"["fresh",[1],42]"#),
+        "{}",
+        replaced.json
+    );
+    assert!(matches!(
+        replaced.query_evaluation_error,
+        Some(OpenUiError::LimitExceeded { .. })
+    ));
+    // The snapshot describes the drawn program, which has nothing loading,
+    // fetched or failed; the manager still holds the old one's (#119).
+    assert_ne!(replaced.query_snapshot_json, snapshot);
+    assert_eq!(
+        replaced.query_snapshot_json.as_deref(),
+        Some(r#"{"__openui_loading":[],"__openui_refetching":[],"__openui_errors":[]}"#)
+    );
+    assert!(!replaced.is_query_loading);
+    let update = s.take_query_update();
+    assert!(update.calls.is_empty());
+    // Still refused on the next draw, still the defaults.
+    let again = s.evaluate(&refs).unwrap();
+    assert!(again.json.contains(r#"["fresh",[1],42]"#));
+    // A blocked draw registers nothing and still does not show old data.
+    let blocked = s
+        .evaluate_with_response(&refs, ResponseState::from(true))
+        .unwrap();
+    assert!(
+        blocked.json.contains(r#"["fresh",[1],42]"#),
+        "{}",
+        blocked.json
+    );
+    // Once the input fits, the new program registers and fetches.
+    s.set(&refs, "$n".into(), Some(r#""b""#.into())).unwrap();
+    let registered = s.evaluate(&refs).unwrap();
+    assert!(registered.query_evaluation_error.is_none());
+    let calls = s.take_query_update().calls;
+    let mut tools: Vec<_> = calls.iter().map(|c| c.tool_name.as_str()).collect();
+    tools.sort_unstable();
+    assert_eq!(tools, ["new", "other"]);
+    // Registered, `q` is the old statement moved to a new key, and shows its
+    // previous key's data while the new key loads, as upstream does.
+    assert!(
+        registered.json.contains(r#"["old data",[1],42]"#),
+        "{}",
+        registered.json
+    );
+}
+
+#[test]
+fn a_refused_re_registration_keeps_drawing_its_results_while_the_next_program_streams() {
+    // Only a program the registrations do not belong to draws defaults when
+    // refused (#119). A refused state write leaves the program registered, so
+    // a blocked draw of the next program shows the held results, as
+    // upstream's renderer draws its snapshot while a response streams.
+    let (lib, _, refs) = base();
+    let limits = RuntimeLimits {
+        evaluation: ParseLimits {
+            result_size: Some(2048),
+            ..Default::default()
+        },
+        ..Default::default()
+    };
+    let mut s = SessionCore::new(lib.clone(), None, limits).unwrap();
+    s.attach_tool_provider(&refs).unwrap();
+    let old = program(&lib, "$n=\"a\"\nq=Query(\"search\",{term:$n})\nroot=Box(q)");
+    s.replace_program(&refs, old, None, None, true).unwrap();
+    let call = s.take_query_update().calls.remove(0);
+    s.complete_tool_call_json(&call.id, r#"{"value":"held"}"#)
+        .unwrap();
+    let big = json!("x".repeat(1500)).to_string();
+    s.set(&refs, "$n".into(), Some(big)).unwrap();
+    assert!(s.take_query_update().evaluation_error.is_some());
+    s.set_program(
+        &refs,
+        program(&lib, "q=Query(\"next\",{},\"d\")\nroot=Box([q,1])"),
+    )
+    .unwrap();
+    let streaming = s
+        .evaluate_with_response(&refs, ResponseState::from(true))
+        .unwrap();
+    assert!(
+        streaming.json.contains(r#"["held",1]"#),
+        "{}",
+        streaming.json
+    );
 }

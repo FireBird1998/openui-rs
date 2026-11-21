@@ -176,7 +176,7 @@ text for undefined shares a key with an undefined state variable, and in
 `cache-keys-collide-across-the-separator` a tool named `t::{}` shares the
 key of tool `t` with dependencies.
 
-The session replay in `conformance/session-queries.json` compares 62
+The session replay in `conformance/session-queries.json` compares 67
 observations of tree bytes, query snapshot bytes, dispatches and snapshot
 changes with `reference/session-queries.ts`. The adapter transcribes the
 pinned renderer's blocked condition, effect dependencies and call to
@@ -198,7 +198,7 @@ query, runs while its call is in flight (any number of them start one more
 call when it finishes), a repeated name, a run after a failure and a
 remembered run after one, unknown names, an empty list (every query) and a
 run that uses the arguments of the last evaluate rather than current state.
-`conformance/session-runs.json` compares 63 observations of tree bytes, query
+`conformance/session-runs.json` compares 69 observations of tree bytes, query
 snapshot bytes, dispatches, host events and snapshot changes with
 `reference/session-runs.ts`, which clicks through the transcribed
 `triggerAction` with a real manager and transcribes the renderer's
@@ -820,7 +820,7 @@ The tool-name and argument conversion pins are in
 2. A query is loading while its current entry has a call in flight, or while it waits on a loading input query. The pending state follows waiting inputs transitively.
 3. A call delivers success or failure to every query currently on its originating live entry. With no current holder, it ends without delivering data, an error or fetch history to that entry's queries. A still-active receipt can also trigger re-evaluation of stale readers.
 4. A ready query whose current entry has neither data nor a call requests one unless the entry has failed and the query already shows an error.
-5. A run asked for while the current entry has a call in flight is remembered once for the entry, and starts one more call when that call is delivered to a query still on the key.
+5. A run asked for while the current entry has a call in flight is remembered once for the entry, and starts one more call when that call is delivered to a query still on the key. If the delivery's readers move every query off the key, the entry is marked stale and a query that returns to it refetches (#119).
 
 Each situation names its two-sided pin. Counts include later effects on data,
 calls, dispatch numbering and flags in 6,000 seeded scripts. The Rust expectation
@@ -910,8 +910,9 @@ With dispatch deferred, 476 observations differ because of the final holders,
 | Loading | `a-waiting-reader-leaves-its-own-pending-key` | A call abandoned by the reader can leave it marked loading even after its last pending input fails. | A waiting reader with an idle current entry leaves the loading list when its inputs stop loading. | 2 |
 | Reader trigger | `a-seeded-self-reader-does-not-follow-its-own-result` | A query edited to read itself can use previously fetched data. A different result can immediately start another call using that result. This can continue across arbitrarily many provider completions. An equal primitive or an already settled key can stop new calls. | Completion displays the returned value and leaves the arguments that produced it registered. If its self-input changed, the manager, session draw and drain report a diagnostic until registration reconciles them. | #79 and #86’s explicit own-result exclusion |
 | Dispatch | `a-reader-only-dispatches-keys-still-current-after-the-cascade` | Cache hits move the leaf through three keys during one Evaluate. The provider receives calls with null, “one” and “two”. | Only the final key requests a call with “two”. An intermediate key still current for another holder can request a call. [Both managers’ observations](conformance/golden/query-reader-fixes.json) | ADR 0013 rules 1 and 3 |
+| Run | `a-remembered-run-marks-its-key-stale` | A run asked for while `a`'s call is in flight starts when that call is delivered, while `a` is still on the key, and stays in flight after the delivery's readers move `a` away. When `a` returns to the key it shows the delivered value, loading on that older call, and makes no new call. | Calls go out only for keys still current after the cascade, and the delivery's readers moved `a`, the key's only holder, away, so the run is not started. The entry is marked stale instead of the run being forgotten: when `a` returns, the key is refetched, with the delivered value on screen, loading and refetching. [Two-sided pin](conformance/divergences/readers-a-remembered-run-marks-its-key-stale.json) | ADR 0013 rule 5 and #119 |
 | Reader trigger | `a-previous-key-releases-a-waiting-self-reader` | With the shared numeric result, the edit to a self-read rebuilds on loss of the old value. The subsequent equal delivery leaves the reader null and idle, even after invalidate. The repeated-id null case dispatches with null. | The wait is recorded after moving the key. A delivery to the previous key releases the reader even when it supplies the same primitive evaluated before the move. Both cases dispatch. [Manager observations](conformance/golden/query-self-wait.json) · [Renderer observations](conformance/golden/session-self-wait.jsonl) | ADR 0013 rule 4 and the spec’s own-result exclusion |
-| Reader admission | `a-parser-limit-removes-a-readers-source` | Registers both sides of the cycle and displays their defaults. | When a parse limit drops the source but retains its reader, Evaluate returns that limit and preserves the previous snapshot and receipts. [Two-sided pin](conformance/divergences/a-parser-limit-removes-a-readers-source.json) | ADR 0001’s parse limits and ADR 0013 rule 4 |
+| Reader admission | `a-parser-limit-removes-a-readers-source` | Registers both sides of the cycle and displays their defaults. | When a parse limit drops the source but retains its reader, Evaluate refuses with that limit, naming the first such reader and the source the parser dropped, and preserves the previous snapshot and receipts. [Two-sided pin](conformance/divergences/a-parser-limit-removes-a-readers-source.json) | ADR 0001’s parse limits and ADR 0013 rule 4 |
 | Reader admission | `admitted-success-exhausts-the-reader-allowance` | Stores the result and requests the reader with the concatenated input. | With a 1,024-byte result allowance, accepts the source, suspends the reader and reports its limit. | #79’s bounded evaluation and visible limit decisions |
 
 A further 128 seeded graphs complete the previous-key call with the same
@@ -957,11 +958,11 @@ statement-count-plus-one bound. Borrowed and owned completions consume an
 admitted receipt even if the dependent work exhausts its allowance. The
 reader diagnostic identifies the cut.
 
-The additional 5,000 reader-edit graphs compare 131,750 observations. Each
+The additional 5,000 reader-edit graphs compare 131,762 observations. Each
 differing observation has exactly one attribution, using the last transition
 from a policy prefix that still matched the upstream bytes. Counts include
 later effects of that decision. The separate 6,000-script table above retains its counts. The graph driver also settles
-2,484 dispatches observed only on the corrected side and keeps the original
+2,495 dispatches observed only on the corrected side and keeps the original
 completion commands for calls now suppressed. Its commands include
 invalidating live readers, remembering runs, and firing and settling mutations
 while a query reads their status.
@@ -969,22 +970,23 @@ while a query reads their status.
 | Reader graph situation | Differing observations |
 |---|---:|
 | `a-reader-only-dispatches-keys-still-current-after-the-cascade` | 141 |
+| `a-remembered-run-marks-its-key-stale` | 24 |
 | `a-seeded-self-reader-does-not-follow-its-own-result` | 17268 |
 | `a-waiting-reader-leaves-its-own-pending-key` | 1986 |
-| `change-flag-after-loading-converges` | 311 |
+| `change-flag-after-loading-converges` | 312 |
 | `handoff-failure-leaves-a-reader-loading` | 10 |
 | `idle-query-takes-over-a-pending-call` | 899 |
 | `new-reader-of-a-retained-failure` | 207 |
 | `pending-key-changes-its-only-reader` | 1264 |
-| `rapid-edits-revisit-a-cached-result` | 661 |
-| `remove-statement-before-registering-its-replacement` | 9382 |
+| `rapid-edits-revisit-a-cached-result` | 662 |
+| `remove-statement-before-registering-its-replacement` | 9385 |
 | `removed-call-failure-on-a-recreated-key` | 7 |
 | `removed-call-success-on-a-recreated-key` | 31 |
 | `return-to-a-displaced-failed-entry` | 41 |
 | `return-to-an-outstanding-key-after-failure` | 1 |
 | `return-to-failed-key` | 125 |
-| `return-to-finished-key` | 1526 |
-| `run-through-a-query-that-did-not-start-the-call` | 3241 |
+| `return-to-finished-key` | 1516 |
+| `run-through-a-query-that-did-not-start-the-call` | 3244 |
 | `shared-completion-leaves-a-reader-loading` | 43 |
 | `shared-entry-delivers-to-both-current-queries` | 8692 |
 
@@ -1010,6 +1012,15 @@ first to register, and every reader's error names that tool, in both orders,
 as in lang-core: `colliding-keys-share-the-first-querys-call-a-first` and
 `-b-first` differ only in the loading list (row
 `shared-entry-delivers-to-both-current-queries`).
+
+A request is kept per key within one command, so a key a reader requests
+and then leaves during a cascade, and another reader arrives on, is called
+with the first request. In `a-colliding-key-keeps-the-first-request-across-a-cascade`
+`a` requests `{"v":"__undefined__"}` with arguments `{}` and moves on, and
+`b` arrives with `{"v":"__undefined__"}`: both managers send one call with
+`a`'s `{}` (lang-core fetches at `a`'s request), and only the loading list
+differs (row `idle-query-takes-over-a-pending-call`). The keys collide, so
+this is the colliding-keys behaviour above, not a call for the wrong key.
 
 In `a-run-survives-a-replacement-on-the-same-key`, a run is remembered for
 `a`'s call and `a` is replaced in place by `b` on the same key. Rust keeps the
@@ -1192,6 +1203,24 @@ with both sides' outputs (`tests/result_limit_scenarios.rs`).
 | `compact-refusal-keeps-a-dependent-waiting` | The shared result releases the dependent. Only the initiating query starts out loading. | Six holders share one compact error. The dependent waits. A successful retry clears the error and releases the dependent. | #90 and ADR 0013 rule 3: one compact error covers a shared failure when the errors at each holder exceed the snapshot allowance. |
 | `refusal-settles-when-a-stale-reader-exceeds-the-allowance` | Stores the result and calls the reader with its enlarged arguments. | The refused call ends with a tool error. Rebuilding the unrelated stale reader exceeds the allowance, suspends it and reports a reader limit. | #90 and #79’s bounded reader evaluation. |
 
+A registration refused by a limit changes nothing in the manager. While a
+program's registration is refused and the registrations belong to another
+program, nothing of that program is drawn, read by an action, called or
+refreshed (ADR 0013). Each pin compares upstream's observations, from
+`conformance/session-queries.json`, `session-mutations.json` and
+`session-runs.json`, with Rust's under a 2,048-byte result limit
+(`crates/openui-session/tests/queries.rs` and `refused_registration.rs`). The
+other program's refresh timers, which do not fire, and a late result of its
+call, which starts no call and is not drawn, are pinned on the Rust side
+only (`refused_registration.rs`): lang-core registers every program, so it
+has no such state to compare.
+
+| Refused registration and pin | lang-core 1.1.0 | openui-rs | Decision |
+|---|---|---|---|
+| `a-refused-replacement-draws-the-new-queries-defaults` | Registers the replacement: the edited query moves to its new key and the new query starts loading, each showing its default. | With a 2,048-byte result limit, the state write and then the replacement are refused; the manager keeps the previous program's registrations and calls. The replacement draws each of its queries' default values with the limit as its query error, and its query snapshot lists nothing loading, fetched or failed. A draw while the next response streams does the same until a program registers. [Two-sided pin](conformance/divergences/session-a-refused-replacement-draws-the-new-queries-defaults.json) | #104 and #119: a refused registration leaves the manager unchanged, so the old program's data belongs to other statements. |
+| `a-refused-replacement-neither-reads-nor-calls-the-old-program` | Registers the replacement. The click sets `$x` to the new query's default, runs the query again while its call is in flight, and fires the renamed mutation's new tool, `delete`. | With a 2,048-byte result limit the replacement is refused. The draw, the click and its snapshot describe the new program: `$x` reads the new query's default, `@Run(q)` starts no call, and the mutation step starts no call and fails for the registration's limit (the plan ends there, `sizeLimited` set). The registered program's `save` is never called. [Two-sided pin](conformance/divergences/session-a-refused-replacement-neither-reads-nor-calls-the-old-program.json) | #119: nothing of another program is drawn, read by an action or called. |
+| `a-refused-replacement-retries-none-of-the-old-programs-queries` | Registers the replacement; its query fails, and Retry calls the new tool again. | Refused, the replacement's snapshot lists nothing (the registered program's error is not the drawn program's), and Retry starts no call. [Two-sided pin](conformance/divergences/session-a-refused-replacement-retries-none-of-the-old-programs-queries.json) | #119: no call for a program that is not the drawn one. |
+
 For the first refusal of a source or reader, a refused refetch, and a refusal
 during bounded reader rounds, the adapter also replays the same script with
 the upstream provider rejecting the call. The Rust calls and snapshots match
@@ -1220,7 +1249,12 @@ is delivered as each reader's `tool-error` instead
 that reads it`). If even those errors do not fit, the readers keep them
 unlisted, their failed entry is not called again, and the snapshot lists one
 compact error, `N queries failed with errors that do not fit the result size
-limit of L bytes`, until a run or success replaces them. The call always ends.
+limit of L bytes`, until a run or success replaces them. Retry
+(`retryFailedQueries`) runs every failed query, those the compact error covers
+included, and each retried result passes the same limits again (#119;
+`retry_runs_the_queries_behind_a_compact_error_under_the_same_limits` in
+`crates/openui-session/tests/result_limits.rs`; upstream's side is the
+`tool-provider-error-limit` row). The call always ends.
 The fixed null placeholder on an unfetched query needs no result room. A
 fetched null goes through result admission at its JSON size of four bytes.
 
