@@ -38,7 +38,7 @@ fn outcome(value: &JsonValue) -> ToolOutcome<'_> {
                 .collect(),
         ),
         "mcp-error" => ToolOutcome::McpError(value["message"].as_str().unwrap()),
-        "tool-error" => ToolOutcome::ToolError(value["message"].as_str().unwrap()),
+        "tool-error" => ToolOutcome::CallFailed(value["message"].as_str().unwrap()),
         kind => panic!("Unknown outcome {kind}"),
     }
 }

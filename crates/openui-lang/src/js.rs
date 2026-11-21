@@ -220,10 +220,13 @@ pub(crate) fn write_json_surrogate(out: &mut String, unit: u16) {
 /// UTF-8 bytes in JSON.stringify's escaped string body, without quotes.
 /// A control character or lone surrogate can require six bytes.
 pub fn json_string_len(s: &str) -> usize {
-    // Saturating, so a raised limit on a 32-bit target cannot wrap past it.
-    s.chars()
-        .map(json_char_len)
-        .fold(0usize, usize::saturating_add)
+    saturating_total(s.chars().map(json_char_len))
+}
+
+// Saturating, so a raised limit on a 32-bit target cannot wrap past it. Its
+// own function so a test can reach the arithmetic no 64-bit string can.
+fn saturating_total(lengths: impl Iterator<Item = usize>) -> usize {
+    lengths.fold(0usize, usize::saturating_add)
 }
 
 #[inline]
@@ -1025,6 +1028,31 @@ mod json_reader_tests {
             write_json_string(&mut out, s);
             assert_eq!(json_string_len(s) + 2, out.len(), "{s:?}");
         }
+    }
+
+    /// A string's charge stops at `usize::MAX` rather than wrapping. No
+    /// string on a 64-bit machine is long enough to show it, so this checks
+    /// the sum `json_string_len` folds its characters' lengths with.
+    #[test]
+    fn a_strings_charge_saturates_instead_of_wrapping() {
+        let six = super::json_char_len('\u{0}');
+        assert_eq!(six, 6);
+        let near = usize::MAX - 5;
+        assert_eq!(super::saturating_total([near, six].into_iter()), usize::MAX);
+        assert_eq!(
+            super::saturating_total([near, six, six].into_iter()),
+            usize::MAX
+        );
+        assert_eq!(super::saturating_total([near, 5].into_iter()), usize::MAX);
+        assert_eq!(
+            super::saturating_total([near, 4].into_iter()),
+            usize::MAX - 1
+        );
+        // Below the ceiling it is the plain sum.
+        assert_eq!(
+            super::saturating_total(std::iter::repeat_n(six, 1 << 20)),
+            six << 20
+        );
     }
 
     fn goldens(dir: &Path, out: &mut Vec<std::path::PathBuf>) {

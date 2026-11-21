@@ -2,6 +2,21 @@
 
 ## Unreleased
 
+- Admitting a tool result given as a value no longer takes time exponential
+  in its depth (#141). A value that shared its child twice at every level
+  used to be read at every position it fills to decide whether it is JSON
+  and within the depth limit. A shared body is now remembered with how much
+  room it was read with; one read whole is not read again, and one cut at
+  the depth limit is read again only where it has more room, so the depth
+  limit multiplies the work only for a value that is refused anyway.
+  Nothing past the depth limit is read, and the size check still stops at
+  the first byte over the limit. Every value is decided in the same order
+  with the same outcome as before, at any depth limit up to `usize::MAX`:
+  validity, then depth, then size. A reader or source id cut for
+  the cut-source error no longer exceeds its room when the room is under
+  three bytes; it is empty instead of a bare ellipsis. Rust: the hidden
+  `ToolOutcome::ToolError` constructor is gone; use
+  `ToolOutcome::CallFailed`.
 - Library definitions: the kinds that link a library together (#133, spec
   #123). A prop's type can refer to another component of the library
   (`{"kind": "component", "name": "Item"}`), be an action slot
@@ -184,8 +199,8 @@
 
 - Rust query-manager pattern matches on invocation failures now use
   `ToolOutcome::CallFailed(message)`. The former `ToolOutcome::ToolError(message)`
-  spelling remains a construction helper. MCP tool-reported errors keep their
-  distinct meaning (#84).
+  spelling stayed as a construction helper until #141 removed it. MCP
+  tool-reported errors keep their distinct meaning (#84).
 
 - Binding session construction now refuses an explicitly configured
   `referencePreparation.peakMemory` with the typed `LimitExceeded` error (#74).

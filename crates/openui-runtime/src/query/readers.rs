@@ -257,17 +257,22 @@ impl QueryManager {
 }
 
 /// `id`, or its first bytes within `room` (at a character boundary) and an
-/// ellipsis, for a message.
+/// ellipsis, for a message. A room too small for the ellipsis holds nothing
+/// of a cut id: a bare prefix would read as a whole, different id.
 fn bounded_id(mut id: String, room: usize) -> String {
+    const ELLIPSIS: char = '…';
     if id.len() <= room {
         return id;
     }
-    let mut end = room.saturating_sub(3);
+    let Some(mut end) = room.checked_sub(ELLIPSIS.len_utf8()) else {
+        id.clear();
+        return id;
+    };
     while !id.is_char_boundary(end) {
-        end -= 1;
+        end = end.saturating_sub(1);
     }
     id.truncate(end);
-    id.push('…');
+    id.push(ELLIPSIS);
     id
 }
 
@@ -280,5 +285,17 @@ mod tests {
         assert_eq!(cut, "é…");
         assert!(cut.len() <= 6);
         assert_eq!(super::bounded_id("abcdefghij".into(), 8), "abcde…");
+    }
+
+    #[test]
+    fn a_cut_id_never_exceeds_a_room_too_small_for_the_ellipsis() {
+        for room in 0..3 {
+            let cut = super::bounded_id("abcdefghij".into(), room);
+            assert!(cut.len() <= room, "room {room}: {cut:?}");
+            assert_eq!(cut, "", "room {room}");
+            assert_eq!(super::bounded_id("éé".into(), room), "", "room {room}");
+        }
+        assert_eq!(super::bounded_id("ab".into(), 2), "ab");
+        assert_eq!(super::bounded_id("abcd".into(), 3), "…");
     }
 }

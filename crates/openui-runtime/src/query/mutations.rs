@@ -145,6 +145,19 @@ impl QueryManager {
 
     /// Start a mutation with click-time arguments. Unknown or loading statements
     /// return an empty update. A dispatched call retains the registration identity.
+    ///
+    /// The manager keeps no receipt of a mutation call: the returned
+    /// [`ToolCall`] owns its memory, its statement id, a copy of the tool name
+    /// for the receipt and another for the call, and the arguments, which
+    /// share the caller's value. A rename (a new tool name for the same
+    /// statement) resets the registration to idle, so it accepts another
+    /// submission while earlier calls are still out, and their receipts stay
+    /// valid. A caller that keeps every call across renames therefore holds
+    /// one of these per submission, and a manager used directly sets no
+    /// bound on how many: each stays until the caller drops it, completing
+    /// it does not free it, and once the registration is removed it keeps
+    /// only an empty identity allocation alive. A managed session bounds
+    /// them with its pending continuation limit, `max_continuations`.
     pub fn fire_mutation(
         &mut self,
         statement: &str,

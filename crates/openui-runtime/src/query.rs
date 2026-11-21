@@ -167,7 +167,10 @@ pub enum QueryCommandError {
     Evaluation(EvaluationFailure),
     /// A parse limit dropped `source` but kept `reader`, a query that reads
     /// it, so nothing could ever deliver `reader`'s input. The registration
-    /// is refused, as for any limit, with the parser's cut flags.
+    /// is refused, as for any limit, with the parser's cut flags. Each id is
+    /// kept within a quarter of the result-size limit: a longer one is cut at
+    /// a character boundary and ends with an ellipsis, and when the room is
+    /// too small for the ellipsis it is empty.
     SourceCut {
         /// The first query, in declaration order, that reads a dropped query.
         reader: String,

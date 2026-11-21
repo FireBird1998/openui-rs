@@ -934,3 +934,284 @@ fn a_refused_refresh_result_ends_its_call_and_the_refresh_schedule_continues() {
         check_charge(&manager);
     }
 }
+
+/// An array holding the same child twice at every level: `levels` arrays
+/// deep, with 2^(levels + 1) - 1 positions but only `levels` + 1 bodies.
+fn shared_twice(levels: usize) -> Value {
+    (0..levels).fold(Value::Null, |child, _| {
+        Value::Arr(Arc::new(vec![child.clone(), child]))
+    })
+}
+
+#[test]
+fn measuring_a_value_shared_at_every_level_is_bounded_by_the_size_limit() {
+    let store = Store::default();
+    let p = program("q = Query(\"t\")");
+    // Within the limits the walk and the measured size are unchanged: seven
+    // levels write 893 bytes of JSON, one level more writes 1789.
+    let limits = Limits::DEFAULT.with_result_size(SIZE);
+    for (levels, refused) in [(7, None), (8, Some(ResultLimit::Size(SIZE)))] {
+        let mut manager = QueryManager::with_limits(limits).with_cache_limit(4 * SIZE);
+        let call = evaluate(&mut manager, &p, &store).remove(0);
+        let (_, delivered) = manager
+            .complete_tool_call_admitted(&call.id, ToolCallOutcome::Result(shared_twice(levels)))
+            .unwrap();
+        assert_eq!(delivered, refused, "{levels} levels");
+        let held = if refused.is_none() { 893 } else { 0 };
+        assert_eq!(manager.cache_bytes(), held, "{levels} levels");
+        check_charge(&manager);
+    }
+    // Twenty levels have over two million positions within the default depth
+    // limit but only 21 bodies. Validity and depth read each body once and the
+    // size stops at the first byte over the limit, on the borrowed and the
+    // owned path alike. Both walks allocate one iterator per array they open,
+    // so allocations count their work: about 250 here, against over a million
+    // when every position was read.
+    let value = shared_twice(20);
+    for owned in [false, true] {
+        let mut manager = QueryManager::with_limits(limits);
+        let call = evaluate(&mut manager, &p, &store).remove(0);
+        let before = test_alloc::allocation_calls();
+        let refused = if owned {
+            manager
+                .complete_tool_call_admitted(&call.id, ToolCallOutcome::Result(value.clone()))
+                .unwrap()
+                .1
+        } else {
+            manager
+                .apply(QueryCommand::Complete {
+                    id: &call.id,
+                    outcome: ToolOutcome::ResultValue(&value),
+                })
+                .unwrap();
+            assert!(manager.snapshot_json().contains("tool-error"));
+            Some(ResultLimit::Size(SIZE))
+        };
+        let work = test_alloc::allocation_calls().saturating_sub(before);
+        assert_eq!(refused, Some(ResultLimit::Size(SIZE)), "owned {owned}");
+        assert!(
+            work < SIZE / 2,
+            "owned {owned}: {work} allocations to refuse"
+        );
+        assert!(!call.id.is_pending(), "owned {owned}");
+    }
+}
+
+/// Completes `call` with `value` on the borrowed or the owned value path,
+/// giving the command's refusal or the limit the result was refused under.
+fn complete_value(
+    manager: &mut QueryManager,
+    id: &ToolCallId,
+    value: &Value,
+    owned: bool,
+) -> Result<Option<ResultLimit>, QueryCommandError> {
+    if owned {
+        return manager
+            .complete_tool_call_admitted(id, ToolCallOutcome::Result(value.clone()))
+            .map(|(_, refused)| refused);
+    }
+    manager.apply(QueryCommand::Complete {
+        id,
+        outcome: ToolOutcome::ResultValue(value),
+    })?;
+    let errors = view(manager)["__openui_errors"].clone();
+    Ok([
+        ResultLimit::Size(SIZE),
+        ResultLimit::Depth(4),
+        ResultLimit::Depth(256),
+    ]
+    .into_iter()
+    .find(|limit| errors[0]["message"] == query_error("t", *limit).as_str()))
+}
+
+#[test]
+fn an_over_limit_result_nested_too_deep_is_too_deep_on_every_path() {
+    let store = Store::default();
+    let p = program("q = Query(\"t\")");
+    let limits = Limits::DEFAULT.with_result_size(SIZE).with_depth(4);
+    // Six levels deep first, then more zeros than the size limit has bytes.
+    let mut items = vec![nested(6)];
+    items.extend(std::iter::repeat_n(JsonValue::from(0), 1100));
+    let json = JsonValue::Array(items);
+    let mut manager = QueryManager::with_limits(limits);
+    let call = evaluate(&mut manager, &p, &store).remove(0);
+    complete(&mut manager, &call.id, &json);
+    let errors = view(&manager)["__openui_errors"].clone();
+    let too_deep = query_error("t", ResultLimit::Depth(4));
+    assert_eq!(errors[0]["message"], too_deep.as_str(), "host JSON");
+    let value = Value::from_json(&json);
+    for owned in [false, true] {
+        let mut manager = QueryManager::with_limits(limits);
+        let call = evaluate(&mut manager, &p, &store).remove(0);
+        let refused = complete_value(&mut manager, &call.id, &value, owned).unwrap();
+        assert_eq!(refused, Some(ResultLimit::Depth(4)), "owned {owned}");
+        assert!(!call.id.is_pending(), "owned {owned}");
+    }
+}
+
+#[test]
+fn an_over_limit_value_holding_syntax_is_refused_and_leaves_the_call_pending() {
+    let store = Store::default();
+    let p = program("q = Query(\"t\")");
+    let limits = Limits::DEFAULT.with_result_size(SIZE).with_depth(4);
+    let syntax = Value::Ast(Arc::new(openui_runtime::Ast::Null));
+    for syntax_first in [true, false] {
+        let mut items = vec![Value::Num(0.0); 1100];
+        if syntax_first {
+            items.insert(0, syntax.clone());
+        } else {
+            items.push(syntax.clone());
+        }
+        let value = Value::Arr(Arc::new(items));
+        for owned in [false, true] {
+            let mut manager = QueryManager::with_limits(limits);
+            let call = evaluate(&mut manager, &p, &store).remove(0);
+            let before = manager.snapshot_json().to_owned();
+            let refused = complete_value(&mut manager, &call.id, &value, owned);
+            let name = format!("syntax first {syntax_first}, owned {owned}");
+            assert!(
+                matches!(refused, Err(QueryCommandError::Limit(_))),
+                "{name}"
+            );
+            assert_eq!(manager.snapshot_json(), before, "{name}");
+            assert!(call.id.is_pending(), "{name}");
+            manager
+                .complete_tool_call(&call.id, ToolCallOutcome::Result(Value::Null))
+                .unwrap();
+        }
+    }
+}
+
+#[test]
+fn a_result_is_admitted_under_the_largest_depth_limit_on_every_path() {
+    let store = Store::default();
+    let p = program("q = Query(\"t\")");
+    // A host's 64-bit depth saturates to this on a smaller target.
+    for depth in [usize::MAX, usize::MAX - 1] {
+        let limits = Limits::DEFAULT.with_result_size(SIZE).with_depth(depth);
+        for path in ["owned", "borrowed", "missing"] {
+            let mut manager = QueryManager::with_limits(limits);
+            let call = evaluate(&mut manager, &p, &store).remove(0);
+            let outcome = match path {
+                "owned" => manager
+                    .complete_tool_call_admitted(&call.id, ToolCallOutcome::Result(Value::Null))
+                    .map(|(_, refused)| refused),
+                "borrowed" => manager
+                    .apply(QueryCommand::Complete {
+                        id: &call.id,
+                        outcome: ToolOutcome::ResultValue(&Value::Null),
+                    })
+                    .map(|_| None),
+                _ => manager
+                    .apply(QueryCommand::Complete {
+                        id: &call.id,
+                        outcome: ToolOutcome::Result(None),
+                    })
+                    .map(|_| None),
+            };
+            assert!(
+                matches!(outcome, Ok(None)),
+                "{path} at {depth}: {outcome:?}"
+            );
+            assert!(!call.id.is_pending(), "{path} at {depth}");
+            assert_eq!(view(&manager)["q"], JsonValue::Null, "{path} at {depth}");
+            assert_eq!(manager.cache_bytes(), 4, "{path} at {depth}");
+            // A value nested a few levels deep, with a syntax value inside,
+            // is still refused as not JSON.
+            let syntax = Value::Ast(Arc::new(openui_runtime::Ast::Null));
+            let nested = (0..3).fold(syntax, |inner, _| Value::Arr(Arc::new(vec![inner])));
+            let mut manager = QueryManager::with_limits(limits);
+            let call = evaluate(&mut manager, &p, &store).remove(0);
+            let refused = complete_value(&mut manager, &call.id, &nested, path == "owned");
+            assert!(
+                matches!(refused, Err(QueryCommandError::Limit(_))),
+                "{path} at {depth}"
+            );
+            assert!(call.id.is_pending(), "{path} at {depth}");
+        }
+    }
+}
+
+#[test]
+fn deciding_a_value_far_taller_than_the_depth_limit_reads_only_to_the_limit() {
+    let store = Store::default();
+    let p = program("q = Query(\"t\")");
+    let limits = Limits::DEFAULT.with_result_size(SIZE);
+    let depth = limits.depth();
+    assert_eq!(depth, 256);
+    // A hundred thousand levels, each body held once, and the same height
+    // with each level's body shared twice by the level above.
+    let single = (0..100_000).fold(Value::Null, |inner, _| Value::Arr(Arc::new(vec![inner])));
+    let shared = shared_twice(100_000);
+    for (name, value) in [("single", &single), ("shared", &shared)] {
+        for owned in [false, true] {
+            let mut manager = QueryManager::with_limits(limits);
+            let call = evaluate(&mut manager, &p, &store).remove(0);
+            let before = test_alloc::allocation_calls();
+            let refused = complete_value(&mut manager, &call.id, value, owned).unwrap();
+            let work = test_alloc::allocation_calls().saturating_sub(before);
+            assert_eq!(
+                refused,
+                Some(ResultLimit::Depth(depth)),
+                "{name}, owned {owned}"
+            );
+            assert!(
+                work < 3 * depth,
+                "{name}, owned {owned}: {work} allocations to decide"
+            );
+        }
+    }
+}
+
+/// One body read deep first and then with a level more room each time: B
+/// holds `width` empty arrays, D_0 = B, D_k = [D_{k-1}], and the root holds
+/// D_`levels` down to D_1, each D_k the same shared body as inside D_{k+1}.
+fn reread_ladder(levels: usize, width: usize) -> Value {
+    let bottom = Value::Arr(Arc::new(
+        (0..width)
+            .map(|_| Value::Arr(Arc::new(Vec::new())))
+            .collect(),
+    ));
+    let mut ladder = vec![bottom];
+    for _ in 0..levels {
+        let below = ladder.last().cloned().unwrap_or(Value::Null);
+        ladder.push(Value::Arr(Arc::new(vec![below])));
+    }
+    Value::Arr(Arc::new(ladder.into_iter().skip(1).rev().collect()))
+}
+
+#[test]
+fn a_shared_body_met_with_more_room_each_time_is_read_a_bounded_number_of_times() {
+    let store = Store::default();
+    let p = program("q = Query(\"t\")");
+    let limits = Limits::DEFAULT.with_result_size(SIZE);
+    let depth = limits.depth();
+    assert_eq!(depth, 256);
+    // Each D_k is met first under D_{k+1} and then again at the root with
+    // more room, so B's 4096 arrays were entered once per root member, about
+    // a million times. A body read whole has the same shape at any room, so
+    // B is now entered at most twice. Each array entered allocates one
+    // iterator, so allocations count the work. 255 levels make the value too
+    // deep; 253 fit the depth limit and are refused for size.
+    let width = 4096;
+    for (levels, limit) in [
+        (255, ResultLimit::Depth(depth)),
+        (253, ResultLimit::Size(SIZE)),
+    ] {
+        let value = reread_ladder(levels, width);
+        for owned in [false, true] {
+            let mut manager = QueryManager::with_limits(limits);
+            let call = evaluate(&mut manager, &p, &store).remove(0);
+            let before = test_alloc::allocation_calls();
+            let refused = complete_value(&mut manager, &call.id, &value, owned).unwrap();
+            let work = test_alloc::allocation_calls().saturating_sub(before);
+            let name = format!("{levels} levels, owned {owned}");
+            assert_eq!(refused, Some(limit), "{name}");
+            assert!(
+                work < 2 * width + 4 * depth + SIZE,
+                "{name}: {work} allocations to decide"
+            );
+            eprintln!("{name}: {work} allocations to decide");
+        }
+    }
+}

@@ -1,15 +1,6 @@
 //! Session integration for tool outcomes, registration and drawing.
 use super::*;
 
-impl<'a> ToolOutcome<'a> {
-    /// Compatibility constructor for the original borrowed provider interface.
-    #[doc(hidden)]
-    #[allow(non_snake_case)]
-    pub fn ToolError(message: &'a str) -> Self {
-        Self::CallFailed(message)
-    }
-}
-
 /// The owned outcome returned by a session's tool provider. Data stays in
 /// the evaluator's representation through admission and cache delivery.
 #[derive(Debug)]
