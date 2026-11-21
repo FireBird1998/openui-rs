@@ -181,3 +181,41 @@ pinned with both sides' outputs, a randomised replay against upstream fails
 on any difference the list does not explain, and a draft upstream report is
 kept for the maintainer to file. If upstream fixes these differently, we
 follow upstream and retire the divergence.
+
+## A step that cannot run
+
+Two states stop the manager from calling anything a plan asks for: queries
+are paused (the manager is disposed until resume) and the program is
+unregistered. Until #117 the four cases disagreed. A mutation step while
+unregistered failed for the limit; a mutation step while paused, or a plan
+whose mutation call was in flight at the pause, vanished with no call, error,
+host event or anything after resume; a query `@Run` in either state started
+no call and the plan went on. The maintainer decided on 2026-11-20 (#115,
+decision 9) that a dropped action is reported to the app as a failure.
+
+One rule now decides all four: a step that cannot run reports a failure
+exactly when it ends its plan. A mutation step ends it, as upstream's does:
+the renderer's loop returns when `fireMutation` returns false, which it does
+at once while disposed and, for a call in flight at the dispose, when the
+call settles. Later steps may read the mutation's result, so they cannot run
+without it. The session reports that end as the action's failure: paused, of
+the new kind `QueriesPaused`, at the mutation step, in the click's own output
+or, for a call in flight, as a segment of the next drain; unregistered, of
+the registration's limit, as before. Exactly one failure per dropped plan,
+and nothing of it runs after resume. A query step does not end its plan:
+upstream's `invalidate` returns without fetching while disposed and the loop
+goes on to the next step. So a query `@Run` that cannot fetch, paused or
+unregistered, is skipped silently and the plan carries on, matching upstream
+where upstream has the state. Reporting it would mean either a failure for a
+plan that went on to run, which the action failure cannot express (it names
+the step that stopped the plan), or stopping the plan where upstream does
+not. Both sides are pinned for pause (`paused-actions` in CONFORMANCE.md);
+lang-core has no unregistered state.
+
+A failure for a call in flight waits in the session until the next drain,
+which the drivers take right after pausing. It keeps the continuation slot
+its plan held until then, so at most `maxContinuations` wait at once and a
+click beyond that fails at its step with the pending-plan limit. Where a
+program is both paused and unregistered the limit is reported, once. The
+reasons are fixed texts. Detaching the provider and disposing the session
+still end plans without a report: neither leaves a program that could go on.

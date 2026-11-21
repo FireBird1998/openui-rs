@@ -542,6 +542,49 @@ private struct TimedOut: Error {}
         #expect(tools.made.isEmpty)
     }
 
+    @Test func aMutationInFlightWhenQueriesPauseIsReportedOnceAsTheActionsFailure() async throws {
+        // #117: the session drops the plan at the pause; the live program
+        // reports it as it reports other action failures, and nothing of the
+        // plan runs, even when the provider answers late.
+        var events: [HostEvent] = []
+        let live = try await live("""
+        m = Mutation("save")
+        root = Button("Go", Action([@Run(m), @ToAssistant("done")]))
+        """, events: { events.append($0) })
+        let tools = FakeTools(ignoresCancellation: true)
+        try live.attachToolProvider(clock: ManualClock(), tools.provider)
+        try live.run("action", of: #require(live.root), message: "go")
+        try await eventually("the mutation's call") { tools.waiting.count == 1 }
+        let pending = try #require(live.queryDriver?.calls.values.first)
+        try live.pauseQueries()
+        let failure = try #require(live.failure)
+        #expect(failure.hasPrefix("Step 0: queries were paused"))
+        tools.answer(tools.waiting[0].id, .bool(true))
+        await pending.value
+        try live.resumeQueries()
+        #expect(live.failure == failure)
+        #expect(events.isEmpty)
+        #expect(tools.made.count == 1)
+    }
+
+    @Test func aMutationClickedWhileQueriesArePausedFailsWithoutACall() async throws {
+        var events: [HostEvent] = []
+        let live = try await live("""
+        m = Mutation("save")
+        root = Button("Go", Action([@Run(m), @ToAssistant("done")]))
+        """, events: { events.append($0) })
+        let tools = FakeTools()
+        try live.attachToolProvider(clock: ManualClock(), tools.provider)
+        try live.pauseQueries()
+        try live.run("action", of: #require(live.root), message: "go")
+        let failure = try #require(live.failure)
+        #expect(failure.hasPrefix("Step 0: queries are paused"))
+        try live.resumeQueries()
+        #expect(live.queryDriver?.calls.isEmpty == true)
+        #expect(tools.made.isEmpty)
+        #expect(events.isEmpty)
+    }
+
     @Test func detachingCancelsCallsAndIgnoresLateOutcomes() async throws {
         let live = try await live("""
         q = Query("read", {}, "none")

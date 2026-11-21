@@ -1431,6 +1431,7 @@ impl From<openui_session::OpenUiError> for OpenUiError {
                 Self::InvalidPromptSpec { reason }
             }
             openui_session::OpenUiError::Prompt { reason } => Self::Prompt { reason },
+            openui_session::OpenUiError::QueriesPaused { reason } => Self::QueriesPaused { reason },
         }
     }
 }

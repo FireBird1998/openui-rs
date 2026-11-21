@@ -193,7 +193,8 @@ struct ParseOutput {
 Swift error cases / Kotlin OpenUiException subclasses: Disposed, ForeignHandle,
 StaleHandle, ConsumedHandle, EvictedHandle, InvalidHandle, InvalidMarker, InvalidToolCall, ReferenceConflict; InvalidJson(reason),
 RefusedWrite(reason), Evaluation(reason), LimitExceeded(reason), Worker(reason), and existing
-InvalidSchema(reason), InvalidPromptSpec(reason), Prompt(reason). Reasons are
+InvalidSchema(reason), InvalidPromptSpec(reason), Prompt(reason), and
+QueriesPaused(reason), which only an action's failure carries (#117). Reasons are
 String. ActionOutput.failure.error and StateRefusal.error use the same typed error.
 ParseLimits has eight optional UInt64/ULong fields: programSize, resultSize,
 resultFloor, amplification, resultCeiling, depth, work, peakMemory; all default to absent.

@@ -597,11 +597,47 @@ including when a call in flight made it skip fetching.
 
 Use `pauseQueries()` to stop the timers and release outstanding queries and
 managed mutation plans. Each original call identity can still acknowledge one
-late outcome. The timestamped attach and resume methods also advance an already
+late outcome, which changes nothing. The timestamped attach and resume methods also advance an already
 active manager. The zero-argument `resumeQueries()` uses the last supplied time.
 Resume re-evaluates a settled program using its retained cache. A streaming program waits for its settled draw.
 During ordinary streaming, previously registered timers continue with their
 last evaluated arguments for both bare and bundled responses.
+
+An action that loses its mutation to a pause is reported once, as an action
+failure whose error is `QueriesPaused` (#117), and nothing more of its plan
+runs, after resume either. A mutation step reached while paused (a click, or
+a host continuation resumed then) fails in that call's own `ActionOutput`: no
+call is made, the steps before it keep their effects and `failure.step` names
+it. A plan whose mutation call was in flight when queries paused comes back
+from the next `takeQueryUpdate` as one action segment with that failure, no
+events and no continuation, in click order. The failure is not a limit, so
+`sizeLimited` stays false. A query `@Run` while paused starts no call and the
+plan carries on, as upstream's does.
+
+The reason is one of two fixed texts, and says what the session knows:
+
+- "queries are paused, so the mutation was not sent to the tool provider and
+  the rest of the action did not run": the call was never handed to a driver.
+  Either the step ran while paused, or its call was still among the calls the
+  session had not yet handed over by `takeQueryUpdate` when the pause cleared
+  them. No provider can have been asked to run it.
+- "queries were paused after the mutation's call was handed to the tool
+  provider, so the tool may have run; its outcome is ignored and the rest of
+  the action did not run": a driver had taken the call. Whether the driver had
+  invoked the provider yet, the session cannot know. The JavaScript driver
+  invokes the provider in the drain that takes the call; OpenUINative starts a
+  task that does not invoke it once cancelled by the pause. Either way the
+  late outcome is ignored and nothing of the plan runs.
+
+A failure waiting for the next drain holds a continuation slot. A managed
+submission is refused past `maxContinuations` (it fails at its mutation step
+with the pending-plan limit), so at most that many failures wait. A host
+handoff counts them too and evicts the oldest pending run when the slots are
+full, but is never refused; with only failures in the slots it adds one, so
+pending runs plus waiting failures are at most `maxContinuations + 1`. While
+the program is also unregistered (a refused registration, ADR 0013) the
+mutation step fails for that limit instead, once.
+
 
 ### The Swift driver
 
@@ -639,4 +675,8 @@ The last `ElementView(live:)` disappearing pauses queries. The first one
 returning resumes them unless the app called `pauseQueries()`. The app releases
 its pause with `resumeQueries()`. Pausing, detaching and releasing the live
 program cancel outstanding work. A provider that returns after cancellation
-cannot deliver a result or a resumed host event to that program.
+cannot deliver a result or a resumed host event to that program. A mutation
+dropped by the pause, clicked while paused or in flight when it came, is
+reported as an action failure in `live.failure`, as `Step N: ` and the
+`QueriesPaused` reason, the way other action failures are; its host events
+are never delivered.

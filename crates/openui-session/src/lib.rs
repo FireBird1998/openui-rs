@@ -58,6 +58,11 @@ pub enum OpenUiError {
     ReferenceConflict,
     /// The tool call expired, belongs to another manager, or was already completed.
     InvalidToolCall,
+    /// An action's mutation step was dropped because queries are paused: it
+    /// was clicked while paused (no call was sent), or its call was in flight
+    /// when queries paused (its outcome is ignored). The rest of its plan
+    /// does not run. The reason is one of a few fixed texts.
+    QueriesPaused { reason: String },
 }
 
 impl fmt::Display for OpenUiError {
@@ -78,7 +83,8 @@ impl fmt::Display for OpenUiError {
             | Self::RefusedWrite { reason }
             | Self::Evaluation { reason }
             | Self::LimitExceeded { reason }
-            | Self::Worker { reason } => f.write_str(reason),
+            | Self::Worker { reason }
+            | Self::QueriesPaused { reason } => f.write_str(reason),
             OpenUiError::InvalidSchema { reason } => write!(f, "invalid JSON Schema: {reason}"),
             OpenUiError::InvalidPromptSpec { reason } => {
                 write!(f, "invalid prompt spec: {reason}")
@@ -386,6 +392,14 @@ pub struct SessionCore {
     released: mpsc::Receiver<u64>,
     next_continuation: u64,
     continuations: BTreeMap<u64, PendingContinuation>,
+    // Plans ended by a pause whose failure waits in `query_effects.actions`
+    // for the next drain (#117). Each holds a continuation slot until taken:
+    // managed admission refuses past `max_continuations`, so at most that
+    // many wait, and a host handoff evicts the oldest pending run when the
+    // slots are full. A handoff is never refused, so with only failures in
+    // the slots it adds one: runs plus failures are at most
+    // `max_continuations + 1`.
+    paused_failures: u64,
 }
 impl SessionCore {
     pub fn new(
@@ -431,6 +445,7 @@ impl SessionCore {
             released,
             next_continuation: 0,
             continuations: BTreeMap::new(),
+            paused_failures: 0,
         };
         if let Some(spec) = prompt_spec {
             let spec = s.json(&spec)?;
@@ -697,7 +712,9 @@ impl SessionCore {
                 return Ok(output);
             }
             self.next_continuation = generation;
-            if self.continuations.len() as u64 >= self.limits.max_continuations
+            // A failure a pause left for the next drain holds a slot too.
+            let occupied = (self.continuations.len() as u64).saturating_add(self.paused_failures);
+            if occupied >= self.limits.max_continuations
                 && let Some((_, oldest)) = self.continuations.pop_first()
                 && let Some(handle) = oldest.handle.upgrade()
             {
@@ -716,6 +733,7 @@ impl SessionCore {
                     continuation,
                     handle: Arc::downgrade(&handle),
                     call: None,
+                    step: None,
                 },
             );
             Some(handle)
@@ -1572,6 +1590,8 @@ struct PendingContinuation {
     continuation: ActionContinuation,
     handle: Weak<ContinuationHandle>,
     call: Option<openui_runtime::ToolCallId>,
+    /// The managed mutation's step, named by the failure if a pause drops it.
+    step: Option<u64>,
 }
 
 enum RuntimeFailure {

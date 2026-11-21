@@ -25,6 +25,7 @@ pub(crate) fn kind(e: &core::OpenUiError) -> &'static str {
         core::OpenUiError::InvalidSchema { .. } => "InvalidSchema",
         core::OpenUiError::InvalidPromptSpec { .. } => "InvalidPromptSpec",
         core::OpenUiError::Prompt { .. } => "Prompt",
+        core::OpenUiError::QueriesPaused { .. } => "QueriesPaused",
     }
 }
 /// A thrown value the package guard turns into a typed `Error`. The core

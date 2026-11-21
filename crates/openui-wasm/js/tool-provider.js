@@ -267,6 +267,19 @@ function openuiReleasedDelivery(owner, ticket) {
 //   Their pending count no longer shows that provider code may be on the
 //   stack, so drains wait for a later task until a driver's turn runs.
 const openuiBusy = new WeakMap();
+// A detached driver during its last drain, which a free or dispose made inside
+// one of its callbacks must finish and stop (ADR 0014).
+const openuiClosing = new WeakMap();
+// Sessions the app has freed or disposed. Every driver the session ever had,
+// current, closing or detached earlier, stops calling the app (ADR 0014).
+const openuiEndedSessions = new WeakSet();
+// How many updates the delivery before a free, dispose or detach takes. The
+// first holds everything the session produced. A callback it runs can make
+// more only by resuming, clicking and pausing again, and one pause leaves at
+// most maxContinuations failures, so one more round is what a reasonable app
+// needs and a third is generous. An app that does it on every delivery would
+// otherwise keep free() from returning (ADR 0014).
+const openuiFlushRounds = 3;
 const openuiCancelled = new WeakMap();
 function openuiEnter(session) { openuiPut(openuiBusy, session, (openuiGet(openuiBusy, session) ?? 0) + 1); }
 function openuiLeave(session) { openuiPut(openuiBusy, session, openuiGet(openuiBusy, session) - 1); }
@@ -362,18 +375,127 @@ class OpenuiToolDriver {
     }
   }
 
+  // After the app's free() or dispose() returns, no callback is called,
+  // for any driver the session had (ADR 0014).
+  stopped() {
+    return this.ended || openuiHas(openuiEndedSessions, this.session);
+  }
+
   notify(name, ...args) {
+    if (this.stopped()) return;
     const callback = this.options[name];
     if (!callback) return;
     // A failed error handler has no further recipient. Never reenter it.
-    const failed = error => { if (name !== 'onError') this.report(error); };
+    const failed = error => { if (!this.stopped() && name !== 'onError') this.report(error); };
     try {
       const returned = callback(...args);
       if (returned != null) Promise.resolve(returned).catch(failed);
     } catch (error) { failed(error); }
   }
 
+  // The update a drain or a flush is delivering, and how far it got, so
+  // that a free or dispose made inside one of its callbacks can hand over
+  // the rest before it returns (ADR 0014).
+  hold(update) {
+    const hand = { update, index: 0n, reported: false };
+    this.inHand = hand;
+    return hand;
+  }
+
+  release(hand) {
+    if (this.inHand === hand) this.inHand = undefined;
+  }
+
+  // Whether this driver may still deliver: attached, and not freed or
+  // disposed. Pausing or resuming from a callback does not stop delivery of
+  // segments the session has already handed over.
+  delivering() {
+    if (this.stopped()) return false;
+    const session = this.session;
+    return openuiDrivers.get(session) === this || openuiGet(openuiClosing, session) === this;
+  }
+
+  // Each resumed action segment goes to onAction. Its failure, if any (a
+  // later step's limit, or a pause that dropped its mutation: #117), first
+  // goes to onError once, as the binding error it carries. Each delivery
+  // advances the hand before its callback runs, so a nested flush neither
+  // repeats it nor skips the next one.
+  deliverHand(hand) {
+    const count = hand.update.actionCount;
+    while (hand.index < count && this.delivering()) {
+      const action = hand.update.actionAt(hand.index);
+      try {
+        if (!hand.reported) {
+          hand.reported = true;
+          const failure = action.failure;
+          if (failure) this.report(openuiFailure(failure.error.kind, failure.error.message));
+          // A free inside onError delivered this segment's onAction and the rest.
+          if (!this.delivering()) return;
+        }
+        hand.index++;
+        hand.reported = false;
+        this.notify('onAction', action);
+      } finally { action.free(); }
+    }
+  }
+
+  // Before free, dispose or detach: hand over every action segment the
+  // session has produced. First the rest of a drain or flush still on the
+  // stack (a free made inside its callback), then what the session holds,
+  // such as the failures of a pause whose drain waits for a task. Wanted
+  // calls are released unstarted; nothing is armed or redrawn.
+  // A drain's errors: the query evaluation error when it changes, and the
+  // reader round cut, which each update reports once.
+  reportEffects(update, current) {
+    const error = update.evaluationError;
+    const previous = this.evaluationError;
+    this.evaluationError = error;
+    if (error && current() &&
+        (error.kind !== previous?.kind || error.message !== previous?.message)) {
+      this.report(openuiFailure(error.kind, error.message));
+    }
+    if (update.readerRoundsLimited && current()) {
+      this.report(openuiFailure('LimitExceeded', 'Query readers were still changing at the reader round limit.'));
+    }
+  }
+
+  flushActions(take = true) {
+    const session = this.session;
+    openuiEnter(session);
+    try {
+      if (this.inHand) this.deliverHand(this.inHand);
+      if (!take) return;
+      // A callback this delivers can produce more (a resume, a click and a
+      // pause), so take again while an update brings segments, up to
+      // openuiFlushRounds takes. Then stop, say so once and let the free go on.
+      let more = true;
+      for (let round = 0; more && this.delivering(); round++) {
+        if (round === openuiFlushRounds) {
+          this.report(openuiFailure('LimitExceeded',
+            `free() stopped delivering after ${openuiFlushRounds} rounds: callbacks kept producing action segments`));
+          return;
+        }
+        const update = openuiOwned.get('takeQueryUpdate').call(session);
+        const hand = this.hold(update);
+        try {
+          const count = update.callCount;
+          for (let i = 0n; i < count; i++) update.callAt(i).free();
+          // A drain would have reported these; the update is not taken twice.
+          this.reportEffects(update, () => this.delivering());
+          more = update.actionCount > 0n;
+          this.deliverHand(hand);
+        } finally {
+          this.release(hand);
+          update.free();
+        }
+      }
+    } finally {
+      openuiLeave(session);
+    }
+  }
+
   report(error) {
+    if (this.stopped()) return;
     let diagnostic;
     try { diagnostic = error instanceof Error ? error : new Error(openuiToolMessage(error)); }
     catch { diagnostic = new Error('tool provider driver callback failed'); }
@@ -471,10 +593,14 @@ class OpenuiToolDriver {
     if (this.deferred !== undefined) return;
     const session = this.session;
     const busy = openuiGet(openuiBusy, session) > 0;
+    let closing = false;
     if (openuiDrivers.get(session) !== this) {
       // A detached driver's last drain. Inside a callback or a completion
       // it is skipped; the session keeps the change for the next drain.
-      if (busy) return;
+      if (busy || openuiGet(openuiClosing, session) !== undefined) return;
+      // It delivers what it takes, as before, and a free inside one of its
+      // callbacks finds it as the session's closing driver (ADR 0014).
+      closing = true;
     } else if (busy || (!hostTurn && (openuiGet(openuiCancelled, session) ||
         (this.pending.size && this.providerMicrotasks)))) {
       this.deferDrain();
@@ -485,6 +611,9 @@ class OpenuiToolDriver {
     if (hostTurn && openuiDrivers.get(session) === this) openuiCancelled.delete(session);
     const generation = this.generation;
     const update = openuiOwned.get('takeQueryUpdate').call(session);
+    // Held before any callback, which could free the session (ADR 0014).
+    const hand = this.hold(update);
+    if (closing) openuiPut(openuiClosing, session, this);
     openuiEnter(session);
     try {
       this.arm(update.nextRefreshDueMs);
@@ -505,28 +634,15 @@ class OpenuiToolDriver {
         if (call.pending) openuiStartTool(this, call);
         else call.free();
       }
-      const error = update.evaluationError;
-      const previous = this.evaluationError;
-      this.evaluationError = error;
-      if (error && this.generation === generation &&
-          (error.kind !== previous?.kind || error.message !== previous?.message)) {
-        this.report(openuiFailure(error.kind, error.message));
-      }
-      // Unlike evaluationError this flag is consumed by the drain.
-      if (update.readerRoundsLimited && this.generation === generation) {
-        this.report(openuiFailure('LimitExceeded', 'Query readers were still changing at the reader round limit.'));
-      }
-      const actions = update.actionCount;
-      for (let i = 0n; i < actions && this.generation === generation; i++) {
-        const action = update.actionAt(i);
-        try { this.notify('onAction', action); }
-        finally { action.free(); }
-      }
+      this.reportEffects(update, () => this.generation === generation);
+      this.deliverHand(hand);
       if (this.generation === generation && update.changed) {
         this.notify('onChange');
       }
     } finally {
       openuiLeave(session);
+      if (closing && openuiGet(openuiClosing, session) === this) openuiClosing.delete(session);
+      this.release(hand);
       update.free();
     }
   }
@@ -644,7 +760,24 @@ function openuiDriverMember(key, spec, prototype, original) {
   return function (...args) {
     const driver = openuiDrivers.get(this);
     if (stop) {
+      // Every segment the session produced reaches the app before it stops;
+      // after free or dispose returns no callback runs (ADR 0014).
+      // A driver attached inside a closing drain's callback: the closing one
+      // finishes its update, the current one takes what is left.
+      const closing = openuiGet(openuiClosing, this);
+      if (closing && closing !== driver) {
+        try { closing.flushActions(!driver); }
+        catch (error) { closing.report(error); }
+      }
+      if (driver) {
+        try { driver.flushActions(); }
+        catch (error) { driver.report(error); }
+      }
       const result = openuiApply(guarded, this, args);
+      if (key !== 'detachToolProvider') {
+        openuiAdd(openuiEndedSessions, this);
+        for (const owner of [closing, driver]) if (owner) owner.ended = true;
+      }
       if (!driver) {
         openuiManualProviders.delete(this);
         return result;

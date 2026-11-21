@@ -95,6 +95,10 @@ pub enum OpenUiError {
     ReferenceConflict,
     /// The tool call expired, belongs to another manager, or was already completed.
     InvalidToolCall,
+    /// An action's mutation step was dropped because queries are paused:
+    /// clicked while paused (no call was sent), or in flight when queries
+    /// paused (its outcome is ignored). The rest of its plan does not run.
+    QueriesPaused { reason: String },
 }
 
 impl fmt::Display for OpenUiError {
@@ -115,7 +119,8 @@ impl fmt::Display for OpenUiError {
             | Self::RefusedWrite { reason }
             | Self::Evaluation { reason }
             | Self::LimitExceeded { reason }
-            | Self::Worker { reason } => f.write_str(reason),
+            | Self::Worker { reason }
+            | Self::QueriesPaused { reason } => f.write_str(reason),
             OpenUiError::InvalidSchema { reason } => write!(f, "invalid JSON Schema: {reason}"),
             OpenUiError::InvalidPromptSpec { reason } => {
                 write!(f, "invalid prompt spec: {reason}")

@@ -2,6 +2,26 @@
 
 ## Unreleased
 
+- An action whose mutation is dropped because queries are paused is reported
+  once as an action failure with the new error kind `QueriesPaused` in both
+  bindings (#117), where it used to vanish with no call, error or event. A
+  mutation step clicked while paused fails in the click's own output; a plan
+  whose call was in flight at the pause comes back from the next query update
+  as a segment with that failure. Nothing more of the plan runs, and the late
+  outcome is still ignored. The JavaScript driver now also reports each
+  resumed segment's failure to `onError`. Freeing or disposing the session
+  delivers every segment the session produced, a pause's failures and the
+  rest of a drain the free was made inside and segments its callbacks
+  produce included (up to three takes, then one `LimitExceeded`), and after
+  it returns no driver of the session, current, closing or detached earlier,
+  calls a callback, invokes a provider or delivers a result (ADR 0014).
+  Detach delivers the same way and reports the evaluation error it takes. The reason says whether the call was handed
+  to the tool provider. A host handoff counts waiting failures against the
+  slots.
+  OpenUINative shows the failure in `LiveProgram.failure`. A query `@Run`
+  that cannot fetch, paused or unregistered, is skipped and the plan carries
+  on, as upstream's is (ADR 0013).
+
 - Every draw reports the renderer's `blocked` for its response:
   `EvaluationOutput.blocked` in both bindings (#118). It is true while the
   response streams and, for a response bundle, while it is incomplete or has

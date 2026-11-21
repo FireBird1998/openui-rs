@@ -27,11 +27,15 @@ impl SessionCore {
     }
 
     /// Retain query data, discard outstanding dispatches and release suspended mutations.
+    /// Each released plan, and each mutation step run while paused, ends
+    /// with a `QueriesPaused` failure (#117): a released plan's comes from
+    /// the next `take_query_update` as a resumed segment, a click's in its
+    /// own output.
     pub fn pause_queries(&mut self) -> Result<(), OpenUiError> {
         if let Some(manager) = self.manager.as_mut() {
             let update = manager.apply(QueryCommand::Dispose)?;
-            self.query_effects.calls.clear();
-            self.continuations.retain(|_, entry| entry.call.is_none());
+            // Also clears the undrained calls, which no driver ever held.
+            self.drop_paused_plans();
             self.query_effects.record(update);
         }
         Ok(())

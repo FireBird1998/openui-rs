@@ -76,7 +76,8 @@ function openuiFailure(kind, message) {
 const openuiKinds = { __proto__: null, Disposed: true, ForeignHandle: true,
   StaleHandle: true, ConsumedHandle: true, EvictedHandle: true, InvalidHandle: true,
   InvalidToolCall: true, ReferenceConflict: true, InvalidMarker: true, InvalidJson: true, RefusedWrite: true, Evaluation: true,
-  LimitExceeded: true, Worker: true, InvalidSchema: true, InvalidPromptSpec: true, Prompt: true };
+  LimitExceeded: true, Worker: true, InvalidSchema: true, InvalidPromptSpec: true, Prompt: true,
+  QueriesPaused: true };
 // Rust throws the string `openui:<Kind>\n<message>`. Anything else thrown by
 // generated code is unexpected: report it as Worker without running accessors.
 function openuiTyped(error) {

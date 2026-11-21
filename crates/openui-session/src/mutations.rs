@@ -23,7 +23,55 @@ impl Delivery {
     }
 }
 
+/// A mutation step reached while queries are paused, or one whose call the
+/// session still held, never handed to a driver, when they paused. No tool
+/// provider can have been asked to run it.
+const PAUSED_BEFORE_SEND: &str = "queries are paused, so the mutation was not sent to the tool provider and the rest of the action did not run";
+/// A mutation whose call had been handed to a driver when queries paused.
+/// The session cannot know whether the driver invoked the provider.
+const PAUSED_IN_FLIGHT: &str = "queries were paused after the mutation's call was handed to the tool provider, so the tool may have run; its outcome is ignored and the rest of the action did not run";
+
+fn paused(reason: &str) -> OpenUiError {
+    OpenUiError::QueriesPaused {
+        reason: reason.into(),
+    }
+}
+
 impl SessionCore {
+    /// Pausing releases every managed plan whose call is in flight. Each
+    /// ends with one `QueriesPaused` failure at its mutation step, delivered
+    /// as a resumed segment by the next drain, in the order they were
+    /// clicked (#117). Its late outcome finds no plan and is ignored. A call
+    /// still among the undrained calls was never handed to a driver, so its
+    /// reason says it was not sent. Call before the undrained calls are
+    /// cleared.
+    pub(super) fn drop_paused_plans(&mut self) {
+        let undrained = std::mem::take(&mut self.query_effects.calls);
+        let continuations = std::mem::take(&mut self.continuations);
+        for (generation, entry) in continuations {
+            if entry.call.is_none() {
+                self.continuations.insert(generation, entry);
+                continue;
+            }
+            self.paused_failures = self.paused_failures.saturating_add(1);
+            let held = undrained
+                .iter()
+                .any(|call| entry.call.as_ref() == Some(&call.id));
+            let reason = if held {
+                PAUSED_BEFORE_SEND
+            } else {
+                PAUSED_IN_FLIGHT
+            };
+            self.query_effects.actions.push(ActionOutput {
+                failure: Some(ActionFailureOutput {
+                    step: entry.step,
+                    error: paused(reason),
+                }),
+                ..ActionOutput::default()
+            });
+        }
+    }
+
     pub(super) fn dispatch_mutation(
         &mut self,
         request: openui_runtime::MutationRequest,
@@ -50,12 +98,25 @@ impl SessionCore {
             });
             return;
         }
+        // Paused, the manager sends nothing until resume and the plan would
+        // vanish (#117). The step fails before any call, like the limit
+        // failures here: the steps before it keep their effects and the rest
+        // of the plan does not run.
+        if manager.is_disposed() {
+            output.failure = Some(ActionFailureOutput {
+                step: Some(request.step as u64),
+                error: paused(PAUSED_BEFORE_SEND),
+            });
+            return;
+        }
         if !manager.can_fire_mutation(&name) {
             return;
         }
         // A managed run has promised a resume. Report a cut on this step
-        // before dispatch if all the session's continuation slots are occupied.
-        let started = if self.continuations.len() as u64 >= self.limits.max_continuations {
+        // before dispatch if all the session's continuation slots are
+        // occupied, a failure a pause left for the next drain included.
+        let occupied = (self.continuations.len() as u64).saturating_add(self.paused_failures);
+        let started = if occupied >= self.limits.max_continuations {
             output.size_limited = true;
             Err(limit("pending mutation continuation limit"))
         } else {
@@ -79,6 +140,7 @@ impl SessionCore {
                             continuation,
                             handle: Weak::new(),
                             call: Some(call.id.clone()),
+                            step: Some(request.step as u64),
                         },
                     );
                 }

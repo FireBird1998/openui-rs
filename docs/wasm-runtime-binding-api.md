@@ -159,9 +159,10 @@ load, so patched globals cannot change a result or strand a session.
 An unexpected failure inside generated glue is reported as Worker.
 Kinds match native: Disposed, ForeignHandle, StaleHandle, ConsumedHandle,
 EvictedHandle, InvalidHandle, InvalidMarker, InvalidToolCall, ReferenceConflict, InvalidJson, RefusedWrite,
-Evaluation, LimitExceeded, Worker, InvalidSchema, InvalidPromptSpec, Prompt.
-Failures inside actions and initialization appear in the records above, with
-that same kind/message shape. Reentry uses Worker("session already in use")
+Evaluation, LimitExceeded, Worker, InvalidSchema, InvalidPromptSpec, Prompt,
+QueriesPaused. Failures inside actions and initialization appear in the records above, with
+that same kind/message shape. `QueriesPaused` is only ever an action's
+failure: its mutation was dropped because queries are paused (below). Reentry uses Worker("session already in use")
 without effects; it does not revoke an otherwise usable session. The package
 guard includes JavaScript argument conversion, so an action-path Array getter
 cannot reenter or free an object while a call is lowering, and registered callbacks execute under that same guard. The Rust inner type
@@ -282,7 +283,8 @@ The driver accepts these options.
 - `onChange()` requests a redraw when the drain reports a visible change.
 - `onAction(output)` receives each resumed action output. Read its events
   or claim its continuation inside the callback. The driver frees the output
-  when the callback returns.
+  when the callback returns. An output whose plan stopped carries `failure`;
+  that failure also reaches `onError`, once, just before `onAction`.
 - `onError(error)` receives query evaluation errors with their binding `kind`
   and message. Repeated drains of the same error report it once, and a
   successful registration clears it. A drain that reaches the reader round limit
@@ -320,6 +322,67 @@ When the manager releases a query call, a late completion can still advance
 readers left at the round limit. The driver discards the payload without reading it.
 Pause, detach, dispose and free revoke outstanding deliveries. A provider
 owns its network request and any timeout. Its promise can settle later.
+
+An action whose mutation a pause drops is reported once, with the kind
+`QueriesPaused` and nothing more of its plan run, after resume either (#117).
+A click while paused returns that failure in its own output, at the mutation
+step; no call is made, the steps before it keep their effects, and `onError`
+is not called (the caller has the output, as for any click). A plan whose
+mutation call was pending when `pauseQueries()` ran comes back from the
+pause's drain as an `onAction` output with that failure and no events, and
+`onError` hears the same failure: an `Error` with `kind` `QueriesPaused` and
+the reason as `message`. The reason says "not sent to the tool provider" when
+the driver never took the call (the drain that would have taken it was
+waiting for a task, so the provider is never invoked), and "handed to the tool
+provider, so the tool may have run" when it had. A drain invokes the provider
+for each call it takes while nothing has cancelled the round; a call taken by
+the delivery before a free, dispose or detach is released without invoking
+it, and so is one left after a pause or detach made inside that drain. The
+session sees neither, so that reason stays conservative: the tool may have
+run, not that it did. The texts are in
+[runtime-binding.md](runtime-binding.md). The provider's promise settling later
+changes nothing, and one that never settles is reported the same way. A
+query `@Run` while paused starts no call and the plan carries on, as
+upstream's does. A manual embedder finds the in-flight failure in the next
+`takeQueryUpdate`.
+
+After the app's `free()` or `dispose()` returns, the driver calls none of the
+app's callbacks (`onError`, `onAction`, `onChange`), invokes no tool provider
+and delivers no result into the session, for the session's current driver, a
+closing driver and any driver detached earlier. Every action segment the
+session produced before that is delivered exactly once, in order, before the
+free returns (ADR 0014). So the free delivers what is left first: the rest of
+a drain it was made inside, then what the session holds (segments a pause left
+for a drain still waiting for a task), taking again while a callback it runs
+produces more, up to three takes. Past that it stops, reports one
+`LimitExceeded` through `onError` and frees; an app that resumes, clicks and
+pauses from every callback would otherwise keep `free()` from returning.
+Those callbacks run inside the app's own call, before it returns. An error
+thrown by the session while taking an update during that delivery, and the
+update's query evaluation error or reader-round cut, reach `onError` as a
+drain would report them. A pause inside a callback no longer stops the
+delivery of segments the drain already took; they are delivered after it.
+
+The driver does not promise that JavaScript's own promise machinery leaves
+alone values the app created: a job already queued may still read or run a
+thenable's `then`, a promise subclass's constructor or `Symbol.species`, or a
+getter on such a value after the free. Such a job can no longer call a
+callback, invoke a provider or deliver a result. A provider's result and a
+callback's return value are followed with `Promise.resolve`, as they always
+were.
+
+`setToolProvider(null)` (detach) first delivers every segment the same way,
+while the driver is still attached. Then the detached driver's last drain
+delivers whatever it takes, as it always did, and a free or dispose made
+inside one of its callbacks finishes and stops it. Nothing is left in the
+session for a later owner or a manual `takeQueryUpdate`.
+
+A mutation step that fails while the program is unregistered reports the
+registration's limit, which is also the session's evaluation error. For a
+plan resumed after a call, `onError` therefore hears the same kind and message
+twice: once as the evaluation error, when it first appears (repeats are not
+reported), and once as that action's failure. They are two events: the
+registration was refused, and this action stopped.
 
 ### Drawing a raw response
 

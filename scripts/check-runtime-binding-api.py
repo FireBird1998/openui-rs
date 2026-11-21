@@ -88,8 +88,14 @@ assert "action: Option<ActionHandle>" in wasm_session
 assert "evaluation: &EvaluationHandle" in wasm_session
 assert "continuation: &ContinuationHandle" in wasm_session
 assert "program: &ParsedProgram" in wasm_session
-for name in ["InvalidToolCall", "ReferenceConflict", "ForeignHandle", "StaleHandle", "ConsumedHandle", "EvictedHandle", "InvalidHandle", "InvalidJson", "InvalidMarker", "RefusedWrite", "Disposed", "Evaluation", "LimitExceeded", "Worker"]:
+for name in ["InvalidToolCall", "ReferenceConflict", "ForeignHandle", "StaleHandle", "ConsumedHandle", "EvictedHandle", "InvalidHandle", "InvalidJson", "InvalidMarker", "RefusedWrite", "Disposed", "Evaluation", "LimitExceeded", "Worker", "QueriesPaused"]:
     assert name in core and name in wasm and name in (root / "crates/openui-ffi/src/lib.rs").read_text(), name
+# Every kind Rust throws or reports is one the package guard rebuilds (ADR 0007).
+guard = (root / "crates/openui-wasm/js/package-guards.js").read_text()
+for kind in re.findall(r'=> "(\w+)",', wasm.split("pub(crate) fn kind(", 1)[1].split("\n}\n", 1)[0]):
+    assert f"{kind}: true" in guard, ("package guard kind", kind)
+    for doc in ["docs/wasm-runtime-binding-api.md", "docs/runtime-binding-api.md"]:
+        assert kind in (root / doc).read_text(), (doc, kind)
 assert "package-guards.js" in (root / "scripts/wasm.sh").read_text()
 assert "#[uniffi::export(callback_interface)]" in native
 assert "pub trait LibraryFunction: Send + Sync" in native
@@ -211,7 +217,7 @@ assert "case Thrown(reason: String" in swift
 assert re.search(r"public func extractMcpToolResult\(responseJson: String, limits: ParseLimits\)\s*throws\s*->\s*String", swift), "Swift MCP helper signature drift"
 assert "public var maxPlans:" not in swift
 assert "compile_fail" not in swift, "rustdoc-only snippet leaked to Swift"
-for error in ["ForeignHandle", "ConsumedHandle", "EvictedHandle", "Evaluation"]:
+for error in ["ForeignHandle", "ConsumedHandle", "EvictedHandle", "Evaluation", "QueriesPaused"]:
     assert f"case {error}" in swift
 if len(sys.argv) == 3:
     kotlin = pathlib.Path(sys.argv[2]).read_text()
@@ -264,6 +270,6 @@ if len(sys.argv) == 3:
     assert "onMalformedInput(CodingErrorAction.REPORT)" in kotlin
     assert "encode(CharBuffer.wrap(value))" in kotlin
     assert "compile_fail" not in kotlin
-    for error in ["ForeignHandle", "ConsumedHandle", "EvictedHandle", "Evaluation"]:
+    for error in ["ForeignHandle", "ConsumedHandle", "EvictedHandle", "Evaluation", "QueriesPaused"]:
         assert f"class {error}" in kotlin
 print(f"{'Swift/Kotlin' if len(sys.argv) == 3 else 'Swift'}: {len(native_methods)} session methods, opaque objects, typed errors and current limits checked")

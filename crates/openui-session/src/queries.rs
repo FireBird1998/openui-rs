@@ -395,6 +395,8 @@ impl SessionCore {
         // still pending; a new program's releases the rest (#119).
         self.query_effects.calls.retain(|call| call.id.is_pending());
         let unregistered = self.is_unregistered();
+        // The failures a pause left are handed over with the actions.
+        self.paused_failures = 0;
         QueryEffects {
             next_refresh_due_ms: self
                 .manager

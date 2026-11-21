@@ -353,3 +353,89 @@ no longer be a boxed string.
 
 As of #109 every error and accepted conversion above has a conformance row
 with both sides pinned. Each case that differs from upstream is a divergence.
+
+## Freeing the session delivers what it produced, then calls nothing
+
+#117 made the driver report an action a pause drops, and three reviews of
+its delivery settled this rule (the maintainer's narrowed version,
+2026-11-21):
+
+> After the app's `free()` or `dispose()` returns, the driver calls none of
+> the app's callbacks (`onError`, `onAction`, `onChange`), invokes no tool
+> provider and delivers no result into the session, for the session's
+> current driver, a closing driver and any driver detached earlier. Every
+> action segment the session produced before that is delivered exactly
+> once, in order, before the free returns.
+
+How it holds:
+
+- A drain holds the update it took, with a cursor that each delivery
+  advances before its callback runs. Free and dispose first deliver the rest
+  of that update, then take what the session still holds (a pause's failures
+  whose drain waits for a task), again while an update brings segments, so
+  one a callback produces meanwhile is not lost.
+- That repetition is bounded at three takes. One pause leaves at most
+  `maxContinuations` failures, and a callback can produce more only by
+  resuming, clicking and pausing again, so one extra round is what a
+  reasonable app needs and a third is generous. An app that does it on every
+  delivery made `free()` deliver 20,001 segments in 1.2 s in review, and
+  without a bound it never returns. Past the bound the driver stops taking,
+  reports one `LimitExceeded` through `onError` saying so, and the free goes
+  on; what is left goes with the session.
+- The freed or disposed session joins a set every driver checks: `notify`,
+  a callback's failure handler and `report` return at once, so a driver
+  detached earlier, a closing driver and the current one all stop. A
+  driver attached inside a closing drain's callback and the closing driver
+  both end.
+- Detach delivers the same way while the driver is still attached,
+  reporting the evaluation error and reader-round cut of each update it
+  takes as a drain would. The detached driver's last drain then delivers
+  what it takes, as it always did; it is the session's closing driver
+  meanwhile, so a free made inside one of its callbacks finishes it.
+  Nothing is left in the session for a later owner.
+- A tool provider is invoked only by a drain of an attached driver, and a
+  result is delivered only through its receipt, which free revokes.
+
+A free made inside a callback calls `onError` and `onAction` again before
+it returns: the app is re-entered inside its own callback. We accept that:
+the segments are the session's last words, the re-entry is synchronous and
+bounded, it happens only inside a call the app made to end the session, and
+callbacks already tolerate session calls made from them. Rejected:
+delivering the rest from a later task (it breaks the rule), dropping it (a
+dropped action reported zero times), and handing it back some other way (a
+new channel for one case; `free()` is also `Symbol.dispose`, whose result is
+ignored). A pause inside a callback no longer stops the delivery of segments
+the drain already took: they were produced before it, and the plan they
+report really ran. (A resume never stopped it.)
+
+### The limit, and what was tried
+
+The driver does not promise that JavaScript's own promise machinery leaves
+alone values the app created. A job already queued may still read or run a
+thenable's `then`, a promise subclass's constructor or `Symbol.species`, or
+a getter on such a value after the free. Cases from the third review:
+
+- A released query receipt whose provider thenable later resolves with
+  another thenable: that thenable's `then` is read and called after free.
+- A free made inside the provider, or inside a callback, after which the
+  value it returned has its `then` read by `Promise.resolve`'s job.
+- A `Promise` subclass, or a native promise with a patched `constructor`:
+  its constructor and `Symbol.species` run from a native job after free.
+
+None of these can call a callback, invoke a provider or deliver: the
+receipt is revoked and every driver has stopped. Closing them means
+re-implementing promise resolution inside the driver. The second fix round
+did that: a hand-written adoption of provider thenables that called `then`
+from its own job only while the receipt could deliver, and a callback's
+returned thenable having its `then` called at once. The third review ran 60
+provider shapes against both and found it equivalent for ordinary shapes,
+but not for a live session in several: a native promise with its own
+`then`, a patched constructor or a subclass delivered two microtasks later,
+read `then` twice and in one case delivered a different value; it used the
+host's `queueMicrotask`, which Jest and sinon fake by default, moving
+delivery behind a timer; a callback's thenable resolving with a rejecting
+thenable was no longer reported; and a throwing `then` reached `onError`
+synchronously. That trade, live behaviour for values touched after the end,
+was withdrawn. The provider-result path and a callback's return value are
+followed with `Promise.resolve`, exactly as before #117, and tests pin that
+behaviour so a change to it is deliberate.

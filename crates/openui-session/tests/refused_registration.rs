@@ -233,6 +233,27 @@ fn a_query_run_and_retry_start_no_call_while_unregistered() {
 }
 
 #[test]
+fn a_query_run_while_unregistered_is_skipped_and_the_plan_carries_on() {
+    // One rule for a step that cannot run (ADR 0013, #117): a mutation step
+    // ends its plan with a failure; a query step starts no call and the
+    // plan goes on, as upstream's `invalidate` does when it cannot fetch.
+    let mut f = Fixture::new();
+    f.replace("$n=\"a\"\nq=Query(\"search\",{term:$n})\nroot=Box(q)");
+    f.drain();
+    f.finish("search", json!({"value":"old data"}));
+    f.grow_state();
+    let draw = f.replace(
+        "q=Query(\"new\",{term:$n+$n},\"fresh\")\n$x=\"none\"\nroot=Box([q,$x],Action([@Run(q),@Set($x,\"after\"),@OpenUrl(\"next\")]))",
+    );
+    f.drain();
+    let run = f.click(&draw);
+    assert!(run.failure.is_none() && !run.size_limited);
+    assert_eq!(run.events.len(), 1, "the step after the query run ran");
+    assert!(f.drain().calls.is_empty(), "@Run started no call");
+    assert_eq!(value(&f.evaluate()), json!(["fresh", "after"]));
+}
+
+#[test]
 fn the_other_programs_refreshes_do_not_fire_while_unregistered() {
     // B3: timers of the registered program.
     let mut f = Fixture::new();

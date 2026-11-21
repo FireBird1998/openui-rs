@@ -1,0 +1,132 @@
+{
+  "_comment": "#117: actions while queries are paused. Upstream's pause is the query manager's dispose (the renderer unmounting) and resume is activate with the mount's registration. Rows record new calls, host events and $n after each step.",
+  "schema": {
+    "$defs": {
+      "Box": {
+        "properties": {
+          "value": {},
+          "action": {}
+        }
+      }
+    }
+  },
+  "scenarios": [
+    {
+      "name": "a mutation clicked while paused",
+      "program": "$n=0\nm=Mutation(\"save\")\nn=Mutation(\"other\")\nq=Query(\"read\")\nroot=Box([$n],Action([@Set($n,1),@Run(q),@Run(m),@Set($n,2),@Run(n),@Set($n,3),@OpenUrl(\"after\")]))",
+      "steps": [
+        {
+          "finish": 0,
+          "value": "data"
+        },
+        {
+          "pause": true
+        },
+        {
+          "click": true
+        },
+        {
+          "resume": true
+        }
+      ]
+    },
+    {
+      "name": "a mutation in flight at pause settles late with a result",
+      "program": "$n=0\nm=Mutation(\"save\")\nn=Mutation(\"other\")\nroot=Box([$n],Action([@Set($n,1),@Run(m),@Set($n,2),@Run(n),@Set($n,3),@OpenUrl(\"after\")]))",
+      "steps": [
+        {
+          "click": true
+        },
+        {
+          "pause": true
+        },
+        {
+          "finish": 0,
+          "value": 1
+        },
+        {
+          "resume": true
+        }
+      ]
+    },
+    {
+      "name": "a mutation in flight at pause settles late with a failure",
+      "program": "$n=0\nm=Mutation(\"save\")\nn=Mutation(\"other\")\nroot=Box([$n],Action([@Set($n,1),@Run(m),@Set($n,2),@Run(n),@Set($n,3),@OpenUrl(\"after\")]))",
+      "steps": [
+        {
+          "click": true
+        },
+        {
+          "pause": true
+        },
+        {
+          "finish": 0,
+          "failed": "late"
+        },
+        {
+          "resume": true
+        }
+      ]
+    },
+    {
+      "name": "the second mutation of a plan in flight at pause",
+      "program": "$n=0\nm=Mutation(\"save\")\nn=Mutation(\"other\")\nroot=Box([$n],Action([@Set($n,1),@Run(m),@Set($n,2),@Run(n),@Set($n,3),@OpenUrl(\"after\")]))",
+      "steps": [
+        {
+          "click": true
+        },
+        {
+          "finish": 0,
+          "value": 1
+        },
+        {
+          "pause": true
+        },
+        {
+          "finish": 1,
+          "value": 2
+        },
+        {
+          "resume": true
+        }
+      ]
+    },
+    {
+      "name": "a mutation in flight at pause that never settles",
+      "program": "$n=0\nm=Mutation(\"save\")\nn=Mutation(\"other\")\nroot=Box([$n],Action([@Set($n,1),@Run(m),@Set($n,2),@Run(n),@Set($n,3),@OpenUrl(\"after\")]))",
+      "steps": [
+        {
+          "click": true
+        },
+        {
+          "pause": true
+        },
+        {
+          "resume": true
+        },
+        {
+          "click": true
+        }
+      ]
+    },
+    {
+      "name": "a query run while paused",
+      "program": "$n=0\nq=Query(\"read\")\nroot=Box([q,$n],Action([@Run(q),@Set($n,5),@OpenUrl(\"after\")]))",
+      "steps": [
+        {
+          "finish": 0,
+          "value": "data"
+        },
+        {
+          "pause": true
+        },
+        {
+          "click": true
+        },
+        {
+          "resume": true
+        }
+      ]
+    }
+  ]
+}
