@@ -22,6 +22,10 @@
 //! marker, which stops the reader when exactly one empty line follows it; a
 //! line with an end marker is committed only once two more complete lines
 //! follow it, so that can no longer happen.
+//!
+//! The line still arriving is itself resumed when it is a long line in a
+//! scripts section's array, as a Cloud script's code always is: see
+//! [`Resume`] (#122).
 
 use std::borrow::Cow;
 
@@ -29,7 +33,7 @@ use super::{
     BundleParts, INVALID_SCRIPTS, ResponseBundleError, SCRIPTS, Scripts, has_content_line,
     mask_bare_scripts, read_name, read_scripts, script_json, text::TextFormat, write_bundle,
 };
-use crate::js::normalize_surrogate_pairs;
+use crate::js::{lone_surrogate_unit, normalize_surrogate_pairs};
 use crate::message::{MessageError, PREFIX, hold_retry, marker, read_attributes, split_retries};
 use crate::result::ParseResult;
 use crate::stream::StreamParser;
@@ -110,6 +114,8 @@ struct Accepted {
     /// chunk may pair.
     lone_high: Option<u16>,
     committed: Committed,
+    /// The scan of the line still arriving, for the next append to resume.
+    resume: Resume,
 }
 
 impl Accepted {
@@ -120,8 +126,53 @@ impl Accepted {
             units: 0,
             lone_high: None,
             committed: Committed::new(),
+            resume: Resume::None,
         }
     }
+}
+
+/// Whether the next append can resume the scans of the line still arriving
+/// (the text after the committed lines) instead of reading it again (#122).
+///
+/// A Cloud script's code is one JSON string, so its line is as long as its
+/// code. While that line has no line break and no `]]>` and sits in the
+/// content, in a scripts section's array, every rule of the message reader
+/// takes it as one line of content (see [`ResponseReader::stage_resumed`]),
+/// and only the scripts scan looks into it; that scan stops and continues
+/// at any character boundary. So the scan's state at the end of the line so
+/// far is all a call needs to go on with the new bytes only.
+///
+/// Like the committed lines, it changes only when a read is kept: a staged
+/// read carries the scan it reached, and a refused one is dropped with it.
+enum Resume {
+    /// Not built for the line still arriving.
+    None,
+    /// The line starting at this raw offset cannot be resumed, and appends
+    /// cannot change that: it holds a line break or `]]>`, or the committed
+    /// lines put it somewhere other than a scripts section's array, or the
+    /// scripts marker line's JSON is nested past the depth limit (or a check
+    /// that cannot fail did).
+    Never {
+        line: usize,
+    },
+    Line(LineScan),
+}
+
+/// The scripts scan through the line still arriving, as far as later bytes
+/// cannot change it. Bounded: a few numbers, whatever the line's length.
+#[derive(Clone, Copy)]
+struct LineScan {
+    /// Where the line starts in the raw text: the committed lines' end.
+    line: usize,
+    /// The raw text before this has been scanned. What follows it, up to
+    /// the text's end, is at most a held-back `/`, `]` or `]]` and a lone
+    /// high surrogate the next chunk may pair.
+    raw_at: usize,
+    /// The scan's position in the content (the committed content, a line
+    /// break and the line), which is `raw_at` in the raw text.
+    pos: usize,
+    /// The scan's stage there: always [`Stage::Array`].
+    stage: Stage,
 }
 
 /// A read waiting for the draw that uses it.
@@ -139,6 +190,17 @@ struct Staged {
     kept: usize,
     rest: String,
     origin: Origin,
+    /// The line still arriving was resumed, and its scan reached this.
+    resume: Option<LineScan>,
+}
+
+/// What a resumed read found, for [`ResponseReader::stage`] to stage.
+struct Resumed {
+    outcome: Outcome,
+    kept: usize,
+    rest: String,
+    origin: Origin,
+    scan: LineScan,
 }
 
 /// What one read found, for the drivers.
@@ -965,6 +1027,35 @@ impl ResponseReader {
         lone_high: Option<u16>,
         streaming: bool,
     ) -> Result<(), ResponseReaderError> {
+        if !fresh {
+            let mut examined = 0;
+            let resumed =
+                self.stage_resumed(raw_keep, &appended, lone_high, streaming, &mut examined);
+            self.examined += examined;
+            if let Some(resumed) = resumed {
+                let Resumed {
+                    outcome,
+                    kept,
+                    rest,
+                    origin,
+                    scan,
+                } = resumed;
+                self.staged = Some(Box::new(Staged {
+                    fresh,
+                    raw_keep,
+                    appended,
+                    charged,
+                    units,
+                    lone_high,
+                    outcome,
+                    kept,
+                    rest,
+                    origin,
+                    resume: Some(scan),
+                }));
+                return Ok(());
+            }
+        }
         let empty;
         let accepted = if fresh {
             empty = Accepted::new();
@@ -1040,9 +1131,9 @@ impl ResponseReader {
         };
         let from = extract.pos.min(content.len());
         extract.advance(&content.get(from, content.len()), true, &mut examined);
-        let program = finish_extract(&extract, &content, format, limits, &mut examined)?;
+        let mut program = finish_extract(&extract, &content, format, limits, &mut examined)?;
         let valid = !program.section || program.scripts.is_some();
-        let (scripts, revision) = program.scripts.unwrap_or_default();
+        let (scripts, revision) = program.scripts.take().unwrap_or_default();
         let is_bundle = content_line || program.section || masked.end;
 
         // The message reader's context and attributes, bare markers as they are.
@@ -1075,12 +1166,238 @@ impl ResponseReader {
             }
         }
 
-        // The new program, compared with the last from where they could differ.
-        let base_len = if masked.content.reset {
-            0
-        } else {
-            content.base.len()
+        let (kept, rest, origin, program_changed) = self.compare_program(
+            fresh,
+            committed,
+            &content,
+            &program,
+            masked.content.reset,
+            &mut examined,
+        );
+
+        let has_marker = committed.has_marker || tail.contains("]]>");
+        let outcome = Outcome {
+            name: if content_line {
+                read_name(&masked.query, format)
+            } else {
+                None
+            },
+            scripts,
+            revision,
+            is_bundle,
+            complete: valid && (masked.end || !streaming || !content_line),
+            error: (!streaming && !valid).then_some(INVALID_SCRIPTS),
+            context,
+            query: plain.query.into_owned(),
+            has_marker,
+            program_changed,
         };
+        self.examined += examined;
+        self.staged = Some(Box::new(Staged {
+            fresh,
+            raw_keep,
+            appended,
+            charged,
+            units,
+            lone_high,
+            outcome,
+            kept,
+            rest,
+            origin,
+            resume: None,
+        }));
+        Ok(())
+    }
+
+    /// Stage a read that goes on with the line still arriving from where
+    /// its scan stopped (#122), or `None` when it cannot: the caller then
+    /// reads the line again, as every call did before.
+    ///
+    /// Why the result is the full read's: the text after the committed
+    /// lines is then one line `L` (no line break) with no `]]>`, longer than
+    /// `]]` (see [`Resume`]). Without `]]>` neither a bare scripts marker
+    /// nor a retry can be masked or split out of it, no retry is held back,
+    /// it is no marker line and no content marker line, and it can only be
+    /// held back as a marker that may still arrive if it is `]` or `]]`.
+    /// So each fold takes it as one line of the section it is in, which the
+    /// committed state says is the content, with no context in either view
+    /// (so the message reader's view takes nothing from it, and there is no
+    /// context to read). The content is then the committed content, a line
+    /// break and `L`, and its scripts scan is the resumed one. When that
+    /// scan ends in the array and the array certainly fails to read (it has
+    /// not closed, or has text after it), nothing else looks at `L`, and the
+    /// program is the committed content before the section. Every other case
+    /// returns `None`.
+    fn stage_resumed(
+        &self,
+        raw_keep: usize,
+        appended: &str,
+        lone_high: Option<u16>,
+        streaming: bool,
+        examined: &mut u64,
+    ) -> Option<Resumed> {
+        let accepted = &self.accepted;
+        let Resume::Line(scan) = &accepted.resume else {
+            return None;
+        };
+        let committed = &accepted.committed;
+        let raw = &accepted.raw;
+        let format = self.format;
+        // Checks that cannot fail, kept to fall back rather than trust:
+        // only a commit changes the committed lines, and it rebuilds or
+        // replaces the scan, so `scan.line` is `committed.at`; a scan never
+        // passes the accepted text's stable end, which an append keeps
+        // (`raw_keep` is the accepted length, or that less the escape of a
+        // trailing lone half the scan stopped before); and neither view has
+        // a context in the content (see `build_resume`).
+        if scan.line != committed.at
+            || scan.raw_at < scan.line
+            || scan.raw_at > raw_keep
+            || raw_keep > raw.len()
+            || committed.masked.has_context
+            || committed.plain.has_context
+        {
+            return None;
+        }
+        // Needed: a line outside the content must not be taken as content.
+        // `build_resume` makes no scan for such a line either; either check
+        // alone suffices, and removing both makes the differential tests fail.
+        if committed.masked.part != Part::Content {
+            return None;
+        }
+        // A line of `]` or `]]` may be a marker still arriving.
+        if (raw_keep - scan.line).saturating_add(appended.len()) <= 2 {
+            return None;
+        }
+        // The new bytes, with the two before them so that a `]]>` across
+        // the old end is seen. The line so far has neither a line break nor
+        // `]]>` (the scan was built or carried only so).
+        let mut look = scan.raw_at.saturating_sub(2).max(scan.line);
+        while !raw.is_char_boundary(look) {
+            // Stops by `scan.line`, a character boundary (just after a line
+            // break, or the text's start).
+            look -= 1;
+        }
+        let mut window = String::with_capacity((raw_keep - look).saturating_add(appended.len()));
+        window.push_str(raw.get(look..raw_keep)?);
+        window.push_str(appended);
+        // Copied and searched.
+        *examined += window.len() as u64 * 2;
+        if window.contains('\n') || window.contains("]]>") {
+            return None;
+        }
+        let new = window.get(scan.raw_at - look..)?;
+        let text = match format {
+            TextFormat::Core => {
+                *examined += new.len() as u64;
+                // Pairs are joined as in the whole line (the scanned part
+                // never ends in a lone high surrogate), so that `pos` stays
+                // a true content offset. Unobservable in any result while
+                // the line is resumed: a pair is one non-ASCII character
+                // either way to the scan, and nothing reads the array's
+                // bytes. The same holds for leaving a trailing lone high
+                // half to the next call (below), which also keeps `raw_at`
+                // within a WebAssembly append that pairs it.
+                normalize_surrogate_pairs(new)
+            }
+            TextFormat::ExactUtf16 => Cow::Borrowed(new),
+        };
+        let trailing = trailing_lone_high(&text, format, lone_high)?;
+        let stable = text.get(..text.len().checked_sub(trailing)?)?;
+        let mut extract = Extract {
+            pos: scan.pos,
+            stage: scan.stage,
+            count: None,
+            read: None,
+        };
+        extract.advance(stable, false, examined);
+        let scanned = extract.pos.checked_sub(scan.pos)?;
+        // What the scan held back is ASCII (`/`, `]`, `]]`), so it ends the
+        // raw text as it ends the content, before any lone high surrogate.
+        let held = stable.get(scanned..)?;
+        if !held.is_ascii() || !matches!(extract.stage, Stage::Array { .. }) {
+            return None;
+        }
+        let raw_at = raw_keep
+            .checked_add(appended.len())?
+            .checked_sub(trailing)?
+            .checked_sub(held.len())?;
+        if raw_at < scan.raw_at {
+            return None;
+        }
+        let next = LineScan {
+            line: scan.line,
+            raw_at,
+            pos: extract.pos,
+            stage: extract.stage,
+        };
+        // This read's answer: the scan as if the text ended here.
+        extract.advance(text.get(scanned..)?, true, examined);
+        let Stage::Array { at, shape, .. } = extract.stage else {
+            return None;
+        };
+        let body = committed.masked.content.text.as_str();
+        if !shape.fails(self.limits.json_depth()) || at >= body.len() {
+            return None;
+        }
+
+        // Nothing the full read could refuse: neither view has a context,
+        // and the scripts marker line's JSON was read without error when
+        // the scan was built.
+        let content = Content {
+            base: body,
+            extra: "",
+        };
+        // The program is the content before the section, all committed.
+        let program = Program {
+            before: strip_line_break(&content, at),
+            after: None,
+            section: true,
+            scripts: None,
+        };
+        let (kept, rest, origin, program_changed) =
+            self.compare_program(false, committed, &content, &program, false, examined);
+        let content_line = committed
+            .content_line
+            .is_some_and(|arrived| !streaming || arrived);
+        let outcome = Outcome {
+            name: if content_line {
+                read_name(&committed.masked.query, format)
+            } else {
+                None
+            },
+            scripts: Vec::new(),
+            revision: None,
+            is_bundle: true,
+            complete: false,
+            error: (!streaming).then_some(INVALID_SCRIPTS),
+            context: None,
+            query: committed.plain.query.as_ref().to_owned(),
+            has_marker: committed.has_marker,
+            program_changed,
+        };
+        Some(Resumed {
+            outcome,
+            kept,
+            rest,
+            origin,
+            scan: next,
+        })
+    }
+
+    /// The new program, compared with the last from where they could
+    /// differ: how much of the last it keeps, what follows, where its parts
+    /// come from, and whether it changed.
+    fn compare_program(
+        &self,
+        fresh: bool,
+        committed: &Committed,
+        content: &Content<'_>,
+        program: &Program,
+        reset: bool,
+        examined: &mut u64,
+    ) -> (usize, String, Origin, bool) {
+        let base_len = if reset { 0 } else { content.base.len() };
         let origin = Origin {
             epoch: committed.epoch,
             from_base: program.before.min(base_len),
@@ -1170,40 +1487,9 @@ impl ResponseReader {
             rest.push_str(&content.get(after + (kept - before - 1), content.len()));
         }
         debug_assert_eq!(kept + rest.len(), program_len);
-        examined += (common + rest.len()) as u64;
+        *examined += (common + rest.len()) as u64;
         let program_changed = kept != self.program.len() || !rest.is_empty();
-
-        let has_marker = committed.has_marker || tail.contains("]]>");
-        let outcome = Outcome {
-            name: if content_line {
-                read_name(&masked.query, format)
-            } else {
-                None
-            },
-            scripts,
-            revision,
-            is_bundle,
-            complete: valid && (masked.end || !streaming || !content_line),
-            error: (!streaming && !valid).then_some(INVALID_SCRIPTS),
-            context,
-            query: plain.query.into_owned(),
-            has_marker,
-            program_changed,
-        };
-        self.examined += examined;
-        self.staged = Some(Box::new(Staged {
-            fresh,
-            raw_keep,
-            appended,
-            charged,
-            units,
-            lone_high,
-            outcome,
-            kept,
-            rest,
-            origin,
-        }));
-        Ok(())
+        (kept, rest, origin, program_changed)
     }
 
     /// Whether the staged read's program differs from the last accepted one.
@@ -1324,6 +1610,7 @@ impl ResponseReader {
             kept,
             rest,
             origin,
+            resume,
         } = staged;
         if fresh {
             self.accepted = Accepted::new();
@@ -1342,12 +1629,27 @@ impl ResponseReader {
         self.origin = origin;
         self.last = outcome;
         accepted.committed.low = accepted.committed.masked.content.text.len();
-        self.examined += advance(
-            &mut accepted.committed,
-            &accepted.raw,
-            self.format,
-            self.limits,
-        );
+        match resume {
+            // A resumed read leaves the committed lines as they were: the
+            // text after them is still one line, so `advance` would find no
+            // line to commit and its scan nothing new to look at.
+            Some(scan) => accepted.resume = Resume::Line(scan),
+            None => {
+                self.examined += advance(
+                    &mut accepted.committed,
+                    &accepted.raw,
+                    self.format,
+                    self.limits,
+                );
+                let line = accepted.committed.at;
+                if !matches!(accepted.resume, Resume::Never { line: never } if never == line) {
+                    let mut examined = 0;
+                    accepted.resume =
+                        build_resume(accepted, self.format, self.limits, &mut examined);
+                    self.examined += examined;
+                }
+            }
+        }
     }
 
     /// Drop a staged read without keeping it: the reader stays at the last
@@ -1564,6 +1866,151 @@ fn finish_extract(
         after: (end < whole).then_some(end),
         section: true,
         scripts,
+    })
+}
+
+/// How many bytes at the end of `text` (the line still arriving, as far as
+/// it is new) the resumable scan must leave for the next call: a lone high
+/// surrogate the next chunk may pair, which then changes in both forms (the
+/// core joins the pair, the WebAssembly reader replaces its escape). `None`
+/// when a WebAssembly text does not end in the escape it says it ends in.
+fn trailing_lone_high(text: &str, format: TextFormat, lone_high: Option<u16>) -> Option<usize> {
+    match format {
+        TextFormat::Core => Some(match text.chars().next_back() {
+            Some(ch) if lone_surrogate_unit(ch).is_some_and(|unit| unit < 0xdc00) => ch.len_utf8(),
+            _ => 0,
+        }),
+        TextFormat::ExactUtf16 => match lone_high {
+            None => Some(0),
+            Some(unit) => {
+                let escape = super::text::encode_utf16(std::iter::once(unit));
+                text.ends_with(&escape).then_some(escape.len())
+            }
+        },
+    }
+}
+
+/// The scan of the line still arriving after the committed lines, for the
+/// next append to resume (see [`Resume`]), read once in full. Charged to
+/// `examined`.
+fn build_resume(
+    accepted: &Accepted,
+    format: TextFormat,
+    limits: Limits,
+    examined: &mut u64,
+) -> Resume {
+    let committed = &accepted.committed;
+    let line = committed.at;
+    let never = Resume::Never { line };
+    // Where the committed lines leave the line: in the content, at a
+    // scripts section that has not closed, with no context in either view.
+    // The content condition is needed (it is checked again in
+    // `stage_resumed`; either check alone suffices, and removing both makes
+    // the differential tests fail). The context conditions cannot fail: a
+    // context marker takes both views out of the content and sets their
+    // contexts, and only a content marker, which clears both, brings them
+    // back; so in the content neither has one. They are kept as checks that
+    // fall back. None of this changes until a line is committed.
+    if !matches!(
+        committed.extract.stage,
+        Stage::Count { .. } | Stage::Array { .. }
+    ) || committed.masked.part != Part::Content
+        || committed.masked.has_context
+        || committed.plain.has_context
+    {
+        return never;
+    }
+    let Some(partial) = accepted.raw.get(line..) else {
+        return never;
+    };
+    *examined += partial.len() as u64 * 2;
+    // Appends keep a line break or `]]>` (a WebAssembly pair replaces only
+    // the escape of a lone half, neither of them).
+    if partial.contains('\n') || partial.contains("]]>") {
+        return never;
+    }
+    let text = match format {
+        TextFormat::Core => {
+            *examined += partial.len() as u64;
+            normalize_surrogate_pairs(partial)
+        }
+        TextFormat::ExactUtf16 => Cow::Borrowed(partial),
+    };
+    let body = committed.masked.content.text.as_str();
+    let from = committed.extract.pos.min(body.len());
+    let (Some(trailing), Some(unscanned)) = (
+        trailing_lone_high(&text, format, accepted.lone_high),
+        body.get(from..),
+    ) else {
+        return never;
+    };
+    let Some(stable) = text
+        .len()
+        .checked_sub(trailing)
+        .and_then(|end| text.get(..end))
+    else {
+        return never;
+    };
+    // The content from the committed scan on: what it left of the committed
+    // content (held-back characters, trailing CRs), the line break the line
+    // follows, and the line.
+    let mut fed = String::with_capacity(unscanned.len() + 1 + stable.len());
+    fed.push_str(unscanned);
+    if committed.masked.content.has_line {
+        fed.push('\n');
+    }
+    fed.push_str(stable);
+    let mut extract = Extract {
+        pos: from,
+        stage: committed.extract.stage,
+        count: None,
+        read: None,
+    };
+    extract.advance(&fed, false, examined);
+    let Stage::Array { at, newline, .. } = extract.stage else {
+        return never;
+    };
+    // The scan holds back at most `/`, `]` or `]]`, ASCII at the line's end.
+    let held = from
+        .checked_add(fed.len())
+        .and_then(|end| end.checked_sub(extract.pos));
+    let raw_at = held.and_then(|held| {
+        let tail = stable.get(stable.len().checked_sub(held)?..)?;
+        let raw_at = accepted
+            .raw
+            .len()
+            .checked_sub(trailing)?
+            .checked_sub(held)?;
+        (tail.is_ascii() && raw_at >= line).then_some(raw_at)
+    });
+    let Some(raw_at) = raw_at else {
+        return never;
+    };
+    // The scripts marker line's JSON, which the full read reads whenever
+    // its scan is in the array. Needed: the accepted text's own read may not
+    // have read it, when its last line was a held-back `]` or `]]` (no line
+    // break after the marker line yet, so its scan stopped at the marker).
+    // The next append would then make the full read refuse the JSON as too
+    // deep, so no scan is built and that read takes the full path
+    // (`a_marker_line_too_deep_is_refused_after_a_held_back_bracket`).
+    let count = match &committed.extract.count {
+        Some(count) => count.as_ref().map(|_| ()).map_err(|error| *error),
+        None => body
+            .get(at + SCRIPTS.len()..newline)
+            .ok_or(ResponseBundleError::ScriptsDepth)
+            .and_then(|json| {
+                *examined += json.len() as u64;
+                script_json(json, limits, format).map(|_| ())
+            }),
+    };
+    if count.is_err() {
+        return never;
+    }
+    Resume::Line(LineScan {
+        line,
+        raw_at,
+        pos: extract.pos,
+        stage: extract.stage,
     })
 }
 

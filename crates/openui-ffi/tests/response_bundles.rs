@@ -231,3 +231,32 @@ fn a_session_with_a_small_program_size_reads_long_responses_as_set_did() {
     }
     assert_eq!(steps, 4500);
 }
+
+/// A Cloud script's code is one JSON string, so its line is as long as its
+/// code: the native session resumes that line's scan between reads (#122)
+/// and still gives what the one-shot call gives at every chunk, through the
+/// end of the line and the section.
+#[test]
+fn the_native_response_reader_reads_a_long_script_line_as_the_one_shot_call_does() {
+    use openui_ffi::{ComponentLibrary, StreamSession};
+    let library =
+        ComponentLibrary::new(r#"{"$defs":{"Box":{"properties":{"value":{}}}}}"#.into()).unwrap();
+    let code = "let top = rows[ids[0]] ?? \\\"é\\\"; // ]] \\uD83D\\uDE00\\n".repeat(1400);
+    let text = format!(
+        "]]>openui:content?name=Long\nroot=Box(\"a\")\n]]>openui:scripts {{\"count\":1}}\n[{{\"name\":\"refresh\",\"code\":\"{code}\"}}]\n]]>openui:end\n"
+    );
+    assert!(code.len() >= 65_536);
+    let session = StreamSession::new(library, None);
+    let mut at = 0;
+    while at < text.len() {
+        at = (at + 509).min(text.len());
+        while !text.is_char_boundary(at) {
+            at += 1;
+        }
+        let piece = &text[..at];
+        let streaming = at != text.len();
+        let read = session.read_response(piece.to_owned(), streaming).unwrap();
+        let bundle = parse_response_bundle(Some(piece.to_owned()), streaming).unwrap();
+        assert_eq!(read.bundle, bundle, "cut {at}");
+    }
+}

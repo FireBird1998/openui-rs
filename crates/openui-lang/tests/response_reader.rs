@@ -154,6 +154,25 @@ fn fixed_texts() -> Vec<String> {
     ]
 }
 
+/// Cloud script code of about `bytes` bytes, the content of one JSON string,
+/// so one line: escapes, `]]` (an index), non-ASCII and comments in it.
+fn script_code(bytes: usize) -> String {
+    let piece =
+        "const rows = await query(\\\"sales\\\"); // é\\nlet top = rows[ids[0]] ?? \\u00e9;\\n";
+    let mut code = String::with_capacity(bytes + piece.len());
+    while code.len() < bytes {
+        code.push_str(piece);
+    }
+    code
+}
+
+/// A bundle whose one script's code is `code`, on one line.
+fn one_script_line(code: &str) -> String {
+    format!(
+        "]]>openui:content?name=Long\nroot = TextContent(\"x\")\n]]>openui:scripts {{\"count\":1}}\n[{{\"name\":\"refresh\",\"code\":\"{code}\"}}]\n]]>openui:end\n"
+    )
+}
+
 /// What reading and parsing the whole text gives, as the drivers saw it.
 struct Expected {
     read: Result<(String, Option<String>), ResponseReaderError>,
@@ -161,7 +180,11 @@ struct Expected {
 }
 
 fn expected_core(text: &str, streaming: bool) -> Expected {
-    let bundle = match parse_response_bundle(Some(text), streaming, Limits::DEFAULT) {
+    expected_core_with(text, streaming, Limits::DEFAULT)
+}
+
+fn expected_core_with(text: &str, streaming: bool, limits: Limits) -> Expected {
+    let bundle = match parse_response_bundle(Some(text), streaming, limits) {
         Ok(bundle) => bundle,
         Err(error) => {
             return Expected {
@@ -171,7 +194,7 @@ fn expected_core(text: &str, streaming: bool) -> Expected {
         }
     };
     let message = if text.contains("]]>") {
-        match parse_message(text, streaming, Limits::DEFAULT) {
+        match parse_message(text, streaming, limits) {
             Ok(message) => Some(without_content(&message.to_json())),
             Err(error) => {
                 return Expected {
@@ -198,9 +221,13 @@ fn without_content(json: &str) -> String {
 
 /// The WebAssembly transport's read: the draw JSON (program left out, change
 /// flag added later) and the bundle JSON with its program.
-fn expected_utf16(units: &[u16], streaming: bool) -> Result<(String, String), ResponseBundleError> {
-    let draw = response_draw_json_utf16(units, streaming, Limits::DEFAULT)?;
-    let bundle = response_bundle_json_utf16(units, streaming, Limits::DEFAULT)?;
+fn expected_utf16(
+    units: &[u16],
+    streaming: bool,
+    limits: Limits,
+) -> Result<(String, String), ResponseBundleError> {
+    let draw = response_draw_json_utf16(units, streaming, limits)?;
+    let bundle = response_bundle_json_utf16(units, streaming, limits)?;
     let at = draw.find(",\"metadata\"").expect("metadata field");
     let draw = format!("{{\"bundle\":{{{}", &draw[at + 1..]);
     Ok((draw, bundle))
@@ -221,7 +248,16 @@ fn lossy(program: &str) -> String {
 
 /// A fresh parse of `program`, as the drivers' full re-read did it.
 fn fresh_parse(library: &Arc<Library>, program: &str, complete: bool) -> String {
-    let mut parser = StreamParser::new(library.clone(), None);
+    fresh_parse_with(library, program, complete, Limits::DEFAULT)
+}
+
+fn fresh_parse_with(
+    library: &Arc<Library>,
+    program: &str,
+    complete: bool,
+    limits: Limits,
+) -> String {
+    let mut parser = StreamParser::with_limits(library.clone(), None, limits);
     let partial = parser.set(program);
     if complete {
         parser.finish().to_json()
@@ -235,37 +271,38 @@ fn fresh_parse(library: &Arc<Library>, program: &str, complete: bool) -> String 
 struct CoreDriver {
     reader: ResponseReader,
     library: Arc<Library>,
+    limits: Limits,
     accepted: Option<String>,
 }
 
 impl CoreDriver {
     fn new(library: &Arc<Library>) -> Self {
+        Self::with_limits(library, Limits::DEFAULT)
+    }
+
+    fn with_limits(library: &Arc<Library>, limits: Limits) -> Self {
         Self {
-            reader: ResponseReader::new(StreamParser::new(library.clone(), None), Limits::DEFAULT),
+            reader: ResponseReader::new(
+                StreamParser::with_limits(library.clone(), None, limits),
+                limits,
+            ),
             library: library.clone(),
+            limits,
             accepted: None,
         }
     }
 
-    fn step(&mut self, text: &str, streaming: bool, refuse: bool, what: &str) {
+    /// One step; whether the reader kept the text.
+    fn step(&mut self, text: &str, streaming: bool, refuse: bool, what: &str) -> bool {
         count_step();
-        let expected = expected_core(text, streaming);
+        let expected = expected_core_with(text, streaming, self.limits);
         let actual = self.reader.read(text, streaming).and_then(|()| {
             let message = self.reader.message_json()?;
             Ok((self.reader.bundle_json(), message))
         });
         assert_eq!(actual, expected.read, "{what}: read of {text:?}");
         if expected.read.is_err() {
-            return;
-        }
-        let changed = self
-            .accepted
-            .as_deref()
-            .map(|old| expected_core(old, true).program)
-            != Some(expected.program.clone());
-        if self.accepted.is_some() {
-            // The flag is only promised relative to an accepted program.
-            let _ = changed;
+            return false;
         }
         let complete = !streaming;
         let parsed = self.reader.try_parse(true, complete, |result| {
@@ -275,12 +312,13 @@ impl CoreDriver {
         let parsed = parsed.unwrap_or_else(|refused| refused);
         assert_eq!(
             parsed,
-            fresh_parse(&self.library, &expected.program, complete),
+            fresh_parse_with(&self.library, &expected.program, complete, self.limits),
             "{what}: parse of {text:?}"
         );
         if !refuse {
             self.accepted = Some(text.to_owned());
         }
+        !refuse
     }
 }
 
@@ -288,26 +326,33 @@ impl CoreDriver {
 struct Utf16Driver {
     reader: ResponseReader,
     library: Arc<Library>,
+    limits: Limits,
     accepted: Vec<u16>,
     program: String,
 }
 
 impl Utf16Driver {
     fn new(library: &Arc<Library>) -> Self {
+        Self::with_limits(library, Limits::DEFAULT)
+    }
+
+    fn with_limits(library: &Arc<Library>, limits: Limits) -> Self {
         Self {
             reader: ResponseReader::new_utf16(
-                StreamParser::new(library.clone(), None),
-                Limits::DEFAULT,
+                StreamParser::with_limits(library.clone(), None, limits),
+                limits,
             ),
             library: library.clone(),
+            limits,
             accepted: Vec::new(),
             program: String::new(),
         }
     }
 
-    fn step(&mut self, units: &[u16], streaming: bool, refuse: bool, what: &str) {
+    /// One step; whether the reader kept the text.
+    fn step(&mut self, units: &[u16], streaming: bool, refuse: bool, what: &str) -> bool {
         count_step();
-        let expected = expected_utf16(units, streaming);
+        let expected = expected_utf16(units, streaming, self.limits);
         let read = if units.starts_with(&self.accepted) && !self.accepted.is_empty() {
             self.reader.read_utf16_append(
                 self.accepted.len(),
@@ -326,6 +371,7 @@ impl Utf16Driver {
                     Err(ResponseReaderError::Bundle(error)),
                     "{what}: {text:?}"
                 );
+                false
             }
             Ok((draw, bundle)) => {
                 let program = program_of(&bundle);
@@ -345,7 +391,7 @@ impl Utf16Driver {
                 if let Some(parsed) = parsed {
                     assert_eq!(
                         parsed,
-                        fresh_parse(&self.library, &lossy(&program), complete),
+                        fresh_parse_with(&self.library, &lossy(&program), complete, self.limits),
                         "{what}: parse of {text:?}"
                     );
                 }
@@ -353,6 +399,7 @@ impl Utf16Driver {
                     self.accepted = units.to_vec();
                     self.program = program;
                 }
+                !refuse
             }
         }
     }
@@ -724,6 +771,9 @@ fn shapes(program: &str) -> Vec<(&'static str, String)> {
                 "]]>openui:content\n{head}\n]]>openui:scripts {{\"count\":1}}\n[{{\"name\":\"a\",\"code\":\"1\"}}]\n]]> not a marker\n{tail}]]>openui:end\n"
             ),
         ),
+        // A Cloud script is one JSON string: as much script code as the
+        // program has bytes, on one line (#122).
+        ("script line", one_script_line(&script_code(program.len()))),
     ]
 }
 
@@ -838,6 +888,44 @@ fn streaming_64_kib_in_16_byte_chunks_costs_within_three_times_pushing_it() {
     }
 }
 
+/// 64 KiB of script code on one line, in 16-byte chunks, costs within a small
+/// constant of the same code arriving as many lines (one short script per
+/// line): the partial line's scans resume instead of starting again (#122).
+#[test]
+fn a_long_script_line_costs_about_what_the_same_code_on_many_lines_costs() {
+    let code = script_code(65_536);
+    let one_line = one_script_line(&code);
+    // The same code cut between its pieces into scripts of about 64 bytes,
+    // one per line.
+    let piece = script_code(1);
+    let pieces: Vec<&str> = code
+        .as_bytes()
+        .chunks(piece.len())
+        .map(|chunk| std::str::from_utf8(chunk).expect("whole pieces"))
+        .collect();
+    let scripts: Vec<String> = pieces
+        .iter()
+        .enumerate()
+        .map(|(index, code)| format!("{{\"name\":\"s{index}\",\"code\":\"{code}\"}}"))
+        .collect();
+    let many_lines = format!(
+        "]]>openui:content?name=Long\nroot = TextContent(\"x\")\n]]>openui:scripts {{\"count\":{}}}\n[\n{}\n]\n]]>openui:end\n",
+        scripts.len(),
+        scripts.join(",\n")
+    );
+    let program = "root = TextContent(\"x\")";
+    for utf16 in [false, true] {
+        let (long, _) = stream_costs(&one_line, program, utf16);
+        let (many, _) = stream_costs(&many_lines, program, utf16);
+        let ratio = long as f64 / many as f64;
+        println!(
+            "64 KiB of script ({}): one line {long}, many lines {many}: {ratio:.2}×",
+            if utf16 { "WebAssembly" } else { "core" }
+        );
+        assert!(ratio < 2.0, "one line costs {ratio:.2}× many lines");
+    }
+}
+
 /// A refused update that took back the program's trailing line break (a
 /// last line that may be a marker) must put it back: the next append and
 /// then an edit read as a fresh parse does. Found by an independent review.
@@ -921,4 +1009,569 @@ fn random_sequences_of_refusals_then_other_texts_read_as_a_full_read() {
         "{} steps checked against a full read so far",
         STEPS.load(std::sync::atomic::Ordering::Relaxed)
     );
+}
+
+// ─── A long line in the scripts section (#122) ──────────────────────────────
+
+/// Pieces of script code inside a JSON string: mostly plain code, with every
+/// escape (`\"`, `\\`, `\n`, `\uXXXX`, an escaped surrogate pair), `]` and
+/// `]]` (an index), comments and quotes the scripts scan follows, and
+/// characters of every UTF-8 length.
+const CODE_PIECES: &[&str] = &[
+    "const total = rows.length;",
+    "let x = 1;",
+    "abcdefgh",
+    "\\\"",
+    "\\\\",
+    "\\n",
+    "\\r\\n",
+    "\\u00e9",
+    "\\uD83D\\uDE00",
+    "\\ud800",
+    "rows[ids[0]]",
+    "]]",
+    "]",
+    "//",
+    "/",
+    "#",
+    "'",
+    "\\'",
+    " ",
+    "é",
+    "€",
+    "😀",
+];
+
+/// What else a long line may hold in some texts: raw CRs, `]]>` and markers
+/// inside the string, a retry starting mid-line, and (core strings only) the
+/// core's lone surrogates, adjacent halves that pair when they meet.
+#[derive(Clone, Copy, PartialEq)]
+enum Extra {
+    None,
+    RawCr,
+    Markers,
+    LoneSurrogates,
+}
+
+/// About `bytes` of script code on one line, with a rare piece from `extra`
+/// one time in thirty.
+fn long_code(rng: &mut Rng, bytes: usize, extra: Extra) -> String {
+    let mut code = String::with_capacity(bytes + 64);
+    while code.len() < bytes {
+        let rare = rng.below(30) == 0;
+        let piece: &str = match extra {
+            Extra::RawCr if rare => ["\r", "\r\r", "x\r"][rng.below(3)],
+            Extra::Markers if rare => [
+                "]]>",
+                "]]",
+                "a]]>b",
+                "]]>openui:end",
+                "]]>openui:scripts",
+                "]]>openui:",
+            ][rng.below(6)],
+            Extra::LoneSurrogates if rare => [
+                "\u{10f83d}\u{10fe00}",
+                "\u{10f83d}",
+                "\u{10fe00}",
+                "\u{10fbff}\u{10ffff}",
+                "\u{10f800}\u{10f800}\u{10fc00}",
+            ][rng.below(5)],
+            _ => CODE_PIECES[rng.below(CODE_PIECES.len())],
+        };
+        code.push_str(piece);
+    }
+    code
+}
+
+/// Responses with a long line in or near a scripts section: one that stays
+/// quiet to its end, ones that later turn out not to be quiet, and ones that
+/// are never resumable (in a context section, after the section, nested past
+/// the depth limit, a marker line too deep to read).
+fn long_line_texts(rng: &mut Rng, bytes: usize) -> Vec<(&'static str, String, Limits)> {
+    let head = "]]>openui:content?name=Long\nroot = Stack([t])\nt = TextContent(\"hi\")\n";
+    let defaults = Limits::DEFAULT;
+    let mut texts = vec![
+        (
+            "quiet to its end",
+            format!(
+                "{head}]]>openui:scripts {{\"count\":1}}\n[{{\"name\":\"big\",\"code\":\"{}\"}}]\n]]>openui:end\n",
+                long_code(rng, bytes, Extra::None)
+            ),
+            defaults,
+        ),
+        (
+            "array opened on its own line, CRLF",
+            format!(
+                "{}]]>openui:scripts {{\"count\":2}}\r\n[\r\n{{\"name\":\"big\",\"code\":\"{}\"}},\r\n{{\"name\":\"small\",\"code\":\"1\"}}\r\n]\r\n]]>openui:end\r\n",
+                head.replace('\n', "\r\n"),
+                long_code(rng, bytes, Extra::RawCr)
+            ),
+            defaults,
+        ),
+        (
+            "markers inside the string, then a retry mid-line",
+            format!(
+                "{head}]]>openui:scripts {{\"count\":1}}\n[{{\"name\":\"big\",\"code\":\"{}]]>openui:content?name=retry\nroot = TextContent(\\\"{}\\\")\n",
+                long_code(rng, bytes, Extra::Markers),
+                long_code(rng, bytes / 8, Extra::None)
+            ),
+            defaults,
+        ),
+        (
+            "quiet until a retry starts mid-line",
+            format!(
+                "{head}]]>openui:scripts {{\"count\":1}}\n[{{\"name\":\"big\",\"code\":\"{}]]>openui:content?name=retry\nroot = TextContent(\\\"x\\\")\n",
+                long_code(rng, bytes, Extra::None)
+            ),
+            defaults,
+        ),
+        (
+            "the array closes mid-line, then junk",
+            format!(
+                "{head}]]>openui:scripts {{\"count\":1}}\n[{{\"name\":\"big\",\"code\":\"{}\"}}]   \t {}\n]]>openui:end\n",
+                long_code(rng, bytes, Extra::None),
+                long_code(rng, bytes / 8, Extra::None)
+            ),
+            defaults,
+        ),
+        (
+            "core lone surrogates",
+            format!(
+                "{head}]]>openui:scripts {{\"count\":1}}\n[{{\"name\":\"big\",\"code\":\"{}\"}}]\n",
+                long_code(rng, bytes, Extra::LoneSurrogates)
+            ),
+            defaults,
+        ),
+        (
+            "nested past the depth limit",
+            format!(
+                "{head}]]>openui:scripts {{\"count\":1}}\n{}{{\"code\":\"{}\"}}\n",
+                "[".repeat(300),
+                long_code(rng, bytes / 4, Extra::None)
+            ),
+            defaults,
+        ),
+        (
+            "a marker line too deep to read",
+            format!(
+                "{head}]]>openui:scripts {{\"count\":{}}}\n[{{\"name\":\"big\",\"code\":\"{}\"}}]\n",
+                "[".repeat(1000),
+                long_code(rng, bytes / 8, Extra::None)
+            ),
+            defaults,
+        ),
+        (
+            "in a context section",
+            format!(
+                "{head}]]>openui:context\n{{\"k\":\"{}\"}}\n]]>openui:end\n",
+                long_code(rng, bytes / 4, Extra::None)
+            ),
+            defaults,
+        ),
+        (
+            "after the section",
+            format!(
+                "{head}]]>openui:scripts {{\"count\":1}}\n[{{\"name\":\"a\",\"code\":\"1\"}}]\n]]> no marker\nx = \"{}\"\n",
+                long_code(rng, bytes / 4, Extra::None)
+            ),
+            defaults,
+        ),
+    ];
+    // The program-size limit falls inside the long line.
+    let text = format!(
+        "{head}]]>openui:scripts {{\"count\":1}}\n[{{\"name\":\"big\",\"code\":\"{}\"}}]\n",
+        long_code(rng, bytes + bytes / 4, Extra::None)
+    );
+    texts.push((
+        "over the size limit",
+        text,
+        defaults.with_program_size(bytes),
+    ));
+    texts
+}
+
+/// Appends that end or break a long line, or carry on with something else.
+const DIVERGING: &[&str] = &[
+    "\n",
+    "\r",
+    "\r\n",
+    "]",
+    "]]",
+    "]]>",
+    "]]>openui:content\n",
+    "\"",
+    "\"}]",
+    "\"}]\n]]>openui:end\n",
+    "\\",
+    "\\u",
+    "\\uD8",
+    "x",
+    "\n]]>openui:end\n",
+    "é",
+    "😀",
+    "\u{10f83d}",
+    "\u{10fe00}",
+    "/",
+];
+
+/// Cuts through `len` positions: big and small steps at random, cuts just
+/// after about 300 of the features (an escape, a non-ASCII character or
+/// surrogate, a bracket, a quote, a CR), and a cut at every position around
+/// each turning point (a line break, a `]]>`), where a line stops being
+/// resumable.
+fn long_line_cuts(len: usize, features: &[usize], turns: &[usize], rng: &mut Rng) -> Vec<usize> {
+    let mut cuts = Vec::new();
+    let mut at = 0;
+    while at < len {
+        at += match rng.below(3) {
+            0 => 1 + rng.below(8),
+            1 => 8 + rng.below(56),
+            _ => 64 + rng.below(4096),
+        };
+        cuts.push(at.min(len));
+    }
+    let one_in = (features.len() / 300).max(1);
+    for &feature in features {
+        if rng.below(one_in) == 0 {
+            for offset in 1..=3 {
+                cuts.push((feature + offset).min(len));
+            }
+        }
+    }
+    for &turn in turns {
+        for at in turn.saturating_sub(4)..turn + 32 {
+            cuts.push(at.min(len));
+        }
+    }
+    cuts.sort_unstable();
+    cuts.dedup();
+    cuts
+}
+
+/// Where a text turns: its line breaks and the starts of its `]]>`s.
+fn turns<T: Copy + PartialEq>(items: &[T], newline: T, bracket: T, close: T) -> Vec<usize> {
+    (0..items.len())
+        .filter(|&at| {
+            items[at] == newline || items.get(at..at + 3) == Some(&[bracket, bracket, close][..])
+        })
+        .collect()
+}
+
+/// One sequence against one target: walk its cuts, refuse about a quarter
+/// of the updates, and after a refusal usually send something else: a
+/// different append, an edit that is not an append, or a shrink (often into
+/// the middle of the long line). A text that has left the target goes back
+/// to the target's longest cut it still covers, a shrink too. `units` turns
+/// a text into what the driver takes; `cut_of` moves a cut to a position the
+/// driver can take.
+struct Walk<'a> {
+    rng: &'a mut Rng,
+    cuts: Vec<usize>,
+}
+
+impl Walk<'_> {
+    fn core(&mut self, target: &str, driver: &mut CoreDriver, what: &str) -> usize {
+        let mut accepted = String::new();
+        let mut after_refusal = false;
+        let mut next = 0;
+        let mut steps = 0;
+        while steps < 3 * self.cuts.len() + 8 {
+            let rng = &mut *self.rng;
+            let text = if after_refusal && rng.below(4) != 0 {
+                match rng.below(3) {
+                    0 => format!("{accepted}{}", DIVERGING[rng.below(DIVERGING.len())]),
+                    1 => {
+                        let mut edited: Vec<char> = accepted.chars().collect();
+                        if !edited.is_empty() {
+                            let at = rng.below(edited.len());
+                            edited[at] = ['x', '\n', ']', '\r', 'é', '"'][rng.below(6)];
+                        }
+                        edited.into_iter().collect()
+                    }
+                    _ => accepted[..char_cut(&accepted, rng.below(accepted.len() + 1))].to_owned(),
+                }
+            } else if target.starts_with(&accepted) {
+                // Forward through the cuts, past refused ones too.
+                while next < self.cuts.len() && self.cuts[next] <= accepted.len() {
+                    next += 1;
+                }
+                let Some(&cut) = self.cuts.get(next) else {
+                    break;
+                };
+                next += 1;
+                target[..char_cut(target, cut)].to_owned()
+            } else {
+                let back = self
+                    .cuts
+                    .iter()
+                    .rev()
+                    .find(|&&cut| cut < accepted.len() && target.is_char_boundary(cut))
+                    .copied()
+                    .unwrap_or(0);
+                target[..back].to_owned()
+            };
+            let refuse = rng.below(4) == 0;
+            // A settled read sees a retry still arriving mid-line.
+            let streaming = rng.below(6) != 0;
+            if driver.step(&text, streaming, refuse, what) {
+                accepted = text;
+                after_refusal = false;
+            } else {
+                after_refusal = true;
+            }
+            steps += 1;
+        }
+        driver.step(target, false, false, what);
+        steps + 1
+    }
+
+    fn utf16(&mut self, target: &[u16], driver: &mut Utf16Driver, what: &str) -> usize {
+        let mut accepted: Vec<u16> = Vec::new();
+        let mut after_refusal = false;
+        let mut next = 0;
+        let mut steps = 0;
+        while steps < 3 * self.cuts.len() + 8 {
+            let rng = &mut *self.rng;
+            let units: Vec<u16> = if after_refusal && rng.below(4) != 0 {
+                match rng.below(4) {
+                    0 => accepted
+                        .iter()
+                        .copied()
+                        // The core's lone surrogates as lone units.
+                        .chain(openui_lang::utf16_units(
+                            DIVERGING[rng.below(DIVERGING.len())],
+                        ))
+                        .collect(),
+                    // A lone half: the low one pairs with a high half the
+                    // accepted text ends with.
+                    1 => accepted
+                        .iter()
+                        .copied()
+                        .chain([[0xdc00, 0xde00, 0xd83d][rng.below(3)]])
+                        .collect(),
+                    2 => {
+                        let mut edited = accepted.clone();
+                        if !edited.is_empty() {
+                            let at = rng.below(edited.len());
+                            edited[at] = [0x78, 0x0a, 0x5d, 0x0d, 0xd800, 0xdc00][rng.below(6)];
+                        }
+                        edited
+                    }
+                    _ => accepted[..rng.below(accepted.len() + 1)].to_vec(),
+                }
+            } else if target.starts_with(&accepted) {
+                // Forward through the cuts, past refused ones too.
+                while next < self.cuts.len() && self.cuts[next] <= accepted.len() {
+                    next += 1;
+                }
+                let Some(&cut) = self.cuts.get(next) else {
+                    break;
+                };
+                next += 1;
+                target[..cut].to_vec()
+            } else {
+                let back = self
+                    .cuts
+                    .iter()
+                    .rev()
+                    .find(|&&cut| cut < accepted.len())
+                    .copied()
+                    .unwrap_or(0);
+                target[..back].to_vec()
+            };
+            let refuse = rng.below(4) == 0;
+            // A settled read sees a retry still arriving mid-line.
+            let streaming = rng.below(6) != 0;
+            if driver.step(&units, streaming, refuse, what) {
+                accepted = units;
+                after_refusal = false;
+            } else {
+                after_refusal = true;
+            }
+            steps += 1;
+        }
+        driver.step(target, false, false, what);
+        steps + 1
+    }
+}
+
+/// Where a text's features are: every byte (or unit) that is not plain
+/// ASCII code (a backslash, CR, LF, quote, `]`, `/` or anything non-ASCII),
+/// so cuts land inside escapes, `\uXXXX` sequences, multi-byte characters,
+/// surrogate pairs, around CRs and brackets.
+fn features<T: Copy>(items: &[T], plain: impl Fn(T) -> bool) -> Vec<usize> {
+    items
+        .iter()
+        .enumerate()
+        .filter(|&(_, &item)| !plain(item))
+        .map(|(at, _)| at)
+        .collect()
+}
+
+/// Script code of at least 64 KiB on one line, streamed in both forms with
+/// chunk edges inside escapes, `\uXXXX` sequences, surrogate pairs (UTF-16
+/// form) and multi-byte characters (string form), around CR and CRLF, with
+/// `]]` and `]]>` inside the string, lines that later turn out not to be
+/// quiet, and refusals followed by other appends, edits and shrinks: every
+/// step reads and parses as a full read does (#122).
+#[test]
+fn a_long_script_line_reads_as_a_full_read_however_it_arrives() {
+    let library = library();
+    let mut rng = Rng(0x0122_2026);
+    let mut steps = 0;
+    for (what, text, limits) in long_line_texts(&mut rng, 65_536) {
+        let plain = |b: u8| b.is_ascii() && !b"\\\r\n\"]/".contains(&b);
+        let bytes = text.as_bytes();
+        let cuts = long_line_cuts(
+            text.len(),
+            &features(bytes, plain),
+            &turns(bytes, b'\n', b']', b'>'),
+            &mut rng,
+        );
+        let mut driver = CoreDriver::with_limits(&library, limits);
+        steps += Walk {
+            rng: &mut rng,
+            cuts,
+        }
+        .core(&text, &mut driver, what);
+        // The UTF-16 form: the core's lone surrogates become lone units.
+        let units: Vec<u16> = openui_lang::utf16_units(&text).collect();
+        let plain = |u: u16| u < 0x80 && plain(u as u8);
+        let cuts = long_line_cuts(
+            units.len(),
+            &features(&units, plain),
+            &turns(&units, 0x0a, 0x5d, 0x3e),
+            &mut rng,
+        );
+        let mut driver = Utf16Driver::with_limits(&library, limits);
+        steps += Walk {
+            rng: &mut rng,
+            cuts,
+        }
+        .utf16(&units, &mut driver, what);
+    }
+    println!("{steps} steps on long script lines");
+    assert!(steps > 5_000, "{steps} steps");
+}
+
+/// A refused update leaves the resumed scan of a long script line where the
+/// last accepted read left it: after refused appends (a longer one, one that
+/// ends the line, one that pairs a trailing lone surrogate), the next
+/// accepted append reads as a reader that never saw them reads it, at the
+/// same cost, and that cost is the new bytes only, not the line again. A
+/// read that is staged and then discarded leaves it there too.
+#[test]
+fn a_refused_update_leaves_the_resumed_scan_where_it_was() {
+    let library = library();
+    let code = script_code(65_536);
+    let text = one_script_line(&code);
+    let middle = char_cut(&text, text.len() / 2);
+    for utf16 in [false, true] {
+        let make = || {
+            let parser = StreamParser::new(library.clone(), None);
+            if utf16 {
+                ResponseReader::new_utf16(parser, Limits::DEFAULT)
+            } else {
+                ResponseReader::new(parser, Limits::DEFAULT)
+            }
+        };
+        let (mut control, mut staged) = (make(), make());
+        // Both readers: the text up to the middle of the long line, in
+        // 16-byte chunks, and then a lone high surrogate.
+        let head = format!("{}\u{10f83d}", &text[..middle]);
+        let feed = |reader: &mut ResponseReader, from: &str, to: &str, accept: bool| {
+            let read = if utf16 {
+                let old: Vec<u16> = openui_lang::utf16_units(from).collect();
+                let new: Vec<u16> = openui_lang::utf16_units(to).collect();
+                reader.read_utf16_append(old.len(), &new[old.len()..], true)
+            } else {
+                reader.read(to, true)
+            };
+            read.expect("read");
+            let draw = (reader.bundle_json(), reader.draw_json());
+            let kept = reader.try_parse(true, false, |parsed| {
+                let parsed = parsed.map(|parsed| parsed.to_json());
+                if accept { Ok(parsed) } else { Err(parsed) }
+            });
+            (draw, kept.is_ok())
+        };
+        for reader in [&mut control, &mut staged] {
+            let mut at = 0;
+            let mut sent = String::new();
+            while at < head.len() {
+                at = char_cut(&head, at + 16);
+                let (_, kept) = feed(reader, &sent, &head[..at], true);
+                assert!(kept);
+                sent = head[..at].to_owned();
+            }
+        }
+        // Refused: more of the line, the line's end, and the low half.
+        for refused in [
+            format!("{head}{}", &code[..4096]),
+            format!("{head}\"}}]\n]]>openui:end\n"),
+            format!("{head}\u{10fe00}more code"),
+        ] {
+            let (_, kept) = feed(&mut staged, &head, &refused, false);
+            assert!(!kept);
+        }
+        // A read staged and then discarded, as the native binding does when
+        // the message's context is refused after the read: the same.
+        let discarded = format!("{head}\u{10fe00}{}", &code[..2048]);
+        if utf16 {
+            let old = openui_lang::utf16_units(&head).count();
+            let new: Vec<u16> = openui_lang::utf16_units(&discarded).collect();
+            staged
+                .read_utf16_append(old, &new[old..], true)
+                .expect("read");
+        } else {
+            staged.read(&discarded, true).expect("read");
+        }
+        staged.discard();
+        let next = format!("{head}\u{10fe00}abcdef");
+        let before = (control.bytes_examined(), staged.bytes_examined());
+        let read = (
+            feed(&mut control, &head, &next, true),
+            feed(&mut staged, &head, &next, true),
+        );
+        assert_eq!(read.0, read.1);
+        let cost = (
+            control.bytes_examined() - before.0,
+            staged.bytes_examined() - before.1,
+        );
+        assert_eq!(cost.0, cost.1, "the refused reads moved the scan");
+        assert!(cost.1 < 1_000, "the line was read again: {} bytes", cost.1);
+    }
+}
+
+/// A scripts marker line whose JSON is nested past the depth limit is not
+/// read while the line after it is a held-back `]` or `]]` (the full read
+/// has no line break after the marker line yet). The next append makes the
+/// full read refuse it, and the resumed read must refuse it too: the scan
+/// is not built for that line (found by an independent review).
+#[test]
+fn a_marker_line_too_deep_is_refused_after_a_held_back_bracket() {
+    let library = library();
+    let limits = Limits::DEFAULT.with_depth(1);
+    let head = format!(
+        "]]>openui:content\nroot = TextContent(\"x\")\n]]>openui:scripts {}\n",
+        "[".repeat(36)
+    );
+    for held in ["]", "]]"] {
+        let first = format!("{head}{held}");
+        let next = format!("{first}abc");
+        assert_eq!(
+            expected_core_with(&next, true, limits).read,
+            Err(ResponseReaderError::Bundle(
+                ResponseBundleError::ScriptsDepth
+            ))
+        );
+        let mut core = CoreDriver::with_limits(&library, limits);
+        assert!(core.step(&first, true, false, "held back"));
+        assert!(!core.step(&next, true, false, "too deep"));
+        let mut web = Utf16Driver::with_limits(&library, limits);
+        let units: Vec<u16> = first.encode_utf16().collect();
+        assert!(web.step(&units, true, false, "held back"));
+        let units: Vec<u16> = next.encode_utf16().collect();
+        assert!(!web.step(&units, true, false, "too deep"));
+    }
 }
