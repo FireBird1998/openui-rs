@@ -39,9 +39,39 @@
 //!   come first, ascending, whatever their place in the list.
 //! - A prop has a `name`, a `type` and `optional` (default `false`). A
 //!   prop's name may appear once per component.
-//! - A type is an object with a `kind`. This version supports `"string"`,
-//!   `"number"`, `"boolean"` and `"any"`, with no other field. Any other kind
-//!   is refused with [`LibraryDefinitionError::UnsupportedKind`], naming it.
+//! - A type is an object with a `kind`, and the fields that kind has, no
+//!   others. Any other kind is refused with
+//!   [`LibraryDefinitionError::UnsupportedKind`], naming it. The kinds:
+//!
+//!   | Type | zod | JSON Schema zod 4.6.7 writes | Signature |
+//!   |---|---|---|---|
+//!   | `{"kind": "string"}` | `z.string()` | `{"type": "string"}` | `string` |
+//!   | `{"kind": "number"}` | `z.number()` | `{"type": "number"}` | `number` |
+//!   | `{"kind": "boolean"}` | `z.boolean()` | `{"type": "boolean"}` | `boolean` |
+//!   | `{"kind": "any"}` | `z.any()` | `{}` | `any` |
+//!   | `{"kind": "enum", "values": ["a", "b"]}` | `z.enum(["a", "b"])` | `{"type": "string", "enum": ["a", "b"]}` | `"a" \| "b"` |
+//!   | `{"kind": "array", "items": T}` | `z.array(T)` | `{"type": "array", "items": T}` | `T[]`, `(T)[]` for a union |
+//!   | `{"kind": "union", "options": [T, U]}` | `z.union([T, U])` | `{"anyOf": [T, U]}` | `T \| U` |
+//!   | `{"kind": "object", "fields": [F]}` | `z.object({...})` | as a component's props | `{a: T, b?: U}` |
+//!   | `{"kind": "record", "values": T}` | `z.record(z.string(), T)` | `{"type": "object", "propertyNames": {"type": "string"}, "additionalProperties": T}` | `Record<string, T>` |
+//!   | `{"kind": "nullable", "type": T}` | `T.nullable()` | `{"anyOf": [T, {"type": "null"}]}` | `T`, and the prop or field gets `?` |
+//!
+//!   As zod 4.6.7 does, an `anyOf` whose members are all bare types
+//!   (`{"type": ...}` and nothing else) is written as one `type` list, each
+//!   type once: a union of string and number is `{"type": ["string",
+//!   "number"]}`, a nullable string `{"type": ["string", "null"]}`, a
+//!   one-member union its member's type. A nullable prop stays in `required`
+//!   but its signature has `?`, as upstream's signature builder treats
+//!   nullable as optional; optional and nullable are separate facts, and a
+//!   prop may be both (zod's `.nullable().optional()` and `.nullish()`).
+//!   Upstream's other quirks are copied too: an enum's words come in
+//!   JavaScript property order (array indices first) with each word once, and
+//!   unescaped in the signature; an empty enum is `{"not": {}}` and has no
+//!   signature type (the prop prints as its bare name, or `[name]` when it is
+//!   an array of one); an empty union is `{"anyOf": []}` and prints `any`.
+//! - An object's `fields` are an ordered array like a component's props: a
+//!   field has a `name`, a `type` and `optional` (default `false`), a name
+//!   may appear once per object, and array-index names come first.
 //! - `componentGroups` (optional): copied into the prompt spec in order. A
 //!   group has a `name`, `components` (names, not checked) and optional
 //!   `notes`, and no other field (another is refused as an unknown field).
@@ -63,34 +93,50 @@
 //! new optional prop fields. Planned (spec #123), each an addition:
 //!
 //! ```json
-//! {"kind": "enum", "values": ["info", "warn"]}
-//! {"kind": "array", "items": T}
-//! {"kind": "union", "options": [T, T]}
-//! {"kind": "object", "fields": [{"name": "x", "type": T, "optional": true}]}
-//! {"kind": "record", "values": T}
-//! {"kind": "nullable", "type": T}
 //! {"kind": "component", "name": "ListItem"}
 //! {"kind": "action"}
 //! {"kind": "named", "name": "Color", "type": T}
 //! ```
 //!
 //! and on a prop, `"binding": true` (a binding marks the outermost type only,
-//! so it belongs to the prop). Nullable is a kind, separate from `optional`:
-//! upstream keeps a nullable prop in `required`. The recursive kinds bring
-//! nesting; their reader will count depth against [`crate::Limits`] then.
+//! so it belongs to the prop).
 //!
 //! # Limits
 //!
-//! Reading a definition never recurses into the input: unknown fields are
-//! refused unread, and every supported value is a string, a boolean or an
-//! array of them. Its time and memory grow with the definition, nothing more;
-//! the definition is already in the caller's memory. The binding entry
-//! points, which arrive with #137, are to cap its size as they cap other host
-//! input (ADR 0001).
-
+//! Types nest, so reading counts how deep: a prop's type is one level, and
+//! each type inside another one more. A type deeper than
+//! [`Limits::depth`](crate::Limits::depth) (256 by default) is refused with
+//! [`LibraryDefinitionError::DepthLimited`] before it is read, so reading
+//! recurses at most that deep, growing the stack on demand as the parser's
+//! walks do (ADR 0002). A definition at the default limit fits within the
+//! JSON depth [`crate::parse_json`] reads, and its JSON Schema and prompt
+//! spec within the depth the prompt entry points accept. Writing the schema
+//! and the signatures walks the types read, growing the stack the same way,
+//! and [`DefinedLibrary::library`](crate::DefinedLibrary::library) compiles
+//! the schema on a stack segment sized for the definition's depth. Otherwise
+//! a definition's time and memory grow with its size, nothing more; it is
+//! already in the caller's memory. The binding entry points, which arrive
+//! with #137, are to cap its size as they cap other host input (ADR 0001).
+//!
+//! What is handed back is freed by the caller, and some of it recursively:
+//! the JSON Schema and prompt spec are `serde_json` values, whose drop
+//! recurses, and so is the [`Library`](crate::Library) from `library()`,
+//! which holds each prop's schema. At the default limit these drops fit a
+//! 64 KiB stack in optimized builds (opt-level 1, the test profile, and
+//! release), but not at opt-level 0, where the schema of a 256-deep array
+//! overflows 64 KiB and the `Library` of a 256-deep object needs up to
+//! 256 KiB. On a small stack free the JSON with [`crate::free_json`]; the
+//! `Library` has no such way out. A definition itself, a tree of boxed
+//! types, is also freed by Rust's recursive drop. So reading under a raised
+//! depth limit is unsupported for definitions nested that deep unless the
+//! caller's thread has the stack for those drops: free the JSON with
+//! `free_json`, and drop the definition and the `Library` on a large stack.
 use std::fmt;
 
 use serde_json::{Map, Value as Json};
+
+use crate::Limits;
+use crate::js::JsObject;
 
 /// A component library's declarations, in plain-data form. Read one from its
 /// JSON with [`LibraryDefinition::from_json`] (the module docs give the
@@ -129,6 +175,17 @@ pub struct PropDefinition {
     pub optional: bool,
 }
 
+/// One field of an inline object type.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct FieldDefinition {
+    /// The field's name.
+    pub name: String,
+    /// What the field holds.
+    pub ty: TypeDescription,
+    /// Whether it may be left out (zod's `.optional()`).
+    pub optional: bool,
+}
+
 /// What a prop holds. Later versions add kinds; see the module docs.
 #[derive(Clone, Debug, PartialEq, Eq)]
 #[non_exhaustive]
@@ -141,6 +198,19 @@ pub enum TypeDescription {
     Boolean,
     /// `z.any()`.
     Any,
+    /// `z.enum([...])`: one of these words. They are written in JavaScript
+    /// property order, each once, as zod keeps them.
+    Enum(Vec<String>),
+    /// `z.array(T)`.
+    Array(Box<TypeDescription>),
+    /// `z.union([...])`, its options in order.
+    Union(Vec<TypeDescription>),
+    /// `z.object({...})`, written inline, its fields in positional order.
+    Object(Vec<FieldDefinition>),
+    /// `z.record(z.string(), T)`: string keys, values of this type.
+    Record(Box<TypeDescription>),
+    /// `T.nullable()`: this type or null.
+    Nullable(Box<TypeDescription>),
 }
 
 /// A group of components for the prompt, as upstream's `ComponentGroup`.
@@ -173,6 +243,14 @@ pub enum LibraryDefinitionError {
         /// The kind given.
         kind: String,
     },
+    /// A type nests deeper than [`Limits::depth`] allows.
+    DepthLimited {
+        /// Where, as `components[0].props[1].type.items`: the first type
+        /// past the limit.
+        path: String,
+        /// The limit, in levels of type.
+        limit: usize,
+    },
     /// The definition isn't in the plain-data form.
     Invalid {
         /// Where, as `components[0].props[1].name` (empty for the whole
@@ -198,6 +276,10 @@ impl fmt::Display for LibraryDefinitionError {
                     "library definition: {path}: type kind {kind} is not supported"
                 )
             }
+            LibraryDefinitionError::DepthLimited { path, limit } => write!(
+                f,
+                "library definition: {path}: types nest deeper than {limit} levels"
+            ),
             LibraryDefinitionError::Invalid { path, problem } if path.is_empty() => {
                 write!(f, "library definition: {problem}")
             }
@@ -219,13 +301,33 @@ enum Path<'a> {
 }
 
 impl Path<'_> {
+    /// The path as text, built with a loop: a path is as long as the
+    /// definition is deep.
     fn text(&self) -> String {
-        match self {
-            Path::Root => String::new(),
-            Path::Field(Path::Root, name) => (*name).to_owned(),
-            Path::Field(parent, name) => format!("{}.{name}", parent.text()),
-            Path::Index(parent, i) => format!("{}[{i}]", parent.text()),
+        let mut steps = Vec::new();
+        let mut at = self;
+        loop {
+            match at {
+                Path::Root => break,
+                Path::Field(parent, _) | Path::Index(parent, _) => {
+                    steps.push(at);
+                    at = parent;
+                }
+            }
         }
+        let mut out = String::new();
+        for step in steps.into_iter().rev() {
+            match step {
+                Path::Field(Path::Root, name) => out.push_str(name),
+                Path::Field(_, name) => {
+                    out.push('.');
+                    out.push_str(name);
+                }
+                Path::Index(_, i) => out.push_str(&format!("[{i}]")),
+                Path::Root => {}
+            }
+        }
+        out
     }
 
     fn invalid(&self, problem: impl Into<String>) -> LibraryDefinitionError {
@@ -288,19 +390,111 @@ fn optional<T>(
         .transpose()
 }
 
+/// How deep a type is, and how deep one may be.
+#[derive(Clone, Copy)]
+struct Depth {
+    level: usize,
+    limit: usize,
+}
+
+impl Depth {
+    /// A prop's type: the first level.
+    fn top(limits: Limits) -> Depth {
+        Depth {
+            level: 1,
+            limit: limits.depth(),
+        }
+    }
+
+    /// A type inside one at this depth.
+    fn inner(self) -> Depth {
+        Depth {
+            level: self.level.saturating_add(1),
+            ..self
+        }
+    }
+}
+
+/// A list of named entries (props, or an object's fields), each name once.
+fn named_list<T>(
+    value: &Json,
+    at: Path<'_>,
+    what: &str,
+    read: impl Fn(&Json, Path<'_>) -> Read<T>,
+    name: impl Fn(&T) -> &str,
+) -> Read<Vec<T>> {
+    let items = array(value, at)?;
+    let mut list: Vec<T> = Vec::with_capacity(items.len());
+    let mut seen = std::collections::HashSet::with_capacity(items.len());
+    for (i, item) in items.iter().enumerate() {
+        let item_at = Path::Index(&at, i);
+        let entry = read(item, item_at)?;
+        let entry_name = name(&entry);
+        if !seen.insert(entry_name.to_owned()) {
+            let problem = format!(
+                "duplicate {what} {}",
+                crate::stringify_json(&Json::String(entry_name.to_owned()))
+            );
+            return Err(Path::Field(&item_at, "name").invalid(problem));
+        }
+        list.push(entry);
+    }
+    Ok(list)
+}
+
+/// A prop's or a field's `name`, `type` and `optional`.
+fn named_type(value: &Json, at: Path<'_>, depth: Depth) -> Read<(String, TypeDescription, bool)> {
+    let map = object(value, at, &["name", "type", "optional"])?;
+    let name = string(required(map, at, "name")?, Path::Field(&at, "name"))?;
+    let ty =
+        TypeDescription::from_json(required(map, at, "type")?, Path::Field(&at, "type"), depth)?;
+    let optional = optional(map, at, "optional", |value, at| {
+        value
+            .as_bool()
+            .ok_or_else(|| at.invalid("expected a boolean"))
+    })?
+    .unwrap_or(false);
+    Ok((name, ty, optional))
+}
+
+/// Entries in JavaScript property order, as a zod shape or an enum's entries
+/// iterate them: names that are array indices first, ascending, and a name
+/// given twice in its first place with its last entry.
+pub(crate) fn in_property_order<'a, T>(
+    items: &'a [T],
+    name: impl Fn(&'a T) -> &'a str,
+) -> Vec<&'a T> {
+    let mut shape: JsObject<&T> = JsObject::with_capacity(items.len());
+    for item in items {
+        shape.define(name(item), item);
+    }
+    shape.values().copied().collect()
+}
+
 impl LibraryDefinition {
     /// Read a library definition from its plain-data JSON (see the module
-    /// docs for the shape). Refuses a kind this version doesn't support with
-    /// [`LibraryDefinitionError::UnsupportedKind`], and anything else not in
-    /// the form with [`LibraryDefinitionError::Invalid`], saying where.
+    /// docs for the shape) under the default [`Limits`]. Refuses a kind this
+    /// version doesn't support with [`LibraryDefinitionError::UnsupportedKind`],
+    /// types nested too deep with [`LibraryDefinitionError::DepthLimited`],
+    /// and anything else not in the form with
+    /// [`LibraryDefinitionError::Invalid`], saying where.
     pub fn from_json(value: &Json) -> Result<LibraryDefinition, LibraryDefinitionError> {
+        LibraryDefinition::from_json_with_limits(value, Limits::DEFAULT)
+    }
+
+    /// [`LibraryDefinition::from_json`] under `limits`: a type may nest
+    /// [`Limits::depth`] levels, a prop's own type being the first.
+    pub fn from_json_with_limits(
+        value: &Json,
+        limits: Limits,
+    ) -> Result<LibraryDefinition, LibraryDefinitionError> {
         let at = Path::Root;
         let map = object(value, at, &["components", "componentGroups", "root", "id"])?;
         let components_at = Path::Field(&at, "components");
         let components = array(required(map, at, "components")?, components_at)?
             .iter()
             .enumerate()
-            .map(|(i, c)| ComponentDefinition::from_json(c, Path::Index(&components_at, i)))
+            .map(|(i, c)| ComponentDefinition::from_json(c, Path::Index(&components_at, i), limits))
             .collect::<Read<_>>()?;
         let component_groups = optional(map, at, "componentGroups", |value, at| {
             array(value, at)?
@@ -319,29 +513,23 @@ impl LibraryDefinition {
 }
 
 impl ComponentDefinition {
-    fn from_json(value: &Json, at: Path<'_>) -> Read<ComponentDefinition> {
+    fn from_json(value: &Json, at: Path<'_>, limits: Limits) -> Read<ComponentDefinition> {
         let map = object(value, at, &["name", "description", "props"])?;
         let name = string(required(map, at, "name")?, Path::Field(&at, "name"))?;
         let description = string(
             required(map, at, "description")?,
             Path::Field(&at, "description"),
         )?;
-        let props_at = Path::Field(&at, "props");
-        let items = array(required(map, at, "props")?, props_at)?;
-        let mut props: Vec<PropDefinition> = Vec::with_capacity(items.len());
-        let mut seen = std::collections::HashSet::with_capacity(items.len());
-        for (i, item) in items.iter().enumerate() {
-            let prop_at = Path::Index(&props_at, i);
-            let prop = PropDefinition::from_json(item, prop_at)?;
-            if !seen.insert(prop.name.clone()) {
-                let problem = format!(
-                    "duplicate prop {}",
-                    crate::stringify_json(&Json::String(prop.name))
-                );
-                return Err(Path::Field(&prop_at, "name").invalid(problem));
-            }
-            props.push(prop);
-        }
+        let props = named_list(
+            required(map, at, "props")?,
+            Path::Field(&at, "props"),
+            "prop",
+            |value, at| {
+                let (name, ty, optional) = named_type(value, at, Depth::top(limits))?;
+                Ok(PropDefinition { name, ty, optional })
+            },
+            |prop| &prop.name,
+        )?;
         Ok(ComponentDefinition {
             name,
             description,
@@ -350,24 +538,15 @@ impl ComponentDefinition {
     }
 }
 
-impl PropDefinition {
-    fn from_json(value: &Json, at: Path<'_>) -> Read<PropDefinition> {
-        let map = object(value, at, &["name", "type", "optional"])?;
-        Ok(PropDefinition {
-            name: string(required(map, at, "name")?, Path::Field(&at, "name"))?,
-            ty: TypeDescription::from_json(required(map, at, "type")?, Path::Field(&at, "type"))?,
-            optional: optional(map, at, "optional", |value, at| {
-                value
-                    .as_bool()
-                    .ok_or_else(|| at.invalid("expected a boolean"))
-            })?
-            .unwrap_or(false),
-        })
-    }
-}
-
 impl TypeDescription {
-    fn from_json(value: &Json, at: Path<'_>) -> Read<TypeDescription> {
+    fn from_json(value: &Json, at: Path<'_>, depth: Depth) -> Read<TypeDescription> {
+        if depth.level > depth.limit {
+            return Err(LibraryDefinitionError::DepthLimited {
+                path: at.text(),
+                limit: depth.limit,
+            });
+        }
+        crate::stack::grow_stack!(TypeDescription::from_json(value, at, depth));
         let map = value
             .as_object()
             .ok_or_else(|| at.invalid("expected an object"))?;
@@ -376,11 +555,13 @@ impl TypeDescription {
             .as_str()
             .ok_or_else(|| Path::Field(&at, "kind").invalid("expected a string"))?;
         // Each kind names the fields it has; a new kind is a new arm.
-        let (ty, fields): (TypeDescription, &[&str]) = match kind {
-            "string" => (TypeDescription::String, &["kind"]),
-            "number" => (TypeDescription::Number, &["kind"]),
-            "boolean" => (TypeDescription::Boolean, &["kind"]),
-            "any" => (TypeDescription::Any, &["kind"]),
+        let fields: &[&str] = match kind {
+            "string" | "number" | "boolean" | "any" => &["kind"],
+            "enum" | "record" => &["kind", "values"],
+            "array" => &["kind", "items"],
+            "union" => &["kind", "options"],
+            "object" => &["kind", "fields"],
+            "nullable" => &["kind", "type"],
             _ => {
                 return Err(LibraryDefinitionError::UnsupportedKind {
                     path: at.text(),
@@ -389,7 +570,56 @@ impl TypeDescription {
             }
         };
         object(value, at, fields)?;
-        Ok(ty)
+        // The kind's other field, and where it is.
+        let field = |name: &'static str| required(map, at, name).map(|v| (v, name));
+        let inner = |name: &'static str| -> Read<Box<TypeDescription>> {
+            let (value, name) = field(name)?;
+            TypeDescription::from_json(value, Path::Field(&at, name), depth.inner()).map(Box::new)
+        };
+        Ok(match kind {
+            "string" => TypeDescription::String,
+            "number" => TypeDescription::Number,
+            "boolean" => TypeDescription::Boolean,
+            "enum" => {
+                let (value, name) = field("values")?;
+                TypeDescription::Enum(strings(value, Path::Field(&at, name))?)
+            }
+            "array" => TypeDescription::Array(inner("items")?),
+            "record" => TypeDescription::Record(inner("values")?),
+            "nullable" => TypeDescription::Nullable(inner("type")?),
+            "union" => {
+                let (value, name) = field("options")?;
+                let options_at = Path::Field(&at, name);
+                let options = array(value, options_at)?
+                    .iter()
+                    .enumerate()
+                    .map(|(i, option)| {
+                        TypeDescription::from_json(
+                            option,
+                            Path::Index(&options_at, i),
+                            depth.inner(),
+                        )
+                    })
+                    .collect::<Read<_>>()?;
+                TypeDescription::Union(options)
+            }
+            "object" => {
+                let (value, name) = field("fields")?;
+                let fields = named_list(
+                    value,
+                    Path::Field(&at, name),
+                    "field",
+                    |value, at| {
+                        let (name, ty, optional) = named_type(value, at, depth.inner())?;
+                        Ok(FieldDefinition { name, ty, optional })
+                    },
+                    |field| &field.name,
+                )?;
+                TypeDescription::Object(fields)
+            }
+            // "any": every other kind was refused above.
+            _ => TypeDescription::Any,
+        })
     }
 }
 

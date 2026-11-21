@@ -2,6 +2,33 @@
 
 ## Unreleased
 
+- Library definitions: the remaining data kinds (#132, spec #123). A
+  prop's type can also be a list of allowed words (`enum`), an `array`, a
+  `union`, an inline `object` with ordered fields, a `record` or `nullable`,
+  nested in one another; optional and nullable are separate facts, and the
+  order of fields and union members is kept. Each is written as upstream's
+  lang-core with zod 4.6.7 writes it, in the JSON Schema (an `anyOf` of bare
+  types folded into one `type` list) and in the signature (a nullable prop
+  marked `?`), with upstream's quirks: enum words in JavaScript key order,
+  each once; an empty enum or union as upstream writes it. A type nests at
+  most `Limits::depth` levels: `LibraryDefinition::from_json_with_limits`
+  takes the limits, and a deeper type is refused with the new
+  `LibraryDefinitionError::DepthLimited` (200,000 levels are refused at the
+  limit on a 128 KiB thread). `DefinedLibrary::library()` compiles the schema
+  on a stack segment sized for the definition's depth, so at the default
+  limit reading, `library()`, `to_json_schema()` and `to_spec()` work on a
+  64 KiB thread. What they return is dropped by the caller through
+  serde_json's recursive drop: at the limit that fits 64 KiB in optimized
+  builds but not at opt-level 0 (free the JSON with `free_json`; the
+  returned `Library` has no such way out). New public
+  type `FieldDefinition`; `TypeDescription` gains six variants. The reference
+  converter carries the new kinds and refuses by name what the plain data
+  can't say (literals, tuples, discriminated unions, intersections, records
+  with other keys, `.optional()` inside a type, component references and
+  action slots, which are #133's, symbol keys in an object's shape, types
+  nested past the core's depth limit including a recursive getter schema,
+  and more); 16 new samples pin each kind.
+
 - Library definitions in the core (#131, the first ticket of spec #123,
   ADR 0017): a host describes a component library as plain data, components
   with a name, a description and ordered props whose types are string,

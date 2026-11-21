@@ -435,8 +435,8 @@ pub use js::{
 pub use lexer::{Token, tokenize, tokens_to_json};
 pub use library::{Call, CallKind, Component, Library, Param};
 pub use library_definition::{
-    ComponentDefinition, ComponentGroup, LibraryDefinition, LibraryDefinitionError, PropDefinition,
-    TypeDescription,
+    ComponentDefinition, ComponentGroup, FieldDefinition, LibraryDefinition,
+    LibraryDefinitionError, PropDefinition, TypeDescription,
 };
 pub use limits::Limits;
 pub use merge::{Merged, merge_statements, merge_statements_with_limits};

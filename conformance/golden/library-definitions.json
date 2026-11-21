@@ -2016,6 +2016,4426 @@
   }
  },
  {
+  "name": "enum",
+  "definition": {
+   "components": [
+    {
+     "name": "A",
+     "description": "a",
+     "props": [
+      {
+       "name": "tone",
+       "type": {
+        "kind": "enum",
+        "values": [
+         "info",
+         "warn",
+         "error"
+        ]
+       }
+      },
+      {
+       "name": "level",
+       "type": {
+        "kind": "enum",
+        "values": [
+         "low",
+         "high"
+        ]
+       },
+       "optional": true
+      },
+      {
+       "name": "single",
+       "type": {
+        "kind": "enum",
+        "values": [
+         "only"
+        ]
+       }
+      },
+      {
+       "name": "keys",
+       "type": {
+        "kind": "enum",
+        "values": [
+         "a",
+         "b"
+        ]
+       }
+      }
+     ]
+    }
+   ]
+  },
+  "schema": {
+   "$schema": "https://json-schema.org/draft/2020-12/schema",
+   "type": "object",
+   "properties": {
+    "A": {
+     "$ref": "#/$defs/A"
+    }
+   },
+   "required": [
+    "A"
+   ],
+   "additionalProperties": false,
+   "$defs": {
+    "A": {
+     "type": "object",
+     "properties": {
+      "tone": {
+       "type": "string",
+       "enum": [
+        "info",
+        "warn",
+        "error"
+       ]
+      },
+      "level": {
+       "type": "string",
+       "enum": [
+        "low",
+        "high"
+       ]
+      },
+      "single": {
+       "type": "string",
+       "enum": [
+        "only"
+       ]
+      },
+      "keys": {
+       "type": "string",
+       "enum": [
+        "a",
+        "b"
+       ]
+      }
+     },
+     "required": [
+      "tone",
+      "single",
+      "keys"
+     ],
+     "additionalProperties": false,
+     "description": "a"
+    }
+   }
+  },
+  "spec": {
+   "components": {
+    "A": {
+     "signature": "A(tone: \"info\" | \"warn\" | \"error\", level?: \"low\" | \"high\", single: \"only\", keys: \"a\" | \"b\")",
+     "description": "a"
+    }
+   },
+   "schema": {
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "type": "object",
+    "properties": {
+     "A": {
+      "$ref": "#/$defs/A"
+     }
+    },
+    "required": [
+     "A"
+    ],
+    "additionalProperties": false,
+    "$defs": {
+     "A": {
+      "type": "object",
+      "properties": {
+       "tone": {
+        "type": "string",
+        "enum": [
+         "info",
+         "warn",
+         "error"
+        ]
+       },
+       "level": {
+        "type": "string",
+        "enum": [
+         "low",
+         "high"
+        ]
+       },
+       "single": {
+        "type": "string",
+        "enum": [
+         "only"
+        ]
+       },
+       "keys": {
+        "type": "string",
+        "enum": [
+         "a",
+         "b"
+        ]
+       }
+      },
+      "required": [
+       "tone",
+       "single",
+       "keys"
+      ],
+      "additionalProperties": false,
+      "description": "a"
+     }
+    }
+   }
+  }
+ },
+ {
+  "name": "enum-key-order",
+  "definition": {
+   "components": [
+    {
+     "name": "A",
+     "description": "a",
+     "props": [
+      {
+       "name": "order",
+       "type": {
+        "kind": "enum",
+        "values": [
+         "2",
+         "10",
+         "4294967294",
+         "b",
+         "__proto__",
+         "01",
+         "-0",
+         "4294967295"
+        ]
+       }
+      },
+      {
+       "name": "repeated",
+       "type": {
+        "kind": "enum",
+        "values": [
+         "a",
+         "b"
+        ]
+       }
+      }
+     ]
+    }
+   ]
+  },
+  "schema": {
+   "$schema": "https://json-schema.org/draft/2020-12/schema",
+   "type": "object",
+   "properties": {
+    "A": {
+     "$ref": "#/$defs/A"
+    }
+   },
+   "required": [
+    "A"
+   ],
+   "additionalProperties": false,
+   "$defs": {
+    "A": {
+     "type": "object",
+     "properties": {
+      "order": {
+       "type": "string",
+       "enum": [
+        "2",
+        "10",
+        "4294967294",
+        "b",
+        "__proto__",
+        "01",
+        "-0",
+        "4294967295"
+       ]
+      },
+      "repeated": {
+       "type": "string",
+       "enum": [
+        "a",
+        "b"
+       ]
+      }
+     },
+     "required": [
+      "order",
+      "repeated"
+     ],
+     "additionalProperties": false,
+     "description": "a"
+    }
+   }
+  },
+  "spec": {
+   "components": {
+    "A": {
+     "signature": "A(order: \"2\" | \"10\" | \"4294967294\" | \"b\" | \"__proto__\" | \"01\" | \"-0\" | \"4294967295\", repeated: \"a\" | \"b\")",
+     "description": "a"
+    }
+   },
+   "schema": {
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "type": "object",
+    "properties": {
+     "A": {
+      "$ref": "#/$defs/A"
+     }
+    },
+    "required": [
+     "A"
+    ],
+    "additionalProperties": false,
+    "$defs": {
+     "A": {
+      "type": "object",
+      "properties": {
+       "order": {
+        "type": "string",
+        "enum": [
+         "2",
+         "10",
+         "4294967294",
+         "b",
+         "__proto__",
+         "01",
+         "-0",
+         "4294967295"
+        ]
+       },
+       "repeated": {
+        "type": "string",
+        "enum": [
+         "a",
+         "b"
+        ]
+       }
+      },
+      "required": [
+       "order",
+       "repeated"
+      ],
+      "additionalProperties": false,
+      "description": "a"
+     }
+    }
+   }
+  }
+ },
+ {
+  "name": "enum-quotes",
+  "definition": {
+   "components": [
+    {
+     "name": "A",
+     "description": "a",
+     "props": [
+      {
+       "name": "q",
+       "type": {
+        "kind": "enum",
+        "values": [
+         "say \"hi\"",
+         "back\\slash",
+         ""
+        ]
+       }
+      }
+     ]
+    }
+   ]
+  },
+  "schema": {
+   "$schema": "https://json-schema.org/draft/2020-12/schema",
+   "type": "object",
+   "properties": {
+    "A": {
+     "$ref": "#/$defs/A"
+    }
+   },
+   "required": [
+    "A"
+   ],
+   "additionalProperties": false,
+   "$defs": {
+    "A": {
+     "type": "object",
+     "properties": {
+      "q": {
+       "type": "string",
+       "enum": [
+        "say \"hi\"",
+        "back\\slash",
+        ""
+       ]
+      }
+     },
+     "required": [
+      "q"
+     ],
+     "additionalProperties": false,
+     "description": "a"
+    }
+   }
+  },
+  "spec": {
+   "components": {
+    "A": {
+     "signature": "A(q: \"say \"hi\"\" | \"back\\slash\" | \"\")",
+     "description": "a"
+    }
+   },
+   "schema": {
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "type": "object",
+    "properties": {
+     "A": {
+      "$ref": "#/$defs/A"
+     }
+    },
+    "required": [
+     "A"
+    ],
+    "additionalProperties": false,
+    "$defs": {
+     "A": {
+      "type": "object",
+      "properties": {
+       "q": {
+        "type": "string",
+        "enum": [
+         "say \"hi\"",
+         "back\\slash",
+         ""
+        ]
+       }
+      },
+      "required": [
+       "q"
+      ],
+      "additionalProperties": false,
+      "description": "a"
+     }
+    }
+   }
+  }
+ },
+ {
+  "name": "enum-empty",
+  "definition": {
+   "components": [
+    {
+     "name": "A",
+     "description": "a",
+     "props": [
+      {
+       "name": "none",
+       "type": {
+        "kind": "enum",
+        "values": []
+       }
+      },
+      {
+       "name": "maybe",
+       "type": {
+        "kind": "enum",
+        "values": []
+       },
+       "optional": true
+      },
+      {
+       "name": "list",
+       "type": {
+        "kind": "array",
+        "items": {
+         "kind": "enum",
+         "values": []
+        }
+       }
+      },
+      {
+       "name": "nullable",
+       "type": {
+        "kind": "nullable",
+        "type": {
+         "kind": "enum",
+         "values": []
+        }
+       }
+      },
+      {
+       "name": "nullableList",
+       "type": {
+        "kind": "nullable",
+        "type": {
+         "kind": "array",
+         "items": {
+          "kind": "enum",
+          "values": []
+         }
+        }
+       },
+       "optional": true
+      },
+      {
+       "name": "field",
+       "type": {
+        "kind": "object",
+        "fields": [
+         {
+          "name": "a",
+          "type": {
+           "kind": "enum",
+           "values": []
+          }
+         },
+         {
+          "name": "b",
+          "type": {
+           "kind": "enum",
+           "values": []
+          },
+          "optional": true
+         },
+         {
+          "name": "c",
+          "type": {
+           "kind": "array",
+           "items": {
+            "kind": "enum",
+            "values": []
+           }
+          }
+         }
+        ]
+       }
+      },
+      {
+       "name": "map",
+       "type": {
+        "kind": "record",
+        "values": {
+         "kind": "enum",
+         "values": []
+        }
+       }
+      },
+      {
+       "name": "onlyEmpty",
+       "type": {
+        "kind": "union",
+        "options": [
+         {
+          "kind": "enum",
+          "values": []
+         },
+         {
+          "kind": "enum",
+          "values": []
+         }
+        ]
+       }
+      },
+      {
+       "name": "withString",
+       "type": {
+        "kind": "union",
+        "options": [
+         {
+          "kind": "enum",
+          "values": []
+         },
+         {
+          "kind": "string"
+         }
+        ]
+       }
+      }
+     ]
+    }
+   ]
+  },
+  "schema": {
+   "$schema": "https://json-schema.org/draft/2020-12/schema",
+   "type": "object",
+   "properties": {
+    "A": {
+     "$ref": "#/$defs/A"
+    }
+   },
+   "required": [
+    "A"
+   ],
+   "additionalProperties": false,
+   "$defs": {
+    "A": {
+     "type": "object",
+     "properties": {
+      "none": {
+       "not": {}
+      },
+      "maybe": {
+       "not": {}
+      },
+      "list": {
+       "type": "array",
+       "items": {
+        "not": {}
+       }
+      },
+      "nullable": {
+       "anyOf": [
+        {
+         "not": {}
+        },
+        {
+         "type": "null"
+        }
+       ]
+      },
+      "nullableList": {
+       "anyOf": [
+        {
+         "type": "array",
+         "items": {
+          "not": {}
+         }
+        },
+        {
+         "type": "null"
+        }
+       ]
+      },
+      "field": {
+       "type": "object",
+       "properties": {
+        "a": {
+         "not": {}
+        },
+        "b": {
+         "not": {}
+        },
+        "c": {
+         "type": "array",
+         "items": {
+          "not": {}
+         }
+        }
+       },
+       "required": [
+        "a",
+        "c"
+       ],
+       "additionalProperties": false
+      },
+      "map": {
+       "type": "object",
+       "propertyNames": {
+        "type": "string"
+       },
+       "additionalProperties": {
+        "not": {}
+       }
+      },
+      "onlyEmpty": {
+       "anyOf": [
+        {
+         "not": {}
+        },
+        {
+         "not": {}
+        }
+       ]
+      },
+      "withString": {
+       "anyOf": [
+        {
+         "not": {}
+        },
+        {
+         "type": "string"
+        }
+       ]
+      }
+     },
+     "required": [
+      "none",
+      "list",
+      "nullable",
+      "field",
+      "map",
+      "onlyEmpty",
+      "withString"
+     ],
+     "additionalProperties": false,
+     "description": "a"
+    }
+   }
+  },
+  "spec": {
+   "components": {
+    "A": {
+     "signature": "A(none, maybe?, [list], nullable?, [nullableList]?, field: {a, b?, c}, map: Record<string, any>, onlyEmpty: any, withString: string)",
+     "description": "a"
+    }
+   },
+   "schema": {
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "type": "object",
+    "properties": {
+     "A": {
+      "$ref": "#/$defs/A"
+     }
+    },
+    "required": [
+     "A"
+    ],
+    "additionalProperties": false,
+    "$defs": {
+     "A": {
+      "type": "object",
+      "properties": {
+       "none": {
+        "not": {}
+       },
+       "maybe": {
+        "not": {}
+       },
+       "list": {
+        "type": "array",
+        "items": {
+         "not": {}
+        }
+       },
+       "nullable": {
+        "anyOf": [
+         {
+          "not": {}
+         },
+         {
+          "type": "null"
+         }
+        ]
+       },
+       "nullableList": {
+        "anyOf": [
+         {
+          "type": "array",
+          "items": {
+           "not": {}
+          }
+         },
+         {
+          "type": "null"
+         }
+        ]
+       },
+       "field": {
+        "type": "object",
+        "properties": {
+         "a": {
+          "not": {}
+         },
+         "b": {
+          "not": {}
+         },
+         "c": {
+          "type": "array",
+          "items": {
+           "not": {}
+          }
+         }
+        },
+        "required": [
+         "a",
+         "c"
+        ],
+        "additionalProperties": false
+       },
+       "map": {
+        "type": "object",
+        "propertyNames": {
+         "type": "string"
+        },
+        "additionalProperties": {
+         "not": {}
+        }
+       },
+       "onlyEmpty": {
+        "anyOf": [
+         {
+          "not": {}
+         },
+         {
+          "not": {}
+         }
+        ]
+       },
+       "withString": {
+        "anyOf": [
+         {
+          "not": {}
+         },
+         {
+          "type": "string"
+         }
+        ]
+       }
+      },
+      "required": [
+       "none",
+       "list",
+       "nullable",
+       "field",
+       "map",
+       "onlyEmpty",
+       "withString"
+      ],
+      "additionalProperties": false,
+      "description": "a"
+     }
+    }
+   }
+  }
+ },
+ {
+  "name": "array",
+  "definition": {
+   "components": [
+    {
+     "name": "A",
+     "description": "a",
+     "props": [
+      {
+       "name": "tags",
+       "type": {
+        "kind": "array",
+        "items": {
+         "kind": "string"
+        }
+       }
+      },
+      {
+       "name": "scores",
+       "type": {
+        "kind": "array",
+        "items": {
+         "kind": "number"
+        }
+       },
+       "optional": true
+      },
+      {
+       "name": "grid",
+       "type": {
+        "kind": "array",
+        "items": {
+         "kind": "array",
+         "items": {
+          "kind": "boolean"
+         }
+        }
+       }
+      },
+      {
+       "name": "rows",
+       "type": {
+        "kind": "array",
+        "items": {
+         "kind": "object",
+         "fields": [
+          {
+           "name": "id",
+           "type": {
+            "kind": "string"
+           }
+          },
+          {
+           "name": "note",
+           "type": {
+            "kind": "string"
+           },
+           "optional": true
+          }
+         ]
+        }
+       }
+      },
+      {
+       "name": "tones",
+       "type": {
+        "kind": "array",
+        "items": {
+         "kind": "enum",
+         "values": [
+          "a",
+          "b"
+         ]
+        }
+       }
+      },
+      {
+       "name": "maps",
+       "type": {
+        "kind": "array",
+        "items": {
+         "kind": "record",
+         "values": {
+          "kind": "any"
+         }
+        }
+       }
+      },
+      {
+       "name": "anything",
+       "type": {
+        "kind": "array",
+        "items": {
+         "kind": "any"
+        }
+       }
+      }
+     ]
+    }
+   ]
+  },
+  "schema": {
+   "$schema": "https://json-schema.org/draft/2020-12/schema",
+   "type": "object",
+   "properties": {
+    "A": {
+     "$ref": "#/$defs/A"
+    }
+   },
+   "required": [
+    "A"
+   ],
+   "additionalProperties": false,
+   "$defs": {
+    "A": {
+     "type": "object",
+     "properties": {
+      "tags": {
+       "type": "array",
+       "items": {
+        "type": "string"
+       }
+      },
+      "scores": {
+       "type": "array",
+       "items": {
+        "type": "number"
+       }
+      },
+      "grid": {
+       "type": "array",
+       "items": {
+        "type": "array",
+        "items": {
+         "type": "boolean"
+        }
+       }
+      },
+      "rows": {
+       "type": "array",
+       "items": {
+        "type": "object",
+        "properties": {
+         "id": {
+          "type": "string"
+         },
+         "note": {
+          "type": "string"
+         }
+        },
+        "required": [
+         "id"
+        ],
+        "additionalProperties": false
+       }
+      },
+      "tones": {
+       "type": "array",
+       "items": {
+        "type": "string",
+        "enum": [
+         "a",
+         "b"
+        ]
+       }
+      },
+      "maps": {
+       "type": "array",
+       "items": {
+        "type": "object",
+        "propertyNames": {
+         "type": "string"
+        },
+        "additionalProperties": {}
+       }
+      },
+      "anything": {
+       "type": "array",
+       "items": {}
+      }
+     },
+     "required": [
+      "tags",
+      "grid",
+      "rows",
+      "tones",
+      "maps",
+      "anything"
+     ],
+     "additionalProperties": false,
+     "description": "a"
+    }
+   }
+  },
+  "spec": {
+   "components": {
+    "A": {
+     "signature": "A(tags: string[], scores?: number[], grid: boolean[][], rows: {id: string, note?: string}[], tones: \"a\" | \"b\"[], maps: Record<string, any>[], anything: any[])",
+     "description": "a"
+    }
+   },
+   "schema": {
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "type": "object",
+    "properties": {
+     "A": {
+      "$ref": "#/$defs/A"
+     }
+    },
+    "required": [
+     "A"
+    ],
+    "additionalProperties": false,
+    "$defs": {
+     "A": {
+      "type": "object",
+      "properties": {
+       "tags": {
+        "type": "array",
+        "items": {
+         "type": "string"
+        }
+       },
+       "scores": {
+        "type": "array",
+        "items": {
+         "type": "number"
+        }
+       },
+       "grid": {
+        "type": "array",
+        "items": {
+         "type": "array",
+         "items": {
+          "type": "boolean"
+         }
+        }
+       },
+       "rows": {
+        "type": "array",
+        "items": {
+         "type": "object",
+         "properties": {
+          "id": {
+           "type": "string"
+          },
+          "note": {
+           "type": "string"
+          }
+         },
+         "required": [
+          "id"
+         ],
+         "additionalProperties": false
+        }
+       },
+       "tones": {
+        "type": "array",
+        "items": {
+         "type": "string",
+         "enum": [
+          "a",
+          "b"
+         ]
+        }
+       },
+       "maps": {
+        "type": "array",
+        "items": {
+         "type": "object",
+         "propertyNames": {
+          "type": "string"
+         },
+         "additionalProperties": {}
+        }
+       },
+       "anything": {
+        "type": "array",
+        "items": {}
+       }
+      },
+      "required": [
+       "tags",
+       "grid",
+       "rows",
+       "tones",
+       "maps",
+       "anything"
+      ],
+      "additionalProperties": false,
+      "description": "a"
+     }
+    }
+   }
+  }
+ },
+ {
+  "name": "array-of-union",
+  "definition": {
+   "components": [
+    {
+     "name": "A",
+     "description": "a",
+     "props": [
+      {
+       "name": "mixed",
+       "type": {
+        "kind": "array",
+        "items": {
+         "kind": "union",
+         "options": [
+          {
+           "kind": "string"
+          },
+          {
+           "kind": "number"
+          }
+         ]
+        }
+       }
+      },
+      {
+       "name": "shapes",
+       "type": {
+        "kind": "array",
+        "items": {
+         "kind": "union",
+         "options": [
+          {
+           "kind": "string"
+          },
+          {
+           "kind": "object",
+           "fields": [
+            {
+             "name": "a",
+             "type": {
+              "kind": "number"
+             }
+            }
+           ]
+          }
+         ]
+        }
+       }
+      },
+      {
+       "name": "one",
+       "type": {
+        "kind": "array",
+        "items": {
+         "kind": "union",
+         "options": [
+          {
+           "kind": "string"
+          }
+         ]
+        }
+       }
+      },
+      {
+       "name": "none",
+       "type": {
+        "kind": "array",
+        "items": {
+         "kind": "union",
+         "options": []
+        }
+       }
+      },
+      {
+       "name": "nullableUnion",
+       "type": {
+        "kind": "array",
+        "items": {
+         "kind": "nullable",
+         "type": {
+          "kind": "union",
+          "options": [
+           {
+            "kind": "string"
+           },
+           {
+            "kind": "number"
+           }
+          ]
+         }
+        }
+       }
+      },
+      {
+       "name": "nullableItems",
+       "type": {
+        "kind": "array",
+        "items": {
+         "kind": "nullable",
+         "type": {
+          "kind": "string"
+         }
+        }
+       }
+      },
+      {
+       "name": "nested",
+       "type": {
+        "kind": "array",
+        "items": {
+         "kind": "array",
+         "items": {
+          "kind": "union",
+          "options": [
+           {
+            "kind": "boolean"
+           },
+           {
+            "kind": "string"
+           }
+          ]
+         }
+        }
+       }
+      }
+     ]
+    }
+   ]
+  },
+  "schema": {
+   "$schema": "https://json-schema.org/draft/2020-12/schema",
+   "type": "object",
+   "properties": {
+    "A": {
+     "$ref": "#/$defs/A"
+    }
+   },
+   "required": [
+    "A"
+   ],
+   "additionalProperties": false,
+   "$defs": {
+    "A": {
+     "type": "object",
+     "properties": {
+      "mixed": {
+       "type": "array",
+       "items": {
+        "type": [
+         "string",
+         "number"
+        ]
+       }
+      },
+      "shapes": {
+       "type": "array",
+       "items": {
+        "anyOf": [
+         {
+          "type": "string"
+         },
+         {
+          "type": "object",
+          "properties": {
+           "a": {
+            "type": "number"
+           }
+          },
+          "required": [
+           "a"
+          ],
+          "additionalProperties": false
+         }
+        ]
+       }
+      },
+      "one": {
+       "type": "array",
+       "items": {
+        "type": "string"
+       }
+      },
+      "none": {
+       "type": "array",
+       "items": {
+        "anyOf": []
+       }
+      },
+      "nullableUnion": {
+       "type": "array",
+       "items": {
+        "type": [
+         "string",
+         "number",
+         "null"
+        ]
+       }
+      },
+      "nullableItems": {
+       "type": "array",
+       "items": {
+        "type": [
+         "string",
+         "null"
+        ]
+       }
+      },
+      "nested": {
+       "type": "array",
+       "items": {
+        "type": "array",
+        "items": {
+         "type": [
+          "boolean",
+          "string"
+         ]
+        }
+       }
+      }
+     },
+     "required": [
+      "mixed",
+      "shapes",
+      "one",
+      "none",
+      "nullableUnion",
+      "nullableItems",
+      "nested"
+     ],
+     "additionalProperties": false,
+     "description": "a"
+    }
+   }
+  },
+  "spec": {
+   "components": {
+    "A": {
+     "signature": "A(mixed: (string | number)[], shapes: (string | {a: number})[], one: (string)[], none: (any)[], nullableUnion: (string | number)[], nullableItems: string[], nested: (boolean | string)[][])",
+     "description": "a"
+    }
+   },
+   "schema": {
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "type": "object",
+    "properties": {
+     "A": {
+      "$ref": "#/$defs/A"
+     }
+    },
+    "required": [
+     "A"
+    ],
+    "additionalProperties": false,
+    "$defs": {
+     "A": {
+      "type": "object",
+      "properties": {
+       "mixed": {
+        "type": "array",
+        "items": {
+         "type": [
+          "string",
+          "number"
+         ]
+        }
+       },
+       "shapes": {
+        "type": "array",
+        "items": {
+         "anyOf": [
+          {
+           "type": "string"
+          },
+          {
+           "type": "object",
+           "properties": {
+            "a": {
+             "type": "number"
+            }
+           },
+           "required": [
+            "a"
+           ],
+           "additionalProperties": false
+          }
+         ]
+        }
+       },
+       "one": {
+        "type": "array",
+        "items": {
+         "type": "string"
+        }
+       },
+       "none": {
+        "type": "array",
+        "items": {
+         "anyOf": []
+        }
+       },
+       "nullableUnion": {
+        "type": "array",
+        "items": {
+         "type": [
+          "string",
+          "number",
+          "null"
+         ]
+        }
+       },
+       "nullableItems": {
+        "type": "array",
+        "items": {
+         "type": [
+          "string",
+          "null"
+         ]
+        }
+       },
+       "nested": {
+        "type": "array",
+        "items": {
+         "type": "array",
+         "items": {
+          "type": [
+           "boolean",
+           "string"
+          ]
+         }
+        }
+       }
+      },
+      "required": [
+       "mixed",
+       "shapes",
+       "one",
+       "none",
+       "nullableUnion",
+       "nullableItems",
+       "nested"
+      ],
+      "additionalProperties": false,
+      "description": "a"
+     }
+    }
+   }
+  }
+ },
+ {
+  "name": "union-of-scalars",
+  "definition": {
+   "components": [
+    {
+     "name": "A",
+     "description": "a",
+     "props": [
+      {
+       "name": "text",
+       "type": {
+        "kind": "union",
+        "options": [
+         {
+          "kind": "string"
+         },
+         {
+          "kind": "number"
+         }
+        ]
+       }
+      },
+      {
+       "name": "order",
+       "type": {
+        "kind": "union",
+        "options": [
+         {
+          "kind": "boolean"
+         },
+         {
+          "kind": "string"
+         },
+         {
+          "kind": "number"
+         }
+        ]
+       }
+      },
+      {
+       "name": "repeated",
+       "type": {
+        "kind": "union",
+        "options": [
+         {
+          "kind": "string"
+         },
+         {
+          "kind": "string"
+         }
+        ]
+       }
+      },
+      {
+       "name": "nested",
+       "type": {
+        "kind": "union",
+        "options": [
+         {
+          "kind": "union",
+          "options": [
+           {
+            "kind": "string"
+           },
+           {
+            "kind": "boolean"
+           }
+          ]
+         },
+         {
+          "kind": "number"
+         }
+        ]
+       }
+      },
+      {
+       "name": "nullableMember",
+       "type": {
+        "kind": "union",
+        "options": [
+         {
+          "kind": "nullable",
+          "type": {
+           "kind": "string"
+          }
+         },
+         {
+          "kind": "number"
+         }
+        ]
+       }
+      },
+      {
+       "name": "single",
+       "type": {
+        "kind": "union",
+        "options": [
+         {
+          "kind": "number"
+         }
+        ]
+       }
+      },
+      {
+       "name": "withAny",
+       "type": {
+        "kind": "union",
+        "options": [
+         {
+          "kind": "any"
+         },
+         {
+          "kind": "string"
+         }
+        ]
+       }
+      },
+      {
+       "name": "optional",
+       "type": {
+        "kind": "union",
+        "options": [
+         {
+          "kind": "string"
+         },
+         {
+          "kind": "boolean"
+         }
+        ]
+       },
+       "optional": true
+      }
+     ]
+    }
+   ]
+  },
+  "schema": {
+   "$schema": "https://json-schema.org/draft/2020-12/schema",
+   "type": "object",
+   "properties": {
+    "A": {
+     "$ref": "#/$defs/A"
+    }
+   },
+   "required": [
+    "A"
+   ],
+   "additionalProperties": false,
+   "$defs": {
+    "A": {
+     "type": "object",
+     "properties": {
+      "text": {
+       "type": [
+        "string",
+        "number"
+       ]
+      },
+      "order": {
+       "type": [
+        "boolean",
+        "string",
+        "number"
+       ]
+      },
+      "repeated": {
+       "type": "string"
+      },
+      "nested": {
+       "type": [
+        "string",
+        "boolean",
+        "number"
+       ]
+      },
+      "nullableMember": {
+       "type": [
+        "string",
+        "null",
+        "number"
+       ]
+      },
+      "single": {
+       "type": "number"
+      },
+      "withAny": {
+       "anyOf": [
+        {},
+        {
+         "type": "string"
+        }
+       ]
+      },
+      "optional": {
+       "type": [
+        "string",
+        "boolean"
+       ]
+      }
+     },
+     "required": [
+      "text",
+      "order",
+      "repeated",
+      "nested",
+      "nullableMember",
+      "single",
+      "withAny"
+     ],
+     "additionalProperties": false,
+     "description": "a"
+    }
+   }
+  },
+  "spec": {
+   "components": {
+    "A": {
+     "signature": "A(text: string | number, order: boolean | string | number, repeated: string | string, nested: string | boolean | number, nullableMember: string | number, single: number, withAny: any | string, optional?: string | boolean)",
+     "description": "a"
+    }
+   },
+   "schema": {
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "type": "object",
+    "properties": {
+     "A": {
+      "$ref": "#/$defs/A"
+     }
+    },
+    "required": [
+     "A"
+    ],
+    "additionalProperties": false,
+    "$defs": {
+     "A": {
+      "type": "object",
+      "properties": {
+       "text": {
+        "type": [
+         "string",
+         "number"
+        ]
+       },
+       "order": {
+        "type": [
+         "boolean",
+         "string",
+         "number"
+        ]
+       },
+       "repeated": {
+        "type": "string"
+       },
+       "nested": {
+        "type": [
+         "string",
+         "boolean",
+         "number"
+        ]
+       },
+       "nullableMember": {
+        "type": [
+         "string",
+         "null",
+         "number"
+        ]
+       },
+       "single": {
+        "type": "number"
+       },
+       "withAny": {
+        "anyOf": [
+         {},
+         {
+          "type": "string"
+         }
+        ]
+       },
+       "optional": {
+        "type": [
+         "string",
+         "boolean"
+        ]
+       }
+      },
+      "required": [
+       "text",
+       "order",
+       "repeated",
+       "nested",
+       "nullableMember",
+       "single",
+       "withAny"
+      ],
+      "additionalProperties": false,
+      "description": "a"
+     }
+    }
+   }
+  }
+ },
+ {
+  "name": "union-with-object",
+  "definition": {
+   "components": [
+    {
+     "name": "A",
+     "description": "a",
+     "props": [
+      {
+       "name": "value",
+       "type": {
+        "kind": "union",
+        "options": [
+         {
+          "kind": "string"
+         },
+         {
+          "kind": "object",
+          "fields": [
+           {
+            "name": "a",
+            "type": {
+             "kind": "number"
+            }
+           },
+           {
+            "name": "b",
+            "type": {
+             "kind": "string"
+            },
+            "optional": true
+           }
+          ]
+         }
+        ]
+       }
+      },
+      {
+       "name": "single",
+       "type": {
+        "kind": "union",
+        "options": [
+         {
+          "kind": "object",
+          "fields": [
+           {
+            "name": "a",
+            "type": {
+             "kind": "string"
+            }
+           }
+          ]
+         }
+        ]
+       }
+      },
+      {
+       "name": "nested",
+       "type": {
+        "kind": "union",
+        "options": [
+         {
+          "kind": "union",
+          "options": [
+           {
+            "kind": "string"
+           },
+           {
+            "kind": "object",
+            "fields": []
+           }
+          ]
+         },
+         {
+          "kind": "number"
+         }
+        ]
+       }
+      },
+      {
+       "name": "arrays",
+       "type": {
+        "kind": "union",
+        "options": [
+         {
+          "kind": "array",
+          "items": {
+           "kind": "string"
+          }
+         },
+         {
+          "kind": "string"
+         }
+        ]
+       }
+      },
+      {
+       "name": "words",
+       "type": {
+        "kind": "union",
+        "options": [
+         {
+          "kind": "enum",
+          "values": [
+           "x",
+           "y"
+          ]
+         },
+         {
+          "kind": "string"
+         }
+        ]
+       }
+      },
+      {
+       "name": "maps",
+       "type": {
+        "kind": "union",
+        "options": [
+         {
+          "kind": "record",
+          "values": {
+           "kind": "number"
+          }
+         },
+         {
+          "kind": "boolean"
+         }
+        ]
+       }
+      }
+     ]
+    }
+   ]
+  },
+  "schema": {
+   "$schema": "https://json-schema.org/draft/2020-12/schema",
+   "type": "object",
+   "properties": {
+    "A": {
+     "$ref": "#/$defs/A"
+    }
+   },
+   "required": [
+    "A"
+   ],
+   "additionalProperties": false,
+   "$defs": {
+    "A": {
+     "type": "object",
+     "properties": {
+      "value": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "object",
+         "properties": {
+          "a": {
+           "type": "number"
+          },
+          "b": {
+           "type": "string"
+          }
+         },
+         "required": [
+          "a"
+         ],
+         "additionalProperties": false
+        }
+       ]
+      },
+      "single": {
+       "anyOf": [
+        {
+         "type": "object",
+         "properties": {
+          "a": {
+           "type": "string"
+          }
+         },
+         "required": [
+          "a"
+         ],
+         "additionalProperties": false
+        }
+       ]
+      },
+      "nested": {
+       "anyOf": [
+        {
+         "anyOf": [
+          {
+           "type": "string"
+          },
+          {
+           "type": "object",
+           "properties": {},
+           "additionalProperties": false
+          }
+         ]
+        },
+        {
+         "type": "number"
+        }
+       ]
+      },
+      "arrays": {
+       "anyOf": [
+        {
+         "type": "array",
+         "items": {
+          "type": "string"
+         }
+        },
+        {
+         "type": "string"
+        }
+       ]
+      },
+      "words": {
+       "anyOf": [
+        {
+         "type": "string",
+         "enum": [
+          "x",
+          "y"
+         ]
+        },
+        {
+         "type": "string"
+        }
+       ]
+      },
+      "maps": {
+       "anyOf": [
+        {
+         "type": "object",
+         "propertyNames": {
+          "type": "string"
+         },
+         "additionalProperties": {
+          "type": "number"
+         }
+        },
+        {
+         "type": "boolean"
+        }
+       ]
+      }
+     },
+     "required": [
+      "value",
+      "single",
+      "nested",
+      "arrays",
+      "words",
+      "maps"
+     ],
+     "additionalProperties": false,
+     "description": "a"
+    }
+   }
+  },
+  "spec": {
+   "components": {
+    "A": {
+     "signature": "A(value: string | {a: number, b?: string}, single: {a: string}, nested: string | {} | number, arrays: string[] | string, words: \"x\" | \"y\" | string, maps: Record<string, number> | boolean)",
+     "description": "a"
+    }
+   },
+   "schema": {
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "type": "object",
+    "properties": {
+     "A": {
+      "$ref": "#/$defs/A"
+     }
+    },
+    "required": [
+     "A"
+    ],
+    "additionalProperties": false,
+    "$defs": {
+     "A": {
+      "type": "object",
+      "properties": {
+       "value": {
+        "anyOf": [
+         {
+          "type": "string"
+         },
+         {
+          "type": "object",
+          "properties": {
+           "a": {
+            "type": "number"
+           },
+           "b": {
+            "type": "string"
+           }
+          },
+          "required": [
+           "a"
+          ],
+          "additionalProperties": false
+         }
+        ]
+       },
+       "single": {
+        "anyOf": [
+         {
+          "type": "object",
+          "properties": {
+           "a": {
+            "type": "string"
+           }
+          },
+          "required": [
+           "a"
+          ],
+          "additionalProperties": false
+         }
+        ]
+       },
+       "nested": {
+        "anyOf": [
+         {
+          "anyOf": [
+           {
+            "type": "string"
+           },
+           {
+            "type": "object",
+            "properties": {},
+            "additionalProperties": false
+           }
+          ]
+         },
+         {
+          "type": "number"
+         }
+        ]
+       },
+       "arrays": {
+        "anyOf": [
+         {
+          "type": "array",
+          "items": {
+           "type": "string"
+          }
+         },
+         {
+          "type": "string"
+         }
+        ]
+       },
+       "words": {
+        "anyOf": [
+         {
+          "type": "string",
+          "enum": [
+           "x",
+           "y"
+          ]
+         },
+         {
+          "type": "string"
+         }
+        ]
+       },
+       "maps": {
+        "anyOf": [
+         {
+          "type": "object",
+          "propertyNames": {
+           "type": "string"
+          },
+          "additionalProperties": {
+           "type": "number"
+          }
+         },
+         {
+          "type": "boolean"
+         }
+        ]
+       }
+      },
+      "required": [
+       "value",
+       "single",
+       "nested",
+       "arrays",
+       "words",
+       "maps"
+      ],
+      "additionalProperties": false,
+      "description": "a"
+     }
+    }
+   }
+  }
+ },
+ {
+  "name": "union-empty",
+  "definition": {
+   "components": [
+    {
+     "name": "A",
+     "description": "a",
+     "props": [
+      {
+       "name": "none",
+       "type": {
+        "kind": "union",
+        "options": []
+       }
+      },
+      {
+       "name": "nullable",
+       "type": {
+        "kind": "nullable",
+        "type": {
+         "kind": "union",
+         "options": []
+        }
+       }
+      },
+      {
+       "name": "list",
+       "type": {
+        "kind": "array",
+        "items": {
+         "kind": "union",
+         "options": []
+        }
+       },
+       "optional": true
+      }
+     ]
+    }
+   ]
+  },
+  "schema": {
+   "$schema": "https://json-schema.org/draft/2020-12/schema",
+   "type": "object",
+   "properties": {
+    "A": {
+     "$ref": "#/$defs/A"
+    }
+   },
+   "required": [
+    "A"
+   ],
+   "additionalProperties": false,
+   "$defs": {
+    "A": {
+     "type": "object",
+     "properties": {
+      "none": {
+       "anyOf": []
+      },
+      "nullable": {
+       "anyOf": [
+        {
+         "anyOf": []
+        },
+        {
+         "type": "null"
+        }
+       ]
+      },
+      "list": {
+       "type": "array",
+       "items": {
+        "anyOf": []
+       }
+      }
+     },
+     "required": [
+      "none",
+      "nullable"
+     ],
+     "additionalProperties": false,
+     "description": "a"
+    }
+   }
+  },
+  "spec": {
+   "components": {
+    "A": {
+     "signature": "A(none: any, nullable?: any, list?: (any)[])",
+     "description": "a"
+    }
+   },
+   "schema": {
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "type": "object",
+    "properties": {
+     "A": {
+      "$ref": "#/$defs/A"
+     }
+    },
+    "required": [
+     "A"
+    ],
+    "additionalProperties": false,
+    "$defs": {
+     "A": {
+      "type": "object",
+      "properties": {
+       "none": {
+        "anyOf": []
+       },
+       "nullable": {
+        "anyOf": [
+         {
+          "anyOf": []
+         },
+         {
+          "type": "null"
+         }
+        ]
+       },
+       "list": {
+        "type": "array",
+        "items": {
+         "anyOf": []
+        }
+       }
+      },
+      "required": [
+       "none",
+       "nullable"
+      ],
+      "additionalProperties": false,
+      "description": "a"
+     }
+    }
+   }
+  }
+ },
+ {
+  "name": "object-with-optional-fields",
+  "definition": {
+   "components": [
+    {
+     "name": "A",
+     "description": "a",
+     "props": [
+      {
+       "name": "point",
+       "type": {
+        "kind": "object",
+        "fields": [
+         {
+          "name": "x",
+          "type": {
+           "kind": "number"
+          }
+         },
+         {
+          "name": "y",
+          "type": {
+           "kind": "number"
+          }
+         },
+         {
+          "name": "label",
+          "type": {
+           "kind": "string"
+          },
+          "optional": true
+         }
+        ]
+       }
+      },
+      {
+       "name": "allOptional",
+       "type": {
+        "kind": "object",
+        "fields": [
+         {
+          "name": "a",
+          "type": {
+           "kind": "string"
+          },
+          "optional": true
+         },
+         {
+          "name": "b",
+          "type": {
+           "kind": "boolean"
+          },
+          "optional": true
+         }
+        ]
+       },
+       "optional": true
+      },
+      {
+       "name": "nested",
+       "type": {
+        "kind": "object",
+        "fields": [
+         {
+          "name": "inner",
+          "type": {
+           "kind": "object",
+           "fields": [
+            {
+             "name": "v",
+             "type": {
+              "kind": "string"
+             }
+            },
+            {
+             "name": "w",
+             "type": {
+              "kind": "array",
+              "items": {
+               "kind": "number"
+              }
+             },
+             "optional": true
+            }
+           ]
+          }
+         }
+        ]
+       }
+      },
+      {
+       "name": "nullableFields",
+       "type": {
+        "kind": "object",
+        "fields": [
+         {
+          "name": "a",
+          "type": {
+           "kind": "nullable",
+           "type": {
+            "kind": "string"
+           }
+          }
+         },
+         {
+          "name": "b",
+          "type": {
+           "kind": "nullable",
+           "type": {
+            "kind": "string"
+           }
+          },
+          "optional": true
+         }
+        ]
+       }
+      },
+      {
+       "name": "strict",
+       "type": {
+        "kind": "object",
+        "fields": [
+         {
+          "name": "s",
+          "type": {
+           "kind": "string"
+          }
+         }
+        ]
+       }
+      }
+     ]
+    }
+   ]
+  },
+  "schema": {
+   "$schema": "https://json-schema.org/draft/2020-12/schema",
+   "type": "object",
+   "properties": {
+    "A": {
+     "$ref": "#/$defs/A"
+    }
+   },
+   "required": [
+    "A"
+   ],
+   "additionalProperties": false,
+   "$defs": {
+    "A": {
+     "type": "object",
+     "properties": {
+      "point": {
+       "type": "object",
+       "properties": {
+        "x": {
+         "type": "number"
+        },
+        "y": {
+         "type": "number"
+        },
+        "label": {
+         "type": "string"
+        }
+       },
+       "required": [
+        "x",
+        "y"
+       ],
+       "additionalProperties": false
+      },
+      "allOptional": {
+       "type": "object",
+       "properties": {
+        "a": {
+         "type": "string"
+        },
+        "b": {
+         "type": "boolean"
+        }
+       },
+       "additionalProperties": false
+      },
+      "nested": {
+       "type": "object",
+       "properties": {
+        "inner": {
+         "type": "object",
+         "properties": {
+          "v": {
+           "type": "string"
+          },
+          "w": {
+           "type": "array",
+           "items": {
+            "type": "number"
+           }
+          }
+         },
+         "required": [
+          "v"
+         ],
+         "additionalProperties": false
+        }
+       },
+       "required": [
+        "inner"
+       ],
+       "additionalProperties": false
+      },
+      "nullableFields": {
+       "type": "object",
+       "properties": {
+        "a": {
+         "type": [
+          "string",
+          "null"
+         ]
+        },
+        "b": {
+         "type": [
+          "string",
+          "null"
+         ]
+        }
+       },
+       "required": [
+        "a"
+       ],
+       "additionalProperties": false
+      },
+      "strict": {
+       "type": "object",
+       "properties": {
+        "s": {
+         "type": "string"
+        }
+       },
+       "required": [
+        "s"
+       ],
+       "additionalProperties": false
+      }
+     },
+     "required": [
+      "point",
+      "nested",
+      "nullableFields",
+      "strict"
+     ],
+     "additionalProperties": false,
+     "description": "a"
+    }
+   }
+  },
+  "spec": {
+   "components": {
+    "A": {
+     "signature": "A(point: {x: number, y: number, label?: string}, allOptional?: {a?: string, b?: boolean}, nested: {inner: {v: string, w?: number[]}}, nullableFields: {a?: string, b?: string}, strict: {s: string})",
+     "description": "a"
+    }
+   },
+   "schema": {
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "type": "object",
+    "properties": {
+     "A": {
+      "$ref": "#/$defs/A"
+     }
+    },
+    "required": [
+     "A"
+    ],
+    "additionalProperties": false,
+    "$defs": {
+     "A": {
+      "type": "object",
+      "properties": {
+       "point": {
+        "type": "object",
+        "properties": {
+         "x": {
+          "type": "number"
+         },
+         "y": {
+          "type": "number"
+         },
+         "label": {
+          "type": "string"
+         }
+        },
+        "required": [
+         "x",
+         "y"
+        ],
+        "additionalProperties": false
+       },
+       "allOptional": {
+        "type": "object",
+        "properties": {
+         "a": {
+          "type": "string"
+         },
+         "b": {
+          "type": "boolean"
+         }
+        },
+        "additionalProperties": false
+       },
+       "nested": {
+        "type": "object",
+        "properties": {
+         "inner": {
+          "type": "object",
+          "properties": {
+           "v": {
+            "type": "string"
+           },
+           "w": {
+            "type": "array",
+            "items": {
+             "type": "number"
+            }
+           }
+          },
+          "required": [
+           "v"
+          ],
+          "additionalProperties": false
+         }
+        },
+        "required": [
+         "inner"
+        ],
+        "additionalProperties": false
+       },
+       "nullableFields": {
+        "type": "object",
+        "properties": {
+         "a": {
+          "type": [
+           "string",
+           "null"
+          ]
+         },
+         "b": {
+          "type": [
+           "string",
+           "null"
+          ]
+         }
+        },
+        "required": [
+         "a"
+        ],
+        "additionalProperties": false
+       },
+       "strict": {
+        "type": "object",
+        "properties": {
+         "s": {
+          "type": "string"
+         }
+        },
+        "required": [
+         "s"
+        ],
+        "additionalProperties": false
+       }
+      },
+      "required": [
+       "point",
+       "nested",
+       "nullableFields",
+       "strict"
+      ],
+      "additionalProperties": false,
+      "description": "a"
+     }
+    }
+   }
+  }
+ },
+ {
+  "name": "object-empty",
+  "definition": {
+   "components": [
+    {
+     "name": "A",
+     "description": "a",
+     "props": [
+      {
+       "name": "empty",
+       "type": {
+        "kind": "object",
+        "fields": []
+       }
+      },
+      {
+       "name": "maybe",
+       "type": {
+        "kind": "object",
+        "fields": []
+       },
+       "optional": true
+      },
+      {
+       "name": "list",
+       "type": {
+        "kind": "array",
+        "items": {
+         "kind": "object",
+         "fields": []
+        }
+       }
+      }
+     ]
+    }
+   ]
+  },
+  "schema": {
+   "$schema": "https://json-schema.org/draft/2020-12/schema",
+   "type": "object",
+   "properties": {
+    "A": {
+     "$ref": "#/$defs/A"
+    }
+   },
+   "required": [
+    "A"
+   ],
+   "additionalProperties": false,
+   "$defs": {
+    "A": {
+     "type": "object",
+     "properties": {
+      "empty": {
+       "type": "object",
+       "properties": {},
+       "additionalProperties": false
+      },
+      "maybe": {
+       "type": "object",
+       "properties": {},
+       "additionalProperties": false
+      },
+      "list": {
+       "type": "array",
+       "items": {
+        "type": "object",
+        "properties": {},
+        "additionalProperties": false
+       }
+      }
+     },
+     "required": [
+      "empty",
+      "list"
+     ],
+     "additionalProperties": false,
+     "description": "a"
+    }
+   }
+  },
+  "spec": {
+   "components": {
+    "A": {
+     "signature": "A(empty: {}, maybe?: {}, list: {}[])",
+     "description": "a"
+    }
+   },
+   "schema": {
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "type": "object",
+    "properties": {
+     "A": {
+      "$ref": "#/$defs/A"
+     }
+    },
+    "required": [
+     "A"
+    ],
+    "additionalProperties": false,
+    "$defs": {
+     "A": {
+      "type": "object",
+      "properties": {
+       "empty": {
+        "type": "object",
+        "properties": {},
+        "additionalProperties": false
+       },
+       "maybe": {
+        "type": "object",
+        "properties": {},
+        "additionalProperties": false
+       },
+       "list": {
+        "type": "array",
+        "items": {
+         "type": "object",
+         "properties": {},
+         "additionalProperties": false
+        }
+       }
+      },
+      "required": [
+       "empty",
+       "list"
+      ],
+      "additionalProperties": false,
+      "description": "a"
+     }
+    }
+   }
+  }
+ },
+ {
+  "name": "object-key-order",
+  "definition": {
+   "components": [
+    {
+     "name": "A",
+     "description": "a",
+     "props": [
+      {
+       "name": "fields",
+       "type": {
+        "kind": "object",
+        "fields": [
+         {
+          "name": "2",
+          "type": {
+           "kind": "boolean"
+          }
+         },
+         {
+          "name": "10",
+          "type": {
+           "kind": "number"
+          }
+         },
+         {
+          "name": "b",
+          "type": {
+           "kind": "string"
+          }
+         },
+         {
+          "name": "__proto__",
+          "type": {
+           "kind": "string"
+          },
+          "optional": true
+         },
+         {
+          "name": "a\"b",
+          "type": {
+           "kind": "any"
+          }
+         },
+         {
+          "name": "",
+          "type": {
+           "kind": "number"
+          }
+         }
+        ]
+       }
+      }
+     ]
+    }
+   ]
+  },
+  "schema": {
+   "$schema": "https://json-schema.org/draft/2020-12/schema",
+   "type": "object",
+   "properties": {
+    "A": {
+     "$ref": "#/$defs/A"
+    }
+   },
+   "required": [
+    "A"
+   ],
+   "additionalProperties": false,
+   "$defs": {
+    "A": {
+     "type": "object",
+     "properties": {
+      "fields": {
+       "type": "object",
+       "properties": {
+        "2": {
+         "type": "boolean"
+        },
+        "10": {
+         "type": "number"
+        },
+        "b": {
+         "type": "string"
+        },
+        "__proto__": {
+         "type": "string"
+        },
+        "a\"b": {},
+        "": {
+         "type": "number"
+        }
+       },
+       "required": [
+        "2",
+        "10",
+        "b",
+        "a\"b",
+        ""
+       ],
+       "additionalProperties": false
+      }
+     },
+     "required": [
+      "fields"
+     ],
+     "additionalProperties": false,
+     "description": "a"
+    }
+   }
+  },
+  "spec": {
+   "components": {
+    "A": {
+     "signature": "A(fields: {2: boolean, 10: number, b: string, __proto__?: string, a\"b: any, : number})",
+     "description": "a"
+    }
+   },
+   "schema": {
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "type": "object",
+    "properties": {
+     "A": {
+      "$ref": "#/$defs/A"
+     }
+    },
+    "required": [
+     "A"
+    ],
+    "additionalProperties": false,
+    "$defs": {
+     "A": {
+      "type": "object",
+      "properties": {
+       "fields": {
+        "type": "object",
+        "properties": {
+         "2": {
+          "type": "boolean"
+         },
+         "10": {
+          "type": "number"
+         },
+         "b": {
+          "type": "string"
+         },
+         "__proto__": {
+          "type": "string"
+         },
+         "a\"b": {},
+         "": {
+          "type": "number"
+         }
+        },
+        "required": [
+         "2",
+         "10",
+         "b",
+         "a\"b",
+         ""
+        ],
+        "additionalProperties": false
+       }
+      },
+      "required": [
+       "fields"
+      ],
+      "additionalProperties": false,
+      "description": "a"
+     }
+    }
+   }
+  }
+ },
+ {
+  "name": "record",
+  "definition": {
+   "components": [
+    {
+     "name": "A",
+     "description": "a",
+     "props": [
+      {
+       "name": "counts",
+       "type": {
+        "kind": "record",
+        "values": {
+         "kind": "number"
+        }
+       }
+      },
+      {
+       "name": "anything",
+       "type": {
+        "kind": "record",
+        "values": {
+         "kind": "any"
+        }
+       }
+      },
+      {
+       "name": "shapes",
+       "type": {
+        "kind": "record",
+        "values": {
+         "kind": "object",
+         "fields": [
+          {
+           "name": "a",
+           "type": {
+            "kind": "string"
+           }
+          }
+         ]
+        }
+       }
+      },
+      {
+       "name": "nullable",
+       "type": {
+        "kind": "record",
+        "values": {
+         "kind": "nullable",
+         "type": {
+          "kind": "string"
+         }
+        }
+       }
+      },
+      {
+       "name": "mixed",
+       "type": {
+        "kind": "record",
+        "values": {
+         "kind": "union",
+         "options": [
+          {
+           "kind": "string"
+          },
+          {
+           "kind": "number"
+          }
+         ]
+        }
+       }
+      },
+      {
+       "name": "lists",
+       "type": {
+        "kind": "record",
+        "values": {
+         "kind": "array",
+         "items": {
+          "kind": "string"
+         }
+        }
+       },
+       "optional": true
+      },
+      {
+       "name": "nested",
+       "type": {
+        "kind": "record",
+        "values": {
+         "kind": "record",
+         "values": {
+          "kind": "boolean"
+         }
+        }
+       }
+      }
+     ]
+    }
+   ]
+  },
+  "schema": {
+   "$schema": "https://json-schema.org/draft/2020-12/schema",
+   "type": "object",
+   "properties": {
+    "A": {
+     "$ref": "#/$defs/A"
+    }
+   },
+   "required": [
+    "A"
+   ],
+   "additionalProperties": false,
+   "$defs": {
+    "A": {
+     "type": "object",
+     "properties": {
+      "counts": {
+       "type": "object",
+       "propertyNames": {
+        "type": "string"
+       },
+       "additionalProperties": {
+        "type": "number"
+       }
+      },
+      "anything": {
+       "type": "object",
+       "propertyNames": {
+        "type": "string"
+       },
+       "additionalProperties": {}
+      },
+      "shapes": {
+       "type": "object",
+       "propertyNames": {
+        "type": "string"
+       },
+       "additionalProperties": {
+        "type": "object",
+        "properties": {
+         "a": {
+          "type": "string"
+         }
+        },
+        "required": [
+         "a"
+        ],
+        "additionalProperties": false
+       }
+      },
+      "nullable": {
+       "type": "object",
+       "propertyNames": {
+        "type": "string"
+       },
+       "additionalProperties": {
+        "type": [
+         "string",
+         "null"
+        ]
+       }
+      },
+      "mixed": {
+       "type": "object",
+       "propertyNames": {
+        "type": "string"
+       },
+       "additionalProperties": {
+        "type": [
+         "string",
+         "number"
+        ]
+       }
+      },
+      "lists": {
+       "type": "object",
+       "propertyNames": {
+        "type": "string"
+       },
+       "additionalProperties": {
+        "type": "array",
+        "items": {
+         "type": "string"
+        }
+       }
+      },
+      "nested": {
+       "type": "object",
+       "propertyNames": {
+        "type": "string"
+       },
+       "additionalProperties": {
+        "type": "object",
+        "propertyNames": {
+         "type": "string"
+        },
+        "additionalProperties": {
+         "type": "boolean"
+        }
+       }
+      }
+     },
+     "required": [
+      "counts",
+      "anything",
+      "shapes",
+      "nullable",
+      "mixed",
+      "nested"
+     ],
+     "additionalProperties": false,
+     "description": "a"
+    }
+   }
+  },
+  "spec": {
+   "components": {
+    "A": {
+     "signature": "A(counts: Record<string, number>, anything: Record<string, any>, shapes: Record<string, {a: string}>, nullable: Record<string, string>, mixed: Record<string, string | number>, lists?: Record<string, string[]>, nested: Record<string, Record<string, boolean>>)",
+     "description": "a"
+    }
+   },
+   "schema": {
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "type": "object",
+    "properties": {
+     "A": {
+      "$ref": "#/$defs/A"
+     }
+    },
+    "required": [
+     "A"
+    ],
+    "additionalProperties": false,
+    "$defs": {
+     "A": {
+      "type": "object",
+      "properties": {
+       "counts": {
+        "type": "object",
+        "propertyNames": {
+         "type": "string"
+        },
+        "additionalProperties": {
+         "type": "number"
+        }
+       },
+       "anything": {
+        "type": "object",
+        "propertyNames": {
+         "type": "string"
+        },
+        "additionalProperties": {}
+       },
+       "shapes": {
+        "type": "object",
+        "propertyNames": {
+         "type": "string"
+        },
+        "additionalProperties": {
+         "type": "object",
+         "properties": {
+          "a": {
+           "type": "string"
+          }
+         },
+         "required": [
+          "a"
+         ],
+         "additionalProperties": false
+        }
+       },
+       "nullable": {
+        "type": "object",
+        "propertyNames": {
+         "type": "string"
+        },
+        "additionalProperties": {
+         "type": [
+          "string",
+          "null"
+         ]
+        }
+       },
+       "mixed": {
+        "type": "object",
+        "propertyNames": {
+         "type": "string"
+        },
+        "additionalProperties": {
+         "type": [
+          "string",
+          "number"
+         ]
+        }
+       },
+       "lists": {
+        "type": "object",
+        "propertyNames": {
+         "type": "string"
+        },
+        "additionalProperties": {
+         "type": "array",
+         "items": {
+          "type": "string"
+         }
+        }
+       },
+       "nested": {
+        "type": "object",
+        "propertyNames": {
+         "type": "string"
+        },
+        "additionalProperties": {
+         "type": "object",
+         "propertyNames": {
+          "type": "string"
+         },
+         "additionalProperties": {
+          "type": "boolean"
+         }
+        }
+       }
+      },
+      "required": [
+       "counts",
+       "anything",
+       "shapes",
+       "nullable",
+       "mixed",
+       "nested"
+      ],
+      "additionalProperties": false,
+      "description": "a"
+     }
+    }
+   }
+  }
+ },
+ {
+  "name": "nullable",
+  "definition": {
+   "components": [
+    {
+     "name": "A",
+     "description": "a",
+     "props": [
+      {
+       "name": "text",
+       "type": {
+        "kind": "nullable",
+        "type": {
+         "kind": "string"
+        }
+       }
+      },
+      {
+       "name": "anything",
+       "type": {
+        "kind": "nullable",
+        "type": {
+         "kind": "any"
+        }
+       }
+      },
+      {
+       "name": "union",
+       "type": {
+        "kind": "nullable",
+        "type": {
+         "kind": "union",
+         "options": [
+          {
+           "kind": "string"
+          },
+          {
+           "kind": "number"
+          }
+         ]
+        }
+       }
+      },
+      {
+       "name": "list",
+       "type": {
+        "kind": "nullable",
+        "type": {
+         "kind": "array",
+         "items": {
+          "kind": "string"
+         }
+        }
+       }
+      },
+      {
+       "name": "shape",
+       "type": {
+        "kind": "nullable",
+        "type": {
+         "kind": "object",
+         "fields": [
+          {
+           "name": "a",
+           "type": {
+            "kind": "string"
+           }
+          }
+         ]
+        }
+       }
+      },
+      {
+       "name": "word",
+       "type": {
+        "kind": "nullable",
+        "type": {
+         "kind": "enum",
+         "values": [
+          "a",
+          "b"
+         ]
+        }
+       }
+      },
+      {
+       "name": "map",
+       "type": {
+        "kind": "nullable",
+        "type": {
+         "kind": "record",
+         "values": {
+          "kind": "string"
+         }
+        }
+       }
+      },
+      {
+       "name": "twice",
+       "type": {
+        "kind": "nullable",
+        "type": {
+         "kind": "nullable",
+         "type": {
+          "kind": "string"
+         }
+        }
+       }
+      },
+      {
+       "name": "emptyObject",
+       "type": {
+        "kind": "nullable",
+        "type": {
+         "kind": "object",
+         "fields": []
+        }
+       }
+      }
+     ]
+    }
+   ]
+  },
+  "schema": {
+   "$schema": "https://json-schema.org/draft/2020-12/schema",
+   "type": "object",
+   "properties": {
+    "A": {
+     "$ref": "#/$defs/A"
+    }
+   },
+   "required": [
+    "A"
+   ],
+   "additionalProperties": false,
+   "$defs": {
+    "A": {
+     "type": "object",
+     "properties": {
+      "text": {
+       "type": [
+        "string",
+        "null"
+       ]
+      },
+      "anything": {
+       "anyOf": [
+        {},
+        {
+         "type": "null"
+        }
+       ]
+      },
+      "union": {
+       "type": [
+        "string",
+        "number",
+        "null"
+       ]
+      },
+      "list": {
+       "anyOf": [
+        {
+         "type": "array",
+         "items": {
+          "type": "string"
+         }
+        },
+        {
+         "type": "null"
+        }
+       ]
+      },
+      "shape": {
+       "anyOf": [
+        {
+         "type": "object",
+         "properties": {
+          "a": {
+           "type": "string"
+          }
+         },
+         "required": [
+          "a"
+         ],
+         "additionalProperties": false
+        },
+        {
+         "type": "null"
+        }
+       ]
+      },
+      "word": {
+       "anyOf": [
+        {
+         "type": "string",
+         "enum": [
+          "a",
+          "b"
+         ]
+        },
+        {
+         "type": "null"
+        }
+       ]
+      },
+      "map": {
+       "anyOf": [
+        {
+         "type": "object",
+         "propertyNames": {
+          "type": "string"
+         },
+         "additionalProperties": {
+          "type": "string"
+         }
+        },
+        {
+         "type": "null"
+        }
+       ]
+      },
+      "twice": {
+       "type": [
+        "string",
+        "null"
+       ]
+      },
+      "emptyObject": {
+       "anyOf": [
+        {
+         "type": "object",
+         "properties": {},
+         "additionalProperties": false
+        },
+        {
+         "type": "null"
+        }
+       ]
+      }
+     },
+     "required": [
+      "text",
+      "anything",
+      "union",
+      "list",
+      "shape",
+      "word",
+      "map",
+      "twice",
+      "emptyObject"
+     ],
+     "additionalProperties": false,
+     "description": "a"
+    }
+   }
+  },
+  "spec": {
+   "components": {
+    "A": {
+     "signature": "A(text?: string, anything?: any, union?: string | number, list?: string[], shape?: {a: string}, word?: \"a\" | \"b\", map?: Record<string, string>, twice?: string, emptyObject?: {})",
+     "description": "a"
+    }
+   },
+   "schema": {
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "type": "object",
+    "properties": {
+     "A": {
+      "$ref": "#/$defs/A"
+     }
+    },
+    "required": [
+     "A"
+    ],
+    "additionalProperties": false,
+    "$defs": {
+     "A": {
+      "type": "object",
+      "properties": {
+       "text": {
+        "type": [
+         "string",
+         "null"
+        ]
+       },
+       "anything": {
+        "anyOf": [
+         {},
+         {
+          "type": "null"
+         }
+        ]
+       },
+       "union": {
+        "type": [
+         "string",
+         "number",
+         "null"
+        ]
+       },
+       "list": {
+        "anyOf": [
+         {
+          "type": "array",
+          "items": {
+           "type": "string"
+          }
+         },
+         {
+          "type": "null"
+         }
+        ]
+       },
+       "shape": {
+        "anyOf": [
+         {
+          "type": "object",
+          "properties": {
+           "a": {
+            "type": "string"
+           }
+          },
+          "required": [
+           "a"
+          ],
+          "additionalProperties": false
+         },
+         {
+          "type": "null"
+         }
+        ]
+       },
+       "word": {
+        "anyOf": [
+         {
+          "type": "string",
+          "enum": [
+           "a",
+           "b"
+          ]
+         },
+         {
+          "type": "null"
+         }
+        ]
+       },
+       "map": {
+        "anyOf": [
+         {
+          "type": "object",
+          "propertyNames": {
+           "type": "string"
+          },
+          "additionalProperties": {
+           "type": "string"
+          }
+         },
+         {
+          "type": "null"
+         }
+        ]
+       },
+       "twice": {
+        "type": [
+         "string",
+         "null"
+        ]
+       },
+       "emptyObject": {
+        "anyOf": [
+         {
+          "type": "object",
+          "properties": {},
+          "additionalProperties": false
+         },
+         {
+          "type": "null"
+         }
+        ]
+       }
+      },
+      "required": [
+       "text",
+       "anything",
+       "union",
+       "list",
+       "shape",
+       "word",
+       "map",
+       "twice",
+       "emptyObject"
+      ],
+      "additionalProperties": false,
+      "description": "a"
+     }
+    }
+   }
+  }
+ },
+ {
+  "name": "optional-and-nullable",
+  "definition": {
+   "components": [
+    {
+     "name": "A",
+     "description": "a",
+     "props": [
+      {
+       "name": "both",
+       "type": {
+        "kind": "nullable",
+        "type": {
+         "kind": "string"
+        }
+       },
+       "optional": true
+      },
+      {
+       "name": "nullish",
+       "type": {
+        "kind": "nullable",
+        "type": {
+         "kind": "number"
+        }
+       },
+       "optional": true
+      },
+      {
+       "name": "list",
+       "type": {
+        "kind": "nullable",
+        "type": {
+         "kind": "array",
+         "items": {
+          "kind": "string"
+         }
+        }
+       },
+       "optional": true
+      },
+      {
+       "name": "shape",
+       "type": {
+        "kind": "nullable",
+        "type": {
+         "kind": "object",
+         "fields": [
+          {
+           "name": "a",
+           "type": {
+            "kind": "nullable",
+            "type": {
+             "kind": "string"
+            }
+           },
+           "optional": true
+          }
+         ]
+        }
+       },
+       "optional": true
+      },
+      {
+       "name": "required",
+       "type": {
+        "kind": "boolean"
+       }
+      }
+     ]
+    }
+   ]
+  },
+  "schema": {
+   "$schema": "https://json-schema.org/draft/2020-12/schema",
+   "type": "object",
+   "properties": {
+    "A": {
+     "$ref": "#/$defs/A"
+    }
+   },
+   "required": [
+    "A"
+   ],
+   "additionalProperties": false,
+   "$defs": {
+    "A": {
+     "type": "object",
+     "properties": {
+      "both": {
+       "type": [
+        "string",
+        "null"
+       ]
+      },
+      "nullish": {
+       "type": [
+        "number",
+        "null"
+       ]
+      },
+      "list": {
+       "anyOf": [
+        {
+         "type": "array",
+         "items": {
+          "type": "string"
+         }
+        },
+        {
+         "type": "null"
+        }
+       ]
+      },
+      "shape": {
+       "anyOf": [
+        {
+         "type": "object",
+         "properties": {
+          "a": {
+           "type": [
+            "string",
+            "null"
+           ]
+          }
+         },
+         "additionalProperties": false
+        },
+        {
+         "type": "null"
+        }
+       ]
+      },
+      "required": {
+       "type": "boolean"
+      }
+     },
+     "required": [
+      "required"
+     ],
+     "additionalProperties": false,
+     "description": "a"
+    }
+   }
+  },
+  "spec": {
+   "components": {
+    "A": {
+     "signature": "A(both?: string, nullish?: number, list?: string[], shape?: {a?: string}, required: boolean)",
+     "description": "a"
+    }
+   },
+   "schema": {
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "type": "object",
+    "properties": {
+     "A": {
+      "$ref": "#/$defs/A"
+     }
+    },
+    "required": [
+     "A"
+    ],
+    "additionalProperties": false,
+    "$defs": {
+     "A": {
+      "type": "object",
+      "properties": {
+       "both": {
+        "type": [
+         "string",
+         "null"
+        ]
+       },
+       "nullish": {
+        "type": [
+         "number",
+         "null"
+        ]
+       },
+       "list": {
+        "anyOf": [
+         {
+          "type": "array",
+          "items": {
+           "type": "string"
+          }
+         },
+         {
+          "type": "null"
+         }
+        ]
+       },
+       "shape": {
+        "anyOf": [
+         {
+          "type": "object",
+          "properties": {
+           "a": {
+            "type": [
+             "string",
+             "null"
+            ]
+           }
+          },
+          "additionalProperties": false
+         },
+         {
+          "type": "null"
+         }
+        ]
+       },
+       "required": {
+        "type": "boolean"
+       }
+      },
+      "required": [
+       "required"
+      ],
+      "additionalProperties": false,
+      "description": "a"
+     }
+    }
+   }
+  }
+ },
+ {
+  "name": "nested-kinds",
+  "definition": {
+   "components": [
+    {
+     "name": "Table",
+     "description": "A table of rows.",
+     "props": [
+      {
+       "name": "columns",
+       "type": {
+        "kind": "array",
+        "items": {
+         "kind": "object",
+         "fields": [
+          {
+           "name": "key",
+           "type": {
+            "kind": "string"
+           }
+          },
+          {
+           "name": "label",
+           "type": {
+            "kind": "string"
+           }
+          },
+          {
+           "name": "align",
+           "type": {
+            "kind": "enum",
+            "values": [
+             "left",
+             "right"
+            ]
+           },
+           "optional": true
+          }
+         ]
+        }
+       }
+      },
+      {
+       "name": "rows",
+       "type": {
+        "kind": "array",
+        "items": {
+         "kind": "record",
+         "values": {
+          "kind": "nullable",
+          "type": {
+           "kind": "union",
+           "options": [
+            {
+             "kind": "string"
+            },
+            {
+             "kind": "number"
+            },
+            {
+             "kind": "boolean"
+            }
+           ]
+          }
+         }
+        }
+       }
+      },
+      {
+       "name": "footer",
+       "type": {
+        "kind": "union",
+        "options": [
+         {
+          "kind": "string"
+         },
+         {
+          "kind": "object",
+          "fields": [
+           {
+            "name": "total",
+            "type": {
+             "kind": "number"
+            }
+           },
+           {
+            "name": "note",
+            "type": {
+             "kind": "nullable",
+             "type": {
+              "kind": "string"
+             }
+            }
+           }
+          ]
+         }
+        ]
+       },
+       "optional": true
+      }
+     ]
+    },
+    {
+     "name": "Chart",
+     "description": "A chart.",
+     "props": [
+      {
+       "name": "kind",
+       "type": {
+        "kind": "enum",
+        "values": [
+         "bar",
+         "line"
+        ]
+       }
+      },
+      {
+       "name": "series",
+       "type": {
+        "kind": "array",
+        "items": {
+         "kind": "object",
+         "fields": [
+          {
+           "name": "name",
+           "type": {
+            "kind": "string"
+           }
+          },
+          {
+           "name": "points",
+           "type": {
+            "kind": "array",
+            "items": {
+             "kind": "union",
+             "options": [
+              {
+               "kind": "number"
+              },
+              {
+               "kind": "array",
+               "items": {
+                "kind": "number"
+               }
+              }
+             ]
+            }
+           }
+          }
+         ]
+        }
+       }
+      }
+     ]
+    }
+   ],
+   "componentGroups": [
+    {
+     "name": "Data",
+     "components": [
+      "Table",
+      "Chart"
+     ]
+    }
+   ],
+   "root": "Table"
+  },
+  "schema": {
+   "$schema": "https://json-schema.org/draft/2020-12/schema",
+   "type": "object",
+   "properties": {
+    "Table": {
+     "$ref": "#/$defs/Table"
+    },
+    "Chart": {
+     "$ref": "#/$defs/Chart"
+    }
+   },
+   "required": [
+    "Table",
+    "Chart"
+   ],
+   "additionalProperties": false,
+   "$defs": {
+    "Table": {
+     "type": "object",
+     "properties": {
+      "columns": {
+       "type": "array",
+       "items": {
+        "type": "object",
+        "properties": {
+         "key": {
+          "type": "string"
+         },
+         "label": {
+          "type": "string"
+         },
+         "align": {
+          "type": "string",
+          "enum": [
+           "left",
+           "right"
+          ]
+         }
+        },
+        "required": [
+         "key",
+         "label"
+        ],
+        "additionalProperties": false
+       }
+      },
+      "rows": {
+       "type": "array",
+       "items": {
+        "type": "object",
+        "propertyNames": {
+         "type": "string"
+        },
+        "additionalProperties": {
+         "type": [
+          "string",
+          "number",
+          "boolean",
+          "null"
+         ]
+        }
+       }
+      },
+      "footer": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "object",
+         "properties": {
+          "total": {
+           "type": "number"
+          },
+          "note": {
+           "type": [
+            "string",
+            "null"
+           ]
+          }
+         },
+         "required": [
+          "total",
+          "note"
+         ],
+         "additionalProperties": false
+        }
+       ]
+      }
+     },
+     "required": [
+      "columns",
+      "rows"
+     ],
+     "additionalProperties": false,
+     "description": "A table of rows."
+    },
+    "Chart": {
+     "type": "object",
+     "properties": {
+      "kind": {
+       "type": "string",
+       "enum": [
+        "bar",
+        "line"
+       ]
+      },
+      "series": {
+       "type": "array",
+       "items": {
+        "type": "object",
+        "properties": {
+         "name": {
+          "type": "string"
+         },
+         "points": {
+          "type": "array",
+          "items": {
+           "anyOf": [
+            {
+             "type": "number"
+            },
+            {
+             "type": "array",
+             "items": {
+              "type": "number"
+             }
+            }
+           ]
+          }
+         }
+        },
+        "required": [
+         "name",
+         "points"
+        ],
+        "additionalProperties": false
+       }
+      }
+     },
+     "required": [
+      "kind",
+      "series"
+     ],
+     "additionalProperties": false,
+     "description": "A chart."
+    }
+   }
+  },
+  "spec": {
+   "root": "Table",
+   "components": {
+    "Table": {
+     "signature": "Table(columns: {key: string, label: string, align?: \"left\" | \"right\"}[], rows: Record<string, string | number | boolean>[], footer?: string | {total: number, note?: string})",
+     "description": "A table of rows."
+    },
+    "Chart": {
+     "signature": "Chart(kind: \"bar\" | \"line\", series: {name: string, points: (number | number[])[]}[])",
+     "description": "A chart."
+    }
+   },
+   "componentGroups": [
+    {
+     "name": "Data",
+     "components": [
+      "Table",
+      "Chart"
+     ]
+    }
+   ],
+   "schema": {
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "type": "object",
+    "properties": {
+     "Table": {
+      "$ref": "#/$defs/Table"
+     },
+     "Chart": {
+      "$ref": "#/$defs/Chart"
+     }
+    },
+    "required": [
+     "Table",
+     "Chart"
+    ],
+    "additionalProperties": false,
+    "$defs": {
+     "Table": {
+      "type": "object",
+      "properties": {
+       "columns": {
+        "type": "array",
+        "items": {
+         "type": "object",
+         "properties": {
+          "key": {
+           "type": "string"
+          },
+          "label": {
+           "type": "string"
+          },
+          "align": {
+           "type": "string",
+           "enum": [
+            "left",
+            "right"
+           ]
+          }
+         },
+         "required": [
+          "key",
+          "label"
+         ],
+         "additionalProperties": false
+        }
+       },
+       "rows": {
+        "type": "array",
+        "items": {
+         "type": "object",
+         "propertyNames": {
+          "type": "string"
+         },
+         "additionalProperties": {
+          "type": [
+           "string",
+           "number",
+           "boolean",
+           "null"
+          ]
+         }
+        }
+       },
+       "footer": {
+        "anyOf": [
+         {
+          "type": "string"
+         },
+         {
+          "type": "object",
+          "properties": {
+           "total": {
+            "type": "number"
+           },
+           "note": {
+            "type": [
+             "string",
+             "null"
+            ]
+           }
+          },
+          "required": [
+           "total",
+           "note"
+          ],
+          "additionalProperties": false
+         }
+        ]
+       }
+      },
+      "required": [
+       "columns",
+       "rows"
+      ],
+      "additionalProperties": false,
+      "description": "A table of rows."
+     },
+     "Chart": {
+      "type": "object",
+      "properties": {
+       "kind": {
+        "type": "string",
+        "enum": [
+         "bar",
+         "line"
+        ]
+       },
+       "series": {
+        "type": "array",
+        "items": {
+         "type": "object",
+         "properties": {
+          "name": {
+           "type": "string"
+          },
+          "points": {
+           "type": "array",
+           "items": {
+            "anyOf": [
+             {
+              "type": "number"
+             },
+             {
+              "type": "array",
+              "items": {
+               "type": "number"
+              }
+             }
+            ]
+           }
+          }
+         },
+         "required": [
+          "name",
+          "points"
+         ],
+         "additionalProperties": false
+        }
+       }
+      },
+      "required": [
+       "kind",
+       "series"
+      ],
+      "additionalProperties": false,
+      "description": "A chart."
+     }
+    }
+   }
+  }
+ },
+ {
   "name": "root-missing",
   "definition": {
    "components": [

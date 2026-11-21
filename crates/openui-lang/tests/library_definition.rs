@@ -15,8 +15,8 @@ mod common;
 
 use common::{conformance_dir, golden_dir, load_corpus, read};
 use openui_lang::{
-    Library, LibraryDefinition, LibraryDefinitionError, StreamParser, create_library, parse,
-    parse_json, stringify_json,
+    Library, LibraryDefinition, LibraryDefinitionError, Limits, StreamParser, TypeDescription,
+    create_library, free_json, parse, parse_json, stringify_json,
 };
 use serde_json::{Value, json};
 use std::sync::Arc;
@@ -159,7 +159,7 @@ fn a_proto_component_answers_the_root_check_with_its_own_fields() {
 
 #[test]
 fn a_kind_the_core_does_not_support_is_refused_naming_the_kind() {
-    for kind in ["enum", "array", "union", "date", ""] {
+    for kind in ["component", "action", "named", "date", "literal", ""] {
         let definition = json!({"components": [{
             "name": "Card", "description": "",
             "props": [{"name": "ok", "type": {"kind": "string"}}, {"name": "tone", "type": {"kind": kind}}]
@@ -232,6 +232,60 @@ fn malformed_definitions_are_refused_with_where_and_why() {
             "duplicate prop \"x\"",
         ),
         (
+            json!({"components": [{"name": "A", "description": "", "props": [
+                {"name": "x", "type": {"kind": "object", "fields": [
+                    {"name": "x", "type": {"kind": "string"}},
+                    {"name": "x", "type": {"kind": "number"}, "optional": true}
+                ]}}
+            ]}]}),
+            "components[0].props[0].type.fields[1].name",
+            "duplicate field \"x\"",
+        ),
+        (
+            json!({"components": [{"name": "A", "description": "", "props": [
+                {"name": "x", "type": {"kind": "enum", "values": ["a", 1]}}
+            ]}]}),
+            "components[0].props[0].type.values[1]",
+            "expected a string",
+        ),
+        (
+            json!({"components": [{"name": "A", "description": "", "props": [
+                {"name": "x", "type": {"kind": "array"}}
+            ]}]}),
+            "components[0].props[0].type.items",
+            "missing",
+        ),
+        (
+            json!({"components": [{"name": "A", "description": "", "props": [
+                {"name": "x", "type": {"kind": "array", "items": {"kind": "string"}, "values": {"kind": "string"}}}
+            ]}]}),
+            "components[0].props[0].type.values",
+            "unknown field",
+        ),
+        (
+            json!({"components": [{"name": "A", "description": "", "props": [
+                {"name": "x", "type": {"kind": "union", "options": {"kind": "string"}}}
+            ]}]}),
+            "components[0].props[0].type.options",
+            "expected an array",
+        ),
+        (
+            json!({"components": [{"name": "A", "description": "", "props": [
+                {"name": "x", "type": {"kind": "union", "options": [{"kind": "string"}, {"kind": "nullable"}]}}
+            ]}]}),
+            "components[0].props[0].type.options[1].type",
+            "missing",
+        ),
+        (
+            json!({"components": [{"name": "A", "description": "", "props": [
+                {"name": "x", "type": {"kind": "record", "values": {"kind": "object", "fields": [
+                    {"name": "f", "type": {"kind": "string"}, "nullable": true}
+                ]}}}
+            ]}]}),
+            "components[0].props[0].type.values.fields[0].nullable",
+            "unknown field",
+        ),
+        (
             json!({"components": [], "root": null}),
             "root",
             "expected a string",
@@ -261,6 +315,286 @@ fn malformed_definitions_are_refused_with_where_and_why() {
             other => panic!("{definition}: expected Invalid, got {other:?}"),
         }
     }
+}
+
+/// `z.enum` makes its words an object's keys, so they come in JavaScript
+/// property order, each once; a definition listing them as written, with a
+/// repeat, gets the same.
+#[test]
+fn enum_words_come_in_javascript_order_each_once() {
+    let case = case("enum-key-order");
+    let mut definition = case["definition"].clone();
+    definition["components"][0]["props"][0]["type"]["values"] = json!([
+        "b",
+        "10",
+        "2",
+        "__proto__",
+        "01",
+        "-0",
+        "4294967295",
+        "4294967294",
+        "b",
+        "2"
+    ]);
+    definition["components"][0]["props"][1]["type"]["values"] = json!(["a", "b", "a"]);
+    let library = define(&definition).unwrap();
+    assert_eq!(
+        stringify_json(&library.to_spec()),
+        stringify_json(&case["spec"])
+    );
+}
+
+/// An inline object's fields follow JavaScript key order, as props do.
+#[test]
+fn object_fields_come_in_javascript_order_whatever_order_they_are_listed_in() {
+    let case = case("object-key-order");
+    let mut definition = case["definition"].clone();
+    let fields = definition["components"][0]["props"][0]["type"]["fields"]
+        .as_array_mut()
+        .unwrap();
+    // As written in the declaration: b, "10", "2", __proto__, a"b, "".
+    fields.swap(0, 2);
+    fields.swap(1, 2);
+    let names: Vec<&str> = fields.iter().map(|f| f["name"].as_str().unwrap()).collect();
+    assert_eq!(names, ["b", "2", "10", "__proto__", "a\"b", ""]);
+    let library = define(&definition).unwrap();
+    assert_eq!(
+        stringify_json(&library.to_spec()),
+        stringify_json(&case["spec"])
+    );
+}
+
+/// Every sample's defined library is the library the parser compiles from
+/// upstream's own JSON Schema for it.
+#[test]
+fn every_sample_compiles_to_the_library_of_upstreams_schema() {
+    for case in golden().iter().filter(|c| c.get("schema").is_some()) {
+        let name = case["name"].as_str().unwrap();
+        let defined = define(&case["definition"]).unwrap().library();
+        assert_eq!(
+            defined,
+            Library::from_json_schema(&case["schema"]),
+            "{name}"
+        );
+    }
+}
+
+/// A component whose one prop's type nests `depth` levels: `wrap` puts a
+/// type inside another, around a string. Built with a loop, moving each type
+/// into the next (`json!` would copy it, recursively).
+fn nested(depth: usize, wrap: fn(Value) -> Value) -> Value {
+    let mut ty = json!({"kind": "string"});
+    for _ in 1..depth {
+        ty = wrap(ty);
+    }
+    let mut prop = json!({"name": "v"});
+    prop["type"] = ty;
+    let mut component = json!({"name": "Deep", "description": ""});
+    component["props"] = Value::Array(vec![prop]);
+    let mut definition = json!({});
+    definition["components"] = Value::Array(vec![component]);
+    definition
+}
+
+/// `{"kind": kind, field: inner}`, moving `inner` in.
+fn holding(kind: &str, field: &str, inner: Value) -> Value {
+    let mut ty = json!({"kind": kind});
+    ty[field] = inner;
+    ty
+}
+
+fn in_array(ty: Value) -> Value {
+    holding("array", "items", ty)
+}
+
+fn in_object(ty: Value) -> Value {
+    let mut field = json!({"name": "f", "optional": true});
+    field["type"] = ty;
+    holding("object", "fields", Value::Array(vec![field]))
+}
+
+fn in_union(ty: Value) -> Value {
+    holding(
+        "union",
+        "options",
+        Value::Array(vec![json!({"kind": "number"}), ty]),
+    )
+}
+
+fn in_record(ty: Value) -> Value {
+    holding("record", "values", ty)
+}
+
+fn in_nullable(ty: Value) -> Value {
+    holding("nullable", "type", ty)
+}
+
+fn depth_of(ty: &TypeDescription) -> usize {
+    let mut depth = 1;
+    let mut ty = ty;
+    while let TypeDescription::Array(inner) = ty {
+        depth += 1;
+        ty = inner;
+    }
+    depth
+}
+
+/// Types nest as deep as `Limits::depth` (256 by default), a prop's type
+/// being the first level, and one level more is refused with the depth
+/// error, naming the first type past the limit: reading never recurses past
+/// the limit, whatever the input's depth. A definition at the limit goes all
+/// the way through (its text reads back with `parse_json`, its schema and
+/// spec are written, the parser compiles the schema) on a 512 KiB thread,
+/// growing the stack on demand.
+#[test]
+fn types_nest_to_the_depth_limit_and_no_further() {
+    std::thread::Builder::new()
+        .stack_size(512 * 1024)
+        .spawn(|| {
+            let limit = Limits::default().depth();
+            assert_eq!(limit, 256);
+            for wrap in [in_array, in_object, in_union, in_record, in_nullable] {
+                let at_limit = nested(limit, wrap);
+                // The deepest form still reads back from its text.
+                let text = stringify_json(&at_limit);
+                let reread = parse_json(&text).unwrap();
+                let library = define(&reread).unwrap();
+                let schema = library.to_json_schema();
+                let spec = library.to_spec();
+                let signature = spec["components"]["Deep"]["signature"].as_str().unwrap();
+                assert!(signature.starts_with("Deep(v"), "{signature}");
+                let _ = library.library();
+                let schema_text = stringify_json(&schema);
+                let schema_reread = parse_json(&schema_text).unwrap();
+                assert_eq!(
+                    stringify_json(&schema_reread),
+                    schema_text,
+                    "the schema reads back"
+                );
+                openui_lang::generate_prompt_with_limits(&spec, Limits::default())
+                    .expect("the spec is within the prompt's depth");
+                for json in [schema, spec, schema_reread, reread, at_limit] {
+                    free_json(json);
+                }
+
+                let past = nested(limit + 1, wrap);
+                let refused = define(&past).err().unwrap();
+                free_json(past);
+                match refused {
+                    LibraryDefinitionError::DepthLimited { path, limit: named } => {
+                        assert_eq!(named, limit);
+                        assert!(path.starts_with("components[0].props[0].type."), "{path}");
+                    }
+                    other => panic!("expected DepthLimited, got {other:?}"),
+                }
+            }
+            let at_limit = LibraryDefinition::from_json(&nested(limit, in_array)).unwrap();
+            assert_eq!(depth_of(&at_limit.components[0].props[0].ty), limit);
+            let err = LibraryDefinition::from_json(&nested(limit + 1, in_array))
+                .err()
+                .unwrap();
+            let path = format!("components[0].props[0].type{}", ".items".repeat(limit));
+            assert_eq!(
+                err.to_string(),
+                format!("library definition: {path}: types nest deeper than 256 levels")
+            );
+        })
+        .unwrap()
+        .join()
+        .unwrap();
+}
+
+/// The crate's smallest stack in the depth suite.
+const SMALL_STACK: usize = 64 * 1024;
+
+/// On a 64 KiB thread, a definition nested to the default limit in each
+/// recursive kind reads, builds its schema, spec and parser library, and
+/// drops all of it: compiling the deep schema (whose clones and drops
+/// recurse) runs on a stack segment sized for the definition's depth.
+///
+/// What is handed back is dropped by the caller, through serde_json's
+/// recursive drop (the returned `Library` holds each prop's schema). That
+/// fits 64 KiB in the test profile (opt-level 1) and in release, as here.
+/// Measured at opt-level 0 it does not: the schema of an array chain at the
+/// limit overflows 64 KiB, and the `Library` of an object chain needs
+/// between 192 and 256 KiB. The returned JSON can be freed with
+/// `free_json`; the `Library` cannot be, short of a change to the parser's
+/// own type.
+#[test]
+fn a_definition_at_the_limit_builds_and_drops_on_a_64_kib_stack() {
+    let limit = Limits::default().depth();
+    for wrap in [in_array, in_object, in_union, in_record, in_nullable] {
+        let input = nested(limit, wrap);
+        std::thread::Builder::new()
+            .stack_size(SMALL_STACK)
+            .spawn(move || {
+                let definition = LibraryDefinition::from_json(&input).unwrap();
+                free_json(input);
+                let library = create_library(definition).unwrap();
+                let parser_library = library.library();
+                assert!(parser_library.component("Deep").is_some());
+                drop(parser_library);
+                let schema = library.to_json_schema();
+                let spec = library.to_spec();
+                // serde_json drops a value by recursing into it; a caller on
+                // a small stack frees deep ones with `free_json`.
+                free_json(schema);
+                free_json(spec);
+                drop(library);
+            })
+            .unwrap()
+            .join()
+            .unwrap();
+    }
+}
+
+/// The limit is the one in `Limits`, raised or lowered like any other.
+#[test]
+fn the_type_depth_limit_is_configurable() {
+    let limits = Limits::default().with_depth(10);
+    for wrap in [in_array, in_object, in_union] {
+        assert!(LibraryDefinition::from_json_with_limits(&nested(10, wrap), limits).is_ok());
+        assert!(matches!(
+            LibraryDefinition::from_json_with_limits(&nested(11, wrap), limits),
+            Err(LibraryDefinitionError::DepthLimited { limit: 10, .. })
+        ));
+    }
+    let raised = Limits::default().with_depth(300);
+    assert!(LibraryDefinition::from_json_with_limits(&nested(300, in_array), raised).is_ok());
+    // A depth past a field of an object counts the object's level.
+    let flat = json!({"components": [{"name": "A", "description": "", "props": [
+        {"name": "a", "type": {"kind": "string"}}
+    ]}]});
+    assert!(
+        LibraryDefinition::from_json_with_limits(&flat, Limits::default().with_depth(1)).is_ok()
+    );
+    assert!(matches!(
+        LibraryDefinition::from_json_with_limits(&flat, Limits::default().with_depth(0)),
+        Err(LibraryDefinitionError::DepthLimited { limit: 0, .. })
+    ));
+}
+
+/// Input far deeper than the limit is refused at the limit, without a panic
+/// or a stack overflow, on a small stack.
+#[test]
+fn a_definition_far_past_the_limit_is_refused_not_a_crash() {
+    std::thread::Builder::new()
+        .stack_size(128 * 1024)
+        .spawn(|| {
+            for wrap in [in_array, in_object] {
+                let deep = nested(200_000, wrap);
+                let err = LibraryDefinition::from_json(&deep).err().unwrap();
+                assert!(
+                    matches!(err, LibraryDefinitionError::DepthLimited { limit: 256, .. }),
+                    "{err:?}"
+                );
+                // serde_json drops a value by recursing into it.
+                free_json(deep);
+            }
+        })
+        .unwrap()
+        .join()
+        .unwrap();
 }
 
 /// The corpus library for `conformance/cases/library-definition/` is the
