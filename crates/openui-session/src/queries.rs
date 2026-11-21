@@ -20,9 +20,19 @@ pub struct QueryEffects {
 
 impl QueryEffects {
     pub(super) fn record(&mut self, update: QueryUpdate) {
+        self.record_for(update, true);
+    }
+
+    /// Record an update of the registrations. Unless they speak for the
+    /// drawn program, keep only its calls: they stay with the session (see
+    /// `take_query_update`), and its redraw and round cut describe another
+    /// program's snapshot, which nothing draws (#142).
+    pub(super) fn record_for(&mut self, update: QueryUpdate, drawn: bool) {
         self.calls.retain(|call| call.id.is_pending());
-        self.changed |= update.needs_redraw();
-        self.reader_rounds_limited |= update.reader_rounds_limited;
+        if drawn {
+            self.changed |= update.needs_redraw();
+            self.reader_rounds_limited |= update.reader_rounds_limited;
+        }
         self.calls.extend(update.calls.into_iter().map(Arc::new));
     }
 }
@@ -62,6 +72,10 @@ pub(super) struct Registered {
     /// The last attempt to register a program the registrations do not
     /// belong to was refused.
     refused: bool,
+    /// Queries resumed and no registration has been accepted since. The
+    /// pause released every call, and only a registration asks for them
+    /// again (#142).
+    pub(super) resumed: bool,
 }
 
 impl Registered {
@@ -426,6 +440,11 @@ impl SessionCore {
         // refused re-registration keeps its own program's results.
         let belongs = self.registered.belongs(&self.program);
         self.registered.refused = result.is_err() && !belongs;
+        // The first registration after a resume: if it re-registers the
+        // program the registrations belong to and is refused, that program
+        // keeps its results but nothing asked again for the calls the pause
+        // released (#142).
+        let owed = belongs && std::mem::take(&mut self.registered.resumed);
         if result.is_ok() {
             self.registered.program = Some(Arc::downgrade(&self.program));
             if !belongs {
@@ -434,10 +453,16 @@ impl SessionCore {
         }
         let error = match result {
             Ok(update) => {
+                self.registered.resumed = false;
                 self.query_effects.record(update);
                 None
             }
-            Err(error) => Some(error),
+            Err(error) => {
+                if owed && let Some(manager) = self.manager.as_mut() {
+                    self.query_effects.record(manager.request_owed_calls());
+                }
+                Some(error)
+            }
         };
         self.query_effects.changed |= self.query_effects.evaluation_error != error;
         self.query_effects.evaluation_error = error;
@@ -509,6 +534,8 @@ impl SessionCore {
         {
             return self.complete_mutation_delivery(generation, call, outcome);
         }
+        // Unregistered, the delivery is another program's (#142).
+        let drawn = !self.is_unregistered();
         let manager = self.manager.as_mut().ok_or(OpenUiError::InvalidToolCall)?;
         let delivery = outcome.stage(manager, call)?;
         let update = if delivery.needs_reader_context() {
@@ -520,7 +547,7 @@ impl SessionCore {
             ) {
                 Ok(functions) => functions,
                 Err(_) if delivery.result_refusal().is_some() => {
-                    self.query_effects.record(delivery.finish(None)?);
+                    self.query_effects.record_for(delivery.finish(None)?, drawn);
                     return Ok(());
                 }
                 Err(error) => return Err(error),
@@ -535,7 +562,7 @@ impl SessionCore {
         } else {
             delivery.finish(None)?
         };
-        self.query_effects.record(update);
+        self.query_effects.record_for(update, drawn);
         Ok(())
     }
 

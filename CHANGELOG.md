@@ -2,6 +2,25 @@
 
 ## Unreleased
 
+- Runtime, session: three defects on the unregistered and paused paths
+  (#142, from #125 and #127). After pause and resume, a program whose own
+  re-registration is refused by a limit keeps its results as before and
+  now also asks again for the calls the pause released, with the tool
+  names and arguments of its last accepted registration (new
+  `QueryManager::request_owed_calls`): a reader whose call was in flight
+  at the pause shows a call instead of staying idle with no result, error
+  or call. While a program is unregistered, a late delivery, a mutation
+  result or a pause of the other program no longer sets `changed` or
+  `reader_rounds_limited` in `take_query_update`; its calls stay with the
+  session as before. Pending runs plus failures waiting from a pause now
+  never exceed `maxContinuations`: with only waiting failures in the
+  slots, a host handoff fails at its mutation step with the pending-plan
+  limit (`size_limited`, no continuation, and the mutation's `run` event
+  is not handed to the host), as a managed submission at the limit
+  already did; until now it was accepted, reaching `maxContinuations + 1`
+  (new `ActionContinuation::step`). A new test bounds the allocation
+  requests of each command on the unregistered path to grow in proportion
+  to the program.
 - Library definitions through both bindings (#137, spec #123). A host hands
   a library definition in plain-data form, as JSON text, to
   `ComponentLibrary.fromDefinition` (native: Swift and Kotlin through the

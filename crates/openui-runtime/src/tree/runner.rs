@@ -105,6 +105,14 @@ impl fmt::Debug for ActionContinuation {
         f.write_str("ActionContinuation { .. }")
     }
 }
+impl ActionContinuation {
+    /// The index of the mutation step the run is suspended at, while it is
+    /// still pending (not yet resumed or revoked).
+    pub fn step(&self) -> Option<usize> {
+        let pending = self.pending.try_borrow().ok()?;
+        pending.as_ref().map(|run| run.next.saturating_sub(1))
+    }
+}
 /// A continuation was refused before any effects occurred.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 #[non_exhaustive]

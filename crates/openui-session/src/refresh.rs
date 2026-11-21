@@ -32,11 +32,13 @@ impl SessionCore {
     /// the next `take_query_update` as a resumed segment, a click's in its
     /// own output.
     pub fn pause_queries(&mut self) -> Result<(), OpenUiError> {
+        // Unregistered, the snapshot it changes is another program's (#142).
+        let drawn = !self.is_unregistered();
         if let Some(manager) = self.manager.as_mut() {
             let update = manager.apply(QueryCommand::Dispose)?;
             // Also clears the undrained calls, which no driver ever held.
             self.drop_paused_plans();
-            self.query_effects.record(update);
+            self.query_effects.record_for(update, drawn);
         }
         Ok(())
     }
@@ -51,6 +53,7 @@ impl SessionCore {
     pub fn resume_queries(&mut self) -> Result<(), OpenUiError> {
         if let Some(manager) = self.manager.as_mut().filter(|m| m.is_disposed()) {
             manager.apply(QueryCommand::Activate)?;
+            self.registered.resumed = true;
             self.query_inputs_changed = true;
             self.state_changed();
         }

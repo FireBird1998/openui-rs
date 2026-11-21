@@ -126,6 +126,43 @@ impl QueryManager {
         calls
     }
 
+    /// Start the calls the registered queries are owed by rule 4 (ADR
+    /// 0013), with the tool names and arguments of their last accepted
+    /// registration, evaluating nothing. [`QueryCommand::Dispose`] releases
+    /// every call and only a registration asks for them again, so a session
+    /// whose own re-registration after [`QueryCommand::Activate`] is refused
+    /// by a limit calls this to keep a query from staying idle with no
+    /// result, error or call (#142). In registration order; a key shared by
+    /// several queries gets one call, with the request of the first. Nothing
+    /// changes while disposed or when nothing is owed.
+    pub fn request_owed_calls(&mut self) -> QueryUpdate {
+        if self.disposed {
+            return self.idle_update();
+        }
+        let mut requests = QueryRequests::default();
+        for id in &self.order {
+            let Some(query) = self.queries.get(id).filter(|q| !q.suspended) else {
+                continue;
+            };
+            if self
+                .cache
+                .get(&query.key)
+                .is_some_and(|entry| owes_call(query, entry))
+            {
+                requests.request(query.key.clone(), &query.request);
+            }
+        }
+        let calls = requests.dispatch(self, None);
+        if calls.is_empty() {
+            return self.idle_update();
+        }
+        QueryUpdate {
+            calls,
+            changed: self.rebuild_snapshot(),
+            ..self.idle_update()
+        }
+    }
+
     /// After a call for `key` was delivered, take the run remembered for the
     /// key, if any, with the request that was asked for, whether or not the
     /// query that asked is still registered. With no query on the key the

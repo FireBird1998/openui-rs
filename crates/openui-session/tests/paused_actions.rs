@@ -480,8 +480,8 @@ fn a_call_handed_to_a_driver_says_the_tool_may_have_run() {
 fn a_host_handoff_counts_waiting_failures_against_the_slots() {
     // With room for two, one failure waiting and one host run pending, a
     // second host run evicts the first: the slots hold at most two. With
-    // only failures waiting there is nothing to evict, so the bound is
-    // `max_continuations + 1` (docs/runtime-binding.md).
+    // only failures waiting there is nothing to evict, and the handoff is
+    // refused (the next test, docs/runtime-binding.md).
     let limits = RuntimeLimits {
         max_continuations: 2,
         ..RuntimeLimits::default()
@@ -504,4 +504,60 @@ fn a_host_handoff_counts_waiting_failures_against_the_slots() {
     let effects = f.s.take_query_update();
     assert_eq!(effects.actions.len(), 1, "the waiting failure is kept");
     paused_failure(&effects.actions[0], 1);
+}
+
+#[test]
+fn a_host_handoff_with_only_failures_in_the_slots_is_refused_at_its_step() {
+    // #127 item 8 (#142). Two plans in flight at the pause (the first at
+    // its second mutation, the second at its first) leave two failures
+    // waiting, filling both slots. With nothing to evict, a host
+    // handoff would make three: it fails at its mutation step with the
+    // pending-plan limit instead, before its mutation is handed to the host,
+    // as a managed submission at the limit does. One slot short of full, a
+    // handoff is still accepted, so runs plus failures reach the limit.
+    let limits = RuntimeLimits {
+        max_continuations: 2,
+        ..RuntimeLimits::default()
+    };
+    let mut f = Fixture::with_limits(TWO_MUTATIONS, limits.clone());
+    f.drain();
+    f.click();
+    f.drain();
+    let save = f.call("save");
+    f.finish(&save, &json!({"value": 1}));
+    f.drain();
+    assert!(f.click().failure.is_none());
+    f.drain();
+    assert_eq!(f.s.pending_continuations(&refs()).unwrap(), 2);
+    f.pause();
+    f.s.detach_tool_provider();
+    let run = f.click();
+    let failure = run.failure.expect("refused at the limit");
+    assert_eq!(failure.step, Some(1));
+    assert!(matches!(failure.error, OpenUiError::LimitExceeded { .. }));
+    assert!(run.size_limited && run.continuation.is_none());
+    assert!(
+        run.events.is_empty(),
+        "the mutation is not handed to the host"
+    );
+    assert_eq!(f.s.pending_continuations(&refs()).unwrap(), 0);
+    let effects = f.s.take_query_update();
+    assert_eq!(effects.actions.len(), 2, "both waiting failures are kept");
+    paused_failure(&effects.actions[0], 3);
+    paused_failure(&effects.actions[1], 1);
+    // Taken, they free their slots.
+    let _host = f.click().continuation.expect("a host handoff");
+    assert_eq!(f.s.pending_continuations(&refs()).unwrap(), 1);
+
+    // At the boundary: one failure waiting and one slot free.
+    let mut f = Fixture::with_limits(TWO_MUTATIONS, limits);
+    f.drain();
+    f.click();
+    f.drain();
+    f.pause();
+    f.s.detach_tool_provider();
+    let run = f.click();
+    assert!(run.failure.is_none() && run.continuation.is_some());
+    assert_eq!(f.s.pending_continuations(&refs()).unwrap(), 1);
+    assert_eq!(f.s.take_query_update().actions.len(), 1);
 }

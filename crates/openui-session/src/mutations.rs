@@ -166,6 +166,8 @@ impl SessionCore {
             Delivery::Outcome(ToolCallOutcome::Result(_) | ToolCallOutcome::MissingResult)
         );
         let generation_room = self.next_continuation_generation();
+        // Unregistered, the mutation result is another program's (#142).
+        let drawn = !self.is_unregistered();
         let manager = self.manager.as_mut().ok_or(OpenUiError::InvalidToolCall)?;
         let staged = delivery.stage(manager, call)?;
         let succeeded = delivers_result && staged.result_refusal().is_none();
@@ -182,7 +184,7 @@ impl SessionCore {
             None
         };
         let update = staged.finish(None)?;
-        self.query_effects.record(update);
+        self.query_effects.record_for(update, drawn);
         let pending = self
             .continuations
             .remove(&generation)

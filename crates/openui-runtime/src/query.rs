@@ -291,6 +291,16 @@ struct CacheEntry {
     stale: bool,
 }
 
+/// Rule 4 (ADR 0013): whether a ready query on `entry`, its current entry,
+/// wants a call. A failed entry suppresses another call while this query can
+/// see an error. A new reader otherwise has neither data nor an explanation.
+/// A stale entry owes the run that was remembered for it (#119).
+fn owes_call(query: &Query, entry: &CacheEntry) -> bool {
+    !query.waiting()
+        && entry.pending.is_none()
+        && (entry.stale || (entry.data.is_none() && (!entry.failed || query.error.is_none())))
+}
+
 struct PendingCall {
     key: Arc<str>,
     tool_name: String,
@@ -646,13 +656,7 @@ impl QueryManager {
         if acquire {
             entry.references = entry.references.saturating_add(1);
         }
-        // A failed entry suppresses another call while this query can see an
-        // error. A new reader otherwise has neither data nor an explanation.
-        // A stale entry owes the run that was remembered for it (#119).
-        if !query.waiting()
-            && entry.pending.is_none()
-            && (entry.stale || (entry.data.is_none() && (!entry.failed || query.error.is_none())))
-        {
+        if owes_call(query, entry) {
             requests.request(key, &query.request);
         }
     }

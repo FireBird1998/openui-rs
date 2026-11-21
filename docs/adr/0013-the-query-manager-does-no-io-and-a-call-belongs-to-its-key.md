@@ -219,3 +219,9 @@ click beyond that fails at its step with the pending-plan limit. Where a
 program is both paused and unregistered the limit is reported, once. The
 reasons are fixed texts. Detaching the provider and disposing the session
 still end plans without a report: neither leaves a program that could go on.
+After a resume whose registration of the program the registrations belong to
+is refused by a limit, the session asks the query manager, once, for the tool
+calls of the last accepted registration, with that registration's tool names
+and arguments (#142): a refused registration leaves the last accepted one as
+what is drawn, exactly as when the same refusal happens without a pause, and
+nothing else would ask again for the calls the pause released.

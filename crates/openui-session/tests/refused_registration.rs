@@ -40,10 +40,14 @@ struct Fixture {
 impl Fixture {
     /// A session with a 2,048-byte result limit and a tool provider.
     fn new() -> Self {
+        Self::with_result_size(2048)
+    }
+
+    fn with_result_size(bytes: u64) -> Self {
         let lib = library();
         let limits = RuntimeLimits {
             evaluation: ParseLimits {
-                result_size: Some(2048),
+                result_size: Some(bytes),
                 ..Default::default()
             },
             ..Default::default()
@@ -109,7 +113,11 @@ impl Fixture {
     /// Make the registered program's own re-registration refused, so a
     /// replacement whose arguments read `$n` is refused too.
     fn grow_state(&mut self) {
-        let big = json!("x".repeat(1500)).to_string();
+        self.grow_state_to(1500);
+    }
+
+    fn grow_state_to(&mut self, bytes: usize) {
+        let big = json!("x".repeat(bytes)).to_string();
         self.s.set(&refs(), "$n".into(), Some(big)).unwrap();
         assert!(self.drain().evaluation_error.is_some());
     }
@@ -600,4 +608,159 @@ fn a_held_call_the_new_program_wants_for_a_current_key_goes_out_once() {
     f.finish("follow", json!({"value":"r2"}));
     f.drain();
     assert_eq!(value(&f.evaluate())[1], "r2");
+}
+
+#[test]
+fn a_reader_whose_call_a_pause_dropped_calls_again_when_its_own_re_registration_is_refused() {
+    // #125 item 2 (#142). `r`'s call is in flight when queries pause, which
+    // releases it; resume re-registers the same program, the limit refuses
+    // that, and nothing asked for `r`'s call again: `r` stayed idle with no
+    // result, error or call. The registrations still belong to the drawn
+    // program, so it keeps its own results and asks for the calls they owe.
+    let mut f = Fixture::new();
+    f.replace(
+        "$n=\"a\"\nq=Query(\"search\",{term:$n})\nr=Query(\"follow\",{v:q})\nroot=Box([q,r])",
+    );
+    f.drain();
+    f.grow_state();
+    f.finish("search", json!({"value":"v1"}));
+    assert_eq!(f.drain().calls[0].tool_name, "follow");
+    f.s.pause_queries().unwrap();
+    f.drain();
+    f.s.resume_queries().unwrap();
+    let resumed = f.drain();
+    assert!(
+        matches!(
+            resumed.evaluation_error,
+            Some(OpenUiError::LimitExceeded { .. })
+        ),
+        "the re-registration is still refused"
+    );
+    let calls: Vec<_> = resumed
+        .calls
+        .iter()
+        .map(|c| (c.tool_name.as_str(), c.arguments_json()))
+        .collect();
+    assert_eq!(calls, [("follow", Some(r#"{"v":"v1"}"#.to_owned()))]);
+    let draw = f.evaluate();
+    assert_eq!(value(&draw), json!(["v1", null]));
+    assert_eq!(snapshot(&draw)["__openui_loading"], json!(["r"]));
+    assert!(f.drain().calls.is_empty(), "asked for once");
+    f.finish("follow", json!({"value":"r1"}));
+    f.drain();
+    assert_eq!(value(&f.evaluate()), json!(["v1", "r1"]));
+}
+
+#[test]
+fn a_late_result_of_the_other_program_reports_no_redraw_or_round_cut() {
+    // #125 item 7 (#142). A NaN result makes `r`'s input differ on every
+    // round, so its cascade stops at the round bound and changes the other
+    // program's snapshot. Neither is the drawn program's.
+    let mut f = Fixture::new();
+    f.replace(
+        "$n=\"a\"\nq=Query(\"search\",{term:$n})\nr=Query(\"follow\",{v:q})\nroot=Box([q,r])",
+    );
+    f.drain();
+    f.grow_state();
+    f.replace("q=Query(\"new\",{term:$n+$n},\"fresh\")\nroot=Box([q,1])");
+    f.drain();
+    let search = f.outstanding[0].clone();
+    assert_eq!(search.tool_name, "search");
+    f.s.complete_tool_call(
+        &search.id,
+        openui_runtime::ToolCallOutcome::Result(openui_runtime::Value::Num(f64::NAN)),
+    )
+    .unwrap();
+    let late = f.drain();
+    assert!(late.calls.is_empty(), "no follow-up call");
+    assert!(!late.changed, "nothing the host draws changed");
+    assert!(
+        !late.reader_rounds_limited,
+        "the cut is the other program's"
+    );
+    let draw = f.evaluate();
+    assert_eq!(value(&draw), json!(["fresh", 1]));
+    assert_eq!(draw.query_snapshot_json.as_deref(), Some(UNREGISTERED));
+}
+
+/// Allocation requests of each command on the unregistered path (#125 item
+/// 10, #142), for programs of `n` queries: the refused replacement, a late
+/// result whose `n` readers' calls are held, a draw, a drain, and the
+/// registration that leaves the state and ends the held calls.
+fn unregistered_costs(n: usize) -> [usize; 5] {
+    let mut f = Fixture::with_result_size(65_536);
+    let readers: String = (0..n)
+        .map(|i| format!("r{i}=Query(\"follow\",{{v:q,i:{i}}})\n"))
+        .collect();
+    f.replace(&format!(
+        "$n=\"a\"\nq=Query(\"search\",{{term:$n}})\n{readers}root=Box(q)"
+    ));
+    let first = f.drain();
+    assert!(
+        first.evaluation_error.is_none(),
+        "{:?}",
+        first.evaluation_error
+    );
+    f.grow_state_to(48_000);
+    let others: String = (0..n)
+        .map(|i| format!("s{i}=Query(\"other\",{{i:{i}}})\n"))
+        .collect();
+    let replacement = format!("{others}q=Query(\"new\",{{term:$n+$n}},\"fresh\")\nroot=Box(q)");
+    let p = program(&f.lib, &replacement);
+    let mut costs = [0; 5];
+    let before = test_alloc::allocation_calls();
+    let draw = f.s.replace_program(&refs(), p, None, None, false).unwrap();
+    costs[0] = test_alloc::allocation_calls() - before;
+    assert_eq!(
+        draw.evaluation.query_snapshot_json.as_deref(),
+        Some(UNREGISTERED)
+    );
+    f.drain();
+    let search = f.outstanding[0].clone();
+    let before = test_alloc::allocation_calls();
+    f.s.complete_tool_call_json(&search.id, r#"{"value":"late"}"#)
+        .unwrap();
+    costs[1] = test_alloc::allocation_calls() - before;
+    let before = test_alloc::allocation_calls();
+    let draw = f.s.evaluate(&refs()).unwrap();
+    costs[2] = test_alloc::allocation_calls() - before;
+    assert_eq!(value(&draw), json!("fresh"));
+    let before = test_alloc::allocation_calls();
+    let held = f.s.take_query_update();
+    costs[3] = test_alloc::allocation_calls() - before;
+    assert!(held.calls.is_empty() && !held.changed);
+    let before = test_alloc::allocation_calls();
+    f.s.set(&refs(), "$n".into(), Some(r#""b""#.into()))
+        .unwrap();
+    costs[4] = test_alloc::allocation_calls() - before;
+    let registered = f.drain();
+    assert!(registered.evaluation_error.is_none());
+    assert_eq!(
+        registered.calls.len(),
+        n + 1,
+        "the new program's calls only"
+    );
+    costs
+}
+
+#[test]
+fn each_command_on_the_unregistered_path_costs_in_proportion_to_the_program() {
+    let small = unregistered_costs(100);
+    let large = unregistered_costs(200);
+    eprintln!("allocation requests at 100 and 200 queries: {small:?} {large:?}");
+    for (name, (small, large)) in [
+        "refused replacement",
+        "late result",
+        "draw",
+        "drain",
+        "registration",
+    ]
+    .into_iter()
+    .zip(small.into_iter().zip(large))
+    {
+        assert!(
+            large <= small * 5 / 2 + 64,
+            "{name}: {small} allocation requests at 100 queries, {large} at 200"
+        );
+    }
 }

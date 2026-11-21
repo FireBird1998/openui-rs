@@ -420,9 +420,8 @@ pub struct SessionCore {
     // for the next drain (#117). Each holds a continuation slot until taken:
     // managed admission refuses past `max_continuations`, so at most that
     // many wait, and a host handoff evicts the oldest pending run when the
-    // slots are full. A handoff is never refused, so with only failures in
-    // the slots it adds one: runs plus failures are at most
-    // `max_continuations + 1`.
+    // slots are full. With only failures in the slots a handoff is refused
+    // at its step (#142): runs plus failures are at most `max_continuations`.
     paused_failures: u64,
 }
 impl SessionCore {
@@ -731,15 +730,30 @@ impl SessionCore {
                 self.dispatch_mutation(request, continuation, generation, &mut output);
                 return Ok(output);
             }
-            self.next_continuation = generation;
             // A failure a pause left for the next drain holds a slot too.
             let occupied = (self.continuations.len() as u64).saturating_add(self.paused_failures);
-            if occupied >= self.limits.max_continuations
-                && let Some((_, oldest)) = self.continuations.pop_first()
-                && let Some(handle) = oldest.handle.upgrade()
-            {
-                handle.evicted.store(true, Ordering::Release);
+            if occupied >= self.limits.max_continuations {
+                match self.continuations.pop_first() {
+                    Some((_, oldest)) => {
+                        if let Some(handle) = oldest.handle.upgrade() {
+                            handle.evicted.store(true, Ordering::Release);
+                        }
+                    }
+                    // Only waiting failures fill the slots, and none can be
+                    // dropped. The step fails before its mutation reaches the
+                    // host, as a managed submission at the limit does (#142).
+                    None => {
+                        output.events.pop();
+                        output.size_limited = true;
+                        output.failure = Some(ActionFailureOutput {
+                            step: continuation.step().map(|step| step as u64),
+                            error: limit("pending mutation continuation limit"),
+                        });
+                        return Ok(output);
+                    }
+                }
             }
+            self.next_continuation = generation;
             let handle = Arc::new(ContinuationHandle {
                 owner: self.owner.clone(),
                 generation: self.next_continuation,

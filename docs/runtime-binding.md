@@ -602,6 +602,9 @@ managed mutation plans. Each original call identity can still acknowledge one
 late outcome, which changes nothing. The timestamped attach and resume methods also advance an already
 active manager. The zero-argument `resumeQueries()` uses the last supplied time.
 Resume re-evaluates a settled program using its retained cache. A streaming program waits for its settled draw.
+If a limit refuses that re-registration, the program keeps its results and asks
+again for the calls the pause released, with the tool names and arguments of its
+last accepted registration, so no query is left idle without a result, error or call.
 During ordinary streaming, previously registered timers continue with their
 last evaluated arguments for both bare and bundled responses.
 
@@ -635,8 +638,10 @@ A failure waiting for the next drain holds a continuation slot. A managed
 submission is refused past `maxContinuations` (it fails at its mutation step
 with the pending-plan limit), so at most that many failures wait. A host
 handoff counts them too and evicts the oldest pending run when the slots are
-full, but is never refused; with only failures in the slots it adds one, so
-pending runs plus waiting failures are at most `maxContinuations + 1`. While
+full. With only failures in the slots there is nothing to evict, so the
+handoff is refused the same way: it fails at its mutation step with the
+pending-plan limit, before the mutation's event reaches the host. Pending runs
+plus waiting failures are at most `maxContinuations`. While
 the program is also unregistered (a refused registration, ADR 0013) the
 mutation step fails for that limit instead, once.
 

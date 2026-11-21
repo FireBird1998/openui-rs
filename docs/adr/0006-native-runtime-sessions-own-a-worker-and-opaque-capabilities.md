@@ -43,7 +43,8 @@ token never retains the transport/session. Disposal joins and releases entries;
 a late token destructor simply finds a dead Weak or closed channel.
 
 At the positive maxContinuations bound, only a new suspension evicts the oldest
-outcome. Its native token records EvictedHandle atomically, so no worker-side
+outcome; when only failures a pause left fill the slots, a host handoff fails at
+its mutation step with the pending-plan limit instead. Its native token records EvictedHandle atomically, so no worker-side
 tombstone history accumulates. Non-suspending runs/default/legacy events keep
 working. Eviction cannot undo effects or cancel external host operations.
 pendingContinuations exposes the retained count and a normal dispatch barrier.
