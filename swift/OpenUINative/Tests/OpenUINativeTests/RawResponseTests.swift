@@ -179,7 +179,7 @@ import Testing
         do {
             try await live.show(response: bundle + script + String(repeating: " ", count: 1 << 20), streaming: false)
             Issue.record("The oversized response was accepted")
-        } catch OpenUiError.LimitExceeded {}
+        } catch let error where error.kind == .limitExceeded {}
         #expect(live.isBlocked && !live.acceptsInteractions)
         // A bare program is blocked only while the app says it streams.
         try await live.show(response: program, streaming: false)
@@ -235,7 +235,8 @@ import Testing
         try await live.show(response: header + #"root=Text("City")"#, streaming: false)
         let edit = Task.immediate { try await live.show(response: #"root=Text("Late")"#, streaming: true) }
         live.discardPreview()
-        await #expect(throws: CancellationError.self) { try await edit.value }
+        let superseded = await #expect(throws: OpenUIError.self) { try await edit.value }
+        #expect(superseded?.kind == .cancelled)
         #expect(drawnText(live) == "City" && live.response?.name == "City desk")
     }
 
@@ -248,8 +249,8 @@ import Testing
         do {
             try await live.show(response: oversized, streaming: false)
             Issue.record("The oversized response was accepted")
-        } catch OpenUiError.LimitExceeded(let reason) {
-            #expect(reason == "response bundle exceeds the program-size limit")
+        } catch let error where error.kind == .limitExceeded {
+            #expect(error.message == "response bundle exceeds the program-size limit")
         }
         #expect(drawnText(live) == "City" && live.response?.name == "City desk")
     }

@@ -102,7 +102,7 @@ extension NativeUITests {
         """) { events.append($0) }
         let drawn = try #require(element(live, at: "/buttons/buttons/0"))
         try live.set("$f", to: .string("b"))
-        #expect(throws: LiveError.self) { try live.run("action", of: drawn, message: "Send", form: "a") }
+        #expect(throws: OpenUIError.self) { try live.run("action", of: drawn, message: "Send", form: "a") }
         #expect(events.isEmpty)
         try live.run("action", of: try #require(element(live, at: "/buttons/buttons/0")), message: "Send", form: "b")
         #expect(events.map(\.formName) == ["b"])
@@ -178,7 +178,7 @@ extension NativeUITests {
         #expect(live.isCurrent(add))
         try live.set("$n", to: .number(5))
         #expect(!live.isCurrent(add))
-        #expect(throws: LiveError.self) { try live.run("action", of: add, message: "") }
+        #expect(throws: OpenUIError.self) { try live.run("action", of: add, message: "") }
         #expect(live.value(of: "$n") == .number(5))
         try live.run("action", of: reset, message: "")
         #expect(live.value(of: "$n") == .number(0))
@@ -191,7 +191,7 @@ extension NativeUITests {
         let one = try await live(program)
         let two = try await live(program)
         let theirs = try #require(element(two, at: "/children/0"))
-        #expect(throws: LiveError.self) { try one.run("action", of: theirs, message: "") }
+        #expect(throws: OpenUIError.self) { try one.run("action", of: theirs, message: "") }
         #expect(one.value(of: "$n") == .number(0))
         #expect(two.value(of: "$n") == .number(0))
     }
@@ -209,7 +209,7 @@ extension NativeUITests {
         try live.write(marker, .number(6))
         #expect(live.value(of: "$hp") == .number(6))
         try live.set("$shown", to: .bool(false))
-        #expect(throws: LiveError.self) { try live.write(marker, .number(9)) }
+        #expect(throws: OpenUIError.self) { try live.write(marker, .number(9)) }
         #expect(live.value(of: "$hp") == .number(6))
     }
 }
@@ -389,7 +389,7 @@ extension NativeUITests {
         #expect(events.isEmpty)
         #expect(live.failure == nil)
         #expect(window.fields.isEmpty || window.fields.allSatisfy { !$0.isEnabled })
-        #expect(throws: LiveError.self) { try live.run("action", of: try #require(element(live, at: "/children/1")), message: "Hit") }
+        #expect(throws: OpenUIError.self) { try live.run("action", of: try #require(element(live, at: "/children/1")), message: "Hit") }
         #expect(live.value(of: "$hp") == .number(5))
 
         live.isStreaming = false

@@ -216,7 +216,9 @@ for (const f of readdirSync(samples).filter((f) => f.endsWith(".oui")).sort()) {
 // Upstream's own library, from packages/react-ui (react-ui-spec.ts loads it
 // with React stubbed out): its JSON Schema as a library, and its prompt spec
 // with the package's examples and rules, plain and with tool calls and
-// bindings on. The viewer asks Claude with these.
+// bindings on. The viewer asks Claude with these. A third asks for OpenUI
+// Cloud's config block with the same library and options, as upstream's
+// openui-cloud template does (`generateSystemPrompt({cloud: true, ...})`).
 const reactUi = spawnSync(
   "bun",
   ["--no-install", "--preload", "./react-ui-stubs.ts", "react-ui-spec.ts", upstream],
@@ -240,6 +242,14 @@ for (const [name, options] of [
     JSON.stringify({ library: reactUiLibrary.spec, promptOptions: options }, null, 1) + "\n",
   );
 }
+writeFileSync(
+  join(PROMPTS, "react-ui-cloud.json"),
+  JSON.stringify(
+    { cloud: true, library: reactUiLibrary.spec, promptOptions: reactUiLibrary.promptOptions },
+    null,
+    1,
+  ) + "\n",
+);
 
 // ── Docs and examples ────────────────────────────────────────────────────────
 const STATEMENT = /^[ \t]*\$?[A-Za-z_][A-Za-z0-9_]*[ \t]*=(?!=)/m;

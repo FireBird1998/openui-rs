@@ -50,6 +50,10 @@ _Avoid_: prompt config, prompt options (when meaning the whole input)
 The text generated from a prompt spec that tells the model how to write OpenUI Lang for a given component library.
 _Avoid_: instructions, preamble (that's one part of it)
 
+**Cloud config block**:
+What upstream's `generateSystemPrompt({cloud: true, ...})` gives instead of a system prompt, for OpenUI Cloud to build the prompt from: a `]]>openui:config` marker line and JSON naming the component library (without its components) and the only prompt options Cloud carries (examples, preamble and additional rules), or Cloud's built-in library. Sending it as the system prompt is cloud prompt mode; sending the system prompt itself is full prompt mode.
+_Avoid_: cloud prompt, cloud system prompt (for the block itself)
+
 **Message**:
 A response as stored or streamed, with marker lines around its parts: content, context, attributes and an end.
 _Avoid_: envelope, frame, payload

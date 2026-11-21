@@ -18,7 +18,7 @@ Reference: `@openuidev/lang-core 1.1.0` at commit `47b9cae0d3b26a8c9d7514d5887a6
 |---|---:|---:|---|
 | Parse results: one-shot, and after every push and at the end of 8 chunkings, 2 resync sequences and any recorded chunks | 975 | 1,484,640 results | 7 benchmark, 107 docs, 46 examples, 14 fuzz, 329 hand-written, 152 recorded, 259 reference-test, 58 spec-fixture, 3 synthetic |
 | Stages on every prefix: preprocessing, tokens, statements and expression trees | 973 | 479,335 prefixes | the parse corpus, less its largest synthetic programs |
-| System prompts | 65 | 65 | |
+| System prompts | 66 | 66 | |
 | Edit-mode merges | 3,269 | 3,269 | 3,179 generated, 53 hand-written, 31 recorded, 1 reference-test, 5 spec-fixture |
 | Element trees back to source | 940 | 940 | 1 fuzz, 71 hand-written, 837 parse corpus root, 31 reference-test |
 | Enriched errors | 512 | 512 | every parse corpus case with errors |

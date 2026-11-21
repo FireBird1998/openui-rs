@@ -151,7 +151,7 @@ extension NativeUITests {
         let second = live.suspendInteractions()
         #expect(live.isStreaming && !live.isStreamingRequested)
         let before = PublicSnapshot(live, retained: button)
-        #expect(throws: LiveError.self) { try live.run("action", of: button, message: "Go") }
+        #expect(throws: OpenUIError.self) { try live.run("action", of: button, message: "Go") }
         #expect(PublicSnapshot(live, retained: button) == before)
         first.release(); first.release()
         #expect(live.isStreaming && !live.isStreamingRequested)
@@ -181,13 +181,13 @@ extension NativeUITests {
             let before = PublicSnapshot(live, retained: drawn)
             #expect(throws: (any Error).self) { try live.show(candidate, persisted: .string("invalid")) }
             #expect(PublicSnapshot(live, retained: drawn) == before)
-            #expect(throws: LiveError.self) { try live.run("action", of: drawn, message: "Go") }
+            #expect(throws: OpenUIError.self) { try live.run("action", of: drawn, message: "Go") }
             #expect(PublicSnapshot(live, retained: drawn) == before)
         }
         live.discardPreview()
         #expect(live.isStreamingRequested == requested)
         #expect(live.isStreaming == requested)
-        if requested { #expect(throws: LiveError.self) { try live.run("action", of: original, message: "Go") } }
+        if requested { #expect(throws: OpenUIError.self) { try live.run("action", of: original, message: "Go") } }
         live.isStreaming = false
         try live.run("action", of: original, message: "Go")
         #expect(live.value(of: "$n") == .number(1))

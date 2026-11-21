@@ -34,9 +34,9 @@ extension NativeUITests {
         guard case let .binding(marker)? = input.props.first(where: { $0.name == "value" })?.value else { Issue.record("missing marker"); return }
         try live.show(step)
         let version = live.version
-        #expect(throws: LiveError.self) { try live.run("action", of: old, message: "Go") }
-        #expect(throws: LiveError.self) { try live.write(marker, .number(99)) }
-        #expect(throws: LiveError.self) { try live.enter(.number(99), into: input) }
+        #expect(throws: OpenUIError.self) { try live.run("action", of: old, message: "Go") }
+        #expect(throws: OpenUIError.self) { try live.write(marker, .number(99)) }
+        #expect(throws: OpenUIError.self) { try live.enter(.number(99), into: input) }
         #expect(live.version == version)
         #expect(live.value(of: "$n") == .number(0))
     }
@@ -100,7 +100,7 @@ extension NativeUITests {
         #expect(live.value(of: "$v") == .string("b!"))
         live.isStreaming = true
         let streamingVersion = live.version
-        #expect(throws: LiveError.self) { try live.enter(.string("c"), into: select) }
+        #expect(throws: OpenUIError.self) { try live.enter(.string("c"), into: select) }
         #expect(live.version == streamingVersion)
         #expect(live.value(of: "$v") == .string("b!"))
     }

@@ -18,7 +18,9 @@ extension Session {
     /// replace the parser's input even when the raw response only grew. The
     /// reader remembers how far it got, so a response that only grows costs
     /// about what pushing it does; any other edit is read afresh.
-    public func response(_ text: String, streaming: Bool) async throws -> Step {
+    /// Refuses what the core's response reader refuses, with its kind
+    /// (`.limitExceeded`, `.invalidJSON`, `.invalidAttribute`, …).
+    public func response(_ text: String, streaming: Bool) async throws(OpenUIError) -> Step {
         try await core.run { [inner] in
             let started = ContinuousClock.now
             // The session's own parser reads it, so `finish`, `push` and
@@ -28,7 +30,7 @@ extension Session {
             let bundle = try JSONValue.parse(read.bundle)
             guard let program = bundle["program"]?.string, let complete = bundle["complete"]?.bool,
                   let isBundle = bundle["isBundle"]?.bool, let scripts = bundle["scripts"]?.array else {
-                throw DecodeError(description: "Missing response bundle fields")
+                throw OpenUIError(.decode, "Missing response bundle fields")
             }
             let state = ResponseState(streaming: streaming, isBundle: isBundle, complete: complete,
                 error: bundle["error"]?.string, scripts: scripts.compactMap(\.string),

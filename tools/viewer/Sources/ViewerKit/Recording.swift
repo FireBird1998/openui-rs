@@ -201,3 +201,13 @@ public struct RecordingFile: Identifiable, Sendable {
     public var id: String { "recording:" + url.lastPathComponent }
     public var title: String { recording.request.split(whereSeparator: \.isNewline).first.map(String.init) ?? url.lastPathComponent }
 }
+
+/// A file or script the viewer reads isn't what it expects. OpenUINative's
+/// own failures arrive as its `OpenUIError` instead.
+public struct DecodeError: Error, CustomStringConvertible {
+    public let description: String
+
+    public init(description: String) {
+        self.description = description
+    }
+}

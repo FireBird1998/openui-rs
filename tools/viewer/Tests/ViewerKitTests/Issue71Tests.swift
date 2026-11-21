@@ -97,18 +97,18 @@ private struct FailingSource: ChunkSource {
         let version = live.version
         let completePosition = playback.chunks.count
         #expect(live.isStreaming)
-        #expect(throws: LiveError.self) { try live.run("action", of: preview, message: "Go") }
+        #expect(throws: OpenUIError.self) { try live.run("action", of: preview, message: "Go") }
         await gate.arm()
         let moving = Task { await playback.move(to: playback.chunks.count) }
         await gate.waitForRequest()
-        #expect(throws: LiveError.self) { try live.run("action", of: preview, message: "Go") }
+        #expect(throws: OpenUIError.self) { try live.run("action", of: preview, message: "Go") }
         #expect(live.state == state && live.version == version)
         await gate.release(succeed: false)
         await moving.value
         #expect(playback.error != nil)
         #expect(playback.position == completePosition)
         #expect(!live.isStreaming)
-        #expect(throws: LiveError.self) { try live.run("action", of: preview, message: "Go") }
+        #expect(throws: OpenUIError.self) { try live.run("action", of: preview, message: "Go") }
         #expect(live.state == state)
         // The complete session is retained, so its version is its pre-preview version.
         #expect(live.value(of: "$n") == .number(1))
@@ -146,11 +146,11 @@ private struct FailingSource: ChunkSource {
             continuation.yield(["$new = 9\nroot = Button(\"Wrong\", @Set($n, 99))"])
         }
         #expect(playback.step?.isStreaming == true)
-        #expect(throws: LiveError.self) { try original.run("action", of: button, message: "Go") }
+        #expect(throws: OpenUIError.self) { try original.run("action", of: button, message: "Go") }
         #expect(original.state == state && original.version == version)
         continuation.finish()
         await gate.waitForRequest()
-        #expect(throws: LiveError.self) { try original.run("action", of: button, message: "Go") }
+        #expect(throws: OpenUIError.self) { try original.run("action", of: button, message: "Go") }
         #expect(original.state == state && original.version == version)
         await gate.release(succeed: false)
         await loading.value
@@ -213,10 +213,10 @@ private struct FailingSource: ChunkSource {
         await gate.arm()
         let moving = Task { await playback.move(to: playback.chunks.count) }
         await gate.waitForRequest()
-        #expect(throws: LiveError.self) { try live.run("action", of: preview, message: "Go") }
+        #expect(throws: OpenUIError.self) { try live.run("action", of: preview, message: "Go") }
         await gate.release(succeed: false)
         await moving.value
-        #expect(throws: LiveError.self) { try live.run("action", of: preview, message: "Go") }
+        #expect(throws: OpenUIError.self) { try live.run("action", of: preview, message: "Go") }
         #expect(live.value(of: "$n") == .number(1))
         try live.run("action", of: original, message: "Go")
         #expect(live.value(of: "$n") == .number(2))
@@ -241,7 +241,7 @@ private struct FailingSource: ChunkSource {
         await gate.arm()
         let moving = Task { await playback.move(to: playback.chunks.count) }
         await gate.waitForRequest()
-        #expect(throws: LiveError.self) { try live.run("action", of: complete, message: "Go") }
+        #expect(throws: OpenUIError.self) { try live.run("action", of: complete, message: "Go") }
         await gate.release(succeed: succeeds)
         await moving.value
         #expect(live.state == state && live.version == version)
@@ -251,7 +251,7 @@ private struct FailingSource: ChunkSource {
         let button = try #require(live.root)
         if !succeeds { #expect(live.isCurrent(complete)) }
         if requested {
-            #expect(throws: LiveError.self) { try live.run("action", of: button, message: "Go") }
+            #expect(throws: OpenUIError.self) { try live.run("action", of: button, message: "Go") }
             #expect(live.state == state && live.version == version)
         } else {
             try live.run("action", of: button, message: "Go")
@@ -283,7 +283,7 @@ private struct FailingSource: ChunkSource {
         #expect(live.isStreamingRequested == !requested)
         #expect(live.isStreaming == !requested)
         #expect(live.isCurrent(original))
-        if !requested { #expect(throws: LiveError.self) { try live.run("action", of: original, message: "Go") } }
+        if !requested { #expect(throws: OpenUIError.self) { try live.run("action", of: original, message: "Go") } }
         else {
             try live.run("action", of: original, message: "Go")
             #expect(live.value(of: "$n") == .number(1))

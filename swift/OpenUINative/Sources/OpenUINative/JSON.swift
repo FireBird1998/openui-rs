@@ -10,17 +10,34 @@ public enum JSONValue: Sendable, Equatable {
     case array([JSONValue])
     case object([(key: String, value: JSONValue)])
 
+    /// Compares on an explicit stack, so no depth of nesting adds a call
+    /// frame: an app can build values far deeper than `parse` accepts.
     public static func == (a: JSONValue, b: JSONValue) -> Bool {
-        switch (a, b) {
-        case (.null, .null): true
-        case let (.bool(x), .bool(y)): x == y
-        case let (.number(x), .number(y)): x == y
-        case let (.string(x), .string(y)): x == y
-        case let (.array(x), .array(y)): x == y
-        case let (.object(x), .object(y)):
-            x.count == y.count && zip(x, y).allSatisfy { $0.key == $1.key && $0.value == $1.value }
-        default: false
+        var pairs: [(JSONValue, JSONValue)] = [(a, b)]
+        while let (x, y) = pairs.popLast() {
+            switch (x, y) {
+            case (.null, .null): continue
+            case let (.bool(p), .bool(q)): if p != q { return false }
+            case let (.number(p), .number(q)): if p != q { return false }
+            case let (.string(p), .string(q)): if p != q { return false }
+            case let (.array(p), .array(q)):
+                guard p.count == q.count else { return false }
+                // As `Array ==` does, which the recursive comparison used:
+                // two arrays sharing one buffer are equal without comparing
+                // elements (so an array holding NaN equals itself). Objects
+                // had no such shortcut and have none here.
+                if p.isEmpty || JSONValue.sharesBuffer(p, q) { continue }
+                pairs.append(contentsOf: zip(p, q))
+            case let (.object(p), .object(q)):
+                guard p.count == q.count else { return false }
+                for (l, r) in zip(p, q) {
+                    guard l.key == r.key else { return false }
+                    pairs.append((l.value, r.value))
+                }
+            default: return false
+            }
         }
+        return true
     }
 
     /// The value at `key`, if this is an object that has it.
@@ -45,16 +62,53 @@ public enum JSONValue: Sendable, Equatable {
         if case let .array(a) = self { a } else { nil }
     }
 
-    /// Compact JSON text, for showing values that have no better form.
+    /// Compact JSON text, for showing values that have no better form and
+    /// for handing values to the core. Written from an explicit stack, as
+    /// `parse` reads, so no depth of nesting adds a call frame: the async
+    /// calls that send an app's values to the core run on threads with small
+    /// stacks.
     public var compact: String {
-        switch self {
-        case .null: "null"
-        case let .bool(b): b ? "true" : "false"
-        case let .number(n): JSONValue.format(n)
-        case let .string(s): JSONValue.quote(s)
-        case let .array(a): "[" + a.map(\.compact).joined(separator: ",") + "]"
-        case let .object(o): "{" + o.map { JSONValue.quote($0.key) + ":" + $0.value.compact }.joined(separator: ",") + "}"
+        var out = ""
+        var work: [CompactStep] = [.value(self)]
+        while let step = work.popLast() {
+            switch step {
+            case let .text(text): out += text
+            case let .value(value):
+                switch value {
+                case .null: out += "null"
+                case let .bool(b): out += b ? "true" : "false"
+                case let .number(n): out += JSONValue.format(n)
+                case let .string(s): out += JSONValue.quote(s)
+                case let .array(items):
+                    out += "["
+                    work.append(.text("]"))
+                    for (i, item) in items.enumerated().reversed() {
+                        work.append(.value(item))
+                        if i > 0 { work.append(.text(",")) }
+                    }
+                case let .object(entries):
+                    out += "{"
+                    work.append(.text("}"))
+                    for (i, entry) in entries.enumerated().reversed() {
+                        work.append(.value(entry.value))
+                        work.append(.text(JSONValue.quote(entry.key) + ":"))
+                        if i > 0 { work.append(.text(",")) }
+                    }
+                }
+            }
         }
+        return out
+    }
+
+    /// Whether two arrays are one buffer, as `Array ==` checks first.
+    private static func sharesBuffer(_ a: [JSONValue], _ b: [JSONValue]) -> Bool {
+        a.withUnsafeBufferPointer { x in b.withUnsafeBufferPointer { y in x.baseAddress == y.baseAddress } }
+    }
+
+    /// What is left to write: a value, or punctuation between values.
+    private enum CompactStep {
+        case value(JSONValue)
+        case text(String)
     }
 
     /// A number the way JavaScript prints it: no ".0" on whole numbers.

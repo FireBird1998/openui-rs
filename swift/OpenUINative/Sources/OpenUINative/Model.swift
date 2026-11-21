@@ -110,14 +110,6 @@ public struct ActionPlan: Sendable, Equatable {
     public var steps: [JSONValue]
 }
 
-public struct DecodeError: Error, CustomStringConvertible {
-    public let description: String
-
-    public init(description: String) {
-        self.description = description
-    }
-}
-
 /// The `k` values of expression nodes in the core's JSON.
 private let expressionKinds: Set<String> = [
     "Arr", "Assign", "BinOp", "Bool", "Comp", "Index", "Member", "Null", "Num", "Obj",
@@ -125,10 +117,16 @@ private let expressionKinds: Set<String> = [
 ]
 
 extension ParseResult {
-    public init(json text: String, depthLimited: Bool, sizeLimited: Bool) throws {
-        let json = try JSONValue.parse(text)
-        guard let meta = json["meta"] else { throw DecodeError(description: "no meta") }
-        self.root = try json["root"].flatMap { $0 == .null ? nil : try Element(json: $0) }
+    /// Decodes the core's parse result JSON; `.decode` if it isn't one.
+    public init(json text: String, depthLimited: Bool, sizeLimited: Bool) throws(OpenUIError) {
+        let json: JSONValue
+        do { json = try JSONValue.parse(text) } catch { throw OpenUIError(.decode, error.description) }
+        guard let meta = json["meta"] else { throw OpenUIError(.decode, "no meta") }
+        if let root = json["root"], root != .null {
+            self.root = try Element(json: root)
+        } else {
+            self.root = nil
+        }
         self.meta = Meta(
             incomplete: meta["incomplete"]?.bool ?? false,
             unresolved: meta["unresolved"]?.array?.compactMap(\.string) ?? [],
@@ -169,17 +167,17 @@ extension Element {
         return entries.count == 5 || (entries[5].key == "statementId" && entries[5].value.string != nil)
     }
 
-    init(json: JSONValue) throws {
+    init(json: JSONValue) throws(OpenUIError) {
         try self.init(json: json, at: nil)
     }
 
     /// With `origin`, the element of a live program's evaluated tree at that
     /// path, and every element inside it at its own path.
-    init(json: JSONValue, at origin: Origin?) throws {
+    init(json: JSONValue, at origin: Origin?) throws(OpenUIError) {
         guard Element.isElement(json), let typeName = json["typeName"]?.string,
               case let .object(props)? = json["props"]
         else {
-            throw DecodeError(description: "not an element: \(json.compact.prefix(80))")
+            throw OpenUIError(.decode, "not an element: \(json.compact.prefix(80))")
         }
         self.typeName = typeName
         self.props = props.map { prop in
@@ -251,28 +249,63 @@ extension PropValue {
 }
 
 extension PropValue {
-    /// Whether an element sits anywhere inside this value.
+    /// Whether an element sits anywhere inside this value. Walks an
+    /// explicit stack, as `summary` does.
     public var holdsElements: Bool {
-        switch self {
-        case .element: true
-        case let .list(items): items.contains { $0.holdsElements }
-        case let .record(fields): fields.contains { $0.value.holdsElements }
-        case .expression, .binding, .plan, .scalar: false
+        var pending: [PropValue] = [self]
+        while let value = pending.popLast() {
+            switch value {
+            case .element: return true
+            case let .list(items): pending.append(contentsOf: items.reversed())
+            case let .record(fields): pending.append(contentsOf: fields.reversed().map(\.value))
+            case .expression, .binding, .plan, .scalar: continue
+            }
         }
+        return false
     }
 
-    /// One line of text for a value with no elements in it.
+    /// One line of text for a value with no elements in it. Written from an
+    /// explicit stack, so no depth of nesting adds a call frame: a tree at
+    /// the core's depth limit is summarised on a thread with a small stack.
     public var summary: String {
-        switch self {
-        case let .scalar(json): json.compact
-        case let .expression(json): "ƒ " + json.compact
-        case let .binding(marker): "⇄ " + marker.target
-        case let .plan(plan): "▶ action, \(plan.steps.count) step" + (plan.steps.count == 1 ? "" : "s")
-        case let .list(items): "[" + items.map(\.summary).joined(separator: ", ") + "]"
-        case let .record(fields): "{" + fields.map { $0.name + ": " + $0.value.summary }.joined(separator: ", ") + "}"
-        case let .element(element): element.typeName + "(…)"
+        var out = ""
+        var work: [SummaryStep] = [.value(self)]
+        while let step = work.popLast() {
+            switch step {
+            case let .text(text): out += text
+            case let .value(value):
+                switch value {
+                case let .scalar(json): out += json.compact
+                case let .expression(json): out += "ƒ " + json.compact
+                case let .binding(marker): out += "⇄ " + marker.target
+                case let .plan(plan): out += "▶ action, \(plan.steps.count) step" + (plan.steps.count == 1 ? "" : "s")
+                case let .list(items):
+                    out += "["
+                    work.append(.text("]"))
+                    for (i, item) in items.enumerated().reversed() {
+                        work.append(.value(item))
+                        if i > 0 { work.append(.text(", ")) }
+                    }
+                case let .record(fields):
+                    out += "{"
+                    work.append(.text("}"))
+                    for (i, field) in fields.enumerated().reversed() {
+                        work.append(.value(field.value))
+                        work.append(.text(field.name + ": "))
+                        if i > 0 { work.append(.text(", ")) }
+                    }
+                case let .element(element): out += element.typeName + "(…)"
+                }
+            }
         }
+        return out
     }
+}
+
+/// What is left of a summary to write: a value, or punctuation.
+private enum SummaryStep {
+    case value(PropValue)
+    case text(String)
 }
 
 extension Element {

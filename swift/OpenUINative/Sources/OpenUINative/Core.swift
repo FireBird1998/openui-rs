@@ -35,20 +35,23 @@ public final class Core: Sendable {
         assert(isCurrent, "\(function) called the core off its thread")
     }
 
-    /// Runs `work` on the core thread and waits for it.
-    func run<T: Sendable>(_ work: @escaping @Sendable () throws -> T) async throws -> T {
-        try await withCheckedThrowingContinuation { continuation in
-            queue.add { continuation.resume(with: Result { try work() }) }
+    /// Runs `work` on the core thread and waits for it. Whatever it throws
+    /// comes back as an `OpenUIError`.
+    func run<T: Sendable>(_ work: @escaping @Sendable () throws -> T) async throws(OpenUIError) -> T {
+        let result: Result<T, OpenUIError> = await withCheckedContinuation { continuation in
+            queue.add { continuation.resume(returning: Result { () throws(OpenUIError) in try bridged(work) }) }
         }
+        return try result.get()
     }
 
-    /// Loads a component library from its JSON Schema.
-    public func library(schema: String) async throws -> Library {
+    /// Loads a component library from its JSON Schema; `.invalidSchema` if
+    /// the schema isn't JSON.
+    public func library(schema: String) async throws(OpenUIError) -> Library {
         try await run { try Library(core: self, schema: schema) }
     }
 
     /// Parses a whole program one-shot.
-    public func parseOneShot(_ program: String, library: Library, root: String? = nil) async throws -> Step {
+    public func parseOneShot(_ program: String, library: Library, root: String? = nil) async throws(OpenUIError) -> Step {
         try await run {
             try Step.measure(chunks: 1) {
                 Core.assertOnCoreThread()
@@ -57,8 +60,14 @@ public final class Core: Sendable {
         }
     }
 
-    /// The system prompt for a prompt spec (`{library, promptOptions}` as JSON text).
-    public func systemPrompt(spec: String) async throws -> String {
+    /// The system prompt for a prompt spec given as JSON text, exactly as
+    /// upstream's `generateSystemPrompt` takes it: `{library, promptOptions}`,
+    /// `{cloud: true, ...}` or a bare prompt spec. `.invalidPromptSpec` if
+    /// it isn't JSON, `.prompt` with upstream's message if upstream would
+    /// throw. `systemPrompt(library:options:)` and
+    /// `cloudConfigBlock(library:options:instructions:)` build the spec
+    /// from typed options.
+    public func systemPrompt(spec: String) async throws(OpenUIError) -> String {
         try await run {
             Core.assertOnCoreThread()
             return try OpenUIFFI.generateSystemPrompt(spec: spec)
@@ -66,7 +75,7 @@ public final class Core: Sendable {
     }
 
     /// Merges an edit-mode patch into a program by statement name.
-    public func merge(existing: String, patch: String) async throws -> String {
+    public func merge(existing: String, patch: String) async throws(OpenUIError) -> String {
         try await run {
             Core.assertOnCoreThread()
             return OpenUIFFI.mergeStatements(existing: existing, patch: patch, rootId: nil)
@@ -75,7 +84,7 @@ public final class Core: Sendable {
 
     /// Merges the patch so far into `base` and parses the result one-shot: one
     /// step of an edit-mode stream, as a renderer shows it.
-    public func mergeAndParse(base: String, patch: String, library: Library, root: String?, chunks: Int, streaming: Bool = false) async throws -> Step {
+    public func mergeAndParse(base: String, patch: String, library: Library, root: String?, chunks: Int, streaming: Bool = false) async throws(OpenUIError) -> Step {
         try await run {
             Core.assertOnCoreThread()
             let merged = OpenUIFFI.mergeStatements(existing: base, patch: patch, rootId: nil)
@@ -88,7 +97,7 @@ public final class Core: Sendable {
     }
 
     /// Starts a streaming parse.
-    public func session(library: Library, root: String? = nil) async throws -> Session {
+    public func session(library: Library, root: String? = nil) async throws(OpenUIError) -> Session {
         try await run { Session(core: self, library: library, root: root) }
     }
 }
@@ -123,7 +132,7 @@ public final class Session: Sendable {
 
     /// Pushes chunks and returns the result after the last; no chunks gives
     /// the current result.
-    public func push(_ chunks: [String]) async throws -> Step {
+    public func push(_ chunks: [String]) async throws(OpenUIError) -> Step {
         try await core.run { [inner] in
             try Step.measure(chunks: chunks.count, streaming: true) {
                 Core.assertOnCoreThread()
@@ -134,7 +143,7 @@ public final class Session: Sendable {
 
     /// The result once the stream has ended, after its last chunk: a `$name`
     /// at the very end reads as the whole name.
-    public func finish() async throws -> Step {
+    public func finish() async throws(OpenUIError) -> Step {
         try await core.run { [inner] in
             try Step.measure(chunks: 0) {
                 Core.assertOnCoreThread()
@@ -144,7 +153,7 @@ public final class Session: Sendable {
     }
 
     /// Gives the whole text so far.
-    public func set(_ text: String) async throws -> Step {
+    public func set(_ text: String) async throws(OpenUIError) -> Step {
         try await core.run { [inner] in
             try Step.measure(chunks: 1, streaming: true) {
                 Core.assertOnCoreThread()
@@ -177,7 +186,7 @@ public struct Step: Sendable {
     }
 
     /// Calls the core, then decodes, timing each part. Core thread only.
-    static func measure(chunks: Int, streaming: Bool = false, _ call: () -> ParseOutput) throws -> Step {
+    static func measure(chunks: Int, streaming: Bool = false, _ call: () -> ParseOutput) throws(OpenUIError) -> Step {
         let started = ContinuousClock.now
         let output = call()
         let called = ContinuousClock.now

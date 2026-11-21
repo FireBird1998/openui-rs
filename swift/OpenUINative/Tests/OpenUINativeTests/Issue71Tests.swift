@@ -108,7 +108,7 @@ extension NativeUITests {
         #expect(stored["componentType"] == componentType)
         live.isStreaming = true
         let version = live.version
-        #expect(throws: LiveError.self) { try live.enter(.string("refused"), into: input, form: "f") }
+        #expect(throws: OpenUIError.self) { try live.enter(.string("refused"), into: input, form: "f") }
         #expect(live.version == version)
         #expect(live.field(form: "f", name: "x") == field.filled)
     }
@@ -125,7 +125,7 @@ extension NativeUITests {
         try live.show(try await core.parseOneShot("root = TextContent(\"gone\")", library: library))
         let before = live.state
         let version = live.version
-        #expect(throws: LiveError.self) { try live.enter(.string("refused"), into: input, form: "f") }
+        #expect(throws: OpenUIError.self) { try live.enter(.string("refused"), into: input, form: "f") }
         #expect(live.state == before)
         #expect(live.version == version)
     }
@@ -420,7 +420,7 @@ extension NativeUITests {
         try live.show(preview)
         let partialButton = try #require(element(live, at: "/buttons/buttons/0"))
         #expect(live.value(of: "$pristine") == .number(99))
-        #expect(throws: LiveError.self) { try live.run("action", of: partialButton, message: "Go", form: "f") }
+        #expect(throws: OpenUIError.self) { try live.run("action", of: partialButton, message: "Go", form: "f") }
         try await window.click("/buttons/buttons/0")
         #expect(live.value(of: "$n") == .number(1))
         live.discardPreview()
@@ -428,7 +428,7 @@ extension NativeUITests {
         #expect(live.pristineNames == pristine)
         #expect(live.field(form: "f", name: "x") == .string("Ann"))
         #expect(live.value(of: "$new") == nil)
-        #expect(throws: LiveError.self) { try live.run("action", of: partialButton, message: "Go", form: "f") }
+        #expect(throws: OpenUIError.self) { try live.run("action", of: partialButton, message: "Go", form: "f") }
         #expect(live.state == state && live.version == version)
         try live.run("action", of: button, message: "Go", form: "f")
         await window.settle()
@@ -534,10 +534,10 @@ extension NativeUITests {
         let state = live.state
         let version = live.version
         #expect(live.isStreaming)
-        #expect(throws: LiveError.self) { try live.run("action", of: button, message: "Go") }
-        #expect(throws: LiveError.self) { try live.enter(.number(9), into: input) }
+        #expect(throws: OpenUIError.self) { try live.run("action", of: button, message: "Go") }
+        #expect(throws: OpenUIError.self) { try live.enter(.number(9), into: input) }
         guard case let .binding(marker)? = input.props.first(where: { $0.name == "value" })?.value else { Issue.record("missing marker"); return }
-        #expect(throws: LiveError.self) { try live.write(marker, .number(9)) }
+        #expect(throws: OpenUIError.self) { try live.write(marker, .number(9)) }
         #expect(live.state == state)
         #expect(live.version == version)
         let final = try await stream.finish()

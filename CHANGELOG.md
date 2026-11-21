@@ -2,6 +2,45 @@
 
 ## Unreleased
 
+- OpenUINative: typed errors and a typed cloud prompt (#148, spec #129).
+  Every public call that can fail now throws only `OpenUIError`
+  (`throws(OpenUIError)`), a `kind` a caller can switch on and a
+  `message`. The binding's refusals keep its kind, one to one, so an app
+  no longer needs the generated `OpenUiError`, which it cannot import;
+  OpenUINative adds kinds for its own refusals (`stale`, `streaming`,
+  `blocked`, `unusableElement`, `toolProviderAttached`, `invalidArgument`,
+  `decode`, `cancelled`, `unexpected`). New typed prompt calls:
+  `Core.systemPrompt(library:options:)` gives the full system prompt and
+  `Core.cloudConfigBlock(library:options:instructions:)` OpenUI Cloud's
+  config block, from `PromptOptions` (with `PromptTool`, `ToolSpec` and
+  `ToolAnnotations`) and `CloudPromptOptions`, which holds only examples,
+  a preamble and additional rules, as upstream's `CloudPromptOptions` does.
+  Both equal upstream's `generateSystemPrompt` for every recorded case the
+  typed options can say, including a new recorded case,
+  `conformance/prompts/react-ui-cloud.json`: react-ui's library and prompt
+  options in cloud mode, as upstream's openui-cloud template asks for it.
+  The core already made the block; nothing in Rust changed. Breaking Swift
+  changes, and how callers migrate: `LiveError` is gone, so match
+  `OpenUIError` and its `kind` instead (`#expect(throws: LiveError.self)`
+  becomes `#expect(throws: OpenUIError.self)`); `DecodeError` is gone from
+  OpenUINative (the viewer keeps its own); a superseded
+  `LiveProgram.show(response:streaming:)` throws `OpenUIError` of kind
+  `.cancelled` instead of `CancellationError`; catching the binding's
+  `OpenUiError` around an OpenUINative call no longer matches, so match the
+  kind (`catch OpenUiError.LimitExceeded` becomes
+  `catch let error where error.kind == .limitExceeded`). A refusal's text
+  in `failure` is now the binding's wording for every kind (`session
+  disposed`, `invalid JSON Schema: …`) where a few kinds used to show
+  Swift's description of the case. `JSONValue.compact` and `==` now walk
+  an explicit stack instead of recursing, with the same text and results:
+  a 511-level schema that `JSONValue.parse` accepts, handed to the typed
+  prompt calls or returned by a tool provider, crashed a debug build on the
+  cooperative pool (stack overflow from 440 levels); it is now refused by
+  the core as the raw spec is. `==` keeps `Array ==`'s answer for two
+  arrays sharing one buffer, so an array holding NaN still equals itself.
+  `PropValue.summary` and `holdsElements` walk an explicit stack too, with
+  the same output: summarising a list a model nested to the core's depth
+  limit (255 levels) crashed a debug build off the main actor.
 - Library definitions: functions and actions (#134, spec #123). A library
   definition can declare `functions` (a name, a description, ordered
   `params` and an optional `returns` type) and `actions` (a name, a
@@ -40,7 +79,6 @@
   under-refusal in 18,000 random libraries with shared params objects). 38
   new samples (93 in all) match upstream byte for byte, and 95 converter
   refusals are checked, the `__schemaN` ones against upstream's output.
-
 - Admitting a tool result given as a value no longer takes time exponential
   in its depth (#141). A value that shared its child twice at every level
   used to be read at every position it fills to decide whether it is JSON

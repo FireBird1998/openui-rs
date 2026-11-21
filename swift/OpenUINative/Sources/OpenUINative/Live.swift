@@ -178,28 +178,37 @@ public final class LiveProgram {
         promptSpec: String? = nil,
         bindings: [(component: String, prop: String)] = [],
         onHostEvent: @escaping @MainActor (HostEvent) -> Void = { _ in }
-    ) throws {
+    ) throws(OpenUIError) {
         self.rootName = root
         self.library = library
         self.promptSpec = promptSpec
         self.bindings = bindings
-        session = try RuntimeSession(library: library.inner, promptSpec: promptSpec)
-        for binding in bindings {
-            try session.markBinding(component: binding.component, prop: binding.prop)
+        let session = try bridged {
+            let session = try RuntimeSession(library: library.inner, promptSpec: promptSpec)
+            for binding in bindings {
+                try session.markBinding(component: binding.component, prop: binding.prop)
+            }
+            return session
         }
+        self.session = session
         self.onHostEvent = onHostEvent
     }
 
     /// Reads and shows the whole raw response so far, including edits.
     /// A newer show or discard supersedes a read that is still in progress.
     @discardableResult
-    public func show(response text: String, streaming: Bool) async throws -> Step {
+    public func show(response text: String, streaming: Bool) async throws(OpenUIError) -> Step {
         let request = UUID()
         pendingResponse = request
-        let parser = try await responseParser.value
-        let step = try await parser.response(text, streaming: streaming)
-        try Task.checkCancellation()
-        guard request == pendingResponse else { throw CancellationError() }
+        let step: Step
+        do {
+            let parser = try await responseParser.value
+            step = try await parser.response(text, streaming: streaming)
+            try Task.checkCancellation()
+        } catch { throw OpenUIError(error) }
+        guard request == pendingResponse else {
+            throw OpenUIError(.cancelled, "a newer show or discard superseded this read")
+        }
         try show(step)
         return step
     }
@@ -213,7 +222,7 @@ public final class LiveProgram {
     /// session after a parser failure. Call with each step of a stream. Program
     /// replacement is atomic, including initialization, evaluation and native
     /// display admission. A refused show preserves both sessions and drawings.
-    public func show(_ step: Step, persisted: JSONValue? = nil) throws {
+    public func show(_ step: Step, persisted: JSONValue? = nil) throws(OpenUIError) {
         let oldDisplay = display
         let oldCompleteDisplay = completeDisplay
         pendingResponse = nil
@@ -243,7 +252,7 @@ public final class LiveProgram {
             pristineCache = oldCache
             failure = oldFailure
             syncQueries()
-            throw error
+            throw OpenUIError(error)
         }
     }
 
@@ -252,9 +261,9 @@ public final class LiveProgram {
             try showPreview(step, persisted: persisted)
             return
         }
-        guard generation < UInt64.max else { throw LiveError(description: "evaluation generation exhausted") }
+        guard generation < UInt64.max else { throw Self.generationsExhausted }
         let base = completeDisplay ?? display
-        guard base.generation < UInt64.max else { throw LiveError(description: "evaluation generation exhausted") }
+        guard base.generation < UInt64.max else { throw Self.generationsExhausted }
         let started = ContinuousClock.now
         let replaced = try session.replaceProgramWithResponse(program: step.parsed, persisted: persisted?.compact,
             projected: nil, nativeView: true, responseState: state(for: step, streaming: requestedStreaming))
@@ -302,8 +311,8 @@ public final class LiveProgram {
                     _ = try preview.initialize(persisted: nil)
                 }
             }
-            guard let previewSession else { throw LiveError(description: "no preview session") }
-            guard display.generation < UInt64.max else { throw LiveError(description: "evaluation generation exhausted") }
+            guard let previewSession else { throw OpenUIError(.unexpected, "no preview session") }
+            guard display.generation < UInt64.max else { throw Self.generationsExhausted }
             let projected = try editedState(from: completeDisplay ?? display)
             let started = ContinuousClock.now
             if step.response?.state.isBundle == true || response?.state.isBundle == true {
@@ -397,11 +406,13 @@ public final class LiveProgram {
     /// changed anything. Throws if the complete store refuses the value.
     /// A preview projection refusal is reported in failure; the admitted
     /// complete write survives and is visible after discarding/finishing it.
-    public func set(_ name: String, to value: JSONValue?) throws {
-        _ = try onQueryClock { try $0.set(name: name, json: value?.compact) }
-        let warning = mirror { _ = try $0.set(name: name, json: value?.compact) }
-        let redrawWarning = try refresh()
-        if let warning = warning ?? redrawWarning { failure = warning }
+    public func set(_ name: String, to value: JSONValue?) throws(OpenUIError) {
+        try bridged {
+            _ = try onQueryClock { try $0.set(name: name, json: value?.compact) }
+            let warning = mirror { _ = try $0.set(name: name, json: value?.compact) }
+            let redrawWarning = try refresh()
+            if let warning = warning ?? redrawWarning { failure = warning }
+        }
     }
 
     /// Writes a value through a binding marker from the tree: the marker's
@@ -410,14 +421,16 @@ public final class LiveProgram {
     /// keystroke that arrived before the redraw) writes only while the same
     /// marker is at its place in the tree now; otherwise it throws and
     /// changes nothing.
-    public func write(_ marker: BindingMarker, _ value: JSONValue) throws {
+    public func write(_ marker: BindingMarker, _ value: JSONValue) throws(OpenUIError) {
         guard acceptsInteractions else { throw interactionError }
         guard let origin = marker.origin, origin.program == id else { throw Self.stale }
         if origin.generation != generation {
             guard case let .binding(now)? = locate(origin.steps)?.value, now.json == marker.json else { throw Self.stale }
         }
-        _ = try onQueryClock { try $0.writeBinding(marker: marker.json.compact, json: value.compact) }
-        try refresh()
+        try bridged {
+            _ = try onQueryClock { try $0.writeBinding(marker: marker.json.compact, json: value.compact) }
+            try refresh()
+        }
     }
 
     /// An unbound form field's value: in `form`'s fields, or a top-level
@@ -444,13 +457,15 @@ public final class LiveProgram {
     /// state; upstream's own Input and Select give none, while a component
     /// that writes its field itself (such as Chips) gives its name. Complete
     /// admission determines success; preview refusals are reported in failure.
-    public func setField(form: String?, componentType: String? = nil, name: String, to value: JSONValue?) throws {
-        _ = try onQueryClock { try $0.setField(form: form, componentType: componentType, name: name, json: value?.compact, save: true) }
-        let warning = mirror {
-            _ = try $0.setField(form: form, componentType: componentType, name: name, json: value?.compact, save: true)
+    public func setField(form: String?, componentType: String? = nil, name: String, to value: JSONValue?) throws(OpenUIError) {
+        try bridged {
+            _ = try onQueryClock { try $0.setField(form: form, componentType: componentType, name: name, json: value?.compact, save: true) }
+            let warning = mirror {
+                _ = try $0.setField(form: form, componentType: componentType, name: name, json: value?.compact, save: true)
+            }
+            let redrawWarning = try refresh()
+            if let warning = warning ?? redrawWarning { failure = warning }
         }
-        let redrawWarning = try refresh()
-        if let warning = warning ?? redrawWarning { failure = warning }
     }
 
     /// Writes what a person typed or picked in a built-in form control
@@ -459,16 +474,19 @@ public final class LiveProgram {
     /// (see `current(_:form:)`), or while streaming. Entering the value already
     /// held is a no-op, including when the binding transforms new values.
     /// Chips/OptionCards include their component type and accept nil when a
-    /// single selection is cleared; a binding refuses undefined with LiveError.
-    public func enter(_ value: JSONValue?, into element: Element, form: String? = nil) throws {
+    /// single selection is cleared; a binding refuses undefined (`.refusedWrite`).
+    public func enter(_ value: JSONValue?, into element: Element, form: String? = nil) throws(OpenUIError) {
         guard acceptsInteractions else { throw interactionError }
         guard let element = current(element, form: form) else { throw Self.stale }
         let props = PropReader(element: element)
-        let name = try props.text("name").plain
+        let name: String
+        do { name = try props.text("name").plain } catch {
+            throw OpenUIError(.unusableElement, "\(element.typeName) has no name to enter a value under")
+        }
         let field = FieldValue(props, name: name)
         guard value != field.value(in: self, form: form, includingCompositeDefaults: true) else { return }
         if case let .binding(marker)? = props.value("value") {
-            guard let value else { throw LiveError(description: "a binding cannot be set to undefined") }
+            guard let value else { throw OpenUIError(.refusedWrite, "a binding cannot be set to undefined") }
             try write(marker, value)
         } else {
             let type = SelectionField.isSelection(element) ? element.typeName : nil
@@ -537,12 +555,15 @@ public final class LiveProgram {
         return nil
     }
 
-    static let stale = LiveError(description: "the program changed since this was drawn, so nothing was done")
-    private var interactionError: LiveError {
-        response?.error.map { LiveError(description: $0) } ?? Self.streaming
+    static let stale = OpenUIError(.stale, "the program changed since this was drawn, so nothing was done")
+    /// Why an interaction is refused while `acceptsInteractions` is false:
+    /// the response bundle's error when it has one, otherwise streaming.
+    private var interactionError: OpenUIError {
+        response?.error.map { OpenUIError(.blocked, $0) } ?? Self.streaming
     }
 
-    static let streaming = LiveError(description: "a response is streaming, so nothing was done")
+    static let streaming = OpenUIError(.streaming, "a response is streaming, so nothing was done")
+    static let generationsExhausted = OpenUIError(.limitExceeded, "evaluation generation exhausted")
 
     /// Runs the action in `element`'s prop `prop`, as a click on it does: a
     /// plan runs its steps, an older `{type, …}` action object becomes one
@@ -557,28 +578,30 @@ public final class LiveProgram {
     /// it throws and nothing happens, so a click runs exactly the action that
     /// was on screen. A blocked response bundle ignores the action. A bare
     /// streaming preview retains its existing refusal.
-    public func run(_ prop: String, of element: Element, message: String, form: String? = nil) throws {
+    public func run(_ prop: String, of element: Element, message: String, form: String? = nil) throws(OpenUIError) {
         guard !bundleBlocksActions else { return }
         guard !isStreaming else { throw Self.streaming }
         guard let element = current(element, form: form), let origin = element.origin else { throw Self.stale }
         guard let found = locate(origin.steps + [prop]) else {
-            throw LiveError(description: "nothing at \(origin.path) in the tree")
+            throw OpenUIError(.invalidHandle, "nothing at \(origin.path) in the tree")
         }
         let jsonPath = found.jsonPath
-        let output: ActionOutput
-        switch found.value {
-        case nil, .scalar(.null)?:
-            output = try onQueryClock { try $0.run(action: nil, message: message, form: form) }
-        case .plan?:
-            guard let handle else { throw LiveError(description: "no evaluated tree") }
-            let action = try session.actionAt(evaluation: handle, path: jsonPath)
-            output = try onQueryClock { try $0.run(action: action, message: message, form: form) }
-        case let .record(fields)?:
-            output = try onQueryClock { try $0.runLegacy(json: PropValue.record(fields).json.compact, message: message, form: form) }
-        case let other?:
-            throw LiveError(description: "\(prop) holds \(other.summary), not an action")
+        try bridged {
+            let output: ActionOutput
+            switch found.value {
+            case nil, .scalar(.null)?:
+                output = try onQueryClock { try $0.run(action: nil, message: message, form: form) }
+            case .plan?:
+                guard let handle else { throw OpenUIError(.invalidHandle, "no evaluated tree") }
+                let action = try session.actionAt(evaluation: handle, path: jsonPath)
+                output = try onQueryClock { try $0.run(action: action, message: message, form: form) }
+            case let .record(fields)?:
+                output = try onQueryClock { try $0.runLegacy(json: PropValue.record(fields).json.compact, message: message, form: form) }
+            case let other?:
+                throw OpenUIError(.invalidHandle, "\(prop) holds \(other.summary), not an action")
+            }
+            try finish(output)
         }
-        try finish(output)
     }
 
     /// Runs a table's action cell, as a click on it does: like a button with
@@ -596,9 +619,9 @@ public final class LiveProgram {
     /// Ends the mutation a host event asked for: with `succeeded`, the plan
     /// carries on from the step after it; otherwise it stops there. Events
     /// that don't wait on a mutation are ignored.
-    public func resume(_ event: HostEvent, succeeded: Bool) throws {
+    public func resume(_ event: HostEvent, succeeded: Bool) throws(OpenUIError) {
         guard let continuation = event.continuation else { return }
-        try finish(try onQueryClock { try $0.resume(continuation: continuation, succeeded: succeeded) })
+        try bridged { try finish(try onQueryClock { try $0.resume(continuation: continuation, succeeded: succeeded) }) }
     }
 
     /// Redraws, then hands over the events. The store may have changed even
@@ -726,14 +749,14 @@ public final class LiveProgram {
         clock: C,
         minimumRefreshInterval: Duration = .seconds(1),
         _ provider: @escaping ToolProvider
-    ) throws where C.Duration == Duration {
-        guard queryDriver == nil else { throw LiveError(description: "a tool provider is already attached") }
+    ) throws(OpenUIError) where C.Duration == Duration {
+        guard queryDriver == nil else { throw OpenUIError(.toolProviderAttached, "a tool provider is already attached") }
         let minimum = QueryDriver.milliseconds(minimumRefreshInterval)
         guard minimumRefreshInterval == .milliseconds(minimum) else {
-            throw LiveError(description: "the minimum refresh interval must be a whole number of milliseconds")
+            throw OpenUIError(.invalidArgument, "the minimum refresh interval must be a whole number of milliseconds")
         }
         let driver = QueryDriver(program: self, session: session, clock: clock, provider: provider)
-        try session.attachToolProviderAt(nowMs: driver.now(), minimumMs: minimum)
+        try bridged { try session.attachToolProviderAt(nowMs: driver.now(), minimumMs: minimum) }
         queryDriver = driver
         do {
             if queriesPaused { try driver.pause() }
@@ -743,26 +766,26 @@ public final class LiveProgram {
             driver.stop()
             try? session.detachToolProvider()
             _ = try? refreshStore(force: true)
-            throw error
+            throw OpenUIError(error)
         }
         syncQueries(alreadyDrawn: true)
     }
 
     /// `attachToolProvider(clock:minimumRefreshInterval:_:)` on the
     /// continuous clock, which keeps counting while the Mac sleeps.
-    public func attachToolProvider(minimumRefreshInterval: Duration = .seconds(1), _ provider: @escaping ToolProvider) throws {
+    public func attachToolProvider(minimumRefreshInterval: Duration = .seconds(1), _ provider: @escaping ToolProvider) throws(OpenUIError) {
         try attachToolProvider(clock: ContinuousClock(), minimumRefreshInterval: minimumRefreshInterval, provider)
     }
 
     /// Cancels the calls in flight, ignoring their outcomes, and detaches
     /// the provider: the session forgets the queries' results and the program
     /// redraws as it would without one.
-    public func detachToolProvider() throws {
+    public func detachToolProvider() throws(OpenUIError) {
         guard let driver = queryDriver else { return }
-        try session.detachToolProvider()
+        try bridged { try session.detachToolProvider() }
         driver.stop()
         queryDriver = nil
-        try refreshStore(force: true)
+        try bridged { try refreshStore(force: true) }
     }
 
     /// Whether a tool provider is attached.
@@ -770,9 +793,9 @@ public final class LiveProgram {
 
     /// Runs again every query that has an error, as upstream's Retry button
     /// does (with no errors, every query).
-    public func retryFailedQueries() throws {
+    public func retryFailedQueries() throws(OpenUIError) {
         guard queryDriver != nil else { return }
-        try onQueryClock { try $0.retryFailedQueries() }
+        try bridged { try onQueryClock { try $0.retryFailedQueries() } }
         syncQueries()
     }
 
@@ -783,16 +806,16 @@ public final class LiveProgram {
 
     /// Pauses the queries until `resumeQueries()`, as when the app goes to
     /// the background. A view appearing does not resume them.
-    public func pauseQueries() throws {
+    public func pauseQueries() throws(OpenUIError) {
         queriesPausedByApp = true
-        try applyQueryPause()
+        try bridged { try applyQueryPause() }
     }
 
     /// Undoes `pauseQueries()`. Queries resume unless every view drawing this
     /// program has disappeared; they fetch what they still need and refresh.
-    public func resumeQueries() throws {
+    public func resumeQueries() throws(OpenUIError) {
         queriesPausedByApp = false
-        try applyQueryPause()
+        try bridged { try applyQueryPause() }
     }
 
     /// The view lifecycle: queries pause when the last `ElementView(live:)`
@@ -900,7 +923,7 @@ public final class LiveProgram {
     private func decoded(_ output: EvaluationOutput, snapshot: String, version: UInt64,
                          from base: Display, step: Step? = nil, programID: UUID?, streaming: Bool?, started: ContinuousClock.Instant) throws -> Display {
         let json = try JSONValue.parse(output.json)
-        guard base.generation < UInt64.max else { throw LiveError(description: "evaluation generation exhausted") }
+        guard base.generation < UInt64.max else { throw Self.generationsExhausted }
         let nextGeneration = base.generation + 1
         let nextID = programID ?? base.id
         let origin = Origin(program: nextID, generation: nextGeneration, steps: [])
@@ -963,16 +986,9 @@ public final class LiveProgram {
         return Located(value: current, jsonPath: jsonPath, form: form)
     }
 
+    /// The text `failure` shows for an error: its `OpenUIError` message.
     nonisolated static func describe(_ error: any Error) -> String {
-        guard let error = error as? OpenUiError else { return String(describing: error) }
-        switch error {
-        case let .RefusedWrite(reason), let .Evaluation(reason), let .LimitExceeded(reason),
-             let .InvalidJson(reason), let .Worker(reason), let .QueriesPaused(reason),
-             let .InvalidAttribute(reason):
-            return reason
-        default:
-            return String(describing: error)
-        }
+        OpenUIError(error).message
     }
 }
 
@@ -1026,6 +1042,3 @@ public struct HostEvent: Sendable {
     public var awaitsResume: Bool { continuation != nil }
 }
 
-public struct LiveError: Error, CustomStringConvertible {
-    public let description: String
-}
