@@ -112,6 +112,10 @@ _Avoid_: fetch, request, invocation
 How often a query is fetched again, in seconds.
 _Avoid_: polling rate, timer, TTL
 
+**Blocked**:
+A response that has not settled: still streaming or, for a response bundle, incomplete or with an invalid scripts section. Upstream draws buttons and inputs disabled while a response is blocked; a blocked response bundle also ignores clicks and Retry.
+_Avoid_: unsettled, pending, locked
+
 **Settled**:
 A program whose response has finished streaming and, for a response bundle, is complete and valid. Queries and mutations run only for a settled program.
 _Avoid_: unblocked, done, complete (a parse result's own flag)
@@ -209,7 +213,7 @@ The Swift package that draws programs as native SwiftUI views, for any Mac app: 
 _Avoid_: the Mac binding (the binding is one part of it), UI kit, renderer
 
 **Live program**:
-In OpenUINative, a program kept live by a runtime session (`LiveProgram`): the app sets and reads state, `ElementView` draws the evaluated tree and redraws when the store changes, built-in buttons run their action plans (a primary button in a form first checks its fields' rules, as upstream's does), built-in inputs write through binding markers or form fields, and one handler receives the host events. A click or a keystroke acts only while what it was drawn from is still what the tree holds there. While the app says a response is streaming, buttons and inputs are disabled.
+In OpenUINative, a program kept live by a runtime session (`LiveProgram`): the app sets and reads state, `ElementView` draws the evaluated tree and redraws when the store changes, built-in buttons run their action plans (a primary button in a form first checks its fields' rules, as upstream's does), built-in inputs write through binding markers or form fields, and one handler receives the host events. A click or a keystroke acts only while what it was drawn from is still what the tree holds there. While the response on screen is blocked (the app says it is streaming, or the session says a response bundle has not settled), buttons and inputs are disabled.
 _Avoid_: state runtime (its name before the runtime existed), runtime (that's the crate)
 
 **Viewer**:

@@ -90,6 +90,7 @@ object (wasm-bindgen cannot lower Option<&ActionHandle>).
 interface EvaluationOutput {
   readonly json: string; readonly sizeLimited: boolean; readonly depthLimited: boolean;
   readonly isQueryLoading: boolean; readonly parserErrorJson: string | undefined;
+  readonly blocked: boolean;
   readonly querySnapshotJson: string | undefined;
   readonly queryEvaluationError: {kind: string; message: string} | null;
   readonly evaluation: EvaluationHandle;
@@ -340,7 +341,8 @@ or draw with an explicit response state returns control to the caller.
 ```js
 const {evaluation, name, context, attributes, error} = session.setResponse(text, streaming);
 try {
-    render(JSON.parse(evaluation.json), {name, context, attributes, error});
+    // Disable buttons and inputs while the response is blocked, as upstream does.
+    render(JSON.parse(evaluation.json), {disabled: evaluation.blocked, name, context, attributes, error});
 } finally {
     evaluation.free();
 }
@@ -351,11 +353,24 @@ and Cloud script revision. The message's winning content marker supplies its
 attributes. Context contains parsed JSON or the text received so far. An
 invalid response after streaming returns the bundle error in `error` and the parser
 diagnostic in `evaluation.parserErrorJson`. The program still draws.
+Every draw's `evaluation.blocked` is the renderer's `blocked`, which upstream
+hands its components as `isStreaming`: true while the response streams and,
+for a response bundle, while it is incomplete or invalid. While the last draw
+was a `setResponse`, a redraw with `evaluate()` reports it for that raw
+response; after `evaluate(state)`, `setProgram` or `replaceProgram`, a plain
+`evaluate()` is a settled draw of a bare program and reports false. A refused
+update leaves it as it was. Clicks and Retry on a blocked response bundle are ignored
+whatever the flag drew.
 
 The entire raw response counts against the program-size limit, including
 marker lines and Cloud script code. The reader uses the smaller of its
 default size and depth ceilings and the session's configured ceilings.
 Session limits also apply to the script names, revision and parsed program.
+The package counts the error, the revision and the script names (and a byte
+per name) in UTF-8 bytes against `maxJsonBytes` before the draw, as Rust
+does again. It also refuses a response whose scripts JSON (the names as the
+JSON array it hands to Rust, escapes included) exceeds `maxJsonBytes` bytes;
+the native binding passes the names as a list, with no such text.
 A refused edit preserves the displayed evaluation, its actions and pending
 calls.
 

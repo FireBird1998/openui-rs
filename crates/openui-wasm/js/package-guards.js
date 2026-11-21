@@ -168,20 +168,47 @@ function openuiResponseState(value, receiver) {
   if (names !== undefined && !openuiIsArray(names)) throw openuiFailure('InvalidJson', 'expected a scripts array');
   const count = names === undefined ? 0 : names.length;
   if (!openuiIsSafeInteger(count) || count < 0) throw openuiFailure('InvalidJson', 'expected a scripts array length');
-  // UTF-16 units give a lower bound before copying. Rust checks actual bytes.
+  // Bytes as Rust counts them: a byte per name plus the UTF-8 of each text
+  // as it crosses. A text's UTF-16 length, never more than its bytes, is
+  // checked first, so no text longer than the limit is measured or copied.
   const limit = openuiGet(openuiResponseLimits, receiver)?.maxJsonBytes ?? 8388608n;
+  const refuse = () => { throw openuiFailure('LimitExceeded', 'response state byte limit'); };
   let used = count + (error?.length ?? 0) + (revision?.length ?? 0);
-  if (used > limit) throw openuiFailure('LimitExceeded', 'response state byte limit');
-  let scripts = '[';
+  if (used > limit) refuse();
+  const scriptRevision = revision === undefined ? undefined : openuiMessageText(revision);
+  used = count + (error === undefined ? 0 : openuiUtf8Bytes(error))
+    + (scriptRevision === undefined ? 0 : openuiUtf8Bytes(scriptRevision));
+  if (used > limit) refuse();
+  // The scripts JSON handed to Rust is also held to the limit, in bytes:
+  // escapes make it up to six times its names.
+  let scripts = '[', json = 2;
   for (let i = 0; i < count; i++) {
     const name = openuiString(names[i]);
-    used += name.length;
-    if (used > limit) throw openuiFailure('LimitExceeded', 'response state byte limit');
-    scripts += (i ? ',' : '') + openuiStringify(openuiMessageText(name));
+    if (used + name.length > limit) refuse();
+    const text = openuiMessageText(name), quoted = openuiStringify(text);
+    used += openuiUtf8Bytes(text);
+    json += (i ? 1 : 0) + openuiUtf8Bytes(quoted);
+    if (used > limit || json > limit) refuse();
+    scripts += (i ? ',' : '') + quoted;
   }
   return { __proto__: null, streaming, isBundle: bundle === undefined ? false : openuiBoolean(bundle),
     complete: complete === undefined ? true : openuiBoolean(complete), scriptsJson: scripts + ']',
-    error, scriptRevision: revision === undefined ? undefined : openuiMessageText(revision) };
+    error, scriptRevision };
+}
+// The UTF-8 bytes of `text` as wasm-bindgen sends it, a lone surrogate
+// replaced by U+FFFD (three bytes). Never fewer than its UTF-16 units.
+function openuiUtf8Bytes(text) {
+  let bytes = 0;
+  for (let i = 0; i < text.length; i++) {
+    const unit = openuiApply(openuiCharCodeAt, text, [i]);
+    if (unit < 0x80) bytes += 1;
+    else if (unit < 0x800) bytes += 2;
+    else if (unit >= 0xd800 && unit <= 0xdbff && i + 1 < text.length) {
+      const next = openuiApply(openuiCharCodeAt, text, [i + 1]);
+      if (next >= 0xdc00 && next <= 0xdfff) { bytes += 4; i++; } else bytes += 3;
+    } else bytes += 3;
+  }
+  return bytes;
 }
 const openuiLimit = value => {
   if (typeof value === 'bigint' && value >= 0n && value <= 18446744073709551615n) return value;
@@ -347,7 +374,7 @@ const openuiSurface = new Map([
   [ParsedProgram, { methods: { free: openuiFree } }],
   [EvaluationOutput, {
     methods: { free: openuiFree },
-    accessors: { isQueryLoading: { get: openuiNone }, parserErrorJson: { get: openuiNone }, queryEvaluationError: { get: openuiJson }, querySnapshotJson: { get: openuiNone }, evaluation: { get: openuiNone }, json: { get: openuiNone },
+    accessors: { blocked: { get: openuiNone }, isQueryLoading: { get: openuiNone }, parserErrorJson: { get: openuiNone }, queryEvaluationError: { get: openuiJson }, querySnapshotJson: { get: openuiNone }, evaluation: { get: openuiNone }, json: { get: openuiNone },
       sizeLimited: { get: openuiNone }, depthLimited: { get: openuiNone } },
   }],
   [ReplacementOutput, {

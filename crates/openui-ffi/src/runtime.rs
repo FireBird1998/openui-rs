@@ -104,6 +104,11 @@ pub struct EvaluationOutput {
     pub is_query_loading: bool,
     #[uniffi(default = None)]
     pub parser_error_json: Option<String>,
+    /// The renderer's `blocked`: the response this draw was given has not
+    /// settled. Upstream's components draw disabled while it is true; the
+    /// session's own click and Retry gate does not read it.
+    #[uniffi(default = false)]
+    pub blocked: bool,
 }
 
 /// Store initialization's batch result, including per-name refusals.
@@ -1347,6 +1352,7 @@ impl From<openui_session::EvaluationOutput> for EvaluationOutput {
             query_snapshot_json: v.query_snapshot_json,
             is_query_loading: v.is_query_loading,
             parser_error_json: v.parser_error_json,
+            blocked: v.blocked,
             json: v.json,
             size_limited: v.size_limited,
             depth_limited: v.depth_limited,

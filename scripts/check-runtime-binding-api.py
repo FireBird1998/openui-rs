@@ -133,6 +133,7 @@ if len(sys.argv) == 3 and sys.argv[1] == "--wasm":
     assert "setQueryExtraValues(tool_name: string, values_json: string): void;" in session[1]
     assert re.search(r"runLegacy\(json: string, message: string, form\?: string(?: \| null)?\): ActionOutput;", session[1])
     assert "readonly isQueryLoading: boolean;" in declarations
+    assert "readonly blocked: boolean;" in declarations
     assert "readonly parserErrorJson: string | undefined;" in declarations
     assert re.search(r"run\(action: ActionHandle \| (?:null \| )?undefined, message: string, form\?: string(?: \| null)?\): ActionOutput;", session[1])
     for field in ["queryEvaluationError", "evaluationError"]:
@@ -190,6 +191,7 @@ assert re.search(r"func run\(action: ActionHandle\?, message: String, form: Stri
 assert re.search(r"func runLegacy\(json: String, message: String, form: String\?\) throws\s*-> ActionOutput", api[1])
 assert "func setQueryExtraValues(toolName: String, valuesJson: String) throws" in api[1]
 assert "isQueryLoading: Bool = false, parserErrorJson: String? = nil" in swift
+assert re.search(r"public var blocked: Bool\b", swift) and "blocked: Bool = false" in swift, "Swift blocked flag drift"
 assert "nextRefreshDueMs: UInt64? = nil" in swift
 assert "func resumeQueriesAt(nowMs: UInt64) throws" in api[1]
 assert "func attachToolProviderAt(nowMs: UInt64, minimumMs: UInt64) throws" in api[1]
@@ -231,7 +233,8 @@ if len(sys.argv) == 3:
     for declaration in ["`streaming`: kotlin.Boolean = false", "`complete`: kotlin.Boolean = true",
                         "`isBundle`: kotlin.Boolean = false", "`scripts`: List<kotlin.String> = listOf()",
                         "`scriptRevision`: kotlin.String? = null", "`error`: kotlin.String? = null",
-                        "`isQueryLoading`: kotlin.Boolean = false", "`parserErrorJson`: kotlin.String? = null"]:
+                        "`isQueryLoading`: kotlin.Boolean = false", "`parserErrorJson`: kotlin.String? = null",
+                        "`blocked`: kotlin.Boolean = false"]:
         assert declaration in kotlin, declaration
     assert "fun `setQueryExtraValues`(`toolName`: kotlin.String, `valuesJson`: kotlin.String)" in api[1]
     assert "fun `runLegacy`(`json`: kotlin.String, `message`: kotlin.String, `form`: kotlin.String?): ActionOutput" in api[1]

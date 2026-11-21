@@ -97,6 +97,11 @@ pub struct EvaluationOutput {
     pub is_query_loading: bool,
     #[wasm_bindgen(readonly, js_name = parserErrorJson)]
     pub parser_error_json: Option<String>,
+    /// The renderer's `blocked`: the response this draw was given has not
+    /// settled. Upstream's components draw disabled while it is true; the
+    /// session's own click and Retry gate does not read it.
+    #[wasm_bindgen(readonly)]
+    pub blocked: bool,
     #[wasm_bindgen(readonly)]
     pub json: String,
     #[wasm_bindgen(readonly, js_name = sizeLimited)]
@@ -124,6 +129,7 @@ impl From<core::EvaluationOutput> for EvaluationOutput {
             query_evaluation_error: v.query_evaluation_error,
             is_query_loading: v.is_query_loading,
             parser_error_json: v.parser_error_json,
+            blocked: v.blocked,
             query_snapshot_json: v.query_snapshot_json,
             json: v.json,
             size_limited: v.size_limited,
@@ -153,6 +159,7 @@ impl ReplacementOutput {
             query_evaluation_error: v.query_evaluation_error.clone(),
             is_query_loading: v.is_query_loading,
             parser_error_json: v.parser_error_json.clone(),
+            blocked: v.blocked,
             query_snapshot_json: v.query_snapshot_json.clone(),
             json: v.json.clone(),
             size_limited: v.size_limited,

@@ -132,6 +132,7 @@ struct EvaluationOutput {
     public var queryEvaluationError: OpenUiError? // defaults to nil
     public var isQueryLoading: Bool // defaults to false
     public var parserErrorJson: String? // defaults to nil
+    public var blocked: Bool // defaults to false
 }
 struct QueryEffects {
     public var changed: Bool

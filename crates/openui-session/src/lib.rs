@@ -262,6 +262,12 @@ impl Drop for ContinuationHandle {
 /// The runtime's exact `{root,errors}` JSON and separate limit flags.
 #[derive(Debug)]
 pub struct EvaluationOutput {
+    /// The renderer's `blocked` for the response this draw was given: still
+    /// streaming or, for a response bundle, incomplete or with an invalid
+    /// scripts section. Upstream hands it to components as `isStreaming`, so
+    /// drivers draw buttons and inputs disabled while it is true. It only
+    /// reports: the session's own click and Retry gate does not read it.
+    pub blocked: bool,
     pub is_query_loading: bool,
     /// The renderer's separate parse exception, in OpenUIError JSON form.
     pub parser_error_json: Option<String>,
@@ -1025,6 +1031,7 @@ impl SessionCore {
             projection: initialization_output(projection, self.core_limits),
             initialization: initialization_output(initialization, self.core_limits),
             evaluation: EvaluationOutput {
+                blocked: self.response.blocked,
                 is_query_loading: self
                     .response
                     .is_query_loading(&self.program, self.drawn_manager()),
@@ -1215,6 +1222,7 @@ impl SessionCore {
             s.generation = generation;
             s.root = tree.root;
             Ok(EvaluationOutput {
+                blocked: s.response.blocked,
                 is_query_loading: s.response.is_query_loading(&s.program, s.drawn_manager()),
                 parser_error_json: s.response.parser_error_json.clone(),
                 query_snapshot_json,

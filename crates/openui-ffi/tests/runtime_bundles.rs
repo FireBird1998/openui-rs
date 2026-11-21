@@ -21,9 +21,9 @@ fn native_draws_publish_bundle_loading_errors_and_calls_for_the_settled_revision
     session.attach_tool_provider()?;
     let first =
         session.replace_program_with_response(program, None, None, true, bundle(true, "A"))?;
-    assert!(first.evaluation.is_query_loading);
+    assert!(first.evaluation.is_query_loading && first.evaluation.blocked);
     assert!(session.take_query_update()?.calls.is_empty());
-    session.evaluate_with_response(bundle(false, "A"))?;
+    assert!(!session.evaluate_with_response(bundle(false, "A"))?.blocked);
     let a = session
         .take_query_update()?
         .calls
@@ -50,7 +50,7 @@ fn native_draws_publish_bundle_loading_errors_and_calls_for_the_settled_revision
         error: Some("Invalid scripts bundle".into()),
         ..Default::default()
     })?;
-    assert!(!error.is_query_loading);
+    assert!(!error.is_query_loading && error.blocked);
     assert_eq!(
         error.parser_error_json.as_deref(),
         Some(r#"{"source":"parser","code":"parse-failed","message":"Invalid scripts bundle"}"#)
@@ -99,7 +99,7 @@ fn native_set_program_preserves_the_click_and_retry_gate_until_the_next_draw()
         ),
         (0, 0, 0)
     );
-    session.evaluate()?;
+    assert!(!session.evaluate()?.blocked);
     session.retry_failed_queries()?;
     assert_eq!(session.take_query_update()?.calls.len(), 1);
     assert_eq!(session.run(None, "click".into(), None)?.events.len(), 1);

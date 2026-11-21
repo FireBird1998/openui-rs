@@ -18,15 +18,33 @@ fn library(schema: Json) -> Arc<ComponentLibrary> {
 }
 
 fn replay(name: &str) -> Result<()> {
-    let corpus: Json =
-        serde_json::from_str(include_str!("../../../conformance/session-bundles.json"))?;
+    replay_corpus(
+        include_str!("../../../conformance/session-bundles.json"),
+        include_str!("../../../conformance/golden/session-bundles.jsonl"),
+        name,
+    )
+    .map(drop)
+}
+
+/// The session after a replay, with the last response it was given and the
+/// reference's `blocked` after the last step.
+struct Replayed {
+    session: SessionCore,
+    lib: Arc<ComponentLibrary>,
+    response: ResponseState,
+    blocked: bool,
+}
+
+/// Replay one scenario. A golden row with `blocked` (the renderer's
+/// `isStreaming` for its components) is compared with the draw's flag too.
+fn replay_corpus(corpus: &str, golden: &str, name: &str) -> Result<Replayed> {
+    let corpus: Json = serde_json::from_str(corpus)?;
     let lib = library(corpus.get("schema").ok_or("missing schema")?.clone());
     let scenarios = corpus
         .get("scenarios")
         .and_then(Json::as_array)
         .ok_or("missing scenarios")?;
-    let mut golden =
-        include_str!("../../../conformance/golden/session-bundles.jsonl").split_inclusive('\n');
+    let mut golden = golden.split_inclusive('\n');
     let mut selected = None;
     for scenario in scenarios {
         let steps = scenario
@@ -49,6 +67,7 @@ fn replay(name: &str) -> Result<()> {
     let mut calls: Vec<Arc<WantedToolCall>> = Vec::new();
     let mut response = ResponseState::default();
     let mut previous: Option<EvaluationOutput> = None;
+    let mut blocked = false;
     for (index, (step, expected)) in steps.iter().zip(expected).enumerate() {
         let mut draw = None;
         let mut events = Vec::new();
@@ -134,13 +153,17 @@ fn replay(name: &str) -> Result<()> {
             dispatch.push(record);
         }
         calls.extend(effects.calls);
+        let expected_blocked = serde_json::from_str::<Json>(expected)?
+            .get("blocked")
+            .and_then(Json::as_bool);
         let mut actual = format!(
-            r#"{{"name":{},"tree":{},"snapshot":{},"isQueryLoading":{},"parserError":{},"calls":[{}],"events":[{}]}}"#,
+            r#"{{"name":{},"tree":{},"snapshot":{},{}"isQueryLoading":{},"parserError":{},"calls":[{}],"events":[{}]}}"#,
             json!(name),
             draw.json,
             draw.query_snapshot_json
                 .as_deref()
                 .ok_or("missing snapshot")?,
+            expected_blocked.map_or(String::new(), |_| format!(r#""blocked":{},"#, draw.blocked)),
             draw.is_query_loading,
             draw.parser_error_json.as_deref().unwrap_or("null"),
             dispatch.join(","),
@@ -148,9 +171,15 @@ fn replay(name: &str) -> Result<()> {
         );
         actual.push('\n');
         assert_eq!(actual, expected, "{name} step {index}");
+        blocked = draw.blocked;
         previous = Some(draw);
     }
-    Ok(())
+    Ok(Replayed {
+        session: s,
+        lib,
+        response,
+        blocked,
+    })
 }
 
 #[test]
@@ -209,6 +238,11 @@ fn refused_response_metadata_preserves_the_display_and_click_gate() -> Result<()
         },
         ResponseState {
             error: Some("x".repeat(2049)),
+            ..Default::default()
+        },
+        // Bytes, not characters: 1,024 of them under the limit, 2,049 bytes over it.
+        ResponseState {
+            scripts: vec!["é".repeat(1024)],
             ..Default::default()
         },
     ] {
@@ -500,4 +534,89 @@ fn source_revision_with_a_reader() -> Result<()> {
 #[test]
 fn settled_reader_completes_during_a_blocked_edit() -> Result<()> {
     replay("settled-reader-completes-during-a-blocked-edit")
+}
+
+/// The draw's `blocked` after each command the session takes, compared with
+/// the renderer's `blocked` where the reference has the command (the replay)
+/// and, for commands of the session alone, with what the last response says.
+#[test]
+fn every_draw_reports_the_renderers_blocked_flag_and_the_gate_is_unchanged() -> Result<()> {
+    let Replayed {
+        session: mut s,
+        lib,
+        response: settled,
+        blocked,
+    } = replay_corpus(
+        include_str!("../../../conformance/session-blocked.json"),
+        include_str!("../../../conformance/golden/session-blocked.jsonl"),
+        "blocked-flag-walk",
+    )?;
+    assert!(!blocked && settled.is_bundle && !settled.streaming);
+    let values = JsObject::new();
+    let refs = PreparedReferenceValues::new(&values);
+    let program = parsed(&lib, "root=Box(\"x\",Action([@ToAssistant(\"x\")]))");
+    let streaming = ResponseState {
+        streaming: true,
+        ..settled.clone()
+    };
+    let invalid = ResponseState {
+        error: Some("Invalid scripts bundle".into()),
+        ..settled.clone()
+    };
+    let refused = ResponseState {
+        error: Some("x".repeat(9 << 20)),
+        ..streaming.clone()
+    };
+    let clicks = |s: &mut SessionCore| -> Result<usize> {
+        Ok(s.run(&refs, None, "click".into(), None)?.events.len())
+    };
+    // A bundle's draw, then a refused update: the gate is as the last draw left it.
+    for (state, flag) in [(&settled, false), (&streaming, true), (&invalid, true)] {
+        assert_eq!(
+            s.evaluate_with_response(&refs, state.clone())?.blocked,
+            flag
+        );
+        assert!(matches!(
+            s.evaluate_with_response(&refs, refused.clone()),
+            Err(OpenUiError::LimitExceeded { .. })
+        ));
+        assert_eq!(clicks(&mut s)?, usize::from(!flag));
+        assert_eq!(
+            s.evaluate_with_response(&refs, state.clone())?.blocked,
+            flag
+        );
+    }
+    // Pausing and resuming queries changes nothing the draw reports.
+    s.pause_queries()?;
+    assert!(s.evaluate_with_response(&refs, invalid.clone())?.blocked);
+    s.resume_queries()?;
+    assert!(s.evaluate_with_response(&refs, invalid.clone())?.blocked);
+    // Program replacement takes the response it is given.
+    let replaced = s.replace_program(&refs, program.clone(), None, None, true)?;
+    assert!(!replaced.evaluation.blocked);
+    let replaced = s.replace_program_with_response(
+        &refs,
+        program.clone(),
+        None,
+        None,
+        true,
+        streaming.clone(),
+    )?;
+    assert!(replaced.evaluation.blocked);
+    assert_eq!(clicks(&mut s)?, 0);
+    // setProgram keeps the gate until the next draw, which reports its own state.
+    s.set_program(&refs, program.clone())?;
+    assert_eq!(clicks(&mut s)?, 0);
+    assert!(!s.evaluate(&refs)?.blocked);
+    assert_eq!(clicks(&mut s)?, 1);
+    // A bare program streaming is blocked, as upstream's components see it,
+    // yet the session still takes its click: the flag only reports.
+    let bare = ResponseState::from(true);
+    assert!(s.evaluate_with_response(&refs, bare)?.blocked);
+    assert_eq!(clicks(&mut s)?, 1);
+    assert!(
+        !s.evaluate_with_response(&refs, ResponseState::default())?
+            .blocked
+    );
+    Ok(())
 }

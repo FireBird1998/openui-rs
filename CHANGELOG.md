@@ -2,6 +2,18 @@
 
 ## Unreleased
 
+- Every draw reports the renderer's `blocked` for its response:
+  `EvaluationOutput.blocked` in both bindings (#118). It is true while the
+  response streams and, for a response bundle, while it is incomplete or has
+  an invalid scripts section, as upstream passes `isStreaming: blocked` to
+  its components. OpenUINative's `LiveProgram` reads it, gains `isBlocked`,
+  and draws buttons and inputs disabled while it is true; the JavaScript
+  driver returns it with each `setResponse` draw. The session's click and
+  Retry gate is unchanged. The WebAssembly package counts response state in
+  UTF-8 bytes instead of UTF-16 units and refuses scripts JSON over
+  `maxJsonBytes` bytes, which escapes could make about six times the names
+  before (#108).
+
 - Streaming a raw response costs about what pushing it does, in both
   drivers: `RuntimeSession.setResponse` and `LiveProgram.show(response:
   streaming:)` read only what an append adds and parse only the new part of

@@ -1,0 +1,100 @@
+{
+  "schema": {
+    "$defs": {
+      "Box": {
+        "properties": {
+          "value": {},
+          "action": {},
+          "mutation": {}
+        }
+      }
+    }
+  },
+  "scenarios": [
+    {
+      "name": "blocked-flag-walk",
+      "steps": [
+        {
+          "response": "]]>openui:content\nroot=Box(\"bundle\",Action([@ToAssistant(\"bundle\")]))\n]]>openui:scripts {\"count\":1}\n[{\"name\":\"cloud\",\"code\":\"A\"}]",
+          "streaming": true
+        },
+        {
+          "click": "action"
+        },
+        {
+          "retry": true
+        },
+        {
+          "response": "]]>openui:content\nroot=Box(\"bundle\",Action([@ToAssistant(\"bundle\")]))\n]]>openui:scripts {\"count\":1}\n[{\"name\":\"cloud\",\"code\":\"A\"}]"
+        },
+        {
+          "click": "action"
+        },
+        {
+          "response": "]]>openui:content\nroot=Box(\"bundle\",Action([@ToAssistant(\"bundle\")]))\n]]>openui:scripts {\"count\":1}\n["
+        },
+        {
+          "click": "action"
+        },
+        {
+          "retry": true
+        },
+        {
+          "response": "]]>openui:content\nroot=Box(\"cut\n]]>openui:content\nroot=Box(\"retried\",Action([@ToAssistant(\"retried\")]))",
+          "streaming": true
+        },
+        {
+          "response": "]]>openui:content\nroot=Box(\"cut\n]]>openui:content\nroot=Box(\"retried\",Action([@ToAssistant(\"retried\")]))\n]]>openui:end\n"
+        },
+        {
+          "click": "action"
+        },
+        {
+          "response": "root=Box(\"bare\",Action([@ToAssistant(\"bare\")]))",
+          "streaming": true
+        },
+        {
+          "click": "action"
+        },
+        {
+          "response": "root=Box(\"bare\",Action([@ToAssistant(\"bare\")]))"
+        },
+        {
+          "click": "action"
+        },
+        {
+          "response": "]]>openui:content\nroot=Box(\"message\",Action([@ToAssistant(\"message\")]))",
+          "streaming": true
+        },
+        {
+          "response": "]]>openui:content\nroot=Box(\"message\",Action([@ToAssistant(\"message\")]))\n]]>openui:end\n"
+        },
+        {
+          "click": "action"
+        },
+        {
+          "response": "]]>openui:content\nroot=Box(\"again\",Action([@ToAssistant(\"again\")]))\n]]>openui:scripts {\"count\":1}\n[{\"name\":\"cloud\",\"code\":\"A\"}]"
+        },
+        {
+          "response": "]]>openui:content\nroot=Box(\"again\",Action([@ToAssistant(\"again\")]))\n]]>openui:scripts {\"count\":1}\n",
+          "streaming": true
+        },
+        {
+          "click": "action"
+        },
+        {
+          "response": "]]>openui:content\nroot=Box(\"again\",Action([@ToAssistant(\"again\")]))\n]]>openui:scripts {\"count\":1}\n"
+        },
+        {
+          "click": "action"
+        },
+        {
+          "response": "]]>openui:content\nroot=Box(\"again\",Action([@ToAssistant(\"again\")]))\n]]>openui:scripts {\"count\":1}\n[{\"name\":\"cloud\",\"code\":\"A\"}]"
+        },
+        {
+          "click": "action"
+        }
+      ]
+    }
+  ]
+}

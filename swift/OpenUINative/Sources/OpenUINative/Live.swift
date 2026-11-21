@@ -66,12 +66,18 @@ public final class LiveProgram {
             if !showingPreview { queryStreamingChanged() }
         }
     }
+    /// The response on screen has not settled: it is streaming, or it is a
+    /// response bundle that is incomplete or has an invalid scripts section
+    /// (`parserError`). Upstream hands this `blocked` to its components as
+    /// `isStreaming`; built-in buttons, inputs and selects are disabled
+    /// while it is true.
+    public var isBlocked: Bool { isStreaming || bundleBlocksActions }
     /// Built-in controls can interact only with a complete runtime.
-    public var acceptsInteractions: Bool { !isStreaming && !bundleBlocksActions }
-    private var bundleBlocksActions: Bool {
-        guard let state = response?.state, state.isBundle else { return false }
-        return stepIsStreaming || requestedStreaming || !state.complete || state.error != nil
-    }
+    public var acceptsInteractions: Bool { !isBlocked }
+    /// The session's `blocked` for the drawing on screen. Only a response
+    /// bundle's counts here: a bare program's is the streaming request at its
+    /// draw, which `isStreaming` already reports as it is now.
+    private var bundleBlocksActions: Bool { response?.state.isBundle == true && display.blocked }
     /// The app-owned request, separate from an immutable preview step's phase.
     /// Temporary hosts use suspendInteractions(), so they never overwrite
     /// an app request made while their asynchronous work is suspended.
@@ -155,6 +161,8 @@ public final class LiveProgram {
         var step: Step?
         var parserError: JSONValue?
         var queryLoading = false
+        /// The session's `blocked` flag from the evaluation on screen.
+        var blocked = false
         var streaming = false
         var queries = QueryStatus()
     }
@@ -912,7 +920,7 @@ public final class LiveProgram {
             id: nextID, generation: nextGeneration, step: step ?? base.step,
             parserError: try output.parserErrorJson.map(JSONValue.parse),
             queryLoading: output.isQueryLoading || (streaming == true && !queries.loading.isEmpty),
-            streaming: streaming ?? base.streaming, queries: queries)
+            blocked: output.blocked, streaming: streaming ?? base.streaming, queries: queries)
     }
 
     private struct Located {

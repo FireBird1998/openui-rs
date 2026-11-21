@@ -441,3 +441,84 @@ test('a refused response update leaves the reader where it was for the next appe
     expect(drawOf(s, head + more, true)).toBe(drawOf(control, head + more, true));
   }
 });
+
+test('each raw draw reports the renderer blocked flag, which leaves the click gate as it was', () => {
+  const corpus = JSON.parse(readFileSync(new URL('../../../conformance/session-blocked.json', import.meta.url), 'utf8'));
+  const golden = readFileSync(new URL('../../../conformance/golden/session-blocked.jsonl', import.meta.url), 'utf8')
+    .trimEnd().split('\n').map(row => JSON.parse(row));
+  using library = new wasm.ComponentLibrary(JSON.stringify(corpus.schema));
+  using s = new wasm.RuntimeSession(library);
+  const [{steps}] = corpus.scenarios;
+  expect(golden).toHaveLength(steps.length);
+  let token;
+  const seen = [];
+  for (const [index, step] of steps.entries()) {
+    let events = [];
+    if ('click' in step) {
+      using action = s.actionAt(token, ['props', step.click]);
+      using run = s.run(action, 'click');
+      events = run.events;
+    }
+    // Every other step redraws the last response, as the reference does.
+    using output = 'response' in step ? s.setResponse(step.response, step.streaming ?? false).evaluation : s.evaluate();
+    token?.free();
+    token = output.evaluation;
+    seen.push(output.blocked);
+    expect([index, output.blocked, events.length]).toEqual([index, golden[index].blocked, golden[index].events.length]);
+  }
+  token?.free();
+  expect(seen).toContain(true);
+  expect(seen).toContain(false);
+});
+
+test('a refused raw update leaves the blocked flag the last draw reported, until dispose', () => {
+  using library = new wasm.ComponentLibrary(boxSchema);
+  using limits = new wasm.RuntimeLimits();
+  using parse = limits.evaluation;
+  parse.programSize = 4096n;
+  limits.evaluation = parse;
+  using s = wasm.RuntimeSession.withLimits(library, undefined, limits);
+  const bundle = ']]>openui:content\nroot=Box(0)\n]]>openui:scripts {"count":1}\n[{"name":"cloud","code":"A"}]';
+  for (const [text, streaming, blocked] of [[bundle, true, true], [bundle, false, false], [bundle + '?', false, true], ['root=Box(0)', true, true], ['root=Box(0)', false, false]] as const) {
+    using drawn = s.setResponse(text, streaming).evaluation;
+    expect(drawn.blocked).toBe(blocked);
+    kind(() => s.setResponse('root=Box("' + 'V'.repeat(5000) + '")', !streaming), 'LimitExceeded');
+    using redrawn = s.evaluate();
+    expect(redrawn.blocked).toBe(blocked);
+  }
+  using invalid = s.setResponse(bundle + '?', false).evaluation;
+  s.pauseQueries();
+  using paused = s.evaluate();
+  s.resumeQueries();
+  using resumed = s.evaluate();
+  expect([paused.blocked, resumed.blocked]).toEqual([true, true]);
+  using p = wasm.parseProgram('root=Box(1)', library);
+  using replaced = s.replaceProgram(p, undefined, undefined, false);
+  using replacedOutput = replaced.evaluation;
+  expect(replacedOutput.blocked).toBe(false);
+  s.dispose();
+  kind(() => s.evaluate(), 'Disposed');
+});
+
+test('the scripts JSON is refused at maxJsonBytes measured in UTF-8 bytes', () => {
+  using lib = new wasm.ComponentLibrary('{}');
+  using limits = new wasm.RuntimeLimits();
+  limits.maxJsonBytes = 32n;
+  using session = wasm.RuntimeSession.withLimits(lib, undefined, limits);
+  const draw = (scripts: string[], error?: string) => session.evaluate({ streaming: false, isBundle: true, scripts, error }).free();
+  // `["é…é"]`: 2 + 2 + 2 bytes per é. Under the limit in UTF-16 units either way.
+  draw(['é'.repeat(14)]);
+  kind(() => draw(['é'.repeat(15)]), 'LimitExceeded');
+  // Four bytes per astral scalar, two units.
+  draw(['😀'.repeat(7)]);
+  kind(() => draw(['😀'.repeat(8)]), 'LimitExceeded');
+  // A control character is one byte of name and six of JSON.
+  draw(['\u0001'.repeat(4)]);
+  kind(() => draw(['\u0001'.repeat(5)]), 'LimitExceeded');
+  // A lone surrogate crosses as a four-byte stand-in.
+  draw(['a\ud800'.repeat(5)]);
+  kind(() => draw(['a\ud800'.repeat(6)]), 'LimitExceeded');
+  // The error text counts its bytes beside the names.
+  draw([], 'é'.repeat(16));
+  kind(() => draw([], 'é'.repeat(16) + 'e'), 'LimitExceeded');
+});

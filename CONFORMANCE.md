@@ -231,6 +231,17 @@ steps, and mutation registration on a reparse or a change to the blocked flag.
 These observations test that schedule without running React’s effect lifecycle.
 [Renderer hook and React dependencies](https://github.com/thesysdev/openui/blob/47b9cae0d3b26a8c9d7514d5887a6d6608801ac9/packages/react-lang/src/hooks/useOpenUIState.ts#L208-L245)
 
+The renderer hands `blocked`, not `bundleBlocked`, to its components as
+`isStreaming` (`useOpenUIState.ts` lines 92 and 483), so a streaming bare
+program draws disabled too while the session still takes its click.
+`conformance/session-blocked.json` walks a streaming and a settled bundle, an
+invalid settled bundle, a retried content section, a bare program, a plain
+message and a bundle whose scripts section is still arriving, with clicks and
+Retry in between. The same adapter records `blocked` in each of its 25 rows
+([golden](conformance/golden/session-blocked.jsonl)), and every draw's
+`blocked` in both bindings matches it.
+[Renderer context value](https://github.com/thesysdev/openui/blob/47b9cae0d3b26a8c9d7514d5887a6d6608801ac9/packages/react-lang/src/hooks/useOpenUIState.ts#L478-L494)
+
 An ordinary tool keeps its cached result across a scripts edit. A streaming response bundle
 with queries reports loading before dispatch. An invalid scripts section draws
 the program and supplies a separate `parser` / `parse-failed` diagnostic.

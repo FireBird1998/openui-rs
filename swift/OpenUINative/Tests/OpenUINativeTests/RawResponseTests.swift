@@ -160,6 +160,55 @@ import Testing
         #expect(events == ["continue_conversation"])
     }
 
+    @Test func theSessionsBlockedFlagDisablesControlsUntilTheResponseSettles() async throws {
+        let core = Core()
+        var events: [String] = []
+        let live = try LiveProgram(library: await core.library(schema: schema)) { events.append($0.type) }
+        let program = #"root=Button("Send", @ToAssistant("sent"))"#
+        let bundle = header + program + section
+        try await live.show(response: bundle + script, streaming: true)
+        #expect(live.isBlocked && !live.acceptsInteractions)
+        try await live.show(response: bundle + script, streaming: false)
+        #expect(!live.isBlocked && live.acceptsInteractions)
+        // An invalid settled bundle stays blocked, and its click is ignored.
+        try await live.show(response: bundle + "[", streaming: false)
+        #expect(live.isBlocked && !live.isStreaming && !live.acceptsInteractions)
+        try live.run("action", of: #require(live.root), message: "Send")
+        #expect(events.isEmpty)
+        // A refused show leaves the flag as it was.
+        do {
+            try await live.show(response: bundle + script + String(repeating: " ", count: 1 << 20), streaming: false)
+            Issue.record("The oversized response was accepted")
+        } catch OpenUiError.LimitExceeded {}
+        #expect(live.isBlocked && !live.acceptsInteractions)
+        // A bare program is blocked only while the app says it streams.
+        try await live.show(response: program, streaming: false)
+        #expect(!live.isBlocked && live.acceptsInteractions)
+        live.isStreaming = true
+        #expect(live.isBlocked && !live.acceptsInteractions)
+        live.isStreaming = false
+        #expect(!live.isBlocked && live.acceptsInteractions)
+        try live.run("action", of: #require(live.root), message: "Send")
+        #expect(events == ["continue_conversation"])
+        try await live.show(response: bundle + script, streaming: false)
+        #expect(!live.isBlocked && live.acceptsInteractions)
+    }
+
+    @Test func eachDrawCarriesTheRenderersBlockedFlag() throws {
+        let session = try RuntimeSession(library: ComponentLibrary(schema: schema), promptSpec: nil)
+        defer { session.dispose() }
+        for (state, blocked) in [
+            (ResponseState(), false),
+            (ResponseState(streaming: true), true),
+            (ResponseState(isBundle: true, complete: false), true),
+            (ResponseState(isBundle: true, error: "Invalid scripts bundle"), true),
+            (ResponseState(isBundle: true), false),
+        ] {
+            #expect(try session.evaluateWithResponse(responseState: state).blocked == blocked)
+        }
+        #expect(try session.evaluate().blocked == false)
+    }
+
     @Test func clearingAppStreamingAndDiscardingABundlePreviewRestoreProviderFreeActions() async throws {
         let core = Core()
         var events: [String] = []

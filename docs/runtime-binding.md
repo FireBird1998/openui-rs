@@ -405,12 +405,23 @@ declared dependencies, application values, then the script revision. A later
 value wins on a repeated key. An empty object clears the app values
 for that tool. Changing only query keys preserves registered mutation tool names.
 
+Read `evaluation.blocked` to draw buttons and inputs disabled. It is the
+renderer’s `blocked` for the response the draw was given: true while it
+streams, and for a response bundle that is incomplete or has an invalid
+scripts section, even once streaming ends. Upstream hands this value to its
+components as `isStreaming`. A draw without response state reports false.
+The flag only reports: the session ignores clicks and Retry for a blocked
+response bundle whether or not a control was disabled, and still takes a
+click on a streaming bare program, as upstream does
+([ADR 0016](adr/0016-every-draw-reports-whether-its-response-is-blocked.md)).
+
 Read `evaluation.isQueryLoading` for the renderer’s loading indicator. It
 also becomes true before dispatch for a streaming response bundle that
 declares queries. An invalid scripts section still draws its program.
 `evaluation.parserErrorJson` holds the separate parser diagnostic with code
 `parse-failed` and the message from the reader. Response metadata must fit
-`maxJsonBytes`. A parser diagnostic that exceeds the evaluation limits
+`maxJsonBytes`, counted in UTF-8 bytes. The WebAssembly package also holds
+the scripts JSON it hands to Rust to `maxJsonBytes` bytes. A parser diagnostic that exceeds the evaluation limits
 refuses the draw. A revision that exceeds query-key limits reports
 `queryEvaluationError` and preserves the previous registrations.
 
