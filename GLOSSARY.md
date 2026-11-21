@@ -19,8 +19,12 @@ One `name = expression` line of a program; its name is the statement id.
 _Avoid_: line, assignment, declaration
 
 **Component library**:
-The set of components a program may use, each with its props in positional order, supplied as JSON Schema.
+The set of components a program may use, each with its props in positional order, supplied as JSON Schema or built from a library definition.
 _Avoid_: catalog, schema, registry
+
+**Library definition**:
+The declarations of a library's components, functions and actions, from which the core builds the component library's JSON Schema and its prompt spec.
+_Avoid_: registry, catalog, builder
 
 **Element**:
 One component instance in the parsed tree, with its positional arguments mapped to named props.
