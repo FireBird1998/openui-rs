@@ -7,6 +7,9 @@ const openuiReleaseRequest = WantedToolCall.prototype.__releaseRequest;
 if (typeof openuiReleaseRequest !== 'function') throw new Error('missing tool receipt helper');
 delete WantedToolCall.prototype.__releaseRequest;
 const openuiRawDraws = new WeakMap();
+// The last raw response each session's reader accepted (ADR 0015). Only a
+// text that continues it sends just its new units; the reader holds the rest.
+const openuiResponseTexts = new WeakMap();
 const openuiReadBundle = RuntimeSession.prototype.__readResponseBundle;
 const openuiDrawResponse = RuntimeSession.prototype.__drawResponse;
 if (typeof openuiReadBundle !== 'function' || typeof openuiDrawResponse !== 'function') {
@@ -546,8 +549,19 @@ function openuiInstallDriver(prototype) {
   openuiDefine(prototype, 'setResponse', { value: function (...args) {
     const driver = openuiGet(openuiDrivers, this);
     const draw = openuiCall(responseSpec, this, prototype, args, converted => {
-      const text = converted[0], streaming = converted[1];
-      const parts = openuiParseJson(openuiApply(openuiReadBundle, this, [openuiResponseText(text, this), streaming]));
+      const text = openuiResponseString(converted[0], this), streaming = converted[1];
+      const accepted = openuiGet(openuiResponseTexts, this);
+      // startsWith compares at memory speed; converting units to cross into
+      // WebAssembly is the costly step, so only the new ones cross.
+      const appends = accepted !== undefined && text.length >= accepted.length
+        && openuiApply(openuiStartsWith, text, [accepted]);
+      let parts = openuiParseJson(openuiApply(openuiReadBundle, this,
+        [openuiResponseUnits(text, appends ? accepted.length : 0), appends ? accepted.length : undefined, streaming]));
+      // The reader accepted another text than the one remembered here: send
+      // the whole text once, which it reads afresh.
+      if (parts.resend === true) {
+        parts = openuiParseJson(openuiApply(openuiReadBundle, this, [openuiResponseUnits(text, 0), undefined, streaming]));
+      }
       const bundle = parts.bundle;
       const name = openuiHasOwn(bundle.metadata, 'name') ? bundle.metadata.name : undefined;
       const error = openuiHasOwn(bundle, 'error') ? bundle.error : undefined;
@@ -559,11 +573,12 @@ function openuiInstallDriver(prototype) {
         try { context = openuiParseJson(context); } catch { /* A message can carry plain text. */ }
       }
       const last = openuiGet(openuiRawDraws, this);
-      const program = bundle.program;
-      const sameParse = last && last.program === program && last.state.streaming === streaming && last.state.error === error;
-      const output = openuiApply(openuiDrawResponse, this, [sameParse ? undefined : program, state,
+      // The reader says whether the program differs from the last accepted one.
+      const sameParse = last && !parts.programChanged && last.state.streaming === streaming && last.state.error === error;
+      const output = openuiApply(openuiDrawResponse, this, [!sameParse, state,
         driver ? openuiNow() : undefined]);
-      openuiPut(openuiRawDraws, this, {program, state});
+      openuiPut(openuiRawDraws, this, {state});
+      openuiPut(openuiResponseTexts, this, text);
       return {evaluation: openuiRemember(output), name, context, attributes: parts.attributes, error};
     });
     if (driver) driver.drain();

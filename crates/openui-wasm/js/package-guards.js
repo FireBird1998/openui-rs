@@ -39,6 +39,7 @@ const openuiMapSet = WeakMap.prototype.set;
 const openuiSlice = String.prototype.slice;
 const openuiIndexOf = String.prototype.indexOf;
 const openuiCharCodeAt = String.prototype.charCodeAt;
+const openuiStartsWith = String.prototype.startsWith;
 const openuiFromCharCode = String.fromCharCode;
 const openuiIsWellFormed = String.prototype.isWellFormed;
 const openuiToWellFormed = String.prototype.toWellFormed;
@@ -235,13 +236,22 @@ function openuiMessageText(value) {
 // Preserve UTF-16 units with no reserved scalars. Bound the temporary copy
 // using the minimum possible number of UTF-8 bytes before allocating it.
 function openuiResponseText(value, receiver) {
+  return openuiResponseUnits(openuiResponseString(value, receiver), 0);
+}
+// A raw response admitted against the session's program-size limit.
+function openuiResponseString(value, receiver) {
   const text = openuiOptionalString(value) ?? '';
   const length = text.length;
   if (length > 1024 * 1024 || length > (openuiGet(openuiResponseLimits, receiver)?.programSize ?? 1024 * 1024)) {
     throw openuiFailure('LimitExceeded', 'response bundle exceeds the program-size limit');
   }
+  return text;
+}
+// The UTF-16 units of `text` from `from` on, lone surrogates included.
+function openuiResponseUnits(text, from) {
+  const length = text.length - from;
   const units = new openuiUint16Array(length);
-  for (let i = 0; i < length; i++) units[i] = openuiApply(openuiCharCodeAt, text, [i]);
+  for (let i = 0; i < length; i++) units[i] = openuiApply(openuiCharCodeAt, text, [from + i]);
   return units;
 }
 // A copy of the caller's path as JSON text, so Rust reads no JavaScript

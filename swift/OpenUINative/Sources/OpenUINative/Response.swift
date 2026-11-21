@@ -15,10 +15,17 @@ public struct ResponseMetadata: Sendable {
 
 extension Session {
     /// Reads the whole response so far. A regenerated message or an edit can
-    /// replace the parser's input even when the raw response only grew.
+    /// replace the parser's input even when the raw response only grew. The
+    /// reader remembers how far it got, so a response that only grows costs
+    /// about what pushing it does; any other edit is read afresh.
     public func response(_ text: String, streaming: Bool) async throws -> Step {
         try await core.run { [inner] in
-            let bundle = try JSONValue.parse(parseResponseBundle(text: text, streaming: streaming))
+            let started = ContinuousClock.now
+            // The session's own parser reads it, so `finish`, `push` and
+            // `set` go on from this program as before.
+            let read = try inner.readResponse(text: text, streaming: streaming)
+            let called = ContinuousClock.now
+            let bundle = try JSONValue.parse(read.bundle)
             guard let program = bundle["program"]?.string, let complete = bundle["complete"]?.bool,
                   let isBundle = bundle["isBundle"]?.bool, let scripts = bundle["scripts"]?.array else {
                 throw DecodeError(description: "Missing response bundle fields")
@@ -27,20 +34,21 @@ extension Session {
                 error: bundle["error"]?.string, scripts: scripts.compactMap(\.string),
                 scriptRevision: bundle["scriptRevision"]?.string)
             // The bundle reader returns the parser input. Only the message
-            // reader exposes context and attributes (even for context alone).
+            // reader exposes context and attributes (even for context alone);
+            // the reader gives them when the text has a marker.
             var context = JSONValue.null
             var attributes: [String: String] = [:]
-            if text.contains("]]>") {
-                let message = try JSONValue.parse(parseMessage(text: text, streaming: streaming))
+            if let messageJSON = read.message {
+                let message = try JSONValue.parse(messageJSON)
                 context = message["context"] ?? .null
                 if case let .object(entries)? = message["attributes"] {
                     for (key, value) in entries { attributes[key] = value.string }
                 }
             }
-            var step = try Step.measure(chunks: 1, streaming: streaming) {
-                let partial = inner.set(text: program)
-                return streaming ? partial : inner.finish()
-            }
+            // The read parsed the program already. Its parse time covers the
+            // core's reading and parsing; the rest of the call is crossing.
+            var step = try Step.measure(chunks: 1, streaming: streaming) { read.parse }
+            step.timings.crossing = (called - started) - step.timings.parse
             if isBundle || program != text { step.program = program }
             step.response = ResponseMetadata(name: bundle["metadata"]?["name"]?.string, context: context,
                 attributes: attributes, sourceByteCount: text.utf8.count, state: state)

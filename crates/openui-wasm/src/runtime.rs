@@ -305,24 +305,31 @@ impl RuntimeSession {
             .map(|inner| ReplacementOutput { inner })
             .map_err(error)
     }
-    // Internal stages of the package's guarded setResponse operation.
+    // Internal stages of the package's guarded setResponse operation. The
+    // package sends the whole text (`base` undefined) or, when the text
+    // continues the last accepted one, only what follows its `base` units.
     #[wasm_bindgen(js_name = __readResponseBundle, skip_typescript)]
-    pub fn read_response_bundle(&self, text: &[u16], streaming: bool) -> Result<String, JsValue> {
+    pub fn read_response_bundle(
+        &self,
+        units: &[u16],
+        base: Option<u32>,
+        streaming: bool,
+    ) -> Result<String, JsValue> {
         self.inner
-            .read_response_bundle(text, streaming)
+            .read_response(units, base.map(|base| base as usize), streaming)
             .map_err(error)
     }
 
     #[wasm_bindgen(js_name = __drawResponse, skip_typescript)]
     pub fn draw_response(
         &self,
-        text: Option<String>,
+        parse: bool,
         response: ResponseState,
         now_ms: Option<u64>,
     ) -> Result<EvaluationOutput, JsValue> {
         self.inner
             .draw_response(
-                text.as_deref(),
+                parse,
                 ResponseState::read(Some(response)).map_err(error)?,
                 now_ms,
             )

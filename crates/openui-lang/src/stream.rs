@@ -19,11 +19,11 @@ use crate::lexer::{skip_while, tokenize};
 use crate::library::Library;
 use crate::limits::Limits;
 use crate::parser::{Against, PartialRef, build_result, classify};
-use crate::preprocess::Preprocessor;
+use crate::preprocess::{Preprocessor, PreprocessorMark};
 use crate::progress;
 use crate::result::ParseResult;
 use crate::statements::{auto_close, split};
-use crate::table::{Cache, Slot, Table};
+use crate::table::{Cache, Slot, Table, Undo};
 
 /// Parses a program chunk by chunk as it streams in.
 pub struct StreamParser {
@@ -43,10 +43,16 @@ pub struct StreamParser {
     /// The text reached the program-size limit: the rest was left out, and
     /// later pushes are too, until [`StreamParser::set`] starts over.
     past_program_size: bool,
+    /// The open staged update, if any.
+    stage: Option<Box<Stage>>,
+    /// Bytes taken in, for tests of what a stream costs.
+    absorbed: u64,
+    /// Bytes looked at again for each result (the statement still arriving).
+    examined: u64,
 }
 
 /// The statements that have fully arrived.
-#[derive(Clone, Default)]
+#[derive(Default)]
 struct Completed {
     /// How far into the cleaned text they reach.
     end: usize,
@@ -56,11 +62,55 @@ struct Completed {
     count: usize,
     /// Some statement nested past the depth limit.
     depth_limited: bool,
+    /// While a staged update is open: the definitions it made, to undo.
+    undos: Option<Vec<Undo>>,
+}
+
+/// Where a staged update began ([`StreamParser::try_update`]): what it needs
+/// to put the parser back exactly as it was if the update is refused. The
+/// large parts (the text, the cleaned text, the table and the cache) are not
+/// copied: they keep a journal of what the update changed instead, so staging
+/// costs about what the update itself does.
+struct Stage {
+    /// The text's length once the update took back its line breaks, and
+    /// those line breaks: a rollback truncates to it and puts them back.
+    buf: usize,
+    taken: String,
+    pre: PreprocessorMark,
+    /// The completed statements, if the update threw them away (the cleaned
+    /// text changed under them); otherwise their journals are open.
+    replaced: Option<Completed>,
+    end: usize,
+    count: usize,
+    depth_limited: bool,
+    reuse: Reuse,
+    past_program_size: bool,
 }
 
 impl Completed {
     fn clear(&mut self) {
         *self = Completed::default();
+    }
+
+    fn mark(&mut self) {
+        self.table.mark();
+        self.cache.mark_journal();
+        self.undos = Some(Vec::new());
+    }
+
+    fn commit(&mut self) {
+        self.table.commit();
+        self.cache.commit();
+        self.undos = None;
+    }
+
+    fn rollback(&mut self) {
+        self.table.rollback_counts();
+        for undo in self.undos.take().into_iter().flatten().rev() {
+            self.table.undo(undo);
+        }
+        self.table.rollback_rest();
+        self.cache.rollback();
     }
 
     /// Parse and define `text`'s statements, noting each slot defined in
@@ -77,7 +127,11 @@ impl Completed {
             }
             let (expr, limited) = parse_expression_with_limit(&raw.tokens, limits.depth());
             self.depth_limited |= limited;
-            changed.push(self.table.define(&raw.id, classify(&raw, expr)).slot);
+            let undo = self.table.define(&raw.id, classify(&raw, expr));
+            changed.push(undo.slot);
+            if let Some(undos) = &mut self.undos {
+                undos.push(undo);
+            }
             self.count += 1;
         }
     }
@@ -108,7 +162,25 @@ impl StreamParser {
             reuse: Reuse::for_limits(&limits),
             stalled: None,
             past_program_size: false,
+            stage: None,
+            absorbed: 0,
+            examined: 0,
         }
+    }
+
+    /// Bytes this parser has taken in since it was made, counting text
+    /// parsed afresh again: an operation count for cost tests.
+    #[doc(hidden)]
+    pub fn bytes_absorbed(&self) -> u64 {
+        self.absorbed
+    }
+
+    /// [`StreamParser::bytes_absorbed`] plus the bytes of the statement
+    /// still arriving, which every result closes, tokenizes and splits
+    /// again: the parser's own operation count for cost tests.
+    #[doc(hidden)]
+    pub fn bytes_examined(&self) -> u64 {
+        self.absorbed + self.examined
     }
 
     /// Feed the next chunk and get the latest parse result.
@@ -148,35 +220,176 @@ impl StreamParser {
         complete: bool,
         accept: impl FnOnce(ParseResult) -> Result<T, E>,
     ) -> Result<T, E> {
-        let mut next = if !self.buf.is_empty()
+        // Either way `kept` is a character boundary within the text.
+        let kept = if text.starts_with(self.buf.as_str()) {
+            self.buf.len()
+        } else {
+            0
+        };
+        self.update(kept, &text[kept..], complete, accept)
+    }
+
+    /// [`StreamParser::try_set`] for a text the caller already knows starts
+    /// with the first `kept` bytes of the text this parser last took: the new
+    /// text is those bytes and then `rest`. Nothing is compared, so a stream
+    /// of small appends costs what pushing them does.
+    ///
+    /// The update continues from where the parser is when `kept` is all of
+    /// the old text, or when all it drops is line breaks (CR or LF) at the
+    /// end, which a response reader takes back when a marker line starts to
+    /// arrive. Anything else parses the new text afresh. Either way the
+    /// parser is left exactly as it was unless `accept` takes the result.
+    pub(crate) fn try_update<T, E, F>(
+        &mut self,
+        kept: usize,
+        rest: &str,
+        complete: bool,
+        accept: F,
+    ) -> Result<Result<T, E>, F>
+    where
+        F: FnOnce(ParseResult) -> Result<T, E>,
+    {
+        // The caller's account of the text cannot hold: hand `accept` back
+        // rather than guess at what the new text is.
+        if kept > self.buf.len() || !self.buf.is_char_boundary(kept) {
+            return Err(accept);
+        }
+        Ok(self.update(kept, rest, complete, accept))
+    }
+
+    /// [`StreamParser::try_update`] once `kept` is known to be a character
+    /// boundary within the text.
+    fn update<T, E>(
+        &mut self,
+        kept: usize,
+        rest: &str,
+        complete: bool,
+        accept: impl FnOnce(ParseResult) -> Result<T, E>,
+    ) -> Result<T, E> {
+        let dropped = &self.buf.as_bytes()[kept..];
+        let continues = !self.buf.is_empty()
             && !self.past_program_size
             && self.stalled.is_none()
-            && text.starts_with(&self.buf)
+            && dropped.iter().all(|b| matches!(b, b'\r' | b'\n'));
+        if !continues {
+            let mut text = String::with_capacity(kept.saturating_add(rest.len()));
+            text.push_str(&self.buf[..kept]);
+            text.push_str(rest);
+            return self.try_afresh(&text, complete, accept);
+        }
+        self.begin_stage();
+        let dropped = self.buf.len() - kept;
+        if dropped > 0
+            && let Some(stage) = &mut self.stage
         {
-            let mut completed = self.completed.clone();
-            completed.table.stage_counts();
-            Self {
-                library: self.library.clone(),
-                root_name: self.root_name.clone(),
-                limits: self.limits,
-                buf: self.buf.clone(),
-                pre: self.pre.clone(),
-                completed,
-                reuse: self.reuse.clone(),
-                stalled: None,
-                past_program_size: false,
+            stage.taken = self.buf[kept..].to_owned();
+            stage.buf = kept;
+        }
+        let result = self.watched(|parser| {
+            if dropped > 0 {
+                parser.buf.truncate(kept);
+                parser.pre.unpush_line_breaks(dropped);
             }
-        } else {
-            Self::with_limits(self.library.clone(), self.root_name.as_deref(), self.limits)
-        };
+            parser.absorb(rest);
+            parser.current_result(complete)
+        });
+        match accept(result) {
+            Ok(output) => {
+                self.commit_stage();
+                Ok(output)
+            }
+            Err(error) => {
+                self.rollback_stage();
+                Err(error)
+            }
+        }
+    }
+
+    /// Parse `text` with a new parser, which replaces this one only if
+    /// `accept` takes the result.
+    fn try_afresh<T, E>(
+        &mut self,
+        text: &str,
+        complete: bool,
+        accept: impl FnOnce(ParseResult) -> Result<T, E>,
+    ) -> Result<T, E> {
+        let mut next =
+            Self::with_limits(self.library.clone(), self.root_name.as_deref(), self.limits);
+        next.absorbed = self.absorbed;
+        next.examined = self.examined;
         let result = next.watched(|parser| {
-            parser.absorb(&text[parser.buf.len()..]);
+            parser.absorb(text);
             parser.current_result(complete)
         });
         let output = accept(result)?;
-        next.completed.table.commit_counts();
         *self = next;
         Ok(output)
+    }
+
+    /// The length of the text this parser last took.
+    pub(crate) fn text_len(&self) -> usize {
+        self.buf.len()
+    }
+
+    /// The text reached the program-size limit and the rest was left out.
+    pub(crate) fn was_cut(&self) -> bool {
+        self.past_program_size
+    }
+
+    fn begin_stage(&mut self) {
+        self.completed.mark();
+        self.stage = Some(Box::new(Stage {
+            buf: self.buf.len(),
+            taken: String::new(),
+            pre: self.pre.mark(),
+            replaced: None,
+            end: self.completed.end,
+            count: self.completed.count,
+            depth_limited: self.completed.depth_limited,
+            reuse: self.reuse.clone(),
+            past_program_size: self.past_program_size,
+        }));
+    }
+
+    fn commit_stage(&mut self) {
+        if let Some(stage) = self.stage.take()
+            && let Some(mut replaced) = stage.replaced
+        {
+            // The update started the table over. The old one's journals
+            // hold nothing, but its staged counts are dropped with it.
+            replaced.commit();
+        }
+        self.completed.commit();
+    }
+
+    fn rollback_stage(&mut self) {
+        let Some(stage) = self.stage.take() else {
+            return;
+        };
+        let Stage {
+            buf,
+            taken,
+            pre,
+            replaced,
+            end,
+            count,
+            depth_limited,
+            reuse,
+            past_program_size,
+        } = *stage;
+        if let Some(replaced) = replaced {
+            self.completed = replaced;
+        }
+        self.completed.rollback();
+        self.completed.end = end;
+        self.completed.count = count;
+        self.completed.depth_limited = depth_limited;
+        self.buf.truncate(buf);
+        self.buf.push_str(&taken);
+        self.pre.restore(pre);
+        self.reuse = reuse;
+        self.stalled = None;
+        self.past_program_size = past_program_size;
     }
 
     /// The latest parse result, without new text.
@@ -230,11 +443,19 @@ impl StreamParser {
         }
         let room = self.limits.program_size().saturating_sub(self.buf.len());
         let (chunk, cut) = Limits::fit(chunk, room);
+        self.absorbed += chunk.len() as u64;
         self.past_program_size = cut;
         self.buf.push_str(chunk);
         let unchanged = self.pre.push(chunk);
+        // The preprocessor takes its last line through both comment stages again.
+        self.examined += self.pre.last_line_len() as u64 * 2;
         if self.completed.end > unchanged {
-            self.completed.clear();
+            match &mut self.stage {
+                Some(stage) if stage.replaced.is_none() => {
+                    stage.replaced = Some(std::mem::take(&mut self.completed));
+                }
+                _ => self.completed.clear(),
+            }
         }
     }
 
@@ -315,6 +536,8 @@ impl StreamParser {
     fn build_current(&mut self, complete: bool) -> (ParseResult, bool) {
         let pending_start = self.scan_new_completed();
         let pending = js::trim(&self.pre.cleaned()[pending_start..]);
+        // Closed, tokenized and split again on every result.
+        self.examined += pending.len() as u64 * 3;
         let completed = &mut self.completed;
 
         if pending.is_empty() {

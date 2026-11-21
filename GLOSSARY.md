@@ -58,6 +58,10 @@ _Avoid_: tag, delimiter, header
 A message whose content carries a scripts section after the program, as OpenUI Cloud writes it.
 _Avoid_: package, Cloud response
 
+**Response reader**:
+The core's reader for a raw response handed over whole as it grows: it remembers how far it read, goes through only what an append adds, and reads any other edit afresh, with the same result (ADR 0015).
+_Avoid_: incremental parser, delta reader
+
 **Cloud script**:
 A named piece of code in a response bundle that a query calls like a tool; it runs in OpenUI Cloud.
 _Avoid_: function, server tool, script (alone)

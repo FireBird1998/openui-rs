@@ -1,6 +1,9 @@
 //! The response bundle reader from the upstream renderer (react-lang).
 
+mod reader;
 mod text;
+
+pub use reader::{ResponseReader, ResponseReaderError};
 
 use std::{borrow::Cow, collections::HashSet, fmt};
 
@@ -74,47 +77,80 @@ impl ResponseBundle {
     }
 
     fn serialize(&self, format: TextFormat) -> String {
-        let mut out = String::from("{\"program\":");
-        format.write_json(&mut out, &self.program);
-        out.push_str(",\"metadata\":{");
-        if let Some(name) = &self.name {
-            out.push_str("\"name\":");
-            format.write_json(&mut out, name);
-        }
-        out.push_str("},\"scripts\":[");
-        for (index, name) in self.script_names.iter().enumerate() {
-            if index != 0 {
-                out.push(',');
-            }
-            format.write_json(&mut out, name);
-        }
-        out.push_str(if self.complete {
-            "],\"complete\":true"
-        } else {
-            "],\"complete\":false"
-        });
-        out.push_str(if self.is_bundle {
-            ",\"isBundle\":true"
-        } else {
-            ",\"isBundle\":false"
-        });
-        if let Some(error) = self.error {
-            out.push_str(",\"error\":\"");
-            for ch in error.chars() {
-                write_json_char::<true>(&mut out, ch);
-            }
-            out.push('"');
-        }
-        if let Some(revision) = &self.script_revision {
-            out.push_str(",\"scriptRevision\":\"");
-            for ch in revision.chars() {
-                write_json_char::<true>(&mut out, ch);
-            }
-            out.push('"');
-        }
-        out.push('}');
-        out
+        write_bundle(
+            &BundleParts {
+                program: Some(&self.program),
+                name: self.name.as_deref(),
+                scripts: &self.script_names,
+                complete: self.complete,
+                is_bundle: self.is_bundle,
+                error: self.error,
+                revision: self.script_revision.as_deref(),
+            },
+            format,
+        )
     }
+}
+
+/// A read's fields, for [`write_bundle`]. The incremental reader writes them
+/// without making a [`ResponseBundle`], and may leave the program out.
+struct BundleParts<'a> {
+    program: Option<&'a str>,
+    name: Option<&'a str>,
+    scripts: &'a [String],
+    complete: bool,
+    is_bundle: bool,
+    error: Option<&'static str>,
+    revision: Option<&'a str>,
+}
+
+/// The renderer's result as JSON: [`ResponseBundle::to_json`]'s format, with
+/// the `program` field first when there is one.
+fn write_bundle(parts: &BundleParts<'_>, format: TextFormat) -> String {
+    let mut out = String::from("{");
+    if let Some(program) = parts.program {
+        out.push_str("\"program\":");
+        format.write_json(&mut out, program);
+        out.push(',');
+    }
+    out.push_str("\"metadata\":{");
+    if let Some(name) = parts.name {
+        out.push_str("\"name\":");
+        format.write_json(&mut out, name);
+    }
+    out.push_str("},\"scripts\":[");
+    for (index, name) in parts.scripts.iter().enumerate() {
+        if index != 0 {
+            out.push(',');
+        }
+        format.write_json(&mut out, name);
+    }
+    out.push_str(if parts.complete {
+        "],\"complete\":true"
+    } else {
+        "],\"complete\":false"
+    });
+    out.push_str(if parts.is_bundle {
+        ",\"isBundle\":true"
+    } else {
+        ",\"isBundle\":false"
+    });
+    if let Some(error) = parts.error {
+        out.push_str(",\"error\":\"");
+        for ch in error.chars() {
+            write_json_char::<true>(&mut out, ch);
+        }
+        out.push('"');
+    }
+    if let Some(revision) = parts.revision {
+        out.push_str(",\"scriptRevision\":\"");
+        for ch in revision.chars() {
+            write_json_char::<true>(&mut out, ch);
+        }
+        out.push('"');
+    }
+    out.push('}');
+    out
 }
 
 /// A response bundle reader limit.

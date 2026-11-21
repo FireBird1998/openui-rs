@@ -13,7 +13,7 @@ const SURROGATE_BASE: u32 = 0xe000;
 
 // Rust readers share the core's string convention. The WebAssembly boundary
 // instead carries the exact units of JavaScript strings through to JSON.
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, PartialEq, Eq)]
 pub(super) enum TextFormat {
     Core,
     ExactUtf16,
@@ -87,6 +87,22 @@ pub(super) fn encode_utf16(input: impl Iterator<Item = u16>) -> String {
         }
     }
     out
+}
+
+/// Where `text` first holds anything the lossless encoding escapes.
+pub(super) fn first_escape(text: &str) -> Option<usize> {
+    text.find(ESCAPE)
+}
+
+/// The text as a JavaScript string becomes when it crosses into Rust as a
+/// `String`: each lone surrogate replaced with U+FFFD.
+pub(super) fn lossy(text: &str) -> String {
+    chars(text)
+        .map(|ch| match ch {
+            TextChar::Scalar(c) => c,
+            TextChar::Surrogate(_) => char::REPLACEMENT_CHARACTER,
+        })
+        .collect()
 }
 
 fn push_scalar(out: &mut String, ch: char) {

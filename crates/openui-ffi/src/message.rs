@@ -19,7 +19,7 @@ pub fn build_message(parts: String) -> Result<String, OpenUiError> {
     openui_lang::build_message_json(&parts, Limits::DEFAULT).map_err(message_error)
 }
 
-fn message_error(error: MessageError) -> OpenUiError {
+pub(crate) fn message_error(error: MessageError) -> OpenUiError {
     let reason = error.to_string();
     match error {
         MessageError::ProgramSize | MessageError::ContextDepth => {

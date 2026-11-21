@@ -47,6 +47,12 @@ ffi_bundle = (root / "crates/openui-ffi/src/response_bundle.rs").read_text()
 wasm_bundle = (root / "crates/openui-wasm/src/response_bundle.rs").read_text()
 assert re.search(r"#\[uniffi::export\]\s*pub fn parse_response_bundle\(", ffi_bundle)
 assert "js_name = parseResponseBundle" in wasm_bundle
+# The incremental raw-response reader (ADR 0015): the native stream session
+# reads a raw response with its own parser; the WebAssembly session uses the
+# same reader behind setResponse.
+stream_session = ffi_lib.split("impl StreamSession {", 2)[2].split("\n}\n", 1)[0]
+assert {camel(n) for n in re.findall(r"pub fn (\w+)\(", stream_session)} == {"new", "withLimits", "push", "pushAll", "set", "result", "finish", "readResponse"}, "native stream session drift"
+assert re.findall(r"pub (\w+):", ffi_bundle.split("pub struct ResponseRead {", 1)[1].split("\n}", 1)[0]) == ["bundle", "message", "parse"]
 def wasm_accessors(record_name):
     """JavaScript getter and setter names of a wasm record, from each method's
     own attribute: js_name if given, else the Rust name (setters drop `set_`)."""

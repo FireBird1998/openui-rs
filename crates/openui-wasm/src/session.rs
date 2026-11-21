@@ -1,5 +1,5 @@
 //! Rust-callable, one-thread adapter. Exported methods forward here one-to-one.
-use openui_lang::{JsObject, Limits, StreamParser};
+use openui_lang::{JsObject, Limits, ResponseReader, ResponseReaderError};
 use openui_runtime::PreparedReferenceValues;
 use openui_session::*;
 use std::{
@@ -11,7 +11,8 @@ use std::{
 struct State {
     core: SessionCore,
     response_limits: Limits,
-    parser: Option<StreamParser>,
+    /// The raw response reader for `setResponse`, with its parser (ADR 0015).
+    reader: Option<ResponseReader>,
     references: PreparedReferenceValues<'static>,
 }
 pub struct Session {
@@ -59,7 +60,7 @@ impl Session {
             failed: Cell::new(false),
             state: Rc::new(RefCell::new(Some(State {
                 response_limits,
-                parser: None,
+                reader: None,
                 core: SessionCore::new(library, prompt_spec, limits.clone())?,
                 references: PreparedReferenceValues::owned_with_limits(
                     JsObject::new(),
@@ -155,39 +156,64 @@ impl Session {
             )
         })
     }
-    pub(crate) fn read_response_bundle(
+    /// Stage a read of the raw response: `units` is the whole text, or with
+    /// `base` what follows the last accepted text, `base` UTF-16 units long.
+    /// Returns the reader's draw JSON, or `{"resend":true}` when `base` is
+    /// not the length of the text the reader accepted.
+    pub(crate) fn read_response(
         &self,
-        text: &[u16],
+        units: &[u16],
+        base: Option<usize>,
         streaming: bool,
     ) -> Result<String, OpenUiError> {
         self.access(|s| {
-            openui_lang::response_draw_json_utf16(text, streaming, s.response_limits).map_err(
-                |error| OpenUiError::LimitExceeded {
-                    reason: error.to_string(),
-                },
-            )
+            let reader = s.reader.get_or_insert_with(|| {
+                ResponseReader::new_utf16(
+                    s.core.stream_parser(s.response_limits),
+                    s.response_limits,
+                )
+            });
+            let read = match base {
+                Some(base) => reader.read_utf16_append(base, units, streaming),
+                None => reader.read_utf16(units, streaming),
+            };
+            match read {
+                Ok(()) => {}
+                // The package's last text is not the reader's: it sends the
+                // whole text instead. Nothing was staged.
+                Err(ResponseReaderError::NotAnAppend) => return Ok("{\"resend\":true}".into()),
+                Err(error) => {
+                    return Err(OpenUiError::LimitExceeded {
+                        reason: error.to_string(),
+                    });
+                }
+            }
+            Ok(reader.draw_json())
         })
     }
 
+    /// Draw the staged read, parsing its program when `parse` asks or it
+    /// changed. The read is kept only if the draw is: a refused draw leaves
+    /// the reader, its parser and the session as they were.
     pub(crate) fn draw_response(
         &self,
-        text: Option<&str>,
+        parse: bool,
         response: ResponseState,
         now_ms: Option<u64>,
     ) -> Result<EvaluationOutput, OpenUiError> {
         self.access(|s| {
-            let Some(text) = text else {
+            let Some(reader) = s.reader.as_mut() else {
                 return s
                     .core
                     .draw_response_at(&s.references, None, response, now_ms);
             };
-            let parser = s
-                .parser
-                .get_or_insert_with(|| s.core.stream_parser(s.response_limits));
-            parser.try_set(text, !response.streaming, |parsed| {
-                s.core.draw_response_at(
-                    &s.references,
-                    Some(crate::program(parsed).0),
+            let complete = !response.streaming;
+            let core = &mut s.core;
+            let references = &s.references;
+            reader.try_parse(parse, complete, |parsed| {
+                core.draw_response_at(
+                    references,
+                    parsed.map(|parsed| crate::program(parsed).0),
                     response,
                     now_ms,
                 )

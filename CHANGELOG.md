@@ -2,6 +2,17 @@
 
 ## Unreleased
 
+- Streaming a raw response costs about what pushing it does, in both
+  drivers: `RuntimeSession.setResponse` and `LiveProgram.show(response:
+  streaming:)` read only what an append adds and parse only the new part of
+  the program, through `openui_lang::ResponseReader` (ADR 0015). Results are
+  unchanged. 64 KB in 16-byte chunks through `setResponse` took 2.0 s in
+  release WebAssembly in Bun, against 5.4 s before and 2.5 s for push with
+  `replaceProgram`. The native `StreamSession` gains `readResponse`, which
+  OpenUINative's `Session` uses with its own parser, and
+  `StreamParser::try_set` stages an update with journals instead of copying
+  the parser (#116).
+
 - The WebAssembly tool provider driver yields between dispatch rounds through
   `setImmediate` or a `MessageChannel` instead of a zero-delay timer: 200
   dependent calls take about 7 ms in Bun instead of about 270 ms, and a few

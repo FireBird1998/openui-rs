@@ -24,7 +24,7 @@ use crate::result::Value;
 /// A name's number: dense from 0, fixed for the life of the table.
 pub(crate) type Slot = u32;
 
-#[derive(Clone, Default)]
+#[derive(Default)]
 pub(crate) struct Table {
     slots: HashMap<String, Slot>,
     names: Vec<String>,
@@ -53,6 +53,24 @@ pub(crate) struct Table {
     /// Bumped whenever the orphan set may have changed.
     orphans_version: u64,
     orphans_memo: Option<(u64, Vec<String>)>,
+    /// While a staged update is open: what it changed, to take back if the
+    /// update is refused. See [`Table::mark`].
+    journal: Option<Box<TableJournal>>,
+}
+
+/// What a [`Table`] looked like when a staged update began, and the reach
+/// counts it has changed since, oldest first. A refused update puts every
+/// one back ([`Table::rollback`]), so the table is as it was, without a copy
+/// of it being made for each update.
+struct TableJournal {
+    names: usize,
+    reached: Vec<(Slot, u32)>,
+    entry: Option<Slot>,
+    orphans: usize,
+    orphans_version: u64,
+    orphans_memo: Option<(u64, Vec<String>)>,
+    root_reach: Option<Arc<Reach>>,
+    rolling_back: bool,
 }
 
 /// What a definition replaced, so a temporary one can be taken back.
@@ -162,6 +180,7 @@ impl Table {
                 self.set_special(slot, false, current.special());
                 self.orphan_change(slot, Some(current.kind), None);
                 self.statements[i] = None;
+                self.position[i] = u32::MAX;
                 let last = self.order.pop();
                 debug_assert_eq!(last, Some(slot), "undone out of order");
             }
@@ -254,6 +273,14 @@ impl Table {
 
     /// `slot`'s kind went from `before` to `after` (`None` for undefined).
     fn orphan_change(&mut self, slot: Slot, before: Option<Kind>, after: Option<Kind>) {
+        // A rollback puts the orphan count back from its journal afterwards.
+        if self
+            .journal
+            .as_ref()
+            .is_some_and(|journal| journal.rolling_back)
+        {
+            return;
+        }
         if Some(slot) == self.entry || self.reached[slot as usize] != 0 {
             return;
         }
@@ -269,7 +296,14 @@ impl Table {
         }
     }
 
+    fn note_reached(&mut self, slot: Slot) {
+        if let Some(journal) = &mut self.journal {
+            journal.reached.push((slot, self.reached[slot as usize]));
+        }
+    }
+
     fn reach_inc(&mut self, slot: Slot) {
+        self.note_reached(slot);
         let count = &mut self.reached[slot as usize];
         *count += 1;
         if *count == 1 && Some(slot) != self.entry {
@@ -284,6 +318,7 @@ impl Table {
     }
 
     fn reach_dec(&mut self, slot: Slot) {
+        self.note_reached(slot);
         let count = &mut self.reached[slot as usize];
         *count -= 1;
         if *count == 0 && Some(slot) != self.entry {
@@ -297,16 +332,78 @@ impl Table {
         }
     }
 
-    pub(crate) fn stage_counts(&mut self) {
+    /// Begin a staged update: reach counts stay private until
+    /// [`Table::commit`], and what the update changes is noted so that
+    /// [`Table::rollback`] can take it back. Definitions the update makes are
+    /// taken back by the caller, with the [`Undo`]s they return, before the
+    /// rollback.
+    pub(crate) fn mark(&mut self) {
         self.staged_counts = Some(HashMap::new());
+        self.journal = Some(Box::new(TableJournal {
+            names: self.names.len(),
+            reached: Vec::new(),
+            entry: self.entry,
+            orphans: self.orphans,
+            orphans_version: self.orphans_version,
+            orphans_memo: self.orphans_memo.clone(),
+            root_reach: self.root_reach.clone(),
+            rolling_back: false,
+        }));
     }
 
-    pub(crate) fn commit_counts(&mut self) {
+    /// Keep what the staged update changed.
+    pub(crate) fn commit(&mut self) {
+        self.journal = None;
         if let Some(counts) = self.staged_counts.take() {
             for (_, (reach, count)) in counts {
                 reach.active.store(count, Relaxed);
             }
         }
+    }
+
+    /// Put back the reach counts the staged update changed. Call
+    /// [`Table::rollback_rest`] once its definitions have been undone.
+    pub(crate) fn rollback_counts(&mut self) {
+        self.staged_counts = None;
+        if let Some(journal) = &mut self.journal {
+            journal.rolling_back = true;
+            for (slot, count) in journal.reached.drain(..).rev() {
+                self.reached[slot as usize] = count;
+            }
+        }
+    }
+
+    /// Finish taking back a staged update after its definitions: the result
+    /// it was compared with, and the names it brought in.
+    pub(crate) fn rollback_rest(&mut self) {
+        let Some(journal) = self.journal.take() else {
+            return;
+        };
+        let TableJournal {
+            names,
+            entry,
+            orphans,
+            orphans_version,
+            orphans_memo,
+            root_reach,
+            ..
+        } = *journal;
+        self.entry = entry;
+        self.orphans = orphans;
+        self.orphans_version = orphans_version;
+        self.orphans_memo = orphans_memo;
+        self.root_reach = root_reach;
+        // Names the update brought in are defined by nothing now and
+        // referenced by nothing older, so dropping their slots leaves the
+        // table as it was.
+        for name in self.names.drain(names..) {
+            self.slots.remove(&name);
+        }
+        self.statements.truncate(names);
+        self.info.truncate(names);
+        self.position.truncate(names);
+        self.referrers.truncate(names);
+        self.reached.truncate(names);
     }
 
     fn change_count(&mut self, reach: &Arc<Reach>, add: bool) -> usize {
@@ -432,12 +529,19 @@ pub(crate) enum Output {
 ///
 /// An entry is valid for as long as it's here: a change to a statement drops
 /// the entries of every statement that references it, directly or not.
-#[derive(Clone, Default)]
+#[derive(Default)]
 pub(crate) struct Cache {
     entries: Vec<[Option<Box<Entry>>; 4]>,
     /// One bit per slot, for set operations on slot lists; clear between uses.
     marks: Vec<u64>,
+    /// While a staged update is open: how many slots there were, and each
+    /// entry it replaced or dropped, oldest first, moved here rather than
+    /// copied.
+    journal: Option<(usize, Vec<Replaced>)>,
 }
+
+/// An entry a staged update replaced: its slot, its variant and what was there.
+type Replaced = (Slot, usize, Option<Box<Entry>>);
 
 impl Cache {
     fn index(partial: bool, expr: bool) -> usize {
@@ -453,7 +557,34 @@ impl Cache {
         if self.entries.len() <= i {
             self.entries.resize_with(i + 1, Default::default);
         }
-        self.entries[i][Self::index(partial, expr)] = Some(Box::new(entry));
+        let index = Self::index(partial, expr);
+        let old = self.entries[i][index].replace(Box::new(entry));
+        if let Some((_, journal)) = &mut self.journal {
+            journal.push((slot, index, old));
+        }
+    }
+
+    /// Begin a staged update; see [`Table::mark`].
+    pub(crate) fn mark_journal(&mut self) {
+        self.journal = Some((self.entries.len(), Vec::new()));
+    }
+
+    /// Keep the entries the staged update made.
+    pub(crate) fn commit(&mut self) {
+        self.journal = None;
+    }
+
+    /// Put back every entry the staged update replaced or dropped.
+    pub(crate) fn rollback(&mut self) {
+        let Some((len, journal)) = self.journal.take() else {
+            return;
+        };
+        for (slot, index, old) in journal.into_iter().rev() {
+            if let Some(entries) = self.entries.get_mut(slot as usize) {
+                entries[index] = old;
+            }
+        }
+        self.entries.truncate(len);
     }
 
     /// The reached tree another variant of `slot` already holds, when it's
@@ -497,7 +628,14 @@ impl Cache {
             self.mark(&[s]);
             seen.push(s);
             if let Some(entries) = self.entries.get_mut(s as usize) {
-                *entries = Default::default();
+                let dropped = std::mem::take(entries);
+                if let Some((_, journal)) = &mut self.journal {
+                    for (index, old) in dropped.into_iter().enumerate() {
+                        if old.is_some() {
+                            journal.push((s, index, old));
+                        }
+                    }
+                }
             }
             pending.extend_from_slice(table.referrers(s));
         }

@@ -8,7 +8,7 @@ use crate::js::{
 };
 use crate::{JsObject, Limits, Value};
 
-const PREFIX: &str = "]]>openui:";
+pub(crate) const PREFIX: &str = "]]>openui:";
 const CONTENT: &str = "]]>openui:content";
 const CONTEXT: &str = "\n]]>openui:context\n";
 const END: &str = "\n]]>openui:end";
@@ -265,7 +265,7 @@ fn strip_cr(line: &str) -> &str {
 
 // A retry can start mid-line. The lookahead accepts '?' even if the rest of
 // that marker line later fails to match.
-fn split_retries(raw: &str) -> Cow<'_, str> {
+pub(crate) fn split_retries(raw: &str) -> Cow<'_, str> {
     let mut text = String::new();
     let mut copied = 0;
     for (at, _) in raw.match_indices(CONTENT) {
@@ -293,7 +293,7 @@ fn split_retries(raw: &str) -> Cow<'_, str> {
     Cow::Borrowed(raw)
 }
 
-fn hold_retry(text: &str) -> &str {
+pub(crate) fn hold_retry(text: &str) -> &str {
     if let Some(at) = text.rfind("]]>")
         && at > 0
         && text.as_bytes().get(at.saturating_sub(1)) != Some(&b'\n')
@@ -305,7 +305,7 @@ fn hold_retry(text: &str) -> &str {
     text
 }
 
-fn marker(line: &str) -> Option<(&str, &str)> {
+pub(crate) fn marker(line: &str) -> Option<(&str, &str)> {
     let body = strip_cr(line).strip_prefix(PREFIX)?;
     let (kind, query) = body.split_once('?').unwrap_or((body, ""));
     (!kind.is_empty()
@@ -314,7 +314,7 @@ fn marker(line: &str) -> Option<(&str, &str)> {
     .then_some((kind, query))
 }
 
-fn read_attributes(query: &str) -> JsObject<String> {
+pub(crate) fn read_attributes(query: &str) -> JsObject<String> {
     let mut attributes = JsObject::new();
     for pair in query.split('&') {
         let (key, value) = pair.split_once('=').unwrap_or((pair, ""));

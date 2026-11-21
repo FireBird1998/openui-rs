@@ -1259,3 +1259,142 @@ fn refused_stream_edits_preserve_shared_references_and_orphan_counts_on_later_dr
         text.push_str(&format!("root=Stack([{root}])\n"));
     }
 }
+
+/// A staged update keeps journals instead of a copy (ADR 0015): after any
+/// mix of accepted and refused updates, including ones that only take back
+/// line breaks, the parser gives what a parser that saw only the accepted
+/// updates gives, and a container default keeps or changes its identity
+/// exactly as it does there.
+#[test]
+fn refused_updates_in_any_order_leave_the_parser_as_the_accepted_texts_did() {
+    let lib = library();
+    let pieces = [
+        "$rows = [1, 2, 3]\n",
+        "a = Text(\"x\")\n",
+        "root = Stack([a, b])\n",
+        "b = Text($rows)\n",
+        "c = Stack([\n",
+        "  a,\n",
+        "]\n",
+        "$n = 1\r\n",
+        "```openui\n",
+        "d = Text(\"in a fence\")\n",
+        "```\n",
+        "e = Text(\"unfinished",
+        "\")\n",
+        "root = Stack([a, c])\n",
+    ];
+    let mut seed = 0x0116_u64;
+    let mut next = |n: usize| {
+        seed ^= seed << 13;
+        seed ^= seed >> 7;
+        seed ^= seed << 17;
+        (seed % n as u64) as usize
+    };
+    let rows = |result: &ParseResult| match result.state_declarations.get("$rows") {
+        Some(openui_lang::Value::Arr(items)) => Some(items.clone()),
+        _ => None,
+    };
+    for _ in 0..200 {
+        let mut staged = StreamParser::new(lib.clone(), None);
+        let mut baseline = StreamParser::new(lib.clone(), None);
+        let mut accepted = String::new();
+        let (mut staged_rows, mut baseline_rows) = (None, None);
+        for _ in 0..12 {
+            let piece = pieces[next(pieces.len())];
+            let cut = (0..=piece.len())
+                .filter(|&at| piece.is_char_boundary(at))
+                .nth(next(piece.len() + 1))
+                .unwrap_or(piece.len());
+            let mut text = format!("{accepted}{}", &piece[..cut]);
+            if next(5) == 0 {
+                // Take back the line breaks a marker line takes from a response.
+                text.truncate(text.trim_end_matches(['\r', '\n']).len());
+            }
+            let complete = next(4) == 0;
+            let refuse = next(3) == 0;
+            let mut fresh = StreamParser::new(lib.clone(), None);
+            let partial = fresh.set(&text);
+            let expected = if complete { fresh.finish() } else { partial };
+            let mut seen = None;
+            let _ = staged.try_set(&text, complete, |result| {
+                seen = Some(result);
+                if refuse { Err(()) } else { Ok(()) }
+            });
+            let result = seen.expect("a result");
+            assert_same(&result, &expected, &text);
+            if refuse {
+                continue;
+            }
+            accepted = text;
+            let base = baseline
+                .try_set(&accepted, complete, Ok::<_, ()>)
+                .unwrap_or_else(|()| unreachable!());
+            let (now, base_now) = (rows(&result), rows(&base));
+            let kept = |before: &Option<Arc<Vec<openui_lang::Value>>>,
+                        now: &Option<Arc<Vec<openui_lang::Value>>>| {
+                matches!((before, now), (Some(a), Some(b)) if Arc::ptr_eq(a, b))
+            };
+            assert_eq!(
+                kept(&staged_rows, &now),
+                kept(&baseline_rows, &base_now),
+                "a refusal changed a default's identity, at {accepted:?}"
+            );
+            staged_rows = now;
+            baseline_rows = base_now;
+            assert_same(&staged.result(), &baseline.result(), &accepted);
+        }
+    }
+}
+
+/// A refused update that completes a statement others reference must take
+/// back what they were materialized to: the next result must not show it.
+#[test]
+fn a_refused_update_takes_back_what_its_statements_materialized() {
+    let lib = library();
+    let mut staged = StreamParser::new(lib.clone(), None);
+    let head = "root = Stack([s])\ns = Stack([a, b])\na = Text(\"x\")\n";
+    staged.try_set(head, false, Ok::<_, ()>).unwrap();
+    // Each completes its statements: the text goes on after their line break.
+    for refused in [
+        "b = Text(\"refused\")\nz",
+        "a = Text(\"refused\")\nz",
+        "$s = [b]\nb = Text($s)\nz",
+    ] {
+        let text = format!("{head}{refused}");
+        assert!(staged.try_set(&text, false, |_| Err::<(), _>(())).is_err());
+        let next = format!("{head}c = Text(\"next\")\nz");
+        let result = staged.try_set(&next, false, Ok::<_, ()>).unwrap();
+        let mut fresh = StreamParser::new(lib.clone(), None);
+        assert_same(&result, &fresh.set(&next), &next);
+        // Back to the head for the next case, through an accepted shrink.
+        staged.try_set(head, false, Ok::<_, ()>).unwrap();
+    }
+}
+
+/// A refused update that re-defines a completed statement leaves no cache
+/// entry built from that definition: `a` reads `x` as it was accepted.
+/// Pins the cache's journal (found by an independent review: with the
+/// rollback disabled `a` renders "bad").
+#[test]
+fn a_refused_redefinition_leaves_no_cached_entry_behind() {
+    let schema = serde_json::json!({"$defs": {
+        "Stack": {"properties": {"children": {"type": "array"}}},
+        "TextContent": {"properties": {"text": {}}}
+    }});
+    let lib = Arc::new(Library::from_json_schema(&schema));
+    let head =
+        "root = Stack([a, b])\na = TextContent(x)\nb = TextContent(\"b\")\nx = \"good\"\nb2 = 1\n";
+    let mut staged = StreamParser::new(lib.clone(), None);
+    staged.try_set(head, false, Ok::<_, ()>).unwrap();
+    let refused = format!("{head}x = \"bad\"\nz = 1\n");
+    assert!(
+        staged
+            .try_set(&refused, false, |_| Err::<(), _>(()))
+            .is_err()
+    );
+    let next = format!("{head}w = 2\n");
+    let result = staged.try_set(&next, false, Ok::<_, ()>).unwrap();
+    assert!(!result.to_json().contains("bad"));
+    assert_same(&result, &StreamParser::new(lib, None).set(&next), &next);
+}

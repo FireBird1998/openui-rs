@@ -37,7 +37,7 @@ use openui_lang::{Library, Limits, ParseResult, StreamParser};
 mod message;
 mod response_bundle;
 pub use message::{build_message, parse_message};
-pub use response_bundle::parse_response_bundle;
+pub use response_bundle::{ResponseRead, parse_response_bundle};
 mod queries;
 pub use queries::*;
 mod runtime;
@@ -182,7 +182,7 @@ pub struct ParseOutput {
 
 impl ParseOutput {
     /// The result and how long it took to produce, from when parsing started.
-    fn timed(result: ParseResult, started: Instant) -> ParseOutput {
+    pub(crate) fn timed(result: ParseResult, started: Instant) -> ParseOutput {
         let parsed = Instant::now();
         let json = result.to_json();
         let depth_limited = result.depth_limited;
@@ -391,7 +391,9 @@ pub struct StreamSession {
 }
 
 struct StreamState {
-    parser: StreamParser,
+    /// The raw response reader and its parser, which `push` and `set`
+    /// drive too: one parser per session, whichever way text arrives.
+    reader: openui_lang::ResponseReader,
     output: Option<ParseOutput>,
     complete: bool,
     known_text: Option<String>,
@@ -400,7 +402,13 @@ struct StreamState {
 impl StreamState {
     fn new(parser: StreamParser, program_limit: usize) -> Self {
         Self {
-            parser,
+            // Two limits, on purpose. The reader refuses a whole response
+            // past the core's default limits (program size, JSON depth), as
+            // `parse_response_bundle` did for the Swift driver; the parser
+            // keeps the session's own and cuts a longer program, flagged
+            // `size_limited`, as `set` did with that program. Reading under
+            // the session's limits would refuse responses that drew before.
+            reader: openui_lang::ResponseReader::new(parser, Limits::DEFAULT),
             output: None,
             complete: false,
             known_text: Some(String::new()),
@@ -438,9 +446,9 @@ impl StreamState {
             return output;
         }
         let result = if complete {
-            self.parser.finish()
+            self.reader.finish()
         } else {
-            self.parser.result()
+            self.reader.result()
         };
         self.output(result, started, complete)
     }
@@ -491,7 +499,7 @@ impl StreamSession {
         if chunk.is_empty() || state.known_text.is_none() {
             return state.current(started, false);
         }
-        let result = state.parser.push(&chunk);
+        let result = state.reader.parser_mut().push(&chunk);
         state.remember_chunk(chunk);
         state.output(result, started, false)
     }
@@ -507,7 +515,7 @@ impl StreamSession {
         }
         let mut result = None;
         for chunk in chunks.into_iter().filter(|c| !c.is_empty()) {
-            result = Some(state.parser.push(&chunk));
+            result = Some(state.reader.parser_mut().push(&chunk));
             state.remember_chunk(chunk);
         }
         match result {
@@ -525,7 +533,7 @@ impl StreamSession {
         {
             return state.current(started, false);
         }
-        let result = state.parser.set(&text);
+        let result = state.reader.parser_mut().set(&text);
         state.known_text = (text.len() <= state.program_limit).then_some(text);
         state.output(result, started, false)
     }
@@ -542,6 +550,24 @@ impl StreamSession {
     pub fn finish(&self) -> ParseOutput {
         let started = Instant::now();
         self.parser().current(started, true)
+    }
+
+    /// Read the whole raw response so far and parse its program, as
+    /// `parse_response_bundle`, `parse_message` and `set` with the program
+    /// do together, but remembering how far it got: a response that only
+    /// grows costs about what pushing it does, and any other edit is read
+    /// afresh (ADR 0015). The parse is this session's, so `finish`, `push`
+    /// and `set` go on from it. Refuses what `parse_response_bundle` or
+    /// `parse_message` refuse, with the same errors, and then the session
+    /// is as it was. `parse.parse_nanos` covers the reading and the parse.
+    pub fn read_response(
+        &self,
+        text: String,
+        streaming: bool,
+    ) -> Result<response_bundle::ResponseRead, OpenUiError> {
+        let started = Instant::now();
+        let mut state = self.parser();
+        response_bundle::read(&mut state, &text, streaming, started)
     }
 }
 

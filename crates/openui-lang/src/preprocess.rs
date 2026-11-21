@@ -286,6 +286,33 @@ pub(crate) struct Preprocessor {
     chosen: Stream,
 }
 
+/// A [`Preprocessor`] as a staged push found it; see [`Preprocessor::mark`].
+pub(crate) struct PreprocessorMark {
+    started: bool,
+    pending: String,
+    line_start: usize,
+    tail_start: usize,
+    fences: Fences,
+    blocks: CommentsMark,
+    outside: CommentsMark,
+    chosen: Stream,
+}
+
+/// A [`Comments`] stage as a staged push found it: `stable` only grows and
+/// `cleaned[..keep]` never changes, so only the rest is copied.
+struct CommentsMark {
+    stable: usize,
+    keep: usize,
+    tail: String,
+    in_str: Option<u8>,
+    line: Vec<u8>,
+    scan: Scan,
+    lead: Option<usize>,
+    last_nonws_end: usize,
+    final_len: usize,
+    synced: usize,
+}
+
 #[derive(Clone, Copy, PartialEq, Eq)]
 enum Stream {
     Blocks,
@@ -396,6 +423,69 @@ impl Preprocessor {
     /// Forget everything, as if freshly made.
     pub(crate) fn reset(&mut self) {
         *self = Preprocessor::new();
+    }
+
+    /// The raw text kept for the last line with text, which every push
+    /// goes through again: for cost tests.
+    pub(crate) fn last_line_len(&self) -> usize {
+        self.pending.len()
+    }
+
+    /// Where a staged push begins, to go back to with [`Preprocessor::restore`].
+    /// A push only appends to the finished lines' output and to the leading
+    /// part of the cleaned text that is final, so the mark keeps their
+    /// lengths and a copy of the rest: the last lines, which every push
+    /// already goes through again.
+    pub(crate) fn mark(&self) -> PreprocessorMark {
+        PreprocessorMark {
+            started: self.started,
+            pending: self.pending.clone(),
+            line_start: self.line_start,
+            tail_start: self.tail_start,
+            fences: self.fences.clone(),
+            blocks: self.blocks.mark(),
+            outside: self.outside.mark(),
+            chosen: self.chosen,
+        }
+    }
+
+    /// Go back to `mark`, taken on this preprocessor with only pushes since.
+    pub(crate) fn restore(&mut self, mark: PreprocessorMark) {
+        let PreprocessorMark {
+            started,
+            pending,
+            line_start,
+            tail_start,
+            fences,
+            blocks,
+            outside,
+            chosen,
+        } = mark;
+        self.started = started;
+        self.pending = pending;
+        self.line_start = line_start;
+        self.tail_start = tail_start;
+        self.fences = fences;
+        self.blocks.restore(blocks);
+        self.outside.restore(outside);
+        self.chosen = chosen;
+    }
+
+    /// Take back the last `bytes` pushed, when they are line breaks (CR or
+    /// LF) after the last text: the cleaned text is trimmed, so they changed
+    /// nothing but the raw text kept for the last line.
+    pub(crate) fn unpush_line_breaks(&mut self, bytes: usize) {
+        if !self.started {
+            return;
+        }
+        let keep = self.pending.len().saturating_sub(bytes);
+        debug_assert!(
+            self.pending.as_bytes()[keep..]
+                .iter()
+                .all(|b| matches!(b, b'\r' | b'\n'))
+        );
+        self.pending.truncate(keep);
+        self.line_start = self.pending.rfind('\n').map_or(0, |at| at + 1);
     }
 
     /// Add the next chunk of raw text. Returns how many leading bytes of the
@@ -609,6 +699,35 @@ struct Scan {
 }
 
 impl Comments {
+    fn mark(&self) -> CommentsMark {
+        let keep = self.final_len.min(self.cleaned.len());
+        CommentsMark {
+            stable: self.stable.len(),
+            keep,
+            tail: self.cleaned[keep..].to_owned(),
+            in_str: self.in_str,
+            line: self.line.clone(),
+            scan: self.scan.clone(),
+            lead: self.lead,
+            last_nonws_end: self.last_nonws_end,
+            final_len: self.final_len,
+            synced: self.synced,
+        }
+    }
+
+    fn restore(&mut self, mark: CommentsMark) {
+        self.stable.truncate(mark.stable);
+        self.cleaned.truncate(mark.keep);
+        self.cleaned.push_str(&mark.tail);
+        self.in_str = mark.in_str;
+        self.line = mark.line;
+        self.scan = mark.scan;
+        self.lead = mark.lead;
+        self.last_nonws_end = mark.last_nonws_end;
+        self.final_len = mark.final_len;
+        self.synced = mark.synced;
+    }
+
     /// Make `text` the last line, scanned as far as it can be. Scanning
     /// resumes where it was when the old last line is the start of it.
     fn set_tail(&mut self, text: &str) {

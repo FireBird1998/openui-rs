@@ -357,4 +357,12 @@ marker lines and Cloud script code. The reader uses the smaller of its
 default size and depth ceilings and the session's configured ceilings.
 Session limits also apply to the script names, revision and parsed program.
 A refused edit preserves the displayed evaluation, its actions and pending
-calls. [Built-package tests](../crates/openui-wasm/js/session-bundles.test.ts)
+calls.
+
+Streaming costs about what pushing the program does
+([ADR 0015](adr/0015-an-incremental-reader-for-a-raw-response-that-grows.md)):
+when the text continues the last one the session accepted, the package sends
+only the new part across, and the session's reader goes through only the
+lines that changed and parses only the new part of the program. Any other
+edit is read afresh. Either way the result is the same as reading the whole
+text, and a refused update leaves the reader at the last accepted text. [Built-package tests](../crates/openui-wasm/js/session-bundles.test.ts)

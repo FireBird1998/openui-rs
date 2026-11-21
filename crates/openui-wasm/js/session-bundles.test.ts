@@ -379,3 +379,65 @@ test('a raw program without a root statement uses the root component from the se
     expect(JSON.parse(drawn.json).root.props.value).toBe('implicit entry');
   }
 });
+
+// ADR 0015: setResponse sends only what continues the last accepted text.
+// A fresh session reading the whole text is today's full re-read; the
+// streaming session must match it on every prefix, in every chunking and
+// after edits and refusals.
+function drawOf(session: InstanceType<typeof wasm.RuntimeSession>, text: string, streaming: boolean) {
+  const { evaluation, name, attributes, context, error } = session.setResponse(text, streaming);
+  using output = evaluation;
+  // The store keeps values across programs, so only the draw is compared.
+  return JSON.stringify([output.json, output.isQueryLoading, name, attributes, context, error]);
+}
+
+function freshDraw(library: InstanceType<typeof wasm.ComponentLibrary>, text: string, streaming: boolean) {
+  using fresh = new wasm.RuntimeSession(library);
+  return drawOf(fresh, text, streaming);
+}
+
+test('a response streamed in chunks draws as a fresh read of each prefix, edits and lone surrogates included', () => {
+  using library = new wasm.ComponentLibrary(boxSchema);
+  const program = '$n=1\nrows=[\n  Box("a"),\n  Box("b")\n]\nroot=Box(rows)\n';
+  const texts = [
+    program,
+    program.replaceAll('\n', '\r\n'),
+    ']]>openui:content?name=Daily\r\n' + program + ']]>openui:context\r\n{"user":"😀"}\r\n]]>openui:end\r\n',
+    ']]>openui:content\n' + program + 'cut]]>openui:content?name=retry\n' + program + '\n]]>openui:scripts {"count":1}\n[{"name":"a","code":"1"}]\n]]>openui:end\n',
+    'root=Box("😀 \ud800 é")\n]]>openui:end\n',
+  ];
+  let seed = 116;
+  const next = () => (seed = (seed * 1103515245 + 12345) % 2147483648);
+  for (const text of texts) {
+    for (const size of [1, 3, 0]) {
+      using s = new wasm.RuntimeSession(library);
+      let at = 0;
+      while (at < text.length) {
+        at = Math.min(text.length, at + (size || 1 + next() % 17));
+        const prefix = text.slice(0, at);
+        expect(drawOf(s, prefix, true)).toBe(freshDraw(library, prefix, true));
+      }
+      expect(drawOf(s, text, false)).toBe(freshDraw(library, text, false));
+      // Edits that are not appends: a shrink, a changed middle, the same length.
+      const middle = text.length >> 1;
+      for (const edit of [text.slice(0, middle), text.slice(0, middle) + 'x' + text.slice(middle + 1), text.slice(0, -1) + 'q', text]) {
+        expect(drawOf(s, edit, true)).toBe(freshDraw(library, edit, true));
+      }
+    }
+  }
+});
+
+test('a refused response update leaves the reader where it was for the next append', () => {
+  using library = new wasm.ComponentLibrary(boxSchema);
+  using limits = new wasm.RuntimeLimits();
+  limits.maxJsonBytes = 1024n;
+  using s = wasm.RuntimeSession.withLimits(library, undefined, limits);
+  using control = wasm.RuntimeSession.withLimits(library, undefined, limits);
+  const head = ']]>openui:content\nroot=Box("a")\n';
+  expect(drawOf(s, head, true)).toBe(drawOf(control, head, true));
+  // Too large to draw: refused after the read, which must not be kept.
+  kind(() => s.setResponse(head + 'root=Box("' + 'x'.repeat(4096) + '")\n', true), 'LimitExceeded');
+  for (const more of ['second=Box("b")\n', 'second=Box("b")\nroot=Box(second)\n']) {
+    expect(drawOf(s, head + more, true)).toBe(drawOf(control, head + more, true));
+  }
+});
