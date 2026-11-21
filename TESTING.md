@@ -379,6 +379,7 @@ origin of the loading flag in upstream’s pending predicate, then defer dispatc
 until the current holders are known. Completions address the original request
 by step, tool and arguments on both sides. Fixed cases in
 `conformance/query-readers.json` use the same adapter with `--readers`.
+The Rust replay also checks that a boolean changing from true to false refetches its reader with the new argument, while a second false leaves an intervening Store edit unread.
 The renderer replay drains reader calls before the next draw. The same ignored
 integration suite streams 5,000 further two- to six-query graphs, including
 cycles, alias and default reads, per-tool extra keys, removals, renames, and

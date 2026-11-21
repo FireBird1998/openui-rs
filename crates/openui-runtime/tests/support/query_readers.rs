@@ -2,6 +2,42 @@ use super::*;
 use std::io::{BufRead, BufReader};
 use std::process::{Command, Stdio};
 
+#[test]
+fn a_boolean_refetch_reruns_its_reader_only_when_the_value_changes() {
+    let scenario = parse_json(
+        r#"{
+            "name": "boolean-refetch",
+            "program": "$n=0\na=Query(\"source\")\nb=Query(\"reader\",{flag:a,n:$n})",
+            "steps": [
+                {"kind":"evaluate"},
+                {"kind":"complete","call":0,"outcome":{"kind":"result","value":true}},
+                {"kind":"complete","call":1,"outcome":{"kind":"result","value":"first"}},
+                {"kind":"invalidate","ids":["a"]},
+                {"kind":"complete","call":2,"outcome":{"kind":"result","value":false}},
+                {"kind":"complete","call":3,"outcome":{"kind":"result","value":"second"}},
+                {"kind":"invalidate","ids":["a"]},
+                {"kind":"set","name":"$n","value":9},
+                {"kind":"complete","call":4,"outcome":{"kind":"result","value":false}}
+            ]
+        }"#,
+    )
+    .unwrap();
+    replay(&scenario, |step, actual, _| {
+        let expected = match step {
+            1 => r#"[{"call":1,"toolName":"reader","args":{"flag":true,"n":0}}]"#,
+            4 => r#"[{"call":3,"toolName":"reader","args":{"flag":false,"n":0}}]"#,
+            // A rerun would see the Store edit and request n=9.
+            8 => "[]",
+            _ => return,
+        };
+        assert_eq!(
+            parse_json(&actual).unwrap()["calls"],
+            parse_json(expected).unwrap(),
+            "reader calls after source delivery at step {step}"
+        );
+    });
+}
+
 pub(super) fn check_identities(
     manager: &QueryManager,
     foreign: &QueryManager,
