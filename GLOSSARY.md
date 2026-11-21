@@ -112,6 +112,14 @@ _Avoid_: backend, client, handler
 One request to a tool, with its name and arguments, and its outcome: a result or a failure.
 _Avoid_: fetch, request, invocation
 
+**Tool-reported error**:
+A tool call that ran and answered with an error, as an MCP response with `isError` does. The MCP result helper calls it `ToolReported`, Swift's provider `toolReported`; the query manager reports it as `mcp-error`.
+_Avoid_: tool error (that is a call failure)
+
+**Call failure**:
+A tool call that did not produce an answer: the provider threw, was cancelled, or its result was refused under a limit. The query manager reports it as `tool-error`.
+_Avoid_: tool-reported error, MCP error
+
 **Refresh interval**:
 How often a query is fetched again, in seconds.
 _Avoid_: polling rate, timer, TTL

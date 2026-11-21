@@ -20,13 +20,13 @@ versions and pending counts are bigint. failure.step is an ordinary JSON number
 new ComponentLibrary(schema: string)
 parse(program: string, library: ComponentLibrary, rootName?: string): string
 parseProgram(program: string, library: ComponentLibrary, rootName?: string): ParsedProgram
+extractMcpToolResult(responseJson: string, limits: ParseLimits): string
 new StreamSession(library: ComponentLibrary, rootName?: string)
 // Existing push/feed/set/result/finish still work; new retained handoff:
 stream.program(complete: boolean): ParsedProgram
 
 new RuntimeSession(library: ComponentLibrary, promptSpec?: string)
 RuntimeSession.withLimits(library: ComponentLibrary, promptSpec: string | undefined, limits: RuntimeLimits): RuntimeSession
-RuntimeSession.extractMcpToolResult(responseJson: string, limits: ParseLimits): string
 session.setQueryExtraValues(tool_name: string, values_json: string): void
 session.attachToolProvider(): void
 session.detachToolProvider(): void
@@ -65,8 +65,11 @@ session.writeBinding(marker: string, json: string): boolean
 session.free(): void
 ```
 
-The static MCP helper returns either `{"value": …}` or `{"error": "…"}` as
-JSON text. It can be called before creating a session. Malformed JSON,
+The MCP helper is a free function, as in the native binding and like the
+other stateless readers; it needs no session. It returns either
+`{"value": …}` or `{"error": "…"}` as JSON text: `error` is the text of an
+error the tool reported (the Rust helper's `ToolReported` outcome, the query
+manager's `mcp-error`), not a failed call (`tool-error`). Malformed JSON,
 JavaScript TypeErrors, and limit refusals throw `InvalidJson`, `Evaluation`,
 and `LimitExceeded`, respectively. The helper uses the result-size ceiling,
 work and depth from the supplied `ParseLimits`.
@@ -160,7 +163,9 @@ An unexpected failure inside generated glue is reported as Worker.
 Kinds match native: Disposed, ForeignHandle, StaleHandle, ConsumedHandle,
 EvictedHandle, InvalidHandle, InvalidMarker, InvalidToolCall, ReferenceConflict, InvalidJson, RefusedWrite,
 Evaluation, LimitExceeded, Worker, InvalidSchema, InvalidPromptSpec, Prompt,
-QueriesPaused. Failures inside actions and initialization appear in the records above, with
+QueriesPaused, InvalidAttribute. `buildMessage` throws InvalidAttribute for a
+message attribute name or value it cannot URI-encode (a lone surrogate, where
+upstream throws a `URIError`); malformed parts stay InvalidJson. Failures inside actions and initialization appear in the records above, with
 that same kind/message shape. `QueriesPaused` is only ever an action's
 failure: its mutation was dropped because queries are paused (below). Reentry uses Worker("session already in use")
 without effects; it does not revoke an otherwise usable session. The package

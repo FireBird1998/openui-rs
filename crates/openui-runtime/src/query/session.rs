@@ -31,7 +31,7 @@ impl From<crate::McpToolOutcome> for ToolCallOutcome {
     fn from(outcome: crate::McpToolOutcome) -> Self {
         match outcome {
             crate::McpToolOutcome::Result(value) => Self::Result(value),
-            crate::McpToolOutcome::ToolError { message } => Self::McpError(message),
+            crate::McpToolOutcome::ToolReported { message } => Self::McpError(message),
         }
     }
 }

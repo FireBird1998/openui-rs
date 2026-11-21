@@ -3,15 +3,17 @@
 use std::fmt;
 
 use crate::{LimitError, Limits, Value, admission};
-use openui_lang::{JsonError, normalize_js_string, parse_json_value};
+use openui_lang::{JsonError, normalize_surrogate_pairs, parse_json_value};
 
 /// The outcome of an MCP tool call, as reported by its response.
 #[derive(Clone, Debug, PartialEq)]
 pub enum McpToolOutcome {
     /// The extracted value, including null when the tool provides no result.
     Result(Value),
-    /// The tool reported an error.
-    ToolError {
+    /// The tool ran and reported an error (`isError`). The query manager
+    /// delivers it as an `mcp-error`; its `tool-error` is a different thing,
+    /// a call that failed. The bindings write it as the `error` outcome.
+    ToolReported {
         /// The reference's raw tool error text, including its fallback.
         message: String,
     },
@@ -107,7 +109,7 @@ pub fn extract_mcp_tool_result(
             append_text(&mut joined, text, byte_limit)?;
         }
     }
-    let joined = normalize_js_string(joined);
+    let joined = normalize_surrogate_pairs(joined).into_owned();
 
     if is_error {
         let message = if joined.is_empty() {
@@ -118,7 +120,7 @@ pub fn extract_mcp_tool_result(
         if openui_lang::json_string_len(&message).saturating_add(2) > byte_limit {
             return Err(size_error());
         }
-        return Ok(McpToolOutcome::ToolError { message });
+        return Ok(McpToolOutcome::ToolReported { message });
     }
     if !has_text {
         return result(Value::Null, byte_limit);

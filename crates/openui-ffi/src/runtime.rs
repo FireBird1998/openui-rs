@@ -1432,6 +1432,9 @@ impl From<openui_session::OpenUiError> for OpenUiError {
             }
             openui_session::OpenUiError::Prompt { reason } => Self::Prompt { reason },
             openui_session::OpenUiError::QueriesPaused { reason } => Self::QueriesPaused { reason },
+            openui_session::OpenUiError::InvalidAttribute { reason } => {
+                Self::InvalidAttribute { reason }
+            }
         }
     }
 }

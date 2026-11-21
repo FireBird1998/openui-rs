@@ -451,7 +451,7 @@ argument) is the same operation.
 | `value` | Result value, including explicit null |
 | `undefined` | A missing result (pass `true`). Queries cache null and successful mutations omit `data`. |
 | `availableTools` | Missing tool, with available names in provider order |
-| `error` | Tool-reported MCP error text |
+| `error` | Tool-reported MCP error text (`mcp-error`; the MCP helper's `ToolReported` outcome) |
 | `failed` | Call failure message |
 | `mcpResponseJson` | Raw MCP response JSON text. Extracts the result inside Rust and preserves JavaScript numbers and lone surrogates through delivery. |
 

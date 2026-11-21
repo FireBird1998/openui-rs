@@ -12,7 +12,7 @@ pub fn extract_mcp_tool_result(response_json: &str, limits: Limits) -> Result<St
     let outcome = openui_runtime::extract_mcp_tool_result(response_json, limits).map_err(error)?;
     let (prefix, value) = match outcome {
         McpToolOutcome::Result(value) => (r#"{"value":"#, value),
-        McpToolOutcome::ToolError { message } => (r#"{"error":"#, Value::Str(message)),
+        McpToolOutcome::ToolReported { message } => (r#"{"error":"#, Value::Str(message)),
     };
     let mut json = prefix.to_owned();
     openui_lang::write_host_json(&value, limits.result_size(), Some(&mut json)).ok_or_else(

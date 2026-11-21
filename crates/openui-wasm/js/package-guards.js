@@ -77,7 +77,7 @@ const openuiKinds = { __proto__: null, Disposed: true, ForeignHandle: true,
   StaleHandle: true, ConsumedHandle: true, EvictedHandle: true, InvalidHandle: true,
   InvalidToolCall: true, ReferenceConflict: true, InvalidMarker: true, InvalidJson: true, RefusedWrite: true, Evaluation: true,
   LimitExceeded: true, Worker: true, InvalidSchema: true, InvalidPromptSpec: true, Prompt: true,
-  QueriesPaused: true };
+  QueriesPaused: true, InvalidAttribute: true };
 // Rust throws the string `openui:<Kind>\n<message>`. Anything else thrown by
 // generated code is unexpected: report it as Worker without running accessors.
 function openuiTyped(error) {
@@ -322,7 +322,6 @@ const openuiSurface = new Map([
     construct: openuiSpec([openuiLibrary, openuiOptStr]),
     statics: {
       withLimits: openuiSpec([openuiLibrary, openuiOptStr, openuiCapabilityOf(RuntimeLimits)]),
-      extractMcpToolResult: openuiSpec([openuiStr, openuiCapabilityOf(ParseLimits)]),
     },
     methods: {
       free: openuiFree,
@@ -617,12 +616,19 @@ parseResponseBundle = function (...args) {
   return openuiCall(openuiResponseBundleSpec, undefined, undefined, args, converted => openuiApply(openuiParseResponseBundle, undefined, converted));
 };
 
+// A free function like the readers above, as in the native binding.
+const openuiExtractMcpToolResult = extractMcpToolResult;
+const openuiExtractMcpSpec = openuiSpec([openuiStr, openuiCapabilityOf(ParseLimits)]);
+extractMcpToolResult = function (...args) {
+  return openuiCall(openuiExtractMcpSpec, undefined, undefined, args, converted => openuiApply(openuiExtractMcpToolResult, undefined, converted));
+};
+
 // CommonJS exports captured the unguarded values; web exports are live
 // bindings. Refuse to load if the package exports anything not guarded here.
 if (typeof exports !== 'undefined') {
   const openuiExports = { RuntimeSession, EvaluationHandle, ActionHandle, ContinuationHandle,
     ParsedProgram, EvaluationOutput, ActionOutput, ReplacementOutput, RuntimeLimits, ParseLimits, ComponentLibrary,
-    StreamSession, parse, parseProgram, parseMessage, buildMessage, parseResponseBundle };
+    StreamSession, parse, parseProgram, parseMessage, buildMessage, parseResponseBundle, extractMcpToolResult };
   for (const key of openuiOwnKeys(exports)) {
     if (key !== '__esModule' && !openuiHasOwn(openuiExports, key)) throw openuiUncovered('exports', key);
   }

@@ -4,7 +4,7 @@ use openui_ffi::{OpenUiError, ParseLimits, extract_mcp_tool_result};
 static ALLOCATOR: test_alloc::Allocator = test_alloc::Allocator::with_cap(64 * 1024 * 1024);
 
 #[test]
-fn native_export_returns_reference_values_and_tool_errors_as_json() {
+fn native_export_returns_reference_values_and_tool_reported_errors_as_json() {
     let golden = include_str!("../../../conformance/golden/mcp-results.jsonl");
     for line in golden.lines() {
         let row = openui_lang::parse_json(line).unwrap();

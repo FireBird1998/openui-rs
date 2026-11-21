@@ -63,6 +63,10 @@ pub enum OpenUiError {
     /// when queries paused (its outcome is ignored). The rest of its plan
     /// does not run. The reason is one of a few fixed texts.
     QueriesPaused { reason: String },
+    /// A message attribute name or value can't be URI-encoded: it holds a
+    /// lone surrogate (or the core's reserved scalar for one), where upstream
+    /// throws a `URIError`.
+    InvalidAttribute { reason: String },
 }
 
 impl fmt::Display for OpenUiError {
@@ -84,7 +88,8 @@ impl fmt::Display for OpenUiError {
             | Self::Evaluation { reason }
             | Self::LimitExceeded { reason }
             | Self::Worker { reason }
-            | Self::QueriesPaused { reason } => f.write_str(reason),
+            | Self::QueriesPaused { reason }
+            | Self::InvalidAttribute { reason } => f.write_str(reason),
             OpenUiError::InvalidSchema { reason } => write!(f, "invalid JSON Schema: {reason}"),
             OpenUiError::InvalidPromptSpec { reason } => {
                 write!(f, "invalid prompt spec: {reason}")

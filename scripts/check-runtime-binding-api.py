@@ -81,14 +81,35 @@ for record_name, source in [("RuntimeLimits", native), ("ParseLimits", ffi_lib)]
     assert getters == expected, f"{record_name} wasm getters {sorted(getters ^ expected)} drift"
     assert setters == expected, f"{record_name} wasm setters {sorted(setters ^ expected)} drift"
 wasm_session = wasm.split("impl RuntimeSession {", 1)[1].split("pub struct RuntimeLimits", 1)[0]
-assert set(re.findall(r"js_name = (\w+)", wasm_session)) == set(methods) | {"withLimits", "extractMcpToolResult", "sampleQueryClock", "__readResponseBundle", "__drawResponse"}, "wasm session drift"
+assert set(re.findall(r"js_name = (\w+)", wasm_session)) == set(methods) | {"withLimits", "sampleQueryClock", "__readResponseBundle", "__drawResponse"}, "wasm session drift"
+# The MCP result helper is a free function in both bindings, as the other
+# stateless helpers are (#120), and the package guard wraps it as one.
+assert re.search(r"#\[uniffi::export\]\s*pub fn extract_mcp_tool_result\(", ffi_lib), "native MCP helper must be a free function"
+assert re.search(r"#\[wasm_bindgen\(js_name = extractMcpToolResult\)\]\s*pub fn extract_mcp_tool_result\(\s*response_json: &str,", wasm), "wasm MCP helper must be a free function"
+assert "extractMcpToolResult" not in wasm_session, "wasm MCP helper must not be a session static"
+mcp_guard = (root / "crates/openui-wasm/js/package-guards.js").read_text()
+assert re.search(r"^extractMcpToolResult = function", mcp_guard, re.M), "package guard must wrap the free MCP helper"
+assert "extractMcpToolResult: openuiSpec" not in mcp_guard, "package guard still describes the MCP helper as a static"
+assert re.search(r"parseResponseBundle, extractMcpToolResult \};", mcp_guard), "package guard must export the MCP helper"
+# The helper's outcome kind for an error the tool reported is ToolReported;
+# ToolError was its old name and meant something else in the query manager.
+mcp_core = (root / "crates/openui-runtime/src/mcp.rs").read_text()
+mcp_session = (root / "crates/openui-session/src/mcp.rs").read_text()
+assert re.search(r"^    ToolReported \{", mcp_core, re.M), "MCP helper outcome kind ToolReported missing"
+assert "McpToolOutcome::ToolReported" in mcp_session, "session MCP transport drift"
+for label, source in [("runtime", mcp_core), ("session", mcp_session)]:
+    assert "ToolError" not in source, ("old MCP helper outcome kind", label)
+# A message attribute that cannot be URI-encoded has its own kind (#120).
+for label, source in [("native", ffi_messages), ("wasm", wasm_messages)]:
+    assert re.search(r"MessageError::InvalidAttribute => OpenUiError::InvalidAttribute \{ reason \}", source), ("attribute kind", label)
+    assert not re.search(r"MessageError::InvalidAttribute\s*\|", source), ("attribute kind shares a kind", label)
 assert "call: Arc<WantedToolCall>" in native and "outcome_json: String" in native
 assert "call: &WantedToolCall" in wasm_session
 assert "action: Option<ActionHandle>" in wasm_session
 assert "evaluation: &EvaluationHandle" in wasm_session
 assert "continuation: &ContinuationHandle" in wasm_session
 assert "program: &ParsedProgram" in wasm_session
-for name in ["InvalidToolCall", "ReferenceConflict", "ForeignHandle", "StaleHandle", "ConsumedHandle", "EvictedHandle", "InvalidHandle", "InvalidJson", "InvalidMarker", "RefusedWrite", "Disposed", "Evaluation", "LimitExceeded", "Worker", "QueriesPaused"]:
+for name in ["InvalidToolCall", "ReferenceConflict", "ForeignHandle", "StaleHandle", "ConsumedHandle", "EvictedHandle", "InvalidHandle", "InvalidJson", "InvalidMarker", "RefusedWrite", "Disposed", "Evaluation", "LimitExceeded", "Worker", "QueriesPaused", "InvalidAttribute"]:
     assert name in core and name in wasm and name in (root / "crates/openui-ffi/src/lib.rs").read_text(), name
 # Every kind Rust throws or reports is one the package guard rebuilds (ADR 0007).
 guard = (root / "crates/openui-wasm/js/package-guards.js").read_text()
@@ -126,7 +147,8 @@ if len(sys.argv) == 3 and sys.argv[1] == "--wasm":
     assert session, "missing wasm RuntimeSession"
     for method in methods + ["withLimits"]:
         assert re.search(r"\b" + method + r"\(", session[1]), method
-    assert re.search(r"static extractMcpToolResult\(response_json: string, limits: ParseLimits\): string;", session[1]), "wasm MCP helper signature drift"
+    assert re.search(r"^export function extractMcpToolResult\(response_json: string, limits: ParseLimits\): string;", declarations, re.M), "wasm MCP helper signature drift"
+    assert "extractMcpToolResult" not in session[1], "wasm MCP helper must not be a session static"
     assert response_signature in declarations
     assert driver_signature in declarations
     assert "sampleQueryClock(now_ms: bigint): void;" in session[1]
@@ -217,7 +239,7 @@ assert "case Thrown(reason: String" in swift
 assert re.search(r"public func extractMcpToolResult\(responseJson: String, limits: ParseLimits\)\s*throws\s*->\s*String", swift), "Swift MCP helper signature drift"
 assert "public var maxPlans:" not in swift
 assert "compile_fail" not in swift, "rustdoc-only snippet leaked to Swift"
-for error in ["ForeignHandle", "ConsumedHandle", "EvictedHandle", "Evaluation", "QueriesPaused"]:
+for error in ["ForeignHandle", "ConsumedHandle", "EvictedHandle", "Evaluation", "QueriesPaused", "InvalidAttribute"]:
     assert f"case {error}" in swift
 if len(sys.argv) == 3:
     kotlin = pathlib.Path(sys.argv[2]).read_text()
@@ -270,6 +292,6 @@ if len(sys.argv) == 3:
     assert "onMalformedInput(CodingErrorAction.REPORT)" in kotlin
     assert "encode(CharBuffer.wrap(value))" in kotlin
     assert "compile_fail" not in kotlin
-    for error in ["ForeignHandle", "ConsumedHandle", "EvictedHandle", "Evaluation", "QueriesPaused"]:
+    for error in ["ForeignHandle", "ConsumedHandle", "EvictedHandle", "Evaluation", "QueriesPaused", "InvalidAttribute"]:
         assert f"class {error}" in kotlin
 print(f"{'Swift/Kotlin' if len(sys.argv) == 3 else 'Swift'}: {len(native_methods)} session methods, opaque objects, typed errors and current limits checked")

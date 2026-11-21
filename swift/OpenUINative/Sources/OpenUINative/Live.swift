@@ -967,7 +967,8 @@ public final class LiveProgram {
         guard let error = error as? OpenUiError else { return String(describing: error) }
         switch error {
         case let .RefusedWrite(reason), let .Evaluation(reason), let .LimitExceeded(reason),
-             let .InvalidJson(reason), let .Worker(reason), let .QueriesPaused(reason):
+             let .InvalidJson(reason), let .Worker(reason), let .QueriesPaused(reason),
+             let .InvalidAttribute(reason):
             return reason
         default:
             return String(describing: error)

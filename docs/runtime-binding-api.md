@@ -8,8 +8,11 @@ and limits](runtime-binding.md).
 
 Apps with an MCP client can call the standalone
 `extractMcpToolResult(responseJson: String, limits: ParseLimits)` function in
-Swift or Kotlin. It returns JSON text with a `value` field or an `error` field
-containing the tool's raw error message. Malformed JSON, a response that
+Swift or Kotlin; WebAssembly exports the same free function. It returns JSON
+text with a `value` field or an `error` field containing the tool's raw error
+message: the Rust helper's `ToolReported` outcome, which the query manager
+reports as `mcp-error` (a `tool-error` is a call that failed). The text is a
+`completeToolCall` outcome as it stands. Malformed JSON, a response that
 would throw a JavaScript TypeError, and a limit refusal raise `InvalidJson`,
 `Evaluation`, and `LimitExceeded`, respectively. The helper applies
 `resultSize` (fixed result ceiling), `work`, and `depth` before producing
@@ -194,7 +197,10 @@ Swift error cases / Kotlin OpenUiException subclasses: Disposed, ForeignHandle,
 StaleHandle, ConsumedHandle, EvictedHandle, InvalidHandle, InvalidMarker, InvalidToolCall, ReferenceConflict; InvalidJson(reason),
 RefusedWrite(reason), Evaluation(reason), LimitExceeded(reason), Worker(reason), and existing
 InvalidSchema(reason), InvalidPromptSpec(reason), Prompt(reason), and
-QueriesPaused(reason), which only an action's failure carries (#117). Reasons are
+QueriesPaused(reason), which only an action's failure carries (#117), and
+InvalidAttribute(reason), which `buildMessage` raises for a message attribute
+name or value it cannot URI-encode (a lone surrogate, where upstream throws a
+`URIError`; malformed parts stay InvalidJson). Reasons are
 String. ActionOutput.failure.error and StateRefusal.error use the same typed error.
 ParseLimits has eight optional UInt64/ULong fields: programSize, resultSize,
 resultFloor, amplification, resultCeiling, depth, work, peakMemory; all default to absent.

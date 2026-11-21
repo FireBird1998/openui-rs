@@ -28,7 +28,7 @@ fn extraction_matches_the_reference_bytes() {
                     number_kind,
                 )
             }
-            Ok(McpToolOutcome::ToolError { message }) => (
+            Ok(McpToolOutcome::ToolReported { message }) => (
                 format!(
                     r#"{{"error":{}}}"#,
                     value_to_json(&Value::Str(message)).unwrap()

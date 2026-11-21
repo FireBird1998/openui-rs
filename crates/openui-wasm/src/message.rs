@@ -1,4 +1,5 @@
 use openui_lang::{JsonValue, Limits, MessageError};
+use openui_session::OpenUiError;
 use wasm_bindgen::prelude::*;
 
 /// Read message text with the core's default limits and return its parts as
@@ -21,9 +22,13 @@ pub fn build_message(parts: &str) -> Result<String, JsValue> {
 }
 
 fn message_error(error: MessageError) -> JsValue {
-    let kind = match error {
-        MessageError::ProgramSize | MessageError::ContextDepth => "LimitExceeded",
-        MessageError::InvalidAttribute | MessageError::InvalidInput => "InvalidJson",
+    let reason = error.to_string();
+    let error = match error {
+        MessageError::ProgramSize | MessageError::ContextDepth => {
+            OpenUiError::LimitExceeded { reason }
+        }
+        MessageError::InvalidAttribute => OpenUiError::InvalidAttribute { reason },
+        MessageError::InvalidInput => OpenUiError::InvalidJson { reason },
     };
-    crate::runtime::thrown(kind, &error.to_string())
+    crate::runtime::thrown(crate::runtime::kind(&error), &error.to_string())
 }

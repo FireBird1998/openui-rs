@@ -25,8 +25,7 @@ pub(crate) fn message_error(error: MessageError) -> OpenUiError {
         MessageError::ProgramSize | MessageError::ContextDepth => {
             OpenUiError::LimitExceeded { reason }
         }
-        MessageError::InvalidAttribute | MessageError::InvalidInput => {
-            OpenUiError::InvalidJson { reason }
-        }
+        MessageError::InvalidAttribute => OpenUiError::InvalidAttribute { reason },
+        MessageError::InvalidInput => OpenUiError::InvalidJson { reason },
     }
 }

@@ -9,6 +9,7 @@
 //! `JSON.stringify` uses. Text that is, or decodes to, a character in that
 //! range collides with this representation, including a program's string escapes.
 
+use std::borrow::Cow;
 use std::fmt::Write as _;
 
 use crate::progress::Progress;
@@ -56,18 +57,13 @@ pub fn utf16_unit_string(unit: u16) -> String {
 }
 
 /// Combine adjacent surrogate halves in a string using the core's UTF-16
-/// representation. Lone surrogates retain their reserved scalar.
-pub fn normalize_js_string(text: String) -> String {
-    if !text.chars().any(|c| lone_surrogate_unit(c).is_some()) {
-        return text;
-    }
-    char::decode_utf16(utf16_units(&text))
-        .map(|unit| unit.unwrap_or_else(|error| lone_surrogate(error.unpaired_surrogate())))
-        .collect()
-}
-
-/// Canonicalize pairs when independently supplied UTF-16 units meet.
-pub(crate) fn normalize_surrogate_pairs(text: &str) -> std::borrow::Cow<'_, str> {
+/// representation, as JavaScript sees them when independently supplied
+/// UTF-16 units meet: each high half directly followed by a low half becomes
+/// the character they encode. Every other half keeps its reserved scalar.
+/// Text with no such pair comes back as it was given, borrowed or owned,
+/// without a copy.
+pub fn normalize_surrogate_pairs<'a>(text: impl Into<Cow<'a, str>>) -> Cow<'a, str> {
+    let text = text.into();
     let mut high = false;
     let has_pair = text.chars().map(lone_surrogate_unit).any(|unit| {
         let pair = high && matches!(unit, Some(0xDC00..=0xDFFF));
@@ -75,10 +71,10 @@ pub(crate) fn normalize_surrogate_pairs(text: &str) -> std::borrow::Cow<'_, str>
         pair
     });
     if !has_pair {
-        return std::borrow::Cow::Borrowed(text);
+        return text;
     }
-    std::borrow::Cow::Owned(
-        char::decode_utf16(utf16_units(text))
+    Cow::Owned(
+        char::decode_utf16(utf16_units(&text))
             .map(|unit| unit.unwrap_or_else(|e| lone_surrogate(e.unpaired_surrogate())))
             .collect(),
     )
@@ -766,7 +762,7 @@ impl JsonTarget for crate::Value {
         Self::Str(if EXACT_UTF16 {
             text
         } else {
-            normalize_js_string(text)
+            normalize_surrogate_pairs(text).into_owned()
         })
     }
     fn number(text: &str, _: bool) -> Option<Self> {
@@ -783,7 +779,7 @@ impl JsonTarget for crate::Value {
             if EXACT_UTF16 {
                 key
             } else {
-                normalize_js_string(key)
+                normalize_surrogate_pairs(key).into_owned()
             },
             value,
         );
@@ -1146,6 +1142,119 @@ mod issue16_tests {
     fn escaped_and_plain_strings_and_number_scans_advance() {
         for text in [r#""a\nb""#, r#""abc""#, " \t\n12345 ", "-12.34e+56"] {
             assert!(parse_json(text).is_ok(), "{text}");
+        }
+    }
+}
+
+#[cfg(test)]
+mod surrogate_normalizer_tests {
+    use super::*;
+
+    /// The two normalizers this one replaced (#120) both rewrote with this
+    /// decode: `normalize_js_string` whenever the text held a reserved
+    /// stand-in, `normalize_surrogate_pairs` whenever it held a pair of them.
+    /// A text with no stand-in decodes to itself, so the old
+    /// `normalize_js_string` equals this decode on every input, and a
+    /// differential test over the cases below showed the old pair normalizer
+    /// did too before they were merged.
+    fn rewritten(text: &str) -> String {
+        char::decode_utf16(utf16_units(text))
+            .map(|unit| unit.unwrap_or_else(|e| lone_surrogate(e.unpaired_surrogate())))
+            .collect()
+    }
+
+    fn cases() -> Vec<String> {
+        let high = |unit: u16| lone_surrogate(unit).to_string();
+        let low = high;
+        let mut cases: Vec<String> = vec![
+            String::new(),
+            "plain ascii".into(),
+            "é漢😀".into(),
+            high(0xD800),
+            high(0xDBFF),
+            low(0xDC00),
+            low(0xDFFF),
+            high(0xD83D) + &low(0xDE00),
+            high(0xDBFF) + &low(0xDFFF),
+            high(0xD800) + &low(0xDC00),
+            low(0xDE00) + &high(0xD83D),
+            high(0xD83D) + "x" + &low(0xDE00),
+            high(0xD83D) + "😀" + &low(0xDE00),
+            "😀".to_owned() + &low(0xDE00),
+            high(0xD83D) + "😀",
+            high(0xD83D) + &high(0xD83D) + &low(0xDE00),
+            high(0xD83D) + &low(0xDE00) + &low(0xDE00),
+            high(0xD83D) + &low(0xDE00) + &high(0xD83D) + &low(0xDE00),
+            "\u{fdcf}\u{fdd0}\u{fdd1}\u{fdef}\u{fdf0}".into(),
+            high(0xD83D) + "\u{fdd0}" + &low(0xDE00),
+            "\u{fdd0}".to_owned() + &high(0xD83D) + &low(0xDE00) + "\u{fdd0}",
+            "\u{10f7ff}\u{10f800}\u{10ffff}".into(),
+            "\u{10f7ff}".to_owned() + &low(0xDC00),
+            "\u{fffd}\u{ffff}\u{10000}".into(),
+            (high(0xD83D) + &low(0xDE00)).repeat(10_000),
+            "a".repeat(100_000) + &high(0xD83D) + &low(0xDE00),
+            high(0xD83D).repeat(5_000) + &low(0xDE00).repeat(5_000),
+        ];
+        // Every reserved stand-in, alone and before and after every other kind.
+        for code in 0x10_F800..=0x10_FFFF_u32 {
+            let c = char::from_u32(code).map(String::from).unwrap_or_default();
+            cases.push(c.clone());
+            cases.push(high(0xD83D) + &c);
+            cases.push(c.clone() + &low(0xDE00));
+        }
+        // Random strings over a small, collision-heavy alphabet, fixed seed.
+        let alphabet: Vec<String> = vec![
+            "a".into(),
+            "😀".into(),
+            "\u{fdd0}".into(),
+            "\u{fdcf}".into(),
+            "\u{10f7ff}".into(),
+            high(0xD800),
+            high(0xD83D),
+            high(0xDBFF),
+            low(0xDC00),
+            low(0xDE00),
+            low(0xDFFF),
+        ];
+        let mut state: u64 = 0x9E37_79B9_7F4A_7C15;
+        let mut next = move || {
+            state ^= state << 13;
+            state ^= state >> 7;
+            state ^= state << 17;
+            state
+        };
+        for _ in 0..20_000 {
+            let len = (next() % 12) as usize;
+            let text: String = (0..len)
+                .map(|_| alphabet[(next() % alphabet.len() as u64) as usize].as_str())
+                .collect();
+            cases.push(text);
+        }
+        cases
+    }
+
+    #[test]
+    fn the_normalizer_matches_both_former_ones_on_every_input() {
+        for text in cases() {
+            let expected = rewritten(&text);
+            let borrowed = normalize_surrogate_pairs(text.as_str());
+            assert_eq!(
+                *borrowed,
+                *expected,
+                "{:?}",
+                text.escape_unicode().to_string()
+            );
+            // Unchanged text is never copied, borrowed or owned.
+            assert_eq!(matches!(borrowed, Cow::Borrowed(_)), *borrowed == *text);
+            let owned = normalize_surrogate_pairs(text.clone()).into_owned();
+            assert_eq!(owned, expected);
+            let unchanged = text.clone();
+            let unchanged_address = unchanged.as_ptr();
+            if let Cow::Owned(same) = normalize_surrogate_pairs(unchanged)
+                && same == text
+            {
+                assert_eq!(same.as_ptr(), unchanged_address, "copied unchanged text");
+            }
         }
     }
 }

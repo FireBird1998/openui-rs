@@ -444,8 +444,8 @@ static TEST_ALLOCATOR: test_alloc::Allocator = test_alloc::Allocator::with_cap(t
 
 /// Allocation-free JSON number sizing for embedders preparing input allowances.
 pub use js::{
-    json_number_len, json_string_len, normalize_js_string, number_to_string, utf16_unit_string,
-    utf16_units, write_host_json,
+    json_number_len, json_string_len, normalize_surrogate_pairs, number_to_string,
+    utf16_unit_string, utf16_units, write_host_json,
 };
 
 /// JSON values used for runtime schema configuration, without a second dependency.

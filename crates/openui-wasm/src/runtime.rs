@@ -26,6 +26,7 @@ pub(crate) fn kind(e: &core::OpenUiError) -> &'static str {
         core::OpenUiError::InvalidPromptSpec { .. } => "InvalidPromptSpec",
         core::OpenUiError::Prompt { .. } => "Prompt",
         core::OpenUiError::QueriesPaused { .. } => "QueriesPaused",
+        core::OpenUiError::InvalidAttribute { .. } => "InvalidAttribute",
     }
 }
 /// A thrown value the package guard turns into a typed `Error`. The core
@@ -268,16 +269,6 @@ impl RuntimeSession {
                 .map_err(error)?,
         })
     }
-    /// Extract an MCP tool call outcome as JSON containing `value` or `error`.
-    /// Throws InvalidJson, Evaluation or LimitExceeded on refusal.
-    #[wasm_bindgen(js_name = extractMcpToolResult)]
-    pub fn extract_mcp_tool_result(
-        response_json: &str,
-        limits: &ParseLimits,
-    ) -> Result<String, JsValue> {
-        core::extract_mcp_tool_result(response_json, limits.inner.to_core()).map_err(error)
-    }
-
     #[wasm_bindgen(js_name = registerFunction)]
     pub fn register_function(
         &self,
@@ -659,6 +650,18 @@ impl Default for RuntimeLimits {
 #[wasm_bindgen]
 pub struct ParseLimits {
     inner: core::ParseLimits,
+}
+
+/// Extract an MCP tool call outcome as JSON containing `value` (a result) or
+/// `error` (the text of an error the tool reported). Throws InvalidJson,
+/// Evaluation or LimitExceeded on refusal. A free function, like the native
+/// binding's and like the other stateless helpers: it needs no session.
+#[wasm_bindgen(js_name = extractMcpToolResult)]
+pub fn extract_mcp_tool_result(
+    response_json: &str,
+    limits: &ParseLimits,
+) -> Result<String, JsValue> {
+    core::extract_mcp_tool_result(response_json, limits.inner.to_core()).map_err(error)
 }
 #[wasm_bindgen]
 impl ParseLimits {

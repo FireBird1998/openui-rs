@@ -2,6 +2,28 @@
 
 ## Unreleased
 
+- Breaking binding and Rust API changes, accepted because nothing has been
+  released; the old names are not kept as aliases (#120):
+  - The MCP result helper's outcome for an error the tool reported is
+    `McpToolOutcome::ToolReported` in Rust, formerly `ToolError`, which read
+    like the query manager's `tool-error` (a call that failed). The helper's
+    JSON is unchanged: `{"error": …}` is still the `completeToolCall`
+    outcome Swift's `ToolProviderError.toolReported` maps to.
+  - A message attribute name or value that cannot be URI-encoded (a lone
+    surrogate, where upstream throws a `URIError`) makes `buildMessage`
+    throw the new error kind `InvalidAttribute` in both bindings, formerly
+    `InvalidJson`. Its reason text is unchanged, and malformed parts are
+    still `InvalidJson`.
+  - WebAssembly exports `extractMcpToolResult(responseJson, limits)` as a
+    free function, formerly the static `RuntimeSession.extractMcpToolResult`,
+    so it has the native binding's shape and the other stateless helpers'.
+    The package guard wraps it as it wraps them.
+  - Rust: `openui_lang::normalize_js_string` is gone; the core's one
+    surrogate-pair normaliser is `openui_lang::normalize_surrogate_pairs`,
+    which takes borrowed or owned text and returns it uncopied when it holds
+    no pair. A differential test showed the two former normalisers gave the
+    same result on every input before they were merged.
+
 - An action whose mutation is dropped because queries are paused is reported
   once as an action failure with the new error kind `QueriesPaused` in both
   bindings (#117), where it used to vanish with no call, error or event. A
