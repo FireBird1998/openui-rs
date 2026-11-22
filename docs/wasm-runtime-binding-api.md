@@ -24,6 +24,8 @@ ComponentLibrary.fromDefinition(definition: string): ComponentLibrary
 ComponentLibrary.fromDefinitionWithLimits(definition: string, limits: RuntimeLimits): ComponentLibrary
 library.jsonSchema(): string | undefined
 library.promptSpec(): string | undefined
+library.prompt(options?: string): string | undefined
+library.cloudConfig(options?: string, instructions?: string): string | undefined
 parse(program: string, library: ComponentLibrary, rootName?: string): string
 parseProgram(program: string, library: ComponentLibrary, rootName?: string): ParsedProgram
 extractMcpToolResult(responseJson: string, limits: ParseLimits): string
@@ -93,8 +95,15 @@ leaked and the `RuntimeLimits` passed to the failed call can no longer be
 used. `jsonSchema()`
 and `promptSpec()` are a defined library's texts, byte for byte as
 upstream's `JSON.stringify` writes them, and undefined for a library made
-from a JSON Schema; pass `promptSpec()` as a session's prompt spec so it
-knows the library's bindings. See [library definitions](library-definition.md),
+from a JSON Schema. `prompt(options)` and `cloudConfig(options, instructions)`
+give a defined library's system prompt and OpenUI Cloud config block, byte
+for byte as upstream's `library.prompt(options)` and
+`generateSystemPrompt({cloud: true, library: library.toSpec(), ...})` (#135),
+and undefined for a library made from a JSON Schema; options and
+instructions are held to the limits the library was made with
+(`LimitExceeded`, `InvalidPromptSpec`, `Prompt`). A session over a defined
+library given no prompt spec takes its binding props and root from the
+definition; a prompt spec, when given, decides them as before. See [library definitions](library-definition.md),
 including what a library costs past the byte limit.
 
 The MCP helper is a free function, as in the native binding and like the
@@ -432,7 +441,7 @@ interface RuntimeSession {
 ```
 
 Pass the whole response so far on the first draw and on edits. When the
-session's prompt spec supplies a root component, the streaming parser uses it
+session's prompt spec (or, given none, its defined library) supplies a root component, the streaming parser uses it
 to select the entry in programs that omit the `root` statement. Read the
 returned `evaluation` as an ordinary `EvaluationOutput` and free it after
 use. The same result record carries `name`, `attributes`, `context` and

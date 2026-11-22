@@ -768,10 +768,7 @@ impl RuntimeSession {
                 let result = catch_unwind(AssertUnwindSafe(|| {
                     // Construct and destroy session policy on its owning worker.
                     let state = Worker::new(
-                        Arc::new(openui_session::ComponentLibrary {
-                            inner: library.inner.clone(),
-                            schema: library.schema.clone(),
-                        }),
+                        Arc::new(library.session_library()),
                         prompt_spec,
                         limits.into(),
                     );
@@ -2189,14 +2186,8 @@ mod tests {
                         // Reset the test core (and thus release all registry proxies)
                         // before removing their callback transport. No stale registry
                         // or charged registration room may outlive the removed thread.
-                        *state = Worker::new(
-                            Arc::new(openui_session::ComponentLibrary {
-                                inner: library.inner.clone(),
-                                schema: library.schema.clone(),
-                            }),
-                            None,
-                            limits.into(),
-                        )?;
+                        *state =
+                            Worker::new(Arc::new(library.session_library()), None, limits.into())?;
                         state.check_function_registration("Next")?;
                         let thread = callbacks.thread.take().unwrap();
                         thread.mailbox.send(CallbackOperation::Stop).unwrap();

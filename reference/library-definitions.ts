@@ -1199,3 +1199,98 @@ writeFileSync(
   JSON.stringify(out[0].schema, null, 2) + "\n",
 );
 console.log(`${out.length} library-definition observations, ${refusals.length + extractedRefusals.length} converter refusals`);
+
+// Prompts from a defined library (#135): upstream's library.prompt(options)
+// and the cloud config generateSystemPrompt({cloud: true, library:
+// library.toSpec(), promptOptions, instructions}) makes, for every sample
+// createLibrary accepts, written to conformance/golden/library-definition-prompts.json
+// as {prompts: [{name, options?, prompt}], cloud: [{name, promptOptions?,
+// instructions?, config | error}]}. Every sample's prompt and cloud config
+// with no options; the bindings mode for every sample with a binding, an
+// action slot, a function or an action (the $binding and action text); and
+// the other options on a few.
+const { generateSystemPrompt } = await import("./lang-core/src/parser/prompt");
+const tool = {
+  name: "list_items",
+  description: "Lists the items.",
+  inputSchema: { type: "object", properties: { q: { type: "string" } } },
+  outputSchema: { type: "array", items: { type: "string" } },
+  annotations: { readOnlyHint: true },
+};
+const linked = (definition: unknown) => {
+  const d = definition as { functions?: unknown[]; actions?: unknown[] };
+  const text = JSON.stringify(definition);
+  return text.includes('"binding":true') || text.includes('"kind":"action"') || !!d.functions?.length || !!d.actions?.length;
+};
+const everyOption = ["scalars", "binding", "action-slot", "functions-and-actions-with-groups"];
+const promptOptions: object[] = [
+  { tools: ["search", tool], toolExamples: ['root = Page("t", [])'] },
+  { toolCalls: true, bindings: false, builtinFunctions: false },
+  { bindings: true, builtinFunctions: false },
+  { preamble: "You draw pages.", additionalRules: ["Be brief.", "No tables."], examples: ['root = Page("x", [])'] },
+  { editMode: true, inlineMode: true },
+  { root: "Elsewhere", componentGroups: null },
+];
+const cloudOptions: { promptOptions?: object; instructions?: string }[] = [
+  { promptOptions: { examples: ['root = Page("x", [])'], preamble: "P", additionalRules: ["R"], tools: ["dropped"] } },
+  { promptOptions: { editMode: true }, instructions: "Answer briefly." },
+  { promptOptions: {}, instructions: "" },
+];
+const prompts: object[] = [];
+const cloud: object[] = [];
+for (const [name, make] of samples) {
+  const input = make();
+  let library: ReturnType<typeof createLibrary>;
+  try {
+    library = createLibrary(input);
+  } catch {
+    continue;
+  }
+  const definition = toLibraryDefinition(input as any);
+  const variants: (object | undefined)[] = [undefined];
+  if (everyOption.includes(name)) variants.push({ bindings: true }, ...promptOptions);
+  else if (linked(definition)) variants.push({ bindings: true });
+  for (const options of variants) {
+    prompts.push({ name, ...(options ? { options } : {}), prompt: library.prompt(options as any) });
+  }
+  const cloudVariants = everyOption.includes(name) ? [{}, ...cloudOptions] : [{}];
+  for (const variant of cloudVariants) {
+    try {
+      cloud.push({ name, ...variant, config: generateSystemPrompt({ cloud: true, library: library.toSpec(), ...variant } as any) });
+    } catch (e) {
+      cloud.push({ name, ...variant, error: (e as Error).message });
+    }
+  }
+}
+writeFileSync(
+  join(CONFORMANCE, "golden", "library-definition-prompts.json"),
+  JSON.stringify({ prompts, cloud }, null, 1) + "\n",
+);
+console.log(`${prompts.length} prompts and ${cloud.length} cloud configs from defined libraries`);
+
+// The root a defined library gives its parser (#135): react-lang's
+// useOpenUIState creates its streaming parser with library.root
+// (createStreamingParser(schema, library.root)), so a program with no
+// `root` statement draws from the root component's statement. Written to
+// conformance/golden/library-definition-roots.json as [{name, root,
+// program, result}]: the parser with the library's own root, and with a
+// root given in its place (as a prompt spec's root is).
+const { createStreamingParser } = await import("./lang-core/src/parser/parser");
+const rootPrograms = [
+  'h = Heading("Hi")\np = Page("Title", [h])',
+  'p = Page("Title", [t])\nt = Text("x")',
+  'h = Heading("Hi")\nroot = Text("y")',
+  'h = Heading("Hi", 2)',
+];
+const roots: object[] = [];
+{
+  const library = createLibrary(scalars);
+  for (const program of rootPrograms) {
+    for (const root of [library.root, "Heading", undefined]) {
+      const parser = createStreamingParser(library.toJSONSchema(), root);
+      roots.push({ name: "scalars", ...(root !== undefined ? { root } : {}), program, result: parser.set(program) });
+    }
+  }
+}
+writeFileSync(join(CONFORMANCE, "golden", "library-definition-roots.json"), JSON.stringify(roots, null, 1) + "\n");
+console.log(`${roots.length} parses with a defined library's root`);

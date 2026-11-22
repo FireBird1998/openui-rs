@@ -22,6 +22,7 @@ fn downstream_limits_settle_the_source_hide_stale_results_and_recover_on_edit() 
     let lib = Arc::new(ComponentLibrary {
         inner: Arc::new(Library::from_json_schema(&schema)),
         schema: Arc::new(schema),
+        defined: None,
     });
     let refs = PreparedReferenceValues::owned_with_limits(JsObject::new(), Limits::DEFAULT);
     let mut s = SessionCore::new(
@@ -92,6 +93,7 @@ fn a_changed_self_input_displays_a_diagnostic_until_registration_reconciles_the_
     let lib = Arc::new(ComponentLibrary {
         inner: Arc::new(Library::from_json_schema(&schema)),
         schema: Arc::new(schema),
+        defined: None,
     });
     let mut s = SessionCore::new(lib.clone(), None, Default::default()).unwrap();
     let refs = PreparedReferenceValues::owned_with_limits(JsObject::new(), Limits::DEFAULT);

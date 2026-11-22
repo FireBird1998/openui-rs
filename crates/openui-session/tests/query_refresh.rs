@@ -17,6 +17,7 @@ fn setup() -> (
     let lib = Arc::new(ComponentLibrary {
         inner: Arc::new(Library::from_json_schema(&schema)),
         schema: Arc::new(schema),
+        defined: None,
     });
     let s = SessionCore::new(lib.clone(), None, RuntimeLimits::default()).unwrap();
     (

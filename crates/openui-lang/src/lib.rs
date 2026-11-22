@@ -118,7 +118,18 @@
 //!
 //! let result = parse("root = Text(@Shout(\"Hello\"))", &defined.library(), None);
 //! assert!(result.meta.errors.is_empty());
+//!
+//! // Upstream's `library.prompt(options)`, and the props a runtime binds.
+//! let prompt = defined.prompt(Some(serde_json::json!({"bindings": true}))).unwrap();
+//! assert!(prompt.contains("Text(value: string)"));
+//! assert_eq!(defined.binding_props().count(), 0);
 //! ```
+//!
+//! [`DefinedLibrary::prompt`] and [`DefinedLibrary::cloud_config`] give the
+//! system prompt and the OpenUI Cloud config block upstream generates for
+//! the library, and [`DefinedLibrary::binding_props`] the props a runtime
+//! session treats as bindings, so a defined library needs no separate
+//! prompt spec.
 //!
 //! # Streaming
 //!

@@ -1,0 +1,381 @@
+[
+ {
+  "name": "scalars",
+  "root": "Page",
+  "program": "h = Heading(\"Hi\")\np = Page(\"Title\", [h])",
+  "result": {
+   "root": {
+    "type": "element",
+    "typeName": "Page",
+    "props": {
+     "title": "Title",
+     "children": [
+      {
+       "type": "element",
+       "typeName": "Heading",
+       "props": {
+        "text": "Hi"
+       },
+       "partial": false,
+       "hasDynamicProps": false,
+       "statementId": "h"
+      }
+     ]
+    },
+    "partial": false,
+    "hasDynamicProps": false,
+    "statementId": "p"
+   },
+   "meta": {
+    "incomplete": false,
+    "unresolved": [],
+    "orphaned": [],
+    "statementCount": 2,
+    "errors": [
+     {
+      "code": "no-root",
+      "component": "Page",
+      "path": "",
+      "message": "No root statement. Rendering the first statement that calls the root component Page",
+      "statementId": "p",
+      "severity": "warning"
+     }
+    ]
+   },
+   "stateDeclarations": {},
+   "queryStatements": [],
+   "mutationStatements": []
+  }
+ },
+ {
+  "name": "scalars",
+  "root": "Heading",
+  "program": "h = Heading(\"Hi\")\np = Page(\"Title\", [h])",
+  "result": {
+   "root": {
+    "type": "element",
+    "typeName": "Heading",
+    "props": {
+     "text": "Hi"
+    },
+    "partial": false,
+    "hasDynamicProps": false,
+    "statementId": "h"
+   },
+   "meta": {
+    "incomplete": false,
+    "unresolved": [],
+    "orphaned": [
+     "p"
+    ],
+    "statementCount": 2,
+    "errors": [
+     {
+      "code": "no-root",
+      "component": "Heading",
+      "path": "",
+      "message": "No root statement. Rendering the first statement that calls the root component Heading",
+      "statementId": "h",
+      "severity": "warning"
+     }
+    ]
+   },
+   "stateDeclarations": {},
+   "queryStatements": [],
+   "mutationStatements": []
+  }
+ },
+ {
+  "name": "scalars",
+  "program": "h = Heading(\"Hi\")\np = Page(\"Title\", [h])",
+  "result": {
+   "root": null,
+   "meta": {
+    "incomplete": false,
+    "unresolved": [],
+    "orphaned": [],
+    "statementCount": 2,
+    "errors": [
+     {
+      "code": "no-root",
+      "component": "",
+      "path": "",
+      "message": "No root statement"
+     }
+    ]
+   },
+   "stateDeclarations": {},
+   "queryStatements": [],
+   "mutationStatements": []
+  }
+ },
+ {
+  "name": "scalars",
+  "root": "Page",
+  "program": "p = Page(\"Title\", [t])\nt = Text(\"x\")",
+  "result": {
+   "root": {
+    "type": "element",
+    "typeName": "Page",
+    "props": {
+     "title": "Title",
+     "children": [
+      {
+       "type": "element",
+       "typeName": "Text",
+       "props": {
+        "value": "x"
+       },
+       "partial": false,
+       "hasDynamicProps": false,
+       "statementId": "t"
+      }
+     ]
+    },
+    "partial": false,
+    "hasDynamicProps": false,
+    "statementId": "p"
+   },
+   "meta": {
+    "incomplete": false,
+    "unresolved": [],
+    "orphaned": [],
+    "statementCount": 2,
+    "errors": [
+     {
+      "code": "no-root",
+      "component": "Page",
+      "path": "",
+      "message": "No root statement. Rendering the first statement that calls the root component Page",
+      "statementId": "p",
+      "severity": "warning"
+     }
+    ]
+   },
+   "stateDeclarations": {},
+   "queryStatements": [],
+   "mutationStatements": []
+  }
+ },
+ {
+  "name": "scalars",
+  "root": "Heading",
+  "program": "p = Page(\"Title\", [t])\nt = Text(\"x\")",
+  "result": {
+   "root": null,
+   "meta": {
+    "incomplete": false,
+    "unresolved": [],
+    "orphaned": [],
+    "statementCount": 2,
+    "errors": [
+     {
+      "code": "no-root",
+      "component": "Heading",
+      "path": "",
+      "message": "No root statement, and no statement calls the root component Heading"
+     }
+    ]
+   },
+   "stateDeclarations": {},
+   "queryStatements": [],
+   "mutationStatements": []
+  }
+ },
+ {
+  "name": "scalars",
+  "program": "p = Page(\"Title\", [t])\nt = Text(\"x\")",
+  "result": {
+   "root": null,
+   "meta": {
+    "incomplete": false,
+    "unresolved": [],
+    "orphaned": [],
+    "statementCount": 2,
+    "errors": [
+     {
+      "code": "no-root",
+      "component": "",
+      "path": "",
+      "message": "No root statement"
+     }
+    ]
+   },
+   "stateDeclarations": {},
+   "queryStatements": [],
+   "mutationStatements": []
+  }
+ },
+ {
+  "name": "scalars",
+  "root": "Page",
+  "program": "h = Heading(\"Hi\")\nroot = Text(\"y\")",
+  "result": {
+   "root": {
+    "type": "element",
+    "typeName": "Text",
+    "props": {
+     "value": "y"
+    },
+    "partial": false,
+    "hasDynamicProps": false,
+    "statementId": "root"
+   },
+   "meta": {
+    "incomplete": false,
+    "unresolved": [],
+    "orphaned": [
+     "h"
+    ],
+    "statementCount": 2,
+    "errors": []
+   },
+   "stateDeclarations": {},
+   "queryStatements": [],
+   "mutationStatements": []
+  }
+ },
+ {
+  "name": "scalars",
+  "root": "Heading",
+  "program": "h = Heading(\"Hi\")\nroot = Text(\"y\")",
+  "result": {
+   "root": {
+    "type": "element",
+    "typeName": "Text",
+    "props": {
+     "value": "y"
+    },
+    "partial": false,
+    "hasDynamicProps": false,
+    "statementId": "root"
+   },
+   "meta": {
+    "incomplete": false,
+    "unresolved": [],
+    "orphaned": [
+     "h"
+    ],
+    "statementCount": 2,
+    "errors": []
+   },
+   "stateDeclarations": {},
+   "queryStatements": [],
+   "mutationStatements": []
+  }
+ },
+ {
+  "name": "scalars",
+  "program": "h = Heading(\"Hi\")\nroot = Text(\"y\")",
+  "result": {
+   "root": {
+    "type": "element",
+    "typeName": "Text",
+    "props": {
+     "value": "y"
+    },
+    "partial": false,
+    "hasDynamicProps": false,
+    "statementId": "root"
+   },
+   "meta": {
+    "incomplete": false,
+    "unresolved": [],
+    "orphaned": [
+     "h"
+    ],
+    "statementCount": 2,
+    "errors": []
+   },
+   "stateDeclarations": {},
+   "queryStatements": [],
+   "mutationStatements": []
+  }
+ },
+ {
+  "name": "scalars",
+  "root": "Page",
+  "program": "h = Heading(\"Hi\", 2)",
+  "result": {
+   "root": null,
+   "meta": {
+    "incomplete": false,
+    "unresolved": [],
+    "orphaned": [],
+    "statementCount": 1,
+    "errors": [
+     {
+      "code": "no-root",
+      "component": "Page",
+      "path": "",
+      "message": "No root statement, and no statement calls the root component Page"
+     }
+    ]
+   },
+   "stateDeclarations": {},
+   "queryStatements": [],
+   "mutationStatements": []
+  }
+ },
+ {
+  "name": "scalars",
+  "root": "Heading",
+  "program": "h = Heading(\"Hi\", 2)",
+  "result": {
+   "root": {
+    "type": "element",
+    "typeName": "Heading",
+    "props": {
+     "text": "Hi",
+     "level": 2
+    },
+    "partial": false,
+    "hasDynamicProps": false,
+    "statementId": "h"
+   },
+   "meta": {
+    "incomplete": false,
+    "unresolved": [],
+    "orphaned": [],
+    "statementCount": 1,
+    "errors": [
+     {
+      "code": "no-root",
+      "component": "Heading",
+      "path": "",
+      "message": "No root statement. Rendering the first statement that calls the root component Heading",
+      "statementId": "h",
+      "severity": "warning"
+     }
+    ]
+   },
+   "stateDeclarations": {},
+   "queryStatements": [],
+   "mutationStatements": []
+  }
+ },
+ {
+  "name": "scalars",
+  "program": "h = Heading(\"Hi\", 2)",
+  "result": {
+   "root": null,
+   "meta": {
+    "incomplete": false,
+    "unresolved": [],
+    "orphaned": [],
+    "statementCount": 1,
+    "errors": [
+     {
+      "code": "no-root",
+      "component": "",
+      "path": "",
+      "message": "No root statement"
+     }
+    ]
+   },
+   "stateDeclarations": {},
+   "queryStatements": [],
+   "mutationStatements": []
+  }
+ }
+]

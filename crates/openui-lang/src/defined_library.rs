@@ -52,7 +52,39 @@ use crate::library_definition::{
     LibraryDefinitionError, PropDefinition, TypeDescription, check_references, in_property_order,
 };
 use crate::signature::{Entry, call_signature, enum_words};
-use crate::{CallKind, Library, is_builtin, is_reserved_call};
+use crate::{
+    CallKind, Library, PromptError, generate_prompt_with_limits,
+    generate_system_prompt_with_limits, is_builtin, is_reserved_call,
+};
+
+/// The stack a cloud config needs besides its copies' recursion.
+const CLOUD_BASE_SEGMENT: usize = 512 * 1024;
+/// The stack serde_json's copy and drop take per level of JSON. Measured by
+/// bisection on a 64 KiB thread (#135 review): about 2,184 bytes a level for
+/// nested objects and 1,165 for nested arrays unoptimised (opt-level 0),
+/// 275 to 528 optimised. This allows nearly three times the worst.
+const CLOUD_LEVEL_BYTES: usize = 6 * 1024;
+
+/// How deep `value` nests, up to `cap`, counted with a loop: a scalar is 0
+/// levels, an array or object one more than its deepest member. The walk
+/// stops at the first value past `cap`, as the prompt's own depth check does.
+fn json_levels(value: &Json, cap: usize) -> usize {
+    let mut deepest = 0;
+    let mut open = vec![(value, 0usize)];
+    while let Some((value, depth)) = open.pop() {
+        let children: Box<dyn Iterator<Item = &Json>> = match value {
+            Json::Array(items) => Box::new(items.iter()),
+            Json::Object(fields) => Box::new(fields.values()),
+            _ => continue,
+        };
+        deepest = deepest.max(depth + 1);
+        if deepest > cap {
+            return cap;
+        }
+        open.extend(children.map(|child| (child, depth + 1)));
+    }
+    deepest
+}
 
 /// The `$schema` zod 4 writes.
 const DRAFT_2020_12: &str = "https://json-schema.org/draft/2020-12/schema";
@@ -274,6 +306,125 @@ impl DefinedLibrary {
     /// Upstream's `toSpec()`: the prompt spec, with each component's
     /// signature built here, and the JSON Schema as its `schema`.
     pub fn to_spec(&self) -> Json {
+        let mut spec = self.prompt_fields();
+        spec.insert("schema".to_owned(), self.to_json_schema());
+        if let Some(id) = &self.definition.id {
+            spec.insert("id".to_owned(), id.as_str().into());
+        }
+        Json::Object(spec)
+    }
+
+    /// Upstream's `library.prompt(options)`: the system prompt for the
+    /// library, with `options` (upstream's `PromptOptions`, such as
+    /// `{"bindings": true}` or `{"tools": [...]}`) spread over the library's
+    /// root, components, component groups, functions and actions, as
+    /// `generatePrompt` takes them. Options that are not an object add
+    /// nothing, as spreading them adds nothing `generatePrompt` reads.
+    ///
+    /// It generates under the default [`Limits`](crate::Limits): see
+    /// [`DefinedLibrary::prompt_with_limits`].
+    pub fn prompt(&self, options: Option<Json>) -> Result<String, PromptError> {
+        self.prompt_with_limits(options, crate::Limits::DEFAULT)
+    }
+
+    /// [`DefinedLibrary::prompt`] under `limits`, through
+    /// [`generate_prompt_with_limits`]: a spec nesting past the JSON depth
+    /// limit, which only `options` can make it do, is refused, and so are
+    /// options that set `components` to null. The options are moved into
+    /// the spec, never copied, and freed with it without recursion, so
+    /// options as deep as the reader allows cost no stack here.
+    pub fn prompt_with_limits(
+        &self,
+        options: Option<Json>,
+        limits: crate::Limits,
+    ) -> Result<String, PromptError> {
+        let mut spec = self.prompt_fields();
+        match options {
+            Some(Json::Object(options)) => {
+                for (key, value) in options {
+                    spec.insert(key, value);
+                }
+            }
+            Some(other) => crate::free_json(other),
+            None => {}
+        }
+        let spec = Json::Object(spec);
+        let prompt = generate_prompt_with_limits(&spec, limits);
+        crate::free_json(spec);
+        prompt
+    }
+
+    /// The OpenUI Cloud config block upstream's
+    /// `generateSystemPrompt({cloud: true, library: library.toSpec(),
+    /// promptOptions, instructions})` writes for the library: `options` are
+    /// upstream's `CloudPromptOptions` (only `examples`, `preamble` and
+    /// `additionalRules` are sent), and non-empty `instructions` follow the
+    /// block. Refused, with upstream's message, when the library is not one
+    /// Cloud accepts (no component, or a root its JSON Schema has no entry
+    /// for).
+    ///
+    /// It generates under the default [`Limits`](crate::Limits): see
+    /// [`DefinedLibrary::cloud_config_with_limits`].
+    pub fn cloud_config(
+        &self,
+        options: Option<Json>,
+        instructions: Option<&str>,
+    ) -> Result<String, PromptError> {
+        self.cloud_config_with_limits(options, instructions, crate::Limits::DEFAULT)
+    }
+
+    /// [`DefinedLibrary::cloud_config`] under `limits`, through
+    /// [`generate_system_prompt_with_limits`]: the request, the library's
+    /// spec with its JSON Schema included, is refused when it nests past the
+    /// JSON depth limit. The options are moved into the request, never
+    /// copied, and freed with it without recursion.
+    pub fn cloud_config_with_limits(
+        &self,
+        options: Option<Json>,
+        instructions: Option<&str>,
+        limits: crate::Limits,
+    ) -> Result<String, PromptError> {
+        let mut request = Map::new();
+        request.insert("cloud".to_owned(), Json::Bool(true));
+        request.insert("library".to_owned(), self.to_spec());
+        if let Some(options) = options {
+            request.insert("promptOptions".to_owned(), options);
+        }
+        if let Some(instructions) = instructions {
+            request.insert("instructions".to_owned(), instructions.into());
+        }
+        let request = Json::Object(request);
+        // `generateSystemPrompt` copies the library and the options into
+        // the config with serde_json, whose copies and drops recurse once per
+        // level: run it on a segment sized for the request's depth, which it
+        // has already refused past the limit before copying anything.
+        let levels = json_levels(&request, limits.json_depth());
+        let segment = CLOUD_BASE_SEGMENT.saturating_add(levels.saturating_mul(CLOUD_LEVEL_BYTES));
+        let config = stacker::grow(segment, || {
+            generate_system_prompt_with_limits(&request, limits)
+        });
+        crate::free_json(request);
+        config
+    }
+
+    /// The props the definition marks as bindings, as (component, prop)
+    /// pairs: every `"binding": true` prop of the components the library
+    /// keeps, in the order the prompt spec lists them. A runtime session
+    /// reads these instead of the `$binding<...>` marks in the prompt spec's
+    /// signatures.
+    pub fn binding_props(&self) -> impl Iterator<Item = (&str, &str)> {
+        self.components().flat_map(|component| {
+            ordered_props(&component.props)
+                .into_iter()
+                .filter(|p| p.binding)
+                .map(move |p| (component.name.as_str(), p.name.as_str()))
+        })
+    }
+
+    /// What `toSpec()` and `prompt()` share: the root, the components with
+    /// their signatures, the component groups, and the functions and
+    /// actions, each left out as upstream leaves it out.
+    fn prompt_fields(&self) -> Map<String, Json> {
         let mut spec = Map::new();
         if let Some(root) = &self.definition.root {
             spec.insert("root".to_owned(), root.as_str().into());
@@ -345,11 +496,7 @@ impl DefinedLibrary {
         if !actions.is_empty() {
             spec.insert("actions".to_owned(), Json::Object(actions));
         }
-        spec.insert("schema".to_owned(), self.to_json_schema());
-        if let Some(id) = &self.definition.id {
-            spec.insert("id".to_owned(), id.as_str().into());
-        }
-        Json::Object(spec)
+        spec
     }
 
     /// The library the parser uses: [`Library::from_json_schema`] of

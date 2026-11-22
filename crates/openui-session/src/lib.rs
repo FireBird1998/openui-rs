@@ -16,7 +16,7 @@ mod queries;
 mod refresh;
 mod response;
 mod tool_results;
-pub use library_definition::{DefinedLibraryOutput, define_library, library_from_schema};
+pub use library_definition::{Defined, define_library, library_from_schema};
 pub use mcp::extract_mcp_tool_result;
 pub use openui_runtime::{ToolCall as WantedToolCall, ToolCallOutcome};
 pub use queries::QueryEffects;
@@ -175,6 +175,10 @@ impl ParseLimits {
 pub struct ComponentLibrary {
     pub inner: Arc<openui_lang::Library>,
     pub schema: Arc<serde_json::Value>,
+    /// What a library made from a definition keeps beside its compiled form:
+    /// the definition, for prompts and for a session's binding props and
+    /// root (#135). None for a library made from a JSON Schema.
+    pub defined: Option<Arc<Defined>>,
 }
 impl Drop for ComponentLibrary {
     /// The schema of a library made from a definition nests as deep as its
@@ -425,6 +429,11 @@ pub struct SessionCore {
     paused_failures: u64,
 }
 impl SessionCore {
+    /// A session over `library`. Its binding props and root come from
+    /// `prompt_spec` when one is given, and otherwise, for a library made
+    /// from a definition, from the definition: its `"binding": true` props
+    /// and its `root`. A library made from a JSON Schema, given no prompt
+    /// spec, has no binding props and no root.
     pub fn new(
         library: Arc<ComponentLibrary>,
         prompt_spec: Option<String>,
@@ -491,6 +500,18 @@ impl SessionCore {
             s.bindings = BindingProps::from_prompt_spec(library).map_err(|e| {
                 runtime_error(RuntimeFailure::Limit(e), s.core_limits.result_size())
             })?;
+        } else if let Some(defined) = s.library.defined.clone() {
+            // A defined library knows its binding props and root itself, so
+            // no prompt spec is needed for them (#135). The pairs come from
+            // the definition, which was held to max_json_bytes when it was
+            // read, so this loop is bounded by host input already admitted.
+            let definition = defined.library.definition();
+            s.root_name = definition.root.clone();
+            for (component, prop) in defined.library.binding_props() {
+                s.bindings.insert(component, prop).map_err(|e| {
+                    runtime_error(RuntimeFailure::Limit(e), s.core_limits.result_size())
+                })?;
+            }
         }
         Ok(s)
     }
@@ -1708,6 +1729,7 @@ mod tests {
         let library = Arc::new(ComponentLibrary {
             inner: Arc::new(openui_lang::Library::from_json_schema(&schema)),
             schema: Arc::new(schema),
+            defined: None,
         });
         let parsed = Arc::new(openui_lang::parse(
             "$n=0\nm=Mutation(\"m\",{})\nroot=Box(Action([@Set($n,$n+1),@Run(m),@Set($n,$n+1)]))",
@@ -1768,6 +1790,7 @@ mod tests {
         let library = Arc::new(ComponentLibrary {
             inner: Arc::new(openui_lang::Library::from_json_schema(&schema)),
             schema: Arc::new(schema),
+            defined: None,
         });
         let program = Arc::new(ParsedProgram {
             inner: Arc::new(openui_lang::parse(
@@ -1805,6 +1828,7 @@ mod tests {
         let library = Arc::new(ComponentLibrary {
             inner: Arc::new(openui_lang::Library::from_json_schema(&schema)),
             schema: Arc::new(schema),
+            defined: None,
         });
         let parsed = Arc::new(ParsedProgram {
             inner: Arc::new(openui_lang::parse("$n=1", &library.inner, None)),

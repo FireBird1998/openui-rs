@@ -191,6 +191,7 @@ fn live_admission_queries_preserve_room_and_match_real_registration() {
             Arc::new(openui_session::ComponentLibrary {
                 inner: Arc::new(openui_lang::Library::from_json_schema(&schema)),
                 schema: Arc::new(schema.clone()),
+                defined: None,
             }),
             None,
             openui_session::RuntimeLimits {

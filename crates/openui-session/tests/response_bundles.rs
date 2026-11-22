@@ -14,6 +14,7 @@ fn library(schema: Json) -> Arc<ComponentLibrary> {
     Arc::new(ComponentLibrary {
         inner: Arc::new(Library::from_json_schema(&schema)),
         schema: Arc::new(schema),
+        defined: None,
     })
 }
 

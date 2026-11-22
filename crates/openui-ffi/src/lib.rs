@@ -142,14 +142,9 @@ impl std::error::Error for OpenUiError {}
 pub struct ComponentLibrary {
     inner: Arc<Library>,
     schema: Arc<serde_json::Value>,
-    /// The JSON Schema and prompt spec text of a library made from a
-    /// definition; none for one loaded from a JSON Schema.
-    defined: Option<DefinedTexts>,
-}
-
-struct DefinedTexts {
-    json_schema: String,
-    prompt_spec: String,
+    /// What a library made from a definition keeps (its definition, JSON
+    /// Schema and prompt spec text); none for one loaded from a JSON Schema.
+    defined: Option<Arc<openui_session::Defined>>,
 }
 
 impl Drop for ComponentLibrary {
@@ -212,14 +207,11 @@ impl ComponentLibrary {
         definition: String,
         limits: RuntimeLimits,
     ) -> Result<Arc<Self>, OpenUiError> {
-        let defined = openui_session::define_library(&definition, &limits.into())?;
+        let library = openui_session::define_library(&definition, &limits.into())?;
         Ok(Arc::new(ComponentLibrary {
-            inner: defined.library.inner.clone(),
-            schema: defined.library.schema.clone(),
-            defined: Some(DefinedTexts {
-                json_schema: defined.json_schema,
-                prompt_spec: defined.prompt_spec,
-            }),
+            inner: library.inner.clone(),
+            schema: library.schema.clone(),
+            defined: library.defined.clone(),
         }))
     }
 
@@ -241,6 +233,50 @@ impl ComponentLibrary {
     /// library loaded from a JSON Schema.
     pub fn prompt_spec(&self) -> Option<String> {
         self.defined.as_ref().map(|d| d.prompt_spec.clone())
+    }
+
+    /// A library made from a definition: its system prompt, byte for byte
+    /// as upstream's `library.prompt(options)`. `options` is upstream's
+    /// `PromptOptions` as JSON text, such as `{"bindings": true}` or
+    /// `{"tools": [...]}`. Generated under the limits the library was made
+    /// with: `options` longer than `max_json_bytes` is refused with
+    /// `LimitExceeded`, options that are not JSON or nest past
+    /// `evaluation.depth` with `InvalidPromptSpec`, and a spec the core
+    /// can't make a prompt from with `Prompt`. None for a library loaded
+    /// from a JSON Schema.
+    pub fn prompt(&self, options: Option<String>) -> Result<Option<String>, OpenUiError> {
+        Ok(self.session_library().prompt(options.as_deref())?)
+    }
+
+    /// A library made from a definition: its OpenUI Cloud config block,
+    /// byte for byte as upstream's `generateSystemPrompt({cloud: true,
+    /// library: library.toSpec(), promptOptions, instructions})`. `options`
+    /// is upstream's `CloudPromptOptions` as JSON text (only `examples`,
+    /// `preamble` and `additionalRules` are sent); non-empty `instructions`
+    /// follow the block. Limits and errors as [`ComponentLibrary::prompt`];
+    /// `instructions` is held to `max_json_bytes` too. A library Cloud does
+    /// not accept is refused with `Prompt`, with upstream's message. None for
+    /// a library loaded from a JSON Schema.
+    pub fn cloud_config(
+        &self,
+        options: Option<String>,
+        instructions: Option<String>,
+    ) -> Result<Option<String>, OpenUiError> {
+        Ok(self
+            .session_library()
+            .cloud_config(options.as_deref(), instructions.as_deref())?)
+    }
+}
+
+impl ComponentLibrary {
+    /// The session's view of this library: shares the compiled library, its
+    /// schema and what a definition keeps.
+    pub(crate) fn session_library(&self) -> openui_session::ComponentLibrary {
+        openui_session::ComponentLibrary {
+            inner: self.inner.clone(),
+            schema: self.schema.clone(),
+            defined: self.defined.clone(),
+        }
     }
 }
 

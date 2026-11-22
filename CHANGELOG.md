@@ -2,6 +2,64 @@
 
 ## Unreleased
 
+- Prompts and bindings from a defined library (#135). A library made from a
+  definition gives its system prompt, `prompt(options)`, byte for byte as
+  upstream's `library.prompt(options)`, and its OpenUI Cloud config block,
+  `cloudConfig(options, instructions)`, byte for byte as upstream's
+  `generateSystemPrompt({cloud: true, library: library.toSpec(),
+  promptOptions, instructions})`, in the native binding (Swift and Kotlin
+  through the generated binding) and the WebAssembly package, through one
+  shared policy in `openui-session` and the core's new
+  `DefinedLibrary::prompt` and `DefinedLibrary::cloud_config` (each with a
+  `_with_limits` form). The options (upstream's prompt options as JSON text)
+  and instructions are host input, held to the limits the library was made
+  with: `LimitExceeded` past `maxJsonBytes`, `InvalidPromptSpec` for options
+  that are not JSON or nest past `evaluation.depth`, `Prompt` with
+  upstream's message for a refused prompt; both are absent for a library
+  made from a JSON Schema. `conformance/golden/library-definition-prompts.json`,
+  written by `reference/library-definitions.ts` from upstream's own
+  `library.prompt` and `generateSystemPrompt`, holds 121 prompts (every
+  sample, the bindings mode for every sample with a binding, an action slot,
+  a function or an action, and every other option on four) and 82 cloud
+  configs or errors, all matched byte for byte in the core, the native
+  binding and the WebAssembly package.
+  New binding methods: `ComponentLibrary.prompt(options)` and
+  `ComponentLibrary.cloudConfig(options, instructions)` (Swift
+  `prompt(options:)` and `cloudConfig(options:instructions:)`, Kotlin
+  `prompt(options)` and `cloudConfig(options, instructions)`, WebAssembly
+  `library.prompt(options?)` and `library.cloudConfig(options?,
+  instructions?)`), described by the package guard and the binding API
+  check. The cloud config's generator copies the library's JSON Schema and
+  the options with serde_json, which recurses once per level, so it runs on
+  a stack segment sized for the request's depth (6 KiB a level, nearly
+  three times the 2,184 bytes measured for nested objects unoptimised):
+  definitions at the type depth limit and options as deep as the reader
+  allows work on a 64 KiB thread at opt-level 0 too.
+  **Behaviour change (bindings):** a runtime session over a defined library
+  created with no prompt spec now takes its binding props
+  (`DefinedLibrary::binding_props`, the `"binding": true` props) from the
+  definition, so an input bound to one writes state as it does when the
+  prompt spec supplies the marks (spec #123 story 24). Before, such a
+  session had no binding props.
+  **Behaviour change (root):** such a session also takes its root from the
+  definition, so its streaming parser (raw-response draws) picks the root
+  component's statement in a program with no `root` statement. This is
+  upstream's: react-lang's `src/hooks/useOpenUIState.ts`, line 108 at the
+  pinned commit 47b9cae, creates its parser with
+  `createStreamingParser(schema, library.root)`, and lang-core's
+  `library.ts` keeps `root: input.root`.
+  `conformance/golden/library-definition-roots.json`, written by the same
+  script from upstream's own streaming parser, replays it. Before, such a
+  session had no root. A prompt spec, when given, still decides the bindings
+  and the root, and a library from a JSON Schema is unchanged.
+  **Rust API (breaking):** `openui_session::DefinedLibraryOutput` is
+  removed: `define_library` now returns the `ComponentLibrary` itself, and
+  `openui_session::ComponentLibrary` gains a `defined:
+  Option<Arc<Defined>>` field (None for a JSON Schema library; code that
+  builds one literally adds `defined: None`), whose `Defined` holds the
+  definition, the JSON Schema and prompt spec texts and the limits the
+  library was made with.
+
 - A component library's size limit, shared action shapes and no unbounded
   recursion (#140). **Behaviour change** for an existing entry point,
   approved by the maintainer: a component library supplied as JSON Schema

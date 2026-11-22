@@ -661,6 +661,7 @@ mod tests {
         let lib = Arc::new(ComponentLibrary {
             inner: Arc::new(openui_lang::Library::from_json_schema(&schema)),
             schema: Arc::new(schema),
+            defined: None,
         });
         let mut s = SessionCore::new(lib.clone(), None, Default::default()).unwrap();
         let inner = Arc::new(openui_lang::parse(

@@ -12,6 +12,7 @@ fn reference_preparation_refuses_memory_configuration_before_session_creation() 
     let library = Arc::new(ComponentLibrary {
         inner: Arc::new(Library::from_json_schema(&schema)),
         schema: Arc::new(schema),
+        defined: None,
     });
     let mut existing = SessionCore::new(library.clone(), None, RuntimeLimits::default()).unwrap();
     let values = JsObject::new();

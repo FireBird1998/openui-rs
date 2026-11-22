@@ -146,14 +146,26 @@ assert session_definition.index("admit_text(") < session_definition.index("parse
 for accessor in ["json_schema = stringify_json(&schema)", "prompt_spec = stringify_json(&spec)"]:
     assert accessor in session_definition, ("definition text must be stringify_json's", accessor)
 native_library = ffi_lib.split("impl ComponentLibrary {", 1)[1].split("\n}\n", 1)[0]
-assert {camel(n) for n in re.findall(r"pub fn (\w+)\(", native_library)} == {"new", "fromSchemaWithLimits", "fromDefinition", "fromDefinitionWithLimits", "componentNames", "jsonSchema", "promptSpec"}, "native ComponentLibrary drift"
+assert {camel(n) for n in re.findall(r"pub fn (\w+)\(", native_library)} == {"new", "fromSchemaWithLimits", "fromDefinition", "fromDefinitionWithLimits", "componentNames", "jsonSchema", "promptSpec", "prompt", "cloudConfig"}, "native ComponentLibrary drift"
 assert re.search(r"#\[uniffi::constructor\]\s*pub fn from_definition\(definition: String\) -> Result<Arc<Self>, OpenUiError>", native_library)
 assert re.search(r"#\[uniffi::constructor\]\s*pub fn from_definition_with_limits\(\s*definition: String,\s*limits: RuntimeLimits,\s*\) -> Result<Arc<Self>, OpenUiError>", native_library)
 for accessor in ["json_schema", "prompt_spec"]:
     assert f"pub fn {accessor}(&self) -> Option<String>" in native_library, accessor
+# A defined library's prompt and cloud config (#135): one shared policy in
+# the session crate, options and instructions held to the host input limit
+# before they are read, the same two methods in both bindings.
+assert "pub fn prompt(&self, options: Option<String>) -> Result<Option<String>, OpenUiError>" in native_library, "native prompt drift"
+assert re.search(r"pub fn cloud_config\(\s*&self,\s*options: Option<String>,\s*instructions: Option<String>,\s*\) -> Result<Option<String>, OpenUiError>", native_library), "native cloudConfig drift"
+assert re.search(r"pub fn prompt\(&self, options: Option<&str>\) -> Result<Option<String>, OpenUiError>", session_definition), "shared prompt drift"
+assert re.search(r"pub fn cloud_config\(\s*&self,\s*options: Option<&str>,\s*instructions: Option<&str>,\s*\) -> Result<Option<String>, OpenUiError>", session_definition), "shared cloud config drift"
+prompt_options = session_definition.split("fn prompt_options(", 1)[1]
+assert prompt_options.index("admit_text(options, limits.max_json_bytes)?;") < prompt_options.index("parse_json_with_limits("), "prompt options must pass the host input limit before they are read"
+assert "admit_text(instructions, defined.limits.max_json_bytes)?;" in session_definition, "instructions must pass the host input limit"
 wasm_lib = (root / "crates/openui-wasm/src/lib.rs").read_text()
 wasm_library = wasm_lib.split("impl ComponentLibrary {", 1)[1].split("\n}\n", 1)[0]
-assert set(re.findall(r"js_name = (\w+)", wasm_library)) == {"fromSchemaWithLimits", "fromDefinition", "fromDefinitionWithLimits", "jsonSchema", "promptSpec"}, "wasm ComponentLibrary drift"
+assert set(re.findall(r"js_name = (\w+)", wasm_library)) == {"fromSchemaWithLimits", "fromDefinition", "fromDefinitionWithLimits", "jsonSchema", "promptSpec", "cloudConfig"}, "wasm ComponentLibrary drift"
+assert "pub fn prompt(&self, options: Option<String>) -> Result<Option<String>, JsValue>" in wasm_library, "wasm prompt drift"
+assert "self.0.prompt(options.as_deref())" in wasm_library and "self.0\n            .cloud_config(options.as_deref(), instructions.as_deref())" in wasm_library, "wasm prompts must use the shared policy"
 assert "limits: &runtime::RuntimeLimits" in wasm_library
 for label, source in [("native", ffi_lib), ("wasm", wasm_lib)]:
     assert "openui_session::define_library(" in source, ("bindings share the definition policy", label)
@@ -161,7 +173,7 @@ library_guard = (root / "crates/openui-wasm/js/package-guards.js").read_text()
 assert "fromDefinition: openuiSpec([openuiStr])," in library_guard
 assert "fromSchemaWithLimits: openuiSpec([openuiStr, openuiCapabilityOf(RuntimeLimits)])," in library_guard
 assert "fromDefinitionWithLimits: openuiSpec([openuiStr, openuiCapabilityOf(RuntimeLimits)])," in library_guard
-assert "methods: { free: openuiFree, jsonSchema: openuiNone, promptSpec: openuiNone }" in library_guard
+assert "methods: { free: openuiFree, jsonSchema: openuiNone, promptSpec: openuiNone,\n      prompt: openuiSpec([openuiOptStr]), cloudConfig: openuiSpec([openuiOptStr, openuiOptStr]) }," in library_guard
 # A library's JSON Schema (#140): host input held to the same limit, before
 # it is read, by one shared policy; the plain constructor keeps the defaults.
 assert re.search(r"pub fn library_from_schema\(\s*schema: &str,\s*limits: &RuntimeLimits,", session_definition), "shared schema entry point drift"
@@ -173,9 +185,9 @@ assert "Self::from_schema(schema, &openui_session::RuntimeLimits::default())" in
 for label, source in [("native", ffi_lib), ("wasm", wasm_lib)]:
     assert "openui_session::library_from_schema(" in source, ("bindings share the schema policy", label)
     assert "Library::from_json_schema(" not in source.split("impl ComponentLibrary {", 1)[1].split("\n}\n", 1)[0], ("no unlimited schema path", label)
-for doc, names in [("docs/runtime-binding-api.md", ["fromSchemaWithLimits", "fromDefinition", "fromDefinitionWithLimits", "jsonSchema", "promptSpec", "maxJsonBytes"]),
-                   ("docs/wasm-runtime-binding-api.md", ["fromSchemaWithLimits", "fromDefinition", "fromDefinitionWithLimits", "jsonSchema", "promptSpec", "maxJsonBytes"]),
-                   ("docs/library-definition.md", ["host input byte limit", "LimitExceeded", "InvalidJson", "jsonSchema", "promptSpec"])]:
+for doc, names in [("docs/runtime-binding-api.md", ["fromSchemaWithLimits", "fromDefinition", "fromDefinitionWithLimits", "jsonSchema", "promptSpec", "maxJsonBytes", "prompt(options", "cloudConfig"]),
+                   ("docs/wasm-runtime-binding-api.md", ["fromSchemaWithLimits", "fromDefinition", "fromDefinitionWithLimits", "jsonSchema", "promptSpec", "maxJsonBytes", "prompt(options", "cloudConfig"]),
+                   ("docs/library-definition.md", ["host input byte limit", "LimitExceeded", "InvalidJson", "jsonSchema", "promptSpec", "prompt(options", "cloudConfig", "InvalidPromptSpec"])]:
     text = (root / doc).read_text()
     for name in names:
         # The whole name: fromDefinitionWithLimits must not stand in for
@@ -226,7 +238,9 @@ if len(sys.argv) == 3 and sys.argv[1] == "--wasm":
     for declaration in ["static fromSchemaWithLimits(schema: string, limits: RuntimeLimits): ComponentLibrary;",
                         "static fromDefinition(definition: string): ComponentLibrary;",
                         "static fromDefinitionWithLimits(definition: string, limits: RuntimeLimits): ComponentLibrary;",
-                        "jsonSchema(): string | undefined;", "promptSpec(): string | undefined;", "constructor(schema: string);"]:
+                        "jsonSchema(): string | undefined;", "promptSpec(): string | undefined;", "constructor(schema: string);",
+                        "prompt(options?: string | null): string | undefined;",
+                        "cloudConfig(options?: string | null, instructions?: string | null): string | undefined;"]:
         assert declaration in library[1], declaration
     for name in ["QueryEffects", "WantedToolCall"]:
         assert re.search(r"^declare class " + name + r" \{\s*private constructor\(\);", declarations, re.M), name
@@ -295,7 +309,9 @@ for error in ["ForeignHandle", "ConsumedHandle", "EvictedHandle", "Evaluation", 
     assert f"case {error}" in swift
 library = re.search(r"public protocol ComponentLibraryProtocol[^\{]*\{(.*?)\n\}", swift, re.S)
 assert library, "missing Swift ComponentLibrary protocol"
-for method in [r"componentNames\(\)\s*->\s*\[String\]", r"jsonSchema\(\)\s*->\s*String\?", r"promptSpec\(\)\s*->\s*String\?"]:
+for method in [r"componentNames\(\)\s*->\s*\[String\]", r"jsonSchema\(\)\s*->\s*String\?", r"promptSpec\(\)\s*->\s*String\?",
+               r"prompt\(options: String\?\)\s*throws\s*->\s*String\?",
+               r"cloudConfig\(options: String\?, instructions: String\?\)\s*throws\s*->\s*String\?"]:
     assert re.search(r"func\s+" + method, library[1]), method
 assert re.search(r"public static func fromSchemaWithLimits\(schema: String, limits: RuntimeLimits\)\s*throws\s*-> ComponentLibrary", swift), "Swift fromSchemaWithLimits drift"
 assert re.search(r"public static func fromDefinition\(definition: String\)\s*throws\s*-> ComponentLibrary", swift), "Swift fromDefinition drift"
@@ -355,7 +371,9 @@ if len(sys.argv) == 3:
         assert f"class {error}" in kotlin
     library = re.search(r"public interface ComponentLibraryInterface\s*\{(.*?)\n\}", kotlin, re.S)
     assert library, "missing Kotlin ComponentLibrary interface"
-    for method in ["fun `componentNames`(): List<kotlin.String>", "fun `jsonSchema`(): kotlin.String?", "fun `promptSpec`(): kotlin.String?"]:
+    for method in ["fun `componentNames`(): List<kotlin.String>", "fun `jsonSchema`(): kotlin.String?", "fun `promptSpec`(): kotlin.String?",
+                   "fun `prompt`(`options`: kotlin.String?): kotlin.String?",
+                   "fun `cloudConfig`(`options`: kotlin.String?, `instructions`: kotlin.String?): kotlin.String?"]:
         assert method in library[1], method
     assert "@Throws(OpenUiException::class) fun `fromSchemaWithLimits`(`schema`: kotlin.String, `limits`: RuntimeLimits): ComponentLibrary" in kotlin, "Kotlin fromSchemaWithLimits drift"
     assert "@Throws(OpenUiException::class) fun `fromDefinition`(`definition`: kotlin.String): ComponentLibrary" in kotlin, "Kotlin fromDefinition drift"

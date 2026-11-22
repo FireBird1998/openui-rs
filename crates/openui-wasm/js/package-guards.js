@@ -404,7 +404,9 @@ const openuiSurface = new Map([
   }],
   // A library's JSON Schema and a library definition are host input, held
   // to maxJsonBytes in bytes by Rust before they are read; a definition's
-  // JSON Schema and prompt spec come back as text.
+  // JSON Schema and prompt spec come back as text. A defined library's
+  // prompt and cloud config take their options and instructions as text,
+  // held by Rust to the limits the library was made with (#135).
   [ComponentLibrary, {
     construct: openuiSpec([openuiStr]),
     statics: {
@@ -412,7 +414,8 @@ const openuiSurface = new Map([
       fromDefinition: openuiSpec([openuiStr]),
       fromDefinitionWithLimits: openuiSpec([openuiStr, openuiCapabilityOf(RuntimeLimits)]),
     },
-    methods: { free: openuiFree, jsonSchema: openuiNone, promptSpec: openuiNone },
+    methods: { free: openuiFree, jsonSchema: openuiNone, promptSpec: openuiNone,
+      prompt: openuiSpec([openuiOptStr]), cloudConfig: openuiSpec([openuiOptStr, openuiOptStr]) },
   }],
   [StreamSession, {
     construct: openuiSpec([openuiLibrary, openuiOptStr]),

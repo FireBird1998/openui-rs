@@ -7,6 +7,7 @@
 import { test, expect } from 'bun:test';
 import { readdirSync, readFileSync } from 'node:fs';
 import golden from '../../../conformance/golden/library-definitions.json';
+import promptGolden from '../../../conformance/golden/library-definition-prompts.json';
 import { wasm, kind } from './support';
 
 type Sample = { name: string; definition: any; schema?: any; spec?: any; error?: string };
@@ -148,6 +149,85 @@ test('a freed defined library refuses its accessors', () => {
   library.free();
   expect(kind(() => library.jsonSchema(), 'Disposed').message).toBe('object freed');
   expect(kind(() => library.promptSpec(), 'Disposed').message).toBe('object freed');
+  expect(kind(() => library.prompt(), 'Disposed').message).toBe('object freed');
+  expect(kind(() => library.cloudConfig(), 'Disposed').message).toBe('object freed');
+});
+
+// #135: upstream's library.prompt(options) and generateSystemPrompt({cloud:
+// true, library: library.toSpec(), promptOptions, instructions}).
+type PromptEntry = { name: string; options?: unknown; prompt: string };
+type CloudEntry = { name: string; promptOptions?: unknown; instructions?: string; config?: string; error?: string };
+const { prompts, cloud } = promptGolden as { prompts: PromptEntry[]; cloud: CloudEntry[] };
+
+test('a defined library\'s prompt and cloud config are upstream\'s, byte for byte', () => {
+  expect(prompts.length).toBe(121);
+  for (const e of prompts) {
+    const library = define(sample(e.name).definition);
+    expect(library.prompt(e.options === undefined ? undefined : JSON.stringify(e.options))).toBe(e.prompt);
+    library.free();
+  }
+  expect(cloud.length).toBe(82);
+  for (const e of cloud) {
+    const library = define(sample(e.name).definition);
+    const options = e.promptOptions === undefined ? undefined : JSON.stringify(e.promptOptions);
+    if (e.error === undefined) expect(library.cloudConfig(options, e.instructions)).toBe(e.config!);
+    else expect(kind(() => library.cloudConfig(options, e.instructions), 'Prompt').message).toBe(e.error);
+    library.free();
+  }
+});
+
+test('prompt options are host input, held to the library\'s limits', () => {
+  const limits = new wasm.RuntimeLimits();
+  limits.maxJsonBytes = 1000n;
+  const small = { components: [{ name: 'A', description: '', props: [] }] };
+  const library = wasm.ComponentLibrary.fromDefinitionWithLimits(JSON.stringify(small), limits);
+  limits.free();
+  const at = JSON.stringify({ preamble: 'é'.repeat((1000 - 15) / 2) + 'a' });
+  expect(new TextEncoder().encode(at).length).toBe(1000);
+  expect(library.prompt(at)!.startsWith('é')).toBe(true);
+  const over = at.replace('a"', 'aa"');
+  expect(kind(() => library.prompt(over), 'LimitExceeded').message).toBe('host input byte limit');
+  expect(kind(() => library.cloudConfig(undefined, 'i'.repeat(1001)), 'LimitExceeded').message).toBe('host input byte limit');
+  kind(() => library.prompt('{'), 'InvalidPromptSpec');
+  expect(kind(() => library.prompt('{"components":null}'), 'Prompt').message).toBe('[generatePrompt] components is missing.');
+  // Strings only: the guard refuses anything else before Rust sees it.
+  kind(() => library.prompt({ bindings: true }), 'InvalidJson');
+  library.free();
+  const plain = fromUpstream(sample('scalars'));
+  expect(plain.prompt()).toBeUndefined();
+  expect(plain.cloudConfig()).toBeUndefined();
+  plain.free();
+});
+
+test('a session over a defined library knows its bindings with no prompt spec (#135)', () => {
+  const definition = { components: [{ name: 'Input', description: '', props: [
+    { name: 'label', type: { kind: 'string' } }, { name: 'value', type: { kind: 'string' }, binding: true }] }], root: 'Input' };
+  const marker = '{"__reactive":"assign","target":"$v","expr":{"k":"StateRef","n":"$value"}}';
+  const defined = define(definition), plain = new wasm.ComponentLibrary(defined.jsonSchema()!);
+  const run = (library: any, spec: string | undefined) => {
+    const session = new wasm.RuntimeSession(library, spec);
+    const parsed = wasm.parseProgram('$v = "a"\nroot = Input($v, $v)', library);
+    session.setProgram(parsed); parsed.free();
+    const draw = session.evaluate();
+    const json = draw.json; draw.free();
+    const bound = json.includes(marker);
+    if (bound) expect(session.writeBinding(marker, '"typed"')).toBe(true);
+    const snapshot = session.snapshot();
+    const result = JSON.stringify([json, session.undecidedBindings(), snapshot]);
+    session.free();
+    return { bound, result, snapshot };
+  };
+  const withoutSpec = run(defined, undefined), withSpec = run(defined, defined.promptSpec());
+  expect(withoutSpec.bound).toBe(true);
+  expect(withoutSpec).toEqual(withSpec);
+  expect(withoutSpec.snapshot).toBe('{"$v":"typed"}');
+  expect(run(plain, undefined).bound).toBe(false);
+  // A prompt spec, when given, still decides: one marking no binding.
+  const unmarked = define({ ...definition, components: [{ ...definition.components[0], props: [
+    definition.components[0].props[0], { name: 'value', type: { kind: 'string' } }] }] });
+  expect(run(defined, unmarked.promptSpec()).bound).toBe(false);
+  unmarked.free();
+  defined.free(); plain.free();
 });
 
 // A chain of library actions, each one's param an action slot for the next.

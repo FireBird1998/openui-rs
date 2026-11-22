@@ -419,3 +419,174 @@ fn a_long_action_chain_of_a_handled_size_is_handled_on_a_small_stack() {
         started.elapsed()
     );
 }
+
+/// An input whose `value` is a binding, as a small definition.
+fn bound_input() -> Value {
+    json!({
+        "components": [{"name": "Input", "description": "", "props": [
+            {"name": "label", "type": {"kind": "string"}},
+            {"name": "value", "type": {"kind": "string"}, "binding": true}
+        ]}],
+        "root": "Input"
+    })
+}
+
+const BOUND_PROGRAM: &str = "$v = \"a\"\nroot = Input($v, $v)";
+const MARKER: &str =
+    r#"{"__reactive":"assign","target":"$v","expr":{"k":"StateRef","n":"$value"}}"#;
+
+fn session_over(library: &Arc<ComponentLibrary>, spec: Option<String>) -> Arc<RuntimeSession> {
+    let session = RuntimeSession::new(library.clone(), spec).unwrap();
+    let parsed = parse(BOUND_PROGRAM.into(), library.clone(), None).program;
+    session.set_program(parsed).unwrap();
+    session
+}
+
+/// Spec #123 story 24 (#135): a session created with a defined library and
+/// no prompt spec knows the definition's binding props, so an input bound
+/// to one draws a binding marker and writes state through it, exactly as a
+/// session over the same library given its prompt spec does today. The same
+/// library supplied as a JSON Schema with no prompt spec has no binding.
+#[test]
+fn a_session_over_a_defined_library_knows_its_bindings_without_a_prompt_spec() {
+    let defined = define(&bound_input()).unwrap();
+    let plain = ComponentLibrary::new(defined.json_schema().unwrap()).unwrap();
+    let spec = defined.prompt_spec().unwrap();
+    let sessions = [
+        session_over(&defined, None),
+        session_over(&defined, Some(spec.clone())),
+        session_over(&plain, Some(spec)),
+    ];
+    let mut draws = Vec::new();
+    for session in &sessions {
+        let draw = session.evaluate().unwrap().json;
+        assert!(draw.contains(MARKER), "{draw}");
+        assert!(session.undecided_bindings().unwrap().is_empty());
+        assert!(
+            session
+                .write_binding(MARKER.into(), r#""typed""#.into())
+                .unwrap()
+        );
+        assert_eq!(
+            session.get("$v".into()).unwrap().as_deref(),
+            Some(r#""typed""#)
+        );
+        draws.push((
+            draw,
+            session.snapshot().unwrap(),
+            session.evaluate().unwrap().json,
+        ));
+        session.dispose();
+    }
+    assert_eq!(draws[0], draws[1]);
+    assert_eq!(draws[0], draws[2]);
+    let unbound = session_over(&plain, None);
+    let draw = unbound.evaluate().unwrap().json;
+    assert!(!draw.contains("__reactive"), "{draw}");
+    unbound.dispose();
+}
+
+/// A prompt spec given with a defined library still decides the bindings,
+/// as before: one whose signature marks no binding leaves the prop unbound.
+#[test]
+fn an_explicit_prompt_spec_decides_the_bindings_of_a_defined_library() {
+    let defined = define(&bound_input()).unwrap();
+    let mut unbound = bound_input();
+    unbound["components"][0]["props"][1]["binding"] = json!(false);
+    let spec = define(&unbound).unwrap().prompt_spec().unwrap();
+    let session = session_over(&defined, Some(spec));
+    let draw = session.evaluate().unwrap().json;
+    assert!(!draw.contains("__reactive"), "{draw}");
+    session.dispose();
+}
+
+fn prompt_golden() -> Value {
+    parse_json(&read(&golden_dir().join("library-definition-prompts.json"))).unwrap()
+}
+
+/// Through the binding, a defined library's prompt and cloud config are
+/// upstream's `library.prompt(options)` and `generateSystemPrompt({cloud:
+/// true, library: library.toSpec(), promptOptions, instructions})`, byte for
+/// byte, or its error with its message, for every golden entry.
+#[test]
+fn a_defined_librarys_prompt_and_cloud_config_are_upstreams() {
+    let golden = prompt_golden();
+    for entry in golden["prompts"].as_array().unwrap() {
+        let name = entry["name"].as_str().unwrap();
+        let library = define(&sample(name)["definition"]).unwrap();
+        let options = entry.get("options").map(stringify_json);
+        let prompt = library.prompt(options).unwrap().unwrap();
+        assert_eq!(prompt, entry["prompt"].as_str().unwrap(), "{name}");
+    }
+    for entry in golden["cloud"].as_array().unwrap() {
+        let name = entry["name"].as_str().unwrap();
+        let library = define(&sample(name)["definition"]).unwrap();
+        let options = entry.get("promptOptions").map(stringify_json);
+        let instructions = entry
+            .get("instructions")
+            .map(|i| i.as_str().unwrap().to_owned());
+        match (
+            library.cloud_config(options, instructions),
+            entry.get("error"),
+        ) {
+            (Ok(config), None) => {
+                assert_eq!(config.unwrap(), entry["config"].as_str().unwrap(), "{name}")
+            }
+            (Err(OpenUiError::Prompt { reason }), Some(error)) => {
+                assert_eq!(reason, error.as_str().unwrap(), "{name}")
+            }
+            (other, _) => panic!("{name}: {other:?}"),
+        }
+    }
+}
+
+/// A prompt's options and a cloud config's instructions are host input,
+/// held to the limits the library was made with; options that are not JSON
+/// are refused as InvalidPromptSpec; a library from a JSON Schema has no
+/// prompt of its own.
+#[test]
+fn prompt_options_are_held_to_the_librarys_limits() {
+    let limits = RuntimeLimits {
+        max_json_bytes: 1000,
+        ..RuntimeLimits::default()
+    };
+    let text = stringify_json(&bound_input());
+    let library = ComponentLibrary::from_definition_with_limits(text, limits).unwrap();
+    let at = format!(r#"{{"preamble":"{}"}}"#, "a".repeat(1000 - 15));
+    assert_eq!(at.len(), 1000);
+    assert!(
+        library
+            .prompt(Some(at.clone()))
+            .unwrap()
+            .unwrap()
+            .starts_with("aaa")
+    );
+    let over = format!(r#"{{"preamble":"{}"}}"#, "a".repeat(1000 - 14));
+    for result in [
+        library.prompt(Some(over.clone())),
+        library.cloud_config(Some(over), None),
+        library.cloud_config(None, Some("i".repeat(1001))),
+    ] {
+        assert!(
+            matches!(&result, Err(OpenUiError::LimitExceeded { reason }) if reason == "host input byte limit"),
+            "{result:?}"
+        );
+    }
+    assert!(library.cloud_config(None, Some("i".repeat(1000))).is_ok());
+    for bad in ["{", "[".repeat(300).as_str()] {
+        assert!(
+            matches!(
+                library.prompt(Some(bad.into())),
+                Err(OpenUiError::InvalidPromptSpec { .. })
+            ),
+            "{bad}"
+        );
+    }
+    assert!(matches!(
+        library.prompt(Some(r#"{"components":null}"#.into())),
+        Err(OpenUiError::Prompt { reason }) if reason == "[generatePrompt] components is missing."
+    ));
+    let plain = ComponentLibrary::new(library.json_schema().unwrap()).unwrap();
+    assert_eq!(plain.prompt(None).unwrap(), None);
+    assert_eq!(plain.cloud_config(None, None).unwrap(), None);
+}

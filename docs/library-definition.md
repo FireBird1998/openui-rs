@@ -25,6 +25,8 @@ static func fromDefinition(definition: String) throws -> ComponentLibrary
 static func fromDefinitionWithLimits(definition: String, limits: RuntimeLimits) throws -> ComponentLibrary
 func jsonSchema() -> String?
 func promptSpec() -> String?
+func prompt(options: String?) throws -> String?
+func cloudConfig(options: String?, instructions: String?) throws -> String?
 ```
 
 ```kotlin
@@ -32,6 +34,8 @@ fun fromDefinition(definition: String): ComponentLibrary
 fun fromDefinitionWithLimits(definition: String, limits: RuntimeLimits): ComponentLibrary
 fun jsonSchema(): String?
 fun promptSpec(): String?
+fun prompt(options: String?): String?
+fun cloudConfig(options: String?, instructions: String?): String?
 ```
 
 ```typescript
@@ -39,6 +43,8 @@ ComponentLibrary.fromDefinition(definition: string): ComponentLibrary
 ComponentLibrary.fromDefinitionWithLimits(definition: string, limits: RuntimeLimits): ComponentLibrary
 library.jsonSchema(): string | undefined
 library.promptSpec(): string | undefined
+library.prompt(options?: string): string | undefined
+library.cloudConfig(options?: string, instructions?: string): string | undefined
 ```
 
 `jsonSchema()` and `promptSpec()` give a defined library's JSON Schema and
@@ -55,12 +61,22 @@ Using a defined library:
 - **Parsing and streaming:** pass it to `parse`, `parseProgram` or a stream
   session like any other library. A program parses exactly as with the same
   library supplied as upstream's JSON Schema.
-- **Runtime sessions:** pass the library, and `promptSpec()` as the session's
-  prompt spec, so the session knows which props are bindings. A session given
-  no prompt spec does not read bindings from the definition.
-- **Prompts:** `generateSystemPrompt` (native) takes
-  `{"library": <promptSpec()>, "promptOptions": ...}`; in JavaScript, hand
-  the parsed `promptSpec()` to upstream's prompt tooling.
+- **Runtime sessions:** pass the library; no prompt spec is needed. A
+  session over a defined library given no prompt spec takes its binding
+  props (the `"binding": true` props) and its root from the definition, so an
+  input bound to one writes state. A prompt spec, when given, decides both,
+  as for any library.
+- **Prompts:** `prompt(options)` is the system prompt, byte for byte as
+  upstream's `library.prompt(options)`; `options` is upstream's prompt
+  options as JSON text, such as `{"bindings": true}`, `{"tools": [...]}` or
+  `{"preamble": "...", "additionalRules": [...]}`, and may be left out.
+  `cloudConfig(options, instructions)` is the OpenUI Cloud config block, byte
+  for byte as upstream's `generateSystemPrompt({cloud: true, library:
+  library.toSpec(), promptOptions, instructions})`: only `examples`,
+  `preamble` and `additionalRules` of the options are sent, and non-empty
+  instructions follow the block. Both are absent for a library made from a
+  JSON Schema. The native `generateSystemPrompt` with
+  `{"library": <promptSpec()>, "promptOptions": ...}` gives the same prompt.
 - **Functions:** a function's implementation never enters the core. Register
   it with the session's `registerFunction` under the function's name.
 
@@ -141,6 +157,19 @@ engine out of stack any more. Should a call still run out:
 - After a `Worker` error "Maximum call stack size exceeded" the instance
   keeps working, but the library whose call was interrupted is leaked, and
   the `RuntimeLimits` object passed to the failed call can no longer be used.
+
+### Limits and errors of prompts
+
+A prompt's options and a cloud config's instructions are host input, held to
+the limits the library was made with (the defaults for `fromDefinition`):
+longer than `maxJsonBytes` in UTF-8 bytes is `LimitExceeded` (`host input
+byte limit`); options that are not JSON, or nest past `evaluation.depth`, are
+`InvalidPromptSpec`; and a prompt the core refuses, as upstream's
+`generatePrompt` and `generateSystemPrompt` refuse it, is `Prompt` with
+upstream's message: options that set `components` to null, a request nesting
+past the prompt's depth limit, and a cloud config for a library Cloud does
+not accept (no component, or a root its JSON Schema has no entry for, such as
+a root that only passes `createLibrary`'s check because every object has it).
 
 ## The form
 

@@ -21,6 +21,7 @@ fn session() -> (SessionCore, PreparedReferenceValues<'static>) {
     let library = Arc::new(ComponentLibrary {
         inner: Arc::new(Library::from_json_schema(&schema)),
         schema: Arc::new(schema),
+        defined: None,
     });
     let refs = PreparedReferenceValues::owned_with_limits(JsObject::new(), Limits::DEFAULT);
     let mut session = SessionCore::new(library.clone(), None, RuntimeLimits::default()).unwrap();

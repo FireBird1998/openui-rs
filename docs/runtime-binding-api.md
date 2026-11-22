@@ -34,7 +34,18 @@ tracked on #146). Of the `RuntimeLimits`, only `maxJsonBytes` and
 ignored. Either way the library costs time and memory in step with its size:
 action shapes that params refer to are shared, not copied. A defined library's JSON Schema and prompt spec are read as
 JSON text, byte for byte as upstream writes them; both are nil for a library
-loaded from a JSON Schema.
+loaded from a JSON Schema. A defined library also gives its system prompt,
+`prompt(options)` (upstream's `library.prompt(options)`), and its OpenUI Cloud
+config block, `cloudConfig(options, instructions)` (upstream's
+`generateSystemPrompt({cloud: true, library: library.toSpec(), ...})`), byte
+for byte (#135); both are nil for a library loaded from a JSON Schema. The
+options are upstream's prompt options as JSON text, and they and the
+instructions are held to the limits the library was made with: longer than
+`maxJsonBytes` is `LimitExceeded`, options that are not JSON or nest past
+`evaluation.depth` are `InvalidPromptSpec`, and a refusal of the prompt
+itself is `Prompt` with upstream's message. A runtime session over a defined
+library given no prompt spec takes its binding props and root from the
+definition.
 
 ```swift
 convenience init(schema: String) throws
@@ -44,6 +55,8 @@ static func fromDefinitionWithLimits(definition: String, limits: RuntimeLimits) 
 func componentNames() -> [String]
 func jsonSchema() -> String?
 func promptSpec() -> String?
+func prompt(options: String?) throws -> String?
+func cloudConfig(options: String?, instructions: String?) throws -> String?
 ```
 
 ```kotlin
@@ -55,6 +68,8 @@ fun fromDefinitionWithLimits(definition: String, limits: RuntimeLimits): Compone
 fun componentNames(): List<kotlin.String>
 fun jsonSchema(): kotlin.String?
 fun promptSpec(): kotlin.String?
+fun prompt(options: kotlin.String?): kotlin.String?
+fun cloudConfig(options: kotlin.String?, instructions: kotlin.String?): kotlin.String?
 ```
 
 Swift (`import OpenUIFFI`); fallible calls throw OpenUiError:

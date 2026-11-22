@@ -228,6 +228,7 @@ mod tests {
         let library = Arc::new(ComponentLibrary {
             inner: Arc::new(openui_lang::Library::from_json_schema(&schema)),
             schema: Arc::new(schema),
+            defined: None,
         });
         let inner = Arc::new(openui_lang::parse(
             "m=Mutation(\"save\")\nroot=Box(Action([@Run(m),@Set($done,true),@Run(m)]))",

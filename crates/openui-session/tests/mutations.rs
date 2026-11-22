@@ -13,6 +13,7 @@ fn library() -> Arc<ComponentLibrary> {
     Arc::new(ComponentLibrary {
         inner: Arc::new(Library::from_json_schema(&schema)),
         schema: Arc::new(schema),
+        defined: None,
     })
 }
 fn program(lib: &ComponentLibrary, text: &str) -> Arc<ParsedProgram> {

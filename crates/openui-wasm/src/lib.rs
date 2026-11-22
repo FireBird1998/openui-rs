@@ -20,18 +20,10 @@ pub use runtime::*;
 use wasm_bindgen::prelude::*;
 
 /// A component library, from the JSON Schema lang-core's
-/// `library.toJSONSchema()` gives, or from a library definition. The second
-/// field holds a defined library's JSON Schema and prompt spec text.
+/// `library.toJSONSchema()` gives, or from a library definition, whose
+/// definition, JSON Schema and prompt spec text the session's library keeps.
 #[wasm_bindgen]
-pub struct ComponentLibrary(
-    Arc<openui_session::ComponentLibrary>,
-    Option<Arc<DefinedTexts>>,
-);
-
-struct DefinedTexts {
-    json_schema: String,
-    prompt_spec: String,
-}
+pub struct ComponentLibrary(Arc<openui_session::ComponentLibrary>);
 
 #[wasm_bindgen]
 impl ComponentLibrary {
@@ -81,7 +73,7 @@ impl ComponentLibrary {
     /// library made from a JSON Schema.
     #[wasm_bindgen(js_name = jsonSchema)]
     pub fn json_schema(&self) -> Option<String> {
-        self.1.as_ref().map(|d| d.json_schema.clone())
+        self.0.defined.as_ref().map(|d| d.json_schema.clone())
     }
 
     /// A defined library's prompt spec as JSON text, byte for byte as
@@ -89,7 +81,36 @@ impl ComponentLibrary {
     /// library made from a JSON Schema.
     #[wasm_bindgen(js_name = promptSpec)]
     pub fn prompt_spec(&self) -> Option<String> {
-        self.1.as_ref().map(|d| d.prompt_spec.clone())
+        self.0.defined.as_ref().map(|d| d.prompt_spec.clone())
+    }
+
+    /// A defined library's system prompt, byte for byte as upstream's
+    /// `library.prompt(options)`; `options` is upstream's PromptOptions as
+    /// JSON text, such as `{"bindings": true}`. Generated under the limits
+    /// the library was made with: options longer than `maxJsonBytes` throw
+    /// LimitExceeded, options that are not JSON or nest past
+    /// `evaluation.depth` InvalidPromptSpec, and a spec the core can't make
+    /// a prompt from Prompt. Undefined for a library made from a JSON Schema.
+    pub fn prompt(&self, options: Option<String>) -> Result<Option<String>, JsValue> {
+        self.0.prompt(options.as_deref()).map_err(runtime::error)
+    }
+
+    /// A defined library's OpenUI Cloud config block, byte for byte as
+    /// upstream's `generateSystemPrompt({cloud: true, library:
+    /// library.toSpec(), promptOptions, instructions})`; `options` is
+    /// upstream's CloudPromptOptions as JSON text, and non-empty
+    /// `instructions` follow the block. Limits and errors as `prompt`;
+    /// `instructions` is held to `maxJsonBytes` too. Undefined for a library
+    /// made from a JSON Schema.
+    #[wasm_bindgen(js_name = cloudConfig)]
+    pub fn cloud_config(
+        &self,
+        options: Option<String>,
+        instructions: Option<String>,
+    ) -> Result<Option<String>, JsValue> {
+        self.0
+            .cloud_config(options.as_deref(), instructions.as_deref())
+            .map_err(runtime::error)
     }
 }
 
@@ -105,21 +126,15 @@ impl ComponentLibrary {
             }
             other => runtime::error(other),
         })?;
-        Ok(ComponentLibrary(Arc::new(library), None))
+        Ok(ComponentLibrary(Arc::new(library)))
     }
 
     fn defined(
         definition: &str,
         limits: &openui_session::RuntimeLimits,
     ) -> Result<ComponentLibrary, JsValue> {
-        let defined = openui_session::define_library(definition, limits).map_err(runtime::error)?;
-        Ok(ComponentLibrary(
-            Arc::new(defined.library),
-            Some(Arc::new(DefinedTexts {
-                json_schema: defined.json_schema,
-                prompt_spec: defined.prompt_spec,
-            })),
-        ))
+        let library = openui_session::define_library(definition, limits).map_err(runtime::error)?;
+        Ok(ComponentLibrary(Arc::new(library)))
     }
 }
 

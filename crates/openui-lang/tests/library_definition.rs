@@ -1379,5 +1379,192 @@ fn defined_calls_follow_the_built_ins() {
     );
 }
 
+/// `conformance/golden/library-definition-prompts.json`: upstream's
+/// `library.prompt(options)` and cloud configs for the samples.
+fn prompt_golden() -> Value {
+    parse_json(&read(&golden_dir().join("library-definition-prompts.json"))).unwrap()
+}
+
+/// The system prompt a defined library generates is upstream's
+/// `library.prompt(options)`, byte for byte, for every sample createLibrary
+/// accepts: with no options, in the bindings mode for every sample with a
+/// binding, an action slot, a function or an action (the `$binding<...>`
+/// signatures, the function and action lines, the binding and action
+/// text), and with every other option on a few.
+#[test]
+fn every_prompt_from_a_defined_library_is_upstreams() {
+    let golden = prompt_golden();
+    let prompts = golden["prompts"].as_array().unwrap();
+    assert!(prompts.len() >= 100, "the golden lost its prompts");
+    let mut seen = std::collections::HashSet::new();
+    for entry in prompts {
+        let name = entry["name"].as_str().unwrap();
+        let library = define(&case(name)["definition"]).unwrap();
+        let options = entry.get("options");
+        let prompt = library
+            .prompt(options.cloned())
+            .unwrap_or_else(|e| panic!("{name}: {e}"));
+        assert_eq!(
+            prompt,
+            entry["prompt"].as_str().unwrap(),
+            "{name} {options:?}"
+        );
+        // The same text through generateSystemPrompt with the spec.
+        let mut spec = json!({"library": library.to_spec()});
+        if let Some(options) = options {
+            spec["promptOptions"] = options.clone();
+        }
+        assert_eq!(
+            openui_lang::generate_system_prompt(&spec).unwrap(),
+            prompt,
+            "{name}"
+        );
+        seen.insert(name);
+    }
+    for must in [
+        "binding",
+        "action-slot",
+        "custom-action",
+        "functions-in-a-program",
+    ] {
+        assert!(seen.contains(must), "no prompt for {must}");
+    }
+    let bound = prompts
+        .iter()
+        .find(|e| e["name"] == "binding" && e["options"] == json!({"bindings": true}))
+        .unwrap()["prompt"]
+        .as_str()
+        .unwrap();
+    assert!(
+        bound.contains("$binding<"),
+        "the binding sample shows its binding"
+    );
+}
+
+/// The cloud config a defined library generates is upstream's
+/// `generateSystemPrompt({cloud: true, library: library.toSpec(),
+/// promptOptions, instructions})`, byte for byte, or its error with its
+/// message, for every sample createLibrary accepts.
+#[test]
+fn every_cloud_config_from_a_defined_library_is_upstreams() {
+    let golden = prompt_golden();
+    let cloud = golden["cloud"].as_array().unwrap();
+    assert!(cloud.len() >= 70, "the golden lost its cloud configs");
+    let (mut configs, mut errors) = (0, 0);
+    for entry in cloud {
+        let name = entry["name"].as_str().unwrap();
+        let library = define(&case(name)["definition"]).unwrap();
+        let result = library.cloud_config(
+            entry.get("promptOptions").cloned(),
+            entry.get("instructions").map(|i| i.as_str().unwrap()),
+        );
+        match (result, entry.get("config"), entry.get("error")) {
+            (Ok(config), Some(expected), None) => {
+                assert_eq!(config, expected.as_str().unwrap(), "{name}");
+                configs += 1;
+            }
+            (Err(e), None, Some(expected)) => {
+                assert_eq!(e.to_string(), expected.as_str().unwrap(), "{name}");
+                errors += 1;
+            }
+            (result, _, _) => panic!("{name}: {result:?} against {entry}"),
+        }
+    }
+    assert!(
+        configs > 60 && errors > 5,
+        "{configs} configs, {errors} errors"
+    );
+}
+
+/// A prompt's options and a cloud config's request are held to the prompt's
+/// depth limit, as `generate_system_prompt_with_limits` holds a spec.
+#[test]
+fn prompts_from_a_defined_library_keep_the_prompt_limits() {
+    let library = define(&case("scalars")["definition"]).unwrap();
+    let mut deep = json!("x");
+    // Depth 20 allows 92 levels of JSON (3 per level and 32).
+    for _ in 0..100 {
+        deep = json!([deep]);
+    }
+    let options = json!({"examples": deep});
+    let limits = Limits::default().with_depth(20);
+    let err = library
+        .prompt_with_limits(Some(options.clone()), limits)
+        .unwrap_err();
+    assert!(err.to_string().contains("nests deeper than"), "{err}");
+    let err = library
+        .cloud_config_with_limits(Some(options), None, limits)
+        .unwrap_err();
+    assert!(err.to_string().contains("nests deeper than"), "{err}");
+    // Options that null the components are refused, not a crash.
+    let err = library
+        .prompt(Some(json!({"components": null})))
+        .unwrap_err();
+    assert_eq!(err.to_string(), "[generatePrompt] components is missing.");
+    // Options that are not an object add nothing.
+    let plain = library.prompt(None).unwrap();
+    for options in [json!(null), json!("bindings"), json!([true]), json!(1)] {
+        assert_eq!(library.prompt(Some(options)).unwrap(), plain);
+    }
+}
+
+/// A definition at the type depth limit, in each recursive kind, makes its
+/// prompt and its cloud config (which copies the deep JSON Schema) on a
+/// 64 KiB thread.
+#[test]
+fn prompts_from_a_definition_at_the_limit_need_no_stack() {
+    std::thread::Builder::new()
+        .stack_size(SMALL_STACK)
+        .spawn(|| {
+            let limit = Limits::default().depth();
+            for wrap in [
+                in_array,
+                in_object,
+                in_union,
+                in_record,
+                in_nullable,
+                in_named,
+            ] {
+                let mut definition = nested(limit, wrap);
+                definition["root"] = json!("Deep");
+                let library = define(&definition).unwrap();
+                free_json(definition);
+                assert!(library.prompt(None).unwrap().contains("Deep(v"));
+                let config = library.cloud_config(None, None).unwrap();
+                assert!(config.starts_with("]]>openui:config\n"));
+            }
+        })
+        .unwrap()
+        .join()
+        .unwrap();
+}
+
+/// A defined library names its binding props, the ones marked
+/// `"binding": true`, for the components the library keeps.
+#[test]
+fn a_defined_library_names_its_binding_props() {
+    let library = define(&json!({
+        "components": [
+            {"name": "Input", "description": "", "props": [
+                {"name": "label", "type": {"kind": "string"}},
+                {"name": "value", "type": {"kind": "string"}, "binding": true},
+                {"name": "2", "type": {"kind": "number"}, "binding": true}
+            ]},
+            {"name": "Card", "description": "first", "props": [
+                {"name": "open", "type": {"kind": "boolean"}, "binding": true}
+            ]},
+            {"name": "Card", "description": "second", "props": [
+                {"name": "shut", "type": {"kind": "boolean"}, "binding": true}
+            ]}
+        ]
+    }))
+    .unwrap();
+    let pairs: Vec<_> = library.binding_props().collect();
+    assert_eq!(
+        pairs,
+        [("Input", "2"), ("Input", "value"), ("Card", "shut")]
+    );
+}
+
 #[global_allocator]
 static ALLOCATOR: test_alloc::Allocator = test_alloc::Allocator::with_cap(test_alloc::DEFAULT);
