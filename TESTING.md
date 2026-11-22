@@ -543,7 +543,7 @@ stack-depth test files at opt-level 0 after the whole suite, and only those:
 ```bash
 cargo test -q --profile dev --no-fail-fast \
   -p openui-lang --test depth --test drop --test prompt_depth --test entry_points \
-  --test runaway_finished_walk --test library_definition \
+  --test runaway_finished_walk --test library_definition --test library_sharing \
   -p openui-session --test library_definition \
   -p openui-ffi --test stack --test prompt_specs --test library_schemas --test library_definitions
 ```
@@ -553,6 +553,10 @@ Apple silicon Mac (measured for #203). Making it pass needed three test
 fixes only: `depth`'s and `library_definition`'s own deep inputs were
 dropped or cloned with serde_json's recursion, and are now freed with
 `free_json` or built twice.
+
+`library_sharing` is in the step for #215: `a_deep_prop_default_is_applied_on_a_small_stack`
+applies a 2,000-level prop default built in Rust on a 64 KiB thread, which
+the opt-level 1 test profile hides.
 
 `DEPTH_STACK_KB=<n>` sets the thread stack in `prompt_specs`. At opt-level 0
 every `prompt_specs` test passes on a 16 KiB thread, the smallest macOS

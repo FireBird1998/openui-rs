@@ -296,6 +296,33 @@ fn runtime_ref_size(name: &str) -> usize {
     47 + json_string_len(name)
 }
 
+/// The size charged for a default is its compact serde_json length. Serde
+/// spells some numbers and strings differently from the JS result writer.
+/// Grow the stack at each container and let serde format only scalar values.
+fn default_json_len(value: &serde_json::Value) -> usize {
+    crate::stack::grow_stack!(default_json_len(value));
+    use serde_json::Value as Json;
+    match value {
+        Json::Array(items) => {
+            let brackets_and_commas = 2 + items.len().saturating_sub(1);
+            items
+                .iter()
+                .map(default_json_len)
+                .fold(brackets_and_commas, usize::saturating_add)
+        }
+        Json::Object(fields) => {
+            let braces_and_commas = 2 + fields.len().saturating_sub(1);
+            fields.iter().fold(braces_and_commas, |len, (key, child)| {
+                let quoted = serde_json::to_string(key).map_or(usize::MAX, |s| s.len());
+                len.saturating_add(quoted)
+                    .saturating_add(1) // colon
+                    .saturating_add(default_json_len(child))
+            })
+        }
+        scalar => scalar.to_string().len(),
+    }
+}
+
 impl Ctx<'_> {
     /// Record a validation error. Its JSON counts against the result-size
     /// limit like the rest of the result, so past the limit it's cut and the
@@ -411,9 +438,7 @@ impl Ctx<'_> {
     /// of it becomes where it's written.
     pub(crate) fn default_used(&mut self, default: &serde_json::Value, each: usize) {
         self.cut(
-            default
-                .to_string()
-                .len()
+            default_json_len(default)
                 .saturating_mul(each)
                 .saturating_add(1),
         );

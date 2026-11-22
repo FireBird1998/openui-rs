@@ -28,7 +28,7 @@ cargo test --all --no-fail-fast
 # "Host JSON on a small stack").
 cargo test -q --profile dev --no-fail-fast \
   -p openui-lang --test depth --test drop --test prompt_depth --test entry_points \
-  --test runaway_finished_walk --test library_definition \
+  --test runaway_finished_walk --test library_definition --test library_sharing \
   -p openui-session --test library_definition \
   -p openui-ffi --test stack --test prompt_specs --test library_schemas --test library_definitions
 

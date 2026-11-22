@@ -379,6 +379,57 @@ fn compiling_is_linear_in_the_number_of_props() {
     free_json(large);
 }
 
+fn library_with_default(default: Json) -> Library {
+    let mut schema = json!({"$defs": {"A": {"properties": {"value": {}}, "required": ["value"]}}});
+    schema["$defs"]["A"]["properties"]["value"]["default"] = default;
+    let library = Library::from_json_schema(&schema);
+    free_json(schema);
+    library
+}
+
+#[test]
+fn a_prop_default_keeps_its_serde_byte_charge() {
+    use openui_lang::{Limits, parse_with_limits};
+
+    let default = json!({"quoted\"key": [1.0, -0.0, u64::MAX, null, true, false, "leaf", "\u{100000}\n", {}, []]});
+    let library = library_with_default(default);
+    let parse_at = |bytes| {
+        parse_with_limits(
+            "root = A()",
+            &library,
+            None,
+            Limits::default().with_result_size(bytes),
+        )
+    };
+    // Measured before #215. JS renders several of these scalars with different lengths.
+    assert!(parse_at(120).size_limited);
+    assert!(!parse_at(121).size_limited);
+}
+
+#[test]
+fn a_deep_prop_default_is_applied_on_a_small_stack() {
+    on_small_stack(|| {
+        let depth = 2_000;
+        let default = (0..depth).fold(Json::from("leaf"), |inner, _| Json::Array(vec![inner]));
+        let library = library_with_default(default);
+        let result = parse("root = A()", &library, None);
+        assert!(!result.size_limited && !result.depth_limited);
+        assert!(result.meta.errors.is_empty());
+
+        let mut value = result.root.as_ref().unwrap().props.get("value").unwrap();
+        for _ in 0..depth {
+            let openui_lang::Value::Arr(items) = value else {
+                panic!("expected another array in the default");
+            };
+            let [inner] = items.as_slice() else {
+                panic!("expected a single array item");
+            };
+            value = inner;
+        }
+        assert!(matches!(value, openui_lang::Value::Str(s) if s == "leaf"));
+    });
+}
+
 /// A prop schema nested to the core JSON reader's limit (800 levels at the
 /// default depth limit), of objects and of arrays: read, compiled, parsed
 /// with a value as deep, and dropped on a 64 KiB thread. Before #140 the

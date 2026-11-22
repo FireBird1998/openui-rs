@@ -20,6 +20,9 @@
 - The runtime discards a removed mutation's late failure before checking its
   payload (#214). Even over-limit failure text now consumes the receipt and
   leaves the snapshot unchanged.
+- Parsing on a 64 KiB thread now handles deeply nested component prop
+  defaults built in Rust, including in unoptimized builds (#215). Defaults
+  keep their existing result-size charge.
 - Swift libraries can declare functions and custom actions with
   `defineFunction` and `defineAction` (#139). Pass them to `Core.createLibrary`
   alongside components. A `LiveProgram` registers the Swift implementations
