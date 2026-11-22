@@ -126,9 +126,10 @@ the data labels supplied to Charts are. This is a text/acceptance differential,
 not a pixel or interactive-event comparison.
 
 It rejects any native-to-fallback change, unexpected native gain, error mismatch,
-node-inventory mismatch or text mismatch for unchanged acceptance. Only the seven
-new field controls may gain native rendering; their text is recorded but cannot
-match main's fallback text. Standalone results, exact source hashes, JSONL observations and
+node-inventory mismatch or text mismatch for unchanged acceptance. The permitted gains
+are the seven new field controls, column-oriented Table and label/value PieChart
+(#149). The probe records prop names to distinguish the react-ui shapes from the
+bench shapes. Standalone results, exact source hashes, JSONL observations and
 build/run logs are saved in `target/swift-71-r3-differential/`; the suite uses
 `target/swift-71-r3-differential-suite/`. `summary.json`
 is the machine-readable result; a nonzero exit means a regression.

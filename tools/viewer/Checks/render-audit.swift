@@ -21,6 +21,7 @@ private struct NodeResult: Encodable {
     var path: String
     var type: String
     var native: Bool
+    var props: [String]
     var text: [String: Int]
 }
 private struct Result: Encodable {
@@ -78,7 +79,8 @@ private struct Result: Encodable {
             _ = renderer.nsImage
         }
     }
-    return NodeResult(path: node.path, type: node.element.typeName, native: native, text: texts)
+    return NodeResult(path: node.path, type: node.element.typeName, native: native,
+                      props: node.element.props.map(\.name), text: texts)
 }
 
 @main struct RenderAudit {

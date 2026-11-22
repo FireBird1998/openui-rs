@@ -2914,3 +2914,19 @@ SwiftUI's offscreen `ImageRenderer`: every component is drawn by its own
 placeholder and nothing reaches the fallback. In Rust,
 `intelligent_ui_matches_upstream_byte_for_byte` also checks the core's prompt
 for the definition and upstream's prompt options against the recorded prompt.
+
+## React-ui table and pie chart drawing (#149)
+
+`ReactUIDrawingTests` parses both the react-ui and bench shapes against their
+imported schemas. SwiftUI's offscreen renderer checks the grid, nested cell
+paths, chart dispatch and each documented placeholder label. The pie test
+also checks the ordered categories and values supplied to Swift Charts.
+`lastPageKeepsItsNestedButtonsAction()` advances a mounted table and clicks
+the final row's button through its original path.
+
+The replay reads every react-ui case from `conformance/recorded.json` and
+shows its final parse result in a live program. It checks native dispatch
+throughout the evaluated tree, including offscreen pages and inactive tabs.
+A parent that draws a part directly (such as a table column) accounts for
+that part. The replay also renders each qualifying program and checks the
+fallback hook. The test prints the count and pins it at 18 of 152.

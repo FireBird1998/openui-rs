@@ -12,6 +12,9 @@
   used to be counted again for each enclosing call's `mappedProps` (#202).
   Under a small fixed result-size limit, a cut can now land on a different
   item than before; both versions flag `size_limited`.
+- OpenUINative draws react-ui's column-oriented tables and label/value pie
+  charts (#149). Bench tables and slice-based pies still draw. In the recorded
+  react-ui corpus, 18 of 152 programs now draw without a placeholder, up from 12.
 - WebAssembly `free()` can no longer free another object's memory (#211).
   The generated `free` (and `[Symbol.dispose]`) looked up
   `__destroy_into_raw` through the instance, so an own property, a subclass

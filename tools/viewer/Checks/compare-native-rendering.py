@@ -168,7 +168,10 @@ def compare(before, after):
                 regressions.append(dict(case=key, path=path, type=a['type']))
             if not a['native'] and b['native']:
                 improvements.append(dict(case=key, path=path, type=b['type']))
-                if b['type'] not in NEW_CONTROLS:
+                props = set(b['props'])
+                react_table = b['type'] == 'Table' and props == {'columns'}
+                react_pie = b['type'] == 'PieChart' and {'labels', 'values'} <= props and 'slices' not in props
+                if b['type'] not in NEW_CONTROLS and not (react_table or react_pie):
                     errors.append(dict(case=key, path=path, unexpected_native_gain=b['type']))
             elif a['text'] != b['text']:
                 mismatches.append(dict(case=key, path=path, type=a['type'], before=a['text'], after=b['text']))

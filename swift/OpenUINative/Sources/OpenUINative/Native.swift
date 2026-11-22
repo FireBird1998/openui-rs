@@ -586,13 +586,18 @@ struct TableView: View {
     struct Column {
         var label: String
         var type: String
+        var data: [PropValue]
+        var dataPath: String
+        var isList: Bool
     }
 
     let columns: [Column]
-    /// Rows of cells; a row that isn't a list is drawn as one line of text.
-    let rows: [PropValue]
-    /// Where the rows sit: cell `c` of row `r` is at `<rows>/r/c`.
+    /// Bench supplies rows directly. In react-ui each column owns its cells.
+    let rows: [PropValue]?
     let rowsPath: String
+    let rowCount: Int
+    @State private var page = 0
+    private static let pageSize = 10
     /// The table it was drawn from: an action cell runs only while this is
     /// still what the tree holds.
     let element: Element
@@ -601,11 +606,32 @@ struct TableView: View {
     @Environment(\.formContext) private var form
 
     init(_ props: PropReader, path: String) throws {
-        columns = try props.elements("columns", of: "Col").map { _, col in
+        let rows = try props.optionalList("rows")
+        self.rows = rows
+        let columnsPath = ElementPath.child(of: path, "columns")
+        columns = try props.elements("columns", of: "Col").map { index, col in
             let reader = PropReader(element: col)
-            return Column(label: try reader.text("label").plain, type: reader.keyword("type", "string"))
+            let data = col.props.first { $0.name == "data" }?.value
+            let cells: [PropValue]
+            let isList: Bool
+            switch data {
+            case let .list(items)?:
+                cells = items
+                isList = true
+            case nil where rows == nil && !props.element.partial && !col.partial:
+                throw PropReader.Unusable()
+            case nil, .scalar(.null)?:
+                cells = []
+                isList = false
+            case let item?:
+                cells = [item]
+                isList = false
+            }
+            let colPath = ElementPath.child(of: columnsPath, String(index))
+            return Column(label: try reader.text("label").plain, type: reader.keyword("type", "string"),
+                          data: cells, dataPath: ElementPath.child(of: colPath, "data"), isList: isList)
         }
-        rows = try props.list("rows")
+        rowCount = columns.lazy.map(\.data.count).max() ?? 0
         rowsPath = ElementPath.child(of: path, "rows")
         element = props.element
     }
@@ -613,45 +639,75 @@ struct TableView: View {
     var body: some View {
         Grid(alignment: .leading, horizontalSpacing: 16, verticalSpacing: 8) {
             GridRow {
-                ForEach(Array(columns.enumerated()), id: \.offset) { _, column in
+                ForEach(columns.enumerated(), id: \.offset) { _, column in
                     Text(column.label).font(.callout.weight(.semibold)).foregroundStyle(.secondary)
                         .gridColumnAlignment(column.type == "number" ? .trailing : .leading)
                 }
             }
             Divider()
-            ForEach(Array(rows.enumerated()), id: \.offset) { r, row in
-                GridRow {
-                    if case let .list(cells) = row {
-                        ForEach(Array(columns.indices), id: \.self) { c in
-                            cell(c < cells.count ? cells[c] : nil, type: columns[c].type, row: r, column: c)
+            if let rows {
+                ForEach(rows.enumerated(), id: \.offset) { r, row in
+                    GridRow {
+                        if case let .list(cells) = row {
+                            ForEach(columns.enumerated(), id: \.offset) { c, column in
+                                let value = cells.dropFirst(c).first
+                                if case let .scalar(.string(s))? = value, column.type == "action" {
+                                    actionCell(s, row: r, column: c)
+                                } else {
+                                    cell(value, path: ElementPath.child(of: ElementPath.child(of: rowsPath, String(r)), String(c)))
+                                }
+                            }
+                        } else {
+                            Text(row.summary).foregroundStyle(.secondary).gridCellColumns(max(columns.count, 1))
                         }
-                    } else {
-                        Text(row.summary).foregroundStyle(.secondary).gridCellColumns(max(columns.count, 1))
                     }
+                }
+            } else {
+                // Upstream pages column-oriented tables ten rows at a time.
+                // A long column beside many short ones never builds a padded matrix.
+                let lastPage = max(0, rowCount - 1) / Self.pageSize
+                let current = min(page, lastPage)
+                let start = current * Self.pageSize
+                ForEach(start..<(start + min(Self.pageSize, rowCount - start)), id: \.self) { r in
+                    GridRow {
+                        ForEach(columns.enumerated(), id: \.offset) { _, column in
+                            let value = column.data.dropFirst(r).first
+                            cell(value, path: column.isList ? ElementPath.child(of: column.dataPath, String(r)) : column.dataPath)
+                        }
+                    }
+                }
+                if lastPage > 0 {
+                    HStack {
+                        Button("Previous page") { page = max(0, current - 1) }.disabled(current == 0)
+                        Text("\(current + 1) / \(lastPage + 1)")
+                        Button("Next page") { page = min(lastPage, current + 1) }.disabled(current == lastPage)
+                    }
+                    .gridCellColumns(max(columns.count, 1))
                 }
             }
         }
     }
 
-    /// An action cell is a button that, like one with no action, asks to
-    /// continue the conversation with its text; an element is drawn.
-    @ViewBuilder private func cell(_ value: PropValue?, type: String, row: Int, column: Int) -> some View {
+    /// A bench table's string action cell asks to continue the conversation with its text.
+    private func actionCell(_ s: String, row: Int, column: Int) -> some View {
+        Button(s) {
+            guard let live, live.acceptsInteractions else { return }
+            live.attempt {
+                guard let current = live.current(element, form: formName) else { throw LiveProgram.stale }
+                if let form, !form.validation.validate(enclosing: current, in: live, formName: formName) { return }
+                try live.runActionCell(row: row, column: column, of: current, form: formName)
+            }
+        }
+        .controlSize(.small)
+        .disabled(!(live?.acceptsInteractions ?? true))
+    }
+
+    @ViewBuilder private func cell(_ value: PropValue?, path: @autoclosure () -> String) -> some View {
         switch value {
         case nil, .scalar(.null)?:
             Text("")
-        case let .scalar(.string(s))? where type == "action":
-            Button(s) {
-                guard let live, live.acceptsInteractions else { return }
-                live.attempt {
-                    guard let current = live.current(element, form: formName) else { throw LiveProgram.stale }
-                    if let form, !form.validation.validate(enclosing: current, in: live, formName: formName) { return }
-                    try live.runActionCell(row: row, column: column, of: current, form: formName)
-                }
-            }
-            .controlSize(.small)
-            .disabled(!(live?.acceptsInteractions ?? true))
         case let .element(element)?:
-            ElementView(element: element, path: ElementPath.child(of: ElementPath.child(of: rowsPath, String(row)), String(column)))
+            ElementView(element: element, path: path())
         case let .scalar(.number(n))?:
             Text(JSONValue.format(n)).monospacedDigit()
         case let .scalar(.string(s))?:
@@ -956,9 +1012,21 @@ struct PieChartView: View {
     let donut: Bool
 
     init(_ props: PropReader) throws {
-        slices = try props.elements("slices", of: "Slice").enumerated().map { i, entry in
-            let reader = PropReader(element: entry.element)
-            return ChartPoint(id: i, series: try reader.text("category").plain, label: "", value: try reader.number("value"))
+        if props.value("labels") != nil || props.value("values") != nil {
+            let labels = try props.strings("labels")
+            let values = try props.list("values")
+            // react-ui maps over labels. A missing or nonnumeric value is zero.
+            slices = values.isEmpty ? [] : labels.enumerated().map { i, label in
+                let value: Double
+                if case let .scalar(.number(n))? = values.dropFirst(i).first { value = n }
+                else { value = 0 }
+                return ChartPoint(id: i, series: label, label: "", value: value)
+            }
+        } else {
+            slices = try props.elements("slices", of: "Slice").enumerated().map { i, entry in
+                let reader = PropReader(element: entry.element)
+                return ChartPoint(id: i, series: try reader.text("category").plain, label: "", value: try reader.number("value"))
+            }
         }
         donut = props.keyword("variant", "pie") == "donut"
     }
