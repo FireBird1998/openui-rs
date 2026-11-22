@@ -85,11 +85,12 @@ type `"Copy"` and `event.params["text"] == .string("Day 3")`.
 
 The `OpenUIIntelligentUI` library product of the same package is upstream's
 Intelligent UI library (`@openuidev/intelligent-ui-library` 0.0.2, at the
-library pin in `reference/UPSTREAM`) declared with `defineComponent` (ADR
-0017): the same 52 components in the same six groups with root `Col`, the
-same props in the same order, the same descriptions and named types, and the
-same prompt options (bindings on, its 19 additional rules and 3 examples, no
-preamble).
+library pin in `reference/UPSTREAM`) declared with `defineComponent` and
+`defineFunction` (ADR 0017): the same 52 components in the same six groups
+with root `Col`, the same props in the same order, the same descriptions and
+named types, the same 59 functions with the same params and return types in
+the same order, and the same prompt options (bindings on, its 19 additional
+rules and 3 examples, no preamble).
 
 ```swift
 import OpenUIIntelligentUI
@@ -101,15 +102,25 @@ let spec = try JSONValue.parse(try await library.promptSpec() ?? "{}")
 let prompt = try await core.systemPrompt(library: spec, options: IntelligentUI.promptOptions)
 ```
 
-`IntelligentUI.components`, `componentGroups`, `root`, `promptOptions`,
-`additionalRules` and `examples` are public, for an app that builds its own
-library from them. Every component draws a placeholder naming it, with the
-components in its props drawn beneath, until its native view lands. The 59
-functions come with #160 (OpenUINative can declare functions since #139).
+`IntelligentUI.components`, `componentGroups`, `root`, `functions`,
+`promptOptions`, `additionalRules` and `examples` are public, for an app that
+builds its own library from them. Every component draws a placeholder naming
+it, with the components in its props drawn beneath, until its native view
+lands.
 
-**What differs from upstream, and nothing else does** (apart from the
-functions still to come with #139): `IntelligentUIAdditions` lists it in one
-place.
+Each function is a Swift implementation that gives what upstream's gives run
+in Bun, error messages and quirks included, or, until its group's ticket
+lands, none, so that a call evaluates to null. `@MixColor` is implemented;
+the other 58 are declared and return null. The runtime applies upstream's
+argument rules before an implementation runs: an explicit null for an
+optional argument counts as missing, a missing required argument gives null
+without calling it, an argument of the wrong type is reported and gives
+null, and invalid array items are pruned. TESTING.md ("Intelligent UI
+function results") says how each implementation is proved against
+upstream's own results.
+
+**What differs from upstream, and nothing else does:** `IntelligentUIAdditions`
+lists it in one place.
 
 - `Chart`'s `type` gains `radar` and `radial` after upstream's six types.
 - `Chart`'s description gains, after upstream's: "radar draws each series as
@@ -118,8 +129,8 @@ place.
 
 A test compares the library's JSON Schema, prompt spec and prompt with
 upstream's own (`conformance/real-libraries/intelligent-ui.json`) after
-putting upstream's text in place of each addition and, until #160, leaving
-upstream's functions out; any other difference fails it.
+putting upstream's text in place of each addition; any other difference,
+functions included, fails it.
 
 ## Entry points
 

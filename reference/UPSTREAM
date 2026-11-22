@@ -15,3 +15,4 @@ library package: @openuidev/intelligent-ui-library 0.0.2
 library path: packages/libraries/intelligent-ui
 library license: MIT
 library notice: conformance/imported/LICENSE
+library functions: src/lib/functions vendored verbatim in reference/intelligent-ui-functions/

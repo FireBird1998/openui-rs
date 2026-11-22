@@ -4,7 +4,7 @@
 // `Col`, the same props in the same order, the same descriptions and prompt
 // options; IntelligentUIAdditions lists the only differences. Every
 // component draws a placeholder naming it until it is drawn natively. The
-// 59 functions come once OpenUINative can declare functions (#139).
+// 59 functions are in Functions.swift.
 import OpenUINative
 
 public enum IntelligentUI {
@@ -49,6 +49,6 @@ extension Core {
     /// The Intelligent UI library, built on this core.
     public func intelligentUILibrary() async throws(OpenUIError) -> Library {
         try await createLibrary(components: IntelligentUI.components, groups: IntelligentUI.componentGroups,
-                                root: IntelligentUI.root)
+                                functions: IntelligentUI.functions, root: IntelligentUI.root)
     }
 }

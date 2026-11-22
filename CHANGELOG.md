@@ -20,6 +20,17 @@
   statement id. During a bare stream, a direct mutation click uses the
   registered tool with the replacement’s arguments. OpenUINative disables
   its buttons and inputs while the response is blocked.
+- The Intelligent UI library declares upstream's 59 functions (#160), so its
+  JSON Schema, prompt spec and prompt are upstream's byte for byte, functions
+  included, apart from the two listed chart additions.
+  `IntelligentUI.functions` is public. `@MixColor` is implemented and gives
+  what upstream's gives in Bun, its error message included; the other 58
+  return null until their groups land. `scripts/regen-golden.sh` now records
+  upstream's own function results (`conformance/golden/intelligent-ui-functions.json`,
+  from upstream's function source vendored in
+  `reference/intelligent-ui-functions/`) in four time zones, with a fixed
+  clock and seeded random draws, and a Swift test replays every pair through
+  the Rust runtime with the library's functions registered.
 - WebAssembly `free()` can no longer free another object's memory (#211).
   The generated `free` (and `[Symbol.dispose]`) looked up
   `__destroy_into_raw` through the instance, so an own property, a subclass

@@ -643,6 +643,61 @@ compares all 976 programs one-shot, after each five-character push and at
 finish. Both tests run from the checked-in data with
 `cargo test -p openui-lang --test library_definition react_ui_`.
 
+## Intelligent UI function results
+
+`FunctionReplayTests` (in `swift/OpenUINative`, `OpenUIIntelligentUITests`)
+proves each of the Intelligent UI library's Swift functions against
+upstream's own. `reference/intelligent-ui-functions.ts`, which
+`scripts/regen-golden.sh` runs, loads upstream's function source (vendored
+verbatim from the library commit in `reference/intelligent-ui-functions/`)
+and runs every call in `reference/intelligent-ui-function-cases.ts` through
+the vendored parser and evaluator. It writes the pairs to
+`conformance/golden/intelligent-ui-functions.json`, with the Bun and ICU
+versions that made them in its header.
+
+- **A pair** is a program and its result. Each argument sits in a state
+  variable, so the parser can't check it and the runtime's argument rules
+  decide: `$a0 = "#fff"`, `$a1 = "#000"`, `$a2 = 0.5`,
+  `root = Probe(@MixColor($a0, $a1, $a2))`. The result is the probe's
+  evaluated value, the evaluation's errors and any parse errors (a missing
+  required argument, an extra one).
+- **Time zones, clock and draws.** Every call runs in four zones (`UTC`,
+  `America/New_York`, `Asia/Kolkata`, `Australia/Lord_Howe`), each in its own
+  Bun process, with the clock fixed and `Math.random` drawing a sequence
+  seeded afresh for each call. A call with the same result in every zone is
+  written once; otherwise once per zone, with its `zone`. A call that drew
+  numbers lists them in `draws`.
+- **Values JSON can't carry** are tagged: `{"$num": "-0"}`, `"Infinity"`,
+  `"-Infinity"` or `"NaN"`; `{"$utf16": [code units]}` for a string with a
+  lone surrogate; `{"$undefined": true}`.
+- **Replay.** The test shows each program in a `LiveProgram` whose library
+  has the probe and `IntelligentUI.functions`, and compares the value, the
+  errors and the parse errors byte for byte. It compares at the binding,
+  where values cross as JSON: a recorded -0 is expected as 0, and Infinity,
+  NaN and undefined as null. A pair whose arguments hold Infinity, NaN or a
+  lone surrogate isn't compared with upstream, since the runtime hands a
+  function its arguments as JSON and a Swift string holds no lone surrogate
+  (CONFORMANCE.md, "Intelligent UI function arguments JSON can't carry"):
+  it must give null with an error, and the test holds an exact count of
+  them per function (MixColor's body is checked against its non-finite `t`
+  pairs directly). A mismatch names the function, its arguments and the
+  zone.
+- **Argument rules.** A pair recorded for a rule names it in `rule`. While
+  its function is pending, the test reports it as recorded, not yet
+  replayed, and holds an exact count per rule.
+- **Pending.** Every recorded function must be implemented, or listed in
+  the test's `pending` set until its ticket lands; that set must be exactly
+  the declared functions with no implementation. A pending function's pairs
+  check only that its call gives null with no error.
+
+**Adding a group.** Add its calls to `intelligent-ui-function-cases.ts`
+under the function's name, run `scripts/regen-golden.sh` (or
+`bun --no-install intelligent-ui-functions.ts` from `reference/`), give the
+declarations implementations, and take the names out of `pending`. A group
+that reads the time zone, the clock or random draws adds a source for them
+that the replay sets from the pair's `zone` and `draws`; until then the test
+fails on such a pair.
+
 ## Adding a case
 
 1. Write the program as `conformance/cases/hand/NN-what-it-tests.oui`, using the next free number.

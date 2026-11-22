@@ -38,6 +38,7 @@ work="$(mktemp -d "$ROOT/target/golden.XXXXXX")"
 trap 'rm -rf "$work"' EXIT
 mkdir "$work/reference" "$work/conformance"
 cp "$ROOT"/reference/*.ts "$ROOT/reference/package.json" "$ROOT/reference/tsconfig.json" "$work/reference/"
+cp -R "$ROOT/reference/intelligent-ui-functions" "$work/reference/"
 ln -s "$node_modules" "$work/reference/node_modules"
 cp -R "$lang_core" "$work/reference/lang-core"
 for entry in "$ROOT"/conformance/*; do
@@ -87,6 +88,7 @@ done
   bun --no-install session-bundles.ts
   bun --no-install function-undefined-arguments.ts
   bun --no-install renderer-reset-native-defaults.ts
+  bun --no-install intelligent-ui-functions.ts
 )
 if [[ -n "$into" ]]; then
   mkdir -p "$(dirname "$into")"

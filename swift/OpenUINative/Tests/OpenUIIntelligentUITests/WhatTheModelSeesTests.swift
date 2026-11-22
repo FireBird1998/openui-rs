@@ -2,10 +2,8 @@
 // output: conformance/real-libraries/intelligent-ui.json, written by
 // reference/real-library-spec.ts from upstream's package at the library pin
 // in reference/UPSTREAM. Its JSON Schema, prompt spec and prompt must be
-// upstream's byte for byte once the listed additions are taken out, and
-// once upstream's functions are left out of upstream's side: OpenUINative
-// cannot declare functions yet (#139). When it can, this library declares
-// them and the leaving out goes.
+// upstream's byte for byte once the listed additions are taken out. That
+// includes the 59 functions, which this library declares as upstream does.
 import Foundation
 import OpenUIFFI
 import OpenUIIntelligentUI
@@ -21,18 +19,6 @@ private let repository: URL = {
 private func upstream() throws -> JSONValue {
     let url = repository.appendingPathComponent("conformance/real-libraries/intelligent-ui.json")
     return try JSONValue.parse(String(contentsOf: url, encoding: .utf8))
-}
-
-private func removing(_ key: String, from value: JSONValue?) -> JSONValue? {
-    guard case let .object(entries)? = value else { return value }
-    return .object(entries.filter { $0.key != key })
-}
-
-/// Upstream's prompt spec without its functions, which the spec lists twice:
-/// as signatures and inside the spec's copy of the JSON Schema.
-private func removingFunctions(fromSpec spec: JSONValue?) -> JSONValue? {
-    guard case let .object(entries)? = removing("functions", from: spec) else { return nil }
-    return .object(entries.map { $0.key == "schema" ? ($0.key, removing("functions", from: $0.value) ?? .null) : $0 })
 }
 
 /// This library's text with every addition replaced by upstream's text, and
@@ -72,12 +58,11 @@ private func removingAdditions(_ text: String) -> (text: String, found: [Int]) {
         }
         #expect(try await prompt(upstreamSpec) == upstreamPrompt)
 
-        // Upstream's side without its functions.
+        // Upstream's side, functions and all.
         #expect(upstreamSpec["functions"]?.isObject == true && upstreamSchema["functions"]?.isObject == true)
-        let expectedSchema = try #require(removing("functions", from: upstreamSchema)).compact
-        let specWithoutFunctions = try #require(removingFunctions(fromSpec: upstreamSpec))
-        let expectedSpec = specWithoutFunctions.compact
-        let expectedPrompt = try await prompt(specWithoutFunctions)
+        let expectedSchema = upstreamSchema.compact
+        let expectedSpec = upstreamSpec.compact
+        let expectedPrompt = upstreamPrompt
 
         // This library's side, with the additions taken out.
         let schema = try #require(try await core.run { library.inner.jsonSchema() })
@@ -140,6 +125,13 @@ private func removingAdditions(_ text: String) -> (text: String, found: [Int]) {
         #expect(IntelligentUI.components.allSatisfy { $0.draw != nil })
         // The additions stay on Chart, the one place they belong.
         #expect(IntelligentUIAdditions.chartTypes == ["radar", "radial"])
+    }
+
+    @Test func fiftyNineFunctionsInUpstreamsOrder() throws {
+        let spec = try #require(try upstream()["spec"])
+        guard case let .object(functions)? = spec["functions"] else { throw JSONError(offset: 0, reason: "no functions") }
+        #expect(IntelligentUI.functions.map(\.name) == functions.map(\.key))
+        #expect(IntelligentUI.functions.count == 59)
     }
 }
 

@@ -229,7 +229,7 @@ The Swift package that draws programs as native SwiftUI views, for any Mac app: 
 _Avoid_: the Mac binding (the binding is one part of it), UI kit, renderer
 
 **Intelligent UI library**:
-Upstream's Intelligent UI component library (52 components in six groups under `Col`, and 59 functions, which follow #139) written in Swift in the `OpenUIIntelligentUI` target beside OpenUINative: what the model sees is an exact copy of upstream's, with two added chart types as the only difference, and the views are native SwiftUI.
+Upstream's Intelligent UI component library (52 components in six groups under `Col`, and 59 functions) written in Swift in the `OpenUIIntelligentUI` target beside OpenUINative: what the model sees is an exact copy of upstream's, with two added chart types as the only difference, and the views are native SwiftUI.
 _Avoid_: the Intelligent UI kit, the native library, the Swift library (OpenUINative is Swift too)
 
 **Live program**:

@@ -745,7 +745,7 @@ and [the plain-data form](docs/library-definition.md).
 | Defaults, unknown values, array minima, refined props and string descriptions | The converter and core reproduce each shape's schema and prompt signature. | [Definition goldens](conformance/golden/library-definitions.json), [react-ui definition](conformance/real-libraries/react-ui.json) |
 | A component declaration carries its renderer | OpenUINative draws the declared SwiftUI view with the evaluated element through `ElementDrawing`. A viewless declaration uses its fallback. | [Binding example](docs/library-definition.md), [ADR 0017](docs/adr/0017-library-definition-lives-where-upstream-puts-it.md) |
 | react-ui column-oriented tables and label/value pie charts | OpenUINative draws both shapes and the bench shapes. 18 of 152 recorded react-ui programs draw throughout their evaluated trees. | [Swift replay](swift/OpenUINative/Tests/OpenUINativeTests/ReactUIDrawingTests.swift), [component coverage](swift/OpenUINative/README.md) |
-| `@openuidev/intelligent-ui-library` 0.0.2: its components, groups and prompt options | The `OpenUIIntelligentUI` Swift target declares the same 52 components and prompt options; `Chart`'s `radar` and `radial` are the only additions. Components draw placeholders; the functions follow #139. | [Upstream's schema, spec, prompt options and prompt](conformance/real-libraries/intelligent-ui.json), [Swift comparison](swift/OpenUINative/Tests/OpenUIIntelligentUITests/WhatTheModelSeesTests.swift) |
+| `@openuidev/intelligent-ui-library` 0.0.2: its components, groups, functions and prompt options | The `OpenUIIntelligentUI` Swift target declares the same 52 components, 59 functions and prompt options; `Chart`'s `radar` and `radial` are the only additions. Components draw placeholders. `@MixColor` is implemented in Swift and replays upstream's recorded results; the other 58 functions return null until their groups land. | [Upstream's schema, spec, prompt options and prompt](conformance/real-libraries/intelligent-ui.json), [Swift comparison](swift/OpenUINative/Tests/OpenUIIntelligentUITests/WhatTheModelSeesTests.swift), [upstream's function results](conformance/golden/intelligent-ui-functions.json), [Swift replay](swift/OpenUINative/Tests/OpenUIIntelligentUITests/FunctionReplayTests.swift) |
 | `@openuidev/intelligent-ui-library` 0.0.2: its theme tokens and prop value rules (`shared/tokens.ts`, `shared/props.ts`) | `IntelligentTheme.light` and `.dark` hold every token as react-components' default light and dark resolve it, following the system's setting unless the host forces one; `ColorValue`, `Length`, `Radius` and `Spacing.points` accept and drop what upstream's `fg`, `bg`, `size`, `radius` and `space` do. The system font stands in for Inter (OFL, not approved). | [Upstream's resolved tokens and helper results](conformance/real-libraries/intelligent-ui-theme.json), [Swift comparison](swift/OpenUINative/Tests/OpenUIIntelligentUITests/ThemeTests.swift) |
 
 ## Deliberately not ported from lang-core
@@ -878,6 +878,22 @@ On the web, a model-written colour reaches the browser as CSS text. Natively, `O
 | A gradient such as `linear-gradient(...)` as a Box or Pressable `background` (upstream writes it into the CSS `background` shorthand) | The gradient | Nothing; whether to draw gradients natively is #220 |
 
 The theme's font is the other recorded difference. Upstream's `"Inter", sans-serif` is the system font here, because Inter's OFL licence is not approved and no font is bundled. The mono stack matches upstream exactly. The theme test pins upstream's font text, so a change shows up.
+
+### Intelligent UI function arguments JSON can't carry
+
+The runtime hands a library function its arguments as JSON, as
+`JSON.stringify` writes them, so Infinity and NaN arrive as null; and a
+Swift string holds no lone surrogate. Upstream's function sees the value
+itself. The binding stays as it is (maintainer decision on #160): where a
+function can't receive what upstream's received, the call gives null with
+an error, never a made-up value. `FunctionReplayTests` counts the recorded
+pairs it can't replay per function and checks each gives null with an
+error, so a new one fails until it is looked at.
+
+| A model writes | Upstream returns | openui-rs returns | Recorded pairs |
+|---|---|---|---|
+| `@MixColor("#000000", "#ffffff", 1e308*10)`: t is Infinity; `-1e308*10` gives -Infinity and `1e308*10 - 1e308*10` gives NaN | A colour: `"#ffffff"` for Infinity, `"#000000"` for -Infinity and `"#NaNNaNNaN"` for NaN | null, with the error `@MixColor threw: t is not a number` | MixColor: 3 |
+| `@MixColor("\ud800", "#000", 0.5)`: a lone surrogate in a colour | null, with the error `@MixColor threw: not a hex color: ` and the lone surrogate | null, with the same error ending in U+FFFD in place of the surrogate | MixColor: 1 |
 
 ### Query cache lifetime differences
 
