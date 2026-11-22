@@ -2016,6 +2016,13 @@ push and finish must equal a fresh parse, including both limit flags. These
 programs also match archived main at every push, finish and set in the offline
 differential; no elapsed-time assertion is added.
 
+`parser_materialisation` compares all four empty-name `$ref` signatures and
+the 287-byte nested-action program from #202 with the complete parse bytes
+in `conformance/golden/parser-call-results.jsonl`. Regenerate them with
+`bun --no-install parser-call-results.ts` from `reference/`. The action
+case also checks streaming and a smaller fixed limit. Separate cases cover
+an unused action default and replay with less room for temporary arguments.
+
 `parser_prototype_divergences` tests the separate twelve-case corpus in
 `conformance/parser-prototype-assignments.json`. Complete results and all pushes
 after `$v` is assigned must retain archived main's bytes. Every prefix and finish

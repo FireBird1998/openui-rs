@@ -191,6 +191,13 @@ pub(crate) fn flatten_unresolved(parts: &[UnresolvedPart]) -> Vec<String> {
 /// so its effects can be cached and replayed with it.
 #[derive(Default)]
 pub(crate) struct Frame {
+    /// Charges outside the retained AST: diagnostics, reference walks, and
+    /// construction costs kept when a call discards its arguments.
+    side_size: usize,
+    /// Defaults copied from the library in this frame.
+    defaults_used: usize,
+    /// Absolute size before releasing temporary call arguments or defaults.
+    peak: usize,
     pub errors: Vec<ErrorPart>,
     pub unresolved: Vec<UnresolvedPart>,
     /// Every defined statement looked up here, sorted and deduplicated when
@@ -338,6 +345,7 @@ impl Ctx<'_> {
         if !self.grow(size) {
             return;
         }
+        self.frame.side_size += size;
         self.frame.errors.push(ErrorPart::Own(ValidationError {
             code: issue.code(),
             component: component.to_owned(),
@@ -369,9 +377,35 @@ impl Ctx<'_> {
         if !self.grow(name.len() + 3) {
             return;
         }
+        self.frame.side_size += name.len() + 3;
         self.frame
             .unresolved
             .push(UnresolvedPart::Own(name.to_owned()));
+    }
+
+    /// Differences within one frame price the AST built between two points,
+    /// excluding side effects that a second occurrence would not write.
+    fn ast_size(&self) -> usize {
+        self.size.saturating_sub(self.frame.side_size)
+    }
+
+    /// Release AST bytes discarded by call validation. Remember the high-water
+    /// mark so cache reuse requires the same room as walking the call afresh.
+    fn discard_call_args(&mut self, start: &CallStart) {
+        let bytes = self.ast_size() - start.ast_size;
+        if self.frame.children.len() != start.statements
+            || self.frame.defaults_used != start.defaults_used
+            || self.cuts != start.cuts
+        {
+            // A reference can leave the value in the statement cache. A
+            // library default can cost much more to copy than the call's
+            // source. Keep their construction bounded even for invalid calls,
+            // and never reopen room a limit already cut.
+            self.frame.side_size += bytes;
+        } else {
+            self.frame.peak = self.frame.peak.max(self.size);
+            self.size -= bytes;
+        }
     }
 
     /// Exhaust the existing size state on the cold ceiling path. Raising
@@ -389,7 +423,9 @@ impl Ctx<'_> {
     /// Whether the result could grow by `more` and stay within the
     /// result-size limit. Asking cuts nothing.
     fn would_fit(&self, more: usize) -> bool {
-        self.size.saturating_add(more) <= self.limits.result_size()
+        self.size
+            .checked_add(more)
+            .is_some_and(|size| size <= self.limits.result_size())
     }
 
     /// Whether the result can still grow by `more`; if not, it's cut here.
@@ -437,6 +473,7 @@ impl Ctx<'_> {
     /// as [`Ctx::cut`] counts a placeholder; `each` is how many bytes a byte
     /// of it becomes where it's written.
     pub(crate) fn default_used(&mut self, default: &serde_json::Value, each: usize) {
+        self.frame.defaults_used += 1;
         self.cut(
             default_json_len(default)
                 .saturating_mul(each)
@@ -659,12 +696,13 @@ fn resolve_ref(name: &str, ctx: &mut Ctx, mode: Mode) -> Resolved {
             Some((depth, _)) => ctx.depth == depth && ctx.visited.is_empty(),
             None => ctx.depth + entry.r_max < ctx.limits.depth(),
         }
-        && ctx.would_fit(entry.size)
+        && ctx.would_fit(entry.peak)
     {
         // Replay only a whole subtree that fits. Otherwise walk it afresh:
         // the remaining room may hold a prefix, and keys, errors and element
         // overhead are charged after their children's fit checks. Rejecting
         // the total here would cut differently depending on cache history.
+        ctx.frame.peak = ctx.frame.peak.max(ctx.size + entry.peak);
         ctx.size += entry.size;
         if !replay(entry, (slot, expr), true, &mut ctx.frame, ctx.depth) {
             ctx.stack_stalled();
@@ -692,6 +730,7 @@ fn resolve_ref(name: &str, ctx: &mut Ctx, mode: Mode) -> Resolved {
     ctx.visited.insert(slot);
     let previous = ctx.current_statement_id.replace(name.to_owned());
     let outer = std::mem::take(&mut ctx.frame);
+    ctx.frame.side_size = REFERENCE_SIZE;
     let start_depth = ctx.depth;
     let output = match mode {
         Mode::Value => {
@@ -710,13 +749,12 @@ fn resolve_ref(name: &str, ctx: &mut Ctx, mode: Mode) -> Resolved {
         Output::Value(v) => Resolved::Value(v.clone()),
         Output::Ast(a) => Resolved::Ast(a.clone()),
     };
-    let size = ctx.size - start_size;
     finish(
         frame,
         output,
         slot,
         expr,
-        (start_depth, size, ctx.cuts - start_cuts),
+        (start_depth, start_size, ctx.cuts - start_cuts),
         ctx,
     );
     resolved
@@ -765,6 +803,7 @@ fn replay(
             .unresolved
             .push(UnresolvedPart::Reached(entry.unresolved.clone()));
     }
+    frame.side_size += entry.side_size;
     frame.limited |= entry.depth_cut.is_some();
     frame.children.push(entry.reach.clone());
     frame.max_depth = frame.max_depth.max(depth + entry.r_max);
@@ -790,6 +829,8 @@ struct Folded {
 /// allows it (see [`ErrorPart`]).
 fn fold(frame: Frame, key: (Slot, bool), memoize: bool, ctx: &mut Ctx) -> Folded {
     let Frame {
+        side_size,
+        peak,
         errors,
         unresolved,
         mut reached,
@@ -800,7 +841,10 @@ fn fold(frame: Frame, key: (Slot, bool), memoize: bool, ctx: &mut Ctx) -> Folded
         size_limited,
         partial_read,
         alias_marks: _,
+        defaults_used: _,
     } = frame;
+    ctx.frame.side_size += side_size;
+    ctx.frame.peak = ctx.frame.peak.max(peak);
     let reached_nothing = reached.is_empty();
     reached.sort_unstable();
     reached.dedup();
@@ -860,9 +904,11 @@ fn finish(
     output: Output,
     slot: Slot,
     expr: bool,
-    (start_depth, size, cuts): (usize, usize, usize),
+    (start_depth, start_size, cuts): (usize, usize, usize),
     ctx: &mut Ctx,
 ) {
+    let side_size = frame.side_size;
+    let peak = frame.peak.max(ctx.size) - start_size;
     let folded = fold(frame, (slot, expr), true, ctx);
     // Cut containers previously had fresh identities at each reach. Only
     // identity-free null outputs can reuse a depth cut without changing that.
@@ -878,7 +924,9 @@ fn finish(
         unresolved: folded.unresolved,
         errors: folded.errors,
         r_max: folded.max_depth.saturating_sub(start_depth),
-        size,
+        size: ctx.size - start_size,
+        side_size,
+        peak,
         context: None,
         depth_cut,
     };
@@ -898,11 +946,12 @@ pub(crate) fn materialize_state(slot: Slot, init: &Ast, ctx: &mut Ctx) -> Value 
     // only uncut entries are stored, so their depth always fits again.
     if let Some(entry) = ctx.cache.get(slot, ctx.partial, false)
         && entry.context == ctx.current_statement_id
-        && ctx.would_fit(entry.size)
+        && ctx.would_fit(entry.peak)
         && let Output::Value(value) = &entry.output
     {
         // Its errors stand where they were met, in order: not memoized, so
         // they're reported here every time, as inline ones are.
+        ctx.frame.peak = ctx.frame.peak.max(ctx.size + entry.peak);
         ctx.size += entry.size;
         if !replay(entry, (slot, false), false, &mut ctx.frame, ctx.depth) {
             ctx.stack_stalled();
@@ -915,6 +964,8 @@ pub(crate) fn materialize_state(slot: Slot, init: &Ast, ctx: &mut Ctx) -> Value 
     let (start_depth, start_size) = (ctx.depth, ctx.size);
     let value = materialize_value(init, ctx);
     let frame = std::mem::replace(&mut ctx.frame, outer);
+    let side_size = frame.side_size;
+    let peak = frame.peak.max(ctx.size) - start_size;
     let folded = fold(frame, (slot, false), false, ctx);
     if folded.cut {
         return value;
@@ -932,6 +983,8 @@ pub(crate) fn materialize_state(slot: Slot, init: &Ast, ctx: &mut Ctx) -> Value 
         errors: folded.errors.clone(),
         r_max: folded.max_depth.saturating_sub(start_depth),
         size: ctx.size - start_size,
+        side_size,
+        peak,
         context: ctx.current_statement_id.clone(),
         depth_cut: None,
     };
@@ -1017,6 +1070,15 @@ fn is_runtime_call(name: &str, ctx: &Ctx) -> bool {
     ctx.library.call(name).is_some() || is_reserved_call(name)
 }
 
+/// Snapshot before materializing positional arguments. A rejected call can
+/// give back its inline AST, while the diagnostics remain in the result.
+struct CallStart {
+    ast_size: usize,
+    statements: usize,
+    defaults_used: usize,
+    cuts: usize,
+}
+
 /// A runtime call, kept as AST: `@Each` with its iterator in scope, anything
 /// else with its args normalized and, for a function or step, by param name.
 fn runtime_call(
@@ -1030,11 +1092,15 @@ fn runtime_call(
     if let Some(lazy) = materialize_lazy_builtin(name, args, function, mapped_props, ctx, scope) {
         return lazy;
     }
-    let (start, cuts) = (ctx.size, ctx.cuts);
+    let start = CallStart {
+        ast_size: ctx.ast_size(),
+        statements: ctx.frame.children.len(),
+        defaults_used: ctx.frame.defaults_used,
+        cuts: ctx.cuts,
+    };
     let args = expr_list(args, ctx, scope);
-    let args_size = ctx.size - start;
-    let outer = std::mem::replace(&mut ctx.cut_inside, ctx.cuts > cuts);
-    let call = mapped_call(name, args, args_size, function, mapped_props, ctx);
+    let outer = std::mem::replace(&mut ctx.cut_inside, ctx.cuts > start.cuts);
+    let call = mapped_call(name, args, &start, function, mapped_props, ctx);
     ctx.cut_inside = outer;
     call
 }
@@ -1047,7 +1113,7 @@ fn runtime_call(
 fn mapped_call(
     name: &str,
     args: Arc<Vec<Ast>>,
-    args_size: usize,
+    start: &CallStart,
     function: bool,
     mapped_props: &Option<Arc<JsObject<Ast>>>,
     ctx: &mut Ctx,
@@ -1061,12 +1127,16 @@ fn mapped_call(
             mapped_props: mapped_props.clone(),
         };
     };
+    let args_size = ctx.ast_size() - start.ast_size;
     let mapped = if def.builtin {
         Some(name_args(&args, &def.params))
     } else {
         map_call_args(name, &args, def, ctx)
     };
     let Some(by_name) = mapped else {
+        // Validation errors stay in meta. The positional arguments and any
+        // provisional defaults disappear with the invalid call.
+        ctx.discard_call_args(start);
         return match def.kind {
             CallKind::Action => {
                 // Written in the call's place: its name and its empty list.
@@ -1085,6 +1155,7 @@ fn mapped_call(
     let keys: usize = by_name.iter().map(|(k, _)| k.len() + 4).sum();
     let size = args_size + 16 + keys;
     if !ctx.fits(size) {
+        ctx.discard_call_args(start);
         return Ast::Null;
     }
     ctx.size += size;
@@ -1172,7 +1243,13 @@ fn map_call_args(name: &str, args: &[Ast], def: &Call, ctx: &mut Ctx) -> Option<
             }
         };
         let mut next = value.clone();
-        if validate_schema_value(&mut next, &param.schema, name, &path, ctx) {
+        let rejected = validate_schema_value(&mut next, &param.schema, name, &path, ctx);
+        if def.kind == CallKind::Action && ctx.frame.errors.len() > errors_before {
+            // The whole step will become Action([]). Continue checking the
+            // remaining params, but no mapped value or default will be used.
+            continue;
+        }
+        if rejected {
             match (&param.default, param.required) {
                 (Some(default), _) => {
                     // Written as literal nodes, each no longer than this.
@@ -1578,9 +1655,9 @@ fn expr_comp(
     if is_runtime_call(name, ctx) {
         return runtime_call(name, args, function, mapped_props, ctx, scope);
     }
-    let start = ctx.size;
+    let start = ctx.ast_size();
     let args = expr_list(args, ctx, scope);
-    let args_size = ctx.size - start;
+    let args_size = ctx.ast_size() - start;
     library_comp(name, args, args_size, mapped_props, ctx)
 }
 
@@ -1606,6 +1683,7 @@ fn library_comp(
             .sum();
         let mapped = args_size + 16 + keys;
         if !ctx.fits(mapped) {
+            ctx.frame.side_size += args_size;
             return Ast::Null;
         }
         ctx.size += mapped;
@@ -1702,6 +1780,8 @@ mod stack_cut_tests {
             unresolved: Arc::new(vec![UnresolvedPart::Own("missing".into())]),
             r_max: 2,
             size: 1,
+            peak: 1,
+            side_size: 0,
             context: None,
             depth_cut: None,
         };

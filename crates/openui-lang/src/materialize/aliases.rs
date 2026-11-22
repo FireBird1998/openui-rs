@@ -172,6 +172,7 @@ pub(super) fn resolve(slot: Slot, mode: Mode, ctx: &mut Ctx<'_>) -> Option<Resol
         .max_depth
         .max(ctx.depth.saturating_sub(1).saturating_add(successful));
     ctx.size += successful * REFERENCE_SIZE;
+    ctx.frame.side_size += successful * REFERENCE_SIZE;
     if let Some(aliases) = ctx.aliases.as_ref() {
         let marks = ctx
             .frame

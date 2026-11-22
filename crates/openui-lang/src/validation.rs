@@ -188,8 +188,10 @@ fn scalar_leaf<'a>(s: &SchemaNode<'a>) -> Leaf<'a> {
 /// The type hint for a param's schema, as the reference `getTypeFromSchema`.
 fn type_from_schema(schema: &SchemaNode<'_>) -> Option<String> {
     schema.object()?;
-    if let Some(r) = schema.get("$ref").and_then(|r| r.as_str()) {
-        return r.rsplit('/').next().map(str::to_owned);
+    if let Some(r) = schema.get("$ref").and_then(|r| r.as_str())
+        && let Some(name) = r.rsplit('/').next().filter(|name| !name.is_empty())
+    {
+        return Some(name.to_owned());
     }
     match scalar_leaf(schema) {
         Leaf::Enum(values) => Some(

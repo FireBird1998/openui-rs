@@ -6,6 +6,12 @@
   click or form submit into the next user message through OpenUINative's
   `Core` (#147). Action messages use upstream's label, form state and action
   context in the stored content and context marker format.
+- Parser signatures now show the enum or type when a `$ref` ends in an empty
+  name. Nested actions also keep their valid outer step when invalid inner
+  steps become empty plans. Their discarded arguments and validation errors
+  used to be counted again for each enclosing call's `mappedProps` (#202).
+  Under a small fixed result-size limit, a cut can now land on a different
+  item than before; both versions flag `size_limited`.
 - WebAssembly `free()` can no longer free another object's memory (#211).
   The generated `free` (and `[Symbol.dispose]`) looked up
   `__destroy_into_raw` through the instance, so an own property, a subclass

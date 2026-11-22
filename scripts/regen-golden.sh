@@ -67,6 +67,7 @@ done
   bun --no-install tool-provider-mutations.ts
   bun --no-install tool-provider.ts
   bun --no-install mcp-results.ts
+  bun --no-install parser-call-results.ts
   bun --no-install parser-prototype-assignments.ts
   bun --no-install core-divergences.ts
   bun --no-install query-default-cycles.ts
