@@ -96,8 +96,32 @@ const collision = (kind: "function" | "action", name: string, extra: Partial<Inp
     : { actions: [...(extra.actions ?? []), act(name, "", {})] }),
 });
 
+function stringDescription(withDescription: boolean): Input {
+  const describe = <T extends z.ZodType>(s: T) => withDescription ? s.describe("field text") : s;
+  return one({
+    name: describe(z.string()), category: describe(z.string().optional()),
+    binding: bound(describe(z.string().optional())), tagged: named(describe(z.string()), "Token"),
+    nested: z.array(describe(z.string())),
+  });
+}
+
 const samples: [string, () => Input][] = [
   ["scalars", () => scalars],
+  ["default", () => one({
+    name: z.string().default(""), nullable: z.any().default(null),
+    optional: bound(z.boolean().default(false).optional()),
+    required: z.string().optional().default("x"),
+    rows: z.array(z.object({ key: z.number().default(0) })).default([{ key: 7 }]),
+    object: z.object({ text: z.string() }).default({ text: "value" }),
+  })],
+  ["array-min", () => one({
+    items: z.array(z.string()).min(2).min(1), zero: z.array(z.number()).min(0),
+    nonempty: z.array(z.boolean()).nonempty(),
+  })],
+  ["string-description", () => stringDescription(true)],
+  ["string-description-control", () => stringDescription(false)],
+  ["refined-props", () => one(z.object({ v: z.string() }).refine(() => false, { path: ["v"] }))],
+  ["unknown", () => one({ required: z.unknown(), bound: bound(z.unknown().optional()), list: z.array(z.unknown()) })],
   // JavaScript lists array-index keys first, for component and prop names alike.
   [
     "key-order",
@@ -854,12 +878,34 @@ const refusals: [string, () => unknown, string, string?][] = [
   ["min", () => one({ s: z.string().min(1) }), "checks"],
   ["trim", () => one({ s: z.string().trim() }), "checks"],
   ["coerce", () => one({ n: z.coerce.number() }), '"coerce"'],
-  ["describe", () => one({ s: z.string().describe("d") }), "metadata"],
-  ["default", () => one({ s: z.string().default("d") }), 'kind "default"'],
-  ["unknown-kind", () => one({ s: z.unknown() }), 'kind "unknown"'],
+  ["meta-description-only", () => one({ s: z.string().meta({ description: "d" }) }), ".meta()"],
+  ["meta-empty", () => one({ s: z.string().meta({}) }), ".meta()"],
+  ["describe-number", () => one({ n: z.number().describe("d") }), "description on number"],
+  ["describe-optional-number", () => one({ n: z.number().optional().describe("d") }), "description on optional number"],
+  ["describe-enum", () => one({ e: z.enum(["a"]).describe("d") }), "description on enum"],
+  ["describe-object", () => one({ o: z.object({}).describe("d") }), "description on object"],
+  ["describe-array", () => one({ a: z.array(z.string()).describe("d") }), "description on array"],
+  ["describe-extra-argument", () => one({ s: (z.string().describe as any)("d", "extra") }), "only a single string-valued .describe()"],
+  ["describe-non-string", () => one({ s: z.string().describe(42 as any) }), "non-string description"],
+  ["describe-plus-metadata", () => one({ s: z.string().meta({ title: "t" }).describe("d") }), "description plus other metadata"],
+  ["meta-plus-description", () => one({ s: z.string().meta({ description: "d", title: "t" }) }), "description plus other metadata"],
+  ["meta-after-describe", () => one({ s: z.string().describe("d").meta({ title: "t" }) }), "description plus other metadata"],
+  ["describe-literal", () => one({ l: z.literal("x").describe("d") }), "description on literal"],
+  ["describe-twice", () => one({ s: z.string().describe("a").describe("b") }), "repeated description"],
+  ["describe-inner-and-outer", () => one({ s: z.string().describe("a").optional().describe("b") }), "repeated description"],
+  ["default-undefined", () => one({ s: z.any().default(undefined) }), "JSON default"],
+  ["default-bigint", () => one({ s: z.any().default(2n) }), "JSON default", "BigInt defaults"],
+  ["default-inner-binding", () => one({ s: bound(z.string()).default("v") }), "reactive"],
+  ["default-on-checked-type", () => one({ s: z.string().min(1).default("x") }), "checks"],
   ["loose-object", () => one(z.looseObject({ v: z.string() })), "catch-all"],
   ["catchall", () => one(z.object({ v: z.string() }).catchall(z.number())), "catch-all"],
-  ["props-checked", () => one(z.object({ v: z.string() }).refine(() => true) as any), "checks"],
+  ["refined-registered-props", () => {
+    const base = z.object({ v: z.string() });
+    return { components: [component("Base", "", base), component("Derived", "", base.refine(() => true))] };
+  }, "registered parent"],
+  ["refined-inline-object", () => one({ v: z.object({}).refine(() => false) }), "checks"],
+  ["refined-props-catchall", () => one(z.looseObject({}).refine(() => false)), "catch-all"],
+  ["refined-props-metadata", () => one(z.object({}).refine(() => false).describe("d")), "metadata"],
   // The data kinds (#132): what zod can say that the plain data can't, or
   // says differently.
   ["literal", () => one({ s: z.literal("x") }), 'kind "literal"'],
@@ -881,8 +927,8 @@ const refusals: [string, () => unknown, string, string?][] = [
   ["record-key-check", () => one({ r: z.record(z.string().min(1), z.string()) }), "checks"],
   ["partial-record", () => one({ r: z.partialRecord(z.enum(["a"]), z.string()) }), '"partial"'],
   ["loose-record", () => one({ r: z.looseRecord(z.string(), z.string()) }), '"mode"'],
-  ["array-min", () => one({ a: z.array(z.string()).min(1) }), "checks"],
-  ["array-nonempty", () => one({ a: z.array(z.string()).nonempty() }), "checks"],
+  ["array-min-max", () => one({ a: z.array(z.string()).min(1).max(2) }), "checks"],
+  ["array-length", () => one({ a: z.array(z.string()).length(2) }), "checks"],
   ["optional-in-array", () => one({ a: z.array(z.string().optional()) }), "optional inside"],
   // Inside a union zod drops the prop from `required` though the signature
   // shows no `?`.
@@ -893,7 +939,7 @@ const refusals: [string, () => unknown, string, string?][] = [
   ["default-in-array", () => one({ a: z.array(z.string().default("x")) }), 'kind "default"'],
   ["loose-inner-object", () => one({ o: z.looseObject({ a: z.string() }) }), "catch-all"],
   ["inner-catchall", () => one({ o: z.object({ a: z.string() }).catchall(z.string()) }), "catch-all"],
-  ["describe-nested", () => one({ a: z.array(z.string().describe("d")) }), "metadata"],
+  ["describe-nested-number", () => one({ a: z.array(z.number().describe("d")) }), "description on number"],
   ["meta-object", () => one({ o: z.object({}).meta({ title: "t" }) }), "metadata"],
   // A binding anywhere but on a prop's outermost type (#133): upstream
   // prints $binding<...> there but never binds it.
@@ -1116,6 +1162,12 @@ const extractedRefusals: [string, () => unknown][] = [
   ["record-on-a-cycle", cyclic((back) => z.record(z.string(), loop(back)))],
   ["nullable-on-a-cycle", cyclic((back) => loop(back).nullable())],
   ["optional-on-a-cycle", cyclic((back) => loop(back).optional())],
+  ["refinement-parent-on-a-cycle", () => {
+    const base = z.object({ get child(): z.ZodType { return child.ref; } });
+    const child = component("Child", "", base.refine(() => true));
+    return { components: [component("Page", "", { base }), child] };
+  }],
+  ["default-on-a-cycle", cyclic((back) => loop(back).default({}))],
   // V6: a call's param type met again inside itself through an action: the
   // call's $ref to its entry is kept though the entry is dropped.
   [
@@ -1178,6 +1230,22 @@ for (const [name, make, reason, upstreamThrows] of refusals) {
     }
     if (!upstream?.includes(upstreamThrows)) throw new Error(`refusal ${name}: upstream no longer throws: ${upstream}`);
   }
+}
+
+// Upstream keys marks by identity. Applying the mark to the described clone
+// works; a mark applied before Zod clones the string stays on its parent.
+const original = named(bound(z.string()), "Token");
+const clone = original.describe("field text");
+const markedInput = one({ original, clone, markedClone: named(bound(z.string().describe("field text")), "Token") });
+const marked = toLibraryDefinition(markedInput as any).components[0].props;
+const signature = createLibrary(markedInput).toSpec().components.A.signature;
+if (signature !== "A(original: $binding<Token>, clone: string, markedClone: $binding<Token>)" ||
+    JSON.stringify(marked.map(p => [p.type, !!p.binding])) !== JSON.stringify([
+      [{ kind: "named", name: "Token", type: { kind: "string" } }, true],
+      [{ kind: "string" }, false],
+      [{ kind: "named", name: "Token", type: { kind: "string" } }, true],
+    ])) {
+  throw new Error(`described clone marks: ${signature}, ${JSON.stringify(marked)}`);
 }
 
 // The converter's depth limit is the core's: 256 levels convert.

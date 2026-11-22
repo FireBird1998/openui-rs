@@ -693,6 +693,8 @@ fn references(ty: &TypeDescription, registry: &Registry<'_>, out: &mut Vec<Node>
             }
         },
         TypeDescription::Array(t)
+        | TypeDescription::ArrayWithMinimum(t, _)
+        | TypeDescription::Default(t, _)
         | TypeDescription::Record(t)
         | TypeDescription::Nullable(t)
         | TypeDescription::Named(_, t) => references(t, registry, out),
@@ -710,6 +712,7 @@ fn references(ty: &TypeDescription, registry: &Registry<'_>, out: &mut Vec<Node>
         | TypeDescription::Number
         | TypeDescription::Boolean
         | TypeDescription::Any
+        | TypeDescription::Unknown
         | TypeDescription::Enum(_) => {}
     }
 }
@@ -814,7 +817,7 @@ fn type_schema(ty: &TypeDescription, registry: &Registry<'_>) -> Json {
         TypeDescription::String => object([("type", "string".into())]),
         TypeDescription::Number => object([("type", "number".into())]),
         TypeDescription::Boolean => object([("type", "boolean".into())]),
-        TypeDescription::Any => Json::Object(Map::new()),
+        TypeDescription::Any | TypeDescription::Unknown => Json::Object(Map::new()),
         TypeDescription::Enum(values) => {
             let words = enum_words(values);
             if words.is_empty() {
@@ -830,6 +833,11 @@ fn type_schema(ty: &TypeDescription, registry: &Registry<'_>) -> Json {
         TypeDescription::Array(items) => {
             object([("type", "array".into()), ("items", schema(items))])
         }
+        TypeDescription::ArrayWithMinimum(items, min) => object([
+            ("minItems", Json::Number(min.clone())),
+            ("type", "array".into()),
+            ("items", schema(items)),
+        ]),
         TypeDescription::Union(options) => any_of(options.iter().map(schema).collect()),
         TypeDescription::Object(fields) => Json::Object(object_schema(
             in_property_order(fields, |f| &f.name)
@@ -842,6 +850,17 @@ fn type_schema(ty: &TypeDescription, registry: &Registry<'_>) -> Json {
             ("propertyNames", object([("type", "string".into())])),
             ("additionalProperties", schema(values)),
         ]),
+        TypeDescription::Default(inner, value) => {
+            let mut result = Map::new();
+            result.insert(
+                "default".to_owned(),
+                crate::library::clone_json(value.as_ref()),
+            );
+            if let Json::Object(body) = schema(inner) {
+                result.extend(body);
+            }
+            Json::Object(result)
+        }
         TypeDescription::Nullable(inner) => {
             any_of(vec![schema(inner), object([("type", "null".into())])])
         }

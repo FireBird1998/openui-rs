@@ -45,6 +45,12 @@
   place host JSON is read and why it fits, and `scripts/check.sh` (so CI)
   now also runs the stack-depth test files at opt-level 0
   (`cargo test --profile dev`), where frames are largest.
+- Library definitions support JSON defaults on props and nested fields,
+  unknown values and array minima (#209). The reference converter also
+  accepts custom refinements on component props and a single string description
+  on a string or optional string. The full react-ui definition reproduces
+  the pinned schema, spec, prompt and cloud config. A defaulted prop stays
+  required in the schema and prints with `?` in the prompt signature.
 
 - Prompts and bindings from a defined library (#135). A library made from a
   definition gives its system prompt, `prompt(options)`, byte for byte as

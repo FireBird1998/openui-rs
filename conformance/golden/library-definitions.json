@@ -468,6 +468,897 @@
   }
  },
  {
+  "name": "default",
+  "definition": {
+   "components": [
+    {
+     "name": "A",
+     "description": "a",
+     "props": [
+      {
+       "name": "name",
+       "type": {
+        "kind": "string"
+       },
+       "default": ""
+      },
+      {
+       "name": "nullable",
+       "type": {
+        "kind": "any"
+       },
+       "default": null
+      },
+      {
+       "name": "optional",
+       "type": {
+        "kind": "boolean"
+       },
+       "optional": true,
+       "default": false,
+       "binding": true
+      },
+      {
+       "name": "required",
+       "type": {
+        "kind": "string"
+       },
+       "default": "x"
+      },
+      {
+       "name": "rows",
+       "type": {
+        "kind": "array",
+        "items": {
+         "kind": "object",
+         "fields": [
+          {
+           "name": "key",
+           "type": {
+            "kind": "number"
+           },
+           "default": 0
+          }
+         ]
+        }
+       },
+       "default": [
+        {
+         "key": 7
+        }
+       ]
+      },
+      {
+       "name": "object",
+       "type": {
+        "kind": "object",
+        "fields": [
+         {
+          "name": "text",
+          "type": {
+           "kind": "string"
+          }
+         }
+        ]
+       },
+       "default": {
+        "text": "value"
+       }
+      }
+     ]
+    }
+   ]
+  },
+  "schema": {
+   "$schema": "https://json-schema.org/draft/2020-12/schema",
+   "type": "object",
+   "properties": {
+    "A": {
+     "$ref": "#/$defs/A"
+    }
+   },
+   "required": [
+    "A"
+   ],
+   "additionalProperties": false,
+   "$defs": {
+    "A": {
+     "type": "object",
+     "properties": {
+      "name": {
+       "default": "",
+       "type": "string"
+      },
+      "nullable": {
+       "default": null
+      },
+      "optional": {
+       "default": false,
+       "type": "boolean"
+      },
+      "required": {
+       "default": "x",
+       "type": "string"
+      },
+      "rows": {
+       "default": [
+        {
+         "key": 7
+        }
+       ],
+       "type": "array",
+       "items": {
+        "type": "object",
+        "properties": {
+         "key": {
+          "default": 0,
+          "type": "number"
+         }
+        },
+        "required": [
+         "key"
+        ],
+        "additionalProperties": false
+       }
+      },
+      "object": {
+       "default": {
+        "text": "value"
+       },
+       "type": "object",
+       "properties": {
+        "text": {
+         "type": "string"
+        }
+       },
+       "required": [
+        "text"
+       ],
+       "additionalProperties": false
+      }
+     },
+     "required": [
+      "name",
+      "nullable",
+      "required",
+      "rows",
+      "object"
+     ],
+     "additionalProperties": false,
+     "description": "a"
+    }
+   }
+  },
+  "spec": {
+   "components": {
+    "A": {
+     "signature": "A(name?: string, nullable?: any, optional?: $binding<boolean>, required?: string, rows?: {key?: number}[], object?: {text: string})",
+     "description": "a"
+    }
+   },
+   "schema": {
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "type": "object",
+    "properties": {
+     "A": {
+      "$ref": "#/$defs/A"
+     }
+    },
+    "required": [
+     "A"
+    ],
+    "additionalProperties": false,
+    "$defs": {
+     "A": {
+      "type": "object",
+      "properties": {
+       "name": {
+        "default": "",
+        "type": "string"
+       },
+       "nullable": {
+        "default": null
+       },
+       "optional": {
+        "default": false,
+        "type": "boolean"
+       },
+       "required": {
+        "default": "x",
+        "type": "string"
+       },
+       "rows": {
+        "default": [
+         {
+          "key": 7
+         }
+        ],
+        "type": "array",
+        "items": {
+         "type": "object",
+         "properties": {
+          "key": {
+           "default": 0,
+           "type": "number"
+          }
+         },
+         "required": [
+          "key"
+         ],
+         "additionalProperties": false
+        }
+       },
+       "object": {
+        "default": {
+         "text": "value"
+        },
+        "type": "object",
+        "properties": {
+         "text": {
+          "type": "string"
+         }
+        },
+        "required": [
+         "text"
+        ],
+        "additionalProperties": false
+       }
+      },
+      "required": [
+       "name",
+       "nullable",
+       "required",
+       "rows",
+       "object"
+      ],
+      "additionalProperties": false,
+      "description": "a"
+     }
+    }
+   }
+  }
+ },
+ {
+  "name": "array-min",
+  "definition": {
+   "components": [
+    {
+     "name": "A",
+     "description": "a",
+     "props": [
+      {
+       "name": "items",
+       "type": {
+        "kind": "array",
+        "items": {
+         "kind": "string"
+        },
+        "minItems": 2
+       }
+      },
+      {
+       "name": "zero",
+       "type": {
+        "kind": "array",
+        "items": {
+         "kind": "number"
+        },
+        "minItems": 0
+       }
+      },
+      {
+       "name": "nonempty",
+       "type": {
+        "kind": "array",
+        "items": {
+         "kind": "boolean"
+        },
+        "minItems": 1
+       }
+      }
+     ]
+    }
+   ]
+  },
+  "schema": {
+   "$schema": "https://json-schema.org/draft/2020-12/schema",
+   "type": "object",
+   "properties": {
+    "A": {
+     "$ref": "#/$defs/A"
+    }
+   },
+   "required": [
+    "A"
+   ],
+   "additionalProperties": false,
+   "$defs": {
+    "A": {
+     "type": "object",
+     "properties": {
+      "items": {
+       "minItems": 2,
+       "type": "array",
+       "items": {
+        "type": "string"
+       }
+      },
+      "zero": {
+       "minItems": 0,
+       "type": "array",
+       "items": {
+        "type": "number"
+       }
+      },
+      "nonempty": {
+       "minItems": 1,
+       "type": "array",
+       "items": {
+        "type": "boolean"
+       }
+      }
+     },
+     "required": [
+      "items",
+      "zero",
+      "nonempty"
+     ],
+     "additionalProperties": false,
+     "description": "a"
+    }
+   }
+  },
+  "spec": {
+   "components": {
+    "A": {
+     "signature": "A(items: string[], zero: number[], nonempty: boolean[])",
+     "description": "a"
+    }
+   },
+   "schema": {
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "type": "object",
+    "properties": {
+     "A": {
+      "$ref": "#/$defs/A"
+     }
+    },
+    "required": [
+     "A"
+    ],
+    "additionalProperties": false,
+    "$defs": {
+     "A": {
+      "type": "object",
+      "properties": {
+       "items": {
+        "minItems": 2,
+        "type": "array",
+        "items": {
+         "type": "string"
+        }
+       },
+       "zero": {
+        "minItems": 0,
+        "type": "array",
+        "items": {
+         "type": "number"
+        }
+       },
+       "nonempty": {
+        "minItems": 1,
+        "type": "array",
+        "items": {
+         "type": "boolean"
+        }
+       }
+      },
+      "required": [
+       "items",
+       "zero",
+       "nonempty"
+      ],
+      "additionalProperties": false,
+      "description": "a"
+     }
+    }
+   }
+  }
+ },
+ {
+  "name": "string-description",
+  "definition": {
+   "components": [
+    {
+     "name": "A",
+     "description": "a",
+     "props": [
+      {
+       "name": "name",
+       "type": {
+        "kind": "string"
+       }
+      },
+      {
+       "name": "category",
+       "type": {
+        "kind": "string"
+       },
+       "optional": true
+      },
+      {
+       "name": "binding",
+       "type": {
+        "kind": "string"
+       },
+       "optional": true,
+       "binding": true
+      },
+      {
+       "name": "tagged",
+       "type": {
+        "kind": "named",
+        "name": "Token",
+        "type": {
+         "kind": "string"
+        }
+       }
+      },
+      {
+       "name": "nested",
+       "type": {
+        "kind": "array",
+        "items": {
+         "kind": "string"
+        }
+       }
+      }
+     ]
+    }
+   ]
+  },
+  "schema": {
+   "$schema": "https://json-schema.org/draft/2020-12/schema",
+   "type": "object",
+   "properties": {
+    "A": {
+     "$ref": "#/$defs/A"
+    }
+   },
+   "required": [
+    "A"
+   ],
+   "additionalProperties": false,
+   "$defs": {
+    "A": {
+     "type": "object",
+     "properties": {
+      "name": {
+       "type": "string"
+      },
+      "category": {
+       "type": "string"
+      },
+      "binding": {
+       "type": "string"
+      },
+      "tagged": {
+       "type": "string"
+      },
+      "nested": {
+       "type": "array",
+       "items": {
+        "type": "string"
+       }
+      }
+     },
+     "required": [
+      "name",
+      "tagged",
+      "nested"
+     ],
+     "additionalProperties": false,
+     "description": "a"
+    }
+   }
+  },
+  "spec": {
+   "components": {
+    "A": {
+     "signature": "A(name: string, category?: string, binding?: $binding<string>, tagged: Token, nested: string[])",
+     "description": "a"
+    }
+   },
+   "schema": {
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "type": "object",
+    "properties": {
+     "A": {
+      "$ref": "#/$defs/A"
+     }
+    },
+    "required": [
+     "A"
+    ],
+    "additionalProperties": false,
+    "$defs": {
+     "A": {
+      "type": "object",
+      "properties": {
+       "name": {
+        "type": "string"
+       },
+       "category": {
+        "type": "string"
+       },
+       "binding": {
+        "type": "string"
+       },
+       "tagged": {
+        "type": "string"
+       },
+       "nested": {
+        "type": "array",
+        "items": {
+         "type": "string"
+        }
+       }
+      },
+      "required": [
+       "name",
+       "tagged",
+       "nested"
+      ],
+      "additionalProperties": false,
+      "description": "a"
+     }
+    }
+   }
+  }
+ },
+ {
+  "name": "string-description-control",
+  "definition": {
+   "components": [
+    {
+     "name": "A",
+     "description": "a",
+     "props": [
+      {
+       "name": "name",
+       "type": {
+        "kind": "string"
+       }
+      },
+      {
+       "name": "category",
+       "type": {
+        "kind": "string"
+       },
+       "optional": true
+      },
+      {
+       "name": "binding",
+       "type": {
+        "kind": "string"
+       },
+       "optional": true,
+       "binding": true
+      },
+      {
+       "name": "tagged",
+       "type": {
+        "kind": "named",
+        "name": "Token",
+        "type": {
+         "kind": "string"
+        }
+       }
+      },
+      {
+       "name": "nested",
+       "type": {
+        "kind": "array",
+        "items": {
+         "kind": "string"
+        }
+       }
+      }
+     ]
+    }
+   ]
+  },
+  "schema": {
+   "$schema": "https://json-schema.org/draft/2020-12/schema",
+   "type": "object",
+   "properties": {
+    "A": {
+     "$ref": "#/$defs/A"
+    }
+   },
+   "required": [
+    "A"
+   ],
+   "additionalProperties": false,
+   "$defs": {
+    "A": {
+     "type": "object",
+     "properties": {
+      "name": {
+       "type": "string"
+      },
+      "category": {
+       "type": "string"
+      },
+      "binding": {
+       "type": "string"
+      },
+      "tagged": {
+       "type": "string"
+      },
+      "nested": {
+       "type": "array",
+       "items": {
+        "type": "string"
+       }
+      }
+     },
+     "required": [
+      "name",
+      "tagged",
+      "nested"
+     ],
+     "additionalProperties": false,
+     "description": "a"
+    }
+   }
+  },
+  "spec": {
+   "components": {
+    "A": {
+     "signature": "A(name: string, category?: string, binding?: $binding<string>, tagged: Token, nested: string[])",
+     "description": "a"
+    }
+   },
+   "schema": {
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "type": "object",
+    "properties": {
+     "A": {
+      "$ref": "#/$defs/A"
+     }
+    },
+    "required": [
+     "A"
+    ],
+    "additionalProperties": false,
+    "$defs": {
+     "A": {
+      "type": "object",
+      "properties": {
+       "name": {
+        "type": "string"
+       },
+       "category": {
+        "type": "string"
+       },
+       "binding": {
+        "type": "string"
+       },
+       "tagged": {
+        "type": "string"
+       },
+       "nested": {
+        "type": "array",
+        "items": {
+         "type": "string"
+        }
+       }
+      },
+      "required": [
+       "name",
+       "tagged",
+       "nested"
+      ],
+      "additionalProperties": false,
+      "description": "a"
+     }
+    }
+   }
+  }
+ },
+ {
+  "name": "refined-props",
+  "definition": {
+   "components": [
+    {
+     "name": "A",
+     "description": "a",
+     "props": [
+      {
+       "name": "v",
+       "type": {
+        "kind": "string"
+       }
+      }
+     ]
+    }
+   ]
+  },
+  "schema": {
+   "$schema": "https://json-schema.org/draft/2020-12/schema",
+   "type": "object",
+   "properties": {
+    "A": {
+     "$ref": "#/$defs/A"
+    }
+   },
+   "required": [
+    "A"
+   ],
+   "additionalProperties": false,
+   "$defs": {
+    "A": {
+     "type": "object",
+     "properties": {
+      "v": {
+       "type": "string"
+      }
+     },
+     "required": [
+      "v"
+     ],
+     "additionalProperties": false,
+     "description": "a"
+    }
+   }
+  },
+  "spec": {
+   "components": {
+    "A": {
+     "signature": "A(v: string)",
+     "description": "a"
+    }
+   },
+   "schema": {
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "type": "object",
+    "properties": {
+     "A": {
+      "$ref": "#/$defs/A"
+     }
+    },
+    "required": [
+     "A"
+    ],
+    "additionalProperties": false,
+    "$defs": {
+     "A": {
+      "type": "object",
+      "properties": {
+       "v": {
+        "type": "string"
+       }
+      },
+      "required": [
+       "v"
+      ],
+      "additionalProperties": false,
+      "description": "a"
+     }
+    }
+   }
+  }
+ },
+ {
+  "name": "unknown",
+  "definition": {
+   "components": [
+    {
+     "name": "A",
+     "description": "a",
+     "props": [
+      {
+       "name": "required",
+       "type": {
+        "kind": "unknown"
+       }
+      },
+      {
+       "name": "bound",
+       "type": {
+        "kind": "unknown"
+       },
+       "optional": true,
+       "binding": true
+      },
+      {
+       "name": "list",
+       "type": {
+        "kind": "array",
+        "items": {
+         "kind": "unknown"
+        }
+       }
+      }
+     ]
+    }
+   ]
+  },
+  "schema": {
+   "$schema": "https://json-schema.org/draft/2020-12/schema",
+   "type": "object",
+   "properties": {
+    "A": {
+     "$ref": "#/$defs/A"
+    }
+   },
+   "required": [
+    "A"
+   ],
+   "additionalProperties": false,
+   "$defs": {
+    "A": {
+     "type": "object",
+     "properties": {
+      "required": {},
+      "bound": {},
+      "list": {
+       "type": "array",
+       "items": {}
+      }
+     },
+     "required": [
+      "required",
+      "list"
+     ],
+     "additionalProperties": false,
+     "description": "a"
+    }
+   }
+  },
+  "spec": {
+   "components": {
+    "A": {
+     "signature": "A(required: any, bound?: $binding<any>, list: any[])",
+     "description": "a"
+    }
+   },
+   "schema": {
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "type": "object",
+    "properties": {
+     "A": {
+      "$ref": "#/$defs/A"
+     }
+    },
+    "required": [
+     "A"
+    ],
+    "additionalProperties": false,
+    "$defs": {
+     "A": {
+      "type": "object",
+      "properties": {
+       "required": {},
+       "bound": {},
+       "list": {
+        "type": "array",
+        "items": {}
+       }
+      },
+      "required": [
+       "required",
+       "list"
+      ],
+      "additionalProperties": false,
+      "description": "a"
+     }
+    }
+   }
+  }
+ },
+ {
   "name": "key-order",
   "definition": {
    "components": [

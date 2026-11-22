@@ -186,6 +186,16 @@ fn block() -> String {
         n(corpus.len()),
         field("library package")
     );
+    let react_ui = parse_json(&read(
+        &conformance_dir().join("prompts/react-ui-schema.json"),
+    ))
+    .unwrap();
+    let _ = writeln!(
+        out,
+        "| react-ui library definition | {} components | JSON Schema, spec, prompt and cloud config bytes, plus one-shot and streamed parses of {} programs | lang-core pin |",
+        n(react_ui["library"]["components"].as_object().unwrap().len()),
+        n(corpus.len())
+    );
     let serialize_total: usize = serialize_sources.values().sum();
     let _ = writeln!(
         out,

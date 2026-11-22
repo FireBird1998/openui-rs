@@ -21,6 +21,7 @@ Reference: `@openuidev/lang-core 1.1.0` at commit `47b9cae0d3b26a8c9d7514d5887a6
 | System prompts | 66 | 66 | |
 | Edit-mode merges | 3,269 | 3,269 | 3,179 generated, 53 hand-written, 31 recorded, 1 reference-test, 5 spec-fixture |
 | Intelligent UI library definition | 52 components, 59 functions | JSON Schema and prompt spec bytes, plus one-shot and streamed parses of 976 programs | @openuidev/intelligent-ui-library 0.0.2 (library only) |
+| react-ui library definition | 82 components | JSON Schema, spec, prompt and cloud config bytes, plus one-shot and streamed parses of 976 programs | lang-core pin |
 | Element trees back to source | 941 | 941 | 1 fuzz, 71 hand-written, 838 parse corpus root, 31 reference-test |
 | Enriched errors | 512 | 512 | every parse corpus case with errors |
 
@@ -713,16 +714,13 @@ check both outcomes. [Renderer values](conformance/golden/tool-provider-response
 The core implements the declarations behind `defineComponent`,
 `defineFunction`, `defineAction` and `createLibrary` as a plain-data library
 definition. The library-definition tests compare its JSON Schema and prompt
-spec byte for byte with upstream. The Intelligent UI fixture covers the
-complete library. The react-ui import supplies its upstream schema and spec,
-but it cannot be converted yet: its declarations use four shapes the converter
-refuses today, each of which upstream emits: a `.default(...)` value
-(`EditableTable.name` and seven other schemas' fields), `z.unknown()`
-(`DatePicker.value`), `array.min(2)`, which emits `minItems`
-(`SnippetCardBlock.items`, `OverviewCardBlock`, `ContextCardBlock`,
-`VisualCardBlock` and `CompositeCardBlock`), and a refined props object
-(`EntityList`). #209 adds them, as upstream emits them, with react-ui's full
-proof as its acceptance.
+spec byte for byte with upstream. The complete Intelligent UI and react-ui definitions are
+proved against their pinned libraries. At `47b9cae`, react-ui matches all
+82 components, the complete schema and spec, the generated prompt and the
+cloud config. Removing the descriptions from `Icon.name` and `Icon.category`
+gives identical bytes for every output. The defined and schema-supplied
+react-ui libraries agree on all 976 programs one-shot, after every
+five-character push and at finish.
 [ADR 0017](docs/adr/0017-library-definition-lives-where-upstream-puts-it.md)
 and [the plain-data form](docs/library-definition.md).
 
@@ -730,6 +728,7 @@ and [the plain-data form](docs/library-definition.md).
 | --- | --- | --- |
 | `defineComponent`, `createLibrary`, and zod-derived schemas and signatures | The core builds the schema and spec from plain data. Swift authors supply typed props, groups and a root. | [Definition goldens](conformance/golden/library-definitions.json), [Swift declaration and drawing tests](swift/OpenUINative/Tests/OpenUINativeTests/ComponentDefinitionTests.swift) |
 | `defineFunction`, `defineAction` and renderer registration | Swift declarations supply ordered parameters and an optional return type. Each live session registers the library's Swift closures. The evaluator checks function calls, and the app receives declared actions as host events. | [Swift function and action tests](swift/OpenUINative/Tests/OpenUINativeTests/FunctionDefinitionTests.swift) |
+| Defaults, unknown values, array minima, refined props and string descriptions | The converter and core reproduce each shape's schema and prompt signature. | [Definition goldens](conformance/golden/library-definitions.json), [react-ui definition](conformance/real-libraries/react-ui.json) |
 | A component declaration carries its renderer | OpenUINative draws the declared SwiftUI view with the evaluated element through `ElementDrawing`. A viewless declaration uses its fallback. | [Binding example](docs/library-definition.md), [ADR 0017](docs/adr/0017-library-definition-lives-where-upstream-puts-it.md) |
 
 ## Deliberately not ported from lang-core

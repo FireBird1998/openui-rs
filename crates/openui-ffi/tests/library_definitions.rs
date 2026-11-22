@@ -69,7 +69,7 @@ fn limit_exceeded(result: Result<Arc<ComponentLibrary>, OpenUiError>) -> String 
 #[test]
 fn every_sample_gives_upstreams_schema_and_spec_text() {
     let cases = golden();
-    assert_eq!(cases.len(), 93, "the golden's samples changed");
+    assert_eq!(cases.len(), 99, "the golden's samples changed");
     let (mut errors, mut libraries) = (0, 0);
     for case in &cases {
         let name = case["name"].as_str().unwrap();
@@ -94,7 +94,7 @@ fn every_sample_gives_upstreams_schema_and_spec_text() {
         assert_eq!(schema, stringify_json(&core.to_json_schema()), "{name}");
         assert_eq!(spec, stringify_json(&core.to_spec()), "{name}");
     }
-    assert_eq!((errors, libraries), (23, 70), "every sample was checked");
+    assert_eq!((errors, libraries), (23, 76), "every sample was checked");
 }
 
 /// Components named like array indices come first in the text, as

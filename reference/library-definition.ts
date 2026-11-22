@@ -8,13 +8,13 @@
 // It refuses, naming it, anything the plain-data form can't carry, so nothing
 // is silently approximated and the proof compares like with like. It works
 // from allow-lists rather than a list of known-bad cases: each supported zod
-// kind names the fields its def may have (and `checks` only when empty), so a
-// format (z.int(), z.email(), z.iso.date()), a check (.min()), a coercion, a
+// kind names the fields and checks its def may have, so a
+// format (z.int(), z.email(), z.iso.date()), an unsupported check, a coercion, a
 // catch-all on an object, a discriminated or exclusive union (z.xor), a
 // partial or loose record, or anything zod adds later is refused by the
 // field's name, and a kind not listed (z.literal, z.tuple, z.intersection,
 // z.map, z.lazy, ...) by its name. Beyond the def it refuses, on every type at
-// every depth, metadata (.describe(), .meta()).
+// every depth, metadata except one .describe(string) on a string or optional string.
 //
 // The kinds that link a library together (#133) are found by identity: a
 // component's props object used as a type is a reference to that component
@@ -73,14 +73,16 @@ import { ACTION_DEFS, action, steps } from "./lang-core/src/parser/builtins";
 import { isReactiveSchema } from "./lang-core/src/reactive";
 import { schemaIdTags } from "./lang-core/src/signature";
 import * as z from "zod/v4/core";
+import { z as classic } from "zod/v4";
 
 export type TypeDescription =
   | { kind: "string" }
   | { kind: "number" }
   | { kind: "boolean" }
   | { kind: "any" }
+  | { kind: "unknown" }
   | { kind: "enum"; values: string[] }
-  | { kind: "array"; items: TypeDescription }
+  | { kind: "array"; items: TypeDescription; minItems?: number }
   | { kind: "union"; options: TypeDescription[] }
   | { kind: "object"; fields: FieldDefinition[] }
   | { kind: "record"; values: TypeDescription }
@@ -88,7 +90,7 @@ export type TypeDescription =
   | { kind: "component"; name: string }
   | { kind: "action"; name?: string }
   | { kind: "named"; name: string; type: TypeDescription };
-export type FieldDefinition = { name: string; type: TypeDescription; optional?: true };
+export type FieldDefinition = { name: string; type: TypeDescription; optional?: true; default?: z.util.JSONType };
 export type PropDefinition = FieldDefinition & { binding?: true };
 export type ComponentDefinition = { name: string; description: string; props: PropDefinition[] };
 export type ComponentGroup = { name: string; components: string[]; notes?: string[] };
@@ -112,15 +114,16 @@ type Declared = {
   id?: string;
 };
 
-// The def fields each supported zod kind may have. `checks` is allowed only
-// when empty (z.number() always has one).
+// Supported fields of each zod def. Checks have their own allow-list.
 const SCALAR_DEFS: Record<string, string[]> = {
   string: ["type", "checks"],
   number: ["type", "checks"],
   boolean: ["type", "checks"],
   any: ["type", "checks"],
+  unknown: ["type", "checks"],
 };
 const OPTIONAL_DEF = ["type", "innerType", "checks"];
+const DEFAULT_DEF = ["type", "innerType", "defaultValue", "checks"];
 const NULLABLE_DEF = ["type", "innerType", "checks"];
 const ENUM_DEF = ["type", "entries", "checks"];
 const ARRAY_DEF = ["type", "element", "checks"];
@@ -154,19 +157,74 @@ function refuseUnknownFields(value: object, allowed: string[], where: string) {
   }
 }
 
-// The def holds only the allowed fields, no checks, and nothing outside the
+// Zod registers exactly the same data for .describe("x") and
+// .meta({description: "x"}). Observe the former while the declarations load.
+// Delegate to the pinned Zod method and keep its actual clone and metadata;
+// upstream and the converter both read the marks on that same object.
+const described = new WeakMap<z.$ZodType, z.GlobalMeta>();
+for (const example of [classic.string(), classic.string().optional()]) {
+  const proto = Object.getPrototypeOf(example);
+  const accessor = Object.getOwnPropertyDescriptor(proto, "describe")!;
+  Object.defineProperty(proto, "describe", {
+    ...accessor,
+    get(this: classic.ZodType) {
+      const describe = accessor.get!.call(this);
+      // Zod caches the bound method on first access, including detached calls.
+      return z.util.own(this, "describe", (...args: unknown[]) => {
+        const clone = describe(...args);
+        if (args.length === 1) described.set(clone, z.globalRegistry._map.get(clone)!);
+        return clone;
+      });
+    },
+  });
+}
+
+function hasMetadata(schema: z.$ZodType | undefined): boolean {
+  for (let node = schema; node; node = node._zod.parent) {
+    if (z.globalRegistry.has(node)) return true;
+  }
+  return false;
+}
+
+function refuseMetadata(schema: z.$ZodType, where: string) {
+  const parentMetadata = hasMetadata(schema._zod.parent);
+  if (!z.globalRegistry.has(schema) && !parentMetadata) return;
+  const d = def(schema);
+  const own = z.globalRegistry._map.get(schema);
+  const metadata = z.globalRegistry.get(schema);
+  const kind = d.type === "optional" ? `optional ${def(d.innerType)?.type}` : d.type;
+  let reason = `.meta() or unproved metadata on ${kind}`;
+  if (metadata && Object.hasOwn(metadata, "description")) {
+    if (parentMetadata || Reflect.ownKeys(metadata).length !== 1 ||
+        (d.type === "optional" && hasMetadata(d.innerType))) {
+      reason = "repeated description or description plus other metadata";
+    } else if (typeof metadata.description !== "string") {
+      reason = "non-string description";
+    } else if (kind !== "string" && kind !== "optional string") {
+      reason = `description on ${kind}`;
+    } else if (own && described.get(schema) === own && Reflect.ownKeys(own).length === 1) {
+      return;
+    }
+  }
+  throw new Error(`${where}: ${reason}; only a single string-valued .describe() on a string or optional string is accepted because only this metadata form is proved against upstream`);
+}
+
+// The def holds only the allowed fields and checks, and nothing outside the
 // def changes what zod writes. A binding is refused unless `binding` says the
 // schema is a prop's outermost one.
-function refuseDetails(schema: z.$ZodType, allowed: string[], where: string, binding = false) {
+function refuseDetails(
+  schema: z.$ZodType, allowed: string[], where: string, binding = false,
+  acceptsCheck: (check: z.$ZodCheck) => boolean = () => false,
+) {
   const d = def(schema);
   if (d === undefined || d === null || typeof d !== "object") throw new Error(`${where}: not a zod schema`);
+  refuseMetadata(schema, where);
   for (const key of Object.keys(d)) {
     if (!allowed.includes(key)) throw new Error(`${where}: zod ${d.type} with "${key}" (a format, coercion or other detail) isn't supported yet`);
   }
-  if (d.checks !== undefined && (!Array.isArray(d.checks) || d.checks.length > 0)) {
+  if (d.checks !== undefined && (!Array.isArray(d.checks) || !d.checks.every(acceptsCheck))) {
     throw new Error(`${where}: checks (${d.type} with .min() and the like) aren't supported yet`);
   }
-  if (z.globalRegistry.get(schema) !== undefined) throw new Error(`${where}: metadata (.describe(), .meta()) isn't supported yet`);
   refuseBinding(schema, where, binding);
 }
 
@@ -217,7 +275,7 @@ function typeOf(schema: z.$ZodType, where: string, depth: number, binding = fals
   }
   const slot = ACTION_SCHEMAS.get(schema);
   if (slot !== undefined) {
-    if (z.globalRegistry.get(schema as z.$ZodType) !== undefined) throw new Error(`${where}: metadata (.describe(), .meta()) isn't supported yet`);
+    refuseMetadata(schema, where);
     if (slot.kind === "action" && slot.name === undefined && schemaIdTags.get(schema as object) !== "ActionExpression") {
       throw new Error(`${where}: an action slot whose prompt name was changed isn't supported`);
     }
@@ -227,7 +285,7 @@ function typeOf(schema: z.$ZodType, where: string, depth: number, binding = fals
   const custom = actionOwners.get(schema);
   if (custom !== undefined) {
     if (custom === "") throw new Error(`${where}: a reference to the action with the empty name isn't supported`);
-    if (z.globalRegistry.get(schema as z.$ZodType) !== undefined) throw new Error(`${where}: metadata (.describe(), .meta()) isn't supported yet`);
+    refuseMetadata(schema, where);
     refuseBinding(schema, where, binding);
     return { kind: "action", name: custom };
   }
@@ -255,9 +313,16 @@ function structureOf(schema: z.$ZodType, where: string, depth: number, binding: 
       // Object.keys order: array-index words first, a repeated word once.
       return { kind, values: entries.map(([key]) => key) };
     }
-    case "array":
-      refuseDetails(schema, ARRAY_DEF, where, binding);
-      return { kind, items: typeOf(d.element, `${where}[]`, depth + 1) };
+    case "array": {
+      let minItems: number | undefined;
+      refuseDetails(schema, ARRAY_DEF, where, binding, (check) => {
+        const rule = def(check);
+        if (rule?.check !== "min_length" || !Number.isFinite(rule.minimum)) return false;
+        minItems = minItems === undefined ? rule.minimum : Math.max(minItems, rule.minimum);
+        return true;
+      });
+      return { kind, items: typeOf(d.element, `${where}[]`, depth + 1), ...(minItems === undefined ? {} : { minItems }) };
+    }
     case "union":
       refuseDetails(schema, UNION_DEF, where, binding);
       return { kind, options: (d.options as z.$ZodType[]).map((o, i) => typeOf(o, `${where}|${i}`, depth + 1)) };
@@ -275,9 +340,18 @@ function structureOf(schema: z.$ZodType, where: string, depth: number, binding: 
       return { kind, type: typeOf(d.innerType, `${where}?`, depth + 1) };
   }
   const allowed = SCALAR_DEFS[kind];
-  if (!Object.hasOwn(SCALAR_DEFS, kind) || allowed === undefined) throw new Error(`${where}: zod kind "${kind}" isn't supported yet`);
+  if (!Object.hasOwn(SCALAR_DEFS, kind) || allowed === undefined) {
+    if (d) refuseMetadata(schema, where);
+    throw new Error(`${where}: zod kind "${kind}" isn't supported yet`);
+  }
   refuseDetails(schema, allowed, where, binding);
   return { kind } as TypeDescription;
+}
+
+function optionalInner(schema: z.$ZodType, where: string, binding: boolean): z.$ZodType {
+  refuseDetails(schema, OPTIONAL_DEF, where, binding);
+  if (schemaIdTags.has(schema)) throw new Error(`${where}: a prompt name on .optional() (which upstream never reads) isn't supported`);
+  return def(schema).innerType;
 }
 
 // A prop or an object field: .optional() is allowed here and only here. A
@@ -285,13 +359,29 @@ function structureOf(schema: z.$ZodType, where: string, depth: number, binding: 
 // wrapper when there is one, as upstream reads it.
 function fieldOf(name: string, schema: z.$ZodType, where: string, depth: number, prop = false): PropDefinition {
   const binding = prop && isReactiveSchema(schema);
-  const marks = binding ? { binding: true as const } : {};
+  const marks: Omit<PropDefinition, "name" | "type"> = {};
+  let outermost = prop;
   if (def(schema)?.type === "optional") {
-    refuseDetails(schema, OPTIONAL_DEF, where, prop);
-    if (schemaIdTags.has(schema)) throw new Error(`${where}: a prompt name on .optional() (which upstream never reads) isn't supported`);
-    return { name, type: typeOf(def(schema).innerType, where, depth), optional: true, ...marks };
+    marks.optional = true;
+    schema = optionalInner(schema, where, outermost);
+    outermost = false;
   }
-  return { name, type: typeOf(schema, where, depth, prop), ...marks };
+  if (def(schema)?.type === "default") {
+    refuseDetails(schema, DEFAULT_DEF, where, outermost);
+    if (schemaIdTags.has(schema)) throw new Error(`${where}: a prompt name on .default() (which upstream never reads) isn't supported`);
+    // Zod round-trips the value through JSON before writing its schema.
+    try {
+      marks.default = JSON.parse(JSON.stringify(def(schema).defaultValue));
+    } catch {
+      throw new Error(`${where}: value cannot be written as a JSON default`);
+    }
+    schema = def(schema).innerType;
+    // An optional under the default does not remove the key from required.
+    if (def(schema)?.type === "optional") schema = optionalInner(schema, where, false);
+    outermost = false;
+  }
+  if (binding) marks.binding = true;
+  return { name, type: typeOf(schema, where, depth, outermost), ...marks };
 }
 
 // The fields of a z.object (a component's props, `props`, or an inline
@@ -302,7 +392,17 @@ function fieldOf(name: string, schema: z.$ZodType, where: string, depth: number,
 function fieldsOf(object: z.$ZodObject, where: string, depth: number, binding = false, props = false): PropDefinition[] {
   const d = def(object);
   if (d?.type !== "object" || !d.shape) throw new Error(`${where}: props must be z.object(...)`);
-  refuseDetails(object, OBJECT_DEF, where, binding);
+  // Component refinements validate at runtime. Zod emits their ordinary shape.
+  refuseDetails(object, OBJECT_DEF, where, binding, (check) => props && def(check)?.check === "custom");
+  if (props && d.checks?.length) {
+    // A refinement inherits its schema. Zod can write a $ref to a parent
+    // registered as a component instead of the object's fields.
+    for (let parent = object._zod.parent; parent; parent = parent._zod.parent) {
+      if (owners.get(parent)?.name || actionOwners.get(parent) || ACTION_SCHEMAS.has(parent)) {
+        throw new Error(`${where}: refined props with a registered parent aren't supported`);
+      }
+    }
+  }
   if (d.catchall !== undefined) {
     if (def(d.catchall)?.type !== "never") throw new Error(`${where}: an object with a catch-all (z.looseObject, .catchall()) isn't supported`);
     refuseDetails(d.catchall, NEVER_DEF, `${where} catch-all`);
@@ -337,8 +437,17 @@ function groupOf(g: ComponentGroup, where: string): ComponentGroup {
 // The schemas zod meets inside a schema, in the order its processors meet
 // them: an object's fields (and a catch-all other than z.never()), an
 // array's element, a union's options, a record's values then key, the
-// schema inside .nullable() or .optional().
+// schema inside .nullable(), .default() or .optional().
 function children(schema: unknown): unknown[] {
+  const children = innerSchemas(schema);
+  // Zod processes a check's parent after its own children. A cycle can run
+  // through the base object of a refinement or the base array of .min().
+  const parent = (schema as z.$ZodType)?._zod?.parent;
+  if (parent) children.push(parent);
+  return children;
+}
+
+function innerSchemas(schema: unknown): unknown[] {
   const d = def(schema);
   switch (d?.type) {
     case "object": {
@@ -353,6 +462,7 @@ function children(schema: unknown): unknown[] {
       return [d.valueType, d.keyType];
     case "nullable":
     case "optional":
+    case "default":
       return [d.innerType];
     default:
       return [];

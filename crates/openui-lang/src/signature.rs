@@ -4,8 +4,8 @@
 //! [`LibraryDefinition`](crate::LibraryDefinition)'s plain data and must give
 //! the same text.
 //!
-//! Upstream's rules, copied: a nullable prop or field is marked `?` as an
-//! optional one is (`isOptionalType`), and nullable is unwrapped before a
+//! Upstream's rules, copied: a defaulted or nullable prop or field is marked `?` as an
+//! optional one is (`isOptionalType`), and both are unwrapped before a
 //! type is named (`unwrap`). A type upstream can't name (an empty enum, whose
 //! name is the empty string, or an array of one) has no annotation: a prop
 //! then prints as its bare name, or `[name]` when it is an array; a field as
@@ -46,10 +46,11 @@ fn structure(mut ty: &TypeDescription) -> &TypeDescription {
     ty
 }
 
-/// `unwrap`: the type inside any nullables, a named nullable's name lost
+/// `unwrap`: the type inside any defaults or nullables, a named nullable's name lost
 /// with it.
 fn unwrap(mut ty: &TypeDescription) -> &TypeDescription {
-    while let TypeDescription::Nullable(inner) = structure(ty) {
+    while let TypeDescription::Nullable(inner) | TypeDescription::Default(inner, _) = structure(ty)
+    {
         ty = inner;
     }
     ty
@@ -104,7 +105,7 @@ fn base_type(ty: &TypeDescription) -> Option<String> {
                 names.join(" | ")
             }
         }
-        TypeDescription::Array(items) => {
+        TypeDescription::Array(items) | TypeDescription::ArrayWithMinimum(items, _) => {
             let inner = type_annotation(items)?;
             if is_union(unwrap(items)) {
                 format!("({inner})[]")
@@ -115,7 +116,7 @@ fn base_type(ty: &TypeDescription) -> Option<String> {
         TypeDescription::String => "string".to_owned(),
         TypeDescription::Number => "number".to_owned(),
         TypeDescription::Boolean => "boolean".to_owned(),
-        TypeDescription::Any => "any".to_owned(),
+        TypeDescription::Any | TypeDescription::Unknown => "any".to_owned(),
         TypeDescription::Record(values) => {
             let values = type_annotation(values);
             format!("Record<string, {}>", values.as_deref().unwrap_or("any"))
@@ -143,7 +144,9 @@ fn base_type(ty: &TypeDescription) -> Option<String> {
                 .collect();
             format!("{{{}}}", fields.join(", "))
         }
-        TypeDescription::Nullable(inner) => return base_type(unwrap(inner)),
+        TypeDescription::Nullable(inner) | TypeDescription::Default(inner, _) => {
+            return base_type(unwrap(inner));
+        }
         // `structure` never gives a named type, and the others answered
         // above.
         TypeDescription::Component(_) | TypeDescription::Action(_) | TypeDescription::Named(..) => {
@@ -152,9 +155,13 @@ fn base_type(ty: &TypeDescription) -> Option<String> {
     })
 }
 
-/// `isOptionalType`: optional, or a nullable type (named or not).
+/// `isOptionalType`: optional, defaulted, or a nullable type (named or not).
 fn is_optional(optional: bool, ty: &TypeDescription) -> bool {
-    optional || matches!(structure(ty), TypeDescription::Nullable(_))
+    optional
+        || matches!(
+            structure(ty),
+            TypeDescription::Nullable(_) | TypeDescription::Default(..)
+        )
 }
 
 /// `schemaSignature`: `Name(field, ...)`, with the entries in the order
@@ -196,7 +203,11 @@ fn signature<'a>(name: &str, props: impl Iterator<Item = Entry<'a>>) -> String {
                     out.push_str(&ty);
                 }
             }
-            None if matches!(structure(unwrap(prop.ty)), TypeDescription::Array(_)) => {
+            None if matches!(
+                structure(unwrap(prop.ty)),
+                TypeDescription::Array(_) | TypeDescription::ArrayWithMinimum(..)
+            ) =>
+            {
                 out.push('[');
                 out.push_str(prop.name);
                 out.push_str(if optional { "]?" } else { "]" });

@@ -69,8 +69,10 @@
 //!   | `{"kind": "number"}` | `z.number()` | `{"type": "number"}` | `number` |
 //!   | `{"kind": "boolean"}` | `z.boolean()` | `{"type": "boolean"}` | `boolean` |
 //!   | `{"kind": "any"}` | `z.any()` | `{}` | `any` |
+//!   | `{"kind": "unknown"}` | `z.unknown()` | `{}` | `any` |
 //!   | `{"kind": "enum", "values": ["a", "b"]}` | `z.enum(["a", "b"])` | `{"type": "string", "enum": ["a", "b"]}` | `"a" \| "b"` |
 //!   | `{"kind": "array", "items": T}` | `z.array(T)` | `{"type": "array", "items": T}` | `T[]`, `(T)[]` for a union |
+//!   | `{"kind": "array", "items": T, "minItems": n}` | `z.array(T).min(n)` | `{"minItems": n, "type": "array", "items": T}` | as an array |
 //!   | `{"kind": "union", "options": [T, U]}` | `z.union([T, U])` | `{"anyOf": [T, U]}` | `T \| U` |
 //!   | `{"kind": "object", "fields": [F]}` | `z.object({...})` | as a component's props | `{a: T, b?: U}` |
 //!   | `{"kind": "record", "values": T}` | `z.record(z.string(), T)` | `{"type": "object", "propertyNames": {"type": "string"}, "additionalProperties": T}` | `Record<string, T>` |
@@ -94,6 +96,11 @@
 //!   unescaped in the signature; an empty enum is `{"not": {}}` and has no
 //!   signature type (the prop prints as its bare name, or `[name]` when it is
 //!   an array of one); an empty union is `{"anyOf": []}` and prints `any`.
+//! - A prop or field may carry `"default": value`, for any JSON value,
+//!   including null. Zod writes `default` before the inner schema's keys.
+//!   The field stays in `required` unless optional, and prints with `?`.
+//! - A custom refinement on the props object uses the ordinary props list.
+//!   Upstream emits the object without its validation predicate.
 //! - The kinds that link a library together:
 //!   - A **component reference** names a component of the library: the
 //!     last one of that name, as upstream's record keeps the last, or the
@@ -226,6 +233,7 @@ use std::fmt;
 use serde_json::{Map, Value as Json};
 
 use crate::js::JsObject;
+use crate::library::clone_json;
 use crate::{CallKind, Limits};
 
 /// A component library's declarations, in plain-data form. Read one from its
@@ -319,17 +327,24 @@ pub enum TypeDescription {
     Boolean,
     /// `z.any()`.
     Any,
+    /// `z.unknown()`.
+    Unknown,
     /// `z.enum([...])`: one of these words. They are written in JavaScript
     /// property order, each once, as zod keeps them.
     Enum(Vec<String>),
     /// `z.array(T)`.
     Array(Box<TypeDescription>),
+    /// `z.array(T).min(n)`, with the tightest declared minimum.
+    ArrayWithMinimum(Box<TypeDescription>, serde_json::Number),
     /// `z.union([...])`, its options in order.
     Union(Vec<TypeDescription>),
     /// `z.object({...})`, written inline, its fields in positional order.
     Object(Vec<FieldDefinition>),
     /// `z.record(z.string(), T)`: string keys, values of this type.
     Record(Box<TypeDescription>),
+    /// A prop or field with a JSON default. Only the outermost type of a field
+    /// can carry this wrapper in the plain-data form.
+    Default(Box<TypeDescription>, DefaultValue),
     /// `T.nullable()`: this type or null.
     Nullable(Box<TypeDescription>),
     /// `Item.ref`: the library's component of this name.
@@ -339,6 +354,37 @@ pub enum TypeDescription {
     Action(Option<String>),
     /// `tagSchemaId(T, name)`: `T`, shown by this name in the signature.
     Named(String, Box<TypeDescription>),
+}
+
+/// A JSON default, copied and freed with the same iterative walks as a
+/// compiled library's parameter defaults.
+#[derive(Debug, PartialEq, Eq)]
+pub struct DefaultValue(Json);
+
+impl From<Json> for DefaultValue {
+    fn from(value: Json) -> Self {
+        Self(value)
+    }
+}
+
+impl AsRef<Json> for DefaultValue {
+    fn as_ref(&self) -> &Json {
+        &self.0
+    }
+}
+
+impl Clone for DefaultValue {
+    fn clone(&self) -> Self {
+        Self(clone_json(&self.0))
+    }
+}
+
+impl Drop for DefaultValue {
+    fn drop(&mut self) {
+        if self.0.is_array() || self.0.is_object() {
+            crate::free_json(std::mem::take(&mut self.0));
+        }
+    }
 }
 
 impl Drop for TypeDescription {
@@ -360,6 +406,8 @@ impl TypeDescription {
     fn take_inner(&mut self, rest: &mut Vec<TypeDescription>) {
         match self {
             TypeDescription::Array(inner)
+            | TypeDescription::ArrayWithMinimum(inner, _)
+            | TypeDescription::Default(inner, _)
             | TypeDescription::Record(inner)
             | TypeDescription::Nullable(inner)
             | TypeDescription::Named(_, inner) => {
@@ -379,6 +427,7 @@ impl TypeDescription {
             | TypeDescription::Number
             | TypeDescription::Boolean
             | TypeDescription::Any
+            | TypeDescription::Unknown
             | TypeDescription::Enum(_)
             | TypeDescription::Component(_)
             | TypeDescription::Action(_) => {}
@@ -389,6 +438,8 @@ impl TypeDescription {
         !matches!(
             self,
             TypeDescription::Array(_)
+                | TypeDescription::ArrayWithMinimum(..)
+                | TypeDescription::Default(..)
                 | TypeDescription::Record(_)
                 | TypeDescription::Nullable(_)
                 | TypeDescription::Named(..)
@@ -697,6 +748,10 @@ fn named_type(
     let name = string(required(map, at, "name")?, Path::Field(&at, "name"))?;
     let ty =
         TypeDescription::from_json(required(map, at, "type")?, Path::Field(&at, "type"), depth)?;
+    let ty = match map.get("default") {
+        Some(value) => TypeDescription::Default(Box::new(ty), clone_json(value).into()),
+        None => ty,
+    };
     Ok((
         name,
         ty,
@@ -705,8 +760,8 @@ fn named_type(
     ))
 }
 
-const PROP_FIELDS: [&str; 4] = ["name", "type", "optional", "binding"];
-const FIELD_FIELDS: [&str; 3] = ["name", "type", "optional"];
+const PROP_FIELDS: [&str; 5] = ["name", "type", "optional", "binding", "default"];
+const FIELD_FIELDS: [&str; 4] = ["name", "type", "optional", "default"];
 
 /// The built-in actions a slot can name: upstream's `steps`, the ones with
 /// an action shape of their own.
@@ -909,9 +964,9 @@ impl TypeDescription {
             .ok_or_else(|| Path::Field(&at, "kind").invalid("expected a string"))?;
         // Each kind names the fields it has; a new kind is a new arm.
         let fields: &[&str] = match kind {
-            "string" | "number" | "boolean" | "any" => &["kind"],
+            "string" | "number" | "boolean" | "any" | "unknown" => &["kind"],
             "enum" | "record" => &["kind", "values"],
-            "array" => &["kind", "items"],
+            "array" => &["kind", "items", "minItems"],
             "union" => &["kind", "options"],
             "object" => &["kind", "fields"],
             "nullable" => &["kind", "type"],
@@ -935,11 +990,23 @@ impl TypeDescription {
             "string" => TypeDescription::String,
             "number" => TypeDescription::Number,
             "boolean" => TypeDescription::Boolean,
+            "unknown" => TypeDescription::Unknown,
             "enum" => {
                 let (value, name) = field("values")?;
                 TypeDescription::Enum(strings(value, Path::Field(&at, name))?)
             }
-            "array" => TypeDescription::Array(inner("items")?),
+            "array" => {
+                let items = inner("items")?;
+                match map.get("minItems") {
+                    None => TypeDescription::Array(items),
+                    Some(Json::Number(min)) => {
+                        TypeDescription::ArrayWithMinimum(items, min.clone())
+                    }
+                    Some(_) => {
+                        return Err(Path::Field(&at, "minItems").invalid("expected a number"));
+                    }
+                }
+            }
             "record" => TypeDescription::Record(inner("values")?),
             "nullable" => TypeDescription::Nullable(inner("type")?),
             "component" => {
@@ -1084,6 +1151,7 @@ fn check_type(ty: &TypeDescription, at: Path<'_>, names: &Names<'_>) -> Read<()>
         | TypeDescription::Number
         | TypeDescription::Boolean
         | TypeDescription::Any
+        | TypeDescription::Unknown
         | TypeDescription::Enum(_) => Ok(()),
         TypeDescription::Named(_, inner) => {
             let inner_at = Path::Field(&at, "type");
@@ -1099,8 +1167,11 @@ fn check_type(ty: &TypeDescription, at: Path<'_>, names: &Names<'_>) -> Read<()>
             }
             check_type(inner, inner_at, names)
         }
-        TypeDescription::Array(inner) => check_type(inner, Path::Field(&at, "items"), names),
+        TypeDescription::Array(inner) | TypeDescription::ArrayWithMinimum(inner, _) => {
+            check_type(inner, Path::Field(&at, "items"), names)
+        }
         TypeDescription::Record(inner) => check_type(inner, Path::Field(&at, "values"), names),
+        TypeDescription::Default(inner, _) => check_type(inner, at, names),
         TypeDescription::Nullable(inner) => check_type(inner, Path::Field(&at, "type"), names),
         TypeDescription::Union(options) => {
             let options_at = Path::Field(&at, "options");

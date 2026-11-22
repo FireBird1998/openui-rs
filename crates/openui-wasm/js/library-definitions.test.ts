@@ -21,7 +21,7 @@ const define = (definition: unknown) => wasm.ComponentLibrary.fromDefinition(JSO
 const fromUpstream = (s: Sample) => new wasm.ComponentLibrary(JSON.stringify(s.schema));
 
 test('every sample gives upstream\'s schema and spec text, or its error as InvalidJson', () => {
-  expect(samples.length).toBe(93);
+  expect(samples.length).toBe(99);
   let errors = 0, libraries = 0;
   for (const s of samples) {
     if (s.error !== undefined) {
@@ -37,7 +37,7 @@ test('every sample gives upstream\'s schema and spec text, or its error as Inval
     expect(library.promptSpec()).toBe(JSON.stringify(s.spec));
     library.free();
   }
-  expect([errors, libraries]).toEqual([23, 70]);
+  expect([errors, libraries]).toEqual([23, 76]);
 });
 
 test('integer-like component names come first, as JavaScript writes them', () => {
@@ -160,13 +160,13 @@ type CloudEntry = { name: string; promptOptions?: unknown; instructions?: string
 const { prompts, cloud } = promptGolden as { prompts: PromptEntry[]; cloud: CloudEntry[] };
 
 test('a defined library\'s prompt and cloud config are upstream\'s, byte for byte', () => {
-  expect(prompts.length).toBe(121);
+  expect(prompts.length).toBe(131);
   for (const e of prompts) {
     const library = define(sample(e.name).definition);
     expect(library.prompt(e.options === undefined ? undefined : JSON.stringify(e.options))).toBe(e.prompt);
     library.free();
   }
-  expect(cloud.length).toBe(82);
+  expect(cloud.length).toBe(88);
   for (const e of cloud) {
     const library = define(sample(e.name).definition);
     const options = e.promptOptions === undefined ? undefined : JSON.stringify(e.promptOptions);

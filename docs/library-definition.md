@@ -310,11 +310,14 @@ Schema written for it and how the signature prints it (for a prop named
 | number | `{"kind": "number"}` | `z.number()` | `{"type":"number"}` | `p: number` |
 | boolean | `{"kind": "boolean"}` | `z.boolean()` | `{"type":"boolean"}` | `p: boolean` |
 | any | `{"kind": "any"}` | `z.any()` | `{}` | `p: any` |
+| unknown | `{"kind": "unknown"}` | `z.unknown()` | `{}` | `p: any` |
 | list of words | `{"kind": "enum", "values": ["sm", "lg"]}` | `z.enum(["sm", "lg"])` | `{"type":"string","enum":["sm","lg"]}` | `p: "sm" \| "lg"` |
 | array | `{"kind": "array", "items": {"kind": "string"}}` | `z.array(z.string())` | `{"type":"array","items":{"type":"string"}}` | `p: string[]` |
+| array minimum | `{"kind": "array", "items": {"kind": "string"}, "minItems": 2}` | `z.array(z.string()).min(2)` | `{"minItems":2,"type":"array","items":{"type":"string"}}` | `p: string[]` |
 | union | `{"kind": "union", "options": [{"kind": "string"}, {"kind": "number"}]}` | `z.union([...])` | `{"type":["string","number"]}` (an `anyOf` unless every option is a bare type) | `p: string \| number` |
 | inline object | `{"kind": "object", "fields": [{"name": "x", "type": {"kind": "number"}}, {"name": "y", "type": {"kind": "number"}, "optional": true}]}` | `z.object({x, y: ....optional()})` | `{"type":"object","properties":{"x":{"type":"number"},"y":{"type":"number"}},"required":["x"],"additionalProperties":false}` | `p: {x: number, y?: number}` |
 | record | `{"kind": "record", "values": {"kind": "string"}}` | `z.record(z.string(), z.string())` | `{"type":"object","propertyNames":{"type":"string"},"additionalProperties":{"type":"string"}}` | `p: Record<string, string>` |
+| default | `"default": ""` on a string prop or field | `z.string().default("")` | `{"default":"","type":"string"}`, in `required` | `p?: string` |
 | optional | `"optional": true` on the prop or field | `.optional()` | left out of `required` | `p?: ...` |
 | nullable | `{"kind": "nullable", "type": {"kind": "string"}}` | `.nullable()` | `{"type":["string","null"]}`, still in `required` | `p?: string` |
 | component reference | `{"kind": "array", "items": {"kind": "component", "name": "Item"}}` | `z.array(Item.ref)` | `{"type":"array","items":{"$ref":"#/$defs/Item"}}` | `p: Item[]` |
@@ -323,6 +326,27 @@ Schema written for it and how the signature prints it (for a prop named
 | one library action | `{"kind": "action", "name": "Copy"}` | `copy.ref` | `{"$ref":"#/$defs/Copy"}`, whose entry is `{"type":"object","properties":{"type":{"type":"string","const":"Copy"},"params":...},"required":["type","params"],"additionalProperties":false}` | `p: @Copy` |
 | binding | `"binding": true` on the prop | `reactive(...)` | unchanged | `p: $binding<string>` |
 | named type | `{"kind": "named", "name": "Color", "type": {"kind": "string"}}` | `tagSchemaId(z.string(), "Color")` | the inner type's: `{"type":"string"}` | `p: Color` |
+
+A default can be any JSON value, including `null`, an object or an array.
+It marks the signature with `?`. Adding `"optional": true` also omits the
+field from `required`, as with `.default(value).optional()`.
+The converter takes the tightest of repeated array minima. A custom
+refinement on a component's props uses the same ordered props as the ordinary
+object. Upstream emits the fields and signature without running the predicate.
+
+The reference converter accepts only a single string-valued `.describe("…")`
+on `z.string()` or `z.string().optional()`, because only this metadata form
+is proved against upstream. The converter observes the call while loading
+the declarations. With and without these descriptions, the pinned react-ui
+library writes identical JSON Schema, prompt signatures, system prompt and
+cloud config. The plain data uses the ordinary string and optional flag.
+`.meta({...})` (even with just a description), descriptions on other
+kinds, non-string descriptions, repeated descriptions and descriptions
+combined with other metadata are refused.
+
+Zod creates a new schema for `.describe()`. Apply `reactive` or
+`tagSchemaId` to that returned schema to mark it. Upstream looks up both
+marks by object identity.
 
 Optional and nullable are separate facts: a prop may be both (zod's
 `.nullable().optional()`). A referenced component or action gets its `$defs`

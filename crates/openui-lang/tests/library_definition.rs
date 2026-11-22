@@ -4,8 +4,8 @@
 //! declaration it was converted from, or the error upstream's `createLibrary`
 //! throws, with its message. The expected output is
 //! `conformance/golden/library-definitions.json`, written by
-//! `reference/library-definitions.ts` running upstream's code. The Intelligent
-//! UI definition and oracles come from `reference/real-library-spec.ts`.
+//! `reference/library-definitions.ts` running upstream's code. The real-library
+//! importer also checks the pinned react-ui schema, spec, prompt and cloud config.
 //!
 //! Also the parser guarantee: a defined library reaches the parser only as
 //! that JSON Schema, so it parses the corpus programs written for it exactly
@@ -78,34 +78,39 @@ fn assert_real_library_bytes(actual: &Value, upstream: &Value, label: &str, reco
     if stringify_json(actual) == stringify_json(upstream) {
         return;
     }
-    for field in records {
-        let mut got = actual[*field].as_object().into_iter().flatten();
-        let mut want = upstream[*field].as_object().into_iter().flatten();
-        loop {
-            match (got.next(), want.next()) {
-                (None, None) => break,
-                (Some((a, value)), Some((b, expected))) => {
-                    assert_eq!(a, b, "{label}.{field}: first different name");
-                    assert_eq!(
-                        stringify_json(value),
-                        stringify_json(expected),
-                        "{label}.{field}.{b}"
-                    );
+    let (Value::Object(got), Value::Object(want)) = (actual, upstream) else {
+        panic!("{label}: expected an object on both sides");
+    };
+    let mut got = got.iter();
+    let mut want = want.iter();
+    loop {
+        match (got.next(), want.next()) {
+            (None, None) => break,
+            (Some((a, value)), Some((b, expected))) => {
+                assert_eq!(a, b, "{label}: first different name");
+                let path = format!("{label}.{b}");
+                if records.contains(&b.as_str()) {
+                    assert_real_library_bytes(value, expected, &path, &[]);
+                } else {
+                    assert_eq!(stringify_json(value), stringify_json(expected), "{path}");
                 }
-                (None, Some((name, _))) => panic!("{label}.{field}: missing {name}"),
-                (Some((name, _)), None) => panic!("{label}.{field}: unexpected {name}"),
             }
+            (None, Some((name, _))) => panic!("{label}: missing {name}"),
+            (Some((name, _)), None) => panic!("{label}: unexpected {name}"),
         }
     }
-    panic!("{label}: document bytes differ outside the named records");
 }
 
 fn fixture(path: &str) -> Value {
     parse_json(&read(&conformance_dir().join(path))).unwrap()
 }
 
-fn real_library_bytes(name: &str, definition: &Value, schema: &Value, spec: &Value) {
-    let library = define(definition).unwrap_or_else(|e| panic!("{name}: {e}"));
+fn real_library_bytes(
+    name: &str,
+    library: &openui_lang::DefinedLibrary,
+    schema: &Value,
+    spec: &Value,
+) {
     assert_real_library_bytes(
         &library.to_json_schema(),
         schema,
@@ -123,9 +128,55 @@ fn real_library_bytes(name: &str, definition: &Value, schema: &Value, spec: &Val
 #[test]
 fn intelligent_ui_matches_upstream_byte_for_byte() {
     let f = fixture("real-libraries/intelligent-ui.json");
-    real_library_bytes("intelligent-ui", &f["definition"], &f["schema"], &f["spec"]);
+    real_library_bytes(
+        "intelligent-ui",
+        &define(&f["definition"]).unwrap(),
+        &f["schema"],
+        &f["spec"],
+    );
     assert_eq!(f["spec"]["components"].as_object().unwrap().len(), 52);
     assert_eq!(f["spec"]["functions"].as_object().unwrap().len(), 59);
+}
+
+#[test]
+fn react_ui_matches_upstream_byte_for_byte() {
+    let react_ui = fixture("real-libraries/react-ui.json");
+    let definition = &react_ui["definition"];
+    let schema = fixture("imported/schemas/react-ui.json");
+    let request = fixture("prompts/react-ui-schema.json");
+    assert_eq!(definition["components"].as_array().unwrap().len(), 82);
+    let library = define(definition).unwrap();
+    real_library_bytes("react-ui", &library, &schema, &request["library"]);
+    let package_prompt = fixture("golden/prompts/react-ui-schema.json");
+    let package_cloud = fixture("golden/prompts/react-ui-cloud.json");
+    for (options, prompt, cloud) in [
+        (None, &react_ui["prompt"], &react_ui["cloud"]),
+        (
+            request.get("promptOptions"),
+            &package_prompt["prompt"],
+            &package_cloud["prompt"],
+        ),
+    ] {
+        assert_eq!(
+            library.prompt(options.cloned()).unwrap(),
+            *prompt,
+            "react-ui prompt"
+        );
+        let mut system_request = json!({"library": library.to_spec()});
+        if let Some(options) = options {
+            system_request["promptOptions"] = options.clone();
+        }
+        assert_eq!(
+            openui_lang::generate_system_prompt(&system_request).unwrap(),
+            *prompt,
+            "react-ui system prompt"
+        );
+        assert_eq!(
+            library.cloud_config(options.cloned(), None).unwrap(),
+            *cloud,
+            "react-ui cloud config"
+        );
+    }
 }
 
 /// `z.object({b, "10", "2"})` lists "2" and "10" first, as every JavaScript
@@ -304,6 +355,20 @@ fn malformed_definitions_are_refused_with_where_and_why() {
             ]}]}),
             "components[0].props[0].type.values[1]",
             "expected a string",
+        ),
+        (
+            json!({"components": [{"name": "A", "description": "", "props": [
+                {"name": "x", "type": {"kind": "array", "items": {"kind": "string"}, "minItems": "2"}}
+            ]}]}),
+            "components[0].props[0].type.minItems",
+            "expected a number",
+        ),
+        (
+            json!({"components": [{"name": "A", "description": "", "props": [
+                {"name": "x", "type": {"kind": "unknown", "minItems": 2}}
+            ]}]}),
+            "components[0].props[0].type.minItems",
+            "unknown field",
         ),
         (
             json!({"components": [{"name": "A", "description": "", "props": [
@@ -984,6 +1049,34 @@ fn a_definition_far_past_the_limit_is_refused_not_a_crash() {
         .unwrap();
 }
 
+/// A default is literal JSON. Both building the schema and freeing the
+/// definition must handle that value's own depth on a binding-sized stack.
+#[test]
+fn nested_json_default_is_copied_and_freed_on_a_small_stack() {
+    std::thread::Builder::new()
+        .stack_size(64 * 1024)
+        .spawn(|| {
+            let mut value = Value::Null;
+            for _ in 0..2_000 {
+                value = Value::Array(vec![value]);
+            }
+            let mut definition = nested(1, in_array);
+            definition["components"][0]["props"][0]["default"] = value;
+            let defined = define(&definition).unwrap();
+            let schema = defined.to_json_schema();
+            let mut default = &schema["$defs"]["Deep"]["properties"]["v"]["default"];
+            for _ in 0..2_000 {
+                default = default.get(0).unwrap();
+            }
+            assert!(default.is_null());
+            free_json(schema);
+            free_json(definition);
+        })
+        .unwrap()
+        .join()
+        .unwrap();
+}
+
 /// The corpus library for `conformance/cases/library-definition/` is the
 /// "scalars" sample's upstream JSON Schema.
 #[test]
@@ -1023,6 +1116,17 @@ fn intelligent_ui_parses_the_whole_corpus_as_json() {
     let defined = define(&f["definition"]).unwrap().library();
     let from_json = Library::from_json_schema(&f["schema"]);
     assert_parse_equivalence(defined, from_json, &load_corpus().cases);
+}
+
+#[test]
+fn react_ui_parses_the_whole_corpus_as_json() {
+    let defined = define(&fixture("real-libraries/react-ui.json")["definition"])
+        .unwrap()
+        .library();
+    let from_json = Library::from_json_schema(&fixture("imported/schemas/react-ui.json"));
+    let cases = load_corpus().cases;
+    assert_eq!(cases.len(), 976);
+    assert_parse_equivalence(defined, from_json, &cases);
 }
 
 fn assert_parse_equivalence<'a>(
