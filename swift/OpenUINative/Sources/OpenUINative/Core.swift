@@ -55,7 +55,7 @@ public final class Core: Sendable {
         try await run {
             try Step.measure(chunks: 1) {
                 Core.assertOnCoreThread()
-                return OpenUIFFI.parse(program: program, library: library.inner, rootName: root)
+                return OpenUIFFI.parse(program: program, library: library.inner, rootName: root ?? library.root)
             }
         }
     }
@@ -89,7 +89,7 @@ public final class Core: Sendable {
             Core.assertOnCoreThread()
             let merged = OpenUIFFI.mergeStatements(existing: base, patch: patch, rootId: nil)
             var step = try Step.measure(chunks: chunks, streaming: streaming) {
-                OpenUIFFI.parse(program: merged, library: library.inner, rootName: root)
+                OpenUIFFI.parse(program: merged, library: library.inner, rootName: root ?? library.root)
             }
             step.program = merged
             return step
@@ -106,12 +106,32 @@ public final class Core: Sendable {
 public struct Library: Sendable {
     let core: Core
     let inner: ComponentLibrary
+    let root: String?
+    let components: [Data: DefinedComponent]
 
     /// Loads the library; throws if the schema isn't JSON. Core thread only.
     init(core: Core, schema: String) throws {
         self.core = core
         Core.assertOnCoreThread()
+        root = nil
+        components = [:]
         inner = try ComponentLibrary(schema: schema)
+    }
+
+    init(core: Core, definition: String, components: [DefinedComponent], root: String?) throws {
+        Core.assertOnCoreThread()
+        self.core = core
+        self.root = root
+        inner = try ComponentLibrary.fromDefinition(definition: definition)
+        // Like the core's component record, the last declaration wins. UTF-8
+        // keys keep distinct names that Swift String equality would normalize.
+        self.components = Dictionary(components.lazy.map { (Data($0.name.utf8), $0) },
+                                     uniquingKeysWith: { _, last in last })
+    }
+
+    /// A defined library's core-generated prompt spec as JSON text.
+    public func promptSpec() async throws(OpenUIError) -> String? {
+        try await core.run { inner.promptSpec() }
     }
 }
 
@@ -126,8 +146,8 @@ public final class Session: Sendable {
         Core.assertOnCoreThread()
         self.core = core
         self.library = library
-        self.root = root
-        inner = StreamSession(library: library.inner, rootName: root)
+        self.root = root ?? library.root
+        inner = StreamSession(library: library.inner, rootName: self.root)
     }
 
     /// Pushes chunks and returns the result after the last; no chunks gives

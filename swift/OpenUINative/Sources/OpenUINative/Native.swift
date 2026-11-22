@@ -19,6 +19,7 @@ public struct ElementView: View {
 
     private let source: Source
     @Environment(\.elementDrawing) private var drawing
+    @Environment(\.liveProgram) private var liveProgram
 
     /// Draws `element` at its own path in the evaluated tree it came from;
     /// `path` is used only for an element without one (a parse result's).
@@ -34,7 +35,7 @@ public struct ElementView: View {
     public var body: some View {
         switch source {
         case let .element(element, path):
-            if let drawn = drawing.component(element, path) ?? NativeComponents.view(for: element, path: path) {
+            if let drawn = drawing.view(for: element, path: path, library: liveProgram?.library) {
                 drawing.chrome(drawn, element, path)
             } else {
                 drawing.fallback(element, path)
@@ -72,6 +73,15 @@ public struct ElementDrawing: Sendable {
     public var chrome: @MainActor @Sendable (AnyView, Element, _ path: String) -> AnyView
     /// Draws an element nothing else could: an unknown component, or props that make no sense.
     public var fallback: Draw
+
+    @MainActor fileprivate func view(for element: Element, path: String, library: Library?) -> AnyView? {
+        if let view = component(element, path) { return view }
+        if let library, !library.components.isEmpty,
+           let declared = library.components[Data(element.typeName.utf8)] {
+            return declared.draw?(element, path)
+        }
+        return NativeComponents.view(for: element, path: path)
+    }
 
     /// With nothing given: no components of the app's own, no wrapping, and
     /// the component's name where an element couldn't be drawn.

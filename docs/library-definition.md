@@ -11,8 +11,41 @@ declaration, byte for byte (ADR 0017). The authoritative reference is the
 `openui_lang::library_definition` module documentation; this page is the
 host's view of it.
 
-Swift and Kotlin get typed wrappers later (Swift in OpenUINative); the
-binding itself takes only the plain data.
+## Define and draw a component in Swift
+
+`OpenUINative` pairs each component declaration with a SwiftUI view. The
+view receives the evaluated element and its path. Props are positional in
+declaration order. For example, this program draws “Ready”.
+
+```swift
+import OpenUINative
+import SwiftUI
+
+@MainActor func badgeView() async throws -> ElementView {
+    let badge = defineComponent(name: "Badge", description: "A short label.",
+                                props: [.init("label", .string)]) { element, _ in
+        if case let .scalar(.string(label))? = element.props.first?.value {
+            Text(label)
+        }
+    }
+    let library = try await Core().createLibrary(components: [badge], root: badge.name)
+    let live = try LiveProgram(library: library)
+    try await live.show(response: #"root = Badge("Ready")"#, streaming: false)
+    return ElementView(live: live)
+}
+```
+
+Use the optional `groups` argument of `createLibrary` to supply an ordered
+array of `ComponentGroup` values for the prompt. The declared root also supplies the
+parser's default root component. An explicit root argument overrides it.
+`try await library.promptSpec()` returns the core's generated spec.
+
+An app's `ElementDrawing.component` can override a declared view. A
+declaration without a view uses the existing fallback, including when it
+shares a built-in component's name. Use `ElementView(element: child)` in
+a defined view to draw children in the same live program.
+
+Kotlin authors can supply the plain data through the binding.
 
 ## Entry points
 

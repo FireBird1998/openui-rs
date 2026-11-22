@@ -115,7 +115,7 @@ public final class LiveProgram {
     /// Internal so tests can reach it: the viewer's count its pending
     /// mutations, and the package's dispose it under a redraw.
     @ObservationIgnored let session: RuntimeSession
-    @ObservationIgnored private let library: Library
+    @ObservationIgnored let library: Library
     @ObservationIgnored private let promptSpec: String?
     @ObservationIgnored private let bindings: [(component: String, prop: String)]
     @ObservationIgnored private var previewSession: RuntimeSession?

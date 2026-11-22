@@ -726,6 +726,11 @@ proof as its acceptance.
 [ADR 0017](docs/adr/0017-library-definition-lives-where-upstream-puts-it.md)
 and [the plain-data form](docs/library-definition.md).
 
+| Upstream | Port | Evidence |
+| --- | --- | --- |
+| `defineComponent`, `createLibrary`, and zod-derived schemas and signatures | The core builds the schema and spec from plain data. Swift authors supply typed props, groups and a root. Swift functions and actions come with #139. | [Definition goldens](conformance/golden/library-definitions.json), [Swift declaration and drawing tests](swift/OpenUINative/Tests/OpenUINativeTests/ComponentDefinitionTests.swift) |
+| A component declaration carries its renderer | OpenUINative draws the declared SwiftUI view with the evaluated element through `ElementDrawing`. A viewless declaration uses its fallback. | [Binding example](docs/library-definition.md), [ADR 0017](docs/adr/0017-library-definition-lives-where-upstream-puts-it.md) |
+
 ## Deliberately not ported from lang-core
 
 - Upstream's `library.extend`, which derives a library from another, is not yet ported (ADR 0017).

@@ -70,6 +70,12 @@
   reproduces its JSON Schema and prompt spec byte for byte and parses the
   whole corpus identically with the definition and with the upstream schema.
 
+- OpenUINative can define and draw a Swift component library (#138).
+  `defineComponent` pairs ordered typed props with a SwiftUI view, and
+  `Core.createLibrary` builds the library and its prompt spec. A live program
+  draws those views with evaluated props and uses its fallback for viewless
+  declarations. [Swift example](docs/library-definition.md)
+
 - A component library's size limit, shared action shapes and no unbounded
   recursion (#140). **Behaviour change** for an existing entry point,
   approved by the maintainer: a component library supplied as JSON Schema
