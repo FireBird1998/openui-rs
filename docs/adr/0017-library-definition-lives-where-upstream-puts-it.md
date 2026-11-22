@@ -135,3 +135,5 @@ library declaration is written by hand in Rust.
 `CONFORMANCE.md`'s "Deliberately not ported" entry for the authoring API is
 reversed when the work lands, with a pointer to this record. The glossary
 gains **Library definition**.
+
+(2026-11-22: since #136, the core's library definition is checked against the complete Intelligent UI package. The react-ui proof is pending support for declarations the converter refuses.)

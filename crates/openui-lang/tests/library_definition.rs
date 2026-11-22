@@ -4,7 +4,8 @@
 //! declaration it was converted from, or the error upstream's `createLibrary`
 //! throws, with its message. The expected output is
 //! `conformance/golden/library-definitions.json`, written by
-//! `reference/library-definitions.ts` running upstream's code.
+//! `reference/library-definitions.ts` running upstream's code. The Intelligent
+//! UI definition and oracles come from `reference/real-library-spec.ts`.
 //!
 //! Also the parser guarantee: a defined library reaches the parser only as
 //! that JSON Schema, so it parses the corpus programs written for it exactly
@@ -13,7 +14,7 @@
 
 mod common;
 
-use common::{conformance_dir, golden_dir, load_corpus, read};
+use common::{Case, conformance_dir, golden_dir, load_corpus, read};
 use openui_lang::{
     CallKind, Library, LibraryDefinition, LibraryDefinitionError, Limits, StreamParser,
     TypeDescription, create_library, free_json, parse, parse_json, stringify_json,
@@ -69,6 +70,62 @@ fn every_sample_matches_upstream_byte_for_byte() {
             }
         }
     }
+}
+
+/// If the whole document differs, walk the ordered records to name the first
+/// differing entry, including an insertion, deletion or reordering.
+fn assert_real_library_bytes(actual: &Value, upstream: &Value, label: &str, records: &[&str]) {
+    if stringify_json(actual) == stringify_json(upstream) {
+        return;
+    }
+    for field in records {
+        let mut got = actual[*field].as_object().into_iter().flatten();
+        let mut want = upstream[*field].as_object().into_iter().flatten();
+        loop {
+            match (got.next(), want.next()) {
+                (None, None) => break,
+                (Some((a, value)), Some((b, expected))) => {
+                    assert_eq!(a, b, "{label}.{field}: first different name");
+                    assert_eq!(
+                        stringify_json(value),
+                        stringify_json(expected),
+                        "{label}.{field}.{b}"
+                    );
+                }
+                (None, Some((name, _))) => panic!("{label}.{field}: missing {name}"),
+                (Some((name, _)), None) => panic!("{label}.{field}: unexpected {name}"),
+            }
+        }
+    }
+    panic!("{label}: document bytes differ outside the named records");
+}
+
+fn fixture(path: &str) -> Value {
+    parse_json(&read(&conformance_dir().join(path))).unwrap()
+}
+
+fn real_library_bytes(name: &str, definition: &Value, schema: &Value, spec: &Value) {
+    let library = define(definition).unwrap_or_else(|e| panic!("{name}: {e}"));
+    assert_real_library_bytes(
+        &library.to_json_schema(),
+        schema,
+        &format!("{name} schema"),
+        &["properties", "$defs", "functions", "actions"],
+    );
+    assert_real_library_bytes(
+        &library.to_spec(),
+        spec,
+        &format!("{name} spec"),
+        &["components", "functions", "actions"],
+    );
+}
+
+#[test]
+fn intelligent_ui_matches_upstream_byte_for_byte() {
+    let f = fixture("real-libraries/intelligent-ui.json");
+    real_library_bytes("intelligent-ui", &f["definition"], &f["schema"], &f["spec"]);
+    assert_eq!(f["spec"]["components"].as_object().unwrap().len(), 52);
+    assert_eq!(f["spec"]["functions"].as_object().unwrap().len(), 59);
 }
 
 /// `z.object({b, "10", "2"})` lists "2" and "10" first, as every JavaScript
@@ -946,9 +1003,6 @@ fn a_defined_library_parses_the_corpus_as_the_same_library_as_json() {
         ))
         .unwrap(),
     );
-    let defined = defined.library();
-    assert_eq!(defined, from_json);
-
     let corpus = load_corpus();
     let cases: Vec<_> = corpus
         .cases
@@ -956,6 +1010,23 @@ fn a_defined_library_parses_the_corpus_as_the_same_library_as_json() {
         .filter(|c| c.name.starts_with("library-definition/"))
         .collect();
     assert_eq!(cases.len(), 3);
+    assert_parse_equivalence(defined.library(), from_json, cases);
+}
+
+#[test]
+fn intelligent_ui_parses_the_whole_corpus_as_json() {
+    let f = fixture("real-libraries/intelligent-ui.json");
+    let defined = define(&f["definition"]).unwrap().library();
+    let from_json = Library::from_json_schema(&f["schema"]);
+    assert_parse_equivalence(defined, from_json, &load_corpus().cases);
+}
+
+fn assert_parse_equivalence<'a>(
+    defined: Library,
+    from_json: Library,
+    cases: impl IntoIterator<Item = &'a Case>,
+) {
+    assert_eq!(defined, from_json);
     let defined = Arc::new(defined);
     let from_json = Arc::new(from_json);
     for c in cases {

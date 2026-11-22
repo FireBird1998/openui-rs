@@ -65,6 +65,10 @@
   and `free()` succeeds. Module functions now throw `TypeError` when called
   with `new`. The documented `extractMcpToolResult` signature now uses the
   generated parameter name `response_json`.
+- Library definitions against upstream Intelligent UI (#136). The reference
+  harness converts the library's declarations at its own pin. The core
+  reproduces its JSON Schema and prompt spec byte for byte and parses the
+  whole corpus identically with the definition and with the upstream schema.
 
 - A component library's size limit, shared action shapes and no unbounded
   recursion (#140). **Behaviour change** for an existing entry point,

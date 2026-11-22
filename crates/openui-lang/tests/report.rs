@@ -173,6 +173,19 @@ fn block() -> String {
         n(merges.len()),
         sources(&by_source(&merges))
     );
+    let intelligent_ui = parse_json(&read(
+        &conformance_dir().join("real-libraries/intelligent-ui.json"),
+    ))
+    .unwrap();
+    let spec = &intelligent_ui["spec"];
+    let _ = writeln!(
+        out,
+        "| Intelligent UI library definition | {} components, {} functions | JSON Schema and prompt spec bytes, plus one-shot and streamed parses of {} programs | {} (library only) |",
+        n(spec["components"].as_object().unwrap().len()),
+        n(spec["functions"].as_object().unwrap().len()),
+        n(corpus.len()),
+        field("library package")
+    );
     let serialize_total: usize = serialize_sources.values().sum();
     let _ = writeln!(
         out,

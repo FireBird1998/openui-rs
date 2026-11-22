@@ -8,3 +8,10 @@ renderer: @openuidev/react-lang
 renderer path: packages/react-lang/src/responseBundle.ts
 renderer commit: 47b9cae0d3b26a8c9d7514d5887a6d6608801ac9
 renderer license: react-lang-LICENSE
+
+# Intelligent UI, for the library only
+library commit: 7b7a51985814d37201e16ece44d28a996bdfa528
+library package: @openuidev/intelligent-ui-library 0.0.2
+library path: packages/libraries/intelligent-ui
+library license: MIT
+library notice: conformance/imported/LICENSE

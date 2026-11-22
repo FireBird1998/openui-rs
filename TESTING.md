@@ -518,6 +518,28 @@ Everything the tests compare is in `conformance/`:
   - `QUIRKS.md` lists behaviour the core reproduces on purpose;
   - `pending/` holds a list per golden test of the cases the core doesn't match yet: `parse`, the three stages (`tokens`, `statements`, `preprocess`), `merge`, `serialize`, `enrich` and `prompt`. A listed case may fail. One that matches again, or a listed name that isn't a case, fails its test, so the lists stay exact. Every list is empty today.
 
+## Reproducing the real library definitions
+
+The library-definition tests read `conformance/real-libraries/intelligent-ui.json`.
+It contains the converter's plain data and the library's own `toJSONSchema()`
+and `toSpec()` output. Like the imported react-ui schema and prompt spec, it
+can be tested and the parser goldens regenerated without an upstream checkout.
+To reproduce the fixture from the library commit in `reference/UPSTREAM`, run
+from `reference/` with the locked dependencies available:
+
+```sh
+BUN_RUNTIME_TRANSPILER_CACHE_PATH=0 bun --no-install --preload ./react-ui-stubs.ts \
+  real-library-spec.ts intelligent-ui "$checkout" > "$scratch/intelligent-ui.json"
+cmp "$scratch/intelligent-ui.json" ../conformance/real-libraries/intelligent-ui.json
+```
+
+The `react-ui` argument checks the existing schema and prompt spec at the
+lang-core pin before attempting conversion. Its first unsupported prop is
+`EditableTable.name` (`z.string().default("")`). The other refused shapes are
+`z.unknown()` (`DatePicker.value`), `array.min(2)` (`SnippetCardBlock.items` and
+four other card blocks) and a refined props object (`EntityList`); #209 adds
+all four.
+
 ## Adding a case
 
 1. Write the program as `conformance/cases/hand/NN-what-it-tests.oui`, using the next free number.

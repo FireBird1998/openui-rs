@@ -20,6 +20,7 @@ Reference: `@openuidev/lang-core 1.1.0` at commit `47b9cae0d3b26a8c9d7514d5887a6
 | Stages on every prefix: preprocessing, tokens, statements and expression trees | 974 | 479,415 prefixes | the parse corpus, less its largest synthetic programs |
 | System prompts | 66 | 66 | |
 | Edit-mode merges | 3,269 | 3,269 | 3,179 generated, 53 hand-written, 31 recorded, 1 reference-test, 5 spec-fixture |
+| Intelligent UI library definition | 52 components, 59 functions | JSON Schema and prompt spec bytes, plus one-shot and streamed parses of 976 programs | @openuidev/intelligent-ui-library 0.0.2 (library only) |
 | Element trees back to source | 941 | 941 | 1 fuzz, 71 hand-written, 838 parse corpus root, 31 reference-test |
 | Enriched errors | 512 | 512 | every parse corpus case with errors |
 
@@ -707,10 +708,27 @@ The boundary fixtures record the renderer's values and the built-package tests
 check both outcomes. [Renderer values](conformance/golden/tool-provider-response-boundaries.json)
 [Driver tests](crates/openui-wasm/js/session-bundles.test.ts)
 
+## Library authoring
+
+The core implements the declarations behind `defineComponent`,
+`defineFunction`, `defineAction` and `createLibrary` as a plain-data library
+definition. The library-definition tests compare its JSON Schema and prompt
+spec byte for byte with upstream. The Intelligent UI fixture covers the
+complete library. The react-ui import supplies its upstream schema and spec,
+but it cannot be converted yet: its declarations use four shapes the converter
+refuses today, each of which upstream emits: a `.default(...)` value
+(`EditableTable.name` and seven other schemas' fields), `z.unknown()`
+(`DatePicker.value`), `array.min(2)`, which emits `minItems`
+(`SnippetCardBlock.items`, `OverviewCardBlock`, `ContextCardBlock`,
+`VisualCardBlock` and `CompositeCardBlock`), and a refined props object
+(`EntityList`). #209 adds them, as upstream emits them, with react-ui's full
+proof as its acceptance.
+[ADR 0017](docs/adr/0017-library-definition-lives-where-upstream-puts-it.md)
+and [the plain-data form](docs/library-definition.md).
+
 ## Deliberately not ported from lang-core
 
-- The JavaScript authoring API, including `defineComponent`, `createLibrary`
-  and the zod signature helpers.
+- Upstream's `library.extend`, which derives a library from another, is not yet ported (ADR 0017).
 - Install telemetry.
 - The `artifactTool` request helper.
 

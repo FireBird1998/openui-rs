@@ -1,7 +1,7 @@
-// Preloaded by react-ui-spec.ts: loads upstream's react-ui package for its
+// Preloaded by the react-ui and Intelligent UI importers for their
 // component schemas only. Imports of third-party packages (React, icons,
 // charts) and of style sheets are replaced with one inert stub, so nothing has
-// to be installed; zod, react-lang and react-ui's own modules load as written.
+// to be installed. The package's own modules, zod and the react-lang shim load.
 // Bun applies a runtime plugin's onResolve only to the entry file, so this
 // rewrites import statements as each file loads instead.
 import { plugin } from "bun";
@@ -30,9 +30,9 @@ function bindings(clause: string): string[] {
 }
 
 plugin({
-  name: "react-ui-schemas-only",
+  name: "library-schemas-only",
   setup(build) {
-    build.onLoad({ filter: /packages\/react-ui\/src\/.*\.m?[jt]sx?$/ }, ({ path }) => {
+    build.onLoad({ filter: /packages\/(?:react-ui|libraries\/intelligent-ui)\/src\/.*\.m?[jt]sx?$/ }, ({ path }) => {
       const stubbed: string[] = [];
       const contents = readFileSync(path, "utf8").replace(
         IMPORT,
