@@ -129,6 +129,40 @@ fn a_deep_json_value_is_freed_on_a_small_stack() {
         .unwrap();
 }
 
+/// Text the reader refuses, or whose repeated key replaces a value, after
+/// reading a value 20,000 levels deep: the value read is freed with a loop,
+/// on a 64 KiB thread, for either kind of value the reader makes (#203).
+/// Before, serde_json's recursive drop freed it on the caller's stack.
+#[test]
+fn what_the_reader_lets_go_of_is_freed_on_a_small_stack() {
+    let deep = nested_json(20_000);
+    let texts = [
+        format!(r#"{{"a":{deep},"a":1}}"#),
+        format!("{deep} x"),
+        format!(r#"{{"a":{deep},"b":!}}"#),
+        format!("[{deep},{}", nested_json(40_000)),
+    ];
+    std::thread::Builder::new()
+        .name(format!(
+            "{}::worker",
+            std::thread::current().name().unwrap_or("test")
+        ))
+        .stack_size(64 * 1024)
+        .spawn(move || {
+            let limits = Limits::default().with_depth(10_000);
+            let [repeated, refused @ ..] = texts;
+            free_json(parse_json_with_limits(&repeated, limits).unwrap());
+            assert!(openui_lang::parse_json_value(&repeated, 30_032).is_ok());
+            for text in refused {
+                assert!(parse_json_with_limits(&text, limits).is_err());
+                assert!(openui_lang::parse_json_value(&text, 30_032).is_err());
+            }
+        })
+        .unwrap()
+        .join()
+        .unwrap();
+}
+
 #[test]
 fn parsing_one_expression_stops_at_the_depth_limit() {
     let tokens = tokenize(&format!("{}1{}", "[".repeat(10), "]".repeat(10)));

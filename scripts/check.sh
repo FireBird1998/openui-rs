@@ -22,6 +22,15 @@ done
 cargo clippy --all-targets --all-features -- -D warnings
 RUSTDOCFLAGS="-D warnings" cargo doc --no-deps -q -p openui-lang -p openui-runtime -p openui-session -p openui-ffi -p openui-wasm
 cargo test --all --no-fail-fast
+# The stack-depth tests again unoptimised: the test profile's opt-level 1
+# shrinks frames enough to hide an overflow (#135, #203), and frames are
+# largest at opt-level 0. Only these files, not the whole suite (TESTING.md,
+# "Host JSON on a small stack").
+cargo test -q --profile dev --no-fail-fast \
+  -p openui-lang --test depth --test drop --test prompt_depth --test entry_points \
+  --test runaway_finished_walk --test library_definition \
+  -p openui-session --test library_definition \
+  -p openui-ffi --test stack --test prompt_specs --test library_schemas --test library_definitions
 
 # The WebAssembly packages: scripts/wasm.sh builds both and loads them through
 # the package guard (ADR 0007), then Bun runs the package tests. Rust tests

@@ -70,3 +70,39 @@ fn prompts_accept_the_exact_json_depth_limit() {
         }
     }
 }
+
+/// A spec nested to the JSON depth limit (800 levels by default), its depth
+/// in its components, in the library the generator copies or in a cloud
+/// request's library, makes its prompt on a 64 KiB thread: the generator
+/// copies and drops parts of the spec with serde_json, which recurses once a
+/// level, on a segment sized for the spec's depth (#203). Run it unoptimised
+/// too (`cargo test --profile dev -p openui-lang --test prompt_depth`).
+#[test]
+fn a_spec_at_the_depth_limit_generates_on_a_small_stack() {
+    for (open, close) in [(r#"{"a":"#, "}"), ("[", "]")] {
+        let deep = format!("{}1{}", open.repeat(797), close.repeat(797));
+        let texts = [
+            format!(r#"{{"components":{{"x":{deep}}}}}"#),
+            format!(r#"{{"library":{{"components":{{"x":{deep}}}}}}}"#),
+            format!(
+                r#"{{"cloud":true,"library":{{"schema":{{"$defs":{{"C":{{}}}}}},"extra":{deep}}}}}"#
+            ),
+        ];
+        std::thread::Builder::new()
+            .stack_size(64 * 1024)
+            .spawn(move || {
+                for text in texts {
+                    let spec = openui_lang::parse_json(&text).unwrap();
+                    assert!(generate_system_prompt(&spec).is_ok(), "{}", &text[..40]);
+                    if !text.contains("\"library\"") {
+                        assert!(generate_prompt_with_limits(&spec, Limits::default()).is_ok());
+                        generate_prompt(&spec);
+                    }
+                    free_json(spec);
+                }
+            })
+            .unwrap()
+            .join()
+            .unwrap();
+    }
+}

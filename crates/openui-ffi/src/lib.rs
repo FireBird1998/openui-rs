@@ -448,20 +448,23 @@ pub fn generate_system_prompt(spec: String) -> Result<String, OpenUiError> {
 /// [`generate_system_prompt`] within `limits`: a spec nesting past the JSON
 /// nesting limit described by [`openui_lang::Limits::depth`] is refused as a `Prompt` error.
 /// The spec is read with serde_json, which refuses nesting past 128 levels on
-/// its own, as `InvalidPromptSpec`.
+/// its own, as `InvalidPromptSpec`. It is read on a stack segment of its own
+/// ([`openui_lang::read_host_json`]), generated from on one sized for its
+/// depth and freed with a loop, so no spec overflows the caller's thread
+/// (#203).
 #[uniffi::export]
 pub fn generate_system_prompt_with_limits(
     spec: String,
     limits: ParseLimits,
 ) -> Result<String, OpenUiError> {
-    let json: serde_json::Value =
-        serde_json::from_str(&spec).map_err(|e| OpenUiError::InvalidPromptSpec {
-            reason: e.to_string(),
-        })?;
-    openui_lang::generate_system_prompt_with_limits(&json, limits.to_core()).map_err(|e| {
-        OpenUiError::Prompt {
-            reason: e.to_string(),
-        }
+    let json = openui_lang::read_host_json(&spec).map_err(|e| OpenUiError::InvalidPromptSpec {
+        reason: e.to_string(),
+    })?;
+    let prompt = openui_lang::generate_system_prompt_with_limits(&json, limits.to_core());
+    // serde_json drops a value by recursing: free it with a loop.
+    openui_lang::free_json(json);
+    prompt.map_err(|e| OpenUiError::Prompt {
+        reason: e.to_string(),
     })
 }
 

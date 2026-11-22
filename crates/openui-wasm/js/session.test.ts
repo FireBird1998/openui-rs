@@ -222,3 +222,26 @@ test('replacement getters are guarded and do not expose a writable candidate', (
     kind(() => r.snapshot, 'Disposed');
   } finally { r.free(); p.free(); s.free(); library.free(); }
 });
+// #203: a session reads host JSON with the core's reader, under the depth
+// limit (800 JSON levels by default). Text refused, or whose repeated key
+// replaces a value, after a value nested to the limit frees what it read
+// with a loop, and nothing changes; a deep value within the state's own
+// limit is kept.
+test('host JSON nested to the depth limit is read; what the reader lets go of is freed (#203)', () => {
+  const {s,library} = setup();
+  for (const [open, close] of [['{"a":','}'],['[',']']]) {
+    const before = s.snapshot();
+    const deep = (levels: number) => open.repeat(levels)+'0'+close.repeat(levels);
+    for (const text of [`{"a":${deep(798)},"a":1}x`, `[${deep(798)},!`, `[${deep(798)},${deep(900)}]`]) {
+      kind(() => s.set('$n',text),'InvalidJson');
+      kind(() => s.setReferenceValues(`{"r":${text}}`),'InvalidJson');
+    }
+    expect(s.snapshot()).toBe(before);
+    // A state value has a depth limit of its own; 300 levels is within it.
+    expect(s.set('$deep',deep(300))).toBe(true);
+    expect(s.get('$deep')).toBe(deep(300));
+    expect(s.set('$deep',`{"a":${deep(798)},"a":1}`)).toBe(true);
+    expect(s.get('$deep')).toBe('{"a":1}');
+  }
+  s.dispose(); s.free(); library.free();
+});

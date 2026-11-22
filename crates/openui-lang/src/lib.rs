@@ -454,7 +454,7 @@ pub use js::{
     JsObject, JsonError, parse_json, parse_json_value, parse_json_with_limits, stringify_json,
 };
 pub use lexer::{Token, tokenize, tokens_to_json};
-pub use library::{Call, CallKind, Component, Library, Param, read_schema_json};
+pub use library::{Call, CallKind, Component, Library, Param, read_host_json};
 pub use library_definition::{
     ActionDefinition, ComponentDefinition, ComponentGroup, FieldDefinition, FunctionDefinition,
     LibraryDefinition, LibraryDefinitionError, PropDefinition, TypeDescription,

@@ -709,6 +709,22 @@ enum Open<V: JsonTarget> {
     Object(V::Fields, String),
 }
 
+/// What the reader has open. A refused text leaves values read so far, as
+/// deep as the limit; they are freed with [`JsonTarget::free`], so refusing
+/// needs no stack however deep they nest (#203).
+struct Opened<V: JsonTarget>(Vec<Open<V>>);
+
+impl<V: JsonTarget> Drop for Opened<V> {
+    fn drop(&mut self) {
+        while let Some(open) = self.0.pop() {
+            V::free(match open {
+                Open::Array(items) => V::array(items),
+                Open::Object(fields, _) => V::object(fields),
+            });
+        }
+    }
+}
+
 // The legacy serde_json entry point and the host-value entry point use the
 // same grammar. Only the latter can store all of JavaScript's double values.
 trait JsonTarget: Sized {
@@ -721,6 +737,10 @@ trait JsonTarget: Sized {
     fn array(items: Vec<Self>) -> Self;
     fn object(fields: Self::Fields) -> Self;
     fn define<const EXACT_UTF16: bool>(fields: &mut Self::Fields, key: String, value: Self);
+    /// Let go of a value the reader won't return.
+    fn free(self) {
+        drop(self);
+    }
 }
 
 impl JsonTarget for serde_json::Value {
@@ -753,7 +773,14 @@ impl JsonTarget for serde_json::Value {
         Self::Object(fields)
     }
     fn define<const EXACT_UTF16: bool>(fields: &mut Self::Fields, key: String, value: Self) {
-        fields.insert(key, value);
+        // A repeated key's earlier value may nest to the limit.
+        if let Some(earlier) = fields.insert(key, value) {
+            crate::free_json(earlier);
+        }
+    }
+    /// serde_json drops a value by recursing: free it with a loop instead.
+    fn free(self) {
+        crate::free_json(self);
     }
 }
 
@@ -831,7 +858,7 @@ impl<'a> JsonReader<'a> {
         limit: usize,
         decode_string: impl Copy + Fn(&str) -> Option<String>,
     ) -> Result<V, JsonError> {
-        let mut open: Vec<Open<V>> = Vec::new();
+        let mut open: Opened<V> = Opened(Vec::new());
         let mut progress = Progress::new("the JSON reader");
         loop {
             if progress.stalled(self.pos) {
@@ -840,7 +867,7 @@ impl<'a> JsonReader<'a> {
             // A value starts here.
             self.skip_ws();
             let mut value = match self.s.get(self.pos) {
-                Some(b'[') | Some(b'{') if open.len() >= limit => {
+                Some(b'[') | Some(b'{') if open.0.len() >= limit => {
                     return Err(JsonError {
                         depth_limited: true,
                         ..self.error(&format!("JSON nests deeper than {limit} levels"))
@@ -851,7 +878,7 @@ impl<'a> JsonReader<'a> {
                     if self.eat(b']') {
                         V::array(Vec::new())
                     } else {
-                        open.push(Open::Array(Vec::new()));
+                        open.0.push(Open::Array(Vec::new()));
                         continue;
                     }
                 }
@@ -861,7 +888,7 @@ impl<'a> JsonReader<'a> {
                         V::object(V::Fields::default())
                     } else {
                         let key = self.key(decode_string)?;
-                        open.push(Open::Object(V::Fields::default(), key));
+                        open.0.push(Open::Object(V::Fields::default(), key));
                         continue;
                     }
                 }
@@ -875,10 +902,11 @@ impl<'a> JsonReader<'a> {
             };
             // The value is complete: add it to what's open, closing what ends.
             loop {
-                match open.last_mut() {
+                match open.0.last_mut() {
                     None => {
                         self.skip_ws();
                         if self.pos != self.s.len() {
+                            value.free();
                             return Err(self.error("unexpected text after JSON"));
                         }
                         return Ok(value);
@@ -891,7 +919,7 @@ impl<'a> JsonReader<'a> {
                         if !self.eat(b']') {
                             return Err(self.error("expected , or ]"));
                         }
-                        let Some(Open::Array(items)) = open.pop() else {
+                        let Some(Open::Array(items)) = open.0.pop() else {
                             return Err(self.error("expected an open array"));
                         };
                         value = V::array(items);
@@ -906,7 +934,7 @@ impl<'a> JsonReader<'a> {
                         if !self.eat(b'}') {
                             return Err(self.error("expected , or }"));
                         }
-                        let Some(Open::Object(map, _)) = open.pop() else {
+                        let Some(Open::Object(map, _)) = open.0.pop() else {
                             return Err(self.error("expected an open object"));
                         };
                         value = V::object(map);

@@ -57,35 +57,6 @@ use crate::{
     generate_system_prompt_with_limits, is_builtin, is_reserved_call,
 };
 
-/// The stack a cloud config needs besides its copies' recursion.
-const CLOUD_BASE_SEGMENT: usize = 512 * 1024;
-/// The stack serde_json's copy and drop take per level of JSON. Measured by
-/// bisection on a 64 KiB thread (#135 review): about 2,184 bytes a level for
-/// nested objects and 1,165 for nested arrays unoptimised (opt-level 0),
-/// 275 to 528 optimised. This allows nearly three times the worst.
-const CLOUD_LEVEL_BYTES: usize = 6 * 1024;
-
-/// How deep `value` nests, up to `cap`, counted with a loop: a scalar is 0
-/// levels, an array or object one more than its deepest member. The walk
-/// stops at the first value past `cap`, as the prompt's own depth check does.
-fn json_levels(value: &Json, cap: usize) -> usize {
-    let mut deepest = 0;
-    let mut open = vec![(value, 0usize)];
-    while let Some((value, depth)) = open.pop() {
-        let children: Box<dyn Iterator<Item = &Json>> = match value {
-            Json::Array(items) => Box::new(items.iter()),
-            Json::Object(fields) => Box::new(fields.values()),
-            _ => continue,
-        };
-        deepest = deepest.max(depth + 1);
-        if deepest > cap {
-            return cap;
-        }
-        open.extend(children.map(|child| (child, depth + 1)));
-    }
-    deepest
-}
-
 /// The `$schema` zod 4 writes.
 const DRAFT_2020_12: &str = "https://json-schema.org/draft/2020-12/schema";
 
@@ -394,15 +365,10 @@ impl DefinedLibrary {
             request.insert("instructions".to_owned(), instructions.into());
         }
         let request = Json::Object(request);
-        // `generateSystemPrompt` copies the library and the options into
-        // the config with serde_json, whose copies and drops recurse once per
-        // level: run it on a segment sized for the request's depth, which it
-        // has already refused past the limit before copying anything.
-        let levels = json_levels(&request, limits.json_depth());
-        let segment = CLOUD_BASE_SEGMENT.saturating_add(levels.saturating_mul(CLOUD_LEVEL_BYTES));
-        let config = stacker::grow(segment, || {
-            generate_system_prompt_with_limits(&request, limits)
-        });
+        // `generateSystemPrompt` copies the library and the options into the
+        // config with serde_json on a segment sized for the request's depth
+        // (#203), so the request needs nothing of the caller's stack.
+        let config = generate_system_prompt_with_limits(&request, limits);
         crate::free_json(request);
         config
     }

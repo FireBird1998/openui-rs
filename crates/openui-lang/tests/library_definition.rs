@@ -760,8 +760,9 @@ fn deep_action(depth: usize) -> Value {
 /// a component so that its `$defs` entry, which nests further than a
 /// component's, is written.
 fn deep_calls(depth: usize) -> Value {
-    let mut deep = nested(depth, in_array);
-    let ty = deep["components"][0]["props"][0]["type"].take();
+    // Each type built on its own: serde_json's clone recurses, which a type
+    // at the limit outgrows at opt-level 0.
+    let deep_type = || nested(depth, in_array)["components"][0]["props"][0]["type"].take();
     let mut definition = json!({
         "components": [{"name": "Deep", "description": "", "props": [
             {"name": "go", "type": {"kind": "action", "name": "Go"}}
@@ -769,8 +770,8 @@ fn deep_calls(depth: usize) -> Value {
         "functions": [{"name": "F", "description": "", "params": []}],
         "actions": [{"name": "Go", "description": "", "params": [{"name": "p"}]}]
     });
-    definition["functions"][0]["returns"] = ty.clone();
-    definition["actions"][0]["params"][0]["type"] = ty;
+    definition["functions"][0]["returns"] = deep_type();
+    definition["actions"][0]["params"][0]["type"] = deep_type();
     definition
 }
 
@@ -842,7 +843,7 @@ fn types_nest_to_the_depth_limit_and_no_further() {
             }
             // A call's types at the limit, and a library action's entry,
             // fit the prompt's depth, and one level more is refused.
-            let library = define(&deep_calls(limit)).unwrap();
+            let library = freeing(deep_calls(limit), define).unwrap();
             let spec = library.to_spec();
             assert!(spec["schema"]["$defs"]["Go"].is_object());
             openui_lang::generate_prompt_with_limits(&spec, Limits::default())
@@ -850,20 +851,20 @@ fn types_nest_to_the_depth_limit_and_no_further() {
             let _ = library.library();
             free_json(spec);
             assert!(matches!(
-                define(&deep_calls(limit + 1)),
+                freeing(deep_calls(limit + 1), define),
                 Err(LibraryDefinitionError::DepthLimited { .. })
             ));
             // The action slot written inline at the limit fits the prompt's
             // depth too.
-            let library = define(&deep_action(limit)).unwrap();
+            let library = freeing(deep_action(limit), define).unwrap();
             let spec = library.to_spec();
             openui_lang::generate_prompt_with_limits(&spec, Limits::default())
                 .expect("the spec is within the prompt's depth");
             let _ = library.library();
             free_json(spec);
-            let at_limit = LibraryDefinition::from_json(&nested(limit, in_array)).unwrap();
+            let at_limit = freeing(nested(limit, in_array), LibraryDefinition::from_json).unwrap();
             assert_eq!(depth_of(&at_limit.components[0].props[0].ty), limit);
-            let err = LibraryDefinition::from_json(&nested(limit + 1, in_array))
+            let err = freeing(nested(limit + 1, in_array), LibraryDefinition::from_json)
                 .err()
                 .unwrap();
             let path = format!("components[0].props[0].type{}", ".items".repeat(limit));
@@ -877,6 +878,14 @@ fn types_nest_to_the_depth_limit_and_no_further() {
         .unwrap();
 }
 
+/// `read(&json)`, then `json` freed with a loop: serde_json drops a value by
+/// recursing, which a deep test input outgrows at opt-level 0.
+fn freeing<T>(json: Value, read: impl FnOnce(&Value) -> T) -> T {
+    let result = read(&json);
+    free_json(json);
+    result
+}
+
 /// The crate's smallest stack in the depth suite.
 const SMALL_STACK: usize = 64 * 1024;
 
@@ -885,14 +894,9 @@ const SMALL_STACK: usize = 64 * 1024;
 /// drops all of it: compiling the deep schema (whose clones and drops
 /// recurse) runs on a stack segment sized for the definition's depth.
 ///
-/// What is handed back is dropped by the caller, through serde_json's
-/// recursive drop (the returned `Library` holds each prop's schema). That
-/// fits 64 KiB in the test profile (opt-level 1) and in release, as here.
-/// Measured at opt-level 0 it does not: the schema of an array chain at the
-/// limit overflows 64 KiB, and the `Library` of an object chain needs
-/// between 192 and 256 KiB. The returned JSON can be freed with
-/// `free_json`; the `Library` cannot be, short of a change to the parser's
-/// own type.
+/// What is handed back is freed here with `free_json`, and the `Library`
+/// frees itself with a loop (#140), so this passes at opt-level 0 too, as
+/// `scripts/check.sh` runs it.
 #[test]
 fn a_definition_at_the_limit_builds_and_drops_on_a_64_kib_stack() {
     let limit = Limits::default().depth();

@@ -52,7 +52,37 @@ pub fn generate_system_prompt_with_limits(
     limits: Limits,
 ) -> Result<String, PromptError> {
     let _ceiling = crate::stack::limit(limits.depth());
-    within_depth("generateSystemPrompt", spec, limits)?;
+    let levels = within_depth("generateSystemPrompt", spec, limits)?;
+    on_spec_segment(levels, || system_prompt(spec, limits))
+}
+
+/// The segment a prompt is generated on starts with this, before the spec's
+/// levels: room for the generator's own frames.
+const SPEC_SEGMENT: usize = 512 * 1024;
+
+/// The stack serde_json's copy and drop take per level of a spec. Measured
+/// by bisection on a 64 KiB thread (#135 review): about 2,184 bytes a level
+/// for nested objects and 1,165 for nested arrays at opt-level 0, 275 to 528
+/// optimised. This allows nearly three times the worst.
+const SPEC_LEVEL: usize = 6 * 1024;
+
+/// Runs `generate` on a stack segment sized for a spec `levels` deep. The
+/// generator copies parts of the spec (a library, its components, functions
+/// and actions) and drops the copies with serde_json, which recurses once a
+/// level; the spec has already been refused past the depth limit, so a deep
+/// one needs nothing of the caller's stack (#203).
+///
+/// The segment is reserved address space, not touched memory: 512 KiB plus
+/// 6 KiB for each level the spec nests, so about 5.2 MiB at the default
+/// depth limit (800 JSON levels) and, for [`generate_prompt`], which takes
+/// no limit, 6 KiB a level however deep the caller's spec goes.
+fn on_spec_segment<R>(levels: usize, generate: impl FnOnce() -> R) -> R {
+    let segment = SPEC_SEGMENT.saturating_add(levels.saturating_mul(SPEC_LEVEL));
+    stacker::grow(segment, generate)
+}
+
+/// [`generate_system_prompt_with_limits`] of a spec within the depth limit.
+fn system_prompt(spec: &Json, limits: Limits) -> Result<String, PromptError> {
     let Some(object) = spec.as_object() else {
         return Err(PromptError(
             "[generateSystemPrompt] spec must be an object.".to_owned(),
@@ -75,18 +105,31 @@ pub fn generate_system_prompt_with_limits(
                     merged.insert(key.clone(), value.clone());
                 }
             }
-            generate_prompt_with_limits(&Json::Object(merged), limits)
+            let merged = Json::Object(merged);
+            checked_spec(&merged, limits).map(|_| assemble(&merged))
         }
-        _ => generate_prompt_with_limits(spec, limits),
+        _ => checked_spec(spec, limits).map(|_| assemble(spec)),
     }
 }
 
 // ─── Reading the spec ───────────────────────────────────────────────────────
 
 /// Refuse a spec nesting deeper than `limits` allow JSON to, measured with a
-/// loop, so a deep spec costs no stack to check.
-fn within_depth(function: &str, spec: &Json, limits: Limits) -> Result<(), PromptError> {
+/// loop, so a deep spec costs no stack to check. A spec within the limit
+/// gives how many levels it nests (see [`nesting`]).
+fn within_depth(function: &str, spec: &Json, limits: Limits) -> Result<usize, PromptError> {
     let limit = limits.json_depth();
+    nesting(spec, limit).ok_or_else(|| {
+        PromptError(format!(
+            "[{function}] the spec nests deeper than {limit} levels."
+        ))
+    })
+}
+
+/// How many levels `spec` nests, counted with a loop: a scalar none, an
+/// array or object one more than its deepest member. None past `limit`.
+fn nesting(spec: &Json, limit: usize) -> Option<usize> {
+    let mut deepest = 0;
     let mut open = vec![(spec, 0usize)];
     while let Some((value, depth)) = open.pop() {
         let children: Box<dyn Iterator<Item = &Json>> = match value {
@@ -95,13 +138,12 @@ fn within_depth(function: &str, spec: &Json, limits: Limits) -> Result<(), Promp
             _ => continue,
         };
         if depth + 1 > limit {
-            return Err(PromptError(format!(
-                "[{function}] the spec nests deeper than {limit} levels."
-            )));
+            return None;
         }
+        deepest = deepest.max(depth + 1);
         open.extend(children.map(|child| (child, depth + 1)));
     }
-    Ok(())
+    Some(deepest)
 }
 
 fn field<'a>(value: &'a Json, key: &str) -> Option<&'a Json> {
@@ -796,8 +838,10 @@ fn component_signatures(
 /// examples, rules and mode flags) to the system prompt text.
 ///
 /// It takes no limits and never fails: its time and the prompt's size grow
-/// with the spec, and it grows its stack on demand however deep the spec
-/// nests. For a spec from outside the app, [`generate_prompt_with_limits`]
+/// with the spec, and it runs on a stack segment sized for the spec's depth
+/// (#203), so however deep the spec nests it needs nothing of the caller's
+/// stack. The segment reserves 512 KiB plus 6 KiB of address space a level,
+/// with no cap. For a spec from outside the app, [`generate_prompt_with_limits`]
 /// refuses one nesting past the depth limit.
 ///
 /// Callers must supply a validated spec with a non-null `components` field.
@@ -805,6 +849,12 @@ fn component_signatures(
 /// for a missing field. Use [`generate_prompt_with_limits`] to validate input
 /// from outside the app before rendering it.
 pub fn generate_prompt(spec: &Json) -> String {
+    let levels = nesting(spec, usize::MAX).unwrap_or_default();
+    on_spec_segment(levels, || assemble(spec))
+}
+
+/// [`generate_prompt`], on whatever stack it is called on.
+fn assemble(spec: &Json) -> String {
     let root = present(spec, "root").map_or_else(|| "Root".to_owned(), js_string);
     let tools = items(field(spec, "tools"));
     let has_tools = !tools.is_empty();
@@ -910,13 +960,20 @@ pub fn generate_prompt(spec: &Json) -> String {
 /// with a [`PromptError`].
 pub fn generate_prompt_with_limits(spec: &Json, limits: Limits) -> Result<String, PromptError> {
     let _ceiling = crate::stack::limit(limits.depth());
-    within_depth("generatePrompt", spec, limits)?;
+    let levels = checked_spec(spec, limits)?;
+    Ok(on_spec_segment(levels, || assemble(spec)))
+}
+
+/// How deep a prompt spec nests, when [`generate_prompt_with_limits`] takes
+/// it: within the depth limit and with non-null `components`.
+fn checked_spec(spec: &Json, limits: Limits) -> Result<usize, PromptError> {
+    let levels = within_depth("generatePrompt", spec, limits)?;
     if field(spec, "components").is_none_or(Json::is_null) {
         return Err(PromptError(
             "[generatePrompt] components is missing.".to_owned(),
         ));
     }
-    Ok(generate_prompt(spec))
+    Ok(levels)
 }
 
 // ─── Cloud config ───────────────────────────────────────────────────────────

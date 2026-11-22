@@ -21,7 +21,7 @@ use crate::{ComponentLibrary, OpenUiError, RuntimeLimits, admit_text};
 /// Text that is not JSON is refused with `InvalidSchema`, with the JSON
 /// reader's message. Of the limits, only `max_json_bytes` applies. The text
 /// is read with serde_json on a stack segment of its own
-/// ([`openui_lang::read_schema_json`]), so no schema it accepts or refuses
+/// ([`openui_lang::read_host_json`]), so no schema it accepts or refuses
 /// can overflow the caller's thread.
 ///
 /// Compiling costs time and memory in step with the schema's size: the
@@ -34,7 +34,7 @@ pub fn library_from_schema(
     admit_text(schema, limits.max_json_bytes)?;
     // serde_json's reader, on a segment sized for its level bound: a schema
     // nested to the limit reads on any thread.
-    let json = openui_lang::read_schema_json(schema).map_err(|e| OpenUiError::InvalidSchema {
+    let json = openui_lang::read_host_json(schema).map_err(|e| OpenUiError::InvalidSchema {
         reason: e.to_string(),
     })?;
     Ok(ComponentLibrary {

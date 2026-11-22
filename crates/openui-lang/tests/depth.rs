@@ -229,11 +229,16 @@ fn json_deeper_than_any_parse_result_is_refused() {
                 element.insert("partial".into(), Value::Bool(false));
                 Value::Object(element)
             };
-            assert!(json_to_openui(&element(797), &library(), None).is_ok());
-            assert!(json_to_openui(&element(900), &library(), None).is_err());
+            // serde_json drops a value by recursing: free each with a loop,
+            // so this runs on a 64 KiB thread unoptimised too.
+            for (levels, accepted) in [(797, true), (900, false)] {
+                let tree = element(levels);
+                assert_eq!(json_to_openui(&tree, &library(), None).is_ok(), accepted);
+                openui_lang::free_json(tree);
+            }
             // And JSON text at the limit reads back.
             let at_limit = format!("{}1{}", "[".repeat(800), "]".repeat(800));
-            assert!(parse_json(&at_limit).is_ok());
+            openui_lang::free_json(parse_json(&at_limit).unwrap());
             assert!(
                 test_alloc::peak() < 2 * 1024 * 1024,
                 "deep JSON exceeded its pinned 2 MiB peak: {} bytes",

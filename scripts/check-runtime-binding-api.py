@@ -178,7 +178,7 @@ assert "methods: { free: openuiFree, jsonSchema: openuiNone, promptSpec: openuiN
 # it is read, by one shared policy; the plain constructor keeps the defaults.
 assert re.search(r"pub fn library_from_schema\(\s*schema: &str,\s*limits: &RuntimeLimits,", session_definition), "shared schema entry point drift"
 assert "admit_text(schema, limits.max_json_bytes)?;" in session_definition, "a schema must pass the host input limit before it is read"
-assert session_definition.index("admit_text(schema") < session_definition.index("read_schema_json(schema)"), "the schema limit must come before reading"
+assert session_definition.index("admit_text(schema") < session_definition.index("read_host_json(schema)"), "the schema limit must come before reading"
 assert re.search(r"#\[uniffi::constructor\]\s*pub fn new\(schema: String\) -> Result<Arc<Self>, OpenUiError> \{\s*Self::from_schema_with_limits\(schema, RuntimeLimits::default\(\)\)", native_library), "native new must apply the default limits"
 assert re.search(r"#\[uniffi::constructor\]\s*pub fn from_schema_with_limits\(\s*schema: String,\s*limits: RuntimeLimits,\s*\) -> Result<Arc<Self>, OpenUiError>", native_library)
 assert "Self::from_schema(schema, &openui_session::RuntimeLimits::default())" in wasm_library, "wasm constructor must apply the default limits"

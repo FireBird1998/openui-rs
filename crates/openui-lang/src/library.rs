@@ -578,24 +578,24 @@ const SERDE_JSON_LEVELS: usize = 128;
 /// drop 127 nested objects, 17 KiB to read one), and less optimized.
 const SERDE_JSON_STACK_PER_LEVEL: usize = 3 * 1024;
 
-/// The segment [`read_schema_json`] reads on: four times the reader's need
-/// at its level bound, plus room for the reader's own entry frames, so a
-/// schema nested to the limit, or one level past it, fits on any thread at
-/// any optimization level. 1,664 KiB, reserved rather than touched.
-const SCHEMA_READ_SEGMENT: usize = SERDE_JSON_LEVELS * SERDE_JSON_STACK_PER_LEVEL * 4 + 128 * 1024;
+/// The segment [`read_host_json`] reads on: four times the reader's need at
+/// its level bound, plus room for the reader's own entry frames, so text
+/// nested to the limit, or one level past it, fits on any thread at any
+/// optimization level. 1,664 KiB, reserved rather than touched.
+const HOST_JSON_SEGMENT: usize = SERDE_JSON_LEVELS * SERDE_JSON_STACK_PER_LEVEL * 4 + 128 * 1024;
 
-/// `serde_json::from_str` of a component library's JSON Schema text, run on
-/// a stack segment of its own sized for serde_json's level bound, so that
-/// reading a schema nested as deep as serde_json allows, or refusing one
-/// nested deeper, needs nothing of the caller's stack (ADR 0002). It accepts
-/// and refuses exactly what `serde_json::from_str` does, with the same
-/// errors. The value it returns nests at most as deep; free it with
-/// [`crate::free_json`] on a small stack, as [`Library::from_json_schema`]
-/// copies and frees with loops.
+/// `serde_json::from_str` of a host's JSON text, run on a stack segment of
+/// its own sized for serde_json's level bound, so that reading text nested
+/// as deep as serde_json allows, or refusing text nested deeper, needs
+/// nothing of the caller's stack (ADR 0002). It accepts and refuses exactly
+/// what `serde_json::from_str` does, with the same errors. The value it
+/// returns nests at most as deep; serde_json drops a value by recursing, so
+/// free it with [`crate::free_json`] on a small stack.
 ///
-/// The bindings read a library schema's text through this.
-pub fn read_schema_json(text: &str) -> Result<Json, serde_json::Error> {
-    stacker::grow(SCHEMA_READ_SEGMENT, || serde_json::from_str(text))
+/// The bindings read a library schema's text through this (#140), and the
+/// native binding a prompt spec (#203).
+pub fn read_host_json(text: &str) -> Result<Json, serde_json::Error> {
+    stacker::grow(HOST_JSON_SEGMENT, || serde_json::from_str(text))
 }
 
 /// `$defs[name]` the way JavaScript reads it from parsed JSON: an own key of

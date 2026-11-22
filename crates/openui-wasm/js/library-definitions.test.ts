@@ -412,3 +412,50 @@ test('malformed schemas are refused with the messages they always had', () => {
     expect(kind(() => new wasm.ComponentLibrary(text), 'InvalidSchema').message).toBe(message);
   }
 });
+
+// JSON nested `levels` deep, of objects or arrays, around the number 1.
+function nested(shape: 'object' | 'array', levels: number) {
+  const [open, close] = shape === 'object' ? ['{"a":', '}'] : ['[', ']'];
+  return open.repeat(levels) + '1' + close.repeat(levels);
+}
+
+// #203: a library's prompt options are read by the core's reader under the
+// evaluation depth limit (800 JSON levels by default). Options at the limit
+// make a prompt and one level more is refused; a cloud request holds them
+// one level down, under the same limit. Text the reader refuses, or whose
+// repeated key replaces a value, after a value nested to the limit frees
+// what it read with a loop, and the instance keeps working.
+test('prompt options nested to the depth limit make prompts; the reader frees what it lets go of (#203)', () => {
+  const library = define({ components: [{ name: 'C', description: '', props: [] }], root: 'C' });
+  const plain = library.prompt(), config = library.cloudConfig();
+  for (const shape of ['object', 'array'] as const) {
+    const options = (levels: number) => `{"extra":${nested(shape, levels - 1)}}`;
+    expect(library.prompt(options(800))).toBe(plain);
+    kind(() => library.prompt(options(801)), 'InvalidPromptSpec');
+    expect(library.cloudConfig(options(799))).toBe(config);
+    expect(kind(() => library.cloudConfig(options(800)), 'Prompt').message)
+      .toBe('[generateSystemPrompt] the spec nests deeper than 800 levels.');
+    kind(() => library.cloudConfig(options(801)), 'InvalidPromptSpec');
+    const deep = nested(shape, 798);
+    expect(library.prompt(`{"extra":${deep},"extra":1}`)).toBe(plain);
+    for (const text of [`{"extra":${deep}} x`, `{"extra":${deep},"b":!}`, `{"extra":[${deep},${nested(shape, 900)}]}`]) {
+      kind(() => library.prompt(text), 'InvalidPromptSpec');
+      kind(() => wasm.ComponentLibrary.fromDefinition(text), 'InvalidJson');
+    }
+  }
+  // Options may replace any field the generator reads, and it copies some
+  // with serde_json: each, nested near the limit, gives a prompt or a typed
+  // error, never a trap.
+  for (const key of ['components', 'functions', 'actions', 'tools', 'componentGroups', 'examples', 'additionalRules']) {
+    for (const shape of ['object', 'array'] as const) {
+      const deep = nested(shape, 797);
+      for (const text of [`{"${key}":{"x":${deep}}}`, `{"${key}":[{"name":"t","inputSchema":${deep}}]}`]) {
+        for (const make of [() => library.prompt(text), () => library.cloudConfig(text)]) {
+          try { expect(typeof make()).toBe('string'); } catch (e: any) { expect(e.kind).toBe('Prompt'); }
+        }
+      }
+    }
+  }
+  expect(library.prompt()).toBe(plain);
+  library.free();
+});

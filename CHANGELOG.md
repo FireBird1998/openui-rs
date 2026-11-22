@@ -15,6 +15,25 @@
   34%, respectively. Free, dispose and detach share a flush bound of
   `maxContinuations + 1` rounds, including nested stops. At a limit of 1,
   the bound drops from 3 rounds to 2.
+- No host JSON overflows the caller's thread (#203). The native binding's
+  `generate_system_prompt` reads its spec with serde_json on a stack
+  segment of its own (`openui_lang::read_host_json`, the reader a library
+  schema's text goes through), generates from it and frees it with a
+  loop: a spec nested to serde_json's 127-level bound, which overflowed a
+  64 KiB thread at about 25 levels unoptimised, now fits one, and every
+  accepted and refused spec and every message is as before. The core's
+  `generate_prompt_with_limits` and `generate_system_prompt_with_limits`
+  copy parts of a spec on a segment sized for its depth, so a defined
+  library's prompt options deep in `components` no longer overflow either.
+  `DefinedLibrary::cloud_config` now relies on that segment instead of its
+  own (#135). Rust API: `read_schema_json` is replaced by `read_host_json`.
+  The core's JSON reader (`parse_json_with_limits`, behind definitions,
+  prompt options and session state) frees what it read with a loop when it
+  refuses text and when a repeated key replaces a value; before, serde_json's
+  recursive drop freed it on the caller's stack. TESTING.md lists every
+  place host JSON is read and why it fits, and `scripts/check.sh` (so CI)
+  now also runs the stack-depth test files at opt-level 0
+  (`cargo test --profile dev`), where frames are largest.
 
 - Prompts and bindings from a defined library (#135). A library made from a
   definition gives its system prompt, `prompt(options)`, byte for byte as
@@ -160,7 +179,7 @@
   and checks a value against one by parsing with the library.
   Reading a schema's text in the bindings runs serde_json on a stack
   segment of its own sized for the reader's 127-level bound (the new
-  `openui_lang::read_schema_json`), so a schema nested to that limit, or one
+  `openui_lang::read_host_json`), so a schema nested to that limit, or one
   past it, cannot overflow the caller's thread (64 KiB, unoptimised, and in
   WebAssembly); what is accepted or refused, and every message, is as before.
 
