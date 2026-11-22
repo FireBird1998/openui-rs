@@ -1,0 +1,7 @@
+{
+ "note": "Shaped by hand in OpenAI's Chat Completions streaming format, which the Thesys docs say the Gateway implements; not yet recorded from the Gateway. Replace with a real recording after the first run with a key. The error body follows OpenAI's error object; the Gateway's own shape is unconfirmed.",
+ "status": 401,
+ "chunks": [
+  "{\"error\": {\"message\": \"Invalid API key provided.\", \"type\": \"invalid_request_error\", \"code\": \"invalid_api_key\"}}"
+ ]
+}

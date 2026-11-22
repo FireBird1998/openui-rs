@@ -50,10 +50,16 @@ class SwiftTestGate(unittest.TestCase):
         self.assertIn("INCOMPLETE", result.stderr)
         self.assertIn("tools/viewer declares 2 tests", result.stdout)
 
-    def test_viewer_gate_passes_only_when_both_packages_finish(self):
-        result = self.run_viewer_gate("neither-package")
+    def test_viewer_gate_rejects_incomplete_chat_app_tests(self):
+        result = self.run_viewer_gate("tools/chat")
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("INCOMPLETE", result.stderr)
+        self.assertIn("tools/chat declares 2 tests", result.stdout)
+
+    def test_viewer_gate_passes_only_when_every_package_finishes(self):
+        result = self.run_viewer_gate("no-package")
         self.assertEqual(result.returncode, 0, result.stderr)
-        self.assertEqual(result.stdout.count("complete 2/2"), 2)
+        self.assertEqual(result.stdout.count("complete 2/2"), 3)
 
     def run_gate(self, output, status=0, inventory="Example.Parent/Child/one()\nExample.Parent/Child/two(_:)\n"):
         with tempfile.TemporaryDirectory() as directory:

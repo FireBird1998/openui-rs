@@ -236,6 +236,10 @@ _Avoid_: state runtime (its name before the runtime existed), runtime (that's th
 The Mac app that plays a program as a stream, evaluates every step and draws it natively beside its store and parse result: a development tool for the core and the runtime, built on OpenUINative, and a rehearsal for Dynamic News's binding.
 _Avoid_: playground, inspector, demo app, Mac app
 
+**Chat app**:
+The sandboxed Mac app in `tools/chat/` that sends a thread to the Thesys Gateway with the person's own key, kept in the Keychain, and draws each answer natively as it streams: a real product built on OpenUINative's public interface, to prove the Swift binding is complete.
+_Avoid_: demo, Mac app (the Viewer is a Mac app too)
+
 **Story screen**:
 The screen for one news story, whose layout is a program generated for that story.
 _Avoid_: article page, detail view

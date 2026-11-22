@@ -7,6 +7,8 @@ swift/OpenUINative/.swiftpm/
 swift/OpenUINative/Frameworks/
 swift/OpenUINative/Sources/OpenUIFFI/
 tools/viewer/.build/
+tools/chat/.build/
+tools/chat/.swiftpm/
 # Xcode's package state, except the shared scheme that builds the binding first.
 tools/viewer/.swiftpm/*
 !tools/viewer/.swiftpm/xcode/

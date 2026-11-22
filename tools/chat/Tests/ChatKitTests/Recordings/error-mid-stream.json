@@ -1,0 +1,7 @@
+{
+ "note": "Shaped by hand in OpenAI's Chat Completions streaming format, which the Thesys docs say the Gateway implements; not yet recorded from the Gateway. Replace with a real recording after the first run with a key. An error inside a successful stream is written as the OpenAI SDK reads one (a data event whose JSON has an error object); the cookbook says the Gateway reports some errors, such as an unknown model, inside a successful response, but not in what shape.",
+ "status": 200,
+ "chunks": [
+  "data: {\"id\":\"chatcmpl-shaped\",\"object\":\"chat.completion.chunk\",\"created\":1,\"model\":\"anthropic/claude-sonnet-5.5\",\"choices\":[{\"index\":0,\"delta\":{\"role\":\"assistant\",\"content\":\"\"},\"finish_reason\":null}]}\n\ndata: {\"id\":\"chatcmpl-shaped\",\"object\":\"chat.completion.chunk\",\"created\":1,\"model\":\"anthropic/claude-sonnet-5.5\",\"choices\":[{\"index\":0,\"delta\":{\"content\":\"root = Stack([title, card])\\n\"},\"finish_reason\":null}]}\n\ndata: {\"id\":\"chatcmpl-shaped\",\"object\":\"chat.completion.chunk\",\"created\":1,\"model\":\"anthropic/claude-sonnet-5.5\",\"choices\":[{\"index\":0,\"delta\":{\"content\":\"title = TextContent(\\\"Paris\\\", \\\"large-heavy\\\")\\n\"},\"finish_reason\":null}]}\n\ndata: {\"error\": {\"message\": \"The model is overloaded. Try again later.\", \"type\": \"server_error\"}}\n\n"
+ ]
+}

@@ -221,7 +221,7 @@ The Viewer can load a JSON script of tool outcomes beside a program. The bundled
 
 ```bash
 scripts/viewer.sh run      # build the binding and the app, then run it
-scripts/check-viewer.sh    # the package and the viewer: warnings as errors, then their Swift tests
+scripts/check-viewer.sh    # the package, the viewer and the chat app: warnings as errors, then their Swift tests
 ```
 
 Or run `scripts/viewer.sh` once, then open `tools/viewer/Package.swift` in Xcode and press ⌘R; the shared scheme rebuilds the binding first (its log is `target/viewer-xcode-prebuild.log`). The app bundle lands in `target/viewer/`.
@@ -246,6 +246,14 @@ Run the same batch command again to resume. Matching completed batch recordings 
 
 `scripts/viewer-timing.sh` runs a fixed set of them, streaming steadily and under stress, and reports where each update's time goes. Sending the whole result as JSON after every chunk costs well under a millisecond even for the largest program; drawing is what costs, about 25–45 ms per update while streaming (see `.scratch/viewer/issues/05-where-the-redraw-time-goes.md`).
 
+## The chat app
+
+A sandboxed Mac app in `tools/chat/` that chats with the Thesys Gateway: you type a message, the Gateway answers in OpenUI Lang with react-ui's library in cloud prompt mode, and the answer is drawn natively with OpenUINative as it streams. Your Thesys API key goes into Settings and is kept in the Keychain. So far it has one thread; [its README](tools/chat/README.md) says how to run it and what to try. It needs macOS 27 and Xcode.
+
+```bash
+scripts/chat.sh run        # build the binding and the app, sign it for this Mac, then open it
+```
+
 ## In the browser
 
 `examples/next-compare/` is a Next.js page that streams one program into two copies of upstream's React renderer and react-ui library: one parses with upstream's lang-core, the other with this core compiled to WebAssembly (`crates/openui-wasm`). Only the parser differs. Under each pane it shows parser time, React commit time and long tasks. `npm run compare` there checks without a browser that both give the same result at every update. See [its README](examples/next-compare/README.md).
@@ -263,6 +271,7 @@ cd examples/next-compare && npm ci && npm run compare && npm run build && npm st
 | `crates/openui-ffi/` | the UniFFI binding that OpenUINative (and later Dynamic News) calls, with the bindings generator |
 | `swift/OpenUINative/` | the Swift package: binding, parse result, live programs and native drawing; `scripts/swift-binding.sh` generates its `Frameworks/` and `Sources/OpenUIFFI/` |
 | `tools/viewer/` | the viewer, a development tool built on that package |
+| `tools/chat/` | the chat app, a sandboxed Mac app on that package that talks to the Thesys Gateway |
 | `conformance/` | the corpus (`manifest.json` and friends list every case), the goldens, quirks, and the hand-written and generated edit and prompt cases |
 | `reference/` | the vendored reference (`lang-core/`, untouched) and the Bun scripts that run it: goldens, fuzz server, benchmarks, corpus import |
 | `crates/openui-wasm/` | the WebAssembly binding (`scripts/wasm.sh` builds it into `target/wasm-pkg/`) |
