@@ -2876,6 +2876,14 @@ suite; neither invokes Bun or updates conformance goldens.
 
 `RawResponses` compares a bare response with stream set and finish, reads a regenerated message, and follows a Cloud script through a partial section, settlement and an edit. It checks the drawn text, provider calls, interaction and Retry gates, and the parser diagnostic after a store redraw. A size refusal and a discarded in-flight read preserve the accepted drawing and metadata. A provider-free session accepts clicks again after clearing the app’s streaming request or discarding a bundle preview. `ResponsePlayback` opens both bundled samples through the Viewer model and checks their raw source, drawn editions and cached final steps.
 
+For #124, the session and WebAssembly tests replay `streaming-over-a-registered-program`
+and `replacing-a-program-while-queries-are-paused` from `session-blocked.json`.
+Each step compares the drawn tree, snapshot, flags, tool calls and host events
+with the pinned renderer. In OpenUINative,
+`blockedReplacementDisablesTheMutationButtonAndInputUntilSettlement`
+checks the built-in mutation button and input as B streams over A and while
+B has an invalid scripts section. Both controls work after B settles.
+
 ## Swift component library definitions (#138)
 
 `ComponentDefinitionTests` compares every Swift prop kind with its plain

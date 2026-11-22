@@ -30,6 +30,7 @@ for (const [input, output, withBlocked] of [
     const resultRef = { current: undefined };
     const app = new Map();
     let bundle, streaming, blocked, root;
+    let paused = false;
     let settled = { names: new Set<string>(), revision: null as string | null };
     try {
       for (const step of steps) {
@@ -50,6 +51,17 @@ for (const [input, output, withBlocked] of [
           }
           register = reparse || wasBlocked !== blocked;
         }
+        // Model unmount and remount as in paused-actions.ts. The real
+        // manager retains its query results across dispose/activate.
+        if (step.pause) {
+          manager.dispose();
+          paused = true;
+        }
+        if (step.resume) {
+          manager.activate();
+          paused = false;
+          register = true;
+        }
         const bundleBlocked = bundle.isBundle && blocked;
         if ('set' in step) store.set(step.set, step.value);
         if ('extra' in step) app.set(step.extra, step.values);
@@ -68,14 +80,16 @@ for (const [input, output, withBlocked] of [
           else calls[step.finish].resolve(step.value);
         }
         await new Promise<void>(resolve => setImmediate(resolve));
-        if (!blocked && ('response' in step || 'extra' in step || state !== store.getSnapshot())) {
+        // evaluateStatements itself ignores replacements while disposed.
+        const queryInputsChanged = 'response' in step || step.resume || 'extra' in step || state !== store.getSnapshot();
+        if (!blocked && queryInputsChanged) {
           manager.evaluateStatements(resultRef.current.queryStatements, ctx, {
             // The session combines its app hook and the renderer hook at the single lang-core seam.
             extraDeps: tool => Object.assign({}, app.get(String(tool)),
               settled.names.has(tool) ? { __openuiScriptRevision: settled.revision } : undefined),
           });
         }
-        if (register) registerMutations(blocked, resultRef.current, ctx, manager);
+        if (!paused && register) registerMutations(blocked, resultRef.current, ctx, manager);
         const errors = [];
         root = evaluateRoot(resultRef.current, { ctx, library: { components: {} } as any, store, errors });
         const snapshot = manager.getSnapshot();

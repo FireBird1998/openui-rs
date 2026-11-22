@@ -442,34 +442,59 @@ test('a refused response update leaves the reader where it was for the next appe
   }
 });
 
-test('each raw draw reports the renderer blocked flag, which leaves the click gate as it was', () => {
-  const corpus = JSON.parse(readFileSync(new URL('../../../conformance/session-blocked.json', import.meta.url), 'utf8'));
-  const golden = readFileSync(new URL('../../../conformance/golden/session-blocked.jsonl', import.meta.url), 'utf8')
-    .trimEnd().split('\n').map(row => JSON.parse(row));
-  using library = new wasm.ComponentLibrary(JSON.stringify(corpus.schema));
-  using s = new wasm.RuntimeSession(library);
-  const [{steps}] = corpus.scenarios;
-  expect(golden).toHaveLength(steps.length);
-  let token;
-  const seen = [];
-  for (const [index, step] of steps.entries()) {
-    let events = [];
-    if ('click' in step) {
-      using action = s.actionAt(token, ['props', step.click]);
-      using run = s.run(action, 'click');
-      events = run.events;
+const blockedCorpus = JSON.parse(readFileSync(new URL('../../../conformance/session-blocked.json', import.meta.url), 'utf8'));
+const blockedRows = readFileSync(new URL('../../../conformance/golden/session-blocked.jsonl', import.meta.url), 'utf8')
+  .trimEnd().split('\n').map(row => JSON.parse(row));
+
+for (const {name, steps} of blockedCorpus.scenarios) {
+  test(`raw session matches the renderer for ${name}`, () => {
+    const expected = blockedRows.filter(row => row.name === name);
+    expect(expected).toHaveLength(steps.length);
+    using library = new wasm.ComponentLibrary(JSON.stringify(blockedCorpus.schema));
+    using session = new wasm.RuntimeSession(library);
+    session.attachToolProvider();
+    using handles = new DisposableStack();
+    const calls = [];
+    let token;
+    for (const [index, step] of steps.entries()) {
+      const events = [];
+      if ('click' in step) {
+        using action = session.actionAt(token, ['props', step.click]);
+        using run = session.run(action, 'click');
+        expect(run.failure).toBeNull();
+        events.push(...run.events.map(JSON.parse));
+      } else if ('finish' in step) {
+        session.completeToolCall(calls[step.finish], JSON.stringify({value: step.value}));
+      } else if (step.pause) {
+        session.pauseQueries();
+      } else if (step.resume) {
+        session.resumeQueries();
+      } else if (step.retry) {
+        session.retryFailedQueries();
+      }
+      using output = 'response' in step ? session.setResponse(step.response, step.streaming ?? false).evaluation : session.evaluate();
+      token = handles.use(output.evaluation);
+      using update = session.takeQueryUpdate();
+      expect(update.evaluationError).toBeNull();
+      const dispatch = [];
+      for (let i = 0n; i < update.callCount; i++) {
+        const call = handles.use(update.callAt(i));
+        calls.push(call);
+        dispatch.push({toolName: call.toolName, args: JSON.parse(call.argumentsJson)});
+      }
+      for (let i = 0n; i < update.actionCount; i++) {
+        using resumed = update.actionAt(i);
+        expect(resumed.failure).toBeNull();
+        events.push(...resumed.events.map(JSON.parse));
+      }
+      expect({
+        name, tree: JSON.parse(output.json), snapshot: JSON.parse(output.querySnapshotJson),
+        blocked: output.blocked, isQueryLoading: output.isQueryLoading,
+        parserError: JSON.parse(output.parserErrorJson ?? 'null'), calls: dispatch, events,
+      }).toEqual(expected[index]);
     }
-    // Every other step redraws the last response, as the reference does.
-    using output = 'response' in step ? s.setResponse(step.response, step.streaming ?? false).evaluation : s.evaluate();
-    token?.free();
-    token = output.evaluation;
-    seen.push(output.blocked);
-    expect([index, output.blocked, events.length]).toEqual([index, golden[index].blocked, golden[index].events.length]);
-  }
-  token?.free();
-  expect(seen).toContain(true);
-  expect(seen).toContain(false);
-});
+  });
+}
 
 test('a refused raw update leaves the blocked flag the last draw reported, until dispose', () => {
   using library = new wasm.ComponentLibrary(boxSchema);

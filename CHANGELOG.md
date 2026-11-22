@@ -15,6 +15,11 @@
 - OpenUINative draws react-ui's column-oriented tables and label/value pie
   charts (#149). Bench tables and slice-based pies still draw. In the recorded
   react-ui corpus, 18 of 152 programs now draw without a placeholder, up from 12.
+- Recorded session conformance for streaming and paused program replacements
+  (#124). A replacement can draw the registered program’s query results by
+  statement id. During a bare stream, a direct mutation click uses the
+  registered tool with the replacement’s arguments. OpenUINative disables
+  its buttons and inputs while the response is blocked.
 - WebAssembly `free()` can no longer free another object's memory (#211).
   The generated `free` (and `[Symbol.dispose]`) looked up
   `__destroy_into_raw` through the instance, so an own property, a subclass

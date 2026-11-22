@@ -95,6 +95,36 @@
           "click": "action"
         }
       ]
+    },
+    {
+      "name": "streaming-over-a-registered-program",
+      "steps": [
+        {"response":"keep=Query(\"stable\",{},\"A stable\")\nq=Query(\"lookup\",{version:1},\"A default\")\ngone=Query(\"archive\")\nm=Mutation(\"save\",{version:1})\nroot=Box([keep,q,gone],@Run(q),@Run(m))"},
+        {"finish":0,"value":"kept"},
+        {"finish":1,"value":"v1"},
+        {"finish":2,"value":"A only"},
+        {"response":"keep=Query(\"stable\",{},\"B stable\")\nq=Query(\"search\",{version:2},\"B default\")\nfresh=Query(\"added\",{},\"B fresh\")\nm=Mutation(\"delete\",{version:2})\nroot=Box([keep,q,fresh],@Run(q),Action([@Run(m),@OpenUrl(\"done\")]))","streaming":true},
+        {"click":"mutation"},
+        {"finish":3,"value":"saved"},
+        {"click":"action"},
+        {"finish":4,"value":"v1 refreshed"},
+        {"response":"keep=Query(\"stable\",{},\"B stable\")\nq=Query(\"search\",{version:2},\"B default\")\nfresh=Query(\"added\",{},\"B fresh\")\nm=Mutation(\"delete\",{version:2})\nroot=Box([keep,q,fresh],@Run(q),Action([@Run(m),@OpenUrl(\"done\")]))"},
+        {"finish":5,"value":"v2"},
+        {"finish":6,"value":"B only"},
+        {"click":"mutation"},
+        {"finish":7,"value":"deleted"}
+      ]
+    },
+    {
+      "name": "replacing-a-program-while-queries-are-paused",
+      "steps": [
+        {"response":"q=Query(\"lookup\",{},\"A default\")\nroot=Box([\"A\",q])"},
+        {"finish":0,"value":"v1"},
+        {"pause":true},
+        {"response":"q=Query(\"search\",{},\"B default\")\nroot=Box([\"B\",q])"},
+        {"resume":true},
+        {"finish":1,"value":"v2"}
+      ]
     }
   ]
 }

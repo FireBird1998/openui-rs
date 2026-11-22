@@ -128,6 +128,10 @@ fn replay_corpus(corpus: &str, golden: &str, name: &str) -> Result<Replayed> {
             };
             assert!(run.failure.is_none());
             events.extend(run.events);
+        } else if step["pause"] == true {
+            s.pause_queries()?;
+        } else if step["resume"] == true {
+            s.resume_queries()?;
         } else if let Some(key) = step.get("set").and_then(Json::as_str) {
             s.set(&refs, key.into(), step.get("value").map(Json::to_string))?;
         } else {
@@ -537,6 +541,24 @@ fn settled_reader_completes_during_a_blocked_edit() -> Result<()> {
     replay("settled-reader-completes-during-a-blocked-edit")
 }
 
+fn replay_blocked(name: &str) -> Result<Replayed> {
+    replay_corpus(
+        include_str!("../../../conformance/session-blocked.json"),
+        include_str!("../../../conformance/golden/session-blocked.jsonl"),
+        name,
+    )
+}
+
+#[test]
+fn streaming_replacement_draws_and_calls_the_registered_program() -> Result<()> {
+    replay_blocked("streaming-over-a-registered-program").map(drop)
+}
+
+#[test]
+fn paused_replacement_draws_the_registered_query_until_resume() -> Result<()> {
+    replay_blocked("replacing-a-program-while-queries-are-paused").map(drop)
+}
+
 /// The draw's `blocked` after each command the session takes, compared with
 /// the renderer's `blocked` where the reference has the command (the replay)
 /// and, for commands of the session alone, with what the last response says.
@@ -547,11 +569,7 @@ fn every_draw_reports_the_renderers_blocked_flag_and_the_gate_is_unchanged() -> 
         lib,
         response: settled,
         blocked,
-    } = replay_corpus(
-        include_str!("../../../conformance/session-blocked.json"),
-        include_str!("../../../conformance/golden/session-blocked.jsonl"),
-        "blocked-flag-walk",
-    )?;
+    } = replay_blocked("blocked-flag-walk")?;
     assert!(!blocked && settled.is_bundle && !settled.streaming);
     let values = JsObject::new();
     let refs = PreparedReferenceValues::new(&values);

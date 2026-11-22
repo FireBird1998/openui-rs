@@ -1,8 +1,9 @@
 // A click runs exactly the action that was drawn, or nothing; writes from
 // inputs and markers likewise. Props decode as what they are.
 import AppKit
-import OpenUINative
+@testable import OpenUINative
 import SwiftUI
+import Synchronization
 import Testing
 
 /// The element at `path` in the live program's evaluated tree.
@@ -373,6 +374,66 @@ extension NativeUITests {
 }
 
 @Suite @MainActor struct WhileAResponseStreams {
+    @Test func blockedReplacementDisablesTheMutationButtonAndInputUntilSettlement() async throws {
+        func program(_ tool: String) -> String {
+            """
+            $note = ""
+            m = Mutation("\(tool)")
+            root = Stack([Button("\(tool)", @Run(m)), Input("note", $note)])
+            """
+        }
+        let live = try await live(program("save"))
+        let calls = Mutex<[String]>([])
+        try live.attachToolProvider { name, _ in
+            calls.withLock { $0.append(name) }
+            return .null
+        }
+        let window = await Window(live)
+        defer { window.close() }
+        // Build the accessibility tree even on a worker without VoiceOver.
+        window.host.rootView = AnyView(window.host.rootView.environment(\.accessibilityEnabled, true))
+        await window.settle()
+        func clickAndDeliver() async throws {
+            try await window.click("/children/0")
+            for task in Array(live.queryDriver?.calls.values ?? [:].values) { await task.value }
+        }
+
+        // Read the enabled state of the actual SwiftUI controls as AppKit
+        // exposes them to assistive technology, including a non-editable field.
+        func enabled(_ role: NSAccessibility.Role, in node: AnyObject) -> Bool? {
+            if node.accessibilityRole?() == role { return node.isAccessibilityEnabled?() }
+            for child in node.accessibilityChildren?() ?? [] {
+                if let value = enabled(role, in: child as AnyObject) { return value }
+            }
+            return nil
+        }
+        func expectEnabled(_ expected: Bool) {
+            #expect(enabled(.button, in: window.host) == expected)
+            #expect(enabled(.textField, in: window.host) == expected)
+        }
+        try await clickAndDeliver()
+        #expect(calls.withLock { $0 } == ["save"])
+
+        let replacement = program("delete")
+        let invalidBundle = replacement + "\n]]>openui:scripts {\"count\":1}\n[]"
+        for (response, streaming) in [(replacement, true), (invalidBundle, false)] {
+            try await live.show(response: response, streaming: streaming)
+            await window.settle()
+            expectEnabled(false)
+            try await clickAndDeliver()
+            #expect(calls.withLock { $0 } == ["save"])
+            #expect(live.value(of: "$note") == .string(""))
+        }
+
+        try await live.show(response: replacement, streaming: false)
+        await window.settle()
+        expectEnabled(true)
+        try await window.type("ok")
+        try await clickAndDeliver()
+        #expect(live.value(of: "$note") == .string("ok"))
+        #expect(calls.withLock { $0 } == ["save", "delete"])
+    }
+
     /// The app says a response is streaming: buttons run nothing, a click
     /// already on its way is ignored, inputs can't be typed in, and `run`
     /// refuses. Once it's done, they work again.

@@ -239,10 +239,16 @@ program draws disabled too while the session still takes its click.
 `conformance/session-blocked.json` walks a streaming and a settled bundle, an
 invalid settled bundle, a retried content section, a bare program, a plain
 message and a bundle whose scripts section is still arriving, with clicks and
-Retry in between. The same adapter records `blocked` in each of its 25 rows
+Retry in between. The adapter records `blocked` in each of the 25 rows of
+`blocked-flag-walk`
 ([golden](conformance/golden/session-blocked.jsonl)), and every draw's
 `blocked` in both bindings matches it.
 [Renderer context value](https://github.com/thesysdev/openui/blob/47b9cae0d3b26a8c9d7514d5887a6d6608801ac9/packages/react-lang/src/hooks/useOpenUIState.ts#L478-L494)
+
+| Session behaviour (#124) | lang-core 1.1.0 and the Rust session | Conformance evidence |
+|---|---|---|
+| A bare program B streams over registered program A | B draws A’s query results by statement id. A query only in B draws null. A query only in A stays in the snapshot until settlement. A direct click on B’s mutation calls A’s tool with B’s arguments and continues the plan on success. `@Run(q)` uses A’s registered tool and arguments. When B settles, an unchanged key keeps its data and a changed key shows A’s data while refetching. The stock react-ui button is disabled while streaming. | Conforming. [Scenario and paused variant](conformance/session-blocked.json) · [Reference observations](conformance/golden/session-blocked.jsonl) · [Session replay](crates/openui-session/tests/response_bundles.rs) · [Stock button](https://github.com/thesysdev/openui/blob/47b9cae0d3b26a8c9d7514d5887a6d6608801ac9/packages/react-ui/src/genui-lib/Button/index.tsx#L28-L41) |
+| B replaces A while queries are paused | B draws A’s fetched value for the shared id until resume registers B. The new tool refetches with the previous value on screen. | Conforming. `replacing-a-program-while-queries-are-paused` in the same replay. |
 
 An ordinary tool keeps its cached result across a scripts edit. A streaming response bundle
 with queries reports loading before dispatch. An invalid scripts section draws
