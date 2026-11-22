@@ -250,7 +250,7 @@ struct ExtraKey {
 
 #[derive(Clone)]
 struct Query {
-    suspended: bool,
+    suspension: Option<LimitError>,
     waiting_for_other: bool,
     waiting_for_self: bool,
     reads: Arc<[Read]>,
@@ -267,6 +267,10 @@ struct Query {
 }
 
 impl Query {
+    fn suspended(&self) -> bool {
+        self.suspension.is_some()
+    }
+
     fn waiting(&self) -> bool {
         self.waiting_for_self || self.waiting_for_other
     }
@@ -370,7 +374,7 @@ impl QueryManager {
         mut outstanding: impl Iterator<Item = &'a ToolCallId>,
     ) -> bool {
         if let Some(q) = self.queries.get(id) {
-            if q.suspended {
+            if q.suspended() {
                 return self.explains_suspension(id, q);
             }
             if q.waiting() {
@@ -595,6 +599,27 @@ impl QueryManager {
             }
             false
         });
+        if self.reader_limit.is_some() {
+            // Retry only the registrations we evaluated. An incomplete id
+            // keeps its last registration, including its reason for being idle.
+            for node in nodes {
+                if let Some(q) = self.queries.get_mut(&node.id)
+                    && q.suspension.take().is_some()
+                {
+                    q.error = None;
+                }
+            }
+            // Keep the published reason while a skipped reader still holds
+            // it. Otherwise report a remaining refusal in registration order.
+            let mut remaining = self
+                .order
+                .iter()
+                .filter_map(|id| self.queries.get(id)?.suspension);
+            self.reader_limit = remaining
+                .clone()
+                .find(|limit| Some(*limit) == self.reader_limit)
+                .or_else(|| remaining.next());
+        }
         let mut requests = runs::QueryRequests::default();
         let mut intervals = Vec::new();
         for node in nodes {
@@ -610,7 +635,7 @@ impl QueryManager {
     fn apply_node(&mut self, node: &Node, requests: &mut runs::QueryRequests) {
         #[cfg(test)]
         round_tests::applied();
-        if self.queries.get(&node.id).is_some_and(|q| q.suspended) {
+        if self.queries.get(&node.id).is_some_and(Query::suspended) {
             return;
         }
         let missing_input = node
@@ -622,7 +647,7 @@ impl QueryManager {
             acquire = true;
             self.order.push(node.id.clone());
             Query {
-                suspended: false,
+                suspension: None,
                 waiting_for_other: false,
                 waiting_for_self: false,
                 reads: node.reads.clone(),
@@ -692,7 +717,7 @@ impl QueryManager {
         if !self
             .queries
             .values()
-            .any(|query| !query.suspended && query.key == pending.key)
+            .any(|query| !query.suspended() && query.key == pending.key)
         {
             if let Some(entry) = self.cache.get_mut(&pending.key) {
                 entry.pending = None;
@@ -737,7 +762,7 @@ impl QueryManager {
         let readers = self
             .queries
             .iter_mut()
-            .filter(|(_, query)| !query.suspended && query.key == pending.key);
+            .filter(|(_, query)| !query.suspended() && query.key == pending.key);
         for (statement_id, query) in readers {
             query.withheld = false;
             if success {

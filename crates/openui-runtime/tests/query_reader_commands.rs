@@ -436,6 +436,12 @@ solo=Query("solo",{v:s ? s+s : 0})"#,
     );
     assert_eq!(manager.snapshot().get("healthy"), Some(&result));
 
+    assert_eq!(manager.failed_query_ids(), ["reader", "solo"]);
+    assert!(matches!(
+        manager.reader_diagnostic(),
+        Some(openui_runtime::ReaderDiagnostic::PropagationLimit(_))
+    ));
+
     // Registering again issues a new call while the old one is still out.
     let recovered = step(&mut manager, evaluate(&initial));
     assert!(manager.reader_diagnostic().is_none());
@@ -1066,4 +1072,207 @@ fn query_registration_accepts_statement_id_bytes_at_the_work_limit() {
         }
         manager.audit_cache(std::iter::empty(), work == 64).unwrap();
     }
+}
+
+fn suspend_reader(
+    manager: &mut QueryManager,
+    store: &Store,
+    receipts: &mut Vec<openui_runtime::ToolCallId>,
+) -> openui_lang::ParseResult {
+    let program = parse(
+        "s=Query(\"s\")\nr=Query(\"r\",{v:s+s})",
+        &Library::from_json_schema(&JsonValue::Null),
+        None,
+    );
+    let source = evaluate_reader_program(manager, &program, store, receipts);
+    let reader = audited_reader_calls(
+        manager,
+        deliver_source(&source, &JsonValue::from("a")),
+        receipts,
+    );
+    let old_call = &named(&reader, "r", r#"{"v":"aa"}"#).id;
+    assert!(old_call.is_pending());
+    let refresh = audited_reader_calls(
+        manager,
+        QueryCommand::Invalidate {
+            statement_ids: &["s"],
+        },
+        receipts,
+    );
+    let long = JsonValue::from("x".repeat(700));
+    let cut = audited_reader_calls(manager, deliver_source(&refresh, &long), receipts);
+    check_reader_delivery(manager, &cut, &long, "", true);
+    assert!(!old_call.is_pending());
+    program
+}
+
+#[test]
+fn an_incomplete_reader_keeps_its_limit_error_and_diagnostic() {
+    for source_complete in [true, false] {
+        let store = Store::default();
+        let mut manager = QueryManager::with_limits(Limits::DEFAULT.with_result_size(1024));
+        let mut receipts = Vec::new();
+        let mut program = suspend_reader(&mut manager, &store, &mut receipts);
+        let snapshot = manager.snapshot_json().to_owned();
+        let diagnostic = manager.reader_diagnostic();
+        let errors = manager.snapshot().get("__openui_errors").cloned();
+
+        program.query_statements[0].complete = source_complete;
+        program.query_statements[1].complete = false;
+        assert!(evaluate_reader_program(&mut manager, &program, &store, &mut receipts).is_empty());
+        assert!(
+            audited_reader_calls(
+                &mut manager,
+                QueryCommand::Invalidate {
+                    statement_ids: &["r"],
+                },
+                &mut receipts,
+            )
+            .is_empty()
+        );
+        assert_eq!(manager.snapshot_json(), snapshot);
+        assert_eq!(manager.reader_diagnostic(), diagnostic);
+        assert!(receipts.iter().all(|id| !id.is_pending()));
+
+        // Even an incomplete source keeps its registration. Deliver inputs
+        // that fit, then make only the reader complete and settle its new call.
+        let refresh = audited_reader_calls(
+            &mut manager,
+            QueryCommand::Invalidate {
+                statement_ids: &["s"],
+            },
+            &mut receipts,
+        );
+        let calls = audited_reader_calls(
+            &mut manager,
+            deliver_source(&refresh, &JsonValue::from("b")),
+            &mut receipts,
+        );
+        assert!(calls.is_empty());
+        assert_eq!(manager.snapshot().get("__openui_errors"), errors.as_ref());
+        assert_eq!(manager.reader_diagnostic(), diagnostic);
+        program.query_statements[1].complete = true;
+        let retry = evaluate_reader_program(&mut manager, &program, &store, &mut receipts);
+        assert_eq!(retry.len(), 1);
+        assert_eq!(manager.reader_diagnostic(), None);
+        assert!(manager.failed_query_ids().is_empty());
+        let done = audited_reader_calls(
+            &mut manager,
+            QueryCommand::Complete {
+                id: &named(&retry, "r", r#"{"v":"bb"}"#).id,
+                outcome: ToolOutcome::Result(Some(&JsonValue::from(42))),
+            },
+            &mut receipts,
+        );
+        assert!(done.is_empty());
+        assert_eq!(manager.snapshot().get("r"), Some(&Value::Num(42.0)));
+    }
+}
+
+#[test]
+fn a_complete_reader_still_refuses_oversized_input_from_an_incomplete_source() {
+    let store = Store::default();
+    let mut manager = QueryManager::with_limits(Limits::DEFAULT.with_result_size(1024));
+    let mut receipts = Vec::new();
+    let mut program = suspend_reader(&mut manager, &store, &mut receipts);
+    let snapshot = manager.snapshot_json().to_owned();
+    let diagnostic = manager.reader_diagnostic();
+
+    program.query_statements[0].complete = false;
+    assert!(
+        matches!(manager.apply(QueryCommand::Evaluate { program: &program, store: &store }), Err(QueryCommandError::Limit(limit)) if limit.flags.size_limited)
+    );
+    manager.audit_cache(receipts.iter(), true).unwrap();
+    assert_eq!(manager.snapshot_json(), snapshot);
+    assert_eq!(manager.reader_diagnostic(), diagnostic);
+    assert!(receipts.iter().all(|id| !id.is_pending()));
+}
+
+#[test]
+fn omitting_new_reader_errors_keeps_the_refusal_of_a_skipped_reader() {
+    let store = Store::default();
+    let mut manager = QueryManager::with_limits(Limits::DEFAULT.with_result_size(1024));
+    let mut receipts = Vec::new();
+    suspend_reader(&mut manager, &store, &mut receipts);
+    let errors = manager.snapshot().get("__openui_errors").cloned();
+    let diagnostic = manager.reader_diagnostic();
+
+    // Drop the old source and keep r incomplete. The second source fits,
+    // but its readers' arguments and their combined errors exceed the limit.
+    let mut source = String::from("r=Query(\"r\")\nt=Query(\"t\")");
+    for i in 0..12 {
+        source.push_str(&format!("\nu{i}=Query(\"u\",{{v:t+t}})"));
+    }
+    let mut program = parse(&source, &Library::from_json_schema(&JsonValue::Null), None);
+    program.query_statements[0].complete = false;
+    let calls = evaluate_reader_program(&mut manager, &program, &store, &mut receipts);
+    assert_eq!(calls.len(), 1);
+    let value = JsonValue::from("y".repeat(700));
+    let cut = audited_reader_calls(
+        &mut manager,
+        QueryCommand::Complete {
+            id: &named(&calls, "t", "{}").id,
+            outcome: ToolOutcome::Result(Some(&value)),
+        },
+        &mut receipts,
+    );
+    assert!(cut.is_empty());
+    assert_eq!(manager.snapshot().get("t"), Some(&Value::from_json(&value)));
+    assert!(manager.snapshot().get("u0").is_none());
+    assert_eq!(manager.snapshot().get("__openui_errors"), errors.as_ref());
+    assert_eq!(manager.snapshot().get("r"), Some(&Value::Null));
+    assert_eq!(manager.reader_diagnostic(), diagnostic);
+
+    // Only r remains. Its own refusal still explains the idle registration.
+    program.query_statements.truncate(1);
+    assert!(evaluate_reader_program(&mut manager, &program, &store, &mut receipts).is_empty());
+    assert_eq!(manager.reader_diagnostic(), diagnostic);
+    assert_eq!(manager.snapshot().get("__openui_errors"), errors.as_ref());
+    program.query_statements.clear();
+    assert!(evaluate_reader_program(&mut manager, &program, &store, &mut receipts).is_empty());
+    assert_eq!(manager.reader_diagnostic(), None);
+    assert!(manager.failed_query_ids().is_empty());
+}
+
+#[test]
+fn a_later_depth_cut_keeps_an_incomplete_readers_size_diagnostic() {
+    let store = Store::default();
+    let mut manager =
+        QueryManager::with_limits(Limits::DEFAULT.with_result_size(1024).with_depth(16));
+    let mut receipts = Vec::new();
+    suspend_reader(&mut manager, &store, &mut receipts);
+    let diagnostic = manager.reader_diagnostic();
+    let source = format!(
+        "r=Query(\"r\")\nt=Query(\"t\")\nu=Query(\"u\",t ? {}0{} : 0)",
+        "[".repeat(80),
+        "]".repeat(80)
+    );
+    let mut program = parse(&source, &Library::from_json_schema(&JsonValue::Null), None);
+    program.query_statements[0].complete = false;
+    let calls = evaluate_reader_program(&mut manager, &program, &store, &mut receipts);
+    let cut = audited_reader_calls(
+        &mut manager,
+        QueryCommand::Complete {
+            id: &named(&calls, "t", "{}").id,
+            outcome: ToolOutcome::Result(Some(&JsonValue::Bool(true))),
+        },
+        &mut receipts,
+    );
+    assert!(cut.is_empty());
+    assert_eq!(
+        parse_json(manager.snapshot_json()).unwrap()["__openui_errors"][1]["message"],
+        "depth limit exceeded"
+    );
+    assert_eq!(manager.reader_diagnostic(), diagnostic);
+
+    // Retry r and skip u. The sole remaining refusal now explains the diagnostic.
+    program.query_statements[0].complete = true;
+    program.query_statements[2].complete = false;
+    let retry = evaluate_reader_program(&mut manager, &program, &store, &mut receipts);
+    assert_eq!(retry.len(), 1);
+    named(&retry, "r", "{}");
+    assert_eq!(manager.failed_query_ids(), ["u"]);
+    assert!(
+        matches!(manager.reader_diagnostic(), Some(openui_runtime::ReaderDiagnostic::PropagationLimit(limit)) if limit.flags.depth_limited && !limit.flags.size_limited)
+    );
 }

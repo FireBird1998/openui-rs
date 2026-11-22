@@ -39,7 +39,7 @@ impl QueryRequests {
         let current: HashSet<_> = manager
             .queries
             .values()
-            .filter(|q| !q.suspended)
+            .filter(|q| !q.suspended())
             .map(|q| q.key.as_ref())
             .collect();
         let remembered = remembered.and_then(|(key, request)| {
@@ -77,7 +77,7 @@ impl QueryManager {
     pub(super) fn waits(&self, statement_id: &str) -> bool {
         self.queries
             .get(statement_id)
-            .is_some_and(|q| q.waiting() || q.suspended)
+            .is_some_and(|q| q.waiting() || q.suspended())
     }
 
     /// Upstream's `invalidate`. For each named query that is registered and
@@ -141,7 +141,7 @@ impl QueryManager {
         }
         let mut requests = QueryRequests::default();
         for id in &self.order {
-            let Some(query) = self.queries.get(id).filter(|q| !q.suspended) else {
+            let Some(query) = self.queries.get(id).filter(|q| !q.suspended()) else {
                 continue;
             };
             if self
@@ -171,7 +171,7 @@ impl QueryManager {
         let read = self
             .queries
             .values()
-            .any(|query| !query.suspended && query.key == key);
+            .any(|query| !query.suspended() && query.key == key);
         let entry = self.cache.get_mut(&key)?;
         let asked = entry.run_again.take()?;
         if !read || entry.pending.is_some() {
@@ -201,7 +201,7 @@ impl QueryManager {
         if self
             .queries
             .values()
-            .any(|query| !query.suspended && query.key == pending.key)
+            .any(|query| !query.suspended() && query.key == pending.key)
         {
             return false;
         }

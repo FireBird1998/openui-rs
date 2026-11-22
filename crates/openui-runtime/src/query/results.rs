@@ -183,7 +183,7 @@ impl QueryManager {
         for query in self
             .queries
             .values()
-            .filter(|query| !query.suspended && query.key == *key)
+            .filter(|query| !query.suspended() && query.key == *key)
         {
             if let Some(previous) = query.previous.as_ref().filter(|p| *p != key) {
                 let count = drops.entry(previous).or_default();
@@ -211,7 +211,7 @@ impl QueryManager {
         for query in self
             .queries
             .values_mut()
-            .filter(|q| !q.suspended && q.key == *key)
+            .filter(|q| !q.suspended() && q.key == *key)
         {
             query.withheld = true;
         }

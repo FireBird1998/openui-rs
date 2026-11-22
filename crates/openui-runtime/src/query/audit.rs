@@ -95,7 +95,7 @@ impl QueryManager {
         let current: HashSet<_> = self
             .queries
             .values()
-            .filter(|q| !q.suspended)
+            .filter(|q| !q.suspended())
             .map(|q| q.key.as_ref())
             .collect();
         let mut keys = HashSet::new();
@@ -222,7 +222,7 @@ impl QueryManager {
             let Some(entry) = self.cache.get(&q.key) else {
                 return Err(format!("missing key for {id}"));
             };
-            if q.suspended {
+            if q.suspended() {
                 if !self.explains_suspension(id, q) {
                     return Err(format!("rule 4: unexplained suspended reader {id}"));
                 }
@@ -347,7 +347,7 @@ impl QueryManager {
             if !missing.iter().any(|src| {
                 (!self.registration_history.registered.contains(*src) && !is_query_statement(src))
                     || self.queries.get(*src).is_some_and(|q| {
-                        (q.suspended && self.reader_limit.is_some())
+                        (q.suspended() && self.reader_limit.is_some())
                             || live.contains(&q.key)
                             || self
                                 .cache
@@ -393,7 +393,12 @@ impl ToolDelivery<'_> {
         });
         let delivered = !before.disposed
             && id.0.lifecycle.strong_count() != 0
-            && key.is_some_and(|k| before.queries.values().any(|q| !q.suspended && &q.key == k));
+            && key.is_some_and(|k| {
+                before
+                    .queries
+                    .values()
+                    .any(|q| !q.suspended() && &q.key == k)
+            });
         let success = self.result_refusal().is_none()
             && matches!(
                 outcome,
@@ -403,7 +408,7 @@ impl ToolDelivery<'_> {
             let Some(q) = after.queries.get(id) else {
                 return Err(format!("rule 3: delivery removed {id}"));
             };
-            if !old.suspended && delivered && Some(&old.key) == key {
+            if !old.suspended() && delivered && Some(&old.key) == key {
                 if success {
                     if !q.ever_fetched || q.previous.is_some() || q.error.is_some() {
                         return Err(format!("rule 3: success missed {id}"));

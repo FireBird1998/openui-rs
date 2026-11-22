@@ -248,7 +248,7 @@ impl QueryManager {
                 (
                     self.queries
                         .values()
-                        .filter(|q| !q.suspended && q.key == p.key)
+                        .filter(|q| !q.suspended() && q.key == p.key)
                         .count(),
                     p.tool_name.len(),
                 )

@@ -29,7 +29,7 @@ impl ToolDelivery<'_> {
 
     /// Publish the accepted outcome and the resulting calls. An admitted result
     /// survives a downstream evaluation limit. Affected readers expose the cut
-    /// until a new registration succeeds.
+    /// until a new registration evaluates them successfully.
     pub fn finish(
         mut self,
         context: Option<(&TreeInput<'_>, &Store)>,
@@ -97,7 +97,7 @@ impl ToolDelivery<'_> {
                 }
                 Err(QueryCommandError::Limit(limit)) => {
                     requests = runs::QueryRequests::default();
-                    self.candidate.suspend_stale_readers(&plan.nodes, limit);
+                    self.candidate.suspend_stale_readers(&plan, limit);
                 }
                 Err(QueryCommandError::Evaluation(_)) if self.refused.is_some() => {
                     requests = runs::QueryRequests::default();
@@ -126,7 +126,7 @@ pub enum ReaderDiagnostic {
 
 impl QueryManager {
     /// The diagnostic for the current registration. An explicit registration
-    /// evaluates self-inputs again and retries suspended readers.
+    /// evaluates complete self-inputs again and retries complete suspended readers.
     pub fn reader_diagnostic(&self) -> Option<ReaderDiagnostic> {
         if let Some(limit) = self.reader_limit {
             return Some(ReaderDiagnostic::PropagationLimit(limit));
@@ -139,10 +139,10 @@ impl QueryManager {
         })
     }
 
-    pub(super) fn suspend_stale_readers(&mut self, nodes: &[Arc<Node>], limit: LimitError) {
+    pub(super) fn suspend_stale_readers(&mut self, plan: &ReaderPlan, limit: LimitError) {
         let mut dependents: HashMap<&str, Vec<&str>> = HashMap::new();
         let mut work = Vec::new();
-        for node in nodes {
+        for node in plan.nodes.iter() {
             if self.stale(node) {
                 work.push(node.id.as_str());
             }
@@ -152,9 +152,9 @@ impl QueryManager {
         }
         while let Some(id) = work.pop() {
             if let Some(q) = self.queries.get_mut(id)
-                && !q.suspended
+                && !q.suspended()
             {
-                q.suspended = true;
+                q.suspension = Some(limit);
                 q.withheld = false;
                 q.defaults = Some(Value::Null);
                 let mut error = JsObject::new();
@@ -171,10 +171,10 @@ impl QueryManager {
         let healthy: HashSet<_> = self
             .queries
             .values()
-            .filter(|q| !q.suspended)
+            .filter(|q| !q.suspended())
             .flat_map(|q| std::iter::once(&q.key).chain(q.previous.as_ref()))
             .collect();
-        for q in self.queries.values().filter(|q| q.suspended) {
+        for q in self.queries.values().filter(|q| q.suspended()) {
             if !healthy.contains(&q.key)
                 && let Some(entry) = self.cache.get_mut(&q.key)
             {
@@ -182,14 +182,17 @@ impl QueryManager {
                 entry.run_again = None;
             }
         }
-        self.reader_limit = Some(limit);
+        self.reader_limit = plan.retained_limit.or(Some(limit));
         // The source already passed admission. If listing an error for every
         // suspended reader would exhaust the allowance, keep the diagnostic
-        // beside the snapshot and omit those readers' stale values and errors.
+        // beside the snapshot. Only readers in this plan can add errors;
+        // an incomplete reader's existing error already passed admission.
         if self.admit_snapshot_values().is_err() {
-            for q in self.queries.values_mut().filter(|q| q.suspended) {
-                q.defaults = None;
-                q.error = None;
+            for node in plan.nodes.iter() {
+                if let Some(q) = self.queries.get_mut(&node.id).filter(|q| q.suspended()) {
+                    q.defaults = None;
+                    q.error = None;
+                }
             }
         }
     }

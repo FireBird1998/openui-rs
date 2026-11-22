@@ -12,6 +12,8 @@ pub(super) struct ReaderPlan {
     pub(super) program: Arc<ParseResult>,
     pub(super) measured: PreparedProgram,
     pub(super) needs_context: bool,
+    // A skipped suspension keeps its diagnostic through this plan's deliveries.
+    pub(super) retained_limit: Option<LimitError>,
     // The round cut belongs to this plan even after an unrelated clock or run command.
     pub(super) rounds_limited: bool,
     pub(super) store: crate::store::query_state::QueryStateReader,
@@ -28,7 +30,7 @@ impl QueryManager {
     }
 
     pub(super) fn data_entry(&self, q: &Query) -> Option<&CacheEntry> {
-        if q.suspended {
+        if q.suspended() {
             return None;
         }
         std::iter::once(&q.key)
@@ -66,7 +68,7 @@ impl QueryManager {
     pub(super) fn stale(&self, node: &Node) -> bool {
         #[cfg(test)]
         round_tests::compared();
-        if self.queries.get(&node.id).is_some_and(|q| q.suspended) {
+        if self.queries.get(&node.id).is_some_and(Query::suspended) {
             return false;
         }
         node.reads.iter().any(|read| {
@@ -135,11 +137,6 @@ impl QueryManager {
         check_cuts(measured.flags())?;
         let budget = EvaluationSession::with_limits(&(), measured.input_bytes(), self.limits);
         let nodes = self.evaluate_nodes(input, store, &budget, &measured)?;
-        for q in self.queries.values_mut().filter(|q| q.suspended) {
-            q.suspended = false;
-            q.error = None;
-        }
-        self.reader_limit = None;
         let mut requests = self.apply_nodes(input.result, &nodes);
         // A bounded parse can keep a waitFor edge but drop its source. No
         // completion could wake that reader. Refuse this registration atomically
@@ -209,6 +206,7 @@ impl QueryManager {
                 program,
                 measured,
                 rounds_limited: self.reader_rounds_limited,
+                retained_limit: self.reader_limit,
                 nodes,
                 store: store.query_state(),
                 needs_context: input.cloud_scripts.is_some()
@@ -228,7 +226,7 @@ impl QueryManager {
         let mut pending = HashSet::new();
         let mut work = Vec::new();
         for (id, q) in &self.queries {
-            if q.suspended {
+            if q.suspended() {
                 continue;
             }
             if self

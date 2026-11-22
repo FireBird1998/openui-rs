@@ -511,6 +511,12 @@ so delivery can be audited after its reader plan is gone. The test and fuzz
 drivers enable the `query-audit` feature. Default builds omit the record
 and its observation during evaluation.
 
+The #223 tests in `query_reader_commands` suspend a reader with a call in
+flight, then change only the public completeness flags. They audit every
+command and check the snapshot, diagnostic, receipts, and recovery when
+the reader is complete again. A second propagation cut exercises omitted
+errors and a different limit while an incomplete reader keeps its refusal.
+
 | Test | Checks |
 |---|---|
 | `query_refresh` (runtime) | `conformance/query-refresh.json` against `golden/query-refresh.json` from `reference/query-refresh.ts`, which runs lang-core's manager on a fake clock; each observation also has the next refresh deadline, and the differences are pinned in `divergences/refresh-lifecycle.json`. Also refused clock commands, large advances, the refresh floor a manager reports, a repeated clock sample, and that mutation registration and submission keep the active deadline and ask for a redraw when a mutation takes a reserved snapshot list's name. With `--ignored`, seeded timed scripts against Bun. |

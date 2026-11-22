@@ -17,6 +17,9 @@
   function.
   The scan over the generated JavaScript now fails on any method-like line it
   cannot parse, instead of skipping it.
+- A query reader suspended by a limit keeps its error and diagnostic when
+  the host marks its statement incomplete (#223). The manager issues no
+  replacement call until a successful registration evaluates the reader again.
 - Swift apps can build and parse messages, read MCP tool results, and turn a
   click or form submit into the next user message through OpenUINative's
   `Core` (#147). Action messages use upstream's label, form state and action

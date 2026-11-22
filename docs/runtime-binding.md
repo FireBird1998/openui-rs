@@ -492,8 +492,14 @@ or size allowance, completion consumes the receipt and keeps the admitted result
 The source is visible when its own inputs are still current.
 Affected readers and their dependents display null and a `reader-limit` query
 error. If listing all the errors would itself exceed the allowance, the snapshot
-omits the suspended results and errors. The draw and drain report `LimitExceeded`.
-A successful settled registration retries those expressions and clears the diagnostic.
+omits the suspended results and errors for readers in that evaluation. The draw
+and drain report `LimitExceeded`. A successful settled registration retries the
+complete readers. A suspended reader whose statement is incomplete keeps its
+published error state and diagnostic and issues no replacement call. Removing
+the registration or successfully evaluating it again releases its suspension.
+Its kept error still takes snapshot room, so while it is kept a later
+registration or delivery can be refused (`LimitExceeded`, or a result ending
+as a tool error) until the host marks the reader complete or removes it.
 A result that exceeds admission ends its call as a tool error. A dependent
 query waits for its source's first admitted result. If the source already
 has data, a refused refetch leaves the dependent on its current arguments.

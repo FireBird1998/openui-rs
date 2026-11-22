@@ -103,6 +103,8 @@ CONFORMANCE.md).
 
 (2026-11-23, #210. Rule 4 accepts a wait on a missing source whose query statements are all incomplete if it never registered in this program. A source registered while complete keeps its registration when it becomes incomplete. A registered reader that becomes incomplete keeps its last wait even after its source delivers.)
 
+(2026-11-23: since #223, a suspended reader whose statement becomes incomplete keeps its suspension, error and propagation limit diagnostic and requests no replacement call until a successful registration evaluates it again or removes it.)
+
 Rules 1 and 3 decide a second case, found by the query fuzz target after
 #86 merged and confirmed by the maintainer on 2026-11-20. When one command
 moves a reader through several keys (`c` reads `b`, `b` reads `a`, every
