@@ -440,8 +440,15 @@ draw preserves the previous root and its evaluation and action handles.
 Even a provider-free session refuses a draw with `LimitExceeded` if its
 64-bit evaluation generation is exhausted. Ordinary tree work and depth
 cuts return a successful draw with the corresponding flags.
-Query registration hitting a limit is a successful draw with the previous
-registrations and a typed `queryEvaluationError`. State edits can recover
+A query registration refused by a limit or by evaluation (such as converting
+a tool name to text) produces a successful draw with a typed
+`queryEvaluationError`. On installation the session compares the ordered query and
+mutation statements and the state declarations that initialize the store,
+including their defaults. After a refusal a matching program keeps its held
+data. A different program draws its defaults and its mutation steps fail
+with the registration error.
+A mutation requested by an earlier click keeps its tool and arguments across
+a program replacement until the session hands it over. State edits can recover
 the registration and clear the error. Draining effects does not clear the
 diagnostic on screen.
 
@@ -640,7 +647,7 @@ The reason is one of two fixed texts, and says what the session knows:
   task that does not invoke it once cancelled by the pause. Either way the
   late outcome is ignored and nothing of the plan runs.
 
-A failure waiting for the next drain holds a continuation slot. A managed
+A failure caused by pausing holds its continuation slot until the next drain. A managed
 submission is refused past `maxContinuations` (it fails at its mutation step
 with the pending-plan limit), so at most that many failures wait. A host
 handoff counts them too and evicts the oldest pending run when the slots are
@@ -649,7 +656,14 @@ handoff is refused the same way: it fails at its mutation step with the
 pending-plan limit, before the mutation's event reaches the host. Pending runs
 plus waiting failures are at most `maxContinuations`. While
 the program is also unregistered (a refused registration, ADR 0013) the
-mutation step fails for that limit instead, once.
+mutation step reports the registration error once.
+
+Neither binding can reach the defensive `EvictedHandle` report for a
+provider-run action today because every run, legacy run and resume with an
+attached provider takes the managed mutation path (`query_supply` is `Some`),
+which refuses new calls at capacity in `dispatch_mutation`. Detach and pause
+remove provider-run slots, and only the private `SessionCore::output` can
+evict one.
 
 
 ### The Swift driver

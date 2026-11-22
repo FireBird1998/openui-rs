@@ -436,11 +436,25 @@ inside one of its callbacks finishes and stops it. Nothing is left in the
 session for a later owner or a manual `takeQueryUpdate`.
 
 A mutation step that fails while the program is unregistered reports the
-registration's limit, which is also the session's evaluation error. For a
+registration error, which is also the session's evaluation error. For a
 plan resumed after a call, `onError` therefore hears the same kind and message
 twice: once as the evaluation error, when it first appears (repeats are not
 reported), and once as that action's failure. They are two events: the
 registration was refused, and this action stopped.
+
+A tool name that cannot become text produces a successful draw with
+`queryEvaluationError`, as a state write does. When registration is refused,
+the draw keeps held data if the registration inputs match, including the
+ordered query and mutation statements, state declarations and their defaults.
+Otherwise each query draws its default. A held mutation call from an earlier
+click keeps its tool and arguments when another program registers.
+
+Neither binding can reach the defensive `EvictedHandle` report for a
+provider-run action today because every run, legacy run and resume with an
+attached provider takes the managed mutation path (`query_supply` is `Some`),
+which refuses new calls at capacity in `dispatch_mutation`. Detach and pause
+remove provider-run slots, and only the private `SessionCore::output` can
+evict one.
 
 ### Drawing a raw response
 

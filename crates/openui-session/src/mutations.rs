@@ -89,12 +89,15 @@ impl SessionCore {
         };
         // Unregistered, the registered mutation is another program's and may
         // call another tool (#119). The step fails for the registration's
-        // limit as for a continuation limit: no call, and the plan ends.
+        // error before sending a call, and the plan ends.
         if unregistered {
-            output.size_limited = true;
+            let error = refusal.unwrap_or_else(|| OpenUiError::Evaluation {
+                reason: "query registration refused".into(),
+            });
+            output.size_limited = matches!(error, OpenUiError::LimitExceeded { .. });
             output.failure = Some(ActionFailureOutput {
                 step: Some(request.step as u64),
-                error: refusal.unwrap_or_else(|| limit("query registration refused by a limit")),
+                error,
             });
             return;
         }
@@ -254,6 +257,46 @@ mod tests {
             )
             .unwrap();
         (s, refs, action)
+    }
+
+    #[test]
+    fn evicting_a_provider_run_reports_its_step_once_on_the_next_drain() {
+        let (mut s, refs, action) = submission();
+        s.limits.max_continuations = 1;
+        s.run(&refs, Some(action.clone()), String::new(), None)
+            .unwrap();
+        let call = s.take_query_update().calls.pop().unwrap();
+
+        // Exercise the session's host-handoff boundary with an actual suspended
+        // host run. Public runs while attached always use the managed path.
+        let plan = s.action_value(&action.path).unwrap().clone();
+        let input = TreeInput::new(&s.program);
+        let host_run = openui_runtime::run_action_with_limits(
+            input,
+            &mut s.store,
+            Some(&plan),
+            "",
+            None,
+            s.core_limits,
+        );
+        let host = s.output(host_run).unwrap();
+        assert!(host.continuation.is_some());
+        let update = s.take_query_update();
+        let [ended] = update.actions.as_slice() else {
+            panic!("one evicted plan")
+        };
+        let failure = ended.failure.as_ref().unwrap();
+        assert_eq!(failure.step, Some(0));
+        assert_eq!(failure.error, OpenUiError::EvictedHandle);
+        assert_eq!(failure.error.to_string(), "continuation evicted");
+        assert!(ended.events.is_empty() && ended.continuation.is_none());
+        s.complete_tool_call_json(&call.id, r#"{"value":1}"#)
+            .unwrap();
+        assert!(s.take_query_update().actions.is_empty());
+        assert_ne!(
+            s.get(&refs, "$done".into()).unwrap().as_deref(),
+            Some("true")
+        );
     }
 
     #[test]

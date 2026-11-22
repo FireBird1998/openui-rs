@@ -1242,20 +1242,22 @@ with both sides' outputs (`tests/result_limit_scenarios.rs`).
 | `compact-refusal-keeps-a-dependent-waiting` | The shared result releases the dependent. Only the initiating query starts out loading. | Six holders share one compact error. The dependent waits. A successful retry clears the error and releases the dependent. | #90 and ADR 0013 rule 3: one compact error covers a shared failure when the errors at each holder exceed the snapshot allowance. |
 | `refusal-settles-when-a-stale-reader-exceeds-the-allowance` | Stores the result and calls the reader with its enlarged arguments. | The refused call ends with a tool error. Rebuilding the unrelated stale reader exceeds the allowance, suspends it and reports a reader limit. | #90 and #79’s bounded reader evaluation. |
 
-A registration refused by a limit changes nothing in the manager. While a
+A refused registration changes nothing in the manager. While a
 program's registration is refused and the registrations belong to another
 program, nothing of that program is drawn, read by an action, called or
-refreshed (ADR 0013). Each pin compares upstream's observations, from
+refreshed (ADR 0013). The limit pins compare upstream's observations, from
 `conformance/session-queries.json`, `session-mutations.json` and
 `session-runs.json`, with Rust's under a 2,048-byte result limit
 (`crates/openui-session/tests/queries.rs` and `refused_registration.rs`). The
 other program's refresh timers, which do not fire, and a late result of its
 call, which starts no call and is not drawn, are pinned on the Rust side
-only (`refused_registration.rs`): lang-core registers every program, so it
-has no such state to compare.
+only (`refused_registration.rs`). Lang-core has no corresponding registration limit.
 
 | Refused registration and pin | lang-core 1.1.0 | openui-rs | Decision |
 |---|---|---|---|
+| Tool name that cannot become text | The state write's query effect and a fresh draw both throw in `queryManager.ts` when `buildCacheKey` concatenates the tool name. | Both expose the same evaluation error beside a successful draw. The registered program keeps its data and a different program draws its defaults. | #187, `refused_tool_name_draws_with_the_state_writes_error` in each binding and a two-sided replay in `queries.test.ts`. |
+| Re-reading the registered declarations | The renderer evaluates the new parse result's statements. It has no fallback after a thrown registration. | After a refusal, a re-read with matching registration inputs keeps its held data. Changing a query or mutation statement, or a state default such as the tool name in `Mutation($t)`, draws defaults and a click cannot dispatch the previous mutation. | #187, `reread_registrations_keep_data_but_a_query_or_mutation_edit_draws_defaults` and `a_changed_state_default_draws_fresh_data_and_cannot_fire_the_previous_tool`. |
+| Undrained mutation across program replacement | `fireMutation` calls the provider at the click before awaiting the result. | The original call goes out once with its captured arguments when the session next hands over calls, even under a later program. | #187, `a_held_mutation_from_a_click_goes_out_once_after_another_program_registers`. |
 | `a-refused-replacement-draws-the-new-queries-defaults` | Registers the replacement: the edited query moves to its new key and the new query starts loading, each showing its default. | With a 2,048-byte result limit, the state write and then the replacement are refused; the manager keeps the previous program's registrations and calls. The replacement draws each of its queries' default values with the limit as its query error, and its query snapshot lists nothing loading, fetched or failed. A draw while the next response streams does the same until a program registers. [Two-sided pin](conformance/divergences/session-a-refused-replacement-draws-the-new-queries-defaults.json) | #104 and #119: a refused registration leaves the manager unchanged, so the old program's data belongs to other statements. |
 | `a-refused-replacement-neither-reads-nor-calls-the-old-program` | Registers the replacement. The click sets `$x` to the new query's default, runs the query again while its call is in flight, and fires the renamed mutation's new tool, `delete`. | With a 2,048-byte result limit the replacement is refused. The draw, the click and its snapshot describe the new program: `$x` reads the new query's default, `@Run(q)` starts no call, and the mutation step starts no call and fails for the registration's limit (the plan ends there, `sizeLimited` set). The registered program's `save` is never called. [Two-sided pin](conformance/divergences/session-a-refused-replacement-neither-reads-nor-calls-the-old-program.json) | #119: nothing of another program is drawn, read by an action or called. |
 | `a-refused-replacement-retries-none-of-the-old-programs-queries` | Registers the replacement; its query fails, and Retry calls the new tool again. | Refused, the replacement's snapshot lists nothing (the registered program's error is not the drawn program's), and Retry starts no call. [Two-sided pin](conformance/divergences/session-a-refused-replacement-retries-none-of-the-old-programs-queries.json) | #119: no call for a program that is not the drawn one. |

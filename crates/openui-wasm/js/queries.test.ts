@@ -654,3 +654,44 @@ test('a snapshot read during onChange uses the new response and a refused draw p
     expect(calls).toBe(1);
   } finally { host.dispose(); }
 });
+
+test('a refused tool name draws with the same error as a write where lang-core throws on both', async () => {
+  const { createQueryManager } = await import('../../../reference/lang-core/src/runtime/queryManager');
+  const { compileSchema, parse } = await import('../../../reference/lang-core/src/parser/parser');
+  const { createStore } = await import('../../../reference/lang-core/src/runtime/store');
+  const schema = { $defs: { Box: { properties: { value: {} } } } };
+  const source = '$tool="search"\nq=Query($tool,{},"default")\nroot=Box(q)';
+  const invalid = { toString: null };
+  const manager = createQueryManager(null);
+  const store = createStore();
+  try {
+    const parseStatements = () => parse(source, compileSchema(schema)).queryStatements;
+    const statements = parseStatements();
+    const ctx = { getState: name => store.get(name), resolveRef: () => null };
+    store.set('$tool', 'search');
+    manager.evaluateStatements(statements, ctx);
+    store.set('$tool', invalid);
+    expect(() => manager.evaluateStatements(statements, ctx)).toThrow(TypeError);
+    expect(() => manager.evaluateStatements(parseStatements(), ctx)).toThrow(TypeError);
+  } finally {
+    manager.dispose();
+    store.dispose();
+  }
+
+  using lib = new wasm.ComponentLibrary(JSON.stringify(schema));
+  using s = new wasm.RuntimeSession(lib);
+  using program = wasm.parseProgram(source, lib);
+  s.attachToolProvider();
+  s.replaceProgram(program, undefined, undefined, true).free();
+  using wanted = s.takeQueryUpdate();
+  using call = wanted.callAt(0n);
+  s.completeToolCall(call, '{"value":"held"}');
+  expect(s.set('$tool', JSON.stringify(invalid))).toBe(true);
+  using write = s.takeQueryUpdate();
+  expect(write.evaluationError.kind).toBe('Evaluation');
+  using reread = wasm.parseProgram(source, lib);
+  using replacement = s.replaceProgram(reread, undefined, undefined, true);
+  using draw = replacement.evaluation;
+  expect(draw.queryEvaluationError).toEqual(write.evaluationError);
+  expect(JSON.parse(draw.json).root.props.value).toBe('held');
+});

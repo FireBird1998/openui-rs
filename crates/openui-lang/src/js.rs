@@ -407,6 +407,11 @@ impl<V> JsObject<V> {
         self.unrepresented_prototype = true;
     }
 
+    pub(crate) fn same_prototype(&self, other: &Self) -> bool {
+        self.null_prototype == other.null_prototype
+            && self.unrepresented_prototype == other.unrepresented_prototype
+    }
+
     pub(crate) fn has_unrepresented_prototype(&self) -> bool {
         self.unrepresented_prototype
     }

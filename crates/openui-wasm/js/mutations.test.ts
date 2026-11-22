@@ -179,3 +179,35 @@ test('an undefined mutation result resumes its action tail and a cache refusal s
   using completed = session.evaluate();
   expect(JSON.parse(completed.querySnapshotJson).__openui_errors[0].message).toContain('cache limit of 16 bytes');
 });
+
+test('the driver delivers an eviction segment once to onError and onAction', () => {
+  // Inject the session's drained segment at the driver boundary. A second
+  // public managed submission at capacity is refused before it can evict.
+  const pkg = loadWith(`
+    const take = RuntimeSession.prototype.takeQueryUpdate;
+    RuntimeSession.prototype.takeQueryUpdate = function() {
+      const update = take.call(this);
+      if (this.eviction) {
+        const failure = this.eviction;
+        delete this.eviction;
+        Object.defineProperties(update, {
+          actionCount: { value: 1n },
+          actionAt: { value: () => ({ failure, events: [], free() {} }) },
+        });
+      }
+      return update;
+    };`);
+  using library = new pkg.ComponentLibrary('{}');
+  using session = new pkg.RuntimeSession(library);
+  const delivered = [];
+  session.eviction = { step: 1, error: { kind: 'EvictedHandle', message: 'continuation evicted' } };
+  session.setToolProvider({}, {
+    onError: e => delivered.push([e.kind, e.message]),
+    onAction: action => delivered.push([action.failure.step, action.failure.error.kind, action.events]),
+  });
+  session.evaluate().free();
+  expect(delivered).toEqual([
+    ['EvictedHandle', 'continuation evicted'],
+    [1, 'EvictedHandle', []],
+  ]);
+});

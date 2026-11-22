@@ -765,3 +765,138 @@ fn each_command_on_the_unregistered_path_costs_in_proportion_to_the_program() {
         );
     }
 }
+
+#[test]
+fn reread_registrations_keep_data_but_a_query_or_mutation_edit_draws_defaults() {
+    let mut f = Fixture::new();
+    let source =
+        "$tool=\"search\"\nq=Query($tool,{},\"default\")\nm=Mutation(\"save\")\nroot=Box(q)";
+    f.replace(source);
+    f.drain();
+    f.finish("search", json!({"value": "held"}));
+    f.s.set(&refs(), "$tool".into(), Some(r#"{"toString":null}"#.into()))
+        .unwrap();
+
+    for (candidate, expected) in [
+        (source.to_string(), "held"),
+        (source.replace("save", "delete"), "default"),
+        (source.replace("default", "edited"), "edited"),
+        (source.replace("root=Box(q)", "root=Box(q,1)"), "held"),
+    ] {
+        let draw = f.replace(&candidate);
+        assert!(matches!(
+            draw.query_evaluation_error,
+            Some(OpenUiError::Evaluation { .. })
+        ));
+        assert_eq!(value(&draw), expected);
+        assert_eq!(value(&f.evaluate()), expected);
+    }
+    f.replace(&source.replace("save", "delete"));
+    f.s.set_program(&refs(), program(&f.lib, source)).unwrap();
+    assert_eq!(value(&f.evaluate()), "held");
+}
+
+const MUTATION_FROM_DEFAULT: &str = "$t=\"save\"\n$q=\"search\"\nq=Query($q,{},\"default\")\nm=Mutation($t)\nroot=Box([$t,q],Action([@Run(m)]))";
+
+fn registered_mutation_with_refused_query() -> Fixture {
+    let mut f = Fixture::new();
+    f.replace(MUTATION_FROM_DEFAULT);
+    f.drain();
+    f.finish("search", json!({"value":"held"}));
+    f.s.set(&refs(), "$q".into(), Some(r#"{"toString":null}"#.into()))
+        .unwrap();
+    assert!(matches!(
+        f.drain().evaluation_error,
+        Some(OpenUiError::Evaluation { .. })
+    ));
+    f
+}
+
+#[test]
+fn a_changed_state_default_draws_fresh_data_and_cannot_fire_the_previous_tool() {
+    let mut f = registered_mutation_with_refused_query();
+    let draw = f.replace(&MUTATION_FROM_DEFAULT.replace("save", "delete"));
+    assert!(matches!(
+        draw.query_evaluation_error,
+        Some(OpenUiError::Evaluation { .. })
+    ));
+    assert_eq!(value(&draw), json!(["delete", "default"]));
+    let failure = f.click(&draw).failure.expect("unregistered mutation");
+    assert_eq!(failure.step, Some(0));
+    assert_eq!(Some(failure.error), draw.query_evaluation_error);
+    assert!(f.drain().calls.is_empty());
+}
+
+#[test]
+fn identical_state_defaults_keep_held_data_after_a_refused_reread() {
+    let mut f = registered_mutation_with_refused_query();
+    let draw = f.replace(MUTATION_FROM_DEFAULT);
+    assert!(matches!(
+        draw.query_evaluation_error,
+        Some(OpenUiError::Evaluation { .. })
+    ));
+    assert_eq!(value(&draw), json!(["save", "held"]));
+    assert!(f.click(&draw).failure.is_none());
+    let effects = f.drain();
+    let [call] = effects.calls.as_slice() else {
+        panic!("expected one registered mutation call")
+    };
+    assert_eq!(call.tool_name, "save");
+}
+
+#[test]
+fn rereads_compare_nested_object_order_and_signed_zero_in_registration_inputs() {
+    let mut f = Fixture::new();
+    let source = "$tool=\"search\"\n$args=[{a:1,b:-0}]\nq=Query($tool,{},\"default\")\nm=Mutation(\"save\",[$args,-0])\nroot=Box(q)";
+    f.replace(source);
+    f.drain();
+    f.finish("search", json!({"value":"held"}));
+    f.s.set(&refs(), "$tool".into(), Some(r#"{"toString":null}"#.into()))
+        .unwrap();
+
+    for (candidate, expected) in [
+        (source.replace("a:1,b:-0", "b:-0,a:1"), "default"),
+        (source.replace("b:-0", "b:0"), "default"),
+        (source.replace("$args,-0", "$args,0"), "default"),
+        (source.to_owned(), "held"),
+    ] {
+        let draw = f.replace(&candidate);
+        assert!(matches!(
+            draw.query_evaluation_error,
+            Some(OpenUiError::Evaluation { .. })
+        ));
+        assert_eq!(value(&draw), expected, "{candidate}");
+    }
+}
+
+#[test]
+fn a_held_mutation_from_a_click_goes_out_once_after_another_program_registers() {
+    let mut f = Fixture::new();
+    let draw = f.replace("m=Mutation(\"save\",{id:7})\nroot=Box(m.status,Action([@Run(m)]))");
+    f.drain();
+    f.click(&draw);
+    let refused = f.replace("q=Query({toString:null})\nroot=Box(q)");
+    assert!(refused.query_evaluation_error.is_some());
+    assert!(f.drain().calls.is_empty());
+    f.replace("m=Mutation(\"delete\")\nroot=Box(m.status)");
+    let update = f.drain();
+    let [call] = update.calls.as_slice() else {
+        panic!("one held mutation")
+    };
+    assert_eq!(call.tool_name, "save");
+    assert_eq!(call.arguments_json().as_deref(), Some(r#"{"id":7}"#));
+    assert!(f.drain().calls.is_empty());
+}
+
+#[test]
+fn an_unregistered_mutation_reports_the_conversion_error_without_a_size_cut() {
+    let mut f = Fixture::new();
+    let draw =
+        f.replace("q=Query({toString:null})\nm=Mutation(\"save\")\nroot=Box(q,Action([@Run(m)]))");
+    let run = f.click(&draw);
+    let failure = run.failure.unwrap();
+    assert_eq!(failure.step, Some(0));
+    assert_eq!(Some(failure.error), draw.query_evaluation_error);
+    assert!(!run.size_limited);
+    assert!(f.drain().calls.is_empty());
+}

@@ -597,7 +597,7 @@ pub(crate) fn state_defaults(
         }
         let before = match earlier.next() {
             Some(record) if in_step && record.id == *id => {
-                if same(&record.value, value) {
+                if SAME_AS.with_borrow_mut(|pairs| same(&record.value, value, pairs)) {
                     Some(record)
                 } else {
                     compared.push(record.value);
@@ -1136,30 +1136,98 @@ fn holds_expression(js: &Js) -> bool {
     }
 }
 
-/// The elements and runtime expressions of an earlier push paired with this
-/// push's (see [`same`]), by address: `now` by `then`, and back.
+/// Corresponding shared nodes in two parser outputs, indexed in both
+/// directions so reads that can observe identity keep the same aliases.
 #[derive(Default)]
 struct Aliases {
+    registration: bool,
     now: HashMap<usize, usize>,
     then: HashMap<usize, usize>,
 }
 
-/// Pair the element or runtime expression at `then` (an earlier push's) with
-/// the one at `now` (this push's): `false` if either is paired with another
-/// already.
-fn pair(then: usize, now: usize) -> bool {
-    SAME_AS.with(|s| {
-        let mut s = s.borrow_mut();
-        match (s.now.get(&then), s.then.get(&now)) {
-            (None, None) => {
-                s.now.insert(then, now);
-                s.then.insert(now, then);
-                true
-            }
-            (Some(&n), Some(&t)) => n == now && t == then,
-            _ => false,
+impl crate::ParseResult {
+    /// Whether the parsed inputs to query and mutation registration match.
+    /// State initialization uses every declaration, in order. Expressions
+    /// already contain the ordinary statements they reference. The walk is
+    /// bounded by the expanded declarations in the admitted parse results.
+    pub fn same_registration_inputs(&self, other: &Self) -> bool {
+        let mut pairs = Aliases {
+            registration: true,
+            ..Aliases::default()
+        };
+        if self.depth_limited != other.depth_limited
+            || self.size_limited != other.size_limited
+            || self.query_statements.len() != other.query_statements.len()
+            || self.mutation_statements.len() != other.mutation_statements.len()
+            || !same_entries(
+                &self.state_declarations,
+                &other.state_declarations,
+                &mut pairs,
+                same,
+            )
+        {
+            return false;
         }
-    })
+
+        let mut expression = |a: &Option<Ast>, b: &Option<Ast>| match (a, b) {
+            (Some(a), Some(b)) => same_ast(a, b, &mut pairs),
+            (None, None) => true,
+            _ => false,
+        };
+        self.query_statements
+            .iter()
+            .zip(&other.query_statements)
+            .all(|(a, b)| {
+                a.statement_id == b.statement_id
+                    && a.complete == b.complete
+                    && a.deps == b.deps
+                    && a.wait_for == b.wait_for
+                    && expression(&a.tool, &b.tool)
+                    && expression(&a.args, &b.args)
+                    && expression(&a.defaults, &b.defaults)
+                    && expression(&a.refresh, &b.refresh)
+            })
+            && self
+                .mutation_statements
+                .iter()
+                .zip(&other.mutation_statements)
+                .all(|(a, b)| {
+                    a.statement_id == b.statement_id
+                        && expression(&a.tool, &b.tool)
+                        && expression(&a.args, &b.args)
+                })
+    }
+}
+
+impl Aliases {
+    /// In the parser, only elements and expression nodes carry identity
+    /// across pushes. In the store, arrays and plain objects do too.
+    fn shared<T>(
+        &mut self,
+        a: &Arc<T>,
+        b: &Arc<T>,
+        paired_in_parser: bool,
+        contents: impl FnOnce(&T, &T, &mut Self) -> bool,
+    ) -> bool {
+        if self.registration || paired_in_parser {
+            let (then, now) = (Arc::as_ptr(a) as usize, Arc::as_ptr(b) as usize);
+            match (self.now.get(&then), self.then.get(&now)) {
+                (None, None) => {
+                    self.now.insert(then, now);
+                    self.then.insert(now, then);
+                }
+                (Some(&n), Some(&t)) if n == now && t == then => {
+                    // An install has one comparison, with both immutable
+                    // inputs alive. A repeated pair already matched.
+                    if self.registration {
+                        return true;
+                    }
+                }
+                _ => return false,
+            }
+        }
+        (!self.registration && Arc::ptr_eq(a, b)) || contents(a, b, self)
+    }
 }
 
 /// Whether a default's value at an earlier push is its value at this one:
@@ -1170,76 +1238,78 @@ fn pair(then: usize, now: usize) -> bool {
 /// A comparison that fails may leave pairs behind: harmless, as both values
 /// live until the pairs are cleared (see [`state_defaults`]), and a pair
 /// only ever stands for an equal element or expression at the same place.
-fn same(then: &Value, now: &Value) -> bool {
-    crate::stack::grow_stack!(same(then, now));
+fn same(then: &Value, now: &Value, pairs: &mut Aliases) -> bool {
+    crate::stack::grow_stack!(same(then, now, pairs));
     match (then, now) {
         (Value::Null, Value::Null) => true,
         (Value::Bool(a), Value::Bool(b)) => a == b,
         (Value::Num(a), Value::Num(b)) => a.to_bits() == b.to_bits(),
         (Value::Str(a), Value::Str(b)) => a == b,
-        (Value::Arr(a), Value::Arr(b)) => {
-            Arc::ptr_eq(a, b)
-                || (a.len() == b.len() && a.iter().zip(b.iter()).all(|(x, y)| same(x, y)))
+        (Value::Arr(a), Value::Arr(b)) => pairs.shared(a, b, false, |a, b, pairs| {
+            a.len() == b.len() && a.iter().zip(b).all(|(x, y)| same(x, y, pairs))
+        }),
+        (Value::Obj(a), Value::Obj(b)) => {
+            pairs.shared(a, b, false, |a, b, pairs| same_entries(a, b, pairs, same))
         }
-        (Value::Obj(a), Value::Obj(b)) => Arc::ptr_eq(a, b) || same_entries(a, b),
-        (Value::Element(a), Value::Element(b)) => {
-            pair(Arc::as_ptr(a) as usize, Arc::as_ptr(b) as usize)
-                && (Arc::ptr_eq(a, b)
-                    || (a.type_name == b.type_name
-                        && a.partial == b.partial
-                        && a.has_dynamic_props == b.has_dynamic_props
-                        && a.statement_id == b.statement_id
-                        && same_entries(&a.props, &b.props)))
-        }
-        (Value::Ast(a), Value::Ast(b)) => same_expression(a, b),
+        (Value::Element(a), Value::Element(b)) => pairs.shared(a, b, true, |a, b, pairs| {
+            a.type_name == b.type_name
+                && a.partial == b.partial
+                && a.has_dynamic_props == b.has_dynamic_props
+                && a.statement_id == b.statement_id
+                && same_entries(&a.props, &b.props, pairs, same)
+        }),
+        (Value::Ast(a), Value::Ast(b)) => pairs.shared(a, b, true, same_ast),
         _ => false,
     }
 }
 
-fn same_entries(a: &JsObject<Value>, b: &JsObject<Value>) -> bool {
-    a.len() == b.len()
-        && a.iter()
-            .zip(b.iter())
-            .all(|((ka, va), (kb, vb))| ka == kb && same(va, vb))
-}
-
-/// A shared runtime expression: paired, and the same node.
-fn same_expression(a: &Arc<Ast>, b: &Arc<Ast>) -> bool {
-    pair(Arc::as_ptr(a) as usize, Arc::as_ptr(b) as usize) && (Arc::ptr_eq(a, b) || same_ast(a, b))
+fn same_entries<T>(
+    a: &JsObject<T>,
+    b: &JsObject<T>,
+    pairs: &mut Aliases,
+    same_value: impl Fn(&T, &T, &mut Aliases) -> bool,
+) -> bool {
+    if a.len() != b.len() || (pairs.registration && !a.same_prototype(b)) {
+        return false;
+    }
+    // A registration compares insertion order directly, including in nested
+    // defaults. The parser's reuse check follows JavaScript enumeration order.
+    let registration = pairs.registration;
+    let entry = |((ka, va), (kb, vb))| ka == kb && same_value(va, vb, pairs);
+    if registration {
+        a.iter_unordered().zip(b.iter_unordered()).all(entry)
+    } else {
+        a.iter().zip(b.iter()).all(entry)
+    }
 }
 
 /// The same node, read field by field as the evaluator reads one.
-fn same_ast(a: &Ast, b: &Ast) -> bool {
-    crate::stack::grow_stack!(same_ast(a, b));
+fn same_ast(a: &Ast, b: &Ast, pairs: &mut Aliases) -> bool {
+    crate::stack::grow_stack!(same_ast(a, b, pairs));
     let (fa, fb) = (fields(a), fields(b));
     fa.len() == fb.len()
         && fa
             .iter()
             .zip(&fb)
-            .all(|((ka, x), (kb, y))| ka == kb && same_field(x, y))
+            .all(|((ka, x), (kb, y))| ka == kb && same_field(x, y, pairs))
 }
 
-fn same_field(x: &Field, y: &Field) -> bool {
+fn same_field(x: &Field, y: &Field, pairs: &mut Aliases) -> bool {
     match (x, y) {
         (Field::Text(a), Field::Text(b)) => a == b,
         (Field::Num(a), Field::Num(b)) => a.to_bits() == b.to_bits(),
         (Field::Bool(a), Field::Bool(b)) => a == b,
-        (Field::Node(a), Field::Node(b)) => same_expression(a, b),
+        (Field::Node(a), Field::Node(b)) => pairs.shared(a, b, true, same_ast),
         (Field::Nodes(a), Field::Nodes(b)) => {
-            a.len() == b.len() && a.iter().zip(b.iter()).all(|(x, y)| same_ast(x, y))
+            a.len() == b.len() && a.iter().zip(b.iter()).all(|(x, y)| same_ast(x, y, pairs))
         }
         (Field::Entries(a), Field::Entries(b)) => {
             a.len() == b.len()
                 && a.iter()
                     .zip(b.iter())
-                    .all(|((ka, x), (kb, y))| ka == kb && same_ast(x, y))
+                    .all(|((ka, x), (kb, y))| ka == kb && same_ast(x, y, pairs))
         }
-        (Field::Props(a), Field::Props(b)) => {
-            a.len() == b.len()
-                && a.iter()
-                    .zip(b.iter())
-                    .all(|((ka, x), (kb, y))| ka == kb && same_ast(x, y))
-        }
+        (Field::Props(a), Field::Props(b)) => same_entries(a, b, pairs, same_ast),
         _ => false,
     }
 }

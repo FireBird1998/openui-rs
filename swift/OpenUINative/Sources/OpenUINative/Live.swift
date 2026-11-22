@@ -695,11 +695,15 @@ public final class LiveProgram {
         // Calls taken are dispatched even when redrawing failed: the session
         // hands each out once.
         driver.dispatch(effects.calls, deadline: effects.nextRefreshDueMs)
-        let failures = effects.actions.compactMap { output in
+        deliverQueryActions(effects.actions, redrawWarning: redrawWarning)
+    }
+
+    func deliverQueryActions(_ actions: [ActionOutput], redrawWarning: String?) {
+        let failures = actions.compactMap { output in
             output.failure.map { ($0.step.map { "Step \($0): " } ?? "") + Self.describe($0.error) }
         } + [redrawWarning].compactMap { $0 }
         if !failures.isEmpty { failure = failures.joined(separator: "\n") }
-        for output in effects.actions {
+        for output in actions {
             for event in Self.hostEvents(output) { onHostEvent(event) }
         }
     }

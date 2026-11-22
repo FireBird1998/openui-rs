@@ -756,7 +756,15 @@ impl SessionCore {
             if occupied >= self.limits.max_continuations {
                 match self.continuations.pop_first() {
                     Some((_, oldest)) => {
-                        if let Some(handle) = oldest.handle.upgrade() {
+                        if oldest.call.is_some() {
+                            self.query_effects.actions.push(ActionOutput {
+                                failure: Some(ActionFailureOutput {
+                                    step: oldest.step,
+                                    error: OpenUiError::EvictedHandle,
+                                }),
+                                ..ActionOutput::default()
+                            });
+                        } else if let Some(handle) = oldest.handle.upgrade() {
                             handle.evicted.store(true, Ordering::Release);
                         }
                     }
@@ -959,6 +967,7 @@ impl SessionCore {
                 return Err(limit("program JSON byte limit"));
             }
             s.release_evaluation()?;
+            s.registered.drawn = s.registered.for_install(&s.program, &program.inner);
             s.program = program.inner.clone();
             // Wait for a draw to register this program. Only a draw with
             // response metadata can change the gate on clicks and Retry.
@@ -1047,7 +1056,7 @@ impl SessionCore {
             self.core_limits,
             self.limits.max_json_bytes,
         )?;
-        let registered = self.registered.drawn(&program.inner);
+        let registered = self.registered.for_install(&self.program, &program.inner);
         let (projection, initialization, ((tree, json, snapshot, version), update)) =
             self.store.initialize_transaction(
                 &program.inner.state_declarations,
@@ -1094,6 +1103,7 @@ impl SessionCore {
                 },
             )?;
         drop(functions);
+        self.registered.drawn = registered;
         self.program = program.inner.clone();
         self.generation = generation;
         self.root = tree.root;
@@ -1269,7 +1279,7 @@ impl SessionCore {
                         s.extra_values_changed || s.response.scripts != response.scripts,
                     ),
                     now_ms,
-                    s.registered.drawn(&s.program),
+                    s.registered.drawn,
                 ),
                 &response.input(program_input(
                     &s.program,

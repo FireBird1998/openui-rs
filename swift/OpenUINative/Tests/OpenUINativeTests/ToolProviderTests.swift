@@ -567,6 +567,18 @@ private struct TimedOut: Error {}
         #expect(tools.made.count == 1)
     }
 
+    @Test func anEvictionSegmentReportsOneFailedStepInTheLiveProgram() async throws {
+        var events: [HostEvent] = []
+        let live = try await live("root = TextContent(1)", events: { events.append($0) })
+        let segment = ActionOutput(events: [], failure: ActionFailureOutput(step: 1, error: .EvictedHandle),
+                                   sizeLimited: false, depthLimited: false, continuation: nil)
+        live.deliverQueryActions([segment], redrawWarning: nil)
+        #expect(live.failure == "Step 1: continuation evicted")
+        live.deliverQueryActions([], redrawWarning: nil)
+        #expect(live.failure == "Step 1: continuation evicted")
+        #expect(events.isEmpty)
+    }
+
     @Test func aMutationClickedWhileQueriesArePausedFailsWithoutACall() async throws {
         var events: [HostEvent] = []
         let live = try await live("""

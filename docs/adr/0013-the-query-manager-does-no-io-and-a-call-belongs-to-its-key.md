@@ -237,3 +237,4 @@ calls of the last accepted registration, with that registration's tool names
 and arguments (#142): a refused registration leaves the last accepted one as
 what is drawn, exactly as when the same refusal happens without a pause, and
 nothing else would ask again for the calls the pause released.
+2026-11-22 (#187). A refused registration reports its limit or evaluation error beside the draw. A re-read keeps held data when its parsed registration inputs match, including state defaults. A mutation requested before replacement keeps its original tool and arguments until dispatch. The session defensively reports an evicted provider-run action once at its mutation step.

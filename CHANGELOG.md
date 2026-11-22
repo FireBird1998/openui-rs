@@ -75,6 +75,15 @@
   `Core.createLibrary` builds the library and its prompt spec. A live program
   draws those views with evaluated props and uses its fallback for viewless
   declarations. [Swift example](docs/library-definition.md)
+- A refused query registration reports its error beside a successful draw,
+  including when a tool name cannot become text (#187). A re-read keeps held
+  data after a refusal only when its registration inputs match, including state
+  declarations and their defaults. Neither binding can reach the defensive
+  `EvictedHandle` report for a provider-run action today because every run,
+  legacy run and resume with an attached provider takes the managed mutation
+  path (`query_supply` is `Some`), which refuses new calls at capacity in
+  `dispatch_mutation`. Detach and pause remove provider-run slots, and only the
+  private `SessionCore::output` can evict one.
 
 - A component library's size limit, shared action shapes and no unbounded
   recursion (#140). **Behaviour change** for an existing entry point,

@@ -42,3 +42,46 @@ fn native_refresh_and_retry_hand_calls_to_the_driver() {
         .unwrap();
     assert_eq!(session.take_query_update().unwrap().calls.len(), 1);
 }
+
+#[test]
+fn refused_tool_name_draws_with_the_state_writes_error() {
+    let library =
+        ComponentLibrary::new(r#"{"$defs":{"Box":{"properties":{"value":{}}}}}"#.into()).unwrap();
+    let session = RuntimeSession::new(library.clone(), None).unwrap();
+    session.attach_tool_provider().unwrap();
+    let source = "$tool=\"search\"\nq=Query($tool,{},\"default\")\nroot=Box(q)";
+    let parse_source = |s: &str| parse(s.into(), library.clone(), None).program;
+    session
+        .replace_program(parse_source(source), None, None, true)
+        .unwrap();
+    let call = session.take_query_update().unwrap().calls.remove(0);
+    session
+        .complete_tool_call(call, r#"{"value":"held"}"#.into())
+        .unwrap();
+    session
+        .set("$tool".into(), Some(r#"{"toString":null}"#.into()))
+        .unwrap();
+    let write = session.take_query_update().unwrap();
+    let Some(OpenUiError::Evaluation { reason }) = write.evaluation_error else {
+        panic!("expected a tool name conversion error");
+    };
+    let draw = session.evaluate().unwrap();
+    assert!(draw.json.contains(r#""value":"held""#));
+    assert!(
+        matches!(draw.query_evaluation_error, Some(OpenUiError::Evaluation { reason: error }) if error == reason)
+    );
+    let other = session
+        .replace_program(
+            parse_source("q=Query($tool,{},\"fresh\")\nroot=Box(q)"),
+            None,
+            None,
+            true,
+        )
+        .unwrap()
+        .evaluation;
+    assert!(other.json.contains(r#""value":"fresh""#));
+    assert!(
+        matches!(other.query_evaluation_error, Some(OpenUiError::Evaluation { reason: error }) if error == reason)
+    );
+    assert!(session.take_query_update().unwrap().calls.is_empty());
+}

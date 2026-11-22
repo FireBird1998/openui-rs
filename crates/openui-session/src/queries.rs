@@ -1,7 +1,6 @@
 //! Session policy around the clock-free query manager.
 use super::*;
 use openui_runtime::{QueryCommand, QueryCommandError, QueryManager, QueryUpdate, ToolCallId};
-use std::sync::Weak;
 
 /// Effects since the previous handoff. A store operation can succeed even if
 /// evaluating its new query arguments fails. The previous registrations survive.
@@ -66,12 +65,9 @@ impl From<QueryCommandError> for OpenUiError {
 /// Which program the manager's registrations come from (#119).
 #[derive(Default)]
 pub(super) struct Registered {
-    /// The parse result of the last successful registration. A weak pointer
-    /// keeps its allocation, so the identity cannot be reused.
-    program: Option<Weak<ParseResult>>,
-    /// The last attempt to register a program the registrations do not
-    /// belong to was refused.
-    refused: bool,
+    /// Share at most one accepted parse result across refused replacements.
+    program: Option<Arc<ParseResult>>,
+    pub(super) drawn: Drawn,
     /// Queries resumed and no registration has been accepted since. The
     /// pause released every call, and only a registration asks for them
     /// again (#142).
@@ -79,23 +75,26 @@ pub(super) struct Registered {
 }
 
 impl Registered {
-    pub(super) fn belongs(&self, program: &Arc<ParseResult>) -> bool {
-        self.program
-            .as_ref()
-            .is_some_and(|registered| std::ptr::eq(registered.as_ptr(), Arc::as_ptr(program)))
-    }
-
-    /// The draw's view of these registrations for `program`.
-    pub(super) fn drawn(&self, program: &Arc<ParseResult>) -> Drawn {
+    /// Compare only on installation, before a replacement draws. Its caller
+    /// commits the answer together with the program after the draw succeeds.
+    pub(super) fn for_install(&self, current: &Arc<ParseResult>, next: &Arc<ParseResult>) -> Drawn {
+        if Arc::ptr_eq(current, next) {
+            return self.drawn;
+        }
+        let belongs = self.program.as_ref().is_some_and(|registered| {
+            #[cfg(test)]
+            STATEMENT_COMPARISONS.set(STATEMENT_COMPARISONS.get() + 1);
+            Arc::ptr_eq(registered, next) || registered.same_registration_inputs(next)
+        });
         Drawn {
-            belongs: self.belongs(program),
-            refused: self.refused,
+            belongs,
+            ..self.drawn
         }
     }
 }
 
 /// The registrations as a draw of one program sees them.
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, Default)]
 pub(super) struct Drawn {
     pub(super) belongs: bool,
     pub(super) refused: bool,
@@ -166,7 +165,9 @@ pub(super) fn draw<T>(
             match result {
                 Ok((output, update)) => Ok((output, Some(Ok(update)))),
                 Err(DrawError::Registration(
-                    error @ (QueryCommandError::Limit(_) | QueryCommandError::SourceCut { .. }),
+                    error @ (QueryCommandError::Limit(_)
+                    | QueryCommandError::SourceCut { .. }
+                    | QueryCommandError::Evaluation(_)),
                 )) => Ok((draw_with(&held(manager, true))?, Some(Err(error.into())))),
                 Err(DrawError::Registration(error)) => Err(error.into()),
                 Err(DrawError::Screen(error)) => Err(error),
@@ -302,6 +303,7 @@ impl SessionCore {
 
     pub fn detach_tool_provider(&mut self) {
         if self.manager.take().is_some() {
+            self.registered = Registered::default();
             self.continuations.retain(|_, entry| entry.call.is_none());
             self.query_effects = QueryEffects {
                 actions: std::mem::take(&mut self.query_effects.actions),
@@ -357,10 +359,7 @@ impl SessionCore {
     /// Whether the drawn program is unregistered (see [`unregistered`]).
     pub(super) fn is_unregistered(&self) -> bool {
         self.manager.is_some()
-            && unregistered(
-                self.registered.belongs(&self.program),
-                self.registered.refused,
-            )
+            && unregistered(self.registered.drawn.belongs, self.registered.drawn.refused)
     }
 
     /// The results an action or a resumed plan reads for the drawn program.
@@ -438,21 +437,20 @@ impl SessionCore {
         // records its own after installing the program). Only a refused
         // program the registrations do not belong to is unregistered; a
         // refused re-registration keeps its own program's results.
-        let belongs = self.registered.belongs(&self.program);
-        self.registered.refused = result.is_err() && !belongs;
+        let belongs = self.registered.drawn.belongs;
+        self.registered.drawn.refused = result.is_err() && !belongs;
         // The first registration after a resume: if it re-registers the
         // program the registrations belong to and is refused, that program
         // keeps its results but nothing asked again for the calls the pause
         // released (#142).
         let owed = belongs && std::mem::take(&mut self.registered.resumed);
-        if result.is_ok() {
-            self.registered.program = Some(Arc::downgrade(&self.program));
-            if !belongs {
-                self.abandon_held_query_calls();
-            }
-        }
         let error = match result {
             Ok(update) => {
+                self.registered.program = Some(self.program.clone());
+                if !belongs {
+                    self.registered.drawn.belongs = true;
+                    self.abandon_held_query_calls();
+                }
                 self.registered.resumed = false;
                 self.query_effects.record(update);
                 None
@@ -650,11 +648,59 @@ impl SessionCore {
 }
 
 #[cfg(test)]
-thread_local! { pub(super) static TABLE_BUILDS: std::cell::Cell<usize> = const {std::cell::Cell::new(0)}; }
+thread_local! {
+    pub(super) static TABLE_BUILDS: std::cell::Cell<usize> = const {std::cell::Cell::new(0)};
+    static STATEMENT_COMPARISONS: std::cell::Cell<usize> = const {std::cell::Cell::new(0)};
+}
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn drawing_and_draining_a_refused_reread_do_not_repeat_the_statement_comparison() {
+        let schema = serde_json::json!({"$defs":{}});
+        let lib = Arc::new(ComponentLibrary {
+            inner: Arc::new(openui_lang::Library::from_json_schema(&schema)),
+            schema: Arc::new(schema),
+            defined: None,
+        });
+        let parse = || {
+            let inner = Arc::new(openui_lang::parse(
+                "$tool=\"ok\"\nq=Query($tool)",
+                &lib.inner,
+                None,
+            ));
+            Arc::new(ParsedProgram {
+                json_bytes: inner.to_json().len() as u64,
+                inner,
+            })
+        };
+        let refs = PreparedReferenceValues::owned_with_limits(JsObject::new(), Limits::DEFAULT);
+        let mut session = SessionCore::new(lib.clone(), None, Default::default()).unwrap();
+        session.attach_tool_provider(&refs).unwrap();
+        session
+            .replace_program(&refs, parse(), None, None, false)
+            .unwrap();
+        session
+            .set(&refs, "$tool".into(), Some(r#"{"toString":null}"#.into()))
+            .unwrap();
+        STATEMENT_COMPARISONS.set(0);
+        session
+            .replace_program(&refs, parse(), None, None, false)
+            .unwrap();
+        for _ in 0..3 {
+            assert!(
+                session
+                    .evaluate(&refs)
+                    .unwrap()
+                    .query_evaluation_error
+                    .is_some()
+            );
+            assert!(session.take_query_update().evaluation_error.is_some());
+        }
+        assert_eq!(STATEMENT_COMPARISONS.get(), 1);
+    }
+
     #[test]
     fn an_unrelated_completion_skips_the_function_table_even_with_a_registered_reader() {
         let schema = serde_json::json!({"$defs":{}});
