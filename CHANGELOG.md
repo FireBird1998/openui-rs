@@ -2,6 +2,17 @@
 
 ## Unreleased
 
+- WebAssembly `free()` can no longer free another object's memory (#211).
+  The generated `free` (and `[Symbol.dispose]`) looked up
+  `__destroy_into_raw` through the instance, so an own property, a subclass
+  field or a prototype set with `Object.setPrototypeOf` could make it
+  release another live object's pointer: a use-after-free with aliasing, on
+  every class. The guard now runs the generated free on the helper captured
+  at load, as #145 did for an interrupted session, and
+  `instance.constructor` is the guarded class (it was the generated
+  constructor, which reads its arguments' pointers unchecked). A scan in
+  `pointer-redirection.test.ts` fails if wasm-bindgen ever generates another
+  read through an instance.
 - Swift libraries can declare functions and custom actions with
   `defineFunction` and `defineAction` (#139). Pass them to `Core.createLibrary`
   alongside components. A `LiveProgram` registers the Swift implementations

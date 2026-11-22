@@ -1761,6 +1761,13 @@ every member of every freed object). `errors.test.ts` patches `JSON`,
 stay freeable. `package.test.ts` checks exports, the module's import allowlist,
 pointer/private-helper hardening, the web build, and that mutated glue with an
 uncovered member refuses to load.
+`pointer-redirection.test.ts` (#211) runs the free-redirection reproduction
+for all fourteen classes (own property, subclass field and constructor,
+setPrototypeOf with a subclass or Proxy prototype, a Proxy receiver; through
+free and `[Symbol.dispose]`), checking the victim keeps its pointer and state,
+and scans both generated packages: a generated read through an instance or
+argument other than the pointer field (or `__destroy_into_raw` in free and
+run's retained token) fails the test.
 `js/scenarios.json` carries full tree/event JSON strings, snapshots, versions and
 form decisions generated from the public Rust runtime and checked against the
 thin wasm adapter. It is a binding-seam oracle, not new upstream goldens:

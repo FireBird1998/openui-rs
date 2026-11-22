@@ -8,7 +8,9 @@ TypeScript declarations and loads both generated packages (the guard refuses to 
 if a generated public member is not covered). Generated private `__*` methods
 and pointer fields are outside this interface: the helpers throw InvalidHandle
 outside a guarded call and pointer fields refuse a new value, which stops
-mistakes. It is not a boundary against hostile JavaScript in the same realm
+mistakes. Free and `[Symbol.dispose]` release the receiver's own pointer
+whatever own properties, subclass or prototype the object is given, and
+`instance.constructor` is the guarded class. It is not a boundary against hostile JavaScript in the same realm
 (ADR 0007): isolate untrusted scripts from this package.
 
 JavaScript sees these methods (positional arguments). `?` here means omitted,

@@ -84,3 +84,4 @@ wasm-bindgen method checks that the call released its borrow; if it did not,
 the guard retires the session as Disposed, releases the wrapper through
 wasm-bindgen's finalizer path and stops its driver; Rust allocations of the
 abandoned frame stay until the instance is discarded.)
+(2026-11-22: since #211, the guarded free runs the generated free on the `__destroy_into_raw` captured at load, never one looked up through the instance, and each guarded prototype's `constructor` is the guarded class.)

@@ -11,6 +11,10 @@
 //    any pointer, and only then calls it. With primitive arguments the
 //    generated conversions run no application code.
 // 3. A freed object used in any way throws Disposed.
+// 4. Generated code reaches nothing through an instance a host can redirect
+//    (#211): the pointer field is an own accessor nothing can shadow, free
+//    runs on the helper captured at load, and instance.constructor is the
+//    guarded class.
 // Apart from registered host functions, the core calls no JavaScript while
 // holding an exported object: errors and
 // records come back as text and are built here after Rust has returned, with
@@ -535,12 +539,29 @@ function openuiPrivate(original) {
 }
 const openuiUncovered = (name, key) => new openuiError(
   `openui package guard: ${name}.${String(key)} is not covered; update package-guards.js`);
+// Generated free calls this.__destroy_into_raw() through the instance, which
+// a host can redirect to another object's pointer: an own property, a
+// subclass field, a prototype set with setPrototypeOf (#211). Run it on a
+// private stand-in whose one member is the helper captured at load, applied
+// to the checked receiver. Every other generated method reaches only the
+// pointer field through an instance, an own accessor nothing can shadow
+// (pointer-redirection.test.ts scans the generated code for this).
+function openuiReleasing(generatedFree, destroy) {
+  return function () {
+    const receiver = this;
+    const standIn = { __proto__: null, __destroy_into_raw: () => openuiApply(destroy, receiver, []) };
+    return openuiApply(generatedFree, standIn, []);
+  };
+}
 
 function openuiGuardClass(klass, spec) {
   const prototype = klass.prototype, name = klass.name;
   const methods = spec.methods ?? {}, accessors = spec.accessors ?? {}, statics = spec.statics ?? {};
   const seen = { __proto__: null };
   let guardedFree;
+  const destroyField = openuiDescriptor(prototype, '__destroy_into_raw');
+  const destroy = destroyField !== undefined && openuiHasOwn(destroyField, 'value') ? destroyField.value : undefined;
+  if (typeof destroy !== 'function') throw openuiUncovered(name, '__destroy_into_raw (missing)');
   for (const key of openuiOwnKeys(prototype)) {
     if (key === 'constructor' || key === openuiDisposeSymbol) continue;
     const descriptor = openuiDescriptor(prototype, key);
@@ -552,9 +573,10 @@ function openuiGuardClass(klass, spec) {
     } else if (openuiHasOwn(descriptor, 'value')) {
       const member = openuiHasOwn(methods, key) ? methods[key] : undefined;
       if (member === undefined || typeof descriptor.value !== 'function') throw openuiUncovered(name, key);
+      const generated = key === 'free' ? openuiReleasing(descriptor.value, destroy) : descriptor.value;
       descriptor.value = klass === RuntimeSession
-        ? openuiDriverMember(key, member, prototype, descriptor.value)
-        : openuiMember(member, prototype, descriptor.value);
+        ? openuiDriverMember(key, member, prototype, generated)
+        : openuiMember(member, prototype, generated);
       if (key === 'free') guardedFree = descriptor.value;
       seen[key] = true;
     } else {
@@ -609,15 +631,19 @@ function openuiGuardClass(klass, spec) {
   // Nothing can replace a guarded member, or a private helper that the
   // guarded free calls, after this.
   if (klass === RuntimeSession) openuiInstallDriver(prototype);
-  openuiFreeze(prototype);
-  openuiFreeze(klass);
   const construct = spec.construct;
-  return new openuiProxy(klass, {
+  const guarded = new openuiProxy(klass, {
     construct(target, args) {
       if (construct === undefined) throw openuiFailure('InvalidHandle', 'opaque object has no constructor');
       return openuiCall(construct, undefined, undefined, args, converted => openuiConstruct(target, converted, target));
     },
   });
+  // instance.constructor is the guarded class too: the generated constructor
+  // reads its arguments' pointers unchecked, so it must not be reachable (#211).
+  openuiDefine(prototype, 'constructor', { value: guarded, writable: false, enumerable: false, configurable: false });
+  openuiFreeze(prototype);
+  openuiFreeze(klass);
+  return guarded;
 }
 
 const openuiGuarded = new Map();
