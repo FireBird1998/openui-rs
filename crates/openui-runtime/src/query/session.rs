@@ -219,7 +219,8 @@ impl QueryManager {
         Ok(())
     }
 
-    /// Whether the payload can be discarded before parsing or admission.
+    /// Whether the manager can discard the payload before parsing or admission.
+    /// A suspended action may still need to know whether the provider succeeded.
     /// A receipt still needs completion to retire it and process stale readers.
     pub fn discards_tool_outcome(&self, id: &ToolCallId) -> Result<bool, QueryCommandError> {
         self.check_call(id)?;
@@ -242,7 +243,7 @@ impl QueryManager {
 
     pub(super) fn delivery_holders(&self, id: &ToolCallId) -> (usize, usize) {
         match &id.0.target {
-            CallTarget::Mutation(call) => (1, call.dispatched_tool.len()),
+            CallTarget::Mutation(call) => self.mutations.delivery_holders(call),
             CallTarget::Query(_) => self.owned_call(id).map_or((0, 0), |p| {
                 (
                     self.queries

@@ -521,16 +521,18 @@ impl SessionCore {
         self.complete_delivery(call, mutations::Delivery::Outcome(outcome))
     }
 
+    fn mutation_continuation(&self, call: &ToolCallId) -> Option<u64> {
+        self.continuations.iter().find_map(|(&generation, entry)| {
+            (entry.call.as_ref() == Some(call)).then_some(generation)
+        })
+    }
+
     fn complete_delivery(
         &mut self,
         call: &ToolCallId,
         outcome: mutations::Delivery,
     ) -> Result<(), OpenUiError> {
-        if let Some((&generation, _)) = self
-            .continuations
-            .iter()
-            .find(|(_, entry)| entry.call.as_ref() == Some(call))
-        {
+        if let Some(generation) = self.mutation_continuation(call) {
             return self.complete_mutation_delivery(generation, call, outcome);
         }
         // Unregistered, the delivery is another program's (#142).
@@ -587,8 +589,10 @@ impl SessionCore {
         call: &ToolCallId,
         json: &str,
     ) -> Result<(), OpenUiError> {
-        let manager = self.manager.as_mut().ok_or(OpenUiError::InvalidToolCall)?;
-        if manager.discards_tool_outcome(call)? {
+        let manager = self.manager.as_ref().ok_or(OpenUiError::InvalidToolCall)?;
+        // A removed mutation can still have an action waiting for the provider's
+        // success or failure. Only success resumes the rest of that action.
+        if manager.discards_tool_outcome(call)? && self.mutation_continuation(call).is_none() {
             return self.complete_tool_call(call, ToolCallOutcome::Result(Value::Null));
         }
         let limits = self.core_limits;

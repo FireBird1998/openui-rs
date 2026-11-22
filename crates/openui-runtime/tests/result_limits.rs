@@ -628,6 +628,59 @@ fn a_refused_result_of_an_older_submission_behaves_as_that_calls_failure() {
 }
 
 #[test]
+fn a_removed_mutation_discards_an_over_limit_failure_on_both_completion_paths() {
+    let store = Store::default();
+    let message = "x".repeat(SIZE + 1);
+    for recreate in [false, true] {
+        for owned in [false, true] {
+            let (mut manager, id) = mutation_manager(Limits::DEFAULT.with_result_size(SIZE), SIZE);
+            let deliver = |manager: &mut QueryManager| {
+                if owned {
+                    manager.complete_tool_call(&id, ToolCallOutcome::CallFailed(message.clone()))
+                } else {
+                    manager.apply(QueryCommand::Complete {
+                        id: &id,
+                        outcome: ToolOutcome::CallFailed(&message),
+                    })
+                }
+            };
+            let before = manager.snapshot_json().to_owned();
+            assert!(matches!(
+                deliver(&mut manager),
+                Err(QueryCommandError::Limit(_))
+            ));
+            assert_eq!(manager.snapshot_json(), before);
+            assert!(id.is_pending());
+
+            // Even a staged candidate keeping the original entry alive cannot
+            // receive the failure on behalf of the current manager.
+            let _staged = manager
+                .stage_tool_call(&id, ToolCallOutcome::MissingResult)
+                .unwrap();
+            manager
+                .register_mutations(&TreeInput::new(&program("")), &store)
+                .unwrap();
+            if recreate {
+                manager
+                    .register_mutations(&TreeInput::new(&mutation_program("save")), &store)
+                    .unwrap();
+                manager.fire_mutation("m", None).unwrap();
+            }
+            let before = manager.snapshot_json().to_owned();
+            assert!(manager.discards_tool_outcome(&id).unwrap());
+            let update = deliver(&mut manager).expect("discard the removed registration's failure");
+            assert!(!update.needs_redraw() && update.calls.is_empty());
+            assert_eq!(manager.snapshot_json(), before);
+            assert!(matches!(
+                manager.check_call(&id),
+                Err(QueryCommandError::InvalidCall)
+            ));
+            check_charge(&manager);
+        }
+    }
+}
+
+#[test]
 fn a_completion_for_a_removed_query_is_discarded_on_both_paths_whatever_it_holds() {
     let store = Store::default();
     let limits = Limits::DEFAULT.with_result_size(1024).with_depth(4);

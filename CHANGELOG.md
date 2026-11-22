@@ -17,6 +17,9 @@
   constructor, which reads its arguments' pointers unchecked). A scan in
   `pointer-redirection.test.ts` fails if wasm-bindgen ever generates another
   read through an instance.
+- The runtime discards a removed mutation's late failure before checking its
+  payload (#214). Even over-limit failure text now consumes the receipt and
+  leaves the snapshot unchanged.
 - Swift libraries can declare functions and custom actions with
   `defineFunction` and `defineAction` (#139). Pass them to `Core.createLibrary`
   alongside components. A `LiveProgram` registers the Swift implementations

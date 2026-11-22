@@ -31,7 +31,13 @@ impl Entry {
 pub(super) struct MutationCall {
     statement: String,
     registration: Weak<()>,
-    pub(super) dispatched_tool: String,
+    dispatched_tool: String,
+}
+
+impl MutationCall {
+    fn belongs_to(&self, entry: &Entry) -> bool {
+        self.registration.ptr_eq(&Arc::downgrade(&entry.identity))
+    }
 }
 
 fn result(status: &str, data: Option<Value>, error: Option<Value>) -> Value {
@@ -245,8 +251,15 @@ impl Mutations {
 
     pub(super) fn pending_registration(&self, call: &MutationCall) -> Option<&str> {
         let (name, entry) = self.entries.get_key_value(&call.statement)?;
-        (call.registration.ptr_eq(&Arc::downgrade(&entry.identity)) && !entry.accepts_submission())
-            .then_some(name.as_str())
+        (call.belongs_to(entry) && !entry.accepts_submission()).then_some(name.as_str())
+    }
+
+    pub(super) fn delivery_holders(&self, call: &MutationCall) -> (usize, usize) {
+        // A rename keeps this registration, even if a newer call already settled.
+        match self.entries.get(&call.statement) {
+            Some(entry) if call.belongs_to(entry) => (1, call.dispatched_tool.len()),
+            _ => (0, 0),
+        }
     }
 
     pub(super) fn contains(&self, id: &str) -> bool {
@@ -309,7 +322,7 @@ impl Mutations {
         let Some(entry) = self
             .entries
             .get_mut(&call.statement)
-            .filter(|entry| call.registration.ptr_eq(&Arc::downgrade(&entry.identity)))
+            .filter(|entry| call.belongs_to(entry))
         else {
             return Ok((false, None));
         };

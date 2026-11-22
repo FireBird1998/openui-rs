@@ -443,6 +443,11 @@ key or a mutation fired before disposal are discarded before admission. A
 failure on a current key is charged only to its readers (#192). A mutation can have
 several outstanding calls after renames, as upstream allows; a session caps
 pending managed calls globally at `maxContinuations` (default 64).
+`a_removed_mutation_discards_an_over_limit_failure_on_both_completion_paths`
+retries a refused failure after removing the registration, both with the name
+absent and with a new call under the same name (#214).
+`a_removed_mutations_action_tail_runs_only_on_provider_success` checks the
+session action after a late success, a failure and an over-limit failure.
 The runtime tests also pin the depth error for nested host JSON objects, the exact failure-text charge across holders, and the empty-name count accepted for a missing tool on both completion paths (#193).
 The runtime tests cover withheld delivery errors, receipt recovery after reader evaluation errors or missing context, and query registration at the exact statement-id work limit (#194).
 `recreated_query_receipts` (runtime) replays #204's reproduction: a staged

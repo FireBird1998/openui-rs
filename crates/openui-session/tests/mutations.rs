@@ -184,6 +184,41 @@ fn settled_registration_clicks_and_resumed_segments_match_the_renderer() {
 }
 
 #[test]
+fn a_removed_mutations_action_tail_runs_only_on_provider_success() {
+    let lib = library();
+    let r = refs();
+    let source = r#"m=Mutation("save")
+root=Box(m,Action([@Run(m),@OpenUrl("done")]))"#;
+    let mut limits = RuntimeLimits::default();
+    limits.evaluation.result_size = Some(4096);
+    for (outcome, resumes) in [
+        (json!({"value": 7}), true),
+        (json!({"failed": "late"}), false),
+        (json!({"failed": "x".repeat(4097)}), false),
+    ] {
+        let mut s = SessionCore::new(lib.clone(), None, limits.clone()).unwrap();
+        s.attach_tool_provider(&r).unwrap();
+        let draw = s
+            .replace_program(&r, program(&lib, source), None, None, true)
+            .unwrap();
+        click(&mut s, &r, &draw.evaluation);
+        let call = s.take_query_update().calls.remove(0);
+        s.replace_program(&r, program(&lib, r#"root=Box("gone")"#), None, None, true)
+            .unwrap();
+        s.take_query_update();
+        s.finish_tool_call_json(&call.id, &outcome.to_string())
+            .unwrap();
+        let update = s.take_query_update();
+        assert!(!update.changed && update.calls.is_empty());
+        let [tail] = update.actions.as_slice() else {
+            panic!("expected one completed action")
+        };
+        assert_eq!(tail.events.len(), usize::from(resumes));
+        assert_eq!(s.pending_continuations(&r).unwrap(), 0);
+    }
+}
+
+#[test]
 fn a_refused_draw_or_outcome_keeps_the_call_and_detaching_releases_its_plan() {
     let lib = library();
     let r = refs();

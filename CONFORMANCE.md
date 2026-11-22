@@ -1328,9 +1328,12 @@ makes the registration idle while its earlier call runs on, so it can be
 submitted again, as upstream allows. A stale success or failure replaces the
 newer result, as in lang-core 1.1.0, and a refused result behaves as a failed
 call, including when stale: its `tool-error` replaces the newer result. A call
-whose registration was removed settles nothing (#88). A result too large for
-any number of readers ends the call, as each reader's error or the compact
-error, whether the manager refused it or the session refused it before
+whose registration was removed settles nothing (#88). The manager discards its
+payload before admission and consumes the receipt even for over-limit failure
+text (#214). A session action waiting on that call resumes only on success.
+
+A result too large for any number of readers ends the call, as each reader's
+error or the compact error, whether the manager refused it or the session refused it before
 reading. A refresh's call is admitted the same way: a refused refresh result
 is that call's failure, so the failed entry keeps its data and the next tick
 refetches it, as after any failed call.
