@@ -170,6 +170,14 @@ exclude_re = [
     # above it reservation also refuses. Changing this preflight preserves size flags and
     # prevents no successful copy.
     "crates/openui-runtime/src/tree/input\\.rs:\\d+:14: replace > with >= in text_size$",
+
+    # QueryManager::complete clears run_again when no unsuspended query holds
+    # the key (including a suspended-only key). Otherwise it ends the pending
+    # call. take_remembered runs before reader propagation or dispatch, so
+    # whenever run_again.take()? succeeds, read is true and pending is None.
+    # Widening the reader predicate or changing the final guard has no effect (#198).
+    'crates/openui-runtime/src/query/runs\.rs:\d+:43: replace && with \|\| in QueryManager::take_remembered$',
+    'crates/openui-runtime/src/query/runs\.rs:\d+:18: replace \|\| with && in QueryManager::take_remembered$',
 ]
 
 # Query manager (#95): five equivalent mutants that exclude_re cannot skip.

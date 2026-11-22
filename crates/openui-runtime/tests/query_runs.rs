@@ -143,6 +143,99 @@ fn a_remembered_run_is_forgotten_when_no_query_is_left_on_its_key() {
     assert!(finish(&mut manager, &second, "late").is_empty());
 }
 
+fn audit(manager: &QueryManager, calls: &[&ToolCall]) {
+    manager
+        .audit_cache(calls.iter().map(|c| &c.id), true)
+        .unwrap();
+}
+
+#[test]
+fn a_remembered_run_is_forgotten_on_return_to_a_cached_key() {
+    let source = program("$f=0\nq=Query(\"t\",{f:$f})");
+    let mut store = Store::default();
+    store.set("$f", Some(Value::Num(0.0))).unwrap();
+    let mut manager = QueryManager::default();
+    let [first] = evaluate(&mut manager, &source, &store).try_into().unwrap();
+    audit(&manager, &[&first]);
+    assert!(finish(&mut manager, &first, "cached").is_empty());
+    audit(&manager, &[]);
+
+    let [refresh] = run(&mut manager, &["q"]).try_into().unwrap();
+    audit(&manager, &[&refresh]);
+    assert!(run(&mut manager, &["q"]).is_empty());
+    audit(&manager, &[&refresh]);
+    store.set("$f", Some(Value::Num(1.0))).unwrap();
+    audit(&manager, &[&refresh]);
+    let [moved] = evaluate(&mut manager, &source, &store).try_into().unwrap();
+    audit(&manager, &[&refresh, &moved]);
+    assert!(refresh.id.is_pending());
+    assert_eq!(moved.arguments_json().as_deref(), Some(r#"{"f":1}"#));
+
+    assert!(finish(&mut manager, &refresh, "late").is_empty());
+    audit(&manager, &[&moved]);
+    store.set("$f", Some(Value::Num(0.0))).unwrap();
+    audit(&manager, &[&moved]);
+    assert!(
+        evaluate(&mut manager, &source, &store).is_empty(),
+        "returning to the cached key started a call"
+    );
+    audit(&manager, &[&moved]);
+    let snapshot = parse_json(manager.snapshot_json()).unwrap();
+    assert_eq!(snapshot["q"], "cached");
+    assert_eq!(snapshot["__openui_loading"], parse_json("[]").unwrap());
+}
+
+#[test]
+fn a_suspended_reader_does_not_keep_a_remembered_run_on_its_cached_key() {
+    let cached = r#"q=Query("t",{f:0})"#;
+    let readers = |q| {
+        program(&format!(
+            "{q}\na=Query(\"source\",{{}})\nr=Query(\"t\",{{f:a+a}})"
+        ))
+    };
+    let store = Store::default();
+    let mut manager = QueryManager::with_limits(Limits::DEFAULT.with_result_size(1024));
+    let calls = evaluate(&mut manager, &readers(cached), &store);
+    let first = call_for(&calls, "t", r#"{"f":0}"#);
+    let input = call_for(&calls, "source", "{}");
+    audit(&manager, &[first, input]);
+    assert!(finish_number(&mut manager, input, 0.0).is_empty());
+    audit(&manager, &[first]);
+    assert!(finish(&mut manager, first, "cached").is_empty());
+    audit(&manager, &[]);
+    assert_eq!(parse_json(manager.snapshot_json()).unwrap()["r"], "cached");
+
+    // Ask twice for r's shared key, then move q away. Its previous key
+    // keeps the receipt live even after r's argument exceeds the limit.
+    let runs = run(&mut manager, &["r", "r", "a"]);
+    let refresh = call_for(&runs, "t", r#"{"f":0}"#);
+    let input = call_for(&runs, "source", "{}");
+    audit(&manager, &[refresh, input]);
+    let [moved] = evaluate(&mut manager, &readers(r#"q=Query("t",{f:1})"#), &store)
+        .try_into()
+        .unwrap();
+    audit(&manager, &[refresh, input, &moved]);
+    assert!(finish(&mut manager, input, &"x".repeat(700)).is_empty());
+    audit(&manager, &[refresh, &moved]);
+    let snapshot = parse_json(manager.snapshot_json()).unwrap();
+    assert_eq!(snapshot["__openui_errors"][0]["statementId"], "r");
+    assert_eq!(snapshot["__openui_errors"][0]["code"], "reader-limit");
+    assert!(refresh.id.is_pending());
+
+    assert!(finish(&mut manager, refresh, "late").is_empty());
+    audit(&manager, &[&moved]);
+    // Register q alone so the oversized reader argument is no longer evaluated.
+    let back = program(cached);
+    assert!(
+        evaluate(&mut manager, &back, &store).is_empty(),
+        "the suspended reader kept a run on the cached key"
+    );
+    audit(&manager, &[&moved]);
+    let snapshot = parse_json(manager.snapshot_json()).unwrap();
+    assert_eq!(snapshot["q"], "cached");
+    assert_eq!(snapshot["__openui_loading"], parse_json("[]").unwrap());
+}
+
 fn plan(source: &str) -> (ParseResult, Library, Store, Value) {
     let schema = parse_json(r#"{"$defs":{"Box":{"properties":{"a":{}}}}}"#).unwrap();
     let library = Library::from_json_schema(&schema);

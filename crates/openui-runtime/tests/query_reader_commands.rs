@@ -670,3 +670,160 @@ fn a_reader_of_a_statement_that_is_not_a_query_waits_as_upstream_does() {
             .contains("rule 4: wait at a")
     );
 }
+
+fn audited_reader_calls(
+    manager: &mut QueryManager,
+    command: QueryCommand<'_>,
+    receipts: &mut Vec<openui_runtime::ToolCallId>,
+) -> Vec<openui_runtime::ToolCall> {
+    let calls = reader_calls(manager, command);
+    receipts.extend(calls.iter().map(|call| call.id.clone()));
+    manager.audit_cache(receipts.iter(), true).unwrap();
+    calls
+}
+
+fn register_readers(
+    manager: &mut QueryManager,
+    source: &str,
+    receipts: &mut Vec<openui_runtime::ToolCallId>,
+) -> Vec<openui_runtime::ToolCall> {
+    let program = parse(source, &Library::from_json_schema(&JsonValue::Null), None);
+    audited_reader_calls(
+        manager,
+        QueryCommand::Evaluate {
+            program: &program,
+            store: &Store::default(),
+        },
+        receipts,
+    )
+}
+
+fn deliver_source<'a>(
+    calls: &'a [openui_runtime::ToolCall],
+    result: &'a JsonValue,
+) -> QueryCommand<'a> {
+    QueryCommand::Complete {
+        id: &named(calls, "s", "{}").id,
+        outcome: ToolOutcome::Result(Some(result)),
+    }
+}
+
+fn check_reader_delivery(
+    manager: &QueryManager,
+    calls: &[openui_runtime::ToolCall],
+    source_result: &JsonValue,
+    expected_args: &str,
+    expect_cut: bool,
+) {
+    assert_eq!(
+        manager.snapshot().get("s"),
+        Some(&Value::from_json(source_result))
+    );
+    let diagnostic = manager.reader_diagnostic();
+    let snapshot = openui_lang::parse_json(manager.snapshot_json()).unwrap();
+    let errors = snapshot["__openui_errors"].as_array().unwrap();
+    if expect_cut {
+        assert!(
+            matches!(
+                diagnostic,
+                Some(openui_runtime::ReaderDiagnostic::PropagationLimit(_))
+            ),
+            "expected the long case to suspend r at the work limit, diagnostic {diagnostic:?}, new calls {}",
+            calls.len()
+        );
+        assert!(calls.is_empty());
+        assert_eq!(errors.len(), 1);
+        assert_eq!(errors[0]["code"], "reader-limit");
+        assert_eq!(errors[0]["statementId"], "r");
+    } else {
+        assert_eq!(diagnostic, None);
+        assert!(errors.is_empty());
+        assert_eq!(calls.len(), 1);
+        named(calls, "r", expected_args);
+    }
+}
+
+#[test]
+fn a_cascade_charges_probes_of_unchanged_readers_by_statement_id_length() {
+    for (prefix, expect_cut) in [("x".to_owned(), false), ("x".repeat(512), true)] {
+        // Only r reads s. The other eight readers still wait for u when s settles.
+        let mut source = String::from("s=Query(\"s\")\nr=Query(\"r\",{v:s})\nu=Query(\"u\")");
+        for i in 0..8 {
+            source.push_str(&format!("\n{prefix}{i}=Query(\"w\",{{v:u}})"));
+        }
+        let mut manager = QueryManager::with_limits(Limits::DEFAULT.with_work(6_000));
+        let mut receipts = Vec::new();
+        let initial = register_readers(&mut manager, &source, &mut receipts);
+        assert_eq!(initial.len(), 2);
+        assert!(named(&initial, "u", "{}").id.is_pending());
+        let result = JsonValue::from(1);
+        let delivered = audited_reader_calls(
+            &mut manager,
+            deliver_source(&initial, &result),
+            &mut receipts,
+        );
+        check_reader_delivery(&manager, &delivered, &result, r#"{"v":1}"#, expect_cut);
+    }
+}
+
+#[test]
+fn a_cascade_charges_the_previous_string_when_the_source_version_changes() {
+    let source = "s=Query(\"s\")\nr=Query(\"r\",{v:s.v})";
+    // Both strings have no v property, so r makes the same initial call. The
+    // refetch supplies the same object in both cases. Only the old string varies.
+    let new_field = "y".repeat(256);
+    let args = format!(r#"{{"v":"{new_field}"}}"#);
+    let new_result = openui_lang::parse_json(&args).unwrap();
+    for (old_text, expect_cut) in [("x".to_owned(), false), ("x".repeat(512), true)] {
+        let mut manager = QueryManager::with_limits(Limits::DEFAULT.with_work(1_900));
+        let mut receipts = Vec::new();
+        let initial = register_readers(&mut manager, source, &mut receipts);
+        assert_eq!(initial.len(), 1);
+        let old_result = JsonValue::from(old_text);
+        let first = audited_reader_calls(
+            &mut manager,
+            deliver_source(&initial, &old_result),
+            &mut receipts,
+        );
+        assert_eq!(
+            manager.snapshot().get("s"),
+            Some(&Value::from_json(&old_result))
+        );
+        assert_eq!(manager.reader_diagnostic(), None);
+        assert_eq!(first.len(), 1);
+        named(&first, "r", "{}");
+        let refetch = audited_reader_calls(
+            &mut manager,
+            QueryCommand::Invalidate {
+                statement_ids: &["s"],
+            },
+            &mut receipts,
+        );
+        assert_eq!(refetch.len(), 1);
+        let delivered = audited_reader_calls(
+            &mut manager,
+            deliver_source(&refetch, &new_result),
+            &mut receipts,
+        );
+        check_reader_delivery(&manager, &delivered, &new_result, &args, expect_cut);
+    }
+}
+
+#[test]
+fn a_cascade_charges_the_string_default_when_reapplying_a_reader() {
+    for (default, expect_cut) in [("x".to_owned(), false), ("x".repeat(512), true)] {
+        // The string becomes the reader's default only after s delivers.
+        let source = format!("s=Query(\"s\")\nr=Query(\"r\",{{v:s}},s ? \"{default}\" : null)");
+        let mut manager = QueryManager::with_limits(Limits::DEFAULT.with_work(1_080));
+        let mut receipts = Vec::new();
+        let initial = register_readers(&mut manager, &source, &mut receipts);
+        assert_eq!(initial.len(), 1);
+        let result = JsonValue::from(1);
+        let delivered = audited_reader_calls(
+            &mut manager,
+            deliver_source(&initial, &result),
+            &mut receipts,
+        );
+        check_reader_delivery(&manager, &delivered, &result, r#"{"v":1}"#, expect_cut);
+    }
+}
