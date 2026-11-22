@@ -1,0 +1,4 @@
+$t = "save"
+m = Mutation($t, {shown: $t})
+q = Query("read", {}, $t == "delete" ? $detail + $detail : "")
+root = Box($t, Action([@Run(m)]))

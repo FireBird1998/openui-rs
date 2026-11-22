@@ -31,6 +31,11 @@
   `reference/intelligent-ui-functions/`) in four time zones, with a fixed
   clock and seeded random draws, and a Swift test replays every pair through
   the Rust runtime with the library's functions registered.
+- Pinned mutation dispatch after a state write in one settled program (#205).
+  A mutation's tool is evaluated when the mutation is registered (a new parse
+  or a settle), never on a state write; its arguments are evaluated at the
+  click. This holds whether the write's query registration is accepted,
+  refused by a limit or refused for another reason, and matches upstream.
 - WebAssembly `free()` can no longer free another object's memory (#211).
   The generated `free` (and `[Symbol.dispose]`) looked up
   `__destroy_into_raw` through the instance, so an own property, a subclass

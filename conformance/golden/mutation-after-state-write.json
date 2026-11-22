@@ -1,0 +1,12 @@
+{
+  "before": "save",
+  "after": "delete",
+  "clickCalls": [
+    {
+      "toolName": "save",
+      "args": {
+        "shown": "delete"
+      }
+    }
+  ]
+}

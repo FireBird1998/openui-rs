@@ -695,3 +695,121 @@ test('a refused tool name draws with the same error as a write where lang-core t
   expect(draw.queryEvaluationError).toEqual(write.evaluationError);
   expect(JSON.parse(draw.json).root.props.value).toBe('held');
 });
+
+test('a mutation clicked after refused state-write registration matches the renderer', async () => {
+  const input = new URL('../../../conformance/mutation-after-state-write.oui', import.meta.url);
+  const expected = new URL('../../../conformance/golden/mutation-after-state-write.json', import.meta.url);
+  using lib = new wasm.ComponentLibrary('{"$defs":{"Box":{"properties":{"value":{},"action":{}}}}}');
+  using limits = new wasm.RuntimeLimits();
+  using evaluation = limits.evaluation;
+  evaluation.resultSize = 2048n;
+  limits.evaluation = evaluation;
+  using s = wasm.RuntimeSession.withLimits(lib, undefined, limits);
+  s.attachToolProvider();
+  using program = wasm.parseProgram(await Bun.file(input).text(), lib);
+  using replacement = s.replaceProgram(program, JSON.stringify({ $detail: 'x'.repeat(1200) }), undefined, false);
+  using before = replacement.evaluation;
+  expect(before.queryEvaluationError).toBeNull();
+  using initial = s.takeQueryUpdate();
+  expect(initial.callCount).toBe(1n);
+  using read = initial.callAt(0n);
+  expect(read.toolName).toBe('read');
+
+  expect(s.set('$t', '"delete"')).toBe(true);
+  using write = s.takeQueryUpdate();
+  expect(write.evaluationError?.kind).toBe('LimitExceeded');
+  expect(write.callCount).toBe(0n);
+  using after = s.evaluate();
+  expect(after.queryEvaluationError).toEqual(write.evaluationError);
+  using redraw = s.takeQueryUpdate();
+  expect(redraw.callCount).toBe(0n);
+
+  using token = after.evaluation;
+  using action = s.actionAt(token, ['props', 'action']);
+  using run = s.run(action, 'click');
+  expect(run.failure).toBeNull();
+  using dispatch = s.takeQueryUpdate();
+  const clickCalls = [];
+  for (let i = 0n; i < dispatch.callCount; i++) {
+    using call = dispatch.callAt(i);
+    clickCalls.push({ toolName: call.toolName, args: JSON.parse(call.argumentsJson) });
+  }
+  expect({ before: JSON.parse(before.json).root.props.value, after: JSON.parse(after.json).root.props.value,
+    clickCalls }).toEqual(await Bun.file(expected).json());
+});
+
+function clickCalls(s) {
+  using dispatch = s.takeQueryUpdate();
+  const calls = [];
+  for (let i = 0n; i < dispatch.callCount; i++) {
+    using call = dispatch.callAt(i);
+    calls.push({ toolName: call.toolName, args: JSON.parse(call.argumentsJson) });
+  }
+  return calls;
+}
+
+function click(s, draw) {
+  using token = draw.evaluation;
+  using action = s.actionAt(token, ['props', 'action']);
+  using run = s.run(action, 'click');
+  expect(run.failure).toBeNull();
+}
+
+// #205 route A: nothing is refused, and the golden is upstream's replay without a limit.
+test('a mutation clicked after an accepted state write keeps the registered tool', async () => {
+  const input = new URL('../../../conformance/mutation-after-state-write.oui', import.meta.url);
+  const expected = new URL('../../../conformance/golden/mutation-after-state-write.json', import.meta.url);
+  using lib = new wasm.ComponentLibrary('{"$defs":{"Box":{"properties":{"value":{},"action":{}}}}}');
+  using s = new wasm.RuntimeSession(lib);
+  s.attachToolProvider();
+  using program = wasm.parseProgram(await Bun.file(input).text(), lib);
+  using replacement = s.replaceProgram(program, JSON.stringify({ $detail: 'x'.repeat(1200) }), undefined, false);
+  using before = replacement.evaluation;
+  using initial = s.takeQueryUpdate();
+  expect(initial.callCount).toBe(1n);
+
+  expect(s.set('$t', '"delete"')).toBe(true);
+  using write = s.takeQueryUpdate();
+  expect(write.evaluationError).toBeNull();
+  expect(write.callCount).toBe(0n);
+  using after = s.evaluate();
+  expect(after.queryEvaluationError).toBeNull();
+  using redraw = s.takeQueryUpdate();
+  expect(redraw.callCount).toBe(0n);
+
+  click(s, after);
+  expect({ before: JSON.parse(before.json).root.props.value, after: JSON.parse(after.json).root.props.value,
+    clickCalls: clickCalls(s) }).toEqual(await Bun.file(expected).json());
+});
+
+// #205 route B: a non-limit refusal (#187). Upstream's query effect throws on the $q
+// write, so there is no upstream row; this pins our call, which is the one upstream
+// sends after a write of $t alone.
+test('a mutation clicked after a non-limit refusal keeps the registered tool', () => {
+  using lib = new wasm.ComponentLibrary('{"$defs":{"Box":{"properties":{"value":{},"action":{}}}}}');
+  using s = new wasm.RuntimeSession(lib);
+  s.attachToolProvider();
+  using program = wasm.parseProgram(
+    '$t = "save"\n$q = "read"\nm = Mutation($t, {shown: $t})\nq = Query($q, {}, "")\nroot = Box($t, Action([@Run(m)]))', lib);
+  using replacement = s.replaceProgram(program, undefined, undefined, false);
+  using before = replacement.evaluation;
+  using initial = s.takeQueryUpdate();
+  expect(initial.callCount).toBe(1n);
+
+  expect(s.set('$q', '{"toString":null}')).toBe(true);
+  using refused = s.takeQueryUpdate();
+  expect(refused.evaluationError?.kind).toBe('Evaluation');
+  expect(s.set('$t', '"delete"')).toBe(true);
+  using write = s.takeQueryUpdate();
+  expect(write.evaluationError).toEqual(refused.evaluationError);
+  expect(write.callCount).toBe(0n);
+  using after = s.evaluate();
+  expect(after.queryEvaluationError).toEqual(refused.evaluationError);
+  using redraw = s.takeQueryUpdate();
+  expect(redraw.callCount).toBe(0n);
+
+  click(s, after);
+  expect({ before: JSON.parse(before.json).root.props.value, after: JSON.parse(after.json).root.props.value,
+    clickCalls: clickCalls(s) }).toEqual({ before: 'save', after: 'delete',
+    clickCalls: [{ toolName: 'save', args: { shown: 'delete' } }] });
+});

@@ -900,3 +900,145 @@ fn an_unregistered_mutation_reports_the_conversion_error_without_a_size_cut() {
     assert!(!run.size_limited);
     assert!(f.drain().calls.is_empty());
 }
+
+#[test]
+fn mutation_clicked_after_refused_state_write_registration_matches_the_renderer() {
+    let golden: Json = serde_json::from_str(include_str!(
+        "../../../conformance/golden/mutation-after-state-write.json"
+    ))
+    .unwrap();
+    let mut f = Fixture::new();
+    let source = include_str!("../../../conformance/mutation-after-state-write.oui");
+    let p = program(&f.lib, source);
+    let persisted = json!({"$detail": "x".repeat(1200)}).to_string();
+    let before =
+        f.s.replace_program(&refs(), p, Some(persisted), None, false)
+            .unwrap()
+            .evaluation;
+    assert!(before.query_evaluation_error.is_none());
+    let initial = f.drain();
+    assert_eq!(initial.calls.len(), 1);
+    assert_eq!(initial.calls[0].tool_name, "read");
+
+    assert!(
+        f.s.set(&refs(), "$t".into(), Some(r#""delete""#.into()))
+            .unwrap()
+    );
+    let write = f.drain();
+    assert!(matches!(
+        write.evaluation_error,
+        Some(OpenUiError::LimitExceeded { .. })
+    ));
+    assert!(write.calls.is_empty());
+    let after = f.evaluate();
+    assert_eq!(after.query_evaluation_error, write.evaluation_error);
+    assert!(f.drain().calls.is_empty());
+
+    assert!(f.click(&after).failure.is_none());
+    let calls: Vec<_> = f
+        .drain()
+        .calls
+        .iter()
+        .map(|c| {
+            json!({
+                "toolName": c.tool_name,
+                "args": serde_json::from_str::<Json>(&c.arguments_json().unwrap()).unwrap()
+            })
+        })
+        .collect();
+    assert_eq!(
+        json!({"before": value(&before), "after": value(&after), "clickCalls": calls}),
+        golden
+    );
+}
+
+/// The calls a click handed over, in the golden's projection.
+fn click_calls(f: &mut Fixture) -> Vec<Json> {
+    f.drain()
+        .calls
+        .iter()
+        .map(|c| {
+            json!({
+                "toolName": c.tool_name,
+                "args": serde_json::from_str::<Json>(&c.arguments_json().unwrap()).unwrap()
+            })
+        })
+        .collect()
+}
+
+// Route A of #205: nothing is refused. The write registers queries only, so
+// the click still sends the tool registered with the program, as upstream's
+// renderer does without a limit (the golden is that replay).
+#[test]
+fn mutation_clicked_after_an_accepted_state_write_keeps_the_registered_tool() {
+    let golden: Json = serde_json::from_str(include_str!(
+        "../../../conformance/golden/mutation-after-state-write.json"
+    ))
+    .unwrap();
+    let mut f = Fixture::with_result_size(1 << 20);
+    let p = program(
+        &f.lib,
+        include_str!("../../../conformance/mutation-after-state-write.oui"),
+    );
+    let persisted = json!({"$detail": "x".repeat(1200)}).to_string();
+    let before =
+        f.s.replace_program(&refs(), p, Some(persisted), None, false)
+            .unwrap()
+            .evaluation;
+    assert_eq!(f.drain().calls.len(), 1);
+    assert!(
+        f.s.set(&refs(), "$t".into(), Some(r#""delete""#.into()))
+            .unwrap()
+    );
+    let write = f.drain();
+    assert!(write.evaluation_error.is_none());
+    assert!(write.calls.is_empty());
+    let after = f.evaluate();
+    assert!(after.query_evaluation_error.is_none());
+    assert!(f.drain().calls.is_empty());
+    assert!(f.click(&after).failure.is_none());
+    assert_eq!(
+        json!({"before": value(&before), "after": value(&after), "clickCalls": click_calls(&mut f)}),
+        golden
+    );
+}
+
+// Route B of #205: the write is refused for a reason other than a limit (a
+// query tool name that cannot become text, as in #187). Upstream's query
+// effect throws on that write, so it has no comparable row; the pin is that a
+// later write of `$t` still dispatches the registered tool with the current
+// argument, the same call upstream sends after a write of `$t` alone.
+#[test]
+fn mutation_clicked_after_a_non_limit_refusal_keeps_the_registered_tool() {
+    let mut f = Fixture::with_result_size(1 << 20);
+    let before = f.replace(
+        "$t = \"save\"\n$q = \"read\"\nm = Mutation($t, {shown: $t})\n\
+         q = Query($q, {}, \"\")\nroot = Box($t, Action([@Run(m)]))",
+    );
+    assert_eq!(f.drain().calls.len(), 1);
+    assert!(
+        f.s.set(&refs(), "$q".into(), Some(r#"{"toString":null}"#.into()))
+            .unwrap()
+    );
+    let refused = f.drain();
+    assert!(matches!(
+        refused.evaluation_error,
+        Some(OpenUiError::Evaluation { .. })
+    ));
+    assert!(
+        f.s.set(&refs(), "$t".into(), Some(r#""delete""#.into()))
+            .unwrap()
+    );
+    let write = f.drain();
+    assert_eq!(write.evaluation_error, refused.evaluation_error);
+    assert!(write.calls.is_empty());
+    let after = f.evaluate();
+    assert_eq!(after.query_evaluation_error, refused.evaluation_error);
+    assert!(f.drain().calls.is_empty());
+    assert!(f.click(&after).failure.is_none());
+    assert_eq!(
+        json!({"before": value(&before), "after": value(&after), "clickCalls": click_calls(&mut f)}),
+        json!({"before": "save", "after": "delete",
+            "clickCalls": [{"toolName": "save", "args": {"shown": "delete"}}]})
+    );
+}

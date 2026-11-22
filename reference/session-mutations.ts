@@ -10,9 +10,8 @@ import { registerMutations } from './mutation-registration';
 
 process.env.OPENUI_TELEMETRY_DISABLED = '1';
 process.env.DO_NOT_TRACK = '1';
-const corpus = JSON.parse(readFileSync('../conformance/session-mutations.json', 'utf8'));
-const rows = [];
-for (const scenario of corpus.scenarios) {
+
+export async function* replayMutationScenario(schemaDocument, scenario) {
   const store = createStore();
   const calls = [];
   const events = [];
@@ -26,9 +25,9 @@ for (const scenario of corpus.scenarios) {
     resolveRef: name => manager.getMutationResult(name) ?? manager.getResult(name),
   };
   const resultRef = { current: null };
-  const schema = compileSchema(corpus.schema);
+  const schema = compileSchema(schemaDocument);
   const renderer = rendererState({
-    store, evaluationContext: ctx, schema: corpus.schema, resultRef, queryManager: manager,
+    store, evaluationContext: ctx, schema: schemaDocument, resultRef, queryManager: manager,
     propsRef: { current: { onAction: event => events.push(event) } },
   });
   function draw() {
@@ -51,7 +50,7 @@ for (const scenario of corpus.scenarios) {
         if (step.alsoRegisterMutations) {
           resultRef.current.mutationStatements = parse(step.alsoRegisterMutations, schema).mutationStatements;
         }
-        store.initialize(resultRef.current.stateDeclarations ?? {}, {});
+        store.initialize(resultRef.current.stateDeclarations ?? {}, step.persisted ?? {});
       }
       if ('replace' in step || 'settle' in step) streaming = !!step.streaming;
       if ('set' in step) store.set(step.set, step.value);
@@ -71,16 +70,23 @@ for (const scenario of corpus.scenarios) {
       }
       if (register) registerMutations(streaming, resultRef.current, ctx, manager);
       const snapshot = manager.getSnapshot();
-      rows.push(JSON.stringify({
+      yield {
         tree: draw(), snapshot, events: events.splice(0),
         calls: calls.slice(initial).map(({ toolName, args }) => ({ toolName, args })),
         ...('maxContinuations' in scenario ? { failure: null } : {}),
         changed: before !== JSON.stringify(snapshot) || ('finish' in step && wroteState),
-      }));
+      };
     }
   } finally {
     manager.dispose();
     store.dispose();
   }
 }
-writeFileSync('../conformance/golden/session-mutations.jsonl', rows.join('\n') + '\n');
+if (import.meta.main) {
+  const corpus = JSON.parse(readFileSync('../conformance/session-mutations.json', 'utf8'));
+  const rows: string[] = [];
+  for (const scenario of corpus.scenarios) {
+    for await (const row of replayMutationScenario(corpus.schema, scenario)) rows.push(JSON.stringify(row));
+  }
+  writeFileSync('../conformance/golden/session-mutations.jsonl', rows.join('\n') + '\n');
+}

@@ -83,6 +83,7 @@ done
   bun --no-install query-scenarios.ts --self-wait
   bun --no-install mutation-scenarios.ts
   bun --no-install session-mutations.ts
+  bun --no-install mutation-after-state-write.ts
   bun --no-install paused-actions.ts
   bun --no-install session-runs.ts
   bun --no-install session-bundles.ts
