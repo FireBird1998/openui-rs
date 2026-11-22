@@ -39,9 +39,9 @@ impl ToolDelivery<'_> {
             return Ok(self.manager.idle_update());
         }
         let remembered = self
-            .id
-            .query_key()
-            .and_then(|key| self.candidate.take_remembered(key));
+            .manager
+            .owned_call(self.id)
+            .and_then(|call| self.candidate.take_remembered(call.key.clone()));
         let mut requests = runs::QueryRequests::default();
         // A refusal cannot change source data. Without its borrowed context,
         // leave a previously bounded cascade stale for the next trigger.
@@ -233,10 +233,10 @@ impl QueryManager {
                 } else {
                     false
                 };
-                if !errors_fit && let Some(key) = id.query_key() {
+                if !errors_fit && let Some(call) = self.owned_call(id) {
                     // No data changed. Hiding the new errors restores at least
                     // as much room as there was before the delivery.
-                    candidate.withhold_errors(&key);
+                    candidate.withhold_errors(&call.key);
                 }
             }
         } else if id.0.lifecycle.strong_count() != 0 {

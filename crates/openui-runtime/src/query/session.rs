@@ -28,6 +28,7 @@ impl From<crate::McpToolOutcome> for ToolCallOutcome {
 }
 
 impl ToolCallId {
+    #[cfg(test)]
     pub(super) fn query_key(&self) -> Option<Arc<str>> {
         match &self.0.target {
             CallTarget::Query(target) => target.upgrade().map(|call| call.key.clone()),
@@ -35,8 +36,12 @@ impl ToolCallId {
         }
     }
 
-    /// Whether the manager still owns the outstanding call. A released query
+    /// Whether the outstanding call is still alive: not completed, not
+    /// released by its manager and not ended by disposal. A released query
     /// receipt can still trigger stale readers when its provider finishes.
+    /// A staged delivery that is neither finished nor dropped keeps the
+    /// calls it copied alive, so they read as pending although the manager
+    /// no longer holds them; completing one is discarded (#204).
     pub fn is_pending(&self) -> bool {
         !matches!(&self.0.target, CallTarget::Query(call) if call.strong_count() == 0)
             && self.0.lifecycle.strong_count() != 0
@@ -217,10 +222,24 @@ impl QueryManager {
         Ok(id.0.lifecycle.strong_count() == 0 || self.disposed || self.delivery_holders(id).0 == 0)
     }
 
+    /// The query call `id` was started for, while this manager's entry for
+    /// its key still holds that very call: the identity the delivery audit
+    /// checks. A live target alone is not ownership. A staged delivery's
+    /// candidate can keep a call alive after its entry was released, and the
+    /// key can since have been recreated with a call of its own (#204).
+    pub(super) fn owned_call(&self, id: &ToolCallId) -> Option<Arc<PendingCall>> {
+        let CallTarget::Query(target) = &id.0.target else {
+            return None;
+        };
+        let call = target.upgrade()?;
+        let held = self.cache.get(&call.key)?.pending.as_ref()?;
+        Arc::ptr_eq(held, &call).then_some(call)
+    }
+
     pub(super) fn delivery_holders(&self, id: &ToolCallId) -> (usize, usize) {
         match &id.0.target {
             CallTarget::Mutation(call) => (1, call.dispatched_tool.len()),
-            CallTarget::Query(target) => target.upgrade().map_or((0, 0), |p| {
+            CallTarget::Query(_) => self.owned_call(id).map_or((0, 0), |p| {
                 (
                     self.queries
                         .values()

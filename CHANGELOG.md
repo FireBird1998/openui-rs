@@ -91,6 +91,23 @@
   `dispatch_mutation`. Detach and pause remove provider-run slots, and only the
   private `SessionCore::output` can evict one.
 
+- Runtime: an old query result no longer settles a recreated query (#204).
+  Through the runtime's Rust API, a staged delivery
+  (`QueryManager::stage_tool_call` and friends) that was neither finished
+  nor dropped kept the calls it had copied alive. If a query was then
+  removed and registered again with the same key, completing its original
+  receipt wrote the old result (or error) into the recreated query and
+  ended the recreated query's own call, against ADR 0013 rule 3.
+  Completion now checks that the entry still holds the receipt's very call,
+  as the delivery audit does, instead of only that an entry with the key
+  exists. The same check now decides whether a payload is discarded before
+  it is read, which run remembered for a key a delivery starts, and
+  `QueryManager::abandon_unperformed_call`. Such a receipt is discarded the
+  way a released one is: the command succeeds, consumes the receipt and
+  changes nothing, and failure text past the limits is not read; abandoning
+  it returns false. The session and both bindings finish or drop a staged
+  delivery within the completion that made it, so apps on them were not
+  affected. No change for any other receipt.
 - A component library's size limit, shared action shapes and no unbounded
   recursion (#140). **Behaviour change** for an existing entry point,
   approved by the maintainer: a component library supplied as JSON Schema

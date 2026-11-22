@@ -189,15 +189,13 @@ impl QueryManager {
     /// changes, the entry keeps its data, a run remembered for it is
     /// forgotten, and a later completion of the identity is refused as
     /// already completed. False, and nothing changes, for a mutation call,
-    /// another manager's or a completed identity, or a key still current.
+    /// another manager's, a completed identity, a call the manager no longer
+    /// holds, or a key still current.
     pub fn abandon_unperformed_call(&mut self, id: &ToolCallId) -> bool {
         if self.check_call(id).is_err() {
             return false;
         }
-        let CallTarget::Query(target) = &id.0.target else {
-            return false;
-        };
-        let Some(pending) = target.upgrade() else {
+        let Some(pending) = self.owned_call(id) else {
             return false;
         };
         if self
@@ -207,12 +205,7 @@ impl QueryManager {
         {
             return false;
         }
-        if let Some(entry) = self.cache.get_mut(&pending.key)
-            && entry
-                .pending
-                .as_ref()
-                .is_some_and(|call| Arc::ptr_eq(call, &pending))
-        {
+        if let Some(entry) = self.cache.get_mut(&pending.key) {
             entry.pending = None;
             entry.run_again = None;
         }

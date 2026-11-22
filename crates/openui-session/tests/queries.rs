@@ -707,3 +707,69 @@ fn a_refused_re_registration_keeps_drawing_its_results_while_the_next_program_st
         streaming.json
     );
 }
+
+/// #204: a staged delivery lives only inside the completion that made it.
+/// The session finishes it or drops it before returning, so no program
+/// change can run while it is alive, and a late result cannot settle a
+/// recreated query here. Failure text that fits once but not at both of
+/// `b`'s readers is refused after its delivery is staged; the program then
+/// removes every query and registers `a` again.
+#[test]
+fn a_late_result_for_a_removed_query_leaves_its_recreated_query_loading() {
+    let (lib, _, refs) = base();
+    let limits = RuntimeLimits {
+        evaluation: ParseLimits {
+            result_size: Some(256),
+            ..Default::default()
+        },
+        ..Default::default()
+    };
+    let mut s = SessionCore::new(lib.clone(), None, limits).unwrap();
+    s.attach_tool_provider(&refs).unwrap();
+    let replace = |s: &mut SessionCore, source: &str| {
+        s.replace_program(&refs, program(&lib, source), None, None, true)
+            .unwrap();
+    };
+    replace(
+        &mut s,
+        "a=Query(\"a\")\nb=Query(\"b\")\nc=Query(\"b\")\nroot=Box([a,b,c])",
+    );
+    let calls = s.take_query_update().calls;
+    let old = calls
+        .iter()
+        .find(|c| c.tool_name == "a")
+        .unwrap()
+        .id
+        .clone();
+    let b = calls
+        .iter()
+        .find(|c| c.tool_name == "b")
+        .unwrap()
+        .id
+        .clone();
+    let refused = json!({ "failed": "x".repeat(200) }).to_string();
+    assert!(matches!(
+        s.complete_tool_call_json(&b, &refused),
+        Err(OpenUiError::LimitExceeded { .. })
+    ));
+    assert!(b.is_pending());
+    replace(&mut s, "root=Box(1)");
+    assert!(!old.is_pending() && !b.is_pending());
+    replace(&mut s, "a=Query(\"a\")\nroot=Box(a)");
+    let [replacement] = s.take_query_update().calls.try_into().unwrap();
+    assert_eq!(replacement.tool_name, "a");
+    let before = s.evaluate(&refs).unwrap().query_snapshot_json;
+
+    s.complete_tool_call_json(&old, r#"{"value":"stale"}"#)
+        .unwrap();
+    let late = s.take_query_update();
+    assert!(!late.changed && late.calls.is_empty());
+    assert_eq!(s.evaluate(&refs).unwrap().query_snapshot_json, before);
+    assert!(replacement.id.is_pending());
+    s.complete_tool_call_json(&replacement.id, r#"{"value":"fresh"}"#)
+        .unwrap();
+    let after: Json =
+        serde_json::from_str(&s.evaluate(&refs).unwrap().query_snapshot_json.unwrap()).unwrap();
+    assert_eq!(after["a"], "fresh");
+    assert_eq!(after["__openui_loading"], json!([]));
+}

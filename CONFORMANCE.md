@@ -916,6 +916,18 @@ so `b` shows that call's result and dispatches nothing. Lang-core deletes the
 entry, dispatches again for `b`, drops the first call's result and shows the
 second call's failure.
 
+The rows `removed-call-success-on-a-recreated-key` and
+`removed-call-failure-on-a-recreated-key` hold on every completion path, also
+while a staged delivery (`ToolDelivery`) that was neither finished nor dropped
+keeps the old call alive: a receipt counts only while its entry still holds
+that very call, not merely while an entry with its key exists (#204). Until
+then such an old result settled the recreated query and ended its call
+through the runtime's Rust API. The session and both bindings finish or drop
+a staged delivery inside the completion that made it, so they could not
+reach this. `recreated_query_receipts` (runtime) pins both rows with a live
+staged delivery; a test each in the session, native and WebAssembly suites
+pins that they cannot reach it.
+
 The draft upstream report (#82) is pinned in
 `a-sharing-query-receives-the-result-after-the-starter-moves` and
 `a-sharing-query-receives-the-failure-after-the-starter-moves`: two queries

@@ -444,6 +444,20 @@ several outstanding calls after renames, as upstream allows; a session caps
 pending managed calls globally at `maxContinuations` (default 64).
 The runtime tests also pin the depth error for nested host JSON objects, the exact failure-text charge across holders, and the empty-name count accepted for a missing tool on both completion paths (#193).
 The runtime tests cover withheld delivery errors, receipt recovery after reader evaluation errors or missing context, and query registration at the exact statement-id work limit (#194).
+`recreated_query_receipts` (runtime) replays #204's reproduction: a staged
+delivery that is neither finished nor dropped keeps a removed query's call
+alive while the query is registered again. The old receipt's success, each
+failure (including text past the limits, never read), a refused result and
+an abandonment change nothing; the recreated query keeps its call and its
+remembered run. A seeded differential feeds two managers the same 20,000
+rounds of edits, completions of any receipt ever issued, runs, abandonment
+and dispose, one of them keeping a staged delivery alive through each round,
+and requires every observation to match (about 400 completions arrive while
+a stage holds their call alive). The session, native and WebAssembly suites
+each run a similar sequence through their public API (`b` shares its key
+with a third query, so its failure text is refused after staging), and show
+that nothing they hold keeps the old calls alive (session and WebAssembly
+check the receipts) and the old result is discarded there too.
 `result_limits` (session) pins
 the line between a delivered `tool-error` and a refused outcome for outcome
 JSON, including text past the outcome bound, MCP responses and the peak

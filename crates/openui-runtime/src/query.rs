@@ -672,19 +672,14 @@ impl QueryManager {
         if self.disposed {
             return Ok((false, None));
         }
-        let target = match &id.0.target {
-            CallTarget::Mutation(call) => {
-                let room = self.mutation_room();
-                return self.mutations.complete(call, outcome, self.limits, room);
-            }
-            CallTarget::Query(target) => target,
-        };
+        if let CallTarget::Mutation(call) = &id.0.target {
+            let room = self.mutation_room();
+            return self.mutations.complete(call, outcome, self.limits, room);
+        }
         // Only the originating entry owns this target. A host holding an old
-        // identity cannot retain the key, its data, or a replacement's call.
-        let Some(pending) = target
-            .upgrade()
-            .filter(|pending| self.cache.contains_key(&pending.key))
-        else {
+        // identity cannot retain the key, its data, or a replacement's call,
+        // even while a staged delivery keeps the old call alive (#204).
+        let Some(pending) = self.owned_call(id) else {
             return Ok((false, None));
         };
         // A previous key keeps existing data alive. Only current readers can
