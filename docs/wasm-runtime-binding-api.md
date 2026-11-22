@@ -333,7 +333,9 @@ never a microtask, so timers and input run between rounds (ADR 0014). A
 source that throws falls back to a timer; if that also throws, `onError`
 hears it once and the next session operation drains. On Bun and Node, test
 fakes that replace only `setTimeout` do not govern the turn: fake
-`setImmediate` as well.
+`setImmediate` as well. If a host turn finds the session busy, the driver
+waits for a native microtask checkpoint, clears the stale count and posts
+another task. This also handles a fake timer fired inside a provider.
 
 The driver accepts these options.
 
@@ -343,6 +345,9 @@ The driver accepts these options.
   or claim its continuation inside the callback. The driver frees the output
   when the callback returns. An output whose plan stopped carries `failure`;
   that failure also reaches `onError`, once, just before `onAction`.
+  Each segment keeps the callbacks installed when its delivery began. A
+  replacement made in either callback applies to the next segment, even
+  when a nested free finishes the delivery.
 - `onError(error)` receives query evaluation errors with their binding `kind`
   and message. Repeated drains of the same error report it once, and a
   successful registration clears it. A drain that reaches the reader round limit
@@ -366,7 +371,10 @@ non-finite number (boxed or not), a BigInt, a symbol as a value, a `Map` or
 Otherwise `JSON.stringify` is followed: an `undefined` property and a
 symbol-keyed property are dropped, a valid `Date` becomes its ISO string, an
 `undefined` array item or a hole becomes `null`, and an object's own `toJSON`
-is used (ADR 0014). If delivery itself throws, the
+is used (ADR 0014). Per JSON position the driver reads the conversion hook
+and each property value once and inspects each own descriptor at most once.
+A getter returning an invalid date therefore gives the same tool error as a
+data property holding it. If delivery itself throws, the
 driver reports the binding error and sends a terminal failure for a receipt
 that is still pending. An admitted result survives a cut in dependent reader
 evaluation. A second refusal that leaves the receipt pending
@@ -412,10 +420,13 @@ session produced before that is delivered exactly once, in order, before the
 free returns (ADR 0014). So the free delivers what is left first: the rest of
 a drain it was made inside, then what the session holds (segments a pause left
 for a drain still waiting for a task), taking again while a callback it runs
-produces more, up to three takes. Past that it stops, reports one
+produces more. The first take collects waiting segments, with at most
+`maxContinuations` more takes for segments created during delivery. Nested
+stops share the same allowance. Past that it stops, reports one
 `LimitExceeded` through `onError` and frees; an app that resumes, clicks and
 pauses from every callback would otherwise keep `free()` from returning.
-Those callbacks run inside the app's own call, before it returns. An error
+Those callbacks run inside the app's own call, before it returns. A stop
+attempted from a registered function is refused before delivery begins. An error
 thrown by the session while taking an update during that delivery, and the
 update's query evaluation error or reader-round cut, reach `onError` as a
 drain would report them. A pause inside a callback no longer stops the

@@ -439,3 +439,5 @@ synchronously. That trade, live behaviour for values touched after the end,
 was withdrawn. The provider-result path and a callback's return value are
 followed with `Promise.resolve`, exactly as before #117, and tests pin that
 behaviour so a change to it is deliberate.
+
+(2026-11-22: since #144, the driver reads each result conversion and property once per JSON position, including a getter returning an invalid Date, and inspects each own descriptor at most once. A busy host turn waits for a native microtask checkpoint before repairing the count and posting another task. Each action segment keeps its callbacks through delivery. A stop takes at most one update plus one per continuation slot, shared with nested stops, and refuses guarded reentry before flushing.)

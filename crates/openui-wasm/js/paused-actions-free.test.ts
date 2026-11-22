@@ -253,3 +253,47 @@ test('after the outermost free no callback runs and no provider is invoked', asy
     }
   }
 });
+
+test('replacing callbacks in onError keeps the segment with its original callbacks', async () => {
+  for (const freeInside of [false, true]) {
+    const seen = [];
+    const {s, press} = three({
+      onError(error) {
+        seen.push(['old error', error.kind]);
+        s.setToolProvider({}, {
+          onError: e => seen.push(['new error', e.kind]),
+          onAction: a => seen.push(['new action', a.failure.error.kind]),
+        });
+        if (freeInside) s.free();
+      },
+      onAction: a => seen.push(['old action', a.failure.error.kind]),
+    });
+    press('a'); press('b');
+    await nextToolTurn();
+    s.pauseQueries();
+    await settle();
+    s.free();
+    expect(seen).toEqual(['old error', 'old action', 'new error', 'new action'].map(name => [name, 'QueriesPaused']));
+  }
+});
+
+test('a rejected onAction goes to the onError that owned its segment', async () => {
+  const seen = [];
+  const late = Promise.withResolvers();
+  const {s, press} = three({
+    onError: error => seen.push(['old', error.kind ?? error.message]),
+    onAction() {
+      s.setToolProvider({}, {onError: error => seen.push(['new', error.message])});
+      return late.promise;
+    },
+  });
+  try {
+    press('a');
+    await nextToolTurn();
+    s.pauseQueries();
+    await settle();
+    late.reject(Error('action failed'));
+    await settle();
+    expect(seen).toEqual([['old', 'QueriesPaused'], ['old', 'action failed']]);
+  } finally { s.free(); }
+});

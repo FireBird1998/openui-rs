@@ -153,10 +153,11 @@ const openuiBoolean = value => {
   throw openuiFailure('InvalidJson', 'expected a boolean argument');
 };
 // Read the response value under the package guard, before borrowing the session.
-const openuiResponseLimits = new WeakMap();
+const openuiSessionLimits = new WeakMap();
 const openuiEvaluationLimits = openuiDescriptor(RuntimeLimits.prototype, 'evaluation').get;
 const openuiProgramSize = openuiDescriptor(ParseLimits.prototype, 'programSize').get;
 const openuiFreeLimits = ParseLimits.prototype.free;
+const openuiMaxContinuations = openuiDescriptor(RuntimeLimits.prototype, 'maxContinuations').get;
 const openuiMaxJsonBytes = openuiDescriptor(RuntimeLimits.prototype, 'maxJsonBytes').get;
 const openuiIsSafeInteger = Number.isSafeInteger;
 function openuiResponseState(value, receiver) {
@@ -172,7 +173,7 @@ function openuiResponseState(value, receiver) {
   // Bytes as Rust counts them: four bytes per name plus the UTF-8 of each
   // text as it crosses. A text's UTF-16 length, never more than its bytes, is
   // checked first, so no text longer than the limit is measured or copied.
-  const limit = openuiGet(openuiResponseLimits, receiver)?.maxJsonBytes ?? 8388608n;
+  const limit = openuiGet(openuiSessionLimits, receiver)?.maxJsonBytes ?? 8388608n;
   const refuse = () => { throw openuiFailure('LimitExceeded', 'response state byte limit'); };
   let used = count * 4 + (error?.length ?? 0) + (revision?.length ?? 0);
   if (used > limit) refuse();
@@ -270,7 +271,7 @@ function openuiResponseText(value, receiver) {
 function openuiResponseString(value, receiver) {
   const text = openuiOptionalString(value) ?? '';
   const length = text.length;
-  if (length > 1024 * 1024 || length > (openuiGet(openuiResponseLimits, receiver)?.programSize ?? 1024 * 1024)) {
+  if (length > 1024 * 1024 || length > (openuiGet(openuiSessionLimits, receiver)?.programSize ?? 1024 * 1024)) {
     throw openuiFailure('LimitExceeded', 'response bundle exceeds the program-size limit');
   }
   return text;
@@ -467,11 +468,15 @@ delete openuiSessionPrototype.__checkReleased;
 // release to another session's pointer by shadowing the method (#145 review).
 const openuiDestroySession = openuiSessionPrototype.__destroy_into_raw;
 
+function openuiRefuseReentry() {
+  if (openuiActive) throw openuiFailure('Worker', 'session already in use');
+}
+
 // One guarded call: refuse reentry, convert, check the receiver, call, then
 // build any JSON record. `prototype` is undefined for constructors, statics
 // and free functions, which have no receiver.
 function openuiCall(spec, receiver, prototype, args, call) {
-  if (openuiActive) throw openuiFailure('Worker', 'session already in use');
+  openuiRefuseReentry();
   if (prototype !== undefined) {
     if (!openuiHas(openuiMinted, receiver) || openuiGet(openuiClassOf, receiver) !== prototype) {
       throw openuiFailure('InvalidHandle', 'invalid object receiver');
@@ -588,7 +593,8 @@ function openuiGuardClass(klass, spec) {
           if (key === 'withLimits' && name === 'RuntimeSession') {
             const evaluation = openuiApply(openuiEvaluationLimits, converted[2], []);
             try {
-              openuiPut(openuiResponseLimits, result, {__proto__: null,
+              openuiPut(openuiSessionLimits, result, {__proto__: null,
+                maxContinuations: openuiApply(openuiMaxContinuations, converted[2], []),
                 maxJsonBytes: openuiApply(openuiMaxJsonBytes, converted[2], []),
                 programSize: openuiApply(openuiProgramSize, evaluation, [])});
             } finally { openuiApply(openuiFreeLimits, evaluation, []); }

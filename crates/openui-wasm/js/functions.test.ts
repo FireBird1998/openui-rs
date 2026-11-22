@@ -211,3 +211,27 @@ test('an overflow escaping the callback import disposes only the interrupted ses
   expect(other.snapshot()).toBe('{}');
   library.free();
 });
+
+test('stopping a driven session from a registered function refuses before any callback', () => {
+  const { library, s } = setup();
+  const callbacks = [], refusals = [];
+  try {
+    s.setToolProvider({}, {
+      onError: e => callbacks.push(e.message),
+      onAction: () => callbacks.push('action'),
+      onChange: () => callbacks.push('change'),
+    });
+    s.registerFunction('Echo', () => {
+      for (const stop of ['free', 'dispose', 'detachToolProvider', Symbol.dispose]) {
+        try { s[stop](); } catch (error) { refusals.push([error.kind, error.message]); }
+      }
+      return '7';
+    });
+    callbacks.length = 0;
+    using draw = s.evaluate();
+    expect(JSON.parse(draw.json).root.props.value).toBe(7);
+    expect(refusals).toEqual(Array(4).fill(['Worker', 'session already in use']));
+    expect(callbacks).toEqual([]);
+    kind(() => s.takeQueryUpdate(), 'RefusedWrite');
+  } finally { s.free(); library.free(); }
+});

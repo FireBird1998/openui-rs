@@ -44,10 +44,10 @@ export function packageSource() {
   return { glue: source.slice(0, at), guard: source.slice(at) };
 }
 /** Evaluate the built package with `mutation` run between glue and guard. */
-export function loadWith(mutation: string) {
+export function loadWith(mutation: string, host?: object) {
   const { glue, guard } = packageSource();
   const module = { exports: {} as any };
-  new Function('exports', 'require', 'module', '__filename', '__dirname', `${glue}\n${mutation}\n${guard}`)(
-    module.exports, require, module, packagePath, dirname(packagePath));
+  new Function('exports', 'require', 'module', '__filename', '__dirname', 'host', `${glue}\n${mutation}\n${guard}`)(
+    module.exports, require, module, packagePath, dirname(packagePath), host);
   return module.exports;
 }

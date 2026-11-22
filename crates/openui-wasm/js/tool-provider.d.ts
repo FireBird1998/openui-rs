@@ -23,7 +23,7 @@ export interface ResponseDraw {
 }
 
 export interface RuntimeSession {
-    /** Supplied options replace the callbacks, including for calls in flight. */
+    /** Supplied options replace the callbacks for future deliveries, including calls in flight. A segment already being delivered keeps its callbacks. */
     setToolProvider(provider?: ToolProvider | null, options?: ToolProviderOptions): void;
     /** Draw the entire response so far. */
     setResponse(text: string | null, streaming: boolean): ResponseDraw;

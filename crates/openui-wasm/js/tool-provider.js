@@ -122,9 +122,20 @@ function openuiCannot(what) {
   return new TypeError(`Tool result contains ${what}, which JSON cannot represent`);
 }
 
+const openuiBindEnumerable = Function.prototype.bind.bind(Object.prototype.propertyIsEnumerable);
+const openuiSetPrototype = Object.setPrototypeOf;
+// Provider hooks can change Array.prototype while the projection is running.
+const openuiProjectionArray = () => openuiSetPrototype([], null);
+const openuiJoin = Array.prototype.join;
+
 function openuiToolJson(value) {
   let room = openuiTransportBudget;
-  const depth = new WeakMap();
+  const path = openuiProjectionArray();
+  let pathLength = 0;
+  const charge = size => {
+    room -= size;
+    if (room < 0) throw openuiFailure('LimitExceeded', 'tool outcome size limit');
+  };
   // Each prototype is classified once per result; each step is charged.
   const kinds = new Map();
   const builtinOf = item => {
@@ -133,7 +144,7 @@ function openuiToolJson(value) {
     if (kinds.has(first)) return kinds.get(first);
     let found;
     for (let proto = first; proto !== null && proto !== openuiObjectPrototype; proto = openuiGetPrototype(proto)) {
-      if (--room < 0) throw openuiFailure('LimitExceeded', 'tool outcome size limit');
+      charge(1);
       found = openuiBuiltins.get(proto);
       if (found) break;
     }
@@ -145,15 +156,113 @@ function openuiToolJson(value) {
     try { return { inner: openuiApply(builtin[1], item, []) }; }
     catch { return undefined; }
   };
-  return openuiStringify(value, function (key, item) {
+  // Keep a bounded batch of tokens. Joining a full batch releases its small
+  // strings even when traversal is still deep inside the first root child.
+  const chunks = openuiProjectionArray(), tokens = openuiProjectionArray();
+  const names = openuiProjectionArray(), positions = openuiProjectionArray();
+  let used = 0, nameCount = 0;
+  function flush() {
+    // A string grows by exactly its two quotes if every code unit can be
+    // copied as-is. A space between names keeps lone surrogates in adjacent
+    // names from forming a pair. All these names have already been charged.
+    if (nameCount) {
+      names.length = nameCount;
+      const sample = openuiApply(openuiJoin, names, [' ']);
+      if (openuiStringify(sample).length !== sample.length + 2) {
+        for (let i = 0; i < nameCount; i++) {
+          tokens[positions[i]] = openuiApply(openuiSlice, openuiStringify(names[i]), [1, -1]);
+        }
+      }
+      nameCount = 0;
+    }
+    tokens.length = used;
+    chunks[chunks.length] = openuiApply(openuiJoin, tokens, ['']);
+    used = 0;
+  }
+  // Object members supply a comma flag. Array entries and the root have no
+  // property prefix. An omitted member never enters the buffer.
+  function emit(key, comma, text) {
+    if (used >= 4096) flush();
+    if (comma !== undefined) {
+      tokens[used++] = comma ? ',"' : '"';
+      positions[nameCount] = used;
+      names[nameCount++] = key;
+      tokens[used++] = key;
+      tokens[used++] = '":';
+    }
+    tokens[used++] = text;
+  }
+  let lastScalar, encodedScalar;
+  let boxed;
+  const holder = {toJSON: () => boxed}, noKeys = [];
+  // Read the original and its conversion together. A stringify replacer sees
+  // only the converted value, too late to distinguish a Date from a chosen null.
+  function write(original, key, level, comma) {
+    charge(1 + key.length);
+    if (original !== null &&
+        (typeof original === 'object' || typeof original === 'function' || typeof original === 'bigint')) {
+      return writeObject(original, key, level, comma);
+    }
+    return scalar(original, key, level, comma);
+  }
+  function scalar(item, key, level, comma) {
+    if (typeof item === 'number' && !Number.isFinite(item)) throw openuiCannot(String(item));
+    if (typeof item === 'symbol' && level !== 0) throw openuiCannot('a symbol');
+    if (item === undefined || typeof item === 'symbol') return false;
+    if (typeof item === 'string') charge(item.length);
+    if (item !== lastScalar) {
+      encodedScalar = openuiStringify(item);
+      lastScalar = item;
+    }
+    emit(key, comma, encodedScalar);
+    return true;
+  }
+  function memberKeys(item, lengthField) {
+    const keys = openuiOwnKeys(item);
+    if (keys.length > room) throw openuiFailure('LimitExceeded', 'tool outcome size limit');
+    // Snapshot enumerable keys before a value getter can edit a sibling.
+    if (!keys.length) return keys;
+    // Binding the native test once amortizes its cost on wider objects.
+    const enumerable = keys.length >= 8 ? openuiBindEnumerable(item) : undefined;
+    let count = 0;
+    for (let i = 0; i < keys.length; i++) {
+      const name = keys[i];
+      if (typeof name !== 'string') continue;
+      const visible = name === 'length' ? lengthField?.enumerable
+        : enumerable ? enumerable(name) : openuiFieldOf(item, name)?.enumerable;
+      if (visible) {
+        if (count !== i) keys[count] = name;
+        count++;
+      }
+    }
+    charge(keys.length - count);
+    if (count !== keys.length) keys.length = count;
+    return keys;
+  }
+  function members(item, keys, level, original, toJSON) {
+    let comma = false;
+    for (let i = 0; i < keys.length; i++) {
+      const name = keys[i];
+      const child = item === original && name === 'toJSON' ? toJSON : item[name];
+      if (write(child, name, level, comma)) comma = true;
+    }
+  }
+  function writeObject(original, key, level, comma) {
+    let item = original;
+    const toJSON = original.toJSON;
+    if (typeof toJSON === 'function') {
+      item = openuiApply(toJSON, original, [key]);
+      if (item === null && toJSON === openuiDateToJson) {
+        const builtin = builtinOf(original);
+        if (builtin?.[0] === 'date' && brandOf(builtin, original)) throw openuiCannot('an invalid Date');
+      }
+    }
+    let lengthField;
     if (item !== null && typeof item === 'object') {
-      // A boxed string is the one object JSON.stringify converts to text by
-      // calling application code (its prototype's toString), so it is
-      // recognized before anything else, whatever its prototype. A String
-      // object's own length is always a read-only, hidden, permanent data
-      // property; only an object that has one pays the throwing brand check.
-      const length = openuiFieldOf(item, 'length');
-      if (length && !length.writable && !length.enumerable && !length.configurable) {
+      // A boxed string has this mark even across realms and prototype changes.
+      // Keep the descriptor for enumeration, which can itself run a Proxy trap.
+      lengthField = openuiFieldOf(item, 'length');
+      if (lengthField && !lengthField.writable && !lengthField.enumerable && !lengthField.configurable) {
         try { item = openuiApply(openuiStringValue, item, []); } catch { /* not a boxed string */ }
       }
     }
@@ -161,56 +270,81 @@ function openuiToolJson(value) {
       const builtin = builtinOf(item);
       const brand = builtin && brandOf(builtin, item);
       if (brand) {
-        const [what] = builtin;
-        if (what === 'number') {
-          if (!Number.isFinite(brand.inner)) throw openuiCannot(String(brand.inner));
-          item = brand.inner;
-        } else if (what === 'string' || what === 'boolean') {
-          item = brand.inner;
-        } else if (what === 'typed') {
-          throw openuiCannot((/^[AEIO]/.test(brand.inner) ? 'an ' : 'a ') + brand.inner);
-        } else if (what === 'date') {
-          // A date reaches the replacer only when its toJSON is not callable,
-          // and JSON.stringify would then write {}.
-          throw openuiCannot('a Date');
-        } else {
-          throw openuiCannot(what);
-        }
+        const what = builtin[0];
+        if (what === 'number' || what === 'string' || what === 'boolean') item = brand.inner;
+        else if (what === 'typed') throw openuiCannot((/^[AEIO]/.test(brand.inner) ? 'an ' : 'a ') + brand.inner);
+        else throw openuiCannot(what === 'date' ? 'a Date' : what);
       } else if (builtin?.[0] === 'a DataView' && openuiIsView(item)) {
-        // A view over a detached buffer fails the byteLength brand.
         throw openuiCannot('a DataView');
-      } else if (openuiIsRawJson?.(item)) {
-        // Raw JSON is written as its text; charge that text.
-        room -= openuiFieldOf(item, 'rawJSON').value.length;
       }
-    } else if (item === null) {
-      // Date's own toJSON turns an invalid date into null before this
-      // replacer sees it (also when a replaced valueOf gives NaN). A data
-      // property still holds the original.
-      const field = openuiFieldOf(this, key);
-      const original = field && openuiHasOwn(field, 'value') ? field.value : null;
-      if (original !== null && typeof original === 'object') {
-        const builtin = builtinOf(original);
-        const brand = builtin?.[0] === 'date' && brandOf(builtin, original);
-        if (brand && original.toJSON === openuiDateToJson) throw openuiCannot('an invalid Date');
-      }
-    }
-    room -= 1 + key.length + (typeof item === 'string' ? item.length : 0);
-    if (room < 0) throw openuiFailure('LimitExceeded', 'tool outcome size limit');
-    if (item !== null && typeof item === 'object') {
-      const level = (depth.get(this) ?? 0) + 1;
-      if (level > 256) throw openuiFailure('LimitExceeded', 'tool outcome depth limit');
-      depth.set(item, level);
     }
     if (typeof item === 'function') {
-      throw new TypeError(item === value ? 'Tool returned a function, which JSON cannot represent'
+      throw new TypeError(level === 0 ? 'Tool returned a function, which JSON cannot represent'
         : 'Tool result contains a function, which JSON cannot represent');
     }
-    if (typeof item === 'number' && !Number.isFinite(item)) throw openuiCannot(String(item));
     if (typeof item === 'bigint') throw openuiCannot('a BigInt');
-    if (typeof item === 'symbol' && item !== value) throw openuiCannot('a symbol');
-    return item;
-  });
+    if (item === null || typeof item !== 'object') return scalar(item, key, level, comma);
+    if (level >= 256) throw openuiFailure('LimitExceeded', 'tool outcome depth limit');
+    if (openuiIsRawJson?.(item)) {
+      const raw = openuiFieldOf(item, 'rawJSON').value;
+      charge(raw.length);
+      emit(key, comma, raw);
+      return true;
+    }
+    // Reuse the common prefix of the last path. After a branch changes,
+    // only the entries before this level are ancestors of the current item.
+    let frame = path[level];
+    if (frame === undefined) {
+      frame = {item: undefined, firstRecord: undefined, lastRecord: undefined};
+      path[level] = frame;
+    }
+    if (level >= pathLength || frame.item !== item) {
+      for (let i = level - 1; i >= 0; i--) {
+        if (path[i].item === item) throw new TypeError('Cannot serialize cyclic tool result');
+      }
+      frame.item = item;
+      pathLength = level + 1;
+    }
+    if (openuiIsArray(item)) {
+      const length = Math.trunc(+item.length);
+      if (length > room) throw openuiFailure('LimitExceeded', 'tool outcome size limit');
+      emit(key, comma, '[');
+      for (let i = 0; i < length; i++) {
+        if (i) tokens[used++] = ',';
+        if (!write(item[i], openuiToString(i), level + 1)) emit(undefined, undefined, 'null');
+      }
+      tokens[used++] = ']';
+    } else {
+      // Stringify still unboxes a Number, Boolean or BigInt whose prototype
+      // has changed. An empty property list lets the engine do just that
+      // without visiting any children. The holder supplies the already
+      // converted value so its toJSON is never looked up again.
+      if (frame.firstRecord !== item && frame.lastRecord !== item) {
+        boxed = item;
+        const representation = openuiStringify(holder, noKeys);
+        if (representation !== '{}') {
+          emit(key, comma, representation);
+          return true;
+        }
+        // JSON unboxing depends on immutable internal slots. Remember only
+        // this probe result. Each occurrence still reads the conversion and fields.
+        if (frame.firstRecord === undefined) frame.firstRecord = item;
+        else frame.lastRecord = item;
+      }
+      const keys = memberKeys(item, lengthField);
+      if (!keys.length) {
+        emit(key, comma, '{}');
+        return true;
+      }
+      emit(key, comma, '{');
+      members(item, keys, level + 1, original, toJSON);
+      tokens[used++] = '}';
+    }
+    return true;
+  }
+  if (!write(value, '', 0)) return undefined;
+  if (used) flush();
+  return chunks.length === 1 ? chunks[0] : openuiApply(openuiJoin, chunks, ['']);
 }
 
 function openuiToolMessage(error) {
@@ -273,13 +407,21 @@ const openuiClosing = new WeakMap();
 // Sessions the app has freed or disposed. Every driver the session ever had,
 // current, closing or detached earlier, stops calling the app (ADR 0014).
 const openuiEndedSessions = new WeakSet();
-// How many updates the delivery before a free, dispose or detach takes. The
-// first holds everything the session produced. A callback it runs can make
-// more only by resuming, clicking and pausing again, and one pause leaves at
-// most maxContinuations failures, so one more round is what a reasonable app
-// needs and a third is generous. An app that does it on every delivery would
-// otherwise keep free() from returning (ADR 0014).
-const openuiFlushRounds = 3;
+// One initial take, then at most one extra round per continuation slot for
+// segments created during delivery. Read the Rust default lazily: the web
+// package can be loaded before the WebAssembly module is initialized.
+const openuiFlushes = new WeakMap();
+let openuiDefaultContinuations;
+function openuiFlushRounds(session) {
+  const limits = openuiGet(openuiSessionLimits, session);
+  if (limits) return limits.maxContinuations + 1n;
+  if (openuiDefaultContinuations === undefined) {
+    const defaults = new RuntimeLimits();
+    try { openuiDefaultContinuations = defaults.maxContinuations; }
+    finally { defaults.free(); }
+  }
+  return openuiDefaultContinuations + 1n;
+}
 const openuiCancelled = new WeakMap();
 function openuiEnter(session) { openuiPut(openuiBusy, session, (openuiGet(openuiBusy, session) ?? 0) + 1); }
 function openuiLeave(session) { openuiPut(openuiBusy, session, openuiGet(openuiBusy, session) - 1); }
@@ -381,12 +523,12 @@ class OpenuiToolDriver {
     return openuiHas(openuiEndedSessions, this.session);
   }
 
-  notify(name, ...args) {
+  notify(name, options, ...args) {
     if (this.stopped()) return;
-    const callback = this.options[name];
+    const callback = (options ?? this.options)[name];
     if (!callback) return;
     // A failed error handler has no further recipient. Never reenter it.
-    const failed = error => { if (!this.stopped() && name !== 'onError') this.report(error); };
+    const failed = error => { if (!this.stopped() && name !== 'onError') this.report(error, options); };
     try {
       const returned = callback(...args);
       if (returned != null) Promise.resolve(returned).catch(failed);
@@ -397,7 +539,7 @@ class OpenuiToolDriver {
   // that a free or dispose made inside one of its callbacks can hand over
   // the rest before it returns (ADR 0014).
   hold(update) {
-    const hand = { update, index: 0n, reported: false };
+    const hand = { update, index: 0n, options: undefined };
     this.inHand = hand;
     return hand;
   }
@@ -425,16 +567,17 @@ class OpenuiToolDriver {
     while (hand.index < count && this.delivering()) {
       const action = hand.update.actionAt(hand.index);
       try {
-        if (!hand.reported) {
-          hand.reported = true;
+        const options = hand.options ?? this.options;
+        if (!hand.options) {
+          hand.options = options;
           const failure = action.failure;
-          if (failure) this.report(openuiFailure(failure.error.kind, failure.error.message));
+          if (failure) this.report(openuiFailure(failure.error.kind, failure.error.message), options);
           // A free inside onError delivered this segment's onAction and the rest.
           if (!this.delivering()) return;
         }
         hand.index++;
-        hand.reported = false;
-        this.notify('onAction', action);
+        hand.options = undefined;
+        this.notify('onAction', options, action);
       } finally { action.free(); }
     }
   }
@@ -461,20 +604,27 @@ class OpenuiToolDriver {
 
   flushActions(take = true) {
     const session = this.session;
+    const outer = openuiGet(openuiFlushes, session);
+    const flush = outer ?? { rounds: openuiFlushRounds(session), taken: 0n, reported: false };
+    if (!outer) openuiPut(openuiFlushes, session, flush);
     openuiEnter(session);
     try {
       if (this.inHand) this.deliverHand(this.inHand);
       if (!take) return;
       // A callback this delivers can produce more (a resume, a click and a
-      // pause), so take again while an update brings segments, up to
-      // openuiFlushRounds takes. Then stop, say so once and let the free go on.
+      // pause). Charge the take before delivery so a nested stop uses the
+      // same remaining rounds and reports exhaustion only once.
       let more = true;
-      for (let round = 0; more && this.delivering(); round++) {
-        if (round === openuiFlushRounds) {
-          this.report(openuiFailure('LimitExceeded',
-            `free() stopped delivering after ${openuiFlushRounds} rounds: callbacks kept producing action segments`));
+      while (more && this.delivering()) {
+        if (flush.taken === flush.rounds) {
+          if (!flush.reported) {
+            flush.reported = true;
+            this.report(openuiFailure('LimitExceeded',
+              `free() stopped delivering after ${flush.rounds} rounds: callbacks kept producing action segments`));
+          }
           return;
         }
+        flush.taken++;
         const update = openuiOwned.get('takeQueryUpdate').call(session);
         const hand = this.hold(update);
         try {
@@ -491,15 +641,16 @@ class OpenuiToolDriver {
       }
     } finally {
       openuiLeave(session);
+      if (!outer) openuiFlushes.delete(session);
     }
   }
 
-  report(error) {
+  report(error, options) {
     if (this.stopped()) return;
     let diagnostic;
     try { diagnostic = error instanceof Error ? error : new Error(openuiToolMessage(error)); }
     catch { diagnostic = new Error('tool provider driver callback failed'); }
-    this.notify('onError', diagnostic);
+    this.notify('onError', options, diagnostic);
   }
 
   cancel(paused) {
@@ -589,6 +740,15 @@ class OpenuiToolDriver {
     });
   }
 
+  async postAfterBusy(turn) {
+    // A fake timer can run a "task" on a provider's stack. A native await
+    // leaves that stack even if the host fakes queueMicrotask as well.
+    await undefined;
+    if (this.deferred !== turn) return;
+    openuiPut(openuiBusy, this.session, 0);
+    this.postTurn(turn);
+  }
+
   drain(hostTurn = false) {
     if (this.deferred !== undefined) return;
     const session = this.session;
@@ -601,6 +761,9 @@ class OpenuiToolDriver {
       // It delivers what it takes, as before, and a free inside one of its
       // callbacks finds it as the session's closing driver (ADR 0014).
       closing = true;
+    } else if (busy && hostTurn) {
+      this.postAfterBusy(this.reserveTurn());
+      return;
     } else if (busy || (!hostTurn && (openuiGet(openuiCancelled, session) ||
         (this.pending.size && this.providerMicrotasks)))) {
       this.deferDrain();
@@ -770,7 +933,8 @@ function openuiDriverMember(key, spec, prototype, original) {
   const stop = key === 'free' || key === 'dispose' || key === 'detachToolProvider';
   if (!stop && !openuiDriverWrites.has(key)) return guarded;
   return function (...args) {
-    const driver = openuiDrivers.get(this);
+    if (stop) openuiRefuseReentry();
+    const driver = openuiGet(openuiDrivers, this);
     if (stop) {
       // Every segment the session produced reaches the app before it stops;
       // after free or dispose returns no callback runs (ADR 0014).

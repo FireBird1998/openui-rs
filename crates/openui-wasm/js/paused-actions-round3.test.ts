@@ -62,9 +62,12 @@ test('a free inside onChange after a detach calls no callback once it returns', 
 const SCHEMA = '{"$defs":{"Box":{"properties":{"value":{},"a":{},"b":{}}}}}';
 const PROGRAM = '$n=0\na=Mutation("a")\nb=Mutation("b")\nroot=Box($n,Action([@Run(a)]),Action([@Run(b)]))';
 
-function paused(onAction) {
+function paused(onAction, maxContinuations?: bigint) {
   const library = new wasm.ComponentLibrary(SCHEMA);
-  const s = new wasm.RuntimeSession(library);
+  using limits = new wasm.RuntimeLimits();
+  if (maxContinuations !== undefined) limits.maxContinuations = maxContinuations;
+  const s = maxContinuations === undefined ? new wasm.RuntimeSession(library)
+    : wasm.RuntimeSession.withLimits(library, undefined, limits);
   const parsed = wasm.parseProgram(PROGRAM, library);
   library.free();
   const errors = [];
@@ -84,20 +87,23 @@ function paused(onAction) {
   return { s, errors, press, count: () => deliveries };
 }
 
-test('a free stops taking after a bound when callbacks keep producing segments', async () => {
-  const { s, errors, press, count } = paused((session, click) => {
-    session.resumeQueries(); click('b'); session.pauseQueries();
-  });
-  press('a');
-  await nextToolTurn();
-  s.pauseQueries();
-  s.free();
-  expect(count()).toBeLessThanOrEqual(8);
-  const limits = errors.filter(([kind]) => kind === 'LimitExceeded');
-  expect(limits).toHaveLength(1);
-  expect(limits[0][1]).toContain('free');
-  await settle();
-  expect(errors.filter(([kind]) => kind === 'LimitExceeded')).toHaveLength(1);
+test('free bounds callback-produced rounds by the session continuation limit', async () => {
+  using defaults = new wasm.RuntimeLimits();
+  for (const configured of [1n, 4n, undefined]) {
+    const rounds = Number(configured ?? defaults.maxContinuations) + 1;
+    const { s, errors, press, count } = paused((session, click) => {
+      session.resumeQueries(); click('b'); session.pauseQueries();
+    }, configured);
+    press('a');
+    await nextToolTurn();
+    s.pauseQueries();
+    s.free();
+    expect(count()).toBe(rounds);
+    await settle();
+    expect(errors.filter(([kind]) => kind === 'LimitExceeded')).toEqual([
+      ['LimitExceeded', `free() stopped delivering after ${rounds} rounds: callbacks kept producing action segments`],
+    ]);
+  }
 });
 
 test('the delivery before a detach reports the evaluation error it takes', async () => {
@@ -154,4 +160,18 @@ test('a driver attached inside a closing drain and the closing one both end at f
   late.reject(Error('late'));
   await settle();
   expect(after).toEqual([]);
+});
+
+test('a free inside a flush shares the remaining rounds', async () => {
+  const { s, count, errors, press } = paused((session, click) => {
+    if (count() === 6) return; // keep a regression finite
+    session.resumeQueries(); click('b'); session.pauseQueries();
+    session.free();
+  }, 1n);
+  press('a');
+  await nextToolTurn();
+  s.pauseQueries();
+  s.free();
+  expect(count()).toBe(2);
+  expect(errors.filter(([kind]) => kind === 'LimitExceeded')).toHaveLength(1);
 });

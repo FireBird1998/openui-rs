@@ -7,6 +7,14 @@
   alongside components. A `LiveProgram` registers the Swift implementations
   for complete and streaming programs, and delivers declared actions through
   `onHostEvent`. The session checks arguments, results and registration limits.
+- JavaScript tool results (#144, #212). At each JSON position the driver
+  looks up and calls `toJSON` at most once, including for Dates. It enumerates
+  an object once and reads each property descriptor and value at most once
+  per key, including through a Proxy. Across 28 inputs in Bun, the largest
+  increases in median peak process memory and projection time were 20% and
+  34%, respectively. Free, dispose and detach share a flush bound of
+  `maxContinuations + 1` rounds, including nested stops. At a limit of 1,
+  the bound drops from 3 rounds to 2.
 
 - Prompts and bindings from a defined library (#135). A library made from a
   definition gives its system prompt, `prompt(options)`, byte for byte as

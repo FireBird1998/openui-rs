@@ -378,11 +378,11 @@ test('a late Cloud script delivery leaves the settled edit visible and loading e
 });
 
 // The value a query publishes for one function-map result, or its error.
-async function published(result: () => unknown) {
+async function published(result: () => unknown, mcp = false) {
   using lib = new wasm.ComponentLibrary('{"$defs":{}}');
   using s = new wasm.RuntimeSession(lib);
   using program = wasm.parseProgram('q=Query("read",{})', lib);
-  s.setToolProvider({read: result});
+  s.setToolProvider(mcp ? {callTool: () => ({structuredContent: result()})} : {read: result});
   using out = s.replaceProgram(program, undefined, undefined, false);
   await nextToolTurn();
   using draw = s.evaluate();
@@ -712,4 +712,116 @@ test('a host whose clearTimeout throws reports it and the write still returns', 
   expect(new Set(errors)).toEqual(new Set(['clear refused']));
   using draw = s.evaluate();
   expect(JSON.parse(draw.querySnapshotJson).q).toBe(calls);
+});
+
+test.each([false, true])('a Date conversion getter is read once and its chosen conversion decides the result (MCP %s)', async mcp => {
+  for (const builtin of [true, false]) {
+    let reads = 0, conversions = 0, propertyReads = 0;
+    const date = Object.defineProperty(new Date(NaN), 'toJSON', { get() {
+      reads++;
+      const custom = function (key) {
+        conversions++;
+        expect(this).toBe(date);
+        expect(key).toBe('at');
+        return null;
+      };
+      return (reads === 1 ? builtin : !builtin) ? Date.prototype.toJSON : custom;
+    } });
+    for (const getter of [false, true]) {
+      reads = conversions = propertyReads = 0;
+      const output = await published(() => getter ? { get at() { propertyReads++; return date; } } : {at: date}, mcp);
+      expect(output).toEqual(builtin ? cannot('an invalid Date') : { at: null });
+      expect([propertyReads, reads, conversions]).toEqual([getter ? 1 : 0, 1, builtin ? 0 : 1]);
+    }
+  }
+});
+
+test('Proxy descriptors and values are observed once per key during tool result projection', async () => {
+  const descriptors = [], gets = [];
+  let enumerations = 0;
+  const date = new Date(NaN);
+  const result = new Proxy({length: null, at: date}, {
+    ownKeys(target) { enumerations++; return Reflect.ownKeys(target); },
+    getOwnPropertyDescriptor(target, key) {
+      const repeated = descriptors.includes(key);
+      descriptors.push(key);
+      return repeated ? {configurable: true, enumerable: true, value: null} : Reflect.getOwnPropertyDescriptor(target, key);
+    },
+    get(target, key) { gets.push(key); return Reflect.get(target, key); },
+  });
+  expect(await published(() => ({result}))).toBe(cannot('an invalid Date'));
+  expect(enumerations).toBe(1);
+  expect(descriptors.sort()).toEqual(['at', 'length']);
+  expect(gets.sort()).toEqual(['at', 'length', 'toJSON']);
+});
+
+test('a stale busy count recovers after a host turn without re-deferring forever', async () => {
+  const host = { tasks: [] as Array<() => void>, leaveBusy: (_session: unknown) => {} };
+  const pkg = loadWith(`
+    var setImmediate = callback => host.tasks.push(callback);
+    host.leaveBusy = session => openuiEnter(session);
+  `, host);
+  using c = chained(pkg, 0, () => ({}));
+  host.leaveBusy(c.s);
+  c.start();
+  // Bound the fake loop so a stuck driver fails the assertion.
+  for (let hop = 0; hop < 8 && !c.calls.length; hop++) {
+    host.tasks.shift()?.();
+    await null;
+  }
+  expect(c.calls).toEqual([0]);
+});
+
+test('a fake task run inside provider code waits for the stack and another host task', async () => {
+  const host = { tasks: [] as Array<() => void> };
+  const pkg = loadWith('var setImmediate = callback => host.tasks.push(callback);', host);
+  let reposted;
+  using c = chained(pkg, 1, () => ({}), (s, calls) => ({read: ({n}) => {
+    calls.push(n);
+    if (n === 0) {
+      s.set('$n', '1');
+      // Run the two hops of the reserved turn on this provider's stack.
+      host.tasks.shift()();
+      host.tasks.shift()();
+      reposted = host.tasks.length;
+    }
+    return n;
+  }}));
+  c.start();
+  expect([c.calls, reposted]).toEqual([[0], 0]);
+  await null;
+  expect(c.calls).toEqual([0]);
+  for (let hop = 0; hop < 8 && c.calls.length === 1; hop++) {
+    host.tasks.shift()?.();
+    await null;
+  }
+  expect(c.calls).toEqual([0, 1]);
+});
+
+test('an enumerable toJSON getter is read once when its value is data', async () => {
+  let reads = 0;
+  const result = { get toJSON() { return ++reads; }, empty: null };
+  expect(await published(() => result)).toEqual({toJSON: 1, empty: null});
+  expect(reads).toBe(1);
+});
+
+test('a shared conversion receives the key of each serialized occurrence', async () => {
+  const keys = [];
+  const shared = { toJSON(key) { keys.push(key); return key; } };
+  expect(await published(() => [shared, {again: shared}])).toEqual(['0', {again: 'again'}]);
+  expect(keys).toEqual(['0', 'again']);
+});
+
+test('buffered projection preserves escaped field names and observes a shared record again', () => {
+  const host = {} as { project(value: unknown): string };
+  loadWith('host.project = openuiToolJson;', host);
+  // These lone surrogates would form a pair if field names were concatenated.
+  const adjacent = {['\ud800']: 1, ['\udc00']: 2};
+  expect(host.project(adjacent)).toBe(JSON.stringify(adjacent));
+
+  const wide = Object.fromEntries(Array.from({length: 3000}, (_, i) => ['field' + i, i]));
+  wide['"\\\n'] = 3000;
+  const shared = {n: 1};
+  const result = [shared, wide, {get omitted() { shared.n++; return undefined; }}, shared];
+  expect(host.project(result)).toBe(JSON.stringify([{n: 1}, wide, {}, {n: 2}]));
 });
